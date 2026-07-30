@@ -953,14 +953,23 @@ export declare class Renderer {
     /**
      * THE CURTAIN VEIL — the one-veil window math, always armed. A
      * curtain wall fronts open country, not rooms: there is no shelter
-     * gate to pass and no interior floor to find, so ANY walkable
-     * ground north of the mass opens the window (the sky is the
-     * bailey's ceiling). Same smoothstep window on the continuous
-     * render position as wallHeightAt, widened for the taller mass —
-     * a 3.4 crown overhangs ~6.5 rows, so the ease runs out at dyF
-     * [9..11] instead of [7..9]. Sinks to the same WALL_STUB as every
-     * wall kind, so a curtain meeting a building run cuts to one
-     * shared crown line.
+     * gate to pass and no interior floor to find. THE CONTENT LAW:
+     * anything that is not fortification mass — road, grass, a tree, a
+     * boulder, a prop, even a building's wall — is CONTENT the curtain
+     * occludes, so the first non-garrison tile north opens the window
+     * unconditionally. (The old rule demanded WALKABLE ground there,
+     * so every column that happened to front a tree or a rock stood at
+     * full height while its run-mates sank — a comb of random full
+     * segments standing over the very things the reveal exists to
+     * show.) Same smoothstep window on the continuous render position
+     * as wallHeightAt, widened for the taller mass — a 3.4 crown
+     * overhangs ~6.5 rows, so the ease runs out at dyF [9..11] instead
+     * of [7..9], and the one-slab probe reaches 5 rows deep (a bastion
+     * 4-5 rows thick still throws its crown over the ground in front
+     * at GARRISON_H; house walls stop at 3 because WALL_H 2.05 never
+     * overhangs that far). Sinks to the same WALL_STUB as every wall
+     * kind, so a curtain meeting a building run cuts to one shared
+     * crown line.
      */
     private garrisonHeightAt;
     /**

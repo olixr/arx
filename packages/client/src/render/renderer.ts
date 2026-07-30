@@ -4338,7 +4338,10 @@ export class Renderer {
             const runKey = packTile(ax, ty);
             if (runSeen.has(runKey)) continue;
             runSeen.add(runKey);
-            const gwhT = this.garrisonHeightAt(game, ax, ty);
+            // The merged gate is ONE item — key its veil to the
+            // passage's center column so a wide gate opens
+            // symmetrically as you near the road, not its west end.
+            const gwhT = this.garrisonHeightAt(game, ax + ((runLen - 1) >> 1), ty);
             const gitem = this.garrisonGateItem(ground as Tile, ax, ty, game, gwhT, runLen);
             if (game.world.elevAt(ax, ty) !== 0) gitem.elevated = true;
             items.push(gitem);
@@ -5949,37 +5952,42 @@ export class Renderer {
   /**
    * THE CURTAIN VEIL — the one-veil window math, always armed. A
    * curtain wall fronts open country, not rooms: there is no shelter
-   * gate to pass and no interior floor to find, so ANY walkable
-   * ground north of the mass opens the window (the sky is the
-   * bailey's ceiling). Same smoothstep window on the continuous
-   * render position as wallHeightAt, widened for the taller mass —
-   * a 3.4 crown overhangs ~6.5 rows, so the ease runs out at dyF
-   * [9..11] instead of [7..9]. Sinks to the same WALL_STUB as every
-   * wall kind, so a curtain meeting a building run cuts to one
-   * shared crown line.
+   * gate to pass and no interior floor to find. THE CONTENT LAW:
+   * anything that is not fortification mass — road, grass, a tree, a
+   * boulder, a prop, even a building's wall — is CONTENT the curtain
+   * occludes, so the first non-garrison tile north opens the window
+   * unconditionally. (The old rule demanded WALKABLE ground there,
+   * so every column that happened to front a tree or a rock stood at
+   * full height while its run-mates sank — a comb of random full
+   * segments standing over the very things the reveal exists to
+   * show.) Same smoothstep window on the continuous render position
+   * as wallHeightAt, widened for the taller mass — a 3.4 crown
+   * overhangs ~6.5 rows, so the ease runs out at dyF [9..11] instead
+   * of [7..9], and the one-slab probe reaches 5 rows deep (a bastion
+   * 4-5 rows thick still throws its crown over the ground in front
+   * at GARRISON_H; house walls stop at 3 because WALL_H 2.05 never
+   * overhangs that far). Sinks to the same WALL_STUB as every wall
+   * kind, so a curtain meeting a building run cuts to one shared
+   * crown line.
    */
   private garrisonHeightAt(game: ClientGame, tx: number, ty: number): number {
     const dy = ty - this.ownPY;
-    if (dy < -2 || dy > 13) return GARRISON_H;
+    if (dy < -2 || dy > 15) return GARRISON_H;
     const adx = Math.abs(tx + 0.5 - this.ownPX);
     if (adx > 13) return GARRISON_H;
-    // Nearest walkable ground straight north through the curtain
-    // mass — same one-slab law as wallHeightAt: rows of a thick
-    // rampart share the front row's ease and sink together.
+    // Nearest content row straight north through the curtain mass —
+    // same one-slab law as wallHeightAt: rows of a thick rampart all
+    // key to the front row's ease and sink together.
     let depth = 0;
-    let open = false;
-    for (let d = 1; d <= 3; d++) {
+    for (let d = 1; d <= 5; d++) {
       const nt = game.world.groundAt(tx, ty - d);
       if (nt === undefined) return GARRISON_H;
-      if (Renderer.GARRISON_MASS.has(nt)) {
-        if (depth !== 0) break;
-        continue;
+      if (!Renderer.GARRISON_MASS.has(nt)) {
+        depth = d;
+        break;
       }
-      if (depth === 0) depth = d;
-      if (!tileDef(nt).solid) open = true;
-      break;
     }
-    if (!open) return GARRISON_H;
+    if (depth === 0) return GARRISON_H;
     const dyF = dy - (depth - 1);
     let ey = Math.min((dyF + 0.5) / 1.5, (11 - dyF) / 2, 1);
     let ex = Math.min((13 - adx) / 2.5, 1);
@@ -6586,7 +6594,20 @@ export class Renderer {
     // rise stays a fraction of the span, so the opening reads as gate
     // at any width.
     const rise = Math.min(ow * 0.22, s * 0.42);
-    const archOn = hs > springH + rise + s * 0.5;
+    // THE GATE STAYS A GATE: the passage is carved out of the masonry
+    // at EVERY veil height — a cut gatehouse is two pier stubs
+    // flanking an open gap with the road running through, never a
+    // sealed slab (the old binary archOn slab read as a wall you
+    // could not walk through, exactly at the moment the reveal was
+    // inviting you in). archK keys everything that only exists while
+    // mass stands above the arch — tunnel shade, portcullis, voussoir
+    // ring, machicolations, the wall-walk over the passage — and
+    // fades it continuously as the crown melts toward the arch head,
+    // so nothing pops on the ease.
+    const archK = Math.max(
+      0,
+      Math.min(1, (hs - (springH + rise + s * 0.15)) / (s * 0.6)),
+    );
     const y0 = p.y - 0.25;
     const y1 = p.y + syT + 0.25;
     const mkK = Math.max(0, Math.min(1, (whT - WALL_STUB) / (GARRISON_H - WALL_STUB)));
@@ -6622,13 +6643,11 @@ export class Renderer {
         // with the passage CARVED THROUGH it (the true-glass law: an
         // opening is a hole in the face, never paint over stone), so
         // the baked road genuinely runs under the arch.
-        if (archOn) {
-          ctx.save();
-          const guard = new Path2D();
-          guard.rect(x0 - s, -hs - s, w2 + s * 2, hs + s * 2);
-          guard.addPath(archPath());
-          ctx.clip(guard, 'evenodd');
-        }
+        ctx.save();
+        const guard = new Path2D();
+        guard.rect(x0 - s, -hs - s, w2 + s * 2, hs + s * 2);
+        guard.addPath(archPath());
+        ctx.clip(guard, 'evenodd');
         this.paintGarrisonMasonry(
           x0,
           w2,
@@ -6641,8 +6660,10 @@ export class Renderer {
           whT,
           false,
         );
-        if (archOn) ctx.restore();
-        if (archOn) {
+        ctx.restore();
+        if (archK > 0.001) {
+          ctx.save();
+          ctx.globalAlpha *= archK;
           const arch = archPath();
           // The passage: gatehouse depth holds real shadow, and the
           // dark melts as anyone nears the threshold (the door-veil
@@ -6691,24 +6712,6 @@ export class Renderer {
           ctx.fillStyle = 'rgba(170, 178, 200, 0.3)';
           ctx.fillRect(ox0, tipY - s * 0.18, ow, Math.max(1, s * 0.022));
           ctx.restore();
-          // THE LEAVES: an iron-bound pair to the spring line. The
-          // tile is the state; the swing eases through doorOpenness
-          // and a locked refusal shudders both leaves in the frame.
-          const o = Math.min(1, this.doorOpenness(tx, ty, dinfo.open));
-          const shakeDx = this.doorShakeAt(tx, ty) * s * 0.035;
-          const half = ow / 2;
-          const wLeaf = Math.max(half * 0.09, half * (1 - 0.91 * o));
-          this.paintGarrisonLeaf(ox0 + shakeDx, 1, wLeaf, -springH, springH, o, s);
-          this.paintGarrisonLeaf(ox1 + shakeDx, -1, wLeaf, -springH, springH, o, s);
-          if (o < 0.12) {
-            // The meeting seam, and the drawbar that says "barred".
-            ctx.fillStyle = 'rgba(18, 11, 5, 0.6)';
-            ctx.fillRect(ox0 + half - s * 0.018 + shakeDx, -springH, s * 0.036, springH);
-            ctx.fillStyle = Renderer.GAR_IRON;
-            ctx.fillRect(ox0 + ow * 0.08 + shakeDx, -springH * 0.42, ow * 0.84, s * 0.085);
-            ctx.fillStyle = 'rgba(170, 178, 200, 0.22)';
-            ctx.fillRect(ox0 + ow * 0.08 + shakeDx, -springH * 0.42, ow * 0.84, s * 0.022);
-          }
           // THE VOUSSOIR ARCH: a dressed ring following the curve,
           // radial joints, and a proud keystone at the apex. The
           // annulus needs CLOSED full-ellipse subpaths (half arcs
@@ -6757,8 +6760,12 @@ export class Renderer {
           ctx.fillRect(ox1 - s * 0.08, -springH + s * 0.07, s * 0.18, s * 0.035);
           // MACHICOLATIONS: the corbelled drop-band under the parapet
           // — dark slots between stout corbel teeth, a defended gate's
-          // brow. Only a full-standing gatehouse carries it.
-          if (hs > s * 3.0) {
+          // brow. Only a full-standing gatehouse carries it, and it
+          // fades on its own key so mid-ease crowns never pop it.
+          const machK = Math.max(0, Math.min(1, (hs - s * 3.0) / (s * 0.4)));
+          if (machK > 0.001) {
+            ctx.save();
+            ctx.globalAlpha *= machK;
             const bandT = -hs + s * 0.3;
             ctx.fillStyle = 'rgba(12, 9, 18, 0.42)';
             ctx.fillRect(x0 + s * 0.06, bandT, w2 - s * 0.12, s * 0.2);
@@ -6768,7 +6775,33 @@ export class Renderer {
             }
             ctx.fillStyle = 'rgba(255, 236, 200, 0.1)';
             ctx.fillRect(x0 + s * 0.06, bandT + s * 0.2, w2 - s * 0.12, s * 0.04);
+            ctx.restore();
           }
+          ctx.restore();
+        }
+        // THE LEAVES, at every veil height — never faded with the
+        // dressing: the tile is the state, the swing eases through
+        // doorOpenness, and a locked refusal shudders both leaves in
+        // the frame. A SHUT gate cut by the veil keeps a low
+        // iron-bound pair barring the notch — wood, straps, and a
+        // drawbar say "gate, closed" where the old bare-masonry stub
+        // said "wall" — and the leaf head always ducks under the
+        // sinking crown.
+        const leafH = Math.min(springH, hs * 0.94);
+        const oc = Math.min(1, this.doorOpenness(tx, ty, dinfo.open));
+        const shakeDx = this.doorShakeAt(tx, ty) * s * 0.035;
+        const half = ow / 2;
+        const wLeaf = Math.max(half * 0.09, half * (1 - 0.91 * oc));
+        this.paintGarrisonLeaf(ox0 + shakeDx, 1, wLeaf, -leafH, leafH, oc, s);
+        this.paintGarrisonLeaf(ox1 + shakeDx, -1, wLeaf, -leafH, leafH, oc, s);
+        if (oc < 0.12) {
+          // The meeting seam, and the drawbar that says "barred".
+          ctx.fillStyle = 'rgba(18, 11, 5, 0.6)';
+          ctx.fillRect(ox0 + half - s * 0.018 + shakeDx, -leafH, s * 0.036, leafH);
+          ctx.fillStyle = Renderer.GAR_IRON;
+          ctx.fillRect(ox0 + ow * 0.08 + shakeDx, -leafH * 0.42, ow * 0.84, s * 0.085);
+          ctx.fillStyle = 'rgba(170, 178, 200, 0.22)';
+          ctx.fillRect(ox0 + ow * 0.08 + shakeDx, -leafH * 0.42, ow * 0.84, s * 0.022);
         }
         // FLANKING PIERS, proud of the wall plane: quoined edges over
         // the ashlar, a talus base block, and honest AO at the foot.
@@ -6795,34 +6828,39 @@ export class Renderer {
           ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
           ctx.fillRect(px0 - s * 0.02, -s * 0.07, pwid + s * 0.04, s * 0.07);
         }
-        // Worn threshold flags with two cart-wheel ruts.
-        if (archOn) {
-          ctx.fillStyle = shade(Renderer.GAR_TRIM, 12);
-          ctx.fillRect(ox0, -s * 0.07, ow, s * 0.07);
-          ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
-          ctx.fillRect(ox0 + ow * 0.3, -s * 0.06, s * 0.05, s * 0.05);
-          ctx.fillRect(ox0 + ow * 0.66, -s * 0.06, s * 0.05, s * 0.05);
-        }
+        // Worn threshold flags with two cart-wheel ruts — at EVERY
+        // veil height: the threshold is the road's own promise that
+        // the gap between the pier stubs is walked through.
+        ctx.fillStyle = shade(Renderer.GAR_TRIM, 12);
+        ctx.fillRect(ox0, -s * 0.07, ow, s * 0.07);
+        ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
+        ctx.fillRect(ox0 + ow * 0.3, -s * 0.06, s * 0.05, s * 0.05);
+        ctx.fillRect(ox0 + ow * 0.66, -s * 0.06, s * 0.05, s * 0.05);
         ctx.restore();
-        // CROWN: the wall-walk runs unbroken over the passage, teeth
-        // marching the full span, and each pier wears a raised cap —
-        // the gatehouse towers reading over the curtain line.
+        // CROWN: the pier caps always stand, but the wall-walk over
+        // the passage only exists while there is mass above the arch
+        // to carry it — it narrows away northward on the same archK
+        // that fades the dressing. At the stub the crown is two pier
+        // tops with open sky between them: the gap IS the gate.
         this.beginHeightLayer(whT);
+        const cd = y1 - y0;
         ctx.fillStyle = Renderer.GAR_TOP;
-        ctx.fillRect(x0, y0, w2, y1 - y0);
+        ctx.fillRect(x0, y0, ox0 - x0, cd);
+        ctx.fillRect(ox1, y0, x1 - ox1, cd);
+        if (archK > 0.001) ctx.fillRect(ox0, y1 - cd * archK, ow, cd * archK);
         ctx.fillStyle = shade(Renderer.GAR_TOP, 16);
-        ctx.fillRect(x0, y1 - s * 0.08, w2, s * 0.08);
+        ctx.fillRect(x0, y1 - s * 0.08, ox0 - x0, s * 0.08);
+        ctx.fillRect(ox1, y1 - s * 0.08, x1 - ox1, s * 0.08);
+        if (archK > 0.001) ctx.fillRect(ox0, y1 - s * 0.08 * archK, ow, s * 0.08 * archK);
         if (mh > s * 0.05) {
           for (let i = 0; i < runLen; i++) {
             for (const c of [0.25, 0.75]) {
-              this.merlonBox(
-                p.x + s * (i + c) - mw / 2,
-                y1 - md,
-                mw,
-                md,
-                mh,
-                shade(Renderer.GAR_FACE, 8),
-              );
+              // Teeth over the passage melt with the walk that
+              // carries them; teeth over the piers ride the piers.
+              const mx = p.x + s * (i + c);
+              const mhh = mx > ox0 && mx < ox1 ? mh * archK : mh;
+              if (mhh <= s * 0.02) continue;
+              this.merlonBox(mx - mw / 2, y1 - md, mw, md, mhh, shade(Renderer.GAR_FACE, 8));
             }
           }
           // Pier caps: taller corner teeth anchoring the gate front.
@@ -6831,33 +6869,54 @@ export class Renderer {
         }
         ctx.restore();
         // Outline: castellated crown, pier verticals, and the arch
-        // opening ringed — the threshold stays open underfoot.
+        // opening ringed while the gatehouse stands — but once the
+        // veil cuts through the arch, each pier is its own stub box
+        // and NO line crosses the passage: the silhouette itself
+        // says "opening", never "wall".
         if (this.outlineOn) {
           const cBot = y1 - hs;
           const fBot = p.y + syT;
+          const openThrough = archK <= 0.04;
           const o = new Path2D();
-          o.moveTo(x0, cBot);
           if (mh > s * 0.05) {
-            // Teeth across the run, pier caps at the ends.
+            // Pier caps ring at both ends, at every height.
+            o.moveTo(x0, cBot);
             o.lineTo(x0, cBot - md * 1.15 - mh * 1.45);
             o.lineTo(x0 + pw, cBot - md * 1.15 - mh * 1.45);
             o.lineTo(x0 + pw, cBot);
-            for (let i = 0; i < runLen; i++) {
-              for (const c of [0.25, 0.75]) {
-                const m0 = p.x + s * (i + c) - mw / 2;
-                const m1 = m0 + mw;
-                if (m0 < x0 + pw || m1 > x1 - pw) continue;
-                o.lineTo(m0, cBot);
-                o.lineTo(m0, cBot - md - mh);
-                o.lineTo(m1, cBot - md - mh);
-                o.lineTo(m1, cBot);
+            if (!openThrough) {
+              // Teeth march the span while the walk over the arch
+              // stands; their heights melt on the same archK as the
+              // painted teeth, so line and paint always agree.
+              for (let i = 0; i < runLen; i++) {
+                for (const c of [0.25, 0.75]) {
+                  const m0 = p.x + s * (i + c) - mw / 2;
+                  const m1 = m0 + mw;
+                  if (m0 < x0 + pw || m1 > x1 - pw) continue;
+                  const mhh = mh * archK;
+                  if (mhh <= s * 0.02) continue;
+                  o.lineTo(m0, cBot);
+                  o.lineTo(m0, cBot - md - mhh);
+                  o.lineTo(m1, cBot - md - mhh);
+                  o.lineTo(m1, cBot);
+                }
               }
+              o.lineTo(x1 - pw, cBot);
+            } else {
+              o.moveTo(x1 - pw, cBot);
             }
-            o.lineTo(x1 - pw, cBot);
             o.lineTo(x1 - pw, cBot - md * 1.15 - mh * 1.45);
             o.lineTo(x1, cBot - md * 1.15 - mh * 1.45);
+            o.lineTo(x1, cBot);
+          } else if (!openThrough) {
+            o.moveTo(x0, cBot);
+            o.lineTo(x1, cBot);
+          } else {
+            o.moveTo(x0, cBot);
+            o.lineTo(x0 + pw, cBot);
+            o.moveTo(x1 - pw, cBot);
+            o.lineTo(x1, cBot);
           }
-          o.lineTo(x1, cBot);
           // Pier verticals to the ground.
           o.moveTo(x0, cBot);
           o.lineTo(x0, fBot);
@@ -6868,7 +6927,7 @@ export class Renderer {
           o.lineTo(ox0, fBot);
           o.moveTo(ox1, fBot);
           o.lineTo(x1, fBot);
-          if (archOn) {
+          if (!openThrough) {
             // The opening: up the reveals and over the arch curve.
             o.moveTo(ox0, fBot);
             o.lineTo(ox0, fBot - springH);
@@ -6881,6 +6940,13 @@ export class Renderer {
               Math.PI,
               Math.PI * 2,
             );
+            o.lineTo(ox1, fBot);
+          } else {
+            // Cut through: the inner pier verticals frame the gap so
+            // the two stubs read as jambs of a passage.
+            o.moveTo(ox0, cBot);
+            o.lineTo(ox0, fBot);
+            o.moveTo(ox1, cBot);
             o.lineTo(ox1, fBot);
           }
           this.beginStructOutline();
