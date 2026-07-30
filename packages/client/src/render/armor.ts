@@ -70,6 +70,57 @@ export interface BodyStyle {
   underskirt?: string;
   /** Drifting magic motes in this color — the quiet aura. */
   motes?: string;
+  /**
+   * Gravity folds: hanging-cloth creases down the torso and skirt with
+   * a catch-light beside the deepest one — what turns a flat fill into
+   * FABRIC. Every robe should want this.
+   */
+  folds?: boolean;
+  /**
+   * A short shoulder cape with a SHAPED hem ringing the upper chest —
+   * the garment-over-garment layer for sets whose mantle story isn't
+   * the wizard cope. scallop = foam/feather covers, point = leaf tips,
+   * dag = storm flags. Colors default shade(color, -10) / trim.
+   */
+  capelet?: { color?: string; trim?: string; hem: 'scallop' | 'point' | 'dag' };
+  /**
+   * Two cloth bands hanging from the shoulders past the belt, tick-
+   * marked — the ordained read. From behind they cross the shoulders
+   * as short tabs. Colors default shade(color, -16) / trim.
+   */
+  stole?: { color?: string; trim?: string };
+  /**
+   * The knight's cloth front panel over the cuirass, pointed hem past
+   * the fauld; the waist crosses it (a surcoat is CINCHED). The chest
+   * emblem rides the tabard. Back gets a shorter plain panel.
+   */
+  tabard?: { color: string; trim?: string };
+  /** Gambeson quilting: two-value diagonal stitch channels. */
+  quilt?: boolean;
+  /** Front X-lacing cord up the chest opening — how a jerkin closes.
+   *  `true` derives shade(trim, -10). */
+  lace?: boolean | string;
+  /**
+   * A contrasting shoulder-yoke panel, front AND back (a yoke wraps),
+   * optionally stitch-ticked at its hem — the hunter's tailored cut.
+   * Color defaults shade(color, -14).
+   */
+  yoke?: { color?: string; stitch?: boolean };
+  /**
+   * A real belt where the anonymous waist band was: two-tone strap,
+   * buckle plate, hanging strap end. Colors default shade(trim, -8) /
+   * metal. Skipped when a sash owns the waist.
+   */
+  belt?: { color?: string; buckle?: string } | true;
+  /** Chest device size multiplier — sets whose identity IS the device
+   *  wear it bolder. Default 1. */
+  emblemScale?: number;
+  /** Breastplate anatomy: center forge crease with a light/dark split
+   *  down the chest plate — two halves hammered and joined. */
+  midline?: boolean;
+  /** Rivet rows along the chest plate's seam lines — the boilerwork
+   *  read. Rides the 'plate' chest. */
+  rivetSeams?: boolean;
 }
 
 export interface HelmStyle {
@@ -213,33 +264,38 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     color: '#5a6ea0', trim: '#c9c4cf', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.34,
     sleeves: 'full', mantle: '#48587e', underskirt: '#3e4a6e',
+    folds: true,
   },
   emberweave_robe: {
     color: '#c4553d', trim: '#e8a23c', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'bolt',
     skirt: 0.34, skirtSlit: true, glowTrim: '#ffb054',
     sleeves: 'full', mantle: '#8a3428', underskirt: '#7e2f24',
-    motes: '#ffc26a',
+    motes: '#ffc26a', folds: true,
+    stole: { color: '#8a3428', trim: '#e8a23c' }, emblemScale: 1.15,
   },
   leather_body: {
     color: '#b08a5c', trim: '#6b4a26', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'none', chest: 'straps', skirt: 0,
-    pouch: true,
+    pouch: true, yoke: { color: '#8a6a45', stitch: true }, lace: true,
+    belt: true,
   },
   huntsman_jerkin: {
     color: '#3f6b3a', trim: '#2e4a28', metal: '#6b4a26', cls: 'leather',
     silhouette: 'brigandine', pauldron: 'layered', pauldronColor: '#5a3f1e',
     chest: 'straps', skirt: 0.12, collar: 'fur', pouch: true,
+    lace: '#2e4a28', belt: { color: '#6b4a26', buckle: '#d8cfae' },
   },
   iron_platebody: {
     color: '#8d9299', trim: '#6a6f7d', metal: '#b0b6be', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'round', chest: 'plate', skirt: 0,
-    collar: 'gorget',
+    collar: 'gorget', midline: true, rivetSeams: true,
   },
   steel_platebody: {
     color: '#b8bec8', trim: '#c9a23c', metal: '#d4dae2', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'layered', chest: 'plate',
     emblem: 'diamond', skirt: 0, collar: 'gorget',
+    midline: true, rivetSeams: true,
   },
   // The themed plate sets: one silhouette vocabulary, five color
   // stories. A new colorway is a spread + palette — never a painter.
@@ -258,6 +314,8 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     color: '#5a6270', trim: '#b08a3c', metal: '#787f8e', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#6a7280',
     chest: 'plate', skirt: 0, collar: 'gorget', tassets: true,
+    tabard: { color: '#6e5a28', trim: '#b08a3c' }, emblem: 'diamond',
+    emblemScale: 1.1,
   },
   dreadforge_platebody: {
     color: '#4a4553', trim: '#a83232', metal: '#625c6e', cls: 'plate',
@@ -277,6 +335,7 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     color: '#a8895a', trim: '#6b4a2e', metal: '#8a6a45', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#8a6a45',
     chest: 'straps', fringe: true, skirt: 0, pouch: true,
+    yoke: { color: '#8a6a45', stitch: true }, belt: true,
   },
   wolfstalker_jerkin: {
     color: '#5f6470', trim: '#424652', metal: '#9aa0ae', cls: 'leather',
@@ -284,9 +343,9 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     chest: 'straps', skirt: 0, collar: 'fur', pouch: true,
   },
   nightveil_jerkin: {
-    color: '#3a3648', trim: '#6a5a8c', metal: '#8c4a5a', cls: 'leather',
+    color: '#3a3648', trim: '#7e6ba8', metal: '#8c4a5a', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'none', chest: 'straps', skirt: 0,
-    pouch: true,
+    pouch: true, yoke: { color: '#2e2a3c' }, sash: '#584a78',
   },
   drakescale_body: {
     color: '#8c3a32', trim: '#c9713c', metal: '#d49a4a', cls: 'leather',
@@ -304,32 +363,36 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     color: '#5a6b3a', trim: '#c9a23c', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.32,
     sash: '#c9a23c', sleeves: 'full', underskirt: '#42502c', pouch: true,
+    folds: true, capelet: { color: '#42502c', hem: 'point', trim: '#c9a23c' },
   },
   tidecaller_robe: {
     color: '#2f6a78', trim: '#bfe8e0', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'moon',
     skirt: 0.34, runes: '#bfe8e0', sleeves: 'full',
-    underskirt: '#1f4a55', motes: '#bfe8e0',
+    underskirt: '#1f4a55', motes: '#bfe8e0', folds: true,
+    capelet: { color: '#245663', hem: 'scallop', trim: '#bfe8e0' },
+    emblemScale: 1.25,
   },
   voidwhisper_robe: {
     color: '#453a5c', trim: '#b8a8d8', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'eye',
     skirt: 0.34, skirtSlit: true, sash: '#2e2740', sleeves: 'full',
-    underskirt: '#332b47', motes: '#9a86c8',
+    underskirt: '#332b47', motes: '#9a86c8', folds: true,
+    stole: { color: '#2e2740', trim: '#b8a8d8' }, emblemScale: 1.25,
   },
   cindersworn_robe: {
     color: '#4a3a38', trim: '#e05438', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.34,
     sash: '#8a2f24', glowTrim: '#ff9a4a', runes: '#ff9a4a',
     sleeves: 'full', mantle: '#3a2d2b', underskirt: '#332826',
-    motes: '#ffb054',
+    motes: '#ffb054', folds: true,
   },
   starweaver_robe: {
     color: '#2c3260', trim: '#c8cee8', cls: 'cloth',
     silhouette: 'robe', pauldron: 'orbs', pauldronColor: '#9db6ff',
     chest: 'emblem', emblem: 'star', skirt: 0.36, runes: '#c8cee8',
     sleeves: 'full', mantle: '#232850', underskirt: '#1e2244',
-    motes: '#aebeff',
+    motes: '#aebeff', folds: true,
   },
   // The early-game cloth sets: five color stories for the leveling
   // road. Each ships in four dye lots via registerColorways below.
@@ -337,50 +400,58 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     color: '#c9bfa3', trim: '#8a7a5c', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.3,
     patches: '#8a9a6a', sash: '#8a7a5c', underskirt: '#b0a688',
+    folds: true,
   },
   mothwing_robe: {
     color: '#8a8a72', trim: '#d8d4b8', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'moth',
     skirt: 0.32, sleeves: 'full', underskirt: '#6e6e5a', motes: '#d8d4b8',
+    folds: true, capelet: { hem: 'scallop' }, emblemScale: 1.15,
   },
   dawnsworn_robe: {
     color: '#d9c9a0', trim: '#c9922f', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'sun',
     skirt: 0.32, sash: '#b0703c', sleeves: 'full', underskirt: '#b8a87e',
+    folds: true, stole: { color: '#c9922f', trim: '#d9c9a0' },
+    emblemScale: 1.1,
   },
   fenwalker_robe: {
     color: '#4a6b5c', trim: '#a8c8a0', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'leaf',
     skirt: 0.34, runes: '#9ae8c8', sleeves: 'full', underskirt: '#3a564a',
-    motes: '#9ae8c8',
+    motes: '#9ae8c8', folds: true,
+    capelet: { hem: 'point' }, emblemScale: 1.2,
   },
   stormwoven_robe: {
     color: '#4e5a78', trim: '#e8d878', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'bolt',
     skirt: 0.34, runes: '#a8c4e8', sleeves: 'full', mantle: '#3e4860',
-    underskirt: '#3c4660',
+    underskirt: '#3c4660', folds: true, emblemScale: 1.15,
   },
   // The early-game leather sets: the skirmisher's leveling road. Each
   // ships in four dye lots via registerColorways below.
   hareswift_jerkin: {
     color: '#c2a878', trim: '#8a6f48', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'none', chest: 'straps', skirt: 0,
-    collar: 'fur', pouch: true,
+    collar: 'fur', pouch: true, quilt: true, belt: true,
   },
   kingfisher_jerkin: {
     color: '#2f7a8a', trim: '#d87f3c', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'feathered', pauldronColor: '#57a8b8',
     chest: 'emblem', emblem: 'chevron', skirt: 0, pouch: true,
+    belt: { color: '#1f5866', buckle: '#d87f3c' },
   },
   cutpurse_jerkin: {
     color: '#4e4438', trim: '#c9a23c', metal: '#8a7a5c', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'none', chest: 'emblem', emblem: 'coin',
-    skirt: 0, pouch: true,
+    skirt: 0, pouch: true, yoke: { color: '#3e362c' }, lace: '#2e2820',
+    belt: { color: '#2e2820', buckle: '#c9a23c' }, emblemScale: 1.15,
   },
   trapline_jerkin: {
     color: '#8a7248', trim: '#5a4a34', metal: '#d8cfae', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#6e5a3c',
     chest: 'none', bandolier: '#5a4a34', skirt: 0, pouch: true,
+    quilt: true, belt: { color: '#5a4a34', buckle: '#d8cfae' },
   },
   emberfox_jerkin: {
     color: '#b05a30', trim: '#e8dcc4', cls: 'leather',
@@ -396,24 +467,26 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     color: '#a4744b', trim: '#6e4a30', metal: '#c9955c', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'round', pauldronColor: '#b5854f',
     pauldronTrim: '#d9a86a', chest: 'plate', skirt: 0, collar: 'gorget',
+    rivetSeams: true,
   },
   valiant_platebody: {
     color: '#c9ccd4', trim: '#c9a23c', metal: '#e2e6ec', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#d4d8e0',
     pauldronTrim: '#e8c04c', chest: 'plate', emblem: 'chevron', skirt: 0,
-    collar: 'gorget',
+    collar: 'gorget', tabard: { color: '#a83240', trim: '#e8c04c' },
+    emblemScale: 1.1,
   },
   ramwall_platebody: {
     color: '#6a7080', trim: '#4a4f5c', metal: '#8a92a4', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'round', pauldronColor: '#7a8294',
     pauldronTrim: '#9aa4b8', chest: 'plate', ridges: true, skirt: 0,
-    collar: 'gorget', tassets: true,
+    collar: 'gorget', tassets: true, rivetSeams: true,
   },
   briarplate_platebody: {
-    color: '#3e4a38', trim: '#8a9a6e', metal: '#55644c', cls: 'plate',
+    color: '#3e4a38', trim: '#8a9a6e', metal: '#6a7a58', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'spiked', pauldronColor: '#33402e',
     pauldronSpikes: 2, pauldronTrim: '#8a9a6e', chest: 'plate', skirt: 0,
-    tassets: true,
+    tassets: true, midline: true,
   },
   sentinel_platebody: {
     color: '#55607a', trim: '#d4c28a', metal: '#707c9a', cls: 'plate',
@@ -917,9 +990,18 @@ registerColorways(BOOT_STYLES, 'mothwing_slippers', {
 // Dawnsworn dye lots: the sun device keeps its gold except at noon,
 // when it burns red on bleached white; eclipse rings gold on charcoal.
 registerColorways(BODY_STYLES, 'dawnsworn_robe', {
-  duskvow: { color: '#9a6a86', trim: '#e0b0c0', sash: '#6e4860', underskirt: '#7e5670' },
-  highnoon: { color: '#eae4d2', trim: '#c04a3a', sash: '#b0703c', underskirt: '#c8c2b0' },
-  eclipse: { color: '#4a4550', trim: '#d4a43c', sash: '#38343e', underskirt: '#3a3642' },
+  duskvow: {
+    color: '#9a6a86', trim: '#e0b0c0', sash: '#6e4860', underskirt: '#7e5670',
+    stole: { color: '#6e4860', trim: '#e0b0c0' },
+  },
+  highnoon: {
+    color: '#eae4d2', trim: '#c04a3a', sash: '#b0703c', underskirt: '#c8c2b0',
+    stole: { color: '#c04a3a', trim: '#eae4d2' },
+  },
+  eclipse: {
+    color: '#4a4550', trim: '#d4a43c', sash: '#38343e', underskirt: '#3a3642',
+    stole: { color: '#38343e', trim: '#d4a43c' },
+  },
 });
 registerColorways(HELM_STYLES, 'dawnsworn_hood', {
   duskvow: { color: '#9a6a86', trim: '#e0b0c0', gem: { color: '#d97a9a' } },
@@ -1008,9 +1090,18 @@ registerColorways(BOOT_STYLES, 'hareswift_boots', {
 // Kingfisher dye lots: plumage swaps whole — sundart flips the bird,
 // teal feather on gold.
 registerColorways(BODY_STYLES, 'kingfisher_jerkin', {
-  reedmace: { color: '#6a8a4a', trim: '#c9a23c', pauldronColor: '#82a862' },
-  stormgull: { color: '#9aa8b0', trim: '#4e5a64', pauldronColor: '#c0ccd2' },
-  sundart: { color: '#d8a03c', trim: '#2f7a8a', pauldronColor: '#e8bc60' },
+  reedmace: {
+    color: '#6a8a4a', trim: '#c9a23c', pauldronColor: '#82a862',
+    belt: { color: '#54703a', buckle: '#c9a23c' },
+  },
+  stormgull: {
+    color: '#9aa8b0', trim: '#4e5a64', pauldronColor: '#c0ccd2',
+    belt: { color: '#7e8c94', buckle: '#4e5a64' },
+  },
+  sundart: {
+    color: '#d8a03c', trim: '#2f7a8a', pauldronColor: '#e8bc60',
+    belt: { color: '#b58230', buckle: '#2f7a8a' },
+  },
 });
 registerColorways(HELM_STYLES, 'kingfisher_hood', {
   reedmace: { color: '#6a8a4a', trim: '#c9a23c', feather: { color: '#d8b84c' } },
@@ -1031,9 +1122,21 @@ registerColorways(BOOT_STYLES, 'kingfisher_boots', {
 // Cutpurse dye lots: the coin is the tell — brass on umber and
 // oxblood, silver in the gutter, pale moon-metal after dark.
 registerColorways(BODY_STYLES, 'cutpurse_jerkin', {
-  alleyrat: { color: '#5c5c56', trim: '#b0b6be', metal: '#8a8e96' },
-  moonless: { color: '#33303c', trim: '#a8b0cc', metal: '#5c5a6e' },
-  redhand: { color: '#6e3a34', trim: '#c9a23c', metal: '#8a6a4a' },
+  alleyrat: {
+    color: '#5c5c56', trim: '#b0b6be', metal: '#8a8e96',
+    yoke: { color: '#4a4a44' }, lace: '#3e3e38',
+    belt: { color: '#3e3e38', buckle: '#b0b6be' },
+  },
+  moonless: {
+    color: '#33303c', trim: '#a8b0cc', metal: '#5c5a6e',
+    yoke: { color: '#28252f' }, lace: '#201d28',
+    belt: { color: '#201d28', buckle: '#a8b0cc' },
+  },
+  redhand: {
+    color: '#6e3a34', trim: '#c9a23c', metal: '#8a6a4a',
+    yoke: { color: '#582e28' }, lace: '#442420',
+    belt: { color: '#442420', buckle: '#c9a23c' },
+  },
 });
 registerColorways(HELM_STYLES, 'cutpurse_cowl', {
   alleyrat: { color: '#5c5c56', trim: '#b0b6be', mask: '#45453e' },
@@ -1054,9 +1157,18 @@ registerColorways(BOOT_STYLES, 'cutpurse_boots', {
 // Trapline dye lots: the bone toggles and snare cords stay bone —
 // only the country the line runs through changes.
 registerColorways(BODY_STYLES, 'trapline_jerkin', {
-  juniper: { color: '#4e6a52', trim: '#34483a', bandolier: '#34483a', pauldronColor: '#3e5642' },
-  riverclay: { color: '#96604c', trim: '#6a4034', bandolier: '#6a4034', pauldronColor: '#7a4e3c' },
-  nightsnare: { color: '#3e4450', trim: '#2c303a', bandolier: '#2c303a', pauldronColor: '#333844' },
+  juniper: {
+    color: '#4e6a52', trim: '#34483a', bandolier: '#34483a',
+    pauldronColor: '#3e5642', belt: { color: '#34483a', buckle: '#d8cfae' },
+  },
+  riverclay: {
+    color: '#96604c', trim: '#6a4034', bandolier: '#6a4034',
+    pauldronColor: '#7a4e3c', belt: { color: '#6a4034', buckle: '#d8cfae' },
+  },
+  nightsnare: {
+    color: '#3e4450', trim: '#2c303a', bandolier: '#2c303a',
+    pauldronColor: '#333844', belt: { color: '#2c303a', buckle: '#b8c0cc' },
+  },
 });
 registerColorways(HELM_STYLES, 'trapline_hood', {
   juniper: { color: '#4e6a52', trim: '#34483a', ruff: { color: '#a8c0aa' } },
@@ -1123,9 +1235,19 @@ registerColorways(BOOT_STYLES, 'tuskguard_sabatons', {
 // Valiant tourney lots: enamel over bright iron; every lot re-picks
 // its plume — the heraldry is the point.
 registerColorways(BODY_STYLES, 'valiant_platebody', {
-  crimson: { color: '#a83a38', metal: '#c04a44', pauldronColor: '#b04240', pauldronTrim: '#e8c04c' },
-  azure: { color: '#4a5f9c', metal: '#5a70b0', pauldronColor: '#5468a4', pauldronTrim: '#e8e4da' },
-  gilded: { color: '#d8ac44', trim: '#f4e0a0', metal: '#e8c05c', pauldronColor: '#e0b44e', pauldronTrim: '#f4e0a0' },
+  crimson: {
+    color: '#a83a38', metal: '#c04a44', pauldronColor: '#b04240',
+    pauldronTrim: '#e8c04c', tabard: { color: '#e8e4da', trim: '#e8c04c' },
+  },
+  azure: {
+    color: '#4a5f9c', metal: '#5a70b0', pauldronColor: '#5468a4',
+    pauldronTrim: '#e8e4da', tabard: { color: '#e8e4da', trim: '#e8c04c' },
+  },
+  gilded: {
+    color: '#d8ac44', trim: '#f4e0a0', metal: '#e8c05c',
+    pauldronColor: '#e0b44e', pauldronTrim: '#f4e0a0',
+    tabard: { color: '#a83240', trim: '#f4e0a0' },
+  },
 });
 registerColorways(HELM_STYLES, 'valiant_helm', {
   crimson: { color: '#a83a38', trim: '#e8c04c', crest: { color: '#8a2f2c' }, plume: { color: '#e8e4da' } },
@@ -1494,6 +1616,32 @@ export function drawTorsoGarment(
         hem[1]!.y - 0.01 * s,
       );
       ctx.stroke();
+      if (st.folds) {
+        // Gravity folds: a second crease on the trailing half and a
+        // catch-light rising beside the deep one — hanging cloth holds
+        // more than one opinion about the wind.
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.moveTo(ww * 0.5 + f.dragX * 0.25 * s, y0 + 0.06 * s);
+        ctx.quadraticCurveTo(
+          ww * 0.44 + f.dragX * 0.45 * s,
+          (y0 + hemY) / 2,
+          hem[3]!.x - hemW * 0.12,
+          hem[3]!.y - 0.015 * s,
+        );
+        ctx.stroke();
+        ctx.strokeStyle = shade(st.color, 12);
+        ctx.beginPath();
+        ctx.moveTo(-ww * 0.22 + f.dragX * 0.3 * s, y0 + 0.055 * s);
+        ctx.quadraticCurveTo(
+          -ww * 0.14 + f.dragX * 0.5 * s,
+          (y0 + hemY) / 2,
+          hem[1]!.x + hemW * 0.32,
+          hem[1]!.y - 0.014 * s,
+        );
+        ctx.stroke();
+      }
       // Hem trim follows the moving hem points.
       ctx.strokeStyle = st.trim;
       ctx.lineWidth = Math.max(1.5, s * 0.026);
@@ -1589,6 +1737,45 @@ export function drawTorsoGarment(
     ctx.closePath();
     ctx.fill();
 
+    // ---- gambeson quilting: diagonal stitch channels crossing into
+    // diamonds, one value down — padding you can SEE was sewn, never a
+    // texture wash.
+    if (st.quilt) {
+      ctx.strokeStyle = shade(st.color, -13);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      for (let i = -2; i <= 2; i++) {
+        const cx = i * tw * 0.52;
+        ctx.moveTo(cx - tw * 0.55, -th * 0.94);
+        ctx.lineTo(cx + tw * 0.55, -0.1 * s);
+        ctx.moveTo(cx + tw * 0.55, -th * 0.94);
+        ctx.lineTo(cx - tw * 0.55, -0.1 * s);
+      }
+      ctx.stroke();
+    }
+
+    // ---- gravity folds on the standing torso: creases falling from
+    // the chest toward the waist with one catch-light beside the
+    // deepest — the difference between a fill and a garment.
+    if (st.folds) {
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.strokeStyle = shade(st.color, -22);
+      ctx.beginPath();
+      ctx.moveTo(-tww * 0.55, -th * 0.62);
+      ctx.quadraticCurveTo(-ww * 0.62, -th * 0.28, -ww * 0.5, -0.015 * s);
+      ctx.moveTo(tww * 0.4, -th * 0.48);
+      ctx.quadraticCurveTo(ww * 0.5, -th * 0.2, ww * 0.42, -0.015 * s);
+      ctx.stroke();
+      ctx.strokeStyle = shade(st.color, 10);
+      ctx.beginPath();
+      ctx.moveTo(-tww * 0.55 + 0.016 * s, -th * 0.6);
+      ctx.quadraticCurveTo(
+        -ww * 0.62 + 0.016 * s, -th * 0.28,
+        -ww * 0.5 + 0.016 * s, -0.015 * s,
+      );
+      ctx.stroke();
+    }
+
     // ---- patches: big honest squares of mismatched cloth crossed by
     // stitch ticks — the homespun read. Every patch was a lesson.
     if (st.patches) {
@@ -1617,6 +1804,113 @@ export function drawTorsoGarment(
       if (st.skirt > 0.2) patch(ww * 0.42 + f.dragX * 0.55 * s, 0.17 * s, tw * 0.33, 0.14);
     }
 
+    // ---- the shoulder yoke: a contrasting panel across the upper
+    // chest, worn front AND back — a yoke is construction, not
+    // decoration, and construction wraps the body.
+    if (st.yoke) {
+      const yCol = st.yoke.color ?? shade(st.color, -14);
+      const yh = th * 0.42;
+      ctx.fillStyle = yCol;
+      ctx.beginPath();
+      ctx.moveTo(-tww, -th);
+      ctx.lineTo(tww, -th);
+      ctx.lineTo(tww * 0.93, -th + yh);
+      ctx.lineTo(-tww * 0.93, -th + yh);
+      ctx.closePath();
+      ctx.fill();
+      // Same one-sun form split the base torso wears.
+      ctx.fillStyle = shade(yCol, -16);
+      ctx.beginPath();
+      ctx.moveTo(0, -th);
+      ctx.lineTo(tww, -th);
+      ctx.lineTo(tww * 0.93, -th + yh);
+      ctx.lineTo(0, -th + yh);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(yCol, 12);
+      ctx.fillRect(-tww * 0.96, -th, tww * 1.92, 0.045 * s);
+      if (st.yoke.stitch) {
+        // Saddle stitches straddling the yoke hem — the tailor's tick.
+        ctx.strokeStyle = shade(yCol, 24);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const sx = -tww * 0.74 + i * tww * 0.37;
+          ctx.moveTo(sx, -th + yh - 0.02 * s);
+          ctx.lineTo(sx + 0.018 * s, -th + yh - 0.005 * s);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // ---- front lacing: the cord that closes a jerkin, crossing an
+    // open placket in fat X rungs — front only; the back is seam
+    // country. Rides ON a yoke when one is worn (a laced yoke).
+    if (st.lace && !back) {
+      const lCol = st.lace === true ? shade(st.trim, -10) : st.lace;
+      const lw = tw * 0.17;
+      const y0l = -th * 0.94;
+      const y1l = -th * 0.58;
+      // The placket shadow: the jerkin opens a hair at the throat.
+      ctx.fillStyle = shade(st.yoke ? (st.yoke.color ?? shade(st.color, -14)) : st.color, -14);
+      ctx.beginPath();
+      ctx.moveTo(-lw * 0.55, y0l);
+      ctx.lineTo(lw * 0.55, y0l);
+      ctx.lineTo(lw * 0.3, y1l);
+      ctx.lineTo(-lw * 0.3, y1l);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = lCol;
+      ctx.lineWidth = Math.max(1.5, s * 0.02);
+      ctx.beginPath();
+      for (let i = 0; i < 2; i++) {
+        const yy = y0l + ((y1l - y0l) / 2) * i;
+        const w2 = lw * (0.6 - 0.18 * i);
+        const dy = ((y1l - y0l) / 2) * 0.92;
+        ctx.moveTo(-w2, yy);
+        ctx.lineTo(w2 * 0.82, yy + dy);
+        ctx.moveTo(w2, yy);
+        ctx.lineTo(-w2 * 0.82, yy + dy);
+      }
+      ctx.stroke();
+    }
+
+    // ---- the tabard: the knight's cloth panel over the steel, painted
+    // BEFORE the waist so the fauld cinches it — a surcoat is worn
+    // belted, and the chest emblem rides it afterward. The back wears
+    // a shorter plain panel.
+    if (st.tabard) {
+      const tCol = st.tabard.color;
+      const half = tww * 0.56;
+      const hemYt = back ? 0.09 * s : 0.155 * s;
+      ctx.fillStyle = tCol;
+      ctx.beginPath();
+      ctx.moveTo(-half, -th * 0.94);
+      ctx.lineTo(half, -th * 0.94);
+      ctx.lineTo(half * 0.9, hemYt);
+      ctx.lineTo(0, hemYt + 0.05 * s);
+      ctx.lineTo(-half * 0.9, hemYt);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(tCol, -16);
+      ctx.beginPath();
+      ctx.moveTo(0, -th * 0.94);
+      ctx.lineTo(half, -th * 0.94);
+      ctx.lineTo(half * 0.9, hemYt);
+      ctx.lineTo(0, hemYt + 0.05 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (st.tabard.trim && !back) {
+        ctx.strokeStyle = st.tabard.trim;
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(-half * 0.9, hemYt - 0.008 * s);
+        ctx.lineTo(0, hemYt + 0.042 * s);
+        ctx.lineTo(half * 0.9, hemYt - 0.008 * s);
+        ctx.stroke();
+      }
+    }
+
     // ---- waist: cloth belt, or the cuirass' ARTICULATED fauld — two
     // overlapping plates stepping down, a real joint instead of a band.
     if (st.silhouette === 'cuirass') {
@@ -1634,6 +1928,35 @@ export function drawTorsoGarment(
       if (st.trim !== metal) {
         ctx.fillStyle = st.trim;
         ctx.fillRect(-ww * 0.92, -0.052 * s, ww * 1.84, 0.012 * s);
+      }
+    } else if (st.belt && !st.sash) {
+      // A real belt where the anonymous band was: two-tone strap,
+      // buckle plate with a tongue, and a strap end swinging past it.
+      const b = st.belt === true ? {} : st.belt;
+      const bCol = b.color ?? shade(st.trim, -8);
+      const buck = b.buckle ?? metal;
+      ctx.fillStyle = bCol;
+      ctx.fillRect(-ww - 0.01 * s, -0.082 * s, ww * 2 + 0.02 * s, 0.062 * s);
+      ctx.fillStyle = shade(bCol, -18);
+      ctx.fillRect(0, -0.082 * s, ww + 0.01 * s, 0.062 * s);
+      ctx.fillStyle = shade(bCol, 14);
+      ctx.fillRect(-ww - 0.01 * s, -0.082 * s, ww * 2 + 0.02 * s, 0.012 * s);
+      if (!back) {
+        const sway = f.strideSw * 0.014 * s;
+        ctx.fillStyle = shade(bCol, -10);
+        ctx.beginPath();
+        ctx.moveTo(0.014 * s, -0.032 * s);
+        ctx.lineTo(0.046 * s, -0.032 * s);
+        ctx.lineTo(0.042 * s + sway, 0.082 * s);
+        ctx.lineTo(0.008 * s + sway, 0.076 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = buck;
+        ctx.beginPath();
+        chamferRect(ctx, -0.036 * s, -0.094 * s, 0.072 * s, 0.078 * s, 0.014 * s);
+        ctx.fill();
+        ctx.fillStyle = shade(buck, -26);
+        ctx.fillRect(-0.008 * s, -0.086 * s, 0.016 * s, 0.06 * s);
       }
     } else {
       ctx.fillStyle = shade(st.color, -38);
@@ -1729,6 +2052,61 @@ export function drawTorsoGarment(
       }
     }
 
+    // ---- the capelet: a short shoulder cape with a SHAPED hem — the
+    // layered garment for stories the wizard cope doesn't tell.
+    // scallop = foam and feather covers, point = leaf tips, dag =
+    // storm pennons. One path, filled then clipped for the form split.
+    if (st.capelet) {
+      const cCol = st.capelet.color ?? shade(st.color, -10);
+      const cTrim = st.capelet.trim ?? st.trim;
+      const drop = th * (back ? 0.32 : 0.4);
+      const half = tww * 1.04;
+      const hemKind = st.capelet.hem;
+      const segs = 4;
+      const pts: Array<[number, number]> = [];
+      for (let i = segs; i >= 0; i--) {
+        const u = i / segs;
+        pts.push([-half + u * 2 * half, -th + drop * (0.84 + 0.16 * Math.sin(u * Math.PI))]);
+      }
+      const traceHem = () => {
+        for (let k = 1; k < pts.length; k++) {
+          const [px0, py0] = pts[k - 1]!;
+          const [px1, py1] = pts[k]!;
+          const mx = (px0 + px1) / 2;
+          const my = (py0 + py1) / 2 + drop * 0.32;
+          if (hemKind === 'scallop') ctx.quadraticCurveTo(mx, my, px1, py1);
+          else if (hemKind === 'point') { ctx.lineTo(mx, my); ctx.lineTo(px1, py1); }
+          else { ctx.lineTo(mx + (px1 - px0) * 0.16, my); ctx.lineTo(px1, py1); }
+        }
+      };
+      const shape = () => {
+        ctx.beginPath();
+        ctx.moveTo(-half, -th);
+        ctx.lineTo(half, -th);
+        ctx.lineTo(pts[0]![0], pts[0]![1]);
+        traceHem();
+        ctx.closePath();
+      };
+      shape();
+      ctx.fillStyle = cCol;
+      ctx.fill();
+      ctx.save();
+      shape();
+      ctx.clip();
+      ctx.fillStyle = shade(cCol, -16);
+      ctx.fillRect(0, -th, half, drop * 1.8);
+      ctx.fillStyle = shade(cCol, 12);
+      ctx.fillRect(-half, -th, half * 2, 0.045 * s);
+      ctx.restore();
+      // Trim traces only the shaped hem, never the shoulder line.
+      ctx.strokeStyle = cTrim;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(pts[0]![0], pts[0]![1]);
+      traceHem();
+      ctx.stroke();
+    }
+
     // ---- collar: the neck joint that ties helmet to breastplate.
     if (st.collar === 'gorget') {
       ctx.fillStyle = metal;
@@ -1746,6 +2124,39 @@ export function drawTorsoGarment(
         ctx.beginPath();
         ctx.arc(u * tw * 0.82, -th + 0.012 * s + Math.sin(i * 1.9) * 0.008 * s, r, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+
+    // ---- the stole: two ordained bands falling from the shoulders
+    // past the belt, tick-marked at their ends; from behind they read
+    // as short tabs crossing the shoulders — the vestment wraps.
+    if (st.stole) {
+      const sCol = st.stole.color ?? shade(st.color, -16);
+      const sTrim = st.stole.trim ?? st.trim;
+      const bw = tw * 0.24;
+      const len = back ? th * 0.28 : th + 0.13 * s;
+      const sway = f.strideSw * 0.012 * s;
+      for (const es of [-1, 1]) {
+        const bx = es * tw * 0.5;
+        ctx.fillStyle = es === f.lead ? sCol : shade(sCol, -12);
+        ctx.beginPath();
+        ctx.moveTo(bx - bw / 2, -th);
+        ctx.lineTo(bx + bw / 2, -th);
+        ctx.lineTo(bx + bw / 2 + es * sway, -th + len);
+        ctx.lineTo(bx - bw / 2 + es * sway, -th + len);
+        ctx.closePath();
+        ctx.fill();
+        if (!back) {
+          // The embroidered end: a hem bar plus a small upright tick.
+          ctx.strokeStyle = sTrim;
+          ctx.lineWidth = Math.max(1, s * 0.014);
+          ctx.beginPath();
+          ctx.moveTo(bx - bw / 2 + es * sway, -th + len - 0.026 * s);
+          ctx.lineTo(bx + bw / 2 + es * sway, -th + len - 0.026 * s);
+          ctx.moveTo(bx, -th + len * 0.6);
+          ctx.lineTo(bx, -th + len * 0.6 - 0.03 * s);
+          ctx.stroke();
+        }
       }
     }
 
@@ -1840,7 +2251,7 @@ export function drawTorsoGarment(
         ctx.stroke();
         ctx.fillStyle = metal;
         ctx.fillRect(-tw * 0.16, -th * 0.55, 0.03 * s, 0.03 * s);
-      } else if (st.chest === 'plate') {
+      } else if (st.chest === 'plate' && !st.tabard) {
         ctx.fillStyle = metal;
         ctx.beginPath();
         chamferRect(ctx, -tw * 0.52, -th * 0.86, tw * 1.04, th * 0.52, 0.035 * s);
@@ -1852,6 +2263,45 @@ export function drawTorsoGarment(
         for (const rx of [-tw * 0.42, tw * 0.42]) {
           ctx.fillRect(rx - 0.008 * s, -th * 0.82, 0.016 * s, 0.016 * s);
           ctx.fillRect(rx - 0.008 * s, -th * 0.42, 0.016 * s, 0.016 * s);
+        }
+        if (st.midline) {
+          // The forge crease: two hammered halves joined down the
+          // center — dark seam, catch-light along its east side.
+          ctx.strokeStyle = shade(metal, -20);
+          ctx.lineWidth = Math.max(1, s * 0.016);
+          ctx.beginPath();
+          ctx.moveTo(0, -th * 0.84);
+          ctx.lineTo(0, -th * 0.36);
+          ctx.stroke();
+          ctx.strokeStyle = shade(metal, 18);
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(0.014 * s, -th * 0.83);
+          ctx.lineTo(0.014 * s, -th * 0.37);
+          ctx.stroke();
+        }
+        if (st.rivetSeams) {
+          // Seam the plate: a border stroke plus mid-edge rivets
+          // joining the corner set — boilerwork, every plate PINNED.
+          // Each rivet is a dark seat with a lit dome cap: a BUMP,
+          // never a hole.
+          ctx.strokeStyle = shade(metal, -16);
+          ctx.lineWidth = Math.max(1, s * 0.013);
+          ctx.beginPath();
+          chamferRect(ctx, -tw * 0.52, -th * 0.86, tw * 1.04, th * 0.52, 0.035 * s);
+          ctx.stroke();
+          const rivets: Array<[number, number]> = [
+            [0, -th * 0.855], [0, -th * 0.36],
+            [-tw * 0.51, -th * 0.62], [tw * 0.51, -th * 0.62],
+          ];
+          ctx.fillStyle = shade(metal, -26);
+          for (const [rx, ry] of rivets) {
+            ctx.fillRect(rx - 0.008 * s, ry - 0.008 * s, 0.016 * s, 0.016 * s);
+          }
+          ctx.fillStyle = shade(metal, 22);
+          for (const [rx, ry] of rivets) {
+            ctx.fillRect(rx - 0.008 * s, ry - 0.008 * s, 0.008 * s, 0.008 * s);
+          }
         }
         if (st.ridges) {
           // Gothic fluting: three channels hammered down the plate,
@@ -1887,9 +2337,10 @@ export function drawTorsoGarment(
       }
       if (st.emblem && (st.chest === 'emblem' || st.chest === 'plate')) {
         ctx.fillStyle = st.trim;
-        // A mantle claims the upper chest — the emblem sits below it.
-        const ey = -th * (st.mantle ? 0.3 : 0.58);
-        const r = tw * 0.3;
+        // A mantle or capelet claims the upper chest — the emblem sits
+        // below the layered garment, never behind its hem.
+        const ey = -th * (st.mantle || st.capelet ? 0.3 : 0.58);
+        const r = tw * 0.3 * (st.emblemScale ?? 1);
         if (st.emblem === 'skull') {
           // The dread device: a grinning skull etched into the plate —
           // drawn large; a timid skull is no skull at all.
@@ -2067,7 +2518,7 @@ export function drawTorsoGarment(
         }
       }
     } else {
-      if (st.silhouette === 'cuirass') {
+      if (st.silhouette === 'cuirass' && !st.tabard) {
         // Backplate: spine ridge + shoulder-blade facets + strap line.
         ctx.fillStyle = shade(st.color, -16);
         ctx.fillRect(-0.014 * s, -th * 0.96, 0.028 * s, th * 0.88);
