@@ -1,5 +1,6 @@
 import type {
   DialogueDef,
+  FactionsDef,
   FrontierDef,
   LootTableDef,
   NpcActorDef,
@@ -113,6 +114,28 @@ export async function saveFrontier(def: FrontierDef): Promise<void> {
 export async function revertFrontier(): Promise<{ outcome: string }> {
   return (await (
     await request('/dev/content/frontier', { method: 'DELETE' })
+  ).json()) as { outcome: string };
+}
+
+/** The names are a singleton too: one doc, one 'world' id, two hashes. */
+export async function getFactions(): Promise<{ def: FactionsDef; edited: boolean }> {
+  return (await (await request('/dev/content/factions')).json()) as {
+    def: FactionsDef;
+    edited: boolean;
+  };
+}
+
+export async function saveFactions(def: FactionsDef): Promise<void> {
+  await request('/dev/content/factions', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertFactions(): Promise<{ outcome: string }> {
+  return (await (
+    await request('/dev/content/factions', { method: 'DELETE' })
   ).json()) as { outcome: string };
 }
 

@@ -92,7 +92,18 @@ export class WorldState {
     grid: false,
     /** Claimed-hearth yards — the exclusion mask, drawn honest. */
     rings: false,
+    /** The political map (factions Phase 6) — marches and counters. */
+    standing: false,
   };
+
+  /**
+   * THE STANDING LENS's truth (factions Phase 6): the live political
+   * ledger, the marches radius, and every actor's live post — fetched
+   * beside the world snapshot, absent until the first read lands.
+   */
+  factions: import('@arx/content').FactionsDef | null = null;
+  marchTiles = 192;
+  actorSites: Array<{ actor: string; x: number; y: number }> = [];
 
   private readonly undoStack: WorldOp[] = [];
   private readonly redoStack: WorldOp[] = [];

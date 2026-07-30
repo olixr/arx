@@ -19,7 +19,15 @@
 > per-unit stolen facet (no-laundering removeItem, fence factions =
 > rookery/reavers via Calder's counter + Ferrick's Company's Cut),
 > authored bank-vault locks picked at the sneak gate, town-chest theft,
-> and the suspect eye in the perception scan. Phase 6 open.
+> and the suspect eye in the perception scan. Phase 6 (The Studio Owns
+> the Names) SHIPPED same day — the CMS Factions bench (roster cards
+> with member/enforcer/fine-counter pickers, every dial group, derived
+> consequence pills, save-live/revert on the two-hash law), the
+> Dialogue Studio's political gates in the flag palette + the standing
+> simulator in rehearsal (band dials answering faction: gates — walk a
+> tree as an outlaw without becoming one), and the World Studio's
+> Standing lens (marches at the honest marchTiles radius, ⚖ fine
+> counters at their live posts). THE EPIC IS COMPLETE.
 
 The world already *moves* (Living Frontier) and *asks* (Quest Ledger). This epic
 makes it **remember who you are**. Every deed writes on the player's name; every

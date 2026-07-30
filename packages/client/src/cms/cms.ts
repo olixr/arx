@@ -1,8 +1,19 @@
-import type { DialogueDef, FrontierDef, LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@arx/content';
+import type {
+  DialogueDef,
+  FactionsDef,
+  FrontierDef,
+  LootTableDef,
+  NpcActorDef,
+  NpcDef,
+  PoiDef,
+} from '@arx/content';
 import { iconImg } from '../editor/editorIcons.js';
 import { itemIconUrl } from '../render/icons.js';
 import {
   fetchSpawnSites,
+  getFactions,
+  saveFactions,
+  revertFactions,
   getFrontier,
   saveFrontier,
   revertFrontier,
@@ -43,7 +54,15 @@ import { actorBust } from './portraits.js';
  * new numbers within a tick.
  */
 
-export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'frontier' | 'items';
+export type Section =
+  | 'npcs'
+  | 'loot'
+  | 'actors'
+  | 'dialogues'
+  | 'pois'
+  | 'frontier'
+  | 'factions'
+  | 'items';
 
 export interface CmsState {
   section: Section;
@@ -58,6 +77,8 @@ export interface CmsState {
   poiPrefabIds: string[];
   /** The living frontier's dial table — a singleton doc (Phase 6). */
   frontier: { def: FrontierDef; edited: boolean } | null;
+  /** The faction ledger — a singleton doc (factions Phase 6). */
+  factions: { def: FactionsDef; edited: boolean } | null;
   items: ItemRow[];
   sites: SpawnSites;
   zones: ZoneRect[];
@@ -77,6 +98,7 @@ export const state: CmsState = {
   pois: [],
   poiPrefabIds: [],
   frontier: null,
+  factions: null,
   items: [],
   sites: { npcs: [], actors: [] },
   zones: [],
@@ -123,6 +145,8 @@ export async function reloadSection(section: Section): Promise<void> {
       state.poiPrefabIds = res.prefabIds;
     } else if (section === 'frontier') {
       state.frontier = await getFrontier();
+    } else if (section === 'factions') {
+      state.factions = await getFactions();
     } else state.items = await listItems();
     state.online = true;
   } catch (err) {
@@ -134,17 +158,19 @@ export async function reloadSection(section: Section): Promise<void> {
 
 async function loadEverything(): Promise<void> {
   try {
-    const [npcs, loot, actors, dialogues, pois, items, sites, zones, frontier] = await Promise.all([
-      listNpcs(),
-      listLoot(),
-      listActors(),
-      listDialogues(),
-      listPois(),
-      listItems(),
-      fetchSpawnSites(),
-      listZoneRects(),
-      getFrontier(),
-    ]);
+    const [npcs, loot, actors, dialogues, pois, items, sites, zones, frontier, factions] =
+      await Promise.all([
+        listNpcs(),
+        listLoot(),
+        listActors(),
+        listDialogues(),
+        listPois(),
+        listItems(),
+        fetchSpawnSites(),
+        listZoneRects(),
+        getFrontier(),
+        getFactions(),
+      ]);
     state.npcs = npcs;
     state.loot = loot;
     state.actors = actors.actors;
@@ -155,6 +181,7 @@ async function loadEverything(): Promise<void> {
     state.sites = sites;
     state.zones = zones;
     state.frontier = frontier;
+    state.factions = factions;
     state.online = true;
     $('server-pill').textContent = 'connected';
     $('server-pill').className = 'pill ok';
@@ -225,6 +252,12 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string; hint: string }
     hint: "The living frontier's weather — ember, boldness, calm, raids, and fortune. A save steers the very next beat; no restart, no reload.",
   },
   {
+    id: 'factions',
+    label: 'Factions',
+    icon: 'hall',
+    hint: 'The name you carry — the roster, the bands, the deed values, the two poles, and the crime dials. A save re-draws every loyalty on the very next scan.',
+  },
+  {
     id: 'items',
     label: 'Items',
     icon: 'picker',
@@ -276,7 +309,9 @@ function renderRail(): void {
                 ? state.pois.length
                 : s.id === 'frontier'
                   ? (state.frontier ? Object.keys(state.frontier.def).length : 0)
-                  : state.items.length;
+                  : s.id === 'factions'
+                    ? (state.factions?.def.roster.length ?? 0)
+                    : state.items.length;
     const b = document.createElement('button');
     b.className = 'rail-tab' + (state.section === s.id ? ' active' : '');
     b.appendChild(iconImg(s.icon, 15));
@@ -452,6 +487,22 @@ function listEntries(): ListEntry[] {
       },
     ];
   }
+  if (state.section === 'factions') {
+    const fx = state.factions;
+    return [
+      {
+        id: 'world',
+        title: 'The Names',
+        sub: fx
+          ? `${fx.def.roster.length} factions — bands, deeds, poles, prices, and the crime dials`
+          : 'ledger not loaded',
+        badge: fx?.edited ? 'edited' : 'authored',
+        badgeEdited: fx?.edited ?? false,
+        ico: iconWrap(iconImg('hall', 18)),
+        group: 'The name you carry',
+      },
+    ];
+  }
   return state.items
     .filter((i) => match(i.id, i.name))
     .sort(
@@ -526,7 +577,10 @@ export function renderAll(): void {
   buildDetail($('detail-body'), $('linkage-col'));
   const s = SECTIONS.find((x) => x.id === state.section)!;
   setHint(s.hint);
-  $('btn-new-entry').classList.toggle('hidden', state.section === 'items' || state.section === 'frontier');
+  $('btn-new-entry').classList.toggle(
+    'hidden',
+    state.section === 'items' || state.section === 'frontier' || state.section === 'factions',
+  );
   if (!state.dirty) setSaveState(state.online ? 'all changes saved' : 'offline');
 }
 
@@ -616,7 +670,9 @@ window.addEventListener('beforeunload', (e) => {
 const hash = location.hash.replace(/^#/, '');
 if (hash) {
   const [sect, id] = hash.split('/') as [Section, string?];
-  if (['npcs', 'loot', 'actors', 'dialogues', 'pois', 'items'].includes(sect)) {
+  if (
+    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'items', 'frontier', 'factions'].includes(sect)
+  ) {
     state.section = sect;
     state.selectedId = id ?? null;
   }
@@ -684,6 +740,20 @@ export const persistence = {
     await reloadSection('frontier');
     renderAll();
     toast('the shipped weather stands again', 3000, 'success');
+  },
+  async saveFactionsDef(def: FactionsDef): Promise<void> {
+    await saveFactions(def);
+    state.dirty = false;
+    await reloadSection('factions');
+    setSaveState('all changes saved');
+    toast('the names are set — the very next scan reads them', 3000, 'success');
+  },
+  async revertFactionsDef(): Promise<void> {
+    await revertFactions();
+    state.dirty = false;
+    await reloadSection('factions');
+    renderAll();
+    toast('the shipped roster stands again', 3000, 'success');
   },
   async saveDialogueDef(def: DialogueDef): Promise<void> {
     await saveDialogue(def);

@@ -2770,6 +2770,62 @@ button.ghosted {
   width: 90px;
 }
 
+/* -------- the factions bench (the names) */
+
+.faction-card {
+  border: 1px solid color-mix(in srgb, var(--ink-dim) 24%, transparent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.faction-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.faction-sigil {
+  width: 84px;
+}
+
+.faction-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.faction-blurb {
+  width: 100%;
+}
+
+.faction-label {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.faction-refusals {
+  width: 100%;
+  resize: vertical;
+  background: inherit;
+  color: inherit;
+  border: 1px solid color-mix(in srgb, var(--ink-dim) 30%, transparent);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.faction-raise {
+  margin-top: 4px;
+}
+
+.faction-band-select {
+  width: 120px;
+}
+
 /* The boldness-ladder preview: one column per rung, side by side. */
 .poi-stage-ladder {
   display: flex;
@@ -2802,6 +2858,35 @@ button.ghosted {
 
 .rh-tray.world .flag-chip.toggle.on {
   border-color: var(--brass-soft);
+}
+
+/* The name you carry: the standing simulator, its own political weather. */
+.rh-tray.standing {
+  padding: 5px 8px;
+  border: 1px dashed color-mix(in srgb, #9b6fb0 55%, transparent);
+  border-radius: 6px;
+}
+
+.rh-standing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+}
+
+.rh-standing-name {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.rh-band {
+  font: inherit;
+  font-size: 12px;
+  background: inherit;
+  color: inherit;
+  border: 1px solid color-mix(in srgb, var(--ink-dim) 35%, transparent);
+  border-radius: 5px;
+  padding: 2px 4px;
 }
 
 .flag-chip.toggle {

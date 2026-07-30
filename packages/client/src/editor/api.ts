@@ -1,4 +1,6 @@
 import type {
+  FactionsDef,
+  FrontierDef,
   GeographyDef,
   PackedZoneEdgeProfile,
   PrefabJson,
@@ -185,6 +187,24 @@ export interface WorldSnapshot {
 export async function fetchWorld(): Promise<WorldSnapshot> {
   const res = await request('/dev/world');
   return (await res.json()) as WorldSnapshot;
+}
+
+/** The political ledger (factions Phase 6) — the Standing lens's truth. */
+export async function fetchFactions(): Promise<FactionsDef> {
+  const res = await request('/dev/content/factions');
+  return ((await res.json()) as { def: FactionsDef }).def;
+}
+
+/** The frontier dials — the lens reads marchTiles for honest reach. */
+export async function fetchFrontierDef(): Promise<FrontierDef> {
+  const res = await request('/dev/content/frontier');
+  return ((await res.json()) as { def: FrontierDef }).def;
+}
+
+/** Live actor posts by slug — fineActor marks resolve against these. */
+export async function fetchActorSites(): Promise<Array<{ actor: string; x: number; y: number }>> {
+  const res = await request('/dev/content/usage');
+  return ((await res.json()) as { actors: Array<{ actor: string; x: number; y: number }> }).actors;
 }
 
 export interface GeographySaveResult {

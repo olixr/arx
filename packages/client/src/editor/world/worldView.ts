@@ -508,7 +508,76 @@ export class WorldView {
     this.drawRoutes(ctx);
     this.drawSites(ctx);
     this.drawAnchors(ctx);
+    this.drawStanding(ctx);
     this.drawRouteDraft(ctx);
+  }
+
+  /** Faction id → the lens's ink. Unrostered ids get the road grey. */
+  private static readonly FACTION_INK: Record<string, string> = {
+    fordgate: '217, 138, 61',
+    crown: '143, 168, 214',
+    waykeepers: '127, 176, 105',
+    rookery: '155, 111, 176',
+    reavers: '200, 72, 62',
+  };
+
+  /**
+   * THE STANDING LENS (factions Phase 6): the living map learns
+   * politics — every faction's marches drawn at the honest radius
+   * (the SAME marchTiles factionForPlace reads at deed time), and
+   * every fine counter marked at its live post (⚖ — the road back,
+   * which is also where the Company's envoy sits). Road factions hold
+   * no ground; their name is the space between the circles.
+   */
+  private drawStanding(ctx: CanvasRenderingContext2D): void {
+    if (!this.ws.show.standing) return;
+    const doc = this.ws.factions;
+    if (!doc) return;
+    const inkOf = (id: string): string =>
+      WorldView.FACTION_INK[id] ?? '160, 160, 160';
+    for (const f of doc.roster) {
+      const ink = inkOf(f.id);
+      for (const a of f.anchors) {
+        const x = this.sx(a.x);
+        const y = this.sy(a.y);
+        const r = this.ws.marchTiles * this.scale;
+        if (x < -r || y < -r || x > this.canvas.clientWidth + r || y > this.canvas.clientHeight + r) {
+          continue;
+        }
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${ink}, 0.07)`;
+        ctx.fill();
+        ctx.setLineDash([8, 6]);
+        ctx.strokeStyle = `rgba(${ink}, 0.5)`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        this.label(ctx, x, y - r - 2, f.name, `rgb(${ink})`);
+      }
+      // The fine counter, at its LIVE post — the one door back in.
+      if (f.fineActor) {
+        const post = this.ws.actorSites.find((s) => s.actor === f.fineActor);
+        if (post) {
+          const x = this.sx(post.x);
+          const y = this.sy(post.y);
+          ctx.beginPath();
+          ctx.moveTo(x, y - 5);
+          ctx.lineTo(x + 5, y);
+          ctx.lineTo(x, y + 5);
+          ctx.lineTo(x - 5, y);
+          ctx.closePath();
+          ctx.fillStyle = `rgb(${ink})`;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(16, 13, 24, 0.85)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          if (this.scale >= 0.5) {
+            this.label(ctx, x, y - 7, `⚖ ${f.fineActor}`, `rgb(${ink})`);
+          }
+        }
+      }
+    }
   }
 
   /**

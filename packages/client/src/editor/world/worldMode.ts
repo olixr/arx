@@ -10,6 +10,9 @@ import {
 } from '@arx/content';
 import {
   adoptPoiCell,
+  fetchActorSites,
+  fetchFactions,
+  fetchFrontierDef,
   fetchWorld,
   listMaps,
   poiCellAction,
@@ -95,6 +98,7 @@ export class WorldMode {
       const [snap, maps] = await Promise.all([fetchWorld(), listMaps()]);
       this.ws.setZones(maps.zones);
       this.ws.adopt(snap);
+      void this.readPolitics();
       replaceGeography(snap.geography);
       this.adoptEdgeProfiles(snap.edgeProfiles);
       this.view.invalidateTerrain();
@@ -116,6 +120,7 @@ export class WorldMode {
       const [snap, maps] = await Promise.all([fetchWorld(), listMaps()]);
       this.ws.setZones(maps.zones);
       this.ws.adopt(snap, { keepDraft: this.ws.dirty });
+      void this.readPolitics();
       if (!this.ws.dirty && this.ws.geo) replaceGeography(this.ws.geo);
       // A zone save can change its border's intentions — re-mirror the
       // edge registry, and re-carve the terrain only if it moved.
@@ -126,6 +131,27 @@ export class WorldMode {
       this.ws.changed();
     } catch {
       /* transient — the next action retries */
+    }
+  }
+
+  /**
+   * THE STANDING LENS's reads (factions Phase 6): the political
+   * ledger, the marches, and the live actor posts — quiet on failure
+   * (the lens simply stays unlit until a read lands).
+   */
+  private async readPolitics(): Promise<void> {
+    try {
+      const [factions, frontier, sites] = await Promise.all([
+        fetchFactions(),
+        fetchFrontierDef(),
+        fetchActorSites(),
+      ]);
+      this.ws.factions = factions;
+      this.ws.marchTiles = frontier.marchTiles;
+      this.ws.actorSites = sites;
+      this.ws.changed();
+    } catch {
+      /* transient — the next refresh retries */
     }
   }
 

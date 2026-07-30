@@ -2,12 +2,16 @@ import { DEFAULT_LOOK, RARITY_TIERS, STATUS_IDS, type Look, type RarityTier } fr
 import {
   ABILITIES,
   DANGER_LAWS,
+  FACTION_BAND_ORDER,
   RECIPES,
   SHOPS,
   actorCombatDef,
   expectedYield,
   prefabFromJson,
   zoneFromJson,
+  type FactionBand,
+  type FactionDef,
+  type FactionsDef,
   type FrontierDef,
   type LootEntryDef,
   type LootTableDef,
@@ -3241,6 +3245,7 @@ export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   else if (state.section === 'dialogues') dialogueDetail(body, linkage, id);
   else if (state.section === 'pois') poiDetail(body, linkage, id);
   else if (state.section === 'frontier') frontierDetail(body, linkage);
+  else if (state.section === 'factions') factionsDetail(body, linkage);
   else itemDetail(body, linkage, id);
 }
 
@@ -3517,4 +3522,619 @@ function frontierDetail(body: HTMLElement, linkage: HTMLElement): void {
         'and a loss always earns the shorter mercy.',
     ),
   );
+}
+
+// -------------------------------------------------------- the names
+
+/**
+ * THE FACTIONS BENCH (factions Phase 6): the whole political ledger,
+ * editable — the roster and its memberships, the band thresholds, the
+ * deed values, the two poles, the prices, and the crime dials — with
+ * the consequences derived beside the knobs: a designer reads "4
+ * assaults = outlaw" and "fine from hunted ≈ 300c", never raw deltas.
+ * Saves validate through the one validator and re-draw every loyalty
+ * on the very next perception scan; nothing restarts, nothing reloads.
+ */
+function factionsDetail(body: HTMLElement, linkage: HTMLElement): void {
+  const row = state.factions;
+  if (!row) {
+    body.appendChild(el('p', 'muted empty', 'The ledger has not loaded — is the server up?'));
+    return;
+  }
+  const draft: FactionsDef = JSON.parse(JSON.stringify(row.def)) as FactionsDef;
+
+  // The derived arithmetic, in the designer's language.
+  const toOutlaw = (per: number): string =>
+    per < 0 ? String(Math.ceil(draft.bands.outlaw / per)) : '∞';
+  const fineFrom = (band: number): number =>
+    Math.max(0, (draft.fineFloor - band) * draft.finePerPoint);
+
+  const pills = (): HTMLElement[] => [
+    pill(
+      `${draft.roster.length} names · ${draft.roster.reduce((a, f) => a + f.members.length, 0)} members`,
+      'the closed roster and every actor whose ledger it reads',
+    ),
+    pill(
+      `${toOutlaw(draft.deeds.assaultEnforcer)} assaults = outlaw`,
+      'blows against the watch, from a clean name to the closed throat',
+      'brass',
+    ),
+    pill(
+      `${toOutlaw(draft.deeds.theftWitnessed)} thefts = outlaw`,
+      'witnessed lifts, from a clean name — unseen is unswayed',
+      'brass',
+    ),
+    pill(
+      draft.deeds.slayMember <= draft.bands.outlaw ? 'one slaying = outlaw' : 'a slaying < outlaw',
+      'what a single member kill costs a clean name',
+      draft.deeds.slayMember <= draft.bands.outlaw ? 'brass' : 'danger',
+    ),
+    pill(
+      `fine from hunted ≈ ${fineFrom(draft.bands.hunted)}c`,
+      'the road back at its most expensive (deficit below the floor × coins per point)',
+      'ok',
+    ),
+    pill(
+      `champion pays ×${draft.prices.champion}`,
+      'the warmest counter — and the mirror pays them the same warmth selling',
+      'ok',
+    ),
+  ];
+  const head = detailHead(
+    iconWrap27(iconImg('hall', 34)),
+    'The Names',
+    'factions · world',
+    pills(),
+    row.edited,
+    true,
+    () =>
+      void persistence
+        .saveFactionsDef(draft)
+        .catch((err) => toast((err as Error).message, 5000, 'error')),
+    () =>
+      void persistence
+        .revertFactionsDef()
+        .catch((err) => toast((err as Error).message, 5000, 'error')),
+  );
+  body.appendChild(head);
+  const refreshPills = (): void => {
+    const holder = head.querySelector('.hero-pills');
+    if (holder) {
+      holder.innerHTML = '';
+      for (const p of pills()) holder.appendChild(p);
+    }
+  };
+
+  /** One dial row: label + hint, a control, and a live readout. */
+  const dial = (
+    label: string,
+    hint: string,
+    control: HTMLElement,
+    readout: () => string,
+  ): HTMLElement => {
+    const wrap = el('div', 'frontier-dial');
+    const head2 = el('div', 'frontier-dial-head');
+    head2.appendChild(el('b', '', label));
+    head2.appendChild(el('span', 'muted', hint));
+    const out = el('span', 'pill brass', readout());
+    const refresh = (): void => {
+      out.textContent = readout();
+      refreshPills();
+    };
+    control.addEventListener('input', refresh);
+    control.addEventListener('change', refresh);
+    wrap.appendChild(head2);
+    const rowEl = el('div', 'frontier-dial-row');
+    rowEl.appendChild(control);
+    rowEl.appendChild(out);
+    wrap.appendChild(rowEl);
+    return wrap;
+  };
+
+  /** A scalar dial over a get/set closure (the doc nests its groups). */
+  const numDial = (
+    label: string,
+    hint: string,
+    get: () => number,
+    set: (v: number) => void,
+    min: number,
+    max: number,
+    step: number,
+    readout: () => string,
+  ): HTMLElement => {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = String(min);
+    input.max = String(max);
+    input.step = String(step);
+    input.value = String(get());
+    input.className = 'frontier-num';
+    input.oninput = () => {
+      const v = Number(input.value);
+      if (Number.isFinite(v)) {
+        set(v);
+        markDirty();
+      }
+    };
+    return dial(label, hint, input, readout);
+  };
+
+  // ------------------------------------------------------ the roster
+
+  /** Actors already claimed by ANY name — one name, one ledger. */
+  const claimed = (): Set<string> => {
+    const s = new Set<string>();
+    for (const f of draft.roster) for (const m of f.members) s.add(m);
+    return s;
+  };
+  const actorOpts = (): ComboOption[] =>
+    state.actors.map((a) => ({
+      id: a.def.id,
+      label: a.def.name,
+      sub: a.def.title ?? a.def.disposition,
+    }));
+
+  const rosterBox = el('div');
+  const rebuildRoster = (): void => {
+    rosterBox.innerHTML = '';
+    for (const [fi, f] of draft.roster.entries()) {
+      const card = el('div', 'faction-card');
+
+      // The head: sigil word, display name, fixed id, retire.
+      const headRow = el('div', 'faction-card-head');
+      const sigil = textIn(f.sigil, (v) => (f.sigil = v.trim() || f.sigil), 'sigil');
+      sigil.classList.add('faction-sigil');
+      headRow.appendChild(sigil);
+      const name = textIn(f.name, (v) => (f.name = v.trim() || f.name), 'display name');
+      name.classList.add('faction-name');
+      headRow.appendChild(name);
+      headRow.appendChild(el('span', 'muted', f.id));
+      const retire = el('button', 'chip-x', '✕') as HTMLButtonElement;
+      retire.title = 'retire this name (standing rows keep their history)';
+      retire.onclick = () => {
+        if (!window.confirm(`Retire '${f.name}' from the roster?`)) return;
+        draft.roster.splice(fi, 1);
+        for (const key of Object.keys(draft.oppose)) {
+          if (key.split('|').includes(f.id)) delete draft.oppose[key];
+        }
+        draft.theft.fences = draft.theft.fences.filter((x) => x !== f.id);
+        if (draft.roadFaction === f.id) {
+          toast('the road needs a warden — pick a new road faction before saving', 4200, 'error');
+        }
+        markDirty();
+        rebuildRoster();
+        refreshPills();
+      };
+      headRow.appendChild(retire);
+      card.appendChild(headRow);
+
+      const blurb = textIn(f.blurb, (v) => (f.blurb = v), 'one line of what this name buys');
+      blurb.classList.add('faction-blurb');
+      card.appendChild(blurb);
+
+      // Members — the chip list, one-name-one-ledger enforced at add.
+      const memberRow = el('div', 'chip-row');
+      const rebuildMembers = (): void => {
+        memberRow.innerHTML = '';
+        for (const [mi, slug] of f.members.entries()) {
+          const chip = el('span', 'chip on');
+          const isEnf = f.enforcers.includes(slug);
+          const isFine = f.fineActor === slug;
+          const open = el('button', '', `${slug}${isEnf ? ' ⚔' : ''}${isFine ? ' ⚖' : ''}`) as HTMLButtonElement;
+          open.title = `${isEnf ? 'enforcer — polices this name. ' : ''}${isFine ? 'fine counter — the road back. ' : ''}click to open the actor`;
+          open.onclick = () => setSection('actors', slug);
+          chip.appendChild(open);
+          const x = el('button', 'chip-x', '✕') as HTMLButtonElement;
+          x.title = 'remove from the roster';
+          x.onclick = () => {
+            f.members.splice(mi, 1);
+            f.enforcers = f.enforcers.filter((e) => e !== slug);
+            if (f.fineActor === slug) delete f.fineActor;
+            markDirty();
+            rebuildMembers();
+            rebuildEnforcers();
+            refreshPills();
+          };
+          chip.appendChild(x);
+          memberRow.appendChild(chip);
+        }
+        const add = el('div', 'quick-add');
+        add.appendChild(
+          combobox(
+            () => actorOpts().filter((o) => !claimed().has(o.id)),
+            undefined,
+            (slug) => {
+              f.members.push(slug);
+              markDirty();
+              rebuildMembers();
+              refreshPills();
+            },
+            '+ add a member…',
+          ),
+        );
+        memberRow.appendChild(add);
+      };
+      rebuildMembers();
+      card.appendChild(el('p', 'muted faction-label', 'members — actors who read this ledger'));
+      card.appendChild(memberRow);
+
+      // Enforcers — a subset of members; ⚔ marks them above.
+      const enfRow = el('div', 'chip-row');
+      const rebuildEnforcers = (): void => {
+        enfRow.innerHTML = '';
+        for (const [ei, slug] of f.enforcers.entries()) {
+          const chip = el('span', 'chip on');
+          chip.appendChild(el('span', '', `⚔ ${slug}`));
+          const x = el('button', 'chip-x', '✕') as HTMLButtonElement;
+          x.title = 'stand this body down';
+          x.onclick = () => {
+            f.enforcers.splice(ei, 1);
+            markDirty();
+            rebuildEnforcers();
+            rebuildMembers();
+          };
+          chip.appendChild(x);
+          enfRow.appendChild(chip);
+        }
+        const add = el('div', 'quick-add');
+        add.appendChild(
+          combobox(
+            () =>
+              f.members
+                .filter((m) => !f.enforcers.includes(m))
+                .map((m) => ({ id: m, label: m, sub: 'member' })),
+            undefined,
+            (slug) => {
+              f.enforcers.push(slug);
+              markDirty();
+              rebuildEnforcers();
+              rebuildMembers();
+            },
+            '+ arm an enforcer…',
+          ),
+        );
+        enfRow.appendChild(add);
+      };
+      rebuildEnforcers();
+      card.appendChild(
+        el('p', 'muted faction-label', 'enforcers — the subset that hunts outlaws on sight'),
+      );
+      card.appendChild(enfRow);
+
+      // The fine counter, the bestiary prefixes, the refusals.
+      const fineRow = el('div', 'quick-add');
+      fineRow.appendChild(
+        combobox(
+          () => f.members.map((m) => ({ id: m, label: m, sub: 'member' })),
+          f.fineActor,
+          (slug) => {
+            f.fineActor = slug;
+            markDirty();
+            rebuildMembers();
+          },
+          'fine counter (the road back)…',
+        ),
+      );
+      const clearFine = el('button', 'chip-x', '✕') as HTMLButtonElement;
+      clearFine.title = 'no fine counter — this name sells no way back';
+      clearFine.onclick = () => {
+        delete f.fineActor;
+        markDirty();
+        rebuildRoster();
+      };
+      fineRow.appendChild(clearFine);
+      card.appendChild(el('p', 'muted faction-label', 'the fine counter — who sells a name back'));
+      card.appendChild(fineRow);
+
+      card.appendChild(
+        el('p', 'muted faction-label', 'bestiary prefixes — wild bodies that read this ledger'),
+      );
+      card.appendChild(
+        textIn(
+          f.npcPrefixes.join(', '),
+          (v) => {
+            f.npcPrefixes = v
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
+          },
+          'brigand, …',
+        ),
+      );
+
+      card.appendChild(
+        el('p', 'muted faction-label', 'refusals — the closed throat, one line each'),
+      );
+      const refusals = document.createElement('textarea');
+      refusals.className = 'faction-refusals';
+      refusals.rows = Math.max(2, f.refusals.length);
+      refusals.value = f.refusals.join('\n');
+      refusals.oninput = () => {
+        f.refusals = refusals.value
+          .split('\n')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        markDirty();
+      };
+      card.appendChild(refusals);
+
+      card.appendChild(
+        el(
+          'p',
+          'muted faction-label',
+          f.anchors.length > 0
+            ? `holds ground at ${f.anchors.map((a) => `(${a.x}, ${a.y})`).join(' · ')} — nearest-march at deed time`
+            : 'holds no ground — a name of roads and shadows',
+        ),
+      );
+
+      rosterBox.appendChild(card);
+    }
+    const raise = el('button', 'faction-raise', '+ raise a new name') as HTMLButtonElement;
+    raise.onclick = () => {
+      const id = window.prompt('New faction id (lowercase, e.g. tide_guild):');
+      if (!id) return;
+      if (!/^[a-z][a-z0-9_]*$/.test(id) || draft.roster.some((f) => f.id === id)) {
+        toast('ids are lowercase [a-z0-9_], and the roster is a closed set', 3600, 'error');
+        return;
+      }
+      draft.roster.push({
+        id,
+        name: id,
+        sigil: 'gate',
+        blurb: '',
+        members: [],
+        enforcers: [],
+        npcPrefixes: [],
+        anchors: [],
+        refusals: [],
+      } as FactionDef);
+      markDirty();
+      rebuildRoster();
+      refreshPills();
+    };
+    rosterBox.appendChild(raise);
+  };
+  rebuildRoster();
+
+  body.appendChild(
+    sect(
+      'The roster',
+      'Who reads each ledger — members by actor slug, enforcers by trust, and the counter that sells a name back. One name, one ledger: an actor serves a single flag.',
+      rosterBox,
+    ),
+  );
+
+  // ------------------------------------------------------- the bands
+
+  body.appendChild(
+    sect(
+      'The bands',
+      'The seven rungs of a name. Gameplay reads bands, never raw values — move a threshold and the whole world re-bands on the next beat.',
+      numDial('hunted', 'at or below, the watch shoots first', () => draft.bands.hunted, (v) => (draft.bands.hunted = v), -100, -1, 1, () => `≤ ${draft.bands.hunted}`),
+      numDial('outlaw', 'at or below, throats close and enforcers open', () => draft.bands.outlaw, (v) => (draft.bands.outlaw = v), -100, -1, 1, () => `≤ ${draft.bands.outlaw}`),
+      numDial('suspect', 'at or below, counters grow dear and eyes sharpen', () => draft.bands.suspect, (v) => (draft.bands.suspect = v), -100, -1, 1, () => `≤ ${draft.bands.suspect}`),
+      numDial('known', 'at or above, the street remembers your face kindly', () => draft.bands.known, (v) => (draft.bands.known = v), 1, 100, 1, () => `≥ ${draft.bands.known}`),
+      numDial('trusted', 'at or above, hostile camps hold their fire', () => draft.bands.trusted, (v) => (draft.bands.trusted = v), 1, 100, 1, () => `≥ ${draft.bands.trusted}`),
+      numDial('champion', 'the top of the ladder — the best price in the realm', () => draft.bands.champion, (v) => (draft.bands.champion = v), 1, 100, 1, () => `≥ ${draft.bands.champion}`),
+    ),
+  );
+
+  // ------------------------------------------------------- the deeds
+
+  body.appendChild(
+    sect(
+      'The deeds',
+      'The whole systemic vocabulary — every standing move the world makes on its own is one of these, through the one door.',
+      numDial('bounty honored', "the town's thanks for a posted camp broken", () => draft.deeds.bountyHonored, (v) => (draft.deeds.bountyHonored = v), 1, 50, 1, () => `+${draft.deeds.bountyHonored}`),
+      numDial('toll broken', "a road toll broken inside a town's marches", () => draft.deeds.tollBroken, (v) => (draft.deeds.tollBroken = v), 1, 50, 1, () => `+${draft.deeds.tollBroken}`),
+      numDial('assault on the watch', 'first blow against an enforcer, once per fight', () => draft.deeds.assaultEnforcer, (v) => (draft.deeds.assaultEnforcer = v), -50, -1, 1, () => `${toOutlaw(draft.deeds.assaultEnforcer)} = outlaw`),
+      numDial('member slain', 'a faction body killed — the heaviest mark', () => draft.deeds.slayMember, (v) => (draft.deeds.slayMember = v), -100, -1, 1, () => (draft.deeds.slayMember <= draft.bands.outlaw ? 'one = outlaw' : `${toOutlaw(draft.deeds.slayMember)} = outlaw`)),
+      numDial('theft witnessed', 'a lift a faction body actually saw — unseen is unswayed', () => draft.deeds.theftWitnessed, (v) => (draft.deeds.theftWitnessed = v), -50, -1, 1, () => `${toOutlaw(draft.deeds.theftWitnessed)} caught = outlaw`),
+      numDial('quest cap', 'ceiling on any single authored quest delta', () => draft.deeds.questCap, (v) => (draft.deeds.questCap = v), 1, 50, 1, () => `|Δ| ≤ ${draft.deeds.questCap}`),
+      numDial('story cap', 'ceiling on any single dialogue-hook delta', () => draft.deeds.storyCap, (v) => (draft.deeds.storyCap = v), 1, 50, 1, () => `|Δ| ≤ ${draft.deeds.storyCap}`),
+    ),
+  );
+
+  // ---------------------------------------------------- the two poles
+
+  const opposeBox = el('div');
+  const rebuildOppose = (): void => {
+    opposeBox.innerHTML = '';
+    for (const key of Object.keys(draft.oppose).sort()) {
+      const [a, b] = key.split('|');
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0.05';
+      input.max = '1';
+      input.step = '0.05';
+      input.value = String(draft.oppose[key]);
+      input.className = 'frontier-num';
+      input.oninput = () => {
+        const v = Number(input.value);
+        if (Number.isFinite(v) && v > 0 && v <= 1) {
+          draft.oppose[key] = v;
+          markDirty();
+        }
+      };
+      const wrap = dial(
+        `${a} ↔ ${b}`,
+        'weight of the cross-pay while the border law allows it',
+        input,
+        () => `a +10 deed pays the other ${Math.round(-10 * draft.oppose[key]!)}`,
+      );
+      const x = el('button', 'chip-x', '✕') as HTMLButtonElement;
+      x.title = 'the poles let go of each other';
+      x.onclick = () => {
+        delete draft.oppose[key];
+        markDirty();
+        rebuildOppose();
+      };
+      wrap.querySelector('.frontier-dial-head')?.appendChild(x);
+      opposeBox.appendChild(wrap);
+    }
+    const absent: ComboOption[] = [];
+    for (let i = 0; i < draft.roster.length; i++) {
+      for (let j = i + 1; j < draft.roster.length; j++) {
+        const key = [draft.roster[i]!.id, draft.roster[j]!.id].sort().join('|');
+        if (!(key in draft.oppose)) {
+          absent.push({ id: key, label: key.replace('|', ' ↔ '), sub: 'no opposition yet' });
+        }
+      }
+    }
+    const add = el('div', 'quick-add');
+    add.appendChild(
+      combobox(
+        () => absent,
+        undefined,
+        (key) => {
+          draft.oppose[key] = 0.25;
+          markDirty();
+          rebuildOppose();
+        },
+        '+ set two names against each other…',
+      ),
+    );
+    opposeBox.appendChild(add);
+  };
+  rebuildOppose();
+
+  body.appendChild(
+    sect(
+      'The two poles',
+      'Systemic deeds with one name cross-pay its enemies — while the border law allows it. Authored deltas never cross; authors state both sides.',
+      opposeBox,
+    ),
+  );
+
+  // ------------------------------------------------------ the prices
+
+  const mirror = (mult: number): string => `sells ×${+(2 - mult).toFixed(2)} (the mirror)`;
+  body.appendChild(
+    sect(
+      'The prices',
+      'What a band pays at a faction counter. The mirror law reflects every multiplier around parity on the sell side; outlaw and below never reach a counter.',
+      numDial('champion', 'the realm’s best price', () => draft.prices.champion, (v) => (draft.prices.champion = v), 0.5, 2, 0.01, () => mirror(draft.prices.champion)),
+      numDial('trusted', 'a friend’s discount', () => draft.prices.trusted, (v) => (draft.prices.trusted = v), 0.5, 2, 0.01, () => mirror(draft.prices.trusted)),
+      numDial('known', 'a familiar face', () => draft.prices.known, (v) => (draft.prices.known = v), 0.5, 2, 0.01, () => mirror(draft.prices.known)),
+      numDial('neutral', 'the stranger’s price', () => draft.prices.neutral, (v) => (draft.prices.neutral = v), 0.5, 2, 0.01, () => mirror(draft.prices.neutral)),
+      numDial('suspect', 'coin from a watched hand costs counting', () => draft.prices.suspect, (v) => (draft.prices.suspect = v), 0.5, 2, 0.01, () => mirror(draft.prices.suspect)),
+    ),
+  );
+
+  // ------------------------------------------------- the light fingers
+
+  const fencesRow = el('div', 'chip-row');
+  const rebuildFences = (): void => {
+    fencesRow.innerHTML = '';
+    for (const [i, fid] of draft.theft.fences.entries()) {
+      const chip = el('span', 'chip on');
+      chip.appendChild(el('span', '', fid));
+      const x = el('button', 'chip-x', '✕') as HTMLButtonElement;
+      x.title = 'this name stops buying stolen goods';
+      x.onclick = () => {
+        draft.theft.fences.splice(i, 1);
+        markDirty();
+        rebuildFences();
+      };
+      chip.appendChild(x);
+      fencesRow.appendChild(chip);
+    }
+    const add = el('div', 'quick-add');
+    add.appendChild(
+      combobox(
+        () =>
+          draft.roster
+            .filter((f) => !draft.theft.fences.includes(f.id))
+            .map((f) => ({ id: f.id, label: f.name, sub: f.id })),
+        undefined,
+        (fid) => {
+          draft.theft.fences.push(fid);
+          markDirty();
+          rebuildFences();
+        },
+        '+ whose counters take stolen goods…',
+      ),
+    );
+    fencesRow.appendChild(add);
+  };
+  rebuildFences();
+
+  body.appendChild(
+    sect(
+      'The light fingers',
+      'The crime dials — the roll, the witnesses, the wary window, the locks, and who buys what honest counters refuse.',
+      numDial('theft base', 'success chance at equal sneak and mark level', () => draft.theft.base, (v) => (draft.theft.base = v), 0.01, 0.95, 0.01, () => `${Math.round(draft.theft.base * 100)}% at par`),
+      numDial('per level', 'chance moved per point of sneak − mark level', () => draft.theft.perLevel, (v) => (draft.theft.perLevel = v), 0, 0.05, 0.001, () => `+${Math.round(draft.theft.perLevel * 4000) / 40}% per 10 levels`),
+      numDial('coin cap', 'coins skimmed per lift, at most — coin is coin, never stolen', () => draft.theft.coinCap, (v) => (draft.theft.coinCap = v), 1, 500, 1, () => `≤ ${draft.theft.coinCap}c a lift`),
+      numDial('wary window', 'seconds the mark distrusts the same hand', () => draft.theft.retrySec, (v) => (draft.theft.retrySec = v), 5, 3600, 5, () => humanMs(draft.theft.retrySec * 1000)),
+      numDial('witness radius', 'tiles a faction body can witness from, sightline honest', () => draft.theft.witnessRadius, (v) => (draft.theft.witnessRadius = v), 2, 32, 1, () => `${draft.theft.witnessRadius} tiles`),
+      numDial('lock level', 'sneak level that works a town lock — no roll, no luck', () => draft.theft.lockLevel, (v) => (draft.theft.lockLevel = v), 1, 99, 1, () => `sneak ${draft.theft.lockLevel}`),
+      numDial('the suspect eye', 'enforcers sharpen the sneak factor by this below neutral', () => draft.theft.suspectEye, (v) => (draft.theft.suspectEye = v), 1, 4, 0.1, () => `×${draft.theft.suspectEye} on the crouch`),
+      numDial('stolen sell mult', 'what a fence pays, of the honest sell price', () => draft.theft.stolenSellMult, (v) => (draft.theft.stolenSellMult = v), 0.1, 2, 0.05, () => `fence pays ×${draft.theft.stolenSellMult}`),
+      dial('the fences', 'roster names whose counters accept stolen goods', fencesRow, () => `${draft.theft.fences.length} fence${draft.theft.fences.length === 1 ? '' : 's'}`),
+    ),
+  );
+
+  // ---------------------------------------------------- the law's reach
+
+  const peaceSel = document.createElement('select');
+  peaceSel.className = 'frontier-num faction-band-select';
+  for (const b of FACTION_BAND_ORDER) {
+    if (b !== 'known' && b !== 'trusted' && b !== 'champion') continue;
+    const o = document.createElement('option');
+    o.value = b;
+    o.textContent = b;
+    if (draft.peaceBand === b) o.selected = true;
+    peaceSel.appendChild(o);
+  }
+  peaceSel.onchange = () => {
+    draft.peaceBand = peaceSel.value as FactionBand;
+    markDirty();
+  };
+
+  const roadRow = el('div', 'quick-add');
+  roadRow.appendChild(
+    combobox(
+      () => draft.roster.map((f) => ({ id: f.id, label: f.name, sub: f.id })),
+      draft.roadFaction,
+      (fid) => {
+        draft.roadFaction = fid;
+        markDirty();
+      },
+      'the road’s wardens…',
+    ),
+  );
+
+  body.appendChild(
+    sect(
+      "The law's reach",
+      'The enforcement circle, the peace, the price of a way back, and whose ledger the open road credits.',
+      numDial('enforcer circle', 'tiles an enforcer opens on an outlaw', () => draft.enforcerAggro, (v) => (draft.enforcerAggro = v), 2, 32, 1, () => `${draft.enforcerAggro} tiles`),
+      dial('the peace band', 'a hostile camp holds its fire for a friend at this band', peaceSel, () => `holds fire at ${draft.peaceBand}`),
+      numDial('coins per point', 'the fine per point of deficit below the floor', () => draft.finePerPoint, (v) => (draft.finePerPoint = v), 1, 100, 1, () => `fine from hunted ≈ ${fineFrom(draft.bands.hunted)}c`),
+      numDial('the fine floor', 'a paid fine restores standing to exactly here', () => draft.fineFloor, (v) => (draft.fineFloor = v), -100, 0, 1, () => `restores to ${draft.fineFloor}`),
+      numDial('daily drift', 'standing drifts toward 0 by this each day — ships at 0', () => draft.driftPerDay, (v) => (draft.driftPerDay = v), 0, 10, 1, () => (draft.driftPerDay === 0 ? 'time launders nothing' : `±${draft.driftPerDay}/day`)),
+      dial('the road faction', 'beyond every march, deeds credit these wardens', roadRow, () => draft.roadFaction),
+    ),
+  );
+
+  linkage.appendChild(el('h3', '', 'The one door'));
+  linkage.appendChild(
+    el(
+      'p',
+      'muted',
+      'Every consumer reads this doc at call time — membership at the perception scan, prices at the counter, bands at every ' +
+        'gate. A save re-draws the political map on the very next beat; standing rows keep their history even when a name ' +
+        'retires. The validator holds the cross-laws: bands stay ordered, every enforcer is a member, an actor serves one ' +
+        'flag, the fine floor lands inside suspect, and the fences name roster ids.',
+    ),
+  );
+  const fines = draft.roster.filter((f) => f.fineActor);
+  if (fines.length > 0) {
+    linkHead(linkage, 'actor', 'The fine counters', fines.length);
+    for (const f of fines) {
+      linkRow(linkage, `⚖ ${f.fineActor!}`, f.name, () => setSection('actors', f.fineActor!));
+    }
+  }
 }

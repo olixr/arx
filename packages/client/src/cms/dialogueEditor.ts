@@ -1,8 +1,12 @@
 import {
+  FACTION_BAND_ORDER,
   SHOPS,
+  bandAtLeast,
   dialogueDoneFlag,
   dialogueEligible,
+  isFactionFlag,
   parseDialogueMarkup,
+  parseFactionFlag,
   pickDialogue,
   stripDialogueMarkup,
   validateDialogue,
@@ -10,6 +14,7 @@ import {
   type DialogueDef,
   type DialogueHook,
   type DialogueNode,
+  type FactionBand,
   type NpcActorDef,
 } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
@@ -50,6 +55,15 @@ const FLAG_RE =
 const selByDlg = new Map<string, string>();
 const rehearsalFlagsByDlg = new Map<string, Set<string>>();
 const bustUrlCache = new Map<string, string | null>();
+/**
+ * THE STANDING SIMULATOR (factions Phase 6): the band the rehearsal
+ * walks in with, per faction — one simulated identity across every
+ * tree (a name spans conversations), absent = neutral. faction: gates
+ * answer from HERE, never from the scratch ledger, mirroring the live
+ * server's synthetic namespaces: rehearse a tree as an outlaw without
+ * becoming one.
+ */
+const rehearsalStanding = new Map<string, FactionBand>();
 
 export function newDialogueDef(id: string): DialogueDef {
   return {
@@ -543,10 +557,29 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
 
   const renderFlagUniverse = (): void => {
     flagList.innerHTML = '';
+    const seen = new Set<string>();
     for (const flag of [...flagUniverse(draft).keys()].sort()) {
+      seen.add(flag);
       const opt = document.createElement('option');
       opt.value = flag;
       flagList.appendChild(opt);
+    }
+    // THE POLITICAL GATES (factions Phase 6): the chips authors
+    // actually write, offered for every roster name even before any
+    // tree uses them — the roster is live (Studio edits included).
+    for (const f of state.factions?.def.roster ?? []) {
+      for (const gate of [
+        `faction:${f.id}:atleast:known`,
+        `faction:${f.id}:atleast:trusted`,
+        `faction:${f.id}:atleast:champion`,
+        `faction:${f.id}:atmost:suspect`,
+        `faction:${f.id}:atmost:outlaw`,
+      ]) {
+        if (seen.has(gate)) continue;
+        const opt = document.createElement('option');
+        opt.value = gate;
+        flagList.appendChild(opt);
+      }
     }
   };
 
@@ -601,7 +634,18 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
 
   let rhBox: HTMLElement;
 
-  const rhHas = (f: string): boolean => flags.has(f);
+  const rhHas = (f: string): boolean => {
+    if (isFactionFlag(f)) {
+      const p = parseFactionFlag(f);
+      if (p) {
+        const band = rehearsalStanding.get(p.faction) ?? 'neutral';
+        if (p.cmp === 'exact') return band === p.band;
+        if (p.cmp === 'atleast') return bandAtLeast(band, p.band);
+        return bandAtLeast(p.band, band);
+      }
+    }
+    return flags.has(f);
+  };
 
   const rhEnter = (nodeId: string): void => {
     rhNodeId = nodeId;
@@ -680,7 +724,7 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
     const tray = el('div', 'rh-tray');
     tray.appendChild(el('span', 'rh-tray-label', 'the scratch ledger'));
     for (const f of [...mine].sort()) {
-      if (f.startsWith('world:')) continue;
+      if (f.startsWith('world:') || isFactionFlag(f)) continue;
       tray.appendChild(chipFor(f));
     }
     if (flags.size > 0) {
@@ -699,11 +743,47 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
       for (const f of worldMine) wtray.appendChild(chipFor(f));
       rhBox.appendChild(wtray);
     }
+    // THE STANDING SIMULATOR (factions Phase 6): every faction this
+    // tree gates on gets a band dial — the gates answer from the dial,
+    // never the scratch ledger, so you rehearse as an outlaw without
+    // becoming one. One simulated name across all trees.
+    const factionMine = new Set<string>();
+    for (const f of mine) {
+      if (!isFactionFlag(f)) continue;
+      const p = parseFactionFlag(f);
+      if (p) factionMine.add(p.faction);
+    }
+    if (factionMine.size > 0) {
+      const stray = el('div', 'rh-tray standing');
+      stray.appendChild(el('span', 'rh-tray-label', 'the name you carry (simulated)'));
+      for (const fid of [...factionMine].sort()) {
+        const wrap = el('span', 'rh-standing');
+        const fname = state.factions?.def.roster.find((r) => r.id === fid)?.name ?? fid;
+        wrap.appendChild(el('span', 'rh-standing-name', fname));
+        const bandSel = document.createElement('select');
+        bandSel.className = 'rh-band';
+        for (const b of FACTION_BAND_ORDER) {
+          const o = document.createElement('option');
+          o.value = b;
+          o.textContent = b;
+          if ((rehearsalStanding.get(fid) ?? 'neutral') === b) o.selected = true;
+          bandSel.appendChild(o);
+        }
+        bandSel.onchange = () => {
+          rehearsalStanding.set(fid, bandSel.value as FactionBand);
+          renderRehearsal();
+          renderLinkage();
+        };
+        wrap.appendChild(bandSel);
+        stray.appendChild(wrap);
+      }
+      rhBox.appendChild(stray);
+    }
 
     // Would this tree even be offered?
     if (!dialogueEligible(draft, rhHas)) {
-      const missing = (draft.requires ?? []).filter((f) => !flags.has(f));
-      const blocking = (draft.forbids ?? []).filter((f) => flags.has(f));
+      const missing = (draft.requires ?? []).filter((f) => !rhHas(f));
+      const blocking = (draft.forbids ?? []).filter((f) => rhHas(f));
       const why =
         draft.once && flags.has(dialogueDoneFlag(draft.id))
           ? `it is one-time and ${dialogueDoneFlag(draft.id)} is set`
@@ -738,8 +818,8 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
         const plates = el('div', 'rh-plates');
         if (node.choices && node.choices.length > 0) {
           for (const [ci, c] of node.choices.entries()) {
-            const missing = (c.requires ?? []).filter((f) => !flags.has(f));
-            const blocking = (c.forbids ?? []).filter((f) => flags.has(f));
+            const missing = (c.requires ?? []).filter((f) => !rhHas(f));
+            const blocking = (c.forbids ?? []).filter((f) => rhHas(f));
             const locked = missing.length > 0 || blocking.length > 0;
             const plate = el('button', 'rh-plate' + (locked ? ' locked' : '')) as HTMLButtonElement;
             plate.type = 'button';

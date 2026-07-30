@@ -756,5 +756,6 @@ function buildLenses(root: HTMLElement, deps: WorldPanelDeps): void {
   lens('cells', 'Frontier');
   lens('rings', 'Claims');
   lens('danger', 'Danger');
+  lens('standing', 'Standing');
   root.appendChild(box);
 }
