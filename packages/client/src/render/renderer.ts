@@ -9549,7 +9549,7 @@ export class Renderer {
           race: '#2e4f7e',
           raceDeep: '#24406a',
           shelf: '#385a8a',
-          rollLit: '#7e99bd',
+          rollLit: '#5f7899',
           rollInk: 'rgba(10,22,48,0.55)',
         }
       : {
@@ -9759,7 +9759,7 @@ export class Renderer {
         const aa0 = Math.PI * (0.15 + 0.5 * n01(seed, 101 + k));
         const span = Math.PI * (0.5 + 0.5 * n01(seed, 102 + k));
         ctx.strokeStyle = tones.foam;
-        ctx.globalAlpha = (1 - ph) * (1 - ph) * 0.4 * tones.dim;
+        ctx.globalAlpha = (1 - ph) * (1 - ph) * 0.3 * tones.dim;
         ctx.lineWidth = Math.max(1.2, s * 0.028);
         ctx.beginPath();
         ctx.ellipse(p.x, p.y, rx, rx * 0.5, 0, aa0, aa0 + span);
@@ -9844,14 +9844,17 @@ export class Renderer {
       const wx = x0 + (x1 - x0) * f;
       const wy = y0 + (y1 - y0) * f + 0.1 + Math.random() * 0.4;
       if (!wet || wet(wx, wy)) {
+        // Puffs, never squares — a square mote over dark night water
+        // reads as a pasted chip (live-caught).
         this.particles.burst(wx, wy, 1, ['#dcebf7', '#cfe3f4'], {
           speed: 0.3,
           life: 1.3,
-          size: 0.07,
+          size: 0.055,
           up: true,
           gravity: -0.25,
           drag: 1.1,
-          grow: 0.12,
+          grow: 0.09,
+          shape: 'puff',
         });
       }
     }
@@ -10065,8 +10068,25 @@ export class Renderer {
           const ovR = edgeR ? 0.3 : 0;
           const pTL = this.camera.worldToScreen(ax - ovL, raceTop, this.w, this.h);
           const pBR = this.camera.worldToScreen(bx + ovR, ay + 0.1, this.w, this.h);
+          // The fill's upstream boundary is WAVY (world-keyed) — a
+          // straight rect edge against the bake's tone variants is a
+          // visible line even between near-identical tones.
           ctx.fillStyle = tones.race;
-          ctx.fillRect(pTL.x, pTL.y - topLift, pBR.x - pTL.x, pBR.y - pTL.y);
+          ctx.beginPath();
+          {
+            const RT = Math.max(3, Math.ceil((bx - ax + ovL + ovR) / 0.18));
+            for (let k = 0; k <= RT; k++) {
+              const wx = ax - ovL + (bx + ovR - (ax - ovL)) * (k / RT);
+              const wy = raceTop + (vn(wx, 165, 0.5) - 0.5) * 0.22;
+              const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+              if (k === 0) ctx.moveTo(p.x, p.y - topLift);
+              else ctx.lineTo(p.x, p.y - topLift);
+            }
+            ctx.lineTo(pBR.x, pBR.y - topLift);
+            ctx.lineTo(pTL.x, pBR.y - topLift);
+          }
+          ctx.closePath();
+          ctx.fill();
           // Mid-current lanes — darker streamlines that stretch and
           // strengthen as the water gathers for the drop.
           ctx.strokeStyle = tones.raceDeep;
@@ -10109,8 +10129,10 @@ export class Renderer {
           // THE COLUMNS ARRIVE EARLY: the sheet's world-grid band
           // tones ghost up through the shelf and the last stretch of
           // race, so the columns the water falls in are already
-          // forming before the lip — the read that stitches the two
-          // bodies into one flow.
+          // forming before the lip. Every column starts at its OWN
+          // world-keyed height and fades in over a second soft step —
+          // a shared start line would print the exact hard-rectangle
+          // edge this pass exists to prevent.
           {
             const BW0 = 0.4;
             const g0 = Math.floor((ax - 0.6) / BW0);
@@ -10119,11 +10141,17 @@ export class Renderer {
               const eL = k * BW0 + (n01(k, 140) - 0.5) * 0.18;
               const eR = (k + 1) * BW0 + (n01(k + 1, 140) - 0.5) * 0.18;
               const tone = ((k % 4) + 4) % 4;
-              const pL = this.camera.worldToScreen(eL, ay - 0.85, this.w, this.h);
+              const start = ay - 0.4 - 0.5 * n01(k, 147);
+              const mid = start + 0.25 + 0.15 * n01(k, 148);
+              const pL0 = this.camera.worldToScreen(eL, start, this.w, this.h);
+              const pL1 = this.camera.worldToScreen(eL, mid, this.w, this.h);
               const pR = this.camera.worldToScreen(eR, ay + 0.1, this.w, this.h);
               ctx.fillStyle = tones.band[tone]!;
-              ctx.globalAlpha = 0.14 * (0.5 + 0.5 * n01(k, 144));
-              ctx.fillRect(pL.x, pL.y - topLift, pR.x - pL.x, pR.y - pL.y);
+              const aFull = 0.14 * (0.5 + 0.5 * n01(k, 144));
+              ctx.globalAlpha = aFull * 0.45;
+              ctx.fillRect(pL0.x, pL0.y - topLift, pR.x - pL0.x, pL1.y - pL0.y);
+              ctx.globalAlpha = aFull;
+              ctx.fillRect(pL1.x, pL1.y - topLift, pR.x - pL1.x, pR.y - pL1.y);
             }
             ctx.globalAlpha = 1;
           }
@@ -11329,7 +11357,16 @@ export class Renderer {
             yEdge - 0.3 - Math.random() * Math.max(0.4, info.drop),
             1,
             ['#dcebf7', '#cfe3f4'],
-            { speed: 0.35, life: 1.6, size: 0.07, up: true, gravity: -0.3, drag: 1.0, grow: 0.16 },
+            {
+              speed: 0.35,
+              life: 1.6,
+              size: 0.055,
+              up: true,
+              gravity: -0.3,
+              drag: 1.0,
+              grow: 0.12,
+              shape: 'puff',
+            },
           );
         }
       },
