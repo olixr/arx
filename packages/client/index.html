@@ -191,11 +191,23 @@
         <div id="shop-list"></div>
       </div>
 
-      <!-- BUILDER'S TABLE — blueprints spread out to choose from. -->
+      <!-- BUILDER'S TABLE — the Workshop anatomy: ledger left (the
+           blueprints, shelved by category), work right (the chosen
+           piece, its whole story, and the Place button). -->
       <div id="build-panel" class="ui-screen screen-build hidden">
         <h3>Build</h3>
-        <div id="build-list"></div>
+        <div class="craft-body">
+          <div class="craft-left">
+            <div id="build-tools"></div>
+            <div id="build-list" class="craft-ledger"></div>
+          </div>
+          <div id="build-detail"></div>
+        </div>
       </div>
+
+      <!-- BUILDER'S TRAY — the in-mode face: what you're placing, what
+           it costs against the pack, the dial, and the recent pieces. -->
+      <div id="build-tray" class="hidden"></div>
 
       <!-- SOCIAL — the fellowship ledger: who stands near, who walks
            with you, who is asking to. The body is built by

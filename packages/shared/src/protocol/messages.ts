@@ -171,6 +171,22 @@ export interface C2SDemolish {
   ty: number;
 }
 
+/**
+ * Ask for the ledger of your own built tiles — THE OWN-WORK OVERLAY's
+ * source. The client requests it entering build mode and after each
+ * completed build/demolish; the answer is the whole set (small in
+ * practice, and always correct beats always clever).
+ */
+export interface C2SOwnBuilt {
+  t: 'ownbuilt';
+}
+
+/** Every "tx,ty" key the asking character owns a built tile at. */
+export interface S2COwnBuilt {
+  t: 'ownbuilt';
+  keys: string[];
+}
+
 /** Plant a seed into a tilled garden plot. */
 export interface C2SPlant {
   t: 'plant';
@@ -399,6 +415,7 @@ export type C2SMessage =
   | C2SShop
   | C2SBuild
   | C2SDemolish
+  | C2SOwnBuilt
   | C2SPlant
   | C2SInteractNpc
   | C2SPickup
@@ -1144,6 +1161,7 @@ export type S2CMessage =
   | S2CBank
   | S2CCooldowns
   | S2CFx
+  | S2COwnBuilt
   | S2CTime
   | S2CTechniques
   | S2CCallings
@@ -1360,6 +1378,8 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
       return { t: 'demolish', tx: msg.tx, ty: msg.ty };
     }
+    case 'ownbuilt':
+      return { t: 'ownbuilt' };
     case 'plant': {
       if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
       if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;

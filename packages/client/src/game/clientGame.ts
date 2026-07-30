@@ -189,6 +189,8 @@ export interface GameEvents {
   onNeedLook?(): void;
   /** A timed action began — `ticks` server ticks to completion. */
   onActionStart?(ticks: number): void;
+  /** The own-built ledger arrived — feed the overlay. */
+  onOwnBuilt?(keys: ReadonlySet<string>): void;
   /** The running action ended — `reason` says why ('done', 'blocked', 'occupied', 'materials', 'moved', …). */
   onActionEnd?(reason?: string): void;
   /** A conversation began — raise the cinematic frame around `eid`. */
@@ -310,6 +312,8 @@ export class ClientGame {
   carryOff: 'normal' | 'rogue' = 'normal';
   /** Running gather action, for the progress bar. */
   action: { startedAt: number; durationMs: number } | null = null;
+  /** "tx,ty" keys of this character's own built tiles (THE OWN-WORK OVERLAY). */
+  ownBuilt: ReadonlySet<string> = new Set();
   /** Damage numbers floating up; pruned by the renderer. */
   readonly floaties: Floaty[] = [];
   /**
@@ -880,6 +884,11 @@ export class ClientGame {
           level: msg.level,
           levelledUp: msg.levelledUp,
         });
+        break;
+      }
+      case 'ownbuilt': {
+        this.ownBuilt = new Set(msg.keys);
+        this.events.onOwnBuilt?.(this.ownBuilt);
         break;
       }
       case 'action': {
@@ -1768,6 +1777,11 @@ export class ClientGame {
 
   demolishSend(tx: number, ty: number): void {
     this.conn?.send({ t: 'demolish', tx, ty });
+  }
+
+  /** Ask for the own-built ledger (THE OWN-WORK OVERLAY refresh). */
+  ownBuiltRequest(): void {
+    this.conn?.send({ t: 'ownbuilt' });
   }
 
   private handleSnapshot(snap: Snapshot): void {

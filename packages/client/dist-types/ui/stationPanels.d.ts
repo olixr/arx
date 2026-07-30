@@ -19,7 +19,11 @@ export declare class StationPanels {
     private readonly shopPanel;
     private readonly shopList;
     private readonly buildPanel;
+    private readonly buildTools;
     private readonly buildList;
+    private readonly buildDetail;
+    /** How the Builder's Table ledger is ordered. */
+    private buildSort;
     /** dressPanel handles for the Workshop head — set from main. */
     private craftDressHandles;
     private lastBank;
@@ -71,10 +75,16 @@ export declare class StationPanels {
     refreshOpen(): void;
     /** Total of an item across the pack — the "have" in have/need. */
     private countOf;
-    openBuild(skills: SkillXp): void;
+    openBuild(skills: SkillXp, sel?: string | null): void;
+    /** How many of a buildable the pack covers right now. */
+    private placeable;
+    /** The footing rule in world-words — where a piece agrees to stand. */
+    private footingWords;
     /**
-     * The Builder's Table: every blueprint is a CARD laid on the table —
-     * portrait, name, the level it asks, the material story, and one
+     * The Builder's Table on the Workshop anatomy (LEDGER LEFT, WORK
+     * RIGHT): blueprints shelved by category with an in-reach sort, and
+     * the chosen piece laid out large — costs against the pack, build
+     * time, footing in world-words, the dial note for corners, and one
      * Place button. Locked plans stay visible; ambition needs a map.
      */
     private renderBuild;

@@ -307,6 +307,12 @@ export class Session {
         this.game.demolish(this.playerEid, msg.tx, msg.ty);
         return;
       }
+      case 'ownbuilt': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.sendOwnBuilt(this.playerEid);
+        return;
+      }
       case 'plant': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

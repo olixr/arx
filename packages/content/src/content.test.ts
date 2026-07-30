@@ -35,7 +35,7 @@ import { NPCS, TOWN_SPAWNS } from './npcs.js';
 import { LOOT_TABLES } from './loot/tables.js';
 import { RECIPES } from './recipes.js';
 import { NODES } from './nodes.js';
-import { BUILDABLES } from './buildables.js';
+import { BUILDABLES, BUILD_CATEGORIES } from './buildables.js';
 import { GENERAL_STORE, SHOPS } from './shop.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 import { NPC_ACTORS } from './actors/registry.js';
@@ -530,6 +530,14 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
   // Everything else denominated in wood must ask for boards.
   for (const id of ['board', 'oak_board']) {
     assert.ok(ITEMS.get(id)?.stackable, `${id} must stack — hauling is not the gameplay`);
+  }
+  // Every palette shelf holds at least one plan — an empty category
+  // is a typo'd cat, not a design choice.
+  for (const c of BUILD_CATEGORIES) {
+    assert.ok(
+      [...BUILDABLES.values()].some((b) => b.cat === c.id),
+      `build shelf '${c.id}' is empty`,
+    );
   }
   const WHOLE_TIMBER = new Set([
     'sawhorse',

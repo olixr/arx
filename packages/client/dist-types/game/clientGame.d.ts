@@ -193,6 +193,8 @@ export interface GameEvents {
     onNeedLook?(): void;
     /** A timed action began — `ticks` server ticks to completion. */
     onActionStart?(ticks: number): void;
+    /** The own-built ledger arrived — feed the overlay. */
+    onOwnBuilt?(keys: ReadonlySet<string>): void;
     /** The running action ended — `reason` says why ('done', 'blocked', 'occupied', 'materials', 'moved', …). */
     onActionEnd?(reason?: string): void;
     /** A conversation began — raise the cinematic frame around `eid`. */
@@ -355,6 +357,8 @@ export declare class ClientGame {
         startedAt: number;
         durationMs: number;
     } | null;
+    /** "tx,ty" keys of this character's own built tiles (THE OWN-WORK OVERLAY). */
+    ownBuilt: ReadonlySet<string>;
     /** Damage numbers floating up; pruned by the renderer. */
     readonly floaties: Floaty[];
     /**
@@ -671,6 +675,8 @@ export declare class ClientGame {
     shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number, shop?: string): void;
     buildSend(buildable: string, tx: number, ty: number, orient?: BuildOrient): void;
     demolishSend(tx: number, ty: number): void;
+    /** Ask for the own-built ledger (THE OWN-WORK OVERLAY refresh). */
+    ownBuiltRequest(): void;
     private handleSnapshot;
     /**
      * Smooth game-clock hours for the sky. Rides the same slewed

@@ -368,6 +368,20 @@ export declare class Renderer {
         tx: number;
         ty: number;
     } | null;
+    /**
+     * THE DEMOLISH GHOST: the armed modifier hovering one of YOUR OWN
+     * tiles — red dashed outline plus the salvage the teardown will
+     * hand back. Tiles that aren't yours never highlight; the refusal
+     * becomes something you can see before you swing.
+     */
+    demolishGhost: {
+        tx: number;
+        ty: number;
+        salvage: string | null;
+    } | null;
+    /** THE OWN-WORK OVERLAY: parsed own-built tiles, glinted in build mode. */
+    private ownBuiltTiles;
+    setOwnBuilt(keys: ReadonlySet<string>): void;
     /** Ghost icon bitmaps by buildable id — data-URL images decode async,
      *  so the first frame may skip the icon; it pops in a beat later. */
     private readonly ghostIcons;

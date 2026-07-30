@@ -3063,134 +3063,136 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 }
 
 /* ==================================================================
-   THE BUILDER'S TABLE — blueprints spread three abreast, each a card:
-   portrait, the level it asks, the material story, one Place button.
+   THE BUILDER'S TABLE — the Workshop anatomy: blueprint ledger left,
+   the chosen piece laid out large on the right.
    ================================================================== */
 
+/* The Builder's Table wears the Workshop anatomy: ledger left, work
+   right — one shape for every maker screen (the design law). Ledger,
+   sort chips, material rows, and the detail pane all reuse the craft
+   classes; only the sizing and the shelf heads are its own. */
 .screen-build {
-  width: min(1200px, 92vw);
-  height: min(800px, 86vh);
+  width: min(1180px, 92vw);
+  height: min(780px, 86vh);
 }
 
-#build-list {
-  flex: 1;
+#build-tools {
+  flex: none;
+}
+
+#build-detail {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
   padding-right: 4px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  align-content: start;
-}
-
-/* Each plan is a PARCHMENT SHEET laid on the table — light field,
-   worn edges, ink text. The one screen whose documents are paper. */
-.blueprint-card {
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  background: none;
-  border: 9px solid transparent;
-  border-image: var(--ui-sheet) 45 fill / 9px;
-  border-radius: 0;
-  padding: 8px 10px;
-  text-shadow: none;
-  color: var(--sheet-ink);
-  filter: drop-shadow(4px 5px 0 var(--shadow));
+  gap: 12px;
 }
 
-.blueprint-card .blueprint-name {
+/* A shelf head in the ledger — the category line. */
+.build-shelf {
+  margin: 8px 2px 1px;
   font-family: var(--serif);
-  color: var(--sheet-ink);
-  font-size: 19px;
+  font-size: 13.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-soft, #d9a441);
+  opacity: 0.85;
 }
 
-/* Ink-on-paper variants of the shared chips. */
-.blueprint-card .lvl-badge {
-  background: rgba(107, 92, 61, 0.14);
-  border-color: rgba(107, 92, 61, 0.5);
-  color: #6b5c3d;
-  text-shadow: none;
-}
-
-.blueprint-card .lvl-badge.unmet {
-  color: #a8433c;
-  border-color: rgba(168, 67, 60, 0.55);
-}
-
-.blueprint-card .need-chip {
-  background: rgba(107, 92, 61, 0.1);
-  border-color: rgba(107, 92, 61, 0.45);
-  text-shadow: none;
-}
-
-.blueprint-card .need-chip.ok {
-  color: #3f7a33;
-  border-color: rgba(63, 122, 51, 0.55);
-}
-
-.blueprint-card .need-chip.short {
-  color: #a8433c;
-  border-color: rgba(168, 67, 60, 0.55);
-}
-
-.blueprint-card .icon-tile {
-  border-image: none;
-  border: 2px solid rgba(107, 92, 61, 0.55);
-  background: rgba(107, 92, 61, 0.12);
-}
-
-.blueprint-card .lock-note {
-  color: #a8433c;
-  text-shadow: none;
-}
-
-.blueprint-card.disabled {
-  opacity: 0.62;
-  filter: saturate(0.6) drop-shadow(4px 5px 0 var(--shadow));
-}
-
-.blueprint-top {
+/* ------------------------------------------------------------------
+   BUILDER'S TRAY — the in-mode face pinned over the world: selected
+   piece, live costs, the dial, and the recent pieces row.
+   ------------------------------------------------------------------ */
+#build-tray {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Above the pinned mode strip — the two stack, never overlap. */
+  bottom: 176px;
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 8px 14px;
+  background: rgba(24, 16, 30, 0.88);
+  border: 1.5px solid var(--line-strong, #4a3c58);
+  border-radius: 10px;
+  box-shadow: 0 4px 0 rgba(10, 6, 14, 0.55);
+  pointer-events: auto;
+  z-index: 40;
 }
 
-.blueprint-names {
-  min-width: 0;
+#build-tray .tray-icon {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+}
+
+#build-tray .tray-names {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
+  gap: 2px;
+  min-width: 90px;
 }
 
-.blueprint-name {
-  font-size: 17.5px;
+#build-tray .tray-name {
   font-weight: 700;
-  color: var(--parchment);
+  font-size: 14px;
+  color: var(--parchment, #e8d6a4);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.make-chips {
+#build-tray .tray-orient {
+  font-size: 11.5px;
+  color: #b9a8d0;
+}
+
+#build-tray .tray-mats {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
 }
 
-.blueprint-actions {
-  margin-top: auto;
+#build-tray .tray-recents {
   display: flex;
+  gap: 5px;
   align-items: center;
-  min-height: 46px;
+  border-left: 1px solid rgba(122, 104, 144, 0.45);
+  padding-left: 12px;
 }
 
-.blueprint-actions .act-btn {
+#build-tray .tray-recent {
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  border: 1.5px solid rgba(122, 104, 144, 0.5);
+  border-radius: 7px;
+  background: rgba(44, 32, 56, 0.7);
+  cursor: pointer;
+}
+
+#build-tray .tray-recent:hover {
+  border-color: var(--gold-soft, #d9a441);
+}
+
+#build-tray .tray-recent img {
   width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+#build-tray.armed {
+  border-color: rgba(196, 85, 61, 0.85);
+}
+
+#build-tray .tray-armed {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: #e07a5f;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* ==================================================================

@@ -3751,6 +3751,18 @@ export class GameServer {
     }
   }
 
+  /**
+   * THE OWN-WORK OVERLAY's answer: every built-tile key this character
+   * owns. The client asks on entering build mode and after each
+   * completed build/demolish — whole-set each time, always correct.
+   */
+  sendOwnBuilt(eid: EntityId): void {
+    const player = this.players.get(eid);
+    if (!player || player.session === null) return;
+    const keys = player.characterId > 0 ? this.world.builtKeysOf(player.characterId) : undefined;
+    player.session.sendJson({ t: 'ownbuilt', keys: keys ? [...keys] : [] });
+  }
+
   /** How long a teardown swings — the same practiced-hand Calling that
    *  speeds building speeds unbuilding. */
   private static readonly DEMOLISH_TICKS = 12;

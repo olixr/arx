@@ -1,6 +1,7 @@
 import {
+  Tile,
+  diagWallInfo,
   levelForXp,
-  tileDef,
   type InvSlot,
   type ItemRoll,
   type SkillXp,
@@ -8,15 +9,18 @@ import {
 } from '@arx/shared';
 import {
   BUILDABLES,
+  BUILD_CATEGORIES,
   CROP_BY_SEED,
+  buildableGround,
   shopDef,
   instanceName,
   itemDef,
   recipesForStation,
+  type BuildableDef,
   type RecipeDef,
 } from '@arx/content';
 import { buildableIconUrl, itemIconUrl, uiIconUrl } from '../render/icons.js';
-import { bigButton, iconTile, levelBadge, needChip, sectionHead } from './panel.js';
+import { bigButton, iconTile, sectionHead } from './panel.js';
 
 /**
  * The station screens: Workshop (craft), Vault (bank), Store (shop)
@@ -132,7 +136,11 @@ export class StationPanels {
   private readonly shopPanel = document.getElementById('shop-panel')!;
   private readonly shopList = document.getElementById('shop-list')!;
   private readonly buildPanel = document.getElementById('build-panel')!;
+  private readonly buildTools = document.getElementById('build-tools')!;
   private readonly buildList = document.getElementById('build-list')!;
+  private readonly buildDetail = document.getElementById('build-detail')!;
+  /** How the Builder's Table ledger is ordered. */
+  private buildSort: 'reach' | 'level' | 'az' = 'reach';
 
   /** dressPanel handles for the Workshop head — set from main. */
   private craftDressHandles: { setHint: (t: string) => void; setIcon: (u: string) => void } | null =
@@ -155,7 +163,7 @@ export class StationPanels {
   private showing:
     | { kind: 'craft'; station: StationType | null; skills: SkillXp; known: ReadonlySet<string>; sel: string | null }
     | { kind: 'plant'; tx: number; ty: number; skills: SkillXp; sel: string | null }
-    | { kind: 'build'; skills: SkillXp }
+    | { kind: 'build'; skills: SkillXp; sel: string | null }
     | null = null;
 
   constructor(
@@ -256,80 +264,196 @@ export class StationPanels {
 
   // ------------------------------------------------------------ build
 
-  openBuild(skills: SkillXp): void {
+  openBuild(skills: SkillXp, sel: string | null = null): void {
     this.closeAll();
-    this.showing = { kind: 'build', skills };
+    this.showing = { kind: 'build', skills, sel };
     this.renderBuild();
     this.buildPanel.classList.remove('hidden');
   }
 
+  /** How many of a buildable the pack covers right now. */
+  private placeable(def: BuildableDef): number {
+    if (def.materials.length === 0) return 99;
+    let n = Infinity;
+    for (const m of def.materials) n = Math.min(n, Math.floor(this.countOf(m.item) / m.qty));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  /** The footing rule in world-words — where a piece agrees to stand. */
+  private footingWords(def: BuildableDef): string {
+    const ground = buildableGround(def);
+    const outdoor = ground.includes(Tile.Grass);
+    const floors = ground.includes(Tile.WoodFloor);
+    if (outdoor && floors) return 'open ground, or a laid floor';
+    if (floors) return 'a laid floor';
+    return 'open ground — grass, dirt, or sand';
+  }
+
   /**
-   * The Builder's Table: every blueprint is a CARD laid on the table —
-   * portrait, name, the level it asks, the material story, and one
+   * The Builder's Table on the Workshop anatomy (LEDGER LEFT, WORK
+   * RIGHT): blueprints shelved by category with an in-reach sort, and
+   * the chosen piece laid out large — costs against the pack, build
+   * time, footing in world-words, the dial note for corners, and one
    * Place button. Locked plans stay visible; ambition needs a map.
    */
   private renderBuild(): void {
     if (this.showing?.kind !== 'build') return;
-    const { skills } = this.showing;
+    const showing = this.showing;
+    const { skills } = showing;
     this.buildList.innerHTML = '';
-    for (const def of BUILDABLES.values()) {
-      const skill = def.skill ?? 'construction';
-      const level = levelForXp(skills[skill] ?? 0);
-      const locked = level < def.levelReq;
+    this.buildDetail.innerHTML = '';
 
-      const card = document.createElement('div');
-      card.className = 'blueprint-card' + (locked ? ' disabled' : '');
-      const top = document.createElement('div');
-      top.className = 'blueprint-top';
-      const iconUrl = buildableIconUrl(def.id, 44);
-      let tile: HTMLElement;
-      if (iconUrl) {
-        tile = iconTile(iconUrl, 'sm');
-      } else {
-        tile = document.createElement('div');
-        tile.className = 'icon-tile sm';
-        const sw = document.createElement('div');
-        sw.className = 'tile-swatch';
-        sw.style.cssText = `width:70%;height:70%;background:${
-          tileDef(def.tile).topColor ?? tileDef(def.tile).color
-        }`;
-        tile.appendChild(sw);
-      }
-      const names = document.createElement('div');
-      names.className = 'blueprint-names';
-      const name = document.createElement('div');
-      name.className = 'blueprint-name';
-      name.textContent = def.name;
-      names.appendChild(name);
-      names.appendChild(levelBadge(def.levelReq, skill, !locked));
-      top.append(tile, names);
-      card.appendChild(top);
-
-      const chips = document.createElement('div');
-      chips.className = 'make-chips';
-      for (const m of def.materials) {
-        const mDef = itemDef(m.item);
-        chips.appendChild(
-          needChip(itemIconUrl(m.item, 24), this.countOf(m.item), m.qty, mDef?.name ?? m.item),
-        );
-      }
-      card.appendChild(chips);
-
-      const actions = document.createElement('div');
-      actions.className = 'blueprint-actions';
-      if (!locked) {
-        actions.appendChild(
-          bigButton('Place', `build:${def.id}`, () => this.onPickBuildable(def.id)),
-        );
-      } else {
-        const lockNote = document.createElement('span');
-        lockNote.className = 'lock-note';
-        lockNote.textContent = `Reach ${skill} ${def.levelReq}`;
-        actions.appendChild(lockNote);
-      }
-      card.appendChild(actions);
-      this.buildList.appendChild(card);
+    const defs = [...BUILDABLES.values()];
+    const levelOf = (d: BuildableDef): number => levelForXp(skills[d.skill ?? 'construction'] ?? 0);
+    const lockedOf = (d: BuildableDef): boolean => levelOf(d) < d.levelReq;
+    if (!showing.sel || !BUILDABLES.has(showing.sel)) {
+      const canDo = defs.find((d) => !lockedOf(d) && this.placeable(d) > 0);
+      const unlocked = defs.find((d) => !lockedOf(d));
+      showing.sel = (canDo ?? unlocked ?? defs[0]!).id;
     }
+
+    this.sortBar(
+      this.buildTools,
+      'build',
+      [
+        ['reach', 'In reach'],
+        ['level', 'By level'],
+        ['az', 'A–Z'],
+      ],
+      this.buildSort,
+      (k) => {
+        this.buildSort = k;
+        this.renderBuild();
+      },
+    );
+    const reachScore = (d: BuildableDef): number =>
+      (lockedOf(d) ? 0 : 2) + (!lockedOf(d) && this.placeable(d) > 0 ? 1 : 0);
+    const ordered = (list: BuildableDef[]): BuildableDef[] => {
+      const rows = [...list];
+      if (this.buildSort === 'az') rows.sort((a, b) => a.name.localeCompare(b.name));
+      else if (this.buildSort === 'level')
+        rows.sort((a, b) => a.levelReq - b.levelReq || a.name.localeCompare(b.name));
+      else
+        rows.sort(
+          (a, b) =>
+            reachScore(b) - reachScore(a) ||
+            a.levelReq - b.levelReq ||
+            a.name.localeCompare(b.name),
+        );
+      return rows;
+    };
+
+    // The shelves: every category in its fixed order, each sorted
+    // the player's way inside.
+    for (const cat of BUILD_CATEGORIES) {
+      const shelf = defs.filter((d) => d.cat === cat.id);
+      if (shelf.length === 0) continue;
+      const head = document.createElement('div');
+      head.className = 'build-shelf';
+      head.textContent = cat.label;
+      this.buildList.appendChild(head);
+      for (const def of ordered(shelf)) {
+        const locked = lockedOf(def);
+        const count = this.placeable(def);
+        this.buildList.appendChild(
+          this.ledgerRow({
+            key: `plan:${def.id}`,
+            iconUrl: buildableIconUrl(def.id, 40) ?? itemIconUrl('log', 40),
+            name: def.name,
+            note: locked ? `lvl ${def.levelReq}` : count > 0 ? `× ${count}` : 'short',
+            noteTone: locked ? 'lock' : count > 0 ? 'ok' : 'short',
+            selected: showing.sel === def.id,
+            onPick: () => {
+              showing.sel = def.id;
+              this.renderBuild();
+            },
+          }),
+        );
+      }
+    }
+
+    // ---- the chosen plan, laid out large
+    const def = BUILDABLES.get(showing.sel)!;
+    const skill = def.skill ?? 'construction';
+    const level = levelOf(def);
+    const locked = lockedOf(def);
+    const count = this.placeable(def);
+    const turnable = diagWallInfo(def.tile) !== null || def.tile === Tile.FenceDiagNE;
+
+    const head = document.createElement('div');
+    head.className = 'work-head';
+    head.appendChild(iconTile(buildableIconUrl(def.id, 64) ?? itemIconUrl('log', 64)));
+    const titles = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'work-name';
+    name.textContent = def.name;
+    const sub = document.createElement('div');
+    sub.className = 'work-sub';
+    sub.textContent = `${skill} · level ${def.levelReq} · +${def.xp} xp`;
+    titles.append(name, sub);
+    head.appendChild(titles);
+    this.buildDetail.appendChild(head);
+
+    const facts = document.createElement('div');
+    facts.className = 'work-facts';
+    const fact = (value: string, label: string, tone?: string): void => {
+      const f = document.createElement('div');
+      f.className = 'work-fact';
+      const v = document.createElement('strong');
+      v.textContent = value;
+      if (tone) v.style.color = tone;
+      const l = document.createElement('span');
+      l.textContent = label;
+      f.append(v, l);
+      facts.appendChild(f);
+    };
+    fact(
+      locked ? '—' : `× ${count}`,
+      'you can place',
+      locked ? undefined : count > 0 ? 'var(--green)' : 'var(--red-soft)',
+    );
+    fact(`${level}`, `your ${skill}`, locked ? 'var(--red-soft)' : undefined);
+    fact(`${(def.ticks / 20).toFixed(1)}s`, 'to raise');
+    this.buildDetail.appendChild(facts);
+
+    if (def.materials.length > 0) {
+      this.buildDetail.appendChild(sectionHead('Materials'));
+      for (const m of def.materials) {
+        this.buildDetail.appendChild(this.materialRow(m.item, m.qty));
+      }
+    }
+
+    this.buildDetail.appendChild(sectionHead('Where it stands'));
+    const footing = document.createElement('div');
+    footing.className = 'work-result';
+    const footLine = document.createElement('div');
+    footLine.className = 'work-result-facts';
+    footLine.textContent = `Wants ${this.footingWords(def)}.`;
+    footing.appendChild(footLine);
+    if (turnable) {
+      const turnLine = document.createElement('div');
+      turnLine.className = 'work-result-flavor';
+      turnLine.textContent =
+        'A corner piece: it reads its neighbours on its own, or turns under the wheel while you aim.';
+      footing.appendChild(turnLine);
+    }
+    this.buildDetail.appendChild(footing);
+
+    const actions = document.createElement('div');
+    actions.className = 'work-actions';
+    if (locked) {
+      const lockNote = document.createElement('span');
+      lockNote.className = 'lock-note';
+      lockNote.textContent = `Reach ${skill} ${def.levelReq} to place this`;
+      actions.appendChild(lockNote);
+    } else {
+      const btn = bigButton('Place', `build:${def.id}`, () => this.onPickBuildable(def.id), {
+        acta: 'Place',
+      });
+      if (count === 0 && def.materials.length > 0) btn.disabled = true;
+      actions.appendChild(btn);
+    }
+    this.buildDetail.appendChild(actions);
   }
 
   // ------------------------------------------------------------ plant

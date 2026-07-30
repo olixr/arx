@@ -1150,6 +1150,24 @@ export class Renderer {
    *  pose squares up to it and the site wears the progress ring. */
   buildSite: { tx: number; ty: number } | null = null;
 
+  /**
+   * THE DEMOLISH GHOST: the armed modifier hovering one of YOUR OWN
+   * tiles — red dashed outline plus the salvage the teardown will
+   * hand back. Tiles that aren't yours never highlight; the refusal
+   * becomes something you can see before you swing.
+   */
+  demolishGhost: { tx: number; ty: number; salvage: string | null } | null = null;
+
+  /** THE OWN-WORK OVERLAY: parsed own-built tiles, glinted in build mode. */
+  private ownBuiltTiles: Array<{ tx: number; ty: number }> = [];
+
+  setOwnBuilt(keys: ReadonlySet<string>): void {
+    this.ownBuiltTiles = [...keys].map((k) => {
+      const [tx, ty] = k.split(',').map(Number);
+      return { tx: tx!, ty: ty! };
+    });
+  }
+
   /** Ghost icon bitmaps by buildable id — data-URL images decode async,
    *  so the first frame may skip the icon; it pops in a beat later. */
   private readonly ghostIcons = new Map<string, HTMLImageElement>();
@@ -27038,6 +27056,58 @@ export class Renderer {
         -Math.PI / 2 + frac * Math.PI * 2,
       );
       ctx.stroke();
+    }
+
+    // In build mode (either ghost live), your own work glints softly —
+    // what the wrecking hand may touch, visible before it's armed.
+    if ((g || this.demolishGhost) && this.ownBuiltTiles.length > 0) {
+      ctx.strokeStyle = 'rgba(232, 214, 164, 0.34)';
+      ctx.lineWidth = Math.max(1.2, s * 0.035);
+      for (const t of this.ownBuiltTiles) {
+        const f = this.ghostFootprint(t.tx, t.ty);
+        if (f.x < -s || f.x > this.w + s || f.y < -s * 3 || f.y > this.h + s) continue;
+        const tick = s * 0.18;
+        ctx.beginPath();
+        ctx.moveTo(f.x + 2 + tick, f.y + 2);
+        ctx.lineTo(f.x + 2, f.y + 2);
+        ctx.lineTo(f.x + 2, f.y + 2 + tick * this.camera.yScale);
+        ctx.moveTo(f.x + s - 2 - tick, f.y + f.sy - 2);
+        ctx.lineTo(f.x + s - 2, f.y + f.sy - 2);
+        ctx.lineTo(f.x + s - 2, f.y + f.sy - 2 - tick * this.camera.yScale);
+        ctx.stroke();
+      }
+    }
+
+    // The armed hover: a red dashed frame on YOUR tile, with what the
+    // teardown hands back written above it.
+    if (this.demolishGhost) {
+      const dg = this.demolishGhost;
+      const f = this.ghostFootprint(dg.tx, dg.ty);
+      ctx.strokeStyle = '#e07a5f';
+      ctx.lineWidth = Math.max(2, s * 0.06);
+      ctx.setLineDash([Math.max(3, s * 0.14), Math.max(3, s * 0.1)]);
+      ctx.beginPath();
+      chamferRect(ctx, f.x + 2, f.y + 2, s - 4, f.sy - 4, s * 0.14);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (dg.salvage) {
+        ctx.font = "600 12px 'Trebuchet MS', sans-serif";
+        const tw = ctx.measureText(dg.salvage).width;
+        const cx = f.x + s / 2;
+        ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
+        ctx.beginPath();
+        chamferRect(ctx, cx - tw / 2 - 7, f.y - 26, tw + 14, 18, 5);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(224, 122, 95, 0.7)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#f0dcc8';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(dg.salvage, cx, f.y - 17);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
     }
 
     if (!g) return;

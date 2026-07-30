@@ -11,6 +11,7 @@ import { Hotbar } from './ui/hotbar.js';
 import { Panels, SKILL_FACE } from './ui/panels.js';
 import { showLevelUp } from './ui/levelToast.js';
 import { StationPanels } from './ui/stationPanels.js';
+import { BuildTray } from './ui/buildTray.js';
 import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
 import { SocialPanel } from './ui/socialPanel.js';
@@ -272,6 +273,32 @@ function cycleBuildOrient(step: 1 | -1): void {
   sfx.uiTap();
 }
 
+/** The last pieces worked with — the tray's one-click switch row. */
+const buildRecents: string[] = [];
+
+/** Enter build mode holding `id` — from the palette or the tray. */
+function pickBuildable(id: string): void {
+  const firstEntry = buildMode === null;
+  buildMode = id;
+  buildOrient = 'auto';
+  buildQueue.length = 0;
+  const at = buildRecents.indexOf(id);
+  if (at >= 0) buildRecents.splice(at, 1);
+  buildRecents.unshift(id);
+  if (buildRecents.length > 6) buildRecents.length = 6;
+  stationPanels.closeAll();
+  game.ownBuiltRequest();
+  if (!firstEntry) return; // switching pieces needs no re-teaching
+  const turnable = orientRing() !== null;
+  chat.addLine({
+    channel: 'system',
+    text:
+      nav.mode === 'pad'
+        ? `Steer the ghost with the right stick — Ⓐ place, ${turnable ? 'Ⓧ turn, ' : ''}Ⓨ demolish, Ⓑ done.`
+        : `Click places — hold and drag to lay a run. ${bindings.kbBadge('sit') || 'X'}+click tears down${turnable ? `, the wheel (or ${bindings.kbBadge('buildRotate') || 'Y'}) turns the corner` : ''}. Esc to stop.`,
+  });
+}
+
 /** Queue a tile for the run (deduped) — the frame pump drains it. */
 function enqueueBuild(tx: number, ty: number): void {
   if (buildQueue.some((q) => q.tx === tx && q.ty === ty)) return;
@@ -334,6 +361,8 @@ const PROMPT_LABELS: Record<string, string> = {
   sign: 'Read Sign',
 };
 
+const buildTray = new BuildTray((id) => pickBuildable(id));
+
 const stationPanels = new StationPanels(
   (recipe, qty) => game.craft(recipe, qty),
   (op, item, qty, gearId) => {
@@ -345,20 +374,7 @@ const stationPanels = new StationPanels(
     sfx.coins();
     game.shopSend(op, item, qty, undefined, shop);
   },
-  (buildable) => {
-    buildMode = buildable;
-    buildOrient = 'auto';
-    buildQueue.length = 0;
-    stationPanels.closeAll();
-    const turnable = orientRing() !== null;
-    chat.addLine({
-      channel: 'system',
-      text:
-        nav.mode === 'pad'
-          ? `Steer the ghost with the right stick — Ⓐ place, ${turnable ? 'Ⓧ turn, ' : ''}Ⓨ demolish, Ⓑ done.`
-          : `Click places — hold and drag to lay a run. ${bindings.kbBadge('sit') || 'X'}+click tears down${turnable ? `, the wheel (or ${bindings.kbBadge('buildRotate') || 'Y'}) turns the corner` : ''}. Esc to stop.`,
-    });
-  },
+  (buildable) => pickBuildable(buildable),
   // The live pack — every maker panel's have/need chips read it.
   () => game.inventory,
 );
@@ -541,7 +557,7 @@ function toggleScreen(
       stationPanels.openCraft(null, game.skills, game.knownRecipes);
       break;
     case 'build':
-      stationPanels.openBuild(game.skills);
+      stationPanels.openBuild(game.skills, buildMode);
       break;
     case 'audio':
       audioMenu.open();
@@ -656,6 +672,8 @@ const cinema = new DialogueCinema(sfx, {
 const game = new ClientGame(input, {
   onChat: (line) => chat.addLine(line),
   onNeedLook: () => looks.show(),
+  // The own-built ledger feeds the overlay: glints + armed preview.
+  onOwnBuilt: (keys) => renderer.setOwnBuilt(keys),
   // A build/demolish click the server accepted becomes the active
   // site; any other action-start (gather, craft) discards a stale
   // claim. The site aims the pose and wears the progress ring.
@@ -678,7 +696,11 @@ const game = new ClientGame(input, {
       buildQueue.length = 0;
       return;
     }
-    if (reason === 'done') return;
+    if (reason === 'done') {
+      // The ledger moved — keep the overlay honest.
+      if (buildMode) game.ownBuiltRequest();
+      return;
+    }
     const line =
       reason === 'blocked'
         ? 'The footing changed.'
@@ -2155,7 +2177,29 @@ function frame(now: number): void {
       ty = Math.floor(w.y);
     }
     const def = buildMode ? BUILDABLES.get(buildMode) : undefined;
-    if (def) {
+    // The armed hand: while the demolish modifier is held, the ghost
+    // becomes the wrecking read — your own tile frames red with its
+    // salvage named; anything not yours simply never lights.
+    const armed =
+      nav.mode !== 'pad' && bindings.kb('sit').some((c) => input.isDown(c));
+    if (def && armed) {
+      const owned = game.ownBuilt.has(`${tx},${ty}`);
+      let salvage: string | null = null;
+      if (owned) {
+        const ground = game.world.groundAt(tx, ty);
+        const gDef = ground !== undefined ? buildableForTile(ground as Tile) : undefined;
+        if (gDef && gDef.materials.length > 0) {
+          salvage = gDef.materials
+            .map((m) => `+${Math.ceil(m.qty / 2)} ${(itemDef(m.item)?.name ?? m.item).toLowerCase()}`)
+            .join(', ');
+        }
+      }
+      renderer.demolishGhost = owned ? { tx, ty, salvage } : null;
+      renderer.buildGhost = null;
+    } else {
+      renderer.demolishGhost = null;
+    }
+    if (def && !armed) {
       const ground = game.world.groundAt(tx, ty);
       const dx = tx + 0.5 - pos.x;
       const dy = ty + 0.5 - pos.y;
@@ -2255,10 +2299,29 @@ function frame(now: number): void {
     } else {
       renderer.buildGhost = null;
     }
+    // THE BUILDER'S TRAY: the mode's face, refreshed only when its
+    // signature moves (the class diffes internally).
+    if (def) {
+      buildTray.update({
+        id: def.id,
+        orient: orientRing() ? (buildOrient === 'auto' ? 'Auto' : buildOrient) : null,
+        mats: def.materials.map((m) => ({
+          item: m.item,
+          have: game.inventory.reduce((n, sl) => n + (sl && sl.item === m.item ? sl.qty : 0), 0),
+          need: m.qty,
+        })),
+        armed,
+        recents: buildRecents.filter((r) => r !== def.id).slice(0, 5),
+      });
+    } else {
+      buildTray.hide();
+    }
     pumpBuildQueue();
   } else {
     padBuildCur = null;
     renderer.buildGhost = null;
+    renderer.demolishGhost = null;
+    buildTray.hide();
   }
   // R3 steps the camera (free in gameplay and build mode; in menus
   // the pad belongs to navigation, so uiCapture wins).

@@ -1,5 +1,24 @@
 import { Tile, diagWallInfo, type SkillId } from '@arx/shared';
 
+/** The palette's shelves — every buildable sits on exactly one. */
+export type BuildCategory =
+  | 'foundation'
+  | 'wall'
+  | 'furnishing'
+  | 'station'
+  | 'defense'
+  | 'waymark';
+
+/** Shelf order + player-facing names, shared by every palette reader. */
+export const BUILD_CATEGORIES: ReadonlyArray<{ id: BuildCategory; label: string }> = [
+  { id: 'foundation', label: 'Foundations' },
+  { id: 'wall', label: 'Walls & Openings' },
+  { id: 'station', label: 'Stations' },
+  { id: 'furnishing', label: 'Furnishings' },
+  { id: 'defense', label: 'Defenses' },
+  { id: 'waymark', label: 'Waymarks' },
+];
+
 /** Something a player can construct in the open world. */
 export interface BuildableDef {
   id: string;
@@ -9,6 +28,8 @@ export interface BuildableDef {
   xp: number;
   materials: Array<{ item: string; qty: number }>;
   ticks: number;
+  /** Which palette shelf the piece lives on. */
+  cat: BuildCategory;
   /** Which skill gates and earns the build (default: construction). */
   skill?: SkillId;
   /**
@@ -57,6 +78,7 @@ const defs: BuildableDef[] = [
     // The bootstrap: the board station itself, raised from whole
     // logs at the treeline so the loop starts where the chopping is.
     id: 'sawhorse',
+    cat: 'station',
     name: 'Sawhorse',
     tile: Tile.Sawhorse,
     levelReq: 1,
@@ -66,6 +88,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'wood_floor',
+    cat: 'foundation',
     name: 'Wood floor',
     tile: Tile.WoodFloor,
     levelReq: 1,
@@ -75,6 +98,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'wood_wall',
+    cat: 'wall',
     name: 'Wood wall',
     tile: Tile.WallWood,
     levelReq: 1,
@@ -87,6 +111,7 @@ const defs: BuildableDef[] = [
     // Auto-orients to span the corner between the two perpendicular
     // wall neighbours present at placement — build those runs first.
     id: 'wood_wall_corner',
+    cat: 'wall',
     name: 'Wood wall corner',
     tile: Tile.WallWoodDiagNE,
     levelReq: 4,
@@ -97,6 +122,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'garden_plot',
+    cat: 'foundation',
     name: 'Garden plot',
     tile: Tile.Tilled,
     levelReq: 1,
@@ -107,6 +133,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'barrel',
+    cat: 'furnishing',
     name: 'Barrel',
     tile: Tile.Barrel,
     levelReq: 2,
@@ -117,6 +144,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'crate',
+    cat: 'furnishing',
     name: 'Crate',
     tile: Tile.Crate,
     levelReq: 2,
@@ -127,6 +155,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'fence',
+    cat: 'defense',
     name: 'Fence',
     tile: Tile.Fence,
     levelReq: 3,
@@ -138,6 +167,7 @@ const defs: BuildableDef[] = [
     // Auto-orients to join whichever diagonal already carries
     // fencing — build the adjoining runs first, then the turn.
     id: 'fence_corner',
+    cat: 'defense',
     name: 'Fence corner',
     tile: Tile.FenceDiagNE,
     levelReq: 3,
@@ -149,6 +179,7 @@ const defs: BuildableDef[] = [
     // Placed standing open; walk through, or close it to pen the
     // herd — the gate rides the whole door law (locks included).
     id: 'fence_gate',
+    cat: 'defense',
     name: 'Fence gate',
     tile: Tile.FenceGate,
     levelReq: 4,
@@ -158,6 +189,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'wood_window',
+    cat: 'wall',
     name: 'Wood wall window',
     tile: Tile.WallWoodWindow,
     levelReq: 4,
@@ -168,6 +200,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'campfire',
+    cat: 'station',
     name: 'Campfire',
     tile: Tile.Campfire,
     levelReq: 5,
@@ -177,6 +210,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'chair',
+    cat: 'furnishing',
     name: 'Chair',
     tile: Tile.Chair,
     levelReq: 5,
@@ -187,6 +221,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'wood_doorway',
+    cat: 'wall',
     name: 'Wood doorway',
     tile: Tile.DoorwayWood,
     levelReq: 6,
@@ -199,6 +234,7 @@ const defs: BuildableDef[] = [
     // Place two side by side and they merge into ONE full-width
     // opening; the plain doorway never merges.
     id: 'wood_doorway_wide',
+    cat: 'wall',
     name: 'Wide wood doorway',
     tile: Tile.DoorwayWoodWide,
     levelReq: 7,
@@ -209,6 +245,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'table',
+    cat: 'furnishing',
     name: 'Table',
     tile: Tile.Table,
     levelReq: 7,
@@ -219,6 +256,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'bench',
+    cat: 'furnishing',
     name: 'Bench',
     tile: Tile.Bench,
     levelReq: 7,
@@ -229,6 +267,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'lamp_post',
+    cat: 'waymark',
     name: 'Lamp post',
     tile: Tile.LampPost,
     levelReq: 8,
@@ -238,6 +277,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'alembic',
+    cat: 'station',
     name: 'Alembic bench',
     tile: Tile.Alembic,
     levelReq: 8,
@@ -251,6 +291,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'stone_window',
+    cat: 'wall',
     name: 'Stone wall window',
     tile: Tile.WallStoneWindow,
     levelReq: 8,
@@ -261,6 +302,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'flower_box',
+    cat: 'furnishing',
     name: 'Flower box',
     tile: Tile.FlowerBox,
     levelReq: 9,
@@ -271,6 +313,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'stone_doorway',
+    cat: 'wall',
     name: 'Stone doorway',
     tile: Tile.DoorwayStone,
     levelReq: 10,
@@ -281,6 +324,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'stone_doorway_wide',
+    cat: 'wall',
     name: 'Wide stone doorway',
     tile: Tile.DoorwayStoneWide,
     levelReq: 11,
@@ -291,6 +335,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'wood_railing',
+    cat: 'wall',
     name: 'Wood railing',
     tile: Tile.RailWood,
     levelReq: 10,
@@ -301,6 +346,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'workbench',
+    cat: 'station',
     name: 'Workbench',
     tile: Tile.Workbench,
     levelReq: 10,
@@ -310,6 +356,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'tanning_rack',
+    cat: 'station',
     name: 'Tanning rack',
     tile: Tile.TanningRack,
     levelReq: 9,
@@ -323,6 +370,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'loom',
+    cat: 'station',
     name: 'Loom',
     tile: Tile.Loom,
     levelReq: 11,
@@ -336,6 +384,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'carving_bench',
+    cat: 'station',
     name: 'Carving bench',
     tile: Tile.CarvingBench,
     levelReq: 12,
@@ -349,6 +398,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'enchanting_table',
+    cat: 'station',
     name: 'Enchanting table',
     tile: Tile.EnchantingTable,
     levelReq: 14,
@@ -362,6 +412,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'bed',
+    cat: 'furnishing',
     name: 'Bed',
     tile: Tile.Bed,
     levelReq: 12,
@@ -372,6 +423,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'stone_floor',
+    cat: 'foundation',
     name: 'Stone floor',
     tile: Tile.StoneFloor,
     levelReq: 12,
@@ -381,6 +433,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'hanging_sign',
+    cat: 'waymark',
     name: 'Hanging sign',
     tile: Tile.HangingSign,
     levelReq: 13,
@@ -396,6 +449,7 @@ const defs: BuildableDef[] = [
     // beginner's one. A driven whole-timber post wearing two sawn
     // boards — exactly what the art draws.
     id: 'signpost',
+    cat: 'waymark',
     name: 'Signpost',
     tile: Tile.Signpost,
     levelReq: 3,
@@ -406,6 +460,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'counter',
+    cat: 'furnishing',
     name: 'Counter',
     tile: Tile.Counter,
     levelReq: 14,
@@ -416,6 +471,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'stone_wall',
+    cat: 'wall',
     name: 'Stone wall',
     tile: Tile.WallStone,
     levelReq: 15,
@@ -428,6 +484,7 @@ const defs: BuildableDef[] = [
     // Auto-orients to span the corner between the two perpendicular
     // wall neighbours present at placement — build those runs first.
     id: 'stone_wall_corner',
+    cat: 'wall',
     name: 'Stone wall corner',
     tile: Tile.WallStoneDiagNE,
     levelReq: 16,
@@ -438,6 +495,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'bookshelf',
+    cat: 'furnishing',
     name: 'Bookshelf',
     tile: Tile.Bookshelf,
     levelReq: 16,
@@ -448,6 +506,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'banner_pole',
+    cat: 'waymark',
     name: 'Banner pole',
     tile: Tile.BannerPole,
     levelReq: 18,
@@ -458,6 +517,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'furnace',
+    cat: 'station',
     name: 'Furnace',
     tile: Tile.Furnace,
     levelReq: 20,
@@ -467,6 +527,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'stone_pillar',
+    cat: 'wall',
     name: 'Stone pillar',
     tile: Tile.PillarStone,
     levelReq: 22,
@@ -477,6 +538,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'stone_arch',
+    cat: 'wall',
     name: 'Stone arch',
     tile: Tile.ArchStone,
     levelReq: 24,
@@ -487,6 +549,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'anvil',
+    cat: 'station',
     name: 'Anvil',
     tile: Tile.Anvil,
     levelReq: 25,
@@ -496,6 +559,7 @@ const defs: BuildableDef[] = [
   },
   {
     id: 'hearth',
+    cat: 'furnishing',
     name: 'Hearth',
     tile: Tile.Hearth,
     levelReq: 30,
@@ -513,6 +577,7 @@ const defs: BuildableDef[] = [
   // raises stands half again over any house.
   {
     id: 'garrison_wall',
+    cat: 'defense',
     name: 'Garrison wall',
     tile: Tile.WallGarrison,
     levelReq: 28,
@@ -527,6 +592,7 @@ const defs: BuildableDef[] = [
     // law: building walls never orient a curtain) — raise the
     // adjoining runs first, then turn the corner.
     id: 'garrison_wall_corner',
+    cat: 'defense',
     name: 'Garrison wall corner',
     tile: Tile.WallGarrisonDiagNE,
     levelReq: 30,
@@ -541,6 +607,7 @@ const defs: BuildableDef[] = [
     // portcullis in the soffit, iron-bound leaves, the whole door
     // law (locks, occupancy, auto-close) riding underneath.
     id: 'garrison_gate',
+    cat: 'defense',
     name: 'Garrison gate',
     tile: Tile.GateGarrison,
     levelReq: 32,
