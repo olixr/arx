@@ -664,6 +664,22 @@ export class Renderer {
   /** This frame's reveal strength: shelterK smoothstepped, and ridden
    *  down to the darkness fade (ugBlend) on a portal drop. */
   private cutCtx = 0;
+  /** THE ROOM-TRUTH ease: the wide room reveal belongs to the building
+   *  you are inside, easing 0→1 on entry and back down after you step
+   *  out (a doorway threshold HOLDS it so crossing between rooms never
+   *  dips the veil). Switching to a DIFFERENT building restarts at 0 —
+   *  a neighbour's walls must never inherit a half-open ease. */
+  private buildingK = 0;
+  /** Smoothstepped buildingK, consumed by wallHeightAt's wide window. */
+  private bldCut = 0;
+  /** The last tile we stood INSIDE on — re-resolved each frame so the
+   *  ease-out keeps a live region handle across worldVersion bumps. */
+  private veilAnchorX = 0;
+  private veilAnchorY = 0;
+  private hasVeilAnchor = false;
+  /** The region whose building may reveal this frame: the room you are
+   *  in, or (while buildingK eases out) the room you just left. */
+  private veilRegion: InteriorRegion | null = null;
   // ------------------------------------------------------------------
   // THE STEP-ASIDE FADE + GHOST EMBER (reveal.ts holds the pure laws).
   // Everything below keys off the LOCAL player only — the anti-
@@ -2715,11 +2731,41 @@ export class Renderer {
       // Underground the reveal rides the darkness fade too, so a
       // portal drop reveals with the gloom instead of ahead of it.
       this.cutCtx = this.ugCutOn ? Math.min(shel, this.ugBlend) : shel;
+      // THE ROOM-TRUTH ease: entering a building fades its wide
+      // reveal in; leaving fades it out anchored to the room you just
+      // left. Crossing into a DIFFERENT building restarts the ease at
+      // zero, and a doorway threshold holds the current value so
+      // walking room-to-room never dips the veil mid-door.
+      if (this.localRegion !== null) {
+        const prev = this.hasVeilAnchor
+          ? this.interiors.regionAt(game, this.veilAnchorX, this.veilAnchorY)
+          : null;
+        if (prev === null || !this.interiors.sameBuilding(prev, this.localRegion)) {
+          this.buildingK = 0;
+        }
+        this.veilAnchorX = Math.floor(own.x);
+        this.veilAnchorY = Math.floor(own.y);
+        this.hasVeilAnchor = true;
+      }
+      this.veilRegion =
+        this.localRegion ??
+        (this.hasVeilAnchor && this.buildingK > 0.001
+          ? this.interiors.regionAt(game, this.veilAnchorX, this.veilAnchorY)
+          : null);
+      const onThreshold =
+        this.localRegion === null && ownT !== undefined && Renderer.DOOR_TILES.has(ownT);
+      const bTarget = this.localRegion !== null ? 1 : onThreshold ? this.buildingK : 0;
+      this.buildingK += Math.max(-step, Math.min(step, bTarget - this.buildingK));
+      this.bldCut = this.buildingK * this.buildingK * (3 - 2 * this.buildingK);
     } else {
       this.localRegion = null;
       this.ugCutOn = false;
       this.shelterK = 0;
       this.cutCtx = 0;
+      this.buildingK = 0;
+      this.bldCut = 0;
+      this.veilRegion = null;
+      this.hasVeilAnchor = false;
     }
     // THE STEP-ASIDE FADE's body box + THE GHOST EMBER's wall probe.
     // Both ride the CONTINUOUS render position (same law as the wall
@@ -4567,10 +4613,10 @@ export class Renderer {
    * window, scaled by the frame's shelter gate (cutCtx). One law
    * covers what used to be two: the surface building cutaway and the
    * dungeon corridor cut are the same window now, so multi-room
-   * buildings drop EVERY occluding wall (facade, partitions, sub-room
-   * walls), broken/segmented walls reveal per tile with no enclosure
-   * required, and doorframes and diagonal corners ride the exact same
-   * height field as the runs they sit in.
+   * buildings drop EVERY occluding wall of the building you are in
+   * (facade, partitions, sub-room walls — see THE ROOM-TRUTH GATE
+   * below for who qualifies), and doorframes and diagonal corners
+   * ride the exact same height field as the runs they sit in.
    *
    * Returns the height in tiles, WALL_H (full) → WALL_STUB (cut),
    * SMOOTHSTEP-eased at every window edge on the CONTINUOUS player
@@ -4579,14 +4625,24 @@ export class Renderer {
    * visible wall, no allocation, nothing cached — the wall painter is
    * live, so a per-frame height is free.
    *
-   * THE SURFACE GATE: above ground, the floor found north of the wall
-   * must be interior-ish — man-made floor (REVEAL_FLOORS) or any tile
-   * of an enclosed region (which covers furniture, hearths, and
-   * enclosed courtyards). That keeps freestanding garden walls and a
-   * building's REAR facade standing when seen from outdoors (grass to
-   * their north is not a room), while everything that fronts a room
-   * bows. Underground any walkable floor qualifies — cave floor is
-   * the only floor there is.
+   * THE ROOM-TRUTH GATE (surface): what the wall fronts decides the
+   * window it gets. A wall fronting an ENCLOSED ROOM reveals on the
+   * wide window ONLY while the player is inside the same BUILDING
+   * (rooms joined by doorways/breaches — interiors.sameBuilding),
+   * eased by bldCut; a stranger's room never opens from the street
+   * or from the building next door — cutting a facade exposes the
+   * interior rows behind it, so this is the anti-wallhack line. A
+   * wall fronting UNENCLOSED ground (street paving, grass, a
+   * corridor, courtyard paving) has nothing hidden behind it to
+   * expose, so it may bow only in THE BOWL: a tight anti-occlusion
+   * window that runs out at the face's true cover reach — the wall
+   * dips exactly where it stands between the walker and the camera,
+   * uniformly, with no per-column content test. (The old per-column
+   * gate — REVEAL_FLOORS or any region — cut foreign facades from
+   * the street and shredded street-side walls into ragged combs
+   * wherever paving, grass, and props alternated along the run.)
+   * Underground any walkable floor qualifies for the wide window —
+   * cave floor is the only floor there is.
    */
   /**
    * THE ONE-SLAB LAW (thick masses): one stubbed row is not enough —
@@ -4625,7 +4681,8 @@ export class Renderer {
     // still ~80% tall at the wall-adjacent row, full height when
     // level with the wall — exactly over the thing it was hiding.
     let depth = 0;
-    let open = false;
+    /** 0 = stand, 1 = wide room window, 2 = the anti-occlusion bowl. */
+    let mode = 0;
     for (let d = 1; d <= 3; d++) {
       const nt = game.world.groundAt(tx, ty - d);
       if (nt === undefined) return WALL_H;
@@ -4637,36 +4694,58 @@ export class Renderer {
       }
       if (depth === 0) depth = d;
       if (this.ugCutOn) {
-        open = true;
+        mode = 1;
         break;
       }
-      // The surface gate: only a room is worth revealing. Solid props
-      // replaced their floor tile, so they never sit in REVEAL_FLOORS —
-      // they qualify through their room's region (furniture is flooded
-      // into region tiles), and a regionless prop (a stall on courtyard
-      // paving) falls through to the ground it stands against.
-      if (Renderer.REVEAL_FLOORS.has(nt) || this.interiors.regionAt(game, tx, ty - d) !== null) {
-        open = true;
+      // THE ROOM-TRUTH GATE. Solid props replaced their floor tile, so
+      // furniture resolves through its room's region (flooded into
+      // region tiles); a regionless prop (a stall on street paving)
+      // keeps probing — the ground it stands against decides.
+      const fr = this.interiors.regionAt(game, tx, ty - d);
+      if (fr !== null) {
+        if (this.veilRegion !== null && this.interiors.sameBuilding(fr, this.veilRegion)) {
+          mode = 1;
+        }
+        break; // an enclosed room decides — foreign rooms stand.
+      }
+      if (Renderer.REVEAL_FLOORS.has(nt) || !tileDef(nt).solid) {
+        mode = 2;
         break;
       }
-      if (!tileDef(nt).solid) break;
     }
-    if (!open) return WALL_H;
+    if (mode === 0) return WALL_H;
     // Window margins on the FRONT row — every row of the mass shares
     // its front row's ease, so the slab moves as one. Underground the
     // window opens 2 rows north of you (peek over the corridor wall
     // you stand against); on the SURFACE it opens at your own row —
     // a facade only bows once you are level with or past it, so
-    // standing on paving outside a building's front never dips the
-    // face you are looking at. Ease out over dyF [7..9], |dx|
-    // [10.5..13] everywhere.
+    // standing outside a building's front never dips the face you
+    // are looking at.
     const dyF = dy - (depth - 1);
-    let ey = Math.min(this.ugCutOn ? (dyF + 2) / 1.5 : (dyF + 0.5) / 1.5, (9 - dyF) / 2, 1);
-    let ex = Math.min((13 - adx) / 2.5, 1);
-    if (ey <= 0 || ex <= 0) return WALL_H;
-    ey = ey * ey * (3 - 2 * ey);
-    ex = ex * ex * (3 - 2 * ex);
-    const cut = ey * ex * this.cutCtx;
+    let cut: number;
+    if (mode === 1) {
+      // The wide room window: see the whole interior of YOUR building
+      // while inside it. Ease out over dyF [7..9], |dx| [10.5..13];
+      // above ground it also rides the room-truth ease (bldCut).
+      let ey = Math.min(this.ugCutOn ? (dyF + 2) / 1.5 : (dyF + 0.5) / 1.5, (9 - dyF) / 2, 1);
+      let ex = Math.min((13 - adx) / 2.5, 1);
+      if (ey <= 0 || ex <= 0) return WALL_H;
+      ey = ey * ey * (3 - 2 * ey);
+      ex = ex * ex * (3 - 2 * ex);
+      cut = ey * ex * this.cutCtx * (this.ugCutOn ? 1 : this.bldCut);
+    } else {
+      // THE BOWL: pure geometry — the wall bows only where its face
+      // actually covers the walker (WALL_H at yScale 0.6 reaches
+      // ~3.4 rows up-screen), a smooth dip centred on the body that
+      // never re-answers per column, so street-side runs keep their
+      // silhouette and garden walls merely duck as you brush past.
+      let ey = Math.min((dyF + 0.5) / 1.2, (4 - dyF) / 1.4, 1);
+      let ex = Math.min((4 - adx) / 1.8, 1);
+      if (ey <= 0 || ex <= 0) return WALL_H;
+      ey = ey * ey * (3 - 2 * ey);
+      ex = ex * ex * (3 - 2 * ex);
+      cut = ey * ex * this.cutCtx;
+    }
     if (cut <= 0) return WALL_H;
     return WALL_H + (WALL_STUB - WALL_H) * cut;
   }

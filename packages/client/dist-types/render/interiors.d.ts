@@ -49,8 +49,19 @@ export declare class InteriorMap {
     private version;
     private readonly byTile;
     private nextId;
+    /** THE BUILDING LAW: rooms joined by a shared DOORWAY (or a breach
+     *  hole) are one building — a union-find over region ids, built
+     *  incrementally as floods discover their connectors. Party walls
+     *  deliberately do NOT join: two row-houses sharing a wall run are
+     *  two homes, and standing in one must never reveal the other. */
+    private readonly buildingParent;
+    private readonly connectorOwner;
     /** Version gate: any world change invalidates every cached region. */
     beginFrame(version: number): void;
+    private findRoot;
+    /** True when two regions belong to the same building (transitively
+     *  connected through doorways/breaches). Same region counts. */
+    sameBuilding(a: InteriorRegion, b: InteriorRegion): boolean;
     /** The enclosed region containing this tile, or null for outdoors. */
     regionAt(game: ClientGame, tx: number, ty: number): InteriorRegion | null;
     /** THE BREACH LAW: a walkable one-tile gap flanked by boundary

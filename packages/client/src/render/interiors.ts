@@ -56,14 +56,46 @@ export class InteriorMap {
   private version = -1;
   private readonly byTile = new Map<number, InteriorRegion | null>();
   private nextId = 1;
+  /** THE BUILDING LAW: rooms joined by a shared DOORWAY (or a breach
+   *  hole) are one building — a union-find over region ids, built
+   *  incrementally as floods discover their connectors. Party walls
+   *  deliberately do NOT join: two row-houses sharing a wall run are
+   *  two homes, and standing in one must never reveal the other. */
+  private readonly buildingParent = new Map<number, number>();
+  private readonly connectorOwner = new Map<number, number>();
 
   /** Version gate: any world change invalidates every cached region. */
   beginFrame(version: number): void {
     if (version !== this.version) {
       this.version = version;
       this.byTile.clear();
+      this.buildingParent.clear();
+      this.connectorOwner.clear();
       this.nextId = 1;
     }
+  }
+
+  private findRoot(id: number): number {
+    let r = id;
+    for (;;) {
+      const p = this.buildingParent.get(r);
+      if (p === undefined || p === r) break;
+      r = p;
+    }
+    // Path compression keeps repeated frame queries O(1).
+    let c = id;
+    while (c !== r) {
+      const n = this.buildingParent.get(c)!;
+      this.buildingParent.set(c, r);
+      c = n;
+    }
+    return r;
+  }
+
+  /** True when two regions belong to the same building (transitively
+   *  connected through doorways/breaches). Same region counts. */
+  sameBuilding(a: InteriorRegion, b: InteriorRegion): boolean {
+    return a === b || this.findRoot(a.id) === this.findRoot(b.id);
   }
 
   /** The enclosed region containing this tile, or null for outdoors. */
@@ -98,6 +130,9 @@ export class InteriorMap {
     const tiles = new Set<number>();
     const wallTiles = new Set<number>();
     const doorTiles: Array<{ tx: number; ty: number }> = [];
+    /** Tiles that CONNECT rooms into one building: doorways and
+     *  breach holes (walkable passages), never plain shared walls. */
+    const connectors: Array<[number, number]> = [];
     const queue: Array<[number, number]> = [[sx, sy]];
     tiles.add(packTile(sx, sy));
     let x0 = sx;
@@ -146,6 +181,7 @@ export class InteriorMap {
           // a door toggling must never re-shape the room it serves.
           if (doorInfo(t) !== null) {
             doorTiles.push({ tx: nx, ty: ny });
+            connectors.push([nx, ny]);
           }
           continue;
         }
@@ -153,6 +189,7 @@ export class InteriorMap {
           // Sealed hole in the run: bounds the room like the wall it
           // tore out of, joins the ring, never expands the flood.
           wallTiles.add(nk);
+          connectors.push([nx, ny]);
           continue;
         }
         if (world.elevAt(nx, ny) !== elevLevel) {
@@ -193,6 +230,38 @@ export class InteriorMap {
       seed: hashCoords(131, x0, y0) ^ (x1 - x0) ^ ((y1 - y0) << 8),
     };
     for (const k of tiles) this.byTile.set(k, region);
+    // THE BUILDING LAW bookkeeping: claim every connector; a
+    // connector already claimed by an earlier flood means the two
+    // rooms share a doorway — union them into one building.
+    this.buildingParent.set(region.id, region.id);
+    for (const [cx, cy] of connectors) {
+      const k = packTile(cx, cy);
+      const owner = this.connectorOwner.get(k);
+      if (owner === undefined) {
+        this.connectorOwner.set(k, region.id);
+      } else {
+        const ra = this.findRoot(region.id);
+        const rb = this.findRoot(owner);
+        if (ra !== rb) this.buildingParent.set(ra, rb);
+      }
+    }
+    // Lazy discovery closes the union eagerly: resolve whatever
+    // stands on the FAR side of each connector now (cache-bounded —
+    // every room floods once per version), so a building's rooms
+    // always know each other no matter which one was asked about
+    // first. Without this, A|hall|B only unions if someone happens
+    // to query the hall. Recursion is safe: this region's tiles are
+    // cached above, and each flood runs once.
+    for (const [cx, cy] of connectors) {
+      for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (tiles.has(packTile(nx, ny))) continue;
+        const t = world.groundAt(nx, ny);
+        if (t === undefined || BOUNDARY.has(t)) continue;
+        this.regionAt(game, nx, ny);
+      }
+    }
     return region;
   }
 }
