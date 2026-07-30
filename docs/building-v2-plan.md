@@ -1,6 +1,7 @@
 # BUILDING v2 — THE BUILDER'S HAND
 ### Full review + foundational rework of the player building system
-*Drafted 2026-07-29 from a three-lens code audit (server pipeline, client UX, item economy). Status: PROPOSAL — awaiting green-light.*
+*Drafted 2026-07-29 from a three-lens code audit (server pipeline, client UX, item economy).*
+*Status: **EPIC COMPLETE 2026-07-30 — all phases shipped and live-verified** (see the ledger in Part III).*
 
 ---
 
@@ -247,16 +248,19 @@ or board-denominated; no def may mix `log` and `board` except the signpost).
 
 ---
 
-## Part III — Phases
+## Part III — Phases (the shipped ledger)
 
-| phase | ships | proof |
-|---|---|---|
-| **0 — The honest pack** | pickup partial-fit fix; buildThump moved to completion; cancel-reason surfacing; tickBuild occupancy re-check | unit tests on addItem/pickup overflow; live check |
-| **1 — The board economy** | board/oak_board items + icons; sawhorse tile/station/buildable + art + STATION_FACE; saw recipes; full cost-ledger conversion; content tests pin the ledger | 121fps bake check; body-ruler + top-plane screenshot audit on the sawhorse; tests green |
-| **2 — The salvage law** | demolish action + deterministic salvage + fx/sfx ceremony; LAYER LAW prev-tile fix + floor re-register; demolish safety checks | salvage math tests; layered build/demolish live-verified; fx reads at noon + night |
-| **3 — The true ghost** | piece-true ghost + full validity mirror + reason chips; reach ring; `orient` on the wire + buildRotate; drag-to-place queue; builder-faces-the-work pose + site progress | orient validation tests; 20-wall drag run live; pad + kb parity |
-| **4 — The builder's tray** | palette v2 (categories/sort/detail); persistent tray + recents; own-work overlay + salvage preview; bindings actions + strip hints | pad-nav full traversal; screenshot audit vs Workshop anatomy |
-| **5 — The town knows** (content dressing) | authored sawhorses in Dawnmead/Amberford/Timberway; one teaching crumb each for Tinker Fen + Carpenter Stig (voice cards, ≤55 words) | VOICE checklist; dialogue validator |
+All six phases shipped 2026-07-29 → 2026-07-30, each live-verified in the
+running game via scripted-browser proof passes before its commit.
+
+| phase | shipped | commit | proof run |
+|---|---|---|---|
+| **0 — The honest pack** ✅ | pickup partial-fit fix (both doors, xp single-grant); honest thump (completion, not click); cancel-reason surfacing; tickBuild occupancy re-check (`tileHoldsBody`) | `c3a5d51` | pickup.test.ts (slate idiom); exercised throughout every later live pass |
+| **1 — The board economy** ✅ | board/oak_board (first stackable bulk tier) + icons; Sawhorse tile 147/station/buildable + world art; construction-skill saw recipes; full cost-ledger conversion; MILLED-AND-WHOLE law test-pinned | `2a512e4` + art `1f77479` | live: 4 logs → 12 boards in ONE slot; noon body-ruler audit (log midline = hip); 192 content tests |
+| **2 — The salvage law** ✅ | demolish = 12-tick action; deterministic ceil-half salvage (overflow drops at site); `demolish` fx before patch + Debris.collapse + demolishCrash sfx; LAYER LAW prev-tile update + floor re-register over naturalGround(); solid-restore occupancy guard | `92c5999` + ceremony `1f77479` | demolish.test.ts (salvage math, fx-order, layer law); live: board×4 wall → "Salvaged: 2 boards." + settling debris |
+| **3 — The true ghost** ✅ | piece-true ghost (wall prism / mass triangle / prop icon) + FULL validity mirror + reason chips; reach annulus; `orient` on C2SBuild via shared diagWallTile(); wheel/KeyY/pad-Ⓧ rotation; drag-run queue (pump, ×N chip); builder-faces-the-work + site progress ring; live sit-binding demolish modifier | `e9e56ac` | live: 5-wall drag run flowing around a tree; explicit SW corner landed tile 75 where auto guesses NE |
+| **4 — The builder's tray** ✅ | palette v2 on the Workshop anatomy (six category shelves, in-reach sort, detail pane w/ footing world-words); persistent tray (live cost chips, dial, recents row, armed state); own-work overlay (`ownbuilt` wire pair, glints, red-dash + salvage preview on YOUR tiles only) | `8dd3122` | live: shelved ledger + detail pane; tray w/ live 206/4 chip + recents; armed "+1 logs" preview |
+| **5 — The town knows** ✅ | authored sawhorses: Fen's yard (Dawnmead), Tilo's work line (Amberford), the Saw Yard's stand-in sawpit made real (Silverfall); teaching crumbs threaded off Fen's + Stig's maker nodes (voice cards, hubs at the 4-choice cap) | `fac4345` | dialogue validator + boundary grep; live-verified in all three towns |
 
 Out of scope (named so they're chosen, not forgotten): touch building, blueprint/stamp
 multi-tile templates, shared/guild build permissions, home storage chests (wants its own
