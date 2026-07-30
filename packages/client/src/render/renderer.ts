@@ -9568,13 +9568,18 @@ export class Renderer {
         };
   }
 
-  /** THE IMPACT SKIRT — the boil where the sheet strikes the pool.
-   *  Not a row of lobes: a scalloped foam COLLAR in the shoreline-
-   *  break language (chunky chisel-cut arcs riding a shaded billow
-   *  band), with clustered surge mounds bursting through it and
-   *  sparse leaping caps above. (ox,oy) pushes the skirt toward the
-   *  low side; `push` drops it in screen px to meet a dipped sheet
-   *  base (the pitch-out geometry lands south of the wall foot). */
+  /** THE BREAKWATER — where the sheet knifes into the pool. Not a
+   *  band and never a slab: a rank of low-poly FOAM MOUNDS in the
+   *  world's own two-tone blob language (wash base under a lit foam
+   *  cap, chunky 7-vertex polygons like every canopy and pool blob
+   *  in the game), overlapping along a WORLD-KEYED grid so segment
+   *  seams vanish, and tapering to nothing at true run ends
+   *  (capL/capR) — the foam ends because the mounds shrink away,
+   *  never because a fill stops. Behind the rank, the dark LAP line
+   *  grounds the impact; in front, crescent backwash slides off into
+   *  the pool and the dissolving tail carries the last flecks out.
+   *  (ox,oy) = low-side push; `push` = screen-px drop to meet the
+   *  dipped sheet base. */
   private drawFallChurn(
     x0: number,
     y0: number,
@@ -9587,6 +9592,8 @@ export class Renderer {
     t: number,
     tones: FallTones,
     push = 0,
+    capL = true,
+    capR = true,
   ): void {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -9599,124 +9606,186 @@ export class Renderer {
       p.y = p.y - landLift + push;
       return p;
     };
-    const SK = Math.max(4, Math.ceil(len / 0.14));
-    // Pass -1 — THE AERATION WASH: a broad quiet band of air-charged
-    // water around everything, noisy on BOTH edges, reaching from the
-    // sheet's foot well out into the pool. It is the gradient the
-    // collar lives inside — foam must never end on a line.
-    ctx.fillStyle = `${tones.wash}${0.26 * tones.dim})`;
-    ctx.beginPath();
-    for (let k = 0; k <= SK; k++) {
-      const f = k / SK;
-      const wxm = x0 + (x1 - x0) * f;
-      const wym = y0 + (y1 - y0) * f;
-      const swell = Renderer.fallNoise(wxm + wym * 3, 153, level, 1.2);
-      const p = at(f, -0.1);
-      const y = p.y - s * (0.04 + 0.1 * swell);
-      if (k === 0) ctx.moveTo(p.x, y);
-      else ctx.lineTo(p.x, y);
-    }
-    for (let k = SK; k >= 0; k--) {
-      const f = k / SK;
-      const wxm = x0 + (x1 - x0) * f;
-      const wym = y0 + (y1 - y0) * f;
-      const swell = Renderer.fallNoise(wxm * 1.3 + wym * 3, 154, level, 1.1);
-      const p = at(f, 0.42 + 0.3 * swell);
-      ctx.lineTo(p.x, p.y + s * 0.04);
-    }
-    ctx.closePath();
-    ctx.fill();
-    // Pass 0 — the shaded back billow: a soft band the skirt bursts
-    // out of, so the foam has depth behind it.
-    ctx.fillStyle = `${tones.churnBack}${0.5 * tones.dim})`;
-    ctx.beginPath();
-    for (let k = 0; k <= SK; k++) {
-      const f = k / SK;
-      const idx = Math.round(((x0 + (x1 - x0) * f) * 2 + (y0 + (y1 - y0) * f) * 5) / 0.14);
-      const p = at(f, -0.04);
-      const y =
-        p.y - s * (0.05 + 0.07 * n01(idx, 70)) + Math.sin(t * 2.0 + idx * 1.6) * s * 0.016;
-      if (k === 0) ctx.moveTo(p.x, y);
-      else ctx.lineTo(p.x, y);
-    }
-    for (let k = SK; k >= 0; k--) {
-      const p = at(k / SK, 0.24);
-      ctx.lineTo(p.x, p.y + s * 0.06);
-    }
-    ctx.closePath();
-    ctx.fill();
-    // Pass 1 — the foam skirt proper: one continuous mass whose top
-    // silhouette is a smooth two-octave noise line (a long heave
-    // under fine jitter). Scallops that each return to a baseline
-    // read as a picket of teeth — the silhouette never touches down.
-    ctx.fillStyle = tones.foam;
-    ctx.globalAlpha = 0.85 * tones.dim;
+    // End envelope: sizes shrink to zero over the last ~0.7 tiles of
+    // a TRUE run end. Interior segment seams keep env=1 and their
+    // world-keyed mounds overlap the seam — no joint survives.
+    const env = (f: number): number => {
+      let e = 1;
+      if (capL) e = Math.min(e, 0.15 + (f * len) / 0.7);
+      if (capR) e = Math.min(e, 0.15 + ((1 - f) * len) / 0.7);
+      return Math.max(0, Math.min(1, e));
+    };
+    // The world-keyed mound grid rides the dominant axis, so abutting
+    // segments of one run agree on every mound's centre.
+    const horiz = Math.abs(x1 - x0) >= Math.abs(y1 - y0);
+    const a0 = horiz ? Math.min(x0, x1) : Math.min(y0, y1);
+    const a1 = horiz ? Math.max(x0, x1) : Math.max(y0, y1);
+    const fOfAxis = (w: number): number =>
+      horiz ? (w - x0) / (x1 - x0 || 1e-6) : (w - y0) / (y1 - y0 || 1e-6);
+    // A puffy foam blob — bumpy radii smoothed through vertex
+    // midpoints (the canopy/cloud idiom). Straight polygon edges
+    // here read as ICE FLOES, not foam — the curves are load-bearing.
+    // `wob` boils the silhouette gently over time.
+    const blob = (
+      cx: number,
+      cy: number,
+      rx: number,
+      ry: number,
+      seed: number,
+      wob = 0,
+    ): void => {
+      const B = 7;
+      const px: number[] = [];
+      const py: number[] = [];
+      for (let i = 0; i < B; i++) {
+        const a = (i / B) * Math.PI * 2;
+        const rr =
+          1 +
+          (n01(seed * 7 + i, 95) - 0.5) * 0.42 +
+          wob * 0.09 * Math.sin(t * 2.1 + seed + i * 2.4);
+        px.push(cx + Math.cos(a) * rx * rr);
+        py.push(cy + Math.sin(a) * ry * rr);
+      }
+      ctx.beginPath();
+      ctx.moveTo((px[B - 1]! + px[0]!) / 2, (py[B - 1]! + py[0]!) / 2);
+      for (let i = 0; i < B; i++) {
+        const j = (i + 1) % B;
+        ctx.quadraticCurveTo(px[i]!, py[i]!, (px[i]! + px[j]!) / 2, (py[i]! + py[j]!) / 2);
+      }
+      ctx.closePath();
+      ctx.fill();
+    };
+    // --- THE LAP: the dark waterline where the sheet knifes in —
+    // the shoreline's own grounding stroke, read in the gaps between
+    // mounds. Without it, foam floats on foam.
+    ctx.strokeStyle = '#1a3060';
+    ctx.globalAlpha = 0.32 * tones.dim;
+    ctx.lineWidth = Math.max(1.2, s * 0.035);
     ctx.beginPath();
     {
-      const FK = SK * 2;
-      for (let k = 0; k <= FK; k++) {
-        const f = k / FK;
+      const LK = Math.max(4, Math.ceil(len / 0.2));
+      for (let k = 0; k <= LK; k++) {
+        const f = k / LK;
+        const p = at(f, -0.04);
+        const y = p.y + Math.sin(t * 1.3 + k * 1.1) * s * 0.008;
+        if (k === 0) ctx.moveTo(p.x, y);
+        else ctx.lineTo(p.x, y);
+      }
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // --- THE AERATION LENS: pale charged water under the rank —
+    // a closed lens whose edges are noisy and whose height breathes
+    // with env(), so it pinches shut at run ends (no side walls).
+    ctx.fillStyle = `${tones.wash}${0.2 * tones.dim})`;
+    ctx.beginPath();
+    {
+      const SK = Math.max(4, Math.ceil(len / 0.14));
+      for (let k = 0; k <= SK; k++) {
+        const f = k / SK;
         const wxm = x0 + (x1 - x0) * f;
         const wym = y0 + (y1 - y0) * f;
-        const idx = Math.round((wxm * 2 + wym * 5) / 0.07);
-        const pulse = Math.sin(t * (2.4 + 0.6 * n01(idx, 71)) + idx * 1.3);
-        const swell = Renderer.fallNoise(wxm + wym * 3, 152, level, 1.0);
-        const h =
-          s *
-          (0.05 +
-            0.11 * (0.65 * swell + 0.35 * n01(idx, 72)) +
-            0.022 * pulse);
-        const p = at(f, 0.02);
-        if (k === 0) ctx.moveTo(p.x, p.y - h);
-        else ctx.lineTo(p.x, p.y - h);
+        const swell = Renderer.fallNoise(wxm + wym * 3, 153, level, 1.2);
+        const p = at(f, -0.08 * env(f));
+        if (k === 0) ctx.moveTo(p.x, p.y - s * 0.09 * swell * env(f));
+        else ctx.lineTo(p.x, p.y - s * 0.09 * swell * env(f));
       }
-      for (let k = FK; k >= 0; k--) {
-        const p = at(k / FK, 0.2);
-        ctx.lineTo(p.x, p.y + s * 0.05);
+      for (let k = SK; k >= 0; k--) {
+        const f = k / SK;
+        const wxm = x0 + (x1 - x0) * f;
+        const wym = y0 + (y1 - y0) * f;
+        const swell = Renderer.fallNoise(wxm * 1.3 + wym * 3, 154, level, 1.1);
+        const p = at(f, (0.2 + 0.34 * swell) * env(f) + 0.04);
+        ctx.lineTo(p.x, p.y);
       }
     }
     ctx.closePath();
     ctx.fill();
-    ctx.globalAlpha = 1;
-    // Pass 2 — surge clusters: mounds of 2–3 overlapping puffs that
-    // burst through the collar where the boil happens to heave.
-    ctx.fillStyle = `${tones.wash}${0.8 * tones.dim})`;
-    for (let u = 0.1; u < len; u += 0.3) {
-      const f = u / len;
-      const wx = x0 + (x1 - x0) * f;
-      const wy = y0 + (y1 - y0) * f;
-      const idx = Math.round(((wx + wy * 3) / 0.3) * 2);
-      if (n01(idx, 73) < 0.45) continue;
-      const p = at(f, 0.05);
-      const pulse = 0.5 + 0.5 * Math.sin(t * (2.2 + 0.7 * n01(idx, 74)) + idx * 1.9);
-      const base = s * (0.055 + 0.06 * n01(idx, 75)) * (0.75 + 0.4 * pulse);
-      for (let c = 0; c < 3; c++) {
-        const rx = base * (1 - c * 0.24);
-        const dx = (n01(idx * 3 + c, 76) - 0.5) * base * 1.7;
-        const dy = -c * base * 0.5 - pulse * s * 0.02;
+    // --- THE BACK RANK: shaded billows behind the foam — depth. The
+    // grid is world-keyed; the pitch is irregular by construction.
+    const P0 = 0.46;
+    ctx.fillStyle = `${tones.churnBack}${0.55 * tones.dim})`;
+    for (let w = Math.floor(a0 / P0) * P0; w < a1 + P0; w += P0) {
+      const wj = w + (n01(Math.round(w / P0), 90) - 0.5) * 0.2;
+      const f = fOfAxis(wj);
+      if (f < -0.05 || f > 1.05) continue;
+      const e = env(Math.max(0, Math.min(1, f)));
+      if (e < 0.12) continue;
+      const seed = Math.round(wj / P0) * 3 + 11;
+      const bob = Math.sin(t * (1.5 + 0.5 * n01(seed, 91)) + seed * 1.7);
+      const r = s * (0.15 + 0.09 * n01(seed, 92)) * e * (1 + 0.06 * bob);
+      const p = at(f, -0.08);
+      blob(p.x, p.y - s * 0.03 + bob * s * 0.012, r * 1.35, r * 0.55, seed);
+    }
+    // --- THE MAIN RANK: the foam mounds themselves. Two-tone: a wash
+    // base under a lit foam cap, both chunky polygons, each breathing
+    // on its own slow phase. Overlap makes the rank read continuous;
+    // the noise makes no two mounds match.
+    const P1 = 0.3;
+    for (let w = Math.floor(a0 / P1) * P1; w < a1 + P1; w += P1) {
+      const wj = w + (n01(Math.round(w / P1), 93) - 0.5) * 0.16;
+      const f = fOfAxis(wj);
+      if (f < -0.04 || f > 1.04) continue;
+      const e = env(Math.max(0, Math.min(1, f)));
+      if (e < 0.1) continue;
+      const seed = Math.round(wj / P1) * 5 + 3;
+      const pulse = Math.sin(t * (1.8 + 0.7 * n01(seed, 94)) + seed * 2.1);
+      const r = s * (0.13 + 0.1 * n01(seed, 96)) * e * (1 + 0.09 * pulse);
+      const p = at(f, 0.02 + 0.05 * n01(seed, 97));
+      const cy = p.y + pulse * s * 0.015;
+      ctx.fillStyle = `${tones.wash}${0.85 * tones.dim})`;
+      blob(p.x, cy, r * 1.35, r * 0.62, seed, 1);
+      ctx.fillStyle = tones.foam;
+      ctx.globalAlpha = (0.85 + 0.1 * pulse) * tones.dim;
+      blob(p.x - r * 0.14, cy - r * 0.32, r * 0.78, r * 0.4, seed * 3 + 1, 1);
+      ctx.globalAlpha = 1;
+    }
+    // --- THE CRESCENT BACKWASH: flat arcs sliding off the rank into
+    // the pool — the shoreline's backwash grammar, pointed away from
+    // the impact. Each dies as it travels.
+    ctx.lineCap = 'round';
+    const P2 = 0.55;
+    for (let w = Math.floor(a0 / P2) * P2; w < a1 + P2; w += P2) {
+      const wj = w + (n01(Math.round(w / P2), 98) - 0.5) * 0.24;
+      const f = fOfAxis(wj);
+      if (f < 0 || f > 1) continue;
+      const e = env(f);
+      if (e < 0.2) continue;
+      const seed = Math.round(wj / P2) * 9 + 5;
+      for (let k = 0; k < 2; k++) {
+        const ph = (t * (0.3 + 0.12 * n01(seed, 99 + k)) + n01(seed, 100 + k)) % 1;
+        const p = at(f, 0.1 + ph * 0.5);
+        const rx = s * (0.1 + 0.16 * ph) * e;
+        const aa0 = Math.PI * (0.15 + 0.5 * n01(seed, 101 + k));
+        const span = Math.PI * (0.5 + 0.5 * n01(seed, 102 + k));
+        ctx.strokeStyle = tones.foam;
+        ctx.globalAlpha = (1 - ph) * (1 - ph) * 0.4 * tones.dim;
+        ctx.lineWidth = Math.max(1.2, s * 0.028);
         ctx.beginPath();
-        ctx.ellipse(p.x + dx, p.y + dy, Math.max(1, rx), Math.max(1, rx * 0.62), 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.ellipse(p.x, p.y, rx, rx * 0.5, 0, aa0, aa0 + span);
+        ctx.stroke();
       }
     }
-    // Pass 3 — leaping caps: sparse bright flecks tossed above the
-    // boil at the moment each surge peaks.
+    ctx.lineCap = 'butt';
+    ctx.globalAlpha = 1;
+    // --- LEAPING CAPS: bright flecks tossed off mound tops at the
+    // moment each surge peaks.
     ctx.fillStyle = tones.foam;
-    for (let u = 0.14; u < len; u += 0.26) {
-      const f = u / len;
-      const wx = x0 + (x1 - x0) * f;
-      const wy = y0 + (y1 - y0) * f;
-      const idx = Math.round(((wx + wy * 3) / 0.26) * 2) + 91;
-      if (n01(idx, 78) < 0.52) continue;
-      const pulse = Math.sin(t * (2.8 + n01(idx, 79)) + idx * 2.4);
+    for (let w = Math.floor(a0 / 0.26) * 0.26; w < a1 + 0.26; w += 0.26) {
+      const f = fOfAxis(w);
+      if (f < 0 || f > 1) continue;
+      const e = env(f);
+      const seed = Math.round(w / 0.26) * 2 + 91;
+      if (n01(seed, 78) < 0.52) continue;
+      const pulse = Math.sin(t * (2.8 + n01(seed, 79)) + seed * 2.4);
       if (pulse < 0.25) continue;
       const p = at(f, 0);
-      const rr = s * (0.022 + 0.032 * n01(idx, 77)) * pulse;
+      const rr = s * (0.022 + 0.032 * n01(seed, 77)) * pulse * e;
       ctx.globalAlpha = 0.65 * pulse * tones.dim;
       ctx.beginPath();
       ctx.ellipse(
-        p.x + (n01(idx, 80) - 0.5) * s * 0.1,
-        p.y - s * (0.09 + 0.06 * pulse),
+        p.x + (n01(seed, 80) - 0.5) * s * 0.1,
+        p.y - s * (0.1 + 0.07 * pulse) * e,
         Math.max(1, rr),
         Math.max(1, rr * 0.7),
         0,
@@ -9725,11 +9794,11 @@ export class Renderer {
       );
       ctx.fill();
     }
-    // Pass 4 — THE DISSOLVING TAIL: the collar decays into the pool
-    // as drifting flat flecks, density and alpha falling with reach.
-    // The foam trails off; it never stops on an edge.
+    // --- THE DISSOLVING TAIL: the last flecks drifting off into
+    // open water, density and alpha falling with reach — the foam
+    // trails away; it never stops on an edge.
     ctx.fillStyle = tones.foam;
-    for (const reach of [0.3, 0.48, 0.68] as const) {
+    for (const reach of [0.34, 0.52, 0.72] as const) {
       const gate = 0.35 + reach * 0.55;
       for (let u = 0.05; u < len; u += 0.17) {
         const f = u / len;
@@ -9738,9 +9807,9 @@ export class Renderer {
         const idx = Math.round(((wx + wy * 3) / 0.17) * 2) + Math.round(reach * 100);
         if (n01(idx, 81) < gate) continue;
         const drift = (t * 0.22 * (0.7 + 0.6 * n01(idx, 82)) + n01(idx, 83)) % 1;
-        const p = at(f, reach + drift * 0.22);
+        const p = at(f, (reach + drift * 0.22) * Math.max(0.35, env(f)));
         const rr = s * (0.02 + 0.03 * n01(idx, 84));
-        ctx.globalAlpha = (1 - reach) * 0.3 * (1 - drift * 0.7) * tones.dim;
+        ctx.globalAlpha = (1 - reach) * 0.3 * (1 - drift * 0.7) * tones.dim * env(f);
         ctx.beginPath();
         ctx.ellipse(
           p.x + (n01(idx, 85) - 0.5) * s * 0.14,
@@ -10626,14 +10695,12 @@ export class Renderer {
           this.emitFallHaze(x0, rowY + 0.3, x1, rowY + 0.3, wet);
         }
         if (r === 0) {
-          // Inset the collar ONLY at the run's true ends — a segment
-          // seam with insets on both sides notches the foam.
-          const inL = Math.abs(x0 - runX0) < 0.01 ? 0.06 : 0;
-          const inR = Math.abs(x1 - runX1) < 0.01 ? 0.06 : 0;
+          // Taper caps ONLY at the run's true ends — interior seams
+          // keep env=1 so the world-keyed mound rank crosses them.
           this.drawFallChurn(
-            x0 + inL,
+            x0,
             foot,
-            x1 - inR,
+            x1,
             foot,
             0,
             1,
@@ -10642,6 +10709,8 @@ export class Renderer {
             t,
             tones,
             s * 0.17,
+            Math.abs(x0 - runX0) < 0.01,
+            Math.abs(x1 - runX1) < 0.01,
           );
         }
       },
