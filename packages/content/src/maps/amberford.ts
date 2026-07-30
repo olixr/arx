@@ -245,6 +245,7 @@ export function buildAmberford(): ZoneDef {
   // tapestry hangs on the workshop wall above it, warp showing.
   b.set(34, 17, Tile.Loom);
   b.set(38, 17, Tile.CarvingBench);
+  b.set(40, 17, Tile.Sawhorse); // the board station joins the work line
   b.set(42, 17, Tile.Workbench);
   b.set(45, 16, Tile.Crate).set(45, 18, Tile.Barrel);
   b.setDetail(34, 15, Detail.Tapestry).setDetail(35, 15, Detail.Tapestry);

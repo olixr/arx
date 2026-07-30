@@ -16,6 +16,14 @@
     {
       "id": "make",
       "text": "This *workbench* answers to anyone. Bring it logs from the axe, hides from the hunt, ore from the pick — it'll show you what your hands can shape. Iona's fire does the food; my bench does the rest. You could walk out of this village wearing nothing you didn't make yourself. I have. This shirt's older than Pip.",
+      "choices": [
+        { "text": "And if I want to build a house?", "next": "boards" },
+        { "text": "Something else.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "boards",
+      "text": "A wall wants *boards*, not whole trunks — hold the— there. Two logs make a sawhorse; the sawhorse makes any log three boards. Raise one where you fell timber, stack the boards flat, walk home light. Mine's just past the crate. The trees never… well. They never carry themselves.",
       "next": "hub"
     },
     {

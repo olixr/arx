@@ -44,10 +44,19 @@
           "next": "castle"
         },
         {
+          "text": "How does a log become boards?",
+          "next": "boards"
+        },
+        {
           "text": "Something else.",
           "next": "hub"
         }
       ]
+    },
+    {
+      "id": "boards",
+      "text": "Two logs make a *sawhorse*; a steady hand rips a log into three true boards along the grain — never across it. Boards stack flat and carry light: a wall's worth in one hand. The yard's trestles do nothing yours wouldn't do in the field.",
+      "next": "hub"
     },
     {
       "id": "castle",

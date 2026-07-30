@@ -815,7 +815,9 @@ export function buildSilverfall(): ZoneDef {
   b.set(124, 65, Tile.Stump).set(125, 65, Tile.Stump).set(126, 65, Tile.Stump); // the log stack
   b.set(124, 67, Tile.Stump).set(125, 67, Tile.Stump);
   b.set(132, 65, Tile.Crate).set(133, 66, Tile.Crate); // planks, strapped
-  b.set(127, 70, Tile.Workbench).set(128, 70, Tile.Workbench); // the sawpit
+  // The sawpit made real: the yard's trestles ARE the board station
+  // now — Stig's "nothing yours wouldn't do in the field".
+  b.set(127, 70, Tile.Sawhorse).set(128, 70, Tile.Sawhorse);
   b.setDetail(127, 69, Detail.Sawdust).setDetail(128, 69, Detail.Sawdust);
   b.setDetail(126, 68, Detail.Sawdust);
   b.set(124, 69, Tile.ToolRack).set(133, 70, Tile.Barrel);

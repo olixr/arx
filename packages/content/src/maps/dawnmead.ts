@@ -75,11 +75,15 @@ export function buildDawnmead(): ZoneDef {
   b.set(36, 38, Tile.Chair).set(38, 38, Tile.Chair);
 
   // The tinker's bench — Fen's open-air workshop on the green's east
-  // shoulder: the workbench station, sawdust, and honest clutter.
+  // shoulder: the workbench station, the sawhorse (the board loop's
+  // first teacher — Fen points new builders "just past the crate"),
+  // sawdust, and honest clutter.
   b.set(40, 35, Tile.Workbench);
   b.set(39, 36, Tile.Barrel);
   b.set(41, 36, Tile.Crate);
+  b.set(42, 35, Tile.Sawhorse);
   b.setDetail(40, 36, Detail.Sawdust).setDetail(41, 35, Detail.Sawdust);
+  b.setDetail(42, 36, Detail.Sawdust);
 
   // ---------------------------------------------------------------
   // The farmstead — Hobb's house, the chicken coop, and the cow
