@@ -22,8 +22,10 @@ import { FogLayer, parchmentCanvas } from './fog.js';
 import {
   drawDiscoveryMarker,
   drawMapLabel,
+  drawPartyToken,
   drawPlayerToken,
   drawWaypointFlag,
+  partyColor,
 } from './markers.js';
 import { authoredZoneArt } from './zoneArt.js';
 
@@ -454,6 +456,20 @@ export class MapView {
     if (wp && band === 'surface') {
       const pulse = (nowMs % 1600) / 1600;
       drawWaypointFlag(ctx, this.sx(wp.x + 0.5), this.sy(wp.y + 0.5), Math.max(7, Math.min(12, this.scale * 2.2)), pulse);
+    }
+
+    // Party members — kin-dots in identity ink, drawn under the
+    // reader's own token. Positions ride the slow partypos ticker, so
+    // a dot is a bearing, not a bootprint.
+    for (const f of this.game.partyFellowsPlaced()) {
+      const inBandF = band === 'dungeon' ? f.y >= DUNGEON_MIN_Y : f.y < DUNGEON_MIN_Y;
+      if (!inBandF) continue;
+      const x = this.sx(f.x);
+      const y = this.sy(f.y);
+      if (x < -30 || y < -30 || x > cw + 30 || y > ch + 30) continue;
+      const pr = this.overlay ? 4.5 : Math.max(4.5, Math.min(8, this.scale * 1.5));
+      drawPartyToken(ctx, x, y, pr, partyColor(f.name));
+      if (!this.overlay && this.scale >= 1.2) drawMapLabel(ctx, x, y - pr - 4, f.name, '#cfe7f2', 11);
     }
 
     const pos = this.game.predictor.pos;

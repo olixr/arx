@@ -542,6 +542,84 @@ export class AccountStore {
     });
   }
 
+  /**
+   * The party ledger. One party per character (UNIQUE column law);
+   * membership is durable — it survives logout and ends only by a
+   * deliberate leave/kick/disband. The in-memory PartySystem is the
+   * runtime authority; these writes keep the durable copy true.
+   */
+  async loadPartyOf(characterId: number): Promise<{
+    id: number;
+    leaderId: number;
+    members: Array<{ id: number; name: string; joinedAt: number }>;
+  } | null> {
+    const row = await this.db.get<{ party_id: number; leader_id: number }>(
+      'SELECT m.party_id, p.leader_id FROM party_members m JOIN parties p ON p.id = m.party_id ' +
+        'WHERE m.character_id = ?',
+      [characterId],
+    );
+    if (!row) return null;
+    const members = await this.db.query<{ id: number; name: string; joinedAt: number }>(
+      'SELECT c.id, c.name, m.joined_at AS "joinedAt" FROM party_members m ' +
+        'JOIN characters c ON c.id = m.character_id WHERE m.party_id = ? ORDER BY m.joined_at',
+      [row.party_id],
+    );
+    return { id: row.party_id, leaderId: row.leader_id, members };
+  }
+
+  /** Found a new party of two. Returns the party id, or null if either soul is already sworn. */
+  async createParty(leaderId: number, memberId: number): Promise<number | null> {
+    try {
+      return await this.db.transaction(async (tx) => {
+        const row = await tx.get<{ id: number }>(
+          'INSERT INTO parties (leader_id, created_at) VALUES (?, ?) RETURNING id',
+          [leaderId, Date.now()],
+        );
+        if (!row) throw new Error('party insert returned nothing');
+        const now = Date.now();
+        await tx.run('INSERT INTO party_members (party_id, character_id, joined_at) VALUES (?, ?, ?)', [
+          row.id,
+          leaderId,
+          now,
+        ]);
+        await tx.run('INSERT INTO party_members (party_id, character_id, joined_at) VALUES (?, ?, ?)', [
+          row.id,
+          memberId,
+          now + 1,
+        ]);
+        return row.id;
+      });
+    } catch {
+      // The UNIQUE law fired — someone is already in a party.
+      return null;
+    }
+  }
+
+  async addPartyMember(partyId: number, characterId: number): Promise<boolean> {
+    try {
+      const res = await this.db.run(
+        'INSERT INTO party_members (party_id, character_id, joined_at) VALUES (?, ?, ?)',
+        [partyId, characterId, Date.now()],
+      );
+      return res.rowCount > 0;
+    } catch {
+      return false; // already sworn elsewhere
+    }
+  }
+
+  removePartyMember(characterId: number): void {
+    this.db.fire('DELETE FROM party_members WHERE character_id = ?', [characterId]);
+  }
+
+  setPartyLeader(partyId: number, characterId: number): void {
+    this.db.fire('UPDATE parties SET leader_id = ? WHERE id = ?', [characterId, partyId]);
+  }
+
+  disbandParty(partyId: number): void {
+    // Members go with the party (ON DELETE CASCADE).
+    this.db.fire('DELETE FROM parties WHERE id = ?', [partyId]);
+  }
+
   async loadInventory(
     characterId: number,
     size: number,

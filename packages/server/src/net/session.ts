@@ -198,6 +198,54 @@ export class Session {
         this.game.friendRemove(this.playerEid, this, msg.name);
         return;
       }
+      case 'party': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.partySnapshot(this.playerEid, this);
+        return;
+      }
+      case 'partyinvite': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.partyInvite(this.playerEid, this, msg.name);
+        return;
+      }
+      case 'partyaccept': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.partyAccept(this.playerEid, this, msg.name);
+        return;
+      }
+      case 'partydecline': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.partyDecline(this.playerEid, this, msg.name);
+        return;
+      }
+      case 'partyleave': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.partyLeave(this.playerEid, this);
+        return;
+      }
+      case 'partykick': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.partyKick(this.playerEid, this, msg.name);
+        return;
+      }
+      case 'partydisband': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.partyDisband(this.playerEid, this);
+        return;
+      }
+      case 'partyjoinrun': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.partyJoinRun(this.playerEid, this, msg.name);
+        return;
+      }
       case 'use': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

@@ -19,9 +19,10 @@ const REFETCH_MS = 250;
 
 /**
  * The fellowship ledger: who stands near you, who walks with you, and
- * who is asking to. Four sections — search, nearby, friends, requests —
- * built in the LootPanel dialect (loot-row rows, sticky order, signature
- * dedupe) so a live list never reshuffles or rebuilds under a cursor.
+ * who is asking to. Five sections — party, search, nearby, friends,
+ * requests — built in the LootPanel dialect (loot-row rows, sticky
+ * order, signature dedupe) so a live list never reshuffles or rebuilds
+ * under a cursor.
  *
  * Server truth: the panel never patches state from events; a friendevent
  * simply schedules a fresh snapshot request. The Nearby section is pure
@@ -31,6 +32,7 @@ const REFETCH_MS = 250;
  */
 export class SocialPanel {
   private readonly panel = document.getElementById('social-panel')!;
+  private readonly partyList: HTMLElement;
   private readonly searchInput: HTMLInputElement;
   private readonly searchResults: HTMLElement;
   private readonly nearbyList: HTMLElement;
@@ -52,10 +54,18 @@ export class SocialPanel {
   private inspecting: { eid: EntityId; name: string } | null = null;
   /** Two-click Remove confirmation: the name armed for it. */
   private armedRemove: string | null = null;
+  /** Two-click Disband confirmation. */
+  private armedDisband = false;
 
   constructor(private readonly game: ClientGame) {
     this.ledger = document.createElement('div');
     this.ledger.className = 'social-body';
+
+    // PARTY — the fellowship you actively walk with.
+    this.ledger.appendChild(sectionHead('Party'));
+    this.partyList = document.createElement('div');
+    this.partyList.className = 'row-list';
+    this.ledger.appendChild(this.partyList);
 
     // SEARCH — the only text the HUD asks you to type outside chat.
     this.ledger.appendChild(sectionHead('Find a Friend'));
@@ -119,6 +129,8 @@ export class SocialPanel {
     this.panel.classList.remove('hidden');
     this.showLedger();
     this.game.requestSocial();
+    this.game.requestParty();
+    this.renderParty();
     this.renderNearby();
     this.renderFriends();
     this.renderRequests();
@@ -138,6 +150,7 @@ export class SocialPanel {
     this.results = [];
     this.searchResults.innerHTML = '';
     this.armedRemove = null;
+    this.armedDisband = false;
     this.showLedger();
   }
 
@@ -167,6 +180,28 @@ export class SocialPanel {
       if (this.isOpen) this.game.requestSocial();
     }, REFETCH_MS);
   }
+
+  /** The party snapshot landed (ClientGame already holds it). */
+  onPartySnapshot(): void {
+    if (!this.isOpen) return;
+    this.armedDisband = false;
+    this.renderParty();
+    // Invite-button states ride the nearby/friend rows too.
+    this.nearbySig = '';
+    this.renderNearby();
+    this.renderFriends();
+  }
+
+  /** A partyevent arrived — refetch (debounced) while the panel shows. */
+  notifyPartyEvent(): void {
+    if (!this.isOpen || this.partyRefetchTimer !== null) return;
+    this.partyRefetchTimer = window.setTimeout(() => {
+      this.partyRefetchTimer = null;
+      if (this.isOpen) this.game.requestParty();
+    }, REFETCH_MS);
+  }
+
+  private partyRefetchTimer: number | null = null;
 
   // ------------------------------------------------------------ views
 
@@ -199,6 +234,105 @@ export class SocialPanel {
   private act(send: () => void): void {
     send();
     this.game.requestSocial();
+  }
+
+  /** Same law for party actions: action then snapshot on one socket. */
+  private partyAct(send: () => void): void {
+    send();
+    this.game.requestParty();
+  }
+
+  /** member / invited / none — case-insensitive by name. */
+  private partyRelation(name: string): 'member' | 'invited' | 'none' {
+    const snap = this.game.party;
+    if (!snap) return 'none';
+    const low = name.toLowerCase();
+    if (snap.members.some((m) => m.name.toLowerCase() === low)) return 'member';
+    if (snap.outgoing.some((n) => n.toLowerCase() === low)) return 'invited';
+    return 'none';
+  }
+
+  /** The Invite/Invited button — or null when they already walk with you. */
+  private inviteButton(name: string, navkey: string): HTMLButtonElement | null {
+    if (name.toLowerCase() === this.game.ownName.toLowerCase()) return null;
+    const rel = this.partyRelation(name);
+    if (rel === 'member') return null;
+    const btn = bigButton(
+      rel === 'invited' ? 'Invited' : 'Invite',
+      navkey,
+      () => this.partyAct(() => this.game.partyInvite(name)),
+      { minor: rel === 'invited' },
+    );
+    if (rel === 'invited') btn.disabled = true;
+    return btn;
+  }
+
+  private renderParty(): void {
+    const snap = this.game.party ?? { members: [], invites: [], outgoing: [] };
+    this.partyList.innerHTML = '';
+
+    for (const name of snap.invites) {
+      const { row, actions } = this.row(name, 'invites you to their party');
+      actions.appendChild(
+        bigButton('Join', `social:pacc:${name}`, () => this.partyAct(() => this.game.partyAccept(name))),
+      );
+      actions.appendChild(
+        bigButton('Decline', `social:pdec:${name}`, () => this.partyAct(() => this.game.partyDecline(name)), {
+          minor: true,
+        }),
+      );
+      this.partyList.appendChild(row);
+    }
+
+    if (snap.members.length === 0) {
+      if (snap.invites.length === 0) {
+        this.partyList.appendChild(this.empty('You walk alone — invite a friend or someone nearby.'));
+      }
+      return;
+    }
+
+    const selfLow = this.game.ownName.toLowerCase();
+    const meLeader = snap.members.some((m) => m.leader && m.name.toLowerCase() === selfLow);
+    for (const m of snap.members) {
+      const isSelf = m.name.toLowerCase() === selfLow;
+      const place = m.online ? (m.zone ?? 'Online') : 'Offline';
+      const sub = m.leader ? `Leader · ${place}` : place;
+      const { row, actions } = this.row(m.name, sub, !m.online);
+      if (m.online) row.classList.add('social-online');
+      if (isSelf) {
+        if (meLeader) {
+          actions.appendChild(
+            bigButton(this.armedDisband ? 'Sure?' : 'Disband', 'social:disband', () => {
+              if (this.armedDisband) {
+                this.armedDisband = false;
+                this.partyAct(() => this.game.partyDisband());
+              } else {
+                // First press arms it; the second commits.
+                this.armedDisband = true;
+                this.renderParty();
+              }
+            }, { minor: !this.armedDisband }),
+          );
+        }
+        actions.appendChild(
+          bigButton('Leave', 'social:pleave', () => this.partyAct(() => this.game.partyLeave()), {
+            minor: true,
+          }),
+        );
+      } else if (meLeader) {
+        actions.appendChild(
+          bigButton('Kick', `social:kick:${m.name}`, () => this.partyAct(() => this.game.partyKick(m.name)), {
+            minor: true,
+          }),
+        );
+      }
+      this.partyList.appendChild(row);
+    }
+
+    for (const name of snap.outgoing) {
+      const { row } = this.row(name, 'invited — awaiting an answer', true);
+      this.partyList.appendChild(row);
+    }
   }
 
   /** The Ask/Asked/Accept/Friend button, one vocabulary everywhere. */
@@ -262,7 +396,9 @@ export class SocialPanel {
       if (!this.order.has(p.eid)) this.order.set(p.eid, this.nextRank++);
     }
     near.sort((a, b) => this.order.get(a.eid)! - this.order.get(b.eid)!);
-    const sig = near.map((p) => `${p.eid}:${Math.round(p.dist)}:${this.relation(p.name)}`).join(',');
+    const sig = near
+      .map((p) => `${p.eid}:${Math.round(p.dist)}:${this.relation(p.name)}:${this.partyRelation(p.name)}`)
+      .join(',');
     if (sig === this.nearbySig) return;
     this.nearbySig = sig;
 
@@ -279,6 +415,8 @@ export class SocialPanel {
           minor: true,
         }),
       );
+      const invite = this.inviteButton(p.name, `social:pnear:${p.eid}`);
+      if (invite) actions.appendChild(invite);
       actions.appendChild(this.askButton(p.name, `social:near:${p.eid}`));
       this.nearbyList.appendChild(row);
     }
@@ -297,6 +435,10 @@ export class SocialPanel {
       const sub = f.online ? (f.zone ?? 'Online') : 'Offline';
       const { row, actions } = this.row(f.name, sub, !f.online);
       if (f.online) row.classList.add('social-online');
+      if (f.online) {
+        const invite = this.inviteButton(f.name, `social:pinv:${f.name}`);
+        if (invite) actions.appendChild(invite);
+      }
       const armed = this.armedRemove === f.name;
       actions.appendChild(
         bigButton(armed ? 'Sure?' : 'Remove', `social:remove:${f.name}`, () => {

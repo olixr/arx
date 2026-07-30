@@ -316,6 +316,7 @@ import { geographySnapshot, scaleNpcDef } from '@arx/content';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
 import { SocialSystem } from './social.js';
+import { PartySystem } from './party.js';
 import { dungeonDiscoveryId, findDiscoveries } from './exploration.js';
 
 interface PositionComp {
@@ -812,6 +813,18 @@ interface DungeonInstance {
   /** Zone x-extent, for locating which instance owns a tile. */
   x0: number;
   x1: number;
+  /** The keyholder. The run lives and dies with them. */
+  ownerId: number;
+  /** Spec identity the entry banner needs when a party member joins. */
+  name: string;
+  sigil: string;
+  theme: string;
+  /**
+   * Party members guesting in the run: characterId -> where they stood
+   * when they stepped through, so every exit hands them back to their
+   * own gate, not the owner's.
+   */
+  guests: Map<number, { x: number; y: number }>;
 }
 
 interface PlayerComp {
@@ -1426,10 +1439,37 @@ export class GameServer {
         return true;
       },
     });
+    this.party = new PartySystem(accounts, {
+      isOnline: (characterId) => this.characterEids.has(characterId),
+      zoneOfCharacter: (characterId) => {
+        const eid = this.characterEids.get(characterId);
+        if (eid === undefined) return null;
+        const pos = this.positions.get(eid);
+        return pos ? this.zoneNameAt(pos.x, pos.y) : null;
+      },
+      sendToCharacter: (characterId, msg) => {
+        const eid = this.characterEids.get(characterId);
+        if (eid === undefined) return false;
+        const session = this.players.get(eid)?.session;
+        if (!session) return false;
+        session.sendJson(msg);
+        return true;
+      },
+      positionOfCharacter: (characterId) => {
+        const eid = this.characterEids.get(characterId);
+        if (eid === undefined) return null;
+        const pos = this.positions.get(eid);
+        return pos ? { x: pos.x, y: pos.y } : null;
+      },
+      onMemberSevered: (characterId) => this.evictFromGuestDungeon(characterId),
+    });
   }
 
   /** Friends, requests, and presence pushes. */
   private readonly social: SocialSystem;
+
+  /** Fellowships: membership, invites, and the partypos ticker. */
+  private readonly party: PartySystem;
 
   /**
    * Name the ground under (x, y). Every zone — authored or dungeon
@@ -2053,6 +2093,12 @@ export class GameServer {
     // here) — tell online friends, and surface any waiting asks.
     if (character.id > 0) {
       void this.social.notifyOnline(character.id, character.name).catch(() => undefined);
+      // Loads the durable party into memory as a side effect — the
+      // riftgate/ticker hot paths read it synchronously after this.
+      void this.party.notifyOnline(character.id, character.name).catch(() => undefined);
+      // Push the party unprompted: markers and the panel need it before
+      // the player ever opens a screen.
+      void this.party.snapshot(character.id, (msg) => session.sendJson(msg)).catch(() => undefined);
       const pending = await this.social.pendingCount(character.id);
       if (pending > 0) {
         session.sendJson({
@@ -2187,11 +2233,24 @@ export class GameServer {
       }
       this.teardownDungeon(player.characterId);
     }
+    // A guest slot in someone else's run goes with them — and a guest
+    // logging out inside it reloads at their own gate, not in the dark.
+    for (const inst of this.dungeons.values()) {
+      const back = inst.guests.get(player.characterId);
+      if (back === undefined) continue;
+      inst.guests.delete(player.characterId);
+      const pos = this.positions.get(eid);
+      if (pos && pos.y >= 8192 && pos.x >= inst.x0 && pos.x < inst.x1) {
+        pos.x = back.x;
+        pos.y = back.y;
+      }
+    }
     this.savePlayer(eid);
     this.characterEids.delete(player.characterId);
     // Only now — past the reconnect grace — do friends see "offline".
     if (player.characterId > 0) {
       void this.social.notifyOffline(player.characterId, player.name).catch(() => undefined);
+      void this.party.notifyOffline(player.characterId, player.name).catch(() => undefined);
     }
     if (player.accountId === null) {
       for (const [token, guestEid] of this.guestTokens) {
@@ -2259,6 +2318,57 @@ export class GameServer {
     const actor = this.socialActor(eid, session);
     if (actor) {
       void this.social.remove(actor.id, actor.name, name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[social]', err.message));
+    }
+  }
+
+  // ------------------------------------------------------------ party
+
+  partySnapshot(eid: EntityId, session: Session): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) {
+      void this.party.snapshot(actor.id, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[party]', err.message));
+    }
+  }
+
+  partyInvite(eid: EntityId, session: Session, name: string): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) {
+      void this.party.invite(actor.id, actor.name, name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[party]', err.message));
+    }
+  }
+
+  partyAccept(eid: EntityId, session: Session, name: string): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) {
+      void this.party.accept(actor.id, actor.name, name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[party]', err.message));
+    }
+  }
+
+  partyDecline(eid: EntityId, session: Session, name: string): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) {
+      void this.party.decline(actor.id, actor.name, name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[party]', err.message));
+    }
+  }
+
+  partyLeave(eid: EntityId, session: Session): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) {
+      void this.party.leave(actor.id, actor.name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[party]', err.message));
+    }
+  }
+
+  partyKick(eid: EntityId, session: Session, name: string): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) {
+      void this.party.kick(actor.id, actor.name, name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[party]', err.message));
+    }
+  }
+
+  partyDisband(eid: EntityId, session: Session): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) {
+      void this.party.disband(actor.id, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[party]', err.message));
     }
   }
 
@@ -2432,9 +2542,22 @@ export class GameServer {
       if (portal.delve) {
         this.openRiftgate(eid, player);
       } else if (portal.dest) {
-        this.teleport(eid, portal.dest.x, portal.dest.y);
-        // Using a dungeon's exit (the portal lives at y>=8192) ends the run.
-        if (ty >= 8192) this.teardownDungeon(player.characterId);
+        if (ty >= 8192) {
+          // A dungeon's exit. The run is the OWNER's: their step out
+          // ends it (teardown evacuates any guests); a guest stepping
+          // out simply goes home to their own gate, run untouched.
+          const host = this.dungeonAt(tx, ty);
+          if (host && host.ownerId !== player.characterId) {
+            const back = host.guests.get(player.characterId);
+            host.guests.delete(player.characterId);
+            this.teleport(eid, back?.x ?? portal.dest.x, back?.y ?? portal.dest.y);
+          } else {
+            this.teleport(eid, portal.dest.x, portal.dest.y);
+            this.teardownDungeon(player.characterId);
+          }
+        } else {
+          this.teleport(eid, portal.dest.x, portal.dest.y);
+        }
       }
       return;
     }
@@ -5893,8 +6016,21 @@ export class GameServer {
     for (let i = 0; i < player.inventory.length; i++) {
       if (player.inventory[i]?.item === DUNGEON_KEY_ITEM) keySlots.push(i);
     }
-    player.session?.sendJson({ t: 'riftgate', keySlots });
-    if (keySlots.length === 0) {
+    // The gates are one network: any fellow's live run stands open here.
+    const partyRuns: Array<{ name: string; dungeon: string; tier: string; power: number }> = [];
+    for (const fellowId of this.party.fellowsOf(player.characterId)) {
+      const inst = this.dungeons.get(fellowId);
+      if (!inst) continue;
+      const name = this.accounts.characterName(fellowId);
+      if (!name) continue;
+      partyRuns.push({ name, dungeon: inst.name, tier: inst.tier, power: inst.power });
+    }
+    player.session?.sendJson({
+      t: 'riftgate',
+      keySlots,
+      partyRuns: partyRuns.length > 0 ? partyRuns : undefined,
+    });
+    if (keySlots.length === 0 && partyRuns.length === 0) {
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
@@ -5984,6 +6120,11 @@ export class GameServer {
       power: spec.power,
       x0: origin.x,
       x1: origin.x + spec.size,
+      ownerId: player.characterId,
+      name: spec.name,
+      sigil: spec.sigil,
+      theme: spec.theme,
+      guests: new Map(),
     };
     this.dungeons.set(player.characterId, inst);
     player.session?.sendJson({
@@ -6000,11 +6141,30 @@ export class GameServer {
       text: `${spec.name} — sigil ${spec.sigil}, power ${spec.power}. The way out is where you land; the boss is where you'd least like him.`,
     });
     this.teleport(eid, result.entry.x, result.entry.y);
+    // Offer the fellowship the door (any riftgate carries them in).
+    if (player.characterId > 0) {
+      this.party.notifyDelve(player.characterId, player.name, spec.name);
+    }
   }
 
   private teardownDungeon(characterId: number): void {
     const dungeon = this.dungeons.get(characterId);
     if (!dungeon) return;
+    // Anyone still standing in the halls goes home before the rock
+    // closes — guests to their own gate, anyone else to the spawn.
+    for (const [eid, player] of this.players) {
+      if (player.characterId === characterId) continue;
+      const pos = this.positions.get(eid);
+      if (!pos || pos.y < 8192 || pos.x < dungeon.x0 || pos.x >= dungeon.x1) continue;
+      const back = dungeon.guests.get(player.characterId) ?? this.world.spawn;
+      this.teleport(eid, back.x, back.y);
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: 'The rift closes behind its keyholder — the world takes you back.',
+      });
+    }
+    dungeon.guests.clear();
     for (const idx of dungeon.spawnIndexes) {
       const spawn = this.spawnPoints[idx];
       if (!spawn) continue;
@@ -6019,13 +6179,85 @@ export class GameServer {
     this.dungeons.delete(characterId);
   }
 
-  /** The dungeon instance owning this tile, if any (chests scale by it). */
-  private dungeonPowerAt(tx: number, ty: number): number | null {
+  /** The live instance whose x-band holds this tile, if any. */
+  private dungeonAt(tx: number, ty: number): DungeonInstance | null {
     if (ty < 8192) return null;
     for (const inst of this.dungeons.values()) {
-      if (tx >= inst.x0 && tx < inst.x1) return inst.power;
+      if (tx >= inst.x0 && tx < inst.x1) return inst;
     }
     return null;
+  }
+
+  /** The dungeon instance owning this tile, if any (chests scale by it). */
+  private dungeonPowerAt(tx: number, ty: number): number | null {
+    return this.dungeonAt(tx, ty)?.power ?? null;
+  }
+
+  /**
+   * Step into a party member's live run. The riftgates are one network —
+   * any gate can carry a fellow into a run the keyholder holds open.
+   */
+  partyJoinRun(eid: EntityId, session: Session, name: string): void {
+    const actor = this.socialActor(eid, session);
+    if (!actor) return;
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos) return;
+    const sys = (text: string) => session.sendJson({ t: 'chat', channel: 'system', text });
+    if (!this.riftgateNear(pos)) {
+      sys('You need to stand at a Riftgate to follow your party.');
+      return;
+    }
+    void (async () => {
+      const target = await this.accounts.findCharacterByName(name.trim());
+      if (!target) return sys('No one by that name.');
+      if (!this.party.fellowsOf(actor.id).includes(target.id)) {
+        return sys(`${target.name} is not in your party.`);
+      }
+      const inst = this.dungeons.get(target.id);
+      if (!inst) return sys(`${target.name} holds no rift open.`);
+      inst.guests.set(actor.id, { x: pos.x, y: pos.y });
+      // The banner + fog-mask reset ride the same message the owner got.
+      session.sendJson({
+        t: 'dungeon',
+        name: inst.name,
+        sigil: inst.sigil,
+        tier: inst.tier,
+        theme: inst.theme,
+        power: inst.power,
+      });
+      this.teleport(eid, inst.entry.x, inst.entry.y);
+      const ownerEid = this.characterEids.get(target.id);
+      if (ownerEid !== undefined) {
+        this.players.get(ownerEid)?.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `${actor.name} steps through the rift to join you.`,
+        });
+      }
+    })().catch((err: Error) => console.error('[party]', err.message));
+  }
+
+  /**
+   * A character stopped being party to their fellows — if they were
+   * guesting in one's dungeon, the rift no longer knows them.
+   */
+  private evictFromGuestDungeon(characterId: number): void {
+    const eid = this.characterEids.get(characterId);
+    for (const inst of this.dungeons.values()) {
+      const back = inst.guests.get(characterId);
+      if (back === undefined) continue;
+      inst.guests.delete(characterId);
+      if (eid === undefined) continue;
+      const pos = this.positions.get(eid);
+      if (!pos || pos.y < 8192 || pos.x < inst.x0 || pos.x >= inst.x1) continue;
+      this.teleport(eid, back.x, back.y);
+      this.players.get(eid)?.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: 'The rift no longer knows you — it hands you back to your gate.',
+      });
+    }
   }
 
   // ------------------------------------------------------- equipment
@@ -12722,6 +12954,9 @@ export class GameServer {
     if (this.tickCount % FRONTIER.tickTicks === 7) this.tickFrontier();
     if (this.tickCount % 40 === 20) this.tickWildSpawns();
     if (this.tickCount % SERVER_REVEAL_TICKS === 0) this.tickReveal();
+    // The party wayfinder ticker: ~1.5s, offset 3 so it never shares a
+    // beat with the %20/%40 passes.
+    if (this.tickCount % 30 === 3) this.party.tickPositions();
 
     // Respawn depleted nodes (and pull forgotten doors to).
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {

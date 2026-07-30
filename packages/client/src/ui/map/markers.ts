@@ -1,4 +1,6 @@
+import { hashString } from '@arx/shared';
 import type { DiscoveryWire } from '@arx/shared';
+import { PLAYER_COLORS } from '../../render/renderer.js';
 
 /**
  * MAP SIGILS — the place ledger's marks, drawn in the dock-glyph
@@ -223,6 +225,46 @@ export function drawPlayerToken(
   ctx.strokeStyle = '#241a2e';
   ctx.lineWidth = 1.5;
   ctx.stroke();
+  ctx.restore();
+}
+
+/** A fellow's identity ink — the tint their undressed rig would wear. */
+export function partyColor(name: string): string {
+  return PLAYER_COLORS[hashString(name) % PLAYER_COLORS.length]!;
+}
+
+/**
+ * A party member: a kin-dot in their identity color. Round where the
+ * reader's own token is an arrow — kin are companions, not headings —
+ * with the same dark rim and one soft under-shade so it sits in the
+ * sigil dialect on parchment and glass alike.
+ */
+export function drawPartyToken(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  color: string,
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  // Under-shade pass, then the dot.
+  ctx.beginPath();
+  ctx.arc(r * 0.08, r * 0.12, r, 0, Math.PI * 2);
+  ctx.fillStyle = SHADE;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = '#241a2e';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // A pale keystone dot so the mark reads at glass scale.
+  ctx.beginPath();
+  ctx.arc(0, 0, Math.max(1, r * 0.3), 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(236, 228, 208, 0.85)';
+  ctx.fill();
   ctx.restore();
 }
 

@@ -287,6 +287,57 @@ export interface C2SFriendRemove {
   name: string;
 }
 
+/** Ask for the full party snapshot (members + pending invites). */
+export interface C2SParty {
+  t: 'party';
+}
+
+/**
+ * Invite a character (by name) into your party. Partyless inviters
+ * found a new party the moment their first invite is accepted.
+ */
+export interface C2SPartyInvite {
+  t: 'partyinvite';
+  name: string;
+}
+
+/** Accept a pending party invite from `name`. */
+export interface C2SPartyAccept {
+  t: 'partyaccept';
+  name: string;
+}
+
+/** Decline a pending party invite from `name`. */
+export interface C2SPartyDecline {
+  t: 'partydecline';
+  name: string;
+}
+
+/** Leave your current party. */
+export interface C2SPartyLeave {
+  t: 'partyleave';
+}
+
+/** Remove a member from the party (leader only). */
+export interface C2SPartyKick {
+  t: 'partykick';
+  name: string;
+}
+
+/** Dissolve the whole party (leader only). */
+export interface C2SPartyDisband {
+  t: 'partydisband';
+}
+
+/**
+ * Step into a party member's live dungeon run. Only valid while
+ * standing at a riftgate portal — the gates are one network.
+ */
+export interface C2SPartyJoinRun {
+  t: 'partyjoinrun';
+  name: string;
+}
+
 /**
  * Rewrite the words on a sign you raised. The server is the judge of
  * ownership and of length — it re-sanitizes through the shared law and
@@ -346,6 +397,14 @@ export type C2SMessage =
   | C2SFriendAccept
   | C2SFriendDecline
   | C2SFriendRemove
+  | C2SParty
+  | C2SPartyInvite
+  | C2SPartyAccept
+  | C2SPartyDecline
+  | C2SPartyLeave
+  | C2SPartyKick
+  | C2SPartyDisband
+  | C2SPartyJoinRun
   | C2SSignEdit
   | C2SWaypoint;
 
@@ -689,6 +748,17 @@ export interface S2CRiftgate {
   t: 'riftgate';
   /** Pack slot indexes currently holding dungeon keys. */
   keySlots: number[];
+  /** Party members' live runs this gate can carry you into. */
+  partyRuns?: PartyRunWire[];
+}
+
+/** One live run a party member holds open. */
+export interface PartyRunWire {
+  /** The party member whose run stands open. */
+  name: string;
+  dungeon: string;
+  tier: string;
+  power: number;
 }
 
 /**
@@ -763,6 +833,58 @@ export interface S2CFriendEvent {
   t: 'friendevent';
   kind: 'request' | 'accepted' | 'declined' | 'removed' | 'online' | 'offline';
   name: string;
+}
+
+/** One member on the party snapshot (the receiver is included). */
+export interface PartyMemberWire {
+  name: string;
+  online: boolean;
+  /** True on the party leader's row. */
+  leader?: boolean;
+  /** Where they stand right now — only present while online. */
+  zone?: string;
+}
+
+/**
+ * The full party snapshot, sent on request. An empty members list =
+ * not in a party. The same refetch law as social: clients never patch
+ * membership from events, they ask again.
+ */
+export interface S2CParty {
+  t: 'party';
+  members: PartyMemberWire[];
+  /** Names whose parties have invited you. */
+  invites: string[];
+  /** Names you have invited who haven't answered. */
+  outgoing: string[];
+}
+
+/** A thin push: something party-shaped happened involving `name`. */
+export interface S2CPartyEvent {
+  t: 'partyevent';
+  kind:
+    | 'invite'
+    | 'declined'
+    | 'joined'
+    | 'left'
+    | 'kicked'
+    | 'disbanded'
+    | 'online'
+    | 'offline'
+    | 'delve';
+  name: string;
+  /** For 'delve': the dungeon's name. */
+  detail?: string;
+}
+
+/**
+ * Live positions of your online party members — a slow ticker so the
+ * chart, the glass, and the wayfinder can point at kin beyond the
+ * interest window. Never gameplay truth, purely navigation.
+ */
+export interface S2CPartyPos {
+  t: 'partypos';
+  members: Array<{ name: string; x: number; y: number }>;
 }
 
 /**
@@ -903,6 +1025,9 @@ export type S2CMessage =
   | S2CSocial
   | S2CFriendSearch
   | S2CFriendEvent
+  | S2CParty
+  | S2CPartyEvent
+  | S2CPartyPos
   | S2CExplored
   | S2CDiscoveries
   | S2CDiscovery
@@ -1159,6 +1284,32 @@ export function parseC2S(raw: string): C2SMessage | null {
     case 'friendremove': {
       if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
       return { t: 'friendremove', name: msg.name };
+    }
+    case 'party':
+      return { t: 'party' };
+    case 'partyinvite': {
+      if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
+      return { t: 'partyinvite', name: msg.name };
+    }
+    case 'partyaccept': {
+      if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
+      return { t: 'partyaccept', name: msg.name };
+    }
+    case 'partydecline': {
+      if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
+      return { t: 'partydecline', name: msg.name };
+    }
+    case 'partyleave':
+      return { t: 'partyleave' };
+    case 'partykick': {
+      if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
+      return { t: 'partykick', name: msg.name };
+    }
+    case 'partydisband':
+      return { t: 'partydisband' };
+    case 'partyjoinrun': {
+      if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
+      return { t: 'partyjoinrun', name: msg.name };
     }
     default:
       return null;

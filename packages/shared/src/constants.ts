@@ -48,7 +48,13 @@
 // when a raised shield turns a blow). A v17 client would render it as
 // a mute color puff and the wall would block in silence, so reject
 // cleanly.
-export const PROTOCOL_VERSION = 18;
+// v19: THE PARTY — party membership/invite messages, the partypos
+// ticker, and riftgate partyRuns. A v18 client would drop every party
+// push and stand deaf to its own fellowship, so reject cleanly.
+export const PROTOCOL_VERSION = 19;
+
+/** The most souls one party can hold. */
+export const PARTY_CAP = 10;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

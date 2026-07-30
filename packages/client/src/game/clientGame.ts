@@ -46,8 +46,11 @@ import {
   techniqueRankFor,
   type DiscoveryWire,
   type EquippedItem,
+  type PartyMemberWire,
+  type PartyRunWire,
   type S2CFx,
   type S2CMessage,
+  type S2CPartyEvent,
   type SignInfo,
   type SkillXp,
   type Snapshot,
@@ -161,7 +164,7 @@ export interface GameEvents {
   onEquipment(equipment: Partial<Record<string, EquippedItem>>): void;
   onBank(items: Record<string, number>, gear?: Array<{ id: number; item: string; roll: ItemRoll }>): void;
   /** The Riftgate answered an interact — open the key panel over these pack slots. */
-  onRiftgate?(keySlots: number[]): void;
+  onRiftgate?(keySlots: number[], partyRuns?: PartyRunWire[]): void;
   /** A board's words arrived or changed — repaint whatever shows them. */
   onSignChanged?(tx: number, ty: number): void;
   /** Crossed into a dungeon — everything the entry banner tells. */
@@ -206,6 +209,10 @@ export interface GameEvents {
     kind: 'request' | 'accepted' | 'declined' | 'removed' | 'online' | 'offline';
     name: string;
   }): void;
+  /** The full party snapshot answered a request (or a login push). */
+  onParty?(snap: { members: PartyMemberWire[]; invites: string[]; outgoing: string[] }): void;
+  /** Something party-shaped happened involving `name` — refetch, maybe announce. */
+  onPartyEvent?(ev: { kind: S2CPartyEvent['kind']; name: string; detail?: string }): void;
   /** A LIVE first-ever discovery — the one trigger for the splash. */
   onDiscovery?(d: DiscoveryWire): void;
 }
@@ -267,6 +274,10 @@ export class ClientGame {
   readonly discoveries = new Map<string, DiscoveryWire>();
   /** The one active waypoint (optimistic; server keeps the durable copy). */
   waypoint: Vec2 | null = null;
+  /** The party snapshot — empty members = partyless. Refetched on events. */
+  party: { members: PartyMemberWire[]; invites: string[]; outgoing: string[] } | null = null;
+  /** Fellow positions from the partypos ticker, keyed by name. */
+  readonly partyPos = new Map<string, { x: number; y: number; at: number }>();
   /** Bumped whenever fog, discoveries, or the waypoint change — map surfaces re-draw on it. */
   chartVersion = 0;
   private lastRevealAt = 0;
@@ -693,6 +704,8 @@ export class ClientGame {
           }
         }
         this.waypoint = msg.waypoint ?? null;
+        this.party = null;
+        this.partyPos.clear();
         this.explored.clear();
         this.dungeonExplored.clear();
         this.discoveries.clear();
@@ -958,7 +971,7 @@ export class ClientGame {
       case 'riftgate': {
         // The gate names the slots; the panel reads the keys' rolls
         // from our own pack (instance-addressing law).
-        this.events.onRiftgate?.(msg.keySlots);
+        this.events.onRiftgate?.(msg.keySlots, msg.partyRuns);
         break;
       }
       case 'dungeon': {
@@ -1103,6 +1116,26 @@ export class ClientGame {
       }
       case 'friendevent': {
         this.events.onFriendEvent?.({ kind: msg.kind, name: msg.name });
+        break;
+      }
+      case 'party': {
+        this.party = { members: msg.members, invites: msg.invites, outgoing: msg.outgoing };
+        // Names no longer of the party stop haunting the wayfinder.
+        for (const name of [...this.partyPos.keys()]) {
+          if (!msg.members.some((m) => m.name === name)) this.partyPos.delete(name);
+        }
+        this.events.onParty?.(this.party);
+        break;
+      }
+      case 'partyevent': {
+        this.events.onPartyEvent?.({ kind: msg.kind, name: msg.name, detail: msg.detail });
+        break;
+      }
+      case 'partypos': {
+        // The ticker is authoritative for who is placed right now.
+        this.partyPos.clear();
+        const at = performance.now();
+        for (const m of msg.members) this.partyPos.set(m.name, { x: m.x, y: m.y, at });
         break;
       }
       case 'fx': {
@@ -1540,6 +1573,56 @@ export class ClientGame {
 
   friendRemove(name: string): void {
     this.conn?.send({ t: 'friendremove', name });
+  }
+
+  // ------------------------------------------------------------ party
+
+  requestParty(): void {
+    this.conn?.send({ t: 'party' });
+  }
+
+  partyInvite(name: string): void {
+    this.conn?.send({ t: 'partyinvite', name });
+  }
+
+  partyAccept(name: string): void {
+    this.conn?.send({ t: 'partyaccept', name });
+  }
+
+  partyDecline(name: string): void {
+    this.conn?.send({ t: 'partydecline', name });
+  }
+
+  partyLeave(): void {
+    this.conn?.send({ t: 'partyleave' });
+  }
+
+  partyKick(name: string): void {
+    this.conn?.send({ t: 'partykick', name });
+  }
+
+  partyDisband(): void {
+    this.conn?.send({ t: 'partydisband' });
+  }
+
+  partyJoinRun(name: string): void {
+    this.conn?.send({ t: 'partyjoinrun', name });
+  }
+
+  /**
+   * Fellows the wayfinder may point at: party members with a fresh
+   * ticker position, self excluded. Entries older than two beats are
+   * dropped — a stopped ticker must never leave ghosts on the chart.
+   */
+  partyFellowsPlaced(now = performance.now()): Array<{ name: string; x: number; y: number }> {
+    if (this.partyPos.size === 0) return [];
+    const out: Array<{ name: string; x: number; y: number }> = [];
+    for (const [name, p] of this.partyPos) {
+      if (name === this.ownName) continue;
+      if (now - p.at > 5000) continue;
+      out.push({ name, x: p.x, y: p.y });
+    }
+    return out;
   }
 
   /**

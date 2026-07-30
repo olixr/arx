@@ -17,6 +17,7 @@ import { SocialPanel } from './ui/socialPanel.js';
 import { MapScreen } from './ui/map/mapScreen.js';
 import { MapOverlay } from './ui/map/mapOverlay.js';
 import { WaypointHud } from './ui/waypointHud.js';
+import { PartyHud } from './ui/partyHud.js';
 import { showDiscovery } from './ui/discoveryBanner.js';
 import { RiftgatePanel } from './ui/riftgate.js';
 import { showDungeonEntry } from './ui/dungeonBanner.js';
@@ -686,10 +687,10 @@ const game = new ClientGame(input, {
       panels.showInventory();
     }
   },
-  onRiftgate: (keySlots) => {
+  onRiftgate: (keySlots, partyRuns) => {
     // A server-driven screen, like the vault: through the one gate.
     closeAllUi();
-    riftgate.open(keySlots);
+    riftgate.open(keySlots, partyRuns);
   },
   onDialogueOpen: (o) => {
     // A conversation takes the whole stage: every screen closes, the
@@ -757,6 +758,35 @@ const game = new ClientGame(input, {
     }
     socialPanel.notifyEvent();
   },
+  onParty: () => socialPanel.onPartySnapshot(),
+  onPartyEvent: (ev) => {
+    // Announce what the receiver should act on or feel. Presence stays
+    // quiet here — the friend ledger already calls those; declines pass
+    // silently and the outgoing row simply clears.
+    if (ev.kind === 'invite') {
+      chat.addLine({ channel: 'system', text: `${ev.name} invites you to their party — press U.` });
+      sfx.uiOpen();
+    } else if (ev.kind === 'joined') {
+      chat.addLine({ channel: 'system', text: `${ev.name} joins the party.` });
+      sfx.uiOpen();
+    } else if (ev.kind === 'left') {
+      chat.addLine({ channel: 'system', text: `${ev.name} leaves the party.` });
+    } else if (ev.kind === 'kicked') {
+      chat.addLine({ channel: 'system', text: 'You have been removed from the party.' });
+    } else if (ev.kind === 'disbanded') {
+      chat.addLine({ channel: 'system', text: 'The party has disbanded.' });
+    } else if (ev.kind === 'delve') {
+      chat.addLine({
+        channel: 'system',
+        text: `${ev.name} has delved into ${ev.detail ?? 'a dungeon'} — any Riftgate can carry you in.`,
+      });
+      sfx.uiOpen();
+    }
+    // Membership may have changed even when the panel is shut — the
+    // markers need fresh truth, so refetch unconditionally.
+    if (ev.kind !== 'online' && ev.kind !== 'offline' && ev.kind !== 'delve') game.requestParty();
+    socialPanel.notifyPartyEvent();
+  },
   onXp: (msg) => {
     // NO xp floaty: combat kills feed several skills at once and the
     // drips stacked into unreadable mush over the damage numbers (user
@@ -809,6 +839,7 @@ const mapOverlay = new MapOverlay(game);
 // walks the rail chips on the d-pad alone.
 nav.claimStick = () => mapScreen.isOpen && nav.mode === 'pad';
 const waypointHud = new WaypointHud();
+const partyHud = new PartyHud();
 
 // Signage: the approach plaque over every board, and the sheet that
 // opens when you stop to read one properly.
@@ -1730,6 +1761,7 @@ function frame(now: number): void {
   // opened screen (the chart included) supersedes them.
   mapOverlay.update(now, uiOpen || cinema.open);
   waypointHud.update(game, renderer, uiOpen || cinema.open || buildMode !== null);
+  partyHud.update(game, renderer, uiOpen || cinema.open || buildMode !== null);
   // The character case frames the LIVE you: with the case docked right
   // (and no bank/shop conversation borrowing the pack), the camera
   // slides the world so your character stands centered in the open

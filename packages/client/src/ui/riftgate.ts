@@ -1,7 +1,8 @@
 import { RARITY_COLORS, dungeonSpecFromRoll } from '@arx/shared';
+import type { PartyRunWire } from '@arx/shared';
 import { itemDef } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
-import { iconTile } from './panel.js';
+import { iconTile, sectionHead } from './panel.js';
 import type { ClientGame } from '../game/clientGame.js';
 
 /**
@@ -29,8 +30,8 @@ export class RiftgatePanel {
     return !this.panel.classList.contains('hidden');
   }
 
-  open(keySlots: number[]): void {
-    this.render(keySlots);
+  open(keySlots: number[], partyRuns?: PartyRunWire[]): void {
+    this.render(keySlots, partyRuns);
     this.panel.classList.remove('hidden');
   }
 
@@ -38,7 +39,7 @@ export class RiftgatePanel {
     this.panel.classList.add('hidden');
   }
 
-  private render(keySlots: number[]): void {
+  private render(keySlots: number[], partyRuns?: PartyRunWire[]): void {
     this.list.innerHTML = '';
     let shown = 0;
     for (const slot of keySlots) {
@@ -96,6 +97,55 @@ export class RiftgatePanel {
       });
       this.list.appendChild(row);
       shown++;
+    }
+
+    // Fellows' live runs — the gates are one network, so any arch can
+    // carry you into a run your party holds open.
+    if (partyRuns && partyRuns.length > 0) {
+      this.list.appendChild(sectionHead('Party Runs'));
+      for (const run of partyRuns) {
+        // The wire carries tier as plain string; unknown tiers just go untinted.
+        const tint = (RARITY_COLORS as Record<string, string | null>)[run.tier] ?? null;
+        const row = document.createElement('div');
+        row.className = 'rift-row';
+        if (tint) row.style.setProperty('--rift-tint', tint);
+        row.dataset.nav = '';
+        row.dataset.navkey = `rift:join:${run.name}`;
+        row.dataset.acta = 'Join';
+
+        const mid = document.createElement('div');
+        mid.className = 'rift-mid';
+        const name = document.createElement('div');
+        name.className = 'rift-name';
+        name.textContent = run.dungeon;
+        if (tint) name.style.color = tint;
+        const sub = document.createElement('div');
+        sub.className = 'rift-sub';
+        const who = document.createElement('span');
+        who.textContent = `${run.name} holds the rift open`;
+        const tierWord = document.createElement('span');
+        tierWord.textContent = run.tier;
+        if (tint) tierWord.style.color = tint;
+        sub.append(who, ' · ', tierWord);
+        mid.append(name, sub);
+        row.appendChild(mid);
+
+        const power = document.createElement('div');
+        power.className = 'rift-power';
+        const num = document.createElement('strong');
+        num.textContent = String(run.power);
+        const lab = document.createElement('span');
+        lab.textContent = 'power';
+        power.append(num, lab);
+        row.appendChild(power);
+
+        row.addEventListener('click', () => {
+          this.game.partyJoinRun(run.name);
+          this.close();
+        });
+        this.list.appendChild(row);
+        shown++;
+      }
     }
 
     if (shown === 0) {
