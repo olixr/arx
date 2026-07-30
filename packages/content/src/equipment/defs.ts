@@ -4664,6 +4664,62 @@ function namedChaseDefs(): EquipmentDef[] {
     color: '#33465e',
     rarities: ['legendary'] as RarityTier[],
   };
+  // HARTSONG — the greenwood warden's kit: antler crown, firefly
+  // company. Owner: the stag, plainly; the boar tramples the same
+  // glades and keeps what it finds.
+  const hartsong = {
+    class: 'leather' as const, skill: 'archery' as const,
+    pool: [
+      { stat: 'archery', w: 2 },
+      { stat: 'vitality' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#33472e',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // SKYTALON — hawk feathers over an archer's rig, a crest that
+  // remembers the wind. Owner: the crypt's archer, still at his post;
+  // the mossy chests hold what the old kingdom fletched.
+  const skytalon = {
+    class: 'leather' as const, skill: 'archery' as const,
+    pool: [
+      { stat: 'archery', w: 3 },
+      { stat: 'sneak' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#46596e',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // CINDERSHADE — charcoal leather with seams that never cooled and
+  // coals for eyes. Owner: the reaver crews who burn what they rob;
+  // one of them walked out of a burn wearing this.
+  const cindershade = {
+    class: 'leather' as const, skill: 'sneak' as const,
+    pool: [
+      { stat: 'sneak', w: 2 },
+      { stat: 'melee', w: 2 },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#332e2c',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // ROOKFEATHER — the Rookery's own: oil-dark feathers that molt and
+  // never thin. Owner: the rooks bank their best in other people's
+  // vaults — gilded locks and boss hoards.
+  const rookfeather = {
+    class: 'leather' as const, skill: 'sneak' as const,
+    pool: [
+      { stat: 'sneak', w: 3 },
+      { stat: 'melee' },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#2a2e38',
+    rarities: ['legendary'] as RarityTier[],
+  };
   // ORRERY — the heavens in brass and midnight, a diadem that keeps
   // time. Owner: the diggers found it and the gilded locks kept it;
   // nobody alive remembers the magister who wound it.
@@ -4788,5 +4844,49 @@ function namedChaseDefs(): EquipmentDef[] {
       'They pace like clockwork because they are.'),
     chasePiece(orrery, 'orrery_wraps', 'Orrery wraps', 'gloves', 25, 3, 1150, 'Ok',
       'Brass at the wrist and a slow sky in the palm.'),
+
+    chasePiece(hartsong, 'hartsong_crown', 'Hartsong crown', 'head', 7, 3, 830, 'Da',
+      'The hart wore it first. The fireflies never left.'),
+    chasePiece(hartsong, 'hartsong_jerkin', 'Hartsong jerkin', 'body', 10, 5, 960, 'Dc',
+      'The forest made a warden once. This is the coat it cut.'),
+    chasePiece(hartsong, 'hartsong_leggings', 'Hartsong leggings', 'legs', 9, 4, 880, 'De',
+      'They know every deer path by heart.'),
+    chasePiece(hartsong, 'hartsong_treads', 'Hartsong treads', 'boots', 8, 3, 830, 'Df',
+      'The moss never tells.'),
+    chasePiece(hartsong, 'hartsong_grips', 'Hartsong grips', 'gloves', 8, 3, 830, 'Dg',
+      'Steady on the draw, kind to the string.'),
+
+    chasePiece(skytalon, 'skytalon_helm', 'Skytalon helm', 'head', 12, 4, 940, 'Ya',
+      'Three feathers off a wing that owned the sky.'),
+    chasePiece(skytalon, 'skytalon_harness', 'Skytalon harness', 'body', 15, 6, 1070, 'Yd',
+      'Hawk feathers over an archer’s rig. The quiver rides where it always did.'),
+    chasePiece(skytalon, 'skytalon_leggings', 'Skytalon leggings', 'legs', 14, 5, 990, 'Ye',
+      'Cut for the long stand and the short sprint.'),
+    chasePiece(skytalon, 'skytalon_striders', 'Skytalon striders', 'boots', 13, 4, 940, 'Yf',
+      'They land the way a shadow does.'),
+    chasePiece(skytalon, 'skytalon_talons', 'Skytalon talons', 'gloves', 13, 4, 940, 'Yi',
+      'Gold at the knuckle, hooked like the stoop.'),
+
+    chasePiece(cindershade, 'cindershade_cowl', 'Cindershade cowl', 'head', 17, 4, 1040, 'Cb',
+      'The hood keeps the dark. The eyes keep the fire.'),
+    chasePiece(cindershade, 'cindershade_jerkin', 'Cindershade jerkin', 'body', 20, 7, 1190, 'Ce',
+      'The seams still glow. The tailor never said why.'),
+    chasePiece(cindershade, 'cindershade_leggings', 'Cindershade leggings', 'legs', 19, 5, 1090, 'Cf',
+      'They walked out of the burn. The burn remembers.'),
+    chasePiece(cindershade, 'cindershade_soles', 'Cindershade soles', 'boots', 18, 4, 1040, 'Cj',
+      'Warm underfoot, quiet over coals.'),
+    chasePiece(cindershade, 'cindershade_grips', 'Cindershade grips', 'gloves', 18, 4, 1040, 'Cq',
+      'Fingerless, so the ember work stays honest.'),
+
+    chasePiece(rookfeather, 'rookfeather_cowl', 'Rookfeather cowl', 'head', 23, 5, 1140, 'Rf',
+      'Swept feathers, oil dark. The rook keeps its own counsel.'),
+    chasePiece(rookfeather, 'rookfeather_mantle', 'Rookfeather mantle', 'body', 26, 8, 1330, 'Ri',
+      'A mantle of rook feathers that molts and never thins.'),
+    chasePiece(rookfeather, 'rookfeather_leggings', 'Rookfeather leggings', 'legs', 25, 6, 1240, 'Rk',
+      'Dark as the gap between roof beams.'),
+    chasePiece(rookfeather, 'rookfeather_steps', 'Rookfeather steps', 'boots', 24, 5, 1140, 'Rl',
+      'Slate roofs never hear them coming.'),
+    chasePiece(rookfeather, 'rookfeather_fingers', 'Rookfeather fingers', 'gloves', 24, 5, 1140, 'Rs',
+      'Silver at the wrist, nothing at the fingertips.'),
   ];
 }

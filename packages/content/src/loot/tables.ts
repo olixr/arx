@@ -241,6 +241,8 @@ const defs: LootTableDef[] = [
       // A torn bank page rides some pockets — reading it starts the
       // banker's errand. Plain table math; the page is worth nothing.
       { item: 'torn_ledger_page', chance: 0.025 },
+      // A rank hand sometimes holds a piece of the reaver's prize.
+      ...setDrops('cindershade', 0.004),
     ],
   },
   rack('brigand_wardrobe', 'Stolen wardrobes — cut purses and quieter boots.', 0.04, [
@@ -275,6 +277,9 @@ const defs: LootTableDef[] = [
       { item: 'tollbreaker', chance: 0.01 },
       { item: 'leather_hood', chance: 0.03 },
       ...setDrops('cutpurse', 0.012),
+      // The crews burn what they rob. One of them walked out of a
+      // burn wearing this, and the reaver took it off them.
+      ...setDrops('cindershade', 0.01),
       { item: 'emberstone', chance: 0.02 },
       { item: 'stormpearl', chance: 0.015 },
     ],
@@ -433,6 +438,9 @@ const defs: LootTableDef[] = [
       // brood's silk with whatever he feeds.
       ...setDrops('barrowking', 0.006),
       ...setDrops('riftweave', 0.006),
+      // One rook tried the Champion's vault in person. The Champion
+      // kept the feathers.
+      ...setDrops('rookfeather', 0.005),
       ...setDrops('broodsilk', 0.008),
     ],
   },
@@ -569,6 +577,8 @@ const defs: LootTableDef[] = [
       { table: 'heirlooms', mult: 2 },
       // The gilded locks held the rest of the magister's estate.
       ...setDrops('orrery', 0.008),
+      // The rooks bank their best in other people's vaults.
+      ...setDrops('rookfeather', 0.006),
     ],
   },
   {
@@ -606,6 +616,8 @@ const defs: LootTableDef[] = [
       { table: 'wolf_arms', mult: 6 },
       // Moonbell grows over mossy lids; sometimes a set piece grew in.
       ...setDrops('moonbell', 0.008),
+      // What the old kingdom fletched, the moss kept dry.
+      ...setDrops('skytalon', 0.006),
     ],
   },
   {
@@ -623,6 +635,8 @@ const defs: LootTableDef[] = [
       { item: 'crimson_essence', qty: [2, 4], chance: 0.5 },
       // The king under the hill banked with the house he built.
       ...setDrops('barrowking', 0.008),
+      // A rook got here first, once. It left the feathers behind.
+      ...setDrops('rookfeather', 0.01),
     ],
   },
   {
@@ -767,6 +781,8 @@ const defs: LootTableDef[] = [
       { item: 'raw_beef', chance: 0.5 },
       { item: 'scrap_hide', qty: [1, 3], chance: 0.8 },
       { item: 'verdant_essence', chance: 0.08 },
+      // The hart wore the crown first. The warden's kit follows it.
+      ...setDrops('hartsong', 0.012),
     ],
   },
   {
@@ -792,6 +808,8 @@ const defs: LootTableDef[] = [
       { item: 'crimson_essence', chance: 0.06 },
       // The boar shares the bull's country; sometimes it wins.
       ...setDrops('aurochs', 0.005),
+      // It tramples the hart's glades too, and keeps what it finds.
+      ...setDrops('hartsong', 0.005),
     ],
   },
   {
@@ -848,6 +866,9 @@ const defs: LootTableDef[] = [
       { item: 'arcane_dust', chance: 0.1 },
       { item: 'frost_essence', chance: 0.1 },
       { item: 'weathered_letter', chance: 0.03 },
+      // The old kingdom's hawk-warden, still at his post. The rig
+      // outlived the wing.
+      ...setDrops('skytalon', 0.008),
     ],
   },
   {

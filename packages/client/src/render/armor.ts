@@ -165,6 +165,42 @@ export interface BodyStyle {
    * not cloth: they ride above every layer and never go out.
    */
   ribbons?: { colors: [string, string] };
+  /**
+   * A layered feather mantle ringing the shoulders, front AND back —
+   * two lapped rows of broad vanes, tips broken to a second color,
+   * each with its own spine. An optional sheen walks the rows on a
+   * slow clock — the rook's oil-slick iridescence. The bird worn as
+   * a garment, never a trophy.
+   */
+  plumage?: { color: string; tip: string; sheen?: string };
+  /**
+   * The archer's back quiver on the trailing shoulder blade. From
+   * behind it is the whole story: banded tube, three fletched nocks.
+   * From the front the story is the chest strap and the fletchings
+   * peeking over the shoulder — gear that survives the turn.
+   */
+  quiver?: { color: string; fletch: string };
+  /**
+   * A neck scarf knotted at the trailing shoulder, its tail waving
+   * behind in a lazy S on its own clock, tip dipped in a second
+   * color — the assassin's flag. Cloth, not light: full weight.
+   */
+  scarftail?: { color: string; tip?: string };
+  /**
+   * Smoke curling off the shoulders, rising and thinning — the burn
+   * never quite went out. Deterministic from the clock alone.
+   */
+  wisps?: { color: string };
+  /**
+   * Fireflies keeping the wearer company: low wandering lights that
+   * BLINK on their own beats — alive, where motes merely drift.
+   */
+  fireflies?: { color: string };
+  /**
+   * Shed feathers rocking down past the hem and fading — the rook
+   * molts and never runs out.
+   */
+  featherfall?: { color: string };
 }
 
 export interface HelmStyle {
@@ -246,6 +282,16 @@ export interface HelmStyle {
    *  near side bright and large, far side dim and small — a working
    *  orrery worn as a diadem. It keeps perfect time. */
   orbitals?: { color: string; ring?: string };
+  /** Hoods: two coals burning in the opening's shadow, pulsing on a
+   *  slow breath — front only; the back keeps its secret. */
+  emberEyes?: { color: string };
+  /** A swept crest of three feathers off the crown, trailing back
+   *  and fluttering at the tips — the hawk's wake. Painted before
+   *  the shell so the roots tuck under. */
+  crestfeathers?: { colors: [string, string] };
+  /** Fireflies circling the crown on their own wandering loops,
+   *  blinking — the forest keeps its king company. */
+  fireflies?: { color: string };
 }
 
 export interface LegStyle {
@@ -643,6 +689,42 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     sleeves: 'full', folds: true, underskirt: '#1e2540',
     mantle: '#1e2540', runes: '#c9a23c', motes: '#e8c878',
   },
+  // The legendary leather road: four hunter and assassin kits spread
+  // down the leveling bands, each with a signature that MOVES.
+  // Drop-only, one lot each — the same law the cloth road keeps.
+  hartsong_jerkin: {
+    color: '#33472e', trim: '#d8b84c', metal: '#8a7a52', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#3e5434',
+    pauldronTrim: '#d8b84c', chest: 'none', skirt: 0.14,
+    yoke: { color: '#2a3b26', stitch: true },
+    belt: { color: '#2a3b26', buckle: '#d8b84c' },
+    charms: { color: '#e8e2d0' }, fireflies: { color: '#d8e88a' },
+    pouch: true,
+  },
+  skytalon_harness: {
+    color: '#46596e', trim: '#e8ddc0', metal: '#c9a23c', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'none', chest: 'straps', skirt: 0,
+    plumage: { color: '#5a7086', tip: '#e8ddc0' },
+    quiver: { color: '#6e5a3c', fletch: '#a8e8ff' },
+    belt: { color: '#32404f', buckle: '#c9a23c' },
+  },
+  cindershade_jerkin: {
+    color: '#332e2c', trim: '#8a4a30', metal: '#6e5a4c', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#3e3634',
+    pauldronTrim: '#8a4a30', chest: 'straps', skirt: 0.12,
+    yoke: { color: '#2a2624' }, glowTrim: '#ff9a4a',
+    underskirt: '#241f1e', wisps: { color: '#b0a49c' },
+    scarftail: { color: '#7a3226', tip: '#ff8a3c' },
+    belt: { color: '#241f1e', buckle: '#b86a3c' }, pouch: true,
+  },
+  rookfeather_mantle: {
+    color: '#2a2e38', trim: '#b8c0cc', metal: '#8a92a0', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'none', chest: 'none', skirt: 0,
+    plumage: { color: '#343a48', tip: '#454c5e', sheen: '#7a5ab8' },
+    featherfall: { color: '#454c5e' }, lace: '#1e2128',
+    charms: { color: '#c9ccd8' },
+    belt: { color: '#1e2128', buckle: '#b8c0cc' }, pouch: true,
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -836,6 +918,28 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#c9a23c', trim: '#e8c878', kind: 'circlet',
     orbitals: { color: '#e0b054', ring: '#8a7434' },
   },
+  // The legendary leather road's heads: an antlered crown with living
+  // company, a crested hawk hood, a hood with coals for eyes, and the
+  // rook's swept-feather cowl.
+  hartsong_crown: {
+    color: '#33472e', trim: '#d8b84c', kind: 'hood',
+    antlers: { color: '#e8e2d0' }, gem: { color: '#d8e88a' },
+    fireflies: { color: '#d8e88a' },
+  },
+  skytalon_helm: {
+    color: '#46596e', trim: '#e8ddc0', kind: 'hood',
+    crestfeathers: { colors: ['#5a7086', '#e8ddc0'] },
+    gem: { color: '#8ad4e8' },
+  },
+  cindershade_cowl: {
+    color: '#332e2c', trim: '#8a4a30', kind: 'hood',
+    mask: '#241f1e', emberEyes: { color: '#ff7a3c' },
+  },
+  rookfeather_cowl: {
+    color: '#2a2e38', trim: '#b8c0cc', kind: 'hood',
+    mask: '#333846',
+    crestfeathers: { colors: ['#343a48', '#7a5ab8'] },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -886,6 +990,11 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   vigil_skirts: { kind: 'pants', thigh: '#c2b696' },
   skydancer_skirts: { kind: 'pants', thigh: '#283a4e' },
   orrery_skirts: { kind: 'pants', thigh: '#1e2540' },
+  // The legendary leather road.
+  hartsong_leggings: { kind: 'wraps', thigh: '#2a3b26', shin: '#243320', knee: 'wrap', kneeColor: '#d8b84c' },
+  skytalon_leggings: { kind: 'wraps', thigh: '#32404f', shin: '#2a3642', knee: 'wrap', kneeColor: '#e8ddc0' },
+  cindershade_leggings: { kind: 'wraps', thigh: '#2a2624', shin: '#241f1e', knee: 'wrap', kneeColor: '#8a4a30' },
+  rookfeather_leggings: { kind: 'wraps', thigh: '#232630', shin: '#1e2128', knee: 'wrap', kneeColor: '#b8c0cc' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -940,6 +1049,11 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   vigil_slippers: { color: '#c2b696', height: 0.08, cuff: { color: '#c9922f' } },
   skydancer_slippers: { color: '#283a4e', height: 0.09, cuff: { color: '#8ae8c0' } },
   orrery_slippers: { color: '#1e2540', height: 0.09, cuff: { color: '#c9a23c' } },
+  // The legendary leather road: laced and wrapped, never curled.
+  hartsong_treads: { color: '#2a3b26', height: 0.12, wrap: { color: '#d8b84c' } },
+  skytalon_striders: { color: '#32404f', height: 0.13, cuff: { color: '#e8ddc0' } },
+  cindershade_soles: { color: '#241f1e', height: 0.12, wrap: { color: '#8a4a30' } },
+  rookfeather_steps: { color: '#1e2128', height: 0.12, cuff: { color: '#454c5e' } },
 };
 
 /**
@@ -1172,6 +1286,26 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     color: '#262e4e', hand: 'wrap', bracer: '#222946',
     cuff: { color: '#c9a23c', kind: 'band' },
     knuckle: { color: '#e0b054', kind: 'gem' },
+  },
+  // The legendary leather road: the hunter grips, the hawk talons,
+  // the assassin's fingerless cuts.
+  hartsong_grips: {
+    color: '#33472e', hand: 'glove', bracer: '#2a3b26',
+    cuff: { color: '#d8b84c', kind: 'band' },
+    knuckle: { color: '#e8e2d0', kind: 'studs' },
+  },
+  skytalon_talons: {
+    color: '#46596e', hand: 'glove', bracer: '#3a4a5c',
+    cuff: { color: '#e8ddc0', kind: 'band' },
+    knuckle: { color: '#c9a23c', kind: 'claws' },
+  },
+  cindershade_grips: {
+    color: '#332e2c', hand: 'wrap', bracer: '#2a2624',
+    cuff: { color: '#8a4a30', kind: 'roll' }, fingerless: true,
+  },
+  rookfeather_fingers: {
+    color: '#2a2e38', hand: 'wrap', bracer: '#232630',
+    cuff: { color: '#b8c0cc', kind: 'roll' }, fingerless: true,
   },
 };
 
@@ -3296,6 +3430,302 @@ export function drawTorsoGarment(
       }
       ctx.globalAlpha = 1;
     }
+
+    // ---- the feather mantle: two lapped rows of broad vanes ringing
+    // the shoulders, front AND back — a mantle that vanished on turn
+    // would break the garment. Broad and few beats thin and many; a
+    // timid feather reads as fringe. One-sun: screen-left vanes lit.
+    if (st.plumage) {
+      const pl = st.plumage;
+      const rows = [
+        { y0: -th * 1.02, n: 4, len: th * 0.5, wK: 1 },
+        { y0: -th * 0.72, n: 3, len: th * 0.42, wK: 0.85 },
+      ];
+      for (const row of rows) {
+        for (let i = 0; i < row.n; i++) {
+          const u = -1 + (2 * (i + 0.5)) / row.n;
+          const bx = u * tww * 0.98;
+          const by = row.y0 + Math.abs(u) * th * 0.08;
+          const vw = tww * 0.34 * row.wK;
+          const vl = row.len * (0.86 + 0.14 * Math.sin(i * 2.1 + row.n));
+          const tipX = bx + u * vw * 0.55;
+          const tipY = by + vl;
+          const vane = () => {
+            ctx.beginPath();
+            ctx.moveTo(bx - vw, by);
+            ctx.quadraticCurveTo(bx - vw * 1.05, by + vl * 0.55, tipX, tipY);
+            ctx.quadraticCurveTo(bx + vw * 1.05, by + vl * 0.55, bx + vw, by);
+            ctx.closePath();
+          };
+          ctx.fillStyle = u > 0.01 ? shade(pl.color, -14) : shade(pl.color, 4);
+          vane();
+          ctx.fill();
+          // The tip break: the last third dips in the second color.
+          ctx.fillStyle = u > 0.01 ? shade(pl.tip, -12) : pl.tip;
+          ctx.beginPath();
+          ctx.moveTo(bx - vw * 0.62, by + vl * 0.6);
+          ctx.quadraticCurveTo(bx - vw * 0.68, by + vl * 0.8, tipX, tipY);
+          ctx.quadraticCurveTo(bx + vw * 0.68, by + vl * 0.8, bx + vw * 0.62, by + vl * 0.6);
+          ctx.closePath();
+          ctx.fill();
+          // The spine — one stroke sells the anatomy.
+          ctx.strokeStyle = shade(pl.color, -26);
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(bx, by + vl * 0.08);
+          ctx.quadraticCurveTo(bx + u * vw * 0.2, by + vl * 0.55, tipX, tipY - vl * 0.06);
+          ctx.stroke();
+          // The oil-slick sheen: a band of borrowed light walking the
+          // rows on a slow clock — iridescence, never a palette swap.
+          if (pl.sheen) {
+            const swp = Math.sin(nowMs * 0.0008 + u * 2.4 + row.wK * 2);
+            if (swp > 0.55) {
+              ctx.globalAlpha = ((swp - 0.55) / 0.45) * 0.4;
+              ctx.fillStyle = pl.sheen;
+              vane();
+              ctx.fill();
+              ctx.globalAlpha = 1;
+            }
+          }
+        }
+      }
+    }
+
+    // ---- the back quiver: the archer's tube on the trailing shoulder
+    // blade. From behind, the whole story: banded tube, three fletched
+    // nocks. From the front, the chest strap and the fletchings peeking
+    // over the shoulder — gear that survives the turn.
+    if (st.quiver) {
+      const q = st.quiver;
+      const es = -(f.lead || 1);
+      const bob = f.strideSw * 0.01 * s;
+      const fletchAt = (axx: number, ayy: number, fw: number, fh: number) => {
+        ctx.beginPath();
+        ctx.moveTo(axx, ayy - fh);
+        ctx.lineTo(axx + fw, ayy);
+        ctx.lineTo(axx, ayy + fh);
+        ctx.lineTo(axx - fw, ayy);
+        ctx.closePath();
+        ctx.fill();
+      };
+      if (back) {
+        // Slung wide of the hood's drape tail — a quiver the cowl
+        // swallows is a plank, not a story.
+        ctx.save();
+        ctx.translate(es * tw * 0.52, -th * 0.5 + bob);
+        ctx.rotate(es * 0.42);
+        const qw = 0.066 * s;
+        const qh = 0.2 * s;
+        // Arrows first, so the tube's rim seats over their shafts.
+        ctx.strokeStyle = shade(q.color, -34);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        for (let i = -1; i <= 1; i++) {
+          const axx = i * qw * 0.55;
+          ctx.beginPath();
+          ctx.moveTo(axx, -qh + 0.02 * s);
+          ctx.lineTo(axx + i * 0.009 * s, -qh - 0.085 * s + Math.abs(i) * 0.018 * s);
+          ctx.stroke();
+        }
+        ctx.fillStyle = q.fletch;
+        for (let i = -1; i <= 1; i++) {
+          fletchAt(
+            i * qw * 0.55 + i * 0.009 * s,
+            -qh - 0.078 * s + Math.abs(i) * 0.018 * s,
+            0.019 * s,
+            0.031 * s,
+          );
+        }
+        // The tube: lit half, shaded half, bright rim, waist band.
+        ctx.fillStyle = q.color;
+        ctx.fillRect(-qw, -qh, qw * 2, qh * 2);
+        ctx.fillStyle = shade(q.color, -18);
+        ctx.fillRect(0, -qh, qw, qh * 2);
+        ctx.fillStyle = shade(q.color, 16);
+        ctx.fillRect(-qw, -qh, qw * 2, 0.022 * s);
+        ctx.fillStyle = shade(q.color, -32);
+        ctx.fillRect(-qw, -0.03 * s, qw * 2, 0.02 * s);
+        ctx.restore();
+      } else {
+        // The strap crosses the chest to the opposite hip.
+        ctx.strokeStyle = shade(q.color, -12);
+        ctx.lineWidth = Math.max(2.5, s * 0.04);
+        ctx.beginPath();
+        ctx.moveTo(es * tw * 0.72, -th * 0.98);
+        ctx.lineTo(-es * ww * 0.6, -0.05 * s);
+        ctx.stroke();
+        // The buckle plate where the strap crosses the sternum.
+        ctx.fillStyle = shade(q.color, 24);
+        ctx.fillRect(es * tw * 0.1 - 0.016 * s, -th * 0.56, 0.032 * s, 0.026 * s);
+        // Fletchings over the trailing shoulder — the quiver's hello.
+        // Big enough to read at world zoom; a timid fletch is lint.
+        for (let i = 0; i < 3; i++) {
+          const axx = es * tw * (0.62 + i * 0.24);
+          const ayy = -th * (1.36 - (i === 1 ? 0.02 : 0.1)) + bob;
+          ctx.strokeStyle = shade(q.color, -34);
+          ctx.lineWidth = Math.max(1, s * 0.013);
+          ctx.beginPath();
+          ctx.moveTo(axx, ayy + 0.026 * s);
+          ctx.lineTo(axx - es * 0.014 * s, -th * 1.0);
+          ctx.stroke();
+          ctx.fillStyle = q.fletch;
+          fletchAt(axx, ayy, 0.021 * s, 0.033 * s);
+        }
+      }
+    }
+
+    // ---- the scarf tail: a neck wrap knotted at the trailing
+    // shoulder, its tail waving behind in a lazy S — the assassin's
+    // flag. Cloth, not light: full weight, one shaded edge.
+    if (st.scarftail) {
+      const sc = st.scarftail;
+      const es = -(f.lead || 1);
+      // The wrap itself rings the collar, front and back both.
+      ctx.fillStyle = back ? shade(sc.color, -8) : sc.color;
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.64, -th * 1.04);
+      ctx.lineTo(tw * 0.64, -th * 1.04);
+      ctx.lineTo(tw * 0.56, -th * 0.86);
+      ctx.lineTo(-tw * 0.56, -th * 0.86);
+      ctx.closePath();
+      ctx.fill();
+      // The knot.
+      ctx.fillStyle = shade(sc.color, 12);
+      ctx.beginPath();
+      ctx.arc(es * tw * 0.58, -th * 0.95, 0.024 * s, 0, Math.PI * 2);
+      ctx.fill();
+      // The tail: out, a mid bow, a flared tip that kicks on its own
+      // clock — never a stick.
+      const ax = es * tw * 0.6;
+      const ay = -th * 0.92;
+      const m1x = ax + es * (0.08 * s + Math.sin(nowMs * 0.0018) * 0.016 * s);
+      const m1y = ay + 0.1 * s;
+      const m2x = ax + es * (0.15 * s + Math.sin(nowMs * 0.0018 + 1.2) * 0.03 * s);
+      const m2y = ay + 0.22 * s;
+      const tipX = ax + es * (0.11 * s + Math.sin(nowMs * 0.002 + 2.3) * 0.045 * s);
+      const tipY = ay + 0.35 * s + Math.sin(nowMs * 0.0016 + 3.1) * 0.02 * s;
+      const w0 = 0.036 * s;
+      const wm = 0.048 * s;
+      const w1 = 0.02 * s;
+      ctx.fillStyle = sc.color;
+      ctx.beginPath();
+      ctx.moveTo(ax - w0 * 0.7, ay);
+      ctx.quadraticCurveTo(m1x - wm, m1y, m2x - wm * 0.8, m2y);
+      ctx.quadraticCurveTo(m2x - wm * 0.5, (m2y + tipY) / 2, tipX - w1 * 1.3, tipY);
+      ctx.lineTo(tipX + w1 * 1.3, tipY + 0.012 * s);
+      ctx.quadraticCurveTo(m2x + wm * 0.6, (m2y + tipY) / 2 + 0.02 * s, m2x + wm * 0.8, m2y);
+      ctx.quadraticCurveTo(m1x + wm, m1y, ax + w0 * 0.7, ay);
+      ctx.closePath();
+      ctx.fill();
+      // The shaded edge — cloth has a dark side under one sun.
+      ctx.strokeStyle = shade(sc.color, -20);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(ax + w0 * 0.5, ay + 0.02 * s);
+      ctx.quadraticCurveTo(m1x + wm * 0.7, m1y, m2x + wm * 0.6, m2y);
+      ctx.stroke();
+      // The dipped tip.
+      if (sc.tip) {
+        ctx.fillStyle = sc.tip;
+        ctx.beginPath();
+        ctx.moveTo(m2x - wm * 0.4, (m2y + tipY) / 2 + 0.008 * s);
+        ctx.quadraticCurveTo(m2x - wm * 0.2, (m2y + tipY) / 2 + 0.03 * s, tipX - w1 * 1.3, tipY);
+        ctx.lineTo(tipX + w1 * 1.3, tipY + 0.012 * s);
+        ctx.quadraticCurveTo(m2x + wm * 0.4, (m2y + tipY) / 2 + 0.045 * s, m2x + wm * 0.35, (m2y + tipY) / 2 + 0.016 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // ---- smoke wisps: curls rising off the shoulders and thinning
+    // as they climb — the burn never quite went out. Deterministic
+    // from the clock alone; a curl, never a blob.
+    if (st.wisps) {
+      ctx.strokeStyle = st.wisps.color;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const ph = nowMs * 0.00052 + i * 0.41;
+        const cyc = ph - Math.floor(ph);
+        const a = Math.sin(cyc * Math.PI) * 0.55;
+        if (a <= 0.04) continue;
+        // Born at the shoulder points and drifting OUTBOARD as they
+        // climb — smoke that rises straight up dies behind the hood.
+        const sideW = Math.sin(i * 2.6 + Math.floor(ph) * 1.9);
+        const bx = (Math.sign(sideW) || 1) * tw * (0.8 + 0.25 * Math.abs(sideW));
+        const by = -th * (0.85 + 0.1 * Math.sin(i * 3.3));
+        const x = bx * (1 + cyc * 0.9) + Math.sin(cyc * 5 + i * 1.7) * 0.032 * s;
+        const y = by - cyc * th * 0.75;
+        const r = (0.017 + cyc * 0.02) * s;
+        ctx.globalAlpha = a;
+        ctx.lineWidth = Math.max(1.2, s * (0.02 - cyc * 0.009));
+        ctx.beginPath();
+        ctx.arc(x, y, r, cyc * 4 + i, cyc * 4 + i + 3.6);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'butt';
+    }
+
+    // ---- fireflies: low wandering lights that BLINK on their own
+    // beats — alive, where motes merely drift. A halo and a hot core
+    // per light; never more than three.
+    if (st.fireflies) {
+      const fc = st.fireflies.color;
+      for (let i = 0; i < 3; i++) {
+        const t = nowMs * 0.00038 + i * 2.1;
+        const blink = Math.max(0, Math.sin(nowMs * 0.0019 + i * 2.4));
+        if (blink < 0.12) continue;
+        const x = Math.sin(i * 2.7 + 1) * ww * 0.9 + Math.cos(t * (1.0 + i * 0.17)) * ww * 0.55;
+        const y = -th * 0.3 + Math.sin(i * 1.9) * th * 0.32 + Math.sin(t * (1.4 + i * 0.11)) * 0.05 * s;
+        ctx.globalAlpha = 0.26 * blink;
+        ctx.fillStyle = fc;
+        ctx.beginPath();
+        ctx.arc(x, y, 0.032 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.6 + 0.4 * blink;
+        ctx.fillStyle = shade(fc, 30);
+        ctx.beginPath();
+        ctx.arc(x, y, 0.0135 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // ---- feather fall: shed feathers rocking down past the hem and
+    // fading — the molt that never runs out. Two at most; a flurry
+    // would upstage the garment.
+    if (st.featherfall) {
+      const fCol = st.featherfall.color;
+      for (let i = 0; i < 2; i++) {
+        const ph = nowMs * 0.0003 + i * 0.53;
+        const cyc = ph - Math.floor(ph);
+        const a = Math.sin(cyc * Math.PI) * 0.9;
+        if (a <= 0.05) continue;
+        const bx = Math.sin(i * 2.9 + Math.floor(ph) * 1.7) * ww * 1.25;
+        const x = bx + Math.sin(cyc * 6.2 + i) * 0.05 * s;
+        const y = -th * 0.9 + cyc * th * 1.5;
+        const rot = 0.5 + Math.sin(cyc * 6.2 + i + Math.PI / 2) * 0.7;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+        ctx.globalAlpha = a;
+        const fl = 0.06 * s;
+        ctx.fillStyle = fCol;
+        ctx.beginPath();
+        ctx.moveTo(-fl * 0.5, 0);
+        ctx.quadraticCurveTo(-fl * 0.1, -fl * 0.3, fl * 0.5, -fl * 0.06);
+        ctx.quadraticCurveTo(-fl * 0.1, fl * 0.26, -fl * 0.5, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(fCol, 26);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(-fl * 0.5, 0);
+        ctx.lineTo(fl * 0.5, -fl * 0.06);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    }
   }
 
   // ---- seated knee tents: a raised knee lifts the robe's front into
@@ -3850,6 +4280,41 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     ctx.globalAlpha = 1;
   }
 
+  if (st.crestfeathers && !hurt) {
+    // The hawk's wake: three broad feathers swept off the crown and
+    // trailing back, each fluttering at the tip on its own beat —
+    // painted before the shell so the roots tuck under. The middle
+    // feather carries the second color; a one-color crest reads as
+    // a fin, not a bird.
+    const [c0, c1] = st.crestfeathers.colors;
+    const u = -(lead || 1);
+    for (let i = 0; i < 3; i++) {
+      const colr = i === 1 ? c1 : c0;
+      const ax = headX + u * hw * (0.08 + i * 0.14);
+      const ay = headY - hh * (1.16 - i * 0.14);
+      const flut = Math.sin(f.nowMs * 0.0023 + i * 1.9) * hh * 0.09;
+      const tipX = ax + u * hw * (1.5 - i * 0.2);
+      const tipY = ay - hh * (0.66 - i * 0.26) + flut;
+      const mx = ax + u * hw * 0.62;
+      const my = ay - hh * (0.78 - i * 0.2);
+      const w0 = hh * 0.2;
+      ctx.fillStyle = colr;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay - w0 * 0.5);
+      ctx.quadraticCurveTo(mx, my - w0, tipX, tipY);
+      ctx.quadraticCurveTo(mx, my + w0 * 0.7, ax, ay + w0 * 0.8);
+      ctx.closePath();
+      ctx.fill();
+      // The spine — one stroke sells the anatomy.
+      ctx.strokeStyle = shade(colr, -24);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.quadraticCurveTo(mx, my, tipX, tipY);
+      ctx.stroke();
+    }
+  }
+
   if (st.kind === 'wizard') {
     // THE wizard hat, done properly: a broad down-turned brim, a CHUNKY
     // crown that tapers with gentle concave sides, and the top third
@@ -4395,6 +4860,57 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.moveTo(mx - mw, headY + hh * 0.2);
       ctx.lineTo(mx + mw, headY + hh * 0.2);
       ctx.stroke();
+    }
+    if (st.emberEyes && !hurt && front) {
+      // Two coals in the hood's shadow, breathing on a slow pulse —
+      // the face keeps the dark, the eyes keep the fire. The far eye
+      // narrows out with the facing like the bare face's does.
+      const pulse = 0.6 + 0.4 * Math.sin(f.nowMs * 0.0016);
+      const ex = headX + fx * headR * 0.28;
+      const ey = headY + hh * 0.02;
+      for (const es of [-1, 1]) {
+        const wK = es !== lead ? Math.max(0, 1 - profileK * 1.4) : 1;
+        if (wK <= 0.05) continue;
+        const px = ex + es * hw * 0.34 * (1 - profileK * 0.3);
+        ctx.globalAlpha = 0.35 * pulse * wK;
+        ctx.fillStyle = st.emberEyes.color;
+        ctx.beginPath();
+        ctx.arc(px, ey, hw * 0.17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = (0.75 + 0.25 * pulse) * wK;
+        ctx.fillStyle = shade(st.emberEyes.color, 30);
+        ctx.beginPath();
+        ctx.arc(px, ey, hw * 0.078, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (st.fireflies && !hurt) {
+      // The king's company: two lights on wandering loops round the
+      // crown, blinking on their own beats. The far half of the loop
+      // reads small and dim — the depth law the orbitals keep.
+      const fc = st.fireflies.color;
+      for (const [i, ph] of [[0, 0], [1, 2.6]] as const) {
+        const t = f.nowMs * 0.00052 + ph;
+        const blink = Math.max(0, Math.sin(f.nowMs * 0.0017 + i * 2.9 + 1));
+        if (blink < 0.2) continue;
+        const a = t * (1 + i * 0.13);
+        const px = headX + Math.cos(a) * hw * (1.3 + i * 0.25);
+        const py = headY - hh * (0.9 + 0.25 * i) + Math.sin(a * 1.7) * hh * 0.3;
+        const near = Math.sin(a) >= 0;
+        const r = near ? s * 0.013 : s * 0.009;
+        ctx.globalAlpha = (near ? 0.3 : 0.16) * blink;
+        ctx.fillStyle = fc;
+        ctx.beginPath();
+        ctx.arc(px, py, r * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = (near ? 0.95 : 0.55) * blink;
+        ctx.fillStyle = shade(fc, 26);
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
     return;
   }
