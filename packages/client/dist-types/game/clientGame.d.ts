@@ -1,4 +1,4 @@
-import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type DiscoveryWire, type EquippedItem, type S2CFx, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type DiscoveryWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -156,7 +156,7 @@ export interface GameEvents {
         roll: ItemRoll;
     }>): void;
     /** The Riftgate answered an interact — open the key panel over these pack slots. */
-    onRiftgate?(keySlots: number[]): void;
+    onRiftgate?(keySlots: number[], partyRuns?: PartyRunWire[]): void;
     /** A board's words arrived or changed — repaint whatever shows them. */
     onSignChanged?(tx: number, ty: number): void;
     /** Crossed into a dungeon — everything the entry banner tells. */
@@ -232,6 +232,18 @@ export interface GameEvents {
         kind: 'request' | 'accepted' | 'declined' | 'removed' | 'online' | 'offline';
         name: string;
     }): void;
+    /** The full party snapshot answered a request (or a login push). */
+    onParty?(snap: {
+        members: PartyMemberWire[];
+        invites: string[];
+        outgoing: string[];
+    }): void;
+    /** Something party-shaped happened involving `name` — refetch, maybe announce. */
+    onPartyEvent?(ev: {
+        kind: S2CPartyEvent['kind'];
+        name: string;
+        detail?: string;
+    }): void;
     /** A LIVE first-ever discovery — the one trigger for the splash. */
     onDiscovery?(d: DiscoveryWire): void;
 }
@@ -292,6 +304,18 @@ export declare class ClientGame {
     readonly discoveries: Map<string, DiscoveryWire>;
     /** The one active waypoint (optimistic; server keeps the durable copy). */
     waypoint: Vec2 | null;
+    /** The party snapshot — empty members = partyless. Refetched on events. */
+    party: {
+        members: PartyMemberWire[];
+        invites: string[];
+        outgoing: string[];
+    } | null;
+    /** Fellow positions from the partypos ticker, keyed by name. */
+    readonly partyPos: Map<string, {
+        x: number;
+        y: number;
+        at: number;
+    }>;
     /** Bumped whenever fog, discoveries, or the waypoint change — map surfaces re-draw on it. */
     chartVersion: number;
     private lastRevealAt;
@@ -573,6 +597,24 @@ export declare class ClientGame {
     friendAccept(name: string): void;
     friendDecline(name: string): void;
     friendRemove(name: string): void;
+    requestParty(): void;
+    partyInvite(name: string): void;
+    partyAccept(name: string): void;
+    partyDecline(name: string): void;
+    partyLeave(): void;
+    partyKick(name: string): void;
+    partyDisband(): void;
+    partyJoinRun(name: string): void;
+    /**
+     * Fellows the wayfinder may point at: party members with a fresh
+     * ticker position, self excluded. Entries older than two beats are
+     * dropped — a stopped ticker must never leave ghosts on the chart.
+     */
+    partyFellowsPlaced(now?: number): Array<{
+        name: string;
+        x: number;
+        y: number;
+    }>;
     /**
      * The players standing inside our interest window right now, nearest
      * first. Pure client knowledge — the entities map only ever holds

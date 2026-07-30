@@ -561,7 +561,9 @@ export class AccountStore {
     if (!row) return null;
     const members = await this.db.query<{ id: number; name: string; joinedAt: number }>(
       'SELECT c.id, c.name, m.joined_at AS "joinedAt" FROM party_members m ' +
-        'JOIN characters c ON c.id = m.character_id WHERE m.party_id = ? ORDER BY m.joined_at',
+        // character_id tiebreak: two joins can land in the same ms and
+        // a bare joined_at sort flips their order run to run.
+        'JOIN characters c ON c.id = m.character_id WHERE m.party_id = ? ORDER BY m.joined_at, m.character_id',
       [row.party_id],
     );
     return { id: row.party_id, leaderId: row.leader_id, members };
@@ -597,9 +599,13 @@ export class AccountStore {
 
   async addPartyMember(partyId: number, characterId: number): Promise<boolean> {
     try {
+      // Seat AFTER every current member: createParty hands the founding
+      // pair now/now+1, so a same-millisecond join must clear the max
+      // or the newcomer sorts ahead of the founding member.
       const res = await this.db.run(
-        'INSERT INTO party_members (party_id, character_id, joined_at) VALUES (?, ?, ?)',
-        [partyId, characterId, Date.now()],
+        'INSERT INTO party_members (party_id, character_id, joined_at) ' +
+          'SELECT ?, ?, GREATEST(?, COALESCE(MAX(joined_at) + 1, 0)) FROM party_members WHERE party_id = ?',
+        [partyId, characterId, Date.now(), partyId],
       );
       return res.rowCount > 0;
     } catch {

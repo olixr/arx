@@ -1,3 +1,4 @@
+import type { PartyRunWire } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 /**
  * THE RIFTGATE — the gate's question: which key turns?
@@ -20,7 +21,7 @@ export declare class RiftgatePanel {
     private readonly list;
     constructor(game: ClientGame);
     get isOpen(): boolean;
-    open(keySlots: number[]): void;
+    open(keySlots: number[], partyRuns?: PartyRunWire[]): void;
     close(): void;
     private render;
 }

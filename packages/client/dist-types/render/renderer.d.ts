@@ -4,6 +4,10 @@ import { Particles } from './particles.js';
 import { Debris, type SmashKind } from './debris.js';
 import { Birds } from './birds.js';
 import { InteriorMap } from './interiors.js';
+/** Identity tints for undressed player rigs — also the party marker
+ * inks (map tokens + wayfinder pills), so a fellow reads as the same
+ * color on the chart as in the world. */
+export declare const PLAYER_COLORS: string[];
 /** Player zoom bounds: 1 = the classic framing (also the default). */
 export declare const ZOOM_MIN = 0.85;
 export declare const ZOOM_MAX = 2;

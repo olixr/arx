@@ -11,9 +11,10 @@ interface SocialSnap {
 }
 /**
  * The fellowship ledger: who stands near you, who walks with you, and
- * who is asking to. Four sections — search, nearby, friends, requests —
- * built in the LootPanel dialect (loot-row rows, sticky order, signature
- * dedupe) so a live list never reshuffles or rebuilds under a cursor.
+ * who is asking to. Five sections — party, search, nearby, friends,
+ * requests — built in the LootPanel dialect (loot-row rows, sticky
+ * order, signature dedupe) so a live list never reshuffles or rebuilds
+ * under a cursor.
  *
  * Server truth: the panel never patches state from events; a friendevent
  * simply schedules a fresh snapshot request. The Nearby section is pure
@@ -24,6 +25,7 @@ interface SocialSnap {
 export declare class SocialPanel {
     private readonly game;
     private readonly panel;
+    private readonly partyList;
     private readonly searchInput;
     private readonly searchResults;
     private readonly nearbyList;
@@ -44,6 +46,8 @@ export declare class SocialPanel {
     private inspecting;
     /** Two-click Remove confirmation: the name armed for it. */
     private armedRemove;
+    /** Two-click Disband confirmation. */
+    private armedDisband;
     constructor(game: ClientGame);
     get isOpen(): boolean;
     /** True while the search box holds the keyboard (gates WASD/hotkeys). */
@@ -58,6 +62,11 @@ export declare class SocialPanel {
     }>): void;
     /** A friendevent arrived — refetch (debounced) while the panel shows. */
     notifyEvent(): void;
+    /** The party snapshot landed (ClientGame already holds it). */
+    onPartySnapshot(): void;
+    /** A partyevent arrived — refetch (debounced) while the panel shows. */
+    notifyPartyEvent(): void;
+    private partyRefetchTimer;
     private showLedger;
     private tick;
     /** friend / outgoing / incoming / none — case-insensitive by name. */
@@ -69,6 +78,13 @@ export declare class SocialPanel {
      * the other party).
      */
     private act;
+    /** Same law for party actions: action then snapshot on one socket. */
+    private partyAct;
+    /** member / invited / none — case-insensitive by name. */
+    private partyRelation;
+    /** The Invite/Invited button — or null when they already walk with you. */
+    private inviteButton;
+    private renderParty;
     /** The Ask/Asked/Accept/Friend button, one vocabulary everywhere. */
     private askButton;
     private row;
