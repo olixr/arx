@@ -81,6 +81,7 @@
         <button id="btn-craft" title="Handiwork (C)"></button>
         <button id="btn-build" title="Build (B)"></button>
         <button id="btn-social" title="Social (U)"></button>
+        <button id="btn-quests" title="Journal (J)"></button>
         <button id="btn-map" title="Map (M)"></button>
         <button id="btn-audio" title="Settings (O)"></button>
       </div>
@@ -206,6 +207,12 @@
       <!-- THE CHART TABLE — the fullscreen map (M). -->
       <div id="map-panel" class="ui-screen screen-map hidden">
         <h3>The Chart</h3>
+      </div>
+
+      <!-- THE JOURNAL — the quest log (J). List left, the open page
+           right; the body is built by ui/questLog.ts. -->
+      <div id="quest-panel" class="ui-screen screen-quests hidden">
+        <h3>Journal</h3>
       </div>
 
       <!-- THE RIFTGATE — the gate's question: which key turns? Each

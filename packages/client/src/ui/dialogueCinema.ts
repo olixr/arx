@@ -1,6 +1,6 @@
 import { itemDef, parseDialogueMarkup } from '@arx/content';
 import type { Sfx } from '../audio/sfx.js';
-import { itemIconUrl } from '../render/icons.js';
+import { dockGlyphUrl, itemIconUrl } from '../render/icons.js';
 
 /**
  * THE DIALOGUE CINEMA — the screen-space half of a conversation (the
@@ -36,6 +36,15 @@ interface CinemaNode {
   choices?: string[];
   last?: boolean;
   gifts?: Array<{ item: string; qty: number }>;
+  quest?: {
+    id: string;
+    name: string;
+    rewards?: {
+      xp?: Array<{ skill: string; amount: number }>;
+      items?: Array<{ item: string; qty: number }>;
+      coins?: number;
+    };
+  };
 }
 
 /** One reveal beat: an element to light, how long to rest after it. */
@@ -342,6 +351,7 @@ export class DialogueCinema {
     const node = this.node;
     if (!node) return;
     if (node.gifts && node.gifts.length > 0) this.stageGifts(node.gifts);
+    if (node.quest) this.stageQuestOffer(node.quest);
     if (node.choices && node.choices.length > 0) {
       this.buildChoices(node.choices);
       this.setHints('question');
@@ -416,6 +426,48 @@ export class DialogueCinema {
       }
     }
     this.padPrev = pressed;
+  }
+
+  /**
+   * A quest offer is a CONTRACT read aloud: the scroll chip descends
+   * beside the line — the quest's name and its pay — so the player
+   * reads what they'd be swearing to BEFORE the choice plates appear.
+   * The accept itself is an ordinary choice; this is the paper.
+   */
+  private stageQuestOffer(quest: NonNullable<CinemaNode['quest']>): void {
+    const chip = document.createElement('div');
+    chip.className = 'dlg-gift dlg-quest-offer';
+    const well = document.createElement('span');
+    well.className = 'dlg-gift-well';
+    const img = document.createElement('img');
+    img.src = dockGlyphUrl('quest', 48);
+    img.draggable = false;
+    well.appendChild(img);
+    const text = document.createElement('span');
+    text.className = 'dlg-quest-text';
+    const kicker = document.createElement('span');
+    kicker.className = 'dlg-quest-kicker';
+    kicker.textContent = 'New quest';
+    const name = document.createElement('span');
+    name.className = 'dlg-gift-label';
+    name.textContent = quest.name;
+    text.append(kicker, name);
+    const r = quest.rewards;
+    if (r) {
+      const pay: string[] = [];
+      if (r.coins) pay.push(`${r.coins} coins`);
+      for (const e of r.items ?? []) pay.push(e.qty > 1 ? `${e.qty} × ${itemDef(e.item)?.name ?? e.item}` : itemDef(e.item)?.name ?? e.item);
+      for (const e of r.xp ?? []) pay.push(`${e.skill} xp`);
+      if (pay.length > 0) {
+        const payEl = document.createElement('span');
+        payEl.className = 'dlg-quest-pay';
+        payEl.textContent = pay.join(' · ');
+        text.appendChild(payEl);
+      }
+    }
+    chip.append(well, text);
+    this.giftsEl.appendChild(chip);
+    this.sfx.uiTap();
   }
 
   /** A gift is a MOMENT: socket chip, name, count, chime. */

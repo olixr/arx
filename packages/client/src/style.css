@@ -5963,3 +5963,308 @@ body.pad-mode .map-reticle {
   letter-spacing: 0.03em;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
+
+/* ==================================================================
+   THE JOURNAL — the quest log (J). List left, the open page right.
+   ================================================================== */
+
+.screen-quests {
+  width: min(1080px, 94vw);
+  height: min(760px, 88vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.quest-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 14px;
+}
+
+.quest-list {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.quest-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(30, 22, 14, 0.5);
+  border: 1px solid rgba(222, 190, 128, 0.14);
+  border-radius: 4px;
+  color: #efe3c2;
+  font: 600 14px/1.2 'Trebuchet MS', sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quest-row:hover {
+  border-color: rgba(222, 190, 128, 0.4);
+}
+
+.quest-row.sel {
+  background: rgba(58, 44, 24, 0.6);
+  border-color: #d8c08c;
+}
+
+.quest-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quest-row-state {
+  font: 600 11px/1 'Trebuchet MS', sans-serif;
+  color: #9a8f78;
+  white-space: nowrap;
+}
+
+.quest-row-state.ready {
+  color: #f2c94c;
+}
+
+.quest-empty {
+  padding: 18px 12px;
+  color: #9a8f78;
+  font: 500 13px/1.5 'Trebuchet MS', sans-serif;
+}
+
+.quest-bench {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 4px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quest-bench-name {
+  font: 700 24px/1.2 Georgia, 'Times New Roman', serif;
+  color: #efe3c2;
+}
+
+.quest-bench-sub {
+  margin-top: 4px;
+  font: 600 12px/1.3 'Trebuchet MS', sans-serif;
+  color: #9a8f78;
+}
+
+.quest-bench-sub.ready {
+  color: #f2c94c;
+}
+
+/* The written page — directions in the world's voice, no markers. */
+.quest-entry {
+  font: 500 15px/1.55 Georgia, 'Times New Roman', serif;
+  color: #d8ccae;
+  max-width: 62ch;
+}
+
+.quest-em {
+  color: #f2c94c;
+  font-weight: 700;
+}
+
+.quest-grim {
+  color: #8f8bb0;
+  letter-spacing: 0.06em;
+}
+
+.quest-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px 1px 2px;
+  margin: 0 2px;
+  background: rgba(30, 22, 14, 0.6);
+  border: 1px solid rgba(222, 190, 128, 0.25);
+  border-radius: 4px;
+  font: 600 13px/1.2 'Trebuchet MS', sans-serif;
+  color: #efe3c2;
+  vertical-align: -4px;
+}
+
+.quest-item-chip img {
+  width: 20px;
+  height: 20px;
+}
+
+.quest-objectives {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quest-obj-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quest-obj-label {
+  font: 600 14px/1.2 'Trebuchet MS', sans-serif;
+  color: #d8ccae;
+}
+
+.quest-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.quest-teach {
+  font: 500 12px/1.4 'Trebuchet MS', sans-serif;
+  color: #9a8f78;
+}
+
+#btn-quests.has-new::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ffd98a;
+  box-shadow: 0 0 6px rgba(255, 217, 138, 0.8);
+}
+
+/* THE ERRAND CARD — the tracked quest's smoked-glass face, top-right
+   clear of the chrome (dock bottom-right, chat left, hotbar bottom). */
+#objective-tracker {
+  position: fixed;
+  right: 14px;
+  top: 60px;
+  max-width: 240px;
+  padding: 8px 11px;
+  background: rgba(13, 10, 6, 0.62);
+  border: 1px solid rgba(222, 190, 128, 0.16);
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 40;
+  transition: opacity 300ms ease;
+}
+
+#objective-tracker .obj-quest-name {
+  font: 700 13px/1.25 'Trebuchet MS', sans-serif;
+  color: #efe3c2;
+  margin-bottom: 5px;
+}
+
+#objective-tracker.obj-ready .obj-quest-name {
+  color: #f2c94c;
+}
+
+#objective-tracker .obj-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+
+#objective-tracker .obj-row img {
+  width: 18px;
+  height: 18px;
+}
+
+#objective-tracker .obj-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 12px/1.3 'Trebuchet MS', sans-serif;
+  color: #d8ccae;
+}
+
+#objective-tracker .obj-count {
+  font: 600 12px/1.3 'Trebuchet MS', sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #cbb789;
+}
+
+#objective-tracker .obj-row.met .obj-count {
+  color: #9fd489;
+}
+
+/* THE QUEST CEREMONIES — accepted (quiet) and completed (rays). */
+#quest-stage {
+  position: fixed;
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+  z-index: 57;
+  pointer-events: none;
+}
+
+#quest-stage.leaving .disc-rays,
+#quest-stage.leaving .quest-card {
+  animation: lvl-exit 650ms ease-in both;
+}
+
+.quest-card {
+  position: relative;
+}
+
+.quest-card .rift-plaque {
+  box-shadow:
+    0 0 0 2px var(--quest-accent),
+    0 0 16px var(--quest-accent);
+}
+
+.quest-kicker {
+  color: var(--quest-accent);
+  letter-spacing: 5px;
+}
+
+.quest-reward-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.quest-reward-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px 2px 4px;
+  background: rgba(30, 22, 14, 0.7);
+  border: 1px solid rgba(242, 201, 76, 0.35);
+  border-radius: 4px;
+  font: 600 13px/1.3 'Trebuchet MS', sans-serif;
+  color: #efe3c2;
+}
+
+.quest-reward-chip img {
+  width: 22px;
+  height: 22px;
+}
+
+/* The cinema's contract chip — the quest offer beside the line. */
+.dlg-quest-offer .dlg-quest-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dlg-quest-kicker {
+  font: 700 10px/1 'Trebuchet MS', sans-serif;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #f2c94c;
+}
+
+.dlg-quest-pay {
+  font: 600 11px/1.3 'Trebuchet MS', sans-serif;
+  color: #9a8f78;
+}

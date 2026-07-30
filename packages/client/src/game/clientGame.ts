@@ -199,6 +199,7 @@ export interface GameEvents {
     choices?: string[];
     last?: boolean;
     gifts?: Array<{ item: string; qty: number }>;
+    quest?: { id: string; name: string; rewards?: QuestRewardsWire };
   }): void;
   /** The conversation is over — tear the frame down. */
   onDialogueClose?(): void;
@@ -1024,6 +1025,7 @@ export class ClientGame {
           choices: msg.choices,
           last: msg.last,
           gifts: msg.gifts,
+          quest: msg.quest,
         });
         break;
       }

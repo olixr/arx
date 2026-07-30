@@ -20546,6 +20546,16 @@ export class Renderer {
             npcDef(remote.meta.defId ?? '')?.radius ?? 0.45,
           );
           if (alertItem) items.push(alertItem);
+          // The quest mark — resolved from THIS client's own ledger
+          // against the actor slug; combat truth outranks errand truth
+          // (a live alert glyph owns the spot).
+          if (remote.meta.actor && (s.alert ?? 0) === 0) {
+            const mark = game.questMarkFor(remote.meta.actor);
+            if (mark) {
+              const questItem = this.questIconItem(eid, mark, s, remote.meta.appearance !== undefined);
+              if (questItem) items.push(questItem);
+            }
+          }
           break;
         }
         case EntityKind.ItemDrop:
@@ -21411,6 +21421,57 @@ export class Renderer {
         ctx.fillStyle = 'rgba(24, 14, 32, 0.9)';
         ctx.fillText(glyph, p.x + 1.5, topY + 1.5);
         ctx.fillStyle = engaged ? '#f0655a' : '#e8b64c';
+        ctx.fillText(glyph, p.x, topY);
+        ctx.restore();
+      },
+    };
+  }
+
+  private readonly questAnim = new Map<number, { mark: string; since: number }>();
+
+  /**
+   * THE QUEST MARK: the gold "!" over a giver with work to offer, the
+   * gold "?" over the hand a finished quest returns to — per-viewer
+   * truth resolved from the client's own ledger (EntityMeta.actor is
+   * the key; nothing personal ever rode the wire). Same nameplate-
+   * dialect glyph as the alert telegraph, with a slow breathing bob so
+   * an errand mark never reads as combat. Never emoji.
+   */
+  private questIconItem(
+    eid: number,
+    mark: 'offer' | 'ready',
+    s: { x: number; y: number },
+    humanoid: boolean,
+  ): DrawItem | null {
+    const prev = this.questAnim.get(eid);
+    const now = performance.now();
+    if (!prev || prev.mark !== mark) this.questAnim.set(eid, { mark, since: now });
+    const since = this.questAnim.get(eid)!.since;
+    return {
+      sortY: s.y,
+      draw: () => {},
+      drawLabel: () => {
+        const ctx = this.ctx;
+        const sc = this.camera.scale;
+        const p = this.liftedWTS(s.x, s.y);
+        const t = performance.now();
+        // The slow bob — a lure, not an alarm (combat glyphs pop and
+        // pulse; the errand mark breathes).
+        const bob = Math.sin(t / 480) * sc * 0.05;
+        const topY = (humanoid ? p.y - 1.62 * sc : p.y - 1.3 * sc) + bob;
+        const k = Math.min(1, (t - since) / 180);
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        const ease = 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
+        const pop = 0.5 + 0.5 * ease;
+        const glyph = mark === 'offer' ? '!' : '?';
+        const size = Math.max(14, sc * 0.54) * pop;
+        ctx.save();
+        ctx.font = `700 ${size}px Georgia, 'Times New Roman', serif`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(24, 14, 32, 0.9)';
+        ctx.fillText(glyph, p.x + 1.5, topY + 1.5);
+        ctx.fillStyle = '#f2c94c';
         ctx.fillText(glyph, p.x, topY);
         ctx.restore();
       },

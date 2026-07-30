@@ -40,6 +40,7 @@ export type ActionId =
   | 'screenBuild'
   | 'screenSocial'
   | 'screenMap'
+  | 'screenQuests'
   | 'screenSettings'
   | 'screenLoot'
   | 'mapGlass'
@@ -94,6 +95,7 @@ export const ACTIONS: readonly ActionDef[] = [
   { id: 'screenBuild', label: 'Build', group: 'Screens', kb: ['KeyB'], pad: [] },
   { id: 'screenSocial', label: 'Social', group: 'Screens', kb: ['KeyU'], pad: [] },
   { id: 'screenMap', label: 'The Chart', group: 'Screens', kb: ['KeyM'], pad: [8] },
+  { id: 'screenQuests', label: 'Journal', group: 'Screens', kb: ['KeyJ'], pad: [] },
   { id: 'screenSettings', label: 'Settings', group: 'Screens', kb: ['KeyO'], pad: [] },
   { id: 'mapGlass', label: "Traveler's glass", group: 'Screens', kb: ['Tab'], pad: [15] },
 

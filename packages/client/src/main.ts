@@ -19,6 +19,9 @@ import { MapOverlay } from './ui/map/mapOverlay.js';
 import { WaypointHud } from './ui/waypointHud.js';
 import { PartyHud } from './ui/partyHud.js';
 import { showDiscovery } from './ui/discoveryBanner.js';
+import { QuestLog } from './ui/questLog.js';
+import { ObjectiveTracker } from './ui/objectiveTracker.js';
+import { showQuestBanner } from './ui/questBanner.js';
 import { RiftgatePanel } from './ui/riftgate.js';
 import { showDungeonEntry } from './ui/dungeonBanner.js';
 import { Sfx } from './audio/sfx.js';
@@ -60,6 +63,7 @@ const DOCK_BUTTONS = [
   ['btn-craft', 'handiwork', 'Handiwork', 'screenCraft'],
   ['btn-build', 'build', 'Build', 'screenBuild'],
   ['btn-social', 'social', 'Social', 'screenSocial'],
+  ['btn-quests', 'quest', 'Journal', 'screenQuests'],
   ['btn-map', 'map', 'Map', 'screenMap'],
   ['btn-audio', 'sound', 'Settings', 'screenSettings'],
 ] as const;
@@ -252,6 +256,7 @@ const PROMPT_LABELS: Record<string, string> = {
   anvil: 'Smith',
   workbench: 'Craft',
   alembic: 'Brew',
+  sawhorse: 'Saw',
   plot: 'Plant',
   bed: 'Claim Home',
   sign: 'Read Sign',
@@ -414,11 +419,12 @@ function closeAllUi(): void {
   audioMenu.close();
   socialPanel.close();
   mapScreen.close();
+  questLog.close();
   signHud.close();
 }
 
 function toggleScreen(
-  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map',
+  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests',
 ): void {
   // A conversation owns the stage: no screen may open over it, from
   // any device — hotkeys, dock clicks, and pad shortcuts all pass
@@ -441,7 +447,9 @@ function toggleScreen(
                   ? socialPanel.isOpen
                   : which === 'map'
                     ? mapScreen.isOpen
-                    : lootPanel.isOpen;
+                    : which === 'quests'
+                      ? questLog.isOpen
+                      : lootPanel.isOpen;
   closeAllUi();
   if (wasOpen) return;
   switch (which) {
@@ -469,6 +477,9 @@ function toggleScreen(
     case 'map':
       mapScreen.open();
       break;
+    case 'quests':
+      questLog.open();
+      break;
     case 'loot':
       if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
       break;
@@ -486,6 +497,7 @@ const SCREEN_ORDER = [
   'craft',
   'build',
   'social',
+  'quests',
   'map',
   'audio',
 ] as const;
@@ -497,6 +509,7 @@ function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
   if (stationPanels.craftOpen) return 'craft';
   if (stationPanels.buildOpen) return 'build';
   if (socialPanel.isOpen) return 'social';
+  if (questLog.isOpen) return 'quests';
   if (mapScreen.isOpen) return 'map';
   if (audioMenu.isOpen) return 'audio';
   return null;
@@ -526,6 +539,7 @@ function screenAction(id: ActionId): void {
     screenBuild: 'build',
     screenSocial: 'social',
     screenMap: 'map',
+    screenQuests: 'quests',
     screenSettings: 'audio',
     screenLoot: 'loot',
   };
@@ -541,6 +555,7 @@ document.getElementById('btn-build')!.addEventListener('click', () => toggleScre
 document.getElementById('btn-audio')!.addEventListener('click', () => toggleScreen('audio'));
 document.getElementById('btn-social')!.addEventListener('click', () => toggleScreen('social'));
 document.getElementById('btn-map')!.addEventListener('click', () => toggleScreen('map'));
+document.getElementById('btn-quests')!.addEventListener('click', () => toggleScreen('quests'));
 
 function showLoginError(text: string): void {
   loginError.textContent = text;
@@ -771,6 +786,28 @@ const game = new ClientGame(input, {
     renderer.zoomPulse(0.035);
     chat.addLine({ channel: 'system', text: `Discovered: ${d.name} — marked on your chart (M).` });
   },
+  onQuestEvent: (e) => {
+    // The five beats: banner + call + a ring at your feet (completion
+    // only) + one honest chat line naming the hotkey. Ceremony fires
+    // ONLY here — quiet questupd patches never celebrate.
+    showQuestBanner(e.kind, e.name, e.rewards);
+    if (e.kind === 'accepted') {
+      sfx.questAccepted();
+      chat.addLine({ channel: 'system', text: `Quest accepted: ${e.name} — it's in your journal (J).` });
+    } else {
+      sfx.questComplete();
+      const pos = game.predictor.pos;
+      renderer.addRing(pos.x, pos.y, '#f2c94c', 1.3);
+      input.rumble(0.2, 0.4, 160);
+      chat.addLine({ channel: 'system', text: `Quest complete: ${e.name}.` });
+    }
+  },
+  onQuestsChanged: () => {
+    questLog.refresh();
+    // The dock glint: a quest stands ready to turn in.
+    const ready = [...game.quests.values()].some((q) => q.status === 'ready');
+    document.getElementById('btn-quests')?.classList.toggle('has-new', ready);
+  },
   onSocial: (snap) => socialPanel.onSnapshot(snap),
   onFriendSearch: (results) => socialPanel.onSearchResults(results),
   onFriendEvent: (ev) => {
@@ -871,6 +908,11 @@ const mapOverlay = new MapOverlay(game);
 nav.claimStick = () => mapScreen.isOpen && nav.mode === 'pad';
 const waypointHud = new WaypointHud();
 const partyHud = new PartyHud();
+
+// THE JOURNAL and its HUD face: the log screen, and the tracked
+// errand's card (tracking is client-local — pure presentation).
+const questLog = new QuestLog(game);
+const objectiveTracker = new ObjectiveTracker(game, () => questLog.trackedId());
 
 // Signage: the approach plaque over every board, and the sheet that
 // opens when you stop to read one properly.
@@ -1795,6 +1837,7 @@ function frame(now: number): void {
   // opened screen (the chart included) supersedes them.
   mapOverlay.update(now, uiOpen || cinema.open);
   waypointHud.update(game, renderer, uiOpen || cinema.open || buildMode !== null);
+  objectiveTracker.update(uiOpen || cinema.open || buildMode !== null);
   partyHud.update(game, renderer, uiOpen || cinema.open || buildMode !== null);
   // The character case frames the LIVE you: with the case docked right
   // (and no bank/shop conversation borrowing the pack), the camera

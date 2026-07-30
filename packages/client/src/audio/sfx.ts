@@ -312,6 +312,36 @@ export class Sfx {
   }
 
   /**
+   * Swearing a quest — a page turned and a hand shaken, not a
+   * fanfare: a soft paper breath, a rising fourth to say "begun", and
+   * one clean tick as the entry lands in the journal. Smaller than the
+   * discovery call by design: swearing is a start, finding is a gift.
+   */
+  questAccepted(): void {
+    this.noise(0.16, 0.045, 0, { band: 2400 });
+    this.tone(392, 0.16, { type: 'triangle', volume: 0.2, detune: false });
+    this.tone(523.3, 0.3, { type: 'triangle', volume: 0.24, delay: 0.11, detune: false });
+    this.tone(1568, 0.12, { type: 'triangle', volume: 0.08, delay: 0.3, detune: false });
+  }
+
+  /**
+   * A quest seen through — the level-up's herald a size down, with the
+   * ledger shutting under it: a warm thump, three rising calls at the
+   * herald's spacing, the chord planted with a sine root, and glitter
+   * air on top. Finishing IS a feat; only leveling outranks it.
+   */
+  questComplete(): void {
+    this.tone(88, 0.3, { type: 'sine', slide: -20, volume: 0.3 });
+    this.noise(0.2, 0.05, 0, { band: 900 });
+    this.tone(392, 0.2, { type: 'triangle', volume: 0.24, delay: 0.1, detune: false });
+    this.tone(493.9, 0.2, { type: 'triangle', volume: 0.24, delay: 0.2, detune: false });
+    this.tone(587.3, 0.5, { type: 'triangle', volume: 0.26, delay: 0.3, detune: false });
+    this.tone(196, 0.6, { type: 'sine', volume: 0.16, delay: 0.3, detune: false });
+    this.tone(1174.7, 0.3, { type: 'triangle', volume: 0.1, delay: 0.52, detune: false });
+    this.noise(0.36, 0.03, 0.52, { band: 5200 });
+  }
+
+  /**
    * Stepping through the Riftgate — a dimensional plunge, not a blip:
    * the deep mouth swallows (a falling sub womp), the veil tears (a
    * focused hiss of air), and a doubled shimmer climbs out the far
