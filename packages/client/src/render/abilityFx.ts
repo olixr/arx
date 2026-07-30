@@ -354,6 +354,15 @@ export const FX_STYLES: Record<string, FxStyle> = {
   white_heat: EMBER({ mid: '#f0a050', deep: '#7a3c18', ring: 'halo', debris: 'ember', decal: undefined, motif: 'pillar', punch: 0.35, wash: 0.35 }),
   pale_crescent: FROST({ mid: '#d8dce8', ring: 'halo', debris: 'star', decal: undefined, motif: 'wave', punch: 0.6, wash: 0.35 }),
   horizon_fall: VOID({ mid: '#6a5e7a', deep: '#2c2438', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'pillar', punch: 1.0, wash: 0.55 }),
+  // THE VAULT OF NAMES — six chase faces over the school's floor.
+  // Each palette is the weapon's own paint: toll-lamp amber, fen
+  // green, gate-glass violet, trail-brown, seam gold, bell bronze.
+  road_opens: GOLD({ mid: '#d9a441', deep: '#5e6470', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.8, wash: 0.4 }),
+  marsh_light: VERDANT({ mid: '#b8e068', deep: '#3a4432', ring: 'halo', debris: 'leaf', decal: 'stain', motif: 'wisps', punch: 0.35, wash: 0.35 }),
+  riftfall: VOID({ mid: '#8a7ab8', deep: '#241d30', ring: 'runes', debris: 'star', decal: 'cracks', motif: 'tear', punch: 1.0, wash: 0.55 }),
+  winters_hunger: BLOOD({ mid: '#a08a70', deep: '#42382e', ring: 'shards', debris: 'blood', decal: undefined, motif: 'spikes', punch: 0.4, wash: 0.3 }),
+  open_seam: EMBER({ mid: '#e8c04c', deep: '#565046', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.7, wash: 0.45 }),
+  last_toll: STORM({ mid: '#e2c384', deep: '#4a7a68', ring: 'halo', debris: 'spark', decal: 'glow', motif: 'echo', punch: 0.9, wash: 0.5 }),
 
   // ------------------------ THE TWIN SCHOOL — the paired ladder
   // The school speaks TWIN STEEL: bright steel with the school's own

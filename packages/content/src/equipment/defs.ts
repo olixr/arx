@@ -2995,6 +2995,79 @@ function greatweaponDefs(): EquipmentDef[] {
       value: 2600, color: '#d8dce8', code: 'Mh',
       desc: "Moonpale crescents in gold filigree, the Queen's own commission for her woods-wardens. Quiet work, cleanly done.",
     },
+    // ======================================== THE VAULT OF NAMES
+    // The chase two-handers: every one is a story first, seated on
+    // the somebody (or the somewhere) that carries it. Drop-only —
+    // no forge relearns these.
+    {
+      id: 'tollbreaker', name: 'Tollbreaker', slot: 'weapon',
+      levelReq: { skill: 'twohand', level: 30 },
+      weapon: { style: 'twohand', damage: 6, cooldownTicks: 13, range: 2.6, art: 'road_opens' },
+      affixPool: COLOSSUS_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1000, color: '#5e6470', code: 'Tk',
+      desc: 'The slab that came down on the toll-bar and ended the war over it. The coin in the pommel is the toll it never paid.',
+    },
+    {
+      id: 'fens_lantern', name: "The Fen's Lantern", slot: 'weapon',
+      levelReq: { skill: 'twohand', level: 42 },
+      weapon: { style: 'twohand', damage: 7, cooldownTicks: 13, range: 2.7, art: 'marsh_light' },
+      affixPool: COLOSSUS_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1450, color: '#4e584a', code: 'F9',
+      desc: 'Bog-iron the fen kept for a hundred years and handed back lit. Nobody asks what it learned down there twice.',
+    },
+    {
+      // The vault's blade crown: exists legendary or not at all.
+      id: 'riftglass', name: 'Riftglass', slot: 'weapon',
+      levelReq: { skill: 'twohand', level: 70 },
+      weapon: { style: 'twohand', damage: 10, cooldownTicks: 12, range: 2.9, art: 'riftfall' },
+      affixPool: COLOSSUS_POOL,
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [
+        { kind: 'lifesteal', frac: 0.06 },
+        { kind: 'crit', pct: 3 },
+      ],
+      value: 2000, color: '#3a3048', code: 'R7',
+      desc: 'Ground from a pane of the riftgate. It drinks what it cuts, and the stars in it are not the sky’s.',
+    },
+    {
+      id: 'bearspine', name: 'Bearspine', slot: 'weapon',
+      levelReq: { skill: 'twohand', level: 38 },
+      weapon: { style: 'twohand', damage: 7, cooldownTicks: 14, range: 2.4, art: 'winters_hunger' },
+      affixPool: COLOSSUS_POOL,
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1350, color: '#6a5a4c', code: 'B7',
+      desc: 'Hafted through the spine-bone of the bear that closed the North road for a winter. The hunger stayed in the steel.',
+    },
+    {
+      id: 'seamsplitter', name: 'Seamsplitter', slot: 'weapon',
+      levelReq: { skill: 'twohand', level: 48 },
+      weapon: { style: 'twohand', damage: 8, cooldownTicks: 14, range: 2.4, art: 'open_seam' },
+      affixPool: COLOSSUS_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1800, color: '#8a8478', code: 'S7',
+      desc: 'The digmaster’s own, and it never once swung at stone. Count the tally on the haft and stand somewhere else.',
+    },
+    {
+      // The maul finally gets its heirloom: legendary or not at all.
+      id: 'last_bell', name: 'The Last Bell', slot: 'weapon',
+      levelReq: { skill: 'twohand', level: 68 },
+      weapon: { style: 'twohand', damage: 11, cooldownTicks: 15, range: 2.4, art: 'last_toll' },
+      affixPool: COLOSSUS_POOL,
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [
+        { kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 50, chance: 0.25 },
+      ],
+      value: 2000, color: '#b08a4a', code: 'L7',
+      desc: 'Cast from the watch-bell that cracked ringing the Toll War’s last warning. It still means to be heard.',
+    },
     {
       // The axe school's heirloom: exists legendary or not at all.
       id: 'mountains_end', name: "The Mountain's End", slot: 'weapon',

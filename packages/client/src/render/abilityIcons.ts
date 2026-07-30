@@ -2751,6 +2751,89 @@ Object.assign(PLATES, {
     star4(c, 0.02, 0.26, 0.13, st.core, Math.PI / 4);
     star4(c, 0.26, 0.2, 0.06, st.spark);
   },
+
+  // ------------------- THE VAULT OF NAMES — six chase-find plates.
+  // The Road Opens — the toll-bar snapped in two and the blade that
+  // did it, still moving; the shove reads in the chevrons behind.
+  road_opens: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    chevrons(c, -0.3, 0.06, 0, st, 2, 0.9);
+    poly(c, st.deep, [[-0.38, -0.2], [-0.06, -0.26], [-0.06, -0.2], [-0.38, -0.14]], 0.026);
+    poly(c, st.deep, [[0.04, -0.3], [0.36, -0.36], [0.36, -0.3], [0.04, -0.24]], 0.026);
+    greatblade(c, 0.04, 0.08, 0.9, st, -0.35);
+    star4(c, 0.3, -0.1, 0.08, st.spark);
+  },
+  // Marsh Light — the lantern set down where it feeds: the halo, the
+  // wave blade planted through it, the wisps drifting off.
+  marsh_light: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0.16, 0.3, 0.34, 0, Math.PI * 2, st.mid, 0.028);
+    greatblade(c, 0, -0.04, 0.86, st, Math.PI / 2 - 0.12);
+    star4(c, -0.26, -0.2, 0.07, st.core);
+    star4(c, 0.28, -0.06, 0.05, st.core);
+    star4(c, 0.2, 0.3, 0.06, st.spark);
+  },
+  // Riftfall — the sky behind the sky, edge first: the torn slit,
+  // the glass blade falling through it, stars that are not ours.
+  riftfall: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    fill(c, st.deep, [[-0.3, -0.34], [0.3, -0.4], [0.12, -0.22], [-0.16, -0.2]]);
+    poly(c, st.mid, [[-0.3, -0.34], [0.3, -0.4], [0.12, -0.22], [-0.16, -0.2]], 0.02);
+    greatblade(c, 0.0, -0.02, 0.92, st, Math.PI / 2 - 0.08);
+    star4(c, -0.28, 0.02, 0.07, st.core, Math.PI / 4);
+    star4(c, 0.3, -0.12, 0.05, st.core);
+    ground(c, 0, 0.34, st);
+  },
+  // Winter's Hunger — the claw law: three trail-marks raked across
+  // the plate and the jaws-axe that keeps walking on empty.
+  winters_hunger: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    for (const dx of [-0.3, -0.14, 0.02] as const) {
+      c.beginPath();
+      c.moveTo(dx, -0.32);
+      c.quadraticCurveTo(dx + 0.16, -0.02, dx + 0.1, 0.3);
+      c.stroke();
+    }
+    greataxe(c, 0.14, 0.02, 0.88, st, -0.5);
+    star4(c, -0.32, 0.26, 0.06, st.core);
+  },
+  // Open Seam — the floor cracked like a seam with the gold showing,
+  // and the digmaster's axe that opened it.
+  open_seam: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    ground(c, 0, 0.38, st);
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(-0.34, 0.3);
+    c.lineTo(-0.1, 0.22);
+    c.lineTo(0.04, 0.3);
+    c.lineTo(0.3, 0.2);
+    c.stroke();
+    greataxe(c, 0.02, -0.12, 0.88, st, Math.PI / 2 - 0.2);
+    star4(c, -0.24, -0.24, 0.06, st.spark);
+  },
+  // Last Toll — the bell itself, mouth down over the county, the
+  // echo rings a beat apart. The crack shows; it rang anyway.
+  last_toll: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0.3, 0.3, 0.36, -Math.PI * 0.85, -Math.PI * 0.15, st.mid, 0.03);
+    crescent(c, 0, 0.34, 0.4, 0.46, -Math.PI * 0.8, -Math.PI * 0.2, st.spark, 0.024);
+    fill(c, st.mid, [[-0.05, -0.36], [0.05, -0.36], [0.09, -0.28], [0.09, -0.24], [-0.09, -0.24], [-0.09, -0.28]]);
+    poly(c, st.mid, [[-0.16, -0.24], [0.16, -0.24], [0.22, 0.06], [-0.22, 0.06]], 0.03);
+    fill(c, st.core, [[-0.16, -0.24], [0.16, -0.24], [0.16, -0.16], [-0.16, -0.18]]);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.12, 0.06);
+    c.lineTo(0.05, -0.04);
+    c.lineTo(0.1, -0.12);
+    c.stroke();
+    star4(c, 0, 0.16, 0.07, st.spark, Math.PI / 4);
+  },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
 // ----------------------------- THE TWIN SCHOOL — the paired plates

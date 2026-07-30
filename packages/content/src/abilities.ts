@@ -2070,6 +2070,94 @@ const defs: AbilityDef[] = [
     knockback: 2.4,
   },
 
+  // THE VAULT OF NAMES' Weapon Arts — one per chase find, the same
+  // Q-axis law as the armory: no rungs, no ranks, the story IS the
+  // unlock and the art is the story told at speed.
+  {
+    id: 'road_opens',
+    name: 'The Road Opens',
+    desc: 'The bar came down once. Everything in front of the blade learns how that went.',
+    color: '#d9a441',
+    code: 'R2',
+    cooldownTicks: 220, // 11 s
+    shape: 'melee_arc',
+    damage: 10,
+    range: 2.8,
+    arc: 2.3,
+    knockback: 3.2,
+  },
+  {
+    id: 'marsh_light',
+    name: 'Marsh Light',
+    desc: 'Set the light down and let it feed. The fen always collects.',
+    color: '#b8e068',
+    code: 'M2',
+    cooldownTicks: 280, // 14 s
+    shape: 'ground_field',
+    damage: 4,
+    range: 3,
+    radius: 2.2,
+    fieldTicks: 110,
+    pulseEveryTicks: 18,
+    status: { status: 'venom', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'riftfall',
+    name: 'Riftfall',
+    desc: 'For one breath the sky behind the sky comes through, edge first.',
+    color: '#cabdf2',
+    code: 'R3',
+    cooldownTicks: 300, // 15 s
+    castFreezeTicks: 4,
+    shape: 'ground_aoe',
+    damage: 15,
+    range: 3.4,
+    radius: 2.3,
+    fuseTicks: 9,
+    knockback: 1.6,
+  },
+  {
+    id: 'winters_hunger',
+    name: "Winter's Hunger",
+    desc: 'The bear walked all winter on empty. Now you do — and everything you touch bleeds for it.',
+    color: '#a08a70',
+    code: 'W2',
+    cooldownTicks: 320, // 16 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { speedMult: 1.1, onHitStatus: { status: 'bleed', power: 1, durationTicks: 70 }, durationTicks: 150 },
+  },
+  {
+    id: 'open_seam',
+    name: 'Open Seam',
+    desc: 'Crack the floor like a seam and let it keep giving.',
+    color: '#e8c04c',
+    code: 'O2',
+    cooldownTicks: 280, // 14 s
+    shape: 'ground_field',
+    damage: 5,
+    range: 3,
+    radius: 2.1,
+    fieldTicks: 100,
+    pulseEveryTicks: 16,
+  },
+  {
+    id: 'last_toll',
+    name: 'Last Toll',
+    desc: 'The bell rings once more, and the county answers whether it wants to or not.',
+    color: '#e2c384',
+    code: 'L2',
+    cooldownTicks: 300, // 15 s
+    castFreezeTicks: 4,
+    shape: 'pulse_nova',
+    damage: 10,
+    radius: 2.5,
+    pulses: 3,
+    pulseEveryTicks: 12,
+    knockback: 1.5,
+    status: { status: 'shock', power: 1, durationTicks: 45 },
+  },
+
   // --------------------------- THE TWIN SCHOOL — the paired ladder
   // The school of tempo: everything arrives in pairs and the second
   // beat is the identity. Blows run lighter than melee's and land

@@ -2813,6 +2813,7 @@ export type GreatGuard =
   | 'wing'   // paired swept wings
   | 'crown'  // pronged gold court cross, flared toward the tip
   | 'thorn'  // layered swept spikes raking both ways
+  | 'hook'   // one great toll-bar hook forward, a short spur back
   | 'stub';  // crude block
 
 export type GreatPommel =
@@ -2824,6 +2825,8 @@ export interface GreatStyle {
   blade?: GreatbladeKind;
   /** Head silhouette (greataxe dialect). Default 'crescent'. */
   head?: GreataxeHead;
+  /** Maul head build. Default 'block'; 'bell' is a cast bell. */
+  maul?: 'block' | 'bell';
   /** Steel / head color. */
   color: string;
   /** Lit edge or top plane; defaults shade(+34). */
@@ -3012,6 +3015,61 @@ export const GREAT_STYLES: Record<string, GreatStyle> = {
     kind: 'maul', color: '#7d7468', edge: '#a89e8e',
     guardColor: '#4a4554', grip: '#5b4028', len: 0.96,
   },
+
+  // ---- THE VAULT OF NAMES: the chase two-handers. Every one of these
+  // is a story first and a weapon second — the details are the plot.
+  // The blade that broke the toll-bar: road-iron scarred by the work,
+  // a toll-lamp's amber down the middle, and the bar's own hook
+  // forged into the cross. The coin in the pommel never got paid.
+  tollbreaker: {
+    kind: 'greatblade', blade: 'cleaverback', color: '#5e6470', edge: '#8e96a4',
+    core: '#d9a441', notched: true, guard: 'hook', guardColor: '#3e4450', grip: '#33302c',
+    wrap: '#d9a441', pommel: 'coin', pommelColor: '#8e96a4', gem: '#d9a441',
+  },
+  // Bog-iron the fen held for a hundred years and handed back lit —
+  // the wave edge is the water, the green vein is whatever it learned
+  // down there, and the stone in the pommel is the lantern.
+  fens_lantern: {
+    kind: 'greatblade', blade: 'flamberge', color: '#4e584a', edge: '#7e8e70',
+    core: '#b8e068', guard: 'cross', guardColor: '#38402f', grip: '#2c3226',
+    wrap: '#8a9a58', pommel: 'gem', pommelColor: '#38402f', gem: '#d8f090',
+    fx: 'gleam', fxColor: '#d8f090',
+  },
+  // Ground from a pane of the riftgate: night-glass on a thorn cross,
+  // a white seam of elsewhere down the center, constellations nobody
+  // recognizes worked along the fuller. It drinks what it cuts.
+  riftglass: {
+    kind: 'greatblade', blade: 'spire', len: 1.05, color: '#3a3048', edge: '#6a5c8c',
+    core: '#f4f4ff', runes: '#9a8cc8', guard: 'thorn', guardColor: '#3a3252',
+    grip: '#241d30', wrap: '#8a7ab8', pommel: 'star', pommelColor: '#f4f4ff',
+    fx: 'star', fxColor: '#e8e4ff',
+  },
+  // Hafted through the spine-bone of the bear that closed the North
+  // road: claw-row heads in trail-brown iron, hide lashing, the
+  // knuckle pommel. The hunger stayed in the steel.
+  bearspine: {
+    kind: 'greataxe', head: 'jaws', len: 0.98, color: '#6a5a4c', edge: '#a08a70',
+    fuller: '#42382e', notched: true, collar: '#d8ceba', spike: true,
+    guardColor: '#5a4a3c', grip: '#4a3a2a', wrap: '#8a6a45',
+    pommel: 'bone', pommelColor: '#e8e2d0',
+  },
+  // The digmaster's own: granite-true bearded bits that never once
+  // swung at stone, the seam's gold seated in the eye, and the tally
+  // of every strike it did land scored down the haft.
+  seamsplitter: {
+    kind: 'greataxe', head: 'bearded', color: '#8a8478', edge: '#c2baa8',
+    fuller: '#565046', runes: '#e8c04c', collar: '#c9a45e', gem: '#e8c04c',
+    guardColor: '#565046', grip: '#3e3a32', wrap: '#c9a45e',
+    pommel: 'wheel', pommelColor: '#565046',
+  },
+  // Cast from the watch-bell that rang the Toll War's last warning
+  // and cracked on the peal: bell-bronze on a dark haft, verdigris
+  // straps, the crack left showing. It still means to be heard.
+  last_bell: {
+    kind: 'maul', maul: 'bell', color: '#b08a4a', edge: '#e2c384',
+    fuller: '#6a5026', guardColor: '#4a7a68', grip: '#3a342c', wrap: '#d9a441',
+    pommel: 'ring', pommelColor: '#4a7a68', fx: 'storm', fxColor: '#ffe89a',
+  },
 };
 
 const GREAT_FALLBACKS = new Map<string, GreatStyle>();
@@ -3070,7 +3128,8 @@ export function drawGreatweapon(
   const gripC = hurt ? '#ffffff' : (st.grip ?? '#4a3a2a');
 
   if (st.kind === 'maul') {
-    // The war haft: butt to collar.
+    // The war haft: butt to collar, wearing the same furniture the
+    // rest of the school earns — wrap stations and a real pommel.
     const collar = tip - 0.28 * LEN;
     ctx.strokeStyle = gripC;
     ctx.lineWidth = Math.max(2.5, s * 0.058);
@@ -3079,44 +3138,56 @@ export function drawGreatweapon(
     ctx.moveTo(butt, 0);
     ctx.lineTo(collar, 0);
     ctx.stroke();
+    if (!hurt && st.wrap) {
+      ctx.fillStyle = st.wrap;
+      const gl = collar - butt;
+      ctx.fillRect(butt + gl * 0.2, -0.028 * s, 0.018 * s, 0.056 * s);
+      ctx.fillRect(butt + gl * 0.55, -0.028 * s, 0.018 * s, 0.056 * s);
+    }
+    drawGreatPommel(ctx, st, s, butt, hurt);
     // Iron collar where the head takes the haft.
     ctx.fillStyle = guard;
     ctx.fillRect(collar - 0.018 * s, -0.075 * s, 0.042 * s, 0.15 * s);
-    // The head: one QUARRY block now — proud at the striking end,
-    // chamfered so the mass reads carved, not sawn.
-    const h0 = 0.105 * s;
-    const h1 = 0.128 * s;
-    const bx0 = collar + 0.024 * s;
-    ctx.fillStyle = steel;
-    ctx.beginPath();
-    ctx.moveTo(bx0, -h0);
-    ctx.lineTo(tip - 0.03 * s, -h1);
-    ctx.lineTo(tip, -h1 * 0.72);
-    ctx.lineTo(tip, h1 * 0.72);
-    ctx.lineTo(tip - 0.03 * s, h1);
-    ctx.lineTo(bx0, h0);
-    ctx.closePath();
-    ctx.fill();
-    // Its lit top plane (sun law: bright on −y) and the one seam.
-    ctx.fillStyle = edge;
-    ctx.beginPath();
-    ctx.moveTo(bx0, -h0);
-    ctx.lineTo(tip - 0.03 * s, -h1);
-    ctx.lineTo(tip, -h1 * 0.72);
-    ctx.lineTo(tip - 0.005 * s, -h1 * 0.45);
-    ctx.lineTo(bx0, -h0 * 0.45);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = dark;
-    ctx.lineWidth = Math.max(1, s * 0.015);
-    ctx.beginPath();
-    ctx.moveTo(bx0 + 0.03 * s, h0 * 0.4);
-    ctx.lineTo(tip - 0.03 * s, h1 * 0.38);
-    ctx.stroke();
-    // Twin iron straps holding the quarry stone to the haft.
-    ctx.fillStyle = guard;
-    ctx.fillRect(bx0 + 0.028 * s, -h0 - 0.008 * s, 0.024 * s, 2 * h0 + 0.016 * s);
-    ctx.fillRect(tip - 0.062 * s, -h1 - 0.006 * s, 0.024 * s, 2 * h1 + 0.012 * s);
+    if ((st.maul ?? 'block') === 'bell') {
+      drawBellHead(ctx, st, s, collar, tip, steel, edge, dark, guard, hurt);
+    } else {
+      // The head: one QUARRY block — proud at the striking end,
+      // chamfered so the mass reads carved, not sawn.
+      const h0 = 0.105 * s;
+      const h1 = 0.128 * s;
+      const bx0 = collar + 0.024 * s;
+      ctx.fillStyle = steel;
+      ctx.beginPath();
+      ctx.moveTo(bx0, -h0);
+      ctx.lineTo(tip - 0.03 * s, -h1);
+      ctx.lineTo(tip, -h1 * 0.72);
+      ctx.lineTo(tip, h1 * 0.72);
+      ctx.lineTo(tip - 0.03 * s, h1);
+      ctx.lineTo(bx0, h0);
+      ctx.closePath();
+      ctx.fill();
+      // Its lit top plane (sun law: bright on −y) and the one seam.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(bx0, -h0);
+      ctx.lineTo(tip - 0.03 * s, -h1);
+      ctx.lineTo(tip, -h1 * 0.72);
+      ctx.lineTo(tip - 0.005 * s, -h1 * 0.45);
+      ctx.lineTo(bx0, -h0 * 0.45);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.015);
+      ctx.beginPath();
+      ctx.moveTo(bx0 + 0.03 * s, h0 * 0.4);
+      ctx.lineTo(tip - 0.03 * s, h1 * 0.38);
+      ctx.stroke();
+      // Twin iron straps holding the quarry stone to the haft.
+      ctx.fillStyle = guard;
+      ctx.fillRect(bx0 + 0.028 * s, -h0 - 0.008 * s, 0.024 * s, 2 * h0 + 0.016 * s);
+      ctx.fillRect(tip - 0.062 * s, -h1 - 0.006 * s, 0.024 * s, 2 * h1 + 0.012 * s);
+    }
+    if (!hurt && st.fx) drawBladeFx(ctx, st, collar + 0.04 * s, tip, s, nowMs);
     return;
   }
 
@@ -3526,6 +3597,30 @@ function drawGreatGuard(
       }
       break;
     }
+    case 'hook': {
+      // The toll-bar's own hook, forged into the cross: one great
+      // curl rising over the spine toward the tip, a short spur
+      // raked back beneath — the shape that held the road shut.
+      ctx.fillRect(gx - 0.018 * s, -0.1 * s, 0.042 * s, 0.2 * s);
+      ctx.beginPath();
+      ctx.moveTo(gx - 0.01 * s, -0.088 * s);
+      ctx.quadraticCurveTo(gx + 0.02 * s, -0.19 * s, gx + 0.118 * s, -0.168 * s);
+      ctx.quadraticCurveTo(gx + 0.062 * s, -0.152 * s, gx + 0.036 * s, -0.118 * s);
+      ctx.lineTo(gx + 0.022 * s, -0.078 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(gx - 0.006 * s, 0.072 * s);
+      ctx.lineTo(gx - 0.078 * s, 0.128 * s);
+      ctx.lineTo(gx - 0.026 * s, 0.056 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(guard, 30);
+        ctx.fillRect(gx - 0.018 * s, -0.1 * s, 0.042 * s, 0.013 * s);
+      }
+      break;
+    }
     case 'thorn': {
       // Layered swept spikes raking both ways — the dark court's iron.
       for (const m of [-1, 1] as const) {
@@ -3637,6 +3732,70 @@ function drawGreatPommel(
 }
 
 /**
+ * The bell maul head: a cast bell lying along the haft, mouth toward
+ * the strike. Bronze body flaring from crown to lip, a verdigris
+ * crown strap, one gold waist band — and the crack it took on its
+ * last peal, left showing (the one dark line, spent on the story).
+ */
+function drawBellHead(
+  ctx: CanvasRenderingContext2D,
+  st: GreatStyle,
+  s: number,
+  collar: number,
+  tip: number,
+  steel: string,
+  edge: string,
+  dark: string,
+  guard: string,
+  hurt?: boolean,
+): void {
+  const x0 = collar + 0.02 * s; // the crown end
+  const mouth = tip - 0.012 * s;
+  const span = mouth - x0;
+  // The bell body: concave shoulders swelling to the mouth.
+  ctx.fillStyle = steel;
+  ctx.beginPath();
+  ctx.moveTo(x0, -0.064 * s);
+  ctx.quadraticCurveTo(x0 + span * 0.55, -0.068 * s, mouth - 0.038 * s, -0.104 * s);
+  ctx.quadraticCurveTo(mouth - 0.012 * s, -0.124 * s, mouth, -0.14 * s);
+  ctx.lineTo(mouth, 0.14 * s);
+  ctx.quadraticCurveTo(mouth - 0.012 * s, 0.124 * s, mouth - 0.038 * s, 0.104 * s);
+  ctx.quadraticCurveTo(x0 + span * 0.55, 0.068 * s, x0, 0.064 * s);
+  ctx.closePath();
+  ctx.fill();
+  // The mouth lip, proud of the body.
+  ctx.fillRect(mouth - 0.006 * s, -0.15 * s, 0.024 * s, 0.3 * s);
+  if (hurt) return;
+  // Lit top plane along the upper profile (sun law).
+  ctx.fillStyle = edge;
+  ctx.beginPath();
+  ctx.moveTo(x0, -0.064 * s);
+  ctx.quadraticCurveTo(x0 + span * 0.55, -0.068 * s, mouth - 0.038 * s, -0.104 * s);
+  ctx.quadraticCurveTo(mouth - 0.012 * s, -0.124 * s, mouth, -0.14 * s);
+  ctx.lineTo(mouth, -0.096 * s);
+  ctx.quadraticCurveTo(mouth - 0.05 * s, -0.062 * s, x0, -0.032 * s);
+  ctx.closePath();
+  ctx.fill();
+  // The verdigris crown strap and the gold waist band.
+  ctx.fillStyle = guard;
+  ctx.fillRect(x0 - 0.004 * s, -0.072 * s, 0.024 * s, 0.144 * s);
+  if (st.wrap) {
+    ctx.fillStyle = st.wrap;
+    ctx.fillRect(x0 + span * 0.58, -0.093 * s, 0.016 * s, 0.186 * s);
+  }
+  // THE CRACK: jagged from the lip toward the waist. It rang anyway.
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = Math.max(1.2, s * 0.016);
+  ctx.lineJoin = 'miter';
+  ctx.beginPath();
+  ctx.moveTo(mouth + 0.004 * s, 0.062 * s);
+  ctx.lineTo(mouth - 0.045 * s, 0.048 * s);
+  ctx.lineTo(mouth - 0.07 * s, 0.066 * s);
+  ctx.lineTo(mouth - 0.105 * s, 0.04 * s);
+  ctx.stroke();
+}
+
+/**
  * The double-headed greataxe: a war haft with twin mirrored bits at
  * the crown. The upper bit (−y) wears the lit strip — the sun law —
  * and the lower bit runs a shade darker so the two read as planes of
@@ -3671,6 +3830,25 @@ function drawGreataxeBody(
     const gl = hx - 0.1 * L - butt;
     ctx.fillRect(butt + gl * 0.18, -0.028 * s, 0.018 * s, 0.056 * s);
     ctx.fillRect(butt + gl * 0.52, -0.028 * s, 0.018 * s, 0.056 * s);
+  }
+  // Tally marks scored down the haft — four strokes and the fifth
+  // crossing them, the count of strikes the owner cared to keep.
+  if (!hurt && st.runes) {
+    ctx.strokeStyle = st.runes;
+    ctx.lineWidth = Math.max(1, s * 0.012);
+    ctx.lineCap = 'butt';
+    const gl = hx - 0.12 * L - butt;
+    for (let i = 0; i < 4; i++) {
+      const x = butt + gl * (0.62 + i * 0.07);
+      ctx.beginPath();
+      ctx.moveTo(x, -0.022 * s);
+      ctx.lineTo(x + 0.006 * s, 0.022 * s);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(butt + gl * 0.6, 0.018 * s);
+    ctx.lineTo(butt + gl * 0.85, -0.018 * s);
+    ctx.stroke();
   }
   drawGreatPommel(ctx, st, s, butt, hurt);
 

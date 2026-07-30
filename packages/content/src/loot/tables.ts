@@ -161,6 +161,8 @@ const defs: LootTableDef[] = [
       { item: 'tin_ore', qty: [2, 4], chance: 0.25 },
       // The chase drop: his own pick, an early miner's first upgrade.
       { item: 'iron_pickaxe', chance: 0.05 },
+      // The other tool: the war-axe that never once swung at stone.
+      { item: 'seamsplitter', chance: 0.015 },
       { item: 'dungeon_key', chance: 0.1 },
       { item: 'brass_key', chance: 0.06 },
       { item: 'emberstone', chance: 0.03 },
@@ -266,6 +268,8 @@ const defs: LootTableDef[] = [
       { item: 'iron_dagger', chance: 0.05 },
       // The name carries the toll-blade itself.
       { item: 'reavers_toll', chance: 0.03 },
+      // The war's own trophy, carried by whoever claims the road now.
+      { item: 'tollbreaker', chance: 0.01 },
       { item: 'leather_hood', chance: 0.03 },
       ...setDrops('cutpurse', 0.012),
       { item: 'emberstone', chance: 0.02 },
@@ -495,6 +499,10 @@ const defs: LootTableDef[] = [
       { item: 'stormhewer', chance: 0.035 },
       { item: 'colossus_vow', chance: 0.005 },
       { item: 'mountains_end', chance: 0.005 },
+      // THE VAULT OF NAMES' legendary pair: the gate-glass blade and
+      // the cracked bell, both legendary or not at all.
+      { item: 'riftglass', chance: 0.004 },
+      { item: 'last_bell', chance: 0.005 },
     ],
   ),
 
@@ -609,6 +617,8 @@ const defs: LootTableDef[] = [
       { item: 'arcane_dust', qty: [2, 5], chance: 0.6 },
       { item: 'storm_essence', qty: [1, 2], chance: 0.25 },
       { table: 'crypt_arms', mult: 8 },
+      // Ground from a pane of this very gate.
+      { item: 'riftglass', chance: 0.006 },
     ],
   },
 
@@ -654,6 +664,7 @@ const defs: LootTableDef[] = [
       { item: 'coins', qty: [4, 14], chance: 0.4 },
       { item: 'venom_gland', chance: 0.15 },
       { item: 'crimson_essence', chance: 0.12 },
+      { item: 'bearspine', chance: 0.006 },
     ],
   },
   {
@@ -800,6 +811,8 @@ const defs: LootTableDef[] = [
       { item: 'arcane_dust', qty: [1, 2], chance: 0.15 },
       { item: 'ember_essence', chance: 0.1 },
       { item: 'leather', chance: 0.12 },
+      // Fished out of the fen and kept for the light in it.
+      { item: 'fens_lantern', chance: 0.02 },
     ],
   },
   {
@@ -810,6 +823,8 @@ const defs: LootTableDef[] = [
       { item: 'raw_beef', qty: [1, 2], chance: 0.7 },
       { item: 'scrap_hide', qty: [2, 4], chance: 0.9 },
       { item: 'crimson_essence', qty: [1, 2], chance: 0.15 },
+      // The claw-axe hafted through one of these very spines.
+      { item: 'bearspine', chance: 0.012 },
     ],
   },
 ];

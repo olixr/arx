@@ -153,7 +153,7 @@ export declare function drawStaff(ctx: CanvasRenderingContext2D, st: StaffStyle,
  */
 export type GreatbladeKind = 'colossus' | 'leaf' | 'cruciform' | 'spire' | 'cleaverback' | 'flamberge' | 'sawback';
 export type GreataxeHead = 'crescent' | 'bearded' | 'jaws' | 'scrap' | 'halfmoon';
-export type GreatGuard = 'bar' | 'cross' | 'wing' | 'crown' | 'thorn' | 'stub';
+export type GreatGuard = 'bar' | 'cross' | 'wing' | 'crown' | 'thorn' | 'hook' | 'stub';
 export type GreatPommel = 'wheel' | 'ring' | 'coin' | 'star' | 'bone' | 'gem' | 'none';
 export interface GreatStyle {
     kind: 'greatblade' | 'maul' | 'greataxe';
@@ -161,6 +161,8 @@ export interface GreatStyle {
     blade?: GreatbladeKind;
     /** Head silhouette (greataxe dialect). Default 'crescent'. */
     head?: GreataxeHead;
+    /** Maul head build. Default 'block'; 'bell' is a cast bell. */
+    maul?: 'block' | 'bell';
     /** Steel / head color. */
     color: string;
     /** Lit edge or top plane; defaults shade(+34). */

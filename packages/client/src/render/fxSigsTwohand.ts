@@ -1158,6 +1158,305 @@ const horizon_fall: AbilitySig = {
   },
 };
 
+/**
+ * ROAD_OPENS — "the bar comes down."
+ * The toll-bar itself: a beam sprite that SNAPS at the stroke, both
+ * halves thrown clear, and the shove band behind it — the one arc in
+ * the school where the push is the point.
+ */
+const road_opens: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x3a1);
+    for (const m of [-1, 1] as const) {
+      c.particles.burst(
+        c.wx + Math.cos(c.dir) * 0.8,
+        c.wy + Math.sin(c.dir) * 0.8 * c.squash,
+        2,
+        [c.st.deep],
+        { speed: 2.2 + rand() * 0.8, life: 0.55, size: 0.16, gravity: 5, dir: c.dir + m * 0.9, spread: 0.25 },
+      );
+    }
+    for (let k = 0; k < 6; k++) {
+      c.particles.burst(
+        c.wx + Math.cos(c.dir) * 0.6,
+        c.wy + Math.sin(c.dir) * 0.6 * c.squash,
+        1,
+        [c.st.core, c.st.spark],
+        { speed: 1.6 + rand() * 1.2, life: 0.4, size: 0.08, gravity: 2, dir: c.dir, spread: 0.9 },
+      );
+    }
+  },
+  air(c) {
+    if (c.t < 0.5) sweepBand(c, c.dir - 1.15, c.dir + 1.15, c.t / 0.5, 0.8);
+    const { ctx, st, t, sc } = c;
+    if (t > 0.55) return;
+    // The two halves of the bar, tumbling out of the stroke.
+    const f = t / 0.55;
+    ctx.save();
+    ctx.globalAlpha = 0.9 * (1 - f);
+    ctx.fillStyle = st.deep;
+    for (const m of [-1, 1] as const) {
+      const p = groundPt(c, c.radius * (0.5 + f * 0.5), c.dir + m * (0.35 + f * 0.5));
+      ctx.save();
+      ctx.translate(p.x, p.y - sc * 0.5);
+      ctx.rotate(m * (0.4 + f * 2.2));
+      ctx.fillRect(-sc * 0.34, -sc * 0.045, sc * 0.68, sc * 0.09);
+      ctx.fillStyle = st.mid;
+      ctx.fillRect(-sc * 0.34, -sc * 0.045, sc * 0.68, sc * 0.028);
+      ctx.fillStyle = st.deep;
+      ctx.restore();
+    }
+    ctx.restore();
+  },
+};
+
+/**
+ * MARSH_LIGHT — "the light that collects."
+ * The lantern hangs where it was set; wisp motes drift INWARD off the
+ * field edge — the fen does not spend its light, it gathers.
+ */
+const marsh_light: AbilitySig = {
+  ground(c) {
+    const { ctx, st } = c;
+    const breathe = 0.9 + 0.07 * Math.sin(c.age * 3.1);
+    ctx.save();
+    ctx.globalAlpha = 0.35 * (1 - c.t * 0.6);
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(2, c.sc * 0.07);
+    ctx.beginPath();
+    ctx.ellipse(c.px, c.py, c.rPx * breathe, c.rPx * breathe * c.squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st } = c;
+    // The lantern itself: a hanging glow over the field's heart.
+    const bob = Math.sin(c.age * 2.2) * c.sc * 0.06;
+    ctx.save();
+    ctx.globalAlpha = 0.75 * (1 - c.t * 0.5);
+    ctx.fillStyle = st.core;
+    ctx.beginPath();
+    ctx.arc(c.px, c.py - c.sc * 0.7 + bob, c.sc * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    c.glow(c.wx, c.wy, 1.1, 0.3 * (1 - c.t * 0.6));
+    if (c.frameDt <= 0 || c.t > 0.9) return;
+    if (srand(c.seed ^ (c.age * 8 | 0))() < c.frameDt * 6) {
+      const rand = srand(c.seed ^ 0x3a2 ^ (c.age * 17 | 0));
+      const a = rand() * Math.PI * 2;
+      // Born at the rim, drifting in: dir points back at the heart.
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.9,
+        c.wy + Math.sin(a) * c.radius * 0.9 * c.squash,
+        1,
+        [c.st.core, c.st.mid],
+        { speed: 0.5, life: 1.1, size: 0.08, gravity: -0.2, dir: a + Math.PI, spread: 0.2, shape: 'puff', wobble: 0.3, fade: c.st.deep },
+      );
+    }
+  },
+};
+
+/**
+ * RIFTFALL — "the sky behind the sky."
+ * Through the fuse a slit of elsewhere WIDENS over the mark, leaking
+ * stars; the strike is that sky arriving edge first, and the stars
+ * settle where it landed.
+ */
+const riftfall: AbilitySig = {
+  air(c) {
+    const { ctx, st, t, sc } = c;
+    if (t < 0.42) {
+      // The slit: a lens of deep opening over the target.
+      const f = t / 0.42;
+      const w = sc * (0.4 + 1.6 * f);
+      const h = sc * 0.22 * f;
+      ctx.save();
+      ctx.translate(c.px, c.py - sc * 2.0);
+      ctx.rotate(-0.18);
+      ctx.fillStyle = st.deep;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, w, h, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.8;
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(1.2, sc * 0.05);
+      ctx.stroke();
+      ctx.restore();
+      if (c.frameDt > 0 && srand(c.seed ^ (c.age * 11 | 0))() < c.frameDt * 8) {
+        const rand = srand(c.seed ^ 0x3a3 ^ (c.age * 7 | 0));
+        c.particles.burst(c.wx + (rand() - 0.5) * 0.8, c.wy - 1.7, 1, [c.st.core], {
+          speed: 0.9, life: 0.5, size: 0.07, gravity: 4, shape: 'glint', flicker: 0.5,
+        });
+      }
+    }
+    c.glow(c.wx, c.wy, 1.3, 0.35 * (1 - t));
+  },
+  ground(c) {
+    const { ctx, st, t } = c;
+    if (t < 0.42 || t > 0.95) return;
+    const rand = srand(c.seed ^ 0x3a4);
+    const f = (t - 0.42) / 0.53;
+    ctx.save();
+    ctx.globalAlpha = 0.85 * (1 - f);
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + rand() * 0.8;
+      const p = groundPt(c, c.rPx * (0.35 + 0.55 * f), a);
+      // Star shards standing in the crater, not stones.
+      ctx.fillStyle = k % 2 === 0 ? st.core : st.mid;
+      const r = c.sc * (0.05 + rand() * 0.05);
+      ctx.save();
+      ctx.translate(p.x, p.y - c.sc * 0.18 * (1 - f));
+      ctx.rotate(rand() * Math.PI);
+      ctx.fillRect(-r, -r * 0.35, r * 2, r * 0.7);
+      ctx.fillRect(-r * 0.35, -r, r * 0.7, r * 2);
+      ctx.restore();
+    }
+    ctx.restore();
+  },
+};
+
+/**
+ * WINTERS_HUNGER — "the empty walk."
+ * No burst, no shout: triple claw-rakes keep appearing in the ground
+ * beside the walker's trail, and slow blood beads ride the air — the
+ * hunger is patient and so is the paint.
+ */
+const winters_hunger: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x3a5);
+    for (let k = 0; k < 4; k++) {
+      const a = rand() * Math.PI * 2;
+      c.particles.burst(
+        c.wx + Math.cos(a) * 0.5,
+        c.wy + Math.sin(a) * 0.5 * c.squash,
+        1,
+        [c.st.mid, c.st.deep],
+        { speed: 0.7, life: 0.6, size: 0.1, gravity: -1.2, shape: 'puff', wobble: 0.3, fade: c.st.deep },
+      );
+    }
+  },
+  ground(c) {
+    const { ctx, st, t } = c;
+    if (t > 0.85) return;
+    const rand = srand(c.seed ^ 0x3a6);
+    // Two rake-marks, placed once, fading with the buff's opening.
+    ctx.save();
+    ctx.globalAlpha = 0.55 * (1 - t);
+    ctx.strokeStyle = st.deep;
+    ctx.lineWidth = Math.max(1.4, c.sc * 0.05);
+    for (const [ox, oy, ang] of [[-0.5, 0.25, 0.5], [0.55, 0.4, -0.4]] as const) {
+      for (let k = 0; k < 3; k++) {
+        const p = groundPt(c, Math.hypot(ox, oy), Math.atan2(oy, ox) + rand() * 0.1);
+        ctx.beginPath();
+        ctx.moveTo(p.x + k * c.sc * 0.09, p.y - c.sc * 0.16);
+        ctx.lineTo(p.x + k * c.sc * 0.09 + Math.cos(ang) * c.sc * 0.1, p.y + c.sc * 0.14);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+  air(c) {
+    if (c.frameDt <= 0 || c.t > 0.9) return;
+    if (srand(c.seed ^ (c.age * 5 | 0))() < c.frameDt * 4) {
+      const rand = srand(c.seed ^ 0x3a7 ^ (c.age * 13 | 0));
+      c.particles.burst(c.wx + (rand() - 0.5) * 0.5, c.wy - 0.4 - rand() * 0.5, 1, [c.st.spark], {
+        speed: 0.2, life: 0.9, size: 0.06, gravity: 1.4, shape: 'mote',
+      });
+    }
+  },
+};
+
+/**
+ * OPEN_SEAM — "the seam keeps giving."
+ * One jagged gold crack owns the field; every pulse it flashes
+ * brighter and the floor jumps a stone or two — pay-dirt on a beat.
+ */
+const open_seam: AbilitySig = {
+  ground(c) {
+    const { ctx, st, t } = c;
+    const rand = srand(c.seed ^ 0x3a8);
+    // The crack: fixed jag across the field, gold over dark.
+    const pulse = 0.5 + 0.5 * Math.abs(Math.sin(c.age * 3.9));
+    ctx.save();
+    ctx.globalAlpha = (0.5 + 0.4 * pulse) * (1 - t * 0.7);
+    const a0 = rand() * Math.PI * 2;
+    let px0 = 0;
+    let py0 = 0;
+    ctx.strokeStyle = st.deep;
+    ctx.lineWidth = Math.max(2.2, c.sc * 0.1);
+    for (const pass of [0, 1] as const) {
+      if (pass === 1) {
+        ctx.strokeStyle = st.core;
+        ctx.lineWidth = Math.max(1.2, c.sc * 0.05);
+      }
+      ctx.beginPath();
+      for (let k = 0; k <= 4; k++) {
+        const r = c.rPx * (k / 4) * 0.92;
+        const a = a0 + (k % 2 === 0 ? 0.12 : -0.14);
+        const x = c.px + Math.cos(a + Math.PI * (k % 2) * 0.04) * r;
+        const y = c.py + Math.sin(a) * r * c.squash;
+        if (k === 0) {
+          ctx.moveTo(c.px - (x - c.px), c.py - (y - c.py));
+          px0 = x; py0 = y;
+        } else ctx.lineTo(x, y);
+      }
+      ctx.lineTo(px0, py0);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+  air(c) {
+    if (c.frameDt <= 0 || c.t > 0.9) return;
+    if (srand(c.seed ^ (c.age * 9 | 0))() < c.frameDt * 5) {
+      const rand = srand(c.seed ^ 0x3a9 ^ (c.age * 15 | 0));
+      const a = rand() * Math.PI * 2;
+      const p = groundPt(c, c.rPx * rand() * 0.7, a);
+      stone(c.ctx, p.x, p.y, c.sc * (0.06 + rand() * 0.06), c.st.deep, c.st.mid, rand() * 1.2);
+      c.particles.burst(c.wx + Math.cos(a) * 0.4, c.wy + Math.sin(a) * 0.4 * c.squash, 1, [c.st.core], {
+        speed: 0.8, life: 0.4, size: 0.06, gravity: 3, shape: 'glint', flicker: 0.4,
+      });
+    }
+  },
+};
+
+/**
+ * LAST_TOLL — "the county answers."
+ * Each pulse is a RING of the bell: a hard bright hoop with a dimmer
+ * echo hoop chasing it a beat behind — sound drawn as brass.
+ */
+const last_toll: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x3aa);
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2 + rand() * 0.5;
+      c.particles.burst(
+        c.wx + Math.cos(a) * 0.4,
+        c.wy + Math.sin(a) * 0.4 * c.squash,
+        1,
+        [c.st.core, c.st.spark],
+        { speed: 1.4 + rand() * 0.8, life: 0.45, size: 0.08, gravity: -0.5, dir: a, spread: 0.2, shape: 'glint', flicker: 0.5 },
+      );
+    }
+  },
+  ground(c) {
+    const { ctx, st, t } = c;
+    // The ring and its echo — twice, a beat apart.
+    for (const [start, echo] of [[0.0, false], [0.1, true], [0.34, false], [0.44, true], [0.68, false], [0.78, true]] as const) {
+      if (t < start || t > start + 0.3) continue;
+      const f = (t - start) / 0.3;
+      ctx.save();
+      ctx.globalAlpha = (echo ? 0.3 : 0.7) * (1 - f);
+      ctx.strokeStyle = echo ? st.mid : st.core;
+      ctx.lineWidth = Math.max(echo ? 1.4 : 2.2, c.sc * (echo ? 0.06 : 0.1) * (1 - f * 0.5));
+      ctx.beginPath();
+      ctx.ellipse(c.px, c.py, c.rPx * f, c.rPx * f * c.squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    c.glow(c.wx, c.wy, 1.2, 0.3 * (1 - t));
+  },
+};
+
 export const TWOHAND_SIGS: Record<string, AbilitySig> = {
   wide_swath,
   haft_check,
@@ -1184,4 +1483,10 @@ export const TWOHAND_SIGS: Record<string, AbilitySig> = {
   white_heat,
   pale_crescent,
   horizon_fall,
+  road_opens,
+  marsh_light,
+  riftfall,
+  winters_hunger,
+  open_seam,
+  last_toll,
 };
