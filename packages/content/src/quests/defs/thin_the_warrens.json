@@ -1,0 +1,17 @@
+{
+  "id": "thin_the_warrens",
+  "name": "Thin the Warrens",
+  "giver": "foreman_grettir",
+  "repeat": { "cooldownHours": 24 },
+  "stages": [
+    {
+      "id": "eight",
+      "journal": "Grettir said eight, and said where: the warrens off the mountain works, where the yard won't send its own people. He didn't say why he counts kobolds the way other men count debts. Nobody asked.",
+      "objectives": [{ "kind": "kill", "npc": "kobold", "count": 8 }]
+    }
+  ],
+  "rewards": {
+    "coins": 140,
+    "xp": [{ "skill": "melee", "amount": 350 }]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "q_a_smiths_errand_offer",
+  "start": "hub",
+  "requires": ["quest:a_smiths_errand:available"],
+  "bindings": [{ "kind": "actor", "target": "smith_bretta", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Forge's hot. Yard's slow. Six iron, four coal — seams east of the ford if you swing a pick, Merra's counter if you don't. Fetching?",
+      "hooks": [{ "kind": "quest_offer", "quest": "a_smiths_errand" }],
+      "choices": [
+        { "text": "I'll fetch it.", "next": "sworn" },
+        { "text": "Find another back.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Good. Ore first. Talk after.",
+      "hooks": [{ "kind": "quest_accept", "quest": "a_smiths_errand" }]
+    },
+    {
+      "id": "declined",
+      "text": "Suit yourself. Forge won't."
+    }
+  ]
+}

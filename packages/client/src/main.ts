@@ -1530,6 +1530,7 @@ const KB_SCREEN_ACTIONS: readonly ActionId[] = [
   'screenCraft',
   'screenBuild',
   'screenSocial',
+  'screenQuests',
   'screenMap',
   'screenSettings',
   'screenLoot',

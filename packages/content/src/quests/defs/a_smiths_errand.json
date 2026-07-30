@@ -1,0 +1,20 @@
+{
+  "id": "a_smiths_errand",
+  "name": "A Smith's Errand",
+  "giver": "smith_bretta",
+  "requires": { "skills": [{ "skill": "mining", "level": 5 }] },
+  "stages": [
+    {
+      "id": "feed_the_forge",
+      "journal": "Bretta's forge is running ahead of her yard. Six iron ore and four of coal — the seams east of the ford show where picks have been working, or Merra's counter sells what your back won't carry. She'll know the difference and won't care.",
+      "objectives": [
+        { "kind": "collect", "item": "iron_ore", "count": 6 },
+        { "kind": "collect", "item": "coal", "count": 4 }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 80,
+    "xp": [{ "skill": "smithing", "amount": 500 }]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "q_thin_the_warrens_offer",
+  "start": "hub",
+  "requires": ["quest:thin_the_warrens:available"],
+  "bindings": [{ "kind": "actor", "target": "foreman_grettir", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Kobolds. Warrens off the mountain works. Eight.",
+      "hooks": [{ "kind": "quest_offer", "quest": "thin_the_warrens" }],
+      "choices": [
+        { "text": "Why eight?", "next": "sworn" },
+        { "text": "Send the yard.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Eight's what creeps back in a span. Count right.",
+      "hooks": [{ "kind": "quest_accept", "quest": "thin_the_warrens" }]
+    },
+    {
+      "id": "declined",
+      "text": "Yard doesn't go there. That's the point."
+    }
+  ]
+}

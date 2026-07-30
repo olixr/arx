@@ -1,0 +1,18 @@
+{
+  "id": "names_in_the_registry",
+  "name": "Names in the Registry",
+  "giver": "keeper_ansel",
+  "turnIn": "veteran_skarn",
+  "requires": { "quests": ["the_reavers_mark"] },
+  "stages": [
+    {
+      "id": "the_capital",
+      "journal": "Ansel wants a registry name spoken in the capital before it's read there. Old *Skarn* — last man out of the deep galleries — drinks where old soldiers drink, somewhere on Silverfall's terraces. The city sits above the great falls, north and west. You'll hear it before you see it.",
+      "objectives": [{ "kind": "discover", "place": "zone:silverfall" }]
+    }
+  ],
+  "rewards": {
+    "coins": 120,
+    "flags": ["registry_word_carried"]
+  }
+}

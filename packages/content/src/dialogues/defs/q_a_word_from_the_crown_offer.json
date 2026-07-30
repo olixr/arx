@@ -1,0 +1,26 @@
+{
+  "id": "q_a_word_from_the_crown_offer",
+  "start": "hub",
+  "requires": ["quest:a_word_from_the_crown:available"],
+  "bindings": [{ "kind": "actor", "target": "veteran_skarn", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Word went up the stair after you left. Came back the same day. Crown seal. They want you at the *court*.",
+      "hooks": [{ "kind": "quest_offer", "quest": "a_word_from_the_crown" }],
+      "choices": [
+        { "text": "The king wants me? Why?", "next": "sworn" },
+        { "text": "I'm not dressed for a court.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Crowns don't say why to the likes of us. Court Gate — your chart has it now. Don't polish anything. The king doesn't. Come tell me how he seemed, after.",
+      "hooks": [{ "kind": "quest_accept", "quest": "a_word_from_the_crown" }]
+    },
+    {
+      "id": "declined",
+      "text": "Nobody is. That's rather the test. It'll keep — badly."
+    }
+  ]
+}

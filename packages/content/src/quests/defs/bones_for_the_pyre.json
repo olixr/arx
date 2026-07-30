@@ -1,0 +1,17 @@
+{
+  "id": "bones_for_the_pyre",
+  "name": "Bones for the Pyre",
+  "giver": "shrinekeeper_sella",
+  "repeat": { "cooldownHours": 16 },
+  "stages": [
+    {
+      "id": "gather",
+      "journal": "Sella takes in the old bones the wilds leave lying — ten is a rite's worth. She didn't say why it matters. She said it the way you'd mention the kettle, and somehow that settled it.",
+      "objectives": [{ "kind": "collect", "item": "bones", "count": 10 }]
+    }
+  ],
+  "rewards": {
+    "coins": 60,
+    "xp": [{ "skill": "vitality", "amount": 100 }]
+  }
+}

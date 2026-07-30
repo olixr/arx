@@ -1,0 +1,26 @@
+{
+  "id": "q_deep_seams_offer",
+  "start": "hub",
+  "requires": ["quest:deep_seams:available"],
+  "bindings": [{ "kind": "actor", "target": "smeltmaster_koll", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Pour forty-one wants undercroft iron. Eight ore, deep-grade. The way down opens off the mountain works. Furnace two likes deep iron — I don't ask furnaces why. Will you dig?",
+      "hooks": [{ "kind": "quest_offer", "quest": "deep_seams" }],
+      "choices": [
+        { "text": "Eight ore. I'll go down.", "next": "sworn" },
+        { "text": "The dark's not my trade.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Count them at the seam, count them at the stair. Numbers keep honest company.",
+      "hooks": [{ "kind": "quest_accept", "quest": "deep_seams" }]
+    },
+    {
+      "id": "declined",
+      "text": "Then pour forty-one waits. It goes on the ledger. Everything does."
+    }
+  ]
+}

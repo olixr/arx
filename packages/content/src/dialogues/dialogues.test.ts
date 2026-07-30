@@ -104,7 +104,10 @@ test('eligibility: once-completion, requires and forbids gate the voice', () => 
 
 test('pickDialogue: binding priority wins, completion falls to the default', () => {
   const rowan = offersFor('elder_rowan');
-  assert.equal(rowan.length, 2);
+  // Intro + evergreen + the quest offer (gated on quest:...:available,
+  // which this test's flag predicates answer false — so picks below
+  // exercise the pre-quest ladder unchanged).
+  assert.equal(rowan.length, 3);
   const fresh = pickDialogue(rowan, () => false);
   assert.equal(fresh?.id, 'rowan_awakening', 'the once-intro outranks the default');
   const flags = new Set([dialogueDoneFlag('rowan_awakening')]);

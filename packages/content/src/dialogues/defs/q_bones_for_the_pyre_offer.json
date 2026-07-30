@@ -1,0 +1,26 @@
+{
+  "id": "q_bones_for_the_pyre_offer",
+  "start": "hub",
+  "requires": ["quest:bones_for_the_pyre:available"],
+  "bindings": [{ "kind": "actor", "target": "shrinekeeper_sella", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "When you walk the wilds — the old bones you find. Bring them here. Ten is a rite's worth. They shouldn't lie out in the weather.",
+      "hooks": [{ "kind": "quest_offer", "quest": "bones_for_the_pyre" }],
+      "choices": [
+        { "text": "I'll gather them.", "next": "sworn" },
+        { "text": "I'd rather not carry bones.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Thank you. There's no hurry. There never is, with this.",
+      "hooks": [{ "kind": "quest_accept", "quest": "bones_for_the_pyre" }]
+    },
+    {
+      "id": "declined",
+      "text": "Then leave them be gently, where you find them."
+    }
+  ]
+}

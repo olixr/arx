@@ -1,0 +1,25 @@
+{
+  "id": "deep_seams",
+  "name": "Deep Seams",
+  "giver": "smeltmaster_koll",
+  "requires": { "skills": [{ "skill": "mining", "level": 20 }] },
+  "stages": [
+    {
+      "id": "the_way_down",
+      "journal": "Koll's pour forty-one wants undercroft iron, and furnace two agrees, apparently. The way down opens off the mountain works — find the *Deep Market* before you find the dark, as they say on the stair.",
+      "objectives": [{ "kind": "discover", "place": "zone:undercroft" }]
+    },
+    {
+      "id": "the_seam",
+      "journal": "Eight iron, deep-grade. Koll says he can tell the difference by the weight. Nobody argues with the furnace.",
+      "objectives": [{ "kind": "collect", "item": "iron_ore", "count": 8 }]
+    }
+  ],
+  "rewards": {
+    "coins": 150,
+    "xp": [
+      { "skill": "mining", "amount": 600 },
+      { "skill": "smithing", "amount": 300 }
+    ]
+  }
+}

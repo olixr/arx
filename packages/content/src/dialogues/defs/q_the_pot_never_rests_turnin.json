@@ -1,0 +1,13 @@
+{
+  "id": "q_the_pot_never_rests_turnin",
+  "start": "paid",
+  "requires": ["quest:the_pot_never_rests:ready"],
+  "bindings": [{ "kind": "actor", "target": "hearthkeeper_iona", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Six good ones — into the pot. And these two are yours, cooked proper. You've earned eating something you didn't catch.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_pot_never_rests" }]
+    }
+  ]
+}

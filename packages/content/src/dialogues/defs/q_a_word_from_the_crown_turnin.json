@@ -1,0 +1,13 @@
+{
+  "id": "q_a_word_from_the_crown_turnin",
+  "start": "paid",
+  "requires": ["quest:a_word_from_the_crown:ready"],
+  "bindings": [{ "kind": "actor", "target": "veteran_skarn", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "So you stood the court. Plain man, our king — his grandfather poured foundations, and it shows. I mean that kindly. Here: crown pays first. That's the whole bargain, and today you're the road.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "a_word_from_the_crown" }]
+    }
+  ]
+}

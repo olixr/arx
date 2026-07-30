@@ -1,0 +1,17 @@
+{
+  "id": "pelts_for_the_road",
+  "name": "Pelts for the Road",
+  "giver": "outfitter_hask",
+  "repeat": { "cooldownHours": 20 },
+  "stages": [
+    {
+      "id": "the_lining",
+      "journal": "Hask lines road-cloaks against the winter and won't stock thin. Six wolf furs, clean as you can take them. Wolves work the meadows and the tree lines — and they don't come alone. He was firm on that part.",
+      "objectives": [{ "kind": "collect", "item": "wolf_fur", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 110,
+    "xp": [{ "skill": "leatherworking", "amount": 250 }]
+  }
+}

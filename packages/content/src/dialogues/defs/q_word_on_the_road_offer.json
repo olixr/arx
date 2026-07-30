@@ -1,0 +1,26 @@
+{
+  "id": "q_word_on_the_road_offer",
+  "start": "hub",
+  "requires": ["quest:word_on_the_road:available"],
+  "bindings": [{ "kind": "actor", "target": "captain_aldis", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You came in off the roads, so you saw it: cold fires, cut fences. Bands working the marches again. I want four of them down, and I don't much mind which four. Take the work?",
+      "hooks": [{ "kind": "quest_offer", "quest": "word_on_the_road" }],
+      "choices": [
+        { "text": "Where do I find them?", "next": "sworn" },
+        { "text": "Not today, Captain.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Camps drift. Ask the watch what stands near, or walk until the grass goes burned — that's their country. Report when it's four.",
+      "hooks": [{ "kind": "quest_accept", "quest": "word_on_the_road" }]
+    },
+    {
+      "id": "declined",
+      "text": "Then keep to the walls after dusk. That's not a figure of speech."
+    }
+  ]
+}

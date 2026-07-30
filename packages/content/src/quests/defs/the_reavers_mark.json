@@ -1,0 +1,23 @@
+{
+  "id": "the_reavers_mark",
+  "name": "The Reaver's Mark",
+  "giver": "captain_aldis",
+  "turnIn": "keeper_ansel",
+  "requires": { "quests": ["word_on_the_road"] },
+  "stages": [
+    {
+      "id": "the_reaver",
+      "journal": "Every band answers to a *reaver* — the one who keeps the crew's shares. Find the biggest camp standing in the marches and its master in it; he'll be the one the others stand behind. Take his mark, and carry it to Keeper Ansel at the Waykeepers' Hall, so the name outlives him properly.",
+      "objectives": [
+        { "kind": "kill", "npc": "brigand_reaver", "count": 1 },
+        { "kind": "collect", "item": "reavers_mark", "count": 1 }
+      ]
+    }
+  ],
+  "questDrops": [{ "npc": "brigand_reaver", "item": "reavers_mark", "chance": 1 }],
+  "rewards": {
+    "coins": 150,
+    "xp": [{ "skill": "melee", "amount": 400 }],
+    "flags": ["reaver_marked"]
+  }
+}

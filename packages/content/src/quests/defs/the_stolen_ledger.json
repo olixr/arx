@@ -1,0 +1,21 @@
+{
+  "id": "the_stolen_ledger",
+  "name": "The Stolen Ledger",
+  "giver": "banker_cormund",
+  "stages": [
+    {
+      "id": "the_banker",
+      "journal": "A torn ledger page, bank-ruled, in a brigand's keeping. *Cormund* at the Amberford bank will want to see it — and to know whose fire it came from.",
+      "objectives": [{ "kind": "talk", "actor": "banker_cormund" }]
+    },
+    {
+      "id": "collect_the_debt",
+      "journal": "Cormund read the page twice and went quiet the second time. The column is his; the collecting is yours. Five of the band that took it, and the bank will remember being owed to _you_.",
+      "objectives": [{ "kind": "kill", "npc": "brigand", "count": 5 }]
+    }
+  ],
+  "rewards": {
+    "coins": 250,
+    "flags": ["ledger_returned"]
+  }
+}

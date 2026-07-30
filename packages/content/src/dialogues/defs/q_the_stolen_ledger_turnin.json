@@ -1,0 +1,13 @@
+{
+  "id": "q_the_stolen_ledger_turnin",
+  "start": "paid",
+  "requires": ["quest:the_stolen_ledger:ready"],
+  "bindings": [{ "kind": "actor", "target": "banker_cormund", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Five, off the road's ledger and onto mine. The bank remembers its debts in both directions — here's the reverse of the column, with interest. And if another page walks in wearing your boots, my door knows your name.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_stolen_ledger" }]
+    }
+  ]
+}

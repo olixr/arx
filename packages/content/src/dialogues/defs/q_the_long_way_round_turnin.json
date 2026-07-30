@@ -1,0 +1,13 @@
+{
+  "id": "q_the_long_way_round_turnin",
+  "start": "paid",
+  "requires": ["quest:the_long_way_round:ready"],
+  "bindings": [{ "kind": "actor", "target": "courier_nib", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "You're BACK — Hale signed, Ragna didn't blink. I know because she never does. That's the route run and I didn't run it, which feels like a day off, which I've heard of. Wages! Real ones!",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_long_way_round" }]
+    }
+  ]
+}

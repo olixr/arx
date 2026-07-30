@@ -1,0 +1,18 @@
+{
+  "id": "the_pot_never_rests",
+  "name": "The Pot Never Rests",
+  "giver": "hearthkeeper_iona",
+  "repeat": { "cooldownHours": 12 },
+  "stages": [
+    {
+      "id": "six_trout",
+      "journal": "Iona's pot feeds whoever sits down, which is everyone. Six trout from the brook — she says the fish bite where the water sounds busiest, and that fishing is hungry work whatever it looks like.",
+      "objectives": [{ "kind": "collect", "item": "raw_trout", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 50,
+    "items": [{ "item": "trout", "qty": 2 }],
+    "xp": [{ "skill": "cooking", "amount": 200 }]
+  }
+}

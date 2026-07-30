@@ -1,0 +1,13 @@
+{
+  "id": "q_hobbs_hens_turnin",
+  "start": "paid",
+  "requires": ["quest:hobbs_hens:ready"],
+  "bindings": [{ "kind": "actor", "target": "farmer_hobb", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Eight. All sound. That's market day saved, and Bess none the wiser why I'm pleased. Here.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "hobbs_hens" }]
+    }
+  ]
+}

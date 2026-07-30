@@ -1,0 +1,26 @@
+{
+  "id": "q_the_reavers_mark_offer",
+  "start": "hub",
+  "requires": ["quest:the_reavers_mark:available"],
+  "bindings": [{ "kind": "actor", "target": "captain_aldis", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Every band answers to a *reaver* — the one who keeps the shares. Break the biggest camp standing and take his mark. Then carry it past me, to *Ansel* at the Waykeepers' Hall. The registry outlives my temper. Will you do it?",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_reavers_mark" }],
+      "choices": [
+        { "text": "How will I know him?", "next": "sworn" },
+        { "text": "That's above my head.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "By the coat, and by everyone else standing behind him. Find the camp with a name in it. Mind the archers.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_reavers_mark" }]
+    },
+    {
+      "id": "declined",
+      "text": "Then it keeps. Reavers always do."
+    }
+  ]
+}

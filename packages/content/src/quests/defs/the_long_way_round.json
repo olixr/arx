@@ -1,0 +1,22 @@
+{
+  "id": "the_long_way_round",
+  "name": "The Long Way Round",
+  "giver": "courier_nib",
+  "requires": { "skills": [{ "skill": "vitality", "level": 8 }] },
+  "stages": [
+    {
+      "id": "the_post",
+      "journal": "Nib has more roads than legs today. His word goes first to Waykeeper *Hale* — the post out along the west road, where the lamp burns all day.",
+      "objectives": [{ "kind": "talk", "actor": "waykeeper_hale" }]
+    },
+    {
+      "id": "the_flagon",
+      "journal": "Hale signed and pointed on: the *Silver Flagon*, up in the capital. Ragna keeps the quiet room. Tell her the count came from Nib, and don't ask her anything else — his advice, given twice.",
+      "objectives": [{ "kind": "talk", "actor": "innkeep_ragna" }]
+    }
+  ],
+  "rewards": {
+    "coins": 130,
+    "xp": [{ "skill": "vitality", "amount": 250 }]
+  }
+}

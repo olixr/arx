@@ -396,6 +396,12 @@ const defs: ItemDef[] = [
   { id: 'direwolf_pelt', name: 'Dire wolf pelt', stackable: false, value: 110, desc: 'Broad as a bedroll, storm-dark and frost-tipped — her winters written in the scars.', color: '#4b4854', code: 'Dp' },
   { id: 'worg_fang', name: 'Worg fang', stackable: false, value: 38, desc: 'An up-hooked lower fang, long as a skinning knife. The goblins drill them for war-charms.', color: '#d8ccb0', code: 'Wg' },
   { id: 'scrap_hide', name: 'Scrap hide', stackable: true, value: 3, desc: 'Small pelts and offcuts. Three make an honest leather.', color: '#8a6f52', code: 'Sh' },
+
+  // Quest items — worthless by law (the flood law's price for
+  // quest-gated drops), stackable so an errand rides one slot.
+  { id: 'redmask_writ', name: 'Redmask writ', stackable: true, value: 0, quest: true, desc: 'Marching orders in a hand Captain Aldis would know asleep.', color: '#b0392e', code: 'Rw' },
+  { id: 'reavers_mark', name: "Reaver's mark", stackable: true, value: 0, quest: true, desc: 'A crew\'s iron token. Whoever holds it keeps the shares.', color: '#2b2735', code: 'Rm' },
+  { id: 'torn_ledger_page', name: 'Torn ledger page', stackable: true, value: 0, quest: true, startsQuest: 'the_stolen_ledger', desc: 'Bank-ruled lines torn out rough. Someone kept accounts; someone else kept the accounts.', color: '#efe3c2', code: 'Lp' },
   { id: 'linen_scrap', name: 'Linen scrap', stackable: true, value: 3, desc: 'Torn cloth off someone who stopped needing it.', color: '#ddd6c2', code: 'Ls' },
   { id: 'gloomsilk_thread', name: 'Gloomsilk thread', stackable: true, value: 14, desc: 'Cold spun shadow from the crypt. It drinks the light.', color: '#5a4a78', code: 'Gt' },
 

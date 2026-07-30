@@ -1,0 +1,26 @@
+{
+  "id": "q_pelts_for_the_road_offer",
+  "start": "hub",
+  "requires": ["quest:pelts_for_the_road:available"],
+  "bindings": [{ "kind": "actor", "target": "outfitter_hask", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Winter cloaks want lining and I won't sell thin. Six wolf furs, clean ones. Wolves run the tree lines — and they don't come alone, so hear that part twice. Work you want?",
+      "hooks": [{ "kind": "quest_offer", "quest": "pelts_for_the_road" }],
+      "choices": [
+        { "text": "Six furs. Done.", "next": "sworn" },
+        { "text": "Not for wolf pay.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Aim before the second one commits. Off you go.",
+      "hooks": [{ "kind": "quest_accept", "quest": "pelts_for_the_road" }]
+    },
+    {
+      "id": "declined",
+      "text": "Fair. Wolves think so too."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "a_word_from_the_crown",
+  "name": "A Word from the Crown",
+  "giver": "veteran_skarn",
+  "requires": { "quests": ["names_in_the_registry"] },
+  "stages": [
+    {
+      "id": "the_court",
+      "journal": "Skarn sent word up the stair; it came back the same day under a crown seal. Present yourself at the castle court — the mark on your chart is the Court Gate, and the stairs do the rest. Then bring Skarn word of how the king seemed. He asked plainly, the way he asks everything.",
+      "objectives": [{ "kind": "talk", "actor": "king_aeriex" }],
+      "mark": { "x": -288, "y": -162 }
+    }
+  ],
+  "rewards": {
+    "coins": 200,
+    "flags": ["crown_audience"]
+  }
+}

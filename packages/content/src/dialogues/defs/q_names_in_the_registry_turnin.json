@@ -1,0 +1,18 @@
+{
+  "id": "q_names_in_the_registry_turnin",
+  "start": "paid",
+  "requires": ["quest:names_in_the_registry:ready"],
+  "bindings": [{ "kind": "actor", "target": "veteran_skarn", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Ansel sent you. Up the whole stair. For a name.",
+      "next": "paid2"
+    },
+    {
+      "id": "paid2",
+      "text": "Aye. I'll take it to the rolls myself. You walked it proper — that's worth knowing about a person.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "names_in_the_registry" }]
+    }
+  ]
+}

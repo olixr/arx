@@ -1,0 +1,13 @@
+{
+  "id": "q_the_reavers_mark_turnin",
+  "start": "paid",
+  "requires": ["quest:the_reavers_mark:ready"],
+  "bindings": [{ "kind": "actor", "target": "keeper_ansel", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "A reaver's mark, surrendered by force of arms. I'll enter it under today's date, with your name as witness — the registry remembers what the roads forget. The Hall thanks you. I thank you. Both are now recorded.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_reavers_mark" }]
+    }
+  ]
+}

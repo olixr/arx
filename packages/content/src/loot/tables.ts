@@ -233,6 +233,9 @@ const defs: LootTableDef[] = [
       { item: 'scrap_hide', qty: [2, 3], chance: 0.18 },
       { item: 'linen_scrap', qty: [2, 4], chance: 0.22 },
       { item: 'arcane_dust', chance: 0.06 },
+      // A torn bank page rides some pockets — reading it starts the
+      // banker's errand. Plain table math; the page is worth nothing.
+      { item: 'torn_ledger_page', chance: 0.025 },
     ],
   },
   rack('brigand_wardrobe', 'Stolen wardrobes — cut purses and quieter boots.', 0.04, [

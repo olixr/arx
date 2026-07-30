@@ -95,6 +95,7 @@ import {
   effectiveReq,
   instanceName,
   isTwoHanded,
+  ITEMS,
   itemDef,
   makeRoll,
   npcHitHeight,
@@ -1271,6 +1272,12 @@ export class GameServer {
   /** Quest-gated drop entries by bestiary def id (the kill-site channel). */
   private readonly questDropsByNpc = new Map<string, Array<{ quest: string; item: string; chance: number }>>();
   /**
+   * Quests some ITEM begins (ItemDef.startsQuest). They never join the
+   * availability list — nobody offers them, so no head wears their
+   * mark; the found thing itself is the whole invitation.
+   */
+  private readonly itemStartQuests = new Set<string>();
+  /**
    * Re-reads quests from the DB (wired by index.ts at boot) — the
    * /quest reload lever, same law as dialogueSource.
    */
@@ -1866,6 +1873,10 @@ export class GameServer {
    * a quest naming an unknown giver is a warning, not a wire.
    */
   registerQuests(defs: Iterable<QuestDef>): void {
+    this.itemStartQuests.clear();
+    for (const item of ITEMS.values()) {
+      if (item.startsQuest) this.itemStartQuests.add(item.startsQuest);
+    }
     for (const def of defs) {
       if (!this.actorDefs.has(def.giver)) {
         console.warn(`[npc] quest '${def.id}' names unknown giver '${def.giver}' — skipped`);
@@ -7443,6 +7454,7 @@ export class GameServer {
     const ctx = this.questCtx(player);
     const out: QuestAvailWire[] = [];
     for (const def of this.questDefs.values()) {
+      if (this.itemStartQuests.has(def.id)) continue;
       if (questAvailable(def, ctx)) out.push({ id: def.id, name: def.name, giver: def.giver });
     }
     out.sort((a, b) => (a.id < b.id ? -1 : 1));

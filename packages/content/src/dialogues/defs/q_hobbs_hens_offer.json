@@ -1,0 +1,26 @@
+{
+  "id": "q_hobbs_hens_offer",
+  "start": "hub",
+  "requires": ["quest:hobbs_hens:available"],
+  "bindings": [{ "kind": "actor", "target": "farmer_hobb", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Market day's coming and I'm eight eggs short. The hens know it, too. They lay where they please — coop, mostly. Long grass by the pasture when they're feeling clever. Fetch me eight?",
+      "hooks": [{ "kind": "quest_offer", "quest": "hobbs_hens" }],
+      "choices": [
+        { "text": "I'll find your eggs.", "next": "sworn" },
+        { "text": "I've bigger things to do.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Good. Mind the latch.",
+      "hooks": [{ "kind": "quest_accept", "quest": "hobbs_hens" }]
+    },
+    {
+      "id": "declined",
+      "text": "Than eggs. All right."
+    }
+  ]
+}

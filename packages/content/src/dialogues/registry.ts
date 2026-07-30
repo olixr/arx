@@ -79,6 +79,36 @@ import coffCart from './defs/coff_cart.json';
 import haleWatchUneasy from './defs/hale_watch_uneasy.json';
 import haleWatchUrgent from './defs/hale_watch_urgent.json';
 import haleWatchRelief from './defs/hale_watch_relief.json';
+import qLayOffer from './defs/q_the_lay_of_the_land_offer.json';
+import qLayTurnin from './defs/q_the_lay_of_the_land_turnin.json';
+import qThinOffer from './defs/q_thin_the_meadow_offer.json';
+import qThinTurnin from './defs/q_thin_the_meadow_turnin.json';
+import qHensOffer from './defs/q_hobbs_hens_offer.json';
+import qHensTurnin from './defs/q_hobbs_hens_turnin.json';
+import qWordOffer from './defs/q_word_on_the_road_offer.json';
+import qWordTurnin from './defs/q_word_on_the_road_turnin.json';
+import qReaverOffer from './defs/q_the_reavers_mark_offer.json';
+import qReaverTurnin from './defs/q_the_reavers_mark_turnin.json';
+import qRegistryOffer from './defs/q_names_in_the_registry_offer.json';
+import qRegistryTurnin from './defs/q_names_in_the_registry_turnin.json';
+import qCrownOffer from './defs/q_a_word_from_the_crown_offer.json';
+import qCrownTurnin from './defs/q_a_word_from_the_crown_turnin.json';
+import qSmithOffer from './defs/q_a_smiths_errand_offer.json';
+import qSmithTurnin from './defs/q_a_smiths_errand_turnin.json';
+import qLongwayOffer from './defs/q_the_long_way_round_offer.json';
+import qLongwayTurnin from './defs/q_the_long_way_round_turnin.json';
+import qDeepOffer from './defs/q_deep_seams_offer.json';
+import qDeepTurnin from './defs/q_deep_seams_turnin.json';
+import qPyreOffer from './defs/q_bones_for_the_pyre_offer.json';
+import qPyreTurnin from './defs/q_bones_for_the_pyre_turnin.json';
+import qPeltsOffer from './defs/q_pelts_for_the_road_offer.json';
+import qPeltsTurnin from './defs/q_pelts_for_the_road_turnin.json';
+import qPotOffer from './defs/q_the_pot_never_rests_offer.json';
+import qPotTurnin from './defs/q_the_pot_never_rests_turnin.json';
+import qWarrensOffer from './defs/q_thin_the_warrens_offer.json';
+import qWarrensTurnin from './defs/q_thin_the_warrens_turnin.json';
+import qLedgerActive from './defs/q_the_stolen_ledger_active.json';
+import qLedgerTurnin from './defs/q_the_stolen_ledger_turnin.json';
 
 /**
  * Every authored dialogue JSON, registered here. A def that isn't
@@ -169,6 +199,40 @@ const SOURCES: readonly unknown[] = [
   nixCart,
   hettyCart,
   coffCart,
+  // THE QUEST LEDGER: per-quest offer trees (priority 5 — world news
+  // and once-intros outrank a job pitch) and turn-in trees (21 — a
+  // finished errand is the player's earned moment), all gated on the
+  // synthetic quest: answers so they appear and retire themselves.
+  qLayOffer,
+  qLayTurnin,
+  qThinOffer,
+  qThinTurnin,
+  qHensOffer,
+  qHensTurnin,
+  qWordOffer,
+  qWordTurnin,
+  qReaverOffer,
+  qReaverTurnin,
+  qRegistryOffer,
+  qRegistryTurnin,
+  qCrownOffer,
+  qCrownTurnin,
+  qSmithOffer,
+  qSmithTurnin,
+  qLongwayOffer,
+  qLongwayTurnin,
+  qDeepOffer,
+  qDeepTurnin,
+  qPyreOffer,
+  qPyreTurnin,
+  qPeltsOffer,
+  qPeltsTurnin,
+  qPotOffer,
+  qPotTurnin,
+  qWarrensOffer,
+  qWarrensTurnin,
+  qLedgerActive,
+  qLedgerTurnin,
 ];
 
 function buildRegistry(): ReadonlyMap<string, DialogueDef> {

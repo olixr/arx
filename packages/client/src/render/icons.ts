@@ -4277,6 +4277,10 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   leather: { icon: 'hide', color: '#b08a5c' },
   cowhide: { icon: 'hide', color: '#a08468' },
   scrap_hide: { icon: 'hide', color: '#8a6f52' },
+  // Quest items — papers and tokens; the color says whose.
+  redmask_writ: { icon: 'scroll', color: '#c26a5a' },
+  reavers_mark: { icon: 'ring', color: '#5a5666' },
+  torn_ledger_page: { icon: 'scroll', color: '#e6ddc2' },
   hardened_leather: { icon: 'hide', color: '#7d5636' },
   linen_scrap: { icon: 'clothbolt', color: '#ddd6c2' },
   linen: { icon: 'clothbolt', color: '#e4dcc4' },
