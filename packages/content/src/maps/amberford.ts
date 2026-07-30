@@ -139,18 +139,26 @@ export function buildAmberford(): ZoneDef {
   // The teller line and the staff floor behind it.
   for (let x = 38; x <= 43; x++) b.set(x, 29, Tile.Counter);
   b.set(41, 25, Tile.Bookshelf).set(42, 25, Tile.Bookshelf); // the ledger wall
+  // The crown watches the books: the two sigils flank the ledger
+  // wall — this bank keeps the realm's coin under the realm's cloth.
+  b.setDetail(40, 24, Detail.BannerCrown).setDetail(43, 24, Detail.BannerMoon);
   b.set(39, 26, Tile.Table).set(39, 27, Tile.Chair);
-  // The lobby: the two banking chests flank the rug aisle; a bench
-  // for the queue on market days.
+  // The lobby: the two banking chests flank the charter aisle — a
+  // fitted crimson velvet runner from the double doors to the teller
+  // line (the one state carpet outside Silverfall; the charter came
+  // from the Crown, and the floor says so). Benches for the queue.
   b.set(38, 32, Tile.BankChest).set(43, 32, Tile.BankChest);
   b.set(45, 33, Tile.Bench).set(46, 33, Tile.Bench);
-  b.setDetail(40, 32, Detail.Rug).setDetail(41, 32, Detail.Rug);
-  b.setDetail(40, 33, Detail.Rug).setDetail(41, 33, Detail.Rug);
-  b.setDetail(40, 34, Detail.Doormat).setDetail(41, 34, Detail.Doormat);
+  for (let y = 30; y <= 34; y++) {
+    b.setDetail(40, y, Detail.CarpetRoyal).setDetail(41, y, Detail.CarpetRoyal);
+  }
   // The forecourt: a stone step down, lamps, and a walk to the Round.
   b.fillRect(39, 36, 4, 2, Tile.StoneFloor);
   b.path({ x: 41, y: 38 }, { x: 46, y: 39 }, 2, Tile.StoneFloor);
   b.set(38, 36, Tile.LampPost).set(43, 36, Tile.LampPost);
+  // The facade wears the charter: crown west of the doors, moon east
+  // (the paired-seat order), the way the castle gate flies them.
+  b.setDetail(39, 35, Detail.BannerCrown).setDetail(42, 35, Detail.BannerMoon);
   b.sign(37, 36, 'BANK OF AMBERFORD', ['coin kept, word kept']);
   // The Toll War memorial — the reason there is a bank at all. A
   // pillar for the ones who held the ford against the Redmasks,
@@ -197,6 +205,10 @@ export function buildAmberford(): ZoneDef {
   b.set(24, 15, Tile.ToolRack);
   b.set(19, 18, Tile.Crate).set(24, 17, Tile.CrateGoods);
   b.setDetail(21, 11, Detail.Doormat);
+  // A customer's runner from the door to the counter — the one soft
+  // thing in the building, and it stays on the shop side of the wall
+  // (no cloth lives where the sparks do).
+  for (let x = 20; x <= 22; x++) b.setDetail(x, 12, Detail.Rug);
   // The forge yard: trampled dirt, the outdoor rack, the deliveries.
   b.fillRect(11, 21, 14, 4, Tile.Dirt);
   b.set(13, 22, Tile.WeaponRack);
@@ -217,17 +229,25 @@ export function buildAmberford(): ZoneDef {
   b.set(36, 19, Tile.WallWoodWindow).set(43, 19, Tile.WallWoodWindow);
   for (let x = 33; x <= 46; x++) b.set(x, 15, Tile.WallWood);
   b.set(39, 15, Tile.DoorwayWood); // shop <-> workshop
-  // The shop floor.
+  // The shop floor. The east half is the SHOWROOM: the master's copy
+  // of the Silverfall weave hung on the shop wall over a grand 3x2
+  // display rug — the artisan sells cloth, so the shop wears its own
+  // best work where every customer's eye lands first.
   for (let x = 35; x <= 38; x++) b.set(x, 13, Tile.Counter);
   b.set(33, 11, Tile.Bookshelf).set(34, 11, Tile.Cabinet); // the pattern books
   b.set(44, 11, Tile.Cabinet).set(45, 12, Tile.CrateGoods); // bolts and thread
-  b.setDetail(42, 12, Detail.RugRound);
+  b.setDetail(41, 10, Detail.Tapestry).setDetail(42, 10, Detail.Tapestry);
+  for (let x = 41; x <= 43; x++) {
+    b.setDetail(x, 12, Detail.Rug).setDetail(x, 13, Detail.Rug);
+  }
   b.setDetail(38, 11, Detail.Doormat).setDetail(39, 11, Detail.Doormat);
-  // The work line.
+  // The work line — and the piece still ON the loom: a half-woven
+  // tapestry hangs on the workshop wall above it, warp showing.
   b.set(34, 17, Tile.Loom);
   b.set(38, 17, Tile.CarvingBench);
   b.set(42, 17, Tile.Workbench);
   b.set(45, 16, Tile.Crate).set(45, 18, Tile.Barrel);
+  b.setDetail(34, 15, Detail.Tapestry).setDetail(35, 15, Detail.Tapestry);
   b.setDetail(36, 16, Detail.Sawdust).setDetail(41, 16, Detail.Sawdust);
   b.sign(36, 9, "TILO'S", ['cloth, carving, commissions']);
   b.set(38, 9, Tile.Dirt).set(39, 9, Tile.Dirt);
@@ -261,6 +281,7 @@ export function buildAmberford(): ZoneDef {
   b.set(49, 5, Tile.ToolRack);
   b.set(46, 4, Tile.Table).set(47, 4, Tile.Chair);
   b.set(45, 5, Tile.Brazier); // the watch fire
+  b.setDetail(48, 0, Detail.BannerCrown); // the watch serves the crown
   b.setDetail(47, 6, Detail.Doormat);
   // The gate furniture: lamps where the lamplight ENDS, the sign that
   // tells you the truth, a rack for the watch's spare steel.
@@ -270,9 +291,12 @@ export function buildAmberford(): ZoneDef {
   b.fillRect(53, 0, 3, 2, Tile.Path); // the mouth meets the carved High Road
   // The gate itself is real garrison work now — a three-tile arched
   // gatehouse set in the town wall (laid in THE TOWN WALL section
-  // below), sprung from Aldis's tower to the curtain. The banners
-  // that flank it inside are the watch's colors.
-  b.set(52, 2, Tile.BannerPole).set(56, 2, Tile.BannerPole);
+  // below), sprung from Aldis's tower to the curtain. The masonry
+  // flanking the arch WEARS the realm's colors — true hung banners
+  // on the garrison faces (crown west, moon east, the paired-seat
+  // order), replacing the old freestanding poles: the wall itself
+  // welcomes the High Road now, the way the Court Gate does.
+  b.setDetail(52, 1, Detail.BannerCrown).setDetail(56, 1, Detail.BannerMoon);
   // The outfitter (Hask), the gate's east post: the last shop before
   // the climb. Shop floor by the road — packs stacked, bows racked,
   // counter facing the door — and the storeroom walled off east.
@@ -290,7 +314,10 @@ export function buildAmberford(): ZoneDef {
   b.set(63, 3, Tile.WeaponRack); // bows and arrows
   b.set(63, 10, Tile.ToolRack); // torches, rope, spades
   b.set(59, 9, Tile.Barrel); // pitch for the torches
-  b.setDetail(59, 6, Detail.Doormat).setDetail(60, 5, Detail.Rug);
+  b.setDetail(59, 6, Detail.Doormat);
+  // A proper trade-floor rug where the customers stand and haggle.
+  b.setDetail(60, 5, Detail.Rug).setDetail(61, 5, Detail.Rug);
+  b.setDetail(60, 6, Detail.Rug).setDetail(61, 6, Detail.Rug);
   // The storeroom.
   b.set(66, 3, Tile.Crate).set(67, 3, Tile.CrateGoods).set(68, 4, Tile.Crate);
   b.set(66, 10, Tile.Barrel).set(67, 10, Tile.Barrel);
@@ -319,6 +346,9 @@ export function buildAmberford(): ZoneDef {
   b.set(62, 16, Tile.Bookshelf).set(63, 16, Tile.Cabinet);
   b.set(63, 22, Tile.Table).set(63, 21, Tile.Chair); // where she hears symptoms
   b.setDetail(62, 19, Detail.Doormat).setDetail(63, 20, Detail.RugRound);
+  // The waiting rug in front of the counter — patients stand soft.
+  b.setDetail(62, 17, Detail.Rug).setDetail(63, 17, Detail.Rug);
+  b.setDetail(62, 18, Detail.Rug).setDetail(63, 18, Detail.Rug);
   // The alembic lab, then her room behind it.
   b.set(68, 16, Tile.Alembic);
   b.set(70, 17, Tile.Basin);
@@ -326,7 +356,9 @@ export function buildAmberford(): ZoneDef {
   b.setDetail(67, 18, Detail.Straw); // herbs drying on the floor
   b.set(70, 21, Tile.Bed);
   b.set(67, 23, Tile.Cabinet);
-  b.setDetail(68, 22, Detail.RugRound);
+  // Her one comfort: a real bedside rug, woven whole.
+  b.setDetail(68, 21, Detail.Rug).setDetail(69, 21, Detail.Rug);
+  b.setDetail(68, 22, Detail.Rug).setDetail(69, 22, Detail.Rug);
   // The herb garden, fenced and worked in rows.
   b.outlineRect(74, 15, 9, 8, Tile.Fence);
   b.set(74, 19, Tile.FenceGate); // the garden gate, standing open
@@ -358,10 +390,14 @@ export function buildAmberford(): ZoneDef {
   for (let y = 45; y <= 51; y++) b.set(69, y, Tile.WallWood);
   b.set(69, 46, Tile.DoorwayWood).set(69, 50, Tile.DoorwayWood);
   for (let x = 70; x <= 73; x++) b.set(x, 48, Tile.WallWood);
+  // Each room earns a whole 2x2 woven rug — a paying guest's floor
+  // should be warmer than the corridor's boards.
   b.set(73, 45, Tile.Bed).set(70, 47, Tile.Cabinet);
-  b.setDetail(71, 46, Detail.RugRound);
+  b.setDetail(71, 46, Detail.Rug).setDetail(72, 46, Detail.Rug);
+  b.setDetail(71, 47, Detail.Rug).setDetail(72, 47, Detail.Rug);
   b.set(73, 51, Tile.Bed).set(70, 49, Tile.Cabinet);
-  b.setDetail(71, 50, Detail.RugRound);
+  b.setDetail(71, 49, Detail.Rug).setDetail(72, 49, Detail.Rug);
+  b.setDetail(71, 50, Detail.Rug).setDetail(72, 50, Detail.Rug);
   // The kitchen, walled off southeast; the bar and cellar nook west.
   for (let x = 65; x <= 73; x++) b.set(x, 52, Tile.WallWood);
   b.set(68, 52, Tile.DoorwayWood);
@@ -374,12 +410,23 @@ export function buildAmberford(): ZoneDef {
   for (let x = 61; x <= 63; x++) b.set(x, 52, Tile.Counter);
   b.set(61, 53, Tile.Barrel).set(62, 53, Tile.Barrel);
   b.set(61, 56, Tile.Bed).set(63, 56, Tile.Cabinet);
-  b.setDetail(62, 55, Detail.RugRound);
-  // The hearth room: the everlasting fire and the table clusters.
+  // Dunna's nook keeps a real rug too — she sleeps by the barrels,
+  // but she doesn't sleep on bare boards.
+  b.setDetail(62, 54, Detail.Rug).setDetail(63, 54, Detail.Rug);
+  b.setDetail(62, 55, Detail.Rug).setDetail(63, 55, Detail.Rug);
+  // The hearth room: the everlasting fire, a grand 3x2 hall rug laid
+  // from the doors toward the fire (the one-loom law weaves it into
+  // a single medallion cloth), and the table clusters around it. The
+  // Silverfall weave hangs over the tables — every coaching inn
+  // hangs a picture of where the road goes, and this road goes THERE.
   b.set(61, 45, Tile.Hearth);
   b.set(63, 48, Tile.Table).set(62, 48, Tile.Chair).set(64, 48, Tile.Chair);
   b.set(66, 46, Tile.Table).set(66, 47, Tile.Chair);
-  b.setDetail(62, 46, Detail.Rug).setDetail(63, 46, Detail.Rug);
+  b.set(66, 50, Tile.Table).set(65, 50, Tile.Chair).set(67, 50, Tile.Chair);
+  b.setDetail(65, 44, Detail.Tapestry).setDetail(66, 44, Detail.Tapestry);
+  for (let x = 62; x <= 64; x++) {
+    b.setDetail(x, 46, Detail.Rug).setDetail(x, 47, Detail.Rug);
+  }
   b.setDetail(63, 45, Detail.Doormat).setDetail(64, 45, Detail.Doormat);
   // The inn yard: sign and lamp at the plaza door, the travelers'
   // bench on the lane side, the cellar deliveries along the gable.
@@ -433,6 +480,9 @@ export function buildAmberford(): ZoneDef {
   b.set(72, 35, Tile.Counter).set(73, 35, Tile.Counter);
   b.set(78, 35, Tile.CrateGoods).set(79, 36, Tile.CrateGoods); // flour by the sack
   b.setDetail(74, 36, Detail.Doormat).setDetail(77, 34, Detail.Straw);
+  // One modest runner where the customers queue — flour-dusted by
+  // noon every market day, and Garton wouldn't have it otherwise.
+  b.setDetail(75, 34, Detail.Rug).setDetail(76, 34, Detail.Rug);
   b.sign(69, 36, "GARTON'S MILL", ['flour, meal, and gossip']);
   // The millrace: the pond let through a sluice to lap the mill's
   // east wall. The wheel itself is still on the mason's list, but
@@ -468,6 +518,7 @@ export function buildAmberford(): ZoneDef {
   b.set(78, 50, Tile.WallWoodWindow).set(83, 50, Tile.WallWoodWindow);
   b.set(82, 51, Tile.Bed);
   b.set(79, 51, Tile.Crate).set(79, 49, Tile.Barrel);
+  b.setDetail(81, 50, Detail.RugRound); // the one soft thing Peld owns
   b.set(84, 49, Tile.LampPost); // the ferry lamp
   b.set(84, 51, Tile.ToolRack); // nets and boathooks
   for (let y = 45; y <= 47; y++) b.set(80, y, Tile.Dirt); // the shore path
@@ -529,11 +580,20 @@ export function buildAmberford(): ZoneDef {
   b.set(39, 56, Tile.WallStoneWindow).set(46, 56, Tile.WallStoneWindow);
   b.set(37, 61, Tile.WallStoneWindow).set(37, 65, Tile.WallStoneWindow);
   b.set(48, 61, Tile.WallStoneWindow).set(48, 65, Tile.WallStoneWindow);
-  // The apse end: lectern, braziers, the registry of who passed.
+  // The apse end: lectern, braziers, the registry of who passed —
+  // and THE PILGRIMS' MILE: a single woven runner the whole length
+  // of the nave, door to lectern (the one-loom law lays the 2x12
+  // block as one cloth, a diamond chain pacing its spine). Every
+  // traveler who ever rested here walked this same strip of wool.
   b.set(42, 70, Tile.Lectern);
   b.set(39, 70, Tile.Brazier).set(46, 70, Tile.Brazier);
-  b.setDetail(42, 69, Detail.Rug).setDetail(43, 69, Detail.Rug);
+  for (let y = 58; y <= 69; y++) {
+    b.setDetail(42, y, Detail.Rug).setDetail(43, y, Detail.Rug);
+  }
   b.set(38, 57, Tile.Bookshelf).set(47, 57, Tile.Cabinet);
+  // Over the doors, facing the lectern down the nave: the weave of
+  // the road's far end — the Waykeepers hang the destination itself.
+  b.setDetail(40, 56, Detail.Tapestry).setDetail(41, 56, Detail.Tapestry);
   // East pews only — the west aisle became the PILGRIM ALCOVE: two
   // cots and a locker for road-worn travelers, because the
   // Waykeepers' faith has always been a roof first, sermon second.
@@ -576,11 +636,17 @@ export function buildAmberford(): ZoneDef {
   b.set(7, 60, Tile.Table).set(8, 60, Tile.Table); // the long farm table
   b.set(6, 60, Tile.Chair).set(9, 60, Tile.Chair);
   b.set(5, 62, Tile.Counter).set(5, 63, Tile.Counter).set(5, 64, Tile.Basin);
-  b.setDetail(7, 61, Detail.Rug).setDetail(8, 61, Detail.Rug);
+  // The good rug — a 4x2 laid whole between the hearth and the long
+  // table, the one Tamsin's mother wove and the one thing in the
+  // house nobody puts muddy boots on.
+  for (let x = 6; x <= 9; x++) {
+    b.setDetail(x, 58, Detail.Rug).setDetail(x, 59, Detail.Rug);
+  }
   b.setDetail(9, 57, Detail.Doormat);
   b.set(14, 58, Tile.Bed).set(14, 61, Tile.Bed);
   b.set(12, 57, Tile.Cabinet);
-  b.setDetail(13, 60, Detail.RugRound);
+  b.setDetail(12, 59, Detail.Rug).setDetail(13, 59, Detail.Rug);
+  b.setDetail(12, 60, Detail.Rug).setDetail(13, 60, Detail.Rug);
   b.set(9, 54, Tile.Dirt).set(9, 55, Tile.Dirt); // the worn step to the road
   b.set(5, 66, Tile.Crate).set(6, 66, Tile.Crate); // the woodpile
   b.set(12, 66, Tile.Bench);
@@ -601,7 +667,10 @@ export function buildAmberford(): ZoneDef {
   b.set(27, 57, Tile.Cabinet);
   b.set(23, 59, Tile.Table).set(24, 59, Tile.Chair);
   b.set(27, 61, Tile.Bed);
-  b.setDetail(24, 57, Detail.Doormat).setDetail(24, 58, Detail.Rug);
+  b.setDetail(24, 57, Detail.Doormat);
+  // The parlor square between the table and her bed.
+  b.setDetail(25, 59, Detail.Rug).setDetail(26, 59, Detail.Rug);
+  b.setDetail(25, 60, Detail.Rug).setDetail(26, 60, Detail.Rug);
   b.set(19, 58, Tile.Bench);
   b.set(24, 54, Tile.Dirt).set(24, 55, Tile.Dirt);
   b.fillRect(22, 65, 4, 2, Tile.Tilled);
@@ -617,7 +686,11 @@ export function buildAmberford(): ZoneDef {
   b.set(14, 72, Tile.Table).set(15, 72, Tile.Chair); // the ledger desk
   b.set(20, 70, Tile.Bed);
   b.set(21, 73, Tile.Cabinet);
-  b.setDetail(17, 70, Detail.Doormat).setDetail(17, 72, Detail.Rug);
+  b.setDetail(17, 70, Detail.Doormat);
+  // A banker's rug: bought, not inherited, and it shows — woven
+  // whole, laid square between the desk and the bed.
+  b.setDetail(17, 71, Detail.Rug).setDetail(18, 71, Detail.Rug);
+  b.setDetail(17, 72, Detail.Rug).setDetail(18, 72, Detail.Rug);
   b.set(14, 68, Tile.FlowerBox).set(20, 68, Tile.FlowerBox);
   b.set(17, 67, Tile.Dirt).set(17, 68, Tile.Dirt);
   // Master Tilo's: shavings even at home — a half-finished chair in
@@ -632,6 +705,7 @@ export function buildAmberford(): ZoneDef {
   b.set(29, 70, Tile.Table).set(30, 70, Tile.Chair);
   b.set(27, 71, Tile.Chair); // the half-finished one
   b.set(32, 73, Tile.Crate);
+  b.setDetail(28, 68, Detail.RugRound); // a maker's offcut by the bed
   b.setDetail(28, 70, Detail.Sawdust).setDetail(31, 72, Detail.Sawdust);
   b.setDetail(29, 68, Detail.Doormat);
   b.set(29, 65, Tile.Dirt).set(29, 66, Tile.Dirt);
@@ -648,6 +722,10 @@ export function buildAmberford(): ZoneDef {
   b.set(61, 66, Tile.Table).set(62, 66, Tile.Chair);
   b.set(64, 68, Tile.Cabinet);
   b.setDetail(61, 64, Detail.Doormat);
+  // The captain's colors over her own steel, and one spare runner at
+  // the table — she'd call anything more clutter.
+  b.setDetail(64, 63, Detail.BannerCrown);
+  b.setDetail(61, 65, Detail.Rug).setDetail(62, 65, Detail.Rug);
   b.set(61, 62, Tile.Dirt); // her step to the road
   // Goodwife Perl's: the cottage IN the orchard she keeps, berries
   // at the step and apples out every window.
@@ -659,7 +737,10 @@ export function buildAmberford(): ZoneDef {
   b.set(83, 67, Tile.Bed);
   b.set(84, 71, Tile.Cabinet);
   b.set(80, 70, Tile.Table).set(81, 70, Tile.Chair);
-  b.setDetail(80, 68, Detail.RugRound).setDetail(79, 69, Detail.Doormat);
+  // Perl's braided square — apple-cider colors, worn soft.
+  b.setDetail(80, 68, Detail.Rug).setDetail(81, 68, Detail.Rug);
+  b.setDetail(80, 69, Detail.Rug).setDetail(81, 69, Detail.Rug);
+  b.setDetail(79, 69, Detail.Doormat);
   b.set(76, 68, Tile.BerryBush).set(76, 70, Tile.BerryBush);
   b.set(77, 66, Tile.FlowerBox);
   b.set(76, 69, Tile.Dirt).set(77, 69, Tile.Dirt);
