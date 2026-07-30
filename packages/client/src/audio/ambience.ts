@@ -12,6 +12,10 @@
  *    THE BAN (two user rejections): NO continuous filtered-noise bed
  *    may ever play, in any band — a smooth gain envelope on noise
  *    reads as waves crashing, full stop. Granular or nothing.
+ *    (One sanctioned exception: the FALLING WATER voice below, which
+ *    IS water — the very reading the ban protects against is that
+ *    voice's whole job. It stays gated by true SPILL-LAW earshot and
+ *    granular inside; the ban holds everywhere else, unchanged.)
  *  - BIRDS (day, outdoors): sparse procedural songbird phrases —
  *    2-5 small warbles, panned somewhere in the trees, occasionally
  *    distant. Denser through the dawn chorus, gone by dusk.
@@ -26,6 +30,15 @@
  *    drips; the ambience bus reverb makes each drip a cavern.
  *  - TOWN: a distant smithy tink now and then by day — the sound of
  *    other lives being lived somewhere behind the houses.
+ *  - FALLING WATER (near a waterfall): a calm pink-noise roil in two
+ *    legs — a body whose lowpass opens as the listener approaches
+ *    (distance darkens a fall long before it silences it) and a low
+ *    rumble that swells under tall stacked drops — seated in stereo
+ *    toward the fall. Fed by audio/falls.ts, which asks THE SPILL LAW
+ *    itself where curtains hang, so it is silent everywhere the
+ *    renderer draws no fall. Never a wash: the loop's roil grains
+ *    tumble inside it, and the earshot gate keeps it a soft far hush
+ *    that only finds its voice at the plunge pool.
  *  - RIFTGATE (near a portal): a low beating drone — detuned sine
  *    pairs, a slow-wobbling harmonic, a hollow whistle riding on top
  *    — that swells as the listener approaches (closeness², so it
@@ -42,6 +55,7 @@
 import type { AudioEngine } from './engine.js';
 import { windScalarAt } from '../render/grass.js';
 import { birdsK, cricketsK, type ZoneWeights } from './zones.js';
+import { SILENT_EAR, type FallEar } from './falls.js';
 
 export class AmbienceSystem {
   private built = false;
@@ -59,17 +73,30 @@ export class AmbienceSystem {
   private nextPeckAt = 0;
   private portalGain: GainNode | null = null;
   private nextPortalMoodAt = 0;
+  private fallBody: GainNode | null = null;
+  private fallRumble: GainNode | null = null;
+  private fallLp: BiquadFilterNode | null = null;
+  private fallPan: StereoPannerNode | null = null;
   /** Debug mirrors for live verification. */
-  gates = { wind: 0, birds: 0, crickets: 0, cave: 0, portal: 0 };
+  gates = { wind: 0, birds: 0, crickets: 0, cave: 0, portal: 0, fall: 0 };
 
   constructor(private engine: AudioEngine) {}
 
   /**
    * `portalNear` is 0..1 closeness to the nearest Riftgate (0 beyond
    * hearing range) — main.ts scans for it on a throttle and feeds it
-   * through here.
+   * through here. `fall` is the fall-earshot scan's verdict on the
+   * falling water around the listener (audio/falls.ts), same cadence.
    */
-  update(x: number, y: number, w: ZoneWeights, hours: number, tSec: number, portalNear = 0): void {
+  update(
+    x: number,
+    y: number,
+    w: ZoneWeights,
+    hours: number,
+    tSec: number,
+    portalNear = 0,
+    fall: FallEar = SILENT_EAR,
+  ): void {
     const ctx = this.engine.ctx;
     const bus = this.engine.ambience;
     if (!ctx || !bus) return;
@@ -100,12 +127,25 @@ export class AmbienceSystem {
       // hard at the threshold — you HEAR when you've entered its yard.
       const pg = portalNear * portalNear * 0.1;
       this.portalGain!.gain.setTargetAtTime(pg, t, 0.5);
+      // The fall voice: a steep closeness curve keeps it a far hush
+      // until you're genuinely near; the body's lowpass opens on
+      // approach (a distant fall is dark before it is quiet); heft
+      // leans tall drops onto the rumble leg. Long glides — water
+      // never jumps.
+      const fn = fall.near;
+      const fBody = Math.pow(fn, 1.4) * 0.075;
+      const fRumble = Math.pow(fn, 1.8) * 0.055 * (0.35 + 0.65 * fall.heft);
+      this.fallBody!.gain.setTargetAtTime(fBody, t, 0.5);
+      this.fallRumble!.gain.setTargetAtTime(fRumble, t, 0.5);
+      this.fallLp!.frequency.setTargetAtTime(600 + 2200 * fn, t, 0.5);
+      this.fallPan!.pan.setTargetAtTime(fall.pan, t, 0.7);
       this.gates = {
         wind: windLevel,
         birds: day * outdoor,
         crickets: night * outdoor,
         cave: w.cave,
         portal: pg,
+        fall: fBody + fRumble,
       };
     }
 
@@ -196,6 +236,39 @@ export class AmbienceSystem {
     this.rumbleGain.connect(bus);
     rumble.start();
 
+    // FALLING WATER — the ban's one sanctioned voice (see THE BAN
+    // above): noise reading as water is the failure of a leaf and the
+    // truth of a fall. One pre-rendered roil loop feeds two legs into
+    // a shared stereo seat: the body through a closeness-opened
+    // lowpass, and a deep rumble leg for the pressure under tall
+    // drops. Both gains sit at 0 until the earshot scan says a
+    // curtain hangs nearby.
+    const fallSrc = ctx.createBufferSource();
+    fallSrc.buffer = this.makeFallBuffer(ctx);
+    fallSrc.loop = true;
+    this.fallPan = ctx.createStereoPanner();
+    this.fallPan.pan.value = 0;
+    this.fallPan.connect(bus);
+    this.fallLp = ctx.createBiquadFilter();
+    this.fallLp.type = 'lowpass';
+    this.fallLp.frequency.value = 800;
+    this.fallLp.Q.value = 0.5;
+    this.fallBody = ctx.createGain();
+    this.fallBody.gain.value = 0;
+    fallSrc.connect(this.fallLp);
+    this.fallLp.connect(this.fallBody);
+    this.fallBody.connect(this.fallPan);
+    const fallRlp = ctx.createBiquadFilter();
+    fallRlp.type = 'lowpass';
+    fallRlp.frequency.value = 240;
+    fallRlp.Q.value = 0.5;
+    this.fallRumble = ctx.createGain();
+    this.fallRumble.gain.value = 0;
+    fallSrc.connect(fallRlp);
+    fallRlp.connect(this.fallRumble);
+    this.fallRumble.connect(this.fallPan);
+    fallSrc.start();
+
     // The Riftgate drone: three voices under one gate, all oscillators.
     //  - a beating sub pair (64 / 64.7 Hz — the ~0.7 Hz beat is the
     //    "presence" you feel before you name it);
@@ -278,6 +351,56 @@ export class AmbienceSystem {
       for (let i = 0; i < env.length; i++) peak = Math.max(peak, env[i]!);
       const inv = peak > 0 ? 1 / peak : 1;
       for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * env[i]! * inv;
+    }
+    return buf;
+  }
+
+  /**
+   * Pre-render the fall's roil loop: pink-ish noise (a waterfall's
+   * energy lives below 1 kHz) under a granular tumble — dense
+   * overlapping grains over a steady floor, so the sound has the
+   * internal boil of falling water instead of the flat hiss of
+   * static. Two slow whole-loop swells (seam-safe by construction,
+   * phase-offset per channel) let the mass of it breathe.
+   */
+  private makeFallBuffer(ctx: AudioContext): AudioBuffer {
+    const secs = 6;
+    const rate = ctx.sampleRate;
+    const buf = ctx.createBuffer(2, rate * secs, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      // ROIL: ~26 grains/sec, 80-350ms, sin²-windowed, wrapped at the
+      // loop seam — the tumble that separates a living fall from hiss.
+      const env = new Float32Array(d.length);
+      const grains = secs * 26;
+      for (let g = 0; g < grains; g++) {
+        const start = Math.floor(Math.random() * d.length);
+        const glen = Math.floor(rate * (0.08 + Math.random() * 0.27));
+        const amp = 0.35 + 0.65 * Math.random() * Math.random();
+        for (let i = 0; i < glen; i++) {
+          const w = Math.sin((Math.PI * i) / glen);
+          const idx = (start + i) % d.length;
+          env[idx] = env[idx]! + amp * w * w;
+        }
+      }
+      let peak = 0;
+      for (let i = 0; i < env.length; i++) peak = Math.max(peak, env[i]!);
+      const inv = peak > 0 ? 1 / peak : 1;
+      // Kellet's economy pink filter under the envelope.
+      let b0 = 0;
+      let b1 = 0;
+      let b2 = 0;
+      const phase = ch * 1.7;
+      for (let i = 0; i < d.length; i++) {
+        const u = (i / d.length) * Math.PI * 2;
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + white * 0.099046;
+        b1 = 0.963 * b1 + white * 0.2965164;
+        b2 = 0.57 * b2 + white * 1.0526913;
+        const pink = (b0 + b1 + b2 + white * 0.1848) * 0.22;
+        const breath = 1 + 0.08 * Math.sin(u + phase) + 0.05 * Math.sin(u * 3 + phase * 2);
+        d[i] = pink * (0.5 + 0.5 * env[i]! * inv) * breath;
+      }
     }
     return buf;
   }

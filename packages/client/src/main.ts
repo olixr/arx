@@ -33,6 +33,7 @@ import { TrackPlayer } from './audio/tracks.js';
 import { AmbienceSystem } from './audio/ambience.js';
 import { AudioMenu } from './ui/audioMenu.js';
 import { UNDERGROUND_Y, zoneWeights } from './audio/zones.js';
+import { scanFallEar, SILENT_EAR, type FallEar } from './audio/falls.js';
 import { setupTouch } from './input/touch.js';
 import { dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
 import { abilityIconUrl } from './render/abilityIcons.js';
@@ -1923,8 +1924,10 @@ let fpsCounter = 0;
 let fps = 0;
 let fpsWindowStart = performance.now();
 // Riftgate earshot: throttled nearest-portal scan feeding the drone.
+// The fall-earshot scan rides the same 2.5 Hz throttle.
 let nextPortalScanAt = 0;
 let portalNear = 0;
+let fallEar: FallEar = SILENT_EAR;
 
 let lastOwnPose = 0;
 let padInteractWasDown = false;
@@ -2436,8 +2439,17 @@ function frame(now: number): void {
         }
       }
       portalNear = best === Infinity ? 0 : Math.max(0, Math.min(1, 1 - best / 9.5));
+      // Fall earshot: ask THE SPILL LAW itself where falling water
+      // crosses a cliff near the ear (audio/falls.ts) — the voice can
+      // only sound where the renderer hangs a curtain.
+      fallEar = scanFallEar(
+        (tx, ty) => game.world.groundAt(tx, ty),
+        (tx, ty) => game.world.elevAt(tx, ty),
+        own.x,
+        own.y,
+      );
     }
-    ambience.update(own.x, own.y, w, hours, now / 1000, portalNear);
+    ambience.update(own.x, own.y, w, hours, now / 1000, portalNear, fallEar);
   }
 
   fpsCounter++;

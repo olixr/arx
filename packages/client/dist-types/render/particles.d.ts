@@ -80,8 +80,8 @@ export interface BurstOpts {
     grow?: number;
     /** Y-sort with the world (ground dust) instead of drawing on top. */
     ground?: boolean;
-    /** Silhouette: 'square' (default) | 'streak' | 'shard' | 'lick' | 'puff' | 'glint'. */
-    shape?: 'square' | 'streak' | 'shard' | 'lick' | 'puff' | 'glint';
+    /** Silhouette: 'square' (default) | 'streak' | 'shard' | 'lick' | 'puff' | 'glint' | 'mote'. */
+    shape?: 'square' | 'streak' | 'shard' | 'lick' | 'puff' | 'glint' | 'mote';
     /** Shard tumble rate, rad/s. */
     spin?: number;
     /** Strobe weight 0..1 — embers/arcs shimmer as they live. */
