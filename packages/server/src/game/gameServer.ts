@@ -456,6 +456,8 @@ interface NpcComp {
   huntIdx: number;
   /** Stand-and-look dwell between hunt legs. */
   huntWaitUntilTick: number;
+  /** Consecutive ticks spent holding the wary standoff stare. */
+  standTicks: number;
   /** Wander steering, re-rolled every few seconds. */
   wanderUntilTick: number;
   wanderX: number;
@@ -9923,6 +9925,7 @@ export class GameServer {
       huntWps: null,
       huntIdx: 0,
       huntWaitUntilTick: 0,
+      standTicks: 0,
       nav: null,
       progressLane: null,
       nextRepathTick: 0,
@@ -10048,6 +10051,7 @@ export class GameServer {
         huntWps: null,
         huntIdx: 0,
         huntWaitUntilTick: 0,
+        standTicks: 0,
         nav: null,
         progressLane: null,
         nextRepathTick: 0,
@@ -10149,6 +10153,13 @@ export class GameServer {
   private static readonly SUS_DWELL_TICKS = 24;
   /** An investigator that SEES its interest holds off at this range. */
   private static readonly WATCH_STANDOFF = 3.2;
+  /**
+   * THE NERVE BREAKS: a hostile holds the wary standoff stare only
+   * this long (plus a per-body jitter tick spread, so a pack never
+   * lunges in unison) before committing anyway. The sizing-up law
+   * buys the quarry a telegraphed pause — never a free swing.
+   */
+  private static readonly STANDOFF_NERVE_TICKS = 40;
   /** An investigation's whole budget: walk, look, shrug (15s). */
   private static readonly INVESTIGATE_TICKS = 300;
   /** The hunt for a slipped quarry runs longer — it KNOWS you exist (20s). */
@@ -10807,6 +10818,7 @@ export class GameServer {
     npc.huntWps = null;
     npc.huntIdx = 0;
     npc.huntWaitUntilTick = 0;
+    npc.standTicks = 0;
     if (npc.def.pack && (opts.rally ?? true)) {
       this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE);
     }
@@ -11067,6 +11079,7 @@ export class GameServer {
     npc.huntWps = null;
     npc.huntIdx = 0;
     npc.huntWaitUntilTick = 0;
+    npc.standTicks = 0;
     // "HE WENT THAT WAY": project the last-seen point along the
     // quarry's last-seen stride (capped ~4 tiles), so the hunt
     // carries past the corner instead of stopping dead at it. A
@@ -11510,6 +11523,7 @@ export class GameServer {
           npc.huntWps = null;
           npc.huntIdx = 0;
           npc.huntWaitUntilTick = 0;
+          npc.standTicks = 0;
           npc.navBest = Infinity;
           npc.navStuck = 0;
           npc.steer.side = 0;
@@ -11550,13 +11564,26 @@ export class GameServer {
               // THE WARY STANDOFF: it walked over, it can SEE the
               // stranger, and the sizing-up law hasn't opened the
               // engage circle — so it plants at a respectful few
-              // tiles and stares. The watchful cap holds the meter
-              // at the brink; step closer or linger in its nerve
-              // and the lock finishes on its own.
+              // tiles and stares. But the stare is a fuse, not a
+              // post: hold a hostile's gaze long enough and THE
+              // NERVE BREAKS — it commits through the one aggro
+              // door. Without this, a quarry whose engage circle
+              // shrank under the standoff range could stand nose to
+              // nose with a "?" forever and charge a free swing.
               pos.dir = Math.atan2(npc.alertY - pos.y, npc.alertX - pos.x);
+              if (
+                ++npc.standTicks >= GameServer.STANDOFF_NERVE_TICKS + ((eid * 7) % 20) &&
+                npc.alertEid !== null &&
+                this.players.has(npc.alertEid) &&
+                this.tickCount >= npc.noAggroUntilTick
+              ) {
+                this.npcAggro(eid, npc, npc.alertEid);
+              }
             } else if (gd < 0.8) {
+              npc.standTicks = 0;
               this.npcNextHuntLeg(eid, npc);
             } else {
+              npc.standTicks = 0;
               const h = this.npcNavToward(npc, pos, goal.x, goal.y);
               moveX = h.mx;
               moveY = h.my;
