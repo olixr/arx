@@ -31,6 +31,12 @@ interface CinemaNode {
     text: string;
     choices?: string[];
     last?: boolean;
+    /** The beat's spoken audio (played by main.ts; paces the reveal here). */
+    voice?: {
+        url: string;
+        durMs: number;
+        kind: 'line' | 'quip';
+    };
     gifts?: Array<{
         item: string;
         qty: number;
@@ -74,6 +80,13 @@ export declare class DialogueCinema {
     private steps;
     private revealed;
     private typing;
+    /**
+     * THE PACED WORD: a voiced line stretches every hold so the text
+     * lands with the audio, and the quill's scratch goes quiet — a
+     * voice and a scratching quill fight for the same ear.
+     */
+    private paceScale;
+    private voiced;
     private raf;
     private lastT;
     private holdSec;
@@ -101,6 +114,8 @@ export declare class DialogueCinema {
         onEnd: () => void;
         /** A gift landed — a soft pulse through pad hands. */
         onGift?: () => void;
+        /** The player skipped a voiced line mid-speech — fade the clip. */
+        onVoiceSkip?: () => void;
     });
     /** Raise the frame. Beats arrive separately via showNode. */
     show(o: {

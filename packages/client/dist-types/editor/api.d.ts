@@ -1,4 +1,4 @@
-import type { GeographyDef, PackedZoneEdgeProfile, PrefabJson, ZoneJson } from '@arx/content';
+import type { FactionsDef, FrontierDef, GeographyDef, PackedZoneEdgeProfile, PrefabJson, ZoneJson } from '@arx/content';
 /**
  * The editor's wire to the game server's dev maps API (/dev/maps on
  * the game port, proxied by Vite in dev). Every save lands on disk
@@ -127,6 +127,16 @@ export interface WorldSnapshot {
     }>;
 }
 export declare function fetchWorld(): Promise<WorldSnapshot>;
+/** The political ledger (factions Phase 6) — the Standing lens's truth. */
+export declare function fetchFactions(): Promise<FactionsDef>;
+/** The frontier dials — the lens reads marchTiles for honest reach. */
+export declare function fetchFrontierDef(): Promise<FrontierDef>;
+/** Live actor posts by slug — fineActor marks resolve against these. */
+export declare function fetchActorSites(): Promise<Array<{
+    actor: string;
+    x: number;
+    y: number;
+}>>;
 export interface GeographySaveResult {
     ok: boolean;
     swept?: {

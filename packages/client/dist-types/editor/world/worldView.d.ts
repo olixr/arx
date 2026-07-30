@@ -61,6 +61,17 @@ export declare class WorldView {
     thumbUrl(id: string): Promise<string | null>;
     private dangerBlock;
     render(): void;
+    /** Faction id → the lens's ink. Unrostered ids get the road grey. */
+    private static readonly FACTION_INK;
+    /**
+     * THE STANDING LENS (factions Phase 6): the living map learns
+     * politics — every faction's marches drawn at the honest radius
+     * (the SAME marchTiles factionForPlace reads at deed time), and
+     * every fine counter marked at its live post (⚖ — the road back,
+     * which is also where the Company's envoy sits). Road factions hold
+     * no ground; their name is the space between the circles.
+     */
+    private drawStanding;
     /**
      * THE CLAIMED YARDS lens (Phase 6): every claim ring drawn honest —
      * the exclusion mask exactly as the spawn paths read it, never a

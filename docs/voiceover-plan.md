@@ -43,6 +43,23 @@
 > zone wind + mood beat + reel leg live-verified. Examine voicing waits on
 > its host feature (examine has no runtime surface yet).
 > THE EPIC IS COMPLETE.
+>
+> **PRODUCTION ADDENDUM — THE CASTING OFFICE (2026-07-30).** The content
+> pipeline that fills the machine: `docs/voice-script.md` is the generated
+> master recording sheet (every character, direction notes from the VOICE
+> cards, every dialogue line/ambient bark/quip with its clip slug =
+> filename). `tools/voice/` holds the manifest builder (lib), sheet
+> generator, Chatterbox TTS batch lane (`generate.mts`, voicelab at
+> :5002, casting + exaggeration/cfg dials in `characters.json`, hand-
+> written quip slate in `quips.json`), and the ledger importer
+> (`import.mts`: clips + actor banks via dev routes; dialogue `voice`
+> refs written INTO the authored JSON defs — never the dialogue PUT,
+> which would twin every shipped tree). Takes stage in gitignored
+> `voicework/{recorded,generated}/<actor>/`; human takes always outrank
+> generated ones. New law: THE BARK KEEPS ITS WORD — ambient barks are
+> recorded verbatim, and the bark site plays the clip whose transcript
+> matches the displayed line (cooldown-gated, never diced); the bank's
+> bark slot holds only wordless fillers.
 
 The world moves, asks, and remembers. This epic makes it **speak out loud**. Every
 throat that earned a voice card in the VOICE epic gets an actual voice: full spoken

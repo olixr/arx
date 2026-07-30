@@ -82,6 +82,33 @@ export function pickQuipClip(
   return source[source.length - 1]!.clip;
 }
 
+/** Loose speech equality: case, punctuation and spacing fall away so a
+ * recorded transcript and an authored line agree on their words alone. */
+export function normalizeSpoken(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9']+/g, ' ').trim();
+}
+
+/**
+ * THE BARK KEEPS ITS WORD: an ambient one-liner may be recorded
+ * verbatim, and when the ledger holds the speaker's clip whose
+ * transcript IS the displayed line, that clip speaks — a voiced bark
+ * never says different words than the bubble shows. Undefined sends
+ * the caller to the rationed filler slot (a breath, not a sentence).
+ */
+export function matchActorLineClip(
+  actorId: string,
+  line: string,
+  clips: ReadonlyMap<string, VoiceClipDef>,
+): string | undefined {
+  const want = normalizeSpoken(line);
+  if (want.length === 0) return undefined;
+  for (const [id, def] of clips) {
+    if (def.actor !== actorId || def.transcript === undefined) continue;
+    if (normalizeSpoken(def.transcript) === want) return id;
+  }
+  return undefined;
+}
+
 /** A bank quip as the wire speaks it — quips never duck the music. */
 export function quipWire(
   clipId: string,

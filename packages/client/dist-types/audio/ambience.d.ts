@@ -12,6 +12,10 @@
  *    THE BAN (two user rejections): NO continuous filtered-noise bed
  *    may ever play, in any band — a smooth gain envelope on noise
  *    reads as waves crashing, full stop. Granular or nothing.
+ *    (One sanctioned exception: the FALLING WATER voice below, which
+ *    IS water — the very reading the ban protects against is that
+ *    voice's whole job. It stays gated by true SPILL-LAW earshot and
+ *    granular inside; the ban holds everywhere else, unchanged.)
  *  - BIRDS (day, outdoors): sparse procedural songbird phrases —
  *    2-5 small warbles, panned somewhere in the trees, occasionally
  *    distant. Denser through the dawn chorus, gone by dusk.
@@ -26,6 +30,15 @@
  *    drips; the ambience bus reverb makes each drip a cavern.
  *  - TOWN: a distant smithy tink now and then by day — the sound of
  *    other lives being lived somewhere behind the houses.
+ *  - FALLING WATER (near a waterfall): a calm pink-noise roil in two
+ *    legs — a body whose lowpass opens as the listener approaches
+ *    (distance darkens a fall long before it silences it) and a low
+ *    rumble that swells under tall stacked drops — seated in stereo
+ *    toward the fall. Fed by audio/falls.ts, which asks THE SPILL LAW
+ *    itself where curtains hang, so it is silent everywhere the
+ *    renderer draws no fall. Never a wash: the loop's roil grains
+ *    tumble inside it, and the earshot gate keeps it a soft far hush
+ *    that only finds its voice at the plunge pool.
  *  - RIFTGATE (near a portal): a low beating drone — detuned sine
  *    pairs, a slow-wobbling harmonic, a hollow whistle riding on top
  *    — that swells as the listener approaches (closeness², so it
@@ -40,6 +53,7 @@
  */
 import type { AudioEngine } from './engine.js';
 import { type ZoneWeights } from './zones.js';
+import { type FallEar } from './falls.js';
 export declare class AmbienceSystem {
     private engine;
     private built;
@@ -57,6 +71,10 @@ export declare class AmbienceSystem {
     private nextPeckAt;
     private portalGain;
     private nextPortalMoodAt;
+    private fallBody;
+    private fallRumble;
+    private fallLp;
+    private fallPan;
     /** Debug mirrors for live verification. */
     gates: {
         wind: number;
@@ -64,14 +82,16 @@ export declare class AmbienceSystem {
         crickets: number;
         cave: number;
         portal: number;
+        fall: number;
     };
     constructor(engine: AudioEngine);
     /**
      * `portalNear` is 0..1 closeness to the nearest Riftgate (0 beyond
      * hearing range) — main.ts scans for it on a throttle and feeds it
-     * through here.
+     * through here. `fall` is the fall-earshot scan's verdict on the
+     * falling water around the listener (audio/falls.ts), same cadence.
      */
-    update(x: number, y: number, w: ZoneWeights, hours: number, tSec: number, portalNear?: number): void;
+    update(x: number, y: number, w: ZoneWeights, hours: number, tSec: number, portalNear?: number, fall?: FallEar): void;
     private build;
     /**
      * Pre-render the leaf texture: white noise multiplied by a granular
@@ -81,6 +101,15 @@ export declare class AmbienceSystem {
      * is what separates leaves from water; a smooth envelope cannot.
      */
     private makeRustleBuffer;
+    /**
+     * Pre-render the fall's roil loop: pink-ish noise (a waterfall's
+     * energy lives below 1 kHz) under a granular tumble — dense
+     * overlapping grains over a steady floor, so the sound has the
+     * internal boil of falling water instead of the flat hiss of
+     * static. Two slow whole-loop swells (seam-safe by construction,
+     * phase-offset per channel) let the mass of it breathe.
+     */
+    private makeFallBuffer;
     /** A songbird phrase: 2-5 warbles from one spot in the canopy. */
     private birdPhrase;
     /**

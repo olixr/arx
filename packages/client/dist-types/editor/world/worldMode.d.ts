@@ -49,6 +49,12 @@ export declare class WorldMode {
     boot(): Promise<void>;
     /** Re-read ledger + zone list (after cell actions / zone saves). */
     refresh(): Promise<void>;
+    /**
+     * THE STANDING LENS's reads (factions Phase 6): the political
+     * ledger, the marches, and the live actor posts — quiet on failure
+     * (the lens simply stays unlit until a read lands).
+     */
+    private readPolitics;
     /** Mirror the server's edge-harmony registry; true when it changed. */
     private edgeProfilesJson;
     private adoptEdgeProfiles;

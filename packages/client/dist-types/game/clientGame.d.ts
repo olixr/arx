@@ -202,6 +202,14 @@ export interface GameEvents {
         eid: EntityId;
         name: string;
         title?: string;
+        /** Clip URLs to warm before the first voiced beat lands. */
+        prefetch?: string[];
+        /** The live duck dials riding the frame. */
+        voiceDials?: {
+            duckLine: number;
+            duckAmbience: number;
+            duckReleaseMs: number;
+        };
     }): void;
     /** One beat of conversation — typewriter it out. */
     onDialogueNode?(n: {
@@ -218,9 +226,20 @@ export interface GameEvents {
             name: string;
             rewards?: QuestRewardsWire;
         };
+        voice?: {
+            url: string;
+            durMs: number;
+            kind: 'line' | 'quip';
+        };
     }): void;
     /** The conversation is over — tear the frame down. */
     onDialogueClose?(): void;
+    /** A spoken breath from a place in the world (a bark's voice). */
+    onVoiceQuip?(q: {
+        x: number;
+        y: number;
+        url: string;
+    }): void;
     /** A trainer opened their wares — render the named shop's shelf. */
     onShopOpen?(shop: string, priceMult: number): void;
     /** The full social snapshot answered a request. */

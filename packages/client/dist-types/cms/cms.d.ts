@@ -1,5 +1,5 @@
-import type { DialogueDef, FrontierDef, LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@arx/content';
-import { type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './api.js';
+import type { DialogueDef, FactionsDef, FrontierDef, LootTableDef, NpcActorDef, NpcDef, PoiDef, VoiceDoc } from '@arx/content';
+import { type VoiceLedger, type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './api.js';
 /**
  * Arx Content Studio — the CMS over the running game's DB-first
  * content: bestiary archetypes, loot tables, and placed-actor
@@ -8,7 +8,7 @@ import { type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './a
  * live registry, and retires standing bodies so the world plays the
  * new numbers within a tick.
  */
-export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'frontier' | 'items';
+export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'frontier' | 'factions' | 'voice' | 'items';
 export interface CmsState {
     section: Section;
     selectedId: string | null;
@@ -25,6 +25,13 @@ export interface CmsState {
         def: FrontierDef;
         edited: boolean;
     } | null;
+    /** The faction ledger — a singleton doc (factions Phase 6). */
+    factions: {
+        def: FactionsDef;
+        edited: boolean;
+    } | null;
+    /** The spoken world: clips, banks, dials (voiceover Phase 5). */
+    voice: VoiceLedger | null;
     items: ItemRow[];
     sites: SpawnSites;
     zones: ZoneRect[];
@@ -53,6 +60,10 @@ export declare const persistence: {
     revertPoiDef(id: string): Promise<void>;
     saveFrontierDef(def: FrontierDef): Promise<void>;
     revertFrontierDef(): Promise<void>;
+    saveFactionsDef(def: FactionsDef): Promise<void>;
+    revertFactionsDef(): Promise<void>;
+    saveVoiceDialsDef(def: VoiceDoc): Promise<void>;
+    revertVoiceDialsDef(): Promise<void>;
     saveDialogueDef(def: DialogueDef): Promise<void>;
     revertDialogueDef(id: string): Promise<void>;
     saveActorDef(def: NpcActorDef): Promise<void>;

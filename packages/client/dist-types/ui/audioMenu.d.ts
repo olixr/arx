@@ -1,8 +1,8 @@
 /**
- * The sound menu — four sliders (master, music, effects, ambience)
- * over the engine's user-volume layer, persisted to localStorage, and
- * a now-playing line for the track player. Volumes multiply the tuned
- * bus mix; 100% is exactly the shipped balance.
+ * The sound menu — five sliders (master, music, voice, effects,
+ * ambience) over the engine's user-volume layer, persisted to
+ * localStorage, and a now-playing line for the track player. Volumes
+ * multiply the tuned bus mix; 100% is exactly the shipped balance.
  */
 import type { AudioEngine } from '../audio/engine.js';
 import type { TrackPlayer } from '../audio/tracks.js';

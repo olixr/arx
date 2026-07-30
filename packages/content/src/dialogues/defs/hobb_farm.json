@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "hobb_farm__hub",
       "text": "Mind the latch. Bess leans on it when she's bored. Something you need?",
       "choices": [
         { "text": "What do the animals give?", "next": "produce" },
@@ -15,21 +16,25 @@
     },
     {
       "id": "produce",
+      "voice": "hobb_farm__produce",
       "text": "Cow gives *milk* if you walk up gentle. Bess allows it, mostly. Hens drop *eggs*. Check the coop floor, mornings are best. Berries by the brook. That's breakfast, and nothing had to bleed for it.",
       "next": "hub"
     },
     {
       "id": "practice",
+      "voice": "hobb_farm__practice",
       "text": "Not on my animals. The *old shed* past the ford has rats in it. Bryn will tell you the same. If a hen squares up to you anyway, pay her no mind. She does that.",
       "next": "hub"
     },
     {
       "id": "pip",
+      "voice": "hobb_farm__pip",
       "text": "That's Pip. Mine. He has questions for everyone who comes off the stones, and you'll hear them whether you answer or not. He means nothing by it.",
       "next": "hub"
     },
     {
       "id": "farewell",
+      "voice": "hobb_farm__farewell",
       "text": "Aye. It's a good little patch. Latch! Sorry. Habit."
     }
   ]

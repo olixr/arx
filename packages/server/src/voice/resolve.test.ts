@@ -123,6 +123,29 @@ test('the mood mark rules the slot and is never diced', async () => {
   assert.equal(quipIsRationed(false, true, undefined), false);
 });
 
+test('the bark keeps its word: transcript matching is loose on form, strict on words', async () => {
+  const { matchActorLineClip, normalizeSpoken } = await import('./resolve.js');
+  assert.equal(normalizeSpoken('  Hens.  '), 'hens');
+  assert.equal(normalizeSpoken("Weather's turning, isn't it?"), "weather's turning isn't it");
+  const clips = new Map<string, VoiceClipDef>([
+    ['hobb__bark_1', { ...clip('hobb__bark_1', 'a'), actor: 'farmer_hobb', transcript: 'Hens.' }],
+    [
+      'hobb__bark_2',
+      { ...clip('hobb__bark_2', 'b'), actor: 'farmer_hobb', transcript: "Weather's turning." },
+    ],
+    ['fen__bark_1', { ...clip('fen__bark_1', 'c'), actor: 'tinker_fen', transcript: 'Hens.' }],
+    ['no_words', { ...clip('no_words', 'd'), actor: 'farmer_hobb' }],
+  ]);
+  // Case and punctuation fall away; the words must agree exactly.
+  assert.equal(matchActorLineClip('farmer_hobb', 'hens', clips), 'hobb__bark_1');
+  assert.equal(matchActorLineClip('farmer_hobb', "WEATHER'S TURNING!", clips), 'hobb__bark_2');
+  // Another actor's identical words never speak for this throat.
+  assert.equal(matchActorLineClip('tinker_fen', 'Hens.', clips), 'fen__bark_1');
+  // No transcript, different words, or an empty line: silence.
+  assert.equal(matchActorLineClip('farmer_hobb', 'Fence posts.', clips), undefined);
+  assert.equal(matchActorLineClip('farmer_hobb', '...', clips), undefined);
+});
+
 test('prefetch leaves reel-length lines to stream on demand', async () => {
   const { collectVoicePrefetch } = await import('./resolve.js');
   const clips = new Map([

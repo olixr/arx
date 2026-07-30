@@ -187,6 +187,7 @@ import {
 } from '@arx/content';
 import {
   collectVoicePrefetch,
+  matchActorLineClip,
   pickQuipClip,
   quipIsRationed,
   quipSlotForBeat,
@@ -7292,7 +7293,14 @@ export class GameServer {
         // THE THROAT CLEARS: a bark may carry its spoken breath — the
         // bark slot through the same rationed quip memory, spatial at
         // the speaker's spot. Cosmetic 'vq'; a deaf client loses air.
-        const quip = this.drawQuip(`actor:${actorComp.actor.id}`, 'bark', true);
+        // THE BARK KEEPS ITS WORD: when the ledger holds this very
+        // line in the speaker's voice, it speaks verbatim (cooldown
+        // still applies, the chance die does not — an exact recording
+        // is authored intent); only wordless fillers are diced.
+        const matched = matchActorLineClip(actorComp.actor.id, line, this.voiceClips);
+        const quip = matched
+          ? this.drawMatchedQuip(`actor:${actorComp.actor.id}`, matched)
+          : this.drawQuip(`actor:${actorComp.actor.id}`, 'bark', true);
         if (quip) {
           player.session.sendJson({
             t: 'vq',
@@ -7580,6 +7588,20 @@ export class GameServer {
       quipSlotForBeat(first, last, node.mood),
       quipIsRationed(first, last, node.mood),
     );
+  }
+
+  /** A transcript-matched bark clip through the same quip memory:
+   * cooldown gates it (no machine-gun barks under spam clicks), the
+   * chance die never does — the exact recording always outranks luck. */
+  private drawMatchedQuip(ownerKey: string, clipId: string): VoiceWire | undefined {
+    const mem = this.voiceQuipMemory.get(ownerKey) ?? { lastAt: 0, lastBySlot: new Map() };
+    if (Date.now() - mem.lastAt < VOICE.quipCooldownMs) return undefined;
+    const wire = quipWire(clipId, this.voiceClips);
+    if (!wire) return undefined;
+    mem.lastAt = Date.now();
+    mem.lastBySlot.set('bark', clipId);
+    this.voiceQuipMemory.set(ownerKey, mem);
+    return wire;
   }
 
   /** Pick from an owner's bank slot through the shared quip memory. */

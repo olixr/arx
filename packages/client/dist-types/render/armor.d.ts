@@ -21,18 +21,21 @@ export interface BodyStyle {
     metal?: string;
     cls: ArmorClassStyle;
     silhouette: 'tunic' | 'robe' | 'jerkin' | 'cuirass' | 'brigandine';
-    pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur' | 'feathered' | 'orbs';
+    pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur' | 'feathered' | 'orbs' | 'shards';
     pauldronColor?: string;
     /** Bright edge accent on the pauldron rim / blade edge. */
     pauldronTrim?: string;
     /** Spike count for 'spiked' pauldrons, 1..3. Default 1. */
     pauldronSpikes?: number;
-    chest: 'none' | 'straps' | 'plate' | 'emblem' | 'stitch' | 'scales';
+    /** The boldness dial: scales the whole shoulder assembly. Heavy
+     *  champion plate earns 1.1-1.2; leather stays nearer 1. Default 1. */
+    pauldronScale?: number;
+    chest: 'none' | 'straps' | 'plate' | 'emblem' | 'stitch' | 'scales' | 'diamondhide';
     /** Hanging leather fringe strips off the chest yoke — the buckskin read. */
     fringe?: boolean;
     /** Big mismatched cloth patches with stitch ticks — the homespun read. */
     patches?: string;
-    emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye' | 'moth' | 'coin';
+    emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye' | 'moth' | 'coin' | 'bullhead' | 'flame' | 'orrery';
     /** Glowing rune dashes riding the hem trim — the enchanted-cloth read. */
     runes?: string;
     /** A waist sash: band, hip knot, two swinging tails. */
@@ -67,6 +70,122 @@ export interface BodyStyle {
     underskirt?: string;
     /** Drifting magic motes in this color — the quiet aura. */
     motes?: string;
+    /**
+     * Gravity folds: hanging-cloth creases down the torso and skirt with
+     * a catch-light beside the deepest one — what turns a flat fill into
+     * FABRIC. Every robe should want this.
+     */
+    folds?: boolean;
+    /**
+     * A short shoulder cape with a SHAPED hem ringing the upper chest —
+     * the garment-over-garment layer for sets whose mantle story isn't
+     * the wizard cope. scallop = foam/feather covers, point = leaf tips,
+     * dag = storm flags. Colors default shade(color, -10) / trim.
+     */
+    capelet?: {
+        color?: string;
+        trim?: string;
+        hem: 'scallop' | 'point' | 'dag';
+    };
+    /**
+     * Two cloth bands hanging from the shoulders past the belt, tick-
+     * marked — the ordained read. From behind they cross the shoulders
+     * as short tabs. Colors default shade(color, -16) / trim.
+     */
+    stole?: {
+        color?: string;
+        trim?: string;
+    };
+    /**
+     * The knight's cloth front panel over the cuirass, pointed hem past
+     * the fauld; the waist crosses it (a surcoat is CINCHED). The chest
+     * emblem rides the tabard. Back gets a shorter plain panel.
+     */
+    tabard?: {
+        color: string;
+        trim?: string;
+    };
+    /** Gambeson quilting: two-value diagonal stitch channels. */
+    quilt?: boolean;
+    /** Front X-lacing cord up the chest opening — how a jerkin closes.
+     *  `true` derives shade(trim, -10). */
+    lace?: boolean | string;
+    /**
+     * A contrasting shoulder-yoke panel, front AND back (a yoke wraps),
+     * optionally stitch-ticked at its hem — the hunter's tailored cut.
+     * Color defaults shade(color, -14).
+     */
+    yoke?: {
+        color?: string;
+        stitch?: boolean;
+    };
+    /**
+     * A real belt where the anonymous waist band was: two-tone strap,
+     * buckle plate, hanging strap end. Colors default shade(trim, -8) /
+     * metal. Skipped when a sash owns the waist.
+     */
+    belt?: {
+        color?: string;
+        buckle?: string;
+    } | true;
+    /** Chest device size multiplier — sets whose identity IS the device
+     *  wear it bolder. Default 1. */
+    emblemScale?: number;
+    /** Breastplate anatomy: center forge crease with a light/dark split
+     *  down the chest plate — two halves hammered and joined. */
+    midline?: boolean;
+    /** Rivet rows along the chest plate's seam lines — the boilerwork
+     *  read. Rides the 'plate' chest. */
+    rivetSeams?: boolean;
+    /**
+     * Hanging charms off the waist line — small bells on cords that
+     * sway with the stride. The moonbell read: jewelry that lives on
+     * the garment, not a device stamped on it.
+     */
+    charms?: {
+        color: string;
+    };
+    /**
+     * Silk binding cords crossing the torso both ways, front AND back
+     * (a wrap that vanished on turn would break the garment), knotted
+     * where they meet — the broodsilk read.
+     */
+    cords?: {
+        color: string;
+    };
+    /**
+     * Bone inlay: three lapped ivory arcs across the chest plate — the
+     * barrow-king's ribs, worn on the outside. Front only; the back
+     * keeps its spine ridge.
+     */
+    ribs?: {
+        color: string;
+    };
+    /**
+     * Ice on the garment: icicle points hanging from the capelet hem
+     * (rides the capelet — it needs an eave to freeze from) and slow
+     * winking frost glints low on the skirt. The wintercourt read:
+     * the cold lives ON the cloth, not around it.
+     */
+    icefringe?: {
+        color: string;
+    };
+    /**
+     * A prayer-bead loop hung from the neckline, two strands meeting at
+     * a drop medallion over the sternum, swinging a hair with the
+     * stride — the keeper's jewelry. Front only; the back stays plain.
+     */
+    beads?: {
+        color: string;
+    };
+    /**
+     * Two ribbons of living light rising off the shoulder blades and
+     * waving on their own slow sky — aurora worn as a garment. Light,
+     * not cloth: they ride above every layer and never go out.
+     */
+    ribbons?: {
+        colors: [string, string];
+    };
 }
 export interface HelmStyle {
     color: string;
@@ -81,7 +200,7 @@ export interface HelmStyle {
      *  the raider's bronze face plate; `dread` the tooth-visored maw;
      *  `briar` the woven thorn-cage visor; `drake` the lapped-scale
      *  visage with a copper snout. */
-    kind: 'greathelm' | 'bascinet' | 'barbute' | 'armet' | 'sallet' | 'radiant' | 'ramfort' | 'warmask' | 'dread' | 'briar' | 'drake' | 'hood' | 'circlet' | 'wizard';
+    kind: 'greathelm' | 'bascinet' | 'barbute' | 'armet' | 'sallet' | 'radiant' | 'ramfort' | 'warmask' | 'dread' | 'briar' | 'drake' | 'aurochs' | 'barrow' | 'hood' | 'circlet' | 'wizard';
     visor?: 'slit' | 'cross';
     plume?: {
         color: string;
@@ -156,6 +275,38 @@ export interface HelmStyle {
     /** A floating ring above the crown that never quite touches down. */
     halo?: {
         color: string;
+    };
+    /** Hoods: bell-flowers tucked at the temple, open and hanging —
+     *  the moonbell picked and worn. */
+    blooms?: {
+        color: string;
+    };
+    /** Hoods: two dry fangs at the mouth of the face opening — the
+     *  adder's own, pointed down. */
+    fangs?: {
+        color: string;
+    };
+    /** Three slivers of night glass floating above the crown, each on
+     *  its own slow bob — the rift's answer to a halo. */
+    shards?: {
+        color: string;
+    };
+    /** Circlets: icicle points hanging from the brow band — a crown the
+     *  cold made and never asked back. */
+    icicles?: {
+        color: string;
+    };
+    /** Hoods: two light-ribbon tails streaming off the crown's trailing
+     *  edge, waving on the sky's clock — the skydancer's wake. */
+    streamers?: {
+        colors: [string, string];
+    };
+    /** A thin ring round the crown with two small worlds circling it,
+     *  near side bright and large, far side dim and small — a working
+     *  orrery worn as a diadem. It keeps perfect time. */
+    orbitals?: {
+        color: string;
+        ring?: string;
     };
 }
 export interface LegStyle {

@@ -1,4 +1,4 @@
-import type { DialogueDef, FrontierDef, LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, ZoneJson } from '@arx/content';
+import type { DialogueDef, FactionsDef, FrontierDef, LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, VoiceBankDef, VoiceClipDef, VoiceDoc, ZoneJson } from '@arx/content';
 /** Content Studio's wire to the running server's /dev/content API. */
 export interface Editable<T> {
     def: T;
@@ -44,6 +44,52 @@ export declare function getFrontier(): Promise<{
 }>;
 export declare function saveFrontier(def: FrontierDef): Promise<void>;
 export declare function revertFrontier(): Promise<{
+    outcome: string;
+}>;
+/** The names are a singleton too: one doc, one 'world' id, two hashes. */
+export declare function getFactions(): Promise<{
+    def: FactionsDef;
+    edited: boolean;
+}>;
+export declare function saveFactions(def: FactionsDef): Promise<void>;
+export declare function revertFactions(): Promise<{
+    outcome: string;
+}>;
+/** One GET carries the whole spoken world: clips, banks, dials. */
+export interface VoiceLedger {
+    clips: Array<{
+        def: VoiceClipDef;
+        edited: boolean;
+        url: string;
+    }>;
+    banks: VoiceBankDef[];
+    dials: {
+        def: VoiceDoc;
+        edited: boolean;
+    };
+    errors: string[];
+}
+export declare function getVoice(): Promise<VoiceLedger>;
+/** Upload/replace (with dataB64) or metadata-only edit (without). */
+export interface VoiceClipUpload {
+    id: string;
+    ext?: string;
+    durMs: number;
+    transcript?: string;
+    actor?: string;
+    tags?: string[];
+    dataB64?: string;
+}
+export declare function saveVoiceClip(upload: VoiceClipUpload): Promise<{
+    def: VoiceClipDef;
+    url: string;
+}>;
+export declare function deleteVoiceClip(id: string): Promise<void>;
+export declare function saveVoiceBank(def: VoiceBankDef): Promise<void>;
+export declare function deleteVoiceBank(kind: string, id: string): Promise<void>;
+/** The dials are a singleton: one doc, one 'world' id, two hashes. */
+export declare function saveVoiceDials(def: VoiceDoc): Promise<void>;
+export declare function revertVoiceDials(): Promise<{
     outcome: string;
 }>;
 export declare function listActors(): Promise<{

@@ -6,6 +6,8 @@ dist/
 data/*.db
 data/*.db-*
 data/worldcache/
+# content-addressed voice clip store — runtime data, deploy-persisted via shared/voice
+data/voice/
 .DS_Store
 .playwright-mcp/
 
@@ -13,3 +15,8 @@ data/worldcache/
 /*.png
 /*.jpeg
 /.playwright-mcp/
+
+# Voice takes (human + Chatterbox) stage here before import — audio never
+# ships through git; the ledger (db + data/voice) is the system of record
+/voicework/recorded/*
+/voicework/generated/*
