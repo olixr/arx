@@ -168,6 +168,14 @@ interface FallTones {
   rollLit: string;
   /** The curl's under-shadow ink. */
   rollInk: string;
+  /** OPAQUE splash-zone tones, impact → pool: pale charged water
+   *  under the mound rank, then the shallow spreading ring. The
+   *  shoreline grammar — stepped opaque zones with wavy boundaries,
+   *  never a translucent apron. */
+  splashPale: string;
+  splashMid: string;
+  /** OPAQUE shaded billow tone for the churn's back rank. */
+  churnDeep: string;
 }
 import {
   boltPath,
@@ -9549,8 +9557,11 @@ export class Renderer {
           race: '#2e4f7e',
           raceDeep: '#24406a',
           shelf: '#385a8a',
-          rollLit: '#5f7899',
+          rollLit: '#4d6489',
           rollInk: 'rgba(10,22,48,0.55)',
+          splashPale: '#7388aa',
+          splashMid: '#587699',
+          churnDeep: '#5e7396',
         }
       : {
           foam: '#f2f8fd',
@@ -9563,8 +9574,11 @@ export class Renderer {
           race: '#4979b8',
           raceDeep: '#3a629e',
           shelf: '#5183bd',
-          rollLit: '#a3c9e0',
+          rollLit: '#7fb0d6',
           rollInk: 'rgba(16,34,68,0.5)',
+          splashPale: '#c6dcef',
+          splashMid: '#79aad4',
+          churnDeep: '#a9c6e2',
         };
   }
 
@@ -9655,6 +9669,58 @@ export class Renderer {
       ctx.closePath();
       ctx.fill();
     };
+    // --- THE SPREAD ZONES: charged water radiating from the impact
+    // in OPAQUE stepped tones — the shoreline grammar pointed at a
+    // splash. Two zones (shallow spread under a paler charged core),
+    // each a closed path whose outer boundary is world-keyed wavy
+    // noise and whose reach pinches with env() at true run ends. No
+    // translucency: a translucent apron prints its own silhouette
+    // over the pool; a tone STEP sits in the water like a shoal.
+    const zone = (offBase: number, offAmp: number, salt: number, tone: string, back: number): void => {
+      ctx.fillStyle = tone;
+      ctx.beginPath();
+      const SK = Math.max(4, Math.ceil(len / 0.15));
+      for (let k = 0; k <= SK; k++) {
+        const p = at(k / SK, -back * env(k / SK));
+        if (k === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      }
+      for (let k = SK; k >= 0; k--) {
+        const f = k / SK;
+        const wxm = x0 + (x1 - x0) * f;
+        const wym = y0 + (y1 - y0) * f;
+        const swell = Renderer.fallNoise(wxm + wym * 3, salt, level, 0.9);
+        const off =
+          (offBase + offAmp * swell + 0.03 * Math.sin(t * 1.1 + f * len * 2.1)) * env(f);
+        const p = at(f, off);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    };
+    zone(0.42, 0.3, 171, tones.splashMid, 0.02);
+    zone(0.2, 0.22, 172, tones.splashPale, 0.05);
+    // Detached spreading blobs past the zone edge — the splash tone
+    // interpenetrating the pool. The zone never ENDS on its contour;
+    // it breaks apart into the water.
+    for (let w = Math.floor(a0 / 0.42) * 0.42; w < a1 + 0.42; w += 0.42) {
+      const f = fOfAxis(w);
+      if (f < 0.02 || f > 0.98) continue;
+      const e = env(f);
+      if (e < 0.25) continue;
+      const seed = Math.round(w / 0.42) * 7 + 29;
+      if (n01(seed, 173) < 0.35) continue;
+      const wxm = x0 + (x1 - x0) * f;
+      const wym = y0 + (y1 - y0) * f;
+      const swell = Renderer.fallNoise(wxm + wym * 3, 171, level, 0.9);
+      const off = (0.42 + 0.3 * swell + 0.1 + 0.24 * n01(seed, 174)) * e;
+      const p = at(f, off);
+      const rr = s * (0.045 + 0.05 * n01(seed, 175)) * e;
+      ctx.fillStyle = n01(seed, 176) < 0.35 ? tones.splashPale : tones.splashMid;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, rr * 1.6, rr * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     // --- THE LAP: the dark waterline where the sheet knifes in —
     // the shoreline's own grounding stroke, read in the gaps between
     // mounds. Without it, foam floats on foam.
@@ -9674,37 +9740,11 @@ export class Renderer {
     }
     ctx.stroke();
     ctx.globalAlpha = 1;
-    // --- THE AERATION LENS: pale charged water under the rank —
-    // a closed lens whose edges are noisy and whose height breathes
-    // with env(), so it pinches shut at run ends (no side walls).
-    ctx.fillStyle = `${tones.wash}${0.2 * tones.dim})`;
-    ctx.beginPath();
-    {
-      const SK = Math.max(4, Math.ceil(len / 0.14));
-      for (let k = 0; k <= SK; k++) {
-        const f = k / SK;
-        const wxm = x0 + (x1 - x0) * f;
-        const wym = y0 + (y1 - y0) * f;
-        const swell = Renderer.fallNoise(wxm + wym * 3, 153, level, 1.2);
-        const p = at(f, -0.08 * env(f));
-        if (k === 0) ctx.moveTo(p.x, p.y - s * 0.09 * swell * env(f));
-        else ctx.lineTo(p.x, p.y - s * 0.09 * swell * env(f));
-      }
-      for (let k = SK; k >= 0; k--) {
-        const f = k / SK;
-        const wxm = x0 + (x1 - x0) * f;
-        const wym = y0 + (y1 - y0) * f;
-        const swell = Renderer.fallNoise(wxm * 1.3 + wym * 3, 154, level, 1.1);
-        const p = at(f, (0.2 + 0.34 * swell) * env(f) + 0.04);
-        ctx.lineTo(p.x, p.y);
-      }
-    }
-    ctx.closePath();
-    ctx.fill();
-    // --- THE BACK RANK: shaded billows behind the foam — depth. The
-    // grid is world-keyed; the pitch is irregular by construction.
+    // --- THE BACK RANK: shaded billows behind the foam — depth,
+    // OPAQUE in the churn's own shaded tone (an alpha billow shows
+    // the pool through itself and reads as overlay).
     const P0 = 0.46;
-    ctx.fillStyle = `${tones.churnBack}${0.55 * tones.dim})`;
+    ctx.fillStyle = tones.churnDeep;
     for (let w = Math.floor(a0 / P0) * P0; w < a1 + P0; w += P0) {
       const wj = w + (n01(Math.round(w / P0), 90) - 0.5) * 0.2;
       const f = fOfAxis(wj);
@@ -9731,14 +9771,25 @@ export class Renderer {
       const seed = Math.round(wj / P1) * 5 + 3;
       const pulse = Math.sin(t * (1.8 + 0.7 * n01(seed, 94)) + seed * 2.1);
       const r = s * (0.13 + 0.1 * n01(seed, 96)) * e * (1 + 0.09 * pulse);
-      const p = at(f, 0.02 + 0.05 * n01(seed, 97));
+      // Staggered off the base line — mounds sit at world-keyed
+      // depths so the rank reads as a BANK of foam, not a string of
+      // beads on one line.
+      const p = at(f, 0.02 + 0.18 * n01(seed, 97));
       const cy = p.y + pulse * s * 0.015;
-      ctx.fillStyle = `${tones.wash}${0.85 * tones.dim})`;
+      // Two-tone and OPAQUE: pale charged base under the lit foam
+      // cap — the pulse lives in the SIZE, never the alpha (a foam
+      // mound the pool shows through is an overlay, not water).
+      ctx.fillStyle = tones.splashPale;
       blob(p.x, cy, r * 1.35, r * 0.62, seed, 1);
       ctx.fillStyle = tones.foam;
-      ctx.globalAlpha = (0.85 + 0.1 * pulse) * tones.dim;
-      blob(p.x - r * 0.14, cy - r * 0.32, r * 0.78, r * 0.4, seed * 3 + 1, 1);
-      ctx.globalAlpha = 1;
+      blob(
+        p.x - r * 0.14,
+        cy - r * 0.32,
+        r * (0.74 + 0.08 * pulse),
+        r * (0.38 + 0.04 * pulse),
+        seed * 3 + 1,
+        1,
+      );
     }
     // --- THE CRESCENT BACKWASH: flat arcs sliding off the rank into
     // the pool — the shoreline's backwash grammar, pointed away from
@@ -9759,7 +9810,7 @@ export class Renderer {
         const aa0 = Math.PI * (0.15 + 0.5 * n01(seed, 101 + k));
         const span = Math.PI * (0.5 + 0.5 * n01(seed, 102 + k));
         ctx.strokeStyle = tones.foam;
-        ctx.globalAlpha = (1 - ph) * (1 - ph) * 0.3 * tones.dim;
+        ctx.globalAlpha = (1 - ph) * (1 - ph) * 0.22 * tones.dim;
         ctx.lineWidth = Math.max(1.2, s * 0.028);
         ctx.beginPath();
         ctx.ellipse(p.x, p.y, rx, rx * 0.5, 0, aa0, aa0 + span);
@@ -9844,8 +9895,9 @@ export class Renderer {
       const wx = x0 + (x1 - x0) * f;
       const wy = y0 + (y1 - y0) * f + 0.1 + Math.random() * 0.4;
       if (!wet || wet(wx, wy)) {
-        // Puffs, never squares — a square mote over dark night water
-        // reads as a pasted chip (live-caught).
+        // Motes, never squares OR rect-lobed puffs — any cornered
+        // silhouette at mist scale reads as a pasted chip
+        // (live-caught, twice).
         this.particles.burst(wx, wy, 1, ['#dcebf7', '#cfe3f4'], {
           speed: 0.3,
           life: 1.3,
@@ -9854,7 +9906,7 @@ export class Renderer {
           gravity: -0.25,
           drag: 1.1,
           grow: 0.09,
-          shape: 'puff',
+          shape: 'mote',
         });
       }
     }
@@ -9866,11 +9918,11 @@ export class Renderer {
         this.particles.burst(wx, wy, 2, ['#f4fafe', '#bfe0f2'], {
           speed: 1.5,
           life: 0.35,
-          size: 0.05,
+          size: 0.042,
           up: true,
           gravity: 5.5,
           drag: 1.6,
-          shape: 'streak',
+          shape: 'mote',
         });
       }
     }
@@ -10061,7 +10113,12 @@ export class Renderer {
           // flat fill erases the bake's tone variants and prints a
           // horizontal seam; the lanes and ghost columns cross the
           // overlap so no line survives.
-          const raceTop = ay - info.race - 0.15;
+          // Overlap the drawn pond by 0.5 tiles: the bake's shoreline
+          // INK along the channel mouth sits just inside the water
+          // edge, and any of it left uncovered floats in the race as
+          // a dark crack. The wavy boundary keeps the deep overlap
+          // seamless (same tone as the pond's open water).
+          const raceTop = ay - info.race - 0.5;
           ctx.save();
           if (mouth) this.clipFallRegion(mouth, topLift);
           const ovL = edgeL ? 0.3 : 0;
@@ -10077,7 +10134,7 @@ export class Renderer {
             const RT = Math.max(3, Math.ceil((bx - ax + ovL + ovR) / 0.18));
             for (let k = 0; k <= RT; k++) {
               const wx = ax - ovL + (bx + ovR - (ax - ovL)) * (k / RT);
-              const wy = raceTop + (vn(wx, 165, 0.5) - 0.5) * 0.22;
+              const wy = raceTop + (vn(wx, 165, 0.5) - 0.5) * 0.3;
               const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
               if (k === 0) ctx.moveTo(p.x, p.y - topLift);
               else ctx.lineTo(p.x, p.y - topLift);
@@ -10143,15 +10200,23 @@ export class Renderer {
               const tone = ((k % 4) + 4) % 4;
               const start = ay - 0.4 - 0.5 * n01(k, 147);
               const mid = start + 0.25 + 0.15 * n01(k, 148);
+              const near = ay - 0.12 - 0.08 * n01(k, 149);
               const pL0 = this.camera.worldToScreen(eL, start, this.w, this.h);
               const pL1 = this.camera.worldToScreen(eL, mid, this.w, this.h);
+              const pL2 = this.camera.worldToScreen(eL, near, this.w, this.h);
               const pR = this.camera.worldToScreen(eR, ay + 0.1, this.w, this.h);
               ctx.fillStyle = tones.band[tone]!;
               const aFull = 0.14 * (0.5 + 0.5 * n01(k, 144));
               ctx.globalAlpha = aFull * 0.45;
               ctx.fillRect(pL0.x, pL0.y - topLift, pR.x - pL0.x, pL1.y - pL0.y);
               ctx.globalAlpha = aFull;
-              ctx.fillRect(pL1.x, pL1.y - topLift, pR.x - pL1.x, pR.y - pL1.y);
+              ctx.fillRect(pL1.x, pL1.y - topLift, pR.x - pL1.x, pL2.y - pL1.y);
+              // A third, stronger step hugging the lip: the column is
+              // nearly formed by the time the sheet's wavy top edge
+              // takes over, so the hand-off is a small step, not a
+              // jump at a visible line.
+              ctx.globalAlpha = Math.min(0.5, aFull * 2.2);
+              ctx.fillRect(pL2.x, pL2.y - topLift, pR.x - pL2.x, pR.y - pL2.y);
             }
             ctx.globalAlpha = 1;
           }
@@ -10200,6 +10265,18 @@ export class Renderer {
         // v² as the unconfined margin fans in the air.
         const dip = s * 0.2;
         const dipAt = (wx: number) => dip * (0.8 + 0.4 * vn(wx, 130, 0.55));
+        // The dip TAPERS toward free ends: a flared corner that also
+        // dips to full depth pokes past the churn's cap taper as a
+        // naked glass fin over the pool — the corner rises so the
+        // foam rank owns the whole base line.
+        const endK = (f: number): number => {
+          const span = Math.abs(wxSpan);
+          const reach = Math.min(0.9, span) || 1;
+          let k = 1;
+          if (edgeL) k = Math.min(k, 0.45 + 0.55 * Math.min(1, (f * span) / reach));
+          if (edgeR) k = Math.min(k, 0.45 + 0.55 * Math.min(1, ((1 - f) * span) / reach));
+          return k;
+        };
         const flare = s * 0.16;
         const flareAt = (f: number, v: number): number => {
           const g = v * v;
@@ -10214,9 +10291,15 @@ export class Renderer {
           if (edgeR) d += flare * g * Math.max(0, 1 - ((1 - f) * span) / reach);
           return d;
         };
+        // THE LIVING EDGE: the silhouette undulates — world-keyed
+        // lateral wobble growing as the water gathers speed, so no
+        // ruler-straight margin survives. Keyed by (edge wx, v):
+        // abutting segments of one run agree at every shared seam.
+        const edgeWob = (wx: number, v: number): number =>
+          s * 0.05 * (vn(wx * 1.7 + v * 2.63, 156, 1) - 0.5) * (0.3 + 0.7 * v);
         const xAt = (f: number, v: number) => sxAt(f) + flareAt(f, v);
         const yAt = (f: number, wx: number, v: number) =>
-          yTopAt(f) + (yBaseAt(f) + dipAt(wx) - yTopAt(f)) * v;
+          yTopAt(f) + (yBaseAt(f) + dipAt(wx) * endK(f) - yTopAt(f)) * v;
         // Seat the sheet INTO the scene: a crisp AO shade on the wall
         // just outside each free edge — the curtain hangs IN FRONT of
         // the face, it is not painted onto it.
@@ -10241,26 +10324,36 @@ export class Renderer {
           }
         }
         const SEG = Math.max(4, Math.ceil(Math.abs(wxSpan) * 5));
+        // The sheet outline carries NO straight line anywhere: the
+        // top edge waves on world noise (a straight clip edge prints
+        // a tone line against the ghost columns above), the sides
+        // ride the living-edge wobble, the base is the dipped
+        // scallop. Every vertex is world-keyed — seams stay sealed.
+        const NV = 8;
         const sheet = new Path2D();
-        sheet.moveTo(xAt(0, 0), yTopAt(0));
-        sheet.lineTo(xAt(1, 0), yTopAt(1));
-        sheet.quadraticCurveTo(
-          xAt(1, 0.55),
-          (yTopAt(1) + yBaseAt(1)) / 2,
-          xAt(1, 1),
-          yBaseAt(1) + dipAt(bx),
-        );
+        {
+          const NT = Math.max(3, Math.ceil(Math.abs(wxSpan) / 0.18));
+          for (let k = 0; k <= NT; k++) {
+            const f = k / NT;
+            const wx = ax + wxSpan * f;
+            const y = yTopAt(f) + (vn(wx, 163, 0.6) - 0.5) * s * 0.07;
+            if (k === 0) sheet.moveTo(xAt(f, 0), y);
+            else sheet.lineTo(xAt(f, 0), y);
+          }
+        }
+        for (let k = 1; k <= NV; k++) {
+          const v = k / NV;
+          sheet.lineTo(xAt(1, v) + edgeWob(bx, v), yAt(1, bx, v));
+        }
         for (let k = SEG; k >= 0; k--) {
           const f = k / SEG;
           const wx = ax + wxSpan * f;
-          sheet.lineTo(xAt(f, 1), yBaseAt(f) + dipAt(wx));
+          sheet.lineTo(xAt(f, 1), yBaseAt(f) + dipAt(wx) * endK(f));
         }
-        sheet.quadraticCurveTo(
-          xAt(0, 0.55),
-          (yTopAt(0) + yBaseAt(0)) / 2,
-          xAt(0, 0),
-          yTopAt(0),
-        );
+        for (let k = NV - 1; k >= 1; k--) {
+          const v = k / NV;
+          sheet.lineTo(xAt(0, v) + edgeWob(ax, v), yAt(0, ax, v));
+        }
         sheet.closePath();
         ctx.save();
         ctx.clip(sheet);
@@ -10395,15 +10488,50 @@ export class Renderer {
         }
         ctx.restore();
 
+        // ---- CORNER BOILS ------------------------------------------
+        // Small foam clusters seated over each free base corner —
+        // the churn's cap taper leaves the very corner bare, and a
+        // bare flared corner is a glass fin over the pool. A boil
+        // grounds it the way the mound rank grounds the middle.
+        for (const [isE, f, wxE] of [
+          [edgeL, 0, ax],
+          [edgeR, 1, bx],
+        ] as const) {
+          if (!isE) continue;
+          const cxp = xAt(f, 1) + edgeWob(wxE, 1) * 0.5;
+          const cyp = yBaseAt(f) + dipAt(wxE) * endK(f);
+          const seedC = Math.round(wxE * 4) + 57;
+          for (let k = 0; k < 3; k++) {
+            const bo = Math.sin(t * (1.6 + 0.5 * n01(seedC, 61 + k)) + k * 2.2);
+            const rr = s * (0.05 + 0.045 * n01(seedC, 62 + k)) * (1 + 0.1 * bo);
+            const oxp = (n01(seedC, 63 + k) - 0.5) * s * 0.16;
+            const oyp = (n01(seedC, 64 + k) - 0.5) * s * 0.08 + bo * s * 0.01;
+            ctx.fillStyle = k === 0 ? tones.splashPale : tones.foam;
+            ctx.beginPath();
+            ctx.ellipse(cxp + oxp, cyp + oyp, rr * 1.5, rr * 0.65, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
         // ---- THE CREST ROLL ----------------------------------------
         // The foreshortened curl — the top-plane law applied to
-        // water. A lit convex band rides the arris, standing slightly
-        // PROUD of the lip (the curl rises before it pitches over),
-        // tears off along a world-keyed scallop line, and casts one
-        // crisp shadow onto the sheet below it.
+        // water. Never a bar: the curl's height SWELLS and PINCHES
+        // along a long world wave, BOTH its edges ride noise, and the
+        // lit arris is broken ticks where the fold happens to catch
+        // light. A full-width band with one straight edge is the
+        // pasted-on transition line, whatever its tone.
         const rollH = s * 0.115;
+        const swellAt = (wx: number) => 0.45 + 0.9 * vn(wx, 158, 0.32);
         const SCP = 0.16;
         const NSc = Math.max(3, Math.ceil(Math.abs(wxSpan) / SCP));
+        const topYAt = (f: number): number => {
+          const wx = ax + wxSpan * f;
+          return (
+            yTopAt(f) -
+            s * 0.05 * Math.min(1, swellAt(wx)) +
+            (vn(wx, 159, 0.9) - 0.5) * s * 0.03
+          );
+        };
         const scallopY = (f: number): number => {
           const wx = ax + wxSpan * f;
           const i = Math.round(wx / SCP);
@@ -10411,13 +10539,16 @@ export class Renderer {
           // jitter, so the tear-off line never reads as a valance.
           return (
             yTopAt(f) +
-            rollH * (0.5 + 0.5 * vn(wx, 151, 1.1) + 0.55 * n01(i, 150)) +
+            rollH * swellAt(wx) * (0.45 + 0.4 * vn(wx, 151, 1.1) + 0.45 * n01(i, 150)) +
             Math.sin(t * 2.2 + i * 1.7) * s * 0.012
           );
         };
         const roll = new Path2D();
-        roll.moveTo(xAt(0, 0), yTopAt(0) - s * 0.055);
-        roll.lineTo(xAt(1, 0), yTopAt(1) - s * 0.055);
+        for (let k = 0; k <= NSc; k++) {
+          const f = k / NSc;
+          if (k === 0) roll.moveTo(sxAt(f), topYAt(f));
+          else roll.lineTo(sxAt(f), topYAt(f));
+        }
         for (let k = NSc; k >= 0; k--) roll.lineTo(sxAt(k / NSc), scallopY(k / NSc));
         roll.closePath();
         ctx.fillStyle = tones.rollLit;
@@ -10426,7 +10557,7 @@ export class Renderer {
         // drawn outline (a hard ink line here is exactly the pasted-
         // element edge).
         ctx.strokeStyle = tones.rollInk;
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = 0.45;
         ctx.lineWidth = Math.max(1.2, s * 0.032);
         ctx.beginPath();
         for (let k = 0; k <= NSc; k++) {
@@ -10437,15 +10568,28 @@ export class Renderer {
         }
         ctx.stroke();
         ctx.globalAlpha = 1;
-        // The sunlit arris line along the very top of the curl.
+        // Broken sunlit ticks along the fold — only where the curl
+        // swells enough to catch the light, sliding with the water.
         ctx.strokeStyle = tones.crest;
-        ctx.globalAlpha = (0.8 + 0.15 * Math.sin(t * 2.3 + ax * 3.1)) * tones.dim;
-        ctx.lineWidth = Math.max(1.5, s * 0.045);
-        ctx.beginPath();
-        ctx.moveTo(xAt(0, 0), yTopAt(0) - s * 0.055);
-        ctx.lineTo(xAt(1, 0), yTopAt(1) - s * 0.055);
-        ctx.stroke();
+        ctx.lineCap = 'round';
+        ctx.lineWidth = Math.max(1.4, s * 0.035);
+        for (let wx = Math.ceil(Math.min(ax, bx) / 0.34) * 0.34; wx < Math.max(ax, bx) - 0.15; wx += 0.34) {
+          if (swellAt(wx) < 0.8) continue;
+          const idx = Math.round(wx / 0.34);
+          const f0 = fOf(wx);
+          const f1 = fOf(Math.min(Math.max(ax, bx), wx + 0.14 + 0.12 * n01(idx, 152)));
+          if (f0 < 0 || f0 > 1) continue;
+          ctx.globalAlpha =
+            (0.4 + 0.35 * n01(idx, 153)) *
+            (0.7 + 0.3 * Math.sin(t * 2.3 + idx * 2.7)) *
+            tones.dim;
+          ctx.beginPath();
+          ctx.moveTo(sxAt(f0), topYAt(f0) + s * 0.012);
+          ctx.lineTo(sxAt(f1), topYAt(f1) + s * 0.012);
+          ctx.stroke();
+        }
         ctx.globalAlpha = 1;
+        ctx.lineCap = 'butt';
         if (fine) {
           // Break combs — foam teeth tearing off the scallop line,
           // only where the curl happens to shred (never a dash row).
@@ -10555,15 +10699,38 @@ export class Renderer {
           }
           ctx.closePath();
         };
-        const fillTongue = (depth: number, aTop: number, aBot: number): void => {
-          tonguePath(depth);
-          const g0 = wts((x0 + x1) / 2, rowY);
-          const g1 = wts((x0 + x1) / 2, rowY + depth);
-          const gr = ctx.createLinearGradient(0, g0.y, 0, g1.y);
-          gr.addColorStop(0, `${tones.wash}${aTop * tones.dim})`);
-          gr.addColorStop(1, `${tones.wash}${aBot * tones.dim})`);
-          ctx.fillStyle = gr;
-          ctx.fill();
+        // THE OUTFLOW FINGERS — where the rapid enters the pool it
+        // breaks into tongues: opaque pale capsule streams at world-
+        // keyed lengths, tips dissolving into detached rafts. Never
+        // one fading slab: a gradient apron prints its own edges.
+        const fingers = (): void => {
+          ctx.lineCap = 'round';
+          for (let wx = Math.ceil((x0 + 0.08) / 0.3) * 0.3; wx < x1 - 0.05; wx += 0.3) {
+            const idx = Math.round(wx / 0.3);
+            if (n01(idx, 90) < 0.18) continue;
+            const lenF = 0.28 + 0.42 * n01(idx, 91);
+            const wxa = wx + (n01(idx, 92) - 0.5) * 0.18;
+            const surge = 1 + 0.06 * Math.sin(t * 1.4 + idx * 2.3);
+            const p0 = wts(wxa, rowY - 0.08);
+            const p1 = wts(wxa + (n01(idx, 93) - 0.5) * 0.1, rowY + lenF * surge);
+            ctx.strokeStyle = n01(idx, 94) < 0.45 ? tones.splashPale : tones.splashMid;
+            ctx.lineWidth = s * (0.16 + 0.14 * n01(idx, 95));
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.stroke();
+            // The detached raft off the tip — the stream's tone
+            // carrying on into the pool after the stream lets go.
+            if (n01(idx, 96) > 0.45) {
+              const pr = wts(wxa + (n01(idx, 97) - 0.5) * 0.2, rowY + lenF + 0.18 + 0.14 * n01(idx, 98));
+              const rr = s * (0.04 + 0.04 * n01(idx, 99));
+              ctx.fillStyle = tones.splashMid;
+              ctx.beginPath();
+              ctx.ellipse(pr.x, pr.y, rr * 1.7, rr * 0.6, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          ctx.lineCap = 'butt';
         };
         const dashes = (depth: number): void => {
           ctx.strokeStyle = tones.foam;
@@ -10588,6 +10755,13 @@ export class Renderer {
         // whose organic banks fuse into the pool's drawn shoreline
         // (the mouth law pointed downhill). It includes the pool, so
         // the whole run-out is one clipped body of moving water.
+        // ROW 0 DRAWS NO RAPID: row 0 is the WALL row — its slice
+        // projects onto the wall face, which is the sheet's domain.
+        // Painted anyway, the bed/rapid leak out past the sheet's
+        // free edges wherever the corridor's organic banks flare
+        // wider than the run — an opaque slab climbing the wall
+        // beside the curtain. The churn is row 0's only dressing.
+        if (r > 0) {
         ctx.save();
         if (apron) this.clipFallRegion(apron, landLift);
         // The water BED first: an opaque fill so the corridor reads
@@ -10598,28 +10772,68 @@ export class Renderer {
         {
           const ovL = Math.abs(x0 - runX0) < 0.01 ? 0.35 : 0;
           const ovR = Math.abs(x1 - runX1) < 0.01 ? 0.35 : 0;
-          const depth = last ? 0.9 : 1;
-          const p0 = wts(x0 - ovL, rowY - 0.02);
-          const p1 = wts(x1 + ovR, rowY + depth);
-          const bed = this.sky.moonlit ? '56,84,128' : '96,150,192';
-          if (last) {
-            const gb = ctx.createLinearGradient(0, p0.y, 0, p1.y);
-            gb.addColorStop(0, `rgba(${bed},0.94)`);
-            gb.addColorStop(0.45, `rgba(${bed},0.55)`);
-            gb.addColorStop(1, `rgba(${bed},0)`);
-            ctx.fillStyle = gb;
-          } else {
-            // Dry apron rows read as SOLID water — any ground showing
-            // through the bed reads as spray on grass, the exact
-            // artifact the foot-water law exists to kill.
-            ctx.fillStyle = `rgb(${bed})`;
+          // The bed is a PATH, not a rect: sides wave on world-y
+          // noise (rows sample the same function at shared depths, so
+          // stacked rows stay continuous), and the shore row's bottom
+          // breaks into the pool along a deep wavy boundary — an
+          // OPAQUE tone step in the water, never an alpha fade whose
+          // rectangle corners crop over the pool.
+          const depth = last ? 0.72 : 1;
+          const bed = this.sky.moonlit ? '#38547f' : '#6096c0';
+          ctx.fillStyle = bed;
+          ctx.beginPath();
+          const NSd = 4;
+          const sideX = (base: number, wy: number, salt: number): number =>
+            base + (vn(wy * 1.3, salt, 0.8) - 0.5) * 0.14;
+          // Down the left bank, along the bottom, up the right bank;
+          // closePath seals the straight top edge under the row above.
+          for (let k = 0; k <= NSd; k++) {
+            const wy = rowY - 0.02 + (k / NSd) * (depth + 0.02);
+            const p = wts(sideX(x0 - ovL, wy, 26), wy);
+            if (k === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
           }
-          ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+          {
+            const NB = Math.max(3, Math.ceil((x1 - x0 + ovL + ovR) / 0.16));
+            for (let k = 0; k <= NB; k++) {
+              const wx = x0 - ovL + (x1 + ovR - (x0 - ovL)) * (k / NB);
+              const amp = last ? 0.3 : 0.04;
+              const wy = rowY + depth + (vn(wx, 27, 0.55) - 0.5) * amp;
+              const p = wts(wx, wy);
+              ctx.lineTo(p.x, p.y);
+            }
+          }
+          for (let k = NSd; k >= 0; k--) {
+            const wy = rowY - 0.02 + (k / NSd) * (depth + 0.02);
+            const p = wts(sideX(x1 + ovR, wy, 24), wy);
+            ctx.lineTo(p.x, p.y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          // Detached bed-tone shoals past the shore boundary — the
+          // step interpenetrates the pool instead of contouring it.
+          if (last) {
+            for (let wx = Math.ceil((x0 + 0.1) / 0.44) * 0.44; wx < x1; wx += 0.44) {
+              const idx = Math.round(wx / 0.44);
+              if (n01(idx, 28) < 0.4) continue;
+              const p = wts(
+                wx + (n01(idx, 29) - 0.5) * 0.2,
+                rowY + depth + 0.18 + 0.2 * n01(idx, 30),
+              );
+              const rr = s * (0.05 + 0.05 * n01(idx, 31));
+              ctx.beginPath();
+              ctx.ellipse(p.x, p.y, rr * 1.8, rr * 0.6, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
         }
         if (!last) {
-          // A dry apron slice: the full-depth rapid, with dark cut
-          // lines along its edges so the racing sheet owns its banks.
-          fillTongue(1, Math.max(0.3, 0.62 - r * 0.12), Math.max(0.26, 0.56 - r * 0.12));
+          // A dry apron slice: the full-depth rapid — an OPAQUE pale
+          // stream over the bed, with dark cut lines along its edges
+          // so the racing sheet owns its banks.
+          tonguePath(1);
+          ctx.fillStyle = tones.splashMid;
+          ctx.fill();
           ctx.strokeStyle = 'rgba(26,48,96,0.85)';
           ctx.globalAlpha = 0.2 * tones.dim;
           ctx.lineWidth = Math.max(1.2, s * 0.028);
@@ -10639,10 +10853,11 @@ export class Renderer {
           ctx.globalAlpha = 1;
           dashes(1);
         } else {
-          fillTongue(0.95, Math.max(0.26, 0.54 - r * 0.12), 0.05);
-          dashes(0.95);
+          fingers();
+          dashes(0.6);
         }
         ctx.restore();
+        }
         if (last) {
           // Everything living ON the pool's surface — rings, rafts,
           // the strong veil — clips to the drawn water region.
@@ -10692,8 +10907,8 @@ export class Renderer {
               ((runX1 - runX0) * 0.5 + 0.4) * s * (1 + 0.05 * Math.sin(t * 0.9 + runMid));
             const ry = s * 0.55;
             const rg = ctx.createRadialGradient(pm.x, pm.y, 0, pm.x, pm.y, rx);
-            rg.addColorStop(0, `rgba(238,246,253,${0.16 * tones.dim})`);
-            rg.addColorStop(0.6, `rgba(238,246,253,${0.08 * tones.dim})`);
+            rg.addColorStop(0, `rgba(238,246,253,${0.11 * tones.dim})`);
+            rg.addColorStop(0.6, `rgba(238,246,253,${0.055 * tones.dim})`);
             rg.addColorStop(1, 'rgba(238,246,253,0)');
             ctx.save();
             ctx.translate(pm.x, pm.y);
@@ -11365,7 +11580,7 @@ export class Renderer {
               gravity: -0.3,
               drag: 1.0,
               grow: 0.12,
-              shape: 'puff',
+              shape: 'mote',
             },
           );
         }

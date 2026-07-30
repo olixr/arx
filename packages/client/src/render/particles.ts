@@ -83,8 +83,8 @@ export interface BurstOpts {
   grow?: number;
   /** Y-sort with the world (ground dust) instead of drawing on top. */
   ground?: boolean;
-  /** Silhouette: 'square' (default) | 'streak' | 'shard' | 'lick' | 'puff' | 'glint'. */
-  shape?: 'square' | 'streak' | 'shard' | 'lick' | 'puff' | 'glint';
+  /** Silhouette: 'square' (default) | 'streak' | 'shard' | 'lick' | 'puff' | 'glint' | 'mote'. */
+  shape?: 'square' | 'streak' | 'shard' | 'lick' | 'puff' | 'glint' | 'mote';
   /** Shard tumble rate, rad/s. */
   spin?: number;
   /** Strobe weight 0..1 — embers/arcs shimmer as they live. */
@@ -99,7 +99,15 @@ export interface BurstOpts {
   wobble?: number;
 }
 
-const SHAPE_ID = { square: 0, streak: 1, shard: 2, lick: 3, puff: 4, glint: 5 } as const;
+const SHAPE_ID = {
+  square: 0,
+  streak: 1,
+  shard: 2,
+  lick: 3,
+  puff: 4,
+  glint: 5,
+  mote: 6,
+} as const;
 
 export class Particles {
   private readonly pool: Particle[] = [];
@@ -318,6 +326,20 @@ export class Particles {
       const g = size * 0.38 * tw;
       ctx.fillRect(s.x - g * 0.5, s.y - g * 2.1, g, g * 4.2);
       ctx.fillRect(s.x - g * 2.1, s.y - g * 0.5, g * 4.2, g);
+    } else if (p.shape === 6) {
+      // Mote: the puff idiom with ROUND lobes — water mist. A rect
+      // lobe at mist scale reads as a pasted square chit; vapour has
+      // no corners.
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(p.rot + Math.sin(p.life * 2.2 + p.phase) * 0.2);
+      const m = size * 0.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, m, m * 0.82, 0, 0, Math.PI * 2);
+      ctx.ellipse(-m * 0.72, m * 0.12, m * 0.62, m * 0.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(m * 0.66, -m * 0.08, m * 0.55, m * 0.46, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     } else {
       ctx.fillRect(s.x - size / 2, s.y - size / 2, size, size);
     }
