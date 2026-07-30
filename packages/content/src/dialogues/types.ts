@@ -184,6 +184,13 @@ export interface DialogueNode {
   choices?: DialogueChoice[];
   /** Effects fired on entering this node (server-side, in order). */
   hooks?: DialogueHook[];
+  /**
+   * THE SPOKEN LINE (voiceover-plan Phase 3): a VoiceClipDef id — the
+   * full recorded read of this beat. The server resolves it to a URL
+   * at the beat door; a missing clip degrades to the silent beat
+   * (SILENCE IS VALID), never an error at a player.
+   */
+  voice?: string;
 }
 
 /**

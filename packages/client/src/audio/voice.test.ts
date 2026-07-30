@@ -71,3 +71,14 @@ test('LruBytes: byte budget holds, staleness evicts, a touch re-seats', () => {
   assert.equal(lru.total, 100);
   assert.equal(lru.size, 1);
 });
+
+test('THE PACED WORD: stretch-only, lands at 92% of the clip, safe at zero', async () => {
+  const { voicePaceScale } = await import('./voice.js');
+  // A 5s clip over a 2s natural read stretches the reader 2.3×.
+  assert.equal(voicePaceScale(2, 5000), (5 * 0.92) / 2);
+  // A clip shorter than the read never speeds the reader up.
+  assert.equal(voicePaceScale(3, 1000), 1);
+  // Degenerate inputs stay harmless.
+  assert.equal(voicePaceScale(0, 5000), 1);
+  assert.equal(voicePaceScale(2, 0), 1);
+});

@@ -1,5 +1,6 @@
 import { itemDef, parseDialogueMarkup } from '@arx/content';
 import type { Sfx } from '../audio/sfx.js';
+import { voicePaceScale } from '../audio/voice.js';
 import { dockGlyphUrl, itemIconUrl } from '../render/icons.js';
 
 /**
@@ -35,6 +36,8 @@ interface CinemaNode {
   text: string;
   choices?: string[];
   last?: boolean;
+  /** The beat's spoken audio (played by main.ts; paces the reveal here). */
+  voice?: { url: string; durMs: number; kind: 'line' | 'quip' };
   gifts?: Array<{ item: string; qty: number }>;
   quest?: {
     id: string;
@@ -91,6 +94,13 @@ export class DialogueCinema {
   private steps: RevealStep[] = [];
   private revealed = 0;
   private typing = false;
+  /**
+   * THE PACED WORD: a voiced line stretches every hold so the text
+   * lands with the audio, and the quill's scratch goes quiet — a
+   * voice and a scratching quill fight for the same ear.
+   */
+  private paceScale = 1;
+  private voiced = false;
   private raf = 0;
   private lastT = 0;
   private holdSec = 0;
@@ -122,6 +132,8 @@ export class DialogueCinema {
       onEnd: () => void;
       /** A gift landed — a soft pulse through pad hands. */
       onGift?: () => void;
+      /** The player skipped a voiced line mid-speech — fade the clip. */
+      onVoiceSkip?: () => void;
     },
   ) {
     this.root = document.createElement('div');
@@ -248,6 +260,13 @@ export class DialogueCinema {
     this.sheet.classList.add('turn');
 
     this.buildSteps(node.text);
+    this.voiced = node.voice?.kind === 'line';
+    this.paceScale = this.voiced
+      ? voicePaceScale(
+          this.steps.reduce((a, s) => a + s.hold, 0),
+          node.voice!.durMs,
+        )
+      : 1;
     this.revealed = 0;
     this.typing = true;
     this.holdSec = 0.12; // a beat before the first glyph
@@ -325,10 +344,10 @@ export class DialogueCinema {
       dt -= this.holdSec;
       const step = this.steps[this.revealed++]!;
       step.el.classList.add('lit');
-      this.holdSec = step.hold;
+      this.holdSec = step.hold * this.paceScale;
       if (step.scratch === null) {
         this.sfx.uiTap(); // an item chip lands with a soft tap
-      } else if (++this.scratchGap >= 3) {
+      } else if (!this.voiced && ++this.scratchGap >= 3) {
         this.scratchGap = 0;
         if (step.scratch === 'grim') this.sfx.dialogueScratchGrim();
         else this.sfx.dialogueScratch();
@@ -581,6 +600,9 @@ export class DialogueCinema {
   advance(): void {
     if (!this.open || !this.node) return;
     if (this.typing) {
+      // Skip's first press completes the text AND fades the voice —
+      // the two-press contract holds for voiced and silent lines alike.
+      if (this.voiced) this.hooks.onVoiceSkip?.();
       this.finishReveal();
       return;
     }

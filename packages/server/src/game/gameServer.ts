@@ -179,7 +179,10 @@ import {
   roadDistanceAt,
   wildCandidates,
   type GeographyDef,
+  VOICE,
+  type VoiceClipDef,
 } from '@arx/content';
+import { collectVoicePrefetch, voiceWireForNode } from '../voice/resolve.js';
 import {
   POI_CELL,
   ZONE_CLEARANCE,
@@ -1294,6 +1297,8 @@ export class GameServer {
   private readonly dialoguesByActor = new Map<string, DialogueOffer[]>();
   /** Node lookup per dialogue id, built once at registration. */
   private readonly dialogueNodes = new Map<string, ReadonlyMap<string, DialogueNode>>();
+  /** The live voice-clip ledger — the resolver reads it per beat. */
+  private readonly voiceClips = new Map<string, VoiceClipDef>();
   /**
    * Re-reads dialogues from the DB (wired by index.ts at boot). The
    * tooling edits rows, then /dlgreload swaps the live registry — no
@@ -1885,6 +1890,21 @@ export class GameServer {
    * their bindings. Call after registerActors — a binding without its
    * target is a warning, not a wire.
    */
+  /**
+   * Swap the live voice-clip ledger (THE SPOKEN LINE, voiceover-plan
+   * Phase 3). Boot and the Studio's clip routes both land here; the
+   * resolver reads it at every beat door, so a fresh upload speaks on
+   * the very next line with no dialogue reload.
+   */
+  registerVoiceClips(defs: Iterable<VoiceClipDef>): void {
+    this.voiceClips.clear();
+    for (const def of defs) this.voiceClips.set(def.id, def);
+  }
+
+  voiceClipIds(): ReadonlySet<string> {
+    return new Set(this.voiceClips.keys());
+  }
+
   registerDialogues(defs: Iterable<DialogueDef>): void {
     for (const def of defs) {
       this.dialogueNodes.set(def.id, new Map(def.nodes.map((n) => [n.id, n])));
@@ -7156,11 +7176,23 @@ export class GameServer {
         // The spoken-to turn to face you — small thing, reads as alive.
         npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
         player.dialogue = { targetEid, def, nodeId: def.start, choices: [] };
+        // THE SPOKEN LINE: the frame carries the warm list (every
+        // voiced beat reachable from start) and the live duck dials —
+        // a silent tree sends neither and costs nothing on the wire.
+        const prefetch = collectVoicePrefetch(def, this.voiceClips, VOICE.prefetchCap);
         player.session.sendJson({
           t: 'dlgopen',
           eid: targetEid,
           name: actorComp.actor.name,
           title: actorComp.actor.title,
+          prefetch,
+          voiceDials: prefetch
+            ? {
+                duckLine: VOICE.duckLine,
+                duckAmbience: VOICE.duckAmbience,
+                duckReleaseMs: VOICE.duckReleaseMs,
+              }
+            : undefined,
         });
         this.dialogueEnterNode(eid, player, def.start);
         return;
@@ -7443,6 +7475,9 @@ export class GameServer {
       quest: offerDef
         ? { id: offerDef.id, name: offerDef.name, rewards: this.questRewardsWire(offerDef) }
         : undefined,
+      // THE SPOKEN LINE: the resolver's answer for this beat — a
+      // blind URL, or nothing (a ghost ref mid-edit stays silent).
+      voice: voiceWireForNode(node, this.voiceClips),
     });
   }
 

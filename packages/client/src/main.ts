@@ -684,6 +684,8 @@ const cinema = new DialogueCinema(sfx, {
   onChoose: (idx) => game.dialogueChoose(idx),
   onEnd: () => game.dialogueEnd(),
   onGift: () => input.rumble(0.15, 0.35, 130),
+  // Skipping a voiced line fades the clip with the text completion.
+  onVoiceSkip: () => voice.stopLine(),
 });
 
 const game = new ClientGame(input, {
@@ -873,9 +875,20 @@ const game = new ClientGame(input, {
     renderer.startDialogueCine(o.eid);
     input.cinemaCapture = true;
     document.body.classList.add('in-dialogue'); // the HUD bows out
+    // THE SPOKEN LINE: warm every clip this tree can reach before the
+    // first voiced beat lands, and take the live duck dials.
+    if (o.voiceDials) voice.setDials(o.voiceDials);
+    if (o.prefetch) voice.prefetch(o.prefetch);
   },
-  onDialogueNode: (n) => cinema.showNode(n),
+  onDialogueNode: (n) => {
+    // Voice first, then the paced typewriter — the beat that carries
+    // no line silences whatever the previous beat left playing.
+    if (n.voice && n.voice.kind === 'line') voice.playLine(n.voice.url);
+    else voice.stopLine();
+    cinema.showNode(n);
+  },
   onDialogueClose: () => {
+    voice.stopLine();
     cinema.close();
     renderer.endDialogueCine();
     input.cinemaCapture = false;

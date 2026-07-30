@@ -293,3 +293,23 @@ test('the bounty hook: carries nothing, validates clean, unknown kinds still die
   });
   assert.ok(!bad.ok && bad.errors.some((e) => e.includes("'bounty'")));
 });
+
+test('the spoken line: voice refs check grammar always, existence only with a ledger', () => {
+  const tree = (voice: string): unknown => ({
+    id: 'v_test',
+    start: 'a',
+    nodes: [{ id: 'a', text: 'Morning.', voice }],
+  });
+
+  // Grammar alone (no ledger): a clean slug passes, a dirty one refuses.
+  const ok = validateDialogue(tree('dunna_greet_1'));
+  assert.ok(ok.ok && ok.dialogue.nodes[0]!.voice === 'dunna_greet_1');
+  const dirty = validateDialogue(tree('Not A Slug'));
+  assert.ok(!dirty.ok && dirty.errors.some((e) => e.includes('voice must be a voice clip slug')));
+
+  // With the ledger passed (the Studio-save path), existence is law.
+  const known = validateDialogue(tree('dunna_greet_1'), { voiceClipIds: new Set(['dunna_greet_1']) });
+  assert.ok(known.ok);
+  const ghost = validateDialogue(tree('ghost_clip'), { voiceClipIds: new Set(['dunna_greet_1']) });
+  assert.ok(!ghost.ok && ghost.errors.some((e) => e.includes("unknown clip 'ghost_clip'")));
+});

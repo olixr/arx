@@ -243,12 +243,6 @@ if (config.requireInvite) {
       );
     }
   }
-  const voiceClipLoad = await loadVoiceClips(db);
-  for (const err of voiceClipLoad.errors) console.warn(`[content] invalid voice clip: ${err}`);
-  if (voiceClipLoad.clips.length > 0) {
-    console.log(`[content] voice clips: ${voiceClipLoad.clips.length} in the ledger`);
-  }
-
   await seedContentDocs(db, 'frontier', [{ id: 'world', doc: AUTHORED_FRONTIER }]);
   const frontierDocs = await loadContentDocs(db, 'frontier');
   const frontierRow = frontierDocs.find((d) => d.id === 'world');
@@ -317,6 +311,16 @@ console.log(
   `[npc] actors: ${actorLoad.actors.length} loaded ` +
     `(+${actorSync.added} ~${actorSync.updated} !${actorSync.kept} -${actorSync.removed} =${actorSync.unchanged})`,
 );
+
+// THE SPOKEN LINE: the clip ledger enters the game before dialogues —
+// the resolver answers every beat door from this live map, and the
+// Studio's clip routes re-register it on every upload/delete.
+const voiceClipLoad = await loadVoiceClips(db);
+for (const err of voiceClipLoad.errors) console.warn(`[content] invalid voice clip: ${err}`);
+game.registerVoiceClips(voiceClipLoad.clips.map((c) => c.def));
+if (voiceClipLoad.clips.length > 0) {
+  console.log(`[content] voice clips: ${voiceClipLoad.clips.length} in the ledger`);
+}
 
 // Dialogue trees — THE DATABASE IS THE TRUTH. Shipped JSON seeds it
 // (respecting every tool edit); the runtime reads only the DB.

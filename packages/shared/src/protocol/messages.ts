@@ -819,6 +819,19 @@ export interface PartyRunWire {
 }
 
 /**
+ * A voice clip riding a dialogue beat (THE SPOKEN LINE, voiceover-plan
+ * Phase 3). THE WIRE STAYS BLIND: a URL and a play length, never a
+ * clip id or node id — the server's resolver chose it, the client
+ * just plays it. durMs paces the typewriter to land with the audio.
+ */
+export interface VoiceWire {
+  url: string;
+  durMs: number;
+  /** A full spoken line ducks the music; a quip ducks nothing. */
+  kind: 'line' | 'quip';
+}
+
+/**
  * A conversation began: raise the cinematic frame around this entity.
  * Node beats follow as dlgnode messages; dlgclose tears it down.
  */
@@ -828,6 +841,14 @@ export interface S2CDialogueOpen {
   eid: EntityId;
   name: string;
   title?: string;
+  /**
+   * Clip URLs reachable from this tree's start — the client warms its
+   * buffer cache the moment the frame opens, so no line waits on a
+   * fetch. Server-walked and capped by the prefetchCap dial.
+   */
+  prefetch?: string[];
+  /** The live duck dials — content-tuned, delivered with the frame. */
+  voiceDials?: { duckLine: number; duckAmbience: number; duckReleaseMs: number };
 }
 
 /** One beat of conversation — everything the client may know. */
@@ -851,6 +872,8 @@ export interface S2CDialogueNode {
    * what they'd be agreeing to before the choice plates appear.
    */
   quest?: QuestOfferWire;
+  /** The beat's spoken audio, when the node has a voiced line. */
+  voice?: VoiceWire;
 }
 
 /** The conversation is over (finished, excused, or interrupted). */

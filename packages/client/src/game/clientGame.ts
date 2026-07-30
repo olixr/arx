@@ -195,7 +195,15 @@ export interface GameEvents {
   /** The running action ended — `reason` says why ('done', 'blocked', 'occupied', 'materials', 'moved', …). */
   onActionEnd?(reason?: string): void;
   /** A conversation began — raise the cinematic frame around `eid`. */
-  onDialogueOpen?(o: { eid: EntityId; name: string; title?: string }): void;
+  onDialogueOpen?(o: {
+    eid: EntityId;
+    name: string;
+    title?: string;
+    /** Clip URLs to warm before the first voiced beat lands. */
+    prefetch?: string[];
+    /** The live duck dials riding the frame. */
+    voiceDials?: { duckLine: number; duckAmbience: number; duckReleaseMs: number };
+  }): void;
   /** One beat of conversation — typewriter it out. */
   onDialogueNode?(n: {
     speaker: 'npc' | 'player';
@@ -204,6 +212,7 @@ export interface GameEvents {
     last?: boolean;
     gifts?: Array<{ item: string; qty: number }>;
     quest?: { id: string; name: string; rewards?: QuestRewardsWire };
+    voice?: { url: string; durMs: number; kind: 'line' | 'quip' };
   }): void;
   /** The conversation is over — tear the frame down. */
   onDialogueClose?(): void;
@@ -1062,7 +1071,13 @@ export class ClientGame {
         break;
       }
       case 'dlgopen': {
-        this.events.onDialogueOpen?.({ eid: msg.eid, name: msg.name, title: msg.title });
+        this.events.onDialogueOpen?.({
+          eid: msg.eid,
+          name: msg.name,
+          title: msg.title,
+          prefetch: msg.prefetch,
+          voiceDials: msg.voiceDials,
+        });
         break;
       }
       case 'dlgnode': {
@@ -1073,6 +1088,7 @@ export class ClientGame {
           last: msg.last,
           gifts: msg.gifts,
           quest: msg.quest,
+          voice: msg.voice,
         });
         break;
       }

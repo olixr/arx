@@ -63,6 +63,9 @@
 // (Same-day extensions, still v21: S2CShopOpen.priceMult, S2CRep
 // prices/enforcers/peaceBand, and InvSlot.stolen — the Phase-5 theft
 // facet; all additive optionals an early v21 client simply ignores.)
+// (Voiceover Phase 3, still v21: S2CDialogueNode.voice and
+// S2CDialogueOpen.prefetch/voiceDials — additive optionals; an
+// unvoiced client reads the same conversation in silence.)
 export const PROTOCOL_VERSION = 21;
 
 /** The most souls one party can hold. */

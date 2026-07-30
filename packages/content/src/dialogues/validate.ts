@@ -39,6 +39,13 @@ export interface ValidateDialogueRefs {
    * quest registry here would cycle the packages' content graph).
    */
   questIds?: ReadonlySet<string>;
+  /**
+   * Voice clip ids for cross-checking node `voice` refs. The running
+   * server passes its DB-loaded ledger; without the set only the slug
+   * grammar is checked (shipped trees may name clips that arrive by
+   * Studio upload).
+   */
+  voiceClipIds?: ReadonlySet<string>;
 }
 
 const SLUG_RE = /^[a-z][a-z0-9_]*$/;
@@ -308,6 +315,15 @@ function validateNode(
     errors.push(`${where} cannot have both next and choices — a beat is linear OR a question`);
   }
   node.hooks = validateHooks(raw.hooks, where, errors, refs);
+  if (raw.voice !== undefined) {
+    if (typeof raw.voice !== 'string' || !SLUG_RE.test(raw.voice) || raw.voice.length > 48) {
+      errors.push(`${where}.voice must be a voice clip slug`);
+    } else if (refs?.voiceClipIds && !refs.voiceClipIds.has(raw.voice)) {
+      errors.push(`${where}.voice names unknown clip '${raw.voice}'`);
+    } else {
+      node.voice = raw.voice;
+    }
+  }
   return node;
 }
 

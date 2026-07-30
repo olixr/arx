@@ -33,10 +33,25 @@ const MAX_QUIPS = 2;
 /** Line fades (seconds). */
 const FADE_IN = 0.02;
 const FADE_OUT = 0.08;
-/** THE DUCK RAIL levels under a spoken line, and the move shapes. */
+/**
+ * THE DUCK RAIL levels under a spoken line, and the move shapes.
+ * These are the shipped defaults — the wire's voiceDials (the live
+ * 'voice' content doc) override them per conversation via setDials.
+ */
 export const LINE_DUCK = { music: 0.45, tracks: 0.45, ambience: 0.75 } as const;
 const DUCK_SEAT_TC = 0.12;
-const DUCK_RELEASE_TC = 0.2;
+
+/**
+ * THE PACED WORD: how much to stretch the typewriter so a voiced
+ * line's text lands with its audio. Stretch-only — a clip shorter
+ * than the natural read never speeds the reader up (text may land
+ * early; it never outruns the voice). Lands at ~92% of the clip so
+ * the last word settles inside the speech, not after it.
+ */
+export function voicePaceScale(plainSec: number, durMs: number): number {
+  if (plainSec <= 0 || durMs <= 0) return 1;
+  return Math.max(1, (durMs / 1000) * 0.92 / plainSec);
+}
 /** Spatial quips speak at room scale — the sfx 'near' family's reach. */
 const QUIP_REF = 2.5;
 const QUIP_MAX = 16;
@@ -138,9 +153,25 @@ export class VoicePlayer {
   current: CurrentLine | null = null;
   private quipCount = 0;
   private ducked = false;
+  /** Live duck dials — shipped defaults until the wire says otherwise. */
+  private dials: { duckLine: number; duckAmbience: number; duckReleaseMs: number } = {
+    duckLine: LINE_DUCK.music,
+    duckAmbience: LINE_DUCK.ambience,
+    duckReleaseMs: 600,
+  };
 
   constructor(private engine: AudioEngine) {
     this.formats = probeFormats();
+  }
+
+  /** The wire's voiceDials land here (content-tuned, per dlgopen). */
+  setDials(d: { duckLine: number; duckAmbience: number; duckReleaseMs: number }): void {
+    const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+    this.dials = {
+      duckLine: clamp(d.duckLine, 0.05, 1),
+      duckAmbience: clamp(d.duckAmbience, 0.05, 1),
+      duckReleaseMs: clamp(d.duckReleaseMs, 0, 5000),
+    };
   }
 
   /** Follow the camera's subject; called once per frame from the loop. */
@@ -279,10 +310,12 @@ export class VoicePlayer {
   private setLineDuck(on: boolean): void {
     if (on === this.ducked) return;
     this.ducked = on;
-    const tc = on ? DUCK_SEAT_TC : DUCK_RELEASE_TC;
-    this.engine.setDuck('music', on ? LINE_DUCK.music : 1, tc);
-    this.engine.setDuck('tracks', on ? LINE_DUCK.tracks : 1, tc);
-    this.engine.setDuck('ambience', on ? LINE_DUCK.ambience : 1, tc);
+    // setTargetAtTime reaches ~95% at 3τ — the release dial names the
+    // full journey, so the time constant is a third of it.
+    const tc = on ? DUCK_SEAT_TC : Math.max(0.05, this.dials.duckReleaseMs / 3000);
+    this.engine.setDuck('music', on ? this.dials.duckLine : 1, tc);
+    this.engine.setDuck('tracks', on ? this.dials.duckLine : 1, tc);
+    this.engine.setDuck('ambience', on ? this.dials.duckAmbience : 1, tc);
   }
 
   /**

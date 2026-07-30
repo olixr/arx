@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { VoiceClipDef } from '@arx/content';
 import { freshDb } from './testDb.js';
+import { importDialogue, loadDialogues } from './dialogues.js';
 import {
   clipRefs,
   deleteVoiceBank,
@@ -152,4 +153,25 @@ test('the delete guard: references refuse, orphaned binaries are named', async (
 
   const missing = await deleteVoiceClip(db, 'never_was');
   assert.ok(!missing.ok && 'missing' in missing);
+});
+
+test('the spoken line rides the dialogue row: voice survives the DB round trip', async () => {
+  const db = await freshDb();
+  const def = {
+    id: 'v_roundtrip',
+    start: 'a',
+    bindings: [{ kind: 'actor' as const, target: 'innkeep_dunna' }],
+    nodes: [
+      { id: 'a', text: 'Morning.', voice: 'dunna_greet_1', next: 'b' },
+      { id: 'b', text: 'Mind the step.' },
+    ],
+  };
+  const imported = await importDialogue(db, def);
+  assert.ok(imported.ok, JSON.stringify(imported));
+  const loaded = await loadDialogues(db);
+  const back = loaded.dialogues.find((d) => d.id === 'v_roundtrip')!;
+  assert.equal(back.nodes[0]!.voice, 'dunna_greet_1');
+  assert.equal(back.nodes[1]!.voice, undefined);
+  // The interchange shape reproduces field for field.
+  assert.deepEqual(JSON.parse(JSON.stringify(back)), JSON.parse(JSON.stringify(def)));
 });

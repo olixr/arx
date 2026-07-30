@@ -486,6 +486,8 @@ export function createMapsApi(
             return true;
           }
           await importVoiceClip(db, result.def);
+          // The live resolver speaks the new clip on the next beat.
+          game.registerVoiceClips((await loadVoiceClips(db)).clips.map((c) => c.def));
           console.log(`[content] voice clip '${id}' saved (${result.def.durMs}ms, ${bytes}b)`);
           sendJson(res, 200, { ok: true, def: result.def, url: voiceClipUrl(result.def) });
           return true;
@@ -507,6 +509,7 @@ export function createMapsApi(
           // Orphaned binary goes with its last row — dedupe kept it
           // alive while any sharer remained.
           if (outcome.fileOrphaned) await unlinkVoiceFile(outcome.fileHash, outcome.ext);
+          game.registerVoiceClips((await loadVoiceClips(db)).clips.map((c) => c.def));
           console.log(`[content] voice clip '${id}' deleted${outcome.fileOrphaned ? ' + file' : ''}`);
           sendJson(res, 200, { ok: true });
           return true;
@@ -988,7 +991,12 @@ export function createMapsApi(
             sendJson(res, 400, { error: (err as Error).message });
             return true;
           }
-          const result = await importDialogue(db, raw, { actorIds: game.actorIds() });
+          // A Studio save checks voice refs against the live ledger —
+          // strict where a human edits, lenient where the world boots.
+          const result = await importDialogue(db, raw, {
+            actorIds: game.actorIds(),
+            voiceClipIds: game.voiceClipIds(),
+          });
           if (!result.ok) {
             sendJson(res, 400, { error: result.errors.join('; ') });
             return true;
