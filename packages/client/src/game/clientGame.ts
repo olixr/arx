@@ -64,7 +64,7 @@ import {
   type Vec2,
 } from '@arx/shared';
 import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, techniqueDef, type GeographyDef } from '@arx/content';
-import { EntityKind } from '@arx/shared';
+import { EntityKind, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
 /**
@@ -238,6 +238,15 @@ export class ClientGame {
   readonly world = new ChunkStore();
   /** Bumped whenever chunk data changes so the renderer can re-bake. */
   worldVersion = 0;
+  /**
+   * The interior-region cache's own clock: bumps with worldVersion
+   * EXCEPT for door toggles. Open and shut doorways are both interior
+   * boundaries (and gates are non-boundaries in both postures), so a
+   * posture swap can never reshape a room — but living towns toggle
+   * doors constantly, and wiping the region cache for each one forced
+   * town-wide re-floods mid-stroll.
+   */
+  interiorsVersion = 0;
   readonly entities = new Map<EntityId, RemoteEntity>();
   readonly predictor = new Predictor(this.world, PLAYER_SPEED);
 
@@ -1259,6 +1268,7 @@ export class ClientGame {
     this.world.set(chunk);
     this.touchNeighbors(chunk.cx, chunk.cy);
     this.worldVersion++;
+    this.interiorsVersion++;
   }
 
   /** Fires with (tx, ty, previous, next) whenever a tile mutates. */
@@ -1271,6 +1281,12 @@ export class ClientGame {
     // Blob rendering blends across tiles — rebake the neighborhood.
     this.touchNeighbors(Math.floor(patch.tx / CHUNK_SIZE), Math.floor(patch.ty / CHUNK_SIZE));
     this.worldVersion++;
+    // A posture swap of the SAME door leaves every room's shape alone.
+    const doorSwap =
+      prev !== undefined &&
+      shutDoorTile(prev) !== null &&
+      shutDoorTile(prev) === shutDoorTile(patch.ground);
+    if (!doorSwap) this.interiorsVersion++;
     this.onTileChange?.(patch.tx, patch.ty, prev, patch.ground);
   }
 

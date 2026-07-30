@@ -274,6 +274,15 @@ export declare class ClientGame {
     readonly world: ChunkStore;
     /** Bumped whenever chunk data changes so the renderer can re-bake. */
     worldVersion: number;
+    /**
+     * The interior-region cache's own clock: bumps with worldVersion
+     * EXCEPT for door toggles. Open and shut doorways are both interior
+     * boundaries (and gates are non-boundaries in both postures), so a
+     * posture swap can never reshape a room — but living towns toggle
+     * doors constantly, and wiping the region cache for each one forced
+     * town-wide re-floods mid-stroll.
+     */
+    interiorsVersion: number;
     readonly entities: Map<number, RemoteEntity>;
     readonly predictor: Predictor;
     ownEid: EntityId | null;

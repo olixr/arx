@@ -313,6 +313,20 @@ const PROP_PAD_S = 3;
  */
 const LIGHT_PAD = 5;
 
+/**
+ * Frame-grid pads (see buildFrameGrid): the snapshot must cover the
+ * widest per-tile scan that reads through it — LIGHT_PAD sides/north,
+ * TREE_PAD_X+1 side columns, TREE_PAD_S deep-south rows, and the
+ * lifted-row north reach (ELEV_H·3+1 ≈ 5). Reads past the window fall
+ * back to the ChunkStore, so these are a perf detail, never
+ * correctness.
+ */
+const FG_PAD_X = 7;
+const FG_PAD_N = 7;
+const FG_PAD_S = 15;
+/** fgGround sentinel for "chunk not loaded" (groundAt = undefined). */
+const FG_NO_GROUND = 0xffff;
+
 /** Identity tints for undressed player rigs — also the party marker
  * inks (map tokens + wayfinder pills), so a fellow reads as the same
  * color on the chart as in the world. */
@@ -2233,7 +2247,7 @@ export class Renderer {
                   // the lifted surface, drawn on top of the row (already
                   // y-granular, so tall blades go down in the same pass).
                   const rowGround = (tx: number, ty: number) =>
-                    game.world.elevAt(tx, ty) === level ? game.world.groundAt(tx, ty) : undefined;
+                    this.fgElevAt(tx, ty) === level ? this.fgGroundAt(tx, ty) : undefined;
                   const rowBounds = {
                     minTx: Math.max(b.minTx, cx * CHUNK_SIZE),
                     maxTx: Math.min(b.maxTx, cx * CHUNK_SIZE + CHUNK_SIZE - 1),
@@ -2252,7 +2266,7 @@ export class Renderer {
                   this.grass.drawRow(
                     this.ctx,
                     rowGround,
-                    (tx, ty) => this.detailAt(game, tx, ty),
+                    (tx, ty) => this.fgDetailAt(tx, ty),
                     rowBounds,
                     this.liftedWTS,
                     s,
@@ -2601,9 +2615,15 @@ export class Renderer {
     const dpr = window.devicePixelRatio || 1;
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
-    if (this.canvas.width !== w * dpr || this.canvas.height !== h * dpr) {
-      this.canvas.width = w * dpr;
-      this.canvas.height = h * dpr;
+    // Round BEFORE comparing: the width setter truncates, so a
+    // fractional w*dpr (browser zoom, 1.25/1.5-dpr displays) would
+    // fail the guard every frame and reallocate the full backing
+    // store per frame — a hard whole-game frame-rate lock.
+    const bw = Math.round(w * dpr);
+    const bh = Math.round(h * dpr);
+    if (this.canvas.width !== bw || this.canvas.height !== bh) {
+      this.canvas.width = bw;
+      this.canvas.height = bh;
     }
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.w = w;
@@ -2700,6 +2720,10 @@ export class Renderer {
       this.camera.y += ((Math.random() - 0.5) * this.shakeAmount) / this.camera.scale;
     }
 
+    // The camera is settled for the frame — snapshot the world window
+    // every per-tile scan below reads from.
+    this.buildFrameGrid(game);
+
     this.ctx.fillStyle = '#141020';
     this.ctx.fillRect(0, 0, this.w, this.h);
 
@@ -2729,8 +2753,8 @@ export class Renderer {
     // The grass system wakes up first: it needs every moving body this
     // frame to part blades, flatten them underfoot, and rustle thickets.
     const groundLvl0 = (tx: number, ty: number) =>
-      game.world.elevAt(tx, ty) !== 0 ? undefined : game.world.groundAt(tx, ty);
-    const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
+      this.fgElevAt(tx, ty) !== 0 ? undefined : this.fgGroundAt(tx, ty);
+    const detail = (tx: number, ty: number) => this.fgDetailAt(tx, ty);
     this.grass.beginFrame(
       performance.now(),
       this.frameDt,
@@ -2754,7 +2778,7 @@ export class Renderer {
     // on any world change, then this frame's queries rebuild lazily.
     // The local player's region drives the cutaway wall and hearth-
     // gated window warmth.
-    this.interiors.beginFrame(game.worldVersion);
+    this.interiors.beginFrame(game.interiorsVersion);
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
       this.localRegion = this.interiors.regionAt(game, Math.floor(own.x), Math.floor(own.y));
@@ -3241,7 +3265,7 @@ export class Renderer {
     let windowLights = 0;
     for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
       for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
-        const tile = game.world.groundAt(tx, ty);
+        const tile = this.fgGroundAt(tx, ty);
         if (tile === Tile.Campfire) {
           const flick = 0.85 + Math.sin(t * 11 + tx * 3.1) * 0.1 + Math.sin(t * 23 + ty) * 0.05;
           this.glows.push({ x: tx + 0.5, y: ty + 0.32, r: 1.6 * flick, rgb: '235, 140, 52', a: 0.3 * flick * boost });
@@ -3870,6 +3894,106 @@ export class Renderer {
 
   // ------------------------------------------------------------ ground
 
+  /**
+   * FRAME GRID: one flat snapshot of elev/ground/detail covering the
+   * padded visible bounds, rebuilt at the top of every render pass.
+   * The ChunkStore's per-tile lookups are memoized, but the render
+   * pass still made ~170k of them per frame (lifted-row live ground,
+   * cliff contours, the raised-tile and static-light scans), each
+   * paying modulo math plus a memo compare — ~21% of all frame CPU
+   * measured. One row-major typed-array copy per frame turns every
+   * hot read into a single indexed load. INTERNAL TO THE RENDER PASS:
+   * the grid is never patched mid-frame, so code that runs outside
+   * render() must keep reading the ChunkStore.
+   */
+  private fgMinTx = 0;
+  private fgMinTy = 0;
+  private fgW = 0;
+  private fgH = 0;
+  private fgElev = new Int8Array(0);
+  private fgGround = new Uint16Array(0);
+  private fgDetail = new Uint16Array(0);
+  private fgWorld: ClientGame['world'] | null = null;
+
+  private buildFrameGrid(game: ClientGame): void {
+    const b = this.visibleTileBounds();
+    const minTx = b.minTx - FG_PAD_X;
+    const maxTx = b.maxTx + FG_PAD_X;
+    const minTy = b.minTy - FG_PAD_N;
+    const maxTy = b.maxTy + FG_PAD_S;
+    const w = maxTx - minTx + 1;
+    const h = maxTy - minTy + 1;
+    const n = w * h;
+    if (n > this.fgElev.length) {
+      this.fgElev = new Int8Array(n);
+      this.fgGround = new Uint16Array(n);
+      this.fgDetail = new Uint16Array(n);
+    }
+    this.fgMinTx = minTx;
+    this.fgMinTy = minTy;
+    this.fgW = w;
+    this.fgH = h;
+    this.fgWorld = game.world;
+    this.fgElev.fill(0, 0, n);
+    this.fgGround.fill(FG_NO_GROUND, 0, n);
+    this.fgDetail.fill(0, 0, n);
+    const minCx = Math.floor(minTx / CHUNK_SIZE);
+    const maxCx = Math.floor(maxTx / CHUNK_SIZE);
+    const minCy = Math.floor(minTy / CHUNK_SIZE);
+    const maxCy = Math.floor(maxTy / CHUNK_SIZE);
+    for (let cy = minCy; cy <= maxCy; cy++) {
+      const ty0 = Math.max(minTy, cy * CHUNK_SIZE);
+      const ty1 = Math.min(maxTy, cy * CHUNK_SIZE + CHUNK_SIZE - 1);
+      for (let cx = minCx; cx <= maxCx; cx++) {
+        const chunk = game.world.get(cx, cy);
+        if (!chunk) continue;
+        const tx0 = Math.max(minTx, cx * CHUNK_SIZE);
+        const tx1 = Math.min(maxTx, cx * CHUNK_SIZE + CHUNK_SIZE - 1);
+        const lx0 = tx0 - cx * CHUNK_SIZE;
+        const len = tx1 - tx0 + 1;
+        for (let ty = ty0; ty <= ty1; ty++) {
+          const src = (ty - cy * CHUNK_SIZE) * CHUNK_SIZE + lx0;
+          const dst = (ty - minTy) * w + (tx0 - minTx);
+          this.fgElev.set(chunk.elev.subarray(src, src + len), dst);
+          this.fgGround.set(chunk.ground.subarray(src, src + len), dst);
+          this.fgDetail.set(chunk.detail.subarray(src, src + len), dst);
+        }
+      }
+    }
+  }
+
+  /** Elevation through the frame grid; ChunkStore fallback off-window. */
+  private fgElevAt(tx: number, ty: number): number {
+    const ix = tx - this.fgMinTx;
+    const iy = ty - this.fgMinTy;
+    if (ix >= 0 && iy >= 0 && ix < this.fgW && iy < this.fgH) {
+      return this.fgElev[iy * this.fgW + ix]!;
+    }
+    return this.fgWorld?.elevAt(tx, ty) ?? 0;
+  }
+
+  /** Ground tile through the frame grid; ChunkStore fallback off-window. */
+  private fgGroundAt(tx: number, ty: number): number | undefined {
+    const ix = tx - this.fgMinTx;
+    const iy = ty - this.fgMinTy;
+    if (ix >= 0 && iy >= 0 && ix < this.fgW && iy < this.fgH) {
+      const g = this.fgGround[iy * this.fgW + ix]!;
+      return g === FG_NO_GROUND ? undefined : g;
+    }
+    return this.fgWorld?.groundAt(tx, ty);
+  }
+
+  /** Detail id through the frame grid; ChunkStore fallback off-window. */
+  private fgDetailAt(tx: number, ty: number): number {
+    const ix = tx - this.fgMinTx;
+    const iy = ty - this.fgMinTy;
+    if (ix >= 0 && iy >= 0 && ix < this.fgW && iy < this.fgH) {
+      const g = this.fgGround[iy * this.fgW + ix]!;
+      return g === FG_NO_GROUND ? 0 : this.fgDetail[iy * this.fgW + ix]!;
+    }
+    return this.fgWorld && this.game ? this.detailAt(this.game, tx, ty) : 0;
+  }
+
   private visibleTileBounds(): { minTx: number; maxTx: number; minTy: number; maxTy: number } {
     const s = this.camera.scale;
     return {
@@ -4353,7 +4477,7 @@ export class Renderer {
     for (let ty = b.minTy; ty <= b.maxTy + TREE_PAD_S; ty++) {
       const deepSouth = ty > b.maxTy + PROP_PAD_S;
       for (let tx = b.minTx - 1 - TREE_PAD_X; tx <= b.maxTx + 1 + TREE_PAD_X; tx++) {
-        const ground = game.world.groundAt(tx, ty);
+        const ground = this.fgGroundAt(tx, ty);
         if (ground === undefined) continue;
         // Deep-south rows and side columns admit trees + portals only:
         // the Riftgate stands ~2 tiles tall, so its crown pokes into
@@ -8524,7 +8648,6 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const b = this.visibleTileBounds();
-    const world = game.world;
     // Boundaries are RELATIVE: every seam between L−1 and L gets faces
     // owned by the ≥L side, whatever the sign — a pit's rim is the same
     // law as a plateau's edge. Scan the visible levels once.
@@ -8532,7 +8655,7 @@ export class Renderer {
     let visMax = 0;
     for (let ty = b.minTy; ty <= b.maxTy; ty++) {
       for (let tx = b.minTx; tx <= b.maxTx; tx++) {
-        const e = world.elevAt(tx, ty);
+        const e = this.fgElevAt(tx, ty);
         if (e > visMax) visMax = e;
         if (e < visMin) visMin = e;
       }
@@ -8541,12 +8664,12 @@ export class Renderer {
       // Ramps COUNT as mass here (unlike the crown bake): the contour
       // must not wrap around a stair notch, or mouth-corner cells hang
       // little curtains over the flight.
-      const member = (tx: number, ty: number): boolean => world.elevAt(tx, ty) >= level;
+      const member = (tx: number, ty: number): boolean => this.fgElevAt(tx, ty) >= level;
       // A ramp owns the opening in ITS OWN level's cliff line — its
       // mouth and top edges belong to the flight drawing. A ramp of a
       // different level is ordinary mass to this contour.
       const owningRamp = (tx: number, ty: number): boolean =>
-        world.groundAt(tx, ty) === Tile.Ramp && world.elevAt(tx, ty) === level;
+        this.fgGroundAt(tx, ty) === Tile.Ramp && this.fgElevAt(tx, ty) === level;
       // Contour segments span a whole dual cell, but ramp ownership is
       // tile-aligned — HALF a segment can front a flight while the
       // other half fronts solid cliff. Test each half against its own
@@ -27063,7 +27186,15 @@ export class Renderer {
     if ((g || this.demolishGhost) && this.ownBuiltTiles.length > 0) {
       ctx.strokeStyle = 'rgba(232, 214, 164, 0.34)';
       ctx.lineWidth = Math.max(1.2, s * 0.035);
+      // Cull on TILE coords first: the ledger holds every tile this
+      // hand ever raised, world-wide, and projecting each one
+      // (worldToScreen ×2 + renderLift) before the screen test made
+      // build mode pay for a lifetime of construction every frame.
+      const vb = this.visibleTileBounds();
       for (const t of this.ownBuiltTiles) {
+        if (t.tx < vb.minTx - 1 || t.tx > vb.maxTx + 1 || t.ty < vb.minTy - 1 || t.ty > vb.maxTy + 4) {
+          continue;
+        }
         const f = this.ghostFootprint(t.tx, t.ty);
         if (f.x < -s || f.x > this.w + s || f.y < -s * 3 || f.y > this.h + s) continue;
         const tick = s * 0.18;

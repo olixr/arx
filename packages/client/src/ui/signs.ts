@@ -51,6 +51,17 @@ export class SignHud {
   private openAt: { tx: number; ty: number } | null = null;
   private editing = false;
 
+  /**
+   * Plaque dimensions, measured ONCE per paint: they only change with
+   * the words. Reading offsetWidth here every frame forced a
+   * synchronous reflow per frame for anyone standing near a board —
+   * and towns are lined with boards.
+   */
+  private plaqueW = 0;
+  private plaqueH = 0;
+  private lastTransform = '';
+  private lastClamped = false;
+
   constructor(private readonly game: ClientGame) {
     this.plaque.id = 'sign-plaque';
     this.plaque.className = 'hidden';
@@ -90,29 +101,49 @@ export class SignHud {
       this.retired = false;
       this.paintPlaque(sign);
       this.plaque.classList.remove('hidden');
+      // One deliberate measure per paint — the card's size only
+      // changes with its words.
+      this.plaqueW = this.plaque.offsetWidth;
+      this.plaqueH = this.plaque.offsetHeight;
+      this.lastTransform = '';
     }
     const age = performance.now() - this.shownAt;
     if (!this.retired && age > DWELL_MS) {
       this.retired = true;
       this.plaque.classList.add('bowed');
+      this.plaque.style.opacity = '';
     }
-    this.plaque.style.opacity = this.retired ? '' : String(Math.min(1, age / FADE_MS));
+    // The fade-in is the only window that needs an opacity write; once
+    // fully opaque, writing '1' every frame is pure style churn.
+    if (!this.retired && age < FADE_MS + 50) {
+      this.plaque.style.opacity = String(Math.min(1, age / FADE_MS));
+    }
     // Anchored bottom-center over the board, but never off the edge:
     // zoomed in, a board near the top of the view would push its own
     // plaque past the ceiling and read as "signs stopped working".
     // A clamped card drops its tail — it no longer points at anything.
-    const w = this.plaque.offsetWidth;
-    const h = this.plaque.offsetHeight;
+    const w = this.plaqueW;
+    const h = this.plaqueH;
     const x = Math.max(w / 2 + 8, Math.min(window.innerWidth - w / 2 - 8, sx));
     const yWanted = sy;
     const y = Math.max(h + 10, Math.min(window.innerHeight - 10, yWanted));
-    this.plaque.classList.toggle('clamped', Math.abs(y - yWanted) > 1 || Math.abs(x - sx) > 1);
-    this.plaque.style.transform = `translate(calc(${Math.round(x)}px - 50%), calc(${Math.round(y)}px - 100%))`;
+    const clamped = Math.abs(y - yWanted) > 1 || Math.abs(x - sx) > 1;
+    if (clamped !== this.lastClamped) {
+      this.lastClamped = clamped;
+      this.plaque.classList.toggle('clamped', clamped);
+    }
+    const tf = `translate(calc(${Math.round(x)}px - 50%), calc(${Math.round(y)}px - 100%))`;
+    if (tf !== this.lastTransform) {
+      this.lastTransform = tf;
+      this.plaque.style.transform = tf;
+    }
   }
 
   private paintPlaque(sign: SignInfo): void {
     this.plaque.innerHTML = '';
     this.plaque.classList.remove('bowed');
+    this.plaque.classList.remove('clamped');
+    this.lastClamped = false;
     if (sign.title !== '') {
       const title = document.createElement('div');
       title.className = 'sign-title';

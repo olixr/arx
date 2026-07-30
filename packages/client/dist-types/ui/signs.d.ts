@@ -14,6 +14,16 @@ export declare class SignHud {
     /** The board the sheet is open on. */
     private openAt;
     private editing;
+    /**
+     * Plaque dimensions, measured ONCE per paint: they only change with
+     * the words. Reading offsetWidth here every frame forced a
+     * synchronous reflow per frame for anyone standing near a board —
+     * and towns are lined with boards.
+     */
+    private plaqueW;
+    private plaqueH;
+    private lastTransform;
+    private lastClamped;
     constructor(game: ClientGame);
     get isOpen(): boolean;
     /**

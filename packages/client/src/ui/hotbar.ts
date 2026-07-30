@@ -45,6 +45,9 @@ export class Hotbar {
     for (let i = 0; i < 4; i++) {
       const slot = document.createElement('button');
       slot.className = 'hotbar-slot empty';
+      // The empty-state hint is painted here and on empty TRANSITIONS
+      // only — update() must never write styles on unchanged frames.
+      slot.title = EMPTY_HINTS[i]!;
       slot.type = 'button';
 
       const icon = document.createElement('div');
@@ -126,9 +129,9 @@ export class Hotbar {
           this.names[slot] = '';
           el.classList.add('empty');
           icon.replaceChildren();
+          el.title = EMPTY_HINTS[slot]!;
+          this.wipes[slot]!.style.background = 'none';
         }
-        el.title = EMPTY_HINTS[slot]!;
-        this.wipes[slot]!.style.background = 'none';
         continue;
       }
 
@@ -145,15 +148,18 @@ export class Hotbar {
 
       const frac = game.abilityCdFraction(slot as AbilitySlot, now);
       const ready = frac <= 0;
-      if (ready) {
-        this.wipes[slot]!.style.background = 'none';
-      } else {
+      if (!ready) {
         // Radial wipe: the covered sector shrinks as the cooldown runs.
         const deg = Math.round(frac * 360);
         this.wipes[slot]!.style.background =
           `conic-gradient(rgba(12, 9, 20, 0.78) ${deg}deg, transparent ${deg}deg)`;
+        el.classList.add('cooling');
+      } else if (!this.wasReady[slot]) {
+        // One clearing write on the ready EDGE — a steady-state ready
+        // slot pays zero style writes per frame.
+        this.wipes[slot]!.style.background = 'none';
+        el.classList.remove('cooling');
       }
-      el.classList.toggle('cooling', !ready);
 
       if (ready && !this.wasReady[slot]) {
         // Snap-flash the moment it comes back — the "go" signal.

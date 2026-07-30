@@ -1893,6 +1893,10 @@ let portalNear = 0;
 
 let lastOwnPose = 0;
 let padInteractWasDown = false;
+/** Character-case dock edge: measured on open/resize, held between. */
+let invCaseOpenedAt = 0;
+let invCaseLeft = 0;
+let invCaseMeasuredW = -1;
 let lastDrawT = 0;
 let lastSheathed = false;
 /** Pad button state last frame — build-mode verbs edge off this. */
@@ -2017,8 +2021,17 @@ function frame(now: number): void {
   // ground left of it. 0 hands the classic centered follow back.
   let viewShift = 0;
   if (panels.invOpen && !stationPanels.bankOpen && !stationPanels.shopOpen) {
-    const caseRect = el('inventory-panel').getBoundingClientRect();
-    viewShift = Math.max(0, (window.innerWidth - caseRect.left) / 2);
+    // getBoundingClientRect forces layout — read it live only while
+    // the case may still be sliding in (and after resizes), then hold
+    // the measured edge for the rest of the open stretch.
+    if (invCaseOpenedAt === 0) invCaseOpenedAt = now;
+    if (now - invCaseOpenedAt < 600 || invCaseMeasuredW !== window.innerWidth) {
+      invCaseLeft = el('inventory-panel').getBoundingClientRect().left;
+      invCaseMeasuredW = window.innerWidth;
+    }
+    viewShift = Math.max(0, (window.innerWidth - invCaseLeft) / 2);
+  } else {
+    invCaseOpenedAt = 0;
   }
   renderer.setViewShift(viewShift);
   // Build mode pins the action strip with its verbs — on both devices.

@@ -763,6 +763,33 @@ export declare class Renderer {
     /** Hard red edge bands when the local player is hurt. */
     private drawVignette;
     private detailAt;
+    /**
+     * FRAME GRID: one flat snapshot of elev/ground/detail covering the
+     * padded visible bounds, rebuilt at the top of every render pass.
+     * The ChunkStore's per-tile lookups are memoized, but the render
+     * pass still made ~170k of them per frame (lifted-row live ground,
+     * cliff contours, the raised-tile and static-light scans), each
+     * paying modulo math plus a memo compare — ~21% of all frame CPU
+     * measured. One row-major typed-array copy per frame turns every
+     * hot read into a single indexed load. INTERNAL TO THE RENDER PASS:
+     * the grid is never patched mid-frame, so code that runs outside
+     * render() must keep reading the ChunkStore.
+     */
+    private fgMinTx;
+    private fgMinTy;
+    private fgW;
+    private fgH;
+    private fgElev;
+    private fgGround;
+    private fgDetail;
+    private fgWorld;
+    private buildFrameGrid;
+    /** Elevation through the frame grid; ChunkStore fallback off-window. */
+    private fgElevAt;
+    /** Ground tile through the frame grid; ChunkStore fallback off-window. */
+    private fgGroundAt;
+    /** Detail id through the frame grid; ChunkStore fallback off-window. */
+    private fgDetailAt;
     private visibleTileBounds;
     /**
      * Bake resolution follows the zoom tier: past ~1.05× the 32px bakes
