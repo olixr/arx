@@ -126,6 +126,16 @@ test('validator: the laws hold', () => {
     },
     'rolled gear',
   );
+
+  // Reward rarity is gear-only, and must be a real tier.
+  broken({ rewards: { items: [{ item: 'egg', qty: 1, rarity: 'uncommon' }] } }, 'only gear');
+  broken({ rewards: { items: [{ item: gearId, qty: 1, rarity: 'shiny' }] } }, 'rarity tier');
+  const geared = validateQuest({
+    ...base,
+    rewards: { items: [{ item: gearId, qty: 1, rarity: 'uncommon' }] },
+  });
+  assert.ok(geared.ok, 'gear rewards may carry a rarity tier');
+  assert.equal(geared.ok && geared.quest.rewards.items?.[0]?.rarity, 'uncommon');
 });
 
 test('quest: flag grammar — parse and refuse', () => {

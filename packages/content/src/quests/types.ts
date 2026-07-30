@@ -74,7 +74,12 @@ export interface QuestRequires {
 /** What the turn-in pays. */
 export interface QuestRewards {
   xp?: { skill: SkillId; amount: number }[];
-  items?: { item: string; qty: number }[];
+  /**
+   * `rarity` is gear-only: the turn-in mints the piece at that tier
+   * (default 'common'). Plain items must not carry it — a stack of
+   * trout has no rarity to mint.
+   */
+  items?: { item: string; qty: number; rarity?: string }[];
   coins?: number;
   /** Story flags stamped at turn-in (plain slugs only). */
   flags?: string[];

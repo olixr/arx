@@ -87,9 +87,12 @@ test('pruning removes only pure seeds; tool-born rows are permanent', async () =
         objectives: [{ kind: 'talk', actor: 'elder_rowan' }],
       },
     ],
-    rewards: { coins: 1 },
+    // Gear reward with an authored tier: rarity must survive the trip.
+    rewards: { coins: 1, items: [{ item: 'iron_sword', qty: 1, rarity: 'uncommon' }] },
   };
   assert.ok((await importQuest(db, toolBorn)).ok);
+  const born = (await loadQuests(db)).quests.find((q) => q.id === 'stones_errand');
+  assert.equal(born?.rewards.items?.[0]?.rarity, 'uncommon');
 
   // Retire every shipped file: pure seeds go, the tool's quest stays.
   const res = await seedQuests(db, []);

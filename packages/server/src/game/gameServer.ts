@@ -7607,12 +7607,33 @@ export class GameServer {
     }
 
     const pos = this.positions.get(eid);
-    const grant = (item: string, qty: number): void => {
+    const grant = (item: string, qty: number, rarity?: string): void => {
+      const idef = itemDef(item);
+      // Gear, relics, and sigils are INSTANCES: each piece mints its
+      // own roll at the authored tier (the /give precedent) — a bare
+      // addItem would land a roll-less husk. Overflow keeps its roll
+      // on the ground via placeDrop, never the roll-blind spawnDrop.
+      if (idef && (idef.gear || idef.relic || idef.sigil)) {
+        const rar = isRarityTier(rarity ?? '') ? (rarity as ItemRoll['rar']) : 'common';
+        for (let i = 0; i < qty; i++) {
+          const roll = makeRoll(rar);
+          if (addItem(player.inventory, item, 1, roll) < 1 && pos) {
+            this.placeDrop(item, 1, pos.x, pos.y, {
+              ownerEid: null,
+              ownerUntil: 0,
+              despawnAt: Date.now() + 12 * 60_000,
+              pickupAfter: Date.now() + 400,
+              roll,
+            });
+          }
+        }
+        return;
+      }
       const added = addItem(player.inventory, item, qty);
       if (added < qty && pos) this.spawnDrop(item, qty - added, pos.x, pos.y, eid);
     };
     for (const e of def.rewards.xp ?? []) this.grantXp(eid, player, e.skill, e.amount);
-    for (const e of def.rewards.items ?? []) grant(e.item, e.qty);
+    for (const e of def.rewards.items ?? []) grant(e.item, e.qty, e.rarity);
     if (def.rewards.coins) grant('coins', def.rewards.coins);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
 

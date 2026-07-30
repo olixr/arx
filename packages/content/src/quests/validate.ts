@@ -1,4 +1,4 @@
-import { isSkillId } from '@arx/shared';
+import { isRarityTier, isSkillId } from '@arx/shared';
 import { ITEMS } from '../items.js';
 import { NPCS } from '../npcs.js';
 import { NPC_ACTORS } from '../actors/registry.js';
@@ -287,6 +287,22 @@ function validateRewards(
         }
         if (!isCount(e.qty, 1, 1000)) {
           errors.push(`rewards.items[${i}].qty must be an integer 1..1000`);
+          continue;
+        }
+        if (e.rarity !== undefined) {
+          // Gear-only: the turn-in mints the piece at this tier. A
+          // shipped item we can see must actually BE gear; a DB-born
+          // id (refs path) is trusted — the import already vetted it.
+          if (!isRarityTier(e.rarity)) {
+            errors.push(`rewards.items[${i}].rarity '${String(e.rarity)}' is not a rarity tier`);
+            continue;
+          }
+          const shipped = ITEMS.get(e.item);
+          if (shipped && !shipped.gear) {
+            errors.push(`rewards.items[${i}].rarity on '${e.item}' — only gear takes a rarity`);
+            continue;
+          }
+          out.items.push({ item: e.item, qty: e.qty, rarity: e.rarity });
           continue;
         }
         out.items.push({ item: e.item, qty: e.qty });
