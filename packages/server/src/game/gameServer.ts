@@ -46,6 +46,7 @@ import {
   isRarityTier,
   saplingOf,
   Tile,
+  tileDef,
   chestInfo,
   closedChestTile,
   openChestTile,
@@ -65,6 +66,7 @@ import {
 } from '@arx/shared';
 import {
   BUILDABLES,
+  buildableForTile,
   buildableGround,
   CROP_BY_SEED,
   CROPS,
@@ -389,7 +391,25 @@ interface MilkAction {
   ticksLeft: number;
 }
 
-type PlayerAction = GatherAction | CraftAction | BuildAction | HarvestAction | MilkAction;
+/**
+ * THE SALVAGE LAW (building v2): tearing down is a short swing, not a
+ * packet — one quiet beat of "am I sure" built into the time, and a
+ * spam-proof cost on pulling floors out from under people.
+ */
+interface DemolishAction {
+  kind: 'demolish';
+  tx: number;
+  ty: number;
+  ticksLeft: number;
+}
+
+type PlayerAction =
+  | GatherAction
+  | CraftAction
+  | BuildAction
+  | HarvestAction
+  | MilkAction
+  | DemolishAction;
 
 /** A planted crop; stage derives from (now − plantedAt + boostMs). */
 interface CropState {
@@ -3034,6 +3054,7 @@ export class GameServer {
     else if (kind === 'craft') this.tickCraft(eid, player);
     else if (kind === 'harvest') this.tickHarvest(eid, player);
     else if (kind === 'milk') this.tickMilk(eid, player);
+    else if (kind === 'demolish') this.tickDemolish(eid, player);
     else this.tickBuild(eid, player);
   }
 
@@ -3696,6 +3717,10 @@ export class GameServer {
     }
   }
 
+  /** How long a teardown swings — the same practiced-hand Calling that
+   *  speeds building speeds unbuilding. */
+  private static readonly DEMOLISH_TICKS = 12;
+
   demolish(eid: EntityId, tx: number, ty: number): void {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
@@ -3713,6 +3738,70 @@ export class GameServer {
       player.session.sendJson({ t: 'chat', channel: 'system', text: 'Harvest the crop first.' });
       return;
     }
+    // THE SALVAGE LAW: teardown is a short action, not a packet — the
+    // swing time is the confirmation dialog, and the wire can't strobe
+    // a floor out from under anyone.
+    const ticks = Math.max(1, Math.round(GameServer.DEMOLISH_TICKS * player.perks.buildSpeedMult));
+    player.action = { kind: 'demolish', tx, ty, ticksLeft: ticks };
+    this.poses.set(eid, PoseState.Gather);
+    player.session.sendJson({ t: 'action', state: 'start', ticks });
+  }
+
+  private tickDemolish(eid: EntityId, player: PlayerComp): void {
+    const action = player.action! as DemolishAction;
+    if (--action.ticksLeft > 0) return;
+    const { tx, ty } = action;
+    // Re-validate at the moment of the last swing: the record may have
+    // changed hands or vanished while the bar filled.
+    const built = this.world.builtAt(tx, ty);
+    if (!built || built.owner !== player.characterId || this.crops.has(`${tx},${ty}`)) {
+      this.cancelAction(eid, player, 'blocked');
+      return;
+    }
+    // A restored solid layer may never trap a standing body.
+    if (tileDef(built.prevTile).solid && this.tileHoldsBody(tx, ty)) {
+      this.cancelAction(eid, player, 'occupied');
+      return;
+    }
+
+    // Ceremony FIRST (the smashProp precedent): the collapse fx must
+    // land before the patch that erases what is collapsing.
+    this.broadcastFx({
+      t: 'fx',
+      kind: 'demolish',
+      x: tx + 0.5,
+      y: ty + 0.5,
+      radius: 1,
+      id: String(built.tile),
+    });
+
+    // Deterministic salvage: half of every material, rounded up — no
+    // dice, no dials (the flood law). Overflow lands at the site.
+    const def = buildableForTile(built.tile as Tile);
+    const salvaged: string[] = [];
+    if (def) {
+      for (const m of def.materials) {
+        const back = Math.ceil(m.qty / 2);
+        const kept = addItem(player.inventory, m.item, back);
+        if (kept < back) {
+          this.placeDrop(m.item, back - kept, tx + 0.5, ty + 0.5, {
+            ownerEid: eid,
+            ownerUntil: Date.now() + 30_000,
+            despawnAt: Date.now() + 12 * 60_000,
+            pickupAfter: Date.now() + 400,
+          });
+        }
+        salvaged.push(`${back} ${(itemDef(m.item)?.name ?? m.item).toLowerCase()}`);
+      }
+      if (salvaged.length > 0) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Salvaged: ${salvaged.join(', ')}.`,
+        });
+      }
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+    }
 
     // The words fall with the post: no orphan record may outlive its
     // board, or a rebuild on the same tile would inherit dead copy.
@@ -3722,8 +3811,15 @@ export class GameServer {
     }
     this.world.unregisterBuilt(tx, ty);
     this.accounts.deleteBuiltTile(tx, ty);
-    // Give back the ground the construction was built on — a wall cut
-    // into a stone floor tears down to stone floor, not to grass.
+    // THE LAYER LAW: give back what stood here at build time — a wall
+    // cut into your floor tears down to the FLOOR. A restored player
+    // floor re-registers to the same owner over the pristine ground,
+    // so it stays owned, demolishable, and salvageable in turn.
+    if (built.prevTile === Tile.WoodFloor || built.prevTile === Tile.StoneFloor) {
+      const natural = this.world.naturalGround(tx, ty);
+      this.world.registerBuilt(tx, ty, built.prevTile, built.owner, natural);
+      this.accounts.saveBuiltTile(tx, ty, built.prevTile, built.owner, natural);
+    }
     this.setWorldTile(tx, ty, built.prevTile);
     if (this.homesByCharacter.has(player.characterId)) this.ringCache = null;
     // Tearing down your own claimed bed dissolves the claim NOW —
@@ -3734,6 +3830,7 @@ export class GameServer {
       if (player.characterId > 0) this.accounts.clearHome(player.characterId);
       this.noteHomeChanged(player.characterId, null);
     }
+    this.cancelAction(eid, player, 'done');
   }
 
   // ------------------------------------------------------ bank & shop

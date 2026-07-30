@@ -219,13 +219,15 @@ export class WorldSource extends ChunkStore {
   private readonly builtByOwner = new Map<number, Set<string>>();
 
   registerBuilt(tx: number, ty: number, tile: number, owner: number, prevTile: number): void {
-    // Building over an existing construction (a wall onto your own
-    // floor) keeps the FIRST capture: demolish returns the natural
-    // ground, never an intermediate build that no longer exists.
+    // THE LAYER LAW (building v2): prev_tile captures what stood here
+    // AT THIS BUILD — a wall raised on your floor remembers the floor.
+    // Demolish restores exactly one layer; a restored player floor is
+    // re-registered with the pristine ground (naturalGround) beneath
+    // it, so the chain stays honest at depth 1.
     const key = `${tx},${ty}`;
     const existing = this.builtTiles.get(key);
     if (existing && existing.owner !== owner) this.builtByOwner.get(existing.owner)?.delete(key);
-    this.builtTiles.set(key, { tile, owner, prevTile: existing?.prevTile ?? prevTile });
+    this.builtTiles.set(key, { tile, owner, prevTile });
     let mine = this.builtByOwner.get(owner);
     if (!mine) this.builtByOwner.set(owner, (mine = new Set()));
     mine.add(key);
@@ -261,6 +263,28 @@ export class WorldSource extends ChunkStore {
 
   unregisterCropTile(tx: number, ty: number): void {
     this.cropTiles.delete(`${tx},${ty}`);
+  }
+
+  /** One-entry memo for naturalGround — demolish bursts sample a few
+   *  tiles from the same chunk; regenerating per tile would be waste. */
+  private pristineMemo: { cx: number; cy: number; chunk: ChunkData } | null = null;
+
+  /**
+   * The ground as the world would deal it with no player's hand on it:
+   * worldgen plus authored zone overlays, WITHOUT built tiles or crops.
+   * THE LAYER LAW's floor: when a demolished wall restores the floor
+   * beneath it, the floor's own re-registered prev_tile must be this —
+   * the terrain the very first build displaced.
+   */
+  naturalGround(tx: number, ty: number): number {
+    const cx = Math.floor(tx / CHUNK_SIZE);
+    const cy = Math.floor(ty / CHUNK_SIZE);
+    if (!this.pristineMemo || this.pristineMemo.cx !== cx || this.pristineMemo.cy !== cy) {
+      const chunk = generateChunk(this.seed, cx, cy);
+      for (const zone of this.zones) this.overlayZone(chunk, zone);
+      this.pristineMemo = { cx, cy, chunk };
+    }
+    return this.pristineMemo.chunk.ground[tileIndex(tx, ty)]!;
   }
 
   ensure(cx: number, cy: number): ChunkData {

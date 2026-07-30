@@ -724,12 +724,14 @@ export class AccountStore {
   }
 
   saveBuiltTile(tx: number, ty: number, tile: number, owner: number, prevTile: number): void {
-    // On rebuild-over-a-build, prev_tile keeps the ORIGINAL ground the
-    // conflict row captured — demolishing a replaced piece should still
-    // return the natural terrain, not the intermediate construction.
+    // THE LAYER LAW (building v2): prev_tile is what stood there AT
+    // THIS BUILD — a wall raised on your floor remembers the floor, so
+    // demolishing tears down one layer, never through it to grass.
+    // (The demolish path re-registers a restored player floor with the
+    // pristine ground beneath, keeping the chain honest at depth 1.)
     this.db.fire(
       'INSERT INTO built_tiles (tx, ty, tile, owner_character_id, created_at, prev_tile) VALUES (?, ?, ?, ?, ?, ?) ' +
-        'ON CONFLICT (tx, ty) DO UPDATE SET tile = excluded.tile, owner_character_id = excluded.owner_character_id',
+        'ON CONFLICT (tx, ty) DO UPDATE SET tile = excluded.tile, owner_character_id = excluded.owner_character_id, prev_tile = excluded.prev_tile',
       [tx, ty, tile, owner, Date.now(), prevTile],
     );
   }

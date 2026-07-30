@@ -1,4 +1,4 @@
-import { Tile, type SkillId } from '@arx/shared';
+import { Tile, diagWallInfo, type SkillId } from '@arx/shared';
 
 /** Something a player can construct in the open world. */
 export interface BuildableDef {
@@ -556,3 +556,26 @@ const defs: BuildableDef[] = [
 ];
 
 export const BUILDABLES: ReadonlyMap<string, BuildableDef> = new Map(defs.map((d) => [d.id, d]));
+
+const BY_TILE: ReadonlyMap<Tile, BuildableDef> = new Map(defs.map((d) => [d.tile, d]));
+
+/** Corner defs by wall material — auto-orient scatters one def across
+ *  four placed tiles, and salvage must find its way back. */
+const DIAG_CORNER_ID: Record<string, string> = {
+  wood: 'wood_wall_corner',
+  stone: 'stone_wall_corner',
+  garrison: 'garrison_wall_corner',
+};
+
+/**
+ * The def that placed this tile — the demolisher's reverse ledger.
+ * Callers pass the BUILT record's tile (always the canonical/open
+ * variant); oriented diagonal walls and fence turns resolve to their
+ * single corner def. Undefined = not a player-buildable tile.
+ */
+export function buildableForTile(tile: Tile): BuildableDef | undefined {
+  const dw = diagWallInfo(tile);
+  if (dw) return BUILDABLES.get(DIAG_CORNER_ID[dw.material] ?? '');
+  if (tile === Tile.FenceDiagNE || tile === Tile.FenceDiagNW) return BUILDABLES.get('fence_corner');
+  return BY_TILE.get(tile);
+}

@@ -677,6 +677,14 @@ export interface S2CFx {
      */
     | 'smash'
     /**
+     * A player construction coming down at (x,y) — THE SALVAGE LAW's
+     * ceremony. `id` is the demolished tile's numeric id as a string
+     * (the client looks up its tones and mass for the shard burst);
+     * broadcast BEFORE the tile patch, the smashProp precedent, so
+     * the collapse reads over the piece that is about to vanish.
+     */
+    | 'demolish'
+    /**
      * A raised shield eating a real bite of a blow at (x,y) — the rim
      * spark. `dir` is the heading the blow came FROM (sparks shear off
      * the face), `radius` scales with the bite. Throttled server-side.
