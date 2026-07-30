@@ -266,6 +266,7 @@ import {
   GARRISON_TILES,
   applyDodge,
   diagWallInfo,
+  diagWallTile,
   orientDiagWall,
   orientDiagFence,
   chargedShot,
@@ -292,6 +293,7 @@ import {
   type CombatStyleId,
   type EquipSlot,
   type PassiveId,
+  type BuildOrient,
   type S2CFx,
   type StatusApply,
   type SteerMemory,
@@ -376,6 +378,8 @@ interface BuildAction {
   tx: number;
   ty: number;
   ticksLeft: number;
+  /** THE TRUE GHOST's dial: the player's chosen corner mass; absent = auto-orient. */
+  orient?: BuildOrient;
 }
 
 interface HarvestAction {
@@ -3559,7 +3563,7 @@ export class GameServer {
 
   // ------------------------------------------------------ construction
 
-  build(eid: EntityId, buildableId: string, tx: number, ty: number): void {
+  build(eid: EntityId, buildableId: string, tx: number, ty: number, orient?: BuildOrient): void {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
     if (!player || !pos || player.session === null) return;
@@ -3605,7 +3609,11 @@ export class GameServer {
 
     // Homesteader: walls rise quickly for the practiced hand.
     const buildTicks = Math.max(1, Math.round(def.ticks * player.perks.buildSpeedMult));
-    player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks };
+    // The orient dial only turns pieces that HAVE a dial — anything
+    // else silently drops it (a stale client can't skew a bed).
+    const orientable =
+      diagWallInfo(def.tile) !== null || def.tile === Tile.FenceDiagNE ? orient : undefined;
+    player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks, orient: orientable };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks: buildTicks });
   }
@@ -3661,37 +3669,52 @@ export class GameServer {
     let placed = def.tile;
     const dw = diagWallInfo(def.tile);
     if (dw) {
-      // THE SEPARATE-MASONRY LAW: a garrison corner spans garrison
-      // neighbours, a building corner spans building-wall neighbours
-      // — the two families never orient off each other.
-      const isWall = (x: number, y: number): boolean => {
-        const t = this.world.groundAt(x, y);
-        if (t === undefined) return false;
-        return dw.material === 'garrison'
-          ? GARRISON_TILES.has(t as Tile)
-          : WALL_RUN_TILES.includes(t as Tile);
-      };
-      placed = orientDiagWall(
-        dw.material,
-        isWall(action.tx, action.ty - 1),
-        isWall(action.tx + 1, action.ty),
-        isWall(action.tx, action.ty + 1),
-        isWall(action.tx - 1, action.ty),
-      );
+      if (action.orient) {
+        // THE TRUE GHOST's dial: the player chose the mass — the
+        // ghost's triangle IS the tile that lands, no guessing.
+        placed = diagWallTile(dw.material, action.orient);
+      } else {
+        // THE SEPARATE-MASONRY LAW: a garrison corner spans garrison
+        // neighbours, a building corner spans building-wall neighbours
+        // — the two families never orient off each other.
+        const isWall = (x: number, y: number): boolean => {
+          const t = this.world.groundAt(x, y);
+          if (t === undefined) return false;
+          return dw.material === 'garrison'
+            ? GARRISON_TILES.has(t as Tile)
+            : WALL_RUN_TILES.includes(t as Tile);
+        };
+        placed = orientDiagWall(
+          dw.material,
+          isWall(action.tx, action.ty - 1),
+          isWall(action.tx + 1, action.ty),
+          isWall(action.tx, action.ty + 1),
+          isWall(action.tx - 1, action.ty),
+        );
+      }
     }
     // A 45° fence turn joins whichever diagonal already carries
     // fencing — same build-the-runs-first law as the wall corner.
+    // The fence dial has TWO stops (the piece is 180° symmetric):
+    // NE/SW mean the NE-SW rail, NW/SE the other.
     if (def.tile === Tile.FenceDiagNE || def.tile === Tile.FenceDiagNW) {
-      const isFence = (x: number, y: number): boolean => {
-        const t = this.world.groundAt(x, y);
-        return t !== undefined && FENCE_TILES.has(t as Tile);
-      };
-      placed = orientDiagFence(
-        isFence(action.tx + 1, action.ty - 1),
-        isFence(action.tx - 1, action.ty - 1),
-        isFence(action.tx + 1, action.ty + 1),
-        isFence(action.tx - 1, action.ty + 1),
-      );
+      if (action.orient) {
+        placed =
+          action.orient === 'NE' || action.orient === 'SW'
+            ? Tile.FenceDiagNE
+            : Tile.FenceDiagNW;
+      } else {
+        const isFence = (x: number, y: number): boolean => {
+          const t = this.world.groundAt(x, y);
+          return t !== undefined && FENCE_TILES.has(t as Tile);
+        };
+        placed = orientDiagFence(
+          isFence(action.tx + 1, action.ty - 1),
+          isFence(action.tx - 1, action.ty - 1),
+          isFence(action.tx + 1, action.ty + 1),
+          isFence(action.tx - 1, action.ty + 1),
+        );
+      }
     }
     // The ground being replaced is what demolish will restore. When
     // building over an earlier construction the register/save layers

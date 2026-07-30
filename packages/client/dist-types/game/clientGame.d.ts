@@ -1,4 +1,4 @@
-import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type BuildOrient, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -669,7 +669,7 @@ export declare class ClientGame {
     /** Confirm character creation (optimistic — the server locks it). */
     setLookSend(look: Look): void;
     shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number, shop?: string): void;
-    buildSend(buildable: string, tx: number, ty: number): void;
+    buildSend(buildable: string, tx: number, ty: number, orient?: BuildOrient): void;
     demolishSend(tx: number, ty: number): void;
     private handleSnapshot;
     /**

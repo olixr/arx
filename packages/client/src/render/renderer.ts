@@ -92,6 +92,7 @@ import {
   type SpillInfo,
 } from './waterfalls.js';
 import { Debris, type SmashKind } from './debris.js';
+import { buildableIconUrl } from './icons.js';
 import { Birds, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
 import { paintTree, treeModel, type TreeModel } from './trees.js';
@@ -1124,7 +1125,34 @@ export class Renderer {
   }
 
   /** Placement preview set by the build mode; null when inactive. */
-  buildGhost: { tx: number; ty: number; valid: boolean; color: string } | null = null;
+  /**
+   * THE TRUE GHOST: the placement preview is the piece, not a colored
+   * rectangle. `kind` picks the read — walls rise as a prism, flats
+   * tint the footprint, props stand their icon on it. `diag` carries
+   * the mass triangle a corner will actually land (explicit or the
+   * auto-orient's live resolution). `reason` is the one-breath refusal
+   * chip; `queued` is the drag-run still waiting its turn.
+   */
+  buildGhost: {
+    tx: number;
+    ty: number;
+    valid: boolean;
+    kind: 'wall' | 'flat' | 'prop';
+    diag: 'NE' | 'NW' | 'SE' | 'SW' | null;
+    icon: string | null;
+    color: string;
+    topColor: string;
+    reason: string | null;
+    queued: ReadonlyArray<{ tx: number; ty: number }>;
+  } | null = null;
+
+  /** The tile the OWN player's running build/demolish is working — the
+   *  pose squares up to it and the site wears the progress ring. */
+  buildSite: { tx: number; ty: number } | null = null;
+
+  /** Ghost icon bitmaps by buildable id — data-URL images decode async,
+   *  so the first frame may skip the icon; it pops in a beat later. */
+  private readonly ghostIcons = new Map<string, HTMLImageElement>();
 
   /**
    * Loot HUD inputs, fed by main.ts each frame: the pointer (for
@@ -21218,11 +21246,16 @@ export class Renderer {
     // Gathering: square up to the node and swing the belt tool at it.
     // Crafting: square up to the station and work it.
     let dir = e.dir;
+    // THE BUILDER FACES THE WORK: the own player's running build or
+    // demolish names its tile — square up to it, never to whatever
+    // tree happens to stand nearby.
+    const site = e.eid === 'own' && e.pose === PoseState.Gather ? this.buildSite : null;
     const gather =
-      e.pose === PoseState.Gather
+      e.pose === PoseState.Gather && !site
         ? this.findGatherNode(e.x, e.y, e.eid === 'own' ? this.game?.lastInteract : null)
         : null;
-    if (gather) dir = Math.atan2(gather.ty + 0.5 - e.y, gather.tx + 0.5 - e.x);
+    if (site) dir = Math.atan2(site.ty + 0.5 - e.y, site.tx + 0.5 - e.x);
+    else if (gather) dir = Math.atan2(gather.ty + 0.5 - e.y, gather.tx + 0.5 - e.x);
     const station = e.pose === PoseState.Craft ? this.findStation(e.x, e.y) : null;
     if (station) dir = Math.atan2(station.ty + 0.5 - e.y, station.tx + 0.5 - e.x);
     // Milking: square up to the animal being worked, same as a node.
@@ -26936,24 +26969,221 @@ export class Renderer {
 
   // ------------------------------------------------------------ overlay
 
+  /** Screen-space footprint of a tile, elevation-lifted. */
+  private ghostFootprint(tx: number, ty: number): { x: number; y: number; sy: number } {
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    const sy = this.camera.worldToScreen(tx, ty + 1, this.w, this.h).y - p.y;
+    p.y -= this.renderLift(tx + 0.5, ty + 0.5) * s;
+    return { x: p.x, y: p.y, sy };
+  }
+
+  /** The mass triangle of a 45° piece over a footprint rect. */
+  private ghostDiagPath(
+    x: number,
+    y: number,
+    w: number,
+    hgt: number,
+    mass: 'NE' | 'NW' | 'SE' | 'SW',
+  ): void {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    if (mass === 'NE') {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w, y);
+      ctx.lineTo(x + w, y + hgt);
+    } else if (mass === 'NW') {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w, y);
+      ctx.lineTo(x, y + hgt);
+    } else if (mass === 'SE') {
+      ctx.moveTo(x + w, y);
+      ctx.lineTo(x + w, y + hgt);
+      ctx.lineTo(x, y + hgt);
+    } else {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w, y + hgt);
+      ctx.lineTo(x, y + hgt);
+    }
+    ctx.closePath();
+  }
+
   private drawBuildGhost(): void {
-    if (!this.buildGhost) return;
+    const g = this.buildGhost;
     const ctx = this.ctx;
     const s = this.camera.scale;
-    const p = this.camera.worldToScreen(this.buildGhost.tx, this.buildGhost.ty, this.w, this.h);
-    const sy = this.camera.worldToScreen(this.buildGhost.tx, this.buildGhost.ty + 1, this.w, this.h).y - p.y;
-    p.y -= this.renderLift(this.buildGhost.tx + 0.5, this.buildGhost.ty + 0.5) * s;
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = this.buildGhost.color;
-    ctx.beginPath();
-    chamferRect(ctx, p.x + 1, p.y + 1, s - 2, sy - 2, s * 0.16);
+
+    // The build site's progress ring — the work has a place, not just
+    // a bar over the head.
+    if (this.buildSite && this.game?.action) {
+      const a = this.game.action;
+      const frac = Math.min(1, (performance.now() - a.startedAt) / Math.max(1, a.durationMs));
+      const f = this.ghostFootprint(this.buildSite.tx, this.buildSite.ty);
+      const cx = f.x + s / 2;
+      const cy = f.y + f.sy / 2;
+      ctx.strokeStyle = 'rgba(24, 14, 32, 0.55)';
+      ctx.lineWidth = Math.max(2.5, s * 0.07);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, s * 0.42, s * 0.42 * this.camera.yScale, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = '#e8b64c';
+      ctx.beginPath();
+      ctx.ellipse(
+        cx,
+        cy,
+        s * 0.42,
+        s * 0.42 * this.camera.yScale,
+        0,
+        -Math.PI / 2,
+        -Math.PI / 2 + frac * Math.PI * 2,
+      );
+      ctx.stroke();
+    }
+
+    if (!g) return;
+
+    // The reach annulus: a quiet breathing ring at the 3-tile working
+    // radius — where the red "Too far" begins, made visible.
+    const own = this.game?.predictor.renderPos();
+    if (own) {
+      const c = this.liftedWTS(own.x, own.y);
+      const breathe = 0.1 + Math.sin(performance.now() / 640) * 0.025;
+      ctx.strokeStyle = `rgba(238, 222, 178, ${breathe})`;
+      ctx.lineWidth = Math.max(1.5, s * 0.045);
+      ctx.beginPath();
+      ctx.ellipse(c.x, c.y, s * 3, s * 3 * this.camera.yScale, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // The queued run: faint footprints awaiting their turn, and a
+    // count chip on the last so the drain is legible.
+    for (const q of g.queued) {
+      const f = this.ghostFootprint(q.tx, q.ty);
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = g.topColor;
+      ctx.beginPath();
+      chamferRect(ctx, f.x + 2, f.y + 2, s - 4, f.sy - 4, s * 0.14);
+      ctx.fill();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = '#e8d6a4';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    if (g.queued.length > 0) {
+      const last = g.queued[g.queued.length - 1]!;
+      const f = this.ghostFootprint(last.tx, last.ty);
+      const label = `×${g.queued.length}`;
+      ctx.font = "600 12px 'Trebuchet MS', sans-serif";
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(24, 14, 32, 0.82)';
+      ctx.beginPath();
+      chamferRect(ctx, f.x + s / 2 - tw / 2 - 5, f.y - 20, tw + 10, 16, 4);
+      ctx.fill();
+      ctx.fillStyle = '#e8d6a4';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, f.x + s / 2, f.y - 12);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    const f = this.ghostFootprint(g.tx, g.ty);
+    const edge = g.valid ? '#4fc06a' : '#c4553d';
+
+    // The footprint always grounds the read.
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = g.topColor;
+    if (g.diag) this.ghostDiagPath(f.x + 1, f.y + 1, s - 2, f.sy - 2, g.diag);
+    else {
+      ctx.beginPath();
+      chamferRect(ctx, f.x + 1, f.y + 1, s - 2, f.sy - 2, s * 0.16);
+    }
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.lineWidth = 3;
-    ctx.strokeStyle = this.buildGhost.valid ? '#4fc06a' : '#c4553d';
-    ctx.beginPath();
-    chamferRect(ctx, p.x + 1, p.y + 1, s - 2, sy - 2, s * 0.16);
+    ctx.strokeStyle = edge;
     ctx.stroke();
+
+    if (g.kind === 'wall') {
+      // The piece in the flesh: the wall's own height (WALL_H, full-s
+      // units — the projection law), faces ghosted, edges firm.
+      const rise = s * 2.05;
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = g.color;
+      if (g.diag) {
+        // The hypotenuse face rises from the diagonal; ghost it as the
+        // lifted triangle plus plumb edge hints.
+        this.ghostDiagPath(f.x + 1, f.y + 1 - rise, s - 2, f.sy - 2, g.diag);
+        ctx.fill();
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = edge;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(f.x + 1, f.y + 1 + (g.diag === 'SE' ? f.sy - 2 : 0));
+        ctx.lineTo(f.x + 1, f.y + 1 + (g.diag === 'SE' ? f.sy - 2 : 0) - rise);
+        ctx.moveTo(f.x + s - 1, f.y + 1 + (g.diag === 'SW' ? f.sy - 2 : 0));
+        ctx.lineTo(f.x + s - 1, f.y + 1 + (g.diag === 'SW' ? f.sy - 2 : 0) - rise);
+        ctx.stroke();
+      } else {
+        // Front face from the south edge up, then the crown plate.
+        ctx.fillRect(f.x + 1, f.y + f.sy - rise, s - 2, rise);
+        ctx.globalAlpha = 0.42;
+        ctx.fillStyle = g.topColor;
+        ctx.beginPath();
+        chamferRect(ctx, f.x + 1, f.y + 1 - rise, s - 2, f.sy - 2, s * 0.16);
+        ctx.fill();
+        ctx.globalAlpha = 0.85;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = edge;
+        ctx.beginPath();
+        chamferRect(ctx, f.x + 1, f.y + 1 - rise, s - 2, f.sy - 2, s * 0.16);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(f.x + 1, f.y + f.sy);
+        ctx.lineTo(f.x + 1, f.y + f.sy - rise);
+        ctx.moveTo(f.x + s - 1, f.y + f.sy);
+        ctx.lineTo(f.x + s - 1, f.y + f.sy - rise);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    } else if (g.kind === 'prop' && g.icon) {
+      // The piece's own icon standing on the footprint.
+      let img = this.ghostIcons.get(g.icon);
+      if (!img) {
+        img = new Image();
+        img.src = buildableIconUrl(g.icon, 44) ?? '';
+        this.ghostIcons.set(g.icon, img);
+      }
+      if (img.complete && img.naturalWidth > 0) {
+        const iw = s * 0.85;
+        ctx.globalAlpha = 0.92;
+        ctx.drawImage(img, f.x + s / 2 - iw / 2, f.y + f.sy / 2 - iw * 0.82, iw, iw);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // The one-breath refusal chip: the ghost says WHY it is red.
+    if (!g.valid && g.reason) {
+      const topY = g.kind === 'wall' ? f.y - s * 2.05 : f.y;
+      ctx.font = "600 12px 'Trebuchet MS', sans-serif";
+      const tw = ctx.measureText(g.reason).width;
+      const cx = f.x + s / 2;
+      ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
+      ctx.beginPath();
+      chamferRect(ctx, cx - tw / 2 - 7, topY - 26, tw + 14, 18, 5);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(196, 85, 61, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = '#f0dcc8';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(g.reason, cx, topY - 17);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    }
   }
 
   private drawActionProgress(game: ClientGame): void {

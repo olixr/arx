@@ -147,12 +147,21 @@ export interface C2SShop {
   shop?: string;
 }
 
-/** Place a buildable on a world tile. */
+/** The four masses a corner piece can hold — THE TRUE GHOST's dial. */
+export type BuildOrient = 'NE' | 'NW' | 'SE' | 'SW';
+
+/**
+ * Place a buildable on a world tile. `orient` is the player's chosen
+ * mass for an orientable corner piece; absent = the classic
+ * neighbour-reading auto-orient. The server validates it against the
+ * piece's own family and never lets one def place another's tile.
+ */
 export interface C2SBuild {
   t: 'build';
   buildable: string;
   tx: number;
   ty: number;
+  orient?: BuildOrient;
 }
 
 /** Tear down one of your own constructions. */
@@ -1340,7 +1349,11 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (typeof msg.buildable !== 'string' || msg.buildable.length > 64) return null;
       if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
       if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
-      return { t: 'build', buildable: msg.buildable, tx: msg.tx, ty: msg.ty };
+      const orient =
+        msg.orient === 'NE' || msg.orient === 'NW' || msg.orient === 'SE' || msg.orient === 'SW'
+          ? msg.orient
+          : undefined;
+      return { t: 'build', buildable: msg.buildable, tx: msg.tx, ty: msg.ty, orient };
     }
     case 'demolish': {
       if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;

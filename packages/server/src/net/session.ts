@@ -298,7 +298,7 @@ export class Session {
       case 'build': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.build(this.playerEid, msg.buildable, msg.tx, msg.ty);
+        this.game.build(this.playerEid, msg.buildable, msg.tx, msg.ty, msg.orient);
         return;
       }
       case 'demolish': {

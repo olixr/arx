@@ -664,6 +664,23 @@ export function diagWallInfo(
 }
 
 /**
+ * The 45° wall tile for a material + mass — the inverse of
+ * diagWallInfo, and the door THE TRUE GHOST's explicit rotation walks
+ * through: the player's chosen orient resolves here on both ends of
+ * the wire, so the ghost's triangle IS the tile that lands.
+ */
+export function diagWallTile(material: DiagWallMaterial, mass: DiagWallMass): Tile {
+  for (const [tile, info] of DIAG_WALL_INFO) {
+    if (info.material === material && info.mass === mass) return tile;
+  }
+  return material === 'stone'
+    ? Tile.WallStoneDiagNE
+    : material === 'garrison'
+      ? Tile.WallGarrisonDiagNE
+      : Tile.WallWoodDiagNE;
+}
+
+/**
  * AUTO-ORIENT LAW: a diagonal wall spans the corner between the two
  * perpendicular wall neighbours present at placement time — N+E cuts
  * a SW corner, and so on. With no unambiguous pair it defaults to NE;
@@ -678,14 +695,7 @@ export function orientDiagWall(
 ): Tile {
   const mass: DiagWallMass =
     n && e ? 'NE' : n && w ? 'NW' : s && e ? 'SE' : s && w ? 'SW' : 'NE';
-  for (const [tile, info] of DIAG_WALL_INFO) {
-    if (info.material === material && info.mass === mass) return tile;
-  }
-  return material === 'stone'
-    ? Tile.WallStoneDiagNE
-    : material === 'garrison'
-      ? Tile.WallGarrisonDiagNE
-      : Tile.WallWoodDiagNE;
+  return diagWallTile(material, mass);
 }
 
 /**

@@ -1,4 +1,4 @@
-import { EntityKind, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, dangerAt, doorInfo, isSkillId, tileDef, treeOfSapling } from '@arx/shared';
+import { EntityKind, FENCE_TILES, GARRISON_TILES, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isSkillId, levelForXp, tileDef, treeOfSapling } from '@arx/shared';
 import { BUILDABLES, buildableForTile, buildableGround, itemDef, npcDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -155,11 +155,17 @@ if (Number.isFinite(storedZoom)) {
 const saveZoom = (): void =>
   localStorage.setItem('arx.zoom', renderer.camera.targetZoom.toFixed(3));
 
-// Mouse wheel: smooth, exponential — equal scroll = equal feel at any depth.
+// Mouse wheel: smooth, exponential — equal scroll = equal feel at any
+// depth. In build mode with a corner piece picked, the wheel turns the
+// piece instead (the genre's own grammar); everything else still zooms.
 canvas.addEventListener(
   'wheel',
   (e) => {
     e.preventDefault();
+    if (buildMode && orientRing()) {
+      cycleBuildOrient(e.deltaY > 0 ? 1 : -1);
+      return;
+    }
     renderer.camera.stepZoom(Math.exp(-e.deltaY * 0.0012));
     saveZoom();
   },
@@ -236,10 +242,76 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
 }
 input.setTypingCheck(() => chat.isTyping || looks.open || socialPanel.isTyping || signHud.isTyping);
 let buildMode: string | null = null;
-/** A build click awaiting the server's answer — correlates the next action-start. */
-let sentBuild: { tx: number; ty: number; at: number } | null = null;
-/** The build the server accepted and is ticking down right now. */
-let activeBuild: { tx: number; ty: number } | null = null;
+/** THE TRUE GHOST's dial: the chosen mass for an orientable corner. */
+let buildOrient: 'auto' | 'NE' | 'NW' | 'SE' | 'SW' = 'auto';
+/** The drag-run: tiles waiting their turn, drained one action at a time. */
+const buildQueue: Array<{ tx: number; ty: number }> = [];
+let buildDragging = false;
+/** A build/demolish click awaiting the server's answer — correlates the next action-start. */
+let sentSite: { tx: number; ty: number; at: number } | null = null;
+/** The site the server accepted and is ticking down right now. */
+let activeSite: { tx: number; ty: number } | null = null;
+
+const WALL_ORIENTS = ['auto', 'NE', 'NW', 'SE', 'SW'] as const;
+const FENCE_ORIENTS = ['auto', 'NE', 'NW'] as const;
+
+/** Which dial a piece owns: 4-stop corners, 2-stop fence rails, or none. */
+function orientRing(): readonly ('auto' | 'NE' | 'NW' | 'SE' | 'SW')[] | null {
+  const def = buildMode ? BUILDABLES.get(buildMode) : undefined;
+  if (!def) return null;
+  if (diagWallInfo(def.tile)) return WALL_ORIENTS;
+  if (def.tile === Tile.FenceDiagNE) return FENCE_ORIENTS;
+  return null;
+}
+
+function cycleBuildOrient(step: 1 | -1): void {
+  const ring = orientRing();
+  if (!ring) return;
+  const at = ring.indexOf(buildOrient);
+  buildOrient = ring[(at + step + ring.length) % ring.length]!;
+  sfx.uiTap();
+}
+
+/** Queue a tile for the run (deduped) — the frame pump drains it. */
+function enqueueBuild(tx: number, ty: number): void {
+  if (buildQueue.some((q) => q.tx === tx && q.ty === ty)) return;
+  if (activeSite && activeSite.tx === tx && activeSite.ty === ty) return;
+  buildQueue.push({ tx, ty });
+}
+
+/**
+ * One placement in flight at a time: send the next queued tile when
+ * the hands are free. A tile that stopped being placeable since it
+ * was painted is skipped without a word — the run flows around it.
+ */
+function pumpBuildQueue(): void {
+  if (!buildMode || game.ownEid === null) return;
+  if (game.action) return;
+  const now = performance.now();
+  if (sentSite && now - sentSite.at < 600) return;
+  const def = BUILDABLES.get(buildMode);
+  if (!def) return;
+  const own = game.predictor.pos;
+  while (buildQueue.length > 0) {
+    const next = buildQueue.shift()!;
+    const dx = next.tx + 0.5 - own.x;
+    const dy = next.ty + 0.5 - own.y;
+    const d2 = dx * dx + dy * dy;
+    const ground = game.world.groundAt(next.tx, next.ty);
+    if (
+      d2 > 9 ||
+      d2 < 0.64 ||
+      ground === undefined ||
+      !buildableGround(def).includes(ground as Tile)
+    ) {
+      continue;
+    }
+    sentSite = { tx: next.tx, ty: next.ty, at: now };
+    sfx.uiTap();
+    game.buildSend(buildMode, next.tx, next.ty, buildOrient === 'auto' ? undefined : buildOrient);
+    return;
+  }
+}
 /** The bank chest tile that asked the server for the vault — anchors the panel. */
 let lastBankAnchor: { tx: number; ty: number } | null = null;
 
@@ -275,13 +347,16 @@ const stationPanels = new StationPanels(
   },
   (buildable) => {
     buildMode = buildable;
+    buildOrient = 'auto';
+    buildQueue.length = 0;
     stationPanels.closeAll();
+    const turnable = orientRing() !== null;
     chat.addLine({
       channel: 'system',
       text:
         nav.mode === 'pad'
-          ? 'Steer the ghost with the right stick — Ⓐ place, Ⓨ demolish, Ⓑ done.'
-          : 'Click the ground to place. X+click demolishes. Esc to stop building.',
+          ? `Steer the ghost with the right stick — Ⓐ place, ${turnable ? 'Ⓧ turn, ' : ''}Ⓨ demolish, Ⓑ done.`
+          : `Click places — hold and drag to lay a run. ${bindings.kbBadge('sit') || 'X'}+click tears down${turnable ? `, the wheel (or ${bindings.kbBadge('buildRotate') || 'Y'}) turns the corner` : ''}. Esc to stop.`,
     });
   },
   // The live pack — every maker panel's have/need chips read it.
@@ -581,20 +656,28 @@ const cinema = new DialogueCinema(sfx, {
 const game = new ClientGame(input, {
   onChat: (line) => chat.addLine(line),
   onNeedLook: () => looks.show(),
-  // A build click the server accepted becomes the active build; any
-  // other action-start (gather, craft) discards a stale claim.
+  // A build/demolish click the server accepted becomes the active
+  // site; any other action-start (gather, craft) discards a stale
+  // claim. The site aims the pose and wears the progress ring.
   onActionStart: () => {
-    if (sentBuild && performance.now() - sentBuild.at < 600) {
-      activeBuild = { tx: sentBuild.tx, ty: sentBuild.ty };
+    if (sentSite && performance.now() - sentSite.at < 600) {
+      activeSite = { tx: sentSite.tx, ty: sentSite.ty };
+      renderer.buildSite = { tx: sentSite.tx, ty: sentSite.ty };
     }
-    sentBuild = null;
+    sentSite = null;
   },
-  // A build the world refused mid-swing says why instead of going
-  // mute. (The completion thump lives on the tile patch itself — one
+  // Work the world refused mid-swing says why instead of going mute.
+  // (The completion thump lives on the tile patch itself — one
   // ceremony for builder and bystander alike, spatial, in onTileChange.)
   onActionEnd: (reason) => {
-    if (!activeBuild) return;
-    activeBuild = null;
+    renderer.buildSite = null;
+    if (!activeSite) return;
+    activeSite = null;
+    if (reason === 'moved') {
+      // Walking off abandons the whole run — a deliberate interrupt.
+      buildQueue.length = 0;
+      return;
+    }
     if (reason === 'done') return;
     const line =
       reason === 'blocked'
@@ -605,6 +688,7 @@ const game = new ClientGame(input, {
             ? 'Out of materials.'
             : null;
     if (line) chat.addLine({ channel: 'system', text: line });
+    if (reason === 'materials') buildQueue.length = 0;
   },
   onStatus: (status, detail) => {
     if (status === 'ingame') {
@@ -742,6 +826,9 @@ const game = new ClientGame(input, {
     // turns pages now, it doesn't swing swords.
     closeAllUi();
     buildMode = null;
+    buildOrient = 'auto';
+    buildQueue.length = 0;
+    buildDragging = false;
     renderer.buildGhost = null;
     cinema.show(o);
     renderer.startDialogueCine(o.eid);
@@ -1602,8 +1689,12 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
     closeAllUi();
     buildMode = null;
+    buildOrient = 'auto';
+    buildQueue.length = 0;
+    buildDragging = false;
     renderer.buildGhost = null;
   }
+  if (buildMode && bindings.kbMatches('buildRotate', e.code)) cycleBuildOrient(1);
   if (bindings.kbMatches('interact', e.code)) activateTarget(game.findNearbyTarget());
   if (bindings.kbMatches('zoomIn', e.code)) {
     renderer.camera.stepZoom(1.15);
@@ -1685,21 +1776,44 @@ document.addEventListener('click', (e) => {
 // what the action strip promises. Demolition lives ONLY in build mode
 // now: in open play X is the sit key, and a key must not serve two
 // masters.
+// The drag-run: while the button stays down in build mode, every new
+// tile under the cursor joins the queue. Release ends the painting;
+// the queue keeps draining on its own.
+canvas.addEventListener('mousemove', (e) => {
+  if (!buildDragging || !buildMode || game.ownEid === null) return;
+  const w = renderer.pickWorld(e.clientX, e.clientY);
+  enqueueBuild(Math.floor(w.x), Math.floor(w.y));
+});
+window.addEventListener('mouseup', () => {
+  buildDragging = false;
+});
+// Build mode owns the right button (it clears the run) — no menu.
+canvas.addEventListener('contextmenu', (e) => {
+  if (buildMode) e.preventDefault();
+});
+
 canvas.addEventListener('mousedown', (e) => {
   if (game.ownEid === null) return;
   const w = renderer.pickWorld(e.clientX, e.clientY);
   const tx = Math.floor(w.x);
   const ty = Math.floor(w.y);
   if (buildMode) {
-    if (input.isDown('KeyX')) {
+    // Right-click abandons the queued run — nothing else.
+    if (e.button === 2) {
+      buildQueue.length = 0;
+      return;
+    }
+    // The demolish modifier is the SIT binding read live (ONE KEYMAP:
+    // rebinding Sit moves the modifier and the strip hint together).
+    if (bindings.kb('sit').some((c) => input.isDown(c))) {
+      sentSite = { tx, ty, at: performance.now() };
       game.demolishSend(tx, ty);
       return;
     }
-    // A light tap for the request — the thump belongs to the moment
-    // the piece actually lands (onActionEnd 'done'), not the click.
-    sfx.uiTap();
-    sentBuild = { tx, ty, at: performance.now() };
-    game.buildSend(buildMode, tx, ty);
+    // Click queues the tile; the frame pump sends it the moment the
+    // hands are free. Holding the button and dragging paints a run.
+    enqueueBuild(tx, ty);
+    buildDragging = true;
     return;
   }
   // Clicking the world dismisses any open station panel — the click
@@ -1886,19 +2000,21 @@ function frame(now: number): void {
   }
   renderer.setViewShift(viewShift);
   // Build mode pins the action strip with its verbs — on both devices.
+  // The strip is live: the demolish modifier is whatever Sit is bound
+  // to, and the Turn verb only appears under an orientable piece.
   if (buildMode) {
+    const turnable = orientRing() !== null;
     if (nav.mode === 'pad') {
-      nav.showModeStrip('build:pad', [
-        ['pad-glyph a', 'A', 'Place'],
-        ['pad-glyph y', 'Y', 'Demolish'],
-        ['pad-glyph b', 'B', 'Done'],
-      ]);
+      const rows: Array<[string, string, string]> = [['pad-glyph a', 'A', 'Place']];
+      if (turnable) rows.push(['pad-glyph x', 'X', 'Turn']);
+      rows.push(['pad-glyph y', 'Y', 'Demolish'], ['pad-glyph b', 'B', 'Done']);
+      nav.showModeStrip(`build:pad:${turnable ? 't' : 'p'}`, rows);
     } else {
-      nav.showModeStrip('build:kb', [
-        ['kb-glyph', 'Click', 'Place'],
-        ['kb-glyph', 'X+Click', 'Demolish'],
-        ['kb-glyph', 'Esc', 'Done'],
-      ]);
+      const sitKey = bindings.kbBadge('sit') || 'X';
+      const rows: Array<[string, string, string]> = [['kb-glyph', 'Click', 'Place / drag']];
+      if (turnable) rows.push(['kb-glyph', 'Wheel', 'Turn']);
+      rows.push(['kb-glyph', `${sitKey}+Click`, 'Demolish'], ['kb-glyph', 'Esc', 'Done']);
+      nav.showModeStrip(`build:kb:${turnable ? 't' : 'p'}`, rows);
     }
   } else {
     nav.clearModeStrip();
@@ -2018,34 +2134,128 @@ function frame(now: number): void {
       }
       tx = Math.floor(pos.x + padBuildCur.dx);
       ty = Math.floor(pos.y + padBuildCur.dy);
-      if (padEdge(0) || padEdge(2)) {
-        sfx.uiTap();
-        sentBuild = { tx, ty, at: performance.now() };
-        game.buildSend(buildMode, tx, ty);
+      // Build grammar on pad (contextual, like the menu dialect):
+      // Ⓐ places — held, it paints a run as the cursor moves —
+      // Ⓧ turns the piece, Ⓨ demolishes, Ⓑ is done.
+      if (padEdge(0)) enqueueBuild(tx, ty);
+      else if (padSnap.buttons[0]?.pressed && activeSite) enqueueBuild(tx, ty);
+      if (padEdge(2)) cycleBuildOrient(1);
+      if (padEdge(3)) {
+        sentSite = { tx, ty, at: performance.now() };
+        game.demolishSend(tx, ty);
       }
-      if (padEdge(3)) game.demolishSend(tx, ty);
-      if (padEdge(1)) buildMode = null;
+      if (padEdge(1)) {
+        buildMode = null;
+        buildOrient = 'auto';
+        buildQueue.length = 0;
+      }
     } else {
       const w = renderer.pickWorld(input.mouseX, input.mouseY);
       tx = Math.floor(w.x);
       ty = Math.floor(w.y);
     }
     const def = buildMode ? BUILDABLES.get(buildMode) : undefined;
-    const ground = game.world.groundAt(tx, ty);
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    const dist2 = dx * dx + dy * dy;
-    // Mirror of the server's placement rule: per-buildable ground
-    // allowlist, so the ghost goes red exactly where build() refuses.
-    const valid =
-      def !== undefined &&
-      ground !== undefined &&
-      buildableGround(def).includes(ground) &&
-      dist2 <= 3 * 3 &&
-      dist2 >= 0.8 * 0.8;
-    renderer.buildGhost = def
-      ? { tx, ty, valid, color: tileDef(def.tile).topColor ?? tileDef(def.tile).color }
-      : null;
+    if (def) {
+      const ground = game.world.groundAt(tx, ty);
+      const dx = tx + 0.5 - pos.x;
+      const dy = ty + 0.5 - pos.y;
+      const dist2 = dx * dx + dy * dy;
+
+      // Resolve the tile that would actually land — the explicit dial,
+      // or the auto-orient read live off the neighbours (the ghost
+      // shows what Auto will decide, so the guess is never a surprise).
+      const dw = diagWallInfo(def.tile);
+      let diag: 'NE' | 'NW' | 'SE' | 'SW' | null = null;
+      let landTile: Tile = def.tile;
+      if (dw) {
+        if (buildOrient !== 'auto') diag = buildOrient;
+        else {
+          const isWall = (x: number, y: number): boolean => {
+            const t = game.world.groundAt(x, y);
+            if (t === undefined) return false;
+            return dw.material === 'garrison'
+              ? GARRISON_TILES.has(t as Tile)
+              : WALL_RUN_TILES.includes(t as Tile);
+          };
+          const n = isWall(tx, ty - 1);
+          const ee = isWall(tx + 1, ty);
+          const ss = isWall(tx, ty + 1);
+          const ww = isWall(tx - 1, ty);
+          diag = n && ee ? 'NE' : n && ww ? 'NW' : ss && ee ? 'SE' : ss && ww ? 'SW' : 'NE';
+        }
+        landTile = diagWallTile(dw.material, diag);
+      } else if (def.tile === Tile.FenceDiagNE) {
+        if (buildOrient !== 'auto') {
+          diag = buildOrient === 'NE' || buildOrient === 'SW' ? 'NE' : 'NW';
+        } else {
+          const isFence = (x: number, y: number): boolean => {
+            const t = game.world.groundAt(x, y);
+            return t !== undefined && FENCE_TILES.has(t as Tile);
+          };
+          diag =
+            isFence(tx + 1, ty - 1) || isFence(tx - 1, ty + 1)
+              ? 'NE'
+              : isFence(tx - 1, ty - 1) || isFence(tx + 1, ty + 1)
+                ? 'NW'
+                : 'NE';
+        }
+        landTile = diag === 'NE' ? Tile.FenceDiagNE : Tile.FenceDiagNW;
+      }
+
+      // THE GHOST NEVER LIES: the full server gate, mirrored, with the
+      // first failing check naming itself in one breath.
+      const skill = def.skill ?? 'construction';
+      const level = levelForXp(game.skills[skill] ?? 0);
+      let reason: string | null = null;
+      if (level < def.levelReq) {
+        reason = `${skill.charAt(0).toUpperCase()}${skill.slice(1)} ${def.levelReq}`;
+      } else if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
+        reason = 'No footing';
+      } else if (dist2 > 3 * 3) {
+        reason = 'Too far';
+      } else if (dist2 < 0.8 * 0.8) {
+        reason = 'Too close';
+      } else {
+        for (const [eid, remote] of game.entities) {
+          if (eid === game.ownEid) continue;
+          const at = remote.buffer.latest();
+          if (at && Math.floor(at.x) === tx && Math.floor(at.y) === ty) {
+            reason = "Someone's there";
+            break;
+          }
+        }
+        if (!reason) {
+          for (const m of def.materials) {
+            const have = game.inventory.reduce(
+              (n, sl) => n + (sl && sl.item === m.item ? sl.qty : 0),
+              0,
+            );
+            if (have < m.qty) {
+              reason = `Needs ${m.qty} ${(itemDef(m.item)?.name ?? m.item).toLowerCase()}`;
+              break;
+            }
+          }
+        }
+      }
+
+      const landDef = tileDef(landTile);
+      const wallish = WALL_RUN_TILES.includes(landTile) || GARRISON_TILES.has(landTile);
+      renderer.buildGhost = {
+        tx,
+        ty,
+        valid: reason === null,
+        kind: wallish ? 'wall' : landDef.raised === true ? 'prop' : 'flat',
+        diag,
+        icon: wallish || landDef.raised !== true ? null : def.id,
+        color: landDef.color,
+        topColor: landDef.topColor ?? landDef.color,
+        reason,
+        queued: buildQueue,
+      };
+    } else {
+      renderer.buildGhost = null;
+    }
+    pumpBuildQueue();
   } else {
     padBuildCur = null;
     renderer.buildGhost = null;

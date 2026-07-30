@@ -39,6 +39,7 @@ import {
   type EquipSlot,
   type BuffInfo,
   type InputFrame,
+  type BuildOrient,
   type InvSlot,
   type ItemRoll,
   honedAbility,
@@ -1761,8 +1762,8 @@ export class ClientGame {
     this.conn?.send({ t: 'shop', op, item, qty, slot, shop });
   }
 
-  buildSend(buildable: string, tx: number, ty: number): void {
-    this.conn?.send({ t: 'build', buildable, tx, ty });
+  buildSend(buildable: string, tx: number, ty: number, orient?: BuildOrient): void {
+    this.conn?.send({ t: 'build', buildable, tx, ty, orient });
   }
 
   demolishSend(tx: number, ty: number): void {

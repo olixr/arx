@@ -29,6 +29,7 @@ export type ActionId =
   | 'dodge'
   | 'interact'
   | 'lootReveal'
+  | 'buildRotate'
   | 'sit'
   | 'sheathe'
   | 'walkToggle'
@@ -86,6 +87,10 @@ export const ACTIONS: readonly ActionDef[] = [
 
   { id: 'interact', label: 'Use / talk', group: 'World', kb: ['KeyF'], pad: [0] },
   { id: 'lootReveal', label: 'Name the loot', group: 'World', kb: ['AltLeft', 'AltRight'], pad: [6] },
+  // Build-mode only: turns an orientable corner piece under the ghost.
+  // The wheel does the same while a corner is picked; pads turn on Ⓧ
+  // (contextual build grammar, like Ⓐ place / Ⓨ demolish).
+  { id: 'buildRotate', label: 'Turn the piece', group: 'World', kb: ['KeyY'], pad: [] },
   { id: 'screenLoot', label: 'On the ground', group: 'World', kb: ['KeyG'], pad: [] },
 
   { id: 'screenPack', label: 'Character', group: 'Screens', kb: ['KeyI'], pad: [9] },

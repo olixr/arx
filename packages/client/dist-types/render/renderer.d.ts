@@ -339,12 +339,38 @@ export declare class Renderer {
      */
     private addDecal;
     /** Placement preview set by the build mode; null when inactive. */
+    /**
+     * THE TRUE GHOST: the placement preview is the piece, not a colored
+     * rectangle. `kind` picks the read — walls rise as a prism, flats
+     * tint the footprint, props stand their icon on it. `diag` carries
+     * the mass triangle a corner will actually land (explicit or the
+     * auto-orient's live resolution). `reason` is the one-breath refusal
+     * chip; `queued` is the drag-run still waiting its turn.
+     */
     buildGhost: {
         tx: number;
         ty: number;
         valid: boolean;
+        kind: 'wall' | 'flat' | 'prop';
+        diag: 'NE' | 'NW' | 'SE' | 'SW' | null;
+        icon: string | null;
         color: string;
+        topColor: string;
+        reason: string | null;
+        queued: ReadonlyArray<{
+            tx: number;
+            ty: number;
+        }>;
     } | null;
+    /** The tile the OWN player's running build/demolish is working — the
+     *  pose squares up to it and the site wears the progress ring. */
+    buildSite: {
+        tx: number;
+        ty: number;
+    } | null;
+    /** Ghost icon bitmaps by buildable id — data-URL images decode async,
+     *  so the first frame may skip the icon; it pops in a beat later. */
+    private readonly ghostIcons;
     /**
      * Loot HUD inputs, fed by main.ts each frame: the pointer (for
      * hovering bags), and the reveal hold (Alt / left trigger) that pops
@@ -2189,6 +2215,10 @@ export declare class Renderer {
     private drawCombatFx;
     /** An annular sector (arc band) path in ground perspective. */
     private fxSectorPath;
+    /** Screen-space footprint of a tile, elevation-lifted. */
+    private ghostFootprint;
+    /** The mass triangle of a 45° piece over a footprint rect. */
+    private ghostDiagPath;
     private drawBuildGhost;
     private drawActionProgress;
     private drawFloaties;
