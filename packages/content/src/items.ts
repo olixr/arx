@@ -179,6 +179,12 @@ const defs: ItemDef[] = [
   // Logs
   { id: 'log', name: 'Logs', stackable: false, value: 4, desc: 'Fresh-cut timber, still smelling of the woods.', color: '#8a6a45', code: 'Lg' },
   { id: 'oak_log', name: 'Oak logs', stackable: false, value: 12, desc: 'Dense oak heartwood — bowyers pay well for it.', color: '#6b4a26', code: 'Ok' },
+  // THE MILLED-AND-WHOLE LAW (building v2): milled wood STACKS — the
+  // builder hauls a wall in one slot, not a packful of trunks. One log
+  // rips into three at the sawhorse; whole timber stays whole (posts,
+  // fires, gate beams, hafts, bow staves keep costing logs).
+  { id: 'board', name: 'Boards', stackable: true, value: 2, desc: 'Sawn true and stacked flat; a wall is mostly patience.', color: '#a8794a', code: 'Bd' },
+  { id: 'oak_board', name: 'Oak boards', stackable: true, value: 5, desc: 'Heavy heartwood planks, sawn slow so they stay honest.', color: '#6b4a26', code: 'Ob' },
   { id: 'willow_log', name: 'Willow logs', stackable: false, value: 24, desc: 'Supple riverside wood that bends without breaking.', color: '#8a9455', code: 'Wq' },
   { id: 'yew_log', name: 'Yew logs', stackable: false, value: 52, desc: 'Slow-grown heartwood of the war bows. Kings taxed it.', color: '#7d4436', code: 'Yl' },
 

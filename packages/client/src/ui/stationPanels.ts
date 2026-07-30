@@ -107,6 +107,13 @@ const STATION_FACE: Record<
     verb: 'Bind',
     hint: 'Power pressed into gear — permanently.',
   },
+  sawhorse: {
+    label: 'Sawing',
+    icon: 'board',
+    accent: '#c98d4b',
+    verb: 'Saw',
+    hint: 'One log, three boards — the saw keeps an honest count.',
+  },
 };
 
 const HANDIWORK_FACE = STATION_FACE.workbench!;

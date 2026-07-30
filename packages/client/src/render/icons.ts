@@ -380,6 +380,8 @@ const PAINTERS: Record<string, IconPainter> = {
   log_oak: (c, col) => drawLog(c, col, 'oak'),
   log_willow: (c, col) => drawLog(c, col, 'willow'),
   log_yew: (c, col) => drawLog(c, col, 'yew'),
+  board: (c, col) => drawBoards(c, col),
+  sawhorse: (c, col) => drawSawhorse(c, col),
   // Each ore is its own find, cut in the game's blocky node language:
   // a deep-toned frame, a bright mineral face, one hard square glint —
   // the icon IS the chunk the deposit gives up, no generic host rock.
@@ -4039,6 +4041,122 @@ function drawLog(c: CanvasRenderingContext2D, col: string, kind: 'plain' | 'oak'
 }
 
 /**
+ * A sawyer's stack of three boards — the milled twin of drawLog: same
+ * lean, but flat lumber with staggered ends, a lit top arris on each
+ * course, square end grain, and one honest knot. Tint carries the
+ * species (golden for plain, deep brown for oak).
+ */
+function drawBoards(c: CanvasRenderingContext2D, col: string): void {
+  c.save();
+  c.translate(0.5, 0.54);
+  c.rotate(-0.35);
+  const len = 0.36;
+  const bh = 0.075;
+  // Bottom-up so each course overlaps the one beneath; ends stagger
+  // like a hand-stacked pile, never a machined block.
+  const courses: Array<[number, number, number]> = [
+    [0.09, 0.03, -14],
+    [0, -0.035, -4],
+    [-0.09, 0.015, 10],
+  ];
+  for (const [y, xOff, tone] of courses) {
+    const x0 = -len + xOff;
+    const x1 = len + xOff * 0.4;
+    c.fillStyle = shade(col, tone);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.roundRect(x0, y - bh / 2, x1 - x0, bh, 0.018);
+    c.fill();
+    c.stroke();
+    // Sun catches the top arris of every course.
+    c.strokeStyle = shade(col, tone + 30);
+    c.lineWidth = 0.018;
+    c.beginPath();
+    c.moveTo(x0 + 0.03, y - bh / 2 + 0.016);
+    c.lineTo(x1 - 0.05, y - bh / 2 + 0.016);
+    c.stroke();
+    // Square sawn end grain, one ring tick.
+    c.fillStyle = shade(col, tone + 42);
+    c.beginPath();
+    c.roundRect(x1 - 0.052, y - bh / 2 + 0.012, 0.042, bh - 0.024, 0.008);
+    c.fill();
+    c.strokeStyle = shade(col, tone - 18);
+    c.lineWidth = 0.012;
+    c.beginPath();
+    c.moveTo(x1 - 0.031, y - bh / 2 + 0.018);
+    c.lineTo(x1 - 0.031, y + bh / 2 - 0.018);
+    c.stroke();
+  }
+  // The middle board owns the knot.
+  dot(c, shade(col, -26), -0.08, -0.035, 0.024);
+  dot(c, shade(col, -6), -0.08, -0.035, 0.012);
+  c.restore();
+}
+
+/**
+ * The sawhorse station: two X-trestles, a half-ripped log racked
+ * across them, and the rip saw parked upright in its kerf — the icon
+ * reads as the work mid-stroke, not the furniture alone.
+ */
+function drawSawhorse(c: CanvasRenderingContext2D, col: string): void {
+  const legCol = shade(col, -18);
+  // The two X-frames.
+  c.strokeStyle = legCol;
+  c.lineWidth = 0.06;
+  c.lineCap = 'round';
+  for (const x of [0.26, 0.72] as const) {
+    c.beginPath();
+    c.moveTo(x - 0.11, 0.88);
+    c.lineTo(x + 0.11, 0.5);
+    c.moveTo(x + 0.11, 0.88);
+    c.lineTo(x - 0.11, 0.5);
+    c.stroke();
+  }
+  c.lineCap = 'butt';
+  // The racked log, riding the crossing points.
+  c.fillStyle = col;
+  c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.034;
+  c.beginPath();
+  c.roundRect(0.08, 0.42, 0.84, 0.19, 0.09);
+  c.fill();
+  c.stroke();
+  // The kerf: the cut already made, dark and true, from the near end.
+  c.strokeStyle = shade(col, -34);
+  c.lineWidth = 0.022;
+  c.beginPath();
+  c.moveTo(0.5, 0.435);
+  c.lineTo(0.86, 0.5);
+  c.stroke();
+  // Sun on the log's upper arris.
+  c.strokeStyle = shade(col, 26);
+  c.lineWidth = 0.02;
+  c.beginPath();
+  c.moveTo(0.14, 0.46);
+  c.lineTo(0.46, 0.445);
+  c.stroke();
+  // The rip saw parked in the kerf: blade up, tapering, iron-toothed.
+  c.fillStyle = '#b8bec8';
+  c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.028;
+  c.beginPath();
+  c.moveTo(0.47, 0.44);
+  c.lineTo(0.52, 0.14);
+  c.lineTo(0.6, 0.16);
+  c.lineTo(0.56, 0.44);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  // Wooden grip capping the blade.
+  c.fillStyle = shade(col, -10);
+  c.beginPath();
+  c.roundRect(0.485, 0.09, 0.135, 0.075, 0.035);
+  c.fill();
+  c.stroke();
+}
+
+/**
  * One blocky ore chunk — the icon-scale twin of the world's oreNode:
  * a chamfered deep-toned frame, a bright mineral face biased to the
  * lit top-left, a flat lighter cap band, one hard square glint.
@@ -4125,6 +4243,8 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   coins: { icon: 'coins', color: '#e8b64c' },
   log: { icon: 'log', color: '#96744c' },
   oak_log: { icon: 'log_oak', color: '#74522f' },
+  board: { icon: 'board', color: '#b5854f' },
+  oak_board: { icon: 'board', color: '#7a5530' },
   willow_log: { icon: 'log_willow', color: '#94a05e' },
   yew_log: { icon: 'log_yew', color: '#87493a' },
   copper_ore: { icon: 'ore_copper', color: '#c47b3d' },
@@ -4737,6 +4857,7 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   tanning_rack: { icon: 'hide', color: '#b08a5c' },
   loom: { icon: 'clothbolt', color: '#d8cbb0' },
   carving_bench: { icon: 'bow', color: '#9b7440' },
+  sawhorse: { icon: 'sawhorse', color: '#a8794a' },
   enchanting_table: { icon: 'tome', color: '#7a6aa8' },
   barrel: { icon: 'barrel', color: '#94693a' },
   crate: { icon: 'crate', color: '#a5793f' },

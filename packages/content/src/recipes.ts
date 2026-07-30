@@ -284,6 +284,33 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
   },
   // (bow recipes now generate from equipment/defs.ts — the archer's roster)
 
+  // THE MILLED-AND-WHOLE LAW (building v2): the sawhorse rips logs
+  // into stackable boards — construction's own recipes, so the
+  // builder's loop never detours through a weapon trade. One log,
+  // three boards, always: the ratio is a user-locked design constant.
+  {
+    id: 'saw_boards',
+    name: 'Boards (x3)',
+    skill: 'construction',
+    levelReq: 1,
+    xp: 6,
+    station: 'sawhorse',
+    inputs: [{ item: 'log', qty: 1 }],
+    output: { item: 'board', qty: 3 },
+    ticks: 18,
+  },
+  {
+    id: 'saw_oak_boards',
+    name: 'Oak boards (x3)',
+    skill: 'construction',
+    levelReq: 10,
+    xp: 14,
+    station: 'sawhorse',
+    inputs: [{ item: 'oak_log', qty: 1 }],
+    output: { item: 'oak_board', qty: 3 },
+    ticks: 24,
+  },
+
   // Passive gear — craftable builds, not just lucky drops.
   {
     id: 'smith_spiked_buckler',
@@ -720,6 +747,11 @@ const toolRecipes: RecipeDef[] = TOOL_RECIPES.flatMap((t) =>
  * carry their own rules.
  */
 const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
+  // Sawing — the board loop is every builder's birthright; gating it
+  // behind a teacher would re-create the hauling problem it solves.
+  saw_boards: 'core',
+  saw_oak_boards: 'core',
+
   // Cooking — the hearth is everyone's birthright…
   cook_trout: 'core',
   cook_chicken: 'core',

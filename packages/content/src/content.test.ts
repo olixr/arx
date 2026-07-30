@@ -113,7 +113,9 @@ test('techniques resolve, ladder is sane, and each style has a tree', () => {
 test('trade-skill law: every recipe belongs to a named trade, at that trade\'s station', () => {
   // No generic "crafting" — a recipe trains the profession that makes
   // its kind of thing, and each trade works at its own bench.
-  const TRADES = ['smithing', 'woodworking', 'leatherworking', 'tailoring', 'cooking', 'herbalism', 'enchanting'];
+  // Amended for building v2: construction owns the sawhorse — sawing
+  // boards is the builder's own loop, never a weapon-trade detour.
+  const TRADES = ['smithing', 'woodworking', 'leatherworking', 'tailoring', 'cooking', 'herbalism', 'enchanting', 'construction'];
   const HOME: Record<string, string[]> = {
     smithing: ['furnace', 'anvil'],
     woodworking: ['carving_bench'],
@@ -122,6 +124,7 @@ test('trade-skill law: every recipe belongs to a named trade, at that trade\'s s
     cooking: ['fire', 'workbench'],
     herbalism: ['alembic'],
     enchanting: ['enchanting_table'],
+    construction: ['sawhorse'],
   };
   for (const r of RECIPES.values()) {
     assert.ok(TRADES.includes(r.skill), `${r.id}: '${r.skill}' is not a trade skill`);
@@ -518,6 +521,37 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
   for (const b of BUILDABLES.values()) {
     for (const m of b.materials) assert.ok(ITEMS.has(m.item), `${b.id} material missing`);
     assert.ok(TILE_DEFS[b.tile], `${b.id} tile has no def`);
+  }
+
+  // THE MILLED-AND-WHOLE LAW (building v2): milled wood stacks, and
+  // raw logs may only be spent where whole timber is the point — the
+  // campfire burns trunks, posts and poles drive whole, the garrison
+  // gate hangs on beams, and the sawhorse bootstraps the board loop.
+  // Everything else denominated in wood must ask for boards.
+  for (const id of ['board', 'oak_board']) {
+    assert.ok(ITEMS.get(id)?.stackable, `${id} must stack — hauling is not the gameplay`);
+  }
+  const WHOLE_TIMBER = new Set([
+    'sawhorse',
+    'campfire',
+    'lamp_post',
+    'banner_pole',
+    'garrison_gate',
+    'signpost',
+  ]);
+  for (const b of BUILDABLES.values()) {
+    if (b.materials.some((m) => m.item === 'log' || m.item === 'oak_log')) {
+      assert.ok(WHOLE_TIMBER.has(b.id), `${b.id} spends raw logs — milled work wants boards`);
+    }
+  }
+  for (const id of ['saw_boards', 'saw_oak_boards']) {
+    const r = RECIPES.get(id);
+    assert.ok(r, `${id} recipe missing`);
+    assert.equal(r!.station, 'sawhorse', `${id} saws at the sawhorse`);
+    assert.equal(r!.skill, 'construction', `${id} is the builder's own trade`);
+    assert.equal(r!.output.qty, 3, `${id}: one log, three boards — the user-locked ratio`);
+    assert.equal(r!.inputs.length, 1);
+    assert.equal(r!.inputs[0]!.qty, 1);
   }
   for (const entry of GENERAL_STORE) {
     assert.ok(ITEMS.has(entry.item), `shop '${entry.item}' missing`);
