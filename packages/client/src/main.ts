@@ -31,6 +31,7 @@ import { Sfx } from './audio/sfx.js';
 import { AudioEngine } from './audio/engine.js';
 import { TrackPlayer } from './audio/tracks.js';
 import { AmbienceSystem } from './audio/ambience.js';
+import { VoicePlayer } from './audio/voice.js';
 import { AudioMenu } from './ui/audioMenu.js';
 import { UNDERGROUND_Y, zoneWeights } from './audio/zones.js';
 import { scanFallEar, SILENT_EAR, type FallEar } from './audio/falls.js';
@@ -125,6 +126,7 @@ const audioEngine = new AudioEngine();
 const sfx = new Sfx(audioEngine);
 const music = new TrackPlayer(audioEngine);
 const ambience = new AmbienceSystem(audioEngine);
+const voice = new VoicePlayer(audioEngine);
 const audioMenu = new AudioMenu(audioEngine, music);
 window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
 window.addEventListener('keydown', () => sfx.unlock(), { once: true });
@@ -1572,7 +1574,7 @@ game.onLoose = (charge, aim) => {
 (window as unknown as Record<string, unknown>).__arx = {
   game,
   renderer,
-  audio: { engine: audioEngine, music, ambience, sfx },
+  audio: { engine: audioEngine, music, ambience, sfx, voice },
 };
 
 loginToggle.addEventListener('click', () => {
@@ -1988,6 +1990,7 @@ function frame(now: number): void {
     // world-born sound measures its distance and pan against this.
     const ear = game.predictor.renderPos();
     sfx.setListener(ear.x, ear.y);
+    voice.setListener(ear.x, ear.y);
   }
   panelAudioCues();
   // The station being talked to (open panel) animates its in-use

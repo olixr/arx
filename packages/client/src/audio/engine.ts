@@ -15,6 +15,13 @@
  * USER VOLUMES: each bus keeps a fixed BASE level (the mix) times a
  * user setting 0..1 (the audio menu). Never write bus gains directly —
  * go through setUserVolume so the mix balance survives.
+ *
+ * THE DUCK RAIL (voiceover epic amendment): a bus's live gain is
+ * BASE × userVol × duck. `duck` defaults to 1 and only setDuck may
+ * move it — the system's one lawful multiplier, used to seat music
+ * and ambience under a spoken line and release them after. The user's
+ * sliders and the system's duck compose; neither ever writes a gain
+ * directly, and nothing else touches bus gains at all.
  */
 
 /**
@@ -24,9 +31,40 @@
  * (SFX, ambience) always reads over it. Tuned by ear + analyser, not
  * by the player's sliders.
  */
-const BASE = { master: 0.9, sfx: 0.5, music: 0.17, tracks: 0.21, ambience: 0.6 } as const;
+const BASE = {
+  master: 0.9,
+  sfx: 0.5,
+  music: 0.17,
+  tracks: 0.21,
+  ambience: 0.6,
+  voice: 0.8,
+} as const;
 
-export type VolumeKind = 'master' | 'music' | 'sfx' | 'ambience';
+export type VolumeKind = 'master' | 'music' | 'sfx' | 'ambience' | 'voice';
+/** The duckable group buses (master carries no duck — it is the user's). */
+export type BusKind = 'sfx' | 'music' | 'tracks' | 'ambience' | 'voice';
+
+/** Which user slider drives each bus (tracks rides the music slider). */
+const SLIDER: Record<BusKind, VolumeKind> = {
+  sfx: 'sfx',
+  music: 'music',
+  tracks: 'music',
+  ambience: 'ambience',
+  voice: 'voice',
+};
+
+/**
+ * The one place a bus's target gain is computed: tuned base × the
+ * driving user slider × the system duck. Pure, so tests can pin the
+ * composition law without an AudioContext.
+ */
+export function busLevel(
+  kind: BusKind,
+  userVol: Readonly<Record<VolumeKind, number>>,
+  duck: Readonly<Record<BusKind, number>>,
+): number {
+  return BASE[kind] * userVol[SLIDER[kind]] * duck[kind];
+}
 
 export class AudioEngine {
   ctx: AudioContext | null = null;
@@ -36,13 +74,30 @@ export class AudioEngine {
   /** Streamed music tracks: nearly dry — mastered audio needs no room. */
   tracks: GainNode | null = null;
   ambience: GainNode | null = null;
+  /** Spoken lines and quips: close and dry — speech, not room tone. */
+  voice: GainNode | null = null;
   /** Per-group reverb sends (already connected to the room). */
   sfxVerb: GainNode | null = null;
   musicVerb: GainNode | null = null;
   tracksVerb: GainNode | null = null;
   ambVerb: GainNode | null = null;
+  voiceVerb: GainNode | null = null;
   private master: GainNode | null = null;
-  private userVol: Record<VolumeKind, number> = { master: 1, music: 1, sfx: 1, ambience: 1 };
+  private userVol: Record<VolumeKind, number> = {
+    master: 1,
+    music: 1,
+    sfx: 1,
+    ambience: 1,
+    voice: 1,
+  };
+  /** THE DUCK RAIL — system multipliers, 1 = unducked. setDuck only. */
+  private duckVol: Record<BusKind, number> = {
+    sfx: 1,
+    music: 1,
+    tracks: 1,
+    ambience: 1,
+    voice: 1,
+  };
 
   /** Browsers require a user gesture before audio can start. */
   unlock(): void {
@@ -93,6 +148,7 @@ export class AudioEngine {
       [this.music, this.musicVerb] = bus(BASE.music, 0.5);
       [this.tracks, this.tracksVerb] = bus(BASE.tracks, 0.06);
       [this.ambience, this.ambVerb] = bus(BASE.ambience, 0.22);
+      [this.voice, this.voiceVerb] = bus(BASE.voice, 0.06);
       this.applyUserVolumes();
     } catch {
       this.ctx = null;
@@ -109,6 +165,38 @@ export class AudioEngine {
     return this.userVol[kind];
   }
 
+  /**
+   * Duck a bus toward `k` (0..1 of its normal level) or release it
+   * back to 1. `tc` shapes the move: quick seat (~0.12) under a line,
+   * slow release (~0.2) after. The only lawful system write to gains.
+   */
+  setDuck(kind: BusKind, k: number, tc = 0.12): void {
+    this.duckVol[kind] = Math.max(0, Math.min(1, k));
+    const ctx = this.ctx;
+    const node = this.busNode(kind);
+    if (!ctx || !node) return;
+    node.gain.setTargetAtTime(busLevel(kind, this.userVol, this.duckVol), ctx.currentTime, tc);
+  }
+
+  getDuck(kind: BusKind): number {
+    return this.duckVol[kind];
+  }
+
+  private busNode(kind: BusKind): GainNode | null {
+    switch (kind) {
+      case 'sfx':
+        return this.sfx;
+      case 'music':
+        return this.music;
+      case 'tracks':
+        return this.tracks;
+      case 'ambience':
+        return this.ambience;
+      case 'voice':
+        return this.voice;
+    }
+  }
+
   private applyUserVolumes(): void {
     const ctx = this.ctx;
     if (!ctx) return;
@@ -117,10 +205,9 @@ export class AudioEngine {
       node?.gain.setTargetAtTime(target, t, 0.06);
     };
     set(this.master, BASE.master * this.userVol.master);
-    set(this.sfx, BASE.sfx * this.userVol.sfx);
-    set(this.music, BASE.music * this.userVol.music);
-    set(this.tracks, BASE.tracks * this.userVol.music);
-    set(this.ambience, BASE.ambience * this.userVol.ambience);
+    for (const kind of ['sfx', 'music', 'tracks', 'ambience', 'voice'] as const) {
+      set(this.busNode(kind), busLevel(kind, this.userVol, this.duckVol));
+    }
   }
 
   now(): number {
