@@ -4843,8 +4843,11 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     if (st.mask && !hurt && backK <= 0.55) {
       // The half-mask: a kerchief over the lower face, pointed at the
       // chin. Eyes stay the character's; the rest belongs to the job.
-      const mw = hw * 0.78 * (1 - profileK * 0.25);
-      const mx = headX + fx * headR * 0.18;
+      // Anchored on the SAME face shift as the opening (the 0.34 law):
+      // a mask that stays centered while the face turns un-masks the
+      // profile — it must ride the opening, not the shell.
+      const mw = hw * 0.78 * (1 - profileK * 0.4);
+      const mx = headX + fx * headR * 0.34;
       ctx.fillStyle = st.mask;
       ctx.beginPath();
       ctx.moveTo(mx - mw, headY + hh * 0.18);
@@ -4866,12 +4869,14 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       // the face keeps the dark, the eyes keep the fire. The far eye
       // narrows out with the facing like the bare face's does.
       const pulse = 0.6 + 0.4 * Math.sin(f.nowMs * 0.0016);
-      const ex = headX + fx * headR * 0.28;
+      // The 0.34 opening-anchor law: the coals live IN the face
+      // opening, so they ride its shift and narrow with it.
+      const ex = headX + fx * headR * 0.34;
       const ey = headY + hh * 0.02;
       for (const es of [-1, 1]) {
         const wK = es !== lead ? Math.max(0, 1 - profileK * 1.4) : 1;
         if (wK <= 0.05) continue;
-        const px = ex + es * hw * 0.34 * (1 - profileK * 0.3);
+        const px = ex + es * hw * 0.34 * (1 - profileK * 0.45);
         ctx.globalAlpha = 0.35 * pulse * wK;
         ctx.fillStyle = st.emberEyes.color;
         ctx.beginPath();
