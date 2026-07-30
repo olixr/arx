@@ -63,6 +63,7 @@ import {
   TILE_DEFS,
   type DestructibleInfo,
   type SignInfo,
+  type VoiceWire,
 } from '@arx/shared';
 import {
   BUILDABLES,
@@ -180,9 +181,17 @@ import {
   wildCandidates,
   type GeographyDef,
   VOICE,
+  type VoiceBankDef,
   type VoiceClipDef,
+  type VoiceSlot,
 } from '@arx/content';
-import { collectVoicePrefetch, voiceWireForNode } from '../voice/resolve.js';
+import {
+  collectVoicePrefetch,
+  pickQuipClip,
+  quipSlotForBeat,
+  quipWire,
+  voiceWireForNode,
+} from '../voice/resolve.js';
 import {
   POI_CELL,
   ZONE_CLEARANCE,
@@ -1299,6 +1308,13 @@ export class GameServer {
   private readonly dialogueNodes = new Map<string, ReadonlyMap<string, DialogueNode>>();
   /** The live voice-clip ledger — the resolver reads it per beat. */
   private readonly voiceClips = new Map<string, VoiceClipDef>();
+  /** The live voice banks, keyed 'kind:owner' — the fallback throats. */
+  private readonly voiceBanks = new Map<string, VoiceBankDef>();
+  /** Per-owner quip bookkeeping: cooldown stamp + last pick per slot. */
+  private readonly voiceQuipMemory = new Map<
+    string,
+    { lastAt: number; lastBySlot: Map<VoiceSlot, string> }
+  >();
   /**
    * Re-reads dialogues from the DB (wired by index.ts at boot). The
    * tooling edits rows, then /dlgreload swaps the live registry — no
@@ -1903,6 +1919,12 @@ export class GameServer {
 
   voiceClipIds(): ReadonlySet<string> {
     return new Set(this.voiceClips.keys());
+  }
+
+  /** Swap the live bank set (boot + the Studio's bank routes). */
+  registerVoiceBanks(defs: Iterable<VoiceBankDef>): void {
+    this.voiceBanks.clear();
+    for (const def of defs) this.voiceBanks.set(`${def.owner.kind}:${def.owner.id}`, def);
   }
 
   registerDialogues(defs: Iterable<DialogueDef>): void {
@@ -7176,10 +7198,16 @@ export class GameServer {
         // The spoken-to turn to face you — small thing, reads as alive.
         npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
         player.dialogue = { targetEid, def, nodeId: def.start, choices: [] };
-        // THE SPOKEN LINE: the frame carries the warm list (every
-        // voiced beat reachable from start) and the live duck dials —
-        // a silent tree sends neither and costs nothing on the wire.
-        const prefetch = collectVoicePrefetch(def, this.voiceClips, VOICE.prefetchCap);
+        // THE SPOKEN LINE: the frame carries the warm list (the
+        // speaker's bank quips first, then every voiced beat reachable
+        // from start) and the live duck dials — a wholly silent
+        // conversation sends neither and costs nothing on the wire.
+        const prefetch = collectVoicePrefetch(
+          def,
+          this.voiceClips,
+          VOICE.prefetchCap,
+          this.voiceBanks.get(`actor:${actorComp.actor.id}`),
+        );
         player.session.sendJson({
           t: 'dlgopen',
           eid: targetEid,
@@ -7194,7 +7222,7 @@ export class GameServer {
               }
             : undefined,
         });
-        this.dialogueEnterNode(eid, player, def.start);
+        this.dialogueEnterNode(eid, player, def.start, true);
         return;
       }
       // A trainer's counter opens next: no story to tell means it's
@@ -7227,6 +7255,19 @@ export class GameServer {
           rc.holdFacing = false;
         }
         sys(`${actorComp.actor.name}: "${line}"`);
+        // THE THROAT CLEARS: a bark may carry its spoken breath — the
+        // bark slot through the same rationed quip memory, spatial at
+        // the speaker's spot. Cosmetic 'vq'; a deaf client loses air.
+        const quip = this.drawQuip(`actor:${actorComp.actor.id}`, 'bark', true);
+        if (quip) {
+          player.session.sendJson({
+            t: 'vq',
+            x: npos.x,
+            y: npos.y,
+            url: quip.url,
+            durMs: quip.durMs,
+          });
+        }
         return;
       }
     }
@@ -7435,7 +7476,7 @@ export class GameServer {
    * (no continuation, no offerable choices) records completion —
    * walking away never does.
    */
-  private dialogueEnterNode(eid: EntityId, player: PlayerComp, nodeId: string): void {
+  private dialogueEnterNode(eid: EntityId, player: PlayerComp, nodeId: string, first = false): void {
     const dlg = player.dialogue;
     if (!dlg || player.session === null) return;
     const node = this.dialogueNodes.get(dlg.def.id)?.get(nodeId);
@@ -7475,10 +7516,52 @@ export class GameServer {
       quest: offerDef
         ? { id: offerDef.id, name: offerDef.name, rewards: this.questRewardsWire(offerDef) }
         : undefined,
-      // THE SPOKEN LINE: the resolver's answer for this beat — a
-      // blind URL, or nothing (a ghost ref mid-edit stays silent).
-      voice: voiceWireForNode(node, this.voiceClips),
+      // THE ONE RESOLVER's answer for this beat: the node's full line,
+      // else the speaker's bank slot for the moment, else silence.
+      voice: this.resolveBeatVoice(dlg.targetEid, node, first, last),
     });
+  }
+
+  /**
+   * THE THROAT CLEARS (voiceover-plan Phase 4): the fallback chain
+   * under the full line. Greet speaks on the first beat and farewell
+   * on the terminal one unconditionally (the door and the goodbye ARE
+   * the moments); acks between are rationed by the quipChance and
+   * quipCooldownMs dials so they punctuate instead of chattering.
+   * Player-spoken beats never draw from the NPC's throat.
+   */
+  private resolveBeatVoice(
+    targetEid: EntityId,
+    node: DialogueNode,
+    first: boolean,
+    last: boolean,
+  ): VoiceWire | undefined {
+    const line = voiceWireForNode(node, this.voiceClips);
+    if (line) return line;
+    if ((node.speaker ?? 'npc') === 'player') return undefined;
+    const actor = this.actors.get(targetEid)?.actor;
+    if (!actor) return undefined;
+    return this.drawQuip(`actor:${actor.id}`, quipSlotForBeat(first, last), !first && !last);
+  }
+
+  /** Pick from an owner's bank slot through the shared quip memory. */
+  private drawQuip(ownerKey: string, slot: VoiceSlot, rationed: boolean): VoiceWire | undefined {
+    const bank = this.voiceBanks.get(ownerKey);
+    if (!bank) return undefined;
+    const mem = this.voiceQuipMemory.get(ownerKey) ?? { lastAt: 0, lastBySlot: new Map() };
+    if (rationed) {
+      const now = Date.now();
+      if (now - mem.lastAt < VOICE.quipCooldownMs) return undefined;
+      if (Math.random() >= VOICE.quipChance) return undefined;
+    }
+    const clipId = pickQuipClip(bank, slot, mem.lastBySlot.get(slot), Math.random());
+    if (clipId === undefined) return undefined;
+    const wire = quipWire(clipId, this.voiceClips);
+    if (!wire) return undefined;
+    mem.lastAt = Date.now();
+    mem.lastBySlot.set(slot, clipId);
+    this.voiceQuipMemory.set(ownerKey, mem);
+    return wire;
   }
 
   /** Advance a linear beat (questions are answered, never skipped). */

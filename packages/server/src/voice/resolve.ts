@@ -1,12 +1,14 @@
-import type { DialogueDef, DialogueNode, VoiceClipDef } from '@arx/content';
+import type { DialogueDef, DialogueNode, VoiceBankDef, VoiceClipDef, VoiceSlot } from '@arx/content';
 import { voiceClipUrl } from '@arx/content';
 import type { VoiceWire } from '@arx/shared';
 
 /**
- * THE ONE RESOLVER's pure half (voiceover-plan Phase 3): what plays
- * for a beat, and what a frame should warm. The server owns clip
- * choice; the wire carries URLs only (THE WIRE STAYS BLIND). Phase 4
- * adds the bank-slot fallback rung under the node line.
+ * THE ONE RESOLVER's pure half (voiceover-plan Phases 3-4): what
+ * plays for a beat, and what a frame should warm. The server owns
+ * clip choice; the wire carries URLs only (THE WIRE STAYS BLIND).
+ * The chain: node line → the speaker's bank slot for the MOMENT
+ * (greet on the first beat, farewell on the last, ack between,
+ * bark at the overworld one-liners) → silence.
  *
  * SILENCE IS VALID at this layer too: a node naming a clip the ledger
  * doesn't hold resolves to nothing, never to an error at a player —
@@ -26,20 +28,84 @@ export function voiceWireForNode(
 }
 
 /**
- * The warm list for a dialogue frame: every voiced beat reachable
- * from the start, breadth-first so the beats a player meets soonest
- * decode first, deduped, capped by the prefetchCap dial. Undefined
- * when the tree is wholly silent — the wire stays clean.
+ * Which bank slot a conversation beat draws from when it has no full
+ * line: the first beat is the hello, the terminal beat the goodbye,
+ * everything between an acknowledgement.
+ */
+export function quipSlotForBeat(isFirst: boolean, isLast: boolean): VoiceSlot {
+  if (isFirst) return 'greet';
+  if (isLast) return 'farewell';
+  return 'ack';
+}
+
+/**
+ * Weighted pick from a bank slot, avoiding the previous pick whenever
+ * the slot holds an alternative (the no-repeat cursor's pure half).
+ * `roll` is the caller's 0..1 die — kept outside so tests can pin
+ * every branch. Undefined when the slot is empty or unknown clips.
+ */
+export function pickQuipClip(
+  bank: VoiceBankDef | undefined,
+  slot: VoiceSlot,
+  lastClip: string | undefined,
+  roll: number,
+): string | undefined {
+  const entries = bank?.slots[slot];
+  if (!entries || entries.length === 0) return undefined;
+  const pool = entries.length > 1 ? entries.filter((e) => e.clip !== lastClip) : entries;
+  const source = pool.length > 0 ? pool : entries;
+  const total = source.reduce((a, e) => a + (e.weight ?? 1), 0);
+  let mark = Math.max(0, Math.min(0.999999, roll)) * total;
+  for (const e of source) {
+    mark -= e.weight ?? 1;
+    if (mark < 0) return e.clip;
+  }
+  return source[source.length - 1]!.clip;
+}
+
+/** A bank quip as the wire speaks it — quips never duck the music. */
+export function quipWire(
+  clipId: string,
+  clips: ReadonlyMap<string, VoiceClipDef>,
+): VoiceWire | undefined {
+  const clip = clips.get(clipId);
+  if (!clip) return undefined;
+  return { url: voiceClipUrl(clip), durMs: clip.durMs, kind: 'quip' };
+}
+
+/**
+ * The warm list for a dialogue frame: the speaker's bank quips first
+ * (the greet fires on the very first beat — it needs warmth most),
+ * then every voiced beat reachable from the start, breadth-first so
+ * the beats a player meets soonest decode first, deduped, capped by
+ * the prefetchCap dial. Undefined when the conversation is wholly
+ * silent — the wire stays clean.
  */
 export function collectVoicePrefetch(
   def: DialogueDef,
   clips: ReadonlyMap<string, VoiceClipDef>,
   cap: number,
+  bank?: VoiceBankDef,
 ): string[] | undefined {
   if (cap <= 0) return undefined;
-  const byId = new Map(def.nodes.map((n) => [n.id, n]));
   const urls: string[] = [];
   const seenUrls = new Set<string>();
+  const add = (url: string): void => {
+    if (urls.length < cap && !seenUrls.has(url)) {
+      seenUrls.add(url);
+      urls.push(url);
+    }
+  };
+  if (bank) {
+    const slotOrder: VoiceSlot[] = ['greet', 'ack', 'farewell', 'yes', 'no', 'hm'];
+    for (const slot of slotOrder) {
+      for (const e of bank.slots[slot] ?? []) {
+        const clip = clips.get(e.clip);
+        if (clip) add(voiceClipUrl(clip));
+      }
+    }
+  }
+  const byId = new Map(def.nodes.map((n) => [n.id, n]));
   const seenNodes = new Set<string>();
   const queue: string[] = [def.start];
   while (queue.length > 0 && urls.length < cap) {
@@ -47,10 +113,7 @@ export function collectVoicePrefetch(
     if (!node || seenNodes.has(node.id)) continue;
     seenNodes.add(node.id);
     const wire = voiceWireForNode(node, clips);
-    if (wire && !seenUrls.has(wire.url)) {
-      seenUrls.add(wire.url);
-      urls.push(wire.url);
-    }
+    if (wire) add(wire.url);
     if (node.next !== undefined) queue.push(node.next);
     for (const c of node.choices ?? []) {
       if (c.next !== undefined) queue.push(c.next);

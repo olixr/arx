@@ -46,7 +46,7 @@ import { createMapsApi } from './dev/mapsApi.js';
 import { serveVoiceFile } from './voice/store.js';
 import { openDb } from './db/db.js';
 import { loadDialogues, seedDialogues } from './db/dialogues.js';
-import { loadVoiceClips } from './db/voice.js';
+import { loadVoiceBanks, loadVoiceClips } from './db/voice.js';
 import { loadQuests, seedQuests } from './db/quests.js';
 import { loadNpcActors, syncNpcActors } from './db/npcActors.js';
 import { loadRoutines, seedRoutines } from './db/routines.js';
@@ -318,8 +318,12 @@ console.log(
 const voiceClipLoad = await loadVoiceClips(db);
 for (const err of voiceClipLoad.errors) console.warn(`[content] invalid voice clip: ${err}`);
 game.registerVoiceClips(voiceClipLoad.clips.map((c) => c.def));
-if (voiceClipLoad.clips.length > 0) {
-  console.log(`[content] voice clips: ${voiceClipLoad.clips.length} in the ledger`);
+const voiceBankLoad = await loadVoiceBanks(db);
+game.registerVoiceBanks(voiceBankLoad);
+if (voiceClipLoad.clips.length > 0 || voiceBankLoad.length > 0) {
+  console.log(
+    `[content] voice: ${voiceClipLoad.clips.length} clip(s), ${voiceBankLoad.length} bank(s) in the ledger`,
+  );
 }
 
 // Dialogue trees — THE DATABASE IS THE TRUTH. Shipped JSON seeds it

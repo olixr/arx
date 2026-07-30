@@ -882,10 +882,20 @@ const game = new ClientGame(input, {
   },
   onDialogueNode: (n) => {
     // Voice first, then the paced typewriter — the beat that carries
-    // no line silences whatever the previous beat left playing.
-    if (n.voice && n.voice.kind === 'line') voice.playLine(n.voice.url);
-    else voice.stopLine();
+    // no line silences whatever the previous beat left playing. A
+    // quip beat (the throat clearing: greet/ack/farewell) layers a
+    // small utterance without ducking or pacing anything.
+    if (n.voice?.kind === 'line') {
+      voice.playLine(n.voice.url);
+    } else {
+      voice.stopLine();
+      if (n.voice) voice.playQuip(n.voice.url);
+    }
     cinema.showNode(n);
+  },
+  onVoiceQuip: (q) => {
+    // A bark's spoken breath — spatial from the speaker's spot.
+    voice.playQuip(q.url, { x: q.x, y: q.y });
   },
   onDialogueClose: () => {
     voice.stopLine();

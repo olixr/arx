@@ -881,6 +881,22 @@ export interface S2CDialogueClose {
   t: 'dlgclose';
 }
 
+/**
+ * A small utterance from a place in the world — a bark's spoken
+ * accompaniment (voiceover-plan Phase 4). Purely cosmetic: a client
+ * that drops it reads the same bark in silence, which is why this
+ * family rides v21 without a bump (the party/quest bumps guarded
+ * MATERIAL state a deaf client would corrupt; a lost grunt is lost
+ * air). Spatial: the client pans/rolls off from (x, y).
+ */
+export interface S2CVoiceQuip {
+  t: 'vq';
+  x: number;
+  y: number;
+  url: string;
+  durMs: number;
+}
+
 /** Crossed into a dungeon: everything the entry banner needs. */
 export interface S2CDungeonEnter {
   t: 'dungeon';
@@ -1252,6 +1268,7 @@ export type S2CMessage =
   | S2CDialogueOpen
   | S2CDialogueNode
   | S2CDialogueClose
+  | S2CVoiceQuip
   | S2CHavens
   | S2CSocial
   | S2CFriendSearch

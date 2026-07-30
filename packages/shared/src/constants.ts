@@ -66,6 +66,11 @@
 // (Voiceover Phase 3, still v21: S2CDialogueNode.voice and
 // S2CDialogueOpen.prefetch/voiceDials — additive optionals; an
 // unvoiced client reads the same conversation in silence.)
+// (Voiceover Phase 4, still v21: the S2CVoiceQuip 'vq' family. A new
+// family normally bumps, but the bump law guards MATERIAL state a
+// deaf client would corrupt (parties, quests, standing); 'vq' is a
+// bark's cosmetic breath — an old client drops it and loses nothing
+// but air, so it rides v21. The judgment is recorded here on purpose.)
 export const PROTOCOL_VERSION = 21;
 
 /** The most souls one party can hold. */

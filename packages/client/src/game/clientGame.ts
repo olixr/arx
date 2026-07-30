@@ -216,6 +216,8 @@ export interface GameEvents {
   }): void;
   /** The conversation is over — tear the frame down. */
   onDialogueClose?(): void;
+  /** A spoken breath from a place in the world (a bark's voice). */
+  onVoiceQuip?(q: { x: number; y: number; url: string }): void;
   /** A trainer opened their wares — render the named shop's shelf. */
   onShopOpen?(shop: string, priceMult: number): void;
   /** The full social snapshot answered a request. */
@@ -1094,6 +1096,10 @@ export class ClientGame {
       }
       case 'dlgclose': {
         this.events.onDialogueClose?.();
+        break;
+      }
+      case 'vq': {
+        this.events.onVoiceQuip?.({ x: msg.x, y: msg.y, url: msg.url });
         break;
       }
       case 'death': {

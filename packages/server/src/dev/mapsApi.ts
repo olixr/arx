@@ -544,12 +544,15 @@ export function createMapsApi(
             sendJson(res, 400, { error: saved.errors.join('; ') });
             return true;
           }
+          // The live throat clears on the very next beat.
+          game.registerVoiceBanks(await loadVoiceBanks(db));
           console.log(`[content] voice bank ${ownerKind}:${ownerId} saved`);
           sendJson(res, 200, { ok: true });
           return true;
         }
         if (req.method === 'DELETE') {
           const existed = await deleteVoiceBank(db, ownerKind!, ownerId!);
+          game.registerVoiceBanks(await loadVoiceBanks(db));
           console.log(`[content] voice bank ${ownerKind}:${ownerId} ${existed ? 'deleted' : 'was empty'}`);
           sendJson(res, 200, { ok: true, existed });
           return true;
