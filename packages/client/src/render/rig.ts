@@ -3658,13 +3658,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (offSt && offSt.kind !== 'quiver' && !archer && !offWeapon && !shieldSt) {
       drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
     }
-    // The far pauldron is a true shoulder joint: it caps THIS arm's
-    // root on its solved anchor, so it rides swings and draws instead
-    // of staying glued to the torso corner.
-    if (bodySt && bodySt.pauldron !== 'none') {
-      const side = Math.sign(offShX - rig.x) || -lead;
-      drawPauldron(ctx, bodySt, offShX, shoulderY, side, s, wS, rig.hurt, false, rig.nowMs);
-    }
   };
   // Back-mounted quiver. Depth follows the cape's facing law — behind
   // the torso when the player faces the camera, in front when they face
@@ -3787,10 +3780,31 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       rig.hurt,
       skel,
     );
-    // Near pauldron caps the striking arm's root, over everything.
-    if (bodySt && bodySt.pauldron !== 'none') {
-      const side = Math.sign(mainShX - rig.x) || lead;
-      drawPauldron(ctx, bodySt, mainShX, shoulderY, side, s, wS, rig.hurt, true, rig.nowMs);
+  };
+  // ---- THE SHOULDER DEPTH LAW: a pauldron is a cap on TOP of the
+  // shoulder, so under the tilted bird's eye it stays visible at
+  // nearly every facing — including from behind (riding the arms'
+  // layer used to sink BOTH caps whenever the arms dropped behind the
+  // torso: a knight seen from the back lost his pauldrons). Only in
+  // the PROFILE band does one shoulder genuinely hide: the LEADING
+  // one belongs to the far side of the turned body — it ducks BEHIND
+  // the torso and peeks over the shoulder line, never in front of the
+  // chest (the flipped-shoulder read the user caught). Position still
+  // rides the solved anchors so the caps travel with the swings;
+  // lighting follows the ONE SUN, screen-left, like every other form
+  // split — never the weapon hand.
+  const paintPauldrons = (layer: 'behind' | 'front'): void => {
+    if (!bodySt || bodySt.pauldron === 'none') return;
+    const profileBand = Math.abs(fy) <= 0.35;
+    const leadSgn = Math.sign(fx) || 1;
+    for (const [sx, fallback] of [
+      [offShX, -lead],
+      [mainShX, lead],
+    ] as Array<[number, number]>) {
+      const side = Math.sign(sx - rig.x) || fallback || 1;
+      const behind = profileBand && side === leadSgn;
+      if ((layer === 'behind') !== behind) continue;
+      drawPauldron(ctx, bodySt, sx, shoulderY, side, s, wS, rig.hurt, side < 0, rig.nowMs);
     }
   };
   const paintWeapon = (): void => {
@@ -4024,6 +4038,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Torso garment: the styled body (robe, jerkin, brigandine, cuirass,
   // pauldrons) — the bare `tunic` default is the original silhouette.
   // The bone dialect wears no garment at all: the ribcage IS the torso.
+  // The far shoulder's cap ducks under the garment here (profile band
+  // only) — painted last before the torso so it peeks over the
+  // shoulder line from behind the cloth.
+  paintPauldrons('behind');
   if (skel) {
     paintRibcage(ctx, skel, {
       s,
@@ -4672,6 +4690,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     paintMainArm();
   }
   if (mainBehind) paintOffArm();
+  // Visible shoulder caps paint over everything on their layer — the
+  // near cap over its arm's root, and from behind, both caps over the
+  // backplate where the camera can actually see them.
+  paintPauldrons('front');
 }
 
 /**
