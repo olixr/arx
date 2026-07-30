@@ -148,6 +148,6 @@ export declare class StationPanels {
     openShop(shopId?: string, at?: {
         tx: number;
         ty: number;
-    }): void;
+    }, priceMult?: number): void;
 }
 //# sourceMappingURL=stationPanels.d.ts.map

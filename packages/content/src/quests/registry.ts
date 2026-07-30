@@ -36,6 +36,12 @@ import steelForTheStair from './defs/steel_for_the_stair.json';
 import threadsOfTheRow from './defs/threads_of_the_row.json';
 import theSilverSetting from './defs/the_silver_setting.json';
 import theLastPatrol from './defs/the_last_patrol.json';
+// Factions Phase 3 (docs/factions-plan.md): THE ROAD BACK — penance
+// work, visible only to the disgraced (faction: atmost:suspect gates),
+// paying standing instead of coin.
+import theBadColumn from './defs/the_bad_column.json';
+import theCrownsCount from './defs/the_crowns_count.json';
+import shortHanded from './defs/short_handed.json';
 
 /**
  * Every authored quest JSON, registered here. A def that isn't listed
@@ -61,6 +67,10 @@ const SOURCES: readonly unknown[] = [
   peltsForTheRoad,
   thePotNeverRests,
   thinTheWarrens,
+  // Penance work — the road back for the disgraced (factions Phase 3).
+  theBadColumn,
+  theCrownsCount,
+  shortHanded,
   // Item-borne: the torn page starts it; nobody offers it.
   theStolenLedger,
   // The Sealed Galleries — Grettir's brother's crew, closed at last.

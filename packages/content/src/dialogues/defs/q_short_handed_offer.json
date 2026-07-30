@@ -1,0 +1,26 @@
+{
+  "id": "q_short_handed_offer",
+  "start": "hub",
+  "requires": ["quest:short_handed:available"],
+  "bindings": [{ "kind": "actor", "target": "marshal_kestrel", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Roll's short. Wolves between the lamps again. Six put down is a shift I don't have a warden for. You're not my first choice. You're the one standing here.",
+      "hooks": [{ "kind": "quest_offer", "quest": "short_handed" }],
+      "choices": [
+        { "text": "I'll walk the shift.", "next": "sworn" },
+        { "text": "Find another.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Lamp to lamp. Don't be clever about it.",
+      "hooks": [{ "kind": "quest_accept", "quest": "short_handed" }]
+    },
+    {
+      "id": "declined",
+      "text": "There isn't another. That was the point."
+    }
+  ]
+}

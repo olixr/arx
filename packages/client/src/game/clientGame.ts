@@ -208,7 +208,7 @@ export interface GameEvents {
   /** The conversation is over — tear the frame down. */
   onDialogueClose?(): void;
   /** A trainer opened their wares — render the named shop's shelf. */
-  onShopOpen?(shop: string): void;
+  onShopOpen?(shop: string, priceMult: number): void;
   /** The full social snapshot answered a request. */
   onSocial?(snap: {
     friends: Array<{ name: string; online: boolean; zone?: string }>;
@@ -325,6 +325,10 @@ export class ClientGame {
   repEnforcers = new Set<string>();
   /** The band at which a hostile faction holds its fire. */
   repPeaceBand = 'trusted';
+  /** Live band price multipliers — the Standing screen's legend. */
+  repPrices: { champion: number; trusted: number; known: number; neutral: number; suspect: number } | null = null;
+  /** The most recent standing move per faction (client-side ledger). */
+  readonly repLastDelta = new Map<string, { delta: number; at: number }>();
   /** Bumped on every standing change — the Standing screen re-reads. */
   repVersion = 0;
   /** The party snapshot — empty members = partyless. Refetched on events. */
@@ -905,7 +909,7 @@ export class ClientGame {
         break;
       }
       case 'shopopen': {
-        this.events.onShopOpen?.(msg.shop);
+        this.events.onShopOpen?.(msg.shop, msg.priceMult ?? 1);
         break;
       }
       case 'xp': {
@@ -1215,13 +1219,21 @@ export class ClientGame {
         this.repPrefixes = msg.prefixes;
         this.repEnforcers = new Set(msg.enforcers);
         this.repPeaceBand = msg.peaceBand;
+        this.repPrices = msg.prices;
         this.repVersion++;
         this.events.onRepChanged?.();
         break;
       }
       case 'repupd': {
-        // A quiet patch — nothing celebrates.
-        for (const s of msg.standings) this.repStandings.set(s.faction, s);
+        // A quiet patch — nothing celebrates. The delta ledger is
+        // pure presentation: the Standing screen's "lately" line.
+        for (const s of msg.standings) {
+          const prev = this.repStandings.get(s.faction);
+          if (prev !== undefined && prev.value !== s.value) {
+            this.repLastDelta.set(s.faction, { delta: s.value - prev.value, at: Date.now() });
+          }
+          this.repStandings.set(s.faction, s);
+        }
         this.repVersion++;
         this.events.onRepChanged?.();
         break;

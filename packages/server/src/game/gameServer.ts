@@ -167,6 +167,8 @@ import {
   parseQuestFlag,
   questDoneFlag,
   standingBand,
+  standingPriceMult,
+  standingSellMult,
   peddlerLingerFor,
   pickWild,
   scatterLingerFor,
@@ -3997,6 +3999,25 @@ export class GameServer {
   }
 
   /** Is any placed actor carrying this shop id within reach? */
+  /**
+   * Whose counter is this? The faction of the actor who keeps the
+   * shop (actor.shop is the one tie — the same field the proximity
+   * gate reads). Counterless shops (the general store's tile) and
+   * unaffiliated keepers (peddlers) trade flat.
+   */
+  private factionOfShop(shopId: string): string | null {
+    for (const [slug, def] of this.actorDefs) {
+      if (def.shop === shopId) return factionOfActor(slug);
+    }
+    return null;
+  }
+
+  /** The live buy-price multiplier this player earns at this counter. */
+  private shopPriceMultFor(player: PlayerComp, shopId: string): number {
+    const fid = this.factionOfShop(shopId);
+    return fid === null ? 1 : standingPriceMult(this.playerBandWith(player, fid));
+  }
+
   private nearShopkeeper(eid: EntityId, shop: string): boolean {
     const pos = this.positions.get(eid);
     if (!pos) return false;
@@ -4029,16 +4050,30 @@ export class GameServer {
     const def = itemDef(item);
     if (!def) return;
 
+    // THE PRICE OF A NAME (factions Phase 3): the keeper's faction
+    // reads your band. Outlaw and below are refused outright (a stale
+    // shelf can't outlive the shut door); everyone else trades at the
+    // doc's band multiplier — mirrored on the sell side, so warmth
+    // cuts both ways. Same pure function the client's price tags use.
+    const shopFid = this.factionOfShop(shopId);
+    const band = shopFid !== null ? this.playerBandWith(player, shopFid) : 'neutral';
+    if (shopFid !== null && !bandAtLeast(band, 'suspect')) {
+      sys("Your coin's no good here.");
+      return;
+    }
+    const priceMult = standingPriceMult(band);
+
     if (op === 'buy') {
       const entry = shopDef.stock.find((e) => e.item === item);
       if (!entry) return;
+      const price = Math.max(1, Math.round(entry.price * priceMult));
       const coins = countItem(player.inventory, 'coins');
-      const affordable = Math.min(qty, Math.floor(coins / entry.price));
+      const affordable = Math.min(qty, Math.floor(coins / price));
       if (affordable === 0) {
         sys("You can't afford that.");
         return;
       }
-      removeItem(player.inventory, 'coins', affordable * entry.price);
+      removeItem(player.inventory, 'coins', affordable * price);
       // The shop is never a slot machine: bought gear is always the
       // fixed common baseline instance.
       const added = addItem(
@@ -4049,11 +4084,15 @@ export class GameServer {
       );
       if (added < affordable) {
         // Pack filled up — refund what didn't fit.
-        addItem(player.inventory, 'coins', (affordable - added) * entry.price);
+        addItem(player.inventory, 'coins', (affordable - added) * price);
         sys('Your pack is full.');
       }
     } else {
       if (item === 'coins') return;
+      // THE MIRROR LAW: the sell side reflects the buy multiplier
+      // around parity — a keeper who discounts you also pays better.
+      const sellMult = standingSellMult(band);
+      const payFor = (each: number): number => Math.max(1, Math.floor((each / 2) * sellMult));
       // Slot-addressed sale: the exact instance clicked leaves, and a
       // rolled instance is priced by its DERIVED value, not the base.
       const src = slot !== undefined ? player.inventory[slot] : undefined;
@@ -4061,11 +4100,11 @@ export class GameServer {
         const taken = takeSlot(player.inventory, slot!, qty);
         if (!taken) return;
         const each = rolledStats(taken.item, taken.roll)?.value ?? def.value;
-        addItem(player.inventory, 'coins', taken.qty * Math.max(1, Math.floor(each / 2)));
+        addItem(player.inventory, 'coins', taken.qty * payFor(each));
       } else {
         const sold = removeItem(player.inventory, item, qty);
         if (sold === 0) return;
-        addItem(player.inventory, 'coins', sold * Math.max(1, Math.floor(def.value / 2)));
+        addItem(player.inventory, 'coins', sold * payFor(def.value));
       }
     }
     player.session.sendJson({ t: 'inv', slots: player.inventory });
@@ -7043,7 +7082,11 @@ export class GameServer {
           rc.pauseUntilTick = this.tickCount + 200;
           rc.holdFacing = false;
         }
-        player.session.sendJson({ t: 'shopopen', shop: actorComp.actor.shop });
+        player.session.sendJson({
+          t: 'shopopen',
+          shop: actorComp.actor.shop,
+          priceMult: this.shopPriceMultFor(player, actorComp.actor.shop),
+        });
         return;
       }
       // No eligible tree: fall back to the rotating one-line barks.
@@ -7325,7 +7368,9 @@ export class GameServer {
       // frame drops — "have a look, then" becomes the shelf.
       const shop = dlg.shop;
       this.dialogueClose(player);
-      if (shop !== undefined) player.session?.sendJson({ t: 'shopopen', shop });
+      if (shop !== undefined) {
+        player.session?.sendJson({ t: 'shopopen', shop, priceMult: this.shopPriceMultFor(player, shop) });
+      }
     }
   }
 
@@ -7344,7 +7389,9 @@ export class GameServer {
       this.setPlayerFlag(player, dialogueDoneFlag(dlg.def.id));
       const shop = dlg.shop;
       this.dialogueClose(player);
-      if (shop !== undefined) player.session?.sendJson({ t: 'shopopen', shop });
+      if (shop !== undefined) {
+        player.session?.sendJson({ t: 'shopopen', shop, priceMult: this.shopPriceMultFor(player, shop) });
+      }
     }
   }
 
@@ -7398,6 +7445,9 @@ export class GameServer {
         // Authored story delta — never auto-pays the opposition
         // matrix (an author states both sides explicitly).
         this.creditStanding(player, hook.faction, hook.delta);
+        break;
+      case 'fine':
+        this.runFine(player, hook.faction, hook.quote === true);
         break;
       case 'quest_offer':
         // Pure presentation: dialogueEnterNode stages the chip on the
@@ -8033,6 +8083,7 @@ export class GameServer {
       prefixes,
       enforcers,
       peaceBand: FACTIONS.peaceBand,
+      prices: { ...FACTIONS.prices },
     });
   }
 
@@ -8060,6 +8111,42 @@ export class GameServer {
   /** The player's band with a faction, from the live thresholds. */
   private playerBandWith(player: PlayerComp, fid: string): FactionBand {
     return standingBand(player.standing.get(fid) ?? 0);
+  }
+
+  /**
+   * THE ROAD BACK (Phase 3): the fine counter behind the `fine` hook.
+   * Quote answers the arithmetic; payment takes the coins and lifts
+   * standing to EXACTLY the doc's fineFloor through the one door —
+   * you buy back the courtroom, never the hearts. Every dial read
+   * live; every no-op answered politely in the clerk's voice.
+   */
+  private runFine(player: PlayerComp, factionId: string, quote: boolean): void {
+    const def = factionDef(factionId);
+    const session = player.session;
+    if (!def || !session) return;
+    const sys = (text: string) => session.sendJson({ t: 'chat', channel: 'system', text });
+    const standing = player.standing.get(factionId) ?? 0;
+    const deficit = FACTIONS.fineFloor - standing;
+    if (deficit <= 0) {
+      sys('Your name needs no buying back here.');
+      return;
+    }
+    const owed = deficit * FACTIONS.finePerPoint;
+    const coins = countItem(player.inventory, 'coins');
+    if (quote) {
+      sys(`The fine stands at ${owed} coins${coins < owed ? ` — you carry ${coins}` : ''}.`);
+      return;
+    }
+    if (coins < owed) {
+      sys(`The fine stands at ${owed} coins. You carry ${coins}. Come back heavier.`);
+      return;
+    }
+    removeItem(player.inventory, 'coins', owed);
+    session.sendJson({ t: 'inv', slots: player.inventory });
+    sys(`${owed} coins, counted twice. The book moves your name to the watched column.`);
+    // Through the one door: the quiet line, the ceremony, the gates
+    // all re-answer — and the deficit lands exactly on the floor.
+    this.creditStanding(player, factionId, deficit);
   }
 
   /**

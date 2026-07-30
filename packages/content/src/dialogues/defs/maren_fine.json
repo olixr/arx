@@ -1,0 +1,32 @@
+{
+  "id": "maren_fine",
+  "start": "greet",
+  "requires": ["faction:crown:atmost:outlaw"],
+  "bindings": [{ "kind": "actor", "target": "warden_maren", "priority": 15 }],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "You stand in the crown's debt. There is a number. Pay it, or carry it — those are the choices, and I've weighed both for you already.",
+      "choices": [
+        { "text": "What's the number?", "next": "quote" },
+        { "text": "I'll pay it.", "next": "pay" },
+        { "text": "I'll carry it.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "quote",
+      "text": "She reads the ledger once, and doesn't read it again.",
+      "hooks": [{ "kind": "fine", "faction": "crown", "quote": true }],
+      "next": "greet"
+    },
+    {
+      "id": "pay",
+      "text": "She waits with her hand open.",
+      "hooks": [{ "kind": "fine", "faction": "crown" }]
+    },
+    {
+      "id": "bye",
+      "text": "Then carry it where the guard can see you."
+    }
+  ]
+}

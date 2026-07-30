@@ -15,6 +15,8 @@ import {
   factionOfNpc,
   replaceFactions,
   standingBand,
+  standingPriceMult,
+  standingSellMult,
   validateFactions,
 } from './factions.js';
 import type { FactionsDef } from './types.js';
@@ -112,6 +114,24 @@ test('THE LADDER CONTRACT: pinned deed arithmetic', () => {
   assert.equal(standingBand(FACTIONS.fineFloor), 'suspect');
   // The clamp holds the meter's ends.
   assert.equal(standingBand(-STANDING_CLAMP), 'hunted');
+});
+
+test('THE PRICE OF A NAME: band multipliers and the mirror law', () => {
+  assert.equal(standingPriceMult('champion'), FACTIONS.prices.champion);
+  assert.equal(standingPriceMult('trusted'), FACTIONS.prices.trusted);
+  assert.equal(standingPriceMult('neutral'), 1);
+  assert.equal(standingPriceMult('suspect'), FACTIONS.prices.suspect);
+  // Outlaw and below never reach a counter — callers refuse first;
+  // the function itself answers parity so nothing can underflow.
+  assert.equal(standingPriceMult('outlaw'), 1);
+  // THE MIRROR LAW: the sell side reflects around parity.
+  assert.equal(standingSellMult('champion'), 2 - FACTIONS.prices.champion);
+  assert.equal(standingSellMult('suspect'), 2 - FACTIONS.prices.suspect);
+  assert.equal(standingSellMult('neutral'), 1);
+  // A discount never inverts into paying-you-to-buy.
+  for (const b of ['champion', 'trusted', 'known', 'neutral', 'suspect'] as const) {
+    assert.ok(standingPriceMult(b) > 0.5 && standingSellMult(b) > 0.5);
+  }
 });
 
 test('validator refuses the named illegal docs', () => {

@@ -1,0 +1,32 @@
+{
+  "id": "kestrel_fine",
+  "start": "greet",
+  "requires": ["faction:waykeepers:atmost:outlaw"],
+  "bindings": [{ "kind": "actor", "target": "marshal_kestrel", "priority": 15 }],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "You're on my roll with a mark against you. Coin clears it. The roads don't care which way you choose.",
+      "choices": [
+        { "text": "How much?", "next": "quote" },
+        { "text": "Clear it.", "next": "pay" },
+        { "text": "Leave the mark.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "quote",
+      "text": "He checks the roll.",
+      "hooks": [{ "kind": "fine", "faction": "waykeepers", "quote": true }],
+      "next": "greet"
+    },
+    {
+      "id": "pay",
+      "text": "He takes the count without looking up.",
+      "hooks": [{ "kind": "fine", "faction": "waykeepers" }]
+    },
+    {
+      "id": "bye",
+      "text": "Suit yourself. The lamps see fine either way."
+    }
+  ]
+}

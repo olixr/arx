@@ -1,0 +1,17 @@
+{
+  "id": "the_crowns_count",
+  "name": "The Crown's Count",
+  "giver": "warden_maren",
+  "requires": { "flags": ["faction:crown:atmost:suspect"] },
+  "repeat": { "cooldownHours": 20 },
+  "stages": [
+    {
+      "id": "work",
+      "journal": "The Castellan's terms were weighed before you asked: the crown counts service, not sorrow. Kobolds press the deep galleries below Silverfall — six fewer, and the count moves.",
+      "objectives": [{ "kind": "kill", "npc": "kobold", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "standing": [{ "faction": "crown", "delta": 8 }]
+  }
+}

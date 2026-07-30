@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FACTIONS } from '@arx/content';
 import { GameServer } from './gameServer.js';
+import { addItem, countItem, emptyInventory } from './inventory.js';
 
 /**
  * THE ONE DOOR under test: creditStanding/creditDeed called on a
@@ -15,6 +16,7 @@ const proto = GameServer.prototype as unknown as {
   creditDeed: AnyFn;
   factionForPlace: AnyFn;
   answerFactionGate: AnyFn;
+  runFine: AnyFn;
 };
 
 interface FakePlayer {
@@ -114,6 +116,31 @@ test('factionForPlace: town marches first, then the road faction', () => {
   assert.equal(call(s, proto.factionForPlace, 352, 30), 'fordgate');
   // Deep wild — the road's wardens.
   assert.equal(call(s, proto.factionForPlace, 448, 576), FACTIONS.roadFaction);
+});
+
+test('THE ROAD BACK: the fine counter quotes, refuses, and restores to the floor', () => {
+  const { s, p, msgs } = rig();
+  const player = p as unknown as { inventory: unknown[] };
+  player.inventory = emptyInventory();
+  (s as { runFine?: unknown }).runFine = proto.runFine;
+
+  // A clean name needs no buying.
+  (proto.runFine as (...a: unknown[]) => void).call(s, p, 'fordgate', false);
+  assert.ok(msgs.some((m) => String(m.text ?? '').includes('needs no buying')));
+
+  // Deep in the hole: quote first, then a short purse is refused.
+  p.standing.set('fordgate', -40);
+  const owed = (FACTIONS.fineFloor - -40) * FACTIONS.finePerPoint;
+  (proto.runFine as (...a: unknown[]) => void).call(s, p, 'fordgate', true);
+  assert.ok(msgs.some((m) => String(m.text ?? '').includes(`${owed} coins`)));
+  (proto.runFine as (...a: unknown[]) => void).call(s, p, 'fordgate', false);
+  assert.equal(p.standing.get('fordgate'), -40, 'no coins, no deal');
+
+  // Paid in full: coins leave, standing lands EXACTLY on the floor.
+  addItem(player.inventory as never, 'coins', owed + 25);
+  (proto.runFine as (...a: unknown[]) => void).call(s, p, 'fordgate', false);
+  assert.equal(p.standing.get('fordgate'), FACTIONS.fineFloor);
+  assert.equal(countItem(player.inventory as never, 'coins'), 25);
 });
 
 test('answerFactionGate reads the ledger by band', () => {

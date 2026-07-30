@@ -1,0 +1,13 @@
+{
+  "id": "q_short_handed_turnin",
+  "start": "paid",
+  "requires": ["quest:short_handed:ready"],
+  "bindings": [{ "kind": "actor", "target": "marshal_kestrel", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Six. Noted on the roll, next to your mark. That's how names get unmade and remade out here.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "short_handed" }]
+    }
+  ]
+}

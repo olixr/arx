@@ -1,0 +1,17 @@
+{
+  "id": "short_handed",
+  "name": "Short-Handed",
+  "giver": "marshal_kestrel",
+  "requires": { "flags": ["faction:waykeepers:atmost:suspect"] },
+  "repeat": { "cooldownHours": 20 },
+  "stages": [
+    {
+      "id": "work",
+      "journal": "Kestrel's roll is short-handed and he didn't pretend otherwise. Wolves press the road between the lamps — six put down is a warden's shift you didn't have to be paid for.",
+      "objectives": [{ "kind": "kill", "npc": "wolf", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "standing": [{ "faction": "waykeepers", "delta": 8 }]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "q_the_bad_column_turnin",
+  "start": "paid",
+  "requires": ["quest:the_bad_column:ready"],
+  "bindings": [{ "kind": "actor", "target": "captain_aldis", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Five, confirmed by the road wardens. The book moves your name. Keep it moving the right way.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_bad_column" }]
+    }
+  ]
+}

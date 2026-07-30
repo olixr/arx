@@ -222,7 +222,7 @@ export interface GameEvents {
     /** The conversation is over — tear the frame down. */
     onDialogueClose?(): void;
     /** A trainer opened their wares — render the named shop's shelf. */
-    onShopOpen?(shop: string): void;
+    onShopOpen?(shop: string, priceMult: number): void;
     /** The full social snapshot answered a request. */
     onSocial?(snap: {
         friends: Array<{
@@ -363,6 +363,19 @@ export declare class ClientGame {
     repEnforcers: Set<string>;
     /** The band at which a hostile faction holds its fire. */
     repPeaceBand: string;
+    /** Live band price multipliers — the Standing screen's legend. */
+    repPrices: {
+        champion: number;
+        trusted: number;
+        known: number;
+        neutral: number;
+        suspect: number;
+    } | null;
+    /** The most recent standing move per faction (client-side ledger). */
+    readonly repLastDelta: Map<string, {
+        delta: number;
+        at: number;
+    }>;
     /** Bumped on every standing change — the Standing screen re-reads. */
     repVersion: number;
     /** The party snapshot — empty members = partyless. Refetched on events. */

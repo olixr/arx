@@ -1,0 +1,32 @@
+{
+  "id": "aldis_fine",
+  "start": "greet",
+  "requires": ["faction:fordgate:atmost:outlaw"],
+  "bindings": [{ "kind": "actor", "target": "captain_aldis", "priority": 15 }],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Stop there. You're in the bad column, and the gate doesn't serve the bad column. The book has a price. Coin against the harm, counted to the point.",
+      "choices": [
+        { "text": "How much?", "next": "quote" },
+        { "text": "I'll pay it.", "next": "pay" },
+        { "text": "Not today.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "quote",
+      "text": "She runs a finger down the column.",
+      "hooks": [{ "kind": "fine", "faction": "fordgate", "quote": true }],
+      "next": "greet"
+    },
+    {
+      "id": "pay",
+      "text": "She opens the strongbox and waits.",
+      "hooks": [{ "kind": "fine", "faction": "fordgate" }]
+    },
+    {
+      "id": "bye",
+      "text": "Then walk wide of my gate."
+    }
+  ]
+}

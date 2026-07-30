@@ -6,7 +6,10 @@
 > Standing screen (L). Phase 2 (The Watch Has Eyes) SHIPPED same day —
 > per-player enforcement through the one scan + one aggro door, camp
 > peace, assault/slay deeds, the closed throat + fineActor carve-out,
-> nameplate inks, Aldis's standing-gated greetings. Phases 3-6 open.
+> nameplate inks, Aldis's standing-gated greetings. Phase 3 (The Price
+> of a Name) SHIPPED same day — band-priced shops (the mirror law) with
+> tag-truth on the wire, the fine counters at all four fineActors, three
+> penance repeatables, and the band-crossing ceremony. Phases 4-6 open.
 
 The world already *moves* (Living Frontier) and *asks* (Quest Ledger). This epic
 makes it **remember who you are**. Every deed writes on the player's name; every

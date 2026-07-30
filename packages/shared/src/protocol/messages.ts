@@ -569,6 +569,13 @@ export interface S2CRecipes {
 export interface S2CShopOpen {
   t: 'shopopen';
   shop: string;
+  /**
+   * The viewer's live buy-price multiplier at this counter (factions
+   * Phase 3) — the same pure function the server charges with, pushed
+   * so the shelf's tags can never disagree with the coins taken.
+   * Absent = 1 (unaffiliated keeper).
+   */
+  priceMult?: number;
 }
 
 /** One skill gained XP. */
@@ -1165,6 +1172,8 @@ export interface S2CRep {
   enforcers: string[];
   /** The band at which a hostile faction holds its fire. */
   peaceBand: string;
+  /** Live band price multipliers — the Standing screen's legend. */
+  prices: { champion: number; trusted: number; known: number; neutral: number; suspect: number };
 }
 
 /** A quiet standing patch — deltas tick. NO ceremony rides this. */

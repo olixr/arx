@@ -22,6 +22,7 @@ import { PartyHud } from './ui/partyHud.js';
 import { showDiscovery } from './ui/discoveryBanner.js';
 import { QuestLog } from './ui/questLog.js';
 import { RepScreen } from './ui/repScreen.js';
+import { showRepBanner } from './ui/repBanner.js';
 import { ObjectiveTracker } from './ui/objectiveTracker.js';
 import { showQuestBanner } from './ui/questBanner.js';
 import { RiftgatePanel } from './ui/riftgate.js';
@@ -877,10 +878,10 @@ const game = new ClientGame(input, {
     input.cinemaCapture = false;
     document.body.classList.remove('in-dialogue');
   },
-  onShopOpen: (shop) => {
+  onShopOpen: (shop, priceMult) => {
     // A trainer opened their wares — same store screen, their shelf.
     closeAllUi();
-    stationPanels.openShop(shop);
+    stationPanels.openShop(shop, undefined, priceMult);
     panels.showInventory();
   },
   onSignChanged: (tx, ty) => {
@@ -931,6 +932,7 @@ const game = new ClientGame(input, {
   onRepEvent: (e) => {
     // A band crossing — the ONLY standing ceremony (quiet repupd
     // patches never celebrate; the server already spoke the delta).
+    showRepBanner(e.name, e.band, e.rose);
     chat.addLine({
       channel: 'system',
       text: e.rose

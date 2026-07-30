@@ -74,6 +74,20 @@ import aldisWatchRelief from './defs/aldis_watch_relief.json';
 // priority 1: above the evergreen watch, below every urgent thing).
 import aldisGoodColumn from './defs/aldis_good_column.json';
 import aldisWatchList from './defs/aldis_watch_list.json';
+// Factions Phase 3: THE ROAD BACK — the fine counters (priority 15,
+// atmost:outlaw gates: the fineActor carve-out opens the door, these
+// trees own it) and the penance offer/turn-in pairs (OFFER-TIE law:
+// already-offering givers ride 6, Maren's first offer rides 5).
+import aldisFine from './defs/aldis_fine.json';
+import marenFine from './defs/maren_fine.json';
+import kestrelFine from './defs/kestrel_fine.json';
+import mabFine from './defs/mab_fine.json';
+import qTheBadColumnOffer from './defs/q_the_bad_column_offer.json';
+import qTheBadColumnTurnin from './defs/q_the_bad_column_turnin.json';
+import qTheCrownsCountOffer from './defs/q_the_crowns_count_offer.json';
+import qTheCrownsCountTurnin from './defs/q_the_crowns_count_turnin.json';
+import qShortHandedOffer from './defs/q_short_handed_offer.json';
+import qShortHandedTurnin from './defs/q_short_handed_turnin.json';
 import waywardWatchUneasy from './defs/wayward_watch_uneasy.json';
 import waywardWatchUrgent from './defs/wayward_watch_urgent.json';
 import waywardWatchRelief from './defs/wayward_watch_relief.json';
@@ -235,6 +249,16 @@ const SOURCES: readonly unknown[] = [
   aldisWatchRelief,
   aldisGoodColumn,
   aldisWatchList,
+  aldisFine,
+  marenFine,
+  kestrelFine,
+  mabFine,
+  qTheBadColumnOffer,
+  qTheBadColumnTurnin,
+  qTheCrownsCountOffer,
+  qTheCrownsCountTurnin,
+  qShortHandedOffer,
+  qShortHandedTurnin,
   waywardWatchUneasy,
   waywardWatchUrgent,
   waywardWatchRelief,

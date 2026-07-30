@@ -118,9 +118,19 @@ export class RepScreen {
 
     const word = document.createElement('div');
     word.className = 'rep-word';
-    word.textContent = BAND_WORD[s.band] ?? '';
+    word.textContent = `${BAND_WORD[s.band] ?? ''} ${priceWord(s.band, this.game.repPrices)}`.trim();
 
     row.append(head, meter, word);
+
+    // The "lately" line: the most recent move, client-remembered.
+    const last = this.game.repLastDelta.get(s.faction);
+    if (last && Date.now() - last.at < 12 * 3_600_000) {
+      const lately = document.createElement('div');
+      lately.className = 'rep-lately';
+      lately.textContent = `Lately: ${last.delta > 0 ? '+' : '−'}${Math.abs(last.delta)}`;
+      lately.style.color = last.delta > 0 ? '#d8c08c' : '#c8a36a';
+      row.appendChild(lately);
+    }
     return row;
   }
 }
@@ -128,4 +138,32 @@ export class RepScreen {
 /** 'known' -> 'Known' — the band's display word. */
 function bandLabel(band: string): string {
   return band.length === 0 ? band : band[0]!.toUpperCase() + band.slice(1);
+}
+
+/**
+ * What the band does to this faction's counters — phrased from the
+ * LIVE multipliers the server pushed, so the legend never drifts
+ * from the coins actually taken.
+ */
+function priceWord(
+  band: string,
+  prices: { champion: number; trusted: number; known: number; neutral: number; suspect: number } | null,
+): string {
+  if (!prices) return '';
+  const mult =
+    band === 'champion'
+      ? prices.champion
+      : band === 'trusted'
+        ? prices.trusted
+        : band === 'known'
+          ? prices.known
+          : band === 'suspect'
+            ? prices.suspect
+            : band === 'neutral'
+              ? prices.neutral
+              : null;
+  if (mult === null) return 'Their counters are closed to you.';
+  if (mult === 1) return '';
+  const pct = Math.round(Math.abs(1 - mult) * 100);
+  return mult < 1 ? `Their counters run ${pct}% kind.` : `Their counters run ${pct}% dear.`;
 }

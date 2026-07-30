@@ -1,0 +1,32 @@
+{
+  "id": "mab_fine",
+  "start": "greet",
+  "requires": ["faction:rookery:atmost:outlaw"],
+  "bindings": [{ "kind": "actor", "target": "magpie_mab", "priority": 15 }],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "You want something washed. Tell me — what do you think a clean name costs, in a house that keeps its floors swept?",
+      "choices": [
+        { "text": "You tell me.", "next": "quote" },
+        { "text": "Whatever it is, I'll pay.", "next": "pay" },
+        { "text": "Forget it.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "quote",
+      "text": "A fair question. It deserves arithmetic.",
+      "hooks": [{ "kind": "fine", "faction": "rookery", "quote": true }],
+      "next": "greet"
+    },
+    {
+      "id": "pay",
+      "text": "Everything here is a trade. This one is even simple.",
+      "hooks": [{ "kind": "fine", "faction": "rookery" }]
+    },
+    {
+      "id": "bye",
+      "text": "Already forgotten. That costs nothing. Once."
+    }
+  ]
+}

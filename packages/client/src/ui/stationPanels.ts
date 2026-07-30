@@ -1066,7 +1066,7 @@ export class StationPanels {
    * coin price tag, and the buy buttons right on the shelf. Your pack
    * stands beside the counter; tap items there to sell them.
    */
-  openShop(shopId = 'general_store', at?: { tx: number; ty: number }): void {
+  openShop(shopId = 'general_store', at?: { tx: number; ty: number }, priceMult = 1): void {
     const shop = shopDef(shopId);
     if (!shop) return;
     this.closeAll();
@@ -1074,6 +1074,10 @@ export class StationPanels {
     if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
     const head = this.shopPanel.querySelector('h3');
     if (head) head.textContent = shop.name;
+    // THE PRICE OF A NAME: the server pushed the viewer's live band
+    // multiplier with the open — the tags below show what will
+    // actually be charged (same pure function, never a disagreement).
+    const priceOf = (base: number): number => Math.max(1, Math.round(base * priceMult));
     this.shopList.innerHTML = '';
     for (const entry of shop.stock) {
       const def = itemDef(entry.item);
@@ -1094,7 +1098,11 @@ export class StationPanels {
       coin.src = itemIconUrl('coins', 18);
       coin.draggable = false;
       const amount = document.createElement('span');
-      amount.textContent = entry.price.toLocaleString();
+      amount.textContent = priceOf(entry.price).toLocaleString();
+      if (priceMult !== 1) {
+        tag.title = priceMult < 1 ? 'Your standing earns a better price.' : 'Your standing costs you here.';
+        amount.style.color = priceMult < 1 ? '#e8b64c' : '#c8a36a';
+      }
       tag.append(coin, amount);
       mid.append(name, tag);
       card.appendChild(mid);

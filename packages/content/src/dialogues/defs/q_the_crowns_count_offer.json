@@ -1,0 +1,26 @@
+{
+  "id": "q_the_crowns_count_offer",
+  "start": "hub",
+  "requires": ["quest:the_crowns_count:available"],
+  "bindings": [{ "kind": "actor", "target": "warden_maren", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "The crown counts service. Kobolds press the deep galleries below the city — six fewer would be service. I weighed easier terms. There aren't any.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_crowns_count" }],
+      "choices": [
+        { "text": "Six, then.", "next": "sworn" },
+        { "text": "I'll think on it.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "The galleries are reached through the Undercroft. Come back counted.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_crowns_count" }]
+    },
+    {
+      "id": "declined",
+      "text": "Think where the crown can't hear you at it."
+    }
+  ]
+}

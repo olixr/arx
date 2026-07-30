@@ -249,6 +249,37 @@ export function bandAtLeast(a: FactionBand, b: FactionBand): boolean {
   return FACTION_BAND_ORDER.indexOf(a) >= FACTION_BAND_ORDER.indexOf(b);
 }
 
+/**
+ * THE PRICE OF A NAME (Phase 3): the buy-price multiplier a band earns
+ * at a faction shop. Outlaw and below never reach a counter (the
+ * closed throat + the shopOp refusal) — trading bands only. ONE
+ * implementation, imported by server AND client, so a price tag can
+ * never disagree with the coins actually taken.
+ */
+export function standingPriceMult(band: FactionBand, doc: FactionsDef = FACTIONS): number {
+  switch (band) {
+    case 'champion':
+      return doc.prices.champion;
+    case 'trusted':
+      return doc.prices.trusted;
+    case 'known':
+      return doc.prices.known;
+    case 'suspect':
+      return doc.prices.suspect;
+    default:
+      return doc.prices.neutral;
+  }
+}
+
+/**
+ * THE MIRROR LAW: the shop's warmth cuts both ways — a keeper who
+ * discounts your purchases also pays better for your goods. The sell
+ * multiplier is the buy multiplier reflected around parity.
+ */
+export function standingSellMult(band: FactionBand, doc: FactionsDef = FACTIONS): number {
+  return 2 - standingPriceMult(band, doc);
+}
+
 /** Answer a parsed `faction:` flag against a raw standing value. */
 export function answerFactionFlag(value: number, parsed: ParsedFactionFlag): boolean {
   const band = standingBand(value);

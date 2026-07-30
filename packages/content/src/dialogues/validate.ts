@@ -183,6 +183,16 @@ function validateHooks(
         continue;
       }
       out.push({ kind: 'standing', faction: h.faction, delta: h.delta });
+    } else if (h.kind === 'fine') {
+      if (typeof h.faction !== 'string' || !factionIds().includes(h.faction)) {
+        errors.push(`${where}.hooks[${i}] references unknown faction '${String(h.faction)}'`);
+        continue;
+      }
+      if (h.quote !== undefined && typeof h.quote !== 'boolean') {
+        errors.push(`${where}.hooks[${i}].quote must be a boolean`);
+        continue;
+      }
+      out.push({ kind: 'fine', faction: h.faction, ...(h.quote === true ? { quote: true } : {}) });
     } else if (h.kind === 'quest_offer' || h.kind === 'quest_accept' || h.kind === 'quest_turnin') {
       if (typeof h.quest !== 'string' || !SLUG_RE.test(h.quest) || h.quest.length > 48) {
         errors.push(`${where}.hooks[${i}].quest must be a quest id slug`);
@@ -195,7 +205,7 @@ function validateHooks(
       out.push({ kind: h.kind, quest: h.quest });
     } else {
       errors.push(
-        `${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', 'bounty', 'standing', 'quest_offer', 'quest_accept', or 'quest_turnin'`,
+        `${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', 'bounty', 'standing', 'fine', 'quest_offer', 'quest_accept', or 'quest_turnin'`,
       );
     }
   }

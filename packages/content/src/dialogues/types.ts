@@ -125,6 +125,22 @@ export interface DialogueHookStanding {
 }
 
 /**
+ * THE ROAD BACK (docs/factions-plan.md Phase 3): the fine counter.
+ * With `quote: true` the server answers what clearing the player's
+ * name with `faction` would cost, in the quiet quartermaster's voice.
+ * Without it, the server takes the coins and restores standing to
+ * exactly the doc's fineFloor through the ONE door — you buy back the
+ * courtroom, never the hearts. Both forms no-op politely when the
+ * name needs no buying or the purse is short; the arithmetic lives in
+ * the live doc (finePerPoint × deficit below fineFloor).
+ */
+export interface DialogueHookFine {
+  kind: 'fine';
+  faction: string;
+  quote?: boolean;
+}
+
+/**
  * Node effects, executed server-side when the node is entered. This
  * union is THE open socket: quest grants, faction shifts, and shop
  * unlocks land here as new kinds without touching the walk logic.
@@ -135,6 +151,7 @@ export type DialogueHook =
   | DialogueHookShop
   | DialogueHookBounty
   | DialogueHookStanding
+  | DialogueHookFine
   | DialogueHookQuestOffer
   | DialogueHookQuestAccept
   | DialogueHookQuestTurnin;

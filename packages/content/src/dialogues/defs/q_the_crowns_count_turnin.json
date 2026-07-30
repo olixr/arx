@@ -1,0 +1,13 @@
+{
+  "id": "q_the_crowns_count_turnin",
+  "start": "paid",
+  "requires": ["quest:the_crowns_count:ready"],
+  "bindings": [{ "kind": "actor", "target": "warden_maren", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Six. The count moves, and the crown remembers the direction. So do I.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_crowns_count" }]
+    }
+  ]
+}

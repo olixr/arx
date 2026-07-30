@@ -6216,6 +6216,11 @@ body.pad-mode .map-reticle {
   color: #9a8f78;
 }
 
+.rep-lately {
+  margin-top: 4px;
+  font: 600 11px/1 'Trebuchet MS', sans-serif;
+}
+
 /* THE ERRAND CARD — the tracked quest's smoked-glass face, top-right
    clear of the chrome (dock bottom-right, chat left, hotbar bottom). */
 #objective-tracker {
@@ -6275,7 +6280,8 @@ body.pad-mode .map-reticle {
 }
 
 /* THE QUEST CEREMONIES — accepted (quiet) and completed (rays). */
-#quest-stage {
+#quest-stage,
+#rep-stage {
   position: fixed;
   left: 50%;
   top: 12%;
@@ -6285,8 +6291,18 @@ body.pad-mode .map-reticle {
 }
 
 #quest-stage.leaving .disc-rays,
-#quest-stage.leaving .quest-card {
+#quest-stage.leaving .quest-card,
+#rep-stage.leaving .disc-rays,
+#rep-stage.leaving .quest-card {
   animation: lvl-exit 650ms ease-in both;
+}
+
+/* The standing ceremony's band word under the faction name. */
+.quest-banner-sub {
+  margin-top: 2px;
+  font: 700 13px/1 'Trebuchet MS', sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .quest-card {

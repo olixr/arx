@@ -1,0 +1,26 @@
+{
+  "id": "q_the_bad_column_offer",
+  "start": "hub",
+  "requires": ["quest:the_bad_column:available"],
+  "bindings": [{ "kind": "actor", "target": "captain_aldis", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Your name's in the bad column. Ink doesn't move for sorry — it moves for work. Redmasks on the roads out from the ford. Five off their count.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_bad_column" }],
+      "choices": [
+        { "text": "I'll do the work.", "next": "sworn" },
+        { "text": "Not that kind of work.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Then the book waits. Come back when the count says five.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_bad_column" }]
+    },
+    {
+      "id": "declined",
+      "text": "Then the column stands as written."
+    }
+  ]
+}

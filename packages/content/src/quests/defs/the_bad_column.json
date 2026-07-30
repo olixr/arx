@@ -1,0 +1,17 @@
+{
+  "id": "the_bad_column",
+  "name": "The Bad Column",
+  "giver": "captain_aldis",
+  "requires": { "flags": ["faction:fordgate:atmost:suspect"] },
+  "repeat": { "cooldownHours": 20 },
+  "stages": [
+    {
+      "id": "work",
+      "journal": "The Captain's book keeps your name in the bad column, and Aldis doesn't sell ink. Redmasks work the roads out from the ford — five struck from their count is the kind of arithmetic the watch respects.",
+      "objectives": [{ "kind": "kill", "npc": "brigand", "count": 5 }]
+    }
+  ],
+  "rewards": {
+    "standing": [{ "faction": "fordgate", "delta": 8 }]
+  }
+}
