@@ -168,6 +168,9 @@ const defs: LootTableDef[] = [
       { item: 'emberstone', chance: 0.03 },
       { item: 'ember_essence', qty: [2, 4], chance: 0.25 },
       { item: 'arcane_dust', qty: [1, 2], chance: 0.15 },
+      // The diggers found the magister's wardrobe. The digmaster
+      // kept the shiniest of it, the way digmasters do.
+      ...setDrops('orrery', 0.005),
     ],
   },
 
@@ -340,6 +343,8 @@ const defs: LootTableDef[] = [
       // A Waykeeper's last letter, still on the body it outlived —
       // using it opens The Last Patrol (an ordinary drop, no dials).
       { item: 'weathered_letter', chance: 0.03 },
+      // The keeper's white and gold, still bright in the crypt dark.
+      ...setDrops('vigil', 0.003),
     ],
   },
   {
@@ -359,6 +364,8 @@ const defs: LootTableDef[] = [
       { item: 'arcane_dust', qty: [1, 3], chance: 0.22 },
       { item: 'frost_essence', chance: 0.11 },
       { item: 'weathered_letter', chance: 0.035 },
+      // The watch kept the keeper's vestment with the keys.
+      ...setDrops('vigil', 0.005),
     ],
   },
   rack(
@@ -560,6 +567,8 @@ const defs: LootTableDef[] = [
       { item: 'storm_essence', qty: [1, 3], chance: 0.4 },
       { item: 'frost_essence', qty: [1, 3], chance: 0.4 },
       { table: 'heirlooms', mult: 2 },
+      // The gilded locks held the rest of the magister's estate.
+      ...setDrops('orrery', 0.008),
     ],
   },
   {
@@ -647,6 +656,8 @@ const defs: LootTableDef[] = [
       { item: 'bloomstone', chance: 0.01 },
       { item: 'crimson_essence', qty: [1, 2], chance: 0.12 },
       { item: 'verdant_essence', chance: 0.1 },
+      // The winter court's leavings, snagged in the pack's fur.
+      ...setDrops('wintercourt', 0.003),
     ],
   },
   rack(
@@ -695,6 +706,9 @@ const defs: LootTableDef[] = [
       { item: 'bloomstone', chance: 0.04 },
       { item: 'brass_key', chance: 0.08 },
       { item: 'dungeon_key', chance: 0.04 },
+      // The matriarch walks with the winter court's wardrobe — the
+      // cold kept a court once, and the packs inherited the estate.
+      ...setDrops('wintercourt', 0.012),
     ],
   },
   rack('wolf_arms', 'The pack’s blades, bows, and argued-over staves.', 0.04, [
@@ -848,6 +862,9 @@ const defs: LootTableDef[] = [
       { item: 'leather', chance: 0.12 },
       // Fished out of the fen and kept for the light in it.
       { item: 'fens_lantern', chance: 0.02 },
+      // The troll keeps anything that glows. It never once looked up
+      // to ask where the dancing cloth came from.
+      ...setDrops('skydancer', 0.008),
     ],
   },
   {

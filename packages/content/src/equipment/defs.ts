@@ -4622,6 +4622,62 @@ function namedChaseDefs(): EquipmentDef[] {
     color: '#3a4038',
     rarities: ['legendary'] as RarityTier[],
   };
+  // WINTERCOURT — glacial silk under an iced cape; the crown the cold
+  // made. Owner: the winter packs — the matriarch walks with the
+  // court's leavings snagged in the great pelt.
+  const wintercourt = {
+    class: 'cloth' as const, skill: 'magic' as const,
+    pool: [
+      { stat: 'magic', w: 2 },
+      { stat: 'defence' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#3a5a74',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // VIGIL — white and gold for the long watch, a halo that stayed.
+  // Owner: the crypt's watch; the keeper's vestment outlasted the
+  // keeper, and the guards hold what the hill holds.
+  const vigil = {
+    class: 'cloth' as const, skill: 'magic' as const,
+    pool: [
+      { stat: 'magic', w: 2 },
+      { stat: 'regen', w: 2 },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#e0d6bc',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // SKYDANCER — the northern lights worn as a robe, two ribbons that
+  // never settle. Owner: the troll, who keeps anything that glows and
+  // never once looked up to ask where this came from.
+  const skydancer = {
+    class: 'cloth' as const, skill: 'magic' as const,
+    pool: [
+      { stat: 'magic', w: 2 },
+      { stat: 'sneak', w: 2 },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#33465e',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // ORRERY — the heavens in brass and midnight, a diadem that keeps
+  // time. Owner: the diggers found it and the gilded locks kept it;
+  // nobody alive remembers the magister who wound it.
+  const orrery = {
+    class: 'cloth' as const, skill: 'magic' as const,
+    pool: [
+      { stat: 'magic', w: 3 },
+      { stat: 'vitality' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#262e4e',
+    rarities: ['legendary'] as RarityTier[],
+  };
   return [
     chasePiece(moonbell, 'moonbell_hood', 'Moonbell hood', 'head', 8, 2, 380, 'Ma',
       'Two pale blooms tucked at the brow. They open at dusk.'),
@@ -4688,5 +4744,49 @@ function namedChaseDefs(): EquipmentDef[] {
       'They sound like a door below the ground.'),
     chasePiece(barrowking, 'barrowking_gauntlets', 'Barrowking gauntlets', 'gloves', 31, 5, 1200, 'Wm',
       'Gold at the wrist, patient as the hill.'),
+
+    chasePiece(wintercourt, 'wintercourt_crown', 'Wintercourt crown', 'head', 8, 2, 850, 'Ka',
+      'A crown the cold made. It never asked for it back.'),
+    chasePiece(wintercourt, 'wintercourt_robe', 'Wintercourt robe', 'body', 10, 3, 980, 'Kf',
+      'The winter kept a court once. This is what the court wore.'),
+    chasePiece(wintercourt, 'wintercourt_skirts', 'Wintercourt skirts', 'legs', 9, 2, 900, 'Kg',
+      'Frost gathers at the hem and calls it embroidery.'),
+    chasePiece(wintercourt, 'wintercourt_slippers', 'Wintercourt slippers', 'boots', 8, 2, 850, 'Kl',
+      'They cross the snow and leave it unsigned.'),
+    chasePiece(wintercourt, 'wintercourt_wraps', 'Wintercourt wraps', 'gloves', 8, 2, 850, 'Km',
+      'The cold steadies every hand it keeps.'),
+
+    chasePiece(vigil, 'vigil_circlet', 'Vigil circlet', 'head', 12, 3, 950, 'Va',
+      'The light stayed after the candle went. Nobody argued with it.'),
+    chasePiece(vigil, 'vigil_robe', 'Vigil robe', 'body', 15, 4, 1080, 'Vd',
+      'White and gold for the long watch. The night gave up first.'),
+    chasePiece(vigil, 'vigil_skirts', 'Vigil skirts', 'legs', 14, 3, 1000, 'Ve',
+      'Candle wax at the hem, one drop for every quiet hour.'),
+    chasePiece(vigil, 'vigil_slippers', 'Vigil slippers', 'boots', 13, 2, 950, 'Vg',
+      'Soft enough to walk past the sleeping and guard them anyway.'),
+    chasePiece(vigil, 'vigil_wraps', 'Vigil wraps', 'gloves', 13, 2, 950, 'Vi',
+      'They have carried more candles than swords.'),
+
+    chasePiece(skydancer, 'skydancer_hood', 'Skydancer hood', 'head', 18, 3, 1050, 'Qa',
+      'Two ribbons of night sky trail behind it. They never quite settle.'),
+    chasePiece(skydancer, 'skydancer_robe', 'Skydancer robe', 'body', 21, 4, 1200, 'Qd',
+      'The lights came down to dance once. Some of them stayed.'),
+    chasePiece(skydancer, 'skydancer_skirts', 'Skydancer skirts', 'legs', 20, 3, 1100, 'Qe',
+      'The hem swings half a beat behind you and lands on time.'),
+    chasePiece(skydancer, 'skydancer_slippers', 'Skydancer slippers', 'boots', 19, 3, 1050, 'Qg',
+      'They touch the ground out of politeness.'),
+    chasePiece(skydancer, 'skydancer_wraps', 'Skydancer wraps', 'gloves', 19, 3, 1050, 'Qi',
+      'Green at the knuckle, violet at the wrist, sky in between.'),
+
+    chasePiece(orrery, 'orrery_diadem', 'Orrery diadem', 'head', 24, 3, 1150, 'Od',
+      'Two small worlds circle the brow. They keep perfect time.'),
+    chasePiece(orrery, 'orrery_robe', 'Orrery robe', 'body', 27, 5, 1350, 'Oe',
+      'A magister wove the heavens in brass and midnight. It still runs.'),
+    chasePiece(orrery, 'orrery_skirts', 'Orrery skirts', 'legs', 26, 4, 1250, 'Of',
+      'The hem is stitched with orbits that all come home.'),
+    chasePiece(orrery, 'orrery_slippers', 'Orrery slippers', 'boots', 25, 3, 1150, 'Oi',
+      'They pace like clockwork because they are.'),
+    chasePiece(orrery, 'orrery_wraps', 'Orrery wraps', 'gloves', 25, 3, 1150, 'Ok',
+      'Brass at the wrist and a slow sky in the palm.'),
   ];
 }

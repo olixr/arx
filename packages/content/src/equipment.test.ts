@@ -393,7 +393,7 @@ test('themed cloth sets: five pieces each, coherent class and reqs', () => {
   assert.ok(byId.get('scholars_tome'));
 });
 
-test('the named wardrobe: six chase sets, owners keep them, rarity floors hold', () => {
+test('the named wardrobe: ten chase sets, owners keep them, rarity floors hold', () => {
   // The vault-of-names law brought to armor: epic finds live at the
   // bands players level THROUGH (a low level never means a plain
   // reward), the legendary three never mint below their name, and
@@ -405,6 +405,12 @@ test('the named wardrobe: six chase sets, owners keep them, rarity floors hold',
     broodsilk: { cls: 'leather', skill: 'sneak', floor: ['legendary'], maxLevel: 33 },
     aurochs: { cls: 'plate', skill: 'defence', floor: ['epic', 'legendary'], maxLevel: 13 },
     barrowking: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 33 },
+    // The legendary cloth road: four vestments spread down the
+    // leveling bands — a legendary at level 8 is the whole point.
+    wintercourt: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 10 },
+    vigil: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 15 },
+    skydancer: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 21 },
+    orrery: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 27 },
   };
   for (const [set, want] of Object.entries(SETS)) {
     const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));

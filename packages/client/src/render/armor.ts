@@ -45,7 +45,7 @@ export interface BodyStyle {
   patches?: string;
   emblem?:
     | 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star'
-    | 'moon' | 'eye' | 'moth' | 'coin' | 'bullhead';
+    | 'moon' | 'eye' | 'moth' | 'coin' | 'bullhead' | 'flame' | 'orrery';
   /** Glowing rune dashes riding the hem trim — the enchanted-cloth read. */
   runes?: string;
   /** A waist sash: band, hip knot, two swinging tails. */
@@ -146,6 +146,25 @@ export interface BodyStyle {
    * keeps its spine ridge.
    */
   ribs?: { color: string };
+  /**
+   * Ice on the garment: icicle points hanging from the capelet hem
+   * (rides the capelet — it needs an eave to freeze from) and slow
+   * winking frost glints low on the skirt. The wintercourt read:
+   * the cold lives ON the cloth, not around it.
+   */
+  icefringe?: { color: string };
+  /**
+   * A prayer-bead loop hung from the neckline, two strands meeting at
+   * a drop medallion over the sternum, swinging a hair with the
+   * stride — the keeper's jewelry. Front only; the back stays plain.
+   */
+  beads?: { color: string };
+  /**
+   * Two ribbons of living light rising off the shoulder blades and
+   * waving on their own slow sky — aurora worn as a garment. Light,
+   * not cloth: they ride above every layer and never go out.
+   */
+  ribbons?: { colors: [string, string] };
 }
 
 export interface HelmStyle {
@@ -217,6 +236,16 @@ export interface HelmStyle {
   /** Three slivers of night glass floating above the crown, each on
    *  its own slow bob — the rift's answer to a halo. */
   shards?: { color: string };
+  /** Circlets: icicle points hanging from the brow band — a crown the
+   *  cold made and never asked back. */
+  icicles?: { color: string };
+  /** Hoods: two light-ribbon tails streaming off the crown's trailing
+   *  edge, waving on the sky's clock — the skydancer's wake. */
+  streamers?: { colors: [string, string] };
+  /** A thin ring round the crown with two small worlds circling it,
+   *  near side bright and large, far side dim and small — a working
+   *  orrery worn as a diadem. It keeps perfect time. */
+  orbitals?: { color: string; ring?: string };
 }
 
 export interface LegStyle {
@@ -582,6 +611,38 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     ribs: { color: '#ded6b8' },
     rivetSeams: true, tassets: true, skirt: 0, collar: 'gorget',
   },
+  // The legendary cloth road: four vestments spread down the leveling
+  // bands, each with a signature that MOVES. Drop-only, one lot each.
+  wintercourt_robe: {
+    color: '#3a5a74', trim: '#dcf0fc', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'none', skirt: 0.34,
+    sleeves: 'full', folds: true, underskirt: '#2e4a60',
+    capelet: { color: '#4a7290', hem: 'scallop', trim: '#dcf0fc' },
+    icefringe: { color: '#e8f6ff' }, runes: '#9ad4f0',
+    motes: '#d8f0ff', sash: '#2e4a60', charms: { color: '#dcf0fc' },
+  },
+  vigil_robe: {
+    color: '#e0d6bc', trim: '#c9922f', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'emblem',
+    emblem: 'flame', emblemScale: 1.2, skirt: 0.34, sleeves: 'full',
+    folds: true, underskirt: '#c2b696',
+    stole: { color: '#b8862e', trim: '#ffe6b0' },
+    beads: { color: '#c9a23c' }, glowTrim: '#ffd88a', motes: '#ffe0b0',
+  },
+  skydancer_robe: {
+    color: '#33465e', trim: '#8ae8c0', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'none', skirt: 0.36,
+    skirtSlit: true, sleeves: 'full', folds: true, underskirt: '#283a4e',
+    sash: '#203042', ribbons: { colors: ['#8ae8c0', '#b08ae8'] },
+    runes: '#8ae8c0', motes: '#a8ecd8',
+  },
+  orrery_robe: {
+    color: '#262e4e', trim: '#c9a23c', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'orbs', pauldronColor: '#e0b054',
+    chest: 'emblem', emblem: 'orrery', emblemScale: 1.3, skirt: 0.34,
+    sleeves: 'full', folds: true, underskirt: '#1e2540',
+    mantle: '#1e2540', runes: '#c9a23c', motes: '#e8c878',
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -756,6 +817,25 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
   barrowking_helm: {
     color: '#3a4038', trim: '#c9b25c', kind: 'barrow', jaw: '#565e52',
   },
+  // The legendary cloth road's heads: two crowns that move, a halo
+  // that stays, and a hood trailing the sky it danced with.
+  wintercourt_crown: {
+    color: '#cfe4f0', trim: '#3a9ad0', kind: 'circlet',
+    icicles: { color: '#e8f6ff' },
+  },
+  vigil_circlet: {
+    color: '#c9a23c', trim: '#ffb054', kind: 'circlet',
+    halo: { color: '#ffd88a' },
+  },
+  skydancer_hood: {
+    color: '#33465e', trim: '#8ae8c0', kind: 'hood',
+    gem: { color: '#8ae8c0' },
+    streamers: { colors: ['#8ae8c0', '#b08ae8'] },
+  },
+  orrery_diadem: {
+    color: '#c9a23c', trim: '#e8c878', kind: 'circlet',
+    orbitals: { color: '#e0b054', ring: '#8a7434' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -801,6 +881,11 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   broodsilk_leggings: { kind: 'wraps', thigh: '#2c2a34', shin: '#232028', knee: 'wrap', kneeColor: '#e8e6f0' },
   aurochs_greaves: { kind: 'greaves', thigh: '#38302a', shin: '#4a3f36', knee: 'plate', kneeColor: '#b8925c' },
   barrowking_greaves: { kind: 'greaves', thigh: '#2d322c', shin: '#3a4038', knee: 'plate', kneeColor: '#ded6b8' },
+  // The legendary cloth road.
+  wintercourt_skirts: { kind: 'pants', thigh: '#2e4a60' },
+  vigil_skirts: { kind: 'pants', thigh: '#c2b696' },
+  skydancer_skirts: { kind: 'pants', thigh: '#283a4e' },
+  orrery_skirts: { kind: 'pants', thigh: '#1e2540' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -849,6 +934,12 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   // The dark toe is the hoof.
   aurochs_sabatons: { color: '#4a3f36', height: 0.14, toe: '#2e2622', cuff: { color: '#b8925c' } },
   barrowking_sabatons: { color: '#3a4038', height: 0.14, toe: '#565e52', cuff: { color: '#c9b25c' } },
+  // The legendary cloth road. Same no-curl law as moonbell — the robe
+  // hem owns the foot line.
+  wintercourt_slippers: { color: '#2e4a60', height: 0.09, cuff: { color: '#dcf0fc' } },
+  vigil_slippers: { color: '#c2b696', height: 0.08, cuff: { color: '#c9922f' } },
+  skydancer_slippers: { color: '#283a4e', height: 0.09, cuff: { color: '#8ae8c0' } },
+  orrery_slippers: { color: '#1e2540', height: 0.09, cuff: { color: '#c9a23c' } },
 };
 
 /**
@@ -1060,6 +1151,27 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     color: '#3a4038', hand: 'gauntlet', bracer: '#343a33',
     cuff: { color: '#c9b25c', kind: 'flare' },
     knuckle: { color: '#ded6b8', kind: 'plate' },
+  },
+  // The legendary cloth road.
+  wintercourt_wraps: {
+    color: '#3a5a74', hand: 'wrap', bracer: '#345168',
+    cuff: { color: '#dcf0fc', kind: 'roll' },
+    knuckle: { color: '#8ad4f0', kind: 'gem' },
+  },
+  vigil_wraps: {
+    color: '#e0d6bc', hand: 'wrap', bracer: '#d2c6a8',
+    cuff: { color: '#c9922f', kind: 'band' },
+    knuckle: { color: '#ffb054', kind: 'gem' },
+  },
+  skydancer_wraps: {
+    color: '#33465e', hand: 'wrap', bracer: '#2e3f55',
+    cuff: { color: '#b08ae8', kind: 'roll' },
+    knuckle: { color: '#8ae8c0', kind: 'gem' },
+  },
+  orrery_wraps: {
+    color: '#262e4e', hand: 'wrap', bracer: '#222946',
+    cuff: { color: '#c9a23c', kind: 'band' },
+    knuckle: { color: '#e0b054', kind: 'gem' },
   },
 };
 
@@ -2192,6 +2304,44 @@ export function drawTorsoGarment(
       }
     }
 
+    // ---- the bead loop: two strands hung off the neckline meeting at
+    // a drop medallion over the sternum, swinging a hair with the
+    // stride — a keeper counts the hours on these. Front only.
+    if (st.beads && !back) {
+      const bCol = st.beads.color;
+      const sway = f.strideSw * 0.01 * s;
+      const lowX = sway;
+      const lowY = -th * 0.2;
+      for (const es of [-1, 1]) {
+        const nx = es * tw * 0.4;
+        const ny = -th * 0.94;
+        const cx2 = es * tw * 0.36 + sway * 0.5;
+        const cy2 = -th * 0.44;
+        // One-sun law: the screen-right strand counts in shadow.
+        ctx.fillStyle = es === 1 ? shade(bCol, -16) : bCol;
+        for (let k = 1; k <= 4; k++) {
+          const u = k / 4.6;
+          const omu = 1 - u;
+          const bx = omu * omu * nx + 2 * omu * u * cx2 + u * u * lowX;
+          const by = omu * omu * ny + 2 * omu * u * cy2 + u * u * lowY;
+          ctx.beginPath();
+          ctx.arc(bx, by, 0.0135 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // The medallion drop, one lit facet.
+      ctx.fillStyle = shade(bCol, 10);
+      ctx.beginPath();
+      ctx.moveTo(lowX, lowY - 0.012 * s);
+      ctx.lineTo(lowX + 0.021 * s, lowY + 0.016 * s);
+      ctx.lineTo(lowX, lowY + 0.048 * s);
+      ctx.lineTo(lowX - 0.021 * s, lowY + 0.016 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(bCol, 38);
+      ctx.fillRect(lowX - 0.012 * s, lowY + 0.002 * s, 0.011 * s, 0.011 * s);
+    }
+
     // ---- tassets: hip plates hanging off the fauld, swinging a hair
     // with the stride — the heavy knight keeps armor below the waist.
     if (st.tassets) {
@@ -2308,6 +2458,33 @@ export function drawTorsoGarment(
       ctx.moveTo(pts[0]![0], pts[0]![1]);
       traceHem();
       ctx.stroke();
+      // ---- icicles off the eave: the fringe hangs from the hem dips,
+      // each a two-facet spear — lit windward, dark lee. The capelet
+      // is the roof the cold drips from; without one there is no eave.
+      if (st.icefringe) {
+        const ice = st.icefringe.color;
+        for (let i = 0; i < 4; i++) {
+          const u = 0.125 + i * 0.25;
+          const ix = -half + u * 2 * half;
+          const iy = -th + drop * (0.84 + 0.16 * Math.sin(u * Math.PI)) + drop * 0.28;
+          const len = (0.055 + 0.03 * Math.sin(i * 2.6 + 0.7)) * s;
+          const w = 0.016 * s;
+          ctx.fillStyle = ice;
+          ctx.beginPath();
+          ctx.moveTo(ix - w, iy - 0.02 * s);
+          ctx.lineTo(ix + w, iy - 0.02 * s);
+          ctx.lineTo(ix + 0.004 * s, iy + len);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(ice, -24);
+          ctx.beginPath();
+          ctx.moveTo(ix + 0.001 * s, iy - 0.02 * s);
+          ctx.lineTo(ix + w, iy - 0.02 * s);
+          ctx.lineTo(ix + 0.004 * s, iy + len);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
     }
 
     // ---- collar: the neck joint that ties helmet to breastplate.
@@ -2817,6 +2994,57 @@ export function drawTorsoGarment(
           ctx.fillRect(-r * 0.19, ey - r * 0.19, r * 0.38, r * 0.38);
           ctx.fillStyle = shade(st.trim, 34);
           ctx.fillRect(r * 0.4, ey - r * 0.62, 0.024 * s, 0.024 * s);
+        } else if (st.emblem === 'flame') {
+          // The vigil device: one candle flame drawn big and calm — a
+          // teardrop leaning with its own slow breath over a wick bar.
+          // A timid flame is out.
+          const lean = Math.sin(nowMs * 0.0013) * r * 0.1;
+          const rf = r * 1.15;
+          ctx.beginPath();
+          ctx.moveTo(lean * 1.6, ey - rf * 0.95);
+          ctx.quadraticCurveTo(rf * 0.62 + lean, ey - rf * 0.1, 0, ey + rf * 0.5);
+          ctx.quadraticCurveTo(-rf * 0.62 + lean, ey - rf * 0.1, lean * 1.6, ey - rf * 0.95);
+          ctx.closePath();
+          ctx.fill();
+          // The dark heart every honest flame keeps.
+          ctx.fillStyle = shade(st.color, -20);
+          ctx.beginPath();
+          ctx.moveTo(lean, ey - rf * 0.28);
+          ctx.quadraticCurveTo(rf * 0.25 + lean * 0.6, ey + rf * 0.06, 0, ey + rf * 0.34);
+          ctx.quadraticCurveTo(-rf * 0.25 + lean * 0.6, ey + rf * 0.06, lean, ey - rf * 0.28);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(st.trim, -24);
+          ctx.fillRect(-rf * 0.2, ey + rf * 0.52, rf * 0.4, 0.018 * s);
+        } else if (st.emblem === 'orrery') {
+          // The magister's device: a brass armillary — one meridian
+          // circle, one flat equator band, a fat sun at the heart and
+          // one small world that actually runs its orbit. Clean rings,
+          // never a tangle: an instrument reads because it is exact.
+          const ro = r * 1.1;
+          ctx.strokeStyle = st.trim;
+          ctx.lineWidth = Math.max(1.5, s * 0.016);
+          ctx.beginPath();
+          ctx.arc(0, ey, ro, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.ellipse(0, ey, ro * 0.96, ro * 0.26, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          // The sun, big and sure, one hot glint.
+          ctx.fillStyle = st.trim;
+          ctx.beginPath();
+          ctx.arc(0, ey, ro * 0.36, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(st.trim, 34);
+          ctx.beginPath();
+          ctx.arc(-ro * 0.11, ey - ro * 0.11, ro * 0.13, 0, Math.PI * 2);
+          ctx.fill();
+          // The wandering world, keeping perfect time on the meridian.
+          const oa = nowMs * 0.0009;
+          ctx.fillStyle = shade(st.trim, 18);
+          ctx.beginPath();
+          ctx.arc(Math.cos(oa) * ro, ey + Math.sin(oa) * ro, 0.02 * s, 0, Math.PI * 2);
+          ctx.fill();
         } else {
         ctx.beginPath();
         if (st.emblem === 'chevron') {
@@ -2982,6 +3210,89 @@ export function drawTorsoGarment(
         ctx.lineTo(mx - r, my);
         ctx.closePath();
         ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // ---- frost glints: winter stars winking low on the skirt, each
+    // on its own beat — the cloth glitters where it drags the cold.
+    if (st.icefringe && st.skirt > 0) {
+      const ice = st.icefringe.color;
+      for (const [gu, gk, ph] of [[-0.55, 0.72, 0], [0.4, 0.9, 2.4], [0.08, 0.5, 4.2]] as const) {
+        const wink = Math.max(0, Math.sin(nowMs * 0.0014 + ph));
+        if (wink < 0.15) continue;
+        const gx = gu * ww * 1.2;
+        const gy = 0.02 * s + st.skirt * s * gk;
+        const gr = 0.02 * s * (0.6 + 0.4 * wink);
+        ctx.globalAlpha = 0.35 + 0.55 * wink;
+        ctx.strokeStyle = ice;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(gx - gr, gy);
+        ctx.lineTo(gx + gr, gy);
+        ctx.moveTo(gx, gy - gr);
+        ctx.lineTo(gx, gy + gr);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // ---- dancer ribbons: two banners of light hung off the waist,
+    // each flowing outward and down in a lazy S, tips kicking with
+    // the sky's own clock. Light, not cloth — they ride above every
+    // layer, and the night never puts them down. The composition
+    // pairs with the hood's streamers: sky above, dance below.
+    if (st.ribbons) {
+      for (const [i, rCol] of st.ribbons.colors.entries()) {
+        const es = i === 0 ? -1 : 1;
+        const ph = i * 2.6;
+        const w0 = 0.05 * s;
+        const w1 = 0.02 * s;
+        const ax = es * ww * 0.78;
+        const ay = -0.03 * s;
+        // The S: out and down to a mid bow, then flaring past the hem,
+        // the tip lifting and falling on the slow beat.
+        const m1x = ax + es * (0.1 * s + Math.sin(nowMs * 0.0019 + ph) * 0.02 * s);
+        const m1y = ay + 0.14 * s;
+        const m2x = ax + es * (0.05 * s + Math.sin(nowMs * 0.0019 + ph + 1.3) * 0.035 * s);
+        const m2y = ay + 0.3 * s;
+        const tipX = ax + es * (0.16 * s + Math.sin(nowMs * 0.0021 + ph + 2.1) * 0.05 * s);
+        const tipY = ay + 0.44 * s + Math.sin(nowMs * 0.0017 + ph + 3) * 0.025 * s;
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = rCol;
+        ctx.beginPath();
+        ctx.moveTo(ax - w0 * 0.6, ay);
+        ctx.quadraticCurveTo(m1x - w0, m1y, m2x - w0 * 0.8, m2y);
+        ctx.quadraticCurveTo(m2x - w0 * 0.55, (m2y + tipY) / 2, tipX - w1, tipY);
+        ctx.lineTo(tipX + w1, tipY + 0.014 * s);
+        ctx.quadraticCurveTo(m2x + w0 * 0.55, (m2y + tipY) / 2 + 0.02 * s, m2x + w0 * 0.8, m2y);
+        ctx.quadraticCurveTo(m1x + w0, m1y, ax + w0 * 0.6, ay);
+        ctx.closePath();
+        ctx.fill();
+        // The hot center — light carries its own core.
+        ctx.globalAlpha = 0.95;
+        ctx.strokeStyle = shade(rCol, 32);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(ax, ay + 0.02 * s);
+        ctx.quadraticCurveTo(m1x, m1y, m2x, m2y);
+        ctx.quadraticCurveTo(m2x + es * 0.01 * s, (m2y + tipY) / 2, tipX, tipY);
+        ctx.stroke();
+        // A stray spark shed where the ribbon last kicked.
+        const wk = Math.max(0, Math.sin(nowMs * 0.0016 + ph + 0.8));
+        if (wk > 0.2) {
+          ctx.globalAlpha = wk * 0.8;
+          ctx.fillStyle = shade(rCol, 40);
+          const px2 = tipX + es * 0.035 * s;
+          const py2 = tipY - 0.06 * s - wk * 0.025 * s;
+          ctx.beginPath();
+          ctx.moveTo(px2, py2 - 0.014 * s);
+          ctx.lineTo(px2 + 0.011 * s, py2);
+          ctx.lineTo(px2, py2 + 0.014 * s);
+          ctx.lineTo(px2 - 0.011 * s, py2);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
       ctx.globalAlpha = 1;
     }
@@ -3498,6 +3809,47 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     sliver(0.6, hw * 0.11, hh * 0.2, 4.1);
   }
 
+  if (st.streamers && !hurt) {
+    // Two banner tails of light streaming off the crown's trailing
+    // edge, each flowing back in a lazy S with a swell through the
+    // middle — banners, never sticks. Painted before the shell so
+    // their roots tuck under the cloth they stream from.
+    for (const [i, colr] of st.streamers.colors.entries()) {
+      const ph = i * 2.4;
+      const dy = i * hh * 0.42;
+      const ax = headX - lead * hw * 0.6;
+      const ay = headY - hh * (1.0 - i * 0.2);
+      const m1x = ax - lead * hw * 0.75 + Math.sin(f.nowMs * 0.0021 + ph) * hw * 0.12;
+      const m1y = ay - hh * 0.42 - dy * 0.5;
+      const m2x = ax - lead * hw * 1.35 + Math.sin(f.nowMs * 0.0021 + ph + 1.1) * hw * 0.2;
+      const m2y = ay - hh * 0.28 - dy;
+      const tipX = ax - lead * hw * 2.05 + Math.sin(f.nowMs * 0.0023 + ph + 2.2) * hw * 0.32;
+      const tipY = ay - hh * 0.68 - dy + Math.sin(f.nowMs * 0.0019 + ph + 3.1) * hh * 0.16;
+      const w0 = hh * 0.13;
+      const wm = hh * 0.2;
+      const w1 = hh * 0.06;
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = colr;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay - w0);
+      ctx.quadraticCurveTo(m1x, m1y - wm, m2x, m2y - wm * 0.8);
+      ctx.quadraticCurveTo((m2x + tipX) / 2, (m2y + tipY) / 2 - wm * 0.5, tipX, tipY - w1);
+      ctx.lineTo(tipX - lead * hw * 0.06, tipY + w1);
+      ctx.quadraticCurveTo((m2x + tipX) / 2, (m2y + tipY) / 2 + wm * 0.4, m2x, m2y + wm * 0.6);
+      ctx.quadraticCurveTo(m1x, m1y + wm * 0.7, ax, ay + w0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(colr, 32);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.quadraticCurveTo(m1x, m1y, m2x, m2y);
+      ctx.quadraticCurveTo((m2x + tipX) / 2, (m2y + tipY) / 2, tipX, tipY);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   if (st.kind === 'wizard') {
     // THE wizard hat, done properly: a broad down-turned brim, a CHUNKY
     // crown that tapers with gentle concave sides, and the top third
@@ -3612,6 +3964,72 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.beginPath();
       chamferRect(ctx, gx - headR * 0.11, headY - hh * 0.68, headR * 0.22, headR * 0.24, headR * 0.06);
       ctx.fill();
+    }
+    if (st.icicles && !hurt) {
+      // The frozen crown: spears hanging off the band, long at the
+      // temples and short over the eyes — the cold never blinds its
+      // own court. Two facets each; ice is glass, not chalk.
+      const ice = st.icicles.color;
+      const by = headY - hh * 0.62 + headR * 0.16;
+      for (let i = 0; i < 5; i++) {
+        const u = -0.82 + i * 0.41;
+        const ix = headX + u * hw;
+        const len =
+          headR * (0.3 + 0.14 * Math.sin(i * 2.2 + 0.6)) * (Math.abs(u) > 0.5 ? 1.3 : 0.62);
+        ctx.fillStyle = ice;
+        ctx.beginPath();
+        ctx.moveTo(ix - headR * 0.055, by);
+        ctx.lineTo(ix + headR * 0.055, by);
+        ctx.lineTo(ix + headR * 0.012, by + len);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(ice, -24);
+        ctx.beginPath();
+        ctx.moveTo(ix + headR * 0.002, by);
+        ctx.lineTo(ix + headR * 0.055, by);
+        ctx.lineTo(ix + headR * 0.012, by + len);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // One winking glint at the lit temple.
+      const wk = Math.max(0, Math.sin(f.nowMs * 0.0015));
+      if (wk > 0.2) {
+        ctx.globalAlpha = 0.4 + 0.6 * wk;
+        ctx.fillStyle = shade(ice, 40);
+        ctx.fillRect(headX - hw * 0.86, by + headR * 0.12, s * 0.014, s * 0.014);
+        ctx.globalAlpha = 1;
+      }
+    }
+    if (st.orbitals && !hurt) {
+      // The diadem that keeps time: a thin ring round the crown and
+      // two small worlds walking it — near side big and lit, far side
+      // small and dimmed. Depth drawn as size, the fake-3D law.
+      const ringCol = st.orbitals.ring ?? shade(st.orbitals.color, -22);
+      const oy = headY - hh * 0.85;
+      const rx = hw * 1.24;
+      const ry = hh * 0.26;
+      ctx.strokeStyle = ringCol;
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.ellipse(headX, oy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      for (const ph of [0, Math.PI]) {
+        const a = f.nowMs * 0.0011 + ph;
+        const behind = Math.sin(a) < 0;
+        const px = headX + Math.cos(a) * rx;
+        const py = oy + Math.sin(a) * ry;
+        const r2 = s * (behind ? 0.013 : 0.021);
+        ctx.fillStyle = behind ? shade(st.orbitals.color, -26) : st.orbitals.color;
+        ctx.beginPath();
+        ctx.arc(px, py, r2, 0, Math.PI * 2);
+        ctx.fill();
+        if (!behind) {
+          ctx.fillStyle = shade(st.orbitals.color, 36);
+          ctx.beginPath();
+          ctx.arc(px - r2 * 0.3, py - r2 * 0.3, r2 * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
     return;
   }
