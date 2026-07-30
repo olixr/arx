@@ -28,7 +28,13 @@
 > prefetch warms the bank first, barks speak via the cosmetic 'vq' family
 > (still v21, judgment recorded), banks live-registered at boot + Studio
 > saves. 879 tests green; full moment ladder + spatial bark live-verified.
-> Phases 5-6 pending.
+> Phase 5 (The Studio Speaks) SHIPPED 2026-07-30 (3cce2fc) — the Voice
+> bench (Library upload w/ browser duration probe + audition + replace +
+> guarded retire; Bank cards w/ moment-labeled slot rows + resolver-true
+> audition; Dials on the weather skeleton), Dialogue Studio beat voice
+> rows w/ the honest fallback pill + transcript-drift hint, rehearsal
+> speaks through the mirrored resolver, actor bench voice link. 879 tests
+> green; whole flow driven through the real Studio UI. Phase 6 pending.
 
 The world moves, asks, and remembers. This epic makes it **speak out loud**. Every
 throat that earned a voice card in the VOICE epic gets an actual voice: full spoken
