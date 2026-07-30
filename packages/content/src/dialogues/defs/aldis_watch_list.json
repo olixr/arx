@@ -1,0 +1,39 @@
+{
+ "id": "aldis_watch_list",
+ "start": "greet",
+ "requires": [
+  "faction:fordgate:suspect"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "captain_aldis",
+   "priority": 1
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "You're on the watch-list. Not my doing — the column your name sits in is yours.",
+   "choices": [
+    {
+     "text": "I'll mind myself.",
+     "next": "bye"
+    },
+    {
+     "text": "Is that a threat?",
+     "next": "count"
+    }
+   ]
+  },
+  {
+   "id": "count",
+   "text": "It's a count. We count everything that comes through this gate. Keep clean and we've no quarrel.",
+   "next": "greet"
+  },
+  {
+   "id": "bye",
+   "text": "Do that. The book stays open."
+  }
+ ]
+}

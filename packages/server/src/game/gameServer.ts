@@ -154,9 +154,13 @@ import {
   FACTIONS,
   STANDING_CLAMP,
   answerFactionFlag,
+  bandAtLeast,
   crossDeltas,
   factionDef,
+  factionOfActor,
+  factionOfNpc,
   isFactionFlag,
+  type FactionBand,
   isQuestFlag,
   isWorldFlag,
   parseFactionFlag,
@@ -6992,6 +6996,23 @@ export class GameServer {
 
     const actorComp = this.actors.get(targetEid);
     if (actorComp) {
+      // THE CLOSED THROAT (docs/factions-plan.md Phase 2): at outlaw
+      // and below with the speaker's faction, the member refuses —
+      // no tree, no shop, no bark, no quest talk credit. The ONE
+      // exception is the faction's fineActor: the courtroom's door
+      // stays open so a name can be bought back (Phase 3's rail).
+      const fid = factionOfActor(actorComp.actor.id);
+      if (fid !== null && factionDef(fid)?.fineActor !== actorComp.actor.id) {
+        if (!bandAtLeast(this.playerBandWith(player, fid), 'suspect')) {
+          const refusals = factionDef(fid)?.refusals ?? [];
+          if (refusals.length > 0) {
+            const line = refusals[(targetEid + this.tickCount) % refusals.length]!;
+            npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
+            sys(`${actorComp.actor.name}: "${line}"`);
+          }
+          return;
+        }
+      }
       // "Speak with X" credits the moment you address them — tree,
       // shop, or bark alike, so a talk ask never depends on how the
       // conversation happens to end.
@@ -7999,11 +8020,58 @@ export class GameServer {
     player.repSig = this.repSigOf(standings);
     const members: Record<string, string> = {};
     const prefixes: Record<string, string> = {};
+    const enforcers: string[] = [];
     for (const f of FACTIONS.roster) {
       for (const m of f.members) members[m] = f.id;
       for (const p of f.npcPrefixes) prefixes[p] = f.id;
+      enforcers.push(...f.enforcers);
     }
-    player.session.sendJson({ t: 'rep', standings, members, prefixes });
+    player.session.sendJson({
+      t: 'rep',
+      standings,
+      members,
+      prefixes,
+      enforcers,
+      peaceBand: FACTIONS.peaceBand,
+    });
+  }
+
+  /**
+   * THE WATCH HAS EYES (Phase 2): which faction's ledger does this
+   * body read? Actors by slug, bestiary by id prefix — resolved at
+   * CALL TIME so a Studio edit re-draws loyalties on the next scan
+   * (the dial law; nothing faction-shaped lives on NpcComp).
+   */
+  private npcFactionOf(eid: EntityId, npc: NpcComp): string | null {
+    const actor = this.actors.get(eid);
+    if (actor) return factionOfActor(actor.actor.id);
+    return factionOfNpc(npc.def.id);
+  }
+
+  /** The faction this body POLICES (per the live roster), or null. */
+  private npcEnforcerFid(eid: EntityId): string | null {
+    const actor = this.actors.get(eid);
+    if (!actor) return null;
+    const fid = factionOfActor(actor.actor.id);
+    if (fid === null) return null;
+    return (factionDef(fid)?.enforcers.includes(actor.actor.id) ?? false) ? fid : null;
+  }
+
+  /** The player's band with a faction, from the live thresholds. */
+  private playerBandWith(player: PlayerComp, fid: string): FactionBand {
+    return standingBand(player.standing.get(fid) ?? 0);
+  }
+
+  /**
+   * A player broke an enforcer's peace: the assault deed, charged
+   * exactly at the rest→war flip (the calling damage sites gate on
+   * npcAtPeace), so a whole fight is ONE deed — and cycling the
+   * guard's leash to farm outrage only digs the outlaw hole deeper.
+   */
+  private chargeAssault(attackerEid: EntityId, npcEid: EntityId): void {
+    const player = this.players.get(attackerEid);
+    if (!player) return;
+    this.creditDeed(player, this.npcEnforcerFid(npcEid), 'assaultEnforcer');
   }
 
   /**
@@ -9602,7 +9670,9 @@ export class GameServer {
         if (!npos) continue;
         if (Math.hypot(npos.x - pos.x, npos.y - pos.y) > ab.tauntRadius) continue;
         if (npc.def.damage <= 0 || this.actors.has(npcEid)) continue;
-        this.npcAggro(npcEid, npc, casterEid);
+        // A challenge is a deliberate dare — it pierces faction peace
+        // (taunting a camp that trusts you is asking for the fight).
+        this.npcAggro(npcEid, npc, casterEid, { force: true });
       }
     }
   }
@@ -10340,7 +10410,11 @@ export class GameServer {
     if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') {
       this.broadcastHit(npcEid, 0, false, 0, 0, false, true);
       if (this.npcAtPeace(npc) && npc.def.damage > 0) {
-        this.npcAggro(npcEid, npc, attackerEid);
+        // THE ASSAULT IS THE PEACE-BREAK: charged at the flip from
+        // rest to war, never per swing — one fight, one deed. The
+        // whiff-0 law holds upstream: a 0-roll still drew on the law.
+        this.chargeAssault(attackerEid, npcEid);
+        this.npcAggro(npcEid, npc, attackerEid, { force: true });
       }
       return;
     }
@@ -10474,9 +10548,12 @@ export class GameServer {
 
     // Fight back! A wound interrupts any peacetime state — the
     // suspicious, the investigator, and the searcher all wheel on
-    // whoever drew blood (pain outranks every meter).
+    // whoever drew blood (pain outranks every meter). The blow
+    // forces the aggro past any faction peace, and breaking an
+    // enforcer's peace is the assault deed.
     if (this.npcAtPeace(npc) && npc.def.damage > 0) {
-      this.npcAggro(npcEid, npc, attackerEid);
+      this.chargeAssault(attackerEid, npcEid);
+      this.npcAggro(npcEid, npc, attackerEid, { force: true });
     }
 
     // The craven break: a badly hurt pack-fighter decides ONCE, at the
@@ -10563,6 +10640,13 @@ export class GameServer {
     }
     for (const p of participants.values()) this.creditQuestEvent(p, 'kill', npc.def.id);
     this.rollQuestDrops(npc, pos.x, pos.y, participants);
+    // THE SLAY DEED: a faction member's death marks every hand in it
+    // (the same participation law), through the one door — and the
+    // border law pays first blood against an enemy exactly once.
+    const slainFid = this.npcFactionOf(npcEid, npc);
+    if (slainFid !== null) {
+      for (const p of participants.values()) this.creditDeed(p, slainFid, 'slayMember');
+    }
 
     const spawn = this.spawnPoints[npc.spawnIndex];
     if (spawn) {
@@ -10633,7 +10717,8 @@ export class GameServer {
           const childEid = this.spawnNpc(childDef, cx, cy, -1);
           const child = this.npcs.get(childEid)!;
           if (this.players.has(killerEid)) {
-            this.npcAggro(childEid, child, killerEid);
+            // Children are born INTO the fight the parent died in.
+            this.npcAggro(childEid, child, killerEid, { force: true });
           }
         }
       }
@@ -11933,8 +12018,28 @@ export class GameServer {
     eid: EntityId,
     npc: NpcComp,
     targetEid: EntityId,
-    opts: { rally?: boolean } = {},
+    opts: { rally?: boolean; force?: boolean } = {},
   ): void {
+    // THE PEACE HOLDS AT THE DOOR (docs/factions-plan.md Phase 2):
+    // a faction body never opens a fight with a player its ledger
+    // calls a friend — and an enforcer only ever opens one with an
+    // outlaw. Every unforced path (perception, rally, decoy, nerve
+    // break) answers to this; a BLOW always forces (`force` rides
+    // from the damage chokes — a wound outranks any ledger).
+    if (opts.force !== true) {
+      const target = this.players.get(targetEid);
+      if (target) {
+        const fid = this.npcFactionOf(eid, npc);
+        if (fid !== null) {
+          const band = this.playerBandWith(target, fid);
+          const holds =
+            this.npcEnforcerFid(eid) !== null
+              ? bandAtLeast(band, 'suspect')
+              : bandAtLeast(band, FACTIONS.peaceBand);
+          if (holds) return;
+        }
+      }
+    }
     npc.state = 'chase';
     npc.targetEid = targetEid;
     npc.navBest = Infinity;
@@ -11965,7 +12070,7 @@ export class GameServer {
     npc.huntWaitUntilTick = 0;
     npc.standTicks = 0;
     if (npc.def.pack && (opts.rally ?? true)) {
-      this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE);
+      this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE, 2, opts.force);
     }
   }
 
@@ -11997,6 +12102,7 @@ export class GameServer {
     targetEid: EntityId,
     range: number,
     maxJoin = 2,
+    force = false,
   ): void {
     const pos = this.positions.get(eid);
     if (!pos) return;
@@ -12016,7 +12122,9 @@ export class GameServer {
     for (let i = 0; i < cands.length && i < maxJoin + 2; i++) {
       const c = cands[i]!;
       if (i < maxJoin) {
-        this.npcAggro(c.eid, c.npc, targetEid, { rally: false });
+        // A rally born of a BLOW carries the blow's force — the cry
+        // names the attacker, and betrayal is answered by the pack.
+        this.npcAggro(c.eid, c.npc, targetEid, { rally: false, force });
       } else if (c.npc.state === 'idle' && tpos) {
         // Bystanders: heads turn toward the trouble, feet stay put.
         c.npc.state = 'suspicious';
@@ -12088,9 +12196,11 @@ export class GameServer {
       }
     }
     npc.helpEid = null;
-    this.npcAggro(eid, npc, targetEid, { rally: false });
+    // The crier was already in the fight — a wound put it there, so
+    // the re-entry and the scream both carry the blow's force.
+    this.npcAggro(eid, npc, targetEid, { rally: false, force: true });
     // A desperate scream buys one more answer than an ordinary rally.
-    this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE + 2, 3);
+    this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE + 2, 3, true);
   }
 
   /**
@@ -12110,6 +12220,9 @@ export class GameServer {
     // Only a body truly at rest is limited to its authored arc — a
     // wary one is already turning its head everywhere.
     const arcDeg = npc.state === 'idle' ? (npc.def.sightArc ?? DEFAULT_SIGHT_ARC) : 360;
+    // THE WATCH HAS EYES: resolved once per scan, from the live doc.
+    const fid = this.npcFactionOf(eid, npc);
+    const enforcerFid = fid !== null ? this.npcEnforcerFid(eid) : null;
     let bestEid: EntityId | null = null;
     let bestRate = 0;
     let bestZone: SightZone = 'peripheral';
@@ -12130,9 +12243,26 @@ export class GameServer {
       // at which this body would actually commit to violence. A
       // beast that outclasses the waker commits from far out; one
       // they outgrew watches, follows, sizes up — and holds.
-      let sightRange = npc.def.aggroRange * SIGHT_RANGE_MULT;
-      let engageRange =
-        npc.def.aggroRange * levelAggroFactor(npc.def.level, combatLevel(player.skills));
+      // The per-player circle (docs/factions-plan.md Phase 2): an
+      // enforcer's posted range is 0 — the doc's enforcement circle
+      // opens ONLY on a player its faction calls outlaw. A hostile
+      // faction body holds its fire entirely for a friend at the
+      // peace band (the payoff of the whole dark road) — a blow
+      // still answers through damageNpc's forced aggro.
+      let baseRange = npc.def.aggroRange;
+      if (fid !== null) {
+        const band = this.playerBandWith(player, fid);
+        if (enforcerFid !== null) {
+          if (!bandAtLeast(band, 'suspect')) {
+            baseRange = Math.max(baseRange, FACTIONS.enforcerAggro);
+          }
+        } else if (baseRange > 0 && bandAtLeast(band, FACTIONS.peaceBand)) {
+          continue;
+        }
+      }
+      if (baseRange <= 0) continue;
+      let sightRange = baseRange * SIGHT_RANGE_MULT;
+      let engageRange = baseRange * levelAggroFactor(npc.def.level, combatLevel(player.skills));
       let closeR = SIGHT_CLOSE_RANGE;
       if (player.sneaking) {
         // Soft Step shaves the factor further; the hard floor holds.
@@ -12401,7 +12531,7 @@ export class GameServer {
       // through damageNpc.
       if (
         this.npcAtPeace(npc) &&
-        npc.def.aggroRange > 0 &&
+        (npc.def.aggroRange > 0 || this.npcEnforcerFid(eid) !== null) &&
         this.tickCount >= npc.noAggroUntilTick &&
         (this.tickCount + eid) % GameServer.PERCEPTION_PERIOD === 0
       ) {
@@ -12424,8 +12554,14 @@ export class GameServer {
           const sdx = tpos.x - pos.x;
           const sdy = tpos.y - pos.y;
           const sdist = Math.hypot(sdx, sdy);
+          // An enforcer's eye keeps the doc's enforcement circle in
+          // the chase too — the posted 0 must not shrink retention.
+          const watchBase = Math.max(
+            npc.def.aggroRange,
+            this.npcEnforcerFid(eid) !== null ? FACTIONS.enforcerAggro : 0,
+          );
           const loseRange = Math.max(
-            npc.def.aggroRange * SIGHT_RANGE_MULT * LOSE_SIGHT_FACTOR,
+            watchBase * SIGHT_RANGE_MULT * LOSE_SIGHT_FACTOR,
             npc.def.attackRange + 6,
             SIGHT_CLOSE_RANGE,
           );

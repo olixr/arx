@@ -1161,6 +1161,10 @@ export interface S2CRep {
   members: Record<string, string>;
   /** bestiary id prefix -> faction id. */
   prefixes: Record<string, string>;
+  /** Actor slugs that police their faction (nameplate warnings). */
+  enforcers: string[];
+  /** The band at which a hostile faction holds its fire. */
+  peaceBand: string;
 }
 
 /** A quiet standing patch — deltas tick. NO ceremony rides this. */

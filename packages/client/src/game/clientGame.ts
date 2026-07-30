@@ -64,7 +64,7 @@ import {
   type TilePatch,
   type Vec2,
 } from '@arx/shared';
-import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, techniqueDef, type GeographyDef } from '@arx/content';
+import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, techniqueDef, type FactionBand, type GeographyDef } from '@arx/content';
 import { EntityKind, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
@@ -321,6 +321,10 @@ export class ClientGame {
   readonly repStandings = new Map<string, RepStandingWire>();
   repMembers: Record<string, string> = {};
   repPrefixes: Record<string, string> = {};
+  /** Actor slugs that police their faction (from the bind push). */
+  repEnforcers = new Set<string>();
+  /** The band at which a hostile faction holds its fire. */
+  repPeaceBand = 'trusted';
   /** Bumped on every standing change — the Standing screen re-reads. */
   repVersion = 0;
   /** The party snapshot — empty members = partyless. Refetched on events. */
@@ -1209,6 +1213,8 @@ export class ClientGame {
         for (const s of msg.standings) this.repStandings.set(s.faction, s);
         this.repMembers = msg.members;
         this.repPrefixes = msg.prefixes;
+        this.repEnforcers = new Set(msg.enforcers);
+        this.repPeaceBand = msg.peaceBand;
         this.repVersion++;
         this.events.onRepChanged?.();
         break;
@@ -1439,6 +1445,32 @@ export class ClientGame {
     }
     for (const a of this.questAvailable) {
       if (a.giver === actor) return 'offer';
+    }
+    return null;
+  }
+
+  /**
+   * How would this body receive ME? Resolved per-viewer from the
+   * pushed ledger + live membership tables against the static actor
+   * slug / bestiary id — the questMarkFor law: nothing personal ever
+   * rides the shared EntityMeta. 'hostile' = an enforcer who will
+   * attack on sight (outlaw and below); 'peace' = a hostile faction
+   * body holding its fire for a friend at the peace band.
+   */
+  repTintFor(actor: string | undefined, defId: string | undefined): 'hostile' | 'peace' | null {
+    if (actor !== undefined) {
+      if (!this.repEnforcers.has(actor)) return null;
+      const fid = this.repMembers[actor];
+      if (fid === undefined) return null;
+      const band = this.repStandings.get(fid)?.band ?? 'neutral';
+      return band === 'outlaw' || band === 'hunted' ? 'hostile' : null;
+    }
+    if (defId !== undefined) {
+      for (const [prefix, fid] of Object.entries(this.repPrefixes)) {
+        if (!defId.startsWith(prefix)) continue;
+        const band = (this.repStandings.get(fid)?.band ?? 'neutral') as FactionBand;
+        return bandAtLeast(band, this.repPeaceBand as FactionBand) ? 'peace' : null;
+      }
     }
     return null;
   }

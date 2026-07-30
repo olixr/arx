@@ -21513,6 +21513,11 @@ export class Renderer {
           // Humanoid ACTORS (named townsfolk) broadcast appearance
           // exactly like players — one rig renders both. Creature
           // actors and the bestiary go through npcItem's body art.
+          // THE STREET TELLS YOU (factions Phase 2): the nameplate
+          // ink carries this body's disposition toward THIS viewer.
+          const repTint = game.repTintFor(remote.meta.actor, remote.meta.defId);
+          const nameInk =
+            repTint === 'hostile' ? '#f0655a' : repTint === 'peace' ? '#9db7d6' : undefined;
           const item = remote.meta.appearance
             ? this.humanoidItem({
                 eid,
@@ -21532,8 +21537,9 @@ export class Renderer {
                 color: remote.meta.appearance.look
                   ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
                   : '#c8b89a',
+                nameInk,
               })
-            : this.npcItem(eid, remote.meta.defId ?? '', remote.meta, s, hurt);
+            : this.npcItem(eid, remote.meta.defId ?? '', remote.meta, s, hurt, nameInk);
           this.dressForWater(game, item, eid, s.x, s.y);
           items.push(item);
           const pins = this.npcArrows.get(eid);
@@ -21781,6 +21787,12 @@ export class Renderer {
     kobold?: KoboldLook;
     /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
     sheathed?: boolean;
+    /**
+     * Nameplate ink override — the faction tint (ember = this body
+     * would attack YOU on sight; calm blue = it holds its fire for
+     * you). Resolved per-viewer by clientGame.repTintFor.
+     */
+    nameInk?: string;
   }): DrawItem {
     const s = this.camera.scale;
     const now = performance.now();
@@ -22359,7 +22371,7 @@ export class Renderer {
           const label = e.level ? `${e.name} (${e.level})` : e.name;
           ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
           ctx.fillText(label, p.x + 1.5, topY + 1.5);
-          ctx.fillStyle = e.isOwn ? '#e8b64c' : '#efe3c2';
+          ctx.fillStyle = e.nameInk ?? (e.isOwn ? '#e8b64c' : '#efe3c2');
           ctx.fillText(label, p.x, topY);
         }
         if (e.hpPct < 255) {
@@ -23085,6 +23097,7 @@ export class Renderer {
     meta: { name?: string; level?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number },
     hurt: boolean,
+    nameInk?: string,
   ): DrawItem {
     // Humanoid monsters use the full IK rig with size/skin overrides.
     if (
@@ -23128,6 +23141,7 @@ export class Renderer {
           Renderer.SKELETON_SIZE[defId] ??
           Renderer.BRIGAND_SIZE[defId] ??
           (defId === 'troll' ? 1.4 : 0.85),
+        nameInk,
         skeletal: skel,
         kobold: kob,
       });
@@ -23136,7 +23150,7 @@ export class Renderer {
     // Leg-less bodies skip the rig entirely: gel blocks hop, wings
     // hover, coils slither — each through its own dedicated painter.
     if (defId === 'slime' || defId === 'slime_small' || defId === 'cave_bat' || defId === 'adder') {
-      return this.leglessItem(eid, defId, meta, s, hurt);
+      return this.leglessItem(eid, defId, meta, s, hurt, nameInk);
     }
 
     const def = npcDef(defId);
@@ -23240,7 +23254,7 @@ export class Renderer {
           const label = meta.level ? `${meta.name} (${meta.level})` : meta.name;
           ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
           ctx.fillText(label, p.x + 1.5, topY + 1.5);
-          ctx.fillStyle = '#f0cf8a';
+          ctx.fillStyle = nameInk ?? '#f0cf8a';
           ctx.fillText(label, p.x, topY);
         }
         if (s.hpPct < 255) {
@@ -23262,6 +23276,7 @@ export class Renderer {
     meta: { name?: string; level?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number },
     hurt: boolean,
+    nameInk?: string,
   ): DrawItem {
     const def = npcDef(defId);
     const scale = this.camera.scale;
@@ -23320,7 +23335,7 @@ export class Renderer {
           const label = meta.level ? `${meta.name} (${meta.level})` : meta.name;
           ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
           ctx.fillText(label, p.x + 1.5, labelTop + 1.5);
-          ctx.fillStyle = '#f0cf8a';
+          ctx.fillStyle = nameInk ?? '#f0cf8a';
           ctx.fillText(label, p.x, labelTop);
         }
         if (s.hpPct < 255) {

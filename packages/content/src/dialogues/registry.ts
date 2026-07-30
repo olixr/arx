@@ -69,6 +69,11 @@ import aldisWatchUneasy from './defs/aldis_watch_uneasy.json';
 import aldisWatchUrgent from './defs/aldis_watch_urgent.json';
 import aldisWatchToll from './defs/aldis_watch_toll.json';
 import aldisWatchRelief from './defs/aldis_watch_relief.json';
+// Factions Phase 2 (docs/factions-plan.md): the street tells you —
+// standing-gated greetings on the gate captain's ladder (binding
+// priority 1: above the evergreen watch, below every urgent thing).
+import aldisGoodColumn from './defs/aldis_good_column.json';
+import aldisWatchList from './defs/aldis_watch_list.json';
 import waywardWatchUneasy from './defs/wayward_watch_uneasy.json';
 import waywardWatchUrgent from './defs/wayward_watch_urgent.json';
 import waywardWatchRelief from './defs/wayward_watch_relief.json';
@@ -228,6 +233,8 @@ const SOURCES: readonly unknown[] = [
   aldisWatchUrgent,
   aldisWatchToll,
   aldisWatchRelief,
+  aldisGoodColumn,
+  aldisWatchList,
   waywardWatchUneasy,
   waywardWatchUrgent,
   waywardWatchRelief,

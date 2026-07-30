@@ -1,0 +1,39 @@
+{
+ "id": "aldis_good_column",
+ "start": "greet",
+ "requires": [
+  "faction:fordgate:atleast:trusted"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "captain_aldis",
+   "priority": 1
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Gate's quiet. Your name's in the good column — the watch reads that book every shift.",
+   "choices": [
+    {
+     "text": "Anything need doing?",
+     "next": "work"
+    },
+    {
+     "text": "Just passing, Captain.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "work",
+   "text": "My rounds are covered. Folk with work to give carry a mark over their heads — go and ask. The gate manages.",
+   "next": "greet"
+  },
+  {
+   "id": "bye",
+   "text": "Pass. You don't need checking."
+  }
+ ]
+}

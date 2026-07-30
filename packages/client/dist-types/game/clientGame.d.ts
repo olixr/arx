@@ -359,6 +359,10 @@ export declare class ClientGame {
     readonly repStandings: Map<string, RepStandingWire>;
     repMembers: Record<string, string>;
     repPrefixes: Record<string, string>;
+    /** Actor slugs that police their faction (from the bind push). */
+    repEnforcers: Set<string>;
+    /** The band at which a hostile faction holds its fire. */
+    repPeaceBand: string;
     /** Bumped on every standing change — the Standing screen re-reads. */
     repVersion: number;
     /** The party snapshot — empty members = partyless. Refetched on events. */
@@ -610,6 +614,15 @@ export declare class ClientGame {
      * from the pushed ledger against EntityMeta.actor.
      */
     questMarkFor(actor: string | undefined): 'offer' | 'ready' | null;
+    /**
+     * How would this body receive ME? Resolved per-viewer from the
+     * pushed ledger + live membership tables against the static actor
+     * slug / bestiary id — the questMarkFor law: nothing personal ever
+     * rides the shared EntityMeta. 'hostile' = an enforcer who will
+     * attack on sight (outlaw and below); 'peace' = a hostile faction
+     * body holding its fire for a friend at the peace band.
+     */
+    repTintFor(actor: string | undefined, defId: string | undefined): 'hostile' | 'peace' | null;
     clearWaypoint(): void;
     /** Send an interact intent for a specific world tile. */
     interact(tx: number, ty: number): void;

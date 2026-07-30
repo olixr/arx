@@ -1353,11 +1353,18 @@ export declare class Renderer {
      *  anti-repetition lattice (the cliff-face world-keying law). */
     private static fallNoise;
     private fallTones;
-    /** Churn along a world line just past a fall's foot — the boil.
-     *  Three passes of tightly-packed irregular lobes (deep back
-     *  billows, main foam, sparse bright caps), each with its own
-     *  jitter and pulse so the mound never reads as a row of eggs.
-     *  (ox,oy) pushes the boil off the line toward the low side. */
+    /** THE BREAKWATER — where the sheet knifes into the pool. Not a
+     *  band and never a slab: a rank of low-poly FOAM MOUNDS in the
+     *  world's own two-tone blob language (wash base under a lit foam
+     *  cap, chunky 7-vertex polygons like every canopy and pool blob
+     *  in the game), overlapping along a WORLD-KEYED grid so segment
+     *  seams vanish, and tapering to nothing at true run ends
+     *  (capL/capR) — the foam ends because the mounds shrink away,
+     *  never because a fill stops. Behind the rank, the dark LAP line
+     *  grounds the impact; in front, crescent backwash slides off into
+     *  the pool and the dissolving tail carries the last flecks out.
+     *  (ox,oy) = low-side push; `push` = screen-px drop to meet the
+     *  dipped sheet base. */
     private drawFallChurn;
     /** Airborne life at a fall's landing: drifting mist motes and darting
      *  spray, dt-gated per visible fall (the portal-emitter idiom).
@@ -1371,25 +1378,32 @@ export declare class Renderer {
      */
     private pushSouthFallItems;
     /**
-     * THE WATERFALL CURTAIN — water continuing over a cliff face. One
-     * sheet hangs from the crest of `level` to the elevation the water
-     * truly lands at (landElev — through any stacked intermediate faces:
-     * only the top face of a sheer multi-level drop passes the spill
-     * law, and its curtain covers the whole wall). Inside the item, top
-     * to bottom: the HEADRACE (the glassy tongue that carries the water
-     * across the lip and the Cliff rim strip — authored channels stop a
-     * tile shy of the rim by the auto-fence law), the falling SHEET
-     * (clipped quad: depth-graded body, world-keyed standing column
-     * tones, accelerating foam threads at constant SCREEN speed — the
-     * phase rate divides by the drop height so a two-level fall doesn't
-     * cascade twice as fast), and the CREST ROLL (under-curl shadow +
-     * bright arris + break combs). Churn, outwash, rings and mist live
-     * in per-row items on the low ground (fallOutwashRowItem) so
-     * elevated landing rows — which blit as items at rowTy-0.01 —
-     * can't paint over them; diagonals, whose landing is a corner
-     * pocket rather than a row, draw their dressing right here. Every
-     * mark is keyed to WORLD coordinates (the cliff-face law): the
-     * sheet runs unbroken across segment seams and around 45° turns.
+     * THE WATERFALL CURTAIN — water continuing over a cliff face,
+     * painted in THE POUR dialect: the world's flat-vector water
+     * language folded over an edge. Everything is OPAQUE stepped tone —
+     * never a translucent gradient (a see-through curtain reads as
+     * wallpaper on the wall, the shipped proof-of-concept failure).
+     * Top to bottom: the HEADRACE (the channel's own open-water tone
+     * carried solid to the lip, mid-current lanes stretching as the
+     * water gathers speed, a pale acceleration shelf where it thins
+     * over the arris), the CREST ROLL (the foreshortened curl — the
+     * top-plane law applied to water: a lit convex band riding the
+     * arris, tearing off in world-keyed scallops, casting one crisp
+     * shadow on the sheet), and the SHEET itself (0.4-tile world-grid
+     * bands of the water palette, each breaking at a world-keyed height
+     * into its air-charged lower half — a hard step, not a fade; base
+     * DIPPED south of the wall foot and free ends FLARED outward as
+     * the unconfined edge fans in air — the 2.5D pitch-out read; foam
+     * threads at constant SCREEN speed — phase rate divides by drop
+     * height so a two-level fall doesn't cascade twice as fast).
+     * Churn, outwash, rings and mist live in per-row items on the low
+     * ground (fallOutwashRowItem) so elevated landing rows — which
+     * blit as items at rowTy-0.01 — can't paint over them; diagonals,
+     * whose landing is a corner pocket rather than a row, draw their
+     * dressing right here. Every mark is keyed to WORLD coordinates
+     * (the cliff-face law): the sheet runs unbroken across segment
+     * seams and around 45° turns, and both dip and band edges key to
+     * world x so abutting segments join pixel-true.
      */
     private waterfallItem;
     /**
