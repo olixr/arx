@@ -51,7 +51,12 @@
 // v19: THE PARTY — party membership/invite messages, the partypos
 // ticker, and riftgate partyRuns. A v18 client would drop every party
 // push and stand deaf to its own fellowship, so reject cleanly.
-export const PROTOCOL_VERSION = 19;
+// v20: THE QUEST LEDGER — the quests/questupd/questevent family,
+// C2SQuestAbandon, the quest chip on S2CDialogueNode, and
+// EntityMeta.actor (the slug quest marks resolve against). A v19
+// client would drop every quest push and see no "!" over any head,
+// so reject cleanly.
+export const PROTOCOL_VERSION = 20;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

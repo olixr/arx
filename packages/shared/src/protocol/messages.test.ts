@@ -84,3 +84,14 @@ test('waypoint sets with both integer coords or clears with neither', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'waypoint', x: 2_000_000, y: 0 })), null);
   assert.equal(parseC2S(JSON.stringify({ t: 'waypoint', x: 'a', y: 0 })), null);
 });
+
+test('questabandon carries one bounded quest id', () => {
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'questabandon', quest: 'hobbs_hens' })), {
+    t: 'questabandon',
+    quest: 'hobbs_hens',
+  });
+  assert.equal(parseC2S(JSON.stringify({ t: 'questabandon' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'questabandon', quest: '' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'questabandon', quest: 'x'.repeat(65) })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'questabandon', quest: 7 })), null);
+});

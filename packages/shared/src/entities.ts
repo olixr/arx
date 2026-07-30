@@ -72,6 +72,13 @@ export interface EntityMeta {
    * lines) — clients offer Talk even on fightable neutrals.
    */
   talk?: boolean;
+  /**
+   * NPC actors: the actor def slug (v20). Static identity, safe on the
+   * global meta — the client resolves its OWN quest marks against it
+   * (giver of an available quest wears the "!", turn-in of a ready one
+   * the raised mark), so per-viewer truth never rides the wire.
+   */
+  actor?: string;
   /** Content definition id, e.g. npc/item/node/prop type. */
   defId?: string;
   /** Player/NPC visual loadout for the procedural rig. */

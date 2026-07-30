@@ -148,7 +148,10 @@ import {
   dangerLaw,
   emberLingerFor,
   fallowRestFor,
+  isQuestFlag,
   isWorldFlag,
+  parseQuestFlag,
+  questDoneFlag,
   peddlerLingerFor,
   pickWild,
   scatterLingerFor,
@@ -311,6 +314,10 @@ import {
   type DangerAnchor,
   type DiscoveryWire,
   type DungeonSpec,
+  type QuestAvailWire,
+  type QuestDoneWire,
+  type QuestRewardsWire,
+  type QuestWire,
   type Vec2,
 } from '@arx/shared';
 import { geographySnapshot, scaleNpcDef } from '@arx/content';
@@ -319,6 +326,20 @@ import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
 import { SocialSystem } from './social.js';
 import { PartySystem } from './party.js';
 import { dungeonDiscoveryId, findDiscoveries } from './exploration.js';
+import {
+  acceptQuest,
+  advanceStages,
+  answerQuestFlag,
+  creditQuest,
+  questAvailable,
+  questDropWanted,
+  questReady,
+  questWire,
+  type QuestCreditKind,
+  type QuestNameRefs,
+  type QuestPlayerCtx,
+  type QuestProgress,
+} from './quests.js';
 
 interface PositionComp {
   x: number;
@@ -418,6 +439,13 @@ interface NpcComp {
   def: NpcDef;
   originX: number;
   originY: number;
+  /**
+   * THE QUEST PARTICIPATION LEDGER: every player eid whose landed
+   * wound touched this body (whiff-0 sacred — a miss writes nothing).
+   * Read once at death for kill credit and quest drops, gone with the
+   * entity. Optional so neither spawn literal grows a field.
+   */
+  questWounders?: Set<EntityId>;
   /**
    * THE STATE LADDER (perception rebuild): 'suspicious' = the meter
    * crossed ALERT_SUS — feet planted, eyes on the last-known spot;
@@ -963,6 +991,17 @@ interface PlayerComp {
   discoveries: Map<string, DiscoveryWire>;
   /** The one active waypoint; pure navigation state. */
   waypoint: { x: number; y: number } | null;
+  /**
+   * THE QUEST LEDGER: every quest this character has touched, by quest
+   * id. Persisted whole at every mutation site (accept, credit, stage
+   * advance, turn-in, abandon) — a turn-in must survive a crash.
+   * Guests keep it in memory only.
+   */
+  quests: Map<string, QuestProgress>;
+  /** Last-sent availability signature — the quiet-wire diff guard. */
+  questAvailSig: string;
+  /** Last-sent live collect counts (the 500ms ticker's diff guard). */
+  questCollectSig: string;
 }
 
 /** A timed self-effect; multiple can ride at once (speeds multiply). */
@@ -2061,6 +2100,29 @@ export class GameServer {
       }
     }
 
+    // The quest ledger — rows for retired defs load anyway and sleep
+    // until their quest returns (a tool re-import resumes them).
+    const quests = new Map<string, QuestProgress>();
+    if (character.id > 0) {
+      for (const row of await this.accounts.loadQuestRows(character.id)) {
+        let progress: number[] = [];
+        try {
+          const parsed: unknown = JSON.parse(row.progress);
+          if (Array.isArray(parsed)) progress = parsed.filter((n) => typeof n === 'number');
+        } catch {
+          // A corrupt counter row restarts its stage; the quest survives.
+        }
+        quests.set(row.questId, {
+          status: row.status,
+          stage: row.stage,
+          progress,
+          acceptedAt: row.acceptedAt,
+          completions: row.completions,
+          cooldownUntil: row.cooldownUntil ?? undefined,
+        });
+      }
+    }
+
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Player);
     this.positions.set(eid, { x: spawnX, y: spawnY, dir: 0 });
@@ -2137,6 +2199,9 @@ export class GameServer {
         character.waypoint_x !== null && character.waypoint_y !== null
           ? { x: character.waypoint_x, y: character.waypoint_y }
           : null,
+      quests,
+      questAvailSig: '',
+      questCollectSig: '',
     });
     this.characterEids.set(character.id, eid);
     this.updateChunkMembership(eid);
@@ -2251,6 +2316,9 @@ export class GameServer {
         return d;
       }),
     });
+    // The quest ledger, whole — the journal, the tracker, and every
+    // overhead mark resolve from this one push.
+    this.sendQuestsFull(player);
   }
 
   onSessionClosed(session: Session): void {
@@ -2529,6 +2597,8 @@ export class GameServer {
     player.discoveries.set(d.id, d);
     if (player.characterId > 0) this.accounts.addDiscovery(player.characterId, d, epoch);
     player.session?.sendJson({ t: 'discovery', d });
+    // One choke point catches every "chart this place" quest ask.
+    this.creditQuestEvent(player, 'discover', d.id);
   }
 
   /**
@@ -3839,6 +3909,8 @@ export class GameServer {
         health.maxHp = levelAfter + player.gear.maxHp;
       }
       this.announceLadderClimbs(player, skill, levelBefore, levelAfter);
+      // A crossed skill floor can open a quest gate.
+      this.pushQuestAvail(player);
     }
   }
 
@@ -6405,6 +6477,34 @@ export class GameServer {
       return;
     }
 
+    // Quest-starting items: a torn note, a sealed writ — the thing
+    // found IS the ask, and reading it is the consent. Consumed on
+    // accept; refused (and kept) while the quest is underway, done,
+    // or its gates don't pass — the teaches-scroll law.
+    if (def.startsQuest) {
+      const qdef = this.questDefs.get(def.startsQuest);
+      const sys = (text: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text });
+      if (!qdef) return;
+      const entry = player.quests.get(qdef.id);
+      if (entry?.status === 'active') {
+        sys(`You already carry this errand — it's in your journal.`);
+        return;
+      }
+      if (!questAvailable(qdef, this.questCtx(player))) {
+        sys(
+          entry?.status === 'done'
+            ? `You've already seen "${qdef.name}" through.`
+            : `You read it over, but the work is beyond you for now.`,
+        );
+        return;
+      }
+      removeItem(player.inventory, slot.item, 1);
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      this.questAccept(eid, player, qdef.id);
+      return;
+    }
+
     // Weapon oils: the vial bonds to the EQUIPPED weapon's INSTANCE —
     // swap weapons and each blade keeps its own poison. Edges and
     // arrowheads take oil; a caster's focus never does.
@@ -6704,6 +6804,10 @@ export class GameServer {
 
     const actorComp = this.actors.get(targetEid);
     if (actorComp) {
+      // "Speak with X" credits the moment you address them — tree,
+      // shop, or bark alike, so a talk ask never depends on how the
+      // conversation happens to end.
+      this.creditQuestEvent(player, 'talk', actorComp.actor.id);
       // The dialogue system speaks first: the highest-priority tree
       // this player's flags make eligible opens the cinematic frame.
       const defs = this.dialoguesByActor.get(actorComp.actor.id);
@@ -6837,6 +6941,20 @@ export class GameServer {
    */
   private dialogueHas(player: PlayerComp, targetEid: EntityId): (flag: string) => boolean {
     return (flag) => {
+      // The quest ledger answers its namespace live — never stored,
+      // so an offer appears the tick it opens and a spent turn-in
+      // choice retires itself mid-conversation.
+      if (isQuestFlag(flag)) {
+        const parsed = parseQuestFlag(flag);
+        if (!parsed) return false;
+        return answerQuestFlag(
+          this.questDefs.get(parsed.quest),
+          player.quests.get(parsed.quest),
+          parsed.state,
+          parsed.stage,
+          this.questCtx(player),
+        );
+      }
       if (!isWorldFlag(flag)) return player.flags.has(flag);
       const npos = this.positions.get(targetEid);
       return npos ? this.worldFlagAnswer(flag, player, npos.x, npos.y) : false;
@@ -6962,6 +7080,12 @@ export class GameServer {
     const gifts = (node.hooks ?? [])
       .filter((h): h is Extract<DialogueHook, { kind: 'give' }> => h.kind === 'give')
       .map((h) => ({ item: h.item, qty: h.qty }));
+    // The quest offer rides the beat like a gift: the cinema stages
+    // the ask (name, pay) beside the line, before the choice plates.
+    const offerHook = (node.hooks ?? []).find(
+      (h): h is Extract<DialogueHook, { kind: 'quest_offer' }> => h.kind === 'quest_offer',
+    );
+    const offerDef = offerHook ? this.questDefs.get(offerHook.quest) : undefined;
     player.session.sendJson({
       t: 'dlgnode',
       speaker: node.speaker ?? 'npc',
@@ -6969,6 +7093,9 @@ export class GameServer {
       choices: eligible.length > 0 ? eligible.map((c) => c.text) : undefined,
       last: last || undefined,
       gifts: gifts.length > 0 ? gifts : undefined,
+      quest: offerDef
+        ? { id: offerDef.id, name: offerDef.name, rewards: this.questRewardsWire(offerDef) }
+        : undefined,
     });
   }
 
@@ -7054,6 +7181,16 @@ export class GameServer {
         break;
       case 'bounty':
         this.postBounty(eid, player);
+        break;
+      case 'quest_offer':
+        // Pure presentation: dialogueEnterNode stages the chip on the
+        // beat itself (the gifts pattern). Nothing happens here.
+        break;
+      case 'quest_accept':
+        this.questAccept(eid, player, hook.quest);
+        break;
+      case 'quest_turnin':
+        this.questTurnIn(eid, player, hook.quest);
         break;
       case 'give': {
         const added = addItem(player.inventory, hook.item, hook.qty);
@@ -7142,11 +7279,362 @@ export class GameServer {
     return out;
   }
 
+  // ------------------------------------------------------------ quests
+
+  /** The pure module's window onto one player — built fresh per ask. */
+  private questCtx(player: PlayerComp): QuestPlayerCtx {
+    return {
+      quests: player.quests,
+      hasFlag: (f) => player.flags.has(f),
+      skillLevel: (s) => levelForXp(player.skills[s] ?? 0),
+      hasDiscovered: (p) => {
+        const d = player.discoveries.get(p);
+        return d !== undefined && d.faded !== true;
+      },
+      countItem: (item) => countItem(player.inventory, item),
+      now: Date.now(),
+    };
+  }
+
+  /** Display names for the wire — the DB registries are the truth. */
+  private questNames(): QuestNameRefs {
+    return {
+      itemName: (id) => itemDef(id)?.name ?? id,
+      npcName: (id) => NPCS.get(id)?.name ?? id,
+      actorName: (id) => this.actorDefs.get(id)?.name ?? id,
+      placeName: (id) => {
+        if (!id.startsWith('zone:')) return id;
+        const zoneId = id.slice(5);
+        for (const z of this.world.zoneDefs) if (z.id === zoneId) return z.name;
+        return zoneId;
+      },
+    };
+  }
+
+  private questRewardsWire(def: QuestDef): QuestRewardsWire | undefined {
+    const r = def.rewards;
+    const out: QuestRewardsWire = {};
+    if (r.xp?.length) out.xp = r.xp.map((e) => ({ skill: e.skill, amount: e.amount }));
+    if (r.items?.length) out.items = r.items.map((e) => ({ item: e.item, qty: e.qty }));
+    if (r.coins) out.coins = r.coins;
+    return out.xp || out.items || out.coins ? out : undefined;
+  }
+
+  private questDoneWire(def: QuestDef, q: QuestProgress): QuestDoneWire {
+    return {
+      id: def.id,
+      name: def.name,
+      completions: q.completions,
+      repeatable: def.repeat ? true : undefined,
+      cooldownUntil: q.cooldownUntil,
+    };
+  }
+
+  /** Everything offerable to this player right now, id-sorted. */
+  private questAvailList(player: PlayerComp): QuestAvailWire[] {
+    const ctx = this.questCtx(player);
+    const out: QuestAvailWire[] = [];
+    for (const def of this.questDefs.values()) {
+      if (questAvailable(def, ctx)) out.push({ id: def.id, name: def.name, giver: def.giver });
+    }
+    out.sort((a, b) => (a.id < b.id ? -1 : 1));
+    return out;
+  }
+
+  /**
+   * Re-answer "what could they take on?" and push ONLY on change —
+   * the diff signature keeps flag-heavy play off the wire. Chokes:
+   * bind, every quest mutation, every flag write, level-ups, and the
+   * slow ticker (cooldown clocks expire without any event).
+   */
+  private pushQuestAvail(player: PlayerComp): void {
+    const list = this.questAvailList(player);
+    const sig = list.map((a) => a.id).join(',');
+    if (sig === player.questAvailSig) return;
+    player.questAvailSig = sig;
+    player.session?.sendJson({ t: 'questupd', available: list });
+  }
+
+  /** The full ledger, pushed once at bind. */
+  private sendQuestsFull(player: PlayerComp): void {
+    if (!player.session) return;
+    const ctx = this.questCtx(player);
+    const names = this.questNames();
+    const active: QuestWire[] = [];
+    const done: QuestDoneWire[] = [];
+    for (const [id, q] of player.quests) {
+      const def = this.questDefs.get(id);
+      if (!def) continue; // a retired def's row sleeps until it returns
+      if (q.status === 'active') active.push(questWire(def, q, ctx, names));
+      else done.push(this.questDoneWire(def, q));
+    }
+    const available = this.questAvailList(player);
+    player.questAvailSig = available.map((a) => a.id).join(',');
+    player.questCollectSig = this.questCollectSig(player, ctx);
+    player.session.sendJson({ t: 'quests', active, done, available });
+  }
+
+  /** Persist one ledger row the moment it changes (guests: memory). */
+  private persistQuest(player: PlayerComp, questId: string): void {
+    if (player.characterId <= 0) return;
+    const q = player.quests.get(questId);
+    if (!q) {
+      this.accounts.deleteQuestRow(player.characterId, questId);
+      return;
+    }
+    this.accounts.saveQuestRow(player.characterId, {
+      questId,
+      status: q.status,
+      stage: q.stage,
+      progress: JSON.stringify(q.progress),
+      acceptedAt: q.acceptedAt,
+      completions: q.completions,
+      cooldownUntil: q.cooldownUntil ?? null,
+    });
+  }
+
+  /** Quiet wire: one active quest's current shape. */
+  private pushQuestWire(player: PlayerComp, def: QuestDef, q: QuestProgress): void {
+    player.session?.sendJson({
+      t: 'questupd',
+      quest: questWire(def, q, this.questCtx(player), this.questNames()),
+    });
+  }
+
+  /**
+   * Accept a quest — the guarded transaction behind the quest_accept
+   * hook, item-starts, and the dev lever. A stale plate no-ops.
+   */
+  private questAccept(eid: EntityId, player: PlayerComp, questId: string): boolean {
+    const def = this.questDefs.get(questId);
+    if (!def) return false;
+    const ctx = this.questCtx(player);
+    if (!questAvailable(def, ctx)) return false;
+    const q = acceptQuest(def, player.quests.get(questId), ctx);
+    player.quests.set(questId, q);
+    // A charted place can satisfy stage one on the spot — walk forward.
+    advanceStages(def, q, ctx);
+    this.persistQuest(player, questId);
+    const mark = def.stages[q.stage]?.mark;
+    if (mark) {
+      this.setWaypoint(eid, mark.x, mark.y);
+      player.session?.sendJson({ t: 'waypoint', x: mark.x, y: mark.y });
+    }
+    this.pushQuestWire(player, def, q);
+    this.pushQuestAvail(player);
+    player.session?.sendJson({
+      t: 'questevent',
+      kind: 'accepted',
+      id: def.id,
+      name: def.name,
+      rewards: this.questRewardsWire(def),
+    });
+    return true;
+  }
+
+  /**
+   * Close a quest — verify every ask LIVE, take the collected items,
+   * pay the rewards (overflow lands at the feet, the give-hook law),
+   * and mark the ledger. Repeatables start their cooldown here.
+   */
+  private questTurnIn(eid: EntityId, player: PlayerComp, questId: string): boolean {
+    const def = this.questDefs.get(questId);
+    const q = player.quests.get(questId);
+    if (!def || !q) return false;
+    const ctx = this.questCtx(player);
+    if (!questReady(def, q, ctx)) return false;
+
+    // The turn-in consumes: collect asks are taken now, by id — the
+    // validator kept rolled gear out, so id-addressing is lawful.
+    const finalStage = def.stages[def.stages.length - 1]!;
+    for (const obj of finalStage.objectives) {
+      if (obj.kind === 'collect') removeItem(player.inventory, obj.item, obj.count);
+    }
+
+    const pos = this.positions.get(eid);
+    const grant = (item: string, qty: number): void => {
+      const added = addItem(player.inventory, item, qty);
+      if (added < qty && pos) this.spawnDrop(item, qty - added, pos.x, pos.y, eid);
+    };
+    for (const e of def.rewards.xp ?? []) this.grantXp(eid, player, e.skill, e.amount);
+    for (const e of def.rewards.items ?? []) grant(e.item, e.qty);
+    if (def.rewards.coins) grant('coins', def.rewards.coins);
+    player.session?.sendJson({ t: 'inv', slots: player.inventory });
+
+    q.status = 'done';
+    q.completions += 1;
+    q.cooldownUntil = def.repeat
+      ? Date.now() + def.repeat.cooldownHours * 3_600_000
+      : undefined;
+    this.persistQuest(player, questId);
+    // The durable stamp: deed rails and plain dialogue gates read this.
+    this.setPlayerFlag(player, questDoneFlag(def.id), q.completions);
+    for (const f of def.rewards.flags ?? []) this.setPlayerFlag(player, f);
+
+    player.session?.sendJson({
+      t: 'questupd',
+      remove: def.id,
+      done: this.questDoneWire(def, q),
+    });
+    this.pushQuestAvail(player);
+    player.session?.sendJson({
+      t: 'questevent',
+      kind: 'completed',
+      id: def.id,
+      name: def.name,
+      rewards: this.questRewardsWire(def),
+    });
+    return true;
+  }
+
+  /** Walk away. First-timers erase; repeat veterans fall back to done. */
+  abandonQuest(eid: EntityId, questId: string): void {
+    const player = this.players.get(eid);
+    const q = player?.quests.get(questId);
+    if (!player || !q || q.status !== 'active') return;
+    const def = this.questDefs.get(questId);
+    if (q.completions > 0) {
+      q.status = 'done';
+      q.progress = [];
+      this.persistQuest(player, questId);
+      player.session?.sendJson({
+        t: 'questupd',
+        remove: questId,
+        done: def ? this.questDoneWire(def, q) : undefined,
+      });
+    } else {
+      player.quests.delete(questId);
+      this.persistQuest(player, questId);
+      player.session?.sendJson({ t: 'questupd', remove: questId });
+    }
+    this.pushQuestAvail(player);
+    if (def) {
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `You set aside "${def.name}".`,
+      });
+    }
+  }
+
+  /**
+   * Credit one event (a kill, a talk, a discovery) against every
+   * active quest, walking stages forward and telling the journal.
+   */
+  private creditQuestEvent(player: PlayerComp, kind: QuestCreditKind, key: string): void {
+    if (player.quests.size === 0) return;
+    const ctx = this.questCtx(player);
+    for (const [id, q] of player.quests) {
+      if (q.status !== 'active') continue;
+      const def = this.questDefs.get(id);
+      if (!def) continue;
+      const wasReady = questReady(def, q, ctx);
+      if (!creditQuest(def, q, kind, key)) continue;
+      const crossed = advanceStages(def, q, ctx);
+      this.persistQuest(player, id);
+      this.pushQuestWire(player, def, q);
+      const sys = (text: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text });
+      if (crossed > 0) {
+        sys(`Your journal turns a page: "${def.name}".`);
+        const mark = def.stages[q.stage]?.mark;
+        if (mark) {
+          const eid = player.session?.playerEid;
+          if (eid !== null && eid !== undefined) {
+            this.setWaypoint(eid, mark.x, mark.y);
+            player.session?.sendJson({ t: 'waypoint', x: mark.x, y: mark.y });
+          }
+        }
+      } else if (!wasReady && questReady(def, q, ctx)) {
+        const turnIn = this.actorDefs.get(def.turnIn ?? def.giver)?.name ?? 'the giver';
+        sys(`"${def.name}" is ready — return to ${turnIn}.`);
+      }
+    }
+  }
+
+  /**
+   * THE FLOOD LAW'S SIDE DOOR: quest-gated drops roll here, at the
+   * kill site, per participant, OUTSIDE the loot tables — and stop by
+   * construction the moment the pack satisfies the ask. Each drop is
+   * owned by its earner; quest items are worthless, so the economy
+   * never feels this channel.
+   */
+  private rollQuestDrops(
+    npc: NpcComp,
+    x: number,
+    y: number,
+    participants: Iterable<[EntityId, PlayerComp]>,
+  ): void {
+    const entries = this.questDropsByNpc.get(npc.def.id);
+    if (!entries) return;
+    for (const [peid, player] of participants) {
+      const ctx = this.questCtx(player);
+      for (const entry of entries) {
+        const def = this.questDefs.get(entry.quest);
+        if (!def) continue;
+        if (!questDropWanted(def, player.quests.get(entry.quest), entry.item, ctx)) continue;
+        if (Math.random() >= entry.chance) continue;
+        const scatter = () => (Math.random() - 0.5) * 0.8;
+        this.placeDrop(entry.item, 1, x + scatter(), y + scatter(), {
+          ownerEid: peid,
+          ownerUntil: Date.now() + 60_000,
+          despawnAt: Date.now() + 120_000,
+          pickupAfter: Date.now() + 400,
+        });
+      }
+    }
+  }
+
+  /**
+   * The 500ms collect watcher: live counts changed → resend the
+   * affected quest wires; the 5s beat re-diffs availability so
+   * cooldown clocks expire without any event. Diff-guarded both ways.
+   */
+  private tickQuests(): void {
+    if (this.tickCount % 10 !== 3) return;
+    const slowBeat = this.tickCount % 100 === 3;
+    for (const session of this.sessions) {
+      const eid = session.playerEid;
+      if (eid === null) continue;
+      const player = this.players.get(eid);
+      if (!player) continue;
+      if (slowBeat) this.pushQuestAvail(player);
+      if (player.quests.size === 0) continue;
+      const ctx = this.questCtx(player);
+      const sig = this.questCollectSig(player, ctx);
+      if (sig === player.questCollectSig) continue;
+      player.questCollectSig = sig;
+      for (const [id, q] of player.quests) {
+        if (q.status !== 'active') continue;
+        const def = this.questDefs.get(id);
+        if (!def) continue;
+        if (def.stages[q.stage]?.objectives.some((o) => o.kind === 'collect')) {
+          this.pushQuestWire(player, def, q);
+        }
+      }
+    }
+  }
+
+  /** The live-collect signature: every watched item's current count. */
+  private questCollectSig(player: PlayerComp, ctx: QuestPlayerCtx): string {
+    let sig = '';
+    for (const [id, q] of player.quests) {
+      if (q.status !== 'active') continue;
+      const stage = this.questDefs.get(id)?.stages[q.stage];
+      if (!stage) continue;
+      for (const obj of stage.objectives) {
+        if (obj.kind === 'collect') sig += `${id}:${obj.item}:${ctx.countItem(obj.item)};`;
+      }
+    }
+    return sig;
+  }
+
   /** Set a durable story flag; persisted immediately (guests: memory). */
   private setPlayerFlag(player: PlayerComp, flag: string, value = 1): void {
     // The world answers; nobody writes it. (The validator already
     // refuses authored writes — this holds the line for every caller.)
-    if (isWorldFlag(flag)) return;
+    // The quest ledger answers its own namespace the same way.
+    if (isWorldFlag(flag) || isQuestFlag(flag)) return;
     if (player.flags.get(flag) === value) return;
     player.flags.set(flag, value);
     if (player.characterId > 0) this.accounts.setFlag(player.characterId, flag, value);
@@ -7155,6 +7643,8 @@ export class GameServer {
     // flag choke point, so any authored path to the flag counts.
     const art = GameServer.DEED_FLAG_ARTS[flag];
     if (art) this.grantArt(player, art);
+    // A story beat can open a quest gate — re-answer availability.
+    this.pushQuestAvail(player);
   }
 
   /** Lift a story flag (bounty marks are the one revolving door). */
@@ -9596,6 +10086,10 @@ export class GameServer {
     const attacker = this.players.get(attackerEid);
     if (attacker) {
       attacker.lastCombatAt = Date.now();
+      // The quest ledger's twin write: any landed wound marks you a
+      // participant in this body's death (guests included — their
+      // quests live in memory).
+      (npc.questWounders ??= new Set()).add(attackerEid);
       // The participation ledger: a landed wound on a garrison body
       // writes your name into the cell's fight (whiffs never count —
       // dmg <= 0 returned above). The wipe credit reads this.
@@ -9703,6 +10197,19 @@ export class GameServer {
         dropLoot(drop.item, drop.qty, drop.roll);
       }
     }
+
+    // Quest credit pays the whole fight: the killer and everyone whose
+    // landed wound touched the body (the participation law). The
+    // quest-drop side channel rolls per participant, capped by each
+    // pack's live count — the loot tables above never learn any of it.
+    const participants = new Map<EntityId, PlayerComp>();
+    if (killer) participants.set(killerEid, killer);
+    for (const weid of npc.questWounders ?? []) {
+      const p = this.players.get(weid);
+      if (p) participants.set(weid, p);
+    }
+    for (const p of participants.values()) this.creditQuestEvent(p, 'kill', npc.def.id);
+    this.rollQuestDrops(npc, pos.x, pos.y, participants);
 
     const spawn = this.spawnPoints[npc.spawnIndex];
     if (spawn) {
@@ -12572,6 +13079,78 @@ export class GameServer {
       }
       return;
     }
+    if (config.devCommands && text.startsWith('/quest')) {
+      // /quest — list; /quest accept <id>; /quest complete <id> (fills
+      // the current stage's event counters — collects still need the
+      // items); /quest reset [id]; /quest reload (swap from the DB).
+      const [, sub, arg] = text.split(/\s+/);
+      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      if (!sub) {
+        const ctx = this.questCtx(player);
+        const lines: string[] = [];
+        for (const def of this.questDefs.values()) {
+          const q = player.quests.get(def.id);
+          const state = q
+            ? q.status === 'active'
+              ? questReady(def, q, ctx)
+                ? 'READY'
+                : `active s${q.stage} [${q.progress.join(',')}]`
+              : `done ×${q.completions}`
+            : questAvailable(def, ctx)
+              ? 'available'
+              : 'gated';
+          lines.push(`${def.id}: ${state}`);
+        }
+        sys(lines.length === 0 ? 'No quests registered.' : lines.join(' · '));
+        return;
+      }
+      if (sub === 'accept' && arg) {
+        sys(this.questAccept(eid, player, arg) ? `Accepted '${arg}'.` : `'${arg}' is not available.`);
+        return;
+      }
+      if (sub === 'complete' && arg) {
+        const def = this.questDefs.get(arg);
+        const q = player.quests.get(arg);
+        if (!def || !q || q.status !== 'active') {
+          sys(`'${arg}' is not active.`);
+          return;
+        }
+        const stage = def.stages[q.stage];
+        stage?.objectives.forEach((obj, i) => {
+          if (obj.kind !== 'collect') q.progress[i] = obj.kind === 'kill' ? obj.count : 1;
+        });
+        advanceStages(def, q, this.questCtx(player));
+        this.persistQuest(player, arg);
+        this.pushQuestWire(player, def, q);
+        sys(`Filled '${arg}' to stage ${q.stage}.`);
+        return;
+      }
+      if (sub === 'turnin' && arg) {
+        sys(this.questTurnIn(eid, player, arg) ? `Turned in '${arg}'.` : `'${arg}' is not ready.`);
+        return;
+      }
+      if (sub === 'reset') {
+        const ids = arg ? [arg] : [...player.quests.keys()];
+        for (const id of ids) {
+          player.quests.delete(id);
+          this.persistQuest(player, id);
+          player.session?.sendJson({ t: 'questupd', remove: id });
+        }
+        this.pushQuestAvail(player);
+        this.sendQuestsFull(player);
+        sys(`Reset ${ids.length} quest(s).`);
+        return;
+      }
+      if (sub === 'reload') {
+        void this.reloadQuests().then((res) => {
+          sys(`Quests reloaded: ${res.count}${res.errors.length ? ` (${res.errors.length} invalid)` : ''}.`);
+          for (const p of this.players.values()) this.sendQuestsFull(p);
+        });
+        return;
+      }
+      sys('/quest — list · accept <id> · complete <id> · turnin <id> · reset [id] · reload');
+      return;
+    }
     if (config.devCommands && text.startsWith('/givekey')) {
       // /givekey [tier] [power] [seed] — mint a dungeon key. The
       // staging lever for the whole dungeon system: any tier, any
@@ -13010,6 +13589,9 @@ export class GameServer {
     // The party wayfinder ticker: ~1.5s, offset 3 so it never shares a
     // beat with the %20/%40 passes.
     if (this.tickCount % 30 === 3) this.party.tickPositions();
+    // The quest collect watcher (500ms, diff-guarded) + the 5s
+    // availability re-diff; cadence gating lives inside.
+    this.tickQuests();
 
     // Respawn depleted nodes (and pull forgotten doors to).
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
@@ -13484,6 +14066,9 @@ export class GameServer {
       if (this.dialoguesByActor.has(actor.id) || (actor.lines?.length ?? 0) > 0) {
         meta.talk = true;
       }
+      // The slug is static identity (v20): each client resolves its
+      // OWN quest marks against it — per-viewer truth off the wire.
+      meta.actor = actor.id;
     }
     const drop = this.drops.get(eid);
     if (drop) {

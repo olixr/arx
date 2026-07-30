@@ -66,6 +66,9 @@ function slate(spawns: FakeSpawn[], opts: { authored?: boolean } = {}) {
     poiSpawnFights: proto.poiSpawnFights,
     standDownGarrison: proto.standDownGarrison,
     stampCalm: proto.stampCalm,
+    // setPlayerFlag re-answers quest availability at the choke point;
+    // the slate has no quest registry, so the answer is a no-op.
+    pushQuestAvail: () => {},
     cleared,
   };
 }

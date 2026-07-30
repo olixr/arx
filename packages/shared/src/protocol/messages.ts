@@ -363,6 +363,16 @@ export interface C2SWaypoint {
   y?: number;
 }
 
+/**
+ * Walk away from an active quest. A first-timer's ledger entry is
+ * erased outright; a repeatable that was completed before falls back
+ * to its done state (any cooldown it carried stands).
+ */
+export interface C2SQuestAbandon {
+  t: 'questabandon';
+  quest: string;
+}
+
 export type C2SMessage =
   | C2SHello
   | C2SLogin
@@ -406,7 +416,8 @@ export type C2SMessage =
   | C2SPartyDisband
   | C2SPartyJoinRun
   | C2SSignEdit
-  | C2SWaypoint;
+  | C2SWaypoint
+  | C2SQuestAbandon;
 
 // ---------------------------------------------------------------- S2C
 
@@ -788,6 +799,12 @@ export interface S2CDialogueNode {
    * its own inv message as always.
    */
   gifts?: Array<{ item: string; qty: number }>;
+  /**
+   * A quest offered on this beat (the quest_offer hook) — the cinema
+   * stages the ask beside the line, gifts-style, so the player reads
+   * what they'd be agreeing to before the choice plates appear.
+   */
+  quest?: QuestOfferWire;
 }
 
 /** The conversation is over (finished, excused, or interrupted). */
@@ -989,6 +1006,105 @@ export interface S2CWaypoint {
   y?: number;
 }
 
+/** One objective row: the id (in its namespace) keys the client icon. */
+export interface QuestObjectiveWire {
+  kind: 'kill' | 'collect' | 'discover' | 'talk';
+  item?: string;
+  npc?: string;
+  actor?: string;
+  place?: string;
+  label: string;
+  have: number;
+  need: number;
+}
+
+/**
+ * One ACTIVE quest, shaped for the journal screen and the tracker.
+ * `status: 'ready'` = every ask answered, turn in to `turnIn` — the
+ * client flips that actor's overhead mark on it. Names ride the wire
+ * (the DB is the truth; the bundle may lag a tool edit), ids ride for
+ * icons.
+ */
+export interface QuestWire {
+  id: string;
+  name: string;
+  status: 'active' | 'ready';
+  giver: string;
+  giverName: string;
+  turnIn: string;
+  turnInName: string;
+  /** 0-based stage index and the total, for "Part n of m". */
+  stage: number;
+  stages: number;
+  /** The current stage's journal entry — directions, never markers. */
+  journal: string;
+  objectives: QuestObjectiveWire[];
+  repeatable?: boolean;
+}
+
+/** One completed quest on the ledger's done shelf. */
+export interface QuestDoneWire {
+  id: string;
+  name: string;
+  completions: number;
+  repeatable?: boolean;
+  /** Repeatables: re-offerable once this passes (ms epoch). */
+  cooldownUntil?: number;
+}
+
+/** An offerable quest — the "!" over its giver's head. */
+export interface QuestAvailWire {
+  id: string;
+  name: string;
+  giver: string;
+}
+
+/** The quest chip staged on a dialogue beat (the quest_offer hook). */
+export interface QuestOfferWire {
+  id: string;
+  name: string;
+  rewards?: QuestRewardsWire;
+}
+
+/** Reward summary for ceremonies and offer chips — ids + counts only. */
+export interface QuestRewardsWire {
+  xp?: Array<{ skill: string; amount: number }>;
+  items?: Array<{ item: string; qty: number }>;
+  coins?: number;
+}
+
+/** The full quest ledger, pushed once at bind. */
+export interface S2CQuests {
+  t: 'quests';
+  active: QuestWire[];
+  done: QuestDoneWire[];
+  available: QuestAvailWire[];
+}
+
+/**
+ * A quiet ledger patch — counters tick, stages turn, availability
+ * shifts. NO ceremony rides this; the accepted/completed splash stays
+ * reserved for S2CQuestEvent. Present fields apply: `quest` upserts an
+ * active entry, `remove` drops one, `done` upserts the done shelf,
+ * `available` replaces the offerable list whole.
+ */
+export interface S2CQuestUpd {
+  t: 'questupd';
+  quest?: QuestWire;
+  remove?: string;
+  done?: QuestDoneWire;
+  available?: QuestAvailWire[];
+}
+
+/** A LIVE quest ceremony — the ONLY trigger for banners and fanfare. */
+export interface S2CQuestEvent {
+  t: 'questevent';
+  kind: 'accepted' | 'completed';
+  id: string;
+  name: string;
+  rewards?: QuestRewardsWire;
+}
+
 export type S2CMessage =
   | S2CWelcome
   | S2CReject
@@ -1033,7 +1149,10 @@ export type S2CMessage =
   | S2CDiscovery
   | S2CDiscoveryFade
   | S2CDiscoveryStage
-  | S2CWaypoint;
+  | S2CWaypoint
+  | S2CQuests
+  | S2CQuestUpd
+  | S2CQuestEvent;
 
 // ------------------------------------------------------- validation
 
@@ -1141,6 +1260,12 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!Number.isInteger(msg.x) || !Number.isInteger(msg.y)) return null;
       if (Math.abs(msg.x) > 1_000_000 || Math.abs(msg.y) > 1_000_000) return null;
       return { t: 'waypoint', x: msg.x, y: msg.y };
+    }
+    case 'questabandon': {
+      if (typeof msg.quest !== 'string' || msg.quest.length === 0 || msg.quest.length > 64) {
+        return null;
+      }
+      return { t: 'questabandon', quest: msg.quest };
     }
     case 'use': {
       if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;

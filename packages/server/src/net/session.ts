@@ -343,6 +343,12 @@ export class Session {
         this.game.setWaypoint(this.playerEid, msg.x, msg.y);
         return;
       }
+      case 'questabandon': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.abandonQuest(this.playerEid, msg.quest);
+        return;
+      }
       case 'setlook': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
