@@ -1,0 +1,16 @@
+{
+  "id": "thin_the_meadow",
+  "name": "Thin the Meadow",
+  "giver": "warden_bryn",
+  "stages": [
+    {
+      "id": "cull",
+      "journal": "Bryn has counted goblin tracks in the meadows south of the lane three mornings running, and the count keeps growing. Put six of them down and report back to her yard.",
+      "objectives": [{ "kind": "kill", "npc": "goblin", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 45,
+    "xp": [{ "skill": "melee", "amount": 200 }]
+  }
+}

@@ -1,6 +1,7 @@
 import { ITEMS } from '../items.js';
 import { NPC_ACTORS } from '../actors/registry.js';
 import { SHOPS } from '../shop.js';
+import { QUEST_FLAG_RE, isQuestFlag } from '../quests/flags.js';
 import { parseDialogueMarkup } from './markup.js';
 import { WORLD_FLAGS, isWorldFlag } from './worldFlags.js';
 import type {
@@ -29,13 +30,22 @@ export type ValidateDialogueResult =
  */
 export interface ValidateDialogueRefs {
   actorIds?: ReadonlySet<string>;
+  /**
+   * Quest ids for cross-checking quest_* hooks and `quest:` flag
+   * reads. The running server passes its DB-loaded roster; shipped
+   * content is cross-checked in quests.test.ts instead (importing the
+   * quest registry here would cycle the packages' content graph).
+   */
+  questIds?: ReadonlySet<string>;
 }
 
 const SLUG_RE = /^[a-z][a-z0-9_]*$/;
 /**
- * Flags may reference dialogue completions (`dlg:<dialogue_id>`) or the
+ * Flags may reference dialogue completions (`dlg:<dialogue_id>`), the
  * synthetic world answers (`world:<name>` — the living-frontier
- * namespace, answered live at the Talk site, never stored).
+ * namespace, answered live at the Talk site, never stored), or the
+ * synthetic quest answers (`quest:<id>:<state>` — quests/flags.ts,
+ * answered live from the asking player's quest ledger).
  */
 const FLAG_RE = /^(dlg:|world:)?[a-z][a-z0-9_]*$/;
 
@@ -43,7 +53,12 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-function flagList(raw: unknown, name: string, errors: string[]): string[] | undefined {
+function flagList(
+  raw: unknown,
+  name: string,
+  errors: string[],
+  refs?: ValidateDialogueRefs,
+): string[] | undefined {
   if (raw === undefined) return undefined;
   if (!Array.isArray(raw) || raw.length > 8) {
     errors.push(`${name} must be an array of at most 8 flags`);
@@ -51,7 +66,28 @@ function flagList(raw: unknown, name: string, errors: string[]): string[] | unde
   }
   const out: string[] = [];
   for (const f of raw) {
-    if (typeof f !== 'string' || !FLAG_RE.test(f) || f.length > 64) {
+    if (typeof f !== 'string' || f.length > 64) {
+      errors.push(`${name} flag '${String(f)}' must be a string of at most 64 chars`);
+      continue;
+    }
+    // The quest: namespace has its own grammar — a malformed state
+    // name would gate a tree out forever in silence, so it dies here.
+    if (isQuestFlag(f)) {
+      const m = QUEST_FLAG_RE.exec(f);
+      if (!m) {
+        errors.push(
+          `${name} flag '${f}' must match quest:<id>:(available|active|ready|done|stage:<stage_id>)`,
+        );
+        continue;
+      }
+      if (refs?.questIds && !refs.questIds.has(m[1]!)) {
+        errors.push(`${name} flag '${f}' references unknown quest '${m[1]}'`);
+        continue;
+      }
+      out.push(f);
+      continue;
+    }
+    if (!FLAG_RE.test(f)) {
       errors.push(
         `${name} flag '${String(f)}' must match ^(dlg:|world:)?[a-z][a-z0-9_]*$ (max 64 chars)`,
       );
@@ -68,7 +104,12 @@ function flagList(raw: unknown, name: string, errors: string[]): string[] | unde
   return out;
 }
 
-function validateHooks(raw: unknown, where: string, errors: string[]): DialogueHook[] | undefined {
+function validateHooks(
+  raw: unknown,
+  where: string,
+  errors: string[],
+  refs?: ValidateDialogueRefs,
+): DialogueHook[] | undefined {
   if (raw === undefined) return undefined;
   if (!Array.isArray(raw) || raw.length > 4) {
     errors.push(`${where}.hooks must be an array of at most 4 hooks`);
@@ -107,8 +148,20 @@ function validateHooks(raw: unknown, where: string, errors: string[]): DialogueH
       // Carries nothing — the world state at the moment of asking is
       // the ask (the server picks the cell, plants the waypoint).
       out.push({ kind: 'bounty' });
+    } else if (h.kind === 'quest_offer' || h.kind === 'quest_accept' || h.kind === 'quest_turnin') {
+      if (typeof h.quest !== 'string' || !SLUG_RE.test(h.quest) || h.quest.length > 48) {
+        errors.push(`${where}.hooks[${i}].quest must be a quest id slug`);
+        continue;
+      }
+      if (refs?.questIds && !refs.questIds.has(h.quest)) {
+        errors.push(`${where}.hooks[${i}] references unknown quest '${h.quest}'`);
+        continue;
+      }
+      out.push({ kind: h.kind, quest: h.quest });
     } else {
-      errors.push(`${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', or 'bounty'`);
+      errors.push(
+        `${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', 'bounty', 'quest_offer', 'quest_accept', or 'quest_turnin'`,
+      );
     }
   }
   return out;
@@ -118,6 +171,7 @@ function validateChoices(
   raw: unknown,
   where: string,
   errors: string[],
+  refs?: ValidateDialogueRefs,
 ): DialogueChoice[] | undefined {
   if (raw === undefined) return undefined;
   if (!Array.isArray(raw) || raw.length < 1 || raw.length > 4) {
@@ -138,9 +192,9 @@ function validateChoices(
       }
       choice.next = c.next;
     }
-    choice.requires = flagList(c.requires, `${where}.choices[${i}].requires`, errors);
-    choice.forbids = flagList(c.forbids, `${where}.choices[${i}].forbids`, errors);
-    choice.set = flagList(c.set, `${where}.choices[${i}].set`, errors);
+    choice.requires = flagList(c.requires, `${where}.choices[${i}].requires`, errors, refs);
+    choice.forbids = flagList(c.forbids, `${where}.choices[${i}].forbids`, errors, refs);
+    choice.set = flagList(c.set, `${where}.choices[${i}].set`, errors, refs);
     if (choice.set?.some((f) => f.startsWith('dlg:'))) {
       errors.push(`${where}.choices[${i}].set may not write dlg: flags (completions are automatic)`);
       continue;
@@ -149,12 +203,21 @@ function validateChoices(
       errors.push(`${where}.choices[${i}].set may not write world: flags (the world answers, nobody writes it)`);
       continue;
     }
+    if (choice.set?.some((f) => isQuestFlag(f))) {
+      errors.push(`${where}.choices[${i}].set may not write quest: flags (the ledger answers, nobody writes it)`);
+      continue;
+    }
     out.push(choice);
   }
   return out;
 }
 
-function validateNode(raw: unknown, index: number, errors: string[]): DialogueNode | undefined {
+function validateNode(
+  raw: unknown,
+  index: number,
+  errors: string[],
+  refs?: ValidateDialogueRefs,
+): DialogueNode | undefined {
   const where = `nodes[${index}]`;
   if (!isRecord(raw)) {
     errors.push(`${where} must be an object`);
@@ -191,11 +254,11 @@ function validateNode(raw: unknown, index: number, errors: string[]): DialogueNo
     if (typeof raw.next !== 'string') errors.push(`${where}.next must be a node id string`);
     else node.next = raw.next;
   }
-  node.choices = validateChoices(raw.choices, where, errors);
+  node.choices = validateChoices(raw.choices, where, errors, refs);
   if (node.next !== undefined && node.choices !== undefined) {
     errors.push(`${where} cannot have both next and choices — a beat is linear OR a question`);
   }
-  node.hooks = validateHooks(raw.hooks, where, errors);
+  node.hooks = validateHooks(raw.hooks, where, errors, refs);
   return node;
 }
 
@@ -213,8 +276,8 @@ export function validateDialogue(raw: unknown, refs?: ValidateDialogueRefs): Val
     if (typeof raw.once !== 'boolean') errors.push('once must be a boolean');
     else once = raw.once;
   }
-  const requires = flagList(raw.requires, 'requires', errors);
-  const forbids = flagList(raw.forbids, 'forbids', errors);
+  const requires = flagList(raw.requires, 'requires', errors, refs);
+  const forbids = flagList(raw.forbids, 'forbids', errors, refs);
 
   if (!Array.isArray(raw.nodes) || raw.nodes.length < 1 || raw.nodes.length > 64) {
     errors.push('nodes must be an array of 1..64 nodes');
@@ -223,7 +286,7 @@ export function validateDialogue(raw: unknown, refs?: ValidateDialogueRefs): Val
   const nodes: DialogueNode[] = [];
   const nodeIds = new Set<string>();
   for (const [i, rawNode] of raw.nodes.entries()) {
-    const node = validateNode(rawNode, i, errors);
+    const node = validateNode(rawNode, i, errors, refs);
     if (!node) continue;
     if (nodeIds.has(node.id)) errors.push(`nodes[${i}]: duplicate node id '${node.id}'`);
     nodeIds.add(node.id);

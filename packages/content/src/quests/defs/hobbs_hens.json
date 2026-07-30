@@ -1,0 +1,16 @@
+{
+  "id": "hobbs_hens",
+  "name": "Hobb's Hens",
+  "giver": "farmer_hobb",
+  "stages": [
+    {
+      "id": "gather",
+      "journal": "Hobb wants eight eggs. The hens lay where they please — around the coop north of the lane, mostly, though he says a few end up in the long grass by the pasture fence. He'll be at the pens. He is always at the pens.",
+      "objectives": [{ "kind": "collect", "item": "egg", "count": 8 }]
+    }
+  ],
+  "rewards": {
+    "coins": 30,
+    "xp": [{ "skill": "farming", "amount": 120 }]
+  }
+}

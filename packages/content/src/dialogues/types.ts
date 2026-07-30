@@ -80,6 +80,38 @@ export interface DialogueHookBounty {
 }
 
 /**
+ * Stage the quest's offer chip on this beat: the cinema shows the
+ * quest's name, ask, and pay beside the line (the gifts pattern), so
+ * the player reads what they're agreeing to BEFORE the choice plates.
+ * Pure presentation — accepting is the quest_accept hook's job.
+ */
+export interface DialogueHookQuestOffer {
+  kind: 'quest_offer';
+  quest: string;
+}
+
+/**
+ * Accept the quest: the server opens the ledger entry, stamps the
+ * journal, and fires the accepted ceremony. Guarded — a no-op unless
+ * `quest:<id>:available` answers true at that moment, so a stale
+ * choice plate can never double-accept or jump a gate.
+ */
+export interface DialogueHookQuestAccept {
+  kind: 'quest_accept';
+  quest: string;
+}
+
+/**
+ * Close the quest: verify every objective live, take the collected
+ * items, pay the rewards, and mark it done (repeatables start their
+ * cooldown). Guarded — a no-op unless `quest:<id>:ready` holds.
+ */
+export interface DialogueHookQuestTurnin {
+  kind: 'quest_turnin';
+  quest: string;
+}
+
+/**
  * Node effects, executed server-side when the node is entered. This
  * union is THE open socket: quest grants, faction shifts, and shop
  * unlocks land here as new kinds without touching the walk logic.
@@ -88,7 +120,10 @@ export type DialogueHook =
   | DialogueHookFlag
   | DialogueHookGive
   | DialogueHookShop
-  | DialogueHookBounty;
+  | DialogueHookBounty
+  | DialogueHookQuestOffer
+  | DialogueHookQuestAccept
+  | DialogueHookQuestTurnin;
 
 /** One answer the player may pick (at most 4 per node). */
 export interface DialogueChoice {

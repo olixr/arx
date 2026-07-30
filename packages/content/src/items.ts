@@ -157,6 +157,20 @@ export interface ItemDef {
    * recipe below; never hand-authored.
    */
   teaches?: string;
+  /**
+   * Quest item: exists only to be asked for. Worthless by law (value
+   * 0, shops refuse to buy it) so it never touches the gear economy —
+   * the flood law's price for quest-gated drops. Droppable like
+   * anything else; losing one just means earning it again.
+   */
+  quest?: boolean;
+  /**
+   * Using this item BEGINS the named quest — a torn note, a sealed
+   * writ, a thing found in the world that is itself the ask. Consumed
+   * on accept; refused (and kept) while the quest is underway or its
+   * gates don't pass.
+   */
+  startsQuest?: string;
 }
 
 const defs: ItemDef[] = [
