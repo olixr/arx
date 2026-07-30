@@ -111,3 +111,32 @@ test('prefetch warms the bank first — the greet leads the queue', async () => 
   // The cap still binds across both sources.
   assert.equal(collectVoicePrefetch(def, CLIPS, 2, bank)!.length, 2);
 });
+
+test('the mood mark rules the slot and is never diced', async () => {
+  const { quipSlotForBeat, quipIsRationed } = await import('./resolve.js');
+  assert.equal(quipSlotForBeat(false, false, 'yes'), 'yes');
+  assert.equal(quipSlotForBeat(true, false, 'no'), 'no'); // the mark beats position
+  assert.equal(quipSlotForBeat(false, true, 'hm'), 'hm');
+  assert.equal(quipIsRationed(false, false, undefined), true); // anonymous acks dice
+  assert.equal(quipIsRationed(false, false, 'yes'), false); // marks always speak
+  assert.equal(quipIsRationed(true, false, undefined), false);
+  assert.equal(quipIsRationed(false, true, undefined), false);
+});
+
+test('prefetch leaves reel-length lines to stream on demand', async () => {
+  const { collectVoicePrefetch } = await import('./resolve.js');
+  const clips = new Map([
+    ['short', clip('short', 'a')],
+    ['reel', { ...clip('reel', 'b'), durMs: 60_000 }],
+  ]);
+  const def = {
+    id: 't3',
+    start: 'a',
+    nodes: [
+      { id: 'a', text: '.', voice: 'reel', next: 'b' },
+      { id: 'b', text: '.', voice: 'short' },
+    ],
+  };
+  // The 60s reel is skipped; only the short line warms the cache.
+  assert.deepEqual(collectVoicePrefetch(def, clips, 12), [`/voice/${'a'.repeat(40)}.ogg`]);
+});

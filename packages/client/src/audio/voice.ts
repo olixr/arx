@@ -23,6 +23,7 @@
  * All of it through engine.setDuck — the one lawful system multiplier.
  */
 
+import { VOICE_STREAM_MS } from '@arx/content';
 import type { AudioEngine } from './engine.js';
 import type { WorldAt } from './sfx.js';
 
@@ -40,6 +41,16 @@ const FADE_OUT = 0.08;
  */
 export const LINE_DUCK = { music: 0.45, tracks: 0.45, ambience: 0.75 } as const;
 const DUCK_SEAT_TC = 0.12;
+
+/**
+ * THE REEL LAW (Phase 6): short lines decode into warm buffers; a
+ * line at or past VOICE_STREAM_MS streams through a media element
+ * (the TrackPlayer idiom) — a cutscene's worth of speech should
+ * never sit decoded in the cache nor wait on a full download.
+ */
+export function lineDelivery(durMs: number): 'buffer' | 'stream' {
+  return durMs >= VOICE_STREAM_MS ? 'stream' : 'buffer';
+}
 
 /**
  * THE PACED WORD: how much to stretch the typewriter so a voiced
@@ -150,6 +161,9 @@ export class VoicePlayer {
   private lineGen = 0;
   private lineSrc: AudioBufferSourceNode | null = null;
   private lineGain: GainNode | null = null;
+  /** The streaming leg: one MediaElementSource per element, forever. */
+  private media = new Map<string, { el: HTMLAudioElement; node: MediaElementAudioSourceNode }>();
+  private lineMedia: HTMLAudioElement | null = null;
   current: CurrentLine | null = null;
   private quipCount = 0;
   private ducked = false;
@@ -193,11 +207,16 @@ export class VoicePlayer {
    * Speak a full line: stops whatever line is playing, seats the duck,
    * and starts the clip once decoded (instantly when prefetched). A
    * newer playLine/stopLine during the decode wins — the stale clip
-   * never sounds.
+   * never sounds. Reel-length lines (durMs ≥ VOICE_STREAM_MS) stream
+   * through a media element instead of decoding.
    */
-  playLine(url: string): void {
+  playLine(url: string, durMs = 0): void {
     const gen = ++this.lineGen;
     this.haltLine(FADE_OUT);
+    if (lineDelivery(durMs) === 'stream') {
+      this.playReel(url, durMs, gen);
+      return;
+    }
     void this.load(url).then((buf) => {
       if (gen !== this.lineGen) return;
       const ctx = this.engine.ctx;
@@ -224,6 +243,49 @@ export class VoicePlayer {
       };
       src.start(t);
     });
+  }
+
+  /**
+   * The streaming leg — the TrackPlayer idiom pointed at speech: one
+   * HTMLAudioElement + MediaElementSource per URL, cached forever
+   * (recreating a source for a used element throws), fades and ducks
+   * exactly like a buffered line. SILENCE IS VALID: a failed stream
+   * clears itself and releases the ducks.
+   */
+  private playReel(url: string, durMs: number, gen: number): void {
+    const ctx = this.engine.ctx;
+    const bus = this.engine.voice;
+    if (!ctx || !bus) return;
+    let entry = this.media.get(url);
+    if (!entry) {
+      const mediaEl = new Audio(url);
+      mediaEl.preload = 'auto';
+      entry = { el: mediaEl, node: ctx.createMediaElementSource(mediaEl) };
+      this.media.set(url, entry);
+    }
+    const { el: mediaEl, node } = entry;
+    const t = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(1, t + FADE_IN);
+    node.disconnect();
+    node.connect(gain);
+    gain.connect(bus);
+    this.lineMedia = mediaEl;
+    this.lineGain = gain;
+    this.current = { url, startedAt: t, durSec: durMs / 1000 };
+    this.setLineDuck(true);
+    const done = (): void => {
+      if (gen !== this.lineGen) return;
+      this.lineMedia = null;
+      this.lineGain = null;
+      this.current = null;
+      this.setLineDuck(false);
+    };
+    mediaEl.onended = done;
+    mediaEl.onerror = done;
+    mediaEl.currentTime = 0;
+    mediaEl.play().catch(done);
   }
 
   /** Fade the current line out (a skip, a page turn, a walk-away). */
@@ -286,23 +348,32 @@ export class VoicePlayer {
   private haltLine(fadeSec: number): void {
     const ctx = this.engine.ctx;
     const src = this.lineSrc;
+    const mediaEl = this.lineMedia;
     const gain = this.lineGain;
     this.lineSrc = null;
+    this.lineMedia = null;
     this.lineGain = null;
     this.current = null;
-    if (!ctx || !src || !gain) {
+    if (!ctx || !gain || (!src && !mediaEl)) {
       this.setLineDuck(false);
       return;
     }
     const t = ctx.currentTime;
-    src.onended = null;
     gain.gain.cancelScheduledValues(t);
     gain.gain.setValueAtTime(gain.gain.value, t);
     gain.gain.linearRampToValueAtTime(0, t + fadeSec);
-    try {
-      src.stop(t + fadeSec);
-    } catch {
-      /* already stopped */
+    if (src) {
+      src.onended = null;
+      try {
+        src.stop(t + fadeSec);
+      } catch {
+        /* already stopped */
+      }
+    }
+    if (mediaEl) {
+      mediaEl.onended = null;
+      mediaEl.onerror = null;
+      window.setTimeout(() => mediaEl.pause(), fadeSec * 1000 + 100);
     }
     this.setLineDuck(false);
   }

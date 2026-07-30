@@ -191,6 +191,13 @@ export interface DialogueNode {
    * (SILENCE IS VALID), never an error at a player.
    */
   voice?: string;
+  /**
+   * THE MOOD MARK (Phase 6): this beat is an affirmation ('yes'), a
+   * refusal ('no'), or a hesitation ('hm') — when it has no full
+   * line, the speaker's bank draws that slot instead of a rationed
+   * ack. Authored intent: marked beats always speak if the slot can.
+   */
+  mood?: 'yes' | 'no' | 'hm';
 }
 
 /**

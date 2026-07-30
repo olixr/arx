@@ -37,9 +37,31 @@ const HASH_RE = /^[a-f0-9]{40}$/;
 export const VOICE_SLOTS = ['greet', 'ack', 'yes', 'no', 'farewell', 'hm', 'bark'] as const;
 export type VoiceSlot = (typeof VOICE_SLOTS)[number];
 
-/** Owner kinds a bank may hang from. 'actor' now; the axis is open. */
-export const VOICE_OWNER_KINDS = ['actor'] as const;
+/**
+ * Owner kinds a bank may hang from (THE WORLD SPEAKS, Phase 6):
+ * 'actor' throats speak in conversation and barks; 'poi' banks are
+ * the spirit at a shrine — their greet fires the moment a site is
+ * first discovered; 'zone' banks are the voice on the wind — greet
+ * fires at a place's first footfall. Future kinds join here with the
+ * moment that fires them.
+ */
+export const VOICE_OWNER_KINDS = ['actor', 'poi', 'zone'] as const;
 export type VoiceOwnerKind = (typeof VOICE_OWNER_KINDS)[number];
+
+/**
+ * Node moods — the designer's mark that a beat is an affirmation, a
+ * refusal, or a hesitation. An unvoiced marked beat draws its mood's
+ * bank slot unconditionally (a mark is authored intent, never diced).
+ */
+export const VOICE_MOODS = ['yes', 'no', 'hm'] as const;
+export type VoiceMood = (typeof VOICE_MOODS)[number];
+
+/**
+ * THE REEL THRESHOLD: a line at or past this length streams through a
+ * media element instead of decoding into a buffer (the cutscene/boss
+ * reel path) — and the prefetch walk leaves it to stream on demand.
+ */
+export const VOICE_STREAM_MS = 45_000;
 
 /** Accepted upload containers and what they serve as. */
 export const VOICE_EXTS = ['ogg', 'opus', 'webm', 'mp3', 'm4a', 'wav'] as const;

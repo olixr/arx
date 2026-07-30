@@ -531,10 +531,17 @@ export function createMapsApi(
             return true;
           }
           const clipIds = new Set((await loadVoiceClips(db)).clips.map((c) => c.def.id));
-          const result = validateVoiceBank(raw, {
-            clipIds,
-            ownerIds: ownerKind === 'actor' ? game.actorIds() : undefined,
-          });
+          // Each owner kind validates against its own live roster:
+          // actors, POI archetypes, zones (THE WORLD SPEAKS).
+          const ownerIds =
+            ownerKind === 'actor'
+              ? game.actorIds()
+              : ownerKind === 'poi'
+                ? new Set(POI_DEFS.keys())
+                : ownerKind === 'zone'
+                  ? game.zoneIds()
+                  : undefined;
+          const result = validateVoiceBank(raw, { clipIds, ownerIds });
           if (!result.ok) {
             sendJson(res, 400, { error: result.errors.join('; ') });
             return true;

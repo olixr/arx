@@ -313,3 +313,15 @@ test('the spoken line: voice refs check grammar always, existence only with a le
   const ghost = validateDialogue(tree('ghost_clip'), { voiceClipIds: new Set(['dunna_greet_1']) });
   assert.ok(!ghost.ok && ghost.errors.some((e) => e.includes("unknown clip 'ghost_clip'")));
 });
+
+test('the mood mark: yes/no/hm validate, anything else refuses', () => {
+  const tree = (mood: string): unknown => ({
+    id: 'm_test',
+    start: 'a',
+    nodes: [{ id: 'a', text: 'Aye.', mood }],
+  });
+  const ok = validateDialogue(tree('yes'));
+  assert.ok(ok.ok && ok.dialogue.nodes[0]!.mood === 'yes');
+  const bad = validateDialogue(tree('angry'));
+  assert.ok(!bad.ok && bad.errors.some((e) => e.includes('mood')));
+});

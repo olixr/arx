@@ -163,7 +163,7 @@ test('the spoken line rides the dialogue row: voice survives the DB round trip',
     bindings: [{ kind: 'actor' as const, target: 'innkeep_dunna' }],
     nodes: [
       { id: 'a', text: 'Morning.', voice: 'dunna_greet_1', next: 'b' },
-      { id: 'b', text: 'Mind the step.' },
+      { id: 'b', text: 'Mind the step.', mood: 'hm' as const },
     ],
   };
   const imported = await importDialogue(db, def);
@@ -172,6 +172,7 @@ test('the spoken line rides the dialogue row: voice survives the DB round trip',
   const back = loaded.dialogues.find((d) => d.id === 'v_roundtrip')!;
   assert.equal(back.nodes[0]!.voice, 'dunna_greet_1');
   assert.equal(back.nodes[1]!.voice, undefined);
+  assert.equal(back.nodes[1]!.mood, 'hm');
   // The interchange shape reproduces field for field.
   assert.deepEqual(JSON.parse(JSON.stringify(back)), JSON.parse(JSON.stringify(def)));
 });

@@ -1,5 +1,12 @@
-import type { DialogueDef, DialogueNode, VoiceBankDef, VoiceClipDef, VoiceSlot } from '@arx/content';
-import { voiceClipUrl } from '@arx/content';
+import type {
+  DialogueDef,
+  DialogueNode,
+  VoiceBankDef,
+  VoiceClipDef,
+  VoiceMood,
+  VoiceSlot,
+} from '@arx/content';
+import { VOICE_STREAM_MS, voiceClipUrl } from '@arx/content';
 import type { VoiceWire } from '@arx/shared';
 
 /**
@@ -29,13 +36,25 @@ export function voiceWireForNode(
 
 /**
  * Which bank slot a conversation beat draws from when it has no full
- * line: the first beat is the hello, the terminal beat the goodbye,
- * everything between an acknowledgement.
+ * line: a mood mark speaks its own slot (the designer's word beats
+ * position); else the first beat is the hello, the terminal beat the
+ * goodbye, everything between an acknowledgement.
  */
-export function quipSlotForBeat(isFirst: boolean, isLast: boolean): VoiceSlot {
+export function quipSlotForBeat(isFirst: boolean, isLast: boolean, mood?: VoiceMood): VoiceSlot {
+  if (mood !== undefined) return mood;
   if (isFirst) return 'greet';
   if (isLast) return 'farewell';
   return 'ack';
+}
+
+/**
+ * Whether the moment is diced (quipChance + cooldown) or spoken
+ * unconditionally: the door, the goodbye, and every authored mood
+ * mark speak when they can — only the anonymous in-between acks are
+ * rationed, so quips punctuate instead of chattering.
+ */
+export function quipIsRationed(isFirst: boolean, isLast: boolean, mood?: VoiceMood): boolean {
+  return !isFirst && !isLast && mood === undefined;
 }
 
 /**
@@ -112,8 +131,10 @@ export function collectVoicePrefetch(
     const node = byId.get(queue.shift()!);
     if (!node || seenNodes.has(node.id)) continue;
     seenNodes.add(node.id);
-    const wire = voiceWireForNode(node, clips);
-    if (wire) add(wire.url);
+    // Reel-length lines stream on demand — decoding one into the
+    // buffer cache would waste the whole warm budget on a cutscene.
+    const clip = node.voice !== undefined ? clips.get(node.voice) : undefined;
+    if (clip && clip.durMs < VOICE_STREAM_MS) add(voiceClipUrl(clip));
     if (node.next !== undefined) queue.push(node.next);
     for (const c of node.choices ?? []) {
       if (c.next !== undefined) queue.push(c.next);

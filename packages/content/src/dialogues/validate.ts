@@ -324,6 +324,13 @@ function validateNode(
       node.voice = raw.voice;
     }
   }
+  if (raw.mood !== undefined) {
+    if (raw.mood !== 'yes' && raw.mood !== 'no' && raw.mood !== 'hm') {
+      errors.push(`${where}.mood must be 'yes', 'no', or 'hm'`);
+    } else {
+      node.mood = raw.mood;
+    }
+  }
   return node;
 }
 

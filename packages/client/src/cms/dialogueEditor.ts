@@ -75,7 +75,8 @@ function rehearseVoice(
   if (!actor) return null;
   const bank = v.banks.find((b) => b.owner.kind === 'actor' && b.owner.id === actor);
   const last = node.next === undefined && (node.choices ?? []).length === 0;
-  const slot = first ? 'greet' : last ? 'farewell' : 'ack';
+  // The mood mark rules the slot; else position picks it.
+  const slot = node.mood ?? (first ? 'greet' : last ? 'farewell' : 'ack');
   const entries = (bank?.slots[slot] ?? []).filter((e) => e.clip);
   if (entries.length === 0) return null;
   const total = entries.reduce((a, e) => a + (e.weight ?? 1), 0);
@@ -1493,7 +1494,7 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
           const first = node.id === draft.start;
           const wire = rehearseVoice(draft, node, first);
           const last = node.next === undefined && (node.choices ?? []).length === 0;
-          const slot = first ? 'greet' : last ? 'farewell' : 'ack';
+          const slot = node.mood ?? (first ? 'greet' : last ? 'farewell' : 'ack');
           statusHost.appendChild(
             pill(
               wire ? `fallback: ${slot} speaks` : `fallback: ${slot} → silence`,
@@ -1522,6 +1523,25 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
         else toast('this beat plays silent', 2200);
       };
       vRow.appendChild(play);
+      // THE MOOD MARK: yes / no / hm — an unvoiced marked beat draws
+      // that slot unconditionally instead of a rationed ack.
+      const moods = el('div', 'beat-mood');
+      const moodBtns: HTMLButtonElement[] = [];
+      for (const m of ['yes', 'no', 'hm'] as const) {
+        const b = el('button', node.mood === m ? 'active' : '', m) as HTMLButtonElement;
+        b.title = `mark this beat as '${m}' — its bank slot always speaks when unvoiced`;
+        b.onclick = () => {
+          if (node.mood === m) delete node.mood;
+          else node.mood = m;
+          for (const btn of moodBtns) btn.classList.toggle('active', btn.textContent === node.mood);
+          markDirty();
+          refreshLight();
+          refreshStatus();
+        };
+        moodBtns.push(b);
+        moods.appendChild(b);
+      }
+      vRow.appendChild(moods);
       vRow.appendChild(statusHost);
       refreshStatus();
       card.appendChild(vRow);

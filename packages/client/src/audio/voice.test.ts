@@ -82,3 +82,12 @@ test('THE PACED WORD: stretch-only, lands at 92% of the clip, safe at zero', asy
   assert.equal(voicePaceScale(0, 5000), 1);
   assert.equal(voicePaceScale(2, 0), 1);
 });
+
+test('THE REEL LAW: short lines buffer, cutscene lengths stream', async () => {
+  const { lineDelivery } = await import('./voice.js');
+  const { VOICE_STREAM_MS } = await import('@arx/content');
+  assert.equal(lineDelivery(0), 'buffer'); // unknown length plays safe
+  assert.equal(lineDelivery(VOICE_STREAM_MS - 1), 'buffer');
+  assert.equal(lineDelivery(VOICE_STREAM_MS), 'stream');
+  assert.equal(lineDelivery(10 * 60_000), 'stream');
+});

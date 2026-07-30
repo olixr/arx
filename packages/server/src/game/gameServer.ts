@@ -188,6 +188,7 @@ import {
 import {
   collectVoicePrefetch,
   pickQuipClip,
+  quipIsRationed,
   quipSlotForBeat,
   quipWire,
   voiceWireForNode,
@@ -1927,6 +1928,11 @@ export class GameServer {
     for (const def of defs) this.voiceBanks.set(`${def.owner.kind}:${def.owner.id}`, def);
   }
 
+  /** Live zone ids — the 'zone' bank owner axis validates against these. */
+  zoneIds(): ReadonlySet<string> {
+    return new Set([...this.world.zoneDefs].map((z) => z.id));
+  }
+
   registerDialogues(defs: Iterable<DialogueDef>): void {
     for (const def of defs) {
       this.dialogueNodes.set(def.id, new Map(def.nodes.map((n) => [n.id, n])));
@@ -2731,6 +2737,34 @@ export class GameServer {
     player.session?.sendJson({ t: 'discovery', d });
     // One choke point catches every "chart this place" quest ask.
     this.creditQuestEvent(player, 'discover', d.id);
+    // THE WORLD SPEAKS (voiceover Phase 6): a place may greet its
+    // discoverer — a zone's voice on the wind at first footfall, a
+    // site archetype's spirit at first sighting. Once per character
+    // by the ledger's own nature; a re-stood site speaks again.
+    let owner: string | null = null;
+    if (d.id.startsWith('zone:')) {
+      owner = `zone:${d.id.slice(5)}`;
+    } else if (d.id.startsWith('poi:')) {
+      const defId = this.poiLedger.get(d.id.slice(4))?.site?.defId;
+      if (defId) owner = `poi:${defId}`;
+    }
+    if (owner) {
+      const quip = this.drawQuip(owner, 'greet', false);
+      if (quip) {
+        // The voice reaches the DISCOVERER's ear, not the marker: a
+        // zone center or site anchor can sit past the client's quip
+        // earshot, and a greeting nobody hears is no greeting.
+        const eid = player.session?.playerEid;
+        const at = eid !== null && eid !== undefined ? this.positions.get(eid) : undefined;
+        player.session?.sendJson({
+          t: 'vq',
+          x: at?.x ?? d.x,
+          y: at?.y ?? d.y,
+          url: quip.url,
+          durMs: quip.durMs,
+        });
+      }
+    }
   }
 
   /**
@@ -7541,7 +7575,11 @@ export class GameServer {
     if ((node.speaker ?? 'npc') === 'player') return undefined;
     const actor = this.actors.get(targetEid)?.actor;
     if (!actor) return undefined;
-    return this.drawQuip(`actor:${actor.id}`, quipSlotForBeat(first, last), !first && !last);
+    return this.drawQuip(
+      `actor:${actor.id}`,
+      quipSlotForBeat(first, last, node.mood),
+      quipIsRationed(first, last, node.mood),
+    );
   }
 
   /** Pick from an owner's bank slot through the shared quip memory. */

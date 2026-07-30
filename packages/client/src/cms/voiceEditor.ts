@@ -1,10 +1,12 @@
 import {
+  VOICE_OWNER_KINDS,
   VOICE_SLOTS,
   voiceClipUrl,
   type VoiceBankDef,
   type VoiceBankEntry,
   type VoiceClipDef,
   type VoiceDoc,
+  type VoiceOwnerKind,
   type VoiceSlot,
 } from '@arx/content';
 import { iconImg } from '../editor/editorIcons.js';
@@ -39,14 +41,22 @@ const SLUG_RE = /^[a-z][a-z0-9_]*$/;
 
 /** What each slot means in the live flow — shown beside its row. */
 const SLOT_HINTS: Record<VoiceSlot, string> = {
-  greet: 'fires at the door — the first beat of every conversation',
+  greet: 'fires at the door — the first beat; for world owners, at discovery',
   ack: 'between beats without a full line, rationed by the dials',
-  yes: 'no firing moment yet — arrives with node marking',
-  no: 'no firing moment yet — arrives with node marking',
+  yes: 'fires on beats the designer marks yes — always speaks',
+  no: 'fires on beats the designer marks no — always speaks',
   farewell: 'fires on the terminal beat — the goodbye',
-  hm: 'no firing moment yet — the thinking filler',
+  hm: 'fires on beats marked hm — the hesitation',
   bark: 'rides the overworld one-liners, spatial at the speaker',
 };
+
+/** Per-kind owner labels for bank cards and pickers. */
+function ownerLabel(kind: string, id: string): string {
+  if (kind === 'actor') return state.actors.find((a) => a.def.id === id)?.def.name ?? id;
+  if (kind === 'poi') return state.pois.find((p) => p.def.id === id)?.def.name ?? id;
+  if (kind === 'zone') return state.zones.find((z) => z.id === id)?.name ?? id;
+  return id;
+}
 
 // ------------------------------------------------------ small helpers
 
@@ -403,14 +413,17 @@ function bankCard(bank: VoiceBankDef, isDraft: boolean): HTMLElement {
   const draft: VoiceBankDef = JSON.parse(JSON.stringify(bank)) as VoiceBankDef;
   const card = el('div', 'voice-bank-card');
   const head = el('div', 'voice-card-head');
-  const actorDef = state.actors.find((a) => a.def.id === draft.owner.id)?.def;
+  const actorDef =
+    draft.owner.kind === 'actor'
+      ? state.actors.find((a) => a.def.id === draft.owner.id)?.def
+      : undefined;
   const bust = actorDef ? actorBust(actorDef, 34) : null;
   if (bust) {
     bust.className = 'voice-bank-bust';
     head.appendChild(bust);
   }
   const title = el('div', 'voice-card-title');
-  title.appendChild(el('b', '', actorDef?.name ?? draft.owner.id));
+  title.appendChild(el('b', '', ownerLabel(draft.owner.kind, draft.owner.id)));
   title.appendChild(el('span', 'muted', ` ${draft.owner.kind}:${draft.owner.id}`));
   head.appendChild(title);
   const save = el('button', 'primary', isDraft ? 'Create ▸ Live' : 'Save ▸ Live') as HTMLButtonElement;
@@ -543,28 +556,52 @@ function banksPane(body: HTMLElement, linkage: HTMLElement): void {
     ]),
   );
 
-  // New bank: pick an actor without one.
+  // New bank: pick a kind, then an owner without one — actors speak
+  // in conversation, POI archetypes and zones greet their discoverer.
   const owned = new Set(v.banks.map((b) => `${b.owner.kind}:${b.owner.id}`));
   const fresh = el('div', 'voice-newbank');
   fresh.appendChild(el('b', '', 'Give a throat its fallbacks'));
   const freshHost = el('div', 'voice-newbank-host');
+  const pickerHolder = el('div', 'voice-newbank-picker');
+  let pickKind: VoiceOwnerKind = 'actor';
+  const ownerOptionsFor = (kind: VoiceOwnerKind): ComboOption[] => {
+    const pool: Array<{ id: string; label: string }> =
+      kind === 'actor'
+        ? state.actors.map((a) => ({ id: a.def.id, label: a.def.name }))
+        : kind === 'poi'
+          ? state.pois.map((p) => ({ id: p.def.id, label: p.def.name }))
+          : state.zones.map((z) => ({ id: z.id, label: z.name }));
+    return pool
+      .filter((o) => !owned.has(`${kind}:${o.id}`))
+      .map((o) => ({ id: o.id, label: o.label, sub: o.id }));
+  };
+  const rebuildPicker = (): void => {
+    pickerHolder.innerHTML = '';
+    const kinds = el('div', 'voice-kind-row');
+    for (const k of VOICE_OWNER_KINDS) {
+      const b = el('button', 'voice-kind' + (pickKind === k ? ' active' : ''), k) as HTMLButtonElement;
+      b.onclick = () => {
+        pickKind = k;
+        rebuildPicker();
+      };
+      kinds.appendChild(b);
+    }
+    pickerHolder.appendChild(kinds);
+    pickerHolder.appendChild(
+      combobox(
+        () => ownerOptionsFor(pickKind),
+        '',
+        (id) => {
+          freshHost.innerHTML = '';
+          freshHost.appendChild(bankCard({ owner: { kind: pickKind, id }, slots: {} }, true));
+        },
+        `pick a ${pickKind}…`,
+      ),
+    );
+  };
+  rebuildPicker();
+  fresh.appendChild(pickerHolder);
   fresh.appendChild(freshHost);
-  const pickerHolder = el('div');
-  pickerHolder.appendChild(
-    combobox(
-      () =>
-        state.actors
-          .filter((a) => !owned.has(`actor:${a.def.id}`))
-          .map((a) => ({ id: a.def.id, label: a.def.name, sub: a.def.id })),
-      '',
-      (id) => {
-        freshHost.innerHTML = '';
-        freshHost.appendChild(bankCard({ owner: { kind: 'actor', id }, slots: {} }, true));
-      },
-      'pick an actor…',
-    ),
-  );
-  fresh.insertBefore(pickerHolder, freshHost);
   body.appendChild(vsect('New bank', '', fresh));
 
   const cardsBox = el('div', 'voice-bank-cards');

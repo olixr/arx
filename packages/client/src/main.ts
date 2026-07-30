@@ -886,7 +886,7 @@ const game = new ClientGame(input, {
     // quip beat (the throat clearing: greet/ack/farewell) layers a
     // small utterance without ducking or pacing anything.
     if (n.voice?.kind === 'line') {
-      voice.playLine(n.voice.url);
+      voice.playLine(n.voice.url, n.voice.durMs);
     } else {
       voice.stopLine();
       if (n.voice) voice.playQuip(n.voice.url);

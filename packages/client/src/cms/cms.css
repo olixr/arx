@@ -3208,3 +3208,28 @@ details.adv textarea {
   display: inline-flex;
   gap: 6px;
 }
+.voice-newbank-picker {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.voice-kind-row {
+  display: inline-flex;
+  gap: 4px;
+}
+.voice-kind.active {
+  outline: 2px solid var(--brass, #b08d57);
+}
+.beat-mood {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+.beat-mood button {
+  font-size: 11px;
+  padding: 2px 7px;
+}
+.beat-mood button.active {
+  outline: 2px solid var(--brass, #b08d57);
+}

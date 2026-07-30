@@ -67,8 +67,8 @@ function unpackList<T>(raw: string | null): T[] | undefined {
 }
 
 async function insertChildren(tx: Queryable, def: DialogueDef): Promise<void> {
-  const nodeSql = `INSERT INTO dialogue_nodes (dialogue_id, node_id, idx, speaker, text, next_node, hooks, voice)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  const nodeSql = `INSERT INTO dialogue_nodes (dialogue_id, node_id, idx, speaker, text, next_node, hooks, voice, mood)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
   const choiceSql = `INSERT INTO dialogue_choices
       (dialogue_id, node_id, idx, text, next_node, requires, forbids, set_flags)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -84,6 +84,7 @@ async function insertChildren(tx: Queryable, def: DialogueDef): Promise<void> {
       n.next ?? null,
       packList(n.hooks),
       n.voice ?? null,
+      n.mood ?? null,
     ]);
     for (const [j, c] of (n.choices ?? []).entries()) {
       await tx.run(choiceSql, [
@@ -239,6 +240,7 @@ export async function loadDialogues(
     next_node: string | null;
     hooks: string | null;
     voice: string | null;
+    mood: string | null;
   }
   interface ChoiceRow {
     node_id: string;
@@ -280,6 +282,7 @@ export async function loadDialogues(
       node.choices = choicesByNode.get(n.node_id);
       node.hooks = unpackList(n.hooks);
       if (n.voice !== null) node.voice = n.voice;
+      if (n.mood !== null) node.mood = n.mood as DialogueNode['mood'];
       nodes.push(node);
     }
     const bindings: DialogueBinding[] = [];

@@ -661,6 +661,12 @@ const MIGRATIONS: string[] = [
   CREATE INDEX idx_voice_banks_clip ON voice_banks (clip_id);
   ALTER TABLE dialogue_nodes ADD COLUMN voice TEXT;
   `,
+  // v14: THE WORLD SPEAKS (voiceover-plan Phase 6) — a beat's mood
+  // mark ('yes' | 'no' | 'hm'): the designer's word that an unvoiced
+  // beat draws that bank slot instead of a rationed ack.
+  `
+  ALTER TABLE dialogue_nodes ADD COLUMN mood TEXT;
+  `,
 ];
 
 /**
