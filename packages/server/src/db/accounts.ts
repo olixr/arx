@@ -51,6 +51,21 @@ export type AuthResult =
   | { ok: false; reason: string };
 
 /**
+ * One character_quests row in wire-friendly casing. `progress` stays
+ * the raw JSON string (a number[] per current-stage objective) — the
+ * game layer owns its meaning, the store just keeps it safe.
+ */
+export interface QuestStateRow {
+  questId: string;
+  status: 'active' | 'done';
+  stage: number;
+  progress: string;
+  acceptedAt: number;
+  completions: number;
+  cooldownUntil: number | null;
+}
+
+/**
  * Accounts, sessions, and character records over Postgres. Passwords
  * are scrypt-hashed with a per-account salt; session tokens persist so
  * reconnects survive server restarts.
@@ -407,6 +422,49 @@ export class AccountStore {
     this.db.fire('DELETE FROM character_flags WHERE character_id = ? AND flag = ?', [
       characterId,
       flag,
+    ]);
+  }
+
+  /**
+   * The quest ledger: one row per quest a character has touched.
+   * Written whole at every mutation site (accept, credit, stage
+   * advance, turn-in, abandon) — fire-and-forget like the flags, so a
+   * turn-in can never be lost to a crash before the periodic save.
+   */
+  async loadQuestRows(characterId: number): Promise<QuestStateRow[]> {
+    return this.db.query<QuestStateRow>(
+      'SELECT quest_id AS "questId", status, stage, progress, accepted_at AS "acceptedAt", ' +
+        'completions, cooldown_until AS "cooldownUntil" FROM character_quests WHERE character_id = ?',
+      [characterId],
+    );
+  }
+
+  saveQuestRow(characterId: number, row: QuestStateRow): void {
+    this.db.fire(
+      'INSERT INTO character_quests (character_id, quest_id, status, stage, progress, accepted_at, ' +
+        'completions, cooldown_until, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (character_id, quest_id) DO UPDATE SET status = excluded.status, ' +
+        'stage = excluded.stage, progress = excluded.progress, accepted_at = excluded.accepted_at, ' +
+        'completions = excluded.completions, cooldown_until = excluded.cooldown_until, ' +
+        'updated_at = excluded.updated_at',
+      [
+        characterId,
+        row.questId,
+        row.status,
+        row.stage,
+        row.progress,
+        row.acceptedAt,
+        row.completions,
+        row.cooldownUntil,
+        Date.now(),
+      ],
+    );
+  }
+
+  deleteQuestRow(characterId: number, questId: string): void {
+    this.db.fire('DELETE FROM character_quests WHERE character_id = ? AND quest_id = ?', [
+      characterId,
+      questId,
     ]);
   }
 

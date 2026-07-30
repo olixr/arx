@@ -8,6 +8,7 @@
     "start": "tsx src/index.ts",
     "test": "tsx --test 'src/**/*.test.ts'",
     "dialogues": "tsx src/tools/dialoguesCli.ts",
+    "quests": "tsx src/tools/questsCli.ts",
     "routines": "tsx src/tools/routinesCli.ts",
     "migrate:sqlite": "tsx src/tools/migrateSqliteToPg.ts"
   },

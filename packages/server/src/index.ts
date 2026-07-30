@@ -10,6 +10,7 @@ import {
   AUTHORED_POI_DEFS,
   DIALOGUES,
   NPC_ACTORS,
+  QUESTS,
   ROUTINES,
   buildAmberford,
   buildDawnmead,
@@ -38,6 +39,7 @@ import { loadContentDocs, seedContentDocs } from './db/contentDocs.js';
 import { createMapsApi } from './dev/mapsApi.js';
 import { openDb } from './db/db.js';
 import { loadDialogues, seedDialogues } from './db/dialogues.js';
+import { loadQuests, seedQuests } from './db/quests.js';
 import { loadNpcActors, syncNpcActors } from './db/npcActors.js';
 import { loadRoutines, seedRoutines } from './db/routines.js';
 import { GameServer } from './game/gameServer.js';
@@ -273,6 +275,18 @@ game.dialogueSource = () => loadDialogues(db, { actorIds: game.actorIds() });
 console.log(
   `[npc] dialogues: ${dlgLoad.dialogues.length} loaded ` +
     `(+${dlgSeed.added} ~${dlgSeed.updated} !${dlgSeed.kept} -${dlgSeed.removed} =${dlgSeed.unchanged})`,
+);
+
+// Quests — same DB-truth law, registered last: quest defs cross-ref
+// the live actor roster the way dialogue bindings do.
+const questSeed = await seedQuests(db, [...QUESTS.values()]);
+const questLoad = await loadQuests(db, { actorIds: game.actorIds() });
+for (const err of questLoad.errors) console.warn(`[npc] invalid DB quest: ${err}`);
+game.registerQuests(questLoad.quests);
+game.questSource = () => loadQuests(db, { actorIds: game.actorIds() });
+console.log(
+  `[npc] quests: ${questLoad.quests.length} loaded ` +
+    `(+${questSeed.added} ~${questSeed.updated} !${questSeed.kept} -${questSeed.removed} =${questSeed.unchanged})`,
 );
 
 game.start();

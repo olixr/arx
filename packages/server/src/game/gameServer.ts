@@ -119,6 +119,7 @@ import {
   type CropDef,
   type DialogueChoice,
   type DialogueDef,
+  type QuestDef,
   type DialogueHook,
   type DialogueNode,
   type DialogueOffer,
@@ -1202,6 +1203,19 @@ export class GameServer {
    * restart between an edit and hearing it spoken.
    */
   dialogueSource: (() => Promise<{ dialogues: DialogueDef[]; errors: string[] }>) | null = null;
+  /** Quest defs by id — DB-loaded, already validated. */
+  private readonly questDefs = new Map<string, QuestDef>();
+  /** Quest ids by giver actor slug (the "!" index). */
+  private readonly questsByGiver = new Map<string, string[]>();
+  /** Quest ids by turn-in actor slug (the turn-in mark index). */
+  private readonly questsByTurnIn = new Map<string, string[]>();
+  /** Quest-gated drop entries by bestiary def id (the kill-site channel). */
+  private readonly questDropsByNpc = new Map<string, Array<{ quest: string; item: string; chance: number }>>();
+  /**
+   * Re-reads quests from the DB (wired by index.ts at boot) — the
+   * /quest reload lever, same law as dialogueSource.
+   */
+  questSource: (() => Promise<{ quests: QuestDef[]; errors: string[] }>) | null = null;
 
   private readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
@@ -1785,6 +1799,45 @@ export class GameServer {
     this.dialogueNodes.clear();
     this.registerDialogues(fresh.dialogues);
     return { count: fresh.dialogues.length, errors: fresh.errors };
+  }
+
+  /**
+   * Register quests (DB-loaded, already validated) and build the
+   * runtime indexes. Call after registerActors and registerDialogues —
+   * a quest naming an unknown giver is a warning, not a wire.
+   */
+  registerQuests(defs: Iterable<QuestDef>): void {
+    for (const def of defs) {
+      if (!this.actorDefs.has(def.giver)) {
+        console.warn(`[npc] quest '${def.id}' names unknown giver '${def.giver}' — skipped`);
+        continue;
+      }
+      this.questDefs.set(def.id, def);
+      const giverList = this.questsByGiver.get(def.giver) ?? [];
+      giverList.push(def.id);
+      this.questsByGiver.set(def.giver, giverList);
+      const turnIn = def.turnIn ?? def.giver;
+      const turnInList = this.questsByTurnIn.get(turnIn) ?? [];
+      turnInList.push(def.id);
+      this.questsByTurnIn.set(turnIn, turnInList);
+      for (const d of def.questDrops ?? []) {
+        const drops = this.questDropsByNpc.get(d.npc) ?? [];
+        drops.push({ quest: def.id, item: d.item, chance: d.chance });
+        this.questDropsByNpc.set(d.npc, drops);
+      }
+    }
+  }
+
+  /** Swap the live quest registry from questSource (the DB). */
+  async reloadQuests(): Promise<{ count: number; errors: string[] }> {
+    if (!this.questSource) return { count: 0, errors: ['no quest source wired'] };
+    const fresh = await this.questSource();
+    this.questDefs.clear();
+    this.questsByGiver.clear();
+    this.questsByTurnIn.clear();
+    this.questDropsByNpc.clear();
+    this.registerQuests(fresh.quests);
+    return { count: fresh.quests.length, errors: fresh.errors };
   }
 
   start(): void {

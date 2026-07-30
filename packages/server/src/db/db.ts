@@ -564,6 +564,50 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (party_id, character_id)
   );
   `,
+
+  // v10: THE QUEST LEDGER — content truth under the two-hash law
+  // (dialogues' twin: shipped JSON is seed + interchange only, tool
+  // edits are never clobbered) and per-character quest state. Small
+  // unions (objectives, requires, rewards) ride as JSON TEXT sockets,
+  // not relations; character state writes fire-and-forget at every
+  // mutation site, never batched into savePlayer — a turn-in must
+  // survive a crash.
+  `
+  CREATE TABLE quests (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    giver TEXT NOT NULL,
+    turn_in TEXT,
+    requires TEXT,
+    repeat_hours INTEGER,
+    rewards TEXT NOT NULL,
+    quest_drops TEXT,
+    content_hash TEXT NOT NULL,
+    authored_hash TEXT,
+    updated_at BIGINT NOT NULL
+  );
+  CREATE TABLE quest_stages (
+    quest_id TEXT NOT NULL REFERENCES quests(id) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    stage_id TEXT NOT NULL,
+    journal TEXT NOT NULL,
+    objectives TEXT NOT NULL,
+    mark TEXT,
+    PRIMARY KEY (quest_id, idx)
+  );
+  CREATE TABLE character_quests (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    quest_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    stage INTEGER NOT NULL DEFAULT 0,
+    progress TEXT NOT NULL DEFAULT '[]',
+    accepted_at BIGINT NOT NULL,
+    completions INTEGER NOT NULL DEFAULT 0,
+    cooldown_until BIGINT,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, quest_id)
+  );
+  `,
 ];
 
 /**
