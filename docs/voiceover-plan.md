@@ -21,7 +21,14 @@
 > additive wire, THE PACED WORD (stretch-only typewriter, scratch mutes,
 > skip fades the clip), GameServer live clip ledger re-registered by the
 > Studio routes. 876 tests green; live-verified in-world end to end.
-> Phases 4-6 pending.
+> Phase 4 (The Throat Clears) SHIPPED 2026-07-30 (c4d488c) — the fallback
+> chain live at the beat door (line → moment slot → silence; greet/farewell
+> unconditional, acks rationed by the dials through the per-owner quip
+> memory with weighted no-repeat), quips ride dlgnode as kind 'quip',
+> prefetch warms the bank first, barks speak via the cosmetic 'vq' family
+> (still v21, judgment recorded), banks live-registered at boot + Studio
+> saves. 879 tests green; full moment ladder + spatial bark live-verified.
+> Phases 5-6 pending.
 
 The world moves, asks, and remembers. This epic makes it **speak out loud**. Every
 throat that earned a voice card in the VOICE epic gets an actual voice: full spoken
