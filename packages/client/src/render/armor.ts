@@ -35,6 +35,9 @@ export interface BodyStyle {
   pauldronTrim?: string;
   /** Spike count for 'spiked' pauldrons, 1..3. Default 1. */
   pauldronSpikes?: number;
+  /** The boldness dial: scales the whole shoulder assembly. Heavy
+   *  champion plate earns 1.1-1.2; leather stays nearer 1. Default 1. */
+  pauldronScale?: number;
   chest: 'none' | 'straps' | 'plate' | 'emblem' | 'stitch' | 'scales' | 'diamondhide';
   /** Hanging leather fringe strips off the chest yoke — the buckskin read. */
   fringe?: boolean;
@@ -334,32 +337,35 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   warden_platebody: {
     color: '#4a7a5a', trim: '#2e4a38', metal: '#87b294', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'bladed', pauldronColor: '#5a8a6a',
-    pauldronTrim: '#d69a55', chest: 'plate', emblem: 'leaf', skirt: 0,
-    collar: 'gorget',
+    pauldronTrim: '#d69a55', pauldronScale: 1.08, chest: 'plate',
+    emblem: 'leaf', skirt: 0, collar: 'gorget',
   },
   frostplate_platebody: {
     color: '#9db6cc', trim: '#4a6a9c', metal: '#cfe0ee', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'round', pauldronTrim: '#e8f4ff',
-    chest: 'plate', emblem: 'diamond', skirt: 0, collar: 'gorget',
+    pauldronScale: 1.06, chest: 'plate', emblem: 'diamond', skirt: 0,
+    collar: 'gorget',
   },
   bulwark_platebody: {
     color: '#5a6270', trim: '#b08a3c', metal: '#787f8e', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#6a7280',
-    chest: 'plate', skirt: 0, collar: 'gorget', tassets: true,
+    pauldronTrim: '#b08a3c', pauldronScale: 1.08, chest: 'plate',
+    skirt: 0, collar: 'gorget', tassets: true,
     tabard: { color: '#6e5a28', trim: '#b08a3c' }, emblem: 'diamond',
     emblemScale: 1.1,
   },
   dreadforge_platebody: {
     color: '#4a4553', trim: '#a83232', metal: '#625c6e', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'spiked', pauldronColor: '#3a3542',
-    pauldronSpikes: 3, chest: 'plate', emblem: 'skull', skirt: 0,
-    collar: 'gorget', tassets: true,
+    pauldronSpikes: 3, pauldronTrim: '#a83232', pauldronScale: 1.15,
+    chest: 'plate', emblem: 'skull', skirt: 0, collar: 'gorget',
+    tassets: true,
   },
   sunforged_platebody: {
     color: '#d4a43c', trim: '#f4e0a0', metal: '#e8c05c', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'bladed', pauldronColor: '#e0b04a',
-    pauldronTrim: '#fff2c8', chest: 'plate', emblem: 'sun', skirt: 0,
-    collar: 'gorget', tassets: true,
+    pauldronTrim: '#fff2c8', pauldronScale: 1.12, chest: 'plate',
+    emblem: 'sun', skirt: 0, collar: 'gorget', tassets: true,
   },
   // The themed leather sets: fur, feathers, scales and antlers — the
   // skirmisher's wardrobe. Same colorway law as the plate sets.
@@ -372,7 +378,8 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   wolfstalker_jerkin: {
     color: '#5f6470', trim: '#424652', metal: '#9aa0ae', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'fur', pauldronColor: '#9aa0ae',
-    chest: 'straps', skirt: 0, collar: 'fur', pouch: true,
+    pauldronScale: 1.1, chest: 'straps', skirt: 0, collar: 'fur',
+    pouch: true,
   },
   nightveil_jerkin: {
     color: '#3a3648', trim: '#7e6ba8', metal: '#8c4a5a', cls: 'leather',
@@ -382,12 +389,14 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   drakescale_body: {
     color: '#8c3a32', trim: '#c9713c', metal: '#d49a4a', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#a04a38',
-    pauldronTrim: '#d49a4a', chest: 'scales', skirt: 0,
+    pauldronTrim: '#d49a4a', pauldronScale: 1.06, chest: 'scales',
+    skirt: 0,
   },
   stagheart_jerkin: {
     color: '#6b5138', trim: '#d4a43c', metal: '#3e5a30', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'feathered', pauldronColor: '#d8cfae',
-    chest: 'straps', fringe: true, skirt: 0.14, pouch: true,
+    pauldronScale: 1.1, chest: 'straps', fringe: true, skirt: 0.14,
+    pouch: true,
   },
   // The themed cloth sets: sashes, hem runes, orbs and halos — the
   // caster's wardrobe. Same colorway law as plate and leather.
@@ -498,8 +507,8 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   tuskguard_platebody: {
     color: '#a4744b', trim: '#6e4a30', metal: '#c9955c', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'round', pauldronColor: '#b5854f',
-    pauldronTrim: '#d9a86a', chest: 'plate', skirt: 0, collar: 'gorget',
-    rivetSeams: true,
+    pauldronTrim: '#d9a86a', pauldronScale: 1.05, chest: 'plate',
+    skirt: 0, collar: 'gorget', rivetSeams: true,
   },
   valiant_platebody: {
     color: '#c9ccd4', trim: '#c9a23c', metal: '#e2e6ec', cls: 'plate',
@@ -511,20 +520,21 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   ramwall_platebody: {
     color: '#6a7080', trim: '#4a4f5c', metal: '#8a92a4', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'round', pauldronColor: '#7a8294',
-    pauldronTrim: '#9aa4b8', chest: 'plate', ridges: true, skirt: 0,
-    collar: 'gorget', tassets: true, rivetSeams: true,
+    pauldronTrim: '#9aa4b8', pauldronScale: 1.08, chest: 'plate',
+    ridges: true, skirt: 0, collar: 'gorget', tassets: true,
+    rivetSeams: true,
   },
   briarplate_platebody: {
     color: '#3e4a38', trim: '#8a9a6e', metal: '#6a7a58', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'spiked', pauldronColor: '#33402e',
-    pauldronSpikes: 2, pauldronTrim: '#8a9a6e', chest: 'plate', skirt: 0,
-    tassets: true, midline: true,
+    pauldronSpikes: 2, pauldronTrim: '#8a9a6e', pauldronScale: 1.12,
+    chest: 'plate', skirt: 0, tassets: true, midline: true,
   },
   sentinel_platebody: {
     color: '#55607a', trim: '#d4c28a', metal: '#707c9a', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'bladed', pauldronColor: '#606c88',
-    pauldronTrim: '#d4c28a', chest: 'plate', ridges: true, skirt: 0,
-    collar: 'gorget', tassets: true,
+    pauldronTrim: '#d4c28a', pauldronScale: 1.12, chest: 'plate',
+    ridges: true, skirt: 0, collar: 'gorget', tassets: true,
   },
   // The named wardrobe: six chase sets with owners. Every record here
   // is a full outfit story — the vocabulary earns its keep.
@@ -560,14 +570,16 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   aurochs_platebody: {
     color: '#4a3f36', trim: '#b8925c', metal: '#6e5c4c', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'round', pauldronColor: '#564a3e',
-    pauldronTrim: '#b8925c', chest: 'plate', emblem: 'bullhead',
+    pauldronTrim: '#b8925c', pauldronScale: 1.18, chest: 'plate',
+    emblem: 'bullhead',
     emblemScale: 1.15, midline: true, rivetSeams: true, tassets: true,
     skirt: 0, collar: 'gorget',
   },
   barrowking_platebody: {
     color: '#3a4038', trim: '#c9b25c', metal: '#565e52', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#434a40',
-    pauldronTrim: '#c9b25c', chest: 'plate', ribs: { color: '#ded6b8' },
+    pauldronTrim: '#c9b25c', pauldronScale: 1.12, chest: 'plate',
+    ribs: { color: '#ded6b8' },
     rivetSeams: true, tassets: true, skirt: 0, collar: 'gorget',
   },
 };
@@ -3043,9 +3055,14 @@ export function drawPauldron(
   if (st.pauldron === 'none') return;
   const base = st.pauldronColor ?? st.metal ?? shade(st.color, -14);
   const col = hurt ? '#ffffff' : near ? shade(base, 8) : shade(base, -12);
+  const trim = hurt ? '#ffffff' : (st.pauldronTrim ?? shade(base, 26));
   ctx.save();
   ctx.translate(x, y - 0.035 * s);
-  ctx.scale(Math.max(0.55, squashK), 1);
+  // Perspective is size as well as light: the set's own boldness dial
+  // (champion plate earns a bigger shoulder), and the FAR cap steps
+  // down a notch so depth reads even before the shading does.
+  const bold = (st.pauldronScale ?? 1) * (near ? 1 : 0.93);
+  ctx.scale(Math.max(0.55, squashK) * bold, bold);
   if (st.pauldron === 'orbs') {
     // A conjured orb in patient orbit over each shoulder — floating,
     // never mounted; the gap between orb and shoulder IS the magic.
@@ -3124,33 +3141,41 @@ export function drawPauldron(
     return;
   }
   if (st.pauldron === 'fur') {
-    // A fur mantle over the shoulder: a dark under-row of tufts with a
-    // lit row riding on top — mass first, texture second. Lumpy on
-    // purpose; fur that lines up stops being fur.
+    // A fur mantle over the shoulder: a dark leather under-band SEATS
+    // the pelt on the arm (worn, never stickered), then a dark
+    // under-row of tufts with a lit row riding on top — mass first,
+    // texture second. Lumpy on purpose; fur that lines up stops
+    // being fur.
+    if (!hurt) {
+      ctx.fillStyle = shade(base, -32);
+      ctx.beginPath();
+      ctx.ellipse(0, 0.05 * s, 0.12 * s, 0.036 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     for (let i = 0; i < 4; i++) {
       const u = -0.9 + i * 0.6;
       ctx.fillStyle = hurt ? '#ffffff' : shade(base, -18);
       ctx.beginPath();
-      ctx.arc(u * 0.085 * s, 0.012 * s + Math.sin(i * 2.1) * 0.01 * s, (0.052 + 0.012 * Math.sin(i * 3.3)) * s, 0, Math.PI * 2);
+      ctx.arc(u * 0.095 * s, 0.012 * s + Math.sin(i * 2.1) * 0.011 * s, (0.058 + 0.013 * Math.sin(i * 3.3)) * s, 0, Math.PI * 2);
       ctx.fill();
     }
     for (let i = 0; i < 3; i++) {
       const u = -0.62 + i * 0.62;
       ctx.fillStyle = hurt ? '#ffffff' : shade(base, near ? 14 : -2);
       ctx.beginPath();
-      ctx.arc(u * 0.085 * s, -0.028 * s + Math.sin(i * 1.7) * 0.008 * s, (0.048 + 0.01 * Math.sin(i * 2.6)) * s, 0, Math.PI * 2);
+      ctx.arc(u * 0.095 * s, -0.032 * s + Math.sin(i * 1.7) * 0.009 * s, (0.054 + 0.011 * Math.sin(i * 2.6)) * s, 0, Math.PI * 2);
       ctx.fill();
     }
     if (!hurt) {
-      // A few guard-hair strokes flicking off the outer edge.
+      // Guard hairs flicking off the outer edge — the pelt's opinion.
       ctx.strokeStyle = shade(base, 22);
-      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.lineWidth = Math.max(1, s * 0.013);
       ctx.beginPath();
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
         const bx = side * (0.06 + i * 0.028) * s;
-        const by = (-0.05 + i * 0.024) * s;
+        const by = (-0.06 + i * 0.026) * s;
         ctx.moveTo(bx, by);
-        ctx.lineTo(bx + side * 0.038 * s, by - 0.03 * s);
+        ctx.lineTo(bx + side * 0.045 * s, by - 0.035 * s);
       }
       ctx.stroke();
     }
@@ -3158,116 +3183,241 @@ export function drawPauldron(
     return;
   }
   if (st.pauldron === 'feathered') {
-    // A feathered mantle: three blades fanning off the shoulder, from
-    // an upswept crown feather to a drooping cover feather — a wing at
-    // rest, not a wing in flight.
+    // A feathered mantle: three BROAD vanes fanning off the shoulder
+    // (the fins-v1 law — a thin feather is a wire), rooted under a
+    // covert cluster that seats the wing on the arm. Every vane
+    // carries its pale spine; the crown feather sweeps highest.
     const tips: Array<[number, number, number, number, number, number]> = [
       // [baseX, baseY, ctrlX, ctrlY, tipX, tipY] — outward = +x, ×side.
-      [0.0, -0.05, 0.15, -0.155, 0.235, -0.185],
-      [0.015, -0.022, 0.175, -0.065, 0.25, -0.05],
-      [0.028, 0.01, 0.165, 0.025, 0.225, 0.09],
+      [0.0, -0.055, 0.16, -0.175, 0.26, -0.215],
+      [0.015, -0.025, 0.19, -0.075, 0.28, -0.06],
+      [0.03, 0.012, 0.18, 0.03, 0.25, 0.105],
     ];
     for (let i = 0; i < 3; i++) {
       const [bx, by, cx, cy, txx, tyy] = tips[i]!;
-      ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 16 : 2) - i * 14);
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 16 : 2) - i * 12);
       ctx.beginPath();
       ctx.moveTo(side * bx * s, by * s);
       ctx.quadraticCurveTo(side * cx * s, cy * s, side * txx * s, tyy * s);
-      ctx.quadraticCurveTo(side * (cx + 0.01) * s, (cy + 0.055) * s, side * (bx + 0.02) * s, (by + 0.06) * s);
+      // The return edge is what gives the vane WIDTH — the wing at
+      // rest is a slab of feather, not a pen stroke.
+      ctx.quadraticCurveTo(side * (cx + 0.012) * s, (cy + 0.075) * s, side * (bx + 0.024) * s, (by + 0.072) * s);
       ctx.closePath();
       ctx.fill();
+      if (!hurt) {
+        // Every vane carries its spine.
+        ctx.strokeStyle = shade(base, 30);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(side * (bx + 0.015) * s, (by + 0.02) * s);
+        ctx.quadraticCurveTo(
+          side * (cx + 0.004) * s, (cy + 0.032) * s,
+          side * (txx - 0.02) * s, (tyy + 0.02) * s,
+        );
+        ctx.stroke();
+      }
     }
     if (!hurt) {
-      // The crown feather's spine — one stroke sells the anatomy.
-      ctx.strokeStyle = shade(base, -22);
-      ctx.lineWidth = Math.max(1, s * 0.011);
-      ctx.beginPath();
-      ctx.moveTo(side * 0.02 * s, -0.028 * s);
-      ctx.quadraticCurveTo(side * 0.13 * s, -0.1 * s, side * 0.19 * s, -0.145 * s);
-      ctx.stroke();
+      // The covert cluster: small overlapping base feathers hugging
+      // the arm root — the fan grows out of the shoulder, it does not
+      // hover beside it.
+      for (const [ox, oy, r] of [
+        [-0.03, 0.015, 0.05],
+        [0.035, 0.025, 0.045],
+        [0.0, 0.045, 0.042],
+      ] as const) {
+        ctx.fillStyle = shade(base, -10);
+        ctx.beginPath();
+        ctx.ellipse(side * ox * s, oy * s, r * s, r * 0.8 * s, side * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = shade(base, 14);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.ellipse(side * ox * s, oy * s, r * 0.72 * s, r * 0.56 * s, side * 0.4, Math.PI * 0.1, Math.PI * 0.9);
+        ctx.stroke();
+      }
     }
     ctx.restore();
     return;
   }
-  if (st.pauldron === 'layered') {
-    // Three lames stepping down the arm — articulation you can read.
-    for (let i = 0; i < 3; i++) {
-      const w = 0.105 * s * (1 - i * 0.16);
-      const yy = -0.02 * s + i * 0.038 * s;
-      ctx.fillStyle = hurt ? '#ffffff' : shade(col, -i * 8);
-      ctx.beginPath();
-      chamferRect(ctx, -w + side * i * 0.012 * s, yy, w * 2, 0.042 * s, 0.014 * s);
-      ctx.fill();
-    }
-    if (!hurt) {
-      ctx.fillStyle = shade(col, 18);
-      ctx.fillRect(-0.08 * s, -0.016 * s, 0.16 * s, 0.014 * s);
-    }
-  } else {
-    // Dome cap over the deltoid, flat base, lit crown, dark rim.
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.moveTo(-0.105 * s, 0.045 * s);
-    ctx.quadraticCurveTo(-0.115 * s, -0.05 * s, 0, -0.062 * s);
-    ctx.quadraticCurveTo(0.115 * s, -0.05 * s, 0.105 * s, 0.045 * s);
+  // ---- THE MOUNTED FAMILY (round / spiked / bladed / layered): every
+  // plate pauldron starts from the same forged CAP — a domed shoulder
+  // plate with a lit top plane, a one-sun form split, a bright rim
+  // lip, and a crown rivet — seated on the arm by a contact shadow so
+  // the armor is WORN, never stickered on. The kind then grows its
+  // identity out of the crown: devices are wedges and slabs with two
+  // facets each, never lines (the v1 nub-and-wire verdict).
+  const capW = 0.128 * s;
+  const capTop = -0.078 * s;
+  const capBot = 0.052 * s;
+  const capPath = () => {
+    ctx.moveTo(-capW, capBot);
+    ctx.quadraticCurveTo(-capW * 1.14, capTop * 0.3, -capW * 0.6, capTop);
+    ctx.lineTo(capW * 0.6, capTop);
+    ctx.quadraticCurveTo(capW * 1.14, capTop * 0.3, capW, capBot);
     ctx.closePath();
+  };
+  // The contact seat: the shadow the plate throws onto the arm root.
+  if (!hurt) {
+    ctx.fillStyle = 'rgba(24, 15, 26, 0.28)';
+    ctx.beginPath();
+    ctx.ellipse(0, capBot + 0.014 * s, capW * 0.94, 0.03 * s, 0, 0, Math.PI * 2);
     ctx.fill();
-    if (!hurt) {
-      ctx.fillStyle = shade(col, 18);
+  }
+
+  // Identity layers grow from BEHIND the crown so the cap covers
+  // their roots — grown from the shoulder, not floated beside it.
+  if (!hurt && st.pauldron === 'spiked') {
+    // Forged spikes: each one a wedge with a lit leading facet and a
+    // shaded trailing facet. One is a warlord's tusk — big, hooked;
+    // three are a fan. Bases are FAT; a thin spike is a wire.
+    const n = Math.max(1, Math.min(3, st.pauldronSpikes ?? 1));
+    // [rootX, rootY, halfW, tipX, tipY, hook] — outward = +x, ×side.
+    const layouts: Array<Array<[number, number, number, number, number, number]>> = [
+      [[0.03, -0.045, 0.055, 0.205, -0.235, 0.07]],
+      [
+        [0.055, -0.035, 0.05, 0.225, -0.2, 0.06],
+        [-0.025, -0.05, 0.044, -0.02, -0.225, -0.02],
+      ],
+      [
+        [0.06, -0.03, 0.048, 0.235, -0.185, 0.06],
+        [0.0, -0.052, 0.044, 0.055, -0.24, 0.02],
+        [-0.055, -0.04, 0.04, -0.135, -0.16, -0.04],
+      ],
+    ];
+    for (const [rx, ry, hw, tx2, ty2, hook] of layouts[n - 1]!) {
+      const r0x = side * (rx - hw) * s;
+      const r1x = side * (rx + hw) * s;
+      const rmx = side * rx * s;
+      const ry2 = ry * s;
+      const tx3 = side * tx2 * s;
+      const ty3 = ty2 * s;
+      const cx2 = side * (rx + (tx2 - rx) * 0.5 + hook) * s;
+      const cy2 = (ry + (ty2 - ry) * 0.55) * s;
+      // Leading (outward) facet catches the light...
+      ctx.fillStyle = shade(base, 18);
       ctx.beginPath();
-      ctx.moveTo(-0.07 * s, -0.028 * s);
-      ctx.quadraticCurveTo(0, -0.055 * s, 0.07 * s, -0.028 * s);
-      ctx.lineTo(0.06 * s, -0.008 * s);
-      ctx.quadraticCurveTo(0, -0.03 * s, -0.06 * s, -0.008 * s);
+      ctx.moveTo(r1x, ry2);
+      ctx.quadraticCurveTo(cx2, cy2, tx3, ty3);
+      ctx.lineTo(rmx, ry2);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = shade(col, -24);
-      ctx.fillRect(-0.1 * s, 0.038 * s, 0.2 * s, 0.014 * s);
-      if (st.pauldron === 'spiked') {
-        // A fan of spikes off the crown — one is a soldier, three are a
-        // warlord. Outermost is longest; each rides its own base point.
-        const n = Math.max(1, Math.min(3, st.pauldronSpikes ?? 1));
-        const tips: Array<[number, number, number, number]> = [
-          [0.06, -0.03, 0.16, -0.09],
-          [0.0, -0.05, 0.035, -0.13],
-          [-0.05, -0.04, -0.1, -0.1],
-        ];
-        ctx.fillStyle = col;
-        for (let i = 0; i < n; i++) {
-          const [bx, by, txx, tyy] = tips[i]!;
-          ctx.beginPath();
-          ctx.moveTo(side * bx * s, by * s);
-          ctx.lineTo(side * txx * s, tyy * s);
-          ctx.lineTo(side * (bx + 0.038) * s, (by + 0.032) * s);
-          ctx.closePath();
-          ctx.fill();
-        }
-      } else if (st.pauldron === 'bladed') {
-        // A swept blade-wing rising off the shoulder — the hero cut.
-        ctx.fillStyle = col;
-        ctx.beginPath();
-        ctx.moveTo(side * 0.015 * s, -0.052 * s);
-        ctx.quadraticCurveTo(side * 0.15 * s, -0.095 * s, side * 0.205 * s, -0.21 * s);
-        ctx.quadraticCurveTo(side * 0.125 * s, -0.125 * s, side * 0.078 * s, -0.018 * s);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = st.pauldronTrim ?? shade(col, 24);
-        ctx.lineWidth = Math.max(1, s * 0.016);
-        ctx.beginPath();
-        ctx.moveTo(side * 0.03 * s, -0.058 * s);
-        ctx.quadraticCurveTo(side * 0.145 * s, -0.1 * s, side * 0.195 * s, -0.2 * s);
-        ctx.stroke();
+      // ...the trailing facet turns from it — two-tone or it reads
+      // as paper.
+      ctx.fillStyle = shade(base, -16);
+      ctx.beginPath();
+      ctx.moveTo(rmx, ry2);
+      ctx.quadraticCurveTo(cx2 - side * 0.02 * s, cy2, tx3, ty3);
+      ctx.lineTo(r0x, ry2);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  if (!hurt && st.pauldron === 'bladed') {
+    // The hero wing: a broad swept blade with real body — a filled
+    // edge bevel in the trim metal, a shaded inner face, and a rear
+    // fletch for mass. The v1 sliver read as a wire because the trim
+    // was a hairline on a same-value fill.
+    // Rear fletch first: a shorter, darker blade behind the main one.
+    ctx.fillStyle = shade(base, -20);
+    ctx.beginPath();
+    ctx.moveTo(side * -0.045 * s, capTop + 0.045 * s);
+    ctx.quadraticCurveTo(side * 0.045 * s, -0.16 * s, side * 0.1 * s, -0.235 * s);
+    ctx.quadraticCurveTo(side * 0.035 * s, -0.14 * s, side * 0.028 * s, capTop + 0.055 * s);
+    ctx.closePath();
+    ctx.fill();
+    // The main wing's body.
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(side * 0.0 * s, capTop + 0.035 * s);
+    ctx.quadraticCurveTo(side * 0.17 * s, -0.165 * s, side * 0.25 * s, -0.305 * s);
+    ctx.quadraticCurveTo(side * 0.155 * s, -0.16 * s, side * 0.12 * s, capTop + 0.05 * s);
+    ctx.closePath();
+    ctx.fill();
+    // Inner face in shade — the wing has two planes.
+    ctx.fillStyle = shade(base, -14);
+    ctx.beginPath();
+    ctx.moveTo(side * 0.12 * s, capTop + 0.05 * s);
+    ctx.quadraticCurveTo(side * 0.15 * s, -0.15 * s, side * 0.215 * s, -0.27 * s);
+    ctx.quadraticCurveTo(side * 0.14 * s, -0.145 * s, side * 0.075 * s, capTop + 0.045 * s);
+    ctx.closePath();
+    ctx.fill();
+    // The leading-edge bevel, FILLED in the trim metal.
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.moveTo(side * 0.005 * s, capTop + 0.03 * s);
+    ctx.quadraticCurveTo(side * 0.168 * s, -0.17 * s, side * 0.25 * s, -0.305 * s);
+    ctx.quadraticCurveTo(side * 0.148 * s, -0.152 * s, side * 0.038 * s, capTop + 0.028 * s);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Lames step down the arm BELOW the cap — articulation with mass:
+  // each carries a lit upper edge and end rivets.
+  if (!hurt && st.pauldron === 'layered') {
+    for (let i = 2; i >= 1; i--) {
+      const w = capW * (1 - i * 0.15);
+      const yy = capBot - 0.018 * s + i * 0.045 * s;
+      ctx.fillStyle = shade(col, -i * 9);
+      ctx.beginPath();
+      chamferRect(ctx, -w, yy, w * 2, 0.048 * s, 0.016 * s);
+      ctx.fill();
+      ctx.fillStyle = shade(col, 12);
+      ctx.fillRect(-w * 0.92, yy + 0.003 * s, w * 1.84, 0.011 * s);
+      ctx.fillStyle = shade(base, -28);
+      for (const rx of [-1, 1]) {
+        ctx.fillRect(rx * (w - 0.022 * s) - 0.007 * s, yy + 0.02 * s, 0.014 * s, 0.014 * s);
       }
-      if (st.pauldronTrim && st.pauldron !== 'bladed') {
-        // Bright edging along the dome rim — the gilded read.
-        ctx.strokeStyle = st.pauldronTrim;
-        ctx.lineWidth = Math.max(1, s * 0.018);
-        ctx.beginPath();
-        ctx.moveTo(-0.098 * s, 0.036 * s);
-        ctx.quadraticCurveTo(-0.108 * s, -0.048 * s, 0, -0.058 * s);
-        ctx.quadraticCurveTo(0.108 * s, -0.048 * s, 0.098 * s, 0.036 * s);
-        ctx.stroke();
-      }
+    }
+  }
+
+  // The cap itself, over every root.
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  capPath();
+  ctx.fill();
+  if (!hurt) {
+    ctx.save();
+    ctx.beginPath();
+    capPath();
+    ctx.clip();
+    // One sun: the screen-right half turns away from it. The clip is
+    // in the LOCAL mirrored frame, so un-mirror the split for the
+    // trailing-side cap (side flips the x axis via the layouts, not
+    // the transform — the shade must stay screen-true).
+    ctx.fillStyle = shade(base, near ? -8 : -14);
+    ctx.fillRect(0, capTop - 0.24 * s, capW * 1.3, capBot - capTop + 0.3 * s);
+    // The lit top plane — the tilted bird's eye sees the crown.
+    ctx.fillStyle = shade(col, 20);
+    ctx.beginPath();
+    ctx.moveTo(-capW * 0.66, capTop + 0.002 * s);
+    ctx.lineTo(capW * 0.66, capTop + 0.002 * s);
+    ctx.lineTo(capW * 0.52, capTop + 0.03 * s);
+    ctx.lineTo(-capW * 0.52, capTop + 0.03 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    // The rim lip: bright edging along the base — every kind wears
+    // its trim now, not just the gilded sets.
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = Math.max(1.5, s * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(-capW * 0.96, capBot - 0.006 * s);
+    ctx.lineTo(capW * 0.96, capBot - 0.006 * s);
+    ctx.stroke();
+    // The crown rivet: a dark seat with a lit dome — a BUMP.
+    ctx.fillStyle = shade(base, -26);
+    ctx.fillRect(-0.012 * s, capTop + 0.036 * s, 0.024 * s, 0.024 * s);
+    ctx.fillStyle = shade(base, 30);
+    ctx.fillRect(-0.012 * s, capTop + 0.036 * s, 0.012 * s, 0.012 * s);
+    if (st.pauldron === 'round') {
+      // The plain cap earns an engraved arc — quiet craft, not blank.
+      ctx.strokeStyle = shade(col, -16);
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      ctx.moveTo(-capW * 0.7, 0.012 * s);
+      ctx.quadraticCurveTo(0, -0.03 * s, capW * 0.7, 0.012 * s);
+      ctx.stroke();
     }
   }
   ctx.restore();
