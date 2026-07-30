@@ -958,6 +958,12 @@ interface PlayerBuff {
   armor: number;
   /** THE TURNED BLOW: fraction of post-mitigation damage returned to the striker. */
   reflectFrac: number;
+  /**
+   * THE MIRRORED HAND: the offhand echo lands at this damage fraction
+   * while the stance rides, when it beats the trained factor (max
+   * across buffs, capped at parity — never past the main hand).
+   */
+  offhandWeight: number;
   /** Gathering speed multiplier (best across buffs wins). */
   gatherSpeed: number;
   /** HP restored every 4 seconds (best across buffs wins). */
@@ -985,6 +991,7 @@ function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuf
     meleeLifesteal: 0,
     armor: 0,
     reflectFrac: 0,
+    offhandWeight: 0,
     gatherSpeed: 1,
     regenPer4s: 0,
     ...partial,
@@ -7315,14 +7322,23 @@ export class GameServer {
     if (!off) return;
     const dwLevel = levelForXp(player.skills.dualwield ?? 0);
     const level = this.effectiveLevel(player, 'melee');
+    // Twin Tempo lifts the echo — the never-mirrors cap holds.
+    const trained = Math.min(0.85, offhandDamageFactor(dwLevel) + player.perks.offhandFactorBonus);
+    // THE MIRRORED HAND: while the stance rides, the echo lands at the
+    // buff's weight when that beats the trained factor — parity at the
+    // stance's honed peak, never past it (the off hand never OUT-hits
+    // the main; the passive curve's law stands untouched).
+    let stanceWeight = 0;
+    for (const b of player.buffs) {
+      if (b.untilTick > this.tickCount) stanceWeight = Math.max(stanceWeight, b.offhandWeight);
+    }
     const maxHit = Math.max(
       1,
       Math.round(
         off.weapon.damage *
           powerMultFn(level, PLAYER_POWER_PER_LEVEL) *
           player.gear.styleDmgMult.melee *
-          // Twin Tempo lifts the echo — the never-mirrors cap holds.
-          Math.min(0.85, offhandDamageFactor(dwLevel) + player.perks.offhandFactorBonus),
+          Math.max(trained, Math.min(1, stanceWeight)),
       ),
     );
     // NO pose here: the echo is pure client choreography (the rig's
@@ -7868,8 +7884,10 @@ export class GameServer {
     // any school-tuned element amplifier (Blazing Edge etc.). Gear has
     // no sneak axis — shadow arts swing melee steel, so they ride the
     // melee multiplier.
-    // Gear has no sneak or shield damage axis — both ride the melee mult.
-    const gearStyle = style === 'sneak' || style === 'shield' ? 'melee' : style;
+    // Gear has no sneak, shield, or dualwield damage axis — twin steel
+    // is melee steel, so all three ride the melee mult.
+    const gearStyle =
+      style === 'sneak' || style === 'shield' || style === 'dualwield' ? 'melee' : style;
     const gearMult = casterPlayer
       ? ((casterPlayer.gear.styleDmgMult as Record<string, number>)[gearStyle] ?? 1) *
         (style === 'magic' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1)
@@ -8494,7 +8512,8 @@ export class GameServer {
       self.meleeLifesteal !== undefined ||
       self.onHitStatus !== undefined ||
       self.armor !== undefined ||
-      self.reflectFrac !== undefined
+      self.reflectFrac !== undefined ||
+      self.offhandWeight !== undefined
     ) {
       player.buffs.push(
         mkBuff({
@@ -8505,6 +8524,8 @@ export class GameServer {
           // The tank stances: buff armor mitigates, the turned blow repays.
           armor: self.armor ?? 0,
           reflectFrac: self.reflectFrac ?? 0,
+          // THE MIRRORED HAND: the twin school's stance rail.
+          offhandWeight: self.offhandWeight ?? 0,
           onHitStatus: self.onHitStatus,
           untilTick: this.tickCount + self.durationTicks,
         }),
@@ -9417,15 +9438,18 @@ export class GameServer {
     }
     // THE UNWRITTEN PAGE: felling a champion with the wall still on
     // your arm is the shield-bearer's deed; felling one with great
-    // steel in both fists is the colossus's (any *_champion, so future
-    // champions swear in automatically — the same kill can earn both
-    // pages for nobody, since the hands disagree).
+    // steel in both fists is the colossus's; felling one with a blade
+    // in EACH fist is the twin school's (any *_champion, so future
+    // champions swear in automatically — one kill never earns two
+    // pages, since the hands disagree: a shield offhand, a weapon
+    // offhand, and a two-handed main exclude each other).
     if (npc.def.id.endsWith('_champion')) {
       const killer = this.players.get(killerEid);
       if (killer && this.equippedShield(killer)) this.grantArt(killer, 'champions_wall');
       if (killer && this.equippedWeapon(killer)?.weapon.style === 'twohand') {
         this.grantArt(killer, 'giantsfall');
       }
+      if (killer && this.offhandWeapon(killer)) this.grantArt(killer, 'two_answers');
     }
     this.wildBodies.delete(npcEid);
     // A slain actor's post refills on the synthesized def's clock.

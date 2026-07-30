@@ -2070,6 +2070,146 @@ const defs: AbilityDef[] = [
     knockback: 2.4,
   },
 
+  // --------------------------- THE TWIN SCHOOL — the paired ladder
+  // The school of tempo: everything arrives in pairs and the second
+  // beat is the identity. Blows run lighter than melee's and land
+  // oftener — two knives spend rhythm the way a greatblade spends
+  // weight. Twin steel is melee steel; the school's own axis is time.
+  {
+    id: 'twin_cut',
+    name: 'Twin Cut',
+    desc: 'The one-two. The oldest thing two knives know how to say.',
+    color: '#d9a441',
+    code: 'Tc',
+    cooldownTicks: 150, // 7.5 s
+    shape: 'flurry',
+    damage: 7,
+    range: 2.0,
+    arc: 1.2,
+    hits: 2,
+    pulseEveryTicks: 5,
+  },
+  {
+    id: 'heron_step',
+    name: 'Heron Step',
+    desc: 'Step through, not around — one edge going in, one coming out.',
+    color: '#9ab4c4',
+    code: 'He',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'dash_strike',
+    damage: 9,
+    dashTiles: 3.4,
+    status: { status: 'bleed', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'crossed_throw',
+    name: 'Crossed Throw',
+    desc: 'Loose both at once; they cross halfway there.',
+    color: '#c4b48a',
+    code: 'Cx',
+    cooldownTicks: 160, // 8 s
+    shape: 'projectile_fan',
+    damage: 6,
+    range: 8,
+    projectiles: 2,
+    spreadArc: 0.15,
+    projectileSpeed: 14,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'mirrored_hand',
+    name: 'Mirrored Hand',
+    desc: 'For eight breaths, there is no off hand.',
+    color: '#e8d8a8',
+    code: 'Mh',
+    cooldownTicks: 320, // 16 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { offhandWeight: 0.75, durationTicks: 160 },
+  },
+  {
+    id: 'turning_reel',
+    name: 'Turning Reel',
+    desc: 'One full turn, both edges out. The ring around you empties.',
+    color: '#b8a88a',
+    code: 'Tr',
+    cooldownTicks: 160, // 8 s
+    shape: 'nova',
+    damage: 10,
+    radius: 2.1,
+    knockback: 1.1,
+  },
+  {
+    id: 'red_ribbons',
+    name: 'Red Ribbons',
+    desc: 'A weaving stance. Every pass, either hand, leaves a ribbon.',
+    color: '#c44a3a',
+    code: 'Rr',
+    cooldownTicks: 320, // 16 s
+    shape: 'self_buff',
+    damage: 0,
+    self: {
+      speedMult: 1.08,
+      onHitStatus: { status: 'bleed', power: 1, durationTicks: 60 },
+      durationTicks: 160,
+    },
+  },
+  {
+    id: 'swallows_dive',
+    name: "Swallow's Dive",
+    desc: 'Up like a swallow. Down like two knives.',
+    color: '#8ab4d8',
+    code: 'Sd',
+    cooldownTicks: 220, // 11 s
+    castFreezeTicks: 3,
+    shape: 'leap_slam',
+    damage: 12,
+    dashTiles: 4.5,
+    radius: 1.8,
+    knockback: 1.2,
+  },
+  {
+    id: 'the_shears',
+    name: 'The Shears',
+    desc: 'Two edges, closing. Most things are thread.',
+    color: '#b0a4b8',
+    code: 'Ts',
+    cooldownTicks: 200, // 10 s
+    shape: 'melee_arc',
+    damage: 11,
+    range: 2.2,
+    arc: 0.9,
+    executeBelow: { frac: 0.3, mult: 2.2 },
+  },
+  {
+    id: 'storm_of_two',
+    name: 'Storm of Two',
+    desc: 'Carry the storm with you — it rings once for each hand.',
+    color: '#a8b0c0',
+    code: 'S2',
+    cooldownTicks: 240, // 12 s
+    shape: 'pulse_nova',
+    damage: 6,
+    radius: 1.9,
+    pulses: 3,
+    pulseEveryTicks: 9,
+    knockback: 0.8,
+  },
+  {
+    id: 'hundred_hands',
+    name: 'Hundred Hands',
+    desc: 'Five cuts in a breath. Count the hands later.',
+    color: '#e0c060',
+    code: 'Hh',
+    cooldownTicks: 300, // 15 s
+    shape: 'flurry',
+    damage: 5,
+    range: 2.2,
+    arc: 1.4,
+    hits: 5,
+    pulseEveryTicks: 5,
+  },
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   // These never sit on a rung: an `art:<id>` flag opens each, set by
   // a deed (never drop-luck). Invisible everywhere until earned.
@@ -2160,6 +2300,21 @@ const defs: AbilityDef[] = [
     pulseEveryTicks: 10,
     knockback: 1.2,
     tauntRadius: 4.0,
+  },
+  {
+    id: 'two_answers',
+    name: 'Two Answers',
+    desc: 'The champion asked once. You had two.',
+    color: '#e8c878',
+    code: 'Tw',
+    cooldownTicks: 220, // 11 s
+    shape: 'flurry',
+    damage: 9,
+    range: 2.1,
+    arc: 1.0,
+    hits: 2,
+    pulseEveryTicks: 3,
+    drainFrac: 0.15,
   },
 
   // ----------------------------------------------------------- sigils
@@ -2952,6 +3107,117 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
 
+  // --------------------------- THE TWIN SCHOOL — the paired rungs
+  {
+    ability: 'twin_cut',
+    style: 'dualwield',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'Both hands land heavier.', damage: 9 },
+      { note: 'The sentence repeats sooner.', cooldownTicks: 140 },
+      { note: 'The pair leaves crossed wounds.', status: { status: 'bleed', power: 1, durationTicks: 40 } },
+    ],
+  },
+  {
+    ability: 'heron_step',
+    style: 'dualwield',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'The pass cuts deeper.', damage: 11 },
+      { note: 'A longer stride through them.', dashTiles: 4.2, cooldownTicks: 160 },
+      { note: 'Both edges collect on the way past.', damage: 12, status: { status: 'bleed', power: 2, durationTicks: 50 } },
+    ],
+  },
+  {
+    ability: 'crossed_throw',
+    style: 'dualwield',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'Each knife argues harder.', damage: 7 },
+      { note: 'Thrown oftener, bitten deeper.', damage: 8, cooldownTicks: 150 },
+      { note: 'They remember your hands, and come home.', returns: true, cooldownTicks: 170 },
+    ],
+  },
+  {
+    ability: 'mirrored_hand',
+    style: 'dualwield',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The mirror holds longer.', self: { offhandWeight: 0.75, durationTicks: 200 } },
+      { note: 'The reflection sharpens.', self: { offhandWeight: 0.9, durationTicks: 200 } },
+      { note: 'For a while, the two hands are one.', self: { offhandWeight: 1.0, durationTicks: 220 } },
+    ],
+  },
+  {
+    ability: 'turning_reel',
+    style: 'dualwield',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'The turn cuts deeper.', damage: 12 },
+      { note: 'A wider round, called oftener.', radius: 2.5, cooldownTicks: 150 },
+      { note: 'The reel rings them where they stand.', damage: 13, status: { status: 'shock', power: 1, durationTicks: 30 } },
+    ],
+  },
+  {
+    ability: 'red_ribbons',
+    style: 'dualwield',
+    unlockLevel: 30,
+    ranks: [
+      {
+        note: 'The ribbons run redder.',
+        self: { speedMult: 1.08, onHitStatus: { status: 'bleed', power: 2, durationTicks: 60 }, durationTicks: 160 },
+      },
+      {
+        note: 'The weave quickens.',
+        self: { speedMult: 1.12, onHitStatus: { status: 'bleed', power: 2, durationTicks: 60 }, durationTicks: 180 },
+      },
+      {
+        note: 'Dance long enough and they wear the whole spool.',
+        self: { speedMult: 1.12, onHitStatus: { status: 'bleed', power: 2, durationTicks: 80 }, durationTicks: 200 },
+      },
+    ],
+  },
+  {
+    ability: 'swallows_dive',
+    style: 'dualwield',
+    unlockLevel: 35,
+    ranks: [
+      { note: 'The landing bites deeper.', damage: 14 },
+      { note: 'A longer flight, a shorter wait.', dashTiles: 5.5, cooldownTicks: 210 },
+      { note: 'The landing scatters the ring they made.', damage: 16, radius: 2.1, knockback: 1.8 },
+    ],
+  },
+  {
+    ability: 'the_shears',
+    style: 'dualwield',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The blades close harder.', damage: 13 },
+      { note: 'They read the thread earlier.', executeBelow: { frac: 0.35, mult: 2.2 }, cooldownTicks: 190 },
+      { note: 'Most things were thread all along.', damage: 14, executeBelow: { frac: 0.35, mult: 2.6 } },
+    ],
+  },
+  {
+    ability: 'storm_of_two',
+    style: 'dualwield',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'Each ring lands heavier.', damage: 7 },
+      { note: 'A fourth ring joins the round.', pulses: 4, cooldownTicks: 260 },
+      { note: 'The storm widens its round.', damage: 8, radius: 2.1 },
+    ],
+  },
+  {
+    ability: 'hundred_hands',
+    style: 'dualwield',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'Every hand hits harder.', damage: 6 },
+      { note: 'The breath shortens.', cooldownTicks: 280, pulseEveryTicks: 4 },
+      { note: 'A sixth hand joins the count.', hits: 6 },
+    ],
+  },
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned seats
   {
     ability: 'riftwalker_step',
@@ -3024,6 +3290,17 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'The memory swings heavier.', damage: 19 },
       { note: 'It reaches the tall ones sooner.', range: 3.1, cooldownTicks: 220 },
       { note: 'Everything falls the same height in the end.', damage: 21, knockback: 2.6 },
+    ],
+  },
+  {
+    ability: 'two_answers',
+    style: 'dualwield',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 30 },
+    ranks: [
+      { note: 'Both answers weigh more.', damage: 10 },
+      { note: 'Spoken sooner.', damage: 11, cooldownTicks: 200 },
+      { note: 'What the second answer takes, you keep.', damage: 12, drainFrac: 0.25 },
     ],
   },
 ];

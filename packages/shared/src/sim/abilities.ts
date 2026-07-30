@@ -267,6 +267,13 @@ export interface AbilitySelf {
    * returned to the striking NPC, dealt in the shield school.
    */
   reflectFrac?: number;
+  /**
+   * THE MIRRORED HAND: while active, the offhand echo lands at this
+   * damage fraction when it beats the trained factor (max across
+   * buffs, capped at parity — the off hand never OUT-hits the main,
+   * even honed). The twin school's stance rail.
+   */
+  offhandWeight?: number;
   durationTicks: number;
 }
 
@@ -375,9 +382,17 @@ export type AbilitySlot = 0 | 1 | 2 | 3;
  * FREE HAND slots any learned art whatever weapon is equipped.
  * `sneak` is the rogue's ladder, unlocked by the sneak skill; `shield`
  * is the wall's ladder, unlocked by the hidden shield skill; `twohand`
- * is the colossus's ladder, unlocked by swinging great steel.
+ * is the colossus's ladder, unlocked by swinging great steel;
+ * `dualwield` is the twin school, unlocked by every echo that lands.
  */
-export type CombatStyleId = 'melee' | 'archery' | 'magic' | 'sneak' | 'twohand' | 'shield';
+export type CombatStyleId =
+  | 'melee'
+  | 'archery'
+  | 'magic'
+  | 'sneak'
+  | 'twohand'
+  | 'shield'
+  | 'dualwield';
 
 export const COMBAT_STYLES: readonly CombatStyleId[] = [
   'melee',
@@ -386,6 +401,7 @@ export const COMBAT_STYLES: readonly CombatStyleId[] = [
   'sneak',
   'twohand',
   'shield',
+  'dualwield',
 ];
 
 /**

@@ -355,6 +355,21 @@ export const FX_STYLES: Record<string, FxStyle> = {
   pale_crescent: FROST({ mid: '#d8dce8', ring: 'halo', debris: 'star', decal: undefined, motif: 'wave', punch: 0.6, wash: 0.35 }),
   horizon_fall: VOID({ mid: '#6a5e7a', deep: '#2c2438', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'pillar', punch: 1.0, wash: 0.55 }),
 
+  // ------------------------ THE TWIN SCHOOL — the paired ladder
+  // The school speaks TWIN STEEL: bright steel with the school's own
+  // brass-amber, and everything answers twice — paired trails, crossed
+  // marks, counter-rotation. Nothing in this ladder arrives alone.
+  twin_cut: STEEL({ mid: '#d9a441', ring: 'shards', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.45, wash: 0.3 }),
+  heron_step: STEEL({ mid: '#9ab4c4', ring: 'shards', debris: 'blood', decal: undefined, motif: 'wave', punch: 0.4, wash: 0.25 }),
+  crossed_throw: STEEL({ mid: '#c4b48a', ring: 'shards', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.35, wash: 0.25 }),
+  mirrored_hand: GOLD({ mid: '#e8d8a8', ring: 'halo', debris: 'star', decal: undefined, motif: 'echo', punch: 0.2, wash: 0.3 }),
+  turning_reel: STEEL({ mid: '#b8a88a', ring: 'petals', debris: 'spark', decal: undefined, motif: 'vortex', punch: 0.55, wash: 0.35 }),
+  red_ribbons: BLOOD({ mid: '#c44a3a', ring: 'halo', debris: 'blood', decal: 'stain', motif: 'swarm', punch: 0.25, wash: 0.25 }),
+  swallows_dive: STEEL({ mid: '#8ab4d8', ring: 'teeth', debris: 'spark', decal: 'cracks', motif: 'rain', punch: 0.75, wash: 0.4 }),
+  the_shears: STEEL({ mid: '#b0a4b8', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'tear', punch: 0.6, wash: 0.3 }),
+  storm_of_two: STEEL({ mid: '#a8b0c0', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.5, wash: 0.35 }),
+  hundred_hands: GOLD({ mid: '#e0c060', ring: 'shards', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.6, wash: 0.35 }),
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   riftwalker_step: VOID({ ring: 'runes', debris: 'star', motif: 'tear', punch: 0.5, wash: 0.35 }),
   oathbound_edge: GOLD({ ring: 'halo', debris: 'star', motif: 'crown', punch: 0.7, wash: 0.55 }),
@@ -362,6 +377,7 @@ export const FX_STYLES: Record<string, FxStyle> = {
   whisper_fang: SHADOW({ mid: '#6a5a88', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'wisps', punch: 0.45, wash: 0.15 }),
   champions_wall: GOLD({ mid: '#d8b76a', ring: 'teeth', debris: 'bone', decal: 'cracks', motif: 'crown', punch: 0.7, wash: 0.45 }),
   giantsfall: GOLD({ mid: '#d88a4a', ring: 'shards', debris: 'star', decal: 'cracks', motif: 'pillar', punch: 0.85, wash: 0.5 }),
+  two_answers: GOLD({ mid: '#e8c878', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.4 }),
 
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),

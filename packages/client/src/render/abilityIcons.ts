@@ -2753,8 +2753,164 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// ----------------------------- THE TWIN SCHOOL — the paired plates
+// The school's silhouette is the crossed pair: two short blades, one
+// always answering the other. Every plate keeps something doubled.
+Object.assign(PLATES, {
+  // Twin Cut — the one-two written down: the crossed pair with a
+  // chevron beat on either side, first and second.
+  twin_cut: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    chevrons(c, -0.36, -0.06, 0.35, st, 1, 0.8);
+    chevrons(c, 0.34, 0.1, Math.PI - 0.35, st, 1, 0.8);
+    dagger(c, 0, 0.02, 0.82, -0.6, st);
+    dagger(c, 0, 0.02, 0.82, 0.6 + Math.PI, st);
+    star4(c, 0, 0.02, 0.09, st.spark, Math.PI / 4);
+  },
+  // Heron Step — through, not around: both blades laid on the stride
+  // line, one going in, one coming out, the wake behind.
+  heron_step: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    chevrons(c, -0.38, 0.02, 0, st, 2, 1.0);
+    dagger(c, 0.08, -0.12, 0.72, -0.08, st);
+    c.save();
+    c.globalAlpha = 0.7;
+    dagger(c, -0.04, 0.16, 0.66, Math.PI + 0.08, st);
+    c.restore();
+    star4(c, 0.36, -0.14, 0.06, st.spark);
+  },
+  // Crossed Throw — the crossing point: both knives loosed point-first,
+  // flight lines behind, the argument sparking where they meet.
+  crossed_throw: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.024;
+    c.lineCap = 'round';
+    for (const [x0, y0, x1, y1] of [[-0.42, 0.3, -0.1, 0.02], [0.42, 0.34, 0.1, 0.04]] as const) {
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.lineTo(x1, y1);
+      c.stroke();
+    }
+    dagger(c, 0.02, -0.04, 0.68, -0.72, st);
+    dagger(c, -0.02, -0.04, 0.68, -Math.PI + 0.72, st);
+    star4(c, 0, -0.1, 0.1, st.core, Math.PI / 4);
+  },
+  // Mirrored Hand — the second shadow: one blade and its reflection
+  // across the seam, the halo of the stance above.
+  mirrored_hand: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    haloArcs(c, 0, -0.1, st);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(0, -0.4);
+    c.lineTo(0, 0.42);
+    c.stroke();
+    dagger(c, 0.2, 0.04, 0.66, -Math.PI / 2 + 0.14, st);
+    c.save();
+    c.globalAlpha = 0.45;
+    dagger(c, -0.2, 0.04, 0.66, -Math.PI / 2 - 0.14, st);
+    c.restore();
+  },
+  // Turning Reel — the counter-round: two crescents chasing each other
+  // opposite ways around the turned pair.
+  turning_reel: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0, 0.36, 0.44, -2.8, -0.6, st.spark, 0.028);
+    crescent(c, 0, 0, 0.36, 0.44, 0.34, 2.54, st.mid, 0.028);
+    dagger(c, 0, 0, 0.6, -0.5, st);
+    dagger(c, 0, 0, 0.6, 0.5 + Math.PI, st);
+    chevrons(c, 0.4, -0.24, -1.2, st, 1, 0.6);
+  },
+  // Red Ribbons — the weaving stance: the upright pair with two ribbon
+  // trails winding off the edges, the spool still turning.
+  red_ribbons: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.3, -0.34);
+    c.bezierCurveTo(-0.44, -0.08, -0.1, 0.06, -0.26, 0.36);
+    c.stroke();
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(0.3, -0.3);
+    c.bezierCurveTo(0.46, -0.02, 0.12, 0.1, 0.3, 0.4);
+    c.stroke();
+    dagger(c, -0.04, 0.04, 0.7, -Math.PI / 2 + 0.1, st);
+    dagger(c, 0.1, 0.08, 0.62, -Math.PI / 2 - 0.12, st);
+    droplet(c, -0.3, 0.42, 0.24, st);
+  },
+  // Swallow's Dive — two points down: the pair converging point-first
+  // into the landing, the ground already answering.
+  swallows_dive: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.36, st);
+    chevrons(c, -0.3, -0.4, Math.PI / 2, st, 1, 0.7);
+    chevrons(c, 0.3, -0.4, Math.PI / 2, st, 1, 0.7);
+    dagger(c, -0.1, -0.08, 0.66, Math.PI / 2 - 0.28, st);
+    dagger(c, 0.1, -0.08, 0.66, Math.PI / 2 + 0.28, st);
+    star4(c, 0, 0.26, 0.11, st.core, Math.PI / 4);
+  },
+  // The Shears — the closing edges: two long blades nearly met across
+  // the thread, which is already in two pieces.
+  the_shears: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.026;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.44, 0.02);
+    c.lineTo(-0.1, 0.0);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.12, -0.04);
+    c.lineTo(0.44, -0.06);
+    c.stroke();
+    dagger(c, 0.02, 0.16, 0.84, -0.32, st);
+    dagger(c, 0.02, -0.14, 0.84, 0.32, st);
+    star4(c, 0.02, 0.0, 0.08, st.core);
+  },
+  // Storm of Two — the double round: ring and echo-ring a half-step
+  // apart, the pair turning at the eye.
+  storm_of_two: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    novaRing(c, 0, 0, 0.44, st, 12, 0.18, 0.03);
+    novaRing(c, 0, 0, 0.3, st, 10, 0.22, 0.026);
+    dagger(c, 0, 0, 0.5, -0.55, st);
+    dagger(c, 0, 0, 0.5, 0.55 + Math.PI, st);
+  },
+  // Hundred Hands — count them later: a fan of after-image blades
+  // stacking around the two that are real.
+  hundred_hands: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    for (const [a, al] of [[-1.9, 0.3], [-1.35, 0.5], [-0.5, 0.4], [0.2, 0.3]] as const) {
+      c.save();
+      c.globalAlpha = al;
+      dagger(c, 0, -0.02, 0.6, a, st);
+      c.restore();
+    }
+    dagger(c, 0, -0.02, 0.72, -1.0, st);
+    dagger(c, 0, -0.02, 0.72, -0.1, st);
+    star4(c, 0, -0.02, 0.08, st.spark, Math.PI / 4);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ---------------------------------------------- sigils & npc specials
 Object.assign(PLATES, {
+  // Two Answers — the champion's question settled: the heavy crossed
+  // pair over the bone it was won from, both replies still ringing.
+  two_answers: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    novaRing(c, 0, 0.0, 0.45, st, 12, 0.16, 0.026);
+    dagger(c, 0, 0.0, 0.86, -0.55, st);
+    dagger(c, 0, 0.0, 0.86, 0.55 + Math.PI, st);
+    skull(c, 0, 0.3, 0.42, st.core, st.deep);
+    star4(c, 0, -0.02, 0.09, st.spark, Math.PI / 4);
+  },
   // Champion's Wall — the trophy wall ringing: echo rings, the crown
   // it was carried under, the bone it was won from.
   champions_wall: (st) => (c) => {
