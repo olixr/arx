@@ -112,6 +112,20 @@ export declare class Sfx {
      */
     discovery(): void;
     /**
+     * Swearing a quest — a page turned and a hand shaken, not a
+     * fanfare: a soft paper breath, a rising fourth to say "begun", and
+     * one clean tick as the entry lands in the journal. Smaller than the
+     * discovery call by design: swearing is a start, finding is a gift.
+     */
+    questAccepted(): void;
+    /**
+     * A quest seen through — the level-up's herald a size down, with the
+     * ledger shutting under it: a warm thump, three rising calls at the
+     * herald's spacing, the chord planted with a sine root, and glitter
+     * air on top. Finishing IS a feat; only leveling outranks it.
+     */
+    questComplete(): void;
+    /**
      * Stepping through the Riftgate — a dimensional plunge, not a blip:
      * the deep mouth swallows (a falling sub womp), the veil tears (a
      * focused hiss of air), and a doubled shimmer climbs out the far
@@ -182,6 +196,13 @@ export declare class Sfx {
      * under the crack — a drum giving up.
      */
     propSmash(hollow?: boolean): void;
+    /**
+     * THE SALVAGE LAW's crack-and-drop: a whole construction giving up.
+     * Timber goes with a frame groan, one sharp crack, and a stagger of
+     * plank clatter; stone drops straight into a rubble slump — deeper,
+     * duller, done. Bigger than propSmash on purpose: this was a wall.
+     */
+    demolishCrash(stone?: boolean): void;
     /** The counter bell: two soft brass partials over a felt strike. */
     shopBell(): void;
     /**

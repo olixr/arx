@@ -55,6 +55,21 @@ export declare class Debris {
      */
     smash(x: number, y: number, dir: number, kind: SmashKind, rand?: () => number): void;
     /**
+     * THE SALVAGE LAW's ceremony: a construction coming DOWN, not blown
+     * outward. Chunks spawn through the piece's standing height (`mass`
+     * scales it: a wall falls from higher than a floor) with little
+     * sideways urge — a slump that settles around the footprint. `slabs`
+     * breaks as sawn lumber (long bodies, lit stripes); otherwise the
+     * rubble is blocky. Tones come from the demolished tile itself, so
+     * a walnut wall and a stone arch each fall in their own colors.
+     */
+    collapse(x: number, y: number, spec: {
+        tones: readonly string[];
+        stripe: string | null;
+        slabs: boolean;
+        mass: number;
+    }, rand?: () => number): void;
+    /**
      * A blow that DIDN'T finish the prop: a few small chips fly off the
      * impact, short-lived — the "it's working" feedback between hits on
      * durable furniture. Same bodies, smaller and briefer than a burst.

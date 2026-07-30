@@ -1502,6 +1502,17 @@ export declare class Renderer {
     private static readonly SMASH_TONES;
     crackProp(wx: number, wy: number, dir: number, kind: SmashKind): void;
     smashProp(wx: number, wy: number, dir: number, kind: SmashKind): void;
+    /** Demolished tiles that fall as blocky masonry, not sawn lumber. */
+    private static readonly STONE_FALL_TILES;
+    /**
+     * THE SALVAGE LAW's collapse: a player construction coming down at
+     * (wx,wy). Tones and mass come from the demolished tile itself —
+     * walls slump from height in long sawn slabs (or blocky masonry for
+     * the stone family), floors barely hop — under one rolling dust
+     * bloom. Returns whether the piece fell as stone, so the caller can
+     * pick the rubble voice over the timber crack.
+     */
+    demolishBurst(wx: number, wy: number, tile: Tile): boolean;
     /**
      * Lid openness 0..1 for a chest tile, advancing its animation.
      * Opening is a two-beat swing: the latch gives (a slow first lift)
@@ -1862,6 +1873,16 @@ export declare class Renderer {
      * in the label pass (no outline ring), never emoji.
      */
     private alertIconItem;
+    private readonly questAnim;
+    /**
+     * THE QUEST MARK: the gold "!" over a giver with work to offer, the
+     * gold "?" over the hand a finished quest returns to — per-viewer
+     * truth resolved from the client's own ledger (EntityMeta.actor is
+     * the key; nothing personal ever rode the wire). Same nameplate-
+     * dialect glyph as the alert telegraph, with a slow breathing bob so
+     * an errand mark never reads as combat. Never emoji.
+     */
+    private questIconItem;
     private drawMiniHp;
     /** Eight-tap alpha dilate → tinted ring under the sprite. */
     private static readonly OUTLINE_TAPS;

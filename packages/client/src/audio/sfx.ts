@@ -575,6 +575,37 @@ export class Sfx {
     this.tone(140, 0.05, { type: 'triangle', slide: -50, volume: 0.07, delay: 0.3 });
   }
 
+  /**
+   * THE SALVAGE LAW's crack-and-drop: a whole construction giving up.
+   * Timber goes with a frame groan, one sharp crack, and a stagger of
+   * plank clatter; stone drops straight into a rubble slump — deeper,
+   * duller, done. Bigger than propSmash on purpose: this was a wall.
+   */
+  demolishCrash(stone = false): void {
+    if (stone) {
+      this.tone(58, 0.3, { type: 'sine', slide: -20, volume: 0.5 });
+      this.tone(84, 0.26, { type: 'square', slide: -34, volume: 0.3, delay: 0.02 });
+      this.noise(0.34, 0.3, 0, { band: 900 });
+      // Masonry settling: three falling knocks, each lower than the last.
+      this.tone(150, 0.06, { type: 'square', slide: -60, volume: 0.16, delay: 0.16 });
+      this.tone(120, 0.06, { type: 'square', slide: -50, volume: 0.13, delay: 0.28 });
+      this.tone(96, 0.07, { type: 'square', slide: -40, volume: 0.1, delay: 0.42 });
+      this.noise(0.08, 0.12, 0.3, { band: 700 });
+      return;
+    }
+    // The frame lets go: a groan, then the crack.
+    this.tone(130, 0.18, { type: 'sawtooth', slide: -55, volume: 0.16 });
+    this.tone(255, 0.07, { type: 'triangle', slide: -150, volume: 0.22, delay: 0.05 });
+    this.noise(0.12, 0.22, 0.04, { band: 2200 });
+    // The ground takes the weight.
+    this.tone(62, 0.2, { type: 'sine', slide: -20, volume: 0.4, delay: 0.1 });
+    // Boards coming down: staggered woody knocks and a dry rustle.
+    this.tone(180, 0.05, { type: 'triangle', slide: -60, volume: 0.11, delay: 0.2 });
+    this.noise(0.07, 0.1, 0.24, { band: 1400 });
+    this.tone(150, 0.05, { type: 'triangle', slide: -55, volume: 0.09, delay: 0.34 });
+    this.tone(128, 0.05, { type: 'triangle', slide: -45, volume: 0.07, delay: 0.46 });
+  }
+
   /** The counter bell: two soft brass partials over a felt strike. */
   shopBell(): void {
     this.noise(0.02, 0.05, 0, { band: 3000 });

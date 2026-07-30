@@ -35,6 +35,21 @@ interface CinemaNode {
         item: string;
         qty: number;
     }>;
+    quest?: {
+        id: string;
+        name: string;
+        rewards?: {
+            xp?: Array<{
+                skill: string;
+                amount: number;
+            }>;
+            items?: Array<{
+                item: string;
+                qty: number;
+            }>;
+            coins?: number;
+        };
+    };
 }
 export declare class DialogueCinema {
     private readonly sfx;
@@ -120,6 +135,13 @@ export declare class DialogueCinema {
         buttons: readonly GamepadButton[];
         axes: readonly number[];
     } | null, nowMs: number): void;
+    /**
+     * A quest offer is a CONTRACT read aloud: the scroll chip descends
+     * beside the line — the quest's name and its pay — so the player
+     * reads what they'd be swearing to BEFORE the choice plates appear.
+     * The accept itself is an ordinary choice; this is the paper.
+     */
+    private stageQuestOffer;
     /** A gift is a MOMENT: socket chip, name, count, chime. */
     private stageGifts;
     private buildChoices;

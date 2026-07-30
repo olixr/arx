@@ -1,5 +1,5 @@
 import { EntityKind, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, dangerAt, doorInfo, isSkillId, tileDef, treeOfSapling } from '@arx/shared';
-import { BUILDABLES, buildableGround, itemDef, npcDef } from '@arx/content';
+import { BUILDABLES, buildableForTile, buildableGround, itemDef, npcDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { bindings, type ActionId } from './input/bindings.js';
@@ -589,15 +589,13 @@ const game = new ClientGame(input, {
     }
     sentBuild = null;
   },
-  // The honest thump: placement sound fires when the piece lands, and
-  // a build the world refused mid-swing says why instead of going mute.
+  // A build the world refused mid-swing says why instead of going
+  // mute. (The completion thump lives on the tile patch itself — one
+  // ceremony for builder and bystander alike, spatial, in onTileChange.)
   onActionEnd: (reason) => {
     if (!activeBuild) return;
     activeBuild = null;
-    if (reason === 'done') {
-      sfx.buildThump();
-      return;
-    }
+    if (reason === 'done') return;
     const line =
       reason === 'blocked'
         ? 'The footing changed.'
@@ -1024,6 +1022,19 @@ game.onFx = (fx) => {
     sfx.spatial(at, 'far', () => sfx.warHorn());
     return;
   }
+  if (fx.kind === 'demolish') {
+    // THE SALVAGE LAW's ceremony: a construction slumping into its own
+    // footprint — tones and mass read off the falling tile itself. The
+    // patch that erases the piece arrives right behind this fx; the
+    // stamp below keeps the follow-up patch from double-celebrating.
+    const falling = Number(fx.id ?? '0') as Tile;
+    const stone = renderer.demolishBurst(fx.x, fx.y, falling);
+    lastDemolishFxAt.set(`${Math.floor(fx.x)},${Math.floor(fx.y)}`, performance.now());
+    sfx.spatial(at, 'far', () => sfx.demolishCrash(stone));
+    if (dist < 6) renderer.shake(stone ? 3.4 : 2.6);
+    if (dist < 2.5) input.rumble(0.32, 0.5, 100);
+    return;
+  }
   if (fx.kind === 'smash') {
     // A prop taking a blow. radius carries the durability fraction
     // still standing: >0 = a crack (shudder + chips, keep hitting),
@@ -1260,6 +1271,10 @@ renderer.onSplash = (x, y) => {
 // A felled tree topples away from whoever cut it, groans, and lands
 // with a thud you can feel.
 let lastDoorSfxAt = 0;
+/** Demolish-fx stamps by tile key — the follow-up patch reads this so
+ *  a LAYER-LAW floor restore doesn't double-celebrate the collapse. */
+const lastDemolishFxAt = new Map<string, number>();
+
 game.onTileChange = (tx, ty, prev, next) => {
   // Loot chests: the tile swap IS the state change — the renderer
   // eases the lid over its hinge, and the box breathes out a puff of
@@ -1309,6 +1324,26 @@ game.onTileChange = (tx, ty, prev, next) => {
         else sfx.doorClose();
       });
     }
+    return;
+  }
+  // A construction landing: the piece arrives under a soft dust knock
+  // in its own tones — the shared ceremony, seen and heard by anyone
+  // watching the yard, not just the builder. Door toggles returned
+  // above; a LAYER-LAW floor restore right after a collapse stays
+  // quiet (the demolish fx already carried that moment).
+  if (buildableForTile(next) && (performance.now() - (lastDemolishFxAt.get(`${tx},${ty}`) ?? -1e9)) > 400) {
+    const td = tileDef(next);
+    const base = td.topColor ?? td.color;
+    renderer.particles.burst(tx + 0.5, ty + 0.55, 8, [base, td.color, '#c9bda4'], {
+      speed: 0.8,
+      life: 0.7,
+      size: 0.06,
+      up: true,
+      gravity: 1.8,
+      drag: 1.8,
+      spread: 2.4,
+    });
+    sfx.spatial(tileAt, 'near', () => sfx.buildThump());
     return;
   }
   if (prev === Tile.Stump && treeOfSapling(next) !== null) {

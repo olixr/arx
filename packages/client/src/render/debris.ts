@@ -130,6 +130,50 @@ export class Debris {
   }
 
   /**
+   * THE SALVAGE LAW's ceremony: a construction coming DOWN, not blown
+   * outward. Chunks spawn through the piece's standing height (`mass`
+   * scales it: a wall falls from higher than a floor) with little
+   * sideways urge — a slump that settles around the footprint. `slabs`
+   * breaks as sawn lumber (long bodies, lit stripes); otherwise the
+   * rubble is blocky. Tones come from the demolished tile itself, so
+   * a walnut wall and a stone arch each fall in their own colors.
+   */
+  collapse(
+    x: number,
+    y: number,
+    spec: { tones: readonly string[]; stripe: string | null; slabs: boolean; mass: number },
+    rand: () => number = Math.random,
+  ): void {
+    const n = 7 + Math.round(spec.mass * 7);
+    for (let i = 0; i < n; i++) {
+      const c = this.take();
+      const ang = rand() * Math.PI * 2;
+      const sp = 0.5 + rand() * 1.3;
+      c.x = x + (rand() - 0.5) * 0.55;
+      c.y = y + (rand() - 0.5) * 0.45;
+      c.z = 0.25 + rand() * (0.35 + spec.mass * 0.75);
+      c.vx = Math.cos(ang) * sp;
+      c.vy = Math.sin(ang) * sp * 0.8;
+      c.vz = 0.4 + rand() * 1.2; // a slump, never a blast
+      c.rot = rand() * Math.PI * 2;
+      c.spin = (rand() - 0.5) * 12;
+      if (spec.slabs) {
+        c.len = 0.16 + rand() * 0.15;
+        c.wid = 0.05 + rand() * 0.04;
+      } else {
+        c.len = 0.09 + rand() * 0.09;
+        c.wid = 0.07 + rand() * 0.05;
+      }
+      c.color = spec.tones[Math.floor(rand() * spec.tones.length)]!;
+      c.stripe = spec.slabs && rand() < 0.6 ? spec.stripe : null;
+      c.round = false;
+      c.settled = false;
+      c.life = 0;
+      c.maxLife = 5 + rand() * 3;
+    }
+  }
+
+  /**
    * A blow that DIDN'T finish the prop: a few small chips fly off the
    * impact, short-lived — the "it's working" feedback between hits on
    * durable furniture. Same bodies, smaller and briefer than a burst.

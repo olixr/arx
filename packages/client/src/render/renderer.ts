@@ -1327,7 +1327,8 @@ export class Renderer {
                     t === Tile.TanningRack ||
                     t === Tile.Loom ||
                     t === Tile.CarvingBench ||
-                    t === Tile.EnchantingTable
+                    t === Tile.EnchantingTable ||
+                    t === Tile.Sawhorse
                   ? ('workbench' as const)
                   : null;
         if (!kind) continue;
@@ -1489,6 +1490,7 @@ export class Renderer {
     Tile.Loom,
     Tile.CarvingBench,
     Tile.EnchantingTable,
+    Tile.Sawhorse,
     Tile.BankChest,
     Tile.ShopCounter,
   ]);
@@ -12205,6 +12207,65 @@ export class Renderer {
     });
   }
 
+  /** Demolished tiles that fall as blocky masonry, not sawn lumber. */
+  private static readonly STONE_FALL_TILES = new Set<Tile>([
+    Tile.WallStone,
+    Tile.WallStoneWindow,
+    Tile.WallStoneDiagNE,
+    Tile.WallStoneDiagNW,
+    Tile.WallStoneDiagSE,
+    Tile.WallStoneDiagSW,
+    Tile.DoorwayStone,
+    Tile.DoorwayStoneWide,
+    Tile.StoneFloor,
+    Tile.PillarStone,
+    Tile.ArchStone,
+    Tile.WallGarrison,
+    Tile.WallGarrisonDiagNE,
+    Tile.WallGarrisonDiagNW,
+    Tile.WallGarrisonDiagSE,
+    Tile.WallGarrisonDiagSW,
+    Tile.GateGarrison,
+    Tile.GateGarrisonShut,
+    Tile.Furnace,
+    Tile.Anvil,
+    Tile.Hearth,
+  ]);
+
+  /**
+   * THE SALVAGE LAW's collapse: a player construction coming down at
+   * (wx,wy). Tones and mass come from the demolished tile itself —
+   * walls slump from height in long sawn slabs (or blocky masonry for
+   * the stone family), floors barely hop — under one rolling dust
+   * bloom. Returns whether the piece fell as stone, so the caller can
+   * pick the rubble voice over the timber crack.
+   */
+  demolishBurst(wx: number, wy: number, tile: Tile): boolean {
+    const def = tileDef(tile);
+    const stone = Renderer.STONE_FALL_TILES.has(tile);
+    const base = def.topColor ?? def.color;
+    const tones = [base, def.color, shade(base, -16), shade(base, 14)];
+    const mass = def.raised === true ? 1 : 0.35;
+    this.debris.collapse(wx, wy, {
+      tones,
+      stripe: stone ? null : shade(base, 30),
+      slabs: !stone,
+      mass,
+    });
+    // One dust bloom rolling out of the footprint, unhurried.
+    this.particles.burst(wx, wy, 12, [shade(def.color, -8), shade(base, 10), '#c9bda4'], {
+      speed: 1.1,
+      life: 0.85,
+      size: 0.08,
+      spread: Math.PI * 2,
+      gravity: 0,
+      drag: 2.2,
+      grow: 0.3,
+      ground: true,
+    });
+    return stone;
+  }
+
   /**
    * Lid openness 0..1 for a chest tile, advancing its animation.
    * Opening is a two-beat swing: the latch gives (a slow first lift)
@@ -12492,6 +12553,7 @@ export class Renderer {
     Tile.TanningRack,
     Tile.Loom,
     Tile.CarvingBench,
+    Tile.Sawhorse,
   ]);
 
   /**
@@ -19190,6 +19252,185 @@ export class Renderer {
                   3.4 + ct2 * 3,
                 );
                 ctx.stroke();
+              }
+            }
+          },
+        };
+      }
+
+      case Tile.Sawhorse: {
+        const syT = s * this.camera.yScale;
+        // The sawyer's stand: two X-trestles at the hip, a whole log
+        // racked across them mid-rip, the saw parked upright in its
+        // kerf, a fresh stack of boards by the west legs and sawdust
+        // drifted under the cut — the station reads as work
+        // interrupted, never as furniture.
+        const xL = p.x - s * 0.5;
+        const xR = p.x + s * 0.5;
+        const yB = p.y + syT * 0.42;
+        const barkC = '#7a5329';
+        const sawnC = '#b5854f';
+        const legC = '#5b4028';
+        const logMid = yB - s * 0.48; // the racked log's midline: hip height
+        const logR = s * 0.155;
+        return {
+          sortY: ty + 0.85,
+          body: stationBody(1.05, 1.5, 0.7),
+          drawShadow: () => {
+            this.castEdgeQuad(xL, yB + syT * 0.06, xR, yB + syT * 0.06, 0.7);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            // Contact shade under the whole stand.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.fillRect(xL + s * 0.04, yB + s * 0.005, xR - xL - s * 0.08, s * 0.04);
+            // X-trestles: a shadowed rear leg and a lit fore leg so
+            // the crossing reads in depth, feet planted wide, and a
+            // saddle block where the log rides.
+            const trestle = (cx: number) => {
+              const top = logMid + logR * 0.5;
+              ctx.lineCap = 'round';
+              ctx.lineWidth = Math.max(2.6, s * 0.078);
+              ctx.strokeStyle = shade(legC, -12);
+              ctx.beginPath();
+              ctx.moveTo(cx - s * 0.14, yB - s * 0.03);
+              ctx.lineTo(cx + s * 0.1, top);
+              ctx.stroke();
+              ctx.strokeStyle = legC;
+              ctx.beginPath();
+              ctx.moveTo(cx + s * 0.14, yB);
+              ctx.lineTo(cx - s * 0.1, top);
+              ctx.stroke();
+              ctx.lineCap = 'butt';
+              ctx.fillStyle = shade(legC, 8);
+              ctx.fillRect(cx - s * 0.085, top - s * 0.02, s * 0.17, s * 0.045);
+            };
+            trestle(xL + s * 0.18);
+            trestle(xR - s * 0.18);
+            // The racked log, overhanging both trestles: bark barrel
+            // with a sky-lit top band (the 2.5D top-plane law), a
+            // belly shadow, and a sawn end disc facing the camera side.
+            const lx0 = xL - s * 0.06;
+            const lx1 = xR + s * 0.06;
+            ctx.fillStyle = barkC;
+            ctx.beginPath();
+            ctx.roundRect(lx0, logMid - logR, lx1 - lx0, logR * 2, logR * 0.9);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
+            ctx.lineWidth = Math.max(1.4, s * 0.032);
+            ctx.stroke();
+            ctx.fillStyle = shade(barkC, 22);
+            ctx.fillRect(lx0 + s * 0.05, logMid - logR + s * 0.012, lx1 - lx0 - s * 0.1, logR * 0.55);
+            ctx.fillStyle = 'rgba(26, 16, 8, 0.3)';
+            ctx.fillRect(lx0 + s * 0.04, logMid + logR - s * 0.045, lx1 - lx0 - s * 0.08, s * 0.035);
+            // One long grain streak, hash-jittered per stand.
+            ctx.strokeStyle = shade(barkC, -14);
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            ctx.beginPath();
+            ctx.moveTo(lx0 + s * 0.12, logMid + s * ((h % 5) * 0.008));
+            ctx.quadraticCurveTo(p.x, logMid + s * 0.03, lx1 - s * 0.18, logMid - s * 0.01);
+            ctx.stroke();
+            // Sawn end disc on the east tip: growth rings drifted
+            // off-centre — never machined-concentric.
+            ctx.fillStyle = shade(sawnC, 30);
+            ctx.beginPath();
+            ctx.ellipse(lx1 - s * 0.012, logMid, s * 0.045, logR * 0.92, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = shade(sawnC, -18);
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.ellipse(lx1 - s * 0.014, logMid + s * 0.01, s * 0.026, logR * 0.5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // THE KERF: the rip already run from the east end to just
+            // past centre — a dark true line with a pale fresh-sawn
+            // shoulder under it, and the freed board's leading edge
+            // sagging a whisker below the log's belly.
+            const kx = p.x - s * 0.04;
+            ctx.strokeStyle = 'rgba(30, 18, 8, 0.75)';
+            ctx.lineWidth = Math.max(1.2, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(kx, logMid - s * 0.012);
+            ctx.lineTo(lx1 - s * 0.02, logMid + s * 0.004);
+            ctx.stroke();
+            ctx.fillStyle = shade(sawnC, 16);
+            ctx.beginPath();
+            ctx.moveTo(kx, logMid + s * 0.012);
+            ctx.lineTo(lx1 - s * 0.02, logMid + s * 0.028);
+            ctx.lineTo(lx1 - s * 0.02, logMid + logR * 0.9 + s * 0.05);
+            ctx.lineTo(kx + s * 0.06, logMid + logR * 0.9 + s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.3)';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.stroke();
+            // The rip saw parked in the kerf, blade up, its wooden
+            // grip catching the sun — it rocks with the work.
+            const rock = act > 0.05 ? Math.sin(t * 9 + h) * 0.05 * act : 0;
+            ctx.save();
+            ctx.translate(kx + s * 0.02, logMid);
+            ctx.rotate(rock);
+            ctx.fillStyle = '#9aa2ac';
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
+            ctx.lineWidth = Math.max(1.2, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.036, 0);
+            ctx.lineTo(-s * 0.008, -s * 0.52);
+            ctx.lineTo(s * 0.075, -s * 0.5);
+            ctx.lineTo(s * 0.062, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = shade('#9aa2ac', 22);
+            ctx.fillRect(-s * 0.024, -s * 0.52, s * 0.026, s * 0.52);
+            ctx.fillStyle = shade(legC, 20);
+            ctx.beginPath();
+            ctx.roundRect(-s * 0.045, -s * 0.615, s * 0.165, s * 0.095, s * 0.038);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.022);
+            ctx.stroke();
+            ctx.restore();
+            // The take so far: a low stagger-stacked board pile by the
+            // west trestle, every course with its lit top arris.
+            const bw = s * 0.46;
+            for (let k = 0; k < 3; k++) {
+              const off = ((hashCoords(83 + k, tx, ty) % 9) - 4) * s * 0.014;
+              const by = yB - s * 0.042 * (k + 1);
+              ctx.fillStyle = shade(sawnC, k * 6 - 4);
+              ctx.fillRect(xL + s * 0.01 + off, by, bw, s * 0.046);
+              ctx.fillStyle = shade(sawnC, k * 6 + 24);
+              ctx.fillRect(xL + s * 0.01 + off, by, bw, s * 0.015);
+            }
+            // Sawdust drifted beneath the kerf — a settled pale mound
+            // plus scattered motes.
+            ctx.fillStyle = 'rgba(216, 192, 138, 0.8)';
+            ctx.beginPath();
+            ctx.ellipse(kx + s * 0.14, yB - s * 0.008, s * 0.16, s * 0.045, 0, 0, Math.PI * 2);
+            ctx.fill();
+            for (let k = 0; k < 4; k++) {
+              const hh = hashCoords(91 + k, tx, ty);
+              ctx.fillRect(
+                kx - s * 0.06 + ((hh % 40) / 100) * s,
+                yB - s * 0.05 - ((hh >> 5) % 12) * s * 0.004,
+                s * 0.022,
+                s * 0.014,
+              );
+            }
+            // While someone saws, dust falls from the cut in a slow
+            // drift — the working read, cheap and honest.
+            if (act > 0.05) {
+              for (let i = 0; i < 3; i++) {
+                const ct2 = (t * (0.9 + i * 0.25) + h * 0.31 + i * 0.37) % 1;
+                ctx.fillStyle = `rgba(216, 192, 138, ${0.7 * (1 - ct2) * act})`;
+                ctx.fillRect(
+                  kx + s * 0.05 + i * s * 0.05 + Math.sin(t * 3 + i) * s * 0.015,
+                  logMid + logR + ct2 * (yB - logMid - logR),
+                  s * 0.02,
+                  s * 0.02,
+                );
               }
             }
           },
