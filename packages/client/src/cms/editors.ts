@@ -25,6 +25,7 @@ import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
 import { markDirty, persistence, setSection, state, toast, zoneAt } from './cms.js';
 import { dialogueDetail } from './dialogueEditor.js';
+import { voiceDetail } from './voiceEditor.js';
 import { creatureRender } from './gameRender.js';
 import { lookDesigner } from './lookDesigner.js';
 import { actorBust, actorFigure } from './portraits.js';
@@ -2017,6 +2018,22 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
       linkHead(linkage, 'actor', 'Speaks');
       linkRow(linkage, draft.dialogue, 'dialogue tree', null);
     }
+
+    // The throat's voice — bank slots filled, and the door to fill them.
+    const bank = state.voice?.banks.find(
+      (b) => b.owner.kind === 'actor' && b.owner.id === draft.id,
+    );
+    const slotCount = bank ? Object.keys(bank.slots).length : 0;
+    const clipCount = bank
+      ? Object.values(bank.slots).reduce((n, entries) => n + (entries?.length ?? 0), 0)
+      : 0;
+    linkHead(linkage, 'speech', 'Voice', clipCount);
+    const voiceBtn = el('button', 'link-row') as HTMLButtonElement;
+    voiceBtn.textContent = bank
+      ? `${slotCount} slot${slotCount === 1 ? '' : 's'} filled (${Object.keys(bank.slots).join(', ')}) — open the bank`
+      : 'silent — give this throat its fallback quips';
+    voiceBtn.onclick = () => setSection('voice', 'banks');
+    linkage.appendChild(voiceBtn);
   };
   build();
 }
@@ -3246,6 +3263,7 @@ export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   else if (state.section === 'pois') poiDetail(body, linkage, id);
   else if (state.section === 'frontier') frontierDetail(body, linkage);
   else if (state.section === 'factions') factionsDetail(body, linkage);
+  else if (state.section === 'voice') voiceDetail(body, linkage, id);
   else itemDetail(body, linkage, id);
 }
 

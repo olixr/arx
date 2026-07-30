@@ -6,6 +6,7 @@ import type {
   NpcActorDef,
   NpcDef,
   PoiDef,
+  VoiceDoc,
 } from '@arx/content';
 import { iconImg } from '../editor/editorIcons.js';
 import { itemIconUrl } from '../render/icons.js';
@@ -17,6 +18,10 @@ import {
   getFrontier,
   saveFrontier,
   revertFrontier,
+  getVoice,
+  saveVoiceDials,
+  revertVoiceDials,
+  type VoiceLedger,
   listActors,
   listDialogues,
   listItems,
@@ -62,6 +67,7 @@ export type Section =
   | 'pois'
   | 'frontier'
   | 'factions'
+  | 'voice'
   | 'items';
 
 export interface CmsState {
@@ -79,6 +85,8 @@ export interface CmsState {
   frontier: { def: FrontierDef; edited: boolean } | null;
   /** The faction ledger — a singleton doc (factions Phase 6). */
   factions: { def: FactionsDef; edited: boolean } | null;
+  /** The spoken world: clips, banks, dials (voiceover Phase 5). */
+  voice: VoiceLedger | null;
   items: ItemRow[];
   sites: SpawnSites;
   zones: ZoneRect[];
@@ -99,6 +107,7 @@ export const state: CmsState = {
   poiPrefabIds: [],
   frontier: null,
   factions: null,
+  voice: null,
   items: [],
   sites: { npcs: [], actors: [] },
   zones: [],
@@ -147,6 +156,9 @@ export async function reloadSection(section: Section): Promise<void> {
       state.frontier = await getFrontier();
     } else if (section === 'factions') {
       state.factions = await getFactions();
+    } else if (section === 'voice') {
+      state.voice = await getVoice();
+      for (const err of state.voice.errors) toast(`DB voice clip invalid: ${err}`, 5000, 'error');
     } else state.items = await listItems();
     state.online = true;
   } catch (err) {
@@ -158,7 +170,7 @@ export async function reloadSection(section: Section): Promise<void> {
 
 async function loadEverything(): Promise<void> {
   try {
-    const [npcs, loot, actors, dialogues, pois, items, sites, zones, frontier, factions] =
+    const [npcs, loot, actors, dialogues, pois, items, sites, zones, frontier, factions, voice] =
       await Promise.all([
         listNpcs(),
         listLoot(),
@@ -170,6 +182,7 @@ async function loadEverything(): Promise<void> {
         listZoneRects(),
         getFrontier(),
         getFactions(),
+        getVoice(),
       ]);
     state.npcs = npcs;
     state.loot = loot;
@@ -182,6 +195,7 @@ async function loadEverything(): Promise<void> {
     state.zones = zones;
     state.frontier = frontier;
     state.factions = factions;
+    state.voice = voice;
     state.online = true;
     $('server-pill').textContent = 'connected';
     $('server-pill').className = 'pill ok';
@@ -258,6 +272,12 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string; hint: string }
     hint: 'The name you carry — the roster, the bands, the deed values, the two poles, and the crime dials. A save re-draws every loyalty on the very next scan.',
   },
   {
+    id: 'voice',
+    label: 'Voice',
+    icon: 'speech',
+    hint: 'The spoken world — the clip library, each throat’s fallback bank, and the quip dials. An upload speaks on the very next line; no reload, no deploy.',
+  },
+  {
     id: 'items',
     label: 'Items',
     icon: 'picker',
@@ -311,7 +331,9 @@ function renderRail(): void {
                   ? (state.frontier ? Object.keys(state.frontier.def).length : 0)
                   : s.id === 'factions'
                     ? (state.factions?.def.roster.length ?? 0)
-                    : state.items.length;
+                    : s.id === 'voice'
+                      ? (state.voice?.clips.length ?? 0)
+                      : state.items.length;
     const b = document.createElement('button');
     b.className = 'rail-tab' + (state.section === s.id ? ' active' : '');
     b.appendChild(iconImg(s.icon, 15));
@@ -503,6 +525,42 @@ function listEntries(): ListEntry[] {
       },
     ];
   }
+  if (state.section === 'voice') {
+    const v = state.voice;
+    const spokenLines = state.dialogues.reduce(
+      (n, d) => n + d.def.nodes.filter((node) => node.voice !== undefined).length,
+      0,
+    );
+    return [
+      {
+        id: 'library',
+        title: 'The Library',
+        sub: v ? `${v.clips.length} clip${v.clips.length === 1 ? '' : 's'} — upload, audition, describe` : 'ledger not loaded',
+        badge: `${v?.clips.length ?? 0}`,
+        ico: iconWrap(iconImg('speech', 18)),
+        group: 'The spoken world',
+      },
+      {
+        id: 'banks',
+        title: 'The Banks',
+        sub: v
+          ? `${v.banks.length} throat${v.banks.length === 1 ? '' : 's'} with fallback quips — greet, ack, farewell, bark`
+          : 'ledger not loaded',
+        badge: `${v?.banks.length ?? 0}`,
+        ico: iconWrap(iconImg('actor', 18)),
+        group: 'The spoken world',
+      },
+      {
+        id: 'dials',
+        title: 'The Dials',
+        sub: `quip cadence, duck depths, prefetch and upload caps · ${spokenLines} voiced line${spokenLines === 1 ? '' : 's'} in the trees`,
+        badge: v?.dials.edited ? 'edited' : 'authored',
+        badgeEdited: v?.dials.edited ?? false,
+        ico: iconWrap(iconImg('stamp', 18)),
+        group: 'The spoken world',
+      },
+    ];
+  }
   return state.items
     .filter((i) => match(i.id, i.name))
     .sort(
@@ -579,7 +637,10 @@ export function renderAll(): void {
   setHint(s.hint);
   $('btn-new-entry').classList.toggle(
     'hidden',
-    state.section === 'items' || state.section === 'frontier' || state.section === 'factions',
+    state.section === 'items' ||
+      state.section === 'frontier' ||
+      state.section === 'factions' ||
+      state.section === 'voice',
   );
   if (!state.dirty) setSaveState(state.online ? 'all changes saved' : 'offline');
 }
@@ -671,7 +732,7 @@ const hash = location.hash.replace(/^#/, '');
 if (hash) {
   const [sect, id] = hash.split('/') as [Section, string?];
   if (
-    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'items', 'frontier', 'factions'].includes(sect)
+    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'items', 'frontier', 'factions', 'voice'].includes(sect)
   ) {
     state.section = sect;
     state.selectedId = id ?? null;
@@ -754,6 +815,20 @@ export const persistence = {
     await reloadSection('factions');
     renderAll();
     toast('the shipped roster stands again', 3000, 'success');
+  },
+  async saveVoiceDialsDef(def: VoiceDoc): Promise<void> {
+    await saveVoiceDials(def);
+    state.dirty = false;
+    await reloadSection('voice');
+    setSaveState('all changes saved');
+    toast('the dials are set — the very next quip obeys', 3000, 'success');
+  },
+  async revertVoiceDialsDef(): Promise<void> {
+    await revertVoiceDials();
+    state.dirty = false;
+    await reloadSection('voice');
+    renderAll();
+    toast('the shipped dials stand again', 3000, 'success');
   },
   async saveDialogueDef(def: DialogueDef): Promise<void> {
     await saveDialogue(def);

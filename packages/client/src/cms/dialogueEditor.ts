@@ -21,6 +21,7 @@ import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
 import { markDirty, persistence, setSection, state, toast, zoneAt } from './cms.js';
 import { actorBust } from './portraits.js';
+import { audition } from './voiceEditor.js';
 import { combobox, el, pill, type ComboOption } from './widgets.js';
 
 /**
@@ -45,6 +46,51 @@ import { combobox, el, pill, type ComboOption } from './widgets.js';
  */
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
+/** The highest-priority bound actor — whose throat the tree speaks with. */
+function boundActorOf(def: DialogueDef): string | null {
+  const bindings = (def.bindings ?? []).slice().sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+  return bindings[0]?.target ?? null;
+}
+
+/**
+ * The Studio's mirror of THE ONE RESOLVER: what a beat would sound
+ * like live — the node's full line, else the bound throat's moment
+ * slot (greet on the first beat, farewell on a terminal one, ack
+ * between). Used by the beat cards' fallback pill and by rehearsal.
+ */
+function rehearseVoice(
+  def: DialogueDef,
+  node: DialogueNode,
+  first: boolean,
+): { url: string; what: string } | null {
+  const v = state.voice;
+  if (!v) return null;
+  if (node.voice !== undefined) {
+    const clip = v.clips.find((c) => c.def.id === node.voice);
+    return clip ? { url: clip.url, what: `line '${clip.def.id}'` } : null;
+  }
+  if ((node.speaker ?? 'npc') === 'player') return null;
+  const actor = boundActorOf(def);
+  if (!actor) return null;
+  const bank = v.banks.find((b) => b.owner.kind === 'actor' && b.owner.id === actor);
+  const last = node.next === undefined && (node.choices ?? []).length === 0;
+  const slot = first ? 'greet' : last ? 'farewell' : 'ack';
+  const entries = (bank?.slots[slot] ?? []).filter((e) => e.clip);
+  if (entries.length === 0) return null;
+  const total = entries.reduce((a, e) => a + (e.weight ?? 1), 0);
+  let mark = Math.random() * total;
+  let picked = entries[entries.length - 1]!;
+  for (const e of entries) {
+    mark -= e.weight ?? 1;
+    if (mark < 0) {
+      picked = e;
+      break;
+    }
+  }
+  const clip = v.clips.find((c) => c.def.id === picked.clip);
+  return clip ? { url: clip.url, what: `${slot} quip '${clip.def.id}'` } : null;
+}
 const SLUG_RE = /^[a-z][a-z0-9_]*$/;
 // Mirrors content's grammar: plain/dlg:/world: slugs, quest: states,
 // and faction: band gates (the server validator is the final word).
@@ -647,9 +693,20 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
     return flags.has(f);
   };
 
-  const rhEnter = (nodeId: string): void => {
+  const rhEnter = (nodeId: string, first = false): void => {
     rhNodeId = nodeId;
     const node = draft.nodes.find((n) => n.id === nodeId);
+    // REHEARSAL SPEAKS (voiceover Phase 5): the beat plays exactly
+    // what the live resolver would — the full line, else the bound
+    // throat's moment slot (unrationed here: an audition wants to
+    // hear every moment, not roll dice).
+    if (node) {
+      const wire = rehearseVoice(draft, node, first);
+      if (wire) {
+        audition(wire.url);
+        rhLog.push({ text: `voice: ${wire.what}`, cls: 'flag' });
+      }
+    }
     for (const hook of node?.hooks ?? []) {
       if (hook.kind === 'flag') {
         if (!flags.has(hook.flag)) rhLog.push({ text: `flag set: ${hook.flag}`, cls: 'flag' });
@@ -677,7 +734,7 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
 
   const rhStart = (): void => {
     rhLog = [];
-    rhEnter(draft.start);
+    rhEnter(draft.start, true);
     renderRehearsal();
   };
 
@@ -1396,6 +1453,79 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
     pvRow.appendChild(previewHost);
     pvRow.appendChild(count);
     card.appendChild(pvRow);
+
+    // ---- the recording (voiceover Phase 5): a full line, or the
+    // fallback pill showing what the throat would do on this beat.
+    if (state.voice) {
+      const vRow = el('div', 'beat-voice-row');
+      vRow.appendChild(el('span', 'beat-voice-label', '🎙'));
+      const boundActor = boundActorOf(draft);
+      const options = (): ComboOption[] => {
+        const clips = state.voice?.clips ?? [];
+        const mine = clips.filter(
+          (c) => c.def.actor === undefined || c.def.actor === boundActor || c.def.id === node.voice,
+        );
+        return [
+          { id: '', label: 'no recorded line', sub: 'the fallback throat speaks (or silence)' },
+          ...mine.map((c) => ({
+            id: c.def.id,
+            label: c.def.id,
+            sub: `${c.def.actor ?? 'shared'}${c.def.transcript ? ` · “${c.def.transcript.slice(0, 44)}”` : ''}`,
+          })),
+        ];
+      };
+      const statusHost = el('span', 'beat-voice-status');
+      const refreshStatus = (): void => {
+        statusHost.innerHTML = '';
+        if (node.voice !== undefined) {
+          const clip = state.voice?.clips.find((c) => c.def.id === node.voice);
+          if (!clip) {
+            statusHost.appendChild(pill('unknown clip — silence', 'the ledger holds no such recording; the beat plays unvoiced', 'danger'));
+          } else if (
+            clip.def.transcript &&
+            clip.def.transcript.trim() !== stripDialogueMarkup(node.text).trim()
+          ) {
+            statusHost.appendChild(
+              pill('transcript drifts', `recorded: “${clip.def.transcript}”`, 'brass'),
+            );
+          }
+        } else {
+          const first = node.id === draft.start;
+          const wire = rehearseVoice(draft, node, first);
+          const last = node.next === undefined && (node.choices ?? []).length === 0;
+          const slot = first ? 'greet' : last ? 'farewell' : 'ack';
+          statusHost.appendChild(
+            pill(
+              wire ? `fallback: ${slot} speaks` : `fallback: ${slot} → silence`,
+              wire
+                ? 'no full line — the bank slot answers this beat'
+                : 'no full line and the bound throat has nothing in this slot',
+              wire ? 'ok' : 'ink',
+            ),
+          );
+        }
+      };
+      vRow.appendChild(
+        combobox(options, node.voice ?? '', (id) => {
+          if (id === '') delete node.voice;
+          else node.voice = id;
+          markDirty();
+          refreshLight();
+          refreshStatus();
+        }),
+      );
+      const play = el('button', 'voice-play', '▶') as HTMLButtonElement;
+      play.title = 'audition this beat as the resolver would speak it';
+      play.onclick = () => {
+        const wire = rehearseVoice(draft, node, node.id === draft.start);
+        if (wire) audition(wire.url);
+        else toast('this beat plays silent', 2200);
+      };
+      vRow.appendChild(play);
+      vRow.appendChild(statusHost);
+      refreshStatus();
+      card.appendChild(vRow);
+    }
 
     // ---- flow: continues → / asks → / ends
     const mode = node.choices !== undefined ? 'asks' : node.next !== undefined ? 'continues' : 'ends';

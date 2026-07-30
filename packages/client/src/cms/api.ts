@@ -7,6 +7,9 @@ import type {
   NpcDef,
   PoiDef,
   PrefabJson,
+  VoiceBankDef,
+  VoiceClipDef,
+  VoiceDoc,
   ZoneJson,
 } from '@arx/content';
 
@@ -136,6 +139,74 @@ export async function saveFactions(def: FactionsDef): Promise<void> {
 export async function revertFactions(): Promise<{ outcome: string }> {
   return (await (
     await request('/dev/content/factions', { method: 'DELETE' })
+  ).json()) as { outcome: string };
+}
+
+// ------------------------------------------------- the clip ledger
+
+/** One GET carries the whole spoken world: clips, banks, dials. */
+export interface VoiceLedger {
+  clips: Array<{ def: VoiceClipDef; edited: boolean; url: string }>;
+  banks: VoiceBankDef[];
+  dials: { def: VoiceDoc; edited: boolean };
+  errors: string[];
+}
+
+export async function getVoice(): Promise<VoiceLedger> {
+  return (await (await request('/dev/content/voice')).json()) as VoiceLedger;
+}
+
+/** Upload/replace (with dataB64) or metadata-only edit (without). */
+export interface VoiceClipUpload {
+  id: string;
+  ext?: string;
+  durMs: number;
+  transcript?: string;
+  actor?: string;
+  tags?: string[];
+  dataB64?: string;
+}
+
+export async function saveVoiceClip(
+  upload: VoiceClipUpload,
+): Promise<{ def: VoiceClipDef; url: string }> {
+  return (await (
+    await request(`/dev/content/voice/clips/${upload.id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(upload),
+    })
+  ).json()) as { def: VoiceClipDef; url: string };
+}
+
+export async function deleteVoiceClip(id: string): Promise<void> {
+  await request(`/dev/content/voice/clips/${id}`, { method: 'DELETE' });
+}
+
+export async function saveVoiceBank(def: VoiceBankDef): Promise<void> {
+  await request(`/dev/content/voice/banks/${def.owner.kind}/${def.owner.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function deleteVoiceBank(kind: string, id: string): Promise<void> {
+  await request(`/dev/content/voice/banks/${kind}/${id}`, { method: 'DELETE' });
+}
+
+/** The dials are a singleton: one doc, one 'world' id, two hashes. */
+export async function saveVoiceDials(def: VoiceDoc): Promise<void> {
+  await request('/dev/content/voice/dials', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertVoiceDials(): Promise<{ outcome: string }> {
+  return (await (
+    await request('/dev/content/voice/dials', { method: 'DELETE' })
   ).json()) as { outcome: string };
 }
 
