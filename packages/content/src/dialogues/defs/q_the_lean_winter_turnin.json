@@ -1,0 +1,13 @@
+{
+  "id": "q_the_lean_winter_turnin",
+  "start": "paid",
+  "requires": ["quest:the_lean_winter:ready"],
+  "bindings": [{ "kind": "actor", "target": "company_broker", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Four head. The ford will feel it by first frost, and feel who to thank a little after. Welcome to the better column — it pays worse than they say and better than you'd think.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_lean_winter" }]
+    }
+  ]
+}

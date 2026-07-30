@@ -163,11 +163,14 @@ export const FACTIONS: FactionsDef = {
       name: 'The Red Company',
       sigil: 'mask',
       blurb: 'The Redmask line — camps in the wild, tolls on the road, steel for hire.',
-      members: [],
+      // The Tollhouse crew (Phase 4): the Company's one open door.
+      members: ['company_broker', 'company_toll_guard'],
       enforcers: [],
       npcPrefixes: ['brigand'],
       anchors: [],
       refusals: ["You've spilled Company blood. Run.", 'Steel first. Talk never.'],
+      // The blood-price: Ferrick will sell an enemy back their name.
+      fineActor: 'company_broker',
     },
   ],
   /**

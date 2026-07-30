@@ -1,0 +1,16 @@
+{
+  "id": "the_herd_stands",
+  "name": "The Herd Stands",
+  "giver": "farmer_jorel",
+  "stages": [
+    {
+      "id": "drive",
+      "journal": "Jorel's seen red cloth in the tree line twice this week, and a farmer knows what watchers by a pasture want. Five Redmasks put down before they get bold, and the herd winters where it stands.",
+      "objectives": [{ "kind": "kill", "npc": "brigand", "count": 5 }]
+    }
+  ],
+  "rewards": {
+    "coins": 80,
+    "standing": [{ "faction": "fordgate", "delta": 8 }]
+  }
+}

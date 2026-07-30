@@ -37,6 +37,10 @@ import innkeepRagna from './defs/innkeep_ragna.json';
 import magpieMab from './defs/magpie_mab.json';
 import fenceCalder from './defs/fence_calder.json';
 import lookoutPike from './defs/lookout_pike.json';
+// Factions Phase 4 (docs/factions-plan.md): the Red Company's toll
+// seat on the High Road's first climb — the tongue and his counters.
+import companyBroker from './defs/company_broker.json';
+import companyTollGuard from './defs/company_toll_guard.json';
 import bankerCormund from './defs/banker_cormund.json';
 import captainAldis from './defs/captain_aldis.json';
 import amberfordWatch from './defs/amberford_watch.json';
@@ -122,6 +126,8 @@ const SOURCES: readonly unknown[] = [
   magpieMab,
   fenceCalder,
   lookoutPike,
+  companyBroker,
+  companyTollGuard,
   bankerCormund,
   captainAldis,
   amberfordWatch,

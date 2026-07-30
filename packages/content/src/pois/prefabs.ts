@@ -939,6 +939,29 @@ const lastLamp = sketch(
   ],
 );
 
+/**
+ * THE TOLLHOUSE (factions Phase 4) — the Red Company's toll seat on
+ * the High Road's first climb. A rail bar across the worn approach,
+ * the broker's table under a lean-to, red banners, a fire the guards
+ * never let die. No garrison: the Company talks here — the sketch is
+ * a checkpoint, not a camp.
+ */
+const companyTollhouse = sketch(
+  'poi_company_tollhouse',
+  'The Tollhouse',
+  [
+    '____,,,,,,_____',
+    '__,,t.n..n.t,,_',
+    '_,:.l..k..l.:,_',
+    '_,:.l.qka.l.:,_',
+    '_,:....f....:,_',
+    '_,:.c.....a.:,_',
+    '_,,l.l.i.l.l,,_',
+    '____,,:::,,____',
+    '_____,,,,,_____',
+  ],
+);
+
 export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
   [
     goblinCampRing,
@@ -973,6 +996,7 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     championsBarrow,
     waystationWalled,
     lastLamp,
+    companyTollhouse,
     // The Hearth Watch (living frontier, phase 4):
     raiderSquat,
     // The Road's Fortune (living frontier, phase 5):

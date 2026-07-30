@@ -1,0 +1,26 @@
+{
+  "id": "the_red_mark",
+  "name": "The Red Mark",
+  "giver": "company_broker",
+  "requires": { "flags": ["faction:reavers:atleast:neutral"] },
+  "stages": [
+    {
+      "id": "carry",
+      "journal": "Ferrick's errand needs no cart: carry the Company's word to Calder — the pleasant fellow under the bank's shadow in Silverfall who asks no questions. What the word says, Ferrick didn't offer, and asking felt like a toll.",
+      "objectives": [{ "kind": "talk", "actor": "fence_calder" }]
+    },
+    {
+      "id": "report",
+      "journal": "Calder took the word without blinking. Ferrick will want to hear it landed — the Tollhouse waits on the High Road's first climb.",
+      "objectives": [{ "kind": "talk", "actor": "company_broker" }]
+    }
+  ],
+  "rewards": {
+    "coins": 60,
+    "standing": [
+      { "faction": "reavers", "delta": 10 },
+      { "faction": "rookery", "delta": 4 },
+      { "faction": "fordgate", "delta": -6 }
+    ]
+  }
+}

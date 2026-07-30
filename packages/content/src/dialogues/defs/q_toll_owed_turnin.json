@@ -1,0 +1,13 @@
+{
+  "id": "q_toll_owed_turnin",
+  "start": "paid",
+  "requires": ["quest:toll_owed:ready"],
+  "bindings": [{ "kind": "actor", "target": "company_broker", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Counted once — the Company trusts road-friends to the coin. Your column improves.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "toll_owed" }]
+    }
+  ]
+}

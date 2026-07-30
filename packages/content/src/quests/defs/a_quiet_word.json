@@ -18,6 +18,7 @@
   "rewards": {
     "coins": 200,
     "xp": [{ "skill": "sneak", "amount": 500 }],
-    "flags": ["rookery_trusted"]
+    "flags": ["rookery_trusted"],
+    "standing": [{ "faction": "rookery", "delta": 8 }]
   }
 }

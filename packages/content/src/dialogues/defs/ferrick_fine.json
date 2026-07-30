@@ -1,0 +1,32 @@
+{
+  "id": "ferrick_fine",
+  "start": "greet",
+  "requires": ["faction:reavers:atmost:outlaw"],
+  "bindings": [{ "kind": "actor", "target": "company_broker", "priority": 15 }],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "You've cost the Company blood, and the Company writes blood in coin. We're practical people. Settle the column and the road forgets you were ever bad business.",
+      "choices": [
+        { "text": "What's the blood-price?", "next": "quote" },
+        { "text": "I'll settle it.", "next": "pay" },
+        { "text": "The Company can keep its ledger.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "quote",
+      "text": "He turns the ledger so you can watch the arithmetic happen.",
+      "hooks": [{ "kind": "fine", "faction": "reavers", "quote": true }],
+      "next": "greet"
+    },
+    {
+      "id": "pay",
+      "text": "He clears a space on the table, unhurried.",
+      "hooks": [{ "kind": "fine", "faction": "reavers" }]
+    },
+    {
+      "id": "bye",
+      "text": "It keeps itself. That's the trouble with ledgers."
+    }
+  ]
+}

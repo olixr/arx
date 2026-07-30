@@ -19,6 +19,10 @@
     "coins": 500,
     "xp": [{ "skill": "sneak", "amount": 900 }],
     "items": [{ "item": "seeker_stone", "qty": 1 }],
-    "flags": ["arrangement_kept"]
+    "flags": ["arrangement_kept"],
+    "standing": [
+      { "faction": "rookery", "delta": 12 },
+      { "faction": "crown", "delta": 4 }
+    ]
   }
 }

@@ -1,0 +1,30 @@
+{
+  "id": "ferrick_court",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "company_broker" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Sit, if you're sitting. The road was here before the towns, and the Company was here before the wardens — everything since is rent. What do you want?",
+      "choices": [
+        { "text": "Who are you?", "next": "who" },
+        { "text": "What is this place?", "next": "place" },
+        { "text": "Nothing from you.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "who",
+      "text": "Ferrick. I keep the Company's ledger for this stretch — two columns, no headings. People who are useful, and people who are owed to. You get to pick your column.",
+      "next": "greet"
+    },
+    {
+      "id": "place",
+      "text": "A tollhouse. The bar goes up for friends of the road and down for everyone else. The wardens hang lamps and call it theirs — lamps burn out. A debt doesn't.",
+      "next": "greet"
+    },
+    {
+      "id": "bye",
+      "text": "Then you're paying in walking. Cheapest toll there is."
+    }
+  ]
+}

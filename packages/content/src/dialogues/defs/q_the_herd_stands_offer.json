@@ -1,0 +1,27 @@
+{
+  "id": "q_the_herd_stands_offer",
+  "start": "hub",
+  "requires": ["quest:the_herd_stands:available"],
+  "forbids": ["quest:the_lean_winter:active", "quest:the_lean_winter:done"],
+  "bindings": [{ "kind": "actor", "target": "farmer_jorel", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Seen red cloth in the tree line twice this week. A farmer knows what watchers by a pasture want, and it isn't milk. Five of those Redmasks put down before they get bold, and my herd winters where it stands.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_herd_stands" }],
+      "choices": [
+        { "text": "The herd will stand.", "next": "sworn" },
+        { "text": "That's watch work, not mine.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Good. I'll sleep in the barn till it's done — don't tell Tamsin why.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_herd_stands" }]
+    },
+    {
+      "id": "declined",
+      "text": "The watch says the same. Somebody's wrong about whose work it is."
+    }
+  ]
+}

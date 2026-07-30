@@ -9,7 +9,11 @@
 > nameplate inks, Aldis's standing-gated greetings. Phase 3 (The Price
 > of a Name) SHIPPED same day — band-priced shops (the mirror law) with
 > tag-truth on the wire, the fine counters at all four fineActors, three
-> penance repeatables, and the band-crossing ceremony. Phases 4-6 open.
+> penance repeatables, and the band-crossing ceremony. Phase 4 (The Two
+> Roads) SHIPPED same day — the Tollhouse authored site with Ferrick the
+> Company's Tongue (low-road quests with authored opposition costs, the
+> blood-price), the opposed pair (lean_winter vs herd_stands via quest:
+> forbids), the Rookery ladder paying standing. Phases 5-6 open.
 
 The world already *moves* (Living Frontier) and *asks* (Quest Ledger). This epic
 makes it **remember who you are**. Every deed writes on the player's name; every

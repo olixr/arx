@@ -42,6 +42,14 @@ import theLastPatrol from './defs/the_last_patrol.json';
 import theBadColumn from './defs/the_bad_column.json';
 import theCrownsCount from './defs/the_crowns_count.json';
 import shortHanded from './defs/short_handed.json';
+// Factions Phase 4: THE TWO ROADS — the Company's low road (gated on
+// standing above outlaw with the reavers; opposition costs authored in
+// rewards.standing, stated plainly in the offers) and the charter's
+// answering side of the one opposed pair.
+import theRedMark from './defs/the_red_mark.json';
+import theLeanWinter from './defs/the_lean_winter.json';
+import tollOwed from './defs/toll_owed.json';
+import theHerdStands from './defs/the_herd_stands.json';
 
 /**
  * Every authored quest JSON, registered here. A def that isn't listed
@@ -71,6 +79,11 @@ const SOURCES: readonly unknown[] = [
   theBadColumn,
   theCrownsCount,
   shortHanded,
+  // The two roads — the Company's work and the charter's answer.
+  theRedMark,
+  theLeanWinter,
+  tollOwed,
+  theHerdStands,
   // Item-borne: the torn page starts it; nobody offers it.
   theStolenLedger,
   // The Sealed Galleries — Grettir's brother's crew, closed at last.

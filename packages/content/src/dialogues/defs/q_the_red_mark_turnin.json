@@ -1,0 +1,13 @@
+{
+  "id": "q_the_red_mark_turnin",
+  "start": "paid",
+  "requires": ["quest:the_red_mark:ready"],
+  "bindings": [{ "kind": "actor", "target": "company_broker", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Landed clean — Calder's silence travels faster than most men's letters. Your name moves columns. Spend it wisely or don't; it spends either way.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_red_mark" }]
+    }
+  ]
+}

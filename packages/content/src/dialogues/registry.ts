@@ -88,6 +88,20 @@ import qTheCrownsCountOffer from './defs/q_the_crowns_count_offer.json';
 import qTheCrownsCountTurnin from './defs/q_the_crowns_count_turnin.json';
 import qShortHandedOffer from './defs/q_short_handed_offer.json';
 import qShortHandedTurnin from './defs/q_short_handed_turnin.json';
+// Factions Phase 4: THE TWO ROADS — the Company's tongue at the
+// Tollhouse (hub, blood-price, low-road offers) and the opposed pair
+// (lean_winter vs herd_stands exclude each other via quest: forbids —
+// taking a side closes the other giver's door for good).
+import ferrickCourt from './defs/ferrick_court.json';
+import ferrickFine from './defs/ferrick_fine.json';
+import qTheRedMarkOffer from './defs/q_the_red_mark_offer.json';
+import qTheRedMarkTurnin from './defs/q_the_red_mark_turnin.json';
+import qTheLeanWinterOffer from './defs/q_the_lean_winter_offer.json';
+import qTheLeanWinterTurnin from './defs/q_the_lean_winter_turnin.json';
+import qTollOwedOffer from './defs/q_toll_owed_offer.json';
+import qTollOwedTurnin from './defs/q_toll_owed_turnin.json';
+import qTheHerdStandsOffer from './defs/q_the_herd_stands_offer.json';
+import qTheHerdStandsTurnin from './defs/q_the_herd_stands_turnin.json';
 import waywardWatchUneasy from './defs/wayward_watch_uneasy.json';
 import waywardWatchUrgent from './defs/wayward_watch_urgent.json';
 import waywardWatchRelief from './defs/wayward_watch_relief.json';
@@ -259,6 +273,16 @@ const SOURCES: readonly unknown[] = [
   qTheCrownsCountTurnin,
   qShortHandedOffer,
   qShortHandedTurnin,
+  ferrickCourt,
+  ferrickFine,
+  qTheRedMarkOffer,
+  qTheRedMarkTurnin,
+  qTheLeanWinterOffer,
+  qTheLeanWinterTurnin,
+  qTollOwedOffer,
+  qTollOwedTurnin,
+  qTheHerdStandsOffer,
+  qTheHerdStandsTurnin,
   waywardWatchUneasy,
   waywardWatchUrgent,
   waywardWatchRelief,

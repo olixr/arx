@@ -1,0 +1,43 @@
+{
+  "id": "company_toll_guard",
+  "name": "Toll Guard",
+  "examine": "Red cloth knotted at the arm. The spear leans where a hand can find it without looking.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 5,
+      "hairColor": 2,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 1,
+      "pants": 2
+    }
+  },
+  "equipment": {
+    "head": "cutpurse_cowl",
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "combat": {
+    "level": 24,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 80,
+      "damage": 5,
+      "speed": 3.4,
+      "leashRange": 12
+    }
+  },
+  "lines": [
+    "Ferrick talks. I count.",
+    "The bar stays down till the ledger says otherwise.",
+    "Walk on or pay on. Standing there is neither."
+  ]
+}

@@ -7,6 +7,7 @@ import forestRuin from './defs/forest_ruin.json';
 import goblinWarcamp from './defs/goblin_warcamp.json';
 import koboldDigs from './defs/kobold_digs.json';
 import lastLamp from './defs/last_lamp.json';
+import companyTollhouse from './defs/company_tollhouse.json';
 import peddlerRest from './defs/peddler_rest.json';
 import raiderSquat from './defs/raider_squat.json';
 import riftgateRuin from './defs/riftgate_ruin.json';
@@ -33,6 +34,7 @@ const SOURCES: readonly unknown[] = [
   goblinWarcamp,
   koboldDigs,
   lastLamp,
+  companyTollhouse,
   peddlerRest,
   raiderSquat,
   riftgateRuin,

@@ -165,6 +165,14 @@ it dictates sentence shape. (Pooled actors share one card.)
 - **Edda** (Last Lamp, Sella's sister): wants the worst mile of road to stay
   survivable. Cadence: BLUNT. Shortest sentences in the game. Kindness shown
   in deeds (fire, stew, warnings), never in words.
+- **Ferrick** (the Tollhouse, the Company's Tongue): wants the road to pay
+  what it owes — and believes it owes the Company. Courteous menace; never
+  raises his voice, never threatens twice. Cadence: ledger-of-the-road —
+  columns, tolls, debts, rent; everything an entry, everyone an amount.
+  Wit granted, spent dry (a clerk's wit, not a jester's).
+- **Toll guards** (pooled, the Tollhouse): red cloth at the arm, spears in
+  reach. Cadence: counted words — three-to-six per line, arithmetic diction
+  ("Ferrick talks. I count."). Never explain; the bar explains.
 
 ### Amberford — the ford town
 - **Bretta Ironhewn** (Master Smith, came down-mountain after the seal):

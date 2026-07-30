@@ -1,0 +1,47 @@
+{
+  "id": "company_tollhouse",
+  "name": "The Tollhouse",
+  "description": "The Red Company's one open door (factions Phase 4): a bar across the High Road's first climb where the Company talks before it takes. Weight 0 — the authored-sites law pins it to its one cell; the broker is untargetable, the guards invulnerable, and nobody here draws first. The closed throat still rules: spill Company blood and only the blood-price reopens the conversation.",
+  "tiers": [
+    1,
+    5
+  ],
+  "weight": 0,
+  "prefabs": [
+    "poi_company_tollhouse"
+  ],
+  "garrison": [],
+  "actors": [
+    {
+      "pool": [
+        "company_broker"
+      ],
+      "post": "hearth"
+    },
+    {
+      "pool": [
+        "company_toll_guard"
+      ],
+      "post": "watch"
+    },
+    {
+      "pool": [
+        "company_toll_guard"
+      ],
+      "post": "watch"
+    }
+  ],
+  "cues": {
+    "clearing": 4,
+    "approachPath": true
+  },
+  "signs": [
+    {
+      "title": "THE TOLLHOUSE",
+      "lines": [
+        "the road pays",
+        "the Company collects"
+      ]
+    }
+  ]
+}

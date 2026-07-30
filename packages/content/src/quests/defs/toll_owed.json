@@ -1,0 +1,17 @@
+{
+  "id": "toll_owed",
+  "name": "Toll Owed",
+  "giver": "company_broker",
+  "requires": { "flags": ["faction:reavers:atleast:neutral"] },
+  "repeat": { "cooldownHours": 24 },
+  "stages": [
+    {
+      "id": "collect",
+      "journal": "The Company's cut: a hundred and twenty coins, source unasked. Ferrick calls it a toll on the road you walk anyway. The ledger has two columns, and this puts you in the better one.",
+      "objectives": [{ "kind": "collect", "item": "coins", "count": 120 }]
+    }
+  ],
+  "rewards": {
+    "standing": [{ "faction": "reavers", "delta": 6 }]
+  }
+}

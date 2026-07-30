@@ -21,6 +21,10 @@
     "coins": 320,
     "xp": [{ "skill": "sneak", "amount": 700 }],
     "items": [{ "item": "gold_ring", "qty": 1 }],
-    "flags": ["locket_home"]
+    "flags": ["locket_home"],
+    "standing": [
+      { "faction": "rookery", "delta": 10 },
+      { "faction": "crown", "delta": -4 }
+    ]
   }
 }

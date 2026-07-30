@@ -1,0 +1,23 @@
+{
+  "id": "the_lean_winter",
+  "name": "The Lean Winter",
+  "giver": "company_broker",
+  "requires": {
+    "quests": ["the_red_mark"],
+    "flags": ["faction:reavers:atleast:neutral"]
+  },
+  "stages": [
+    {
+      "id": "cull",
+      "journal": "The Company's arithmetic, in Ferrick's own hand: the ford eats well, so the ford pays badly. Four head of cattle off Amberford's pastures and the winter leans the Company's way. He said it the way a clerk reads weather.",
+      "objectives": [{ "kind": "kill", "npc": "cow", "count": 4 }]
+    }
+  ],
+  "rewards": {
+    "coins": 120,
+    "standing": [
+      { "faction": "reavers", "delta": 10 },
+      { "faction": "fordgate", "delta": -10 }
+    ]
+  }
+}

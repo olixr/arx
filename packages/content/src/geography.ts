@@ -250,6 +250,11 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'first_road_toll', defId: 'bandit_camp', x: 120, y: 78 },
     // The broken tower on the High Road's first climb.
     { id: 'first_climb_tower', defId: 'watchtower_ruin', cell: [1, -1] },
+    // THE TOLLHOUSE (factions Phase 4): the Red Company's one open
+    // door — a bar across the first climb where the Company talks
+    // before it takes. Beside the High Road north of Amberford, its
+    // own macro-cell per the authored-sites law.
+    { id: 'company_tollhouse', defId: 'company_tollhouse', x: 300, y: -60 },
     // THE FENSIDE CROFTS — the mid-journey haven: fisher-crofters on
     // the waist between the fen's two hearts, a lamp and a larder at
     // the halfway mark so the long walk east has a place to breathe.

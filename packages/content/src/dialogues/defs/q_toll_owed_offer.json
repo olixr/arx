@@ -1,0 +1,26 @@
+{
+  "id": "q_toll_owed_offer",
+  "start": "hub",
+  "requires": ["quest:toll_owed:available"],
+  "bindings": [{ "kind": "actor", "target": "company_broker", "priority": 4 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Standing arrangement, for road-friends: a hundred and twenty coins, source unasked. Call it a toll on the road you walk anyway.",
+      "hooks": [{ "kind": "quest_offer", "quest": "toll_owed" }],
+      "choices": [
+        { "text": "I'll bring the cut.", "next": "sworn" },
+        { "text": "Collect it yourself.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "The ledger stays open. It always does.",
+      "hooks": [{ "kind": "quest_accept", "quest": "toll_owed" }]
+    },
+    {
+      "id": "declined",
+      "text": "We do. Constantly. This was the polite version."
+    }
+  ]
+}

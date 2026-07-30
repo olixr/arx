@@ -1,0 +1,39 @@
+{
+  "id": "company_broker",
+  "name": "Ferrick",
+  "title": "The Company's Tongue",
+  "examine": "He sits like a man who owns the road and rents it back by the mile. The ledger open in front of him has two columns and no headings.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 3,
+      "hairColor": 0,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 8
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "wanderer_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 600
+    }
+  ],
+  "lines": [
+    "The road was here before the towns. The Company just collects what it's owed.",
+    "Sit, if you're sitting. Stand there, if you like being counted.",
+    "Every cart that passes pays somebody. The only question is who."
+  ]
+}
