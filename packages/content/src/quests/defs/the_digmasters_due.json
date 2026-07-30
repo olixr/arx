@@ -1,0 +1,22 @@
+{
+  "id": "the_digmasters_due",
+  "name": "The Digmaster's Due",
+  "giver": "reeve_coppin",
+  "requires": { "quests": ["the_brothers_tools"] },
+  "stages": [
+    {
+      "id": "the_dig",
+      "journal": "Coppin keeps the tallies, and one tally is twenty years old: a crew's pay, drawn and never spent. The digmaster's dig sits past the warrens, southeast where the crates are stacked — kobold work, human goods. The big one holds the hoard. Put it down and bring back the pay-tin, because the Reeve does not close a count on a guess.",
+      "objectives": [
+        { "kind": "kill", "npc": "kobold_digmaster", "count": 1 },
+        { "kind": "collect", "item": "crew_paytin", "count": 1 }
+      ]
+    }
+  ],
+  "questDrops": [{ "npc": "kobold_digmaster", "item": "crew_paytin", "chance": 1 }],
+  "rewards": {
+    "coins": 220,
+    "xp": [{ "skill": "mining", "amount": 500 }],
+    "flags": ["digmaster_broken"]
+  }
+}

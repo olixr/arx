@@ -1,0 +1,29 @@
+{
+  "id": "the_starward_dig",
+  "name": "The Starward Dig",
+  "giver": "reeve_coppin",
+  "requires": { "quests": ["the_digmasters_due"], "skills": [{ "skill": "mining", "level": 30 }] },
+  "stages": [
+    {
+      "id": "the_front",
+      "journal": "Coppin laid a chart on the tally desk and tapped it twice. The kobold tunnels don't wander — they aim, straight at the deep chamber where the star-stone fell. Whatever they want with it, the Reeve wants a working gallery more. Clear the diggers off the front, and mind the far chamber: something with too many legs has made a nest where the miners should be.",
+      "objectives": [
+        { "kind": "kill", "npc": "kobold", "count": 10 },
+        { "kind": "kill", "npc": "giant_spider", "count": 1 }
+      ]
+    },
+    {
+      "id": "the_seam",
+      "journal": "The front is quiet and the Reeve's ledger is open to a new page. Prove the galleries pay again: six measures of silver ore off the deep lodes, cut by your own pick. The silver walks are past the junction, east — take a light. The sweepers don't go that far.",
+      "objectives": [{ "kind": "collect", "item": "silver_ore", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 400,
+    "xp": [
+      { "skill": "mining", "amount": 900 },
+      { "skill": "smithing", "amount": 400 }
+    ],
+    "flags": ["deep_watch_set"]
+  }
+}

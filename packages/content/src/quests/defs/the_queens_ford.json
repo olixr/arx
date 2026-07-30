@@ -1,0 +1,24 @@
+{
+  "id": "the_queens_ford",
+  "name": "The Queen's Ford",
+  "giver": "queen_kayri",
+  "requires": { "quests": ["the_kings_peace"] },
+  "stages": [
+    {
+      "id": "the_crossing",
+      "journal": "The queen is ford-born and doesn't pretend otherwise. Her ask is small and exact, like her sums: carry a word to Amberford, to the people who knew her before the arithmetic did. Start with Peld — he keeps the ferry by the millpond, and he taught her the river's moods. Tell him Kayri still counts the crossings.",
+      "objectives": [{ "kind": "talk", "actor": "ferryman_peld" }]
+    },
+    {
+      "id": "the_orchard",
+      "journal": "Peld said four words and looked at the water a while. That's Peld saying yes. One more: Goodwife Perl, out among the orchard oaks east of the Commons. The queen climbed those trees when the fruit wasn't hers to take. Perl is to hear that the debt is remembered — and then come back to the mere with whatever Perl says. Word for word, mind. The queen audits.",
+      "objectives": [{ "kind": "talk", "actor": "orchardist_perl" }]
+    }
+  ],
+  "rewards": {
+    "coins": 250,
+    "xp": [{ "skill": "vitality", "amount": 400 }],
+    "items": [{ "item": "cape_traveler", "qty": 1 }],
+    "flags": ["queens_errand"]
+  }
+}

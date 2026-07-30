@@ -1,0 +1,23 @@
+{
+  "id": "names_for_the_stone",
+  "name": "Names for the Stone",
+  "giver": "veteran_skarn",
+  "requires": { "quests": ["the_digmasters_due"] },
+  "stages": [
+    {
+      "id": "the_mason",
+      "journal": "Skarn held the pay-tin a long time before he spoke. The count can be closed now, he says, but closed properly — cut in stone, where the seal used to stand. Mistress Petra broke that seal with her own hands; she keeps the mason's yard on Silverfall's crafting terrace. She'll cut the names, if it's Skarn asking. Go and ask for him.",
+      "objectives": [{ "kind": "talk", "actor": "mason_petra" }]
+    },
+    {
+      "id": "the_flame",
+      "journal": "Petra didn't argue. She asked for the mark, measured it with her thumb, and said the stone would be ready before the names were cold. One thing left: a flame for the dead. Sella keeps the Silver Shrine above the mere — the mother-flame every road lamp is lit from. Ask her to set a light for the crew. Then bring Skarn word that it's done.",
+      "objectives": [{ "kind": "talk", "actor": "shrinekeeper_sella" }]
+    }
+  ],
+  "rewards": {
+    "coins": 150,
+    "xp": [{ "skill": "vitality", "amount": 300 }],
+    "flags": ["stone_named"]
+  }
+}

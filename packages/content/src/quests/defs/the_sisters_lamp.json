@@ -1,0 +1,20 @@
+{
+  "id": "the_sisters_lamp",
+  "name": "The Sister's Lamp",
+  "giver": "shrinekeeper_sella",
+  "turnIn": "lampkeeper_edda",
+  "requires": { "quests": ["embers_of_the_shrine"] },
+  "stages": [
+    {
+      "id": "the_worst_mile",
+      "journal": "Sella keeps the mother-flame; her elder sister keeps the *Last Lamp*, the light on the worst mile of the High Road below the pass. They have not stood in the same room for years — the flame can't travel and neither will Edda. So the word travels instead, and this season it travels with you. Go down the High Road to the Last Lamp and tell Edda: the flame is tended, and her sister still sets a bowl for her at midwinter. Edda will not say much back. Sella says that's how you'll know it landed.",
+      "objectives": [{ "kind": "talk", "actor": "lampkeeper_edda" }]
+    }
+  ],
+  "rewards": {
+    "coins": 200,
+    "xp": [{ "skill": "vitality", "amount": 300 }],
+    "items": [{ "item": "healing_tincture", "qty": 3 }],
+    "flags": ["lamp_relit"]
+  }
+}

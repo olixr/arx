@@ -1,0 +1,30 @@
+{
+  "id": "the_silver_line",
+  "name": "The Silver Line",
+  "giver": "king_aeriex",
+  "requires": { "quests": ["the_queens_ford", "the_lamps_of_the_line"] },
+  "stages": [
+    {
+      "id": "the_high_passes",
+      "journal": "The king doesn't dress it up: the passes above the city are getting bold. Trolls down off the scree, worgs running the shoulders where the shepherds used to graze. The Line started as a quarry foreman who paid other people's debts — it holds because someone still does the work. Clear the high ground. Both kinds.",
+      "objectives": [
+        { "kind": "kill", "npc": "troll", "count": 2 },
+        { "kind": "kill", "npc": "worg", "count": 4 }
+      ]
+    },
+    {
+      "id": "the_castellan",
+      "journal": "Done, and the shepherds will know it before the court does. One formality left, and it isn't small: High Warden Maren keeps the castle and weighs who the Crown may trust. Present yourself to the Castellan. She made the one decision that can't be taken back; she does not rush the ones that can. Then return to the king.",
+      "objectives": [{ "kind": "talk", "actor": "warden_maren" }]
+    }
+  ],
+  "rewards": {
+    "coins": 800,
+    "xp": [
+      { "skill": "melee", "amount": 800 },
+      { "skill": "defence", "amount": 400 }
+    ],
+    "items": [{ "item": "warden_platebody", "qty": 1, "rarity": "uncommon" }],
+    "flags": ["silver_line_sworn"]
+  }
+}

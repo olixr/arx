@@ -1,0 +1,26 @@
+{
+  "id": "the_gilded_cage",
+  "name": "The Gilded Cage",
+  "giver": "fence_calder",
+  "requires": { "quests": ["a_quiet_word"], "skills": [{ "skill": "sneak", "level": 10 }] },
+  "stages": [
+    {
+      "id": "the_tower",
+      "journal": "A locket, Calder says — gold over brass, 'orphaned' when a courier misjudged the first climb some years back. It lies with the ruined watchtower on the ridge east of Dawnmead, first rise of the road. One detail he mentions last, as is his way: the tower's old garrison still stands its watch, but only after dark. By day you'll find swept stone and nothing. Go at night, put the watch down, and mind the ones with shields.",
+      "objectives": [
+        { "kind": "kill", "npc": "skeleton_guard", "count": 4 },
+        { "kind": "collect", "item": "gilded_locket", "count": 1 }
+      ]
+    }
+  ],
+  "questDrops": [
+    { "npc": "skeleton_guard", "item": "gilded_locket", "chance": 0.4 },
+    { "npc": "skeleton", "item": "gilded_locket", "chance": 0.15 }
+  ],
+  "rewards": {
+    "coins": 320,
+    "xp": [{ "skill": "sneak", "amount": 700 }],
+    "items": [{ "item": "gold_ring", "qty": 1 }],
+    "flags": ["locket_home"]
+  }
+}

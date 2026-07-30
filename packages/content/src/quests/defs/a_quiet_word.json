@@ -1,0 +1,23 @@
+{
+  "id": "a_quiet_word",
+  "name": "A Quiet Word",
+  "giver": "magpie_mab",
+  "requires": { "flags": ["mab_word"] },
+  "stages": [
+    {
+      "id": "the_purveyor",
+      "journal": "Mab answered a question with a question, which from her is a welcome. She has work for someone the watch doesn't know yet — but first, an introduction. Calder keeps a counter in the Broken Lantern, behind the scree at the city's northwest shoulder. He deals in *provenance*. Go and be looked over.",
+      "objectives": [{ "kind": "talk", "actor": "fence_calder" }]
+    },
+    {
+      "id": "the_keys",
+      "journal": "Calder found you 'promisingly unremarkable', which he insists is a compliment. His ask: two brass keys, origin politely unstated. The road crews carry them — brigands, mostly, and the old dead in the crypts held onto theirs. However they come to you, they count. Bring the pair to Mab.",
+      "objectives": [{ "kind": "collect", "item": "brass_key", "count": 2 }]
+    }
+  ],
+  "rewards": {
+    "coins": 200,
+    "xp": [{ "skill": "sneak", "amount": 500 }],
+    "flags": ["rookery_trusted"]
+  }
+}

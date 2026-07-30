@@ -1,0 +1,21 @@
+{
+  "id": "threads_of_the_row",
+  "name": "Threads of the Row",
+  "giver": "weaver_ottilie",
+  "requires": { "skills": [{ "skill": "tailoring", "level": 10 }] },
+  "stages": [
+    {
+      "id": "the_commission",
+      "journal": "Master Weaver Ottilie has a commission she declines to describe and a shortage she does not: eight lengths of gloomsilk thread and four bolts of linen. The thread is grave-spun — it comes off the old dead and the deep spiders, and she is aware of what that costs, which is why the commission pays. The linen you can weave from scrap like anyone honest. Beauty, she says, is labor. Bring her the labor.",
+      "objectives": [
+        { "kind": "collect", "item": "gloomsilk_thread", "count": 8 },
+        { "kind": "collect", "item": "linen", "count": 4 }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 280,
+    "xp": [{ "skill": "tailoring", "amount": 700 }],
+    "items": [{ "item": "gloomsilk", "qty": 2 }]
+  }
+}

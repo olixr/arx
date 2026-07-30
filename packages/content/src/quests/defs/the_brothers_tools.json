@@ -1,0 +1,27 @@
+{
+  "id": "the_brothers_tools",
+  "name": "The Brother's Tools",
+  "giver": "foreman_grettir",
+  "requires": { "flags": ["grettir_word"] },
+  "stages": [
+    {
+      "id": "the_warrens",
+      "journal": "Grettir said it in six words and looked away: the kobolds carry marked tools. His brother's crew struck every head with the guild mark before the seal went down. Past the *Deep Market*, southeast, there's a tunnel choked with rubble — the warrens are through the gap. Thin them until the diggers start dropping what they carry.",
+      "objectives": [{ "kind": "kill", "npc": "kobold", "count": 8 }]
+    },
+    {
+      "id": "the_marks",
+      "journal": "They have them. Twenty years of kobold hands on his brother's iron, and the mark still reads. Bring Grettir three pieces he can put on a bench and know. Not one. Three — enough that it isn't luck.",
+      "objectives": [{ "kind": "collect", "item": "marked_tool", "count": 3 }]
+    }
+  ],
+  "questDrops": [
+    { "npc": "kobold", "item": "marked_tool", "chance": 0.5 },
+    { "npc": "kobold_digmaster", "item": "marked_tool", "chance": 1 }
+  ],
+  "rewards": {
+    "coins": 180,
+    "xp": [{ "skill": "melee", "amount": 400 }],
+    "flags": ["crew_tools_home"]
+  }
+}

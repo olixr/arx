@@ -1,0 +1,24 @@
+{
+  "id": "the_silver_setting",
+  "name": "The Silver Setting",
+  "giver": "silversmith_vigdis",
+  "requires": { "skills": [{ "skill": "smithing", "level": 12 }] },
+  "stages": [
+    {
+      "id": "the_stamp",
+      "journal": "Vigdis has one commandment and it isn't hers: nothing leaves the Silver Setting without Runa's stamp. Before she'll take your metal, the Assayer has to know your face. Runa keeps the scales at the assay house on the crafting terrace, west side, by the tithe vault. Present yourself. Do not attempt small talk — Vigdis was specific about that.",
+      "objectives": [{ "kind": "talk", "actor": "assayer_runa" }]
+    },
+    {
+      "id": "the_silver",
+      "journal": "Runa weighed you with her eyes and found the count plausible. Now the metal: four silver bars for the setting-work. The lodes are in the mountain — the mine terrace runs silver, and the Undercroft's deep walks run richer — or Varga's scales in the Deep Market will part with ore for coin. Smelt true. Runa weighs everything, and Vigdis's mark has to mean something in three hundred years.",
+      "objectives": [{ "kind": "collect", "item": "silver_bar", "count": 4 }]
+    }
+  ],
+  "rewards": {
+    "coins": 320,
+    "xp": [{ "skill": "smithing", "amount": 500 }],
+    "items": [{ "item": "silver_ring", "qty": 1 }],
+    "flags": ["setting_stamped"]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "steel_for_the_stair",
+  "name": "Steel for the Stair",
+  "giver": "forgemistress_balla",
+  "requires": { "skills": [{ "skill": "smithing", "level": 10 }] },
+  "stages": [
+    {
+      "id": "the_stock",
+      "journal": "Balla wants stock, and she wants it honest: six iron bars and eight measures of coal, on her bench, weighed. Smelt the bars yourself if your hands are up to it — or buy them, she doesn't care, Varga brokers ore down in the Deep Market and half the forge's stock walks up that stair. What she cares about is that when she strikes it, the steel doesn't lie.",
+      "objectives": [
+        { "kind": "collect", "item": "iron_bar", "count": 6 },
+        { "kind": "collect", "item": "coal", "count": 8 }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 300,
+    "xp": [{ "skill": "smithing", "amount": 800 }],
+    "items": [{ "item": "recipe_smith_spiked_buckler", "qty": 1 }]
+  }
+}

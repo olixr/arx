@@ -1,0 +1,33 @@
+{
+  "id": "the_lamps_of_the_line",
+  "name": "The Lamps of the Line",
+  "giver": "marshal_kestrel",
+  "requires": { "quests": ["the_kings_peace"] },
+  "stages": [
+    {
+      "id": "the_first_post",
+      "journal": "Kestrel wants eyes she trusts on every lamp between here and the ford, and she's short the people to send. Walk the line and take each sergeant's report in person. Start at the bottom: Sergeant Hale keeps the waystation on the First Road out of Dawnmead. Say the Marshal sent you. Say nothing else — Hale will know what it means.",
+      "objectives": [{ "kind": "talk", "actor": "waykeeper_hale" }]
+    },
+    {
+      "id": "the_second_post",
+      "journal": "Hale's report: quiet, which no Waykeeper trusts. Next up the High Road — Sergeant Odessa, at the long meadow rest north of the ford. The road climbs from there and so does the trouble.",
+      "objectives": [{ "kind": "talk", "actor": "waykeeper_odessa" }]
+    },
+    {
+      "id": "the_fork",
+      "journal": "Odessa signed her report with a wolf tally you didn't ask about. Onward: Sergeant Brant holds the rest at the Thornveil fork, where the hunter's trail meets the High Road. He'll be the one watching the tree line instead of the road.",
+      "objectives": [{ "kind": "talk", "actor": "waykeeper_brant" }]
+    },
+    {
+      "id": "the_last_lamp",
+      "journal": "Last is the worst mile. Past the fork the road climbs into the Silverspine, and near the top burns the *Last Lamp* — Edda's post, the light every traveler aims for when the weather turns. Take her report, if she gives one. Kestrel's grandmother founded the Waykeepers on one sentence, and Edda's lamp is where the sentence is truest: the lamp stays lit.",
+      "objectives": [{ "kind": "talk", "actor": "lampkeeper_edda" }]
+    }
+  ],
+  "rewards": {
+    "coins": 350,
+    "xp": [{ "skill": "vitality", "amount": 700 }],
+    "flags": ["line_walked"]
+  }
+}

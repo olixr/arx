@@ -402,6 +402,10 @@ const defs: ItemDef[] = [
   { id: 'redmask_writ', name: 'Redmask writ', stackable: true, value: 0, quest: true, desc: 'Marching orders in a hand Captain Aldis would know asleep.', color: '#b0392e', code: 'Rw' },
   { id: 'reavers_mark', name: "Reaver's mark", stackable: true, value: 0, quest: true, desc: 'A crew\'s iron token. Whoever holds it keeps the shares.', color: '#2b2735', code: 'Rm' },
   { id: 'torn_ledger_page', name: 'Torn ledger page', stackable: true, value: 0, quest: true, startsQuest: 'the_stolen_ledger', desc: 'Bank-ruled lines torn out rough. Someone kept accounts; someone else kept the accounts.', color: '#efe3c2', code: 'Lp' },
+  { id: 'marked_tool', name: 'Marked tool', stackable: true, value: 0, quest: true, desc: "A pick-head struck with a mason's mark. Twenty years of kobold hands, and the mark still reads.", color: '#8d94a3', code: 'Mt' },
+  { id: 'crew_paytin', name: 'Crew pay-tin', stackable: true, value: 0, quest: true, desc: 'A dented tin, wages still inside. Nobody came up to spend them.', color: '#a9976a', code: 'Pt' },
+  { id: 'gilded_locket', name: 'Gilded locket', stackable: true, value: 0, quest: true, desc: 'Gold over brass, warm even in a dead hand. The clasp still works.', color: '#d8b45a', code: 'Gl' },
+  { id: 'weathered_letter', name: 'Weathered letter', stackable: true, value: 0, quest: true, startsQuest: 'the_last_patrol', desc: 'Rain-run ink, folded to a worn crease. The last line is still legible.', color: '#cfc5ab', code: 'Wl' },
   { id: 'linen_scrap', name: 'Linen scrap', stackable: true, value: 3, desc: 'Torn cloth off someone who stopped needing it.', color: '#ddd6c2', code: 'Ls' },
   { id: 'gloomsilk_thread', name: 'Gloomsilk thread', stackable: true, value: 14, desc: 'Cold spun shadow from the crypt. It drinks the light.', color: '#5a4a78', code: 'Gt' },
 

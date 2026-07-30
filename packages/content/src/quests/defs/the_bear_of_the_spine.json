@@ -1,0 +1,25 @@
+{
+  "id": "the_bear_of_the_spine",
+  "name": "The Bear of the Spine",
+  "giver": "lookout_pike",
+  "requires": { "quests": ["the_matriarch"], "skills": [{ "skill": "melee", "level": 18 }] },
+  "stages": [
+    {
+      "id": "the_shoulders",
+      "journal": "Pike watches the mountain from the rooftops and says little, so when he flags you down it means something. Bears on the near shoulders. Trolls behind them. His exact words were 'two and two, before the snow', and then he stopped talking, so: two bears, two trolls, on the high ground around the city, before the weather closes it. Pike will be watching. Pike is always watching.",
+      "objectives": [
+        { "kind": "kill", "npc": "bear", "count": 2 },
+        { "kind": "kill", "npc": "troll", "count": 2 }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 450,
+    "xp": [
+      { "skill": "melee", "amount": 800 },
+      { "skill": "defence", "amount": 400 }
+    ],
+    "items": [{ "item": "trapline_jerkin", "qty": 1, "rarity": "uncommon" }],
+    "flags": ["spine_quieted"]
+  }
+}

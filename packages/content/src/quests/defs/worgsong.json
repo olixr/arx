@@ -1,0 +1,24 @@
+{
+  "id": "worgsong",
+  "name": "Worgsong",
+  "giver": "outfitter_hask",
+  "requires": { "quests": ["pelts_for_the_road"] },
+  "stages": [
+    {
+      "id": "the_fangs",
+      "journal": "Hask looked your gear over the way he does, and this time he nodded. Worgs are running with the wolf packs in the wild country northwest — bigger, meaner, and their fangs punch through a cheap strap like wet paper. He wants the packs thinned and four good fangs for the buckle-work. You'll hear them before you see them, he says. That's the point of them.",
+      "objectives": [
+        { "kind": "kill", "npc": "worg", "count": 5 },
+        { "kind": "collect", "item": "worg_fang", "count": 4 }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 240,
+    "xp": [
+      { "skill": "melee", "amount": 500 },
+      { "skill": "leatherworking", "amount": 300 }
+    ],
+    "items": [{ "item": "snare_kit", "qty": 1 }]
+  }
+}

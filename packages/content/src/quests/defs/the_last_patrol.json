@@ -1,0 +1,28 @@
+{
+  "id": "the_last_patrol",
+  "name": "The Last Patrol",
+  "giver": "marshal_kestrel",
+  "stages": [
+    {
+      "id": "the_letter",
+      "journal": "A letter off a dead man's bones, rain-run but legible: a Waykeeper writing home, promising to be back before the thaw. The signature is gone. The oath isn't — 'the lamp stays lit', written small at the bottom, the way the sergeants say it. Someone in the order should read this. Marshal Kestrel keeps the chapter house in Silverfall, on the hall terrace.",
+      "objectives": [{ "kind": "talk", "actor": "marshal_kestrel" }]
+    },
+    {
+      "id": "the_rest",
+      "journal": "Kestrel read it twice and said a name you didn't catch, quietly, not to you. The patrol was lost the winter the roads went feral — before her time, not before her grandmother's. Her ask is simple: the dead who walk where that patrol fell don't get to keep walking. Put the old bones to rest — the watch and their shieldmen both. She'll enter the letter in the rolls, with the patrol marked home.",
+      "objectives": [
+        { "kind": "kill", "npc": "skeleton_guard", "count": 3 },
+        { "kind": "kill", "npc": "skeleton", "count": 5 }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 300,
+    "xp": [
+      { "skill": "melee", "amount": 400 },
+      { "skill": "defence", "amount": 300 }
+    ],
+    "flags": ["letter_home"]
+  }
+}

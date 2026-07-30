@@ -333,6 +333,9 @@ const defs: LootTableDef[] = [
       { item: 'frostshard', chance: 0.01 },
       { item: 'arcane_dust', qty: [1, 3], chance: 0.22 },
       { item: 'frost_essence', chance: 0.11 },
+      // A Waykeeper's last letter, still on the body it outlived —
+      // using it opens The Last Patrol (an ordinary drop, no dials).
+      { item: 'weathered_letter', chance: 0.03 },
     ],
   },
   {
@@ -351,6 +354,7 @@ const defs: LootTableDef[] = [
       { item: 'gloomsilk_thread', qty: [1, 2], chance: 0.2 },
       { item: 'arcane_dust', qty: [1, 3], chance: 0.22 },
       { item: 'frost_essence', chance: 0.11 },
+      { item: 'weathered_letter', chance: 0.035 },
     ],
   },
   rack(
@@ -783,6 +787,7 @@ const defs: LootTableDef[] = [
       { item: 'coins', qty: [4, 20], chance: 0.5 },
       { item: 'arcane_dust', chance: 0.1 },
       { item: 'frost_essence', chance: 0.1 },
+      { item: 'weathered_letter', chance: 0.03 },
     ],
   },
   {

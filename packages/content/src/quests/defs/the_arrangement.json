@@ -1,0 +1,24 @@
+{
+  "id": "the_arrangement",
+  "name": "The Arrangement",
+  "giver": "magpie_mab",
+  "requires": { "quests": ["the_gilded_cage"], "flags": ["crown_audience"] },
+  "stages": [
+    {
+      "id": "the_bursar",
+      "journal": "There is an understanding between the Crown and the Rookery, and understandings need tending. Mab's side is owed a hearing, and you've stood in the court, so you'll do. First: Bursar Odele, at the bank on the hall terrace. Ask her whether the tithe balances. She will say the vault's arithmetic is unquestionable. That answer is the message.",
+      "objectives": [{ "kind": "talk", "actor": "bursar_odele" }]
+    },
+    {
+      "id": "the_marshal",
+      "journal": "Now the other half. Marshal Kestrel keeps the Waykeepers' chapter house and has never met anyone called the Magpie, which the two of them find workable. Tell the Marshal the sweeping is done and the floor is clean. She'll know the floor you mean. Then bring Mab whatever face the Marshal makes — Mab collects those.",
+      "objectives": [{ "kind": "talk", "actor": "marshal_kestrel" }]
+    }
+  ],
+  "rewards": {
+    "coins": 500,
+    "xp": [{ "skill": "sneak", "amount": 900 }],
+    "items": [{ "item": "seeker_stone", "qty": 1 }],
+    "flags": ["arrangement_kept"]
+  }
+}

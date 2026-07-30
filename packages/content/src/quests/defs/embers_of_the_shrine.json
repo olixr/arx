@@ -1,0 +1,26 @@
+{
+  "id": "embers_of_the_shrine",
+  "name": "Embers of the Shrine",
+  "giver": "shrinekeeper_sella",
+  "requires": { "flags": ["sella_blessed"] },
+  "stages": [
+    {
+      "id": "the_unquiet",
+      "journal": "Sella asked the way she asks anything — like housekeeping. The old dead are walking again where lamps used to burn: the ruined watchtower on the first climb keeps its garrison after dark, and there are more in the deep places. The dark is large, she says, and they've stopped passing the light along. See some of them to rest. The bowmen among them too.",
+      "objectives": [
+        { "kind": "kill", "npc": "skeleton", "count": 6 },
+        { "kind": "kill", "npc": "skeleton_archer", "count": 2 }
+      ]
+    },
+    {
+      "id": "the_embers",
+      "journal": "For the relighting she needs ember essence — six measures. It comes off things that carry fire in them: the goblin camps hold it, the kobold digs trade in it, and road crews rob it off everyone else. Gather it however the world gives it. The flame doesn't ask where its kindling slept.",
+      "objectives": [{ "kind": "collect", "item": "ember_essence", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 150,
+    "xp": [{ "skill": "magic", "amount": 400 }],
+    "flags": ["flame_tended"]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "the_matriarch",
+  "name": "The Matriarch",
+  "giver": "outfitter_hask",
+  "requires": { "quests": ["worgsong"] },
+  "stages": [
+    {
+      "id": "the_packs",
+      "journal": "Hask doesn't send people to the den lightly — he's outfitted three who went and restocked for two. There's a den in the deep wood northwest of Dawnmead, off the hunter's trail where the Thornveil thickens. A matriarch runs it, dire and old, and every pack for miles answers her. First break the packs between you and the den, or you'll fight all of them at her door.",
+      "objectives": [{ "kind": "kill", "npc": "wolf", "count": 6 }]
+    },
+    {
+      "id": "the_den",
+      "journal": "The packs are broken. What's left is the den and what owns it. Hask's asked for the matriarch put down and her pelt brought whole — not for coin, he was clear about that. He'll work it into something worth what it cost, because the last traveler who found that den is still lying in front of it.",
+      "objectives": [
+        { "kind": "kill", "npc": "dire_wolf", "count": 1 },
+        { "kind": "collect", "item": "direwolf_pelt", "count": 1 }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 400,
+    "xp": [{ "skill": "melee", "amount": 700 }],
+    "items": [{ "item": "wolfjaw_targe", "qty": 1, "rarity": "uncommon" }],
+    "flags": ["matriarch_slain"]
+  }
+}

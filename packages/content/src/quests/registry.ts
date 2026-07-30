@@ -16,6 +16,26 @@ import peltsForTheRoad from './defs/pelts_for_the_road.json';
 import thePotNeverRests from './defs/the_pot_never_rests.json';
 import thinTheWarrens from './defs/thin_the_warrens.json';
 import theStolenLedger from './defs/the_stolen_ledger.json';
+import theBrothersTools from './defs/the_brothers_tools.json';
+import theDigmastersDue from './defs/the_digmasters_due.json';
+import namesForTheStone from './defs/names_for_the_stone.json';
+import theStarwardDig from './defs/the_starward_dig.json';
+import theKingsPeace from './defs/the_kings_peace.json';
+import theQueensFord from './defs/the_queens_ford.json';
+import theLampsOfTheLine from './defs/the_lamps_of_the_line.json';
+import theSilverLine from './defs/the_silver_line.json';
+import aQuietWord from './defs/a_quiet_word.json';
+import theGildedCage from './defs/the_gilded_cage.json';
+import theArrangement from './defs/the_arrangement.json';
+import embersOfTheShrine from './defs/embers_of_the_shrine.json';
+import theSistersLamp from './defs/the_sisters_lamp.json';
+import worgsong from './defs/worgsong.json';
+import theMatriarch from './defs/the_matriarch.json';
+import theBearOfTheSpine from './defs/the_bear_of_the_spine.json';
+import steelForTheStair from './defs/steel_for_the_stair.json';
+import threadsOfTheRow from './defs/threads_of_the_row.json';
+import theSilverSetting from './defs/the_silver_setting.json';
+import theLastPatrol from './defs/the_last_patrol.json';
 
 /**
  * Every authored quest JSON, registered here. A def that isn't listed
@@ -43,6 +63,33 @@ const SOURCES: readonly unknown[] = [
   thinTheWarrens,
   // Item-borne: the torn page starts it; nobody offers it.
   theStolenLedger,
+  // The Sealed Galleries — Grettir's brother's crew, closed at last.
+  theBrothersTools,
+  theDigmastersDue,
+  namesForTheStone,
+  theStarwardDig,
+  // The Crown's Peace — what the audience earned you.
+  theKingsPeace,
+  theQueensFord,
+  theLampsOfTheLine,
+  theSilverLine,
+  // The Rookery — the city's shadows, kept orderly.
+  aQuietWord,
+  theGildedCage,
+  theArrangement,
+  // The Mother-Flame — the road-faith, sister to sister.
+  embersOfTheShrine,
+  theSistersLamp,
+  // Fang and Fur — the wilds ladder, Hask's counter to Pike's roof.
+  worgsong,
+  theMatriarch,
+  theBearOfTheSpine,
+  // The Makers' Marks — the trade districts pay for good hands.
+  steelForTheStair,
+  threadsOfTheRow,
+  theSilverSetting,
+  // Item-borne: a dead Waykeeper's letter, still promising the thaw.
+  theLastPatrol,
 ];
 
 function buildRegistry(): ReadonlyMap<string, QuestDef> {

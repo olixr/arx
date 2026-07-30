@@ -1,0 +1,26 @@
+{
+  "id": "the_kings_peace",
+  "name": "The King's Peace",
+  "giver": "king_aeriex",
+  "requires": { "flags": ["crown_audience"] },
+  "stages": [
+    {
+      "id": "the_camps",
+      "journal": "The king said it the way a foreman gives a shift: the Redmasks chained the ford once, and the Crown pays first so it never happens twice. Brigands camp along the open road between the towns — follow the First Road east of Dawnmead and look for their fires off the verge. Break the camps. Their bowmen too; a camp with archers standing is a camp.",
+      "objectives": [
+        { "kind": "kill", "npc": "brigand", "count": 6 },
+        { "kind": "kill", "npc": "brigand_archer", "count": 3 }
+      ]
+    },
+    {
+      "id": "the_reaver",
+      "journal": "Camps scatter and gather again — that's what camps do. What holds them together is a *reaver*, the one who keeps the shares. There will be one standing over whatever's left of the crews you broke. Find him and finish it. The king asked for the peace kept, not tidied.",
+      "objectives": [{ "kind": "kill", "npc": "brigand_reaver", "count": 1 }]
+    }
+  ],
+  "rewards": {
+    "coins": 300,
+    "xp": [{ "skill": "melee", "amount": 600 }],
+    "flags": ["kings_peace_kept"]
+  }
+}
