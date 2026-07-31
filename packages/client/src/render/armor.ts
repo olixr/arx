@@ -4511,9 +4511,14 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // grammar, three reads, no bolted-on side curtains.
     const t = profileK;
     const front = backK <= 0.55;
-    // The face opening tracks the face bands exactly like the eyes do.
-    const cx = headX + fx * headR * 0.34;
-    const ohw = hw * 0.74 * (1 - 0.45 * t);
+    // The face opening tracks the face bands exactly like the eyes do
+    // — and COMMITS to the profile: as the head turns, the window
+    // presses into the shell's leading edge and narrows, so the side
+    // view reads as a tunnel seen from the side, never a front window
+    // pasted on a turned hood. (0.34 frontal, deepening with t; the
+    // leading rim stays just inside the skull's own edge.)
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
     const oTop = headY - hh * 0.6;
     const oBot = headY + hh * 0.84;
     const shell = () => {
@@ -4579,8 +4584,9 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.fillStyle = st.trim;
         ctx.fillRect(cx - ohw * 0.98, oTop - headR * 0.05, ohw * 1.96, headR * 0.1);
         if (st.gem) {
-          // A cut gem at the brow, tracking the face like the eyes do.
-          const gx = headX + fx * headR * 0.36;
+          // A cut gem at the brow, tracking the face like the eyes do
+          // and deepening with the opening at profile.
+          const gx = headX + fx * headR * (0.36 + 0.24 * t);
           ctx.fillStyle = st.gem.color;
           ctx.beginPath();
           ctx.moveTo(gx, headY - hh * 0.8);
@@ -4843,11 +4849,12 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     if (st.mask && !hurt && backK <= 0.55) {
       // The half-mask: a kerchief over the lower face, pointed at the
       // chin. Eyes stay the character's; the rest belongs to the job.
-      // Anchored on the SAME face shift as the opening (the 0.34 law):
-      // a mask that stays centered while the face turns un-masks the
-      // profile — it must ride the opening, not the shell.
-      const mw = hw * 0.78 * (1 - profileK * 0.4);
-      const mx = headX + fx * headR * 0.34;
+      // Anchored on the SAME face shift as the opening (the 0.34 law,
+      // deepening with profileK): a mask that stays centered while the
+      // face turns un-masks the profile — it must ride the opening,
+      // not the shell, all the way into the side view.
+      const mw = hw * 0.78 * (1 - profileK * 0.5);
+      const mx = headX + fx * headR * (0.34 + 0.24 * profileK);
       ctx.fillStyle = st.mask;
       ctx.beginPath();
       ctx.moveTo(mx - mw, headY + hh * 0.18);
@@ -4870,8 +4877,9 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       // narrows out with the facing like the bare face's does.
       const pulse = 0.6 + 0.4 * Math.sin(f.nowMs * 0.0016);
       // The 0.34 opening-anchor law: the coals live IN the face
-      // opening, so they ride its shift and narrow with it.
-      const ex = headX + fx * headR * 0.34;
+      // opening, so they ride its shift (deepening with profileK)
+      // and narrow with it.
+      const ex = headX + fx * headR * (0.34 + 0.24 * profileK);
       const ey = headY + hh * 0.02;
       for (const es of [-1, 1]) {
         const wK = es !== lead ? Math.max(0, 1 - profileK * 1.4) : 1;

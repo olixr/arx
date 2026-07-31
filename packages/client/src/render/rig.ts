@@ -3954,6 +3954,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     };
   }
 
+  // The far shoulder's cap ducks under the garment (profile band only)
+  // — painted before the torso frame OPENS so it peeks over the
+  // shoulder line from behind the cloth. It must run in the same WORLD
+  // space as the front pass: inside the frame its world-coordinate
+  // anchors got the frame's translate applied twice, teleporting the
+  // cap to (2x, ~2y) — off-screen in game, so the leading cap simply
+  // VANISHED at profile facings (the floating-cap ghost on unclipped
+  // render sheets).
+  paintPauldrons('behind');
+
   // ---- torso + head, drawn in a local frame at the hip line with the
   // fake-3D squash: narrow side profile, full front/back profile, height
   // compensating inversely so the turn reads as orientation.
@@ -4038,10 +4048,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Torso garment: the styled body (robe, jerkin, brigandine, cuirass,
   // pauldrons) — the bare `tunic` default is the original silhouette.
   // The bone dialect wears no garment at all: the ribcage IS the torso.
-  // The far shoulder's cap ducks under the garment here (profile band
-  // only) — painted last before the torso so it peeks over the
-  // shoulder line from behind the cloth.
-  paintPauldrons('behind');
+  // (The far shoulder's behind-pass cap paints before this frame opens
+  // — world coords never enter the torso frame.)
   if (skel) {
     paintRibcage(ctx, skel, {
       s,
