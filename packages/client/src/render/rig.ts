@@ -47,6 +47,7 @@ import {
   STAFF_GUARD_CHOKE_S,
   armPump,
   bowWield,
+  easeRestSide,
   gaitK,
   greatFinisherLean,
   greatFinisherPath,
@@ -229,6 +230,8 @@ export interface RigPose {
     side?: number;
     prevSide?: number;
     sideFlipMs?: number;
+    /** When the facing first asked for a side flip (dwell debounce). */
+    sideWantMs?: number;
     /** Low-passed arm-swing drive (see the SMOOTHED SWING law). */
     sw?: number;
     swMs?: number;
@@ -423,6 +426,13 @@ function drawArm(
   bone?: SkeletonLook | null,
   /** Caller-owned elbow-side memory (THE REMEMBERED ELBOW). */
   elbow?: { sign: number },
+  /** THE CROSSING LOCKS THE ELBOW: while the rest side eases across
+   *  the body the flare pole collapses through zero, and the leftover
+   *  gravity term scores pure chord noise — noise that COMMITS inboard
+   *  sides mid-crossing (the wiggle-walk inversion). A held elbow
+   *  keeps its standing side outright through the ease and flips
+   *  exactly once, when the settled pole reclaims it. */
+  elbowHold?: boolean,
 ): { ex: number; ey: number; kx: number; ky: number } {
   // THE REMEMBERED ELBOW: the arms carry the same side-choice
   // hysteresis the knees have had since the quadruped rig — score the
@@ -441,7 +451,10 @@ function drawArm(
     const dd = Math.hypot(ddx, ddy) || 1e-4;
     const cxn = -ddy / dd;
     const cyn = ddx / dd;
-    const sgn = chooseLimbSign(cxn, cyn, prefX, prefY, elbow.sign);
+    const sgn =
+      elbowHold && elbow.sign !== 0
+        ? elbow.sign
+        : chooseLimbSign(cxn, cyn, prefX, prefY, elbow.sign);
     elbow.sign = sgn;
     prefX = cxn * sgn;
     prefY = cyn * sgn;
@@ -2948,31 +2961,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let armSwingK = 1;
   let restSettle = 0;
   const restSide = Math.sign(fx) || 1;
-  // SMOOTHED REST SIDE: sign(fx) flips instantly as the aim crosses
-  // vertical, and every rest anchor mirroring on it used to teleport —
-  // the mid-run "wrists flip around" snap. With caller memory the side
-  // eases ±1→∓1 through 0 over 240ms: the hands PASS across the body
-  // and every carriage angle (all linear in side) sweeps with them.
-  // The flip only REGISTERS once the facing is clearly past vertical
-  // (|fx| > 0.12): walking straight north/south, fx jitters around
-  // zero, and an undebounced sign ping-ponged the hands across the
-  // body every few steps — the "pivoting between two frames" read.
+  // THE SMOOTHED REST SIDE (wield.ts easeRestSide): the side eases
+  // ±1→∓1 through 0 over 240ms, a flip needs 120ms of sustained
+  // facing past ±0.12 to register (heading-jitter churn), and a
+  // mid-ease reversal continues from the current blend, never
+  // snapping back to a full side. Stateless callers take the raw sign.
   let sideS = restSide;
   const mem = rig.depthMemory;
-  if (mem) {
-    if (mem.side === undefined) {
-      mem.side = restSide;
-      mem.sideFlipMs = -1e9;
-    }
-    if (mem.side !== restSide && Math.abs(fx) > 0.12) {
-      mem.prevSide = mem.side;
-      mem.side = restSide;
-      mem.sideFlipMs = rig.nowMs;
-    }
-    const t = Math.max(0, Math.min(1, (rig.nowMs - (mem.sideFlipMs ?? -1e9)) / 240));
-    const k = t * t * (3 - 2 * t);
-    sideS = mem.side * k + (mem.prevSide ?? mem.side) * (1 - k);
-  }
+  if (mem) sideS = easeRestSide(mem, restSide, fx, rig.nowMs);
   // THE FACING-WEIGHT LAW: the carriage rake is a PROFILE read. Side-on
   // the blade rakes fully forward or back; facing the camera (or away)
   // there IS no screen-forward, so the rake relaxes toward a near-
@@ -3156,6 +3152,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hx += bf.dx * s * wS;
       hy = armY + bf.dy * s;
     }
+    // THE HANDS PASS FRONT-AND-BACK: mid side-ease both rest anchors
+    // sweep through the body's center, and at the midpoint the two
+    // fists (and their blades) landed on the SAME point — the "arms
+    // crossed" overlap the user caught. A crossing splits on the
+    // height axis instead: the main fist dips a breath, the off fist
+    // rides a breath high, and the pair shears past each other like
+    // real hands swapping — never through one another. crossK > 0
+    // only while the ease is in flight; the settled stance is
+    // untouched.
+    const crossK = 1 - Math.min(1, Math.abs(sideS));
+    hy += crossK * 0.035 * s;
     mainX += (hx - mainX) * restSettle;
     mainY += (hy - mainY) * restSettle;
     heldAngle += angleDelta(heldAngle, hAngle) * restSettle;
@@ -3198,6 +3205,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       }
       offBladeAngle += angleDelta(offBladeAngle, oAngle) * restSettle;
     }
+    // The off fist takes the high lane of the crossing shear (see
+    // crossK above the main blend).
+    oy -= crossK * 0.035 * s;
     offX += (ox - offX) * restSettle;
     offY += (oy - offY) * restSettle;
   }
@@ -3698,6 +3708,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     Math.max(0, rig.align);
   const mainSettlePoleX = settleElbowPole(sideS, rig.poleX, trailB);
   const offSettlePoleX = settleElbowPole(-sideS, rig.poleX, trailB);
+  // THE CROSSING LOCKS THE ELBOW: mid side-ease (|sideS| < 1) the
+  // flare pole is collapsing through zero — every settled frame in
+  // that window is degenerate, so the remembered sides hold outright
+  // and the flip lands once, after the hands arrive. Rest carries
+  // only: strikes and draws own their elbows dynamically.
+  const elbowEaseHold = restSettle > 0.5 && Math.abs(sideS) < 0.98;
   mainShX += (rig.x + sideS * tw * 0.85 * wS - mainShX) * settleK;
   offShX += (rig.x - sideS * tw * 0.85 * wS - offShX) * settleK;
   // Aiming up-and-away puts the gear behind the body. And a LONG
@@ -3769,6 +3785,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       rig.hurt,
       skel,
       mem ? (mem.offElbow ??= { sign: 0 }) : undefined,
+      elbowEaseHold,
     );
     if (shieldSt && shieldFr) {
       if (shieldBehindArm) drawShieldStraps(ctx, shieldSt, shieldFr, rig.hurt);
@@ -3899,6 +3916,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       rig.hurt,
       skel,
       mem ? (mem.mainElbow ??= { sign: 0 }) : undefined,
+      elbowEaseHold,
     );
   };
   // ---- THE SHOULDER DEPTH LAW: a pauldron is a cap on TOP of the

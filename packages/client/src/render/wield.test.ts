@@ -145,8 +145,8 @@ test('settle pole: a depth-axis run keeps the full outboard flare', () => {
   // N/S travel: poleX = 0 — the trail can show nothing on screen, so
   // it may claim nothing. The old blend zeroed the flare here and the
   // pole degenerated to straight-down (the N/S elbow-inversion bug).
-  assert.ok(Math.abs(settleElbowPole(1, 0, 1) - 0.45) < 1e-9, 'main flare survives at full trail');
-  assert.ok(Math.abs(settleElbowPole(-1, 0, 1) + 0.45) < 1e-9, 'off flare mirrors');
+  assert.ok(Math.abs(settleElbowPole(1, 0, 1) - 0.7) < 1e-9, 'main flare survives at full trail');
+  assert.ok(Math.abs(settleElbowPole(-1, 0, 1) + 0.7) < 1e-9, 'off flare mirrors');
 });
 
 test('settle pole: a profile run hands the pole to the trail outright', () => {
@@ -157,12 +157,12 @@ test('settle pole: a profile run hands the pole to the trail outright', () => {
 });
 
 test('settle pole: at rest the flare stands alone, and the blend is continuous', () => {
-  assert.ok(Math.abs(settleElbowPole(1, 0.7, 0) - 0.45) < 1e-9, 'no gait, no trail claim');
+  assert.ok(Math.abs(settleElbowPole(1, 0.7, 0) - 0.7) < 1e-9, 'no gait, no trail claim');
   let prev = settleElbowPole(1, Math.cos(0), 1);
   for (let i = 1; i <= 64; i++) {
     const yaw = (i / 64) * Math.PI * 2;
     const p = settleElbowPole(1, Math.cos(yaw), 1);
-    assert.ok(Math.abs(p - prev) < 0.12, `pole step ${i} jumps ${(p - prev).toFixed(3)}`);
+    assert.ok(Math.abs(p - prev) < 0.15, `pole step ${i} jumps ${(p - prev).toFixed(3)}`);
     prev = p;
   }
 });

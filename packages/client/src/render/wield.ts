@@ -211,10 +211,73 @@ export function runnerLift(moveK: number, runK: number, profileK: number): numbe
  * can actually show on screen (|poleX|); the rest stays anatomical.
  * At a profile run |poleX| ≈ 1 and the trail owns the pole outright —
  * the chicken-wing fix this law grew out of is preserved exactly.
+ *
+ * THE FLARE OUTVOTES THE NOISE: the pole is a pure SIDE VOTE — the
+ * solve places the elbow by the vote's sign, never its shape — so the
+ * flare weight costs nothing visually and buys decisiveness. At 0.45
+ * a camera-line rest chord scored ≈0.41 against the 0.35 hysteresis
+ * threshold: one breath of pump noise dipped it borderline, and an
+ * elbow committed inboard by a strike or a facing wiggle could sit
+ * wrong for whole seconds before the pole reclaimed it. At 0.7 the
+ * settled vote is committed every frame and a wrong side heals in one.
  */
 export function settleElbowPole(side: number, poleX: number, trailB: number): number {
   const claim = trailB * Math.abs(poleX);
-  return side * 0.45 * (1 - claim) - poleX * 0.6 * trailB;
+  return side * 0.7 * (1 - claim) - poleX * 0.6 * trailB;
+}
+
+/** Caller-owned smoothed rest-side state (lives on the rig's depth memory). */
+export interface RestSideMemory {
+  side?: number;
+  prevSide?: number;
+  sideFlipMs?: number;
+  sideWantMs?: number;
+}
+
+/**
+ * THE SMOOTHED REST SIDE: sign(fx) flips instantly as the facing
+ * crosses vertical, and every rest anchor mirroring on it used to
+ * teleport — the mid-run "wrists flip around" snap. With memory the
+ * side eases across the body over 240ms.
+ *
+ * THE FLIP EARNS ITS DWELL: heading jitter around straight N/S wobbles
+ * fx across the ±0.12 line every few steps, and an instant flip
+ * churned the hands across the body over and over — each pass a fresh
+ * chance for the elbows to land inboard (the wiggle-walk inversion).
+ * A flip must WANT the new side for 120ms of sustained facing before
+ * it registers; a real turn barely notices (the 240ms ease dwarfs
+ * it), a wobble never crosses it.
+ *
+ * THE EASE CONTINUES FROM WHERE IT STANDS: a flip arriving mid-ease
+ * used to restart the blend from the OLD side's full ±1 — the hands
+ * teleported from mid-body out to a side and swept back (the crossing
+ * snap). The new ease departs from the CURRENT blended value, so a
+ * reversal simply turns around, continuously.
+ */
+export function easeRestSide(
+  mem: RestSideMemory,
+  restSide: number,
+  fx: number,
+  nowMs: number,
+): number {
+  if (mem.side === undefined) {
+    mem.side = restSide;
+    mem.sideFlipMs = -1e9;
+  }
+  const wantFlip = mem.side !== restSide && Math.abs(fx) > 0.12;
+  if (!wantFlip) mem.sideWantMs = undefined;
+  else if (mem.sideWantMs === undefined) mem.sideWantMs = nowMs;
+  if (wantFlip && nowMs - mem.sideWantMs! >= 120) {
+    const tOld = Math.max(0, Math.min(1, (nowMs - (mem.sideFlipMs ?? -1e9)) / 240));
+    const kOld = tOld * tOld * (3 - 2 * tOld);
+    mem.prevSide = mem.side * kOld + (mem.prevSide ?? mem.side) * (1 - kOld);
+    mem.side = restSide;
+    mem.sideFlipMs = nowMs;
+    mem.sideWantMs = undefined;
+  }
+  const t = Math.max(0, Math.min(1, (nowMs - (mem.sideFlipMs ?? -1e9)) / 240));
+  const k = t * t * (3 - 2 * t);
+  return mem.side * k + (mem.prevSide ?? mem.side) * (1 - k);
 }
 
 // ----------------------------------------------------------- staff
