@@ -147,6 +147,10 @@ export class WorldSource extends ChunkStore {
    * touches, and a moved or edited border must re-shape them.
    */
   private dropZoneChunks(zone: ZoneDef): void {
+    // The pristine memo holds zone overlays too — a zone change makes
+    // every memoized chunk suspect (pre-existing staleness, caught
+    // when the memo grew for the growth engine's disc scans).
+    this.pristineMemo.length = 0;
     const pad = EDGE_BASIN_DAMP_RANGE + 4;
     const c0x = Math.floor((zone.origin.x - pad) / CHUNK_SIZE);
     const c0y = Math.floor((zone.origin.y - pad) / CHUNK_SIZE);
@@ -338,26 +342,40 @@ export class WorldSource extends ChunkStore {
     return 'wild';
   }
 
-  /** One-entry memo for naturalGround — demolish bursts sample a few
-   *  tiles from the same chunk; regenerating per tile would be waste. */
-  private pristineMemo: { cx: number; cy: number; chunk: ChunkData } | null = null;
+  /**
+   * Small MRU memo for naturalGround. Demolish bursts sample a few
+   * tiles from one chunk; the growth engine's germination scans sweep
+   * discs that CROSS chunk borders — a one-entry memo would regenerate
+   * a chunk per row of the sweep. Four entries cover any disc that
+   * touches a chunk corner. NOTE: growth deviations are deliberately
+   * NOT part of pristine ground — this is the world with no hand on it.
+   */
+  private readonly pristineMemo: Array<{ cx: number; cy: number; chunk: ChunkData }> = [];
 
   /**
    * The ground as the world would deal it with no player's hand on it:
-   * worldgen plus authored zone overlays, WITHOUT built tiles or crops.
-   * THE LAYER LAW's floor: when a demolished wall restores the floor
-   * beneath it, the floor's own re-registered prev_tile must be this —
-   * the terrain the very first build displaced.
+   * worldgen plus authored zone overlays, WITHOUT built tiles, crops,
+   * or growth deviations. THE LAYER LAW's floor: when a demolished
+   * wall restores the floor beneath it, the floor's own re-registered
+   * prev_tile must be this — the terrain the very first build
+   * displaced. Also THE SECOND GROWTH's seed-truth oracle: what the
+   * land grows back toward.
    */
   naturalGround(tx: number, ty: number): number {
     const cx = Math.floor(tx / CHUNK_SIZE);
     const cy = Math.floor(ty / CHUNK_SIZE);
-    if (!this.pristineMemo || this.pristineMemo.cx !== cx || this.pristineMemo.cy !== cy) {
+    const hit = this.pristineMemo.findIndex((m) => m.cx === cx && m.cy === cy);
+    let entry: { cx: number; cy: number; chunk: ChunkData };
+    if (hit >= 0) {
+      entry = this.pristineMemo.splice(hit, 1)[0]!;
+    } else {
       const chunk = generateChunk(this.seed, cx, cy);
       for (const zone of this.zones) this.overlayZone(chunk, zone);
-      this.pristineMemo = { cx, cy, chunk };
+      entry = { cx, cy, chunk };
     }
-    return this.pristineMemo.chunk.ground[tileIndex(tx, ty)]!;
+    this.pristineMemo.unshift(entry);
+    if (this.pristineMemo.length > 4) this.pristineMemo.pop();
+    return entry.chunk.ground[tileIndex(tx, ty)]!;
   }
 
   ensure(cx: number, cy: number): ChunkData {

@@ -22,13 +22,21 @@ import { NODES_BY_TILE } from './nodes.js';
 /** A jitter band in MINUTES: [min, max], inclusive. */
 export type GrowthRange = readonly [number, number];
 
-// The ages, stored in world_growth.state. SEEDED is reserved for the
-// Phase 2 germination bookkeeping — the enum leaves its seat warm.
+// The ages, stored in world_growth.state.
 export const GROWTH_SCAR = 0; // the fresh harvest mark (stump / spent rock / bare grass)
-export const GROWTH_BARE = 1; // bare ground resting (Phase 2: due null = dormant, set = germinating)
+export const GROWTH_BARE = 1; // bare ground: due null = DORMANT (waiting on the world), set = germinating
 export const GROWTH_SAPLING = 2; // the young tree standing in the clearing
+/**
+ * THE LIVING WOOD (Phase 2): a regrowth that came back a DIFFERENT
+ * species than worldgen's seed-truth — the dispersal drew a neighbor's
+ * seed. The row rests here PERMANENTLY (deleting it would resurrect
+ * the truth species on the next chunk regen); the next felling re-aims
+ * at seed-truth, so drift decays over harvest cycles (THE LAND
+ * REMEMBERS ITS NATURE).
+ */
+export const GROWTH_DRIFTED = 3;
 /** Human names for the lever and the Studio lens, by state index. */
-export const GROWTH_STATE_NAMES: readonly string[] = ['scar', 'bare', 'sapling'];
+export const GROWTH_STATE_NAMES: readonly string[] = ['scar', 'bare', 'sapling', 'drifted'];
 
 /**
  * One wild harvest, remembered. DEVIATIONS ONLY: a row exists only
@@ -57,6 +65,10 @@ export interface GrowthRow {
   /** In-memory courtesy defer (a body stood where a solid would rise);
    *  never persisted. */
   deferUntil?: number;
+  /** In-memory germination bookkeeping — when this dormant row last
+   *  rolled; never persisted (a restart just re-checks a little early,
+   *  which is harmless and self-correcting). */
+  checkedAt?: number;
 }
 
 export type GrowthDialect = 'tree' | 'ore' | 'forage';
@@ -88,7 +100,8 @@ export interface GrowthDef {
   /** How long a felled wild tree's stump marks the ground before it
    *  relaxes to bare, buildable, plantable grass. [min, max] minutes. */
   treeStumpMinutes: GrowthRange;
-  /** How long the bare ground rests before a sapling stands. */
+  /** THE REST FLOOR (Phase 2): how long bare ground must rest before
+   *  germination may even roll — the soil recovers first. */
   treeBareMinutes: GrowthRange;
   /** How long the sapling grows before the crown stands up. */
   treeSaplingMinutes: GrowthRange;
@@ -102,6 +115,29 @@ export interface GrowthDef {
   /** Max tile writes per beat — a whole clearcut healing at once still
    *  lands as a gentle drizzle of patches, never a burst. */
   beatBudget: number;
+  // ---- Phase 2: THE LIVING WOOD ----
+  /** Dispersal radius (tiles): how far a standing crown's seed reaches. */
+  sourceReach: number;
+  /** Germination chance added per standing crown within reach — the
+   *  edge-inward wave IS this number (never coded as a wave). */
+  sourceBoost: number;
+  /** THE PIONEER WHISPER: germination chance with zero sources, so a
+   *  total clearcut is never a permanent desert — just a slow one. */
+  pioneerChance: number;
+  /** Ceiling on any single germination roll. */
+  germChanceCap: number;
+  /** How often a dormant tile re-rolls germination. [min, max] minutes,
+   *  jittered per tile — the pacing dial of the whole succession. */
+  germEveryMinutes: GrowthRange;
+  /** The seed is in the ground: rolled-germination to visible sapling. */
+  germSproutMinutes: GrowthRange;
+  /** Chance a germination draws its species from the NEIGHBORS' crowns
+   *  instead of worldgen's seed-truth — the dispersal drift. Truth is
+   *  always the default, so the ledger self-prunes over cycles. */
+  driftChance: number;
+  /** Tiles of germination refusal around built ground — the forest
+   *  grows AROUND a homestead, never against its walls. */
+  courtesyRing: number;
 }
 
 /**
@@ -120,12 +156,26 @@ export const GROWTH: GrowthDef = {
   forageMinutes: [25, 70],
   beatTicks: 40,
   beatBudget: 48,
+  // Phase 2 — tuned so a clearcut's edge (several crowns in reach)
+  // germinates within an hour or two of its rest floor, while its
+  // heart waits for the wave: one crown in reach ≈ a few hours of
+  // rolls, zero crowns ≈ days (the pioneer whisper).
+  sourceReach: 6,
+  sourceBoost: 0.12,
+  pioneerChance: 0.006,
+  germChanceCap: 0.9,
+  germEveryMinutes: [22, 42],
+  germSproutMinutes: [15, 45],
+  driftChance: 0.25,
+  courtesyRing: 1,
 };
 
 // Growth RNG salts — the named-streams law (the ST_* family's kin).
 const ST_GROW_SCAR = 0x92071a;
 const ST_GROW_BARE = 0x92071b;
 const ST_GROW_SAPLING = 0x92071c;
+const ST_GROW_CHECK = 0x92071d;
+const ST_GROW_SPROUT = 0x92071e;
 
 /**
  * A stage wait in ms, hash-jittered per tile AND per harvest (the
@@ -157,95 +207,138 @@ export interface GrowthProjection {
   /** When the projected current state began (the checkpoint the server
    *  stores back so future walks start here). */
   stateSince: number;
-  /** Next transition deadline, or null — null means fully healed: the
-   *  seed-truth resource stands again and the row should dissolve. */
+  /** Next transition deadline, or null. Null WITHOUT ripe means the
+   *  row is at rest (dormant bare ground, or a drifted crown) — only
+   *  the world can move it, never the clock alone. */
   due: number | null;
-}
-
-interface GrowthStage {
-  state: number;
-  tile: Tile;
-  wait: number;
-}
-
-/** The dialect's stage chain for one row — waits already jittered. */
-function stagesFor(seed: number, row: GrowthRow): GrowthStage[] {
-  const dialect = growthDialectOf(row.tile);
-  const node = NODES_BY_TILE.get(row.tile);
-  if (dialect === null || !node || node.depletedTile === null) return [];
-  const scarTile = node.depletedTile;
-  if (dialect === 'tree') {
-    const stages: GrowthStage[] = [
-      {
-        state: GROWTH_SCAR,
-        tile: scarTile,
-        wait: growWait(seed, ST_GROW_SCAR, row.tx, row.ty, row.firstSeenAt, GROWTH.treeStumpMinutes),
-      },
-      {
-        state: GROWTH_BARE,
-        tile: Tile.Grass,
-        wait: growWait(seed, ST_GROW_BARE, row.tx, row.ty, row.firstSeenAt, GROWTH.treeBareMinutes),
-      },
-    ];
-    const sapling = saplingOf(row.tile);
-    if (sapling !== null) {
-      stages.push({
-        state: GROWTH_SAPLING,
-        tile: sapling,
-        wait: growWait(
-          seed,
-          ST_GROW_SAPLING,
-          row.tx,
-          row.ty,
-          row.firstSeenAt,
-          GROWTH.treeSaplingMinutes,
-        ),
-      });
-    }
-    return stages;
-  }
-  const range = dialect === 'ore' ? GROWTH.oreReopenMinutes : GROWTH.forageMinutes;
-  return [
-    {
-      state: GROWTH_SCAR,
-      tile: scarTile,
-      wait: growWait(seed, ST_GROW_SCAR, row.tx, row.ty, row.firstSeenAt, range),
-    },
-  ];
+  /** The walk is complete: the crown (row.tile) stands. The beat then
+   *  decides clean-heal (row dissolves back to seed-truth) vs drift
+   *  (the row rests as GROWTH_DRIFTED) — a WORLD question the pure
+   *  walk cannot answer. */
+  ripe: boolean;
 }
 
 /** The tile a row shows at its STORED checkpoint state — the beat's
  *  "did the world move on under me" guard reads this. */
 export function growthTileForState(seed: number, row: GrowthRow): Tile {
-  const stages = stagesFor(seed, row);
-  const stage = stages.find((s) => s.state === row.state);
-  return stage?.tile ?? row.tile;
+  const node = NODES_BY_TILE.get(row.tile);
+  if (row.state === GROWTH_DRIFTED) return row.tile;
+  if (row.state === GROWTH_BARE) return Tile.Grass;
+  if (row.state === GROWTH_SAPLING) return saplingOf(row.tile) ?? row.tile;
+  return node?.depletedTile ?? row.tile;
 }
 
 /**
  * THE PURE WALK: project a row forward to `now` from its stored
  * checkpoint. Deterministic — the same row and clock always land on
  * the same age, however many times (and on however many machines) the
- * question is asked. A row whose dialect has left the roster (a def
- * edit) projects straight to healed rather than haunting the ledger.
+ * question is asked. THE LIVING WOOD amendment: a tree's walk STOPS at
+ * bare ground (dormant, due null) — germination is the beat's event,
+ * rolled against the standing world, and only a checkpointed
+ * germination deadline (row.due while BARE) lets the walk continue.
+ * A drifted crown rests forever; a row whose dialect has left the
+ * roster (a def edit) projects straight to ripe rather than haunting
+ * the ledger.
  */
 export function projectGrowth(seed: number, row: GrowthRow, now: number): GrowthProjection {
-  const stages = stagesFor(seed, row);
-  if (stages.length === 0) {
-    return { state: row.state, tile: row.tile, stateSince: row.since, due: null };
+  const dialect = growthDialectOf(row.tile);
+  const node = NODES_BY_TILE.get(row.tile);
+  if (row.state === GROWTH_DRIFTED) {
+    return { state: GROWTH_DRIFTED, tile: row.tile, stateSince: row.since, due: null, ripe: false };
   }
-  let idx = stages.findIndex((s) => s.state === row.state);
-  if (idx === -1) idx = 0;
-  let since = row.since;
-  while (idx < stages.length) {
-    const stage = stages[idx]!;
-    const end = since + stage.wait;
-    if (now < end) return { state: stage.state, tile: stage.tile, stateSince: since, due: end };
-    since = end;
-    idx++;
+  if (dialect === null || !node || node.depletedTile === null) {
+    return { state: row.state, tile: row.tile, stateSince: row.since, due: null, ripe: true };
   }
-  const last = stages[stages.length - 1]!;
-  return { state: last.state, tile: row.tile, stateSince: since, due: null };
+  if (dialect !== 'tree') {
+    const range = dialect === 'ore' ? GROWTH.oreReopenMinutes : GROWTH.forageMinutes;
+    const end = row.since + growWait(seed, ST_GROW_SCAR, row.tx, row.ty, row.firstSeenAt, range);
+    if (now < end) {
+      return { state: GROWTH_SCAR, tile: node.depletedTile, stateSince: row.since, due: end, ripe: false };
+    }
+    return { state: GROWTH_SCAR, tile: row.tile, stateSince: end, due: null, ripe: true };
+  }
+  const sapling = saplingOf(row.tile);
+  const saplingWait = growWait(
+    seed,
+    ST_GROW_SAPLING,
+    row.tx,
+    row.ty,
+    row.firstSeenAt,
+    GROWTH.treeSaplingMinutes,
+  );
+  if (row.state === GROWTH_SCAR) {
+    const end =
+      row.since + growWait(seed, ST_GROW_SCAR, row.tx, row.ty, row.firstSeenAt, GROWTH.treeStumpMinutes);
+    if (now < end) {
+      return { state: GROWTH_SCAR, tile: node.depletedTile, stateSince: row.since, due: end, ripe: false };
+    }
+    // The stump relaxes to bare ground and WAITS FOR THE WORLD.
+    return { state: GROWTH_BARE, tile: Tile.Grass, stateSince: end, due: null, ripe: false };
+  }
+  if (row.state === GROWTH_BARE) {
+    if (row.due === null || now < row.due) {
+      return { state: GROWTH_BARE, tile: Tile.Grass, stateSince: row.since, due: row.due, ripe: false };
+    }
+    // Germination landed: the sapling stands at the checkpointed due.
+    const end = row.due + saplingWait;
+    if (sapling === null || now >= end) {
+      return { state: GROWTH_SAPLING, tile: row.tile, stateSince: end, due: null, ripe: true };
+    }
+    return { state: GROWTH_SAPLING, tile: sapling, stateSince: row.due, due: end, ripe: false };
+  }
+  const end = row.since + saplingWait;
+  if (sapling !== null && now < end) {
+    return { state: GROWTH_SAPLING, tile: sapling, stateSince: row.since, due: end, ripe: false };
+  }
+  return { state: GROWTH_SAPLING, tile: row.tile, stateSince: end, due: null, ripe: true };
+}
+
+// --------------------------------------------- THE LIVING WOOD (Ph2)
+
+/** THE REST FLOOR: bare ground may not roll germination before this. */
+export function bareRestFor(seed: number, tx: number, ty: number, nonce: number): number {
+  return growWait(seed, ST_GROW_BARE, tx, ty, nonce, GROWTH.treeBareMinutes);
+}
+
+/** Cadence between germination rolls for one dormant tile. */
+export function germEveryFor(seed: number, tx: number, ty: number, nonce: number): number {
+  return growWait(seed, ST_GROW_CHECK, tx, ty, nonce, GROWTH.germEveryMinutes);
+}
+
+/** Rolled-germination to visible sapling — the seed is in the ground. */
+export function germSproutFor(seed: number, tx: number, ty: number, nonce: number): number {
+  return growWait(seed, ST_GROW_SPROUT, tx, ty, nonce, GROWTH.germSproutMinutes);
+}
+
+/**
+ * THE FOREST GROWS FROM ITS EDGES, as one pure number: the germination
+ * chance for a bare tile with `sources` standing crowns in reach. The
+ * edge-inward wave is emergent — edges see crowns and race, hearts see
+ * none and wait on the pioneer whisper. Reads world state only (THE
+ * WORLD OWES YOU NOTHING).
+ */
+export function germinationChance(sources: number): number {
+  return Math.min(GROWTH.germChanceCap, GROWTH.pioneerChance + GROWTH.sourceBoost * sources);
+}
+
+/**
+ * THE DISPERSAL DRAW: which species rises. Seed-truth is always the
+ * aim (THE LAND REMEMBERS ITS NATURE — most regrowth heals clean and
+ * the ledger self-prunes); with driftChance, and only when neighbors
+ * actually stand, the seed is a neighbor's instead. Pure: the beat
+ * hands in its own rolls.
+ */
+export function drawSpecies(
+  truth: Tile | null,
+  neighborCrowns: readonly Tile[],
+  driftRoll: number,
+  pickRoll: number,
+  fallback: Tile,
+): Tile {
+  if (neighborCrowns.length > 0 && driftRoll < GROWTH.driftChance) {
+    return neighborCrowns[Math.min(neighborCrowns.length - 1, Math.floor(pickRoll * neighborCrowns.length))]!;
+  }
+  return truth ?? fallback;
 }
 
 // ------------------------------------------------- the Studio's half
@@ -258,6 +351,8 @@ export const AUTHORED_GROWTH: Readonly<GrowthDef> = Object.freeze({
   treeSaplingMinutes: [...GROWTH.treeSaplingMinutes] as [number, number],
   oreReopenMinutes: [...GROWTH.oreReopenMinutes] as [number, number],
   forageMinutes: [...GROWTH.forageMinutes] as [number, number],
+  germEveryMinutes: [...GROWTH.germEveryMinutes] as [number, number],
+  germSproutMinutes: [...GROWTH.germSproutMinutes] as [number, number],
 });
 
 export type ValidateGrowthResult = { ok: true; def: GrowthDef } | { ok: false; errors: string[] };
@@ -321,6 +416,14 @@ export function validateGrowth(raw: unknown): ValidateGrowthResult {
     forageMinutes: range('forageMinutes', 1, WEEK2),
     beatTicks: num('beatTicks', 20, 1200, true),
     beatBudget: num('beatBudget', 1, 256, true),
+    sourceReach: num('sourceReach', 1, 16, true),
+    sourceBoost: num('sourceBoost', 0, 1),
+    pioneerChance: num('pioneerChance', 0, 1),
+    germChanceCap: num('germChanceCap', 0, 1),
+    germEveryMinutes: range('germEveryMinutes', 1, WEEK2),
+    germSproutMinutes: range('germSproutMinutes', 1, WEEK2),
+    driftChance: num('driftChance', 0, 1),
+    courtesyRing: num('courtesyRing', 0, 4, true),
   };
   // Unknown keys are refused loudly — a typoed dial must never sit in
   // the doc pretending to steer anything.
@@ -345,6 +448,8 @@ export function replaceGrowth(next: GrowthDef): void {
     treeSaplingMinutes: [...next.treeSaplingMinutes],
     oreReopenMinutes: [...next.oreReopenMinutes],
     forageMinutes: [...next.forageMinutes],
+    germEveryMinutes: [...next.germEveryMinutes],
+    germSproutMinutes: [...next.germSproutMinutes],
   });
 }
 

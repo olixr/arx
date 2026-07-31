@@ -54,6 +54,7 @@ import {
   type SnapshotEntity,
   isRarityTier,
   saplingOf,
+  TREE_TILES,
   Tile,
   tileDef,
   chestInfo,
@@ -203,8 +204,15 @@ import {
   standingSellMult,
   peddlerLingerFor,
   GROWTH,
+  GROWTH_BARE,
+  GROWTH_DRIFTED,
   GROWTH_SCAR,
   GROWTH_STATE_NAMES,
+  bareRestFor,
+  drawSpecies,
+  germEveryFor,
+  germSproutFor,
+  germinationChance,
   growthDialectOf,
   growthTileForState,
   projectGrowth,
@@ -4067,10 +4075,17 @@ export class GameServer {
   private fellWild(tx: number, ty: number, node: NodeDef): void {
     this.setWorldTile(tx, ty, node.depletedTile!);
     const now = Date.now();
+    // THE LAND REMEMBERS ITS NATURE: the regrowth AIMS at worldgen's
+    // seed-truth, not at what fell — felling a drifted pine over
+    // oak-truth re-aims the ground at oak, so drift decays over
+    // harvest cycles instead of compounding. A truth of a different
+    // dialect (or none) keeps the felled species as the aim.
+    const truth = this.world.naturalGround(tx, ty) as Tile;
+    const aim = growthDialectOf(truth) === growthDialectOf(node.tile) ? truth : node.tile;
     const row: GrowthRow = {
       tx,
       ty,
-      tile: node.tile,
+      tile: aim,
       state: GROWTH_SCAR,
       since: now,
       due: null,
@@ -4097,9 +4112,11 @@ export class GameServer {
     const seed = config.worldSeed;
     for (const row of this.world.growthLedger.values()) {
       if (writes >= GROWTH.beatBudget) break;
+      // A drifted crown is at rest — only an axe moves it again.
+      if (row.state === GROWTH_DRIFTED) continue;
       if (row.deferUntil !== undefined && row.deferUntil > now) continue;
       const proj = projectGrowth(seed, row, now);
-      if (proj.due !== null && proj.state === row.state) {
+      if (!proj.ripe && proj.state === row.state) {
         row.due = proj.due; // dial edits re-aim the checkpoint for free
         continue;
       }
@@ -4118,7 +4135,7 @@ export class GameServer {
       const cx = Math.floor(row.tx / CHUNK_SIZE);
       const cy = Math.floor(row.ty / CHUNK_SIZE);
       const loaded = this.world.hasChunk(cx, cy);
-      const target = proj.due === null ? row.tile : proj.tile;
+      const target = proj.ripe ? row.tile : proj.tile;
       if (loaded) {
         // The world may have moved on under the checkpoint (a chest
         // staged over the scar, a prop burst) — let the row go rather
@@ -4141,11 +4158,24 @@ export class GameServer {
           continue;
         }
       }
-      if (proj.due === null) {
-        // Fully healed: the resource stands and the deviation ends.
+      if (proj.ripe) {
+        // The crown stands. Clean heal when it matches worldgen's
+        // seed-truth — the deviation ends and the pure land answers
+        // from here. A DIFFERENT species rests as a drifted crown:
+        // deleting it would resurrect the truth species on the next
+        // chunk regen, so the row is the tree's memory (THE LAND
+        // REMEMBERS ITS NATURE — the next felling re-aims at truth).
         if (loaded) this.setWorldTile(row.tx, row.ty, row.tile);
-        this.world.unregisterGrowth(row.tx, row.ty);
-        this.accounts.deleteGrowth(row.tx, row.ty);
+        const truth = this.world.naturalGround(row.tx, row.ty) as Tile;
+        if (row.tile === truth || growthDialectOf(row.tile) !== 'tree') {
+          this.world.unregisterGrowth(row.tx, row.ty);
+          this.accounts.deleteGrowth(row.tx, row.ty);
+        } else {
+          row.state = GROWTH_DRIFTED;
+          row.since = now;
+          row.due = null;
+          this.accounts.saveGrowth(row);
+        }
       } else {
         // An age advances (possibly several at once after a sleep —
         // the projection already walked them; the checkpoint jumps).
@@ -4157,6 +4187,103 @@ export class GameServer {
       }
       writes++;
     }
+    this.tickGermination(now);
+  }
+
+  /** Germination rolls per beat — capacity, not pacing (the pacing
+   *  dial is GROWTH.germEveryMinutes; most visits return on the cheap
+   *  cadence check long before any world scan). */
+  private static readonly GERM_VISITS_PER_BEAT = 8;
+  private germCursor = 0;
+
+  /** The one dice throw of the growth engine — a seam the slate tests
+   *  can stub. Everything else about germination is pure or guarded. */
+  private growthRand(): number {
+    return Math.random();
+  }
+
+  /**
+   * THE LIVING WOOD (second-growth Phase 2): visit dormant bare ground
+   * round-robin and roll germination against the STANDING WORLD — the
+   * pioneer whisper plus a boost per crown within dispersal reach, so
+   * clearcuts heal edge-inward as an emergent wave. A successful roll
+   * draws the species (seed-truth by default, a neighbor's crown on
+   * the drift chance) and checkpoints the sprout deadline; the pure
+   * walk owns everything after that.
+   */
+  private tickGermination(now: number): void {
+    const seed = config.worldSeed;
+    const dormant: GrowthRow[] = [];
+    for (const row of this.world.growthLedger.values()) {
+      if (row.state === GROWTH_BARE && row.due === null) dormant.push(row);
+    }
+    if (dormant.length === 0) return;
+    const visits = Math.min(GameServer.GERM_VISITS_PER_BEAT, dormant.length);
+    for (let i = 0; i < visits; i++) {
+      this.visitDormant(seed, dormant[(this.germCursor + i) % dormant.length]!, now);
+    }
+    this.germCursor = (this.germCursor + visits) % 1_000_000_007;
+  }
+
+  private visitDormant(seed: number, row: GrowthRow, now: number): void {
+    if (growthDialectOf(row.tile) !== 'tree') return; // Phase 3 owns the other dialects
+    // THE REST FLOOR: the soil recovers before it can take seed.
+    if (now < row.since + bareRestFor(seed, row.tx, row.ty, row.firstSeenAt)) return;
+    // The roll cadence — in-memory bookkeeping; a restart re-checks a
+    // little early, which is harmless.
+    if (
+      row.checkedAt !== undefined &&
+      now - row.checkedAt < germEveryFor(seed, row.tx, row.ty, row.firstSeenAt)
+    ) {
+      return;
+    }
+    row.checkedAt = now;
+    // THE BUILDER'S CLEARING: no germination inside a claimed yard and
+    // none against built ground or crops (the courtesy ring). The row
+    // is NOT dropped — the forest waits at the fence and grows back
+    // the day the claim lapses.
+    if (this.inClaimRing(row.tx, row.ty)) return;
+    const ring = GROWTH.courtesyRing;
+    for (let dy = -ring; dy <= ring; dy++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        if (this.world.builtAt(row.tx + dx, row.ty + dy) !== undefined) return;
+        if (this.world.hasCropTile(row.tx + dx, row.ty + dy)) return;
+      }
+    }
+    // Count the standing crowns in dispersal reach: seed-truth trees
+    // no ledger row has removed, plus drifted crowns — WILD ground
+    // only (zone dressing never seeds the open land).
+    const reach = GROWTH.sourceReach;
+    const crowns: Tile[] = [];
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        if (dx * dx + dy * dy > reach * reach) continue;
+        const tx = row.tx + dx;
+        const ty = row.ty + dy;
+        const other = this.world.growthAt(tx, ty);
+        if (other) {
+          // Scars, bare ground, and saplings cast no seed yet.
+          if (other.state === GROWTH_DRIFTED) crowns.push(other.tile);
+          continue;
+        }
+        if (this.world.growthDomainAt(tx, ty) !== 'wild') continue;
+        const truth = this.world.naturalGround(tx, ty) as Tile;
+        if (TREE_TILES.has(truth)) crowns.push(truth);
+      }
+    }
+    if (this.growthRand() >= germinationChance(crowns.length)) return;
+    const truthHere = this.world.naturalGround(row.tx, row.ty) as Tile;
+    const drawn = drawSpecies(
+      TREE_TILES.has(truthHere) ? truthHere : null,
+      crowns,
+      this.growthRand(),
+      this.growthRand(),
+      row.tile,
+    );
+    row.tile = drawn;
+    row.due = now + germSproutFor(seed, row.tx, row.ty, row.firstSeenAt);
+    this.accounts.saveGrowth(row);
   }
 
   /** Spawn a free-for-all ground drop (harvest overflow, laid eggs). */
@@ -9864,9 +9991,13 @@ export class GameServer {
         this.grantArt(player, art);
       } else {
         player.flags.set(flag, after);
-        // The codex meter breathes at coarse steps, never per hit.
-        const step = Math.max(1, Math.floor(cost / 20));
-        if (Math.floor(after / step) > Math.floor(before / step)) this.sendTechniques(player);
+        // The codex meter breathes at whole-percent steps — the exact
+        // grain THE SPOKEN NUMBER shows — and always on the FIRST
+        // point, so 'not yet begun' dies with the first landed hit.
+        const step = Math.max(1, Math.floor(cost / 100));
+        if (before === 0 || Math.floor(after / step) > Math.floor(before / step)) {
+          this.sendTechniques(player);
+        }
       }
     }
   }
@@ -16583,7 +16714,12 @@ export class GameServer {
       const now = Date.now();
       for (const row of this.world.growthLedger.values()) {
         const dialect = growthDialectOf(row.tile) ?? 'gone';
-        const age = GROWTH_STATE_NAMES[row.state] ?? `state${row.state}`;
+        const age =
+          row.state === GROWTH_BARE
+            ? row.due === null
+              ? 'bare-dormant'
+              : 'bare-seeded'
+            : (GROWTH_STATE_NAMES[row.state] ?? `state${row.state}`);
         const k = `${dialect} ${age}`;
         census.set(k, (census.get(k) ?? 0) + 1);
         const d = Math.hypot(row.tx + 0.5 - pos.x, row.ty + 0.5 - pos.y);
@@ -16599,8 +16735,13 @@ export class GameServer {
       let near = 'none';
       if (nearest) {
         const proj = projectGrowth(config.worldSeed, nearest, now);
-        const eta =
-          proj.due === null ? 'healed, awaiting the beat' : `${Math.max(0, Math.round((proj.due - now) / 60000))}m to next age`;
+        const eta = proj.ripe
+          ? 'ripe, awaiting the beat'
+          : proj.due === null
+            ? proj.state === GROWTH_DRIFTED
+              ? 'a drifted crown, at rest'
+              : 'dormant, waiting on the world'
+            : `${Math.max(0, Math.round((proj.due - now) / 60000))}m to next age`;
         near =
           `${nearest.tx},${nearest.ty} (${Math.round(nearestD)} tiles) ` +
           `${GROWTH_STATE_NAMES[proj.state] ?? proj.state}, ${eta}`;

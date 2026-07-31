@@ -5,8 +5,11 @@ import {
   AUTHORED_GROWTH,
   GROWTH,
   GROWTH_BARE,
+  GROWTH_DRIFTED,
   GROWTH_SAPLING,
   GROWTH_SCAR,
+  drawSpecies,
+  germinationChance,
   growthDialectOf,
   growthTileForState,
   projectGrowth,
@@ -57,6 +60,8 @@ test('THE BACKFILL LAW: an empty doc adopts every authored dial', () => {
     treeSaplingMinutes: [...AUTHORED_GROWTH.treeSaplingMinutes],
     oreReopenMinutes: [...AUTHORED_GROWTH.oreReopenMinutes],
     forageMinutes: [...AUTHORED_GROWTH.forageMinutes],
+    germEveryMinutes: [...AUTHORED_GROWTH.germEveryMinutes],
+    germSproutMinutes: [...AUTHORED_GROWTH.germSproutMinutes],
   });
 });
 
@@ -87,14 +92,14 @@ test('ONE ENGINE, THREE DIALECTS: every depleting node speaks exactly one', () =
   assert.equal(growthDialectOf(Tile.Grass), null, 'plain ground speaks no dialect');
 });
 
-test('THE THREE AGES: a felled tree walks scar -> bare -> sapling -> healed', () => {
+test('THE THREE AGES: scar relaxes to DORMANT bare — time alone never stands a tree', () => {
   const t0 = 1_700_000_000_000;
   const r = row(Tile.TreeOak, 4213, 977, t0);
 
   const scar = projectGrowth(SEED, r, t0);
   assert.equal(scar.state, GROWTH_SCAR);
   assert.equal(scar.tile, Tile.Stump, 'the scar wears the stump');
-  assert.ok(scar.due !== null, 'a fresh scar has a deadline');
+  assert.ok(scar.due !== null && !scar.ripe, 'a fresh scar has a deadline');
   const stumpWait = scar.due! - t0;
   assert.ok(
     stumpWait >= GROWTH.treeStumpMinutes[0] * 60_000 &&
@@ -105,20 +110,52 @@ test('THE THREE AGES: a felled tree walks scar -> bare -> sapling -> healed', ()
   const bare = projectGrowth(SEED, r, scar.due!);
   assert.equal(bare.state, GROWTH_BARE);
   assert.equal(bare.tile, Tile.Grass, 'the stump relaxes to bare buildable grass');
-  const bareWait = bare.due! - bare.stateSince;
+  assert.equal(bare.due, null, 'bare ground is DORMANT — germination is a world event');
+  assert.equal(bare.ripe, false);
+
+  // A century of clock and the walk still waits at bare ground.
+  const century = projectGrowth(SEED, r, t0 + 100 * 365 * 24 * 3_600_000);
+  assert.equal(century.state, GROWTH_BARE);
+  assert.equal(century.tile, Tile.Grass);
+  assert.equal(century.ripe, false, 'THE WORLD DECIDES — the clock alone never does');
+});
+
+test('a germinated checkpoint walks bare -> sapling -> ripe crown', () => {
+  const t0 = 1_700_000_000_000;
+  const germDue = t0 + 3_600_000;
+  const r: GrowthRow = {
+    ...row(Tile.TreeOak, 4213, 977, t0),
+    state: GROWTH_BARE,
+    since: t0,
+    due: germDue,
+  };
+  const waiting = projectGrowth(SEED, r, t0 + 60_000);
+  assert.equal(waiting.state, GROWTH_BARE);
+  assert.equal(waiting.due, germDue, 'the seed is in the ground, the deadline holds');
+
+  const sapling = projectGrowth(SEED, r, germDue);
+  assert.equal(sapling.state, GROWTH_SAPLING);
+  assert.equal(sapling.tile, Tile.SaplingOak, 'the sapling keeps the drawn species');
+  const saplingWait = sapling.due! - sapling.stateSince;
   assert.ok(
-    bareWait >= GROWTH.treeBareMinutes[0] * 60_000 &&
-      bareWait <= GROWTH.treeBareMinutes[1] * 60_000,
-    'bare wait must sit in the authored band',
+    saplingWait >= GROWTH.treeSaplingMinutes[0] * 60_000 &&
+      saplingWait <= GROWTH.treeSaplingMinutes[1] * 60_000,
+    'sapling wait must sit in the authored band',
   );
 
-  const sapling = projectGrowth(SEED, r, bare.due!);
-  assert.equal(sapling.state, GROWTH_SAPLING);
-  assert.equal(sapling.tile, Tile.SaplingOak, 'the sapling keeps the species');
+  const ripe = projectGrowth(SEED, r, sapling.due!);
+  assert.equal(ripe.ripe, true, 'past the sapling the crown is ripe');
+  assert.equal(ripe.tile, Tile.TreeOak, 'the crown wears the aimed species');
+});
 
-  const healed = projectGrowth(SEED, r, sapling.due!);
-  assert.equal(healed.due, null, 'past the last age the row is healed');
-  assert.equal(healed.tile, Tile.TreeOak, 'healed ground wears the seed-truth tree');
+test('a drifted crown rests forever — only an axe moves it', () => {
+  const t0 = 1_700_000_000_000;
+  const r: GrowthRow = { ...row(Tile.TreePine, 11, 12, t0), state: GROWTH_DRIFTED };
+  const rest = projectGrowth(SEED, r, t0 + 400 * 24 * 3_600_000);
+  assert.equal(rest.state, GROWTH_DRIFTED);
+  assert.equal(rest.tile, Tile.TreePine, 'the drifted species stands');
+  assert.equal(rest.ripe, false, 'never ripe — the row IS the tree');
+  assert.equal(rest.due, null);
 });
 
 test('ore and forage speak one long beat each', () => {
@@ -133,14 +170,14 @@ test('ore and forage speak one long beat each', () => {
     'the vein re-opens inside the authored band',
   );
   const reopened = projectGrowth(SEED, ore, oreScar.due!);
-  assert.equal(reopened.due, null, 'one beat and the vein stands');
+  assert.equal(reopened.ripe, true, 'one beat and the vein stands');
   assert.equal(reopened.tile, Tile.RockGold);
 
   const bush = row(Tile.BerryBush, 700, 42, t0);
   const bushScar = projectGrowth(SEED, bush, t0);
   assert.equal(bushScar.tile, Tile.Grass, 'picked forage leaves bare grass');
   const back = projectGrowth(SEED, bush, bushScar.due!);
-  assert.equal(back.due, null);
+  assert.equal(back.ripe, true);
   assert.equal(back.tile, Tile.BerryBush);
 });
 
@@ -167,7 +204,8 @@ test('a checkpointed row walks to the same future as a fresh one', () => {
   const scar = projectGrowth(SEED, fresh, t0);
   const bare = projectGrowth(SEED, fresh, scar.due!);
   // Advance the checkpoint the way the beat does, then ask about a
-  // moment deep in the future from BOTH rows — the answers must agree.
+  // moment deep in the future from BOTH rows — the answers must agree
+  // (both wait dormant at bare ground under the Phase 2 law).
   const advanced: GrowthRow = {
     ...fresh,
     state: bare.state,
@@ -188,6 +226,48 @@ test('growthTileForState answers the stored age', () => {
   assert.equal(growthTileForState(SEED, r), Tile.Stump);
   assert.equal(growthTileForState(SEED, { ...r, state: GROWTH_BARE }), Tile.Grass);
   assert.equal(growthTileForState(SEED, { ...r, state: GROWTH_SAPLING }), Tile.SaplingPine);
+  assert.equal(
+    growthTileForState(SEED, { ...r, state: GROWTH_DRIFTED, tile: Tile.TreeYew }),
+    Tile.TreeYew,
+    'a drifted crown is its own tile',
+  );
+});
+
+test('THE FOREST GROWS FROM ITS EDGES: the chance is the wave', () => {
+  assert.equal(
+    germinationChance(0),
+    GROWTH.pioneerChance,
+    'zero crowns leaves only the pioneer whisper',
+  );
+  assert.ok(
+    Math.abs(germinationChance(3) - (GROWTH.pioneerChance + 3 * GROWTH.sourceBoost)) < 1e-9,
+    'each crown in reach boosts the roll',
+  );
+  assert.equal(germinationChance(1000), GROWTH.germChanceCap, 'the cap holds');
+});
+
+test('THE DISPERSAL DRAW aims at seed-truth and drifts only by chance', () => {
+  const crowns = [Tile.TreePine, Tile.TreeOak, Tile.TreePine];
+  assert.equal(
+    drawSpecies(Tile.TreeOak, crowns, 0.99, 0.5, Tile.Tree),
+    Tile.TreeOak,
+    'past the drift chance the truth species rises',
+  );
+  assert.equal(
+    drawSpecies(Tile.TreeOak, crowns, 0, 0, Tile.Tree),
+    Tile.TreePine,
+    'the drift roll hands a neighbor seed',
+  );
+  assert.equal(
+    drawSpecies(Tile.TreeOak, [], 0, 0, Tile.Tree),
+    Tile.TreeOak,
+    'no neighbors means no drift, whatever the roll',
+  );
+  assert.equal(
+    drawSpecies(null, [], 0.99, 0, Tile.Tree),
+    Tile.Tree,
+    'no truth and no neighbors falls back to the felled species',
+  );
 });
 
 test('ZoneDef.growth rides serialization; the default stays absent', () => {
