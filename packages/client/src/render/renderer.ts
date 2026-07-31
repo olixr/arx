@@ -95,6 +95,26 @@ import {
   type SpillInfo,
 } from './waterfalls.js';
 import { Debris, type SmashKind } from './debris.js';
+import {
+  TRAIL_PRINT_CAP,
+  TRAIL_PRINT_MS,
+  TRAIL_STANCE,
+  TRAIL_STRIDE,
+  WORN_LIGHT_BODY_BUDGET,
+  WORN_LIGHT_FAR,
+  elementTint,
+  glintAt,
+  printKind,
+  resolveWornLight,
+  tierGlowAlpha,
+  tierGlowRadius,
+  tierMoteRate,
+  trailStrength,
+  procVoice,
+  type ElementTint,
+  type PrintKind,
+  type WornLight,
+} from './wornLight.js';
 import { buildableIconUrl } from './icons.js';
 import { Birds, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
@@ -367,37 +387,15 @@ const PROJ_AIR = 0.62;
  * (or `arx_heavy:<element>`) picks its palette here — bolt layers,
  * muzzle flash, wake, glow, and impact burst all draw from one tint so
  * every staff's fire reads as ITS fire. Unsuffixed Arx stays arcane.
+ *
+ * THE ONE TINT TABLE lives in wornLight.ts: the worn-light grammar, the
+ * projectile painters, and the rig's blade fx must all agree on what
+ * "ember" looks like, or an ember blade will not match the ember trail
+ * its wearer leaves.
  */
-interface ElementTint {
-  /** Hot center of the bolt. */
-  core: string;
-  /** Main body color. */
-  mid: string;
-  /** Shadow tone as 'r, g, b' — soft halos and the trailing wake. */
-  deep: string;
-  /** White-hot fleck accent shed in flight. */
-  fleck: string;
-  /** queueGlow tint as 'r, g, b'. */
-  glow: string;
-}
-
-const ELEMENT_TINTS: Record<string, ElementTint> = {
-  arcane: { core: '#efe3ff', mid: '#b49af0', deep: '122, 90, 196', fleck: '#fff8c8', glow: '180, 154, 240' },
-  ember: { core: '#ffe8b0', mid: '#ff8a4a', deep: '196, 74, 30', fleck: '#ffd98a', glow: '255, 138, 74' },
-  frost: { core: '#f0faff', mid: '#8ac4e8', deep: '74, 130, 180', fleck: '#d8f0fc', glow: '138, 196, 232' },
-  storm: { core: '#fffdf0', mid: '#ffe86a', deep: '170, 150, 60', fleck: '#ffffff', glow: '255, 232, 106' },
-  verdant: { core: '#eaffd8', mid: '#7ac46a', deep: '58, 122, 58', fleck: '#d8ffb0', glow: '122, 196, 106' },
-  // Void runs inverted: a dark heart in a pale shell — the one school
-  // whose flecks are darker than its body.
-  void: { core: '#c8b0e8', mid: '#7a5adf', deep: '46, 32, 84', fleck: '#38284e', glow: '122, 90, 223' },
-  radiant: { core: '#ffffff', mid: '#ffd98a', deep: '196, 150, 70', fleck: '#fff2c8', glow: '255, 217, 138' },
-  blood: { core: '#ffb0a8', mid: '#d95763', deep: '134, 38, 48', fleck: '#ff8a8a', glow: '217, 87, 99' },
-  astral: { core: '#ffffff', mid: '#9ae8de', deep: '90, 140, 180', fleck: '#e8b0ff', glow: '154, 232, 222' },
-};
-
-/** Palette for a projectile style string ('arx:ember' → ember). */
-function elementTint(style: string): ElementTint {
-  return ELEMENT_TINTS[style.split(':')[1] ?? 'arcane'] ?? ELEMENT_TINTS['arcane']!;
+/** Palette for a projectile style string ('arx:ember' -> ember). */
+function projectileTint(style: string): ElementTint {
+  return elementTint(style.split(':')[1]);
 }
 /** How long a landed arrow stands in the world before fading. */
 const STUCK_ARROW_MS = 90_000;
@@ -1179,6 +1177,41 @@ export class Renderer {
     });
     if (this.fxDecals.length > 26) this.fxDecals.shift();
   }
+
+  // ---------------------------------------------------- the worn light
+
+  /**
+   * Per-body motion, kept because the trail needs SPEED and the wire
+   * only ever carries positions. Keyed by eid (or 'own'); swept when a
+   * body stops being drawn.
+   */
+  private readonly wornMotion = new Map<
+    string | number,
+    { x: number; y: number; t: number; speed: number; stride: number; foot: number; seen: number }
+  >();
+
+  /**
+   * Live footprints. A ring buffer, hard-capped, because this is the
+   * only system in the game allowed to write on the ground and an
+   * uncapped one would turn a busy square into a light puddle.
+   */
+  private readonly trailPrints: Array<{
+    x: number;
+    y: number;
+    /** Heading the foot was travelling — prints point the way you ran. */
+    a: number;
+    kind: PrintKind;
+    tint: ElementTint;
+    tier: number;
+    strength: number;
+    bornAt: number;
+    seed: number;
+  }> = [];
+
+  /** Where "near" is measured from — the own body, or the camera. */
+  private wornOrigin = { x: 0, y: 0 };
+  /** Lit bodies counted this frame, for the crowd backstop. */
+  private wornLitBodies = 0;
 
   /** Placement preview set by the build mode; null when inactive. */
   /**
@@ -3031,6 +3064,10 @@ export class Renderer {
     // y-sorted world so bodies stand on them: the far rim hides behind
     // the caster, the near rim rolls out in front of their feet.
     this.drawGroundFx(game);
+    // THE TRAIL lies with the spell floors: under every body, over the
+    // turf. Drawn before the rings so a waypoint ring still reads on
+    // top of a trail that ran through it.
+    this.drawTrail(performance.now());
     this.drawRings();
     // The level ceremony's ground half — honor seal, light pool and
     // pressure rings lie ON the turf like every other spell floor: the
@@ -22039,6 +22076,20 @@ export class Renderer {
     this.frameLoot.length = 0;
     this.consumeProjectileAftermath(game, now);
 
+    // THE WORN LIGHT measures "near" from the player's own body, and
+    // budgets its lit bodies per frame. Both are armed before the walk
+    // so the own body is never the one that gets cut.
+    this.wornOrigin =
+      game.ownEid !== null ? game.predictor.renderPos() : { x: this.camera.x, y: this.camera.y };
+    this.wornLitBodies = 0;
+    // Bodies that stopped being drawn forget their stride; without this
+    // the motion map would grow for every soul ever seen this session.
+    if (this.frameNo % 180 === 0) {
+      for (const [key, m] of this.wornMotion) {
+        if (m.seen < this.frameNo - 120) this.wornMotion.delete(key);
+      }
+    }
+
     for (const [eid, remote] of game.entities) {
       const timeline = remote.meta.kind === EntityKind.Projectile ? tProj : t;
       const s = remote.buffer.sampleAt(timeline) ?? {
@@ -22053,7 +22104,7 @@ export class Renderer {
       const hurt = (remote.hurtUntil ?? 0) > now;
       if (s.status) this.statusAmbience(s.x, s.y, s.status);
       const remoteEnch = remote.meta.appearance?.ench;
-      if (remoteEnch) this.enchantAura(s.x, s.y, remoteEnch);
+      if (remoteEnch) this.wornLight(eid, s.x, s.y, s.dir, remoteEnch, false);
 
       switch (remote.meta.kind) {
         case EntityKind.Player: {
@@ -22221,7 +22272,7 @@ export class Renderer {
           ownEnch[slot] = worn.roll.ench;
         }
       }
-      if (ownEnch) this.enchantAura(own.x, own.y, ownEnch);
+      if (ownEnch) this.wornLight('own', own.x, own.y, game.aim, ownEnch, true);
       const ownItem = this.humanoidItem({
         eid: 'own',
         x: own.x,
@@ -23328,6 +23379,9 @@ export class Renderer {
               ? e.ench?.weapon
               : undefined,
           offhandEnch: e.ench?.offhand,
+          // THE WORN LIGHT's body-space half: every armor slot's working
+          // rides into the rig, which overlays each onto its piece.
+          armorEnch: e.ench,
           carryStyle: e.carry,
           carryOff: e.carryOff,
           bodyItem: e.equip.body,
@@ -25032,7 +25086,7 @@ export class Renderer {
     const ax = s.x;
     const ay = this.projAirWorldY(s.y);
     const arx = style.startsWith('arx');
-    const tint = elementTint(style);
+    const tint = projectileTint(style);
 
     // Muzzle flash — the first frame we see a shot, it POPS out of the
     // weapon: a directional spray of shards + a glow spike.
@@ -25364,7 +25418,7 @@ export class Renderer {
     for (const end of game.projectileEnds) {
       if (end.style.startsWith('arx')) {
         const heavy = end.style.split(':')[0] === 'arx_heavy';
-        const t = elementTint(end.style);
+        const t = projectileTint(end.style);
         const fy = this.projAirWorldY(end.y);
         this.particles.burst(end.x, fy, heavy ? 16 : 8, [t.mid, `rgb(${t.deep})`, t.core, t.fleck], {
           speed: heavy ? 3.2 : 2.2,
@@ -26091,31 +26145,233 @@ export class Renderer {
     }
   }
 
+  // ===================================================== THE WORN LIGHT
+
   /**
-   * The tier-3 enchant aura: an energy corona that marks a walking
-   * masterwork. The strongest worn enchant sets the school and the
-   * color; lower tiers stay quiet here (their fx live on the item
-   * itself). Same fps-stable rate-gating as statusAmbience, plus a
-   * breathing glow that becomes a real scene light after dark.
+   * The world-space half of the worn-light grammar (wornLight.ts holds
+   * the law): the trail under the boots, the wake off the cape, and the
+   * body-wide corona. The body-space half — brow, weave, knuckles,
+   * greaves, rune face — rides the rig, where the joints are known.
+   *
+   * Called once per lit body per frame from collectEntities. Rate-gated
+   * on frameDt exactly like statusAmbience, so the effect costs the
+   * same at 30fps and 144fps.
    */
-  private enchantAura(x: number, y: number, ench: Partial<Record<string, string>>): void {
-    let best: { tier: number; element: string } | null = null;
-    for (const id of Object.values(ench)) {
-      const def = id ? enchantDef(id) : undefined;
-      if (def && (!best || def.tier > best.tier)) best = { tier: def.tier, element: def.element };
+  private wornLight(
+    key: string | number,
+    x: number,
+    y: number,
+    dir: number,
+    ench: Partial<Record<string, string>> | undefined,
+    isOwn: boolean,
+  ): void {
+    if (!ench) {
+      this.wornMotion.delete(key);
+      return;
     }
-    if (!best || best.tier < 3) return;
-    const tint = ELEMENT_TINTS[best.element] ?? ELEMENT_TINTS.arcane!;
+    const light = resolveWornLight(ench);
+    if (!light.any) {
+      this.wornMotion.delete(key);
+      return;
+    }
+    // THE READABILITY CAP: your own light is always full; other people's
+    // fades with range and falls silent past the far mark.
+    const dist = isOwn ? 0 : Math.hypot(x - this.wornOrigin.x, y - this.wornOrigin.y);
+    if (dist >= WORN_LIGHT_FAR) {
+      this.wornMotion.delete(key);
+      return;
+    }
+    const voice = isOwn ? 1 : 1 - dist / WORN_LIGHT_FAR;
+    // The crowd backstop: past the budget, remote bodies keep their glow
+    // (which is cheap and reads at a glance) and stop shedding matter.
+    this.wornLitBodies++;
+    const mayShed = isOwn || this.wornLitBodies <= WORN_LIGHT_BODY_BUDGET;
+
+    const now = performance.now();
+    const speed = this.trackWornMotion(key, x, y, now);
+
+    if (light.slots.boots) this.trail(key, x, y, dir, speed, light.slots.boots, voice, mayShed);
+    if (light.slots.cape) this.capeWake(x, y, dir, speed, light.slots.cape, voice, mayShed);
+    this.wornCorona(x, y, light, voice, mayShed);
+  }
+
+  /**
+   * Ground speed, in tiles per second, for a body we only ever see
+   * positions of. Remote bodies arrive interpolated and own arrives
+   * predicted, so measuring the delta is both the simplest and the most
+   * honest source: whatever the body VISIBLY did is what the trail
+   * answers to.
+   */
+  private trackWornMotion(key: string | number, x: number, y: number, now: number): number {
+    const m = this.wornMotion.get(key);
+    if (!m) {
+      this.wornMotion.set(key, { x, y, t: now, speed: 0, stride: 0, foot: 0, seen: this.frameNo });
+      return 0;
+    }
+    const dt = (now - m.t) / 1000;
+    m.seen = this.frameNo;
+    // A long gap means the body left interest and came back somewhere
+    // else; teleports and respawns land here too. Re-seed rather than
+    // reporting a thousand tiles per second and painting a stripe
+    // across the map.
+    const step = Math.hypot(x - m.x, y - m.y);
+    if (dt <= 0) return m.speed;
+    if (dt > 0.5 || step > 3) {
+      m.x = x;
+      m.y = y;
+      m.t = now;
+      m.speed = 0;
+      m.stride = 0;
+      return 0;
+    }
+    // Low-passed: raw frame deltas jitter badly against interpolation,
+    // and a trail that flickers on and off at the speed gate would be
+    // worse than no trail at all.
+    const raw = step / dt;
+    m.speed += (raw - m.speed) * Math.min(1, dt * 9);
+    m.stride += step;
+    m.x = x;
+    m.y = y;
+    m.t = now;
+    return m.speed;
+  }
+
+  /**
+   * THE TRAIL. Prints stamped one stride apart, alternating left and
+   * right of the line of travel, plus motes shed while moving. Speed
+   * gated: walking leaves nothing, only a runner paints.
+   */
+  private trail(
+    key: string | number,
+    x: number,
+    y: number,
+    dir: number,
+    speed: number,
+    slot: { element: string; tier: number; tint: ElementTint },
+    voice: number,
+    mayShed: boolean,
+  ): void {
+    const strength = trailStrength(speed) * voice;
+    const m = this.wornMotion.get(key);
+    if (!m) return;
+    if (strength <= 0) {
+      // Standing still banks no stride, so the first step after a pause
+      // does not immediately stamp a print at the wearer's heel.
+      m.stride = 0;
+      return;
+    }
+    while (m.stride >= TRAIL_STRIDE) {
+      m.stride -= TRAIL_STRIDE;
+      m.foot = m.foot === 0 ? 1 : 0;
+      // Feet land either side of the line of travel. Using the heading
+      // rather than the aim keeps prints under a strafing body.
+      const heading = Math.atan2(y - m.y || Math.sin(dir), x - m.x || Math.cos(dir));
+      const side = (m.foot === 0 ? 1 : -1) * TRAIL_STANCE;
+      this.trailPrints.push({
+        x: x + Math.cos(heading + Math.PI / 2) * side,
+        y: y + Math.sin(heading + Math.PI / 2) * side * 0.5,
+        a: heading,
+        kind: printKind(slot.element),
+        tint: slot.tint,
+        tier: slot.tier,
+        strength,
+        bornAt: performance.now(),
+        seed: (Math.random() * 0x7fffffff) | 0,
+      });
+      if (this.trailPrints.length > TRAIL_PRINT_CAP) this.trailPrints.shift();
+    }
+    // The shed: motes falling off the heel while the trail is live.
+    // `ground: true` puts them in the y-sort, so a trail behind a
+    // south-running body paints UNDER the body, never over it.
+    if (!mayShed) return;
+    const rate = tierMoteRate(slot.tier) * strength * 1.6;
+    if (rate > 0 && Math.random() < this.frameDt * rate) {
+      const dark = slot.element === 'void';
+      this.particles.burst(
+        x + (Math.random() - 0.5) * 0.24,
+        y + 0.04,
+        1,
+        dark ? [slot.tint.fleck, slot.tint.deep] : [slot.tint.core, slot.tint.fleck],
+        {
+          speed: 0.35,
+          life: 0.45 + Math.random() * 0.3,
+          size: 0.055,
+          gravity: dark ? 0.4 : -0.9,
+          drag: 2.2,
+          ground: true,
+          shape: dark ? 'puff' : 'glint',
+        },
+      );
+    }
+  }
+
+  /**
+   * THE WAKE. The cape's channel: matter shedding off the trailing hem,
+   * behind the body and low, so it reads as the garment leaving light
+   * behind rather than the body being on fire. Motion-scaled, because a
+   * standing cape has no wake.
+   */
+  private capeWake(
+    x: number,
+    y: number,
+    dir: number,
+    speed: number,
+    slot: { element: string; tier: number; tint: ElementTint },
+    voice: number,
+    mayShed: boolean,
+  ): void {
+    if (!mayShed) return;
+    const drive = Math.min(1, speed / 4.2) * voice;
+    // A tier-3 mantle keeps a slow wake even at rest: the cloth is
+    // charged, not merely moving.
+    const rate = tierMoteRate(slot.tier) * (0.15 + drive * 0.85);
+    if (rate <= 0 || Math.random() >= this.frameDt * rate) return;
+    const back = dir + Math.PI;
+    this.particles.burst(
+      x + Math.cos(back) * 0.26 + (Math.random() - 0.5) * 0.16,
+      y + Math.sin(back) * 0.12 - 0.5 - Math.random() * 0.25,
+      1,
+      [slot.tint.core, slot.tint.fleck],
+      {
+        speed: 0.3 + drive * 0.9,
+        dir: back,
+        spread: 0.55,
+        life: 0.5 + Math.random() * 0.35,
+        size: 0.06,
+        gravity: -0.5,
+        drag: 1.7,
+        shape: 'glint',
+      },
+    );
+  }
+
+  /**
+   * The body-wide corona. Tier is loudness: a tier-1 kit gets nothing
+   * here (its whole voice is the per-slot glint on the rig), tier 2
+   * gets a quiet lamp that becomes real scene light after dark, and
+   * tier 3 gets the living charge that marks a walking masterwork.
+   *
+   * The corona answers the STRONGEST worn working only. Summing eight
+   * of them would put a bonfire on anyone with a full kit and undo the
+   * per-slot reading the whole grammar is built on.
+   */
+  private wornCorona(x: number, y: number, light: WornLight, voice: number, mayShed: boolean): void {
+    const best = light.best;
+    if (!best) return;
+    const alpha = tierGlowAlpha(best.tier);
+    if (alpha <= 0) return;
     const t = performance.now() / 1000;
     const dt = this.frameDt;
     // The corona breathes — never a steady lamp, always a living charge.
     const breath = 0.5 + 0.5 * Math.sin(t * 2.1 + x * 3.7);
-    this.queueGlow(x, y - 0.45, 1.0 + breath * 0.25, tint.glow, 0.2 + breath * 0.1);
+    const r = tierGlowRadius(best.tier);
+    this.queueGlow(x, y - 0.45, r + breath * 0.25, best.tint.glow, (alpha + breath * 0.1) * voice);
+    if (!mayShed || best.tier < 3) return;
     // Rising motes on a loose ring around the body — the supercharged read.
-    if (Math.random() < dt * 7) {
+    if (Math.random() < dt * 7 * voice) {
       const a = Math.random() * Math.PI * 2;
-      const r = 0.32 + Math.random() * 0.2;
-      this.particles.burst(x + Math.cos(a) * r, y - 0.15 + Math.sin(a) * r * 0.5, 1, [tint.core, tint.fleck], {
+      const rr = 0.32 + Math.random() * 0.2;
+      this.particles.burst(x + Math.cos(a) * rr, y - 0.15 + Math.sin(a) * rr * 0.5, 1, [best.tint.core, best.tint.fleck], {
         speed: 0.12,
         life: 0.9,
         size: 0.06,
@@ -26124,9 +26380,9 @@ export class Renderer {
       });
     }
     // The occasional tangential spark whipping around the corona.
-    if (Math.random() < dt * 2.5) {
+    if (Math.random() < dt * 2.5 * voice) {
       const a = Math.random() * Math.PI * 2;
-      this.particles.burst(x + Math.cos(a) * 0.42, y - 0.3 + Math.sin(a) * 0.2, 1, [tint.fleck], {
+      this.particles.burst(x + Math.cos(a) * 0.42, y - 0.3 + Math.sin(a) * 0.2, 1, [best.tint.fleck], {
         speed: 1.6,
         dir: a + Math.PI / 2,
         spread: 0.3,
@@ -27705,6 +27961,260 @@ export class Renderer {
    * rim of a nova hides behind the caster, the near rim rolls out in
    * front of their feet. That one fact seats the Arx in the world.
    */
+  /**
+   * THE TRAIL, painted. Runs in the ground pass so every print lies
+   * UNDER the y-sorted world: a body standing on its own trail hides
+   * the part behind its heels, exactly as it should.
+   *
+   * Prints are stamped during collectEntities, which runs after this
+   * pass, so a print appears one frame after the foot fell. That is
+   * imperceptible on a mark that lives 1.2 seconds, and it buys us a
+   * single entity walk per frame instead of two.
+   *
+   * Every school writes differently. These are nine SHAPES, not one
+   * shape in nine colors: a rime print whitens the turf and a void
+   * print darkens it, and if you desaturated the whole screen you
+   * would still be able to tell which school ran past.
+   */
+  private drawTrail(now: number): void {
+    if (this.trailPrints.length === 0) return;
+    const ctx = this.ctx;
+    const sc = this.camera.scale;
+    const squash = Renderer.FX_SQUASH;
+    for (let i = this.trailPrints.length - 1; i >= 0; i--) {
+      const pr = this.trailPrints[i]!;
+      const t = (now - pr.bornAt) / TRAIL_PRINT_MS;
+      if (t >= 1) {
+        this.trailPrints.splice(i, 1);
+        continue;
+      }
+      const p = this.camera.worldToScreen(pr.x, pr.y, this.w, this.h);
+      p.y -= this.renderLift(pr.x, pr.y) * sc;
+      // Off screen prints still age; they just cost nothing to skip.
+      if (p.x < -80 || p.x > this.w + 80 || p.y < -80 || p.y > this.h + 80) continue;
+      const rand = srand(pr.seed);
+      // Land hard, hold, then release. A linear fade reads as a smear;
+      // the hold is what makes each print a discrete FOOTFALL.
+      const fade = (t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45) * pr.strength;
+      if (fade <= 0.01) continue;
+      // A print is a small oriented oval: long along the heading, so a
+      // running trail reads as a line of feet, not a row of dots.
+      const len = sc * 0.17;
+      const wid = sc * 0.1;
+      const ca = Math.cos(pr.a);
+      const sa = Math.sin(pr.a);
+      const tint = pr.tint;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(Math.atan2(sa * squash, ca));
+      const R = Math.hypot(ca, sa * squash);
+      const lx = len * R;
+
+      switch (pr.kind) {
+        case 'scorch': {
+          // Charred turf with an edge that is still orange. The heat
+          // dies faster than the mark: the ring goes early, the char
+          // stays to the end.
+          ctx.globalAlpha = 0.5 * fade;
+          ctx.fillStyle = '#20130d';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, lx, wid, 0, 0, Math.PI * 2);
+          ctx.fill();
+          const heat = Math.max(0, 1 - t / 0.45);
+          if (heat > 0) {
+            ctx.globalAlpha = 0.75 * fade * heat;
+            ctx.strokeStyle = tint.mid;
+            ctx.lineWidth = Math.max(1.2, sc * 0.03);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, lx * 0.92, wid * 0.9, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // Two coals inside the char, each on its own clock.
+            ctx.globalAlpha = fade * heat * (0.5 + 0.5 * Math.sin(now / 90 + pr.seed));
+            ctx.fillStyle = tint.core;
+            for (let k = 0; k < 2; k++) {
+              const s = sc * 0.026;
+              ctx.fillRect((rand() - 0.5) * lx, (rand() - 0.5) * wid, s, s);
+            }
+          }
+          break;
+        }
+        case 'rime': {
+          // The turf frosts WHITE — the one print that lightens ground
+          // instead of marking it. Needles creep outward as it sets,
+          // so the print grows for a beat before it goes.
+          const set = Math.min(1, t / 0.3);
+          ctx.globalAlpha = 0.42 * fade;
+          ctx.fillStyle = tint.core;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, lx * (0.7 + set * 0.3), wid * (0.7 + set * 0.3), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.6 * fade;
+          ctx.strokeStyle = tint.mid;
+          ctx.lineWidth = Math.max(1, sc * 0.02);
+          ctx.beginPath();
+          for (let k = 0; k < 6; k++) {
+            const a = rand() * Math.PI * 2;
+            const r0 = lx * 0.5;
+            const r1 = lx * (0.85 + rand() * 0.5) * set;
+            ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0 * 0.6);
+            ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1 * 0.6);
+          }
+          ctx.stroke();
+          break;
+        }
+        case 'spark': {
+          // Not a print at all: a short arc of static left hanging
+          // where the heel struck, writhing while it lives. Storm
+          // refuses to lie still, and that IS its read.
+          ctx.globalAlpha = 0.85 * fade;
+          ctx.strokeStyle = tint.core;
+          ctx.lineWidth = Math.max(1, sc * 0.022);
+          ctx.beginPath();
+          let px = -lx;
+          let py = 0;
+          ctx.moveTo(px, py);
+          for (let k = 0; k < 4; k++) {
+            px += (lx * 2) / 4;
+            py = (rand() - 0.5) * wid * 2.4 * (1 - t) * Math.sin(now / 60 + k + pr.seed);
+            ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+          ctx.globalAlpha = 0.5 * fade;
+          ctx.fillStyle = tint.fleck;
+          const s = sc * 0.025;
+          ctx.fillRect(-s / 2, -s / 2, s, s);
+          break;
+        }
+        case 'bloom': {
+          // A shoot opens out of the print and wilts inside its own
+          // fade: the only school whose mark has a life cycle rather
+          // than just an alpha ramp.
+          const open = Math.min(1, t / 0.35);
+          const wilt = Math.max(0, 1 - Math.max(0, t - 0.55) / 0.45);
+          ctx.globalAlpha = 0.5 * fade;
+          ctx.fillStyle = tint.deep.startsWith('#') ? tint.deep : tint.mid;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, lx * 0.75, wid * 0.75, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.8 * fade * wilt;
+          ctx.fillStyle = tint.core;
+          for (let k = 0; k < 5; k++) {
+            const a = (k / 5) * Math.PI * 2 + pr.seed;
+            const rr = lx * 0.85 * open * wilt;
+            const s = sc * 0.03 * open;
+            ctx.beginPath();
+            ctx.ellipse(Math.cos(a) * rr, Math.sin(a) * rr * 0.6, s, s * 0.62, a, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+        case 'shadow': {
+          // THE INVERTED PRINT. Void does not light the ground, it
+          // takes light OUT of it, and the pale rim only exists to
+          // prove the darkness is deliberate rather than a hole in
+          // the render.
+          ctx.globalAlpha = 0.5 * fade;
+          ctx.fillStyle = `rgb(${tint.deep})`;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, lx, wid, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.35 * fade;
+          ctx.strokeStyle = tint.core;
+          ctx.lineWidth = Math.max(1, sc * 0.016);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, lx * 1.05, wid * 1.05, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          break;
+        }
+        case 'light': {
+          // A warm print that lights its own rim: soft center, bright
+          // edge, gone quickly. Radiant leaves the least residue of
+          // any school and that restraint is the point.
+          ctx.globalAlpha = 0.4 * fade;
+          ctx.fillStyle = tint.core;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, lx * 0.8, wid * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.7 * fade;
+          ctx.strokeStyle = tint.mid;
+          ctx.lineWidth = Math.max(1.2, sc * 0.026);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, lx, wid, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          break;
+        }
+        case 'stain': {
+          // Deep, slow, and heavy. Blood's print barely fades until it
+          // suddenly does, and it is the only one that drips: a bead
+          // rolls off the heel and sits where it lands.
+          ctx.globalAlpha = 0.55 * fade;
+          ctx.fillStyle = `rgb(${tint.deep})`;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, lx, wid * 1.1, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.4 * fade;
+          ctx.fillStyle = tint.mid;
+          const bx = -lx * (0.4 + rand() * 0.6);
+          const bs = sc * 0.022;
+          ctx.beginPath();
+          ctx.ellipse(bx, (rand() - 0.5) * wid, bs, bs * 0.7, 0, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+        }
+        case 'star': {
+          // A scatter of pinpoints that fade OUT OF ORDER, so the
+          // print dissolves like a constellation setting rather than
+          // dimming as one object. Astral's whole identity is that it
+          // is made of separate distant things.
+          for (let k = 0; k < 7; k++) {
+            const a = rand() * Math.PI * 2;
+            const rr = lx * rand();
+            const own = 0.55 + rand() * 0.45; // this pinpoint's own life
+            const kf = Math.max(0, 1 - t / own);
+            if (kf <= 0) continue;
+            ctx.globalAlpha = fade * kf * 0.9;
+            ctx.fillStyle = k % 3 === 0 ? tint.fleck : tint.core;
+            const s = sc * (0.014 + rand() * 0.014);
+            ctx.fillRect(Math.cos(a) * rr - s / 2, Math.sin(a) * rr * 0.6 - s / 2, s, s);
+          }
+          break;
+        }
+        case 'sigil': {
+          // Arcane is the school with no matter of its own, so its
+          // print is pure geometry: a small figure that draws itself
+          // in and rubs itself out.
+          const draw = Math.min(1, t / 0.25);
+          ctx.globalAlpha = 0.7 * fade;
+          ctx.strokeStyle = tint.mid;
+          ctx.lineWidth = Math.max(1, sc * 0.022);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, lx * 0.8, wid * 0.8, 0, 0, Math.PI * 2 * draw);
+          ctx.stroke();
+          ctx.globalAlpha = 0.85 * fade;
+          ctx.strokeStyle = tint.core;
+          ctx.lineWidth = Math.max(1, sc * 0.016);
+          ctx.beginPath();
+          for (let k = 0; k < 3; k++) {
+            const a = (k / 3) * Math.PI * 2 + pr.seed * 0.001;
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(a) * lx * 0.7 * draw, Math.sin(a) * lx * 0.42 * draw);
+          }
+          ctx.stroke();
+          break;
+        }
+      }
+      ctx.restore();
+
+      // THE DARKNESS LAW reaches the ground too: a tier-3 print is a
+      // light source for as long as it burns, so a runner in the deep
+      // leaves a fading line of lamps behind them. Void is exempt —
+      // its print is an absence, and an absence must not glow.
+      if (pr.tier >= 3 && pr.kind !== 'shadow') {
+        this.queueGlow(pr.x, pr.y, 0.4, tint.glow, 0.1 * fade);
+      }
+    }
+  }
+
   private drawGroundFx(game: ClientGame): void {
     const ctx = this.ctx;
     const sc = this.camera.scale;
@@ -28125,32 +28635,42 @@ export class Renderer {
           // and shorter than any ability circle, because a proc fires
           // inside a fight that is already busy.
           //
-          // Phase 2 replaces this with per-working signatures keyed off
-          // fx.id, exactly as abilities are keyed today. Until then one
-          // honest shape carries every working, tinted by its element.
-          const mark = fx.id === 'reveal_mark';
+          // The moment is SHAPED BY ITS ACTION (see PROC_VOICE): a nova
+          // shouts and blows outward, a ward and a heal fall inward, a
+          // yield barely speaks. The inward/outward sign is the reading
+          // that matters most — it lets a player tell what just happened
+          // to them without looking at the words.
+          //
+          // A bespoke per-working signature still overrides all of this
+          // through the SIGNATURES registry below; this is the floor
+          // every working stands on the day it is authored.
+          const voice = procVoice(fx.id);
+          const inward = voice.flow < 0;
           ctx.save();
           // The stain lands instantly and burns off fast.
           if (t < 0.45) {
-            ctx.globalAlpha = (1 - t / 0.45) * (mark ? 0.16 : 0.22);
+            ctx.globalAlpha = (1 - t / 0.45) * 0.22 * voice.weight;
             ctx.fillStyle = st.deep;
             ctx.beginPath();
             ctx.ellipse(p.x, p.y, rPx * 0.9, rPx * 0.9 * squash, 0, 0, Math.PI * 2);
             ctx.fill();
           }
-          // The ring: out fast, thinning as it goes.
+          // The ring. Outward workings snap open; inward ones CLOSE on
+          // the wearer, which is the whole tell.
           const ease = 1 - (1 - t) * (1 - t);
-          const rr = rPx * (0.25 + 0.95 * ease);
-          ctx.globalAlpha = (1 - t) * (mark ? 0.6 : 0.95);
+          const span = rPx * voice.ring;
+          const rr = inward ? span * (1.15 - 0.95 * ease) : span * (0.25 + 0.95 * ease);
+          ctx.globalAlpha = (1 - t) * 0.95 * voice.weight;
           ctx.strokeStyle = t < 0.3 ? st.core : st.mid;
           ctx.lineWidth = Math.max(1.5, sc * 0.075 * (1 - t * 0.7));
           ctx.beginPath();
           ctx.ellipse(p.x, p.y, rr, rr * squash, 0, 0, Math.PI * 2);
           ctx.stroke();
-          // Four cardinal ticks riding the ring — the sigil's corners.
-          // A reveal pin skips them: it is a mark, not a working.
-          if (!mark && t < 0.6) {
-            ctx.globalAlpha = (1 - t / 0.6) * 0.8;
+          // Cardinal ticks riding the ring — the sigil's corners, and
+          // what reads as engineering rather than sparkle. The quiet
+          // shapes (a reveal pin, a yield) skip them.
+          if (voice.weight >= 0.5 && t < 0.6) {
+            ctx.globalAlpha = (1 - t / 0.6) * 0.8 * voice.weight;
             ctx.fillStyle = st.spark;
             for (let k = 0; k < 4; k++) {
               const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
@@ -28422,31 +28942,44 @@ export class Renderer {
         }
 
         case 'proc': {
-          // THE DEEPER SIGIL, volume pass. Three shards kick UP off the
-          // sigil and fall back: the vertical read that says a working
-          // woke, not that the ground was struck. Deliberately three,
-          // not seven — an ability's flourish must always out-shout a
-          // proc's, or the fight loses its grammar of scale.
-          if (fx.id === 'reveal_mark') break;
+          // THE DEEPER SIGIL, volume pass. Shards kick off the sigil:
+          // the vertical read that says a WORKING woke, rather than that
+          // the ground was struck.
+          //
+          // Outward workings throw their shards up and let them fall.
+          // Inward ones (ward, heal, surge) run the arc BACKWARDS —
+          // matter converging down onto the wearer — which is how a
+          // player reads "something good just happened to me" without a
+          // single word. Shard counts stay well under an ability's, so
+          // the fight keeps its grammar of scale.
+          const pv = procVoice(fx.id);
+          if (pv.shards === 0) break;
           const rand = srand(seed);
-          for (let k = 0; k < 3; k++) {
+          const inward = pv.flow < 0;
+          for (let k = 0; k < pv.shards; k++) {
             const a = rand() * Math.PI * 2;
-            const spread = 0.16 + rand() * 0.16;
+            const spread = (0.16 + rand() * 0.16) * (inward ? 2.4 : 1);
             const ex = fx.x + Math.cos(a) * spread;
             const ey = fx.y + Math.sin(a) * spread * 0.35;
-            const kt0 = k * 0.07;
+            const kt0 = k * 0.05;
             const lit = k % 2 === 0;
             items.push({
               sortY: ey + 0.005,
               draw: () => {
                 const kt = Math.max(0, Math.min(1, (t - kt0) / (1 - kt0)));
                 if (kt <= 0 || kt >= 1) return;
-                const q = this.liftedWTS(ex, ey);
-                // Up hard, then eased back down — a kick, not a drift.
-                const rise = Math.sin(kt * Math.PI) * 1.05;
-                const s = sc * 0.075 * (1 - kt * 0.45);
+                // Outward: the shard stays where it was thrown and
+                // arcs up, then falls. Inward: it starts wide and high
+                // and CONVERGES on the wearer as it drops, so the whole
+                // burst gathers instead of scattering.
+                const pull = inward ? kt : 0;
+                const wx = ex + (fx.x - ex) * pull;
+                const wy = ey + (fx.y - ey) * pull;
+                const q = this.liftedWTS(wx, wy);
+                const rise = inward ? (1 - kt) * 1.15 : Math.sin(kt * Math.PI) * 1.05;
+                const s = sc * 0.075 * (1 - kt * 0.45) * pv.weight;
                 ctx.save();
-                ctx.globalAlpha = (1 - kt) * 0.95;
+                ctx.globalAlpha = (1 - kt) * 0.95 * pv.weight;
                 ctx.fillStyle = lit ? st.core : st.spark;
                 ctx.fillRect(q.x - s / 2, q.y - sc * (0.2 + rise) - s, s, s * 2);
                 ctx.restore();

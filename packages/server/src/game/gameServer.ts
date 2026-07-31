@@ -11583,7 +11583,11 @@ export class GameServer {
       radius,
       color,
       text: p.name,
-      id: p.id,
+      // `<action>:<procId>` — the projectile defId's `arx:<element>`
+      // convention. The client shapes the moment off the ACTION so a
+      // working looks right the day it is authored, and still gets to
+      // override with a bespoke signature registered under either key.
+      id: `${a.do}:${p.id}`,
     });
     return extra;
   }
@@ -11617,7 +11621,7 @@ export class GameServer {
     const session = this.players.get(eid)?.session;
     if (!session) return;
     const mark = (x: number, y: number): void => {
-      session.sendJson({ t: 'fx', kind: 'proc', x, y, radius: 0.35, color, id: 'reveal_mark' });
+      session.sendJson({ t: 'fx', kind: 'proc', x, y, radius: 0.35, color, id: 'mark:reveal' });
     };
     if (of === 'foe') {
       for (const npcEid of this.npcsWithin(ctx.x, ctx.y, radius).slice(0, REVEAL_PROC_CAP)) {

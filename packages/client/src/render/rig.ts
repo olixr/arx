@@ -1,5 +1,6 @@
 import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@arx/shared';
 import { ELEMENT_COLORS, enchantDef, itemDef } from '@arx/content';
+import { arxMark, markPulse, resolveWornLight, SLOT_GLINT_PHASE, type ArxMark, type SlotLight } from './wornLight.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import {
   bladeStyle,
@@ -251,6 +252,12 @@ export interface RigPose {
   weaponEnch?: string;
   /** Offhand enchant id — a dual-wielded second blade burns its own hue. */
   offhandEnch?: string;
+  /**
+   * THE WORN LIGHT: enchant ids by armor slot (head/body/legs/gloves/
+   * boots/offhand/cape). The rig resolves them into per-slot marks and
+   * overlays each onto its piece's style — see withArx.
+   */
+  armorEnch?: Partial<Record<string, string>>;
   /** Cosmetic idle carry: 'rogue' rakes a blade down-back, reverse grip. */
   carryStyle?: 'normal' | 'rogue';
   /** Off-fist grip — a dual wielder's second blade rides its own way. */
@@ -433,6 +440,8 @@ function drawArm(
    *  keeps its standing side outright through the ease and flips
    *  exactly once, when the settled pole reclaims it. */
   elbowHold?: boolean,
+  /** Wall-clock ms — the knuckle channel's breath (THE WORN LIGHT). */
+  nowMs?: number,
 ): { ex: number; ey: number; kx: number; ky: number } {
   // THE REMEMBERED ELBOW: the arms carry the same side-choice
   // hysteresis the knees have had since the quadruped rig — score the
@@ -803,6 +812,27 @@ function drawArm(
           ctx.fill();
           break;
         }
+      }
+    }
+    // THE KNUCKLES — the gloves' channel. Three ticks across the back
+    // of the fist plus a bright bar over the first joint, drawn in the
+    // rotated hand frame so the light rides the fist wherever it swings
+    // and rakes across the screen during a strike. This is the one worn
+    // channel whose whole job is to be seen IN MOTION, which is why it
+    // lives on the hand and not on the forearm.
+    if (glove.arx && !hurt) {
+      const mark = glove.arx;
+      const a = markPulse(mark, nowMs ?? 0, SLOT_GLINT_PHASE.gloves ?? 0, 1.35);
+      if (a > 0.02) {
+        ctx.globalAlpha = Math.min(1, a);
+        ctx.fillStyle = mark.mid;
+        for (const oy of [-0.038, 0, 0.038]) {
+          ctx.fillRect(0.03 * s, oy * s - 0.008 * s, 0.03 * s, 0.016 * s);
+        }
+        ctx.globalAlpha = Math.min(1, a * 1.15);
+        ctx.fillStyle = mark.core;
+        ctx.fillRect(0.056 * s, -0.05 * s, 0.012 * s, 0.1 * s);
+        ctx.globalAlpha = 1;
       }
     }
   }
@@ -2033,18 +2063,29 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const lead = fx >= 0 ? 1 : -1;
 
   // Equipment styles, resolved once per frame (Record lookups).
-  const bodySt = rig.bodyItem ? bodyStyle(rig.bodyItem) : null;
-  const legSt = rig.legsItem ? legStyle(rig.legsItem) : null;
-  const bootSt = rig.bootsItem ? bootStyle(rig.bootsItem) : null;
-  const offSt = rig.offhandItem ? offhandStyle(rig.offhandItem) : null;
-  const gloveSt = rig.glovesItem ? gloveStyle(rig.glovesItem) : null;
+  //
+  // THE WORN LIGHT overlays each piece's working onto its resolved
+  // style here — the same trick enchantedStyle has always played on
+  // weapons, now for the rest of the body. Styles are plain data, so a
+  // shallow clone re-aims a painter without touching any silhouette,
+  // and a def that authored its own rune color simply gets recolored to
+  // the bonded school (its shapes survive, its hue answers the enchant).
+  const worn = resolveWornLight(rig.armorEnch);
+  const bodySt = withArx(rig.bodyItem, rig.bodyItem ? bodyStyle(rig.bodyItem) : null, worn.slots.body);
+  const legSt = withArx(rig.legsItem, rig.legsItem ? legStyle(rig.legsItem) : null, worn.slots.legs);
+  const bootSt = withArx(rig.bootsItem, rig.bootsItem ? bootStyle(rig.bootsItem) : null, worn.slots.boots);
+  const offSt = withArx(rig.offhandItem, rig.offhandItem ? offhandStyle(rig.offhandItem) : null, worn.slots.offhand);
+  const gloveSt = withArx(rig.glovesItem, rig.glovesItem ? gloveStyle(rig.glovesItem) : null, worn.slots.gloves);
   // A shield is not an item held in a fist — it is a PLANE the body
   // stands behind, with its own dialect (shields.ts). Resolving it here
   // takes the offhand out of the held-item vocabulary entirely.
-  const shieldSt: ShieldStyle | null =
+  const shieldSt: ShieldStyle | null = withArx(
+    rig.offhandItem ? `shield:${rig.offhandItem}` : undefined,
     offSt && rig.offhandItem && isShieldKind(offSt.kind)
       ? shieldStyle(rig.offhandItem, offSt.kind, offSt.color, offSt.trim, offSt.boss)
-      : null;
+      : null,
+    worn.slots.offhand,
+  );
 
   // Sneak crouch: dropping the hip line shortens the leg chain so the IK
   // bends the knees for free, and the whole arm frame (armY/shoulderY)
@@ -2220,6 +2261,46 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ctx.lineWidth = Math.max(2, s * 0.09);
       }
 
+      // THE GREAVES — the legs' channel. A thin light down the outside
+      // of the thigh, brightest when the leg is EXTENDED.
+      //
+      // The pulse is taken from the limb's own geometry rather than a
+      // clock: extension is how straight the leg currently is, so the
+      // light swells at the top of each stride and dims through the
+      // swing, for free and perfectly in phase. A leg lit off a timer
+      // would drift against the walk cycle within seconds and read as
+      // two animations fighting.
+      if (legSt?.arx && !rig.hurt) {
+        const mark = legSt.arx;
+        const reach = Math.hypot(ankX - hipX, ankY - hipY);
+        const span = Math.hypot(kx - hipX, ky - hipY) + shinLen0 || 1;
+        const extend = Math.max(0, Math.min(1, (reach / span - 0.72) / 0.26));
+        const base = markPulse(mark, rig.nowMs, SLOT_GLINT_PHASE.legs ?? 0, 0.8);
+        const a = base * (0.45 + 0.55 * extend);
+        if (a > 0.02) {
+          // Offset to the outside of the bone so the light reads as a
+          // fitting ON the greave, never as the leg itself glowing.
+          const nx = -(ky - hipY);
+          const ny = kx - hipX;
+          const nl = Math.hypot(nx, ny) || 1;
+          const off = s * 0.03;
+          ctx.globalAlpha = Math.min(1, a * 0.9);
+          ctx.strokeStyle = mark.mid;
+          ctx.lineWidth = Math.max(1, s * 0.018);
+          ctx.beginPath();
+          ctx.moveTo(hipX + (nx / nl) * off, hipY + (ny / nl) * off);
+          ctx.lineTo(kx + (nx / nl) * off, ky + (ny / nl) * off);
+          ctx.stroke();
+          // A brighter cap at the knee: the line has a TERMINUS, which
+          // is what separates a fitting from a smear of light.
+          ctx.globalAlpha = Math.min(1, a);
+          ctx.fillStyle = mark.core;
+          const cs = s * 0.02;
+          ctx.fillRect(kx - cs / 2, ky - cs / 2, cs, cs);
+          ctx.globalAlpha = 1;
+        }
+      }
+
       // Boots: a shaft climbing the shin, folded cuff, foot, toe cap —
       // or the bare hardcoded chip when nothing is worn.
       const bootCol = rig.hurt ? '#ffffff' : (bootSt?.color ?? BOOT);
@@ -2241,6 +2322,33 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           ctx.moveTo(topX, topY);
           ctx.lineTo(topX + (fxx - topX) * 0.22, topY + (fyy - topY) * 0.22);
           ctx.stroke();
+        }
+        // THE ANKLE BAND — the boots' body-space mark. Small, because
+        // the boots already own the loudest channel in the grammar (the
+        // trail) and this is not a second voice. Its only job is to
+        // ATTACH that trail to a wearer: without a lit ankle the prints
+        // read as ground decoration that happens to follow someone, and
+        // with one they read as light coming off these boots.
+        if (bootSt.arx && !rig.hurt) {
+          const mark = bootSt.arx;
+          const a = markPulse(mark, rig.nowMs, SLOT_GLINT_PHASE.boots ?? 0, 1.1);
+          if (a > 0.02) {
+            const dxn = (fxx - topX) / shinLen;
+            const dyn = (fyy - topY) / shinLen;
+            const px = -dyn;
+            const py = dxn;
+            const w = 0.05 * s;
+            const bx = topX + (fxx - topX) * 0.32;
+            const by = topY + (fyy - topY) * 0.32;
+            ctx.globalAlpha = Math.min(1, a * 0.95);
+            ctx.strokeStyle = mark.mid;
+            ctx.lineWidth = Math.max(1.2, s * 0.022);
+            ctx.beginPath();
+            ctx.moveTo(bx + px * w, by + py * w);
+            ctx.lineTo(bx - px * w, by - py * w);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
         }
         if (bootSt.spike && !rig.hurt) {
           // A knee-spike off the shaft top — dread sabatons bite upward.
@@ -3786,6 +3894,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       skel,
       mem ? (mem.offElbow ??= { sign: 0 }) : undefined,
       elbowEaseHold,
+      rig.nowMs,
     );
     if (shieldSt && shieldFr) {
       if (shieldBehindArm) drawShieldStraps(ctx, shieldSt, shieldFr, rig.hurt);
@@ -3917,6 +4026,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       skel,
       mem ? (mem.mainElbow ??= { sign: 0 }) : undefined,
       elbowEaseHold,
+      rig.nowMs,
     );
   };
   // ---- THE SHOULDER DEPTH LAW: a pauldron is a cap on TOP of the
@@ -4961,6 +5071,51 @@ const ENCH_STAFF_FX: Record<string, StaffFx> = {
   astral: 'stars',
   verdant: 'leaves',
 };
+
+/**
+ * Overlay a worn working onto a resolved armor style. Null in, null
+ * out, and unenchanted pieces return the SAME object they came in as —
+ * this runs per piece per body per frame, so the common case must not
+ * allocate.
+ *
+ * `runes` and `glowTrim` are recolored where a garment already owns
+ * them: a robe authored with rune work keeps every shape its artist
+ * drew and simply answers the bonded school instead of its own.
+ */
+function withArx<T extends { arx?: ArxMark; runes?: string; glowTrim?: string }>(
+  itemId: string | undefined,
+  st: T | null,
+  slot: SlotLight | undefined,
+): T | null {
+  if (!st || !slot || !itemId) return st;
+  // Cached on (item, school, tier). Keyed by ITEM ID rather than by the
+  // style object, because the style resolvers return a registry object
+  // for authored gear but build a fresh derived one every call for
+  // anything unstyled — an identity cache would miss those every frame
+  // forever. The id is stable for both, so this is one Map hit in the
+  // steady state instead of five style clones per body per frame.
+  const key = `${itemId}|${slot.element}|${slot.tier}`;
+  const hit = ARX_STYLE_CACHE.get(key) as T | undefined;
+  if (hit) return hit;
+  const mark = arxMark(slot)!;
+  const out: T = { ...st, arx: mark };
+  // A garment that authored its own rune work keeps every shape its
+  // artist drew and simply answers the bonded school in hue.
+  if (st.runes) out.runes = mark.mid;
+  if (st.glowTrim) out.glowTrim = mark.core;
+  if (ARX_STYLE_CACHE.size >= ARX_STYLE_CACHE_MAX) ARX_STYLE_CACHE.clear();
+  ARX_STYLE_CACHE.set(key, out);
+  return out;
+}
+
+/**
+ * Bounded because the key space is (worn item x school x tier) and a
+ * session only ever sees the gear that walks past it. Cleared wholesale
+ * rather than evicted one by one: this is a render cache, and rebuilding
+ * it costs one clone per visible piece on a single frame.
+ */
+const ARX_STYLE_CACHE = new Map<string, object>();
+const ARX_STYLE_CACHE_MAX = 512;
 
 /**
  * Overlay an enchant's fx channel on a resolved weapon style — the

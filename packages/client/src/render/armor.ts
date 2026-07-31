@@ -1,3 +1,4 @@
+import { markPulse, SLOT_GLINT_PHASE, type ArxMark } from './wornLight.js';
 import { itemDef } from '@arx/content';
 import { chamferRect } from './shapes.js';
 import { shade } from './rig.js';
@@ -21,6 +22,12 @@ import { shade } from './rig.js';
 export type ArmorClassStyle = 'cloth' | 'leather' | 'plate';
 
 export interface BodyStyle {
+  /**
+   * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+   * resolved style rather than authored into it (see wornLight.ts). A
+   * def never sets this; the rig does, per instance.
+   */
+  arx?: ArxMark;
   color: string;
   trim: string;
   /** Rivets, buckles, plate edges. Default shade(color, -20). */
@@ -233,6 +240,12 @@ export interface BodyStyle {
 }
 
 export interface HelmStyle {
+  /**
+   * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+   * resolved style rather than authored into it (see wornLight.ts). A
+   * def never sets this; the rig does, per instance.
+   */
+  arx?: ArxMark;
   color: string;
   trim: string;
   /** THE FORGE LAW: every metal kind is a FULL-FACE helm with its own
@@ -332,6 +345,12 @@ export interface HelmStyle {
 }
 
 export interface LegStyle {
+  /**
+   * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+   * resolved style rather than authored into it (see wornLight.ts). A
+   * def never sets this; the rig does, per instance.
+   */
+  arx?: ArxMark;
   kind: 'pants' | 'greaves' | 'wraps';
   /** Default: today's pants-color law (look pants / darkened body). */
   thigh?: string;
@@ -341,6 +360,12 @@ export interface LegStyle {
 }
 
 export interface BootStyle {
+  /**
+   * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+   * resolved style rather than authored into it (see wornLight.ts). A
+   * def never sets this; the rig does, per instance.
+   */
+  arx?: ArxMark;
   color: string;
   /** Shaft height up the shin, tiles. 0.06 ≈ the bare foot chip. */
   height: number;
@@ -367,6 +392,12 @@ export interface BootStyle {
  * the hand lives in.
  */
 export interface GloveStyle {
+  /**
+   * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+   * resolved style rather than authored into it (see wornLight.ts). A
+   * def never sets this; the rig does, per instance.
+   */
+  arx?: ArxMark;
   /** The hand itself. */
   color: string;
   /** Hand silhouette: gauntlet = squared plated fist with a hard end
@@ -395,6 +426,12 @@ export interface GloveStyle {
 }
 
 export interface OffhandStyle {
+  /**
+   * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+   * resolved style rather than authored into it (see wornLight.ts). A
+   * def never sets this; the rig does, per instance.
+   */
+  arx?: ArxMark;
   /** 'weapon' = a dual-wielded blade: the rig paints the actual weapon. */
   kind: 'buckler' | 'kite' | 'tower' | 'tome' | 'quiver' | 'orb' | 'weapon';
   color: string;
@@ -4156,6 +4193,71 @@ export function drawTorsoGarment(
       ctx.globalAlpha = 1;
     }
   }
+  if (st.arx && !hurt) drawArxWeave(ctx, st, f);
+}
+
+/**
+ * THE WEAVE — the body slot's channel. Rune work following the
+ * garment's own construction lines rather than floating on top of it:
+ * a seam down the breast with three cross ticks, and a collar arc at
+ * the throat.
+ *
+ * A garment that ALREADY owns rune work is left alone here. withArx
+ * recolored its authored runes to the bonded school on the way in, so
+ * the artist's shapes survive and only the hue answers the enchant;
+ * painting this seam over the top as well would give those pieces two
+ * rune systems at once, which is exactly the mush this grammar exists
+ * to prevent. Every other torso in the game gets the seam.
+ *
+ * Facing-aware: the seam narrows into the profile and swaps to a plain
+ * spine line at the back, because a breast seam drawn on someone's
+ * shoulder blades reads as a bug and nothing else.
+ */
+function drawArxWeave(ctx: CanvasRenderingContext2D, st: BodyStyle, f: TorsoFrame): void {
+  const mark = st.arx!;
+  if (st.runes) return;
+  const { s, tw, ww, th, backK, profileK, nowMs } = f;
+  const alpha = markPulse(mark, nowMs, SLOT_GLINT_PHASE.body ?? 0, 0.7);
+  if (alpha <= 0.02) return;
+  // The chest narrows as the body turns; at the back the seam becomes
+  // the spine, which is the same line seen from the other side.
+  const narrow = 1 - profileK * 0.55;
+  const topY = -th * 0.86;
+  const botY = -th * 0.12;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha * 0.85);
+  ctx.strokeStyle = mark.mid;
+  ctx.lineWidth = Math.max(1.1, s * 0.017);
+  ctx.beginPath();
+  ctx.moveTo(0, topY);
+  ctx.lineTo(0, botY);
+  ctx.stroke();
+  // Three ticks crossing the seam, each breathing on its own phase so
+  // the weave reads as punctuation rather than a lit stripe.
+  const half = ((tw + ww) / 2) * 0.42 * narrow * (1 - backK * 0.25);
+  ctx.lineWidth = Math.max(1, s * 0.013);
+  for (let i = 0; i < 3; i++) {
+    const y = topY + ((botY - topY) * (i + 0.7)) / 3.4;
+    const w = half * (1 - i * 0.16);
+    ctx.globalAlpha = Math.min(1, alpha * (0.55 + 0.45 * Math.sin(nowMs * 0.0028 + i * 1.9)));
+    ctx.strokeStyle = i === 1 ? mark.core : mark.mid;
+    ctx.beginPath();
+    ctx.moveTo(-w, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+  // The collar: a shallow arc at the throat that closes the seam at the
+  // top. Dropped at the back facing, where there is no throat to ring.
+  if (backK < 0.6) {
+    ctx.globalAlpha = Math.min(1, alpha * 0.9 * (1 - backK));
+    ctx.strokeStyle = mark.core;
+    ctx.lineWidth = Math.max(1, s * 0.015);
+    ctx.beginPath();
+    ctx.moveTo(-tw * 0.34 * narrow, topY + th * 0.04);
+    ctx.quadraticCurveTo(0, topY - th * 0.06, tw * 0.34 * narrow, topY + th * 0.04);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /**
@@ -7192,6 +7294,71 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.globalAlpha = 1;
     }
   }
+  if (st.arx && !hurt) drawArxBrow(ctx, st.arx, f);
+}
+
+/**
+ * THE BROW — the head slot's channel in the worn-light grammar. A band
+ * of light at the temples with two sigil ticks riding it, and at tier 3
+ * a third mark standing proud of the crown.
+ *
+ * It sits at the BROW rather than over the crown for two reasons: it
+ * survives every helmet silhouette in the game (crowns are crowded with
+ * plumes, horns, spikes, halos, and crests, and a mark up there would
+ * collide with half of them), and a light at eye level reads as
+ * something the wearer is looking THROUGH, which is what makes a head
+ * working feel like a lamp rather than a hat ornament.
+ *
+ * The band narrows as the head turns away, so it never floats off the
+ * silhouette at the back facing.
+ */
+function drawArxBrow(ctx: CanvasRenderingContext2D, mark: ArxMark, f: HeadFrame): void {
+  const { s, headX, headY, hw, hh, backK, nowMs } = f;
+  const alpha = markPulse(mark, nowMs, SLOT_GLINT_PHASE.head ?? 0, 0.9);
+  if (alpha <= 0.02) return;
+  // Facing away, the brow is on the far side of the skull: the band
+  // thins to a rim of spill rather than vanishing outright.
+  const face = 1 - backK * 0.72;
+  const by = headY - hh * 0.24;
+  const bw = hw * 0.82 * face;
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.9;
+  ctx.strokeStyle = mark.mid;
+  ctx.lineWidth = Math.max(1.2, s * 0.02);
+  ctx.beginPath();
+  ctx.moveTo(headX - bw, by);
+  ctx.quadraticCurveTo(headX, by - hh * 0.1, headX + bw, by);
+  ctx.stroke();
+  // Two ticks on the band — the detail that reads it as SIGILWORK and
+  // not a glowing headband.
+  if (face > 0.45) {
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = mark.core;
+    ctx.lineWidth = Math.max(1, s * 0.013);
+    ctx.beginPath();
+    for (const side of [-1, 1]) {
+      const tx = headX + side * bw * 0.56;
+      ctx.moveTo(tx, by - hh * 0.09);
+      ctx.lineTo(tx, by + hh * 0.05);
+    }
+    ctx.stroke();
+  }
+  // Tier 3 stands a mark clear of the crown: the working is no longer
+  // sitting on the helm, it is riding above it.
+  if (mark.tier >= 3) {
+    const hover = Math.sin(nowMs * 0.0019) * hh * 0.05;
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.fillStyle = mark.core;
+    const ms = s * 0.024;
+    ctx.beginPath();
+    ctx.moveTo(headX, headY - hh * 1.34 + hover - ms);
+    ctx.lineTo(headX + ms * 0.72, headY - hh * 1.34 + hover);
+    ctx.lineTo(headX, headY - hh * 1.34 + hover + ms);
+    ctx.lineTo(headX - ms * 0.72, headY - hh * 1.34 + hover);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 /**

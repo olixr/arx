@@ -1,3 +1,4 @@
+import { markPulse, SLOT_GLINT_PHASE, type ArxMark } from './wornLight.js';
 import { shade } from './rig.js';
 
 /* ======================= THE SHIELD IS A PLANE =======================
@@ -135,6 +136,8 @@ export type ShieldDevice =
 export type ShieldField = 'plain' | 'pale' | 'bend' | 'chief' | 'quarter';
 
 export interface ShieldStyle {
+  /** THE WORN LIGHT: the bonded working, overlaid per instance. */
+  arx?: ArxMark;
   shape: ShieldShape;
   material: ShieldMaterial;
   /** The field: the face's own color. */
@@ -1177,6 +1180,80 @@ export function drawShield(
   // bump on the silhouette, which is exactly what a real boss does.
   if (st.boss && !fr.seeBack) drawBoss(ctx, st, fr, hxU, hyU, nxU, nyU, crown);
   if (st.spikes && !hurt) drawSpikes(ctx, st, fr, outline, hxU, hyU, nxU, nyU, crown);
+  if (st.arx && !hurt) drawArxFace(ctx, st.arx, fr, hxU, hyU, nxU, nyU, crown, nowMs);
+  ctx.restore();
+}
+
+/**
+ * THE RUNE FACE — the offhand's channel. A ring of sigil ticks laid ON
+ * the shield's near face, following the same projection the charge and
+ * the boss use, so the ring foreshortens with the plane instead of
+ * floating in front of it as a flat circle.
+ *
+ * The offhand gets the largest, calmest mark in the whole grammar
+ * because it has the largest, flattest surface to carry one, and
+ * because a shield is a thing you present: light on it should read as
+ * deliberate heraldry, not as a leak.
+ *
+ * Drawn only on the near face. A ring painted while the bearer's back
+ * is turned would be sitting on the straps.
+ */
+function drawArxFace(
+  ctx: CanvasRenderingContext2D,
+  mark: ArxMark,
+  fr: ShieldFrame,
+  hxU: number,
+  hyU: number,
+  nxU: number,
+  nyU: number,
+  crown: number,
+  nowMs: number,
+): void {
+  if (fr.seeBack) return;
+  const a = markPulse(mark, nowMs, SLOT_GLINT_PHASE.offhand ?? 0, 0.6);
+  if (a <= 0.02) return;
+  // The face's own basis: `hxU/hyU` runs across the plane, `nxU/nyU`
+  // stands out of it. Every fitting on this shield is placed through
+  // these, so the ring lands in the same space as the boss.
+  const proj = (u: number, v: number): { x: number; y: number } => ({
+    x: fr.cx + hxU * u + nxU * 0.5,
+    y: fr.cy + hyU * u + nyU * 0.5 - v * crown,
+  });
+  const R = 0.62;
+  ctx.save();
+  // Twelve ticks around the rim of the charge field, three of them
+  // long: a clock face, which is what makes it read as WORKED rather
+  // than as a glowing donut.
+  for (let i = 0; i < 12; i++) {
+    const ang = (i / 12) * Math.PI * 2 + nowMs * 0.00018;
+    const long = i % 4 === 0;
+    const r0 = R * (long ? 0.78 : 0.86);
+    const r1 = R * 1.0;
+    const p0 = proj(Math.cos(ang) * r0, Math.sin(ang) * r0);
+    const p1 = proj(Math.cos(ang) * r1, Math.sin(ang) * r1);
+    ctx.globalAlpha = Math.min(1, a * (long ? 1 : 0.72));
+    ctx.strokeStyle = long ? mark.core : mark.mid;
+    ctx.lineWidth = Math.max(1, fr.hw * (long ? 0.035 : 0.024));
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
+  }
+  // A tier-3 face closes its ring: the working is complete, and the
+  // silhouette says so from across the field.
+  if (mark.tier >= 3) {
+    ctx.globalAlpha = Math.min(1, a * 0.6);
+    ctx.strokeStyle = mark.mid;
+    ctx.lineWidth = Math.max(1, fr.hw * 0.018);
+    ctx.beginPath();
+    for (let i = 0; i <= 24; i++) {
+      const ang = (i / 24) * Math.PI * 2;
+      const p = proj(Math.cos(ang) * R * 0.82, Math.sin(ang) * R * 0.82);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

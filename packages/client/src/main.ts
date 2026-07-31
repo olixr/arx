@@ -1,3 +1,4 @@
+import { procShape } from './render/wornLight.js';
 import { EntityKind, FENCE_TILES, GARRISON_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, levelForXp, skillName, tileDef, treeOfSapling } from '@arx/shared';
 import { BUILDABLES, RECIPES, buildableForTile, buildableGround, itemDef, npcDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
@@ -1288,7 +1289,7 @@ game.onFx = (fx) => {
     // shove, both scaled well under an ability's — a proc punctuates
     // the fight it fires inside, it does not interrupt it. The reveal
     // mark is a silent pin and deliberately has neither.
-    if (fx.id !== 'reveal_mark') {
+    if (procShape(fx.id) !== 'mark') {
       sfx.spatial(at, 'near', () => sfx.empower());
       if (dist < 6) renderer.shake(2 * (0.3 + punch));
     }

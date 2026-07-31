@@ -368,11 +368,64 @@ As built:
 Deliberately not done here: no enchant in the roster carries a proc yet. Phase 3
 is what makes the engine visible in play.
 
-**Phase 2 — THE WORN LIGHT.** The per-slot visual grammar: the boot trail, the
-cape wake, the body weave, the knuckle flicker, the greave pulse, the brow lamp,
-the offhand flare. Tier grammar, the darkness law, the readability caps, stack
-reads, and fx signatures for the new proc kinds. Mostly client-side, because
-appearance already carries per-slot enchant ids.
+**Phase 2 — THE WORN LIGHT. SHIPPED.** The per-slot visual grammar. Entirely
+client-side, as predicted: appearance already carried per-slot enchant ids since
+protocol v6, so not one byte was added to the wire.
+
+`client/src/render/wornLight.ts` is the law. All eight channels are live:
+
+| Slot | Channel | Where it lives |
+|---|---|---|
+| weapon | the edge | pre-existing `enchantedStyle` |
+| offhand | the rune face, foreshortened onto the shield plane | shields.ts |
+| head | the brow band, at eye level | armor.ts |
+| body | the weave: breast seam, three ticks, collar arc | armor.ts |
+| gloves | the knuckles, brightest mid-swing | rig.ts |
+| legs | the greaves, pulsing on limb EXTENSION | rig.ts |
+| boots | **the trail** + an ankle band to attach it to a wearer | renderer.ts |
+| cape | the wake off the trailing hem | renderer.ts |
+
+Laws as built:
+
+- **The anti-mush law.** Place and rhythm do the separating, so two slots may
+  share a school and still read as two things.
+- **The tier grammar.** Tier is loudness, element is hue, slot is place. Tier 1
+  owns only a travelling glint and casts no light at all; that restraint is what
+  leaves headroom for tier 3 to feel earned. Every dial already answers tiers 4
+  and 5, so Phase 3's roster lights correctly the day it is authored.
+- **The darkness law.** Tier 2+ contributes real scene light, and a tier-3 print
+  is itself a light source while it burns, so a runner in the deep leaves a
+  fading line of lamps. Void is exempt: its print is an absence, and an absence
+  must not glow.
+- **The trail is speed-gated.** Walking leaves nothing. Prints stamp one stride
+  apart, alternating left and right of the line of travel, ~1.2s life, hard-capped
+  at 96 across all bodies, drawn in the ground pass so they lie under the
+  y-sorted world. Nine schools, nine genuinely different SHAPES rather than one
+  stamp recolored: rime whitens the turf, shadow darkens it, bloom opens and
+  wilts inside its own fade, star dissolves out of order.
+- **The readability cap.** Your own light never fades; other bodies fall off with
+  range and go silent past the far mark, with a crowd budget that keeps remote
+  glow but stops remote particles.
+- **Pulses are driven by animation, not clocks.** The greave brightens on how
+  extended the leg actually is, so it is in phase with the walk cycle for free.
+  A timer would drift against the gait within seconds and read as two animations
+  fighting.
+- **Authored art survives.** A garment that already owns rune work keeps every
+  shape its artist drew and only answers the bonded school in hue; the generic
+  weave seam is skipped entirely for those pieces, so nothing wears two rune
+  systems at once.
+
+Also in this phase: proc fx are now **shaped by their action** (`PROC_VOICE`),
+carried on the existing id field as `<action>:<procId>` following the
+`arx:<element>` convention. The reading that matters is the flow sign — ward,
+heal, surge, and yield gather INWARD while nova, bolt, chain, and status throw
+outward, so a player can tell what just happened to them without reading a word.
+Nothing reaches an ability's volume. Bespoke per-working signatures still
+override through the existing `SIGNATURES` registry.
+
+Deferred with reasons: **stack reads on the body** need the live charge on the
+wire and there are no stacking workings yet, so it rides with Phase 3's roster.
+Corpses deliberately do not carry worn light: the light dies with the wearer.
 
 **Phase 3 — THE LONG LADDER.** Tiers 4 and 5, thin slots filled, elements
 finished, the non-combat family. 38 enchants to roughly 90, and a trade that runs
