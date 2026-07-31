@@ -4038,7 +4038,7 @@ function bowDefs(): EquipmentDef[] {
   ];
 
   // Wood steps shared by every line — each design overrides stats/codes.
-  const WOODS = { plain: '#8a6a45', oak: '#6b4a26', willow: '#8a9455', yew: '#7d4436' };
+  const WOODS = { plain: '#8a6a45', oak: '#6b4a26', pine: '#b08050', willow: '#8a9455', yew: '#7d4436' };
 
   // ---- shortbow: the skirmisher's bow. Quick to draw, quick to loose.
   // oak_shortbow is the id the game shipped with — it adopts as the oak
@@ -4073,6 +4073,8 @@ function bowDefs(): EquipmentDef[] {
         desc: 'Taller than its owner and twice as stubborn.' },
       { wood: 'oak', log: 'oak_log', color: WOODS.oak, damage: 6, archReq: 15, craftReq: 22, xp: 140, value: 170, code: 'Ol',
         desc: 'An oak stave asks for your whole back, and pays for it.' },
+      { wood: 'pine', log: 'pine_log', color: WOODS.pine, damage: 7, archReq: 22, craftReq: 26, xp: 200, value: 270, code: 'Pl',
+        desc: 'Northern pine, straight as the cold horizon it grew against.' },
       { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 8, archReq: 30, craftReq: 34, xp: 280, value: 400, code: 'Wl',
         desc: 'Willow bends far and sends arrows farther.' },
       { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 10, archReq: 45, craftReq: 50, xp: 420, value: 920, code: 'Yn',

@@ -190,6 +190,19 @@ export function moistureAt(seed: number, tx: number, ty: number): number {
   return edgeBlendMoisture(seed, tx, ty, m);
 }
 
+/**
+ * Cold decides where the taiga stands. A hard south→north ramp (the
+ * world's north is negative y — Silverfall country) with fbm ragging
+ * the treeline, so the pine front advances in tongues and islands,
+ * never a ruled line. 0 in the warm south, 1 in the deep north; the
+ * rag can never push a southern meadow over the pine threshold.
+ */
+export function coldAt(seed: number, tx: number, ty: number): number {
+  const lat = Math.min(1, Math.max(0, (-ty - 40) / 180));
+  const rag = (fbm(seed + 31337, tx * 0.025, ty * 0.025, 2) - 0.5) * 0.35;
+  return Math.min(1, Math.max(0, lat + rag));
+}
+
 /** Below this world-y everything defaults to solid cave (dungeon land). */
 export const DARK_BAND_Y = 512;
 
@@ -547,11 +560,16 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
         const oakRoll = hashCoords(seed ^ 0x0acc0de, tx, ty) / 4294967296;
         const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
         // Species by rarity: yew is the ancient one-in-forty find, willow
-        // grows only where the forest turns properly damp, oaks salt the
-        // rest — the woodcutting ladder lives in the deep woods.
+        // grows only where the forest turns properly damp (and shuns the
+        // deep cold), and northward the pines take the common share —
+        // half the stand on Silverfall's approach, near-pure taiga in
+        // the far north. Oaks salt whatever the cold leaves.
+        const cold = coldAt(seed, tx, ty);
+        const pineRoll = hashCoords(seed ^ 0x9b1e5, tx, ty) / 4294967296;
         const species =
           oakRoll < 0.025 ? Tile.TreeYew
-          : oakRoll < 0.12 && moisture > 0.74 ? Tile.TreeWillow
+          : oakRoll < 0.12 && moisture > 0.74 && cold < 0.6 ? Tile.TreeWillow
+          : pineRoll < (cold - 0.42) * 1.9 ? Tile.TreePine
           : oakRoll < 0.26 ? Tile.TreeOak
           : Tile.Tree;
         ground =
@@ -580,9 +598,11 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
         }
       } else {
         // Open meadow: berry bushes and fibre plants for the forager.
+        // In the cold country the lone field trees are pines — the
+        // scattered sentinels that read as the taiga's outriders.
         const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
         ground =
-          roll < 0.015 ? Tile.Tree
+          roll < 0.015 ? (coldAt(seed, tx, ty) > 0.5 ? Tile.TreePine : Tile.Tree)
           : flora < 0.005 ? Tile.BerryBush
           : flora < 0.009 ? Tile.FibrePlant
           : roll < 0.06 ? Tile.GrassTall
@@ -635,6 +655,7 @@ const ROAD_FELLED: ReadonlySet<number> = new Set([
   Tile.TreeOak,
   Tile.TreeWillow,
   Tile.TreeYew,
+  Tile.TreePine,
   Tile.Rock,
   Tile.ChestWood,
 ]);

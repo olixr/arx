@@ -63,8 +63,8 @@ export const TILE_CATEGORIES: TileCategory[] = [
     id: 'nature',
     label: 'Trees & Flora',
     tiles: [
-      Tile.Tree, Tile.TreeOak, Tile.TreeWillow, Tile.TreeYew,
-      Tile.Sapling, Tile.SaplingOak, Tile.SaplingWillow, Tile.SaplingYew,
+      Tile.Tree, Tile.TreeOak, Tile.TreeWillow, Tile.TreeYew, Tile.TreePine,
+      Tile.Sapling, Tile.SaplingOak, Tile.SaplingWillow, Tile.SaplingYew, Tile.SaplingPine,
       Tile.Stump, Tile.BerryBush, Tile.FibrePlant, Tile.WildSagewort,
       Tile.WildMoonbell, Tile.GlowShroom, Tile.Stalagmite, Tile.BonePile,
     ],
@@ -287,10 +287,12 @@ const TREE_THUMBS = new Map<Tile, { tile: Tile; grow: number }>([
   [Tile.TreeOak, { tile: Tile.TreeOak, grow: 1 }],
   [Tile.TreeWillow, { tile: Tile.TreeWillow, grow: 1 }],
   [Tile.TreeYew, { tile: Tile.TreeYew, grow: 1 }],
+  [Tile.TreePine, { tile: Tile.TreePine, grow: 1 }],
   [Tile.Sapling, { tile: Tile.Tree, grow: 0.45 }],
   [Tile.SaplingOak, { tile: Tile.TreeOak, grow: 0.45 }],
   [Tile.SaplingWillow, { tile: Tile.TreeWillow, grow: 0.45 }],
   [Tile.SaplingYew, { tile: Tile.TreeYew, grow: 0.45 }],
+  [Tile.SaplingPine, { tile: Tile.TreePine, grow: 0.45 }],
 ]);
 
 /**

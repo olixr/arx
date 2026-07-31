@@ -185,6 +185,7 @@ const defs: ItemDef[] = [
   // fires, gate beams, hafts, bow staves keep costing logs).
   { id: 'board', name: 'Boards', stackable: true, value: 2, desc: 'Sawn true and stacked flat; a wall is mostly patience.', color: '#a8794a', code: 'Bd' },
   { id: 'oak_board', name: 'Oak boards', stackable: true, value: 5, desc: 'Heavy heartwood planks, sawn slow so they stay honest.', color: '#6b4a26', code: 'Ob' },
+  { id: 'pine_log', name: 'Pine logs', stackable: false, value: 18, desc: 'Straight-grained northwood, sticky with resin. It splits true.', color: '#b08050', code: 'Pq' },
   { id: 'willow_log', name: 'Willow logs', stackable: false, value: 24, desc: 'Supple riverside wood that bends without breaking.', color: '#8a9455', code: 'Wq' },
   { id: 'yew_log', name: 'Yew logs', stackable: false, value: 52, desc: 'Slow-grown heartwood of the war bows. Kings taxed it.', color: '#7d4436', code: 'Yl' },
 
@@ -210,6 +211,20 @@ const defs: ItemDef[] = [
   { id: 'cooked_chicken', name: 'Cooked chicken', stackable: false, value: 7, heals: 3, desc: 'Simple food that keeps an adventurer standing.', color: '#d9a86a', code: 'Ch' },
   { id: 'cooked_beef', name: 'Cooked beef', stackable: false, value: 8, heals: 4, desc: 'A proper meal after a proper fight.', color: '#b06a4a', code: 'Bf' },
   { id: 'burnt_food', name: 'Burnt food', stackable: false, value: 1, desc: 'You looked away for one moment. It noticed.', color: '#3a363f', code: 'Bt' },
+  // Saltmere: the pans' harvest and the smokehouse school's dishes.
+  { id: 'salt', name: 'Salt', stackable: true, value: 6, desc: 'The white harvest of the Saltmere pans. Half of cooking is knowing when.', color: '#f0ede4', code: 'Sa' },
+  { id: 'smoked_trout', name: 'Smoked trout', stackable: false, value: 30, heals: 9, desc: 'Slow smoke, honest fish. Keeps for a long road.', color: '#c98a54', code: 'St' },
+  {
+    id: 'fishers_pot',
+    name: "Fisher's pot",
+    stackable: false,
+    value: 48,
+    heals: 13,
+    buff: { name: 'Off the Mere', channel: 'food', durationSec: 300, regenPer4s: 1 },
+    desc: 'Trout, milk, and pan salt, the way the crews eat it. Warms from the keel up.',
+    color: '#d9b48a',
+    code: 'Fp',
+  },
 
   // Seeds — the start of every field
   { id: 'carrot_seed', name: 'Carrot seeds', stackable: true, value: 2, desc: 'Fast, forgiving, and sweet. Every farm starts here.', color: '#e8873d', code: 'Cs' },

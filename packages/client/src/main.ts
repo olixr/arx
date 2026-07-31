@@ -1340,7 +1340,7 @@ function autoEquipTool(): void {
     for (let tx = Math.floor(own.x) - 2; tx <= Math.floor(own.x) + 2; tx++) {
       const t = game.world.groundAt(tx, ty);
       let kind: string | null = null;
-      if (t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew) kind = 'axe';
+      if (t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew || t === Tile.TreePine) kind = 'axe';
       else if (t !== undefined && ROCK_TILES.includes(t)) kind = 'pickaxe';
       else if (t === Tile.FishingSpot) kind = 'rod';
       else if (

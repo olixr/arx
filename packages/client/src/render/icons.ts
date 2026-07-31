@@ -380,6 +380,7 @@ const PAINTERS: Record<string, IconPainter> = {
   log_oak: (c, col) => drawLog(c, col, 'oak'),
   log_willow: (c, col) => drawLog(c, col, 'willow'),
   log_yew: (c, col) => drawLog(c, col, 'yew'),
+  log_pine: (c, col) => drawLog(c, col, 'pine'),
   board: (c, col) => drawBoards(c, col),
   sawhorse: (c, col) => drawSawhorse(c, col),
   // Each ore is its own find, cut in the game's blocky node language:
@@ -3936,7 +3937,7 @@ const PAINTERS: Record<string, IconPainter> = {
  * brown over a blood-red heart. The sawn end shows growth rings — the
  * 2.5D plane every log gets for free.
  */
-function drawLog(c: CanvasRenderingContext2D, col: string, kind: 'plain' | 'oak' | 'willow' | 'yew'): void {
+function drawLog(c: CanvasRenderingContext2D, col: string, kind: 'plain' | 'oak' | 'willow' | 'yew' | 'pine'): void {
   c.save();
   c.translate(0.5, 0.52);
   c.rotate(-0.35);
@@ -4009,6 +4010,21 @@ function drawLog(c: CanvasRenderingContext2D, col: string, kind: 'plain' | 'oak'
       c.roundRect(x, y, w, 0.05, 0.025);
       c.fill();
     }
+  } else if (kind === 'pine') {
+    // Dead-straight grain, twin dark knots, and one amber resin bead
+    // welling at the lower edge — the northwood signature.
+    c.strokeStyle = shade(col, -20);
+    c.lineWidth = 0.018;
+    for (const y of [-0.07, 0.0, 0.07] as const) {
+      c.beginPath();
+      c.moveTo(-0.3, y);
+      c.lineTo(0.22, y);
+      c.stroke();
+    }
+    dot(c, shade(col, -32), -0.16, -0.035, 0.03);
+    dot(c, shade(col, -32), 0.08, 0.035, 0.026);
+    dot(c, '#d8963c', -0.02, 0.128, 0.028);
+    dot(c, '#f0be6a', -0.028, 0.12, 0.014);
   } else {
     // Plain timber: one grain line and a dark knot.
     c.strokeStyle = shade(col, -22);
@@ -4247,6 +4263,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   oak_board: { icon: 'board', color: '#7a5530' },
   willow_log: { icon: 'log_willow', color: '#94a05e' },
   yew_log: { icon: 'log_yew', color: '#87493a' },
+  pine_log: { icon: 'log_pine', color: '#b08050' },
   copper_ore: { icon: 'ore_copper', color: '#c47b3d' },
   tin_ore: { icon: 'ore_tin', color: '#cfd3dc' },
   iron_ore: { icon: 'ore_iron', color: '#a05038' },

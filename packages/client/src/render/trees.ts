@@ -53,6 +53,23 @@
  *   from the arc, not a rigid flag. Strand part-lines (one batched
  *   stroke) keep same-tone fronds reading combed, never a slab.
  *
+ * THE PINE (the cold-country species' own law):
+ * - A pine is TIERS, not a dome: downswept chevron plates stacked up
+ *   a straight spire trunk, each hem cut into serrated teeth, bare
+ *   bole and daylight under the lowest tier, a pointed spire cap.
+ *   The silhouette is the species — nothing round anywhere.
+ * - Light is banded by tier (dark low band, mid above) and every
+ *   plate wears a WEST-LIT facet — the one sun, sculpting the cone.
+ *   Tier separation is a single batched hem stroke (the shingle
+ *   line), never per-plate strokes.
+ * - Plates are near-rigid: the trunk cantilever carries them, the
+ *   hem teeth flutter barely at all (drop weights ~0.2). Ridge
+ *   tufts and the spire tuft add the soft mass over the crisp
+ *   plates; dead whorl stubs stand on the bare bole.
+ * - Tone indices are per-species SEMANTICS, not colors: the pine
+ *   paints lower band / upper band / lit facets in its own order,
+ *   all still one batched fill per tone.
+ *
  * Scale law: the player reads ~1.2 tiles tall. Commons stand 3-4x
  * that, oaks and yews 4-5x. Trunk base half-widths are the physical
  * truth: `tileColliderRadius` in shared tiles.ts must stay a whisker
@@ -117,6 +134,17 @@ export interface TreeCurtain {
   /** Raw drop FRACTION per vertex (0 anchor → 1 hem) — the phase
    *  rail the traveling ripple runs down. */
   dropF: number[];
+  /** Vertex index range [from, to] to lay into the batched part
+   *  stroke — the willow's comb lines. */
+  part?: [number, number];
+  /** Carries no mass for the shadow projection (hem-shadow ribbons,
+   *  facet overlays) — the shadow pass walks every curtain of every
+   *  tree every frame, so decorative geometry must opt out. */
+  noShadow?: boolean;
+  /** Simplified outline for the shadow projection (a sheared-flat
+   *  shadow can't show hem teeth — a dense stand shouldn't pay to
+   *  project them). Falls back to `pts`. */
+  shadowHull?: Array<[number, number]>;
   /** 0 = deep backdrop (paints BEHIND the trunk), 1 = mid fall,
    *  2 = lit fall, 3 = bright withy streak. */
   tone: number;
@@ -169,6 +197,7 @@ interface Grow {
   fall: number; // willow: lowest streamer-tip height, tiles (0 = none)
   fallW: number; // willow: skirt half-width at the belly, tiles
   fallN: number; // willow: mid-layer streamer count
+  tiers: number; // pine: plate-tier count (0 = not a pine)
   sides: number; // facet count for the low-poly clusters
 }
 
@@ -193,7 +222,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.03, flare: 0.9, split: null,
       boughN: [2, 3], boughStart: 0.55,
       cBot: 0.44, crownW: 1.35, crownR: [0.5, 0.7], crownDx: 0,
-      fall: 0, fallW: 0, fallN: 0, sides: 8,
+      fall: 0, fallW: 0, fallN: 0, tiers: 0, sides: 8,
     },
     variants: [
       {}, // classic dome
@@ -209,7 +238,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.02, flare: 0.5, split: null,
       boughN: [1, 2], boughStart: 0.6,
       cBot: 0.5, crownW: 0.85, crownR: [0.4, 0.55], crownDx: 0,
-      fall: 0, fallW: 0, fallN: 0, sides: 7,
+      fall: 0, fallW: 0, fallN: 0, tiers: 0, sides: 7,
     },
     variants: [
       {}, // straight and pale
@@ -225,7 +254,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.04, flare: 0.85, split: 0.4,
       boughN: [0, 1], boughStart: 0.3,
       cBot: 0.52, crownW: 0.8, crownR: [0.46, 0.62], crownDx: 0,
-      fall: 0, fallW: 0, fallN: 0, sides: 8,
+      fall: 0, fallW: 0, fallN: 0, tiers: 0, sides: 8,
     },
     variants: [
       {}, // classic Y
@@ -242,7 +271,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.05, flare: 0.9, split: null,
       boughN: [1, 2], boughStart: 0.5,
       cBot: 0.45, crownW: 1.25, crownR: [0.48, 0.64], crownDx: 0.4,
-      fall: 0, fallW: 0, fallN: 0, sides: 8,
+      fall: 0, fallW: 0, fallN: 0, tiers: 0, sides: 8,
     },
     variants: [
       {}, // streaming
@@ -258,7 +287,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.04, flare: 1.1, split: null,
       boughN: [3, 4], boughStart: 0.45,
       cBot: 0.38, crownW: 1.55, crownR: [0.5, 0.68], crownDx: 0,
-      fall: 0, fallW: 0, fallN: 0, sides: 9,
+      fall: 0, fallW: 0, fallN: 0, tiers: 0, sides: 9,
     },
     variants: [
       {}, // pavilion dome
@@ -275,7 +304,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.1, flare: 1.25, split: null,
       boughN: [3, 4], boughStart: 0.45,
       cBot: 0.4, crownW: 1.85, crownR: [0.6, 0.82], crownDx: 0,
-      fall: 0, fallW: 0, fallN: 0, sides: 9,
+      fall: 0, fallW: 0, fallN: 0, tiers: 0, sides: 9,
     },
     variants: [
       {}, // broad king
@@ -295,7 +324,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.09, flare: 1.15, split: null,
       boughN: [0, 0], boughStart: 0.55,
       cBot: 0.7, crownW: 0.52, crownR: [0.32, 0.44], crownDx: 0,
-      fall: 0.38, fallW: 1.75, fallN: 7, sides: 9,
+      fall: 0.38, fallW: 1.75, fallN: 7, tiers: 0, sides: 9,
     },
     variants: [
       {}, // the classic weeper
@@ -311,12 +340,31 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.12, flare: 1.2, split: null,
       boughN: [3, 4], boughStart: 0.4,
       cBot: 0.38, crownW: 1.6, crownR: [0.55, 0.75], crownDx: 0,
-      fall: 0, fallW: 0, fallN: 0, sides: 9,
+      fall: 0, fallW: 0, fallN: 0, tiers: 0, sides: 9,
     },
     variants: [
       {}, // dense dome
       { bow: 0.16, gnarl: 0.18 }, // twisted
       { h: [4.7, 5.5], crownW: 1.3 }, // spired
+    ],
+  },
+  // 8 — Northern pine: THE SPIRE (see the header law). Tiered chevron
+  // plates on a dead-straight bole, cold blue-greens against the
+  // broadleaf palette, red-brown bark. crownW = the bottom tier's
+  // half-width; crownR sizes the ridge tufts; cBot = first tier.
+  {
+    base: {
+      bark: '#7a4f33', leaves: ['#24473a', '#33604c', '#4a7f5e'],
+      h: [4.4, 5.2], trunkW: 0.16, taper: 0.32, bow: 0.04, lean: 0,
+      gnarl: 0.05, flare: 0.95, split: null,
+      boughN: [0, 0], boughStart: 0.5,
+      cBot: 0.3, crownW: 1.32, crownR: [0.24, 0.34], crownDx: 0,
+      fall: 0, fallW: 0, fallN: 0, tiers: 6, sides: 7,
+    },
+    variants: [
+      {}, // the classic spire
+      { h: [4.9, 5.7], cBot: 0.42, crownW: 1.05, tiers: 5, trunkW: 0.14 }, // lodgepole — high bare bole
+      { h: [4.1, 4.7], cBot: 0.26, crownW: 1.55, tiers: 7, trunkW: 0.19, gnarl: 0.08 }, // old growth — storm-flattened top
     ],
   },
 ];
@@ -325,6 +373,7 @@ export function speciesOf(tile: Tile, h: number): number {
   return tile === Tile.TreeOak ? 5
     : tile === Tile.TreeWillow ? 6
     : tile === Tile.TreeYew ? 7
+    : tile === Tile.TreePine ? 8
     : h % 5;
 }
 
@@ -483,9 +532,9 @@ export function treeModel(tile: Tile, h: number): TreeModel {
     // The trunk climbs INTO the dome so the joint can never show.
     const trunkTop = crownBot + (H - crownBot) * 0.3;
     const trunk = grownSpine(0, 0, g.lean * unit * 0.7, trunkTop, g.bow, g.lean, g.gnarl, bowSign, unit, rnd, 3, 6);
-    // The willow grows no dome — its broken crown is built with the
-    // limbs in the cascade block below.
-    bottomIdx = g.fall > 0 ? [] : dome(crownCx, crownBot, H, g.crownW, 40);
+    // The willow and the pine grow no dome — their crowns are built
+    // in their own blocks below.
+    bottomIdx = g.fall > 0 || g.tiers > 0 ? [] : dome(crownCx, crownBot, H, g.crownW, 40);
 
     // Boughs: short, fill-only, from the upper trunk to just SHORT of
     // a bottom-tier cluster's centre — tips always buried in foliage.
@@ -576,6 +625,8 @@ export function treeModel(tile: Tile, h: number): TreeModel {
       curtains.push({
         pts, drop, dropF, tone, hf: Math.min(1, ay / H),
         seed: hashCoords(61, h & 0xffff, curtains.length), x0: ax, len,
+        // The comb part-line runs down the visible fronds' left flank.
+        part: tone === 1 || tone === 2 ? [1, 5] : undefined,
       });
     };
 
@@ -685,6 +736,155 @@ export function treeModel(tile: Tile, h: number): TreeModel {
 
     // The limbs grew after the trunk was seated — re-seat the trunk
     // LAST so its body still covers every crotch join (seam law).
+    branches.splice(branches.indexOf(trunkB), 1);
+    branches.push(trunkB);
+  }
+
+  // --- THE PINE: tiered plates up the spire (see the header law).
+  if (g.tiers > 0) {
+    const trunkB = branches[branches.length - 1]!;
+    const nT = g.tiers;
+    const yBot = H * g.cBot;
+    const yTop = H * (variant === 2 ? 0.86 : 0.9);
+
+    /**
+     * One chevron plate: a peaked top ridge, downswept tips, and a
+     * serrated hem of staggered teeth. The hem also sheds a SHADOW
+     * RIBBON — the same zigzag offset down, filled dark in the
+     * pine's tone-0 batch — the shingle separation as a fill, never
+     * a stroke (strokes were the taiga's frame cost: a dense stand
+     * re-bakes many trees per second, and fills raster far cheaper).
+     * `tone` is band semantics (1 low, 2 high, 3 west-lit facet).
+     */
+    const addPlate = (
+      cx0: number, y: number, W: number, rise: number, dTip: number,
+      tone: number, teeth: number, ri: number,
+    ): void => {
+      const pts: Array<[number, number]> = [];
+      const drop: number[] = [];
+      const dropF: number[] = [];
+      const push = (x: number, yy: number, d: number): void => {
+        pts.push([Math.sign(x) * Math.min(Math.abs(x), 2.55), Math.max(0.1, yy)]);
+        drop.push(d);
+        dropF.push(d);
+      };
+      const j = (i: number): number => (rnd(ri + i) - 0.5) * 0.07;
+      push(cx0 - W, y - dTip, 0.28);
+      push(cx0 - W * 0.52 + j(1), y + rise * 0.55 + j(2) * 0.5, 0.1);
+      push(cx0 + j(3) * 0.6, y + rise, 0);
+      push(cx0 + W * 0.52 + j(4), y + rise * 0.55 + j(5) * 0.5, 0.1);
+      push(cx0 + W, y - dTip, 0.28);
+      // The serrated hem, right tip → left tip: notch up, tooth down.
+      const hem: Array<[number, number]> = [[cx0 + W, y - dTip]];
+      for (let k = teeth - 1; k >= 0; k--) {
+        const xn = cx0 - W + 2 * W * ((k + 1) / teeth);
+        const xt = cx0 - W + 2 * W * ((k + 0.5) / teeth);
+        const yn = y - dTip * (0.35 + rnd(ri + 20 + k) * 0.2);
+        const yt = y - dTip * (1.25 + rnd(ri + 30 + k) * 0.65);
+        push(xn - W * 0.06, yn, 0.2);
+        push(xt, yt, 0.26);
+        hem.push([xn - W * 0.06, yn], [xt, yt]);
+      }
+      push(cx0 - W, y - dTip, 0.28);
+      hem.push([cx0 - W, y - dTip]);
+      curtains.push({
+        pts, drop, dropF, tone, hf: Math.min(1, y / H),
+        seed: hashCoords(61, h & 0xffff, curtains.length), x0: cx0, len: 0.5,
+        // The ridge + tips are the whole shadow silhouette.
+        shadowHull: pts.slice(0, 5).concat([[cx0, y - dTip * 1.6]]),
+      });
+      // The shadow ribbon (skip the spire cap's, tone 3 never rides).
+      if (tone !== 3 && W > 0.4) {
+        const rp: Array<[number, number]> = [];
+        const rd: number[] = [];
+        for (const [x, yy] of hem) { rp.push([x, Math.max(0.1, yy)]); rd.push(0.24); }
+        for (let i2 = hem.length - 1; i2 >= 0; i2--) {
+          rp.push([hem[i2]![0], Math.max(0.1, hem[i2]![1] - 0.07)]);
+          rd.push(0.24);
+        }
+        curtains.push({
+          pts: rp, drop: rd, dropF: rd, tone: 0, hf: Math.min(1, y / H),
+          seed: hashCoords(61, h & 0xffff, curtains.length), x0: cx0, len: 0.5,
+          noShadow: true,
+        });
+      }
+    };
+
+    /** The west-lit facet riding a plate — the one-sun sculpting. */
+    const addFacet = (
+      cx0: number, y: number, W: number, rise: number, dTip: number, ri: number,
+    ): void => {
+      const pts: Array<[number, number]> = [];
+      const drop: number[] = [];
+      const dropF: number[] = [];
+      const push = (x: number, yy: number, d: number): void => {
+        pts.push([Math.sign(x) * Math.min(Math.abs(x), 2.55), Math.max(0.1, yy)]);
+        drop.push(d);
+        dropF.push(d);
+      };
+      push(cx0 - W, y - dTip, 0.28);
+      push(cx0 - W * 0.52 + (rnd(ri) - 0.5) * 0.06, y + rise * 0.55, 0.1);
+      push(cx0 - W * 0.06, y + rise * 0.9, 0);
+      push(cx0 - W * 0.16, y - dTip * 0.3, 0.12);
+      push(cx0 - W * 0.6, y - dTip * (0.9 + rnd(ri + 1) * 0.3), 0.24);
+      curtains.push({
+        pts, drop, dropF, tone: 3, hf: Math.min(1, y / H),
+        seed: hashCoords(61, h & 0xffff, curtains.length), x0: cx0, len: 0.5,
+      });
+    };
+
+    // The tiers: wider spacing low (daylight and bole between the
+    // bottom plates), tightening toward the crown; width tapers to
+    // the spire with a slight concave sweep.
+    for (let i = 0; i < nT; i++) {
+      const v = nT === 1 ? 0 : i / (nT - 1);
+      const y = yBot + (yTop - yBot) * Math.pow(v, 0.88);
+      const W = g.crownW * Math.pow(1 - v, 1.12) + 0.24;
+      const cx0 = crownCx + (rnd(800 + i) - 0.5) * 0.09;
+      const rise = 0.3 + W * 0.12 + rnd(810 + i) * 0.06;
+      const dTip = Math.min(0.3, 0.15 + W * 0.11);
+      const teeth = 3 + Math.round(W * 1.5);
+      const tone = v < 0.45 ? 1 : 2;
+      addPlate(cx0, y, W, rise, dTip, tone, teeth, 820 + i * 13);
+      addFacet(cx0, y, W, rise, dTip, 900 + i * 7);
+    }
+    // The spire cap: one slim tall plate closing the silhouette to a
+    // point — the storm-flattened ancient goes without.
+    if (variant !== 2) {
+      addPlate(
+        crownCx + (rnd(950) - 0.5) * 0.06, yTop - 0.05,
+        0.26, H - yTop, 0.12, 2, 2, 955,
+      );
+    }
+    // The crown core: a tight chain of small tufts hugging the spine
+    // BELOW the spire base (fixed radii — the mass law needs the
+    // chain to never break). They tuck INSIDE the upper plates as
+    // soft depth mass between the ridges — the spire plate alone
+    // owns the top of the silhouette; a pine ends in a POINT, never
+    // a ball. The storm-flattened ancient instead wears a wide low
+    // crown pad. A sapling keeps only the top two — a green tip.
+    const tuftR = (i: number): number => 0.24 + rnd(970 + i) * 0.04;
+    addCluster(crownCx + (rnd(972) - 0.5) * 0.08, yTop - 0.22, tuftR(0), 2, { lit: true });
+    addCluster(crownCx - 0.11, yTop - 0.55, tuftR(1), 2, { lit: true });
+    addCluster(crownCx + 0.12, yTop - 0.9, tuftR(2), 2, { extra: true });
+    addCluster(crownCx - 0.13, yTop - 1.24, tuftR(3), 1, { extra: true });
+    addCluster(crownCx + 0.11, yTop - 1.58, tuftR(4), 1, { extra: true });
+
+    // Dead whorl stubs on the bare bole — the northern signature.
+    const nStub = 2 + (rnd(990) < 0.5 ? 1 : 0);
+    for (let k = 0; k < nStub; k++) {
+      const side = k % 2 === 0 ? -1 : 1;
+      const u = 0.45 + rnd(991 + k) * 0.35;
+      const [sx2, sy2] = alongSpine(trunkB.pts, u);
+      branches.push({
+        pts: [
+          [sx2, sy2],
+          [sx2 + side * (0.2 + rnd(994 + k) * 0.14), sy2 - 0.06 - rnd(996 + k) * 0.05],
+        ],
+        w0: g.trunkW * 0.3, w1: g.trunkW * 0.06, flare: 0, tip: -1, level: 1,
+      });
+    }
+    // Re-seat the trunk LAST (seam law) — the stubs grew after it.
     branches.splice(branches.indexOf(trunkB), 1);
     branches.push(trunkB);
   }
@@ -864,7 +1064,7 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
       const ph = f.wx * 1.9 + f.wy * 1.45 + cu.x0 * 2.3;
       const wAmp = windy * Math.min(0.085, 0.028 + cu.len * 0.016);
       const wT = f.tSec * (2.1 + (cu.seed % 4) * 0.15) + ph * 1.7;
-      const part = partPath && (tone === 1 || tone === 2);
+      const part = partPath ? cu.part : undefined;
       for (let k = 0; k < cu.pts.length; k++) {
         const p = cu.pts[k]!;
         const d = cu.drop[k]!;
@@ -874,10 +1074,10 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
         const sy2 = Y(p[1] + lift * d);
         if (k === 0) path.moveTo(sx2, sy2);
         else path.lineTo(sx2, sy2);
-        // Left flank (the first 6 stations) = this frond's part line.
+        // The declared vertex run feeds the batched part/hem stroke.
         if (part) {
-          if (k === 1) partPath!.moveTo(sx2, sy2);
-          else if (k > 1 && k < 6) partPath!.lineTo(sx2, sy2);
+          if (k === part[0]) partPath!.moveTo(sx2, sy2);
+          else if (k > part[0] && k <= part[1]) partPath!.lineTo(sx2, sy2);
         }
       }
       path.closePath();
@@ -887,9 +1087,11 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     ctx.fill(path);
   };
 
-  // Back streamers paint before any wood: the bole stands INSIDE
-  // the cascade, never pasted in front of it.
-  fillFalls(0, shade(m.leaves[0], -8));
+  // Back streamers paint before any wood: the willow's bole stands
+  // INSIDE the cascade, never pasted in front of it. The pine has no
+  // pre-trunk foliage — its plates all ride the spire.
+  const pine = m.species === 8;
+  if (!pine) fillFalls(0, shade(m.leaves[0], -8));
 
   // --- Root flares (the trunk is the LAST branch — seam law).
   const trunk = m.branches[m.branches.length - 1]!;
@@ -942,20 +1144,32 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   }
   ctx.stroke();
 
-  // --- The cascade (willow): mid streamers bury the upper trunk,
-  // lit streamers ride the sun side, withies last. The crest paints
-  // AFTER all of it — it spills over every anchor (seam law, down).
-  fillFalls(1, m.leaves[1]);
-  fillFalls(2, m.leaves[2]);
-  // Strand part-lines: ONE stroke for every mid + lit frond — the
-  // combed-curtain read, skipped when the tree is too small for it.
-  if (partPath) {
-    ctx.strokeStyle = shade(m.leaves[0], -6);
-    ctx.lineWidth = Math.max(1, s * 0.026);
-    ctx.lineJoin = 'round';
-    ctx.stroke(partPath);
+  // --- The foliage geometry, per-species semantics (band law):
+  // willow = cascade fronds; pine = tier plates. Either way each
+  // tone is ONE batched fill and the part/hem lines ONE stroke.
+  if (pine) {
+    // Lower band, upper band + spire, then the shingle hem shadows
+    // (batched FILLS — see the plate law), then the west-lit facets.
+    fillFalls(1, m.leaves[0]);
+    fillFalls(2, m.leaves[1]);
+    fillFalls(0, shade(m.leaves[0], -16));
+    fillFalls(3, shade(m.leaves[1], 15));
+  } else {
+    // The cascade (willow): mid streamers bury the upper trunk, lit
+    // streamers ride the sun side, withies last. The crest paints
+    // AFTER all of it — it spills over every anchor (seam law, down).
+    fillFalls(1, m.leaves[1]);
+    fillFalls(2, m.leaves[2]);
+    // Strand part-lines: ONE stroke for every mid + lit frond — the
+    // combed-curtain read, skipped when the tree is too small for it.
+    if (partPath) {
+      ctx.strokeStyle = shade(m.leaves[0], -6);
+      ctx.lineWidth = Math.max(1, s * 0.026);
+      ctx.lineJoin = 'round';
+      ctx.stroke(partPath);
+    }
+    fillFalls(3, shade(m.leaves[2], 18));
   }
-  fillFalls(3, shade(m.leaves[2], 18));
 
   // --- THE CANOPY MASS: every cluster contributes its blob to
   // batched tone paths — one shade layer beneath, three light bands,

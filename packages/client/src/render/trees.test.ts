@@ -10,7 +10,7 @@ import {
 } from '@arx/shared';
 import { maxTrunkBaseRadius, speciesOf, treeModel } from './trees.js';
 
-const TREES = [Tile.Tree, Tile.TreeOak, Tile.TreeWillow, Tile.TreeYew];
+const TREES = [Tile.Tree, Tile.TreeOak, Tile.TreeWillow, Tile.TreeYew, Tile.TreePine];
 
 test('every tree tile grows all of its structural variants', () => {
   // The user-facing promise: 2-3 real silhouettes per species, not
@@ -46,6 +46,7 @@ test('trees stand at proper scale — never stubby, never absurd', () => {
   for (let h = 0; h < 100; h++) {
     assert.ok(treeModel(Tile.TreeOak, h).height >= 4.6, 'oaks are landmarks');
     assert.ok(treeModel(Tile.TreeYew, h).height >= 4.3, 'yews are ancients');
+    assert.ok(treeModel(Tile.TreePine, h).height >= 4.0, 'pines are spires');
   }
 });
 
@@ -159,11 +160,60 @@ test('the willow weeps: limbs carrying a cascade, and only the willow', () => {
       `the hem only sweeps ${(hemR - hemL).toFixed(2)} tiles`,
     );
   }
-  // Nothing else weeps.
+  // Nothing else weeps (the pine's plates ride the same channel, but
+  // it is tested by its own law below).
   for (const tile of [Tile.Tree, Tile.TreeOak, Tile.TreeYew]) {
     for (let h = 0; h < 60; h++) {
       assert.equal(treeModel(tile, h).curtains.length, 0, `${Tile[tile]} grew a skirt`);
     }
+  }
+});
+
+test('the pine is tiers, not a dome — plates, facets, and a bare bole', () => {
+  // THE PINE law: serrated chevron plates stacked up the spire, a
+  // west-lit facet on every plate, a batched hem stroke per plate,
+  // banded tones, foliage never reaching the ground (the bare bole),
+  // a tapering silhouette, and near-rigid plates (tiny drop weights).
+  for (let h = 0; h < 120; h++) {
+    const m = treeModel(Tile.TreePine, h);
+    const plates = m.curtains.filter((c) => c.tone === 1 || c.tone === 2);
+    const facets = m.curtains.filter((c) => c.tone === 3);
+    const ribbons = m.curtains.filter((c) => c.tone === 0);
+    assert.ok(plates.length >= 5, `only ${plates.length} plates`);
+    assert.ok(facets.length >= 5, 'every tier wears a west facet');
+    assert.ok(ribbons.length >= 4, 'the shingle needs its hem shadow ribbons');
+    assert.ok(plates.some((c) => c.tone === 1) && plates.some((c) => c.tone === 2),
+      'light must band by tier');
+    let lowestFoliage = Infinity;
+    let wBot = 0;
+    let wTop = Infinity;
+    for (const cu of m.curtains) {
+      let lo = Infinity;
+      let hi = -Infinity;
+      let xMin = Infinity;
+      let xMax = -Infinity;
+      for (const [x, y] of cu.pts) {
+        lo = Math.min(lo, y); hi = Math.max(hi, y);
+        xMin = Math.min(xMin, x); xMax = Math.max(xMax, x);
+        assert.ok(Math.abs(x) <= 2.56 && Math.abs(x) <= m.spread);
+      }
+      lowestFoliage = Math.min(lowestFoliage, lo);
+      if (cu.tone === 1 || cu.tone === 2) {
+        const midY = (lo + hi) / 2;
+        if (midY < m.height * 0.5) wBot = Math.max(wBot, xMax - xMin);
+        if (midY > m.height * 0.72) wTop = Math.min(wTop, xMax - xMin);
+        // Near-rigid: plates never swing like cloth.
+        for (const d of cu.drop) assert.ok(d >= 0 && d <= 0.35);
+      }
+    }
+    assert.ok(lowestFoliage > m.height * 0.09,
+      `foliage reaches y=${lowestFoliage.toFixed(2)} — the bole must stand bare`);
+    assert.ok(wBot > wTop * 1.6,
+      `no taper: bottom ${wBot.toFixed(2)} vs top ${wTop.toFixed(2)}`);
+    // The crown core tufts chain over the plates.
+    assert.ok(m.clusters.length >= 4);
+    // Dead whorl stubs stand on the bole.
+    assert.ok(m.branches.filter((b) => b.level === 1).length >= 2, 'the bole lost its whorl stubs');
   }
 });
 
@@ -186,6 +236,7 @@ test('species mapping: named trees keep their species, commons vary', () => {
   assert.equal(speciesOf(Tile.TreeOak, 7), 5);
   assert.equal(speciesOf(Tile.TreeWillow, 7), 6);
   assert.equal(speciesOf(Tile.TreeYew, 7), 7);
+  assert.equal(speciesOf(Tile.TreePine, 7), 8);
   const commons = new Set<number>();
   for (let h = 0; h < 40; h++) commons.add(speciesOf(Tile.Tree, h));
   assert.equal(commons.size, 5, 'common wood draws from five species');

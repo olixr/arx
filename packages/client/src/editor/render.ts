@@ -40,10 +40,12 @@ const TREE_LIKE = new Map<Tile, { tile: Tile; grow: number }>([
   [Tile.TreeOak, { tile: Tile.TreeOak, grow: 1 }],
   [Tile.TreeWillow, { tile: Tile.TreeWillow, grow: 1 }],
   [Tile.TreeYew, { tile: Tile.TreeYew, grow: 1 }],
+  [Tile.TreePine, { tile: Tile.TreePine, grow: 1 }],
   [Tile.Sapling, { tile: Tile.Tree, grow: 0.45 }],
   [Tile.SaplingOak, { tile: Tile.TreeOak, grow: 0.45 }],
   [Tile.SaplingWillow, { tile: Tile.TreeWillow, grow: 0.45 }],
   [Tile.SaplingYew, { tile: Tile.TreeYew, grow: 0.45 }],
+  [Tile.SaplingPine, { tile: Tile.TreePine, grow: 0.45 }],
 ]);
 
 const DOOR_LIKE = new Set<Tile>([

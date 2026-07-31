@@ -195,6 +195,7 @@ const GRASS_LIKE = new Set<number>([
   Tile.TreeOak,
   Tile.TreeWillow,
   Tile.TreeYew,
+  Tile.TreePine,
   Tile.Stump,
   Tile.Fence,
   Tile.FenceDiagNE,

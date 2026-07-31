@@ -344,6 +344,13 @@ export enum Tile {
    * saws boards before they own a saw stand).
    */
   Sawhorse = 147,
+  /**
+   * A northern pine — the cold country's tiered spire. Pine logs are
+   * the mid-wood of the bowyer's and builder's trades.
+   */
+  TreePine = 148,
+  /** A pine sapling. */
+  SaplingPine = 149,
 }
 
 export enum Detail {
@@ -453,6 +460,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.TreeOak]: { name: 'oak tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#1f5426' },
   [Tile.TreeWillow]: { name: 'willow tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#5a8a4a' },
   [Tile.TreeYew]: { name: 'yew tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#1e4028' },
+  [Tile.TreePine]: { name: 'pine tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#2b5747' },
   [Tile.RockCopper]: { name: 'copper rock', solid: true, color: '#6e6a75', raised: true, topColor: '#b87333' },
   [Tile.RockIron]: { name: 'iron rock', solid: true, color: '#6e6a75', raised: true, topColor: '#8d9299' },
   [Tile.RockDepleted]: { name: 'depleted rock', solid: true, color: '#57535f', raised: true, topColor: '#615d69' },
@@ -557,6 +565,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.SaplingOak]: { name: 'oak sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#2d6631' },
   [Tile.SaplingWillow]: { name: 'willow sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#5a8a4a' },
   [Tile.SaplingYew]: { name: 'yew sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#1e4028' },
+  [Tile.SaplingPine]: { name: 'pine sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#2b5747' },
   [Tile.ChestWood]: { name: 'chest', solid: true, color: '#7a552e', raised: true, topColor: '#94693a' },
   [Tile.ChestWoodOpen]: { name: 'open chest', solid: true, color: '#7a552e', raised: true, topColor: '#94693a' },
   [Tile.ChestIron]: { name: 'strongchest', solid: true, color: '#4a4048', raised: true, topColor: '#5e5560' },
@@ -954,6 +963,7 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.TreeOak, 0.38],
   [Tile.TreeWillow, 0.26],
   [Tile.TreeYew, 0.34],
+  [Tile.TreePine, 0.28],
   [Tile.Rock, 0.4],
   [Tile.RockCopper, 0.46],
   [Tile.RockTin, 0.46],
@@ -1021,6 +1031,7 @@ const SAPLING_OF = new Map<Tile, Tile>([
   [Tile.TreeOak, Tile.SaplingOak],
   [Tile.TreeWillow, Tile.SaplingWillow],
   [Tile.TreeYew, Tile.SaplingYew],
+  [Tile.TreePine, Tile.SaplingPine],
 ]);
 const TREE_OF_SAPLING = new Map<Tile, Tile>(
   [...SAPLING_OF].map(([tree, sap]) => [sap, tree]),

@@ -300,6 +300,20 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     ticks: 18,
   },
   {
+    id: 'saw_pine_boards',
+    name: 'Boards from pine (x3)',
+    skill: 'construction',
+    levelReq: 4,
+    xp: 8,
+    station: 'sawhorse',
+    inputs: [{ item: 'pine_log', qty: 1 }],
+    // Pine rips fast and true — same milled boards, quicker at the
+    // sawhorse: the north's builder wood (the 1 log -> 3 boards ratio
+    // is the user-locked constant, every wood obeys it).
+    output: { item: 'board', qty: 3 },
+    ticks: 14,
+  },
+  {
     id: 'saw_oak_boards',
     name: 'Oak boards (x3)',
     skill: 'construction',
@@ -474,6 +488,42 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     output: { item: 'cake', qty: 1 },
     ticks: 55,
     burnChance: 0.2,
+    burnResult: 'burnt_food',
+  },
+
+  // The smokehouse school (Saltmere): the first taught dishes past
+  // the general counter — Alba's, and only Alba's.
+  {
+    id: 'cook_smoked_trout',
+    name: 'Smoked trout',
+    skill: 'cooking',
+    levelReq: 18,
+    xp: 110,
+    station: 'fire',
+    inputs: [
+      { item: 'raw_trout', qty: 1 },
+      { item: 'salt', qty: 1 },
+    ],
+    output: { item: 'smoked_trout', qty: 1 },
+    ticks: 50,
+    burnChance: 0.15,
+    burnResult: 'burnt_food',
+  },
+  {
+    id: 'cook_fishers_pot',
+    name: "Fisher's pot",
+    skill: 'cooking',
+    levelReq: 22,
+    xp: 145,
+    station: 'fire',
+    inputs: [
+      { item: 'raw_trout', qty: 1 },
+      { item: 'salt', qty: 1 },
+      { item: 'milk', qty: 1 },
+    ],
+    output: { item: 'fishers_pot', qty: 1 },
+    ticks: 60,
+    burnChance: 0.15,
     burnResult: 'burnt_food',
   },
 
@@ -750,6 +800,7 @@ const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
   // Sawing — the board loop is every builder's birthright; gating it
   // behind a teacher would re-create the hauling problem it solves.
   saw_boards: 'core',
+  saw_pine_boards: 'core',
   saw_oak_boards: 'core',
 
   // Cooking — the hearth is everyone's birthright…
@@ -762,6 +813,8 @@ const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
   // …but the fancier table is taught at the inn.
   cook_hearty_stew: 'trainer',
   cook_cake: 'trainer',
+  cook_smoked_trout: 'trainer',
+  cook_fishers_pot: 'trainer',
 
   // Smithing — baseline metals stay open to all hands.
   smelt_bronze: 'core',

@@ -64,6 +64,20 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 32,
   },
   {
+    tile: Tile.TreePine,
+    name: 'Pine tree',
+    skill: 'woodcutting',
+    levelReq: 22,
+    xp: 75,
+    yieldItem: 'pine_log',
+    tool: 'axe',
+    minPower: 2, // iron — resin gums a bronze edge to uselessness
+    baseTicks: 78,
+    depleteChance: 0.38,
+    depletedTile: Tile.Stump,
+    respawnSec: 38,
+  },
+  {
     tile: Tile.TreeWillow,
     name: 'Willow tree',
     skill: 'woodcutting',

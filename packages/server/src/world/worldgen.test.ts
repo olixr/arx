@@ -11,6 +11,7 @@ import {
 import {
   AMBERFORD_RECT,
   ROAD_ROUTES,
+  SALTMERE_RECT,
   SILVERFALL_RECT,
   SILVERSPINE,
   THORNVEIL,
@@ -502,9 +503,53 @@ test('the Thornveil is a true wood', () => {
   assert.ok(forest / n > 0.35, `Thornveil core only ${((forest / n) * 100).toFixed(1)}% forest`);
 });
 
+test('the taiga stands north: pines take the cold forests, never the south', () => {
+  const seed = 1337;
+  // Deep-north wilds (east of Silverfall's rect, well past the cold
+  // ramp): the forest share of trees must be pine-dominant.
+  let northPine = 0;
+  let northOther = 0;
+  for (let ty = -260; ty < -180; ty += 2) {
+    for (let tx = 40; tx < 200; tx += 2) {
+      const chunkless = generateChunkTile(seed, tx, ty);
+      if (chunkless === Tile.TreePine) northPine++;
+      else if (
+        chunkless === Tile.Tree || chunkless === Tile.TreeOak ||
+        chunkless === Tile.TreeWillow || chunkless === Tile.TreeYew
+      ) northOther++;
+    }
+  }
+  assert.ok(northPine > 40, `only ${northPine} pines in the deep north`);
+  assert.ok(northPine > northOther, `north not taiga: ${northPine} pines vs ${northOther} others`);
+  // The warm south grows none.
+  let southPine = 0;
+  for (let ty = 40; ty < 160; ty += 2) {
+    for (let tx = 260; tx < 420; tx += 2) {
+      if (generateChunkTile(seed, tx, ty) === Tile.TreePine) southPine++;
+    }
+  }
+  assert.equal(southPine, 0, `${southPine} pines grew in the warm south`);
+});
+
+/** Sample one tile's generated ground via its whole chunk (worldgen is chunk-grained). */
+const chunkTileCache = new Map<string, Uint16Array>();
+function generateChunkTile(seed: number, tx: number, ty: number): number {
+  const cx = Math.floor(tx / CHUNK_SIZE);
+  const cy = Math.floor(ty / CHUNK_SIZE);
+  const key = `${cx},${cy}`;
+  let ground = chunkTileCache.get(key);
+  if (!ground) {
+    ground = generateChunk(seed, cx, cy).ground as Uint16Array;
+    chunkTileCache.set(key, ground);
+  }
+  const lx = tx - cx * CHUNK_SIZE;
+  const ly = ty - cy * CHUNK_SIZE;
+  return ground[lx + ly * CHUNK_SIZE]!;
+}
+
 test('planned zone rects are flat canvases: no levels, no basins inside', () => {
   const seed = 1337;
-  for (const rect of [AMBERFORD_RECT, SILVERFALL_RECT]) {
+  for (const rect of [AMBERFORD_RECT, SILVERFALL_RECT, SALTMERE_RECT]) {
     for (let ty = rect.y; ty < rect.y + rect.h; ty += 5) {
       for (let tx = rect.x; tx < rect.x + rect.w; tx += 5) {
         assert.equal(

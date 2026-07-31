@@ -1652,7 +1652,7 @@ export class Renderer {
     const game = this.game;
     if (!game) return null;
     const t = game.world.groundAt(tx, ty);
-    return t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew
+    return t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew || t === Tile.TreePine
       ? 'tree'
       : t === Tile.Rock ||
           t === Tile.RockCopper ||
@@ -14576,10 +14576,11 @@ export class Renderer {
     // grown their falls yet).
     if (g >= 0.7) {
       for (const cu of m.curtains) {
-        if (cu.tone >= 3) continue;
+        if (cu.tone >= 3 || cu.noShadow) continue;
+        const hull = cu.shadowHull ?? cu.pts;
         const dx = bendT * Math.pow(cu.hf, 1.4);
-        for (let i = 0; i < cu.pts.length; i++) {
-          const [x, y] = cu.pts[i]!;
+        for (let i = 0; i < hull.length; i++) {
+          const [x, y] = hull[i]!;
           const px = bx + (x + dx) * g * s + kx * y * g * s;
           const py = groundY + ky * y * g * s;
           if (i === 0) path.moveTo(px, py);
@@ -15963,7 +15964,8 @@ export class Renderer {
       case Tile.Tree:
       case Tile.TreeOak:
       case Tile.TreeWillow:
-      case Tile.TreeYew: {
+      case Tile.TreeYew:
+      case Tile.TreePine: {
         // A tree that just stood up from its sapling eases from
         // sapling scale to full height instead of popping in.
         const grow = this.growthOf(tx, ty, 0.45, 1, 2600);
@@ -15981,7 +15983,8 @@ export class Renderer {
       case Tile.Sapling:
       case Tile.SaplingOak:
       case Tile.SaplingWillow:
-      case Tile.SaplingYew: {
+      case Tile.SaplingYew:
+      case Tile.SaplingPine: {
         // The middle beat of regrowth: the SAME tree this tile will
         // grow into (same hash -> same species, variant, silhouette),
         // drawn young — thin, short, crown not yet filled in.
