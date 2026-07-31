@@ -262,7 +262,7 @@ test('the flood law: every foeâ€™s per-kill expectation stays under its stationâ
   // couple of stacks and treat gear as an event; named foes pay richer;
   // the Champion alone showers. A retune (code or CMS) that breaks a
   // ceiling is a flood, not a balance pass.
-  const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf', 'gnoll_champion']);
+  const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf', 'gnoll_champion', 'elder_great_owl']);
   const BOSS = new Set(['skeleton_champion']);
   for (const [id, npc] of NPCS) {
     let stacks = 0;

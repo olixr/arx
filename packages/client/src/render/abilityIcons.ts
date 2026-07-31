@@ -3805,6 +3805,64 @@ Object.assign(PLATES, {
     // The scavenger's eye — bone-gold, sizing you up.
     dot(c, '#e8b64c', -0.13, -0.05, 0.032);
   },
+  // Hushing Screech — the elder owl full-face, wings thrown wide, one
+  // shriek-spike tearing upward. (NPC special: bestiary/staging.)
+  hushing_screech: (st) => (c) => {
+    c.translate(0.5, 0.58);
+    // The spike: one jagged scream-line, then nothing — no rings.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(0, -0.3);
+    c.lineTo(-0.05, -0.38);
+    c.lineTo(0.06, -0.44);
+    c.lineTo(-0.03, -0.52);
+    c.stroke();
+    // Wings thrown wide: stepped primary blades either side.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.026;
+    for (const side of [-1, 1] as const) {
+      c.beginPath();
+      c.moveTo(side * 0.08, -0.04);
+      c.lineTo(side * 0.42, -0.26);
+      c.lineTo(side * 0.44, -0.16);
+      c.lineTo(side * 0.34, -0.12);
+      c.lineTo(side * 0.38, -0.02);
+      c.lineTo(side * 0.26, 0.0);
+      c.lineTo(side * 0.28, 0.1);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    // The owl full-face: broad dome, horned tufts, the keg chest.
+    c.beginPath();
+    c.moveTo(-0.13, -0.3); // left tuft tip
+    c.lineTo(-0.07, -0.2);
+    c.lineTo(0.07, -0.2);
+    c.lineTo(0.13, -0.3); // right tuft tip
+    c.lineTo(0.14, -0.12); // skull side
+    c.quadraticCurveTo(0.16, 0.28, 0, 0.34); // chest keel
+    c.quadraticCurveTo(-0.16, 0.28, -0.14, -0.12);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The facial disc: both lamps FORWARD — the stare is the plate.
+    dot(c, st.mid, -0.065, -0.08, 0.052);
+    dot(c, st.mid, 0.065, -0.08, 0.052);
+    dot(c, '#f2e6a0', -0.065, -0.08, 0.034);
+    dot(c, '#f2e6a0', 0.065, -0.08, 0.034);
+    dot(c, st.deep, -0.065, -0.08, 0.014);
+    dot(c, st.deep, 0.065, -0.08, 0.014);
+    // The beak hook between the lamps, open mid-scream.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(0, -0.045);
+    c.lineTo(0, 0.005);
+    c.stroke();
+  },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
 // ------------------------------------------------------------ lookup

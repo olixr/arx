@@ -48,18 +48,21 @@ import {
   drawBoarHead,
   drawCattleHead,
   drawDireWolfHead,
+  drawOwlHead,
   drawRamHead,
   drawRatHead,
   drawStagHead,
   drawWolfHead,
   drawWorgHead,
   enchantedStyle,
+  owlWingFan,
   paintBearBody,
   paintBeetleBody,
   paintBoarBody,
   paintCattleBody,
   paintCrabBody,
   paintDireWolfBody,
+  paintOwlBody,
   paintRamBody,
   paintRatBody,
   paintSpiderBody,
@@ -72,6 +75,7 @@ import {
   type BeastSpec,
   type GnollLook,
   type KoboldLook,
+  type OwlLook,
   type SkeletonLook,
 } from './rig.js';
 
@@ -1199,6 +1203,12 @@ export interface BeastCorpseLook {
   color: string;
   defId: string;
   seed: number;
+  /**
+   * The plumage the owl wore alive — resolved from the RAW eid at the
+   * death instant (the gnoll corpse-coat law), so the fallen body
+   * keeps its cluster instead of rolling a stranger's.
+   */
+  owl?: OwlLook;
 }
 
 /**
@@ -1344,6 +1354,24 @@ export function drawBeastRagdoll(
     );
     ctx.fillStyle = RAT_LOOK.skin;
     ctx.fill(tail);
+  } else if (look.owl) {
+    // The tail fan splays flat on the ground behind the rump.
+    const owl = look.owl;
+    const backA = spineA + Math.PI;
+    const tbx = rear.x + Math.cos(backA) * len * 0.2;
+    const tby = rear.y + Math.sin(backA) * len * 0.2;
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 4; k++) {
+      const a = backA + (k / 3 - 0.5) * 0.9;
+      const blade = owl.tailLen * s * (1 - 0.28 * Math.abs(k / 3 - 0.5) * 2);
+      ctx.strokeStyle = shade(owl.mantle, k % 2 === 0 ? -4 : -12);
+      ctx.lineWidth = Math.max(2, s * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(tbx, tby);
+      ctx.lineTo(tbx + Math.cos(a) * blade, tby + Math.sin(a) * blade * 0.55);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
   }
 
   // Body mass along the spine — the live block, collapsed onto its
@@ -1597,6 +1625,39 @@ export function drawBeastRagdoll(
     ctx.beginPath();
     facetBlob(ctx, midX, midY, r * 1.1, look.seed, 8, 0.75);
     ctx.fill();
+  } else if (look.owl) {
+    // The fallen owl: the keg collapsed on its side, ONE wing thrown
+    // wide across the ground showing its pale underside — the classic
+    // dead-bird splay that tells the whole story from twenty tiles.
+    // The other wing is pinned under the body; honesty needs no stub.
+    // The plumage carries over from life.
+    const owl = look.owl;
+    const side = ((look.seed >> 3) & 1) === 0 ? 1 : -1;
+    paintOwlBody(ctx, spec, owl, {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.45,
+      botH: 0.02,
+    });
+    owlWingFan(ctx, owl, {
+      x: midX - Math.cos(spineA) * len * 0.05,
+      y: midY + r * 0.1,
+      s,
+      ang: spineA + side * 2.2,
+      spread: 1,
+      span: owl.wingSpan * 0.9,
+      under: true,
+      squash: 0.5,
+      seed: look.seed,
+    });
   } else {
     ctx.fillStyle = look.color;
     ctx.save();
@@ -1743,6 +1804,18 @@ export function drawBeastRagdoll(
     ctx.beginPath();
     facetCircle(ctx, head.x, head.y, hr, 6, neckA + Math.PI / 6);
     ctx.fill();
+  } else if (look.owl) {
+    // The disc face-down or side-on, lamps out — the dead-eyes law.
+    drawOwlHead(ctx, look.owl, {
+      x: head.x,
+      y: head.y,
+      s,
+      fx: Math.cos(neckA),
+      fy: Math.sin(neckA),
+      ys: 1,
+      dead: true,
+      seed: look.seed,
+    });
   } else {
     ctx.fillStyle = look.color;
     ctx.beginPath();

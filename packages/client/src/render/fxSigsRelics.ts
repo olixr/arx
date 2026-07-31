@@ -1468,6 +1468,122 @@ const ravening_cackle: AbilitySig = {
   },
 };
 
+/**
+ * HUSHING_SCREECH — "the silence that answers."
+ * The third voice of the champion trio, INVERTED where the other two
+ * pile on: one hard jagged shriek-spike tears up off the thrown-back
+ * disc — and then the wood goes QUIET. Down-feathers settle around
+ * the ring, and the answer at the rim is worse than ears or grins:
+ * EYES. Paired square lamps blink on one after another all around
+ * the circle, every pair turned inward. The parliament was already
+ * here. You just couldn't see it.
+ */
+const hushing_screech: AbilitySig = {
+  spawn(c) {
+    // The wings throw wide: two pale gust-puffs off the shoulders,
+    // not the howlers' single breath column.
+    for (const side of [-1, 1]) {
+      c.particles.burst(c.wx + side * 0.35, c.wy - 0.9, 3, [c.st.core, c.st.mid], {
+        speed: 0.8, life: 0.7, size: 0.1, gravity: -0.8, up: true, drag: 1.5, grow: 0.2, shape: 'puff', fade: '#3c3648', wobble: 0.5,
+      });
+    }
+    const rand = srand(c.seed ^ 0x151);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + rand() * 0.4;
+      c.particles.burst(c.wx + Math.cos(a) * c.radius, c.wy + Math.sin(a) * c.radius * c.squash - 0.2, 1, [c.st.spark, c.st.core], {
+        speed: 0.3, life: 0.6, size: 0.07, gravity: 0.2, drag: 1.8, shape: 'glint',
+      });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, rPx } = c;
+    const rand = srand(c.seed ^ 0x152);
+    const fade = 1 - t;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // The hush: down-feathers settle just inside the rim — small
+    // barbed chevrons rocking down and LYING STILL, one per beat.
+    for (let k = 0; k < 9; k++) {
+      const a = (k / 9) * Math.PI * 2 + rand() * 0.3;
+      const on = cl(t * 2.8 - k * 0.13);
+      if (on <= 0) continue;
+      const p = pt(c, rPx * (0.82 + rand() * 0.12), a);
+      // Falling: the feather drifts the last of its drop as it lands.
+      const drop = (1 - on) * sc * 0.22;
+      const fw = sc * 0.075;
+      ctx.globalAlpha = 0.7 * on * fade;
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.028);
+      ctx.beginPath();
+      ctx.moveTo(p.x - fw, p.y - drop - fw * 0.35);
+      ctx.lineTo(p.x, p.y - drop);
+      ctx.lineTo(p.x + fw, p.y - drop - fw * 0.35);
+      ctx.stroke();
+      // The quill tick down the middle.
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(1, sc * 0.016);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - drop);
+      ctx.lineTo(p.x, p.y - drop - fw * 0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x153);
+    const fade = 1 - t;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // The scream: ONE hard shriek-spike — a narrow zigzag tearing
+    // straight up off the disc, gone by mid-life. Not rings, not
+    // barks: a spike of sound, then nothing. The nothing is the point.
+    const spikeA = cl(1 - t * 2.2) * fade;
+    if (spikeA > 0) {
+      const rise = t * sc * 0.9;
+      ctx.globalAlpha = 0.85 * spikeA;
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.04);
+      ctx.beginPath();
+      ctx.moveTo(px, py - sc * 0.9 - rise * 0.3);
+      ctx.lineTo(px - sc * 0.06, py - sc * 1.15 - rise * 0.6);
+      ctx.lineTo(px + sc * 0.07, py - sc * 1.3 - rise * 0.8);
+      ctx.lineTo(px - sc * 0.03, py - sc * 1.6 - rise);
+      ctx.stroke();
+    }
+    // The answer: EYES blink on around the rim — paired square lamps
+    // with pin pupils, every pair turned inward toward the quarry.
+    for (let k = 0; k < 7; k++) {
+      const a0 = (k / 7) * Math.PI * 2 + rand() * 0.5;
+      const on = cl(t * 2.4 - k * 0.18);
+      if (on <= 0) continue;
+      const p = pt(c, rPx * 1.04, a0);
+      const ey = p.y - sc * 0.32 * on;
+      const er = sc * 0.045;
+      // The near eye leads toward the center — the head has turned.
+      const leanX = px > p.x ? 1 : -1;
+      ctx.globalAlpha = 0.9 * on * fade;
+      for (const off of [-1, 1]) {
+        const ex = p.x + off * er * 1.6 + leanX * er * 0.5;
+        ctx.fillStyle = st.mid;
+        ctx.fillRect(ex - er, ey - er, er * 2, er * 2);
+        // Pin pupil: the hunting stare, already narrowed.
+        ctx.fillStyle = st.deep;
+        ctx.fillRect(ex - er * 0.28, ey - er * 0.6, er * 0.56, er * 1.2);
+      }
+    }
+    ctx.restore();
+    // The cold pull: dread motes drift inward, same law as the pack
+    // voices — a quieter throat behind this one.
+    if (Math.random() < c.frameDt * 8 * fade) {
+      const a = Math.random() * Math.PI * 2;
+      c.particles.burst(c.wx + Math.cos(a) * c.radius, c.wy + Math.sin(a) * c.radius * squash - 0.25, 1, [st.spark, st.deep], {
+        speed: 1.0, life: 0.6, size: 0.06, gravity: 0, dir: a + Math.PI, spread: 0.2, drag: 0.8, flicker: 0.4,
+      });
+    }
+  },
+};
+
 // -------------------------------------------------------- registry
 
 /** The relic actives, the Bone Tempest sigil, and the NPC specials. */
@@ -1486,4 +1602,5 @@ export const RELIC_SIGS: Record<string, AbilitySig> = {
   ground_slam,
   rallying_howl,
   ravening_cackle,
+  hushing_screech,
 };

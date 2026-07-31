@@ -766,6 +766,52 @@ const denHollow = sketch(
   wolfMarks,
 );
 
+const owlMarks: Record<string, Marker> = {
+  '1': { npc: 'great_owl', radius: 3, under: Tile.Grass },
+};
+
+/**
+ * The shadewood roost: a horseshoe of old oaks around a moon glade,
+ * the floor drifted with cast pellets — and the iron chest of the
+ * last climber, still strapped shut, under the tree that kept them.
+ */
+const roostShadewood = sketch(
+  'poi_roost_shadewood',
+  'Shadewood roost',
+  [
+    '_____,,,,______',
+    '__,,.O.o.O.,,__',
+    '_,.O...,..Y.,__',
+    '_,.o.1...o..,__',
+    '_,O...rX...O,__',
+    '_,.u...1....,__',
+    '__,,.o...o.,,__',
+    '_____,,,,______',
+  ],
+  owlMarks,
+);
+
+/**
+ * A pine hollow the parliament hunts from: pellet heaps under the
+ * boughs, one clawed-bare stump, and the cache wedged in the rocks
+ * where something heavy set it down and never came back.
+ */
+const roostPinehollow = sketch(
+  'poi_roost_pinehollow',
+  'Pine hollow roost',
+  [
+    '____,,,,_____',
+    '__,j..o..j,__',
+    '_,.j..1..j.,_',
+    '_,o...r...o,_',
+    '_,.j.rXr.j.,_',
+    '_,..1...u..,_',
+    '__,j..o..j,__',
+    '____,,,,_____',
+  ],
+  owlMarks,
+);
+
 /**
  * A tower of the old Waykeeper line, breached and left. By daylight
  * it's a free chest and a view; after dusk the garrison that died
@@ -1315,6 +1361,9 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     gnollSquat,
     gnollBoneyard,
     gnollDenhall,
+    // The parliament (great owls of the deep wood):
+    roostShadewood,
+    roostPinehollow,
     // The Small Finds (the lived-in land, phase 2):
     findHuntersRest,
     findSnareLine,

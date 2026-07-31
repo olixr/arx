@@ -14,7 +14,7 @@
  * the body decelerates — that inertia is what pitches a sliding corpse
  * over its own pinned feet.
  */
-import { type BeastSpec, type GnollLook, type KoboldLook, type SkeletonLook } from './rig.js';
+import { type BeastSpec, type GnollLook, type KoboldLook, type OwlLook, type SkeletonLook } from './rig.js';
 export interface RagPoint {
     x: number;
     y: number;
@@ -100,7 +100,7 @@ export declare const H: {
  */
 export declare function buildHumanoidRagdoll(size: number, seed: number): Ragdoll;
 /** Upper-body / feet index groups for launch(). */
-export declare const HUMANOID_UPPER: (1 | 2 | 7 | 8 | 9 | 10)[];
+export declare const HUMANOID_UPPER: (1 | 2 | 10 | 8 | 9 | 7)[];
 export declare const HUMANOID_FEET: (4 | 6)[];
 /**
  * Beast skeleton: rear hip, front chest, head, then one two-segment
@@ -163,6 +163,12 @@ export interface BeastCorpseLook {
     color: string;
     defId: string;
     seed: number;
+    /**
+     * The plumage the owl wore alive — resolved from the RAW eid at the
+     * death instant (the gnoll corpse-coat law), so the fallen body
+     * keeps its cluster instead of rolling a stranger's.
+     */
+    owl?: OwlLook;
 }
 /**
  * Paint a beast ragdoll: the same faceted body mass and species legs

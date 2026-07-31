@@ -64,6 +64,7 @@ import {
   shade,
   koboldLook,
   gnollLook,
+  owlLook,
   skeletonLook,
   type RigPose,
   type GnollLook,
@@ -24496,7 +24497,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : defId === 'great_owl' ? 0.4 : defId === 'elder_great_owl' ? 0.65 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
@@ -25807,6 +25808,13 @@ export class Renderer {
       const feet: number[] = [];
       for (let i = 4; i < rag.pts.length; i += 2) feet.push(i);
       rag.launch(sx, sy, sev, BEAST_UPPER, feet);
+      // The corpse keeps the plumage the body wore: the live look
+      // rolls its cluster from the raw eid, so the fall must too —
+      // never the mixed rag seed (the gnoll corpse-coat law).
+      const corpseOwl =
+        death.defId === 'great_owl' || death.defId === 'elder_great_owl'
+          ? owlLook(death.defId, death.eid)
+          : undefined;
       look = {
         kind: 'beast',
         b: {
@@ -25815,6 +25823,7 @@ export class Renderer {
           color: def.color ?? '#999',
           defId: death.defId,
           seed,
+          ...(corpseOwl ? { owl: corpseOwl } : {}),
         },
       };
     }
@@ -25929,7 +25938,12 @@ export class Renderer {
               ? 0.35
               : c.look.b.defId === 'dire_wolf' || c.look.b.defId === 'worg'
                 ? 0.25
-                : 0
+                // The thrown wing splays a full span past the spine.
+                : c.look.b.defId === 'elder_great_owl'
+                  ? 1.4
+                  : c.look.b.defId === 'great_owl'
+                    ? 1.05
+                    : 0
         : 0;
     // A geared humanoid reaches further still: a staff runs ~0.75 t
     // past the fist, a tall helm past the crown — grow the scratch

@@ -139,6 +139,24 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   { npc: 'giant_spider', weight: 1.5, tiers: [3, 5], biomes: ['forest'], hours: NIGHT },
   { npc: 'skeleton', weight: 1, tiers: [3, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow', family: 'dead' },
   { npc: 'worg', weight: 1.5, tiers: [4, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 2], family: 'wolfkin' },
+  // The parliament: great owls hunt the moonlit glades in wings of
+  // two and three — the wide-eyed answer to the wolf pack, and the
+  // one night beast no approach angle sneaks past.
+  { npc: 'great_owl', weight: 1.5, tiers: [3, 5], biomes: ['forest'], hours: NIGHT, band: [2, 3], spread: 3, habitat: 'glade', family: 'parliament' },
+  {
+    // The deep wood's high court: the tier-5 parliament stoops behind
+    // an elder — the screech calls every bough down on you at once.
+    npc: 'great_owl',
+    weight: 1.5,
+    tiers: [5, 5],
+    biomes: ['forest'],
+    hours: NIGHT,
+    band: [2, 3],
+    spread: 3,
+    lead: { npc: 'elder_great_owl' },
+    habitat: 'glade',
+    family: 'parliament',
+  },
   { npc: 'troll', weight: 0.5, tiers: [5, 5], biomes: ['forest'], hours: NIGHT },
   // Daylight gnolls range in scavenging pairs, wide of the squat.
   { npc: 'gnoll', weight: 1.5, tiers: [3, 4], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den', family: 'gnoll' },

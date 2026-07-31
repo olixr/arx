@@ -1,0 +1,116 @@
+{
+  "id": "owl_roost",
+  "name": "Owl roost",
+  "description": "The parliament's hunting ground: old trees over a pellet-strewn glade, and a cache nobody living set down. The owls do not chase what leaves. They watch it go.",
+  "tiers": [
+    3,
+    5
+  ],
+  "weight": 2,
+  "prefabs": [
+    "poi_roost_shadewood",
+    "poi_roost_pinehollow"
+  ],
+  "garrison": [
+    {
+      "npc": "great_owl",
+      "count": [
+        2,
+        3
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "great_owl",
+      "count": [
+        1,
+        1
+      ],
+      "role": "sentry",
+      "patrol": true,
+      "minTier": 4
+    },
+    {
+      "npc": "elder_great_owl",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 4,
+      "levelOffset": 3,
+      "names": [
+        "Hushwing",
+        "Moonbarred",
+        "Old Unblinking",
+        "The Pale Regard"
+      ]
+    }
+  ],
+  "chestTierBonus": 0,
+  "clearedFlag": "poi_roost_broken",
+  "cues": {
+    "clearing": 2,
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 3
+      }
+    ]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [
+          {
+            "npc": "great_owl",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "great_owl",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "great_owl",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 2
+          }
+        ]
+      }
+    ],
+    "satellites": true
+  },
+  "family": "parliament"
+}

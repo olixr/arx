@@ -3058,6 +3058,19 @@ const defs: AbilityDef[] = [
     // The same cold dread as the howl, in an uglier register.
     status: { status: 'chill', power: 1, durationTicks: 50 },
   },
+  {
+    id: 'hushing_screech',
+    name: 'Hushing Screech',
+    desc: 'The elder owl spreads its wings and screams the wood silent. Cold roots your legs, and the parliament drops off its boughs.',
+    color: '#b8c4d8',
+    code: 'Hs',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'nova',
+    damage: 2, // the scream barely bruises — the PARLIAMENT is the payload
+    radius: 2.6,
+    // The hush runs cold: rooted legs while every owl in earshot stoops.
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
 ];
 
 export const ABILITIES: ReadonlyMap<string, AbilityDef> = new Map(defs.map((d) => [d.id, d]));

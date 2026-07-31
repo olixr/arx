@@ -450,6 +450,8 @@ export const FX_STYLES: Record<string, FxStyle> = {
   ground_slam: BONE({ debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.9, wash: 0.45 }),
   rallying_howl: SHADOW({ mid: '#9aa2b8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.3 }),
   ravening_cackle: SHADOW({ mid: '#c9a44a', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.3 }),
+  // Moon-pale over shadow: the scream is a spike, the answer is eyes.
+  hushing_screech: SHADOW({ mid: '#b8c4d8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.32 }),
 };
 
 /**

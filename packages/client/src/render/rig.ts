@@ -6264,6 +6264,53 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     foot: 'claw',
     legColor: '#e8a33d',
   },
+  // The great owl: a two-post strider — bird ankles bow backward like
+  // the chicken's, but the mass they carry is a keg the henyard never
+  // dreamed of. Modest on foot; the kill lives in the pounce lunge.
+  great_owl: {
+    rig: {
+      legs: [
+        { fwd: -0.02, side: -0.11, group: 0 },
+        { fwd: -0.02, side: 0.11, group: 1 },
+      ],
+      legLen: 0.34,
+      rise: 0.28,
+      liftAmp: 0.085,
+      runSpeed: 4.4,
+      turnRate: 8,
+    },
+    bodyLen: 0.3,
+    bodyRise: 0.5,
+    kneeFwd: [-1, -1], // bird ankles bow backward
+    hipFwd: 0.9,
+    hipSide: 0.85,
+    legW: 0.062,
+    foot: 'claw',
+    legColor: '#c7b697',
+  },
+  // The elder: longer-shanked and half again the hunter's keg — the
+  // high seat of the parliament walks like it owns the glade.
+  elder_great_owl: {
+    rig: {
+      legs: [
+        { fwd: -0.02, side: -0.13, group: 0 },
+        { fwd: -0.02, side: 0.13, group: 1 },
+      ],
+      legLen: 0.42,
+      rise: 0.35,
+      liftAmp: 0.09,
+      runSpeed: 4.6,
+      turnRate: 7,
+    },
+    bodyLen: 0.38,
+    bodyRise: 0.64,
+    kneeFwd: [-1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.85,
+    legW: 0.078,
+    foot: 'claw',
+    legColor: '#a8adbd',
+  },
   boar: {
     rig: {
       legs: quadLegs(0.24, 0.13),
@@ -7997,6 +8044,597 @@ export function drawWorgHead(
       if (!o.hurt) {
         ctx.fillStyle = '#1a1610';
         ctx.fillRect(ex - w * 0.014, ey - w * 0.055, w * 0.028, w * 0.11);
+      }
+    }
+  }
+}
+
+/**
+ * THE FEATHER-AND-DISC DIALECT — the great owl, the parliament's
+ * hunter. A TWO-POST beast unlike anything else on the rig: an
+ * upright keg of plumage on backward-kneed bird legs, a facial disc
+ * that carries BOTH eyes forward (the one face in the bestiary that
+ * meets yours), and a head that turns on its own clock while the
+ * body stands stone-still. Straight out of the oldest bestiaries — a
+ * horned hunter the size of a shepherd — rebuilt in the Arx facet
+ * dialect: block-prism body, chamfered feather fans, hard shade
+ * steps, square pupils, no soft pill anywhere.
+ */
+export interface OwlLook {
+  /** Mantle — the folded-wing cloak that IS the back and shoulders. */
+  mantle: string;
+  /** Breast keel and underwing — the pale flash of the threat bloom. */
+  breast: string;
+  /** Barring ink: breast chevrons, feather tips, tail bands. */
+  bar: string;
+  /** The facial disc plate. */
+  disc: string;
+  /** The disc's dark rim — what makes the disc a DISC. */
+  discRim: string;
+  /** The iris — the lamp of the face. */
+  eye: string;
+  /** Beak horn. */
+  horn: string;
+  /** Body half-width (tiles); length comes from the BeastSpec. */
+  bodyW: number;
+  /** Shoulder-dome height of the upright keg (tiles). */
+  backH: number;
+  /** Belly clearance over the shanks (tiles). */
+  bellyH: number;
+  headW: number;
+  headH: number;
+  /** Ear-tuft reach (tiles) — the horned crown; the elder's is a crest. */
+  tuftLen: number;
+  /** Tail-fan blade reach past the rump (tiles). */
+  tailLen: number;
+  /** Leading-primary reach of one spread wing (tiles). */
+  wingSpan: number;
+  /** Doubled disc ring, frost crown ticks — the elder's ledger. */
+  elder?: boolean;
+  /** Spawn seed carried on the resolved look — drives barring phase. */
+  seed?: number;
+}
+
+/** The rank-and-file hunter: tawny bark camouflage, amber lamps. */
+export const GREAT_OWL_LOOK: OwlLook = {
+  mantle: '#8a7458',
+  breast: '#d8c9a4',
+  bar: '#5a4a38',
+  disc: '#c9b488',
+  discRim: '#4a3c30',
+  eye: '#e8b23c',
+  horn: '#3a3028',
+  bodyW: 0.24,
+  backH: 0.72,
+  bellyH: 0.3,
+  headW: 0.32,
+  headH: 0.27,
+  tuftLen: 0.09,
+  tailLen: 0.32,
+  wingSpan: 1.05,
+};
+
+/**
+ * The elder: the parliament's high seat — never a scale-up. Storm
+ * slate over moon-pale cream where the wing is bark over buff, a
+ * TALL tufted crest for a crown, the disc ring doubled like a
+ * weathered court seal, and frost ticked through the crown feathers.
+ * It out-masses the hunter in every dimension that counts.
+ */
+export const ELDER_GREAT_OWL_LOOK: OwlLook = {
+  mantle: '#4e5262',
+  breast: '#d7d3be',
+  bar: '#343846',
+  disc: '#b9bdc9',
+  discRim: '#2c303c',
+  eye: '#f2e6a0',
+  horn: '#2a2a34',
+  bodyW: 0.31,
+  backH: 0.92,
+  bellyH: 0.38,
+  headW: 0.42,
+  headH: 0.35,
+  tuftLen: 0.22,
+  tailLen: 0.44,
+  wingSpan: 1.4,
+  elder: true,
+};
+
+/**
+ * THE PLUMAGE CLUSTERS — four curated colorways for the rank-and-file,
+ * picked by spawn seed so a parliament sorts into kin groups (the
+ * gnoll coat-cluster law, feathered): tawny bark, ash gray, deep-wood
+ * moss, and the birch-pale ghost. Elders never roll — an elder is a
+ * DESIGN.
+ */
+const OWL_PLUMAGES: ReadonlyArray<
+  Pick<OwlLook, 'mantle' | 'breast' | 'bar' | 'disc' | 'discRim' | 'eye'>
+> = [
+  // tawny bark — the shipped def color
+  { mantle: '#8a7458', breast: '#d8c9a4', bar: '#5a4a38', disc: '#c9b488', discRim: '#4a3c30', eye: '#e8b23c' },
+  // ash gray — the great gray of the high boughs
+  { mantle: '#767c88', breast: '#ccc9bd', bar: '#474c58', disc: '#b8b5a8', discRim: '#3c4048', eye: '#e8d24c' },
+  // deep-wood moss — olive umber, the pine-shadow coat
+  { mantle: '#777052', breast: '#cfc298', bar: '#4c4734', disc: '#b5ab7e', discRim: '#3e3a2c', eye: '#e09a38' },
+  // birch-pale — the winter ghost the loggers swear at
+  { mantle: '#a8a290', breast: '#e4ddc8', bar: '#6e675a', disc: '#d5cdb4', discRim: '#575044', eye: '#f0c84a' },
+];
+
+const OWL_LOOK_CACHE = new Map<string, OwlLook>();
+
+/**
+ * Variant lookup with the hunter as the unknown-id fallback. The seed
+ * (spawn eid) rolls the rank-and-file's plumage cluster plus a small
+ * shade jitter — hashed first, because knot members spawn with
+ * CONSECUTIVE eids and raw bits would dress a whole wing in one coat.
+ * The elder holds its authored design. Cached; runs per body per frame.
+ */
+export function owlLook(defId: string, seed = 0): OwlLook {
+  const base = defId === 'elder_great_owl' ? ELDER_GREAT_OWL_LOOK : GREAT_OWL_LOOK;
+  const key = `${defId}|${seed & 0xff}`;
+  const hit = OWL_LOOK_CACHE.get(key);
+  if (hit) return hit;
+  let look: OwlLook;
+  if (defId === 'great_owl') {
+    const h = (seed * 2654435761) | 0;
+    const cl = OWL_PLUMAGES[(h >>> 8) & 3]!;
+    const jit = (((h >>> 12) & 7) - 3) * 2;
+    look = {
+      ...base,
+      mantle: shade(cl.mantle, jit),
+      breast: cl.breast,
+      bar: cl.bar,
+      disc: shade(cl.disc, jit),
+      discRim: cl.discRim,
+      eye: cl.eye,
+      seed,
+    };
+  } else {
+    look = { ...base, seed };
+  }
+  OWL_LOOK_CACHE.set(key, look);
+  return look;
+}
+
+/**
+ * One feathered wing fan in the facet dialect: a bone-dark leading
+ * arm and four chamfered primary blades stepping back from it — a
+ * STEPPED silhouette, never a soft fan. Pale on the underside, so a
+ * raised wing flashes the mantle warning every prey animal in the
+ * wood understands. Screen-space like the bat's membranes (billboard
+ * wings read at every body facing); the corpse splay squashes the
+ * same fan onto the ground.
+ */
+export function owlWingFan(
+  ctx: CanvasRenderingContext2D,
+  look: OwlLook,
+  o: {
+    /** Shoulder pivot on screen. */
+    x: number;
+    y: number;
+    s: number;
+    /** Screen angle of the leading edge (radians). */
+    ang: number;
+    /** 0..1 fan opening. */
+    spread: number;
+    /** Leading-primary reach (tiles). */
+    span: number;
+    /** Show the pale underside (wings up = the mantle flash). */
+    under?: boolean;
+    /** Vertical squash for corpse splays flat on the ground. */
+    squash?: number;
+    hurt?: boolean;
+    seed?: number;
+  },
+): void {
+  const s = o.s;
+  const sy = o.squash ?? 1;
+  const reach = o.span * s * (0.5 + 0.5 * o.spread);
+  const base = o.hurt ? '#ffffff' : o.under ? look.breast : look.mantle;
+  const rib = o.hurt ? '#ffffff' : o.under ? shade(look.breast, -11) : shade(look.mantle, -12);
+  // The fan droops from the leading edge toward the ground, whichever
+  // side of the screen the wing points.
+  const droop = Math.cos(o.ang) >= 0 ? 1 : -1;
+  const open = droop * (0.28 + 0.62 * Math.max(0.3, o.spread));
+  // ONE solid fan silhouette with a stepped trailing edge — a wing is
+  // a MASS, never a rake of ribs. Five primary tips, notched between.
+  const N = 5;
+  const tip = (k: number): { x: number; y: number; a: number } => {
+    const t = k / (N - 1);
+    const a = o.ang + open * t;
+    const len = reach * (1 - 0.15 * t);
+    return { x: o.x + Math.cos(a) * len, y: o.y + Math.sin(a) * len * sy, a };
+  };
+  ctx.fillStyle = base;
+  ctx.beginPath();
+  ctx.moveTo(o.x, o.y);
+  for (let k = 0; k < N; k++) {
+    const p = tip(k);
+    ctx.lineTo(p.x, p.y);
+    // The notch: a step back toward the pivot between primaries.
+    if (k < N - 1) {
+      const a = o.ang + open * ((k + 0.5) / (N - 1));
+      const len = reach * (1 - 0.15 * ((k + 0.5) / (N - 1))) * 0.84;
+      ctx.lineTo(o.x + Math.cos(a) * len, o.y + Math.sin(a) * len * sy);
+    }
+  }
+  ctx.closePath();
+  ctx.fill();
+  if (!o.hurt) {
+    // Rachis lines: the feather shafts fanning through the mass.
+    ctx.strokeStyle = rib;
+    ctx.lineWidth = Math.max(1.2, s * 0.022);
+    ctx.lineCap = 'round';
+    for (let k = 1; k < N - 1; k++) {
+      const p = tip(k);
+      ctx.beginPath();
+      ctx.moveTo(o.x + (p.x - o.x) * 0.2, o.y + (p.y - o.y) * 0.2);
+      ctx.lineTo(o.x + (p.x - o.x) * 0.9, o.y + (p.y - o.y) * 0.9);
+      ctx.stroke();
+    }
+    // The bar band riding the tips — one broken arc of bar ink.
+    ctx.strokeStyle = look.bar;
+    ctx.lineWidth = Math.max(1.3, s * 0.024);
+    for (let k = 0; k < N; k++) {
+      const p = tip(k);
+      ctx.beginPath();
+      ctx.moveTo(o.x + (p.x - o.x) * 0.8, o.y + (p.y - o.y) * 0.8);
+      ctx.lineTo(o.x + (p.x - o.x) * 0.9, o.y + (p.y - o.y) * 0.9);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+  // The leading arm rides the front edge — the wing's bone line.
+  ctx.strokeStyle = o.hurt ? '#ffffff' : shade(look.mantle, -18);
+  ctx.lineWidth = Math.max(1.5, s * 0.045);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(o.x, o.y);
+  ctx.lineTo(o.x + Math.cos(o.ang) * reach * 0.96, o.y + Math.sin(o.ang) * reach * 0.96 * sy);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+  // Covert chip seating the fan on the shoulder.
+  ctx.fillStyle = base;
+  ctx.beginPath();
+  facetCircle(ctx, o.x, o.y, s * 0.08, 6, o.ang, sy);
+  ctx.fill();
+}
+
+/**
+ * The owl body: the upright keg — a tall block-prism (the wall-prism
+ * dialect stood on end) under a lit shoulder dome, the folded wings
+ * drawn as darker saddle panels meeting in a spine seam, the pale
+ * breast keel barred in seeded chevron rows, primary steps ticking
+ * the low flanks toward the tail. The attack telegraph MANTLES:
+ * wings rise and spread through the windup — the threat bloom that
+ * doubles the owl on screen — then snap down-forward with the strike.
+ */
+export function paintOwlBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: OwlLook,
+  f: BeastBlockFrame,
+  attackT = 0,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const s = f.s;
+  // Keg footprint: broad through the wing butts, easing at both ends.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.62],
+    [hl, hw * 0.62],
+    [hl * 0.42, hw],
+    [-hl * 0.48, hw * 0.94],
+    [-hl, hw * 0.6],
+    [-hl, -hw * 0.6],
+    [-hl * 0.48, -hw * 0.94],
+    [hl * 0.42, -hw],
+  ];
+  // Parliament variance: each owl's mantle sits a step off its
+  // cluster tone — a wing of owls reads as kin, never as stamps.
+  const coat = shade(look.mantle, (((f.seed >>> 5) & 7) - 3) * 2);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    // The shoulder dome: highest over the wing butts, easing into the
+    // chest front, dropping harder into the tail root.
+    (X) =>
+      look.backH -
+      0.09 * Math.max(0, X / hl - 0.2) -
+      0.07 * Math.max(0, (-X / hl - 0.4) / 0.6),
+    // Deep keel chest; the stern lifts for tail clearance.
+    (X) =>
+      look.bellyH -
+      0.04 * Math.max(0, X / hl - 0.2) +
+      0.05 * Math.max(0, (-X / hl - 0.4) / 0.6),
+    coat,
+    (gx, gyy, lift) => {
+      const tk = f.topScale ?? 1;
+      const bodyA = Math.atan2(f.fy * f.ys, f.fx);
+      // Folded wing panels: one long saddle blob per side, a shade
+      // darker than the mantle — the closed wings ARE the back.
+      for (const es of [-1, 1]) {
+        ctx.save();
+        ctx.translate(
+          gx(-hl * 0.08, es * hw * 0.42),
+          gyy(-hl * 0.08, es * hw * 0.42) - look.backH * tk * s * 0.88 - lift,
+        );
+        ctx.rotate(bodyA);
+        ctx.fillStyle = shade(coat, -9);
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          0,
+          0,
+          hl * s * 0.78,
+          (f.seed ^ (es * 0x2f)) | 1,
+          9,
+          (hw * 0.62) / (hl * 0.78),
+          0.35,
+        );
+        ctx.fill();
+        ctx.restore();
+      }
+      // Primary steps: folded flight feathers ticking the low flanks,
+      // converging on the tail root — three hard strokes per side.
+      if (!f.hurt) {
+        ctx.strokeStyle = shade(coat, -18);
+        ctx.lineWidth = Math.max(1.2, s * 0.02);
+        ctx.lineCap = 'round';
+        for (const es of [-1, 1]) {
+          for (let k = 0; k < 3; k++) {
+            const X0 = -hl * (0.1 + 0.24 * k);
+            ctx.beginPath();
+            ctx.moveTo(
+              gx(X0, es * hw * (0.82 - 0.1 * k)),
+              gyy(X0, es * hw * (0.82 - 0.1 * k)) - (look.bellyH + 0.12) * s - lift,
+            );
+            ctx.lineTo(
+              gx(X0 - hl * 0.32, es * hw * (0.52 - 0.1 * k)),
+              gyy(X0 - hl * 0.32, es * hw * (0.52 - 0.1 * k)) - (look.bellyH + 0.07) * s - lift,
+            );
+            ctx.stroke();
+          }
+        }
+        ctx.lineCap = 'butt';
+      }
+      // The breast keel: a pale bib on the camera side of the chest,
+      // BARRED in seeded chevron rows — painted only while the chest
+      // can actually face the camera (the wolf-bib law: flat paint
+      // shows through the back when the body walks away).
+      if (f.fy > -0.15) {
+        const bibX = gx(hl * 0.72, 0);
+        const bibY =
+          gyy(hl * 0.72, 0) -
+          (look.bellyH + (look.backH - look.bellyH) * 0.42) * s -
+          lift;
+        ctx.fillStyle = f.hurt ? '#ffffff' : look.breast;
+        ctx.beginPath();
+        facetBlob(ctx, bibX, bibY, hw * s * 1.0, f.seed ^ 0x51, 8, 1.5, 1.6);
+        ctx.fill();
+        if (!f.hurt) {
+          ctx.strokeStyle = look.bar;
+          ctx.lineWidth = Math.max(1.1, s * 0.016);
+          ctx.lineCap = 'round';
+          for (let rIdx = 0; rIdx < 3; rIdx++) {
+            // Seeded phase: no two owls wear the same bars.
+            const ph = (((f.seed >>> (rIdx * 2)) & 3) - 1.5) * hw * s * 0.09;
+            const rw = hw * s * (0.62 - rIdx * 0.13);
+            const ry = bibY + (rIdx - 0.9) * hw * s * 0.42;
+            ctx.beginPath();
+            ctx.moveTo(bibX - rw + ph, ry - hw * s * 0.06);
+            ctx.lineTo(bibX + ph, ry + hw * s * 0.08);
+            ctx.lineTo(bibX + rw + ph, ry - hw * s * 0.06);
+            ctx.stroke();
+          }
+          ctx.lineCap = 'butt';
+        }
+      }
+      // Spine seam from behind: the closed wings MEET — one dark part
+      // line down the back, only when the rump faces the camera.
+      if (f.fy < -0.2 && !f.hurt) {
+        ctx.strokeStyle = shade(coat, -16);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(gx(hl * 0.3, 0), gyy(hl * 0.3, 0) - look.backH * tk * s * 0.98 - lift);
+        ctx.lineTo(gx(-hl * 0.85, 0), gyy(-hl * 0.85, 0) - look.backH * tk * s * 0.62 - lift);
+        ctx.stroke();
+      }
+    },
+  );
+  // THE MANTLE: only a live, standing body blooms — corpses pass a
+  // collapsed topScale and never reach here with an attack running.
+  if (attackT > 0 && (f.topScale ?? 1) === 1) {
+    const wind = Math.min(1, attackT / 0.7);
+    const strike =
+      attackT > 0.7 ? Math.sin(Math.PI * Math.min(1, (attackT - 0.7) / 0.3)) : 0;
+    // Windup lifts the wings high (pale undersides out); the strike
+    // snaps them down-forward past level.
+    const raise = 0.85 * wind - 1.15 * strike;
+    const spread = Math.min(1, wind * 1.15);
+    for (const es of [-1, 1]) {
+      owlWingFan(ctx, look, {
+        x: f.bx + es * hw * 0.55 * s,
+        y: f.gy - look.backH * s * 0.82 - f.bob * 0.35 * s,
+        s,
+        ang: es > 0 ? -raise : Math.PI + raise,
+        spread,
+        span: look.wingSpan,
+        under: raise > 0.3,
+        hurt: f.hurt,
+        seed: f.seed,
+      });
+    }
+  }
+}
+
+/**
+ * The owl head, drawn in its own frame with its OWN facing — the
+ * swivel means the gaze rarely matches the body line. Reads owl by
+ * silhouette alone: the horned tufts, the broad low dome, and THE
+ * FACIAL DISC — two rimmed lobes carrying both eyes FORWARD, thinning
+ * to a crescent at profile and gone entirely from behind (no face on
+ * a backskull, ever). The elder's disc ring is doubled and its crown
+ * wears frost.
+ */
+export function drawOwlHead(
+  ctx: CanvasRenderingContext2D,
+  look: OwlLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    /** HEAD facing (post-swivel), not the body's. */
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 beak gape through the strike — the elder's scream. */
+    screech?: number;
+    /** 0..1 slow two-beat blink. */
+    blink?: number;
+    seed?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const screech = o.dead ? 0 : (o.screech ?? 0);
+  const profileK = Math.min(1, Math.abs(fx) * 1.15);
+
+  // Ear tufts on the crown — the horned silhouette. A fore/aft
+  // stagger keeps the pair from collapsing to one sliver at profile
+  // (the paired-gear law); the screech pins them low and flat.
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.34 + fx * es * w * 0.09;
+    const byr = cy + (py * es * w * 0.34 + fy * es * w * 0.09) * ys - h * 0.42;
+    const pin = screech * 0.55;
+    const reach = Math.max(h * 0.2, look.tuftLen * s * (1 - 0.4 * pin));
+    const tx = bxr + px * es * w * 0.2;
+    const ty = byr - reach - fy * w * 0.06 * pin * ys;
+    ctx.fillStyle = C(shade(look.mantle, -7));
+    ctx.beginPath();
+    ctx.moveTo(bxr - px * es * w * 0.14, byr + h * 0.08);
+    ctx.lineTo(tx, ty);
+    ctx.lineTo(bxr + px * es * w * 0.16, byr + h * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    // Frost tips the elder's crest — the crown it grew, not one it took.
+    if (look.elder && !o.hurt) {
+      ctx.strokeStyle = look.breast;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(bxr + (tx - bxr) * 0.7, byr + (ty - byr) * 0.7);
+      ctx.lineTo(bxr + (tx - bxr) * 0.9, byr + (ty - byr) * 0.9);
+      ctx.stroke();
+    }
+  }
+
+  // Skull dome — broad and low, wider than tall. The crown catches
+  // the light: a round head still shows the camera its cap (the
+  // top-plane law).
+  ctx.fillStyle = C(look.mantle);
+  ctx.beginPath();
+  facetCircle(ctx, cx, cy, w * 0.52, 7, fx * 0.4 - Math.PI / 2, (h * 0.95) / (w * 0.52));
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    facetCircle(ctx, cx, cy, w * 0.52, 7, fx * 0.4 - Math.PI / 2, (h * 0.95) / (w * 0.52));
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.16)';
+    ctx.fillRect(cx - w * 0.55, cy - h * 0.58, w * 1.1, h * 0.26);
+    ctx.restore();
+  }
+
+  // THE FACIAL DISC — only while the face can meet the camera.
+  if (fy > -0.38) {
+    const dcx = cx + fx * w * 0.16;
+    const dcy = cy + fy * w * 0.14 * ys + h * 0.03;
+    const lobeR = w * 0.3 * (1 - 0.3 * profileK);
+    for (const es of [-1, 1]) {
+      // The far lobe hides as the head goes profile.
+      if (profileK > 0.55 && es * py < 0) continue;
+      const lx = dcx + px * es * w * 0.21 * (1 - 0.45 * profileK) + fx * es * w * 0.02;
+      const ly = dcy + py * es * w * 0.21 * (1 - 0.45 * profileK) * ys;
+      ctx.fillStyle = C(look.disc);
+      ctx.beginPath();
+      facetCircle(ctx, lx, ly, lobeR, 7, es * 0.35 + fx * 0.3, 1.06);
+      ctx.fill();
+      if (!o.hurt) {
+        // The rim ring — and the elder's SECOND ring inside it.
+        ctx.strokeStyle = look.discRim;
+        ctx.lineWidth = Math.max(1.2, s * 0.02);
+        ctx.beginPath();
+        facetCircle(ctx, lx, ly, lobeR * 0.95, 7, es * 0.35 + fx * 0.3, 1.06);
+        ctx.stroke();
+        // The second ring only while both lobes read — at profile it
+        // stacked into goggle circles on one lobe (harness-audited).
+        if (look.elder && profileK < 0.55) {
+          ctx.strokeStyle = shade(look.discRim, 26);
+          ctx.lineWidth = Math.max(1, s * 0.013);
+          ctx.beginPath();
+          facetCircle(ctx, lx, ly, lobeR * 0.72, 7, es * 0.35 - fx * 0.2, 1.06);
+          ctx.stroke();
+        }
+      }
+      if (!o.dead) {
+        // The eye: a lamp dead-center of its lobe. The strike narrows
+        // the pupil to a hunting pin.
+        const er = lobeR * 0.44;
+        ctx.fillStyle = C(look.eye);
+        ctx.beginPath();
+        facetCircle(ctx, lx, ly, er, 6, fx * 0.5);
+        ctx.fill();
+        if (!o.hurt) {
+          const pr = er * 0.52 * (1 - 0.45 * screech);
+          ctx.fillStyle = OUTLINE;
+          ctx.fillRect(lx - pr, ly - pr, pr * 2, pr * 2);
+          ctx.fillStyle = '#fff7e0';
+          ctx.fillRect(lx - er * 0.55, ly - er * 0.6, er * 0.28, er * 0.28);
+          // The slow blink: a disc-toned lid dropping over the lamp.
+          const blink = o.blink ?? 0;
+          if (blink > 0.05) {
+            ctx.fillStyle = look.disc;
+            ctx.fillRect(lx - er * 1.05, ly - er * 1.05, er * 2.1, er * 2.1 * Math.min(1, blink));
+          }
+        }
+      } else {
+        // Dead: the lamps are out — a shut-line across each lobe.
+        ctx.strokeStyle = C(look.discRim);
+        ctx.lineWidth = Math.max(1.2, s * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(lx - lobeR * 0.4, ly);
+        ctx.lineTo(lx + lobeR * 0.4, ly + lobeR * 0.08);
+        ctx.stroke();
+      }
+    }
+    // The beak: a small dark hook seated between the lobes, pulled
+    // back so it overlaps the disc instead of floating at profile.
+    if (fy > -0.2) {
+      const bkx = dcx + fx * w * 0.16;
+      const bky = dcy + fy * w * 0.1 * ys + h * 0.16;
+      ctx.fillStyle = C(look.horn);
+      ctx.beginPath();
+      ctx.moveTo(bkx - px * w * 0.07, bky - h * 0.05);
+      ctx.lineTo(bkx + px * w * 0.07, bky - h * 0.05);
+      ctx.lineTo(bkx + fx * w * 0.05, bky + h * (0.14 + 0.05 * screech));
+      ctx.closePath();
+      ctx.fill();
+      if (screech > 0.15 && !o.hurt && !o.dead) {
+        // The scream: the lower mandible drops, dark gape under it.
+        ctx.fillStyle = '#2a1420';
+        ctx.beginPath();
+        ctx.moveTo(bkx - px * w * 0.05, bky + h * 0.08);
+        ctx.lineTo(bkx + px * w * 0.05, bky + h * 0.08);
+        ctx.lineTo(bkx + fx * w * 0.03, bky + h * (0.1 + 0.16 * screech));
+        ctx.closePath();
+        ctx.fill();
       }
     }
   }
@@ -10301,6 +10939,12 @@ export function drawBeast(
   const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
   const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
   const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;
+  // The parliament rolls its plumage cluster from the spawn eid — a
+  // wing of owls sorts into kin groups instead of stamping one coat.
+  const owlL =
+    opts.defId === 'great_owl' || opts.defId === 'elder_great_owl'
+      ? owlLook(opts.defId, opts.seed ?? 0)
+      : undefined;
   const idle = 1 - opts.pose.poleStrength;
   const now = opts.nowMs ?? 0;
   const blockFrame = (): BeastBlockFrame => ({
@@ -10316,6 +10960,10 @@ export function drawBeast(
     roll,
   });
   const paintBody = (): void => {
+    if (owlL) {
+      paintOwlBody(ctx, spec, owlL, blockFrame(), at);
+      return;
+    }
     if (wolfL) {
       paintWolfBody(ctx, spec, wolfL, blockFrame());
       return;
@@ -10402,6 +11050,44 @@ export function drawBeast(
   const paintHead = (): void => {
     if (spiderL) return; // the spider's face lives in its body painter
     if (crabL || beetleL) return; // whole animal drawn by the body painter
+    if (owlL) {
+      const hl = spec.bodyLen * s;
+      // No neck: the skull sits straight on the shoulder dome. What
+      // moves is the HEAD ITSELF — the parliament's swivel. At rest
+      // it sweeps the glade on a slow clock, wide when standing,
+      // narrowed while walking (eyes on the line), and it snaps dead
+      // ahead the instant a strike telegraphs.
+      const sweep = now > 0 ? Math.sin(now * 0.00037 + seed * 0.83) : 0;
+      const gaze = at > 0 ? 0 : sweep * 1.3 * (0.25 + 0.75 * idle);
+      const hdir = opts.dir + gaze;
+      const hfx = Math.cos(hdir);
+      const hfy = Math.sin(hdir);
+      const nod = opts.pose.bob * 0.3 * s;
+      // The stoop: through the windup the head sinks toward the kill
+      // line while the mantle rises behind it.
+      const stoop = at > 0 ? Math.min(1, at / 0.7) * 0.09 * s : 0;
+      const chx = bx + fx * hl * 0.42;
+      const chy =
+        by + fy * hl * 0.42 * ys - (owlL.backH + owlL.headH * 0.52) * s - nod + stoop;
+      // A slow two-beat blink on its own clock — never mid-fight.
+      const blink =
+        now > 0 && at === 0
+          ? Math.max(0, Math.sin(now * 0.0009 + seed * 1.7) - 0.965) / 0.035
+          : 0;
+      drawOwlHead(ctx, owlL, {
+        x: chx,
+        y: chy,
+        s,
+        fx: hfx,
+        fy: hfy,
+        ys,
+        hurt: opts.hurt,
+        screech: at > 0.55 ? Math.min(1, (at - 0.55) / 0.3) : 0,
+        blink,
+        seed,
+      });
+      return;
+    }
     if (ramL) {
       const hl = spec.bodyLen * s;
       const hw2 = ramL.headW * s;
@@ -10767,6 +11453,39 @@ export function drawBeast(
 
   const paintTail = (): void => {
     if (spiderL || crabL || beetleL) return;
+    if (owlL) {
+      // The tail fan: barred blades folded behind the rump. Short —
+      // the wings are the silhouette; the fan just finishes it.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const tbx = bx - fx * hl * 0.8;
+      const tby = by - fy * hl * 0.8 * ys - owlL.bellyH * 1.35 * s - lift * 0.7;
+      const backA = Math.atan2(-fy * ys, -fx);
+      ctx.lineCap = 'round';
+      for (let k = 0; k < 4; k++) {
+        const a = backA + (k / 3 - 0.5) * 0.62;
+        const blade = owlL.tailLen * s * (1 - 0.28 * Math.abs(k / 3 - 0.5) * 2);
+        const tex = tbx + Math.cos(a) * blade;
+        const tey = tby + Math.sin(a) * blade * ys + s * 0.05;
+        ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(owlL.mantle, k % 2 === 0 ? -4 : -12);
+        ctx.lineWidth = Math.max(2.5, s * 0.062);
+        ctx.beginPath();
+        ctx.moveTo(tbx, tby);
+        ctx.lineTo(tex, tey);
+        ctx.stroke();
+        // The bar band riding each blade tip.
+        if (!opts.hurt) {
+          ctx.strokeStyle = owlL.bar;
+          ctx.lineWidth = Math.max(1.4, s * 0.024);
+          ctx.beginPath();
+          ctx.moveTo(tbx + (tex - tbx) * 0.78, tby + (tey - tby) * 0.78);
+          ctx.lineTo(tbx + (tex - tbx) * 0.92, tby + (tey - tby) * 0.92);
+          ctx.stroke();
+        }
+      }
+      ctx.lineCap = 'butt';
+      return;
+    }
     if (ramL) {
       // A wool nub dropped off the fleece stern.
       const hl = spec.bodyLen * s;

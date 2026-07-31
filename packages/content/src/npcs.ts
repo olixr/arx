@@ -865,6 +865,64 @@ const defs: NpcDef[] = [
     // answers — the champion fight is the PACK, not the duel.
     special: { ability: 'rallying_howl', everyTicks: 150 },
   },
+  {
+    id: 'great_owl',
+    name: 'Great owl',
+    level: 16,
+    maxHp: 52,
+    damage: 5,
+    attackRange: 1.1,
+    attackCooldownTicks: 40,
+    // Night eyes: it marks you across a moonlit glade.
+    aggroRange: 7,
+    // The turning head — nothing walks up behind an owl. Sneaking one
+    // is a game of distance, not angle (near-360 leaves no blind cone).
+    sightArc: 330,
+    leashRange: 30,
+    speed: 4.4,
+    xpReward: 190,
+    loot: ['great_owl', 'heirlooms'],
+    respawnSec: 45,
+    color: '#8a7458',
+    radius: 0.36,
+    hitHeight: 1.35,
+    // Talons hook and tear on the way out.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
+    // The swoop: the windup ends in a silent closing rush.
+    pounce: true,
+    // A wing of great owls hunts one glade — the parliament.
+    pack: 'parliament',
+  },
+  {
+    id: 'elder_great_owl',
+    name: 'Elder great owl',
+    level: 24,
+    maxHp: 130,
+    damage: 7,
+    attackRange: 1.2,
+    // The elder strikes on a shorter breath than its wing.
+    attackCooldownTicks: 36,
+    aggroRange: 8,
+    // The oldest head turns the furthest.
+    sightArc: 350,
+    // An elder ranges wide of any one roost.
+    leashRange: 36,
+    speed: 4.6,
+    xpReward: 430,
+    loot: ['elder_great_owl', 'heirlooms'],
+    respawnSec: 100,
+    color: '#4e5262',
+    radius: 0.46,
+    hitHeight: 1.7,
+    // Elder talons open you to the bone.
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 70 },
+    pounce: true,
+    pack: 'parliament',
+    // The screech: the wood goes quiet, your legs go cold, and every
+    // owl in earshot drops off its bough — the champion fight is the
+    // PARLIAMENT, not the duel.
+    special: { ability: 'hushing_screech', everyTicks: 150 },
+  },
 ];
 
 export const NPCS: ReadonlyMap<string, NpcDef> = new Map(defs.map((d) => [d.id, d]));

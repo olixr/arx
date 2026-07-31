@@ -25,6 +25,7 @@ import wayshrine from './defs/wayshrine.json';
 import waystation from './defs/waystation.json';
 import wildGrove from './defs/wild_grove.json';
 import wolfkinDen from './defs/wolfkin_den.json';
+import owlRoost from './defs/owl_roost.json';
 
 /**
  * Every authored POI archetype JSON, registered here. A def that isn't
@@ -58,6 +59,7 @@ const SOURCES: readonly unknown[] = [
   timberPoachers,
   wildGrove,
   wolfkinDen,
+  owlRoost,
 ];
 
 function buildRegistry(): ReadonlyMap<string, PoiDef> {

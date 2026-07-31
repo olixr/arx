@@ -1849,6 +1849,10 @@ export declare class Renderer {
      * the body is the ghost ember's job, not more transparency.
      */
     private occluderFade;
+    /** THE PROMISE LAW: a sapling tile draws its own bespoke young form
+     *  (saplingModel) of the adult it will become; tree tiles draw the
+     *  grown wood. One door for every tree-model read in the renderer. */
+    private treeOrSaplingModel;
     private drawTree;
     /**
      * TRUE-FORM tree shadow: the same skeleton paintTree draws — trunk

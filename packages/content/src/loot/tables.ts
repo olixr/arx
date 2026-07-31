@@ -870,6 +870,42 @@ const defs: LootTableDef[] = [
       { item: 'winterspire', chance: 0.008 },
     ],
   },
+  // ------------------------------------------------------ the parliament
+  {
+    id: 'great_owl',
+    desc: 'What the glade hunter leaves: down by the fistful, the long silent plume, and whatever its last meal carried.',
+    entries: [
+      { item: 'bones' },
+      { item: 'feather', qty: [3, 8], chance: 0.9 },
+      { item: 'owl_plume', chance: 0.45 },
+      { item: 'raw_chicken', chance: 0.2 },
+      // Silent wings hold a little of the night sky's weather.
+      { item: 'storm_essence', chance: 0.12 },
+      { item: 'umbral_essence', chance: 0.08 },
+      // Owls swallow their prey whole — rings and all.
+      { item: 'silver_ring', chance: 0.015 },
+    ],
+  },
+  {
+    id: 'elder_great_owl',
+    desc: 'The elder pays like the champion it is: the moon-edged plume, and a crop full of everything the wood ever lost.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'bones' },
+      { item: 'elder_plume', chance: 0.9 },
+      { item: 'owl_plume', qty: [1, 3], chance: 0.6 },
+      { item: 'feather', qty: [5, 12], chance: 0.9 },
+      { item: 'storm_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'umbral_essence', qty: [1, 2], chance: 0.2 },
+      // A century of swallowed glitter: the crop gives back the
+      // wood's little fortunes.
+      { item: 'silver_ring', chance: 0.06 },
+      { item: 'gold_ring', chance: 0.03 },
+      { item: 'brass_key', chance: 0.08 },
+      { item: 'dungeon_key', chance: 0.04 },
+    ],
+  },
+
   rack('wolf_arms', 'The pack’s blades, bows, and argued-over staves.', 0.04, [
     { item: 'wolfjaw_targe', chance: 0.02 },
     { item: 'wolffang', chance: 0.03 },
