@@ -56,6 +56,7 @@ import {
   projectCarry,
   projectStrike,
   runnerLift,
+  settleElbowPole,
   staffStrikeFrame,
   staffStrikeTrail,
   staffWield,
@@ -231,6 +232,13 @@ export interface RigPose {
     /** Low-passed arm-swing drive (see the SMOOTHED SWING law). */
     sw?: number;
     swMs?: number;
+    /**
+     * Per-arm elbow-side hysteresis (THE REMEMBERED ELBOW) — the same
+     * chooseLimbSign memory the knees carry, so a borderline pole can
+     * never snap an elbow through the arm. Lazily seeded by the rig.
+     */
+    mainElbow?: { sign: number };
+    offElbow?: { sign: number };
   };
   bodyColor: string;
   hurt: boolean;
@@ -389,7 +397,31 @@ function drawArm(
    *  knobs at the joints and a skeletal claw for a hand. Overrides
    *  every cloth/glove branch — the dead wear nothing on their arms. */
   bone?: SkeletonLook | null,
+  /** Caller-owned elbow-side memory (THE REMEMBERED ELBOW). */
+  elbow?: { sign: number },
 ): { ex: number; ey: number; kx: number; ky: number } {
+  // THE REMEMBERED ELBOW: the arms carry the same side-choice
+  // hysteresis the knees have had since the quadruped rig — score the
+  // chord perpendicular against the anatomical pole and let a
+  // borderline score NEVER overturn the standing choice. The frames
+  // that used to invert an elbow are exactly the near-degenerate ones
+  // (a pole almost parallel to the chord: the N/S run before the pole
+  // fix, the 240ms side-flip ease where the flare sweeps through
+  // zero); with memory they hold the last committed side, and the
+  // elbow flips only when the pole genuinely claims the other side.
+  // The clamp inside the solve scales the chord uniformly, so this
+  // perpendicular is the solve's own.
+  if (elbow) {
+    const ddx = hx - sx;
+    const ddy = hy - sy;
+    const dd = Math.hypot(ddx, ddy) || 1e-4;
+    const cxn = -ddy / dd;
+    const cyn = ddx / dd;
+    const sgn = chooseLimbSign(cxn, cyn, prefX, prefY, elbow.sign);
+    elbow.sign = sgn;
+    prefX = cxn * sgn;
+    prefY = cyn * sgn;
+  }
   // Hot path: every visible humanoid solves two arms a frame — reuse
   // one scratch (destructured immediately) instead of allocating.
   const { ex, ey, kx, ky } = solveLimbInto(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * s, 1.08, prefX, prefY);
@@ -2962,8 +2994,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // THE RUNNER'S ELBOW: an empty fist rises toward the ribs as the
     // gait becomes a sprint — bent arms pumping with the legs, the
     // shape every running reference draws. Armed fists keep their
-    // carriage heights (a carry law is a verdict).
-    const elbowLift = runnerLift(Math.min(1, rig.poleStrength), rig.runF) * s;
+    // carriage heights (a carry law is a verdict). Facing-weighted
+    // inside runnerLift: full lift in profile, half at the camera
+    // lines, where the full lift tucked both fists into the armpits.
+    const elbowLift = runnerLift(Math.min(1, rig.poleStrength), rig.runF, profileK) * s;
     let hx = rig.x + wSide * hangW * wS;
     let hy = armY + 0.17 * s - elbowLift;
     let hAngle = Math.PI / 2 + sideW * (0.3 + 0.35 * runK); // tip down, trailing
@@ -3569,14 +3603,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // when the body travels the way it faces. Strafing or backpedaling
   // (facing one way, walking another) the arms belong to the BODY's
   // frame, and an un-gated travel pole folded the elbows inside-out
-  // (the user's broken-elbow screenshot).
+  // (the user's broken-elbow screenshot). The pole math itself lives
+  // in wield.ts (settleElbowPole) with THE POLE NEVER VANISHES law:
+  // the trail claims the flare only in proportion to |poleX|, so a
+  // depth-axis run keeps its outboard elbows instead of collapsing
+  // the preference to noise.
   const trailB =
     Math.min(1, rig.poleStrength) *
     (0.3 + 0.7 * rig.runF) *
     restSettle *
     Math.max(0, rig.align);
-  const mainSettlePoleX = sideS * 0.45 * (1 - trailB) - rig.poleX * 0.6 * trailB;
-  const offSettlePoleX = -sideS * 0.45 * (1 - trailB) - rig.poleX * 0.6 * trailB;
+  const mainSettlePoleX = settleElbowPole(sideS, rig.poleX, trailB);
+  const offSettlePoleX = settleElbowPole(-sideS, rig.poleX, trailB);
   mainShX += (rig.x + sideS * tw * 0.85 * wS - mainShX) * settleK;
   offShX += (rig.x - sideS * tw * 0.85 * wS - offShX) * settleK;
   // Aiming up-and-away puts the gear behind the body. And a LONG
@@ -3647,6 +3685,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gloveSt,
       rig.hurt,
       skel,
+      mem ? (mem.offElbow ??= { sign: 0 }) : undefined,
     );
     if (shieldSt && shieldFr) {
       if (shieldBehindArm) drawShieldStraps(ctx, shieldSt, shieldFr, rig.hurt);
@@ -3779,6 +3818,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gloveSt,
       rig.hurt,
       skel,
+      mem ? (mem.mainElbow ??= { sign: 0 }) : undefined,
     );
   };
   // ---- THE SHOULDER DEPTH LAW: a pauldron is a cap on TOP of the

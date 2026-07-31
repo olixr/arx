@@ -7,6 +7,7 @@ import {
   gaitLift,
   armPump,
   runnerLift,
+  settleElbowPole,
   projectCarry,
   projectStrike,
   staffWield,
@@ -124,9 +125,46 @@ test('honest pump: a loaded hand restrains but never freezes', () => {
 });
 
 test("runner's elbow: free fists rise only at speed", () => {
-  assert.equal(runnerLift(0, 0), 0, 'standing hands hang');
-  assert.ok(runnerLift(1, 0) < 0.02, 'a walk barely lifts them');
-  assert.ok(runnerLift(1, 1) > 0.08, 'a sprint carries them toward the ribs');
+  assert.equal(runnerLift(0, 0, 1), 0, 'standing hands hang');
+  assert.ok(runnerLift(1, 0, 1) < 0.02, 'a walk barely lifts them');
+  assert.ok(runnerLift(1, 1, 1) > 0.08, 'a sprint carries them toward the ribs');
+});
+
+test("runner's elbow: the camera-line lift is a half-measure of the profile's", () => {
+  const profile = runnerLift(1, 1, 1);
+  const frontal = runnerLift(1, 1, 0);
+  assert.ok(frontal < profile * 0.6, `frontal fists stay out of the armpits (${frontal.toFixed(3)})`);
+  assert.ok(frontal > profile * 0.4, 'lowered, not dropped — the pump still reads');
+  const mid = runnerLift(1, 1, 0.5);
+  assert.ok(mid > frontal && mid < profile, 'linear breath through the diagonals');
+});
+
+// ---- the trailing-elbow pole ----
+
+test('settle pole: a depth-axis run keeps the full outboard flare', () => {
+  // N/S travel: poleX = 0 — the trail can show nothing on screen, so
+  // it may claim nothing. The old blend zeroed the flare here and the
+  // pole degenerated to straight-down (the N/S elbow-inversion bug).
+  assert.ok(Math.abs(settleElbowPole(1, 0, 1) - 0.45) < 1e-9, 'main flare survives at full trail');
+  assert.ok(Math.abs(settleElbowPole(-1, 0, 1) + 0.45) < 1e-9, 'off flare mirrors');
+});
+
+test('settle pole: a profile run hands the pole to the trail outright', () => {
+  // E/W travel: |poleX| = 1 — the trail owns the pole, flare gone.
+  // This is the chicken-wing verdict, preserved exactly.
+  assert.ok(Math.abs(settleElbowPole(1, 1, 1) - -0.6) < 1e-9, 'elbow trails a full east run');
+  assert.ok(Math.abs(settleElbowPole(1, -1, 1) - 0.6) < 1e-9, 'elbow trails a full west run');
+});
+
+test('settle pole: at rest the flare stands alone, and the blend is continuous', () => {
+  assert.ok(Math.abs(settleElbowPole(1, 0.7, 0) - 0.45) < 1e-9, 'no gait, no trail claim');
+  let prev = settleElbowPole(1, Math.cos(0), 1);
+  for (let i = 1; i <= 64; i++) {
+    const yaw = (i / 64) * Math.PI * 2;
+    const p = settleElbowPole(1, Math.cos(yaw), 1);
+    assert.ok(Math.abs(p - prev) < 0.12, `pole step ${i} jumps ${(p - prev).toFixed(3)}`);
+    prev = p;
+  }
 });
 
 // ---- the staff ----

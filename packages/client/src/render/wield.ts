@@ -173,9 +173,48 @@ export function armPump(
  * hang, units of s, for the caller to subtract from the hang height.
  * Armed hands keep their own carriage heights — a carry law is a
  * verdict — so this applies to EMPTY fists only.
+ *
+ * `profileK` is the facing weight (|cos dir|): the full lift belongs
+ * to the profile silhouette, where the bent pumping arm is the whole
+ * read. Front- and back-on the hang is already at hip-line width and
+ * the same lift jammed both fists up into the armpits — and shrank
+ * the shoulder→hand chord until the elbow bend had nowhere honest to
+ * go. Half the lift at the camera-line facings, full in profile,
+ * linear so the height breathes through every diagonal.
  */
-export function runnerLift(moveK: number, runK: number): number {
-  return 0.11 * smooth(Math.max(0, Math.min(1, runK))) * Math.max(0, Math.min(1, moveK));
+export function runnerLift(moveK: number, runK: number, profileK: number): number {
+  const pk = Math.max(0, Math.min(1, profileK));
+  return (
+    0.11 *
+    (0.55 + 0.45 * pk) *
+    smooth(Math.max(0, Math.min(1, runK))) *
+    Math.max(0, Math.min(1, moveK))
+  );
+}
+
+/**
+ * THE TRAILING-ELBOW POLE: the screen-X of a settled arm's anatomical
+ * pole (pole Y is always 1 — gravity). At rest the elbow flares to its
+ * own side of the body (`side` = ±1-ish, the arm's outboard sign); on
+ * the move it trails BACK along the travel — a runner's elbows trail,
+ * they never lead. `trailB` is the gait's claim on that trade.
+ *
+ * THE POLE NEVER VANISHES: "elbows trail the travel" is a WORLD truth,
+ * but this pole lives in screen X — and a north/south run has no
+ * screen-lateral travel at all (`poleX` ≈ 0). Letting the trail claim
+ * the whole pole anyway collapsed the preference to straight-down,
+ * parallel to the near-vertical shoulder→hand chord of a frontal run,
+ * and the elbow side fell to numerical noise: the shared gait sway
+ * carried both fists across their shoulder lines twice a stride and
+ * BOTH elbows inverted in unison (the user's N/S broken-elbow
+ * screenshots). The trail may only claim as much of the flare as it
+ * can actually show on screen (|poleX|); the rest stays anatomical.
+ * At a profile run |poleX| ≈ 1 and the trail owns the pole outright —
+ * the chicken-wing fix this law grew out of is preserved exactly.
+ */
+export function settleElbowPole(side: number, poleX: number, trailB: number): number {
+  const claim = trailB * Math.abs(poleX);
+  return side * 0.45 * (1 - claim) - poleX * 0.6 * trailB;
 }
 
 // ----------------------------------------------------------- staff
