@@ -187,12 +187,31 @@ test('an unmastered secret casts at Rank I; a rung art still hones', () => {
     equipment: { weapon: { id: 'gladius' } },
   });
   const { self } = slate(player);
-  const lent = self.seatAbility.call(self, player, 0) as { id: string };
+  const lent = self.seatAbility.call(self, player, 0) as { id: string; damage: number };
   assert.equal(lent.id, 'lunge', 'the loan resolves');
+  assert.equal(
+    lent.damage,
+    abilityDef('lunge')!.damage,
+    'the LOAN casts at Rank I even at 99 — the borrowed motion is not yet yours',
+  );
   const honed = self.seatAbility.call(self, player, 1) as { damage: number };
   assert.ok(
     honed.damage > abilityDef('heavy_slam')!.damage,
     'the rung art casts honed at 99 — both seats share the resolver',
+  );
+});
+
+test('RANKS FOR THE SHELF: a MASTERED secret hones on its anchor clock', () => {
+  const player = mkPlayer({
+    skills: { onehand: xpForLevel(99) },
+    techniques: ['lunge', null],
+    flags: new Map([[artFlag('lunge'), 1]]),
+  });
+  const { self } = slate(player);
+  const honed = self.seatAbility.call(self, player, 0) as { damage: number };
+  assert.ok(
+    honed.damage > abilityDef('lunge')!.damage,
+    'the mastered secret casts honed at 99 — the shelf grows beside the ladder',
   );
 });
 

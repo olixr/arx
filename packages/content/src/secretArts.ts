@@ -36,8 +36,14 @@
  */
 import type { CombatStyleId, TechniqueDef } from '@arx/shared';
 import { techniqueDef } from './abilities.js';
+import { SECRET_RANKS } from './secretRanks.js';
 
-export const SECRET_ARTS: readonly TechniqueDef[] = [
+/**
+ * The authored seats. RANKS FOR THE SHELF pays each seat's honed
+ * steps from secretRanks.ts — merged below, so the ledger here stays
+ * the readable roster and the rank book keeps its own shelf.
+ */
+const SEATS: readonly TechniqueDef[] = [
 
   // ------------ onehand: the blade roster — swords, daggers, and the Ten Crowns
   // taught by bronze_sword, rustbite … 10 teachers
@@ -275,6 +281,11 @@ export const SECRET_ARTS: readonly TechniqueDef[] = [
   // taught by worldsplinter
   { ability: 'realm_rend', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 54 } },
 ];
+
+export const SECRET_ARTS: readonly TechniqueDef[] = SEATS.map((s) => ({
+  ...s,
+  ranks: SECRET_RANKS[s.ability],
+}));
 
 const BY_ABILITY: ReadonlyMap<string, TechniqueDef> = new Map(
   SECRET_ARTS.map((s) => [s.ability, s]),

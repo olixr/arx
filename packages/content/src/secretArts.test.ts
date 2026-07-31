@@ -5,9 +5,16 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TECHNIQUE_MAX_RANK, honedAbility, techniqueAnchor, type AbilityDef } from '@arx/shared';
+import {
+  TECHNIQUE_MAX_RANK,
+  honedAbility,
+  techniqueAnchor,
+  techniqueRankFor,
+  type AbilityDef,
+} from '@arx/shared';
 import { TECHNIQUES, abilityDef, techniquesFor } from './abilities.js';
 import { SECRET_ARTS, secretArtsFor } from './secretArts.js';
+import { SECRET_RANKS } from './secretRanks.js';
 import { HONABLE, cycleValue, isUtilityArt } from './ladderModel.js';
 import { ITEMS } from './items.js';
 import { NPCS, scaleNpcDef } from './npcs.js';
@@ -16,12 +23,12 @@ import { NPCS, scaleNpcDef } from './npcs.js';
 const WEAPON_SCHOOLS = ['onehand', 'twohand', 'archery', 'arx'] as const;
 
 /**
- * THE RANK DEBT — secret seats shipped Rank-I-only; RANKS FOR THE
- * SHELF pays this down school by school. Author ranks on a seat and
- * decrement this number in the same commit: the debt is counted so it
- * can never quietly become the permanent state.
+ * THE RANK DEBT — PAID IN FULL by RANKS FOR THE SHELF: every secret
+ * seat carries its three honed steps (secretRanks.ts). The counter
+ * stays at zero forever — a new secret art ships WITH its ranks, in
+ * the same commit that authors its seat.
  */
-const SECRET_RANK_DEBT = 114;
+const SECRET_RANK_DEBT = 0;
 
 /**
  * THE SECRET BAND's waiver ledger — arts the model flags as outside
@@ -75,37 +82,43 @@ test('THE ANCHOR RULER: anchors climb with the cheapest teacher, never against i
   }
 });
 
-test('THE SECRET BAND: every damage secret lands inside its school rung envelope', () => {
+test('THE SECRET BAND: every damage secret lands inside its school rung envelope, Rank I and Rank IV', () => {
   const breaches: string[] = [];
   const expired: string[] = [];
   for (const style of WEAPON_SCHOOLS) {
-    // The envelope is the rung ladder's base (Rank I) spread — secrets
-    // are Rank-I citizens until their ranks arrive, so the comparison
-    // is Rank I against Rank I.
-    const rungValues = techniquesFor(style)
+    // Two envelopes, one law: Rank I against the rung ladder's base
+    // spread, Rank IV against the ladder fully honed — the shelf hones
+    // WITH the ladder, never over it.
+    const rungs = techniquesFor(style)
       .filter((t) => !t.hidden)
-      .map((t) => abilityDef(t.ability)!)
-      .filter((ab) => !isUtilityArt(ab))
-      .map((ab) => cycleValue(ab));
-    const lo = Math.min(...rungValues) * 0.8;
-    const hi = Math.max(...rungValues) * 1.2;
+      .filter((t) => !isUtilityArt(abilityDef(t.ability)!));
+    const envelope = (rank: number): [number, number] => {
+      const vals = rungs.map((t) => cycleValue(honedAbility(abilityDef(t.ability)!, t.ranks, rank)));
+      return [Math.min(...vals) * 0.8, Math.max(...vals) * 1.2];
+    };
+    const bands: Array<[number, [number, number]]> = [
+      [1, envelope(1)],
+      [TECHNIQUE_MAX_RANK, envelope(TECHNIQUE_MAX_RANK)],
+    ];
     for (const seat of secretArtsFor(style)) {
       const ab = abilityDef(seat.ability)!;
       if (isUtilityArt(ab)) continue;
-      const v = cycleValue(ab);
-      const inside = v >= lo && v <= hi;
-      if (SECRET_BAND_WAIVERS.has(seat.ability)) {
-        if (inside) expired.push(`${style}/${seat.ability}`);
-        continue;
-      }
-      if (!inside) {
-        breaches.push(
-          `${style}/${seat.ability} cycle ${v.toFixed(2)} outside [${lo.toFixed(2)}, ${hi.toFixed(2)}]`,
-        );
+      for (const [rank, [lo, hi]] of bands) {
+        const v = cycleValue(honedAbility(ab, seat.ranks, rank));
+        const inside = v >= lo && v <= hi;
+        if (SECRET_BAND_WAIVERS.has(seat.ability)) {
+          if (inside) expired.push(`${style}/${seat.ability}@${rank}`);
+          continue;
+        }
+        if (!inside) {
+          breaches.push(
+            `${style}/${seat.ability} rank ${rank} cycle ${v.toFixed(2)} outside [${lo.toFixed(2)}, ${hi.toFixed(2)}]`,
+          );
+        }
       }
     }
   }
-  assert.deepEqual(breaches, [], 'tune these or waiver them (phase 5 pays the waivers down)');
+  assert.deepEqual(breaches, [], 'tune these; the waiver ledger stays empty');
   assert.deepEqual(expired, [], 'back inside the band — remove the expired waivers');
 });
 
@@ -151,10 +164,12 @@ test('THE RANK DEBT is counted, and any paid seat obeys the honed ladder laws', 
   );
 });
 
-test('THE PAYOFF BRACKET FOR THE SHELF: no lent secret deletes an at-level line fighter', () => {
-  // The rung ladder's bracket, extended to the secrets at Rank I —
-  // availability read off the anchor (the band a player honestly holds
-  // the teaching weapon at). Same line fighter, same caps.
+test('THE PAYOFF BRACKET FOR THE SHELF: no secret, at any honed rank, deletes an at-level line fighter', () => {
+  // The rung ladder's bracket, extended to the secrets — availability
+  // read off the anchor (the band a player honestly holds the teaching
+  // weapon at), the def honed to the rank a MASTERED hand would cast at
+  // that level (the loan's Rank I is strictly weaker). Same line
+  // fighter, same caps.
   const skeleton = NPCS.get('skeleton')!;
   const powerMult = (l: number): number => 1 + l * 0.05;
   const oneTargetBeats = (ab: AbilityDef): number => {
@@ -174,7 +189,7 @@ test('THE PAYOFF BRACKET FOR THE SHELF: no lent secret deletes an at-level line 
     for (const style of WEAPON_SCHOOLS) {
       for (const seat of secretArtsFor(style)) {
         if (techniqueAnchor(seat) > L) continue;
-        const ab = abilityDef(seat.ability)!;
+        const ab = honedAbility(abilityDef(seat.ability)!, seat.ranks, techniqueRankFor(seat, L));
         if (ab.damage < 3) continue;
         const perBeat = Math.round(ab.damage * powerMult(L));
         const beats = oneTargetBeats(ab);
@@ -189,6 +204,16 @@ test('THE PAYOFF BRACKET FOR THE SHELF: no lent secret deletes an at-level line 
         );
       }
     }
+  }
+});
+
+test('RANKS FOR THE SHELF: the rank book covers every seat, and only the seats', () => {
+  const seatIds = new Set(SECRET_ARTS.map((s) => s.ability));
+  for (const seat of SECRET_ARTS) {
+    assert.ok(SECRET_RANKS[seat.ability], `${seat.ability}: every secret seat carries its ranks`);
+  }
+  for (const key of Object.keys(SECRET_RANKS)) {
+    assert.ok(seatIds.has(key), `rank book entry '${key}' names no seat — an orphan or a typo`);
   }
 });
 
