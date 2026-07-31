@@ -149,8 +149,9 @@ const main = async () => {
   cds = await c.waitFor((m) => m.t === 'cooldowns' && m.cd?.[2] > 0, 'R cast cooldown', 4000, mark);
   receipt('both seats cast — two free hands', cds.cd[2] > 0, `cd ${cds.cd[2]} ticks`);
 
-  // --- R: THE LESSON banks — a paired grant mirrors onto the wire at
-  // the coarse step (40 crosses the cost/20 = 35 boundary).
+  // --- R: THE LESSON banks — a paired grant mirrors onto the wire
+  // (the first point always speaks; 40 crosses many whole-percent
+  // steps of the 700 cost besides).
   mark = c.mark();
   c.send({ t: 'chat', text: '/xp onehand 40' });
   const banked = await c.waitFor(

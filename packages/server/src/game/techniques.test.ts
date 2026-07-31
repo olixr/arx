@@ -306,6 +306,26 @@ test('THE LESSON LAW: the mirror credits only the full pairing', () => {
   assert.equal(done.flags.get(lessonFlag('lunge')), undefined, 'mastery closes the meter');
 });
 
+test('THE SPOKEN NUMBER breathes: the first point and every whole percent reach the wire', () => {
+  const cost = masteryXp(secretArtDef('lunge')!.secret!.anchorLevel);
+  const step = Math.max(1, Math.floor(cost / 100));
+  const player = mkPlayer({
+    techniques: ['lunge', null],
+    equipment: { weapon: { id: 'gladius' } },
+  });
+  const { self, sent } = slate(player);
+  const resends = () => sent.filter((m) => m.t === 'techniques').length;
+  // The very first landed point speaks — 'not yet begun' dies at once.
+  self.creditLessons.call(self, player, 'onehand', 1);
+  assert.equal(resends(), 1, 'the first point reaches the wire');
+  // Inside the same whole percent: banked, but quiet.
+  self.creditLessons.call(self, player, 'onehand', 1);
+  assert.equal(resends(), 1, 'sub-percent motion stays quiet');
+  // Crossing the whole-percent boundary speaks again.
+  self.creditLessons.call(self, player, 'onehand', step);
+  assert.equal(resends(), 2, 'the whole-percent step speaks');
+});
+
 test('THE LESSON LAW: the bank converts through grantArt exactly once', () => {
   const cost = masteryXp(secretArtDef('lunge')!.secret!.anchorLevel);
   const player = mkPlayer({

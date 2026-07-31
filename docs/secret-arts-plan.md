@@ -369,6 +369,21 @@ haven't. 114 arts must feel like a world of rumors, not a spreadsheet.**
   loan seating and casting, and THE HAND REMEMBERS across a relog.
   `masteryXp` pacing stands as authored (an afternoon at bronze, a
   courtship at starsteel) — live play tunes it from here.
+- **LESSON-BY-COMBAT (post-close verification, 2026-07-31)**: user
+  report "killed enemies, meter said not yet begun" — the crediting
+  law was proven SOUND over the live wire with real spawned skeletons
+  and basic attacks only (`npm run prove:lesson-combat -w @arx/tools`:
+  strike XP through the one door, bank on the wire, bank survives the
+  relog). The failure was legibility, fixed twice over: (1) the codex
+  resend cadence tightened from cost/20 to **whole-percent steps
+  (cost/100), plus an unconditional resend on the FIRST banked point**
+  — 'not yet begun' now dies with the first landed hit (unit pin in
+  techniques.test.ts, THE SPOKEN NUMBER breathes); (2) the bench meter
+  now **names the shut door**: an unseated art says 'seat this art to
+  begin', a seated art with its teacher stowed says 'waiting on its
+  weapon', and a sub-percent bank says 'under 1%' instead of 'not yet
+  begun'. The lesson's two doors (seat + teacher in hand) stand as
+  designed — they are now spoken, not silent.
 
 ## Part 5 — Open questions (recommendation first)
 

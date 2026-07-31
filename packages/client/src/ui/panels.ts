@@ -2118,8 +2118,10 @@ export class Panels {
         seal.dataset.tipsub = this.ownsArt(tech.ability)
           ? 'Mastered — yours from any hand, forever.'
           : bankedNow > 0
-            ? `Lent by the weapon that teaches it. Mastery ${pctOf(bankedNow)}% — fight on, and it will stay.`
-            : 'Lent by the weapon that teaches it. Fight on, and it will stay.';
+            ? `Lent by the weapon that teaches it. Mastery ${pctOf(bankedNow) < 1 ? 'under 1' : pctOf(bankedNow)}% — fight on, and it will stay.`
+            : this.seatOf(tech.ability) === null
+              ? 'Lent by the weapon that teaches it. Seat it and fight, and the art will stay.'
+              : 'Lent by the weapon that teaches it. Fight on, and it will stay.';
         wellEl.appendChild(seal);
         // THE LESSON's fill at plate scale: how far the blade has
         // carried you, told without a number.
@@ -2246,17 +2248,25 @@ export class Panels {
       const banked = this.lessons[t.ability] ?? 0;
       const frac = Math.min(1, banked / masteryXp(t.secret.anchorLevel));
       const pct = Math.min(99, Math.floor(frac * 100));
+      // The lesson has two doors: the art must HOLD a seat, and its
+      // teacher must be in hand. A meter that stands still without
+      // saying which door is shut reads as broken — name the door.
+      const seated = this.seatOf(t.ability) !== null;
+      const taught = this.equippedArtIds().has(t.ability);
       const row = document.createElement('div');
       row.className = 'lesson-row';
       row.dataset.tipname = 'The lesson';
-      row.dataset.tipsub =
-        pct <= 0
-          ? 'Fight with the weapon that teaches this art, and the art will begin to stay.'
-          : pct < 50
-            ? 'The blade still has things to teach. Every fight with it counts.'
-            : pct < 90
-              ? 'More than half yours. Keep fighting with the teacher.'
-              : 'The lesson is nearly yours.';
+      row.dataset.tipsub = !seated
+        ? 'The lesson only counts while this art holds your Q or R seat. Seat it, take up its weapon, and fight.'
+        : !taught
+          ? 'The seat is set, but the teacher is away. Hold a weapon that teaches this art, and every fight counts.'
+          : pct <= 0
+            ? 'Fight with the weapon that teaches this art, and the art will begin to stay.'
+            : pct < 50
+              ? 'The blade still has things to teach. Every fight with it counts.'
+              : pct < 90
+                ? 'More than half yours. Keep fighting with the teacher.'
+                : 'The lesson is nearly yours.';
       const meter = document.createElement('div');
       meter.className = 'lesson-meter';
       const fill = document.createElement('div');
@@ -2265,7 +2275,16 @@ export class Panels {
       meter.appendChild(fill);
       const label = document.createElement('span');
       label.className = 'lesson-label';
-      label.textContent = pct <= 0 ? 'Mastery: not yet begun' : `Mastery: ${pct}%`;
+      label.textContent =
+        banked > 0 && pct < 1
+          ? 'Mastery: under 1%'
+          : pct >= 1
+            ? `Mastery: ${pct}%`
+            : !seated
+              ? 'Mastery: seat this art to begin'
+              : !taught
+                ? 'Mastery: waiting on its weapon'
+                : 'Mastery: not yet begun';
       row.append(meter, label);
       this.artsDetail.appendChild(row);
     }
