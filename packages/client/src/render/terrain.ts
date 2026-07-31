@@ -609,7 +609,6 @@ function drawDocks(
   include?: (tx: number, ty: number) => boolean,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
-  const seam = Math.max(1, px * 0.02);
   for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
     for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
@@ -683,28 +682,10 @@ function drawDocks(
         ctx.fillRect(gx, gy + px - liftB, px, Math.max(1, px * 0.02));
       }
 
-      // The deck itself, lifted. Dark underlay first — the gaps
-      // between boards read as shadowed seams.
+      // The deck itself, lifted — the floor-law course painter.
       const dy0 = gy - liftB;
       const vertRun = deckN || deckS || (!deckE && !deckW);
-      ctx.fillStyle = '#5a4326';
-      ctx.fillRect(gx, dy0, px, px);
-      const rows = 5;
-      for (let r = 0; r < rows; r++) {
-        const hh = vertRun ? hashCoords(137, ty * 8 + r, 0) : hashCoords(139, tx * 8 + r, 0);
-        ctx.fillStyle = DOCK_TONES[hh % 4]!;
-        if (vertRun) ctx.fillRect(gx, dy0 + (r / rows) * px, px, px / rows - seam);
-        else ctx.fillRect(gx + (r / rows) * px, dy0, px / rows - seam, px);
-      }
-      // Staggered butt joints where boards meet along a run.
-      ctx.fillStyle = 'rgba(40, 26, 14, 0.5)';
-      for (let r = 0; r < rows; r++) {
-        const hh = hashCoords(141, (vertRun ? ty : tx) * 8 + r, vertRun ? tx : ty);
-        if (hh % 3 !== 0) continue;
-        const at = 0.25 + ((hh >>> 4) % 50) / 100;
-        if (vertRun) ctx.fillRect(gx + at * px, dy0 + (r / rows) * px, seam, px / rows - seam);
-        else ctx.fillRect(gx + (r / rows) * px, dy0 + at * px, px / rows - seam, seam);
-      }
+      paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, 'dock', vertRun);
 
       // Perimeter stroke, exposed edges only.
       ctx.strokeStyle = 'rgba(42, 28, 14, 0.85)';
@@ -731,17 +712,137 @@ function drawDocks(
   }
 }
 
-/** Bridge masonry tones — abutment steps, piers, fascia, thresholds. */
-const BRIDGE_STONE = {
-  face: '#7b7568',
-  lit: '#8f897b',
-  dark: '#5d5849',
-  top: '#918b7d',
+/** Bridge carpentry tones — rim joists, piles, sills. The crossing is
+ *  TIMBER through and through (the old pale stone kit read as concrete
+ *  slabs stuck onto a boardwalk — user-rejected). */
+const BRIDGE_TIMBER = {
+  /** Rim joist: the deck's visible thickness, one weathered board. */
+  rim: '#5c4527',
+  /** Pile body driven into the water, and its sun-law lit west edge. */
+  pile: '#4a3620',
+  pileLit: '#6d5233',
+  /** Cross-brace between a pile pair. */
+  brace: '#3f2d18',
+  /** Sill plank across a land entrance — warmer, boot-worn. */
+  sill: '#7b5d38',
 };
 
 /** Board tones for bridge decks — a touch greyer than dock lumber:
  *  a public crossing weathered by every boot in town. */
 const BRIDGE_TONES = ['#997a50', '#8e7049', '#a28356', '#856a44'];
+
+/**
+ * THE FLOOR LAW (bridge rework round 5). Deck boards lie in HORIZONTAL
+ * courses on EVERY span axis. In this oblique projection a horizontal
+ * course always reads as a floor plane seen from the tilted bird's
+ * eye; the old across-the-walk stripes turned every E-W span into
+ * full-height vertical strips — the exact visual grammar of board-and-
+ * batten SIDING, so whole crossings read as plank walls (user-rejected
+ * with screenshots). The walk axis now speaks only through joint
+ * rhythm (long planks run an E-W walk; cross-boards on a N-S span
+ * break in a brick bond), kerbs, rails and thresholds.
+ *
+ * The 2.5D hand: course heights FORESHORTEN (far/north courses run a
+ * touch shallower than near ones — one tile reads as a tilted plane,
+ * not graph paper), and interior course seams ride a slow world-x
+ * sine so the planking sits slightly askew, hand-laid. The wobble is
+ * pinned to ZERO at the tile-edge courses, so exposed deck edges stay
+ * flush with fascia and neighbors by construction. Everything is
+ * world-keyed: rows, segments, joints and pips continue unbroken
+ * across tiles, chunk seams and resolution tiers.
+ */
+function paintDeckBoards(
+  ctx: CanvasRenderingContext2D,
+  tx: number,
+  ty: number,
+  gx: number,
+  gy: number,
+  px: number,
+  liftB: number,
+  family: 'bridge' | 'dock',
+  vertRun: boolean,
+): void {
+  const seam = Math.max(1, px * 0.02);
+  const dy0 = gy - liftB;
+  const tones = family === 'bridge' ? BRIDGE_TONES : DOCK_TONES;
+  ctx.fillStyle = family === 'bridge' ? '#54402a' : '#5a4326';
+  ctx.fillRect(gx, dy0, px, px);
+  const ROWS = 5;
+  // Foreshortened course grid: cumulative fractions on a mild power
+  // curve — ~25% relative depth gain from the far course to the near.
+  const frac = (r: number): number => Math.pow(r / ROWS, 1.09);
+  const wobAt = (r: number, wx: number): number => {
+    const f = frac(r);
+    // sin(πf) envelope pins the tile-edge seams straight.
+    return px * 0.014 * Math.sin(wx * 1.9 + (ty * ROWS + r) * 2.17) * Math.sin(Math.PI * f);
+  };
+  const yT = (r: number, wx: number): number => dy0 + frac(r) * px + wobAt(r, wx);
+  for (let r = 0; r < ROWS; r++) {
+    const rowW = ty * ROWS + r;
+    const hL = hashCoords(163, rowW, 0);
+    // Long planks run an E-W walk; a N-S span's cross-boards break in
+    // a brick bond (alternating half-tile offsets, jittered) so a two-
+    // wide crossing never collapses to one straight seam.
+    const len = vertRun ? 1 : 1.5 + (hL % 3) * 0.35;
+    const phase = vertRun
+      ? (rowW % 2) * 0.5 + ((hL >>> 4) % 13) / 100
+      : (((hL >>> 4) % 97) / 97) * len;
+    let u0 = tx;
+    const si0 = Math.floor((tx + phase) / len);
+    const si1 = Math.floor((tx + 1 + phase) / len);
+    for (let si = si0; si <= si1; si++) {
+      const segEnd = (si + 1) * len - phase;
+      const u1 = Math.min(tx + 1, segEnd);
+      if (u1 - u0 > 0.01) {
+        const x0 = gx + (u0 - tx) * px;
+        const x1 = gx + (u1 - tx) * px;
+        ctx.fillStyle = tones[hashCoords(165, rowW, si) % 4]!;
+        ctx.beginPath();
+        ctx.moveTo(x0, yT(r, u0));
+        ctx.lineTo(x1, yT(r, u1));
+        ctx.lineTo(x1, yT(r + 1, u1) - seam);
+        ctx.lineTo(x0, yT(r + 1, u0) - seam);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Butt joint at the segment boundary: a dark seam with a hint of
+      // hand-sawn lean.
+      if (segEnd > tx + 0.02 && segEnd < tx + 0.98) {
+        const xj = gx + (segEnd - tx) * px;
+        const lean = ((hashCoords(167, rowW, si) % 5) - 2) * px * 0.008;
+        ctx.strokeStyle = 'rgba(40, 26, 14, 0.55)';
+        ctx.lineWidth = Math.max(1, px * 0.022);
+        ctx.beginPath();
+        ctx.moveTo(xj + lean, yT(r, segEnd) + seam * 0.5);
+        ctx.lineTo(xj - lean, yT(r + 1, segEnd) - seam * 1.2);
+        ctx.stroke();
+      }
+      u0 = u1;
+    }
+    // Nail pips over the joist stations and the odd grain tick — kept
+    // sparse; the blit squash flattens anything busier into noise.
+    const hN = hashCoords(169, rowW, tx);
+    if (hN % 3 === 0) {
+      const fx = 0.22 + ((hN >>> 3) % 2) * 0.56 + ((hN >>> 5) % 13) / 100;
+      const ny = (yT(r, tx + fx) + yT(r + 1, tx + fx)) / 2;
+      const np = Math.max(1, px * 0.02);
+      ctx.fillStyle = 'rgba(30, 20, 10, 0.4)';
+      ctx.fillRect(gx + fx * px - np / 2, ny - np / 2, np, np);
+    }
+    if (hN % 7 === 3) {
+      const fx0 = ((hN >>> 6) % 60) / 100;
+      const fw = 0.14 + ((hN >>> 9) % 20) / 100;
+      const fy = 0.3 + ((hN >>> 11) % 40) / 100;
+      const gy0 = yT(r, tx + fx0) + (frac(r + 1) - frac(r)) * px * fy;
+      ctx.strokeStyle = 'rgba(46, 30, 16, 0.3)';
+      ctx.lineWidth = Math.max(1, px * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(gx + fx0 * px, gy0);
+      ctx.lineTo(gx + Math.min(fx0 + fw, 1) * px, gy0);
+      ctx.stroke();
+    }
+  }
+}
 
 /**
  * THE BRIDGE PASS. A bridge is the dock's opposite statement: not
@@ -776,7 +877,6 @@ function drawBridges(
   include?: (tx: number, ty: number) => boolean,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
-  const seam = Math.max(1, px * 0.02);
   const isLand = (t: number | undefined): boolean =>
     t !== undefined && !isDeckGround(t) && !isWaterTile(t);
   // One walk-axis flood per span, shared by every member tile.
@@ -835,18 +935,32 @@ function drawBridges(
         ctx.fillRect(gx, gy + px + px * 0.2, px, px * 0.18);
       }
 
-      // Stone piers: the masonry the full-height span stands on (a
-      // ramp's mass is its wing wall — no legs). A north apron's
-      // south edge is at full lift, so it keeps its piers.
+      // Timber pile pairs: the legs the full-height span stands on (a
+      // ramp's mass is its raked stringer — no legs). A north apron's
+      // south edge is at full lift, so it keeps its piles. An X of
+      // cross-bracing ties each pair — the carpentry that sells a
+      // standing trestle.
       if (!hasS && waterS && (apron === 'none' || apron === 'N')) {
-        for (const fpos of [0.18, 0.82]) {
-          const pw = px * 0.16;
-          const pxl = gx + fpos * px - pw / 2;
-          const top = gy + px - liftB * 0.3;
-          const bot = gy + px + px * 0.16;
-          ctx.fillStyle = BRIDGE_STONE.dark;
+        const pw = px * 0.13;
+        const top = gy + px - liftB * 0.3;
+        const bot = gy + px + px * 0.16;
+        const c0 = gx + 0.18 * px;
+        const c1 = gx + 0.82 * px;
+        ctx.strokeStyle = BRIDGE_TIMBER.brace;
+        ctx.lineWidth = Math.max(1.2, px * 0.032);
+        ctx.globalAlpha = 0.75;
+        ctx.beginPath();
+        ctx.moveTo(c0 + pw * 0.3, gy + px - liftB * 0.05);
+        ctx.lineTo(c1 - pw * 0.3, bot - px * 0.02);
+        ctx.moveTo(c1 - pw * 0.3, gy + px - liftB * 0.05);
+        ctx.lineTo(c0 + pw * 0.3, bot - px * 0.02);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        for (const cx0 of [c0, c1]) {
+          const pxl = cx0 - pw / 2;
+          ctx.fillStyle = BRIDGE_TIMBER.pile;
           ctx.fillRect(pxl, top, pw, bot - top);
-          ctx.fillStyle = BRIDGE_STONE.lit; // sun-law lit west edge
+          ctx.fillStyle = BRIDGE_TIMBER.pileLit; // sun-law lit west edge
           ctx.fillRect(pxl, top, Math.max(1, pw * 0.32), bot - top);
           ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
           ctx.lineWidth = Math.max(1.2, px * 0.03);
@@ -864,42 +978,33 @@ function drawBridges(
         ctx.fillRect(gx, gy + px, px, px * 0.05);
       }
       if (!hasS && (apron === 'none' || apron === 'N')) {
+        // Rim joist: the deck's visible timber thickness — a weathered
+        // board hung under the south edge, over water and land alike.
+        ctx.fillStyle = BRIDGE_TIMBER.rim;
+        ctx.fillRect(gx, gy + px - liftB, px, liftB);
+        // Catch-light lip, the under-deck shadow foot, and support
+        // ticks tying the rim to its pile stations.
+        ctx.fillStyle = 'rgba(222, 184, 122, 0.32)';
+        ctx.fillRect(gx, gy + px - liftB, px, Math.max(1, px * 0.02));
+        ctx.fillStyle = 'rgba(20, 14, 7, 0.42)';
+        ctx.fillRect(gx, gy + px - Math.max(1.5, liftB * 0.16), px, Math.max(1.5, liftB * 0.16));
+        if (waterS) {
+          ctx.fillStyle = 'rgba(24, 16, 8, 0.28)';
+          for (const fpos of [0.18, 0.82]) {
+            ctx.fillRect(gx + fpos * px - px * 0.02, gy + px - liftB, px * 0.04, liftB);
+          }
+        }
+        // A rim joint where the world says the board breaks.
+        const hj = hashCoords(171, tx, ty);
+        if (hj % 3 === 0) {
+          const fx = 0.2 + ((hj >>> 4) % 60) / 100;
+          ctx.fillStyle = 'rgba(30, 20, 10, 0.35)';
+          ctx.fillRect(gx + fx * px, gy + px - liftB, Math.max(1, px * 0.02), liftB);
+        }
         if (landS) {
-          // Abutment: two stone step courses walking down to the bank.
-          ctx.fillStyle = BRIDGE_STONE.top;
-          ctx.fillRect(gx, gy + px - liftB, px, liftB * 0.5);
-          ctx.fillStyle = BRIDGE_STONE.face;
-          ctx.fillRect(gx, gy + px - liftB * 0.5, px, liftB * 0.5);
-          const nose = Math.max(1, px * 0.018);
-          ctx.fillStyle = 'rgba(30, 24, 14, 0.35)';
-          ctx.fillRect(gx, gy + px - liftB * 0.5, px, nose);
-          ctx.fillRect(gx, gy + px - nose, px, nose);
           // The seat shadow on the bank: the mass presses into land.
           ctx.fillStyle = 'rgba(30, 22, 12, 0.2)';
           ctx.fillRect(gx, gy + px, px, px * 0.07);
-        } else {
-          // Stone fascia with the arch shadow sprung between piers.
-          ctx.fillStyle = BRIDGE_STONE.face;
-          ctx.fillRect(gx, gy + px - liftB, px, liftB);
-          if (waterS) {
-            const springY = gy + px - liftB * 0.5;
-            ctx.fillStyle = 'rgba(22, 17, 10, 0.5)';
-            ctx.beginPath();
-            ctx.moveTo(gx + 0.23 * px, gy + px);
-            ctx.lineTo(gx + 0.28 * px, springY);
-            ctx.lineTo(gx + 0.72 * px, springY);
-            ctx.lineTo(gx + 0.77 * px, gy + px);
-            ctx.closePath();
-            ctx.fill();
-          }
-          // One masonry course joint, the coping catch-light, and the
-          // shade at the waterline foot.
-          ctx.fillStyle = 'rgba(30, 24, 14, 0.3)';
-          ctx.fillRect(gx, gy + px - liftB * 0.45, px, Math.max(1, px * 0.015));
-          ctx.fillStyle = 'rgba(228, 222, 204, 0.32)';
-          ctx.fillRect(gx, gy + px - liftB, px, Math.max(1, px * 0.02));
-          ctx.fillStyle = 'rgba(20, 16, 8, 0.4)';
-          ctx.fillRect(gx, gy + px - Math.max(1.5, liftB * 0.14), px, Math.max(1.5, liftB * 0.14));
         }
       }
 
@@ -933,23 +1038,7 @@ function drawBridges(
         ctx.fillRect(gx, dy0 - px * 0.05, px, px * 0.05);
       }
 
-      ctx.fillStyle = '#54402a';
-      ctx.fillRect(gx, dy0, px, px);
-      const rows = 5;
-      for (let r = 0; r < rows; r++) {
-        const hh = vertRun ? hashCoords(151, ty * 8 + r, 0) : hashCoords(153, tx * 8 + r, 0);
-        ctx.fillStyle = BRIDGE_TONES[hh % 4]!;
-        if (vertRun) ctx.fillRect(gx, dy0 + (r / rows) * px, px, px / rows - seam);
-        else ctx.fillRect(gx + (r / rows) * px, dy0, px / rows - seam, px);
-      }
-      ctx.fillStyle = 'rgba(40, 26, 14, 0.5)';
-      for (let r = 0; r < rows; r++) {
-        const hh = hashCoords(155, (vertRun ? ty : tx) * 8 + r, vertRun ? tx : ty);
-        if (hh % 3 !== 0) continue;
-        const at = 0.25 + ((hh >>> 4) % 50) / 100;
-        if (vertRun) ctx.fillRect(gx + at * px, dy0 + (r / rows) * px, seam, px / rows - seam);
-        else ctx.fillRect(gx + (r / rows) * px, dy0 + at * px, px / rows - seam, seam);
-      }
+      paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, 'bridge', vertRun);
 
       // Sides vs ends, by the span's walk axis: the SIDES (the edges
       // a rail runs along) are perpendicular to the walk; the ENDS
@@ -980,71 +1069,29 @@ function drawBridges(
       if (kerbW) ctx.fillRect(gx + kerb, dy0, lit, px);
       if (kerbE) ctx.fillRect(gx + px - kerb - lit, dy0, lit, px);
 
-      // Land entrances: a stone threshold course across the walk,
-      // flanked by squat newel blocks — the bridge visibly GRIPS the
-      // bank instead of hovering beside it.
-      const th = Math.max(2, px * 0.13);
-      const newel = px * 0.15;
+      // Land entrances: a proud SILL PLANK across the walk — a warmer,
+      // boot-worn board that seats the crossing onto the bank. The
+      // rail end posts finish the entrance; no masonry furniture.
+      const th = Math.max(2, px * 0.11);
       const joint = Math.max(1, px * 0.02);
-      const drawNewel = (nx: number, nyDeck: number): void => {
-        const h = liftB * 0.5;
-        const cap = newel * FLAT * 0.7;
-        ctx.fillStyle = BRIDGE_STONE.face;
-        ctx.fillRect(nx, nyDeck - h, newel, h);
-        ctx.fillStyle = 'rgba(20, 16, 8, 0.35)';
-        ctx.fillRect(nx, nyDeck - joint, newel, joint);
-        ctx.fillStyle = BRIDGE_STONE.top;
-        ctx.fillRect(nx, nyDeck - h - cap, newel, cap);
-      };
-      ctx.fillStyle = BRIDGE_STONE.top;
+      const lip = Math.max(1, px * 0.018);
+      ctx.fillStyle = BRIDGE_TIMBER.sill;
       if (thN) ctx.fillRect(gx, dy0, px, th);
       if (thS) ctx.fillRect(gx, dy0 + px - th, px, th);
       if (thW) ctx.fillRect(gx, dy0, th, px);
       if (thE) ctx.fillRect(gx + px - th, dy0, th, px);
+      // The sill's lit face toward the walker, then the seam shadow
+      // where the deck boards butt against it.
+      ctx.fillStyle = 'rgba(224, 186, 124, 0.3)';
+      if (thN) ctx.fillRect(gx, dy0, px, lip);
+      if (thS) ctx.fillRect(gx, dy0 + px - th, px, lip);
+      if (thW) ctx.fillRect(gx, dy0, lip, px);
+      if (thE) ctx.fillRect(gx + px - th, dy0, lip, px);
       ctx.fillStyle = 'rgba(30, 24, 14, 0.35)';
       if (thN) ctx.fillRect(gx, dy0 + th, px, joint);
       if (thS) ctx.fillRect(gx, dy0 + px - th - joint, px, joint);
       if (thW) ctx.fillRect(gx + th, dy0, joint, px);
       if (thE) ctx.fillRect(gx + px - th - joint, dy0, joint, px);
-      // Newels and step-down wedges belong to the FLAT-ended legacy
-      // entrance only — a ramp's rail posts land at grade and finish
-      // the entrance themselves.
-      if (apron === 'none') {
-        if (thN) {
-          drawNewel(gx + px * 0.02, dy0 + newel * FLAT + px * 0.02);
-          drawNewel(gx + px - newel - px * 0.02, dy0 + newel * FLAT + px * 0.02);
-        }
-        if (thS) {
-          drawNewel(gx + px * 0.02, dy0 + px - px * 0.02);
-          drawNewel(gx + px - newel - px * 0.02, dy0 + px - px * 0.02);
-        }
-        if (thW) {
-          drawNewel(gx + px * 0.02, dy0 + newel * FLAT + px * 0.02);
-          drawNewel(gx + px * 0.02, dy0 + px - px * 0.02);
-        }
-        if (thE) {
-          drawNewel(gx + px - newel - px * 0.02, dy0 + newel * FLAT + px * 0.02);
-          drawNewel(gx + px - newel - px * 0.02, dy0 + px - px * 0.02);
-        }
-        if (thW && !hasS) {
-          ctx.fillStyle = BRIDGE_STONE.face;
-          ctx.beginPath();
-          ctx.moveTo(gx, dy0 + px);
-          ctx.lineTo(gx, gy + px);
-          ctx.lineTo(gx - px * 0.14, gy + px);
-          ctx.closePath();
-          ctx.fill();
-        }
-        if (thE && !hasS) {
-          ctx.fillStyle = BRIDGE_STONE.face;
-          ctx.beginPath();
-          ctx.moveTo(gx + px, dy0 + px);
-          ctx.lineTo(gx + px, gy + px);
-          ctx.lineTo(gx + px + px * 0.14, gy + px);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
 
       // Perimeter stroke, exposed edges only (architecture outline
       // law) — but NEVER across a ramp mouth: the road runs straight
@@ -1072,21 +1119,21 @@ function drawBridges(
       ctx.stroke();
       ctx.restore();
 
-      // WING WALLS: a west/east ramp shows its abutment's flank — the
-      // sloping stone mass that seats the crossing into the bank,
-      // from the deck's falling south edge down to the ground line.
+      // RAKED STRINGER: a west/east ramp shows its flank — the sloping
+      // timber that carries the deck from the bank up to full lift,
+      // from the falling south edge down to the ground line.
       if ((apron === 'W' || apron === 'E') && !hasS) {
         const hiX = apron === 'W' ? gx + px : gx;
         const loX = apron === 'W' ? gx : gx + px;
-        ctx.fillStyle = BRIDGE_STONE.face;
+        ctx.fillStyle = BRIDGE_TIMBER.rim;
         ctx.beginPath();
         ctx.moveTo(loX, gy + px);
         ctx.lineTo(hiX, gy + px - liftB);
         ctx.lineTo(hiX, gy + px);
         ctx.closePath();
         ctx.fill();
-        // Sloped coping catch-light, and the seat shadow on the bank.
-        ctx.strokeStyle = 'rgba(228, 222, 204, 0.3)';
+        // Catch-light along the raked top edge, and the seat shadow.
+        ctx.strokeStyle = 'rgba(222, 184, 122, 0.3)';
         ctx.lineWidth = Math.max(1, px * 0.02);
         ctx.beginPath();
         ctx.moveTo(loX, gy + px);
@@ -1123,7 +1170,6 @@ function drawDeckFill(
   axisMemo?: Map<number, boolean>,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
-  const seam = Math.max(1, px * 0.02);
   const { legs, family } = fill;
   const bridge = family === 'bridge';
   const southFacing = legs[0] === 'N'; // hypotenuse faces the camera
@@ -1175,18 +1221,18 @@ function drawDeckFill(
     band(0, px * 0.2, 'rgba(20, 34, 62, 0.26)');
     band(px * 0.2, px * 0.38, 'rgba(20, 34, 62, 0.12)');
 
-    // One leg at the hyp midpoint: a stone pier for the bridge, a
-    // driven pile for the dock — the diagonal stands on the water
-    // like every straight bay does.
+    // One leg at the hyp midpoint: a driven timber pile for either
+    // family — the diagonal stands on the water like every straight
+    // bay does.
     const mx = (ax0 + bx0) / 2;
     const myG = (ayG + byG) / 2;
-    const pw = bridge ? px * 0.16 : px * 0.11;
+    const pw = bridge ? px * 0.13 : px * 0.11;
     const pxl = mx - pw / 2;
     const top = myG - liftB * (bridge ? 0.3 : 0.25);
     const bot = myG + px * (bridge ? 0.16 : 0.14);
-    ctx.fillStyle = bridge ? BRIDGE_STONE.dark : '#4e3a22';
+    ctx.fillStyle = bridge ? BRIDGE_TIMBER.pile : '#4e3a22';
     ctx.fillRect(pxl, top, pw, bot - top);
-    ctx.fillStyle = bridge ? BRIDGE_STONE.lit : '#77593a'; // sun-law lit west edge
+    ctx.fillStyle = bridge ? BRIDGE_TIMBER.pileLit : '#77593a'; // sun-law lit west edge
     ctx.fillRect(pxl, top, Math.max(1, pw * (bridge ? 0.32 : 0.3)), bot - top);
     ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
     ctx.lineWidth = Math.max(1.2, px * 0.03);
@@ -1195,8 +1241,8 @@ function drawDeckFill(
     ctx.stroke();
 
     // The face under the hyp: deck thickness made visible, sheared
-    // along the diagonal — stone fascia for the bridge, plank face
-    // for the dock, each wearing its family's dressing lines.
+    // along the diagonal — the family's timber rim, wearing the same
+    // dressing lines as the straight bays.
     const face = (yTop: number, yBot: number, style: string): void => {
       ctx.fillStyle = style;
       ctx.beginPath();
@@ -1207,11 +1253,10 @@ function drawDeckFill(
       ctx.closePath();
       ctx.fill();
     };
-    face(0, liftB, bridge ? BRIDGE_STONE.face : '#6d5130');
+    face(0, liftB, bridge ? BRIDGE_TIMBER.rim : '#6d5130');
     if (bridge) {
-      face(liftB * 0.45, liftB * 0.45 + Math.max(1, px * 0.015), 'rgba(30, 24, 14, 0.3)');
-      face(0, Math.max(1, px * 0.02), 'rgba(228, 222, 204, 0.32)');
-      face(liftB - Math.max(1.5, liftB * 0.14), liftB, 'rgba(20, 16, 8, 0.4)');
+      face(0, Math.max(1, px * 0.02), 'rgba(222, 184, 122, 0.32)');
+      face(liftB - Math.max(1.5, liftB * 0.16), liftB, 'rgba(20, 14, 7, 0.42)');
     } else {
       face(liftB - Math.max(1.5, liftB * 0.22), liftB, 'rgba(30, 19, 9, 0.45)');
       face(0, Math.max(1, px * 0.02), 'rgba(214, 178, 120, 0.28)');
@@ -1240,28 +1285,7 @@ function drawDeckFill(
   ctx.save();
   triPath();
   ctx.clip();
-  const dy0 = gy - liftB;
-  ctx.fillStyle = bridge ? '#54402a' : '#5a4326';
-  ctx.fillRect(gx, dy0, px, px);
-  const tones = bridge ? BRIDGE_TONES : DOCK_TONES;
-  const rowSeed = bridge ? 151 : 137;
-  const colSeed = bridge ? 153 : 139;
-  const jointSeed = bridge ? 155 : 141;
-  const rows = 5;
-  for (let r = 0; r < rows; r++) {
-    const hh = vertRun ? hashCoords(rowSeed, ty * 8 + r, 0) : hashCoords(colSeed, tx * 8 + r, 0);
-    ctx.fillStyle = tones[hh % 4]!;
-    if (vertRun) ctx.fillRect(gx, dy0 + (r / rows) * px, px, px / rows - seam);
-    else ctx.fillRect(gx + (r / rows) * px, dy0, px / rows - seam, px);
-  }
-  ctx.fillStyle = 'rgba(40, 26, 14, 0.5)';
-  for (let r = 0; r < rows; r++) {
-    const hh = hashCoords(jointSeed, (vertRun ? ty : tx) * 8 + r, vertRun ? tx : ty);
-    if (hh % 3 !== 0) continue;
-    const at = 0.25 + ((hh >>> 4) % 50) / 100;
-    if (vertRun) ctx.fillRect(gx + at * px, dy0 + (r / rows) * px, seam, px / rows - seam);
-    else ctx.fillRect(gx + (r / rows) * px, dy0 + at * px, px / rows - seam, seam);
-  }
+  paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, family, vertRun);
 
   // Kerb stringer along the hyp (bridge only) — the dark curb the
   // rail bolts to, with its lit inner pop, still inside the clip so
@@ -3779,14 +3803,18 @@ function drawShorelines(
       // Deck cells get NO shoreline: the water slides quietly under
       // a raised dock or bridge — foam ringing a deck would paint it
       // back into a flat peninsula (piles carry their own ripples).
-      if (
-        (isDeckGround(c00) && isDeckTile(ground, i - 1, j - 1)) ||
-        (isDeckGround(c10) && isDeckTile(ground, i, j - 1)) ||
-        (isDeckGround(c11) && isDeckTile(ground, i, j)) ||
-        (isDeckGround(c01) && isDeckTile(ground, i - 1, j))
-      ) {
-        continue;
+      // The skip reaches ONE RING past the dual cell: a set wave
+      // slides in from over half a tile offshore, so a run in the
+      // NEXT cell still pushes its crest and spray out past a deck
+      // edge (the torn white sliver at every bank junction). Water
+      // calming beside the structure reads right anyway.
+      let nearDeck = false;
+      for (let dy = -2; dy <= 1 && !nearDeck; dy++) {
+        for (let dx = -2; dx <= 1 && !nearDeck; dx++) {
+          if (isDeckGround(ground(i + dx, j + dy))) nearDeck = true;
+        }
       }
+      if (nearDeck) continue;
       const mask =
         (isWaterTile(c00) ? 1 : 0) |
         (isWaterTile(c10) ? 2 : 0) |
