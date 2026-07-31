@@ -3960,7 +3960,7 @@ function daggerDefs(): EquipmentDef[] {
 /** One bow design fletched across the four bow woods (metalLine's cousin:
  *  crafting skill, no station — a bowyer works wherever there's a knee). */
 interface WoodStep {
-  wood: 'plain' | 'oak' | 'willow' | 'yew';
+  wood: 'plain' | 'oak' | 'pine' | 'willow' | 'yew';
   log: string;
   color: string;
   damage: number;
