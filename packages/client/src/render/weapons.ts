@@ -24,6 +24,12 @@ export type BladeKind =
   | 'rapier'   // long needle with a ricasso
   | 'cutlass'  // short broad curve, clipped tip
   | 'cleaver'  // brutal square-nosed chopper
+  // ---- the legendary silhouettes (the ten-crowns pass): forged wide,
+  // reference-grade, one story each — never handed to a metal ladder.
+  | 'runeblade' // segmented ceremonial slab, stepped spear-cut tip
+  | 'cloven'    // twin storm-tines split around a live gap
+  | 'crystal'   // faceted shard, every plane its own light
+  | 'flared'    // wide taper over swept basal flare prongs
   // ---- the dagger vocabulary (short blades, len ≈ 0.5–0.7):
   | 'dirk'     // symmetric double-edge taper with a midrib
   | 'stiletto' // needle over a squared ricasso — all point
@@ -44,6 +50,7 @@ export type GuardKind =
   | 'crown'  // crenellated bar
   | 'wing'   // paired swept wings
   | 'bolt'   // zigzag storm bar
+  | 'coil'   // a living serpent wound over the ricasso, head toward the edge
   | 'stub'   // crude block, barely a guard
   | 'none';  // guardless — a knife trusts its grip
 
@@ -58,7 +65,18 @@ export type BladeFx =
   | 'blood'  // slow beads running the seam
   | 'sun'    // warm sparks at the edge
   | 'star'   // twinkling starlight
-  | 'gleam'; // a single glint traveling the edge
+  | 'gleam'  // a single glint traveling the edge
+  // ---- the legendary signature words (ten-crowns law: each chase
+  // blade owns ONE of these and no other blade wears it):
+  | 'ripple'     // tide rings expanding off the mid-blade
+  | 'drip'       // molten beads swelling on the belly, falling free
+  | 'arc'        // lightning snaps the blade, re-jagged every 90ms
+  | 'slither'    // one serpent-light winding the edge, tail fading
+  | 'sunflare'   // a slow-turning ray star + staggered gleam winks
+  | 'frostbloom' // ice spikes growing off the spine, holding, fading
+  | 'petalfall'  // shed petals rocking down off the edge
+  | 'orbit'      // two glints circling the blade, near-big far-dim
+  | 'gravemist'; // pale wisps curling up off the steel
 
 export interface SwordStyle {
   blade: BladeKind;
@@ -79,6 +97,16 @@ export interface SwordStyle {
   gem?: string;
   /** Battle damage: dark bites knocked out of the cutting edge. */
   notched?: boolean;
+  /**
+   * A living core vein down the blade's center — the one bright thing
+   * on a dark blade (the riftglass law brought to one-handers). It
+   * REPLACES the fuller line's read and breathes on the world clock.
+   */
+  core?: string;
+  /** Script ticks along the spine that light in a walking sequence. */
+  runes?: string;
+  /** Socketed stones marching the fuller line (the molten-slab read). */
+  gems?: { color: string; n?: number };
   fx?: BladeFx;
   fxColor?: string;
 }
@@ -310,6 +338,66 @@ export const SWORD_STYLES: Record<string, SwordStyle> = {
     guard: 'cross', guardColor: '#8a92a4', grip: '#2e3a5c', wrap: '#8a92a4',
     pommel: 'round', pommelColor: '#8a92a4', fx: 'gleam', fxColor: '#ffffff',
   },
+
+  // ---- THE TEN CROWNS: the legendary chase blades. Each owns one
+  // animated signature word (fx / runes / gems / core) that no other
+  // blade in the roster wears — the cloth-road law brought to steel.
+  saltfang: {
+    // The drowned duelist's saber, handed back by the tide: sea-glass
+    // steel under salt-crusted gold, rings still spreading off it.
+    // The core is the wet light down the spine — never dry steel.
+    blade: 'saber', color: '#7fae9e', edge: '#d8f4e6', fuller: '#3d6b62', len: 1.12,
+    core: '#c8f2e2',
+    guard: 'swept', guardColor: '#5f8a7a', grip: '#2e4a44', wrap: '#b0a068',
+    pommel: 'gem', pommelColor: '#5f8a7a', gem: '#d8f4e6', fx: 'ripple', fxColor: '#bfeedd',
+  },
+  brightword: {
+    // The shrine slab: pale ceremonial steel forged in sections, gold
+    // script reading itself down the flat, crown and claret below.
+    blade: 'runeblade', color: '#dfe2ea', edge: '#ffffff', fuller: '#a8aec0', len: 1.05,
+    core: '#ffd977', runes: '#ffd977',
+    guard: 'crown', guardColor: '#c9a23c', gem: '#e85a3c', grip: '#5a2e34', wrap: '#c9a23c',
+    pommel: 'gem', pommelColor: '#c9a23c',
+  },
+  cindermaw: {
+    // A black leaf-slab with four live coals socketed down the spine
+    // and a molten rim — it drools slag when it thinks about eating.
+    blade: 'gladius', color: '#3a3234', edge: '#ff9a4c', fuller: '#241e20', len: 1.05,
+    gems: { color: '#ffa040', n: 4 },
+    guard: 'wing', guardColor: '#3a3234', grip: '#6a3a2a', wrap: '#8a4a30',
+    pommel: 'gem', pommelColor: '#3a3234', gem: '#ffa040', fx: 'drip', fxColor: '#ffb060',
+  },
+  skysplinter: {
+    // Twin storm-tines around a live gap; the bolt jumps the notch
+    // and never draws the same path twice.
+    blade: 'cloven', color: '#8fa2c4', edge: '#e6eeff', fuller: '#3c4664', len: 1.08,
+    guard: 'bolt', guardColor: '#ffe66a', grip: '#2e3448', wrap: '#7a88b8',
+    pommel: 'ring', pommelColor: '#ffe66a', fx: 'arc', fxColor: '#aee0ff',
+  },
+  vipersong: {
+    // Jade fang-curve under a living coil guard; one bright serpent
+    // light winds the edge, patient as the song.
+    blade: 'scimitar', color: '#6faa74', edge: '#d6f2c8', fuller: '#2f5e3c', len: 1.05,
+    core: '#b8e878',
+    guard: 'coil', guardColor: '#3f6a48', gem: '#ffd977', grip: '#2c3a2e', wrap: '#79a355',
+    pommel: 'fang', pommelColor: '#e2dcc8', fx: 'slither', fxColor: '#d0ff9a',
+  },
+  crownfire: {
+    // The throne room's blade: royal gold on swept flares, rubies down
+    // the spine, a slow sun turning at the ricasso.
+    blade: 'flared', color: '#e8c04c', edge: '#fff2cc', fuller: '#b8863f', len: 1.08,
+    gems: { color: '#e85a3c', n: 3 },
+    guard: 'crown', guardColor: '#d9a441', gem: '#e85a3c', grip: '#6a2a3a', wrap: '#d9a441',
+    pommel: 'crown', pommelColor: '#d9a441', fx: 'sunflare', fxColor: '#ffdf8a',
+  },
+  winterspire: {
+    // A grown shard of deep winter: faceted ice-steel around a white
+    // heart-line, still growing itself new edges.
+    blade: 'crystal', color: '#a9c8e4', edge: '#eef8ff', fuller: '#5a7ea6', len: 1.1,
+    core: '#ffffff',
+    guard: 'wing', guardColor: '#6f8fb4', grip: '#2e3a4e', wrap: '#a8c8dc',
+    pommel: 'gem', pommelColor: '#6f8fb4', gem: '#eef8ff', fx: 'frostbloom', fxColor: '#dff2ff',
+  },
 };
 
 /**
@@ -524,6 +612,33 @@ export const DAGGER_STYLES: Record<string, SwordStyle> = {
     guard: 'cross', guardColor: '#8a92a4', grip: '#2e3a5c', wrap: '#8a92a4',
     pommel: 'round', pommelColor: '#8a92a4', fx: 'gleam', fxColor: '#ffffff',
   },
+
+  // ---- THE TEN CROWNS, rogue's third: the chase knives. Same law as
+  // the sword crowns — one animated signature word each, worn alone.
+  nightbloom: {
+    // A single dusk petal ground to an edge; the garden sheds around
+    // it and never runs out.
+    blade: 'leafblade', color: '#6a5e88', edge: '#cbb8f0', fuller: '#38304a', len: 0.72,
+    core: '#e79ad4',
+    guard: 'thorn', guardColor: '#4a4258', grip: '#241d30', wrap: '#5a4a78',
+    pommel: 'gem', pommelColor: '#4a4258', gem: '#e79ad4', fx: 'petalfall', fxColor: '#e8b4de',
+  },
+  rooksbeak: {
+    // The Rookery's black beak in brass furniture; two coin-glints
+    // circle it, counting what it's owed. A dark blade's lit edge
+    // stays midtone (the riftglass bench law) so the brass reads.
+    blade: 'karambit', color: '#4a505c', edge: '#b8c4d4', fuller: '#2a2d34', len: 0.6,
+    guard: 'none', guardColor: '#2a2d34', grip: '#2a2d34', wrap: '#c9a23c',
+    pommel: 'ring', pommelColor: '#a8842e', fx: 'orbit', fxColor: '#ffd977',
+  },
+  marrowlight: {
+    // A needle of old bone with a grave-green heart-line; what the
+    // bone remembers rises off it a little at a time.
+    blade: 'stiletto', color: '#e2dcc8', edge: '#f8f4e4', fuller: '#b0a890', len: 0.72,
+    core: '#b8e8a8',
+    guard: 'disc', guardColor: '#b0a890', grip: '#8a8276', wrap: '#4a5a48',
+    pommel: 'crescent', pommelColor: '#b8e8a8', fx: 'gravemist', fxColor: '#cff0c0',
+  },
 };
 
 /** Color-derived fallbacks so any future '*sword' id is dressed. */
@@ -590,13 +705,29 @@ export function drawSword(
   drawPommel(ctx, st, s, hurt);
 
   // ---- blade silhouette + dress (edge light on −y, fuller center).
-  drawBlade(ctx, st, color, bx, tip, s, hurt);
+  drawBlade(ctx, st, color, bx, tip, s, nowMs, hurt);
 
   // ---- guard last: it seats OVER the blade base and the grip.
   drawGuard(ctx, st, s, hurt);
 
   // ---- the living channel.
   if (!hurt && st.fx) drawBladeFx(ctx, st, bx, tip, s, nowMs);
+}
+
+/**
+ * The blade's spine path — a quadratic every dress detail (core vein,
+ * runes, gem sockets) rides so it follows curved silhouettes instead
+ * of cutting a chord across them. Straight blades return zeros.
+ */
+function bladeSpine(kind: BladeKind): readonly [number, number, number] {
+  switch (kind) {
+    case 'saber': return [0.004, -0.014, -0.028];
+    case 'scimitar': return [-0.01, -0.04, -0.072];
+    case 'cutlass': return [-0.014, -0.03, -0.042];
+    case 'falchion': return [-0.012, -0.016, -0.02];
+    case 'talon': return [-0.012, -0.02, 0.012];
+    default: return [0, 0, 0];
+  }
 }
 
 function drawBlade(
@@ -606,6 +737,7 @@ function drawBlade(
   bx: number,
   tip: number,
   s: number,
+  nowMs: number,
   hurt?: boolean,
 ): void {
   const edge = hurt ? '#ffffff' : (st.edge ?? shade(st.color, 34));
@@ -817,6 +949,188 @@ function drawBlade(
         ctx.arc(bx + len * rx, -0.018 * s, Math.max(1, 0.012 * s), 0, Math.PI * 2);
         ctx.fill();
       }
+      break;
+    }
+
+    // --------------------------------------- the legendary silhouettes
+    case 'runeblade': {
+      // A ceremonial slab forged in sections — wide flats made to carry
+      // script, stepping down twice into a spear-cut point (the shrine
+      // sword read). Width is the argument: no ladder blade is this bold.
+      const hw = 0.054 * s;
+      const t1 = tip - 0.17 * s; // first step
+      const t2 = tip - 0.06 * s; // second step
+      ctx.beginPath();
+      ctx.moveTo(bx, -hw);
+      ctx.lineTo(t1, -hw);
+      ctx.lineTo(t1 + 0.022 * s, -hw * 0.62);
+      ctx.lineTo(t2, -hw * 0.62);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(t2, hw * 0.62);
+      ctx.lineTo(t1 + 0.022 * s, hw * 0.62);
+      ctx.lineTo(t1, hw);
+      ctx.lineTo(bx, hw);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      // Lit top plane down the whole run — one sun, one strip.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.008 * s, -hw + 0.007 * s);
+      ctx.lineTo(t1 - 0.004 * s, -hw + 0.007 * s);
+      ctx.lineTo(t1 + 0.02 * s, -hw * 0.62 + 0.006 * s);
+      ctx.lineTo(t2 + 0.01 * s, -hw * 0.62 + 0.006 * s);
+      ctx.lineTo(tip - 0.024 * s, -0.004 * s);
+      ctx.lineTo(bx + 0.008 * s, -0.004 * s);
+      ctx.closePath();
+      ctx.fill();
+      // Forge seams: the sections the smith joined, told in two dark
+      // cross-lines — never a full break (one line each, budgeted).
+      ctx.strokeStyle = fuller;
+      ctx.lineWidth = Math.max(1, 0.013 * s);
+      for (const t of [0.34, 0.62]) {
+        const x = bx + len * t;
+        ctx.beginPath();
+        ctx.moveTo(x + 0.008 * s, -hw * 0.82);
+        ctx.lineTo(x - 0.008 * s, hw * 0.82);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'cloven': {
+      // Twin storm-tines split around a LIVE gap — a true fork, the
+      // background showing through the middle. The gap starts just
+      // past half-blade; the arc word snaps across the daylight.
+      const x0 = bx + len * 0.48; // where the steel decides to disagree
+      // The shared root slab.
+      ctx.beginPath();
+      ctx.moveTo(bx, -0.05 * s);
+      ctx.lineTo(x0 + 0.03 * s, -0.055 * s);
+      ctx.lineTo(x0 + 0.02 * s, 0.05 * s);
+      ctx.lineTo(bx, 0.05 * s);
+      ctx.closePath();
+      ctx.fill();
+      // Upper tine: the long one, raked skyward.
+      ctx.beginPath();
+      ctx.moveTo(x0, -0.055 * s);
+      ctx.lineTo(tip, -0.088 * s);
+      ctx.lineTo(tip - 0.03 * s, -0.038 * s);
+      ctx.lineTo(x0 - 0.01 * s, -0.008 * s);
+      ctx.closePath();
+      ctx.fill();
+      // Lower tine: shorter, leveler — the answer. It ends in a
+      // POINT: a tine is a spear, never a paddle.
+      ctx.beginPath();
+      ctx.moveTo(x0 - 0.005 * s, 0.012 * s);
+      ctx.lineTo(tip - 0.03 * s, 0.052 * s);
+      ctx.lineTo(x0 - 0.01 * s, 0.052 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      // Edge light on both tines' sky sides + the root.
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 0.015 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.015 * s, -0.042 * s);
+      ctx.lineTo(x0 + 0.015 * s, -0.046 * s);
+      ctx.lineTo(tip - 0.015 * s, -0.082 * s);
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1, 0.011 * s);
+      ctx.beginPath();
+      ctx.moveTo(x0 + 0.01 * s, 0.022 * s);
+      ctx.lineTo(tip - 0.06 * s, 0.048 * s);
+      ctx.stroke();
+      // The fork's throat wears the deep plane.
+      ctx.strokeStyle = fuller;
+      ctx.lineWidth = Math.max(1, 0.014 * s);
+      ctx.beginPath();
+      ctx.moveTo(x0 + 0.02 * s, -0.03 * s);
+      ctx.lineTo(x0 + 0.01 * s, 0.03 * s);
+      ctx.stroke();
+      break;
+    }
+    case 'crystal': {
+      // A faceted shard: every plane owns its light. The silhouette is
+      // deliberately asymmetric — grown, not forged.
+      ctx.beginPath();
+      ctx.moveTo(bx, -0.03 * s);
+      ctx.lineTo(bx + len * 0.3, -0.06 * s);
+      ctx.lineTo(bx + len * 0.72, -0.046 * s);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(bx + len * 0.6, 0.048 * s);
+      ctx.lineTo(bx + len * 0.22, 0.054 * s);
+      ctx.lineTo(bx, 0.028 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      // The lit facet: one bright plane across the upper mid-run.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(bx + len * 0.3, -0.052 * s);
+      ctx.lineTo(bx + len * 0.72, -0.04 * s);
+      ctx.lineTo(tip - 0.02 * s, -0.002 * s);
+      ctx.lineTo(bx + len * 0.34, -0.008 * s);
+      ctx.closePath();
+      ctx.fill();
+      // The deep facet below the midline — ice under ice.
+      ctx.fillStyle = fuller;
+      ctx.beginPath();
+      ctx.moveTo(bx + len * 0.26, 0.012 * s);
+      ctx.lineTo(bx + len * 0.6, 0.04 * s);
+      ctx.lineTo(bx + len * 0.24, 0.046 * s);
+      ctx.closePath();
+      ctx.fill();
+      // Facet seams: the two lines where the planes meet.
+      ctx.strokeStyle = shade(st.color, -18);
+      ctx.lineWidth = Math.max(1, 0.01 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + len * 0.3, -0.052 * s);
+      ctx.lineTo(bx + len * 0.34, -0.006 * s);
+      ctx.lineTo(bx + len * 0.26, 0.012 * s);
+      ctx.stroke();
+      break;
+    }
+    case 'flared': {
+      // A wide royal taper standing on swept basal flares — the throne
+      // room's blade. The flares paint first so the main slab seats
+      // over their roots (proper overlap, never a butt joint).
+      const hw = 0.048 * s;
+      for (const sy of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.015 * s, sy * 0.02 * s);
+        ctx.quadraticCurveTo(bx + 0.055 * s, sy * 0.105 * s, bx + 0.125 * s, sy * 0.115 * s);
+        ctx.quadraticCurveTo(bx + 0.09 * s, sy * 0.05 * s, bx + 0.155 * s, sy * 0.028 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.moveTo(bx, -hw);
+      ctx.lineTo(tip - 0.13 * s, -hw * 0.72);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(tip - 0.13 * s, hw * 0.72);
+      ctx.lineTo(bx, hw);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      // Flare undersides take the shade plane — two-plane metal.
+      ctx.fillStyle = fuller;
+      for (const sy of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.06 * s, sy * 0.052 * s);
+        ctx.quadraticCurveTo(bx + 0.09 * s, sy * 0.088 * s, bx + 0.12 * s, sy * 0.1 * s);
+        ctx.quadraticCurveTo(bx + 0.095 * s, sy * 0.062 * s, bx + 0.14 * s, sy * 0.034 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Edge light along the top taper.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.01 * s, -hw + 0.007 * s);
+      ctx.lineTo(tip - 0.135 * s, -hw * 0.72 + 0.006 * s);
+      ctx.lineTo(tip - 0.028 * s, -0.004 * s);
+      ctx.lineTo(bx + 0.01 * s, -0.004 * s);
+      ctx.closePath();
+      ctx.fill();
       break;
     }
 
@@ -1034,6 +1348,106 @@ function drawBlade(
       break;
     }
   }
+  // ---- the legendary dress pass: core vein, walking runes, sockets.
+  // All of it rides the blade's SPINE quadratic so curved silhouettes
+  // keep their details on the steel, never on a chord through the air.
+  if (!hurt && (st.core || st.runes || st.gems)) {
+    const [sy0, syc, sy1] = bladeSpine(st.blade);
+    const x0 = bx + 0.03 * s;
+    const x1 = tip - 0.07 * s;
+    const spineAt = (t: number): readonly [number, number] => {
+      const u = 1 - t;
+      return [
+        x0 + (x1 - x0) * t,
+        (u * u * sy0 + 2 * u * t * syc + t * t * sy1) * s,
+      ];
+    };
+    if (st.core) {
+      // The vein breathes on the world clock: a soft halo under a hot
+      // line. It REPLACES the fuller's read — the one bright thing.
+      const breath = 0.72 + 0.28 * Math.sin(nowMs * 0.0021);
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.32 * breath;
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(2, 0.05 * s);
+      ctx.beginPath();
+      ctx.moveTo(x0, sy0 * s);
+      ctx.quadraticCurveTo((x0 + x1) / 2, syc * s, x1, sy1 * s);
+      ctx.stroke();
+      ctx.globalAlpha = breath;
+      ctx.lineWidth = Math.max(1.2, 0.021 * s);
+      ctx.beginPath();
+      ctx.moveTo(x0, sy0 * s);
+      ctx.quadraticCurveTo((x0 + x1) / 2, syc * s, x1, sy1 * s);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'butt';
+    }
+    if (st.runes) {
+      // Four script ticks lighting in a walking sequence — the word
+      // reads itself down the blade, over and over.
+      ctx.strokeStyle = st.runes;
+      ctx.lineWidth = Math.max(1.2, 0.019 * s);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        const [rx, ry] = spineAt(0.18 + i * 0.2);
+        const pulse = Math.max(0, Math.sin(nowMs * 0.0026 - i * 1.05));
+        ctx.globalAlpha = 0.35 + 0.65 * pulse * pulse;
+        ctx.beginPath();
+        ctx.moveTo(rx - 0.015 * s, ry + 0.026 * s);
+        ctx.lineTo(rx + 0.015 * s, ry - 0.026 * s);
+        ctx.stroke();
+        // A cross-stroke every other tick — script, not scratches.
+        if (i % 2 === 0) {
+          ctx.beginPath();
+          ctx.moveTo(rx - 0.013 * s, ry - 0.016 * s);
+          ctx.lineTo(rx + 0.013 * s, ry - 0.002 * s);
+          ctx.stroke();
+        }
+        if (pulse > 0.92) {
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(rx, ry, Math.max(1, 0.008 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'butt';
+    }
+    if (st.gems) {
+      // Socketed stones marching the spine: dark seat, hot stone, one
+      // glint — worn INTO the steel, never stickered on.
+      const n = st.gems.n ?? 3;
+      for (let i = 0; i < n; i++) {
+        const [gx, gy] = spineAt(0.16 + (i * 0.66) / Math.max(1, n - 1));
+        const gr = 0.024 * s * (1 - i * 0.09);
+        ctx.fillStyle = shade(st.color, -34);
+        ctx.beginPath();
+        ctx.moveTo(gx - gr * 1.3, gy);
+        ctx.lineTo(gx, gy - gr * 1.3);
+        ctx.lineTo(gx + gr * 1.3, gy);
+        ctx.lineTo(gx, gy + gr * 1.3);
+        ctx.closePath();
+        ctx.fill();
+        const hot = 0.8 + 0.2 * Math.sin(nowMs * 0.0024 + i * 1.4);
+        ctx.globalAlpha = hot;
+        ctx.fillStyle = st.gems.color;
+        ctx.beginPath();
+        ctx.moveTo(gx - gr, gy);
+        ctx.lineTo(gx, gy - gr);
+        ctx.lineTo(gx + gr, gy);
+        ctx.lineTo(gx, gy + gr);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#fff8e8';
+        ctx.beginPath();
+        ctx.arc(gx - gr * 0.3, gy - gr * 0.35, Math.max(0.8, gr * 0.28), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
   // Battle bites knocked out of the cutting edge — the wedge BASE sits
   // on the silhouette boundary and cuts inward, so it reads as missing
   // metal, never as teeth stuck on the blade.
@@ -1178,6 +1592,49 @@ function drawGuard(
       ctx.stroke();
       break;
     }
+    case 'coil': {
+      // A living serpent wound TIGHT over the ricasso: three fat
+      // wraps crossing the blade base like rings on a finger, each
+      // with a lit back, then the head rising past the spine. Tight
+      // is the law — a loose coil reads as a pretzel, not a snake.
+      ctx.strokeStyle = c;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(2.5, 0.032 * s);
+      for (const [ox, sy] of [[0.02, 1], [0.048, -1], [0.076, 1]] as const) {
+        ctx.beginPath();
+        ctx.moveTo(ox * s, sy * 0.06 * s);
+        ctx.quadraticCurveTo((ox + 0.016) * s, 0, ox * s, -sy * 0.06 * s);
+        ctx.stroke();
+      }
+      if (!hurt) {
+        // Each wrap's back catches the sun on its own curve.
+        ctx.strokeStyle = shade(st.guardColor, 30);
+        ctx.lineWidth = Math.max(1, 0.011 * s);
+        for (const [ox, sy] of [[0.02, 1], [0.048, -1], [0.076, 1]] as const) {
+          ctx.beginPath();
+          ctx.moveTo((ox + 0.004) * s, sy * 0.045 * s);
+          ctx.quadraticCurveTo((ox + 0.016) * s, 0, (ox + 0.004) * s, -sy * 0.045 * s);
+          ctx.stroke();
+        }
+      }
+      ctx.lineCap = 'butt';
+      // The head rises off the last wrap, jaw toward the edge.
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(0.082 * s, -0.05 * s);
+      ctx.quadraticCurveTo(0.098 * s, -0.092 * s, 0.128 * s, -0.088 * s);
+      ctx.quadraticCurveTo(0.146 * s, -0.084 * s, 0.138 * s, -0.062 * s);
+      ctx.lineTo(0.104 * s, -0.04 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt && st.gem) {
+        ctx.fillStyle = st.gem;
+        ctx.beginPath();
+        ctx.arc(0.122 * s, -0.072 * s, Math.max(1, 0.01 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
     case 'stub':
       ctx.fillRect(0.02 * s, -0.052 * s, 0.036 * s, 0.104 * s);
       break;
@@ -1292,6 +1749,266 @@ function drawBladeFx(
 ): void {
   const c = st.fxColor ?? '#ffffff';
   const len = tip - bx;
+  // Deterministic jitter for the re-jag words — seeded on the world
+  // clock, never Math.random (icons pin one frame; replays agree).
+  const jag = (seed: number, k: number): number => {
+    const v = Math.sin(seed * 91.7 + k * 23.31) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  switch (st.fx) {
+    case 'ripple': {
+      // Tide rings LYING ON the steel — flat water circles spreading
+      // along the flat like rain on a still pool, never a lasso
+      // around the blade (the round-1 bench verdict).
+      ctx.strokeStyle = c;
+      for (let i = 0; i < 3; i++) {
+        const ph = (nowMs * 0.00042 + i * 0.333) % 1;
+        const cx = bx + len * (0.3 + 0.24 * i);
+        ctx.globalAlpha = 0.7 * (1 - ph);
+        ctx.lineWidth = Math.max(1, 0.011 * s * (1 - ph * 0.4));
+        ctx.beginPath();
+        ctx.ellipse(cx, -0.004 * s, 0.012 * s + 0.055 * s * ph, (0.012 * s + 0.055 * s * ph) * 0.32, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      // Foam winks trading places along the bright edge.
+      for (let i = 0; i < 2; i++) {
+        const tw = Math.max(0, Math.sin(nowMs * 0.003 + i * Math.PI));
+        if (tw < 0.5) continue;
+        ctx.globalAlpha = tw;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(bx + len * (0.45 + 0.35 * i), -0.03 * s, Math.max(1, 0.009 * s * tw), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'drip': {
+      // Molten beads swell on the belly, let go, and fall — heavy,
+      // bright, gone. The swell is the tell; the fall is the payoff.
+      ctx.fillStyle = c;
+      for (let i = 0; i < 3; i++) {
+        const ph = (nowMs * 0.00038 + i * 0.333) % 1;
+        const x = bx + len * (0.3 + 0.24 * i);
+        if (ph < 0.4) {
+          const g = ph / 0.4;
+          ctx.globalAlpha = 0.5 + 0.5 * g;
+          ctx.beginPath();
+          ctx.arc(x, 0.032 * s + 0.006 * s * g, Math.max(1, 0.013 * s * g), 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          const f = (ph - 0.4) / 0.6;
+          ctx.globalAlpha = f < 0.7 ? 1 : (1 - f) / 0.3;
+          ctx.beginPath();
+          ctx.arc(x + 0.01 * s * f, 0.038 * s + 0.13 * s * f * f, Math.max(1, 0.012 * s * (1 - f * 0.45)), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'arc': {
+      // Lightning snaps the blade's run and re-jags every 90ms —
+      // electricity never draws the same path twice (the plate-road
+      // law brought to steel). Between snaps, a charge wink.
+      const seed = Math.floor(nowMs / 90);
+      const gate = Math.sin(nowMs * 0.0057);
+      if (gate > -0.15) {
+        // The bolt lives in the FORK: it snaps from the upper tine's
+        // underside across the open gap to the lower tine, diagonal,
+        // never twice the same.
+        const ax = bx + len * 0.58;
+        const ay = -0.038 * s;
+        const bx2 = bx + len * 0.88;
+        const by = 0.038 * s;
+        const segs = 5;
+        for (const [w, col, al] of [[0.014, c, 0.9], [0.006, '#ffffff', 0.95]] as const) {
+          ctx.strokeStyle = col;
+          ctx.lineWidth = Math.max(1, w * s);
+          ctx.globalAlpha = al * Math.min(1, 0.4 + gate);
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          for (let k = 1; k < segs; k++) {
+            const t = k / segs;
+            ctx.lineTo(
+              ax + (bx2 - ax) * t + (jag(seed, k + 5) - 0.5) * 0.05 * s,
+              ay + (by - ay) * t + (jag(seed, k) - 0.5) * 0.05 * s,
+            );
+          }
+          ctx.lineTo(bx2, by);
+          ctx.stroke();
+        }
+        // The strike point flares where the bolt lands.
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(bx2, by, Math.max(1, 0.011 * s * (0.6 + 0.4 * jag(seed, 9))), 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Charge-cross wink at mid-blade while the sky reloads.
+        const w = Math.max(0, -gate) * 0.02 * s;
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = c;
+        ctx.fillRect(bx + len * 0.62 - w / 2, -0.002 * s - w * 2, w, w * 4);
+        ctx.fillRect(bx + len * 0.62 - w * 2, -0.002 * s - w / 2, w * 4, w);
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'slither': {
+      // One serpent-light winds the blade, tail fading behind it —
+      // alive, patient, always moving toward the point.
+      const head = (nowMs * 0.00032) % 1;
+      ctx.fillStyle = c;
+      for (let i = 0; i < 5; i++) {
+        const t = head - i * 0.045;
+        if (t < 0.04) continue;
+        const x = bx + len * t;
+        const y = Math.sin(t * 9.5) * 0.024 * s - 0.006 * s;
+        ctx.globalAlpha = i === 0 ? 0.95 : 0.55 * (1 - i / 5);
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(1, 0.013 * s * (1 - i * 0.16)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'sunflare': {
+      // A slow-turning ray star seated low on the blade, and gleam
+      // winks trading places up the run — never all lit at once.
+      const fx0 = bx + len * 0.3;
+      const rot = nowMs * 0.00052;
+      ctx.fillStyle = c;
+      ctx.globalAlpha = 0.75;
+      for (let k = 0; k < 4; k++) {
+        const a = rot + (k * Math.PI) / 2;
+        const rl = 0.075 * s * (0.85 + 0.15 * Math.sin(nowMs * 0.003 + k));
+        ctx.beginPath();
+        ctx.moveTo(fx0 + Math.cos(a) * rl, Math.sin(a) * rl);
+        ctx.lineTo(fx0 + Math.cos(a + 2.35) * 0.016 * s, Math.sin(a + 2.35) * 0.016 * s);
+        ctx.lineTo(fx0 + Math.cos(a - 2.35) * 0.016 * s, Math.sin(a - 2.35) * 0.016 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fff8e0';
+      ctx.beginPath();
+      ctx.arc(fx0, 0, Math.max(1, 0.018 * s), 0, Math.PI * 2);
+      ctx.fill();
+      // Two staggered winks: phase-opposed so one always rests.
+      for (let i = 0; i < 2; i++) {
+        const tw = Math.max(0, Math.sin(nowMs * 0.0035 + i * Math.PI));
+        if (tw < 0.55) continue;
+        const wx = bx + len * (0.58 + 0.22 * i);
+        const wr = 0.016 * s * tw;
+        ctx.globalAlpha = tw;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(wx - wr / 3, -0.018 * s - wr, wr * 0.66, wr * 2);
+        ctx.fillRect(wx - wr, -0.018 * s - wr / 3, wr * 2, wr * 0.66);
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'frostbloom': {
+      // Ice spikes grow off the spine, hold, and sublime away — the
+      // cold keeps building the blade a new edge it never asked for.
+      for (let i = 0; i < 3; i++) {
+        const ph = (nowMs * 0.00028 + i * 0.37) % 1;
+        const grow = Math.min(1, ph / 0.3) * (ph < 0.72 ? 1 : (1 - ph) / 0.28);
+        if (grow <= 0.02) continue;
+        const x = bx + len * (0.32 + 0.21 * i);
+        const h = 0.055 * s * grow;
+        ctx.globalAlpha = 0.85 * Math.min(1, grow * 1.5);
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.moveTo(x - 0.013 * s, -0.036 * s);
+        ctx.lineTo(x + 0.004 * s + 0.008 * s * i, -0.036 * s - h);
+        ctx.lineTo(x + 0.014 * s, -0.036 * s);
+        ctx.closePath();
+        ctx.fill();
+        if (grow > 0.8) {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x + 0.004 * s + 0.008 * s * i, -0.036 * s - h, Math.max(0.8, 0.006 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // One hanging breath of fog under the belly.
+      const fp = (nowMs * 0.0004) % 1;
+      ctx.globalAlpha = 0.35 * (1 - Math.abs(fp - 0.5) * 2);
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(bx + len * 0.6, 0.045 * s, Math.max(1, 0.016 * s), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'petalfall': {
+      // Petals shed off the edge and rock down, fading — the garden
+      // never stops losing them and never runs out.
+      ctx.fillStyle = c;
+      for (let i = 0; i < 2; i++) {
+        const ph = (nowMs * 0.00033 + i * 0.5) % 1;
+        const x = bx + len * (0.38 + 0.28 * i) + 0.02 * s * Math.sin(ph * 5 + i * 2);
+        const y = -0.012 * s + 0.11 * s * ph;
+        ctx.globalAlpha = 0.85 * (1 - ph);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(0.7 * Math.sin(ph * 7 + i * 1.7));
+        ctx.beginPath();
+        ctx.ellipse(0, 0, Math.max(1, 0.016 * s), Math.max(0.8, 0.008 * s), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      // The bloom at the guard: a dim heart that breathes.
+      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(nowMs * 0.0019);
+      ctx.beginPath();
+      ctx.arc(bx + 0.02 * s, -0.02 * s, Math.max(1, 0.012 * s), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'orbit': {
+      // Two glints circle the blade with honest depth: near passes
+      // big and lit, far passes small and dim (the fake-3D law).
+      const cx = bx + len * 0.5;
+      for (let i = 0; i < 2; i++) {
+        const a = nowMs * 0.0012 + i * Math.PI;
+        const depth = Math.sin(a);
+        const x = cx + Math.cos(a) * 0.12 * s;
+        const y = depth * 0.03 * s;
+        ctx.globalAlpha = 0.4 + 0.6 * Math.max(0, depth);
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(1, 0.011 * s * (1 + 0.5 * depth)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'gravemist': {
+      // Pale wisps curl up off the steel and thin to nothing — what
+      // the bone remembers, leaving a little at a time.
+      ctx.fillStyle = c;
+      for (let i = 0; i < 3; i++) {
+        const ph = (nowMs * 0.0003 + i * 0.333) % 1;
+        const x = bx + len * (0.3 + 0.22 * i) + 0.02 * s * Math.sin(ph * 6.5 + i * 2.2);
+        const y = -0.02 * s - 0.085 * s * ph;
+        ctx.globalAlpha = 0.6 * (1 - ph);
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(1, 0.012 * s * (1 - ph * 0.4)), 0, Math.PI * 2);
+        ctx.fill();
+        // The curl: a smaller trailing knuckle behind the head.
+        ctx.globalAlpha = 0.35 * (1 - ph);
+        ctx.beginPath();
+        ctx.arc(x - 0.014 * s * Math.cos(ph * 6.5 + i * 2.2), y + 0.016 * s, Math.max(0.8, 0.008 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    default: break;
+  }
   if (st.fx === 'gleam') {
     // One glint traveling the edge, resting between passes.
     const u = (nowMs % 2600) / 2600;

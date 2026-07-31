@@ -295,6 +295,104 @@ const defs: AbilityDef[] = [
     self: { meleeLifesteal: 0.35, durationTicks: 120 },
   },
 
+  // ------------------------------------- the ten crowns, sword arts
+  // Each chase blade names its own Art (the own-art law). Cadence
+  // rides the sword-art band; identity rides the crown that taught it.
+  {
+    id: 'drag_under',
+    name: 'Drag Under',
+    desc: 'The sweep is a wave. Everything it touches goes down slow and comes up slower.',
+    color: '#7fae9e',
+    code: 'Du',
+    cooldownTicks: 150, // 7.5 s
+    castFreezeTicks: 4,
+    shape: 'melee_arc',
+    damage: 6,
+    range: 2.2,
+    arc: 1.4,
+    status: { status: 'chill', power: 1, durationTicks: 90 },
+  },
+  {
+    id: 'spoken_light',
+    name: 'Spoken Light',
+    desc: 'The blade reads its word aloud, once, and the circle goes white.',
+    color: '#ffd977',
+    code: 'So',
+    cooldownTicks: 170, // 8.5 s
+    castFreezeTicks: 5,
+    shape: 'nova',
+    damage: 7,
+    radius: 2.0,
+    knockback: 1.2,
+  },
+  {
+    id: 'slagfall',
+    name: 'Slagfall',
+    desc: 'Point the maw; it spits a mouthful of forge onto the spot you picked.',
+    color: '#ff8a3c',
+    code: 'Sq',
+    cooldownTicks: 180, // 9 s
+    shape: 'ground_aoe',
+    damage: 9,
+    range: 8,
+    radius: 1.8,
+    fuseTicks: 14,
+    status: { status: 'burn', power: 1, durationTicks: 70 },
+  },
+  {
+    id: 'sky_splits',
+    name: 'The Sky Splits',
+    desc: 'The gap in the blade opens, and the bolt goes visiting down the line.',
+    color: '#8fa2c4',
+    code: 'Sz',
+    cooldownTicks: 160, // 8 s
+    shape: 'chain_zap',
+    damage: 6,
+    range: 6,
+    radius: 3.0,
+    chainTargets: 4,
+    status: { status: 'shock', power: 1, durationTicks: 70 },
+  },
+  {
+    id: 'green_verse',
+    name: 'Green Verse',
+    desc: 'The song closes the distance in one bar. The bite is the rest of the verse.',
+    color: '#6faa74',
+    code: 'Gv',
+    cooldownTicks: 130, // 6.5 s
+    shape: 'dash_strike',
+    damage: 6,
+    dashTiles: 2.5,
+    status: { status: 'venom', power: 1, durationTicks: 100 },
+  },
+  {
+    id: 'sun_court',
+    name: 'Sun Court',
+    desc: 'Court convenes wherever you are standing. Everyone else is dismissed, burning.',
+    color: '#e8c04c',
+    code: 'Sc',
+    cooldownTicks: 190, // 9.5 s
+    castFreezeTicks: 6,
+    shape: 'nova',
+    damage: 9,
+    radius: 2.2,
+    knockback: 2.6,
+    status: { status: 'burn', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'still_air',
+    name: 'Still Air',
+    desc: 'The air stops moving an arm\'s length around. So does everything in it.',
+    color: '#a9c8e4',
+    code: 'Si',
+    cooldownTicks: 180, // 9 s
+    castFreezeTicks: 5,
+    shape: 'nova',
+    damage: 8,
+    radius: 2.2,
+    status: { status: 'chill', power: 1, durationTicks: 120 },
+  },
+
   // ----------------------------------------- rogue's-roster weapon arts
   // The dagger identities: short dashes, deep statuses, and one polite
   // execute. Cadence runs faster than the sword arts — a rogue's Art is
@@ -425,6 +523,47 @@ const defs: AbilityDef[] = [
     damage: 14,
     dashTiles: 2.6,
     executeBelow: { frac: 0.35, mult: 1.8 }, // the finisher: wounded foes take it hard
+  },
+
+  // ------------------------------------- the ten crowns, knife arts
+  // The rogue's three chase knives name their own Arts — quicker
+  // cadence than the sword crowns; a knife's Art is a beat, not a
+  // setpiece.
+  {
+    id: 'garden_close',
+    name: 'The Garden Closes',
+    desc: 'Petals everywhere at once, and every one of them is an edge.',
+    color: '#5f5478',
+    code: 'Gc',
+    cooldownTicks: 150, // 7.5 s
+    castFreezeTicks: 4,
+    shape: 'nova',
+    damage: 5,
+    radius: 1.8,
+    status: { status: 'venom', power: 1, durationTicks: 110 },
+  },
+  {
+    id: 'beak_first',
+    name: 'Beak First',
+    desc: 'The rook takes the short way to the purse. Through.',
+    color: '#3c4048',
+    code: 'Bf',
+    cooldownTicks: 110, // 5.5 s
+    shape: 'dash_strike',
+    damage: 5,
+    dashTiles: 2.2,
+    status: { status: 'bleed', power: 1, durationTicks: 70 },
+  },
+  {
+    id: 'pale_lantern',
+    name: 'Pale Lantern',
+    desc: 'The grave-light comes up for five seconds, and what it shows on, it keeps a little of.',
+    color: '#b8e8a8',
+    code: 'Pn',
+    cooldownTicks: 240, // 12 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { meleeLifesteal: 0.3, durationTicks: 100 },
   },
 
   // ---------------------------------------- archer's-roster weapon arts

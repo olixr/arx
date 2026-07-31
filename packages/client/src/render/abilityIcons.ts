@@ -771,6 +771,98 @@ const PLATES: Record<string, (st: FxStyle) => Painter> = {
     c.stroke();
     star4(c, 0.2, -0.36, 0.05, st.core);
   },
+
+  // ------------------------------------- the ten crowns, sword arts
+  // Drag Under — the wave takes its turn: a saber pulled beneath a
+  // breaking crest, rings still leaving the water.
+  drag_under: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    blade(c, 0.04, 0.08, 0.72, -Math.PI / 2.4, st);
+    crescent(c, -0.06, -0.1, 0.3, 0.2, Math.PI * 1.05, Math.PI * 1.95, st.mid, 0.05);
+    crescent(c, 0, 0.12, 0.34, 0.26, Math.PI * 0.1, Math.PI * 0.9, st.core, 0.035);
+    crescent(c, 0, 0.2, 0.42, 0.34, Math.PI * 0.15, Math.PI * 0.85, st.deep, 0.03);
+    dot(c, st.core, -0.24, -0.2, 0.035);
+    dot(c, st.spark, -0.3, -0.06, 0.025);
+  },
+  // Spoken Light — the word goes white: the rune slab mid-sentence,
+  // script flaring off it as rays.
+  spoken_light: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    for (let k = 0; k < 6; k++) {
+      const a = -Math.PI / 2 + (k - 2.5) * 0.42;
+      poly(c, st.mid, [[Math.cos(a) * 0.18, Math.sin(a) * 0.18], [Math.cos(a) * 0.42, Math.sin(a) * 0.42]], 0.028);
+    }
+    blade(c, 0, 0.05, 0.82, -Math.PI / 2, st);
+    // The script: three lit ticks marching the flat.
+    for (let i = 0; i < 3; i++) {
+      poly(c, st.core, [[-0.035, -0.05 - i * 0.11], [0.035, -0.09 - i * 0.11]], 0.03);
+    }
+    star4(c, 0, -0.4, 0.07, st.core);
+  },
+  // Slagfall — the maw spits: a molten gob mid-drop over the scorched
+  // patch, coals riding the splash.
+  slagfall: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.34, st);
+    droplet(c, 0, -0.16, 0.55, st);
+    dot(c, st.spark, -0.2, 0.1, 0.04);
+    dot(c, st.spark, 0.22, 0.06, 0.032);
+    dot(c, st.core, 0.1, -0.34, 0.028);
+    // The rim of the patch cracks hot.
+    crescent(c, 0, 0.12, 0.3, 0.24, Math.PI * 0.15, Math.PI * 0.85, st.core, 0.03);
+  },
+  // The Sky Splits — the gap opens: twin tines and the bolt jumping
+  // the notch on its way down the line.
+  sky_splits: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    // The two tines.
+    fill(c, st.mid, [[-0.07, 0.34], [-0.12, -0.3], [-0.04, -0.42], [-0.02, 0.34]]);
+    fill(c, st.mid, [[0.03, 0.34], [0.05, -0.38], [0.12, -0.26], [0.08, 0.34]]);
+    poly(c, st.core, [[-0.1, -0.26], [-0.05, -0.38]], 0.026);
+    // The bolt visiting across the gap.
+    bolt(c, 0, -0.1, 0.9, st, 0.5);
+    dot(c, st.core, 0.09, -0.32, 0.035);
+  },
+  // Green Verse — the song closes: the jade curve mid-dash, the coil
+  // and the wake of the bar it crossed.
+  green_verse: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    chevrons(c, -0.26, 0.08, 0, st, 2, 0.9);
+    blade(c, 0.1, 0.02, 0.7, -Math.PI / 2.8, st);
+    // The serpent coil at the hilt.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.arc(-0.12, 0.26, 0.09, Math.PI * 0.2, Math.PI * 1.4);
+    c.stroke();
+    poly(c, st.spark, [[-0.05, 0.14], [0.05, 0.1], [-0.01, 0.22]], 0.026);
+    droplet(c, 0.3, 0.24, 0.26, st);
+  },
+  // Sun Court — court convenes: the gold flare-blade upright under
+  // the crown, rays holding session.
+  sun_court: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2 + 0.2;
+      poly(c, st.mid, [[Math.cos(a) * 0.24, Math.sin(a) * 0.24], [Math.cos(a) * 0.44, Math.sin(a) * 0.44]], 0.026);
+    }
+    blade(c, 0, 0.06, 0.78, -Math.PI / 2, st);
+    // The basal flares: the throne wings.
+    fill(c, st.spark, [[-0.03, 0.1], [-0.16, 0.02], [-0.05, 0.02]]);
+    fill(c, st.spark, [[0.03, 0.1], [0.16, 0.02], [0.05, 0.02]]);
+    crown(c, 0, -0.42, 0.22, st.spark, st.core);
+  },
+  // Still Air — nothing moves: the crystal shard in a held breath,
+  // one ring of stopped air and the frost star.
+  still_air: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ringDot(c, st.deep, 0, 0.02, 0.4, 0.026);
+    fill(c, st.mid, [[-0.05, 0.32], [-0.1, -0.14], [-0.02, -0.44], [0.08, -0.1], [0.05, 0.32]]);
+    poly(c, st.core, [[-0.02, -0.42], [-0.01, 0.3]], 0.024);
+    snowflake(c, 0.26, -0.26, 0.09, st.spark, 0.035);
+    snowflake(c, -0.28, 0.16, 0.06, st.mid, 0.03);
+  },
 };
 
 // ------------------------------------------------- rogue-roster arts
@@ -929,6 +1021,48 @@ Object.assign(PLATES, {
     c.globalAlpha = 1;
     blade(c, 0, 0.02, 0.82, -Math.PI / 2, st);
     star4(c, 0, -0.38, 0.08, '#ffffff');
+  },
+
+  // ------------------------------------- the ten crowns, knife arts
+  // The Garden Closes — petals from every direction, and the petal
+  // that cuts standing in the middle of them.
+  garden_close: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 - Math.PI / 2;
+      const px = Math.cos(a) * 0.32;
+      const py = Math.sin(a) * 0.32;
+      c.save();
+      c.translate(px, py);
+      c.rotate(a + Math.PI / 2);
+      fill(c, st.spark, [[0, -0.09], [0.05, 0], [0, 0.09], [-0.05, 0]]);
+      c.restore();
+    }
+    dagger(c, 0, 0.04, 0.7, -Math.PI / 2, st);
+    dot(c, st.core, 0, -0.3, 0.035);
+  },
+  // Beak First — the short way to the purse: the hooked beak mid-dash
+  // and the two counting glints.
+  beak_first: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    chevrons(c, -0.28, 0.1, 0, st, 2, 0.9);
+    // The beak: a hooked black claw, brass ring at the butt.
+    fill(c, st.mid, [[-0.08, -0.02], [0.3, -0.1], [0.34, 0.12], [0.12, 0.1]]);
+    poly(c, st.core, [[0.28, -0.06], [0.33, 0.1]], 0.028);
+    ringDot(c, st.spark, -0.14, 0, 0.06, 0.035);
+    star4(c, 0.18, -0.24, 0.05, st.spark);
+    star4(c, 0.38, 0.26, 0.04, st.spark, Math.PI / 4);
+  },
+  // Pale Lantern — the grave-light comes up: the bone needle burning
+  // green at the heart, wisps making their rounds.
+  pale_lantern: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    haloArcs(c, 0, 0.08, st);
+    dagger(c, 0, 0.02, 0.78, -Math.PI / 2, st);
+    poly(c, st.mid, [[0, -0.3], [0, 0.14]], 0.024);
+    puff(c, -0.26, -0.14, 0.05, st.mid);
+    puff(c, 0.28, -0.02, 0.04, st.mid);
+    dot(c, st.core, 0, -0.34, 0.03);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 

@@ -3468,6 +3468,91 @@ function swordDefs(): EquipmentDef[] {
       value: 2000, color: '#e8e8f0', code: 'Oa',
       desc: 'A plain, perfect blade in white steel. Whoever swore on it kept the promise. Your turn. Every wound it deals steadies your own hand.',
     },
+
+    // ============================================= THE TEN CROWNS
+    // The legendary chase blades, spread down the road a fighter
+    // actually walks — legendary or nothing, found or nothing, and
+    // every one DOES something beyond its stats (the riftglass law).
+    {
+      id: 'saltfang', name: 'Saltfang', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 6 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.85, art: 'drag_under' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'chill', power: 1, durationTicks: 40, chance: 0.2 }],
+      value: 900, color: '#7fae9e', code: 'S4',
+      desc: 'The tide kept a duelist\'s saber for sixty years and gave back something better. Salt in the gold, rings still leaving the steel.',
+    },
+    {
+      id: 'brightword', name: 'Brightword', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 9 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.9, art: 'spoken_light' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'crit', pct: 2 }],
+      value: 1050, color: '#dfe2ea', code: 'Bq',
+      desc: 'A shrine blade forged in sections, one word of gold script to a section. It reads itself aloud, slowly, all day.',
+    },
+    {
+      id: 'cindermaw', name: 'Cindermaw', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 12 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 8, range: 1.9, art: 'slagfall' },
+      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'burn', power: 1, durationTicks: 50, chance: 0.25 }],
+      value: 1200, color: '#3a3234', code: 'Cz',
+      desc: 'Black iron around four live coals. The forge that poured it burned down proud, and the blade still drools when it thinks about eating.',
+    },
+    {
+      id: 'skysplinter', name: 'Skysplinter', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 16 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.95, art: 'sky_splits' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 50, chance: 0.2 }],
+      value: 1400, color: '#8fa2c4', code: 'Ky',
+      desc: 'Two tines of storm steel around a gap the lightning likes. Somebody split the sky once. The sky keeps coming back to look.',
+    },
+    {
+      id: 'vipersong', name: 'Vipersong', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 20 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.9, art: 'green_verse' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'sneak' }, { stat: 'beastcraft' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'venom', power: 1, durationTicks: 70, chance: 0.25 }],
+      value: 1550, color: '#6faa74', code: 'Vy',
+      desc: 'Jade curved the way a strike curves, with the serpent still coiled on the hilt. The song is quiet. The bite is not.',
+    },
+    {
+      id: 'crownfire', name: 'Crownfire', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 25 },
+      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 2.0, art: 'sun_court' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'defence', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onKillHaste', ticks: 40 }],
+      value: 1750, color: '#e8c04c', code: 'Cx',
+      desc: 'Gold enough for a throne and rubies enough for three. Whoever carried it last never knelt again, one way or the other.',
+    },
+    {
+      id: 'winterspire', name: 'Winterspire', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 30 },
+      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 2.0, art: 'still_air' },
+      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [
+        { kind: 'onHitStatus', status: 'chill', power: 1, durationTicks: 70, chance: 0.3 },
+        { kind: 'crit', pct: 2 },
+      ],
+      value: 2000, color: '#a9c8e4', code: 'W4',
+      desc: 'Deep winter grew this and nobody forged it. The heart line is white as the first hard frost, and it is still growing.',
+    },
   ];
 
   return [...arming, ...falchion, ...gladius, ...scimitar, ...crafts, ...finds];
@@ -3815,6 +3900,43 @@ function daggerDefs(): EquipmentDef[] {
       effects: [{ kind: 'backstab', bonus: 0.3 }, { kind: 'skill', skill: 'sneak', amount: 2 }],
       value: 2000, color: '#f0f0f4', code: 'Lz',
       desc: 'Every argument ends. This one ends them politely, completely, and from behind.',
+    },
+
+    // ============================================= THE TEN CROWNS
+    // The rogue's three: chase knives on the same law as the sword
+    // crowns — legendary or nothing, found or nothing, each alive.
+    {
+      id: 'nightbloom', name: 'Nightbloom', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 10 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 4, range: 1.4, art: 'garden_close', backstabMult: 2.6 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'backstab', bonus: 0.2 }],
+      value: 1050, color: '#5f5478', code: 'Np',
+      desc: 'One dusk petal ground to an edge. The garden closes at night around whoever holds it, and something always gets pruned.',
+    },
+    {
+      id: 'rooksbeak', name: 'Rooksbeak', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 18 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 4, range: 1.35, art: 'beak_first', backstabMult: 3.0 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'vitality' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'crit', pct: 3 }],
+      value: 1450, color: '#3c4048', code: 'Ro',
+      desc: 'The Rookery\'s beak in brass. Two glints circle it, counting. It has never once come up short.',
+    },
+    {
+      id: 'marrowlight', name: 'Marrowlight', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 26 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.45, art: 'pale_lantern', backstabMult: 2.8 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'melee' }, { stat: 'vitality' }, { stat: 'regen' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'lifesteal', frac: 0.05 }],
+      value: 1800, color: '#e2dcc8', code: 'Ml',
+      desc: 'A needle of old bone with grave-light down the middle. What the bone remembers, the light spends a little at a time.',
     },
   ];
 

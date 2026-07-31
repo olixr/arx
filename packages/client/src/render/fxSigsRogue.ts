@@ -1090,6 +1090,181 @@ const last_word: AbilitySig = {
 // -------------------------------------------------------- registry
 
 /** The rogue roster's signatures, keyed by ability id. */
+// ------------------------------------------------------ garden_close
+
+/**
+ * GARDEN_CLOSE — "the pruning."
+ * The nova runs BACKWARD: petals appear at the rim first and spiral
+ * INWARD, closing on the caster like a flower folding for the night.
+ * Whatever the fold catches, the venom keeps. The last petal winks
+ * shut at the sternum.
+ */
+const garden_close: AbilitySig = {
+  ground(c: SigCtx) {
+    const { ctx, st, t, squash } = c;
+    ctx.save();
+    // Five petals ride a shrinking, turning ring — the fold.
+    const r = c.rPx * (1 - Math.min(1, t * 1.15) * 0.85);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + t * 2.6 + (c.seed % 9) * 0.2;
+      const x = c.px + Math.cos(a) * r;
+      const y = c.py + Math.sin(a) * r * squash;
+      ctx.globalAlpha = 0.85 * (1 - t * 0.6);
+      ctx.fillStyle = k % 2 === 0 ? st.spark : st.mid;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(a + Math.PI / 2 + t * 1.5);
+      ctx.beginPath();
+      const p = Math.max(2, c.sc * 0.09) * (1 - t * 0.35);
+      ctx.moveTo(0, -p);
+      ctx.quadraticCurveTo(p * 0.6, 0, 0, p);
+      ctx.quadraticCurveTo(-p * 0.6, 0, 0, -p);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  },
+  air(c: SigCtx) {
+    if (c.t < 0.8) return;
+    // The last petal winks shut at the chest.
+    const { ctx, st } = c;
+    const u = (c.t - 0.8) / 0.2;
+    const g = c.sc * 0.12 * (1 - u);
+    ctx.save();
+    ctx.globalAlpha = 0.95 * (1 - u);
+    ctx.fillStyle = st.core;
+    ctx.fillRect(c.px - g / 3, c.py - c.sc * 0.62 - g * 1.5, g * 0.66, g * 3);
+    ctx.fillRect(c.px - g * 1.5, c.py - c.sc * 0.62 - g / 3, g * 3, g * 0.66);
+    ctx.restore();
+  },
+  spawn(c: SigCtx) {
+    // Pollen hangs where the garden stood.
+    const rand = srand(c.seed ^ 0x6a);
+    for (let k = 0; k < 6; k++) {
+      const a = rand() * Math.PI * 2;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * (0.4 + rand() * 0.5),
+        c.wy + Math.sin(a) * c.radius * (0.4 + rand() * 0.5) * c.squash - 0.3,
+        1, [c.st.spark, c.st.mid], {
+          speed: 0.3, life: 0.9, size: 0.05, gravity: -0.3, drag: 2.4,
+          shape: 'glint', flicker: 0.3,
+        },
+      );
+    }
+  },
+};
+
+// -------------------------------------------------------- beak_first
+
+/**
+ * BEAK_FIRST — "the counted line."
+ * The dash line is an INVOICE: coin-glints stamp along it as the
+ * rook crosses, tallied one per stride, and the arrival is a single
+ * beak-wedge flash — through, not into. The glints linger a beat,
+ * counting themselves, then cash out.
+ */
+const beak_first: AbilitySig = {
+  spawn(c: SigCtx) {
+    const f = dashFrame(c);
+    if (f.len < 1) return;
+    // The tally: glints pinned down the traveled line.
+    const n = Math.min(5, Math.max(3, Math.round(f.len / (c.sc * 0.8))));
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) / n;
+      c.particles.burst(
+        c.wx + (c.wx2 - c.wx) * t,
+        c.wy + (c.wy2 - c.wy) * t - 0.35,
+        1, ['#ffd977', '#fff2cc'], {
+          speed: 0.1, life: 0.55 + k * 0.08, size: 0.06, gravity: -0.2,
+          drag: 3, shape: 'glint', flicker: 0.5,
+        },
+      );
+    }
+  },
+  air(c: SigCtx) {
+    const { ctx, st, t } = c;
+    if (t > 0.45) return;
+    // The beak-wedge flash at the arrival: through, not into.
+    const u = t / 0.45;
+    const f = dashFrame(c);
+    const w = c.sc * 0.5 * (1 - u * 0.4);
+    ctx.save();
+    ctx.globalAlpha = 0.9 * (1 - u);
+    ctx.fillStyle = st.mid;
+    ctx.beginPath();
+    ctx.moveTo(c.px2 + f.ux * w, c.py2 - c.sc * 0.45 + f.uy * w);
+    ctx.lineTo(c.px2 - f.ux * w * 0.4 + f.nx * w * 0.22, c.py2 - c.sc * 0.45 - f.uy * w * 0.4 + f.ny * w * 0.22);
+    ctx.lineTo(c.px2 - f.ux * w * 0.4 - f.nx * w * 0.22, c.py2 - c.sc * 0.45 - f.uy * w * 0.4 - f.ny * w * 0.22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 0.95 * (1 - u);
+    ctx.strokeStyle = st.spark;
+    ctx.lineWidth = Math.max(1.5, c.sc * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(c.px2 - f.ux * w * 0.2, c.py2 - c.sc * 0.45 - f.uy * w * 0.2);
+    ctx.lineTo(c.px2 + f.ux * w * 0.9, c.py2 - c.sc * 0.45 + f.uy * w * 0.9);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+// ------------------------------------------------------ pale_lantern
+
+/**
+ * PALE_LANTERN — "the rounds."
+ * The buff is a NIGHT WATCH: one pale lantern-orb makes slow rounds
+ * of the body at shoulder height, trailing grave-green motes, and a
+ * dim ring underfoot marks the beat it keeps. What it shines on, it
+ * keeps a little of — the drink-back motes reel INWARD to the orb.
+ */
+const pale_lantern: AbilitySig = {
+  ground(c: SigCtx) {
+    const { ctx, st, t, squash } = c;
+    const fade = t < 0.75 ? 1 : (1 - t) / 0.25;
+    ctx.save();
+    ctx.globalAlpha = 0.28 * fade * (0.75 + 0.25 * Math.sin(c.now / 300));
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1.5, c.sc * 0.035);
+    ctx.beginPath();
+    ctx.ellipse(c.px, c.py, c.sc * 0.5, c.sc * 0.5 * squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  },
+  air(c: SigCtx) {
+    const { ctx, st, t } = c;
+    const fade = t < 0.75 ? 1 : (1 - t) / 0.25;
+    // The lantern on its rounds: near passes lit, far passes dim.
+    const a = c.now / 480 + c.seed;
+    const depth = Math.sin(a);
+    const x = c.px + Math.cos(a) * c.sc * 0.55;
+    const y = c.py - c.sc * 0.72 + depth * c.sc * 0.1;
+    ctx.save();
+    ctx.globalAlpha = (0.5 + 0.5 * Math.max(0, depth)) * fade;
+    ctx.fillStyle = st.core;
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(2, c.sc * 0.06 * (1 + 0.4 * depth)), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.3 * fade;
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(3, c.sc * 0.12 * (1 + 0.4 * depth)), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // The drink-back: motes reel inward to the lantern while it holds.
+    if (Math.random() < c.frameDt * 8 * (1 - t)) {
+      const ma = Math.random() * Math.PI * 2;
+      c.particles.burst(
+        c.wx + Math.cos(ma) * 0.9,
+        c.wy + Math.sin(ma) * 0.9 * c.squash - 0.5,
+        1, [st.mid, st.core], {
+          speed: 1.4, life: 0.5, size: 0.05, gravity: 0, dir: ma + Math.PI,
+          spread: 0.2, drag: 0.8, shape: 'glint',
+        },
+      );
+    }
+    c.glow(c.wx, c.wy, 0.8, 0.2 * fade);
+  },
+};
+
 export const ROGUE_SIGS: Record<string, AbilitySig> = {
   serpents_kiss,
   stinger,
@@ -1101,4 +1276,8 @@ export const ROGUE_SIGS: Record<string, AbilitySig> = {
   spark_lash,
   kings_bane,
   last_word,
+  // The ten crowns' knife arts.
+  garden_close,
+  beak_first,
+  pale_lantern,
 };

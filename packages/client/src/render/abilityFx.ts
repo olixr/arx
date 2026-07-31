@@ -200,6 +200,15 @@ export const FX_STYLES: Record<string, FxStyle> = {
   starfall_strike: VOID({ mid: '#4a4066', spark: '#ffd98a', debris: 'star', decal: 'scorch', motif: 'rain', punch: 0.9, wash: 0.65 }),
   vow_unbroken: RADIANT({ mid: '#e8e8f0', ring: 'halo', debris: 'star', motif: 'echo', punch: 0.2, wash: 0.35 }),
 
+  // -------------------------------------- the ten crowns, sword arts
+  drag_under: TIDE({ mid: '#7fae9e', ring: 'halo', debris: 'ice', motif: 'wave', punch: 0.45, wash: 0.5 }),
+  spoken_light: RADIANT({ mid: '#ffd977', ring: 'runes', debris: 'star', motif: 'rays', punch: 0.6, wash: 0.55 }),
+  slagfall: EMBER({ mid: '#ff8a3c', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'rain', punch: 0.8, wash: 0.5 }),
+  sky_splits: STORM({ mid: '#8fa2c4', ring: 'shards', debris: 'spark', motif: 'rays', punch: 0.7 }),
+  green_verse: VERDANT({ mid: '#6faa74', ring: 'petals', debris: 'leaf', decal: 'stain', motif: 'spikes', punch: 0.4 }),
+  sun_court: GOLD({ mid: '#e8c04c', ring: 'halo', debris: 'star', decal: 'scorch', motif: 'crown', punch: 0.85, wash: 0.7 }),
+  still_air: FROST({ mid: '#a9c8e4', ring: 'halo', debris: 'ice', motif: 'echo', punch: 0.35, wash: 0.6 }),
+
   // ------------------------------------------------- rogue-roster arts
   serpents_kiss: VERDANT({ mid: '#8a9a4a', ring: 'shards', debris: 'spark', decal: 'stain', motif: 'spikes' }),
   stinger: GOLD({ mid: '#e8b64c', ring: 'shards', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.3 }),
@@ -208,6 +217,11 @@ export const FX_STYLES: Record<string, FxStyle> = {
   shadow_fang: SHADOW({ ring: 'shards', debris: 'shadow', motif: 'wisps', punch: 0.5 }),
   crimson_tithe: BLOOD({ ring: 'halo', motif: 'swarm', punch: 0.2, wash: 0.2 }),
   pale_flame: FROST({ mid: '#c8dce8', ring: 'petals', debris: 'spark', motif: 'wisps', punch: 0.4 }),
+
+  // -------------------------------------- the ten crowns, knife arts
+  garden_close: VOID({ mid: '#5f5478', spark: '#e0aad8', ring: 'petals', debris: 'shadow', motif: 'bloom', punch: 0.4, wash: 0.35 }),
+  beak_first: SHADOW({ mid: '#3c4048', spark: '#ffd977', ring: 'shards', debris: 'spark', motif: 'swarm', punch: 0.5 }),
+  pale_lantern: BONE({ mid: '#cff0c0', ring: 'halo', debris: 'shadow', motif: 'wisps', punch: 0.2, wash: 0.3 }),
   spark_lash: STORM({ mid: '#7a88b8', ring: 'runes', motif: 'swarm', punch: 0.4 }),
   kings_bane: GOLD({ mid: '#c9a23c', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'crown', punch: 0.7, wash: 0.5 }),
   last_word: STEEL({ core: '#ffffff', mid: '#f0f0f4', ring: 'halo', debris: 'spark', motif: 'echo', punch: 0.9, wash: 0.6 }),

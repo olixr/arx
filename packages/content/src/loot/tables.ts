@@ -150,6 +150,9 @@ const defs: LootTableDef[] = [
       // The warren dug into the old forge. The diggers wear what the
       // anvil remembers, one piece per lucky kobold.
       ...setDrops('forgeheart', 0.004),
+      // The forge's last pour never cooled. The warren dug it out and
+      // nobody has held it long since.
+      { item: 'cindermaw', chance: 0.005 },
     ],
   },
   {
@@ -249,6 +252,9 @@ const defs: LootTableDef[] = [
       { item: 'torn_ledger_page', chance: 0.025 },
       // A rank hand sometimes holds a piece of the reaver's prize.
       ...setDrops('cindershade', 0.004),
+      // Every road crew has one hand who claims to have flown with
+      // the Rookery. One of them was not lying.
+      { item: 'rooksbeak', chance: 0.005 },
     ],
   },
   rack('brigand_wardrobe', 'Stolen wardrobes — cut purses and quieter boots.', 0.04, [
@@ -288,6 +294,9 @@ const defs: LootTableDef[] = [
       ...setDrops('cindershade', 0.01),
       { item: 'emberstone', chance: 0.02 },
       { item: 'stormpearl', chance: 0.015 },
+      // The royal escort lost exactly one thing on the low road, and
+      // the reaver has been afraid to sell it ever since.
+      { item: 'crownfire', chance: 0.01 },
     ],
   },
   {
@@ -308,6 +317,9 @@ const defs: LootTableDef[] = [
       // The throwers scavenge the high passes after weather. Some of
       // what the lightning drops is armor.
       ...setDrops('stormcrown', 0.005),
+      // And once in a war, what it drops is the blade it was aiming
+      // at all along.
+      { item: 'skysplinter', chance: 0.004 },
     ],
   },
   rack('thrower_wardrobe', 'Coast plunder and trampled-fen cloth.', 0.04, [
@@ -359,6 +371,8 @@ const defs: LootTableDef[] = [
       { item: 'weathered_letter', chance: 0.03 },
       // The keeper's white and gold, still bright in the crypt dark.
       ...setDrops('vigil', 0.003),
+      // Some bone remembers being a person. This one took notes.
+      { item: 'marrowlight', chance: 0.004 },
     ],
   },
   {
@@ -380,6 +394,9 @@ const defs: LootTableDef[] = [
       { item: 'weathered_letter', chance: 0.035 },
       // The watch kept the keeper's vestment with the keys.
       ...setDrops('vigil', 0.005),
+      // The shrine blade the watch swore in on. The guard that holds
+      // it still thinks the words are being read to him.
+      { item: 'brightword', chance: 0.006 },
     ],
   },
   rack(
@@ -454,6 +471,9 @@ const defs: LootTableDef[] = [
       // The Champion still drills in the dark. The gold and crimson
       // were the king's grant; the oath outlasted the king.
       ...setDrops('oathgold', 0.005),
+      // The Champion's own field surgeon went into the dark with the
+      // rest. Its needle still makes rounds.
+      { item: 'marrowlight', chance: 0.006 },
     ],
   },
   {
@@ -591,6 +611,10 @@ const defs: LootTableDef[] = [
       ...setDrops('orrery', 0.008),
       // The rooks bank their best in other people's vaults.
       ...setDrops('rookfeather', 0.006),
+      // A crown's ransom banks somewhere. Sometimes it IS the ransom.
+      { item: 'crownfire', chance: 0.005 },
+      // One rook's retirement plan, filed under someone else's name.
+      { item: 'rooksbeak', chance: 0.006 },
     ],
   },
   {
@@ -630,6 +654,11 @@ const defs: LootTableDef[] = [
       ...setDrops('moonbell', 0.008),
       // What the old kingdom fletched, the moss kept dry.
       ...setDrops('skytalon', 0.006),
+      // The sea is a long way up the creek from here. Rings on the
+      // lid anyway.
+      { item: 'saltfang', chance: 0.005 },
+      // The garden went wild over this one particular box.
+      { item: 'nightbloom', chance: 0.004 },
     ],
   },
   {
@@ -740,6 +769,9 @@ const defs: LootTableDef[] = [
       // The matriarch walks with the winter court's wardrobe — the
       // cold kept a court once, and the packs inherited the estate.
       ...setDrops('wintercourt', 0.012),
+      // The court's sword outlived the court. The matriarch sleeps
+      // curled around it, and the den never quite thaws.
+      { item: 'winterspire', chance: 0.008 },
     ],
   },
   rack('wolf_arms', 'The pack’s blades, bows, and argued-over staves.', 0.04, [
@@ -763,6 +795,9 @@ const defs: LootTableDef[] = [
       { item: 'bones' },
       { item: 'raw_trout', chance: 0.25 },
       { item: 'coins', qty: [1, 6], chance: 0.3 },
+      // The tide buried a duelist and kept the saber. The crabs have
+      // been passing it around ever since.
+      { item: 'saltfang', chance: 0.008 },
     ],
   },
   {
@@ -772,6 +807,9 @@ const defs: LootTableDef[] = [
       { item: 'coins', qty: [2, 10], chance: 0.5 },
       { item: 'verdant_essence', chance: 0.15 },
       { item: 'arcane_dust', chance: 0.12 },
+      // Jade is the one thing the ooze never managed to digest. It
+      // carries the grudge around its middle.
+      { item: 'vipersong', chance: 0.012 },
     ],
   },
   {
@@ -791,6 +829,9 @@ const defs: LootTableDef[] = [
       // The crag keeps the storm and the ram keeps the crag. The
       // crown comes down the mountain one piece at a time.
       ...setDrops('stormcrown', 0.012),
+      // The split blade fell up there with its wielder. The rams
+      // guard the gap in it like a lamb.
+      { item: 'skysplinter', chance: 0.01 },
     ],
   },
   {
@@ -839,6 +880,9 @@ const defs: LootTableDef[] = [
       { item: 'bones' },
       { item: 'arcane_dust', chance: 0.15 },
       { item: 'verdant_essence', chance: 0.08 },
+      // Chitin does not burn. One beetle carried the coal-blade home
+      // through the deep runs and never noticed the weight.
+      { item: 'cindermaw', chance: 0.012 },
     ],
   },
   {
@@ -861,6 +905,9 @@ const defs: LootTableDef[] = [
       // whisper about. Moonbell grows where the adders sun themselves.
       ...setDrops('adderfang', 0.008),
       ...setDrops('moonbell', 0.006),
+      // The jade fang went into a nest a hundred years ago. The
+      // adders keep it warm and call it grandmother.
+      { item: 'vipersong', chance: 0.008 },
     ],
   },
   {
@@ -874,6 +921,9 @@ const defs: LootTableDef[] = [
       // A long hunt: the web gives nothing up twice.
       ...setDrops('broodsilk', 0.0025),
       ...setDrops('moonbell', 0.005),
+      // The petal-knife came into the web on a gardener who never
+      // left. The web keeps the pruning shear it was pruned with.
+      { item: 'nightbloom', chance: 0.006 },
     ],
   },
   {
@@ -909,6 +959,8 @@ const defs: LootTableDef[] = [
       // The trolls den in the old wyrm caves. The emerald plate suits
       // them fine; it glows.
       ...setDrops('wyrmsteel', 0.008),
+      // It glows AND it grows. The troll thinks it is a pet.
+      { item: 'winterspire', chance: 0.006 },
     ],
   },
   {

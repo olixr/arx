@@ -581,9 +581,9 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 178, 'swords 48 + daggers 45 + bows 29 + staves 28 + greatweapons 28');
+  assert.equal(weapons.length, 188, 'swords 55 + daggers 48 + bows 29 + staves 28 + greatweapons 28');
   const swords = weapons.filter((d) => d.weapon?.style === 'melee');
-  assert.equal(swords.length, 93, 'swords 48 + daggers 45');
+  assert.equal(swords.length, 103, 'swords 55 + daggers 48');
   for (const s of swords) {
     assert.equal(s.weapon?.style, 'melee');
     assert.ok(s.weapon!.art && ABILITIES.has(s.weapon!.art), `${s.id} art ${s.weapon!.art} exists`);
@@ -690,6 +690,8 @@ test('rogue roster: 20 dagger designs, sneak gates, backstab dial, ladders climb
     'vagrants_friend', 'sting', 'coldsnap',
     'shiv', 'ratter', 'scaler', 'fangtooth', 'bogsting', 'bonepick', 'redhand',
     'nightthorn', 'leech', 'hush', 'palefire', 'sparkfang', 'kingsbane', 'last_word',
+    // The ten crowns' knives keep the dagger identity too.
+    'nightbloom', 'rooksbeak', 'marrowlight',
   ];
   for (const id of daggers) {
     const d = byId.get(id);
@@ -723,6 +725,50 @@ test('rogue roster: 20 dagger designs, sneak gates, backstab dial, ladders climb
   // The Last Word out-backstabs everything.
   const best = Math.max(...daggers.map((id) => byId.get(id)!.weapon!.backstabMult ?? 0));
   assert.equal(byId.get('last_word')!.weapon!.backstabMult, best);
+});
+
+test('the ten crowns: legendary-only one-hand chase blades, spread down the road', async () => {
+  const { ABILITIES } = await import('./abilities.js');
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  const swords: Array<[string, number]> = [
+    ['saltfang', 6], ['brightword', 9], ['cindermaw', 12], ['skysplinter', 16],
+    ['vipersong', 20], ['crownfire', 25], ['winterspire', 30],
+  ];
+  const knives: Array<[string, number]> = [
+    ['nightbloom', 10], ['rooksbeak', 18], ['marrowlight', 26],
+  ];
+  const crowns = [...swords, ...knives];
+  assert.equal(crowns.length, 10, 'ten crowns, no more, no fewer');
+  for (const [id, gate] of crowns) {
+    const d = byId.get(id);
+    assert.ok(d, `${id} exists`);
+    // The band-spread law: legendary is a road promise, not an
+    // endgame one — every crown gates at or below level 30.
+    assert.ok(gate <= 30, `${id} sits on the leveling road`);
+    assert.equal(d!.levelReq!.level, gate, `${id} keeps its band`);
+    // Legendary or nothing; found or nothing.
+    assert.deepEqual(d!.rarities, ['legendary'], `${id} only exists legendary`);
+    assert.ok(d!.acquisition?.drop && !d!.acquisition?.craft, `${id} is found, never forged`);
+    assert.equal(d!.recipe, undefined, `${id} has no recipe`);
+    // Every crown DOES something beyond stats (the riftglass law —
+    // lawful here because all ten are legendary-pinned).
+    assert.ok((d!.effects?.length ?? 0) > 0, `${id} carries a native effect`);
+    assert.ok(d!.weapon!.art && ABILITIES.has(d!.weapon!.art), `${id} art resolves`);
+    assert.ok(d!.desc && d!.desc.length > 20, `${id} carries a real story`);
+  }
+  // The own-art law: no two crowns share a word — and none borrows
+  // another weapon's art either.
+  const arts = crowns.map(([id]) => byId.get(id)!.weapon!.art);
+  assert.equal(new Set(arts).size, arts.length, 'no two crowns share a word');
+  const others = EQUIPMENT_DEFS.filter(
+    (d) => d.slot === 'weapon' && !crowns.some(([id]) => id === d.id),
+  );
+  for (const o of others) {
+    assert.ok(!arts.includes(o.weapon?.art), `${o.id} does not borrow a crown's art`);
+  }
+  // Sword crowns gate on melee, knife crowns on sneak (dagger law).
+  for (const [id] of swords) assert.equal(byId.get(id)!.levelReq!.skill, 'melee');
+  for (const [id] of knives) assert.equal(byId.get(id)!.levelReq!.skill, 'sneak');
 });
 
 test('archer roster: 20 bow designs, wood ladders climb, arts resolve, chase steepens', async () => {
