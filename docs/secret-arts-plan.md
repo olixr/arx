@@ -153,10 +153,18 @@ art is at your side. It credits at the one `grantXp` door — no new crediting
 surface, whiff-0 inherited, anti-cheese inherited.**
 
 - The meter: while an **unmastered secret art is slotted** and **a weapon that
-  teaches it is in hand**, every point of combat-style XP the *weapon's* style
-  earns also feeds that art's lesson meter, 1:1. XP earned by casting the art
-  itself feeds **2:1** — performing the motion teaches fastest. Two loaned
-  arts slotted (twin blades, two teachers) → two meters feed independently.
+  teaches it is in hand**, every point of combat-style XP the *art's* school
+  earns also feeds that art's lesson meter, 1:1. Two loaned arts slotted
+  (twin blades, two teachers) → two meters feed independently.
+- **THE ONE MIRROR** *(as-built, phase 3 — supersedes the drafted 2:1
+  own-cast clause)*: the mirror is a flat 1:1 at the one `grantXp` door,
+  nothing else. The art's own casts already pay through their landed
+  damage; a separate 2:1 cast channel would demand ability-id threading
+  through every delayed damage carrier (projectiles, fields, DoT ticks) —
+  a wide surface for one pacing dial. If THE PROVING wants faster
+  own-cast learning, tune `masteryXp`, not the plumbing. The combat
+  school's SHARED-LESSON echo never feeds a bank (no secret sits in
+  'combat'), and the mirror runs before the echo on purpose.
 - Whiff-0 stays sacred: no damage, no XP, no lesson. Utility secret arts
   (self-buffs, wards) learn through the weapon's strikes — the blade teaches
   while the ward holds.
@@ -307,6 +315,29 @@ haven't. 114 arts must feel like a world of rumors, not a spreadsheet.**
    ceremony → cross-weapon cast); update memory laws (FREE HAND AMENDMENT).
    *Follow-on wave, separately scheduled:* **RANKS FOR THE SHELF** — author
    rank steps school-by-school until the debt ledger reads zero.
+
+## Part 4b — As-built addenda (2026-07-31)
+
+- **Phase 1 (46633f1)**: the ledger ships as its own `SECRET_ARTS` export
+  beside `TECHNIQUES`, not merged in — the ladder queries stay
+  rung-and-page shaped, the OPEN LADDER and RELEVANCE tests stand
+  untouched, and `setTechnique` cannot resolve a secret until the
+  phase-2 wire opens the pool on purpose. The balance model moved to
+  `ladderModel.ts` (one law, both contracts). THE SECRET BAND carries
+  22 authored outliers on an expiring waiver ledger for phase 5.
+- **Phase 2 (ca7e7b8)**: one new law beyond the draft — **THE LOAN
+  FOLLOWS THE BLADE**: when the Q seat holds an orphaned unmastered
+  loan, the new main hand's art takes the seat on equip change, so an
+  untouched player's weapon swap feels exactly like the old Q slot.
+  Mastered arts, rungs, pages, and emptied seats are never touched;
+  the R seat never follows. Slot constants renamed SLOT_TECH_Q /
+  SLOT_TECH_R; `techniquePoolDef` is the pool's one lookup.
+- **Phase 3**: THE ONE MIRROR (above); `lesson:<id>` banks flush on the
+  savePlayer cadence, never per hit; the meter converts through the
+  same `grantArt` door the pages use and deletes its bank; the codex
+  bench wears the quiet fill from this phase (the courtship must be
+  visible to be a courtship); `S2CTechniques.lessons` rides v24
+  additively.
 
 ## Part 5 — Open questions (recommendation first)
 

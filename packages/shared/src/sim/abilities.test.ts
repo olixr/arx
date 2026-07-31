@@ -110,6 +110,8 @@ import {
   TECHNIQUE_MAX_RANK,
   artFlag,
   honedAbility,
+  lessonFlag,
+  masteryXp,
   rankLevel,
   techniqueAnchor,
   techniqueRank,
@@ -189,6 +191,19 @@ test('THE UNWRITTEN PAGE: earned pages rank from their anchor, never below I', (
   const rung = { ability: 'y', style: 'arx' as const, unlockLevel: 15 };
   assert.equal(techniqueRankFor(rung, 10), 0, 'ladder arts still gate on their rung');
   assert.equal(artFlag('riftwalker_step'), 'art:riftwalker_step');
+});
+
+test('THE LESSON LAW: the cost dial climbs with the anchor and the keys stay disjoint', () => {
+  assert.equal(masteryXp(1), 700, 'a bronze-band art is an honest afternoon');
+  assert.equal(masteryXp(54), 6000, 'the deepest anchor is a real courtship');
+  let prev = 0;
+  for (const anchor of [1, 8, 18, 28, 38, 44, 50, 54]) {
+    const cost = masteryXp(anchor);
+    assert.ok(cost > prev, `cost rises with the anchor (${anchor})`);
+    prev = cost;
+  }
+  assert.equal(lessonFlag('lunge'), 'lesson:lunge');
+  assert.notEqual(lessonFlag('lunge'), artFlag('lunge'), 'the bank and the deed never collide');
 });
 
 test('THE SECRET LEDGER: secret arts rank from their anchor exactly like pages', () => {

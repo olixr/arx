@@ -78,6 +78,8 @@ export declare class Panels {
     /** THE FREE HAND: the one slotted technique, mirrored from the server. */
     /** THE SECOND HAND: the seated techniques, [Q, R] (server truth). */
     private techniques;
+    /** THE LESSON LAW's banks (server truth; cost derives from the dial). */
+    private lessons;
     /** Hidden arts earned by deed, mirrored from the server. */
     private earnedArts;
     private lastSkills;
@@ -159,7 +161,7 @@ export declare class Panels {
      */
     private renderIdentity;
     /** Server-confirmed technique seats; re-renders whoever shows them. */
-    setTechniques(chosen: [string | null, string | null], earned?: string[]): void;
+    setTechniques(chosen: [string | null, string | null], earned?: string[], lessons?: Record<string, number>): void;
     /** The seat an ability occupies (0 = Q, 1 = R), or null. */
     private seatOf;
     /** THE LOAN LAW's teaching hands, read off the worn weapons. */

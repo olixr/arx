@@ -31,6 +31,8 @@ import {
   techniqueRank,
   techniqueRankFor,
   artFlag,
+  lessonFlag,
+  masteryXp,
   RANK_ROMAN,
   stepMovement,
   xpForLevel,
@@ -1046,6 +1048,11 @@ interface PlayerComp {
    * LOAN LAW's lent art while a teaching weapon is in hand.
    */
   techniques: [string | null, string | null];
+  /**
+   * THE LESSON LAW: secret arts whose lesson:<id> meter changed since
+   * the last save — flushed on the savePlayer cadence, never per hit.
+   */
+  lessonDirty: Set<string>;
   /** Answered Callings (row-presence mirror of character_callings). */
   callings: Set<string>;
   /** One-site perk dials derived from answered Callings (recomputeGear). */
@@ -2535,6 +2542,7 @@ export class GameServer {
       castFreezeUntilTick: 0,
       buffs: [],
       techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : [null, null],
+      lessonDirty: new Set(),
       callings: character.id > 0 ? new Set(await this.accounts.loadCallings(character.id)) : new Set(),
       perks: defaultPerks(),
       stillTicks: 0,
@@ -2914,6 +2922,7 @@ export class GameServer {
     this.accounts.saveSkills(player.characterId, player.skills as Record<string, number>);
     this.accounts.saveInventory(player.characterId, player.inventory);
     this.accounts.saveEquipment(player.characterId, player.equipment);
+    this.flushLessons(player);
     if (player.bank && player.bankDirty) {
       this.accounts.saveBank(player.characterId, player.bank);
       player.bankDirty = false;
@@ -4825,6 +4834,10 @@ export class GameServer {
       level: levelAfter,
       levelledUp,
     });
+    // THE LESSON LAW mirrors the grant BEFORE the combat echo, so the
+    // meter reads the true school only — the echo pays 'combat', a
+    // school no secret sits in, and must never double-feed a bank.
+    this.creditLessons(player, skill, amount);
     // THE SHARED LESSON: every strike-school lesson echoes a share into
     // combat — the generalist's skill trains whenever any weapon does.
     // 'combat' is never in the school set, so the echo cannot recurse.
@@ -9622,10 +9635,19 @@ export class GameServer {
   }
 
   private sendTechniques(player: PlayerComp): void {
+    // THE LESSON LAW's meters ride the same message — banked mirrored
+    // XP per art still learning; cost derives client-side from the
+    // shared masteryXp dial.
+    let lessons: Record<string, number> | undefined;
+    for (const [flag, v] of player.flags) {
+      if (!flag.startsWith('lesson:') || v <= 0) continue;
+      (lessons ??= {})[flag.slice('lesson:'.length)] = v;
+    }
     player.session?.sendJson({
       t: 'techniques',
       chosen: [player.techniques[0], player.techniques[1]],
       earned: this.earnedArts(player),
+      lessons,
     });
   }
 
@@ -9673,6 +9695,64 @@ export class GameServer {
   /** A mastered art is owned outright — no blade may take it back. */
   private masteredArt(player: PlayerComp, ability: string): boolean {
     return player.flags.has(artFlag(ability));
+  }
+
+  /**
+   * THE LESSON LAW: the mastery meter for lent secret arts, credited
+   * at the one grantXp door and nowhere else. While an unmastered
+   * secret holds a seat AND a weapon that teaches it is in hand, every
+   * point of XP its school earns mirrors 1:1 into the art's bank —
+   * whiff-0 inherited (no damage, no XP, no lesson), anti-cheese
+   * inherited, no pity dials, ONE MIRROR (the art's own casts already
+   * pay through their landed damage; there is deliberately no separate
+   * cast channel). Utility secrets learn through the weapon's strikes.
+   * At the masteryXp cost the bank converts through grantArt — the
+   * same ceremony rail the unwritten pages ride — and the lesson flag
+   * is deleted: the art:<id> flag is the truth of ownership.
+   */
+  private creditLessons(player: PlayerComp, skill: SkillId, amount: number): void {
+    if (amount <= 0) return;
+    let teachers: Set<string> | null = null;
+    for (const seat of [0, 1] as const) {
+      const art = player.techniques[seat];
+      if (!art) continue;
+      const tech = techniquePoolDef(art);
+      if (!tech?.secret || tech.style !== skill) continue;
+      if (this.masteredArt(player, art)) continue;
+      teachers ??= this.equippedArtIds(player);
+      if (!teachers.has(art)) continue;
+      const flag = lessonFlag(art);
+      const cost = masteryXp(tech.secret.anchorLevel);
+      const before = player.flags.get(flag) ?? 0;
+      const after = Math.min(cost, before + amount);
+      if (after === before) continue;
+      player.lessonDirty.add(art);
+      if (after >= cost) {
+        player.flags.delete(flag);
+        this.grantArt(player, art);
+      } else {
+        player.flags.set(flag, after);
+        // The codex meter breathes at coarse steps, never per hit.
+        const step = Math.max(1, Math.floor(cost / 20));
+        if (Math.floor(after / step) > Math.floor(before / step)) this.sendTechniques(player);
+      }
+    }
+  }
+
+  /**
+   * The lesson banks flush on the savePlayer cadence — a meter that
+   * moves every hit must never write every hit. A bank that emptied
+   * (the meter converted) clears its row.
+   */
+  private flushLessons(player: PlayerComp): void {
+    if (player.characterId < 0 || player.lessonDirty.size === 0) return;
+    for (const art of player.lessonDirty) {
+      const flag = lessonFlag(art);
+      const v = player.flags.get(flag);
+      if (v === undefined) this.accounts.clearFlag(player.characterId, flag);
+      else this.accounts.setFlag(player.characterId, flag, v);
+    }
+    player.lessonDirty.clear();
   }
 
   /**

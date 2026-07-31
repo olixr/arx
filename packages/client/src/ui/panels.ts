@@ -11,6 +11,7 @@ import {
   honedAbility,
   levelForXp,
   rankLevel,
+  masteryXp,
   skillName,
   techniqueAnchor,
   techniqueRankFor,
@@ -255,6 +256,8 @@ export class Panels {
   /** THE FREE HAND: the one slotted technique, mirrored from the server. */
   /** THE SECOND HAND: the seated techniques, [Q, R] (server truth). */
   private techniques: [string | null, string | null] = [null, null];
+  /** THE LESSON LAW's banks (server truth; cost derives from the dial). */
+  private lessons: Record<string, number> = {};
   /** Hidden arts earned by deed, mirrored from the server. */
   private earnedArts: string[] = [];
   private lastSkills: SkillXp = {};
@@ -1216,9 +1219,14 @@ export class Panels {
   }
 
   /** Server-confirmed technique seats; re-renders whoever shows them. */
-  setTechniques(chosen: [string | null, string | null], earned: string[] = []): void {
+  setTechniques(
+    chosen: [string | null, string | null],
+    earned: string[] = [],
+    lessons: Record<string, number> = {},
+  ): void {
     this.techniques = chosen;
     this.earnedArts = earned;
+    this.lessons = lessons;
     this.renderSkills(this.lastSkills);
     if (this.artsOpen) this.renderArts();
   }
@@ -2149,6 +2157,28 @@ export class Panels {
             ? `Unlocks at ${styleName} level ${t.unlockLevel}`
             : `A secret of ${styleName} — still veiled`;
     this.artsDetail.appendChild(state);
+
+    // THE LESSON LAW's quiet fill: the courtship shown without a
+    // number — the flood law's no-grindometer spirit. Only a secret
+    // still being learned wears it.
+    if (t.secret && !this.ownsArt(t.ability)) {
+      const banked = this.lessons[t.ability] ?? 0;
+      const frac = Math.min(1, banked / masteryXp(t.secret.anchorLevel));
+      const meter = document.createElement('div');
+      meter.className = 'lesson-meter';
+      meter.dataset.tipname = 'The lesson';
+      meter.dataset.tipsub =
+        frac <= 0
+          ? 'Fight with the weapon that teaches this art, and the art will begin to stay.'
+          : frac < 1
+            ? 'The blade still has things to teach.'
+            : 'The lesson is nearly yours.';
+      const fill = document.createElement('div');
+      fill.className = 'lesson-fill';
+      fill.style.width = `${Math.round(frac * 100)}%`;
+      meter.appendChild(fill);
+      this.artsDetail.appendChild(meter);
+    }
 
     const desc = document.createElement('p');
     desc.className = 'bench-desc';

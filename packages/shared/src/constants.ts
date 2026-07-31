@@ -97,6 +97,9 @@
 // as null, show a dead Q slot, and send seatless technique picks the
 // server can't place — the loadout itself changed shape, so the
 // handshake turns the old client away to refresh.
+// (THE LESSON, still v24: S2CTechniques grows the optional `lessons`
+// meter map. Additive — a peer that ignores it merely shows no fill,
+// and no v23 peers exist past the v24 gate. Recorded on purpose.)
 export const PROTOCOL_VERSION = 24;
 
 /** The most souls one party can hold. */

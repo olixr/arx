@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { artFlag, xpForLevel } from '@arx/shared';
-import { abilityDef, itemDef } from '@arx/content';
+import { artFlag, lessonFlag, masteryXp, xpForLevel } from '@arx/shared';
+import { abilityDef, itemDef, secretArtDef } from '@arx/content';
 import { GameServer } from './gameServer.js';
 
 /**
@@ -28,6 +28,10 @@ const proto = GameServer.prototype as unknown as {
   earnedArts: Fn;
   followLoanSeat: Fn;
   grantArt: Fn;
+  creditLessons: Fn;
+  flushLessons: Fn;
+  grantXp: Fn;
+  sendTechniques: Fn;
 };
 
 interface FakePlayer {
@@ -37,19 +41,25 @@ interface FakePlayer {
   skills: Record<string, number>;
   equipment: Record<string, { id: string } | undefined>;
   session: { sendJson: (m: unknown) => void };
+  lessonDirty: Set<string>;
+  name?: string;
 }
 
 function slate(player: FakePlayer) {
   const sent: Array<Record<string, unknown>> = [];
   const saves: Array<[number, string]> = [];
+  const flagWrites: Array<[string, number | null]> = [];
   player.session = { sendJson: (m) => sent.push(m as Record<string, unknown>) };
   const self = {
     players: new Map([[1, player]]),
     accounts: {
       saveTechniqueSeat: (_id: number, seat: number, ability: string) =>
         saves.push([seat, ability]),
-      setFlag: () => undefined,
+      setFlag: (_id: number, flag: string, v: number) => flagWrites.push([flag, v]),
+      clearFlag: (_id: number, flag: string) => flagWrites.push([flag, null]),
     },
+    creditLessons: proto.creditLessons,
+    flushLessons: proto.flushLessons,
     // The real private helpers under test ride the prototype.
     setTechnique: proto.setTechnique,
     seatAbility: proto.seatAbility,
@@ -75,8 +85,12 @@ function slate(player: FakePlayer) {
       p.session.sendJson({ t: 'techniques', chosen: [p.techniques[0], p.techniques[1]] });
     },
     sendCooldowns: () => undefined,
+    grantXp: proto.grantXp,
+    systemChatAll: () => undefined,
+    announceLadderClimbs: () => undefined,
+    pushQuestAvail: () => undefined,
   };
-  return { self, sent, saves };
+  return { self, sent, saves, flagWrites };
 }
 
 function itemWeapon(id: string) {
@@ -93,6 +107,7 @@ function mkPlayer(over: Partial<FakePlayer> = {}): FakePlayer {
     skills: {},
     equipment: {},
     session: { sendJson: () => undefined },
+    lessonDirty: new Set(),
     ...over,
   };
 }
@@ -237,6 +252,93 @@ test('mastered secrets ride the earned wire beside the deed pages', () => {
   const earned = self.earnedArts.call(self, player) as string[];
   assert.ok(earned.includes('lunge'), 'the mastered secret is owned');
   assert.ok(earned.includes('two_answers'), 'the deed page is owned');
+});
+
+test('THE LESSON LAW: the mirror credits only the full pairing', () => {
+  // Seated + unmastered + teacher in hand + the school's own XP.
+  const learning = mkPlayer({
+    techniques: ['lunge', null],
+    equipment: { weapon: { id: 'gladius' } },
+  });
+  const s1 = slate(learning);
+  s1.self.creditLessons.call(s1.self, learning, 'onehand', 40);
+  assert.equal(learning.flags.get(lessonFlag('lunge')), 40, 'the pairing banks the mirror');
+  assert.ok(learning.lessonDirty.has('lunge'), 'the bank is marked for the flush');
+  // Wrong school: arx XP teaches no blade.
+  s1.self.creditLessons.call(s1.self, learning, 'arx', 40);
+  assert.equal(learning.flags.get(lessonFlag('lunge')), 40, 'off-school XP mirrors nothing');
+  // Teacher away: the meter pauses, the bank is never lost.
+  learning.equipment.weapon = undefined;
+  s1.self.creditLessons.call(s1.self, learning, 'onehand', 40);
+  assert.equal(learning.flags.get(lessonFlag('lunge')), 40, 'no teacher, no lesson');
+  // Unslotted: fighting without the art at your side teaches it nothing.
+  const unslotted = mkPlayer({ equipment: { weapon: { id: 'gladius' } } });
+  const s2 = slate(unslotted);
+  s2.self.creditLessons.call(s2.self, unslotted, 'onehand', 40);
+  assert.equal(unslotted.flags.get(lessonFlag('lunge')), undefined, 'no seat, no lesson');
+  // Mastered: a finished lesson never banks again.
+  const done = mkPlayer({
+    techniques: ['lunge', null],
+    flags: new Map([[artFlag('lunge'), 1]]),
+    equipment: { weapon: { id: 'gladius' } },
+  });
+  const s3 = slate(done);
+  s3.self.creditLessons.call(s3.self, done, 'onehand', 40);
+  assert.equal(done.flags.get(lessonFlag('lunge')), undefined, 'mastery closes the meter');
+});
+
+test('THE LESSON LAW: the bank converts through grantArt exactly once', () => {
+  const cost = masteryXp(secretArtDef('lunge')!.secret!.anchorLevel);
+  const player = mkPlayer({
+    techniques: ['lunge', null],
+    equipment: { weapon: { id: 'gladius' } },
+    flags: new Map([[lessonFlag('lunge'), cost - 5]]),
+  });
+  const { self, sent } = slate(player);
+  self.creditLessons.call(self, player, 'onehand', 500);
+  assert.ok(player.flags.has(artFlag('lunge')), 'the meter converted to mastery');
+  assert.equal(player.flags.get(lessonFlag('lunge')), undefined, 'the emptied bank is deleted');
+  const line = sent.find((m) => m.t === 'chat') as { text: string } | undefined;
+  assert.ok(line && /yours now/.test(line.text), 'the ceremony fires from the meter');
+  // Further XP mirrors nothing — the art is owned.
+  self.creditLessons.call(self, player, 'onehand', 500);
+  assert.equal(player.flags.get(lessonFlag('lunge')), undefined, 'no bank reopens');
+});
+
+test('the lesson banks flush on the save cadence, and an emptied bank clears its row', () => {
+  const player = mkPlayer({
+    techniques: ['lunge', null],
+    equipment: { weapon: { id: 'gladius' } },
+  });
+  const { self, flagWrites } = slate(player);
+  self.creditLessons.call(self, player, 'onehand', 40);
+  assert.equal(flagWrites.length, 0, 'a moving meter never writes per hit');
+  self.flushLessons.call(self, player);
+  assert.deepEqual(flagWrites, [[lessonFlag('lunge'), 40]], 'the flush writes the bank');
+  assert.equal(player.lessonDirty.size, 0, 'the dirty set drains');
+  // Convert, then flush: the emptied bank clears its row.
+  flagWrites.length = 0;
+  player.flags.set(lessonFlag('lunge'), masteryXp(secretArtDef('lunge')!.secret!.anchorLevel) - 1);
+  self.creditLessons.call(self, player, 'onehand', 10);
+  self.flushLessons.call(self, player);
+  // grantArt writes the art: flag immediately; the flush clears the bank row.
+  assert.ok(
+    flagWrites.some(([f, v]) => f === lessonFlag('lunge') && v === null),
+    'the converted bank clears its row',
+  );
+});
+
+test('the mirror rides the one grantXp door, and the combat echo never double-feeds', () => {
+  const player = mkPlayer({
+    techniques: ['lunge', null],
+    equipment: { weapon: { id: 'gladius' } },
+  });
+  const { self } = slate(player);
+  self.grantXp.call(self, 1, player, 'onehand', 40);
+  assert.equal(player.skills.onehand, 40, 'the school is paid');
+  assert.equal(player.skills.combat, 20, 'THE SHARED LESSON echoes half');
+  assert.equal(player.flags.get(lessonFlag('lunge')), 40, 'the mirror banks the school grant');
+  // 40 mirrored, not 60 — the combat echo feeds no bank.
 });
 
 test('grantArt masters a secret with its own ceremony line', () => {

@@ -832,6 +832,13 @@ export interface S2CTechniques {
   t: 'techniques';
   chosen: [string | null, string | null];
   earned?: string[];
+  /**
+   * THE LESSON LAW's meters: banked mirrored XP per unmastered secret
+   * art (absent key = nothing banked). Cost derives client-side from
+   * the shared masteryXp dial — the wire carries only the bank.
+   * Additive on v24 (the field is optional and every peer is v24+).
+   */
+  lessons?: Record<string, number>;
 }
 
 /**

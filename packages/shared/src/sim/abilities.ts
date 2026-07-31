@@ -456,6 +456,26 @@ export function artFlag(ability: string): string {
 }
 
 /**
+ * THE LESSON LAW's ledger key: the flag whose INTEGER value banks a
+ * secret art's mastery progress (mirrored combat XP). Deleted when the
+ * meter converts — the art:<id> flag is the truth of ownership.
+ */
+export function lessonFlag(ability: string): string {
+  return `lesson:${ability}`;
+}
+
+/**
+ * THE LESSON LAW's cost dial: the mirrored combat XP a secret art
+ * takes to master, scaled by its anchor. Intent: a committed session
+ * or two at the weapon's own band — a bronze line's art masters in an
+ * afternoon of honest fighting; a starsteel signature is a real
+ * courtship. Phase 5 (THE PROVING) tunes this against live play.
+ */
+export function masteryXp(anchorLevel: number): number {
+  return Math.round(600 * (1 + anchorLevel / 6));
+}
+
+/**
  * The level a technique's rank clock counts from: the rung for ladder
  * arts, the anchor for unwritten pages and secret arts. The ONE place
  * the choice lives — rank math, maturity tests, and bench copy all

@@ -515,6 +515,8 @@ export declare class ClientGame {
     techniques: [string | null, string | null];
     /** Earned arts: deed pages and mastered secrets alike (server truth). */
     earnedArts: string[];
+    /** THE LESSON LAW's banks: mirrored XP per still-learning secret. */
+    lessons: Record<string, number>;
     /** Answered Callings (server truth; Focus derives from skills). */
     callings: string[];
     /** Active consumable buffs (tonic/food) for the HUD chip row. */
@@ -585,6 +587,12 @@ export declare class ClientGame {
     equippedArtIds(): Set<string>;
     /** A mastered or deed-earned art is owned outright (server truth). */
     ownsArt(ability: string): boolean;
+    /**
+     * THE LESSON LAW's meter, 0..1, for a still-learning secret art —
+     * null when nothing is banked or the art is already owned. Cost
+     * derives from the shared masteryXp dial; the wire carries the bank.
+     */
+    lessonProgress(ability: string): number | null;
     /**
      * Resolve a technique seat (0 = Q, 1 = R), mirroring the server:
      * THE FREE HAND ignores the equipped weapon; THE HONED-ART LAW ranks
