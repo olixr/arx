@@ -176,9 +176,9 @@ reputation, and it changes.
 
 ---
 
-## 4. Phases
+## 4. Phases — ALL SHIPPED
 
-1. **THE LAND REMEMBERS THE NORTH** — meres + pinelands primitives, the
+1. **THE LAND REMEMBERS THE NORTH** (88dd7b3) — meres + pinelands primitives, the
    Silverspine walls, the Glasswater, the Pinereach, all three routes, the
    authored sites, the Pinewatch rect + anchor. Tests.
 2. **THE HOARGATE** — the Postern Lane in Silverfall, the `hoargate_watch`
