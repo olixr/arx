@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "wayward_watch_uneasy__hub",
       "text": "Fire's free, voice down. There's a camp out there we're watching instead of sleeping.",
       "choices": [
         {
@@ -24,21 +25,25 @@
     },
     {
       "id": "mark",
+      "voice": "wayward_watch_uneasy__mark",
       "text": "There's your mark. Two of us hold this post, so it's yours or nobody's. The lamp stays lit.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
+      "voice": "wayward_watch_uneasy__remark",
       "text": "It's on your chart. If you lose it, follow the smoke.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "nights",
+      "voice": "wayward_watch_uneasy__nights",
       "text": "Three nights. First night's a fire. Second's a fence. We don't talk much about what the third one usually is.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "wayward_watch_uneasy__bye",
       "text": "We do."
     }
   ]

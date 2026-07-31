@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { dangerAt, type DangerAnchor } from '@arx/shared';
+import { POI_DEFS } from './pois/defs.js';
 import {
   AMBERFORD_RECT,
   AUTHORED_GEOGRAPHY,
@@ -238,4 +240,61 @@ test('the warnings counsel flags loose ends without blocking them', () => {
   assert.ok(v.ok, 'a loose road is legal — the studio warns, never blocks');
   const warnings = geographyWarnings(draft).join(' | ');
   assert.match(warnings, /nowhere_road.*loose/);
+});
+
+// ------------------------------------------------------- the two ways
+// THE SPARWAY'S BARGAIN, pinned. The whole point of the pair of roads
+// to Pinewatch is that the short one costs more, and the danger field
+// is where that has to be TRUE, not merely written on a sign. Distance
+// alone would have made the shortcut the safe road (it stays nearer
+// both towns the whole way), so the Blackpine dread and the Timber
+// Road's havens carry the design between them. If someone moves a
+// lamp or trims the wood, this is the test that notices.
+test('the Sparway is shorter than the Timber Road and bands worse', () => {
+  const routeOf = (id: string) => {
+    const r = AUTHORED_GEOGRAPHY.routes.find((rt) => rt.id === id);
+    assert.ok(r, `route ${id} must exist`);
+    return r!;
+  };
+  const anchors: DangerAnchor[] = [
+    ...AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a })),
+    // The havens the authored sites stand up at boot — the long road's
+    // safety is these, so the measurement must include them.
+    ...AUTHORED_GEOGRAPHY.sites.flatMap((s) => {
+      const haven = POI_DEFS.get(s.defId)?.haven;
+      return haven && s.x !== undefined && s.y !== undefined
+        ? [{ x: s.x, y: s.y, safeR: haven.safeR, haven: true } as DangerAnchor]
+        : [];
+    }),
+  ];
+  const measure = (id: string): { len: number; mean: number } => {
+    const pts = routeOf(id).pts;
+    let len = 0;
+    const tiers: number[] = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i]!;
+      const b = pts[i + 1]!;
+      const seg = Math.hypot(b.x - a.x, b.y - a.y);
+      len += seg;
+      for (let t = 0; t < 1; t += 4 / seg) {
+        tiers.push(
+          dangerAt(1337, Math.round(a.x + (b.x - a.x) * t), Math.round(a.y + (b.y - a.y) * t), anchors),
+        );
+      }
+    }
+    return { len, mean: tiers.reduce((s, v) => s + v, 0) / tiers.length };
+  };
+  const timber = measure('timber_road');
+  const spar = measure('sparway');
+  assert.ok(spar.len < timber.len * 0.7, `the Sparway must be the SHORT way (${spar.len} vs ${timber.len})`);
+  assert.ok(
+    spar.mean > timber.mean + 0.5,
+    `the Sparway must be the BAD way (mean tier ${spar.mean.toFixed(2)} vs ${timber.mean.toFixed(2)})`,
+  );
+});
+
+test('both towns stay tier 0 at their own hearths despite the Blackpine', () => {
+  const anchors = AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a }));
+  assert.equal(dangerAt(1337, 352, 24, anchors), 0, 'Amberford');
+  assert.equal(dangerAt(1337, 584, -136, anchors), 0, 'Pinewatch');
 });

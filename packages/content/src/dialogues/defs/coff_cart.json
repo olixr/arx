@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "coff_cart__hub",
       "text": "Careful with your elbows. Half this cart is older than your village and twice as breakable.",
       "choices": [
         { "text": "Let me see the goods.", "next": "browse" },
@@ -14,11 +15,13 @@
     },
     {
       "id": "browse",
+      "voice": "coff_cart__browse",
       "text": "Keys, essences, and one or two things I'll not name until they're paid for. Look.",
       "hooks": [{ "kind": "shop", "shop": "peddler_relics" }]
     },
     {
       "id": "where",
+      "voice": "coff_cart__where",
       "text": "Places that stopped minding. Next question costs.",
       "next": "hub"
     }

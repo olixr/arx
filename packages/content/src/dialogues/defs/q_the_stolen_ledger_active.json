@@ -6,11 +6,13 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_stolen_ledger_active__hub",
       "text": "A torn page finds its way home. Bank rule, my clerk's hand, and a _Redmask_ thumb on the margin.",
       "next": "ask"
     },
     {
       "id": "ask",
+      "voice": "q_the_stolen_ledger_active__ask",
       "text": "The column they took is still owed. Collect five of the band that held it, and the bank will remember being owed to *you*. We're very good at remembering.",
       "choices": [
         { "text": "I'll collect it.", "next": "sworn" },
@@ -19,6 +21,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_stolen_ledger_active__sworn",
       "text": "The marches, where the fires burn cold. Mind the arithmetic: five."
     }
   ]

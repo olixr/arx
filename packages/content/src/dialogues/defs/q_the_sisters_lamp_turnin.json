@@ -6,16 +6,19 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_sisters_lamp_turnin__paid",
       "text": "From Sella. Say it.",
       "next": "word"
     },
     {
       "id": "word",
+      "voice": "q_the_sisters_lamp_turnin__word",
       "text": "The flame's tended. Good. The bowl's a waste of soup.",
       "next": "closed"
     },
     {
       "id": "closed",
+      "voice": "q_the_sisters_lamp_turnin__closed",
       "text": "Tinctures. Take them. Road's bad past here. Tell her the lamp stays lit. She knows. Tell her anyway.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_sisters_lamp" }]
     }

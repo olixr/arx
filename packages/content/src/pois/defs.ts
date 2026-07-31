@@ -14,6 +14,8 @@ import riftgateRuin from './defs/riftgate_ruin.json';
 import roadToll from './defs/road_toll.json';
 import roadsideHamlet from './defs/roadside_hamlet.json';
 import wardensOutpost from './defs/wardens_outpost.json';
+import hoargateWatch from './defs/hoargate_watch.json';
+import timberPoachers from './defs/timber_poachers.json';
 import watchtowerRuin from './defs/watchtower_ruin.json';
 import wayshrine from './defs/wayshrine.json';
 import waystation from './defs/waystation.json';
@@ -44,6 +46,8 @@ const SOURCES: readonly unknown[] = [
   watchtowerRuin,
   wayshrine,
   waystation,
+  hoargateWatch,
+  timberPoachers,
   wildGrove,
   wolfkinDen,
 ];

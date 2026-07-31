@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "hub",
+   "voice": "aldis_watch_wry__hub",
    "text": "Still upright, then. The incident book waits. What?",
    "choices": [
     {
@@ -35,16 +36,19 @@
   },
   {
    "id": "relent",
+   "voice": "aldis_watch_wry__relent",
    "text": "Ha. There it is. Fernway, the Long Meadow, the Fork. Walk lamp to lamp and sleep behind walls. Past Edda's light at the Last Lamp, go armed, fed, and rested. Took you long enough.",
    "next": "hub"
   },
   {
    "id": "road",
+   "voice": "aldis_watch_wry__road",
    "text": "Meaner than last week. Redmask sign on the middle stretch again. Want particulars? Buy a bowl at Dunna's and listen to whichever table talks quietest.",
    "next": "hub"
   },
   {
    "id": "bye",
+   "voice": "aldis_watch_wry__bye",
    "text": "Stay out of my incident book."
   }
  ]

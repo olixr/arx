@@ -12,11 +12,13 @@
  "nodes": [
   {
    "id": "truth",
+   "voice": "aldis_gate__truth",
    "text": "Hold up. New face at the north gate gets the speech. This wall is where the settled land ends. Every mile north is meaner than the last. Goblins in the foothills. Wolves under the Thornveil. Past the Last Lamp, worse. I won't name it at a gate.",
    "next": "ask"
   },
   {
    "id": "ask",
+   "voice": "aldis_gate__ask",
    "text": "The Waykeepers hold three walled lamps on the way north: Fernway, the Long Meadow, the Fork. Walk lamp to lamp. Sleep behind their walls. The day the road starts feeling _interested in you_, turn around. That's the speech.",
    "choices": [
     {
@@ -37,10 +39,12 @@
   },
   {
    "id": "heeded",
+   "voice": "aldis_gate__heeded",
    "text": "Good. See Hask, the outfitter across the way, before you go. Get your boots looked at. Road keep you."
   },
   {
    "id": "shrugged",
+   "voice": "aldis_gate__shrugged",
    "text": "Mm. They all say that. I'll keep a page free in the incident book. Prove me wrong."
   }
  ]

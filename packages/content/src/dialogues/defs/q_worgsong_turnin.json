@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_worgsong_turnin__paid",
       "text": "Four fangs, no cracks, and you're standing square on both legs. That's the whole inspection. These'll buckle a strap a bear couldn't open. Kit's yours, coin's yours. And that look you're wearing: everyone comes back from the song with it.",
       "hooks": [{ "kind": "quest_turnin", "quest": "worgsong" }]
     }

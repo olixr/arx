@@ -60,6 +60,8 @@ import roundTrader from './defs/round_trader.json';
 import innkeepDunna from './defs/innkeep_dunna.json';
 import keeperAnsel from './defs/keeper_ansel.json';
 import lampkeeperEdda from './defs/lampkeeper_edda.json';
+import hoargateWatch from './defs/hoargate_watch.json';
+import serjeantOttar from './defs/serjeant_ottar.json';
 import masterTilo from './defs/master_tilo.json';
 import millerGarton from './defs/miller_garton.json';
 import orchardistPerl from './defs/orchardist_perl.json';
@@ -105,6 +107,8 @@ import saltmereFisher from './defs/saltmere_fisher.json';
 // Waykeeper sergeants holding the marches, and Edda holding the
 // Last Lamp against the Silverspine dark.
 const SOURCES: readonly unknown[] = [
+  hoargateWatch,
+  serjeantOttar,
   portreeveBrack,
   factorNeave,
   innkeepDorrit,

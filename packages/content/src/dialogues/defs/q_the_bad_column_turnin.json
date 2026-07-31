@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_bad_column_turnin__paid",
       "text": "Five, confirmed by the road wardens. The book moves your name. Keep it moving the right way.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_bad_column" }]
     }

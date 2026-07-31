@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "aldis_watch_list__greet",
    "text": "You're on the watch-list. Not my doing. You put your own name in that column.",
    "choices": [
     {
@@ -28,11 +29,13 @@
   },
   {
    "id": "count",
+   "voice": "aldis_watch_list__count",
    "text": "It's a count. We count everything that comes through this gate. Keep clean and we've no quarrel.",
    "next": "greet"
   },
   {
    "id": "bye",
+   "voice": "aldis_watch_list__bye",
    "text": "Do that. The book stays open."
   }
  ]

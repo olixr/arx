@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "aldis_watch_toll__hub",
       "text": "There's a bar across my road and it isn't mine. They're charging for the crossing. A _toll_. I don't say that word lightly in this town.",
       "choices": [
         {
@@ -24,21 +25,25 @@
     },
     {
       "id": "mark",
+      "voice": "aldis_watch_toll__mark",
       "text": "Marked. Break the bar, or break the camp that feeds it. Either way my road opens.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
+      "voice": "aldis_watch_toll__remark",
       "text": "The mark stands. So does the bar. See to it.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "war",
+      "voice": "aldis_watch_toll__war",
       "text": "The Redmasks chained the ford once. It cost this town names we still read at dusk. I was made at that gate. I won't stand for a second plaque.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "aldis_watch_toll__bye",
       "text": "Then go. The gate stays open for your return."
     }
   ]

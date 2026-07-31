@@ -108,8 +108,14 @@ for (const actor of wanted) {
     ]);
     const wav = readFileSync(tmp);
     // Mono Opus-in-Ogg at 48k: the web-native speech codec, ~6x smaller
-    // than WAV, and the ledger's preferred food.
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', tmp, '-ac', '1', '-c:a', 'libopus', '-b:a', '48k', dest]);
+    // than WAV, and the ledger's preferred food. The limiter caps peaks at
+    // -1 dBFS — Chatterbox often returns takes sitting on 0 dBFS, and Opus
+    // then reconstructs intersample peaks above full scale (measured up to
+    // +1.7 dB across the existing bank), which distorts on integer output.
+    const PEAK_LIMIT =
+      'alimiter=level_in=1:level_out=1:limit=0.891:attack=5:release=50:level=disabled';
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', tmp,
+      '-af', PEAK_LIMIT, '-ac', '1', '-c:a', 'libopus', '-b:a', '48k', dest]);
     rmSync(tmp);
     spoken++;
     console.log(`✓ ${line.clipId} (${(wav.length / 1024).toFixed(0)}kB wav → ogg) — "${line.text.slice(0, 60)}"`);

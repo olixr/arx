@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "aldis_watch_uneasy__hub",
       "text": "New entry in the incident book: camp sign off the road. Fresh, orderly, wrong side of my gate.",
       "choices": [
         {
@@ -24,21 +25,25 @@
     },
     {
       "id": "mark",
+      "voice": "aldis_watch_uneasy__mark",
       "text": "Marked. The log will say I sent you.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
+      "voice": "aldis_watch_uneasy__remark",
       "text": "Check your chart. It hasn't moved. Neither have they.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "serious",
+      "voice": "aldis_watch_uneasy__serious",
       "text": "I've doubled the watch and I bar the gate at dusk now. That's my answer.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "aldis_watch_uneasy__bye",
       "text": "Mind the road."
     }
   ]

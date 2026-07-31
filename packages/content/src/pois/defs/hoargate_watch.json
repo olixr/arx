@@ -1,0 +1,37 @@
+{
+  "id": "hoargate_watch",
+  "name": "The Hoargate",
+  "description": "The Crown's garrison across the narrows north of Silverfall. Weight 0: the master plan pins it (the authored-sites law) to the one place the mountain leaves open. Nine bodies, two braziers, three boards, and no opinion at all about whether you should keep walking.",
+  "tiers": [5, 5],
+  "weight": 0,
+  "prefabs": ["poi_hoargate"],
+  "garrison": [],
+  "actors": [
+    { "pool": ["serjeant_ottar"], "post": "hearth", "routine": "waystation_keeper" },
+    { "pool": ["hoargate_watch"], "post": "hearth" },
+    { "pool": ["hoargate_watch"], "post": "hearth" },
+    { "pool": ["hoargate_watch"], "post": "watch" },
+    { "pool": ["hoargate_watch"], "post": "watch" },
+    { "pool": ["hoargate_watch"], "post": "watch" }
+  ],
+  "haven": { "safeR": 20 },
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [{ "tile": "BannerPole", "count": 2 }]
+  },
+  "signs": [
+    {
+      "title": "THE HOARGATE",
+      "lines": ["the pass is open", "that is a fact, not a blessing"]
+    },
+    {
+      "title": "BY ORDER OF THE CROWN",
+      "lines": ["give your name at the fire", "give it again on the way back"]
+    },
+    {
+      "title": "NORTH OF THIS WALL",
+      "lines": ["no lamp, no roof, no watch", "the maps end here and so does help"]
+    }
+  ]
+}

@@ -12,16 +12,19 @@
  "nodes": [
   {
    "id": "news",
+   "voice": "bretta_mountain__news",
    "text": "You'll have heard what the caravans are shouting. The Masons' Guild broke their own seal. The *Undercroft* is open again. Twenty years shut. Open again.",
    "next": "father"
   },
   {
    "id": "father",
+   "voice": "bretta_mountain__father",
    "text": "I swung my first hammer down there, under the mountain. Grand Forge apprentice, me and *Balla*, fighting over the same anvil. Then the kobolds came up through the deep galleries, and the Guild closed the whole district. My father's crew set the last stones of the seal. He set stone the way I set edges. Properly. _The seal was his._",
    "next": "choice"
   },
   {
    "id": "choice",
+   "voice": "bretta_mountain__choice",
    "text": "So when the coal boys sing about open galleries, I hear a door my father built, propped open with his own chisel. That's all the story I've got. What do you want at my forge?",
    "choices": [
     {
@@ -40,16 +43,19 @@
   },
   {
    "id": "back",
+   "voice": "bretta_mountain__back",
    "text": "Balla's asked. Every solstice letter, one line at the bottom: *the anvil's still here*. Maybe now the door's open I'll walk up and lose the trials to her again. Once. For the look on her face. If you pass the Grand Forge before I do, tell her Bretta says her quenches always ran cold.",
    "next": "end"
   },
   {
    "id": "sorry",
+   "voice": "bretta_mountain__sorry",
    "text": "So am I. Twenty years' practice at it now. He'd have liked this town, I think. He always said stone should hold something: coin, bread, people. This one holds all three.",
    "next": "end"
   },
   {
    "id": "browse",
+   "voice": "bretta_mountain__browse",
    "text": "Schematics on the shelf, steel on the racks. Priced honest. I can't be bothered to haggle.",
    "hooks": [
     {
@@ -60,6 +66,7 @@
   },
   {
    "id": "end",
+   "voice": "bretta_mountain__end",
    "text": "Right. Enough smoke without a fire under it. Come by when you need steel, or the knowing of it."
   }
  ]

@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "aldis_watch_urgent__hub",
       "text": "The camp has grown. My book calls that a muster. I don't have the spears to answer it.",
       "choices": [
         {
@@ -28,21 +29,25 @@
     },
     {
       "id": "mark",
+      "voice": "aldis_watch_urgent__mark",
       "text": "Marked. Break the camp and I'll log it under your name.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
+      "voice": "aldis_watch_urgent__remark",
       "text": "The mark's still on your chart. Go soon. They're growing.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "toll",
+      "voice": "aldis_watch_urgent__toll",
       "text": "They've put a bar across my road and they're charging for the crossing. The Redmasks did the same in the war. I was at this gate when the names went on the plaque. Break the toll or break the camp that feeds it. Either one ends both.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "aldis_watch_urgent__bye",
       "text": "Mind the road. I mean it more than usual."
     }
   ]

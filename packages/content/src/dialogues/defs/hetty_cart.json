@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "hetty_cart__hub",
       "text": "Sit, love. The kettle's just come round, and everything on this cart grew somewhere kind.",
       "choices": [
         { "text": "Show me the cart.", "next": "browse" },
@@ -14,11 +15,13 @@
     },
     {
       "id": "browse",
+      "voice": "hetty_cart__browse",
       "text": "Roots, brews, and the writing-down of both. Have a good look, love.",
       "hooks": [{ "kind": "shop", "shop": "peddler_herbwife" }]
     },
     {
       "id": "advice",
+      "voice": "hetty_cart__advice",
       "text": "Hobblebrew for what chases you, salve for what catches you. And plenty of sleep, love. That part's free.",
       "next": "hub"
     }

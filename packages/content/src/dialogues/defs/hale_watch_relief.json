@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "hale_watch_relief__hub",
       "text": "Ledger's clean this morning. The camp's gone. Burned out from the inside, the way I heard it. Your work?",
       "choices": [
         { "text": "Mine.", "next": "mine" },
@@ -15,15 +16,18 @@
     },
     {
       "id": "mine",
+      "voice": "hale_watch_relief__mine",
       "text": "Then the post owes you stew and silence. We're good for both."
     },
     {
       "id": "word",
+      "voice": "hale_watch_relief__word",
       "text": "Fourteen miles of it, faster than carts. Sit if you like.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "hale_watch_relief__bye",
       "text": "Easier job today than yesterday. Thanks to somebody."
     }
   ]

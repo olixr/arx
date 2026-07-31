@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "hale_post__hub",
       "text": "Wardens' post. Fourteen miles of road and one lamp. What do you need?",
       "choices": [
         { "text": "What holds the road?", "next": "holds" },
@@ -19,21 +20,25 @@
     },
     {
       "id": "holds",
+      "voice": "hale_post__holds",
       "text": "Us, the lamps, and the fences, in that order. Brigands hold the toll bends, wolves have the trail. I keep the ledger even.",
       "next": "hub"
     },
     {
       "id": "doing",
+      "voice": "hale_post__doing",
       "text": "Always. Tonight it's the same as every night: hold fourteen miles with six hands. When something's stirring out there, ask me and I'll point you at it.",
       "next": "hub"
     },
     {
       "id": "peddler",
+      "voice": "hale_post__peddler",
       "text": "A cart with bells went up the road this morning and stopped. Friendly, by the ledger. Go quick. Carts don't keep.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "hale_post__bye",
       "text": "That's the job."
     }
   ]

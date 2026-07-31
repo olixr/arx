@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_stolen_ledger_turnin__paid",
       "text": "Five, off the road's ledger and onto mine. I said the bank remembers. Here's yours, with interest. My door knows your name now.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_stolen_ledger" }]
     }

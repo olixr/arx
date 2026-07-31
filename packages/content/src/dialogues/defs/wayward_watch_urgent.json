@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "wayward_watch_urgent__hub",
       "text": "That camp's done being shy. Drums past midnight now, and we count more of them than of us.",
       "choices": [
         {
@@ -24,21 +25,25 @@
     },
     {
       "id": "mark",
+      "voice": "wayward_watch_urgent__mark",
       "text": "Marked. We'll hold the fire. You do the loud part.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
+      "voice": "wayward_watch_urgent__remark",
       "text": "Same place, louder. It's on your chart.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "stay",
+      "voice": "wayward_watch_urgent__stay",
       "text": "And give them the mile? No. We stay.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "wayward_watch_urgent__bye",
       "text": "Lamp stays lit."
     }
   ]

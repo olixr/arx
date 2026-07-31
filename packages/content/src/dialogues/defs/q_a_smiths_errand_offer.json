@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_a_smiths_errand_offer__hub",
       "text": "Forge's hot. Yard's slow. Six iron, four coal. Seams east of the ford if you swing a pick, Merra's counter if you don't. Fetching?",
       "hooks": [{ "kind": "quest_offer", "quest": "a_smiths_errand" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_a_smiths_errand_offer__sworn",
       "text": "Good. Ore first. Talk after.",
       "hooks": [{ "kind": "quest_accept", "quest": "a_smiths_errand" }]
     },
     {
       "id": "declined",
+      "voice": "q_a_smiths_errand_offer__declined",
       "text": "Suit yourself. Forge won't."
     }
   ]

@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "tilo_patterns__greet",
       "text": "Oh, welcome, welcome. Mind the sawdust. Actually, no, don't. Sawdust on the floor means work on the bench. I'm *Tilo*. The loom, the carving bench, the worktable: all public, all yours. Sorry, I should let you speak.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "tilo_patterns__hub",
       "text": "What can I do for you?",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "public",
+      "voice": "tilo_patterns__public",
       "text": "Anyone with the patience. That's the whole idea. A croft can't afford a loom. A *town* can afford one everybody shares. Bring hide, cloth, or timber and make what you need. Sorry, I'm talking again.",
       "next": "hub"
     },
     {
       "id": "chair",
+      "voice": "tilo_patterns__chair",
       "text": "Merra told you about the chair. Of course she did. Three years, yes. Three years. But the chair is *teaching* me, you see. Every joint I cut for pay, I cut better, because the chair at home is watching. That sounded less strange in my head.",
       "next": "hub"
     },
     {
       "id": "galleria",
+      "voice": "tilo_patterns__galleria",
       "text": "Silverfall's galleria. A clothier took me on as a boy to carry bolts up the Silver Stair. I came down before the deep trouble with one pattern-book and a needle case. Grand work up there. The useful work I learned here.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "tilo_patterns__browse",
       "text": "Leather, cloth, and woodcraft patterns: the whole soft-trades ladder. Priced by what they'll ask of your hands.",
       "hooks": [
         {

@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "elowen_folios__greet",
       "text": "Come in. Mind the drying herbs. Sagewort on the left, moonbell on the right, and the smell in the middle is a tincture that is *supposed* to do that. Probably. Almost certainly.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "elowen_folios__hub",
       "text": "What do you need?",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "buy",
+      "voice": "elowen_folios__buy",
       "text": "Sagewort, moonbell, any honest herb you pull from the verges. Coin on the counter, no questions. Half this town's health walks in through that door in a forager's pocket. More than half, actually. I've counted.",
       "next": "hub"
     },
     {
       "id": "came",
+      "voice": "elowen_folios__came",
       "text": "Down the High Road, twelve years back. Eleven and a half, strictly. One book and a moonbell cutting wrapped in a stocking. Where from? _Further than the road goes._ The cutting took to the soil here. So did I. That's the whole answer you'll get.",
       "next": "hub"
     },
     {
       "id": "advice",
+      "voice": "elowen_folios__advice",
       "text": "Carry more tinctures than you think you need, and drink them *earlier* than you think you should. People die holding a full bottle. And past the Last Lamp, walk mornings. The old things up there sleep late.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "elowen_folios__browse",
       "text": "Brewing formulas and the enchanter's treatises, folios on the shelf. Take your time with them.",
       "hooks": [
         {

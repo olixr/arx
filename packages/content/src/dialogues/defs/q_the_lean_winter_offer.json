@@ -7,6 +7,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_lean_winter_offer__hub",
       "text": "Bigger work. The ford eats well, so the ford bargains badly. Four head of cattle off Amberford's pastures and the winter leans our way. The Charter will hate you for it. Count that in the wages.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_lean_winter" }],
       "choices": [
@@ -16,11 +17,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_lean_winter_offer__sworn",
       "text": "Quietly, if you can. Loudly will also do.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_lean_winter" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_lean_winter_offer__declined",
       "text": "It's all somebody's herd. Suit your stomach."
     }
   ]

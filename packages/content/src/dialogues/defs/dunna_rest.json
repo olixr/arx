@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "dunna_rest__greet",
    "text": "Welcome to the *Wanderer's Rest*. Beds, board, and news. Stew's on.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "dunna_rest__hub",
    "text": "What'll you have?",
    "choices": [
     {
@@ -37,6 +39,7 @@
   },
   {
    "id": "news",
+   "voice": "dunna_rest__news",
    "text": "Pick your poison.",
    "choices": [
     {
@@ -62,31 +65,37 @@
   },
   {
    "id": "peddler",
+   "voice": "dunna_rest__peddler",
    "text": "A peddler's cart went by at dawn, bells and all, and parked somewhere up the road. Carts don't wait, love. Best hurry.",
    "next": "hub"
   },
   {
    "id": "seal",
+   "voice": "dunna_rest__seal",
    "text": "The big one: Silverfall's Masons broke the *Undercroft seal*. Twenty years shut, and now there's a market down there again. Kobolds past the rubble line too, which folk say quieter. Every stool in this room has an opinion on it. Ask Bretta at the forge. She's mountain-born. She was *there*.",
    "next": "news"
   },
   {
    "id": "roads",
+   "voice": "dunna_rest__roads",
    "text": "First Road's tame: hedgerows, wayshrines, the odd goblin scout getting above himself. The High Road is another matter. Fine to the Long Meadow, chancy to the Fork, and past *Edda's lamp* you'd best be serious about yourself. The Redmasks work the middle stretch. Travel mornings, and travel loud.",
    "next": "news"
   },
   {
    "id": "strange",
+   "voice": "dunna_rest__strange",
    "text": "Peld swears something big turned over in the millpond, twice last month. Garton swears it was Peld's own bell. Perl swears her cows have learnt to open the gate, and I believe *Perl*. Small town. The strange here stays friendly.",
    "next": "news"
   },
   {
    "id": "osa",
+   "voice": "dunna_rest__osa",
    "text": "Mam ran this room thirty years. *Osa*. Ask anyone grey enough. When my father passed she couldn't sit still in this room, so she kissed the bar and walked the High Road at sixty. Now she waters caravan mules under Silverfall's wall, and writes once a season to say my stew wants more thyme. She's right. Don't you dare tell her.",
    "next": "hub"
   },
   {
    "id": "browse",
+   "voice": "dunna_rest__browse",
    "text": "Stew, bread, roast, and cake. Sit. Eat. The road can wait an hour.",
    "hooks": [
     {
@@ -97,6 +106,7 @@
   },
   {
    "id": "fire",
+   "voice": "dunna_rest__fire",
    "text": "Fire's free. Sit as long as you like."
   }
  ]

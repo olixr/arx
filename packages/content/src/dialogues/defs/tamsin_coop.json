@@ -10,6 +10,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "tamsin_coop__hub",
       "text": "Watch the hens. They've decided feet are a delicacy. What do you need?",
       "choices": [
         {
@@ -38,11 +39,13 @@
     },
     {
       "id": "cotton",
+      "voice": "tamsin_coop__cotton",
       "text": "Next spring, the south strip goes to cotton. Jorel says the soil's wrong. The soil and I had a word in private, and the soil is *enthusiastic*. Tilo's loom sits hungry half the year, and every bolt of cloth in this town came in on a cart. We could grow it and spin it and weave it inside our own fence. Watch me.",
       "next": "hub"
     },
     {
       "id": "egg",
+      "voice": "tamsin_coop__egg",
       "text": "Here. Laid this morning, and the hen wants you to know it was her best work. {item:egg} Crack it over a pan at any campfire.",
       "hooks": [
         {
@@ -55,11 +58,13 @@
     },
     {
       "id": "ledger",
+      "voice": "tamsin_coop__ledger",
       "text": "In the seed ledger, in winter, by lamplight: every row, every rotation, three seasons deep. Jorel digs what I draw and swears the drawing's the easy half. He's right, too. The ledger doesn't get blisters.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "tamsin_coop__bye",
       "text": "Mind the gate latch. The cows have learnt Perl's, and mine's likely next."
     }
   ]

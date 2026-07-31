@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_matriarch_offer__hub",
       "text": "I'm going to say a thing I've only said twice, and I restocked for both of them after. There's a den in the deep wood off the hunter's trail. A matriarch runs it: dire, old, and every pack for miles answers her.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_matriarch" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "two",
+      "voice": "q_the_matriarch_offer__two",
       "text": "One's lying in front of the den. The other doesn't hunt anymore. _Know that before you say yes._",
       "choices": [
         { "text": "I'll pay it. She dies.", "next": "dead" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "dead",
+      "voice": "q_the_matriarch_offer__dead",
       "text": "Break the packs between you and the den first, or you fight all of them at her door. Then her. Bring the pelt whole, not for coin. I'll work it into something worth what it cost.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_matriarch" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_matriarch_offer__declined",
       "text": "That's the answer that keeps my restock bill down. Offer stands."
     }
   ]

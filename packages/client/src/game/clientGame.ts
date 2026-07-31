@@ -759,11 +759,12 @@ export class ClientGame {
     if (settled) {
       this.settledAnchors = settled
         .filter((a) => a.length >= 3)
-        .map(([x, y, safeR, haven]) => ({
+        .map(([x, y, safeR, haven, dread]) => ({
           x: x!,
           y: y!,
           safeR: safeR!,
           ...(haven ? { haven: true } : {}),
+          ...(dread ? { dread } : {}),
         }));
     }
     this.dangerAnchors = [

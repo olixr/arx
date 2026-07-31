@@ -9,6 +9,7 @@
   "nodes": [
     {
       "id": "fireside",
+      "voice": "wayfarer_camp__fireside",
       "text": "Sit if you're sitting, buy if you're buying. The fire's free either way.",
       "choices": [
         { "text": "Let me see your wares.", "next": "wares" },
@@ -18,16 +19,19 @@
     },
     {
       "id": "wares",
+      "voice": "wayfarer_camp__wares",
       "text": "Shelf's honest, prices aren't kind. Carriage costs, this far out. Everything the road calls for, and a *brass key* for the locked chests out there.",
       "hooks": [{ "kind": "shop", "shop": "waystation_supplies" }]
     },
     {
       "id": "rumor",
+      "voice": "wayfarer_camp__rumor",
       "text": "Camps on the rises. Old ruins that _don't stay quiet after dusk_. And further out, stones that folk hang names on. The road pays better the further it runs. Fewer walk back to spend it.",
       "next": "rumor2"
     },
     {
       "id": "rumor2",
+      "voice": "wayfarer_camp__rumor2",
       "text": "You'll smell a camp before you see it: stumps, worn ruts, watchers on the high ground. Read the ground and you'll know what's waiting.",
       "choices": [
         { "text": "Let me see your wares.", "next": "wares" },

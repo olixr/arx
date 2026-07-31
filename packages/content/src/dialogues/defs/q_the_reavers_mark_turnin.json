@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_reavers_mark_turnin__paid",
       "text": "A reaver's mark, surrendered by force of arms. I'll enter it under today's date, with your name as witness. The Hall thanks you. I thank you. Both are now in the record.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_reavers_mark" }]
     }

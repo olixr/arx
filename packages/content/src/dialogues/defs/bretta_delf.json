@@ -15,6 +15,7 @@
  "nodes": [
   {
    "id": "look",
+   "voice": "bretta_delf__look",
    "text": "Back again. Good. The ones who come back are worth teaching. Before you buy a single schematic off me, answer this. Where does a bar of bronze *start*?",
    "choices": [
     {
@@ -29,16 +30,19 @@
   },
   {
    "id": "wrong",
+   "voice": "bretta_delf__wrong",
    "text": "No. Furnace is the *middle*. It starts in the ground. North spine past Hask's, dirt trail east at the lamp: that's the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
    "next": "lesson"
   },
   {
    "id": "right",
+   "voice": "bretta_delf__right",
    "text": "*In the ground.* Ha. There's hope for you. North spine past Hask's, dirt trail east at the lamp: the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
    "next": "lesson"
   },
   {
    "id": "lesson",
+   "voice": "bretta_delf__lesson",
    "text": "Your ladder, free of charge: dig copper and tin. Smelt bronze at my furnace. Hammer it on the spare anvil till your arms understand. And when you hit the north face, the gray one that laughs at bronze picks, that's *iron*. Iron wants a better pick. A better pick wants a better smith.",
    "choices": [
     {
@@ -53,6 +57,7 @@
   },
   {
    "id": "sell",
+   "voice": "bretta_delf__sell",
    "text": "Thought you'd never ask. Priced at what they'll earn you back twice over.",
    "hooks": [
     {
@@ -63,6 +68,7 @@
   },
   {
    "id": "send",
+   "voice": "bretta_delf__send",
    "text": "Better answer than the schematics. Go. And mind Holloway's cows on the way past."
   }
  ]

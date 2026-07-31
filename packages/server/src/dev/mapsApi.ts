@@ -262,6 +262,8 @@ export function createMapsApi(
             massifs: AUTHORED_GEOGRAPHY.massifs.map((m) => ({ ...m })),
             veils: AUTHORED_GEOGRAPHY.veils.map((v) => ({ ...v })),
             fens: AUTHORED_GEOGRAPHY.fens.map((f) => ({ ...f })),
+            meres: AUTHORED_GEOGRAPHY.meres.map((m) => ({ ...m })),
+            pinelands: AUTHORED_GEOGRAPHY.pinelands.map((p) => ({ ...p })),
             planned: AUTHORED_GEOGRAPHY.planned.map((p) => ({ ...p })),
           });
           console.log(`[content] geography ${outcome} — shipped plan stands`);

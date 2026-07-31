@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_pelts_for_the_road_offer__hub",
       "text": "Winter cloaks want lining and I won't sell thin. Six wolf furs, clean ones. Wolves run the tree lines, and they don't come alone. Hear that part twice. Work you want?",
       "hooks": [{ "kind": "quest_offer", "quest": "pelts_for_the_road" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_pelts_for_the_road_offer__sworn",
       "text": "Aim before the second one commits. Off you go.",
       "hooks": [{ "kind": "quest_accept", "quest": "pelts_for_the_road" }]
     },
     {
       "id": "declined",
+      "voice": "q_pelts_for_the_road_offer__declined",
       "text": "Fair enough."
     }
   ]

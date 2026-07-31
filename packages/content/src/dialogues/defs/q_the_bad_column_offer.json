@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_bad_column_offer__hub",
       "text": "Your name's in the bad column. Sorry doesn't move ink. Work does. Redmasks on the roads out from the ford. Five off their count.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_bad_column" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_bad_column_offer__sworn",
       "text": "Then the book waits. Come back when the count says five.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_bad_column" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_bad_column_offer__declined",
       "text": "Then the column stands as written."
     }
   ]

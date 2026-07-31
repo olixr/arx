@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "watchpost",
+      "voice": "wayward_road__watchpost",
       "text": "Warm yourself and move along when you're able. That's the posting.",
       "choices": [
         { "text": "How goes the watch?", "next": "report" },
@@ -23,16 +24,19 @@
     },
     {
       "id": "report",
+      "voice": "wayward_road__report",
       "text": "Quiet at the fire. Loud everywhere else. Warcamps on the rises, ruins that _wake after dusk_, stones out deep with names on them. We hold the lamplight. Past that, no promises.",
       "next": "watchpost"
     },
     {
       "id": "respect_camp",
+      "voice": "wayward_road__respect_camp",
       "text": "That was *you*? Then the east road breathes for a season. The Watch pays in respect and not much else. You've got mine.",
       "next": "watchpost"
     },
     {
       "id": "respect_champion",
+      "voice": "wayward_road__respect_champion",
       "text": "We heard the name went quiet. Camps grow back by spring. Named things take longer. Fire's yours tonight.",
       "next": "watchpost"
     }

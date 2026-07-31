@@ -1,0 +1,49 @@
+{
+  "id": "hoargate_watch",
+  "name": "Hoargate Watch",
+  "title": "The Crown's Cold Post",
+  "examine": "Steel under three layers of wool, and frost in the beard of it. Nobody is posted here twice by accident.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 34,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 170,
+      "damage": 11,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 2,
+      "hairColor": 0,
+      "beard": 5,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "head": "steel_greathelm",
+    "body": "steel_platebody",
+    "legs": "steel_greaves",
+    "gloves": "steel_gauntlets",
+    "boots": "steel_sabatons",
+    "weapon": "steel_sword",
+    "offhand": "tower_shield"
+  },
+  "inventory": [
+    { "item": "coins", "qty": 24 }
+  ],
+  "lines": [
+    "Gate's open. It being open is not the same as it being advice.",
+    "Six of us on the wall, four on the stair, and the wall is the easy duty.",
+    "You want the far side, you go in daylight and you go loud."
+  ]
+}

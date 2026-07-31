@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "merra_market__greet",
       "text": "Shop's open, love. Eggs from Tamsin's hens this morning, bread from Garton's flour, berries from Perl's hedges. Nothing in this room traveled more than a mile.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "merra_market__hub",
       "text": "Anything else, love?",
       "choices": [
         {
@@ -37,6 +39,7 @@
     },
     {
       "id": "cape",
+      "voice": "merra_market__cape",
       "text": "My Edwin's. Wayfarer, caravan guard, best whistler on two roads. He walked north the spring the wolves came down early, and the road kept him. Keeper Ansel has his name in the hall registry. I keep the cape.",
       "choices": [
         {
@@ -57,21 +60,25 @@
     },
     {
       "id": "cape2",
+      "voice": "merra_market__cape2",
       "text": "None of that, now. Fifteen good years he gave me, and a clean cape at the end. Most get less. Now buy something, love, before I get weepy.",
       "next": "hub"
     },
     {
       "id": "tilo",
+      "voice": "merra_market__tilo",
       "text": "Tilo? Cleverest hands in town, and not a lick of sense to go with them. He built every shelf in this shop in one week, then he spent three years not finishing a chair. That's my brother.",
       "next": "hub"
     },
     {
       "id": "nib",
+      "voice": "merra_market__nib",
       "text": "Nib eats free, and we both pretend she doesn't. That girl hauls a day's worth of everyone's business before breakfast and never once gets it wrong. She'll go far, that one.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "merra_market__browse",
       "text": "Take your pick. Mind the eggs, love. Tamsin counts them.",
       "hooks": [
         {

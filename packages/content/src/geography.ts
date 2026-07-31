@@ -98,6 +98,57 @@ export const SALTMERE_RECT: ZoneRect = { x: 300, y: 252, w: 112, h: 80 };
 /** The Silverspine massif — crag country cradling Silverfall. */
 export const SILVERSPINE = { x: -320, y: -192, r: 210 } as const;
 
+/**
+ * THE SPINEWALLS — the two ramparts that close the Silverspine's hand
+ * around the capital. The base massif lifts the whole province, but a
+ * province is not a cradle: the east flank ran soft all the way to
+ * the Thornveil, and the last league of the High Road crossed open
+ * meadow. These two put stone where the story needs stone.
+ *
+ * EAST: crag country standing a clean thirty tiles off the city's
+ * east wall (the zone apron holds the plateau field down inside that
+ * ring, so the crags crowd the approach without ever fencing a gate).
+ * SOUTH: the shoulder the High Road's last league squeezes past —
+ * with the Kingswater on the other side, the final approach to
+ * Silverfall is a gap between crag and deep water. One road in.
+ */
+export const SPINEWALL_EAST = { x: -152, y: -176, r: 116 } as const;
+export const SPINEWALL_SOUTH = { x: -238, y: -34, r: 82 } as const;
+
+/**
+ * THE KINGSWATER + THE COLDTARN — the capital's water. The Kingswater
+ * is the long cold sheet off Silverfall's south-west: the flank no
+ * army has ever bothered to march, and the reason the city only ever
+ * needed one gate. The Coldtarn is the high water under the pass
+ * shoulder, the last drink before the Hoargate.
+ *
+ * Both hearts sit OFF the zone rect (the Amberfen heart law): the
+ * city authors its own ground and the border's edge class carries the
+ * water outward, so no shoreline is ever sliced by a rect.
+ */
+export const KINGSWATER = { x: -380, y: -70, r: 84 } as const;
+export const COLDTARN = { x: -166, y: -250, r: 44 } as const;
+
+/**
+ * THE PINEREACH — the great taiga of the north-east, and the whole
+ * reason Pinewatch exists. Two hearts overlapping into one wood: the
+ * northern heart stands near-pure pine (cold enough that nothing else
+ * takes the stand), and the southern arm runs down the east country
+ * toward the coast, giving out into mixed oak and pine as it warms —
+ * so the shore country a future port will sit on already has its
+ * hinterland, and the treeline reads as a journey rather than a rule.
+ */
+export const PINEREACH = { x: 620, y: -190, r: 190 } as const;
+export const PINEREACH_SOUTH = { x: 700, y: -30, r: 150 } as const;
+
+/**
+ * THE GLASSWATER — the lake Pinewatch watches across. The town holds
+ * its south shore; the old wood holds the north; between them lies
+ * water that nothing crosses. Except in a hard winter, when it
+ * freezes end to end — which is what the watch is FOR.
+ */
+export const GLASSWATER = { x: 596, y: -224, r: 96 } as const;
+
 /** The Thornveil — the dark wood between the lowlands and the climb. */
 export const THORNVEIL = { x: -130, y: -70, r: 160 } as const;
 
@@ -122,6 +173,30 @@ export const AMBERFEN_EAST = { x: 206, y: 34, r: 66 } as const;
  * brack-marsh on every seed.
  */
 export const SALT_FLATS = { x: 356, y: 400, r: 64 } as const;
+
+/**
+ * Pinewatch — the town that watches the deep wood (the Pinereach
+ * epic). Centre (584,-136): far enough north-east of Amberford that
+ * the band march lands the whole of the town's country at TIER 4
+ * (levels 22-34) and everything past the Glasswater or east of the
+ * Wardline at tier 5. The town anchors as a HAVEN, the third: tier 0
+ * on the muster yard, wild at the gates, and the old wood beyond the
+ * line stays a frontier the town watches rather than one it holds.
+ */
+export const PINEWATCH_RECT: ZoneRect = { x: 520, y: -184, w: 128, h: 96 };
+
+/**
+ * THE RIMEWARD — ground RESERVED, not built. The Hoargate Road has to
+ * end somewhere, and a road that ends nowhere is a road the plan is
+ * lying about: this rect is the plan telling the truth. The scaffold
+ * already keeps the frontier out of it (planned rects are treated
+ * exactly like registered zones when siting camps), so whatever the
+ * north turns out to be, it will not have to evict a bandit camp
+ * first. Deliberately NOT aproned: until something stands here the
+ * mountains should keep their crags right up to the road's last
+ * milepost.
+ */
+export const RIMEWARD_RECT: ZoneRect = { x: -400, y: -448, w: 128, h: 96 };
 
 export interface RoadRoute {
   id: string;
@@ -169,6 +244,20 @@ export interface GeographyDef {
   veils: Landform[];
   /** Wetland hearts — elevation pulled to the wet line, moisture up. */
   fens: Landform[];
+  /**
+   * Open-water hearts — elevation pulled UNDER the water line and
+   * deepening toward the heart. Where a fen deals a marsh mosaic
+   * (half wet, half islet), a mere deals a lake: deep core, wading
+   * rim, an organic shore the base noise still draws.
+   */
+  meres: Landform[];
+  /**
+   * Taiga hearts — cold AND damp, because a pine stand needs both.
+   * The cold decides the species, the damp decides that there is a
+   * canopy at all; one landform carries the pair so a forest is
+   * authored as a forest and not as two coincidences.
+   */
+  pinelands: Landform[];
   planned: PlannedRect[];
 }
 
@@ -257,6 +346,73 @@ const AUTHORED_PLAN: GeographyDef = {
       ],
     },
     {
+      id: 'timber_road',
+      name: 'The Timber Road',
+      kind: 'road',
+      // Amberford's EAST GATE to Pinewatch's south gate: the long way
+      // round, and the only way a loaded timber wain can come. It runs
+      // the open lowland due east until the land tilts, turns north up
+      // the coast country under the Pinereach's southern arm, and
+      // comes at the town from below so the lake is the last thing you
+      // see, not the first. ~386 tiles against the Sparway's 211 — the
+      // distance IS the safety, because three havens sit on it and
+      // nothing sits on the trail.
+      pts: [
+        { x: 408, y: 44 },
+        { x: 456, y: 38 },
+        { x: 506, y: 28 },
+        { x: 556, y: 16 },
+        { x: 604, y: 2 },
+        { x: 644, y: -20 },
+        { x: 666, y: -50 },
+        { x: 660, y: -78 },
+        { x: 620, y: -80 },
+        { x: 584, y: -89 },
+      ],
+    },
+    {
+      id: 'sparway',
+      name: 'The Sparway',
+      kind: 'trail',
+      // The mast-cutters' shortcut: Amberford's north gate to
+      // Pinewatch's west gate, straight through the Pinereach's heart.
+      // Half the distance, none of the lamps, and the tier-4 wood does
+      // not care that you are in a hurry. Forks off the High Road's
+      // first waypoint, so both ways out of Amberford leave by a gate
+      // that already exists.
+      pts: [
+        { x: 350, y: -15 },
+        { x: 382, y: -42 },
+        { x: 416, y: -70 },
+        { x: 450, y: -96 },
+        { x: 486, y: -118 },
+        { x: 520, y: -136 },
+      ],
+    },
+    {
+      id: 'hoargate_road',
+      name: 'The Hoargate Road',
+      kind: 'road',
+      // Silverfall's Postern Lane to the top of the world. It leaves
+      // the city's north hem, runs the aproned shelf under the crags,
+      // climbs the vale the massif leaves open at x -338..-306, and
+      // passes the Hoargate itself — the garrison across the narrows.
+      // North of the gate the road keeps going for a while and then
+      // the maps stop, which is exactly what the signage says.
+      pts: [
+        { x: -204, y: -224 },
+        { x: -216, y: -240 },
+        { x: -244, y: -248 },
+        { x: -278, y: -252 },
+        { x: -306, y: -258 },
+        { x: -320, y: -272 },
+        { x: -322, y: -292 },
+        { x: -328, y: -316 },
+        { x: -334, y: -344 },
+        { x: -338, y: -372 },
+      ],
+    },
+    {
       id: 'hunters_trail',
       name: "The Hunter's Trail",
       kind: 'trail',
@@ -309,20 +465,58 @@ const AUTHORED_PLAN: GeographyDef = {
     // roof before the tier-3 league; south of here the road trusts
     // you to be ready.
     { id: 'gullmoor_rest', defId: 'waystation', x: 352, y: 158 },
+    // THE TIMBER ROAD'S TWO LAMPS — the long way's whole argument.
+    // Each is a HAVEN, and a haven relieves the danger field around
+    // it, so the lamped road genuinely bands lower than the wood the
+    // Sparway walks through. The lamp is the safety; it always was.
+    // They sit on the road's BACK half by design: the first league
+    // out of Amberford is tier 1-2 and needs nobody's fire, and every
+    // macro-cell an authored site claims is a cell the living
+    // frontier can never grow anything in (the one-site-per-cell
+    // law). The Sparway is deliberately given NOTHING — its terror is
+    // whatever the scaffold rolls there, which is the point: the
+    // shortcut is dangerous because it is unwatched, not because a
+    // designer parked a den on it.
+    { id: 'pinehollow_rest', defId: 'roadside_hamlet', x: 674, y: -56 },
+    { id: 'hollow_watch', defId: 'wardens_outpost', x: 612, y: -16 },
+    // PAST THE WARDLINE: the axe-thieves in the old wood east of
+    // Pinewatch, cutting the great spars nobody is allowed to cut.
+    // The town's quest spine has a physical address.
+    { id: 'wardline_cut', defId: 'timber_poachers', cell: [5, -2] },
+    // THE HOARGATE — the garrison across the pass, and the last
+    // authored thing before the Rimeward.
+    { id: 'hoargate', defId: 'hoargate_watch', x: -334, y: -262 },
+    // The shelf walk under Silverfall's crags gets one roof.
+    { id: 'spineshelf_rest', defId: 'waystation', x: -232, y: -236 },
   ],
   anchors: SETTLED_ANCHORS.map((a) => ({ ...a })),
-  massifs: [{ id: 'silverspine', ...SILVERSPINE }],
+  massifs: [
+    { id: 'silverspine', ...SILVERSPINE },
+    { id: 'spinewall_east', ...SPINEWALL_EAST },
+    { id: 'spinewall_south', ...SPINEWALL_SOUTH },
+  ],
   veils: [{ id: 'thornveil', ...THORNVEIL }],
   fens: [
     { id: 'amberfen_west', ...AMBERFEN_WEST },
     { id: 'amberfen_east', ...AMBERFEN_EAST },
     { id: 'salt_flats', ...SALT_FLATS },
   ],
+  meres: [
+    { id: 'kingswater', ...KINGSWATER },
+    { id: 'coldtarn', ...COLDTARN },
+    { id: 'glasswater', ...GLASSWATER },
+  ],
+  pinelands: [
+    { id: 'pinereach', ...PINEREACH },
+    { id: 'pinereach_south', ...PINEREACH_SOUTH },
+  ],
   planned: [
     { id: 'dawnmead', name: 'Dawnmead', ...DAWNMEAD_RECT },
     { id: 'amberford', name: 'Amberford', ...AMBERFORD_RECT, apron: true },
     { id: 'silverfall', name: 'Silverfall', ...SILVERFALL_RECT, apron: true },
     { id: 'saltmere', name: 'Saltmere', ...SALTMERE_RECT, apron: true },
+    { id: 'pinewatch', name: 'Pinewatch', ...PINEWATCH_RECT, apron: true },
+    { id: 'rimeward', name: 'The Rimeward', ...RIMEWARD_RECT },
   ],
 };
 export const AUTHORED_GEOGRAPHY: GeographyDef = Object.freeze(AUTHORED_PLAN);
@@ -338,6 +532,8 @@ export const FIELD_APRON_RECTS: readonly PlannedRect[] = [];
 const MASSIFS: Landform[] = [];
 const VEILS: Landform[] = [];
 const FENS: Landform[] = [];
+const MERES: Landform[] = [];
+const PINELANDS: Landform[] = [];
 
 interface RouteBounds {
   route: RoadRoute;
@@ -366,6 +562,8 @@ export function geographySnapshot(): GeographyDef {
     massifs: MASSIFS.map((m) => ({ ...m })),
     veils: VEILS.map((v) => ({ ...v })),
     fens: FENS.map((f) => ({ ...f })),
+    meres: MERES.map((m) => ({ ...m })),
+    pinelands: PINELANDS.map((p) => ({ ...p })),
     planned: PLANNED_ZONE_RECTS.map((p) => ({ ...p })),
   };
 }
@@ -383,6 +581,8 @@ export function replaceGeography(def: GeographyDef): void {
   refill(MASSIFS, def.massifs.map((m) => ({ ...m })));
   refill(VEILS, def.veils.map((v) => ({ ...v })));
   refill(FENS, (def.fens ?? []).map((f) => ({ ...f })));
+  refill(MERES, (def.meres ?? []).map((m) => ({ ...m })));
+  refill(PINELANDS, (def.pinelands ?? []).map((p) => ({ ...p })));
   replaceSettledAnchors(def.anchors);
   ROAD_BOUNDS = ROAD_ROUTES.map((route) => {
     let x0 = Infinity;
@@ -558,16 +758,34 @@ export function validateGeographyDef(
         errors.push(`${at}.safeR must be an integer in [8, 192]`);
         continue;
       }
-      anchors.push({ x: a.x, y: a.y, safeR: a.safeR, ...(a.haven ? { haven: true } : {}) });
+      if (a.dread !== undefined && (!isInt(a.dread) || a.dread < 1 || a.dread > 3)) {
+        errors.push(`${at}.dread must be an integer in [1, 3] (or absent)`);
+        continue;
+      }
+      if (a.dread !== undefined && a.haven) {
+        errors.push(`${at} cannot be a haven and a dread at once`);
+        continue;
+      }
+      anchors.push({
+        x: a.x,
+        y: a.y,
+        safeR: a.safeR,
+        ...(a.haven ? { haven: true } : {}),
+        ...(a.dread !== undefined ? { dread: a.dread } : {}),
+      });
     }
   }
 
-  const landforms = (kind: 'massifs' | 'veils' | 'fens', optional = false): Landform[] => {
+  const landforms = (
+    kind: 'massifs' | 'veils' | 'fens' | 'meres' | 'pinelands',
+    optional = false,
+  ): Landform[] => {
     const out: Landform[] = [];
     const list = r[kind];
     const seen = new Set<string>();
     if (!Array.isArray(list)) {
-      // Fens joined the plan after ship — an older doc simply has none.
+      // Fens, meres and pinelands all joined the plan after ship — an
+      // older doc simply has none, and must still load.
       if (!optional) errors.push(`${kind} must be an array`);
       return out;
     }
@@ -590,6 +808,8 @@ export function validateGeographyDef(
   const massifs = landforms('massifs');
   const veils = landforms('veils');
   const fens = landforms('fens', true);
+  const meres = landforms('meres', true);
+  const pinelands = landforms('pinelands', true);
 
   const planned: PlannedRect[] = [];
   const seenPlanned = new Set<string>();
@@ -620,7 +840,10 @@ export function validateGeographyDef(
   }
 
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, def: { routes, sites, anchors, massifs, veils, fens, planned } };
+  return {
+    ok: true,
+    def: { routes, sites, anchors, massifs, veils, fens, meres, pinelands, planned },
+  };
 }
 
 /**
@@ -677,6 +900,7 @@ export function geographyWarnings(def: GeographyDef, seed = 1337): string[] {
     }
   }
   for (const a of def.anchors) {
+    if (a.dread) continue; // bad country is never housed in a town
     const housed = def.planned.some((rect) => distToRect(a.x, a.y, rect) === 0);
     if (!housed) {
       warnings.push(
@@ -736,6 +960,35 @@ export function fenAt(tx: number, ty: number): number {
   let s = 0;
   for (const f of FENS) {
     const v = 1 - Math.hypot(tx - f.x, ty - f.y) / f.r;
+    if (v > s) s = v;
+  }
+  return s;
+}
+
+/**
+ * Radial falloff for the meres' open water (1 at a heart, 0 past
+ * every rim). Worldgen pulls elevation under the water line by this,
+ * deepening toward the heart — the lake's floor, not its mood.
+ */
+export function mereAt(tx: number, ty: number): number {
+  let s = 0;
+  for (const m of MERES) {
+    const v = 1 - Math.hypot(tx - m.x, ty - m.y) / m.r;
+    if (v > s) s = v;
+  }
+  return s;
+}
+
+/**
+ * Radial falloff for the pinelands (1 at a heart, 0 past every rim).
+ * Read TWICE by worldgen — once by the cold field that decides which
+ * species takes the stand, once by the moisture field that decides
+ * whether a stand closes into canopy at all.
+ */
+export function pinelandAt(tx: number, ty: number): number {
+  let s = 0;
+  for (const p of PINELANDS) {
+    const v = 1 - Math.hypot(tx - p.x, ty - p.y) / p.r;
     if (v > s) s = v;
   }
   return s;

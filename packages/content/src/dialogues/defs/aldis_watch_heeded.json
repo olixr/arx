@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "hub",
+   "voice": "aldis_watch_heeded__hub",
    "text": "Still walking lamp to lamp? Good. What do you need?",
    "choices": [
     {
@@ -32,16 +33,19 @@
   },
   {
    "id": "road",
+   "voice": "aldis_watch_heeded__road",
    "text": "Quiet to the Meadow. Redmask sign on the middle stretch. And the Fork tower lit its brazier at the wrong hour twice this week. Could be nothing. If you pass the wardens' outpost, tell the sergeant I want her count.",
    "next": "hub"
   },
   {
    "id": "toll",
+   "voice": "aldis_watch_heeded__toll",
    "text": "Before the bank, the ford toll sat in a wooden box. One autumn the Redmasks chained the ford and taxed this town at its own crossing. Three days. On the fourth we went out and took the chain down. It cost us the names on the pillar by the bank. Read them when you pass. The chain itself sits in Cormund's vault. He'll show you, if you ask him straight.",
    "next": "hub"
   },
   {
    "id": "bye",
+   "voice": "aldis_watch_heeded__bye",
    "text": "Road keep you. Mind the lamps."
   }
  ]

@@ -1,0 +1,43 @@
+{
+  "id": "serjeant_ottar",
+  "name": "Ottar",
+  "title": "Serjeant of the Hoargate",
+  "examine": "Twenty-one winters on this wall and he still counts every party through and every party back. The count is written up. The second column is shorter.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 1,
+      "hairColor": 6,
+      "beard": 4,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "head": "steel_greathelm",
+    "body": "steel_platebody",
+    "legs": "steel_greaves",
+    "boots": "steel_sabatons",
+    "weapon": "steel_sword"
+  },
+  "inventory": [
+    {
+      "item": "hearty_stew",
+      "qty": 3
+    },
+    {
+      "item": "healing_tincture",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Warm yourself. The fire is the Crown's and the Crown is not here to grudge it.",
+    "Sign the board on your way through. It saves us guessing later.",
+    "North of my wall the road is a rumour with snow on it."
+  ]
+}

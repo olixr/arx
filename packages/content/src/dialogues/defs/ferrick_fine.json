@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "ferrick_fine__greet",
       "text": "You've cost the Company blood, and the Company writes blood in coin. We're practical people. Settle the column and the road forgets you were ever bad business.",
       "choices": [
         { "text": "What's the blood-price?", "next": "quote" },
@@ -15,17 +16,20 @@
     },
     {
       "id": "quote",
+      "voice": "ferrick_fine__quote",
       "text": "He turns the ledger so you can see the figure.",
       "hooks": [{ "kind": "fine", "faction": "reavers", "quote": true }],
       "next": "greet"
     },
     {
       "id": "pay",
+      "voice": "ferrick_fine__pay",
       "text": "He clears a space on the table, unhurried.",
       "hooks": [{ "kind": "fine", "faction": "reavers" }]
     },
     {
       "id": "bye",
+      "voice": "ferrick_fine__bye",
       "text": "It keeps itself. That's the trouble with ledgers."
     }
   ]

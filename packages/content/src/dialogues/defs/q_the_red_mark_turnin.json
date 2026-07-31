@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_red_mark_turnin__paid",
       "text": "Landed clean. Calder's silence travels faster than most men's letters. Your name moves columns now.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_red_mark" }]
     }

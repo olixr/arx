@@ -17,7 +17,9 @@ import {
   fenAt,
   fieldApronAt,
   massifAt,
+  mereAt,
   nearRoads,
+  pinelandAt,
   roadDistanceAt,
   roadHitAt,
   thornveilAt,
@@ -76,6 +78,21 @@ export function elevationAt(seed: number, tx: number, ty: number): number {
     const marsh = 0.37 + (fbm(seed + 4242, tx * 0.03, ty * 0.03, 2) - 0.5) * 0.4;
     const k = Math.min(1, fen * 1.4) * 0.85;
     elevation = elevation * (1 - k) + marsh * k;
+  }
+  // THE MERES: a lake is not a wet meadow. Inside a mere heart the
+  // land is pulled UNDER the water line and keeps sinking toward the
+  // heart — deep core, wading rim, and a shore the base noise still
+  // draws (a tenth of the field always survives, and the lake's own
+  // slow noise ripples the depth so no shoreline is ever a circle).
+  // Applied AFTER the massif so a tarn can drown a crag floor: the
+  // level law reads elevation < 0.42 as flat, so a mere never fights
+  // a cliff fence for the same tile — it simply cancels the plateau
+  // and leaves crags standing at the waterline.
+  const mere = mereAt(tx, ty);
+  if (mere > 0) {
+    const k = Math.min(1, mere * 1.6) * 0.9;
+    const water = 0.3 - mere * 0.12 + (fbm(seed + 8181, tx * 0.02, ty * 0.02, 2) - 0.5) * 0.16;
+    elevation = elevation * (1 - k) + water * k;
   }
   // THE EDGE-HARMONY LAW: near a registered zone border the field
   // honors the border's authored intention — water edges keep flowing
@@ -184,7 +201,11 @@ export function moistureAt(seed: number, tx: number, ty: number): number {
   const m =
     fbm(seed + 9999, tx * 0.03, ty * 0.03, 3) +
     thornveilAt(tx, ty) * 0.3 +
-    fenAt(tx, ty) * 0.22;
+    fenAt(tx, ty) * 0.22 +
+    // A pineland is damp as well as cold: the taiga hearts close
+    // their own canopy, and where the noise dips the stand opens
+    // into the clearings a logging country needs.
+    pinelandAt(tx, ty) * 0.3;
   // The edge-harmony law: an authored tree line keeps going as wild
   // forest; a road stub leaving a gate dries into an open clearing.
   return edgeBlendMoisture(seed, tx, ty, m);
@@ -196,11 +217,17 @@ export function moistureAt(seed: number, tx: number, ty: number): number {
  * the treeline, so the pine front advances in tongues and islands,
  * never a ruled line. 0 in the warm south, 1 in the deep north; the
  * rag can never push a southern meadow over the pine threshold.
+ *
+ * THE PINELANDS lift it locally: latitude alone can only ever draw
+ * horizontal bands, and the Pinereach is a PLACE — a great wood that
+ * runs south down the east country long past the line where pine
+ * should have given up. The lift is what lets a named forest walk
+ * out of its own latitude and fade honestly as it goes.
  */
 export function coldAt(seed: number, tx: number, ty: number): number {
   const lat = Math.min(1, Math.max(0, (-ty - 40) / 180));
   const rag = (fbm(seed + 31337, tx * 0.025, ty * 0.025, 2) - 0.5) * 0.35;
-  return Math.min(1, Math.max(0, lat + rag));
+  return Math.min(1, Math.max(0, lat + rag + pinelandAt(tx, ty) * 0.55));
 }
 
 /** Below this world-y everything defaults to solid cave (dungeon land). */

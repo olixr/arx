@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "hale_watch_uneasy__hub",
       "text": "Something's set up shop on my fourteen miles, uninvited. I keep a ledger of who works this road. They're not in it.",
       "choices": [
         {
@@ -24,21 +25,25 @@
     },
     {
       "id": "mark",
+      "voice": "hale_watch_uneasy__mark",
       "text": "There's your mark. The post can't leave the lamp, so the errand's yours.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
+      "voice": "hale_watch_uneasy__remark",
       "text": "The mark's on your chart. It hasn't moved.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "who",
+      "voice": "hale_watch_uneasy__who",
       "text": "Fires say brigand, tracks say more than four. Past that I'd be guessing.",
       "next": "hub"
     },
     {
       "id": "pass",
+      "voice": "hale_watch_uneasy__pass",
       "text": "Then walk the middle of the road and don't stop to look."
     }
   ]

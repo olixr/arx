@@ -10,6 +10,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "bretta_forge__hub",
       "text": "Forge's hot. Speak.",
       "choices": [
         {
@@ -32,16 +33,19 @@
     },
     {
       "id": "teach",
+      "voice": "bretta_forge__teach",
       "text": "Scrolls on my shelf. Every pattern the guilds teach, jewellery to plate. Buy the one your hands are ready for, no higher. The metal will tell you if you've flattered yourself. Copper and tin first. Everyone starts at copper and tin.",
       "next": "hub"
     },
     {
       "id": "busy",
+      "voice": "bretta_forge__busy",
       "text": "Two roads' worth of horseshoes. A bank's worth of hinges. Every plough blade from here to the hedgerows. And lately, arrowheads. More than I like. Hask doubled his order last month.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "bretta_forge__browse",
       "text": "Take your time. The steel's not going anywhere.",
       "hooks": [
         {
@@ -52,6 +56,7 @@
     },
     {
       "id": "warm",
+      "voice": "bretta_forge__warm",
       "text": "That's what the fire's for. Warm them, then put them to work."
     }
   ]

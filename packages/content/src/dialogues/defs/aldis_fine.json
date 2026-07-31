@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "aldis_fine__greet",
       "text": "Stop there. Your name's in the bad column, and the gate doesn't serve that column. The book sets a price: coin against the harm done.",
       "choices": [
         { "text": "How much?", "next": "quote" },
@@ -15,17 +16,20 @@
     },
     {
       "id": "quote",
+      "voice": "aldis_fine__quote",
       "text": "She runs a finger down the column.",
       "hooks": [{ "kind": "fine", "faction": "fordgate", "quote": true }],
       "next": "greet"
     },
     {
       "id": "pay",
+      "voice": "aldis_fine__pay",
       "text": "She opens the strongbox and waits.",
       "hooks": [{ "kind": "fine", "faction": "fordgate" }]
     },
     {
       "id": "bye",
+      "voice": "aldis_fine__bye",
       "text": "Then walk wide of my gate."
     }
   ]

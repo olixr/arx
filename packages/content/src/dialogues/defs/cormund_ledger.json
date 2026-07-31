@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "cormund_ledger__greet",
       "text": "Welcome to the Amberford bank. Deposits at the counter, withdrawals at the counter, and the vault behind me holds both.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "cormund_ledger__hub",
       "text": "How may the bank serve?",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "how",
+      "voice": "cormund_ledger__how",
       "text": "Use the *bank chests*, one by each rug. What you put in is yours, recorded twice, and reachable from any bank chest in any town. Coin in a ledger travels faster than coin in a pocket, and is considerably harder to stab. The service is free.",
       "next": "hub"
     },
     {
       "id": "toll",
+      "voice": "cormund_ledger__toll",
       "text": "My father kept the ford toll in a wooden box with a wooden lock. The autumn the Redmasks chained the ford, they walked off with it, box and all. Captain Aldis broke the chain. I built the vault. Between us, it has not happened twice.",
       "next": "hub"
     },
     {
       "id": "odele",
+      "voice": "cormund_ledger__odele",
       "text": "Bursar Odele, of the Bank of Silverfall. Every charter bank on the two roads clears through her vault row. Her letters arrive with each caravan. Terse. Exact. I have kept every one.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "cormund_ledger__bye",
       "text": "Good day. The counter is here when you need it."
     }
   ]

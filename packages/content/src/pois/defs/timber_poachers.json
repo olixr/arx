@@ -1,0 +1,44 @@
+{
+  "id": "timber_poachers",
+  "name": "The Wardline Cut",
+  "description": "Axe-thieves working the old wood past Pinewatch's boundary line. Weight 0: authored only, because a poacher camp means nothing anywhere except beside the line it crosses. Breaking it sets poi_wardline_broken, and it grows bolder every season nobody does.",
+  "tiers": [4, 5],
+  "weight": 0,
+  "prefabs": ["poi_wardline_cut"],
+  "garrison": [
+    { "npc": "brigand", "count": [2, 3], "role": "holdfast" },
+    { "npc": "brigand_archer", "count": [1, 2], "role": "sentry", "patrol": true },
+    {
+      "npc": "brigand_reaver",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 3,
+      "names": ["Haldor Two-Cut", "The Sawyer", "Rig Crossgrain", "Old Mattock", "Vell of the Skids"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "chestWarded": true,
+  "clearedFlag": "poi_wardline_broken",
+  "cues": {
+    "clearing": 5,
+    "approachPath": true,
+    "scatter": [{ "tile": "Stump", "count": 5 }]
+  },
+  "boldness": {
+    "satellites": true,
+    "stages": [
+      { "garrison": [{ "npc": "brigand", "count": [1, 2], "role": "holdfast" }], "scatter": [{ "tile": "Stump", "count": 4 }] },
+      {
+        "garrison": [{ "npc": "brigand_archer", "count": [1, 1], "role": "sentry", "patrol": true }],
+        "scatter": [{ "tile": "Stump", "count": 4 }]
+      },
+      { "garrison": [{ "npc": "brigand_reaver", "count": [1, 1], "role": "holdfast" }] }
+    ]
+  },
+  "signs": [
+    {
+      "title": "WARDLINE",
+      "lines": ["no axe past this stone", "set by the town, kept by the town"]
+    }
+  ]
+}

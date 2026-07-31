@@ -38,6 +38,25 @@ export interface DangerAnchor {
    * stone's throw down the road.
    */
   haven?: boolean;
+  /**
+   * THE DREAD LAW — the mirror of the haven, and the answer to a
+   * question the band march cannot answer on its own: why is the
+   * short way the bad way?
+   *
+   * Distance from a hearth is a fine model of danger right up until
+   * the world has NAMED COUNTRY in it. A wood everyone walks around
+   * is not dangerous because it is far; it is dangerous because it is
+   * that wood. A dread adds tiers inside its safeR and one fewer on
+   * the graded rim past it (the haven's relief, run backwards), so a
+   * shortcut that saves a day of walking can cost more than the long
+   * lamped road it skips — and the map, the music, and the spawn
+   * tables all agree about it, because they all read this one field.
+   *
+   * Dreads NEVER set the march: a bad wood cannot re-origin the
+   * bands any more than a campfire can. And they never reach inside
+   * a hearth's safe radius, because a town is a town.
+   */
+  dread?: number;
 }
 
 /** Highest danger tier. */
@@ -69,9 +88,15 @@ export function dangerAt(
   // stays defined.
   let edge = Infinity;
   let relief = 0;
+  let dread = 0;
   for (const a of anchors) {
     const d = Math.hypot(tx - a.x, ty - a.y) - a.safeR;
-    if (a.haven) {
+    if (a.dread) {
+      // The dread law: bad country, graded like a haven's relief and
+      // signed the other way. It never joins the march.
+      const add = d <= 0 ? a.dread : d < HAVEN_FADE * 2 ? a.dread - 1 : 0;
+      if (add > dread) dread = add;
+    } else if (a.haven) {
       if (d <= 0) return 0;
       const r = d < HAVEN_FADE ? 2 : d < HAVEN_FADE * 2 ? 1 : 0;
       if (r > relief) relief = r;
@@ -80,11 +105,12 @@ export function dangerAt(
     }
   }
   if (edge === Infinity) edge = Math.hypot(tx, ty);
+  // A town is a town: no wood's reputation reaches inside a hearth.
   if (edge <= 0) return 0;
 
   const base = Math.min(DANGER_MAX, 1 + Math.floor(edge / DANGER_BAND));
   // Slow wobble bends band borders by at most one tier either way.
   const j = fbm(seed ^ JITTER_SALT, tx * 0.011, ty * 0.011, 2);
   const jitter = j > 0.62 ? 1 : j < 0.38 ? -1 : 0;
-  return Math.max(1, Math.min(DANGER_MAX, base + jitter - relief));
+  return Math.max(1, Math.min(DANGER_MAX, base + jitter - relief + dread));
 }

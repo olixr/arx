@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_lean_winter_turnin__paid",
       "text": "Four head. The ford will feel it by first frost, and feel who to thank a little after. Welcome to the better column.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_lean_winter" }]
     }

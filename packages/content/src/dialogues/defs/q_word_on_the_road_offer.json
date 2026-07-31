@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_word_on_the_road_offer__hub",
       "text": "You came in off the roads, so you saw it: cold fires, cut fences. Bands working the marches again. I want four of them down, and I don't much mind which four. Take the work?",
       "hooks": [{ "kind": "quest_offer", "quest": "word_on_the_road" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_word_on_the_road_offer__sworn",
       "text": "Camps drift. Ask the watch what stands near, or walk until the grass goes burned. That's their country. Report when it's four.",
       "hooks": [{ "kind": "quest_accept", "quest": "word_on_the_road" }]
     },
     {
       "id": "declined",
+      "voice": "q_word_on_the_road_offer__declined",
       "text": "Then keep to the walls after dusk. That's not a figure of speech."
     }
   ]

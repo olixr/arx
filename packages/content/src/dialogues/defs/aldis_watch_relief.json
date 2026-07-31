@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "aldis_watch_relief__hub",
       "text": "The book got a good entry for once: camp broken, road open. By all accounts, your doing.",
       "choices": [
         { "text": "The road's yours again.", "next": "thanks" },
@@ -15,15 +16,18 @@
     },
     {
       "id": "thanks",
+      "voice": "aldis_watch_relief__thanks",
       "text": "It's the town's road. The town breathes easier tonight. I've logged the deed under your name."
     },
     {
       "id": "quiet",
+      "voice": "aldis_watch_relief__quiet",
       "text": "Quiet, for now. I know better than to trust it. I'll take it anyway.",
       "next": "hub"
     },
     {
       "id": "salute",
+      "voice": "aldis_watch_relief__salute",
       "text": "Waker."
     }
   ]

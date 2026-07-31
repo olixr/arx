@@ -15,11 +15,13 @@
  "nodes": [
   {
    "id": "sniff",
+   "voice": "dunna_hearthfire__sniff",
    "text": "Smell that? Yard fire's going. Midday I do the stew out there. The indoor hearth keeps you warm, love. The yard fire does the cooking.",
    "next": "offer"
   },
   {
    "id": "offer",
+   "voice": "dunna_hearthfire__offer",
    "text": "Here's the arrangement, same as I give every waker: the yard fire is yours whenever it's lit. Catch a trout off Peld's dock, cook it on my coals, no charge. Peld keeps his own fire down the shore, if you'd rather smell like the pond. And when you're tired of your own cooking, the board's right here.",
    "choices": [
     {
@@ -37,6 +39,7 @@
   },
   {
    "id": "teach",
+   "voice": "dunna_hearthfire__teach",
    "text": "Trout first, then bread. Trout teaches you the fire. Bread is Garton's flour, water, and the nerve to leave it alone. After that, come ask me about stew. Board's here when you get hungry.",
    "hooks": [
     {
@@ -47,6 +50,7 @@
   },
   {
    "id": "board",
+   "voice": "dunna_hearthfire__board",
    "text": "Sit, point, eat. The stew's the pride of the house, and the cake is Perl's apples.",
    "hooks": [
     {

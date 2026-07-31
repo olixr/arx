@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_reavers_mark_offer__hub",
       "text": "Every band answers to a *reaver*, the one who keeps the shares. Break the biggest camp standing and take his mark. Then carry it past me, to *Ansel* at the Waykeepers' Hall. The registry outlives my temper. Will you do it?",
       "hooks": [{ "kind": "quest_offer", "quest": "the_reavers_mark" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_reavers_mark_offer__sworn",
       "text": "By the coat, and by everyone else standing behind him. Find the camp with a name in it. Mind the archers.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_reavers_mark" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_reavers_mark_offer__declined",
       "text": "Then it keeps. Reavers always do."
     }
   ]

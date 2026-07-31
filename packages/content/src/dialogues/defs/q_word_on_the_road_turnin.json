@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_word_on_the_road_turnin__paid",
       "text": "Four down, and writs to prove whose. _Redmask_ hand. I'd know it asleep. That name built this gate, and filled a plaque doing it. Good work. I don't say that to be kind.",
       "hooks": [{ "kind": "quest_turnin", "quest": "word_on_the_road" }]
     }

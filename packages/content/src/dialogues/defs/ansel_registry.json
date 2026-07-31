@@ -15,11 +15,13 @@
  "nodes": [
   {
    "id": "page",
+   "voice": "ansel_registry__page",
    "text": "You've been to Merra's shop. People come from her wall to my book, and they always stand just where you're standing. Yes. *Edwin's* page is here. Signed north in his own hand, the spring of the early wolves. No homecoming mark.",
    "next": "read"
   },
   {
    "id": "read",
+   "voice": "ansel_registry__read",
    "text": "I'll tell you what the registry knows that the cape on her wall doesn't: his caravan made the Fork. He gave his place at the palisade to a tinsmith's family and stood the last watch outside the wall himself. The sergeant's report says the lamps never went out that night. _He kept them lit._",
    "choices": [
     {
@@ -40,10 +42,12 @@
   },
   {
    "id": "knows",
+   "voice": "ansel_registry__knows",
    "text": "She knows the shape of it. She's never asked for the page, and I don't press. If she ever asks, the book is hers. Until then I read his name to the braziers each feast, and she keeps the cape clean. Between us he stays remembered. Thank you for asking."
   },
   {
    "id": "stand",
+   "voice": "ansel_registry__stand",
    "text": "Peace on his road, wherever it went. And on yours. Signed and marked, if I have any say in it."
   }
  ]

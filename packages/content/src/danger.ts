@@ -39,6 +39,23 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // runs tier 4-5: the deep south is a frontier the town lights, not
   // one it tames.
   { x: 356, y: 292, safeR: 64, haven: true },
+  // Pinewatch — the town that watches the deep wood, and the third
+  // HAVEN. Its lamp keeps the muster yard and the boom tier 0, and
+  // its country bands tier 4 (levels 22-34) all the way round: the
+  // first town the Dawnlands ask a made adventurer to earn. North
+  // across the Glasswater and east past the Wardline the field goes
+  // to 5 and stays there — the old wood is watched, never held.
+  { x: 584, y: -136, safeR: 64, haven: true },
+  // THE BLACKPINE — the first DREAD in the Dawnlands, and the reason
+  // the Sparway is the bad way. The trail between Amberford and
+  // Pinewatch is barely half the Timber Road's length and passes far
+  // nearer both towns, so the band march alone would have made the
+  // shortcut the SAFE road: exactly backwards. The wood answers for
+  // itself instead. Two tiers inside the line, one on the rim, and
+  // nothing at all inside anyone's walls (the dread never reaches
+  // into a hearth). Nobody put this here; the wood was always like
+  // this, and the Timber Road's whole existence is the argument.
+  { x: 440, y: -96, safeR: 88, dread: 2 },
 ];
 
 /**

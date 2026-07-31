@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "nix_cart__hub",
       "text": "Wheel's off, kettle's on. I'm parked till the axle says otherwise.",
       "choices": [
         { "text": "What do you sell?", "next": "browse" },
@@ -14,11 +15,13 @@
     },
     {
       "id": "browse",
+      "voice": "nix_cart__browse",
       "text": "Parts, keys, the odd sharp thing. Two hands' worth. Have a look.",
       "hooks": [{ "kind": "shop", "shop": "peddler_tinker" }]
     },
     {
       "id": "why",
+      "voice": "nix_cart__why",
       "text": "Town smiths fix what's broken. Out here things stay broken longer. Better custom.",
       "next": "hub"
     }

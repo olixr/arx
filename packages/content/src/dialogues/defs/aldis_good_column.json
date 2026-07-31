@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "aldis_good_column__greet",
    "text": "Gate's quiet. Your name's in the good column. The watch reads that book every shift.",
    "choices": [
     {
@@ -28,11 +29,13 @@
   },
   {
    "id": "work",
+   "voice": "aldis_good_column__work",
    "text": "My rounds are covered. Folk with work to give carry a mark over their heads. Go and ask.",
    "next": "greet"
   },
   {
    "id": "bye",
+   "voice": "aldis_good_column__bye",
    "text": "Pass. You don't need checking."
   }
  ]

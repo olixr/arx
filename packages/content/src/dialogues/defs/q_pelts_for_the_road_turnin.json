@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_pelts_for_the_road_turnin__paid",
       "text": "Six, and clean. Somebody taught you skinning, or you listened the first time. Three cloaks lined, one road-death fewer this winter, the way I count it.",
       "hooks": [{ "kind": "quest_turnin", "quest": "pelts_for_the_road" }]
     }

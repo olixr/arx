@@ -89,6 +89,14 @@ const LEGEND: Record<string, number> = {
   '~': Tile.WaterShallow,
   '%': Tile.Tilled,
   '*': Tile.WheatMid,
+  // The Pinereach extension: taiga, snow, a garrison curtain, and the
+  // one bench a logging camp is actually built around.
+  j: Tile.TreePine,
+  J: Tile.SaplingPine,
+  N: Tile.Snow,
+  A: Tile.WallGarrison,
+  U: Tile.GateGarrison,
+  d: Tile.Sawhorse,
 };
 
 interface Marker {
@@ -962,6 +970,65 @@ const companyTollhouse = sketch(
   ],
 );
 
+/**
+ * THE HOARGATE (the Pinereach epic) — the Crown's garrison across the
+ * narrows north of Silverfall. Two towers, a covered passage, and a
+ * gate in the NORTH curtain because that is the direction nobody
+ * sensible walks: the muster yard opens south onto the road, so a
+ * traveller reads the fire, the benches and the boards before they
+ * ever read the gate. Snow on the shoulders, pines on both hems, and
+ * three signs that do not hedge.
+ */
+const hoargateFort = sketch(
+  'poi_hoargate',
+  'The Hoargate',
+  [
+    '____,,,jjj,,,,,jjj,,___',
+    '__,....N........N...,__',
+    '_,.AAAAAAAUUUAAAAAAA.,_',
+    '_,.A#zzz#SSSSS#zzz#A.,_',
+    '_,.A#SbS#SSSSS#SbS#A.,_',
+    '_,.A#SKS#SSSSS#SKS#A.,_',
+    '_,.A##y##SSSSS##y##A.,_',
+    '_,.ASnSSSSSSSSSSSnSA.,_',
+    '_,.ASSSeSSSfSSSeSSSA.,_',
+    '_,.ASSSaSSSSSSScSSSA.,_',
+    '_,.ASSSSSSSSSSSSSSSA.,_',
+    '_,.AAAAAAAUUUAAAAAAA.,_',
+    '_,...:::::::::::::...,_',
+    '__,....i.......i....,__',
+    '___,,,jjj,,,,,jjj,,,___',
+  ],
+);
+
+/**
+ * THE WARDLINE CUT (the Pinereach epic) — a poacher camp in the old
+ * wood east of Pinewatch. Everything in it is stolen work: a skid
+ * road dragged through the moss, great pines down in rows, spars
+ * stacked where no wain can legally reach them, and a lean-to that
+ * has been slept in too long to be one season's crime. The board at
+ * the foot is the town's own boundary marker, pulled up and re-used.
+ */
+const wardlineCut = sketch(
+  'poi_wardline_cut',
+  'The Wardline Cut',
+  [
+    '___,,jjj,,,,jjj,___',
+    '__,.u..:::::..u.,__',
+    '_,..u.:::::::.u..,_',
+    '_,.uu.:wwvww:.uu.,_',
+    '_,..u.:wpppw:.u..,_',
+    '_,.d..:wpEpw:..d.,_',
+    '_,....:wwwww:....,_',
+    '_,.c..:..f..:..a.,_',
+    '_,.cc.:.W.k.:.aa.,_',
+    '_,.u..:::::::..u.,_',
+    '_,..uu.:::::.uu..,_',
+    '__,..u...i...u..,__',
+    '___,,jjj,,,,jjj,___',
+  ],
+);
+
 export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
   [
     goblinCampRing,
@@ -1001,5 +1068,8 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     raiderSquat,
     // The Road's Fortune (living frontier, phase 5):
     peddlerRest,
+    // The Pinereach (the north wall and the deep wood):
+    hoargateFort,
+    wardlineCut,
   ].map((p) => [p.id, p]),
 );

@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_toll_owed_offer__hub",
       "text": "Standing arrangement, for road-friends: a hundred and twenty coins, source unasked. Call it a toll on the road you walk anyway.",
       "hooks": [{ "kind": "quest_offer", "quest": "toll_owed" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_toll_owed_offer__sworn",
       "text": "The ledger stays open. It always does.",
       "hooks": [{ "kind": "quest_accept", "quest": "toll_owed" }]
     },
     {
       "id": "declined",
+      "voice": "q_toll_owed_offer__declined",
       "text": "We do. Constantly. This was the polite version."
     }
   ]

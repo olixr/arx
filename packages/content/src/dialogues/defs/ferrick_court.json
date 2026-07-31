@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "ferrick_court__greet",
       "text": "Sit, if you like. The road was here before the towns, and the Company was here before the wardens. What do you want?",
       "choices": [
         { "text": "Who are you?", "next": "who" },
@@ -15,21 +16,25 @@
     },
     {
       "id": "who",
+      "voice": "ferrick_court__who",
       "text": "Ferrick. I keep the Company's ledger for this stretch. Two columns, no headings: people who are useful, and people who owe. You get to pick your column.",
       "next": "greet"
     },
     {
       "id": "place",
+      "voice": "ferrick_court__place",
       "text": "A tollhouse. The bar goes up for friends of the road and down for everyone else. The wardens hang lamps and call the road theirs. Lamps burn out. A debt doesn't.",
       "next": "greet"
     },
     {
       "id": "counter",
+      "voice": "ferrick_court__counter",
       "text": "Buying, and buying back. The Company's ledger runs both directions. Whatever arrives in your pack with a history stays off the page.",
       "hooks": [{ "kind": "shop", "shop": "company_post" }]
     },
     {
       "id": "bye",
+      "voice": "ferrick_court__bye",
       "text": "Then you're paying in walking."
     }
   ]

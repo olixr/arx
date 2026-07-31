@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "hask_roadgear__greet",
       "text": "Stop. Boots. Mm. They'll do to the Long Meadow. Past that, we should talk. Hask. Outfitter, fletcher. Last shop before the High Road.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "hask_roadgear__hub",
       "text": "Speak your business.",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "kit",
+      "voice": "hask_roadgear__kit",
       "text": "Arrows, double what you brought. A snare kit, so dinner doesn't cost steel. Spare bowstring. Dry socks. And be under a roof by nightfall. Most that die out there went out underprepared.",
       "next": "hub"
     },
     {
       "id": "waykeeper",
+      "voice": "hask_roadgear__waykeeper",
       "text": "Fifteen years. Escort sergeant, Amberford to the Last Lamp and back, more times than I've got teeth left. Retired the winter the worgs came down on the Fork rest and took two of mine _inside the fence line_. I keep their names off my tongue.",
       "next": "hub"
     },
     {
       "id": "aldis",
+      "voice": "hask_roadgear__aldis",
       "text": "Best cadet I ever shouted at. Only one who ever shouted back and was right. When the Toll War broke, she's the one who went out on the ice and broke the Redmask chain with a mattock. The town gave her the gate the same week.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "hask_roadgear__browse",
       "text": "Racks are yours. Buy for the road you're actually walking.",
       "hooks": [
         {

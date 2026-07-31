@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "wayward_watch_relief__hub",
       "text": "Quiet night. First in a while. The camp out there went dark, and word says that was you.",
       "choices": [
         { "text": "It's done.", "next": "done" },
@@ -15,15 +16,18 @@
     },
     {
       "id": "done",
+      "voice": "wayward_watch_relief__done",
       "text": "Then the fire's yours and so is the good log: nothing happened, all night. Best watch I've stood in a month."
     },
     {
       "id": "sharp",
+      "voice": "wayward_watch_relief__sharp",
       "text": "Always are. Quiet's when we listen hardest.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "wayward_watch_relief__bye",
       "text": "Paid for. We will."
     }
   ]

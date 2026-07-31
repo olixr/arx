@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "hale_watch_urgent__hub",
       "text": "It's grown. What was a camp is a garrison now, and garrisons don't pay toll, they charge it.",
       "choices": [
         {
@@ -24,21 +25,25 @@
     },
     {
       "id": "mark",
+      "voice": "hale_watch_urgent__mark",
       "text": "Marked. Sergeant Odessa logs 'road holds' every dusk. Keep her honest.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
+      "voice": "hale_watch_urgent__remark",
       "text": "Mark stands. So do they, last I looked.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "hold",
+      "voice": "hale_watch_urgent__hold",
       "text": "We hold the post. The road between posts I can't promise. That part's yours.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "hale_watch_urgent__bye",
       "text": "It does."
     }
   ]

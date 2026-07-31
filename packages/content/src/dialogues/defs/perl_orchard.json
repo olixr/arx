@@ -10,6 +10,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "perl_orchard__hub",
       "text": "Shade's free, the windfalls aren't. The cows taught me to say that up front. What brings you under my trees?",
       "choices": [
         {
@@ -38,16 +39,19 @@
     },
     {
       "id": "trees",
+      "voice": "perl_orchard__trees",
       "text": "My Hollis planted the old oak at the east end the year we married. Said a wedding ought to plant something that outlives it. I planted the rest around him when he passed, so he'd have company and I'd have somewhere to put my talking. Forty trees now. He always was a good listener. Being an orchard has only improved him.",
       "next": "hub"
     },
     {
       "id": "cows",
+      "voice": "perl_orchard__cows",
       "text": "The pasture cows have decided my windfalls belong to whoever reaches them first, meaning them. I've been to the moot about it *twice*. The fence was approved both times. Next morning that brindled old matriarch had the gate latch open, like she'd sat at the moot herself. I'll lose this war in the end. I mean to make her work for it, though.",
       "next": "hub"
     },
     {
       "id": "sweet",
+      "voice": "perl_orchard__sweet",
       "text": "Here, berry pressings and a slice of feast cake. Anybody polite enough to ask under the trees gets fed under them. {item:cake} That was Hollis's rule. I've kept it.",
       "hooks": [
         {
@@ -65,6 +69,7 @@
     },
     {
       "id": "bye",
+      "voice": "perl_orchard__bye",
       "text": "Mind where you step. Windfalls underfoot, and the cows count every one."
     }
   ]

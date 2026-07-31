@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "peld_crossing__greet",
       "text": "M-morning. Or whatever it is by now. The pond keeps its own clock.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "peld_crossing__hub",
       "text": "Need something?",
       "choices": [
         {
@@ -37,16 +39,19 @@
     },
     {
       "id": "saltmere",
+      "voice": "peld_crossing__saltmere",
       "text": "Down to *Saltmere*. In the end. Salt flats, grey gulls, boats with eyes painted on them. I walked up from there, when I was small. One day I'll pole somebody the whole way back down. When I've got the nerve.",
       "next": "hub"
     },
     {
       "id": "bell",
+      "voice": "peld_crossing__bell",
       "text": "So the pond knows I'm here. And so *Garton* knows. He'd never ask. But his window faces the water, and the bell saves him the walk. The wind rings it sometimes, on its own. I let it.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "peld_crossing__browse",
       "text": "Trout, mostly. The pond's generous if you're p-patient. Rod's for sale too, if you'd rather catch your own.",
       "hooks": [
         {
@@ -57,6 +62,7 @@
     },
     {
       "id": "bye",
+      "voice": "peld_crossing__bye",
       "text": "You too. Mind the reeds if you swim. They *are* clingy."
     }
   ]

@@ -5259,7 +5259,7 @@ export class GameServer {
 
   /** Settled anchors as wire quads [x, y, safeR, haven] for the client. */
   private anchorWire(): number[][] {
-    return SETTLED_ANCHORS.map((a) => [a.x, a.y, a.safeR, a.haven ? 1 : 0]);
+    return SETTLED_ANCHORS.map((a) => [a.x, a.y, a.safeR, a.haven ? 1 : 0, a.dread ?? 0]);
   }
 
   /**

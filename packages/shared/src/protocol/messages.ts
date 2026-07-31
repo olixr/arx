@@ -483,8 +483,9 @@ export interface S2CWelcome {
    */
   havens?: number[][];
   /**
-   * Settled anchors as [x, y, safeR, haven] quads — the LIVE hearth
-   * list. The geography is editable data now, so the client must not
+   * Settled anchors as [x, y, safeR, haven, dread] tuples — the LIVE
+   * hearth list (a trailing 0 dread is the ordinary case; an older
+   * server sends quads and the client simply reads no dread). The geography is editable data now, so the client must not
    * trust its bundled copy: absent (old server) it falls back to the
    * content constants, present it replaces them wholesale.
    */
@@ -505,7 +506,7 @@ export interface S2CHavens {
   t: 'havens';
   /** [x, y, safeR] triples — replaces the whole list. */
   list: number[][];
-  /** Settled-anchor quads [x, y, safeR, haven] — present when the plan itself changed. */
+  /** Settled-anchor tuples [x, y, safeR, haven, dread] — present when the plan itself changed. */
   settled?: number[][];
 }
 

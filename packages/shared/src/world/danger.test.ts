@@ -96,3 +96,39 @@ test('haven never re-origins the band march', () => {
     );
   }
 });
+
+// ---------------------------------------------------------------- dread
+const DREAD = { x: 600, y: 600, safeR: 80, dread: 2 } as const;
+const WITH_DREAD: DangerAnchor[] = [...ANCHORS, { ...DREAD }];
+
+test('dread: bad country reads worse than its distance, on a graded rim', () => {
+  // Inside the line: the full weight.
+  for (const [dx, dy] of [[0, 0], [40, 0], [0, -60], [50, 50]] as const) {
+    const with_ = dangerAt(SEED, DREAD.x + dx, DREAD.y + dy, WITH_DREAD);
+    const without = dangerAt(SEED, DREAD.x + dx, DREAD.y + dy, ANCHORS);
+    assert.equal(
+      with_,
+      Math.min(DANGER_MAX, without + DREAD.dread),
+      `dread heart at +${dx},${dy} read ${with_} against ${without}`,
+    );
+  }
+  // The rim carries one fewer tier, and past twice the fade, nothing.
+  for (let d = DREAD.safeR + 1; d < DREAD.safeR + HAVEN_FADE * 2 + 40; d += 3) {
+    const with_ = dangerAt(SEED, DREAD.x + d, DREAD.y, WITH_DREAD);
+    const without = dangerAt(SEED, DREAD.x + d, DREAD.y, ANCHORS);
+    const add = d - DREAD.safeR < HAVEN_FADE * 2 ? DREAD.dread - 1 : 0;
+    assert.equal(with_, Math.min(DANGER_MAX, without + add), `rim at +${d}`);
+  }
+});
+
+test('dread never reaches inside a hearth, and never joins the march', () => {
+  // A dread laid straight over a settled anchor changes nothing inside it.
+  const overTown: DangerAnchor[] = [...ANCHORS, { x: 48, y: 48, safeR: 200, dread: 3 }];
+  assert.equal(dangerAt(SEED, 48, 48, overTown), 0);
+  assert.equal(dangerAt(SEED, 100, 48, overTown), 0);
+  // With NO settled anchor at all, a lone dread must not become one:
+  // the march still measures from the world origin.
+  const lone: DangerAnchor[] = [{ x: 600, y: 600, safeR: 80, dread: 2 }];
+  const far = dangerAt(SEED, -900, -900, lone);
+  assert.ok(far >= 1 && far <= DANGER_MAX);
+});

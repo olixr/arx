@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_red_mark_offer__hub",
       "text": "Small work first. Carry the Company's word to Calder, under the bank's shadow in Silverfall. He asks no questions. The ford's registry will mind, if it ever learns. That's the price of the better column.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_red_mark" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_red_mark_offer__sworn",
       "text": "The word is one sentence. Calder will know the shape of it.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_red_mark" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_red_mark_offer__declined",
       "text": "Then you're cargo, not courier."
     }
   ]
