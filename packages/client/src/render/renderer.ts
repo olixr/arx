@@ -13611,7 +13611,7 @@ export class Renderer {
     [Tile.Table, { hw: 0.85, up: 1.1, down: 0.5, sortOff: 0.72, cap: 12 }],
     [Tile.Counter, { hw: 0.85, up: 1.4, down: 0.5, sortOff: 0.72, cap: 12 }],
     [Tile.Bench, { hw: 0.75, up: 0.75, down: 0.45, sortOff: 0.68, cap: 8 }],
-    [Tile.Bed, { hw: 0.85, up: 1.35, down: 0.6, sortOff: 0.72, cap: 4 }],
+    [Tile.Bed, { hw: 0.85, up: 1.35, down: 1.0, sortOff: 0.72, cap: 4 }],
     [Tile.MarketStall, { hw: 1.35, up: 2.4, down: 0.8, sortOff: 0.78, cap: 8 }],
     // Fence left this map for good: the rebuilt fence paints its own
     // structural outline live (the wall law — exposed edges only), so
@@ -17529,6 +17529,18 @@ export class Renderer {
                   ? 'w'
                   : 'n';
         }
+        // THE WHOLE BED (v3): vertical beds draw as ONE piece from
+        // the head tile too — run-mates yield. And the piece is sized
+        // to the BODY (the rig is the unit of measure, user law): the
+        // deck runs a full body-length south of the pillow, past the
+        // tile footprint if it must — unless a wall stands at the
+        // foot, where the frame keeps its compact cot proportions.
+        let runY1 = ty;
+        if (head === 'n' && (bn || bs)) {
+          if (bn) return { sortY: ty + 0.72, draw: () => {} };
+          while (isBed(game.world.groundAt(tx, runY1 + 1))) runY1++;
+        }
+        const runV = runY1 - ty;
         // N-S runs merge into one long bed; the quilt colorway is keyed
         // to the run's head tile so both halves wear the same cloth.
         let ay = ty;
@@ -17557,30 +17569,28 @@ export class Renderer {
         // south of the bed, where the old floor-level foot art was
         // legitimately occluded and read as cut off.
         const bedH = s * 0.3;
-        const wallS = isWall(game.world.groundAt(tx, ty + 1));
+        const wallS = isWall(game.world.groundAt(tx, runY1 + 1));
         const vert = head === 'n';
-        // Floor lines: the deck footprint. A lone bed overdraws south
-        // (the 1.15-tile body must fit) — unless a wall stands at the
-        // foot, where the bed stands OFF it so its base stays visible
-        // over the wall's sunken crown.
-        const yFf = vert ? p.y - syT * 0.5 : p.y - syT * 0.44;
+        // Floor lines: THE BODY-SCALE DECK. The pillow sits at the
+        // head tile's north line and the deck runs a full body-length
+        // south (1.62 tiles past a lone tile's centre, 0.75 past a
+        // run's foot) so a full-size sleeper lies out whole — art
+        // greater than footprint, exactly like a tall tree's canopy.
+        // A wall at the foot caps it at the compact cot. PARITY: the
+        // seat registry's `span` mirrors these constants.
+        const yFf = vert ? p.y - syT * 0.5 : p.y - syT * 0.5;
         const yFn = vert
-          ? bs
-            ? p.y + syT * 0.5
-            : wallS
-              ? p.y + syT * 0.4
-              : bn
-                ? p.y + syT * 0.48
-                : p.y + syT * 0.58
-          : wallS
-            ? p.y + syT * 0.42
-            : p.y + syT * 0.5;
+          ? p.y + syT * (runV + (wallS ? 0.4 : runV > 0 ? 0.75 : 1.62))
+          : p.y + syT * 0.58;
         const dTop = yFf - bedH;
         const dBot = yFn - bedH;
         return {
           sortY: ty + 0.72,
-          body: bn || bs || horiz ? undefined : stationBody(0.85, 1.35, 0.6),
-          drawShadow: bs ? undefined : () => this.castEdgeQuad(x0, yFn, x1, yFn, 0.3),
+          // Run mates never reach here (they yield above), so every
+          // drawn bed is a whole piece: full shadow, and the lone
+          // body pads DOWN for the body-length deck (rings cover runs).
+          body: bn || bs || horiz ? undefined : stationBody(0.85, 1.35, 1.35),
+          drawShadow: () => this.castEdgeQuad(x0, yFn, x1, yFn, 0.3),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past
@@ -17590,20 +17600,6 @@ export class Renderer {
             const ctx = this.ctx;
             // Patchwork blocks under seam lines — a quilt sewn from
             // scraps, softened by a white fold-back of the sheet.
-            const quilt = (qx0: number, qy0: number, qw: number, qh: number, cols: number, rows: number) => {
-              ctx.fillStyle = qMain;
-              ctx.fillRect(qx0, qy0, qw, qh);
-              ctx.fillStyle = qDark;
-              for (let r2 = 0; r2 < rows; r2++) {
-                for (let c3 = 0; c3 < cols; c3++) {
-                  if ((r2 + c3) % 2 === 0) continue;
-                  ctx.fillRect(qx0 + (qw / cols) * c3, qy0 + (qh / rows) * r2, qw / cols, qh / rows);
-                }
-              }
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
-              for (let r2 = 1; r2 < rows; r2++) ctx.fillRect(qx0, qy0 + (qh / rows) * r2 - s * 0.008, qw, s * 0.016);
-              for (let c3 = 1; c3 < cols; c3++) ctx.fillRect(qx0 + (qw / cols) * c3 - s * 0.008, qy0, s * 0.016, qh);
-            };
             // A bedpost capped with a turned finial.
             const finialPost = (fx2: number, fy2: number, ph2: number) => {
               ctx.fillStyle = postC;
@@ -17619,7 +17615,7 @@ export class Renderer {
               // FACING THE CAMERA. Everything soft rides the raised
               // deck [dTop..dBot]; everything structural stands on the
               // floor lines and shows honest height below the deck.
-              if (!bs) {
+              {
                 // Contact pool + open under-bed shadow first — the
                 // gap under a real frame is darker than the room.
                 ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
@@ -17627,7 +17623,7 @@ export class Renderer {
                 ctx.fillStyle = 'rgba(18, 12, 26, 0.13)';
                 ctx.fillRect(x0 + s * 0.01, dBot + s * 0.15, x1 - x0 - s * 0.02, yFn - dBot - s * 0.16);
               }
-              if (!bn) {
+              {
                 // Headboard first — the far plane. Posts stand ON the
                 // far floor line; the board of matched planks spans
                 // them (boards, not a void — a dark recess reads as an
@@ -17654,7 +17650,7 @@ export class Renderer {
               // Side rails frame the tick along the deck, a lit lip
               // proud of the mattress, rimmed dark so the frame
               // separates from same-lumber floorboards.
-              const railH = dBot - dTop + (bs ? 0 : s * 0.02);
+              const railH = dBot - dTop + s * 0.02;
               ctx.fillStyle = frameC;
               ctx.fillRect(x0 - s * 0.055, dTop - s * 0.035, s * 0.055, railH + s * 0.035);
               ctx.fillRect(x1, dTop - s * 0.035, s * 0.055, railH + s * 0.035);
@@ -17672,11 +17668,11 @@ export class Renderer {
               ctx.fillStyle = shade(tickC, -8);
               ctx.fillRect(x0, dTop, s * 0.045, dBot - dTop);
               ctx.fillRect(x1 - s * 0.045, dTop, s * 0.045, dBot - dTop);
-              if (!bn) {
+              {
                 ctx.fillStyle = 'rgba(36, 22, 10, 0.09)';
                 ctx.fillRect(x0, dTop, x1 - x0, (dBot - dTop) * 0.2);
               }
-              if (!bn) {
+              {
                 // Pillow: plumped against the board, creased, casting
                 // its own soft line on the sheet.
                 ctx.fillStyle = '#f4efe0';
@@ -17693,7 +17689,7 @@ export class Renderer {
               // SOUTH FACE (the fix): below the deck's near edge the
               // frame shows its boards, then the shadow gap, then
               // corner feet standing on the near floor line.
-              if (!bs) {
+              {
                 ctx.fillStyle = shade(frameC, -4);
                 ctx.fillRect(x0 - s * 0.02, dBot, x1 - x0 + s * 0.04, s * 0.15);
                 ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
@@ -17704,16 +17700,9 @@ export class Renderer {
                 ctx.fillRect(x1 - s * 0.05, yFn - s * 0.13, s * 0.065, s * 0.13);
               }
               // The quilt on the deck…
-              const yQ = bn ? dTop : dTop + (dBot - dTop) * (bs ? 0.55 : 0.4);
-              quilt(x0 - s * 0.03, yQ, x1 - x0 + s * 0.06, dBot - yQ, 4, bs || bn ? 2 : 3);
-              if (!bn) {
-                // Fold-back sheet band at the quilt's head edge.
-                ctx.fillStyle = '#f4efe0';
-                ctx.fillRect(x0 - s * 0.03, yQ - s * 0.055, x1 - x0 + s * 0.06, s * 0.075);
-                ctx.fillStyle = shade('#f4efe0', -11);
-                ctx.fillRect(x0 - s * 0.03, yQ - s * 0.005, x1 - x0 + s * 0.06, s * 0.025);
-              }
-              if (!bs) {
+              const yQ = dTop + (dBot - dTop) * 0.4;
+              this.bedCoversVert(x0, x1, yQ, dBot, qMain, qDark);
+              {
                 // …DRAPING over the south face — cloth falling over an
                 // edge is what makes the lift read.
                 ctx.fillStyle = shade(qMain, -10);
@@ -17818,19 +17807,11 @@ export class Renderer {
               ctx.fillRect(px2 + s * 0.02, pyMid + ph3 * 0.42 - s * 0.02, pw2 - s * 0.04, s * 0.022);
               ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
               ctx.fillRect(px2 + pw2 * 0.3, pyMid - ph3 * 0.44, s * 0.09, s * 0.024);
-              // The quilt claims the foot 58% of the deck…
+              // The quilt claims the foot 58% of the deck (one shared
+              // painter — the sleeper's tuck repaints the SAME art).
               const qw2 = (x1 - x0) * 0.58;
               const qx0 = sgn > 0 ? fx0 - s * 0.02 : fx0 - qw2 + s * 0.02;
-              quilt(qx0, dTop - s * 0.02, qw2, dBot - dTop + s * 0.02, 3, 3);
-              // …and recedes with the deck under the same far shade.
-              ctx.fillStyle = 'rgba(36, 22, 10, 0.09)';
-              ctx.fillRect(qx0, dTop - s * 0.02, qw2, (dBot - dTop) * 0.32);
-              // Fold-back sheet band along the quilt's head edge.
-              const bandX = sgn > 0 ? qx0 + qw2 - s * 0.01 : qx0 - s * 0.065;
-              ctx.fillStyle = '#f4efe0';
-              ctx.fillRect(bandX, dTop - s * 0.02, s * 0.075, dBot - dTop + s * 0.02);
-              ctx.fillStyle = shade('#f4efe0', -11);
-              ctx.fillRect(bandX + (sgn > 0 ? s * 0.05 : 0), dTop - s * 0.02, s * 0.025, dBot - dTop + s * 0.02);
+              this.bedCoversSide(qx0, qw2, dTop, dBot, sgn, qMain, qDark);
               // …and DRAPES over the south rail: hem shadow + the
               // hanging corner falling down the face.
               ctx.fillStyle = shade(qMain, -10);
@@ -22066,59 +22047,92 @@ export class Renderer {
   }
 
   /**
-   * THE TUCK: the covers repainted OVER a sleeper's lower body — an
-   * opaque quilt panel in the bed painter's own colorway, with the
-   * turned-down sheet along its head-side edge and soft fold lines.
-   * Painted in plain screen space after the rig, so the legs live
-   * under the blanket; alpha rides the recline blend.
+   * The bed's patchwork quilt — ONE painter shared by the bed case
+   * and the sleeper's tuck, so the covers over a body are pixel-
+   * identical to the covers on an empty bed (no invented rectangles,
+   * no strange edges — THE SAME CLOTH). Blocks under seam lines,
+   * softened by white thread.
    */
-  private paintBedTuck(
-    x: number,
-    y: number,
-    w: number,
-    h: number,
+  private quiltPatch(
+    qx0: number,
+    qy0: number,
+    qw: number,
+    qh: number,
+    cols: number,
+    rows: number,
     qMain: string,
     qDark: string,
-    k: number,
-    head: 'n' | 'e' | 'w',
   ): void {
-    if (h <= 0 || w <= 0) return;
-    // The covers pull over only once the body has mostly settled —
-    // and pull back FIRST on the rise, so a climbing body is never
-    // painted through a phantom blanket.
-    const a = Math.min(1, Math.max(0, (k - 0.45) / 0.35));
-    if (a <= 0) return;
     const ctx = this.ctx;
     const s = this.camera.scale;
-    ctx.save();
-    ctx.globalAlpha = a;
     ctx.fillStyle = qMain;
-    ctx.fillRect(x, y, w, h);
+    ctx.fillRect(qx0, qy0, qw, qh);
     ctx.fillStyle = qDark;
-    if (head === 'n') {
-      // Long rails shaded, sheet turned down at the chest line.
-      ctx.fillRect(x, y, 0.07 * s, h);
-      ctx.fillRect(x + w - 0.07 * s, y, 0.07 * s, h);
-      ctx.fillStyle = '#e8dfc8';
-      ctx.fillRect(x, y, w, 0.09 * s);
-      ctx.fillStyle = qDark;
-      ctx.fillRect(x, y + 0.09 * s, w, 0.025 * s);
-      ctx.globalAlpha *= 0.5;
-      ctx.fillRect(x + 0.06 * s, y + h * 0.45, w - 0.12 * s, 0.02 * s);
-      ctx.fillRect(x + 0.06 * s, y + h * 0.75, w - 0.12 * s, 0.02 * s);
-    } else {
-      ctx.fillRect(x, y, w, 0.06 * s);
-      ctx.fillRect(x, y + h - 0.06 * s, w, 0.06 * s);
-      const sheetX = head === 'e' ? x + w - 0.09 * s : x;
-      ctx.fillStyle = '#e8dfc8';
-      ctx.fillRect(sheetX, y, 0.09 * s, h);
-      ctx.fillStyle = qDark;
-      ctx.fillRect(head === 'e' ? sheetX - 0.025 * s : sheetX + 0.09 * s, y, 0.025 * s, h);
-      ctx.globalAlpha *= 0.5;
-      ctx.fillRect(x + w * 0.35, y + 0.05 * s, 0.02 * s, h - 0.1 * s);
-      ctx.fillRect(x + w * 0.68, y + 0.05 * s, 0.02 * s, h - 0.1 * s);
+    for (let r2 = 0; r2 < rows; r2++) {
+      for (let c3 = 0; c3 < cols; c3++) {
+        if ((r2 + c3) % 2 === 0) continue;
+        ctx.fillRect(qx0 + (qw / cols) * c3, qy0 + (qh / rows) * r2, qw / cols, qh / rows);
+      }
     }
-    ctx.restore();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+    for (let r2 = 1; r2 < rows; r2++)
+      ctx.fillRect(qx0, qy0 + (qh / rows) * r2 - s * 0.008, qw, s * 0.016);
+    for (let c3 = 1; c3 < cols; c3++)
+      ctx.fillRect(qx0 + (qw / cols) * c3 - s * 0.008, qy0, s * 0.016, qh);
+  }
+
+  /**
+   * A camera-facing bed's covers: the patchwork from the chest line
+   * down to the mattress edge, with the fold-back sheet band along
+   * the head edge. Row count derives from the quilt's own height so
+   * bed and tuck always agree on the pattern.
+   */
+  private bedCoversVert(
+    x0: number,
+    x1: number,
+    yQ: number,
+    dBot: number,
+    qMain: string,
+    qDark: string,
+  ): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const rows = Math.max(2, Math.round((dBot - yQ) / (0.3 * s)));
+    this.quiltPatch(x0 - s * 0.03, yQ, x1 - x0 + s * 0.06, dBot - yQ, 4, rows, qMain, qDark);
+    // Fold-back sheet band at the quilt's head edge.
+    ctx.fillStyle = '#f4efe0';
+    ctx.fillRect(x0 - s * 0.03, yQ - s * 0.055, x1 - x0 + s * 0.06, s * 0.075);
+    ctx.fillStyle = shade('#f4efe0', -11);
+    ctx.fillRect(x0 - s * 0.03, yQ - s * 0.005, x1 - x0 + s * 0.06, s * 0.025);
+  }
+
+  /**
+   * A side-on bed's covers: the foot-end patchwork with the deck's
+   * far-third shade and the vertical fold-back sheet band at the
+   * head edge. Shared by the painter and the sleeper's tuck.
+   */
+  private bedCoversSide(
+    qx0: number,
+    qw2: number,
+    dTop: number,
+    dBot: number,
+    sgn: number,
+    qMain: string,
+    qDark: string,
+  ): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const cols = Math.max(3, Math.round(qw2 / (0.3 * s)));
+    this.quiltPatch(qx0, dTop - s * 0.02, qw2, dBot - dTop + s * 0.02, cols, 3, qMain, qDark);
+    // …receding with the deck under the same far shade.
+    ctx.fillStyle = 'rgba(36, 22, 10, 0.09)';
+    ctx.fillRect(qx0, dTop - s * 0.02, qw2, (dBot - dTop) * 0.32);
+    // Fold-back sheet band along the quilt's head edge.
+    const bandX = sgn > 0 ? qx0 + qw2 - s * 0.01 : qx0 - s * 0.065;
+    ctx.fillStyle = '#f4efe0';
+    ctx.fillRect(bandX, dTop - s * 0.02, s * 0.075, dBot - dTop + s * 0.02);
+    ctx.fillStyle = shade('#f4efe0', -11);
+    ctx.fillRect(bandX + (sgn > 0 ? s * 0.05 : 0), dTop - s * 0.02, s * 0.025, dBot - dTop + s * 0.02);
   }
 
   private humanoidItem(e: {
@@ -22764,6 +22778,7 @@ export class Renderer {
           sitVariant,
           sitStyle: chairSit ? (seat!.kind === 'throne' ? 'throne' : 'chair') : 'floor',
           seatH: chairSit ? seat!.seatH : undefined,
+          sleepT: lieE,
           sheathT: sheathK,
         };
         // THE BED TAKES THE BODY — THE TUCK (v2; user verdict killed
@@ -22786,7 +22801,6 @@ export class Renderer {
           const bodyH = 1.17 * s * kSize;
           const syT2 = s * this.camera.yScale;
           const span = seat!.span ?? 1;
-          const lone = seat!.tiles.length === 1 && head === 'n';
           // Quilt colorway — MUST match the bed painter's QUILTS
           // table and its run-HEAD hash key (east end for an
           // east-headed run), or the tuck reads as a stranger's
@@ -22800,55 +22814,72 @@ export class Renderer {
             ['#75588a', '#8a6aa0'],
           ] as const;
           const [qDark, qMain] = QUILTS_TUCK[hashCoords(41, headTile.x, headTile.y) % 4]!;
+          // The covers pull over only once the body has mostly
+          // settled, and pull back FIRST on the rise — a climbing
+          // body is never painted through a phantom blanket.
+          const tuckA = Math.min(1, Math.max(0, (lieE - 0.45) / 0.35));
           ctx.save();
           if (head === 'n') {
-            // Deck extents from the painter's own formulas, relative
-            // to the anchor (mid-deck + 0.05), lifted bedH (0.3s)
-            // onto the mattress surface.
-            const dTop = p.y - (span / 2 + 0.05) * syT2 - 0.3 * s;
+            // Deck extents mirror the painter: pillow line at the
+            // head tile's north edge, deck running `span` world-tiles
+            // south (the body-scale stretch), lifted bedH (0.3s) onto
+            // the mattress. The anchor sits mid-FOOTPRINT (+0.04), so
+            // the head tile's north edge is footprint/2 + 0.04 north.
+            const dTop = p.y - (seat!.tiles.length / 2 + 0.04) * syT2 - 0.3 * s;
             const dBot = dTop + span * syT2;
-            const xL = p.x - 0.47 * s;
-            const xR = p.x + 0.47 * s;
-            // The crown settles just onto the pillow; feet follow at
-            // full body length, wherever that lands.
-            const feetY = dTop + 0.02 * s + bodyH;
-            // The mattress is where the body ends — anything past the
-            // footboard or off the sides never paints. SETTLED ONLY:
-            // clipping a body mid-rise cut the figure off at the rail
-            // (user catch) — while the blend plays, the whole body
-            // shows and the motion reads as climbing in or out.
+            const xL = p.x - 0.46 * s;
+            const xR = p.x + 0.46 * s;
+            // The crown settles onto the pillow; feet follow at full
+            // body length and now land ON the mattress — the deck is
+            // body-sized by construction.
+            const feetY = dTop + 0.06 * s + bodyH;
+            // SETTLED ONLY: clipping a body mid-rise cut the figure
+            // off at the rail (user catch) — while the blend plays,
+            // the whole body shows and the motion reads as climbing.
             if (lieK >= 0.92) {
               ctx.beginPath();
-              ctx.rect(xL - 0.07 * s, dTop - 0.7 * s, xR - xL + 0.14 * s, dBot - dTop + 0.7 * s);
+              ctx.rect(xL - 0.08 * s, dTop - 0.7 * s, xR - xL + 0.16 * s, dBot - dTop + 0.7 * s);
               ctx.clip();
             }
             ctx.translate(0, (feetY - bodyY) * lieE);
-            const qStart = dTop + span * syT2 * (lone ? 0.58 : 0.6);
-            tuck = () =>
-              this.paintBedTuck(xL, qStart, xR - xL, dBot - qStart, qMain, qDark, lieE, 'n');
+            const yQ = dTop + (dBot - dTop) * 0.4;
+            tuck = () => {
+              if (tuckA <= 0) return;
+              ctx.save();
+              ctx.globalAlpha = tuckA;
+              this.bedCoversVert(xL, xR, yQ, dBot, qMain, qDark);
+              ctx.restore();
+            };
           } else {
             // Side-on bed: same law rotated a quarter turn — head at
-            // the pillow end, feet toward the far rail. The span comes
-            // from the registry, so a full-length two-tile run lays
-            // the body out whole and only a lone cot ever clips feet.
+            // the pillow end. The span comes from the registry, so a
+            // full-length two-tile run lays the body out whole.
             const sgn = head === 'e' ? 1 : -1;
             const rot = sgn * (Math.PI / 2) * lieE;
-            const dMid = p.y - 0.3 * s;
+            const dTop = p.y - 0.5 * syT2 - 0.3 * s;
+            const dBot = p.y + 0.58 * syT2 - 0.3 * s;
+            const dMid = (dTop + dBot) / 2;
             const halfLen = (span / 2) * s;
-            const crownX = p.x + sgn * (halfLen - 0.08 * s);
+            const crownX = p.x + sgn * (halfLen - 0.1 * s);
             const feetX = crownX - sgn * bodyH;
             if (lieK >= 0.92) {
               ctx.beginPath();
-              ctx.rect(p.x - halfLen - 0.02 * s, dMid - 0.52 * s, halfLen * 2 + 0.04 * s, 1.04 * s);
+              ctx.rect(p.x - halfLen - 0.03 * s, dTop - 0.12 * s, halfLen * 2 + 0.06 * s, dBot - dTop + 0.24 * s);
               ctx.clip();
             }
             ctx.translate(bodyX + (feetX - bodyX) * lieE, bodyY + (dMid - bodyY) * lieE);
             ctx.rotate(rot);
             ctx.translate(-bodyX, -bodyY);
-            const qW = halfLen * 2 * 0.56;
-            const qX = head === 'e' ? p.x - halfLen : p.x + halfLen - qW;
-            tuck = () =>
-              this.paintBedTuck(qX, dMid - 0.44 * syT2, qW, 0.88 * syT2, qMain, qDark, lieE, head);
+            // The painter's own quilt geometry, foot end.
+            const qW = halfLen * 2 * 0.58;
+            const qX = sgn > 0 ? p.x - halfLen - 0.02 * s : p.x + halfLen - qW + 0.02 * s;
+            tuck = () => {
+              if (tuckA <= 0) return;
+              ctx.save();
+              ctx.globalAlpha = tuckA;
+              this.bedCoversSide(qX, qW, dTop, dBot, sgn, qMain, qDark);
+              ctx.restore();
+            };
           }
         }
         // Layer law with a cape worn: gear straps OVER the cloth, so

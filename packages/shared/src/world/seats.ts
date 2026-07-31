@@ -213,10 +213,16 @@ export function seatAt(ground: SeatGround, tx: number, ty: number): SeatSpec | n
       while (y1 < y0 + BED_RUN_CAP - 1 && ground(tx, y1 + 1) === Tile.Bed) y1++;
       const tiles: Array<{ x: number; y: number }> = [];
       for (let y = y0; y <= y1; y++) tiles.push({ x: tx, y });
-      const lone = y0 === y1;
-      // Deck extent per the painter: far line -0.5 off the head tile,
-      // near line +0.58 (lone cots overdraw) or +0.48 past the foot.
-      const span = y1 - y0 + (lone ? 1.08 : 0.98);
+      // Deck extent per the painter's BODY-SCALE law: pillow at the
+      // head tile's north line, deck running a full body-length south
+      // (1.62 past a lone tile's centre, 0.75 past a run's foot) —
+      // capped at the compact cot when a wall stands at the foot.
+      const isWallS = ((): boolean => {
+        const t2 = ground(tx, y1 + 1);
+        return t2 !== undefined && WALLS.has(t2);
+      })();
+      const runV = y1 - y0;
+      const span = 0.5 + runV + (isWallS ? 0.4 : runV > 0 ? 0.75 : 1.62);
       return {
         kind: 'bed',
         pose: 'lie',

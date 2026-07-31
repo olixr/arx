@@ -318,6 +318,11 @@ export interface RigPose {
   /** Seat surface height for chair/throne sits, tile units above ground. */
   seatH?: number;
   /**
+   * Sleeping blend, 0..1 (the lie recline, caller-smoothed): past 0.5
+   * the eyes close — soft lid lines instead of the open pattern.
+   */
+  sleepT?: number;
+  /**
    * Sheathe blend, 0..1, SMOOTHED BY THE CALLER (the sitT pattern —
    * never poseT). 0 = weapons in hand; rising, the hand carries the
    * weapon to its stow spot (blades to the belt, bow/staff over the
@@ -4613,12 +4618,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ctx.fill();
       }
     }
+    const asleep = (rig.sleepT ?? 0) > 0.5;
     for (const es of [-1, 1]) {
       const wK = featK(es * EYE_U);
       if (wK <= 0.02) continue;
       const w = eyeW * wK;
       const cx = featX(es * EYE_U, EYE_R);
       ctx.fillStyle = OUTLINE;
+      if (asleep) {
+        // Closed lids: one soft line resting where the eye's lower
+        // third sat, gently bowed — a sleeper, not a squint.
+        ctx.fillRect(cx - w / 2, eyeLineY + eyeH * 0.08, w, headR * 0.06);
+        continue;
+      }
       if (eyeStyle === 1) {
         // Sharp: a hard slanted blade, outer corner riding high.
         const innerX = cx - es * (w / 2);
