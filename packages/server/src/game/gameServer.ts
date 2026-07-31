@@ -109,6 +109,7 @@ import {
   ELEMENT_COLORS,
   enchantDef,
   type ArxElement,
+  type EnchantTier,
   type ProcAction,
   type ProcEffect,
   type ProcMoment,
@@ -184,9 +185,11 @@ import {
   standingPriceMult,
   standingSellMult,
   peddlerLingerFor,
+  composeKnot,
   pickWild,
   scatterLingerFor,
   stageWaitFor,
+  WILD_KNOT_SPREAD,
   replaceGeography,
   roadDistanceAt,
   wildCandidates,
@@ -1152,6 +1155,20 @@ const CHAIN_PROC_RANGE = 5;
 const REVEAL_PROC_CAP = 24;
 /** Hard ceiling on a reveal's tile scan, whatever radius the def asks for. */
 const REVEAL_PROC_MAX_TILES = 12;
+
+/**
+ * What the gear DOES as a working settles into it. The line climbs with
+ * the tier because the light does: THE WORN LIGHT gives tier 1 a single
+ * glint and tier 5 a masterwork's whole voice, and the moment of
+ * bonding should promise exactly what the player is about to see.
+ */
+const BONDING_VOICE: Record<EnchantTier, string> = {
+  1: 'glints, just once',
+  2: 'hums quietly',
+  3: 'blazes with power',
+  4: 'wakes, and the air around it goes tight',
+  5: 'takes the light out of the room and gives back its own',
+};
 
 /** One sample of every action shape, for the /proc dev lever. */
 const DEV_PROC_ACTIONS: Record<string, ProcAction> = {
@@ -7390,7 +7407,7 @@ export class GameServer {
         channel: 'system',
         text: replaced
           ? `The ${replaced.name} fades as the ${ench.name} takes its place on the ${itemDef(worn.id)?.name ?? 'item'}.`
-          : `The scroll crumbles as the ${ench.name} sinks into the ${itemDef(worn.id)?.name ?? 'item'}. It ${ench.tier >= 3 ? 'blazes with power' : ench.tier === 2 ? 'hums quietly' : 'glints, just once'}.`,
+          : `The scroll crumbles as the ${ench.name} sinks into the ${itemDef(worn.id)?.name ?? 'item'}. It ${BONDING_VOICE[ench.tier]}.`,
       });
       return;
     }
@@ -12490,7 +12507,10 @@ export class GameServer {
       const tier = this.liveDangerTier(Math.floor(ppos.x), Math.floor(ppos.y));
       if (tier === 0) continue; // settled land keeps only authored life
       const law = dangerLaw(tier);
-      const budget = Math.round(8 * law.wildDensity);
+      // THE HERD AND THE PACK (lived-in-land Phase 1): the budget is
+      // counted in BODIES and spent in KNOTS — wildBudgetBase is a
+      // frontier dial, wildDensity stays the one law's per-tier word.
+      const budget = Math.round(FRONTIER.wildBudgetBase * law.wildDensity);
       if (budget <= 0) continue;
       let near = 0;
       for (const eid of this.wildBodies.keys()) {
@@ -12498,45 +12518,115 @@ export class GameServer {
         if (pos && Math.hypot(pos.x - ppos.x, pos.y - ppos.y) <= GameServer.WILD_MAX_R + 24) near++;
       }
       if (near >= budget) continue;
-      // One attempt per pass per under-budget player — the wilds fill
-      // in over half a minute, never in a visible burst.
-      const ang = Math.random() * Math.PI * 2;
-      const r =
-        GameServer.WILD_MIN_R + Math.random() * (GameServer.WILD_MAX_R - GameServer.WILD_MIN_R);
-      const tx = Math.floor(ppos.x + Math.cos(ang) * r);
-      const ty = Math.floor(ppos.y + Math.sin(ang) * r);
-      if (ty >= DARK_BAND_Y) continue;
-      // Live-world checks: open natural grass (keeps ambient life out
-      // of camps, ruins, roads, and anything authored), walkable now.
-      const ground = this.world.groundAt(tx, ty);
-      if (ground !== Tile.Grass && ground !== Tile.GrassTall) continue;
-      const spotTier = this.liveDangerTier(tx, ty);
-      if (spotTier === 0) continue;
-      // Roads read as traveled: no ambient body musters within earshot
-      // of the carved routes (danger tiers still apply on them — a
-      // tier-4 road is quiet, never safe).
-      if (roadDistanceAt(config.worldSeed, tx, ty) <= ROAD_CALM) continue;
-      // THE EXCLUSION LAW (Phase 4): nothing materializes in a claimed
-      // yard — the danger tier stays wild, but the spawn point moves on.
-      if (this.inClaimRing(tx, ty)) continue;
-      const biome = groundProbeAt(config.worldSeed, tx, ty);
-      if (biome !== 'grass' && biome !== 'forest') continue;
-      const candidates = wildCandidates(spotTier, biome, hours);
-      const entry = pickWild(candidates, Math.random());
-      if (!entry) continue;
-      const base = NPCS.get(entry.npc);
+      // A few anchor probes per pass; the FIRST lawful one deals one
+      // whole knot and the pass ends. The wilds fill in over tens of
+      // seconds, never in a visible burst — but a run of unlucky
+      // probes no longer starves a whole pass the way the old single
+      // attempt did.
+      const probes = Math.max(1, FRONTIER.wildKnotProbes);
+      for (let probe = 0; probe < probes; probe++) {
+        const spot = this.probeWildAnchor(ppos.x, ppos.y);
+        if (!spot) continue;
+        this.spawnWildKnot(spot.tx, spot.ty, spot.tier, spot.biome, hours, budget - near);
+        break;
+      }
+    }
+  }
+
+  /**
+   * One anchor candidate in the just-offscreen annulus, or null when
+   * the roll lands somewhere the law refuses. Every guard the old
+   * single-attempt spawner enforced, unchanged: open natural grass
+   * (keeps ambient life out of camps, ruins, and anything authored),
+   * off the traveled roads (ROAD_CALM — a tier-4 road is quiet, never
+   * safe), out of claimed yards (THE EXCLUSION LAW), and on a spot the
+   * danger field itself reads as wild.
+   */
+  private probeWildAnchor(
+    px: number,
+    py: number,
+  ): { tx: number; ty: number; tier: number; biome: 'grass' | 'forest' } | null {
+    const ang = Math.random() * Math.PI * 2;
+    const r =
+      GameServer.WILD_MIN_R + Math.random() * (GameServer.WILD_MAX_R - GameServer.WILD_MIN_R);
+    const tx = Math.floor(px + Math.cos(ang) * r);
+    const ty = Math.floor(py + Math.sin(ang) * r);
+    if (ty >= DARK_BAND_Y) return null;
+    const ground = this.world.groundAt(tx, ty);
+    if (ground !== Tile.Grass && ground !== Tile.GrassTall) return null;
+    const spotTier = this.liveDangerTier(tx, ty);
+    if (spotTier === 0) return null;
+    if (roadDistanceAt(config.worldSeed, tx, ty) <= ROAD_CALM) return null;
+    if (this.inClaimRing(tx, ty)) return null;
+    const biome = groundProbeAt(config.worldSeed, tx, ty);
+    if (biome !== 'grass' && biome !== 'forest') return null;
+    return { tx, ty, tier: spotTier, biome };
+  }
+
+  /**
+   * Deal one knot at a lawful anchor: roll the roster, compose the
+   * bodies (THE KNOT LAW — the shape is content's, pure and tested),
+   * and stand them inside the entry's spread so the far edge of the
+   * knot still hears the anchor's cry. `cap` is the remaining body
+   * budget; partial knots stand, an empty one never does.
+   */
+  private spawnWildKnot(
+    tx: number,
+    ty: number,
+    spotTier: number,
+    biome: 'grass' | 'forest',
+    hours: number,
+    cap: number,
+  ): void {
+    const candidates = wildCandidates(spotTier, biome, hours);
+    const entry = pickWild(candidates, Math.random());
+    if (!entry) return;
+    const bodies = composeKnot(entry, Math.random(), cap);
+    const spread = entry.spread ?? WILD_KNOT_SPREAD;
+    const [bandMin, bandMax] = dangerLaw(spotTier).npcLevel;
+    let placed = 0;
+    for (const body of bodies) {
+      const base = NPCS.get(body.npc);
       if (!base) continue;
+      // The lead takes the anchor tile; the rest scatter through the
+      // spread disc, each probing for open natural ground — a member
+      // with no footing simply stays home (partial knots stand).
+      let bx = tx;
+      let by = ty;
+      if (placed > 0) {
+        let found = false;
+        for (let attempt = 0; attempt < 8; attempt++) {
+          const a = Math.random() * Math.PI * 2;
+          const d = Math.random() * spread;
+          const cx = Math.floor(tx + Math.cos(a) * d);
+          const cy = Math.floor(ty + Math.sin(a) * d);
+          const g = this.world.groundAt(cx, cy);
+          if (g !== Tile.Grass && g !== Tile.GrassTall) continue;
+          bx = cx;
+          by = cy;
+          found = true;
+          break;
+        }
+        if (!found) continue;
+      }
       // The band lifts what it must: a tier-4 wolf is a dire threat,
       // but a stag never becomes one — prey keeps its authored level.
       // The SPOT's law, not the player's: a jitter pocket of calmer
       // ground grows calmer beasts, exactly as the field reads there.
-      const bandMin = dangerLaw(spotTier).npcLevel[0];
-      const def =
-        base.aggroRange > 0 && base.level < bandMin
-          ? scaleNpcDef(base, bandMin + (Math.floor(Math.random() * 3) - 1))
-          : base;
-      const eid = this.spawnNpc(def, tx + 0.5, ty + 0.5, -1);
+      // A lead CLAMPS into the band both ways (busier, never deadlier:
+      // a dire wolf heading a calm-pocket pack walks the pocket's law).
+      let def = base;
+      if (base.aggroRange > 0) {
+        if (body.lead) {
+          const lvl = Math.min(bandMax, Math.max(bandMin, base.level));
+          if (lvl !== base.level) def = scaleNpcDef(base, lvl);
+        } else if (base.level < bandMin) {
+          def = scaleNpcDef(base, bandMin + (Math.floor(Math.random() * 3) - 1));
+        }
+      }
+      const eid = this.spawnNpc(def, bx + 0.5, by + 0.5, -1);
       this.wildBodies.set(eid, entry.hours ?? null);
+      placed++;
     }
   }
 
@@ -15392,6 +15482,43 @@ export class GameServer {
           (row?.clearedAt ? ` · cleared ${Math.round((Date.now() - row.clearedAt) / 60000)}m ago` : '') +
           (live?.zoneId ? ' · standing' : '') +
           ' — /poi here [archetype] · /poi reroll · /poi fallow [days] · /poi havens · /frontier',
+      );
+      return;
+    }
+    if (config.devCommands && text.startsWith('/wilds')) {
+      // The ambience lens (lived-in-land Phase 1): what the wild
+      // spawner owes and holds at your feet — the tier's body budget,
+      // how much of it stands nearby, and the roster the clock and
+      // biome would deal here right now.
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const say = (t: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      const tier = this.liveDangerTier(Math.floor(pos.x), Math.floor(pos.y));
+      const law = dangerLaw(tier);
+      const budget = tier > 0 ? Math.round(FRONTIER.wildBudgetBase * law.wildDensity) : 0;
+      let near = 0;
+      for (const weid of this.wildBodies.keys()) {
+        const wpos = this.positions.get(weid);
+        if (wpos && Math.hypot(wpos.x - pos.x, wpos.y - pos.y) <= GameServer.WILD_MAX_R + 24) {
+          near++;
+        }
+      }
+      const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+      const biome = groundProbeAt(config.worldSeed, Math.floor(pos.x), Math.floor(pos.y));
+      const pool =
+        biome === 'grass' || biome === 'forest' ? wildCandidates(tier, biome, hours) : [];
+      const roster = pool
+        .map((e) => {
+          const [lo, hi] = e.band ?? [1, 1];
+          const lead = e.lead ? `+${e.lead.npc}` : '';
+          return `${e.npc}x${lo}${hi > lo ? `-${hi}` : ''}${lead}`;
+        })
+        .join(', ');
+      say(
+        `wilds: tier ${tier}, ${near}/${budget} bodies near ` +
+          `(${this.wildBodies.size} world-wide), ${biome} underfoot` +
+          (pool.length > 0 ? ` | roster: ${roster}` : ' | roster: empty here'),
       );
       return;
     }

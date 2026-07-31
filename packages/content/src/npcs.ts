@@ -540,6 +540,27 @@ const defs: NpcDef[] = [
     hitHeight: 1.5,
   },
   {
+    // The herd behind the stag (wilds knot law): antlerless, lighter,
+    // and it keeps the stag's flight speed — a startled herd stays a
+    // herd instead of stringing out by the slowest body.
+    id: 'hind',
+    name: 'Hind',
+    level: 4,
+    maxHp: 14,
+    damage: 1,
+    attackRange: 1.0,
+    attackCooldownTicks: 44,
+    aggroRange: 0,
+    leashRange: 12,
+    speed: 4.4,
+    xpReward: 35,
+    loot: ['stag'],
+    respawnSec: 30,
+    color: '#b28a5f',
+    radius: 0.28,
+    hitHeight: 1.4,
+  },
+  {
     id: 'boar',
     name: 'Boar',
     level: 7,

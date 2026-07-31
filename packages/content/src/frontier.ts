@@ -36,6 +36,8 @@ export interface FrontierDef {
   raidStandoffTiles: number;
   peddlerChance: number;
   peddlerLingerMs: FrontierRange;
+  wildBudgetBase: number;
+  wildKnotProbes: number;
 }
 
 /**
@@ -186,6 +188,21 @@ export const FRONTIER: FrontierDef = {
    * nobody "solves" a peddler). [min, max] ms, hash-jittered per site.
    */
   peddlerLingerMs: [2 * 3_600_000, 4 * 3_600_000],
+  /**
+   * THE HERD AND THE PACK (docs/lived-in-land-plan.md Phase 1): the
+   * ambient-body budget near each player is wildBudgetBase ×
+   * DANGER_LAWS[tier].wildDensity, counted in BODIES and spawned in
+   * KNOTS. 14 reads: ~4 bodies at tier 1, ~8 in the deep frontier —
+   * a walk with company, never a wall of teeth.
+   */
+  wildBudgetBase: 14,
+  /**
+   * Anchor candidates the wild spawner probes per pass for an
+   * under-budget player. One lawful anchor deals one whole knot; more
+   * probes fill the budget faster without ever bursting into view
+   * (the annulus and dignity guards are per-probe).
+   */
+  wildKnotProbes: 3,
 };
 
 /** Frontier RNG salts — the named-streams law (the ST_* family's kin). */
@@ -278,6 +295,12 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
   const doc = raw as Record<string, unknown>;
   const num = (key: keyof FrontierDef, lo: number, hi: number, int = false): number => {
     const v = doc[key];
+    // THE BACKFILL LAW: an ABSENT dial adopts the shipped default, so
+    // a doc the Studio saved before the dial existed keeps its edits
+    // when the table grows (the geography `fens` precedent). Only
+    // absence is forgiven — a present-but-malformed dial is refused,
+    // and a typo still dies loudly as an unknown key below.
+    if (v === undefined) return AUTHORED_FRONTIER[key] as number;
     if (typeof v !== 'number' || !Number.isFinite(v)) {
       errors.push(`${key} must be a number`);
       return lo;
@@ -288,6 +311,11 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
   };
   const range = (key: keyof FrontierDef, lo: number, hi: number): [number, number] => {
     const v = doc[key];
+    // THE BACKFILL LAW — see num() above.
+    if (v === undefined) {
+      const a = AUTHORED_FRONTIER[key] as FrontierRange;
+      return [a[0], a[1]];
+    }
     if (
       !Array.isArray(v) ||
       v.length !== 2 ||
@@ -334,6 +362,8 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
     raidStandoffTiles: num('raidStandoffTiles', 0, 128),
     peddlerChance: num('peddlerChance', 0, 1),
     peddlerLingerMs: range('peddlerLingerMs', MIN, 24 * HOUR),
+    wildBudgetBase: num('wildBudgetBase', 0, 64, true),
+    wildKnotProbes: num('wildKnotProbes', 1, 8, true),
   };
   // Unknown keys are refused loudly — a typoed dial must never sit in
   // the doc pretending to steer anything.

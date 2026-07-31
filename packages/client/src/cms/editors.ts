@@ -3529,6 +3529,20 @@ function frontierDetail(body: HTMLElement, linkage: HTMLElement): void {
         () => `parked ${humanMs(draft.peddlerLingerMs[0])}–${humanMs(draft.peddlerLingerMs[1])}`),
     ),
   );
+  body.appendChild(
+    sect(
+      'The herd and the pack',
+      'Ambient life comes as knots — packs, herds, sounders — budgeted in bodies by the danger law.',
+      numDial('wild budget', 'body budget per player bubble = base × the tier\'s wildDensity', 'wildBudgetBase', 0, 64, 1,
+        () => {
+          const lo = Math.round(draft.wildBudgetBase * (DANGER_LAWS[1]?.wildDensity ?? 0));
+          const hi = Math.round(draft.wildBudgetBase * (DANGER_LAWS[5]?.wildDensity ?? 0));
+          return `≈${lo} bodies at tier 1, ≈${hi} in the deep frontier`;
+        }),
+      numDial('knot probes', 'anchor candidates per pass; the first lawful one deals a whole knot', 'wildKnotProbes', 1, 8, 1,
+        () => `${draft.wildKnotProbes} probes per pass`),
+    ),
+  );
 
   linkage.appendChild(el('h3', '', 'The clockwork'));
   linkage.appendChild(

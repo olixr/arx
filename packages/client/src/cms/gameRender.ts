@@ -212,7 +212,7 @@ function paintBeast(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): voi
   // Fit the species envelope (the npcItem bounds law) into the stage;
   // at 3/4 the east-west span foreshortens, so weight height first.
   const headroom =
-    def.id === 'stag' ? 0.7 : def.id === 'ram' ? 0.25 : def.id === 'dire_wolf' ? 0.3 : def.id === 'worg' ? 0.25 : 0;
+    def.id === 'stag' ? 0.7 : def.id === 'hind' ? 0.15 : def.id === 'ram' ? 0.25 : def.id === 'dire_wolf' ? 0.3 : def.id === 'worg' ? 0.25 : 0;
   const halfWTiles = spec.bodyLen * 2.0 + 0.35 + radius;
   const topTiles = spec.bodyRise + radius * 2.2 + headroom;
   const bottomTiles = spec.rig.legLen + 0.7;

@@ -5608,6 +5608,26 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     foot: 'hoof',
     legColor: '#8a6f4d',
   },
+  // The stag's build a hand smaller — same gait, same high daylight
+  // under the belly, so the herd reads as one species at a glance.
+  hind: {
+    rig: {
+      legs: quadLegs(0.24, 0.12),
+      legLen: 0.4,
+      rise: 0.35,
+      liftAmp: 0.085,
+      runSpeed: 4.4,
+      turnRate: 7,
+    },
+    bodyLen: 0.34,
+    bodyRise: 0.42,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.048,
+    foot: 'hoof',
+    legColor: '#93764f',
+  },
   // Six legs, alternating tripods: each group keeps a stable triangle
   // planted (front+rear one side, middle the other) — the insect gait.
   mudcrab: {
@@ -8132,6 +8152,12 @@ export interface StagLook {
   headH: number;
   /** How far the head rides above the back line (tiles). */
   neckRise: number;
+  /**
+   * Branched crown or bare poll — the hind shares the whole deer
+   * dialect and differs exactly here: no beams, leaf ears instead
+   * (everything species-flavored lives in the look table).
+   */
+  antlers: boolean;
 }
 
 export const STAG_LOOK: StagLook = {
@@ -8146,6 +8172,28 @@ export const STAG_LOOK: StagLook = {
   headW: 0.22,
   headH: 0.19,
   neckRise: 0.3,
+  antlers: true,
+};
+
+/**
+ * The hind: the stag's dialect at herd scale — a hand smaller, a
+ * shade warmer, the neck a touch lower, and big leaf ears where the
+ * stag carries his crown. Reads "deer" beside the stag and "not the
+ * stag" on her own.
+ */
+export const HIND_LOOK: StagLook = {
+  coat: '#b18a60',
+  belly: '#d1b98f',
+  rump: '#e9ddc2',
+  antler: '#9c8563',
+  muzzle: '#63503a',
+  bodyW: 0.145,
+  backH: 0.56,
+  chestH: 0.35,
+  headW: 0.19,
+  headH: 0.17,
+  neckRise: 0.26,
+  antlers: false,
 };
 
 export function paintStagBody(
@@ -8237,15 +8285,7 @@ export function drawStagHead(
       x: cx + fsx * fw * w + px * es * sd * w + fx * es * w * 0.08,
       y: cy + fsy * fw * w - up * w + (py * es * sd * w + fy * es * w * 0.08) * ys,
     });
-    const b0 = A(0.05, 0.28, 0.24);
-    const b1 = A(-0.32, 0.85, 0.5);
-    const b2 = A(-0.42, 1.45, 0.72);
-    const brow = A(0.5, 0.85, 0.36);
-    const mid = A(0.1, 1.35, 0.62);
-    const tipA = A(-0.12, 1.9, 0.8);
-    const tipB = A(-0.95, 1.72, 0.84);
     ctx.lineCap = 'round';
-    ctx.strokeStyle = C(look.antler);
     const seg = (
       a: { x: number; y: number },
       b: { x: number; y: number },
@@ -8257,13 +8297,34 @@ export function drawStagHead(
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
     };
-    seg(b0, b1, w * 0.1);
-    seg(b1, b2, w * 0.08);
-    seg(b0, brow, w * 0.06);
-    seg(b1, mid, w * 0.055);
-    ctx.strokeStyle = C(shade(look.antler, 16));
-    seg(b2, tipA, w * 0.05);
-    seg(b2, tipB, w * 0.05);
+    if (look.antlers) {
+      const b0 = A(0.05, 0.28, 0.24);
+      const b1 = A(-0.32, 0.85, 0.5);
+      const b2 = A(-0.42, 1.45, 0.72);
+      const brow = A(0.5, 0.85, 0.36);
+      const mid = A(0.1, 1.35, 0.62);
+      const tipA = A(-0.12, 1.9, 0.8);
+      const tipB = A(-0.95, 1.72, 0.84);
+      ctx.strokeStyle = C(look.antler);
+      seg(b0, b1, w * 0.1);
+      seg(b1, b2, w * 0.08);
+      seg(b0, brow, w * 0.06);
+      seg(b1, mid, w * 0.055);
+      ctx.strokeStyle = C(shade(look.antler, 16));
+      seg(b2, tipA, w * 0.05);
+      seg(b2, tipB, w * 0.05);
+    } else {
+      // The bare poll wears leaf ears instead — a coat-dark blade
+      // with a pale inner lick, angled back off the crown. Without
+      // them an antlerless deer head reads horse at a glance.
+      const e0 = A(0.12, 0.26, 0.26);
+      const e1 = A(-0.22, 0.78, 0.52);
+      const eIn = A(-0.1, 0.62, 0.44);
+      ctx.strokeStyle = C(shade(look.coat, -10));
+      seg(e0, e1, w * 0.13);
+      ctx.strokeStyle = C(look.belly);
+      seg(eIn, e1, w * 0.05);
+    }
     ctx.lineCap = 'butt';
   }
 
@@ -9507,7 +9568,8 @@ export function drawBeast(
   const boarL = opts.defId === 'boar' ? BOAR_LOOK : undefined;
   const spiderL = opts.defId === 'giant_spider' ? SPIDER_LOOK : undefined;
   const ramL = opts.defId === 'ram' ? RAM_LOOK : undefined;
-  const stagL = opts.defId === 'stag' ? STAG_LOOK : undefined;
+  const stagL =
+    opts.defId === 'stag' ? STAG_LOOK : opts.defId === 'hind' ? HIND_LOOK : undefined;
   const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
   const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
   const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;

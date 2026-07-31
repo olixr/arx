@@ -46,13 +46,25 @@ test('the validator refuses the dishonest weather, by name', () => {
     'the SHORTER mercy',
   );
   bad({ claimReach: 10, claimR: 24 }, 'never shrinks it');
+  bad({ wildBudgetBase: 3.5 }, 'wildBudgetBase');
+  bad({ wildKnotProbes: 0 }, 'wildKnotProbes');
   // A typoed dial never sits in the doc pretending to steer.
   const res = validateFrontier({ ...AUTHORED_FRONTIER, emberLingerMinutes: 5 });
   assert.ok(!res.ok && res.errors.some((e) => e.includes("unknown dial 'emberLingerMinutes'")));
-  // A missing dial is an undefined law.
+  // THE BACKFILL LAW: an ABSENT dial adopts the shipped default — a
+  // doc the Studio saved before the dial existed keeps its edits when
+  // the table grows. Absence is forgiven for scalars and bands alike…
   const partial: Record<string, unknown> = { ...AUTHORED_FRONTIER };
   delete partial.calmMs;
-  assert.ok(!validateFrontier(partial).ok);
+  delete partial.creepMs;
+  const filled = validateFrontier(partial);
+  assert.ok(filled.ok, 'an old doc must survive a grown table');
+  if (filled.ok) {
+    assert.equal(filled.def.calmMs, AUTHORED_FRONTIER.calmMs);
+    assert.deepEqual(filled.def.creepMs, [...AUTHORED_FRONTIER.creepMs]);
+  }
+  // …but a dial that is PRESENT and malformed is still refused.
+  bad({ calmMs: 'soon' }, 'calmMs');
 });
 
 test('replaceFrontier swaps in place — same object, new weather, live jitters', () => {

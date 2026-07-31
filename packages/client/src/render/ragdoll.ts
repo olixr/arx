@@ -40,6 +40,7 @@ import {
   RAM_LOOK,
   RAT_LOOK,
   SPIDER_LOOK,
+  HIND_LOOK,
   STAG_LOOK,
   WOLF_LOOK,
   WORG_LOOK,
@@ -1343,8 +1344,8 @@ export function drawBeastRagdoll(
       topScale: 0.55,
       botH: 0.02,
     });
-  } else if (look.defId === 'stag') {
-    paintStagBody(ctx, spec, STAG_LOOK, {
+  } else if (look.defId === 'stag' || look.defId === 'hind') {
+    paintStagBody(ctx, spec, look.defId === 'hind' ? HIND_LOOK : STAG_LOOK, {
       bx: midX,
       gy: midY + r * 0.4,
       s,
@@ -1574,8 +1575,8 @@ export function drawBeastRagdoll(
       ys: 1,
       dead: true,
     });
-  } else if (look.defId === 'stag') {
-    drawStagHead(ctx, STAG_LOOK, {
+  } else if (look.defId === 'stag' || look.defId === 'hind') {
+    drawStagHead(ctx, look.defId === 'hind' ? HIND_LOOK : STAG_LOOK, {
       x: head.x,
       y: head.y,
       s,
