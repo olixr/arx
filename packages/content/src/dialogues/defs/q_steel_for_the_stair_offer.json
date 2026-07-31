@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_steel_for_the_stair_offer__hub",
       "text": "You there. Hands. The stair rails are going to steel this season and my stock won't cover it. Six iron bars, eight of coal, on this bench, weighed. That's the whole commission.",
       "hooks": [{ "kind": "quest_offer", "quest": "steel_for_the_stair" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "where",
+      "voice": "q_steel_for_the_stair_offer__where",
       "text": "Anywhere honest! Smelt it yourself at Koll's furnaces if your arms are up to it, or buy off Varga's scales in the Deep Market. Half my stock walks up that stair anyway. I pay by weight.",
       "choices": [
         { "text": "Weight it is.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_steel_for_the_stair_offer__sworn",
       "text": "Good. When I strike this steel it will NOT lie to me. See your iron doesn't either. There's a pattern in it for you. Buckler work. My best teaching piece.",
       "hooks": [{ "kind": "quest_accept", "quest": "steel_for_the_stair" }]
     },
     {
       "id": "declined",
+      "voice": "q_steel_for_the_stair_offer__declined",
       "text": "Then stand clear of the sparks. The rails won't wait forever and neither do I."
     }
   ]

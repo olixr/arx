@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_short_handed_turnin__paid",
       "text": "Six. Noted on the roll, next to your mark. Take your pay.",
       "hooks": [{ "kind": "quest_turnin", "quest": "short_handed" }]
     }

@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_threads_of_the_row_turnin__paid",
       "text": "Lay it out. The thread is true-spun and the linen is even. From field-taught hands, that is a small astonishment. The Row pays: two bolts of finished gloomsilk, woven here, worth more than the coin beside them. Wear it or sell it. If you sell it, sell it *proudly*. It came off my looms.",
       "hooks": [{ "kind": "quest_turnin", "quest": "threads_of_the_row" }]
     }

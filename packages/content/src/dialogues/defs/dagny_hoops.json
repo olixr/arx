@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "dagny_hoops__greet",
       "text": "Ha! A visitor! Grab a stave or stand clear. Either way, talk loud, I'm working.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "dagny_hoops__hub",
       "text": "Talk while I work. The hoops don't ring themselves.",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "barrels",
+      "voice": "dagny_hoops__barrels",
       "text": "Count with me: the Flagon's cellar, Signy's stores, Koll's quench water, Wyn's steeping casks, every wagon on the High Road, and the ferry down at the ford ships its catch in *my* wet-casks. Half this city is things that need holding. Ask Stig who the Timberway actually runs on. Go on. Ask him with me watching.",
       "next": "hub"
     },
     {
       "id": "craft",
+      "voice": "dagny_hoops__craft",
       "text": "Thirty staves, every one bent against its will, and an iron hoop driven on until the whole thing sits round and tight. No glue, no nails. Fire, water, and a mallet. Balla forges my hoops and swears coopering is smithing for people afraid of fire. I let her have that one. My barrels float. Her anvils don't.",
       "next": "hub"
     },
     {
       "id": "taught",
+      "voice": "dagny_hoops__taught",
       "text": "My mother, on a coast you've never heard of, where a leaky cask meant a hungry winter. She'd have called this mountain work soft. Nobody drowns if I'm sloppy. Then she'd have inspected every hoop in this shop anyway. I still build like she's coming by later.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "dagny_hoops__bye",
       "text": "Ring true! And if you ever buy a barrel that leaks, it isn't mine. Bring it anyway, I'll fix it."
     }
   ]

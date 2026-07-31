@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_sisters_lamp_offer__hub",
       "text": "One more keeping, if your boots will take it. My sister holds the *Last Lamp*, the worst mile of the High Road, below the pass. The flame can't travel, and Edda won't. So the word goes on foot.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_sisters_lamp" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "word",
+      "voice": "q_the_sisters_lamp_offer__word",
       "text": "That the flame is tended. And that I still set a bowl for her at midwinter. She won't say much back. That's how you'll know it landed.",
       "choices": [
         { "text": "I'll carry it.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_sisters_lamp_offer__sworn",
       "text": "Down the High Road, past the fork, up where the weather starts arguing. Her lamp is the one that doesn't go out.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_sisters_lamp" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_sisters_lamp_offer__declined",
       "text": "Then warm them here a while. The word has kept for years; it keeps a little more."
     }
   ]

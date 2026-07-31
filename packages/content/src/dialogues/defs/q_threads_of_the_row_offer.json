@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_threads_of_the_row_offer__hub",
       "text": "You sew. I can see it in how you stand near the looms. Respectfully. Very well. I have a commission I won't describe, and a shortage: eight lengths of gloomsilk thread, four bolts of linen.",
       "hooks": [{ "kind": "quest_offer", "quest": "threads_of_the_row" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "dead",
+      "voice": "q_threads_of_the_row_offer__dead",
       "text": "It means the crypts and the deep spiders, yes. Grave-spun, cold to the hand. There is no substitute, which is why the commission pays. Beauty is labor. Some labor is dark.",
       "choices": [
         { "text": "Then I'll labor.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_threads_of_the_row_offer__sworn",
       "text": "The linen you may weave from honest scrap like anyone else. Bring me both, and the Row will pay you in cloth worth wearing.",
       "hooks": [{ "kind": "quest_accept", "quest": "threads_of_the_row" }]
     },
     {
       "id": "declined",
+      "voice": "q_threads_of_the_row_offer__declined",
       "text": "Hm. The shortage remains. It does not care that you refused."
     }
   ]

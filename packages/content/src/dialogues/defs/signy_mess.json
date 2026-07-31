@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "signy_mess__greet",
       "text": "Terrace kitchen! Miners eat first, smiths second, travelers wherever there's a bench-end going spare. You look like a bench-end sort. Sit. The stew's at the good stage.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "signy_mess__hub",
       "text": "What'll it be?",
       "choices": [
         {
@@ -33,16 +35,19 @@
     },
     {
       "id": "how",
+      "voice": "signy_mess__how",
       "text": "Timing, mostly, and fear. The stew never stops. Same pot my predecessor lit, topped and tended, older than half the miners eating from it. Bread runs on Ivo's wheat, trout on the gate mongers. You there, pass that ladle. Ta. Where was I. Yes: nobody argues with me, because nobody argues well on a full stomach, and I keep them full. Sit.",
       "next": "hub"
     },
     {
       "id": "talk",
+      "voice": "signy_mess__talk",
       "text": "Deep talk, all of it. Who's gone below, what the ore broker's paying, whether the digmaster's tunnel truly points at the starfall. And every third bowl, somebody's heard the spider's web creak personally. The mountain gossips upward. It all reaches my benches eventually.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "signy_mess__browse",
       "text": "Stew, bread, roast, and pool trout done proper. Eat it while it's hot.",
       "hooks": [
         {

@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_deep_seams_turnin__paid",
       "text": "Eight, deep-grade. I can tell by the weight, and by furnace two's sulk lifting already. Wage, plus the difference for the stairs. Forty-one pours tonight.",
       "hooks": [{ "kind": "quest_turnin", "quest": "deep_seams" }]
     }

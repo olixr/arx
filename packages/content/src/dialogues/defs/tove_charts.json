@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "tove_charts__greet",
       "text": "Mind the wet ink, that's someone's inheritance drying. Welcome to Inks & Charts. Deeds, charters, wills, and honest maps. And yes, before you ask, the maps are the interesting part. They are ALWAYS the interesting part.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "tove_charts__hub",
       "text": "What can I draw up for you?",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "maps",
+      "voice": "tove_charts__maps",
       "text": "An honest map shows its ignorance. Mine have blank patches labeled *I have not been here, and neither has anyone I trust*. A map that guesses sends confident people into the Thornveil at dusk. Three days' walk south-southwest, roughly. Don't quote the roughly. The Guildhall buys my charts because they admit what they don't know.",
       "next": "hub"
     },
     {
       "id": "deeds",
+      "voice": "tove_charts__deeds",
       "text": "Every deed on Lantern Row, half the mining claims on the Emberway, and the boundary rolls that the Guildhall's records room and I fight over, politely. Seventeen disputed stones between us. I'm right about sixteen. The seventeenth I defend on principle. I'll concede it after a survey and not before.",
       "next": "hub"
     },
     {
       "id": "advice",
+      "voice": "tove_charts__advice",
       "text": "Keep your own chart. Mark it as you walk. A bought map only shows where the mapmaker was willing to go. Yours shows where *you* went. When you've filled a whole province with your own footsteps, come back and tell me what my maps got wrong. I'll pay in ink and gratitude. Mostly ink.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "tove_charts__bye",
       "text": "Ink and luck. Come back with corrections."
     }
   ]

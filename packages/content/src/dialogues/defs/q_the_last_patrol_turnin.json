@@ -6,16 +6,19 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_last_patrol_turnin__paid",
       "text": "Done? Done, then. The rolls.",
       "next": "rolls"
     },
     {
       "id": "rolls",
+      "voice": "q_the_last_patrol_turnin__rolls",
       "text": "'Winter patrol, whereabouts unknown.' Struck. Entered instead: fell on the road, letter recovered, seen to rest by a friend of the order. Home, as the rolls count it.",
       "next": "closed"
     },
     {
       "id": "closed",
+      "voice": "q_the_last_patrol_turnin__closed",
       "text": "Somewhere my grandmother is satisfied, which she never said in life either. Wages from the chapter. The order pays its debts, even the old ones.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_last_patrol" }]
     }

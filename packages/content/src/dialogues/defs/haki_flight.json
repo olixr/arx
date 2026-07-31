@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "haki_flight__greet",
       "text": "One moment. A fletch set wrong kills someone eight weeks from now, far from here. There. Done. Now you have my whole attention.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "haki_flight__hub",
       "text": "Ask, friend.",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "road",
+      "voice": "haki_flight__road",
       "text": "Ten years under Kestrel's banner, walking the High Road with a lamp and a bow. The road gave me back with a knee that predicts weather, and one rule: _never send anyone into the dark with gear you wouldn't stake your own life on._ I can't walk the miles anymore. So I fletch.",
       "next": "hub"
     },
     {
       "id": "watch",
+      "voice": "haki_flight__watch",
       "text": "The watch on the wall. The castle guard. Kestrel's sergeants. Any honest traveler with coin and sense. When a watchman on the night wall nocks one of mine, he's holding my word that it flies true.",
       "next": "hub"
     },
     {
       "id": "true",
+      "voice": "haki_flight__true",
       "text": "Straight grain. The saw yard saves me its best billets. Feathers matched from the *same wing*, or the arrow corkscrews. And patience at the finish. That's the whole craft.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "haki_flight__bye",
       "text": "Fly straight. And thank the goose."
     }
   ]

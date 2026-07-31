@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_embers_of_the_shrine_offer__hub",
       "text": "You carry the blessing, so I'll ask you a keeping. The old dead are walking where lamps used to burn: the tower on the first climb, after dark, and deeper places besides. They've stopped passing the light along.",
       "hooks": [{ "kind": "quest_offer", "quest": "embers_of_the_shrine" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "besides",
+      "voice": "q_embers_of_the_shrine_offer__besides",
       "text": "Ember essence, six measures, for the relighting. Goblin camps carry it, and the kobold digs, and road crews who robbed it off someone else.",
       "choices": [
         { "text": "I'll see to both.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_embers_of_the_shrine_offer__sworn",
       "text": "The dark is large, and we pass the light along. Go gently.",
       "hooks": [{ "kind": "quest_accept", "quest": "embers_of_the_shrine" }]
     },
     {
       "id": "declined",
+      "voice": "q_embers_of_the_shrine_offer__declined",
       "text": "Then keep your own lamp filled. That's a keeping too."
     }
   ]

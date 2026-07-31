@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_brothers_tools_offer__hub",
       "text": "You know about my brother. So. The kobolds carry the crew's tools. Guild mark on every head. I want three back.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_brothers_tools" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "where",
+      "voice": "q_the_brothers_tools_offer__where",
       "text": "Past the Deep Market. The choked tunnel, southeast. Warrens are through the gap.",
       "choices": [
         { "text": "I'll go.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_brothers_tools_offer__sworn",
       "text": "Three. Enough that it isn't luck.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_brothers_tools" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_brothers_tools_offer__declined",
       "text": "Twenty years. It keeps."
     }
   ]

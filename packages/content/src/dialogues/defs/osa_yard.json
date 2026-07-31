@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "osa_yard__greet",
       "text": "Mind the trough. The mules queue politer than the caravans do. Osa. Hostler. You've the road on your boots; sit on a rail and scrape it off while you talk.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "osa_yard__hub",
       "text": "Go on then.",
       "choices": [
         {
@@ -40,21 +42,25 @@
     },
     {
       "id": "climb",
+      "voice": "osa_yard__climb",
       "text": "Sixty years old, one pack, uphill, alone, the spring after my man died. The whole ford said the road would kill me. It didn't.",
       "next": "hub"
     },
     {
       "id": "dunna",
+      "voice": "osa_yard__dunna",
       "text": "You've sat at my daughter's bar. Well? Did the stew want thyme? It wanted thyme. It ALWAYS wants thyme. Thirty years I ran that room, and she won't take one herb of advice from me. Which is exactly what I was like. So, fair play. You see her again, tell her the mountain air is kind, her mother's hips are winning, and the thyme grows wild ten steps from her own back door. She'll ignore all three. Tell her anyway.",
       "next": "hub"
     },
     {
       "id": "yard",
+      "voice": "osa_yard__yard",
       "text": "Everything the mountain buys and everything it sells, with mules in between. Silver down, cotton up, deep-ore out of the new cellar, and every kind of traveler the road makes. They go up to the Undercroft eager and come back quiet. The mules prefer them quiet.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "osa_yard__bye",
       "text": "Walk well. And eat something before the Silver Stair. It's a long climb on an empty stomach."
     }
   ]

@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_deep_seams_offer__hub",
       "text": "Pour forty-one wants undercroft iron. Eight ore, deep-grade. The way down opens off the mountain works. Furnace two likes deep iron. I don't ask furnaces why. Will you dig?",
       "hooks": [{ "kind": "quest_offer", "quest": "deep_seams" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_deep_seams_offer__sworn",
       "text": "Count them at the seam, count them again at the stair.",
       "hooks": [{ "kind": "quest_accept", "quest": "deep_seams" }]
     },
     {
       "id": "declined",
+      "voice": "q_deep_seams_offer__declined",
       "text": "Then pour forty-one waits. It goes on the ledger."
     }
   ]

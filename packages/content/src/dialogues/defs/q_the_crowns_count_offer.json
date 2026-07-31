@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_crowns_count_offer__hub",
       "text": "The crown counts service. Kobolds press the deep galleries below the city. Six fewer would be service. I weighed easier terms. There aren't any.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_crowns_count" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_crowns_count_offer__sworn",
       "text": "The galleries are reached through the Undercroft. Come back counted.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_crowns_count" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_crowns_count_offer__declined",
       "text": "Think where the crown can't hear you at it."
     }
   ]

@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_thin_the_warrens_offer__hub",
       "text": "Kobolds. Warrens off the mountain works. Eight.",
       "hooks": [{ "kind": "quest_offer", "quest": "thin_the_warrens" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_thin_the_warrens_offer__sworn",
       "text": "Eight's what creeps back in a span. Count right.",
       "hooks": [{ "kind": "quest_accept", "quest": "thin_the_warrens" }]
     },
     {
       "id": "declined",
+      "voice": "q_thin_the_warrens_offer__declined",
       "text": "Yard doesn't go there. That's the point."
     }
   ]

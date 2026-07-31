@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "grettir_yard__greet",
       "text": "Helmets past the rope line. Grettir. Foreman. Here to swing a pick, the mountain pays honest wages. Here to ask about the upper vein, we're done early.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "grettir_yard__hub",
       "text": "What?",
       "choices": [
         {
@@ -40,16 +42,19 @@
     },
     {
       "id": "vein",
+      "voice": "grettir_yard__vein",
       "text": "The one we don't discuss. Mithril. You'd hear it from some coal boy anyway. Runs shallow at the top of the deep galleries. Every foreman before me left it alone. I leave it alone. The reasons are between me and the mountain. Dig anywhere else in my yard with my blessing.",
       "next": "hub"
     },
     {
       "id": "mining",
+      "voice": "grettir_yard__mining",
       "text": "Silver holds. Iron's steady. Coal does what coal does. My crews go down on my count and come up on my count. Twenty years, every count matched. Now the deep's open again, half my shift wants transfer papers. Better ore down there. Worse neighbors. I sign the papers. I count them extra.",
       "next": "hub"
     },
     {
       "id": "below",
+      "voice": "grettir_yard__below",
       "text": "You've talked to Coppin, then. So you've stood in the old works. My brother's crew cut those galleries, before the trouble. He was setting shot-holes past the rubble line the day the kobolds came through, and the seal went up with the count *unmatched*. First unmatched count in the yard's books. If the reeve's crews ever clear the far warren, there'll be tools down there with our mark on the hafts. I'd want to know. That's all. I'd want to know.",
       "choices": [
         {
@@ -74,18 +79,22 @@
     },
     {
       "id": "word",
+      "voice": "grettir_yard__word",
       "text": "Aye. Well. The yard's grateful, and the yard doesn't say that often. Helmets past the rope line, traveler. Even below. _Especially below._"
     },
     {
       "id": "sorry",
+      "voice": "grettir_yard__sorry",
       "text": "Twenty years of practice at it. Go on now. The count doesn't keep itself."
     },
     {
       "id": "bye",
+      "voice": "grettir_yard__bye",
       "text": "Count yourself out at the rope. Everyone counts out. House rule."
     },
     {
       "id": "named",
+      "voice": "grettir_yard__named",
       "text": "I know. I went up at night to read them. Fourteen names, good stone. Back to work."
     }
   ]

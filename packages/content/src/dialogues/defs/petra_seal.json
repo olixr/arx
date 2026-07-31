@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "petra_seal__greet",
       "text": "Guild yard. Mind the stock, the pillars bite. Petra, master mason. Every course of every terrace you climbed today was guild work. Most of it my family's cutting.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "petra_seal__hub",
       "text": "What's your question, then?",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "seal",
+      "voice": "petra_seal__seal",
       "text": "First pick, my own swing. The Warden gave the order, but the guild insisted the breaking be ours. My grandfather helped SET those stones, after the trouble took the deep crews. Twenty years the guild kept that seal pointed and tight. His initials were under my pick when I swung. I don't have a word for what that is. 'Family trade' is as close as I've got.",
       "next": "hub"
     },
     {
       "id": "below",
+      "voice": "petra_seal__below",
       "text": "The old works, standing. Every bench where the crews left it, the stock still racked, one brazier the guild's kept fed by way of the ledge crack all these years. Don't ask. Guild secret. The answer is stubbornness. And the market floor was swept. Twenty years sealed, and swept. Kobolds don't sweep. We put it in the report and none of us has mentioned it since, which tells you what the guild thinks of it.",
       "next": "hub"
     },
     {
       "id": "guild",
+      "voice": "petra_seal__guild",
       "text": "The Masons raised the terraces in my great-great-grandmother's time. Cut the stair, hung the arches. The guild law is one line: _stone outlasts the reasons._ Build so the work still deserves to stand after the reasons are forgotten. The Undercroft was guild work twice over, the building and the sealing.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "petra_seal__bye",
       "text": "Mind the edge on the stair."
     }
   ]

@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "balla_forge__greet",
       "text": "You're in the Grand Forge of Silverfall. Stand straighter. Good. Now then: steel, silver, or conversation?",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "balla_forge__hub",
       "text": "Well?",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "trials",
+      "voice": "balla_forge__trials",
       "text": "Every apprentice generation, one anvil, two finalists, best blade takes the forge-right. My year it was me and Bretta Ironhewn, and the judges took until *dawn*. I won on the temper line. She'd tell you she won on everything else. She'd be half right.",
       "next": "hub"
     },
     {
       "id": "bretta",
+      "voice": "balla_forge__bretta",
       "text": "HA! Twenty years and she's still filing that grievance! My quenches ran *precise*. She calls that cold. You've seen her, then. The ford forge. Good. Tell her the anvil's still here, the solstice letter stands, and the door's never been locked. Tell her that last part like it's from the forge, not from me.",
       "next": "hub"
     },
     {
       "id": "work",
+      "voice": "balla_forge__work",
       "text": "Silver for the bank, steel for the watch, and now the deep orders. The reopened galleries want rails, brackets, cage-lanterns, pick heads by the crate. Biggest commission this forge has taken since the terraces went up. Listen. Hear that? Three anvils going at once. My smiths are singing again. THAT'S good work.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "balla_forge__browse",
       "text": "Bar stock and coal, priced by the ledger, weighed in front of you. The Grand Forge doesn't haggle. The price is already fair.",
       "hooks": [
         {

@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "kestrel_fine__greet",
       "text": "You're on my roll with a mark against you. Coin clears it.",
       "choices": [
         { "text": "How much?", "next": "quote" },
@@ -15,17 +16,20 @@
     },
     {
       "id": "quote",
+      "voice": "kestrel_fine__quote",
       "text": "He checks the roll.",
       "hooks": [{ "kind": "fine", "faction": "waykeepers", "quote": true }],
       "next": "greet"
     },
     {
       "id": "pay",
+      "voice": "kestrel_fine__pay",
       "text": "He takes the count without looking up.",
       "hooks": [{ "kind": "fine", "faction": "waykeepers" }]
     },
     {
       "id": "bye",
+      "voice": "kestrel_fine__bye",
       "text": "Suit yourself. The lamps see fine either way."
     }
   ]

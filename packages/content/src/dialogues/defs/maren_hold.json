@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "maren_hold__greet",
       "text": "You've climbed a long way to stand in a drafty hall. Welcome to it. I'm *Maren*. Castellan of Castle Silverfall. The charter says High Warden. The work is the same under either name.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "maren_hold__hub",
       "text": "Ask what you came to ask.",
       "choices": [
         {
@@ -37,6 +39,7 @@
     },
     {
       "id": "seal",
+      "voice": "maren_hold__seal",
       "text": "The upper veins are thinning, and Solvei's surveys finally frightened me in the right direction. A city that lives by silver cannot spend a generation pretending its own cellar isn't there. The Masons counseled patience. I ordered the breaking, and Petra swung the pick _through her own grandfather's stonework._ If the dark sends up more than ore, the account is mine to settle. I said so at the moot.",
       "choices": [
         {
@@ -51,26 +54,31 @@
     },
     {
       "id": "kobolds",
+      "voice": "maren_hold__kobolds",
       "text": "Still down there. We hold the market spine and the swept galleries. Past the rubble line, the warren holds itself. Grettir's crews go armed and come back counted. For now the account balances. Travelers who tilt it in our favor find the city grateful. In coin.",
       "next": "hub"
     },
     {
       "id": "hard",
+      "voice": "maren_hold__hard",
       "text": "All the calls up here are hard. I weigh them as long as the day allows, then I stand by them. I won't say more than that.",
       "next": "hub"
     },
     {
       "id": "city",
+      "voice": "maren_hold__city",
       "text": "A mine that learnt manners. The terraces, the banners, the court: all of it is what the silver bought. Put your ear to any wall on a quiet night and you'll hear picks.",
       "next": "hub"
     },
     {
       "id": "hold",
+      "voice": "maren_hold__hold",
       "text": "The feast hall seats the moot. The armory arms the watch, and the wardens' wing sleeps light. The Mirrormere behind us feeds the falls, the falls feed the pool, and the pool has caught three careless wardens that the histories admit to. *Mind the edge.* It's the city motto for good reason.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "maren_hold__bye",
       "text": "The road down is easier than the road up. Walk well."
     }
   ]

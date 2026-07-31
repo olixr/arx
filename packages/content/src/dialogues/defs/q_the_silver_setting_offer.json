@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_silver_setting_offer__hub",
       "text": "The work is beautiful, and I don't take walk-in metal. Everything on this bench answers to one commandment: Runa's stamp settles it. If you want to supply the Setting, the Assayer knows your face first.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_silver_setting" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "what",
+      "voice": "q_the_silver_setting_offer__what",
       "text": "Four silver bars, true-smelted, for setting-work that will carry my mark. My mark has to mean something in three hundred years. That starts with whose hands touched the metal.",
       "choices": [
         { "text": "Mine will weigh true.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_silver_setting_offer__sworn",
       "text": "Runa keeps the assay house on the crafting terrace, by the tithe vault. Present yourself. Don't attempt small talk. She weighs that too.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_silver_setting" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_silver_setting_offer__declined",
       "text": "The rules ARE the beauty. Come back when you see it."
     }
   ]

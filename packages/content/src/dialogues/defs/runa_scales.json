@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "runa_scales__greet",
       "text": "Counter's for weighing, not leaning. State your business.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "runa_scales__hub",
       "text": "Well?",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "assay",
+      "voice": "runa_scales__assay",
       "text": "Every bar the smelter pours crosses this counter. Weighed. Tested. Stamped. Every tenth goes to the tithe vault for the Crown. The stamp is the mountain's word. Vigdis won't touch silver without it. The bank won't vault it.",
       "next": "hub"
     },
     {
       "id": "vault",
+      "voice": "runa_scales__vault",
       "text": "The Crown's tenth, until the quarter-day wagon carries it up to the bank under guard. One vault, one key, and I hold the key. I've caught Rookery people at the lock twice. Nothing taken, either time. Whatever arrangement the Magpie has with the castle, she's kept it. I keep a second lock anyway.",
       "next": "hub"
     },
     {
       "id": "bribe",
+      "voice": "runa_scales__bribe",
       "text": "Four times. Twice in coin. Once in silver. Once in a very good pie. All four assays came back exact. The pie went back with one slice gone.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "runa_scales__bye",
       "text": "Weighed and logged. On your way."
     }
   ]

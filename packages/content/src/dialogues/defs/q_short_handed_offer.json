@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_short_handed_offer__hub",
       "text": "Roll's short. Wolves between the lamps again. Six put down is a shift I don't have a warden for. You're not my first choice. You're the one standing here.",
       "hooks": [{ "kind": "quest_offer", "quest": "short_handed" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_short_handed_offer__sworn",
       "text": "Lamp to lamp. Don't be clever about it.",
       "hooks": [{ "kind": "quest_accept", "quest": "short_handed" }]
     },
     {
       "id": "declined",
+      "voice": "q_short_handed_offer__declined",
       "text": "There isn't another. That was the point."
     }
   ]

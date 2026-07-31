@@ -6,16 +6,19 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_last_patrol_active__hub",
       "text": "{item:weathered_letter} Give it here.",
       "next": "read"
     },
     {
       "id": "read",
+      "voice": "q_the_last_patrol_active__read",
       "text": "'Back before the thaw.' And the oath at the bottom, written small, the way you write a thing you mean. This is the winter patrol. Lost before my time. Not before my grandmother's.",
       "next": "ask"
     },
     {
       "id": "ask",
+      "voice": "q_the_last_patrol_active__ask",
       "text": "The dead that walk where they fell don't get to keep walking. Put the watch and their shieldmen to rest, and I'll enter the letter in the rolls with the patrol marked home. That's the whole of what the order can still do for them. It's not nothing.",
       "choices": [
         { "text": "I'll see them to rest.", "next": "sworn" },
@@ -24,11 +27,13 @@
     },
     {
       "id": "where",
+      "voice": "q_the_last_patrol_active__where",
       "text": "Where the old dead stand now. The ruined tower on the first climb keeps its garrison after dark, and the deeper crypts keep the rest. You'll know the watch by their shields. They kept those, at least.",
       "next": "sworn"
     },
     {
       "id": "sworn",
+      "voice": "q_the_last_patrol_active__sworn",
       "text": "The lamp stays lit. Go."
     }
   ]

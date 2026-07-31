@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "stig_grain__greet",
       "text": "Watch your step, shavings underfoot. Take your time, look at the benches. You after a door, or a lesson? I keep both.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "stig_grain__hub",
       "text": "Speak up over the benches. What'll it be?",
       "choices": [
         {
@@ -37,6 +39,7 @@
     },
     {
       "id": "make",
+      "voice": "stig_grain__make",
       "text": "Everything the mountain can't smelt. Doors, carts, cradles, coffins, all off these benches. The saw yard breaks the pine down, my hall joins it back up, Dagny bends the offcuts into barrels and Haki flights the straightest of it. One tree, four trades. That's the Timberway. Nothing wasted but the bark, and Wyn the herbalist takes the bark.",
       "choices": [
         {
@@ -55,21 +58,25 @@
     },
     {
       "id": "boards",
+      "voice": "stig_grain__boards",
       "text": "Two logs make a *sawhorse*; a steady hand rips a log into three true boards along the grain, never across it. Boards stack flat and carry light: a wall's worth in one hand. The yard's trestles do nothing yours wouldn't do in the field.",
       "next": "hub"
     },
     {
       "id": "castle",
+      "voice": "stig_grain__castle",
       "text": "The great doors, the moot dais, and the Queen's window box. The window box was hardest, because Her Majesty knows joinery, and she *checked*. The King thanked me for the dais. The doors thank me every winter by not warping.",
       "next": "hub"
     },
     {
       "id": "teach",
+      "voice": "stig_grain__teach",
       "text": "The patterns on my counter will start you: measures, joints, which grain forgives and which doesn't. After that it's ten thousand shavings, and a temper you learn to lose quietly. Take the wood at its own pace and it behaves forever. Same with apprentices. Tilo, the artisan down at the ford, was mine. Look at him now.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "stig_grain__browse",
       "text": "Patterns, drawings, and the measures I trust. Priced fair. Learn them slower than you want to.",
       "hooks": [
         {
@@ -80,6 +87,7 @@
     },
     {
       "id": "bye",
+      "voice": "stig_grain__bye",
       "text": "True grain. And check your ladder rungs."
     }
   ]

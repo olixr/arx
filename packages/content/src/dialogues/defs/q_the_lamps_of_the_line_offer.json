@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_lamps_of_the_line_offer__hub",
       "text": "Muster stands at too few, same as last season. I need the whole line walked: every sergeant's report, taken in person, bottom of the road to the top. You've done crown work. This is the older kind.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_lamps_of_the_line" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "why",
+      "voice": "q_the_lamps_of_the_line_offer__why",
       "text": "Because paper says 'quiet' and a sergeant's face says which kind of quiet. My grandmother founded the order on the difference.",
       "choices": [
         { "text": "Then I'll go look at faces.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_lamps_of_the_line_offer__sworn",
       "text": "Hale, first waystation out of Dawnmead. Odessa at the long meadow. Brant at the fork. Edda at the top, the *Last Lamp*. Say I sent you and nothing else. They'll know.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_lamps_of_the_line" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_lamps_of_the_line_offer__declined",
       "text": "It is. That's rather the point of it."
     }
   ]

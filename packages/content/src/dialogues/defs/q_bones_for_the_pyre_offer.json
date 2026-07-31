@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_bones_for_the_pyre_offer__hub",
       "text": "When you walk the wilds, bring back the old bones you find. Ten is a rite's worth. They shouldn't lie out in the weather.",
       "hooks": [{ "kind": "quest_offer", "quest": "bones_for_the_pyre" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_bones_for_the_pyre_offer__sworn",
       "text": "Thank you. There's no hurry. There never is, with this.",
       "hooks": [{ "kind": "quest_accept", "quest": "bones_for_the_pyre" }]
     },
     {
       "id": "declined",
+      "voice": "q_bones_for_the_pyre_offer__declined",
       "text": "Then leave them be gently, where you find them."
     }
   ]

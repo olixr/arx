@@ -10,6 +10,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "ivo_greenstair__hub",
       "text": "Oh. A visitor. Hello. Um. This is the Greenstair. Highest farm in the Dawnlands. That's the interesting fact about it. Did you need something?",
       "choices": [
         {
@@ -28,16 +29,19 @@
     },
     {
       "id": "how",
+      "voice": "ivo_greenstair__how",
       "text": "Terraces, and patience. Snow in the morning, sun by noon, wind all day. You plant for the row, not the field. Each row has its own weather up here. Its own temper, really. That one by the fence sulks if the wheat crowds it. People think I'm joking when I say that. I'm not.",
       "next": "hub"
     },
     {
       "id": "grow",
+      "voice": "ivo_greenstair__grow",
       "text": "Wheat and cotton on the high pads. Sagewort and moonbell behind the fence. Those are for Wyn, the herbalist. She's particular and so are they, so it works. And carrots. Cold ground makes a carrot sweet. Most of them go to Signy, the cook, for her stew. The carrots don't mind. They like Signy.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "ivo_greenstair__bye",
       "text": "Mind the rows. And take a carrot, if one's leaning. The leaning ones have decided."
     }
   ]
