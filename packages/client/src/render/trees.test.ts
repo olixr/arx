@@ -214,6 +214,12 @@ test('the pine is tiers, not a dome — plates, facets, and a bare bole', () => 
     assert.ok(m.clusters.length >= 4);
     // Dead whorl stubs stand on the bole.
     assert.ok(m.branches.filter((b) => b.level === 1).length >= 2, 'the bole lost its whorl stubs');
+    // THE RIGID SWAY: the pine is the stiff species — it bakes once
+    // and sways by sprite shear, never by cadence re-bakes.
+    assert.equal(m.rigid, true, 'the pine must declare itself rigid');
+  }
+  for (const tile of [Tile.Tree, Tile.TreeOak, Tile.TreeWillow, Tile.TreeYew]) {
+    assert.ok(!treeModel(tile, 3).rigid, `${Tile[tile]} is a soft species — cadence wind`);
   }
 });
 

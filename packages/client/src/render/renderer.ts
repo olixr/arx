@@ -13600,6 +13600,7 @@ export class Renderer {
     wx: number,
     wy: number,
     tSec: number,
+    windOverride?: number,
   ): {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
@@ -13627,7 +13628,7 @@ export class Renderer {
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
     sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     sctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-    paintTree(sctx, m, { bx: half, groundY: top, s, syT, wx, wy, tSec, grow: 1 });
+    paintTree(sctx, m, { bx: half, groundY: top, s, syT, wx, wy, tSec, windOverride, grow: 1 });
     if (this.outlineOn) this.bakeOutlineRing(canvas, sctx, pw, ph);
     return {
       canvas,
@@ -14425,12 +14426,16 @@ export class Renderer {
       if (fade < 1) this.ctx.globalAlpha = 1;
     } else {
       const key = Renderer.treeKey(wx, wy, tile);
-      this.treesVisible++;
+      // Rigid species (THE RIGID SWAY, trees.ts) bake once and sway
+      // by shear — they neither ride the cadence nor count toward
+      // it, so a taiga's few soft trees keep the fine re-bake rate.
+      const rigid = m.rigid === true;
+      if (!rigid) this.treesVisible++;
       let sp = this.treeSprites.get(key);
       // Each tree re-bakes on its own phase of the (adaptive) cadence,
       // derived from its key, so the herd never re-bakes in one frame —
       // a phase-locked wave read as a p95 hitch every Nth frame.
-      const due = (this.frameNo + key) % this.treeCadence === 0;
+      const due = !rigid && (this.frameNo + key) % this.treeCadence === 0;
       const stale =
         !sp ||
         (due && sp.frame !== this.frameNo) ||
@@ -14451,7 +14456,9 @@ export class Renderer {
         if (allow) {
           this.treeBakeBudget--;
           const t0 = performance.now();
-          sp = this.bakeTreeSprite(sp, m, wx, wy, tSec);
+          // A rigid tree bakes its NEUTRAL pose — the shear below is
+          // the only wind it will ever need.
+          sp = this.bakeTreeSprite(sp, m, wx, wy, tSec, rigid ? 0 : undefined);
           this.spriteBakeMsLeft -= performance.now() - t0;
           this.treeSprites.set(key, sp);
         }
@@ -14470,9 +14477,23 @@ export class Renderer {
       // body politely fades — plain globalAlpha, exact layering.
       const fade = this.occluderFade(key, dx0, dy0, dw, dh, wy - this.ownPY > -FRONT_EPS);
       if (fade < 1) this.ctx.globalAlpha = fade;
-      this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
-      if (fade < 1) this.ctx.globalAlpha = 1;
       wind = windScalarAt(wx, wy, tSec);
+      if (rigid) {
+        // THE RIGID SWAY: shear the cached sprite about the ground
+        // line so the top leans by the live cantilever throw —
+        // full-framerate sway, and the linear ramp reads the same as
+        // the painter's hf^1.4 curve at these amplitudes. Manual
+        // inverse (b = 0 keeps it exact) — save/restore per tree was
+        // measurable on the shadow pass already.
+        const kSh = wind * 0.055;
+        const gy = by + syT * 0.3;
+        this.ctx.transform(1, 0, -kSh, 1, kSh * gy, 0);
+        this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
+        this.ctx.transform(1, 0, kSh, 1, -kSh * gy, 0);
+      } else {
+        this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
+      }
+      if (fade < 1) this.ctx.globalAlpha = 1;
     }
 
     // Life: strong gusts shake the occasional leaf loose (skipped
@@ -14633,8 +14654,12 @@ export class Renderer {
           const key = Renderer.treeKey(wx, wy, tile);
           let sh = this.treeShadows.get(key);
           // Same per-key phase as the sprite: body and shadow re-bake
-          // in the same frame, so their sway always agrees.
-          const due = (this.frameNo + key) % this.treeCadence === 0;
+          // in the same frame, so their sway always agrees. Rigid
+          // trees (THE RIGID SWAY) cast a windless silhouette on a
+          // SLOW cadence — a ground blob doesn't read a lean, but the
+          // sun's azimuth still drifts and the path must follow it.
+          const rigid = m.rigid === true;
+          const due = (this.frameNo + key) % (rigid ? 240 : this.treeCadence) === 0;
           const stale =
             !sh || (due && sh.frame !== this.frameNo) || Math.abs(sh.scale - s) > s * 0.2;
           if (stale && (!sh || (this.treeShadowBudget > 0 && !this.zoomGliding))) {
@@ -14645,7 +14670,7 @@ export class Renderer {
                 0,
                 0,
                 1,
-                windScalarAt(wx, wy, tSec),
+                rigid ? 0 : windScalarAt(wx, wy, tSec),
                 this.sky.shadowX * this.sky.shadowLen,
                 this.sky.shadowY * this.sky.shadowLen * ys,
               ),

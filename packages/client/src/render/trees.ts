@@ -160,6 +160,14 @@ export interface TreeCurtain {
 export interface TreeModel {
   species: number;
   variant: number;
+  /**
+   * THE RIGID SWAY: a stiff species (the pine) whose only real
+   * motion is the trunk cantilever. The renderer bakes it ONCE in a
+   * neutral pose and sways the cached sprite with a ground-pivot
+   * SHEAR each frame — full-framerate wind at zero re-bake cost,
+   * where cadence re-baking a dense taiga cost whole frames.
+   */
+  rigid?: boolean;
   /** Ground → crown top, tiles. */
   height: number;
   /** Max |x| + r across the crown — shadow and culling. */
@@ -901,6 +909,7 @@ export function treeModel(tile: Tile, h: number): TreeModel {
 
   const model: TreeModel = {
     species, variant,
+    rigid: g.tiers > 0 || undefined,
     height: Math.max(H, top),
     spread,
     bark: g.bark,
