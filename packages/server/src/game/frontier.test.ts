@@ -913,6 +913,9 @@ test('worldSnapshot carries the living state: credits, calm, claimed yards', () 
     findsLive: new Map(),
     minorLedger: new Map(),
   });
+  // THE FORESTER'S GLASS (second-growth Phase 6) reads the growth
+  // ledger off the world — the slate's fake world carries it too.
+  Object.assign(s.world as object, { growthLedger: new Map() });
   s.frontierCalm.set('1,1', Date.now() + 3_600_000);
   s.frontierCalm.set('2,2', Date.now() - 1); // expired — never reported
   s.homesByCharacter.set(7, { x: 100, y: 100 });
