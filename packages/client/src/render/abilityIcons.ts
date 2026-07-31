@@ -450,36 +450,61 @@ function greatblade(c: Ctx, x: number, y: number, len: number, st: FxStyle, ang 
  * The veteran's silhouette — a clenched fist, knuckles leading. The
  * combat school owns no weapon, so the empty hand IS its glyph: every
  * plate in the ladder keeps it in frame, the way the twin plates keep
- * their crossed pair. Blocky mitt, one lit top plane, a folded thumb.
+ * their crossed pair.
+ *
+ * Rebuilt for the 42px read: the knuckles SCALLOP the leading edge
+ * (three rolled bumps — the fist's own skyline, the thing no blob
+ * has), a wide lit top plane, a deep under-shadow, the thumb folded
+ * across the near side, and one brass wrist band — the school's
+ * single note of polish. Everything else stays big and blunt.
  */
 function fist(c: Ctx, x: number, y: number, s: number, st: FxStyle, ang = 0): void {
   c.save();
   c.translate(x, y);
   c.rotate(ang);
   c.scale(s, s);
-  // Cuff — the sleeve the arm arrives in.
-  c.fillStyle = shade('#5b4028', 10);
-  c.fillRect(-0.5, -0.2, 0.18, 0.4);
+  // A short wrist stub — enough to say "arm", never enough to read as
+  // a vessel's base when the fist stands upright.
+  poly(c, '#6a4a30', [[-0.52, -0.1], [-0.3, -0.13], [-0.3, 0.13], [-0.52, 0.1]], 0.042);
+  // Brass wrist band — thin, the school's one note of polish.
+  c.fillStyle = '#c89440';
   c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.034;
+  c.fillRect(-0.37, -0.15, 0.065, 0.3);
+  c.strokeRect(-0.37, -0.15, 0.065, 0.3);
+  // The mitt: one blunt mass, three knuckles rolling the leading edge.
+  c.fillStyle = st.mid;
   c.lineWidth = 0.05;
-  c.strokeRect(-0.5, -0.2, 0.18, 0.4);
-  // The mitt: a blunt block, knuckles leading (+x).
-  poly(c, st.mid, [
-    [-0.32, -0.26], [0.14, -0.3], [0.34, -0.18], [0.36, 0.12], [0.2, 0.26], [-0.32, 0.24],
-  ], 0.05);
-  // One lit top plane — the sun law at plate scale.
-  fill(c, st.core, [[-0.3, -0.22], [0.12, -0.26], [0.28, -0.15], [-0.3, -0.11]]);
-  // Knuckle notches down the leading edge.
+  c.lineJoin = 'round';
+  c.beginPath();
+  c.moveTo(-0.33, -0.26);
+  c.lineTo(0.06, -0.3);
+  c.lineTo(0.17, -0.29);
+  c.arc(0.27, -0.21, 0.12, -1.3, 1.0);
+  c.arc(0.3, 0.0, 0.12, -1.35, 1.15);
+  c.arc(0.26, 0.19, 0.115, -1.2, 1.35);
+  c.lineTo(0.12, 0.32);
+  c.lineTo(-0.33, 0.3);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  // The lit top plane — the sun law at plate scale.
+  fill(c, st.core, [[-0.31, -0.22], [0.08, -0.26], [0.26, -0.2], [0.3, -0.13], [-0.31, -0.08]]);
+  // Deep under-shadow seats the mass.
+  fill(c, st.deep, [[-0.31, 0.21], [0.12, 0.24], [0.06, 0.3], [-0.31, 0.28]]);
+  // Knuckle seams between the bumps.
   c.strokeStyle = st.deep;
-  c.lineWidth = 0.035;
-  for (const ky of [-0.13, -0.01, 0.11]) {
+  c.lineWidth = 0.032;
+  c.lineCap = 'round';
+  for (const ky of [-0.1, 0.1]) {
     c.beginPath();
-    c.moveTo(0.33, ky);
-    c.lineTo(0.23, ky + 0.035);
+    c.moveTo(0.34, ky);
+    c.lineTo(0.2, ky + 0.02);
     c.stroke();
   }
-  // The folded thumb riding the low edge.
-  poly(c, st.mid, [[-0.06, 0.23], [0.14, 0.19], [0.18, 0.3], [-0.02, 0.33]], 0.04);
+  // The folded thumb crossing the near side, its own lit facet.
+  poly(c, st.mid, [[-0.04, 0.1], [0.2, 0.07], [0.3, 0.18], [0.16, 0.31], [-0.06, 0.3]], 0.042);
+  fill(c, st.core, [[-0.01, 0.13], [0.18, 0.1], [0.22, 0.16], [0.02, 0.19]]);
   c.restore();
 }
 
@@ -2497,76 +2522,78 @@ Object.assign(PLATES, {
   // Bull Rush — the lowered shoulder becomes a wedge; the dust agrees.
   bull_rush: (st) => (c) => {
     c.translate(0.5, 0.52);
-    chevrons(c, -0.34, -0.02, 0, st, 2, 1.1);
-    poly(c, st.mid, [[-0.08, -0.22], [0.34, -0.04], [0.34, 0.12], [-0.12, 0.18]], 0.036);
-    fill(c, st.core, [[-0.06, -0.18], [0.26, -0.04], [-0.08, 0.0]]);
-    puff(c, -0.18, 0.22, 0.09, st.deep);
-    puff(c, 0.02, 0.26, 0.07, st.deep);
+    chevrons(c, -0.36, -0.04, 0, st, 2, 1.5);
+    poly(c, st.mid, [[-0.16, -0.36], [0.46, -0.06], [0.46, 0.16], [-0.24, 0.28]], 0.045);
+    fill(c, st.core, [[-0.12, -0.3], [0.38, -0.06], [-0.14, 0.02]]);
+    fill(c, st.deep, [[-0.22, 0.18], [0.44, 0.1], [0.46, 0.16], [-0.24, 0.28]]);
+    puff(c, -0.04, 0.34, 0.1, st.deep);
+    puff(c, 0.28, 0.3, 0.08, st.deep);
   },
-  // Warcry — the shout leaves the mouth and hardens into rings.
+  // Warcry — the shout leaves the mouth and hardens into two hard
+  // waves; the sparks are the yard hearing it.
   warcry: (st) => (c) => {
-    c.translate(0.42, 0.5);
-    dot(c, st.deep, -0.16, 0, 0.1);
-    for (const [r, a] of [[0.2, 0.9], [0.32, 0.65], [0.44, 0.4]] as const) {
-      c.globalAlpha = a;
-      crescent(c, -0.1, 0, r, r + 0.055, -0.9, 0.9, st.mid, 0.03);
-    }
-    c.globalAlpha = 1;
-    star4(c, 0.36, -0.3, 0.09, st.spark);
-    star4(c, 0.4, 0.26, 0.07, st.core);
+    c.translate(0.38, 0.5);
+    ringDot(c, st.core, -0.14, 0, 0.13, 0.036);
+    crescent(c, -0.08, 0, 0.2, 0.32, -0.85, 0.85, st.core, 0.03);
+    crescent(c, -0.08, 0, 0.4, 0.54, -0.72, 0.72, st.mid, 0.034);
+    star4(c, 0.5, -0.32, 0.09, st.spark);
+    star4(c, 0.52, 0.28, 0.07, st.core);
   },
-  // Steel Wave — the swing leaves the sword and keeps rolling.
+  // Steel Wave — the swing leaves the sword and keeps rolling: one
+  // thick wave, bright down its own spine.
   steel_wave: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    crescent(c, -0.05, 0, 0.3, 0.44, -0.75, 0.75, st.mid, 0.036);
-    crescent(c, -0.05, 0, 0.32, 0.4, -0.55, 0.55, st.core, 0.024);
-    chevrons(c, -0.3, 0, 0, st, 2, 0.9);
-    for (const a of [-0.5, 0, 0.5]) {
-      star4(c, Math.cos(a) * 0.52 - 0.02, Math.sin(a) * 0.52, 0.06, st.spark, a);
+    c.translate(0.44, 0.5);
+    chevrons(c, -0.28, 0, 0, st, 2, 1.2);
+    crescent(c, -0.02, 0, 0.22, 0.46, -0.85, 0.85, st.mid, 0.04);
+    crescent(c, -0.02, 0, 0.28, 0.4, -0.7, 0.7, st.core, 0.024);
+    for (const a of [-0.55, 0, 0.55]) {
+      star4(c, Math.cos(a) * 0.55 - 0.02, Math.sin(a) * 0.55, 0.07, st.spark, a);
     }
   },
-  // Stagger Stomp — the heel arrives; the floor passes it on.
+  // Stagger Stomp — the heel arrives; the floor passes it on. A real
+  // boot now, toe proud, cracks bright enough to matter.
   stagger_stomp: (st) => (c) => {
-    c.translate(0.5, 0.48);
-    c.globalAlpha = 0.5;
-    novaRing(c, 0, 0.18, 0.34, st, 10, 0.2, 0.034);
+    c.translate(0.48, 0.46);
+    c.globalAlpha = 0.55;
+    novaRing(c, 0.02, 0.26, 0.38, st, 10, 0.2, 0.04);
     c.globalAlpha = 1;
-    poly(c, st.mid, [[-0.14, -0.34], [0.12, -0.34], [0.16, 0.0], [0.08, 0.1], [-0.18, 0.06]], 0.036);
-    fill(c, st.core, [[-0.1, -0.3], [0.08, -0.3], [0.1, -0.1], [-0.12, -0.12]]);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.035;
+    poly(c, st.mid, [[-0.16, -0.42], [0.1, -0.42], [0.12, -0.04], [0.32, 0.02], [0.32, 0.16], [-0.18, 0.14]], 0.045);
+    fill(c, st.core, [[-0.12, -0.38], [0.06, -0.38], [0.08, -0.16], [-0.14, -0.18]]);
+    fill(c, st.deep, [[-0.16, 0.06], [0.3, 0.09], [0.32, 0.16], [-0.18, 0.14]]);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.04;
     c.lineCap = 'round';
-    for (const [x1, y1] of [[-0.38, 0.28], [0.36, 0.3], [-0.1, 0.38]] as const) {
+    for (const [x1, y1] of [[-0.42, 0.34], [0.44, 0.36], [-0.1, 0.44]] as const) {
       c.beginPath();
-      c.moveTo(-0.02, 0.12);
+      c.moveTo(0.06, 0.18);
       c.lineTo(x1, y1);
       c.stroke();
     }
   },
-  // Headsman's Stroke — the axe over the block; the arc is clean.
+  // Headsman's Stroke — the broad head already at the block, the haft
+  // still up where the swing began.
   headsman_stroke: (st) => (c) => {
     c.translate(0.5, 0.52);
-    poly(c, '#6a4a2e', [[-0.3, 0.14], [0.3, 0.14], [0.26, 0.32], [-0.26, 0.32]], 0.036);
+    poly(c, '#6a4a2e', [[-0.32, 0.18], [0.32, 0.18], [0.26, 0.4], [-0.26, 0.4]], 0.04);
+    fill(c, '#8a6440', [[-0.28, 0.21], [0.28, 0.21], [0.26, 0.27], [-0.27, 0.27]]);
     c.strokeStyle = '#7a5a38';
-    c.lineWidth = 0.06;
+    c.lineWidth = 0.07;
     c.lineCap = 'round';
     c.beginPath();
-    c.moveTo(0.3, -0.42);
-    c.lineTo(0.06, -0.08);
+    c.moveTo(0.38, -0.42);
+    c.lineTo(0.04, -0.12);
     c.stroke();
-    poly(c, st.mid, [[-0.26, -0.34], [0.02, -0.42], [0.08, -0.12], [-0.14, -0.06]], 0.036);
-    fill(c, st.core, [[-0.22, -0.32], [0.0, -0.38], [0.02, -0.26], [-0.18, -0.22]]);
-    crescent(c, -0.06, 0.02, 0.3, 0.35, 1.9, 2.9, st.spark, 0.026);
+    poly(c, st.mid, [[-0.36, -0.32], [-0.02, -0.44], [0.1, -0.08], [-0.22, 0.06]], 0.045);
+    fill(c, st.core, [[-0.32, -0.28], [-0.05, -0.38], [0.0, -0.22], [-0.27, -0.14]]);
+    fill(c, st.spark, [[-0.22, 0.06], [0.1, -0.08], [0.08, -0.01], [-0.2, 0.12]]);
   },
-  // Warlord's Descent — the banner comes down with the man.
+  // Warlord's Descent — the crown comes down with the man, and the
+  // ground announces them both.
   warlords_descent: (st) => (c) => {
     c.translate(0.5, 0.5);
-    crown(c, 0, -0.34, 0.3, st.mid, st.core);
-    chevrons(c, 0, -0.06, Math.PI / 2, st, 2, 1.1);
-    c.globalAlpha = 0.6;
-    novaRing(c, 0, 0.3, 0.3, st, 10, 0.24, 0.04);
-    c.globalAlpha = 1;
-    ground(c, 0, 0.34, st);
+    novaRing(c, 0, 0.32, 0.36, st, 10, 0.22, 0.045);
+    crown(c, 0, 0.14, 0.52, st.mid, st.core);
+    chevrons(c, 0, -0.38, Math.PI / 2, st, 2, 1.3);
   },
   // Longshot — one line, drawn to the edge of the plate.
   longshot: (st) => (c) => {
@@ -3501,136 +3528,134 @@ Object.assign(PLATES, {
 // iron. No weapon ever appears on these plates: the lessons belong to
 // whatever hand shows up holding whatever it holds.
 Object.assign(PLATES, {
-  // First Blood — the opening cut: the fist past the wave of the fight
-  // starting, the first drop already falling.
+  // First Blood — the opening cut: the fist arriving, the first drop
+  // already falling off the knuckles. One glyph, one drop.
   first_blood: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    crescent(c, -0.02, 0.02, 0.34, 0.42, -2.4, -0.7, st.spark, 0.028);
-    fist(c, 0.0, 0.02, 0.62, st, -0.2);
-    droplet(c, 0.3, 0.3, 0.22, st);
-    star4(c, 0.32, -0.24, 0.07, st.core);
+    c.translate(0.46, 0.46);
+    crescent(c, -0.04, 0.0, 0.4, 0.47, -2.75, -1.35, st.spark, 0.026);
+    fist(c, 0.02, 0.0, 0.92, st, -0.12);
+    droplet(c, 0.32, 0.34, 0.26, st);
   },
-  // Shoulder Check — the tackle: the run's chevrons behind, the dust
-  // arriving with the fist.
+  // Shoulder Check — the tackle: the run's chevrons still arriving,
+  // the dust getting there with the fist.
   shoulder_check: (st) => (c) => {
-    c.translate(0.5, 0.52);
-    ground(c, 0.08, 0.34, st);
-    chevrons(c, -0.36, -0.06, 0, st, 2, 1.0);
-    fist(c, 0.1, -0.06, 0.7, st, 0);
-    star4(c, 0.42, 0.06, 0.08, st.spark, Math.PI / 4);
+    c.translate(0.54, 0.5);
+    chevrons(c, -0.46, -0.04, 0, st, 2, 1.7);
+    fist(c, 0.12, -0.02, 0.98, st, 0);
+    puff(c, 0.28, 0.3, 0.09, st.deep);
   },
-  // War Shout — the horn note: two rings leaving the raised fist, the
-  // yard already listening.
+  // War Shout — the horn note: two hard waves rolling up off the
+  // raised fist, the yard already listening.
   war_shout: (st) => (c) => {
-    c.translate(0.5, 0.52);
-    novaRing(c, 0, -0.02, 0.44, st, 12, 0.14, 0.028);
-    c.globalAlpha = 0.55;
-    novaRing(c, 0, -0.02, 0.29, st, 10, 0.18, 0.024);
-    c.globalAlpha = 1;
-    fist(c, 0, 0.06, 0.6, st, -Math.PI / 2);
+    c.translate(0.5, 0.56);
+    crescent(c, 0, -0.02, 0.24, 0.36, Math.PI * 1.18, Math.PI * 1.82, st.core, 0.03);
+    crescent(c, 0, -0.02, 0.44, 0.58, Math.PI * 1.22, Math.PI * 1.78, st.mid, 0.034);
+    fist(c, 0, 0.14, 0.9, st, -Math.PI / 2);
+    star4(c, -0.42, -0.24, 0.08, st.spark);
+    star4(c, 0.42, -0.22, 0.06, st.core);
   },
-  // Second Breath — the chest fills: breath climbing off the resting
-  // hand under the gathering halo.
+  // Second Breath — the chest fills: one breath climbing off the
+  // resting hand under the gathering halo.
   second_breath: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    haloArcs(c, 0, -0.04, st);
-    puff(c, -0.16, -0.28, 0.1, st.core);
-    puff(c, 0.14, -0.36, 0.08, st.mid);
-    fist(c, 0, 0.18, 0.6, st, -Math.PI / 2);
+    c.translate(0.5, 0.52);
+    haloArcs(c, 0, -0.08, st);
+    puff(c, -0.02, -0.34, 0.11, st.core);
+    fist(c, 0, 0.14, 0.88, st, -Math.PI / 2);
   },
-  // Loose Iron — everything flies: a fan of camp iron off the throwing
-  // hand, flight lines still humming.
+  // Loose Iron — everything flies: three bolts of camp iron off the
+  // throwing hand, still climbing.
   loose_iron: (st) => (c) => {
-    c.translate(0.42, 0.56);
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.022;
+    c.translate(0.42, 0.54);
     c.lineCap = 'round';
-    for (const [a, r] of [[-0.55, 0.52], [-0.22, 0.56], [0.1, 0.5]] as const) {
+    for (const [a, d] of [[-1.05, 0.46], [-0.62, 0.52], [-0.22, 0.48]] as const) {
+      const dx = Math.cos(a);
+      const dy = Math.sin(a);
+      c.strokeStyle = st.spark;
+      c.lineWidth = 0.032;
       c.beginPath();
-      c.moveTo(Math.cos(a) * 0.12, Math.sin(a) * 0.12);
-      c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      c.moveTo(dx * 0.16, dy * 0.16);
+      c.lineTo(dx * (d - 0.14), dy * (d - 0.14));
       c.stroke();
+      c.save();
+      c.translate(dx * d, dy * d);
+      c.rotate(a);
+      poly(c, st.core, [[-0.09, 0], [0.0, -0.055], [0.12, 0], [0.0, 0.055]], 0.028);
+      c.restore();
     }
-    star4(c, 0.4, -0.3, 0.08, st.mid, 0.3);
-    star4(c, 0.5, -0.02, 0.06, st.core, 0.8);
-    poly(c, st.mid, [[0.3, -0.16], [0.44, -0.2], [0.46, -0.14], [0.32, -0.1]], 0.024);
-    fist(c, -0.06, 0.12, 0.6, st, -0.5);
+    fist(c, -0.02, 0.14, 0.82, st, -0.55);
   },
-  // Hold Fast — the planted heel: knuckles down on held ground, the
-  // stakes of the stand either side.
+  // Hold Fast — the planted stand: knuckles down on the held ground,
+  // the ward arched over the stand.
   hold_fast: (st) => (c) => {
-    c.translate(0.5, 0.54);
-    ground(c, 0, 0.36, st);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.05;
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.spark;
     c.lineCap = 'round';
-    for (const bx of [-0.32, 0.32]) {
-      c.beginPath();
-      c.moveTo(bx, -0.26);
-      c.lineTo(bx, 0.08);
-      c.stroke();
-    }
-    fist(c, 0, -0.14, 0.72, st, Math.PI / 2);
+    c.lineWidth = 0.05;
+    c.globalAlpha = 0.85;
+    c.beginPath();
+    c.arc(0, 0.06, 0.42, Math.PI * 1.12, Math.PI * 1.88);
+    c.stroke();
+    c.globalAlpha = 1;
+    poly(c, st.deep, [[-0.4, 0.3], [0.4, 0.3], [0.34, 0.42], [-0.34, 0.42]], 0.036);
+    fill(c, st.mid, [[-0.36, 0.32], [0.36, 0.32], [0.33, 0.37], [-0.33, 0.37]]);
+    fist(c, 0, -0.04, 0.88, st, Math.PI / 2);
   },
   // Break the Line — the wall in two pieces, the fist already through
   // the gap it made.
   break_the_line: (st) => (c) => {
     c.translate(0.5, 0.5);
-    poly(c, st.deep, [[-0.46, -0.12], [-0.08, -0.16], [-0.06, -0.05], [-0.46, -0.02]], 0.03);
-    poly(c, st.deep, [[0.12, -0.18], [0.46, -0.16], [0.46, -0.06], [0.14, -0.08]], 0.03);
-    chevrons(c, -0.32, 0.22, 0, st, 1, 0.8);
-    fist(c, 0.04, 0.12, 0.66, st, -0.35);
-    star4(c, 0.02, -0.12, 0.1, st.core, Math.PI / 4);
+    poly(c, st.deep, [[-0.48, -0.2], [-0.12, -0.26], [-0.09, -0.06], [-0.46, 0.0]], 0.036);
+    fill(c, st.mid, [[-0.45, -0.18], [-0.15, -0.23], [-0.14, -0.16], [-0.44, -0.11]]);
+    poly(c, st.deep, [[0.14, -0.28], [0.48, -0.24], [0.46, -0.04], [0.12, -0.1]], 0.036);
+    fill(c, st.mid, [[0.17, -0.24], [0.44, -0.2], [0.43, -0.13], [0.16, -0.17]]);
+    star4(c, 0.02, -0.28, 0.09, st.spark, Math.PI / 4);
+    fist(c, 0.0, 0.14, 0.94, st, -0.3);
   },
-  // The Opening — daylight in the guard: two panels, the bright seam
-  // between them, the hand already inside it.
+  // The Opening — daylight in the guard: two dark panels, the bright
+  // seam between them, the hand already inside it.
   the_opening: (st) => (c) => {
     c.translate(0.5, 0.5);
-    poly(c, st.deep, [[-0.44, -0.34], [-0.08, -0.3], [-0.08, 0.34], [-0.44, 0.3]], 0.03);
-    poly(c, st.deep, [[0.12, -0.3], [0.46, -0.34], [0.46, 0.3], [0.12, 0.34]], 0.03);
-    fill(c, st.core, [[-0.07, -0.3], [0.11, -0.3], [0.11, 0.33], [-0.07, 0.33]]);
-    fist(c, 0.02, 0.02, 0.58, st, 0);
+    poly(c, st.deep, [[-0.46, -0.36], [-0.12, -0.32], [-0.12, 0.36], [-0.46, 0.32]], 0.036);
+    poly(c, st.deep, [[0.16, -0.32], [0.48, -0.36], [0.48, 0.32], [0.16, 0.36]], 0.036);
+    fill(c, st.core, [[-0.11, -0.32], [0.15, -0.32], [0.15, 0.35], [-0.11, 0.35]]);
+    star4(c, 0.02, -0.36, 0.08, st.spark);
+    fist(c, 0.02, 0.04, 0.78, st, 0);
   },
-  // No Quarter — the grindstone: cuts chasing each other around the
-  // fist that will not stop, the price already on the floor.
+  // No Quarter — the grindstone: two cuts chasing each other around
+  // the fist that will not stop, the price already on the floor.
   no_quarter: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    crescent(c, 0, -0.02, 0.3, 0.38, -2.9, -1.5, st.mid, 0.028);
-    crescent(c, 0, -0.02, 0.3, 0.38, -1.1, 0.3, st.spark, 0.028);
-    crescent(c, 0, -0.02, 0.3, 0.38, 0.9, 2.3, st.mid, 0.028);
-    fist(c, 0, 0.02, 0.62, st, -0.1);
-    droplet(c, -0.3, 0.34, 0.2, st);
+    c.translate(0.5, 0.48);
+    crescent(c, 0, 0.0, 0.33, 0.44, -2.85, -1.15, st.spark, 0.028);
+    crescent(c, 0, 0.0, 0.33, 0.44, 0.35, 2.05, st.mid, 0.028);
+    fist(c, 0, 0.0, 0.9, st, -0.1);
+    droplet(c, -0.32, 0.34, 0.22, st);
   },
-  // The Long Fight — the wave returns: three rings, oldest faintest,
-  // and the fist still up in the middle of all of them.
+  // The Long Fight — the wave returns: the hard ring now, its echo
+  // behind it, and the fist still up in the middle of both.
   the_long_fight: (st) => (c) => {
     c.translate(0.5, 0.52);
-    novaRing(c, 0, 0, 0.46, st, 13, 0.12, 0.028);
-    c.globalAlpha = 0.55;
-    novaRing(c, 0, 0, 0.33, st, 11, 0.16, 0.026);
-    c.globalAlpha = 0.3;
-    novaRing(c, 0, 0, 0.21, st, 9, 0.2, 0.024);
+    c.globalAlpha = 0.45;
+    novaRing(c, 0, -0.04, 0.47, st, 13, 0.14, 0.034);
     c.globalAlpha = 1;
-    star4(c, -0.36, -0.3, 0.06, st.spark);
-    star4(c, 0.38, -0.26, 0.05, st.core);
-    fist(c, 0, 0.04, 0.58, st, -Math.PI / 2);
+    novaRing(c, 0, -0.04, 0.34, st, 11, 0.18, 0.05);
+    fist(c, 0, 0.1, 0.84, st, -Math.PI / 2);
   },
   // Four Roads — the crossroads: four ways out of one stance, a light
   // at the end of each, the hand that walked them in the middle.
   four_roads: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.strokeStyle = st.spark;
-    c.lineWidth = 0.026;
+    c.lineWidth = 0.045;
     c.lineCap = 'round';
     for (let i = 0; i < 4; i++) {
       const a = Math.PI / 4 + (i * Math.PI) / 2;
       c.beginPath();
-      c.moveTo(Math.cos(a) * 0.16, Math.sin(a) * 0.16);
+      c.moveTo(Math.cos(a) * 0.2, Math.sin(a) * 0.2);
       c.lineTo(Math.cos(a) * 0.44, Math.sin(a) * 0.44);
       c.stroke();
-      dot(c, st.mid, Math.cos(a) * 0.44, Math.sin(a) * 0.44, 0.05);
+      ringDot(c, st.core, Math.cos(a) * 0.45, Math.sin(a) * 0.45, 0.065, 0.026);
     }
-    fist(c, 0, 0.02, 0.54, st, -Math.PI / 2);
+    fist(c, 0, 0.04, 0.68, st, -Math.PI / 2);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 

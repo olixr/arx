@@ -190,6 +190,8 @@ export declare class Panels {
     private renderArtsWingTabs;
     /** The codex, whole: wing tabs, then whichever wing is open. */
     renderArts(): void;
+    /** The jump-strip: one chip per school — a short road down a long ledger. */
+    private schoolJumpStrip;
     /** Skills whose Callings may show — the hidden-skill law honored. */
     private callingSkillIds;
     private callingState;

@@ -1527,9 +1527,45 @@ export class Panels {
 
     this.renderArtsLoadout();
     this.artsSchools.innerHTML = '';
+    if (schools.length > 1) this.artsSchools.appendChild(this.schoolJumpStrip(schools));
     for (const style of schools) this.artsSchools.appendChild(this.artsSchool(style));
     this.renderArtsBench(all);
     this.updateArtsPip();
+  }
+
+  /** The jump-strip: one chip per school — a short road down a long ledger. */
+  private schoolJumpStrip(schools: SkillId[]): HTMLElement {
+    const strip = document.createElement('div');
+    strip.className = 'school-jump';
+    const inHand = techniqueDef(this.technique ?? '')?.style;
+    for (const style of schools) {
+      const face = SKILL_FACE[style] ?? { icon: 'bread', color: '#d9a441' };
+      const hidden = HIDDEN_SKILLS[style];
+      const chip = document.createElement('button');
+      chip.className = 'jump-chip' + (inHand === style ? ' on-r' : '');
+      const unseenHere = this.visibleTechniques(style).some((t) => {
+        const s = this.techState(style, t);
+        return (s === 'unlocked' || s === 'equipped') && !this.seenTech.has(t.ability);
+      });
+      if (unseenHere) chip.classList.add('has-new');
+      chip.style.setProperty('--skill-accent', face.color);
+      chip.dataset.nav = '';
+      chip.dataset.navkey = `jump:${style}`;
+      chip.dataset.acta = 'Go';
+      const img = document.createElement('img');
+      img.src = itemIconUrl(face.icon, 17);
+      img.draggable = false;
+      const label = document.createElement('span');
+      label.textContent = hidden ? hidden.name : style;
+      chip.append(img, label);
+      chip.addEventListener('click', () => {
+        document
+          .getElementById(`arts-school-${style}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      strip.appendChild(chip);
+    }
+    return strip;
   }
 
   // ---------------------------------------------- the Callings wing
@@ -1825,6 +1861,7 @@ export class Panels {
     const level = levelForXp(this.lastSkills[style] ?? 0);
     const block = document.createElement('div');
     block.className = 'arts-school' + (hidden ? ' secret-skill' : '');
+    block.id = `arts-school-${style}`;
     block.style.setProperty('--skill-accent', face.color);
 
     const head = document.createElement('div');
@@ -1843,6 +1880,18 @@ export class Panels {
     lv.className = 'arts-school-lv';
     lv.textContent = `Lv ${level}`;
     head.append(plaque, name, lv);
+    // How much of the ladder this hand has climbed (pages ride outside it).
+    const rungs = this.visibleTechniques(style).filter((t) => !t.hidden);
+    const climbed = rungs.filter((t) => {
+      const s = this.techState(style, t);
+      return s === 'unlocked' || s === 'equipped';
+    }).length;
+    const count = document.createElement('span');
+    count.className = 'arts-school-count';
+    count.textContent = `${climbed} of ${rungs.length}`;
+    count.dataset.tipname = 'The ladder';
+    count.dataset.tipsub = `${climbed} of ${rungs.length} arts answer to this school so far.`;
+    head.appendChild(count);
     if (techniqueDef(this.technique ?? '')?.style === style) {
       const hand = document.createElement('span');
       hand.className = 'in-hand';
@@ -1855,12 +1904,20 @@ export class Panels {
 
     const rail = document.createElement('div');
     rail.className = 'tech-rail';
-    this.visibleTechniques(style).forEach((tech) => {
+    const visible = this.visibleTechniques(style);
+    visible.forEach((tech, i) => {
       const ab = abilityDef(tech.ability);
       if (!ab) return;
       const st = this.techState(style, tech);
       const btn = document.createElement('button');
       btn.className = `tech-plate-btn ${st}`;
+      // The link back to the previous rung — earned pages sit outside
+      // the ladder, so no link touches them on either side.
+      const prev = visible[i - 1];
+      if (i % 5 !== 0 && !tech.hidden && prev && !prev.hidden) {
+        btn.classList.add('rail-link');
+        if (st === 'unlocked' || st === 'equipped') btn.classList.add('rail-lit');
+      }
       if (this.artsSel === tech.ability) btn.classList.add('selected');
       btn.dataset.nav = '';
       btn.dataset.navkey = `art:${tech.ability}`;
