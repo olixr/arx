@@ -263,6 +263,18 @@ export const FX_STYLES: Record<string, FxStyle> = {
   red_eclipse: BLOOD({ mid: '#c84a5a', ring: 'halo', debris: 'blood', motif: 'rays', punch: 0.8, wash: 0.6 }),
   realm_rend: fx('#ffffff', '#9ae8de', '#2a6a64', '#e0fffb', '160, 235, 225', 'teeth', 'star', 'glow', 0.9, 'tear'),
 
+  // -------------------------------------- the ten voices, staff arts
+  wild_root: VERDANT({ mid: '#7a9a4a', ring: 'petals', debris: 'leaf', decal: 'roots', motif: 'spikes', punch: 0.5, wash: 0.4 }),
+  day_breaks: RADIANT({ mid: '#ffd98a', ring: 'halo', debris: 'star', decal: 'glow', motif: 'rays', punch: 0.7, wash: 0.7 }),
+  moonfall: FROST({ mid: '#bcd8f0', ring: 'halo', debris: 'ice', decal: 'rime', motif: 'rain', punch: 0.75, wash: 0.6 }),
+  shearwind: STORM({ mid: '#d8e8f0', ring: 'halo', debris: 'spark', decal: undefined, motif: 'vortex', punch: 0.65, wash: 0.5 }),
+  the_molt: EMBER({ mid: '#ff9a5a', ring: 'petals', debris: 'ember', decal: 'scorch', motif: 'swarm', punch: 0.5, wash: 0.5 }),
+  hollowing: VOID({ mid: '#9a8ad8', ring: 'halo', debris: 'shadow', decal: 'stain', motif: 'vortex', punch: 0.7, wash: 0.3 }),
+  red_toll: BLOOD({ mid: '#e84a5a', ring: 'runes', debris: 'blood', decal: 'stain', motif: 'swarm', punch: 0.55, wash: 0.4 }),
+  axiom: ARCANE({ mid: '#c8b8f0', ring: 'runes', debris: 'star', decal: 'runes', motif: 'echo', punch: 0.55, wash: 0.5 }),
+  perihelion: fx('#ffffff', '#b8ecff', '#2a4a6a', '#e8f8ff', '184, 236, 255', 'shards', 'star', 'cracks', 0.85, 'rain'),
+  crownstorm: GOLD({ mid: '#fff0a0', ring: 'runes', debris: 'spark', decal: 'glow', motif: 'crown', punch: 0.8, wash: 0.6 }),
+
   // ------------------------------------------------------ relic actives
   ember_dash: EMBER({ ring: 'shards', decal: 'scorch', punch: 0.5 }),
   healing_totem: VERDANT({ ring: 'halo', debris: 'leaf', decal: 'glow', motif: 'bloom', punch: 0.2, wash: 0.4 }),

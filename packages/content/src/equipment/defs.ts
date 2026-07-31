@@ -4614,7 +4614,129 @@ function staffDefs(): EquipmentDef[] {
     },
   ];
 
-  return [...carved, ...battlestaffs, ...classics, ...crafts, ...finds];
+  // ============================================= THE TEN VOICES
+  // The legendary chase staffs, spread down the road a mage actually
+  // walks — legendary or nothing, found or nothing, and every one
+  // DOES something beyond its stats (the riftglass law). The staff is
+  // the spell's mouth; each of these has its own voice, its own crown,
+  // and its own Art nobody else gets to speak.
+  const voices: EquipmentDef[] = [
+    {
+      id: 'wealdheart', name: 'Wealdheart', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 5 },
+      weapon: { style: 'magic', damage: 2, cooldownTicks: 8, range: 13, projectileSpeed: 13, art: 'wild_root', element: 'verdant' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'herbalism', w: 2 }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'venom', power: 1, durationTicks: 60, chance: 0.2 }],
+      value: 900, color: '#5a7a3c', code: 'Wf',
+      desc: 'A living bough that never noticed it was cut. The bloom at the top opens for spring, and it decides when spring is.',
+    },
+    {
+      id: 'firstlight', name: 'Firstlight', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 8 },
+      weapon: { style: 'magic', damage: 2, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'day_breaks', element: 'radiant' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onKillHaste', ticks: 30 }],
+      value: 1000, color: '#e8b84a', code: 'Fh',
+      desc: 'Wings of temple gold holding the first hour of the day. The halo does not touch the staff. It stays out of politeness.',
+    },
+    {
+      id: 'moonwell', name: 'Moonwell', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 11 },
+      weapon: { style: 'magic', damage: 3, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'moonfall', element: 'frost' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'chill', power: 1, durationTicks: 60, chance: 0.2 }],
+      value: 1100, color: '#c8d0dc', code: 'Mv',
+      desc: 'Three small moons walk a silver ring around a pearl of held water. Somewhere a tide is missing. It is here.',
+    },
+    {
+      id: 'galecall', name: 'Galecall', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 14 },
+      weapon: { style: 'magic', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 14, art: 'shearwind', element: 'storm' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 50, chance: 0.2 }],
+      value: 1250, color: '#b8c8d4', code: 'Gw',
+      desc: 'A storm wound onto a spindle. The eye at the center is calm the way a held breath is calm.',
+    },
+    {
+      id: 'firequill', name: 'Firequill', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 17 },
+      weapon: { style: 'magic', damage: 4, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'the_molt', element: 'ember' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'burn', power: 1, durationTicks: 60, chance: 0.25 }],
+      value: 1400, color: '#c98a3f', code: 'Fv',
+      desc: 'Five brass feathers from a bird that writes in fire. The inkwell never runs dry and never quite cools.',
+    },
+    {
+      id: 'hollowstar', name: 'Hollowstar', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 20 },
+      weapon: { style: 'magic', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'hollowing', element: 'void' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'elementDmg', element: 'void', pct: 8 }, { kind: 'cooldown', pct: 3 }],
+      value: 1500, color: '#46425a', code: 'Hs',
+      desc: 'A star that closed its eye and kept the weight. Light nearby leans in, and some of it does not lean back out.',
+    },
+    {
+      id: 'everthirst', name: 'Everthirst', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 23 },
+      weapon: { style: 'magic', damage: 5, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'red_toll', element: 'blood' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'vitality', w: 2 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'lifesteal', frac: 0.05 }],
+      value: 1600, color: '#7a2e38', code: 'Eh',
+      desc: 'A garnet cup that has never once been full. The heart above it beats. Nobody agreed to explain that.',
+    },
+    {
+      id: 'runekey', name: 'Runekey', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 26 },
+      weapon: { style: 'magic', damage: 5, cooldownTicks: 8, range: 15, projectileSpeed: 14, art: 'axiom', element: 'arcane' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'tailoring' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'cooldown', pct: 6 }],
+      value: 1750, color: '#d9a441', code: 'Rj',
+      desc: 'Two rings turning against each other around a stone that touches neither. It opens the kind of door that has no hinges.',
+    },
+    {
+      id: 'driftstar', name: 'Driftstar', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 28 },
+      weapon: { style: 'magic', damage: 6, cooldownTicks: 9, range: 15, projectileSpeed: 15, art: 'perihelion', element: 'astral' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'vitality' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'elementDmg', element: 'astral', pct: 8 }, { kind: 'crit', pct: 2 }],
+      value: 1850, color: '#9aa2b4', code: 'Dq',
+      desc: 'A comet on a silver leash, still making its rounds. It kept its tail. It gave up nothing else.',
+    },
+    {
+      id: 'skythrone', name: 'Skythrone', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 30 },
+      weapon: { style: 'magic', damage: 6, cooldownTicks: 8, range: 15, projectileSpeed: 15, art: 'crownstorm', element: 'storm' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [
+        { kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 60, chance: 0.25 },
+        { kind: 'onKillHaste', ticks: 40 },
+      ],
+      value: 2000, color: '#e8b84a', code: 'Sj',
+      desc: 'A crown that outranks the weather, floating where a king would be if any king dared. The lightning holds it like a leash.',
+    },
+  ];
+
+  return [...carved, ...battlestaffs, ...classics, ...crafts, ...finds, ...voices];
 }
 
 /** Compiled once at module load — throws loudly on any malformed def. */

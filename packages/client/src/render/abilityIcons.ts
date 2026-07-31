@@ -1640,6 +1640,167 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// -------------------------------------- the ten voices, staff arts
+Object.assign(PLATES, {
+  // Wildroot — the ground remembers being forest: root spears up
+  // through the patch, one leaf already unpacking.
+  wild_root: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.34, st);
+    for (const [x, h, w] of [[-0.18, 0.3, 0.05], [0.02, 0.44, 0.06], [0.2, 0.24, 0.045]] as const) {
+      fill(c, st.mid, [[x - w, 0.1], [x - w * 0.3, -h], [x + w * 0.3, -h + 0.06], [x + w, 0.1]]);
+      poly(c, st.core, [[x - w * 0.3, -h], [x - w * 0.2, 0.04]], 0.024);
+    }
+    fill(c, st.spark, [[0.02, -0.44], [0.14, -0.52], [0.16, -0.42], [0.06, -0.38]]);
+    dot(c, st.core, -0.26, -0.18, 0.03);
+  },
+  // The Day Breaks — dawn in a straight line: the gold corridor and
+  // the halo it was poured from.
+  day_breaks: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(-0.22);
+    poly(c, st.mid, [[-0.46, -0.09], [0.44, -0.09]], 0.03);
+    poly(c, st.mid, [[-0.46, 0.09], [0.44, 0.09]], 0.03);
+    fill(c, st.core, [[-0.44, -0.05], [0.42, -0.05], [0.42, 0.05], [-0.44, 0.05]]);
+    ringDot(c, st.spark, -0.34, -0.26, 0.1, 0.03);
+    star4(c, 0.3, -0.24, 0.06, st.spark);
+    star4(c, 0.05, 0.26, 0.05, st.core, Math.PI / 4);
+  },
+  // Moonfall — the borrowed moon arrives: the disc mid-drop, cold
+  // rings already spreading on the ground it picked.
+  moonfall: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.32, st);
+    dot(c, st.core, 0.02, -0.2, 0.17);
+    crescent(c, 0.02, -0.2, 0.17, 0.22, Math.PI * 0.6, Math.PI * 1.5, st.mid, 0.03);
+    dot(c, st.deep, 0.08, -0.26, 0.035);
+    dot(c, st.deep, -0.04, -0.14, 0.026);
+    chevrons(c, 0.02, 0.06, Math.PI / 2, st, 2, 0.7);
+    snowflake(c, -0.3, -0.34, 0.07, st.spark, 0.03);
+  },
+  // Shearwind — one coil comes off the spindle and the crowd
+  // rearranges itself: the spiral, unwinding outward.
+  shearwind: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.055;
+    c.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      c.beginPath();
+      c.arc(0, 0, 0.14 + i * 0.13, i * 1.8, i * 1.8 + 2.4 - i * 0.3);
+      c.stroke();
+    }
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.arc(0, 0, 0.2, 2.4, 4.2);
+    c.stroke();
+    dot(c, st.spark, 0, 0, 0.06);
+    chevrons(c, 0.32, -0.18, -0.5, st, 2, 0.7);
+  },
+  // The Molt — five feathers, five addresses: the fan mid-shed, one
+  // quill already flying point-first.
+  the_molt: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    for (let k = -2; k <= 2; k++) {
+      const a = -Math.PI / 2 + k * 0.38;
+      const len = 0.34 - Math.abs(k) * 0.04;
+      const tx = Math.cos(a) * len;
+      const ty = Math.sin(a) * len;
+      fill(c, st.mid, [
+        [0, 0.1],
+        [tx + Math.cos(a + 1.9) * 0.07, ty + Math.sin(a + 1.9) * 0.07],
+        [tx * 1.22, ty * 1.22],
+        [tx + Math.cos(a - 1.9) * 0.07, ty + Math.sin(a - 1.9) * 0.07],
+      ]);
+      dot(c, st.core, tx * 1.22, ty * 1.22, 0.028);
+    }
+    fill(c, st.deep, [[-0.05, 0.12], [0.05, 0.12], [0.05, 0.24], [-0.05, 0.24]]);
+    dot(c, st.spark, 0, 0.18, 0.03);
+    chevrons(c, 0.34, -0.3, -0.9, st, 2, 0.6);
+  },
+  // Hollowing — the hungry dark does the inviting: the hole, the
+  // lean of everything near it.
+  hollowing: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.arc(0, 0, 0.2, 0, Math.PI * 2);
+    c.fill();
+    ringDot(c, st.core, 0, 0, 0.22, 0.026);
+    // Streaks leaning IN from the rim of the room.
+    for (let i = 0; i < 4; i++) {
+      const a = i * 1.57 + 0.5;
+      poly(c, st.mid, [
+        [Math.cos(a) * 0.44, Math.sin(a) * 0.44],
+        [Math.cos(a + 0.2) * 0.26, Math.sin(a + 0.2) * 0.26],
+      ], 0.032);
+    }
+    dot(c, st.spark, 0.07, -0.07, 0.025);
+  },
+  // Red Toll — the cup goes down the line: the chalice, and the
+  // paying arcs arriving from both neighbors.
+  red_toll: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    // The cup: bowl, stem, foot.
+    fill(c, st.mid, [[-0.16, -0.18], [0.16, -0.18], [0.1, 0.04], [-0.1, 0.04]]);
+    fill(c, st.core, [[-0.12, -0.16], [0.12, -0.16], [0.08, -0.06], [-0.08, -0.06]]);
+    poly(c, st.mid, [[0, 0.04], [0, 0.2]], 0.045);
+    poly(c, st.mid, [[-0.1, 0.24], [0.1, 0.24]], 0.045);
+    // The tribute, arcing in.
+    crescent(c, -0.3, -0.3, 0.16, 0.2, -Math.PI * 0.2, Math.PI * 0.5, st.spark, 0.03);
+    crescent(c, 0.3, -0.3, 0.16, 0.2, Math.PI * 0.5, Math.PI * 1.2, st.spark, 0.03);
+    droplet(c, 0.02, -0.36, 0.22, st);
+  },
+  // Axiom — stated three times: the theorem rings, each restatement
+  // wider, the keystone unmoved at the center.
+  axiom: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    for (let i = 0; i < 3; i++) {
+      const r = 0.14 + i * 0.13;
+      const rot = i * 0.5;
+      c.strokeStyle = i === 1 ? st.core : st.mid;
+      c.lineWidth = 0.032;
+      c.beginPath();
+      for (let k = 0; k <= 4; k++) {
+        const a = rot + (k / 4) * Math.PI * 2;
+        const x = Math.cos(a) * r;
+        const y = Math.sin(a) * r;
+        if (k === 0) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      }
+      c.stroke();
+    }
+    dot(c, st.spark, 0, 0, 0.06);
+    star4(c, 0.3, -0.32, 0.05, st.spark);
+  },
+  // Perihelion — closest pass, meaning here: the comet head down,
+  // tail still arriving from the sky it left.
+  perihelion: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.32, st);
+    // Tail beads strung back up the fall line.
+    dot(c, st.mid, 0.3, -0.44, 0.035);
+    dot(c, st.mid, 0.2, -0.32, 0.045);
+    poly(c, st.deep, [[0.34, -0.5], [0.02, -0.1]], 0.05);
+    // The head, burning through.
+    dot(c, st.core, 0.02, -0.12, 0.1);
+    star4(c, 0.02, -0.12, 0.16, st.spark);
+    crescent(c, 0, 0.08, 0.24, 0.18, Math.PI * 0.15, Math.PI * 0.85, st.core, 0.03);
+    dot(c, st.spark, -0.28, -0.36, 0.028);
+  },
+  // Crownstorm — court convenes down the line: the crown, and the
+  // bolt leaving it for the next head.
+  crownstorm: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crown(c, 0, -0.2, 0.3, st.mid, st.core);
+    bolt(c, -0.02, 0.12, 0.7, st, 0.45);
+    dot(c, st.spark, -0.26, 0.3, 0.035);
+    dot(c, st.spark, 0.28, 0.34, 0.028);
+    star4(c, 0.3, -0.34, 0.05, st.spark);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ------------------------------------------------------ relic actives
 Object.assign(PLATES, {
   // Ember Dash — a streak of fire you were briefly inside of.

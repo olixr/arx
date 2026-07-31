@@ -45,6 +45,7 @@ import { RELIC_SIGS } from './fxSigsRelics.js';
 import { SHIELD_SIGS } from './fxSigsShield.js';
 import { TWOHAND_SIGS } from './fxSigsTwohand.js';
 import { DUALWIELD_SIGS } from './fxSigsDualwield.js';
+import { VOICES_SIGS } from './fxSigsVoices.js';
 
 // --------------------------------------------------------------- ctx
 
@@ -712,4 +713,5 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...SHIELD_SIGS,
   ...TWOHAND_SIGS,
   ...DUALWIELD_SIGS,
+  ...VOICES_SIGS,
 };

@@ -581,7 +581,7 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 188, 'swords 55 + daggers 48 + bows 29 + staves 28 + greatweapons 28');
+  assert.equal(weapons.length, 198, 'swords 55 + daggers 48 + bows 29 + staves 38 + greatweapons 28');
   const swords = weapons.filter((d) => d.weapon?.style === 'melee');
   assert.equal(swords.length, 103, 'swords 55 + daggers 48');
   for (const s of swords) {
@@ -769,6 +769,52 @@ test('the ten crowns: legendary-only one-hand chase blades, spread down the road
   // Sword crowns gate on melee, knife crowns on sneak (dagger law).
   for (const [id] of swords) assert.equal(byId.get(id)!.levelReq!.skill, 'melee');
   for (const [id] of knives) assert.equal(byId.get(id)!.levelReq!.skill, 'sneak');
+});
+
+test('the ten voices: legendary-only chase staffs, spread down the road', async () => {
+  const { ABILITIES } = await import('./abilities.js');
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  const voices: Array<[string, number]> = [
+    ['wealdheart', 5], ['firstlight', 8], ['moonwell', 11], ['galecall', 14],
+    ['firequill', 17], ['hollowstar', 20], ['everthirst', 23], ['runekey', 26],
+    ['driftstar', 28], ['skythrone', 30],
+  ];
+  assert.equal(voices.length, 10, 'ten voices, no more, no fewer');
+  const elements = new Set<string>();
+  for (const [id, gate] of voices) {
+    const d = byId.get(id);
+    assert.ok(d, `${id} exists`);
+    // The band-spread law: legendary is a road promise, not an
+    // endgame one — every voice gates at or below level 30.
+    assert.ok(gate <= 30, `${id} sits on the leveling road`);
+    assert.equal(d!.levelReq!.level, gate, `${id} keeps its band`);
+    assert.equal(d!.levelReq!.skill, 'magic', `${id} gates on magic`);
+    // Legendary or nothing; found or nothing.
+    assert.deepEqual(d!.rarities, ['legendary'], `${id} only exists legendary`);
+    assert.ok(d!.acquisition?.drop && !d!.acquisition?.craft, `${id} is found, never forged`);
+    assert.equal(d!.recipe, undefined, `${id} has no recipe`);
+    // Every voice DOES something beyond stats (the riftglass law —
+    // lawful here because all ten are legendary-pinned).
+    assert.ok((d!.effects?.length ?? 0) > 0, `${id} carries a native effect`);
+    assert.ok(d!.weapon!.art && ABILITIES.has(d!.weapon!.art), `${id} art resolves`);
+    // The staff is the spell's mouth: every voice names its school.
+    assert.ok(d!.weapon!.element, `${id} names its school`);
+    elements.add(d!.weapon!.element!);
+    assert.ok(d!.desc && d!.desc.length > 20, `${id} carries a real story`);
+  }
+  // Nine schools across ten voices — the roster is a curriculum,
+  // not a palette swap.
+  assert.ok(elements.size >= 8, 'the voices cover the schools');
+  // The own-art law: no two voices share a word — and none borrows
+  // another weapon's art either.
+  const arts = voices.map(([id]) => byId.get(id)!.weapon!.art);
+  assert.equal(new Set(arts).size, arts.length, 'no two voices share a word');
+  const others = EQUIPMENT_DEFS.filter(
+    (d) => d.slot === 'weapon' && !voices.some(([id]) => id === d.id),
+  );
+  for (const o of others) {
+    assert.ok(!arts.includes(o.weapon?.art), `${o.id} does not borrow a voice's art`);
+  }
 });
 
 test('archer roster: 20 bow designs, wood ladders climb, arts resolve, chase steepens', async () => {
