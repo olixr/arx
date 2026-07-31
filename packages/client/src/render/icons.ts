@@ -3250,24 +3250,56 @@ const PAINTERS: Record<string, IconPainter> = {
     gem(0.5, 0.76, 0.16, 0.1);
   },
   fibre: (c, col) => {
-    // A hank of fat chisel strands folded over a woven wrap — the
-    // same slab-blade language as the living plant.
-    for (const [dx, tint] of [[-0.17, -14], [-0.06, 6], [0.05, -4], [0.16, 16]] as const) {
-      poly(c, shade(col, tint), [
-        [0.5 + dx - 0.045, 0.14],
-        [0.5 + dx + 0.045, 0.14],
-        [0.5 + dx * 1.9 + 0.05, 0.52],
-        [0.5 + dx * 1.4 + 0.04, 0.88],
-        [0.5 + dx * 1.4 - 0.04, 0.88],
-        [0.5 + dx * 1.9 - 0.05, 0.52],
-      ]);
+    // A cut hank of the living fibre plant: blades fanning up from a
+    // lashed waist, two still wearing their gold seed-heads, short
+    // tails splayed below the tie. The silhouette is the sheaf —
+    // an hourglass of grass — never a box or a cage.
+    const blade = (bx: number, lean: number, len: number, w: number, tone: string): void => {
+      const tipX = bx + lean;
+      const tipY = 0.6 - len;
+      const midX = bx + lean * 0.3;
+      const midY = 0.6 - len * 0.55;
+      c.fillStyle = tone;
+      c.beginPath();
+      c.moveTo(bx - w, 0.64);
+      c.quadraticCurveTo(midX - w, midY, tipX, tipY);
+      c.quadraticCurveTo(midX + w, midY, bx + w, 0.64);
+      c.closePath();
+      c.fill();
+    };
+    // Back rank dark, front rank lit — same shade-banding as the plant.
+    blade(0.43, -0.24, 0.4, 0.034, shade(col, -20));
+    blade(0.57, 0.24, 0.42, 0.034, shade(col, -20));
+    blade(0.46, -0.13, 0.5, 0.038, col);
+    blade(0.55, 0.14, 0.52, 0.038, col);
+    blade(0.5, 0.02, 0.57, 0.04, shade(col, 18));
+    // The two tallest blades wear fat gold seed-heads — chunky
+    // towers along the blade axis, sized to survive the ring and
+    // the hotbar both.
+    for (const [hx, hy, ang] of [[0.52, 0.06, 0.06], [0.71, 0.13, 0.5]] as const) {
+      c.save();
+      c.translate(hx, hy);
+      c.rotate(ang);
+      poly(c, '#a37b2e', [[0, -0.15], [0.075, -0.02], [0.05, 0.13], [-0.05, 0.13], [-0.075, -0.02]]);
+      poly(c, '#d9b04c', [[0, -0.115], [0.05, -0.015], [0.032, 0.1], [-0.032, 0.1], [-0.05, -0.015]]);
+      dot(c, '#f2dd94', -0.016, -0.045, 0.026);
+      c.restore();
     }
-    // The wrap: chunky band with a lit course and a stitch groove.
-    poly(c, '#6b5230', [[0.3, 0.38], [0.7, 0.38], [0.72, 0.58], [0.28, 0.58]]);
-    c.fillStyle = '#8a6c40';
-    c.fillRect(0.32, 0.41, 0.36, 0.06);
-    c.fillStyle = '#57422a';
-    c.fillRect(0.32, 0.51, 0.36, 0.04);
+    // Cut tails under the lash: a short bright whisk, splayed wide
+    // so the outline can never fuse them into a block.
+    poly(c, shade(col, 4), [[0.43, 0.64], [0.47, 0.64], [0.33, 0.84], [0.3, 0.81]]);
+    poly(c, shade(col, 18), [[0.47, 0.64], [0.51, 0.64], [0.46, 0.88], [0.42, 0.87]]);
+    poly(c, shade(col, 10), [[0.52, 0.64], [0.56, 0.64], [0.61, 0.87], [0.57, 0.88]]);
+    poly(c, shade(col, -8), [[0.55, 0.64], [0.59, 0.64], [0.69, 0.8], [0.66, 0.83]]);
+    // The lash: two courses of twine cinched at the waist, the knot
+    // sitting proud at the side.
+    poly(c, '#8a6c40', [[0.38, 0.555], [0.62, 0.555], [0.64, 0.65], [0.36, 0.65]]);
+    c.fillStyle = '#b89552';
+    c.fillRect(0.385, 0.562, 0.235, 0.034);
+    c.fillStyle = '#6b5230';
+    c.fillRect(0.375, 0.612, 0.255, 0.018);
+    dot(c, '#b89552', 0.645, 0.598, 0.032);
+    dot(c, '#8a6c40', 0.645, 0.598, 0.016);
   },
   bloomstone: (c, col) => {
     // A seed that chose stone: a hewn grey-green BLOCK (quarried
@@ -3299,32 +3331,53 @@ const PAINTERS: Record<string, IconPainter> = {
     poly(c, '#ffffff', [[0.62, 0.28], [0.65, 0.34], [0.71, 0.37], [0.65, 0.4], [0.62, 0.46], [0.59, 0.4], [0.53, 0.37], [0.59, 0.34]]);
   },
   twine: (c, col) => {
-    // A wound coil with a loose tail.
-    c.strokeStyle = OUTLINE;
-    c.lineWidth = 0.32;
+    // A wound BALL of twine, courses curving with the sphere and a
+    // loose working tail — the winding rides the ball, so it can
+    // never flatten into a wheel.
+    const cx = 0.45;
+    const cy = 0.44;
+    const r = 0.31;
+    dot(c, shade(col, -22), cx, cy, r);
+    c.save();
     c.beginPath();
-    c.arc(0.5, 0.46, 0.2, 0, Math.PI * 2);
-    c.stroke();
-    c.strokeStyle = col;
-    c.lineWidth = 0.26;
-    c.beginPath();
-    c.arc(0.5, 0.46, 0.2, 0, Math.PI * 2);
-    c.stroke();
-    // Wrap ridges.
-    c.strokeStyle = shade(col, -26);
-    c.lineWidth = 0.03;
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
+    c.arc(cx, cy, r, 0, Math.PI * 2);
+    c.clip();
+    dot(c, col, cx + 0.04, cy - 0.04, r * 0.94);
+    dot(c, shade(col, 22), cx + 0.09, cy - 0.1, r * 0.52);
+    // Two families of winding: nested loops one way, one crossing.
+    c.strokeStyle = shade(col, -28);
+    c.lineWidth = 0.028;
+    for (const ry of [0.34, 0.6, 0.86]) {
       c.beginPath();
-      c.moveTo(0.5 + Math.cos(a) * 0.1, 0.46 + Math.sin(a) * 0.1);
-      c.lineTo(0.5 + Math.cos(a) * 0.31, 0.46 + Math.sin(a) * 0.31);
+      c.ellipse(cx, cy, r * 0.99, r * ry, -0.62, 0, Math.PI * 2);
       c.stroke();
     }
-    c.strokeStyle = shade(col, 20);
-    c.lineWidth = 0.05;
     c.beginPath();
-    c.moveTo(0.62, 0.62);
-    c.quadraticCurveTo(0.76, 0.74, 0.7, 0.88);
+    c.ellipse(cx, cy, r * 0.99, r * 0.48, 0.85, 0, Math.PI * 2);
+    c.stroke();
+    // One course catches the light on the lit shoulder.
+    c.strokeStyle = shade(col, 34);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.ellipse(cx, cy, r * 0.96, r * 0.6, -0.62, -2.4, -0.9);
+    c.stroke();
+    c.restore();
+    // The tail: off the ball, a lazy curve, frayed at the cut.
+    c.strokeStyle = shade(col, 8);
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(cx + r * 0.62, cy + r * 0.72);
+    c.quadraticCurveTo(0.84, 0.7, 0.78, 0.84);
+    c.quadraticCurveTo(0.74, 0.92, 0.64, 0.9);
+    c.stroke();
+    c.lineWidth = 0.02;
+    c.strokeStyle = shade(col, -12);
+    c.beginPath();
+    c.moveTo(0.64, 0.9);
+    c.lineTo(0.57, 0.87);
+    c.moveTo(0.64, 0.9);
+    c.lineTo(0.585, 0.935);
     c.stroke();
   },
   clothbolt: (c, col) => {
@@ -3349,6 +3402,209 @@ const PAINTERS: Record<string, IconPainter> = {
     c.beginPath();
     c.arc(0.3, 0.38, 0.115, 0, Math.PI * 2);
     c.stroke();
+  },
+  threadspool: (c, col) => {
+    // A wooden spool wound fat with lustrous thread, one strand run
+    // loose — the flanges top and bottom keep it a spool, never a
+    // wheel, and the sheen band says silk.
+    c.save();
+    c.translate(0.47, 0.46);
+    c.rotate(0.14);
+    // The wound body, waisted slightly where the thread piles —
+    // drawn wide, so the spool still has a body at hotbar size.
+    poly(c, shade(col, 6), [[-0.24, -0.27], [0.24, -0.27], [0.2, 0.27], [-0.2, 0.27]]);
+    // Thread courses, bowed like winding.
+    c.strokeStyle = shade(col, -22);
+    c.lineWidth = 0.022;
+    for (const y of [-0.17, -0.06, 0.05, 0.16]) {
+      c.beginPath();
+      c.moveTo(-0.22, y);
+      c.quadraticCurveTo(0, y + 0.035, 0.22, y);
+      c.stroke();
+    }
+    // The luster: one bright band riding the body.
+    poly(c, shade(col, 40), [[-0.02, -0.27], [0.06, -0.27], [-0.005, 0.27], [-0.085, 0.27]]);
+    // Wooden flanges, lit caps on top.
+    bar(c, '#7a5a34', -0.31, -0.38, 0.62, 0.115);
+    bar(c, '#9a7848', -0.31, -0.38, 0.62, 0.045);
+    bar(c, '#7a5a34', -0.31, 0.265, 0.62, 0.115);
+    bar(c, '#5b4028', -0.31, 0.335, 0.62, 0.045);
+    c.restore();
+    // The loose strand, glint near the cut end.
+    c.strokeStyle = shade(col, 14);
+    c.lineWidth = 0.034;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0.68, 0.56);
+    c.quadraticCurveTo(0.84, 0.66, 0.78, 0.82);
+    c.quadraticCurveTo(0.75, 0.9, 0.66, 0.9);
+    c.stroke();
+    dot(c, shade(col, 52), 0.795, 0.74, 0.02);
+  },
+  ragswatch: (c, col) => {
+    // A torn scrap of woven linen: the selvedge still straight up
+    // top, the tear ragged along the bottom, loose threads hanging
+    // where the cloth gave way.
+    c.save();
+    c.translate(0.5, 0.46);
+    c.rotate(-0.09);
+    poly(c, col, [
+      [-0.31, -0.26], [0.29, -0.3], [0.33, 0.06],
+      [0.24, 0.02], [0.17, 0.16], [0.06, 0.06], [-0.03, 0.2],
+      [-0.14, 0.08], [-0.22, 0.18], [-0.3, 0.06],
+    ]);
+    // The dog-eared corner shows the underside.
+    poly(c, shade(col, -16), [[0.29, -0.3], [0.33, -0.1], [0.13, -0.27]]);
+    // Weave hint: sparse hatch both ways.
+    c.strokeStyle = shade(col, -14);
+    c.globalAlpha = 0.65;
+    c.lineWidth = 0.016;
+    c.beginPath();
+    for (const x of [-0.17, -0.02, 0.13]) {
+      c.moveTo(x - 0.015, -0.24);
+      c.lineTo(x + 0.015, 0.04);
+    }
+    for (const y of [-0.16, -0.04] as const) {
+      c.moveTo(-0.28, y);
+      c.lineTo(0.28, y - 0.02);
+    }
+    c.stroke();
+    c.globalAlpha = 1;
+    // Two short threads hanging off the tear — no more, or at small
+    // sizes they read as legs.
+    c.strokeStyle = shade(col, -8);
+    c.lineWidth = 0.018;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.03, 0.2);
+    c.lineTo(-0.045, 0.29);
+    c.moveTo(0.17, 0.16);
+    c.lineTo(0.18, 0.24);
+    c.stroke();
+    c.restore();
+  },
+  linenbolt: (c, col) => {
+    // Linen folded into a neat stack, three courses deep — the fold
+    // rounds show on the right, the open edges stagger on the left,
+    // a flax stripe woven along the middle course. A different
+    // silhouette from the rolled cloth bolt on purpose.
+    const fold = (x: number, y: number, w: number, h: number, tone: string): void => {
+      c.fillStyle = tone;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + w - h / 2, y);
+      c.arc(x + w - h / 2, y + h / 2, h / 2, -Math.PI / 2, Math.PI / 2);
+      c.lineTo(x, y + h);
+      c.closePath();
+      c.fill();
+    };
+    fold(0.18, 0.6, 0.62, 0.17, shade(col, -18));
+    fold(0.22, 0.44, 0.6, 0.17, col);
+    fold(0.19, 0.28, 0.58, 0.17, shade(col, 12));
+    // Lit top plane on the upper fold.
+    c.fillStyle = shade(col, 30);
+    c.fillRect(0.19, 0.28, 0.5, 0.05);
+    // The flax stripe riding the middle course.
+    c.fillStyle = '#b09a6a';
+    c.fillRect(0.22, 0.5, 0.56, 0.035);
+    // Open edges: fold shadows at the left cut.
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(0.22, 0.44);
+    c.lineTo(0.22, 0.61);
+    c.moveTo(0.19, 0.28);
+    c.lineTo(0.19, 0.45);
+    c.stroke();
+  },
+  silkbolt: (c, col) => {
+    // Gloomsilk off the roll: the fat roll up top, the drape
+    // spilling down with a waved hem, moon-sheen streaks riding
+    // the luster — cloth that shines back.
+    // The drape.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(0.3, 0.4);
+    c.lineTo(0.78, 0.4);
+    c.quadraticCurveTo(0.84, 0.62, 0.76, 0.84);
+    c.quadraticCurveTo(0.68, 0.9, 0.62, 0.82);
+    c.quadraticCurveTo(0.55, 0.92, 0.46, 0.84);
+    c.quadraticCurveTo(0.38, 0.92, 0.32, 0.82);
+    c.quadraticCurveTo(0.24, 0.6, 0.3, 0.4);
+    c.closePath();
+    c.fill();
+    // Fold shadows down the drape.
+    c.strokeStyle = shade(col, -22);
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0.44, 0.44);
+    c.quadraticCurveTo(0.4, 0.64, 0.44, 0.82);
+    c.moveTo(0.62, 0.44);
+    c.quadraticCurveTo(0.66, 0.62, 0.63, 0.8);
+    c.stroke();
+    // Moon-sheen: two bright diagonals across the luster.
+    c.strokeStyle = shade(col, 46);
+    c.globalAlpha = 0.85;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.36, 0.72);
+    c.lineTo(0.56, 0.48);
+    c.moveTo(0.52, 0.78);
+    c.lineTo(0.68, 0.58);
+    c.stroke();
+    c.globalAlpha = 1;
+    // The roll, spiral cap on the left with a glint.
+    bar(c, shade(col, -10), 0.2, 0.24, 0.62, 0.2);
+    c.fillStyle = shade(col, 16);
+    c.fillRect(0.24, 0.265, 0.54, 0.06);
+    dot(c, shade(col, -28), 0.26, 0.34, 0.105);
+    dot(c, col, 0.26, 0.34, 0.072);
+    dot(c, shade(col, -28), 0.26, 0.34, 0.04);
+    dot(c, shade(col, 42), 0.275, 0.325, 0.018);
+  },
+  loombuild: (c, col) => {
+    // The loom stands as its frame: posts and beams in wood, warp
+    // threads strung down to the woven cloth, the shuttle resting
+    // mid-weave — the machine, not its product.
+    const wood = '#8a6534';
+    const woodLit = '#a5793f';
+    const woodDark = '#6d4a26';
+    // A warm shadowed backdrop fills the frame, so the gaps between
+    // warp threads stay the loom's own shadow — not outline ink.
+    bar(c, '#3a2c1c', 0.16, 0.14, 0.68, 0.7);
+    // Side posts with lit faces.
+    bar(c, wood, 0.14, 0.16, 0.095, 0.72);
+    bar(c, woodLit, 0.14, 0.16, 0.038, 0.72);
+    bar(c, wood, 0.765, 0.16, 0.095, 0.72);
+    bar(c, woodLit, 0.765, 0.16, 0.038, 0.72);
+    // Top beam shows its foreshortened cap; bottom beam sits dark.
+    bar(c, wood, 0.1, 0.1, 0.8, 0.11);
+    bar(c, woodLit, 0.1, 0.1, 0.8, 0.045);
+    bar(c, woodDark, 0.1, 0.82, 0.8, 0.08);
+    // Warp threads from the beam down into the weave.
+    c.strokeStyle = shade(col, -8);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    for (const x of [0.31, 0.4, 0.49, 0.58, 0.67]) {
+      c.moveTo(x, 0.21);
+      c.lineTo(x, 0.62);
+    }
+    c.stroke();
+    // The woven cloth grown up from the bottom, weft courses inked.
+    bar(c, col, 0.26, 0.6, 0.48, 0.22);
+    c.fillStyle = shade(col, 16);
+    c.fillRect(0.26, 0.6, 0.48, 0.05);
+    c.strokeStyle = shade(col, -20);
+    c.lineWidth = 0.018;
+    c.beginPath();
+    for (const y of [0.68, 0.74, 0.79]) {
+      c.moveTo(0.27, y);
+      c.lineTo(0.73, y);
+    }
+    c.stroke();
+    // The shuttle resting across the warp.
+    poly(c, '#5b4028', [[0.32, 0.45], [0.5, 0.4], [0.68, 0.45], [0.5, 0.5]]);
+    poly(c, '#7a5a34', [[0.38, 0.445], [0.5, 0.415], [0.62, 0.445], [0.5, 0.475]]);
   },
   floursack: (c, col) => {
     // A plump sack rolled open at the top, flour heaped over the rim.
@@ -4346,10 +4602,10 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   gilded_locket: { icon: 'gem', color: '#d8b45a' },
   weathered_letter: { icon: 'scroll', color: '#cfc5ab' },
   hardened_leather: { icon: 'hide', color: '#7d5636' },
-  linen_scrap: { icon: 'clothbolt', color: '#ddd6c2' },
-  linen: { icon: 'clothbolt', color: '#e4dcc4' },
-  gloomsilk_thread: { icon: 'twine', color: '#5a4a78' },
-  gloomsilk: { icon: 'clothbolt', color: '#6a5690' },
+  linen_scrap: { icon: 'ragswatch', color: '#ddd6c2' },
+  linen: { icon: 'linenbolt', color: '#e4dcc4' },
+  gloomsilk_thread: { icon: 'threadspool', color: '#5a4a78' },
+  gloomsilk: { icon: 'silkbolt', color: '#6a5690' },
   wolf_fur: { icon: 'hide', color: '#8a90a0' },
   direwolf_pelt: { icon: 'hide', color: '#5d5a68' },
   worg_fang: { icon: 'fang', color: '#d8ccb0' },
@@ -5018,7 +5274,7 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   garden_plot: { icon: 'seeds', color: '#79a355' },
   alembic: { icon: 'bottle', color: '#7fc9b3' },
   tanning_rack: { icon: 'hide', color: '#b08a5c' },
-  loom: { icon: 'clothbolt', color: '#d8cbb0' },
+  loom: { icon: 'loombuild', color: '#d8cbb0' },
   carving_bench: { icon: 'bow', color: '#9b7440' },
   sawhorse: { icon: 'sawhorse', color: '#a8794a' },
   enchanting_table: { icon: 'tome', color: '#7a6aa8' },
