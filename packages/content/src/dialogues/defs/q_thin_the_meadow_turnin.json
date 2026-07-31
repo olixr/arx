@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_thin_the_meadow_turnin__paid",
       "text": "Six. I counted. Well cut, waker. Here's the yard's thanks, and my better mood, which is rarer.",
       "hooks": [{ "kind": "quest_turnin", "quest": "thin_the_meadow" }]
     }

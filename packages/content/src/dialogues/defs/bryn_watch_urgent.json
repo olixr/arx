@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "bryn_watch_urgent__hub",
       "text": "They've stopped hiding their fires. That means numbers. Numbers mean they're deciding something.",
       "choices": [
         {
@@ -24,21 +25,25 @@
     },
     {
       "id": "mark",
+      "voice": "bryn_watch_urgent__mark",
       "text": "Marked on your chart. Don't scout it. *End* it.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
+      "voice": "bryn_watch_urgent__remark",
       "text": "Camp hasn't moved. Their nerve has. The mark stands. Go.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "noone",
+      "voice": "bryn_watch_urgent__noone",
       "text": "Then they get bolder. Then they come down the road. I've seen the order it happens in.",
       "next": "hub"
     },
     {
       "id": "hold",
+      "voice": "bryn_watch_urgent__hold",
       "text": "Always."
     }
   ]

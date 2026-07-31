@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_pot_never_rests_turnin__paid",
       "text": "Six good ones. Into the pot they go. And these two are yours, cooked proper. You've earned a supper you didn't catch.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_pot_never_rests" }]
     }

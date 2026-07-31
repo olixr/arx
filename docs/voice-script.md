@@ -780,7 +780,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Captain of the North Gate, made by the Toll War. Watch-report clip; names the dead plainly; no glory talk. She remembers whether you listened to her. Steady command voice with the weight of a bad year behind it.
 
-**Chatterbox casting:** `steel_cori` *(provisional)* · exaggeration 0.4 · cfg 0.6
+**Chatterbox casting:** `iron_sue` *(provisional)* · exaggeration 0.4 · cfg 0.6
 
 ### Quips — short fillers, one file each
 
@@ -1075,7 +1075,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Grocer; wants everyone fed and everyone's news. Warm, nosy, kind. Runs sentences together, asks after people by name. Fast and friendly, barely a full stop in her.
 
-**Chatterbox casting:** `matron_michele` *(provisional)* · exaggeration 0.6 · cfg 0.4
+**Chatterbox casting:** `market_tricia` *(provisional)* · exaggeration 0.6 · cfg 0.4
 
 ### Quips — short fillers, one file each
 
@@ -1156,7 +1156,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Keeper of the Wanderer's Rest; Osa's daughter, working in her mam's shadow. Publican's timing: quick, hospitable, gossip in threes, mothers the roadworn. Bright and warm with a smart mouth.
 
-**Chatterbox casting:** `bright_karen` *(provisional)* · exaggeration 0.6 · cfg 0.45
+**Chatterbox casting:** `tavern_sonia` *(provisional)* · exaggeration 0.6 · cfg 0.45
 
 ### Quips — short fillers, one file each
 

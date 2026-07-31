@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "bryn_watch_relief__hub",
       "text": "Fires came up one short last night. The *right* kind of short. Word says that was you.",
       "choices": [
         { "text": "It was.", "next": "praise" },
@@ -15,15 +16,18 @@
     },
     {
       "id": "praise",
+      "voice": "bryn_watch_relief__praise",
       "text": "Good. Rack your blade, eat something, sleep behind a door. That's an order."
     },
     {
       "id": "someone",
+      "voice": "bryn_watch_relief__someone",
       "text": "Then somebody out there has my thanks and doesn't know it. Enjoy their quiet anyway.",
       "next": "hub"
     },
     {
       "id": "pass",
+      "voice": "bryn_watch_relief__pass",
       "text": "Pass through, then. It's a good day for it."
     }
   ]

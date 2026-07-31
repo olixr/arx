@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_thin_the_meadow_offer__hub",
       "text": "Tracks in the south meadow. Goblin. Three mornings running, closer each day. I want six of them down before they decide my hedgerows look soft. Yours?",
       "hooks": [{ "kind": "quest_offer", "quest": "thin_the_meadow" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_thin_the_meadow_offer__sworn",
       "text": "Good. South, past the lane. Count them out loud if it helps. It helps me.",
       "hooks": [{ "kind": "quest_accept", "quest": "thin_the_meadow" }]
     },
     {
       "id": "declined",
+      "voice": "q_thin_the_meadow_offer__declined",
       "text": "It will be. Come back when you've noticed."
     }
   ]

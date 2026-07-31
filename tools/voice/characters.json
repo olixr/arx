@@ -177,7 +177,7 @@
   "captain_aldis": {
     "where": "amberford",
     "direction": "Captain of the North Gate, made by the Toll War. Watch-report clip; names the dead plainly; no glory talk. She remembers whether you listened to her. Steady command voice with the weight of a bad year behind it.",
-    "ttsVoice": "steel_cori",
+    "ttsVoice": "iron_sue",
     "exaggeration": 0.4,
     "cfgWeight": 0.6,
     "firstWave": true
@@ -200,7 +200,7 @@
   "innkeep_dunna": {
     "where": "amberford",
     "direction": "Keeper of the Wanderer's Rest; Osa's daughter, working in her mam's shadow. Publican's timing: quick, hospitable, gossip in threes, mothers the roadworn. Bright and warm with a smart mouth.",
-    "ttsVoice": "bright_karen",
+    "ttsVoice": "tavern_sonia",
     "exaggeration": 0.6,
     "cfgWeight": 0.45,
     "firstWave": true
@@ -208,7 +208,7 @@
   "grocer_merra": {
     "where": "amberford",
     "direction": "Grocer; wants everyone fed and everyone's news. Warm, nosy, kind. Runs sentences together, asks after people by name. Fast and friendly, barely a full stop in her.",
-    "ttsVoice": "matron_michele",
+    "ttsVoice": "market_tricia",
     "exaggeration": 0.6,
     "cfgWeight": 0.4,
     "firstWave": true

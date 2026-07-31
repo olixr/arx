@@ -1,4 +1,4 @@
-# The Arx voice pool — 17 clone-source voices
+# The Arx voice pool — 20 clone-source voices
 
 Chatterbox generates every line from a ~20s conditioning sample. The pool
 lives in `~/code/voicelab/voices/` (one WAV per voice id; full provenance
@@ -17,21 +17,24 @@ recast freely, then `npx tsx tools/voice/generate.mts <actor> --force`.
 |---|---|---|
 | gran_ruth | mature British, warm, unhurried | Perl |
 | hearth_kara | warm American, homely, kind | Iona, Senna, Signy |
-| bright_karen | light, quick, bright | Dunna, Tamsin, Pip, Dagny, Nib, Varga |
+| bright_karen | light, quick, bright | Pip, Tamsin, Dagny, Nib, Varga |
 | clear_liz | precise, calm, cool-headed | Kayri, Elowen, Runa, Odele, Ragna, Nix |
-| steel_cori | rich British, firm, command | Bryn, Aldis, Maren, Kestrel, Edda |
+| steel_cori | rich British, firm, command | Bryn, Maren, Kestrel, Edda |
 | stage_mil | grand, theatrical, huge character range | Ottilie, Balla, Mab, Solvei, Osa |
-| matron_michele | plain mature American, level | Bretta, Merra, Sella |
+| matron_michele | plain mature American, level | Bretta, Sella |
 | king_bob | deep, grave, measured; a fairy-tale elder's warmth when slowed | Elder Rowan, King Aeriex, Grettir, Garton, castle guard |
 | wry_peter | dry British, antiquarian wit | Ferrick, Ansel, Pike |
 | hale_andy | hale British, money-wry | Cormund |
 | plain_mark | steady American narrator, dependable | Hask, Stig, Haki, the watches |
 | showman_martin | theatrical, relishing | Ninebrass, Tove, criers |
 | gentle_simon | soft-spoken British, gentle | Fen, Tilo, Ivo |
-| ember_tadhg | Irish, quick ember energy | Koll, Nib, Brant, Tam |
+| ember_tadhg | Irish, quick ember energy | Koll, Brant, Tam |
 | folksy_phil | folksy, cheery patter | Coppin, Dray, Coff, round traders |
 | slow_john | slow, dry, deadpan | Hobb, Skarn, Peld, Jorel |
 | sly_adrian | sly, storyteller's glint | Calder |
+| iron_sue | hardy mature American, frontier steel | Aldis |
+| market_tricia | bright chatty American, comic timing | Merra |
+| tavern_sonia | rich, expressive, publican warmth | Dunna |
 
 Legacy personal samples (david, edd, stanley, farnsworth) remain in the
 voices folder but are no longer cast.
