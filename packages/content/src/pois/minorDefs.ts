@@ -8,6 +8,8 @@ import findGlade from './minors/find_glade.json';
 import findHuntersRest from './minors/find_hunters_rest.json';
 import findSnareLine from './minors/find_snare_line.json';
 import findStandingStone from './minors/find_standing_stone.json';
+import findStashMound from './minors/find_stash_mound.json';
+import findWarTotem from './minors/find_war_totem.json';
 import findTappedYew from './minors/find_tapped_yew.json';
 import findWarren from './minors/find_warren.json';
 import findWaymarkCairn from './minors/find_waymark_cairn.json';
@@ -27,7 +29,9 @@ const SOURCES: readonly unknown[] = [
   findHuntersRest,
   findSnareLine,
   findStandingStone,
+  findStashMound,
   findTappedYew,
+  findWarTotem,
   findWarren,
   findWaymarkCairn,
   findWreckedCart,

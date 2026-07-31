@@ -3554,6 +3554,8 @@ function frontierDetail(body: HTMLElement, linkage: HTMLElement): void {
         () => `${draft.wildKnotProbes} probes per pass`),
       numDial('trail reach', "how far a site's worn path walks toward its road (tiles)", 'trailReach', 16, 96, 1,
         () => `trails arrive within ${draft.trailReach} tiles, taper past it`),
+      numDial('territory lean', "family-match weight multiplier in the country's own land (1 = off)", 'territoryBias', 1, 10, 0.5,
+        () => draft.territoryBias === 1 ? 'territory is off' : `x${draft.territoryBias} in family country, never a cage`),
     ),
   );
 

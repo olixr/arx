@@ -2,20 +2,57 @@
   "id": "road_toll",
   "name": "Road toll",
   "description": "A bar of planks and rope thrown across the way — the creep answered: when a full-strength camp stands unanswered in a town's marches, its crew forks the road and charges for the crossing. Never rolls on its own (weight 0); only tickFrontier's creep fork stands one, always owned by its core family.",
-  "tiers": [1, 5],
+  "tiers": [
+    1,
+    5
+  ],
   "weight": 0,
-  "prefabs": ["poi_bandit_toll"],
+  "prefabs": [
+    "poi_bandit_toll"
+  ],
   "garrison": [
-    { "npc": "brigand", "count": [1, 2], "role": "holdfast" },
-    { "npc": "brigand_archer", "count": [1, 1], "role": "sentry", "patrol": true },
-    { "npc": "brigand", "count": [1, 1], "role": "sentry", "minTier": 3 },
+    {
+      "npc": "brigand",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "brigand_archer",
+      "count": [
+        1,
+        1
+      ],
+      "role": "sentry",
+      "patrol": true
+    },
+    {
+      "npc": "brigand",
+      "count": [
+        1,
+        1
+      ],
+      "role": "sentry",
+      "minTier": 3
+    },
     {
       "npc": "brigand_reaver",
-      "count": [1, 1],
+      "count": [
+        1,
+        1
+      ],
       "role": "holdfast",
       "minTier": 2,
       "levelOffset": 2,
-      "names": ["Halfweight Hob", "Ledger Ash", "Two-Coins Tam", "Gatewood Bess", "Plank Mora"]
+      "names": [
+        "Halfweight Hob",
+        "Ledger Ash",
+        "Two-Coins Tam",
+        "Gatewood Bess",
+        "Plank Mora"
+      ]
     }
   ],
   "chestTierBonus": 1,
@@ -24,6 +61,12 @@
   "cues": {
     "clearing": 3,
     "approachPath": true,
-    "scatter": [{ "tile": "Crate", "count": 2 }]
-  }
+    "scatter": [
+      {
+        "tile": "Crate",
+        "count": 2
+      }
+    ]
+  },
+  "family": "brigand"
 }

@@ -1,0 +1,10 @@
+{
+  "id": "find_war_totem",
+  "name": "War totem",
+  "description": "A crooked pole hung with trophies on trampled ground. The warband wants this land known as theirs.",
+  "tiers": [2, 5],
+  "weight": 2,
+  "prefabs": ["find_war_totem"],
+  "family": "goblin",
+  "clearing": 1
+}

@@ -2,19 +2,49 @@
   "id": "gnoll_squat",
   "name": "Gnoll squat",
   "description": "Somebody built this place, and somebody else's bones are piled at the door. The warband moved in when the roof fell, and after dark you hear the cackling from the road.",
-  "tiers": [3, 5],
+  "tiers": [
+    3,
+    5
+  ],
   "weight": 2,
-  "prefabs": ["poi_gnoll_squat", "poi_gnoll_boneyard", "poi_gnoll_denhall"],
+  "prefabs": [
+    "poi_gnoll_squat",
+    "poi_gnoll_boneyard",
+    "poi_gnoll_denhall"
+  ],
   "garrison": [
-    { "npc": "gnoll", "count": [1, 2], "role": "holdfast" },
-    { "npc": "gnoll", "count": [1, 2], "role": "sentry", "patrol": true },
+    {
+      "npc": "gnoll",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "gnoll",
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    },
     {
       "npc": "gnoll_champion",
-      "count": [1, 1],
+      "count": [
+        1,
+        1
+      ],
       "role": "holdfast",
       "minTier": 4,
       "levelOffset": 3,
-      "names": ["Ragjaw", "Splitear", "Marrowmaw", "Old Cackle"]
+      "names": [
+        "Ragjaw",
+        "Splitear",
+        "Marrowmaw",
+        "Old Cackle"
+      ]
     }
   ],
   "chestTierBonus": 0,
@@ -22,35 +52,95 @@
   "cues": {
     "clearing": 4,
     "approachPath": true,
-    "scatter": [{ "tile": "BonePile", "count": 2 }]
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 2
+      }
+    ]
   },
   "boldness": {
     "stages": [
       {
-        "garrison": [{ "npc": "gnoll", "count": [1, 2], "role": "holdfast" }],
-        "scatter": [{ "tile": "BonePile", "count": 1 }]
-      },
-      {
         "garrison": [
-          { "npc": "gnoll", "count": [1, 1], "role": "sentry", "patrol": true },
-          { "npc": "gnoll", "count": [1, 1], "role": "holdfast" }
-        ],
-        "scatter": [{ "tile": "BonePile", "count": 1 }]
-      },
-      {
-        "garrison": [
-          { "npc": "gnoll", "count": [1, 2], "role": "holdfast" },
           {
-            "npc": "gnoll_champion",
-            "count": [1, 1],
-            "role": "holdfast",
-            "minTier": 4,
-            "names": ["Ragjaw", "Splitear", "Marrowmaw", "Old Cackle"]
+            "npc": "gnoll",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
           }
         ],
-        "scatter": [{ "tile": "BonePile", "count": 2 }]
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "gnoll",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          },
+          {
+            "npc": "gnoll",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "gnoll",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "gnoll_champion",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast",
+            "minTier": 4,
+            "names": [
+              "Ragjaw",
+              "Splitear",
+              "Marrowmaw",
+              "Old Cackle"
+            ]
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 2
+          }
+        ]
       }
     ],
     "satellites": true
-  }
+  },
+  "family": "gnoll"
 }

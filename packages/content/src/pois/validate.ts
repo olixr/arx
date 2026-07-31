@@ -79,6 +79,13 @@ export function validatePoiDef(
       : typeof raw.description === 'string'
         ? raw.description
         : (errors.push('description must be a string'), undefined);
+  // THE TERRITORY FIELD (Phase 5): the family slug.
+  const family =
+    raw.family === undefined
+      ? undefined
+      : typeof raw.family === 'string' && /^[a-z][a-z0-9_]*$/.test(raw.family)
+        ? raw.family
+        : (errors.push('family must be a lowercase slug'), undefined);
 
   // Tiers.
   let tiers: [number, number] = [1, 1];
@@ -533,6 +540,7 @@ export function validatePoiDef(
       id,
       name,
       ...(description !== undefined ? { description } : {}),
+      ...(family !== undefined ? { family } : {}),
       tiers,
       weight,
       prefabs,

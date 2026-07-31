@@ -40,6 +40,7 @@ export interface FrontierDef {
   wildKnotProbes: number;
   trailReach: number;
   holdEmberMs: FrontierRange;
+  territoryBias: number;
 }
 
 /**
@@ -220,6 +221,15 @@ export const FRONTIER: FrontierDef = {
    * savor. [min, max] ms, hash-jittered per site.
    */
   holdEmberMs: [15 * 60_000, 20 * 60_000],
+  /**
+   * THE TERRITORY FIELD (lived-in-land Phase 5): how hard the land
+   * leans toward its country's family — a matching archetype's pick
+   * weight multiplies by this in sites, finds, and wild knots alike.
+   * 1 turns territory off; the lean NEVER gates (every eligible
+   * archetype still rolls everywhere — the land leans, it does not
+   * repeat).
+   */
+  territoryBias: 3,
 };
 
 /** Frontier RNG salts — the named-streams law (the ST_* family's kin). */
@@ -394,6 +404,7 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
     wildKnotProbes: num('wildKnotProbes', 1, 8, true),
     trailReach: num('trailReach', 16, 96, true),
     holdEmberMs: range('holdEmberMs', MIN, 2 * HOUR),
+    territoryBias: num('territoryBias', 1, 10),
   };
   // Unknown keys are refused loudly — a typoed dial must never sit in
   // the doc pretending to steer anything.

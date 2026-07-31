@@ -21,10 +21,13 @@ import {
   POI_PREFABS,
   ROAD_SHOULDER,
   dangerLaw,
+  familiesOf,
   prefabFromJson,
   prefabToJson,
   roadBearingAt,
   roadDistanceAt,
+  territoryAt,
+  territoryWeight,
   type MinorDef,
   type PoiDef,
   type PoiGarrisonEntry,
@@ -254,6 +257,16 @@ export function poiForCell(
     const def = ctx.defs.find((d) => d.id === force);
     return def ? decideSite(def) : null;
   }
+  // THE TERRITORY LEAN (Phase 5): both pools weight toward the
+  // country's family — THE ONE ATLAS LAW: the DEF roster names the
+  // world's countries, and every layer (sites here, finds and wild
+  // knots at their own doors) leans within that one atlas, so the
+  // same ground never answers to two different maps. Bias never
+  // gates: unmatched weights stand untouched, and a country whose
+  // family has no eligible def here decides exactly as before.
+  const territory = territoryAt(seed, x0 + POI_CELL / 2, y0 + POI_CELL / 2, familiesOf(ctx.defs));
+  const leanW = (d: PoiDef): number =>
+    territoryWeight(d.weight, d.family, territory, FRONTIER.territoryBias);
   const holds = ctx.defs.filter(
     (d) => d.compound && d.weight > 0 && centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
   );
@@ -262,11 +275,11 @@ export function poiForCell(
     holds.length > 0 &&
     stream(seed, ST_HOLD, cellX, cellY, epoch) / 4294967296 < law.holdChance
   ) {
-    const totalW = holds.reduce((s, d) => s + d.weight, 0);
+    const totalW = holds.reduce((s, d) => s + leanW(d), 0);
     let pick = ((stream(seed, ST_HOLD ^ 0x9, cellX, cellY, epoch) % totalW) + totalW) % totalW;
     let holdDef: PoiDef | undefined;
     for (const d of holds) {
-      pick -= d.weight;
+      pick -= leanW(d);
       if (pick < 0) {
         holdDef = d;
         break;
@@ -282,11 +295,11 @@ export function poiForCell(
     (d) => !d.compound && d.weight > 0 && centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
   );
   if (eligible.length === 0) return null;
-  const totalW = eligible.reduce((s, d) => s + d.weight, 0);
+  const totalW = eligible.reduce((s, d) => s + leanW(d), 0);
   let pick = ((stream(seed, ST_KIND, cellX, cellY, epoch) % totalW) + totalW) % totalW;
   let def: PoiDef | undefined;
   for (const d of eligible) {
-    pick -= d.weight;
+    pick -= leanW(d);
     if (pick < 0) {
       def = d;
       break;

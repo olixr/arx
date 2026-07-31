@@ -1189,6 +1189,23 @@ const findTappedYew = sketch('find_tapped_yew', 'Tapped yew', [
   '_,..,_',
 ]);
 
+/** A crooked trophy pole on trampled ground — the warband's claim. */
+const findWarTotem = sketch('find_war_totem', 'War totem', [
+  '_,..,_',
+  ',.o:.,',
+  ',:n:.,',
+  ',.o..,',
+  '_,..,_',
+]);
+
+/** Fresh-turned earth over a crate meant to stay hidden. */
+const findStashMound = sketch('find_stash_mound', 'Stash mound', [
+  '_,..,_',
+  ',:W:.,',
+  ',.c:.,',
+  '_,..,_',
+]);
+
 /** A low stone ring over old bones. */
 const findBarrow = sketch('find_barrow', 'Old barrow', [
   '_,....,_',
@@ -1310,5 +1327,7 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     findWreckedCart,
     findTappedYew,
     findBarrow,
+    findWarTotem,
+    findStashMound,
   ].map((p) => [p.id, p]),
 );

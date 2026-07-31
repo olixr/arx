@@ -2,13 +2,21 @@
   "id": "goblin_warhold",
   "name": "Goblin war-hold",
   "description": "The region's goblin heart: a palisaded court ringed by whole camps, a named war-boss at the center of it all.",
-  "tiers": [3, 5],
+  "tiers": [
+    3,
+    5
+  ],
   "weight": 3,
-  "prefabs": ["poi_warhold_court"],
+  "prefabs": [
+    "poi_warhold_court"
+  ],
   "garrison": [
     {
       "npc": "goblin",
-      "count": [1, 1],
+      "count": [
+        1,
+        1
+      ],
       "role": "holdfast",
       "levelOffset": 5,
       "names": [
@@ -20,8 +28,23 @@
         "Mudge Kingbiter"
       ]
     },
-    { "npc": "goblin", "count": [2, 3], "role": "holdfast" },
-    { "npc": "goblin_thrower", "count": [2, 2], "role": "sentry", "patrol": true }
+    {
+      "npc": "goblin",
+      "count": [
+        2,
+        3
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "goblin_thrower",
+      "count": [
+        2,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    }
   ],
   "chestTierBonus": 1,
   "chestWarded": true,
@@ -30,30 +53,101 @@
     "clearing": 4,
     "approachPath": true,
     "scatter": [
-      { "tile": "BonePile", "count": 3 },
-      { "tile": "BannerPole", "count": 2 }
+      {
+        "tile": "BonePile",
+        "count": 3
+      },
+      {
+        "tile": "BannerPole",
+        "count": 2
+      }
     ]
   },
   "compound": {
-    "wings": { "pool": ["poi_goblin_camp_ring", "poi_goblin_camp_pair"], "count": [2, 4] },
+    "wings": {
+      "pool": [
+        "poi_goblin_camp_ring",
+        "poi_goblin_camp_pair"
+      ],
+      "count": [
+        2,
+        4
+      ]
+    },
     "wingGarrison": [
-      { "npc": "goblin", "count": [2, 3], "role": "holdfast" },
-      { "npc": "goblin_thrower", "count": [1, 1], "role": "holdfast", "minTier": 4 }
+      {
+        "npc": "goblin",
+        "count": [
+          2,
+          3
+        ],
+        "role": "holdfast"
+      },
+      {
+        "npc": "goblin_thrower",
+        "count": [
+          1,
+          1
+        ],
+        "role": "holdfast",
+        "minTier": 4
+      }
     ]
   },
   "boldness": {
     "stages": [
-      { "garrison": [{ "npc": "goblin", "count": [1, 2], "role": "holdfast" }] },
       {
-        "garrison": [{ "npc": "goblin_thrower", "count": [1, 2], "role": "sentry" }],
-        "scatter": [{ "tile": "BannerPole", "count": 2 }]
+        "garrison": [
+          {
+            "npc": "goblin",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ]
       },
       {
-        "garrison": [{ "npc": "worg", "count": [1, 1], "role": "sentry", "patrol": true }],
-        "scatter": [{ "tile": "BonePile", "count": 3 }]
+        "garrison": [
+          {
+            "npc": "goblin_thrower",
+            "count": [
+              1,
+              2
+            ],
+            "role": "sentry"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BannerPole",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "worg",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 3
+          }
+        ]
       }
     ],
     "satellites": true,
     "satelliteDef": "goblin_warcamp"
-  }
+  },
+  "family": "goblin"
 }

@@ -33,6 +33,7 @@ export * from './pois/defs.js';
 export * from './pois/minorTypes.js';
 export * from './pois/minorValidate.js';
 export * from './pois/minorDefs.js';
+export * from './territory.js';
 export * from './crops.js';
 export * from './npcs.js';
 export * from './actors/types.js';

@@ -1,0 +1,10 @@
+{
+  "id": "find_stash_mound",
+  "name": "Stash mound",
+  "description": "Fresh-turned earth and a crate that was meant to stay hidden. Somebody on the road is coming back for this.",
+  "tiers": [2, 4],
+  "weight": 1.5,
+  "prefabs": ["find_stash_mound"],
+  "family": "brigand",
+  "cache": { "chance": 0.35 }
+}

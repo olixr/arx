@@ -56,6 +56,14 @@ export interface MinorDef {
    */
   habitat?: string;
   /**
+   * THE TERRITORY FIELD (Phase 5): the family whose country deals
+   * this find more often — goblin country deals war totems where
+   * wolfkin country deals dens. The finds palette is what makes
+   * territory READABLE on the ground before the first fight. Absent =
+   * universal texture.
+   */
+  family?: string;
+  /**
    * The humble cache: any closed chest tile in the stamped prefab
    * SURVIVES with this probability (else it composes away to grass) —
    * and when it survives it re-keys ONE TIER HUMBLE

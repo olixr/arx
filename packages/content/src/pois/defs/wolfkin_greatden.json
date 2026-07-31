@@ -2,13 +2,21 @@
   "id": "wolfkin_greatden",
   "name": "Wolfkin great den",
   "description": "The old den under the rocks that every smaller den answers to, and the beast that holds it.",
-  "tiers": [3, 5],
+  "tiers": [
+    3,
+    5
+  ],
   "weight": 2,
-  "prefabs": ["poi_greatden_court"],
+  "prefabs": [
+    "poi_greatden_court"
+  ],
   "garrison": [
     {
       "npc": "dire_wolf",
-      "count": [1, 1],
+      "count": [
+        1,
+        1
+      ],
       "role": "holdfast",
       "levelOffset": 4,
       "names": [
@@ -20,36 +28,122 @@
         "The Long Shadow"
       ]
     },
-    { "npc": "wolf", "count": [2, 3], "role": "holdfast" },
-    { "npc": "worg", "count": [1, 2], "role": "sentry", "patrol": true, "minTier": 4 }
+    {
+      "npc": "wolf",
+      "count": [
+        2,
+        3
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "worg",
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true,
+      "minTier": 4
+    }
   ],
   "chestTierBonus": 1,
   "chestWarded": true,
   "clearedFlag": "poi_greatden_broken",
   "cues": {
     "clearing": 3,
-    "scatter": [{ "tile": "BonePile", "count": 4 }]
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 4
+      }
+    ]
   },
   "compound": {
-    "wings": { "pool": ["poi_den_bones", "poi_den_hollow"], "count": [2, 3] },
+    "wings": {
+      "pool": [
+        "poi_den_bones",
+        "poi_den_hollow"
+      ],
+      "count": [
+        2,
+        3
+      ]
+    },
     "wingGarrison": [
-      { "npc": "wolf", "count": [2, 3], "role": "holdfast" },
-      { "npc": "worg", "count": [1, 1], "role": "holdfast", "minTier": 4 }
+      {
+        "npc": "wolf",
+        "count": [
+          2,
+          3
+        ],
+        "role": "holdfast"
+      },
+      {
+        "npc": "worg",
+        "count": [
+          1,
+          1
+        ],
+        "role": "holdfast",
+        "minTier": 4
+      }
     ]
   },
   "boldness": {
     "stages": [
-      { "garrison": [{ "npc": "wolf", "count": [1, 2], "role": "holdfast" }] },
       {
-        "garrison": [{ "npc": "worg", "count": [1, 1], "role": "sentry", "patrol": true }],
-        "scatter": [{ "tile": "BonePile", "count": 2 }]
+        "garrison": [
+          {
+            "npc": "wolf",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ]
       },
       {
-        "garrison": [{ "npc": "wolf", "count": [1, 2], "role": "holdfast" }],
-        "scatter": [{ "tile": "BonePile", "count": 2 }]
+        "garrison": [
+          {
+            "npc": "worg",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "wolf",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 2
+          }
+        ]
       }
     ],
     "satellites": true,
     "satelliteDef": "wolfkin_den"
-  }
+  },
+  "family": "wolfkin"
 }

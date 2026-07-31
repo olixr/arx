@@ -162,6 +162,15 @@ export interface PoiDef {
   name: string;
   /** One-line story for the bench — what this place IS. */
   description?: string;
+  /**
+   * THE TERRITORY FIELD (lived-in-land Phase 5): the family this
+   * archetype belongs to ('goblin', 'wolfkin', 'dead', …). Inside the
+   * family's own country the KIND pick multiplies this def's weight
+   * by FRONTIER.territoryBias — a lean, never a cage. Absent = the
+   * def belongs to no country and rolls evenly everywhere (friendly
+   * and neutral sites usually should).
+   */
+  family?: string;
   /** Danger tiers this archetype can roll at, inclusive. */
   tiers: readonly [number, number];
   /** Pick weight among archetypes eligible at a tier. */

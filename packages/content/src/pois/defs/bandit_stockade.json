@@ -2,13 +2,21 @@
   "id": "bandit_stockade",
   "name": "Bandit stockade",
   "description": "A timber-walled court where the road's takings are tallied, with whole camps of blades around it.",
-  "tiers": [3, 5],
+  "tiers": [
+    3,
+    5
+  ],
   "weight": 3,
-  "prefabs": ["poi_stockade_court"],
+  "prefabs": [
+    "poi_stockade_court"
+  ],
   "garrison": [
     {
       "npc": "brigand_reaver",
-      "count": [1, 1],
+      "count": [
+        1,
+        1
+      ],
       "role": "holdfast",
       "levelOffset": 5,
       "names": [
@@ -20,8 +28,23 @@
         "Coll the Tally"
       ]
     },
-    { "npc": "brigand", "count": [2, 3], "role": "holdfast" },
-    { "npc": "brigand", "count": [2, 2], "role": "sentry", "patrol": true }
+    {
+      "npc": "brigand",
+      "count": [
+        2,
+        3
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "brigand",
+      "count": [
+        2,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    }
   ],
   "chestTierBonus": 1,
   "chestWarded": true,
@@ -29,28 +52,101 @@
   "cues": {
     "clearing": 4,
     "approachPath": true,
-    "scatter": [{ "tile": "Barrel", "count": 2 }, { "tile": "BonePile", "count": 2 }]
+    "scatter": [
+      {
+        "tile": "Barrel",
+        "count": 2
+      },
+      {
+        "tile": "BonePile",
+        "count": 2
+      }
+    ]
   },
   "compound": {
-    "wings": { "pool": ["poi_bandit_hollow"], "count": [2, 3] },
+    "wings": {
+      "pool": [
+        "poi_bandit_hollow"
+      ],
+      "count": [
+        2,
+        3
+      ]
+    },
     "wingGarrison": [
-      { "npc": "brigand", "count": [2, 3], "role": "holdfast" },
-      { "npc": "brigand_reaver", "count": [1, 1], "role": "holdfast", "minTier": 4 }
+      {
+        "npc": "brigand",
+        "count": [
+          2,
+          3
+        ],
+        "role": "holdfast"
+      },
+      {
+        "npc": "brigand_reaver",
+        "count": [
+          1,
+          1
+        ],
+        "role": "holdfast",
+        "minTier": 4
+      }
     ]
   },
   "boldness": {
     "stages": [
-      { "garrison": [{ "npc": "brigand", "count": [1, 2], "role": "holdfast" }] },
       {
-        "garrison": [{ "npc": "brigand", "count": [1, 2], "role": "sentry", "patrol": true }],
-        "scatter": [{ "tile": "Barrel", "count": 2 }]
+        "garrison": [
+          {
+            "npc": "brigand",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ]
       },
       {
-        "garrison": [{ "npc": "brigand_reaver", "count": [1, 1], "role": "holdfast" }],
-        "scatter": [{ "tile": "BonePile", "count": 2 }]
+        "garrison": [
+          {
+            "npc": "brigand",
+            "count": [
+              1,
+              2
+            ],
+            "role": "sentry",
+            "patrol": true
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "Barrel",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "brigand_reaver",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 2
+          }
+        ]
       }
     ],
     "satellites": true,
     "satelliteDef": "bandit_camp"
-  }
+  },
+  "family": "brigand"
 }

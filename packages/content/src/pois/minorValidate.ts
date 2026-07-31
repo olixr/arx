@@ -143,6 +143,10 @@ export function validateMinorDef(
     errors.push('habitat must be a lowercase slug');
   }
 
+  if (d.family !== undefined && (typeof d.family !== 'string' || !HABITAT_RE.test(d.family))) {
+    errors.push('family must be a lowercase slug');
+  }
+
   let cache: { chance: number } | undefined;
   if (d.cache !== undefined) {
     const c = d.cache as { chance?: unknown };
@@ -166,7 +170,7 @@ export function validateMinorDef(
 
   const known = new Set([
     'id', 'name', 'description', 'tiers', 'weight', 'prefabs',
-    'garrison', 'habitat', 'cache', 'clearing',
+    'garrison', 'habitat', 'family', 'cache', 'clearing',
   ]);
   for (const key of Object.keys(d)) {
     if (!known.has(key)) errors.push(`unknown field '${key}'`);
@@ -184,6 +188,7 @@ export function validateMinorDef(
       prefabs: prefabsOk,
       ...(garrisonOk.length > 0 ? { garrison: garrisonOk } : {}),
       ...(typeof d.habitat === 'string' ? { habitat: d.habitat } : {}),
+      ...(typeof d.family === 'string' ? { family: d.family } : {}),
       ...(cache !== undefined ? { cache } : {}),
       ...(d.clearing !== undefined ? { clearing: d.clearing as number } : {}),
     },

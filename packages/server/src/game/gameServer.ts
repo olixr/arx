@@ -199,6 +199,9 @@ import {
   standingSellMult,
   peddlerLingerFor,
   composeKnot,
+  familiesOf,
+  leanWild,
+  territoryAt,
   pickWild,
   scatterLingerFor,
   stageWaitFor,
@@ -13172,6 +13175,14 @@ export class GameServer {
   ): number {
     let candidates = wildCandidates(spotTier, biome, hours);
     if (habitat !== undefined) candidates = candidates.filter((e) => e.habitat === habitat);
+    // THE TERRITORY LEAN (Phase 5): wolf knots run thicker in wolfkin
+    // country, the dead walk their own barrows — the same one atlas
+    // the site and find picks read (the def roster's families).
+    candidates = leanWild(
+      candidates,
+      territoryAt(config.worldSeed, tx, ty, familiesOf([...POI_DEFS.values()])),
+      FRONTIER.territoryBias,
+    );
     const entry = pickWild(candidates, Math.random());
     if (!entry) return 0;
     const bodies = composeKnot(entry, Math.random(), cap);
@@ -16113,6 +16124,42 @@ export class GameServer {
         `wilds: tier ${tier}, ${near}/${budget} bodies near ` +
           `(${this.wildBodies.size} world-wide), ${biome} underfoot` +
           (pool.length > 0 ? ` | roster: ${roster}` : ' | roster: empty here'),
+      );
+      return;
+    }
+    if (config.devCommands && text.startsWith('/territory')) {
+      // The country lens (lived-in-land Phase 5): whose land you stand
+      // on, the surrounding cells' countries, and the atlas roster.
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const say = (t: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      const families = familiesOf([...POI_DEFS.values()]);
+      const here = territoryAt(
+        config.worldSeed,
+        Math.floor(pos.x),
+        Math.floor(pos.y),
+        families,
+      );
+      const cx = poiCellOf(pos.x);
+      const cy = poiCellOf(pos.y);
+      const rows: string[] = [];
+      for (let dy = -1; dy <= 1; dy++) {
+        const row: string[] = [];
+        for (let dx = -1; dx <= 1; dx++) {
+          const f = territoryAt(
+            config.worldSeed,
+            (cx + dx) * POI_CELL + POI_CELL / 2,
+            (cy + dy) * POI_CELL + POI_CELL / 2,
+            families,
+          );
+          row.push(f ?? 'none');
+        }
+        rows.push(row.join(' '));
+      }
+      say(
+        `territory: ${here ?? 'none'} country at your feet (bias x${FRONTIER.territoryBias}) | ` +
+          `cells around: [${rows.join(' / ')}] | atlas: ${families.sort().join(', ')}`,
       );
       return;
     }

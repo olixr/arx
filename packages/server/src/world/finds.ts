@@ -8,8 +8,12 @@ import {
 } from '@arx/shared';
 import {
   DARK_BAND_Y,
+  FRONTIER,
   dangerLaw,
+  familiesOf,
   groundProbeAt,
+  territoryAt,
+  territoryWeight,
   type MinorDef,
   type ZoneDef,
   type ZoneSpawn,
@@ -112,16 +116,23 @@ export function findsForCell(
     const law = dangerLaw(tier);
     if (draw(1) / 4294967296 >= law.findChance) continue;
 
-    // KIND: weighted pick among finds eligible at this slot's tier.
+    // KIND: weighted pick among finds eligible at this slot's tier —
+    // leaned toward the country's family (THE ONE ATLAS LAW: the DEF
+    // roster names the countries; the finds palette is what makes a
+    // territory READABLE on the ground). Slot-local read, so a border
+    // cuts through a cell the way real borders do.
     const eligible = ctx.minors.filter(
       (m) => m.weight > 0 && tier >= m.tiers[0] && tier <= m.tiers[1],
     );
     if (eligible.length === 0) continue;
-    const totalW = eligible.reduce((s, m) => s + m.weight, 0);
+    const territory = territoryAt(seed, cx, cy, familiesOf(ctx.defs));
+    const leanW = (m: MinorDef): number =>
+      territoryWeight(m.weight, m.family, territory, FRONTIER.territoryBias);
+    const totalW = eligible.reduce((s, m) => s + leanW(m), 0);
     let pick = (draw(2) / 4294967296) * totalW;
     let def: MinorDef | undefined;
     for (const m of eligible) {
-      pick -= m.weight;
+      pick -= leanW(m);
       if (pick < 0) {
         def = m;
         break;

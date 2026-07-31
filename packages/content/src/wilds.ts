@@ -67,6 +67,14 @@ export interface WildEntry {
    * ahead of the machinery.
    */
   habitat?: string;
+  /**
+   * THE TERRITORY FIELD (Phase 5): inside this family's country the
+   * entry's pick weight multiplies by FRONTIER.territoryBias — wolf
+   * knots run thicker in wolfkin country, the dead walk their own
+   * barrows more often. A lean, never a cage; absent = weather, the
+   * same everywhere.
+   */
+  family?: string;
 }
 
 /** Default knot radius (tiles) when an entry names none. */
@@ -99,7 +107,7 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   { npc: 'giant_beetle', weight: 1.5, tiers: [1, 2], biomes: ['grass'] },
   { npc: 'boar', weight: 2, tiers: [1, 3], biomes: ['forest'], band: [2, 3] },
   // --------------------------------------------- the standing perils
-  { npc: 'wolf', weight: 2, tiers: [2, 5], biomes: ['forest'], band: [2, 3], habitat: 'den' },
+  { npc: 'wolf', weight: 2, tiers: [2, 5], biomes: ['forest'], band: [2, 3], habitat: 'den', family: 'wolfkin' },
   { npc: 'adder', weight: 1, tiers: [2, 4], biomes: ['grass'] },
   { npc: 'bear', weight: 1.5, tiers: [3, 5], biomes: ['forest'] },
   // ------------------------------------------------- the night shift
@@ -111,6 +119,7 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     hours: NIGHT,
     band: [2, 4],
     habitat: 'den',
+    family: 'wolfkin',
   },
   {
     // The deep dark's answer to the day wolf: the tier-5 midnight
@@ -124,14 +133,15 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     band: [3, 4],
     lead: { npc: 'dire_wolf' },
     habitat: 'den',
+    family: 'wolfkin',
   },
   { npc: 'cave_bat', weight: 2, tiers: [2, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], spread: 2 },
   { npc: 'giant_spider', weight: 1.5, tiers: [3, 5], biomes: ['forest'], hours: NIGHT },
-  { npc: 'skeleton', weight: 1, tiers: [3, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow' },
-  { npc: 'worg', weight: 1.5, tiers: [4, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 2] },
+  { npc: 'skeleton', weight: 1, tiers: [3, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow', family: 'dead' },
+  { npc: 'worg', weight: 1.5, tiers: [4, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 2], family: 'wolfkin' },
   { npc: 'troll', weight: 0.5, tiers: [5, 5], biomes: ['forest'], hours: NIGHT },
   // Daylight gnolls range in scavenging pairs, wide of the squat.
-  { npc: 'gnoll', weight: 1.5, tiers: [3, 4], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den' },
+  { npc: 'gnoll', weight: 1.5, tiers: [3, 4], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den', family: 'gnoll' },
   {
     // The night raid: the warband runs behind its packlord, and the
     // cackle carries further than any fire-light.
@@ -144,6 +154,7 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     spread: 4,
     lead: { npc: 'gnoll_champion' },
     habitat: 'den',
+    family: 'gnoll',
   },
 ];
 
@@ -178,6 +189,23 @@ export function pickWild(
     if (r < 0) return e;
   }
   return candidates[candidates.length - 1] ?? null;
+}
+
+/**
+ * THE TERRITORY LEAN (Phase 5): candidates re-weighted toward the
+ * country's family — matching entries multiply by `bias`, the rest
+ * keep their own weight (bias never gates, structurally). Pure; the
+ * server feeds territoryAt's answer for the spawn anchor.
+ */
+export function leanWild(
+  candidates: readonly WildEntry[],
+  territory: string | null,
+  bias: number,
+): WildEntry[] {
+  if (territory === null || bias === 1) return [...candidates];
+  return candidates.map((e) =>
+    e.family === territory ? { ...e, weight: e.weight * bias } : e,
+  );
 }
 
 /** One body of a composed knot. */
@@ -236,6 +264,9 @@ export function wildEntryErrors(e: WildEntry, label: string): string[] {
   }
   if (e.habitat !== undefined && !/^[a-z][a-z0-9_]*$/.test(e.habitat)) {
     errors.push(`${label}: habitat must be a lowercase slug`);
+  }
+  if (e.family !== undefined && !/^[a-z][a-z0-9_]*$/.test(e.family)) {
+    errors.push(`${label}: family must be a lowercase slug`);
   }
   return errors;
 }

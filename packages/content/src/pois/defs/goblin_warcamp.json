@@ -156,5 +156,6 @@
       }
     ],
     "satellites": true
-  }
+  },
+  "family": "goblin"
 }

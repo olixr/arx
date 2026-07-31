@@ -2,48 +2,142 @@
   "id": "wolfkin_den",
   "name": "Wolfkin den",
   "description": "The pack's ground, marked and defended — and in the middle of it, the cold camp of the traveler who found that out. Their chest is still there. The pack neither opened it nor left it.",
-  "tiers": [2, 5],
+  "tiers": [
+    2,
+    5
+  ],
   "weight": 3,
-  "prefabs": ["poi_den_bones", "poi_den_hollow"],
+  "prefabs": [
+    "poi_den_bones",
+    "poi_den_hollow"
+  ],
   "garrison": [
-    { "npc": "wolf", "count": [2, 3], "role": "holdfast" },
-    { "npc": "wolf", "count": [1, 2], "role": "sentry", "patrol": true },
-    { "npc": "worg", "count": [1, 2], "role": "holdfast", "minTier": 3 },
+    {
+      "npc": "wolf",
+      "count": [
+        2,
+        3
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "wolf",
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    },
+    {
+      "npc": "worg",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast",
+      "minTier": 3
+    },
     {
       "npc": "dire_wolf",
-      "count": [1, 1],
+      "count": [
+        1,
+        1
+      ],
       "role": "holdfast",
       "minTier": 4,
       "levelOffset": 3,
-      "names": ["Greymaw", "Ashfang", "Hollowhowl", "The Winter Sister"]
+      "names": [
+        "Greymaw",
+        "Ashfang",
+        "Hollowhowl",
+        "The Winter Sister"
+      ]
     }
   ],
   "chestTierBonus": 0,
   "clearedFlag": "poi_den_broken",
   "cues": {
     "clearing": 2,
-    "scatter": [{ "tile": "BonePile", "count": 3 }]
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 3
+      }
+    ]
   },
   "boldness": {
     "stages": [
       {
-        "garrison": [{ "npc": "wolf", "count": [1, 2], "role": "holdfast" }],
-        "scatter": [{ "tile": "BonePile", "count": 1 }]
-      },
-      {
         "garrison": [
-          { "npc": "wolf", "count": [1, 1], "role": "sentry", "patrol": true },
-          { "npc": "worg", "count": [1, 1], "role": "holdfast", "minTier": 3 }
+          {
+            "npc": "wolf",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
         ]
       },
       {
         "garrison": [
-          { "npc": "wolf", "count": [1, 2], "role": "holdfast" },
-          { "npc": "worg", "count": [1, 1], "role": "sentry", "patrol": true, "minTier": 3 }
+          {
+            "npc": "wolf",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          },
+          {
+            "npc": "worg",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast",
+            "minTier": 3
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "wolf",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "worg",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true,
+            "minTier": 3
+          }
         ],
-        "scatter": [{ "tile": "BonePile", "count": 2 }]
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 2
+          }
+        ]
       }
     ],
     "satellites": true
-  }
+  },
+  "family": "wolfkin"
 }
