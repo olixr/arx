@@ -14,7 +14,7 @@
  * the body decelerates — that inertia is what pitches a sliding corpse
  * over its own pinned feet.
  */
-import { type BeastSpec, type KoboldLook, type SkeletonLook } from './rig.js';
+import { type BeastSpec, type GnollLook, type KoboldLook, type SkeletonLook } from './rig.js';
 export interface RagPoint {
     x: number;
     y: number;
@@ -100,7 +100,7 @@ export declare const H: {
  */
 export declare function buildHumanoidRagdoll(size: number, seed: number): Ragdoll;
 /** Upper-body / feet index groups for launch(). */
-export declare const HUMANOID_UPPER: (1 | 8 | 2 | 9 | 7 | 10)[];
+export declare const HUMANOID_UPPER: (1 | 2 | 7 | 8 | 9 | 10)[];
 export declare const HUMANOID_FEET: (4 | 6)[];
 /**
  * Beast skeleton: rear hip, front chest, head, then one two-segment
@@ -145,6 +145,8 @@ export interface HumanoidCorpseLook {
     skel?: SkeletonLook;
     /** Set = this corpse is a kobold: horns, muzzle, and tail stay. */
     kob?: KoboldLook;
+    /** Set = this corpse is a gnoll: muzzle, crest, and coat stay. */
+    gno?: GnollLook;
     /** Worn equipment — the corpse keeps everything it died in. */
     gear?: CorpseGear;
 }

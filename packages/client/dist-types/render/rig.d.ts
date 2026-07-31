@@ -76,6 +76,8 @@ export interface RigPose {
         side?: number;
         prevSide?: number;
         sideFlipMs?: number;
+        /** When the facing first asked for a side flip (dwell debounce). */
+        sideWantMs?: number;
         /** Low-passed arm-swing drive (see the SMOOTHED SWING law). */
         sw?: number;
         swMs?: number;
@@ -99,6 +101,12 @@ export interface RigPose {
     weaponEnch?: string;
     /** Offhand enchant id — a dual-wielded second blade burns its own hue. */
     offhandEnch?: string;
+    /**
+     * THE WORN LIGHT: enchant ids by armor slot (head/body/legs/gloves/
+     * boots/offhand/cape). The rig resolves them into per-slot marks and
+     * overlays each onto its piece's style — see withArx.
+     */
+    armorEnch?: Partial<Record<string, string>>;
     /** Cosmetic idle carry: 'rogue' rakes a blade down-back, reverse grip. */
     carryStyle?: 'normal' | 'rogue';
     /** Off-fist grip — a dual wielder's second blade rides its own way. */
@@ -133,6 +141,13 @@ export interface RigPose {
      * the rig, carriage, and facing bands keep working untouched.
      */
     kobold?: KoboldLook;
+    /**
+     * THE FUR DIALECT: swap the flesh head for the gnoll's hyena muzzle
+     * under tall round ears and a bristled crest, hunch the back, hang a
+     * bushy tail off the hip, and paw the bare feet — while the rig,
+     * carriage, and facing bands keep working untouched.
+     */
+    gnoll?: GnollLook;
     /** Time-based swing driver for the gather pose. */
     gatherPhase: number;
     /**
@@ -377,6 +392,76 @@ export interface KoboldTailFrame {
  * face-on.
  */
 export declare function paintKoboldTail(ctx: CanvasRenderingContext2D, kb: KoboldLook, f: KoboldTailFrame): void;
+/**
+ * THE FUR DIALECT — the gnoll, the hyena-headed scavenger. Like the
+ * bone and scale dialects it swaps head, hair, and face wholesale and
+ * adds species mass (crest hump, bushy tail, bare paws) while the IK
+ * rig, carriage, and facing bands keep working untouched. Each variant
+ * is its own DESIGN, never a scale-up: the rank-and-file skulker in
+ * its speckled coat, and the packlord's storm-dark bulk under the
+ * standing crest. The rank-and-file additionally rolls a COAT CLUSTER
+ * from its spawn seed — a warband reads as individuals from one stock,
+ * never as one body stamped four times.
+ */
+export interface GnollLook {
+    /** Coat base — the speckled gray-brown fur that carries the body. */
+    fur: string;
+    /** Pale underfur: throat, jaw underside, the tail's low edge. */
+    underfur: string;
+    /** The dull green-gray hide where the fur thins: muzzle and paws. */
+    skin: string;
+    /** Speckle ink — the hyena's broken spot field over the coat. */
+    spot: string;
+    /** The bristled crest: crown, nape, and down the hunched back. */
+    mane: string;
+    /** The lit eye bead — small, close-set, watching the weakest. */
+    eye: string;
+    /** The bare nose pad at the muzzle tip. */
+    nose: string;
+    /** Frame multiplier: jaw mass, ear reach, crest height, tail girth. */
+    heavy: number;
+    /** Battle-worn: notched ear and a muzzle scar — the packlord's ledger. */
+    scarred?: boolean;
+    /** Spawn seed carried on the resolved look — drives the spot field. */
+    seed?: number;
+}
+export declare const GNOLL_LOOKS: Record<string, GnollLook>;
+/**
+ * Variant lookup with the rank-and-file as the unknown-id fallback.
+ * The seed (spawn eid) rolls the skulker's coat cluster plus a small
+ * shade jitter; named looks (the packlord) hold their authored design.
+ * Resolved looks are cached — this runs per body per frame.
+ */
+export declare function gnollLook(defId: string, seed?: number): GnollLook;
+/**
+ * The gnoll head, drawn in the head block's own frame. Reads gnoll by
+ * SILHOUETTE first: a broad low skull between TALL ROUND ears, a
+ * bristled crest breaking off the crown, and a BLUNT DEEP muzzle — a
+ * bone-cracking jaw, not the wolf's spike — ending in a broad nose
+ * with the underbite's teeth proud of the lip. Muzzle length leads the
+ * facing (short face-on, run out at profile) and the whole face is
+ * gone from behind (the cattle muzzle law): occiput fur, spot courses,
+ * ear backs, and the crest pouring down the nape.
+ */
+export declare function paintGnollHead(ctx: CanvasRenderingContext2D, gn: GnollLook, f: KoboldHeadFrame, seed?: number): void;
+/**
+ * The crest hump: the gnoll's hunched shoulders drawn in the torso's
+ * local frame AFTER the garment and BEFORE the head — high withers in
+ * FUR (the scraps a gnoll wears never cover its own back) with the
+ * mane's bristle ridge marching down the slope. The low-slung skull
+ * sinks into it; face-on and from behind it reads as the bowed back
+ * the whole species carries.
+ */
+export declare function paintGnollCrest(ctx: CanvasRenderingContext2D, gn: GnollLook, f: KoboldHumpFrame): void;
+/**
+ * The bushy tail — short and heavy, carried LOW (a hyena's flag only
+ * rises for a fight; ours stays sunk, which keeps the silhouette
+ * hunched even from behind). A stub spine with a fat fur ribbon and a
+ * dark tip cap, wagging a little harder with the gait. Drawn in the
+ * torso's squashed frame BEFORE the garment so the root tucks behind
+ * the body.
+ */
+export declare function paintGnollTail(ctx: CanvasRenderingContext2D, gn: GnollLook, f: KoboldTailFrame): void;
 export declare function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void;
 /**
  * Back-mounted gear layered relative to the CAPE — called by the
@@ -844,8 +929,21 @@ export interface StagLook {
     headH: number;
     /** How far the head rides above the back line (tiles). */
     neckRise: number;
+    /**
+     * Branched crown or bare poll — the hind shares the whole deer
+     * dialect and differs exactly here: no beams, leaf ears instead
+     * (everything species-flavored lives in the look table).
+     */
+    antlers: boolean;
 }
 export declare const STAG_LOOK: StagLook;
+/**
+ * The hind: the stag's dialect at herd scale — a hand smaller, a
+ * shade warmer, the neck a touch lower, and big leaf ears where the
+ * stag carries his crown. Reads "deer" beside the stag and "not the
+ * stag" on her own.
+ */
+export declare const HIND_LOOK: StagLook;
 export declare function paintStagBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: StagLook, f: BeastBlockFrame): void;
 /**
  * The stag head: a small wedge carried high, alert ears, and the

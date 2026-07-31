@@ -343,6 +343,22 @@ export declare class Renderer {
      * it) — so a fight leaves a readable history behind it.
      */
     private addDecal;
+    /**
+     * Per-body motion, kept because the trail needs SPEED and the wire
+     * only ever carries positions. Keyed by eid (or 'own'); swept when a
+     * body stops being drawn.
+     */
+    private readonly wornMotion;
+    /**
+     * Live footprints. A ring buffer, hard-capped, because this is the
+     * only system in the game allowed to write on the ground and an
+     * uncapped one would turn a busy square into a light puddle.
+     */
+    private readonly trailPrints;
+    /** Where "near" is measured from — the own body, or the camera. */
+    private wornOrigin;
+    /** Lit bodies counted this frame, for the crowd backstop. */
+    private wornLitBodies;
     /** Placement preview set by the build mode; null when inactive. */
     /**
      * THE TRUE GHOST: the placement preview is the piece, not a colored
@@ -709,13 +725,13 @@ export declare class Renderer {
     private readonly portalsInView;
     private collectStaticLights;
     /**
-     * Emissive bloom: campfires, furnace mouths, portals, and magic bolts
+     * Emissive bloom: campfires, furnace mouths, portals, and Arx bolts
      * pour additive light over the scene. Sold with plain radial
      * gradients under `lighter` compositing — no shader required.
      */
     private drawGlows;
     /**
-     * A magic projectile (or totem, or spark) advertises its own glow.
+     * An Arx projectile (or totem, or spark) advertises its own glow.
      * After dark the same source also lights the ground around it — a
      * bolt streaking across a night field carries its own pool of light.
      */
@@ -2130,6 +2146,17 @@ export declare class Renderer {
     private static readonly SKELETON_EQUIP;
     private static readonly GOBLIN_EQUIP;
     /**
+     * Gnoll kit — the loot-story law: scavenged pieces that really drop
+     * from the warband's tables. The skulker swings rusted camp iron;
+     * the packlord hauls the greatblade no goblin could lift.
+     */
+    private static readonly GNOLL_EQUIP;
+    /**
+     * Gnoll stature: seven feet carried low — the skulker stands over
+     * any brigand even hunched, and the packlord looms near the troll.
+     */
+    private static readonly GNOLL_SIZE;
+    /**
      * The road-thieves' kit — leathers and honest iron, every piece a
      * real drop from the wearer's table (the loot-story law). The
      * archer slings a shortbow and quiver; the reaver fights sword-and-
@@ -2196,7 +2223,7 @@ export declare class Renderer {
     private projectileItem;
     /**
      * Settle every projectile that ended flight this frame: arrows stand
-     * in the ground (or ride the NPC they hit), magic fizzles in a burst.
+     * in the ground (or ride the NPC they hit), Arx fizzles in a burst.
      * Dead NPCs shed their arrows onto the ground where they fell.
      */
     private consumeProjectileAftermath;
@@ -2254,13 +2281,48 @@ export declare class Renderer {
      */
     private statusAmbience;
     /**
-     * The tier-3 enchant aura: an energy corona that marks a walking
-     * masterwork. The strongest worn enchant sets the school and the
-     * color; lower tiers stay quiet here (their fx live on the item
-     * itself). Same fps-stable rate-gating as statusAmbience, plus a
-     * breathing glow that becomes a real scene light after dark.
+     * The world-space half of the worn-light grammar (wornLight.ts holds
+     * the law): the trail under the boots, the wake off the cape, and the
+     * body-wide corona. The body-space half — brow, weave, knuckles,
+     * greaves, rune face — rides the rig, where the joints are known.
+     *
+     * Called once per lit body per frame from collectEntities. Rate-gated
+     * on frameDt exactly like statusAmbience, so the effect costs the
+     * same at 30fps and 144fps.
      */
-    private enchantAura;
+    private wornLight;
+    /**
+     * Ground speed, in tiles per second, for a body we only ever see
+     * positions of. Remote bodies arrive interpolated and own arrives
+     * predicted, so measuring the delta is both the simplest and the most
+     * honest source: whatever the body VISIBLY did is what the trail
+     * answers to.
+     */
+    private trackWornMotion;
+    /**
+     * THE TRAIL. Prints stamped one stride apart, alternating left and
+     * right of the line of travel, plus motes shed while moving. Speed
+     * gated: walking leaves nothing, only a runner paints.
+     */
+    private trail;
+    /**
+     * THE WAKE. The cape's channel: matter shedding off the trailing hem,
+     * behind the body and low, so it reads as the garment leaving light
+     * behind rather than the body being on fire. Motion-scaled, because a
+     * standing cape has no wake.
+     */
+    private capeWake;
+    /**
+     * The body-wide corona. Tier is loudness: a tier-1 kit gets nothing
+     * here (its whole voice is the per-slot glint on the rig), tier 2
+     * gets a quiet lamp that becomes real scene light after dark, and
+     * tier 3 gets the living charge that marks a walking masterwork.
+     *
+     * The corona answers the STRONGEST worn working only. Summing eight
+     * of them would put a bonfire on anyone with a full kit and undo the
+     * per-slot reading the whole grammar is built on.
+     */
+    private wornCorona;
     /** Placed summons: totem, snare trap, straw decoy. */
     /**
      * THE STONE REMEMBERS: a little headstone over a spilled pack, up
@@ -2348,8 +2410,24 @@ export declare class Renderer {
      * telegraph sigils, hazard floors, and every expanding ring, light
      * wash, and crescent sweep. Bodies stand ON these marks — the far
      * rim of a nova hides behind the caster, the near rim rolls out in
-     * front of their feet. That one fact seats the magic in the world.
+     * front of their feet. That one fact seats the Arx in the world.
      */
+    /**
+     * THE TRAIL, painted. Runs in the ground pass so every print lies
+     * UNDER the y-sorted world: a body standing on its own trail hides
+     * the part behind its heels, exactly as it should.
+     *
+     * Prints are stamped during collectEntities, which runs after this
+     * pass, so a print appears one frame after the foot fell. That is
+     * imperceptible on a mark that lives 1.2 seconds, and it buys us a
+     * single entity walk per frame instead of two.
+     *
+     * Every school writes differently. These are nine SHAPES, not one
+     * shape in nine colors: a rime print whitens the turf and a void
+     * print darkens it, and if you desaturated the whole screen you
+     * would still be able to tell which school ran past.
+     */
+    private drawTrail;
     private drawGroundFx;
     /**
      * The VOLUME stratum of combat FX — kind-level standing matter,

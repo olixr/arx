@@ -9,7 +9,7 @@
  *
  * Everything stays on brand: hard-edged rects, jagged polygons, flat
  * fills. No blur, no gradients — the world is chunky and so is its
- * magic. Unknown ids fall back to a palette derived from the ability's
+ * Arx. Unknown ids fall back to a palette derived from the ability's
  * wire color, so a missing entry degrades gracefully, never invisibly.
  */
 /** Ring silhouette for nova/blast expansion. */
