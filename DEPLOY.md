@@ -231,6 +231,28 @@ There is no data-shipping step because the restart does it all:
   release. The server serves them read-only at `/voice/<hash>.<ext>`
   (nginx proxies that path — see deploy/nginx-arx.conf).
 
+### Pushing voice clips to production
+
+A local `tools/voice/import.mts` run fills only the **local** ledger —
+deploys never carry clips or banks, so production stays silent until
+they are pushed through its own `/dev` door. The dialogue `voice` refs
+ship via git as usual (and are ghost-safe: an unmatched ref resolves to
+silence, never an error). To push the clips and banks themselves:
+
+1. On the server, set `DEV_COMMANDS=1` in the site environment (Forge →
+   Environment) and `scripts/arxctl.sh restart` — this opens the `/dev`
+   API on loopback only; nginx still 404s it from the internet.
+2. Tunnel from your machine: `ssh -L 8791:127.0.0.1:8790 forge@arx.gg`.
+3. Run the same importer against the tunnel:
+   `npx tsx tools/voice/import.mts --api http://localhost:8791`
+   Uploads are content-addressed and deduped, so re-pushing the whole
+   voicework/ tree is cheap and idempotent; clips and banks re-register
+   live with no restart. (It also re-lays the local JSON refs — a
+   no-op if they are already committed.)
+4. Remove `DEV_COMMANDS=1` and `scripts/arxctl.sh restart` again.
+5. Spot-check: `https://arx.gg/voice/<hash>.<ext>` for a hash from
+   local `data/voice/` returns 200, and a voiced NPC speaks in-world.
+
 Note the restart drops connected players for a couple of seconds — a
 single authoritative world process can't hand off live sessions, so
 deploy at quiet hours once there's a population.
