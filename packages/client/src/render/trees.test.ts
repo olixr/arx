@@ -99,37 +99,65 @@ test('the model is coherent: anchored tips, sorted crown, real spread', () => {
   }
 });
 
-test('the willow weeps: a real skirt of falls, and only the willow', () => {
-  // The cascade IS the tree (THE WILLOW FALL law): a deep rear sheet,
-  // articulated mid falls, lit falls, and withy streaks — anchored
-  // under the crown, plunging to near the ground, never digging in,
-  // never streaming past the culling reach, always inside `spread`.
+test('the willow weeps: limbs carrying a cascade, and only the willow', () => {
+  // THE WILLOW REBUILT law: real arching limbs (each tip dragging
+  // its tuft), dark rear streamers, a body of mid fronds, lit
+  // sun-side fronds, escaped withies. Anchors buried under the
+  // tufts, tips staggered and plunging near the ground, never
+  // digging in, never streaming past the culling reach, always
+  // inside `spread` — and the ground-level hem must sweep WIDE.
   for (let h = 0; h < 120; h++) {
     const m = treeModel(Tile.TreeWillow, h);
+    const limbs = m.branches.filter((b) => b.level === 1);
+    assert.ok(limbs.length >= 4, `only ${limbs.length} limbs — the willow lost its arms`);
+    for (const b of limbs) {
+      assert.ok(b.tip >= 0, 'every limb tip must drag its own tuft (anchoring law)');
+    }
     const byTone = [0, 0, 0, 0];
     let lowest = Infinity;
+    let hemL = Infinity;
+    let hemR = -Infinity;
+    const tips: number[] = [];
     for (const cu of m.curtains) {
       byTone[cu.tone]!++;
       let topY = -Infinity;
-      for (const [x, y] of cu.pts) {
-        lowest = Math.min(lowest, y);
+      let low = Infinity;
+      assert.equal(cu.dropF.length, cu.pts.length, 'every vertex needs a ripple phase');
+      for (let i = 0; i < cu.pts.length; i++) {
+        const [x, y] = cu.pts[i]!;
+        low = Math.min(low, y);
         topY = Math.max(topY, y);
-        assert.ok(y >= 0.09, `fall digs into the ground at y=${y.toFixed(2)}`);
-        assert.ok(Math.abs(x) <= 2.56, 'fall streams past the culling reach');
-        assert.ok(Math.abs(x) <= m.spread, 'spread must cover the whole skirt');
+        if (y < 1.3) { hemL = Math.min(hemL, x); hemR = Math.max(hemR, x); }
+        assert.ok(y >= 0.09, `a streamer digs into the ground at y=${y.toFixed(2)}`);
+        assert.ok(Math.abs(x) <= 2.56, 'a streamer streams past the culling reach');
+        assert.ok(Math.abs(x) <= m.spread, 'spread must cover the whole cascade');
+        const fr = cu.dropF[i]!;
+        assert.ok(fr >= 0 && fr <= 1);
       }
-      // Anchors buried under the crown mass (seam law, downward).
-      assert.ok(topY > m.height * 0.5, `a fall anchors in the open at y=${topY.toFixed(2)}`);
+      lowest = Math.min(lowest, low);
+      tips.push(low);
+      // Anchors buried under the tuft masses (seam law, downward).
+      assert.ok(topY > m.height * 0.52, `a streamer anchors in the open at y=${topY.toFixed(2)}`);
       // Swing weights are sane: bounded, anchored at the top.
       for (const d of cu.drop) assert.ok(d >= 0 && d <= 1.45);
       assert.ok(cu.drop[0]! < 0.35, 'the anchor row must hang stiff');
       assert.ok(cu.len > 0.35);
     }
-    assert.equal(byTone[0], 1, 'exactly one rear sheet');
-    assert.ok(byTone[1]! >= 5, `only ${byTone[1]} mid falls`);
-    assert.ok(byTone[2]! >= 2, 'the light side carries lit falls');
-    assert.ok(byTone[3]! >= 3, 'withy streaks sell the close range');
-    assert.ok(lowest <= 0.95, `the skirt stops short at ${lowest.toFixed(2)} tiles`);
+    assert.ok(byTone[0]! >= 5, `only ${byTone[0]} rear streamers`);
+    assert.ok(byTone[1]! >= 6, `only ${byTone[1]} mid streamers`);
+    assert.ok(byTone[2]! >= 2, 'the sun side carries lit streamers');
+    assert.ok(byTone[3]! >= 4, 'withies sell the close range');
+    assert.ok(lowest <= 0.75, `the cascade stops short at ${lowest.toFixed(2)} tiles`);
+    // The staggered hem: tips spread over real depth, never a bar.
+    assert.ok(
+      Math.max(...tips) - Math.min(...tips) > 0.5,
+      'streamer tips must stagger, not line up',
+    );
+    // The ground-level sweep: the hem spans wide on both sides.
+    assert.ok(
+      hemR - hemL > 2.0,
+      `the hem only sweeps ${(hemR - hemL).toFixed(2)} tiles`,
+    );
   }
   // Nothing else weeps.
   for (const tile of [Tile.Tree, Tile.TreeOak, Tile.TreeYew]) {

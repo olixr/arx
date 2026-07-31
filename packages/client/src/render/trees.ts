@@ -26,21 +26,32 @@
  *   (no edge strokes), painted BEFORE the trunk so the trunk body
  *   covers every join, and their tips end INSIDE the canopy.
  *
- * THE WILLOW FALL (the weeping species' own law):
- * - The cascade IS the tree. A willow grows a compact high crown and
- *   pours a SKIRT of foliage curtains from under it to near the
- *   ground — the skirt carries most of the silhouette, not the dome.
- * - Depth is layered, back to front: one deep backdrop sheet painted
- *   BEHIND the trunk (the bole stands inside the cascade), mid falls
- *   over it, lit falls on the light side, thin withy streaks last —
- *   each layer one batched fill, banded like the canopy.
- * - Every fall ends in a chisel-cut fringe of staggered pointed
- *   tips; every anchor is buried under the crown's underside so the
- *   join can never show (seam law, downward).
- * - Falls hang like cloth on the ONE wind field: anchored at the
- *   crown, hems swinging with a pendulum lift. The deep sheet sways
- *   least, the loose front falls most — differential motion is the
- *   depth cue.
+ * THE WILLOW REBUILT (the weeping species' own law — supersedes
+ * every skirt-on-a-crown draft):
+ * - The willow has its OWN anatomy, not a shrunken dome with
+ *   dressing: trunk → arching LIMBS → fronds pouring off the arcs.
+ *   Four or five real wooden limbs rise from the upper trunk, arc
+ *   outward and droop at the ends; every streamer is anchored at an
+ *   actual point ALONG a limb, so the cascade hangs from the wood
+ *   that carries it.
+ * - The crown is a BROKEN crown: an apex knot on the trunk top plus
+ *   small tufts riding each limb — never one fused dome. Tufts bury
+ *   every streamer anchor and every limb tip (seam law, both ways).
+ * - Hem law: anchors nearer the center hang longest, tips are
+ *   STAGGERED chisel points, and daylight opens between the outer
+ *   hems. A willow you cannot see through at the fringe is a blob
+ *   wearing a skirt. The bole shows only LOW through the front
+ *   parting — never a bare pole up the tree.
+ * - Depth is layered back to front, one batched fill per tone: the
+ *   rear limbs' dark streamers paint BEHIND the trunk, mid
+ *   streamers over it, the sun-side limb carries the lit fronds,
+ *   bright escaped withies fly off the limb tips last.
+ * - EVERY section moves on the ONE wind field, independently: tufts
+ *   rustle per-cluster, limbs flex with their tuft (anchoring law),
+ *   and each streamer pendulums at its own lag AND carries a
+ *   traveling ripple down its length (dropF phase) — cloth waving
+ *   from the arc, not a rigid flag. Strand part-lines (one batched
+ *   stroke) keep same-tone fronds reading combed, never a slab.
  *
  * Scale law: the player reads ~1.2 tiles tall. Commons stand 3-4x
  * that, oaks and yews 4-5x. Trunk base half-widths are the physical
@@ -103,6 +114,9 @@ export interface TreeCurtain {
   pts: Array<[number, number]>;
   /** Per-vertex swing weight: 0 anchored top → ~1 free hem. */
   drop: number[];
+  /** Raw drop FRACTION per vertex (0 anchor → 1 hem) — the phase
+   *  rail the traveling ripple runs down. */
+  dropF: number[];
   /** 0 = deep backdrop (paints BEHIND the trunk), 1 = mid fall,
    *  2 = lit fall, 3 = bright withy streak. */
   tone: number;
@@ -152,9 +166,9 @@ interface Grow {
   crownW: number; // crown half-width, tiles
   crownR: [number, number]; // cluster radius range, tiles
   crownDx: number; // crown centre x-shift (windswept streaming)
-  fall: number; // willow skirt: lowest fringe-tip height, tiles (0 = none)
-  fallW: number; // skirt half-width at the belly, tiles
-  fallN: number; // mid-layer curtain count
+  fall: number; // willow: lowest streamer-tip height, tiles (0 = none)
+  fallW: number; // willow: skirt half-width at the belly, tiles
+  fallN: number; // willow: mid-layer streamer count
   sides: number; // facet count for the low-poly clusters
 }
 
@@ -269,23 +283,24 @@ const SPECIES: SpeciesDef[] = [
       { split: 0.42, crownW: 0.95, gnarl: 0.12 }, // storm-split twin crown
     ],
   },
-  // 6 — Weeping willow: THE FOUNTAIN. A compact high crown pours a
-  // full skirt of foliage falls to near the ground — the cascade is
-  // the tree, and the gnarled bole shows through a front part in the
-  // curtain. Pale silvered green against the harder forest tones.
+  // 6 — Weeping willow: trunk → arching limbs → fronds pouring off
+  // the arcs, under a broken crown of limb tufts (see the header
+  // law). The gnarled bole shows low through the front parting.
+  // Pale silvered green against the harder forest tones. crownW is
+  // the apex knot's half-width; fallW the cascade belly.
   {
     base: {
       bark: '#6f6448', leaves: ['#41713d', '#5d914f', '#7fac66'],
       h: [4.0, 4.6], trunkW: 0.19, taper: 0.6, bow: 0.14, lean: 0.05,
       gnarl: 0.09, flare: 1.15, split: null,
-      boughN: [2, 3], boughStart: 0.55,
-      cBot: 0.6, crownW: 1.02, crownR: [0.44, 0.58], crownDx: 0,
-      fall: 0.42, fallW: 1.6, fallN: 6, sides: 9,
+      boughN: [0, 0], boughStart: 0.55,
+      cBot: 0.7, crownW: 0.52, crownR: [0.32, 0.44], crownDx: 0,
+      fall: 0.38, fallW: 1.75, fallN: 7, sides: 9,
     },
     variants: [
-      {}, // the classic fountain
-      { lean: 0.22, crownDx: 0.28, h: [3.8, 4.4], crownW: 0.95, fallW: 1.48 }, // riverbank lean
-      { h: [4.4, 5.0], fall: 0.24, fallW: 1.8, fallN: 7, trunkW: 0.2, crownW: 1.12 }, // the old weeper
+      {}, // the classic weeper
+      { lean: 0.22, crownDx: 0.3, h: [3.8, 4.4], crownW: 0.48, fallW: 1.6 }, // riverbank lean
+      { h: [4.5, 5.1], fall: 0.28, fallW: 1.95, fallN: 8, trunkW: 0.2, crownW: 0.56 }, // the old weeper
     ],
   },
   // 7 — Ancient yew: red-brown mass under a dense near-black dome.
@@ -445,6 +460,7 @@ export function treeModel(tile: Tile, h: number): TreeModel {
     return bottomIdx;
   };
 
+
   // --- Trunk (possibly forked) + crown dome(s).
   const crownBot = H * g.cBot;
   const crownCx = g.crownDx * unit + g.lean * unit * 0.9;
@@ -467,7 +483,9 @@ export function treeModel(tile: Tile, h: number): TreeModel {
     // The trunk climbs INTO the dome so the joint can never show.
     const trunkTop = crownBot + (H - crownBot) * 0.3;
     const trunk = grownSpine(0, 0, g.lean * unit * 0.7, trunkTop, g.bow, g.lean, g.gnarl, bowSign, unit, rnd, 3, 6);
-    bottomIdx = dome(crownCx, crownBot, H, g.crownW, 40);
+    // The willow grows no dome — its broken crown is built with the
+    // limbs in the cascade block below.
+    bottomIdx = g.fall > 0 ? [] : dome(crownCx, crownBot, H, g.crownW, 40);
 
     // Boughs: short, fill-only, from the upper trunk to just SHORT of
     // a bottom-tier cluster's centre — tips always buried in foliage.
@@ -486,125 +504,189 @@ export function treeModel(tile: Tile, h: number): TreeModel {
     branches.push({ pts: trunk, w0: g.trunkW, w1: g.trunkW * g.taper, flare: g.flare, tip: -1, level: 0 });
   }
 
-  // --- THE WILLOW FALL: grow the weeping skirt (see the header law).
+  // --- THE WILLOW REBUILT: limbs, tufts, and the cascade they
+  // carry (see the header law).
   const curtains: TreeCurtain[] = [];
   if (g.fall > 0) {
-    // The spill tier: mid-tone mounds dipping below the crown's dark
-    // underside, so the dome MELTS into the skirt instead of sitting
-    // on it — no straight shelf line across the tree.
-    for (let i = 0; i < 4; i++) {
-      const t = ((i + 0.5) / 4) * 2 - 1;
-      const sx2 = crownCx + t * g.crownW * 0.95 + (rnd(95 + i) - 0.5) * 0.2;
-      const rr = lerp(g.crownR, rnd(97 + i)) * 0.62;
-      addCluster(sx2, crownBot - rr * (0.2 + rnd(98 + i) * 0.4), rr, 1);
-    }
     const skirtW = g.fallW;
-    const tipMax = 0.34; // deepest fringe tip below its seat, tiles
+    const trunkB = branches[branches.length - 1]!;
+    const [axc, ayc] = trunkB.pts[trunkB.pts.length - 1]!;
+
+    /** One small foliage tuft riding a limb (or the apex). */
+    const tuft = (
+      x: number, y: number, scale: number, tone: number,
+      opts: { lit?: boolean; extra?: boolean }, ri: number,
+    ): number =>
+      addCluster(x, y, lerp(g.crownR, rnd(ri)) * scale, tone, opts);
+
+    // The apex knot: three clusters capping the trunk top — the only
+    // crown a young willow has grown yet. Kept SMALL: the crown must
+    // stay a swept mound over the arcs, never a ball.
+    const apexR = g.crownW * 0.5;
+    tuft(axc - apexR, ayc + 0.02, 0.95, 2, { lit: true }, 500);
+    tuft(axc + apexR, ayc + 0.05, 0.9, 1, {}, 501);
+    tuft(axc + (rnd(502) - 0.5) * 0.16, ayc + 0.2, 0.95, 2, { lit: true }, 503);
 
     /**
-     * One curtain: anchor buried in the dome underside, an outward
-     * arch to the belly (the withies clearing the crown), then a
-     * sheer drop to a chisel-cut fringe of staggered pointed tips.
-     * Faceted flanks, no curves. `sway` scales the paint-time swing
-     * (the deep sheet is stiff, the loose front falls are not).
+     * One streamer: a frond bundle hung from an exact anchor point
+     * on a limb. A tiny lip rise, a short outward shoulder (the
+     * limb already carried it out), then a near-vertical hang to a
+     * chisel-cut point. `tipY` is the LOWEST tip; `sway` scales the
+     * pendulum, `dropF` carries the traveling-ripple phase.
      */
-    const addFall = (
-      x0: number, yTop: number, drape: number, seatY: number,
-      wTop: number, wBelly: number, wHem: number,
+    const addStreamer = (
+      ax: number, ay: number, dir: number, reach: number,
+      tipY: number, w: number,
       tone: number, sway: number, tipN: number, ri: number,
     ): void => {
-      const len = Math.max(0.4, yTop - seatY);
-      // Centerline stations: anchor → shoulder → belly → hem seat.
-      const drift = [0, 0.5, 0.9, 1];
-      const yF = [0, 0.3, 0.62, 1];
-      const wF = [wTop, wBelly * 0.9, wBelly, wHem];
+      const tipDepth = Math.min(0.45, Math.max(0.16, (ay - tipY) * 0.28));
+      const seatY = tipY + tipDepth * 0.85;
+      const len = Math.max(0.4, ay - seatY);
+      const xF = [0, 0.45, 0.8, 0.98, 1.03, 1.0];
+      const yF = [0, -0.04, 0.18, 0.45, 0.72, 1];
+      const wF = [0.45, 0.7, 0.95, 1, 0.85, 0.62];
       const st: Array<[number, number, number]> = [];
-      for (let i = 0; i < 4; i++) {
-        const jx = i === 0 ? 0 : (rnd(ri + i) - 0.5) * 0.1;
-        st.push([x0 + drape * drift[i]! + jx, yTop - len * yF[i]!, wF[i]!]);
+      for (let i = 0; i < 6; i++) {
+        const jx = i === 0 ? 0 : (rnd(ri + i) - 0.5) * 0.08;
+        st.push([ax + dir * reach * xF[i]! + jx, ay - len * yF[i]!, w * wF[i]!]);
       }
       const pts: Array<[number, number]> = [];
       const drop: number[] = [];
+      const dropF: number[] = [];
       const push = (x: number, y: number): void => {
-        // Reach + ground clearance: the skirt never streams past the
-        // culling pad and the fringe never digs into the grass.
+        // Reach + ground clearance: streamers never stream past the
+        // culling pad and tips never dig into the grass.
         pts.push([Math.sign(x) * Math.min(Math.abs(x), 2.55), Math.max(0.1, y)]);
-        drop.push(Math.pow(Math.min(1, Math.max(0, (yTop - y) / len)), 1.35) * sway);
+        const fr = Math.min(1, Math.max(0, (ay - y) / len));
+        drop.push(Math.pow(fr, 1.3) * sway);
+        dropF.push(fr);
       };
-      // Down the left flank…
-      for (let i = 0; i < 4; i++) push(st[i]![0] - st[i]![2], st[i]![1]);
-      // …the fringe, left → right: pointed tips at staggered depths
-      // with shallow notches between…
-      const [hx, , hw] = st[3]!;
-      for (let k = 0; k < tipN; k++) {
-        const dTip = (0.55 + rnd(ri + 20 + k) * 0.45) * tipMax * Math.min(1, len * 0.55);
-        push(hx - hw + 2 * hw * ((k + 0.5) / tipN), seatY - dTip);
-        if (k < tipN - 1) push(hx - hw + 2 * hw * ((k + 1) / tipN), seatY - dTip * 0.3);
+      for (let i = 0; i < 6; i++) push(st[i]![0] - st[i]![2], st[i]![1]);
+      const [hx, , hw] = st[5]!;
+      if (tipN <= 1) {
+        push(hx, seatY - tipDepth);
+      } else {
+        for (let k = 0; k < tipN; k++) {
+          const dTip = (0.5 + rnd(ri + 20 + k) * 0.5) * tipDepth;
+          push(hx - hw + 2 * hw * ((k + 0.5) / tipN), seatY - dTip);
+          if (k < tipN - 1) push(hx - hw + 2 * hw * ((k + 1) / tipN), seatY - dTip * 0.25);
+        }
       }
-      // …and back up the right flank.
-      for (let i = 3; i >= 0; i--) push(st[i]![0] + st[i]![2], st[i]![1]);
+      for (let i = 5; i >= 0; i--) push(st[i]![0] + st[i]![2], st[i]![1]);
       curtains.push({
-        pts, drop, tone, hf: Math.min(1, yTop / H),
-        seed: hashCoords(61, h & 0xffff, curtains.length), x0, len,
+        pts, drop, dropF, tone, hf: Math.min(1, ay / H),
+        seed: hashCoords(61, h & 0xffff, curtains.length), x0: ax, len,
       });
     };
 
-    /** Hem seat height: staggered, outer falls hang a touch shorter. */
-    const seatOf = (t: number, j: number): number =>
-      g.fall + tipMax + rnd(120 + j) * 0.4 + Math.abs(t) * 0.3;
+    /** Hem law: anchors near the center hang longest. */
+    const tipOf = (ax: number, j: number): number =>
+      g.fall + Math.abs(ax) * 0.3 + rnd(120 + j) * 0.25;
 
-    // The rear sheet: one deep backdrop spanning the whole skirt —
-    // the guarantee that no gap between falls ever shows background,
-    // and the wall the bole stands against (it paints PRE-trunk).
-    addFall(
-      crownCx, crownBot + 0.45, 0, g.fall + tipMax + 0.26,
-      skirtW * 0.78, skirtW * 0.98, skirtW * 0.9,
-      0, 0.55, 9, 100,
-    );
-    // Mid falls: the articulated bell, parting at the bole (the trunk
-    // window) — outer falls arch further outward and ride lower
-    // anchors, tucked under the dome's own silhouette.
-    let li = 0;
-    for (let side = -1; side <= 1; side += 2) {
-      const nS = side < 0 ? Math.ceil(g.fallN / 2) : Math.floor(g.fallN / 2);
-      for (let k = 0; k < nS; k++, li++) {
-        const t = side * (0.5 + 0.5 * ((k + 0.8) / nS)) + (rnd(130 + li) - 0.5) * 0.06;
-        const wB = 0.36 + rnd(140 + li) * 0.14;
-        // Anchors CLIMB the crown's flank with |t| — the outermost
-        // falls pour over the shoulder, not from under a flat brim.
-        addFall(
-          crownCx + t * (skirtW - 0.5), crownBot + 0.32 + Math.abs(t) * 0.5,
-          t * 0.38, seatOf(t, li),
-          wB * (0.75 - 0.25 * Math.abs(t)), wB, wB * 0.8,
-          1, 0.85 + rnd(150 + li) * 0.3, 3, 160 + li * 7,
+    /**
+     * One arching limb: crotch on the trunk, a rise, an outward
+     * shoulder, a drooping tip — with a tuft buried over each
+     * station and 2-3 streamers hung from those exact points.
+     * `depth` 0 = rear pair (dark streamers, painted pre-trunk),
+     * 1 = mid front, 2 = the sun-side front limb (lit fronds).
+     */
+    const addLimb = (
+      dir: number, crotchU: number, R: number, depth: number, ri: number,
+    ): void => {
+      const [x0, y0] = alongSpine(trunkB.pts, crotchU);
+      const rise = (0.42 + rnd(ri) * 0.15) * unit;
+      const reach = R * (1 + g.lean * dir * 1.1);
+      const jx = (i: number): number => (rnd(ri + i) - 0.5) * 0.08;
+      // The arc: up off the crotch, over the shoulder, and the tip
+      // DROOPS — the tuft line slopes down toward the edges, the
+      // swept-mound crown profile.
+      const p1: [number, number] = [x0 + dir * reach * 0.35 + jx(1), y0 + rise * 0.85];
+      const p2: [number, number] = [x0 + dir * reach * 0.72 + jx(2), y0 + rise];
+      const p3: [number, number] = [
+        Math.sign(x0 + dir * reach) * Math.min(Math.abs(x0 + dir * reach), 2.3),
+        Math.min(y0 + rise * 0.42, H - 0.45),
+      ];
+      // Tufts first (the limb tip needs its cluster to drag with —
+      // anchoring law). Grown late like dome filler: a sapling has
+      // no limbs, so it gets no limb tufts either.
+      tuft(p1[0], p1[1], 0.95, 1, { extra: true }, ri + 10);
+      const litLimb = depth === 2;
+      tuft(p2[0], p2[1], 0.95, litLimb ? 2 : 1, { lit: litLimb, extra: true }, ri + 11);
+      // A small bridge tuft rides the arc between shoulder and tip —
+      // it guarantees the tuft chain never breaks (mass law) and
+      // deepens the swept mound.
+      tuft(
+        (p2[0] + p3[0]) / 2, (p2[1] + p3[1]) / 2 + 0.05, 0.7,
+        litLimb ? 2 : 1, { extra: true }, ri + 13,
+      );
+      const t3 = tuft(p3[0], p3[1], 0.8, 1, { extra: true }, ri + 12);
+      branches.push({
+        pts: [[x0, y0], p1, p2, p3],
+        w0: g.trunkW * 0.55, w1: g.trunkW * 0.16, flare: 0.15,
+        tip: t3, level: 1,
+      });
+      // The cascade this limb carries: one frond per station. Rear
+      // limbs hang dark depth; the front limbs the visible body;
+      // the sun-side limb bright fronds. Inner stations hang the
+      // loosest and longest (hem law).
+      const stations: Array<[number, number]> = [p1, p2, p3];
+      for (let sIdx = 0; sIdx < 3; sIdx++) {
+        const [sx2, sy2] = stations[sIdx]!;
+        const tone = depth === 0 ? 0 : depth === 2 ? (sIdx < 2 ? 2 : 1) : 1;
+        addStreamer(
+          sx2, sy2 - 0.08, dir, 0.1 + sIdx * 0.09,
+          tipOf(sx2, ri + sIdx) + (depth === 0 ? 0.22 : 0),
+          (depth === 0 ? 0.3 : 0.24) + rnd(ri + 30 + sIdx) * 0.09,
+          tone,
+          (depth === 0 ? 0.55 : 0.85) + rnd(ri + 40 + sIdx) * 0.25 + sIdx * 0.08,
+          depth === 0 ? 2 : 3, ri + 50 + sIdx * 7,
         );
       }
-    }
-    // Lit falls: the west side of the bell catches the sun — looser,
-    // brighter curtains riding over the mid falls.
-    for (let k = 0; k < 2; k++) {
-      const t = -(0.5 + k * 0.32 + rnd(200 + k) * 0.1);
-      const wB = 0.26 + rnd(210 + k) * 0.08;
-      addFall(
-        crownCx + t * (skirtW - 0.5), crownBot + 0.3 + Math.abs(t) * 0.4, t * 0.4,
-        seatOf(t, 40 + k) + 0.12,
-        wB * 0.7, wB, wB * 0.78,
-        2, 1.0 + rnd(220 + k) * 0.2, 2, 230 + k * 9,
+      // The rear pair double-hangs a near strand over its own dark
+      // fall — depth INSIDE the cascade, not just behind it.
+      if (depth === 0) {
+        addStreamer(
+          p1[0] + dir * 0.12, p1[1] - 0.12, dir, 0.08,
+          tipOf(p1[0], ri + 60), 0.17 + rnd(ri + 61) * 0.05,
+          1, 1.0, 2, ri + 62,
+        );
+      }
+      // Every limb tip sheds one bright escaped withy — the loosest
+      // thing on the tree, flying just past the belly.
+      addStreamer(
+        p3[0], p3[1] - 0.05, dir, 0.3 + rnd(ri + 70) * 0.12,
+        g.fall + rnd(ri + 71) * 0.2, 0.055,
+        3, 1.25, 1, ri + 72,
       );
+    };
+
+    // The limb plan: per side one HIGH limb (short reach, rear
+    // depth) and one LOW limb (the long front sweep); the old
+    // weeper grows a fifth long west sweeper. West front is the
+    // sun-side limb (lit fronds ride it).
+    addLimb(1, 0.78 + rnd(600) * 0.05, 0.92 + rnd(601) * 0.16, 0, 610); // high east — rear
+    addLimb(-1, 0.76 + rnd(602) * 0.05, 0.95 + rnd(603) * 0.16, 0, 640); // high west — rear
+    addLimb(1, 0.66 + rnd(604) * 0.05, (skirtW - 0.35) * (0.82 + rnd(605) * 0.1), 1, 670); // low east — front
+    addLimb(-1, 0.68 + rnd(606) * 0.05, (skirtW - 0.3) * (0.86 + rnd(607) * 0.1), 2, 700); // low west — sun side
+    if (variant === 2) {
+      addLimb(-1, 0.68 + rnd(608) * 0.04, (skirtW - 0.2), 1, 730); // the old sweeper
     }
-    // Withy streaks: single bright strands over the falls — the
-    // detail that sells individual weeping branches up close.
-    const nStreak = 3 + (variant === 2 ? 1 : 0);
-    for (let k = 0; k < nStreak; k++) {
-      const side = k % 2 === 0 ? -1 : 1;
-      const t = side * (0.55 + rnd(240 + k) * 0.4);
-      addFall(
-        crownCx + t * (skirtW - 0.55) + (rnd(250 + k) - 0.5) * 0.12,
-        crownBot + 0.28 + Math.abs(t) * 0.4, t * 0.36, seatOf(t, 60 + k) + 0.3,
-        0.04, 0.045, 0.024,
-        3, 1.2, 1, 260 + k * 5,
-      );
-    }
+
+    // The front veil: one frond hung from the trunk top, crossing
+    // the bole so it shows only LOW through the parting — never a
+    // bare pole running the tree's whole height. It follows the
+    // trunk's OWN mid-course (the bole bows).
+    const [vx] = alongSpine(trunkB.pts, 0.55);
+    addStreamer(
+      vx, ayc - 0.1, vx < axc ? -1 : 1, 0.05,
+      g.fall + 0.85 + rnd(356) * 0.25, 0.36 + rnd(357) * 0.05,
+      1, 0.95, 3, 358,
+    );
+
+    // The limbs grew after the trunk was seated — re-seat the trunk
+    // LAST so its body still covers every crotch join (seam law).
+    branches.splice(branches.indexOf(trunkB), 1);
+    branches.push(trunkB);
   }
 
   let top = 0;
@@ -759,7 +841,15 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     }
   }
 
-  /** Batch every curtain of one tone into a single fill (band law). */
+  /**
+   * Batch every curtain of one tone into a single fill (band law).
+   * Each vertex swings on the pendulum AND rides a traveling ripple
+   * running down the frond (phase along dropF) — cloth waving from
+   * the arc, never a rigid flag. Mid and lit fronds also lay their
+   * left flank into `partPath`, the batched strand part-lines that
+   * keep same-tone fronds reading combed instead of fusing flat.
+   */
+  const partPath = cSw && f.s > 18 ? new Path2D() : null;
   const fillFalls = (tone: number, color: string): void => {
     if (!cSw) return;
     const path = new Path2D();
@@ -771,13 +861,24 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
       const ax = disp(cu.hf);
       const sw = cSw[i]!;
       const lift = Math.abs(sw) * 0.18;
+      const ph = f.wx * 1.9 + f.wy * 1.45 + cu.x0 * 2.3;
+      const wAmp = windy * Math.min(0.085, 0.028 + cu.len * 0.016);
+      const wT = f.tSec * (2.1 + (cu.seed % 4) * 0.15) + ph * 1.7;
+      const part = partPath && (tone === 1 || tone === 2);
       for (let k = 0; k < cu.pts.length; k++) {
         const p = cu.pts[k]!;
         const d = cu.drop[k]!;
-        const sx2 = X(p[0] + ax + sw * d);
+        const fr = cu.dropF[k]!;
+        const ripple = Math.sin(wT - fr * 2.8) * wAmp * fr * fr;
+        const sx2 = X(p[0] + ax + sw * d + ripple);
         const sy2 = Y(p[1] + lift * d);
         if (k === 0) path.moveTo(sx2, sy2);
         else path.lineTo(sx2, sy2);
+        // Left flank (the first 6 stations) = this frond's part line.
+        if (part) {
+          if (k === 1) partPath!.moveTo(sx2, sy2);
+          else if (k > 1 && k < 6) partPath!.lineTo(sx2, sy2);
+        }
       }
       path.closePath();
     }
@@ -786,7 +887,7 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     ctx.fill(path);
   };
 
-  // The rear sheet paints before any wood: the bole stands INSIDE
+  // Back streamers paint before any wood: the bole stands INSIDE
   // the cascade, never pasted in front of it.
   fillFalls(0, shade(m.leaves[0], -8));
 
@@ -841,12 +942,20 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   }
   ctx.stroke();
 
-  // --- The skirt (willow): mid falls around the bole, lit falls on
-  // the light side, withy streaks last. The dome paints AFTER all of
-  // it — its underside spills over every anchor (seam law, downward).
+  // --- The cascade (willow): mid streamers bury the upper trunk,
+  // lit streamers ride the sun side, withies last. The crest paints
+  // AFTER all of it — it spills over every anchor (seam law, down).
   fillFalls(1, m.leaves[1]);
   fillFalls(2, m.leaves[2]);
-  fillFalls(3, shade(m.leaves[2], 10));
+  // Strand part-lines: ONE stroke for every mid + lit frond — the
+  // combed-curtain read, skipped when the tree is too small for it.
+  if (partPath) {
+    ctx.strokeStyle = shade(m.leaves[0], -6);
+    ctx.lineWidth = Math.max(1, s * 0.026);
+    ctx.lineJoin = 'round';
+    ctx.stroke(partPath);
+  }
+  fillFalls(3, shade(m.leaves[2], 18));
 
   // --- THE CANOPY MASS: every cluster contributes its blob to
   // batched tone paths — one shade layer beneath, three light bands,
