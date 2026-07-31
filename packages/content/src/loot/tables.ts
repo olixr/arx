@@ -147,6 +147,9 @@ const defs: LootTableDef[] = [
       { item: 'linen_scrap', qty: [2, 3], chance: 0.2 },
       { item: 'ember_essence', qty: [1, 2], chance: 0.1 },
       { item: 'arcane_dust', chance: 0.06 },
+      // The warren dug into the old forge. The diggers wear what the
+      // anvil remembers, one piece per lucky kobold.
+      ...setDrops('forgeheart', 0.004),
     ],
   },
   {
@@ -171,6 +174,9 @@ const defs: LootTableDef[] = [
       // The diggers found the magister's wardrobe. The digmaster
       // kept the shiniest of it, the way digmasters do.
       ...setDrops('orrery', 0.005),
+      // The old forge answers to the digmaster now. The black iron
+      // never cooled and he never asked why.
+      ...setDrops('forgeheart', 0.01),
     ],
   },
 
@@ -299,6 +305,9 @@ const defs: LootTableDef[] = [
       { item: 'fang_band', chance: 0.02 },
       { item: 'storm_essence', qty: [1, 2], chance: 0.13 },
       { item: 'arcane_dust', chance: 0.07 },
+      // The throwers scavenge the high passes after weather. Some of
+      // what the lightning drops is armor.
+      ...setDrops('stormcrown', 0.005),
     ],
   },
   rack('thrower_wardrobe', 'Coast plunder and trampled-fen cloth.', 0.04, [
@@ -442,6 +451,9 @@ const defs: LootTableDef[] = [
       // kept the feathers.
       ...setDrops('rookfeather', 0.005),
       ...setDrops('broodsilk', 0.008),
+      // The Champion still drills in the dark. The gold and crimson
+      // were the king's grant; the oath outlasted the king.
+      ...setDrops('oathgold', 0.005),
     ],
   },
   {
@@ -637,6 +649,9 @@ const defs: LootTableDef[] = [
       ...setDrops('barrowking', 0.008),
       // A rook got here first, once. It left the feathers behind.
       ...setDrops('rookfeather', 0.01),
+      // The champion's parade kit went into the hoard with the
+      // champion. The pennons still fly down there.
+      ...setDrops('oathgold', 0.008),
     ],
   },
   {
@@ -654,6 +669,8 @@ const defs: LootTableDef[] = [
       { item: 'riftglass', chance: 0.006 },
       // Woven from the same dark the blade was ground from.
       ...setDrops('riftweave', 0.006),
+      // The smith's dragon run went below with whoever ordered it.
+      ...setDrops('wyrmsteel', 0.006),
     ],
   },
 
@@ -771,6 +788,9 @@ const defs: LootTableDef[] = [
     entries: [
       { item: 'bones' },
       { item: 'scrap_hide', qty: [1, 2], chance: 0.7 },
+      // The crag keeps the storm and the ram keeps the crag. The
+      // crown comes down the mountain one piece at a time.
+      ...setDrops('stormcrown', 0.012),
     ],
   },
   {
@@ -886,6 +906,9 @@ const defs: LootTableDef[] = [
       // The troll keeps anything that glows. It never once looked up
       // to ask where the dancing cloth came from.
       ...setDrops('skydancer', 0.008),
+      // The trolls den in the old wyrm caves. The emerald plate suits
+      // them fine; it glows.
+      ...setDrops('wyrmsteel', 0.008),
     ],
   },
   {

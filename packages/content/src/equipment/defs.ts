@@ -4734,6 +4734,62 @@ function namedChaseDefs(): EquipmentDef[] {
     color: '#262e4e',
     rarities: ['legendary'] as RarityTier[],
   };
+  // STORMCROWN — storm-slate steel with the thunder still in it.
+  // Owner: the high crags where the storm lives; the rams wear it
+  // down, and the goblin throwers scavenge what the lightning drops.
+  const stormcrown = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 2 },
+      { stat: 'melee', w: 2 },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#46506e',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // FORGEHEART — black iron whose seams never cooled. Owner: the
+  // warren; the kobolds dug into the old forge and the digmaster
+  // wears what the anvil remembers.
+  const forgeheart = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 3 },
+      { stat: 'vitality' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#33302e',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // WYRMSTEEL — emerald steel forged to a dragon's notes. Owner: the
+  // trolls den in the old wyrm caves; the riftgate hoards kept the
+  // rest of the smith's run.
+  const wyrmsteel = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'melee', w: 3 },
+      { stat: 'defence' },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#2e4438',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // OATHGOLD — the king's champion wore gold and crimson and kept the
+  // oath past the king. Owner: the crypt's Champion still drills in
+  // the dark, and the boss hoards bank the rest.
+  const oathgold = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 2 },
+      { stat: 'vitality', w: 2 },
+      { stat: 'melee' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#c9a23c',
+    rarities: ['legendary'] as RarityTier[],
+  };
   return [
     chasePiece(moonbell, 'moonbell_hood', 'Moonbell hood', 'head', 8, 2, 380, 'Ma',
       'Two pale blooms tucked at the brow. They open at dusk.'),
@@ -4888,5 +4944,49 @@ function namedChaseDefs(): EquipmentDef[] {
       'Slate roofs never hear them coming.'),
     chasePiece(rookfeather, 'rookfeather_fingers', 'Rookfeather fingers', 'gloves', 24, 5, 1140, 'Rs',
       'Silver at the wrist, nothing at the fingertips.'),
+
+    chasePiece(stormcrown, 'stormcrown_helm', 'Stormcrown helm', 'head', 9, 3, 470, 'Ja',
+      'A crown of lightning rods. The arc still jumps them.'),
+    chasePiece(stormcrown, 'stormcrown_platebody', 'Stormcrown platebody', 'body', 12, 6, 640, 'Jd',
+      'Storm-slate steel. The thunder never checked out.'),
+    chasePiece(stormcrown, 'stormcrown_greaves', 'Stormcrown greaves', 'legs', 11, 5, 560, 'Je',
+      'They stand where the strike lands.'),
+    chasePiece(stormcrown, 'stormcrown_sabatons', 'Stormcrown sabatons', 'boots', 10, 4, 500, 'Jf',
+      'Every step sounds a little like weather.'),
+    chasePiece(stormcrown, 'stormcrown_gauntlets', 'Stormcrown gauntlets', 'gloves', 10, 4, 500, 'Ji',
+      'The hair on your arms never quite settles.'),
+
+    chasePiece(forgeheart, 'forgeheart_helm', 'Forgeheart helm', 'head', 13, 4, 700, 'Pa',
+      'A furnace with eye holes. The fire is the face.'),
+    chasePiece(forgeheart, 'forgeheart_platebody', 'Forgeheart platebody', 'body', 16, 7, 880, 'Pd',
+      'Black iron, seams glowing. The smith never let it cool.'),
+    chasePiece(forgeheart, 'forgeheart_greaves', 'Forgeheart greaves', 'legs', 15, 6, 790, 'Pi',
+      'Warm at the knee in any winter.'),
+    chasePiece(forgeheart, 'forgeheart_sabatons', 'Forgeheart sabatons', 'boots', 14, 5, 740, 'Po',
+      'Snow gives up arguing with them.'),
+    chasePiece(forgeheart, 'forgeheart_gauntlets', 'Forgeheart gauntlets', 'gloves', 14, 5, 740, 'Pp',
+      'They hold coals the way other hands hold coins.'),
+
+    chasePiece(wyrmsteel, 'wyrmsteel_helm', 'Wyrmsteel helm', 'head', 18, 5, 900, 'Xd',
+      'A dragon’s face in emerald steel. The smith had notes.'),
+    chasePiece(wyrmsteel, 'wyrmsteel_platebody', 'Wyrmsteel platebody', 'body', 21, 8, 1120, 'Xe',
+      'Scaled like the animal nobody living has seen. Sparks rise off it anyway.'),
+    chasePiece(wyrmsteel, 'wyrmsteel_greaves', 'Wyrmsteel greaves', 'legs', 20, 7, 1000, 'Xf',
+      'Green as the deep caves, warm as their breath.'),
+    chasePiece(wyrmsteel, 'wyrmsteel_sabatons', 'Wyrmsteel sabatons', 'boots', 19, 6, 950, 'Xk',
+      'Clawed at the toe. The ground takes the hint.'),
+    chasePiece(wyrmsteel, 'wyrmsteel_gauntlets', 'Wyrmsteel gauntlets', 'gloves', 19, 6, 950, 'Xl',
+      'Talons over knuckles. The grip does not negotiate.'),
+
+    chasePiece(oathgold, 'oathgold_helm', 'Oathgold helm', 'head', 24, 6, 1150, 'Om',
+      'Fluted gold under a laurel band. The plume outlasted the parade.'),
+    chasePiece(oathgold, 'oathgold_platebody', 'Oathgold platebody', 'body', 27, 9, 1400, 'On',
+      'The champion’s gold, pennons still flying. The oath outlasted the king.'),
+    chasePiece(oathgold, 'oathgold_greaves', 'Oathgold greaves', 'legs', 26, 8, 1250, 'Oo',
+      'They kneel for coronations and nothing else.'),
+    chasePiece(oathgold, 'oathgold_sabatons', 'Oathgold sabatons', 'boots', 25, 7, 1180, 'Op',
+      'Gold to the toe. Parade ground or battlefield, same stride.'),
+    chasePiece(oathgold, 'oathgold_gauntlets', 'Oathgold gauntlets', 'gloves', 25, 7, 1180, 'Oq',
+      'A jewel at the knuckle, a kingdom behind the fist.'),
   ];
 }
