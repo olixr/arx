@@ -17808,9 +17808,11 @@ export class Renderer {
               ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
               ctx.fillRect(px2 + pw2 * 0.3, pyMid - ph3 * 0.44, s * 0.09, s * 0.024);
               // The quilt claims the foot 58% of the deck (one shared
-              // painter — the sleeper's tuck repaints the SAME art).
+              // painter — the sleeper's tuck repaints the SAME art),
+              // stopping a hand short of the foot end: cloth never
+              // rides the footboard post (user catch).
               const qw2 = (x1 - x0) * 0.58;
-              const qx0 = sgn > 0 ? fx0 - s * 0.02 : fx0 - qw2 + s * 0.02;
+              const qx0 = sgn > 0 ? fx0 + s * 0.1 : fx0 - qw2 - s * 0.1;
               this.bedCoversSide(qx0, qw2, dTop, dBot, sgn, qMain, qDark);
               // …and DRAPES over the south rail: hem shadow + the
               // hanging corner falling down the face.
@@ -22870,9 +22872,10 @@ export class Renderer {
             ctx.translate(bodyX + (feetX - bodyX) * lieE, bodyY + (dMid - bodyY) * lieE);
             ctx.rotate(rot);
             ctx.translate(-bodyX, -bodyY);
-            // The painter's own quilt geometry, foot end.
+            // The painter's own quilt geometry, foot end — inset a
+            // hand from the frame so the cloth never rides the post.
             const qW = halfLen * 2 * 0.58;
-            const qX = sgn > 0 ? p.x - halfLen - 0.02 * s : p.x + halfLen - qW + 0.02 * s;
+            const qX = sgn > 0 ? p.x - halfLen + 0.1 * s : p.x + halfLen - qW - 0.1 * s;
             tuck = () => {
               if (tuckA <= 0) return;
               ctx.save();
