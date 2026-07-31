@@ -111,6 +111,7 @@ import {
   artFlag,
   honedAbility,
   rankLevel,
+  techniqueAnchor,
   techniqueRank,
   techniqueRankFor,
   type AbilityDef,
@@ -188,4 +189,21 @@ test('THE UNWRITTEN PAGE: earned pages rank from their anchor, never below I', (
   const rung = { ability: 'y', style: 'arx' as const, unlockLevel: 15 };
   assert.equal(techniqueRankFor(rung, 10), 0, 'ladder arts still gate on their rung');
   assert.equal(artFlag('riftwalker_step'), 'art:riftwalker_step');
+});
+
+test('THE SECRET LEDGER: secret arts rank from their anchor exactly like pages', () => {
+  const secret = {
+    ability: 'z',
+    style: 'twohand' as const,
+    unlockLevel: 0,
+    secret: { anchorLevel: 24 },
+  };
+  assert.equal(techniqueRankFor(secret, 1), 1, 'a lent or mastered secret never ranks below I');
+  assert.equal(techniqueRankFor(secret, 39), 2, 'anchor +15 = rank II');
+  assert.equal(techniqueRankFor(secret, 69), 4, 'the secret masters at anchor +45');
+  assert.equal(techniqueAnchor(secret), 24, 'the clock reads the secret anchor');
+  const page = { ability: 'p', style: 'arx' as const, unlockLevel: 0, hidden: { anchorLevel: 30 } };
+  assert.equal(techniqueAnchor(page), 30, 'the clock reads the page anchor');
+  const rung = { ability: 'r', style: 'arx' as const, unlockLevel: 15 };
+  assert.equal(techniqueAnchor(rung), 15, 'the clock reads the rung');
 });

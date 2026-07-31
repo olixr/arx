@@ -430,6 +430,19 @@ export interface TechniqueDef {
    * earned art still grows with the hand that carries it.
    */
   hidden?: { anchorLevel: number };
+  /**
+   * THE SECRET LEDGER: a secret art is a weapon's Art holding a seat
+   * in the technique pool — the third citizenship beside rungs and
+   * unwritten pages. The seat belongs to the ART, not the tool: every
+   * weapon whose `WeaponStats.art` names this ability teaches it.
+   * THE LOAN LAW lends it while a teaching weapon is in either hand;
+   * THE LESSON LAW converts fighting with the teacher into permanent
+   * mastery (the same `art:<ability>` flag the unwritten pages earn).
+   * The anchorLevel is authored from the teaching line's tier band and
+   * seeds rank derivation exactly as a page's anchor does. A def is
+   * exactly one of: rung (unlockLevel >= 1), hidden, or secret.
+   */
+  secret?: { anchorLevel: number };
 }
 
 /** The character flag that marks a hidden art as earned. */
@@ -439,13 +452,25 @@ export function artFlag(ability: string): string {
 
 /**
  * The level a technique's rank clock counts from: the rung for ladder
- * arts, the anchor for the unwritten pages. The ONE place this choice
- * lives — server casts, codex, and hotbar all rank through it. An
- * earned page never ranks below I: the deed already opened it, so a
- * hand below the anchor simply holds an unhoned art.
+ * arts, the anchor for unwritten pages and secret arts. The ONE place
+ * the choice lives — rank math, maturity tests, and bench copy all
+ * read the clock through here.
+ */
+export function techniqueAnchor(tech: TechniqueDef): number {
+  return tech.hidden?.anchorLevel ?? tech.secret?.anchorLevel ?? tech.unlockLevel;
+}
+
+/**
+ * The rank an art stands at for the hand that carries it. The ONE
+ * place this choice lives — server casts, codex, and hotbar all rank
+ * through it. An earned page or mastered secret never ranks below I:
+ * the deed (or the lessons) already opened it, so a hand below the
+ * anchor simply holds an unhoned art.
  */
 export function techniqueRankFor(tech: TechniqueDef, baseLevel: number): number {
-  if (tech.hidden) return Math.max(1, techniqueRank(tech.hidden.anchorLevel, baseLevel));
+  if (tech.hidden || tech.secret) {
+    return Math.max(1, techniqueRank(techniqueAnchor(tech), baseLevel));
+  }
   return techniqueRank(tech.unlockLevel, baseLevel);
 }
 

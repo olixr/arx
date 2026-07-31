@@ -32,6 +32,7 @@ import {
   WELL_PLAZA,
 } from './structures/templates.js';
 import { ABILITIES, TECHNIQUES, abilityDef } from './abilities.js';
+import { SECRET_ARTS, secretArtDef } from './secretArts.js';
 import { ITEMS } from './items.js';
 import { NPCS, TOWN_SPAWNS } from './npcs.js';
 import { LOOT_TABLES } from './loot/tables.js';
@@ -72,9 +73,38 @@ test('every weapon art and relic active resolves to an ability', () => {
   }
 });
 
-test('every equippable weapon carries an Art — no dead Q slots', () => {
+test('THE SECRET LEDGER: every weapon teaches, and every seat has a teacher', () => {
+  // A weapon with no art is a mute teacher; an art with no secret seat
+  // is a lesson nobody can keep. Both directions are the law.
+  const taught = new Set<string>();
   for (const [id, item] of ITEMS) {
-    if (item.weapon) assert.ok(item.weapon.art, `${id} has no weapon art`);
+    if (!item.weapon) continue;
+    assert.ok(item.weapon.art, `${id} has no weapon art`);
+    const seat = secretArtDef(item.weapon.art);
+    assert.ok(seat, `${id} art '${item.weapon.art}' holds no secret ledger seat`);
+    assert.equal(
+      seat!.style,
+      item.weapon.style,
+      `${id}: the seat's school must be the teaching weapon's style`,
+    );
+    taught.add(item.weapon.art);
+  }
+  for (const seat of SECRET_ARTS) {
+    assert.ok(taught.has(seat.ability), `secret seat '${seat.ability}' has no teaching weapon`);
+  }
+});
+
+test('THE THREE CITIZENSHIPS: rung, page, and secret seats never overlap', () => {
+  const ladderIds = new Set(TECHNIQUES.map((t) => t.ability));
+  const seatIds = new Set<string>();
+  for (const seat of SECRET_ARTS) {
+    assert.ok(abilityDef(seat.ability), `secret seat '${seat.ability}' resolves to an ability`);
+    assert.ok(!ladderIds.has(seat.ability), `'${seat.ability}' is both ladder and secret`);
+    assert.ok(!seatIds.has(seat.ability), `'${seat.ability}' holds two secret seats`);
+    seatIds.add(seat.ability);
+    assert.equal(seat.unlockLevel, 0, `${seat.ability}: a secret has no rung`);
+    assert.ok(seat.secret, `${seat.ability}: a ledger seat carries the secret marker`);
+    assert.ok(!seat.hidden, `${seat.ability}: one citizenship only — secret, never also hidden`);
   }
 });
 
