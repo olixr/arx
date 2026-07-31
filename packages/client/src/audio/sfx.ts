@@ -267,6 +267,21 @@ export class Sfx {
   }
 
   /**
+   * A craft batch seen through — the tools set down, not a fanfare:
+   * a soft wooden tock as the last piece lands on the pile, a rising
+   * third saying "done", and one warm ring to let the bench go quiet.
+   * Bigger than the collect blip, smaller than swearing a quest —
+   * it fires every batch, so it must never wear out its welcome.
+   */
+  workDone(): void {
+    this.tone(180, 0.08, { type: 'sine', slide: -40, volume: 0.24, detune: false });
+    this.noise(0.05, 0.04, 0, { band: 1400 });
+    this.tone(523.3, 0.12, { type: 'triangle', volume: 0.22, delay: 0.07, detune: false });
+    this.tone(659.3, 0.28, { type: 'triangle', volume: 0.24, delay: 0.16, detune: false });
+    this.tone(1318.5, 0.14, { type: 'triangle', volume: 0.07, delay: 0.3, detune: false });
+  }
+
+  /**
    * The level-up fanfare — a ceremony, not a blip: a grounded thump
    * the moment lands on, a four-note herald climbing the major triad,
    * then the full chord planted on top with a glitter tail. Sized to

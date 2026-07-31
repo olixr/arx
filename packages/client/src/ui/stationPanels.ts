@@ -15,6 +15,7 @@ import {
   shopDef,
   instanceName,
   itemDef,
+  RECIPES,
   recipesForStation,
   type BuildableDef,
   type RecipeDef,
@@ -53,14 +54,14 @@ const STATION_FACE: Record<
     icon: 'trout',
     accent: '#e8944a',
     verb: 'Cook',
-    hint: 'The fire is lit — raw makings come straight from your pack.',
+    hint: 'The fire is lit. Raw makings come straight from your pack.',
   },
   furnace: {
     label: 'Smelting',
     icon: 'bronze_bar',
     accent: '#ff8a4a',
     verb: 'Smelt',
-    hint: 'Ore in, bars out — the furnace does not negotiate.',
+    hint: 'Ore in, bars out. The furnace does not negotiate.',
   },
   anvil: {
     label: 'Smithing',
@@ -109,18 +110,29 @@ const STATION_FACE: Record<
     icon: 'arcane_dust',
     accent: '#b49af0',
     verb: 'Bind',
-    hint: 'Power pressed into gear — permanently.',
+    hint: 'Power pressed into gear, for good.',
   },
   sawhorse: {
     label: 'Sawing',
     icon: 'board',
     accent: '#c98d4b',
     verb: 'Saw',
-    hint: 'One log, three boards — the saw keeps an honest count.',
+    hint: 'One log, three boards. The saw keeps an honest count.',
   },
 };
 
 const HANDIWORK_FACE = STATION_FACE.workbench!;
+
+/** The station's face (label, icon, accent, verb) — the work card wears it too. */
+export function craftStationFace(station: StationType | null): {
+  label: string;
+  icon: string | null;
+  accent: string;
+  verb: string;
+  hint: string;
+} {
+  return (station && STATION_FACE[station]) || HANDIWORK_FACE;
+}
 
 export class StationPanels {
   private readonly craftPanel = document.getElementById('craft-panel')!;
@@ -669,6 +681,12 @@ export class StationPanels {
 
   // ------------------------------------------------------------ craft
 
+  /** Set by main: stops the running craft batch (the busy strip's Stop). */
+  onCraftStop: (() => void) | null = null;
+
+  /** Set by main: the live running action — feeds the busy strip. */
+  getAction: () => { recipe?: string; made?: number; total?: number } | null = () => null;
+
   openCraft(
     station: StationType | null,
     skills: SkillXp,
@@ -869,18 +887,50 @@ export class StationPanels {
 
     const actions = document.createElement('div');
     actions.className = 'work-actions';
-    if (locked) {
+    const running = this.getAction();
+    if (running?.recipe) {
+      // THE HANDS ARE BUSY. A running batch owns the bench: show its
+      // live tally and one Stop — never a second Make button that
+      // would silently swallow the rest of the batch.
+      const busy = document.createElement('span');
+      busy.className = 'work-busy';
+      const busyName = RECIPES.get(running.recipe)?.name ?? running.recipe;
+      const total = running.total ?? 1;
+      const at = Math.min((running.made ?? 0) + 1, total);
+      busy.textContent =
+        total > 1 ? `At work: ${busyName}, ${at} of ${total}` : `At work: ${busyName}`;
+      actions.appendChild(busy);
+      actions.appendChild(
+        bigButton('Stop', 'craft:stop', () => this.onCraftStop?.(), { acta: 'Stop' }),
+      );
+    } else if (locked) {
       const lockNote = document.createElement('span');
       lockNote.className = 'lock-note';
       lockNote.textContent = `Reach ${recipe.skill} ${recipe.levelReq} to ${face.verb.toLowerCase()} this`;
       actions.appendChild(lockNote);
     } else {
-      for (const qty of [1, 5, 28]) {
-        const label = qty === 1 ? `${face.verb} 1` : qty === 28 ? `${face.verb} all` : `× ${qty}`;
-        const btn = bigButton(label, `craft:${recipe.id}:${qty}`, () => this.onCraft(recipe.id, qty), {
-          acta: face.verb,
-          minor: qty !== 1,
-        });
+      // MAKE, THEN WATCH: the buttons hand the moment to the world —
+      // the panel closes and the work card takes over. "All" means
+      // all the pack can cover, not a fixed number.
+      const most = Math.min(count, 1000);
+      const quantities = [1];
+      if (most > 5) quantities.push(5);
+      if (most > 1) quantities.push(most);
+      for (const qty of quantities) {
+        const label =
+          qty === 1 ? `${face.verb} 1` : qty === most ? `${face.verb} all` : `× ${qty}`;
+        const btn = bigButton(
+          label,
+          `craft:${recipe.id}:${qty === most && qty !== 1 ? 'all' : qty}`,
+          () => {
+            this.onCraft(recipe.id, qty);
+            this.closeAll();
+          },
+          {
+            acta: face.verb,
+            minor: qty !== 1,
+          },
+        );
         if (count === 0) btn.disabled = true;
         actions.appendChild(btn);
       }

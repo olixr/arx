@@ -1,5 +1,5 @@
-import { EntityKind, FENCE_TILES, GARRISON_TILES, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isSkillId, levelForXp, tileDef, treeOfSapling } from '@arx/shared';
-import { BUILDABLES, buildableForTile, buildableGround, itemDef, npcDef } from '@arx/content';
+import { EntityKind, FENCE_TILES, GARRISON_TILES, HIDDEN_SKILLS, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isSkillId, levelForXp, tileDef, treeOfSapling } from '@arx/shared';
+import { BUILDABLES, RECIPES, buildableForTile, buildableGround, itemDef, npcDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { bindings, type ActionId } from './input/bindings.js';
@@ -10,7 +10,8 @@ import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
 import { Panels, SKILL_FACE } from './ui/panels.js';
 import { showLevelUp } from './ui/levelToast.js';
-import { StationPanels } from './ui/stationPanels.js';
+import { StationPanels, craftStationFace } from './ui/stationPanels.js';
+import { CraftHud } from './ui/craftHud.js';
 import { BuildTray } from './ui/buildTray.js';
 import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
@@ -391,6 +392,13 @@ stationPanels.onPlant = (tx, ty, seed) => {
   game.plantSend(tx, ty, seed);
 };
 
+// THE WORK CARD: starting a craft closes the Workshop and this card
+// speaks for the batch from above the hotbar — item bar, batch tally,
+// and the end ceremony. Stop chip, Esc, and walking all set it down.
+const craftHud = new CraftHud(() => game.craftStop());
+stationPanels.onCraftStop = () => game.craftStop();
+stationPanels.getAction = () => game.action;
+
 /** The sound a pack item makes when USED — equip clasp or a bite. */
 function useSlotSound(itemId: string): void {
   const def = itemDef(itemId);
@@ -697,18 +705,43 @@ const game = new ClientGame(input, {
   // A build/demolish click the server accepted becomes the active
   // site; any other action-start (gather, craft) discards a stale
   // claim. The site aims the pose and wears the progress ring.
-  onActionStart: () => {
+  onActionStart: (ticks, craft) => {
     if (sentSite && performance.now() - sentSite.at < 600) {
       activeSite = { tx: sentSite.tx, ty: sentSite.ty };
       renderer.buildSite = { tx: sentSite.tx, ty: sentSite.ty };
     }
     sentSite = null;
+    // A craft start (first item or the next in the batch) beats the
+    // work card; the reopened Workshop's busy strip follows along.
+    if (craft) {
+      const recipe = RECIPES.get(craft.recipe);
+      if (recipe) {
+        const face = craftStationFace(recipe.station ?? null);
+        craftHud.beat({
+          name: recipe.name,
+          icon: recipe.output.item,
+          label: face.label,
+          accent: face.accent,
+          made: craft.made,
+          total: craft.total,
+          outQty: recipe.output.qty,
+          durationMs: ticks * TICK_MS,
+        });
+      }
+      stationPanels.refreshOpen();
+    }
   },
   // Work the world refused mid-swing says why instead of going mute.
   // (The completion thump lives on the tile patch itself — one
   // ceremony for builder and bystander alike, spatial, in onTileChange.)
-  onActionEnd: (reason) => {
+  onActionEnd: (reason, made) => {
     renderer.buildSite = null;
+    // The work card wears the end: done, set down, or run dry. The
+    // chime belongs to a finished batch only — `made` rides craft
+    // stops alone, so gathers and builds never borrow it.
+    craftHud.end(reason, made);
+    if (reason === 'done' && made !== undefined && made > 0) sfx.workDone();
+    if (made !== undefined) stationPanels.refreshOpen();
     if (!activeSite) return;
     activeSite = null;
     if (reason === 'moved') {
@@ -1772,12 +1805,18 @@ window.addEventListener('keydown', (e) => {
     }
   }
   if (e.code === 'Escape') {
+    // With nothing open, Esc means the craft itself: set the tools
+    // down. With a screen up it keeps its old job and only closes.
+    const hadUi =
+      document.querySelector('.ui-screen:not(.hidden), .ui-tray:not(.hidden)') !== null ||
+      buildMode !== null;
     closeAllUi();
     buildMode = null;
     buildOrient = 'auto';
     buildQueue.length = 0;
     buildDragging = false;
     renderer.buildGhost = null;
+    if (!hadUi && game.action?.recipe !== undefined) game.craftStop();
   }
   if (buildMode && bindings.kbMatches('buildRotate', e.code)) cycleBuildOrient(1);
   if (bindings.kbMatches('interact', e.code)) activateTarget(game.findNearbyTarget());
@@ -2082,6 +2121,7 @@ function frame(now: number): void {
   mapOverlay.update(now, uiOpen || cinema.open);
   waypointHud.update(game, renderer, uiOpen || cinema.open || buildMode !== null);
   objectiveTracker.update(uiOpen || cinema.open || buildMode !== null);
+  craftHud.duck(uiOpen || cinema.open);
   partyHud.update(game, renderer, uiOpen || cinema.open || buildMode !== null);
   // The character case frames the LIVE you: with the case docked right
   // (and no bank/shop conversation borrowing the pack), the camera

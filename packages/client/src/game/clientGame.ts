@@ -189,12 +189,14 @@ export interface GameEvents {
   }): void;
   /** This character has never chosen a look — open the creator. */
   onNeedLook?(): void;
-  /** A timed action began — `ticks` server ticks to completion. */
-  onActionStart?(ticks: number): void;
+  /** A timed action began — `ticks` server ticks to completion; craft
+   *  starts carry the recipe and the batch tally for the work card. */
+  onActionStart?(ticks: number, craft?: { recipe: string; made: number; total: number }): void;
   /** The own-built ledger arrived — feed the overlay. */
   onOwnBuilt?(keys: ReadonlySet<string>): void;
-  /** The running action ended — `reason` says why ('done', 'blocked', 'occupied', 'materials', 'moved', …). */
-  onActionEnd?(reason?: string): void;
+  /** The running action ended — `reason` says why ('done', 'blocked', 'occupied',
+   *  'materials', 'moved', 'stopped', …); craft ends carry the batch tally. */
+  onActionEnd?(reason?: string, made?: number): void;
   /** A conversation began — raise the cinematic frame around `eid`. */
   onDialogueOpen?(o: {
     eid: EntityId;
@@ -355,8 +357,15 @@ export class ClientGame {
   carryStyle: 'normal' | 'rogue' = 'normal';
   /** Off-fist grip preference — each hand carries its own way. */
   carryOff: 'normal' | 'rogue' = 'normal';
-  /** Running gather action, for the progress bar. */
-  action: { startedAt: number; durationMs: number } | null = null;
+  /** Running timed action, for the progress bar. Craft actions carry
+   *  their recipe and batch tally so the HUD can speak for the work. */
+  action: {
+    startedAt: number;
+    durationMs: number;
+    recipe?: string;
+    made?: number;
+    total?: number;
+  } | null = null;
   /** "tx,ty" keys of this character's own built tiles (THE OWN-WORK OVERLAY). */
   ownBuilt: ReadonlySet<string> = new Set();
   /** Damage numbers floating up; pruned by the renderer. */
@@ -945,11 +954,22 @@ export class ClientGame {
       }
       case 'action': {
         if (msg.state === 'start') {
-          this.action = { startedAt: performance.now(), durationMs: (msg.ticks ?? 0) * TICK_MS };
-          this.events.onActionStart?.(msg.ticks ?? 0);
+          this.action = {
+            startedAt: performance.now(),
+            durationMs: (msg.ticks ?? 0) * TICK_MS,
+            recipe: msg.recipe,
+            made: msg.made,
+            total: msg.total,
+          };
+          this.events.onActionStart?.(
+            msg.ticks ?? 0,
+            msg.recipe !== undefined
+              ? { recipe: msg.recipe, made: msg.made ?? 0, total: msg.total ?? 1 }
+              : undefined,
+          );
         } else {
           this.action = null;
-          this.events.onActionEnd?.(msg.reason);
+          this.events.onActionEnd?.(msg.reason, msg.made);
         }
         break;
       }
@@ -1749,6 +1769,11 @@ export class ClientGame {
 
   craft(recipe: string, qty: number): void {
     this.conn?.send({ t: 'craft', recipe, qty });
+  }
+
+  /** Set the tools down: stop the running craft batch, keeping what's made. */
+  craftStop(): void {
+    this.conn?.send({ t: 'craftstop' });
   }
 
   /** Plant a seed into a tilled plot. */

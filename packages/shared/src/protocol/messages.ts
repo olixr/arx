@@ -123,6 +123,11 @@ export interface C2SCraft {
   qty: number;
 }
 
+/** Set the tools down: stop the running craft batch, keeping what's made. */
+export interface C2SCraftStop {
+  t: 'craftstop';
+}
+
 export interface C2SBank {
   t: 'bank';
   op: 'deposit' | 'withdraw';
@@ -416,6 +421,7 @@ export type C2SMessage =
   | C2SInvMove
   | C2SDropItem
   | C2SCraft
+  | C2SCraftStop
   | C2SBank
   | C2SShop
   | C2SBuild
@@ -593,7 +599,7 @@ export interface S2CXp {
   levelledUp: boolean;
 }
 
-/** A timed action (gathering) started or stopped for this player. */
+/** A timed action (gathering / crafting) started or stopped for this player. */
 export interface S2CAction {
   t: 'action';
   state: 'start' | 'stop';
@@ -601,6 +607,12 @@ export interface S2CAction {
   ticks?: number;
   /** Why it stopped: done / cancelled / failed reason. */
   reason?: string;
+  /** Craft only: the recipe being worked (start only). */
+  recipe?: string;
+  /** Craft only: items finished so far in this batch. */
+  made?: number;
+  /** Craft only: batch size asked for (start only). */
+  total?: number;
 }
 
 /** This player's worn equipment changed. */
@@ -1432,6 +1444,9 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.qty) || !Number.isInteger(msg.qty)) return null;
       if (msg.qty < 1 || msg.qty > 1000) return null;
       return { t: 'craft', recipe: msg.recipe, qty: msg.qty };
+    }
+    case 'craftstop': {
+      return { t: 'craftstop' };
     }
     case 'bank': {
       if (msg.op !== 'deposit' && msg.op !== 'withdraw') return null;

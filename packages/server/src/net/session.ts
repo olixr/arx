@@ -282,6 +282,12 @@ export class Session {
         this.game.craft(this.playerEid, msg.recipe, msg.qty);
         return;
       }
+      case 'craftstop': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.craftStop(this.playerEid);
+        return;
+      }
       case 'bank': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

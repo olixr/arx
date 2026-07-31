@@ -403,6 +403,8 @@ interface CraftAction {
   kind: 'craft';
   recipe: RecipeDef;
   remaining: number;
+  /** Batch size asked for — `total - remaining` is the made count on the wire. */
+  total: number;
   ticksLeft: number;
 }
 
@@ -3261,8 +3263,21 @@ export class GameServer {
 
   private cancelAction(eid: EntityId, player: PlayerComp, reason?: string): void {
     if (!player.action) return;
+    // A craft batch reports its tally on the way out — the work card's
+    // "Made N" face and the interrupt lines both read from this.
+    const made =
+      player.action.kind === 'craft'
+        ? (player.action as CraftAction).total - (player.action as CraftAction).remaining
+        : undefined;
     player.action = null;
-    player.session?.sendJson({ t: 'action', state: 'stop', reason });
+    player.session?.sendJson({ t: 'action', state: 'stop', reason, made });
+  }
+
+  /** The player sets the tools down mid-batch — an honest stop, not a failure. */
+  craftStop(eid: EntityId): void {
+    const player = this.players.get(eid);
+    if (!player || player.action?.kind !== 'craft') return;
+    this.cancelAction(eid, player, 'stopped');
   }
 
   /** Called each tick for players with a running action. */
@@ -3867,9 +3882,16 @@ export class GameServer {
       return;
     }
     const craftTicks = this.craftTicks(player, recipe);
-    player.action = { kind: 'craft', recipe, remaining: qty, ticksLeft: craftTicks };
+    player.action = { kind: 'craft', recipe, remaining: qty, total: qty, ticksLeft: craftTicks };
     this.poses.set(eid, PoseState.Craft);
-    player.session.sendJson({ t: 'action', state: 'start', ticks: craftTicks });
+    player.session.sendJson({
+      t: 'action',
+      state: 'start',
+      ticks: craftTicks,
+      recipe: recipe.id,
+      made: 0,
+      total: qty,
+    });
   }
 
   /** Master Grain and kin: the trade's Calling quickens the bench. */
@@ -3930,7 +3952,7 @@ export class GameServer {
           player.session?.sendJson({
             t: 'chat',
             channel: 'system',
-            text: `Your hands outdo themselves — a ${rar} ${instanceName(recipe.output.item, roll)}!`,
+            text: `Your hands outdo themselves: a ${rar} ${instanceName(recipe.output.item, roll)}!`,
           });
         }
       } else {
@@ -3944,7 +3966,14 @@ export class GameServer {
     if (action.remaining > 0 && this.hasInputs(player, recipe)) {
       const nextTicks = this.craftTicks(player, recipe);
       action.ticksLeft = nextTicks;
-      player.session?.sendJson({ t: 'action', state: 'start', ticks: nextTicks });
+      player.session?.sendJson({
+        t: 'action',
+        state: 'start',
+        ticks: nextTicks,
+        recipe: recipe.id,
+        made: action.total - action.remaining,
+        total: action.total,
+      });
     } else {
       this.cancelAction(eid, player, 'done');
     }
