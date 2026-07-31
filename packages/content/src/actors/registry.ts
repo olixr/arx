@@ -79,6 +79,19 @@ import waykeeperHale from './defs/waykeeper_hale.json';
 import waykeeperOdessa from './defs/waykeeper_odessa.json';
 import waywardWatch from './defs/wayward_watch.json';
 import youngPip from './defs/young_pip.json';
+import portreeveBrack from './defs/portreeve_brack.json';
+import factorNeave from './defs/factor_neave.json';
+import innkeepDorrit from './defs/innkeep_dorrit.json';
+import chandlerSwale from './defs/chandler_swale.json';
+import salterOndra from './defs/salter_ondra.json';
+import smokemistressAlba from './defs/smokemistress_alba.json';
+import anglerVoss from './defs/angler_voss.json';
+import boatwrightSeff from './defs/boatwright_seff.json';
+import roperJessa from './defs/roper_jessa.json';
+import lightkeeperLund from './defs/lightkeeper_lund.json';
+import pilotFane from './defs/pilot_fane.json';
+import saltmereWatch from './defs/saltmere_watch.json';
+import saltmereFisher from './defs/saltmere_fisher.json';
 
 /**
  * Every authored actor JSON, registered here. A def that isn't listed
@@ -92,6 +105,19 @@ import youngPip from './defs/young_pip.json';
 // Waykeeper sergeants holding the marches, and Edda holding the
 // Last Lamp against the Silverspine dark.
 const SOURCES: readonly unknown[] = [
+  portreeveBrack,
+  factorNeave,
+  innkeepDorrit,
+  chandlerSwale,
+  salterOndra,
+  smokemistressAlba,
+  anglerVoss,
+  boatwrightSeff,
+  roperJessa,
+  lightkeeperLund,
+  pilotFane,
+  saltmereWatch,
+  saltmereFisher,
   brokerVarga,
   curioNinebrass,
   reeveCoppin,

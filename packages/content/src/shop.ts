@@ -60,9 +60,11 @@ export const GENERAL_STORE: readonly ShopEntry[] = [
   // come from the anvil, the workbench, or the wilds.
   { item: 'leather_boots', price: 60 },
   { item: 'woven_trousers', price: 55 },
-  // Tobbin's cookbook shelf — the town's two taught dishes live at
-  // the general counter; there is no separate cooking trainer yet.
-  ...trainerStock(['cooking']),
+  // The cookbook shelf keeps the two starter dishes only — the
+  // cooking school proper moved south with Smokemistress Alba
+  // (alba_receipts, Saltmere): her shelf carries the whole trade.
+  { item: recipeScrollId('cook_hearty_stew'), price: trainerPrice(12) },
+  { item: recipeScrollId('cook_cake'), price: trainerPrice(15) },
 ];
 
 /**
@@ -377,6 +379,73 @@ const defs: ShopDef[] = [
       { item: 'arcane_dust', price: 85 },
       { item: 'silver_ring', price: 210 },
       { item: 'brass_key', price: 250 },
+    ],
+  },
+  // ------------------------------------------------------- Saltmere
+  // The chandlery: everything the water asks of you, in threes.
+  {
+    id: 'saltmere_stores',
+    name: 'Saltmere Stores',
+    stock: [
+      { item: 'fishing_rod', price: 18 },
+      { item: 'twine', price: 10 },
+      { item: 'arrow', price: 4 },
+      { item: 'bread', price: 20 },
+      { item: 'healing_tincture', price: 58 },
+      { item: 'leather_boots', price: 62 },
+      { item: 'brass_key', price: 250 },
+    ],
+  },
+  // Dorrit's board at the Painted Gull: the house dish is the point.
+  {
+    id: 'gull_board',
+    name: 'The Painted Gull',
+    stock: [
+      { item: 'bread', price: 18 },
+      { item: 'fried_egg', price: 10 },
+      { item: 'milk', price: 12 },
+      { item: 'hearty_stew', price: 42 },
+      { item: 'fishers_pot', price: 78 },
+    ],
+  },
+  // Alba's Receipts: the world's one true cooking school — every
+  // taught dish in the trade, plus the salt and the smoke to prove it.
+  {
+    id: 'alba_receipts',
+    name: "Alba's Receipts",
+    stock: [
+      ...trainerStock(['cooking']),
+      { item: 'salt', price: 8 },
+      { item: 'smoked_trout', price: 34 },
+    ],
+  },
+  // Voss sells tackle and yesterday's catch, in that order of pride.
+  {
+    id: 'voss_tackle',
+    name: "Voss's Tackle",
+    stock: [
+      { item: 'fishing_rod', price: 16 },
+      { item: 'raw_trout', price: 10 },
+      { item: 'trout', price: 20 },
+      { item: 'smoked_trout', price: 32 },
+    ],
+  },
+  // The White Harvest: Ondra's salt, at the pans' own price.
+  {
+    id: 'ondra_salt',
+    name: 'The White Harvest',
+    stock: [
+      { item: 'salt', price: 5 },
+    ],
+  },
+  // The Ropewalk's counter: line, cord, and cloth off the looms.
+  {
+    id: 'jessa_walk',
+    name: 'The Ropewalk',
+    stock: [
+      { item: 'twine', price: 8 },
+      { item: 'cloth', price: 30 },
+      { item: 'snare_kit', price: 280 },
     ],
   },
   // Bretta sells the forge's knowledge: every guild-taught schematic

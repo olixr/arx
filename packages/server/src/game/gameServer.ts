@@ -8642,7 +8642,7 @@ export class GameServer {
     for (const z of this.world.zoneDefs) {
       if (x < z.origin.x || x >= z.origin.x + z.width) continue;
       if (y < z.origin.y || y >= z.origin.y + z.height) continue;
-      if (z.id === 'dawnmead' || z.id === 'amberford' || z.id === 'silverfall') {
+      if (z.id === 'dawnmead' || z.id === 'amberford' || z.id === 'silverfall' || z.id === 'saltmere') {
         return this.factionForPlace(x, y);
       }
       return null;

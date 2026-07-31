@@ -1,0 +1,58 @@
+{
+  "id": "lund_light",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "lightkeeper_lund"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "She's fed. Lund. Ask your question.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Go on.",
+      "choices": [
+        {
+          "text": "What is this light?",
+          "next": "flame"
+        },
+        {
+          "text": "Are there others like her?",
+          "next": "sisters"
+        },
+        {
+          "text": "Long watch, out here alone.",
+          "next": "thirty"
+        },
+        {
+          "text": "Keep her lit.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "flame",
+      "text": "The Mere Light. Boats aim at her in the dark. That's the whole job. Her flame walked here from the Silver Shrine in the mountains, hand to hand, lamp to lamp. She remembers the trip. So do I.",
+      "next": "hub"
+    },
+    {
+      "id": "sisters",
+      "text": "Every road lamp in the Dawnlands is her kin, and the mother flame burns at the Silver Shrine under Keeper Sella. Old Edda holds the Last Lamp on the mountain road. Edda and I have never met. We'd have nothing to say. Same job.",
+      "next": "hub"
+    },
+    {
+      "id": "thirty",
+      "text": "Thirty years. She has not gone out. People call that my doing. It's hers. I just carry coal.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Watch the causeway stones. The mere licks them."
+    }
+  ]
+}

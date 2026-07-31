@@ -1,0 +1,32 @@
+{
+  "id": "lightkeeper_lund",
+  "name": "Lightkeeper Lund",
+  "title": "The Mere Light",
+  "examine": "Wind-cured and unhurried, with fire-tender's hands. The light has not gone out on her watch. The watch is thirty years old.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 2,
+      "hairColor": 0,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 3,
+      "pants": 6
+    }
+  },
+  "inventory": [
+    {
+      "item": "coal",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "She's fed. Ask your question.",
+    "The flame walked here from the Silver Shrine, hand to hand, lamp to lamp. She remembers the trip.",
+    "Boats aim at her in the dark. That's the whole job. There is no other job."
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "id": "salt_watch_quay",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963,
+    "speed": 1.6
+  },
+  "slots": [
+    {
+      "from": 9,
+      "to": 10.5,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.6,
+        "waypoints": [
+          {
+            "x": -24,
+            "y": 0
+          },
+          {
+            "x": 10,
+            "y": 0,
+            "waitSec": 20
+          }
+        ]
+      }
+    },
+    {
+      "from": 22,
+      "to": 6,
+      "task": {
+        "kind": "wander",
+        "x": -5,
+        "y": -1,
+        "radius": 4,
+        "speed": 1.5
+      }
+    }
+  ]
+}

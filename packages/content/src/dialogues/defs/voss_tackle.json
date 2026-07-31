@@ -1,0 +1,63 @@
+{
+  "id": "voss_tackle",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "angler_voss"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Quiet on the planks. Voss. The water listens, and it gossips.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Mm?",
+      "choices": [
+        {
+          "text": "Catch anything today?",
+          "next": "count"
+        },
+        {
+          "text": "What's out past the last post?",
+          "next": "deep"
+        },
+        {
+          "text": "Sell me tackle?",
+          "next": "browse"
+        },
+        {
+          "text": "Tight lines, Voss.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "count",
+      "text": "Eleven thousand fish, give or take, since I first held a rod. I remember nine of them. That ratio is correct and I'll thank you not to improve it.",
+      "next": "hub"
+    },
+    {
+      "id": "deep",
+      "text": "Something past the last post takes hooks and leaves the line. Clean bite, no fight, gone. Twenty years now. A short wait is an hour out here. That one has been a long wait.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Rods that work. Fish that did.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "voss_tackle"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "text": "Mind the planks. Wet wood keeps score."
+    }
+  ]
+}

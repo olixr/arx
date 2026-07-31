@@ -84,6 +84,17 @@ export const AMBERFORD_RECT: ZoneRect = { x: 296, y: -16, w: 112, h: 80 };
  */
 export const SILVERFALL_RECT: ZoneRect = { x: -376, y: -224, w: 176, h: 128 };
 
+/**
+ * Saltmere — the town at the water's end (the southern epic). Center
+ * (356, 292): a straight run of ~190 tiles south of Amberford's gate,
+ * far enough that the band march carries the Salt Road through tier 2
+ * into tier 3 for its last league — the first journey the game asks
+ * of a made character, not a waker. The town anchors as a HAVEN (the
+ * Silverfall law): tier 0 on the quay, wild at the walls, and the far
+ * shore of the mere stays tier 4-5 country forever.
+ */
+export const SALTMERE_RECT: ZoneRect = { x: 300, y: 252, w: 112, h: 80 };
+
 /** The Silverspine massif — crag country cradling Silverfall. */
 export const SILVERSPINE = { x: -320, y: -192, r: 210 } as const;
 
@@ -101,6 +112,16 @@ export const THORNVEIL = { x: -130, y: -70, r: 160 } as const;
  */
 export const AMBERFEN_WEST = { x: 92, y: 40, r: 68 } as const;
 export const AMBERFEN_EAST = { x: 206, y: 34, r: 66 } as const;
+
+/**
+ * THE SALT FLATS — the wet country past Saltmere's mere, where the
+ * land finally runs out of lift and the water wins. The heart sits
+ * south of the zone rect (the Amberfen law: hearts stay off the
+ * canvas; the zone authors its own shoreline and the water edge
+ * class carries it out), so the far shore reads as tidal flat and
+ * brack-marsh on every seed.
+ */
+export const SALT_FLATS = { x: 356, y: 400, r: 64 } as const;
 
 export interface RoadRoute {
   id: string;
@@ -212,6 +233,30 @@ const AUTHORED_PLAN: GeographyDef = {
       ],
     },
     {
+      id: 'salt_road',
+      name: 'The Salt Road',
+      kind: 'road',
+      // Amberford's South Gate to Saltmere's landward gate: the road
+      // the salt built. It leans west off the fen tail's damp ground,
+      // swings back east over the heath shelf, and runs the last dry
+      // league straight at the water. Tier 1 at the fields, tier 2
+      // past the halfway lamp, tier 3 to the gate — the first road
+      // that expects a made character (L15+), and says so at both
+      // ends.
+      pts: [
+        { x: 348, y: 62 },
+        { x: 344, y: 84 },
+        { x: 338, y: 108 },
+        { x: 346, y: 132 },
+        { x: 360, y: 152 },
+        { x: 368, y: 176 },
+        { x: 362, y: 200 },
+        { x: 350, y: 222 },
+        { x: 348, y: 238 },
+        { x: 354, y: 256 },
+      ],
+    },
+    {
       id: 'hunters_trail',
       name: "The Hunter's Trail",
       kind: 'trail',
@@ -259,6 +304,11 @@ const AUTHORED_PLAN: GeographyDef = {
     // the waist between the fen's two hearts, a lamp and a larder at
     // the halfway mark so the long walk east has a place to breathe.
     { id: 'fenside_crofts', defId: 'roadside_hamlet', x: 152, y: 32 },
+    // THE GULLMOOR REST — the Salt Road's halfway lamp, where the
+    // heath opens and the gulls start winning arguments. The last
+    // roof before the tier-3 league; south of here the road trusts
+    // you to be ready.
+    { id: 'gullmoor_rest', defId: 'waystation', x: 352, y: 158 },
   ],
   anchors: SETTLED_ANCHORS.map((a) => ({ ...a })),
   massifs: [{ id: 'silverspine', ...SILVERSPINE }],
@@ -266,11 +316,13 @@ const AUTHORED_PLAN: GeographyDef = {
   fens: [
     { id: 'amberfen_west', ...AMBERFEN_WEST },
     { id: 'amberfen_east', ...AMBERFEN_EAST },
+    { id: 'salt_flats', ...SALT_FLATS },
   ],
   planned: [
     { id: 'dawnmead', name: 'Dawnmead', ...DAWNMEAD_RECT },
     { id: 'amberford', name: 'Amberford', ...AMBERFORD_RECT, apron: true },
     { id: 'silverfall', name: 'Silverfall', ...SILVERFALL_RECT, apron: true },
+    { id: 'saltmere', name: 'Saltmere', ...SALTMERE_RECT, apron: true },
   ],
 };
 export const AUTHORED_GEOGRAPHY: GeographyDef = Object.freeze(AUTHORED_PLAN);

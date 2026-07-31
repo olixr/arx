@@ -1,0 +1,58 @@
+{
+  "id": "seff_slipway",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "boatwright_seff"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Seff. Don't lean on her, she's drying. What?",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Say it while I work.",
+      "choices": [
+        {
+          "text": "Why do the boats have eyes?",
+          "next": "eyes"
+        },
+        {
+          "text": "Build me one?",
+          "next": "no"
+        },
+        {
+          "text": "What wood holds against the mere?",
+          "next": "wood"
+        },
+        {
+          "text": "Back to it, then.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "eyes",
+      "text": "A boat launched blind stays lost. Every hull off this slip gets her eyes painted last, when the rest of her is true. Old custom. Older than the town. I didn't start it and I won't be the one who stops it.",
+      "next": "hub"
+    },
+    {
+      "id": "no",
+      "text": "No. A hull takes a season and I build for crews I'll answer to. Come back with a crew, a season, and a name for her. Then we'll talk.",
+      "next": "hub"
+    },
+    {
+      "id": "wood",
+      "text": "Oak keel, willow ribs. The mere argues with both. The keel wins the argument and the ribs survive it. That's boats.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Walk wide of the sawdust. It travels."
+    }
+  ]
+}

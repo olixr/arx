@@ -1,0 +1,68 @@
+{
+  "id": "alba_smoke",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "smokemistress_alba"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Alba. Don't open that door, there's fish in the smoke. Talk here.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Quick, then. The fire wants tending.",
+      "choices": [
+        {
+          "text": "Teach me to cook.",
+          "next": "teach"
+        },
+        {
+          "text": "What's the slow fire?",
+          "next": "smoke"
+        },
+        {
+          "text": "Who taught you?",
+          "next": "winter"
+        },
+        {
+          "text": "Mind your fire, Alba.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "teach",
+      "text": "Good. Cooking is a trade, same as smithing, and I'm the only one fool enough to teach it properly. My receipts are written fair. Buy what your hands are ready for.",
+      "next": "browse"
+    },
+    {
+      "id": "smoke",
+      "text": "Low fire, long patience, salt done honest. Fast fire feeds you tonight. Slow fire feeds you in the hills three days out, and that's the difference between a meal and a trade.",
+      "next": "hub"
+    },
+    {
+      "id": "winter",
+      "text": "A bad winter taught me. That's all the name it gets.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Receipts on the left, salt and smoke on the right.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "alba_receipts"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "text": "Eat before the road. The road can tell."
+    }
+  ]
+}

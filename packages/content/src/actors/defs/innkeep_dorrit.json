@@ -1,0 +1,37 @@
+{
+  "id": "innkeep_dorrit",
+  "name": "Dorrit",
+  "title": "Keeper of the Painted Gull",
+  "examine": "Flour to one elbow, brine to the other. She has never once let a story end badly inside her walls.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 1,
+      "hairColor": 5,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 9,
+      "pants": 7
+    }
+  },
+  "inventory": [
+    {
+      "item": "bread",
+      "qty": 3
+    },
+    {
+      "item": "fishers_pot",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Sit. Eat. The weather can wait, it always does.",
+    "The gull on my sign has one eye. Seff painted it. He says the other one watches the water.",
+    "You've the look of the road. The pot fixes that."
+  ],
+  "shop": "gull_board"
+}

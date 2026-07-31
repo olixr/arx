@@ -1,0 +1,55 @@
+{
+  "id": "salt_chandler",
+  "base": {
+    "kind": "post",
+    "dir": 3.1415927,
+    "speed": 1.7
+  },
+  "slots": [
+    {
+      "from": 13,
+      "to": 14,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.7,
+        "waypoints": [
+          {
+            "x": -6,
+            "y": 0
+          },
+          {
+            "x": -8,
+            "y": 14,
+            "waitSec": 500,
+            "dir": 1.5707963
+          }
+        ]
+      }
+    },
+    {
+      "from": 21,
+      "to": 7,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.7,
+        "waypoints": [
+          {
+            "x": 3.2,
+            "y": 0
+          },
+          {
+            "x": 4.2,
+            "y": 0
+          },
+          {
+            "x": 4.2,
+            "y": -1,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}

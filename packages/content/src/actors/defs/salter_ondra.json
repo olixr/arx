@@ -1,0 +1,33 @@
+{
+  "id": "salter_ondra",
+  "name": "Master Salter Ondra",
+  "title": "Mistress of the Pans",
+  "examine": "Hands cured hard as oak, eyes pale from twenty years of white glare. She harvests weather.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 2,
+      "hairColor": 0,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 3,
+      "pants": 4
+    }
+  },
+  "inventory": [
+    {
+      "item": "salt",
+      "qty": 12
+    }
+  ],
+  "lines": [
+    "The sun does the work. I just keep the books between it and the mere.",
+    "A pan is a field. Flood it, dry it, rake it, rest it. Farmers understand me. Nobody else does.",
+    "Walk the lips, not the beds. The beds are money."
+  ],
+  "shop": "ondra_salt"
+}

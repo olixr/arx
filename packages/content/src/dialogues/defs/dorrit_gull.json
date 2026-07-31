@@ -1,0 +1,63 @@
+{
+  "id": "dorrit_gull",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "innkeep_dorrit"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "In you come, the wind stays out. Dorrit. Sit anywhere that isn't the hearth.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What'll it be?",
+      "choices": [
+        {
+          "text": "What's on the board?",
+          "next": "browse"
+        },
+        {
+          "text": "Why the Painted Gull?",
+          "next": "sign"
+        },
+        {
+          "text": "Busy house?",
+          "next": "trade"
+        },
+        {
+          "text": "Just warming up. Thanks, Dorrit.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "sign",
+      "text": "Seff painted the sign the way he paints his boats: one eye open. He says the other one watches the water. I say he ran out of yellow. We're both right, which is the secret of a long friendship.",
+      "next": "hub"
+    },
+    {
+      "id": "trade",
+      "text": "Crews at dawn, salters at noon, the whole town when the weather argues. Factor Neave keeps the corner room; she says the bank is too near the water. The bank she built to be near the water.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "The pot's the thing. Trout, milk, pan salt. Eat it slow, thank me after.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "gull_board"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "text": "Door pulls, love. Everything here pulls."
+    }
+  ]
+}

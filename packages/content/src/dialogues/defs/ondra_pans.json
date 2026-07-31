@@ -1,0 +1,63 @@
+{
+  "id": "ondra_pans",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "salter_ondra"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Ondra. Mind where you stand. The white ground is the harvest and the wet ground is next year's.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Ask, then.",
+      "choices": [
+        {
+          "text": "How does salt happen?",
+          "next": "crop"
+        },
+        {
+          "text": "Sell me some?",
+          "next": "browse"
+        },
+        {
+          "text": "Hard trade?",
+          "next": "sun"
+        },
+        {
+          "text": "Good harvest to you.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "crop",
+      "text": "Flood the pan. Shut the gate. Let the sun work and the wind carry. Rake what stays. A pan is a field that grows weather. Farmers understand me straight off. Everyone else asks twice.",
+      "next": "hub"
+    },
+    {
+      "id": "sun",
+      "text": "The sun does not take feast days. Neither do I. In the grey months we cut the harvest to one pan and mend the lips. The mere always gives it back come summer. So far.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Pans' price. Alba gets the same rate, and she trades in secrets.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "ondra_salt"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "text": "Walk the lips."
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { TILE_SKIP, tileDef } from '@arx/shared';
 import {
   buildAmberford,
   buildDawnmead,
+  buildSaltmere,
   buildSilverfall,
   buildUndercroft,
   type ZoneDef,
@@ -61,7 +62,7 @@ let cache: ZoneArt[] | null = null;
 /** All bundled authored zones, baked once on first ask. */
 export function authoredZoneArt(): ZoneArt[] {
   if (!cache) {
-    cache = [buildDawnmead(), buildAmberford(), buildSilverfall(), buildUndercroft()].map(bakeZone);
+    cache = [buildDawnmead(), buildAmberford(), buildSilverfall(), buildSaltmere(), buildUndercroft()].map(bakeZone);
   }
   return cache;
 }

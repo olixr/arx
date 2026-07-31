@@ -32,6 +32,13 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // master plan demands. The walk is the game; the walls are the
   // reward.
   { x: -288, y: -160, safeR: 72, haven: true },
+  // Saltmere — the town at the water's end, and the second HAVEN:
+  // its lamp keeps the quay and the pans tier 0, but the Salt Road
+  // south stays an earned walk — tier 2 past the halfway lamp, tier 3
+  // for the last league to the gate. Beyond the mere the far shore
+  // runs tier 4-5: the deep south is a frontier the town lights, not
+  // one it tames.
+  { x: 356, y: 292, safeR: 64, haven: true },
 ];
 
 /**

@@ -1,0 +1,36 @@
+{
+  "id": "boatwright_seff",
+  "name": "Boatwright Seff",
+  "title": "The Slipway",
+  "examine": "Sawdust in the seams of him. His hulls come home; ask the crews what they think that's worth.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 0,
+      "hairColor": 3,
+      "beard": 3,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 8,
+      "pants": 10
+    }
+  },
+  "inventory": [
+    {
+      "item": "log",
+      "qty": 2
+    },
+    {
+      "item": "twine",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Eyes go on last. A boat launched blind stays lost.",
+    "Oak keel, willow ribs. The mere argues with both. The keel wins.",
+    "Don't lean on that. She's drying."
+  ]
+}

@@ -131,6 +131,22 @@ export const FACTIONS: FactionsDef = {
         'crofter_beck',
         'crofter_holt',
         'crofter_tam',
+        // Saltmere — the Waykeepers' port at the water's end: the
+        // Salt Road is their road, so the town at the end of it flies
+        // their lamp (no Charter, no Crown; the road's own people).
+        'portreeve_brack',
+        'factor_neave',
+        'innkeep_dorrit',
+        'chandler_swale',
+        'salter_ondra',
+        'smokemistress_alba',
+        'angler_voss',
+        'boatwright_seff',
+        'roper_jessa',
+        'lightkeeper_lund',
+        'pilot_fane',
+        'saltmere_watch',
+        'saltmere_fisher',
       ],
       enforcers: [
         'marshal_kestrel',
@@ -138,6 +154,7 @@ export const FACTIONS: FactionsDef = {
         'waykeeper_odessa',
         'waykeeper_brant',
         'wayward_watch',
+        'saltmere_watch',
       ],
       npcPrefixes: [],
       anchors: [],

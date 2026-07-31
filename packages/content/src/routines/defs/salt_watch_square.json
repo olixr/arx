@@ -1,0 +1,54 @@
+{
+  "id": "salt_watch_square",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963,
+    "speed": 1.6
+  },
+  "slots": [
+    {
+      "from": 17,
+      "to": 22.5,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.6,
+        "waypoints": [
+          {
+            "x": 4,
+            "y": -5
+          },
+          {
+            "x": 4,
+            "y": -42,
+            "waitSec": 25
+          }
+        ]
+      }
+    },
+    {
+      "from": 23,
+      "to": 7,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.6,
+        "waypoints": [
+          {
+            "x": 0,
+            "y": -36
+          },
+          {
+            "x": 0,
+            "y": -37
+          },
+          {
+            "x": 0,
+            "y": -38,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}

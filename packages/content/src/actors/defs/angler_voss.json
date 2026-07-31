@@ -1,0 +1,37 @@
+{
+  "id": "angler_voss",
+  "name": "Master Angler Voss",
+  "title": "The Long Pier",
+  "examine": "Stillness with a rod in it. He has caught eleven thousand and some fish and remembers perhaps nine of them.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 3,
+      "hairColor": 2,
+      "beard": 5,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 2,
+      "pants": 9
+    }
+  },
+  "inventory": [
+    {
+      "item": "fishing_rod",
+      "qty": 1
+    },
+    {
+      "item": "raw_trout",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Quiet on the planks. The water listens.",
+    "Deep past the last post there's something that takes hooks and leaves the line. One day.",
+    "A short wait is an hour. Calibrate."
+  ],
+  "shop": "voss_tackle"
+}

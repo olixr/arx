@@ -1,0 +1,61 @@
+{
+  "id": "salt_pilot",
+  "base": {
+    "kind": "post",
+    "x": 0,
+    "y": 1,
+    "sit": true,
+    "dir": 1.5707963,
+    "speed": 1.2
+  },
+  "slots": [
+    {
+      "from": 12,
+      "to": 13.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.2,
+        "waypoints": [
+          {
+            "x": -25,
+            "y": -5
+          },
+          {
+            "x": -39,
+            "y": -16
+          },
+          {
+            "x": -39,
+            "y": -15,
+            "sit": true
+          }
+        ]
+      }
+    },
+    {
+      "from": 20,
+      "to": 7,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.2,
+        "waypoints": [
+          {
+            "x": -4,
+            "y": -3
+          },
+          {
+            "x": -5,
+            "y": -4
+          },
+          {
+            "x": -5,
+            "y": -5,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}

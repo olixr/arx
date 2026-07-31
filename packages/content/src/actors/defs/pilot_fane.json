@@ -1,0 +1,32 @@
+{
+  "id": "pilot_fane",
+  "name": "Old Pilot Fane",
+  "title": "The Quay Bench",
+  "examine": "The oldest eyes on the water. He has outlived three boats, two portreeves, and every argument about the weather.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 3,
+      "hairColor": 0,
+      "beard": 6,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 4,
+      "pants": 8
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "Swell's wrong for rain. Wrong for calm too. Interesting day coming.",
+    "I piloted grain boats when this quay was six planks and an opinion.",
+    "Children take to the water or they take to the road. Both come back, mostly."
+  ]
+}

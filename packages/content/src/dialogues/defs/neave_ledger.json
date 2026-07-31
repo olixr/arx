@@ -1,0 +1,58 @@
+{
+  "id": "neave_ledger",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "factor_neave"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Neave. Factor. Your coin is safe here, which is more than I can say for your boots. Wipe them.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Yes?",
+      "choices": [
+        {
+          "text": "You keep the bank?",
+          "next": "bank"
+        },
+        {
+          "text": "You learned this trade at the ford?",
+          "next": "cormund"
+        },
+        {
+          "text": "Anything need doing?",
+          "next": "damp"
+        },
+        {
+          "text": "Balance well, Factor.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "bank",
+      "text": "The Counting House. One vault, two chests, and the driest room within forty miles of the mere. Cost this town a great deal of stone. Worth every block.",
+      "next": "hub"
+    },
+    {
+      "id": "cormund",
+      "text": "Under Cormund, at the Bank of Amberford. He taught me the second count. The first count tells you what you want. The second one tells you what you have. No, I will not explain the third.",
+      "next": "hub"
+    },
+    {
+      "id": "damp",
+      "text": "The damp needs defeating and the salt wagons need counting, and neither is work I would hand a stranger. Ask me again when I know you.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Mind the step. It is the one thing here I cannot keep dry."
+    }
+  ]
+}

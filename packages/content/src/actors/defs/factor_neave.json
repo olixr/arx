@@ -1,0 +1,32 @@
+{
+  "id": "factor_neave",
+  "name": "Factor Neave",
+  "title": "Factor, the Counting House",
+  "examine": "Ink on the fingers, salt nowhere near the paper. Her columns balance to the grain and she resents that the town is proud of it.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 3,
+      "hairColor": 4,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 4,
+      "pants": 5
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 40
+    }
+  ],
+  "lines": [
+    "Mind the damp on your coin. It counts the same wet, but it counts slower.",
+    "I clerked under Cormund at the ford. He taught me the second count. The first one lies.",
+    "The vault is dry. That sentence cost this town a great deal of stone."
+  ]
+}

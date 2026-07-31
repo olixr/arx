@@ -317,6 +317,53 @@ it dictates sentence shape. (Pooled actors share one card.)
   below ground — patter, invented provenance, self-mythology he may not
   believe either. Cadence: exclamatory, list-happy, but keep each bark short.
 
+### Saltmere — the town at the water's end
+- **Portreeve Brack**: wants the port to outlive him; the year the mere took
+  four boats, he was the one who said go out. Cadence: harbormaster's economy
+  — headings, tallies, weather read off the water; kindness shown as dock
+  room granted, never as words.
+- **Factor Neave** (Counting House; clerked under Cormund at the ford):
+  wants the ledger to balance to the grain, and the damp kept off the paper.
+  Cadence: precise, self-correcting mid-figure, disclaims what she can't
+  vouch. Sleeps at the Gull because the bank is nearer the water than she'd
+  like.
+- **Innkeep Dorrit** (the Painted Gull): wants every chair full and every
+  story finished properly. Wit granted (the Dunna class, salt edition).
+  Cadence: warm, quick, feeds you mid-sentence, names the weather like a
+  regular.
+- **Chandler Swale** (Saltmere Stores): wants never once to be caught
+  without. Cadence: inventory triplets — "rope, tar, biscuit" — everything
+  in threes, prices remembered to the coin.
+- **Master Salter Ondra** (the pans): wants the pans respected like fields,
+  because they are fields. Cadence: slow, seasonal, speaks of salt as a crop
+  and the sun as a workman. Never hurries; salt doesn't.
+- **Smokemistress Alba** (the smokehouses; the world's first cooking
+  trainer): wants cooking treated as a trade, not a chore; fed the town
+  through a winter she won't name. Cadence: kitchen imperatives, timing
+  words, zero waste in food or speech.
+- **Master Angler Voss**: wants the one fish; counts everything he has ever
+  caught and a few he hasn't yet. Cadence: patient understatement, measures
+  time in waits, lets silences do the bragging.
+- **Boatwright Seff** (the slipway): wants hulls back in one piece; will not
+  launch a boat blind — the eyes go on last, always last. Cadence: careful,
+  short, plain; ends conversations by picking the tool back up.
+- **Roper Jessa** (the ropewalk): wants unbroken lines. Cadence: long
+  steady sentences laid out like strands, counts in fathoms, walks while
+  she talks because the walk is the work.
+- **Lightkeeper Lund** (the Mere Light): wants the light fed before anything
+  else, including this conversation. Road-faith literal: the flame came from
+  the mother flame and that is not a figure of speech. Cadence: short,
+  watchful, calls the light "she".
+- **Old Pilot Fane**: wants the mere read right by somebody after him;
+  remembers half the coast as children, including Peld ("bell-shy little
+  thing"). Cadence: weather-eye recollections kept short, names people by
+  what they feared.
+- **Saltmere Watch** (pooled, Waykeepers): harbor soldiers a long way from
+  relief. Cadence: report-speak with salt in it; "the lamp stays lit" said
+  like a password, same as the road sergeants.
+- **Saltmere fishers** (pooled): the crews. Catch-talk, plain, generous
+  with advice about exactly one subject.
+
 ---
 
 ## 5. Surface rules

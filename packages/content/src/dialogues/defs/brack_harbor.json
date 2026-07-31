@@ -1,0 +1,58 @@
+{
+  "id": "brack_harbor",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "portreeve_brack"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Brack. Portreeve. Wind's backing south, so make it quick or make it useful.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Well?",
+      "choices": [
+        {
+          "text": "What is this place?",
+          "next": "town"
+        },
+        {
+          "text": "What's across the water?",
+          "next": "south"
+        },
+        {
+          "text": "Who keeps order here?",
+          "next": "watch"
+        },
+        {
+          "text": "Fair winds, Portreeve.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "town",
+      "text": "Last town before the water. Salt goes north, coin comes south, and every road in the Dawnlands ends on my quay. The pans pay the wall, the fish pay the rest.",
+      "next": "hub"
+    },
+    {
+      "id": "south",
+      "text": "The far shore. Nobody nets it, nobody walks it, and I sign no papers for people who try. The mere is wide and the things on the other side are not fishermen.",
+      "next": "hub"
+    },
+    {
+      "id": "watch",
+      "text": "The Waykeepers. This is their port; the road south is their road. Quay trouble comes to me, road trouble goes to the Watch House by the gate. Keep both empty and we'll get on.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Mind the tide line. It minds you."
+    }
+  ]
+}

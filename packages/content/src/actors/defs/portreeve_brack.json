@@ -1,0 +1,36 @@
+{
+  "id": "portreeve_brack",
+  "name": "Portreeve Brack",
+  "title": "Portreeve of Saltmere",
+  "examine": "A back built by oars and a face built by weather. He reads the mere the way clerks read ledgers, and trusts it less.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 2,
+      "hairColor": 1,
+      "beard": 4,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 6,
+      "pants": 8
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 30
+    },
+    {
+      "item": "smoked_trout",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Wind's backing south. Boats in by dusk.",
+    "Dock room is for working boats. You want to stand and stare, the quay's free.",
+    "Four boats, one bad year. Read the stone by the light before you ask me about it."
+  ]
+}

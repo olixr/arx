@@ -1,0 +1,62 @@
+{
+  "id": "salt_beacon",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963,
+    "speed": 1.5
+  },
+  "slots": [
+    {
+      "from": 8,
+      "to": 9,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.5,
+        "waypoints": [
+          {
+            "x": -0.5,
+            "y": -8
+          },
+          {
+            "x": -3,
+            "y": -11,
+            "waitSec": 500,
+            "dir": -1.5707963
+          }
+        ]
+      }
+    },
+    {
+      "from": 22,
+      "to": 1,
+      "task": {
+        "kind": "post",
+        "x": 2,
+        "y": -0.9,
+        "dir": 1.5707963,
+        "speed": 1.5
+      }
+    },
+    {
+      "from": 1.5,
+      "to": 5.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.5,
+        "waypoints": [
+          {
+            "x": -1,
+            "y": -1.9
+          },
+          {
+            "x": -1,
+            "y": -2.9,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}

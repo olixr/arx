@@ -1,0 +1,32 @@
+{
+  "id": "salt_fisher_east",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963,
+    "speed": 1.6
+  },
+  "slots": [
+    {
+      "from": 21,
+      "to": 4.5,
+      "task": {
+        "kind": "post",
+        "x": -1,
+        "y": 5,
+        "dir": 1.5707963,
+        "speed": 1.6
+      }
+    },
+    {
+      "from": 9,
+      "to": 15,
+      "task": {
+        "kind": "wander",
+        "x": 4,
+        "y": -3,
+        "radius": 2.5,
+        "speed": 1.4
+      }
+    }
+  ]
+}

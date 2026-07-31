@@ -1,0 +1,61 @@
+{
+  "id": "fane_mere",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "pilot_fane"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Sit if you're sitting. Fane. I piloted grain boats when this quay was six planks and an opinion.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Hm.",
+      "choices": [
+        {
+          "text": "Read the water for me.",
+          "next": "weather"
+        },
+        {
+          "text": "Do you know a ferryman called Peld?",
+          "next": "peld",
+          "requires": [
+            "dlg:peld_crossing"
+          ]
+        },
+        {
+          "text": "What was Saltmere, before?",
+          "next": "before"
+        },
+        {
+          "text": "Rest easy, pilot.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "weather",
+      "text": "Swell's wrong for rain and wrong for calm. See the gulls sitting down? When the gulls sit, you sit. That's the first thing I teach and the last thing anyone believes.",
+      "next": "hub"
+    },
+    {
+      "id": "peld",
+      "text": "Peld. Up at the ford now, is he? Bell-shy little thing. Wouldn't ring the Downwater Bell even on his own birthday, scared the ferry would actually come. You see him, tell him the bell still waits. Tell him the mere remembers small boats kindly.",
+      "next": "hub"
+    },
+    {
+      "id": "before",
+      "text": "Six crofts and a salt lick. Then the pans, then the wall, then the road came south to meet us. Towns grow from the water up. Anyone who says different grew up inland.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Interesting day coming. Most of them are, if you sit still enough."
+    }
+  ]
+}

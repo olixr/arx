@@ -1,0 +1,50 @@
+{
+  "id": "saltmere_watch",
+  "name": "Harbor Watch",
+  "title": "Waykeepers of Saltmere",
+  "examine": "A road soldier a long way from the road. The lamp badge is polished; the boots are salt-white.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 20,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 90,
+      "damage": 7,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 2,
+      "hairColor": 2,
+      "beard": 2,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 8,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 8
+    }
+  ],
+  "lines": [
+    "The lamp stays lit. Even at the end of the road.",
+    "Tier-three country past that gate. Go fed, go armed, go by day.",
+    "Trouble on the quay answers to the Portreeve. Trouble on the road answers to us."
+  ]
+}

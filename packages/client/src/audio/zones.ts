@@ -30,6 +30,7 @@ const TOWNS = [
   { x: -64, y: 48, full: 22, fade: 36 }, // Dawnmead
   { x: 352, y: 24, full: 30, fade: 48 }, // Amberford — the bigger hearth
   { x: -288, y: -160, full: 44, fade: 72 }, // Silverfall — the mountain capital
+  { x: 356, y: 292, full: 34, fade: 52 }, // Saltmere — the town at the water's end
 ] as const;
 /** The dark band: worldgen's underground begins here. */
 export const UNDERGROUND_Y = 512;

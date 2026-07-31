@@ -1,0 +1,63 @@
+{
+  "id": "swale_stores",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "chandler_swale"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Swale. Stores. Say what you need and watch me have it.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Go on.",
+      "choices": [
+        {
+          "text": "Show me your stock.",
+          "next": "browse"
+        },
+        {
+          "text": "What sells in a place like this?",
+          "next": "threes"
+        },
+        {
+          "text": "Any word off the road?",
+          "next": "road"
+        },
+        {
+          "text": "Nothing today.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "threes",
+      "text": "Rope, tar, biscuit. Line, hook, lamp oil. Boots, salt, nerve. Everything the water asks for, it asks for in threes.",
+      "next": "hub"
+    },
+    {
+      "id": "road",
+      "text": "Carters say the Gullmoor lamp still burns and the moor past it has teeth. Wolves, and worse than wolves. Buy arrows. Buy the tincture. Buy twice.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Shelf's yours. Mind the tar.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "saltmere_stores"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "text": "Come back caught short. They always do."
+    }
+  ]
+}

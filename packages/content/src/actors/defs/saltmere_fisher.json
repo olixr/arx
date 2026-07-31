@@ -1,0 +1,32 @@
+{
+  "id": "saltmere_fisher",
+  "name": "Fisher",
+  "title": "Saltmere Crews",
+  "examine": "Oilskin, rope burn, and an opinion about the weather that has never once been humble.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 0,
+      "hairColor": 3,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 2,
+      "pants": 4
+    }
+  },
+  "inventory": [
+    {
+      "item": "raw_trout",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Dawn tide gives, dusk tide takes. Plan around it.",
+    "The far shore? No. Nobody nets the far shore.",
+    "If the gulls sit down, you sit down too."
+  ]
+}

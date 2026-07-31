@@ -1,0 +1,37 @@
+{
+  "id": "chandler_swale",
+  "name": "Chandler Swale",
+  "title": "Saltmere Stores",
+  "examine": "A man shelved as neatly as his stock. If he has ever been caught without, nobody has caught him at it.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 0,
+      "hairColor": 2,
+      "beard": 1,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 5,
+      "pants": 6
+    }
+  },
+  "inventory": [
+    {
+      "item": "twine",
+      "qty": 4
+    },
+    {
+      "item": "coins",
+      "qty": 22
+    }
+  ],
+  "lines": [
+    "Rope, tar, biscuit. Ask for stranger and I'll surprise you.",
+    "Everything here earns its shelf. The shelf is the interview.",
+    "Boots, line, lamp oil. In that order, if you're walking back north."
+  ],
+  "shop": "saltmere_stores"
+}

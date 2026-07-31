@@ -1,0 +1,37 @@
+{
+  "id": "roper_jessa",
+  "name": "Roper Jessa",
+  "title": "The Ropewalk",
+  "examine": "She walks twelve miles a day without leaving one room. Her lines hold boats, bells, and one very specific promise.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 1,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 6,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    {
+      "item": "twine",
+      "qty": 6
+    },
+    {
+      "item": "cloth",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "A rope is a hundred small holds agreeing to be one long one. So is a town.",
+    "Walk with me if you want to talk. The strand doesn't lay itself.",
+    "Anything that snaps was two flaws and a hurry. I sell neither."
+  ],
+  "shop": "jessa_walk"
+}

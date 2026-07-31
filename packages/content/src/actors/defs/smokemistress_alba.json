@@ -1,0 +1,37 @@
+{
+  "id": "smokemistress_alba",
+  "name": "Smokemistress Alba",
+  "title": "The Smokehouse School",
+  "examine": "Smoke has cured her voice down to the useful words. Every cook in the south learned the slow fire from her, or from someone who did.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 1,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 7,
+      "pants": 3
+    }
+  },
+  "inventory": [
+    {
+      "item": "smoked_trout",
+      "qty": 2
+    },
+    {
+      "item": "salt",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "Low fire. Long patience. That's the whole secret, and it still takes years.",
+    "Gut it clean, salt it honest, and don't open the door to check. Checking is how you feed the dog.",
+    "Cooking is a trade. Anyone who tells you otherwise has been eating badly."
+  ],
+  "shop": "alba_receipts"
+}

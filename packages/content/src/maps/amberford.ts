@@ -74,6 +74,8 @@ export function buildAmberford(): ZoneDef {
   b.path({ x: 0, y: 52 }, { x: 52, y: 52 }, 3); // the west spine: Fordgate -> town
   b.path({ x: 54, y: 2 }, { x: 54, y: 33 }, 3); // the north spine: North Gate -> the Round
   b.path({ x: 52, y: 47 }, { x: 52, y: 68 }, 3); // the south lane: the Round -> the Commons
+  b.path({ x: 52, y: 69 }, { x: 52, y: 77 }, 3); // ...and on to the South Gate (the Salt Road)
+  b.fillRect(51, 78, 3, 2, Tile.Path); // the mouth meets the carved Salt Road
   b.path({ x: 12, y: 8 }, { x: 54, y: 8 }, 2); // the craft lane
   b.path({ x: 61, y: 39 }, { x: 80, y: 39 }, 2); // the dock lane: the Round -> the water
 
@@ -905,8 +907,12 @@ export function buildAmberford(): ZoneDef {
   b.fillRect(110, 5, 1, 55, Tile.WallGarrison); // y5-59
   b.set(110, 60, Tile.GateGarrison).set(110, 61, Tile.GateGarrison);
   b.fillRect(110, 62, 1, 13, Tile.WallGarrison); // y62-74
-  // The south curtain, wading the reed neck at x91.
-  b.fillRect(5, 78, 102, 1, Tile.WallGarrison); // x5-106
+  // The south curtain, wading the reed neck at x91 — with the South
+  // Gate cut where the south lane always pointed: the Salt Road runs
+  // from here to the water's end, and the wall admits it.
+  b.fillRect(5, 78, 46, 1, Tile.WallGarrison); // x5-50
+  b.set(51, 78, Tile.GateGarrison).set(52, 78, Tile.GateGarrison).set(53, 78, Tile.GateGarrison);
+  b.fillRect(54, 78, 53, 1, Tile.WallGarrison); // x54-106
   // The four corner cuts — northwest, northeast, southeast, southwest.
   b.set(4, 2, Tile.WallGarrisonDiagSE).set(3, 3, Tile.WallGarrisonDiagSE);
   b.set(107, 2, Tile.WallGarrisonDiagSW).set(108, 3, Tile.WallGarrisonDiagSW);
@@ -915,9 +921,13 @@ export function buildAmberford(): ZoneDef {
   b.set(107, 77, Tile.WallGarrisonDiagNW);
   b.set(3, 76, Tile.WallGarrisonDiagNE).set(4, 77, Tile.WallGarrisonDiagNE);
   // The gates' furniture: watch fires at the Fordgate mouth, the
-  // east gate's lamp so the unfinished road still gets a light.
+  // east gate's lamp so the unfinished road still gets a light, and
+  // the South Gate's braziers with a plain word about the road they
+  // open onto.
   b.set(3, 50, Tile.Brazier).set(3, 54, Tile.Brazier);
   b.set(108, 58, Tile.LampPost);
+  b.set(49, 77, Tile.Brazier).set(55, 77, Tile.Brazier);
+  b.sign(56, 75, 'THE SALT ROAD', ['to Saltmere and the mere country', 'a hard walk past the halfway lamp', 'go fed, go armed, go by day'], Tile.Signpost);
 
   // ---------------------------------------------------------------
   // Meadow life, then the town's soft edges.
@@ -932,6 +942,7 @@ export function buildAmberford(): ZoneDef {
       if (Math.abs(y - 52) <= 4 && x < 10) continue; // Fordgate breathes
       if (Math.abs(x - 54) <= 4 && y < 10) continue; // North Gate breathes
       if (Math.abs(y - 61) <= 4 && x > 100) continue; // East stub breathes
+      if (Math.abs(x - 52) <= 4 && y > 70) continue; // South Gate breathes
       if (x >= 2 && x <= 23 && y >= 35 && y <= 49) continue; // fields
       if (x >= 72 && x <= 98 && y >= 1 && y <= 11) continue; // pasture
       if (x >= 97 && y <= 16) continue; // the Delf clearing

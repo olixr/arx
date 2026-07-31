@@ -16,8 +16,9 @@ import { ZoneBuilder } from './maps/builder.js';
 import { buildDawnmead } from './maps/dawnmead.js';
 import { buildAmberford } from './maps/amberford.js';
 import { buildSilverfall } from './maps/silverfall.js';
+import { buildSaltmere } from './maps/saltmere.js';
 import { buildUndercroft } from './maps/undercroft.js';
-import { AMBERFORD_RECT, SILVERFALL_RECT } from './geography.js';
+import { AMBERFORD_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
@@ -865,8 +866,12 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   for (const x of [53, 54, 55]) {
     assert.equal(at(x, 0), Tile.Path, `North Gate col ${x} must reach the north edge`);
   }
-  // The East Road stub wanders out the east edge toward Saltmere-someday.
+  // The East Road stub wanders out the east edge toward the coast-someday.
   assert.equal(at(111, 61), Tile.Path, 'the east stub must reach the edge');
+  // The South Gate's mouth meets the carved Salt Road at the south hem.
+  for (const x of [51, 52, 53]) {
+    assert.equal(at(x, 79), Tile.Path, `South Gate col ${x} must reach the south edge`);
+  }
   const counts = new Map<number, number>();
   for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
   // THE BANK: the world's first banking chests and the vault behind them.
@@ -900,9 +905,10 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.ok((counts.get(Tile.FibrePlant) ?? 0) >= 5, 'the retting bank lost its flax');
   assert.ok((counts.get(Tile.Tilled) ?? 0) >= 40, 'the Free Furrows went fallow');
   // THE TOWN WALL (the garrison pass): a full curtain rings the town
-  // — three garrison gates on the three road mouths (3 + 3 + 2),
-  // and all four corners cut at 45 degrees.
-  assert.equal(counts.get(Tile.GateGarrison) ?? 0, 8, 'the town gates changed');
+  // — four garrison gates on the four road mouths (3 + 3 + 2 + 3,
+  // the Salt Road's South Gate cut in the southern epic), and all
+  // four corners cut at 45 degrees.
+  assert.equal(counts.get(Tile.GateGarrison) ?? 0, 11, 'the town gates changed');
   assert.ok((counts.get(Tile.WallGarrison) ?? 0) >= 300, 'the town wall came down');
   const amberDiags =
     (counts.get(Tile.WallGarrisonDiagNE) ?? 0) +
@@ -914,6 +920,7 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   for (const y of [51, 52, 53]) assert.equal(at(2, y), Tile.GateGarrison);
   for (const x of [53, 54, 55]) assert.equal(at(x, 1), Tile.GateGarrison);
   for (const y of [60, 61]) assert.equal(at(110, y), Tile.GateGarrison);
+  for (const x of [51, 52, 53]) assert.equal(at(x, 78), Tile.GateGarrison);
   // Livestock only — the named people arrive in the people pass.
   const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
   assert.equal(spawnKinds.get('cow'), 3);
@@ -961,7 +968,7 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.deepEqual(back, src);
 });
 
-test('amberford: every doorway walks from the Round, and all three gates connect', () => {
+test('amberford: every doorway walks from the Round, and all four gates connect', () => {
   const z = buildAmberford();
   const walkable = (x: number, y: number): boolean =>
     x >= 0 && y >= 0 && x < z.width && y < z.height &&
@@ -997,10 +1004,11 @@ test('amberford: every doorway walks from the Round, and all three gates connect
     }
   }
   assert.deepEqual(unreachable, [], `doorways cut off from the Round: ${unreachable.join(' ')}`);
-  // All three road mouths connect to the Round.
+  // All four road mouths connect to the Round.
   assert.equal(seen[52 * z.width + 0], 1, 'the Fordgate is severed');
   assert.equal(seen[1 * z.width + 54], 1, 'the North Gate is severed');
   assert.equal(seen[61 * z.width + 111], 1, 'the east stub is severed');
+  assert.equal(seen[79 * z.width + 52], 1, 'the South Gate is severed');
   // And the banking floor is truly public: the lobby rug between the
   // two (solid) banking chests must be walkable from the door.
   assert.equal(seen[32 * z.width + 40], 1, 'the bank floor is unreachable');
@@ -1337,6 +1345,133 @@ test('daggers: backstab multiplier, fast cadence, and a real Art', () => {
     assert.ok(item.weapon.cooldownTicks < 7, `${id} should swing faster than swords`);
     assert.ok(item.weapon.range < 1.7, `${id} should reach shorter than swords`);
     assert.ok(item.weapon.art && abilityDef(item.weapon.art), `${id} art unresolved`);
+  }
+});
+
+test('saltmere: the town at the waters end holds its shore, trades, and gate', () => {
+  const z = buildSaltmere();
+  assert.equal(z.id, 'saltmere');
+  assert.deepEqual(z.origin, { x: SALTMERE_RECT.x, y: SALTMERE_RECT.y });
+  assert.equal(z.width, SALTMERE_RECT.w);
+  assert.equal(z.height, SALTMERE_RECT.h);
+  const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
+  assert.deepEqual(z.spawn, { x: SALTMERE_RECT.x + 54.5, y: SALTMERE_RECT.y + 44.5 });
+  assert.equal(TILE_DEFS[at(54, 44)].solid, false, 'spawn tile must be walkable');
+  // The gate mouth meets the carved Salt Road at the north hem.
+  for (const x of [52, 53, 54]) {
+    assert.equal(at(x, 0), Tile.Path, `gate col ${x} must reach the north edge`);
+    assert.equal(at(x, 2), Tile.GateGarrison, `gate col ${x} must stand open`);
+  }
+  const counts = new Map<number, number>();
+  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
+  // The wall: one gate, both curtain ends wading into the mere.
+  assert.equal(counts.get(Tile.GateGarrison) ?? 0, 3, 'the town gate changed');
+  assert.ok((counts.get(Tile.WallGarrison) ?? 0) >= 180, 'the curtain came down');
+  assert.equal(
+    (counts.get(Tile.WallGarrisonDiagSE) ?? 0) + (counts.get(Tile.WallGarrisonDiagSW) ?? 0),
+    2,
+    'the corner cuts changed',
+  );
+  // The trades: bank, pans, smoke school, ropewalk, slipway, piers.
+  assert.equal(counts.get(Tile.BankChest) ?? 0, 2, 'the Counting House lost its chests');
+  assert.equal(counts.get(Tile.Vault) ?? 0, 2, 'the vault room changed');
+  assert.equal(counts.get(Tile.Campfire) ?? 0, 3, 'the smoke fires changed');
+  assert.equal(counts.get(Tile.Loom) ?? 0, 2, 'the ropewalk lost a loom');
+  assert.ok((counts.get(Tile.Sawhorse) ?? 0) >= 1, 'the slipway lost its sawhorse');
+  assert.ok((counts.get(Tile.CarvingBench) ?? 0) >= 1, 'the slipway lost its bench');
+  assert.ok((counts.get(Tile.Workbench) ?? 0) >= 1, 'the shed lost its bench');
+  assert.equal(counts.get(Tile.FishingSpot) ?? 0, 4, 'the fishing changed');
+  assert.ok((counts.get(Tile.MarketStall) ?? 0) >= 6, 'the quay market thinned');
+  assert.ok((counts.get(Tile.Dock) ?? 0) >= 60, 'the piers came up short');
+  assert.ok((counts.get(Tile.WaterShallow) ?? 0) >= 48, 'the pans drained');
+  assert.ok((counts.get(Tile.Sand) ?? 0) >= 300, 'the flats washed away');
+  assert.ok((counts.get(Tile.Water) ?? 0) >= 400, 'the mere shrank');
+  assert.ok((counts.get(Tile.Bed) ?? 0) >= 30, 'the town lost its beds');
+  // The people: seventeen posts, every one keeping hours.
+  const actors = z.actorSpawns ?? [];
+  assert.equal(actors.length, 17, 'the cast changed size');
+  for (const slug of [
+    'portreeve_brack',
+    'factor_neave',
+    'innkeep_dorrit',
+    'chandler_swale',
+    'salter_ondra',
+    'smokemistress_alba',
+    'angler_voss',
+    'boatwright_seff',
+    'roper_jessa',
+    'lightkeeper_lund',
+    'pilot_fane',
+  ] as const) {
+    assert.ok(actors.some((a) => a.actor === slug), `missing resident: ${slug}`);
+  }
+  assert.equal(actors.filter((a) => a.actor === 'saltmere_watch').length, 3, 'the watch changed');
+  assert.equal(actors.filter((a) => a.actor === 'saltmere_fisher').length, 3, 'the crews changed');
+  assert.equal(actors.filter((a) => a.routine).length, actors.length, 'every resident keeps hours');
+  const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
+  assert.equal(spawnKinds.get('chicken'), 3);
+  // The editor round trip holds, flat-zone law included.
+  const json = zoneToJson(z);
+  assert.equal(json.elev, undefined, 'saltmere is a flat zone');
+  const { elev: _rt, ...back } = zoneToJson(zoneFromJson(json));
+  const { elev: _src, ...src } = json;
+  assert.deepEqual(back, src);
+});
+
+test('saltmere: every doorway walks from the quay square, out to the light', () => {
+  const z = buildSaltmere();
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const queue: number[] = [44 * z.width + 54]; // the quay square
+  seen[queue[0]!] = 1;
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const ni = ny * z.width + nx;
+      if (walkable(nx, ny) && !seen[ni]) {
+        seen[ni] = 1;
+        queue.push(ni);
+      }
+    }
+  }
+  const unreachable: string[] = [];
+  for (let i = 0; i < z.ground.length; i++) {
+    const t = z.ground[i];
+    if (
+      (t === Tile.DoorwayStone ||
+        t === Tile.DoorwayWood ||
+        t === Tile.DoorwayStoneWide ||
+        t === Tile.DoorwayWoodWide) &&
+      !seen[i]
+    ) {
+      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
+    }
+  }
+  assert.deepEqual(unreachable, [], `doorways cut off from the square: ${unreachable.join(' ')}`);
+  const reach = (x: number, y: number, what: string): void => {
+    assert.equal(seen[y * z.width + x], 1, `${what} unreachable at (${x},${y})`);
+  };
+  reach(53, 0, 'the gate mouth');
+  reach(46, 59, 'pier A tip');
+  reach(58, 63, 'pier B tip');
+  reach(71, 57, 'pier C tip');
+  reach(15, 50, 'the pans walk');
+  reach(17, 70, "the Mere Light's south nose");
+  reach(14, 67, "the islet's west ring");
+  reach(94, 54, "the boatwright's strand");
+  reach(41, 40, 'the supper fire ring');
+  reach(60, 17, 'the Counting House lobby');
+  reach(84, 44, 'the rack yard');
+  reach(91, 16, "the roper's end room");
+  // Every actor post stands on ground the square can reach.
+  for (const a of z.actorSpawns ?? []) {
+    reach(Math.floor(a.x - z.origin.x), Math.floor(a.y - z.origin.y), `post ${a.actor}`);
   }
 });
 

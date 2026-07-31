@@ -49,6 +49,17 @@ import jorelFields from './defs/jorel_fields.json';
 import merraMarket from './defs/merra_market.json';
 import nibStreets from './defs/nib_streets.json';
 import peldCrossing from './defs/peld_crossing.json';
+import brackHarbor from './defs/brack_harbor.json';
+import neaveLedger from './defs/neave_ledger.json';
+import dorritGull from './defs/dorrit_gull.json';
+import swaleStores from './defs/swale_stores.json';
+import ondraPans from './defs/ondra_pans.json';
+import albaSmoke from './defs/alba_smoke.json';
+import vossTackle from './defs/voss_tackle.json';
+import seffSlipway from './defs/seff_slipway.json';
+import jessaWalk from './defs/jessa_walk.json';
+import lundLight from './defs/lund_light.json';
+import faneMere from './defs/fane_mere.json';
 import perlOrchard from './defs/perl_orchard.json';
 import tamsinCoop from './defs/tamsin_coop.json';
 import tiloPatterns from './defs/tilo_patterns.json';
@@ -189,6 +200,17 @@ import qPatrolTurnin from './defs/q_the_last_patrol_turnin.json';
  * and fails if a file is missing from this roster.
  */
 const SOURCES: readonly unknown[] = [
+  brackHarbor,
+  neaveLedger,
+  dorritGull,
+  swaleStores,
+  ondraPans,
+  albaSmoke,
+  vossTackle,
+  seffSlipway,
+  jessaWalk,
+  lundLight,
+  faneMere,
   coppinReeve,
   ninebrassStall,
   skarnLine,

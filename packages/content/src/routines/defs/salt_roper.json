@@ -1,0 +1,75 @@
+{
+  "id": "salt_roper",
+  "base": {
+    "kind": "post",
+    "dir": 3.1415927,
+    "work": true,
+    "speed": 1.6
+  },
+  "slots": [
+    {
+      "from": 10,
+      "to": 12,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.4,
+        "waypoints": [
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 16,
+            "y": 1,
+            "waitSec": 8
+          }
+        ]
+      }
+    },
+    {
+      "from": 15,
+      "to": 17,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.4,
+        "waypoints": [
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 16,
+            "y": 1,
+            "waitSec": 8
+          }
+        ]
+      }
+    },
+    {
+      "from": 21.5,
+      "to": 6.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.6,
+        "waypoints": [
+          {
+            "x": 16,
+            "y": 1
+          },
+          {
+            "x": 20,
+            "y": 1
+          },
+          {
+            "x": 21,
+            "y": 1,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}

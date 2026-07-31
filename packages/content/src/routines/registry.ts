@@ -53,6 +53,23 @@ import amberTraderA from './defs/amber_trader_a.json';
 import amberTraderB from './defs/amber_trader_b.json';
 import dawnmeadFarmhand from './defs/dawnmead_farmhand.json';
 import greenScamp from './defs/green_scamp.json';
+import saltPortreeve from './defs/salt_portreeve.json';
+import saltFactor from './defs/salt_factor.json';
+import saltInnkeep from './defs/salt_innkeep.json';
+import saltChandler from './defs/salt_chandler.json';
+import saltSalter from './defs/salt_salter.json';
+import saltSmoke from './defs/salt_smoke.json';
+import saltAngler from './defs/salt_angler.json';
+import saltBoatwright from './defs/salt_boatwright.json';
+import saltRoper from './defs/salt_roper.json';
+import saltBeacon from './defs/salt_beacon.json';
+import saltPilot from './defs/salt_pilot.json';
+import saltWatchGate from './defs/salt_watch_gate.json';
+import saltWatchSquare from './defs/salt_watch_square.json';
+import saltWatchQuay from './defs/salt_watch_quay.json';
+import saltFisherPiers from './defs/salt_fisher_piers.json';
+import saltFisherYard from './defs/salt_fisher_yard.json';
+import saltFisherEast from './defs/salt_fisher_east.json';
 import hearthHours from './defs/hearth_hours.json';
 import rowanHours from './defs/rowan_hours.json';
 import tinkerHours from './defs/tinker_hours.json';
@@ -118,6 +135,23 @@ const SOURCES: readonly unknown[] = [
   amberTraderB,
   dawnmeadFarmhand,
   greenScamp,
+  saltPortreeve,
+  saltFactor,
+  saltInnkeep,
+  saltChandler,
+  saltSalter,
+  saltSmoke,
+  saltAngler,
+  saltBoatwright,
+  saltRoper,
+  saltBeacon,
+  saltPilot,
+  saltWatchGate,
+  saltWatchSquare,
+  saltWatchQuay,
+  saltFisherPiers,
+  saltFisherYard,
+  saltFisherEast,
   hearthHours,
   rowanHours,
   tinkerHours,

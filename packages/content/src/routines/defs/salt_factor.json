@@ -1,0 +1,58 @@
+{
+  "id": "salt_factor",
+  "base": {
+    "kind": "post",
+    "dir": 3.1415927,
+    "speed": 1.8
+  },
+  "slots": [
+    {
+      "from": 17.5,
+      "to": 19.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.8,
+        "waypoints": [
+          {
+            "x": -6,
+            "y": 0.2
+          },
+          {
+            "x": -10,
+            "y": 14.2
+          },
+          {
+            "x": -23,
+            "y": 14.2
+          },
+          {
+            "x": -23,
+            "y": 15.2,
+            "sit": true
+          }
+        ]
+      }
+    },
+    {
+      "from": 20.5,
+      "to": 6.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.8,
+        "waypoints": [
+          {
+            "x": -22,
+            "y": 12.2
+          },
+          {
+            "x": -22,
+            "y": 11.2,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}

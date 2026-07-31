@@ -1,0 +1,66 @@
+{
+  "id": "salt_innkeep",
+  "base": {
+    "kind": "post",
+    "dir": 3.1415927,
+    "speed": 1.8
+  },
+  "slots": [
+    {
+      "from": 6,
+      "to": 7.5,
+      "task": {
+        "kind": "post",
+        "x": -9.5,
+        "y": 3,
+        "dir": 3.1415927,
+        "speed": 1.8
+      }
+    },
+    {
+      "from": 12,
+      "to": 13.5,
+      "task": {
+        "kind": "path",
+        "speed": 1.8,
+        "waypoints": [
+          {
+            "x": 3,
+            "y": 0.5
+          },
+          {
+            "x": -4,
+            "y": 9.5,
+            "waitSec": 45,
+            "dir": 3.1415927
+          },
+          {
+            "x": 3,
+            "y": 0.5,
+            "waitSec": 30
+          }
+        ]
+      }
+    },
+    {
+      "from": 22.5,
+      "to": 5.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.8,
+        "waypoints": [
+          {
+            "x": 1,
+            "y": -2
+          },
+          {
+            "x": 1,
+            "y": -3,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}
