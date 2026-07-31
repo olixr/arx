@@ -1,6 +1,9 @@
 # Secret Arts — THE WEAPON TEACHES
 
-*Design review 2026-07-31. Status: DESIGN — awaiting green-light.*
+*Design review 2026-07-31. Status: **ALL FIVE PHASES SHIPPED — EPIC
+COMPLETE** (Ph1 46633f1, Ph2 ca7e7b8, Ph3 06479fb, Ph4 ddf7cba, Ph5
+in the closing commit). The follow-on authoring wave RANKS FOR THE
+SHELF remains open by design (SECRET_RANK_DEBT counts it down).*
 
 The weapon art leaves the weapon. Every Art a blade, bow, or staff carries
 becomes a **secret art**: a technique the weapon *teaches* rather than a button
@@ -338,6 +341,28 @@ haven't. 114 arts must feel like a world of rumors, not a spreadsheet.**
   bench wears the quiet fill from this phase (the courtship must be
   visible to be a courtship); `S2CTechniques.lessons` rides v24
   additively.
+- **Phase 4 (ddf7cba)**: per-school secret shelf under its own plaque,
+  one `techPlate()` builder for all three citizenships, lent/asleep
+  sub-lines, plate-scale fill slivers, dormant mirrors in codex and
+  loadout strip. Two defects found and fixed: the school head's rung
+  count had included secrets, and `announceLadderClimbs` walked only
+  the ladder (mastered secrets now join the climbable set).
+- **Phase 5 (THE PROVING)**: the SECRET BAND waiver ledger paid to
+  ZERO — all 22 outliers tuned into their bands, cooldown-led with
+  identity kept (two deep offenders took a damage trim; the three cold
+  arts were buffed into the floor). THE PAYOFF BRACKET FOR THE SHELF
+  joined the contract suite and caught three 6-beat field arts
+  (wakewood, overgrowth, wild_root) deleting at-anchor line fighters —
+  trimmed to five beats. Seventeen live receipts ride the real wire in
+  `packages/tools/src/proving/secretArts.ts`
+  (`npm run prove:secret-arts -w @arx/tools` against a dev server):
+  loan refusal spoken, seat + ONE SEAT refusal, both seats cast,
+  lesson bank on the wire, dormancy spends nothing, the waking blade,
+  the mastery ceremony verbatim, the earned wire, follow-the-blade
+  sparing a mastered Q, the bow-in-hand cross-weapon cast, the offhand
+  loan seating and casting, and THE HAND REMEMBERS across a relog.
+  `masteryXp` pacing stands as authored (an afternoon at bronze, a
+  courtship at starsteel) — live play tunes it from here.
 
 ## Part 5 — Open questions (recommendation first)
 

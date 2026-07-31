@@ -18,7 +18,7 @@ const defs: AbilityDef[] = [
     desc: 'Spin in a full circle, wounding everything around you.',
     color: '#d9a05a',
     code: 'CS',
-    cooldownTicks: 130, // 6.5 s
+    cooldownTicks: 140, // 7 s
     castFreezeTicks: 5,
     shape: 'nova',
     damage: 6,
@@ -32,7 +32,7 @@ const defs: AbilityDef[] = [
     desc: 'Dash forward, blade first, cutting through your path.',
     color: '#8d9299',
     code: 'Lu',
-    cooldownTicks: 150, // 7.5 s
+    cooldownTicks: 160, // 8 s
     shape: 'dash_strike',
     damage: 8,
     dashTiles: 3.4,
@@ -44,7 +44,7 @@ const defs: AbilityDef[] = [
     desc: 'Melt forward through the dark — the knife arrives before you do.',
     color: '#7a68a8',
     code: 'Sp',
-    cooldownTicks: 160, // 8 s
+    cooldownTicks: 150, // 7.5 s
     shape: 'dash_strike',
     damage: 5,
     dashTiles: 3.0,
@@ -260,7 +260,7 @@ const defs: AbilityDef[] = [
     desc: 'Dawn happens HERE: a flash of gold that scorches the circle.',
     color: '#e8b64c',
     code: 'Su',
-    cooldownTicks: 180, // 9 s
+    cooldownTicks: 195, // 9.75 s
     castFreezeTicks: 5,
     shape: 'nova',
     damage: 9,
@@ -274,7 +274,7 @@ const defs: AbilityDef[] = [
     desc: 'Point the blade; a piece of the sky keeps the appointment.',
     color: '#4a4066',
     code: 'Sk',
-    cooldownTicks: 200, // 10 s
+    cooldownTicks: 230, // 11.5 s
     shape: 'ground_aoe',
     damage: 12,
     range: 10,
@@ -331,7 +331,7 @@ const defs: AbilityDef[] = [
     desc: 'Point the maw; it spits a mouthful of forge onto the spot you picked.',
     color: '#ff8a3c',
     code: 'Sq',
-    cooldownTicks: 180, // 9 s
+    cooldownTicks: 195, // 9.75 s
     shape: 'ground_aoe',
     damage: 9,
     range: 8,
@@ -359,9 +359,9 @@ const defs: AbilityDef[] = [
     desc: 'The song closes the distance in one bar. The bite is the rest of the verse.',
     color: '#6faa74',
     code: 'Gv',
-    cooldownTicks: 130, // 6.5 s
+    cooldownTicks: 175, // 8.75 s
     shape: 'dash_strike',
-    damage: 6,
+    damage: 5,
     dashTiles: 2.5,
     status: { status: 'venom', power: 1, durationTicks: 100 },
   },
@@ -403,7 +403,7 @@ const defs: AbilityDef[] = [
     desc: 'The wave finds the vein — and leaves something living in it.',
     color: '#8a9a4a',
     code: 'Ss',
-    cooldownTicks: 140, // 7 s
+    cooldownTicks: 160, // 8 s
     shape: 'melee_arc',
     damage: 5,
     range: 1.8,
@@ -416,7 +416,7 @@ const defs: AbilityDef[] = [
     desc: 'One wingbeat forward, one perfect puncture.',
     color: '#e8b64c',
     code: 'Sg',
-    cooldownTicks: 100, // 5 s — the wasp does not wait
+    cooldownTicks: 110, // 5.5 s
     shape: 'dash_strike',
     damage: 5,
     dashTiles: 2.0,
@@ -505,9 +505,9 @@ const defs: AbilityDef[] = [
     desc: 'Cross the room the way rumor does, and land the way history does.',
     color: '#c9a23c',
     code: 'Kb',
-    cooldownTicks: 170, // 8.5 s
+    cooldownTicks: 190, // 9.5 s
     shape: 'dash_strike',
-    damage: 10,
+    damage: 9,
     dashTiles: 3.0,
     executeBelow: { frac: 0.3, mult: 1.5 }, // regicide favors a faltering crown
     status: { status: 'bleed', power: 1, durationTicks: 80 },
@@ -518,7 +518,7 @@ const defs: AbilityDef[] = [
     desc: 'Step in, say it once, and the conversation is over. The weary hear it loudest.',
     color: '#f0f0f4',
     code: 'Lw',
-    cooldownTicks: 200, // 10 s
+    cooldownTicks: 210, // 10.5 s
     shape: 'dash_strike',
     damage: 14,
     dashTiles: 2.6,
@@ -535,7 +535,7 @@ const defs: AbilityDef[] = [
     desc: 'Petals everywhere at once, and every one of them is an edge.',
     color: '#5f5478',
     code: 'Gc',
-    cooldownTicks: 150, // 7.5 s
+    cooldownTicks: 172, // 8.6 s
     castFreezeTicks: 4,
     shape: 'nova',
     damage: 5,
@@ -548,7 +548,7 @@ const defs: AbilityDef[] = [
     desc: 'The rook takes the short way to the purse. Through.',
     color: '#3c4048',
     code: 'Bf',
-    cooldownTicks: 110, // 5.5 s
+    cooldownTicks: 120, // 6 s
     shape: 'dash_strike',
     damage: 5,
     dashTiles: 2.2,
@@ -747,7 +747,7 @@ const defs: AbilityDef[] = [
     desc: 'A ring of raw Arx snaps outward from the staff\'s heel.',
     color: '#b49af0',
     code: 'Ar',
-    cooldownTicks: 140, // 7 s
+    cooldownTicks: 132, // 6.6 s
     castFreezeTicks: 4,
     shape: 'nova',
     damage: 5,
@@ -804,7 +804,7 @@ const defs: AbilityDef[] = [
     desc: 'Call the bolt you were promised. It brings friends.',
     color: '#e8e06a',
     code: 'Sm',
-    cooldownTicks: 180, // 9 s
+    cooldownTicks: 185, // 9.25 s
     shape: 'chain_zap',
     damage: 9,
     range: 12,
@@ -863,7 +863,9 @@ const defs: AbilityDef[] = [
     damage: 4,
     range: 12,
     radius: 2.2,
-    fieldTicks: 120, // 6 s of living thicket
+    // Five rakes of the briar — THE PAYOFF BRACKET FOR THE SHELF caps
+    // the full channel under the at-anchor line fighter.
+    fieldTicks: 100, // 5 s of living thicket
     pulseEveryTicks: 18,
     status: { status: 'chill', power: 1, durationTicks: 60 },
   },
@@ -901,7 +903,7 @@ const defs: AbilityDef[] = [
     desc: 'Both serpents spit at once. Professional courtesy.',
     color: '#a0c050',
     code: 'Vl',
-    cooldownTicks: 140, // 7 s
+    cooldownTicks: 160, // 8 s
     shape: 'projectile_fan',
     damage: 6,
     range: 13,
@@ -916,7 +918,7 @@ const defs: AbilityDef[] = [
     desc: 'A slow globe of liquid rock that does not stop for anyone.',
     color: '#e85a2c',
     code: 'Mg',
-    cooldownTicks: 190, // 9.5 s
+    cooldownTicks: 210, // 10.5 s
     shape: 'projectile_fan',
     damage: 13,
     range: 12,
@@ -1014,7 +1016,7 @@ const defs: AbilityDef[] = [
     desc: 'For one heartbeat the moon is close, and it drinks what it wounds.',
     color: '#c84a5a',
     code: 'Rd',
-    cooldownTicks: 190, // 9.5 s
+    cooldownTicks: 215, // 10.75 s
     castFreezeTicks: 6,
     shape: 'nova',
     damage: 12,
@@ -1051,7 +1053,9 @@ const defs: AbilityDef[] = [
     damage: 4,
     range: 11,
     radius: 2.0,
-    fieldTicks: 110,
+    // Five beats of root and briar — THE PAYOFF BRACKET FOR THE SHELF
+    // caps the full channel under the at-anchor line fighter.
+    fieldTicks: 90,
     pulseEveryTicks: 16,
     status: { status: 'chill', power: 1, durationTicks: 70 },
   },
@@ -1103,7 +1107,7 @@ const defs: AbilityDef[] = [
     desc: 'The fan sheds five feathers. Every one of them knows an address.',
     color: '#ff9a5a',
     code: 'Tm',
-    cooldownTicks: 180, // 9 s
+    cooldownTicks: 200, // 10 s
     shape: 'projectile_fan',
     damage: 4,
     range: 12,
@@ -1201,7 +1205,9 @@ const defs: AbilityDef[] = [
     damage: 4,
     range: 13,
     radius: 2.0,
-    fieldTicks: 110,
+    // Five pulses, not six — THE PAYOFF BRACKET FOR THE SHELF: a full
+    // channel at the anchor band must never exceed the line fighter.
+    fieldTicks: 90,
     pulseEveryTicks: 16,
     status: { status: 'bleed', power: 1, durationTicks: 60 },
   },
@@ -2368,7 +2374,7 @@ const defs: AbilityDef[] = [
     desc: 'Mark out a plot. Everything in it slows to a walk behind the coffin.',
     color: '#8a90a8',
     code: 'Mf',
-    cooldownTicks: 280, // 14 s
+    cooldownTicks: 190, // 9.5 s
     shape: 'ground_field',
     damage: 3,
     range: 3,
@@ -2568,7 +2574,7 @@ const defs: AbilityDef[] = [
     desc: 'Crack the floor like a seam and let it keep giving.',
     color: '#e8c04c',
     code: 'O2',
-    cooldownTicks: 280, // 14 s
+    cooldownTicks: 265, // 13.25 s
     shape: 'ground_field',
     damage: 5,
     range: 3,
@@ -2582,7 +2588,7 @@ const defs: AbilityDef[] = [
     desc: 'The bell rings once more, and the county answers whether it wants to or not.',
     color: '#e2c384',
     code: 'L2',
-    cooldownTicks: 300, // 15 s
+    cooldownTicks: 335, // 16.75 s
     castFreezeTicks: 4,
     shape: 'pulse_nova',
     damage: 10,

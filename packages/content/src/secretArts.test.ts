@@ -10,6 +10,7 @@ import { TECHNIQUES, abilityDef, techniquesFor } from './abilities.js';
 import { SECRET_ARTS, secretArtsFor } from './secretArts.js';
 import { HONABLE, cycleValue, isUtilityArt } from './ladderModel.js';
 import { ITEMS } from './items.js';
+import { NPCS, scaleNpcDef } from './npcs.js';
 
 /** The four schools that own weapons — the only schools a secret may sit in. */
 const WEAPON_SCHOOLS = ['onehand', 'twohand', 'archery', 'arx'] as const;
@@ -29,36 +30,12 @@ const SECRET_RANK_DEBT = 114;
  * listed art comes back inside the band, the test demands its removal.
  * Never add a NEW art here to dodge the band — tune it instead.
  */
-const SECRET_BAND_WAIVERS: ReadonlySet<string> = new Set([
-  // onehand — the blade roster runs hot against its rung envelope
-  // (13 of 37; the shelf's biggest phase-5 tuning debt), plus one cold
-  // dagger art a hair under the floor.
-  'beak_first',
-  'crescent_sweep',
-  'garden_close',
-  'green_verse',
-  'kings_bane',
-  'last_word',
-  'lunge',
-  'serpents_kiss',
-  'shadowstep',
-  'slagfall',
-  'starfall_strike',
-  'stinger',
-  'sunburst',
-  // twohand — two slow mourners under the floor, one bell over the top.
-  'last_toll',
-  'mournfield',
-  'open_seam',
-  // arx — five hot casters and one ring at the floor's edge.
-  'arcane_ring',
-  'magma_orb',
-  'red_eclipse',
-  'stormlash',
-  'the_molt',
-  'venom_lash',
-  // archery — the whole flight lands inside its band. Zero waivers.
-]);
+// THE PROVING (phase 5) paid the whole ledger down: the 22 launch
+// outliers were tuned into their bands (cooldown-led, identity kept;
+// two deep offenders took a damage trim; the three cold arts were
+// BUFFED into the floor). The ledger stands empty and must stay so —
+// tune new outliers, never waiver them.
+const SECRET_BAND_WAIVERS: ReadonlySet<string> = new Set([]);
 
 test('every secret seat sits in a weapon school with a sane anchor', () => {
   for (const seat of SECRET_ARTS) {
@@ -172,6 +149,47 @@ test('THE RANK DEBT is counted, and any paid seat obeys the honed ladder laws', 
     SECRET_RANK_DEBT,
     'the rank debt moved — decrement SECRET_RANK_DEBT in the commit that authors the ranks',
   );
+});
+
+test('THE PAYOFF BRACKET FOR THE SHELF: no lent secret deletes an at-level line fighter', () => {
+  // The rung ladder's bracket, extended to the secrets at Rank I —
+  // availability read off the anchor (the band a player honestly holds
+  // the teaching weapon at). Same line fighter, same caps.
+  const skeleton = NPCS.get('skeleton')!;
+  const powerMult = (l: number): number => 1 + l * 0.05;
+  const oneTargetBeats = (ab: AbilityDef): number => {
+    switch (ab.shape) {
+      case 'pulse_nova':
+        return ab.pulses ?? 1;
+      case 'ground_field':
+        return Math.floor((ab.fieldTicks ?? 0) / (ab.pulseEveryTicks ?? 20));
+      case 'flurry':
+        return ab.hits ?? 1;
+      default:
+        return 1;
+    }
+  };
+  for (const L of [10, 25, 50, 75, 95]) {
+    const fighterHp = scaleNpcDef(skeleton, L).maxHp;
+    for (const style of WEAPON_SCHOOLS) {
+      for (const seat of secretArtsFor(style)) {
+        if (techniqueAnchor(seat) > L) continue;
+        const ab = abilityDef(seat.ability)!;
+        if (ab.damage < 3) continue;
+        const perBeat = Math.round(ab.damage * powerMult(L));
+        const beats = oneTargetBeats(ab);
+        const instant = beats === 1 ? perBeat : 0;
+        assert.ok(
+          instant <= fighterHp * 0.75,
+          `${style}/${seat.ability} @L${L}: instant ${instant} deletes the ${fighterHp}hp line fighter`,
+        );
+        assert.ok(
+          perBeat * beats <= fighterHp * 1.1,
+          `${style}/${seat.ability} @L${L}: full channel ${perBeat * beats} vs ${fighterHp}hp exceeds the payoff cap`,
+        );
+      }
+    }
+  }
 });
 
 test('the shelf never doubles the ladder: shared abilities stay single-citizenship', () => {
