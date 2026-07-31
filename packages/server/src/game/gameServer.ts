@@ -202,6 +202,13 @@ import {
   standingPriceMult,
   standingSellMult,
   peddlerLingerFor,
+  GROWTH,
+  GROWTH_SCAR,
+  GROWTH_STATE_NAMES,
+  growthDialectOf,
+  growthTileForState,
+  projectGrowth,
+  type GrowthRow,
   composeKnot,
   familiesOf,
   leanWild,
@@ -4890,7 +4897,17 @@ export class GameServer {
     }
     if (!(COMBAT_STYLES as readonly string[]).includes(skill)) return;
     let ladderMoved = false;
-    for (const tech of techniquesFor(skill)) {
+    // Mastered secrets ride the same rank clock as the ladder; their
+    // climbs will speak here the day RANKS FOR THE SHELF authors
+    // their steps (rankless seats fall through the ranks guard below).
+    // Unmastered loans never appear — a lent art holds Rank I.
+    const climbable = [
+      ...techniquesFor(skill),
+      ...SECRET_ARTS.filter(
+        (s) => s.style === skill && player.flags.has(artFlag(s.ability)),
+      ),
+    ];
+    for (const tech of climbable) {
       const name = abilityDef(tech.ability)?.name ?? tech.ability;
       if (levelBefore < tech.unlockLevel && levelAfter >= tech.unlockLevel) {
         ladderMoved = true;

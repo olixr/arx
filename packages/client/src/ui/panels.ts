@@ -702,9 +702,17 @@ export class Panels {
         );
       }
       // THE SECRET LEDGER: the weapon names the art it teaches — the
-      // card is the discovery surface for secrets not yet met.
+      // card is the discovery surface for secrets not yet met, and it
+      // tells the courtship's state in a word.
       const art = w.art ? abilityDef(w.art) : undefined;
-      if (art) stat('Secret Art', art.name, '#9a7ae0', abilityIconUrl(art.id, 40));
+      if (art) {
+        const state = this.ownsArt(art.id)
+          ? ' · mastered'
+          : (this.lessons[art.id] ?? 0) > 0
+            ? ' · learning'
+            : '';
+        stat('Secret Art', `${art.name}${state}`, '#9a7ae0', abilityIconUrl(art.id, 40));
+      }
       // The instance's oil — poison lives ON the weapon, so the card
       // is where you check which blade carries what.
       const coat = roll?.coat;
@@ -1908,8 +1916,14 @@ export class Panels {
       { action: 'ability4', src: 'Sigil', ab: sigil?.sigil, empty: 'Fell a boss' },
     ] as const) {
       const ab = row.ab ? abilityDef(row.ab) : undefined;
+      // THE LOAN LAW in the strip: a seated secret with its teacher
+      // away reads asleep here too — the strip never overpromises.
+      const tdef = row.ab ? techniquePoolDef(row.ab) : undefined;
+      const dormant = !!tdef && this.secretDormant(tdef);
       const slot = document.createElement('div');
-      slot.className = 'load-slot' + ('r' in row && row.r ? ' the-r' : '');
+      slot.className =
+        'load-slot' + ('r' in row && row.r ? ' the-r' : '') + (dormant ? ' dormant' : '');
+      if (dormant && ab) slot.title = `${ab.name} sleeps. Hold a weapon that teaches it.`;
       const well = document.createElement('div');
       well.className = 'load-well';
       if (ab) {
@@ -1975,8 +1989,9 @@ export class Panels {
     lv.className = 'arts-school-lv';
     lv.textContent = `Lv ${level}`;
     head.append(plaque, name, lv);
-    // How much of the ladder this hand has climbed (pages ride outside it).
-    const rungs = this.visibleTechniques(style).filter((t) => !t.hidden);
+    // How much of the ladder this hand has climbed (pages and secrets
+    // ride outside it — the count is the RUNG count, nothing else).
+    const rungs = this.visibleTechniques(style).filter((t) => !t.hidden && !t.secret);
     const climbed = rungs.filter((t) => {
       const s = this.techState(style, t);
       return s === 'unlocked' || s === 'equipped';
@@ -1999,91 +2014,149 @@ export class Panels {
     }
     block.appendChild(head);
 
+    const visible = this.visibleTechniques(style);
+    const ladder = visible.filter((t) => !t.secret);
+    const secrets = visible.filter((t) => t.secret);
     const rail = document.createElement('div');
     rail.className = 'tech-rail';
-    const visible = this.visibleTechniques(style);
-    visible.forEach((tech, i) => {
-      const ab = abilityDef(tech.ability);
-      if (!ab) return;
-      const st = this.techState(style, tech);
-      const btn = document.createElement('button');
-      btn.className = `tech-plate-btn ${st}`;
-      // The link back to the previous rung — earned pages and secret
-      // arts sit outside the ladder, so no link touches them either side.
-      const prev = visible[i - 1];
-      if (i % 5 !== 0 && !tech.hidden && !tech.secret && prev && !prev.hidden && !prev.secret) {
-        btn.classList.add('rail-link');
-        if (st === 'unlocked' || st === 'equipped') btn.classList.add('rail-lit');
+    ladder.forEach((tech, i) => {
+      // The link back to the previous rung — earned pages sit outside
+      // the ladder, so no link touches them on either side.
+      const prev = ladder[i - 1];
+      const linked = i % 5 !== 0 && !tech.hidden && !!prev && !prev.hidden;
+      rail.appendChild(this.techPlate(style, tech, linked));
+    });
+    block.appendChild(rail);
+    // THE QUIET SHELF: the school's secret arts — only the ones this
+    // hand has met. No shelf renders until a secret is worth showing.
+    if (secrets.length > 0) {
+      const shelfHead = document.createElement('div');
+      shelfHead.className = 'secret-shelf-head';
+      shelfHead.textContent = 'Secret arts';
+      shelfHead.dataset.tipname = 'The secret shelf';
+      shelfHead.dataset.tipsub =
+        'Arts that weapons teach. Fight with the teacher and its art becomes yours for good.';
+      block.appendChild(shelfHead);
+      const shelf = document.createElement('div');
+      shelf.className = 'tech-rail secret-shelf';
+      for (const tech of secrets) shelf.appendChild(this.techPlate(style, tech, false));
+      block.appendChild(shelf);
+    }
+    return block;
+  }
+
+  /**
+   * THE LOAN LAW's dormancy, mirrored for the codex: a seated secret
+   * whose teaching weapon left the hands sleeps until it returns.
+   */
+  private secretDormant(tech: TechniqueDef): boolean {
+    return (
+      !!tech.secret &&
+      this.seatOf(tech.ability) !== null &&
+      !this.ownsArt(tech.ability) &&
+      !this.equippedArtIds().has(tech.ability)
+    );
+  }
+
+  /** One plate on a rail — rung, page, and secret speak the same shape. */
+  private techPlate(style: SkillId, tech: TechniqueDef, linked: boolean): HTMLElement {
+    const ab = abilityDef(tech.ability)!;
+    const st = this.techState(style, tech);
+    const btn = document.createElement('button');
+    btn.className = `tech-plate-btn ${st}`;
+    if (linked) {
+      btn.classList.add('rail-link');
+      if (st === 'unlocked' || st === 'equipped') btn.classList.add('rail-lit');
+    }
+    if (this.secretDormant(tech)) btn.classList.add('dormant');
+    if (this.artsSel === tech.ability) btn.classList.add('selected');
+    btn.dataset.nav = '';
+    btn.dataset.navkey = `art:${tech.ability}`;
+    btn.dataset.acta = 'Inspect';
+    const wellEl = document.createElement('span');
+    wellEl.className = 'tech-plate-well';
+    if (st === 'veiled') {
+      const q = document.createElement('span');
+      q.className = 'tech-mystery';
+      q.textContent = '?';
+      wellEl.appendChild(q);
+    } else {
+      const plate = document.createElement('img');
+      plate.src = abilityIconUrl(tech.ability, 44);
+      plate.draggable = false;
+      wellEl.appendChild(plate);
+      if ((st === 'unlocked' || st === 'equipped') && !this.seenTech.has(tech.ability)) {
+        const pip = document.createElement('span');
+        pip.className = 'new-pip';
+        pip.textContent = 'NEW';
+        wellEl.appendChild(pip);
       }
-      if (this.artsSel === tech.ability) btn.classList.add('selected');
-      btn.dataset.nav = '';
-      btn.dataset.navkey = `art:${tech.ability}`;
-      btn.dataset.acta = 'Inspect';
-      const wellEl = document.createElement('span');
-      wellEl.className = 'tech-plate-well';
-      if (st === 'veiled') {
-        const q = document.createElement('span');
-        q.className = 'tech-mystery';
-        q.textContent = '?';
-        wellEl.appendChild(q);
-      } else {
-        const plate = document.createElement('img');
-        plate.src = abilityIconUrl(tech.ability, 44);
-        plate.draggable = false;
-        wellEl.appendChild(plate);
-        if ((st === 'unlocked' || st === 'equipped') && !this.seenTech.has(tech.ability)) {
-          const pip = document.createElement('span');
-          pip.className = 'new-pip';
-          pip.textContent = 'NEW';
-          wellEl.appendChild(pip);
-        }
-        if (st === 'equipped') {
-          const rBadge = document.createElement('span');
-          rBadge.className = 'r-badge';
-          rBadge.textContent = this.seatOf(tech.ability) === 0 ? 'Q' : 'R';
-          wellEl.appendChild(rBadge);
-        }
-        if (tech.hidden) {
-          const seal = document.createElement('span');
-          seal.className = 'earned-seal';
-          seal.textContent = '❖';
-          seal.dataset.tipname = 'An unwritten page';
-          seal.dataset.tipsub = 'Earned by deed — no rung of the ladder holds it.';
-          wellEl.appendChild(seal);
-        }
-        if (tech.secret) {
-          const seal = document.createElement('span');
-          seal.className = 'earned-seal';
-          seal.textContent = this.ownsArt(tech.ability) ? '❖' : '◈';
-          seal.dataset.tipname = 'A secret art';
-          seal.dataset.tipsub = this.ownsArt(tech.ability)
-            ? 'Mastered — yours from any hand, forever.'
-            : 'Lent by the weapon that teaches it. Fight on, and it will stay.';
-          wellEl.appendChild(seal);
+      if (st === 'equipped') {
+        const rBadge = document.createElement('span');
+        rBadge.className = 'r-badge';
+        rBadge.textContent = this.seatOf(tech.ability) === 0 ? 'Q' : 'R';
+        wellEl.appendChild(rBadge);
+      }
+      if (tech.hidden) {
+        const seal = document.createElement('span');
+        seal.className = 'earned-seal';
+        seal.textContent = '❖';
+        seal.dataset.tipname = 'An unwritten page';
+        seal.dataset.tipsub = 'Earned by deed — no rung of the ladder holds it.';
+        wellEl.appendChild(seal);
+      }
+      if (tech.secret) {
+        const seal = document.createElement('span');
+        seal.className = 'earned-seal';
+        seal.textContent = this.ownsArt(tech.ability) ? '❖' : '◈';
+        seal.dataset.tipname = 'A secret art';
+        seal.dataset.tipsub = this.ownsArt(tech.ability)
+          ? 'Mastered — yours from any hand, forever.'
+          : 'Lent by the weapon that teaches it. Fight on, and it will stay.';
+        wellEl.appendChild(seal);
+        // THE LESSON's fill at plate scale: how far the blade has
+        // carried you, told without a number.
+        const banked = this.lessons[tech.ability] ?? 0;
+        if (!this.ownsArt(tech.ability) && banked > 0 && tech.secret) {
+          const meter = document.createElement('span');
+          meter.className = 'plate-lesson';
+          const fill = document.createElement('span');
+          fill.className = 'plate-lesson-fill';
+          const frac = Math.min(1, banked / masteryXp(tech.secret.anchorLevel));
+          fill.style.width = `${Math.round(frac * 100)}%`;
+          meter.appendChild(fill);
+          wellEl.appendChild(meter);
         }
       }
-      const nameEl = document.createElement('span');
-      nameEl.className = 'tech-plate-name';
-      nameEl.textContent = st === 'veiled' ? '???' : ab.name;
-      const sub = document.createElement('span');
-      sub.className = 'tech-plate-sub';
-      const rank = this.techRank(style, tech);
-      const seat = this.seatOf(tech.ability);
+    }
+    const nameEl = document.createElement('span');
+    nameEl.className = 'tech-plate-name';
+    nameEl.textContent = st === 'veiled' ? '???' : ab.name;
+    const sub = document.createElement('span');
+    sub.className = 'tech-plate-sub';
+    const rank = this.techRank(style, tech);
+    const seat = this.seatOf(tech.ability);
+    const key = seat === 0 ? 'Q' : 'R';
+    if (tech.secret && !this.ownsArt(tech.ability)) {
+      // A lent secret speaks its citizenship, not a rank it cannot climb.
       sub.textContent =
         st === 'equipped'
-          ? `On your ${seat === 0 ? 'Q' : 'R'} · ${RANK_ROMAN[rank]}`
+          ? `On your ${key} · ${this.secretDormant(tech) ? 'asleep' : 'lent'}`
+          : 'Lent';
+    } else {
+      sub.textContent =
+        st === 'equipped'
+          ? `On your ${key} · ${RANK_ROMAN[rank]}`
           : st === 'unlocked'
             ? `Rank ${RANK_ROMAN[rank]}`
             : `Lv ${tech.unlockLevel}`;
-      btn.append(wellEl, nameEl, sub);
-      btn.addEventListener('click', () => {
-        this.artsSel = tech.ability;
-        this.renderArts();
-      });
-      rail.appendChild(btn);
+    }
+    btn.append(wellEl, nameEl, sub);
+    btn.addEventListener('click', () => {
+      this.artsSel = tech.ability;
+      this.renderArts();
     });
-    block.appendChild(rail);
-    return block;
+    return btn;
   }
 
   /** The bench: the chosen art laid out large, stats told honestly. */

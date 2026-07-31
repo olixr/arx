@@ -231,6 +231,13 @@ export declare class Panels {
     private renderArtsLoadout;
     /** One school: its face, level, and the four-rung ladder. */
     private artsSchool;
+    /**
+     * THE LOAN LAW's dormancy, mirrored for the codex: a seated secret
+     * whose teaching weapon left the hands sleeps until it returns.
+     */
+    private secretDormant;
+    /** One plate on a rail — rung, page, and secret speak the same shape. */
+    private techPlate;
     /** The bench: the chosen art laid out large, stats told honestly. */
     private renderArtsBench;
 }

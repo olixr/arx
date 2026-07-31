@@ -2762,6 +2762,43 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   text-shadow: var(--punch-small);
 }
 
+/* THE QUIET SHELF: the school's secrets sit under their own quiet
+   plaque — a shelf, not more rungs. */
+.secret-shelf-head {
+  margin: 10px 0 2px;
+  font-size: 11.5px;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* THE LESSON at plate scale: a sliver of progress along the well's
+   foot — visible at a glance, still no numerals. */
+.plate-lesson {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 2px;
+  height: 3px;
+  background: rgba(12, 9, 20, 0.65);
+  overflow: hidden;
+  pointer-events: none;
+}
+.plate-lesson-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #6a5a9a, #b49af0);
+}
+
+/* A dormant plate sleeps like the hotbar seat does — same language. */
+.tech-plate-btn.dormant .tech-plate-well img,
+.load-slot.dormant .load-well img {
+  filter: grayscale(0.85) brightness(0.55);
+  opacity: 0.7;
+}
+
 /* THE LESSON LAW's quiet fill: a courtship bar, never a grindometer —
    no numerals, just how far the blade has carried you. */
 .lesson-meter {
