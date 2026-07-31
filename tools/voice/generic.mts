@@ -172,7 +172,8 @@ for (const slot of wanted) {
   // complete, so an unforced run would keep them and the slot would quietly
   // hold the wrong voice or the old delivery. The stamp records the full
   // signature of what the clips are actually in; on mismatch, clear them.
-  const sig = `${voice} ex=${EXAGGERATION} cfg=${CFG_WEIGHT} tempo=${TUNING.tempo}`;
+  const sig = `${voice} ex=${EXAGGERATION} cfg=${CFG_WEIGHT} `
+    + `tempo=${TUNING.tempo} temp=${TEMPERATURE}`;
   const stampFile = join(dir, '.voice');
   const stamp = existsSync(stampFile) ? readFileSync(stampFile, 'utf8').trim() : null;
   if (stamp !== null && stamp !== sig) {

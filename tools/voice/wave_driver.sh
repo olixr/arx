@@ -1,7 +1,7 @@
 #!/bin/bash
 # Voiceover driver: strictly serial — one TTS request in flight ever, one actor
-# at a time, voicelab restarted between actors so MPS memory/speed degradation
-# never compounds across the batch.
+# at a time, against a single long-lived voicelab process that is started once
+# and then left warm for the whole batch.
 #
 #   ./wave_driver.sh                 first-wave actors (default)
 #   ./wave_driver.sh all             every cast character in characters.json
@@ -73,6 +73,7 @@ voice_of() {
       "ex=" + (v.exaggeration ?? t.defaultExaggeration),
       "cfg=" + (v.cfgWeight ?? t.defaultCfgWeight),
       "tempo=" + t.tempo,
+      "temp=" + t.temperature,
     ].join(" "));
   ' "$1"
 }
@@ -121,7 +122,16 @@ run_actor() {
     echo "  resuming — $have clip(s) already spoken in $want"
   fi
 
-  (cd "$VL" && ./voicelab.sh restart)
+  # Ensure the service is up; do NOT restart it. `start` is idempotent.
+  #
+  # This used to restart voicelab before every actor "so MPS slowdown never
+  # compounds". Measured, that slowdown does not exist: across 68 consecutive
+  # clips on one process, generation held flat at ~5.5s/clip with no upward
+  # trend, and RSS plateaued near 8 GB on a 128 GB machine. The restart cost
+  # 18.4s each time — ~23 minutes of dead time over a 74-actor pass, about 20%
+  # of the total — and it also dumped the voice conditionals cache, making the
+  # first clip of every actor pay ~2s of re-preparation it had already done.
+  (cd "$VL" && ./voicelab.sh start >/dev/null)
   npx tsx tools/voice/generate.mts "$actor"
   npx tsx tools/voice/import.mts "$actor"
 

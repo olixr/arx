@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "ragna_flagon__greet",
       "text": "Welcome to the Silver Flagon. Beds, board, and quiet. We keep all three. Wipe your boots, if you would.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "ragna_flagon__hub",
       "text": "What can the house do for you?",
       "choices": [
         {
@@ -37,11 +39,13 @@
     },
     {
       "id": "news",
+      "voice": "ragna_flagon__news",
       "text": "What I can repeat: Lantern Row has the price of arcane dust up again. The Deep Market talk says the kobolds are digging *toward* something. And the Queen walked the mere at noon and fed the shrine fire with her own hand. The rest is my lodgers' business.",
       "next": "hub"
     },
     {
       "id": "lodgers",
+      "voice": "ragna_flagon__lodgers",
       "text": "Signy the terrace cook keeps my best room and pays half in leftovers, which suits us both. Caravan masters. Guildhall clerks in audit season. A Waykeeper now and then, too stiff for the chapter house cots. And sometimes a guest takes the corner room, pays in advance, and asks nothing. I ask nothing back.",
       "choices": [
         {
@@ -56,11 +60,13 @@
     },
     {
       "id": "dunna",
+      "voice": "ragna_flagon__dunna",
       "text": "Dunna keeps the inn at the bottom of the road. I keep the one at the top. We trade the road's news through the caravans, twice a season, and never once in writing. Her mother Osa waters the mules at our own gate. The day those two are in one room again, pull up a chair. Quietly.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "ragna_flagon__browse",
       "text": "Stew with real beef in it, bread from Signy's ovens, and a short board. A short board means nothing on it is old. Sit where you like.",
       "hooks": [
         {
@@ -71,6 +77,7 @@
     },
     {
       "id": "bye",
+      "voice": "ragna_flagon__bye",
       "text": "Warm hearths. The door's never barred before midnight."
     }
   ]

@@ -21,10 +21,17 @@
     "pacing is stochastic — the same settings gave +11% on one voice and +3% on",
     "another — so the last few percent are bought deterministically instead. It is",
     "pitch-preserving. Keep it under ~1.15; past that it starts to sound clipped",
-    "and artificial rather than brisk."
+    "and artificial rather than brisk.",
+    "",
+    "temperature is 0.8 deliberately. The service used to drop the field on the",
+    "non-streaming path, so every take — including all of the tuning measurements",
+    "above — actually ran at the library default of 0.8. The field is wired up now",
+    "(0.1 vs 1.5 measured an 18x spread in take-to-take variation), so this holds",
+    "it at the value the numbers above were gathered under. Lower it for steadier",
+    "reads, raise it for more variety between takes."
   ],
   "tempo": 1.09,
-  "temperature": 0.7,
+  "temperature": 0.8,
   "defaultExaggeration": 0.7,
   "defaultCfgWeight": 0.55
 }

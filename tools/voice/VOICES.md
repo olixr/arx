@@ -95,7 +95,28 @@ tools/voice/wave_driver.sh warden_bryn  # just these
 tools/voice/wave_driver.sh --fresh      # ignore stamps, re-speak everything
 ```
 
-It restarts voicelab between actors so MPS slowdown never compounds.
+It starts voicelab once and leaves it warm for the whole batch.
+
+## Why the HTTP service, not the CLI
+
+The service is not overhead — it is the optimisation. Same line, same voice,
+measured:
+
+| path | per clip |
+|---|---:|
+| `tts_cli.py` (cold each call) | **18.75s** |
+| warm service over HTTP | **~5.5s** |
+
+**3.1× faster.** The CLI reloads the model (7.0s) and pays Python/Torch import
+(~3.5s) on *every* invocation; the service pays both once at startup and then
+keeps the model resident and the voice conditionals cached. HTTP framing itself
+is well under a millisecond against a ~5.5s generation — unmeasurable. Going
+"direct to the CLI" would triple the cost of a full pass.
+
+The one thing that genuinely was overhead — restarting the service between
+actors — is gone. Sustained-load measurements over 68 consecutive clips on one
+process: generation time flat at ~5.5s with no upward drift, RSS plateauing near
+8 GB on a 128 GB machine. Nothing degrades, so nothing needs recycling.
 
 **It is resumable — just re-run it after a crash.** A full pass is an hour or
 more, so it will get interrupted. Two dotfiles per actor track state:
