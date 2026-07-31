@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DROP_MERGE_RADIUS, canMergeDrop, type DropLike } from './drops.js';
+import type { InvSlot } from '@arx/shared';
+import {
+  DEATH_SPILL_TTL_MS,
+  DROP_MERGE_RADIUS,
+  canMergeDrop,
+  spillInventory,
+  type DropLike,
+} from './drops.js';
 
 const bones = (over: Partial<DropLike> = {}): DropLike => ({
   item: 'bones',
@@ -71,6 +78,40 @@ test('xp-bearing drops (laid eggs) never merge', () => {
 
 test('merge radius is a local law, not a room-wide one', () => {
   assert.ok(DROP_MERGE_RADIUS >= 0.8 && DROP_MERGE_RADIUS <= 1.5);
+});
+
+test('THE PACK SPILLS: every carried slot empties into parcels', () => {
+  const slots: InvSlot[] = [
+    { item: 'bones', qty: 3 },
+    null,
+    { item: 'bronze_sword', qty: 1, roll: { rar: 'rare', seed: 41 } },
+    { item: 'bread', qty: 2, stolen: true },
+    null,
+  ];
+  const parcels = spillInventory(slots);
+  assert.deepEqual(parcels, [
+    { item: 'bones', qty: 3 },
+    { item: 'bronze_sword', qty: 1, roll: { rar: 'rare', seed: 41 } },
+    { item: 'bread', qty: 2, stolen: true },
+  ]);
+  // The pack is empty after the fall — the slots clear in place.
+  assert.ok(slots.every((s) => s === null));
+});
+
+test('an empty pack spills nothing', () => {
+  const slots: InvSlot[] = [null, null];
+  assert.deepEqual(spillInventory(slots), []);
+});
+
+test('spilled instance rolls and theft facets survive the fall whole', () => {
+  const roll = { rar: 'legendary' as const, seed: 7, ench: 'kindled_edge' };
+  const [parcel] = spillInventory([{ item: 'bronze_sword', qty: 1, roll, stolen: true }]);
+  assert.deepEqual(parcel?.roll, roll);
+  assert.equal(parcel?.stolen, true);
+});
+
+test('the spill outlives the walk back: ten to fifteen minutes', () => {
+  assert.ok(DEATH_SPILL_TTL_MS >= 10 * 60_000 && DEATH_SPILL_TTL_MS <= 15 * 60_000);
 });
 
 test('THE STOLEN FACET: provenance splits piles', () => {

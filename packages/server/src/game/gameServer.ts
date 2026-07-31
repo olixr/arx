@@ -361,7 +361,7 @@ import {
 } from '@arx/shared';
 import { AUTHORED_LOCKS, geographySnapshot, scaleNpcDef } from '@arx/content';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
-import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
+import { DEATH_SPILL_TTL_MS, DROP_MERGE_RADIUS, canMergeDrop, spillInventory } from './drops.js';
 import { SocialSystem } from './social.js';
 import { PartySystem } from './party.js';
 import { dungeonDiscoveryId, findDiscoveries } from './exploration.js';
@@ -920,6 +920,12 @@ interface DungeonInstance {
   x1: number;
   /** The keyholder. The run lives and dies with them. */
   ownerId: number;
+  /**
+   * Where the owner stood at the gate they turned the key in — the
+   * surface point their pack spills to if they fall inside (guests
+   * have the same promise via the guests map).
+   */
+  ownerReturn: { x: number; y: number };
   /** Spec identity the entry banner needs when a party member joins. */
   name: string;
   sigil: string;
@@ -6887,6 +6893,7 @@ export class GameServer {
       x0: origin.x,
       x1: origin.x + spec.size,
       ownerId: player.characterId,
+      ownerReturn: returnTo,
       name: spec.name,
       sigil: spec.sigil,
       theme: spec.theme,
@@ -11628,6 +11635,35 @@ export class GameServer {
         }
       }
       const pos = this.positions.must(eid);
+      // THE PACK SPILLS: everything carried hits the ground where you
+      // fell, unclaimed from the first beat — the fallen can walk back
+      // for it, and so can anyone else. Worn gear stays on the body,
+      // so the kit survives and the pack is the stake. A rift death
+      // spills at the surface gate instead: a pile on the rift floor
+      // would be a locked room (the key that opens it is IN the pack,
+      // and teardown orphans the band).
+      const inst = pos.y >= 8192 ? this.dungeonAt(Math.floor(pos.x), Math.floor(pos.y)) : null;
+      const spillAt = inst
+        ? inst.ownerId === player.characterId
+          ? inst.ownerReturn
+          : (inst.guests.get(player.characterId) ?? this.world.spawn)
+        : { x: pos.x, y: pos.y };
+      const parcels = spillInventory(player.inventory);
+      if (parcels.length > 0) {
+        const spillNow = Date.now();
+        const scatter = () => (Math.random() - 0.5) * 0.8;
+        for (const parcel of parcels) {
+          this.placeDrop(parcel.item, parcel.qty, spillAt.x + scatter(), spillAt.y + scatter(), {
+            ownerEid: null,
+            ownerUntil: 0,
+            despawnAt: spillNow + DEATH_SPILL_TTL_MS,
+            pickupAfter: spillNow + 400,
+            roll: parcel.roll,
+            ...(parcel.stolen ? { stolen: true as const } : {}),
+          });
+        }
+        player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      }
       // The claimed home bed answers first; everyone else wakes at the
       // nearest settled spawn — with one hearth in the world that's
       // the Waking Ring; future settlements shorten the walk back.
@@ -11644,9 +11680,21 @@ export class GameServer {
         t: 'chat',
         channel: 'system',
         text: bedside
-          ? 'You were defeated! You wake at your own bed.'
-          : 'You were defeated! You wake back at the nearest hearth.',
+          ? 'You went down. Kind hands carried you home to your own bed.'
+          : 'You went down. Kind hands carried you back to the nearest hearth.',
       });
+      if (parcels.length > 0) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: inst
+            ? 'Your pack spilled at the riftgate on the way out. It lies there a quarter hour, for whoever finds it first.'
+            : 'Your pack spilled where you fell. It lies there a quarter hour, for whoever finds it first.',
+        });
+      }
+      // The spill is real the moment it happens: write the emptied
+      // pack now, so quitting on the death screen keeps nothing.
+      this.savePlayer(eid);
     }
   }
 

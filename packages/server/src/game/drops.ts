@@ -1,5 +1,5 @@
 import { sameRoll } from '@arx/shared';
-import type { EntityId, ItemRoll, SkillId } from '@arx/shared';
+import type { EntityId, InvSlot, ItemRoll, SkillId } from '@arx/shared';
 
 /**
  * How far (tiles) a landing drop reaches to join an existing pile.
@@ -17,6 +17,46 @@ export interface DropLike {
   roll?: ItemRoll;
   /** The theft facet survives the ground (Phase 5). */
   stolen?: true;
+}
+
+/**
+ * How long a fallen player's spilled pack holds the ground. Long
+ * enough for the walk back from any hearth; short enough that a
+ * plundered camp doesn't wear yesterday's losses forever. The defeat
+ * message promises "a quarter hour" — keep the two in step.
+ */
+export const DEATH_SPILL_TTL_MS = 15 * 60_000;
+
+/** One parcel of a spilled pack, ready for the ground. */
+export interface SpilledSlot {
+  item: string;
+  qty: number;
+  roll?: ItemRoll;
+  stolen?: true;
+}
+
+/**
+ * THE PACK SPILLS: defeat empties every carried slot onto the ground.
+ * Worn equipment never spills (the kit on your back is yours to keep);
+ * the pack is the stake. Slots are cleared IN PLACE and returned as
+ * parcels carrying their instance rolls and theft facets whole, so a
+ * rolled sword hits the dirt as the same sword and stolen goods keep
+ * their history through the fall.
+ */
+export function spillInventory(slots: InvSlot[]): SpilledSlot[] {
+  const out: SpilledSlot[] = [];
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    if (!slot) continue;
+    out.push({
+      item: slot.item,
+      qty: slot.qty,
+      ...(slot.roll ? { roll: slot.roll } : {}),
+      ...(slot.stolen ? { stolen: true as const } : {}),
+    });
+    slots[i] = null;
+  }
+  return out;
 }
 
 /**
