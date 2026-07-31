@@ -69,10 +69,30 @@ export interface ItemRoll {
    * every swap, bank trip, and trade until another scroll replaces it.
    */
   ench?: string;
+  /**
+   * THE ENCHANTER'S HAND: inscription quality, as a percentage of a
+   * working's authored strength (QUALITY_FLOOR..QUALITY_CEIL).
+   *
+   * On a SCROLL it is the mark of whoever inscribed it. On GEAR it is
+   * the strength of the working bonded there. One field, one meaning:
+   * how well this working was done. Absent reads as QUALITY_BASE, so
+   * every scroll and every enchanted item that existed before this
+   * shipped is exactly as strong as it always was.
+   */
+  q?: number;
 }
 
 /** Sanity ceiling for wire/DB power values (above every skill cap). */
 export const MAX_ITEM_POWER = 120;
+
+/**
+ * Inscription quality bounds. A working done at the very edge of the
+ * enchanter's ability sits near the floor; a master's runs past 100.
+ * Baseline is what an unmarked instance reads as.
+ */
+export const QUALITY_FLOOR = 85;
+export const QUALITY_BASE = 100;
+export const QUALITY_CEIL = 115;
 
 /** Wire/DB guard for untrusted roll payloads. */
 export function isItemRoll(v: unknown): v is ItemRoll {
@@ -96,6 +116,16 @@ export function isItemRoll(v: unknown): v is ItemRoll {
   if (r.ench !== undefined && (typeof r.ench !== 'string' || r.ench.length === 0 || r.ench.length > 40)) {
     return false;
   }
+  if (r.q !== undefined) {
+    if (
+      typeof r.q !== 'number' ||
+      !Number.isInteger(r.q) ||
+      r.q < QUALITY_FLOOR ||
+      r.q > QUALITY_CEIL
+    ) {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -106,6 +136,7 @@ export function sameRoll(a?: ItemRoll, b?: ItemRoll): boolean {
     a.seed === b.seed &&
     (a.pwr ?? 0) === (b.pwr ?? 0) &&
     (a.coat?.id ?? '') === (b.coat?.id ?? '') &&
-    (a.ench ?? '') === (b.ench ?? '')
+    (a.ench ?? '') === (b.ench ?? '') &&
+    (a.q ?? QUALITY_BASE) === (b.q ?? QUALITY_BASE)
   );
 }

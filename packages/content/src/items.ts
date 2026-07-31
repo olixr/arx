@@ -1058,7 +1058,13 @@ const SCROLL_VALUE_BY_TIER: Record<EnchantTier, number> = {
 const scrollDefs: ItemDef[] = ENCHANT_DEFS.map((e, i) => ({
   id: `scroll_${e.id}`,
   name: `${e.name} Scroll`,
-  stackable: true,
+  // THE ENCHANTER'S HAND: a scroll carries the quality of the hand that
+  // inscribed it, so two Keen Edge scrolls are no longer the same
+  // object — exactly the dungeon-key law ("the instance roll IS the
+  // dungeon"), applied to inscriptions. Stacking would throw the roll
+  // away (addItem drops it for stackables) and with it the maker's
+  // mark, which is the whole point of the quality system.
+  stackable: false,
   value: SCROLL_VALUE_BY_TIER[e.tier],
   enchant: e.id,
   desc: `${e.desc} Use to bond onto your equipped ${e.slot === 'weapon' ? 'weapon' : e.slot + ' gear'}.`,

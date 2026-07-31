@@ -1,4 +1,5 @@
 import type { SkillId, StatusId } from '@arx/shared';
+import { QUALITY_BASE, QUALITY_CEIL, QUALITY_FLOOR } from '@arx/shared';
 import type { CombatStyle, ArxElement } from '../items.js';
 import type { GearSlot } from './types.js';
 
@@ -1396,18 +1397,168 @@ export function describeEffect(fx: EnchantEffect): string {
   }
 }
 
+// ------------------------------------------------ THE ENCHANTER'S HAND
+
+/**
+ * How well a working was done, and why it matters.
+ *
+ * Before this, a level-12 enchanter and a level-96 enchanter inscribed
+ * the identical scroll. Nothing about the craftsman survived into the
+ * craft, so there was no reason to seek out a master and no market
+ * above the recipe floor. Quality is the fix: it is the maker's mark,
+ * and it rides the scroll into whatever it is bonded to.
+ *
+ * THE MEASURE IS MASTERY, NOT LEVEL. What counts is how far past the
+ * work's own requirement the hand sits, so a level-99 enchanter turning
+ * out entry scrolls runs them perfectly, and that same enchanter's
+ * first masterwork at exactly level 80 comes out honest but plain. An
+ * absolute-level measure would have made the whole low band worthless
+ * to a master and unreachable to everyone else.
+ */
+export const QUALITY_AT_REQUIREMENT = 90;
+/** Quality gained per level of mastery past the requirement. */
+export const QUALITY_PER_LEVEL = 0.8;
+
+export function inscriptionQuality(skillLevel: number, recipeLevel: number, bonus = 0): number {
+  const mastery = Math.max(0, skillLevel - recipeLevel);
+  const raw = QUALITY_AT_REQUIREMENT + mastery * QUALITY_PER_LEVEL + bonus;
+  return Math.max(QUALITY_FLOOR, Math.min(QUALITY_CEIL, Math.round(raw)));
+}
+
+/** The band a quality sits in, for cards and bench copy. */
+export function qualityWord(q: number): string {
+  if (q >= 112) return 'masterwork';
+  if (q >= 105) return 'fine';
+  if (q >= 96) return 'true';
+  if (q >= QUALITY_AT_REQUIREMENT) return 'honest';
+  return 'rough';
+}
+
+/**
+ * RESONANCE. A piece that already carries a working of the same school
+ * accepts another of that school gladly; a different school has to be
+ * argued into the same steel, and the working lands weaker for it.
+ *
+ * This is a CHOICE WITH A SHAPE, not a dice roll. Nothing is ever
+ * destroyed and no materials are ever eaten by bad luck: the player can
+ * take the discord knowingly, or sunder the old working first and bond
+ * onto bare steel. Fail-and-lose-your-reagents is a rage mechanic and
+ * this system will not have one.
+ */
+export const RESONANCE_BONUS = 6;
+export const DISCORD_PENALTY = 8;
+
+export function resonanceShift(
+  incoming: ArxElement,
+  standing: ArxElement | undefined,
+): number {
+  if (!standing) return 0;
+  return standing === incoming ? RESONANCE_BONUS : -DISCORD_PENALTY;
+}
+
+/**
+ * Quality scales MAGNITUDE and never TIMING. A finer inscription sits
+ * deeper in the steel; it does not make a working wake more often, rest
+ * less, or reach further. Chances, cooldowns, durations, radii and jump
+ * counts are all authored balance and stay exactly where the designer
+ * put them, which keeps a masterwork a stronger version of the working
+ * rather than a different one.
+ */
+function scaleN(v: number, q: number): number {
+  const out = (v * q) / 100;
+  // Anything authored as a whole number stays whole, and never rounds
+  // away to nothing: a +1 that became +0 would read as a broken item.
+  return Number.isInteger(v) ? Math.max(v > 0 ? 1 : v, Math.round(out)) : Math.round(out * 100) / 100;
+}
+
+/**
+ * QUALITY IS FELT WHERE THERE IS SOMETHING TO FEEL IT IN, and this is a
+ * deliberate consequence rather than an oversight. A +/-15% band around
+ * a whole number of 1, 2 or 3 rounds back to itself, so a small working
+ * reads the same at every quality while a Worldheart's +45 maxHp or a
+ * Sunlance's 26-damage bolt move properly.
+ *
+ * The alternative was biasing the rounding so 110% of 3 became 4, which
+ * turns every small working into a coin flip worth 33% of its own
+ * strength. A +1 is a +1; craftsmanship shows on work that has room to
+ * show it. The card prints the percentage either way, so nothing is
+ * hidden from the player.
+ */
+
+function scaleAction(a: ProcAction, q: number): ProcAction {
+  switch (a.do) {
+    case 'status':
+      return { ...a, power: scaleN(a.power, q) };
+    case 'nova':
+      return { ...a, damage: scaleN(a.damage, q) };
+    case 'bolt':
+      return { ...a, damage: scaleN(a.damage, q) };
+    case 'chain':
+      return { ...a, damage: scaleN(a.damage, q) };
+    case 'ward':
+      return { ...a, absorb: scaleN(a.absorb, q) };
+    case 'heal':
+      return { ...a, amount: scaleN(a.amount, q) };
+    case 'surge':
+      return { ...a, pct: scaleN(a.pct, q) };
+    // A yield working hands over whole objects and a reveal marks whole
+    // things; there is no fraction of either to scale.
+    case 'cleanse':
+    case 'yield':
+    case 'reveal':
+      return a;
+  }
+}
+
+export function scaleEffect(fx: EnchantEffect, q: number): EnchantEffect {
+  if (q === QUALITY_BASE) return fx;
+  switch (fx.kind) {
+    case 'skill':
+    case 'maxHp':
+    case 'regen':
+    case 'armor':
+    case 'thorns':
+      return { ...fx, amount: scaleN(fx.amount, q) };
+    case 'styleDmg':
+    case 'elementDmg':
+    case 'cooldown':
+    case 'speed':
+    case 'crit':
+      return { ...fx, pct: scaleN(fx.pct, q) };
+    case 'onKillHaste':
+      return { ...fx, ticks: scaleN(fx.ticks, q) };
+    case 'lifesteal':
+      return { ...fx, frac: scaleN(fx.frac, q) };
+    case 'backstab':
+      return { ...fx, bonus: scaleN(fx.bonus, q) };
+    case 'onHitStatus':
+      // Power only. The chance a coated edge catches is balance, not
+      // craftsmanship.
+      return { ...fx, power: scaleN(fx.power, q) };
+    case 'proc':
+      return { ...fx, action: scaleAction(fx.action, q) };
+  }
+}
+
 /** Effects granted by an instance = native gear effects + its enchant. */
 export function instanceEffects(
   nativeEffects: EnchantEffect[] | undefined,
   ench: string | undefined,
+  /**
+   * The bonded working's inscription quality. Scales the ENCHANT's
+   * effects only: a def's native effects are the item's own identity
+   * and no enchanter's hand touches them.
+   */
+  quality = QUALITY_BASE,
 ): EnchantEffect[] {
   const e = enchantDef(ench);
   if (!e) return nativeEffects ?? [];
-  const carried = e.effects.map((fx) =>
+  const carried = e.effects.map((fx0) => {
+    const fx = scaleEffect(fx0, quality);
     // A proc inherits its carrier's element unless it names its own —
     // so an ember edge's working burns ember without saying so twice.
-    fx.kind === 'proc' && fx.element === undefined ? { ...fx, element: e.element } : fx,
-  );
+    return fx.kind === 'proc' && fx.element === undefined ? { ...fx, element: e.element } : fx;
+  });
   return nativeEffects ? [...nativeEffects, ...carried] : carried;
 }
 

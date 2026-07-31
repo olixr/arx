@@ -10,6 +10,7 @@ function rowRoll(
   coatId?: string | null,
   coatUntil?: number | null,
   enchId?: string | null,
+  quality?: number | null,
 ): ItemRoll | undefined {
   if (rar === null || seed === null || !isRarityTier(rar)) return undefined;
   const roll: ItemRoll = { rar, seed };
@@ -19,6 +20,9 @@ function rowRoll(
     roll.coat = { id: coatId, until: coatUntil };
   }
   if (enchId != null) roll.ench = enchId;
+  // THE ENCHANTER'S HAND: absent quality reads as baseline, so every
+  // instance that predates the system is exactly as strong as it was.
+  if (quality != null) roll.q = quality;
   return roll;
 }
 
@@ -724,9 +728,10 @@ export class AccountStore {
       coat_id: string | null;
       coat_until: number | null;
       ench_id: string | null;
+      quality: number | null;
       stolen: number | null;
     }>(
-      'SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, stolen FROM inventory_slots WHERE character_id = ?',
+      'SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, quality, stolen FROM inventory_slots WHERE character_id = ?',
       [characterId],
     );
     const slots = new Array<{ item: string; qty: number; roll?: ItemRoll; stolen?: true } | null>(
@@ -737,7 +742,7 @@ export class AccountStore {
         slots[row.slot] = {
           item: row.item_id,
           qty: row.qty,
-          roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id),
+          roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id, row.quality),
           ...(row.stolen ? { stolen: true as const } : {}),
         };
       }
@@ -876,6 +881,35 @@ export class AccountStore {
         fallowUntil,
         originCell,
       ],
+    );
+  }
+
+  // --------------------------------------------- the small finds
+
+  /**
+   * Every cell with cleared-find bits (THE SMALL FINDS ledger —
+   * deviations only: cells whose finds all stand have no row).
+   */
+  async loadMinorCells(): Promise<
+    Array<{ cellX: number; cellY: number; epoch: number; cleared: number }>
+  > {
+    return this.db.query(
+      'SELECT cell_x AS "cellX", cell_y AS "cellY", epoch, cleared FROM world_minors',
+    ) as ReturnType<AccountStore['loadMinorCells']>;
+  }
+
+  /**
+   * Stamp a cell's cleared-slot mask for the given epoch. A re-deal
+   * (new epoch) overwrites wholesale — stale bits never survive the
+   * turn.
+   */
+  upsertMinorCell(cellX: number, cellY: number, epoch: number, cleared: number): void {
+    this.db.fire(
+      'INSERT INTO world_minors (cell_x, cell_y, epoch, cleared, first_seen_at) ' +
+        'VALUES (?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (cell_x, cell_y) DO UPDATE SET epoch = excluded.epoch, ' +
+        'cleared = excluded.cleared',
+      [cellX, cellY, epoch, cleared, Date.now()],
     );
   }
 
@@ -1038,15 +1072,16 @@ export class AccountStore {
       coat_id: string | null;
       coat_until: number | null;
       ench_id: string | null;
+      quality: number | null;
     }>(
-      'SELECT slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id FROM equipment WHERE character_id = ?',
+      'SELECT slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality FROM equipment WHERE character_id = ?',
       [characterId],
     );
     const out: Record<string, { id: string; roll?: ItemRoll }> = {};
     for (const row of rows) {
       out[row.slot] = {
         id: row.item_id,
-        roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id),
+        roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id, row.quality),
       };
     }
     return out;
@@ -1061,12 +1096,12 @@ export class AccountStore {
       for (const [slot, worn] of Object.entries(equipment)) {
         if (worn) {
           await tx.run(
-            'INSERT INTO equipment (character_id, slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO equipment (character_id, slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
               characterId, slot, worn.id,
               worn.roll?.rar ?? null, worn.roll?.seed ?? null, worn.roll?.pwr ?? null,
               worn.roll?.coat?.id ?? null, worn.roll?.coat?.until ?? null,
-              worn.roll?.ench ?? null,
+              worn.roll?.ench ?? null, worn.roll?.q ?? null,
             ],
           );
         }
@@ -1089,13 +1124,14 @@ export class AccountStore {
       coat_id: string | null;
       coat_until: number | null;
       ench_id: string | null;
+      quality: number | null;
     }>(
-      'SELECT id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id FROM bank_gear WHERE character_id = ? ORDER BY id',
+      'SELECT id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality FROM bank_gear WHERE character_id = ? ORDER BY id',
       [characterId],
     );
     const out: Array<{ id: number; item: string; roll: ItemRoll }> = [];
     for (const row of rows) {
-      const roll = rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id);
+      const roll = rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id, row.quality);
       if (roll) out.push({ id: row.id, item: row.item_id, roll });
     }
     return out;
@@ -1103,10 +1139,10 @@ export class AccountStore {
 
   async insertBankGear(characterId: number, item: string, roll: ItemRoll): Promise<number> {
     const row = await this.db.get<{ id: number }>(
-      'INSERT INTO bank_gear (character_id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+      'INSERT INTO bank_gear (character_id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
       [
         characterId, item, roll.rar, roll.seed, roll.pwr ?? null,
-        roll.coat?.id ?? null, roll.coat?.until ?? null, roll.ench ?? null,
+        roll.coat?.id ?? null, roll.coat?.until ?? null, roll.ench ?? null, roll.q ?? null,
       ],
     );
     return row!.id;
@@ -1222,12 +1258,12 @@ export class AccountStore {
         const slot = slots[i];
         if (slot) {
           await tx.run(
-            'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, stolen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, quality, stolen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
               characterId, i, slot.item, slot.qty,
               slot.roll?.rar ?? null, slot.roll?.seed ?? null, slot.roll?.pwr ?? null,
               slot.roll?.coat?.id ?? null, slot.roll?.coat?.until ?? null,
-              slot.roll?.ench ?? null,
+              slot.roll?.ench ?? null, slot.roll?.q ?? null,
               slot.stolen ? 1 : null,
             ],
           );

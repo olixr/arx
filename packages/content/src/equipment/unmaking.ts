@@ -94,6 +94,10 @@ export function unmakingOf(itemId: string, roll?: ItemRoll): Unmaking | null {
   if (ench) {
     const reagent = ELEMENT_REAGENT[ench.element];
     const spent = ESSENCE_BY_TIER[ench.tier];
+    // Half, rounded down, and quality does NOT lift it: what comes back
+    // is a share of the reagents the scroll ate, and a finer hand did
+    // not use finer reagents. Letting quality raise the return would
+    // hand a master a way to profit by breaking their own work.
     const back = Math.floor(spent / 2);
     if (reagent && back > 0) yields.push({ item: reagent, qty: back });
   }

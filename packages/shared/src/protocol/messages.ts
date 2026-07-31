@@ -127,6 +127,22 @@ export interface C2SUnmake {
   slot: number;
 }
 
+/**
+ * SUNDERING: draw the working back out of a piece and keep the piece.
+ * The way out of a bad RESONANCE pairing (see enchants.ts).
+ */
+export interface C2SSunder {
+  t: 'sunder';
+  /** Pack slot index. Ignored when `worn` is given. */
+  slot: number;
+  /**
+   * Sunder the piece WORN in this slot instead. Bonding targets worn
+   * gear, so sundering has to reach it too, or every school change
+   * would mean unequipping first for no reason a player could name.
+   */
+  worn?: EquipSlot;
+}
+
 /** Craft a recipe (validated against station adjacency server-side). */
 export interface C2SCraft {
   t: 'craft';
@@ -434,6 +450,7 @@ export type C2SMessage =
   | C2SCraft
   | C2SCraftStop
   | C2SUnmake
+  | C2SSunder
   | C2SBank
   | C2SShop
   | C2SBuild

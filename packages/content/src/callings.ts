@@ -57,7 +57,8 @@ export type PerkId =
   | 'greatReach' //          tryPlayerAttack (twohand): +reach, tiles
   | 'greatExecute' //        meleeSwing (twohand): +damage fraction vs targets under 25% hp
   | 'marchArmor' //          damagePlayer mitigate: +armor while moving
-  | 'warSchooling'; //       effectiveLevel: +levels to the four weapon schools
+  | 'warSchooling' //        effectiveLevel: +levels to the four weapon schools
+  | 'inscribeQuality'; //    tickCraft: +quality points on every inscription
 
 export type CallingEffect =
   | { kind: 'gear'; effect: EnchantEffect }
@@ -562,9 +563,14 @@ const defs: CallingDef[] = [
     unlockLevel: 60,
     focusCost: 2,
     name: 'Deep Sigils',
-    desc: 'Your workings settle deeper into the steel — cooldowns shorten.',
+    // THE ENCHANTER'S HAND: this Calling always SAID its workings sat
+    // deeper in the steel and then quietly handed out a cooldown, which
+    // is a personal buff and not a fact about the craft at all. Quality
+    // is what "deeper" actually means now, so the text is finally true
+    // and the trade's own Calling is about the trade.
+    desc: 'Your workings settle deeper into the steel. Every inscription you make runs truer.',
     color: '#8a6ac8',
-    effect: { kind: 'gear', effect: { kind: 'cooldown', pct: 3 } },
+    effect: { kind: 'perk', perk: 'inscribeQuality', magnitude: 5 },
   },
   // ---------------------------------------------------------- beastcraft
   {

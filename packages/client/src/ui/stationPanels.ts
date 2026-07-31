@@ -2,6 +2,8 @@ import {
   Tile,
   diagWallInfo,
   levelForXp,
+  type EquippedItem,
+  type EquipSlot,
   type InvSlot,
   type ItemRoll,
   type SkillXp,
@@ -13,6 +15,9 @@ import {
   CROP_BY_SEED,
   buildableGround,
   canUnmake,
+  enchantDef,
+  inscriptionQuality,
+  qualityWord,
   unmakingOf,
   shopDef,
   instanceName,
@@ -175,8 +180,10 @@ export class StationPanels {
    * one screen because they are one trade and they feed each other.
    */
   private craftMode: 'make' | 'unmake' = 'make';
-  /** The pack slot the unmaking bench is laying out. */
+  /** The pack slot the unmaking bench is laying out (-1 = a worn piece). */
   private unmakeSel: number | null = null;
+  /** Set when the bench's subject is on the body instead of in the pack. */
+  private unmakeWorn: EquipSlot | undefined = undefined;
   /**
    * The slot the player has asked to break and not yet confirmed.
    * Destroying gear is irreversible, so it takes two presses and the
@@ -206,8 +213,12 @@ export class StationPanels {
     private readonly onPickBuildable: (id: string) => void,
     /** THE UNMAKING: break the gear in this pack slot down for dust. */
     private readonly onUnmake: (slot: number) => void = () => {},
+    /** SUNDERING: draw the working out of this slot, keep the piece. */
+    private readonly onSunder: (slot: number, worn?: EquipSlot) => void = () => {},
     /** The live pack — feeds every have/need figure. */
     private readonly getInventory: () => InvSlot[] = () => [],
+    /** The worn kit — the unmaking bench sunders straight off the body. */
+    private readonly getEquipment: () => Partial<Record<EquipSlot, EquippedItem>> = () => ({}),
   ) {}
   // Close chips + header dressing come from ui/panel.ts (dressPanel),
   // wired in main — one anatomy for every screen in the game.
@@ -775,10 +786,27 @@ export class StationPanels {
    */
   private renderUnmake(skills: SkillXp): void {
     const inv = this.getInventory();
-    const rows: Array<{ slot: number; item: string; roll?: ItemRoll; stolen?: true }> = [];
+    const rows: Array<{
+      slot: number;
+      item: string;
+      roll?: ItemRoll;
+      stolen?: true;
+      /** Set when the piece is on the body rather than in the pack. */
+      worn?: EquipSlot;
+    }> = [];
     inv.forEach((s, i) => {
       if (s && canUnmake(s.item)) rows.push({ slot: i, item: s.item, roll: s.roll, stolen: s.stolen });
     });
+    // Worn pieces that carry a working are listed too, so a player who
+    // wants to change a school does not have to guess that the bench
+    // only sees their pack. They can be SUNDERED but never unmade: a
+    // Destroy button aimed at the armor you are wearing is a footgun,
+    // not a feature.
+    for (const [wslot, w] of Object.entries(this.getEquipment())) {
+      if (w?.roll?.ench) {
+        rows.push({ slot: -1, item: w.id, roll: w.roll, worn: wslot as EquipSlot });
+      }
+    }
 
     if (rows.length === 0) {
       const empty = document.createElement('div');
@@ -788,8 +816,12 @@ export class StationPanels {
       this.craftList.appendChild(empty);
       return;
     }
-    if (this.unmakeSel === null || !rows.some((r) => r.slot === this.unmakeSel)) {
-      this.unmakeSel = rows[0]!.slot;
+    if (
+      this.unmakeSel === null ||
+      !rows.some((r) => (r.worn ? -1 : r.slot) === this.unmakeSel && r.worn === this.unmakeWorn)
+    ) {
+      this.unmakeSel = rows[0]!.worn ? -1 : rows[0]!.slot;
+      this.unmakeWorn = rows[0]!.worn;
     }
 
     for (const row of rows) {
@@ -797,14 +829,15 @@ export class StationPanels {
       const dust = result?.yields.find((y) => y.item === 'arcane_dust')?.qty ?? 0;
       this.craftList.appendChild(
         this.ledgerRow({
-          key: `unmake:${row.slot}`,
+          key: `unmake:${row.worn ?? row.slot}`,
           iconUrl: itemIconUrl(row.item, 40),
           name: instanceName(row.item, row.roll),
-          note: row.stolen ? 'hot' : `${dust} dust`,
+          note: row.worn ? 'worn' : row.stolen ? 'hot' : enchantDef(row.roll?.ench) ? 'worked' : `${dust} dust`,
           noteTone: row.stolen ? 'lock' : 'ok',
-          selected: this.unmakeSel === row.slot,
+          selected: this.unmakeSel === (row.worn ? -1 : row.slot) && this.unmakeWorn === row.worn,
           onPick: () => {
-            this.unmakeSel = row.slot;
+            this.unmakeSel = row.worn ? -1 : row.slot;
+            this.unmakeWorn = row.worn;
             this.unmakeArmed = null;
             this.renderCraft();
           },
@@ -812,7 +845,9 @@ export class StationPanels {
       );
     }
 
-    const picked = rows.find((r) => r.slot === this.unmakeSel)!;
+    const picked = rows.find(
+      (r) => (r.worn ? -1 : r.slot) === this.unmakeSel && r.worn === this.unmakeWorn,
+    )!;
     const result = unmakingOf(picked.item, picked.roll);
     if (!result) return;
     const pickedName = instanceName(picked.item, picked.roll);
@@ -862,6 +897,36 @@ export class StationPanels {
       : 'The piece is destroyed. Whatever is bound into it comes back as dust; the rest is gone.';
     warn.appendChild(flavor);
     this.craftDetail.appendChild(warn);
+
+    // SUNDERING is offered first and framed as the gentler answer: most
+    // players opening this bench with an enchanted piece want the
+    // working gone, not the piece gone.
+    const bonded = enchantDef(picked.roll?.ench);
+    if (bonded) {
+      this.craftDetail.appendChild(sectionHead('Or draw the working out'));
+      const note = document.createElement('div');
+      note.className = 'work-result';
+      const nf = document.createElement('div');
+      nf.className = 'work-result-flavor';
+      nf.textContent = `Sundering strips the ${bonded.name} and leaves the piece whole. Bare steel takes the next working cleanly; worked steel of another school fights it.`;
+      note.appendChild(nf);
+      this.craftDetail.appendChild(note);
+      const sunderRow = document.createElement('div');
+      sunderRow.className = 'work-actions';
+      sunderRow.appendChild(
+        bigButton(
+          'Sunder',
+          `sunder:${picked.worn ?? picked.slot}`,
+          () => this.onSunder(picked.slot, picked.worn),
+          { minor: true, acta: 'Sunder' },
+        ),
+      );
+      this.craftDetail.appendChild(sunderRow);
+    }
+
+    // A worn piece is offered for sundering and nothing else. A Destroy
+    // button aimed at the armor you are currently wearing is a footgun.
+    if (picked.worn) return;
 
     const actions = document.createElement('div');
     actions.className = 'work-actions';
@@ -999,6 +1064,7 @@ export class StationPanels {
     const level = levelForXp(skills[recipe.skill] ?? 0);
     const locked = level < recipe.levelReq;
     const count = this.makeable(recipe);
+    const outIsInscription = itemDef(recipe.output.item)?.enchant !== undefined;
 
     const head = document.createElement('div');
     head.className = 'work-head';
@@ -1037,6 +1103,15 @@ export class StationPanels {
     fact(locked ? '—' : `× ${count}`, 'you can make', locked ? undefined : count > 0 ? 'var(--green)' : 'var(--red-soft)');
     fact(`${level}`, `your ${recipe.skill}`, locked ? 'var(--red-soft)' : undefined);
     if (recipe.output.qty > 1) fact(`× ${recipe.output.qty}`, 'per make');
+    // THE ENCHANTER'S HAND: an inscription carries the mark of the hand
+    // that made it, so the bench says what YOUR hand will make before
+    // you spend the reagents. Shown without the Calling bonus, which
+    // the panel cannot see — so the figure is a floor, never a promise
+    // the craft then fails to keep.
+    if (!locked && outIsInscription) {
+      const q = inscriptionQuality(level, recipe.levelReq);
+      fact(`${q}%`, `a ${qualityWord(q)} inscription`, q >= 105 ? 'var(--green)' : undefined);
+    }
     this.craftDetail.appendChild(facts);
 
     this.craftDetail.appendChild(sectionHead('Materials'));

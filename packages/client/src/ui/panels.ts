@@ -1,4 +1,5 @@
 import {
+  QUALITY_BASE,
   DUNGEON_TIER_LAWS,
   PASSIVES,
   HIDDEN_SKILLS,
@@ -31,6 +32,8 @@ import {
   describeEffect,
   effectiveReq,
   enchantDef,
+  instanceEffects,
+  qualityWord,
   instanceName,
   isTwoHanded,
   itemDef,
@@ -729,10 +732,20 @@ export class Panels {
       // The bonded enchantment — permanent, tier-colored, spelled out.
       const ench = enchantDef(roll?.ench);
       if (ench) {
-        stat('Enchant', ench.name, ELEMENT_COLORS[ench.element]);
+        // THE ENCHANTER'S HAND: the working's own quality is part of
+        // what this piece IS, so the card names it beside the working.
+        const q = roll?.q ?? QUALITY_BASE;
+        stat(
+          'Enchant',
+          q === QUALITY_BASE ? ench.name : `${ench.name} · ${qualityWord(q)} (${q}%)`,
+          ELEMENT_COLORS[ench.element],
+        );
         const ed = document.createElement('div');
         ed.className = 'card-passive-desc';
-        ed.textContent = ench.effects.map(describeEffect).join(' · ');
+        // Scaled, so the numbers on the card are the numbers in the
+        // fight. A card that showed the authored strength while the
+        // body felt a scaled one would be lying about the item.
+        ed.textContent = instanceEffects(undefined, ench.id, q).map(describeEffect).join(' · ');
         this.card.appendChild(ed);
       }
       // A re-issued instance wears its power openly — the heirloom row.
@@ -773,11 +786,20 @@ export class Panels {
     if (def.enchant) {
       const se = enchantDef(def.enchant);
       if (se) {
+        const q = roll?.q ?? QUALITY_BASE;
         stat('Enchant', `${se.name} · tier ${se.tier}`, ELEMENT_COLORS[se.element]);
+        // The maker's mark. This is the whole reason one Keen Edge
+        // scroll is worth more than another, so it reads before the
+        // slot line rather than buried under the effects.
+        stat(
+          'Inscription',
+          `${qualityWord(q)} · ${q}%`,
+          q >= 105 ? '#7ac47a' : q < QUALITY_BASE ? '#c4a35a' : '#c4b590',
+        );
         stat('Applies to', se.slot === 'weapon' ? 'weapons' : `${se.slot} gear`, '#c4b590');
         const sd = document.createElement('div');
         sd.className = 'card-passive-desc';
-        sd.textContent = se.effects.map(describeEffect).join(' · ');
+        sd.textContent = instanceEffects(undefined, se.id, q).map(describeEffect).join(' · ');
         this.card.appendChild(sd);
       }
     }

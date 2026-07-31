@@ -281,7 +281,7 @@ export interface StrikeEffects {
 export function weaponStrikeEffects(itemId: string, roll?: ItemRoll): StrikeEffects {
   const out: StrikeEffects = { onHit: [], lifestealFrac: 0, backstabBonus: 0, procs: [] };
   const def = itemDef(itemId);
-  for (const fx of instanceEffects(def?.gear?.effects, roll?.ench)) {
+  for (const fx of instanceEffects(def?.gear?.effects, roll?.ench, roll?.q)) {
     if (fx.kind === 'proc') {
       if (isStrikeTrigger(fx.trigger.on)) addProc(out.procs, fx);
     } else if (fx.kind === 'onHitStatus') {
@@ -328,7 +328,9 @@ export function aggregateGearStats(
     }
     // Native effects + enchant — the aggregate channels only; strike
     // channels stay with the weapon instance (weaponStrikeEffects).
-    for (const fx of instanceEffects(def.gear?.effects, worn.roll?.ench)) {
+    // THE ENCHANTER'S HAND: the bonded working folds in at the strength
+    // it was inscribed at, so a master's scroll is felt in the numbers.
+    for (const fx of instanceEffects(def.gear?.effects, worn.roll?.ench, worn.roll?.q)) {
       foldEffect(out, fx);
     }
   }

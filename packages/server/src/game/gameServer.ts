@@ -41,6 +41,9 @@ import {
   type Look,
   type InvSlot,
   MAX_ITEM_POWER,
+  QUALITY_BASE,
+  QUALITY_CEIL,
+  QUALITY_FLOOR,
   type ItemRoll,
   type EquippedItem,
   type SkillId,
@@ -108,6 +111,9 @@ import {
   pickRarity,
   canUnmake,
   ELEMENT_COLORS,
+  inscriptionQuality,
+  qualityWord,
+  resonanceShift,
   enchantDef,
   unmakingOf,
   type ArxElement,
@@ -225,6 +231,12 @@ import {
   type PoiContext,
   type PoiSite,
 } from '../world/pois.js';
+import {
+  composeFinds,
+  findsForCell,
+  findsZoneId,
+  type MinorFind,
+} from '../world/finds.js';
 import { DARK_BAND_Y, groundProbeAt } from '@arx/content';
 import {
   COMBO_GRACE_TICKS,
@@ -1172,6 +1184,9 @@ const BONDING_VOICE: Record<EnchantTier, string> = {
   5: 'takes the light out of the room and gives back its own',
 };
 
+/** Enchanting xp for drawing a working back out of a piece. */
+const SUNDER_XP = 45;
+
 /** One sample of every action shape, for the /proc dev lever. */
 const DEV_PROC_ACTIONS: Record<string, ProcAction> = {
   status: { do: 'status', status: 'burn', power: 2, ticks: 60 },
@@ -1314,6 +1329,8 @@ interface Perks {
   gatherSpeed: Partial<Record<SkillId, number>>;
   materialSave: Partial<Record<SkillId, number>>;
   craftSpeed: Partial<Record<SkillId, number>>;
+  /** THE ENCHANTER'S HAND: quality points added to every inscription. */
+  inscribeQuality: number;
 }
 
 function defaultPerks(): Perks {
@@ -1349,6 +1366,7 @@ function defaultPerks(): Perks {
     gatherSpeed: {},
     materialSave: {},
     craftSpeed: {},
+    inscribeQuality: 0,
   };
 }
 
@@ -1692,6 +1710,27 @@ export class GameServer {
   >();
   /** spawnPoints index → owning POI cell key (cleared-wipe detection). */
   private readonly poiSpawnCells = new Map<number, string>();
+  /**
+   * THE SMALL FINDS (lived-in-land Phase 2) — the texture layer's
+   * whole runtime state, kept beside the site machinery, never inside
+   * it. minorLedger mirrors world_minors (deviations only: rows exist
+   * once a find has been cleared; bits belong to their epoch and stop
+   * matching after a turn). findsLive is per-uptime standing state.
+   */
+  private readonly minorLedger = new Map<string, { epoch: number; cleared: number }>();
+  private readonly findsLive = new Map<
+    string,
+    { zoneId: string; spawnIdx: number[]; spawnSlots: number[]; finds: MinorFind[] }
+  >();
+  /** spawnPoints index → owning finds cell + slot (per-slot wipes). */
+  private readonly minorSpawnSlots = new Map<number, { key: string; slot: number }>();
+  /**
+   * THE DEN IS THE SOURCE: standing UNCLEARED habitat finds by
+   * `<cellKey>#<slot>` — the wild spawner musters matching knots at
+   * these mouths; clearing the find deletes the entry and the pull
+   * goes quiet.
+   */
+  private readonly habitatFinds = new Map<string, { habitat: string; x: number; y: number }>();
   /** POI prefab library; null until initPois — tickPois no-ops before boot wiring. */
   private poiPrefabs: Map<string, PrefabDef> | null = null;
   /**
@@ -4130,6 +4169,22 @@ export class GameServer {
             text: `Your hands outdo themselves: a ${rar} ${instanceName(recipe.output.item, roll)}!`,
           });
         }
+      } else if (itemDef(recipe.output.item)?.enchant) {
+        // THE ENCHANTER'S HAND: an inscription carries the mark of the
+        // hand that made it. Quality is MASTERY over this particular
+        // work, not absolute level, so a master's entry scrolls run
+        // perfect and their first masterwork comes out honest.
+        const q = inscriptionQuality(level, recipe.levelReq, player.perks.inscribeQuality);
+        for (let i = 0; i < recipe.output.qty; i++) {
+          addItem(player.inventory, recipe.output.item, 1, { rar: 'common', seed: 0, q });
+        }
+        if (q >= 105) {
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `The sigils settle true. A ${qualityWord(q)} inscription, ${q} on the mark.`,
+          });
+        }
       } else {
         addItem(player.inventory, recipe.output.item, recipe.output.qty);
       }
@@ -5114,6 +5169,7 @@ export class GameServer {
     extras: {
       discovered?: readonly string[];
       calm?: ReadonlyArray<{ cellX: number; cellY: number; calmUntil: number }>;
+      minors?: ReadonlyArray<{ cellX: number; cellY: number; epoch: number; cleared: number }>;
     } = {},
   ): void {
     this.poiPrefabs = loadPoiPrefabs(config.dataDir);
@@ -5121,6 +5177,9 @@ export class GameServer {
     for (const key of extras.discovered ?? []) this.discoveredPoiCells.add(key);
     for (const c of extras.calm ?? []) {
       this.frontierCalm.set(poiCellKey(c.cellX, c.cellY), c.calmUntil);
+    }
+    for (const m of extras.minors ?? []) {
+      this.minorLedger.set(poiCellKey(m.cellX, m.cellY), { epoch: m.epoch, cleared: m.cleared });
     }
     let sites = 0;
     for (const row of rows) {
@@ -6602,6 +6661,7 @@ export class GameServer {
     }
     if (!row.site) {
       this.poiLive.set(key, { spawnIdx: [] });
+      this.standFinds(cellX, cellY, row.epoch, null);
       return null;
     }
     // A hearth-tied squat faces the claim it covets — the worn track,
@@ -6614,6 +6674,7 @@ export class GameServer {
       // the row (an edit or revert can bring it back).
       console.warn(`[poi] cell ${key}: cannot compose '${row.site.defId}' — content missing`);
       this.poiLive.set(key, { spawnIdx: [] });
+      this.standFinds(cellX, cellY, row.epoch, { x: row.site.anchorX, y: row.site.anchorY });
       return null;
     }
     this.world.addZone(zone);
@@ -6650,11 +6711,59 @@ export class GameServer {
       }
     }
     this.poiLive.set(key, { zoneId: zone.id, spawnIdx });
+    this.standFinds(cellX, cellY, row.epoch, { x: row.site.anchorX, y: row.site.anchorY });
     console.log(
       `[poi] ${row.site.defId} (${row.site.prefabId}) stands at ` +
         `${row.site.anchorX},${row.site.anchorY} — tier ${row.site.tier}`,
     );
     return row.site;
+  }
+
+  /**
+   * THE SMALL FINDS half of a cell's materialization: decide the
+   * lattice (pure), compose the ONE finds zone, stand it through the
+   * same addZone/registerSpawns doors, and honor the cleared bits —
+   * a wiped find stays a carcass for the cell's whole epoch. Runs
+   * with every cell materialization (site, empty, or carcass alike);
+   * the epoch turn re-deals it with everything else. Finds mint no
+   * chart markers and no ceremonies (THE QUIET CHART LAW) and bank no
+   * renewal credits (conservation owes the world its TROUBLE, not its
+   * texture).
+   */
+  private standFinds(
+    cellX: number,
+    cellY: number,
+    epoch: number,
+    siteAnchor: { x: number; y: number } | null,
+  ): void {
+    const key = poiCellKey(cellX, cellY);
+    if (this.findsLive.has(key)) return;
+    const ctx = this.poiCtx();
+    const finds = findsForCell(config.worldSeed, cellX, cellY, epoch, ctx, siteAnchor);
+    if (finds.length === 0) return;
+    const composed = composeFinds(config.worldSeed, cellX, cellY, epoch, finds, ctx);
+    if (!composed) return;
+    const { zone, spawnSlots } = composed;
+    this.world.addZone(zone);
+    this.dropClientChunks(zone);
+    const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
+    const ledger = this.minorLedger.get(key);
+    const cleared = ledger && ledger.epoch === epoch ? ledger.cleared : 0;
+    for (const [j, idx] of spawnIdx.entries()) {
+      const slot = spawnSlots[j]!;
+      this.minorSpawnSlots.set(idx, { key, slot });
+      // A cleared slot's whisper stays down for the whole epoch.
+      if ((cleared >>> slot) & 1) {
+        const s = this.spawnPoints[idx];
+        if (s?.active) s.active = false;
+      }
+    }
+    for (const f of finds) {
+      if (f.habitat === undefined) continue;
+      if ((cleared >>> f.slot) & 1) continue;
+      this.habitatFinds.set(`${key}#${f.slot}`, { habitat: f.habitat, x: f.anchorX, y: f.anchorY });
+    }
+    this.findsLive.set(key, { zoneId: zone.id, spawnIdx, spawnSlots, finds });
   }
 
   /**
@@ -6691,6 +6800,38 @@ export class GameServer {
    * (POI_RESPAWN_MIN_SEC from the wipe) to loot, then the veil's den
    * musters anew — the plan's fixed points never churn.
    */
+  /**
+   * Find-wipe watch (THE SMALL FINDS): when the last living fighting
+   * body of a SLOT falls, the slot's bit stamps into world_minors for
+   * the cell's epoch, the whisper stands down for good, and the
+   * habitat pull goes quiet. No ceremony, no flags, no credits, no
+   * chart traffic — a cleared find is just a quieter piece of ground
+   * until the epoch turns and the land re-deals.
+   */
+  private noteMinorKill(spawnIndex: number): void {
+    const ref = this.minorSpawnSlots.get(spawnIndex);
+    if (ref === undefined) return;
+    const fl = this.findsLive.get(ref.key);
+    if (!fl) return;
+    for (const [j, idx] of fl.spawnIdx.entries()) {
+      if (fl.spawnSlots[j] !== ref.slot) continue;
+      const s = this.spawnPoints[idx];
+      if (s?.active && s.eid !== null && this.poiSpawnFights(s)) return;
+    }
+    const [cx, cy] = ref.key.split(',').map(Number) as [number, number];
+    const epoch = this.poiLedger.get(ref.key)?.epoch ?? 0;
+    const prior = this.minorLedger.get(ref.key);
+    const cleared = (((prior && prior.epoch === epoch ? prior.cleared : 0) | (1 << ref.slot)) >>> 0);
+    this.minorLedger.set(ref.key, { epoch, cleared });
+    this.accounts.upsertMinorCell(cx, cy, epoch, cleared);
+    for (const [j, idx] of fl.spawnIdx.entries()) {
+      if (fl.spawnSlots[j] !== ref.slot) continue;
+      const s = this.spawnPoints[idx];
+      if (s?.active) s.active = false;
+    }
+    this.habitatFinds.delete(`${ref.key}#${ref.slot}`);
+  }
+
   private notePoiKill(spawnIndex: number, killerEid?: EntityId): void {
     const key = this.poiSpawnCells.get(spawnIndex);
     if (key === undefined) return;
@@ -6869,6 +7010,15 @@ export class GameServer {
       if (over.cell === key) this.poiChests.delete(tileKey);
     }
     this.poiLive.delete(key);
+    // The cell's finds retire with it — an epoch turn re-deals the
+    // texture along with the trouble.
+    const fl = this.findsLive.get(key);
+    if (fl) {
+      this.unloadZone(fl.zoneId);
+      for (const i of fl.spawnIdx) this.minorSpawnSlots.delete(i);
+      for (const f of fl.finds) this.habitatFinds.delete(`${key}#${f.slot}`);
+      this.findsLive.delete(key);
+    }
   }
 
   /** Does any FIGHTING garrison body of this POI cell still stand? */
@@ -6932,6 +7082,25 @@ export class GameServer {
     }
     for (const [key, row] of this.poiLedger) {
       if (row.site?.prefabId !== id || !this.poiLive.has(key)) continue;
+      this.retirePoiCell(key);
+    }
+    // Finds wear library prefabs too — re-deal any cell whose texture
+    // carries the edited art.
+    for (const [key, fl] of this.findsLive) {
+      if (!fl.finds.some((f) => f.prefabId === id)) continue;
+      this.retirePoiCell(key);
+    }
+  }
+
+  /**
+   * Minor-def edit applied live: every standing cell whose texture
+   * carries the archetype retires; tickPois re-stands the whole cell
+   * (site included — pure recomposition, bit-identical) on the very
+   * next pass with the new truth.
+   */
+  reloadMinorDef(id: string): void {
+    for (const [key, fl] of this.findsLive) {
+      if (!fl.finds.some((f) => f.defId === id)) continue;
       this.retirePoiCell(key);
     }
   }
@@ -7344,6 +7513,72 @@ export class GameServer {
     }
   }
 
+  /**
+   * SUNDERING: strip the working off a piece and keep the piece.
+   *
+   * The other half of RESONANCE. Bonding a different school onto worked
+   * steel lands weaker; sundering clears the steel so the next working
+   * goes in clean. Costs nothing but the working itself, because the
+   * point is to give the player a way OUT of a bad pairing, and a
+   * sundering that also charged them would just be a worse penalty.
+   *
+   * Returns no reagents on purpose: the unmaking already pays those
+   * back, and paying them here too would make sunder-and-rebond a
+   * cheaper source of essence than breaking the item.
+   */
+  sunder(eid: EntityId, slotIndex: number, wornSlot?: EquipSlot): void {
+    const player = this.players.get(eid);
+    if (!player?.session) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    // A working can be drawn out of a piece on the body or in the pack.
+    // Bonding targets WORN gear, so sundering must reach it too, or
+    // changing a piece's school would mean unequipping first for no
+    // reason the player could name.
+    // Worn gear names its item as `id`, a pack slot as `item`; one
+    // shape covers both so the rest of the door reads the same.
+    const wornRef = wornSlot ? player.equipment[wornSlot] : undefined;
+    const packRef =
+      !wornSlot && slotIndex >= 0 && slotIndex < player.inventory.length
+        ? player.inventory[slotIndex]
+        : null;
+    const target: { item: string; roll?: ItemRoll } | undefined = wornRef
+      ? { item: wornRef.id, roll: wornRef.roll }
+      : (packRef ?? undefined);
+    if (!target) return;
+    if (!this.nearTile(eid, STATION_TILES.enchanting_table)) {
+      sys('You need to stand by an enchanting table for that.');
+      return;
+    }
+    const ench = enchantDef(target.roll?.ench);
+    if (!ench) {
+      sys('There is no working on that to strip.');
+      return;
+    }
+    // Mutate the ROLL, which both shapes share by reference.
+    delete target.roll!.ench;
+    delete target.roll!.q;
+    // A worn piece's aggregate really does change; a packed one's does
+    // not, but recomputing is cheap and idempotent and getting this
+    // wrong would leave a stripped working still buffing the body.
+    this.onEquipmentChanged(eid, player);
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    sys(`You draw the ${ench.name} back out. The ${itemDef(target.item)?.name ?? 'piece'} is bare steel again.`);
+    this.grantXp(eid, player, 'enchanting', SUNDER_XP);
+
+    const pos = this.positions.get(eid);
+    if (pos) {
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'proc',
+        x: pos.x,
+        y: pos.y,
+        radius: 0.7,
+        color: ELEMENT_COLORS[ench.element],
+        id: 'cleanse:sunder',
+      });
+    }
+  }
+
   useItem(eid: EntityId, slotIndex: number): void {
     const player = this.players.get(eid);
     if (!player || slotIndex >= player.inventory.length) return;
@@ -7469,22 +7704,50 @@ export class GameServer {
         return;
       }
       const replaced = enchantDef(worn.roll?.ench);
-      removeItem(player.inventory, slot.item, 1);
+      // RESONANCE: the steel remembers what it already carries. Same
+      // school and the sigils agree; a different one has to be argued
+      // in, and the working lands weaker for it. Sundering the old
+      // working first bonds onto bare steel at no penalty — a choice
+      // with a shape, never a dice roll, and nothing is ever destroyed
+      // by bad luck.
+      const shift = resonanceShift(ench.element, replaced?.element);
+      const scrollQ = slot.roll?.q ?? QUALITY_BASE;
+      const q = Math.max(QUALITY_FLOOR, Math.min(QUALITY_CEIL, scrollQ + shift));
+      // INSTANCE-ADDRESSING LAW: the scroll that was CLICKED is the one
+      // consumed. An id-addressed removal would grab the first matching
+      // scroll in the pack and could spend a masterwork inscription to
+      // bond a rough one's quality.
+      if (!takeSlot(player.inventory, slotIndex, 1)) return;
       // Legacy-grace materialization: an unrolled instance IS common/0.
       const roll = worn.roll ?? { rar: 'common' as const, seed: 0 };
       roll.ench = ench.id;
+      roll.q = q;
       worn.roll = roll;
       // Enchants move aggregate stats (maxHp, speed, cooldowns...) —
       // recompute exactly like an equip change.
       this.onEquipmentChanged(eid, player);
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      const itemName = itemDef(worn.id)?.name ?? 'item';
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
         text: replaced
-          ? `The ${replaced.name} fades as the ${ench.name} takes its place on the ${itemDef(worn.id)?.name ?? 'item'}.`
-          : `The scroll crumbles as the ${ench.name} sinks into the ${itemDef(worn.id)?.name ?? 'item'}. It ${BONDING_VOICE[ench.tier]}.`,
+          ? `The ${replaced.name} fades as the ${ench.name} takes its place on the ${itemName}.`
+          : `The scroll crumbles as the ${ench.name} sinks into the ${itemName}. It ${BONDING_VOICE[ench.tier]}.`,
       });
+      if (shift > 0) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Both workings are ${ench.element}. The sigils agree, and it sits deeper for it.`,
+        });
+      } else if (shift < 0) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `The old ${replaced!.element} work fights the new. Sunder a piece first and the next one goes in clean.`,
+        });
+      }
       return;
     }
 
@@ -12053,11 +12316,15 @@ export class GameServer {
       // beats suit open-field hunting, but a camp that restaffs while
       // you fight it can never be wiped — the floor buys the clear.
       const baseSec = NPCS.get(spawn.npc)!.respawnSec;
-      const sec = this.poiSpawnCells.has(npc.spawnIndex)
-        ? Math.max(baseSec, GameServer.POI_RESPAWN_MIN_SEC)
-        : baseSec;
+      // Find whispers share the floor: a two-body find whose first
+      // body restaffs mid-fight could never be wiped either.
+      const sec =
+        this.poiSpawnCells.has(npc.spawnIndex) || this.minorSpawnSlots.has(npc.spawnIndex)
+          ? Math.max(baseSec, GameServer.POI_RESPAWN_MIN_SEC)
+          : baseSec;
       spawn.respawnAt = Date.now() + sec * 1000;
       this.notePoiKill(npc.spawnIndex, killerEid);
+      this.noteMinorKill(npc.spawnIndex);
       // THE UNWRITTEN PAGE: felling a delve's named boss (the only
       // named spawn a dungeon seeds) is the riftwalker's deed.
       if (spawn.name !== undefined && pos.y >= DUNGEON_MIN_Y) {
@@ -12599,14 +12866,58 @@ export class GameServer {
       // seconds, never in a visible burst — but a run of unlucky
       // probes no longer starves a whole pass the way the old single
       // attempt did.
-      const probes = Math.max(1, FRONTIER.wildKnotProbes);
-      for (let probe = 0; probe < probes; probe++) {
-        const spot = this.probeWildAnchor(ppos.x, ppos.y);
-        if (!spot) continue;
-        this.spawnWildKnot(spot.tx, spot.ty, spot.tier, spot.biome, hours, budget - near);
-        break;
+      // THE DEN IS THE SOURCE (lived-in-land Phase 2): when an
+      // uncleared habitat find stands in the annulus, half the deals
+      // muster the MATCHING kind at its mouth — wolves from the den,
+      // herds in the glade, the dead around the barrow. The other
+      // half (and every miss) still deals anywhere lawful, so habitat
+      // reads as a lean, never a cage.
+      let dealt = false;
+      if (Math.random() < 0.5) {
+        dealt = this.spawnHabitatKnot(ppos.x, ppos.y, hours, budget - near);
+      }
+      if (!dealt) {
+        const probes = Math.max(1, FRONTIER.wildKnotProbes);
+        for (let probe = 0; probe < probes; probe++) {
+          const spot = this.probeWildAnchor(ppos.x, ppos.y);
+          if (!spot) continue;
+          this.spawnWildKnot(spot.tx, spot.ty, spot.tier, spot.biome, hours, budget - near);
+          break;
+        }
       }
     }
+  }
+
+  /**
+   * Muster one knot at a standing habitat find inside the offscreen
+   * annulus. The find only steers WHERE and WHICH KIND — every ground
+   * guard, the budget cap, and the tier law hold exactly as for any
+   * other deal. Returns false when no mouth stands in reach, the
+   * ground refuses, or the roster has no matching entry (the caller
+   * falls through to the ordinary probes).
+   */
+  private spawnHabitatKnot(px: number, py: number, hours: number, cap: number): boolean {
+    const near: Array<{ habitat: string; x: number; y: number }> = [];
+    for (const f of this.habitatFinds.values()) {
+      const d = Math.hypot(f.x - px, f.y - py);
+      // Offscreen law holds at the mouth too: a den in view never
+      // bursts; one just past the screen's edge does the haunting.
+      if (d >= GameServer.WILD_MIN_R && d <= GameServer.WILD_MAX_R + 16) near.push(f);
+    }
+    if (near.length === 0) return false;
+    const mouth = near[Math.floor(Math.random() * near.length)]!;
+    for (let t = 0; t < 4; t++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 2 + Math.random() * 3;
+      const tx = Math.floor(mouth.x + Math.cos(a) * d);
+      const ty = Math.floor(mouth.y + Math.sin(a) * d);
+      const spot = this.vetWildAnchor(tx, ty);
+      if (!spot) continue;
+      return (
+        this.spawnWildKnot(tx, ty, spot.tier, spot.biome, hours, cap, mouth.habitat) > 0
+      );
+    }
+    return false;
   }
 
   /**
@@ -12627,6 +12938,15 @@ export class GameServer {
       GameServer.WILD_MIN_R + Math.random() * (GameServer.WILD_MAX_R - GameServer.WILD_MIN_R);
     const tx = Math.floor(px + Math.cos(ang) * r);
     const ty = Math.floor(py + Math.sin(ang) * r);
+    const spot = this.vetWildAnchor(tx, ty);
+    return spot ? { tx, ty, ...spot } : null;
+  }
+
+  /** The anchor guard ladder on explicit coords (habitat deals share it). */
+  private vetWildAnchor(
+    tx: number,
+    ty: number,
+  ): { tier: number; biome: 'grass' | 'forest' } | null {
     if (ty >= DARK_BAND_Y) return null;
     const ground = this.world.groundAt(tx, ty);
     if (ground !== Tile.Grass && ground !== Tile.GrassTall) return null;
@@ -12636,7 +12956,7 @@ export class GameServer {
     if (this.inClaimRing(tx, ty)) return null;
     const biome = groundProbeAt(config.worldSeed, tx, ty);
     if (biome !== 'grass' && biome !== 'forest') return null;
-    return { tx, ty, tier: spotTier, biome };
+    return { tier: spotTier, biome };
   }
 
   /**
@@ -12653,10 +12973,13 @@ export class GameServer {
     biome: 'grass' | 'forest',
     hours: number,
     cap: number,
-  ): void {
-    const candidates = wildCandidates(spotTier, biome, hours);
+    /** Habitat deal: only entries of this habitat may muster here. */
+    habitat?: string,
+  ): number {
+    let candidates = wildCandidates(spotTier, biome, hours);
+    if (habitat !== undefined) candidates = candidates.filter((e) => e.habitat === habitat);
     const entry = pickWild(candidates, Math.random());
-    if (!entry) return;
+    if (!entry) return 0;
     const bodies = composeKnot(entry, Math.random(), cap);
     const spread = entry.spread ?? WILD_KNOT_SPREAD;
     const [bandMin, bandMax] = dangerLaw(spotTier).npcLevel;
@@ -12704,6 +13027,7 @@ export class GameServer {
       this.wildBodies.set(eid, entry.hours ?? null);
       placed++;
     }
+    return placed;
   }
 
   /**
@@ -15595,6 +15919,41 @@ export class GameServer {
         `wilds: tier ${tier}, ${near}/${budget} bodies near ` +
           `(${this.wildBodies.size} world-wide), ${biome} underfoot` +
           (pool.length > 0 ? ` | roster: ${roster}` : ' | roster: empty here'),
+      );
+      return;
+    }
+    if (config.devCommands && text.startsWith('/finds')) {
+      // The texture lens (lived-in-land Phase 2): what the lattice
+      // dealt in this cell, which slots are cleared, and how many
+      // habitat mouths are pulling knots world-wide.
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const say = (t: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      const cx = poiCellOf(pos.x);
+      const cy = poiCellOf(pos.y);
+      const key = poiCellKey(cx, cy);
+      const fl = this.findsLive.get(key);
+      const ledger = this.minorLedger.get(key);
+      const epoch = this.poiLedger.get(key)?.epoch ?? 0;
+      const cleared = ledger && ledger.epoch === epoch ? ledger.cleared : 0;
+      if (!fl || fl.finds.length === 0) {
+        say(
+          `finds: cell ${key} holds none — ` +
+            `${this.findsLive.size} cells standing, ${this.habitatFinds.size} habitat mouths live`,
+        );
+        return;
+      }
+      const list = fl.finds
+        .map((f) => {
+          const bit = (cleared >>> f.slot) & 1;
+          const hab = f.habitat !== undefined ? ` [${f.habitat}]` : '';
+          return `${f.defId}@${f.anchorX},${f.anchorY} t${f.tier}${hab}${bit ? ' CLEARED' : ''}`;
+        })
+        .join(' | ');
+      say(
+        `finds: cell ${key} (epoch ${epoch}) deals ${fl.finds.length}: ${list} — ` +
+          `${this.habitatFinds.size} habitat mouths live`,
       );
       return;
     }

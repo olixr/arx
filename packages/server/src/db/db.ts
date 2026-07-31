@@ -706,6 +706,39 @@ const MIGRATIONS: string[] = [
     AND a.skill = 'magic' AND b.skill = 'arx';
   UPDATE character_skills SET skill = 'arx' WHERE skill = 'magic';
   `,
+  // v17: THE SMALL FINDS (lived-in-land Phase 2) — the finds ledger.
+  // Deviations only, at find scale: a row exists ONLY once a find in
+  // the cell has been cleared (the pure lattice re-decides everything
+  // else from the seed). `cleared` is a 16-bit slot mask; `epoch`
+  // stamps which deal the bits belong to — an epoch turn re-deals the
+  // cell and the stale bits simply stop matching.
+  `
+  CREATE TABLE world_minors (
+    cell_x INTEGER NOT NULL,
+    cell_y INTEGER NOT NULL,
+    epoch INTEGER NOT NULL DEFAULT 0,
+    cleared INTEGER NOT NULL DEFAULT 0,
+    first_seen_at BIGINT NOT NULL,
+    PRIMARY KEY (cell_x, cell_y)
+  );
+  `,
+  // v18: THE ENCHANTER'S HAND — a working's inscription quality.
+  //
+  // The roll is stored as COLUMNS here, not as JSON, so a new roll
+  // field is a new column in all three tables that carry one. Missing
+  // reads as QUALITY_BASE, which is exactly what every scroll and every
+  // enchanted item in the world already was, so nothing changes
+  // strength on the day this lands.
+  //
+  // Written IF NOT EXISTS on purpose: migrations are index-addressed,
+  // and this one was authored while another was in flight in the same
+  // array. An additive column that can be applied twice without harm is
+  // the cheap insurance against the ordering ever being disturbed.
+  `
+  ALTER TABLE inventory_slots ADD COLUMN IF NOT EXISTS quality INTEGER;
+  ALTER TABLE equipment ADD COLUMN IF NOT EXISTS quality INTEGER;
+  ALTER TABLE bank_gear ADD COLUMN IF NOT EXISTS quality INTEGER;
+  `,
 ];
 
 /**

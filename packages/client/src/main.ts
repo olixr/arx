@@ -390,8 +390,13 @@ const stationPanels = new StationPanels(
     sfx.stow();
     game.unmakeSend(slot);
   },
+  (slot, worn) => {
+    sfx.stow();
+    game.sunderSend(slot, worn);
+  },
   // The live pack — every maker panel's have/need chips read it.
   () => game.inventory,
+  () => game.equipment,
 );
 
 stationPanels.onPlant = (tx, ty, seed) => {

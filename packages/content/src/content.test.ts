@@ -230,7 +230,16 @@ test('enchanting: every enchant is inscribable, every reagent is obtainable', as
     const scroll = ITEMS.get(`scroll_${e.id}`);
     assert.ok(scroll, `${e.id} has no scroll item`);
     assert.equal(scroll!.enchant, e.id);
-    assert.ok(scroll!.stackable, `${scroll!.id} must stack — scrolls are trade goods`);
+    // THE ENCHANTER'S HAND inverted this law. A scroll now carries the
+    // quality of the hand that inscribed it, and addItem throws the
+    // roll away when it stacks — so stacking would silently erase the
+    // maker's mark, which is the whole point of the system. Same law as
+    // the dungeon key: the instance roll IS the inscription.
+    assert.equal(
+      scroll!.stackable,
+      false,
+      `${scroll!.id} must NOT stack — a scroll carries its maker's quality`,
+    );
     // Inscribe recipe exists, trains enchanting at the table, gates at the def's level.
     const r = RECIPES.get(`inscribe_${e.id}`);
     assert.ok(r, `${e.id} has no inscribe recipe`);

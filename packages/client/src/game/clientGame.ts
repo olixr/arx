@@ -1805,6 +1805,11 @@ export class ClientGame {
     this.conn?.send({ t: 'unmake', slot });
   }
 
+  /** SUNDERING: draw the working back out of a pack slot's gear. */
+  sunderSend(slot: number, worn?: EquipSlot): void {
+    this.conn?.send({ t: 'sunder', slot, worn });
+  }
+
   /** Set the tools down: stop the running craft batch, keeping what's made. */
   craftStop(): void {
     this.conn?.send({ t: 'craftstop' });

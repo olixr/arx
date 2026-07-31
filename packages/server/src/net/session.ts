@@ -282,6 +282,12 @@ export class Session {
         this.game.unmake(this.playerEid, msg.slot);
         return;
       }
+      case 'sunder': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.sunder(this.playerEid, msg.slot, msg.worn);
+        return;
+      }
       case 'craft': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

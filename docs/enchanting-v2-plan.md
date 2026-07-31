@@ -521,8 +521,63 @@ No protocol bump. `C2SUnmake` is a new client message; a server that has never
 heard of it ignores it and the button does nothing, so there is no material state
 to protect. Recorded in `constants.ts` beside the other bump judgments.
 
-**Phase 5 — THE ENCHANTER'S HAND.** Scroll quality, resonance and sundering, the
-bench rebuild, Solvei and the high-band teaching, the enchanting Callings pass.
+**Phase 5 — THE ENCHANTER'S HAND. SHIPPED.**
+
+**Quality.** `ItemRoll.q`, 85 to 115, absent reading as 100 so nothing that
+already existed changed strength. **THE MEASURE IS MASTERY, NOT LEVEL**: what
+counts is how far past *this work's own requirement* the hand sits. A level-99
+enchanter turns out entry scrolls at the ceiling; that same enchanter's first
+masterwork at exactly level 80 comes out honest and plain. An absolute-level
+measure would have made the whole low band worthless to a master and unreachable
+to everyone else.
+
+**QUALITY SCALES MAGNITUDE AND NEVER TIMING.** A finer inscription sits deeper in
+the steel; it does not make a working wake more often, rest less, or reach
+further. Chances, cooldowns, durations, radii and jump counts are authored
+balance and stay where the designer put them, so a masterwork is a stronger
+version of a working rather than a different one.
+
+A consequence worth naming: **quality is felt where there is something to feel it
+in.** A ±15% band around a whole number of 1 or 2 rounds back to itself, so small
+workings read the same at every quality while a Worldheart's +45 maxHp moves
+properly. The alternative was biasing the rounding so 110% of 3 became 4, which
+turns every small working into a coin flip worth a third of its own strength.
+
+**Scrolls stopped stacking**, and that is load-bearing rather than incidental:
+`addItem` throws the roll away when it merges a stackable, which would silently
+erase the maker's mark. Same law as the dungeon key — the instance roll IS the
+inscription. Enchant scrolls are player-made only (never shop stock), so quality
+is always somebody's mark.
+
+**RESONANCE.** Bonding onto steel that already carries the same school lands
+better; crossing schools lands worse. **SUNDERING** draws a working back out and
+leaves the piece whole, so bare steel takes the next one cleanly. This is a
+choice with a shape and not a dice roll: nothing is ever destroyed, no reagents
+are ever eaten by bad luck, and the player sees the penalty coming. The worst a
+crossing can do is land at the floor.
+
+**Deep Sigils was re-aimed rather than replaced.** The Calling always *said* its
+workings sat deeper in the steel and then quietly handed out a cooldown, which is
+a personal buff and not a fact about the craft. It now grants inscription
+quality, so its own text is finally true and the trade's Calling is about the
+trade. Same id, so no answered Calling is orphaned.
+
+**Persistence:** rolls are stored as COLUMNS, not JSON, so quality is db v18
+across all three tables that carry a roll (`inventory_slots`, `equipment`,
+`bank_gear`). Written `ADD COLUMN IF NOT EXISTS` because migrations are
+index-addressed and this one was authored while another was in flight in the same
+array.
+
+Two bugs found and fixed on the way. The bonding door removed the scroll **by
+id**, which with quality-bearing instances could spend a masterwork inscription
+to bond a rough one's quality — it is slot-addressed now, per the codebase's own
+instance-addressing law. And the bench let you bond onto **worn** gear but only
+sunder **packed** gear; `C2SSunder` now reaches the body, and worn pieces appear
+on the bench as sunder-only (a Destroy button aimed at the armor you are wearing
+is a footgun, not a feature).
+
+Deferred: Solvei's high-band teaching is dialogue work that wants a writing pass
+of its own rather than being bolted onto a systems phase.
 
 **Phase 6 — THE DEEPENING.** The second slot, the tier-5 named workings, capstone
 acquisition, and the full balance pass across everything above.
