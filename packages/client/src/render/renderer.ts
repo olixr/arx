@@ -3134,6 +3134,18 @@ export class Renderer {
           this.debris.drawOne(this.ctx, c, this.liftedWTS, this.camera.scale, this.outlineOn),
       });
     }
+    // THE THROWN COVER: dismount cloth flips — tiny one-shot spring
+    // sims owned by their beds, advanced here and self-deleting once
+    // settled (hard-capped at 1.6s). Zero cost while the map is empty.
+    if (this.bedFlips.size > 0) {
+      for (const [key, flip] of this.bedFlips) {
+        if (this.stepBedFlip(flip, this.frameDt)) {
+          this.bedFlips.delete(key);
+          continue;
+        }
+        items.push({ sortY: flip.sortY, draw: () => this.drawBedFlip(flip) });
+      }
+    }
     // AMBIENT BIRDS: the flock lives with the world. THE FLUSH LAW —
     // the threat scan feeds every nearby body, players AND npcs, so a
     // grazing stag flushes a flock exactly like a sprinting hero.
@@ -22048,6 +22060,226 @@ export class Renderer {
     });
   }
 
+  /** The four bed colorways — MUST mirror the bed painter's QUILTS
+   *  table and its run-head hash key. One lookup for tuck and flip. */
+  private static readonly BED_QUILTS = [
+    ['#8a3d46', '#a34b52'],
+    ['#3d5a8a', '#4a6a9c'],
+    ['#4d6b3c', '#5a7d4a'],
+    ['#75588a', '#8a6aa0'],
+  ] as const;
+
+  /**
+   * THE THROWN COVER: when a sleeper rises, the bed's covers get
+   * tossed — a one-shot cloth flip owned by the BED (keyed by its
+   * head tile), not the body. A single fold spring with overshoot
+   * carries the throw; a five-point flutter row gives the free edge
+   * its fabric life (the cape's philosophy at a fraction of its
+   * cost). World-anchored so the camera can pan through it; self-
+   * deleting once settled — zero cost while no one is getting up.
+   */
+  private readonly bedFlips = new Map<
+    number,
+    {
+      t: number;
+      foldK: number;
+      foldV: number;
+      f: number[];
+      fv: number[];
+      turb: number[];
+      ax: number;
+      ay: number;
+      footN: number;
+      span: number;
+      head: 'n' | 'e' | 'w';
+      qMain: string;
+      qDark: string;
+      sortY: number;
+    }
+  >();
+
+  private startBedFlip(seat: SeatSpec): void {
+    const headTile = (seat.head ?? 'n') === 'e' ? seat.tiles[seat.tiles.length - 1]! : seat.tiles[0]!;
+    const key = packTile(headTile.x, headTile.y);
+    // Idempotent: the rise edge fires for a few frames while the
+    // blend falls — the first throw owns the cloth.
+    if (this.bedFlips.has(key) || this.bedFlips.size > 6) return;
+    const [qDark, qMain] = Renderer.BED_QUILTS[hashCoords(41, headTile.x, headTile.y) % 4]!;
+    const f: number[] = [];
+    const fv: number[] = [];
+    const turb: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      f.push(0);
+      // Alternating launch impulses — the edge leaves already rippling.
+      fv.push((i % 2 === 0 ? 1 : -1) * (1.6 + 0.5 * ((i * 2654435761) % 3)));
+      turb.push((i % 2 === 0 ? 1 : -1) * (0.5 + 0.25 * ((i * 40503) % 3)));
+    }
+    const maxY = seat.tiles[seat.tiles.length - 1]!.y;
+    this.bedFlips.set(key, {
+      t: 0,
+      foldK: 0,
+      foldV: 0,
+      f,
+      fv,
+      turb,
+      ax: seat.ax,
+      ay: seat.ay,
+      footN: seat.tiles.length,
+      span: seat.span ?? 1,
+      head: seat.head ?? 'n',
+      qMain,
+      qDark,
+      sortY: maxY + 0.74,
+    });
+  }
+
+  /** Advance one flip's springs; true = settled, remove it. */
+  private stepBedFlip(flip: { t: number; foldK: number; foldV: number; f: number[]; fv: number[]; turb: number[] }, dt: number): boolean {
+    flip.t += dt;
+    if (flip.t > 1.6) return true; // hard cap — always cleaned up
+    // The fold: fling to fully-thrown with deliberate overshoot (the
+    // exaggeration is the point), then a softer settle home.
+    const fling = flip.t < 0.5;
+    const tgt = fling ? 1 : 0;
+    const acc = (tgt - flip.foldK) * (fling ? 150 : 70) - flip.foldV * (fling ? 8 : 11);
+    flip.foldV += acc * dt;
+    flip.foldK += flip.foldV * dt;
+    // Flutter row: damped springs with neighbor coupling, stirred by
+    // the fold's own velocity — cloth, not a hinged plank.
+    const n = flip.f.length;
+    for (let i = 0; i < n; i++) {
+      const left = flip.f[i > 0 ? i - 1 : i]!;
+      const right = flip.f[i < n - 1 ? i + 1 : i]!;
+      const a2 =
+        -140 * flip.f[i]! -
+        7.5 * flip.fv[i]! +
+        70 * (left + right - 2 * flip.f[i]!) +
+        flip.foldV * flip.turb[i]! * 2.2;
+      flip.fv[i] = flip.fv[i]! + a2 * dt;
+      flip.f[i] = flip.f[i]! + flip.fv[i]! * dt;
+    }
+    let live = Math.abs(flip.foldK) > 0.012 || Math.abs(flip.foldV) > 0.05;
+    for (let i = 0; i < n && !live; i++) {
+      if (Math.abs(flip.f[i]!) > 0.02 || Math.abs(flip.fv[i]!) > 0.1) live = true;
+    }
+    return flip.t > 0.85 && !live;
+  }
+
+  /** Paint one thrown-cover flip: mattress bared above the fold, the
+   *  flap doubled back with its fluttering sheet-band edge, and the
+   *  intact painted quilt below — so the settled last frame IS the
+   *  bed painter's own art and the handoff is invisible. */
+  private drawBedFlip(flip: {
+    foldK: number;
+    foldV: number;
+    f: number[];
+    ax: number;
+    ay: number;
+    footN: number;
+    span: number;
+    head: 'n' | 'e' | 'w';
+    qMain: string;
+    qDark: string;
+  }): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const p = this.liftedWTS(flip.ax, flip.ay);
+    const k = Math.max(0, flip.foldK);
+    const airK = Math.sin(Math.min(1, k) * Math.PI);
+    const tickC = '#e8dfc8';
+    if (flip.head === 'n') {
+      const dTop = p.y - (flip.footN / 2 + 0.04) * syT - 0.3 * s;
+      const dBot = dTop + flip.span * syT;
+      const xL = p.x - 0.46 * s;
+      const xR = p.x + 0.46 * s;
+      const yQ = dTop + (dBot - dTop) * 0.4;
+      const qh = dBot - yQ;
+      this.bedCoversVert(xL, xR, yQ, dBot, flip.qMain, flip.qDark);
+      const a = k * qh * 0.48;
+      if (a > 0.02 * s) {
+        const F = yQ + a;
+        // Bared mattress where the covers used to lie.
+        ctx.fillStyle = tickC;
+        ctx.fillRect(xL - 0.03 * s, yQ - 0.06 * s, xR - xL + 0.06 * s, F - yQ + 0.06 * s);
+        ctx.fillStyle = shade(tickC, -8);
+        ctx.fillRect(xL - 0.03 * s, yQ - 0.06 * s, 0.045 * s, F - yQ + 0.06 * s);
+        ctx.fillRect(xR - 0.015 * s, yQ - 0.06 * s, 0.045 * s, F - yQ + 0.06 * s);
+        // The doubled-back flap: underside up, free edge billowing.
+        const lift = airK * 0.24 * s * (1 + Math.min(1, Math.abs(flip.foldV)) * 0.35);
+        const n = flip.f.length;
+        ctx.fillStyle = shade(flip.qMain, 24);
+        ctx.beginPath();
+        ctx.moveTo(xL - 0.03 * s, F);
+        ctx.lineTo(xR + 0.03 * s, F);
+        for (let i = n - 1; i >= 0; i--) {
+          const ex = xL - 0.03 * s + ((xR - xL + 0.06 * s) * i) / (n - 1);
+          const ey = F + a - lift + flip.f[i]! * 0.09 * s;
+          ctx.lineTo(ex, ey);
+        }
+        ctx.closePath();
+        ctx.fill();
+        // Fold crease + the sheet band riding the free edge.
+        ctx.fillStyle = shade(flip.qMain, -14);
+        ctx.fillRect(xL - 0.03 * s, F - 0.012 * s, xR - xL + 0.06 * s, 0.024 * s);
+        ctx.strokeStyle = '#f4efe0';
+        ctx.lineWidth = 0.07 * s;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const ex = xL - 0.03 * s + ((xR - xL + 0.06 * s) * i) / (n - 1);
+          const ey = F + a - lift + flip.f[i]! * 0.09 * s - 0.02 * s;
+          if (i === 0) ctx.moveTo(ex, ey);
+          else ctx.lineTo(ex, ey);
+        }
+        ctx.stroke();
+      }
+    } else {
+      const sgn = flip.head === 'e' ? 1 : -1;
+      const dTop = p.y - 0.5 * syT - 0.3 * s;
+      const dBot = p.y + 0.58 * syT - 0.3 * s;
+      const halfLen = (flip.span / 2) * s;
+      const qW = halfLen * 2 * 0.58;
+      const qX = sgn > 0 ? p.x - halfLen + 0.1 * s : p.x + halfLen - qW - 0.1 * s;
+      this.bedCoversSide(qX, qW, dTop, dBot, sgn, flip.qMain, flip.qDark);
+      const a = k * qW * 0.48;
+      if (a > 0.02 * s) {
+        const headEdge = sgn > 0 ? qX + qW : qX;
+        const F = headEdge - sgn * a;
+        const bx0 = Math.min(headEdge, F);
+        ctx.fillStyle = tickC;
+        ctx.fillRect(bx0, dTop - 0.02 * s, Math.abs(headEdge - F), dBot - dTop + 0.04 * s);
+        ctx.fillStyle = shade(tickC, -8);
+        ctx.fillRect(bx0, dTop - 0.02 * s, Math.abs(headEdge - F), 0.04 * s);
+        const lift = airK * 0.24 * s * (1 + Math.min(1, Math.abs(flip.foldV)) * 0.35);
+        const n = flip.f.length;
+        const edgeX = F - sgn * a;
+        ctx.fillStyle = shade(flip.qMain, 24);
+        ctx.beginPath();
+        ctx.moveTo(F, dTop - 0.02 * s);
+        ctx.lineTo(F, dBot + 0.02 * s);
+        for (let i = n - 1; i >= 0; i--) {
+          const ey = dTop - 0.02 * s + ((dBot - dTop + 0.04 * s) * i) / (n - 1);
+          const ex = edgeX + sgn * (flip.f[i]! * 0.09 * s) - sgn * lift * 0.4;
+          ctx.lineTo(ex, ey - lift * 0.5);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(flip.qMain, -14);
+        ctx.fillRect(F - 0.012 * s, dTop - 0.02 * s, 0.024 * s, dBot - dTop + 0.04 * s);
+        ctx.strokeStyle = '#f4efe0';
+        ctx.lineWidth = 0.07 * s;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const ey = dTop - 0.02 * s + ((dBot - dTop + 0.04 * s) * i) / (n - 1);
+          const ex = edgeX + sgn * (flip.f[i]! * 0.09 * s - 0.02 * s) - sgn * lift * 0.4;
+          if (i === 0) ctx.moveTo(ex, ey - lift * 0.5);
+          else ctx.lineTo(ex, ey - lift * 0.5);
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
   /**
    * The bed's patchwork quilt — ONE painter shared by the bed case
    * and the sleeper's tuck, so the covers over a body are pixel-
@@ -22196,6 +22428,11 @@ export class Renderer {
     const sitE = sitK * sitK * (3 - 2 * sitK);
     // Lying blend — the bed recline, same glide law as the sit.
     const lieTarget = e.pose === PoseState.Lie ? 1 : 0;
+    // THE THROWN COVER: the instant a sleeper rises (the pose leaves
+    // Lie while the blend is still deep), the bed throws its covers.
+    if (lieTarget === 0 && (anim.lieK ?? 0) >= 0.85 && anim.seat?.kind === 'bed') {
+      this.startBedFlip(anim.seat);
+    }
     let lieK = anim.lieK ?? 0;
     lieK += (lieTarget - lieK) * (1 - Math.exp(-5 * this.frameDt));
     if (lieK < 0.004) lieK = 0;
@@ -22809,13 +23046,11 @@ export class Renderer {
           // blanket thrown over the bed.
           const headTile =
             (seat!.head ?? 'n') === 'e' ? seat!.tiles[seat!.tiles.length - 1]! : seat!.tiles[0]!;
-          const QUILTS_TUCK = [
-            ['#8a3d46', '#a34b52'],
-            ['#3d5a8a', '#4a6a9c'],
-            ['#4d6b3c', '#5a7d4a'],
-            ['#75588a', '#8a6aa0'],
-          ] as const;
-          const [qDark, qMain] = QUILTS_TUCK[hashCoords(41, headTile.x, headTile.y) % 4]!;
+          const [qDark, qMain] =
+            Renderer.BED_QUILTS[hashCoords(41, headTile.x, headTile.y) % 4]!;
+          // While the bed's own thrown-cover flip is live, IT owns the
+          // cloth — the static tuck stands down.
+          const flipKey = packTile(headTile.x, headTile.y);
           // The covers pull over only once the body has mostly
           // settled, and pull back FIRST on the rise — a climbing
           // body is never painted through a phantom blanket.
@@ -22846,7 +23081,7 @@ export class Renderer {
             ctx.translate(0, (feetY - bodyY) * lieE);
             const yQ = dTop + (dBot - dTop) * 0.4;
             tuck = () => {
-              if (tuckA <= 0) return;
+              if (tuckA <= 0 || this.bedFlips.has(flipKey)) return;
               ctx.save();
               ctx.globalAlpha = tuckA;
               this.bedCoversVert(xL, xR, yQ, dBot, qMain, qDark);
@@ -22877,7 +23112,7 @@ export class Renderer {
             const qW = halfLen * 2 * 0.58;
             const qX = sgn > 0 ? p.x - halfLen + 0.1 * s : p.x + halfLen - qW - 0.1 * s;
             tuck = () => {
-              if (tuckA <= 0) return;
+              if (tuckA <= 0 || this.bedFlips.has(flipKey)) return;
               ctx.save();
               ctx.globalAlpha = tuckA;
               this.bedCoversSide(qX, qW, dTop, dBot, sgn, qMain, qDark);
