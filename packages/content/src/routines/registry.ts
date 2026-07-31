@@ -18,6 +18,8 @@ import fallShrinekeeper from './defs/fall_shrinekeeper.json';
 import fallTrader from './defs/fall_trader.json';
 import fallWarden from './defs/fall_warden.json';
 import fallWatch from './defs/fall_watch.json';
+import fallWatchPostern from './defs/fall_watch_postern.json';
+import fallWatchMuster from './defs/fall_watch_muster.json';
 import fallWeaver from './defs/fall_weaver.json';
 import fallKing from './defs/fall_king.json';
 import fallQueen from './defs/fall_queen.json';
@@ -100,6 +102,8 @@ const SOURCES: readonly unknown[] = [
   fallTrader,
   fallWarden,
   fallWatch,
+  fallWatchPostern,
+  fallWatchMuster,
   fallWeaver,
   fallKing,
   fallQueen,

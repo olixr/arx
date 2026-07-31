@@ -1,0 +1,32 @@
+{
+  "id": "fall_watch_postern",
+  "base": { "kind": "post", "dir": -1.5707963, "speed": 1.6 },
+  "slots": [
+    {
+      "from": 7,
+      "to": 11.5,
+      "task": {
+        "kind": "path",
+        "speed": 1.5,
+        "waypoints": [
+          { "x": 0, "y": -26, "waitSec": 40, "dir": -1.5707963 },
+          { "x": 0, "y": -52, "waitSec": 40, "dir": -1.5707963 },
+          { "x": 0, "y": -26, "waitSec": 30 },
+          { "x": 0, "y": 0, "waitSec": 60, "dir": -1.5707963 }
+        ]
+      }
+    },
+    {
+      "from": 15,
+      "to": 19.5,
+      "task": {
+        "kind": "path",
+        "speed": 1.5,
+        "waypoints": [
+          { "x": 0, "y": -40, "waitSec": 45, "dir": -1.5707963 },
+          { "x": 0, "y": 0, "waitSec": 60, "dir": -1.5707963 }
+        ]
+      }
+    }
+  ]
+}

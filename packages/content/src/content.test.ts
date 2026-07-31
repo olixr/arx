@@ -1082,7 +1082,9 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // the Silver Gate (5 wide) in the outer wall, the Court Gate
   // (9 wide) at the avenue stair's crown, bastions and drum towers
   // carrying the corner cuts.
-  assert.equal(n(Tile.GateGarrison), 14, 'the city gates changed');
+  // 14 + the Postern's 3: the Silver Gate (5), the Court Gate (9),
+  // and the back road's throat on the east shelf (the Pinereach epic).
+  assert.equal(n(Tile.GateGarrison), 17, 'the city gates changed');
   assert.ok(n(Tile.WallGarrison) >= 140, 'the city curtain came down');
   const fallDiags =
     n(Tile.WallGarrisonDiagNE) + n(Tile.WallGarrisonDiagNW) +
@@ -1100,7 +1102,7 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // The capital's cast: the Crown, the districts' masters, the Row's
   // keepers, the Rookery — and the pooled watch, guard, and stalls.
   const fallActors = z.actorSpawns ?? [];
-  assert.equal(fallActors.length, 39, 'Silverfall lost residents');
+  assert.equal(fallActors.length, 41, 'Silverfall lost residents');
   for (const slug of [
     'king_aeriex',
     'queen_kayri',
@@ -1131,11 +1133,12 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   ]) {
     assert.ok(fallActors.some((a) => a.actor === slug), `${slug} missing from Silverfall`);
   }
-  assert.equal(fallActors.filter((a) => a.actor === 'silverfall_watch').length, 5);
+  // 5 in the city + 2 on the Postern Lane (the Pinereach epic).
+  assert.equal(fallActors.filter((a) => a.actor === 'silverfall_watch').length, 7);
   assert.equal(fallActors.filter((a) => a.actor === 'castle_guard').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'galleria_trader').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'gate_monger').length, 2);
-  assert.equal(fallActors.filter((a) => a.routine).length, 39, 'every keeper keeps hours');
+  assert.equal(fallActors.filter((a) => a.routine).length, 41, 'every keeper keeps hours');
   // The editor JSON round trip holds WITH the elevation layer.
   const json = zoneToJson(z);
   assert.ok(json.elev !== undefined, 'the elevation layer must serialize');
@@ -1195,6 +1198,18 @@ test('silverfall: the Silver Stair connects every terrace and every doorway walk
   assert.equal(seen[63 * z.width + 88], 1, 'the second flight is severed');
   assert.equal(seen[31 * z.width + 88], 1, 'the third flight is severed');
   assert.equal(seen[11 * z.width + 14], 1, 'the deep gallery is severed');
+  // THE POSTERN LANE walks end to end: the gatefront shelf, through
+  // the gate in its throat, up the cliff foot to the muster yard, and
+  // out the north hem where the Hoargate Road's first milepost
+  // stands. The pass is only a pass if a body can get to it.
+  assert.equal(seen[95 * z.width + 171], 1, 'the Postern Lane is severed below the gate');
+  assert.equal(seen[80 * z.width + 171], 1, 'the postern gate does not open');
+  assert.equal(seen[12 * z.width + 171], 1, 'the muster yard is severed');
+  assert.equal(seen[8 * z.width + 171], 1, 'the muster hut is sealed');
+  assert.equal(seen[0 * z.width + 172], 1, 'the Hoargate Road mouth is severed');
+  // And the curtain still seals: nothing walks AROUND the east end of
+  // the wall, only through the lane's own gate.
+  assert.equal(seen[113 * z.width + 174], 0, 'the east curtain leaks past the scree');
   // Every market stall keeps a walkable approach.
   for (let i = 0; i < z.ground.length; i++) {
     if (z.ground[i] !== Tile.MarketStall) continue;

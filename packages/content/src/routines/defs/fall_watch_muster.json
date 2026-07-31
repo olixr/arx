@@ -1,0 +1,24 @@
+{
+  "id": "fall_watch_muster",
+  "base": { "kind": "post", "dir": -1.5707963, "speed": 1.6 },
+  "slots": [
+    {
+      "from": 12,
+      "to": 13,
+      "task": { "kind": "wander", "radius": 2.5, "speed": 1.4 }
+    },
+    {
+      "from": 22,
+      "to": 5.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.4,
+        "waypoints": [
+          { "x": -1, "y": -5 },
+          { "x": -1, "y": -6, "lie": true }
+        ]
+      }
+    }
+  ]
+}

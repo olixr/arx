@@ -1018,6 +1018,62 @@ export function buildSilverfall(): ZoneDef {
   // The bastions wear the crown: sigil drops on both drum faces —
   // the first thing the road sees is whose city this is.
   b.setDetail(83, 114, Detail.BannerCrown).setDetail(93, 114, Detail.BannerCrown);
+
+  // ---------------------------------------------------------------
+  // THE POSTERN LANE (the Pinereach epic) — the city's back road, and
+  // the only way a body walks to the Hoargate.
+  //
+  // The stair law forbids a gate in the north wall: flights descend
+  // SOUTH and nothing else reads at this camera, so no stair can ever
+  // carry a body from the Crown down to the north border. Real
+  // mountain holds answer that the same way this one does — the back
+  // road does not climb the hold at all. It runs the level-0 shelf
+  // between the terrace cliff (x167, already fenced) and the
+  // mountain, from the gatefront to the north hem, where the Hoargate
+  // Road's first milepost stands at local (172,0).
+  //
+  // It also closes an honest hole: the curtain's scree died out at
+  // x172 and left the last three columns walkable. Now the ridge runs
+  // to the border and the lane is the only way past it, with the
+  // Crown's own gate across its throat.
+  // ---------------------------------------------------------------
+  for (let x = 169; x <= 175; x++) {
+    b.set(x, 112, Tile.WallGarrison).set(x, 113, Tile.Rock);
+    if (x % 3 === 0) b.set(x, 114, Tile.Rock);
+  }
+  b.path({ x: 171, y: 110 }, { x: 171, y: 1 }, 3);
+  // The postern proper: a gate across the lane's throat, tied into
+  // the terrace cliff on one hand and the border scree on the other.
+  b.set(168, 88, Tile.WallGarrison).set(169, 88, Tile.WallGarrison);
+  b.set(173, 88, Tile.WallGarrison).set(174, 88, Tile.WallGarrison);
+  b.set(175, 88, Tile.WallGarrison);
+  for (let x = 170; x <= 172; x++) b.set(x, 88, Tile.GateGarrison);
+  b.set(168, 87, Tile.Brazier).set(174, 87, Tile.Brazier);
+  b.sign(174, 90, 'THE POSTERN', ['the Hoargate road', 'give your name at the wall'], Tile.Signpost);
+  // Lamps up the lane at a marching rhythm: the Crown keeps its own
+  // road lit even where nobody but the watch uses it.
+  for (let y = 16; y <= 104; y += 12) b.set(174, y, Tile.LampPost);
+  // The muster yard at the head of the lane: the post the Hoargate's
+  // reliefs form up in before they walk out, and the last roof on
+  // this side of the mountain.
+  b.fillRect(168, 4, 8, 10, Tile.StoneFloor);
+  b.fillRect(169, 5, 5, 6, Tile.WoodFloor);
+  b.outlineRect(169, 5, 5, 6, Tile.WallWood);
+  b.set(171, 10, Tile.DoorwayWood);
+  b.set(169, 7, Tile.WallWoodWindow).set(173, 7, Tile.WallWoodWindow);
+  b.set(170, 6, Tile.Bed).set(170, 7, Tile.Bed);
+  b.set(172, 6, Tile.WeaponRack);
+  b.set(172, 8, Tile.Table).set(172, 9, Tile.Chair);
+  b.setDetail(171, 9, Detail.Doormat);
+  b.set(175, 6, Tile.Brazier).set(175, 12, Tile.Crate);
+  b.set(168, 12, Tile.Bench);
+  b.sign(168, 6, 'THE MUSTER', ['reliefs form here', 'count out, count back'], Tile.Signpost);
+  b.fillRect(170, 0, 3, 2, Tile.Path); // the mouth meets the carved road
+  b.set(169, 2, Tile.Brazier).set(173, 2, Tile.Brazier);
+  b.sign(174, 3, 'THE HOARGATE ROAD', ['the pass stands open', 'it is not a kindness'], Tile.Signpost);
+  b.actor('silverfall_watch', 171.5, 90.5, -Math.PI / 2, 'fall_watch_postern');
+  b.actor('silverfall_watch', 171.5, 12.5, -Math.PI / 2, 'fall_watch_muster');
+
   // THE CARAVANSERAI: the road's last yard, laid out like it works —
   // three rail bays with straw and troughs, the cargo corner, the
   // travellers' fire circle, the farrier's bench.
