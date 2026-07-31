@@ -673,11 +673,13 @@ h3 {
   font-size: 16px;
 }
 
+/* Capped short of center so the log never slides under the buff
+   tray beside the hotbar — the bottom row is lanes, not layers. */
 #chat {
   position: absolute;
   left: 14px;
   bottom: 14px;
-  width: min(500px, 62vw);
+  width: min(420px, 30vw);
   pointer-events: auto;
 }
 
@@ -736,10 +738,11 @@ h3 {
 
 /* ---------------------------------- touch controls */
 
+/* Inboard of the standing dock — the keypad owns the corner itself. */
 #touch-controls {
   position: absolute;
-  right: 18px;
-  bottom: 104px;
+  right: 132px;
+  bottom: 16px;
   pointer-events: auto;
 }
 
@@ -777,15 +780,25 @@ h3 {
 
 /* ---------------------------------- dock buttons */
 
-/* The dock — the quiet console: no tray, no rivets. A short row of
-   small smoked-glass keys resting directly on the world, engraved
-   with monoline brass sigils. Present, never shouting. */
+/* The dock — the quiet console: no tray, no rivets. Ten smoked-glass
+   keys engraved with monoline brass sigils. THE STANDING DOCK: at ten
+   screens a single row ran 520px wide and walked over the hotbar, so
+   the dock stands up instead — a 2×5 keypad in the corner. Column
+   flow keeps the read: left column is you and your work (pack,
+   skills, techniques, handiwork, build), right column is the world
+   and others (social, journal, standing, map, settings). */
 #panel-buttons {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
-  display: flex;
-  gap: 7px;
+  /* Flush with the right-docked cases (right 16) so an open screen
+     covers the keypad whole — no key sliver peeking past the frame. */
+  right: 16px;
+  bottom: 14px;
+  display: grid;
+  grid-template-rows: repeat(5, 46px);
+  grid-auto-flow: column;
+  /* Wide enough that the overhanging key tokens clear the neighbor
+     column's frame instead of kissing it. */
+  gap: 7px 12px;
   pointer-events: auto;
 }
 
