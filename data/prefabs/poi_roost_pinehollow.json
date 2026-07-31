@@ -1,0 +1,24 @@
+{
+  "id": "poi_roost_pinehollow",
+  "name": "Pine hollow roost",
+  "width": 13,
+  "height": 8,
+  "ground": "//////////8CAAIAAgACAP//////////////////AgCUAAEAAQB/AAEAAQCUAAIA////////AgABAJQAAQABAAEAAQABAJQAAQACAP////8CAH8AAQABAAEADQABAAEAAQB/AAIA/////wIAAQCUAAEADQBxAA0AAQCUAAEAAgD/////AgABAAEAAQABAAEAAQAOAAEAAQACAP///////wIAlAABAAEAfwABAAEAlAACAP///////////////wIAAgACAAIA/////////////w==",
+  "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+  "spawns": [
+    {
+      "dx": 6,
+      "dy": 2,
+      "npc": "great_owl",
+      "radius": 3,
+      "count": 1
+    },
+    {
+      "dx": 4,
+      "dy": 5,
+      "npc": "great_owl",
+      "radius": 3,
+      "count": 1
+    }
+  ]
+}

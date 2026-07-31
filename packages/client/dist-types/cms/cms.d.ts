@@ -1,4 +1,4 @@
-import type { DialogueDef, FactionsDef, FrontierDef, LootTableDef, MinorDef, NpcActorDef, NpcDef, PoiDef, VoiceDoc } from '@arx/content';
+import type { GrowthDef, NodeDef, DialogueDef, FactionsDef, FrontierDef, LootTableDef, MinorDef, NpcActorDef, NpcDef, PoiDef, VoiceDoc } from '@arx/content';
 import { type VoiceLedger, type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './api.js';
 /**
  * Arx Content Studio — the CMS over the running game's DB-first
@@ -8,7 +8,7 @@ import { type VoiceLedger, type Editable, type ItemRow, type SpawnSites, type Zo
  * live registry, and retires standing bodies so the world plays the
  * new numbers within a tick.
  */
-export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'minors' | 'frontier' | 'factions' | 'voice' | 'items';
+export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'minors' | 'resources' | 'frontier' | 'factions' | 'voice' | 'items';
 export interface CmsState {
     section: Section;
     selectedId: string | null;
@@ -20,6 +20,13 @@ export interface CmsState {
     pois: Array<Editable<PoiDef>>;
     /** THE SMALL FINDS roster (lived-in-land Phase 6). */
     minors: Array<Editable<MinorDef>>;
+    /** THE ROSTER SPEAKS: the gatherable-node roster (second-growth Ph5). */
+    nodes: Array<Editable<NodeDef>>;
+    /** The land's clock — the growth dial doc riding the Resources bench. */
+    growth: {
+        def: GrowthDef;
+        edited: boolean;
+    } | null;
     /** The live POI prefab library's ids (pool pickers + validation). */
     poiPrefabIds: string[];
     /** The living frontier's dial table — a singleton doc (Phase 6). */
@@ -62,6 +69,10 @@ export declare const persistence: {
     revertPoiDef(id: string): Promise<void>;
     saveMinorDef(def: MinorDef): Promise<void>;
     revertMinorDef(id: string): Promise<void>;
+    saveNodeDef(def: NodeDef): Promise<void>;
+    revertNodeDef(id: string): Promise<void>;
+    saveGrowthDef(def: GrowthDef): Promise<void>;
+    revertGrowthDef(): Promise<void>;
     saveFrontierDef(def: FrontierDef): Promise<void>;
     revertFrontierDef(): Promise<void>;
     saveFactionsDef(def: FactionsDef): Promise<void>;

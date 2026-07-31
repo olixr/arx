@@ -92,6 +92,8 @@ export declare class WorldState {
         territory: boolean;
         /** THE SMALL FINDS pips — the texture layer, Studio-eyes only. */
         finds: boolean;
+        /** THE FORESTER'S GLASS — the regrowth wave, age by age. */
+        growth: boolean;
     };
     /**
      * THE STANDING LENS's truth (factions Phase 6): the live political
@@ -107,6 +109,15 @@ export declare class WorldState {
     }>;
     /** THE ONE ATLAS (Phase 6): the countries the territory wash paints. */
     families: string[];
+    /** The wild-harvest ledger (second-growth Phase 6). */
+    growth: Array<{
+        tx: number;
+        ty: number;
+        state: number;
+        dialect: string;
+        sown: boolean;
+        due: number | null;
+    }>;
     private readonly undoStack;
     private readonly redoStack;
     private static readonly UNDO_CAP;

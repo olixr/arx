@@ -1,4 +1,4 @@
-import type { DialogueDef, FactionsDef, FrontierDef, LootTableDef, MinorDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, VoiceBankDef, VoiceClipDef, VoiceDoc, ZoneJson } from '@arx/content';
+import type { GrowthDef, NodeDef, DialogueDef, FactionsDef, FrontierDef, LootTableDef, MinorDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, VoiceBankDef, VoiceClipDef, VoiceDoc, ZoneJson } from '@arx/content';
 /** Content Studio's wire to the running server's /dev/content API. */
 export interface Editable<T> {
     def: T;
@@ -110,6 +110,21 @@ export declare function listMinors(): Promise<{
 }>;
 export declare function saveMinor(def: MinorDef): Promise<void>;
 export declare function revertMinor(id: string): Promise<{
+    outcome: string;
+}>;
+export declare function listNodes(): Promise<{
+    nodes: Array<Editable<NodeDef>>;
+}>;
+export declare function saveNode(def: NodeDef): Promise<void>;
+export declare function revertNode(id: string): Promise<{
+    outcome: string;
+}>;
+export declare function getGrowthDoc(): Promise<{
+    def: GrowthDef;
+    edited: boolean;
+}>;
+export declare function saveGrowthDoc(def: GrowthDef): Promise<void>;
+export declare function revertGrowthDoc(): Promise<{
     outcome: string;
 }>;
 export declare function savePoi(def: PoiDef): Promise<void>;

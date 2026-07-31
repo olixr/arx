@@ -118,6 +118,15 @@ export interface WorldSnapshot {
         y: number;
         r: number;
     }>;
+    /** THE FORESTER'S GLASS: the wild-harvest ledger, one read. */
+    growth?: Array<{
+        tx: number;
+        ty: number;
+        state: number;
+        dialect: string;
+        sown: boolean;
+        due: number | null;
+    }>;
     geography: GeographyDef;
     geographyEdited: boolean;
     warnings: string[];

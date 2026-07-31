@@ -90,6 +90,16 @@ export declare class WorldView {
      */
     private drawStanding;
     /**
+     * THE FORESTER'S GLASS (second-growth Phase 6): every wild harvest
+     * still healing, drawn at its own tile, aged by ink — the regrowth
+     * wave visible on the map. Scar = the cut's dark mark, bare = a
+     * hollow ring (dormant, waiting on the world), a seeded tile fills
+     * amber, the sapling stands green, and a drifted crown reads violet
+     * (the ledger IS the tree). Sown ground wears a ring — the
+     * gardener's mark.
+     */
+    private drawGrowth;
+    /**
      * THE CLAIMED YARDS lens (Phase 6): every claim ring drawn honest —
      * the exclusion mask exactly as the spawn paths read it, never a
      * danger wash (rings calm nothing; they only refuse ground).

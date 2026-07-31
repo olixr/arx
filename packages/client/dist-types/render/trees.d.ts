@@ -110,7 +110,10 @@ export interface TreeCluster {
     tone: number;
     /** Carries a bright top facet in the lit pass. */
     lit: boolean;
-    /** Interior filler — young trees haven't grown these yet. */
+    /** Interior dome mass (non-edge middle tiers). ALWAYS drawn — the
+     *  old young-thinning law (skip extras below grow 0.7) read as a
+     *  DONUT crown mid grow-in and is retired; young trees are bespoke
+     *  saplingModel forms now. The marker stays for density LOD work. */
     extra: boolean;
 }
 /**
@@ -184,6 +187,29 @@ export declare function speciesOf(tile: Tile, h: number): number;
 export declare function maxTrunkBaseRadius(tile: Tile): number;
 /** Grow (or recall) the tree standing on a tile with world-hash `h`. */
 export declare function treeModel(tile: Tile, h: number): TreeModel;
+/**
+ * THE SAPLING STANDS ALONE (second-growth polish): a young tree is a
+ * BESPOKE form, never the adult model shrunk. The adult dome is a
+ * ring of shoulder clusters whose heart the old young-thinning law
+ * left unfilled — at sapling scale that read as a DONUT with the
+ * trunk showing through the crown, the exact kind of cheat this
+ * studio does not ship. Every species grows a true juvenile: a
+ * slender whip of a stem with a root flare, a pair of seed-leaves
+ * low on the stem, and a TIGHT overlapping tuft of crown clusters —
+ * solid mass at every zoom, the same three light bands (shaded
+ * underside, body, lit cap with a sun facet) and the same wind
+ * grammar as the grown wood, so a stand of saplings breathes with
+ * the forest it will become.
+ *
+ * Species dialects: the OAK squats broad on a stout stem; the PINE
+ * stacks three tierlets to a green tip and keeps a dead whorl stub
+ * (rigid, like its elder); the WILLOW leans hard and hangs two low
+ * lobes — the weep before the curtains; the YEW holds a dense dark
+ * column; the COMMON WOODS read their adult grammar's hash so every
+ * sapling grows into exactly the tree it promised (same species,
+ * same variant, same lean).
+ */
+export declare function saplingModel(tile: Tile, h: number): TreeModel;
 export interface TreeFrame {
     bx: number;
     groundY: number;
