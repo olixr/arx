@@ -363,10 +363,10 @@ export const PLAYER_COLORS = ['#c4553d', '#3d78c4', '#3da865', '#c4a03d', '#8a55
 const PROJ_AIR = 0.62;
 
 /**
- * The schools of magic, as paint. A projectile defId of `magic:<element>`
- * (or `magic_heavy:<element>`) picks its palette here — bolt layers,
+ * The schools of Arx, as paint. A projectile defId of `arx:<element>`
+ * (or `arx_heavy:<element>`) picks its palette here — bolt layers,
  * muzzle flash, wake, glow, and impact burst all draw from one tint so
- * every staff's fire reads as ITS fire. Unsuffixed magic stays arcane.
+ * every staff's fire reads as ITS fire. Unsuffixed Arx stays arcane.
  */
 interface ElementTint {
   /** Hot center of the bolt. */
@@ -395,7 +395,7 @@ const ELEMENT_TINTS: Record<string, ElementTint> = {
   astral: { core: '#ffffff', mid: '#9ae8de', deep: '90, 140, 180', fleck: '#e8b0ff', glow: '154, 232, 222' },
 };
 
-/** Palette for a projectile style string ('magic:ember' → ember). */
+/** Palette for a projectile style string ('arx:ember' → ember). */
 function elementTint(style: string): ElementTint {
   return ELEMENT_TINTS[style.split(':')[1] ?? 'arcane'] ?? ELEMENT_TINTS['arcane']!;
 }
@@ -3124,7 +3124,7 @@ export class Renderer {
     // here, before the sort, so positions are current): the trail a
     // south-running body leaves must paint UNDER the body, and a puff
     // south of a body must paint over it. Airborne effects (sparks,
-    // leaves, magic) stay in the overlay pass below.
+    // leaves, Arx) stay in the overlay pass below.
     this.particles.update(this.frameDt);
     for (const p of this.particles.groundParticles()) {
       items.push({
@@ -3513,7 +3513,7 @@ export class Renderer {
   }
 
   /**
-   * Emissive bloom: campfires, furnace mouths, portals, and magic bolts
+   * Emissive bloom: campfires, furnace mouths, portals, and Arx bolts
    * pour additive light over the scene. Sold with plain radial
    * gradients under `lighter` compositing — no shader required.
    */
@@ -3538,7 +3538,7 @@ export class Renderer {
   }
 
   /**
-   * A magic projectile (or totem, or spark) advertises its own glow.
+   * An Arx projectile (or totem, or spark) advertises its own glow.
    * After dark the same source also lights the ground around it — a
    * bolt streaking across a night field carries its own pool of light.
    */
@@ -20793,7 +20793,7 @@ export class Renderer {
             const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
             // Magelight pools under the table — dim at rest, surging
             // while an inscription is worked. Never fully dark: bound
-            // magic doesn't sleep, it waits.
+            // Arx doesn't sleep, it waits.
             const pulse = 0.5 + 0.5 * Math.sin(t * 1.7 + h);
             const might = 0.16 + 0.1 * pulse + act * (0.3 + 0.2 * Math.sin(t * 4.2));
             ctx.fillStyle = `rgba(146, 122, 220, ${might * 0.5})`;
@@ -25031,14 +25031,14 @@ export class Renderer {
     p.y -= PROJ_AIR * scale;
     const ax = s.x;
     const ay = this.projAirWorldY(s.y);
-    const magic = style.startsWith('magic');
+    const arx = style.startsWith('arx');
     const tint = elementTint(style);
 
     // Muzzle flash — the first frame we see a shot, it POPS out of the
     // weapon: a directional spray of shards + a glow spike.
     if (!this.projSeen.has(eid)) {
       this.projSeen.add(eid);
-      if (magic) {
+      if (arx) {
         this.particles.burst(ax, ay, 10, [tint.mid, `rgb(${tint.deep})`, tint.core, tint.fleck], {
           speed: 2.6,
           life: 0.32,
@@ -25082,7 +25082,7 @@ export class Renderer {
 
         const now = performance.now();
         const el = style.split(':')[1] ?? 'arcane';
-        if (style.split(':')[0] === 'magic_heavy') {
+        if (style.split(':')[0] === 'arx_heavy') {
           // The heavy orb: fat, slow, unmistakably the payoff beat —
           // a churning faceted core with an ESCORT: three satellites
           // wheeling around it in the element's own matter.
@@ -25131,7 +25131,7 @@ export class Renderer {
           return;
         }
 
-        if (magic) {
+        if (arx) {
           // Every school flies its OWN matter — a frost shard is not
           // an orange fireball with the hue swapped. The shared core
           // is the cut diamond; the element speaks around it.
@@ -25357,13 +25357,13 @@ export class Renderer {
 
   /**
    * Settle every projectile that ended flight this frame: arrows stand
-   * in the ground (or ride the NPC they hit), magic fizzles in a burst.
+   * in the ground (or ride the NPC they hit), Arx fizzles in a burst.
    * Dead NPCs shed their arrows onto the ground where they fell.
    */
   private consumeProjectileAftermath(game: ClientGame, now: number): void {
     for (const end of game.projectileEnds) {
-      if (end.style.startsWith('magic')) {
-        const heavy = end.style.split(':')[0] === 'magic_heavy';
+      if (end.style.startsWith('arx')) {
+        const heavy = end.style.split(':')[0] === 'arx_heavy';
         const t = elementTint(end.style);
         const fy = this.projAirWorldY(end.y);
         this.particles.burst(end.x, fy, heavy ? 16 : 8, [t.mid, `rgb(${t.deep})`, t.core, t.fleck], {
@@ -27699,7 +27699,7 @@ export class Renderer {
    * telegraph sigils, hazard floors, and every expanding ring, light
    * wash, and crescent sweep. Bodies stand ON these marks — the far
    * rim of a nova hides behind the caster, the near rim rolls out in
-   * front of their feet. That one fact seats the magic in the world.
+   * front of their feet. That one fact seats the Arx in the world.
    */
   private drawGroundFx(game: ClientGame): void {
     const ctx = this.ctx;

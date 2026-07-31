@@ -79,7 +79,7 @@ import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 export interface OwnShot {
   /** Input-frame seq at the predicted fire — the matching key. */
   seq: number;
-  /** Same defId the server will broadcast ('archery', 'magic:ember'…). */
+  /** Same defId the server will broadcast ('archery', 'arx:ember'…). */
   defId: string;
   x: number;
   y: number;
@@ -663,7 +663,7 @@ export class ClientGame {
    */
   private trackOwnStaff(frame: InputFrame): void {
     const weapon = this.equippedWeaponDef();
-    if (!weapon || weapon.style !== 'magic') return;
+    if (!weapon || weapon.style !== 'arx') return;
     if (!hasButton(frame.buttons, InputButton.Attack)) return;
     if (frame.seq < this.staffReadySeq || frame.seq < this.castFreezeUntilSeq) return;
     const stage = nextComboStage(this.boltStageLocal, frame.seq <= this.boltGraceUntilSeq);
@@ -674,7 +674,7 @@ export class ClientGame {
       : weapon.cooldownTicks;
     this.staffReadySeq = frame.seq + cdTicks;
     this.boltGraceUntilSeq = this.staffReadySeq + COMBO_GRACE_TICKS;
-    const base = heavy ? 'magic_heavy' : 'magic';
+    const base = heavy ? 'arx_heavy' : 'arx';
     const defId = weapon.element ? `${base}:${weapon.element}` : base;
     this.predictShot(
       frame.seq,
@@ -877,10 +877,10 @@ export class ClientGame {
             // permanently shifts the seq↔tick mapping, pushing every later
             // bolt outside the ±2 window. Both streams are ordered, so
             // marry the oldest unclaimed tracer of the same bolt kind
-            // rather than draw the shot twice. Magic only — the archery
+            // rather than draw the shot twice. Arx only — the archery
             // snap-fan's second arrow shares a seq and must stay
             // unpredicted.
-            if (!best && meta.defId?.startsWith('magic')) {
+            if (!best && meta.defId?.startsWith('arx')) {
               for (let i = 0; i < this.ownShots.length; i++) {
                 if (this.ownShots[i]!.defId === meta.defId) {
                   best = this.ownShots[i]!;

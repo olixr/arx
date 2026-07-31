@@ -181,11 +181,11 @@ test('honedAbility clamps past the last authored step', () => {
 });
 
 test('THE UNWRITTEN PAGE: earned pages rank from their anchor, never below I', () => {
-  const page = { ability: 'x', style: 'magic' as const, unlockLevel: 0, hidden: { anchorLevel: 30 } };
+  const page = { ability: 'x', style: 'arx' as const, unlockLevel: 0, hidden: { anchorLevel: 30 } };
   assert.equal(techniqueRankFor(page, 10), 1, 'below the anchor the page is simply unhoned');
   assert.equal(techniqueRankFor(page, 45), 2, 'anchor +15 = rank II');
   assert.equal(techniqueRankFor(page, 75), 4, 'the page masters at anchor +45');
-  const rung = { ability: 'y', style: 'magic' as const, unlockLevel: 15 };
+  const rung = { ability: 'y', style: 'arx' as const, unlockLevel: 15 };
   assert.equal(techniqueRankFor(rung, 10), 0, 'ladder arts still gate on their rung');
   assert.equal(artFlag('riftwalker_step'), 'art:riftwalker_step');
 });

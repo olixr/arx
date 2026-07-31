@@ -188,10 +188,10 @@ const defs: CallingDef[] = [
     color: '#6b8a5a',
     effect: { kind: 'perk', perk: 'drawMoveFactor', magnitude: 0.7 },
   },
-  // --------------------------------------------------------------- magic
+  // ----------------------------------------------------------------- arx
   {
     id: 'kindled_mind',
-    skill: 'magic',
+    skill: 'arx',
     unlockLevel: 20,
     focusCost: 1,
     name: 'Kindled Mind',
@@ -201,13 +201,13 @@ const defs: CallingDef[] = [
   },
   {
     id: 'attuned',
-    skill: 'magic',
+    skill: 'arx',
     unlockLevel: 60,
     focusCost: 2,
     name: 'Attuned',
-    desc: 'The current runs closer to the skin — magic strikes harder.',
+    desc: 'The current runs closer to the skin — Arx strikes harder.',
     color: '#8a6ac8',
-    effect: { kind: 'gear', effect: { kind: 'styleDmg', style: 'magic', pct: 6 } },
+    effect: { kind: 'gear', effect: { kind: 'styleDmg', style: 'arx', pct: 6 } },
   },
   // --------------------------------------------------------------- sneak
   {

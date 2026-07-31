@@ -76,7 +76,7 @@ export interface BodyStyle {
   mantle?: string;
   /** A second hem layer beneath the skirt — flowing depth. */
   underskirt?: string;
-  /** Drifting magic motes in this color — the quiet aura. */
+  /** Drifting Arx motes in this color — the quiet aura. */
   motes?: string;
   /**
    * Gravity folds: hanging-cloth creases down the torso and skirt with
@@ -3477,7 +3477,7 @@ export function drawTorsoGarment(
       ctx.fill();
     }
 
-    // ---- the aura: three magic motes drifting slowly up the robe,
+    // ---- the aura: three Arx motes drifting slowly up the robe,
     // each on its own phase, fading in and out — quiet power, never a
     // particle storm. Deterministic from the clock alone.
     if (st.motes) {
@@ -4189,7 +4189,7 @@ export function drawPauldron(
   ctx.scale(Math.max(0.55, squashK) * bold, bold);
   if (st.pauldron === 'orbs') {
     // A conjured orb in patient orbit over each shoulder — floating,
-    // never mounted; the gap between orb and shoulder IS the magic.
+    // never mounted; the gap between orb and shoulder IS the trick.
     // Pushed OUTWARD past the skull silhouette: the head paints after
     // the pauldrons, so an orb hovering straight up simply vanishes.
     const bob = Math.sin(nowMs * 0.0021 + side * 1.3) * 0.014 * s;

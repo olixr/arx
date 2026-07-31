@@ -687,6 +687,25 @@ const MIGRATIONS: string[] = [
     HAVING FLOOR(SUM(xp) * 0.5) > 0
   ON CONFLICT (character_id, skill) DO NOTHING;
   `,
+  // v16: ARX WIELDING — the school of Arx takes its true name. 'magic'
+  // was only ever the placeholder word for the energy that binds the
+  // world; the skill that taps it is Arx Wielding, and its id is the
+  // substance itself. A straight rename: the ladder, the levels, and
+  // every art unlocked off it carry over untouched. The merge guard
+  // follows v15's model so a half-applied rerun cannot double a row —
+  // no character can hold an 'arx' row yet, but the shape is the law.
+  //
+  // Nothing else stored needs rewriting: character_techniques rows all
+  // sit under the reserved 'slot' key since v5, and gear affixes are
+  // derived from (rar, seed) by pool INDEX, so renaming the stat in
+  // the affix pools leaves every rolled item in the world unchanged.
+  `
+  DELETE FROM character_skills a
+    USING character_skills b
+    WHERE a.character_id = b.character_id
+    AND a.skill = 'magic' AND b.skill = 'arx';
+  UPDATE character_skills SET skill = 'arx' WHERE skill = 'magic';
+  `,
 ];
 
 /**

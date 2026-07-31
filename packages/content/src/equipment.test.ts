@@ -160,7 +160,7 @@ test('aggregateGearStats counts classes and applies modifiers', () => {
   });
   assert.equal(fullPlate.classCounts.plate, 4);
   assert.ok(Math.abs(fullPlate.styleDmgMult.onehand - 1.12) < 1e-9);
-  assert.ok(Math.abs(fullPlate.styleDmgMult.magic - 0.84) < 1e-9);
+  assert.ok(Math.abs(fullPlate.styleDmgMult.arx - 0.84) < 1e-9);
   assert.ok(Math.abs(fullPlate.speedMult - 0.96) < 1e-9);
   assert.equal(fullPlate.cooldownMult, 1);
   assert.ok(fullPlate.armor >= 3 + 6 + 4 + 3, 'summed base armor');
@@ -170,7 +170,7 @@ test('aggregateGearStats counts classes and applies modifiers', () => {
     boots: { id: 'swiftstep_boots', roll: { rar: 'common', seed: 2 } },
   });
   assert.equal(cloth.classCounts.cloth, 2);
-  assert.ok(Math.abs(cloth.styleDmgMult.magic - 1.08) < 1e-9);
+  assert.ok(Math.abs(cloth.styleDmgMult.arx - 1.08) < 1e-9);
   assert.ok(Math.abs(cloth.cooldownMult - 0.95) < 1e-9);
 
   // Legacy non-gear armor (capes) still counts its flat armor, no class.
@@ -192,7 +192,7 @@ test('rarity scales base armor and value', () => {
 });
 
 test('item power promotes an instance without changing its identity', () => {
-  // A re-issued early robe (native magic 4) at power 42 climbs toward —
+  // A re-issued early robe (native arx 4) at power 42 climbs toward —
   // but not past — a native piece of that tier on base armor, while its
   // affix cap uses the FULL effective level (the real catch-up).
   const native = rolledStats('thistledown_robe', { rar: 'common', seed: 9 })!;
@@ -221,9 +221,9 @@ test('item power promotes an instance without changing its identity', () => {
 
 test('effectiveReq gates a re-issued instance at its power', () => {
   const base = effectiveReq('thistledown_robe');
-  assert.deepEqual(base, { skill: 'magic', level: 4 });
+  assert.deepEqual(base, { skill: 'arx', level: 4 });
   const promoted = effectiveReq('thistledown_robe', { rar: 'common', seed: 1, pwr: 45 });
-  assert.deepEqual(promoted, { skill: 'magic', level: 45 });
+  assert.deepEqual(promoted, { skill: 'arx', level: 45 });
   assert.equal(effectiveReq('coins'), null);
 });
 
@@ -384,7 +384,7 @@ test('themed cloth sets: five pieces each, coherent class and reqs', () => {
     assert.deepEqual([...slots].sort(), ['body', 'boots', 'gloves', 'head', 'legs'], `${set} covers the armor slots`);
     for (const p of pieces) {
       assert.equal(p.armorClass, 'cloth', `${p.id} is cloth`);
-      assert.equal(p.levelReq?.skill, 'magic', `${p.id} gates on magic`);
+      assert.equal(p.levelReq?.skill, 'arx', `${p.id} gates on arx`);
       assert.ok(p.affixPool.length >= 3, `${p.id} pool feeds legendary rolls`);
     }
     const stories = new Set(pieces.map((p) => (p.acquisition.craft ? 'craft' : 'drop')));
@@ -399,18 +399,18 @@ test('the named wardrobe: eighteen chase sets, owners keep them, rarity floors h
   // reward), the legendary three never mint below their name, and
   // every set is drop-only — hunted, never forged.
   const SETS: Record<string, { cls: string; skill: string; floor: RarityTier[]; maxLevel: number }> = {
-    moonbell: { cls: 'cloth', skill: 'magic', floor: ['epic', 'legendary'], maxLevel: 13 },
-    riftweave: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 33 },
+    moonbell: { cls: 'cloth', skill: 'arx', floor: ['epic', 'legendary'], maxLevel: 13 },
+    riftweave: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 33 },
     adderfang: { cls: 'leather', skill: 'archery', floor: ['epic', 'legendary'], maxLevel: 13 },
     broodsilk: { cls: 'leather', skill: 'sneak', floor: ['legendary'], maxLevel: 33 },
     aurochs: { cls: 'plate', skill: 'defence', floor: ['epic', 'legendary'], maxLevel: 13 },
     barrowking: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 33 },
     // The legendary cloth road: four vestments spread down the
     // leveling bands — a legendary at level 8 is the whole point.
-    wintercourt: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 10 },
-    vigil: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 15 },
-    skydancer: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 21 },
-    orrery: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 27 },
+    wintercourt: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 10 },
+    vigil: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 15 },
+    skydancer: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 21 },
+    orrery: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 27 },
     // The legendary leather road: hunters and assassins get the same
     // deal on the same bands.
     hartsong: { cls: 'leather', skill: 'archery', floor: ['legendary'], maxLevel: 10 },
@@ -459,7 +459,7 @@ test('early-game cloth sets: four dye lots each, colorways mirror their base', (
     assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'gloves', 'head', 'legs']);
     for (const p of base) {
       assert.equal(p.armorClass, 'cloth', `${p.id} is cloth`);
-      assert.equal(p.levelReq?.skill, 'magic', `${p.id} gates on magic`);
+      assert.equal(p.levelReq?.skill, 'arx', `${p.id} gates on arx`);
       // The leveling road: these live below the themed wardrobe's floor.
       assert.ok((p.levelReq?.level ?? 0) <= 19, `${p.id} is early/mid game`);
     }
@@ -788,7 +788,7 @@ test('the ten voices: legendary-only chase staffs, spread down the road', async 
     // endgame one — every voice gates at or below level 30.
     assert.ok(gate <= 30, `${id} sits on the leveling road`);
     assert.equal(d!.levelReq!.level, gate, `${id} keeps its band`);
-    assert.equal(d!.levelReq!.skill, 'magic', `${id} gates on magic`);
+    assert.equal(d!.levelReq!.skill, 'arx', `${id} gates on arx`);
     // Legendary or nothing; found or nothing.
     assert.deepEqual(d!.rarities, ['legendary'], `${id} only exists legendary`);
     assert.ok(d!.acquisition?.drop && !d!.acquisition?.craft, `${id} is found, never forged`);
@@ -926,7 +926,7 @@ test('archmage roster: 22 staff designs, elements ride every bolt, gem swaps cra
   for (const id of staves) {
     const d = byId.get(id);
     assert.ok(d, `${id} exists`);
-    assert.equal(d!.weapon?.style, 'magic');
+    assert.equal(d!.weapon?.style, 'arx');
     assert.equal(d!.weapon!.ammo, undefined, `${id} needs no ammo — the staff IS the source`);
     assert.ok(d!.weapon!.element, `${id} belongs to a school`);
     assert.ok(d!.weapon!.art && ABILITIES.has(d!.weapon!.art), `${id} art resolves`);
@@ -939,7 +939,7 @@ test('archmage roster: 22 staff designs, elements ride every bolt, gem swaps cra
     assert.ok(line[i]!.weapon!.damage > line[i - 1]!.weapon!.damage, 'staff damage climbs');
     assert.ok(line[i]!.value > line[i - 1]!.value, 'staff value climbs');
     assert.ok(line[i]!.recipe!.levelReq > line[i - 1]!.recipe!.levelReq, 'staff crafting climbs');
-    assert.equal(line[i]!.levelReq!.skill, 'magic', 'staff gates on magic');
+    assert.equal(line[i]!.levelReq!.skill, 'arx', 'staff gates on arx');
   }
   line.forEach((d, i) => assert.ok(d.recipe!.inputs.some((inp) => inp.item === logs[i]), `${d.id} carved from ${logs[i]}`));
   // The gem swap system: one battlestaff frame, four element stones,
@@ -1104,7 +1104,7 @@ test('the two-hands law: bows and staves are two-handed, quivers ride the back',
         slot: 'head',
         armorClass: 'cloth',
         backMounted: true,
-        affixPool: [{ stat: 'magic' }],
+        affixPool: [{ stat: 'arx' }],
         acquisition: { shop: true },
         value: 1,
         color: '#fff',

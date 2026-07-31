@@ -13,7 +13,7 @@ import type { AffixPoolEntry, EquipmentDef } from './types.js';
 // Class-flavored affix pools. Local shorthand only — a JSON authoring
 // tool would inline these; the serialized form always carries the pool.
 const CLOTH_POOL: AffixPoolEntry[] = [
-  { stat: 'magic', w: 3 },
+  { stat: 'arx', w: 3 },
   { stat: 'vitality' },
   { stat: 'herbalism' },
   { stat: 'regen' },
@@ -38,7 +38,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     name: 'Apprentice robe',
     slot: 'body',
     armorClass: 'cloth',
-    levelReq: { skill: 'magic', level: 4 },
+    levelReq: { skill: 'arx', level: 4 },
     armor: 2,
     affixPool: CLOTH_POOL,
     acquisition: { craft: true, drop: true },
@@ -63,7 +63,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     name: 'Emberweave robe',
     slot: 'body',
     armorClass: 'cloth',
-    levelReq: { skill: 'magic', level: 24 },
+    levelReq: { skill: 'arx', level: 24 },
     armor: 3,
     affixPool: [...CLOTH_POOL, { stat: 'cooking' }],
     acquisition: { craft: true, drop: true },
@@ -264,9 +264,9 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     name: "Wizard's hat",
     slot: 'head',
     armorClass: 'cloth',
-    levelReq: { skill: 'magic', level: 12 },
+    levelReq: { skill: 'arx', level: 12 },
     armor: 1,
-    affixPool: [{ stat: 'magic', w: 3 }, { stat: 'herbalism' }, { stat: 'vitality' }, { stat: 'regen' }],
+    affixPool: [{ stat: 'arx', w: 3 }, { stat: 'herbalism' }, { stat: 'vitality' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
       skill: 'tailoring',
@@ -289,9 +289,9 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     name: 'Runecloth cowl',
     slot: 'head',
     armorClass: 'cloth',
-    levelReq: { skill: 'magic', level: 20 },
+    levelReq: { skill: 'arx', level: 20 },
     armor: 2,
-    affixPool: [{ stat: 'magic', w: 3 }, { stat: 'herbalism' }, { stat: 'regen' }],
+    affixPool: [{ stat: 'arx', w: 3 }, { stat: 'herbalism' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
       skill: 'tailoring',
@@ -447,9 +447,9 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     name: 'Swiftstep boots',
     slot: 'boots',
     armorClass: 'cloth',
-    levelReq: { skill: 'magic', level: 10 },
+    levelReq: { skill: 'arx', level: 10 },
     armor: 1,
-    affixPool: [{ stat: 'magic', w: 2 }, { stat: 'sneak' }, { stat: 'regen' }],
+    affixPool: [{ stat: 'arx', w: 2 }, { stat: 'sneak' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
       skill: 'tailoring',
@@ -563,9 +563,9 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     name: 'Padded mitts',
     slot: 'gloves',
     armorClass: 'cloth',
-    levelReq: { skill: 'magic', level: 8 },
+    levelReq: { skill: 'arx', level: 8 },
     armor: 1,
-    affixPool: [{ stat: 'magic', w: 2 }, { stat: 'tailoring' }, { stat: 'regen' }],
+    affixPool: [{ stat: 'arx', w: 2 }, { stat: 'tailoring' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
       skill: 'tailoring',
@@ -675,9 +675,9 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     id: 'arcane_orb',
     name: 'Arcane orb',
     slot: 'offhand',
-    levelReq: { skill: 'magic', level: 16 },
+    levelReq: { skill: 'arx', level: 16 },
     armor: 0,
-    affixPool: [{ stat: 'magic', w: 3 }, { stat: 'vitality' }, { stat: 'regen' }],
+    affixPool: [{ stat: 'arx', w: 3 }, { stat: 'vitality' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
       skill: 'smithing',
@@ -806,7 +806,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     slot: 'offhand',
     levelReq: { skill: 'defence', level: 24 },
     armor: 7,
-    affixPool: [{ stat: 'defence', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'maxHp' }],
+    affixPool: [{ stat: 'defence', w: 2 }, { stat: 'arx', w: 2 }, { stat: 'maxHp' }],
     acquisition: { drop: true },
     value: 620,
     color: '#9db6cc',
@@ -891,9 +891,9 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     id: 'scholars_tome',
     name: "Scholar's tome",
     slot: 'offhand',
-    levelReq: { skill: 'magic', level: 10 },
+    levelReq: { skill: 'arx', level: 10 },
     armor: 0,
-    affixPool: [{ stat: 'magic', w: 3 }, { stat: 'herbalism' }, { stat: 'regen' }],
+    affixPool: [{ stat: 'arx', w: 3 }, { stat: 'herbalism' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
       skill: 'leatherworking',
@@ -923,7 +923,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // plate. Grown, not forged — affixes lean into the field skills.
   ...wardenSet(),
   // -------- Frostplate: pale ice-steel, drop-only from the wolf packs.
-  // The battle-mage hybrid: plate that still remembers magic.
+  // The battle-mage hybrid: plate that still remembers Arx.
   ...frostplateSet(),
   // -------- Bulwark: gunmetal and brass, the fortress line. Nothing
   // clever, everything thick.
@@ -976,7 +976,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   ...starweaverSet(),
 
   // ========================================== early-game cloth wardrobe
-  // Five sets for the leveling road (magic 2–19), each in FOUR dye lots
+  // Five sets for the leveling road (arx 2–19), each in FOUR dye lots
   // via the colorway law — same silhouette record, new palette and a
   // new place in the world to find it. Low-level never means mundane.
   ...earlyClothDefs(),
@@ -1114,7 +1114,7 @@ function wardenSet(): EquipmentDef[] {
 function frostplateSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
     { stat: 'defence', w: 2 },
-    { stat: 'magic', w: 2 },
+    { stat: 'arx', w: 2 },
     { stat: 'sneak' },
     { stat: 'maxHp' },
   ];
@@ -1515,7 +1515,7 @@ function stagheartSet(): EquipmentDef[] {
 
 function hedgemageSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 2 },
+    { stat: 'arx', w: 2 },
     { stat: 'herbalism', w: 2 },
     { stat: 'farming' },
     { stat: 'regen' },
@@ -1534,35 +1534,35 @@ function hedgemageSet(): EquipmentDef[] {
   return [
     {
       id: 'hedgemage_hat', name: 'Hedgemage hat', slot: 'head', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 12 }, armor: 1, affixPool: pool,
+      levelReq: { skill: 'arx', level: 12 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(14, 100, 55, 2, { item: 'moonbell', qty: 1 }),
       value: 190, color, code: 'Hh',
       desc: 'Pointed, patched, and proud of both. Smells faintly of thyme.',
     },
     {
       id: 'hedgemage_robe', name: 'Hedgemage robe', slot: 'body', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 14 }, armor: 3, affixPool: pool,
+      levelReq: { skill: 'arx', level: 14 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(18, 160, 70, 3, { item: 'twine', qty: 2 }),
       value: 290, color, code: 'Hr',
       desc: 'Every patch was a lesson. The garden grades generously.',
     },
     {
       id: 'hedgemage_skirts', name: 'Hedgemage skirts', slot: 'legs', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 13 }, armor: 2, affixPool: pool,
+      levelReq: { skill: 'arx', level: 13 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(16, 130, 60, 2, { item: 'twine', qty: 1 }),
       value: 240, color, code: 'Hs',
       desc: 'Hemmed high for mud season. The mud appreciates the effort.',
     },
     {
       id: 'hedgemage_slippers', name: 'Hedgemage slippers', slot: 'boots', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 12 }, armor: 1, affixPool: pool,
+      levelReq: { skill: 'arx', level: 12 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(15, 110, 55, 2),
       value: 210, color, code: 'Hp',
       desc: 'Soft-soled and garden-stained. The cat approves of the toes.',
     },
     {
       id: 'hedgemage_gloves', name: 'Hedgemage gloves', slot: 'gloves', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 12 }, armor: 1, affixPool: pool,
+      levelReq: { skill: 'arx', level: 12 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(15, 105, 55, 2, { item: 'sagewort', qty: 1 }),
       value: 215, color, code: 'Hg',
       desc: 'Fingerless for the fiddly charms. Nettles lost this round.',
@@ -1572,7 +1572,7 @@ function hedgemageSet(): EquipmentDef[] {
 
 function tidecallerSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 2 },
+    { stat: 'arx', w: 2 },
     { stat: 'fishing', w: 2 },
     { stat: 'regen' },
     { stat: 'maxHp' },
@@ -1583,7 +1583,7 @@ function tidecallerSet(): EquipmentDef[] {
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'cloth',
-    levelReq: { skill: 'magic', level }, armor, affixPool: pool,
+    levelReq: { skill: 'arx', level }, armor, affixPool: pool,
     acquisition: { drop: true }, value, color, code, desc,
   });
   return [
@@ -1602,7 +1602,7 @@ function tidecallerSet(): EquipmentDef[] {
 
 function voidwhisperSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 2 },
+    { stat: 'arx', w: 2 },
     { stat: 'sneak', w: 2 },
     { stat: 'herbalism' },
     { stat: 'regen' },
@@ -1613,7 +1613,7 @@ function voidwhisperSet(): EquipmentDef[] {
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'cloth',
-    levelReq: { skill: 'magic', level }, armor, affixPool: pool,
+    levelReq: { skill: 'arx', level }, armor, affixPool: pool,
     acquisition: { drop: true }, value, color, code, desc,
   });
   return [
@@ -1632,7 +1632,7 @@ function voidwhisperSet(): EquipmentDef[] {
 
 function cinderswornSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 3 },
+    { stat: 'arx', w: 3 },
     { stat: 'cooking' },
     { stat: 'vitality' },
     { stat: 'regen' },
@@ -1649,35 +1649,35 @@ function cinderswornSet(): EquipmentDef[] {
   return [
     {
       id: 'cindersworn_hood', name: 'Cindersworn hood', slot: 'head', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 33 }, armor: 3, affixPool: pool,
+      levelReq: { skill: 'arx', level: 33 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(36, 320, 85, 2, 1),
       value: 720, color, code: 'Ch',
       desc: 'An ember set at the brow. It has never once gone out.',
     },
     {
       id: 'cindersworn_robe', name: 'Cindersworn robe', slot: 'body', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 34 }, armor: 5, affixPool: pool,
+      levelReq: { skill: 'arx', level: 34 }, armor: 5, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(40, 460, 100, 4, 2),
       value: 990, color, code: 'Cr',
       desc: 'Charcoal cloth, hem runes banked like coals. Warm side out.',
     },
     {
       id: 'cindersworn_skirts', name: 'Cindersworn skirts', slot: 'legs', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 33 }, armor: 4, affixPool: pool,
+      levelReq: { skill: 'arx', level: 33 }, armor: 4, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(38, 380, 90, 3, 1),
       value: 850, color, code: 'Ck',
       desc: 'Ash-grey wool that keeps the heat and spends it later.',
     },
     {
       id: 'cindersworn_slippers', name: 'Cindersworn slippers', slot: 'boots', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 33 }, armor: 2, affixPool: pool,
+      levelReq: { skill: 'arx', level: 33 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(37, 340, 85, 2, 1),
       value: 760, color, code: 'Cp',
       desc: 'Every step leaves the faintest warmth in the floorboards.',
     },
     {
       id: 'cindersworn_gloves', name: 'Cindersworn gloves', slot: 'gloves', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 33 }, armor: 2, affixPool: pool,
+      levelReq: { skill: 'arx', level: 33 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(37, 350, 85, 2, 1),
       value: 770, color, code: 'Cu',
       desc: 'Char-black palms, ember-lined cuffs. Snap, and mean it.',
@@ -1687,7 +1687,7 @@ function cinderswornSet(): EquipmentDef[] {
 
 function starweaverSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 3 },
+    { stat: 'arx', w: 3 },
     { stat: 'herbalism' },
     { stat: 'vitality' },
     { stat: 'maxHp' },
@@ -1707,35 +1707,35 @@ function starweaverSet(): EquipmentDef[] {
   return [
     {
       id: 'starweaver_circlet', name: 'Starweaver circlet', slot: 'head', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 40 }, armor: 3, affixPool: pool,
+      levelReq: { skill: 'arx', level: 40 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(44, 560, 100, 2, 1, 2),
       value: 1080, color, code: 'Sc',
       desc: 'A silver band beneath a halo that never quite touches down.',
     },
     {
       id: 'starweaver_robe', name: 'Starweaver robe', slot: 'body', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 42 }, armor: 6, affixPool: pool,
+      levelReq: { skill: 'arx', level: 42 }, armor: 6, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(48, 780, 120, 4, 2, 3),
       value: 1450, color, code: 'Sr',
       desc: 'Midnight cloth, silver star, two orbs in patient orbit.',
     },
     {
       id: 'starweaver_skirts', name: 'Starweaver skirts', slot: 'legs', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 41 }, armor: 5, affixPool: pool,
+      levelReq: { skill: 'arx', level: 41 }, armor: 5, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(46, 660, 110, 3, 1, 2),
       value: 1250, color, code: 'Sk',
       desc: 'Hemmed with constellations nobody has misread yet.',
     },
     {
       id: 'starweaver_slippers', name: 'Starweaver slippers', slot: 'boots', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 40 }, armor: 3, affixPool: pool,
+      levelReq: { skill: 'arx', level: 40 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(45, 600, 100, 2, 1, 1),
       value: 1150, color, code: 'Sp',
       desc: 'Curled silver toes. The night sky, fitted for walking.',
     },
     {
       id: 'starweaver_gloves', name: 'Starweaver gloves', slot: 'gloves', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 40 }, armor: 3, affixPool: pool,
+      levelReq: { skill: 'arx', level: 40 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(45, 610, 100, 2, 1, 1),
       value: 1160, color, code: 'Sy',
       desc: 'A star sapphire on each hand. Constellations take requests.',
@@ -1861,7 +1861,7 @@ function earlyClothDefs(): EquipmentDef[] {
 
 function thistledownSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 2 },
+    { stat: 'arx', w: 2 },
     { stat: 'farming' },
     { stat: 'foraging' },
     { stat: 'regen' },
@@ -1878,35 +1878,35 @@ function thistledownSet(): EquipmentDef[] {
   return [
     {
       id: 'thistledown_hood', name: 'Thistledown hood', slot: 'head', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 2 }, armor: 1, affixPool: pool,
+      levelReq: { skill: 'arx', level: 2 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(2, 20, 35, 1),
       value: 30, color, code: 'Lh',
       desc: 'Oat linen, soft as seed-fluff. Every road starts warm.',
     },
     {
       id: 'thistledown_robe', name: 'Thistledown robe', slot: 'body', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 4 }, armor: 2, affixPool: pool,
+      levelReq: { skill: 'arx', level: 4 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(5, 40, 50, 2),
       value: 55, color, code: 'Lr',
       desc: 'Patched at the elbow, proud of it. The rope belt is load-bearing.',
     },
     {
       id: 'thistledown_skirts', name: 'Thistledown skirts', slot: 'legs', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 3 }, armor: 1, affixPool: pool,
+      levelReq: { skill: 'arx', level: 3 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(3, 30, 40, 1),
       value: 40, color, code: 'Lk',
       desc: 'Homespun and hemmed twice. Thorns give up politely.',
     },
     {
       id: 'thistledown_slippers', name: 'Thistledown slippers', slot: 'boots', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 2 }, armor: 1, affixPool: pool,
+      levelReq: { skill: 'arx', level: 2 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(2, 25, 35, 1),
       value: 35, color, code: 'Lp',
       desc: 'Quiet as thistle seed on the wind, twice as stubborn.',
     },
     {
       id: 'thistledown_wraps', name: 'Thistledown wraps', slot: 'gloves', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 2 }, armor: 1, affixPool: pool,
+      levelReq: { skill: 'arx', level: 2 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(2, 22, 35, 1),
       value: 32, color, code: 'Lw',
       desc: 'Linen wound to the knuckle. Warm hands, willing sparks.',
@@ -1916,7 +1916,7 @@ function thistledownSet(): EquipmentDef[] {
 
 function mothwingSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 2 },
+    { stat: 'arx', w: 2 },
     { stat: 'sneak' },
     { stat: 'herbalism' },
     { stat: 'regen' },
@@ -1927,7 +1927,7 @@ function mothwingSet(): EquipmentDef[] {
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'cloth',
-    levelReq: { skill: 'magic', level }, armor, affixPool: pool,
+    levelReq: { skill: 'arx', level }, armor, affixPool: pool,
     acquisition: { drop: true }, value, color, code, desc,
   });
   return [
@@ -1946,7 +1946,7 @@ function mothwingSet(): EquipmentDef[] {
 
 function dawnswornSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 2 },
+    { stat: 'arx', w: 2 },
     { stat: 'regen', w: 2 },
     { stat: 'vitality' },
     { stat: 'maxHp' },
@@ -1963,35 +1963,35 @@ function dawnswornSet(): EquipmentDef[] {
   return [
     {
       id: 'dawnsworn_hood', name: 'Dawnsworn hood', slot: 'head', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 10 }, armor: 2, affixPool: pool,
+      levelReq: { skill: 'arx', level: 10 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(12, 85, 55, 2),
       value: 170, color, code: 'Ah',
       desc: 'A sunstone at the brow. It warms a minute before sunrise.',
     },
     {
       id: 'dawnsworn_robe', name: 'Dawnsworn robe', slot: 'body', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 12 }, armor: 3, affixPool: pool,
+      levelReq: { skill: 'arx', level: 12 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(16, 140, 70, 3),
       value: 240, color, code: 'Ar',
       desc: 'Ivory cloth behind a blazing sun. First light, sworn in.',
     },
     {
       id: 'dawnsworn_skirts', name: 'Dawnsworn skirts', slot: 'legs', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 11 }, armor: 2, affixPool: pool,
+      levelReq: { skill: 'arx', level: 11 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(14, 110, 60, 2),
       value: 205, color, code: 'Ak',
       desc: 'Gold-hemmed and early to rise. The dew steps aside.',
     },
     {
       id: 'dawnsworn_slippers', name: 'Dawnsworn slippers', slot: 'boots', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 10 }, armor: 1, affixPool: pool,
+      levelReq: { skill: 'arx', level: 10 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(13, 95, 55, 2),
       value: 180, color, code: 'Ap',
       desc: 'They face east on their own. Let them lead once in a while.',
     },
     {
       id: 'dawnsworn_wraps', name: 'Dawnsworn wraps', slot: 'gloves', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 10 }, armor: 1, affixPool: pool,
+      levelReq: { skill: 'arx', level: 10 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(13, 90, 55, 2),
       value: 175, color, code: 'Aw',
       desc: 'Gold-banded ivory. Morning light stays where you put it.',
@@ -2001,7 +2001,7 @@ function dawnswornSet(): EquipmentDef[] {
 
 function fenwalkerSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 2 },
+    { stat: 'arx', w: 2 },
     { stat: 'herbalism', w: 2 },
     { stat: 'fishing' },
     { stat: 'maxHp' },
@@ -2012,7 +2012,7 @@ function fenwalkerSet(): EquipmentDef[] {
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'cloth',
-    levelReq: { skill: 'magic', level }, armor, affixPool: pool,
+    levelReq: { skill: 'arx', level }, armor, affixPool: pool,
     acquisition: { drop: true }, value, color, code, desc,
   });
   return [
@@ -2031,7 +2031,7 @@ function fenwalkerSet(): EquipmentDef[] {
 
 function stormwovenSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'magic', w: 3 },
+    { stat: 'arx', w: 3 },
     { stat: 'vitality' },
     { stat: 'regen' },
     { stat: 'maxHp' },
@@ -2048,35 +2048,35 @@ function stormwovenSet(): EquipmentDef[] {
   return [
     {
       id: 'stormwoven_hood', name: 'Stormwoven hood', slot: 'head', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 17 }, armor: 2, affixPool: pool,
+      levelReq: { skill: 'arx', level: 17 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(20, 170, 70, 2),
       value: 360, color, code: 'Zh',
       desc: 'A storm-eye glints at the brow. Weather answers to it, some days.',
     },
     {
       id: 'stormwoven_robe', name: 'Stormwoven robe', slot: 'body', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 19 }, armor: 4, affixPool: pool,
+      levelReq: { skill: 'arx', level: 19 }, armor: 4, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(24, 260, 90, 4),
       value: 500, color, code: 'Zr',
       desc: 'A fat gold bolt on rolling slate. Thunder, tailored.',
     },
     {
       id: 'stormwoven_skirts', name: 'Stormwoven skirts', slot: 'legs', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 18 }, armor: 3, affixPool: pool,
+      levelReq: { skill: 'arx', level: 18 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(22, 210, 80, 3),
       value: 430, color, code: 'Zk',
       desc: 'Rain-grey wool with a charge in it. Hems mutter like far fronts.',
     },
     {
       id: 'stormwoven_slippers', name: 'Stormwoven slippers', slot: 'boots', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 17 }, armor: 2, affixPool: pool,
+      levelReq: { skill: 'arx', level: 17 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(21, 180, 70, 2),
       value: 380, color, code: 'Zp',
       desc: 'Static in the soles. Doorknobs have learned to flinch.',
     },
     {
       id: 'stormwoven_wraps', name: 'Stormwoven wraps', slot: 'gloves', armorClass: 'cloth',
-      levelReq: { skill: 'magic', level: 17 }, armor: 2, affixPool: pool,
+      levelReq: { skill: 'arx', level: 17 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(21, 175, 70, 2),
       value: 370, color, code: 'Zw',
       desc: 'A gold bolt down each wrist. Point at nothing you like.',
@@ -3300,7 +3300,7 @@ function swordDefs(): EquipmentDef[] {
       id: 'moonshard', name: 'Moonshard', slot: 'weapon',
       levelReq: { skill: 'onehand', level: 22 },
       weapon: { style: 'onehand', damage: 2, cooldownTicks: 5, range: 2.05, art: 'lunge', backstabMult: 1.5 },
-      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'sneak' }, { stat: 'magic' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'sneak' }, { stat: 'arx' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 30, xp: 260, station: 'anvil', ticks: 90,
@@ -3411,7 +3411,7 @@ function swordDefs(): EquipmentDef[] {
       id: 'frostbrand', name: 'Frostbrand', slot: 'weapon',
       levelReq: { skill: 'onehand', level: 28 },
       weapon: { style: 'onehand', damage: 3, cooldownTicks: 7, range: 1.9, art: 'winters_edge' },
-      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'arx' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 560, color: '#a8c8dc', code: 'Fb',
@@ -3431,7 +3431,7 @@ function swordDefs(): EquipmentDef[] {
       id: 'stormcall', name: 'Stormcall', slot: 'weapon',
       levelReq: { skill: 'onehand', level: 35 },
       weapon: { style: 'onehand', damage: 3, cooldownTicks: 6, range: 1.9, art: 'storm_brand' },
-      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'arx', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 800, color: '#5a6a9c', code: 'Sm',
@@ -3451,7 +3451,7 @@ function swordDefs(): EquipmentDef[] {
       id: 'starfall', name: 'Starfall', slot: 'weapon',
       levelReq: { skill: 'onehand', level: 45 },
       weapon: { style: 'onehand', damage: 5, cooldownTicks: 7, range: 2.0, art: 'starfall_strike' },
-      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'magic' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'arx' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['epic', 'legendary'],
       acquisition: { drop: true },
       value: 1400, color: '#4a4066', code: 'Fy',
@@ -3510,7 +3510,7 @@ function swordDefs(): EquipmentDef[] {
       id: 'skysplinter', name: 'Skysplinter', slot: 'weapon',
       levelReq: { skill: 'onehand', level: 16 },
       weapon: { style: 'onehand', damage: 3, cooldownTicks: 6, range: 1.95, art: 'sky_splits' },
-      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'arx', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 50, chance: 0.2 }],
@@ -3543,7 +3543,7 @@ function swordDefs(): EquipmentDef[] {
       id: 'winterspire', name: 'Winterspire', slot: 'weapon',
       levelReq: { skill: 'onehand', level: 30 },
       weapon: { style: 'onehand', damage: 4, cooldownTicks: 7, range: 2.0, art: 'still_air' },
-      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'arx' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [
@@ -3755,7 +3755,7 @@ function daggerDefs(): EquipmentDef[] {
       id: 'coldsnap', name: 'Coldsnap', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 30 },
       weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.45, art: 'cold_snap', backstabMult: 2.4 },
-      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'arx' }, { stat: 'defence' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 36, xp: 340, station: 'anvil', ticks: 85,
@@ -3864,7 +3864,7 @@ function daggerDefs(): EquipmentDef[] {
       id: 'palefire', name: 'Palefire', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 32 },
       weapon: { style: 'onehand', damage: 3, cooldownTicks: 6, range: 1.45, art: 'pale_flame', backstabMult: 2.5 },
-      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'arx', w: 2 }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 820, color: '#c8dce8', code: 'Pe',
@@ -3874,7 +3874,7 @@ function daggerDefs(): EquipmentDef[] {
       id: 'sparkfang', name: 'Sparkfang', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 35 },
       weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.45, art: 'spark_lash', backstabMult: 2.6 },
-      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic' }, { stat: 'onehand' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'arx' }, { stat: 'onehand' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 900, color: '#7a88b8', code: 'Qs',
@@ -4133,7 +4133,7 @@ function bowDefs(): EquipmentDef[] {
       id: 'windsinger', name: 'Windsinger', slot: 'weapon',
       levelReq: { skill: 'archery', level: 40 },
       weapon: { style: 'archery', damage: 9, cooldownTicks: 10, range: 18, ammo: 'arrow', projectileSpeed: 21, art: 'windsong' },
-      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'arx' }, { stat: 'defence' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'woodworking', levelReq: 45, xp: 420, station: 'carving_bench', ticks: 90,
@@ -4219,7 +4219,7 @@ function bowDefs(): EquipmentDef[] {
       id: 'rimewood', name: 'Rimewood', slot: 'weapon',
       levelReq: { skill: 'archery', level: 24 },
       weapon: { style: 'archery', damage: 7, cooldownTicks: 9, range: 16, ammo: 'arrow', projectileSpeed: 17, art: 'hoarfrost' },
-      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'arx' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 640, color: '#a8c8d8', code: 'Rm',
@@ -4249,7 +4249,7 @@ function bowDefs(): EquipmentDef[] {
       id: 'emberglow', name: 'Emberglow', slot: 'weapon',
       levelReq: { skill: 'archery', level: 30 },
       weapon: { style: 'archery', damage: 8, cooldownTicks: 9, range: 15, ammo: 'arrow', projectileSpeed: 18, art: 'cinder_rain' },
-      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'magic' }, { stat: 'smithing' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'arx' }, { stat: 'smithing' }, { stat: 'maxHp' }],
       rarities: ['rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 760, color: '#c86a38', code: 'Ew',
@@ -4269,7 +4269,7 @@ function bowDefs(): EquipmentDef[] {
       id: 'starcall', name: 'Starcall', slot: 'weapon',
       levelReq: { skill: 'archery', level: 42 },
       weapon: { style: 'archery', damage: 8, cooldownTicks: 8, range: 17, ammo: 'arrow', projectileSpeed: 19, art: 'starfall_arrows' },
-      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'magic', w: 2 }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'arx', w: 2 }, { stat: 'maxHp' }],
       rarities: ['epic', 'legendary'],
       acquisition: { drop: true },
       value: 1400, color: '#5a5e9e', code: 'Zc',
@@ -4377,7 +4377,7 @@ function bowDefs(): EquipmentDef[] {
       id: 'runespan', name: 'Runespan', slot: 'weapon',
       levelReq: { skill: 'archery', level: 26 },
       weapon: { style: 'archery', damage: 6, cooldownTicks: 7, range: 16, ammo: 'arrow', projectileSpeed: 18, art: 'plucked_chord' },
-      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'arx' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'cooldown', pct: 6 }],
@@ -4388,7 +4388,7 @@ function bowDefs(): EquipmentDef[] {
       id: 'starloom', name: 'Starloom', slot: 'weapon',
       levelReq: { skill: 'archery', level: 28 },
       weapon: { style: 'archery', damage: 7, cooldownTicks: 8, range: 16, ammo: 'arrow', projectileSpeed: 19, art: 'nightweft' },
-      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'magic' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'arx' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'elementDmg', element: 'astral', pct: 8 }, { kind: 'crit', pct: 2 }],
@@ -4419,21 +4419,21 @@ function bowDefs(): EquipmentDef[] {
 }
 
 function staffDefs(): EquipmentDef[] {
-  // Pools: every staff leans magic; the flavor stats tell its school.
+  // Pools: every staff leans arx; the flavor stats tell its school.
   const MAGE_POOL: AffixPoolEntry[] = [
-    { stat: 'magic', w: 3 },
+    { stat: 'arx', w: 3 },
     { stat: 'vitality' },
     { stat: 'herbalism' },
     { stat: 'maxHp' },
   ];
   const SAGE_POOL: AffixPoolEntry[] = [
-    { stat: 'magic', w: 3 },
+    { stat: 'arx', w: 3 },
     { stat: 'herbalism', w: 2 },
     { stat: 'regen' },
     { stat: 'maxHp' },
   ];
   const WARMAGE_POOL: AffixPoolEntry[] = [
-    { stat: 'magic', w: 3 },
+    { stat: 'arx', w: 3 },
     { stat: 'defence' },
     { stat: 'vitality' },
     { stat: 'maxHp' },
@@ -4462,7 +4462,7 @@ function staffDefs(): EquipmentDef[] {
       name: w.name,
       slot: 'weapon',
       weapon: {
-        style: 'magic', damage: w.damage, cooldownTicks: 8, range: 14,
+        style: 'arx', damage: w.damage, cooldownTicks: 8, range: 14,
         projectileSpeed: 13, art: 'arcane_ring', element: 'arcane',
       },
       affixPool: MAGE_POOL,
@@ -4473,7 +4473,7 @@ function staffDefs(): EquipmentDef[] {
       },
       value: w.value, color: w.color, code: w.code, desc: w.desc,
     };
-    if (w.magReq > 0) def.levelReq = { skill: 'magic', level: w.magReq };
+    if (w.magReq > 0) def.levelReq = { skill: 'arx', level: w.magReq };
     return def;
   });
 
@@ -4502,9 +4502,9 @@ function staffDefs(): EquipmentDef[] {
     id: `${g.el}_battlestaff`,
     name: g.name,
     slot: 'weapon' as const,
-    levelReq: { skill: 'magic' as const, level: 30 },
+    levelReq: { skill: 'arx' as const, level: 30 },
     weapon: {
-      style: 'magic' as const, damage: 5, cooldownTicks: 9, range: 14,
+      style: 'arx' as const, damage: 5, cooldownTicks: 9, range: 14,
       projectileSpeed: 13, art: g.art, element: g.el,
     },
     affixPool: WARMAGE_POOL,
@@ -4523,7 +4523,7 @@ function staffDefs(): EquipmentDef[] {
   const classics: EquipmentDef[] = [
     {
       id: 'apprentice_staff', name: 'Apprentice staff', slot: 'weapon',
-      weapon: { style: 'magic', damage: 1, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'frost_nova', element: 'arcane' },
+      weapon: { style: 'arx', damage: 1, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'frost_nova', element: 'arcane' },
       affixPool: MAGE_POOL,
       acquisition: { shop: true },
       value: 45, color: '#7a5ac4', code: 'St',
@@ -4531,8 +4531,8 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'ember_staff', name: 'Ember staff', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 8 },
-      weapon: { style: 'magic', damage: 2, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'fireburst', element: 'ember' },
+      levelReq: { skill: 'arx', level: 8 },
+      weapon: { style: 'arx', damage: 2, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'fireburst', element: 'ember' },
       affixPool: MAGE_POOL,
       rarities: ['common', 'uncommon', 'rare'],
       acquisition: { drop: true },
@@ -4545,9 +4545,9 @@ function staffDefs(): EquipmentDef[] {
   const crafts: EquipmentDef[] = [
     {
       id: 'hearthwarden', name: 'Hearthwarden', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 16 },
-      weapon: { style: 'magic', damage: 4, cooldownTicks: 9, range: 13, projectileSpeed: 13, art: 'hearth_flare', element: 'ember' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'cooking' }, { stat: 'vitality' }, { stat: 'regen' }],
+      levelReq: { skill: 'arx', level: 16 },
+      weapon: { style: 'arx', damage: 4, cooldownTicks: 9, range: 13, projectileSpeed: 13, art: 'hearth_flare', element: 'ember' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'cooking' }, { stat: 'vitality' }, { stat: 'regen' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'woodworking', levelReq: 22, xp: 180, station: 'carving_bench', ticks: 70,
@@ -4558,9 +4558,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'tidebinder', name: 'Tidebinder', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 26 },
-      weapon: { style: 'magic', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'undertow', element: 'frost' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'fishing', w: 2 }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 26 },
+      weapon: { style: 'arx', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'undertow', element: 'frost' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'fishing', w: 2 }, { stat: 'defence' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'woodworking', levelReq: 32, xp: 230, station: 'carving_bench', ticks: 75,
@@ -4571,9 +4571,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'stormcaller', name: 'Stormcaller', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 42 },
-      weapon: { style: 'magic', damage: 7, cooldownTicks: 10, range: 15, projectileSpeed: 14, art: 'stormlash', element: 'storm' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 42 },
+      weapon: { style: 'arx', damage: 7, cooldownTicks: 10, range: 15, projectileSpeed: 14, art: 'stormlash', element: 'storm' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'woodworking', levelReq: 47, xp: 400, station: 'carving_bench', ticks: 90,
@@ -4589,8 +4589,8 @@ function staffDefs(): EquipmentDef[] {
   const finds: EquipmentDef[] = [
     {
       id: 'hazel_switch', name: 'Hazel switch', slot: 'weapon',
-      weapon: { style: 'magic', damage: 1, cooldownTicks: 7, range: 12, projectileSpeed: 12, art: 'arcane_ring', element: 'arcane' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'foraging' }, { stat: 'maxHp' }],
+      weapon: { style: 'arx', damage: 1, cooldownTicks: 7, range: 12, projectileSpeed: 12, art: 'arcane_ring', element: 'arcane' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'foraging' }, { stat: 'maxHp' }],
       rarities: ['common', 'uncommon'],
       acquisition: { drop: true },
       value: 12, color: '#96784f', code: 'Hz',
@@ -4598,9 +4598,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'shepherds_crook', name: 'Shepherd\'s crook', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 5 },
-      weapon: { style: 'magic', damage: 2, cooldownTicks: 8, range: 13, projectileSpeed: 12, art: 'overgrowth', element: 'verdant' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'beastcraft', w: 2 }, { stat: 'regen' }],
+      levelReq: { skill: 'arx', level: 5 },
+      weapon: { style: 'arx', damage: 2, cooldownTicks: 8, range: 13, projectileSpeed: 12, art: 'overgrowth', element: 'verdant' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'beastcraft', w: 2 }, { stat: 'regen' }],
       rarities: ['common', 'uncommon', 'rare'],
       acquisition: { drop: true },
       value: 90, color: '#a08a5c', code: 'Kk',
@@ -4608,9 +4608,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'wisplight', name: 'Wisplight', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 7 },
-      weapon: { style: 'magic', damage: 2, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'wisp_flare', element: 'radiant' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 7 },
+      weapon: { style: 'arx', damage: 2, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'wisp_flare', element: 'radiant' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'sneak' }, { stat: 'maxHp' }],
       rarities: ['common', 'uncommon', 'rare'],
       acquisition: { drop: true },
       value: 130, color: '#e8e0b0', code: 'Xy',
@@ -4618,9 +4618,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'gravewood', name: 'Gravewood', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 10 },
-      weapon: { style: 'magic', damage: 3, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'grave_chill', element: 'void' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 10 },
+      weapon: { style: 'arx', damage: 3, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'grave_chill', element: 'void' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['common', 'uncommon', 'rare'],
       acquisition: { drop: true },
       value: 200, color: '#6a6454', code: 'Gx',
@@ -4628,9 +4628,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'gloomthorn', name: 'Gloomthorn', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 14 },
-      weapon: { style: 'magic', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'gloom_burst', element: 'void' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'herbalism' }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 14 },
+      weapon: { style: 'arx', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'gloom_burst', element: 'void' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'herbalism' }, { stat: 'sneak' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 300, color: '#7a5a8a', code: 'Hx',
@@ -4638,9 +4638,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'serpentcoil', name: 'Serpentcoil', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 18 },
-      weapon: { style: 'magic', damage: 4, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'venom_lash', element: 'verdant' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'herbalism', w: 2 }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 18 },
+      weapon: { style: 'arx', damage: 4, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'venom_lash', element: 'verdant' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'herbalism', w: 2 }, { stat: 'sneak' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 420, color: '#8aa050', code: 'Qn',
@@ -4648,9 +4648,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'glacierbite', name: 'Glacierbite', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 22 },
-      weapon: { style: 'magic', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'shatterfrost', element: 'frost' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 22 },
+      weapon: { style: 'arx', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'shatterfrost', element: 'frost' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 600, color: '#b0d8e8', code: 'Gq',
@@ -4658,9 +4658,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'pyreheart', name: 'Pyreheart', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 24 },
-      weapon: { style: 'magic', damage: 6, cooldownTicks: 10, range: 13, projectileSpeed: 12, art: 'magma_orb', element: 'ember' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'smithing', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 24 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 10, range: 13, projectileSpeed: 12, art: 'magma_orb', element: 'ember' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'smithing', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 640, color: '#3a3038', code: 'Py',
@@ -4668,9 +4668,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'runegnarl', name: 'Runegnarl', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 28 },
-      weapon: { style: 'magic', damage: 5, cooldownTicks: 9, range: 15, projectileSpeed: 13, art: 'rune_echo', element: 'arcane' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'tailoring' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 28 },
+      weapon: { style: 'arx', damage: 5, cooldownTicks: 9, range: 15, projectileSpeed: 13, art: 'rune_echo', element: 'arcane' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'tailoring' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 720, color: '#8a7a9e', code: 'Rq',
@@ -4678,9 +4678,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'sunwrought', name: 'Sunwrought', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 30 },
-      weapon: { style: 'magic', damage: 6, cooldownTicks: 9, range: 15, projectileSpeed: 15, art: 'solar_lance', element: 'radiant' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'farming' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 30 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 9, range: 15, projectileSpeed: 15, art: 'solar_lance', element: 'radiant' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'farming' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 800, color: '#e8b84a', code: 'Sx',
@@ -4688,9 +4688,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'boneharrow', name: 'Boneharrow', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 32 },
-      weapon: { style: 'magic', damage: 6, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'marrow_pulse', element: 'void' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'sneak', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 32 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'marrow_pulse', element: 'void' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'sneak', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['epic', 'legendary'],
       acquisition: { drop: true },
       value: 1100, color: '#d8d2be', code: 'Hy',
@@ -4698,9 +4698,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'bloodmoon', name: 'Bloodmoon', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 34 },
-      weapon: { style: 'magic', damage: 7, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'red_eclipse', element: 'blood' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'onehand' }, { stat: 'vitality', w: 2 }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 34 },
+      weapon: { style: 'arx', damage: 7, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'red_eclipse', element: 'blood' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'onehand' }, { stat: 'vitality', w: 2 }, { stat: 'maxHp' }],
       rarities: ['epic', 'legendary'],
       acquisition: { drop: true },
       value: 1250, color: '#a83a4a', code: 'Bm',
@@ -4708,9 +4708,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'nightwell', name: 'Nightwell', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 36 },
-      weapon: { style: 'magic', damage: 7, cooldownTicks: 10, range: 15, projectileSpeed: 13, art: 'void_rift', element: 'void' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 36 },
+      weapon: { style: 'arx', damage: 7, cooldownTicks: 10, range: 15, projectileSpeed: 13, art: 'void_rift', element: 'void' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'sneak' }, { stat: 'maxHp' }],
       rarities: ['epic', 'legendary'],
       acquisition: { drop: true },
       value: 1300, color: '#3a3252', code: 'Nw',
@@ -4718,9 +4718,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'tempest_crown', name: 'Tempest Crown', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 38 },
-      weapon: { style: 'magic', damage: 6, cooldownTicks: 8, range: 15, projectileSpeed: 15, art: 'eye_of_the_storm', element: 'storm' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 38 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 8, range: 15, projectileSpeed: 15, art: 'eye_of_the_storm', element: 'storm' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['epic', 'legendary'],
       acquisition: { drop: true },
       value: 1400, color: '#b0b8d8', code: 'Tx',
@@ -4728,9 +4728,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'worldsplinter', name: 'The Worldsplinter', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 50 },
-      weapon: { style: 'magic', damage: 10, cooldownTicks: 9, range: 16, projectileSpeed: 16, art: 'realm_rend', element: 'astral' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'vitality' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 50 },
+      weapon: { style: 'arx', damage: 10, cooldownTicks: 9, range: 16, projectileSpeed: 16, art: 'realm_rend', element: 'astral' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'vitality' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'cooldown', pct: 6 }, { kind: 'elementDmg', element: 'astral', pct: 10 }],
@@ -4748,9 +4748,9 @@ function staffDefs(): EquipmentDef[] {
   const voices: EquipmentDef[] = [
     {
       id: 'wealdheart', name: 'Wealdheart', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 5 },
-      weapon: { style: 'magic', damage: 2, cooldownTicks: 8, range: 13, projectileSpeed: 13, art: 'wild_root', element: 'verdant' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'herbalism', w: 2 }, { stat: 'regen' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 5 },
+      weapon: { style: 'arx', damage: 2, cooldownTicks: 8, range: 13, projectileSpeed: 13, art: 'wild_root', element: 'verdant' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'herbalism', w: 2 }, { stat: 'regen' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onHitStatus', status: 'venom', power: 1, durationTicks: 60, chance: 0.2 }],
@@ -4759,9 +4759,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'firstlight', name: 'Firstlight', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 8 },
-      weapon: { style: 'magic', damage: 2, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'day_breaks', element: 'radiant' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 8 },
+      weapon: { style: 'arx', damage: 2, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'day_breaks', element: 'radiant' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onKillHaste', ticks: 30 }],
@@ -4770,9 +4770,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'moonwell', name: 'Moonwell', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 11 },
-      weapon: { style: 'magic', damage: 3, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'moonfall', element: 'frost' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 11 },
+      weapon: { style: 'arx', damage: 3, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'moonfall', element: 'frost' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onHitStatus', status: 'chill', power: 1, durationTicks: 60, chance: 0.2 }],
@@ -4781,9 +4781,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'galecall', name: 'Galecall', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 14 },
-      weapon: { style: 'magic', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 14, art: 'shearwind', element: 'storm' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 14 },
+      weapon: { style: 'arx', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 14, art: 'shearwind', element: 'storm' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 50, chance: 0.2 }],
@@ -4792,9 +4792,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'firequill', name: 'Firequill', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 17 },
-      weapon: { style: 'magic', damage: 4, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'the_molt', element: 'ember' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 17 },
+      weapon: { style: 'arx', damage: 4, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'the_molt', element: 'ember' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onHitStatus', status: 'burn', power: 1, durationTicks: 60, chance: 0.25 }],
@@ -4803,9 +4803,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'hollowstar', name: 'Hollowstar', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 20 },
-      weapon: { style: 'magic', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'hollowing', element: 'void' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 20 },
+      weapon: { style: 'arx', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'hollowing', element: 'void' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'elementDmg', element: 'void', pct: 8 }, { kind: 'cooldown', pct: 3 }],
@@ -4814,9 +4814,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'everthirst', name: 'Everthirst', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 23 },
-      weapon: { style: 'magic', damage: 5, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'red_toll', element: 'blood' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'vitality', w: 2 }, { stat: 'onehand' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 23 },
+      weapon: { style: 'arx', damage: 5, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'red_toll', element: 'blood' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'vitality', w: 2 }, { stat: 'onehand' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'lifesteal', frac: 0.05 }],
@@ -4825,9 +4825,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'runekey', name: 'Runekey', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 26 },
-      weapon: { style: 'magic', damage: 5, cooldownTicks: 8, range: 15, projectileSpeed: 14, art: 'axiom', element: 'arcane' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'tailoring' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 26 },
+      weapon: { style: 'arx', damage: 5, cooldownTicks: 8, range: 15, projectileSpeed: 14, art: 'axiom', element: 'arcane' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'tailoring' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'cooldown', pct: 6 }],
@@ -4836,9 +4836,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'driftstar', name: 'Driftstar', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 28 },
-      weapon: { style: 'magic', damage: 6, cooldownTicks: 9, range: 15, projectileSpeed: 15, art: 'perihelion', element: 'astral' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'vitality' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 28 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 9, range: 15, projectileSpeed: 15, art: 'perihelion', element: 'astral' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'vitality' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'elementDmg', element: 'astral', pct: 8 }, { kind: 'crit', pct: 2 }],
@@ -4847,9 +4847,9 @@ function staffDefs(): EquipmentDef[] {
     },
     {
       id: 'skythrone', name: 'Skythrone', slot: 'weapon',
-      levelReq: { skill: 'magic', level: 30 },
-      weapon: { style: 'magic', damage: 6, cooldownTicks: 8, range: 15, projectileSpeed: 15, art: 'crownstorm', element: 'storm' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'arx', level: 30 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 8, range: 15, projectileSpeed: 15, art: 'crownstorm', element: 'storm' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [
@@ -4893,7 +4893,7 @@ type ArmorSlot = 'head' | 'body' | 'legs' | 'gloves' | 'boots';
 function chasePiece(
   base: {
     class: 'cloth' | 'leather' | 'plate';
-    skill: 'magic' | 'archery' | 'sneak' | 'defence';
+    skill: 'arx' | 'archery' | 'sneak' | 'defence';
     pool: AffixPoolEntry[];
     color: string;
     rarities: RarityTier[];
@@ -4914,9 +4914,9 @@ function namedChaseDefs(): EquipmentDef[] {
   // bells, a glow the flower keeps for itself. Owner: the fen edge
   // where moonbell grows — adders and the spiders above them.
   const moonbell = {
-    class: 'cloth' as const, skill: 'magic' as const,
+    class: 'cloth' as const, skill: 'arx' as const,
     pool: [
-      { stat: 'magic', w: 2 },
+      { stat: 'arx', w: 2 },
       { stat: 'herbalism', w: 2 },
       { stat: 'regen' },
       { stat: 'maxHp' },
@@ -4928,9 +4928,9 @@ function namedChaseDefs(): EquipmentDef[] {
   // one white seam, violet runes: the riftglass blade's own language.
   // Owner: the riftgate and the Champion who guards the way down.
   const riftweave = {
-    class: 'cloth' as const, skill: 'magic' as const,
+    class: 'cloth' as const, skill: 'arx' as const,
     pool: [
-      { stat: 'magic', w: 3 },
+      { stat: 'arx', w: 3 },
       { stat: 'sneak' },
       { stat: 'regen' },
       { stat: 'maxHp' },
@@ -4995,9 +4995,9 @@ function namedChaseDefs(): EquipmentDef[] {
   // made. Owner: the winter packs — the matriarch walks with the
   // court's leavings snagged in the great pelt.
   const wintercourt = {
-    class: 'cloth' as const, skill: 'magic' as const,
+    class: 'cloth' as const, skill: 'arx' as const,
     pool: [
-      { stat: 'magic', w: 2 },
+      { stat: 'arx', w: 2 },
       { stat: 'defence' },
       { stat: 'regen' },
       { stat: 'maxHp' },
@@ -5009,9 +5009,9 @@ function namedChaseDefs(): EquipmentDef[] {
   // Owner: the crypt's watch; the keeper's vestment outlasted the
   // keeper, and the guards hold what the hill holds.
   const vigil = {
-    class: 'cloth' as const, skill: 'magic' as const,
+    class: 'cloth' as const, skill: 'arx' as const,
     pool: [
-      { stat: 'magic', w: 2 },
+      { stat: 'arx', w: 2 },
       { stat: 'regen', w: 2 },
       { stat: 'vitality' },
       { stat: 'maxHp' },
@@ -5023,9 +5023,9 @@ function namedChaseDefs(): EquipmentDef[] {
   // never settle. Owner: the troll, who keeps anything that glows and
   // never once looked up to ask where this came from.
   const skydancer = {
-    class: 'cloth' as const, skill: 'magic' as const,
+    class: 'cloth' as const, skill: 'arx' as const,
     pool: [
-      { stat: 'magic', w: 2 },
+      { stat: 'arx', w: 2 },
       { stat: 'sneak', w: 2 },
       { stat: 'regen' },
       { stat: 'maxHp' },
@@ -5093,9 +5093,9 @@ function namedChaseDefs(): EquipmentDef[] {
   // time. Owner: the diggers found it and the gilded locks kept it;
   // nobody alive remembers the magister who wound it.
   const orrery = {
-    class: 'cloth' as const, skill: 'magic' as const,
+    class: 'cloth' as const, skill: 'arx' as const,
     pool: [
-      { stat: 'magic', w: 3 },
+      { stat: 'arx', w: 3 },
       { stat: 'vitality' },
       { stat: 'regen' },
       { stat: 'maxHp' },

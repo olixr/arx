@@ -63,7 +63,7 @@ function revealPoly(
 /**
  * ARCANE_RING — "the rune-cut hoop."
  * The staff's heel stamps the ground and a machined band is CUT from
- * raw magic around it: inner and outer edge expanding together while
+ * raw Arx around it: inner and outer edge expanding together while
  * cog teeth bridge the band and turn — a lathe running at the speed
  * of a spell. Filings glint off the young rim; three rune squares
  * ride the finished hoop until the work dissolves.

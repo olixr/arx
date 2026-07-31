@@ -9,7 +9,7 @@
  * path ops per hook per frame.
  *
  * Relics are ancient TOOLS with one perfected trick — each signature
- * reads as machinery of old magic doing exactly its job: a totem that
+ * reads as machinery of old Arx doing exactly its job: a totem that
  * breathes, a snare that hides itself, a bell whose toll is the
  * weapon. The NPC specials are authored from the RECEIVING end:
  * ground_slam is threat with total clarity, rallying_howl is the

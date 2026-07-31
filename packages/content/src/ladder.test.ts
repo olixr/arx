@@ -221,7 +221,7 @@ test('the rank clock is uniform and the ladder mastered before 99', () => {
 
 test('THE OPEN LADDER: an art every five levels, 5 through 50, no gaps, no doubles', () => {
   const RUNGS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
-  for (const style of ['combat', 'onehand', 'archery', 'magic', 'sneak', 'twohand', 'shield', 'dualwield']) {
+  for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
     const arts = techniquesFor(style).filter((t) => !t.hidden);
     assert.deepEqual(
       arts.map((t) => t.unlockLevel),
@@ -243,7 +243,7 @@ test('THE UNWRITTEN PAGE: hidden arts are well-formed, one per style at launch',
     assert.ok(t.ranks?.length === TECHNIQUE_MAX_RANK - 1, `${t.ability} climbs to Rank IV too`);
     assert.ok(abilityDef(t.ability), `${t.ability} resolves`);
   }
-  for (const style of ['combat', 'onehand', 'archery', 'magic', 'sneak', 'twohand', 'shield', 'dualwield']) {
+  for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
     assert.equal(byStyle.get(style), 1, `${style} carries exactly one unwritten page at launch`);
   }
 });
@@ -263,7 +263,7 @@ test('techniques never fork identity: rank steps leave id/shape/fx face alone', 
 });
 
 test('every style ladder still resolves against the ability book', () => {
-  for (const style of ['combat', 'onehand', 'archery', 'magic', 'sneak', 'twohand', 'shield', 'dualwield']) {
+  for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
     for (const t of techniquesFor(style)) assert.ok(ABILITIES.has(t.ability));
   }
 });
@@ -292,7 +292,7 @@ test('THE PAYOFF BRACKET: one press never deletes an at-level line fighter', () 
   };
   for (const L of [10, 25, 50, 75, 95]) {
     const fighterHp = scaleNpcDef(skeleton, L).maxHp;
-    for (const style of ['combat', 'onehand', 'archery', 'magic', 'sneak', 'twohand', 'shield', 'dualwield']) {
+    for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
       let instantBest = 0;
       let channelBest = 0;
       for (const t of techniquesFor(style)) {

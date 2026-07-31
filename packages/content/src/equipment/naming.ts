@@ -21,7 +21,7 @@ export const AFFIX_EPITHETS: Record<AffixStat, string> = {
   onehand: 'of Strength',
   defence: 'of the Bulwark',
   archery: 'of Swiftness',
-  magic: 'of Sorcery',
+  arx: 'of Sorcery',
   mining: 'of the Deep',
   woodcutting: 'of the Timberline',
   fishing: 'of the Tides',

@@ -1314,7 +1314,7 @@ Object.assign(PLATES, {
 
 // -------------------------------------------------- mage-roster arts
 Object.assign(PLATES, {
-  // Arcane Ring — raw magic snapped outward: rune ring, echo behind.
+  // Arcane Ring — raw Arx snapped outward: rune ring, echo behind.
   arcane_ring: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.globalAlpha = 0.4;

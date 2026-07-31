@@ -4958,7 +4958,7 @@ export function enchantedStyle<T extends { fx?: unknown; fxColor?: string }>(
   if (!def) return st;
   const color = ELEMENT_COLORS[def.element];
   if (def.tier <= 1) {
-    // A whisper of magic: the traveling glint (staffs: drifting motes).
+    // A whisper of Arx: the traveling glint (staffs: drifting motes).
     return { ...st, fx: family === 'staff' ? 'motes' : 'gleam', fxColor: color };
   }
   const fx =

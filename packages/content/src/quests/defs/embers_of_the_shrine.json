@@ -20,7 +20,7 @@
   ],
   "rewards": {
     "coins": 150,
-    "xp": [{ "skill": "magic", "amount": 400 }],
+    "xp": [{ "skill": "arx", "amount": 400 }],
     "flags": ["flame_tended"]
   }
 }

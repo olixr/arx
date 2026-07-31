@@ -5,16 +5,16 @@ import type { ArmorClass, GearSlot } from './equipment/types.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
-export type CombatStyle = 'onehand' | 'archery' | 'magic' | 'twohand';
+export type CombatStyle = 'onehand' | 'archery' | 'arx' | 'twohand';
 
 /**
- * The elemental schools of magic. A staff's element rides its bolts —
+ * The elemental schools of Arx. A staff's element rides its bolts —
  * the client tints every projectile, muzzle flash, and impact from
  * this — and names the school its Art belongs to. Purely cosmetic on
- * the wire (`magic:<element>` in the projectile defId); the gameplay
+ * the wire (`arx:<element>` in the projectile defId); the gameplay
  * lives in the Art and status the weapon carries.
  */
-export type MagicElement =
+export type ArxElement =
   | 'arcane'
   | 'ember'
   | 'frost'
@@ -42,8 +42,8 @@ export interface WeaponStats {
   art?: string;
   /** Backstab damage multiplier — daggers carry a big one; other melee falls back to the default. */
   backstabMult?: number;
-  /** Magic school (staves) — tints bolts, flashes, and impacts. */
-  element?: MagicElement;
+  /** Arx school (staves) — tints bolts, flashes, and impacts. */
+  element?: ArxElement;
 }
 
 /**
@@ -69,7 +69,7 @@ export interface ConsumableBuff {
 /**
  * A weapon oil — the poison-maker's craft. Using the vial coats the
  * EQUIPPED melee or archery weapon: while the coating lasts, every
- * landed basic attack carries the status. Magic focuses take no oil —
+ * landed basic attack carries the status. Arx focuses take no oil —
  * poison is a craft of edges and arrowheads, never of light. One
  * coating at a time; a new vial replaces the old. Vials are ordinary
  * items, so a poison-maker can brew for the whole party.
@@ -322,7 +322,7 @@ const defs: ItemDef[] = [
   },
 
   // Poison-making — the alembic's dark branch. Vials coat melee
-  // weapons and bows (never magic); the maker's herbalism gates the
+  // weapons and bows (never Arx); the maker's herbalism gates the
   // tiers, and the vials trade hands like any other goods.
   {
     id: 'venom_gland',
@@ -507,7 +507,7 @@ const defs: ItemDef[] = [
     name: 'Arcane dust',
     stackable: true,
     value: 14,
-    desc: 'Glittering grit that was recently something magical. Every enchantment starts here.',
+    desc: 'Glittering grit still humming with spent Arx. Every enchantment starts here.',
     color: '#b8a8e0',
     code: 'xd',
   },
@@ -1055,7 +1055,7 @@ export function itemDef(id: string): ItemDef | undefined {
 /**
  * THE TWO-HANDS LAW: every bow needs a drawing hand, every staff a
  * channeling one, and every greatweapon a second fist on the haft —
- * archery, magic, and twohand weapons are two-handed, derived from
+ * archery, arx, and twohand weapons are two-handed, derived from
  * style rather than flagged per item so no def can forget it.
  * A two-handed weapon shares the body with nothing HELD in the off
  * fist: no off blade, no shield, no tome, no orb. Back-mounted

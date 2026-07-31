@@ -744,7 +744,7 @@ const defs: AbilityDef[] = [
   {
     id: 'arcane_ring',
     name: 'Arcane Ring',
-    desc: 'A ring of raw magic snaps outward from the staff\'s heel.',
+    desc: 'A ring of raw Arx snaps outward from the staff\'s heel.',
     color: '#b49af0',
     code: 'Ar',
     cooldownTicks: 140, // 7 s
@@ -1857,7 +1857,7 @@ const defs: AbilityDef[] = [
     element: 'storm', // storm-wreathed seekers — the school the eye reads
   },
 
-  // ------------------------------------ THE OPEN LADDER — new magic arts
+  // -------------------------------------- THE OPEN LADDER — new Arx arts
   {
     id: 'frost_lance',
     name: 'Frost Lance',
@@ -3313,7 +3313,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'arc_bolt',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 5,
     ranks: [
       { note: 'A hotter crack.', damage: 8 },
@@ -3327,7 +3327,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'frost_lance',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 10,
     ranks: [
       { note: 'The cold line lands harder.', damage: 10 },
@@ -3341,7 +3341,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'blink',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 15,
     ranks: [
       { note: 'A longer stride between places.', dashTiles: 4.6 },
@@ -3351,7 +3351,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'ward_shell',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 20,
     ranks: [
       { note: 'The shell thickens.', self: { shieldHp: 14, durationTicks: 160 } },
@@ -3361,7 +3361,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'ember_fan',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 25,
     ranks: [
       { note: 'Each finger burns hotter.', damage: 7 },
@@ -3374,7 +3374,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'meteor_shard',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 30,
     ranks: [
       { note: 'A heavier shard.', damage: 15 },
@@ -3387,7 +3387,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'stormcall',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 35,
     ranks: [
       { note: 'Each strike asks for more.', damage: 6 },
@@ -3397,7 +3397,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'mirror_image',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 40,
     ranks: [
       {
@@ -3413,7 +3413,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'maelstrom',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 45,
     ranks: [
       { note: 'The drain pulls a deeper draught.', damage: 12 },
@@ -3429,7 +3429,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'daybreak',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 50,
     ranks: [
       { note: 'Noon weighs more.', damage: 16 },
@@ -4033,7 +4033,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   // ------------------------- THE UNWRITTEN PAGE — deed-earned seats
   {
     ability: 'riftwalker_step',
-    style: 'magic',
+    style: 'arx',
     unlockLevel: 0,
     hidden: { anchorLevel: 30 },
     ranks: [

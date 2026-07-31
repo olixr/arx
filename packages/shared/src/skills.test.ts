@@ -35,7 +35,7 @@ test('combatLevel: all three pillars at L sit at combat level L', () => {
 test('combatLevel: only the best offense counts', () => {
   const xp = xpForLevel(60);
   const one = combatLevel({ onehand: xp });
-  const three = combatLevel({ onehand: xp, archery: xp, magic: xp });
+  const three = combatLevel({ onehand: xp, archery: xp, arx: xp });
   assert.equal(one, three);
 });
 
@@ -57,4 +57,34 @@ test('focusBudget: base 2, +1 per skill at 50, +1 more at 99', () => {
     FOCUS_BASE + 4,
     'breadth and depth both pay',
   );
+});
+
+// --------------------------------------------------- THE ARX WIELDING LAW
+
+import {
+  COMBAT_SCHOOL_IDS,
+  SKILL_IDS,
+  isSkillId,
+  resolveSkillId,
+  skillName,
+} from './skills.js';
+
+test('arx is the caster school, and magic is retired', () => {
+  assert.ok(SKILL_IDS.includes('arx'), 'arx sits in the roster');
+  assert.ok(isSkillId('arx'));
+  assert.ok(!isSkillId('magic'), 'the old id is gone from the roster');
+  assert.ok(COMBAT_SCHOOL_IDS.includes('arx'), 'it still echoes into combat');
+});
+
+test('arx wears its spoken name; plain ids speak for themselves', () => {
+  assert.equal(skillName('arx'), 'Arx Wielding');
+  assert.equal(skillName('mining'), 'mining', 'no name, no map row');
+  assert.equal(skillName('shield'), 'Shield', 'hidden skills keep their own name');
+});
+
+test('retired ids resolve forever — Studio-owned rows never reseed', () => {
+  assert.equal(resolveSkillId('magic'), 'arx');
+  assert.equal(resolveSkillId('melee'), 'onehand');
+  assert.equal(resolveSkillId('arx'), 'arx', 'a live id passes through');
+  assert.equal(resolveSkillId('sorcery'), null, 'an unknown id is refused, not guessed');
 });

@@ -15,7 +15,7 @@ import type { EnchantEffect } from './enchants.js';
 /**
  * Armor weight class. Counted per worn piece over head/body/legs/
  * gloves/boots to derive playstyle modifiers: plate favors melee and defence at a
- * mobility/magic cost, leather favors archery, cloth favors magic.
+ * mobility/Arx cost, leather favors archery, cloth favors Arx.
  * Only plate carries penalties — mixing dilutes, it never punishes.
  */
 export type ArmorClass = 'cloth' | 'leather' | 'plate';

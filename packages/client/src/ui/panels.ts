@@ -10,6 +10,7 @@ import {
   honedAbility,
   levelForXp,
   rankLevel,
+  skillName,
   techniqueRankFor,
   xpForLevel,
   type EquipSlot,
@@ -53,7 +54,7 @@ const CLASS_COLORS: Record<string, string> = {
   plate: '#9aa2ac',
 };
 
-/** Card chip tints for a staff's magic school — matched to its bolts. */
+/** Card chip tints for a staff's Arx school — matched to its bolts. */
 const ELEMENT_CHIPS: Record<string, string> = {
   arcane: '#b49af0',
   ember: '#ff8a4a',
@@ -66,7 +67,7 @@ const ELEMENT_CHIPS: Record<string, string> = {
   astral: '#9ae8de',
 };
 
-/** Human name for an affix stat ('magic' → 'Magic', 'maxHp' → 'Max HP'). */
+/** Human name for an affix stat ('arx' → 'Arx', 'maxHp' → 'Max HP'). */
 function affixName(stat: string): string {
   if (stat === 'maxHp') return 'Max HP';
   if (stat === 'regen') return 'Regen /4s';
@@ -83,7 +84,7 @@ export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
   onehand: { icon: 'bronze_sword', color: '#c4553d' },
   defence: { icon: 'oak_kiteshield', color: '#8ac4e8' },
   archery: { icon: 'stickbow', color: '#7dc46a' },
-  magic: { icon: 'apprentice_staff', color: '#b49af0' },
+  arx: { icon: 'apprentice_staff', color: '#b49af0' },
   mining: { icon: 'bronze_pickaxe', color: '#9aa2ac' },
   woodcutting: { icon: 'bronze_axe', color: '#b08a5c' },
   fishing: { icon: 'fishing_rod', color: '#7fb2d9' },
@@ -114,7 +115,7 @@ export const SKILL_STORY: Record<string, string> = {
   onehand: 'Blades, bludgeons and closed distance',
   defence: 'Standing where the blow lands',
   archery: 'The long shot and the quick draw',
-  magic: 'Eight schools, one focused mind',
+  arx: 'Eight schools, one focused mind',
   mining: 'Ore called out of the rock',
   woodcutting: 'Timber felled clean',
   fishing: 'Patience at the water',
@@ -142,7 +143,7 @@ export const SKILL_STORY: Record<string, string> = {
 const SKILL_WINGS: Array<{ title: string; skills: SkillId[] }> = [
   {
     title: 'Combat Arts',
-    skills: ['vitality', 'combat', 'onehand', 'twohand', 'defence', 'archery', 'magic'],
+    skills: ['vitality', 'combat', 'onehand', 'twohand', 'defence', 'archery', 'arx'],
   },
   {
     title: 'Fieldcraft',
@@ -765,7 +766,7 @@ export class Panels {
       const cd = document.createElement('div');
       cd.className = 'card-passive-desc';
       cd.textContent =
-        'Coats your equipped bladed weapon or bow — every landed basic applies it. Magic takes no oil.';
+        'Coats your equipped bladed weapon or bow — every landed basic applies it. Arx takes no oil.';
       this.card.appendChild(cd);
     }
     // Scroll cards spell out the enchantment they carry.
@@ -1221,7 +1222,7 @@ export class Panels {
     // whole hall of deeds — not just the cards with a codex button.
     card.dataset.nav = '';
     card.dataset.navkey = `skill:${skill}`;
-    card.dataset.tipname = hidden ? hidden.name : skill;
+    card.dataset.tipname = skillName(skill);
     card.dataset.acta = 'Read';
 
     const head = document.createElement('div');
@@ -1237,7 +1238,7 @@ export class Panels {
     names.className = 'skill-names';
     const name = document.createElement('span');
     name.className = 'skill-name';
-    name.textContent = hidden ? hidden.name : skill;
+    name.textContent = skillName(skill);
     const tale = document.createElement('span');
     tale.className = 'skill-tale';
     tale.textContent = hidden ? 'A secret art — you earned knowing it' : SKILL_STORY[skill] ?? '';
@@ -1556,7 +1557,7 @@ export class Panels {
       img.src = itemIconUrl(face.icon, 17);
       img.draggable = false;
       const label = document.createElement('span');
-      label.textContent = hidden ? hidden.name : style;
+      label.textContent = skillName(style);
       chip.append(img, label);
       chip.addEventListener('click', () => {
         document
@@ -1659,7 +1660,7 @@ export class Panels {
       const name = document.createElement('span');
       name.className = 'calling-skill-name';
       const hidden = HIDDEN_SKILLS[skill];
-      name.textContent = hidden ? hidden.name : skill;
+      name.textContent = skillName(skill);
       if (hidden) name.classList.add('secret');
       const lv = document.createElement('span');
       lv.className = 'calling-skill-lv';
@@ -1727,8 +1728,7 @@ export class Panels {
       return;
     }
     const st = this.callingState(def);
-    const hidden = HIDDEN_SKILLS[def.skill];
-    const skillName = hidden ? hidden.name : def.skill;
+    const callingSkill = skillName(def.skill);
 
     const head = document.createElement('div');
     head.className = 'bench-head';
@@ -1745,7 +1745,7 @@ export class Panels {
     name.textContent = def.name;
     const line = document.createElement('div');
     line.className = 'bench-line';
-    line.textContent = `${skillName} · Calling`;
+    line.textContent = `${callingSkill} · Calling`;
     names.append(name, line);
     head.append(well, names);
     this.artsDetail.appendChild(head);
@@ -1757,7 +1757,7 @@ export class Panels {
         ? `Answered — holding ${def.focusCost} Focus`
         : st === 'unlocked'
           ? `Ready to answer — holds ${def.focusCost} Focus`
-          : `Answers at ${skillName} level ${def.unlockLevel}`;
+          : `Answers at ${callingSkill} level ${def.unlockLevel}`;
     this.artsDetail.appendChild(state);
 
     const desc = document.createElement('p');
@@ -1875,7 +1875,7 @@ export class Panels {
     plaque.appendChild(img);
     const name = document.createElement('span');
     name.className = 'arts-school-name';
-    name.textContent = hidden ? hidden.name : style;
+    name.textContent = skillName(style);
     const lv = document.createElement('span');
     lv.className = 'arts-school-lv';
     lv.textContent = `Lv ${level}`;

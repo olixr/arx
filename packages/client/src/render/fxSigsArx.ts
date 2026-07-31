@@ -1,7 +1,7 @@
 /**
- * THE SIGNATURE LAW — the MAGIC wave.
+ * THE SIGNATURE LAW — the ARX wave.
  *
- * Eleven bespoke set-pieces for the caster roster. Magic here is not
+ * Eleven bespoke set-pieces for the caster roster. Arx here is not
  * decoration on a hit: each element is a WORLD given one sentence to
  * speak — the sky falls, the sea drowns a circle, dawn is delivered
  * early. Every signature layers a primary read (the impact), a
@@ -1194,11 +1194,11 @@ const riftwalker_step: AbilitySig = {
 // -------------------------------------------------------- the registry
 
 /**
- * The MAGIC roster's bespoke crowns. The lead wires this table into
+ * The ARX roster's bespoke crowns. The lead wires this table into
  * the master SIGNATURES registry — keys must match ability ids and
  * FX_STYLES faces exactly.
  */
-export const MAGIC_SIGS: Record<string, AbilitySig> = {
+export const ARX_SIGS: Record<string, AbilitySig> = {
   arc_bolt,
   blink,
   meteor_shard,

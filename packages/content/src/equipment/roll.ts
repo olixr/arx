@@ -1,6 +1,6 @@
 import type { EquipSlot, ItemRoll, RarityTier, SkillId, StatusId } from '@arx/shared';
 import { Rng, hashCoords, hashString, rarityIndex } from '@arx/shared';
-import type { CombatStyle, MagicElement } from '../items.js';
+import type { CombatStyle, ArxElement } from '../items.js';
 import { ITEMS, itemDef } from '../items.js';
 import type { EnchantEffect } from './enchants.js';
 import { instanceEffects } from './enchants.js';
@@ -175,8 +175,8 @@ export interface GearStats {
   speedMult: number;
   /** Multiplier on ability cooldowns (<1 = faster). */
   cooldownMult: number;
-  /** Multiplier on magic max hits of a specific school (1 = neutral). */
-  elementDmgMult: Partial<Record<MagicElement, number>>;
+  /** Multiplier on Arx max hits of a specific school (1 = neutral). */
+  elementDmgMult: Partial<Record<ArxElement, number>>;
   /** Flat damage reflected to attackers that strike the wearer. */
   thorns: number;
   /** Additional crit chance, percentage points on the base roll. */
@@ -192,7 +192,7 @@ export function emptyGearStats(): GearStats {
     maxHp: 0,
     regenPer4s: 0,
     classCounts: { cloth: 0, leather: 0, plate: 0 },
-    styleDmgMult: { onehand: 1, archery: 1, magic: 1, twohand: 1 },
+    styleDmgMult: { onehand: 1, archery: 1, arx: 1, twohand: 1 },
     speedMult: 1,
     cooldownMult: 1,
     elementDmgMult: {},

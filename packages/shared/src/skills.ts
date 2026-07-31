@@ -13,7 +13,7 @@ export type SkillId =
   | 'onehand'
   | 'defence'
   | 'archery'
-  | 'magic'
+  | 'arx'
   | 'mining'
   | 'woodcutting'
   | 'fishing'
@@ -39,7 +39,7 @@ export const SKILL_IDS: readonly SkillId[] = [
   'onehand',
   'defence',
   'archery',
-  'magic',
+  'arx',
   'mining',
   'woodcutting',
   'fishing',
@@ -89,6 +89,43 @@ export function isHiddenSkill(s: SkillId): boolean {
   return s in HIDDEN_SKILLS;
 }
 
+/**
+ * THE SPOKEN NAME: a skill whose id does not read as its name says so
+ * here. Everything else falls through to the id itself, which the
+ * skills hall capitalizes in CSS — so this map stays a short list of
+ * exceptions, not a second roster to keep in sync.
+ *
+ * `arx` is the standing one: Arx is the energy and matter that binds
+ * the world, and the skill is the craft of tapping it. The id is the
+ * substance; the name is the art.
+ */
+export const SKILL_NAMES: Partial<Record<SkillId, string>> = {
+  arx: 'Arx Wielding',
+};
+
+/** The name a skill wears in front of players. */
+export function skillName(s: SkillId | string): string {
+  return HIDDEN_SKILLS[s as SkillId]?.name ?? SKILL_NAMES[s as SkillId] ?? s;
+}
+
+/**
+ * Retired skill ids, and what they answer to now. Quests and dialogue
+ * are DB-truth: a row a designer touched in the Studio keeps whatever
+ * skill id it was authored with, and a shipped-JSON reseed will not
+ * overwrite it. So a rename has to be forgiving at the reading end
+ * forever, not just at the migration.
+ */
+const LEGACY_SKILL_IDS: Record<string, SkillId> = {
+  magic: 'arx', // v16 ARX WIELDING
+  melee: 'onehand', // v15 THE VETERAN'S SCHOOL
+};
+
+/** A skill id read from stored or authored data, under its live name. */
+export function resolveSkillId(s: string): SkillId | null {
+  const live = LEGACY_SKILL_IDS[s] ?? s;
+  return isSkillId(live) ? live : null;
+}
+
 export const MAX_LEVEL = 99;
 
 /** Cumulative XP required for each level, RuneScape-style curve. */
@@ -129,7 +166,7 @@ export function combatLevel(skills: SkillXp): number {
     Math.max(
       levelForXp(skills.onehand ?? 0),
       levelForXp(skills.archery ?? 0),
-      levelForXp(skills.magic ?? 0),
+      levelForXp(skills.arx ?? 0),
       levelForXp(skills.twohand ?? 0),
       levelForXp(skills.combat ?? 0),
     ) / 2;
@@ -155,7 +192,7 @@ export const COMBAT_SCHOOL_IDS: readonly SkillId[] = [
   'onehand',
   'twohand',
   'archery',
-  'magic',
+  'arx',
   'dualwield',
   'shield',
 ];

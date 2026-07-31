@@ -1,5 +1,5 @@
 import type { SkillId, StatusId } from '@arx/shared';
-import type { CombatStyle, MagicElement } from '../items.js';
+import type { CombatStyle, ArxElement } from '../items.js';
 import type { GearSlot } from './types.js';
 
 /**
@@ -30,7 +30,7 @@ export type EnchantEffect =
   | { kind: 'regen'; amount: number }
   | { kind: 'armor'; amount: number }
   | { kind: 'styleDmg'; style: CombatStyle; pct: number }
-  | { kind: 'elementDmg'; element: MagicElement; pct: number }
+  | { kind: 'elementDmg'; element: ArxElement; pct: number }
   | { kind: 'cooldown'; pct: number }
   | { kind: 'speed'; pct: number }
   | { kind: 'thorns'; amount: number }
@@ -58,7 +58,7 @@ export interface EnchantDef {
   /** The single equip slot a scroll of this enchant targets. */
   slot: GearSlot;
   /** Drives tint, fx channel, and the reagent theme. */
-  element: MagicElement;
+  element: ArxElement;
   effects: EnchantEffect[];
   /** Enchanting level to inscribe the scroll (also drives xp/cost). */
   level: number;
@@ -87,7 +87,7 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     effects: [
       E({ kind: 'styleDmg', style: 'onehand', pct: 4 }),
       E({ kind: 'styleDmg', style: 'archery', pct: 4 }),
-      E({ kind: 'styleDmg', style: 'magic', pct: 4 }),
+      E({ kind: 'styleDmg', style: 'arx', pct: 4 }),
     ],
     desc: 'The weight settles true in any hand. All strikes hit a touch harder.',
   },
@@ -117,7 +117,7 @@ export const ENCHANT_DEFS: EnchantDef[] = [
       E({ kind: 'onHitStatus', status: 'burn', power: 1, durationTicks: 70, chance: 0.22 }),
       E({ kind: 'elementDmg', element: 'ember', pct: 10 }),
     ],
-    desc: 'The blade wears a working flame. Fire magic burns brighter in your hands.',
+    desc: 'The blade wears a working flame. Fire Arx burns brighter in your hands.',
   },
   {
     id: 'frostbound_edge', name: 'Frostbound Edge', prefix: 'Frostbound', tier: 2, slot: 'weapon',
@@ -126,7 +126,7 @@ export const ENCHANT_DEFS: EnchantDef[] = [
       E({ kind: 'onHitStatus', status: 'chill', power: 1, durationTicks: 70, chance: 0.22 }),
       E({ kind: 'elementDmg', element: 'frost', pct: 10 }),
     ],
-    desc: 'Cold has soaked to the core. Frost magic bites deeper in your hands.',
+    desc: 'Cold has soaked to the core. Frost Arx bites deeper in your hands.',
   },
   {
     id: 'storming_edge', name: 'Storming Edge', prefix: 'Storming', tier: 2, slot: 'weapon',
@@ -135,7 +135,7 @@ export const ENCHANT_DEFS: EnchantDef[] = [
       E({ kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 60, chance: 0.22 }),
       E({ kind: 'elementDmg', element: 'storm', pct: 10 }),
     ],
-    desc: 'Sparks walk the edge unbidden. Storm magic strikes harder in your hands.',
+    desc: 'Sparks walk the edge unbidden. Storm Arx strikes harder in your hands.',
   },
   {
     id: 'leeching_edge', name: 'Leeching Edge', prefix: 'Leeching', tier: 2, slot: 'weapon',
@@ -245,7 +245,7 @@ export const ENCHANT_DEFS: EnchantDef[] = [
   {
     id: 'mindstorm', name: 'Mindstorm Sigilwork', prefix: 'Mindstorm', tier: 3, slot: 'head',
     element: 'arcane', level: 48,
-    effects: [E({ kind: 'cooldown', pct: 10 }), E({ kind: 'skill', skill: 'magic', amount: 1 })],
+    effects: [E({ kind: 'cooldown', pct: 10 }), E({ kind: 'skill', skill: 'arx', amount: 1 })],
     desc: 'Ideas arrive before you reach for them. The arts barely rest at all.',
   },
   // ---- Legs ----
@@ -297,8 +297,8 @@ export const ENCHANT_DEFS: EnchantDef[] = [
   {
     id: 'sagacious', name: 'Sagacious Grip', prefix: 'Sagacious', tier: 1, slot: 'gloves',
     element: 'arcane', level: 7,
-    effects: [E({ kind: 'skill', skill: 'magic', amount: 1 })],
-    desc: 'Sigils rise to meet the fingertips. Magic comes easier.',
+    effects: [E({ kind: 'skill', skill: 'arx', amount: 1 })],
+    desc: 'Sigils rise to meet the fingertips. Arx comes easier.',
   },
   {
     id: 'fieldhand', name: 'Fieldhand Grip', prefix: 'Fieldhand', tier: 1, slot: 'gloves',
@@ -316,7 +316,7 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     effects: [
       E({ kind: 'skill', skill: 'onehand', amount: 1 }),
       E({ kind: 'skill', skill: 'archery', amount: 1 }),
-      E({ kind: 'skill', skill: 'magic', amount: 1 }),
+      E({ kind: 'skill', skill: 'arx', amount: 1 }),
     ],
     desc: 'Every discipline answers the same steady hands.',
   },
@@ -357,7 +357,7 @@ export function enchantDef(id: string | undefined): EnchantDef | undefined {
 }
 
 /** Reagent theme per element: the essence a scroll of that element needs. */
-export const ELEMENT_REAGENT: Partial<Record<MagicElement, string>> = {
+export const ELEMENT_REAGENT: Partial<Record<ArxElement, string>> = {
   ember: 'ember_essence',
   frost: 'frost_essence',
   storm: 'storm_essence',
@@ -369,7 +369,7 @@ export const ELEMENT_REAGENT: Partial<Record<MagicElement, string>> = {
 };
 
 /** Tier-3 capstone reagent: the element's gem, or gold for the rest. */
-export const ELEMENT_GEM: Partial<Record<MagicElement, string>> = {
+export const ELEMENT_GEM: Partial<Record<ArxElement, string>> = {
   ember: 'emberstone',
   frost: 'frostshard',
   storm: 'stormpearl',
@@ -377,7 +377,7 @@ export const ELEMENT_GEM: Partial<Record<MagicElement, string>> = {
 };
 
 /** Identity hex per element — scroll items, card rows, loot labels. */
-export const ELEMENT_COLORS: Record<MagicElement, string> = {
+export const ELEMENT_COLORS: Record<ArxElement, string> = {
   arcane: '#b8a8e0',
   ember: '#e8683c',
   frost: '#9ad0ec',

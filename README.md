@@ -62,7 +62,7 @@ pack clicks deposit or sell instead.
 ## What's in the world
 
 - **12 skills**, RS-style XP curve to 99: vitality, melee, defence, archery,
-  magic, mining, woodcutting, fishing, smithing, crafting, cooking,
+  arx wielding, mining, woodcutting, fishing, smithing, crafting, cooking,
   construction. No classes — train what you like.
 - **The Dawnlands**: hand-authored settlements — Dawnmead, Amberford,
   Silverfall — linked by authored roads and ringed by procedurally

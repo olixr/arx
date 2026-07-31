@@ -2,7 +2,7 @@
  * THE SIGNATURE LAW — the ARCHMAGE wave, second half.
  *
  * Ten bespoke set-pieces for the heavy end of the archmage roster —
- * the late-game showpieces. Down here magic stops asking the world
+ * the late-game showpieces. Down here Arx stops asking the world
  * and starts TELLING it: venom that keeps chewing after it lands,
  * a window opened onto the place with no windows, noon thrown as a
  * spear, and at the very top the world itself parted at the seam

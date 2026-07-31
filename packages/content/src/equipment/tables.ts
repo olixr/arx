@@ -64,7 +64,7 @@ export const AFFIX_ROLL_FRAC: Record<RarityTier, readonly [number, number]> = {
 /**
  * Per-piece playstyle modifiers, counted over head/body/legs/gloves/
  * boots. Percentages — a full five-piece plate set is +15% onehand /
- * −20% magic / −5% move; completing a set with its gloves is what
+ * −20% Arx / −5% move; completing a set with its gloves is what
  * pushes a specialty over the top.
  * Only plate pays for its protection; cloth and leather are pure buffs,
  * so mixed sets dilute a specialty without punishing the wearer.
@@ -82,16 +82,16 @@ export const ARMOR_CLASS_MODS: Record<
     cooldownPct: number;
   }
 > = {
-  plate: { dmgPct: { onehand: 3, twohand: 3, magic: -4 }, speedPct: -1, cooldownPct: 0 },
+  plate: { dmgPct: { onehand: 3, twohand: 3, arx: -4 }, speedPct: -1, cooldownPct: 0 },
   leather: { dmgPct: { archery: 3 }, speedPct: 0.5, cooldownPct: 0 },
-  cloth: { dmgPct: { magic: 4 }, speedPct: 0, cooldownPct: -2.5 },
+  cloth: { dmgPct: { arx: 4 }, speedPct: 0, cooldownPct: -2.5 },
 };
 
 /** Short player-facing blurb per class, shown on the item card. */
 export const ARMOR_CLASS_BLURB: Record<ArmorClass, string> = {
-  plate: 'Plate: +one-handed and two-handed damage, −magic damage, slightly slower',
+  plate: 'Plate: +one-handed and two-handed damage, −Arx damage, slightly slower',
   leather: 'Leather: +archery damage, slightly faster',
-  cloth: 'Cloth: +magic damage, faster ability cooldowns',
+  cloth: 'Cloth: +Arx damage, faster ability cooldowns',
 };
 
 /**
@@ -128,7 +128,7 @@ export function dropRarityWeights(npcLevel: number): Record<RarityTier, number> 
  * Item power — the recycling axis. A roll's `pwr` above the def's
  * native requirement scales base armor/damage by this much per surplus
  * level. Calibrated against the authored ladders (cloth body: armor 2
- * at magic 4 → 6 at magic 42): a re-issued early piece lands JUST shy
+ * at arx 4 → 6 at arx 42): a re-issued early piece lands JUST shy
  * of a native piece of its power on base stats — the heirloom's real
  * catch-up is its affix cap, which uses the full effective level. The
  * chase for native top gear survives; the old wardrobe stays viable.

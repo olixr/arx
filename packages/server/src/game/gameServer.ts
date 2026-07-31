@@ -23,6 +23,7 @@ import {
   FOCUS_MILESTONE_LEVEL,
   FOCUS_MASTERY_LEVEL,
   isSkillId,
+  resolveSkillId,
   isCombatSchool,
   COMBAT_LESSON_FRAC,
   levelForXp,
@@ -686,7 +687,7 @@ interface GraveComp {
 
 interface ProjectileComp {
   ownerEid: EntityId;
-  style: 'archery' | 'magic';
+  style: 'archery' | 'arx';
   maxHit: number;
   dirX: number;
   dirY: number;
@@ -714,8 +715,8 @@ interface ProjectileComp {
   /** Splash damage radius around the impact point. */
   splashRadius?: number;
   /**
-   * Magic school riding the shot — cosmetic. Reaches clients as a
-   * `magic:<element>` defId suffix; the renderer tints bolt, flash,
+   * Arx school riding the shot — cosmetic. Reaches clients as an
+   * `arx:<element>` defId suffix; the renderer tints bolt, flash,
    * and impact from it.
    */
   element?: string;
@@ -4570,6 +4571,15 @@ export class GameServer {
   }
 
   private grantXp(eid: EntityId, player: PlayerComp, skill: SkillId, amount: number): void {
+    // Stored data can still carry a retired id: a Studio-touched quest
+    // row keeps the skill it was authored with, and a reseed leaves it
+    // alone. Resolve at the one door so no reward pays a dead school.
+    const live = resolveSkillId(skill);
+    if (!live) {
+      console.warn(`[xp] unknown skill '${skill}' — grant of ${amount} dropped`);
+      return;
+    }
+    skill = live;
     const before = player.skills[skill] ?? 0;
     const after = before + amount;
     player.skills[skill] = after;
@@ -9136,7 +9146,7 @@ export class GameServer {
     // Old Campaigner: the veteran fights every weapon school a little
     // above their letter — the four schools only, never trades.
     const schooled =
-      skill === 'onehand' || skill === 'twohand' || skill === 'archery' || skill === 'magic'
+      skill === 'onehand' || skill === 'twohand' || skill === 'archery' || skill === 'arx'
         ? player.perks.warSchooling
         : 0;
     return Math.min(
@@ -9202,7 +9212,7 @@ export class GameServer {
     const level = this.effectiveLevel(player, weapon.style);
     // School-tuned gear (Blazing Edge etc.) amplifies bolts of its element.
     const elementMult =
-      weapon.style === 'magic' && weapon.element
+      weapon.style === 'arx' && weapon.element
         ? (player.gear.elementDmgMult[weapon.element] ?? 1)
         : 1;
     const maxHit = Math.max(
@@ -9899,7 +9909,7 @@ export class GameServer {
     powerMult = 1,
   ): void {
     const pos = this.positions.must(casterEid);
-    // Magic Art projectiles fly in the caster's staff school — the
+    // Arx Art projectiles fly in the caster's staff school — the
     // element is a weapon fact, so a Frost Nova from an ember staff
     // still novas blue, but its bolts stay the staff's own fire.
     const casterPlayer = fromNpc ? undefined : this.players.get(casterEid);
@@ -9921,7 +9931,7 @@ export class GameServer {
           : style;
     const gearMult = casterPlayer
       ? ((casterPlayer.gear.styleDmgMult as Record<string, number>)[gearStyle] ?? 1) *
-        (style === 'magic' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1)
+        (style === 'arx' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1)
       : 1;
     // THE THREAT LAW: NPC casters climb the steeper NPC curve — the
     // level line is all they have; players compound gear on top.
@@ -10067,7 +10077,7 @@ export class GameServer {
             this.positions.set(proj, { x: pos.x, y: pos.y, dir: shotAim });
             this.projectiles.set(proj, {
               ownerEid: casterEid,
-              style: ab.element ? 'magic' : style === 'magic' ? 'magic' : 'archery',
+              style: ab.element ? 'arx' : style === 'arx' ? 'arx' : 'archery',
               maxHit,
               dirX: Math.cos(shotAim),
               dirY: Math.sin(shotAim),
@@ -10076,7 +10086,7 @@ export class GameServer {
               status: ab.status,
               fromNpc,
               attackerLevel: fromNpc ? level : undefined,
-              element: ab.element ?? (style === 'magic' ? element : undefined),
+              element: ab.element ?? (style === 'arx' ? element : undefined),
               homingTurn: ab.homing,
               abilityId: ab.id,
               abilityColor: ab.color,
@@ -10175,9 +10185,9 @@ export class GameServer {
         const count = ab.projectiles ?? 1;
         const spread = ab.spreadArc ?? 0;
         // An ability's own school outranks the caster's hand: seeker
-        // wisps thrown from a sword still fly as magic, not arrows.
-        const projStyle = ab.element ? 'magic' : style === 'magic' ? 'magic' : 'archery';
-        const projElement = ab.element ?? (style === 'magic' ? element : undefined);
+        // wisps thrown from a sword still fly as Arx, not arrows.
+        const projStyle = ab.element ? 'arx' : style === 'arx' ? 'arx' : 'archery';
+        const projElement = ab.element ?? (style === 'arx' ? element : undefined);
         // Homing fans spread their marks: each missile takes a DIFFERENT
         // foe from the aim cone (round-robin when foes are scarce).
         const marks =
@@ -10827,7 +10837,7 @@ export class GameServer {
     health.hp -= dmg;
     const source = this.players.get(sourceEid);
     if (source) {
-      const style: SkillId = kind === 'burn' ? 'magic' : kind === 'venom' ? 'sneak' : 'onehand';
+      const style: SkillId = kind === 'burn' ? 'arx' : kind === 'venom' ? 'sneak' : 'onehand';
       this.grantXp(sourceEid, source, style, dmg * 2);
     }
     // A DoT tail is not a struck blow — no style rides to the deed rail.
@@ -11522,12 +11532,12 @@ export class GameServer {
       // hand-state pages above; the page fills on the fourth road.
       if (
         killer &&
-        (style === 'onehand' || style === 'twohand' || style === 'archery' || style === 'magic') &&
+        (style === 'onehand' || style === 'twohand' || style === 'archery' || style === 'arx') &&
         !killer.flags.has(artFlag('four_roads')) &&
         !killer.flags.has(`road:${style}`)
       ) {
         this.setPlayerFlag(killer, `road:${style}`);
-        const ROADS: readonly SkillId[] = ['onehand', 'twohand', 'archery', 'magic'];
+        const ROADS: readonly SkillId[] = ['onehand', 'twohand', 'archery', 'arx'];
         const walked = ROADS.filter((r) => killer.flags.has(`road:${r}`)).length;
         if (walked >= ROADS.length) {
           this.grantArt(killer, 'four_roads');

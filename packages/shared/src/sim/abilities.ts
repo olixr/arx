@@ -320,9 +320,9 @@ export interface AbilityDef {
    */
   homing?: number;
   /**
-   * Projectile school override: shots fly as magic bolts in this school
+   * Projectile school override: shots fly as Arx bolts in this school
    * regardless of the caster's weapon — seeker wisps from a sword hand
-   * still look like magic, not arrows.
+   * still look like Arx, not arrows.
    */
   element?: string;
   /** dash_strike distance, tiles. Negative = away from the aim. */
@@ -391,7 +391,7 @@ export type CombatStyleId =
   | 'combat'
   | 'onehand'
   | 'archery'
-  | 'magic'
+  | 'arx'
   | 'sneak'
   | 'twohand'
   | 'shield'
@@ -401,7 +401,7 @@ export const COMBAT_STYLES: readonly CombatStyleId[] = [
   'combat',
   'onehand',
   'archery',
-  'magic',
+  'arx',
   'sneak',
   'twohand',
   'shield',

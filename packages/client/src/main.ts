@@ -1,4 +1,4 @@
-import { EntityKind, FENCE_TILES, GARRISON_TILES, HIDDEN_SKILLS, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isSkillId, levelForXp, tileDef, treeOfSapling } from '@arx/shared';
+import { EntityKind, FENCE_TILES, GARRISON_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, levelForXp, skillName, tileDef, treeOfSapling } from '@arx/shared';
 import { BUILDABLES, RECIPES, buildableForTile, buildableGround, itemDef, npcDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -1060,20 +1060,19 @@ const game = new ClientGame(input, {
     if (msg.levelledUp) {
       const own = game.predictor.renderPos();
       const face = SKILL_FACE[msg.skill] ?? { icon: 'bread', color: '#e8b64c' };
-      const skillName =
-        (isSkillId(msg.skill) ? HIDDEN_SKILLS[msg.skill]?.name : undefined) ?? msg.skill;
+      const name = skillName(msg.skill);
       // The full reward ceremony: the renderer stages the world show
       // (honor seal, pillar behind the body, the y-sorted shard
       // orbit — ~5.6s) while the herald's plaque unfurls up top with
       // the skill's face, its story line, and the level rolling over.
       chat.addLine({
         channel: 'system',
-        text: `⭐ ${skillName} level ${msg.level}! Congratulations!`,
+        text: `⭐ ${name} level ${msg.level}! Congratulations!`,
       });
       sfx.levelUp();
       renderer.startLevelCeremony(own.x, own.y, face.color);
       showLevelUp({
-        name: skillName,
+        name,
         level: msg.level,
         icon: face.icon,
         color: face.color,
@@ -2073,7 +2072,7 @@ function frame(now: number): void {
     else if (game.ownPose === PoseState.Attack2) sfx.swingCombo(1);
     else if (game.ownPose === PoseState.Attack3) {
       // The finisher beat — a heavy orb for wands, the big swing for steel.
-      if (game.currentStyle() === 'magic') sfx.heavyBolt();
+      if (game.currentStyle() === 'arx') sfx.heavyBolt();
       else sfx.swingCombo(2);
       input.rumble(0.55, 0.3, 130);
     } else if (game.ownPose === PoseState.Cast) sfx.zap();

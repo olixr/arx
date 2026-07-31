@@ -223,7 +223,7 @@ const defs: LootTableDef[] = [
     ...setDrops('cutpurse', 0.016),
     ...setDrops('briarplate', 0.01, { colorway: 'bloodbriar' }),
   ]),
-  rack('goblin_arms', 'Camp ironwork and stolen hedge-magic.', 0.045, [
+  rack('goblin_arms', 'Camp ironwork and stolen hedge-craft.', 0.045, [
     { item: 'rustbite', chance: 0.03 },
     { item: 'gobsplitter', chance: 0.025 },
     // Too big for any goblin to swing — looted, dragged home, hoarded.

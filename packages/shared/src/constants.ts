@@ -71,7 +71,14 @@
 // deaf client would corrupt (parties, quests, standing); 'vq' is a
 // bark's cosmetic breath — an old client drops it and loses nothing
 // but air, so it rides v21. The judgment is recorded here on purpose.)
-export const PROTOCOL_VERSION = 21;
+// (v22 ARX WIELDING: the caster school's id becomes 'arx', which the
+// projectile defId carries on the wire as `arx:<element>` /
+// `arx_heavy:<element>`. A v21 client matches neither prefix, so its
+// staff bolts would draw as arrows and its predicted tracers would
+// never marry the real ones — cosmetic, but wrong in the hand, and a
+// v21 skills panel would show an empty school. Bumped so old clients
+// are turned away cleanly instead of playing a half-wrong game.)
+export const PROTOCOL_VERSION = 22;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

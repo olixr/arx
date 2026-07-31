@@ -35,7 +35,7 @@ import type { Particles } from './particles.js';
 import { MELEE_SIGS } from './fxSigsMelee.js';
 import { SNEAK_SIGS } from './fxSigsSneak.js';
 import { ARCHERY_SIGS } from './fxSigsArchery.js';
-import { MAGIC_SIGS } from './fxSigsMagic.js';
+import { ARX_SIGS } from './fxSigsArx.js';
 import { ARCHER_SIGS } from './fxSigsArcher.js';
 import { ROGUE_SIGS } from './fxSigsRogue.js';
 import { BLADE_SIGS } from './fxSigsBlade.js';
@@ -705,7 +705,7 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...MELEE_SIGS,
   ...SNEAK_SIGS,
   ...ARCHERY_SIGS,
-  ...MAGIC_SIGS,
+  ...ARX_SIGS,
   ...ARCHER_SIGS,
   ...ROGUE_SIGS,
   ...BLADE_SIGS,
