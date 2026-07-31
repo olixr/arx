@@ -21,7 +21,7 @@
   ],
   "rewards": {
     "coins": 180,
-    "xp": [{ "skill": "melee", "amount": 400 }],
+    "xp": [{ "skill": "combat", "amount": 400 }],
     "flags": ["crew_tools_home"]
   }
 }

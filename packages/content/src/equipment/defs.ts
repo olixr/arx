@@ -25,7 +25,7 @@ const LEATHER_POOL: AffixPoolEntry[] = [
   { stat: 'maxHp' },
 ];
 const PLATE_POOL: AffixPoolEntry[] = [
-  { stat: 'melee', w: 2 },
+  { stat: 'onehand', w: 2 },
   { stat: 'defence', w: 2 },
   { stat: 'vitality' },
   { stat: 'maxHp' },
@@ -341,7 +341,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     armorClass: 'plate',
     levelReq: { skill: 'defence', level: 18 },
     armor: 4,
-    affixPool: [{ stat: 'melee', w: 3 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+    affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'vitality' }, { stat: 'maxHp' }],
     acquisition: { drop: true },
     value: 340,
     color: '#7d6a52',
@@ -727,7 +727,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     slot: 'offhand',
     levelReq: { skill: 'defence', level: 8 },
     armor: 2,
-    affixPool: [{ stat: 'defence', w: 2 }, { stat: 'melee' }, { stat: 'maxHp' }],
+    affixPool: [{ stat: 'defence', w: 2 }, { stat: 'onehand' }, { stat: 'maxHp' }],
     acquisition: { drop: true },
     value: 95,
     color: '#6b5233',
@@ -790,7 +790,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     slot: 'offhand',
     levelReq: { skill: 'defence', level: 38 },
     armor: 10,
-    affixPool: [{ stat: 'melee', w: 3 }, { stat: 'defence', w: 2 }, { stat: 'maxHp' }],
+    affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'defence', w: 2 }, { stat: 'maxHp' }],
     acquisition: { drop: true },
     value: 1400,
     color: '#3a3d46',
@@ -843,7 +843,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     slot: 'offhand',
     levelReq: { skill: 'defence', level: 42 },
     armor: 11,
-    affixPool: [{ stat: 'defence', w: 3 }, { stat: 'melee', w: 2 }, { stat: 'maxHp' }],
+    affixPool: [{ stat: 'defence', w: 3 }, { stat: 'onehand', w: 2 }, { stat: 'maxHp' }],
     acquisition: { craft: true },
     recipe: {
       skill: 'smithing',
@@ -1198,7 +1198,7 @@ function bulwarkSet(): EquipmentDef[] {
 
 function dreadforgeSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'melee', w: 3 },
+    { stat: 'onehand', w: 3 },
     { stat: 'maxHp' },
     { stat: 'vitality' },
     { stat: 'sneak' },
@@ -1228,7 +1228,7 @@ function dreadforgeSet(): EquipmentDef[] {
 
 function sunforgedSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'melee', w: 2 },
+    { stat: 'onehand', w: 2 },
     { stat: 'defence', w: 2 },
     { stat: 'smithing' },
     { stat: 'vitality' },
@@ -1403,7 +1403,7 @@ function nightveilSet(): EquipmentDef[] {
 function drakescaleSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
     { stat: 'archery', w: 2 },
-    { stat: 'melee', w: 2 },
+    { stat: 'onehand', w: 2 },
     { stat: 'vitality' },
     { stat: 'maxHp' },
   ];
@@ -2447,7 +2447,7 @@ function earlyPlateDefs(): EquipmentDef[] {
 
 function tuskguardSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'melee', w: 2 },
+    { stat: 'onehand', w: 2 },
     { stat: 'defence', w: 2 },
     { stat: 'mining' },
     { stat: 'maxHp' },
@@ -2502,7 +2502,7 @@ function tuskguardSet(): EquipmentDef[] {
 
 function valiantSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'melee', w: 2 },
+    { stat: 'onehand', w: 2 },
     { stat: 'defence', w: 2 },
     { stat: 'vitality' },
     { stat: 'regen' },
@@ -2558,7 +2558,7 @@ function valiantSet(): EquipmentDef[] {
 function ramwallSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
     { stat: 'defence', w: 3 },
-    { stat: 'melee' },
+    { stat: 'onehand' },
     { stat: 'smithing' },
     { stat: 'maxHp' },
   ];
@@ -2612,7 +2612,7 @@ function ramwallSet(): EquipmentDef[] {
 
 function briarplateSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
-    { stat: 'melee', w: 3 },
+    { stat: 'onehand', w: 3 },
     { stat: 'defence' },
     { stat: 'foraging' },
     { stat: 'maxHp' },
@@ -2623,7 +2623,7 @@ function briarplateSet(): EquipmentDef[] {
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'plate',
-    levelReq: { skill: 'melee', level }, armor, affixPool: pool,
+    levelReq: { skill: 'onehand', level }, armor, affixPool: pool,
     acquisition: { drop: true }, value, color, code, desc,
   });
   return [
@@ -2643,7 +2643,7 @@ function briarplateSet(): EquipmentDef[] {
 function sentinelSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
     { stat: 'defence', w: 2 },
-    { stat: 'melee', w: 2 },
+    { stat: 'onehand', w: 2 },
     { stat: 'vitality' },
     { stat: 'regen' },
   ];
@@ -2707,7 +2707,7 @@ function metalLine(
 ): EquipmentDef[] {
   return steps.map((m) => {
     const weapon: EquipmentDef['weapon'] = {
-      style: 'melee',
+      style: 'onehand',
       damage: m.damage,
       cooldownTicks: design.cooldownTicks,
       range: design.range,
@@ -2729,7 +2729,7 @@ function metalLine(
       },
       value: m.value, color: m.color, code: m.code, desc: m.desc,
     };
-    if (m.meleeReq > 1) def.levelReq = { skill: 'melee', level: m.meleeReq };
+    if (m.meleeReq > 1) def.levelReq = { skill: 'onehand', level: m.meleeReq };
     return def;
   });
 }
@@ -3099,13 +3099,13 @@ function greatweaponDefs(): EquipmentDef[] {
 function swordDefs(): EquipmentDef[] {
   // Pools: every sword leans melee; the flavor stats tell its story.
   const SOLDIER_POOL: AffixPoolEntry[] = [
-    { stat: 'melee', w: 3 },
+    { stat: 'onehand', w: 3 },
     { stat: 'defence' },
     { stat: 'vitality' },
     { stat: 'maxHp' },
   ];
   const ROGUE_POOL: AffixPoolEntry[] = [
-    { stat: 'melee', w: 2 },
+    { stat: 'onehand', w: 2 },
     { stat: 'sneak', w: 2 },
     { stat: 'vitality' },
     { stat: 'maxHp' },
@@ -3117,7 +3117,7 @@ function swordDefs(): EquipmentDef[] {
   const arming: EquipmentDef[] = [
     {
       id: 'bronze_sword', name: 'Bronze sword', slot: 'weapon',
-      weapon: { style: 'melee', damage: 1, cooldownTicks: 7, range: 1.7, art: 'crescent_sweep' },
+      weapon: { style: 'onehand', damage: 1, cooldownTicks: 7, range: 1.7, art: 'crescent_sweep' },
       affixPool: SOLDIER_POOL,
       acquisition: { craft: true, shop: true, drop: true },
       recipe: {
@@ -3129,8 +3129,8 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'iron_sword', name: 'Iron sword', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 10 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 7, range: 1.95, art: 'lunge' },
+      levelReq: { skill: 'onehand', level: 10 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 7, range: 1.95, art: 'lunge' },
       affixPool: SOLDIER_POOL,
       acquisition: { craft: true, drop: true },
       recipe: {
@@ -3142,8 +3142,8 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'steel_sword', name: 'Steel sword', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 20 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 7, range: 2.05, art: 'shockwave' },
+      levelReq: { skill: 'onehand', level: 20 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 7, range: 2.05, art: 'shockwave' },
       affixPool: SOLDIER_POOL,
       acquisition: { craft: true },
       recipe: {
@@ -3155,8 +3155,8 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'mithril_sword', name: 'Mithril sword', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 40 },
-      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 2.1, art: 'shockwave' },
+      levelReq: { skill: 'onehand', level: 40 },
+      weapon: { style: 'onehand', damage: 4, cooldownTicks: 7, range: 2.1, art: 'shockwave' },
       affixPool: SOLDIER_POOL,
       acquisition: { craft: true },
       recipe: {
@@ -3168,8 +3168,8 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'adamant_sword', name: 'Adamant sword', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 55 },
-      weapon: { style: 'melee', damage: 5, cooldownTicks: 7, range: 2.15, art: 'shockwave' },
+      levelReq: { skill: 'onehand', level: 55 },
+      weapon: { style: 'onehand', damage: 5, cooldownTicks: 7, range: 2.15, art: 'shockwave' },
       affixPool: SOLDIER_POOL,
       acquisition: { craft: true },
       recipe: {
@@ -3181,8 +3181,8 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'obsidian_sword', name: 'Obsidian sword', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 68 },
-      weapon: { style: 'melee', damage: 6, cooldownTicks: 7, range: 2.15, art: 'shockwave' },
+      levelReq: { skill: 'onehand', level: 68 },
+      weapon: { style: 'onehand', damage: 6, cooldownTicks: 7, range: 2.15, art: 'shockwave' },
       affixPool: SOLDIER_POOL,
       acquisition: { craft: true },
       recipe: {
@@ -3194,8 +3194,8 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'starsteel_sword', name: 'Starsteel sword', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 80 },
-      weapon: { style: 'melee', damage: 7, cooldownTicks: 7, range: 2.2, art: 'shockwave' },
+      levelReq: { skill: 'onehand', level: 80 },
+      weapon: { style: 'onehand', damage: 7, cooldownTicks: 7, range: 2.2, art: 'shockwave' },
       affixPool: SOLDIER_POOL,
       acquisition: { craft: true },
       recipe: {
@@ -3285,9 +3285,9 @@ function swordDefs(): EquipmentDef[] {
   const crafts: EquipmentDef[] = [
     {
       id: 'briarfang', name: 'Briarfang', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 15 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 7, range: 1.9, art: 'thorn_lash' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'foraging' }, { stat: 'vitality' }, { stat: 'regen' }],
+      levelReq: { skill: 'onehand', level: 15 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 7, range: 1.9, art: 'thorn_lash' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'foraging' }, { stat: 'vitality' }, { stat: 'regen' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 20, xp: 180, station: 'anvil', ticks: 80,
@@ -3298,9 +3298,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'moonshard', name: 'Moonshard', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 22 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 2.05, art: 'lunge', backstabMult: 1.5 },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'sneak' }, { stat: 'magic' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 22 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 5, range: 2.05, art: 'lunge', backstabMult: 1.5 },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'sneak' }, { stat: 'magic' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 30, xp: 260, station: 'anvil', ticks: 90,
@@ -3311,9 +3311,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'tidereaver', name: 'Tidereaver', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 26 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.85, art: 'riptide' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 26 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 6, range: 1.85, art: 'riptide' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 34, xp: 320, station: 'anvil', ticks: 95,
@@ -3324,9 +3324,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'emberbrand', name: 'Emberbrand', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 30 },
-      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 1.9, art: 'cinder_arc' },
-      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 30 },
+      weapon: { style: 'onehand', damage: 4, cooldownTicks: 7, range: 1.9, art: 'cinder_arc' },
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 38, xp: 420, station: 'anvil', ticks: 105,
@@ -3337,9 +3337,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'dawnbreaker', name: 'Dawnbreaker', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 40 },
-      weapon: { style: 'melee', damage: 5, cooldownTicks: 7, range: 2.0, art: 'sunburst' },
-      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }, { stat: 'regen' }],
+      levelReq: { skill: 'onehand', level: 40 },
+      weapon: { style: 'onehand', damage: 5, cooldownTicks: 7, range: 2.0, art: 'sunburst' },
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }, { stat: 'regen' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 45, xp: 600, station: 'anvil', ticks: 120,
@@ -3354,8 +3354,8 @@ function swordDefs(): EquipmentDef[] {
   const finds: EquipmentDef[] = [
     {
       id: 'rustbite', name: 'Rustbite', slot: 'weapon',
-      weapon: { style: 'melee', damage: 1, cooldownTicks: 6, range: 1.6, art: 'crescent_sweep' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 1, cooldownTicks: 6, range: 1.6, art: 'crescent_sweep' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['common', 'uncommon', 'rare'],
       acquisition: { drop: true },
       value: 20, color: '#8a6a52', code: 'Rt',
@@ -3363,9 +3363,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'gobsplitter', name: 'Gobsplitter', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 5 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 8, range: 1.8, art: 'shockwave' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 5 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 8, range: 1.8, art: 'shockwave' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['common', 'uncommon', 'rare', 'epic'],
       acquisition: { drop: true },
       value: 60, color: '#6e7a52', code: 'Gs',
@@ -3373,45 +3373,45 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'wolffang', name: 'Wolffang', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 12 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.8, art: 'lunge', backstabMult: 1.6 },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'sneak' }, { stat: 'beastcraft' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 12 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 6, range: 1.8, art: 'lunge', backstabMult: 1.6 },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'sneak' }, { stat: 'beastcraft' }, { stat: 'maxHp' }],
       acquisition: { drop: true },
       value: 130, color: '#8d939f', code: 'Wa',
       desc: 'A grey saber with a fang set in the pommel. The pack hunts ahead of the point.',
     },
     {
       id: 'fenreaper', name: 'Fenreaper', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 14 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 8, range: 2.0, art: 'reapers_arc' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'farming' }, { stat: 'defence' }, { stat: 'regen' }],
+      levelReq: { skill: 'onehand', level: 14 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 8, range: 2.0, art: 'reapers_arc' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'farming' }, { stat: 'defence' }, { stat: 'regen' }],
       acquisition: { drop: true },
       value: 240, color: '#4a5a48', code: 'Fz',
       desc: 'Bog-iron with a wisp-green light down the fuller. The marsh harvests too.',
     },
     {
       id: 'gravewhisper', name: 'Gravewhisper', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 18 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.75, art: 'shadowstep', backstabMult: 2.0 },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'sneak', w: 2 }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 18 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 6, range: 1.75, art: 'shadowstep', backstabMult: 2.0 },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'sneak', w: 2 }, { stat: 'maxHp' }],
       acquisition: { drop: true },
       value: 320, color: '#7a7d88', code: 'Gw',
       desc: 'Ash-grey steel that makes no sound leaving the sheath. The dead lend quiet.',
     },
     {
       id: 'duelists_grace', name: 'Duelist\'s Grace', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 24 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.9, art: 'quicksilver' },
-      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 24 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.9, art: 'quicksilver' },
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       acquisition: { drop: true },
       value: 480, color: '#e6ddc8', code: 'Dl',
       desc: 'Swept hilt, ivory grip, gold wire. Somebody fought beautifully and lost anyway.',
     },
     {
       id: 'frostbrand', name: 'Frostbrand', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 28 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 7, range: 1.9, art: 'winters_edge' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 28 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 7, range: 1.9, art: 'winters_edge' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 560, color: '#a8c8dc', code: 'Fb',
@@ -3419,9 +3419,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'bloodletter', name: 'Bloodletter', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 32 },
-      weapon: { style: 'melee', damage: 4, cooldownTicks: 8, range: 1.85, art: 'red_harvest' },
-      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'vitality' }, { stat: 'maxHp', w: 2 }],
+      levelReq: { skill: 'onehand', level: 32 },
+      weapon: { style: 'onehand', damage: 4, cooldownTicks: 8, range: 1.85, art: 'red_harvest' },
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'vitality' }, { stat: 'maxHp', w: 2 }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 720, color: '#5a4048', code: 'Bl',
@@ -3429,9 +3429,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'stormcall', name: 'Stormcall', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 35 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.9, art: 'storm_brand' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 35 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 6, range: 1.9, art: 'storm_brand' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 800, color: '#5a6a9c', code: 'Sm',
@@ -3439,9 +3439,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'sovereign', name: 'Sovereign', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 38 },
-      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 2.05, art: 'kings_decree' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'defence', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 38 },
+      weapon: { style: 'onehand', damage: 4, cooldownTicks: 7, range: 2.05, art: 'kings_decree' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'defence', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 950, color: '#e8c04c', code: 'Ov',
@@ -3449,9 +3449,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'starfall', name: 'Starfall', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 45 },
-      weapon: { style: 'melee', damage: 5, cooldownTicks: 7, range: 2.0, art: 'starfall_strike' },
-      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'magic' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 45 },
+      weapon: { style: 'onehand', damage: 5, cooldownTicks: 7, range: 2.0, art: 'starfall_strike' },
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'magic' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['epic', 'legendary'],
       acquisition: { drop: true },
       value: 1400, color: '#4a4066', code: 'Fy',
@@ -3459,9 +3459,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'oathkeeper', name: 'Oathkeeper', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 50 },
-      weapon: { style: 'melee', damage: 5, cooldownTicks: 6, range: 2.0, art: 'vow_unbroken' },
-      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }, { stat: 'regen' }],
+      levelReq: { skill: 'onehand', level: 50 },
+      weapon: { style: 'onehand', damage: 5, cooldownTicks: 6, range: 2.0, art: 'vow_unbroken' },
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }, { stat: 'regen' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'lifesteal', frac: 0.05 }],
@@ -3475,9 +3475,9 @@ function swordDefs(): EquipmentDef[] {
     // every one DOES something beyond its stats (the riftglass law).
     {
       id: 'saltfang', name: 'Saltfang', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 6 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.85, art: 'drag_under' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 6 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 6, range: 1.85, art: 'drag_under' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onHitStatus', status: 'chill', power: 1, durationTicks: 40, chance: 0.2 }],
@@ -3486,9 +3486,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'brightword', name: 'Brightword', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 9 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.9, art: 'spoken_light' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 9 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 6, range: 1.9, art: 'spoken_light' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'crit', pct: 2 }],
@@ -3497,9 +3497,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'cindermaw', name: 'Cindermaw', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 12 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 8, range: 1.9, art: 'slagfall' },
-      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 12 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 8, range: 1.9, art: 'slagfall' },
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onHitStatus', status: 'burn', power: 1, durationTicks: 50, chance: 0.25 }],
@@ -3508,9 +3508,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'skysplinter', name: 'Skysplinter', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 16 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.95, art: 'sky_splits' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 16 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 6, range: 1.95, art: 'sky_splits' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 50, chance: 0.2 }],
@@ -3519,9 +3519,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'vipersong', name: 'Vipersong', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 20 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.9, art: 'green_verse' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'sneak' }, { stat: 'beastcraft' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 20 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.9, art: 'green_verse' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'sneak' }, { stat: 'beastcraft' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onHitStatus', status: 'venom', power: 1, durationTicks: 70, chance: 0.25 }],
@@ -3530,9 +3530,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'crownfire', name: 'Crownfire', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 25 },
-      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 2.0, art: 'sun_court' },
-      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'defence', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 25 },
+      weapon: { style: 'onehand', damage: 4, cooldownTicks: 7, range: 2.0, art: 'sun_court' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'defence', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'onKillHaste', ticks: 40 }],
@@ -3541,9 +3541,9 @@ function swordDefs(): EquipmentDef[] {
     },
     {
       id: 'winterspire', name: 'Winterspire', slot: 'weapon',
-      levelReq: { skill: 'melee', level: 30 },
-      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 2.0, art: 'still_air' },
-      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      levelReq: { skill: 'onehand', level: 30 },
+      weapon: { style: 'onehand', damage: 4, cooldownTicks: 7, range: 2.0, art: 'still_air' },
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [
@@ -3567,19 +3567,19 @@ function swordDefs(): EquipmentDef[] {
 function daggerDefs(): EquipmentDef[] {
   const THIEF_POOL: AffixPoolEntry[] = [
     { stat: 'sneak', w: 3 },
-    { stat: 'melee' },
+    { stat: 'onehand' },
     { stat: 'foraging' },
     { stat: 'maxHp' },
   ];
   const ASSASSIN_POOL: AffixPoolEntry[] = [
     { stat: 'sneak', w: 3 },
-    { stat: 'melee', w: 2 },
+    { stat: 'onehand', w: 2 },
     { stat: 'maxHp' },
   ];
   // The tanto is the one dagger that fights face-on — melee gates, a
   // soldier's pool with a rogue accent.
   const SOLDIER_DAGGER_POOL: AffixPoolEntry[] = [
-    { stat: 'melee', w: 2 },
+    { stat: 'onehand', w: 2 },
     { stat: 'defence' },
     { stat: 'sneak' },
     { stat: 'maxHp' },
@@ -3590,7 +3590,7 @@ function daggerDefs(): EquipmentDef[] {
   const dirks: EquipmentDef[] = [
     {
       id: 'bronze_dagger', name: 'Bronze dagger', slot: 'weapon',
-      weapon: { style: 'melee', damage: 1, cooldownTicks: 5, range: 1.35, art: 'shadowstep', backstabMult: 2.5 },
+      weapon: { style: 'onehand', damage: 1, cooldownTicks: 5, range: 1.35, art: 'shadowstep', backstabMult: 2.5 },
       affixPool: THIEF_POOL,
       acquisition: { craft: true },
       recipe: {
@@ -3603,7 +3603,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'iron_dagger', name: 'Iron dagger', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 10 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.45, art: 'shadowstep', backstabMult: 2.5 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 5, range: 1.45, art: 'shadowstep', backstabMult: 2.5 },
       affixPool: THIEF_POOL,
       acquisition: { craft: true },
       recipe: {
@@ -3616,7 +3616,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'steel_dagger', name: 'Steel dagger', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 24 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 2.5 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 2.5 },
       affixPool: THIEF_POOL,
       acquisition: { craft: true },
       recipe: {
@@ -3629,7 +3629,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'gold_dagger', name: 'Gold dagger', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 28 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 2.6 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 2.6 },
       affixPool: THIEF_POOL,
       acquisition: { craft: true },
       recipe: {
@@ -3728,7 +3728,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'vagrants_friend', name: 'Vagrant\'s Friend', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 2 },
-      weapon: { style: 'melee', damage: 1, cooldownTicks: 5, range: 1.4, art: 'shadowstep', backstabMult: 2.5 },
+      weapon: { style: 'onehand', damage: 1, cooldownTicks: 5, range: 1.4, art: 'shadowstep', backstabMult: 2.5 },
       affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'foraging' }, { stat: 'regen' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
@@ -3741,8 +3741,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'sting', name: 'Sting', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 25 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 4, range: 1.4, art: 'stinger', backstabMult: 2.6 },
-      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'melee' }, { stat: 'farming' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 4, range: 1.4, art: 'stinger', backstabMult: 2.6 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'onehand' }, { stat: 'farming' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 32, xp: 260, station: 'anvil', ticks: 75,
@@ -3754,7 +3754,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'coldsnap', name: 'Coldsnap', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 30 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.45, art: 'cold_snap', backstabMult: 2.4 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.45, art: 'cold_snap', backstabMult: 2.4 },
       affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
@@ -3770,8 +3770,8 @@ function daggerDefs(): EquipmentDef[] {
   const finds: EquipmentDef[] = [
     {
       id: 'shiv', name: 'Shiv', slot: 'weapon',
-      weapon: { style: 'melee', damage: 1, cooldownTicks: 4, range: 1.25, art: 'shadowstep', backstabMult: 2.3 },
-      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 1, cooldownTicks: 4, range: 1.25, art: 'shadowstep', backstabMult: 2.3 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'onehand' }, { stat: 'maxHp' }],
       rarities: ['common', 'uncommon', 'rare'],
       acquisition: { drop: true },
       value: 15, color: '#8a8276', code: 'Zx',
@@ -3780,7 +3780,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'ratter', name: 'Ratter', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 3 },
-      weapon: { style: 'melee', damage: 1, cooldownTicks: 5, range: 1.35, art: 'shadowstep', backstabMult: 2.4 },
+      weapon: { style: 'onehand', damage: 1, cooldownTicks: 5, range: 1.35, art: 'shadowstep', backstabMult: 2.4 },
       affixPool: [{ stat: 'sneak' }, { stat: 'beastcraft', w: 2 }, { stat: 'foraging' }],
       acquisition: { drop: true },
       value: 60, color: '#9a8468', code: 'Ra',
@@ -3789,7 +3789,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'scaler', name: 'Scaler', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 10 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.4, art: 'riptide', backstabMult: 2.4 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 5, range: 1.4, art: 'riptide', backstabMult: 2.4 },
       affixPool: [{ stat: 'fishing', w: 2 }, { stat: 'sneak' }, { stat: 'cooking' }, { stat: 'maxHp' }],
       acquisition: { drop: true },
       value: 180, color: '#9ab8b0', code: 'Sa',
@@ -3798,8 +3798,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'fangtooth', name: 'Fangtooth', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 12 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.4, art: 'lunge', backstabMult: 2.6 },
-      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'beastcraft' }, { stat: 'melee' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 5, range: 1.4, art: 'lunge', backstabMult: 2.6 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'beastcraft' }, { stat: 'onehand' }, { stat: 'maxHp' }],
       acquisition: { drop: true },
       value: 140, color: '#d8d2c0', code: 'Zf',
       desc: 'A wolf\'s killing tooth, socketed and edged. It remembers how to be a mouth.',
@@ -3807,7 +3807,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'bogsting', name: 'Bogsting', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 14 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.45, art: 'thorn_lash', backstabMult: 2.4 },
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 6, range: 1.45, art: 'thorn_lash', backstabMult: 2.4 },
       affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'herbalism' }, { stat: 'regen' }],
       acquisition: { drop: true },
       value: 250, color: '#5a7a58', code: 'Zs',
@@ -3816,8 +3816,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'bonepick', name: 'Bonepick', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 16 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.5, art: 'bone_needle', backstabMult: 2.7 },
-      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 5, range: 1.5, art: 'bone_needle', backstabMult: 2.7 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'onehand' }, { stat: 'maxHp' }],
       acquisition: { drop: true },
       value: 300, color: '#e2dcc8', code: 'Zb',
       desc: 'Carved from one femur into one purpose. The dead make excellent tools of themselves.',
@@ -3825,8 +3825,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'redhand', name: 'Redhand', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 18 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.4, art: 'quicksilver', backstabMult: 2.7 },
-      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 5, range: 1.4, art: 'quicksilver', backstabMult: 2.7 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'onehand' }, { stat: 'maxHp' }],
       acquisition: { drop: true },
       value: 340, color: '#a04a48', code: 'Rn',
       desc: 'The guild\'s initiation blade — the red is lacquer, they insist. Membership is permanent.',
@@ -3834,7 +3834,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'nightthorn', name: 'Nightthorn', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 22 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.45, art: 'shadow_fang', backstabMult: 2.8 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.45, art: 'shadow_fang', backstabMult: 2.8 },
       affixPool: ASSASSIN_POOL,
       acquisition: { drop: true },
       value: 520, color: '#4a4058', code: 'Nt',
@@ -3843,7 +3843,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'leech', name: 'Leech', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 26 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.4, art: 'crimson_tithe', backstabMult: 2.5 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 6, range: 1.4, art: 'crimson_tithe', backstabMult: 2.5 },
       affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'vitality', w: 2 }, { stat: 'regen' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
@@ -3853,8 +3853,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'hush', name: 'Hush', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 30 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 3.0 },
-      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 3.0 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'onehand' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 780, color: '#b8b4c4', code: 'Hu',
@@ -3863,7 +3863,7 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'palefire', name: 'Palefire', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 32 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.45, art: 'pale_flame', backstabMult: 2.5 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 6, range: 1.45, art: 'pale_flame', backstabMult: 2.5 },
       affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
@@ -3873,8 +3873,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'sparkfang', name: 'Sparkfang', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 35 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.45, art: 'spark_lash', backstabMult: 2.6 },
-      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic' }, { stat: 'melee' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.45, art: 'spark_lash', backstabMult: 2.6 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic' }, { stat: 'onehand' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 900, color: '#7a88b8', code: 'Qs',
@@ -3883,8 +3883,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'kingsbane', name: 'Kingsbane', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 40 },
-      weapon: { style: 'melee', damage: 4, cooldownTicks: 5, range: 1.5, art: 'kings_bane', backstabMult: 2.8 },
-      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee', w: 2 }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 4, cooldownTicks: 5, range: 1.5, art: 'kings_bane', backstabMult: 2.8 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'onehand', w: 2 }, { stat: 'maxHp' }],
       rarities: ['rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 1200, color: '#c9a23c', code: 'Ke',
@@ -3893,8 +3893,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'last_word', name: 'The Last Word', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 50 },
-      weapon: { style: 'melee', damage: 4, cooldownTicks: 4, range: 1.5, art: 'last_word', backstabMult: 3.2 },
-      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 4, cooldownTicks: 4, range: 1.5, art: 'last_word', backstabMult: 3.2 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'onehand' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'backstab', bonus: 0.3 }, { kind: 'skill', skill: 'sneak', amount: 2 }],
@@ -3908,8 +3908,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'nightbloom', name: 'Nightbloom', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 10 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 4, range: 1.4, art: 'garden_close', backstabMult: 2.6 },
-      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 4, range: 1.4, art: 'garden_close', backstabMult: 2.6 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'onehand' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'backstab', bonus: 0.2 }],
@@ -3919,8 +3919,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'rooksbeak', name: 'Rooksbeak', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 18 },
-      weapon: { style: 'melee', damage: 2, cooldownTicks: 4, range: 1.35, art: 'beak_first', backstabMult: 3.0 },
-      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'vitality' }],
+      weapon: { style: 'onehand', damage: 2, cooldownTicks: 4, range: 1.35, art: 'beak_first', backstabMult: 3.0 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'onehand' }, { stat: 'vitality' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'crit', pct: 3 }],
@@ -3930,8 +3930,8 @@ function daggerDefs(): EquipmentDef[] {
     {
       id: 'marrowlight', name: 'Marrowlight', slot: 'weapon',
       levelReq: { skill: 'sneak', level: 26 },
-      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.45, art: 'pale_lantern', backstabMult: 2.8 },
-      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'melee' }, { stat: 'vitality' }, { stat: 'regen' }],
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.45, art: 'pale_lantern', backstabMult: 2.8 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'onehand' }, { stat: 'vitality' }, { stat: 'regen' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'lifesteal', frac: 0.05 }],
@@ -4159,7 +4159,7 @@ function bowDefs(): EquipmentDef[] {
       id: 'knucklebow', name: 'Knucklebow', slot: 'weapon',
       levelReq: { skill: 'archery', level: 4 },
       weapon: { style: 'archery', damage: 3, cooldownTicks: 7, range: 13, ammo: 'arrow', projectileSpeed: 15, art: 'volley' },
-      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'onehand' }, { stat: 'maxHp' }],
       rarities: ['common', 'uncommon', 'rare'],
       acquisition: { drop: true },
       value: 55, color: '#8a6f52', code: 'Kx',
@@ -4229,7 +4229,7 @@ function bowDefs(): EquipmentDef[] {
       id: 'marrowpoint', name: 'Marrowpoint', slot: 'weapon',
       levelReq: { skill: 'archery', level: 20 },
       weapon: { style: 'archery', damage: 7, cooldownTicks: 9, range: 16, ammo: 'arrow', projectileSpeed: 17, art: 'piercing_bolt' },
-      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'melee' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'onehand' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 480, color: '#d8d2be', code: 'Mo',
@@ -4700,7 +4700,7 @@ function staffDefs(): EquipmentDef[] {
       id: 'bloodmoon', name: 'Bloodmoon', slot: 'weapon',
       levelReq: { skill: 'magic', level: 34 },
       weapon: { style: 'magic', damage: 7, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'red_eclipse', element: 'blood' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'melee' }, { stat: 'vitality', w: 2 }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'onehand' }, { stat: 'vitality', w: 2 }, { stat: 'maxHp' }],
       rarities: ['epic', 'legendary'],
       acquisition: { drop: true },
       value: 1250, color: '#a83a4a', code: 'Bm',
@@ -4816,7 +4816,7 @@ function staffDefs(): EquipmentDef[] {
       id: 'everthirst', name: 'Everthirst', slot: 'weapon',
       levelReq: { skill: 'magic', level: 23 },
       weapon: { style: 'magic', damage: 5, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'red_toll', element: 'blood' },
-      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'vitality', w: 2 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'vitality', w: 2 }, { stat: 'onehand' }, { stat: 'maxHp' }],
       rarities: ['legendary'],
       acquisition: { drop: true },
       effects: [{ kind: 'lifesteal', frac: 0.05 }],
@@ -4970,7 +4970,7 @@ function namedChaseDefs(): EquipmentDef[] {
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
-      { stat: 'melee' },
+      { stat: 'onehand' },
       { stat: 'vitality' },
       { stat: 'maxHp' },
     ] as AffixPoolEntry[],
@@ -4984,7 +4984,7 @@ function namedChaseDefs(): EquipmentDef[] {
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 3 },
-      { stat: 'melee' },
+      { stat: 'onehand' },
       { stat: 'vitality' },
       { stat: 'maxHp' },
     ] as AffixPoolEntry[],
@@ -5068,7 +5068,7 @@ function namedChaseDefs(): EquipmentDef[] {
     class: 'leather' as const, skill: 'sneak' as const,
     pool: [
       { stat: 'sneak', w: 2 },
-      { stat: 'melee', w: 2 },
+      { stat: 'onehand', w: 2 },
       { stat: 'regen' },
       { stat: 'maxHp' },
     ] as AffixPoolEntry[],
@@ -5082,7 +5082,7 @@ function namedChaseDefs(): EquipmentDef[] {
     class: 'leather' as const, skill: 'sneak' as const,
     pool: [
       { stat: 'sneak', w: 3 },
-      { stat: 'melee' },
+      { stat: 'onehand' },
       { stat: 'vitality' },
       { stat: 'maxHp' },
     ] as AffixPoolEntry[],
@@ -5110,7 +5110,7 @@ function namedChaseDefs(): EquipmentDef[] {
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
-      { stat: 'melee', w: 2 },
+      { stat: 'onehand', w: 2 },
       { stat: 'regen' },
       { stat: 'maxHp' },
     ] as AffixPoolEntry[],
@@ -5137,7 +5137,7 @@ function namedChaseDefs(): EquipmentDef[] {
   const wyrmsteel = {
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
-      { stat: 'melee', w: 3 },
+      { stat: 'onehand', w: 3 },
       { stat: 'defence' },
       { stat: 'vitality' },
       { stat: 'maxHp' },
@@ -5153,7 +5153,7 @@ function namedChaseDefs(): EquipmentDef[] {
     pool: [
       { stat: 'defence', w: 2 },
       { stat: 'vitality', w: 2 },
-      { stat: 'melee' },
+      { stat: 'onehand' },
       { stat: 'maxHp' },
     ] as AffixPoolEntry[],
     color: '#c9a23c',

@@ -75,6 +75,14 @@ export declare class Sfx {
     private get ctx();
     private tone;
     private noise;
+    /**
+     * A soft brass voice: two sawtooths detuned a few cents apart (the
+     * ensemble beat that makes horns warm) through a lowpass that
+     * BLOSSOMS open over the attack — brass brightens as the player
+     * leans in — with a gentle linear onset instead of tone()'s instant
+     * strike. Built for fanfares that repeat without wearing thin.
+     */
+    private horn;
     hit(): void;
     hurt(): void;
     swing(): void;
@@ -97,10 +105,21 @@ export declare class Sfx {
     bodyThud(heavy: boolean): void;
     collect(): void;
     /**
-     * The level-up fanfare — a ceremony, not a blip: a grounded thump
-     * the moment lands on, a four-note herald climbing the major triad,
-     * then the full chord planted on top with a glitter tail. Sized to
-     * the world show (~5.6s of pillar and rings) without overstaying.
+     * A craft batch seen through — the tools set down, not a fanfare:
+     * a soft wooden tock as the last piece lands on the pile, a rising
+     * third saying "done", and one warm ring to let the bench go quiet.
+     * Bigger than the collect blip, smaller than swearing a quest —
+     * it fires every batch, so it must never wear out its welcome.
+     */
+    workDone(): void;
+    /**
+     * The level-up fanfare v3 — a small brass choir, not a chiptune
+     * arpeggio: a felt timpani landing, then horns lift G4 - C5 - E5
+     * and plant a full C major chord over a low root, a soft ensemble
+     * "ta - da - daaa" with real attack and a shimmer of air on top.
+     * Soft-edged on purpose: several skills can level in one hunt, and
+     * the herald must stay welcome on the fifth hearing. Sized to the
+     * world show without overstaying.
      */
     levelUp(): void;
     /**

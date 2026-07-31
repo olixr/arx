@@ -79,7 +79,8 @@ function affixName(stat: string): string {
  */
 export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
   vitality: { icon: 'bread', color: '#d95763' },
-  melee: { icon: 'bronze_sword', color: '#c4553d' },
+  combat: { icon: 'iron_helm', color: '#b0623c' },
+  onehand: { icon: 'bronze_sword', color: '#c4553d' },
   defence: { icon: 'oak_kiteshield', color: '#8ac4e8' },
   archery: { icon: 'stickbow', color: '#7dc46a' },
   magic: { icon: 'apprentice_staff', color: '#b49af0' },
@@ -109,7 +110,8 @@ export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
  */
 export const SKILL_STORY: Record<string, string> = {
   vitality: 'Health and the will to keep it',
-  melee: 'Blades, bludgeons and closed distance',
+  combat: 'Every fight, whatever the hand holds',
+  onehand: 'Blades, bludgeons and closed distance',
   defence: 'Standing where the blow lands',
   archery: 'The long shot and the quick draw',
   magic: 'Eight schools, one focused mind',
@@ -138,7 +140,10 @@ export const SKILL_STORY: Record<string, string> = {
  * skills only ever surface in the Secret Arts wing, by row-presence.
  */
 const SKILL_WINGS: Array<{ title: string; skills: SkillId[] }> = [
-  { title: 'Combat Arts', skills: ['vitality', 'melee', 'twohand', 'defence', 'archery', 'magic'] },
+  {
+    title: 'Combat Arts',
+    skills: ['vitality', 'combat', 'onehand', 'twohand', 'defence', 'archery', 'magic'],
+  },
   {
     title: 'Fieldcraft',
     skills: ['mining', 'woodcutting', 'fishing', 'farming', 'foraging', 'herbalism'],
@@ -674,7 +679,7 @@ export class Panels {
     const w = def.weapon;
     if (w) {
       // Damage already leads the headline; the fine print starts here.
-      stat(w.style === 'melee' || w.style === 'twohand' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
+      stat(w.style === 'onehand' || w.style === 'twohand' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
       // The two-hands law, stated where you'd look before equipping.
       if (isTwoHanded(def)) stat('Hands', 'Two-handed', '#8d9299');
       if (w.ammo) stat('Ammo', itemDef(w.ammo)?.name ?? w.ammo, '#c4b590');
@@ -760,7 +765,7 @@ export class Panels {
       const cd = document.createElement('div');
       cd.className = 'card-passive-desc';
       cd.textContent =
-        'Coats your equipped melee weapon or bow — every landed basic applies it. Magic takes no oil.';
+        'Coats your equipped bladed weapon or bow — every landed basic applies it. Magic takes no oil.';
       this.card.appendChild(cd);
     }
     // Scroll cards spell out the enchantment they carry.
@@ -907,7 +912,7 @@ export class Panels {
       // so a dual wielder can run standard main / reverse off.
       const hand: 'main' | 'off' | null =
         slot === 'weapon' ? 'main' : slot === 'offhand' ? 'off' : null;
-      if (hand && itemDef(worn.id)?.weapon?.style === 'melee') {
+      if (hand && itemDef(worn.id)?.weapon?.style === 'onehand') {
         const rogue = this.carryStyle(hand) === 'rogue';
         entries.push({
           label: rogue ? 'Grip: standard' : 'Grip: rogue (reversed)',

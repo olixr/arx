@@ -85,7 +85,7 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     id: 'balanced_edge', name: 'Balanced Edge', prefix: 'Balanced', tier: 1, slot: 'weapon',
     element: 'arcane', level: 5,
     effects: [
-      E({ kind: 'styleDmg', style: 'melee', pct: 4 }),
+      E({ kind: 'styleDmg', style: 'onehand', pct: 4 }),
       E({ kind: 'styleDmg', style: 'archery', pct: 4 }),
       E({ kind: 'styleDmg', style: 'magic', pct: 4 }),
     ],
@@ -285,8 +285,8 @@ export const ENCHANT_DEFS: EnchantDef[] = [
   {
     id: 'brutish', name: 'Brutish Grip', prefix: 'Brutish', tier: 1, slot: 'gloves',
     element: 'blood', level: 7,
-    effects: [E({ kind: 'skill', skill: 'melee', amount: 1 })],
-    desc: 'The hands remember old brawls. Melee comes easier.',
+    effects: [E({ kind: 'skill', skill: 'onehand', amount: 1 })],
+    desc: 'The hands remember old brawls. The blade hand comes easier.',
   },
   {
     id: 'deadeye', name: 'Deadeye Grip', prefix: 'Deadeye', tier: 1, slot: 'gloves',
@@ -314,7 +314,7 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     id: 'adept', name: 'Adept Grip', prefix: 'Adept', tier: 2, slot: 'gloves',
     element: 'arcane', level: 36,
     effects: [
-      E({ kind: 'skill', skill: 'melee', amount: 1 }),
+      E({ kind: 'skill', skill: 'onehand', amount: 1 }),
       E({ kind: 'skill', skill: 'archery', amount: 1 }),
       E({ kind: 'skill', skill: 'magic', amount: 1 }),
     ],

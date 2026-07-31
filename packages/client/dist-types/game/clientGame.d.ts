@@ -78,6 +78,10 @@ export type InteractTarget = {
     open: boolean;
     gate: boolean;
 } | {
+    kind: 'seat';
+    tx: number;
+    ty: number;
+} | {
     kind: 'bed';
     tx: number;
     ty: number;
@@ -191,12 +195,18 @@ export interface GameEvents {
     }): void;
     /** This character has never chosen a look — open the creator. */
     onNeedLook?(): void;
-    /** A timed action began — `ticks` server ticks to completion. */
-    onActionStart?(ticks: number): void;
+    /** A timed action began — `ticks` server ticks to completion; craft
+     *  starts carry the recipe and the batch tally for the work card. */
+    onActionStart?(ticks: number, craft?: {
+        recipe: string;
+        made: number;
+        total: number;
+    }): void;
     /** The own-built ledger arrived — feed the overlay. */
     onOwnBuilt?(keys: ReadonlySet<string>): void;
-    /** The running action ended — `reason` says why ('done', 'blocked', 'occupied', 'materials', 'moved', …). */
-    onActionEnd?(reason?: string): void;
+    /** The running action ended — `reason` says why ('done', 'blocked', 'occupied',
+     *  'materials', 'moved', 'stopped', …); craft ends carry the batch tally. */
+    onActionEnd?(reason?: string, made?: number): void;
     /** A conversation began — raise the cinematic frame around `eid`. */
     onDialogueOpen?(o: {
         eid: EntityId;
@@ -361,6 +371,14 @@ export declare class ClientGame {
     readonly discoveries: Map<string, DiscoveryWire>;
     /** The one active waypoint (optimistic; server keeps the durable copy). */
     waypoint: Vec2 | null;
+    /** Where the reader last fell — the spilled pack's skull on the
+     *  chart. `until` is a local clock stamp built from the wire's
+     *  duration; the server clears it on arrival or expiry. */
+    deathMark: {
+        x: number;
+        y: number;
+        until: number;
+    } | null;
     /** THE QUEST LEDGER: active quests by id (status 'ready' = turn in). */
     readonly quests: Map<string, QuestWire>;
     /** The done shelf, by id. */
@@ -417,10 +435,14 @@ export declare class ClientGame {
     carryStyle: 'normal' | 'rogue';
     /** Off-fist grip preference — each hand carries its own way. */
     carryOff: 'normal' | 'rogue';
-    /** Running gather action, for the progress bar. */
+    /** Running timed action, for the progress bar. Craft actions carry
+     *  their recipe and batch tally so the HUD can speak for the work. */
     action: {
         startedAt: number;
         durationMs: number;
+        recipe?: string;
+        made?: number;
+        total?: number;
     } | null;
     /** "tx,ty" keys of this character's own built tiles (THE OWN-WORK OVERLAY). */
     ownBuilt: ReadonlySet<string>;
@@ -529,6 +551,9 @@ export declare class ClientGame {
     ownHpPct: number;
     /** Authoritative pose for the local player (from snapshots). */
     ownPose: number;
+    /** Server-confirmed own facing (radians) — the seat-locked dir while
+     *  mounted on furniture; the live aim everywhere else. */
+    ownDirServer: number;
     /** Dodge FX hook (the predictor's onDodge is owned internally). */
     onDodgeFx: ((x: number, y: number, mx: number, my: number) => void) | null;
     /** Fires the instant the local player releases a valid draw. */
@@ -693,6 +718,8 @@ export declare class ClientGame {
     walkTo(tx: number, ty: number): boolean;
     get isAutoWalking(): boolean;
     craft(recipe: string, qty: number): void;
+    /** Set the tools down: stop the running craft batch, keeping what's made. */
+    craftStop(): void;
     /** Plant a seed into a tilled plot. */
     plantSend(tx: number, ty: number, seed: string): void;
     /** Interact with a living NPC (talk to an actor, milk a cow). */

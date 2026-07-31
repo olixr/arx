@@ -104,7 +104,7 @@ test('techniques resolve, ladder is sane, and each style has a tree', () => {
     if (!t.hidden) levels.push(t.unlockLevel);
     styles.set(t.style, levels);
   }
-  for (const style of ['melee', 'archery', 'magic', 'sneak', 'twohand', 'shield', 'dualwield']) {
+  for (const style of ['combat', 'onehand', 'archery', 'magic', 'sneak', 'twohand', 'shield', 'dualwield']) {
     const levels = styles.get(style);
     assert.ok(levels && levels.length >= 3, `${style} needs a technique tree`);
     assert.ok(Math.min(...levels) <= 5, `${style} needs an early unlock`);

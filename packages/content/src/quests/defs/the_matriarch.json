@@ -20,7 +20,7 @@
   ],
   "rewards": {
     "coins": 400,
-    "xp": [{ "skill": "melee", "amount": 700 }],
+    "xp": [{ "skill": "combat", "amount": 700 }],
     "items": [{ "item": "wolfjaw_targe", "qty": 1, "rarity": "uncommon" }],
     "flags": ["matriarch_slain"]
   }

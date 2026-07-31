@@ -12,10 +12,10 @@
  * - geometry lives in the held-item frame: +x runs hand → tip, the
  *   bright edge faces −y (the sun law), grip behind the fist at −x.
  */
-export type BladeKind = 'arming' | 'falchion' | 'gladius' | 'scimitar' | 'saber' | 'rapier' | 'cutlass' | 'cleaver' | 'dirk' | 'stiletto' | 'kris' | 'karambit' | 'tanto' | 'shivkind' | 'talon' | 'leafblade';
-export type GuardKind = 'cross' | 'swept' | 'shell' | 'disc' | 'fang' | 'thorn' | 'crown' | 'wing' | 'bolt' | 'stub' | 'none';
+export type BladeKind = 'arming' | 'falchion' | 'gladius' | 'scimitar' | 'saber' | 'rapier' | 'cutlass' | 'cleaver' | 'runeblade' | 'cloven' | 'crystal' | 'flared' | 'dirk' | 'stiletto' | 'kris' | 'karambit' | 'tanto' | 'shivkind' | 'talon' | 'leafblade';
+export type GuardKind = 'cross' | 'swept' | 'shell' | 'disc' | 'fang' | 'thorn' | 'crown' | 'wing' | 'bolt' | 'coil' | 'stub' | 'none';
 export type PommelKind = 'round' | 'gem' | 'fang' | 'ring' | 'crescent' | 'star' | 'crown' | 'none';
-export type BladeFx = 'ember' | 'frost' | 'void' | 'storm' | 'blood' | 'sun' | 'star' | 'gleam';
+export type BladeFx = 'ember' | 'frost' | 'void' | 'storm' | 'blood' | 'sun' | 'star' | 'gleam' | 'ripple' | 'drip' | 'arc' | 'slither' | 'sunflare' | 'frostbloom' | 'petalfall' | 'orbit' | 'gravemist';
 export interface SwordStyle {
     blade: BladeKind;
     /** Blade steel. Edge defaults to shade(+34), fuller to shade(−24). */
@@ -35,6 +35,19 @@ export interface SwordStyle {
     gem?: string;
     /** Battle damage: dark bites knocked out of the cutting edge. */
     notched?: boolean;
+    /**
+     * A living core vein down the blade's center — the one bright thing
+     * on a dark blade (the riftglass law brought to one-handers). It
+     * REPLACES the fuller line's read and breathes on the world clock.
+     */
+    core?: string;
+    /** Script ticks along the spine that light in a walking sequence. */
+    runes?: string;
+    /** Socketed stones marching the fuller line (the molten-slab read). */
+    gems?: {
+        color: string;
+        n?: number;
+    };
     fx?: BladeFx;
     fxColor?: string;
 }
@@ -65,8 +78,14 @@ export declare const swordStyle: typeof bladeStyle;
  * body scale — a standard blade reaches ~0.5 s.
  */
 export declare function drawSword(ctx: CanvasRenderingContext2D, st: SwordStyle, s: number, nowMs: number, hurt?: boolean): void;
-export type BowKind = 'shortbow' | 'longbow' | 'recurve' | 'flatbow' | 'composite' | 'crude' | 'bone';
+export type BowKind = 'shortbow' | 'longbow' | 'recurve' | 'flatbow' | 'composite' | 'crude' | 'bone' | 'antler' | 'wing' | 'crystal' | 'talon' | 'brand' | 'fang' | 'harp' | 'loom' | 'siege';
 export type BowTip = 'plain' | 'horn' | 'gold' | 'iron' | 'thorn' | 'bone';
+/**
+ * The legendary signature words (ten-flights law: each chase bow owns
+ * ONE of these and no other bow wears it). All clocks ride nowMs —
+ * icons pin one frame, and two frames must prove the motion.
+ */
+export type BowSig = 'budding' | 'dawnrays' | 'rimelight' | 'spurarcs' | 'emberseam' | 'hushfeathers' | 'bloodhaze' | 'glyphwalk' | 'starweft' | 'stormcrest';
 export type BowCharm = 'feathers' | 'beads' | 'teeth' | 'leaves' | 'fur' | 'holes';
 export interface BowStyle {
     bow: BowKind;
@@ -86,6 +105,9 @@ export interface BowStyle {
     fletch?: string;
     fx?: BladeFx;
     fxColor?: string;
+    /** The one-owner legendary signature word (ten-flights law). */
+    sig?: BowSig;
+    sigColor?: string;
 }
 export declare const BOW_STYLES: Record<string, BowStyle>;
 /**
@@ -102,9 +124,9 @@ export declare function bowStyle(itemId: string | undefined, color?: string): Bo
  * grip translate keeps holding wood for every kind.
  */
 export declare function drawBow(ctx: CanvasRenderingContext2D, st: BowStyle, s: number, nowMs: number, hurt?: boolean, pull?: number, loose?: number): void;
-export type StaffShaft = 'straight' | 'gnarled' | 'twisted' | 'bone' | 'iron' | 'obsidian';
-export type StaffCrown = 'fork' | 'orb' | 'crook' | 'crescent' | 'skull' | 'twinprong' | 'sundisc' | 'coil' | 'thorns' | 'lantern' | 'shard' | 'ring' | 'knot' | 'branch' | 'wisp';
-export type StaffFx = 'embers' | 'frost' | 'sparks' | 'motes' | 'leaves' | 'drip' | 'rays' | 'stars' | 'runes' | 'aurora';
+export type StaffShaft = 'straight' | 'gnarled' | 'twisted' | 'bone' | 'iron' | 'obsidian' | 'fluted';
+export type StaffCrown = 'fork' | 'orb' | 'crook' | 'crescent' | 'skull' | 'twinprong' | 'sundisc' | 'coil' | 'thorns' | 'lantern' | 'shard' | 'ring' | 'knot' | 'branch' | 'wisp' | 'canopy' | 'winghalo' | 'phases' | 'cyclone' | 'plume' | 'eclipse' | 'chalice' | 'gyre' | 'comet' | 'crownring';
+export type StaffFx = 'embers' | 'frost' | 'sparks' | 'motes' | 'leaves' | 'drip' | 'rays' | 'stars' | 'runes' | 'aurora' | 'petals' | 'glory' | 'moonveil' | 'gust' | 'flutter' | 'infall' | 'tithe' | 'glyphs' | 'stardust' | 'crownarcs';
 export interface StaffStyle {
     shaft: StaffShaft;
     /** Shaft body color. Edge light defaults to shade(+28). */

@@ -25,7 +25,7 @@ function baseDef(): EquipmentDef {
     slot: 'head',
     armorClass: 'plate',
     armor: 2,
-    affixPool: [{ stat: 'melee' }],
+    affixPool: [{ stat: 'onehand' }],
     acquisition: { drop: true },
     value: 10,
     color: '#888',
@@ -159,7 +159,7 @@ test('aggregateGearStats counts classes and applies modifiers', () => {
     boots: { id: 'iron_sabatons', roll: { rar: 'common', seed: 4 } },
   });
   assert.equal(fullPlate.classCounts.plate, 4);
-  assert.ok(Math.abs(fullPlate.styleDmgMult.melee - 1.12) < 1e-9);
+  assert.ok(Math.abs(fullPlate.styleDmgMult.onehand - 1.12) < 1e-9);
   assert.ok(Math.abs(fullPlate.styleDmgMult.magic - 0.84) < 1e-9);
   assert.ok(Math.abs(fullPlate.speedMult - 0.96) < 1e-9);
   assert.equal(fullPlate.cooldownMult, 1);
@@ -500,7 +500,7 @@ test('early-game plate sets: four lots each, forge lots swap the bar', () => {
     assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'gloves', 'head', 'legs']);
     for (const p of base) {
       assert.equal(p.armorClass, 'plate', `${p.id} is plate`);
-      assert.ok(p.levelReq && ['defence', 'melee'].includes(p.levelReq.skill), `${p.id} gates on defence/melee`);
+      assert.ok(p.levelReq && ['defence', 'onehand'].includes(p.levelReq.skill), `${p.id} gates on defence/onehand`);
       assert.ok((p.levelReq?.level ?? 0) <= 19, `${p.id} is early/mid game`);
       if (p.acquisition.craft) {
         assert.equal(p.recipe?.skill, 'smithing', `${p.id} is smithed`);
@@ -582,10 +582,10 @@ test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates 
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
   assert.equal(weapons.length, 209, 'swords 55 + daggers 48 + bows 40 + staves 38 + greatweapons 28');
-  const swords = weapons.filter((d) => d.weapon?.style === 'melee');
+  const swords = weapons.filter((d) => d.weapon?.style === 'onehand');
   assert.equal(swords.length, 103, 'swords 55 + daggers 48');
   for (const s of swords) {
-    assert.equal(s.weapon?.style, 'melee');
+    assert.equal(s.weapon?.style, 'onehand');
     assert.ok(s.weapon!.art && ABILITIES.has(s.weapon!.art), `${s.id} art ${s.weapon!.art} exists`);
     assert.ok(s.desc && s.desc.length > 20, `${s.id} carries a real story`);
   }
@@ -696,7 +696,7 @@ test('rogue roster: 20 dagger designs, sneak gates, backstab dial, ladders climb
   for (const id of daggers) {
     const d = byId.get(id);
     assert.ok(d, `${id} exists`);
-    assert.equal(d!.weapon?.style, 'melee');
+    assert.equal(d!.weapon?.style, 'onehand');
     // The dagger identity: fast cadence, short reach, a real backstab.
     assert.ok(d!.weapon!.cooldownTicks <= 6, `${id} keeps dagger cadence`);
     assert.ok(d!.weapon!.range <= 1.5, `${id} keeps dagger reach`);
@@ -713,12 +713,12 @@ test('rogue roster: 20 dagger designs, sneak gates, backstab dial, ladders climb
       assert.ok(line[i]!.recipe!.levelReq > line[i - 1]!.recipe!.levelReq, `${key} smithing climbs`);
     }
   }
-  // Stiletto/kris gate on SNEAK (the rogue's ladder); tanto on melee.
+  // Stiletto/kris gate on SNEAK (the rogue's ladder); tanto on onehand.
   assert.equal(byId.get('iron_stiletto')!.levelReq!.skill, 'sneak');
   assert.equal(byId.get('iron_kris')!.levelReq!.skill, 'sneak');
-  assert.equal(byId.get('iron_tanto')!.levelReq!.skill, 'melee');
+  assert.equal(byId.get('iron_tanto')!.levelReq!.skill, 'onehand');
   assert.equal(byId.get('starsteel_stiletto')!.levelReq!.skill, 'sneak');
-  assert.equal(byId.get('starsteel_tanto')!.levelReq!.skill, 'melee');
+  assert.equal(byId.get('starsteel_tanto')!.levelReq!.skill, 'onehand');
   // The chase steepens; the heirloom only exists legendary.
   assert.deepEqual(byId.get('kingsbane')!.rarities, ['rare', 'epic', 'legendary']);
   assert.deepEqual(byId.get('last_word')!.rarities, ['legendary']);
@@ -766,8 +766,8 @@ test('the ten crowns: legendary-only one-hand chase blades, spread down the road
   for (const o of others) {
     assert.ok(!arts.includes(o.weapon?.art), `${o.id} does not borrow a crown's art`);
   }
-  // Sword crowns gate on melee, knife crowns on sneak (dagger law).
-  for (const [id] of swords) assert.equal(byId.get(id)!.levelReq!.skill, 'melee');
+  // Sword crowns gate on onehand, knife crowns on sneak (dagger law).
+  for (const [id] of swords) assert.equal(byId.get(id)!.levelReq!.skill, 'onehand');
   for (const [id] of knives) assert.equal(byId.get(id)!.levelReq!.skill, 'sneak');
 });
 
@@ -1072,8 +1072,8 @@ test('the two-hands law: bows and staves are two-handed, quivers ride the back',
   for (const def of ITEMS.values()) {
     if (!def.weapon) {
       assert.ok(!isTwoHanded(def), `${def.id}: non-weapons are never two-handed`);
-    } else if (def.weapon.style === 'melee') {
-      assert.ok(!isTwoHanded(def), `${def.id}: melee stays one-handed (dual wield lives)`);
+    } else if (def.weapon.style === 'onehand') {
+      assert.ok(!isTwoHanded(def), `${def.id}: onehand stays one-handed (dual wield lives)`);
     } else {
       assert.ok(isTwoHanded(def), `${def.id}: ${def.weapon.style} weapons take both hands`);
     }

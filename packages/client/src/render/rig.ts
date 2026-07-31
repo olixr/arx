@@ -3590,7 +3590,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     ctx.stroke();
     ctx.lineCap = 'butt';
   };
-  if (mainTrail && (weapon?.weapon?.style === 'melee' || weapon?.weapon?.style === 'twohand' || isStaff)) {
+  if (mainTrail && (weapon?.weapon?.style === 'onehand' || weapon?.weapon?.style === 'twohand' || isStaff)) {
     // A staff's WEAPON range is its spell reach — the sweep is an
     // arm's-length fact, so the crescent radius caps at melee reach.
     // A greatweapon's range IS its reach: the crescent earns the
@@ -3628,7 +3628,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.lineCap = 'butt';
     }
   }
-  if (meleeStage === 2 && weapon?.weapon?.style === 'melee') {
+  if (meleeStage === 2 && weapon?.weapon?.style === 'onehand') {
     // The finisher streak, on the shared finisher clock: alive from
     // the loosing of the drive, dying through the buried hold. The
     // icepick's streak runs down its plunge line to the mark; the

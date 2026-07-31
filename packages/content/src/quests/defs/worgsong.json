@@ -16,7 +16,7 @@
   "rewards": {
     "coins": 240,
     "xp": [
-      { "skill": "melee", "amount": 500 },
+      { "skill": "combat", "amount": 500 },
       { "skill": "leatherworking", "amount": 300 }
     ],
     "items": [{ "item": "snare_kit", "qty": 1 }]

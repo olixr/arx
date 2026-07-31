@@ -55,7 +55,9 @@ export type PerkId =
   | 'shieldArm' //           damagePlayer mitigate: +armor while a shield is raised
   | 'shieldThorns' //        npc strike thorns: +thorns while a shield is raised
   | 'greatReach' //          tryPlayerAttack (twohand): +reach, tiles
-  | 'greatExecute'; //       meleeSwing (twohand): +damage fraction vs targets under 25% hp
+  | 'greatExecute' //        meleeSwing (twohand): +damage fraction vs targets under 25% hp
+  | 'marchArmor' //          damagePlayer mitigate: +armor while moving
+  | 'warSchooling'; //       effectiveLevel: +levels to the four weapon schools
 
 export type CallingEffect =
   | { kind: 'gear'; effect: EnchantEffect }
@@ -102,10 +104,31 @@ const defs: CallingDef[] = [
     color: '#c4372a',
     effect: { kind: 'gear', effect: { kind: 'regen', amount: 1 } },
   },
-  // --------------------------------------------------------------- melee
+  // -------------------------------------------------------------- combat
+  {
+    id: 'war_footing',
+    skill: 'combat',
+    unlockLevel: 20,
+    focusCost: 1,
+    name: 'War Footing',
+    desc: 'A soldier is hardest to hurt mid stride. Armor while you move.',
+    color: '#b0623c',
+    effect: { kind: 'perk', perk: 'marchArmor', magnitude: 4 },
+  },
+  {
+    id: 'old_campaigner',
+    skill: 'combat',
+    unlockLevel: 60,
+    focusCost: 2,
+    name: 'Old Campaigner',
+    desc: 'Every road taught you something. All four weapon schools fight two levels higher.',
+    color: '#8f7a4a',
+    effect: { kind: 'perk', perk: 'warSchooling', magnitude: 2 },
+  },
+  // ------------------------------------------------------------- onehand
   {
     id: 'follow_through',
-    skill: 'melee',
+    skill: 'onehand',
     unlockLevel: 20,
     focusCost: 1,
     name: 'Follow-Through',
@@ -115,7 +138,7 @@ const defs: CallingDef[] = [
   },
   {
     id: 'warpath',
-    skill: 'melee',
+    skill: 'onehand',
     unlockLevel: 60,
     focusCost: 2,
     name: 'Warpath',

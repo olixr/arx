@@ -106,6 +106,10 @@ export declare class Renderer {
     private veilRegion;
     /** Reveal armed this frame (own player exists). */
     private revealArmed;
+    /** Packed tile keys of the furniture the OWN body is mounted on
+     *  this frame (seat-registry derivation) — exempt from the
+     *  step-aside fade, or the seat itself ghosts away under you. */
+    private ownSeatTiles;
     /** The own body's occlusion box in screen css px, per frame. */
     private fadeBX0;
     private fadeBY0;
@@ -272,12 +276,13 @@ export declare class Renderer {
     private readonly rings;
     /**
      * The level-up ceremony: ONE record, ~5.6s of staged show anchored
-     * to the live player — light pillar, slow ground rings, a sustained
-     * pooled-particle fountain, four climbing orbit sparks and a
-     * wheeling crown star, all in gold + the skill's accent color.
-     * Zero steady-state allocation: the record is built once at start,
-     * every mote rides the pooled particle system, and rings are bornAt
-     * stamps in one small array.
+     * to the live player and split across the three honest FX strata —
+     * ground (light pool, honor seal, pressure rings), volume (pillar
+     * behind the body + the y-sorted shard orbit wheeling around it),
+     * air (fountain, crown star, farewell) — all in gold + the skill's
+     * accent color. Zero steady-state allocation: the record is built
+     * once at start, every mote rides the pooled particle system, and
+     * rings are bornAt stamps in one small array.
      */
     private levelFx;
     private static readonly LEVEL_FX_MS;
@@ -747,19 +752,49 @@ export declare class Renderer {
     private drawRings;
     /**
      * The level-up ceremony's world half, staged over 5.6s and anchored
-     * to the live player every frame:
-     *  - Act 1 (0–0.5s): the pillar of light rises out of the opening
-     *    crack, the first ground ring rolls out.
-     *  - Act 2 (0.5–4.2s): the show holds court — slow gold/accent
-     *    rings every ~0.8s, a sustained mote-and-shard fountain, four
-     *    sparks spiraling up the pillar, a wheeling crown star at the
-     *    top, and a lightmap glow so the world itself answers.
-     *  - Act 3 (4.2–5.6s): one farewell ring and drifting settle motes
-     *    while the pillar thins and bows out.
-     * Direct draws are a dozen flat shapes; everything thrown rides the
-     * pooled particle system — no steady-state allocation.
+     * to the live player every frame — rebuilt on the three honest FX
+     * strata so the show stands IN the world instead of on the screen:
+     *  - GROUND (drawLevelCeremonyGround, under the y-sort): the light
+     *    pool, the wheeling honor seal with its arming rune chips, and
+     *    the slow pressure rings — the body stands ON all of it, the
+     *    far rims slide behind the legs.
+     *  - VOLUME (collectLevelFxVolumes, y-sorted items): the pillar of
+     *    light rising just BEHIND the body so the character reads as a
+     *    silhouette inside the radiance, and twelve shard-motes wheeling
+     *    around the body on two counter-rotating foreshortened orbits —
+     *    each anchored at its own ground point, so a shard vanishes
+     *    behind the shoulders and swings back across the chest.
+     *  - AIR (this method, overlay): the lightmap glow, the outward
+     *    mote fountain, the wheeling crown star at the pillar's head,
+     *    and the farewell burst.
+     * Direct draws are a few dozen flat shapes; everything thrown rides
+     * the pooled particle system — no steady-state allocation.
      */
     private drawLevelCeremony;
+    /** In fast, out slow: the show lands hard and leaves politely. */
+    private levelFxEnv;
+    /**
+     * The ceremony's GROUND half — painted with the other spell floors,
+     * under the y-sorted world, so the body stands on the light: the
+     * base pool, the honor seal (a wheeling engraved double rim with
+     * eight rune chips that arm one by one), and the slow pressure
+     * rings that used to wash over the character from the overlay.
+     */
+    private drawLevelCeremonyGround;
+    /**
+     * The ceremony's VOLUME half — standing matter pushed into the
+     * world y-sort, one DrawItem per element, each anchored at its own
+     * ground point (the collectFxVolumes law):
+     *  - the three-band light pillar rises just BEHIND the body, so the
+     *    character stands silhouetted inside the radiance instead of
+     *    being painted over by it;
+     *  - twelve shard-motes wheel around the body on two counter-
+     *    rotating foreshortened orbits, joining one by one and spiraling
+     *    upward — north of the body they vanish behind the shoulders,
+     *    south of it they cross in front of the chest. Power visibly
+     *    wraps the character; nothing sits ON the sprite.
+     */
+    private collectLevelFxVolumes;
     /** Hard red edge bands when the local player is hurt. */
     private drawVignette;
     private detailAt;
@@ -1743,6 +1778,10 @@ export declare class Renderer {
      * 240-frame heal is far too slow to feel like your own pen.
      */
     invalidateProp(tx: number, ty: number, tile: Tile): void;
+    /** The interaction furniture that never joins the step-aside fade:
+     *  the pieces a body walks up to USE. Ghosting the table you dine
+     *  at (or the seat under you) breaks the scene it exists to sell. */
+    private static readonly NEVER_FADE_TILES;
     private drawPropOutlined;
     /** Pool-aware canvas acquisition shared by the world-prop sprite bakes. */
     private acquireSpriteCanvas;
@@ -1941,6 +1980,63 @@ export declare class Renderer {
      * (grow) and settles fast (drag) — impact dust, not smoke.
      */
     private kickDust;
+    /** The four bed colorways — MUST mirror the bed painter's QUILTS
+     *  table and its run-head hash key. One lookup for tuck and flip. */
+    private static readonly BED_QUILTS;
+    /**
+     * THE THROWN COVER: when a sleeper rises, the bed's covers get
+     * tossed — a one-shot cloth flip owned by the BED (keyed by its
+     * head tile), not the body. A single fold spring with overshoot
+     * carries the throw; a five-point flutter row gives the free edge
+     * its fabric life (the cape's philosophy at a fraction of its
+     * cost). World-anchored so the camera can pan through it; self-
+     * deleting once settled — zero cost while no one is getting up.
+     */
+    private readonly bedFlips;
+    /** Flight beats: airborne, fade window, then the bed re-makes itself. */
+    private static readonly FLIP_FLY_S;
+    private static readonly FLIP_FADE_AT;
+    private static readonly FLIP_REMAKE_S;
+    private static readonly FLIP_TOTAL_S;
+    private startBedFlip;
+    /** Advance one flip's flutter row; true = finished, remove it. */
+    private stepBedFlip;
+    /** Paint one thrown cover: the quilt flies off the WAY the body
+     *  left — arcing, tumbling, trailing-edge fluttering — and fades
+     *  mid-air while the bared bed quietly re-makes itself from the
+     *  foot up; the final frame IS the painted quilt (invisible
+     *  handoff). */
+    private drawBedFlip;
+    /** A bedpost capped with a turned finial — the shared post brush. */
+    private bedFinialPost;
+    /**
+     * The vertical bed's footboard — rail and finial posts as their OWN
+     * layer: the bed paints it over the drape, and the sleeper's tuck
+     * and the thrown-cover flip repaint it over their cloth, so the
+     * posts always stand in FRONT of the blanket (user z-index law).
+     */
+    private bedFootboardVert;
+    /**
+     * The bed's patchwork quilt — ONE painter shared by the bed case
+     * and the sleeper's tuck, so the covers over a body are pixel-
+     * identical to the covers on an empty bed (no invented rectangles,
+     * no strange edges — THE SAME CLOTH). Blocks under seam lines,
+     * softened by white thread.
+     */
+    private quiltPatch;
+    /**
+     * A camera-facing bed's covers: the patchwork from the chest line
+     * down to the mattress edge, with the fold-back sheet band along
+     * the head edge. Row count derives from the quilt's own height so
+     * bed and tuck always agree on the pattern.
+     */
+    private bedCoversVert;
+    /**
+     * A side-on bed's covers: the foot-end patchwork with the deck's
+     * far-third shade and the vertical fold-back sheet band at the
+     * head edge. Shared by the painter and the sleeper's tuck.
+     */
+    private bedCoversSide;
     private humanoidItem;
     /** Per-entity alert glyph animation state (icon + when it changed). */
     private readonly alertAnim;
@@ -2166,6 +2262,14 @@ export declare class Renderer {
      */
     private enchantAura;
     /** Placed summons: totem, snare trap, straw decoy. */
+    /**
+     * THE STONE REMEMBERS: a little headstone over a spilled pack, up
+     * for the spill's quarter hour. Kept small against the rig (hip
+     * height) — a marker, not a monument. Each stone leans and cracks
+     * by its eid, so a battlefield of them reads as a yard of
+     * individuals, never a stamp.
+     */
+    private gravestoneItem;
     private summonItem;
     /** Ground perspective squash for combat-fx circles. */
     private static readonly FX_SQUASH;

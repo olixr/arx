@@ -1,4 +1,12 @@
 import { type InvSlot, type ItemRoll, type SkillXp, type StationType } from '@arx/shared';
+/** The station's face (label, icon, accent, verb) — the work card wears it too. */
+export declare function craftStationFace(station: StationType | null): {
+    label: string;
+    icon: string | null;
+    accent: string;
+    verb: string;
+    hint: string;
+};
 export declare class StationPanels {
     private readonly onCraft;
     private readonly onBank;
@@ -107,6 +115,14 @@ export declare class StationPanels {
     /** One material row in the Workshop detail: the full story of a need. */
     private materialRow;
     private renderPlant;
+    /** Set by main: stops the running craft batch (the busy strip's Stop). */
+    onCraftStop: (() => void) | null;
+    /** Set by main: the live running action — feeds the busy strip. */
+    getAction: () => {
+        recipe?: string;
+        made?: number;
+        total?: number;
+    } | null;
     openCraft(station: StationType | null, skills: SkillXp, known: ReadonlySet<string>, at?: {
         tx: number;
         ty: number;

@@ -37,7 +37,7 @@ const ERRAND: QuestDef = {
   id: 'errand',
   name: 'The Errand',
   giver: 'warden',
-  requires: { quests: ['hunt'], skills: [{ skill: 'melee', level: 5 }], flags: ['trusted'] },
+  requires: { quests: ['hunt'], skills: [{ skill: 'combat', level: 5 }], flags: ['trusted'] },
   repeat: { cooldownHours: 2 },
   stages: [
     { id: 'walk', journal: 'Walk.', objectives: [{ kind: 'discover', place: 'zone:fort' }] },

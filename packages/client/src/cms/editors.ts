@@ -427,7 +427,7 @@ function npcDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       }),
     );
     chipRow.appendChild(
-      featureChip('strikes inflict', !!draft.attackStatus, 'Melee hits apply a status effect', (on) => {
+      featureChip('strikes inflict', !!draft.attackStatus, 'Weapon hits apply a status effect', (on) => {
         if (on) draft.attackStatus = { status: 'bleed', power: 1, durationTicks: 60 };
         else delete draft.attackStatus;
         markDirty();

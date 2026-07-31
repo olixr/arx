@@ -1168,7 +1168,7 @@ export class AccountStore {
       'SELECT style, ability FROM character_techniques WHERE character_id = ?',
       [characterId],
     );
-    const order = ['slot', 'melee', 'archery', 'magic', 'sneak', 'twohand', 'shield', 'dualwield'];
+    const order = ['slot', 'onehand', 'melee', 'archery', 'magic', 'sneak', 'twohand', 'shield', 'dualwield', 'combat'];
     const rank = (s: string) => {
       const i = order.indexOf(s);
       return i < 0 ? order.length : i;

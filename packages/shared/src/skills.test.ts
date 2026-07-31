@@ -28,14 +28,14 @@ test('combatLevel: a fresh character is level 1', () => {
 test('combatLevel: all three pillars at L sit at combat level L', () => {
   for (const lvl of [10, 40, 99]) {
     const xp = xpForLevel(lvl);
-    assert.equal(combatLevel({ vitality: xp, defence: xp, melee: xp }), lvl);
+    assert.equal(combatLevel({ vitality: xp, defence: xp, onehand: xp }), lvl);
   }
 });
 
 test('combatLevel: only the best offense counts', () => {
   const xp = xpForLevel(60);
-  const one = combatLevel({ melee: xp });
-  const three = combatLevel({ melee: xp, archery: xp, magic: xp });
+  const one = combatLevel({ onehand: xp });
+  const three = combatLevel({ onehand: xp, archery: xp, magic: xp });
   assert.equal(one, three);
 });
 
@@ -49,11 +49,11 @@ import { FOCUS_BASE, focusBudget, xpForLevel as xpFor } from './skills.js';
 
 test('focusBudget: base 2, +1 per skill at 50, +1 more at 99', () => {
   assert.equal(focusBudget({}), FOCUS_BASE);
-  assert.equal(focusBudget({ melee: xpFor(49) }), FOCUS_BASE, 'one shy pays nothing');
-  assert.equal(focusBudget({ melee: xpFor(50) }), FOCUS_BASE + 1);
-  assert.equal(focusBudget({ melee: xpFor(99) }), FOCUS_BASE + 2, 'mastery pays twice');
+  assert.equal(focusBudget({ onehand: xpFor(49) }), FOCUS_BASE, 'one shy pays nothing');
+  assert.equal(focusBudget({ onehand: xpFor(50) }), FOCUS_BASE + 1);
+  assert.equal(focusBudget({ onehand: xpFor(99) }), FOCUS_BASE + 2, 'mastery pays twice');
   assert.equal(
-    focusBudget({ melee: xpFor(50), mining: xpFor(50), cooking: xpFor(99) }),
+    focusBudget({ onehand: xpFor(50), mining: xpFor(50), cooking: xpFor(99) }),
     FOCUS_BASE + 4,
     'breadth and depth both pay',
   );

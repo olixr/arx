@@ -21,7 +21,7 @@ export interface BodyStyle {
     metal?: string;
     cls: ArmorClassStyle;
     silhouette: 'tunic' | 'robe' | 'jerkin' | 'cuirass' | 'brigandine';
-    pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur' | 'feathered' | 'orbs' | 'shards';
+    pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur' | 'feathered' | 'orbs' | 'shards' | 'wyrmwing';
     pauldronColor?: string;
     /** Bright edge accent on the pauldron rim / blade edge. */
     pauldronTrim?: string;
@@ -35,7 +35,7 @@ export interface BodyStyle {
     fringe?: boolean;
     /** Big mismatched cloth patches with stitch ticks — the homespun read. */
     patches?: string;
-    emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye' | 'moth' | 'coin' | 'bullhead' | 'flame' | 'orrery';
+    emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye' | 'moth' | 'coin' | 'bullhead' | 'flame' | 'orrery' | 'crown';
     /** Glowing rune dashes riding the hem trim — the enchanted-cloth read. */
     runes?: string;
     /** A waist sash: band, hip knot, two swinging tails. */
@@ -186,6 +186,96 @@ export interface BodyStyle {
     ribbons?: {
         colors: [string, string];
     };
+    /**
+     * A layered feather mantle ringing the shoulders, front AND back —
+     * two lapped rows of broad vanes, tips broken to a second color,
+     * each with its own spine. An optional sheen walks the rows on a
+     * slow clock — the rook's oil-slick iridescence. The bird worn as
+     * a garment, never a trophy.
+     */
+    plumage?: {
+        color: string;
+        tip: string;
+        sheen?: string;
+    };
+    /**
+     * The archer's back quiver on the trailing shoulder blade. From
+     * behind it is the whole story: banded tube, three fletched nocks.
+     * From the front the story is the chest strap and the fletchings
+     * peeking over the shoulder — gear that survives the turn.
+     */
+    quiver?: {
+        color: string;
+        fletch: string;
+    };
+    /**
+     * A neck scarf knotted at the trailing shoulder, its tail waving
+     * behind in a lazy S on its own clock, tip dipped in a second
+     * color — the assassin's flag. Cloth, not light: full weight.
+     */
+    scarftail?: {
+        color: string;
+        tip?: string;
+    };
+    /**
+     * Smoke curling off the shoulders, rising and thinning — the burn
+     * never quite went out. Deterministic from the clock alone.
+     */
+    wisps?: {
+        color: string;
+    };
+    /**
+     * Fireflies keeping the wearer company: low wandering lights that
+     * BLINK on their own beats — alive, where motes merely drift.
+     */
+    fireflies?: {
+        color: string;
+    };
+    /**
+     * Shed feathers rocking down past the hem and fading — the rook
+     * molts and never runs out.
+     */
+    featherfall?: {
+        color: string;
+    };
+    /**
+     * Storm arcs snapping across the plate on their own beats — a
+     * jagged bolt that flickers alive, jumps shoulder to chest, and is
+     * gone. Between snaps, small charge sparks keep the current honest.
+     */
+    arcsparks?: {
+        color: string;
+    };
+    /**
+     * The forge's veins: branching molten cracks glowing between the
+     * chest plates, each breathing on its own furnace beat. The metal
+     * never cooled; the seams admit it.
+     */
+    moltenSeams?: {
+        color: string;
+    };
+    /**
+     * Hot sparks rising off the plate and flickering out — embers where
+     * motes merely drift; they burn, wobble upward, and die mid-air.
+     */
+    embers?: {
+        color: string;
+    };
+    /**
+     * Two swallow-tailed banner pennons flying off the shoulders,
+     * rippling on the march wind's own clock — heraldry that moves.
+     * Field in the first color, tail dip in the second.
+     */
+    pennons?: {
+        colors: [string, string];
+    };
+    /**
+     * Star glints winking off the plate's high points on their own
+     * beats — armor polished past vanity into legend.
+     */
+    gleam?: {
+        color: string;
+    };
 }
 export interface HelmStyle {
     color: string;
@@ -200,7 +290,7 @@ export interface HelmStyle {
      *  the raider's bronze face plate; `dread` the tooth-visored maw;
      *  `briar` the woven thorn-cage visor; `drake` the lapped-scale
      *  visage with a copper snout. */
-    kind: 'greathelm' | 'bascinet' | 'barbute' | 'armet' | 'sallet' | 'radiant' | 'ramfort' | 'warmask' | 'dread' | 'briar' | 'drake' | 'aurochs' | 'barrow' | 'hood' | 'circlet' | 'wizard';
+    kind: 'greathelm' | 'bascinet' | 'barbute' | 'armet' | 'sallet' | 'radiant' | 'ramfort' | 'warmask' | 'dread' | 'briar' | 'drake' | 'aurochs' | 'barrow' | 'tempest' | 'furnace' | 'wyrm' | 'champion' | 'hood' | 'circlet' | 'wizard';
     visor?: 'slit' | 'cross';
     plume?: {
         color: string;
@@ -307,6 +397,34 @@ export interface HelmStyle {
     orbitals?: {
         color: string;
         ring?: string;
+    };
+    /** Hoods: two coals burning in the opening's shadow, pulsing on a
+     *  slow breath — front only; the back keeps its secret. On the
+     *  fire-hearted forged shells (furnace, wyrm) the same word is the
+     *  heat inside the helm: grate glow, nostril vents, eye slits. */
+    emberEyes?: {
+        color: string;
+    };
+    /** A swept crest of three feathers off the crown, trailing back
+     *  and fluttering at the tips — the hawk's wake. Painted before
+     *  the shell so the roots tuck under. */
+    crestfeathers?: {
+        colors: [string, string];
+    };
+    /** Fireflies circling the crown on their own wandering loops,
+     *  blinking — the forest keeps its king company. */
+    fireflies?: {
+        color: string;
+    };
+    /** Tempest shells: a storm arc snapping between the crown points on
+     *  its own beat, and the charge glow that never quite leaves. */
+    arcs?: {
+        color: string;
+    };
+    /** A star glint winking off the crown on its own beat — the same
+     *  polished-past-vanity law the body's gleam keeps. */
+    gleam?: {
+        color: string;
     };
 }
 export interface LegStyle {

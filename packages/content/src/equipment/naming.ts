@@ -17,7 +17,8 @@ import type { AffixStat } from './types.js';
  */
 export const AFFIX_EPITHETS: Record<AffixStat, string> = {
   vitality: 'of Vigor',
-  melee: 'of Strength',
+  combat: 'of the Veteran',
+  onehand: 'of Strength',
   defence: 'of the Bulwark',
   archery: 'of Swiftness',
   magic: 'of Sorcery',

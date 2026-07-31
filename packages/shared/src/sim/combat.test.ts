@@ -36,7 +36,7 @@ test('draw slow-down applies only to a held bow', () => {
   const idle = { buttons: 0 };
   assert.ok(isDrawSlowed(held, 'archery'));
   assert.ok(!isDrawSlowed(idle, 'archery'));
-  assert.ok(!isDrawSlowed(held, 'melee'));
+  assert.ok(!isDrawSlowed(held, 'onehand'));
   assert.ok(!isDrawSlowed(held, null));
 });
 
@@ -94,5 +94,5 @@ test('hidden skills are real skills and never leak into the visible roster by de
     assert.ok((SKILL_IDS as readonly string[]).includes(id), `${id} not a SkillId`);
   }
   assert.ok(isHiddenSkill('dualwield'));
-  assert.ok(!isHiddenSkill('melee'));
+  assert.ok(!isHiddenSkill('onehand'));
 });

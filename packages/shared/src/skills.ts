@@ -9,7 +9,8 @@
  */
 export type SkillId =
   | 'vitality'
-  | 'melee'
+  | 'combat'
+  | 'onehand'
   | 'defence'
   | 'archery'
   | 'magic'
@@ -34,7 +35,8 @@ export type SkillId =
 
 export const SKILL_IDS: readonly SkillId[] = [
   'vitality',
-  'melee',
+  'combat',
+  'onehand',
   'defence',
   'archery',
   'magic',
@@ -125,16 +127,44 @@ export function combatLevel(skills: SkillXp): number {
   const stay = (levelForXp(skills.vitality ?? 0) + levelForXp(skills.defence ?? 0)) / 4;
   const strike =
     Math.max(
-      levelForXp(skills.melee ?? 0),
+      levelForXp(skills.onehand ?? 0),
       levelForXp(skills.archery ?? 0),
       levelForXp(skills.magic ?? 0),
       levelForXp(skills.twohand ?? 0),
+      levelForXp(skills.combat ?? 0),
     ) / 2;
   return Math.max(1, Math.round(stay + strike));
 }
 
 export function isSkillId(s: string): s is SkillId {
   return (SKILL_IDS as readonly string[]).includes(s);
+}
+
+// ------------------------------------------------- the shared lesson
+
+/**
+ * THE SHARED LESSON: combat is the generalist's skill — whatever the
+ * hand holds, the fight itself is teaching you. Every XP grant to a
+ * strike school echoes a share into `combat` at the one grantXp door.
+ *
+ * Sneak is deliberately absent: its combat blows already echo through
+ * the weapon school that swung them, and its stealth-craft XP (marks,
+ * staying hidden) is not combat and must never train it.
+ */
+export const COMBAT_SCHOOL_IDS: readonly SkillId[] = [
+  'onehand',
+  'twohand',
+  'archery',
+  'magic',
+  'dualwield',
+  'shield',
+];
+
+/** The echo's share: half of every strike lesson is a lesson in war. */
+export const COMBAT_LESSON_FRAC = 0.5;
+
+export function isCombatSchool(s: SkillId): boolean {
+  return (COMBAT_SCHOOL_IDS as readonly string[]).includes(s);
 }
 
 // ------------------------------------------------------------- focus

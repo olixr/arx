@@ -20,7 +20,7 @@
   "rewards": {
     "coins": 300,
     "xp": [
-      { "skill": "melee", "amount": 400 },
+      { "skill": "combat", "amount": 400 },
       { "skill": "defence", "amount": 300 }
     ],
     "flags": ["letter_home"]

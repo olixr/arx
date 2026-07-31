@@ -21,7 +21,7 @@
   "rewards": {
     "coins": 800,
     "xp": [
-      { "skill": "melee", "amount": 800 },
+      { "skill": "combat", "amount": 800 },
       { "skill": "defence", "amount": 400 }
     ],
     "items": [{ "item": "warden_platebody", "qty": 1, "rarity": "uncommon" }],

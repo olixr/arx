@@ -17,7 +17,7 @@
   "questDrops": [{ "npc": "brigand_reaver", "item": "reavers_mark", "chance": 1 }],
   "rewards": {
     "coins": 150,
-    "xp": [{ "skill": "melee", "amount": 400 }],
+    "xp": [{ "skill": "combat", "amount": 400 }],
     "flags": ["reaver_marked"]
   }
 }

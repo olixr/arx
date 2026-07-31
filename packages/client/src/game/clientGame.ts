@@ -527,7 +527,7 @@ export class ClientGame {
 
   /** The combat style of the equipped weapon (bare fists = melee). */
   currentStyle(): string {
-    return this.equippedWeaponDef()?.style ?? 'melee';
+    return this.equippedWeaponDef()?.style ?? 'onehand';
   }
 
   /** The ability granted by a hotbar slot: Art, relic, technique, sigil. */

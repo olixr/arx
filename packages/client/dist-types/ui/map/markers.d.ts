@@ -3,6 +3,12 @@ import type { DiscoveryWire } from '@arx/shared';
 export declare function drawDiscoveryMarker(ctx: CanvasRenderingContext2D, d: DiscoveryWire, x: number, y: number, r: number, hot?: boolean): void;
 /** The one active waypoint: a planted banner with a soft beacon pulse. */
 export declare function drawWaypointFlag(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, pulse01: number): void;
+/**
+ * Where the reader last fell: a little bone-ink skull over the spilled
+ * pack, breathing a slow ember ring (the waypoint beacon's grim
+ * cousin). Personal like the flag — nobody else's chart carries it.
+ */
+export declare function drawDeathMark(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, pulse01: number): void;
 /** The reader's own body: a gold compass-arrow token at their heading. */
 export declare function drawPlayerToken(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, dir: number): void;
 /** A fellow's identity ink — the tint their undressed rig would wear. */

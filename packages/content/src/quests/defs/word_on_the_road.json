@@ -21,7 +21,7 @@
   ],
   "rewards": {
     "coins": 90,
-    "xp": [{ "skill": "melee", "amount": 300 }],
+    "xp": [{ "skill": "combat", "amount": 300 }],
     "flags": ["redmask_writs_shown"]
   }
 }

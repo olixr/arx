@@ -137,6 +137,10 @@ export interface DeckFill {
     legs: DeckFillLegs;
     /** Which painter owns the fill — bridge wins a mixed junction. */
     family: 'bridge' | 'dock';
+    /** True when the notch is walkable BANK, not water: the crossing's
+     *  corner chamfers onto the land — same triangle, land dressing
+     *  (contact shade instead of water AO, no pile, no rail). */
+    bank: boolean;
 }
 /**
  * THE 45° NOTCH-FILL LAW. A stair-stepped span (a diagonal worldgen
@@ -218,4 +222,6 @@ export declare function waterRegionPath(ground: GroundSampler, bounds: {
     minTy: number;
     maxTy: number;
 }): Path2D | null;
+/** Water tiles that share a shoreline (no foam between each other). */
+export declare function isWaterTile(t: number | undefined): boolean;
 //# sourceMappingURL=terrain.d.ts.map

@@ -63,7 +63,7 @@ export const AFFIX_ROLL_FRAC: Record<RarityTier, readonly [number, number]> = {
 
 /**
  * Per-piece playstyle modifiers, counted over head/body/legs/gloves/
- * boots. Percentages — a full five-piece plate set is +15% melee /
+ * boots. Percentages — a full five-piece plate set is +15% onehand /
  * −20% magic / −5% move; completing a set with its gloves is what
  * pushes a specialty over the top.
  * Only plate pays for its protection; cloth and leather are pure buffs,
@@ -82,14 +82,14 @@ export const ARMOR_CLASS_MODS: Record<
     cooldownPct: number;
   }
 > = {
-  plate: { dmgPct: { melee: 3, twohand: 3, magic: -4 }, speedPct: -1, cooldownPct: 0 },
+  plate: { dmgPct: { onehand: 3, twohand: 3, magic: -4 }, speedPct: -1, cooldownPct: 0 },
   leather: { dmgPct: { archery: 3 }, speedPct: 0.5, cooldownPct: 0 },
   cloth: { dmgPct: { magic: 4 }, speedPct: 0, cooldownPct: -2.5 },
 };
 
 /** Short player-facing blurb per class, shown on the item card. */
 export const ARMOR_CLASS_BLURB: Record<ArmorClass, string> = {
-  plate: 'Plate: +melee and two-handed damage, −magic damage, slightly slower',
+  plate: 'Plate: +one-handed and two-handed damage, −magic damage, slightly slower',
   leather: 'Leather: +archery damage, slightly faster',
   cloth: 'Cloth: +magic damage, faster ability cooldowns',
 };

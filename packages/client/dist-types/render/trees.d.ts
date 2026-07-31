@@ -26,21 +26,49 @@
  *   (no edge strokes), painted BEFORE the trunk so the trunk body
  *   covers every join, and their tips end INSIDE the canopy.
  *
- * THE WILLOW FALL (the weeping species' own law):
- * - The cascade IS the tree. A willow grows a compact high crown and
- *   pours a SKIRT of foliage curtains from under it to near the
- *   ground — the skirt carries most of the silhouette, not the dome.
- * - Depth is layered, back to front: one deep backdrop sheet painted
- *   BEHIND the trunk (the bole stands inside the cascade), mid falls
- *   over it, lit falls on the light side, thin withy streaks last —
- *   each layer one batched fill, banded like the canopy.
- * - Every fall ends in a chisel-cut fringe of staggered pointed
- *   tips; every anchor is buried under the crown's underside so the
- *   join can never show (seam law, downward).
- * - Falls hang like cloth on the ONE wind field: anchored at the
- *   crown, hems swinging with a pendulum lift. The deep sheet sways
- *   least, the loose front falls most — differential motion is the
- *   depth cue.
+ * THE WILLOW REBUILT (the weeping species' own law — supersedes
+ * every skirt-on-a-crown draft):
+ * - The willow has its OWN anatomy, not a shrunken dome with
+ *   dressing: trunk → arching LIMBS → fronds pouring off the arcs.
+ *   Four or five real wooden limbs rise from the upper trunk, arc
+ *   outward and droop at the ends; every streamer is anchored at an
+ *   actual point ALONG a limb, so the cascade hangs from the wood
+ *   that carries it.
+ * - The crown is a BROKEN crown: an apex knot on the trunk top plus
+ *   small tufts riding each limb — never one fused dome. Tufts bury
+ *   every streamer anchor and every limb tip (seam law, both ways).
+ * - Hem law: anchors nearer the center hang longest, tips are
+ *   STAGGERED chisel points, and daylight opens between the outer
+ *   hems. A willow you cannot see through at the fringe is a blob
+ *   wearing a skirt. The bole shows only LOW through the front
+ *   parting — never a bare pole up the tree.
+ * - Depth is layered back to front, one batched fill per tone: the
+ *   rear limbs' dark streamers paint BEHIND the trunk, mid
+ *   streamers over it, the sun-side limb carries the lit fronds,
+ *   bright escaped withies fly off the limb tips last.
+ * - EVERY section moves on the ONE wind field, independently: tufts
+ *   rustle per-cluster, limbs flex with their tuft (anchoring law),
+ *   and each streamer pendulums at its own lag AND carries a
+ *   traveling ripple down its length (dropF phase) — cloth waving
+ *   from the arc, not a rigid flag. Strand part-lines (one batched
+ *   stroke) keep same-tone fronds reading combed, never a slab.
+ *
+ * THE PINE (the cold-country species' own law):
+ * - A pine is TIERS, not a dome: downswept chevron plates stacked up
+ *   a straight spire trunk, each hem cut into serrated teeth, bare
+ *   bole and daylight under the lowest tier, a pointed spire cap.
+ *   The silhouette is the species — nothing round anywhere.
+ * - Light is banded by tier (dark low band, mid above) and every
+ *   plate wears a WEST-LIT facet — the one sun, sculpting the cone.
+ *   Tier separation is a single batched hem stroke (the shingle
+ *   line), never per-plate strokes.
+ * - Plates are near-rigid: the trunk cantilever carries them, the
+ *   hem teeth flutter barely at all (drop weights ~0.2). Ridge
+ *   tufts and the spire tuft add the soft mass over the crisp
+ *   plates; dead whorl stubs stand on the bare bole.
+ * - Tone indices are per-species SEMANTICS, not colors: the pine
+ *   paints lower band / upper band / lit facets in its own order,
+ *   all still one batched fill per tone.
  *
  * Scale law: the player reads ~1.2 tiles tall. Commons stand 3-4x
  * that, oaks and yews 4-5x. Trunk base half-widths are the physical
@@ -96,6 +124,20 @@ export interface TreeCurtain {
     pts: Array<[number, number]>;
     /** Per-vertex swing weight: 0 anchored top → ~1 free hem. */
     drop: number[];
+    /** Raw drop FRACTION per vertex (0 anchor → 1 hem) — the phase
+     *  rail the traveling ripple runs down. */
+    dropF: number[];
+    /** Vertex index range [from, to] to lay into the batched part
+     *  stroke — the willow's comb lines. */
+    part?: [number, number];
+    /** Carries no mass for the shadow projection (hem-shadow ribbons,
+     *  facet overlays) — the shadow pass walks every curtain of every
+     *  tree every frame, so decorative geometry must opt out. */
+    noShadow?: boolean;
+    /** Simplified outline for the shadow projection (a sheared-flat
+     *  shadow can't show hem teeth — a dense stand shouldn't pay to
+     *  project them). Falls back to `pts`. */
+    shadowHull?: Array<[number, number]>;
     /** 0 = deep backdrop (paints BEHIND the trunk), 1 = mid fall,
      *  2 = lit fall, 3 = bright withy streak. */
     tone: number;
@@ -110,6 +152,14 @@ export interface TreeCurtain {
 export interface TreeModel {
     species: number;
     variant: number;
+    /**
+     * THE RIGID SWAY: a stiff species (the pine) whose only real
+     * motion is the trunk cantilever. The renderer bakes it ONCE in a
+     * neutral pose and sways the cached sprite with a ground-pivot
+     * SHEAR each frame — full-framerate wind at zero re-bake cost,
+     * where cadence re-baking a dense taiga cost whole frames.
+     */
+    rigid?: boolean;
     /** Ground → crown top, tiles. */
     height: number;
     /** Max |x| + r across the crown — shadow and culling. */

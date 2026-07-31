@@ -12,6 +12,6 @@
   ],
   "rewards": {
     "coins": 140,
-    "xp": [{ "skill": "melee", "amount": 350 }]
+    "xp": [{ "skill": "combat", "amount": 350 }]
   }
 }

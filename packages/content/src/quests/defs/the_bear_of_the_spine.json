@@ -2,7 +2,7 @@
   "id": "the_bear_of_the_spine",
   "name": "The Bear of the Spine",
   "giver": "lookout_pike",
-  "requires": { "quests": ["the_matriarch"], "skills": [{ "skill": "melee", "level": 18 }] },
+  "requires": { "quests": ["the_matriarch"], "skills": [{ "skill": "combat", "level": 18 }] },
   "stages": [
     {
       "id": "the_shoulders",
@@ -16,7 +16,7 @@
   "rewards": {
     "coins": 450,
     "xp": [
-      { "skill": "melee", "amount": 800 },
+      { "skill": "combat", "amount": 800 },
       { "skill": "defence", "amount": 400 }
     ],
     "items": [{ "item": "trapline_jerkin", "qty": 1, "rarity": "uncommon" }],

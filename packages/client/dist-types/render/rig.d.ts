@@ -79,6 +79,17 @@ export interface RigPose {
         /** Low-passed arm-swing drive (see the SMOOTHED SWING law). */
         sw?: number;
         swMs?: number;
+        /**
+         * Per-arm elbow-side hysteresis (THE REMEMBERED ELBOW) — the same
+         * chooseLimbSign memory the knees carry, so a borderline pole can
+         * never snap an elbow through the arm. Lazily seeded by the rig.
+         */
+        mainElbow?: {
+            sign: number;
+        };
+        offElbow?: {
+            sign: number;
+        };
     };
     bodyColor: string;
     hurt: boolean;
@@ -146,6 +157,22 @@ export interface RigPose {
     sitT?: number;
     /** Which seated posture: 0 = lounger (legs out), 1 = one knee up. */
     sitVariant?: 0 | 1;
+    /**
+     * WHERE the body sits. 'floor' (default) = the wayside sit above.
+     * 'chair' = mounted furniture: hips ride at seatH on the seat
+     * surface, feet drop square to the floor in front, knees keep the
+     * anatomical facing pole, and the hands rest on the thighs.
+     * 'throne' = the crown sit — upright spine, fists out to the
+     * armrests. Callers pass it with the same smoothed sitT.
+     */
+    sitStyle?: 'floor' | 'chair' | 'throne';
+    /** Seat surface height for chair/throne sits, tile units above ground. */
+    seatH?: number;
+    /**
+     * Sleeping blend, 0..1 (the lie recline, caller-smoothed): past 0.5
+     * the eyes close — soft lid lines instead of the open pattern.
+     */
+    sleepT?: number;
     /**
      * Sheathe blend, 0..1, SMOOTHED BY THE CALLER (the sitT pattern —
      * never poseT). 0 = weapons in hand; rising, the hand carries the

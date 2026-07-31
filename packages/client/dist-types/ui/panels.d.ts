@@ -7,6 +7,11 @@ export declare const SKILL_FACE: Record<string, {
     icon: string;
     color: string;
 }>;
+/**
+ * One quiet line under each skill's name — what the craft IS. Shared
+ * with the level-up plaque, which says it once as the citation line.
+ */
+export declare const SKILL_STORY: Record<string, string>;
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
 /**

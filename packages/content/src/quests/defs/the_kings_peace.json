@@ -20,7 +20,7 @@
   ],
   "rewards": {
     "coins": 300,
-    "xp": [{ "skill": "melee", "amount": 600 }],
+    "xp": [{ "skill": "combat", "amount": 600 }],
     "flags": ["kings_peace_kept"]
   }
 }

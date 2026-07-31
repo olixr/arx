@@ -383,10 +383,13 @@ export type AbilitySlot = 0 | 1 | 2 | 3;
  * `sneak` is the rogue's ladder, unlocked by the sneak skill; `shield`
  * is the wall's ladder, unlocked by the hidden shield skill; `twohand`
  * is the colossus's ladder, unlocked by swinging great steel;
- * `dualwield` is the twin school, unlocked by every echo that lands.
+ * `dualwield` is the twin school, unlocked by every echo that lands;
+ * `combat` is the veteran's ladder, fed a share of every strike school
+ * by THE SHARED LESSON — the one school every fighter is always in.
  */
 export type CombatStyleId =
-  | 'melee'
+  | 'combat'
+  | 'onehand'
   | 'archery'
   | 'magic'
   | 'sneak'
@@ -395,7 +398,8 @@ export type CombatStyleId =
   | 'dualwield';
 
 export const COMBAT_STYLES: readonly CombatStyleId[] = [
-  'melee',
+  'combat',
+  'onehand',
   'archery',
   'magic',
   'sneak',

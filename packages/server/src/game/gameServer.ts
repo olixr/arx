@@ -23,6 +23,8 @@ import {
   FOCUS_MILESTONE_LEVEL,
   FOCUS_MASTERY_LEVEL,
   isSkillId,
+  isCombatSchool,
+  COMBAT_LESSON_FRAC,
   levelForXp,
   honedAbility,
   techniqueRank,
@@ -266,7 +268,7 @@ import {
   SNEAK_XP_RADIUS,
   BACKSTAB_MULT_DEFAULT,
   BACKSTAB_XP_BASE,
-  DUALWIELD_UNLOCK_MELEE,
+  DUALWIELD_UNLOCK_ONEHAND,
   HIDDEN_SKILLS,
   OFFHAND_DELAY_TICKS,
   offhandDamageFactor,
@@ -1199,6 +1201,10 @@ interface Perks {
   buildSpeedMult: number;
   shieldArm: number;
   shieldThorns: number;
+  /** +armor while on the move (War Footing — Bulwark's mirror). */
+  marchArmor: number;
+  /** +effective levels to the four weapon schools (Old Campaigner). */
+  warSchooling: number;
   doubleGather: Partial<Record<SkillId, number>>;
   gatherSpeed: Partial<Record<SkillId, number>>;
   materialSave: Partial<Record<SkillId, number>>;
@@ -1232,6 +1238,8 @@ function defaultPerks(): Perks {
     buildSpeedMult: 1,
     shieldArm: 0,
     shieldThorns: 0,
+    marchArmor: 0,
+    warSchooling: 0,
     doubleGather: {},
     gatherSpeed: {},
     materialSave: {},
@@ -4576,6 +4584,13 @@ export class GameServer {
       level: levelAfter,
       levelledUp,
     });
+    // THE SHARED LESSON: every strike-school lesson echoes a share into
+    // combat — the generalist's skill trains whenever any weapon does.
+    // 'combat' is never in the school set, so the echo cannot recurse.
+    if (isCombatSchool(skill)) {
+      const echo = Math.floor(amount * COMBAT_LESSON_FRAC);
+      if (echo > 0) this.grantXp(eid, player, 'combat', echo);
+    }
     if (levelledUp) {
       this.systemChatAll(`${player.name} reached ${skill} level ${levelAfter}!`);
       if (skill === 'vitality') {
@@ -7199,11 +7214,11 @@ export class GameServer {
       const c = def.coating;
       const worn = player.equipment.weapon;
       const style = worn ? itemDef(worn.id)?.weapon?.style : undefined;
-      if (!worn || (style !== 'melee' && style !== 'twohand' && style !== 'archery')) {
+      if (!worn || (style !== 'onehand' && style !== 'twohand' && style !== 'archery')) {
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
-          text: 'Poison needs an edge or arrowheads — equip a melee weapon or a bow first.',
+          text: 'Poison needs an edge or arrowheads — equip a bladed weapon or a bow first.',
         });
         return;
       }
@@ -7370,21 +7385,21 @@ export class GameServer {
         return;
       }
       // DUAL WIELD — the secret is the act itself. A second one-handed
-      // melee weapon, equipped over a melee mainhand with an empty off
+      // weapon, equipped over a one-handed mainhand with an empty off
       // hand, goes TO the off hand instead of swapping — if the arm is
-      // strong enough (melee 10+) or the secret is already yours. The
+      // strong enough (onehand 10+) or the secret is already yours. The
       // first time, the hidden skill reveals itself. No menu, no hint:
       // players find it by trying the obvious rogue thing.
-      if (def.equipSlot === 'weapon' && def.weapon?.style === 'melee') {
+      if (def.equipSlot === 'weapon' && def.weapon?.style === 'onehand') {
         const main = player.equipment.weapon;
         const mainWeapon = main ? itemDef(main.id)?.weapon : undefined;
         const discovered = player.skills.dualwield !== undefined;
-        const meleeLvl = levelForXp(player.skills.melee ?? 0);
+        const onehandLvl = levelForXp(player.skills.onehand ?? 0);
         if (
           main &&
-          mainWeapon?.style === 'melee' &&
+          mainWeapon?.style === 'onehand' &&
           !player.equipment.offhand &&
-          (discovered || meleeLvl >= DUALWIELD_UNLOCK_MELEE)
+          (discovered || onehandLvl >= DUALWIELD_UNLOCK_ONEHAND)
         ) {
           const taken = takeSlot(player.inventory, slotIndex, 1);
           if (!taken) return;
@@ -9118,9 +9133,15 @@ export class GameServer {
    * Equip requirements, technique unlocks, and max HP stay BASE.
    */
   private effectiveLevel(player: PlayerComp, skill: SkillId): number {
+    // Old Campaigner: the veteran fights every weapon school a little
+    // above their letter — the four schools only, never trades.
+    const schooled =
+      skill === 'onehand' || skill === 'twohand' || skill === 'archery' || skill === 'magic'
+        ? player.perks.warSchooling
+        : 0;
     return Math.min(
       120,
-      levelForXp(player.skills[skill] ?? 0) + (player.gear.skillBonus[skill] ?? 0),
+      levelForXp(player.skills[skill] ?? 0) + (player.gear.skillBonus[skill] ?? 0) + schooled,
     );
   }
 
@@ -9194,7 +9215,7 @@ export class GameServer {
       ),
     );
 
-    if (weapon.style === 'melee') {
+    if (weapon.style === 'onehand') {
       // Combo string: forehand → backhand → heavy finisher. Swinging
       // again inside the grace window continues the chain; the finisher
       // hits harder, shoves harder, CLEARS THE WHOLE ARC, and demands a
@@ -9320,13 +9341,13 @@ export class GameServer {
    * scales by offhandDamageFactor(dualwield) — clumsy at discovery,
    * near-mirrored at mastery — and every landed echo trains dualwield
    * (that's the ONLY way it trains). The base scaling still rides
-   * melee: it is a melee strike, thrown by the weaker hand.
+   * onehand: it is a one-handed strike, thrown by the weaker hand.
    */
   private offhandStrike(eid: EntityId, player: PlayerComp, aim: number): void {
     const off = this.offhandWeapon(player);
     if (!off) return;
     const dwLevel = levelForXp(player.skills.dualwield ?? 0);
-    const level = this.effectiveLevel(player, 'melee');
+    const level = this.effectiveLevel(player, 'onehand');
     // Twin Tempo lifts the echo — the never-mirrors cap holds.
     const trained = Math.min(0.85, offhandDamageFactor(dwLevel) + player.perks.offhandFactorBonus);
     // THE MIRRORED HAND: while the stance rides, the echo lands at the
@@ -9342,7 +9363,7 @@ export class GameServer {
       Math.round(
         off.weapon.damage *
           powerMultFn(level, PLAYER_POWER_PER_LEVEL) *
-          player.gear.styleDmgMult.melee *
+          player.gear.styleDmgMult.onehand *
           Math.max(trained, Math.min(1, stanceWeight)),
       ),
     );
@@ -9375,7 +9396,7 @@ export class GameServer {
     sweepAll = false,
     wasHidden = false,
     backstabMult = BACKSTAB_MULT_DEFAULT,
-    xpStyle: SkillId = 'melee',
+    xpStyle: SkillId = 'onehand',
     /** Sweep half-angle — swords cut a ±60° cone, greatweapons wider. */
     arcHalf = Math.PI / 3,
   ): void {
@@ -9585,9 +9606,9 @@ export class GameServer {
 
   // --------------------------------------------------------- abilities
 
-  /** The combat style of the equipped weapon (bare fists count melee). */
+  /** The combat style of the equipped weapon (bare fists count onehand). */
   private currentStyle(player: PlayerComp): CombatStyleId {
-    return (this.equippedWeapon(player)?.weapon.style ?? 'melee') as CombatStyleId;
+    return (this.equippedWeapon(player)?.weapon.style ?? 'onehand') as CombatStyleId;
   }
 
   /**
@@ -9887,12 +9908,17 @@ export class GameServer {
       : undefined;
     // Player casters carry their armor-class style multiplier in, plus
     // any school-tuned element amplifier (Blazing Edge etc.). Gear has
-    // no sneak axis — shadow arts swing melee steel, so they ride the
-    // melee multiplier.
-    // Gear has no sneak, shield, or dualwield damage axis — twin steel
-    // is melee steel, so all three ride the melee mult.
+    // no sneak, shield, or dualwield damage axis — twin steel is
+    // one-hand steel, so all three ride the onehand mult. A COMBAT art
+    // rides the hand that holds it: the veteran's school owns no
+    // weapon, so its casts resolve to the EQUIPPED weapon's gear axis
+    // (sword in hand pays the onehand investment, bow the archery one).
     const gearStyle =
-      style === 'sneak' || style === 'shield' || style === 'dualwield' ? 'melee' : style;
+      style === 'sneak' || style === 'shield' || style === 'dualwield'
+        ? 'onehand'
+        : style === 'combat'
+          ? (casterPlayer ? this.currentStyle(casterPlayer) : 'onehand')
+          : style;
     const gearMult = casterPlayer
       ? ((casterPlayer.gear.styleDmgMult as Record<string, number>)[gearStyle] ?? 1) *
         (style === 'magic' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1)
@@ -10801,9 +10827,10 @@ export class GameServer {
     health.hp -= dmg;
     const source = this.players.get(sourceEid);
     if (source) {
-      const style: SkillId = kind === 'burn' ? 'magic' : kind === 'venom' ? 'sneak' : 'melee';
+      const style: SkillId = kind === 'burn' ? 'magic' : kind === 'venom' ? 'sneak' : 'onehand';
       this.grantXp(sourceEid, source, style, dmg * 2);
     }
+    // A DoT tail is not a struck blow — no style rides to the deed rail.
     if (health.hp <= 0) this.killNpc(npcEid, npc, sourceEid);
   }
 
@@ -10863,9 +10890,9 @@ export class GameServer {
           if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > sum.radius) continue;
           // Sprung: bite, chill, and the trap is spent.
           const owner = this.players.get(sum.ownerEid);
-          const level = owner ? this.effectiveLevel(owner, 'melee') : 1;
+          const level = owner ? this.effectiveLevel(owner, 'onehand') : 1;
           const dmg = scaledMaxHit(3, level, PLAYER_POWER_PER_LEVEL);
-          this.damageNpc(npcEid, dmg, sum.ownerEid, 'melee', {
+          this.damageNpc(npcEid, dmg, sum.ownerEid, 'onehand', {
             status: { status: 'chill', power: sum.power, durationTicks: 80 },
           });
           this.removeFromChunks(eid);
@@ -11339,10 +11366,10 @@ export class GameServer {
       if (opts.backstab) {
         this.grantXp(attackerEid, attacker, 'sneak', BACKSTAB_XP_BASE + dmg * 3);
       }
-      // Bloodlust buffs feed melee wounds; a leeching weapon enchant
-      // feeds every basic ITS steel lands, whatever the style.
+      // Bloodlust buffs feed one-handed wounds; a leeching weapon
+      // enchant feeds every basic ITS steel lands, whatever the style.
       let steal = strikeSteal;
-      if (style === 'melee') {
+      if (style === 'onehand') {
         for (const b of attacker.buffs) steal = Math.max(steal, b.meleeLifesteal);
       }
       if (steal > 0) {
@@ -11379,10 +11406,10 @@ export class GameServer {
       if (Math.random() < 0.5) this.npcSeekHelp(npcEid, npc);
     }
 
-    if (health.hp <= 0) this.killNpc(npcEid, npc, attackerEid);
+    if (health.hp <= 0) this.killNpc(npcEid, npc, attackerEid, style);
   }
 
-  private killNpc(npcEid: EntityId, npc: NpcComp, killerEid: EntityId): void {
+  private killNpc(npcEid: EntityId, npc: NpcComp, killerEid: EntityId, style?: SkillId): void {
     // Idempotent: reaction cascades can route two lethal blows into the
     // same tick — the second finds the entity already gone.
     if (!this.ecs.isAlive(npcEid)) return;
@@ -11488,6 +11515,38 @@ export class GameServer {
         this.grantArt(killer, 'giantsfall');
       }
       if (killer && this.offhandWeapon(killer)) this.grantArt(killer, 'two_answers');
+      // THE FOUR ROADS: the veteran's deed — a champion felled by a
+      // struck killing blow from each of the four weapon schools.
+      // Progress rides road: flags (deeds, never dice) and is keyed by
+      // the blow's own school, so it composes freely with the
+      // hand-state pages above; the page fills on the fourth road.
+      if (
+        killer &&
+        (style === 'onehand' || style === 'twohand' || style === 'archery' || style === 'magic') &&
+        !killer.flags.has(artFlag('four_roads')) &&
+        !killer.flags.has(`road:${style}`)
+      ) {
+        this.setPlayerFlag(killer, `road:${style}`);
+        const ROADS: readonly SkillId[] = ['onehand', 'twohand', 'archery', 'magic'];
+        const walked = ROADS.filter((r) => killer.flags.has(`road:${r}`)).length;
+        if (walked >= ROADS.length) {
+          this.grantArt(killer, 'four_roads');
+        } else {
+          const word =
+            style === 'onehand'
+              ? 'one blade'
+              : style === 'twohand'
+                ? 'both hands'
+                : style === 'archery'
+                  ? 'the string'
+                  : 'the staff';
+          killer.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `A champion felled by ${word}. ${walked} of four roads walked.`,
+          });
+        }
+      }
     }
     this.wildBodies.delete(npcEid);
     // A slain actor's post refills on the synthesized def's clock.
@@ -11567,10 +11626,14 @@ export class GameServer {
       buffArmor += b.armor;
       reflectFrac = Math.max(reflectFrac, b.reflectFrac);
     }
+    // War Footing is Bulwark's mirror: one boundary, two callings —
+    // planted ground answers to Bulwark, everything else is the march.
     const armor =
       player.gear.armor +
       buffArmor +
-      (player.stillTicks >= STILL_ARMOR_TICKS ? player.perks.stillArmor : 0) +
+      (player.stillTicks >= STILL_ARMOR_TICKS
+        ? player.perks.stillArmor
+        : player.perks.marchArmor) +
       (shieldUp
         ? player.perks.shieldArm +
           this.effectiveLevel(player, 'shield') * SHIELD_ARMOR_PER_LEVEL
@@ -13527,7 +13590,7 @@ export class GameServer {
             if (ab) {
               npc.specialCooldown = npc.def.special.everyTicks;
               this.setNpcPose(eid, npc, PoseState.Art, 10);
-              this.castAbility(eid, ab, Math.atan2(dy, dx), 'melee', npc.def.level, true, {
+              this.castAbility(eid, ab, Math.atan2(dy, dx), 'onehand', npc.def.level, true, {
                 x: tpos.x,
                 y: tpos.y,
               });

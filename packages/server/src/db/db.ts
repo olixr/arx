@@ -667,6 +667,26 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE dialogue_nodes ADD COLUMN mood TEXT;
   `,
+  // v15: THE VETERAN'S SCHOOL — melee splits in two. The old skill's
+  // rows rename to 'onehand' (the one-handed weapon school keeps its
+  // ladder, its levels, and its unlocked arts), and every character is
+  // seeded a 'combat' row at exactly what THE SHARED LESSON would have
+  // paid historically: half the summed xp of the strike schools. The
+  // merge-then-rename shape guards a half-applied rerun, per v5's model.
+  `
+  DELETE FROM character_skills a
+    USING character_skills b
+    WHERE a.character_id = b.character_id
+    AND a.skill = 'melee' AND b.skill = 'onehand';
+  UPDATE character_skills SET skill = 'onehand' WHERE skill = 'melee';
+  INSERT INTO character_skills (character_id, skill, xp)
+    SELECT character_id, 'combat', FLOOR(SUM(xp) * 0.5)::INTEGER
+    FROM character_skills
+    WHERE skill IN ('onehand', 'twohand', 'archery', 'magic', 'dualwield', 'shield')
+    GROUP BY character_id
+    HAVING FLOOR(SUM(xp) * 0.5) > 0
+  ON CONFLICT (character_id, skill) DO NOTHING;
+  `,
 ];
 
 /**

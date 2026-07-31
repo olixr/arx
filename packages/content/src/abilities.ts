@@ -1500,7 +1500,7 @@ const defs: AbilityDef[] = [
   {
     id: 'bloodlust',
     name: 'Bloodlust',
-    desc: 'For six seconds, every melee wound you deal feeds you.',
+    desc: 'For six seconds, every wound your blade deals feeds you.',
     color: '#c4372a',
     code: 'Bl',
     cooldownTicks: 280, // 14 s
@@ -2733,6 +2733,145 @@ const defs: AbilityDef[] = [
     pulseEveryTicks: 5,
   },
 
+  // ------------------------ THE VETERAN'S SCHOOL — the combat ladder
+  // The school every fighter is already in. No weapon owns it: these
+  // are the lessons the fight itself teaches — footing, breath, the
+  // shout, the read of a guard — cast the same whatever the hand
+  // holds. THE SHARED LESSON feeds the skill; this ladder spends it.
+  // Grammar: dust and brass. Kicked grit, drill-yard iron, one horn
+  // note — never an element, never a single school's steel.
+  {
+    id: 'first_blood',
+    name: 'First Blood',
+    desc: 'The fight starts when you say it does.',
+    color: '#c4553d',
+    code: 'Fb',
+    cooldownTicks: 160, // 8 s
+    shape: 'melee_arc',
+    damage: 8,
+    range: 2.2,
+    arc: 1.1,
+    status: { status: 'bleed', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'shoulder_check',
+    name: 'Shoulder Check',
+    desc: 'No blade needed. The whole body says move.',
+    color: '#b09a7a',
+    code: 'Sk',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'dash_strike',
+    damage: 9,
+    dashTiles: 3,
+    knockback: 1.5,
+  },
+  {
+    id: 'war_shout',
+    name: 'War Shout',
+    desc: 'The oldest weapon is the voice.',
+    color: '#d9b04a',
+    code: 'Wh',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'nova',
+    damage: 9,
+    radius: 2.4,
+    knockback: 1.0,
+    status: { status: 'shock', power: 1, durationTicks: 30 },
+  },
+  {
+    id: 'second_breath',
+    name: 'Second Breath',
+    desc: 'The fight is long. Breathe like it.',
+    color: '#a8c4b0',
+    code: 'Sb',
+    cooldownTicks: 400, // 20 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { heal: 10, speedMult: 1.1, durationTicks: 100 },
+  },
+  {
+    id: 'loose_iron',
+    name: 'Loose Iron',
+    desc: 'A buckle, a camp nail, the pommel stone. It all flies.',
+    color: '#8a8f98',
+    code: 'Li',
+    cooldownTicks: 180, // 9 s
+    shape: 'projectile_fan',
+    damage: 5,
+    range: 7,
+    projectiles: 3,
+    spreadArc: 0.18,
+    projectileSpeed: 13,
+  },
+  {
+    id: 'hold_fast',
+    name: 'Hold Fast',
+    desc: 'Feet planted. The word given. Held.',
+    color: '#7a8494',
+    code: 'Hf',
+    cooldownTicks: 400, // 20 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { armor: 4, shieldHp: 8, durationTicks: 140 },
+  },
+  {
+    id: 'break_the_line',
+    name: 'Break the Line',
+    desc: 'A wall is only a wall until somebody walks through.',
+    color: '#b0623c',
+    code: 'Bl',
+    cooldownTicks: 200, // 10 s
+    castFreezeTicks: 3,
+    shape: 'melee_arc',
+    damage: 13,
+    range: 2.4,
+    arc: 1.5,
+    knockback: 1.8,
+  },
+  {
+    id: 'the_opening',
+    name: 'The Opening',
+    desc: 'Every guard opens once. Be already moving.',
+    color: '#e0d0a0',
+    code: 'Op',
+    cooldownTicks: 190, // 9.5 s
+    shape: 'melee_arc',
+    damage: 13,
+    range: 2.3,
+    arc: 0.8,
+    executeBelow: { frac: 0.3, mult: 2.0 },
+  },
+  {
+    id: 'no_quarter',
+    name: 'No Quarter',
+    desc: 'None asked. None given.',
+    color: '#a83c32',
+    code: 'Nq',
+    cooldownTicks: 210, // 10.5 s
+    shape: 'flurry',
+    damage: 5,
+    range: 2.1,
+    arc: 1.0,
+    hits: 4,
+    pulseEveryTicks: 5,
+    drainFrac: 0.2,
+  },
+  {
+    id: 'the_long_fight',
+    name: 'The Long Fight',
+    desc: 'You have been here before. You will be here after.',
+    color: '#c9a44a',
+    code: 'Lf',
+    cooldownTicks: 260, // 13 s
+    castFreezeTicks: 4,
+    shape: 'pulse_nova',
+    damage: 7,
+    radius: 2.2,
+    pulses: 3,
+    pulseEveryTicks: 10,
+    knockback: 0.8,
+  },
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   // These never sit on a rung: an `art:<id>` flag opens each, set by
   // a deed (never drop-luck). Invisible everywhere until earned.
@@ -2839,6 +2978,20 @@ const defs: AbilityDef[] = [
     pulseEveryTicks: 3,
     drainFrac: 0.15,
   },
+  {
+    id: 'four_roads',
+    name: 'Four Roads',
+    desc: 'Blade, both hands, string, staff. Every road taught the same hand.',
+    color: '#d8c080',
+    code: 'Fr',
+    cooldownTicks: 210, // 10.5 s
+    castFreezeTicks: 3,
+    shape: 'nova',
+    damage: 10,
+    radius: 2.2,
+    knockback: 1.0,
+    self: { speedMult: 1.1, durationTicks: 80 },
+  },
 
   // ----------------------------------------------------------- sigils
   {
@@ -2908,7 +3061,7 @@ export function abilityDef(id: string): AbilityDef | undefined {
 export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'heavy_slam',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 5,
     ranks: [
       { note: 'The blow lands heavier, and sooner.', damage: 12, cooldownTicks: 160 },
@@ -2926,7 +3079,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'bull_rush',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 10,
     ranks: [
       { note: 'The shoulder hits harder.', damage: 10 },
@@ -2936,7 +3089,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'whirlwind',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 15,
     ranks: [
       { note: 'Each cut bites deeper.', damage: 5 },
@@ -2946,7 +3099,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'warcry',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 20,
     ranks: [
       {
@@ -2962,7 +3115,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'steel_wave',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 25,
     ranks: [
       { note: 'The edges bite deeper.', damage: 8 },
@@ -2972,7 +3125,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'bloodlust',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 30,
     ranks: [
       {
@@ -2991,7 +3144,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'stagger_stomp',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 35,
     ranks: [
       { note: 'The heel falls heavier.', damage: 9 },
@@ -3006,7 +3159,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'headsman_stroke',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 40,
     ranks: [
       { note: 'The arc lands heavier.', damage: 14 },
@@ -3016,7 +3169,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'earthbreaker',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 45,
     ranks: [
       { note: 'You land heavier.', damage: 13 },
@@ -3026,7 +3179,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'warlords_descent',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 50,
     ranks: [
       { note: 'You land heavier still.', damage: 14 },
@@ -3741,6 +3894,142 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
 
+  // --------------------- THE VETERAN'S SCHOOL — the combat ladder
+  {
+    ability: 'first_blood',
+    style: 'combat',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'The first one lands harder.', damage: 10 },
+      {
+        note: 'The wound stays open longer.',
+        damage: 11,
+        status: { status: 'bleed', power: 1, durationTicks: 70 },
+      },
+      {
+        note: 'First blood wakes your feet.',
+        damage: 12,
+        status: { status: 'bleed', power: 1, durationTicks: 70 },
+        self: { speedMult: 1.06, durationTicks: 60 },
+      },
+    ],
+  },
+  {
+    ability: 'shoulder_check',
+    style: 'combat',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'More weight behind the shoulder.', damage: 11 },
+      { note: 'A longer run at them.', damage: 12, dashTiles: 3.6 },
+      {
+        note: 'They stop being where they stood.',
+        damage: 13,
+        dashTiles: 3.6,
+        knockback: 2.0,
+        status: { status: 'shock', power: 1, durationTicks: 40 },
+      },
+    ],
+  },
+  {
+    ability: 'war_shout',
+    style: 'combat',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'Louder, and it hurts more.', damage: 11 },
+      { note: 'The yard hears it further out.', damage: 11, radius: 2.7 },
+      {
+        note: 'The shout holds them a beat longer.',
+        damage: 12,
+        radius: 2.7,
+        status: { status: 'shock', power: 1, durationTicks: 40 },
+      },
+    ],
+  },
+  {
+    ability: 'second_breath',
+    style: 'combat',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'A deeper pull of air.', self: { heal: 14, speedMult: 1.1, durationTicks: 100 } },
+      { note: 'The legs get their share.', self: { heal: 16, speedMult: 1.12, durationTicks: 100 } },
+      {
+        note: 'The breath steadies the arm too.',
+        self: { heal: 18, speedMult: 1.12, armor: 2, durationTicks: 120 },
+      },
+    ],
+  },
+  {
+    ability: 'loose_iron',
+    style: 'combat',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'Heavier iron in the hand.', damage: 6 },
+      { note: 'A fourth thing finds your fingers.', projectiles: 4 },
+      {
+        note: 'Rough edges. Everything you throw bites.',
+        status: { status: 'bleed', power: 1, durationTicks: 42 },
+      },
+    ],
+  },
+  {
+    ability: 'hold_fast',
+    style: 'combat',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'The stance sets deeper.', self: { armor: 5, shieldHp: 10, durationTicks: 140 } },
+      { note: 'Held longer.', self: { armor: 5, shieldHp: 12, durationTicks: 160 } },
+      {
+        note: 'What breaks on you, breaks back.',
+        self: { armor: 6, shieldHp: 14, reflectFrac: 0.1, durationTicks: 160 },
+      },
+    ],
+  },
+  {
+    ability: 'break_the_line',
+    style: 'combat',
+    unlockLevel: 35,
+    ranks: [
+      { note: 'More of you arrives at once.', damage: 15 },
+      { note: 'The line bends further back.', damage: 16, knockback: 2.2 },
+      {
+        note: 'Broken lines stay broken a while.',
+        damage: 18,
+        knockback: 2.2,
+        status: { status: 'chill', power: 1, durationTicks: 40 },
+      },
+    ],
+  },
+  {
+    ability: 'the_opening',
+    style: 'combat',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The answer arrives heavier.', damage: 15 },
+      { note: 'Sharper eyes, sharper price.', damage: 16 },
+      { note: 'A failing guard is an open door.', damage: 16, executeBelow: { frac: 0.3, mult: 2.3 } },
+    ],
+  },
+  {
+    ability: 'no_quarter',
+    style: 'combat',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'You keep more of what you take.', drainFrac: 0.3 },
+      { note: 'Each refusal lands harder.', damage: 6, drainFrac: 0.3 },
+      { note: 'The fight feeds you as fast as it costs them.', damage: 6, drainFrac: 0.4 },
+    ],
+  },
+  {
+    ability: 'the_long_fight',
+    style: 'combat',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'Each wave lands heavier.', damage: 8 },
+      { note: 'The fight widens around you.', damage: 8, radius: 2.4 },
+      { note: 'It ends the way it always ends. You, standing.', damage: 9, radius: 2.4 },
+    ],
+  },
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned seats
   {
     ability: 'riftwalker_step',
@@ -3759,7 +4048,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
   {
     ability: 'oathbound_edge',
-    style: 'melee',
+    style: 'onehand',
     unlockLevel: 0,
     hidden: { anchorLevel: 30 },
     ranks: [
@@ -3824,6 +4113,22 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'Both answers weigh more.', damage: 10 },
       { note: 'Spoken sooner.', damage: 11, cooldownTicks: 200 },
       { note: 'What the second answer takes, you keep.', damage: 12, drainFrac: 0.25 },
+    ],
+  },
+  {
+    ability: 'four_roads',
+    style: 'combat',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 30 },
+    ranks: [
+      { note: 'Each road adds its weight.', damage: 12 },
+      { note: 'The circle widens to fit four schools.', damage: 13, radius: 2.5 },
+      {
+        note: 'All four roads, walked at once.',
+        damage: 14,
+        radius: 2.5,
+        self: { speedMult: 1.14, armor: 2, durationTicks: 100 },
+      },
     ],
   },
 ];

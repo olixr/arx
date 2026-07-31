@@ -417,6 +417,22 @@ export const FX_STYLES: Record<string, FxStyle> = {
   storm_of_two: STEEL({ mid: '#a8b0c0', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.5, wash: 0.35 }),
   hundred_hands: GOLD({ mid: '#e0c060', ring: 'shards', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.6, wash: 0.35 }),
 
+  // ------------------ THE VETERAN'S SCHOOL — the combat ladder
+  // The school speaks DUST AND BRASS: drill-yard grit kicked off the
+  // ground, one brass horn-note where the school raises its voice, and
+  // war-red only where blood is the point. No element ever — the
+  // veteran's lessons look the same whatever the hand holds.
+  first_blood: BLOOD({ mid: '#c4553d', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'wave', punch: 0.4, wash: 0.3 }),
+  shoulder_check: STEEL({ mid: '#b09a7a', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'quake', punch: 0.55, wash: 0.3 }),
+  war_shout: GOLD({ mid: '#d9b04a', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.4 }),
+  second_breath: STEEL({ mid: '#a8c4b0', ring: 'halo', debris: 'star', decal: undefined, motif: 'bloom', punch: 0.15, wash: 0.25 }),
+  loose_iron: STEEL({ mid: '#8a8f98', ring: 'shards', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.35, wash: 0.25 }),
+  hold_fast: STEEL({ mid: '#7a8494', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'cage', punch: 0.3, wash: 0.3 }),
+  break_the_line: STEEL({ mid: '#b0623c', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'wave', punch: 0.7, wash: 0.35 }),
+  the_opening: RADIANT({ mid: '#e0d0a0', ring: 'shards', debris: 'star', decal: undefined, motif: 'tear', punch: 0.5, wash: 0.35 }),
+  no_quarter: BLOOD({ mid: '#a83c32', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'swarm', punch: 0.55, wash: 0.3 }),
+  the_long_fight: GOLD({ mid: '#c9a44a', ring: 'teeth', debris: 'spark', decal: 'cracks', motif: 'echo', punch: 0.75, wash: 0.45 }),
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   riftwalker_step: VOID({ ring: 'runes', debris: 'star', motif: 'tear', punch: 0.5, wash: 0.35 }),
   oathbound_edge: GOLD({ ring: 'halo', debris: 'star', motif: 'crown', punch: 0.7, wash: 0.55 }),
@@ -425,6 +441,7 @@ export const FX_STYLES: Record<string, FxStyle> = {
   champions_wall: GOLD({ mid: '#d8b76a', ring: 'teeth', debris: 'bone', decal: 'cracks', motif: 'crown', punch: 0.7, wash: 0.45 }),
   giantsfall: GOLD({ mid: '#d88a4a', ring: 'shards', debris: 'star', decal: 'cracks', motif: 'pillar', punch: 0.85, wash: 0.5 }),
   two_answers: GOLD({ mid: '#e8c878', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.4 }),
+  four_roads: GOLD({ mid: '#d8c080', ring: 'halo', debris: 'star', decal: 'glow', motif: 'rays', punch: 0.6, wash: 0.5 }),
 
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),

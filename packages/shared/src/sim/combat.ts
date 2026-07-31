@@ -144,13 +144,13 @@ export const TWOHAND_COMBO_GRACE_TICKS = 20;
 
 /**
  * Dual wielding — the hidden skill. Discovered by trying the thing:
- * equip a second one-handed melee weapon (melee level 10+) and the off
+ * equip a second one-handed weapon (onehand level 10+) and the off
  * hand takes it instead of swapping. Every mainhand swing is echoed a
  * half-beat later by an offhand strike at a damage fraction that climbs
  * with the dualwield skill — clumsy at first, near-mirrored at mastery.
  * The price is structural: that hand held your shield.
  */
-export const DUALWIELD_UNLOCK_MELEE = 10;
+export const DUALWIELD_UNLOCK_ONEHAND = 10;
 /**
  * Offhand echo lands this many ticks after the mainhand swing —
  * matched to the rig's echo choreography (the off blade's cut lands

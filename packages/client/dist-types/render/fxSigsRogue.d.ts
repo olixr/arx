@@ -14,6 +14,5 @@
  * shares a centerpiece with any other file's.
  */
 import type { AbilitySig } from './fxSignatures.js';
-/** The rogue roster's signatures, keyed by ability id. */
 export declare const ROGUE_SIGS: Record<string, AbilitySig>;
 //# sourceMappingURL=fxSigsRogue.d.ts.map

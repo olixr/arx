@@ -2085,7 +2085,7 @@ function frame(now: number): void {
       game.ownPose === PoseState.Attack ||
       game.ownPose === PoseState.Attack2 ||
       game.ownPose === PoseState.Attack3;
-    if (isMeleeSwing && itemDef(game.equipment.offhand?.id ?? '')?.weapon?.style === 'melee') {
+    if (isMeleeSwing && itemDef(game.equipment.offhand?.id ?? '')?.weapon?.style === 'onehand') {
       const beatMs = game.ownPose === PoseState.Attack3 ? 400 : 280;
       window.setTimeout(() => sfx.swingCombo(0), Math.round(beatMs * 0.55));
     }

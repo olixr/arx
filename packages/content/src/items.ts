@@ -5,7 +5,7 @@ import type { ArmorClass, GearSlot } from './equipment/types.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
-export type CombatStyle = 'melee' | 'archery' | 'magic' | 'twohand';
+export type CombatStyle = 'onehand' | 'archery' | 'magic' | 'twohand';
 
 /**
  * The elemental schools of magic. A staff's element rides its bolts —
@@ -1062,7 +1062,7 @@ export function itemDef(id: string): ItemDef | undefined {
  * casters (wands) ever land, this is the law to widen.
  */
 export function isTwoHanded(def: ItemDef): boolean {
-  return def.weapon !== undefined && def.weapon.style !== 'melee';
+  return def.weapon !== undefined && def.weapon.style !== 'onehand';
 }
 
 /** What a fresh character carries. */
