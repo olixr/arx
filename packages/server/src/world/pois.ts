@@ -14,14 +14,17 @@ import {
   type DangerAnchor,
 } from '@arx/shared';
 import {
+  FRONTIER,
   MINOR_DEFS,
   PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
+  ROAD_SHOULDER,
   dangerLaw,
   prefabFromJson,
   prefabToJson,
   roadBearingAt,
+  roadDistanceAt,
   type MinorDef,
   type PoiDef,
   type PoiGarrisonEntry,
@@ -283,6 +286,67 @@ export function intersectsRings(
   return false;
 }
 
+export interface TrailPoint {
+  x: number;
+  y: number;
+  /** Distance ordinal from the walk's start (the footprint edge). */
+  t: number;
+}
+
+export interface Trail {
+  points: TrailPoint[];
+  /** True when the walk ARRIVED at a road's shoulder — the junction. */
+  reachedRoad: boolean;
+}
+
+/**
+ * THE WORN PATH's centerline (lived-in-land Phase 3) — a deterministic
+ * desire-path walk outward from a site's edge along the approach
+ * bearing, meandering the way feet actually do (bounded drift, never a
+ * zigzag), and stopping HONESTLY:
+ *
+ * - at the road's shoulder — the trail arrives; the last point is the
+ *   junction mouth, kept just off the carve;
+ * - at water or rock — feet go around, the map does not pave;
+ * - at an authored zone's clearance — the town's ground is not ours
+ *   to wear;
+ * - at the dark band, or at `reach` — the taper's job from there.
+ *
+ * Pure and exported: the composer stamps it, the tests walk it bare.
+ */
+export function traceTrail(
+  seed: number,
+  salt: number,
+  originX: number,
+  originY: number,
+  startT: number,
+  ax: number,
+  ay: number,
+  reach: number,
+  zoneRects: readonly PoiZoneRect[],
+): Trail {
+  const points: TrailPoint[] = [];
+  let wob = 0;
+  for (let t = startT; t <= startT + reach; t++) {
+    const drift = ((hashCoords(salt, t, 0) % 3) - 1) * 0.5;
+    wob = Math.max(-2.5, Math.min(2.5, wob + drift));
+    const wx = Math.round(originX + ax * t - ay * wob);
+    const wy = Math.round(originY + ay * t + ax * wob);
+    if (wy >= DARK_BAND_Y) break;
+    // Arrival first: the shoulder itself probes as rock, and stopping
+    // BEFORE stepping onto the carve keeps the mouth beside the road,
+    // never on it.
+    if (roadDistanceAt(seed, wx, wy) <= ROAD_SHOULDER + 0.5) {
+      return { points, reachedRoad: points.length > 0 };
+    }
+    const cls = groundProbeAt(seed, wx, wy);
+    if (cls !== 'grass' && cls !== 'forest') break;
+    if (intersectsZones(wx, wy, 1, 1, zoneRects, 6)) break;
+    points.push({ x: wx, y: wy, t });
+  }
+  return { points, reachedRoad: false };
+}
+
 /**
  * Compose a decided site into a stampable ZoneDef: prefab layers
  * verbatim (TILE_SKIP fringe passes through the overlay), strongboxes
@@ -330,7 +394,9 @@ export function composePoi(
   // cues and the watchers.
   let ax = 0;
   let ay = -1;
-  const roadWard = face ? null : roadBearingAt(site.anchorX, site.anchorY, 40);
+  // A road within the trail's own reach wins the bearing — the worn
+  // path law needs the arm to actually arrive where it aims.
+  const roadWard = face ? null : roadBearingAt(site.anchorX, site.anchorY, FRONTIER.trailReach);
   if (face) {
     const d = Math.max(1, Math.hypot(face.x - site.anchorX, face.y - site.anchorY));
     ax = (face.x - site.anchorX) / d;
@@ -354,20 +420,67 @@ export function composePoi(
   // enough to carry the approach cues; with no cues the pad is 0 and
   // the zone is exactly the footprint, as in phase 1.
   const cues = def.cues;
+  // The clearing pads ONE PAST its own radius: a felled ring that
+  // reaches the rect edge puts trampled ground on the perimeter, and
+  // the all-skip-perimeter law (edge harmony reads zone borders as
+  // intentions) forbids exactly that — the Phase-3 perimeter test
+  // caught the beast-lair defs doing it.
+  // FLOOR 1 always: even a cue-less def gets one transparent ring, so
+  // a sketch with an opaque tile on its own edge row can never leak an
+  // edge profile (Phase 3's perimeter test caught one doing it).
   const pad = Math.max(
+    1,
     cues
       ? Math.max(
-          cues.clearing ?? 0,
+          cues.clearing !== undefined ? cues.clearing + 1 : 0,
           cues.approachPath ? 9 : 0,
           cues.scatter && cues.scatter.length > 0 ? 7 : 0,
         )
       : 0,
     boldScatter.length > 0 ? 7 : 0,
   );
-  const zw = prefab.width + pad * 2;
-  const zh = prefab.height + pad * 2;
-  const originX = site.anchorX - Math.floor(prefab.width / 2) - pad;
-  const originY = site.anchorY - Math.floor(prefab.height / 2) - pad;
+  // THE WORN PATH (Phase 3): the old 10-tile stub grows into a full
+  // trail arm — walked BEFORE the rect exists, because the rect must
+  // grow to carry it. approachPath is the def's word that this site
+  // wears one (beast lairs and groves stay pathless by their nature).
+  const half = Math.max(prefab.width, prefab.height) / 2;
+  const trail = cues?.approachPath
+    ? traceTrail(
+        seed,
+        musterBase ^ 0x29,
+        site.anchorX,
+        site.anchorY,
+        Math.floor(half) - 1,
+        ax,
+        ay,
+        FRONTIER.trailReach,
+        ctx.zoneRects,
+      )
+    : null;
+  // The rect: prefab + symmetric pad, then grown (asymmetrically)
+  // to hold the trail with a 2-tile transparent margin — the margin
+  // is LAW: a composed zone's perimeter must stay all-TILE_SKIP or
+  // the edge-harmony machinery would read the trail as the zone's
+  // border intention and re-shape worldgen around it.
+  let minX = site.anchorX - Math.floor(prefab.width / 2) - pad;
+  let minY = site.anchorY - Math.floor(prefab.height / 2) - pad;
+  let maxX = minX + prefab.width + pad * 2;
+  let maxY = minY + prefab.height + pad * 2;
+  if (trail) {
+    for (const p of trail.points) {
+      minX = Math.min(minX, p.x - 3);
+      minY = Math.min(minY, p.y - 3);
+      maxX = Math.max(maxX, p.x + 4);
+      maxY = Math.max(maxY, p.y + 4);
+    }
+  }
+  const zw = maxX - minX;
+  const zh = maxY - minY;
+  const originX = minX;
+  const originY = minY;
+  /** Prefab's top-left corner in zone coords (the blit anchor). */
+  const px0 = site.anchorX - Math.floor(prefab.width / 2) - originX;
+  const py0 = site.anchorY - Math.floor(prefab.height / 2) - originY;
 
   // Layers: fringe starts fully transparent; the prefab blits into
   // the center (chest re-keyed under the tier law as it lands).
@@ -384,7 +497,7 @@ export function composePoi(
         const info = chestInfo(g);
         if (info && !info.open) g = closedChestTile(chestKind);
       }
-      const zi = (dy + pad) * zw + (dx + pad);
+      const zi = (dy + py0) * zw + (dx + px0);
       ground[zi] = g;
       detail[zi] = prefab.detail[dy * prefab.width + dx]!;
     }
@@ -395,7 +508,14 @@ export function composePoi(
   // the ground it replaces is natural (grass/forest probe) so cues
   // never pave water, rock, or another zone's work (zone clearance
   // already keeps the whole rect 24 tiles from authored land).
+  // The perimeter is excluded STRUCTURALLY: every cue writer goes
+  // through this gate, so no ring rounding or wobble can ever put a
+  // stamped tile on the rect edge (the all-skip-perimeter law).
   const fringeSkip = (zx: number, zy: number): boolean =>
+    zx > 0 &&
+    zy > 0 &&
+    zx < zw - 1 &&
+    zy < zh - 1 &&
     ground[zy * zw + zx] === TILE_SKIP;
   const worldOf = (zx: number, zy: number): { wx: number; wy: number } => ({
     wx: originX + zx,
@@ -410,8 +530,8 @@ export function composePoi(
     for (let zy = 0; zy < zh; zy++) {
       for (let zx = 0; zx < zw; zx++) {
         if (!fringeSkip(zx, zy)) continue;
-        const ex = Math.max(pad - zx, zx - (zw - 1 - pad), 0);
-        const ey = Math.max(pad - zy, zy - (zh - 1 - pad), 0);
+        const ex = Math.max(px0 - zx, zx - (px0 + prefab.width - 1), 0);
+        const ey = Math.max(py0 - zy, zy - (py0 + prefab.height - 1), 0);
         const edgeDist = Math.max(ex, ey);
         if (edgeDist > cues.clearing) continue;
         const { wx, wy } = worldOf(zx, zy);
@@ -422,35 +542,67 @@ export function composePoi(
     }
   }
 
-  if (cues?.approachPath) {
-    // The worn path: a wobbling dirt stub from the footprint edge
-    // outward on the townward bearing — it dies honestly at water or
-    // rock instead of paving them.
-    const half = Math.max(prefab.width, prefab.height) / 2;
-    for (let t = Math.floor(half) - 1; t <= half + pad; t++) {
-      const wob = ((hashCoords(musterBase ^ 0x29, t, 0) % 3) - 1) * 0.7;
-      const wx = Math.round(site.anchorX + ax * t - ay * wob);
-      const wy = Math.round(site.anchorY + ay * t + ax * wob);
+  if (trail && trail.points.length > 0) {
+    // THE WORN PATH: the centerline stamped as ruts — only into
+    // still-transparent cells over natural ground, like every cue.
+    // WIDTH SPEAKS RANK, and boldness widens the walk: the base camp
+    // wears the two-rut path; each rung adds wear until a stage-3
+    // camp's road mouth reads from thirty tiles out. When no road was
+    // in reach the trail tapers HONESTLY instead of stopping dead —
+    // double rut, single rut, trampled grass, nothing: a desire path
+    // fading into the wild.
+    const stamp = (wx: number, wy: number, tile: Tile): void => {
       const zx = wx - originX;
       const zy = wy - originY;
-      if (zx < 0 || zy < 0 || zx >= zw || zy >= zh) break;
-      if (!fringeSkip(zx, zy)) continue; // the prefab's own ground wins
+      if (zx < 0 || zy < 0 || zx >= zw || zy >= zh) return;
+      if (!fringeSkip(zx, zy)) return; // the prefab's own ground wins
       const cls = groundProbeAt(seed, wx, wy);
-      if (cls !== 'grass' && cls !== 'forest') break;
-      ground[zy * zw + zx] = Tile.Dirt;
-      // A worn path is two ruts wide more often than one.
-      const sx = wx - Math.round(ay);
-      const sy = wy + Math.round(ax);
-      const szx = sx - originX;
-      const szy = sy - originY;
-      if (
-        szx >= 0 && szy >= 0 && szx < zw && szy < zh &&
-        fringeSkip(szx, szy) &&
-        hashCoords(musterBase ^ 0x2b, sx, sy) % 100 < 55
-      ) {
-        const scls = groundProbeAt(seed, sx, sy);
-        if (scls === 'grass' || scls === 'forest') ground[szy * zw + szx] = Tile.Dirt;
+      if (cls !== 'grass' && cls !== 'forest') return;
+      ground[zy * zw + zx] = tile;
+    };
+    const perpX = -Math.round(ay);
+    const perpY = Math.round(ax);
+    const startT = trail.points[0]!.t;
+    for (const p of trail.points) {
+      const frac = (p.t - startT) / Math.max(1, FRONTIER.trailReach);
+      const single = !trail.reachedRoad && frac > 0.55;
+      const sparse = !trail.reachedRoad && frac > 0.8;
+      if (sparse) {
+        // The path forgetting itself: intermittent trampled grass.
+        if (hashCoords(musterBase ^ 0x2d, p.x, p.y) % 100 < 55) stamp(p.x, p.y, Tile.Grass);
+        continue;
       }
+      stamp(p.x, p.y, Tile.Dirt);
+      // A worn path is two ruts wide more often than one — and always,
+      // once the camp has climbed a rung (frequency reads on the land).
+      const sx = p.x + perpX;
+      const sy = p.y + perpY;
+      if (!single && (stage >= 1 || hashCoords(musterBase ^ 0x2b, sx, sy) % 100 < 55)) {
+        stamp(sx, sy, Tile.Dirt);
+      }
+      // Stage 2+: the walk wears a third lane on the far side.
+      if (stage >= 2 && !single) {
+        const wx2 = p.x - perpX;
+        const wy2 = p.y - perpY;
+        if (hashCoords(musterBase ^ 0x33, wx2, wy2) % 100 < 70) stamp(wx2, wy2, Tile.Dirt);
+      }
+      // Stage 3: verge marks — stumps where the war-camp's traffic
+      // chewed the treeline beside its road.
+      if (stage >= 3 && hashCoords(musterBase ^ 0x35, p.x, p.y) % 100 < 18) {
+        stamp(p.x + perpX * 2, p.y + perpY * 2, Tile.Stump);
+      }
+    }
+    // THE ROAD MOUTH: where the trail meets the carve the last steps
+    // fan wide — the breadcrumb a traveling player actually crosses.
+    // No words, no signs: trampled ground says everything.
+    if (trail.reachedRoad) {
+      for (const p of trail.points.slice(-3)) {
+        stamp(p.x + perpX, p.y + perpY, Tile.Dirt);
+        stamp(p.x - perpX, p.y - perpY, Tile.Dirt);
+      }
+      const mouth = trail.points[trail.points.length - 1]!;
+      stamp(mouth.x + perpX * 2, mouth.y + perpY * 2, Tile.Grass);
+      stamp(mouth.x - perpX * 2, mouth.y - perpY * 2, Tile.Grass);
     }
   }
 
@@ -492,8 +644,8 @@ export function composePoi(
   for (const s of prefab.spawns) {
     spawns.push({
       npc: s.npc,
-      x: originX + pad + s.dx + 0.5,
-      y: originY + pad + s.dy + 0.5,
+      x: originX + px0 + s.dx + 0.5,
+      y: originY + py0 + s.dy + 0.5,
       radius: s.radius,
       count: s.count,
       level: s.level ?? levelRoll(n++),
@@ -645,8 +797,8 @@ export function composePoi(
   for (const a of prefab.actorSpawns) {
     actorSpawns.push({
       actor: a.actor,
-      x: originX + pad + a.dx + 0.5,
-      y: originY + pad + a.dy + 0.5,
+      x: originX + px0 + a.dx + 0.5,
+      y: originY + py0 + a.dy + 0.5,
       ...(a.dir !== undefined ? { dir: a.dir } : {}),
       ...(a.routine !== undefined ? { routine: a.routine } : {}),
     });
@@ -791,8 +943,8 @@ export function composePoi(
   // Prefab portals ride the stamp — a delve gate in the sketch is a
   // WORKING riftgate in the world (worldSource indexes zone portals).
   const portals = prefab.portals.map((p) => ({
-    x: originX + pad + p.dx,
-    y: originY + pad + p.dy,
+    x: originX + px0 + p.dx,
+    y: originY + py0 + p.dy,
     ...(p.dest !== undefined ? { dest: p.dest } : {}),
     ...(p.delve !== undefined ? { delve: p.delve } : {}),
   }));

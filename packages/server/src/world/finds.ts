@@ -14,11 +14,14 @@ import {
   type ZoneDef,
   type ZoneSpawn,
 } from '@arx/content';
+import { roadBearingAt } from '@arx/content';
 import {
   POI_CELL,
   intersectsRings,
   intersectsZones,
+  traceTrail,
   type PoiContext,
+  type Trail,
 } from './pois.js';
 
 /**
@@ -187,9 +190,44 @@ export function composeFinds(
   const base = findStream(seed, cellX, cellY, epoch);
   const defOf = (id: string): MinorDef | undefined => ctx.minors.find((m) => m.id === id);
 
-  // Bounding box over every footprint, padded by the widest clearing.
-  let pad = 0;
-  for (const f of finds) pad = Math.max(pad, defOf(f.defId)?.clearing ?? 0);
+  // THE FOOTPATH (Phase 3, find scale): a find whose story involves
+  // FEET — a habitat something lives at, a cache somebody left — wears
+  // a single-width path toward a road within hailing reach. Cairns and
+  // stones stay pathless: they mark routes, they are not destinations.
+  const FOOTPATH_REACH = 10;
+  const paths = new Map<number, Trail>();
+  for (const f of finds) {
+    const def = defOf(f.defId);
+    const prefab = ctx.prefabs.get(f.prefabId);
+    if (!def || !prefab) continue;
+    if (def.habitat === undefined && def.cache === undefined) continue;
+    const bearing = roadBearingAt(f.anchorX, f.anchorY, 32);
+    if (!bearing) continue;
+    const trail = traceTrail(
+      seed,
+      hashCoords(base, f.slot, 0x29),
+      f.anchorX,
+      f.anchorY,
+      Math.floor(Math.max(prefab.width, prefab.height) / 2),
+      bearing.x,
+      bearing.y,
+      FOOTPATH_REACH,
+      ctx.zoneRects,
+    );
+    if (trail.points.length > 0) paths.set(f.slot, trail);
+  }
+
+  // Bounding box over every footprint, padded by the widest clearing —
+  // FLOOR 1: the perimeter must stay all-TILE_SKIP or the edge-harmony
+  // machinery reads the zone as a border intention and re-shapes the
+  // worldgen around a snare line (the all-skip-perimeter law).
+  let pad = 1;
+  for (const f of finds) {
+    const clearing = defOf(f.defId)?.clearing ?? 0;
+    // One past the felled ring — the ring itself may not touch the
+    // perimeter (the all-skip-perimeter law, as at site scale).
+    if (clearing > 0) pad = Math.max(pad, clearing + 1);
+  }
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -203,6 +241,14 @@ export function composeFinds(
     minY = Math.min(minY, fy0 - pad);
     maxX = Math.max(maxX, fx0 + prefab.width + pad);
     maxY = Math.max(maxY, fy0 + prefab.height + pad);
+  }
+  for (const trail of paths.values()) {
+    for (const p of trail.points) {
+      minX = Math.min(minX, p.x - 2);
+      minY = Math.min(minY, p.y - 2);
+      maxX = Math.max(maxX, p.x + 3);
+      maxY = Math.max(maxY, p.y + 3);
+    }
   }
   if (!Number.isFinite(minX)) return null;
   const zw = maxX - minX;
@@ -255,7 +301,8 @@ export function composeFinds(
           if (inside) continue;
           const zx = fx0 + dx - minX;
           const zy = fy0 + dy - minY;
-          if (zx < 0 || zy < 0 || zx >= zw || zy >= zh) continue;
+          // Interior only — the all-skip-perimeter law, structurally.
+          if (zx < 1 || zy < 1 || zx >= zw - 1 || zy >= zh - 1) continue;
           if (ground[zy * zw + zx] !== TILE_SKIP) continue;
           const wx = fx0 + dx;
           const wy = fy0 + dy;
@@ -286,6 +333,29 @@ export function composeFinds(
         ...(g.hours !== undefined ? { hours: g.hours } : {}),
       });
       spawnSlots.push(f.slot);
+    }
+
+    // The footpath: single width, honest taper when the road was
+    // never reached — feet visited this place, not carts.
+    const path = paths.get(f.slot);
+    if (path) {
+      const startT = path.points[0]!.t;
+      for (const p of path.points) {
+        const zx = p.x - minX;
+        const zy = p.y - minY;
+        // Interior only — the all-skip-perimeter law, structurally.
+        if (zx < 1 || zy < 1 || zx >= zw - 1 || zy >= zh - 1) continue;
+        if (ground[zy * zw + zx] !== TILE_SKIP) continue;
+        if (!standable(groundProbeAt(seed, p.x, p.y))) continue;
+        const frac = (p.t - startT) / FOOTPATH_REACH;
+        if (!path.reachedRoad && frac > 0.6) {
+          if (hashCoords(slotBase ^ 0x2d, p.x, p.y) % 100 < 55) {
+            ground[zy * zw + zx] = Tile.Grass;
+          }
+        } else {
+          ground[zy * zw + zx] = Tile.Dirt;
+        }
+      }
     }
   }
 

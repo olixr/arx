@@ -48,6 +48,7 @@ test('the validator refuses the dishonest weather, by name', () => {
   bad({ claimReach: 10, claimR: 24 }, 'never shrinks it');
   bad({ wildBudgetBase: 3.5 }, 'wildBudgetBase');
   bad({ wildKnotProbes: 0 }, 'wildKnotProbes');
+  bad({ trailReach: 8 }, 'trailReach');
   // A typoed dial never sits in the doc pretending to steer.
   const res = validateFrontier({ ...AUTHORED_FRONTIER, emberLingerMinutes: 5 });
   assert.ok(!res.ok && res.errors.some((e) => e.includes("unknown dial 'emberLingerMinutes'")));

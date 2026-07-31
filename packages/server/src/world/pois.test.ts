@@ -250,17 +250,24 @@ test('approach cues live in the fringe and never touch the prefab or unnatural g
     const def = POI_DEFS.get(site.defId)!;
     const prefab = POI_PREFABS.get(site.prefabId)!;
     const zone = composePoi(SEED, site, CTX)!;
-    const pad = (zone.width - prefab.width) / 2;
-    assert.equal(pad, (zone.height - prefab.height) / 2, `${zone.id} pad not symmetric`);
-    assert.ok(Number.isInteger(pad) && pad >= 0, `${zone.id} bad pad ${pad}`);
-    if (def.cues === undefined) assert.equal(pad, 0, `${zone.id} grew a fringe with no cues`);
+    // Phase 3: the rect is anchor-derived and may grow ASYMMETRICALLY
+    // toward the road (the trail arm) — the prefab's blit corner comes
+    // from the anchor, exactly as the composer computes it, and it may
+    // never touch the rect edge (the all-skip-perimeter law).
+    const px0 = site.anchorX - Math.floor(prefab.width / 2) - zone.origin.x;
+    const py0 = site.anchorY - Math.floor(prefab.height / 2) - zone.origin.y;
+    assert.ok(px0 >= 1 && py0 >= 1, `${zone.id} prefab touches the rect edge`);
+    assert.ok(
+      px0 + prefab.width <= zone.width - 1 && py0 + prefab.height <= zone.height - 1,
+      `${zone.id} prefab overruns the rect`,
+    );
     // The prefab's AUTHORED cells survive composition verbatim (chest
     // aside); its transparent cells are fringe — cues may claim them.
     for (let dy = 0; dy < prefab.height; dy++) {
       for (let dx = 0; dx < prefab.width; dx++) {
         const pg = prefab.ground[dy * prefab.width + dx]!;
         if (pg === TILE_SKIP) continue;
-        const zg = zone.ground[(dy + pad) * zone.width + (dx + pad)]!;
+        const zg = zone.ground[(dy + py0) * zone.width + (dx + px0)]!;
         if (chestInfo(pg) && !chestInfo(pg)!.open) continue; // re-keyed by law
         assert.equal(zg, pg, `${zone.id} cue overwrote prefab cell ${dx},${dy}`);
       }
@@ -270,10 +277,10 @@ test('approach cues live in the fringe and never touch the prefab or unnatural g
     for (let zy = 0; zy < zone.height; zy++) {
       for (let zx = 0; zx < zone.width; zx++) {
         const inPrefab =
-          zx >= pad && zx < pad + prefab.width && zy >= pad && zy < pad + prefab.height;
+          zx >= px0 && zx < px0 + prefab.width && zy >= py0 && zy < py0 + prefab.height;
         if (
           inPrefab &&
-          prefab.ground[(zy - pad) * prefab.width + (zx - pad)] !== TILE_SKIP
+          prefab.ground[(zy - py0) * prefab.width + (zx - px0)] !== TILE_SKIP
         ) {
           continue;
         }

@@ -38,6 +38,7 @@ export interface FrontierDef {
   peddlerLingerMs: FrontierRange;
   wildBudgetBase: number;
   wildKnotProbes: number;
+  trailReach: number;
 }
 
 /**
@@ -203,6 +204,14 @@ export const FRONTIER: FrontierDef = {
    * (the annulus and dignity guards are per-probe).
    */
   wildKnotProbes: 3,
+  /**
+   * THE WORN PATH (lived-in-land Phase 3): how far a site's trail arm
+   * walks toward the road it watches before tapering out (tiles).
+   * Occupation wears the ground — a camp that has stood for weeks has
+   * a path to the road it raids, and the path is both fiction and the
+   * discovery affordance: cross it anywhere and follow it home.
+   */
+  trailReach: 48,
 };
 
 /** Frontier RNG salts — the named-streams law (the ST_* family's kin). */
@@ -364,6 +373,7 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
     peddlerLingerMs: range('peddlerLingerMs', MIN, 24 * HOUR),
     wildBudgetBase: num('wildBudgetBase', 0, 64, true),
     wildKnotProbes: num('wildKnotProbes', 1, 8, true),
+    trailReach: num('trailReach', 16, 96, true),
   };
   // Unknown keys are refused loudly — a typoed dial must never sit in
   // the doc pretending to steer anything.

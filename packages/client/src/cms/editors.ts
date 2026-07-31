@@ -3541,6 +3541,8 @@ function frontierDetail(body: HTMLElement, linkage: HTMLElement): void {
         }),
       numDial('knot probes', 'anchor candidates per pass; the first lawful one deals a whole knot', 'wildKnotProbes', 1, 8, 1,
         () => `${draft.wildKnotProbes} probes per pass`),
+      numDial('trail reach', "how far a site's worn path walks toward its road (tiles)", 'trailReach', 16, 96, 1,
+        () => `trails arrive within ${draft.trailReach} tiles, taper past it`),
     ),
   );
 
