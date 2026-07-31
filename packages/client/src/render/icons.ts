@@ -4776,7 +4776,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   for (const [id, st] of Object.entries(BOW_STYLES)) {
     // Same diagonal headroom as the blades — a bow is all silhouette,
     // so the fatter limbs and visible grain matter double here.
-    const tall = st.bow === 'longbow';
+    const tall = st.bow === 'longbow' || st.bow === 'siege';
     const scale = tall ? 92 : 108;
     const shift = -0.15 * scale;
     PAINTERS[`bow:${id}`] = (c) => {

@@ -2079,9 +2079,37 @@ export type BowKind =
   | 'flatbow'   // broad paddle limbs, widest at mid-limb
   | 'composite' // rigid riser, working limbs, angled siyah levers
   | 'crude'     // a kinked branch with knots — menace by neglect
-  | 'bone';     // ribbed vertebrae strung with sinew
+  | 'bone'      // ribbed vertebrae strung with sinew
+  // ---- the legendary silhouettes (ten-flights law: chase frames,
+  // never handed to ladder wood):
+  | 'antler'    // stag-tine limbs off a shed crown, one living bloom
+  | 'wing'      // filled feather fans, step-cut trailing edges
+  | 'crystal'   // faceted glass limbs, lit facet over deep facet
+  | 'talon'     // working limbs with siyah levers raked hard forward
+  | 'brand'     // a charred bough holding a molten seam
+  | 'fang'      // vertebra riser, limbs ending in curved fangs
+  | 'harp'      // a rigid court frame strung with silent chords
+  | 'loom'      // twin beams tied by rungs, threaded with night
+  | 'siege';    // the man-tall war recurve in iron and gold
 
 export type BowTip = 'plain' | 'horn' | 'gold' | 'iron' | 'thorn' | 'bone';
+
+/**
+ * The legendary signature words (ten-flights law: each chase bow owns
+ * ONE of these and no other bow wears it). All clocks ride nowMs —
+ * icons pin one frame, and two frames must prove the motion.
+ */
+export type BowSig =
+  | 'budding'      // leaves bud on the belly, hold, and shed drifting
+  | 'dawnrays'     // a ray fan sweeps the upper wing, tips wink
+  | 'rimelight'    // a moon glint walks the facets; frost grows, sublimes
+  | 'spurarcs'     // a live arc between the siyah caps, re-jagged 90ms
+  | 'emberseam'    // the molten seam breathes; embers rise off the char
+  | 'hushfeathers' // shed feathers dissolve behind; two eyes keep watch
+  | 'bloodhaze'    // red wisps stream off the nock; the fangs bead and drip
+  | 'glyphwalk'    // script ticks walk the frame; a glint crosses the chords
+  | 'starweft'     // a shuttle glint rides the wefts between the beams
+  | 'stormcrest';  // lightning winks inside the floating anvil crest
 
 export type BowCharm =
   | 'feathers' // two hanging fletch-feathers off the lower limb
@@ -2109,6 +2137,9 @@ export interface BowStyle {
   fletch?: string;
   fx?: BladeFx;
   fxColor?: string;
+  /** The one-owner legendary signature word (ten-flights law). */
+  sig?: BowSig;
+  sigColor?: string;
 }
 
 export const BOW_STYLES: Record<string, BowStyle> = {
@@ -2205,6 +2236,59 @@ export const BOW_STYLES: Record<string, BowStyle> = {
     tip: 'gold', tipColor: '#e8c04c', charm: 'beads', charmColor: '#e8c04c',
     fletch: '#e8c04c', fx: 'storm', fxColor: '#a8d8f4',
   },
+
+  // ---- THE TEN FLIGHTS: the legendary chase bows. Each owns its
+  // silhouette kind's debut and one signature word no other bow wears.
+  thornwake: {
+    bow: 'antler', color: '#8a7a52', belly: '#a8945f', wrap: '#6a5a40',
+    string: '#d8cba8', tipColor: '#d8d0b8', fletch: '#8aa455',
+    sig: 'budding', sigColor: '#9ac86a',
+  },
+  suncrest: {
+    bow: 'wing', color: '#c9973f', belly: '#e8c04c', wrap: '#7a5426',
+    string: '#f4ecd8', tipColor: '#ece4d4', fletch: '#e8dcc0',
+    sig: 'dawnrays', sigColor: '#ffe9a3',
+  },
+  moonglass: {
+    bow: 'crystal', color: '#a8c4dc', belly: '#d8ecf8', wrap: '#5a7a94',
+    string: '#e8f4fc', fletch: '#c8e0f0',
+    sig: 'rimelight', sigColor: '#eaf6ff',
+  },
+  galespur: {
+    bow: 'talon', color: '#5a6a8c', belly: '#7a8cb0', wrap: '#3a4258',
+    string: '#d8dce8', tipColor: '#c9973f', fletch: '#8fb2d4',
+    sig: 'spurarcs', sigColor: '#7ac8ff',
+  },
+  charbough: {
+    bow: 'brand', color: '#4a4038', belly: '#6a5a4c', wrap: '#7a5a3c',
+    string: '#c9b088', fletch: '#e8944c',
+    sig: 'emberseam', sigColor: '#ffb35c',
+  },
+  hushwing: {
+    bow: 'wing', color: '#6a6280', belly: '#8d84a8', wrap: '#3e3850',
+    string: '#b8b0cc', tipColor: '#c8c0dc', fletch: '#c8c0dc',
+    sig: 'hushfeathers', sigColor: '#cfc8e4',
+  },
+  redquarry: {
+    bow: 'fang', color: '#b8ac94', belly: '#d8ccb4', wrap: '#7a4a3a',
+    string: '#c9a89a', tipColor: '#e2d8c4', fletch: '#a83a44',
+    sig: 'bloodhaze', sigColor: '#c84a5a',
+  },
+  runespan: {
+    bow: 'harp', color: '#d9a441', belly: '#f0c86a', wrap: '#5a3a6a',
+    string: '#e8e0c8', fletch: '#b89ae0',
+    sig: 'glyphwalk', sigColor: '#e8d8ff',
+  },
+  starloom: {
+    bow: 'loom', color: '#8a92ac', belly: '#b0b8cc', wrap: '#3a4060',
+    string: '#c8d0e8', fletch: '#c9cdf4',
+    sig: 'starweft', sigColor: '#e8ecff',
+  },
+  thunderhead: {
+    bow: 'siege', len: 1.05, color: '#5e6678', belly: '#8d95a8', wrap: '#b8863f',
+    string: '#e8e4d4', tip: 'gold', tipColor: '#e8c04c', fletch: '#e8c04c',
+    sig: 'stormcrest', sigColor: '#cfe0ff',
+  },
 };
 
 const BOW_FALLBACKS = new Map<string, BowStyle>();
@@ -2236,6 +2320,15 @@ const BOW_KIND: Record<BowKind, { len: number; ang: number }> = {
   composite: { len: 0.95, ang: Math.PI / 2.35 },
   crude: { len: 0.9, ang: Math.PI / 2.3 },
   bone: { len: 0.9, ang: Math.PI / 2.32 },
+  antler: { len: 0.95, ang: Math.PI / 2.4 },
+  wing: { len: 1.0, ang: Math.PI / 2.3 },
+  crystal: { len: 0.95, ang: Math.PI / 2.35 },
+  talon: { len: 0.95, ang: Math.PI / 2.35 },
+  brand: { len: 0.95, ang: Math.PI / 2.3 },
+  fang: { len: 0.9, ang: Math.PI / 2.35 },
+  harp: { len: 1.0, ang: Math.PI / 2.25 },
+  loom: { len: 1.0, ang: Math.PI / 2.3 },
+  siege: { len: 1.45, ang: Math.PI / 2.15 },
 };
 
 /**
@@ -2378,6 +2471,589 @@ export function drawBow(
     ctx.moveTo(tipX + lw * 0.22, -tipY + 0.012 * s);
     ctx.quadraticCurveTo(ctrlX + lw * 0.35, 0, tipX + lw * 0.22, tipY - 0.012 * s);
     ctx.stroke();
+  } else if (st.bow === 'antler') {
+    // A shed stag crown restrung: the classic sprung arc in aged
+    // antler-wood, with three forward tines per beam and one living
+    // bloom that never asked permission.
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(tipX, -tipY);
+    ctx.quadraticCurveTo(ctrlX, 0, tipX, tipY);
+    ctx.stroke();
+    ctx.strokeStyle = belly;
+    ctx.lineWidth = lw * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(tipX + lw * 0.22, -tipY + 0.012 * s);
+    ctx.quadraticCurveTo(ctrlX + lw * 0.32, 0, tipX + lw * 0.22, tipY - 0.012 * s);
+    ctx.stroke();
+    // The tines: BOLD filled spikes off the back edge — a tine is a
+    // point with a root, never a smear (the round-1 verdict). Two per
+    // beam plus a brow tine hooking near each nock.
+    const tine = hurt ? '#ffffff' : (st.tipColor ?? '#e2dac2');
+    const tineEdge = hurt ? '#ffffff' : shade(st.tipColor ?? '#e2dac2', -34);
+    for (const sy of [-1, 1]) {
+      for (const [ti, reach, rake] of [[0.1, 0.15, -0.5], [0.24, 0.13, -0.2], [0.4, 0.1, 0.1]] as const) {
+        const t = sy < 0 ? ti : 1 - ti;
+        const bx = limbX(t);
+        const by = limbY(t);
+        // Root sits a full knuckle on the wood; the point sweeps back
+        // and tip-ward like a live crown.
+        const px2 = bx - reach * 0.85 * s;
+        const py2 = by - sy * reach * (0.55 - rake * 0.3) * s;
+        ctx.fillStyle = tine;
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.006 * s, by - sy * 0.024 * s);
+        ctx.quadraticCurveTo(bx - reach * 0.4 * s, by - sy * reach * 0.5 * s, px2, py2);
+        ctx.quadraticCurveTo(bx - reach * 0.42 * s, by - sy * reach * 0.18 * s, bx + 0.006 * s, by + sy * 0.012 * s);
+        ctx.closePath();
+        ctx.fill();
+        // The shaded underside keeps the point honest at 60px.
+        ctx.strokeStyle = tineEdge;
+        ctx.lineWidth = Math.max(1, lw * 0.2);
+        ctx.beginPath();
+        ctx.moveTo(bx - 0.002 * s, by + sy * 0.008 * s);
+        ctx.quadraticCurveTo(bx - reach * 0.42 * s, by - sy * reach * 0.2 * s, px2, py2);
+        ctx.stroke();
+      }
+    }
+    if (!hurt) {
+      // The bloom: five petals and a warm eye on the upper beam, dark
+      // calyx behind so it never sinks into the wood. The sig word
+      // breathes it; the flower itself is always in season.
+      const bx = limbX(0.32) + 0.04 * s;
+      const by = limbY(0.32) - 0.02 * s;
+      ctx.fillStyle = '#3e4a30';
+      ctx.beginPath();
+      ctx.arc(bx, by, 0.032 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#efd4e2';
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.arc(bx + Math.cos(a) * 0.02 * s, by + Math.sin(a) * 0.02 * s, 0.014 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#e8b84a';
+      ctx.beginPath();
+      ctx.arc(bx, by, 0.011 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (st.bow === 'wing') {
+    // Feather-fan limbs: a rigid riser bar, then each limb is a
+    // FILLED fan — leading edge on the sprung curve, trailing edge
+    // step-cut in four falls (a wing is a surface, never three
+    // vanes; the ten-voices verdict, kept).
+    const deep = hurt ? '#ffffff' : shade(st.color, -26);
+    const under = hurt ? '#ffffff' : (st.tipColor ?? shade(st.color, 40));
+    for (const sy of [-1, 1]) {
+      // Leading edge rides the sprung curve tip → riser; the trailing
+      // edge sweeps DEEP at the shoulder and tapers to the point —
+      // a wing is widest where it roots, and its falls are cut hard.
+      const P = [0, 0.1, 0.2, 0.3].map((t0) => {
+        const t = sy < 0 ? t0 : 1 - t0;
+        return [limbX(t), limbY(t)] as const;
+      });
+      const depth = [0.05, 0.14, 0.24, 0.34];
+      const trail = P.map(([x, y], i) => [
+        x - depth[i]! * S,
+        y - sy * (0.02 + i * 0.015) * s,
+      ] as const);
+      ctx.fillStyle = wood;
+      ctx.beginPath();
+      ctx.moveTo(P[0]![0], P[0]![1]);
+      for (const [x, y] of P.slice(1)) ctx.lineTo(x, y);
+      // Walk back tip-ward along the falls with hard step cuts.
+      for (let i = trail.length - 1; i >= 0; i--) {
+        ctx.lineTo(trail[i]![0], trail[i]![1]);
+        if (i > 0) {
+          const [nx, ny] = trail[i - 1]!;
+          ctx.lineTo(nx - 0.024 * s, ny + sy * 0.012 * s);
+        }
+      }
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The under-feather band along the trailing falls — the pale
+        // lining that sells the surface as plumage, not a flag.
+        ctx.fillStyle = under;
+        ctx.beginPath();
+        ctx.moveTo(trail[3]![0], trail[3]![1]);
+        for (let i = 2; i >= 1; i--) {
+          ctx.lineTo(trail[i]![0], trail[i]![1]);
+          ctx.lineTo(trail[i]![0] + 0.028 * s, trail[i]![1] + sy * 0.018 * s);
+        }
+        ctx.lineTo(trail[3]![0] + 0.032 * s, trail[3]![1] + sy * 0.022 * s);
+        ctx.closePath();
+        ctx.fill();
+        // Feather separations, root to fall, cut bold.
+        ctx.strokeStyle = deep;
+        ctx.lineWidth = Math.max(1, lw * 0.4);
+        for (let i = 1; i < P.length; i++) {
+          ctx.beginPath();
+          ctx.moveTo(P[i]![0], P[i]![1]);
+          ctx.lineTo(trail[i]![0], trail[i]![1]);
+          ctx.stroke();
+        }
+      }
+      // The lit leading band.
+      ctx.strokeStyle = belly;
+      ctx.lineWidth = lw * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(P[0]![0] + lw * 0.2, P[0]![1] + sy * 0.01 * s);
+      ctx.quadraticCurveTo(ctrlX + lw * 0.3, sy * 0.06 * s, P[3]![0] + lw * 0.2, P[3]![1]);
+      ctx.stroke();
+    }
+    // The riser bar the fans grow from.
+    ctx.fillStyle = hurt ? '#ffffff' : (st.wrap ?? shade(st.color, -30));
+    ctx.beginPath();
+    ctx.roundRect(0.18 * s - lw, -0.17 * S, lw * 2, 0.34 * S, lw * 0.5);
+    ctx.fill();
+  } else if (st.bow === 'crystal') {
+    // Faceted glass limbs: each a long two-facet shard — lit facet on
+    // the belly side, deep facet behind, seams stroked so the pour
+    // reads as cut, not blown.
+    const deep = hurt ? '#ffffff' : shade(st.color, -46);
+    const seam = hurt ? '#ffffff' : shade(st.color, -58);
+    for (const sy of [-1, 1]) {
+      const t = sy < 0 ? 0.3 : 0.7;
+      const mx = limbX(t);
+      const my = limbY(t);
+      const baseX = 0.16 * s;
+      const baseY = sy * 0.06 * S;
+      // Deep facet first, then the lit facet seats over it — a shard
+      // is two planes and a seam, and both planes must read (the
+      // round-1 verdict: the sliver had one).
+      ctx.fillStyle = deep;
+      ctx.beginPath();
+      ctx.moveTo(baseX - 0.02 * s, baseY);
+      ctx.lineTo(mx - 0.052 * s, my);
+      ctx.lineTo(tipX, sy * tipY);
+      ctx.lineTo(mx + 0.008 * s, my);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = belly;
+      ctx.beginPath();
+      ctx.moveTo(baseX + 0.018 * s, baseY);
+      ctx.lineTo(mx + 0.008 * s, my);
+      ctx.lineTo(tipX, sy * tipY);
+      ctx.lineTo(mx + 0.05 * s, my + sy * 0.008 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = seam;
+      ctx.lineWidth = Math.max(1, lw * 0.3);
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY);
+      ctx.lineTo(mx + 0.008 * s, my);
+      ctx.lineTo(tipX, sy * tipY);
+      ctx.stroke();
+      // The held moonlight: a pale core streak INSIDE the lit facet,
+      // reflecting nothing that exists.
+      if (!hurt) {
+        ctx.strokeStyle = hurt ? '#ffffff' : shade(st.belly ?? st.color, 22);
+        ctx.lineWidth = Math.max(1, lw * 0.24);
+        ctx.beginPath();
+        ctx.moveTo(baseX + 0.02 * s, baseY + sy * 0.012 * s);
+        ctx.lineTo(mx + 0.024 * s, my + sy * 0.004 * s);
+        ctx.stroke();
+      }
+    }
+    // The riser: a cut hexagonal collar where the fist lands.
+    ctx.fillStyle = hurt ? '#ffffff' : (st.wrap ?? shade(st.color, -30));
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + Math.PI / 6;
+      const px = 0.18 * s + Math.cos(a) * lw * 1.1;
+      const py = Math.sin(a) * 0.06 * s;
+      if (k === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  } else if (st.bow === 'talon') {
+    // The stooping falcon: composite bones, but the siyah levers rake
+    // HARD forward, capped in brass — a raptor's feet an instant
+    // before the strike.
+    const elbowX = 0.1 * s;
+    const elbowY = tipY * 0.72;
+    const spurX = tipX + 0.06 * s;
+    const spurY = tipY * 1.04;
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(spurX, -spurY);
+    ctx.lineTo(elbowX, -elbowY);
+    ctx.quadraticCurveTo(ctrlX + 0.02 * s, 0, elbowX, elbowY);
+    ctx.lineTo(spurX, spurY);
+    ctx.stroke();
+    ctx.strokeStyle = belly;
+    ctx.lineWidth = lw * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(elbowX + lw * 0.3, -elbowY + 0.01 * s);
+    ctx.quadraticCurveTo(ctrlX + 0.02 * s + lw * 0.3, 0, elbowX + lw * 0.3, elbowY - 0.01 * s);
+    ctx.stroke();
+    // Brass caps on the spurs — the talons themselves — and brass
+    // bands at the elbows so the levers read as fitted, not grown.
+    if (!hurt) {
+      ctx.fillStyle = st.tipColor ?? '#c9973f';
+      for (const sy of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(spurX - 0.036 * s, sy * (spurY - 0.03 * s));
+        ctx.lineTo(spurX + 0.014 * s, sy * (spurY - 0.036 * s));
+        ctx.lineTo(spurX + 0.054 * s, sy * (spurY + 0.02 * s));
+        ctx.lineTo(spurX - 0.016 * s, sy * (spurY + 0.012 * s));
+        ctx.closePath();
+        ctx.fill();
+        // The talon's honed under-edge.
+        ctx.strokeStyle = shade(st.tipColor ?? '#c9973f', 30);
+        ctx.lineWidth = Math.max(1, lw * 0.24);
+        ctx.beginPath();
+        ctx.moveTo(spurX + 0.014 * s, sy * (spurY - 0.036 * s));
+        ctx.lineTo(spurX + 0.054 * s, sy * (spurY + 0.02 * s));
+        ctx.stroke();
+        ctx.fillStyle = st.tipColor ?? '#c9973f';
+        ctx.save();
+        ctx.translate(elbowX, sy * elbowY);
+        ctx.rotate(sy < 0 ? -0.5 : 0.5);
+        ctx.fillRect(-0.014 * s, -lw * 0.8, 0.028 * s, lw * 1.6);
+        ctx.restore();
+      }
+    }
+    ax = spurX;
+    ayT = -spurY;
+    ayB = spurY;
+  } else if (st.bow === 'brand') {
+    // The charred bough: a crude kinked silhouette burned black, held
+    // together by the molten seam running its belly. Dark bodies pay
+    // the edge law — a hard pale rim keeps the char off the night.
+    const kinks: Array<readonly [number, number]> = [
+      [tipX + 0.012 * s, -tipY],
+      [ctrlX * 0.74, -tipY * 0.5],
+      [ctrlX * 0.64 + flex * 0.04 * s, 0.03 * s],
+      [ctrlX * 0.78, tipY * 0.48],
+      [tipX, tipY],
+    ];
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw * 1.3;
+    ctx.beginPath();
+    ctx.moveTo(kinks[0]![0], kinks[0]![1]);
+    for (const [x, y] of kinks.slice(1)) ctx.lineTo(x, y);
+    ctx.stroke();
+    if (!hurt) {
+      // Char scale texture: dark cross-checks so the burn reads as
+      // burnt wood, not stained wood.
+      ctx.strokeStyle = shade(st.color, -30);
+      ctx.lineWidth = Math.max(1, lw * 0.26);
+      for (const t of [0.18, 0.34, 0.66, 0.82]) {
+        const kx = limbX(t);
+        const ky = limbY(t);
+        ctx.beginPath();
+        ctx.moveTo(kx - lw * 0.5, ky - lw * 0.3);
+        ctx.lineTo(kx + lw * 0.3, ky + lw * 0.3);
+        ctx.stroke();
+      }
+      // The pale rim rides the whole back edge (dark bodies pay the
+      // edge law), then the molten seam on the belly.
+      ctx.strokeStyle = shade(st.color, 52);
+      ctx.lineWidth = Math.max(1, lw * 0.24);
+      ctx.beginPath();
+      ctx.moveTo(kinks[0]![0] - lw * 0.55, kinks[0]![1]);
+      for (const [x, y] of kinks.slice(1)) ctx.lineTo(x - lw * 0.55, y);
+      ctx.stroke();
+      ctx.strokeStyle = st.sigColor ?? '#ff8a3c';
+      ctx.lineWidth = Math.max(1.5, lw * 0.34);
+      ctx.globalAlpha = 0.95;
+      ctx.beginPath();
+      ctx.moveTo(kinks[1]![0] + lw * 0.5, kinks[1]![1]);
+      ctx.lineTo(kinks[2]![0] + lw * 0.5, kinks[2]![1]);
+      ctx.lineTo(kinks[3]![0] + lw * 0.5, kinks[3]![1]);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // Coals at the knuckles, seated in dark sockets so they read
+      // as embedded fire, not stuck-on beads.
+      ctx.fillStyle = shade(st.color, -34);
+      ctx.beginPath();
+      ctx.arc(kinks[1]![0], kinks[1]![1], lw * 0.62, 0, Math.PI * 2);
+      ctx.arc(kinks[3]![0], kinks[3]![1], lw * 0.56, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffb35c';
+      ctx.beginPath();
+      ctx.arc(kinks[1]![0], kinks[1]![1], lw * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(kinks[3]![0], kinks[3]![1], lw * 0.38, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff0c8';
+      ctx.beginPath();
+      ctx.arc(kinks[1]![0] - lw * 0.1, kinks[1]![1] - lw * 0.1, lw * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ax = tipX + 0.006 * s;
+  } else if (st.bow === 'fang') {
+    // Rib and fang: a vertebra riser, smooth bone limbs, and each
+    // limb ending in a true curved fang, point toward the target.
+    // The bone limbs first, heavy as ribs, then the vertebra riser
+    // seats over them, then the fangs hook off the ends — everything
+    // a size up from round 1 (a relic bow reads at 60px or not at all).
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw * 1.1;
+    for (const sy of [-1, 1]) {
+      const t0 = sy < 0 ? 0.42 : 0.58;
+      const t1 = sy < 0 ? 0.08 : 0.92;
+      ctx.beginPath();
+      ctx.moveTo(limbX(t0), limbY(t0));
+      ctx.quadraticCurveTo(limbX((t0 + t1) / 2) + 0.01 * s, limbY((t0 + t1) / 2), limbX(t1), limbY(t1));
+      ctx.stroke();
+    }
+    for (let i = 0; i < 5; i++) {
+      const t = 0.4 + (i / 4) * 0.2;
+      const r = (0.03 + 0.018 * Math.sin(Math.PI * ((t - 0.4) / 0.2))) * s;
+      ctx.fillStyle = wood;
+      ctx.beginPath();
+      ctx.arc(limbX(t), limbY(t), r, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = belly;
+        ctx.beginPath();
+        ctx.arc(limbX(t) + r * 0.35, limbY(t), r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    for (const sy of [-1, 1]) {
+      const t1 = sy < 0 ? 0.08 : 0.92;
+      // The fang: a filled crescent hooking forward off the limb end,
+      // big enough to threaten, honed edge stroked.
+      const bx = limbX(t1);
+      const by = limbY(t1);
+      ctx.fillStyle = hurt ? '#ffffff' : (st.tipColor ?? '#e2d8c4');
+      ctx.beginPath();
+      ctx.moveTo(bx - 0.016 * s, by - sy * 0.024 * s);
+      ctx.quadraticCurveTo(
+        bx + 0.08 * s, by + sy * 0.075 * s,
+        bx + 0.115 * s, by - sy * 0.045 * s,
+      );
+      ctx.quadraticCurveTo(bx + 0.055 * s, by + sy * 0.02 * s, bx - 0.016 * s, by + sy * 0.03 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.strokeStyle = shade(st.tipColor ?? '#e2d8c4', -30);
+        ctx.lineWidth = Math.max(1, lw * 0.22);
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.01 * s, by + sy * 0.036 * s);
+        ctx.quadraticCurveTo(bx + 0.07 * s, by + sy * 0.05 * s, bx + 0.115 * s, by - sy * 0.045 * s);
+        ctx.stroke();
+        // Sinew lashing where fang meets bone, doubled.
+        ctx.strokeStyle = st.wrap ?? '#7a4a3a';
+        ctx.lineWidth = Math.max(1.5, lw * 0.36);
+        for (const dx of [0, 0.016]) {
+          ctx.beginPath();
+          ctx.moveTo(bx - 0.018 * s + dx * s, by - sy * 0.03 * s);
+          ctx.lineTo(bx - 0.004 * s + dx * s, by + sy * 0.034 * s);
+          ctx.stroke();
+        }
+      }
+    }
+    ax = tipX + 0.012 * s;
+    ayT = -tipY * 0.92;
+    ayB = tipY * 0.92;
+  } else if (st.bow === 'harp') {
+    // The court frame: a gold sprung arc with collar bands, and three
+    // silent chord strings pinned inside the true string's reach.
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(tipX, -tipY);
+    ctx.quadraticCurveTo(ctrlX, 0, tipX, tipY);
+    ctx.stroke();
+    ctx.strokeStyle = belly;
+    ctx.lineWidth = lw * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(tipX + lw * 0.22, -tipY + 0.012 * s);
+    ctx.quadraticCurveTo(ctrlX + lw * 0.32, 0, tipX + lw * 0.22, tipY - 0.012 * s);
+    ctx.stroke();
+    if (!hurt) {
+      // Collar bands at the thirds — courtwork, not fittings.
+      ctx.fillStyle = st.wrap ?? '#5a3a6a';
+      for (const t of [0.24, 0.76]) {
+        const cxp = limbX(t);
+        const cyp = limbY(t);
+        ctx.save();
+        ctx.translate(cxp, cyp);
+        ctx.rotate(Math.atan2(limbY(t + 0.02) - limbY(t - 0.02), limbX(t + 0.02) - limbX(t - 0.02)));
+        ctx.fillRect(-0.012 * s, -lw * 0.75, 0.024 * s, lw * 1.5);
+        ctx.restore();
+      }
+      // The silent chords, pinned limb to limb — full-voiced color,
+      // gold pins: courtwork announces itself (round-1 verdict).
+      ctx.strokeStyle = st.fletch ?? '#b89ae0';
+      ctx.lineWidth = Math.max(1.5, s * 0.014);
+      for (const t of [0.14, 0.24, 0.34]) {
+        ctx.beginPath();
+        ctx.moveTo(limbX(t), limbY(t));
+        ctx.lineTo(limbX(1 - t), limbY(1 - t));
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#f0c86a';
+      for (const t of [0.14, 0.24, 0.34, 0.66, 0.76, 0.86]) {
+        ctx.beginPath();
+        ctx.arc(limbX(t), limbY(t), Math.max(1.5, 0.013 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  } else if (st.bow === 'loom') {
+    // Twin beams tied by rungs: the outer beam carries the string,
+    // the inner beam carries the night, and the warp threads between
+    // them wait for the shuttle.
+    // Inner beam first so the outer seats over it at the tips. The
+    // beam carries the night as a LIT plane — deep blue with its own
+    // pale edge, or it vanishes into any dark ground (round-1
+    // verdict).
+    const inner = hurt ? '#ffffff' : shade(st.wrap ?? '#3a4060', 22);
+    const inTipX = tipX - 0.024 * s;
+    const inTipY = tipY * 0.86;
+    const inCtrl = ctrlX - 0.075 * s;
+    ctx.strokeStyle = inner;
+    ctx.lineWidth = lw * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(inTipX, -inTipY);
+    ctx.quadraticCurveTo(inCtrl, 0, inTipX, inTipY);
+    ctx.stroke();
+    if (!hurt) {
+      ctx.strokeStyle = st.sigColor ?? '#e8ecff';
+      ctx.lineWidth = Math.max(1, lw * 0.2);
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(inTipX - lw * 0.4, -inTipY + 0.01 * s);
+      ctx.quadraticCurveTo(inCtrl - lw * 0.4, 0, inTipX - lw * 0.4, inTipY - 0.01 * s);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(tipX, -tipY);
+    ctx.quadraticCurveTo(ctrlX, 0, tipX, tipY);
+    ctx.stroke();
+    ctx.strokeStyle = belly;
+    ctx.lineWidth = lw * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(tipX + lw * 0.22, -tipY + 0.012 * s);
+    ctx.quadraticCurveTo(ctrlX + lw * 0.32, 0, tipX + lw * 0.22, tipY - 0.012 * s);
+    ctx.stroke();
+    if (!hurt) {
+      // The rungs tying beam to beam, and the warp between them.
+      const inX = (t: number): number => {
+        const u = 1 - t;
+        return u * u * inTipX + 2 * u * t * inCtrl + t * t * inTipX;
+      };
+      const inY = (t: number): number => {
+        const u = 1 - t;
+        return u * u * -inTipY + t * t * inTipY;
+      };
+      ctx.strokeStyle = belly;
+      ctx.lineWidth = Math.max(1.5, lw * 0.45);
+      for (const t of [0.2, 0.5, 0.8]) {
+        ctx.beginPath();
+        ctx.moveTo(limbX(t), limbY(t));
+        ctx.lineTo(inX(t), inY(t));
+        ctx.stroke();
+      }
+      ctx.strokeStyle = st.sigColor ?? '#e8ecff';
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.globalAlpha = 0.45;
+      for (const t of [0.3, 0.42, 0.58, 0.7]) {
+        ctx.beginPath();
+        ctx.moveTo(limbX(t), limbY(t));
+        ctx.lineTo(inX(t), inY(t));
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  } else if (st.bow === 'siege') {
+    // The man-tall war recurve: hooked tips, iron collar plates, a
+    // heavy riser block riveted in gold. The storm crest above the
+    // upper tip is painted with the sig word's clock inside it.
+    const innerY = tipY * 0.86;
+    const hookX = tipX + (0.066 - flex * 0.018) * s;
+    const hookY = tipY * 1.02;
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw * 1.15;
+    ctx.beginPath();
+    ctx.moveTo(hookX, -hookY);
+    ctx.quadraticCurveTo(tipX - 0.008 * s, -innerY, limbX(0.5) - 0.0001, 0);
+    ctx.quadraticCurveTo(tipX - 0.008 * s, innerY, hookX, hookY);
+    ctx.stroke();
+    ctx.strokeStyle = belly;
+    ctx.lineWidth = lw * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(hookX + lw * 0.2, -hookY + 0.012 * s);
+    ctx.quadraticCurveTo(ctrlX + lw * 0.32, 0, hookX + lw * 0.2, hookY - 0.012 * s);
+    ctx.stroke();
+    if (!hurt) {
+      // Iron collar plates clamped across the working limbs — dark
+      // plate, pale top edge, a rivet each, or they read as smudges.
+      for (const t of [0.28, 0.72]) {
+        const cxp = limbX(t);
+        const cyp = limbY(t);
+        ctx.save();
+        ctx.translate(cxp, cyp);
+        ctx.rotate(Math.atan2(limbY(t + 0.02) - limbY(t - 0.02), limbX(t + 0.02) - limbX(t - 0.02)));
+        ctx.fillStyle = shade(st.color, -34);
+        ctx.fillRect(-0.02 * s, -lw * 1.15, 0.04 * s, lw * 2.3);
+        ctx.strokeStyle = shade(st.color, 30);
+        ctx.lineWidth = Math.max(1, lw * 0.2);
+        ctx.strokeRect(-0.02 * s, -lw * 1.15, 0.04 * s, lw * 2.3);
+        ctx.fillStyle = '#e8c04c';
+        ctx.beginPath();
+        ctx.arc(0, 0, Math.max(1, 0.008 * s), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      // The riser block, riveted.
+      ctx.fillStyle = st.wrap ?? '#b8863f';
+      ctx.beginPath();
+      ctx.roundRect(0.18 * s - lw * 1.1, -0.085 * s, lw * 2.2, 0.17 * s, lw * 0.4);
+      ctx.fill();
+      ctx.fillStyle = '#e8c04c';
+      for (const ry of [-0.055, 0.055]) {
+        ctx.beginPath();
+        ctx.arc(0.18 * s, ry * s, Math.max(1, 0.009 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The anvil crest: a flat-topped stormcloud floating clear of
+      // the upper hook — daylight between the crest and the steel,
+      // but only a finger of it (the round-1 verdict: too far, too
+      // small — a crest is a statement, not a passerby).
+      const ccx = tipX * 0.5;
+      const ccy = -hookY - 0.1 * s;
+      ctx.fillStyle = '#4e5668';
+      ctx.beginPath();
+      ctx.roundRect(ccx - 0.15 * s, ccy - 0.042 * s, 0.3 * s, 0.048 * s, 0.01 * s);
+      ctx.fill();
+      for (const [bx, br] of [[-0.085, 0.046], [0, 0.058], [0.085, 0.042]] as const) {
+        ctx.beginPath();
+        ctx.arc(ccx + bx * s, ccy + 0.018 * s, br * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The lit shoulder along the anvil's top — one sun, upper-left
+      // — and a gold horn at the anvil's working corner.
+      ctx.strokeStyle = shade('#4e5668', 38);
+      ctx.lineWidth = Math.max(1, lw * 0.32);
+      ctx.beginPath();
+      ctx.moveTo(ccx - 0.145 * s, ccy - 0.04 * s);
+      ctx.lineTo(ccx + 0.145 * s, ccy - 0.04 * s);
+      ctx.stroke();
+      ctx.fillStyle = '#e8c04c';
+      ctx.beginPath();
+      ctx.moveTo(ccx + 0.145 * s, ccy - 0.044 * s);
+      ctx.lineTo(ccx + 0.185 * s, ccy - 0.032 * s);
+      ctx.lineTo(ccx + 0.145 * s, ccy - 0.014 * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ax = hookX;
+    ayT = -hookY;
+    ayB = hookY;
   } else {
     // shortbow / longbow: the classic sprung arc, two-pass.
     ctx.strokeStyle = wood;
@@ -2591,6 +3267,345 @@ export function drawBow(
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+  }
+
+  // ---- THE TEN FLIGHTS: the one-owner signature words. Every clock
+  // rides nowMs (icons pin one frame; two frames prove the motion),
+  // and every piece stays inside the bow's outline envelope.
+  if (!hurt && st.sig) {
+    const c = st.sigColor ?? '#ffffff';
+    // Deterministic per-slice hash — the arc law: never Math.random.
+    const jag = (seed: number, k: number): number => {
+      const v = Math.sin(seed * 127.1 + k * 311.7) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    if (st.sig === 'budding') {
+      // Leaves bud on the belly, hold, and shed drifting free; the
+      // bloom's eye breathes with them.
+      for (let k = 0; k < 3; k++) {
+        const p = ((nowMs / 3200) + k * 0.33) % 1;
+        const t = 0.26 + k * 0.24;
+        const bx = limbX(t) + 0.02 * s;
+        const by = limbY(t);
+        const grow = Math.min(1, p / 0.22);
+        const shed = Math.max(0, (p - 0.68) / 0.32);
+        const dx = shed * 0.07 * s;
+        const dy = shed * 0.05 * s + Math.sin(p * Math.PI * 6) * shed * 0.01 * s;
+        ctx.globalAlpha = 1 - shed;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.moveTo(bx + dx, by + dy);
+        ctx.quadraticCurveTo(bx + dx + 0.024 * s * grow, by + dy - 0.016 * s * grow, bx + dx + 0.038 * s * grow, by + dy + 0.002 * s * grow);
+        ctx.quadraticCurveTo(bx + dx + 0.02 * s * grow, by + dy + 0.012 * s * grow, bx + dx, by + dy);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 0.4 + 0.5 * (Math.sin(nowMs * 0.003) + 1) / 2;
+      ctx.fillStyle = '#ffe9a3';
+      ctx.beginPath();
+      ctx.arc(limbX(0.3) + 0.032 * s, limbY(0.3) - 0.02 * s, 0.006 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (st.sig === 'dawnrays') {
+      // A fan of rays sweeps the upper wing on a slow clock; the tip
+      // horns wink phase-opposed.
+      const sweep = Math.sin(nowMs * 0.0011);
+      for (let k = 0; k < 4; k++) {
+        const a = -Math.PI * 0.62 + (k - 1.5) * 0.16 + sweep * 0.1;
+        const rx = 0.19 * s;
+        const win = Math.max(0, Math.sin(nowMs * 0.0022 + k * 1.3));
+        ctx.globalAlpha = 0.2 + 0.4 * win;
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(rx + Math.cos(a) * 0.05 * s, Math.sin(a) * 0.05 * s);
+        ctx.lineTo(rx + Math.cos(a) * (0.13 + 0.03 * win) * s, Math.sin(a) * (0.13 + 0.03 * win) * s);
+        ctx.stroke();
+      }
+      for (const sy of [-1, 1]) {
+        const win = Math.max(0, Math.sin(nowMs * 0.0035 + (sy < 0 ? 0 : Math.PI)));
+        ctx.globalAlpha = win * win;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(ax, sy < 0 ? ayT : ayB, 0.014 * s * win, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.sig === 'rimelight') {
+      // The moon glint walks the facet seam end to end; frost spikes
+      // grow off the limb backs, hold, and sublime.
+      const u = (nowMs % 2800) / 2800;
+      const t = u < 0.5 ? u * 2 : 2 - u * 2;
+      const gx = limbX(t) + 0.01 * s;
+      const gy = limbY(t);
+      ctx.fillStyle = c;
+      for (const [ox, oy, r] of [[0, -0.016, 0.006], [0.016, 0, 0.006], [0, 0.016, 0.006], [-0.016, 0, 0.006], [0, 0, 0.01]] as const) {
+        ctx.beginPath();
+        ctx.arc(gx + ox * s, gy + oy * s, r * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (let k = 0; k < 3; k++) {
+        const p = ((nowMs / 2400) + k * 0.37) % 1;
+        const grow = p < 0.3 ? p / 0.3 : p > 0.72 ? Math.max(0, 1 - (p - 0.72) / 0.28) : 1;
+        const t2 = 0.18 + k * 0.3;
+        const bx = limbX(t2) - 0.02 * s;
+        const by = limbY(t2);
+        ctx.globalAlpha = 0.85 * grow;
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx - 0.026 * s * grow, by - 0.014 * s * grow * (k % 2 === 0 ? 1 : -1));
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.sig === 'spurarcs') {
+      // The live arc between the brass talons, re-jagged every 90ms;
+      // between snaps a charge wink swells on one cap.
+      const slice = Math.floor(nowMs / 90);
+      if (jag(slice, 0) > 0.3) {
+        // The arc BOWS belly-ward off the string line — an arc that
+        // hides inside the string is no arc at all (round-1 verdict).
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(1.5, s * 0.02);
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        ctx.moveTo(ax + 0.012 * s, ayT + 0.02 * s);
+        for (let k = 1; k < 5; k++) {
+          const t = k / 5;
+          const bow = Math.sin(t * Math.PI) * 0.11 * s;
+          ctx.lineTo(
+            ax + 0.012 * s - bow + (jag(slice, k) - 0.5) * 0.05 * s,
+            ayT + (ayB - ayT) * t + (jag(slice, k + 7) - 0.5) * 0.03 * s,
+          );
+        }
+        ctx.lineTo(ax + 0.012 * s, ayB - 0.02 * s);
+        ctx.stroke();
+        // Contact glints where the arc grips the brass.
+        ctx.fillStyle = '#ffffff';
+        for (const cy of [ayT + 0.02 * s, ayB - 0.02 * s]) {
+          ctx.beginPath();
+          ctx.arc(ax + 0.012 * s, cy, Math.max(1, 0.011 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        const capY = slice % 2 === 0 ? ayT : ayB;
+        ctx.fillStyle = c;
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        ctx.arc(ax + 0.012 * s, capY, Math.max(1.5, 0.016 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.sig === 'emberseam') {
+      // The seam breathes hot, and embers climb off the char with a
+      // shrink and a fade — the fire never agreed to go out.
+      const breath = (Math.sin(nowMs * 0.004) + 1) / 2;
+      ctx.globalAlpha = 0.3 + 0.6 * breath;
+      ctx.strokeStyle = '#ffd98a';
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(ctrlX * 0.74 + 0.02 * s, -tipY * 0.5);
+      ctx.lineTo(ctrlX * 0.64 + 0.02 * s, 0.03 * s);
+      ctx.lineTo(ctrlX * 0.78 + 0.02 * s, tipY * 0.48);
+      ctx.stroke();
+      for (let k = 0; k < 3; k++) {
+        const p = ((nowMs / 2000) + k * 0.37) % 1;
+        const t = 0.25 + k * 0.22;
+        ctx.globalAlpha = (1 - p) * 0.9;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(
+          limbX(t) + 0.02 * s + p * 0.02 * s,
+          limbY(t) - p * 0.08 * s,
+          Math.max(1, 0.012 * s * (1 - p * 0.6)), 0, Math.PI * 2,
+        );
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.sig === 'hushfeathers') {
+      // Feathers shed off the trailing edges and dissolve behind the
+      // wing; two amber eyes above the grip keep watch and never go
+      // fully dark.
+      for (let k = 0; k < 2; k++) {
+        const p = ((nowMs / 2600) + k * 0.5) % 1;
+        const sy = k === 0 ? -1 : 1;
+        const t = sy < 0 ? 0.18 : 0.82;
+        const bx = limbX(t) - 0.1 * s - p * 0.09 * s;
+        const by = limbY(t) + sy * p * 0.05 * s + Math.sin(p * Math.PI * 4) * 0.012 * s;
+        ctx.globalAlpha = (1 - p) * 0.8;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo(bx - 0.026 * s, by - 0.012 * s, bx - 0.042 * s, by + 0.004 * s);
+        ctx.quadraticCurveTo(bx - 0.02 * s, by + 0.012 * s, bx, by);
+        ctx.fill();
+      }
+      for (const sy of [-1, 1]) {
+        const blink = Math.min(1, Math.abs(Math.sin(nowMs * 0.0009 + (sy < 0 ? 0 : 1.2))) * 4);
+        ctx.globalAlpha = 0.35 + 0.65 * blink;
+        ctx.fillStyle = '#ffd98a';
+        ctx.beginPath();
+        ctx.arc(0.19 * s, sy * 0.035 * s, Math.max(1, 0.011 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.sig === 'bloodhaze') {
+      // Red wisps stream back off the nock line; the fang points bead
+      // and let one drop go per round.
+      // The haze hugs the wood: wisps rise off the vertebra riser and
+      // curl along the belly — never a detached squiggle in the air
+      // (the round-1 verdict).
+      for (let k = 0; k < 2; k++) {
+        const p = ((nowMs / 1800) + k * 0.5) % 1;
+        const t = k === 0 ? 0.44 : 0.56;
+        const wx2 = limbX(t) + 0.03 * s;
+        const wy = limbY(t);
+        ctx.globalAlpha = (1 - p) * 0.6;
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(wx2, wy);
+        ctx.quadraticCurveTo(
+          wx2 + 0.02 * s + Math.sin(p * Math.PI * 3) * 0.014 * s, wy - p * 0.045 * s,
+          wx2 + 0.008 * s, wy - p * 0.09 * s,
+        );
+        ctx.stroke();
+      }
+      const p = (nowMs % 2200) / 2200;
+      const fy = tipY * 0.9 + 0.03 * s;
+      if (p < 0.55) {
+        // The bead swells at the lower fang point...
+        ctx.globalAlpha = 0.95;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(ax + 0.06 * s, fy, Math.max(1, 0.012 * s * (p / 0.55)), 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // ...then falls free and fades.
+        const q = (p - 0.55) / 0.45;
+        ctx.globalAlpha = (1 - q) * 0.95;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(ax + 0.06 * s, fy + q * 0.09 * s, Math.max(1, 0.011 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.sig === 'glyphwalk') {
+      // Four script ticks walk the frame in sequence; a glint crosses
+      // one silent chord at a time, playing the quiet music.
+      const step = Math.floor(nowMs / 420) % 4;
+      for (let k = 0; k < 4; k++) {
+        const t = 0.1 + k * 0.13;
+        const lit = k === step;
+        ctx.globalAlpha = lit ? 1 : 0.4;
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(1.5, s * 0.016);
+        const gx2 = limbX(t) + 0.032 * s;
+        const gy2 = limbY(t);
+        ctx.beginPath();
+        ctx.moveTo(gx2 - 0.012 * s, gy2 - 0.014 * s);
+        ctx.lineTo(gx2 + 0.012 * s, gy2 - 0.004 * s);
+        ctx.moveTo(gx2 - 0.009 * s, gy2 + 0.01 * s);
+        ctx.lineTo(gx2 + 0.011 * s, gy2 + 0.014 * s);
+        ctx.stroke();
+      }
+      const chord = Math.floor(nowMs / 1400) % 3;
+      const u = (nowMs % 1400) / 1400;
+      const t0 = [0.14, 0.24, 0.34][chord]!;
+      const x1 = limbX(t0);
+      const y1 = limbY(t0);
+      const x2 = limbX(1 - t0);
+      const y2 = limbY(1 - t0);
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x1 + (x2 - x1) * u, y1 + (y2 - y1) * u, Math.max(1, 0.009 * s), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (st.sig === 'starweft') {
+      // The shuttle rides one warp thread at a time between the
+      // beams; stardust winks near the rungs.
+      const inTipX = tipX - 0.024 * s;
+      const inTipY = tipY * 0.86;
+      const inCtrl = ctrlX - 0.075 * s;
+      const inX = (t: number): number => {
+        const u2 = 1 - t;
+        return u2 * u2 * inTipX + 2 * u2 * t * inCtrl + t * t * inTipX;
+      };
+      const inY = (t: number): number => {
+        const u2 = 1 - t;
+        return u2 * u2 * -inTipY + t * t * inTipY;
+      };
+      const wefts = [0.3, 0.42, 0.58, 0.7];
+      const j = Math.floor(nowMs / 1100) % wefts.length;
+      const u = (nowMs % 1100) / 1100;
+      const t = wefts[j]!;
+      // The shuttle: a bright bead with a short tail laid back along
+      // the thread it rides.
+      const sx = limbX(t) + (inX(t) - limbX(t)) * u;
+      const sy2 = limbY(t) + (inY(t) - limbY(t)) * u;
+      const tx2 = limbX(t) + (inX(t) - limbX(t)) * Math.max(0, u - 0.22);
+      const ty2 = limbY(t) + (inY(t) - limbY(t)) * Math.max(0, u - 0.22);
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = c;
+      ctx.lineWidth = Math.max(1, 0.012 * s);
+      ctx.beginPath();
+      ctx.moveTo(tx2, ty2);
+      ctx.lineTo(sx, sy2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(sx, sy2, Math.max(1.5, 0.015 * s), 0, Math.PI * 2);
+      ctx.fill();
+      for (let k = 0; k < 2; k++) {
+        const win = Math.max(0, Math.sin(nowMs * 0.0028 + k * 2.4));
+        ctx.globalAlpha = win * 0.8;
+        ctx.beginPath();
+        ctx.arc(inX(0.2 + k * 0.6), inY(0.2 + k * 0.6), Math.max(1, 0.007 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.sig === 'stormcrest') {
+      // Lightning winks inside the floating anvil; every few rounds a
+      // strike jumps the daylight to the upper horn. Rain hints fall
+      // off the crest's underside on a slow loop.
+      const ccx = tipX * 0.5;
+      const hookY = tipY * 1.02;
+      const ccy = -hookY - 0.1 * s;
+      const slice = Math.floor(nowMs / 90);
+      if (jag(slice, 3) > 0.55) {
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        const lx = ccx + (jag(slice, 1) - 0.5) * 0.12 * s;
+        ctx.moveTo(lx, ccy - 0.01 * s);
+        ctx.lineTo(lx + (jag(slice, 2) - 0.5) * 0.04 * s, ccy + 0.022 * s);
+        ctx.lineTo(lx + (jag(slice, 4) - 0.5) * 0.05 * s, ccy + 0.048 * s);
+        ctx.stroke();
+        // One round in a handful, the strike takes the gap.
+        if (jag(slice, 8) > 0.8) {
+          ctx.beginPath();
+          ctx.moveTo(ccx, ccy + 0.045 * s);
+          ctx.lineTo(ccx + (jag(slice, 5) - 0.5) * 0.05 * s, (ccy - ayT) / 2 + ayT);
+          ctx.lineTo(ax * 0.9, ayT + 0.01 * s);
+          ctx.stroke();
+        }
+      }
+      for (let k = 0; k < 3; k++) {
+        const p = ((nowMs / 1600) + k * 0.33) % 1;
+        ctx.globalAlpha = (1 - p) * 0.35;
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        const rx = ccx + (k - 1) * 0.06 * s;
+        ctx.beginPath();
+        ctx.moveTo(rx, ccy + 0.05 * s + p * 0.05 * s);
+        ctx.lineTo(rx - 0.006 * s, ccy + 0.06 * s + p * 0.05 * s);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
     }
   }
 }

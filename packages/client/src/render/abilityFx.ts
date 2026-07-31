@@ -275,6 +275,18 @@ export const FX_STYLES: Record<string, FxStyle> = {
   perihelion: fx('#ffffff', '#b8ecff', '#2a4a6a', '#e8f8ff', '184, 236, 255', 'shards', 'star', 'cracks', 0.85, 'rain'),
   crownstorm: GOLD({ mid: '#fff0a0', ring: 'runes', debris: 'spark', decal: 'glow', motif: 'crown', punch: 0.8, wash: 0.6 }),
 
+  // ------------------------------------- the ten flights, bow arts
+  wakewood: VERDANT({ mid: '#6a8a4a', ring: 'shards', debris: 'leaf', decal: 'roots', motif: 'spikes', punch: 0.5, wash: 0.35 }),
+  larkshot: RADIANT({ mid: '#ffd98a', ring: 'petals', debris: 'star', decal: 'glow', motif: 'rays', punch: 0.65, wash: 0.6 }),
+  glasshail: FROST({ mid: '#bcd8f0', ring: 'shards', debris: 'ice', decal: 'rime', motif: 'rain', punch: 0.6, wash: 0.45 }),
+  stormskip: STORM({ mid: '#8fa2c4', ring: 'shards', debris: 'spark', motif: 'echo', punch: 0.55 }),
+  charfall: EMBER({ mid: '#ff8a3c', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'pillar', punch: 0.8, wash: 0.55 }),
+  hushfall: VOID({ mid: '#8d84a8', spark: '#ffd98a', ring: 'petals', debris: 'shadow', motif: 'swarm', punch: 0.4, wash: 0.3 }),
+  quarry_call: BLOOD({ mid: '#c84a5a', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'wisps', punch: 0.6, wash: 0.4 }),
+  plucked_chord: ARCANE({ mid: '#c8b8f0', ring: 'runes', debris: 'star', decal: 'runes', motif: 'echo', punch: 0.5, wash: 0.5 }),
+  nightweft: VOID({ mid: '#9aa2c8', spark: '#e8ecff', ring: 'halo', debris: 'star', motif: 'vortex', punch: 0.6, wash: 0.4 }),
+  the_anvil: STORM({ mid: '#cfe0ff', deep: '#3e4a66', ring: 'teeth', debris: 'spark', decal: 'cracks', motif: 'quake', punch: 0.9, wash: 0.55 }),
+
   // ------------------------------------------------------ relic actives
   ember_dash: EMBER({ ring: 'shards', decal: 'scorch', punch: 0.5 }),
   healing_totem: VERDANT({ ring: 'halo', debris: 'leaf', decal: 'glow', motif: 'bloom', punch: 0.2, wash: 0.4 }),

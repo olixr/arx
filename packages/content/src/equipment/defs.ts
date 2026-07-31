@@ -4286,11 +4286,134 @@ function bowDefs(): EquipmentDef[] {
     },
   ];
 
+  // ============================================= THE TEN FLIGHTS
+  // The legendary chase bows, spread down the road an archer actually
+  // walks — legendary or nothing, found or nothing, and every one
+  // DOES something beyond its stats (the riftglass law). A flight is
+  // what the fletcher calls the feathers that steer the shaft; each
+  // of these steers its own, and each looses an Art nobody else gets
+  // to draw.
+  const flights: EquipmentDef[] = [
+    {
+      id: 'thornwake', name: 'Thornwake', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 5 },
+      weapon: { style: 'archery', damage: 3, cooldownTicks: 7, range: 13, ammo: 'arrow', projectileSpeed: 16, art: 'wakewood' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'foraging', w: 2 }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'bleed', power: 1, durationTicks: 60, chance: 0.2 }],
+      value: 900, color: '#8a7a52', code: 'Tw',
+      desc: 'A shed stag crown the briar restrung sharper. Spring follows its arrows down and comes up armed.',
+    },
+    {
+      id: 'suncrest', name: 'Suncrest', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 8 },
+      weapon: { style: 'archery', damage: 4, cooldownTicks: 7, range: 14, ammo: 'arrow', projectileSpeed: 17, art: 'larkshot' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onKillHaste', ticks: 30 }],
+      value: 1000, color: '#c9973f', code: 'Sn',
+      desc: 'A hawk\'s morning spread in bronze and white. The crest catches light that has not arrived yet.',
+    },
+    {
+      id: 'moonglass', name: 'Moonglass', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 11 },
+      weapon: { style: 'archery', damage: 4, cooldownTicks: 8, range: 14, ammo: 'arrow', projectileSpeed: 16, art: 'glasshail' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'chill', power: 1, durationTicks: 60, chance: 0.2 }],
+      value: 1100, color: '#a8c4dc', code: 'Mq',
+      desc: 'Limbs of pale glass poured on a cold night. The glint inside is not a reflection. Nothing is there to reflect.',
+    },
+    {
+      id: 'galespur', name: 'Galespur', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 14 },
+      weapon: { style: 'archery', damage: 5, cooldownTicks: 8, range: 14, ammo: 'arrow', projectileSpeed: 17, art: 'stormskip' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 50, chance: 0.2 }],
+      value: 1250, color: '#5a6a8c', code: 'Gp',
+      desc: 'A stooping falcon rendered in lacquer and brass. The spark between the talons never quite lands.',
+    },
+    {
+      id: 'charbough', name: 'Charbough', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 17 },
+      weapon: { style: 'archery', damage: 5, cooldownTicks: 8, range: 15, ammo: 'arrow', projectileSpeed: 17, art: 'charfall' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'onHitStatus', status: 'burn', power: 1, durationTicks: 60, chance: 0.25 }],
+      value: 1400, color: '#4a4038', code: 'Cq',
+      desc: 'A bough that burned and refused the rest of it. The seam still glows, and the grain still argues.',
+    },
+    {
+      id: 'hushwing', name: 'Hushwing', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 20 },
+      weapon: { style: 'archery', damage: 6, cooldownTicks: 8, range: 15, ammo: 'arrow', projectileSpeed: 19, art: 'hushfall' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'sneak', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'crit', pct: 3 }],
+      value: 1500, color: '#6a6280', code: 'Hh',
+      desc: 'An owl\'s wings at full hush. The two lights above the grip are paying attention.',
+    },
+    {
+      id: 'redquarry', name: 'Redquarry', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 23 },
+      weapon: { style: 'archery', damage: 7, cooldownTicks: 9, range: 15, ammo: 'arrow', projectileSpeed: 17, art: 'quarry_call' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'vitality', w: 2 }, { stat: 'beastcraft' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'lifesteal', frac: 0.05 }],
+      value: 1600, color: '#b8ac94', code: 'Rq',
+      desc: 'Rib and fang off something the hunt never names twice. The bow drinks first.',
+    },
+    {
+      id: 'runespan', name: 'Runespan', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 26 },
+      weapon: { style: 'archery', damage: 6, cooldownTicks: 7, range: 16, ammo: 'arrow', projectileSpeed: 18, art: 'plucked_chord' },
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'cooldown', pct: 6 }],
+      value: 1750, color: '#d9a441', code: 'Rn',
+      desc: 'A court harp that took up archery. Three strings stay silent, and only the walls hear what they play.',
+    },
+    {
+      id: 'starloom', name: 'Starloom', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 28 },
+      weapon: { style: 'archery', damage: 7, cooldownTicks: 8, range: 16, ammo: 'arrow', projectileSpeed: 19, art: 'nightweft' },
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'magic' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'elementDmg', element: 'astral', pct: 8 }, { kind: 'crit', pct: 2 }],
+      value: 1850, color: '#8a92ac', code: 'Sl',
+      desc: 'A loom frame threaded with night. The shuttle you can almost see is never done crossing.',
+    },
+    {
+      id: 'thunderhead', name: 'Thunderhead', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 30 },
+      weapon: { style: 'archery', damage: 8, cooldownTicks: 9, range: 17, ammo: 'arrow', projectileSpeed: 20, art: 'the_anvil' },
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [
+        { kind: 'onHitStatus', status: 'shock', power: 1, durationTicks: 60, chance: 0.25 },
+        { kind: 'onKillHaste', ticks: 40 },
+      ],
+      value: 2000, color: '#6a7284', code: 'Tk',
+      desc: 'A war bow that flies the storm\'s anvil for a crest. Thunder counts the arrows out loud.',
+    },
+  ];
+
   // The plain shortbow is general-store stock — always a fixed common
   // baseline on the shelf; better rolls come from the knee or the wilds.
   shortbow[0]!.acquisition = { craft: true, shop: true };
 
-  return [...shortbow, ...longbow, ...hunting, ...crafts, ...finds];
+  return [...shortbow, ...longbow, ...hunting, ...crafts, ...finds, ...flights];
 }
 
 function staffDefs(): EquipmentDef[] {

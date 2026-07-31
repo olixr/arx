@@ -581,7 +581,7 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 198, 'swords 55 + daggers 48 + bows 29 + staves 38 + greatweapons 28');
+  assert.equal(weapons.length, 208, 'swords 55 + daggers 48 + bows 39 + staves 38 + greatweapons 28');
   const swords = weapons.filter((d) => d.weapon?.style === 'melee');
   assert.equal(swords.length, 103, 'swords 55 + daggers 48');
   for (const s of swords) {
@@ -814,6 +814,48 @@ test('the ten voices: legendary-only chase staffs, spread down the road', async 
   );
   for (const o of others) {
     assert.ok(!arts.includes(o.weapon?.art), `${o.id} does not borrow a voice's art`);
+  }
+});
+
+test('the ten flights: legendary-only chase bows, spread down the road', async () => {
+  const { ABILITIES } = await import('./abilities.js');
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  const flights: Array<[string, number]> = [
+    ['thornwake', 5], ['suncrest', 8], ['moonglass', 11], ['galespur', 14],
+    ['charbough', 17], ['hushwing', 20], ['redquarry', 23], ['runespan', 26],
+    ['starloom', 28], ['thunderhead', 30],
+  ];
+  assert.equal(flights.length, 10, 'ten flights, no more, no fewer');
+  for (const [id, gate] of flights) {
+    const d = byId.get(id);
+    assert.ok(d, `${id} exists`);
+    // The band-spread law: legendary is a road promise, not an
+    // endgame one — every flight gates at or below level 30.
+    assert.ok(gate <= 30, `${id} sits on the leveling road`);
+    assert.equal(d!.levelReq!.level, gate, `${id} keeps its band`);
+    assert.equal(d!.levelReq!.skill, 'archery', `${id} gates on archery`);
+    // Legendary or nothing; found or nothing.
+    assert.deepEqual(d!.rarities, ['legendary'], `${id} only exists legendary`);
+    assert.ok(d!.acquisition?.drop && !d!.acquisition?.craft, `${id} is found, never forged`);
+    assert.equal(d!.recipe, undefined, `${id} has no recipe`);
+    // Every flight DOES something beyond stats (the riftglass law —
+    // lawful here because all ten are legendary-pinned).
+    assert.ok((d!.effects?.length ?? 0) > 0, `${id} carries a native effect`);
+    assert.ok(d!.weapon!.art && ABILITIES.has(d!.weapon!.art), `${id} art resolves`);
+    // A bow is still a bow: arrows in, real flight out.
+    assert.equal(d!.weapon!.ammo, 'arrow', `${id} feeds on arrows`);
+    assert.ok(d!.weapon!.projectileSpeed! >= 14, `${id} shoots a real projectile`);
+    assert.ok(d!.desc && d!.desc.length > 20, `${id} carries a real story`);
+  }
+  // The own-art law: no two flights share a word — and none borrows
+  // another weapon's art either.
+  const arts = flights.map(([id]) => byId.get(id)!.weapon!.art);
+  assert.equal(new Set(arts).size, arts.length, 'no two flights share a word');
+  const others = EQUIPMENT_DEFS.filter(
+    (d) => d.slot === 'weapon' && !flights.some(([id]) => id === d.id),
+  );
+  for (const o of others) {
+    assert.ok(!arts.includes(o.weapon?.art), `${o.id} does not borrow a flight's art`);
   }
 });
 

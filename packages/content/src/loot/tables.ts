@@ -156,6 +156,9 @@ const defs: LootTableDef[] = [
       // A firebird nested over the warren once. What fell down the
       // shafts was warm, and writing something.
       { item: 'firequill', chance: 0.005 },
+      // The warren's cook-fires burned a whole bough-stack one year.
+      // One bough burned back.
+      { item: 'charbough', chance: 0.005 },
     ],
   },
   {
@@ -186,6 +189,9 @@ const defs: LootTableDef[] = [
       // The magister's study had one drawer the diggers never got
       // open. The digmaster wears the reason on his belt.
       { item: 'runekey', chance: 0.012 },
+      // The study's music stand held no music, only a bow strung
+      // four ways. The digmaster cannot make it stop humming.
+      { item: 'runespan', chance: 0.012 },
     ],
   },
 
@@ -306,6 +312,9 @@ const defs: LootTableDef[] = [
       // The crew drank to every job from one garnet cup. The cup
       // never filled and the crew never noticed what it was drinking.
       { item: 'everthirst', chance: 0.01 },
+      // The crew's tracker bragged his bow found the mark by smell.
+      // The crew stopped asking what it fed on.
+      { item: 'redquarry', chance: 0.01 },
     ],
   },
   {
@@ -332,6 +341,9 @@ const defs: LootTableDef[] = [
       // A thrower's dream kit: a stick that throws the WEATHER. None
       // of them can make it work. They keep it anyway.
       { item: 'galecall', chance: 0.005 },
+      // The one bow in camp nobody dares string. The spark between
+      // the talons has opinions about goblins.
+      { item: 'galespur', chance: 0.005 },
     ],
   },
   rack('thrower_wardrobe', 'Coast plunder and trampled-fen cloth.', 0.04, [
@@ -388,6 +400,9 @@ const defs: LootTableDef[] = [
       // One of the buried was a morning priest. The crypt has never
       // once managed to put the light out.
       { item: 'firstlight', chance: 0.004 },
+      // The priest's warden was an archer. Her bow still faces the
+      // east wall, waiting for a window.
+      { item: 'suncrest', chance: 0.004 },
     ],
   },
   {
@@ -485,6 +500,9 @@ const defs: LootTableDef[] = [
       // The Champion knelt to a king once. What the king carried is
       // down here, still floating, still refusing to be worn.
       { item: 'skythrone', chance: 0.005 },
+      // The king's marshal carried the answer to it: a war bow flying
+      // the storm's anvil. The Champion holds both grudges now.
+      { item: 'thunderhead', chance: 0.005 },
       ...setDrops('broodsilk', 0.008),
       // The Champion still drills in the dark. The gold and crimson
       // were the king's grant; the oath outlasted the king.
@@ -613,9 +631,15 @@ const defs: LootTableDef[] = [
       // The strongbox was sealed at dusk. Something in it is still
       // waiting for its hour.
       { item: 'firstlight', chance: 0.006 },
+      // Locked away bronze-side down. The lid never quite goes dark
+      // over the crest.
+      { item: 'suncrest', chance: 0.006 },
       // Silver worth locking up twice. The three small moons keep
       // walking their ring in the dark.
       { item: 'moonwell', chance: 0.005 },
+      // Glass poured on the same cold night, boxed so the glint
+      // inside would stop unsettling the guards. It has not.
+      { item: 'moonglass', chance: 0.005 },
     ],
   },
   {
@@ -642,9 +666,15 @@ const defs: LootTableDef[] = [
       // Deposited in a vault by someone who wanted it far away, in
       // the dark, with other people's guards around it.
       { item: 'hollowstar', chance: 0.005 },
+      // Banked with the lights facing the wall. The clerk who took
+      // the deposit still checks over his shoulder.
+      { item: 'hushwing', chance: 0.005 },
       // The magister's own key to doors without hinges, banked with
       // everything else he trusted no apprentice to hold.
       { item: 'runekey', chance: 0.005 },
+      // Beside it, the harp he taught to shoot. The vault log lists
+      // it as an instrument. The guards list it as a reason to knock.
+      { item: 'runespan', chance: 0.005 },
     ],
   },
   {
@@ -692,6 +722,9 @@ const defs: LootTableDef[] = [
       // The moss opened the lid a crack and a bough grew in. The
       // bloom on it still thinks the box is spring.
       { item: 'wealdheart', chance: 0.005 },
+      // A shed crown went into the box as antler and came out
+      // strung. The briar takes credit.
+      { item: 'thornwake', chance: 0.005 },
     ],
   },
   {
@@ -717,6 +750,9 @@ const defs: LootTableDef[] = [
       // The weather abdicated into this hoard. The crown floats an
       // honest inch over the coins and outranks all of them.
       { item: 'skythrone', chance: 0.008 },
+      // The storm kept its anvil, though, and nailed it over a war
+      // bow's tip. The hoard hears the hammering on bad nights.
+      { item: 'thunderhead', chance: 0.008 },
     ],
   },
   {
@@ -739,6 +775,9 @@ const defs: LootTableDef[] = [
       // Whoever built the gate charted the sky to aim it. Their
       // instrument still keeps its own orbit by the lock.
       { item: 'driftstar', chance: 0.006 },
+      // The charting took a loom. The loom took to the night. The
+      // shuttle has not stopped for anyone since.
+      { item: 'starloom', chance: 0.006 },
     ],
   },
 
@@ -790,6 +829,9 @@ const defs: LootTableDef[] = [
       // War-hounds howl at what their masters steal. One camp stole
       // the moon's own staff, and the worgs would not leave it be.
       { item: 'moonwell', chance: 0.01 },
+      // The pack's other prize: a bow of night glass. The worgs
+      // howl at the glint in it, which howls nothing back.
+      { item: 'moonglass', chance: 0.01 },
     ],
   },
   {
@@ -877,6 +919,9 @@ const defs: LootTableDef[] = [
       // The wind on the crag blows out of a spindle someone dropped.
       // The rams like the calm spot at the middle of it.
       { item: 'galecall', chance: 0.01 },
+      // A falcon stooped at a ram once and lost. What the falconer
+      // dropped on the crag, the flock now guards on principle.
+      { item: 'galespur', chance: 0.01 },
     ],
   },
   {
@@ -892,6 +937,9 @@ const defs: LootTableDef[] = [
       // The old wood grew one staff on purpose. The hart carries it
       // between owners, the way the wood asked it to.
       { item: 'wealdheart', chance: 0.008 },
+      // Stags shed their crowns every spring. One spring the briar
+      // got to a crown first, and the herd keeps its distance now.
+      { item: 'thornwake', chance: 0.008 },
     ],
   },
   {
@@ -934,6 +982,9 @@ const defs: LootTableDef[] = [
       // The same shell hauled the scribe's staff out of the burn.
       // Five brass feathers, not one of them singed.
       { item: 'firequill', chance: 0.01 },
+      // It also dragged home a branch that was still burning. Three
+      // seasons on, it still is.
+      { item: 'charbough', chance: 0.01 },
     ],
   },
   {
@@ -978,6 +1029,9 @@ const defs: LootTableDef[] = [
       // The web's darkest corner holds a star that stopped shining
       // on purpose. Even the spider walks around it.
       { item: 'hollowstar', chance: 0.005 },
+      // An owl hunted this web's corner of the dark for years. The
+      // web won, and kept the wings as a warning.
+      { item: 'hushwing', chance: 0.005 },
     ],
   },
   {
@@ -1018,6 +1072,9 @@ const defs: LootTableDef[] = [
       // A falling star bounced off the hills once. The troll caught
       // it on the second bounce and has been feeding it since.
       { item: 'driftstar', chance: 0.006 },
+      // The troll also keeps a frame of silver threads it cannot
+      // untangle. It calls the frame "harp". The frame declines.
+      { item: 'starloom', chance: 0.006 },
     ],
   },
   {
@@ -1033,6 +1090,9 @@ const defs: LootTableDef[] = [
       // The deep wood buried a red thing under a den because burying
       // it was easier than owning it. Ask the bear how that went.
       { item: 'everthirst', chance: 0.01 },
+      // Rib and fang of the den's last owner, strung by the hunt
+      // that lost. The bear sleeps on it out of respect.
+      { item: 'redquarry', chance: 0.01 },
     ],
   },
 ];

@@ -1799,6 +1799,188 @@ Object.assign(PLATES, {
     dot(c, st.spark, 0.28, 0.34, 0.028);
     star4(c, 0.3, -0.34, 0.05, st.spark);
   },
+
+  // ------------------------------------- the ten flights, bow arts
+  // Wakewood — the arrow takes root: the planted shaft, thorn runs
+  // already claiming the ground around it.
+  wakewood: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.32, st);
+    // The shaft, planted at a landing lean, fletched.
+    poly(c, st.deep, [[0.16, -0.4], [-0.02, 0.06]], 0.05);
+    fill(c, st.core, [[0.16, -0.4], [0.26, -0.32], [0.1, -0.26]]);
+    // Thorn runs crawling out from the strike.
+    for (const [a0, a1] of [[-0.36, -0.14], [0.3, 0.12], [-0.1, 0.3]] as const) {
+      poly(c, st.mid, [[-0.02, 0.06], [a0, 0.14], [a0 * 1.2, a1 * 0.4 + 0.18]], 0.036);
+    }
+    fill(c, st.mid, [[-0.3, 0.1], [-0.22, 0.02], [-0.18, 0.12]]);
+    dot(c, st.spark, 0.24, 0.16, 0.03);
+  },
+  // Larkshot — dawn up the morning line: the beam lane, the sun
+  // rising at the terminus.
+  larkshot: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(-0.22);
+    poly(c, st.mid, [[-0.46, -0.08], [0.4, -0.08]], 0.028);
+    poly(c, st.mid, [[-0.46, 0.08], [0.4, 0.08]], 0.028);
+    fill(c, st.core, [[-0.44, -0.045], [0.38, -0.045], [0.38, 0.045], [-0.44, 0.045]]);
+    // The lark's sun cresting at the far end.
+    dot(c, st.spark, 0.42, 0, 0.09);
+    for (let i = 0; i < 4; i++) {
+      const a = -Math.PI / 2 + (i - 1.5) * 0.5;
+      poly(c, st.spark, [
+        [0.42 + Math.cos(a) * 0.12, Math.sin(a) * 0.12],
+        [0.42 + Math.cos(a) * 0.2, Math.sin(a) * 0.2],
+      ], 0.026);
+    }
+    star4(c, -0.34, -0.26, 0.05, st.spark);
+  },
+  // Glasshail — the sky answers in splinters: six shards mid-fall,
+  // frost already on the ground lane.
+  glasshail: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.32, st);
+    for (let k = -1; k <= 1; k++) {
+      fill(c, st.core, [
+        [k * 0.24 - 0.03, -0.34 + Math.abs(k) * 0.08],
+        [k * 0.24 + 0.03, -0.36 + Math.abs(k) * 0.08],
+        [k * 0.24 + 0.1, -0.06 + Math.abs(k) * 0.06],
+      ]);
+      fill(c, st.mid, [
+        [k * 0.24 + 0.03, -0.36 + Math.abs(k) * 0.08],
+        [k * 0.24 + 0.09, -0.3 + Math.abs(k) * 0.08],
+        [k * 0.24 + 0.1, -0.06 + Math.abs(k) * 0.06],
+      ]);
+    }
+    snowflake(c, -0.32, -0.3, 0.07, st.spark, 0.03);
+    dot(c, st.spark, 0.3, 0.14, 0.028);
+    star4(c, 0.06, 0.1, 0.05, st.spark);
+  },
+  // Stormskip — head to head like a stone across a pond: the bolt
+  // skipping, rings where it touched.
+  stormskip: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    // Skip rings on the water it made of the crowd.
+    for (const [x, r] of [[-0.26, 0.1], [0.04, 0.13], [0.32, 0.09]] as const) {
+      c.strokeStyle = st.mid;
+      c.lineWidth = 0.03;
+      c.beginPath();
+      c.ellipse(x, 0.16, r, r * 0.42, 0, 0, Math.PI * 2);
+      c.stroke();
+    }
+    // The arrow's skipping line, arcing between them.
+    crescent(c, -0.12, -0.1, 0.2, 0.14, Math.PI * 1.05, Math.PI * 1.95, st.core, 0.036);
+    crescent(c, 0.2, -0.08, 0.16, 0.12, Math.PI * 1.05, Math.PI * 1.95, st.core, 0.036);
+    fill(c, st.spark, [[0.34, -0.2], [0.42, -0.14], [0.32, -0.1]]);
+    star4(c, -0.34, -0.3, 0.05, st.spark);
+  },
+  // Charfall — up an arrow, down a kiln: the burning fall, the
+  // strike ring waiting.
+  charfall: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.32, st);
+    poly(c, st.deep, [[0.26, -0.46], [0.02, -0.02]], 0.05);
+    flame(c, 0.14, -0.34, 0.26, st, 0.06);
+    dot(c, st.core, 0.02, -0.02, 0.07);
+    crescent(c, 0, 0.1, 0.24, 0.16, Math.PI * 0.15, Math.PI * 0.85, st.core, 0.03);
+    dot(c, st.spark, -0.26, -0.3, 0.03);
+    dot(c, st.mid, -0.18, -0.14, 0.026);
+  },
+  // Hushfall — five feathers that know the way: the fan leaving,
+  // soft, points first, one eye watching it go.
+  hushfall: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    for (let k = -2; k <= 2; k++) {
+      const a = -Math.PI / 2 + k * 0.34;
+      const len = 0.32 - Math.abs(k) * 0.03;
+      const tx = Math.cos(a) * len;
+      const ty = Math.sin(a) * len;
+      fill(c, st.mid, [
+        [0, 0.12],
+        [tx + Math.cos(a + 2.0) * 0.06, ty + Math.sin(a + 2.0) * 0.06],
+        [tx * 1.18, ty * 1.18],
+        [tx + Math.cos(a - 2.0) * 0.06, ty + Math.sin(a - 2.0) * 0.06],
+      ]);
+    }
+    // The watcher's eyes, amber, unblinking.
+    dot(c, st.spark, -0.05, 0.2, 0.032);
+    dot(c, st.spark, 0.05, 0.2, 0.032);
+    dot(c, st.deep, 0.3, -0.3, 0.04);
+  },
+  // Quarry Call — the called shot: one heavy shaft, the mark it
+  // already owns ringed at the far end.
+  quarry_call: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(-0.18);
+    // The mark: a ringed quarry sigil.
+    ringDot(c, st.mid, 0.3, 0, 0.14, 0.036);
+    dot(c, st.core, 0.3, 0, 0.05);
+    // The shaft arriving, all business.
+    poly(c, st.deep, [[-0.46, 0], [0.12, 0]], 0.05);
+    fill(c, st.core, [[0.12, -0.06], [0.24, 0], [0.12, 0.06]]);
+    fill(c, st.mid, [[-0.46, -0.07], [-0.34, 0], [-0.46, 0.07]]);
+    droplet(c, 0.4, -0.3, 0.2, st);
+  },
+  // The Plucked Chord — three notes, taken personally: the strings,
+  // and the rings each note left the room.
+  plucked_chord: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    for (let k = -1; k <= 1; k++) {
+      poly(c, st.mid, [[k * 0.14, -0.36], [k * 0.14, 0.36]], 0.03);
+    }
+    for (let i = 0; i < 3; i++) {
+      const r = 0.12 + i * 0.12;
+      c.strokeStyle = i === 1 ? st.core : st.mid;
+      c.lineWidth = 0.028;
+      c.beginPath();
+      c.ellipse(0, 0, r, r * 0.75, 0, 0, Math.PI * 2);
+      c.stroke();
+    }
+    dot(c, st.spark, 0, 0, 0.05);
+    star4(c, 0.32, -0.32, 0.05, st.spark);
+  },
+  // Nightweft — the net of night gathers: the woven lattice, and
+  // the pull toward center.
+  nightweft: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.028;
+    for (let k = -1; k <= 1; k++) {
+      c.beginPath();
+      c.moveTo(-0.4, k * 0.2);
+      c.quadraticCurveTo(0, k * 0.2 + 0.08, 0.4, k * 0.2);
+      c.stroke();
+      c.beginPath();
+      c.moveTo(k * 0.2, -0.4);
+      c.quadraticCurveTo(k * 0.2 + 0.08, 0, k * 0.2, 0.4);
+      c.stroke();
+    }
+    // Everything leans toward the middle of the weave.
+    for (let i = 0; i < 4; i++) {
+      const a = i * 1.57 + 0.8;
+      poly(c, st.core, [
+        [Math.cos(a) * 0.42, Math.sin(a) * 0.42],
+        [Math.cos(a + 0.15) * 0.24, Math.sin(a + 0.15) * 0.24],
+      ], 0.03);
+    }
+    dot(c, st.spark, 0, 0, 0.055);
+    star4(c, -0.3, -0.32, 0.05, st.spark);
+  },
+  // The Anvil — the storm sets it down: the flat-topped cloud, the
+  // strike beneath, the ground braced for both.
+  the_anvil: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.34, st);
+    // The anvil cloud, flat on top the way the sky planes it.
+    fill(c, st.deep, [[-0.34, -0.3], [0.34, -0.3], [0.34, -0.22], [-0.34, -0.22]]);
+    dot(c, st.deep, -0.18, -0.18, 0.1);
+    dot(c, st.deep, 0.04, -0.16, 0.12);
+    dot(c, st.deep, 0.24, -0.18, 0.09);
+    poly(c, st.mid, [[-0.33, -0.29], [0.33, -0.29]], 0.024);
+    bolt(c, 0, -0.06, 0.55, st, 0.4);
+    dot(c, st.spark, -0.3, 0.24, 0.03);
+    dot(c, st.spark, 0.32, 0.2, 0.026);
+  },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
 // ------------------------------------------------------ relic actives
