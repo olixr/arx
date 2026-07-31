@@ -120,7 +120,8 @@ import {
 import { buildableIconUrl } from './icons.js';
 import { Birds, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
-import { paintTree, treeModel, type TreeModel } from './trees.js';
+import { paintTree, saplingModel,
+  treeModel, type TreeModel } from './trees.js';
 import {
   DITHER_CELL,
   FADE_BODY_BELOW,
@@ -5000,6 +5001,16 @@ export class Renderer {
           continue;
         }
         const item = this.objectItem(ground as Tile, tx, ty, game);
+        // THE FACE CONTEST, completed for objects: cliff faces and
+        // side planes sort in LIFTED space (their row minus the level
+        // lift — the face-contest law), but objects sorted at raw tile
+        // rows — so an ore on a terrace one tile north of a HIGHER
+        // band out-sorted that band's lifted face and punched a tower
+        // of blocks through the wall in front of it. An elevated
+        // object joins the same lifted space; flat ground (elev 0)
+        // keeps its exact old sort, so every settled contest stands.
+        const oElev = this.fgElevAt(tx, ty);
+        if (oElev > 0) item.sortY -= (oElev * ELEV_H) / this.camera.yScale;
         // Discrete props ride the ring-baked sprite cache instead of
         // the per-frame outline pass — 76 live-outlined props in town
         // cost 2.5ms/frame. Their slow ambient animation (canopy sway,
@@ -14517,6 +14528,15 @@ export class Renderer {
   }
 
 
+
+  /** THE PROMISE LAW: a sapling tile draws its own bespoke young form
+   *  (saplingModel) of the adult it will become; tree tiles draw the
+   *  grown wood. One door for every tree-model read in the renderer. */
+  private treeOrSaplingModel(tile: Tile, h: number) {
+    const adult = treeOfSapling(tile);
+    return adult !== null ? saplingModel(adult, h) : treeModel(tile, h);
+  }
+
   private drawTree(
     bx: number,
     by: number,
@@ -14530,7 +14550,7 @@ export class Renderer {
   ): void {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    const m = treeModel(tile, h);
+    const m = this.treeOrSaplingModel(tile, h);
     let wind: number;
     if (bendOverride !== undefined || grow < 1) {
       // Shape changes every frame — paint live. The step-aside fade
@@ -14762,7 +14782,7 @@ export class Renderer {
     const sunOn = this.sky.shadowAlpha >= 0.02;
     const throws = this.lightThrows(bx, groundY, 0.6);
     if (!sunOn && throws.length === 0) return;
-    const m = treeModel(tile, h);
+    const m = this.treeOrSaplingModel(tile, h);
     const ys = this.camera.yScale;
     if (sunOn) {
       const c = this.beginCastFill();
@@ -15072,7 +15092,7 @@ export class Renderer {
     px: number,
     py: number,
   ): { x: number; y: number; w: number; h: number } {
-    const m = treeModel(tile, h);
+    const m = this.treeOrSaplingModel(tile, h);
     const s = this.camera.scale;
     const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
     const top = (m.height * 1.18 + 0.45) * s;
@@ -16144,16 +16164,17 @@ export class Renderer {
       case Tile.SaplingWillow:
       case Tile.SaplingYew:
       case Tile.SaplingPine: {
-        // The middle beat of regrowth: the SAME tree this tile will
-        // grow into (same hash -> same species, variant, silhouette),
-        // drawn young — thin, short, crown not yet filled in.
-        const tree = treeOfSapling(tile) ?? Tile.Tree;
-        const grow = this.growthOf(tx, ty, 0.16, 0.45, 1400);
+        // The middle beat of regrowth: a BESPOKE young form of the
+        // SAME tree this tile will grow into (same hash -> same
+        // species, variant, lean — the promise law), drawn at its own
+        // full size with a sprout-in ease. Never the adult shrunk:
+        // the thinned adult crown read as a donut (retired law).
+        const grow = this.growthOf(tx, ty, 0.35, 1, 1400);
         return {
           sortY: ty + 0.7,
-          body: this.treeBody(tree, h, p.x, p.y),
-          drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tree, t, grow),
-          draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tree, t, undefined, grow),
+          body: this.treeBody(tile, h, p.x, p.y),
+          drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
+          draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined, grow),
         };
       }
 
@@ -25788,7 +25809,13 @@ export class Renderer {
       rag.launch(sx, sy, sev, BEAST_UPPER, feet);
       look = {
         kind: 'beast',
-        b: { spec, radius, color: def.color ?? '#999', defId: death.defId, seed },
+        b: {
+          spec,
+          radius,
+          color: def.color ?? '#999',
+          defId: death.defId,
+          seed,
+        },
       };
     }
     this.corpses.push({

@@ -116,7 +116,10 @@ export interface TreeCluster {
   tone: number;
   /** Carries a bright top facet in the lit pass. */
   lit: boolean;
-  /** Interior filler — young trees haven't grown these yet. */
+  /** Interior dome mass (non-edge middle tiers). ALWAYS drawn — the
+   *  old young-thinning law (skip extras below grow 0.7) read as a
+   *  DONUT crown mid grow-in and is retired; young trees are bespoke
+   *  saplingModel forms now. The marker stays for density LOD work. */
   extra: boolean;
 }
 
@@ -925,6 +928,162 @@ export function treeModel(tile: Tile, h: number): TreeModel {
   return model;
 }
 
+const saplingCache = new Map<number, TreeModel>();
+
+/**
+ * THE SAPLING STANDS ALONE (second-growth polish): a young tree is a
+ * BESPOKE form, never the adult model shrunk. The adult dome is a
+ * ring of shoulder clusters whose heart the old young-thinning law
+ * left unfilled — at sapling scale that read as a DONUT with the
+ * trunk showing through the crown, the exact kind of cheat this
+ * studio does not ship. Every species grows a true juvenile: a
+ * slender whip of a stem with a root flare, a pair of seed-leaves
+ * low on the stem, and a TIGHT overlapping tuft of crown clusters —
+ * solid mass at every zoom, the same three light bands (shaded
+ * underside, body, lit cap with a sun facet) and the same wind
+ * grammar as the grown wood, so a stand of saplings breathes with
+ * the forest it will become.
+ *
+ * Species dialects: the OAK squats broad on a stout stem; the PINE
+ * stacks three tierlets to a green tip and keeps a dead whorl stub
+ * (rigid, like its elder); the WILLOW leans hard and hangs two low
+ * lobes — the weep before the curtains; the YEW holds a dense dark
+ * column; the COMMON WOODS read their adult grammar's hash so every
+ * sapling grows into exactly the tree it promised (same species,
+ * same variant, same lean).
+ */
+export function saplingModel(tile: Tile, h: number): TreeModel {
+  const key = ((tile as number) << 16) | (h & 0xffff);
+  const hit = saplingCache.get(key);
+  if (hit) return hit;
+  if (saplingCache.size > 300) saplingCache.clear();
+
+  // Two streams: salt 53 REPLAYS the adult's variant pick (the
+  // promise law — a sapling becomes precisely the tree its tile
+  // hash grows); salt 97 deals the juvenile's own jitter.
+  const rndA = (i: number): number => (hashCoords(53, h & 0xffff, i) % 1000) / 1000;
+  const rnd = (i: number): number => (hashCoords(97, h & 0xffff, i) % 1000) / 1000;
+  const species = speciesOf(tile, h);
+  const def = SPECIES[species]!;
+  const variant = Math.floor(rndA(0) * def.variants.length) % def.variants.length;
+  const g: Grow = { ...def.base, ...def.variants[variant] };
+
+  const pine = g.tiers > 0;
+  const willow = g.fall > 0;
+  const yew = species === 7;
+  const oak = species === 5;
+  const H = pine ? 1.45 + rnd(1) * 0.35 : yew ? 1.0 + rnd(1) * 0.22 : 1.15 + rnd(1) * 0.3;
+  const leanSign = rndA(2) < 0.5 ? -1 : 1;
+  const lean = (willow ? 0.22 : 0.06 + g.lean * 0.4) * leanSign;
+
+  const branches: TreeBranch[] = [];
+  const clusters: TreeCluster[] = [];
+  const add = (x: number, y: number, r: number, tone: number, lit = false): void => {
+    clusters.push({
+      x,
+      y: Math.min(y, H + 0.1),
+      r,
+      hf: Math.min(1, y / H),
+      seed: hashCoords(59, h & 0xffff, 0x40 + clusters.length),
+      tone,
+      lit,
+      extra: false,
+    });
+  };
+
+  // --- The stem: a slender whip with a visible root flare. It climbs
+  // into the tuft so the joint can never show (the seam law, young).
+  const stemTop = pine ? H * 0.9 : H * 0.68;
+  const stemW = oak ? 0.1 : yew ? 0.095 : 0.08;
+  const stem = grownSpine(
+    0, 0, lean * H * 0.9, stemTop,
+    g.bow * 0.4, lean * 1.2, g.gnarl * 0.5, leanSign, H / 2.4, rnd, 5, 4,
+  );
+
+  // --- Seed-leaves: the juvenile signature — a tiny leaf pair low on
+  // the stem, one per side, shaded like the crown's underside.
+  const [slx, sly] = alongSpine(stem, 0.3);
+  add(slx - 0.13, sly + 0.04, 0.09 + rnd(20) * 0.02, 1);
+  add(slx + 0.12, sly + 0.09, 0.08 + rnd(21) * 0.02, 0);
+
+  const [cx0, cy0] = alongSpine(stem, 1);
+  if (pine) {
+    // Three tierlets closing to a point — a pine ends in a POINT,
+    // never a ball, from its first year. A dead whorl stub keeps the
+    // northern signature.
+    add(cx0 + (rnd(30) - 0.5) * 0.06, H * 0.42, 0.34, 1);
+    add(cx0 - (rnd(31) - 0.5) * 0.08, H * 0.62, 0.27, 1);
+    add(cx0 + (rnd(32) - 0.5) * 0.06, H * 0.8, 0.21, 2);
+    add(cx0, H * 0.97, 0.13, 2, true);
+    const [wx1, wy1] = alongSpine(stem, 0.34);
+    branches.push({
+      pts: [[wx1, wy1], [wx1 - leanSign * (0.16 + rnd(33) * 0.08), wy1 - 0.05]],
+      w0: stemW * 0.32, w1: stemW * 0.07, flare: 0, tip: -1, level: 1,
+    });
+  } else if (willow) {
+    // The weep before the curtains: a teardrop tuft with two LOW
+    // hanging lobes on the lean side — the crown already falling.
+    add(cx0, cy0 + 0.14, 0.3, 1);
+    add(cx0 - leanSign * 0.1, cy0 + 0.32, 0.24, 2, true);
+    add(cx0 + leanSign * 0.24, cy0 - 0.04, 0.21, 0);
+    add(cx0 + leanSign * 0.3, cy0 - 0.26, 0.15, 0);
+    add(cx0 - leanSign * 0.18, cy0 + 0.02, 0.19, 1);
+  } else if (yew) {
+    // A dense dark column — the slowest wood is solid from the start.
+    add(cx0 + (rnd(40) - 0.5) * 0.05, cy0 - 0.1, 0.29, 0);
+    add(cx0 - (rnd(41) - 0.5) * 0.06, cy0 + 0.12, 0.31, 1);
+    add(cx0 + (rnd(42) - 0.5) * 0.05, cy0 + 0.34, 0.24, 2, true);
+  } else {
+    // The common woods and the oak: one honest tuft — underside lobe,
+    // body, side lobe, lit cap — every blob overlapping its neighbor
+    // by half a radius so the mass NEVER opens.
+    const w = oak ? 1.25 : 1;
+    add(cx0 - 0.1 * w, cy0 - 0.06, 0.25 * w, 0);
+    add(cx0 + 0.2 * w, cy0 + 0.02, 0.24 * w, 1);
+    add(cx0 - 0.18 * w, cy0 + 0.1, 0.23 * w, 1);
+    add(cx0 + (rnd(50) - 0.5) * 0.08, cy0 + 0.12, 0.3 * w, 1);
+    add(cx0 + (rnd(51) - 0.5) * 0.1, cy0 + (oak ? 0.26 : 0.3), 0.26 * w, 2, true);
+    if (species === 2 && rndA(2) < 0.6) {
+      // The twin's second whip — forked from the first hand-span.
+      const arm = grownSpine(
+        0.04, H * 0.12, -leanSign * 0.3, stemTop * 0.82,
+        g.bow * 0.3, -lean, g.gnarl * 0.5, -leanSign, H / 2.6, rnd, 60, 3,
+      );
+      branches.push({ pts: arm, w0: stemW * 0.7, w1: stemW * 0.35, flare: 0.1, tip: -1, level: 0 });
+      const [ax, ay] = alongSpine(arm, 1);
+      add(ax, ay + 0.1, 0.2, 1);
+    }
+  }
+
+  // Stem LAST — its body paints over every join (the seam law).
+  branches.push({ pts: stem, w0: stemW, w1: stemW * 0.42, flare: 0.55, tip: -1, level: 0 });
+
+  let top = 0;
+  let spread = 0;
+  for (const c of clusters) {
+    top = Math.max(top, c.y + c.r);
+    spread = Math.max(spread, Math.abs(c.x) + c.r);
+  }
+
+  const model: TreeModel = {
+    species,
+    variant,
+    rigid: pine || undefined,
+    height: Math.max(H, top),
+    spread,
+    bark: g.bark,
+    barkLit: shade(g.bark, g.bark === '#d7d2c4' ? 10 : 16),
+    barkDark: shade(g.bark, -18),
+    leaves: g.leaves,
+    sides: g.sides,
+    branches,
+    clusters,
+    curtains: [],
+  };
+  saplingCache.set(key, model);
+  return model;
+}
+
 export interface TreeFrame {
   bx: number; // screen x of the trunk base
   groundY: number; // screen y of the trunk base
@@ -1020,7 +1179,6 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   const windy = 0.2 + Math.min(1, Math.abs(wind));
   for (let i = 0; i < n; i++) {
     const c = m.clusters[i]!;
-    if (g < 0.7 && c.extra) continue;
     const local = f.windOverride !== undefined
       ? wind
       : windScalarAt(f.wx + c.x * 0.8, f.wy - c.y * 0.35, f.tSec - c.hf * 0.3);
@@ -1037,7 +1195,7 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   // and looseness, and the hem lifts slightly as it swings — a
   // pendulum of hanging cloth, never a flapping sheet.
   const nc = m.curtains.length;
-  const cSw = nc > 0 && g >= 0.7 ? new Float32Array(nc) : null;
+  const cSw = nc > 0 ? new Float32Array(nc) : null;
   if (cSw) {
     for (let i = 0; i < nc; i++) {
       const cu = m.curtains[i]!;
@@ -1197,7 +1355,6 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   let drew = false;
   for (let i = 0; i < n; i++) {
     const c = m.clusters[i]!;
-    if (g < 0.7 && c.extra) continue;
     drew = true;
     const cx = X(c.x + rx[i]!);
     const cy = Y(c.y + ry[i]!);

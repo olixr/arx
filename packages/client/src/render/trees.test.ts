@@ -8,7 +8,7 @@ import {
   tileColliderRadius,
   treeOfSapling,
 } from '@arx/shared';
-import { maxTrunkBaseRadius, speciesOf, treeModel } from './trees.js';
+import { maxTrunkBaseRadius, saplingModel, speciesOf, treeModel } from './trees.js';
 
 const TREES = [Tile.Tree, Tile.TreeOak, Tile.TreeWillow, Tile.TreeYew, Tile.TreePine];
 
@@ -246,4 +246,37 @@ test('species mapping: named trees keep their species, commons vary', () => {
   const commons = new Set<number>();
   for (let h = 0; h < 40; h++) commons.add(speciesOf(Tile.Tree, h));
   assert.equal(commons.size, 5, 'common wood draws from five species');
+});
+
+test('THE SAPLING STANDS ALONE: every young form is solid, small, and true to its promise', () => {
+  for (const tile of TREES) {
+    for (const h of [3, 977, 4213, 61007]) {
+      const m = saplingModel(tile, h);
+      const adult = treeModel(tile, h);
+      // The promise law: a sapling is the SAME species and variant as
+      // the adult its tile hash grows into.
+      assert.equal(m.species, adult.species, `${Tile[tile]} sapling must keep its species`);
+      assert.equal(m.variant, adult.variant, `${Tile[tile]} sapling must keep its variant`);
+      // Young: comfortably under the grown wood, over knee height.
+      assert.ok(m.height >= 0.8 && m.height <= 2.1, `height ${m.height}`);
+      assert.ok(m.spread <= 1.2, `spread ${m.spread} must stay tight`);
+      assert.ok(m.branches.length >= 1, 'a stem stands');
+      // THE SOLID CROWN: no donut, ever — every crown cluster (above
+      // the seed-leaf band) overlaps at least one other crown cluster,
+      // so the tuft reads as ONE mass at any zoom.
+      const crown = m.clusters.filter((c) => c.y > m.height * 0.35);
+      assert.ok(crown.length >= 3, `${Tile[tile]} needs a real tuft, got ${crown.length}`);
+      for (const c of crown) {
+        const touches = crown.some(
+          (o) => o !== c && Math.hypot(o.x - c.x, o.y - c.y) < (o.r + c.r) * 0.9,
+        );
+        assert.ok(touches, `${Tile[tile]} sapling cluster at ${c.x},${c.y} floats alone`);
+      }
+      // The light language holds: an underside band and a lit cap.
+      assert.ok(m.clusters.some((c) => c.tone === 0), 'a shaded underside');
+      assert.ok(m.clusters.some((c) => c.tone === 2 && c.lit), 'a lit cap facet');
+      // The pine keeps its elder's rigid sway.
+      if (tile === Tile.TreePine) assert.equal(m.rigid, true);
+    }
+  }
 });
