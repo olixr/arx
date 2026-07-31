@@ -972,14 +972,23 @@ test('archmage roster: 22 staff designs, elements ride every bolt, gem swaps cra
 // ------------------------------------------------------------------ enchants
 
 test('enchant registry is coherent', async () => {
-  const { ENCHANT_DEFS, ENCHANTS, ELEMENT_REAGENT } = await import('./equipment/enchants.js');
+  const { ENCHANT_DEFS, ENCHANTS, ELEMENT_REAGENT, TIER_BANDS } = await import(
+    './equipment/enchants.js'
+  );
   const { GEAR_SLOTS } = await import('./equipment/types.js');
   assert.ok(ENCHANT_DEFS.length >= 30, 'a real roster of enchants');
   const prefixes = new Set<string>();
   for (const e of ENCHANT_DEFS) {
     assert.ok((GEAR_SLOTS as readonly string[]).includes(e.slot), `${e.id} targets a gear slot`);
-    assert.ok(e.tier >= 1 && e.tier <= 3, `${e.id} tier in range`);
-    assert.ok(e.level >= 1 && e.level <= 60, `${e.id} inscribe level sane`);
+    assert.ok(e.tier >= 1 && e.tier <= 5, `${e.id} tier in range`);
+    // THE LONG LADDER: a working lives inside its tier's band, or the
+    // tiers stop meaning anything and the cost tables (which key off
+    // tier, not level) drift away from the power they pay for.
+    const band = TIER_BANDS[e.tier];
+    assert.ok(
+      e.level >= band.lo && e.level <= band.hi,
+      `${e.id} is tier ${e.tier} at level ${e.level}, outside ${band.lo}-${band.hi}`,
+    );
     assert.ok(e.effects.length > 0, `${e.id} does something`);
     assert.ok(!prefixes.has(e.prefix), `${e.id} prefix '${e.prefix}' unique`);
     prefixes.add(e.prefix);

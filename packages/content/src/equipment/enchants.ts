@@ -118,6 +118,46 @@ export function isStrikeTrigger(on: EnchantTrigger['on']): boolean {
   return (STRIKE_TRIGGERS as readonly string[]).includes(on);
 }
 
+/**
+ * Triggers that arrive with a FOE in hand. A working whose action needs
+ * a target (a status to lay, a mote to send) is authored nonsense on any
+ * other trigger: it would pass every test, bond onto a real item, wake
+ * exactly on schedule, and then do nothing at all, forever, because
+ * there is nobody for it to do it to.
+ *
+ * `kill` is absent on purpose. The foe that died is the only candidate,
+ * and poisoning a corpse is not an effect.
+ */
+const TARGETED_TRIGGERS: readonly EnchantTrigger['on'][] = ['hit', 'crit', 'cadence', 'hurt', 'block'];
+
+/** Actions that cannot do anything without a foe. */
+const TARGETED_ACTIONS: readonly ProcAction['do'][] = ['status', 'bolt'];
+
+export function triggerHasTarget(t: EnchantTrigger): boolean {
+  if (t.on === 'stacks') {
+    return (TARGETED_TRIGGERS as readonly string[]).includes(t.per);
+  }
+  return (TARGETED_TRIGGERS as readonly string[]).includes(t.on);
+}
+
+/**
+ * Why this working could never fire, or null if it is sound. Checked at
+ * load for the whole roster, so an unfirable pairing cannot ship.
+ */
+export function procMismatch(p: ProcEffect): string | null {
+  const needsFoe = (TARGETED_ACTIONS as readonly string[]).includes(p.action.do);
+  if (needsFoe && !triggerHasTarget(p.trigger)) {
+    return `'${p.action.do}' needs a foe, and '${p.trigger.on}' never brings one`;
+  }
+  if (p.action.do === 'yield' && p.trigger.on !== 'gather') {
+    return `'yield' fills a basket, so it only answers 'gather'`;
+  }
+  if (p.trigger.on === 'gather' && p.action.do !== 'yield' && p.action.do !== 'reveal') {
+    return `'gather' happens away from any fight; '${p.action.do}' has nothing to work on`;
+  }
+  return null;
+}
+
 export type EnchantEffect =
   | { kind: 'skill'; skill: SkillId; amount: number }
   | { kind: 'maxHp'; amount: number }
@@ -166,14 +206,40 @@ export const STRIKE_EFFECT_KINDS: readonly EnchantEffect['kind'][] = [
   'backstab',
 ];
 
+/**
+ * THE LONG LADDER. Enchanting caps at 99 like every other trade, and
+ * for a long time the roster stopped at 54 — forty-five levels of a
+ * named profession with nothing in them. Tiers 4 and 5 are the answer.
+ *
+ * The bands are law, not suggestion: a working authored outside its
+ * tier's band is rejected at load. Without that guard the ladder drifts
+ * one enchant at a time until the tiers stop meaning anything, and the
+ * cost tables (which key off tier, not level) quietly stop matching the
+ * power they are paying for.
+ */
+export type EnchantTier = 1 | 2 | 3 | 4 | 5;
+
+export const TIER_BANDS: Record<EnchantTier, { lo: number; hi: number }> = {
+  1: { lo: 1, hi: 19 },
+  2: { lo: 20, hi: 39 },
+  3: { lo: 40, hi: 57 },
+  4: { lo: 58, hi: 79 },
+  5: { lo: 80, hi: 99 },
+};
+
 export interface EnchantDef {
   id: string;
   /** Full label ("Kindled Edge") — scroll names, card rows. */
   name: string;
   /** Adjective prepended to the item's display name ("Kindled ..."). */
   prefix: string;
-  /** Visual + cost tier: 1 glint, 2 elemental motes, 3 full aura. */
-  tier: 1 | 2 | 3;
+  /**
+   * Visual + cost tier. THE WORN LIGHT reads this as loudness:
+   *   1 a glint, 2 a steady channel, 3 the living corona,
+   *   4 a greater working, 5 a masterwork.
+   * See TIER_BANDS for the level each tier is authored inside.
+   */
+  tier: EnchantTier;
   /** The single equip slot a scroll of this enchant targets. */
   slot: GearSlot;
   /** Drives tint, fx channel, and the reagent theme. */
@@ -462,6 +528,647 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     ],
     desc: 'A fortress compressed into a sigil. It holds, and it answers back.',
   },
+
+  // ==================================================================
+  // THE LONG LADDER
+  //
+  // Everything above is the original roster, which stopped at level 54
+  // and left legs, cape, and half the schools with nothing. What
+  // follows fills those holes and runs the trade to 99.
+  //
+  // Two things change in kind above tier 3. First, WORKINGS: the top
+  // bands are where procs live, so a greater working is not a bigger
+  // number, it is a thing that happens. Second, the non-combat family
+  // becomes real, and it competes for the same slots as the combat
+  // lines. That competition IS the build decision.
+  //
+  // Gathering workings take RHYTHM AND REACH on purpose. The thrift and
+  // doubling channels belong to the Callings (Dust Thrift, Gentle Hand,
+  // Prospector), and an enchant that also doubled a yield would be a
+  // second copy of a system that already exists.
+  // ==================================================================
+
+  // ---------------------------------------------------------- weapon
+  {
+    id: 'starlit_edge', name: 'Starlit Edge', prefix: 'Starlit', tier: 2, slot: 'weapon',
+    element: 'astral', level: 32,
+    effects: [E({ kind: 'elementDmg', element: 'astral', pct: 10 }), E({ kind: 'crit', pct: 2 })],
+    desc: 'Cold pinpoints travel the steel, always a little behind the swing.',
+  },
+  {
+    id: 'emberwake_edge', name: 'Emberwake', prefix: 'Emberwake', tier: 4, slot: 'weapon',
+    element: 'ember', level: 60,
+    effects: [
+      E({ kind: 'elementDmg', element: 'ember', pct: 22 }),
+      E({
+        kind: 'proc', id: 'emberwake', name: 'Emberwake',
+        trigger: { on: 'cadence', every: 4 },
+        action: { do: 'nova', damage: 9, radius: 2.6 },
+        icd: 100,
+      }),
+    ],
+    desc: 'Heat gathers across four blows and lets go of all of it at once.',
+  },
+  {
+    id: 'frostbinder_edge', name: 'Frostbinder', prefix: 'Frostbinding', tier: 4, slot: 'weapon',
+    element: 'frost', level: 62,
+    effects: [
+      E({ kind: 'elementDmg', element: 'frost', pct: 22 }),
+      E({
+        kind: 'proc', id: 'frostbind', name: 'Frostbind',
+        trigger: { on: 'hit', chance: 0.18 },
+        action: { do: 'status', status: 'chill', power: 2, ticks: 90 },
+        icd: 60,
+      }),
+    ],
+    desc: 'The cold does not spread from the wound. It arrives already everywhere.',
+  },
+  {
+    id: 'thunderchain_edge', name: 'Thunderchain', prefix: 'Thunderchain', tier: 4, slot: 'weapon',
+    element: 'storm', level: 66,
+    effects: [
+      E({ kind: 'elementDmg', element: 'storm', pct: 22 }),
+      E({
+        kind: 'proc', id: 'thunderchain', name: 'Thunderchain',
+        trigger: { on: 'crit' },
+        action: { do: 'chain', damage: 11, jumps: 3 },
+        icd: 120,
+      }),
+    ],
+    desc: 'A clean hit finds the next three throats without being asked.',
+  },
+  {
+    id: 'sanguine_edge', name: 'Sanguine Edge', prefix: 'Sanguine', tier: 4, slot: 'weapon',
+    element: 'blood', level: 70,
+    effects: [
+      E({ kind: 'lifesteal', frac: 0.11 }),
+      E({
+        kind: 'proc', id: 'red_harvest', name: 'Red Harvest',
+        trigger: { on: 'cadence', every: 6 },
+        action: { do: 'heal', amount: 18 },
+        icd: 140,
+      }),
+    ],
+    desc: 'It keeps a tally. Every sixth wound, it settles up in your favor.',
+  },
+  {
+    id: 'duskfang', name: 'Duskfang', prefix: 'Dusk', tier: 4, slot: 'weapon',
+    element: 'void', level: 74,
+    effects: [
+      E({ kind: 'backstab', bonus: 1 }),
+      E({ kind: 'skill', skill: 'sneak', amount: 2 }),
+      E({
+        kind: 'proc', id: 'open_vein', name: 'Open Vein',
+        trigger: { on: 'crit' },
+        action: { do: 'status', status: 'bleed', power: 3, ticks: 100 },
+        icd: 80,
+      }),
+    ],
+    desc: 'It does not cut so much as decline to be stopped.',
+  },
+  {
+    id: 'sunspear_edge', name: 'Sunspear', prefix: 'Sunspear', tier: 5, slot: 'weapon',
+    element: 'radiant', level: 82,
+    effects: [
+      E({ kind: 'crit', pct: 8 }),
+      E({ kind: 'elementDmg', element: 'radiant', pct: 26 }),
+      E({
+        kind: 'proc', id: 'sunlance', name: 'Sunlance',
+        trigger: { on: 'crit' },
+        action: { do: 'bolt', damage: 26 },
+        icd: 90,
+      }),
+    ],
+    desc: 'Every weak point is lit for you, and something answers the light.',
+  },
+  {
+    id: 'starfall_edge', name: 'Starfall Edge', prefix: 'Starfall', tier: 5, slot: 'weapon',
+    element: 'astral', level: 88,
+    effects: [
+      E({ kind: 'elementDmg', element: 'astral', pct: 26 }),
+      E({
+        kind: 'proc', id: 'starfall', name: 'Starfall',
+        trigger: { on: 'cadence', every: 5 },
+        action: { do: 'nova', damage: 16, radius: 3.4 },
+        icd: 120,
+      }),
+    ],
+    desc: 'Something very far away is keeping count of your swings.',
+  },
+  {
+    id: 'worldbreaker_edge', name: 'Worldbreaker', prefix: 'Worldbreaking', tier: 5, slot: 'weapon',
+    element: 'arcane', level: 95,
+    effects: [
+      E({ kind: 'styleDmg', style: 'onehand', pct: 10 }),
+      E({ kind: 'styleDmg', style: 'twohand', pct: 10 }),
+      E({ kind: 'styleDmg', style: 'archery', pct: 10 }),
+      E({ kind: 'styleDmg', style: 'arx', pct: 10 }),
+      E({
+        kind: 'proc', id: 'sunder', name: 'Sunder',
+        trigger: { on: 'cadence', every: 3 },
+        action: { do: 'nova', damage: 14, radius: 3 },
+        icd: 90,
+      }),
+    ],
+    desc: 'The binding of things is a suggestion, and this argues with it.',
+  },
+
+  // ------------------------------------------------------------ body
+  {
+    id: 'warded_weave', name: 'Sealed Weave', prefix: 'Sealed', tier: 1, slot: 'body',
+    element: 'arcane', level: 6,
+    effects: [E({ kind: 'armor', amount: 1 })],
+    desc: 'A closing rune at every seam. Small work, honestly done.',
+  },
+  {
+    id: 'emberweave', name: 'Emberweave Ward', prefix: 'Emberweave', tier: 2, slot: 'body',
+    element: 'ember', level: 30,
+    effects: [
+      E({ kind: 'maxHp', amount: 12 }),
+      E({
+        kind: 'proc', id: 'backdraft', name: 'Backdraft',
+        trigger: { on: 'hurt', chance: 0.25 },
+        action: { do: 'status', status: 'burn', power: 2, ticks: 70 },
+        icd: 80,
+      }),
+    ],
+    desc: 'Struck hard, the cloth remembers it was fire first.',
+  },
+  {
+    id: 'dragonhide_ward', name: 'Dragonhide Ward', prefix: 'Dragonhide', tier: 3, slot: 'body',
+    element: 'ember', level: 48,
+    effects: [E({ kind: 'maxHp', amount: 20 }), E({ kind: 'armor', amount: 2 })],
+    desc: 'Scale-logic worked into ordinary cloth. Blows slide where they meant to bite.',
+  },
+  {
+    id: 'voidweave_ward', name: 'Voidweave Ward', prefix: 'Voidweave', tier: 3, slot: 'body',
+    element: 'void', level: 52,
+    effects: [E({ kind: 'armor', amount: 3 }), E({ kind: 'skill', skill: 'sneak', amount: 2 })],
+    desc: 'The garment declines to be looked at directly. So, mostly, do you.',
+  },
+  {
+    id: 'stoneheart_ward', name: 'Stoneheart Ward', prefix: 'Stoneheart', tier: 4, slot: 'body',
+    element: 'frost', level: 64,
+    effects: [
+      E({ kind: 'maxHp', amount: 30 }),
+      E({ kind: 'armor', amount: 3 }),
+      E({
+        kind: 'proc', id: 'stoneheart', name: 'Stoneheart',
+        trigger: { on: 'lowHp', pct: 0.35 },
+        action: { do: 'ward', absorb: 70, ticks: 160 },
+        icd: 1200,
+      }),
+    ],
+    desc: 'It waits until things are genuinely bad, and then it holds.',
+  },
+  {
+    id: 'thornlord_ward', name: 'Thornlord Ward', prefix: 'Thornlord', tier: 4, slot: 'body',
+    element: 'verdant', level: 70,
+    effects: [
+      E({ kind: 'thorns', amount: 4 }),
+      E({ kind: 'armor', amount: 2 }),
+      E({
+        kind: 'proc', id: 'briarburst', name: 'Briarburst',
+        trigger: { on: 'hurt', chance: 0.3 },
+        action: { do: 'nova', damage: 10, radius: 2.4 },
+        icd: 100,
+      }),
+    ],
+    desc: 'A thicket does not defend itself politely, and neither does this.',
+  },
+  {
+    id: 'worldheart_ward', name: 'Worldheart Ward', prefix: 'Worldheart', tier: 5, slot: 'body',
+    element: 'verdant', level: 86,
+    effects: [
+      E({ kind: 'maxHp', amount: 45 }),
+      E({ kind: 'regen', amount: 3 }),
+      E({
+        kind: 'proc', id: 'worldheart', name: 'Worldheart',
+        trigger: { on: 'lowHp', pct: 0.4 },
+        action: { do: 'heal', amount: 60 },
+        icd: 1400,
+      }),
+    ],
+    desc: 'Old forest patience, worn on the body. It has seen worse than this and stayed.',
+  },
+
+  // ------------------------------------------------------------ head
+  {
+    id: 'keen_sight', name: 'Keen Sight', prefix: 'Keen-eyed', tier: 1, slot: 'head',
+    element: 'astral', level: 6,
+    effects: [E({ kind: 'skill', skill: 'archery', amount: 1 })],
+    desc: 'Distance stops arguing with you. The loose comes easier.',
+  },
+  {
+    id: 'warded_crown', name: 'Frostbrow Sigilwork', prefix: 'Frostbrow', tier: 2, slot: 'head',
+    element: 'frost', level: 30,
+    effects: [E({ kind: 'armor', amount: 2 }), E({ kind: 'maxHp', amount: 8 })],
+    desc: 'Cold sits in the brow band and takes the edge off what lands there.',
+  },
+  {
+    id: 'farseers_crown', name: "Farseer's Sigilwork", prefix: 'Farseeing', tier: 3, slot: 'head',
+    element: 'astral', level: 50,
+    effects: [
+      E({ kind: 'skill', skill: 'arx', amount: 2 }),
+      E({
+        kind: 'proc', id: 'farsight', name: 'Farsight',
+        trigger: { on: 'stride', tiles: 34 },
+        action: { do: 'reveal', radius: 9, of: 'node' },
+        icd: 300,
+      }),
+    ],
+    desc: 'Walk long enough and the ground starts telling you what it is holding.',
+  },
+  {
+    id: 'runethinkers_crown', name: "Runethinker's Sigilwork", prefix: 'Runethinking', tier: 4, slot: 'head',
+    element: 'arcane', level: 68,
+    effects: [
+      E({ kind: 'cooldown', pct: 12 }),
+      E({
+        kind: 'proc', id: 'second_thought', name: 'Second Thought',
+        trigger: { on: 'cast' },
+        action: { do: 'surge', stat: 'crit', pct: 12, ticks: 80 },
+        icd: 220,
+      }),
+    ],
+    desc: 'One art fires and the next is already half-assembled behind your eyes.',
+  },
+  {
+    id: 'oracles_crown', name: "Oracle's Sigilwork", prefix: 'Oracular', tier: 5, slot: 'head',
+    element: 'astral', level: 88,
+    effects: [
+      E({ kind: 'skill', skill: 'arx', amount: 3 }),
+      E({ kind: 'cooldown', pct: 12 }),
+      E({
+        kind: 'proc', id: 'oracle_eye', name: 'The Eye Opens',
+        trigger: { on: 'stride', tiles: 26 },
+        action: { do: 'reveal', radius: 12, of: 'foe' },
+        icd: 260,
+      }),
+    ],
+    desc: 'Nothing gets to be behind you any more. It is restful and it is not.',
+  },
+
+  // ------------------------------------------------------------ legs
+  //
+  // Legs carried exactly ONE working for the whole game before this,
+  // which is not a choice, it is a formality. The line below is built
+  // around the two things legs actually do: carry you, and keep
+  // carrying you after something hits you.
+  {
+    id: 'sure_footed', name: 'Sure-footed Ward', prefix: 'Sure-footed', tier: 1, slot: 'legs',
+    element: 'verdant', level: 6,
+    effects: [E({ kind: 'speed', pct: 1 })],
+    desc: 'Roots and loose stone stop mattering quite so much.',
+  },
+  {
+    id: 'padded_greaves', name: 'Padded Ward', prefix: 'Padded', tier: 1, slot: 'legs',
+    element: 'arcane', level: 12,
+    effects: [E({ kind: 'armor', amount: 1 })],
+    desc: 'Quiet stuffing in the places that always get hit first.',
+  },
+  {
+    id: 'longstride', name: 'Longstride Ward', prefix: 'Longstride', tier: 2, slot: 'legs',
+    element: 'storm', level: 26,
+    effects: [E({ kind: 'speed', pct: 2.5 })],
+    desc: 'The same walk covers more ground. Nobody can say quite how.',
+  },
+  {
+    id: 'unyielding_greaves', name: 'Unyielding Ward', prefix: 'Unyielding', tier: 3, slot: 'legs',
+    element: 'frost', level: 45,
+    effects: [E({ kind: 'armor', amount: 5 }), E({ kind: 'maxHp', amount: 8 })],
+    desc: 'Set once, and the ground under you becomes the argument.',
+  },
+  {
+    id: 'wayfarers_greaves', name: "Wayfarer's Ward", prefix: 'Wayfaring', tier: 3, slot: 'legs',
+    element: 'astral', level: 50,
+    effects: [
+      E({ kind: 'speed', pct: 3 }),
+      E({
+        kind: 'proc', id: 'second_wind_stride', name: 'Second Wind',
+        trigger: { on: 'stride', tiles: 46 },
+        action: { do: 'surge', stat: 'speed', pct: 20, ticks: 90 },
+        icd: 260,
+      }),
+    ],
+    desc: 'The long road stops taking from you somewhere around the third mile.',
+  },
+  {
+    id: 'bulwark_greaves', name: 'Anchored Ward', prefix: 'Anchored', tier: 4, slot: 'legs',
+    element: 'frost', level: 62,
+    effects: [
+      E({ kind: 'armor', amount: 8 }),
+      E({ kind: 'maxHp', amount: 14 }),
+      E({
+        kind: 'proc', id: 'dig_in', name: 'Dig In',
+        trigger: { on: 'hurt', chance: 0.2 },
+        action: { do: 'ward', absorb: 26, ticks: 120 },
+        icd: 300,
+      }),
+    ],
+    desc: 'Every blow that lands teaches the legs to be somewhere harder to move.',
+  },
+  {
+    id: 'stormstep_greaves', name: 'Stormstep Ward', prefix: 'Stormstep', tier: 4, slot: 'legs',
+    element: 'storm', level: 68,
+    effects: [
+      E({ kind: 'speed', pct: 4 }),
+      E({
+        kind: 'proc', id: 'stormstep', name: 'Stormstep',
+        trigger: { on: 'stride', tiles: 32 },
+        action: { do: 'surge', stat: 'speed', pct: 28, ticks: 70 },
+        icd: 200,
+      }),
+    ],
+    desc: 'The weather gets behind you and pushes, for a while, at intervals.',
+  },
+  {
+    id: 'titanstride', name: 'Titanstride Ward', prefix: 'Titanstride', tier: 5, slot: 'legs',
+    element: 'verdant', level: 84,
+    effects: [
+      E({ kind: 'armor', amount: 10 }),
+      E({ kind: 'maxHp', amount: 25 }),
+      E({ kind: 'speed', pct: 3 }),
+      E({
+        kind: 'proc', id: 'rooted', name: 'Rooted',
+        trigger: { on: 'lowHp', pct: 0.3 },
+        action: { do: 'ward', absorb: 90, ticks: 200 },
+        icd: 1400,
+      }),
+    ],
+    desc: 'Something under the ground has opinions about you falling over.',
+  },
+
+  // ----------------------------------------------------------- boots
+  {
+    id: 'pathfinders_step', name: "Pathfinder's Stride", prefix: 'Pathfinding', tier: 1, slot: 'boots',
+    element: 'astral', level: 6,
+    effects: [E({ kind: 'speed', pct: 1 })],
+    desc: 'The way ahead reads a little clearer than it has any right to.',
+  },
+  {
+    id: 'prospectors_step', name: "Prospector's Stride", prefix: 'Prospecting', tier: 2, slot: 'boots',
+    element: 'verdant', level: 28,
+    effects: [
+      E({
+        kind: 'proc', id: 'good_footing', name: 'Good Footing',
+        trigger: { on: 'gather', chance: 0.18 },
+        action: { do: 'yield', extra: 1 },
+        icd: 40,
+      }),
+    ],
+    desc: 'You end up standing in the right spot more often than chance allows.',
+  },
+  {
+    id: 'emberstep', name: 'Emberstep Stride', prefix: 'Emberstep', tier: 3, slot: 'boots',
+    element: 'ember', level: 46,
+    effects: [
+      E({ kind: 'speed', pct: 3 }),
+      E({
+        kind: 'proc', id: 'cinder_trail', name: 'Cinder Trail',
+        trigger: { on: 'stride', tiles: 24 },
+        action: { do: 'nova', damage: 8, radius: 2.2 },
+        icd: 160,
+      }),
+    ],
+    desc: 'What you leave behind keeps burning for a moment after you have gone.',
+  },
+  {
+    id: 'voidstep', name: 'Voidstep Stride', prefix: 'Voidstep', tier: 4, slot: 'boots',
+    element: 'void', level: 62,
+    effects: [
+      E({ kind: 'speed', pct: 4 }),
+      E({ kind: 'skill', skill: 'sneak', amount: 2 }),
+      E({
+        kind: 'proc', id: 'slip_away', name: 'Slip Away',
+        trigger: { on: 'stride', tiles: 36 },
+        action: { do: 'surge', stat: 'speed', pct: 24, ticks: 80 },
+        icd: 220,
+      }),
+    ],
+    desc: 'The ground lets go early and the sound arrives late.',
+  },
+  {
+    id: 'stormrunner', name: 'Stormrunner Stride', prefix: 'Stormrunner', tier: 5, slot: 'boots',
+    element: 'storm', level: 92,
+    effects: [
+      E({ kind: 'speed', pct: 6 }),
+      E({
+        kind: 'proc', id: 'stormrunner', name: 'Stormrunner',
+        trigger: { on: 'stride', tiles: 22 },
+        action: { do: 'chain', damage: 12, jumps: 3 },
+        icd: 180,
+      }),
+    ],
+    desc: 'A running charge builds up in the heel and has to go somewhere.',
+  },
+
+  // ------------------------------------------------------------ cape
+  //
+  // Capes had exactly one working, at tier 3, which meant a cape was
+  // unenchantable for the first forty-nine levels of the trade. The
+  // cape's channel is the WAKE, so its line is built around motion and
+  // aftermath: what happens when you kill, when you cast, when you run.
+  {
+    id: 'travellers_mantle', name: "Traveller's Mantle", prefix: 'Travelling', tier: 1, slot: 'cape',
+    element: 'astral', level: 8,
+    effects: [E({ kind: 'speed', pct: 1.5 })],
+    desc: 'Cut for long roads by somebody who had walked a few.',
+  },
+  {
+    id: 'warm_mantle', name: 'Warm Mantle', prefix: 'Warm', tier: 2, slot: 'cape',
+    element: 'ember', level: 26,
+    effects: [E({ kind: 'maxHp', amount: 10 })],
+    desc: 'Banked heat in the lining. You last longer at everything, including winter.',
+  },
+  {
+    id: 'quickened_mantle', name: 'Quickened Mantle', prefix: 'Quickened', tier: 2, slot: 'cape',
+    element: 'arcane', level: 34,
+    effects: [E({ kind: 'cooldown', pct: 4 })],
+    desc: 'The cloth hurries a little. Whatever you were about to do comes back sooner.',
+  },
+  {
+    id: 'shrouded_mantle', name: 'Shrouded Mantle', prefix: 'Shrouded', tier: 3, slot: 'cape',
+    element: 'void', level: 46,
+    effects: [E({ kind: 'skill', skill: 'sneak', amount: 2 }), E({ kind: 'speed', pct: 2 })],
+    desc: 'It hangs wrong on purpose. Eyes slide off the shape of you.',
+  },
+  {
+    id: 'revenants_mantle', name: "Revenant's Mantle", prefix: 'Revenant', tier: 4, slot: 'cape',
+    element: 'blood', level: 64,
+    effects: [
+      E({ kind: 'maxHp', amount: 15 }),
+      E({
+        kind: 'proc', id: 'blood_price', name: 'Blood Price',
+        trigger: { on: 'kill' },
+        action: { do: 'heal', amount: 14 },
+        icd: 60,
+      }),
+    ],
+    desc: 'What goes out of them comes back into you. Nobody is comfortable about it.',
+  },
+  {
+    id: 'stormcallers_mantle', name: "Stormcaller's Mantle", prefix: 'Stormcalling', tier: 4, slot: 'cape',
+    element: 'storm', level: 72,
+    effects: [
+      E({ kind: 'cooldown', pct: 7 }),
+      E({
+        kind: 'proc', id: 'gathering_storm', name: 'Gathering Storm',
+        trigger: { on: 'stacks', per: 'cast', count: 3 },
+        action: { do: 'surge', stat: 'damage', pct: 18, ticks: 100 },
+        icd: 200,
+      }),
+    ],
+    desc: 'Three arts in and the air behind your shoulders has made up its mind.',
+  },
+  {
+    id: 'comet_mantle', name: 'Comet Mantle', prefix: 'Comet', tier: 5, slot: 'cape',
+    element: 'astral', level: 86,
+    effects: [
+      E({ kind: 'speed', pct: 4 }),
+      E({
+        kind: 'proc', id: 'comet_tail', name: 'Comet Tail',
+        trigger: { on: 'stride', tiles: 28 },
+        action: { do: 'nova', damage: 15, radius: 3 },
+        icd: 170,
+      }),
+    ],
+    desc: 'You are the near end of something long and very bright.',
+  },
+
+  // ---------------------------------------------------------- gloves
+  {
+    id: 'quarriers_grip', name: "Quarrier's Grip", prefix: 'Quarrying', tier: 2, slot: 'gloves',
+    element: 'verdant', level: 30,
+    effects: [
+      E({ kind: 'skill', skill: 'mining', amount: 2 }),
+      E({ kind: 'skill', skill: 'woodcutting', amount: 2 }),
+      E({ kind: 'skill', skill: 'fishing', amount: 2 }),
+      E({
+        kind: 'proc', id: 'good_seam', name: 'Good Seam',
+        trigger: { on: 'gather', chance: 0.15 },
+        action: { do: 'yield', extra: 1 },
+        icd: 60,
+      }),
+    ],
+    desc: 'Hands that have done this before, lent to hands that are learning.',
+  },
+  {
+    id: 'masters_grip', name: "Master's Grip", prefix: 'Masterful', tier: 3, slot: 'gloves',
+    element: 'arcane', level: 46,
+    effects: [
+      E({ kind: 'skill', skill: 'onehand', amount: 2 }),
+      E({ kind: 'skill', skill: 'twohand', amount: 2 }),
+      E({ kind: 'skill', skill: 'archery', amount: 2 }),
+      E({ kind: 'skill', skill: 'arx', amount: 2 }),
+    ],
+    desc: 'Whatever you pick up, the hands have already met one of those.',
+  },
+  {
+    id: 'bloodletters_grip', name: "Bloodletter's Grip", prefix: 'Bloodletting', tier: 3, slot: 'gloves',
+    element: 'blood', level: 50,
+    effects: [
+      E({ kind: 'crit', pct: 4 }),
+      E({
+        kind: 'proc', id: 'bloodletting', name: 'Bloodletting',
+        trigger: { on: 'stacks', per: 'crit', count: 4 },
+        action: { do: 'status', status: 'bleed', power: 3, ticks: 90 },
+        icd: 100,
+      }),
+    ],
+    desc: 'The fourth clean hit opens something that does not close on its own.',
+  },
+  {
+    id: 'reapers_grip', name: "Reaper's Grip", prefix: 'Reaping', tier: 4, slot: 'gloves',
+    element: 'blood', level: 64,
+    effects: [
+      E({ kind: 'crit', pct: 5 }),
+      E({
+        kind: 'proc', id: 'toll_taken', name: 'Toll Taken',
+        trigger: { on: 'stacks', per: 'hit', count: 10 },
+        action: { do: 'heal', amount: 22 },
+        icd: 120,
+      }),
+    ],
+    desc: 'It counts to ten and takes its fee out of somebody else.',
+  },
+  {
+    id: 'godhands', name: 'Sovereign Grip', prefix: 'Sovereign', tier: 5, slot: 'gloves',
+    element: 'radiant', level: 90,
+    effects: [
+      E({ kind: 'skill', skill: 'onehand', amount: 3 }),
+      E({ kind: 'skill', skill: 'twohand', amount: 3 }),
+      E({ kind: 'skill', skill: 'archery', amount: 3 }),
+      E({ kind: 'skill', skill: 'arx', amount: 3 }),
+      E({ kind: 'crit', pct: 6 }),
+      E({
+        kind: 'proc', id: 'perfect_form', name: 'Perfect Form',
+        trigger: { on: 'stacks', per: 'crit', count: 3 },
+        action: { do: 'surge', stat: 'damage', pct: 22, ticks: 90 },
+        icd: 180,
+      }),
+    ],
+    desc: 'Three in a row and the hands stop consulting you about the fourth.',
+  },
+
+  // --------------------------------------------------------- offhand
+  {
+    id: 'mending_rune', name: 'Mending Rune', prefix: 'Mending', tier: 1, slot: 'offhand',
+    element: 'verdant', level: 10,
+    effects: [E({ kind: 'regen', amount: 1 })],
+    desc: 'A slow green mark that thinks wounds are untidy.',
+  },
+  {
+    id: 'thorn_rune', name: 'Thorn Rune', prefix: 'Thorned', tier: 2, slot: 'offhand',
+    element: 'verdant', level: 32,
+    effects: [E({ kind: 'thorns', amount: 2 }), E({ kind: 'armor', amount: 2 })],
+    desc: 'Whatever comes at this hand gets a little of itself back.',
+  },
+  {
+    id: 'wardens_rune', name: "Warden's Rune", prefix: 'Wardenly', tier: 3, slot: 'offhand',
+    element: 'frost', level: 48,
+    effects: [
+      E({ kind: 'armor', amount: 5 }),
+      E({
+        kind: 'proc', id: 'held_line', name: 'Held Line',
+        trigger: { on: 'block' },
+        action: { do: 'ward', absorb: 20, ticks: 100 },
+        icd: 240,
+      }),
+    ],
+    desc: 'A blow turned is not a blow survived. It is a blow you learned from.',
+  },
+  {
+    id: 'sentinels_rune', name: "Sentinel's Rune", prefix: 'Sentinel', tier: 4, slot: 'offhand',
+    element: 'radiant', level: 64,
+    effects: [
+      E({ kind: 'armor', amount: 7 }),
+      E({ kind: 'maxHp', amount: 8 }),
+      E({
+        kind: 'proc', id: 'answering_light', name: 'Answering Light',
+        trigger: { on: 'block' },
+        action: { do: 'nova', damage: 12, radius: 2.4 },
+        icd: 120,
+      }),
+    ],
+    desc: 'It does not simply stop things. It has something to say about them.',
+  },
+  {
+    id: 'bastion_rune', name: 'Bastion Rune', prefix: 'Bastion', tier: 5, slot: 'offhand',
+    element: 'arcane', level: 90,
+    effects: [
+      E({ kind: 'armor', amount: 10 }),
+      E({ kind: 'maxHp', amount: 20 }),
+      E({ kind: 'thorns', amount: 2 }),
+      E({
+        kind: 'proc', id: 'bastion', name: 'Bastion',
+        trigger: { on: 'stacks', per: 'block', count: 4 },
+        action: { do: 'ward', absorb: 100, ticks: 220 },
+        icd: 400,
+      }),
+    ],
+    desc: 'Four turned in a row and the sigil decides the wall is the point.',
+  },
 ];
 
 export const ENCHANTS = new Map<string, EnchantDef>();
@@ -476,9 +1183,25 @@ const PROC_SHAPES = new Map<string, string>();
 for (const e of ENCHANT_DEFS) {
   if (ENCHANTS.has(e.id)) throw new Error(`duplicate enchant id: ${e.id}`);
   if (e.effects.length === 0) throw new Error(`enchant ${e.id} has no effects`);
+  const band = TIER_BANDS[e.tier];
+  if (e.level < band.lo || e.level > band.hi) {
+    throw new Error(
+      `enchant ${e.id} is tier ${e.tier} at level ${e.level}, outside ${band.lo}-${band.hi}`,
+    );
+  }
   for (const fx of e.effects) {
     if (fx.kind !== 'proc') continue;
     if (fx.icd <= 0) throw new Error(`proc ${fx.id} (${e.id}) must rest: icd > 0`);
+    const bad = procMismatch(fx);
+    if (bad) throw new Error(`proc ${fx.id} (${e.id}) can never fire: ${bad}`);
+    // A strike-triggered working on a piece that never lands a blow is
+    // the other unfirable pairing: hit/crit/cadence resolve from the
+    // WEAPON INSTANCE, so a glove or a helm carrying one is silent.
+    if (isStrikeTrigger(fx.trigger.on) && e.slot !== 'weapon' && e.slot !== 'offhand') {
+      throw new Error(
+        `proc ${fx.id} (${e.id}) triggers on '${fx.trigger.on}', which only steel can answer`,
+      );
+    }
     const shape = JSON.stringify([fx.name, fx.trigger, fx.action]);
     const seen = PROC_SHAPES.get(fx.id);
     if (seen !== undefined && seen !== shape) {
@@ -494,18 +1217,38 @@ export function enchantDef(id: string | undefined): EnchantDef | undefined {
 }
 
 /** Reagent theme per element: the essence a scroll of that element needs. */
+/**
+ * The essence a scroll of each school needs. Every school but arcane
+ * has one of its own now; arcane runs on dust alone, because arcane IS
+ * the dust.
+ *
+ * Void used to borrow `gloomsilk_thread` and radiant `sunflower` —
+ * a tailoring material and a farm crop pressed into service because
+ * neither school had anything else. Both schools now have their own
+ * essence, and both of those items keep every other use they had.
+ */
 export const ELEMENT_REAGENT: Partial<Record<ArxElement, string>> = {
   ember: 'ember_essence',
   frost: 'frost_essence',
   storm: 'storm_essence',
   verdant: 'verdant_essence',
   blood: 'crimson_essence',
-  void: 'gloomsilk_thread',
-  radiant: 'sunflower',
+  void: 'umbral_essence',
+  radiant: 'radiant_essence',
+  astral: 'astral_essence',
   // arcane runs on dust alone.
 };
 
-/** Tier-3 capstone reagent: the element's gem, or gold for the rest. */
+/**
+ * Tier-3 capstone reagent: the element's gem, or gold for the rest.
+ *
+ * Deliberately NOT filled out for the other five schools. These four
+ * gems are the battlestaff swap stones (GEM_BATTLESTAFFS), so minting
+ * a voidglass or a starstone would put a gem in the world that looks
+ * exactly like a socketing stone and cannot socket anything. The gap is
+ * the honest reading: four schools have staves, and those four schools
+ * have gems. Everyone else pays the capstone in gold.
+ */
 export const ELEMENT_GEM: Partial<Record<ArxElement, string>> = {
   ember: 'emberstone',
   frost: 'frostshard',

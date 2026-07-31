@@ -1,6 +1,6 @@
 import type { EquipSlot, PassiveId, RarityTier, SkillId, StatusApply } from '@arx/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
-import { ELEMENT_COLORS, ENCHANT_DEFS, type EnchantEffect } from './equipment/enchants.js';
+import { ELEMENT_COLORS, ENCHANT_DEFS, type EnchantEffect, type EnchantTier } from './equipment/enchants.js';
 import type { ArmorClass, GearSlot } from './equipment/types.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 
@@ -25,6 +25,25 @@ export type ArxElement =
   | 'blood'
   /** The legendary school: starlight from before the sky settled. */
   | 'astral';
+
+/**
+ * The schools, as a roster you can walk. The union alone cannot be
+ * iterated, which meant nothing could ever ask "does every school have
+ * workings of its own" — and the answer, for a long time, was no:
+ * astral had none at all and void had two. Keep this in step with the
+ * union above; the enchant tests walk it.
+ */
+export const ARX_ELEMENTS: readonly ArxElement[] = [
+  'arcane',
+  'ember',
+  'frost',
+  'storm',
+  'verdant',
+  'void',
+  'radiant',
+  'blood',
+  'astral',
+];
 
 export interface WeaponStats {
   style: CombatStyle;
@@ -556,6 +575,37 @@ const defs: ItemDef[] = [
     color: '#c04848',
     code: 'xc',
   },
+  // The three late schools. Void and radiant used to borrow a tailor's
+  // thread and a farmer's flower because neither had anything of its
+  // own; astral had nothing at all, which is why no astral enchant
+  // existed to want it.
+  {
+    id: 'umbral_essence',
+    name: 'Umbral essence',
+    stackable: true,
+    value: 34,
+    desc: 'A pinch of the dark that stays dark with a lamp on it.',
+    color: '#8a78b0',
+    code: 'xu',
+  },
+  {
+    id: 'radiant_essence',
+    name: 'Radiant essence',
+    stackable: true,
+    value: 34,
+    desc: 'Caught daylight, still warm at midnight. It will not sit still in the hand.',
+    color: '#f2d98a',
+    code: 'xr',
+  },
+  {
+    id: 'astral_essence',
+    name: 'Astral essence',
+    stackable: true,
+    value: 40,
+    desc: 'A bead of far-off cold. Hold it up and the whole sky is in there, very small.',
+    color: '#9ae8de',
+    code: 'xa',
+  },
   // Relics — worn actives (E). The Minecraft-Dungeons-artifact slot:
   // your second ability comes from the trinket you hunt down, so build
   // identity is a loot chase, not a menu pick.
@@ -993,7 +1043,9 @@ for (const t of TOOL_LADDER) {
 // plain stackable trade good: the enchanter's skill went into
 // INSCRIBING it (see recipes.ts); anyone may apply one, which is how a
 // specialist enchanter powers up the whole town's gear.
-const SCROLL_VALUE_BY_TIER: Record<1 | 2 | 3, number> = { 1: 90, 2: 260, 3: 700 };
+const SCROLL_VALUE_BY_TIER: Record<EnchantTier, number> = {
+  1: 90, 2: 260, 3: 700, 4: 1800, 5: 4500,
+};
 const scrollDefs: ItemDef[] = ENCHANT_DEFS.map((e, i) => ({
   id: `scroll_${e.id}`,
   name: `${e.name} Scroll`,

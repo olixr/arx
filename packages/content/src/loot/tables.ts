@@ -419,6 +419,7 @@ const defs: LootTableDef[] = [
       { item: 'oak_kiteshield', chance: 0.015 },
       { item: 'aegis_stone', chance: 0.02 },
       { item: 'gloomsilk_thread', qty: [1, 2], chance: 0.2 },
+      { item: 'umbral_essence', chance: 0.14 },
       { item: 'arcane_dust', qty: [1, 3], chance: 0.22 },
       { item: 'frost_essence', chance: 0.11 },
       { item: 'weathered_letter', chance: 0.035 },
@@ -477,6 +478,8 @@ const defs: LootTableDef[] = [
       { item: 'gravewrought', chance: 0.03 },
       { item: 'iron_bar', qty: [1, 2], chance: 0.4 },
       { item: 'gloomsilk_thread', qty: [2, 5], chance: 0.5 },
+      // The dark he has stood in for a few centuries has gone thick.
+      { item: 'umbral_essence', qty: [1, 3], chance: 0.4 },
       { item: 'storm_bell', chance: 0.08 },
       { item: 'storm_coil', chance: 0.07 },
       { item: 'seeker_stone', chance: 0.05 },
@@ -654,6 +657,8 @@ const defs: LootTableDef[] = [
       { item: 'arcane_dust', qty: [3, 6], chance: 0.7 },
       { item: 'storm_essence', qty: [1, 3], chance: 0.4 },
       { item: 'frost_essence', qty: [1, 3], chance: 0.4 },
+      // Gold keeps daylight better than most things.
+      { item: 'radiant_essence', qty: [1, 2], chance: 0.3 },
       { table: 'heirlooms', mult: 2 },
       // The gilded locks held the rest of the magister's estate.
       ...setDrops('orrery', 0.008),
@@ -740,6 +745,8 @@ const defs: LootTableDef[] = [
       { item: 'dungeon_key', chance: 0.6 },
       { item: 'arcane_dust', qty: [4, 8], chance: 0.8 },
       { item: 'crimson_essence', qty: [2, 4], chance: 0.5 },
+      { item: 'radiant_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'astral_essence', qty: [1, 3], chance: 0.3 },
       // The king under the hill banked with the house he built.
       ...setDrops('barrowking', 0.008),
       // A rook got here first, once. It left the feathers behind.
@@ -765,6 +772,8 @@ const defs: LootTableDef[] = [
       { item: 'brass_key', chance: 0.12 },
       { item: 'arcane_dust', qty: [2, 5], chance: 0.6 },
       { item: 'storm_essence', qty: [1, 2], chance: 0.25 },
+      // The gate looks somewhere very far away. Some of it condenses.
+      { item: 'astral_essence', qty: [1, 2], chance: 0.3 },
       { table: 'crypt_arms', mult: 8 },
       // Ground from a pane of this very gate.
       { item: 'riftglass', chance: 0.006 },
@@ -994,6 +1003,8 @@ const defs: LootTableDef[] = [
       { item: 'bones' },
       { item: 'crimson_essence', chance: 0.06 },
       { item: 'gloomsilk_thread', chance: 0.12 },
+      // It has never once seen the sun, and it shows.
+      { item: 'umbral_essence', chance: 0.1 },
     ],
   },
   {
@@ -1018,6 +1029,7 @@ const defs: LootTableDef[] = [
     entries: [
       { item: 'venom_gland', chance: 0.5 },
       { item: 'gloomsilk_thread', qty: [1, 2], chance: 0.4 },
+      { item: 'umbral_essence', chance: 0.12 },
       { item: 'crimson_essence', chance: 0.08 },
       // The spider owns Broodsilk — its own silk, worn back at it.
       // A long hunt: the web gives nothing up twice.

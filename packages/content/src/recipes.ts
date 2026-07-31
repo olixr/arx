@@ -1,6 +1,6 @@
 import type { SkillId, StationType } from '@arx/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
-import { ELEMENT_GEM, ELEMENT_REAGENT, ENCHANT_DEFS } from './equipment/enchants.js';
+import { ELEMENT_GEM, ELEMENT_REAGENT, ENCHANT_DEFS, type EnchantTier } from './equipment/enchants.js';
 
 /**
  * THE RECIPE IS KNOWLEDGE: how a character comes to know a recipe.
@@ -727,15 +727,24 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
 /**
  * Enchanting recipes, generated from the enchant roster. Reagent law:
  * every scroll takes arcane dust (the universal binder, scaling by
- * tier), elemental scrolls add their element's essence, tier-2 scrolls
- * bind through a silver bar, and tier-3 capstones demand the element's
- * gem (or a gold bar where no gem exists) — the dungeon-chase
- * ingredient.
+ * tier) and its element's essence. Above that, each band binds through
+ * a metal, and the metal is the ladder:
+ *
+ *   t2  silver bar   the enchanter's own metal
+ *   t3  the school's gem, or gold where the school has no stave
+ *   t4  mithril bar
+ *   t5  starsteel bar
+ *
+ * THE ENCHANTER NEEDS A SMITH. The two top bands are deliberately
+ * gated behind bars nobody can dig up and use raw: a masterwork scroll
+ * means somebody smelted starsteel for it. That is a trade route
+ * between two professions, and it costs nothing to build because both
+ * metals already exist with their own sources and their own ladder.
  */
-const DUST_BY_TIER: Record<1 | 2 | 3, number> = { 1: 2, 2: 4, 3: 8 };
-const ESSENCE_BY_TIER: Record<1 | 2 | 3, number> = { 1: 1, 2: 2, 3: 4 };
-const XP_BY_TIER: Record<1 | 2 | 3, number> = { 1: 30, 2: 75, 3: 150 };
-const TICKS_BY_TIER: Record<1 | 2 | 3, number> = { 1: 35, 2: 50, 3: 65 };
+const DUST_BY_TIER: Record<EnchantTier, number> = { 1: 2, 2: 4, 3: 8, 4: 14, 5: 24 };
+const ESSENCE_BY_TIER: Record<EnchantTier, number> = { 1: 1, 2: 2, 3: 4, 4: 7, 5: 12 };
+const XP_BY_TIER: Record<EnchantTier, number> = { 1: 30, 2: 75, 3: 150, 4: 340, 5: 750 };
+const TICKS_BY_TIER: Record<EnchantTier, number> = { 1: 35, 2: 50, 3: 65, 4: 85, 5: 110 };
 
 const enchantRecipes: RecipeDef[] = ENCHANT_DEFS.map((e) => {
   const inputs: Array<{ item: string; qty: number }> = [
@@ -747,6 +756,8 @@ const enchantRecipes: RecipeDef[] = ENCHANT_DEFS.map((e) => {
   // keeping the silver lodes busy long past the jeweller's bench.
   if (e.tier === 2) inputs.push({ item: 'silver_bar', qty: 1 });
   if (e.tier === 3) inputs.push({ item: ELEMENT_GEM[e.element] ?? 'gold_bar', qty: 1 });
+  if (e.tier === 4) inputs.push({ item: 'mithril_bar', qty: 1 });
+  if (e.tier === 5) inputs.push({ item: 'starsteel_bar', qty: 1 });
   return {
     id: `inscribe_${e.id}`,
     name: `${e.name} Scroll`,
@@ -758,10 +769,39 @@ const enchantRecipes: RecipeDef[] = ENCHANT_DEFS.map((e) => {
     output: { item: `scroll_${e.id}`, qty: 1 },
     ticks: TICKS_BY_TIER[e.tier],
     // Tier ladder of knowledge: entry inscriptions come with the
-    // profession, journeyman work is guild-taught, capstones are found.
+    // profession, journeyman work is guild-taught, and everything from
+    // the capstones up is FOUND. Nothing past tier 2 is ever sold —
+    // the top of this trade is a chase, not a shopping list.
     unlock: (e.tier === 1 ? 'core' : e.tier === 2 ? 'trainer' : 'drop') as RecipeUnlock,
   };
 });
+
+/**
+ * Pressing — the enchanter's own low-level method, and the reason a
+ * farmer keeps a sunflower row.
+ *
+ * Radiant essence used to BE the sunflower: the school had nothing of
+ * its own, so a farm crop stood in as its reagent. Now the flower is
+ * the source and the essence is the reagent, which is one honest step
+ * of work instead of a stand-in, and it keeps the field in the trade.
+ */
+const pressRecipes: RecipeDef[] = [
+  {
+    id: 'press_radiant_essence',
+    name: 'Radiant essence',
+    skill: 'enchanting' as SkillId,
+    levelReq: 12,
+    xp: 45,
+    station: 'enchanting_table' as StationType,
+    inputs: [
+      { item: 'sunflower', qty: 4 },
+      { item: 'arcane_dust', qty: 1 },
+    ],
+    output: { item: 'radiant_essence', qty: 1 },
+    ticks: 40,
+    unlock: 'core' as RecipeUnlock,
+  },
+];
 
 // Gem grinding — the entry rung and the gem sink: any element gem
 // crushes into binder dust.
@@ -889,7 +929,7 @@ for (const id of Object.keys(INLINE_UNLOCK)) {
   if (!defs.some((d) => d.id === id)) throw new Error(`INLINE_UNLOCK names unknown recipe '${id}'`);
 }
 
-const allRecipes: RecipeDef[] = [...inlineRecipes, ...enchantRecipes, ...grindRecipes, ...toolRecipes, ...COMPILED_EQUIPMENT.recipes];
+const allRecipes: RecipeDef[] = [...inlineRecipes, ...enchantRecipes, ...pressRecipes, ...grindRecipes, ...toolRecipes, ...COMPILED_EQUIPMENT.recipes];
 
 export const RECIPES: ReadonlyMap<string, RecipeDef> = new Map(allRecipes.map((d) => [d.id, d]));
 

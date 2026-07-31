@@ -427,9 +427,55 @@ Deferred with reasons: **stack reads on the body** need the live charge on the
 wire and there are no stacking workings yet, so it rides with Phase 3's roster.
 Corpses deliberately do not carry worn light: the light dies with the wearer.
 
-**Phase 3 — THE LONG LADDER.** Tiers 4 and 5, thin slots filled, elements
-finished, the non-combat family. 38 enchants to roughly 90, and a trade that runs
-to 99.
+**Phase 3 — THE LONG LADDER. SHIPPED.** 37 enchants to **88**, and the trade
+finally runs to 95 instead of stopping at 54.
+
+| | before | after |
+|---|---|---|
+| roster | 37 | 88 |
+| top inscription | level 54 | level 95 |
+| legs / cape | 1 each | 9 / 8 |
+| astral / void | 0 / 2 | 9 / 6 |
+| procs in the world | 0 | 33 |
+
+- **Tiers 4 and 5** exist, with `TIER_BANDS` tiling 1-99 with no overlap and no
+  hole. A working authored outside its band is rejected at load, because
+  otherwise the ladder drifts one enchant at a time until tiers stop meaning
+  anything and the cost tables (which key off tier, not level) quietly stop
+  matching the power they pay for.
+- **Every slot now has all five tiers.** Legs and cape were the worst holes: one
+  working each, cape's at tier 3, which made a cape unenchantable for the first
+  forty-nine levels of the trade.
+- **Every school has workings and a reagent of its own.** Three new essences —
+  `umbral`, `radiant`, `astral`. Void used to borrow `gloomsilk_thread` (a
+  tailoring material) and radiant `sunflower` (a farm crop); both items keep
+  every other use they had. Sunflowers now PRESS into radiant essence at the
+  table, which keeps the field in the trade as a craft rather than a stand-in.
+- **The high bands differ in KIND, not magnitude.** 80%+ of tier 4 and 5 carry a
+  proc, so a greater working is a thing that HAPPENS rather than a bigger number.
+  This is where Phase 1's engine finally goes live.
+- **THE ENCHANTER NEEDS A SMITH.** Tier 4 binds through a mithril bar and tier 5
+  through starsteel. Both already exist with their own ladder, so this builds a
+  trade route between two professions for free: a masterwork scroll means
+  somebody smelted for it.
+- **The non-combat family is real and competes for the same slots** — gathering
+  (rhythm and reach only; thrift and doubling stay the Callings'), exploration
+  (reveal, stride surges), and defense (wards on hurt, block, and low health).
+
+Two load-time guards were added because the proc grammar made new mistakes
+possible. A working whose action needs a foe on a trigger that never brings one
+would pass typecheck, bond onto a real item, wake exactly on schedule, and then
+do nothing forever; and a strike-triggered working on a helm or a boot is silent,
+because hit/crit/cadence resolve from the weapon instance that landed. Both are
+now errors at load and tests in `ladder.test.ts`.
+
+Nothing needed doing to make the new content reachable: the recipe-trove tables
+are generated over every drop-unlock recipe and banded by level, so all 50-odd
+new inscriptions joined the chase automatically. Verified rather than assumed.
+
+Also fixed here: `ArxElement` had no runtime roster, so nothing could ever ask
+"does every school have workings of its own" — and the answer was no. `ARX_ELEMENTS`
+now exists and the tests walk it.
 
 **Phase 4 — THE UNMAKING.** Disenchanting, refinement, the new reagents and gems,
 and their sources placed across the zones.
