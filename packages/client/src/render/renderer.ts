@@ -37,6 +37,7 @@ import {
   type ChestKind,
   type ChunkData,
   type DaylightSample,
+  type EntityId,
   type EquipSlot,
   type ItemRoll,
   type Look,
@@ -22090,6 +22091,8 @@ export class Renderer {
         case EntityKind.Prop:
           if (remote.meta.defId?.startsWith('summon_')) {
             items.push(this.summonItem(remote.meta.defId, s, now));
+          } else if (remote.meta.defId === 'gravestone') {
+            items.push(this.gravestoneItem(eid, s));
           }
           break;
         default:
@@ -26056,6 +26059,170 @@ export class Renderer {
   }
 
   /** Placed summons: totem, snare trap, straw decoy. */
+  /**
+   * THE STONE REMEMBERS: a little headstone over a spilled pack, up
+   * for the spill's quarter hour. Kept small against the rig (hip
+   * height) — a marker, not a monument. Each stone leans and cracks
+   * by its eid, so a battlefield of them reads as a yard of
+   * individuals, never a stamp.
+   */
+  private gravestoneItem(eid: number, s: { x: number; y: number }): DrawItem {
+    const ctx = this.ctx;
+    const sc = this.camera.scale;
+    const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
+    p.y -= this.renderLift(s.x, s.y) * sc;
+    // Per-stone identity: lean, crack side, pebble scatter.
+    const h01 = (n: number) => {
+      const v = Math.sin(eid * 127.1 + n * 311.7) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    const lean = (h01(1) - 0.5) * 0.14;
+    const crackSide = h01(2) < 0.5 ? -1 : 1;
+    return {
+      sortY: s.y,
+      drawShadow: () => {
+        this.castContact(p.x, p.y + sc * 0.05, sc * 0.3, sc * 0.12);
+      },
+      draw: () => {
+        const w = sc * 0.44;
+        const h = sc * 0.82;
+        const th = sc * 0.09; // slab thickness read on the top plane
+        // Turned earth at the foot — the ground remembers the digging.
+        ctx.fillStyle = '#4a3826';
+        ctx.beginPath();
+        facetBlob(ctx, p.x, p.y - sc * 0.01, sc * 0.3, eid * 7 + 3, 7, 0.38);
+        ctx.fill();
+        ctx.fillStyle = '#5d452c';
+        ctx.beginPath();
+        facetBlob(ctx, p.x - sc * 0.05, p.y - sc * 0.035, sc * 0.2, eid * 7 + 5, 6, 0.36);
+        ctx.fill();
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(lean);
+        const ch = w * 0.3; // chamfer cut at the shoulders
+        // Slab silhouette (shared by face fill and the outline pass).
+        // The crown is an honest extrusion: the face's chamfered top
+        // boundary raised by the slab thickness, inset as it rises.
+        // Shared corners so face, facets, lid, and outline all meet.
+        const inX = th * 0.45;
+        const A = [-w / 2, -h + ch] as const; // left shoulder root
+        const B = [-w / 2 + ch, -h] as const; // left shoulder crest
+        const C = [w / 2 - ch, -h] as const; // right shoulder crest
+        const D = [w / 2, -h + ch] as const; // right shoulder root
+        const A2 = [A[0] + inX, A[1] - th] as const;
+        const B2 = [B[0] + inX, B[1] - th] as const;
+        const C2 = [C[0] - inX, C[1] - th] as const;
+        const D2 = [D[0] - inX, D[1] - th] as const;
+        const slab = () => {
+          ctx.beginPath();
+          ctx.moveTo(-w / 2, 0);
+          ctx.lineTo(...A);
+          ctx.lineTo(...B);
+          ctx.lineTo(...C);
+          ctx.lineTo(...D);
+          ctx.lineTo(w / 2, 0);
+          ctx.closePath();
+        };
+        // The whole standing silhouette, crown included — one honest
+        // outer boundary for the outline to trace.
+        const whole = () => {
+          ctx.beginPath();
+          ctx.moveTo(-w / 2, 0);
+          ctx.lineTo(...A);
+          ctx.lineTo(...A2);
+          ctx.lineTo(...B2);
+          ctx.lineTo(...C2);
+          ctx.lineTo(...D2);
+          ctx.lineTo(...D);
+          ctx.lineTo(w / 2, 0);
+          ctx.closePath();
+        };
+        // Front face.
+        ctx.fillStyle = '#8b8577';
+        slab();
+        ctx.fill();
+        // Foreshortened top plane — the lit lid the perspective law
+        // demands on every standing block, sun catching it whole.
+        ctx.fillStyle = '#a89f8c';
+        ctx.beginPath();
+        ctx.moveTo(...B);
+        ctx.lineTo(...C);
+        ctx.lineTo(...C2);
+        ctx.lineTo(...B2);
+        ctx.closePath();
+        ctx.fill();
+        // Chamfer facets take their own light: west cut lit, east shaded.
+        ctx.fillStyle = '#9a9282';
+        ctx.beginPath();
+        ctx.moveTo(...A);
+        ctx.lineTo(...B);
+        ctx.lineTo(...B2);
+        ctx.lineTo(...A2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#6b6659';
+        ctx.beginPath();
+        ctx.moveTo(...D);
+        ctx.lineTo(...C);
+        ctx.lineTo(...C2);
+        ctx.lineTo(...D2);
+        ctx.closePath();
+        ctx.fill();
+        // East side shade strip — the slab has a body, not a paper edge.
+        ctx.fillStyle = 'rgba(43, 39, 53, 0.28)';
+        ctx.fillRect(w / 2 - w * 0.14, -h + ch, w * 0.14, h - ch);
+        // The carve: two short name lines nobody left can read.
+        ctx.strokeStyle = 'rgba(58, 53, 64, 0.55)';
+        ctx.lineWidth = Math.max(1, sc * 0.03);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.24, -h * 0.62);
+        ctx.lineTo(w * 0.2, -h * 0.62);
+        ctx.moveTo(-w * 0.18, -h * 0.46);
+        ctx.lineTo(w * 0.12, -h * 0.46);
+        ctx.stroke();
+        // A hairline crack wandering down from one shoulder.
+        ctx.strokeStyle = 'rgba(43, 39, 53, 0.4)';
+        ctx.lineWidth = Math.max(1, sc * 0.022);
+        ctx.beginPath();
+        ctx.moveTo(crackSide * (w / 2 - ch * 0.7), -h + ch * 0.5);
+        ctx.lineTo(crackSide * w * 0.16, -h * 0.78);
+        ctx.lineTo(crackSide * w * 0.24, -h * 0.6);
+        ctx.stroke();
+        // Foot plinth: a slightly prouder base course seating the slab.
+        ctx.fillStyle = '#75705f';
+        ctx.fillRect(-w * 0.58, -sc * 0.075, w * 1.16, sc * 0.075);
+        ctx.fillStyle = '#8b8577';
+        ctx.fillRect(-w * 0.58, -sc * 0.075, w * 1.16, sc * 0.028);
+        // The stone wears its own outline (the held-item law: the body
+        // dilate never rings props) — traced around the WHOLE mass,
+        // crown included, so the lid never reads pasted-on.
+        ctx.strokeStyle = 'rgba(20, 16, 28, 0.75)';
+        ctx.lineWidth = Math.max(1, sc * 0.035);
+        ctx.lineJoin = 'round';
+        whole();
+        ctx.stroke();
+        ctx.strokeRect(-w * 0.58, -sc * 0.075, w * 1.16, sc * 0.075);
+        ctx.restore();
+        // Two pebble chips kicked loose at the foot.
+        ctx.fillStyle = '#75705f';
+        for (let i = 0; i < 2; i++) {
+          ctx.beginPath();
+          facetCircle(
+            ctx,
+            p.x + (h01(3 + i) - 0.5) * sc * 0.66,
+            p.y + sc * (0.02 + h01(5 + i) * 0.045),
+            sc * 0.028,
+            5,
+            eid + i,
+            0.7,
+          );
+          ctx.fill();
+        }
+      },
+    };
+  }
+
   private summonItem(
     defId: string,
     s: { x: number; y: number; hpPct: number },

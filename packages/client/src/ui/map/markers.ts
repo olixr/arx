@@ -203,6 +203,75 @@ export function drawWaypointFlag(
   ctx.restore();
 }
 
+/**
+ * Where the reader last fell: a little bone-ink skull over the spilled
+ * pack, breathing a slow ember ring (the waypoint beacon's grim
+ * cousin). Personal like the flag — nobody else's chart carries it.
+ */
+export function drawDeathMark(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  pulse01: number,
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  // The ember breath: an expanding ring sighing out of the fall.
+  const pr = r * (1.0 + pulse01 * 1.5);
+  ctx.beginPath();
+  ctx.arc(0, 0, pr, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(217, 108, 79, ${0.5 * (1 - pulse01)})`;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  const bone = '#e6ddc8';
+  const skull = (ink: string) => {
+    // Cranium: a broad dome dying into two jaw shoulders.
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.62, r * 0.2);
+    ctx.quadraticCurveTo(-r * 0.72, -r * 0.75, 0, -r * 0.82);
+    ctx.quadraticCurveTo(r * 0.72, -r * 0.75, r * 0.62, r * 0.2);
+    ctx.lineTo(r * 0.36, r * 0.42);
+    ctx.lineTo(r * 0.36, r * 0.72);
+    ctx.lineTo(-r * 0.36, r * 0.72);
+    ctx.lineTo(-r * 0.36, r * 0.42);
+    ctx.closePath();
+    ctx.lineWidth = Math.max(1.2, r * 0.18);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = ink;
+    ctx.stroke();
+  };
+  // Under-shade pass, then the bone ink (the sigil dialect).
+  ctx.save();
+  ctx.translate(r * 0.07, r * 0.1);
+  skull(SHADE);
+  ctx.restore();
+  skull(bone);
+  // Sockets and the nose notch, filled so they read at glass scale.
+  ctx.fillStyle = bone;
+  ctx.beginPath();
+  ctx.arc(-r * 0.27, -r * 0.12, r * 0.17, 0, Math.PI * 2);
+  ctx.arc(r * 0.27, -r * 0.12, r * 0.17, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(0, r * 0.14);
+  ctx.lineTo(-r * 0.1, r * 0.34);
+  ctx.lineTo(r * 0.1, r * 0.34);
+  ctx.closePath();
+  ctx.fill();
+  // Two tooth ticks on the jaw.
+  ctx.strokeStyle = bone;
+  ctx.lineWidth = Math.max(1, r * 0.12);
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.12, r * 0.5);
+  ctx.lineTo(-r * 0.12, r * 0.7);
+  ctx.moveTo(r * 0.12, r * 0.5);
+  ctx.lineTo(r * 0.12, r * 0.7);
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** The reader's own body: a gold compass-arrow token at their heading. */
 export function drawPlayerToken(
   ctx: CanvasRenderingContext2D,

@@ -676,6 +676,12 @@ interface DropComp {
   stolen?: true;
 }
 
+/** A spill's gravestone: who fell, and when the ground forgets. */
+interface GraveComp {
+  name: string;
+  despawnAt: number;
+}
+
 interface ProjectileComp {
   ownerEid: EntityId;
   style: 'archery' | 'magic';
@@ -1314,6 +1320,25 @@ export class GameServer {
   readonly projectiles = this.ecs.register<ProjectileComp>();
   readonly statuses = this.ecs.register<ServerStatus[]>();
   readonly summons = this.ecs.register<SummonComp>();
+  /** Gravestones raised where a pack spilled — world dressing on the
+   *  Prop lane, living exactly as long as the spill's quarter hour. */
+  readonly graves = this.ecs.register<GraveComp>();
+
+  /**
+   * The walk-back beacon: each character's latest spill spot, keyed by
+   * characterId so it survives relogin within the server's life (the
+   * drops it points at are memory too — consistent by construction).
+   * Cleared on arrival, expiry, or the next death overwriting it.
+   */
+  private readonly deathMarks = new Map<number, { x: number; y: number; until: number }>();
+
+  /**
+   * ONE STONE PER SOUL: each character's standing gravestone, so a
+   * death loop replaces its marker instead of tiling the ground with
+   * ten stones. The spilled piles stack regardless — items are items;
+   * the stone is a marker.
+   */
+  private readonly graveByChar = new Map<number, EntityId>();
 
   /** Telegraphed blasts (ground AoEs) waiting to detonate. */
   private readonly pendingBlasts: PendingBlast[] = [];
@@ -2459,6 +2484,19 @@ export class GameServer {
     session.sendJson({ t: 'callings', answered: [...player.callings] });
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
+    // The walk-back beacon survives a relogin while the spill still
+    // holds the ground; a stale entry is swept here instead of sent.
+    {
+      const mark = this.deathMarks.get(player.characterId);
+      if (mark) {
+        const remainMs = mark.until - Date.now();
+        if (remainMs > 0) {
+          session.sendJson({ t: 'deathmark', mark: { x: mark.x, y: mark.y, remainMs } });
+        } else {
+          this.deathMarks.delete(player.characterId);
+        }
+      }
+    }
     // The chart snapshot — after this, fog only ever clears locally on
     // both sides (the deterministic-reveal law).
     {
@@ -11663,6 +11701,38 @@ export class GameServer {
           });
         }
         player.session?.sendJson({ t: 'inv', slots: player.inventory });
+        // THE STONE REMEMBERS: a little gravestone stands over the
+        // spill for its quarter hour — world dressing anyone can see
+        // (a fresh stone advertises fresh loot; that's the game).
+        // One stone per soul: a fresh fall retires the old marker.
+        const oldGrave = this.graveByChar.get(player.characterId);
+        if (oldGrave !== undefined && this.graves.has(oldGrave)) {
+          this.removeFromChunks(oldGrave);
+          this.ecs.destroy(oldGrave);
+        }
+        const graveEid = this.ecs.create();
+        this.kinds.set(graveEid, EntityKind.Prop);
+        // The stone stands at the HEAD of the spill, north of the
+        // pile, so the y-sort keeps the goods at its foot instead of
+        // burying the marker under its own loot icons.
+        this.positions.set(graveEid, { x: spillAt.x, y: spillAt.y - 0.65, dir: 0 });
+        this.graves.set(graveEid, {
+          name: player.name,
+          despawnAt: spillNow + DEATH_SPILL_TTL_MS,
+        });
+        this.graveByChar.set(player.characterId, graveEid);
+        this.updateChunkMembership(graveEid);
+        // The walk-back beacon: a skull on the owner's chart, cleared
+        // when they arrive (tickDrops), expire, or fall again.
+        this.deathMarks.set(player.characterId, {
+          x: spillAt.x,
+          y: spillAt.y,
+          until: spillNow + DEATH_SPILL_TTL_MS,
+        });
+        player.session?.sendJson({
+          t: 'deathmark',
+          mark: { x: spillAt.x, y: spillAt.y, remainMs: DEATH_SPILL_TTL_MS },
+        });
       }
       // The claimed home bed answers first; everyone else wakes at the
       // nearest settled spawn — with one hearth in the world that's
@@ -14016,6 +14086,29 @@ export class GameServer {
         break;
       }
     }
+    // Gravestones sink when the spill's quarter hour runs out.
+    for (const [eid, grave] of this.graves) {
+      if (grave.despawnAt <= now) {
+        this.removeFromChunks(eid);
+        this.ecs.destroy(eid);
+      }
+    }
+    // The walk-back beacon retires itself: arrival within reach of the
+    // stone (the skull's promise is kept), or the clock running out.
+    for (const [playerEid, player] of this.players) {
+      if (player.session === null) continue;
+      const mark = this.deathMarks.get(player.characterId);
+      if (!mark) continue;
+      let clear = mark.until <= now;
+      if (!clear) {
+        const ppos = this.positions.get(playerEid);
+        if (ppos && Math.hypot(ppos.x - mark.x, ppos.y - mark.y) <= 4) clear = true;
+      }
+      if (clear) {
+        this.deathMarks.delete(player.characterId);
+        player.session.sendJson({ t: 'deathmark' });
+      }
+    }
   }
 
   /** Slow out-of-combat regen: 1 hp / 5s. Buff regen works in combat. */
@@ -15515,6 +15608,11 @@ export class GameServer {
     }
     const summon = this.summons.get(eid);
     if (summon) meta.defId = `summon_${summon.kind}`;
+    const grave = this.graves.get(eid);
+    if (grave) {
+      meta.defId = 'gravestone';
+      meta.name = grave.name;
+    }
     return meta;
   }
 

@@ -44,6 +44,8 @@ function slate(inventory: InvSlot[], drop: Drop, opts: { sneaking?: boolean } = 
   return {
     players: new Map([[1, player]]),
     drops: new Map([[9, drop]]),
+    graves: new Map(),
+    deathMarks: new Map(),
     positions: {
       get: (eid: number) => positions.get(eid),
       must: (eid: number) => positions.get(eid)!,

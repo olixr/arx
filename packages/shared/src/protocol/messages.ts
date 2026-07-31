@@ -1202,6 +1202,18 @@ export interface S2CQuestEvent {
   rewards?: QuestRewardsWire;
 }
 
+/**
+ * Where the reader last fell — the walk-back beacon for the spilled
+ * pack. Sent at the death moment and again at login while the spill
+ * still holds the ground; `remainMs` is a duration, never a wall
+ * clock (client clocks drift). An absent `mark` clears the skull:
+ * the reader arrived, or the ground let the spill go.
+ */
+export interface S2CDeathMark {
+  t: 'deathmark';
+  mark?: { x: number; y: number; remainMs: number };
+}
+
 /** One faction's standing as the owner reads it (bands server-derived). */
 export interface RepStandingWire {
   faction: string;
@@ -1299,7 +1311,8 @@ export type S2CMessage =
   | S2CQuestEvent
   | S2CRep
   | S2CRepUpd
-  | S2CRepEvent;
+  | S2CRepEvent
+  | S2CDeathMark;
 
 // ------------------------------------------------------- validation
 

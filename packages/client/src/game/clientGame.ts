@@ -318,6 +318,10 @@ export class ClientGame {
   readonly discoveries = new Map<string, DiscoveryWire>();
   /** The one active waypoint (optimistic; server keeps the durable copy). */
   waypoint: Vec2 | null = null;
+  /** Where the reader last fell — the spilled pack's skull on the
+   *  chart. `until` is a local clock stamp built from the wire's
+   *  duration; the server clears it on arrival or expiry. */
+  deathMark: { x: number; y: number; until: number } | null = null;
   /** THE QUEST LEDGER: active quests by id (status 'ready' = turn in). */
   readonly quests = new Map<string, QuestWire>();
   /** The done shelf, by id. */
@@ -1224,6 +1228,15 @@ export class ClientGame {
         // The server plants the mark (a guard's bounty) — adopted
         // exactly as if the player pinned it: pin, pill, chart redraw.
         this.waypoint = msg.x !== undefined && msg.y !== undefined ? { x: msg.x, y: msg.y } : null;
+        this.chartVersion++;
+        break;
+      }
+      case 'deathmark': {
+        // The walk-back beacon: duration on the wire, stamped against
+        // the local clock here (clocks drift; durations don't).
+        this.deathMark = msg.mark
+          ? { x: msg.mark.x, y: msg.mark.y, until: Date.now() + msg.mark.remainMs }
+          : null;
         this.chartVersion++;
         break;
       }

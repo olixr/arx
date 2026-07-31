@@ -22,6 +22,7 @@ import { FogLayer, parchmentCanvas } from './fog.js';
 import {
   drawDiscoveryMarker,
   drawMapLabel,
+  drawDeathMark,
   drawPartyToken,
   drawPlayerToken,
   drawWaypointFlag,
@@ -456,6 +457,23 @@ export class MapView {
     if (wp && band === 'surface') {
       const pulse = (nowMs % 1600) / 1600;
       drawWaypointFlag(ctx, this.sx(wp.x + 0.5), this.sy(wp.y + 0.5), Math.max(7, Math.min(12, this.scale * 2.2)), pulse);
+    }
+
+    // Where the reader last fell — the spilled pack's skull. Always a
+    // surface mark (rift deaths spill at the surface gate), dimming
+    // through its last two minutes as the ground gets ready to forget.
+    const dm = this.game.deathMark;
+    if (dm && band === 'surface' && dm.until > Date.now()) {
+      const x = this.sx(dm.x);
+      const y = this.sy(dm.y);
+      if (x > -30 && y > -30 && x < cw + 30 && y < ch + 30) {
+        const remain = dm.until - Date.now();
+        const pulse = (nowMs % 2200) / 2200;
+        ctx.save();
+        ctx.globalAlpha = remain < 120_000 ? 0.45 + 0.55 * (remain / 120_000) : 1;
+        drawDeathMark(ctx, x, y, this.overlay ? 6 : Math.max(6.5, Math.min(11, this.scale * 2.1)), pulse);
+        ctx.restore();
+      }
     }
 
     // Party members — kin-dots in identity ink, drawn under the
