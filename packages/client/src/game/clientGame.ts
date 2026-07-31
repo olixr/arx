@@ -1800,6 +1800,11 @@ export class ClientGame {
     this.conn?.send({ t: 'craft', recipe, qty });
   }
 
+  /** THE UNMAKING: break the gear in a pack slot down for its dust. */
+  unmakeSend(slot: number): void {
+    this.conn?.send({ t: 'unmake', slot });
+  }
+
   /** Set the tools down: stop the running craft batch, keeping what's made. */
   craftStop(): void {
     this.conn?.send({ t: 'craftstop' });

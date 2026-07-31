@@ -85,6 +85,12 @@
 // damage, wards, and cooldowns. A v22 client would take the hits and
 // the healing with no idea what caused either, which is not a lost
 // bark, it is an unreadable fight. Bumped on that reasoning.
+// (THE UNMAKING, still v23: C2SUnmake is a new CLIENT message, and the
+// bump law guards material state a deaf peer would corrupt. A server
+// that has never heard of it ignores it and the bench button does
+// nothing; nothing is half-destroyed and nothing is half-paid. The
+// version handshake already refuses any mismatched pair outright, so
+// there is no state to protect here. Recorded on purpose.)
 export const PROTOCOL_VERSION = 23;
 
 /** The most souls one party can hold. */

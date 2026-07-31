@@ -116,6 +116,17 @@ export interface C2SDropItem {
   qty: number;
 }
 
+/**
+ * THE UNMAKING: take an inventory slot apart at an enchanting table for
+ * its dust. Destructive and irreversible, so the server re-validates
+ * everything the bench claimed and the client is expected to have
+ * confirmed with the player first.
+ */
+export interface C2SUnmake {
+  t: 'unmake';
+  slot: number;
+}
+
 /** Craft a recipe (validated against station adjacency server-side). */
 export interface C2SCraft {
   t: 'craft';
@@ -422,6 +433,7 @@ export type C2SMessage =
   | C2SDropItem
   | C2SCraft
   | C2SCraftStop
+  | C2SUnmake
   | C2SBank
   | C2SShop
   | C2SBuild

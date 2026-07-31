@@ -580,6 +580,15 @@ const defs: ItemDef[] = [
   // own; astral had nothing at all, which is why no astral enchant
   // existed to want it.
   {
+    id: 'focused_dust',
+    name: 'Focused dust',
+    stackable: true,
+    value: 110,
+    desc: 'Binder worked down until it stops glittering and starts pulling. The greater workings will not hold without it.',
+    color: '#d8c8ff',
+    code: 'xF',
+  },
+  {
     id: 'umbral_essence',
     name: 'Umbral essence',
     stackable: true,

@@ -12,6 +12,8 @@ import {
   BUILD_CATEGORIES,
   CROP_BY_SEED,
   buildableGround,
+  canUnmake,
+  unmakingOf,
   shopDef,
   instanceName,
   itemDef,
@@ -167,6 +169,20 @@ export class StationPanels {
   private bankSort: 'az' | 'qty' = 'az';
   /** How the Workshop ledger is ordered. */
   private craftSort: 'reach' | 'level' | 'az' = 'reach';
+  /**
+   * THE UNMAKING's bench mode. The enchanting table does two opposite
+   * jobs — it makes workings and it takes things apart — and they share
+   * one screen because they are one trade and they feed each other.
+   */
+  private craftMode: 'make' | 'unmake' = 'make';
+  /** The pack slot the unmaking bench is laying out. */
+  private unmakeSel: number | null = null;
+  /**
+   * The slot the player has asked to break and not yet confirmed.
+   * Destroying gear is irreversible, so it takes two presses and the
+   * second one says what it is about to destroy.
+   */
+  private unmakeArmed: number | null = null;
   /** World tile center the open panel is bound to (null = untethered). */
   private anchor: { x: number; y: number } | null = null;
   /** Which shop's shelf is on screen — echoed on every buy. */
@@ -188,6 +204,8 @@ export class StationPanels {
     ) => void,
     private readonly onShop: (op: 'buy' | 'sell', item: string, qty: number, shop?: string) => void,
     private readonly onPickBuildable: (id: string) => void,
+    /** THE UNMAKING: break the gear in this pack slot down for dust. */
+    private readonly onUnmake: (slot: number) => void = () => {},
     /** The live pack — feeds every have/need figure. */
     private readonly getInventory: () => InvSlot[] = () => [],
   ) {}
@@ -509,13 +527,20 @@ export class StationPanels {
     options: Array<[K, string]>,
     current: K,
     onPick: (key: K) => void,
+    /**
+     * `label` renames the row (the enchanting table's bench switch is
+     * not a sort). `keep` appends instead of replacing, so two rows can
+     * share one tool strip — without it the second call silently wipes
+     * the first, which is exactly the bug the bench mode hit.
+     */
+    opts: { label?: string; keep?: boolean } = {},
   ): void {
-    host.innerHTML = '';
+    if (!opts.keep) host.innerHTML = '';
     const row = document.createElement('div');
     row.className = 'sort-row';
     const label = document.createElement('span');
     label.className = 'sort-label';
-    label.textContent = 'Sort';
+    label.textContent = opts.label ?? 'Sort';
     row.appendChild(label);
     for (const [key, text] of options) {
       const chip = document.createElement('button');
@@ -721,6 +746,154 @@ export class StationPanels {
    * a glance whether it's within reach — and the chosen work laid out
    * large on the right with the full material story and make buttons.
    */
+  /** The enchanting table's two jobs, as one pair of chips. */
+  private modeBar(): void {
+    this.sortBar(
+      this.craftTools,
+      'craftmode',
+      [
+        ['make', 'Inscribe'],
+        ['unmake', 'Unmake'],
+      ],
+      this.craftMode,
+      (k) => {
+        this.craftMode = k as 'make' | 'unmake';
+        this.unmakeArmed = null;
+        this.renderCraft();
+      },
+      { label: 'Bench' },
+    );
+  }
+
+  /**
+   * THE UNMAKING bench: the pack, filtered to what has Arx in it, and
+   * an honest account of what each piece comes apart into.
+   *
+   * The yield is computed by the SAME pure function the server pays
+   * out from, so the preview and the payout can never disagree. On a
+   * destructive action that would be the worst bug in the system.
+   */
+  private renderUnmake(skills: SkillXp): void {
+    const inv = this.getInventory();
+    const rows: Array<{ slot: number; item: string; roll?: ItemRoll; stolen?: true }> = [];
+    inv.forEach((s, i) => {
+      if (s && canUnmake(s.item)) rows.push({ slot: i, item: s.item, roll: s.roll, stolen: s.stolen });
+    });
+
+    if (rows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'make-empty';
+      empty.textContent =
+        'Nothing in your pack has Arx to recover. Worn-out armor and weapons come apart here.';
+      this.craftList.appendChild(empty);
+      return;
+    }
+    if (this.unmakeSel === null || !rows.some((r) => r.slot === this.unmakeSel)) {
+      this.unmakeSel = rows[0]!.slot;
+    }
+
+    for (const row of rows) {
+      const result = unmakingOf(row.item, row.roll);
+      const dust = result?.yields.find((y) => y.item === 'arcane_dust')?.qty ?? 0;
+      this.craftList.appendChild(
+        this.ledgerRow({
+          key: `unmake:${row.slot}`,
+          iconUrl: itemIconUrl(row.item, 40),
+          name: instanceName(row.item, row.roll),
+          note: row.stolen ? 'hot' : `${dust} dust`,
+          noteTone: row.stolen ? 'lock' : 'ok',
+          selected: this.unmakeSel === row.slot,
+          onPick: () => {
+            this.unmakeSel = row.slot;
+            this.unmakeArmed = null;
+            this.renderCraft();
+          },
+        }),
+      );
+    }
+
+    const picked = rows.find((r) => r.slot === this.unmakeSel)!;
+    const result = unmakingOf(picked.item, picked.roll);
+    if (!result) return;
+    const pickedName = instanceName(picked.item, picked.roll);
+
+    const head = document.createElement('div');
+    head.className = 'work-head';
+    head.appendChild(iconTile(itemIconUrl(picked.item, 64)));
+    const titles = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'work-name';
+    name.textContent = pickedName;
+    const sub = document.createElement('div');
+    sub.className = 'work-sub';
+    sub.textContent = `enchanting · +${result.xp} xp`;
+    titles.append(name, sub);
+    head.appendChild(titles);
+    this.craftDetail.appendChild(head);
+
+    const facts = document.createElement('div');
+    facts.className = 'work-facts';
+    const fact = (value: string, label: string, tone?: string): void => {
+      const f = document.createElement('div');
+      f.className = 'work-fact';
+      const v = document.createElement('strong');
+      v.textContent = value;
+      if (tone) v.style.color = tone;
+      const l = document.createElement('span');
+      l.textContent = label;
+      f.append(v, l);
+      facts.appendChild(f);
+    };
+    fact(`${levelForXp(skills.enchanting ?? 0)}`, 'your enchanting');
+    fact(`+${result.xp}`, 'xp for the work');
+    this.craftDetail.appendChild(facts);
+
+    this.craftDetail.appendChild(sectionHead('What comes out'));
+    for (const y of result.yields) {
+      this.craftDetail.appendChild(this.materialRow(y.item, y.qty));
+    }
+
+    const warn = document.createElement('div');
+    warn.className = 'work-result';
+    const flavor = document.createElement('div');
+    flavor.className = 'work-result-flavor';
+    flavor.textContent = picked.stolen
+      ? 'This one is stolen. No honest bench will take it apart for you.'
+      : 'The piece is destroyed. Whatever is bound into it comes back as dust; the rest is gone.';
+    warn.appendChild(flavor);
+    this.craftDetail.appendChild(warn);
+
+    const actions = document.createElement('div');
+    actions.className = 'work-actions';
+    if (picked.stolen) {
+      const no = bigButton('Cannot unmake', `unmake:${picked.slot}`, () => {}, { minor: true });
+      no.disabled = true;
+      actions.appendChild(no);
+    } else if (this.unmakeArmed === picked.slot) {
+      // THE SECOND PRESS NAMES ITS VICTIM. One click between a player
+      // and a destroyed legendary is not a bench, it is a trap, and the
+      // confirm has to say WHICH piece or it protects nobody.
+      actions.append(
+        bigButton(`Destroy ${pickedName}`, `unmake:${picked.slot}`, () => {
+          this.unmakeArmed = null;
+          this.onUnmake(picked.slot);
+        }, { acta: 'Destroy' }),
+        bigButton('Keep it', `unmake:cancel`, () => {
+          this.unmakeArmed = null;
+          this.renderCraft();
+        }, { minor: true, acta: 'Cancel' }),
+      );
+    } else {
+      actions.appendChild(
+        bigButton('Unmake', `unmake:${picked.slot}`, () => {
+          this.unmakeArmed = picked.slot;
+          this.renderCraft();
+        }, { acta: 'Unmake' }),
+      );
+    }
+    this.craftDetail.appendChild(actions);
+  }
+
   private renderCraft(): void {
     if (this.showing?.kind !== 'craft') return;
     const showing = this.showing;
@@ -728,6 +901,19 @@ export class StationPanels {
     const face = (station && STATION_FACE[station]) || HANDIWORK_FACE;
     this.craftList.innerHTML = '';
     this.craftDetail.innerHTML = '';
+    // THE UNMAKING lives only at the enchanting table, and the bench
+    // remembers nothing between visits: a mode that persisted would
+    // eventually greet somebody with a wall of their own gear and a
+    // Break button, which is not what anyone opens a table for.
+    const canUnmakeHere = station === 'enchanting_table';
+    if (!canUnmakeHere) this.craftMode = 'make';
+    if (canUnmakeHere) {
+      this.modeBar();
+      if (this.craftMode === 'unmake') {
+        this.renderUnmake(skills);
+        return;
+      }
+    }
     // The ledger lists only what this character KNOWS: core recipes
     // plus learned scrolls. What's undiscovered stays a rumor — a
     // count in the footer, never an endless list of futures.
@@ -768,6 +954,7 @@ export class StationPanels {
         this.craftSort = k;
         this.renderCraft();
       },
+      { keep: station === 'enchanting_table' },
     );
     const reachScore = (r: RecipeDef): number => {
       const unlocked = levelForXp(skills[r.skill] ?? 0) >= r.levelReq;

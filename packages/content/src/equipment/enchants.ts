@@ -219,6 +219,18 @@ export const STRIKE_EFFECT_KINDS: readonly EnchantEffect['kind'][] = [
  */
 export type EnchantTier = 1 | 2 | 3 | 4 | 5;
 
+/**
+ * How much of its school's essence a scroll of each tier costs. Lives
+ * here, beside the tier itself, because two systems need it and must
+ * never disagree: recipes.ts spends it, and THE UNMAKING pays a
+ * fraction of it back. A second copy would drift the day one of them
+ * was rebalanced and the other was not, and the drift would silently
+ * open or close a farming cycle.
+ */
+export const ESSENCE_BY_TIER: Record<EnchantTier, number> = {
+  1: 1, 2: 2, 3: 4, 4: 7, 5: 12,
+};
+
 export const TIER_BANDS: Record<EnchantTier, { lo: number; hi: number }> = {
   1: { lo: 1, hi: 19 },
   2: { lo: 20, hi: 39 },

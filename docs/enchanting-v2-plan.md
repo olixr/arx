@@ -477,8 +477,49 @@ Also fixed here: `ArxElement` had no runtime roster, so nothing could ever ask
 "does every school have workings of its own" — and the answer was no. `ARX_ELEMENTS`
 now exists and the tests walk it.
 
-**Phase 4 — THE UNMAKING.** Disenchanting, refinement, the new reagents and gems,
-and their sources placed across the zones.
+**Phase 4 — THE UNMAKING. SHIPPED.** (Reagents and their sources landed early,
+with Phase 3.) Disenchanting and the refinement sink.
+
+**Disenchanting** at the enchanting table. One act, three problems:
+
+- enchanting finally has a **gathering half**. Every other trade has one; the
+  enchanter had loot tables and other people's leftovers, so the trade could
+  only be practiced by someone already doing something else.
+- **every junk drop becomes worth carrying home.** The pile of unwanted gear IS
+  the ore seam.
+- **the item economy's open end closes.** Gear used to flow in and never out.
+
+**THE UNMAKING IS NOT A REFUND**, and that is the load-bearing law. What comes
+back is dust, plus half a working's essence rounded DOWN. Bond a scroll and break
+the piece and you are down on the deal every time; a tier-1 working returns
+nothing at all. A test walks the entire roster and asserts every yield is
+strictly less than the recipe spent, so no future rebalance can open a cycle by
+accident.
+
+Yield scales on two axes, rarity and item power (a re-issued heirloom breaks like
+the endgame piece it actually is). The rarity curve on dust is deliberately much
+gentler than the vendor-value curve, or every enchanter becomes a vendor-trash
+farmer instead of an adventurer. XP scales the same way, which makes breaking
+your own starting kit a real way to begin the trade at level 1.
+
+**THE CONCENTRATE** is the refinement sink. Tiers 4 and 5 no longer ask for MORE
+dust, they ask for BETTER dust: `focused_dust`, made from raw dust plus an
+elemental essence of **any** school. That is what keeps the frost essence a
+level-20 crypt handed you worth something at level 90, and it means early-zone
+drops never become dead stock.
+
+The bench is a mode switch on the enchanting table, Inscribe / Unmake, sharing
+one screen because it is one trade feeding itself. The yield preview is computed
+by the **same pure function the server pays out from** — on a destructive action,
+a preview that disagreed with the payout would be the worst bug in the system.
+Destroying takes two presses and the second one names the piece.
+
+**NO LAUNDERING**: stolen goods are refused at the bench. The fences exist for
+exactly this, and the table must not quietly become a better one.
+
+No protocol bump. `C2SUnmake` is a new client message; a server that has never
+heard of it ignores it and the button does nothing, so there is no material state
+to protect. Recorded in `constants.ts` beside the other bump judgments.
 
 **Phase 5 — THE ENCHANTER'S HAND.** Scroll quality, resonance and sundering, the
 bench rebuild, Solvei and the high-band teaching, the enchanting Callings pass.

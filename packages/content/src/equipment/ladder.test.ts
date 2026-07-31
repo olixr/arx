@@ -183,16 +183,37 @@ test('the top of the trade is found, never sold', () => {
 });
 
 test('the cost of a working climbs with its tier', () => {
-  const dustFor = (tier: EnchantTier): number => {
+  // Measured in RAW BINDER, because the top two bands deliberately ask
+  // for better dust rather than more of it: focused dust costs 6 raw
+  // and yields 2, so each one is worth three. Counting only the raw
+  // line would read the concentrate as a discount.
+  const RAW_PER_FOCUSED = 3;
+  const binderFor = (tier: EnchantTier): number => {
     const e = ENCHANT_DEFS.find((x) => x.tier === tier)!;
     const r = RECIPES.get(`inscribe_${e.id}`)!;
-    return r.inputs.find((i) => i.item === 'arcane_dust')!.qty;
+    const raw = r.inputs.find((i) => i.item === 'arcane_dust')?.qty ?? 0;
+    const focused = r.inputs.find((i) => i.item === 'focused_dust')?.qty ?? 0;
+    return raw + focused * RAW_PER_FOCUSED;
   };
   for (let i = 1; i < TIERS.length; i++) {
     assert.ok(
-      dustFor(TIERS[i]!) > dustFor(TIERS[i - 1]!),
+      binderFor(TIERS[i]!) > binderFor(TIERS[i - 1]!),
       `tier ${TIERS[i]} does not cost more binder than tier ${TIERS[i - 1]}`,
     );
+  }
+});
+
+test('THE CONCENTRATE is a sink for every school', () => {
+  // An enchanter at 90 must still have a use for the frost essence a
+  // level-20 crypt handed them, or early-zone drops become dead stock.
+  const focusRecipes = [...RECIPES.values()].filter((r) => r.output.item === 'focused_dust');
+  const burns = new Set(
+    focusRecipes.flatMap((r) => r.inputs.map((i) => i.item)).filter((i) => i !== 'arcane_dust'),
+  );
+  for (const el of ARX_ELEMENTS) {
+    const reagent = ELEMENT_REAGENT[el];
+    if (!reagent) continue; // arcane runs on dust alone
+    assert.ok(burns.has(reagent), `${el}'s essence has no sink at the top of the trade`);
   }
 });
 

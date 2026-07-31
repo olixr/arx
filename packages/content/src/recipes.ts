@@ -1,6 +1,12 @@
 import type { SkillId, StationType } from '@arx/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
-import { ELEMENT_GEM, ELEMENT_REAGENT, ENCHANT_DEFS, type EnchantTier } from './equipment/enchants.js';
+import {
+  ELEMENT_GEM,
+  ELEMENT_REAGENT,
+  ENCHANT_DEFS,
+  ESSENCE_BY_TIER,
+  type EnchantTier,
+} from './equipment/enchants.js';
 
 /**
  * THE RECIPE IS KNOWLEDGE: how a character comes to know a recipe.
@@ -741,8 +747,15 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
  * between two professions, and it costs nothing to build because both
  * metals already exist with their own sources and their own ladder.
  */
-const DUST_BY_TIER: Record<EnchantTier, number> = { 1: 2, 2: 4, 3: 8, 4: 14, 5: 24 };
-const ESSENCE_BY_TIER: Record<EnchantTier, number> = { 1: 1, 2: 2, 3: 4, 4: 7, 5: 12 };
+const DUST_BY_TIER: Record<EnchantTier, number> = { 1: 2, 2: 4, 3: 8, 4: 4, 5: 6 };
+/**
+ * THE CONCENTRATE. The two top bands do not ask for MORE dust, they ask
+ * for BETTER dust, and focusing it burns an elemental essence of any
+ * school. That is the sink the ladder needed: an enchanter at 90 still
+ * has a use for the frost essence a low-level crypt handed them, so
+ * early-zone drops never stop being worth picking up.
+ */
+const FOCUSED_BY_TIER: Partial<Record<EnchantTier, number>> = { 4: 6, 5: 12 };
 const XP_BY_TIER: Record<EnchantTier, number> = { 1: 30, 2: 75, 3: 150, 4: 340, 5: 750 };
 const TICKS_BY_TIER: Record<EnchantTier, number> = { 1: 35, 2: 50, 3: 65, 4: 85, 5: 110 };
 
@@ -756,6 +769,8 @@ const enchantRecipes: RecipeDef[] = ENCHANT_DEFS.map((e) => {
   // keeping the silver lodes busy long past the jeweller's bench.
   if (e.tier === 2) inputs.push({ item: 'silver_bar', qty: 1 });
   if (e.tier === 3) inputs.push({ item: ELEMENT_GEM[e.element] ?? 'gold_bar', qty: 1 });
+  const focused = FOCUSED_BY_TIER[e.tier];
+  if (focused) inputs.push({ item: 'focused_dust', qty: focused });
   if (e.tier === 4) inputs.push({ item: 'mithril_bar', qty: 1 });
   if (e.tier === 5) inputs.push({ item: 'starsteel_bar', qty: 1 });
   return {
@@ -786,6 +801,24 @@ const enchantRecipes: RecipeDef[] = ENCHANT_DEFS.map((e) => {
  * of work instead of a stand-in, and it keeps the field in the trade.
  */
 const pressRecipes: RecipeDef[] = [
+  // THE CONCENTRATE: dust worked down, burning an essence of ANY school
+  // to do it. One recipe, every element, so no essence is ever dead
+  // stock — the answer to a bank drawer full of frost from level 20.
+  ...Object.values(ELEMENT_REAGENT).map((essence) => ({
+    id: `focus_dust_${essence}`,
+    name: 'Focused dust',
+    skill: 'enchanting' as SkillId,
+    levelReq: 40,
+    xp: 120,
+    station: 'enchanting_table' as StationType,
+    inputs: [
+      { item: 'arcane_dust', qty: 6 },
+      { item: essence, qty: 1 },
+    ],
+    output: { item: 'focused_dust', qty: 2 },
+    ticks: 55,
+    unlock: 'trainer' as RecipeUnlock,
+  })),
   {
     id: 'press_radiant_essence',
     name: 'Radiant essence',

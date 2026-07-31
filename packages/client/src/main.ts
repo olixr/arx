@@ -384,6 +384,12 @@ const stationPanels = new StationPanels(
     game.shopSend(op, item, qty, undefined, shop);
   },
   (buildable) => pickBuildable(buildable),
+  // THE UNMAKING: the bench already confirmed with the player, and the
+  // server re-validates everything regardless.
+  (slot) => {
+    sfx.stow();
+    game.unmakeSend(slot);
+  },
   // The live pack — every maker panel's have/need chips read it.
   () => game.inventory,
 );

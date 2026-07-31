@@ -276,6 +276,12 @@ export class Session {
         this.game.dropItem(this.playerEid, msg.slot, msg.qty);
         return;
       }
+      case 'unmake': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.unmake(this.playerEid, msg.slot);
+        return;
+      }
       case 'craft': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
