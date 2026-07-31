@@ -1,9 +1,10 @@
 # Secret Arts — THE WEAPON TEACHES
 
-*Design review 2026-07-31. Status: **ALL FIVE PHASES SHIPPED — EPIC
-COMPLETE** (Ph1 46633f1, Ph2 ca7e7b8, Ph3 06479fb, Ph4 ddf7cba, Ph5
-in the closing commit). The follow-on authoring wave RANKS FOR THE
-SHELF remains open by design (SECRET_RANK_DEBT counts it down).*
+*Design review 2026-07-31. Status: **ALL FIVE PHASES + RANKS FOR THE
+SHELF SHIPPED — EPIC FULLY CLOSED** (Ph1 46633f1, Ph2 ca7e7b8, Ph3
+06479fb, Ph4 ddf7cba, Ph5 eeef278, RANKS 33d72a4). SECRET_RANK_DEBT
+reads zero forever: a new secret art ships WITH its three honed steps
+in the commit that authors its seat.*
 
 The weapon art leaves the weapon. Every Art a blade, bow, or staff carries
 becomes a **secret art**: a technique the weapon *teaches* rather than a button
