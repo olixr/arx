@@ -1,0 +1,12 @@
+{
+  "id": "find_barrow",
+  "name": "Old barrow",
+  "description": "A low stone ring over old bones. After dark, the bones keep their own watch.",
+  "tiers": [3, 5],
+  "weight": 1.5,
+  "prefabs": ["find_barrow"],
+  "habitat": "barrow",
+  "garrison": [
+    { "npc": "skeleton", "count": [1, 2], "hours": { "from": 20.5, "to": 5.5 } }
+  ]
+}

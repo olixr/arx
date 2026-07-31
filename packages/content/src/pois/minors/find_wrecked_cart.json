@@ -1,0 +1,9 @@
+{
+  "id": "find_wrecked_cart",
+  "name": "Wrecked cart",
+  "description": "A cart that lost the argument with the ground. What spilled is mostly gone. Mostly.",
+  "tiers": [1, 4],
+  "weight": 2,
+  "prefabs": ["find_wrecked_cart"],
+  "cache": { "chance": 0.35 }
+}

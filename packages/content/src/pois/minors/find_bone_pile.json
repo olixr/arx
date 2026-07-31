@@ -1,0 +1,11 @@
+{
+  "id": "find_bone_pile",
+  "name": "Bone pile",
+  "description": "A kill dragged here and picked over. The scavengers have not finished.",
+  "tiers": [2, 5],
+  "weight": 2,
+  "prefabs": ["find_bone_pile"],
+  "garrison": [
+    { "npc": "rat", "count": [1, 2] }
+  ]
+}

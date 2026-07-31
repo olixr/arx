@@ -1,0 +1,10 @@
+{
+  "id": "find_hunters_rest",
+  "name": "Hunter's rest",
+  "description": "A cold-camped fire ring and a stump seat. Somebody slept rough here, and may again.",
+  "tiers": [1, 3],
+  "weight": 3,
+  "prefabs": ["find_hunters_rest"],
+  "cache": { "chance": 0.3 },
+  "clearing": 1
+}

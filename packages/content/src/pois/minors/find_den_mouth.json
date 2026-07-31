@@ -1,0 +1,13 @@
+{
+  "id": "find_den_mouth",
+  "name": "Den mouth",
+  "description": "A dug-out hollow under the rocks, floor strewn with old bones. Something sleeps here.",
+  "tiers": [2, 5],
+  "weight": 2,
+  "prefabs": ["find_den_mouth"],
+  "habitat": "den",
+  "garrison": [
+    { "npc": "wolf", "count": [1, 2] }
+  ],
+  "clearing": 1
+}

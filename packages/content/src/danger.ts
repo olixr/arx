@@ -81,21 +81,29 @@ export interface DangerLaw {
   poiChance: number;
   /** Ambient wilderness spawn density (phase 3; 0..1 scalar). */
   wildDensity: number;
+  /**
+   * THE SMALL FINDS (lived-in-land phase 2): per-SLOT chance a
+   * 32-tile sub-lattice slot deals a minor find — 16 slots per cell,
+   * so ~0.18 reads as roughly three finds per hostile-tier cell. The
+   * texture layer's one density dial, living in the one law table
+   * like every other density.
+   */
+  findChance: number;
 }
 
 export const DANGER_LAWS: readonly DangerLaw[] = [
   // 0 — settled: authored content only. The scaffold never rolls here.
-  { npcLevel: [1, 4], chest: 'wood', rarityBonus: 0, poiChance: 0, wildDensity: 0 },
+  { npcLevel: [1, 4], chest: 'wood', rarityBonus: 0, poiChance: 0, wildDensity: 0, findChance: 0 },
   // 1 — the near frontier: a first camp just past the town fields.
-  { npcLevel: [4, 9], chest: 'wood', rarityBonus: 0, poiChance: 0.3, wildDensity: 0.25 },
+  { npcLevel: [4, 9], chest: 'wood', rarityBonus: 0, poiChance: 0.3, wildDensity: 0.25, findChance: 0.14 },
   // 2 — the walk-out: worth packing food for.
-  { npcLevel: [9, 16], chest: 'mossy', rarityBonus: 1, poiChance: 0.38, wildDensity: 0.35 },
+  { npcLevel: [9, 16], chest: 'mossy', rarityBonus: 1, poiChance: 0.38, wildDensity: 0.35, findChance: 0.18 },
   // 3 — the expedition line: brass keys start mattering.
-  { npcLevel: [15, 24], chest: 'iron', rarityBonus: 2, poiChance: 0.42, wildDensity: 0.45 },
+  { npcLevel: [15, 24], chest: 'iron', rarityBonus: 2, poiChance: 0.42, wildDensity: 0.45, findChance: 0.2 },
   // 4 — deep frontier: champions wear names out here.
-  { npcLevel: [22, 34], chest: 'gilded', rarityBonus: 4, poiChance: 0.45, wildDensity: 0.5 },
+  { npcLevel: [22, 34], chest: 'gilded', rarityBonus: 4, poiChance: 0.45, wildDensity: 0.5, findChance: 0.22 },
   // 5 — the far dark: the overworld's dungeon-grade band.
-  { npcLevel: [32, 48], chest: 'boss', rarityBonus: 6, poiChance: 0.5, wildDensity: 0.55 },
+  { npcLevel: [32, 48], chest: 'boss', rarityBonus: 6, poiChance: 0.5, wildDensity: 0.55, findChance: 0.22 },
 ];
 
 /** Danger tier at a world tile over the settled anchors. */

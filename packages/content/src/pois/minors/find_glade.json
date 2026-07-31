@@ -1,0 +1,9 @@
+{
+  "id": "find_glade",
+  "name": "Glade",
+  "description": "A sweet pocket of forage and soft grass. The herds know this place.",
+  "tiers": [1, 3],
+  "weight": 3,
+  "prefabs": ["find_glade"],
+  "habitat": "glade"
+}

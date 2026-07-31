@@ -1,0 +1,12 @@
+{
+  "id": "find_warren",
+  "name": "Warren",
+  "description": "Burrow mouths in trampled earth. The ground is busier than it looks.",
+  "tiers": [1, 2],
+  "weight": 2,
+  "prefabs": ["find_warren"],
+  "habitat": "warren",
+  "garrison": [
+    { "npc": "rat", "count": [1, 2] }
+  ]
+}

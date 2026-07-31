@@ -1,0 +1,9 @@
+{
+  "id": "find_tapped_yew",
+  "name": "Tapped yew",
+  "description": "A bowyer's tree, worked and abandoned mid-season. Good staves gone to waste.",
+  "tiers": [2, 4],
+  "weight": 1,
+  "prefabs": ["find_tapped_yew"],
+  "clearing": 2
+}

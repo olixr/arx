@@ -1029,6 +1029,106 @@ const wardlineCut = sketch(
   ],
 );
 
+// ----------------------------------------------------- THE SMALL FINDS
+// (docs/lived-in-land-plan.md Phase 2.) Footprints stay tiny — the
+// texture layer must read as something the land grew, not a site the
+// player owes a fight. No spawn markers: a find's bodies come from
+// its DEF garrison (hours and tiers live there), never the sketch.
+
+/** A cold-camped fire ring, a stump seat, and whatever got left. */
+const findHuntersRest = sketch('find_hunters_rest', "Hunter's rest", [
+  '__,.,__',
+  ',..f..,',
+  ',.uW..,',
+  ',..:..,',
+  '__,.,__',
+]);
+
+/** Trapper's stakes strung between the tussocks. */
+const findSnareLine = sketch('find_snare_line', 'Snare line', [
+  ',.F.F.,',
+  '.:.:.:.',
+  ',F...F,',
+]);
+
+/** Stacked stones older than any road. */
+const findWaymarkCairn = sketch('find_waymark_cairn', 'Waymark cairn', [
+  '_,.,_',
+  ',.r.,',
+  '.rPr.',
+  ',.r.,',
+  '_,.,_',
+]);
+
+/** A dragged kill, picked over and not finished. */
+const findBonePile = sketch('find_bone_pile', 'Bone pile', [
+  '_,..,_',
+  ',.oo.,',
+  '.o::o.',
+  ',.o..,',
+  '_,..,_',
+]);
+
+/** A dug hollow under the rocks, floored with old bones. */
+const findDenMouth = sketch('find_den_mouth', 'Den mouth', [
+  '_,rrr,_',
+  ',rRRr.,',
+  ',R::o.,',
+  '_,...,_',
+]);
+
+/** Burrow mouths in trampled earth. */
+const findWarren = sketch('find_warren', 'Warren', [
+  '_,..,_',
+  ',:R:.,',
+  ',.:R,_',
+  '_,..,_',
+]);
+
+/** A sweet pocket of forage the herds know. */
+const findGlade = sketch('find_glade', 'Glade', [
+  '_,,..,,_',
+  ',.B..h.,',
+  ',s.,,.B,',
+  ',.h..s.,',
+  '_,,..,,_',
+]);
+
+/** One worked stone on a worn plinth. */
+const findStandingStone = sketch('find_standing_stone', 'Standing stone', [
+  '_,..,_',
+  ',.SS.,',
+  ',SPS.,',
+  ',.S..,',
+  '_,..,_',
+]);
+
+/** A cart that lost the argument with the ground. */
+const findWreckedCart = sketch('find_wrecked_cart', 'Wrecked cart', [
+  '_,....,_',
+  ',.l:a..,',
+  ',:lW:c.,',
+  ',..:...,',
+  '_,....,_',
+]);
+
+/** A bowyer's tree, worked and abandoned mid-season. */
+const findTappedYew = sketch('find_tapped_yew', 'Tapped yew', [
+  '_,..,_',
+  ',.uY.,',
+  ',.cu.,',
+  '_,..,_',
+]);
+
+/** A low stone ring over old bones. */
+const findBarrow = sketch('find_barrow', 'Old barrow', [
+  '_,....,_',
+  ',.SoS..,',
+  ',So:oS.,',
+  ',.SoS..,',
+  '_,....,_',
+]);
+
 export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
   [
     goblinCampRing,
@@ -1071,5 +1171,17 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     // The Pinereach (the north wall and the deep wood):
     hoargateFort,
     wardlineCut,
+    // The Small Finds (the lived-in land, phase 2):
+    findHuntersRest,
+    findSnareLine,
+    findWaymarkCairn,
+    findBonePile,
+    findDenMouth,
+    findWarren,
+    findGlade,
+    findStandingStone,
+    findWreckedCart,
+    findTappedYew,
+    findBarrow,
   ].map((p) => [p.id, p]),
 );

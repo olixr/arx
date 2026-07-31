@@ -1,0 +1,8 @@
+{
+  "id": "find_snare_line",
+  "name": "Snare line",
+  "description": "Stakes and cord run between the grass tussocks. The trapper checks these, sometimes.",
+  "tiers": [1, 3],
+  "weight": 2,
+  "prefabs": ["find_snare_line"]
+}

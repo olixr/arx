@@ -127,7 +127,7 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   },
   { npc: 'cave_bat', weight: 2, tiers: [2, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], spread: 2 },
   { npc: 'giant_spider', weight: 1.5, tiers: [3, 5], biomes: ['forest'], hours: NIGHT },
-  { npc: 'skeleton', weight: 1, tiers: [3, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3] },
+  { npc: 'skeleton', weight: 1, tiers: [3, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow' },
   { npc: 'worg', weight: 1.5, tiers: [4, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 2] },
   { npc: 'troll', weight: 0.5, tiers: [5, 5], biomes: ['forest'], hours: NIGHT },
 ];
