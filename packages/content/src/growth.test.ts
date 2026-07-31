@@ -12,6 +12,7 @@ import {
   germinationChance,
   growthDialectOf,
   growthTileForState,
+  hostTileFor,
   projectGrowth,
   validateGrowth,
   type GrowthRow,
@@ -62,6 +63,7 @@ test('THE BACKFILL LAW: an empty doc adopts every authored dial', () => {
     forageMinutes: [...AUTHORED_GROWTH.forageMinutes],
     germEveryMinutes: [...AUTHORED_GROWTH.germEveryMinutes],
     germSproutMinutes: [...AUTHORED_GROWTH.germSproutMinutes],
+    bushRestMinutes: [...AUTHORED_GROWTH.bushRestMinutes],
   });
 });
 
@@ -78,7 +80,7 @@ test('present-but-malformed dials are refused; typos die loudly', () => {
   );
 });
 
-test('ONE ENGINE, THREE DIALECTS: every depleting node speaks exactly one', () => {
+test('ONE ENGINE, FOUR DIALECTS: every depleting node speaks exactly one', () => {
   for (const node of NODES) {
     const dialect = growthDialectOf(node.tile);
     if (node.depletedTile === null) {
@@ -86,10 +88,56 @@ test('ONE ENGINE, THREE DIALECTS: every depleting node speaks exactly one', () =
       continue;
     }
     const expected =
-      node.skill === 'woodcutting' ? 'tree' : node.skill === 'mining' ? 'ore' : 'forage';
+      node.skill === 'woodcutting'
+        ? 'tree'
+        : node.skill === 'mining'
+          ? 'ore'
+          : node.tile === Tile.BerryBush
+            ? 'bush'
+            : 'forage';
     assert.equal(dialect, expected, `${node.name} must speak the ${expected} dialect`);
   }
   assert.equal(growthDialectOf(Tile.Grass), null, 'plain ground speaks no dialect');
+  assert.equal(hostTileFor('ore'), Tile.Rock, 'a sealed vein mouth is plain rock');
+  assert.equal(hostTileFor('forage'), Tile.Grass, 'a moved meadow patch is plain grass');
+  assert.equal(hostTileFor('tree'), null, 'trees drift by seed, never by wandering');
+  assert.equal(hostTileFor('bush'), null, 'bushes spread by seed, never by wandering');
+});
+
+test('THE QUICK MEADOW: a picked bush is dormant grass until the world says grow', () => {
+  const t0 = 1_700_000_000_000;
+  const r: GrowthRow = {
+    tx: 300,
+    ty: 40,
+    tile: Tile.BerryBush,
+    state: GROWTH_BARE,
+    since: t0,
+    due: null,
+    owner: null,
+    firstSeenAt: t0,
+  };
+  const dormant = projectGrowth(SEED, r, t0 + 365 * 24 * 3_600_000);
+  assert.equal(dormant.tile, Tile.Grass, 'a year of clock leaves grass');
+  assert.equal(dormant.ripe, false);
+  const seeded: GrowthRow = { ...r, due: t0 + 3_600_000 };
+  const waiting = projectGrowth(SEED, seeded, t0 + 60_000);
+  assert.equal(waiting.tile, Tile.Grass);
+  assert.equal(waiting.ripe, false);
+  const back = projectGrowth(SEED, seeded, t0 + 3_600_001);
+  assert.equal(back.ripe, true, 'a germinated bush ripens at its sprout deadline');
+  assert.equal(back.tile, Tile.BerryBush, 'no sapling age — a bush is a bush');
+});
+
+test('germinationChance speaks per dialect', () => {
+  assert.equal(germinationChance(0, 'bush'), GROWTH.bushPioneer);
+  assert.ok(
+    Math.abs(germinationChance(2, 'bush') - (GROWTH.bushPioneer + 2 * GROWTH.bushBoost)) < 1e-9,
+    'bushes boost by bushBoost',
+  );
+  assert.ok(
+    GROWTH.bushPioneer > GROWTH.pioneerChance,
+    'the meadow whisper is deliberately louder than the forest one',
+  );
 });
 
 test('THE THREE AGES: scar relaxes to DORMANT bare — time alone never stands a tree', () => {
@@ -173,12 +221,12 @@ test('ore and forage speak one long beat each', () => {
   assert.equal(reopened.ripe, true, 'one beat and the vein stands');
   assert.equal(reopened.tile, Tile.RockGold);
 
-  const bush = row(Tile.BerryBush, 700, 42, t0);
-  const bushScar = projectGrowth(SEED, bush, t0);
-  assert.equal(bushScar.tile, Tile.Grass, 'picked forage leaves bare grass');
-  const back = projectGrowth(SEED, bush, bushScar.due!);
+  const herb = row(Tile.FibrePlant, 700, 42, t0);
+  const herbScar = projectGrowth(SEED, herb, t0);
+  assert.equal(herbScar.tile, Tile.Grass, 'picked forage leaves bare grass');
+  const back = projectGrowth(SEED, herb, herbScar.due!);
   assert.equal(back.ripe, true);
-  assert.equal(back.tile, Tile.BerryBush);
+  assert.equal(back.tile, Tile.FibrePlant);
 });
 
 test('the walk is deterministic and jittered per tile and per harvest', () => {

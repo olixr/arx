@@ -209,11 +209,13 @@ import {
   GROWTH_SCAR,
   GROWTH_STATE_NAMES,
   bareRestFor,
+  bushRestFor,
   drawSpecies,
   germEveryFor,
   germSproutFor,
   germinationChance,
   growthDialectOf,
+  hostTileFor,
   growthTileForState,
   projectGrowth,
   type GrowthRow,
@@ -4081,18 +4083,22 @@ export class GameServer {
     // harvest cycles instead of compounding. A truth of a different
     // dialect (or none) keeps the felled species as the aim.
     const truth = this.world.naturalGround(tx, ty) as Tile;
-    const aim = growthDialectOf(truth) === growthDialectOf(node.tile) ? truth : node.tile;
+    const dialect = growthDialectOf(node.tile);
+    const aim = growthDialectOf(truth) === dialect ? truth : node.tile;
+    // A picked bush's ground is grass from the first moment — bush
+    // rows start DORMANT (succession, no scar age); everything else
+    // wears its scar on the fixed window.
     const row: GrowthRow = {
       tx,
       ty,
       tile: aim,
-      state: GROWTH_SCAR,
+      state: dialect === 'bush' ? GROWTH_BARE : GROWTH_SCAR,
       since: now,
       due: null,
       owner: null,
       firstSeenAt: now,
     };
-    row.due = projectGrowth(config.worldSeed, row, now).due;
+    if (dialect !== 'bush') row.due = projectGrowth(config.worldSeed, row, now).due;
     this.world.registerGrowth(row);
     this.accounts.saveGrowth(row);
   }
@@ -4159,15 +4165,24 @@ export class GameServer {
         }
       }
       if (proj.ripe) {
-        // The crown stands. Clean heal when it matches worldgen's
-        // seed-truth — the deviation ends and the pure land answers
-        // from here. A DIFFERENT species rests as a drifted crown:
-        // deleting it would resurrect the truth species on the next
-        // chunk regen, so the row is the tree's memory (THE LAND
-        // REMEMBERS ITS NATURE — the next felling re-aims at truth).
+        // THE PATIENT STONE / THE QUICK MEADOW: a ripe vein or meadow
+        // patch may surface elsewhere in its formation instead of at
+        // the old mouth — mining migrates through the mesa, the herb
+        // patch wanders the grass.
+        const dialect = growthDialectOf(row.tile);
+        if ((dialect === 'ore' || dialect === 'forage') && this.maybeWander(row, now)) {
+          writes++;
+          continue;
+        }
+        // The resource stands here. Clean heal when it matches
+        // worldgen's seed-truth — the deviation ends and the pure land
+        // answers from here. A DIFFERENT stand rests as a drifted row:
+        // deleting it would resurrect the truth on the next chunk
+        // regen, so the row is the stand's memory (THE LAND REMEMBERS
+        // ITS NATURE — the next harvest re-aims at truth).
         if (loaded) this.setWorldTile(row.tx, row.ty, row.tile);
         const truth = this.world.naturalGround(row.tx, row.ty) as Tile;
-        if (row.tile === truth || growthDialectOf(row.tile) !== 'tree') {
+        if (row.tile === truth) {
           this.world.unregisterGrowth(row.tx, row.ty);
           this.accounts.deleteGrowth(row.tx, row.ty);
         } else {
@@ -4188,6 +4203,108 @@ export class GameServer {
       writes++;
     }
     this.tickGermination(now);
+  }
+
+  /**
+   * THE WANDERING VEIN (second-growth Phase 3): a ripe ore or forage
+   * row rolls its drift chance — on success the resource SURFACES
+   * ELSEWHERE within its reach and the old mouth seals to host ground
+   * (plain rock, plain grass). Conservation by construction: exactly
+   * one resource moves. Targets prefer HOMING — a sealed mouth whose
+   * seed-truth is this very resource — so exposing there cancels a
+   * row and the wander decays back toward worldgen's truth over
+   * cycles; fresh host ground stands a drifted presence otherwise.
+   * Returns true when it handled the ripe row.
+   */
+  private maybeWander(row: GrowthRow, now: number): boolean {
+    const dialect = growthDialectOf(row.tile);
+    const host = dialect === null ? null : hostTileFor(dialect);
+    if (host === null) return false;
+    const chance = dialect === 'ore' ? GROWTH.oreDriftChance : GROWTH.forageDriftChance;
+    if (this.growthRand() >= chance) return false;
+    const reach = dialect === 'ore' ? GROWTH.oreDriftReach : GROWTH.forageDriftReach;
+    const homing: Array<{ tx: number; ty: number }> = [];
+    const fresh: Array<{ tx: number; ty: number }> = [];
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        if (dx * dx + dy * dy > reach * reach) continue;
+        const tx = row.tx + dx;
+        const ty = row.ty + dy;
+        if (this.world.growthDomainAt(tx, ty) !== 'wild') continue;
+        if (this.world.builtAt(tx, ty) !== undefined) continue;
+        if (this.world.hasCropTile(tx, ty)) continue;
+        if (this.inClaimRing(tx, ty)) continue;
+        const other = this.world.growthAt(tx, ty);
+        const truth = this.world.naturalGround(tx, ty) as Tile;
+        if (other) {
+          if (other.state === GROWTH_DRIFTED && other.tile === host && truth === row.tile) {
+            homing.push({ tx, ty });
+          }
+          continue;
+        }
+        if (truth === host) fresh.push({ tx, ty });
+      }
+    }
+    const pool = homing.length > 0 ? homing : fresh;
+    if (pool.length === 0) return false;
+    // Never surface a solid under a body — walk the pool from a random
+    // start until a free candidate answers.
+    const start = Math.floor(this.growthRand() * pool.length);
+    let target: { tx: number; ty: number } | null = null;
+    for (let i = 0; i < pool.length; i++) {
+      const cand = pool[(start + i) % pool.length]!;
+      const candLoaded = this.world.hasChunk(
+        Math.floor(cand.tx / CHUNK_SIZE),
+        Math.floor(cand.ty / CHUNK_SIZE),
+      );
+      if (candLoaded && this.bodyOnTile(cand.tx, cand.ty)) continue;
+      target = cand;
+      break;
+    }
+    if (target === null) return false;
+    // Surface the resource at the target.
+    const targetLoaded = this.world.hasChunk(
+      Math.floor(target.tx / CHUNK_SIZE),
+      Math.floor(target.ty / CHUNK_SIZE),
+    );
+    if (this.world.growthAt(target.tx, target.ty) !== undefined) {
+      // Homing: the sealed truth-site heals — its row cancels.
+      this.world.unregisterGrowth(target.tx, target.ty);
+      this.accounts.deleteGrowth(target.tx, target.ty);
+    } else {
+      const stand: GrowthRow = {
+        tx: target.tx,
+        ty: target.ty,
+        tile: row.tile,
+        state: GROWTH_DRIFTED,
+        since: now,
+        due: null,
+        owner: null,
+        firstSeenAt: now,
+      };
+      this.world.registerGrowth(stand);
+      this.accounts.saveGrowth(stand);
+    }
+    if (targetLoaded) this.setWorldTile(target.tx, target.ty, row.tile);
+    // Seal the old mouth to host ground.
+    const srcLoaded = this.world.hasChunk(
+      Math.floor(row.tx / CHUNK_SIZE),
+      Math.floor(row.ty / CHUNK_SIZE),
+    );
+    const srcTruth = this.world.naturalGround(row.tx, row.ty) as Tile;
+    if (srcTruth === host) {
+      this.world.unregisterGrowth(row.tx, row.ty);
+      this.accounts.deleteGrowth(row.tx, row.ty);
+    } else {
+      row.state = GROWTH_DRIFTED;
+      row.tile = host;
+      row.since = now;
+      row.due = null;
+      this.accounts.saveGrowth(row);
+    }
+    if (srcLoaded) this.setWorldTile(row.tx, row.ty, host);
+    return true;
   }
 
   /** Germination rolls per beat — capacity, not pacing (the pacing
@@ -4226,9 +4343,16 @@ export class GameServer {
   }
 
   private visitDormant(seed: number, row: GrowthRow, now: number): void {
-    if (growthDialectOf(row.tile) !== 'tree') return; // Phase 3 owns the other dialects
+    const dialect = growthDialectOf(row.tile);
+    // Succession dialects only — trees and bushes germinate against
+    // the standing world; ore and forage ride their fixed windows.
+    if (dialect !== 'tree' && dialect !== 'bush') return;
     // THE REST FLOOR: the soil recovers before it can take seed.
-    if (now < row.since + bareRestFor(seed, row.tx, row.ty, row.firstSeenAt)) return;
+    const restMs =
+      dialect === 'bush'
+        ? bushRestFor(seed, row.tx, row.ty, row.firstSeenAt)
+        : bareRestFor(seed, row.tx, row.ty, row.firstSeenAt);
+    if (now < row.since + restMs) return;
     // The roll cadence — in-memory bookkeeping; a restart re-checks a
     // little early, which is harmless.
     if (
@@ -4250,10 +4374,14 @@ export class GameServer {
         if (this.world.hasCropTile(row.tx + dx, row.ty + dy)) return;
       }
     }
-    // Count the standing crowns in dispersal reach: seed-truth trees
-    // no ledger row has removed, plus drifted crowns — WILD ground
-    // only (zone dressing never seeds the open land).
-    const reach = GROWTH.sourceReach;
+    // Count the standing sources in dispersal reach: seed-truth stands
+    // no ledger row has removed, plus drifted stands — WILD ground
+    // only (zone dressing never seeds the open land). Trees count
+    // crowns; bushes count bushes; scars, bare ground, and saplings
+    // cast no seed yet.
+    const isSource = (t: Tile): boolean =>
+      dialect === 'bush' ? t === Tile.BerryBush : TREE_TILES.has(t);
+    const reach = dialect === 'bush' ? GROWTH.bushReach : GROWTH.sourceReach;
     const crowns: Tile[] = [];
     for (let dy = -reach; dy <= reach; dy++) {
       for (let dx = -reach; dx <= reach; dx++) {
@@ -4263,25 +4391,26 @@ export class GameServer {
         const ty = row.ty + dy;
         const other = this.world.growthAt(tx, ty);
         if (other) {
-          // Scars, bare ground, and saplings cast no seed yet.
-          if (other.state === GROWTH_DRIFTED) crowns.push(other.tile);
+          if (other.state === GROWTH_DRIFTED && isSource(other.tile)) crowns.push(other.tile);
           continue;
         }
         if (this.world.growthDomainAt(tx, ty) !== 'wild') continue;
         const truth = this.world.naturalGround(tx, ty) as Tile;
-        if (TREE_TILES.has(truth)) crowns.push(truth);
+        if (isSource(truth)) crowns.push(truth);
       }
     }
-    if (this.growthRand() >= germinationChance(crowns.length)) return;
-    const truthHere = this.world.naturalGround(row.tx, row.ty) as Tile;
-    const drawn = drawSpecies(
-      TREE_TILES.has(truthHere) ? truthHere : null,
-      crowns,
-      this.growthRand(),
-      this.growthRand(),
-      row.tile,
-    );
-    row.tile = drawn;
+    if (this.growthRand() >= germinationChance(crowns.length, dialect)) return;
+    if (dialect === 'tree') {
+      // THE DISPERSAL DRAW — trees only; a bush is always a bush.
+      const truthHere = this.world.naturalGround(row.tx, row.ty) as Tile;
+      row.tile = drawSpecies(
+        TREE_TILES.has(truthHere) ? truthHere : null,
+        crowns,
+        this.growthRand(),
+        this.growthRand(),
+        row.tile,
+      );
+    }
     row.due = now + germSproutFor(seed, row.tx, row.ty, row.firstSeenAt);
     this.accounts.saveGrowth(row);
   }
@@ -16713,7 +16842,10 @@ export class GameServer {
       let nearestD = Infinity;
       const now = Date.now();
       for (const row of this.world.growthLedger.values()) {
-        const dialect = growthDialectOf(row.tile) ?? 'gone';
+        // A sealed mouth (host ground over a wandered-away resource)
+        // has no dialect of its own — name it honestly.
+        const dialect =
+          growthDialectOf(row.tile) ?? (row.state === GROWTH_DRIFTED ? 'sealed' : 'gone');
         const age =
           row.state === GROWTH_BARE
             ? row.due === null

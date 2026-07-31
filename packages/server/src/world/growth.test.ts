@@ -40,6 +40,7 @@ const proto = GameServer.prototype as unknown as {
   tickGrowth: (now: number) => void;
   tickGermination: (now: number) => void;
   visitDormant: (seed: number, row: GrowthRow, now: number) => void;
+  maybeWander: (row: GrowthRow, now: number) => boolean;
   fellWild: (tx: number, ty: number, node: NodeDef) => void;
 };
 
@@ -64,6 +65,7 @@ function slate(world: WorldSource) {
     growthRand: (() => 0.5) as () => number,
     tickGermination: proto.tickGermination,
     visitDormant: proto.visitDormant,
+    maybeWander: proto.maybeWander,
     germCursor: 0,
     patched,
     saved,
@@ -86,25 +88,36 @@ function fellAt(s: ReturnType<typeof slate>, tx: number, ty: number, tile: Tile)
 }
 
 /**
- * Find a WILD tile whose worldgen seed-truth is a standing tree —
- * scanned chunk-by-chunk so the pristine memo stays warm.
+ * Find WILD tiles whose worldgen seed-truth matches — scanned
+ * chunk-by-chunk so the pristine memo stays warm.
  */
-function findWildTree(world: WorldSource): { tx: number; ty: number; tile: Tile } {
-  for (let ccy = 5; ccy < 12; ccy++) {
-    for (let ccx = 5; ccx < 12; ccx++) {
+function findWildTruth(
+  world: WorldSource,
+  pred: (t: Tile) => boolean,
+  count = 1,
+): Array<{ tx: number; ty: number; tile: Tile }> {
+  const out: Array<{ tx: number; ty: number; tile: Tile }> = [];
+  for (let ccy = 0; ccy < 14; ccy++) {
+    for (let ccx = 0; ccx < 14; ccx++) {
       for (let dy = 4; dy < CHUNK_SIZE - 4; dy++) {
         for (let dx = 4; dx < CHUNK_SIZE - 4; dx++) {
           const tx = ccx * CHUNK_SIZE + dx;
           const ty = ccy * CHUNK_SIZE + dy;
           const t = world.naturalGround(tx, ty) as Tile;
-          if (TREE_TILES.has(t) && world.growthDomainAt(tx, ty) === 'wild') {
-            return { tx, ty, tile: t };
+          if (pred(t) && world.growthDomainAt(tx, ty) === 'wild') {
+            out.push({ tx, ty, tile: t });
+            if (out.length >= count) return out;
           }
         }
       }
     }
   }
-  throw new Error('no wild tree in the scan box — worldgen changed under this test');
+  if (out.length === 0) throw new Error('no wild truth match in the scan box');
+  return out;
+}
+
+function findWildTree(world: WorldSource): { tx: number; ty: number; tile: Tile } {
+  return findWildTruth(world, (t) => TREE_TILES.has(t))[0]!;
 }
 
 test('THE KEPT AND THE WILD: the domain router answers by ground provenance', () => {
@@ -336,7 +349,7 @@ test('a tree never stands up through a body — the defer courtesy', () => {
   assert.equal(world.groundAt(spot.tx, spot.ty), spot.tile, 'the tree stands once the way is clear');
 });
 
-test('the beat is budgeted in writes — a clearcut heals as a drizzle', () => {
+test('the beat is budgeted in writes — a harvest heals as a drizzle', () => {
   const base = validateGrowth({});
   assert.ok(base.ok);
   if (!base.ok) return;
@@ -344,7 +357,14 @@ test('the beat is budgeted in writes — a clearcut heals as a drizzle', () => {
   try {
     const world = new WorldSource(SEED, []);
     const s = slate(world);
-    for (let i = 0; i < 5; i++) fellAt(s, 200 + i, 220, Tile.BerryBush);
+    const herbs = findWildTruth(
+      world,
+      (t) => t === Tile.WildSagewort || t === Tile.WildMoonbell || t === Tile.FibrePlant,
+      5,
+    );
+    assert.equal(herbs.length, 5, 'the scan box must hold five wild herbs');
+    for (const h of herbs) fellAt(s, h.tx, h.ty, h.tile);
+    s.growthRand = () => 0.99; // the meadow stays put — no wandering today
     const future = Date.now() + 30 * 24 * 3_600_000;
     proto.tickGrowth.call(s, future);
     assert.equal(s.deleted.length, 2, 'one beat lands exactly the budget');
@@ -353,6 +373,96 @@ test('the beat is budgeted in writes — a clearcut heals as a drizzle', () => {
     assert.equal(s.deleted.length, 5, 'later beats finish the job');
   } finally {
     replaceGrowth({ ...AUTHORED_GROWTH });
+  }
+});
+
+test('THE QUICK MEADOW: a picked wild bush returns by succession, not the clock', () => {
+  const world = new WorldSource(SEED, []);
+  const s = slate(world);
+  const spot = findWildTruth(world, (t) => t === Tile.BerryBush)[0]!;
+  const row = fellAt(s, spot.tx, spot.ty, spot.tile);
+  assert.equal(row.state, GROWTH_BARE, 'a picked bush starts DORMANT');
+  assert.equal(row.due, null);
+  assert.equal(world.groundAt(spot.tx, spot.ty), Tile.Grass, 'grass from the first moment');
+
+  // Failed rolls: a month of clock and the ground is still grass.
+  s.growthRand = () => 0.9999;
+  const t1 = Date.now();
+  proto.tickGrowth.call(s, t1 + 30 * 24 * 3_600_000);
+  assert.equal(row.due, null, 'time alone never stands a bush either');
+
+  // The world says yes: one germination roll, then the sprout deadline.
+  queueRolls(s, [0]);
+  const t2 = t1 + 30 * 24 * 3_600_000 + germEveryFor(SEED, spot.tx, spot.ty, row.firstSeenAt) + 1;
+  proto.tickGrowth.call(s, t2);
+  assert.ok(row.due !== null, 'the bush germinates against the standing world');
+  proto.tickGrowth.call(s, row.due! + 1000);
+  assert.equal(world.growthAt(spot.tx, spot.ty), undefined, 'truth heals clean — row dissolves');
+  assert.equal(world.groundAt(spot.tx, spot.ty), Tile.BerryBush, 'the bush stands');
+});
+
+test('THE WANDERING PATCH: out with the pick, home with the next — and the ledger empties', () => {
+  const world = new WorldSource(SEED, []);
+  const s = slate(world);
+  const spot = findWildTruth(
+    world,
+    (t) => t === Tile.WildSagewort || t === Tile.FibrePlant,
+  )[0]!;
+  const row = fellAt(s, spot.tx, spot.ty, spot.tile);
+
+  // Ripe + a wander roll that succeeds: the patch surfaces on fresh
+  // grass in reach, and the old ground seals (a drifted pair stands).
+  queueRolls(s, [0, 0]); // wander roll, pool pick
+  proto.tickGrowth.call(s, row.due! + 1000);
+  const rows = [...world.growthLedger.values()];
+  assert.equal(rows.length, 2, 'the wander leaves a sealed mouth and a standing patch');
+  const stand = rows.find((r) => r.tile === spot.tile);
+  const sealed = rows.find((r) => r.tile === Tile.Grass);
+  assert.ok(stand && sealed, 'one resource, one seal — conservation by construction');
+  assert.equal(sealed!.tx, spot.tx, 'the old ground sealed to grass');
+  assert.equal(world.groundAt(stand!.tx, stand!.ty), spot.tile, 'the patch stands elsewhere');
+  assert.equal(world.groundAt(spot.tx, spot.ty), Tile.Grass);
+  const dist = Math.hypot(stand!.tx - spot.tx, stand!.ty - spot.ty);
+  assert.ok(dist <= GROWTH.forageDriftReach, 'the wander respects its reach');
+
+  // Pick the wandered patch: its wander HOMES to the sealed truth-site
+  // and BOTH rows cancel — the meadow walks back to worldgen's truth.
+  const again = fellAt(s, stand!.tx, stand!.ty, spot.tile);
+  queueRolls(s, [0, 0]);
+  proto.tickGrowth.call(s, again.due! + 1000);
+  assert.equal(world.growthLedger.size, 0, 'full circle — the ledger is EMPTY');
+  assert.equal(world.groundAt(spot.tx, spot.ty), spot.tile, 'truth stands at home');
+  assert.equal(world.groundAt(stand!.tx, stand!.ty), Tile.Grass, 'the wander site healed to grass');
+});
+
+test('THE PATIENT STONE: a re-opening vein either heals home or migrates conserving ore', () => {
+  const world = new WorldSource(SEED, []);
+  const s = slate(world);
+  const ores = new Set([
+    Tile.RockCopper,
+    Tile.RockTin,
+    Tile.RockIron,
+    Tile.RockCoal,
+    Tile.RockSilver,
+    Tile.RockGold,
+  ]);
+  const spot = findWildTruth(world, (t) => ores.has(t))[0]!;
+  const row = fellAt(s, spot.tx, spot.ty, spot.tile);
+  assert.equal(world.groundAt(spot.tx, spot.ty), Tile.RockDepleted, 'the spent rock stands');
+  queueRolls(s, [0, 0]); // always try to wander
+  proto.tickGrowth.call(s, row.due! + 1000);
+  const rows = [...world.growthLedger.values()];
+  if (rows.length === 0) {
+    // No host rock in reach: the vein re-opened at its own mouth.
+    assert.equal(world.groundAt(spot.tx, spot.ty), spot.tile, 'healed home');
+  } else {
+    // Migration: exactly one ore stands, exactly one mouth sealed.
+    assert.equal(rows.length, 2, 'a wander is always a pair');
+    const stand = rows.find((r) => r.tile === spot.tile)!;
+    const sealed = rows.find((r) => r.tile === Tile.Rock)!;
+    assert.ok(stand && sealed, 'one vein, one sealed mouth — ore is conserved');
+    assert.equal(world.groundAt(stand.tx, stand.ty), spot.tile, 'the vein surfaced in the formation');
+    assert.equal(world.groundAt(spot.tx, spot.ty), Tile.Rock, 'plain rock seals the old mouth');
   }
 });
 

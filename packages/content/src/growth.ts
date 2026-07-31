@@ -71,12 +71,15 @@ export interface GrowthRow {
   checkedAt?: number;
 }
 
-export type GrowthDialect = 'tree' | 'ore' | 'forage';
+export type GrowthDialect = 'tree' | 'ore' | 'bush' | 'forage';
 
 /**
- * ONE ENGINE, THREE DIALECTS: which regrowth dialect a resource tile
- * speaks, read off the node roster — trees stage through the ages,
- * ores re-open in one long beat, forage returns quickly. Null means
+ * ONE ENGINE, FOUR DIALECTS: which regrowth dialect a resource tile
+ * speaks, read off the node roster. Trees stage through the ages by
+ * succession; ores are THE PATIENT STONE — long re-open, and the vein
+ * WANDERS through the formation; berry bushes spread bush-to-bush by
+ * the same succession engine as trees; herbs and fibre are THE QUICK
+ * MEADOW — short windows, and the patch wanders the grass. Null means
  * the ledger never takes the tile (fishing spots never deplete;
  * anything the roster doesn't know stays on the kept path).
  */
@@ -85,7 +88,19 @@ export function growthDialectOf(tile: Tile): GrowthDialect | null {
   if (!node || node.depletedTile === null) return null;
   if (node.skill === 'woodcutting') return 'tree';
   if (node.skill === 'mining') return 'ore';
-  if (node.skill === 'foraging') return 'forage';
+  if (node.skill === 'foraging') return tile === Tile.BerryBush ? 'bush' : 'forage';
+  return null;
+}
+
+/**
+ * The barren host a wandering resource leaves behind (and surfaces
+ * through): a sealed vein mouth is plain rock, a moved meadow patch
+ * is plain grass. Trees and bushes never wander — they drift by SEED,
+ * in place.
+ */
+export function hostTileFor(dialect: GrowthDialect): Tile | null {
+  if (dialect === 'ore') return Tile.Rock;
+  if (dialect === 'forage') return Tile.Grass;
   return null;
 }
 
@@ -138,6 +153,25 @@ export interface GrowthDef {
   /** Tiles of germination refusal around built ground — the forest
    *  grows AROUND a homestead, never against its walls. */
   courtesyRing: number;
+  // ---- Phase 3: THE PATIENT STONE AND THE QUICK MEADOW ----
+  /** Chance a re-opening vein SURFACES ELSEWHERE in the formation
+   *  instead of at the old mouth — mining migrates through the mesa. */
+  oreDriftChance: number;
+  /** How far the vein may wander (tiles). */
+  oreDriftReach: number;
+  /** Chance a returning herb/fibre patch wanders the meadow. */
+  forageDriftChance: number;
+  /** How far the patch may wander (tiles). */
+  forageDriftReach: number;
+  /** Bush-to-bush dispersal radius for berry succession. */
+  bushReach: number;
+  /** Germination chance added per standing bush within reach. */
+  bushBoost: number;
+  /** A lone picked bush's own return whisper — generous, so a meadow
+   *  never empties for want of neighbors. */
+  bushPioneer: number;
+  /** How long picked bush ground rests before germination may roll. */
+  bushRestMinutes: GrowthRange;
 }
 
 /**
@@ -168,6 +202,17 @@ export const GROWTH: GrowthDef = {
   germSproutMinutes: [15, 45],
   driftChance: 0.25,
   courtesyRing: 1,
+  // Phase 3 — the stone wanders more often than not (farming one rock
+  // must not work); the meadow wanders enough to feel alive; bushes
+  // return generously because forage is the newest hand's trade.
+  oreDriftChance: 0.5,
+  oreDriftReach: 5,
+  forageDriftChance: 0.35,
+  forageDriftReach: 4,
+  bushReach: 4,
+  bushBoost: 0.2,
+  bushPioneer: 0.04,
+  bushRestMinutes: [30, 90],
 };
 
 // Growth RNG salts — the named-streams law (the ST_* family's kin).
@@ -176,6 +221,7 @@ const ST_GROW_BARE = 0x92071b;
 const ST_GROW_SAPLING = 0x92071c;
 const ST_GROW_CHECK = 0x92071d;
 const ST_GROW_SPROUT = 0x92071e;
+const ST_GROW_BUSH = 0x92071f;
 
 /**
  * A stage wait in ms, hash-jittered per tile AND per harvest (the
@@ -249,6 +295,16 @@ export function projectGrowth(seed: number, row: GrowthRow, now: number): Growth
   if (dialect === null || !node || node.depletedTile === null) {
     return { state: row.state, tile: row.tile, stateSince: row.since, due: null, ripe: true };
   }
+  if (dialect === 'bush') {
+    // A picked bush's ground is grass from the first moment — the
+    // harvest goes straight to dormant bare and waits for the world
+    // (succession like the trees, with no sapling age; the sprout
+    // deadline is the germination visitor's checkpoint).
+    if (row.due === null || now < row.due) {
+      return { state: GROWTH_BARE, tile: Tile.Grass, stateSince: row.since, due: row.due, ripe: false };
+    }
+    return { state: GROWTH_BARE, tile: row.tile, stateSince: row.due, due: null, ripe: true };
+  }
   if (dialect !== 'tree') {
     const range = dialect === 'ore' ? GROWTH.oreReopenMinutes : GROWTH.forageMinutes;
     const end = row.since + growWait(seed, ST_GROW_SCAR, row.tx, row.ty, row.firstSeenAt, range);
@@ -310,15 +366,22 @@ export function germSproutFor(seed: number, tx: number, ty: number, nonce: numbe
   return growWait(seed, ST_GROW_SPROUT, tx, ty, nonce, GROWTH.germSproutMinutes);
 }
 
+/** THE QUICK MEADOW's rest floor for a picked bush. */
+export function bushRestFor(seed: number, tx: number, ty: number, nonce: number): number {
+  return growWait(seed, ST_GROW_BUSH, tx, ty, nonce, GROWTH.bushRestMinutes);
+}
+
 /**
  * THE FOREST GROWS FROM ITS EDGES, as one pure number: the germination
- * chance for a bare tile with `sources` standing crowns in reach. The
- * edge-inward wave is emergent — edges see crowns and race, hearts see
- * none and wait on the pioneer whisper. Reads world state only (THE
- * WORLD OWES YOU NOTHING).
+ * chance for a bare tile with `sources` standing crowns (or bushes) in
+ * reach. The edge-inward wave is emergent — edges see sources and
+ * race, hearts see none and wait on the pioneer whisper. Reads world
+ * state only (THE WORLD OWES YOU NOTHING).
  */
-export function germinationChance(sources: number): number {
-  return Math.min(GROWTH.germChanceCap, GROWTH.pioneerChance + GROWTH.sourceBoost * sources);
+export function germinationChance(sources: number, dialect: GrowthDialect = 'tree'): number {
+  const pioneer = dialect === 'bush' ? GROWTH.bushPioneer : GROWTH.pioneerChance;
+  const boost = dialect === 'bush' ? GROWTH.bushBoost : GROWTH.sourceBoost;
+  return Math.min(GROWTH.germChanceCap, pioneer + boost * sources);
 }
 
 /**
@@ -353,6 +416,7 @@ export const AUTHORED_GROWTH: Readonly<GrowthDef> = Object.freeze({
   forageMinutes: [...GROWTH.forageMinutes] as [number, number],
   germEveryMinutes: [...GROWTH.germEveryMinutes] as [number, number],
   germSproutMinutes: [...GROWTH.germSproutMinutes] as [number, number],
+  bushRestMinutes: [...GROWTH.bushRestMinutes] as [number, number],
 });
 
 export type ValidateGrowthResult = { ok: true; def: GrowthDef } | { ok: false; errors: string[] };
@@ -424,6 +488,14 @@ export function validateGrowth(raw: unknown): ValidateGrowthResult {
     germSproutMinutes: range('germSproutMinutes', 1, WEEK2),
     driftChance: num('driftChance', 0, 1),
     courtesyRing: num('courtesyRing', 0, 4, true),
+    oreDriftChance: num('oreDriftChance', 0, 1),
+    oreDriftReach: num('oreDriftReach', 1, 16, true),
+    forageDriftChance: num('forageDriftChance', 0, 1),
+    forageDriftReach: num('forageDriftReach', 1, 16, true),
+    bushReach: num('bushReach', 1, 16, true),
+    bushBoost: num('bushBoost', 0, 1),
+    bushPioneer: num('bushPioneer', 0, 1),
+    bushRestMinutes: range('bushRestMinutes', 1, WEEK2),
   };
   // Unknown keys are refused loudly — a typoed dial must never sit in
   // the doc pretending to steer anything.
@@ -450,6 +522,7 @@ export function replaceGrowth(next: GrowthDef): void {
     forageMinutes: [...next.forageMinutes],
     germEveryMinutes: [...next.germEveryMinutes],
     germSproutMinutes: [...next.germSproutMinutes],
+    bushRestMinutes: [...next.bushRestMinutes],
   });
 }
 

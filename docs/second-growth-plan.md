@@ -272,6 +272,20 @@ ledger written into this doc.
 - Nothing here rolls per-player. Two players at the same grove see the same truth and
   compete for it — contention was already the law (`'gone'`), now it matters.
 
+## 7a. Phase 3 balance ledger (as shipped)
+
+The economy pass concluded with ZERO yield changes — no loot table, no
+`yieldItem`, no `xp` moved, so the loot flood-law needed no analyzer
+run. What changed is *where and when* supply stands, never how much a
+swing pays: kept town nodes are untouched end to end (test-pinned and
+live-verified — the towns remain every trade's steady floor); wild
+supply is conserved by construction (a wander moves exactly one
+resource: the source seals to host ground, the target either heals a
+sealed truth-site or stands a drifted presence — the full-circle test
+pins that a wander out and back leaves the ledger EMPTY). Farming one
+wild rock stops working not because the rock pays less, but because
+the vein moves — the pay-per-swing is identical everywhere.
+
 ## 8. Open questions (decided at green-light, defaults proposed)
 
 1. **Ledger scale guard.** A griefing crew could fell thousands of tiles. Rows are tiny
