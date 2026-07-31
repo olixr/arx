@@ -13,6 +13,7 @@ import {
   BUILDABLES,
   BUILD_CATEGORIES,
   CROP_BY_SEED,
+  GROWTH_SEEDS,
   buildableGround,
   canUnmake,
   enchantDef,
@@ -630,7 +631,7 @@ export class StationPanels {
     // Tally the seed pouches in the pack.
     const held = new Map<string, number>();
     for (const slot of this.getInventory()) {
-      if (slot && CROP_BY_SEED.has(slot.item)) {
+      if (slot && (CROP_BY_SEED.has(slot.item) || GROWTH_SEEDS.has(slot.item))) {
         held.set(slot.item, (held.get(slot.item) ?? 0) + slot.qty);
       }
     }
@@ -645,14 +646,16 @@ export class StationPanels {
     if (!showing.sel || !held.has(showing.sel)) showing.sel = seeds[0]!;
 
     for (const seed of seeds) {
-      const crop = CROP_BY_SEED.get(seed)!;
-      const locked = level < crop.levelReq;
+      // THE SOWN LINE: tree and bush seeds share the picker with crops
+      // but carry no crop def — the wild owns their clock.
+      const crop = CROP_BY_SEED.get(seed);
+      const locked = crop !== undefined && level < crop.levelReq;
       this.craftList.appendChild(
         this.ledgerRow({
           key: `plantrow:${seed}`,
           iconUrl: itemIconUrl(seed, 40),
-          name: crop.name,
-          note: locked ? `lvl ${crop.levelReq}` : `× ${held.get(seed)!.toLocaleString()}`,
+          name: crop?.name ?? itemDef(seed)?.name ?? seed,
+          note: locked ? `lvl ${crop!.levelReq}` : `× ${held.get(seed)!.toLocaleString()}`,
           noteTone: locked ? 'lock' : 'ok',
           selected: showing.sel === seed,
           onPick: () => {
@@ -665,18 +668,19 @@ export class StationPanels {
 
     // The chosen seed, laid out large.
     const seed = showing.sel;
-    const crop = CROP_BY_SEED.get(seed)!;
-    const locked = level < crop.levelReq;
+    const crop = CROP_BY_SEED.get(seed);
+    const sown = GROWTH_SEEDS.has(seed);
+    const locked = crop !== undefined && level < crop.levelReq;
     const head = document.createElement('div');
     head.className = 'work-head';
     head.appendChild(iconTile(itemIconUrl(seed, 64)));
     const titles = document.createElement('div');
     const name = document.createElement('div');
     name.className = 'work-name';
-    name.textContent = crop.name;
+    name.textContent = crop?.name ?? itemDef(seed)?.name ?? seed;
     const sub = document.createElement('div');
     sub.className = 'work-sub';
-    sub.textContent = `farming · level ${crop.levelReq}`;
+    sub.textContent = crop ? `farming · level ${crop.levelReq}` : 'planting · wild ground';
     titles.append(name, sub);
     head.appendChild(titles);
     this.craftDetail.appendChild(head);
@@ -694,11 +698,11 @@ export class StationPanels {
       f.append(v, l);
       facts.appendChild(f);
     };
-    fact('to grow', `~${crop.growMinutes} min`);
+    fact('to grow', crop ? `~${crop.growMinutes} min` : 'the world decides');
     fact('seeds held', held.get(seed)!.toLocaleString());
     this.craftDetail.appendChild(facts);
 
-    this.craftDetail.appendChild(sectionHead('In the furrow'));
+    this.craftDetail.appendChild(sectionHead(sown ? 'Into wild earth' : 'In the furrow'));
     this.craftDetail.appendChild(this.materialRow(seed, 1));
 
     const actions = document.createElement('div');
@@ -706,7 +710,7 @@ export class StationPanels {
     if (locked) {
       const lockNote = document.createElement('span');
       lockNote.className = 'lock-note';
-      lockNote.textContent = `Reach farming ${crop.levelReq} to plant this`;
+      lockNote.textContent = `Reach farming ${crop!.levelReq} to plant this`;
       actions.appendChild(lockNote);
     } else {
       actions.appendChild(

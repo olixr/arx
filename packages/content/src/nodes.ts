@@ -31,6 +31,13 @@ export interface NodeDef {
    * hook (chests and other lootable props resolve the same way).
    */
   bonusYield?: { item?: string; table?: string; chance: number };
+  /**
+   * THE SPILLED SEED (second-growth Phase 4): rolled ONCE, on the
+   * swing that fells the node — a falling wood sheds its seed, a
+   * picked cane can be struck. The seed item plants back into WILD
+   * ground through the seed picker (the sown line).
+   */
+  seedYield?: { item: string; chance: number };
 }
 
 export const NODES: readonly NodeDef[] = [
@@ -48,6 +55,7 @@ export const NODES: readonly NodeDef[] = [
     // Regrowth is staged (stump -> sapling -> tree), so the wait reads
     // as growth, not a pop-in refresh.
     respawnSec: 18,
+    seedYield: { item: 'tree_seed', chance: 0.3 },
   },
   {
     tile: Tile.TreeOak,
@@ -62,6 +70,7 @@ export const NODES: readonly NodeDef[] = [
     depleteChance: 0.4,
     depletedTile: Tile.Stump,
     respawnSec: 32,
+    seedYield: { item: 'acorn', chance: 0.35 },
   },
   {
     tile: Tile.TreePine,
@@ -77,6 +86,7 @@ export const NODES: readonly NodeDef[] = [
     depleteChance: 0.38,
     depletedTile: Tile.Stump,
     respawnSec: 38,
+    seedYield: { item: 'pine_cone', chance: 0.35 },
   },
   {
     tile: Tile.TreeWillow,
@@ -91,6 +101,7 @@ export const NODES: readonly NodeDef[] = [
     depleteChance: 0.35,
     depletedTile: Tile.Stump,
     respawnSec: 45,
+    seedYield: { item: 'willow_cutting', chance: 0.35 },
   },
   {
     tile: Tile.TreeYew,
@@ -105,6 +116,7 @@ export const NODES: readonly NodeDef[] = [
     depleteChance: 0.3,
     depletedTile: Tile.Stump,
     respawnSec: 75,
+    seedYield: { item: 'yew_seed', chance: 0.35 },
   },
   {
     tile: Tile.RockCopper,
@@ -277,6 +289,7 @@ export const NODES: readonly NodeDef[] = [
     depleteChance: 1,
     depletedTile: Tile.Grass,
     respawnSec: 60,
+    seedYield: { item: 'bush_cutting', chance: 0.3 },
   },
   {
     tile: Tile.FibrePlant,

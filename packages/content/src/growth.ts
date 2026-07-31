@@ -93,6 +93,23 @@ export function growthDialectOf(tile: Tile): GrowthDialect | null {
 }
 
 /**
+ * THE SOWN LINE (Phase 4): seed item -> the species it plants. A
+ * planted seed enters the SAME growth ledger as any wild regrowth —
+ * owner-stamped, pre-germinated (the hand does the germination's
+ * work), and riding the exact same ages from there. Reciprocity with
+ * NODES.seedYield is test-pinned: every seed a wood spills can be
+ * sown, and every sowable species spills its seed.
+ */
+export const GROWTH_SEEDS: ReadonlyMap<string, Tile> = new Map([
+  ['tree_seed', Tile.Tree],
+  ['acorn', Tile.TreeOak],
+  ['pine_cone', Tile.TreePine],
+  ['willow_cutting', Tile.TreeWillow],
+  ['yew_seed', Tile.TreeYew],
+  ['bush_cutting', Tile.BerryBush],
+]);
+
+/**
  * The barren host a wandering resource leaves behind (and surfaces
  * through): a sealed vein mouth is plain rock, a moved meadow patch
  * is plain grass. Trees and bushes never wander — they drift by SEED,

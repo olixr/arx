@@ -7,6 +7,7 @@ import {
   GROWTH,
   GROWTH_BARE,
   GROWTH_DRIFTED,
+  GROWTH_SAPLING,
   GROWTH_SCAR,
   NODES_BY_TILE,
   bareRestFor,
@@ -19,6 +20,7 @@ import {
   type ZoneDef,
 } from '@arx/content';
 import { GameServer } from '../game/gameServer.js';
+import { addItem, countItem, emptyInventory } from '../game/inventory.js';
 import { config } from '../config.js';
 import { WorldSource } from './worldSource.js';
 
@@ -42,6 +44,15 @@ const proto = GameServer.prototype as unknown as {
   visitDormant: (seed: number, row: GrowthRow, now: number) => void;
   maybeWander: (row: GrowthRow, now: number) => boolean;
   fellWild: (tx: number, ty: number, node: NodeDef) => void;
+  plantWild: (
+    eid: number,
+    player: unknown,
+    tx: number,
+    ty: number,
+    seed: string,
+    species: Tile,
+    sys: (text: string) => void,
+  ) => void;
 };
 
 const SEED = config.worldSeed;
@@ -484,4 +495,147 @@ test('a dial edit re-aims live regrowth on the next beat (call-time reads)', () 
   } finally {
     replaceGrowth({ ...AUTHORED_GROWTH });
   }
+});
+// ------------------------------------------------- THE SOWN LINE (Ph4)
+
+function mkPlanter(seed: string, qty = 3) {
+  const inventory = emptyInventory();
+  addItem(inventory, seed, qty);
+  const sent: Array<Record<string, unknown>> = [];
+  return {
+    player: {
+      characterId: 7,
+      inventory,
+      session: { sendJson: (m: Record<string, unknown>) => sent.push(m) },
+    },
+    inventory,
+    sent,
+  };
+}
+
+function plantSlate(world: WorldSource) {
+  const s = slate(world) as ReturnType<typeof slate> & {
+    grantXp: (...a: unknown[]) => void;
+    xp: Array<string>;
+  };
+  s.xp = [];
+  s.grantXp = (_eid: unknown, _player: unknown, skill: unknown) => s.xp.push(String(skill));
+  return s;
+}
+
+test('THE SOWN LINE: a seed takes wild earth, owner-stamped and pre-germinated', () => {
+  const world = new WorldSource(SEED, []);
+  const s = plantSlate(world);
+  const spot = findWildTruth(world, (t) => t === Tile.Grass)[0]!;
+  world.ensure(Math.floor(spot.tx / CHUNK_SIZE), Math.floor(spot.ty / CHUNK_SIZE));
+  const { player, inventory } = mkPlanter('acorn');
+  const msgs: string[] = [];
+  proto.plantWild.call(s, 1, player, spot.tx, spot.ty, 'acorn', Tile.TreeOak, (t) => msgs.push(t));
+  const row = world.growthAt(spot.tx, spot.ty);
+  assert.ok(row, 'the sowing registers a ledger row');
+  assert.equal(row!.owner, 7, 'the row carries its planter');
+  assert.equal(row!.state, GROWTH_BARE);
+  assert.ok(row!.due !== null, 'pre-germinated: the hand did the germination\'s work');
+  assert.equal(countItem(inventory, 'acorn'), 2, 'the seed is spent');
+  assert.equal(s.xp[0], 'farming', 'sowing pays the farmer');
+  assert.ok(msgs.some((m) => m.includes('the earth')), 'the sowing speaks');
+
+  // The plot is taken now.
+  const again = mkPlanter('acorn');
+  proto.plantWild.call(s, 1, again.player, spot.tx, spot.ty, 'acorn', Tile.TreeOak, (t) =>
+    msgs.push(t),
+  );
+  assert.equal(countItem(again.inventory, 'acorn'), 3, 'a refused sowing spends nothing');
+});
+
+test('THE SOWN LINE: tended ground refuses wild seeds', () => {
+  const size = 8 * 8;
+  const zone: ZoneDef = {
+    id: 'sown_kept_test',
+    name: 'Kept Test',
+    origin: { x: 32, y: 32 },
+    width: 8,
+    height: 8,
+    ground: new Uint16Array(size).fill(Tile.Grass),
+    detail: new Uint16Array(size),
+  };
+  const world = new WorldSource(SEED, [zone]);
+  const s = plantSlate(world);
+  world.ensure(1, 1);
+  const { player, inventory } = mkPlanter('acorn');
+  const msgs: string[] = [];
+  proto.plantWild.call(s, 1, player, 36, 36, 'acorn', Tile.TreeOak, (t) => msgs.push(t));
+  assert.equal(world.growthAt(36, 36), undefined, 'no row on kept ground');
+  assert.equal(countItem(inventory, 'acorn'), 3, 'the seed stays in the pack');
+  assert.ok(msgs.some((m) => m.includes('tended')), 'the refusal speaks plainly');
+});
+
+test('the orchard: sown oak grows on grass-truth, rests drifted, and refelling keeps the mark', () => {
+  const world = new WorldSource(SEED, []);
+  const s = plantSlate(world);
+  const spot = findWildTruth(world, (t) => t === Tile.Grass)[0]!;
+  world.ensure(Math.floor(spot.tx / CHUNK_SIZE), Math.floor(spot.ty / CHUNK_SIZE));
+  const { player } = mkPlanter('acorn');
+  proto.plantWild.call(s, 1, player, spot.tx, spot.ty, 'acorn', Tile.TreeOak, () => {});
+  const row = world.growthAt(spot.tx, spot.ty)!;
+
+  proto.tickGrowth.call(s, row.due! + 1000);
+  assert.equal(row.state, GROWTH_SAPLING, 'the sapling stands');
+  assert.equal(world.groundAt(spot.tx, spot.ty), Tile.SaplingOak);
+  const sapDue = projectGrowth(SEED, row, row.due ?? Date.now()).due ?? row.due!;
+  proto.tickGrowth.call(s, sapDue + 24 * 3_600_000);
+  assert.equal(row.state, GROWTH_DRIFTED, 'an oak over grass-truth rests as a drifted crown');
+  assert.equal(row.owner, 7, 'the crown keeps its planter');
+  assert.equal(world.groundAt(spot.tx, spot.ty), Tile.TreeOak);
+
+  // Anyone may chop it — and the reFELLed ground keeps both the mark
+  // and the species (truth is grass, so the aim stays the oak).
+  const felled = fellAt(s, spot.tx, spot.ty, Tile.TreeOak);
+  assert.equal(felled.owner, 7, 'the orchard remembers whose hand set it');
+  assert.equal(felled.tile, Tile.TreeOak, 'the sown species holds through the felling');
+});
+
+test('THE SEED TAKES THE PLOT: sowing on a garden plot consumes the built record', () => {
+  const world = new WorldSource(SEED, []);
+  const s = plantSlate(world) as ReturnType<typeof plantSlate> & { ringCache: unknown };
+  s.ringCache = {};
+  const spot = findWildTruth(world, (t) => t === Tile.Grass)[0]!;
+  world.ensure(Math.floor(spot.tx / CHUNK_SIZE), Math.floor(spot.ty / CHUNK_SIZE));
+  world.registerBuilt(spot.tx, spot.ty, Tile.Tilled, 7, Tile.Grass);
+  const deletedBuilt: Array<[number, number]> = [];
+  (s.accounts as unknown as { deleteBuiltTile: (tx: number, ty: number) => void }).deleteBuiltTile =
+    (tx: number, ty: number) => deletedBuilt.push([tx, ty]);
+  const { player } = mkPlanter('acorn');
+  proto.plantWild.call(s, 1, player, spot.tx, spot.ty, 'acorn', Tile.TreeOak, () => {});
+  assert.ok(world.growthAt(spot.tx, spot.ty), 'the sowing stands');
+  assert.equal(world.builtAt(spot.tx, spot.ty), undefined, 'the plot is spent');
+  assert.equal(deletedBuilt.length, 1, 'the built record leaves the table');
+  assert.equal(s.ringCache, null, 'the claim rings re-derive');
+  // The beat must NOT drop the sown row as a builder's claim now.
+  const row = world.growthAt(spot.tx, spot.ty)!;
+  proto.tickGrowth.call(s, row.due! + 1000);
+  assert.ok(world.growthAt(spot.tx, spot.ty), 'the growth survives its own plot');
+});
+
+test('THE SOWN EXCEPTION: owned ground germinates inside its claim ring; wild ground waits', () => {
+  const world = new WorldSource(SEED, []);
+  const s = plantSlate(world);
+  const spot = findWildTree(world);
+  const row = fellAt(s, spot.tx, spot.ty, spot.tile);
+  proto.tickGrowth.call(s, row.due! + 1000);
+  assert.equal(row.state, GROWTH_BARE);
+  s.inClaimRing = () => true;
+  const floor = bareRestFor(SEED, spot.tx, spot.ty, row.firstSeenAt);
+
+  // Unowned: the ring refuses the roll.
+  queueRolls(s, [0, 0.99, 0.5]);
+  proto.tickGrowth.call(s, row.since + floor + 60_000);
+  assert.equal(row.due, null, 'wild ground waits at the ring');
+
+  // Owned: the gardener's yard grows for the gardener.
+  row.owner = 7;
+  queueRolls(s, [0, 0.99, 0.5]);
+  const every = germEveryFor(SEED, spot.tx, spot.ty, row.firstSeenAt);
+  proto.tickGrowth.call(s, row.since + floor + every + 120_000);
+  assert.ok(row.due !== null, 'the sown exception lets the owned row germinate');
 });

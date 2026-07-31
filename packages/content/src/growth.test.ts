@@ -9,6 +9,7 @@ import {
   GROWTH_SAPLING,
   GROWTH_SCAR,
   drawSpecies,
+  GROWTH_SEEDS,
   germinationChance,
   growthDialectOf,
   growthTileForState,
@@ -18,6 +19,7 @@ import {
   type GrowthRow,
 } from './growth.js';
 import { NODES } from './nodes.js';
+import { itemDef } from './items.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import type { ZoneDef } from './maps/types.js';
 
@@ -126,6 +128,32 @@ test('THE QUICK MEADOW: a picked bush is dormant grass until the world says grow
   const back = projectGrowth(SEED, seeded, t0 + 3_600_001);
   assert.equal(back.ripe, true, 'a germinated bush ripens at its sprout deadline');
   assert.equal(back.tile, Tile.BerryBush, 'no sapling age — a bush is a bush');
+});
+
+test('THE SOWN LINE: seeds and species answer each other (reciprocity)', () => {
+  for (const [seed, species] of GROWTH_SEEDS) {
+    assert.ok(itemDef(seed), `seed item '${seed}' must exist`);
+    const node = NODES.find((n) => n.tile === species);
+    assert.ok(node, `species for '${seed}' must be a harvestable node`);
+    assert.equal(node!.seedYield?.item, seed, `${node!.name} must spill '${seed}'`);
+    const dialect = growthDialectOf(species);
+    assert.ok(
+      dialect === 'tree' || dialect === 'bush',
+      'only succession dialects are sowable — the wild owns their clock',
+    );
+  }
+  for (const node of NODES) {
+    if (!node.seedYield) continue;
+    assert.equal(
+      GROWTH_SEEDS.get(node.seedYield.item),
+      node.tile,
+      `${node.name}'s spilled seed must plant back to itself`,
+    );
+    assert.ok(
+      node.seedYield.chance > 0 && node.seedYield.chance <= 1,
+      'the spill chance is a real chance',
+    );
+  }
 });
 
 test('germinationChance speaks per dialect', () => {

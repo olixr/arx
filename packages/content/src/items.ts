@@ -249,6 +249,14 @@ const defs: ItemDef[] = [
   // Seeds — the start of every field
   { id: 'carrot_seed', name: 'Carrot seeds', stackable: true, value: 2, desc: 'Fast, forgiving, and sweet. Every farm starts here.', color: '#e8873d', code: 'Cs' },
   { id: 'sagewort_seed', name: 'Sagewort seeds', stackable: true, value: 5, desc: 'Papery seeds smelling faintly of medicine.', color: '#8fb083', code: 'Ss' },
+  // THE SOWN LINE (second-growth Phase 4): a felled wood spills its
+  // seed, and a planted seed joins the wild's own growth ledger.
+  { id: 'tree_seed', name: 'Tree seeds', stackable: true, value: 3, desc: 'A handful of wild seeds. Any common wood may rise from them.', color: '#7a9b4a', code: 'Ts' },
+  { id: 'acorn', name: 'Acorn', stackable: true, value: 8, desc: 'A fat oak seed, heavy with patience.', color: '#8a6a3a', code: 'Ac' },
+  { id: 'pine_cone', name: 'Pine cone', stackable: true, value: 10, desc: 'A resin-sticky cone from the cold woods.', color: '#6f5a3c', code: 'Pc' },
+  { id: 'willow_cutting', name: 'Willow cutting', stackable: true, value: 12, desc: 'A supple withy that roots where the ground is soft.', color: '#87a06b', code: 'Wc' },
+  { id: 'yew_seed', name: 'Yew seeds', stackable: true, value: 20, desc: 'Dark seeds of the slowest, surest wood.', color: '#4a6b52', code: 'Yw' },
+  { id: 'bush_cutting', name: 'Bush cutting', stackable: true, value: 4, desc: 'A berry cane ready to strike root in open ground.', color: '#9b5a6b', code: 'Bc' },
   { id: 'sunflower_seed', name: 'Sunflower seeds', stackable: true, value: 7, desc: 'Plant a little sun. Harvest a tall one.', color: '#e8c04c', code: 'Fs' },
   { id: 'wheat_seed', name: 'Wheat seeds', stackable: true, value: 8, desc: 'A handful of gold-to-be.', color: '#d9b45c', code: 'Ws' },
   { id: 'cotton_seed', name: 'Cotton seeds', stackable: true, value: 12, desc: 'Fluff futures, sold by the pinch.', color: '#e8e4da', code: 'Ct' },
@@ -443,6 +451,8 @@ const defs: ItemDef[] = [
   { id: 'gnoll_hide', name: 'Gnoll hide', stackable: false, value: 26, desc: 'Speckled gray-brown fur over dull green skin. Smells of old camps and older kills.', color: '#8a7a58', code: 'Gh' },
   { id: 'packlord_mane', name: 'Packlord mane', stackable: false, value: 120, desc: 'A bristled crest cut from the biggest back in the warband. The cackling stopped when it fell.', color: '#4e4034', code: 'Pm' },
   { id: 'scrap_hide', name: 'Scrap hide', stackable: true, value: 3, desc: 'Small pelts and offcuts. Three make an honest leather.', color: '#8a6f52', code: 'Sh' },
+  { id: 'owl_plume', name: 'Owl plume', stackable: true, value: 26, desc: 'A flight feather longer than your forearm. It fell without a sound.', color: '#d8ccae', code: 'Op' },
+  { id: 'elder_plume', name: 'Elder plume', stackable: false, value: 140, desc: 'Moon-pale at the edge, storm-dark at the root. The wood is louder now.', color: '#5a5e70', code: 'Ep' },
 
   // Quest items — worthless by law (the flood law's price for
   // quest-gated drops), stackable so an errand rides one slot.

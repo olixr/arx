@@ -207,6 +207,7 @@ import {
   GROWTH_BARE,
   GROWTH_DRIFTED,
   GROWTH_SCAR,
+  GROWTH_SEEDS,
   GROWTH_STATE_NAMES,
   bareRestFor,
   bushRestFor,
@@ -3599,9 +3600,16 @@ export class GameServer {
         }
       }
     }
+    // THE SPILLED SEED (second-growth Phase 4): the swing that fells
+    // the node sometimes sheds its seed — rolled BEFORE the pack
+    // snapshot goes out, so the seed rides the same message.
+    const felled = node.depletedTile !== null && Math.random() < node.depleteChance;
+    if (felled && node.seedYield && Math.random() < node.seedYield.chance) {
+      addItem(player.inventory, node.seedYield.item, 1);
+    }
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
 
-    if (node.depletedTile !== null && Math.random() < node.depleteChance) {
+    if (felled) {
       // THE KEPT AND THE WILD (second-growth Phase 1): the domain of
       // the GROUND routes the depletion, never the def. Kept ground
       // (authored zones, live POI zones, the dark band) keeps the old
@@ -3613,7 +3621,8 @@ export class GameServer {
       ) {
         this.fellWild(action.tx, action.ty, node);
       } else {
-        this.setWorldTile(action.tx, action.ty, node.depletedTile);
+        // felled ⇒ depletedTile is non-null (the roll requires it).
+        this.setWorldTile(action.tx, action.ty, node.depletedTile!);
         // Trees regrow in stages: the stump sprouts a sapling partway
         // through the wait, then the sapling stands up into the tree.
         // Both entries share the tile, so a build/demolish cancel that
@@ -3980,6 +3989,13 @@ export class GameServer {
     }
     const key = `${tx},${ty}`;
     if (this.crops.has(key)) return; // someone beat you to the plot
+    // THE SOWN LINE (second-growth Phase 4): tree and bush seeds skip
+    // the crop rows and join the wild's own growth ledger instead.
+    const species = GROWTH_SEEDS.get(seed);
+    if (species !== undefined) {
+      this.plantWild(eid, player, tx, ty, seed, species, sys);
+      return;
+    }
     const def = CROP_BY_SEED.get(seed);
     if (!def) return;
     const level = this.effectiveLevel(player, 'farming');
@@ -4006,6 +4022,62 @@ export class GameServer {
     this.grantXp(eid, player, 'farming', Math.max(1, Math.ceil(def.xp / 4)));
     player.session.sendJson({ t: 'inv', slots: player.inventory });
     sys(`You plant ${def.name.toLowerCase()}. Ready in about ${def.growMinutes} min.`);
+  }
+
+  /**
+   * THE SOWN LINE (second-growth Phase 4): a tree or bush seed goes
+   * into WILD tilled earth and becomes an owner-stamped ledger row —
+   * pre-germinated (the gardener's hand does the germination's work),
+   * riding the exact same ages as any wild regrowth from there on.
+   * Anyone may harvest what grows; the owner mark means the sown
+   * ground keeps germinating inside its planter's own claim ring
+   * (the gardener's yard grows for the gardener).
+   */
+  private plantWild(
+    eid: EntityId,
+    player: PlayerComp,
+    tx: number,
+    ty: number,
+    seed: string,
+    species: Tile,
+    sys: (text: string) => void,
+  ): void {
+    if (this.world.growthDomainAt(tx, ty) !== 'wild') {
+      sys('This ground is tended. Wild seeds want wild earth.');
+      return;
+    }
+    if (this.world.growthAt(tx, ty) !== undefined) {
+      sys('Something already grows here. Give it room.');
+      return;
+    }
+    if (removeItem(player.inventory, seed, 1) === 0) return;
+    // THE SEED TAKES THE PLOT: a garden plot spent on a tree returns
+    // to wild earth — otherwise the growth beat would read the plot's
+    // built-tile record as a builder's claim and end the very growth
+    // it hosted. The plot is the price of the planting.
+    if (this.world.builtAt(tx, ty) !== undefined) {
+      this.world.unregisterBuilt(tx, ty);
+      this.accounts.deleteBuiltTile(tx, ty);
+      this.ringCache = null;
+    }
+    const now = Date.now();
+    const row: GrowthRow = {
+      tx,
+      ty,
+      tile: species,
+      state: GROWTH_BARE,
+      since: now,
+      due: now + germSproutFor(config.worldSeed, tx, ty, now),
+      owner: player.characterId,
+      firstSeenAt: now,
+    };
+    this.world.registerGrowth(row);
+    this.accounts.saveGrowth(row);
+    this.setWorldTile(tx, ty, Tile.Grass);
+    const node = NODES_BY_TILE.get(species);
+    this.grantXp(eid, player, 'farming', Math.max(4, Math.ceil((node?.xp ?? 20) / 5)));
+    player.session!.sendJson({ t: 'inv', slots: player.inventory });
+    sys('You set the seed in the earth. The wild takes it from here.');
   }
 
   private tickHarvest(eid: EntityId, player: PlayerComp): void {
@@ -4085,6 +4157,9 @@ export class GameServer {
     const truth = this.world.naturalGround(tx, ty) as Tile;
     const dialect = growthDialectOf(node.tile);
     const aim = growthDialectOf(truth) === dialect ? truth : node.tile;
+    // A felled SOWN stand keeps its planter's mark — the orchard
+    // remembers whose hand set it, however many times it falls.
+    const prior = this.world.growthAt(tx, ty);
     // A picked bush's ground is grass from the first moment — bush
     // rows start DORMANT (succession, no scar age); everything else
     // wears its scar on the fixed window.
@@ -4095,7 +4170,7 @@ export class GameServer {
       state: dialect === 'bush' ? GROWTH_BARE : GROWTH_SCAR,
       since: now,
       due: null,
-      owner: null,
+      owner: prior?.owner ?? null,
       firstSeenAt: now,
     };
     if (dialect !== 'bush') row.due = projectGrowth(config.worldSeed, row, now).due;
@@ -4366,7 +4441,10 @@ export class GameServer {
     // none against built ground or crops (the courtesy ring). The row
     // is NOT dropped — the forest waits at the fence and grows back
     // the day the claim lapses.
-    if (this.inClaimRing(row.tx, row.ty)) return;
+    // THE SOWN EXCEPTION: an owner-stamped row germinates inside a
+    // claim ring — the gardener's yard grows for the gardener. The
+    // built-ground courtesy below still holds for everyone.
+    if (row.owner === null && this.inClaimRing(row.tx, row.ty)) return;
     const ring = GROWTH.courtesyRing;
     for (let dy = -ring; dy <= ring; dy++) {
       for (let dx = -ring; dx <= ring; dx++) {
