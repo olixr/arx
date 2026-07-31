@@ -924,6 +924,61 @@ export class AccountStore {
     );
   }
 
+  // --------------------------------------------- world_growth ledger
+
+  /**
+   * Every wild harvest still healing (THE SECOND GROWTH — deviations
+   * only: ground that matches worldgen's seed-truth has no row). Loaded
+   * once at boot into the WorldSource overlay.
+   */
+  async loadGrowth(): Promise<
+    Array<{
+      tx: number;
+      ty: number;
+      state: number;
+      tile: number;
+      since: number;
+      due: number | null;
+      owner: number | null;
+      firstSeenAt: number;
+    }>
+  > {
+    return this.db.query(
+      'SELECT tx, ty, state, tile, since, due, owner_character_id AS owner, ' +
+        'first_seen_at AS "firstSeenAt" FROM world_growth',
+    ) as ReturnType<AccountStore['loadGrowth']>;
+  }
+
+  /**
+   * Checkpoint a regrowth row. `first_seen_at` is written once and
+   * kept on conflict — it is the jitter nonce for the whole chain, and
+   * moving it would re-deal every remaining wait mid-flight.
+   */
+  saveGrowth(row: {
+    tx: number;
+    ty: number;
+    state: number;
+    tile: number;
+    since: number;
+    due: number | null;
+    owner: number | null;
+    firstSeenAt: number;
+  }): void {
+    this.db.fire(
+      'INSERT INTO world_growth (tx, ty, state, tile, since, due, owner_character_id, first_seen_at) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (tx, ty) DO UPDATE SET state = excluded.state, tile = excluded.tile, ' +
+        'since = excluded.since, due = excluded.due, ' +
+        'owner_character_id = excluded.owner_character_id',
+      [row.tx, row.ty, row.state, row.tile, row.since, row.due, row.owner, row.firstSeenAt],
+    );
+  }
+
+  /** The ground healed (or the land was claimed) — the deviation ends. */
+  deleteGrowth(tx: number, ty: number): void {
+    this.db.fire('DELETE FROM world_growth WHERE tx = ? AND ty = ?', [tx, ty]);
+  }
+
   /** Stamp a boldness rung (stage_at = when this rung began). */
   markPoiStage(cellX: number, cellY: number, stage: number, stageAt: number): void {
     this.db.fire('UPDATE world_pois SET stage = ?, stage_at = ? WHERE cell_x = ? AND cell_y = ?', [

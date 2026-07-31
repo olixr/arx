@@ -24,6 +24,7 @@ export * from './loot/serialize.js';
 export * from './danger.js';
 export * from './locks.js';
 export * from './frontier.js';
+export * from './growth.js';
 export * from './voice.js';
 export * from './nodes.js';
 export * from './wilds.js';

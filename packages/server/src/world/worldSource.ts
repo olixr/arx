@@ -7,11 +7,12 @@ import {
   type ChunkData,
   type Vec2,
 } from '@arx/shared';
-import type { PortalDef, ZoneDef, ZoneSign } from '@arx/content';
+import type { GrowthRow, PortalDef, ZoneDef, ZoneSign } from '@arx/content';
 import {
   DARK_BAND_Y,
   EDGE_BASIN_DAMP_RANGE,
   generateChunk,
+  projectGrowth,
   replaceZoneEdgeProfiles,
   zoneEdgeProfileOf,
 } from '@arx/content';
@@ -265,6 +266,78 @@ export class WorldSource extends ChunkStore {
     this.cropTiles.delete(`${tx},${ty}`);
   }
 
+  /** A crop stands here — the growth beat's claim guard reads this. */
+  hasCropTile(tx: number, ty: number): boolean {
+    return this.cropTiles.has(`${tx},${ty}`);
+  }
+
+  // ---------------------------------------- THE SECOND GROWTH ledger
+
+  /**
+   * Wild harvests still healing (docs/second-growth-plan.md Phase 1).
+   * DEVIATIONS ONLY: the untouched world never simulates — a row exists
+   * only where a hand harvested wild ground, and a healed row is
+   * unregistered. Registration is a map write and nothing else: the
+   * live felling path patches the tile itself, and boot-time rehydrate
+   * runs before any chunk exists — the ensure() overlay serves every
+   * later read.
+   */
+  private readonly growthRows = new Map<string, GrowthRow>();
+
+  registerGrowth(row: GrowthRow): void {
+    this.growthRows.set(`${row.tx},${row.ty}`, row);
+  }
+
+  unregisterGrowth(tx: number, ty: number): void {
+    this.growthRows.delete(`${tx},${ty}`);
+  }
+
+  growthAt(tx: number, ty: number): GrowthRow | undefined {
+    return this.growthRows.get(`${tx},${ty}`);
+  }
+
+  /** The live ledger, for the growth beat to walk. */
+  get growthLedger(): ReadonlyMap<string, GrowthRow> {
+    return this.growthRows;
+  }
+
+  /** Whether a chunk is materialized in the cache — the growth beat
+   *  writes tiles only where a chunk already stands; everywhere else
+   *  the ensure() overlay serves the projected truth on generation. */
+  hasChunk(cx: number, cy: number): boolean {
+    return this.get(cx, cy) !== undefined;
+  }
+
+  /**
+   * THE KEPT AND THE WILD: which growth domain a tile belongs to,
+   * decided by where its ground comes from — never by the node def.
+   * The dark band is kept (delves and the authored underground answer
+   * to their own generators); a zone that OWNS the tile (non-skip
+   * cell) answers with its mark, default kept; raw worldgen ground is
+   * wild. Zones scan in reverse overlay order so the zone that wins
+   * the ground also names the domain.
+   */
+  growthDomainAt(tx: number, ty: number): 'kept' | 'wild' {
+    if (ty >= DARK_BAND_Y) return 'kept';
+    for (let i = this.zones.length - 1; i >= 0; i--) {
+      const zone = this.zones[i]!;
+      if (
+        tx < zone.origin.x ||
+        tx >= zone.origin.x + zone.width ||
+        ty < zone.origin.y ||
+        ty >= zone.origin.y + zone.height
+      ) {
+        continue;
+      }
+      const zi = (ty - zone.origin.y) * zone.width + (tx - zone.origin.x);
+      // TILE_SKIP is transparent in the overlay and transparent here:
+      // the ground beneath keeps its own domain.
+      if (zone.ground[zi] === TILE_SKIP) continue;
+      return zone.growth ?? 'kept';
+    }
+    return 'wild';
+  }
+
   /** One-entry memo for naturalGround — demolish bursts sample a few
    *  tiles from the same chunk; regenerating per tile would be waste. */
   private pristineMemo: { cx: number; cy: number; chunk: ChunkData } | null = null;
@@ -291,6 +364,27 @@ export class WorldSource extends ChunkStore {
     const existing = this.get(cx, cy);
     if (existing) return existing;
     const chunk = generateChunk(this.seed, cx, cy);
+    // THE SECOND GROWTH overlay: the harvest ledger re-stamps the WILD
+    // ground before any zone, built, or crop layer — regrowth is a
+    // fact of the natural land, and every human layer wins over it.
+    // The stamped tile is the PURE PROJECTION at this moment (THE
+    // THREE AGES), which is what makes an unloaded chunk correct the
+    // instant it generates, restarts included.
+    if (this.growthRows.size > 0) {
+      const baseX = cx * CHUNK_SIZE;
+      const baseY = cy * CHUNK_SIZE;
+      const now = Date.now();
+      for (const row of this.growthRows.values()) {
+        if (
+          row.tx >= baseX &&
+          row.tx < baseX + CHUNK_SIZE &&
+          row.ty >= baseY &&
+          row.ty < baseY + CHUNK_SIZE
+        ) {
+          chunk.ground[tileIndex(row.tx, row.ty)] = projectGrowth(this.seed, row, now).tile;
+        }
+      }
+    }
     for (const zone of this.zones) this.overlayZone(chunk, zone);
     // Player constructions survive regeneration.
     const baseX = cx * CHUNK_SIZE;

@@ -119,6 +119,17 @@ export interface ZoneDef {
   elev?: Int8Array;
   /** World-tile spawn point, if this zone hosts one. */
   spawn?: Vec2;
+  /**
+   * THE KEPT AND THE WILD (second-growth Phase 1): which growth domain
+   * this zone's owned tiles belong to. Absent ⇒ 'kept' — authored
+   * ground is tended ground, and its resources respawn fast and in
+   * place as they always have. 'wild' hands the zone's resources to
+   * the growth ledger (slow, persistent, organic regrowth) — for
+   * authored wilderness that should feel untended. TILE_SKIP cells are
+   * transparent here exactly as in the overlay: the ground beneath
+   * keeps its own domain.
+   */
+  growth?: 'kept' | 'wild';
   portals?: PortalDef[];
   spawns?: ZoneSpawn[];
   /** Placed NPC actors — the who-stands-where layer. */

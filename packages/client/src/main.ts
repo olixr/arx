@@ -1571,9 +1571,10 @@ game.onTileChange = (tx, ty, prev, next) => {
     sfx.spatial(tileAt, 'near', () => sfx.buildThump());
     return;
   }
-  if (prev === Tile.Stump && treeOfSapling(next) !== null) {
-    // Regrowth stage 1: a sapling sprouts from the stump under a
-    // soft spray of leaves and turned earth.
+  if ((prev === Tile.Stump || prev === Tile.Grass) && treeOfSapling(next) !== null) {
+    // Regrowth stage 1: a sapling sprouts (from the stump on kept
+    // ground, from bare healed grass in the wild — second-growth)
+    // under a soft spray of leaves and turned earth.
     renderer.addGrowingTree(tx, ty);
     renderer.particles.burst(tx + 0.5, ty + 0.6, 8, ['#5a9b48', '#6da24f', '#8a6a45'], {
       speed: 0.8,

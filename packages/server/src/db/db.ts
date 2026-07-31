@@ -755,6 +755,29 @@ const MIGRATIONS: string[] = [
   ALTER TABLE bank_gear ADD COLUMN IF NOT EXISTS ench2_id TEXT;
   ALTER TABLE bank_gear ADD COLUMN IF NOT EXISTS quality2 INTEGER;
   `,
+  // v20: THE LEDGER OF THE LAND (second-growth Phase 1) — the wild
+  // harvest ledger. Deviations only, at tile scale: a row exists ONLY
+  // where a hand harvested WILD ground (kept ground — authored zones,
+  // live POI zones, the dark band — never writes here); a row whose
+  // regrowth has fully healed back to worldgen's seed-truth deletes
+  // itself. `state`/`since`/`due` are a checkpoint — the truth is the
+  // pure projection (content/growth.ts projectGrowth) walked from them
+  // at read time, which is what makes the ledger restart-safe with no
+  // catch-up pass. `due` NULL is the Phase 2 dormant-germination gate;
+  // `owner_character_id` is the Phase 4 planting stamp.
+  `
+  CREATE TABLE world_growth (
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    state SMALLINT NOT NULL DEFAULT 0,
+    tile INTEGER NOT NULL,
+    since BIGINT NOT NULL,
+    due BIGINT,
+    owner_character_id INTEGER,
+    first_seen_at BIGINT NOT NULL,
+    PRIMARY KEY (tx, ty)
+  );
+  `,
 ];
 
 /**

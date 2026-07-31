@@ -17,6 +17,8 @@ export interface ZoneJson {
   /** Base64 of the signed Int8 elevation layer; absent ⇒ flat 0. */
   elev?: string;
   spawn?: { x: number; y: number };
+  /** Growth domain mark (second-growth); absent ⇒ 'kept'. */
+  growth?: 'kept' | 'wild';
   /** Placed NPC actors (plain JSON — tiny lists, no encoding needed). */
   actorSpawns?: ZoneActorSpawn[];
   /** Portal tiles (world coords), same plain-JSON law as actorSpawns. */
@@ -86,6 +88,9 @@ export function zoneToJson(zone: ZoneDef): ZoneJson {
     detail: u16ToBase64(zone.detail),
     elev: zone.elev ? i8ToBase64(zone.elev) : undefined,
     spawn: zone.spawn,
+    // The default domain serializes as absent so legacy files stay
+    // byte-identical (the empty-list law below).
+    growth: zone.growth === 'wild' ? 'wild' : undefined,
     actorSpawns: zone.actorSpawns,
     // Empty lists serialize as absent so legacy files stay byte-identical.
     portals: zone.portals && zone.portals.length > 0 ? zone.portals : undefined,
@@ -111,6 +116,8 @@ export function zoneFromJson(json: ZoneJson): ZoneDef {
     // mentions elevation decode identically.
     elev: json.elev ? base64ToI8(json.elev, size) : new Int8Array(size),
     spawn: json.spawn,
+    // Anything but the explicit 'wild' mark normalizes to the default.
+    growth: json.growth === 'wild' ? 'wild' : undefined,
     actorSpawns: json.actorSpawns,
     portals: json.portals,
     spawns: json.spawns,

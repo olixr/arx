@@ -6,6 +6,7 @@ import {
   AUTHORED_FACTIONS,
   AUTHORED_FRONTIER,
   AUTHORED_GEOGRAPHY,
+  AUTHORED_GROWTH,
   AUTHORED_VOICE,
   AUTHORED_LOOT_TABLES,
   AUTHORED_MINOR_DEFS,
@@ -25,6 +26,7 @@ import {
   replaceFactions,
   replaceFrontier,
   replaceGeography,
+  replaceGrowth,
   replaceLootTables,
   replaceMinorDefs,
   replaceNpcDefs,
@@ -33,11 +35,13 @@ import {
   validateFactions,
   validateFrontier,
   validateGeographyDef,
+  validateGrowth,
   validateMinorDef,
   validateNpcDef,
   validatePoiDef,
   validateVoice,
   zoneFromJson,
+  type GrowthRow,
   type LootTableDef,
   type MinorDef,
   type NpcDef,
@@ -284,6 +288,27 @@ if (config.requireInvite) {
       );
     }
   }
+  // THE GROWTH DIALS join the law (second-growth Phase 1): one 'world'
+  // doc holding the land's clock — the ages' windows, the beat's
+  // cadence and budget. Call-time reads; the Studio's edit re-aims
+  // every live regrowth on the very next beat.
+  await seedContentDocs(db, 'growth', [{ id: 'world', doc: AUTHORED_GROWTH }]);
+  const growthDocs = await loadContentDocs(db, 'growth');
+  const growthRow = growthDocs.find((d) => d.id === 'world');
+  if (growthRow) {
+    const res = validateGrowth(growthRow.doc);
+    if (!res.ok) {
+      console.warn(`[content] DB growth dials invalid (${res.errors[0]}) — authored dials stand`);
+    } else {
+      replaceGrowth(res.def);
+      console.log(
+        `[content] growth dials: tree ${res.def.treeStumpMinutes[0]}+${res.def.treeBareMinutes[0]}+` +
+          `${res.def.treeSaplingMinutes[0]}m.. · ore ${res.def.oreReopenMinutes[0]}-${res.def.oreReopenMinutes[1]}m · ` +
+          `forage ${res.def.forageMinutes[0]}-${res.def.forageMinutes[1]}m · beat ${res.def.beatTicks}t/${res.def.beatBudget}` +
+          (growthRow.edited ? ' (tool-edited)' : ''),
+      );
+    }
+  }
   await seedContentDocs(db, 'frontier', [{ id: 'world', doc: AUTHORED_FRONTIER }]);
   const frontierDocs = await loadContentDocs(db, 'frontier');
   const frontierRow = frontierDocs.find((d) => d.id === 'world');
@@ -307,6 +332,18 @@ if (config.requireInvite) {
 const world = new WorldSource(config.worldSeed, zones);
 for (const built of await accounts.loadBuiltTiles()) {
   world.registerBuilt(built.tx, built.ty, built.tile, built.owner, built.prevTile);
+}
+// THE SECOND GROWTH: the wild-harvest ledger rehydrates before any
+// chunk exists — the ensure() overlay projects every row against the
+// clock at generation time, so a regrowth that crossed ages (or fully
+// healed) while the server slept is simply CORRECT on first read; the
+// growth beat only catches the checkpoints up.
+{
+  const growthRows = await accounts.loadGrowth();
+  for (const row of growthRows) world.registerGrowth(row as GrowthRow);
+  if (growthRows.length > 0) {
+    console.log(`[world] growth ledger: ${growthRows.length} wild harvest(s) still healing`);
+  }
 }
 const game = new GameServer(world, accounts);
 game.loadCrops(await accounts.loadCrops());

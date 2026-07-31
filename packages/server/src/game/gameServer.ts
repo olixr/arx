@@ -3592,26 +3592,38 @@ export class GameServer {
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
 
     if (node.depletedTile !== null && Math.random() < node.depleteChance) {
-      this.setWorldTile(action.tx, action.ty, node.depletedTile);
-      // Trees regrow in stages: the stump sprouts a sapling partway
-      // through the wait, then the sapling stands up into the tree.
-      // Both entries share the tile, so a build/demolish cancel that
-      // sweeps the queue clears the whole staging.
-      const sapling = saplingOf(node.tile);
-      if (sapling !== null) {
+      // THE KEPT AND THE WILD (second-growth Phase 1): the domain of
+      // the GROUND routes the depletion, never the def. Kept ground
+      // (authored zones, live POI zones, the dark band) keeps the old
+      // seconds-fast in-place queue; wild ground writes the persistent
+      // growth ledger and heals slowly through the ages.
+      if (
+        this.world.growthDomainAt(action.tx, action.ty) === 'wild' &&
+        growthDialectOf(node.tile) !== null
+      ) {
+        this.fellWild(action.tx, action.ty, node);
+      } else {
+        this.setWorldTile(action.tx, action.ty, node.depletedTile);
+        // Trees regrow in stages: the stump sprouts a sapling partway
+        // through the wait, then the sapling stands up into the tree.
+        // Both entries share the tile, so a build/demolish cancel that
+        // sweeps the queue clears the whole staging.
+        const sapling = saplingOf(node.tile);
+        if (sapling !== null) {
+          this.respawnQueue.push({
+            at: Date.now() + node.respawnSec * 1000 * 0.45,
+            tx: action.tx,
+            ty: action.ty,
+            tile: sapling,
+          });
+        }
         this.respawnQueue.push({
-          at: Date.now() + node.respawnSec * 1000 * 0.45,
+          at: Date.now() + node.respawnSec * 1000,
           tx: action.tx,
           ty: action.ty,
-          tile: sapling,
+          tile: node.tile,
         });
       }
-      this.respawnQueue.push({
-        at: Date.now() + node.respawnSec * 1000,
-        tx: action.tx,
-        ty: action.ty,
-        tile: node.tile,
-      });
       this.cancelAction(eid, player, 'done');
     } else {
       // Keep gathering the same node.
@@ -4041,6 +4053,109 @@ export class GameServer {
         this.world.registerCropTile(state.tx, state.ty, tile);
         this.setWorldTile(state.tx, state.ty, tile);
       }
+    }
+  }
+
+  /**
+   * A WILD resource falls (second-growth Phase 1): the scar tile
+   * stands, and the harvest is remembered in the persistent growth
+   * ledger instead of the respawn queue — the ground now heals on the
+   * slow clock, survives restarts, and (from Phase 2) drifts. The
+   * checkpoint's `due` is seeded from the pure projection so the lever
+   * and the Studio can read an honest deadline without walking.
+   */
+  private fellWild(tx: number, ty: number, node: NodeDef): void {
+    this.setWorldTile(tx, ty, node.depletedTile!);
+    const now = Date.now();
+    const row: GrowthRow = {
+      tx,
+      ty,
+      tile: node.tile,
+      state: GROWTH_SCAR,
+      since: now,
+      due: null,
+      owner: null,
+      firstSeenAt: now,
+    };
+    row.due = projectGrowth(config.worldSeed, row, now).due;
+    this.world.registerGrowth(row);
+    this.accounts.saveGrowth(row);
+  }
+
+  /**
+   * THE GROWTH BEAT (second-growth Phase 1): walk the wild-harvest
+   * ledger, project every row against the clock, and land what came
+   * due — an age advancing, or the full heal that dissolves the row
+   * and lets worldgen's seed-truth stand back up. The projection is
+   * the truth and this beat is only its herald: unloaded chunks get
+   * the same answer from the ensure() overlay, so a restart needs no
+   * catch-up. Budgeted in WRITES (GROWTH.beatBudget), so a clearcut
+   * healing after a long sleep lands as a drizzle, never a burst.
+   */
+  private tickGrowth(now: number): void {
+    let writes = 0;
+    const seed = config.worldSeed;
+    for (const row of this.world.growthLedger.values()) {
+      if (writes >= GROWTH.beatBudget) break;
+      if (row.deferUntil !== undefined && row.deferUntil > now) continue;
+      const proj = projectGrowth(seed, row, now);
+      if (proj.due !== null && proj.state === row.state) {
+        row.due = proj.due; // dial edits re-aim the checkpoint for free
+        continue;
+      }
+      // Something is due. First, the claim guards: a zone that moved
+      // in, a built tile, or a crop ends the regrowth — the land
+      // yields to the hand that holds it (THE BUILDER'S CLEARING).
+      if (
+        this.world.growthDomainAt(row.tx, row.ty) !== 'wild' ||
+        this.world.builtAt(row.tx, row.ty) !== undefined ||
+        this.world.hasCropTile(row.tx, row.ty)
+      ) {
+        this.world.unregisterGrowth(row.tx, row.ty);
+        this.accounts.deleteGrowth(row.tx, row.ty);
+        continue;
+      }
+      const cx = Math.floor(row.tx / CHUNK_SIZE);
+      const cy = Math.floor(row.ty / CHUNK_SIZE);
+      const loaded = this.world.hasChunk(cx, cy);
+      const target = proj.due === null ? row.tile : proj.tile;
+      if (loaded) {
+        // The world may have moved on under the checkpoint (a chest
+        // staged over the scar, a prop burst) — let the row go rather
+        // than stomp what stands (the respawn queue's `over` dialect).
+        // The ground is OURS if it matches either self-written state:
+        // the stored checkpoint's tile, or the projection's (a chunk
+        // that generated after a sleep already wears the projected
+        // age — the checkpoint just hasn't caught up yet).
+        const cur = this.world.groundAt(row.tx, row.ty);
+        if (cur !== growthTileForState(seed, row) && cur !== target) {
+          this.world.unregisterGrowth(row.tx, row.ty);
+          this.accounts.deleteGrowth(row.tx, row.ty);
+          continue;
+        }
+        // Never stand a solid up through a body — the doors' courtesy.
+        const becomingSolid =
+          TILE_DEFS[target]?.solid && !(cur !== undefined && TILE_DEFS[cur as Tile]?.solid);
+        if (becomingSolid && this.bodyOnTile(row.tx, row.ty)) {
+          row.deferUntil = now + 5000;
+          continue;
+        }
+      }
+      if (proj.due === null) {
+        // Fully healed: the resource stands and the deviation ends.
+        if (loaded) this.setWorldTile(row.tx, row.ty, row.tile);
+        this.world.unregisterGrowth(row.tx, row.ty);
+        this.accounts.deleteGrowth(row.tx, row.ty);
+      } else {
+        // An age advances (possibly several at once after a sleep —
+        // the projection already walked them; the checkpoint jumps).
+        row.state = proj.state;
+        row.since = proj.stateSince;
+        row.due = proj.due;
+        if (loaded) this.setWorldTile(row.tx, row.ty, proj.tile);
+        this.accounts.saveGrowth(row);
+      }
+      writes++;
     }
   }
 
@@ -15787,7 +15902,7 @@ export class GameServer {
       }
       return;
     }
-    if (config.devCommands && text.startsWith('/grow')) {
+    if (config.devCommands && (text === '/grow' || text.startsWith('/grow '))) {
       const pos = this.positions.get(eid);
       const now = Date.now();
       let grown = 0;
@@ -16453,6 +16568,50 @@ export class GameServer {
       );
       return;
     }
+    if (config.devCommands && text.startsWith('/growth')) {
+      // The land's-clock lens (second-growth Phase 1): the domain
+      // underfoot, the ledger census by dialect and age, and the
+      // nearest healing ground with its honest deadline.
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const say = (t: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      const domain = this.world.growthDomainAt(Math.floor(pos.x), Math.floor(pos.y));
+      const census = new Map<string, number>();
+      let nearest: GrowthRow | null = null;
+      let nearestD = Infinity;
+      const now = Date.now();
+      for (const row of this.world.growthLedger.values()) {
+        const dialect = growthDialectOf(row.tile) ?? 'gone';
+        const age = GROWTH_STATE_NAMES[row.state] ?? `state${row.state}`;
+        const k = `${dialect} ${age}`;
+        census.set(k, (census.get(k) ?? 0) + 1);
+        const d = Math.hypot(row.tx + 0.5 - pos.x, row.ty + 0.5 - pos.y);
+        if (d < nearestD) {
+          nearestD = d;
+          nearest = row;
+        }
+      }
+      const parts = [...census.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([k, n]) => `${k} x${n}`)
+        .join(', ');
+      let near = 'none';
+      if (nearest) {
+        const proj = projectGrowth(config.worldSeed, nearest, now);
+        const eta =
+          proj.due === null ? 'healed, awaiting the beat' : `${Math.max(0, Math.round((proj.due - now) / 60000))}m to next age`;
+        near =
+          `${nearest.tx},${nearest.ty} (${Math.round(nearestD)} tiles) ` +
+          `${GROWTH_STATE_NAMES[proj.state] ?? proj.state}, ${eta}`;
+      }
+      say(
+        `growth: ${domain} ground underfoot | ledger ${this.world.growthLedger.size}` +
+          (parts.length > 0 ? ` (${parts})` : '') +
+          ` | nearest: ${near}`,
+      );
+      return;
+    }
     if (config.devCommands && text.startsWith('/frontier')) {
       // The living-frontier lens + staging levers (the /poi family's kin):
       //   /frontier          — credits + this cell's ember/fallow state + world counts
@@ -16747,6 +16906,9 @@ export class GameServer {
     // on tickPois every time).
     if (this.tickCount % FRONTIER.tickTicks === 7) this.tickFrontier();
     if (this.tickCount % 40 === 20) this.tickWildSpawns();
+    // The land's clock (second-growth): offset 13 keeps it off every
+    // other slow pass's beat; cadence is the Studio's dial.
+    if (this.tickCount % GROWTH.beatTicks === 13) this.tickGrowth(now);
     if (this.tickCount % SERVER_REVEAL_TICKS === 0) this.tickReveal();
     // The party wayfinder ticker: ~1.5s, offset 3 so it never shares a
     // beat with the %20/%40 passes.

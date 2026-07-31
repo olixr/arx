@@ -6,6 +6,7 @@ import type { Db } from '../db/db.js';
 import {
   AUTHORED_FACTIONS,
   AUTHORED_FRONTIER,
+  AUTHORED_GROWTH,
   AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
   AUTHORED_MINOR_DEFS,
@@ -20,11 +21,13 @@ import {
   NPC_ACTORS,
   FACTIONS,
   FRONTIER,
+  GROWTH,
   POI_DEFS,
   ZONE_EDGE_PROFILES,
   geographySnapshot,
   replaceFactions,
   replaceFrontier,
+  replaceGrowth,
   geographyWarnings,
   packZoneEdgeProfile,
   lootTableErrors,
@@ -36,6 +39,7 @@ import {
   replacePoiDefs,
   validateFactions,
   validateFrontier,
+  validateGrowth,
   validateGeographyDef,
   validateMinorDef,
   validateNpcDef,
@@ -357,6 +361,45 @@ export function createMapsApi(
           const outcome = await revertContentDoc(db, 'frontier', 'world', AUTHORED_FRONTIER);
           replaceFrontier({ ...AUTHORED_FRONTIER });
           console.log(`[content] frontier dials ${outcome} — shipped weather stands`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      // ------------------------------------------------ growth dials
+      // THE LAND'S CLOCK is ONE document under the two-hash law
+      // (second-growth Phase 1). Call-time reads: a save re-aims every
+      // live regrowth's projection on the very next beat.
+      if (url.pathname === '/dev/content/growth') {
+        if (req.method === 'GET') {
+          const edited =
+            (await loadContentDocs(db, 'growth')).find((d) => d.id === 'world')?.edited ?? false;
+          sendJson(res, 200, { def: { ...GROWTH }, edited });
+          return true;
+        }
+        if (req.method === 'PUT') {
+          let raw: unknown;
+          try {
+            raw = JSON.parse(await readBody(req));
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validateGrowth(raw);
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'growth', 'world', result.def);
+          replaceGrowth(result.def);
+          console.log('[content] growth dials saved + live (no reload needed — call-time reads)');
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const outcome = await revertContentDoc(db, 'growth', 'world', AUTHORED_GROWTH);
+          replaceGrowth({ ...AUTHORED_GROWTH });
+          console.log(`[content] growth dials ${outcome} — the shipped clock stands`);
           sendJson(res, 200, { ok: true, outcome });
           return true;
         }
