@@ -22039,6 +22039,57 @@ export class Renderer {
     });
   }
 
+  /**
+   * THE TUCK: the covers repainted OVER a sleeper's lower body — an
+   * opaque quilt panel in the bed painter's own colorway, with the
+   * turned-down sheet along its head-side edge and soft fold lines.
+   * Painted in plain screen space after the rig, so the legs live
+   * under the blanket; alpha rides the recline blend.
+   */
+  private paintBedTuck(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    qMain: string,
+    qDark: string,
+    k: number,
+    head: 'n' | 'e' | 'w',
+  ): void {
+    if (h <= 0 || w <= 0) return;
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, k * 1.6);
+    ctx.fillStyle = qMain;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = qDark;
+    if (head === 'n') {
+      // Long rails shaded, sheet turned down at the chest line.
+      ctx.fillRect(x, y, 0.07 * s, h);
+      ctx.fillRect(x + w - 0.07 * s, y, 0.07 * s, h);
+      ctx.fillStyle = '#e8dfc8';
+      ctx.fillRect(x, y, w, 0.09 * s);
+      ctx.fillStyle = qDark;
+      ctx.fillRect(x, y + 0.09 * s, w, 0.025 * s);
+      ctx.globalAlpha *= 0.5;
+      ctx.fillRect(x + 0.06 * s, y + h * 0.45, w - 0.12 * s, 0.02 * s);
+      ctx.fillRect(x + 0.06 * s, y + h * 0.75, w - 0.12 * s, 0.02 * s);
+    } else {
+      ctx.fillRect(x, y, w, 0.06 * s);
+      ctx.fillRect(x, y + h - 0.06 * s, w, 0.06 * s);
+      const sheetX = head === 'e' ? x + w - 0.09 * s : x;
+      ctx.fillStyle = '#e8dfc8';
+      ctx.fillRect(sheetX, y, 0.09 * s, h);
+      ctx.fillStyle = qDark;
+      ctx.fillRect(head === 'e' ? sheetX - 0.025 * s : sheetX + 0.09 * s, y, 0.025 * s, h);
+      ctx.globalAlpha *= 0.5;
+      ctx.fillRect(x + w * 0.35, y + 0.05 * s, 0.02 * s, h - 0.1 * s);
+      ctx.fillRect(x + w * 0.68, y + 0.05 * s, 0.02 * s, h - 0.1 * s);
+    }
+    ctx.restore();
+  }
+
   private humanoidItem(e: {
     eid: number | 'own';
     x: number;
@@ -22681,43 +22732,78 @@ export class Renderer {
           seatH: chairSit ? seat!.seatH : undefined,
           sheathT: sheathK,
         };
-        // THE BED TAKES THE BODY: a lying figure is the standing rig
-        // laid down whole — rotate to the bed's axis, foreshorten its
-        // length onto the ground plane (rotate-then-squash, the bird
-        // flight law), and lift it onto the deck, centered so head
-        // meets pillow and feet meet footboard. The blend IS the
-        // recline: at lieE 0 the transform is identity, so easing in
-        // and out plays as the body tipping down / rising.
+        // THE BED TAKES THE BODY — THE TUCK (v2; user verdict killed
+        // v1's rotate-then-squash: "minifies the character to half
+        // size, scale and perspective lost"). The sleeper is the
+        // standing rig at FULL SCALE — never squashed, never shrunk
+        // (the rig is the unit of measure). It lays along the bed's
+        // axis (rotation only for side-on cots), the HEAD aligned to
+        // the pillow, the body CLIPPED at the mattress edge, and the
+        // quilt repaints OVER the lower body after the rig — the
+        // classic RPG read: head and shoulders out on the pillow,
+        // everything else under the covers. The blend IS the recline.
         const lying = lieE > 0 && seat !== null && seat.kind === 'bed';
+        let tuck: (() => void) | null = null;
         if (lying) {
           const head = seat!.head ?? 'n';
-          const rot = (head === 'n' ? 0 : head === 'e' ? Math.PI / 2 : -Math.PI / 2) * lieE;
-          const bodyH = 1.62 * s * (e.size ?? 1);
-          // Fit the sleeper to the deck: long beds take the honest
-          // ground foreshortening (~0.6); cots squash a little harder
-          // and still let the feet overhang the footboard a touch —
-          // a tall settler on a short cot, never a shrunken doll.
-          const availLen = (seat!.span ?? 1) * (head === 'n' ? this.camera.yScale : 1) * s;
-          const lKT = Math.min(0.66, Math.max(0.5, (availLen * 0.94) / bodyH));
-          const wKT = head === 'n' ? 1 : 0.62;
-          const lK = 1 + (lKT - 1) * lieE;
-          const wK = 1 + (wKT - 1) * lieE;
-          const lift = (seat!.seatH + 0.05) * s * lieE;
-          // Feet-ward unit vector of the rotated figure: the ground
-          // point lands half a body past the deck centre so the whole
-          // figure straddles it evenly.
-          const fux = -Math.sin(rot);
-          const fuy = Math.cos(rot);
-          // A whisper of head-ward bias tucks the feet above the
-          // footboard rail instead of draping over it.
-          const half = bodyH * lK * 0.5 - 0.08 * s;
-          const fx = bodyX + fux * half * lieE;
-          const fy = bodyY - lift + fuy * half * lieE;
+          const kSize = e.size ?? 1;
+          // BODY_H (reveal.ts): the rig stands ~1.15 tiles on screen —
+          // the scale-anchor law is also the head-to-pillow ruler.
+          const bodyH = 1.17 * s * kSize;
+          const syT2 = s * this.camera.yScale;
+          const span = seat!.span ?? 1;
+          const lone = seat!.tiles.length === 1 && head === 'n';
+          // Quilt colorway — MUST match the bed painter's QUILTS
+          // table and its run-head hash key, or the tuck reads as a
+          // stranger's blanket thrown over the bed.
+          const headTile = seat!.tiles[0]!;
+          const QUILTS_TUCK = [
+            ['#8a3d46', '#a34b52'],
+            ['#3d5a8a', '#4a6a9c'],
+            ['#4d6b3c', '#5a7d4a'],
+            ['#75588a', '#8a6aa0'],
+          ] as const;
+          const [qDark, qMain] = QUILTS_TUCK[hashCoords(41, headTile.x, headTile.y) % 4]!;
           ctx.save();
-          ctx.translate(fx, fy);
-          ctx.rotate(rot);
-          ctx.scale(wK, lK);
-          ctx.translate(-bodyX, -bodyY);
+          if (head === 'n') {
+            // Deck extents from the painter's own formulas, relative
+            // to the anchor (mid-deck + 0.05), lifted bedH (0.3s)
+            // onto the mattress surface.
+            const dTop = p.y - (span / 2 + 0.05) * syT2 - 0.3 * s;
+            const dBot = dTop + span * syT2;
+            const xL = p.x - 0.47 * s;
+            const xR = p.x + 0.47 * s;
+            // The crown settles just onto the pillow; feet follow at
+            // full body length, wherever that lands.
+            const feetY = dTop + 0.02 * s + bodyH;
+            // The mattress is where the body ends — anything past the
+            // footboard or off the sides never paints.
+            ctx.beginPath();
+            ctx.rect(xL - 0.07 * s, dTop - 0.7 * s, xR - xL + 0.14 * s, dBot - dTop + 0.7 * s);
+            ctx.clip();
+            ctx.translate(0, (feetY - bodyY) * lieE);
+            const qStart = dTop + span * syT2 * (lone ? 0.58 : 0.6);
+            tuck = () =>
+              this.paintBedTuck(xL, qStart, xR - xL, dBot - qStart, qMain, qDark, lieE, 'n');
+          } else {
+            // Side-on cot: same law rotated a quarter turn — head at
+            // the pillow end, feet clipped at the far rail.
+            const sgn = head === 'e' ? 1 : -1;
+            const rot = sgn * (Math.PI / 2) * lieE;
+            const dMid = p.y - 0.3 * s;
+            const crownX = p.x + sgn * 0.42 * s;
+            const feetX = crownX - sgn * bodyH;
+            ctx.beginPath();
+            ctx.rect(p.x - 0.48 * s, dMid - 0.52 * s, 0.96 * s, 1.04 * s);
+            ctx.clip();
+            ctx.translate(bodyX + (feetX - bodyX) * lieE, bodyY + (dMid - bodyY) * lieE);
+            ctx.rotate(rot);
+            ctx.translate(-bodyX, -bodyY);
+            const qW = 0.94 * s * 0.56;
+            const qX = head === 'e' ? p.x - 0.47 * s : p.x + 0.47 * s - qW;
+            tuck = () =>
+              this.paintBedTuck(qX, dMid - 0.44 * syT2, qW, 0.88 * syT2, qMain, qDark, lieE, head);
+          }
         }
         // Layer law with a cape worn: gear straps OVER the cloth, so
         // the quiver paints immediately after the cape on whichever
@@ -22731,7 +22817,12 @@ export class Renderer {
           paintCape(ctx);
           if (rigPose.hasCape) drawBackGear(ctx, rigPose);
         }
-        if (lying) ctx.restore();
+        if (lying) {
+          ctx.restore();
+          // The covers claim the lower body — painted AFTER the rig,
+          // in plain screen space, so the legs live under the quilt.
+          tuck?.();
+        }
       },
       // THE REACH ENVELOPE: the outline scratch rasterizes ONLY this
       // box — anything painted past it is cropped on a hard edge. The
