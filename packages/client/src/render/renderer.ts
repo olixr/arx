@@ -22069,8 +22069,9 @@ export class Renderer {
     number,
     {
       t: number;
-      foldK: number;
-      foldV: number;
+      dirX: number;
+      dirY: number;
+      spin: number;
       f: number[];
       fv: number[];
       turb: number[];
@@ -22085,27 +22086,40 @@ export class Renderer {
     }
   >();
 
-  private startBedFlip(seat: SeatSpec): void {
+  /** Flight beats: airborne, fade window, then the bed re-makes itself. */
+  private static readonly FLIP_FLY_S = 0.72;
+  private static readonly FLIP_FADE_AT = 0.42;
+  private static readonly FLIP_REMAKE_S = 0.38;
+  private static readonly FLIP_TOTAL_S = 1.15;
+
+  private startBedFlip(seat: SeatSpec, dirX: number, dirY: number): void {
     const headTile = (seat.head ?? 'n') === 'e' ? seat.tiles[seat.tiles.length - 1]! : seat.tiles[0]!;
     const key = packTile(headTile.x, headTile.y);
     // Idempotent: the rise edge fires for a few frames while the
     // blend falls — the first throw owns the cloth.
     if (this.bedFlips.has(key) || this.bedFlips.size > 6) return;
     const [qDark, qMain] = Renderer.BED_QUILTS[hashCoords(41, headTile.x, headTile.y) % 4]!;
+    // The throw goes THE WAY THE BODY LEFT — normalized, defaulting
+    // south when the dismount was too tight to read a side.
+    const dLen = Math.hypot(dirX, dirY);
+    const dx = dLen > 0.2 ? dirX / dLen : 0;
+    const dy = dLen > 0.2 ? dirY / dLen : 1;
     const f: number[] = [];
     const fv: number[] = [];
     const turb: number[] = [];
     for (let i = 0; i < 5; i++) {
       f.push(0);
-      // Alternating launch impulses — the edge leaves already rippling.
-      fv.push((i % 2 === 0 ? 1 : -1) * (1.6 + 0.5 * ((i * 2654435761) % 3)));
-      turb.push((i % 2 === 0 ? 1 : -1) * (0.5 + 0.25 * ((i * 40503) % 3)));
+      // Alternating launch impulses — the cloth leaves already rippling.
+      fv.push((i % 2 === 0 ? 1 : -1) * (2.2 + 0.6 * ((i * 2654435761) % 3)));
+      turb.push((i % 2 === 0 ? 1 : -1) * (0.6 + 0.3 * ((i * 40503) % 3)));
     }
     const maxY = seat.tiles[seat.tiles.length - 1]!.y;
     this.bedFlips.set(key, {
       t: 0,
-      foldK: 0,
-      foldV: 0,
+      dirX: dx,
+      dirY: dy,
+      // Tumble sign follows the throw side; magnitude jittered by tile.
+      spin: (dx >= 0 ? 1 : -1) * (1.6 + 0.5 * (hashCoords(7, headTile.x, headTile.y) % 3)),
       f,
       fv,
       turb,
@@ -22120,45 +22134,41 @@ export class Renderer {
     });
   }
 
-  /** Advance one flip's springs; true = settled, remove it. */
-  private stepBedFlip(flip: { t: number; foldK: number; foldV: number; f: number[]; fv: number[]; turb: number[] }, dt: number): boolean {
+  /** Advance one flip's flutter row; true = finished, remove it. */
+  private stepBedFlip(
+    flip: { t: number; f: number[]; fv: number[]; turb: number[] },
+    dt: number,
+  ): boolean {
     flip.t += dt;
     if (flip.t > 1.6) return true; // hard cap — always cleaned up
-    // The fold: fling to fully-thrown with deliberate overshoot (the
-    // exaggeration is the point), then a softer settle home.
-    const fling = flip.t < 0.5;
-    const tgt = fling ? 1 : 0;
-    const acc = (tgt - flip.foldK) * (fling ? 150 : 70) - flip.foldV * (fling ? 8 : 11);
-    flip.foldV += acc * dt;
-    flip.foldK += flip.foldV * dt;
-    // Flutter row: damped springs with neighbor coupling, stirred by
-    // the fold's own velocity — cloth, not a hinged plank.
+    // Flutter row: damped springs with neighbor coupling, stirred
+    // hard while the cloth is airborne — fabric, not cardboard.
+    const airborne = flip.t < Renderer.FLIP_FLY_S ? 1 : 0;
     const n = flip.f.length;
     for (let i = 0; i < n; i++) {
       const left = flip.f[i > 0 ? i - 1 : i]!;
       const right = flip.f[i < n - 1 ? i + 1 : i]!;
       const a2 =
-        -140 * flip.f[i]! -
-        7.5 * flip.fv[i]! +
-        70 * (left + right - 2 * flip.f[i]!) +
-        flip.foldV * flip.turb[i]! * 2.2;
+        -150 * flip.f[i]! -
+        7 * flip.fv[i]! +
+        80 * (left + right - 2 * flip.f[i]!) +
+        airborne * flip.turb[i]! * 9;
       flip.fv[i] = flip.fv[i]! + a2 * dt;
       flip.f[i] = flip.f[i]! + flip.fv[i]! * dt;
     }
-    let live = Math.abs(flip.foldK) > 0.012 || Math.abs(flip.foldV) > 0.05;
-    for (let i = 0; i < n && !live; i++) {
-      if (Math.abs(flip.f[i]!) > 0.02 || Math.abs(flip.fv[i]!) > 0.1) live = true;
-    }
-    return flip.t > 0.85 && !live;
+    return flip.t >= Renderer.FLIP_TOTAL_S;
   }
 
-  /** Paint one thrown-cover flip: mattress bared above the fold, the
-   *  flap doubled back with its fluttering sheet-band edge, and the
-   *  intact painted quilt below — so the settled last frame IS the
-   *  bed painter's own art and the handoff is invisible. */
+  /** Paint one thrown cover: the quilt flies off the WAY the body
+   *  left — arcing, tumbling, trailing-edge fluttering — and fades
+   *  mid-air while the bared bed quietly re-makes itself from the
+   *  foot up; the final frame IS the painted quilt (invisible
+   *  handoff). */
   private drawBedFlip(flip: {
-    foldK: number;
-    foldV: number;
+    t: number;
+    dirX: number;
+    dirY: number;
+    spin: number;
     f: number[];
     ax: number;
     ay: number;
@@ -22172,101 +22182,116 @@ export class Renderer {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
     const p = this.liftedWTS(flip.ax, flip.ay);
-    const k = Math.max(0, flip.foldK);
-    const airK = Math.sin(Math.min(1, k) * Math.PI);
+    const t = flip.t;
     const tickC = '#e8dfc8';
+    // Quilt region + head-edge bookkeeping per orientation.
+    let qx: number;
+    let qy: number;
+    let qw: number;
+    let qh: number;
+    let vertBed: boolean;
+    let footEdgeFirst: boolean; // remake grows from the foot side
+    let xL = 0;
+    let xR = 0;
+    let dBotV = 0;
     if (flip.head === 'n') {
       const dTop = p.y - (flip.footN / 2 + 0.04) * syT - 0.3 * s;
       const dBot = dTop + flip.span * syT;
-      const xL = p.x - 0.46 * s;
-      const xR = p.x + 0.46 * s;
+      xL = p.x - 0.46 * s;
+      xR = p.x + 0.46 * s;
+      dBotV = dBot;
       const yQ = dTop + (dBot - dTop) * 0.4;
-      const qh = dBot - yQ;
+      qx = xL - 0.03 * s;
+      qy = yQ;
+      qw = xR - xL + 0.06 * s;
+      qh = dBot - yQ;
+      vertBed = true;
+      footEdgeFirst = true; // foot = south (the far end of the region)
       this.bedCoversVert(xL, xR, yQ, dBot, flip.qMain, flip.qDark);
-      const a = k * qh * 0.48;
-      if (a > 0.02 * s) {
-        const F = yQ + a;
-        // Bared mattress where the covers used to lie.
-        ctx.fillStyle = tickC;
-        ctx.fillRect(xL - 0.03 * s, yQ - 0.06 * s, xR - xL + 0.06 * s, F - yQ + 0.06 * s);
-        ctx.fillStyle = shade(tickC, -8);
-        ctx.fillRect(xL - 0.03 * s, yQ - 0.06 * s, 0.045 * s, F - yQ + 0.06 * s);
-        ctx.fillRect(xR - 0.015 * s, yQ - 0.06 * s, 0.045 * s, F - yQ + 0.06 * s);
-        // The doubled-back flap: underside up, free edge billowing.
-        const lift = airK * 0.24 * s * (1 + Math.min(1, Math.abs(flip.foldV)) * 0.35);
-        const n = flip.f.length;
-        ctx.fillStyle = shade(flip.qMain, 24);
-        ctx.beginPath();
-        ctx.moveTo(xL - 0.03 * s, F);
-        ctx.lineTo(xR + 0.03 * s, F);
-        for (let i = n - 1; i >= 0; i--) {
-          const ex = xL - 0.03 * s + ((xR - xL + 0.06 * s) * i) / (n - 1);
-          const ey = F + a - lift + flip.f[i]! * 0.09 * s;
-          ctx.lineTo(ex, ey);
-        }
-        ctx.closePath();
-        ctx.fill();
-        // Fold crease + the sheet band riding the free edge.
-        ctx.fillStyle = shade(flip.qMain, -14);
-        ctx.fillRect(xL - 0.03 * s, F - 0.012 * s, xR - xL + 0.06 * s, 0.024 * s);
-        ctx.strokeStyle = '#f4efe0';
-        ctx.lineWidth = 0.07 * s;
-        ctx.beginPath();
-        for (let i = 0; i < n; i++) {
-          const ex = xL - 0.03 * s + ((xR - xL + 0.06 * s) * i) / (n - 1);
-          const ey = F + a - lift + flip.f[i]! * 0.09 * s - 0.02 * s;
-          if (i === 0) ctx.moveTo(ex, ey);
-          else ctx.lineTo(ex, ey);
-        }
-        ctx.stroke();
-      }
-      // The footboard layer stands back in front of the flying cloth.
-      this.bedFootboardVert(xL, xR, dBot, dBot + 0.3 * s);
     } else {
       const sgn = flip.head === 'e' ? 1 : -1;
       const dTop = p.y - 0.5 * syT - 0.3 * s;
       const dBot = p.y + 0.58 * syT - 0.3 * s;
       const halfLen = (flip.span / 2) * s;
       const qW = halfLen * 2 * 0.58;
-      const qX = sgn > 0 ? p.x - halfLen + 0.1 * s : p.x + halfLen - qW - 0.1 * s;
-      this.bedCoversSide(qX, qW, dTop, dBot, sgn, flip.qMain, flip.qDark);
-      const a = k * qW * 0.48;
-      if (a > 0.02 * s) {
-        const headEdge = sgn > 0 ? qX + qW : qX;
-        const F = headEdge - sgn * a;
-        const bx0 = Math.min(headEdge, F);
-        ctx.fillStyle = tickC;
-        ctx.fillRect(bx0, dTop - 0.02 * s, Math.abs(headEdge - F), dBot - dTop + 0.04 * s);
+      qx = sgn > 0 ? p.x - halfLen + 0.1 * s : p.x + halfLen - qW - 0.1 * s;
+      qy = dTop - 0.02 * s;
+      qw = qW;
+      qh = dBot - dTop + 0.04 * s;
+      vertBed = false;
+      footEdgeFirst = sgn > 0; // foot side is the region's LOW-x end for head 'e'
+      this.bedCoversSide(qx, qw, dTop, dBot, sgn, flip.qMain, flip.qDark);
+    }
+    // How much of the head-side region still lies bare: all of it
+    // while the cloth flies, then the covers pull back from the foot.
+    let bareK = 1;
+    if (t >= Renderer.FLIP_FLY_S) {
+      const u = Math.min(1, (t - Renderer.FLIP_FLY_S) / Renderer.FLIP_REMAKE_S);
+      bareK = 1 - u * u * (3 - 2 * u);
+    }
+    if (bareK > 0.01) {
+      ctx.fillStyle = tickC;
+      if (vertBed) {
+        // Bared from the sheet line down, shrinking toward the head.
+        const bh = qh * bareK;
+        ctx.fillRect(qx, qy - 0.06 * s, qw, bh + 0.06 * s);
         ctx.fillStyle = shade(tickC, -8);
-        ctx.fillRect(bx0, dTop - 0.02 * s, Math.abs(headEdge - F), 0.04 * s);
-        const lift = airK * 0.24 * s * (1 + Math.min(1, Math.abs(flip.foldV)) * 0.35);
+        ctx.fillRect(qx, qy - 0.06 * s, 0.045 * s, bh + 0.06 * s);
+        ctx.fillRect(qx + qw - 0.045 * s, qy - 0.06 * s, 0.045 * s, bh + 0.06 * s);
+      } else {
+        const bw = qw * bareK;
+        const bx = footEdgeFirst ? qx + qw - bw : qx;
+        ctx.fillRect(bx, qy, bw, qh);
+        ctx.fillStyle = shade(tickC, -8);
+        ctx.fillRect(bx, qy, bw, 0.04 * s);
+      }
+    }
+    // THE FLIGHT: a loose piece of cloth launched the way the body
+    // left — drag-decayed travel, a hop of an arc, a lazy tumble, and
+    // a trailing edge that flutters — gone before it lands.
+    if (t < Renderer.FLIP_FLY_S) {
+      const alpha =
+        t < Renderer.FLIP_FADE_AT
+          ? 1
+          : Math.max(0, 1 - (t - Renderer.FLIP_FADE_AT) / (Renderer.FLIP_FLY_S - Renderer.FLIP_FADE_AT));
+      if (alpha > 0.01) {
+        const dist = 1.5 * (1 - Math.exp(-3.2 * t));
+        const z = Math.max(-0.05, 2.4 * t - 3.9 * t * t);
+        const cxq = qx + qw / 2 + flip.dirX * dist * s;
+        const cyq = qy + qh / 2 + flip.dirY * dist * syT - z * s;
+        const rot = flip.spin * t * (1 - 0.35 * t);
+        const shrink = 1 - 0.18 * (t / Renderer.FLIP_FLY_S);
+        const hw = (qw / 2) * shrink;
+        const hh = (qh / 2) * shrink;
         const n = flip.f.length;
-        const edgeX = F - sgn * a;
-        ctx.fillStyle = shade(flip.qMain, 24);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(cxq, cyq);
+        ctx.rotate(rot);
+        // Body of the cloth: leading edge straight, trailing edge
+        // waving through the flutter row.
+        ctx.fillStyle = flip.qMain;
         ctx.beginPath();
-        ctx.moveTo(F, dTop - 0.02 * s);
-        ctx.lineTo(F, dBot + 0.02 * s);
+        ctx.moveTo(-hw, -hh);
+        ctx.lineTo(hw, -hh);
         for (let i = n - 1; i >= 0; i--) {
-          const ey = dTop - 0.02 * s + ((dBot - dTop + 0.04 * s) * i) / (n - 1);
-          const ex = edgeX + sgn * (flip.f[i]! * 0.09 * s) - sgn * lift * 0.4;
-          ctx.lineTo(ex, ey - lift * 0.5);
+          const ex = -hw + (2 * hw * i) / (n - 1);
+          ctx.lineTo(ex, hh + flip.f[i]! * 0.1 * s);
         }
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = shade(flip.qMain, -14);
-        ctx.fillRect(F - 0.012 * s, dTop - 0.02 * s, 0.024 * s, dBot - dTop + 0.04 * s);
-        ctx.strokeStyle = '#f4efe0';
-        ctx.lineWidth = 0.07 * s;
-        ctx.beginPath();
-        for (let i = 0; i < n; i++) {
-          const ey = dTop - 0.02 * s + ((dBot - dTop + 0.04 * s) * i) / (n - 1);
-          const ex = edgeX + sgn * (flip.f[i]! * 0.09 * s - 0.02 * s) - sgn * lift * 0.4;
-          if (i === 0) ctx.moveTo(ex, ey - lift * 0.5);
-          else ctx.lineTo(ex, ey - lift * 0.5);
-        }
-        ctx.stroke();
+        // A few patch blocks so it reads as THE quilt in the air.
+        ctx.fillStyle = flip.qDark;
+        ctx.fillRect(-hw * 0.6, -hh * 0.7, hw * 0.55, hh * 0.6);
+        ctx.fillRect(hw * 0.05, -hh * 0.05, hw * 0.55, hh * 0.6);
+        // The fold-back sheet rides the leading edge.
+        ctx.fillStyle = '#f4efe0';
+        ctx.fillRect(-hw, -hh, hw * 2, 0.08 * s);
+        ctx.restore();
       }
     }
+    // The footboard layer stands back in front of everything.
+    if (vertBed) this.bedFootboardVert(xL, xR, dBotV, dBotV + 0.3 * s);
   }
 
   /** A bedpost capped with a turned finial — the shared post brush. */
@@ -22451,9 +22476,11 @@ export class Renderer {
     // Lying blend — the bed recline, same glide law as the sit.
     const lieTarget = e.pose === PoseState.Lie ? 1 : 0;
     // THE THROWN COVER: the instant a sleeper rises (the pose leaves
-    // Lie while the blend is still deep), the bed throws its covers.
+    // Lie while the blend is still deep), the bed throws its covers —
+    // the way the body LEFT (its position is already bedside in the
+    // same snapshot that flipped the pose).
     if (lieTarget === 0 && (anim.lieK ?? 0) >= 0.85 && anim.seat?.kind === 'bed') {
-      this.startBedFlip(anim.seat);
+      this.startBedFlip(anim.seat, e.x - anim.seat.ax, e.y - anim.seat.ay);
     }
     let lieK = anim.lieK ?? 0;
     lieK += (lieTarget - lieK) * (1 - Math.exp(-5 * this.frameDt));
