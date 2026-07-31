@@ -413,7 +413,7 @@ export function buildAmberford(): ZoneDef {
   // The bar, and Dunna's nook behind it.
   for (let x = 61; x <= 63; x++) b.set(x, 52, Tile.Counter);
   b.set(61, 53, Tile.Barrel).set(62, 53, Tile.Barrel);
-  b.set(61, 56, Tile.Bed).set(63, 56, Tile.Cabinet);
+  b.set(61, 56, Tile.Bed).set(62, 56, Tile.Bed).set(63, 56, Tile.Cabinet);
   // Dunna's nook keeps a real rug too — she sleeps by the barrels,
   // but she doesn't sleep on bare boards.
   b.setDetail(62, 54, Detail.Rug).setDetail(63, 54, Detail.Rug);
@@ -604,7 +604,8 @@ export function buildAmberford(): ZoneDef {
   for (const y of [60, 63, 66]) {
     b.set(45, y, Tile.Bench).set(46, y, Tile.Bench);
   }
-  b.set(38, 60, Tile.Bed).set(38, 63, Tile.Bed);
+  b.set(38, 60, Tile.Bed).set(39, 60, Tile.Bed);
+  b.set(38, 63, Tile.Bed).set(39, 63, Tile.Bed);
   b.set(38, 66, Tile.Cabinet);
   b.setDetail(39, 61, Detail.RugRound).setDetail(39, 64, Detail.RugRound);
   // The REGISTRY corner: the book of who passed, at a desk by the
@@ -670,7 +671,7 @@ export function buildAmberford(): ZoneDef {
   b.set(21, 57, Tile.CrateGoods).set(22, 57, Tile.CrateGoods);
   b.set(27, 57, Tile.Cabinet);
   b.set(23, 59, Tile.Table).set(24, 59, Tile.Chair);
-  b.set(27, 61, Tile.Bed);
+  b.set(27, 61, Tile.Bed).set(26, 61, Tile.Bed);
   b.setDetail(24, 57, Detail.Doormat);
   // The parlor square between the table and her bed.
   b.setDetail(25, 59, Detail.Rug).setDetail(26, 59, Detail.Rug);

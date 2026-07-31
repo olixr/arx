@@ -17493,17 +17493,42 @@ export class Renderer {
         const isBed = (t2: number | undefined) => t2 === Tile.Bed;
         const bn = isBed(game.world.groundAt(tx, ty - 1));
         const bs = isBed(game.world.groundAt(tx, ty + 1));
+        const be2 = isBed(game.world.groundAt(tx + 1, ty));
+        const bw2 = isBed(game.world.groundAt(tx - 1, ty));
         const isWall = (t2: number | undefined) => t2 !== undefined && Renderer.WALL_TILES.has(t2);
         // A bed sleeps with its head to the wall — the side-on variant
         // is what keeps an inn's row of beds from reading stamped.
-        const head: 'n' | 'e' | 'w' =
-          bn || bs || isWall(game.world.groundAt(tx, ty - 1))
-            ? 'n'
-            : isWall(game.world.groundAt(tx + 1, ty))
-              ? 'e'
-              : isWall(game.world.groundAt(tx - 1, ty))
-                ? 'w'
-                : 'n';
+        // Orientation priority (PARITY LAW with shared seats.ts): a
+        // N-S run wins, then an E-W run — the FULL-LENGTH side-on bed,
+        // proportioned to the body (user law: a one-tile cot reads
+        // half a bed) — then the lone bed's wall scan.
+        const horiz = !bn && !bs && (be2 || bw2);
+        let runX0 = tx;
+        let runX1 = tx;
+        let head: 'n' | 'e' | 'w';
+        if (horiz) {
+          while (isBed(game.world.groundAt(runX0 - 1, ty))) runX0--;
+          while (isBed(game.world.groundAt(runX1 + 1, ty))) runX1++;
+          head = isWall(game.world.groundAt(runX1 + 1, ty))
+            ? 'e'
+            : isWall(game.world.groundAt(runX0 - 1, ty))
+              ? 'w'
+              : 'e';
+          // The head-end tile draws the WHOLE bed; run-mates yield
+          // (the run ring still counts them for the outline box).
+          if (tx !== (head === 'e' ? runX1 : runX0)) {
+            return { sortY: ty + 0.72, draw: () => {} };
+          }
+        } else {
+          head =
+            bn || bs || isWall(game.world.groundAt(tx, ty - 1))
+              ? 'n'
+              : isWall(game.world.groundAt(tx + 1, ty))
+                ? 'e'
+                : isWall(game.world.groundAt(tx - 1, ty))
+                  ? 'w'
+                  : 'n';
+        }
         // N-S runs merge into one long bed; the quilt colorway is keyed
         // to the run's head tile so both halves wear the same cloth.
         let ay = ty;
@@ -17520,8 +17545,9 @@ export class Renderer {
         const frameC = '#6f4d26';
         const postC = '#5e3f1e';
         const tickC = '#e8dfc8';
-        const x0 = p.x - s * 0.46;
-        const x1 = p.x + s * 0.46;
+        // An E-W run stretches the piece footward from the head tile.
+        const x0 = p.x - s * 0.46 - (horiz && head === 'e' ? (runX1 - runX0) * s : 0);
+        const x1 = p.x + s * 0.46 + (horiz && head === 'w' ? (runX1 - runX0) * s : 0);
         // THE HONEST-ANGLE LAW, bed edition: a bed is a RAISED DECK —
         // the tick rides bedH above the floor, so the plan-view quilt
         // sits on a visible south face (frame boards, an under-bed
@@ -17553,7 +17579,7 @@ export class Renderer {
         const dBot = yFn - bedH;
         return {
           sortY: ty + 0.72,
-          body: bn || bs ? undefined : stationBody(0.85, 1.35, 0.6),
+          body: bn || bs || horiz ? undefined : stationBody(0.85, 1.35, 0.6),
           drawShadow: bs ? undefined : () => this.castEdgeQuad(x0, yFn, x1, yFn, 0.3),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
@@ -22057,10 +22083,15 @@ export class Renderer {
     head: 'n' | 'e' | 'w',
   ): void {
     if (h <= 0 || w <= 0) return;
+    // The covers pull over only once the body has mostly settled —
+    // and pull back FIRST on the rise, so a climbing body is never
+    // painted through a phantom blanket.
+    const a = Math.min(1, Math.max(0, (k - 0.45) / 0.35));
+    if (a <= 0) return;
     const ctx = this.ctx;
     const s = this.camera.scale;
     ctx.save();
-    ctx.globalAlpha = Math.min(1, k * 1.6);
+    ctx.globalAlpha = a;
     ctx.fillStyle = qMain;
     ctx.fillRect(x, y, w, h);
     ctx.fillStyle = qDark;
@@ -22695,8 +22726,11 @@ export class Renderer {
           // standing hips, and at seat height every weapon class
           // found its own way to jut through the lap or the mattress.
           // The wayside floor sit keeps the classic hip stow.
+          // The 0.2 gate keeps steel away for nearly the whole blend:
+          // gone early on the way down, back only at the end of the
+          // rise — never popping mid-animation.
           weaponItem:
-            lieE > 0.5 || (chairSit && sitE > 0.5)
+            lieE > 0.2 || (chairSit && sitE > 0.2)
               ? undefined
               : e.pose === PoseState.Gather
                 ? (e.equip.tool ?? e.equip.weapon)
@@ -22716,7 +22750,7 @@ export class Renderer {
           legsItem: e.equip.legs,
           bootsItem: e.equip.boots,
           glovesItem: e.equip.gloves,
-          offhandItem: lieE > 0.5 || (chairSit && sitE > 0.5) ? undefined : e.equip.offhand,
+          offhandItem: lieE > 0.2 || (chairSit && sitE > 0.2) ? undefined : e.equip.offhand,
           hasCape: e.equip.cape !== undefined,
           size: e.size,
           skinColor: e.skinColor,
@@ -22754,9 +22788,11 @@ export class Renderer {
           const span = seat!.span ?? 1;
           const lone = seat!.tiles.length === 1 && head === 'n';
           // Quilt colorway — MUST match the bed painter's QUILTS
-          // table and its run-head hash key, or the tuck reads as a
-          // stranger's blanket thrown over the bed.
-          const headTile = seat!.tiles[0]!;
+          // table and its run-HEAD hash key (east end for an
+          // east-headed run), or the tuck reads as a stranger's
+          // blanket thrown over the bed.
+          const headTile =
+            (seat!.head ?? 'n') === 'e' ? seat!.tiles[seat!.tiles.length - 1]! : seat!.tiles[0]!;
           const QUILTS_TUCK = [
             ['#8a3d46', '#a34b52'],
             ['#3d5a8a', '#4a6a9c'],
@@ -22777,30 +22813,40 @@ export class Renderer {
             // full body length, wherever that lands.
             const feetY = dTop + 0.02 * s + bodyH;
             // The mattress is where the body ends — anything past the
-            // footboard or off the sides never paints.
-            ctx.beginPath();
-            ctx.rect(xL - 0.07 * s, dTop - 0.7 * s, xR - xL + 0.14 * s, dBot - dTop + 0.7 * s);
-            ctx.clip();
+            // footboard or off the sides never paints. SETTLED ONLY:
+            // clipping a body mid-rise cut the figure off at the rail
+            // (user catch) — while the blend plays, the whole body
+            // shows and the motion reads as climbing in or out.
+            if (lieK >= 0.92) {
+              ctx.beginPath();
+              ctx.rect(xL - 0.07 * s, dTop - 0.7 * s, xR - xL + 0.14 * s, dBot - dTop + 0.7 * s);
+              ctx.clip();
+            }
             ctx.translate(0, (feetY - bodyY) * lieE);
             const qStart = dTop + span * syT2 * (lone ? 0.58 : 0.6);
             tuck = () =>
               this.paintBedTuck(xL, qStart, xR - xL, dBot - qStart, qMain, qDark, lieE, 'n');
           } else {
-            // Side-on cot: same law rotated a quarter turn — head at
-            // the pillow end, feet clipped at the far rail.
+            // Side-on bed: same law rotated a quarter turn — head at
+            // the pillow end, feet toward the far rail. The span comes
+            // from the registry, so a full-length two-tile run lays
+            // the body out whole and only a lone cot ever clips feet.
             const sgn = head === 'e' ? 1 : -1;
             const rot = sgn * (Math.PI / 2) * lieE;
             const dMid = p.y - 0.3 * s;
-            const crownX = p.x + sgn * 0.42 * s;
+            const halfLen = (span / 2) * s;
+            const crownX = p.x + sgn * (halfLen - 0.08 * s);
             const feetX = crownX - sgn * bodyH;
-            ctx.beginPath();
-            ctx.rect(p.x - 0.48 * s, dMid - 0.52 * s, 0.96 * s, 1.04 * s);
-            ctx.clip();
+            if (lieK >= 0.92) {
+              ctx.beginPath();
+              ctx.rect(p.x - halfLen - 0.02 * s, dMid - 0.52 * s, halfLen * 2 + 0.04 * s, 1.04 * s);
+              ctx.clip();
+            }
             ctx.translate(bodyX + (feetX - bodyX) * lieE, bodyY + (dMid - bodyY) * lieE);
             ctx.rotate(rot);
             ctx.translate(-bodyX, -bodyY);
-            const qW = 0.94 * s * 0.56;
-            const qX = head === 'e' ? p.x - 0.47 * s : p.x + 0.47 * s - qW;
+            const qW = halfLen * 2 * 0.56;
+            const qX = head === 'e' ? p.x - halfLen : p.x + halfLen - qW;
             tuck = () =>
               this.paintBedTuck(qX, dMid - 0.44 * syT2, qW, 0.88 * syT2, qMain, qDark, lieE, head);
           }

@@ -162,6 +162,35 @@ export function seatAt(ground: SeatGround, tx: number, ty: number): SeatSpec | n
         tiles: [{ x: tx, y: ty }],
       };
     case Tile.Bed: {
+      // An E-W bed run: the full-length side-on bed (orientation
+      // priority, PARITY with the painter: N-S run > E-W run > the
+      // lone bed's wall scan).
+      const isBed = (t2: number | undefined): boolean => t2 === Tile.Bed;
+      if (
+        !isBed(ground(tx, ty - 1)) &&
+        !isBed(ground(tx, ty + 1)) &&
+        (isBed(ground(tx + 1, ty)) || isBed(ground(tx - 1, ty)))
+      ) {
+        const isWall = (t2: number | undefined): boolean => t2 !== undefined && WALLS.has(t2);
+        let x0 = tx;
+        let x1 = tx;
+        while (x0 > tx - BED_RUN_CAP && ground(x0 - 1, ty) === Tile.Bed) x0--;
+        while (x1 < x0 + BED_RUN_CAP - 1 && ground(x1 + 1, ty) === Tile.Bed) x1++;
+        const head = isWall(ground(x1 + 1, ty)) ? 'e' : isWall(ground(x0 - 1, ty)) ? 'w' : 'e';
+        const tiles: Array<{ x: number; y: number }> = [];
+        for (let x = x0; x <= x1; x++) tiles.push({ x, y: ty });
+        return {
+          kind: 'bed',
+          pose: 'lie',
+          ax: (x0 + x1 + 1) / 2,
+          ay: ty + 0.54,
+          dir: Math.PI / 2,
+          seatH: 0.3,
+          head,
+          span: x1 - x0 + 0.92,
+          tiles,
+        };
+      }
       const head = bedHead(ground, tx, ty);
       if (head !== 'n') {
         // Side-on cot: one tile, pillow against the east or west wall.
@@ -170,7 +199,7 @@ export function seatAt(ground: SeatGround, tx: number, ty: number): SeatSpec | n
           pose: 'lie',
           ax: tx + 0.5,
           ay: ty + 0.54,
-          dir: head === 'e' ? 0 : Math.PI,
+          dir: Math.PI / 2,
           seatH: 0.3,
           head,
           span: 0.92,
@@ -193,8 +222,10 @@ export function seatAt(ground: SeatGround, tx: number, ty: number): SeatSpec | n
         pose: 'lie',
         // Mid-deck, so head and feet share the mattress evenly.
         ax: tx + 0.5,
+        // A sleeper lies FACE UP — the supine figure's face points at
+        // the camera, whatever way the bed runs.
         ay: (y0 + y1 + 1) / 2 + 0.04,
-        dir: -Math.PI / 2,
+        dir: Math.PI / 2,
         seatH: 0.3,
         head,
         span,

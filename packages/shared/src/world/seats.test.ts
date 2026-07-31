@@ -100,17 +100,43 @@ test('a two-tile bed is ONE seat: both tiles answer with the whole run', () => {
   assert.deepEqual(foot.tiles, head.tiles);
   assert.equal(foot.ax, head.ax);
   assert.equal(foot.ay, head.ay);
-  // The sleeper lies mid-deck, head north.
+  // The sleeper lies mid-deck, head north, FACE UP (the supine
+  // figure's face points at the camera whatever way the bed runs).
   assert.equal(head.ay, 6.04);
-  assert.equal(head.dir, -Math.PI / 2);
+  assert.equal(head.dir, Math.PI / 2);
   assert.ok(head.span! > 1.9, 'a double bed stretches the sleeper');
+});
+
+test('an east-west bed run is ONE full-length side-on bed', () => {
+  const g = worldOf({ '5,5': Tile.Bed, '6,5': Tile.Bed, '7,5': Tile.WallStone });
+  const west = seatAt(g, 5, 5)!;
+  const east = seatAt(g, 6, 5)!;
+  assert.equal(west.pose, 'lie');
+  assert.equal(west.head, 'e');
+  assert.deepEqual(west.tiles, [
+    { x: 5, y: 5 },
+    { x: 6, y: 5 },
+  ]);
+  // Both tiles answer with the same run, anchor mid-deck.
+  assert.deepEqual(east.tiles, west.tiles);
+  assert.equal(west.ax, 6);
+  assert.equal(west.ay, 5.54);
+  assert.ok(west.span! > 1.9, 'a two-tile run stretches the sleeper');
+  // Head at the WEST wall when that end holds the wall instead.
+  const g2 = worldOf({ '5,5': Tile.Bed, '6,5': Tile.Bed, '4,5': Tile.WallWood });
+  assert.equal(seatAt(g2, 6, 5)!.head, 'w');
+});
+
+test('a north-south run outranks an east neighbor (parity priority)', () => {
+  const g = worldOf({ '5,5': Tile.Bed, '5,6': Tile.Bed, '6,5': Tile.Bed });
+  assert.equal(seatAt(g, 5, 5)!.head, 'n');
 });
 
 test('a lone bed against an east wall lies side-on, pillow east', () => {
   const g = worldOf({ '5,5': Tile.Bed, '6,5': Tile.WallStone });
   const seat = seatAt(g, 5, 5)!;
   assert.equal(seat.head, 'e');
-  assert.equal(seat.dir, 0);
+  assert.equal(seat.dir, Math.PI / 2);
   assert.equal(seat.span, 0.92);
   assert.deepEqual(seat.tiles, [{ x: 5, y: 5 }]);
 });
