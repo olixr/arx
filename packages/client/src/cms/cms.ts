@@ -1,4 +1,6 @@
 import type {
+  GrowthDef,
+  NodeDef,
   DialogueDef,
   FactionsDef,
   FrontierDef,
@@ -28,6 +30,12 @@ import {
   listItems,
   listLoot,
   listMinors,
+  listNodes,
+  getGrowthDoc,
+  saveNode,
+  revertNode,
+  saveGrowthDoc,
+  revertGrowthDoc,
   listNpcs,
   listPois,
   listZoneRects,
@@ -70,6 +78,7 @@ export type Section =
   | 'dialogues'
   | 'pois'
   | 'minors'
+  | 'resources'
   | 'frontier'
   | 'factions'
   | 'voice'
@@ -86,6 +95,10 @@ export interface CmsState {
   pois: Array<Editable<PoiDef>>;
   /** THE SMALL FINDS roster (lived-in-land Phase 6). */
   minors: Array<Editable<MinorDef>>;
+  /** THE ROSTER SPEAKS: the gatherable-node roster (second-growth Ph5). */
+  nodes: Array<Editable<NodeDef>>;
+  /** The land's clock — the growth dial doc riding the Resources bench. */
+  growth: { def: GrowthDef; edited: boolean } | null;
   /** The live POI prefab library's ids (pool pickers + validation). */
   poiPrefabIds: string[];
   /** The living frontier's dial table — a singleton doc (Phase 6). */
@@ -112,6 +125,8 @@ export const state: CmsState = {
   dialogues: [],
   pois: [],
   minors: [],
+  nodes: [],
+  growth: null,
   poiPrefabIds: [],
   frontier: null,
   factions: null,
@@ -164,6 +179,10 @@ export async function reloadSection(section: Section): Promise<void> {
       const res = await listMinors();
       state.minors = res.minors;
       state.poiPrefabIds = res.prefabIds;
+    } else if (section === 'resources') {
+      state.nodes = (await listNodes()).nodes;
+      state.growth = await getGrowthDoc();
+      if (state.items.length === 0) state.items = await listItems();
     } else if (section === 'frontier') {
       state.frontier = await getFrontier();
     } else if (section === 'factions') {
@@ -182,7 +201,7 @@ export async function reloadSection(section: Section): Promise<void> {
 
 async function loadEverything(): Promise<void> {
   try {
-    const [npcs, loot, actors, dialogues, pois, minors, items, sites, zones, frontier, factions, voice] =
+    const [npcs, loot, actors, dialogues, pois, minors, nodes, growth, items, sites, zones, frontier, factions, voice] =
       await Promise.all([
         listNpcs(),
         listLoot(),
@@ -190,6 +209,8 @@ async function loadEverything(): Promise<void> {
         listDialogues(),
         listPois(),
         listMinors(),
+        listNodes(),
+        getGrowthDoc(),
         listItems(),
         fetchSpawnSites(),
         listZoneRects(),
@@ -203,6 +224,8 @@ async function loadEverything(): Promise<void> {
     state.dialogues = dialogues.dialogues;
     state.pois = pois.pois;
     state.minors = minors.minors;
+    state.nodes = nodes.nodes;
+    state.growth = growth;
     state.poiPrefabIds = pois.prefabIds;
     state.items = items;
     state.sites = sites;
@@ -280,6 +303,12 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string; hint: string }
     hint: 'The texture layer — dens, cairns, caches, and claim-marks the lattice deals between sites. No chart markers, no ceremonies: the walk itself pays.',
   },
   {
+    id: 'resources',
+    label: 'Resources',
+    icon: 'stamp',
+    hint: 'Every gatherable node — yields, gates, windows, renewal class — plus the land\'s clock. A save steers the very next gather.',
+  },
+  {
     id: 'frontier',
     label: 'Frontier',
     icon: 'stamp',
@@ -349,6 +378,8 @@ function renderRail(): void {
                 ? state.pois.length
                 : s.id === 'minors'
                   ? state.minors.length
+                : s.id === 'resources'
+                  ? state.nodes.length
                 : s.id === 'frontier'
                   ? (state.frontier ? Object.keys(state.frontier.def).length : 0)
                   : s.id === 'factions'
@@ -532,6 +563,47 @@ function listEntries(): ListEntry[] {
         group: m.def.family !== undefined ? `${m.def.family} country` : 'Universal texture',
       }));
   }
+  if (state.section === 'resources') {
+    const SKILL_GROUP: Record<string, string> = {
+      woodcutting: 'The woods',
+      mining: 'The stone',
+      foraging: 'The meadow',
+      fishing: 'The waters',
+    };
+    const clock = state.growth
+      ? [
+          {
+            id: 'growth',
+            title: "The Land's Clock",
+            sub: 'the wild regrowth dials — ages, windows, dispersal',
+            badge: state.growth.edited ? 'edited' : 'authored',
+            badgeEdited: state.growth.edited,
+            ico: iconWrap(iconImg('stamp', 18)),
+            group: 'The clock',
+          },
+        ]
+      : [];
+    return [
+      ...clock,
+      ...state.nodes
+        .filter((n) => match(n.def.id, n.def.name, n.def.skill))
+        .sort(
+          (a, b) =>
+            a.def.skill.localeCompare(b.def.skill) ||
+            a.def.levelReq - b.def.levelReq ||
+            a.def.name.localeCompare(b.def.name),
+        )
+        .map((n) => ({
+          id: n.def.id,
+          title: n.def.name,
+          sub: `${n.def.yieldItem} · lvl ${n.def.levelReq}` + (n.def.renewal ? ` · ${n.def.renewal}` : ''),
+          badge: n.def.depletedTile === null ? 'endless' : `${n.def.respawnSec}s kept`,
+          badgeEdited: n.edited,
+          ico: iconWrap(iconImg('stamp', 18)),
+          group: SKILL_GROUP[n.def.skill] ?? n.def.skill,
+        })),
+    ];
+  }
   if (state.section === 'frontier') {
     const f = state.frontier;
     return [
@@ -700,6 +772,10 @@ $('btn-new-entry').onclick = () => {
     openActorWizard();
     return;
   }
+  if (state.section === 'resources') {
+    toast('the roster grows in code — a node needs a tile, and tiles are art and physics', 3600);
+    return;
+  }
   const id = window.prompt(
     state.section === 'npcs'
       ? 'New creature id (lowercase, e.g. bog_fiend):'
@@ -783,7 +859,7 @@ const hash = location.hash.replace(/^#/, '');
 if (hash) {
   const [sect, id] = hash.split('/') as [Section, string?];
   if (
-    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'minors', 'items', 'frontier', 'factions', 'voice'].includes(sect)
+    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'minors', 'resources', 'items', 'frontier', 'factions', 'voice'].includes(sect)
   ) {
     state.section = sect;
     state.selectedId = id ?? null;
@@ -853,6 +929,35 @@ export const persistence = {
     if (outcome === 'deleted') state.selectedId = null;
     renderAll();
     toast(outcome === 'reverted' ? 'restored the shipped find' : 'deleted', 3000, 'success');
+  },
+  async saveNodeDef(def: NodeDef): Promise<void> {
+    await saveNode(def);
+    state.dirty = false;
+    await reloadSection('resources');
+    setSaveState('all changes saved');
+    toast(`'${def.name}' saved — the very next gather obeys`, 3000, 'success');
+  },
+  async revertNodeDef(id: string): Promise<void> {
+    const { outcome } = await revertNode(id);
+    state.dirty = false;
+    await reloadSection('resources');
+    if (outcome === 'deleted') state.selectedId = null;
+    renderAll();
+    toast(outcome === 'reverted' ? 'restored the shipped node' : 'deleted', 3000, 'success');
+  },
+  async saveGrowthDef(def: GrowthDef): Promise<void> {
+    await saveGrowthDoc(def);
+    state.dirty = false;
+    await reloadSection('resources');
+    setSaveState('all changes saved');
+    toast('the clock is set — every live regrowth re-aims on the next beat', 3200, 'success');
+  },
+  async revertGrowthDef(): Promise<void> {
+    await revertGrowthDoc();
+    state.dirty = false;
+    await reloadSection('resources');
+    renderAll();
+    toast('the shipped clock stands again', 3000, 'success');
   },
   async saveFrontierDef(def: FrontierDef): Promise<void> {
     await saveFrontier(def);

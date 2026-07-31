@@ -10,6 +10,7 @@ import {
   AUTHORED_VOICE,
   AUTHORED_LOOT_TABLES,
   AUTHORED_MINOR_DEFS,
+  AUTHORED_NODES,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
   DIALOGUES,
@@ -29,6 +30,7 @@ import {
   replaceGrowth,
   replaceLootTables,
   replaceMinorDefs,
+  replaceNodes,
   replaceNpcDefs,
   replacePoiDefs,
   replaceVoice,
@@ -37,6 +39,7 @@ import {
   validateGeographyDef,
   validateGrowth,
   validateMinorDef,
+  validateNodeDoc,
   validateNpcDef,
   validatePoiDef,
   validateVoice,
@@ -44,6 +47,7 @@ import {
   type GrowthRow,
   type LootTableDef,
   type MinorDef,
+  type NodeDef,
   type NpcDef,
   type PoiDef,
   type ZoneDef,
@@ -220,6 +224,37 @@ if (config.requireInvite) {
     `[content] finds: ${goodMinors.length} loaded ` +
       `(+${minorSeed.added} ~${minorSeed.updated} !${minorSeed.kept} -${minorSeed.removed} =${minorSeed.unchanged})`,
   );
+
+  // THE ROSTER SPEAKS (second-growth Phase 5): the resource-node
+  // roster joins the law — every gatherable's yields, gates, windows,
+  // and renewal class are Studio content. Call-time reads through
+  // NODES_BY_TILE mean an edit steers the very next gather.
+  const nodeSeed = await seedContentDocs(
+    db,
+    'node',
+    [...AUTHORED_NODES.values()].map((d) => ({ id: d.id, doc: d })),
+  );
+  const nodeDocs = await loadContentDocs(db, 'node');
+  const goodNodes: NodeDef[] = [];
+  for (const docRow of nodeDocs) {
+    const res = validateNodeDoc(docRow.doc, { lootTables: lootIds });
+    if (!res.ok) {
+      console.warn(`[content] DB node '${docRow.id}' invalid (${res.errors[0]}) — authored def stands`);
+      const authored = AUTHORED_NODES.get(docRow.id);
+      if (authored) goodNodes.push(authored);
+    } else {
+      goodNodes.push(res.def);
+    }
+  }
+  try {
+    replaceNodes(goodNodes);
+    console.log(
+      `[content] nodes: ${goodNodes.length} loaded ` +
+        `(+${nodeSeed.added} ~${nodeSeed.updated} !${nodeSeed.kept} -${nodeSeed.removed} =${nodeSeed.unchanged})`,
+    );
+  } catch (err) {
+    console.warn(`[content] node roster refused (${(err as Error).message}) — authored roster stands`);
+  }
 
   // THE GEOGRAPHY joins the law: one 'world' doc holding the whole
   // plan — roads, authored wild sites, anchors, landform fields,

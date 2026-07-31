@@ -86,9 +86,13 @@ export type GrowthDialect = 'tree' | 'ore' | 'bush' | 'forage';
 export function growthDialectOf(tile: Tile): GrowthDialect | null {
   const node = NODES_BY_TILE.get(tile);
   if (!node || node.depletedTile === null) return null;
+  // THE ROSTER SPEAKS (Phase 5): an explicit renewal class on the def
+  // wins — the berry bush's succession is data now, and the Studio
+  // can hand any node a dialect. The skill derivation is the default.
+  if (node.renewal !== undefined) return node.renewal;
   if (node.skill === 'woodcutting') return 'tree';
   if (node.skill === 'mining') return 'ore';
-  if (node.skill === 'foraging') return tile === Tile.BerryBush ? 'bush' : 'forage';
+  if (node.skill === 'foraging') return 'forage';
   return null;
 }
 

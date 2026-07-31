@@ -1,8 +1,13 @@
 import { Tile, type SkillId } from '@arx/shared';
-import type { ToolType } from './items.js';
+import { itemDef, type ToolType } from './items.js';
+
+/** The growth dialects a node may claim (see growth.ts). */
+export type NodeRenewal = 'tree' | 'ore' | 'bush' | 'forage';
 
 /** A gatherable world tile: what it needs, gives, and becomes. */
 export interface NodeDef {
+  /** Content-doc slug (THE ROSTER SPEAKS — the Studio's handle). */
+  id: string;
   tile: Tile;
   name: string;
   skill: SkillId;
@@ -38,10 +43,26 @@ export interface NodeDef {
    * ground through the seed picker (the sown line).
    */
   seedYield?: { item: string; chance: number };
+  /**
+   * Explicit growth-dialect override (second-growth Phase 5): absent,
+   * the dialect derives from the skill (woodcutting = tree, mining =
+   * ore, foraging = forage). The berry bush's bush-succession is DATA
+   * now, not a hardcoded tile check — and the Studio can hand any
+   * forage the same treatment.
+   */
+  renewal?: NodeRenewal;
 }
 
-export const NODES: readonly NodeDef[] = [
+/**
+ * THE ROSTER SPEAKS (second-growth Phase 5): the node roster is a live
+ * content registry under the two-hash law — this array is the shipped
+ * seed AND the live table, swapped in place by replaceNodes. Read
+ * NODES / NODES_BY_TILE at CALL TIME, never destructure into
+ * long-lived state.
+ */
+export const NODES: NodeDef[] = [
   {
+    id: 'tree',
     tile: Tile.Tree,
     name: 'Tree',
     skill: 'woodcutting',
@@ -58,6 +79,7 @@ export const NODES: readonly NodeDef[] = [
     seedYield: { item: 'tree_seed', chance: 0.3 },
   },
   {
+    id: 'tree_oak',
     tile: Tile.TreeOak,
     name: 'Oak tree',
     skill: 'woodcutting',
@@ -73,6 +95,7 @@ export const NODES: readonly NodeDef[] = [
     seedYield: { item: 'acorn', chance: 0.35 },
   },
   {
+    id: 'tree_pine',
     tile: Tile.TreePine,
     name: 'Pine tree',
     skill: 'woodcutting',
@@ -89,6 +112,7 @@ export const NODES: readonly NodeDef[] = [
     seedYield: { item: 'pine_cone', chance: 0.35 },
   },
   {
+    id: 'tree_willow',
     tile: Tile.TreeWillow,
     name: 'Willow tree',
     skill: 'woodcutting',
@@ -104,6 +128,7 @@ export const NODES: readonly NodeDef[] = [
     seedYield: { item: 'willow_cutting', chance: 0.35 },
   },
   {
+    id: 'tree_yew',
     tile: Tile.TreeYew,
     name: 'Yew tree',
     skill: 'woodcutting',
@@ -119,6 +144,7 @@ export const NODES: readonly NodeDef[] = [
     seedYield: { item: 'yew_seed', chance: 0.35 },
   },
   {
+    id: 'rock_copper',
     tile: Tile.RockCopper,
     name: 'Copper rock',
     skill: 'mining',
@@ -133,6 +159,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 15,
   },
   {
+    id: 'rock_tin',
     tile: Tile.RockTin,
     name: 'Tin rock',
     skill: 'mining',
@@ -146,6 +173,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 15,
   },
   {
+    id: 'rock_iron',
     tile: Tile.RockIron,
     name: 'Iron rock',
     skill: 'mining',
@@ -160,6 +188,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 25,
   },
   {
+    id: 'rock_coal',
     tile: Tile.RockCoal,
     name: 'Coal seam',
     skill: 'mining',
@@ -174,6 +203,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 35,
   },
   {
+    id: 'rock_gold',
     tile: Tile.RockGold,
     name: 'Gold vein',
     skill: 'mining',
@@ -189,6 +219,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 60,
   },
   {
+    id: 'rock_silver',
     tile: Tile.RockSilver,
     name: 'Silver lode',
     skill: 'mining',
@@ -204,6 +235,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 45,
   },
   {
+    id: 'rock_mithril',
     tile: Tile.RockMithril,
     name: 'Mithril spire',
     skill: 'mining',
@@ -219,6 +251,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 90,
   },
   {
+    id: 'rock_adamant',
     tile: Tile.RockAdamant,
     name: 'Adamant horns',
     skill: 'mining',
@@ -234,6 +267,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 120,
   },
   {
+    id: 'rock_obsidian',
     tile: Tile.RockObsidian,
     name: 'Obsidian flow',
     skill: 'mining',
@@ -249,6 +283,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 150,
   },
   {
+    id: 'rock_starfall',
     tile: Tile.RockStarfall,
     name: 'Starfall crater',
     skill: 'mining',
@@ -264,6 +299,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 240,
   },
   {
+    id: 'fishing_spot',
     tile: Tile.FishingSpot,
     name: 'Fishing spot',
     skill: 'fishing',
@@ -277,7 +313,9 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 0,
   },
   {
+    id: 'berry_bush',
     tile: Tile.BerryBush,
+    renewal: 'bush',
     name: 'Berry bush',
     skill: 'foraging',
     levelReq: 1,
@@ -292,6 +330,7 @@ export const NODES: readonly NodeDef[] = [
     seedYield: { item: 'bush_cutting', chance: 0.3 },
   },
   {
+    id: 'fibre_plant',
     tile: Tile.FibrePlant,
     name: 'Fibre plant',
     skill: 'foraging',
@@ -306,6 +345,7 @@ export const NODES: readonly NodeDef[] = [
     respawnSec: 60,
   },
   {
+    id: 'wild_sagewort',
     tile: Tile.WildSagewort,
     name: 'Wild sagewort',
     skill: 'foraging',
@@ -320,6 +360,7 @@ export const NODES: readonly NodeDef[] = [
     bonusYield: { item: 'sagewort_seed', chance: 0.35 },
   },
   {
+    id: 'wild_moonbell',
     tile: Tile.WildMoonbell,
     name: 'Wild moonbell',
     skill: 'foraging',
@@ -335,4 +376,136 @@ export const NODES: readonly NodeDef[] = [
   },
 ];
 
-export const NODES_BY_TILE: ReadonlyMap<Tile, NodeDef> = new Map(NODES.map((n) => [n.tile, n]));
+const nodesByTile = new Map<Tile, NodeDef>(NODES.map((n) => [n.tile, n]));
+export const NODES_BY_TILE: ReadonlyMap<Tile, NodeDef> = nodesByTile;
+
+/** The shipped roster exactly as authored — the CMS revert target. */
+export const AUTHORED_NODES: ReadonlyMap<string, NodeDef> = new Map(
+  NODES.map((n) => [n.id, JSON.parse(JSON.stringify(n)) as NodeDef]),
+);
+
+export type ValidateNodeResult = { ok: true; def: NodeDef } | { ok: false; errors: string[] };
+
+const NODE_SKILLS = new Set<SkillId>(['woodcutting', 'mining', 'fishing', 'foraging']);
+const NODE_TOOLS = new Set<ToolType>(['axe', 'pickaxe', 'rod']);
+const NODE_RENEWALS = new Set<NodeRenewal>(['tree', 'ore', 'bush', 'forage']);
+
+/**
+ * THE ONE VALIDATOR for the roster: every field bounds-checked, every
+ * reference resolved (items by def, loot tables via the caller's
+ * context), every cross-law named. Runs on DB rows at boot and on
+ * every Studio save — a node that could orphan a yield or stall the
+ * growth engine never reaches the live table.
+ */
+export function validateNodeDoc(
+  raw: unknown,
+  ctx: { lootTables: ReadonlySet<string> },
+): ValidateNodeResult {
+  const errors: string[] = [];
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return { ok: false, errors: ['node doc must be an object'] };
+  }
+  const doc = raw as Record<string, unknown>;
+  const id = typeof doc.id === 'string' ? doc.id : '';
+  if (!/^[a-z][a-z0-9_]{1,40}$/.test(id)) errors.push('id must be a lowercase slug');
+  const tile = doc.tile;
+  if (typeof tile !== 'number' || !Number.isInteger(tile) || Tile[tile as number] === undefined) {
+    errors.push('tile must be a known tile id');
+  }
+  const name = typeof doc.name === 'string' ? doc.name : '';
+  if (name.length < 2 || name.length > 40) errors.push('name must be 2-40 characters');
+  if (!NODE_SKILLS.has(doc.skill as SkillId)) errors.push('skill must be a gathering skill');
+  const num = (key: string, lo: number, hi: number, int = false): number => {
+    const v = doc[key];
+    if (typeof v !== 'number' || !Number.isFinite(v)) {
+      errors.push(`${key} must be a number`);
+      return lo;
+    }
+    if (int && !Number.isInteger(v)) errors.push(`${key} must be an integer`);
+    if (v < lo || v > hi) errors.push(`${key} must be in [${lo}, ${hi}]`);
+    return v;
+  };
+  num('levelReq', 1, 99, true);
+  num('xp', 1, 2000);
+  num('baseTicks', 10, 2000, true);
+  num('depleteChance', 0, 1);
+  num('respawnSec', 0, 3600);
+  if (doc.minPower !== undefined) num('minPower', 1, 6, true);
+  if (typeof doc.yieldItem !== 'string' || !itemDef(doc.yieldItem)) {
+    errors.push('yieldItem must name a real item');
+  }
+  if (doc.tool !== null && !NODE_TOOLS.has(doc.tool as ToolType)) {
+    errors.push('tool must be axe, pickaxe, rod, or null');
+  }
+  if (doc.depletedTile !== null) {
+    const dt = doc.depletedTile;
+    if (typeof dt !== 'number' || !Number.isInteger(dt) || Tile[dt as number] === undefined) {
+      errors.push('depletedTile must be a known tile id or null');
+    }
+  }
+  const by = doc.bonusYield as { item?: unknown; table?: unknown; chance?: unknown } | undefined;
+  if (by !== undefined) {
+    if (typeof by !== 'object' || by === null) errors.push('bonusYield must be an object');
+    else {
+      if (typeof by.chance !== 'number' || by.chance <= 0 || by.chance > 1) {
+        errors.push('bonusYield.chance must be in (0, 1]');
+      }
+      if (by.item !== undefined && (typeof by.item !== 'string' || !itemDef(by.item))) {
+        errors.push('bonusYield.item must name a real item');
+      }
+      if (by.table !== undefined && (typeof by.table !== 'string' || !ctx.lootTables.has(by.table))) {
+        errors.push('bonusYield.table must name a real loot table');
+      }
+      if (by.item === undefined && by.table === undefined) {
+        errors.push('bonusYield needs an item or a table');
+      }
+    }
+  }
+  const sy = doc.seedYield as { item?: unknown; chance?: unknown } | undefined;
+  if (sy !== undefined) {
+    if (typeof sy !== 'object' || sy === null) errors.push('seedYield must be an object');
+    else {
+      if (typeof sy.item !== 'string' || !itemDef(sy.item as string)) {
+        errors.push('seedYield.item must name a real item');
+      }
+      if (typeof sy.chance !== 'number' || sy.chance <= 0 || sy.chance > 1) {
+        errors.push('seedYield.chance must be in (0, 1]');
+      }
+    }
+  }
+  if (doc.renewal !== undefined && !NODE_RENEWALS.has(doc.renewal as NodeRenewal)) {
+    errors.push('renewal must be tree, ore, bush, or forage');
+  }
+  // Cross-laws, named:
+  if (doc.depletedTile === null && (doc.depleteChance as number) > 0) {
+    errors.push('a node with no depleted tile must never deplete (chance 0)');
+  }
+  const known = new Set([
+    'id', 'tile', 'name', 'skill', 'levelReq', 'xp', 'yieldItem', 'tool', 'minPower',
+    'baseTicks', 'depleteChance', 'depletedTile', 'respawnSec', 'bonusYield', 'seedYield',
+    'renewal',
+  ]);
+  for (const key of Object.keys(doc)) {
+    if (!known.has(key)) errors.push(`unknown field '${key}'`);
+  }
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, def: doc as unknown as NodeDef };
+}
+
+/**
+ * THE CMS HOOK: swap the live roster in place — NODES and
+ * NODES_BY_TILE keep their identities, so every call-time reader sees
+ * the Studio's edit on the very next gather. Duplicate tiles refuse
+ * wholesale (two defs on one tile would make interact() a coin toss).
+ */
+export function replaceNodes(defs: readonly NodeDef[]): void {
+  const tiles = new Set<Tile>();
+  for (const d of defs) {
+    if (tiles.has(d.tile)) throw new Error(`duplicate node tile ${Tile[d.tile]}`);
+    tiles.add(d.tile);
+  }
+  NODES.length = 0;
+  NODES.push(...defs);
+  nodesByTile.clear();
+  for (const d of defs) nodesByTile.set(d.tile, d);
+}

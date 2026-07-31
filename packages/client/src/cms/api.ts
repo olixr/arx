@@ -1,4 +1,6 @@
 import type {
+  GrowthDef,
+  NodeDef,
   DialogueDef,
   FactionsDef,
   FrontierDef,
@@ -264,6 +266,47 @@ export async function revertMinor(id: string): Promise<{ outcome: string }> {
   return (await (
     await request(`/dev/content/minors/${id}`, { method: 'DELETE' })
   ).json()) as { outcome: string };
+}
+
+export async function listNodes(): Promise<{ nodes: Array<Editable<NodeDef>> }> {
+  return (await (await request('/dev/content/nodes')).json()) as {
+    nodes: Array<Editable<NodeDef>>;
+  };
+}
+
+export async function saveNode(def: NodeDef): Promise<void> {
+  await request(`/dev/content/nodes/${def.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertNode(id: string): Promise<{ outcome: string }> {
+  return (await (
+    await request(`/dev/content/nodes/${id}`, { method: 'DELETE' })
+  ).json()) as { outcome: string };
+}
+
+export async function getGrowthDoc(): Promise<{ def: GrowthDef; edited: boolean }> {
+  return (await (await request('/dev/content/growth')).json()) as {
+    def: GrowthDef;
+    edited: boolean;
+  };
+}
+
+export async function saveGrowthDoc(def: GrowthDef): Promise<void> {
+  await request('/dev/content/growth', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertGrowthDoc(): Promise<{ outcome: string }> {
+  return (await (await request('/dev/content/growth', { method: 'DELETE' })).json()) as {
+    outcome: string;
+  };
 }
 
 export async function savePoi(def: PoiDef): Promise<void> {

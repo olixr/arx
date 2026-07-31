@@ -18,7 +18,7 @@ import {
   validateGrowth,
   type GrowthRow,
 } from './growth.js';
-import { NODES } from './nodes.js';
+import { AUTHORED_NODES, NODES, NODES_BY_TILE, replaceNodes, validateNodeDoc } from './nodes.js';
 import { itemDef } from './items.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import type { ZoneDef } from './maps/types.js';
@@ -366,4 +366,49 @@ test('ZoneDef.growth rides serialization; the default stays absent', () => {
     undefined,
     'legacy files stay byte-identical',
   );
+});
+
+test('THE ROSTER SPEAKS: the validator holds the door and the swap keeps identity', () => {
+  const ctx = { lootTables: new Set<string>() };
+  const oak = AUTHORED_NODES.get('tree_oak')!;
+  const ok = validateNodeDoc(JSON.parse(JSON.stringify(oak)), ctx);
+  assert.ok(ok.ok, ok.ok ? '' : ok.errors.join('; '));
+  const badItem = validateNodeDoc({ ...oak, yieldItem: 'no_such_item' }, ctx);
+  assert.ok(!badItem.ok, 'an orphan yield must be refused');
+  const badTile = validateNodeDoc({ ...oak, tile: 999999 }, ctx);
+  assert.ok(!badTile.ok, 'an unknown tile must be refused');
+  const badCross = validateNodeDoc({ ...oak, depletedTile: null, depleteChance: 0.5 }, ctx);
+  assert.ok(!badCross.ok, 'no depleted tile means chance 0 (the fishing law)');
+  const typo = validateNodeDoc({ ...oak, respwanSec: 5 }, ctx);
+  assert.ok(!typo.ok && typo.errors.some((e) => e.includes('unknown field')), 'typos die loudly');
+
+  // The swap: identity-stable, call-time readers see the edit at once.
+  const before = NODES_BY_TILE;
+  const edited = { ...JSON.parse(JSON.stringify(oak)), respawnSec: 5 } as typeof oak;
+  replaceNodes(NODES.map((n) => (n.id === 'tree_oak' ? edited : n)));
+  try {
+    assert.equal(NODES_BY_TILE, before, 'the map keeps its identity');
+    assert.equal(NODES_BY_TILE.get(Tile.TreeOak)!.respawnSec, 5, 'the edit is live');
+    assert.throws(
+      () => replaceNodes([...NODES, { ...edited, id: 'twin' }]),
+      'duplicate tiles refuse wholesale',
+    );
+  } finally {
+    replaceNodes([...AUTHORED_NODES.values()]);
+  }
+  assert.equal(NODES_BY_TILE.get(Tile.TreeOak)!.respawnSec, oak.respawnSec, 'authored stands again');
+});
+
+test('the renewal class is data: an override redials the dialect', () => {
+  const bush = NODES_BY_TILE.get(Tile.BerryBush)!;
+  assert.equal(bush.renewal, 'bush', 'the berry bush declares its succession in DATA');
+  const sage = AUTHORED_NODES.get('wild_sagewort')!;
+  const edited = { ...JSON.parse(JSON.stringify(sage)), renewal: 'bush' } as typeof sage;
+  replaceNodes(NODES.map((n) => (n.id === 'wild_sagewort' ? edited : n)));
+  try {
+    assert.equal(growthDialectOf(Tile.WildSagewort), 'bush', 'the Studio can redial a dialect');
+  } finally {
+    replaceNodes([...AUTHORED_NODES.values()]);
+  }
+  assert.equal(growthDialectOf(Tile.WildSagewort), 'forage', 'the default derives from the skill');
 });

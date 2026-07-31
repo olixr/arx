@@ -10,6 +10,7 @@ import {
   AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
   AUTHORED_MINOR_DEFS,
+  AUTHORED_NODES,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
   MINOR_DEFS,
@@ -17,6 +18,7 @@ import {
   DIALOGUES,
   ITEMS,
   LOOT_TABLES,
+  NODES,
   NPCS,
   NPC_ACTORS,
   FACTIONS,
@@ -35,6 +37,7 @@ import {
   prefabToJson,
   replaceLootTables,
   replaceMinorDefs,
+  replaceNodes,
   replaceNpcDefs,
   replacePoiDefs,
   validateFactions,
@@ -42,6 +45,7 @@ import {
   validateGrowth,
   validateGeographyDef,
   validateMinorDef,
+  validateNodeDoc,
   validateNpcDef,
   validatePoiDef,
   validateVoice,
@@ -963,6 +967,69 @@ export function createMapsApi(
           replaceMinorDefs(next.values());
           game.reloadMinorDef(id);
           console.log(`[content] minor '${id}' ${outcome}`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      // THE ROSTER SPEAKS (second-growth Phase 5) — the node roster's
+      // bench doors, on the minors shape: list with edited/authored
+      // pills, PUT through the one validator + live in-place swap
+      // (call-time reads mean the very next gather uses it), DELETE =
+      // revert-to-authored.
+      if (url.pathname === '/dev/content/nodes' && req.method === 'GET') {
+        const edited = new Set(
+          (await loadContentDocs(db, 'node')).filter((d) => d.edited).map((d) => d.id),
+        );
+        sendJson(res, 200, {
+          nodes: NODES.map((d) => ({
+            def: d,
+            edited: edited.has(d.id),
+            authored: AUTHORED_NODES.has(d.id),
+          })),
+        });
+        return true;
+      }
+
+      const nodeMatch = /^\/dev\/content\/nodes\/([^/]+)$/.exec(url.pathname);
+      if (nodeMatch) {
+        const id = nodeMatch[1]!;
+        if (req.method === 'PUT') {
+          let raw: { id?: string };
+          try {
+            raw = JSON.parse(await readBody(req)) as { id?: string };
+            if (raw.id !== id) throw new Error(`body id '${raw.id}' does not match URL '${id}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validateNodeDoc(raw, { lootTables: new Set(LOOT_TABLES.keys()) });
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          const next = NODES.some((n) => n.id === id)
+            ? NODES.map((n) => (n.id === id ? result.def : n))
+            : [...NODES, result.def];
+          try {
+            replaceNodes(next);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          await importContentDoc(db, 'node', id, result.def);
+          console.log(`[content] node '${id}' saved + live (call-time reads)`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const authored = AUTHORED_NODES.get(id) ?? null;
+          const outcome = await revertContentDoc(db, 'node', id, authored);
+          const next = authored
+            ? NODES.map((n) => (n.id === id ? authored : n))
+            : NODES.filter((n) => n.id !== id);
+          replaceNodes(next.some((n) => n.id === id) || !authored ? next : [...next, authored]);
+          console.log(`[content] node '${id}' ${outcome}`);
           sendJson(res, 200, { ok: true, outcome });
           return true;
         }

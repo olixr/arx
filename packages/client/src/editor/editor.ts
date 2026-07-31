@@ -1580,6 +1580,16 @@ function zonePropertiesDialog(): void {
           <em>8–512 tiles per side. Shrinking crops from the south-east;
           growth fills with meadow.</em>
         </label>
+        <label class="form-row">
+          <span>growth</span>
+          <select id="zp-growth">
+            <option value="kept"${z.growth !== 'wild' ? ' selected' : ''}>kept — tended ground, fast in-place respawn</option>
+            <option value="wild"${z.growth === 'wild' ? ' selected' : ''}>wild — harvests ride the growth ledger</option>
+          </select>
+          <em>THE KEPT AND THE WILD (second-growth): which renewal law this
+          zone's owned tiles obey. Towns stay kept; authored wilderness may
+          go wild.</em>
+        </label>
       </div>`;
     const row = document.createElement('div');
     row.className = 'dialog-actions';
@@ -1607,6 +1617,13 @@ function zonePropertiesDialog(): void {
           zone.name = name || id;
         }, { tiles: false });
         changes.push('identity');
+      }
+      const growthSel = ($('zp-growth') as HTMLSelectElement).value;
+      if ((z.growth ?? 'kept') !== growthSel) {
+        zoneOp('set growth domain', (zone) => {
+          zone.growth = growthSel === 'wild' ? 'wild' : undefined;
+        }, { tiles: false });
+        changes.push('growth');
       }
       const dx = nx - state.zone.origin.x;
       const dy = ny - state.zone.origin.y;

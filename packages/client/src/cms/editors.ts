@@ -18,6 +18,8 @@ import {
   type NpcActorCombatStats,
   type NpcActorDef,
   type MinorDef,
+  type NodeDef,
+  type GrowthDef,
   type MinorGarrisonEntry,
   type NpcDef,
   type PoiDef,
@@ -2122,6 +2124,226 @@ export function newMinorDef(id: string): MinorDef {
  * whisper of a garrison (≤3 bodies by law), the habitat thread, the
  * family palette, and the humble cache.
  */
+function nodeDetail(body: HTMLElement, id: string): void {
+  const row = state.nodes.find((n) => n.def.id === id);
+  if (!row) {
+    body.appendChild(el('p', 'muted empty', `No node '${id}'.`));
+    return;
+  }
+  const draft: NodeDef = JSON.parse(JSON.stringify(row.def)) as NodeDef;
+  const dialect = (): string => {
+    if (draft.depletedTile === null) return 'endless';
+    if (draft.renewal !== undefined) return draft.renewal;
+    return draft.skill === 'woodcutting' ? 'tree' : draft.skill === 'mining' ? 'ore' : 'forage';
+  };
+  const pills = (): HTMLElement[] => [
+    pill(`${draft.skill} ${draft.levelReq}`, 'the gate: skill and level'),
+    pill(`${dialect()}`, 'the wild renewal dialect this node speaks', 'brass'),
+    pill(
+      draft.depletedTile === null ? 'never depletes' : `kept ${draft.respawnSec}s`,
+      'the KEPT-ground respawn window; wild ground rides the growth ledger',
+    ),
+    ...(draft.minPower !== undefined
+      ? [pill(`tool power ${draft.minPower}+`, 'the metal-tier gate', 'brass')]
+      : []),
+    ...(draft.seedYield
+      ? [pill(`seed ${Math.round(draft.seedYield.chance * 100)}%`, 'THE SPILLED SEED on the felling swing', 'ok')]
+      : []),
+  ];
+  body.appendChild(
+    detailHead(
+      null,
+      draft.name,
+      draft.id,
+      pills(),
+      row.edited,
+      row.authored,
+      () => void persistence.saveNodeDef(draft).catch((err) => toast((err as Error).message, 5000, 'error')),
+      () => void persistence.revertNodeDef(draft.id).catch((err) => toast((err as Error).message, 5000, 'error')),
+    ),
+  );
+
+  // The gate and the labor.
+  const nameIn = textIn(draft.name, (v) => {
+    draft.name = v;
+  });
+  const skillRow = combobox(
+    () =>
+      (['woodcutting', 'mining', 'foraging', 'fishing'] as const).map((sk) => ({
+        id: sk,
+        label: sk,
+        sub: '',
+      })),
+    draft.skill,
+    (v) => {
+      draft.skill = v as NodeDef['skill'];
+      markDirty();
+    },
+    'skill',
+  );
+  const lvlIn = numIn(draft.levelReq, (v) => {
+    draft.levelReq = Math.max(1, Math.min(99, Math.round(v)));
+  });
+  const xpIn = numIn(draft.xp, (v) => {
+    draft.xp = Math.max(1, v);
+  });
+  const ticksIn = numIn(draft.baseTicks, (v) => {
+    draft.baseTicks = Math.max(10, Math.round(v));
+  });
+  const toolRow = combobox(
+    () =>
+      [
+        { id: 'none', label: 'bare hands', sub: '' },
+        { id: 'axe', label: 'axe', sub: '' },
+        { id: 'pickaxe', label: 'pickaxe', sub: '' },
+        { id: 'rod', label: 'rod', sub: '' },
+      ],
+    draft.tool ?? 'none',
+    (v) => {
+      draft.tool = v === 'none' ? null : (v as NodeDef['tool']);
+      markDirty();
+    },
+    'tool',
+  );
+  const powerIn = numIn(draft.minPower ?? 1, (v) => {
+    const p2 = Math.max(1, Math.min(6, Math.round(v)));
+    draft.minPower = p2 <= 1 ? undefined : p2;
+  });
+  body.appendChild(
+    sect(
+      'The gate and the labor',
+      'Who may work it, what it pays, and how long a swing takes (base ticks at power 1; 20 = one second).',
+      nameIn, skillRow, lvlIn, xpIn, ticksIn, toolRow, powerIn,
+    ),
+  );
+
+  // The yield.
+  const yieldRow = combobox(
+    () => state.items.map((it) => ({ id: it.id, label: it.name, sub: it.id })),
+    draft.yieldItem,
+    (v) => {
+      draft.yieldItem = v;
+      markDirty();
+    },
+    'yield item',
+  );
+  const seedItemIn = textIn(draft.seedYield?.item ?? '', (v) => {
+    if (v === '') delete draft.seedYield;
+    else draft.seedYield = { item: v, chance: draft.seedYield?.chance ?? 0.3 };
+  });
+  const seedChanceIn = numIn(draft.seedYield?.chance ?? 0.3, (v) => {
+    if (draft.seedYield) draft.seedYield.chance = Math.max(0.01, Math.min(1, v));
+  }, 0.05);
+  body.appendChild(
+    sect(
+      'The yield',
+      'The take per swing, and the seed the felling spills (blank item = no seed).',
+      yieldRow, seedItemIn, seedChanceIn,
+    ),
+  );
+
+  // The renewal.
+  const depleteRow = statSlider({
+    label: 'deplete chance',
+    value: draft.depleteChance,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    note: 'chance the node falls on a successful swing (1 = every time)',
+    dist: distribution(state.nodes.map((n) => n.def.depleteChance)),
+    onInput: (v) => {
+      draft.depleteChance = v;
+    },
+  });
+  const respawnIn = numIn(draft.respawnSec, (v) => {
+    draft.respawnSec = Math.max(0, Math.min(3600, Math.round(v)));
+  });
+  const renewalRow = combobox(
+    () =>
+      [
+        { id: 'derived', label: 'derived from skill', sub: 'the default' },
+        { id: 'tree', label: 'tree — succession with ages', sub: '' },
+        { id: 'ore', label: 'ore — the patient wandering stone', sub: '' },
+        { id: 'bush', label: 'bush — spread by neighbors', sub: '' },
+        { id: 'forage', label: 'forage — the quick wandering meadow', sub: '' },
+      ],
+    draft.renewal ?? 'derived',
+    (v) => {
+      if (v === 'derived') delete draft.renewal;
+      else draft.renewal = v as NonNullable<NodeDef['renewal']>;
+      markDirty();
+    },
+    'renewal class',
+  );
+  body.appendChild(
+    sect(
+      'The renewal',
+      'Kept ground (towns) respawns in seconds, in place. Wild ground rides the growth ledger — the renewal class picks its dialect.',
+      depleteRow, respawnIn, renewalRow,
+    ),
+  );
+}
+
+function growthClockDetail(body: HTMLElement): void {
+  if (!state.growth) {
+    body.appendChild(el('p', 'muted empty', 'The clock has not loaded.'));
+    return;
+  }
+  const draft: GrowthDef = JSON.parse(JSON.stringify(state.growth.def)) as GrowthDef;
+  body.appendChild(
+    detailHead(
+      null,
+      "The Land's Clock",
+      'growth',
+      [
+        pill('call-time reads', 'a save re-aims every live regrowth on the very next beat', 'ok'),
+        pill('minutes', 'every band is whole minutes, jittered per tile'),
+      ],
+      state.growth.edited,
+      true,
+      () => void persistence.saveGrowthDef(draft).catch((err) => toast((err as Error).message, 5000, 'error')),
+      () => void persistence.revertGrowthDef().catch((err) => toast((err as Error).message, 5000, 'error')),
+    ),
+  );
+  const band = (label: string, key: keyof GrowthDef, note: string): HTMLElement => {
+    const v = draft[key] as [number, number];
+    const rowEl = rangePair(v[0], v[1], 1, 20160, (a, b) => {
+      (draft[key] as [number, number]) = [a, b];
+      markDirty();
+    });
+    return sect(label, note, rowEl);
+  };
+  const dial = (label: string, key: keyof GrowthDef, note: string, step = 0.01): HTMLElement => {
+    const input = numIn(draft[key] as number, (v) => {
+      (draft[key] as number) = v;
+    }, step);
+    return sect(label, note, input);
+  };
+  body.appendChild(band('Stump', 'treeStumpMinutes', 'the felled scar before bare, buildable grass'));
+  body.appendChild(band('Rest floor', 'treeBareMinutes', 'the soil recovers before germination may roll'));
+  body.appendChild(band('Sapling', 'treeSaplingMinutes', 'the young tree before the crown stands'));
+  body.appendChild(band('Vein re-open', 'oreReopenMinutes', 'the patient stone (and its wander)'));
+  body.appendChild(band('Forage return', 'forageMinutes', 'the quick meadow'));
+  body.appendChild(band('Bush rest', 'bushRestMinutes', 'picked bush ground before its rolls begin'));
+  body.appendChild(band('Roll cadence', 'germEveryMinutes', 'how often a dormant tile re-rolls germination'));
+  body.appendChild(band('Sprout', 'germSproutMinutes', 'rolled germination to visible sapling'));
+  body.appendChild(dial('Source reach', 'sourceReach', 'dispersal radius in tiles — crowns seed the wave', 1));
+  body.appendChild(dial('Source boost', 'sourceBoost', 'germination chance per standing crown in reach'));
+  body.appendChild(dial('Pioneer whisper', 'pioneerChance', 'the zero-source floor — a clearcut is never a desert'));
+  body.appendChild(dial('Chance cap', 'germChanceCap', 'ceiling on any single germination roll'));
+  body.appendChild(dial('Drift chance', 'driftChance', "a neighbor's seed instead of truth — species drift"));
+  body.appendChild(dial('Ore drift', 'oreDriftChance', 'the vein surfaces elsewhere in the formation'));
+  body.appendChild(dial('Ore drift reach', 'oreDriftReach', 'how far the vein may wander (tiles)', 1));
+  body.appendChild(dial('Meadow drift', 'forageDriftChance', 'the patch wanders the grass'));
+  body.appendChild(dial('Meadow drift reach', 'forageDriftReach', 'how far the patch may wander (tiles)', 1));
+  body.appendChild(dial('Bush reach', 'bushReach', 'bush-to-bush dispersal radius (tiles)', 1));
+  body.appendChild(dial('Bush boost', 'bushBoost', 'germination chance per standing bush in reach'));
+  body.appendChild(dial('Bush whisper', 'bushPioneer', "a lone bush's own return floor"));
+  body.appendChild(dial('Courtesy ring', 'courtesyRing', 'tiles of germination refusal around built ground', 1));
+  body.appendChild(dial('Beat cadence', 'beatTicks', 'ticks between growth passes (40 = two seconds)', 1));
+  body.appendChild(dial('Beat budget', 'beatBudget', 'max tile writes per beat — the drizzle law', 1));
+}
+
 function minorDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
   const row = state.minors.find((m) => m.def.id === id);
   if (!row) {
@@ -3726,6 +3948,8 @@ export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   else if (state.section === 'dialogues') dialogueDetail(body, linkage, id);
   else if (state.section === 'pois') poiDetail(body, linkage, id);
   else if (state.section === 'minors') minorDetail(body, linkage, id);
+  else if (state.section === 'resources')
+    id === 'growth' ? growthClockDetail(body) : nodeDetail(body, id);
   else if (state.section === 'frontier') frontierDetail(body, linkage);
   else if (state.section === 'factions') factionsDetail(body, linkage);
   else if (state.section === 'voice') voiceDetail(body, linkage, id);
