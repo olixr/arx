@@ -70,6 +70,7 @@ export const NODES: readonly NodeDef[] = [
     levelReq: 22,
     xp: 75,
     yieldItem: 'pine_log',
+    bonusYield: { item: 'pine_resin', chance: 0.3 }, // cut pine bleeds amber
     tool: 'axe',
     minPower: 2, // iron — resin gums a bronze edge to uselessness
     baseTicks: 78,

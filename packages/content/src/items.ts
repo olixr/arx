@@ -186,6 +186,7 @@ const defs: ItemDef[] = [
   { id: 'board', name: 'Boards', stackable: true, value: 2, desc: 'Sawn true and stacked flat; a wall is mostly patience.', color: '#a8794a', code: 'Bd' },
   { id: 'oak_board', name: 'Oak boards', stackable: true, value: 5, desc: 'Heavy heartwood planks, sawn slow so they stay honest.', color: '#6b4a26', code: 'Ob' },
   { id: 'pine_log', name: 'Pine logs', stackable: false, value: 18, desc: 'Straight-grained northwood, sticky with resin. It splits true.', color: '#b08050', code: 'Pq' },
+  { id: 'pine_resin', name: 'Pine resin', stackable: true, value: 5, desc: 'Amber tears bled from cut northwood. They never quite dry.', color: '#d8963c', code: 'Rz' },
   { id: 'willow_log', name: 'Willow logs', stackable: false, value: 24, desc: 'Supple riverside wood that bends without breaking.', color: '#8a9455', code: 'Wq' },
   { id: 'yew_log', name: 'Yew logs', stackable: false, value: 52, desc: 'Slow-grown heartwood of the war bows. Kings taxed it.', color: '#7d4436', code: 'Yl' },
 
@@ -361,6 +362,16 @@ const defs: ItemDef[] = [
     desc: 'Twice the gland, half the mercy. The journeyman\'s vial.',
     color: '#7a9a2a',
     code: 'Vk',
+  },
+  {
+    id: 'firepitch_oil',
+    name: 'Firepitch oil',
+    stackable: false,
+    value: 60,
+    coating: { name: 'Firepitch', durationSec: 180, status: { status: 'burn', power: 1, durationTicks: 80 } },
+    desc: 'Resin cut with ground emberstone. It wants one excuse to light.',
+    color: '#e07a38',
+    code: 'Fo',
   },
   {
     id: 'leadfoot_oil',

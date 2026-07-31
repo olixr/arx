@@ -665,6 +665,22 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     ticks: 50,
   },
   {
+    id: 'brew_firepitch_oil',
+    name: 'Firepitch oil',
+    skill: 'herbalism',
+    levelReq: 16,
+    xp: 80,
+    station: 'alembic',
+    // The taiga's own recipe: resin bled from cut pines, warmed with
+    // a ground emberstone from the copper seams.
+    inputs: [
+      { item: 'pine_resin', qty: 2 },
+      { item: 'emberstone', qty: 1 },
+    ],
+    output: { item: 'firepitch_oil', qty: 1 },
+    ticks: 50,
+  },
+  {
     id: 'brew_vipers_kiss',
     name: 'Viper\'s kiss',
     skill: 'herbalism',
@@ -858,6 +874,7 @@ const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
   // The dark branch is never taught — poison lore is FOUND.
   brew_adderfang_oil: 'drop',
   brew_hobble_brew: 'drop',
+  brew_firepitch_oil: 'drop',
   brew_vipers_kiss: 'drop',
   brew_leadfoot_oil: 'drop',
   brew_wyrmtongue_oil: 'drop',

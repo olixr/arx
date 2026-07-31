@@ -2152,6 +2152,7 @@ export const BOW_STYLES: Record<string, BowStyle> = {
   // ---- longbow line: the war bow.
   longbow: { bow: 'longbow', color: '#96784f', wrap: '#5b4028' },
   oak_longbow: { bow: 'longbow', color: '#6b4a26', belly: '#8a6534', wrap: '#3e3a44', tip: 'horn', tipColor: '#d8d2c0' },
+  pine_longbow: { bow: 'longbow', color: '#b08050', belly: '#c89a62', wrap: '#5b4028', tip: 'horn', tipColor: '#e6e0ce' },
   willow_longbow: { bow: 'longbow', color: '#8a9455', belly: '#a8b46e', wrap: '#5b4028', tip: 'horn', tipColor: '#e2dcc8' },
   yew_longbow: { bow: 'longbow', color: '#7d4436', belly: '#9a5c44', wrap: '#3a3540', tip: 'gold', tipColor: '#e8c04c' },
 

@@ -3568,6 +3568,49 @@ const PAINTERS: Record<string, IconPainter> = {
     c.closePath();
     c.stroke();
   },
+  resin: (c, col) => {
+    // Pine resin: three amber tears clustered on a bark chip, each
+    // with a window of trapped light — the northwood's loose change.
+    c.save();
+    c.translate(0.5, 0.52);
+    // The bark chip they bled onto.
+    c.fillStyle = '#6b4a30';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(-0.34, 0.1);
+    c.lineTo(-0.12, 0.02);
+    c.lineTo(0.3, 0.06);
+    c.lineTo(0.36, 0.2);
+    c.lineTo(-0.24, 0.24);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The tears: fat teardrops, biggest in front.
+    const drop = (x: number, y: number, r: number) => {
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.032;
+      c.beginPath();
+      c.moveTo(x, y - r * 1.5);
+      c.quadraticCurveTo(x + r, y - r * 0.5, x + r * 0.9, y + r * 0.35);
+      c.quadraticCurveTo(x + r * 0.55, y + r, x, y + r);
+      c.quadraticCurveTo(x - r * 0.55, y + r, x - r * 0.9, y + r * 0.35);
+      c.quadraticCurveTo(x - r, y - r * 0.5, x, y - r * 1.5);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      // Trapped light.
+      c.fillStyle = shade(col, 34);
+      c.beginPath();
+      c.ellipse(x - r * 0.3, y - r * 0.25, r * 0.28, r * 0.42, -0.4, 0, Math.PI * 2);
+      c.fill();
+    };
+    drop(-0.16, -0.04, 0.11);
+    drop(0.2, -0.02, 0.09);
+    drop(0.03, 0.08, 0.14);
+    c.restore();
+  },
   gland: (c, col) => {
     // The milked venom sac: a taut membrane bulb with a sinew stem,
     // sheen on the swell, and one drop leaving the tip.
@@ -4583,6 +4626,8 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   ironbark_tonic: { icon: 'vial', color: '#9c7440' },
   mending_salve: { icon: 'jar', color: '#c9a8e8' },
   venom_gland: { icon: 'gland', color: '#8a9a3a' },
+  pine_resin: { icon: 'resin', color: '#d8963c' },
+  firepitch_oil: { icon: 'oilvial', color: '#e07a38' },
   adderfang_oil: { icon: 'oilvial', color: '#a0c050' },
   hobble_brew: { icon: 'jug', color: '#8f9ed6' },
   vipers_kiss: { icon: 'oilvial', color: '#7a9a2a' },
