@@ -3,6 +3,7 @@ import type {
   FactionsDef,
   FrontierDef,
   LootTableDef,
+  MinorDef,
   NpcActorDef,
   NpcDef,
   PoiDef,
@@ -241,6 +242,30 @@ export async function listPois(): Promise<{ pois: Array<Editable<PoiDef>>; prefa
   };
 }
 
+export async function listMinors(): Promise<{
+  minors: Array<Editable<MinorDef>>;
+  prefabIds: string[];
+}> {
+  return (await (await request('/dev/content/minors')).json()) as {
+    minors: Array<Editable<MinorDef>>;
+    prefabIds: string[];
+  };
+}
+
+export async function saveMinor(def: MinorDef): Promise<void> {
+  await request(`/dev/content/minors/${def.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertMinor(id: string): Promise<{ outcome: string }> {
+  return (await (
+    await request(`/dev/content/minors/${id}`, { method: 'DELETE' })
+  ).json()) as { outcome: string };
+}
+
 export async function savePoi(def: PoiDef): Promise<void> {
   await request(`/dev/content/pois/${def.id}`, {
     method: 'PUT',
@@ -264,6 +289,11 @@ export interface PoiSimStats {
     string,
     { count: number; tiers: Record<number, number>; prefabs: Record<string, number> }
   >;
+  /** THE DENSITY SURVEY (Phase 6): the whole land, observed at once. */
+  finds: { total: number; histogram: Record<number, number>; byDef: Record<string, number> };
+  /** Promotion runs UNGATED in a fresh scan — the upper bound, and the bench says so. */
+  holds: { sites: number; byDef: Record<string, number> };
+  territory: Record<string, { sites: number; familyTrue: number }>;
 }
 
 /** The observed panel: the server runs the REAL scaffold over a fresh scan. */

@@ -5589,6 +5589,8 @@ export class GameServer {
       defName: string | null;
       zoneId: string | null;
       authoredId: string | null;
+      /** THE SMALL FINDS standing in the cell this uptime (Phase 6 lens). */
+      finds: { count: number; cleared: number } | null;
     }>;
     /** THE LIVING STATE (Phase 6): the whole weather, one read. */
     credits: number;
@@ -5609,6 +5611,15 @@ export class GameServer {
       defName: row.site ? (POI_DEFS.get(row.site.defId)?.name ?? row.site.defId) : null,
       zoneId: this.poiLive.get(key)?.zoneId ?? null,
       authoredId: authored.get(key) ?? null,
+      finds: (() => {
+        const fl = this.findsLive.get(key);
+        if (!fl || fl.finds.length === 0) return null;
+        const ml = this.minorLedger.get(key);
+        return {
+          count: fl.finds.length,
+          cleared: ml && ml.epoch === row.epoch ? ml.cleared : 0,
+        };
+      })(),
     }));
     const now = Date.now();
     const calm = [...this.frontierCalm.entries()]

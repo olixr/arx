@@ -17,6 +17,8 @@ import {
   type LootTableDef,
   type NpcActorCombatStats,
   type NpcActorDef,
+  type MinorDef,
+  type MinorGarrisonEntry,
   type NpcDef,
   type PoiDef,
   type PoiGarrisonEntry,
@@ -2102,6 +2104,273 @@ export function newPoiDef(id: string): PoiDef {
   };
 }
 
+export function newMinorDef(id: string): MinorDef {
+  const pretty = id.replace(/^find_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return {
+    id,
+    name: pretty,
+    description: '',
+    tiers: [1, 3],
+    weight: 2,
+    prefabs: state.poiPrefabIds.filter((p) => p.startsWith('find_')).slice(0, 1),
+  };
+}
+
+/**
+ * THE SMALL FINDS bench (lived-in-land Phase 6) — the texture layer's
+ * editor, in the poi bench's dialect at find scale: tiny prefabs, a
+ * whisper of a garrison (≤3 bodies by law), the habitat thread, the
+ * family palette, and the humble cache.
+ */
+function minorDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
+  const row = state.minors.find((m) => m.def.id === id);
+  if (!row) {
+    body.appendChild(el('p', 'muted empty', `No find '${id}'.`));
+    return;
+  }
+  const draft: MinorDef = JSON.parse(JSON.stringify(row.def)) as MinorDef;
+  const bodiesMax = (): number => (draft.garrison ?? []).reduce((s, g) => s + g.count[1], 0);
+  const pills = (): HTMLElement[] => [
+    pill(`tiers ${draft.tiers[0]}–${draft.tiers[1]}`, 'slot tiers this find deals at'),
+    pill(`weight ${draft.weight}`, 'pick weight among tier-eligible finds', 'brass'),
+    ...(draft.family !== undefined
+      ? [pill(`${draft.family} country`, 'leans thicker in this family’s own land', 'brass')]
+      : []),
+    ...(draft.habitat !== undefined
+      ? [pill(`habitat: ${draft.habitat}`, 'wild knots of the matching kind muster at this mouth', 'ok')]
+      : []),
+    ...(draft.cache !== undefined
+      ? [pill(`cache ${Math.round(draft.cache.chance * 100)}%`, 'the chest survives this often, ONE TIER HUMBLE', 'brass')]
+      : []),
+    ...(bodiesMax() > 0
+      ? [pill(`≤${bodiesMax()} bodies`, 'the whisper — capped at 3 by the texture law')]
+      : [pill('quiet', 'no garrison — pure texture')]),
+  ];
+  body.appendChild(
+    detailHead(
+      null,
+      draft.name,
+      draft.id,
+      pills(),
+      row.edited,
+      row.authored,
+      () => void persistence.saveMinorDef(draft).catch((err) => toast((err as Error).message, 5000, 'error')),
+      () => void persistence.revertMinorDef(draft.id).catch((err) => toast((err as Error).message, 5000, 'error')),
+    ),
+  );
+
+  const desc = el('input', 'desc-line') as HTMLInputElement;
+  desc.value = draft.description ?? '';
+  desc.placeholder = 'One line: what this small thing IS.';
+  desc.oninput = () => {
+    draft.description = desc.value;
+    markDirty();
+  };
+  body.appendChild(desc);
+
+  // The texture: name, weight, tiers.
+  const nameIn = textIn(draft.name, (v) => {
+    draft.name = v;
+  });
+  const weightRow = statSlider({
+    label: 'weight',
+    value: draft.weight,
+    min: 0.5,
+    max: 6,
+    step: 0.5,
+    note: 'pick weight among finds eligible at the slot tier',
+    dist: distribution(state.minors.map((m) => m.def.weight)),
+    onInput: (v) => {
+      draft.weight = v;
+    },
+  });
+  const tiersRow = rangePair(draft.tiers[0], draft.tiers[1], 1, 5, (a, b) => {
+    draft.tiers = [a, b];
+    markDirty();
+  });
+  body.appendChild(sect('Texture', 'What it is and where the lattice deals it.', nameIn, weightRow, tiersRow));
+
+  // The footprint pool (find-scale prefabs, ≤9×7 by law).
+  const poolBox = el('div', 'poi-pool');
+  const rebuildPool = (): void => {
+    poolBox.innerHTML = '';
+    for (const [pi, pid] of draft.prefabs.entries()) {
+      const card = el('div', 'poi-card');
+      card.appendChild(el('div', 'poi-card-title', pid));
+      const rm = el('button', 'mini-btn', 'Remove') as HTMLButtonElement;
+      rm.disabled = draft.prefabs.length <= 1;
+      rm.onclick = () => {
+        draft.prefabs = draft.prefabs.filter((_, i) => i !== pi);
+        markDirty();
+        rebuildPool();
+      };
+      card.appendChild(rm);
+      poolBox.appendChild(card);
+    }
+    const add = el('div', 'poi-card add');
+    add.appendChild(
+      combobox(
+        () =>
+          state.poiPrefabIds
+            .filter((p) => p.startsWith('find_') && !draft.prefabs.includes(p))
+            .sort()
+            .map((p) => ({ id: p, label: p.replace(/^find_/, '').replace(/_/g, ' '), sub: p })),
+        '',
+        (v) => {
+          draft.prefabs = [...draft.prefabs, v];
+          markDirty();
+          rebuildPool();
+        },
+        '+ footprint',
+      ),
+    );
+    poolBox.appendChild(add);
+  };
+  rebuildPool();
+  body.appendChild(
+    sect('Footprint pool', 'Small sketches only — a find must stay under 9×7 (the validator holds it).', poolBox),
+  );
+
+  // The whisper: the ≤3-body garrison.
+  const gBox = el('div');
+  const rebuildG = (): void => {
+    gBox.innerHTML = '';
+    for (const [gi, g] of (draft.garrison ?? []).entries()) {
+      const rowEl = el('div', 'poi-grow');
+      rowEl.appendChild(
+        combobox(
+          () => state.npcs.map((n) => ({ id: n.def.id, label: n.def.name, sub: n.def.id })),
+          g.npc,
+          (v) => {
+            draft.garrison = (draft.garrison ?? []).map((x, i) => (i === gi ? { ...x, npc: v } : x));
+            markDirty();
+          },
+          'kind',
+        ),
+      );
+      rowEl.appendChild(
+        rangePair(g.count[0], g.count[1], 0, 3, (a, b) => {
+          draft.garrison = (draft.garrison ?? []).map((x, i) =>
+            i === gi ? { ...x, count: [a, b] as [number, number] } : x,
+          );
+          markDirty();
+        }),
+      );
+      const del = el('button', 'mini-btn', '✕');
+      del.onclick = () => {
+        draft.garrison = (draft.garrison ?? []).filter((_, i) => i !== gi);
+        if (draft.garrison.length === 0) draft.garrison = undefined;
+        markDirty();
+        rebuildG();
+      };
+      rowEl.appendChild(del);
+      gBox.appendChild(rowEl);
+    }
+    const add = el('button', 'mini-btn', '+ whisper entry');
+    add.onclick = () => {
+      draft.garrison = [...(draft.garrison ?? []), { npc: 'rat', count: [1, 1] } as MinorGarrisonEntry];
+      markDirty();
+      rebuildG();
+    };
+    gBox.appendChild(add);
+  };
+  rebuildG();
+  body.appendChild(
+    sect('The whisper', 'At most three bodies, ever — texture is not a camp. Wipe them all and the find clears for the epoch.', gBox),
+  );
+
+  // The story: habitat, family, cache, clearing.
+  const storyBox = el('div');
+  const rebuildStory = (): void => {
+    storyBox.innerHTML = '';
+    const habRow = el('div', 'poi-grow');
+    habRow.appendChild(el('span', 'muted tiny', 'habitat'));
+    habRow.appendChild(
+      combobox(
+        () => [
+          { id: '', label: 'none', sub: 'no wild pull' },
+          { id: 'den', label: 'den', sub: 'wolf and gnoll knots muster here' },
+          { id: 'warren', label: 'warren', sub: 'rat knots' },
+          { id: 'glade', label: 'glade', sub: 'herds' },
+          { id: 'barrow', label: 'barrow', sub: 'the dead' },
+        ],
+        draft.habitat ?? '',
+        (v) => {
+          draft.habitat = v === '' ? undefined : v;
+          markDirty();
+        },
+        'none',
+      ),
+    );
+    storyBox.appendChild(habRow);
+    const famRow = el('div', 'poi-grow');
+    famRow.appendChild(el('span', 'muted tiny', 'family'));
+    famRow.appendChild(
+      combobox(
+        () => [
+          { id: '', label: 'universal', sub: 'the same everywhere' },
+          ...[...new Set(state.pois.map((p) => p.def.family).filter((f): f is string => f !== undefined))]
+            .sort()
+            .map((f) => ({ id: f, label: `${f} country`, sub: 'leans thicker in its own land' })),
+        ],
+        draft.family ?? '',
+        (v) => {
+          draft.family = v === '' ? undefined : v;
+          markDirty();
+        },
+        'universal',
+      ),
+    );
+    storyBox.appendChild(famRow);
+    storyBox.appendChild(
+      featureChip('cache', draft.cache !== undefined, 'A chest survives sometimes — ONE TIER HUMBLE, never the tier’s own law', (on) => {
+        draft.cache = on ? { chance: 0.3 } : undefined;
+        markDirty();
+        rebuildStory();
+      }),
+    );
+    if (draft.cache) {
+      storyBox.appendChild(
+        statSlider({
+          label: 'cache chance',
+          value: draft.cache.chance,
+          min: 0.05,
+          max: 0.35,
+          step: 0.05,
+          note: 'capped at 0.35 — texture is not treasure',
+          onInput: (v) => {
+            draft.cache = { chance: v };
+          },
+        }),
+      );
+    }
+    const clearRow = el('div', 'poi-grow');
+    clearRow.appendChild(el('span', 'muted tiny', 'felled clearing (0–2)'));
+    clearRow.appendChild(
+      numIn(draft.clearing ?? 0, (v) => {
+        draft.clearing = v <= 0 ? undefined : Math.min(2, Math.round(v));
+      }),
+    );
+    storyBox.appendChild(clearRow);
+  };
+  rebuildStory();
+  body.appendChild(
+    sect(
+      'The story',
+      'The habitat thread (THE DEN IS THE SOURCE), the family palette (territory reads on the ground), the humble cache, and the felled fringe.',
+      storyBox,
+    ),
+  );
+
+  // Linkage: the whisper's kinds.
+  linkHead(linkage, 'cluster', 'The whisper', (draft.garrison ?? []).length);
+  const kinds = draft.garrison ?? [];
+  if (kinds.length === 0) emptyLink(linkage, 'pure texture — nobody home');
+  for (const g of kinds) {
+    linkRow(linkage, g.npc, `${g.count[0]}–${g.count[1]} bodies`, () => setSection('npcs', g.npc));
+  }
+}
+
 /** The cue-scatter vocabulary the bench offers (Tile enum NAMES). */
 const CUE_TILES: ComboOption[] = [
   { id: 'BonePile', label: 'Bone pile', sub: 'a warning underfoot' },
@@ -2625,12 +2894,36 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
         b.satellites === true,
         'At rung 2+ the core seeds satellite camps townward — the family dies with the core',
         (on) => {
-          draft.boldness = { ...b, ...(on ? { satellites: true } : { satellites: undefined }) };
+          draft.boldness = { ...b, ...(on ? { satellites: true } : { satellites: undefined, satelliteDef: undefined }) };
           markDirty();
           rebuildBoldness();
         },
       ),
     );
+    // THE WAR-GROUND's reach (Phase 4/6): what the satellites stand AS
+    // — a hold seeds ordinary camps, never sibling holds.
+    if (b.satellites === true) {
+      const satRow = el('div', 'poi-grow');
+      satRow.appendChild(el('span', 'muted tiny', 'satellites stand as'));
+      satRow.appendChild(
+        combobox(
+          () => [
+            { id: '', label: 'this archetype', sub: 'same-kind satellites (default)' },
+            ...state.pois
+              .filter((p) => p.def.id !== draft.id && !p.def.compound)
+              .map((p) => ({ id: p.def.id, label: p.def.name, sub: p.def.id })),
+          ],
+          b.satelliteDef ?? '',
+          (v) => {
+            draft.boldness = { ...b, satelliteDef: v === '' ? undefined : v };
+            markDirty();
+            rebuildBoldness();
+          },
+          'this archetype',
+        ),
+      );
+      boldBox.appendChild(satRow);
+    }
   };
   const mutateStage = (
     si: number,
@@ -2679,6 +2972,131 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       'The boldness ladder',
       'What the site ADDS when it stands discovered and unanswered — rungs are cumulative, climbed over real days, and never raise levels past the base garrison’s own ceiling.',
       boldBox,
+    ),
+  );
+
+  // ------------------------------------------------- the war-ground
+  // (lived-in-land Phase 4/6): the compound block — the def's own
+  // prefab pool is the COURT; wings muster around it in chapters.
+  const compBox = el('div');
+  const rebuildCompound = (): void => {
+    compBox.innerHTML = '';
+    const c = draft.compound;
+    compBox.appendChild(
+      featureChip(
+        'war-ground',
+        c !== undefined,
+        'Compose as a compound hold: court + wings, cleared in chapters. Arrives by PROMOTION under the region law — never the ordinary roll.',
+        (on) => {
+          draft.compound = on
+            ? {
+                wings: { pool: state.poiPrefabIds.slice(0, 1), count: [2, 3] },
+                wingGarrison: draft.garrison.slice(0, 1).map((g) => ({ ...g, role: 'holdfast' })),
+              }
+            : undefined;
+          markDirty();
+          rebuildCompound();
+        },
+      ),
+    );
+    if (!c) return;
+    compBox.appendChild(
+      el('p', 'muted tiny', 'The prefab pool above is the COURT. Wings come from this pool:'),
+    );
+    const wingList = el('div');
+    for (const [wi, pid] of c.wings.pool.entries()) {
+      const rowEl = el('div', 'poi-grow');
+      rowEl.appendChild(el('span', 'pill brass', pid));
+      const del = el('button', 'mini-btn', '✕') as HTMLButtonElement;
+      del.disabled = c.wings.pool.length <= 1;
+      del.onclick = () => {
+        draft.compound = {
+          ...c,
+          wings: { ...c.wings, pool: c.wings.pool.filter((_, i) => i !== wi) },
+        };
+        markDirty();
+        rebuildCompound();
+      };
+      rowEl.appendChild(del);
+      wingList.appendChild(rowEl);
+    }
+    const addRow = el('div', 'poi-grow');
+    addRow.appendChild(
+      combobox(
+        () =>
+          state.poiPrefabIds
+            .filter((id2) => !c.wings.pool.includes(id2))
+            .sort()
+            .map((id2) => ({ id: id2, label: id2.replace(/^poi_/, '').replace(/_/g, ' '), sub: id2 })),
+        '',
+        (v) => {
+          draft.compound = { ...c, wings: { ...c.wings, pool: [...c.wings.pool, v] } };
+          markDirty();
+          rebuildCompound();
+        },
+        '+ wing prefab',
+      ),
+    );
+    wingList.appendChild(addRow);
+    compBox.appendChild(wingList);
+    const countRow = el('div', 'poi-grow');
+    countRow.appendChild(el('span', 'muted tiny', 'wings muster'));
+    countRow.appendChild(
+      rangePair(c.wings.count[0], c.wings.count[1], 1, 4, (a, b) => {
+        draft.compound = { ...c, wings: { ...c.wings, count: [a, b] } };
+        markDirty();
+      }),
+    );
+    compBox.appendChild(countRow);
+    compBox.appendChild(el('p', 'muted tiny', 'Each wing musters its own chapter:'));
+    for (const [gi, g] of c.wingGarrison.entries()) {
+      const rowEl = el('div', 'poi-grow');
+      rowEl.appendChild(
+        combobox(
+          () => state.npcs.map((n) => ({ id: n.def.id, label: n.def.name, sub: n.def.id })),
+          g.npc,
+          (v) => {
+            const next = c.wingGarrison.map((x, i) => (i === gi ? { ...x, npc: v } : x));
+            draft.compound = { ...c, wingGarrison: next };
+            markDirty();
+          },
+          'kind',
+        ),
+      );
+      rowEl.appendChild(
+        rangePair(g.count[0], g.count[1], 0, 5, (a, b) => {
+          const next = c.wingGarrison.map((x, i) => (i === gi ? { ...x, count: [a, b] as [number, number] } : x));
+          draft.compound = { ...c, wingGarrison: next };
+          markDirty();
+        }),
+      );
+      const del = el('button', 'mini-btn', '✕') as HTMLButtonElement;
+      del.disabled = c.wingGarrison.length <= 1;
+      del.onclick = () => {
+        draft.compound = { ...c, wingGarrison: c.wingGarrison.filter((_, i) => i !== gi) };
+        markDirty();
+        rebuildCompound();
+      };
+      rowEl.appendChild(del);
+      compBox.appendChild(rowEl);
+    }
+    const addG = el('button', 'mini-btn', '+ wing muster entry');
+    addG.onclick = () => {
+      draft.compound = {
+        ...c,
+        wingGarrison: [...c.wingGarrison, { npc: 'goblin', count: [1, 2], role: 'holdfast' }],
+      };
+      markDirty();
+      rebuildCompound();
+    };
+    compBox.appendChild(addG);
+  };
+  rebuildCompound();
+  body.appendChild(
+    sect(
+      'The war-ground',
+      'The region’s landmark: a court with a named chief and whole camps for wings — the five-to-ten-minute clear. One per neighborhood by the region law; a promotion the land refuses deals an ordinary camp instead.',
+      compBox,
     ),
   );
 
@@ -3023,6 +3441,43 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
         }
         surveyBox.appendChild(tierRow);
       }
+      // THE WHOLE LAND (Phase 6): the same scan's finds, holds, and
+      // countries — observed, never computed.
+      if (stats.finds) {
+        const landRow = el('div', 'hero-pills');
+        landRow.appendChild(
+          pill(
+            `${stats.finds.total} finds (~${(stats.finds.total / Math.max(1, stats.evaluated)).toFixed(1)}/cell)`,
+            'the texture layer over the same scan',
+            'brass',
+          ),
+        );
+        for (const [n, c] of Object.entries(stats.finds.histogram).sort()) {
+          landRow.appendChild(pill(`${n} finds: ${c} cells`, 'cells dealing N finds'));
+        }
+        if (stats.holds) {
+          landRow.appendChild(
+            pill(
+              `${stats.holds.sites} war-grounds (ungated)`,
+              'promotion runs UNGATED in a fresh scan — the region law caps the live world harder',
+              stats.holds.sites > 0 ? 'ok' : 'ink',
+            ),
+          );
+        }
+        surveyBox.appendChild(landRow);
+        if (stats.territory && Object.keys(stats.territory).length > 0) {
+          const terrRow = el('div', 'hero-pills');
+          for (const [fam, t] of Object.entries(stats.territory).sort()) {
+            terrRow.appendChild(
+              pill(
+                `${fam}: ${t.familyTrue}/${t.sites} family-true`,
+                'sites in this country that belong to its family — the lean, observed',
+              ),
+            );
+          }
+          surveyBox.appendChild(terrRow);
+        }
+      }
     } catch (err) {
       surveyBox.innerHTML = '';
       surveyBox.appendChild(el('p', 'muted empty', (err as Error).message));
@@ -3270,6 +3725,7 @@ export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   else if (state.section === 'actors') actorDetail(body, linkage, id);
   else if (state.section === 'dialogues') dialogueDetail(body, linkage, id);
   else if (state.section === 'pois') poiDetail(body, linkage, id);
+  else if (state.section === 'minors') minorDetail(body, linkage, id);
   else if (state.section === 'frontier') frontierDetail(body, linkage);
   else if (state.section === 'factions') factionsDetail(body, linkage);
   else if (state.section === 'voice') voiceDetail(body, linkage, id);

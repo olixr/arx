@@ -3,6 +3,7 @@ import type {
   FactionsDef,
   FrontierDef,
   LootTableDef,
+  MinorDef,
   NpcActorDef,
   NpcDef,
   PoiDef,
@@ -26,17 +27,20 @@ import {
   listDialogues,
   listItems,
   listLoot,
+  listMinors,
   listNpcs,
   listPois,
   listZoneRects,
   revertActor,
   revertDialogue,
   revertLoot,
+  revertMinor,
   revertNpc,
   revertPoi,
   saveActor,
   saveDialogue,
   saveLoot,
+  saveMinor,
   saveNpc,
   savePoi,
   type Editable,
@@ -45,7 +49,7 @@ import {
   type ZoneRect,
 } from './api.js';
 import { openActorWizard } from './actorWizard.js';
-import { buildDetail, newLootTable, newNpcDef, newPoiDef } from './editors.js';
+import { buildDetail, newLootTable, newMinorDef, newNpcDef, newPoiDef } from './editors.js';
 import { newDialogueDef } from './dialogueEditor.js';
 import { creatureRender } from './gameRender.js';
 import { actorBust } from './portraits.js';
@@ -65,6 +69,7 @@ export type Section =
   | 'actors'
   | 'dialogues'
   | 'pois'
+  | 'minors'
   | 'frontier'
   | 'factions'
   | 'voice'
@@ -79,6 +84,8 @@ export interface CmsState {
   actors: Array<Editable<NpcActorDef>>;
   dialogues: Array<Editable<DialogueDef>>;
   pois: Array<Editable<PoiDef>>;
+  /** THE SMALL FINDS roster (lived-in-land Phase 6). */
+  minors: Array<Editable<MinorDef>>;
   /** The live POI prefab library's ids (pool pickers + validation). */
   poiPrefabIds: string[];
   /** The living frontier's dial table — a singleton doc (Phase 6). */
@@ -104,6 +111,7 @@ export const state: CmsState = {
   actors: [],
   dialogues: [],
   pois: [],
+  minors: [],
   poiPrefabIds: [],
   frontier: null,
   factions: null,
@@ -152,6 +160,10 @@ export async function reloadSection(section: Section): Promise<void> {
       const res = await listPois();
       state.pois = res.pois;
       state.poiPrefabIds = res.prefabIds;
+    } else if (section === 'minors') {
+      const res = await listMinors();
+      state.minors = res.minors;
+      state.poiPrefabIds = res.prefabIds;
     } else if (section === 'frontier') {
       state.frontier = await getFrontier();
     } else if (section === 'factions') {
@@ -170,13 +182,14 @@ export async function reloadSection(section: Section): Promise<void> {
 
 async function loadEverything(): Promise<void> {
   try {
-    const [npcs, loot, actors, dialogues, pois, items, sites, zones, frontier, factions, voice] =
+    const [npcs, loot, actors, dialogues, pois, minors, items, sites, zones, frontier, factions, voice] =
       await Promise.all([
         listNpcs(),
         listLoot(),
         listActors(),
         listDialogues(),
         listPois(),
+        listMinors(),
         listItems(),
         fetchSpawnSites(),
         listZoneRects(),
@@ -189,6 +202,7 @@ async function loadEverything(): Promise<void> {
     state.actors = actors.actors;
     state.dialogues = dialogues.dialogues;
     state.pois = pois.pois;
+    state.minors = minors.minors;
     state.poiPrefabIds = pois.prefabIds;
     state.items = items;
     state.sites = sites;
@@ -260,6 +274,12 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string; hint: string }
     hint: 'Wilderness archetypes — prefab pools, tier-scaled garrisons, and approach cues. Standing sites recompose on save.',
   },
   {
+    id: 'minors',
+    label: 'Small Finds',
+    icon: 'stamp',
+    hint: 'The texture layer — dens, cairns, caches, and claim-marks the lattice deals between sites. No chart markers, no ceremonies: the walk itself pays.',
+  },
+  {
     id: 'frontier',
     label: 'Frontier',
     icon: 'stamp',
@@ -327,6 +347,8 @@ function renderRail(): void {
               ? state.dialogues.length
               : s.id === 'pois'
                 ? state.pois.length
+                : s.id === 'minors'
+                  ? state.minors.length
                 : s.id === 'frontier'
                   ? (state.frontier ? Object.keys(state.frontier.def).length : 0)
                   : s.id === 'factions'
@@ -491,6 +513,23 @@ function listEntries(): ListEntry[] {
         badgeEdited: p.edited,
         ico: iconWrap(iconImg('stamp', 18)),
         group: p.def.tiers[0] <= 1 ? 'Near frontier' : p.def.tiers[0] <= 3 ? 'Expedition line' : 'Deep frontier',
+      }));
+  }
+  if (state.section === 'minors') {
+    return state.minors
+      .filter((m) => match(m.def.id, m.def.name, m.def.description ?? ''))
+      .sort((a, b) => a.def.tiers[0] - b.def.tiers[0] || a.def.name.localeCompare(b.def.name))
+      .map((m) => ({
+        id: m.def.id,
+        title: m.def.name,
+        sub:
+          `${m.def.garrison?.length ? `${m.def.garrison.length} whisper entr${m.def.garrison.length === 1 ? 'y' : 'ies'}` : 'quiet'}` +
+          (m.def.habitat ? ` · ${m.def.habitat}` : '') +
+          (m.def.cache ? ' · cache' : ''),
+        badge: `tiers ${m.def.tiers[0]}–${m.def.tiers[1]}`,
+        badgeEdited: m.edited,
+        ico: iconWrap(iconImg('stamp', 18)),
+        group: m.def.family !== undefined ? `${m.def.family} country` : 'Universal texture',
       }));
   }
   if (state.section === 'frontier') {
@@ -666,6 +705,8 @@ $('btn-new-entry').onclick = () => {
       ? 'New creature id (lowercase, e.g. bog_fiend):'
       : state.section === 'pois'
         ? 'New archetype id (lowercase, e.g. bandit_watch):'
+        : state.section === 'minors'
+          ? 'New find id (must start find_, e.g. find_owl_roost):'
         : state.section === 'dialogues'
           ? 'New dialogue id (lowercase, e.g. ferryman_toll):'
           : 'New loot table id (lowercase, e.g. bog_fiend_drops):',
@@ -699,6 +740,16 @@ $('btn-new-entry').onclick = () => {
       return;
     }
     state.pois.push({ def: newPoiDef(id), edited: true, authored: false });
+  } else if (state.section === 'minors') {
+    if (state.minors.some((m) => m.def.id === id)) {
+      toast(`'${id}' already exists`, 3000, 'error');
+      return;
+    }
+    if (!id.startsWith('find_')) {
+      toast("find ids start with 'find_' (the prefix is law)", 3600, 'error');
+      return;
+    }
+    state.minors.push({ def: newMinorDef(id), edited: true, authored: false });
   }
   select(id);
   markDirty();
@@ -732,7 +783,7 @@ const hash = location.hash.replace(/^#/, '');
 if (hash) {
   const [sect, id] = hash.split('/') as [Section, string?];
   if (
-    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'items', 'frontier', 'factions', 'voice'].includes(sect)
+    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'minors', 'items', 'frontier', 'factions', 'voice'].includes(sect)
   ) {
     state.section = sect;
     state.selectedId = id ?? null;
@@ -787,6 +838,21 @@ export const persistence = {
     if (outcome === 'deleted') state.selectedId = null;
     renderAll();
     toast(outcome === 'reverted' ? 'restored the shipped archetype' : 'deleted', 3000, 'success');
+  },
+  async saveMinorDef(def: MinorDef): Promise<void> {
+    await saveMinor(def);
+    state.dirty = false;
+    await reloadSection('minors');
+    setSaveState('all changes saved');
+    toast(`'${def.name}' saved — standing texture re-deals`, 3000, 'success');
+  },
+  async revertMinorDef(id: string): Promise<void> {
+    const { outcome } = await revertMinor(id);
+    state.dirty = false;
+    await reloadSection('minors');
+    if (outcome === 'deleted') state.selectedId = null;
+    renderAll();
+    toast(outcome === 'reverted' ? 'restored the shipped find' : 'deleted', 3000, 'success');
   },
   async saveFrontierDef(def: FrontierDef): Promise<void> {
     await saveFrontier(def);

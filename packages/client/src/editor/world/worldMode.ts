@@ -103,6 +103,7 @@ export class WorldMode {
       this.adoptEdgeProfiles(snap.edgeProfiles);
       this.view.invalidateTerrain();
       this.view.invalidateDanger();
+      this.view.invalidateTerritory();
       this.needsFit = true;
       this.booted = true;
     } catch (err) {

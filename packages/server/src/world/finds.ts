@@ -23,6 +23,8 @@ import {
   POI_CELL,
   intersectsRings,
   intersectsZones,
+  poiForCell,
+  poiScanOrder,
   traceTrail,
   type PoiContext,
   type Trail,
@@ -384,4 +386,109 @@ export function composeFinds(
     },
     spawnSlots,
   };
+}
+
+// ------------------------------------------------- the density survey
+
+export interface LandSimStats {
+  /** Frontier cells actually decided (settled cells don't count). */
+  evaluated: number;
+  settledSkipped: number;
+  sites: number;
+  empty: number;
+  byDef: Record<
+    string,
+    { count: number; tiers: Record<number, number>; prefabs: Record<string, number> }
+  >;
+  /** THE SMALL FINDS, observed: how the lattice actually deals. */
+  finds: {
+    total: number;
+    /** Cells dealing N finds → how many cells (the walk's texture). */
+    histogram: Record<number, number>;
+    byDef: Record<string, number>;
+  };
+  /**
+   * THE WAR-GROUNDS, observed with promotion UNGATED (a fresh scan
+   * has no ledger, so the region law cannot answer — this is the
+   * upper bound of hold density, and the bench must say so).
+   */
+  holds: { sites: number; byDef: Record<string, number> };
+  /** THE COUNTRY, observed: sites standing in each family's own land. */
+  territory: Record<string, { sites: number; familyTrue: number }>;
+}
+
+/**
+ * THE DENSITY SURVEY's engine (lived-in-land Phase 6) — the whole
+ * land simulated at once through the REAL scaffolds: sites (promotion
+ * ungated), the finds lattice, and the territory read, over a fresh
+ * scan on the chosen epoch. A draft def rides in ctx like the site
+ * survey always allowed — the loot-laboratory law: observed, not
+ * computed. A generator so the /dev endpoint can breathe between
+ * batches.
+ */
+export function* simulateLandSteps(
+  seed: number,
+  ctx: PoiContext,
+  maxCells: number,
+  epoch = 0,
+  batch = 8,
+): Generator<void, LandSimStats> {
+  const stats: LandSimStats = {
+    evaluated: 0,
+    settledSkipped: 0,
+    sites: 0,
+    empty: 0,
+    byDef: {},
+    finds: { total: 0, histogram: {}, byDef: {} },
+    holds: { sites: 0, byDef: {} },
+    territory: {},
+  };
+  const atlas = familiesOf(ctx.defs);
+  for (const { cx, cy } of poiScanOrder(64)) {
+    if (stats.evaluated >= maxCells) break;
+    const centerX = cx * POI_CELL + POI_CELL / 2;
+    const centerY = cy * POI_CELL + POI_CELL / 2;
+    const tier = dangerAt(seed, centerX, centerY, ctx.anchors);
+    if (tier === 0) {
+      stats.settledSkipped++;
+      continue;
+    }
+    stats.evaluated++;
+    if (stats.evaluated % batch === 0) yield;
+    const site = poiForCell(seed, cx, cy, epoch, ctx, undefined, true);
+    if (site) {
+      stats.sites++;
+      const rec = (stats.byDef[site.defId] ??= { count: 0, tiers: {}, prefabs: {} });
+      rec.count++;
+      rec.tiers[site.tier] = (rec.tiers[site.tier] ?? 0) + 1;
+      rec.prefabs[site.prefabId] = (rec.prefabs[site.prefabId] ?? 0) + 1;
+      const def = ctx.defs.find((d) => d.id === site.defId);
+      if (def?.compound) {
+        stats.holds.sites++;
+        stats.holds.byDef[site.defId] = (stats.holds.byDef[site.defId] ?? 0) + 1;
+      }
+      const country = territoryAt(seed, centerX, centerY, atlas);
+      if (country !== null) {
+        const t = (stats.territory[country] ??= { sites: 0, familyTrue: 0 });
+        t.sites++;
+        if (def?.family === country) t.familyTrue++;
+      }
+    } else {
+      stats.empty++;
+    }
+    const finds = findsForCell(
+      seed,
+      cx,
+      cy,
+      epoch,
+      ctx,
+      site ? { x: site.anchorX, y: site.anchorY } : null,
+    );
+    stats.finds.total += finds.length;
+    stats.finds.histogram[finds.length] = (stats.finds.histogram[finds.length] ?? 0) + 1;
+    for (const f of finds) {
+      stats.finds.byDef[f.defId] = (stats.finds.byDef[f.defId] ?? 0) + 1;
+    }
+  }
+  return stats;
 }

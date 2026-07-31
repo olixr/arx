@@ -94,6 +94,10 @@ export class WorldState {
     rings: false,
     /** The political map (factions Phase 6) — marches and counters. */
     standing: false,
+    /** THE COUNTRY wash (lived-in-land Phase 5/6) — whose land is whose. */
+    territory: false,
+    /** THE SMALL FINDS pips — the texture layer, Studio-eyes only. */
+    finds: false,
   };
 
   /**
@@ -104,6 +108,8 @@ export class WorldState {
   factions: import('@arx/content').FactionsDef | null = null;
   marchTiles = 192;
   actorSites: Array<{ actor: string; x: number; y: number }> = [];
+  /** THE ONE ATLAS (Phase 6): the countries the territory wash paints. */
+  families: string[] = [];
 
   private readonly undoStack: WorldOp[] = [];
   private readonly redoStack: WorldOp[] = [];
@@ -132,6 +138,7 @@ export class WorldState {
     this.calm = snap.calm;
     this.claimRings = snap.claimRings;
     this.poiDefs = snap.poiDefs;
+    this.families = snap.families ?? [];
     this.warnings = snap.warnings;
     this.edited = snap.geographyEdited;
     this.savedJson = JSON.stringify(snap.geography);

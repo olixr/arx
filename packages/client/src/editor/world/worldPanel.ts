@@ -1,4 +1,4 @@
-import type { GeographyDef } from '@arx/content';
+import { territoryAt, type GeographyDef } from '@arx/content';
 import type { WorldCell } from '../api.js';
 import type { WorldSel, WorldState, WorldTool } from './worldState.js';
 
@@ -501,6 +501,35 @@ function buildInspector(root: HTMLElement, deps: WorldPanelDeps): void {
       if (calmHere) {
         facts.appendChild(el('span', 'pill green', `calm ${left(calmHere.calmUntil)}`));
       }
+      // THE LIVED-IN LAND (Phase 6): the war-ground rank, the standing
+      // texture, and whose country the cell sits in.
+      if (ws.poiDefs.find((d) => d.id === c.site?.defId)?.compound) {
+        facts.appendChild(el('span', 'pill brass', 'war-ground'));
+      }
+      if (c.finds && c.finds.count > 0) {
+        const clearedBits = ((): number => {
+          let n = 0;
+          for (let i = 0; i < 16; i++) if ((c.finds!.cleared >>> i) & 1) n++;
+          return n;
+        })();
+        facts.appendChild(
+          el(
+            'span',
+            'pill',
+            `${c.finds.count} find${c.finds.count === 1 ? '' : 's'}` +
+              (clearedBits > 0 ? ` (${clearedBits} cleared)` : ''),
+          ),
+        );
+      }
+      const country = territoryAt(
+        ws.seed,
+        sel.cx * ws.poiCell + ws.poiCell / 2,
+        sel.cy * ws.poiCell + ws.poiCell / 2,
+        ws.families,
+      );
+      if (country !== null) {
+        facts.appendChild(el('span', 'pill', `${country} country`));
+      }
       box.appendChild(facts);
       const btns = el('div', 'wp-btnrow');
       btns.appendChild(button('Open site', () => actions.openCellSite(sel.cx, sel.cy)));
@@ -757,5 +786,7 @@ function buildLenses(root: HTMLElement, deps: WorldPanelDeps): void {
   lens('rings', 'Claims');
   lens('danger', 'Danger');
   lens('standing', 'Standing');
+  lens('territory', 'Territory');
+  lens('finds', 'Finds');
   root.appendChild(box);
 }

@@ -12,6 +12,7 @@ import {
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
   MINOR_DEFS,
+  familiesOf,
   DIALOGUES,
   ITEMS,
   LOOT_TABLES,
@@ -80,7 +81,8 @@ import {
   saveVoiceBank,
 } from '../db/voice.js';
 import { saveVoiceFile, unlinkVoiceFile } from '../voice/store.js';
-import { previewPoi, simulatePoisSteps, type PoiSimStats } from '../world/pois.js';
+import { previewPoi } from '../world/pois.js';
+import { simulateLandSteps, type LandSimStats } from '../world/finds.js';
 import type { GameServer } from '../game/gameServer.js';
 
 /**
@@ -217,7 +219,12 @@ export function createMapsApi(
             weight: d.weight,
             tiers: d.tiers,
             haven: d.haven?.safeR ?? null,
+            family: d.family ?? null,
+            compound: d.compound !== undefined,
           })),
+          // THE ONE ATLAS (Phase 6): the countries, for the territory
+          // wash — derived from the live def roster, same as every lean.
+          families: familiesOf([...POI_DEFS.values()]),
         });
         return true;
       }
@@ -984,8 +991,12 @@ export function createMapsApi(
           return true;
         }
         const cells = Math.max(20, Math.min(1000, body.cells ?? 300));
-        const steps = simulatePoisSteps(config.worldSeed, ctx, cells);
-        const stats = await new Promise<PoiSimStats>((resolve) => {
+        // THE DENSITY SURVEY (lived-in-land Phase 6): the whole land at
+        // once — sites, the finds lattice, ungated hold promotion, and
+        // the territory read. Superset of the old site-only stats; the
+        // bench reads what it knows.
+        const steps = simulateLandSteps(config.worldSeed, ctx, cells);
+        const stats = await new Promise<LandSimStats>((resolve) => {
           const drain = (): void => {
             const r = steps.next();
             if (r.done) resolve(r.value);

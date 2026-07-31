@@ -907,7 +907,12 @@ test('the bench plays the lifecycle: stage and ember verbs with lever semantics'
 test('worldSnapshot carries the living state: credits, calm, claimed yards', () => {
   const proto6b = GameServer.prototype as unknown as { worldSnapshot: Fn };
   const s = slate([[KEY, row({ site: site(), stage: 2 })]], { credits: 3 });
-  Object.assign(s, { worldSnapshot: proto6b.worldSnapshot });
+  // THE SMALL FINDS lens (lived-in-land Phase 6) reads these maps.
+  Object.assign(s, {
+    worldSnapshot: proto6b.worldSnapshot,
+    findsLive: new Map(),
+    minorLedger: new Map(),
+  });
   s.frontierCalm.set('1,1', Date.now() + 3_600_000);
   s.frontierCalm.set('2,2', Date.now() - 1); // expired — never reported
   s.homesByCharacter.set(7, { x: 100, y: 100 });

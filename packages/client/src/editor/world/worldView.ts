@@ -9,6 +9,7 @@ import {
   levelAt,
   moistureAt,
   roadHitAt,
+  territoryAt,
   type ZoneJson,
 } from '@arx/content';
 import { fetchZone } from '../api.js';
@@ -89,6 +90,9 @@ export class WorldView {
   private zoneArt = new Map<string, ZoneArt | 'loading' | 'failed'>();
   private dangerRev = 0;
   private dangerBlocks = new Map<string, HTMLCanvasElement>();
+  /** THE COUNTRY wash cache (Phase 6) — seed + atlas only, no drafts. */
+  private territoryRev = 0;
+  private territoryBlocks = new Map<string, HTMLCanvasElement>();
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -179,6 +183,16 @@ export class WorldView {
   invalidateDanger(): void {
     this.dangerRev++;
     this.dangerBlocks.clear();
+  }
+
+  /**
+   * The atlas changed (snapshot adopt) — territory wash only. The
+   * country field reads seed + family roster, never the draft, so
+   * this stays OFF the danger/terrain invalidation paths.
+   */
+  invalidateTerritory(): void {
+    this.territoryRev++;
+    this.territoryBlocks.clear();
   }
 
   /** A zone's tiles changed (save/adopt) — refetch its art. */
@@ -395,6 +409,51 @@ export class WorldView {
     return cnv;
   }
 
+  /**
+   * THE COUNTRY wash block (Phase 6): one territoryAt sample per
+   * 16-tile square (the field's 384-tile countries need no finer),
+   * inked per family — the same pure field every lean reads.
+   */
+  private territoryBlock(bx: number, by: number): HTMLCanvasElement {
+    const key = `${bx},${by}:${this.territoryRev}`;
+    let cnv = this.territoryBlocks.get(key);
+    if (cnv) return cnv;
+    const families = this.ws.families;
+    const step = 16;
+    const n = BLOCK / step;
+    cnv = document.createElement('canvas');
+    cnv.width = n;
+    cnv.height = n;
+    const ctx = cnv.getContext('2d')!;
+    for (let iy = 0; iy < n; iy++) {
+      for (let ix = 0; ix < n; ix++) {
+        const tx = bx * BLOCK + ix * step + step / 2;
+        const ty = by * BLOCK + iy * step + step / 2;
+        if (ty >= 512) continue;
+        const fam = territoryAt(this.ws.seed, tx, ty, families);
+        if (fam === null) continue;
+        ctx.fillStyle = WorldView.TERRITORY_INK[fam] ?? 'rgba(150, 150, 150, 0.12)';
+        ctx.fillRect(ix, iy, 1, 1);
+      }
+    }
+    this.territoryBlocks.set(key, cnv);
+    if (this.territoryBlocks.size > 256) {
+      const first = this.territoryBlocks.keys().next().value as string;
+      this.territoryBlocks.delete(first);
+    }
+    return cnv;
+  }
+
+  /** Family → the country wash ink (unrostered families get grey). */
+  private static readonly TERRITORY_INK: Record<string, string> = {
+    goblin: 'rgba(110, 180, 70, 0.16)',
+    brigand: 'rgba(200, 120, 60, 0.16)',
+    wolfkin: 'rgba(90, 130, 200, 0.16)',
+    kobold: 'rgba(190, 170, 80, 0.16)',
+    dead: 'rgba(150, 110, 190, 0.16)',
+    gnoll: 'rgba(190, 90, 110, 0.16)',
+  };
+
   // --------------------------------------------------------- render
 
   render(): void {
@@ -492,6 +551,19 @@ export class WorldView {
       for (const { bx, by } of wanted) {
         ctx.drawImage(
           this.dangerBlock(bx, by),
+          this.sx(bx * BLOCK),
+          this.sy(by * BLOCK),
+          BLOCK * this.scale,
+          BLOCK * this.scale,
+        );
+      }
+    }
+
+    // THE COUNTRY wash — whose land is whose (Phase 6).
+    if (this.ws.show.territory) {
+      for (const { bx, by } of wanted) {
+        ctx.drawImage(
+          this.territoryBlock(bx, by),
           this.sx(bx * BLOCK),
           this.sy(by * BLOCK),
           BLOCK * this.scale,
@@ -717,7 +789,11 @@ export class WorldView {
               : '#d9b06c';
       ctx.save();
       ctx.translate(x, y);
-      const r = this.isSel(sel) || this.isHover(sel) ? 7 : 5;
+      // THE WAR-GROUND ranks larger: a compound hold is the region's
+      // landmark and the map says so at a glance.
+      const siteDefId = c.site.defId;
+      const isHold = this.ws.poiDefs.find((d) => d.id === siteDefId)?.compound === true;
+      const r = (this.isSel(sel) || this.isHover(sel) ? 7 : 5) + (isHold ? 3 : 0);
       ctx.beginPath();
       ctx.moveTo(0, -r);
       ctx.lineTo(r, 0);
@@ -752,6 +828,26 @@ export class WorldView {
           ctx.moveTo(px, r + 3);
           ctx.lineTo(px, r + 7);
           ctx.stroke();
+        }
+      }
+      // THE SMALL FINDS pips (Phase 6, lens): faint dots under the
+      // stage ticks — the Studio sees the texture the chart politely
+      // doesn't. Cleared slots go hollow.
+      if (this.ws.show.finds && c.finds && c.finds.count > 0) {
+        const shown = Math.min(6, c.finds.count);
+        for (let i = 0; i < shown; i++) {
+          const px = (i - (shown - 1) / 2) * 5;
+          const bit = (c.finds.cleared >>> i) & 1;
+          ctx.beginPath();
+          ctx.arc(px, r + 11, 1.6, 0, Math.PI * 2);
+          if (bit) {
+            ctx.strokeStyle = 'rgba(190, 180, 160, 0.7)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = 'rgba(190, 180, 160, 0.85)';
+            ctx.fill();
+          }
         }
       }
       if (this.isSel(sel)) {
