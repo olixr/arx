@@ -302,9 +302,12 @@ import {
   chargedShot,
   circleHitsSolid,
   findPathNav,
+  isSeatTile,
   lineClear,
   newSteerMemory,
+  pickSeatDir,
   pointHitsSolid,
+  seatAt,
   steerToward,
   drawCharge,
   hasButton,
@@ -880,6 +883,19 @@ interface RoutineComp {
    * the-passerby glance yields to it.
    */
   holdFacing: boolean;
+  /**
+   * The furniture this body is mounted on (a sit/lie stop whose target
+   * landed on a chair, bench, throne, or bed), or null. Mounting moved
+   * the body ONTO the seat anchor; every path that hands the legs back
+   * (slot flip, linger end, combat) dismounts to (retX, retY) first.
+   */
+  seat: {
+    tiles: Array<{ x: number; y: number }>;
+    retX: number;
+    retY: number;
+    dir: number;
+    lie: boolean;
+  } | null;
 }
 
 /**
@@ -992,6 +1008,15 @@ interface PlayerComp {
    * or taking a hit stands the body back up.
    */
   sitting: boolean;
+  /** Lying in a bed (the Rest interact). Yields exactly like sitting. */
+  lying: boolean;
+  /**
+   * The furniture this body occupies, or null when standing/floor-
+   * sitting. Mounting moved the body ONTO the seat's anchor; standUp
+   * returns it to (retX, retY) — the spot it walked up from — and
+   * releases the occupancy claim. Facing locks to `dir` while mounted.
+   */
+  seat: { tiles: Array<{ x: number; y: number }>; retX: number; retY: number; dir: number } | null;
   /**
    * Weapons stowed on the body (the H toggle) — blades at the hip,
    * bow/staff across the back. While stowed, attacks and casts are
@@ -2310,6 +2335,8 @@ export class GameServer {
       boltGraceUntilTick: 0,
       sneaking: false,
       sitting: false,
+      lying: false,
+      seat: null,
       sheathed: false,
       drawLockUntilTick: 0,
       sneakStillTicks: 0,
@@ -2473,6 +2500,11 @@ export class GameServer {
     // No unpiloted invisible bodies during the reconnect grace window.
     player.sneaking = false;
     if (player.hidden) this.setHidden(eid, player, false);
+    // Stand a seated body down at its walk-up spot before the save —
+    // a position persisted inside solid furniture would wedge the
+    // next login.
+    const dropPos = this.positions.get(eid);
+    if (dropPos) this.standUp(eid, player, dropPos);
     this.savePlayer(eid);
     console.log(`[game] ${player.name} disconnected, grace ${RECONNECT_GRACE_MS}ms`);
   }
@@ -2891,10 +2923,12 @@ export class GameServer {
       return;
     }
 
-    // Beds: lying claim makes this bed HOME — defeat wakes you beside
-    // it, and /recall carries you back on the hearth cooldown.
-    if (ground === Tile.Bed) {
-      this.interactBed(player, tx, ty, sys);
+    // Furniture: chairs, benches, and thrones seat the body; beds lay
+    // it down — and lying in a fresh bed claims it as HOME (defeat
+    // wakes you beside it, /recall carries you back on the hearth
+    // cooldown, and touching it again while resting tends the ward).
+    if (isSeatTile(ground)) {
+      this.interactSeat(eid, player, pos, tx, ty, sys);
       return;
     }
 
@@ -3320,38 +3354,222 @@ export class GameServer {
   /** How long the hearth rests between recalls. */
   private static readonly HEARTH_CD_MS = 10 * 60 * 1000;
 
+  // ----------------------------------------------------------- seating
+
   /**
-   * Claim a bed as home. Town beds are open to all — for now the only
-   * gate is on PLAYER-BUILT beds, which answer to their builder alone
-   * (the built-tiles ledger already remembers whose hands placed it).
+   * Who holds a furniture tile, or null. Occupancy is a claim ledger
+   * (mount writes, standUp erases) with LAZY EVICTION: any claim whose
+   * holder no longer exists or no longer sits there clears on sight,
+   * so death and despawn paths never need to remember the furniture.
    */
-  private interactBed(player: PlayerComp, tx: number, ty: number, sys: (text: string) => void): void {
-    const built = this.world.builtAt(tx, ty);
-    if (built && built.owner !== player.characterId) {
-      sys('This bed was built by another settler — only its builder may call it home.');
-      return;
+  private readonly seatOcc = new Map<string, EntityId>();
+
+  private seatHolder(tx: number, ty: number): EntityId | null {
+    const key = `${tx},${ty}`;
+    const eid = this.seatOcc.get(key);
+    if (eid === undefined) return null;
+    const covers = (s: { tiles: Array<{ x: number; y: number }> } | null | undefined): boolean =>
+      s != null && s.tiles.some((t) => t.x === tx && t.y === ty);
+    if (covers(this.players.get(eid)?.seat)) return eid;
+    if (covers(this.routines.get(eid)?.seat)) return eid;
+    this.seatOcc.delete(key);
+    return null;
+  }
+
+  /**
+   * Every path out of a rest funnels here: stands the body up, and if
+   * it was mounted on furniture, returns it to the walk-up spot and
+   * releases the seat. `restore: false` is for teleports and death,
+   * where the destination is already someone else's decision.
+   */
+  private standUp(eid: EntityId, player: PlayerComp, pos: PositionComp, restore = true): void {
+    player.sitting = false;
+    player.lying = false;
+    const seat = player.seat;
+    if (!seat) return;
+    player.seat = null;
+    this.releaseSeat(eid, seat, restore ? pos : null);
+  }
+
+  /**
+   * Erase a seat claim and, when `pos` is given, put the body back on
+   * standing ground: the remembered walk-up spot, or (if the world
+   * changed under it) the first open neighbor of the furniture.
+   */
+  private releaseSeat(
+    eid: EntityId,
+    seat: { tiles: Array<{ x: number; y: number }>; retX: number; retY: number },
+    pos: PositionComp | null,
+  ): void {
+    for (const t of seat.tiles) {
+      const key = `${t.x},${t.y}`;
+      if (this.seatOcc.get(key) === eid) this.seatOcc.delete(key);
     }
-    if (player.home && player.home.x === tx && player.home.y === ty) {
-      // THE HEARTH-SIDE DIAL (Phase 4.3): touching your own claimed
-      // bed tends the fire — warded hearths are never coveted by the
-      // raid dice. The choice is the player's, any hour, no menu.
-      player.hearthWarded = !player.hearthWarded;
-      if (player.characterId > 0) {
-        this.accounts.saveHearthWarded(player.characterId, player.hearthWarded);
+    if (!pos) return;
+    if (!circleHitsSolid(this.world, seat.retX, seat.retY, 0.35)) {
+      pos.x = seat.retX;
+      pos.y = seat.retY;
+    } else {
+      const cx = Math.floor(pos.x);
+      const cy = Math.floor(pos.y);
+      const steps = [
+        [0, 1], [0, -1], [1, 0], [-1, 0],
+        [1, 1], [-1, 1], [1, -1], [-1, -1],
+      ];
+      for (const [dx, dy] of steps) {
+        if (!this.world.isSolid(cx + dx!, cy + dy!)) {
+          pos.x = cx + dx! + 0.5;
+          pos.y = cy + dy! + 0.5;
+          break;
+        }
       }
-      sys(
-        player.hearthWarded
-          ? 'You bank the fire low and ward the hearth — raiders will not covet this place.'
-          : 'You let the hearth blaze bright again. Let them covet; let them come.',
-      );
+    }
+    this.updateChunkMembership(eid);
+  }
+
+  /**
+   * Mount the furniture under a routine rest stop, if any stands
+   * free. The body remembers its walk-up stand and settles onto the
+   * seat anchor; beds impose the lie axis, seats take the authored
+   * facing when one was written, else the seat's own.
+   */
+  private routineMount(
+    eid: EntityId,
+    rc: RoutineComp,
+    pos: PositionComp,
+    dir: number | undefined,
+  ): void {
+    const spec = seatAt(
+      (x, y) => this.world.groundAt(x, y),
+      Math.floor(rc.targetX),
+      Math.floor(rc.targetY),
+    );
+    if (!spec) return;
+    for (const t of spec.tiles) {
+      const holder = this.seatHolder(t.x, t.y);
+      // Taken (a player on the King's throne!) — rest on foot beside.
+      if (holder !== null && holder !== eid) return;
+    }
+    // The furniture's own geometry outranks the authored facing: a
+    // chair's backrest and a bed's axis are painted facts. Only a
+    // free-standing bench lets the author (or the walk-up side) pick
+    // which long side to face, snapped to the two honest facings.
+    const face =
+      spec.kind === 'bench' && !spec.fixed
+        ? dir !== undefined
+          ? Math.sin(dir) < 0
+            ? -Math.PI / 2
+            : Math.PI / 2
+          : pickSeatDir(spec, pos.x, pos.y)
+        : spec.dir;
+    rc.seat = {
+      tiles: spec.tiles,
+      retX: pos.x,
+      retY: pos.y,
+      dir: face,
+      lie: spec.pose === 'lie',
+    };
+    for (const t of spec.tiles) this.seatOcc.set(`${t.x},${t.y}`, eid);
+    pos.x = spec.ax;
+    pos.y = spec.ay;
+    pos.dir = face;
+    this.updateChunkMembership(eid);
+  }
+
+  /** The routine walker's standUp — seat released, legs get the ground back. */
+  private routineDismount(eid: EntityId, rc: RoutineComp, pos: PositionComp): void {
+    const seat = rc.seat;
+    if (!seat) return;
+    rc.seat = null;
+    this.releaseSeat(eid, seat, pos);
+  }
+
+  /**
+   * Furniture answers the interact: chairs, benches, and thrones seat
+   * the body; a bed lays it down (and lying in a fresh bed claims it
+   * as home). The body moves ONTO the seat's anchor so the paint and
+   * the pose agree; any deliberate act afterward stands it back up at
+   * the spot it walked in from.
+   */
+  private interactSeat(
+    eid: EntityId,
+    player: PlayerComp,
+    pos: PositionComp,
+    tx: number,
+    ty: number,
+    sys: (text: string) => void,
+  ): void {
+    const spec = seatAt((x, y) => this.world.groundAt(x, y), tx, ty);
+    if (!spec) return;
+    // Interacting with the seat you already occupy: your own home bed
+    // tends the hearth (THE HEARTH-SIDE DIAL, Frontier Phase 4.3 —
+    // warded hearths are never coveted by the raid dice); any other
+    // seat simply stands you up.
+    const home = player.home;
+    const onIt = player.seat?.tiles.some((t) => spec.tiles.some((o) => o.x === t.x && o.y === t.y));
+    if (onIt) {
+      if (spec.kind === 'bed' && home && spec.tiles.some((t) => t.x === home.x && t.y === home.y)) {
+        player.hearthWarded = !player.hearthWarded;
+        if (player.characterId > 0) {
+          this.accounts.saveHearthWarded(player.characterId, player.hearthWarded);
+        }
+        sys(
+          player.hearthWarded
+            ? 'You bank the fire low and ward the hearth. Raiders will not covet this place.'
+            : 'You let the hearth blaze bright again. Let them covet; let them come.',
+        );
+      } else {
+        this.standUp(eid, player, pos);
+      }
       return;
     }
-    player.home = { x: tx, y: ty };
-    if (player.characterId > 0) this.accounts.saveHome(player.characterId, tx, ty);
-    this.noteHomeChanged(player.characterId, player.home);
-    sys(
-      'You claim this bed as your home. Defeat wakes you here, and /recall carries you back (10 minute rest between recalls). Touch it again to ward or unward the hearth.',
-    );
+    // A bed another settler built answers only to its builder.
+    if (spec.kind === 'bed') {
+      const built = this.world.builtAt(tx, ty);
+      if (built && built.owner !== player.characterId) {
+        sys('This bed was built by another settler. Only its builder may rest here.');
+        return;
+      }
+    }
+    // One body per seat; a bed sleeps one, whole mattress.
+    for (const t of spec.tiles) {
+      const holder = this.seatHolder(t.x, t.y);
+      if (holder !== null && holder !== eid) {
+        sys(spec.kind === 'bed' ? 'Someone is already resting here.' : 'The seat is taken.');
+        return;
+      }
+    }
+    // Settle in: a running gather or draw lets go, any old seat clears,
+    // and the body eases onto the anchor facing the seat's way. A hop
+    // from seat to seat keeps the ORIGINAL walk-up spot — the body
+    // must never remember a furniture anchor as standing ground.
+    const retX = player.seat ? player.seat.retX : pos.x;
+    const retY = player.seat ? player.seat.retY : pos.y;
+    this.cancelAction(eid, player);
+    player.drawTicks = 0;
+    this.standUp(eid, player, pos, false);
+    const dir = pickSeatDir(spec, retX, retY);
+    player.seat = { tiles: spec.tiles, retX, retY, dir };
+    for (const t of spec.tiles) this.seatOcc.set(`${t.x},${t.y}`, eid);
+    pos.x = spec.ax;
+    pos.y = spec.ay;
+    pos.dir = dir;
+    this.updateChunkMembership(eid);
+    if (spec.pose === 'lie') {
+      player.lying = true;
+      // Lying in a claimable bed makes it home (town beds are open to
+      // all; the builder gate above already spoke for built ones).
+      if (!home || !spec.tiles.some((t) => t.x === home.x && t.y === home.y)) {
+        player.home = { x: tx, y: ty };
+        if (player.characterId > 0) this.accounts.saveHome(player.characterId, tx, ty);
+        this.noteHomeChanged(player.characterId, player.home);
+        sys(
+          'You claim this bed as your home. Defeat wakes you here, and /recall carries you back (10 minute rest between recalls). Touch it again while resting to ward or unward the hearth.',
+        );
+      }
+    } else {
+      player.sitting = true;
+    }
   }
 
   /**
@@ -6517,6 +6735,9 @@ export class GameServer {
     const pos = this.positions.get(eid);
     if (!player || !pos) return;
     this.cancelAction(eid, player);
+    // Any ride out of a seat releases it — the destination is already
+    // decided, so no walk-up restore.
+    this.standUp(eid, player, pos, false);
     player.inputQueue.length = 0;
     pos.x = x;
     pos.y = y;
@@ -11346,7 +11567,10 @@ export class GameServer {
       const back = Math.round(dmg * reflectFrac);
       if (back > 0) this.damageNpc(opts.sourceEid, back, eid, 'shield');
     }
-    player.sitting = false; // a landed blow ends the rest
+    // A landed blow ends the rest — and tips a sleeper out of bed.
+    const hitPos = this.positions.get(eid);
+    if (hitPos) this.standUp(eid, player, hitPos);
+    else player.sitting = player.lying = false;
     this.setPose(eid, PoseState.Hurt, 4);
     // Second Wind: fires only on the CROSSING into danger, so a string
     // of low hits can't re-trigger it every tick.
@@ -11746,6 +11970,7 @@ export class GameServer {
         losGoalX: Infinity,
         losGoalY: Infinity,
         holdFacing: false,
+        seat: null,
       });
     }
     // The untargetable switch works BY CONSTRUCTION: no combat body,
@@ -12299,6 +12524,8 @@ export class GameServer {
       const npc = this.npcs.get(eid);
       if (npc && npc.state !== 'idle') {
         // Combat owns the body; the errand resumes where life left it.
+        // Off the furniture first — legs can't engage from a solid tile.
+        this.routineDismount(eid, rc, pos);
         rc.holdFacing = false;
         rc.stuckTicks = 0;
         rc.progressBest = Infinity; // the fight moved us — re-baseline
@@ -12308,6 +12535,7 @@ export class GameServer {
       // Schedule resolve — a flip resets progression onto the new task.
       const slot = pickRoutineSlot(rc.def, hours);
       if (slot !== rc.slot) {
+        this.routineDismount(eid, rc, pos);
         rc.slot = slot;
         rc.wpIndex = 0;
         rc.wpDir = 1;
@@ -12318,11 +12546,17 @@ export class GameServer {
       }
       const task = this.routineTask(rc);
 
-      // Conversations and barks park the body mid-errand.
+      // Conversations and barks park the body mid-errand. A mounted
+      // body holds its seat through the talk — royalty does not rise
+      // for petitioners, and a sleeper answers from the pillow.
       if (talking?.has(eid) || this.tickCount < rc.pauseUntilTick) {
-        rc.holdFacing = false;
         rc.stuckTicks = 0;
-        this.routinePose(eid, npc, PoseState.Idle);
+        if (rc.seat) {
+          this.routinePose(eid, npc, rc.seat.lie ? PoseState.Lie : PoseState.Sit);
+        } else {
+          rc.holdFacing = false;
+          this.routinePose(eid, npc, PoseState.Idle);
+        }
         continue;
       }
 
@@ -12353,10 +12587,18 @@ export class GameServer {
         const ddy = rc.targetY - pos.y;
         const holdR = arriveR + 0.5;
         if (ddx * ddx + ddy * ddy > holdR * holdR) {
+          // Knocked clear off a mounted seat: release the claim where
+          // the body lies — restoring would teleport it back.
+          const seat = rc.seat;
+          if (seat) {
+            rc.seat = null;
+            this.releaseSeat(eid, seat, null);
+          }
           rc.phase = 'travel';
           rc.stuckTicks = 0;
           rc.progressBest = Infinity;
         } else if (this.tickCount >= rc.lingerUntilTick) {
+          this.routineDismount(eid, rc, pos);
           if (task.kind === 'path') {
             this.routineAdvance(rc, task);
           } else if (task.kind === 'wander') {
@@ -12370,18 +12612,27 @@ export class GameServer {
         if (rc.phase === 'linger') {
           const working = task.kind === 'post' ? task.work : wp?.work;
           const seated = task.kind === 'post' ? task.sit : wp?.sit;
+          const lying = task.kind === 'post' ? task.lie : wp?.lie;
           const dir = task.kind === 'path' ? wp?.dir : task.kind === 'post' ? task.dir : undefined;
           if (working) {
             // The client squares the rig up to the nearest station and
             // plays the full work choreography off this one byte.
             this.routinePose(eid, npc, PoseState.Craft);
             rc.holdFacing = true;
-          } else if (seated) {
-            // The wayside rest: a seated body is planted — no glancing
-            // at passersby (the whole figure would swivel on the seat).
-            this.routinePose(eid, npc, PoseState.Sit);
+          } else if (seated || lying) {
+            // THE SEAT UNDER THE STOP: a rest stop whose target lands
+            // on furniture mounts it — the body settles onto the seat
+            // anchor and takes the furniture's pose (a bed lays it
+            // down). Open-ground stops keep the wayside floor sit, and
+            // a taken seat retries each tick so the King reclaims his
+            // throne the moment a squatter hops off. Seated bodies are
+            // planted either way — no glancing at passersby (the whole
+            // figure would swivel on the seat).
+            if (!rc.seat) this.routineMount(eid, rc, pos, dir);
+            this.routinePose(eid, npc, rc.seat?.lie ? PoseState.Lie : PoseState.Sit);
             rc.holdFacing = true;
-            if (dir !== undefined) pos.dir = dir;
+            if (rc.seat) pos.dir = rc.seat.dir;
+            else if (dir !== undefined) pos.dir = dir;
           } else {
             this.routinePose(eid, npc, PoseState.Idle);
             // An authored facing is held; otherwise tickActors may
@@ -14772,6 +15023,11 @@ export class GameServer {
       speed *= player.gear.speedMult; // plate drags, leather springs
       if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
       if (casting) speed = 0; // committed to the cast
+      // A step off the furniture dismounts FIRST — the body walks on
+      // from the spot it sat down at, never out of the solid seat tile.
+      if (player.seat && (Math.abs(frame.mx) > 0.01 || Math.abs(frame.my) > 0.01)) {
+        this.standUp(eid, player, pos);
+      }
       const next = stepMovement(pos, frame, speed, TICK_DT, this.world);
       if (next.x !== pos.x || next.y !== pos.y) {
         moved = true;
@@ -14779,14 +15035,20 @@ export class GameServer {
       }
       pos.x = next.x;
       pos.y = next.y;
-      pos.dir = frame.aim;
+      // A mounted body faces the way the furniture does; aim resumes
+      // command of the shoulders the moment it stands.
+      pos.dir = player.seat ? player.seat.dir : frame.aim;
 
       // Abilities fire on the press edge — holding Q is one cast.
       const pressed = frame.buttons & ~player.prevButtons;
       player.prevButtons = frame.buttons;
       // The sit toggle flips on the press edge; every deliberate act
       // below (moving, dodging, swinging, casting) stands the body up.
-      if (pressed & InputButton.Sit) player.sitting = !player.sitting;
+      // From furniture (or a bed) the same press is simply "stand".
+      if (pressed & InputButton.Sit) {
+        if (player.sitting || player.lying) this.standUp(eid, player, pos);
+        else player.sitting = true;
+      }
       // The sheathe toggle: weapons away, weapons out. Sheathing mid-draw
       // lets the bowstring down; sitting and sheathing compose freely.
       if (pressed & InputButton.Sheathe) {
@@ -14796,7 +15058,7 @@ export class GameServer {
       const abilityPressed =
         pressed &
         (InputButton.Ability1 | InputButton.Ability2 | InputButton.Ability3 | InputButton.Ability4);
-      if (abilityPressed) player.sitting = false;
+      if (abilityPressed) this.standUp(eid, player, pos);
       // THE SAFETY: while stowed, no press can deal damage. A combat
       // press DRAWS instead — the weapon comes out (the client plays
       // the pull), and the draw-lock holds the first real swing until
@@ -14836,7 +15098,7 @@ export class GameServer {
       const stillCasting = this.tickCount < player.castFreezeUntilTick;
       const attackHeld =
         hasButton(frame.buttons, InputButton.Attack) && !stillCasting && !weaponsAway;
-      if (attackHeld) player.sitting = false;
+      if (attackHeld) this.standUp(eid, player, pos);
       if (style === 'archery') {
         this.tickBowDraw(eid, player, equipped!.weapon, attackHeld, frame.aim, frame.seq);
       } else if (attackHeld) {
@@ -14851,7 +15113,7 @@ export class GameServer {
     player.sneaking = hasButton(player.prevButtons, InputButton.Sneak);
     // Rest yields to everything: a step, a crouch, or a running action
     // (gathering, crafting) ends the sit — no half-seated walkers.
-    if (moved || player.sneaking || player.action) player.sitting = false;
+    if (moved || player.sneaking || player.action) this.standUp(eid, player, pos);
     // The planted-stance clock (Bulwark) counts sneaking or not.
     player.stillTicks = moved ? 0 : player.stillTicks + 1;
     if (player.sneaking) {
@@ -14888,13 +15150,15 @@ export class GameServer {
     } else {
       this.poses.set(
         eid,
-        player.sitting
-          ? PoseState.Sit
-          : player.sneaking
-            ? PoseState.Sneak
-            : moved
-              ? PoseState.Walk
-              : PoseState.Idle,
+        player.lying
+          ? PoseState.Lie
+          : player.sitting
+            ? PoseState.Sit
+            : player.sneaking
+              ? PoseState.Sneak
+              : moved
+                ? PoseState.Walk
+                : PoseState.Idle,
       );
     }
     if (moved) this.updateChunkMembership(eid);

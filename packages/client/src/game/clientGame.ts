@@ -106,6 +106,7 @@ export type InteractTarget =
   | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
   | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
   | { kind: 'door'; tx: number; ty: number; open: boolean; gate: boolean }
+  | { kind: 'seat'; tx: number; ty: number }
   | { kind: 'bed'; tx: number; ty: number }
   | { kind: 'sign'; tx: number; ty: number; mine: boolean; blank: boolean };
 import { Connection } from '../net/connection.js';
@@ -467,6 +468,9 @@ export class ClientGame {
   ownHpPct = 255;
   /** Authoritative pose for the local player (from snapshots). */
   ownPose = 0;
+  /** Server-confirmed own facing (radians) — the seat-locked dir while
+   *  mounted on furniture; the live aim everywhere else. */
+  ownDirServer = 0;
 
   /** Dodge FX hook (the predictor's onDodge is owned internally). */
   onDodgeFx: ((x: number, y: number, mx: number, my: number) => void) | null = null;
@@ -1572,7 +1576,12 @@ export class ClientGame {
       if (blank && !sign?.mine) return null;
       return { kind: 'sign', tx, ty, mine: sign?.mine === true, blank };
     }
-    // Beds offer the home claim — the server arbitrates ownership.
+    // Furniture offers a rest: chairs, benches, and the throne seat a
+    // body; a bed lays one down (and the home claim rides the lying).
+    // The server arbitrates occupancy and ownership.
+    if (ground === Tile.Chair || ground === Tile.Bench || ground === Tile.Throne) {
+      return { kind: 'seat', tx, ty };
+    }
     if (ground === Tile.Bed) return { kind: 'bed', tx, ty };
     if (ground === Tile.PortalDown || ground === Tile.PortalUp) return { kind: 'portal', tx, ty };
     return null;
@@ -1958,6 +1967,11 @@ export class ClientGame {
         this.ownHpPct = e.hpPct;
         this.ownPose = e.pose;
         this.ownStatus = e.status;
+        // The server-confirmed facing: normally the aim echoes back,
+        // but a body mounted on furniture is dir-locked to the seat —
+        // the renderer reads this instead of the live aim while
+        // seated, so the sitter can't swivel on the chair.
+        this.ownDirServer = e.dir;
         this.predictor.reconcile({ x: e.x, y: e.y }, snap.lastInputSeq);
         continue;
       }

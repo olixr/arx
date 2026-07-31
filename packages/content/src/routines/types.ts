@@ -47,9 +47,20 @@ export interface RoutineWaypoint {
   /**
    * Rest seated while lingering — the wayside sit (stretched-out RPG
    * rest, never cross-legged). A bandit off the patrol rotation parks
-   * by the campfire with this. Mutually exclusive with `work`.
+   * by the campfire with this. THE SEAT UNDER THE STOP: a sit stop
+   * whose target lands ON a chair, bench, or throne tile mounts the
+   * furniture — the body settles onto the seat itself, facing the way
+   * the furniture does (authored `dir` overrides where the seat
+   * allows). Mutually exclusive with `work`.
    */
   sit?: boolean;
+  /**
+   * Lie down while lingering — author the stop ON a Tile.Bed and the
+   * body climbs in (head on the pillow, axis from the bed itself).
+   * Off a bed this falls back to the wayside sit. Mutually exclusive
+   * with `work` and `sit`.
+   */
+  lie?: boolean;
   /**
    * Stride for the leg INTO this stop, tiles/sec — overrides the
    * task's speed for that one segment (a dash across the yard on an
@@ -81,6 +92,8 @@ export interface RoutineTaskPost {
   work?: boolean;
   /** Rest seated the whole time (see RoutineWaypoint.sit). */
   sit?: boolean;
+  /** Lie in the bed under the post the whole time (see RoutineWaypoint.lie). */
+  lie?: boolean;
   /** Stride when traveling to (or back to) the post, tiles/sec. */
   speed?: RoutineSpeed;
 }

@@ -62,7 +62,7 @@ function validateDir(raw: unknown, where: string, errors: string[]): number | un
 function validateFlag(
   raw: unknown,
   where: string,
-  key: 'work' | 'sit',
+  key: 'work' | 'sit' | 'lie',
   errors: string[],
 ): boolean | undefined {
   if (raw === undefined) return undefined;
@@ -73,14 +73,17 @@ function validateFlag(
   return raw ? true : undefined;
 }
 
-/** A stop is a posture: hammering a station and resting are exclusive. */
+/** A stop is ONE posture: working, sitting, and lying are exclusive. */
 function rejectWorkSit(
   work: boolean | undefined,
   sit: boolean | undefined,
+  lie: boolean | undefined,
   where: string,
   errors: string[],
 ): void {
   if (work && sit) errors.push(`${where} cannot both work and sit`);
+  if (work && lie) errors.push(`${where} cannot both work and lie`);
+  if (sit && lie) errors.push(`${where} cannot both sit and lie`);
 }
 
 /** Strides live between a hobble and a sprint (player speed is 5). */
@@ -115,7 +118,8 @@ function validateWaypoint(
   wp.dir = validateDir(raw.dir, where, errors);
   wp.work = validateFlag(raw.work, where, 'work', errors);
   wp.sit = validateFlag(raw.sit, where, 'sit', errors);
-  rejectWorkSit(wp.work, wp.sit, where, errors);
+  wp.lie = validateFlag(raw.lie, where, 'lie', errors);
+  rejectWorkSit(wp.work, wp.sit, wp.lie, where, errors);
   wp.speed = validateSpeed(raw.speed, where, errors);
   return wp;
 }
@@ -133,7 +137,8 @@ function validateTask(raw: unknown, where: string, errors: string[]): RoutineTas
     task.dir = validateDir(raw.dir, where, errors);
     task.work = validateFlag(raw.work, where, 'work', errors);
     task.sit = validateFlag(raw.sit, where, 'sit', errors);
-    rejectWorkSit(task.work, task.sit, where, errors);
+    task.lie = validateFlag(raw.lie, where, 'lie', errors);
+    rejectWorkSit(task.work, task.sit, task.lie, where, errors);
     task.speed = validateSpeed(raw.speed, where, errors);
     return task;
   }

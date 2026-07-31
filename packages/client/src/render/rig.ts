@@ -307,6 +307,17 @@ export interface RigPose {
   /** Which seated posture: 0 = lounger (legs out), 1 = one knee up. */
   sitVariant?: 0 | 1;
   /**
+   * WHERE the body sits. 'floor' (default) = the wayside sit above.
+   * 'chair' = mounted furniture: hips ride at seatH on the seat
+   * surface, feet drop square to the floor in front, knees keep the
+   * anatomical facing pole, and the hands rest on the thighs.
+   * 'throne' = the crown sit — upright spine, fists out to the
+   * armrests. Callers pass it with the same smoothed sitT.
+   */
+  sitStyle?: 'floor' | 'chair' | 'throne';
+  /** Seat surface height for chair/throne sits, tile units above ground. */
+  seatH?: number;
+  /**
    * Sheathe blend, 0..1, SMOOTHED BY THE CALLER (the sitT pattern —
    * never poseT). 0 = weapons in hand; rising, the hand carries the
    * weapon to its stow spot (blades to the belt, bow/staff over the
@@ -2028,12 +2039,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ? 0.55 * Math.min(1, rig.poseT)
         : 0;
   const sit = rig.sitT ?? 0;
+  // A furniture sit: the hips ride the SEAT surface, not the ground.
+  const chairSit = sit > 0 && rig.sitStyle !== undefined && rig.sitStyle !== 'floor';
 
-  // The body rides the hip line, which rides the gait bob. Seated, the
-  // hip line settles a hand's width off the ground and the whole upper
-  // body (armY/shoulderY hang off hipY) comes down with it.
+  // The body rides the hip line, which rides the gait bob. Seated on
+  // the ground, the hip line settles a hand's width off it; mounted
+  // on furniture, it settles at the seat's own surface height — the
+  // whole upper body (armY/shoulderY hang off hipY) comes down (or
+  // up onto the throne) with it.
+  const seatLift = chairSit ? (rig.seatH ?? 0.34) : 0.13;
   const hipYStand = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
-  const hipY = hipYStand + (rig.y - 0.13 * s - hipYStand) * sit;
+  const hipY = hipYStand + (rig.y - seatLift * s - hipYStand) * sit;
 
   // ---- legs: two-bone IK from SCREEN-FIXED hips to planted feet.
   const L = (LEG_LEN / 2) * s;
@@ -2061,10 +2077,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const bend = Math.sqrt(Math.max(0, L * L - (d / 2) ** 2));
     const cxn = -ey / d;
     const cyn = ex / d;
-    // Seated, the anatomical pole yields to gravity's law: a bent knee
-    // always rises UP-SCREEN — folding down would bury it in the ground.
+    // Seated ON THE GROUND, the anatomical pole yields to gravity's
+    // law: a bent knee always rises UP-SCREEN — folding down would
+    // bury it in the ground. A chair sit keeps the anatomical pole:
+    // hips ride the seat, shins drop to the floor, and the knee folds
+    // with the facing exactly as a standing bend would.
     const sign =
-      sit > 0.4
+      sit > 0.4 && !chairSit
         ? cyn > 0
           ? -1
           : 1
@@ -3270,7 +3289,35 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     let smy: number;
     let sox: number;
     let soy: number;
-    if (kneeUpSit) {
+    if (chairSit) {
+      // FURNITURE CLAIMS ITS OWN CARRIAGE. Chair and bench: both
+      // hands settle onto the thighs just shy of the solved kneecaps
+      // — the patient tavern sit. Throne: the fists ride out to the
+      // scrolled armrest ends, spine regal-straight (the armrest line
+      // is the painter's own: arms end ~0.33s off center, a forearm
+      // above the cushion).
+      if (rig.sitStyle === 'throne') {
+        smx = rig.x + 0.33 * s;
+        smy = hipY - 0.16 * s;
+        sox = rig.x - 0.33 * s;
+        soy = hipY - 0.16 * s;
+      } else {
+        const a = KNEE_SCRATCH[0]!;
+        const b = KNEE_SCRATCH[1]!;
+        // Main hand takes the camera-side knee so the near forearm
+        // paints over the lap; the off hand rests on the far thigh.
+        const aNear = a.x >= rig.x;
+        const near = aNear ? a : b;
+        const far = aNear ? b : a;
+        const mainNear = (Math.sign(sideS) || 1) >= 0;
+        const mk = mainNear ? near : far;
+        const ok = mainNear ? far : near;
+        smx = mk.x + (mk.x - rig.x) * 0.1;
+        smy = mk.y - 0.045 * s;
+        sox = ok.x + (ok.x - rig.x) * 0.1;
+        soy = ok.y - 0.045 * s;
+      }
+    } else if (kneeUpSit) {
       // The raised knee is the leg the IK bent hardest (smallest
       // hip→foot span) — drape the same-side fist over it.
       const a = KNEE_SCRATCH[0]!;
@@ -3301,7 +3348,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // Seated breath — the resting hands are never a freeze-frame.
     mainY += Math.sin(rig.nowMs * 0.0017) * 0.008 * s * sit;
     offY += Math.sin(rig.nowMs * 0.0017 + 1.4) * 0.008 * s * sit;
-    lean += -sideS * profileK * (kneeUpSit ? 0.1 : 0.2) * sit;
+    // THE PROP LEAN belongs to the floor sit's planted arms; a chair
+    // sit keeps the spine over the hips (the throne dead-upright).
+    if (!chairSit) lean += -sideS * profileK * (kneeUpSit ? 0.1 : 0.2) * sit;
   }
 
   // Casting: the free hand punches a push toward the aim. The punch
@@ -3376,13 +3425,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         angle: spot.angle,
       };
     } else {
-      const spot = stowBlade('main', sideS, sideW, sit);
+      // The lie-back law (a stowed blade rests along the ground
+      // beside a sitter) belongs to the FLOOR sit — on furniture the
+      // hips ride the seat and the scabbard hangs upright at the hip.
+      const spot = stowBlade('main', sideS, sideW, chairSit ? sit * 0.15 : sit);
       mainStow = { x: rig.x + spot.dx * s * wS, y: hipY + spot.dy * s, angle: spot.angle };
     }
   }
   let offStow: { x: number; y: number; angle: number } | null = null;
   if (offWorn) {
-    const spot = stowBlade('off', sideS, sideW, sit);
+    const spot = stowBlade('off', sideS, sideW, chairSit ? sit * 0.15 : sit);
     offStow = { x: rig.x + spot.dx * s * wS, y: hipY + spot.dy * s, angle: spot.angle };
   }
   if (sheath > 0 && mainStow) {

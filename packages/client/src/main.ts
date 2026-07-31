@@ -363,7 +363,8 @@ const PROMPT_LABELS: Record<string, string> = {
   alembic: 'Brew',
   sawhorse: 'Saw',
   plot: 'Plant',
-  bed: 'Claim Home',
+  seat: 'Sit',
+  bed: 'Rest',
   sign: 'Read Sign',
 };
 
@@ -1697,8 +1698,11 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       // hold it open because someone stands in the way.
       game.interact(target.tx, target.ty);
       break;
+    case 'seat':
     case 'bed':
-      // The server decides: claim it, or refuse another builder's bed.
+      // The server decides: seat the body, lay it down (claiming the
+      // bed as home), stand it up, tend the hearth, or refuse an
+      // occupied seat and another builder's bed.
       game.interact(target.tx, target.ty);
       break;
     case 'sign':
@@ -2162,12 +2166,23 @@ function frame(now: number): void {
     if (target) {
       const p = renderer.camera.worldToScreen(target.tx + 0.5, target.ty + 0.5, window.innerWidth, window.innerHeight);
       p.y -= renderer.renderLift(target.tx + 0.5, target.ty + 0.5) * renderer.camera.scale;
+      // Is the OWN body mounted on this piece of furniture? Seats are
+      // one tile; a bed run answers for its neighbor tile too.
+      const onTarget = (t: { tx: number; ty: number }, bed = false): boolean => {
+        const own = game.predictor.renderPos();
+        if (Math.floor(own.x) !== t.tx) return false;
+        return bed ? Math.abs(own.y - (t.ty + 0.5)) < 1.15 : Math.floor(own.y) === t.ty;
+      };
       const label =
         target.kind === 'station' ? PROMPT_LABELS[target.station]
         : target.kind === 'npc' ? target.verb
         : target.kind === 'crop' ? (target.mature ? 'Harvest' : 'Tend')
         : target.kind === 'door' ? (target.open ? (target.gate ? 'Close Gate' : 'Close Door') : (target.gate ? 'Open Gate' : 'Open Door'))
         : target.kind === 'sign' ? (target.blank ? 'Write Sign' : target.mine ? 'Read / Write' : 'Read Sign')
+        // On the furniture already: the same touch stands you up — or
+        // tends the hearth from your own bed (the ward dial).
+        : target.kind === 'seat' && game.ownPose === PoseState.Sit && onTarget(target) ? 'Stand'
+        : target.kind === 'bed' && game.ownPose === PoseState.Lie && onTarget(target, true) ? 'Tend Hearth'
         : PROMPT_LABELS[target.kind];
       nav.setPrompt({ sx: p.x, sy: p.y - renderer.camera.scale * 1.5, label: label ?? 'Use' });
     } else {

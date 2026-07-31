@@ -30,6 +30,7 @@ import {
   hashCoords,
   hashString,
   pointHitsSolid,
+  seatAt,
   tileDef,
   treeOfSapling,
   daylightAt,
@@ -39,6 +40,7 @@ import {
   type EquipSlot,
   type ItemRoll,
   type Look,
+  type SeatSpec,
   type Vec2,
 } from '@arx/shared';
 import { bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@arx/content';
@@ -482,6 +484,16 @@ interface AnimState {
    * both directions so sitting down and rising both ease.
    */
   sitK?: number;
+  /** Smoothed 0..1 lying blend (the sitK pattern) — the bed recline. */
+  lieK?: number;
+  /**
+   * The furniture under a resting body (shared seats.ts derivation),
+   * cached so the stand-up blend keeps its seat context after the
+   * pose byte has already moved on. null = the wayside floor sit.
+   */
+  seat?: SeatSpec | null;
+  seatTx?: number;
+  seatTy?: number;
   /**
    * Smoothed 0..1 sheathe blend (the sitK pattern): 1 = weapons stowed
    * on the body. Initialized AT its target on first sight so a body
@@ -731,6 +743,10 @@ export class Renderer {
   // ------------------------------------------------------------------
   /** Reveal armed this frame (own player exists). */
   private revealArmed = false;
+  /** Packed tile keys of the furniture the OWN body is mounted on
+   *  this frame (seat-registry derivation) — exempt from the
+   *  step-aside fade, or the seat itself ghosts away under you. */
+  private ownSeatTiles: Set<number> | null = null;
   /** The own body's occlusion box in screen css px, per frame. */
   private fadeBX0 = 0;
   private fadeBY0 = 0;
@@ -2882,6 +2898,19 @@ export class Renderer {
       this.fadeBY1 = a.y + FADE_BODY_BELOW * s;
       const btx = Math.floor(this.ownPX);
       const bty = Math.floor(this.ownPY);
+      // THE SEAT STANDS ITS GROUND: the furniture the own body is
+      // mounted on is never an occluder to step aside — fading the
+      // very chair you sit in (or the bed you lie in) deletes the
+      // read. Resolved once per frame from the seat registry.
+      this.ownSeatTiles = null;
+      if (game.ownPose === PoseState.Sit || game.ownPose === PoseState.Lie) {
+        const spec = seatAt((x, y) => game.world.groundAt(x, y), btx, bty);
+        if (spec) {
+          this.ownSeatTiles = new Set(
+            spec.tiles.map((t) => (t.x + 0x8000) * 0x10000 + (t.y + 0x8000)),
+          );
+        }
+      }
       // THE RISING GROUND IS A WALL: higher terrain south of the body
       // paints over it exactly like masonry (the elevated bands sort
       // by world row), but a north-facing rise wears no face art and
@@ -13782,6 +13811,19 @@ export class Renderer {
     this.treeSprites.delete(Renderer.treeKey(tx + 0.5, ty + 0.5, tile));
   }
 
+  /** The interaction furniture that never joins the step-aside fade:
+   *  the pieces a body walks up to USE. Ghosting the table you dine
+   *  at (or the seat under you) breaks the scene it exists to sell. */
+  private static readonly NEVER_FADE_TILES = new Set<number>([
+    Tile.Table,
+    Tile.Counter,
+    Tile.ShopCounter,
+    Tile.Chair,
+    Tile.Bench,
+    Tile.Bed,
+    Tile.Throne,
+  ]);
+
   private drawPropOutlined(
     tile: Tile,
     tx: number,
@@ -13831,8 +13873,17 @@ export class Renderer {
     // THE STEP-ASIDE FADE reaches man-height props: a bookshelf or
     // pillar truly hiding the body fades like a canopy. Short
     // furniture (barrels, chairs) can't hide a body and never fades.
+    // THE FURNITURE KEEPS ITS FACE (user law): the interaction set —
+    // tables, counters, seats, beds — NEVER ghosts, whatever its
+    // drawn height. Sitting at a table that fades to glass deletes
+    // the tavern read; a torso-high piece hides nothing that matters
+    // and the fade stays reserved for true body-hiders (bookcases,
+    // pillars, canopies, walls' own veil). The seat the own body is
+    // MOUNTED on stands its ground by the same law.
     const fade =
-      dh >= FADE_TALL_TILES * s
+      dh >= FADE_TALL_TILES * s &&
+      !Renderer.NEVER_FADE_TILES.has(tile) &&
+      this.ownSeatTiles?.has((tx + 0x8000) * 0x10000 + (ty + 0x8000)) !== true
         ? this.occluderFade(key, dx0, dy0, dw, dh, ty + 0.9 - this.ownPY > -FRONT_EPS)
         : 1;
     if (fade < 1) this.ctx.globalAlpha = fade;
@@ -22045,6 +22096,43 @@ export class Renderer {
     else if (sitK > 0.996) sitK = 1;
     anim.sitK = sitK;
     const sitE = sitK * sitK * (3 - 2 * sitK);
+    // Lying blend — the bed recline, same glide law as the sit.
+    const lieTarget = e.pose === PoseState.Lie ? 1 : 0;
+    let lieK = anim.lieK ?? 0;
+    lieK += (lieTarget - lieK) * (1 - Math.exp(-5 * this.frameDt));
+    if (lieK < 0.004) lieK = 0;
+    else if (lieK > 0.996) lieK = 1;
+    anim.lieK = lieK;
+    const lieE = lieK * lieK * (3 - 2 * lieK);
+    // THE SEAT UNDER THE BODY (shared/world/seats.ts — the parity
+    // law with the furniture painters): the pose byte says "resting",
+    // the world says on WHAT. Furniture lifts the hips to its own
+    // seat surface and takes the chair posture; a bed takes the whole
+    // body; open ground keeps the wayside floor sit. Cached per anim
+    // so the stand-up blend keeps its seat context after the pose
+    // byte has already moved on.
+    let seat = anim.seat ?? null;
+    if (e.pose === PoseState.Sit || e.pose === PoseState.Lie) {
+      const stx = Math.floor(e.x);
+      const sty = Math.floor(e.y);
+      if (!seat || anim.seatTx !== stx || anim.seatTy !== sty) {
+        const world = this.game?.world;
+        seat = world ? seatAt((x, y) => world.groundAt(x, y), stx, sty) : null;
+        anim.seat = seat;
+        anim.seatTx = stx;
+        anim.seatTy = sty;
+      }
+    } else if (sitK === 0 && lieK === 0 && seat) {
+      seat = anim.seat = null;
+    }
+    const chairSit = seat !== null && seat.pose === 'sit';
+    // THE SEAT OWNS THE SHOULDERS: the own body normally faces the
+    // live aim, but mounted on furniture the server locked the facing
+    // to the seat — read the confirmed dir back so the sitter can't
+    // swivel on the chair by mousing around.
+    if (seat && e.isOwn && (sitK > 0 || lieK > 0)) {
+      e.dir = this.game?.ownDirServer ?? e.dir;
+    }
     // Posture by entity id parity — stable per body, mixed per crowd.
     // The own body resolves its REAL eid so the mirror never disagrees
     // with what other players see.
@@ -22140,8 +22228,18 @@ export class Renderer {
       // or it hides behind the torso and the sit reads one-legged;
       // camSide re-signs it into world down-screen.
       const camSide = fwx >= 0 ? 1 : -1;
-      const spots =
-        sitVariant === 0
+      // ON FURNITURE the sprawl is gone: both feet drop square to the
+      // floor in FRONT of the seat, shins near-vertical, knees folded
+      // — a chair sit, not a campfire lounge. Profile staggers the
+      // pair a hand's width so two legs read; face-on the feet tuck
+      // close under the folded knees (real forward reach would hang
+      // them a whole seat-height below the hips on screen).
+      const spots = chairSit
+        ? [
+            { fwd: 0.3 - 0.14 * vert + 0.07 * (1 - vert), side: -camSide * (0.1 + 0.05 * vert) },
+            { fwd: 0.3 - 0.14 * vert - 0.07 * (1 - vert), side: camSide * (0.1 + 0.05 * vert) },
+          ]
+        : sitVariant === 0
           ? [
               { fwd: 0.34 - 0.3 * vert, side: -camSide * (0.17 + 0.07 * vert) },
               { fwd: 0.56 - 0.5 * vert, side: camSide * (0.16 + 0.1 * vert) },
@@ -22237,9 +22335,11 @@ export class Renderer {
     const milkCow = e.pose === PoseState.Milk ? this.findMilkTarget(e.x, e.y) : null;
     if (milkCow) dir = Math.atan2(milkCow.y - e.y, milkCow.x - e.x);
 
-    // Seated lean: hips and torso settle BEHIND the ground point while
-    // the feet hold their forward plant — the stretched-out rest.
-    if (sitE > 0) lunge -= 0.15 * sitE;
+    // Seated lean: on the ground the hips and torso settle BEHIND the
+    // ground point while the feet hold their forward plant — the
+    // stretched-out rest. On furniture the spine stays over the seat
+    // (a whisper of settle so the transition still reads).
+    if (sitE > 0) lunge -= (chairSit ? 0.04 : 0.15) * sitE;
 
     // The sheathe blend: the player's own toggle, and every state that
     // used to VANISH the weapon (station work, foraging, the seated
@@ -22250,6 +22350,7 @@ export class Renderer {
       e.sheathed === true ||
       e.pose === PoseState.Craft ||
       e.pose === PoseState.Sit ||
+      e.pose === PoseState.Lie ||
       e.pose === PoseState.Milk ||
       gather?.kind === 'forage'
         ? 1
@@ -22281,7 +22382,10 @@ export class Renderer {
       // (the rig's own seat law), so the cloth's slack pools on the
       // ground behind the sitter instead of hanging from thin air.
       const azStand = legPose.rise + legPose.bob * 0.45 + 0.44 * hSc;
-      const azSeat = 0.13 + 0.44 * hSc;
+      // On furniture the shoulders ride the SEAT surface, so the
+      // clasp holds that much more height and the hem drapes down the
+      // chair back instead of pooling in the seat.
+      const azSeat = (chairSit ? seat!.seatH : 0.13) + 0.44 * hSc;
       const az = (azStand + (azSeat - azStand) * sitE) * capeK;
       capeSim.update(
         e.x + Math.cos(dir) * lunge,
@@ -22322,6 +22426,7 @@ export class Renderer {
       (e.hurt ?? false) ||
       capeSim !== null ||
       (sitK > 0 && sitK < 1) ||
+      (lieK > 0 && lieK < 1) ||
       (sheathK > 0 && sheathK < 1) ||
       (e.drawTOverride !== undefined && e.drawTOverride > 0) ||
       (e.isOwn && locomotion);
@@ -22330,7 +22435,9 @@ export class Renderer {
       e.color
     }|${e.size ?? 1}|${e.carry ?? ''}|${e.carryOff ?? ''}|${e.skinColor ?? ''}|${this.olObjSig(
       e.equip,
-    )}|${this.olObjSig(e.ench)}|${this.olObjSig(e.look)}|${e.skeletal ? 1 : 0}${e.kobold ? 'k' : ''}`;
+    )}|${this.olObjSig(e.ench)}|${this.olObjSig(e.look)}|${e.skeletal ? 1 : 0}${e.kobold ? 'k' : ''}${
+      seat ? `|${seat.kind}${seat.head ?? ''}` : ''
+    }`;
 
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
     const paintCape =
@@ -22354,8 +22461,23 @@ export class Renderer {
           }
         : null;
 
+    // PAINT-ORDER LAW for mounted furniture: a sitter facing the
+    // camera (or side-on) paints OVER the seat (chair 0.68 / bench
+    // 0.68); facing away, the backrest is the near side and the whole
+    // piece paints over the body — head peeking above the crest IS
+    // the read. A sleeper paints over the bed run (0.72). The throne
+    // keeps its own ty+0.42 carve-out and needs no bump.
+    let sortY = e.y;
+    if (seat && (sitE > 0 || lieE > 0)) {
+      const t0 = seat.tiles[0]!;
+      const tN = seat.tiles[seat.tiles.length - 1]!;
+      if (seat.kind === 'bed') sortY = tN.y + 0.73;
+      else if (seat.kind !== 'throne') {
+        sortY = Math.sin(e.dir) < -0.5 ? t0.y + 0.4 : t0.y + 0.69;
+      }
+    }
     return {
-      sortY: e.y,
+      sortY,
       elevated: terrainLift !== 0,
       olKey: varEid,
       olSig,
@@ -22363,7 +22485,8 @@ export class Renderer {
       baseX: e.x,
       baseY: e.y,
       drawShadow: () => {
-        this.castBody(p.x, p.y + s * 0.05, 0.26 * s * (e.size ?? 1));
+        // A body in bed casts no pool of its own — the bed already did.
+        this.castBody(p.x, p.y + s * 0.05, 0.26 * s * (e.size ?? 1) * (1 - 0.85 * lieE));
       },
       draw: () => {
         const ctx = this.ctx;
@@ -22516,8 +22639,17 @@ export class Renderer {
           // old holster states (station work, foraging, the seated
           // rest) now flow through the sheathe blend above instead of
           // vanishing the weapon — it stows to the belt or the back.
+          // A body resting on furniture sets its steel aside — beds
+          // AND seats (user law): belt-stow anchors are built for
+          // standing hips, and at seat height every weapon class
+          // found its own way to jut through the lap or the mattress.
+          // The wayside floor sit keeps the classic hip stow.
           weaponItem:
-            e.pose === PoseState.Gather ? (e.equip.tool ?? e.equip.weapon) : e.equip.weapon,
+            lieE > 0.5 || (chairSit && sitE > 0.5)
+              ? undefined
+              : e.pose === PoseState.Gather
+                ? (e.equip.tool ?? e.equip.weapon)
+                : e.equip.weapon,
           // Enchant fx ride the real weapon — in hand OR stowed —
           // never the gather tool.
           weaponEnch:
@@ -22533,7 +22665,7 @@ export class Renderer {
           legsItem: e.equip.legs,
           bootsItem: e.equip.boots,
           glovesItem: e.equip.gloves,
-          offhandItem: e.equip.offhand,
+          offhandItem: lieE > 0.5 || (chairSit && sitE > 0.5) ? undefined : e.equip.offhand,
           hasCape: e.equip.cape !== undefined,
           size: e.size,
           skinColor: e.skinColor,
@@ -22545,8 +22677,48 @@ export class Renderer {
           foraging: gather?.kind === 'forage',
           sitT: sitE,
           sitVariant,
+          sitStyle: chairSit ? (seat!.kind === 'throne' ? 'throne' : 'chair') : 'floor',
+          seatH: chairSit ? seat!.seatH : undefined,
           sheathT: sheathK,
         };
+        // THE BED TAKES THE BODY: a lying figure is the standing rig
+        // laid down whole — rotate to the bed's axis, foreshorten its
+        // length onto the ground plane (rotate-then-squash, the bird
+        // flight law), and lift it onto the deck, centered so head
+        // meets pillow and feet meet footboard. The blend IS the
+        // recline: at lieE 0 the transform is identity, so easing in
+        // and out plays as the body tipping down / rising.
+        const lying = lieE > 0 && seat !== null && seat.kind === 'bed';
+        if (lying) {
+          const head = seat!.head ?? 'n';
+          const rot = (head === 'n' ? 0 : head === 'e' ? Math.PI / 2 : -Math.PI / 2) * lieE;
+          const bodyH = 1.62 * s * (e.size ?? 1);
+          // Fit the sleeper to the deck: long beds take the honest
+          // ground foreshortening (~0.6); cots squash a little harder
+          // and still let the feet overhang the footboard a touch —
+          // a tall settler on a short cot, never a shrunken doll.
+          const availLen = (seat!.span ?? 1) * (head === 'n' ? this.camera.yScale : 1) * s;
+          const lKT = Math.min(0.66, Math.max(0.5, (availLen * 0.94) / bodyH));
+          const wKT = head === 'n' ? 1 : 0.62;
+          const lK = 1 + (lKT - 1) * lieE;
+          const wK = 1 + (wKT - 1) * lieE;
+          const lift = (seat!.seatH + 0.05) * s * lieE;
+          // Feet-ward unit vector of the rotated figure: the ground
+          // point lands half a body past the deck centre so the whole
+          // figure straddles it evenly.
+          const fux = -Math.sin(rot);
+          const fuy = Math.cos(rot);
+          // A whisper of head-ward bias tucks the feet above the
+          // footboard rail instead of draping over it.
+          const half = bodyH * lK * 0.5 - 0.08 * s;
+          const fx = bodyX + fux * half * lieE;
+          const fy = bodyY - lift + fuy * half * lieE;
+          ctx.save();
+          ctx.translate(fx, fy);
+          ctx.rotate(rot);
+          ctx.scale(wK, lK);
+          ctx.translate(-bodyX, -bodyY);
+        }
         // Layer law with a cape worn: gear straps OVER the cloth, so
         // the quiver paints immediately after the cape on whichever
         // side of the body the cape lands this frame.
@@ -22559,6 +22731,7 @@ export class Renderer {
           paintCape(ctx);
           if (rigPose.hasCape) drawBackGear(ctx, rigPose);
         }
+        if (lying) ctx.restore();
       },
       // THE REACH ENVELOPE: the outline scratch rasterizes ONLY this
       // box — anything painted past it is cropped on a hard edge. The

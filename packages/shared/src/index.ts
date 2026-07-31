@@ -24,6 +24,7 @@ export * from './world/danger.js';
 export * from './world/explored.js';
 export * from './world/tiles.js';
 export * from './world/signs.js';
+export * from './world/seats.js';
 export * from './world/chunk.js';
 export * from './world/pathfind.js';
 export * from './ecs/world.js';

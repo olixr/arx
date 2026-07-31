@@ -47,6 +47,13 @@ export enum PoseState {
    * settled two-hand rhythm for the action's whole run.
    */
   Milk = 15,
+  /**
+   * Lying down — a body resting in a bed. Only ever set while the
+   * sitter occupies a Tile.Bed (players via Rest, NPCs via routine
+   * `lie` stops); the client reads the bed under the body for the
+   * axis and deck height, so the wire stays one byte.
+   */
+  Lie = 16,
 }
 
 /**
