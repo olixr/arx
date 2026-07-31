@@ -106,7 +106,15 @@ import {
   npcLivestock,
   GEM_BATTLESTAFFS,
   pickRarity,
+  ELEMENT_COLORS,
   enchantDef,
+  type ArxElement,
+  type ProcAction,
+  type ProcEffect,
+  type ProcMoment,
+  mkProcRuntime,
+  procWakes,
+  type ProcRuntime,
   rollLoot,
   rolledStats,
   trinketPowerMult,
@@ -1116,7 +1124,60 @@ interface PlayerComp {
    * wary mark forgets across a restart, and that's fine.
    */
   markWary: Map<EntityId, number>;
+  /**
+   * THE DEEPER SIGIL: live state for every working the player carries,
+   * keyed by proc id. One entry per id however many pieces carry it —
+   * a matched set shares one rest timer and one meter.
+   *
+   * In-memory only, and deliberately so: a charge half-built and a
+   * timer half-spent are facts about THIS fight, not about the
+   * character. Logging out puts the workings back at rest.
+   */
+  procs: Map<string, ProcRuntime>;
 }
+
+/** Where a working woke, and what it has to work with. */
+interface ProcContext {
+  x: number;
+  y: number;
+  /** The foe in the moment, when there was one. */
+  targetEid?: EntityId;
+  /** School to credit any damage the working deals. */
+  style?: SkillId;
+}
+
+/** How far a chaining working looks for its next foe, tiles. */
+const CHAIN_PROC_RANGE = 5;
+/** Most things one reveal may mark — a rich seam must not flood the wire. */
+const REVEAL_PROC_CAP = 24;
+/** Hard ceiling on a reveal's tile scan, whatever radius the def asks for. */
+const REVEAL_PROC_MAX_TILES = 12;
+
+/** One sample of every action shape, for the /proc dev lever. */
+const DEV_PROC_ACTIONS: Record<string, ProcAction> = {
+  status: { do: 'status', status: 'burn', power: 2, ticks: 60 },
+  nova: { do: 'nova', damage: 6, radius: 3 },
+  bolt: { do: 'bolt', damage: 8 },
+  chain: { do: 'chain', damage: 5, jumps: 3 },
+  ward: { do: 'ward', absorb: 30, ticks: 100 },
+  heal: { do: 'heal', amount: 15 },
+  surge: { do: 'surge', stat: 'crit', pct: 25, ticks: 100 },
+  cleanse: { do: 'cleanse' },
+  yield: { do: 'yield', extra: 2 },
+  reveal: { do: 'reveal', radius: 10, of: 'node' },
+};
+
+/** Every chest a reveal working counts as a cache, open or shut. */
+const CHEST_TILES: ReadonlySet<Tile> = new Set([
+  Tile.ChestWood,
+  Tile.ChestWoodOpen,
+  Tile.ChestIron,
+  Tile.ChestIronOpen,
+  Tile.ChestGilded,
+  Tile.ChestGildedOpen,
+  Tile.ChestMossy,
+  Tile.ChestMossyOpen,
+]);
 
 /** A timed self-effect; multiple can ride at once (speeds multiply). */
 interface PlayerBuff {
@@ -1139,6 +1200,10 @@ interface PlayerBuff {
   regenPer4s: number;
   /** While active, landed basic attacks apply this status (Envenom). */
   onHitStatus?: StatusApply;
+  /** Extra crit chance in percentage points (a surge working's lift). */
+  critPct: number;
+  /** Multiplier on this player's outgoing max hits (a surge working's lift). */
+  dmgMult: number;
   untilTick: number;
   /**
    * Consumable channel: one 'tonic' + one 'food' buff may be active at
@@ -1163,8 +1228,28 @@ function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuf
     offhandWeight: 0,
     gatherSpeed: 1,
     regenPer4s: 0,
+    critPct: 0,
+    dmgMult: 1,
     ...partial,
   };
+}
+
+/**
+ * The two surge dials that had no home in PlayerBuff before the proc
+ * grammar. Both fold ADDITIVELY across live buffs rather than taking
+ * the best: two workings that each sharpen the edge should both be
+ * felt, and neither is a stance the other could be said to replace.
+ */
+function surgeCritPct(player: PlayerComp): number {
+  let pct = 0;
+  for (const b of player.buffs) pct += b.critPct;
+  return pct;
+}
+
+function surgeDmgMult(player: PlayerComp): number {
+  let mult = 1;
+  for (const b of player.buffs) mult += b.dmgMult - 1;
+  return mult;
 }
 
 /**
@@ -2408,6 +2493,7 @@ export class GameServer {
       standing,
       repSig: '',
       markWary: new Map(),
+      procs: new Map(),
     });
     this.characterEids.set(character.id, eid);
     this.updateChunkMembership(eid);
@@ -3366,6 +3452,16 @@ export class GameServer {
       addItem(player.inventory, node.yieldItem, 1);
     }
     this.grantXp(eid, player, node.skill, node.xp);
+    // THE DEEPER SIGIL: a finished harvest is a moment, and a yield
+    // working puts its extra straight into the basket. Pack overflow is
+    // the same law as the base yield above: what will not fit is simply
+    // not taken.
+    const procExtra = this.bodyMoment(eid, player, 'gather', {
+      x: action.tx + 0.5,
+      y: action.ty + 0.5,
+      style: node.skill,
+    });
+    if (procExtra > 0) addItem(player.inventory, node.yieldItem, procExtra);
     // Occasional extra find (wild herbs shed seeds) — a single item or
     // a loot table rolled at the node's level (interaction loot).
     if (node.bonusYield && Math.random() < node.bonusYield.chance) {
@@ -3800,6 +3896,13 @@ export class GameServer {
     // hands next season back with it.
     let yieldQty = roll(def.yield.min, def.yield.max);
     if (Math.random() < player.perks.doubleHarvestChance) yieldQty *= 2;
+    // THE DEEPER SIGIL: the plot answers a yield working the same way
+    // the ore seam does.
+    yieldQty += this.bodyMoment(eid, player, 'gather', {
+      x: action.tx + 0.5,
+      y: action.ty + 0.5,
+      style: 'farming',
+    });
     giveOrDrop(def.yield.item, yieldQty);
     let seeds = roll(def.seedReturn.min, def.seedReturn.max);
     if (Math.random() < player.perks.seedRefundChance) seeds += 1;
@@ -9423,7 +9526,8 @@ export class GameServer {
     }
     // Opportunist: the turned back pays the practiced hand more.
     backstabMult += player.perks.backstabBonus;
-    const critPct = player.gear.critPct;
+    const critPct = player.gear.critPct + surgeCritPct(player);
+    maxHit = Math.max(1, Math.round(maxHit * surgeDmgMult(player)));
     // LAG COMP: test the swing against the world the ATTACKER saw —
     // NPC positions rewound by their view delay (see npcHist). Damage
     // and knockback still resolve on the live entity.
@@ -9816,6 +9920,12 @@ export class GameServer {
           : undefined;
     const powerMult = trinket?.roll ? trinketPowerMult(trinket.roll.rar, trinket.roll.pwr) : 1;
     this.castAbility(eid, ab, aim, style, level, false, undefined, powerMult);
+    // THE DEEPER SIGIL: the art is away, so the cast is a moment. Fired
+    // here rather than inside castAbility on purpose — that door also
+    // serves NPC casters and every relic and trinket echo, and only a
+    // player pressing an ability is what a cast working means.
+    const cp = this.positions.get(eid);
+    this.bodyMoment(eid, player, 'cast', { x: cp?.x ?? 0, y: cp?.y ?? 0, style });
     this.sendCooldowns(player);
   }
 
@@ -9931,7 +10041,9 @@ export class GameServer {
           : style;
     const gearMult = casterPlayer
       ? ((casterPlayer.gear.styleDmgMult as Record<string, number>)[gearStyle] ?? 1) *
-        (style === 'arx' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1)
+        (style === 'arx' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1) *
+        // A damage surge riding when the art fires rides the art too.
+        surgeDmgMult(casterPlayer)
       : 1;
     // THE THREAT LAW: NPC casters climb the steeper NPC curve — the
     // level line is all they have; players compound gear on top.
@@ -11142,7 +11254,12 @@ export class GameServer {
           // feet→crown band so a shot crossing the chest or head lands.
           const dy = bandDy(pos.y, npos.y, npcHitHeight(npc.def));
           if (dx * dx + dy * dy < (npc.def.radius + 0.25) ** 2) {
-            const critPct = this.players.get(proj.ownerEid)?.gear.critPct ?? 0;
+            // The surge is read where the shaft LANDS, not where it was
+            // loosed: a working that woke mid-flight still sharpens the
+            // arrow already in the air. Cheaper than stamping every
+            // projectile, and it reads the same in the hand.
+            const shooter = this.players.get(proj.ownerEid);
+            const critPct = shooter ? shooter.gear.critPct + surgeCritPct(shooter) : 0;
             const roll = proj.basic ? rollBasic(proj.maxHit, critPct) : rollDamage(proj.maxHit, critPct);
             const dmg = this.executeAdjust(npcEid, roll.dmg, proj.executeBelow);
             const crit = roll.crit;
@@ -11211,6 +11328,320 @@ export class GameServer {
         this.ecs.destroy(eid);
       } else {
         this.updateChunkMembership(eid);
+      }
+    }
+  }
+
+  // ====================================================== THE DEEPER SIGIL
+
+  /**
+   * A working's live state, born at rest-zero on first sight. One entry
+   * per proc id however many worn pieces carry it: a matched set shares
+   * one timer and one meter, which is what stops five copies of the
+   * same working from answering the same moment five times.
+   */
+  private procState(player: PlayerComp, id: string): ProcRuntime {
+    let st = player.procs.get(id);
+    if (!st) {
+      st = mkProcRuntime();
+      player.procs.set(id, st);
+    }
+    return st;
+  }
+
+  /**
+   * THE ONE PROC DOOR. Every trigger site funnels through here, so the
+   * rest timer, the meter, and the firing all live at one seam. The
+   * arbitration itself is pure and lives in content/equipment (see
+   * procWakes) so the ordering laws can be pinned without a server.
+   *
+   * Returns whatever the action hands back (a yield working's extra),
+   * 0 for everything else.
+   */
+  private offerProc(
+    eid: EntityId,
+    player: PlayerComp,
+    p: ProcEffect,
+    on: ProcMoment,
+    ctx: ProcContext,
+  ): number {
+    const st = this.procState(player, p.id);
+    if (!procWakes(p, st, on, this.tickCount)) return 0;
+    return this.runProc(eid, player, p, ctx);
+  }
+
+  /**
+   * Offer a moment to every working the BODY carries (the aggregate
+   * channel) — kill, hurt, block, cast, gather, and every stacking
+   * working whatever slot it rides.
+   */
+  private bodyMoment(
+    eid: EntityId,
+    player: PlayerComp,
+    on: ProcMoment,
+    ctx: ProcContext,
+  ): number {
+    let extra = 0;
+    for (const p of player.gear.procs) extra += this.offerProc(eid, player, p, on, ctx);
+    return extra;
+  }
+
+  /**
+   * Offer a moment to the workings on the steel that LANDED, then to
+   * the body. Two dual-wielded blades carry two different edges and
+   * each answers only when its own steel connects, exactly as coats do.
+   */
+  private steelMoment(
+    eid: EntityId,
+    player: PlayerComp,
+    worn: EquippedItem | undefined,
+    on: ProcMoment,
+    ctx: ProcContext,
+  ): void {
+    if (worn) {
+      for (const p of weaponStrikeEffects(worn.id, worn.roll).procs) {
+        this.offerProc(eid, player, p, on, ctx);
+      }
+    }
+    this.bodyMoment(eid, player, on, ctx);
+  }
+
+  /**
+   * THE CROSSING: a lowHp working answers the fall past its line and
+   * then goes quiet until the wearer climbs back over it. Called from
+   * the two places health moves — the wound and the mend — so one dive
+   * is one answer however many small hits carried it down.
+   */
+  private lowHpMoment(eid: EntityId, player: PlayerComp): void {
+    const health = this.healths.get(eid);
+    if (!health || health.maxHp <= 0) return;
+    const frac = health.hp / health.maxHp;
+    const pos = this.positions.get(eid);
+    for (const p of player.gear.procs) {
+      if (p.trigger.on !== 'lowHp') continue;
+      const st = this.procState(player, p.id);
+      if (frac > p.trigger.pct) {
+        st.armed = true;
+        continue;
+      }
+      if (!st.armed || health.hp <= 0) continue;
+      if (this.tickCount < st.restUntil) continue;
+      st.armed = false;
+      st.restUntil = this.tickCount + p.icd;
+      this.runProc(eid, player, p, { x: pos?.x ?? 0, y: pos?.y ?? 0 });
+    }
+  }
+
+  /** Ground covered on foot feeds every stride working. */
+  private strideMoment(eid: EntityId, player: PlayerComp, tiles: number): void {
+    if (tiles <= 0) return;
+    for (const p of player.gear.procs) {
+      if (p.trigger.on !== 'stride') continue;
+      const st = this.procState(player, p.id);
+      st.tiles += tiles;
+      if (st.tiles < p.trigger.tiles) continue;
+      if (this.tickCount < st.restUntil) continue;
+      st.tiles = 0;
+      st.restUntil = this.tickCount + p.icd;
+      const pos = this.positions.get(eid);
+      this.runProc(eid, player, p, { x: pos?.x ?? 0, y: pos?.y ?? 0 });
+    }
+  }
+
+  /**
+   * A woken working does its work and says its name. The name floats
+   * once and no number ever does: a proc is an event in the fight, and
+   * a second damage number every other second is noise, not feedback.
+   */
+  private runProc(
+    eid: EntityId,
+    player: PlayerComp,
+    p: ProcEffect,
+    ctx: ProcContext,
+  ): number {
+    const a = p.action;
+    const color = ELEMENT_COLORS[p.element ?? 'arcane'];
+    const style: SkillId = ctx.style ?? 'arx';
+    const at = this.positions.get(eid);
+    let radius = 0.6;
+    let x2: number | undefined;
+    let y2: number | undefined;
+    let extra = 0;
+
+    switch (a.do) {
+      case 'status': {
+        if (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid)) break;
+        this.applyStatusToNpc(
+          ctx.targetEid,
+          { status: a.status, power: a.power, durationTicks: a.ticks },
+          eid,
+          style,
+        );
+        break;
+      }
+      case 'bolt': {
+        if (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid)) break;
+        const tp = this.positions.get(ctx.targetEid);
+        if (at && tp) {
+          x2 = tp.x;
+          y2 = tp.y;
+        }
+        this.damageNpc(ctx.targetEid, a.damage, eid, style, {});
+        break;
+      }
+      case 'nova': {
+        radius = a.radius;
+        for (const npcEid of this.npcsWithin(ctx.x, ctx.y, a.radius)) {
+          this.damageNpc(npcEid, a.damage, eid, style, { knockFrom: { x: ctx.x, y: ctx.y } });
+        }
+        break;
+      }
+      case 'chain': {
+        // The struck foe first, then the nearest others outward — the
+        // same walk the reaction table's chain effect takes.
+        const hit = ctx.targetEid !== undefined && this.npcs.has(ctx.targetEid) ? [ctx.targetEid] : [];
+        for (const npcEid of this.npcsWithin(ctx.x, ctx.y, CHAIN_PROC_RANGE)) {
+          if (hit.length > a.jumps) break;
+          if (!hit.includes(npcEid)) hit.push(npcEid);
+        }
+        let from = { x: ctx.x, y: ctx.y };
+        for (const npcEid of hit) {
+          const tp = this.positions.get(npcEid);
+          if (tp) {
+            this.broadcastFx({
+              t: 'fx',
+              kind: 'proc',
+              x: from.x,
+              y: from.y,
+              x2: tp.x,
+              y2: tp.y,
+              radius: 0.4,
+              color,
+              id: p.id,
+            });
+            from = { x: tp.x, y: tp.y };
+          }
+          this.damageNpc(npcEid, a.damage, eid, style, {});
+        }
+        break;
+      }
+      case 'ward': {
+        player.buffs.push(mkBuff({ shieldHp: a.absorb, untilTick: this.tickCount + a.ticks }));
+        radius = 0.9;
+        break;
+      }
+      case 'heal': {
+        const health = this.healths.get(eid);
+        if (health) health.hp = Math.min(health.maxHp, health.hp + a.amount);
+        // A mend can lift the wearer back over a lowHp line, re-arming
+        // the workings that watch it.
+        this.lowHpMoment(eid, player);
+        break;
+      }
+      case 'surge': {
+        const until = this.tickCount + a.ticks;
+        const lift = a.pct / 100;
+        player.buffs.push(
+          mkBuff(
+            a.stat === 'speed'
+              ? { speedMult: 1 + lift, untilTick: until }
+              : a.stat === 'armor'
+                ? { armor: a.pct, untilTick: until }
+                : a.stat === 'regen'
+                  ? { regenPer4s: a.pct, untilTick: until }
+                  : a.stat === 'crit'
+                    ? { critPct: a.pct, untilTick: until }
+                    : { dmgMult: 1 + lift, untilTick: until },
+          ),
+        );
+        radius = 0.9;
+        break;
+      }
+      case 'cleanse': {
+        this.statuses.delete(eid);
+        radius = 0.9;
+        break;
+      }
+      case 'yield': {
+        extra = a.extra;
+        break;
+      }
+      case 'reveal': {
+        radius = a.radius;
+        this.revealNearby(eid, ctx, a.radius, a.of, color);
+        break;
+      }
+    }
+
+    this.broadcastFx({
+      t: 'fx',
+      kind: 'proc',
+      x: ctx.x,
+      y: ctx.y,
+      x2,
+      y2,
+      radius,
+      color,
+      text: p.name,
+      id: p.id,
+    });
+    return extra;
+  }
+
+  /** Living foes inside a circle, nearest first. */
+  private npcsWithin(x: number, y: number, radius: number): EntityId[] {
+    const found: Array<{ eid: EntityId; d: number }> = [];
+    for (const [npcEid, npc] of this.npcs) {
+      const np = this.positions.get(npcEid);
+      if (!np) continue;
+      const d = Math.hypot(np.x - x, np.y - y) - npc.def.radius;
+      if (d <= radius) found.push({ eid: npcEid, d });
+    }
+    found.sort((a, b) => a.d - b.d);
+    return found.map((f) => f.eid);
+  }
+
+  /**
+   * A reveal working marks what is near but unseen, one mote per thing
+   * and only to the wearer's own session — a working on your boots is
+   * not a flare for the whole field. Capped so a rich seam cannot flood
+   * the wire.
+   */
+  private revealNearby(
+    eid: EntityId,
+    ctx: ProcContext,
+    radius: number,
+    of: 'node' | 'chest' | 'foe',
+    color: string,
+  ): void {
+    const session = this.players.get(eid)?.session;
+    if (!session) return;
+    const mark = (x: number, y: number): void => {
+      session.sendJson({ t: 'fx', kind: 'proc', x, y, radius: 0.35, color, id: 'reveal_mark' });
+    };
+    if (of === 'foe') {
+      for (const npcEid of this.npcsWithin(ctx.x, ctx.y, radius).slice(0, REVEAL_PROC_CAP)) {
+        const np = this.positions.get(npcEid);
+        if (np) mark(np.x, np.y);
+      }
+      return;
+    }
+    const r = Math.min(radius, REVEAL_PROC_MAX_TILES);
+    const cx = Math.floor(ctx.x);
+    const cy = Math.floor(ctx.y);
+    let marked = 0;
+    for (let ty = cy - r; ty <= cy + r && marked < REVEAL_PROC_CAP; ty++) {
+      for (let tx = cx - r; tx <= cx + r && marked < REVEAL_PROC_CAP; tx++) {
+        if ((tx - cx) ** 2 + (ty - cy) ** 2 > r * r) continue;
+        const ground = this.world.groundAt(tx, ty);
+        if (ground === undefined) continue;
+        const wanted =
+          of === 'node'
+            ? NODES_BY_TILE.has(ground as Tile)
+            : CHEST_TILES.has(ground as Tile);
+        if (!wanted) continue;
+        mark(tx + 0.5, ty + 0.5);
+        marked++;
       }
     }
   }
@@ -11302,6 +11733,24 @@ export class GameServer {
         if (struck) {
           const strike = weaponStrikeEffects(struck.id, struck.roll);
           strikeSteal = strike.lifestealFrac;
+          // THE DEEPER SIGIL: the steel that landed offers its moment.
+          // A crit is also a hit, so both are offered and each working
+          // hears only the one it listens for.
+          //
+          // WHIFF-0 IS SACRED: a 0-roll drew on the law but landed
+          // nothing, so it wakes no working and advances no meter. A
+          // cadence that counted whiffs would be counting swings.
+          if (dmg > 0) {
+            const npos = this.positions.get(npcEid);
+            const ctx: ProcContext = {
+              x: npos?.x ?? 0,
+              y: npos?.y ?? 0,
+              targetEid: npcEid,
+              style,
+            };
+            this.steelMoment(attackerEid, attacker, struck, 'hit', ctx);
+            if (crit) this.steelMoment(attackerEid, attacker, struck, 'crit', ctx);
+          }
           for (const oh of strike.onHit) {
             if (Math.random() < oh.chance) {
               this.applyStatusToNpc(
@@ -11450,6 +11899,14 @@ export class GameServer {
           this.sendCooldowns(killer);
         }
       }
+      // THE DEEPER SIGIL: the kill is a moment for the body's workings.
+      // The corpse is still on the ground here, so a working that
+      // bursts does so where the foe fell.
+      this.bodyMoment(killerEid, killer, 'kill', {
+        x: pos.x,
+        y: pos.y,
+        style: style ?? 'onehand',
+      });
     }
 
     // Roll the loot table onto the ground.
@@ -11673,6 +12130,16 @@ export class GameServer {
       const blocked = raw - dmg;
       if (blocked > 0) {
         this.grantXp(eid, player, 'shield', blocked * 3);
+        // THE DEEPER SIGIL: a real bite turned is a moment. Gated on
+        // the same `blocked > 0` the wall's own lesson uses, so a
+        // working can never answer a blow the shield never met.
+        const bp = this.positions.get(eid);
+        this.bodyMoment(eid, player, 'block', {
+          x: bp?.x ?? 0,
+          y: bp?.y ?? 0,
+          targetEid: opts.sourceEid,
+          style: 'shield',
+        });
         // The rim spark — throttled so a mob's flurry doesn't strobe.
         if (blocked >= 2 && this.tickCount - player.lastBlockFxTick >= 8) {
           player.lastBlockFxTick = this.tickCount;
@@ -11707,6 +12174,20 @@ export class GameServer {
 
     health.hp -= dmg;
     this.grantXp(eid, player, 'defence', dmg * 3);
+    // THE DEEPER SIGIL: a wound that reached flesh is a moment (whiff-0
+    // and fully-soaked blows are already gone above), and the new
+    // health may have carried the wearer past a lowHp line.
+    {
+      const wp = this.positions.get(eid);
+      const ctx: ProcContext = {
+        x: wp?.x ?? 0,
+        y: wp?.y ?? 0,
+        targetEid: opts.sourceEid,
+        style: 'defence',
+      };
+      this.bodyMoment(eid, player, 'hurt', ctx);
+      this.lowHpMoment(eid, player);
+    }
     // THE TURNED BLOW: the stance sends part of what landed back to
     // whoever sent it, dealt in the shield school (the wall's own
     // damage trains the wall — and credits the kill).
@@ -14370,6 +14851,44 @@ export class GameServer {
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Ripened ${grown} crops.` });
       return;
     }
+    if (config.devCommands && text.startsWith('/proc')) {
+      // /proc <action> [element] — wake a working on the spot.
+      //
+      // THE DEEPER SIGIL ships its engine before its roster, so this is
+      // how the whole path (action → fx → floaty → sound) is exercised
+      // in a real session while enchants.ts still carries no procs. It
+      // fires runProc DIRECTLY, so it deliberately proves nothing about
+      // triggers, rest timers, or meters — those are pinned by tests.
+      const [, actionRaw, elemRaw] = text.split(/\s+/);
+      const pos = this.positions.get(eid);
+      const action = actionRaw ? DEV_PROC_ACTIONS[actionRaw] : undefined;
+      if (!pos || !action) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Workings: ${Object.keys(DEV_PROC_ACTIONS).join(', ')}`,
+        });
+        return;
+      }
+      const element = (elemRaw && elemRaw in ELEMENT_COLORS ? elemRaw : 'arcane') as ArxElement;
+      const target = this.npcsWithin(pos.x, pos.y, 8)[0];
+      const tp = target !== undefined ? this.positions.get(target) : undefined;
+      this.runProc(
+        eid,
+        player,
+        {
+          kind: 'proc',
+          id: `dev_${actionRaw}`,
+          name: 'Dev Working',
+          trigger: { on: 'crit' },
+          action,
+          icd: 20,
+          element,
+        },
+        { x: tp?.x ?? pos.x, y: tp?.y ?? pos.y, targetEid: target, style: 'arx' },
+      );
+      return;
+    }
     if (config.devCommands && text.startsWith('/give ')) {
       // /give <item> [qty] [rarity] [power] [enchant] — gear/trinkets
       // mint a fresh roll at the requested tier, item power, and
@@ -15248,6 +15767,8 @@ export class GameServer {
     const equipped = this.equippedWeapon(player);
     const style = equipped?.weapon.style ?? null;
     let moved = false;
+    /** Tiles covered across every frame this tick — feeds stride workings. */
+    let strideStep = 0;
     let frames = 0;
     while (frames < MAX_INPUTS_PER_TICK && player.inputQueue.length > 0) {
       const frame = player.inputQueue.shift()!;
@@ -15274,7 +15795,12 @@ export class GameServer {
       const next = stepMovement(pos, frame, speed, TICK_DT, this.world);
       if (next.x !== pos.x || next.y !== pos.y) {
         moved = true;
-        player.sneakMoveAccum += Math.hypot(next.x - pos.x, next.y - pos.y);
+        const step = Math.hypot(next.x - pos.x, next.y - pos.y);
+        player.sneakMoveAccum += step;
+        // THE DEEPER SIGIL: ground actually covered feeds the stride
+        // workings. Measured off the RESOLVED step, so walking a wall
+        // covers nothing and no working can be farmed standing still.
+        strideStep += step;
       }
       pos.x = next.x;
       pos.y = next.y;
@@ -15359,6 +15885,7 @@ export class GameServer {
     if (moved || player.sneaking || player.action) this.standUp(eid, player, pos);
     // The planted-stance clock (Bulwark) counts sneaking or not.
     player.stillTicks = moved ? 0 : player.stillTicks + 1;
+    if (strideStep > 0) this.strideMoment(eid, player, strideStep);
     if (player.sneaking) {
       player.sneakStillTicks = moved ? 0 : player.sneakStillTicks + 1;
     } else {

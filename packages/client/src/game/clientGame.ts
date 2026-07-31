@@ -1372,6 +1372,21 @@ export class ClientGame {
         this.fx.push(fx);
         if (this.fx.length > 48) this.fx.shift();
         this.onFx?.(fx);
+        // THE DEEPER SIGIL: a working says its name once and never a
+        // number. The damage it deals already floats through the normal
+        // hit stream, so printing a figure here would double-count the
+        // same blow and turn feedback into noise. Sized under a
+        // reaction's shout: a proc punctuates, a reaction interrupts.
+        if (msg.kind === 'proc' && msg.text) {
+          this.floaties.push({
+            x: msg.x,
+            y: msg.y - 0.95,
+            text: msg.text,
+            color: msg.color ?? '#f4efe4',
+            bornAt: performance.now(),
+            sizeMul: 1.05,
+          });
+        }
         // Reactions announce themselves — the name IS the reward.
         if (msg.kind === 'reaction' && msg.text) {
           this.floaties.push({

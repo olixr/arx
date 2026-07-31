@@ -26396,6 +26396,10 @@ export class Renderer {
         return 750;
       case 'summon':
         return 500;
+      case 'proc':
+        // A working reads as a quick flare, deliberately shorter than
+        // any ability moment — Phase 2 gives each one its own signature.
+        return 520;
       default:
         return 380;
     }
@@ -28113,6 +28117,56 @@ export class Renderer {
           break;
         }
 
+        case 'proc': {
+          // THE DEEPER SIGIL, ground pass. A working wakes as a sigil
+          // that STAMPS and opens: a hard bright ring snapping outward
+          // over a brief stain, with four cardinal ticks that read as
+          // engineering rather than sparkle. Held deliberately quieter
+          // and shorter than any ability circle, because a proc fires
+          // inside a fight that is already busy.
+          //
+          // Phase 2 replaces this with per-working signatures keyed off
+          // fx.id, exactly as abilities are keyed today. Until then one
+          // honest shape carries every working, tinted by its element.
+          const mark = fx.id === 'reveal_mark';
+          ctx.save();
+          // The stain lands instantly and burns off fast.
+          if (t < 0.45) {
+            ctx.globalAlpha = (1 - t / 0.45) * (mark ? 0.16 : 0.22);
+            ctx.fillStyle = st.deep;
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, rPx * 0.9, rPx * 0.9 * squash, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // The ring: out fast, thinning as it goes.
+          const ease = 1 - (1 - t) * (1 - t);
+          const rr = rPx * (0.25 + 0.95 * ease);
+          ctx.globalAlpha = (1 - t) * (mark ? 0.6 : 0.95);
+          ctx.strokeStyle = t < 0.3 ? st.core : st.mid;
+          ctx.lineWidth = Math.max(1.5, sc * 0.075 * (1 - t * 0.7));
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, rr, rr * squash, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          // Four cardinal ticks riding the ring — the sigil's corners.
+          // A reveal pin skips them: it is a mark, not a working.
+          if (!mark && t < 0.6) {
+            ctx.globalAlpha = (1 - t / 0.6) * 0.8;
+            ctx.fillStyle = st.spark;
+            for (let k = 0; k < 4; k++) {
+              const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+              const g = Math.max(1.5, sc * 0.035);
+              ctx.fillRect(
+                p.x + Math.cos(a) * rr - g / 2,
+                p.y + Math.sin(a) * rr * squash - g,
+                g,
+                g * 2,
+              );
+            }
+          }
+          ctx.restore();
+          break;
+        }
+
         case 'summon': {
           // The arrival circle rolls out on the turf; its glyphs
           // stand on the ring in the volume pass.
@@ -28360,6 +28414,41 @@ export class Renderer {
                 ctx.fillStyle = lit ? st.core : st.spark;
                 ctx.fillRect(q.x - s / 2, by - s, s, s * 2);
                 if (cross) ctx.fillRect(q.x - s, by - s * 0.3, s * 2, s * 0.6);
+                ctx.restore();
+              },
+            });
+          }
+          break;
+        }
+
+        case 'proc': {
+          // THE DEEPER SIGIL, volume pass. Three shards kick UP off the
+          // sigil and fall back: the vertical read that says a working
+          // woke, not that the ground was struck. Deliberately three,
+          // not seven — an ability's flourish must always out-shout a
+          // proc's, or the fight loses its grammar of scale.
+          if (fx.id === 'reveal_mark') break;
+          const rand = srand(seed);
+          for (let k = 0; k < 3; k++) {
+            const a = rand() * Math.PI * 2;
+            const spread = 0.16 + rand() * 0.16;
+            const ex = fx.x + Math.cos(a) * spread;
+            const ey = fx.y + Math.sin(a) * spread * 0.35;
+            const kt0 = k * 0.07;
+            const lit = k % 2 === 0;
+            items.push({
+              sortY: ey + 0.005,
+              draw: () => {
+                const kt = Math.max(0, Math.min(1, (t - kt0) / (1 - kt0)));
+                if (kt <= 0 || kt >= 1) return;
+                const q = this.liftedWTS(ex, ey);
+                // Up hard, then eased back down — a kick, not a drift.
+                const rise = Math.sin(kt * Math.PI) * 1.05;
+                const s = sc * 0.075 * (1 - kt * 0.45);
+                ctx.save();
+                ctx.globalAlpha = (1 - kt) * 0.95;
+                ctx.fillStyle = lit ? st.core : st.spark;
+                ctx.fillRect(q.x - s / 2, q.y - sc * (0.2 + rise) - s, s, s * 2);
                 ctx.restore();
               },
             });

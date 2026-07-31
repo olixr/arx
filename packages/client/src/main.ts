@@ -1283,6 +1283,15 @@ game.onFx = (fx) => {
     if (dist < 7) renderer.shake(3);
   } else if (fx.kind === 'buff') {
     sfx.spatial(at, 'near', () => sfx.empower());
+  } else if (fx.kind === 'proc') {
+    // THE DEEPER SIGIL: a working wakes. It gets a voice and a small
+    // shove, both scaled well under an ability's — a proc punctuates
+    // the fight it fires inside, it does not interrupt it. The reveal
+    // mark is a silent pin and deliberately has neither.
+    if (fx.id !== 'reveal_mark') {
+      sfx.spatial(at, 'near', () => sfx.empower());
+      if (dist < 6) renderer.shake(2 * (0.3 + punch));
+    }
   } else if (fx.kind === 'vanish') {
     // A stealth flip: a soft gray-violet puff where the body was (or
     // reappears) so the interest pop reads as intentional.

@@ -22,7 +22,101 @@ import type { GearSlot } from './types.js';
  *    time from the WEAPON INSTANCE that landed the blow — so two dual-
  *    wielded blades can carry two different edge enchants and each
  *    fires only when its own steel connects.
+ *  - PROCS route by their TRIGGER, not by their slot (see below).
  */
+
+// ------------------------------------------------------- the proc grammar
+
+/**
+ * THE PROC GRAMMAR: a working that waits for a moment, then answers.
+ *
+ * Every other effect in this file is a flat number folded into the
+ * wearer's stats, and before this grammar the only conditional in the
+ * whole vocabulary was an on-hit chance. A proc is trigger x response:
+ * WHEN it wakes, WHAT it does, and how long it must rest after.
+ *
+ * The internal cooldown (`icd`, in ticks) is not a dial to leave at
+ * zero. It is the law that keeps a proc a MOMENT instead of a texture:
+ * a 12%-chance nova that may fire three times a second is not a proc,
+ * it is a damage aura wearing a disguise.
+ */
+export type EnchantTrigger =
+  /** A basic attack landed. Rolls `chance` on each landed blow. */
+  | { on: 'hit'; chance: number }
+  /** A critical landed. Rare of its own nature, so it needs no chance. */
+  | { on: 'crit' }
+  /** Something died to you. */
+  | { on: 'kill' }
+  /** A blow got past armor into flesh. Rolls `chance`. */
+  | { on: 'hurt'; chance: number }
+  /** A raised shield turned a real bite of a blow. */
+  | { on: 'block' }
+  /** An ability fired. */
+  | { on: 'cast' }
+  /**
+   * Health crossed this fraction of maximum, DOWNWARD. Fires on the
+   * crossing alone and re-arms only when the wearer climbs back above
+   * the line, so a string of small hits cannot re-trigger it every
+   * tick. (The Second Wind law, generalized to the whole grammar.)
+   */
+  | { on: 'lowHp'; pct: number }
+  /** Every Nth landed strike. Whiffs never count, the whiff-0 law. */
+  | { on: 'cadence'; every: number }
+  /**
+   * Build and spend: each `per` moment adds a charge and the working
+   * fires at `count`. THE METER IS THE FIGHTER'S, never the blade's —
+   * a dual wielder keeps ONE meter however many edges carry the same
+   * working, which is why stacks route aggregate-side whatever slot
+   * they ride on.
+   */
+  | { on: 'stacks'; per: StackSource; count: number }
+  /** A harvest completed. Rolls `chance`. */
+  | { on: 'gather'; chance: number }
+  /** Every N tiles covered on foot. */
+  | { on: 'stride'; tiles: number };
+
+/** The moments a stacking working may count toward its charge. */
+export type StackSource = 'hit' | 'crit' | 'hurt' | 'block' | 'cast' | 'kill';
+
+/** What a timed surge lifts. Each maps to exactly one live dial. */
+export type SurgeStat = 'speed' | 'armor' | 'crit' | 'damage' | 'regen';
+
+/** What a woken working actually does. */
+export type ProcAction =
+  /** Lay a status on the struck foe. */
+  | { do: 'status'; status: StatusId; power: number; ticks: number }
+  /** A burst around the moment's point. */
+  | { do: 'nova'; damage: number; radius: number }
+  /** A single mote into the foe that woke it. */
+  | { do: 'bolt'; damage: number }
+  /** Damage that walks on to nearby foes. */
+  | { do: 'chain'; damage: number; jumps: number }
+  /** A shell that eats damage before flesh does. */
+  | { do: 'ward'; absorb: number; ticks: number }
+  /** Close some of the wearer's own wounds. */
+  | { do: 'heal'; amount: number }
+  /** A timed lift on one dial. */
+  | { do: 'surge'; stat: SurgeStat; pct: number; ticks: number }
+  /** Strip every status riding the wearer. */
+  | { do: 'cleanse' }
+  /** Gathering only: more in the basket. */
+  | { do: 'yield'; extra: number }
+  /** Mark what is nearby but unseen. */
+  | { do: 'reveal'; radius: number; of: 'node' | 'chest' | 'foe' };
+
+/**
+ * Triggers that belong to the steel which LANDED, and so resolve from
+ * the weapon instance that swung it (the strike channel). Everything
+ * else belongs to the body wearing it and folds into the aggregate.
+ *
+ * `stacks` is deliberately absent even when it counts hits: see the
+ * meter law on the trigger itself.
+ */
+export const STRIKE_TRIGGERS: readonly EnchantTrigger['on'][] = ['hit', 'crit', 'cadence'];
+
+export function isStrikeTrigger(on: EnchantTrigger['on']): boolean {
+  return (STRIKE_TRIGGERS as readonly string[]).includes(on);
+}
 
 export type EnchantEffect =
   | { kind: 'skill'; skill: SkillId; amount: number }
@@ -38,9 +132,34 @@ export type EnchantEffect =
   | { kind: 'onKillHaste'; ticks: number }
   | { kind: 'onHitStatus'; status: StatusId; power: number; durationTicks: number; chance: number }
   | { kind: 'lifesteal'; frac: number }
-  | { kind: 'backstab'; bonus: number };
+  | { kind: 'backstab'; bonus: number }
+  | ProcEffect;
 
-/** Effect kinds resolved at strike time from the landed weapon instance. */
+/**
+ * A named working. `id` keys its rest timer and its charge, so two
+ * pieces carrying the SAME proc id share one timer and one meter —
+ * that is what stops a matched set from firing the same working five
+ * times at once. `name` is what floats when it wakes; procs announce
+ * themselves once by name and never by number, so a working reads as
+ * an event instead of adding noise to the damage stream.
+ */
+export interface ProcEffect {
+  kind: 'proc';
+  id: string;
+  name: string;
+  trigger: EnchantTrigger;
+  action: ProcAction;
+  /** Ticks the working must rest before it may wake again. */
+  icd: number;
+  /** Tint for the moment. Defaults to the carrying enchant's element. */
+  element?: ArxElement;
+}
+
+/**
+ * Effect kinds resolved at strike time from the landed weapon instance.
+ * Procs are absent on purpose: they route by TRIGGER, not by kind, so
+ * asking `isStrikeEffect` about one is always the wrong question.
+ */
 export const STRIKE_EFFECT_KINDS: readonly EnchantEffect['kind'][] = [
   'onHitStatus',
   'lifesteal',
@@ -346,9 +465,27 @@ export const ENCHANT_DEFS: EnchantDef[] = [
 ];
 
 export const ENCHANTS = new Map<string, EnchantDef>();
+/**
+ * Every proc shape in the roster, by id. Sharing an id is LEGAL and
+ * meaningful (one rest timer, one meter across a matched set), but two
+ * workings that share an id must be the same working — otherwise the
+ * timer they share is silently arbitrating between two different
+ * effects. Checked at load so it can never reach a player.
+ */
+const PROC_SHAPES = new Map<string, string>();
 for (const e of ENCHANT_DEFS) {
   if (ENCHANTS.has(e.id)) throw new Error(`duplicate enchant id: ${e.id}`);
   if (e.effects.length === 0) throw new Error(`enchant ${e.id} has no effects`);
+  for (const fx of e.effects) {
+    if (fx.kind !== 'proc') continue;
+    if (fx.icd <= 0) throw new Error(`proc ${fx.id} (${e.id}) must rest: icd > 0`);
+    const shape = JSON.stringify([fx.name, fx.trigger, fx.action]);
+    const seen = PROC_SHAPES.get(fx.id);
+    if (seen !== undefined && seen !== shape) {
+      throw new Error(`proc id ${fx.id} carries two different workings`);
+    }
+    PROC_SHAPES.set(fx.id, shape);
+  }
   ENCHANTS.set(e.id, e);
 }
 
@@ -389,9 +526,90 @@ export const ELEMENT_COLORS: Record<ArxElement, string> = {
   astral: '#9ae8de',
 };
 
+/** Ticks to a spoken duration. The sim runs at 20 ticks a second. */
+function secs(ticks: number): string {
+  const s = ticks / 20;
+  return `${Number.isInteger(s) ? s : s.toFixed(1)}s`;
+}
+
+function pct(frac: number): string {
+  return `${Math.round(frac * 100)}%`;
+}
+
+function ordinal(n: number): string {
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+  return `${n}${suffix}`;
+}
+
+const STACK_WORD: Record<StackSource, string> = {
+  hit: 'landed blows',
+  crit: 'critical strikes',
+  hurt: 'wounds taken',
+  block: 'blows turned',
+  cast: 'abilities fired',
+  kill: 'kills',
+};
+
+/** The moment a working waits for, as a phrase that follows "on". */
+export function describeTrigger(t: EnchantTrigger): string {
+  switch (t.on) {
+    case 'hit':
+      return `${pct(t.chance)} of landed blows`;
+    case 'crit':
+      return 'a critical strike';
+    case 'kill':
+      return 'a kill';
+    case 'hurt':
+      return `${pct(t.chance)} of wounds taken`;
+    case 'block':
+      return 'a blow your shield turns';
+    case 'cast':
+      return 'an ability fired';
+    case 'lowHp':
+      return `falling below ${pct(t.pct)} health`;
+    case 'cadence':
+      return `every ${ordinal(t.every)} landed strike`;
+    case 'stacks':
+      return `every ${t.count} ${STACK_WORD[t.per]}`;
+    case 'gather':
+      return `${pct(t.chance)} of harvests`;
+    case 'stride':
+      return `every ${t.tiles} tiles run`;
+  }
+}
+
+/** What the working does when it wakes, as a noun phrase. */
+export function describeAction(a: ProcAction): string {
+  switch (a.do) {
+    case 'status':
+      return `${a.status} on the foe for ${secs(a.ticks)}`;
+    case 'nova':
+      return `a burst of ${a.damage} to everything within ${a.radius} tiles`;
+    case 'bolt':
+      return `a mote into the foe for ${a.damage}`;
+    case 'chain':
+      return `${a.damage} damage walking to ${a.jumps} more foes`;
+    case 'ward':
+      return `a shell that eats ${a.absorb} damage for ${secs(a.ticks)}`;
+    case 'heal':
+      return `${a.amount} health closed`;
+    case 'surge':
+      return `+${a.pct}% ${a.stat} for ${secs(a.ticks)}`;
+    case 'cleanse':
+      return 'every status on you stripped';
+    case 'yield':
+      return `+${a.extra} to the basket`;
+    case 'reveal':
+      return `nearby ${a.of === 'node' ? 'ore and growth' : a.of === 'chest' ? 'caches' : 'foes'} marked within ${a.radius} tiles`;
+  }
+}
+
 /** One-line human reading of an effect — cards, scroll tooltips. */
 export function describeEffect(fx: EnchantEffect): string {
   switch (fx.kind) {
+    case 'proc':
+      return `${fx.name}: on ${describeTrigger(fx.trigger)}, ${describeAction(fx.action)}`;
     case 'skill':
       return `+${fx.amount} ${fx.skill}`;
     case 'maxHp':
@@ -430,5 +648,113 @@ export function instanceEffects(
 ): EnchantEffect[] {
   const e = enchantDef(ench);
   if (!e) return nativeEffects ?? [];
-  return nativeEffects ? [...nativeEffects, ...e.effects] : e.effects;
+  const carried = e.effects.map((fx) =>
+    // A proc inherits its carrier's element unless it names its own —
+    // so an ember edge's working burns ember without saying so twice.
+    fx.kind === 'proc' && fx.element === undefined ? { ...fx, element: e.element } : fx,
+  );
+  return nativeEffects ? [...nativeEffects, ...carried] : carried;
+}
+
+// ------------------------------------------------ the working's own clock
+
+/**
+ * One working's live state. Held per player, keyed by proc id, and
+ * in-memory only: a charge half-built and a timer half-spent are facts
+ * about THIS fight, not about the character.
+ */
+export interface ProcRuntime {
+  /** Tick before which the working is still resting. */
+  restUntil: number;
+  /** Charge built so far (stacks triggers). */
+  stacks: number;
+  /** Landed strikes counted so far (cadence triggers). */
+  strikes: number;
+  /** Tiles covered so far (stride triggers). */
+  tiles: number;
+  /**
+   * lowHp only: ready to answer a crossing. Cleared when the working
+   * fires, set again when the wearer climbs back over the line, so one
+   * dive past the mark is one answer however many blows carried it.
+   */
+  armed: boolean;
+}
+
+export function mkProcRuntime(): ProcRuntime {
+  return { restUntil: 0, stacks: 0, strikes: 0, tiles: 0, armed: true };
+}
+
+/** The moments that can be offered to a working through procWakes. */
+export type ProcMoment = StackSource | 'gather';
+
+/**
+ * THE ARBITRATION, kept pure so it can be reasoned about and pinned.
+ * Given a working, its live state, the moment that just happened, and
+ * the clock, decide whether it wakes. Mutates the state's counters,
+ * because the tally IS the state.
+ *
+ * Two orderings matter and are deliberate:
+ *
+ *  - COUNTERS ADVANCE WHILE THE WORKING RESTS. A cadence or a stack
+ *    keeps an honest tally through the rest, so the charge is banked
+ *    rather than lost and the working answers on the first moment
+ *    after it wakes. A meter that silently dropped its count during
+ *    the rest would read to a player as the game eating their hits.
+ *
+ *  - CHANCE IS NOT ROLLED WHILE IT RESTS. Spending a roll that a
+ *    resting working could never have answered would quietly push
+ *    every published proc rate below what its card promises.
+ *
+ * `roll` is injected so the law is testable without stubbing global
+ * randomness.
+ */
+export function procWakes(
+  p: ProcEffect,
+  st: ProcRuntime,
+  on: ProcMoment,
+  tick: number,
+  roll: () => number = Math.random,
+): boolean {
+  const t = p.trigger;
+  // A stacking working listens for its OWN source moment rather than
+  // for its name; a cadence counts landed strikes, so it listens for
+  // the hit. Everything else answers to the moment it is named after.
+  const listens =
+    t.on === 'stacks' ? t.per === on : t.on === 'cadence' ? on === 'hit' : t.on === on;
+  if (!listens) return false;
+  const resting = tick < st.restUntil;
+
+  switch (t.on) {
+    case 'cadence':
+      if (++st.strikes < t.every) return false;
+      if (resting) return false; // the charge waits; it is never spent unheard
+      st.strikes = 0;
+      break;
+    case 'stacks':
+      if (++st.stacks < t.count) return false;
+      if (resting) return false;
+      st.stacks = 0;
+      break;
+    case 'hit':
+    case 'hurt':
+    case 'gather':
+      if (resting || roll() >= t.chance) return false;
+      break;
+    default:
+      if (resting) return false;
+      break;
+  }
+  st.restUntil = tick + p.icd;
+  return true;
+}
+
+/**
+ * Add a proc to a list, keeping ONE entry per proc id. Two pieces
+ * carrying the same working share a rest timer and a meter, so a
+ * matched set must not fire it five times over — the fold has to
+ * collapse them at the gathering point, not at the firing point.
+ */
+export function addProc(out: ProcEffect[], fx: ProcEffect): void {
+  if (out.some((p) => p.id === fx.id)) return;
+  out.push(fx);
 }

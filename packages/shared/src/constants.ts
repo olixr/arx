@@ -78,7 +78,14 @@
 // never marry the real ones — cosmetic, but wrong in the hand, and a
 // v21 skills panel would show an empty school. Bumped so old clients
 // are turned away cleanly instead of playing a half-wrong game.)
-export const PROTOCOL_VERSION = 22;
+// v23: THE DEEPER SIGIL — S2CFx grows the 'proc' kind (an enchanted
+// working waking). By the bump law this is cosmetic breath and could
+// have ridden v22 like 'vq' does v21 — but unlike a bark, a proc IS
+// the feedback for a mechanic that is also changing the player's
+// damage, wards, and cooldowns. A v22 client would take the hits and
+// the healing with no idea what caused either, which is not a lost
+// bark, it is an unreadable fight. Bumped on that reasoning.
+export const PROTOCOL_VERSION = 23;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

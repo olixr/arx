@@ -740,7 +740,17 @@ export interface S2CFx {
      * spark. `dir` is the heading the blow came FROM (sparks shear off
      * the face), `radius` scales with the bite. Throttled server-side.
      */
-    | 'block';
+    | 'block'
+    /**
+     * THE DEEPER SIGIL: an enchanted working waking at (x,y). `id` is
+     * the proc id, which the client keys its bespoke visual off exactly
+     * as it does for ability ids (unknown ids fall back to the element
+     * color). `text` is the working's NAME and floats once — a proc
+     * announces itself by name and never by number, so it reads as an
+     * event instead of adding noise to the damage stream. `x2/y2` carry
+     * the segment for the workings that travel.
+     */
+    | 'proc';
   x: number;
   y: number;
   radius: number;

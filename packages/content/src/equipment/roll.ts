@@ -2,8 +2,8 @@ import type { EquipSlot, ItemRoll, RarityTier, SkillId, StatusId } from '@arx/sh
 import { Rng, hashCoords, hashString, rarityIndex } from '@arx/shared';
 import type { CombatStyle, ArxElement } from '../items.js';
 import { ITEMS, itemDef } from '../items.js';
-import type { EnchantEffect } from './enchants.js';
-import { instanceEffects } from './enchants.js';
+import type { EnchantEffect, ProcEffect } from './enchants.js';
+import { addProc, instanceEffects, isStrikeTrigger } from './enchants.js';
 import type { AffixStat, ArmorClass } from './types.js';
 import { ARMOR_CLASS_SLOTS } from './types.js';
 import {
@@ -183,6 +183,13 @@ export interface GearStats {
   critPct: number;
   /** Ability-cooldown ticks shaved on every kill. */
   onKillHasteTicks: number;
+  /**
+   * Workings whose trigger belongs to the BODY (kill, hurt, block,
+   * cast, lowHp, stacks, gather, stride) rather than to the steel that
+   * landed. Deduplicated by proc id, so a matched set carrying one
+   * working fires it once.
+   */
+  procs: ProcEffect[];
 }
 
 export function emptyGearStats(): GearStats {
@@ -199,6 +206,7 @@ export function emptyGearStats(): GearStats {
     thorns: 0,
     critPct: 0,
     onKillHasteTicks: 0,
+    procs: [],
   };
 }
 
@@ -207,9 +215,16 @@ export function emptyGearStats(): GearStats {
  * (onHitStatus / lifesteal / backstab) are deliberately ignored here —
  * they are read at hit time from the weapon instance that landed
  * (weaponStrikeEffects below), never from the worn aggregate.
+ *
+ * Procs are the one kind that reads its own routing: a body-triggered
+ * working lands here, a steel-triggered one is left for the strike
+ * channel to collect.
  */
 export function foldEffect(out: GearStats, fx: EnchantEffect): void {
   switch (fx.kind) {
+    case 'proc':
+      if (!isStrikeTrigger(fx.trigger.on)) addProc(out.procs, fx);
+      break;
     case 'skill':
       out.skillBonus[fx.skill] = (out.skillBonus[fx.skill] ?? 0) + fx.amount;
       break;
@@ -255,13 +270,21 @@ export interface StrikeEffects {
   onHit: Array<{ status: StatusId; power: number; durationTicks: number; chance: number }>;
   lifestealFrac: number;
   backstabBonus: number;
+  /**
+   * Workings triggered by THIS steel landing (hit, crit, cadence). Two
+   * dual-wielded blades each carry their own, and each fires only when
+   * its own edge connects.
+   */
+  procs: ProcEffect[];
 }
 
 export function weaponStrikeEffects(itemId: string, roll?: ItemRoll): StrikeEffects {
-  const out: StrikeEffects = { onHit: [], lifestealFrac: 0, backstabBonus: 0 };
+  const out: StrikeEffects = { onHit: [], lifestealFrac: 0, backstabBonus: 0, procs: [] };
   const def = itemDef(itemId);
   for (const fx of instanceEffects(def?.gear?.effects, roll?.ench)) {
-    if (fx.kind === 'onHitStatus') {
+    if (fx.kind === 'proc') {
+      if (isStrikeTrigger(fx.trigger.on)) addProc(out.procs, fx);
+    } else if (fx.kind === 'onHitStatus') {
       out.onHit.push({
         status: fx.status,
         power: fx.power,

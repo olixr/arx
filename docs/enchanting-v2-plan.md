@@ -329,9 +329,44 @@ epic. That is why it is last.
 
 ## 3. Phases
 
-**Phase 1 — THE DEEPER SIGIL.** The trigger/response grammar, internal
+**Phase 1 — THE DEEPER SIGIL. SHIPPED.** The trigger/response grammar, internal
 cooldowns, stacks, the server proc engine wired into the existing strike and
-aggregate doors. No new content. Purely the loom.
+aggregate doors. No new content: purely the loom.
+
+As built:
+
+- `ProcEffect` joins the `EnchantEffect` union. The existing 14 kinds are
+  untouched and no rolled item in the world changes.
+- **Procs route by trigger, never by slot.** `hit`, `crit`, and `cadence` are
+  strike-channel (read from the steel that landed, so two blades proc
+  independently); everything else folds aggregate. `stacks` is aggregate even
+  when it counts hits, because the meter belongs to the fighter.
+- **One id, one timer, one meter.** `addProc` dedupes at the gathering point, so
+  a matched set carrying the same working answers a moment once. A load-time
+  guard rejects two different workings sharing an id.
+- The arbitration is a pure function (`procWakes`) in content, not a server
+  method, so its two ordering laws are pinned by test: counters advance while
+  the working rests (the charge banks rather than vanishing), and chance is
+  never rolled while it rests (or every published rate silently drops below what
+  the card promises).
+- **Whiff-0 is sacred.** A 0-damage blow wakes nothing and advances no meter.
+- Ten trigger doors are live: hit, crit, cadence, kill, hurt, block, cast, lowHp
+  (crossing-only, re-arms above the line), gather (both the ore seam and the
+  plot), stride (measured off the resolved step, so walking a wall covers
+  nothing).
+- `surge` needed two dials PlayerBuff did not have: `critPct` and `dmgMult`,
+  both folded additively and wired at the melee, projectile, and ability doors.
+- Wire: `S2CFx` grows `'proc'`, protocol 22 → 23. The client draws a generic
+  stamped sigil keyed off element, and the proc id already falls through to the
+  `SIGNATURES` registry, so Phase 2's bespoke visuals need no further plumbing.
+- The name floats once; no number ever does (the damage is already in the hit
+  stream, and printing it again would double-count the same blow).
+- `/proc <action> [element]` is a dev lever that fires each action shape
+  directly, so the whole path is exercisable in a live session before the
+  roster exists.
+
+Deliberately not done here: no enchant in the roster carries a proc yet. Phase 3
+is what makes the engine visible in play.
 
 **Phase 2 — THE WORN LIGHT.** The per-slot visual grammar: the boot trail, the
 cape wake, the body weave, the knuckle flicker, the greave pulse, the brow lamp,
