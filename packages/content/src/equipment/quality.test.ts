@@ -7,6 +7,7 @@ import {
   QUALITY_AT_REQUIREMENT,
   RESONANCE_BONUS,
   inscriptionQuality,
+  bondedEffects,
   instanceEffects,
   qualityWord,
   resonanceShift,
@@ -151,8 +152,8 @@ test('baseline quality is a no-op, exactly', () => {
       assert.equal(scaleEffect(fx, QUALITY_BASE), fx, `${e.id} changed at baseline`);
     }
     assert.deepEqual(
-      instanceEffects(undefined, e.id, QUALITY_BASE),
-      instanceEffects(undefined, e.id),
+      bondedEffects(e.id, QUALITY_BASE),
+      bondedEffects(e.id),
       `${e.id} disagrees with its own default`,
     );
   }
@@ -200,8 +201,8 @@ test('the effects a card shows are the effects the body feels', () => {
   // The card renders instanceEffects(.., q) and the aggregate folds
   // instanceEffects(.., q). One function, so they cannot disagree.
   const e = ENCHANT_DEFS.find((x) => x.id === 'worldheart_ward')!;
-  assert.deepEqual(instanceEffects(undefined, e.id, 110), instanceEffects(undefined, e.id, 110));
-  assert.notDeepEqual(instanceEffects(undefined, e.id, 110), instanceEffects(undefined, e.id, 90));
+  assert.deepEqual(bondedEffects(e.id, 110), bondedEffects(e.id, 110));
+  assert.notDeepEqual(bondedEffects(e.id, 110), bondedEffects(e.id, 90));
 });
 
 test('QUALITY IS FELT WHERE THERE IS SOMETHING TO FEEL IT IN', () => {
@@ -212,7 +213,7 @@ test('QUALITY IS FELT WHERE THERE IS SOMETHING TO FEEL IT IN', () => {
   // must move, and this pins that they do.
   const big = ENCHANT_DEFS.find((x) => x.id === 'worldheart_ward')!;
   const hp = (q: number): number => {
-    const fx = instanceEffects(undefined, big.id, q).find((f) => f.kind === 'maxHp');
+    const fx = bondedEffects(big.id, q).find((f) => f.kind === 'maxHp');
     return fx && fx.kind === 'maxHp' ? fx.amount : 0;
   };
   assert.ok(hp(QUALITY_CEIL) > hp(QUALITY_BASE), 'a masterwork ward must hold more');
@@ -223,6 +224,11 @@ test("a def's native effects are never touched by an enchanter's hand", () => {
   // A chase item's identity is its own. Quality belongs to the bonded
   // working, and only to it.
   const native: EnchantEffect[] = [{ kind: 'armor', amount: 10 }];
-  const out = instanceEffects(native, ENCHANT_DEFS[0]!.id, QUALITY_CEIL);
+  const out = instanceEffects(native, {
+    rar: 'common',
+    seed: 0,
+    ench: ENCHANT_DEFS[0]!.id,
+    q: QUALITY_CEIL,
+  });
   assert.deepEqual(out[0], native[0]);
 });

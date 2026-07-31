@@ -580,6 +580,18 @@ const defs: ItemDef[] = [
   // own; astral had nothing at all, which is why no astral enchant
   // existed to want it.
   {
+    id: 'deepening_sigil',
+    name: 'Deepening sigil',
+    stackable: true,
+    value: 2400,
+    // THE DEEPENING's key. Found, never made: the trade can teach you
+    // to inscribe a masterwork, but nobody alive remembers how to open
+    // steel to a second working.
+    desc: 'A sigil cut on a plate of something older than the forge. Steel it touches opens, and stays open.',
+    color: '#e8d8a8',
+    code: 'xS',
+  },
+  {
     id: 'focused_dust',
     name: 'Focused dust',
     stackable: true,

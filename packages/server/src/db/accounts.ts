@@ -11,6 +11,9 @@ function rowRoll(
   coatUntil?: number | null,
   enchId?: string | null,
   quality?: number | null,
+  deep?: number | null,
+  ench2Id?: string | null,
+  quality2?: number | null,
 ): ItemRoll | undefined {
   if (rar === null || seed === null || !isRarityTier(rar)) return undefined;
   const roll: ItemRoll = { rar, seed };
@@ -23,6 +26,11 @@ function rowRoll(
   // THE ENCHANTER'S HAND: absent quality reads as baseline, so every
   // instance that predates the system is exactly as strong as it was.
   if (quality != null) roll.q = quality;
+  // THE DEEPENING: the seat survives even with no art in it, so a
+  // sundered deepened piece stays deepened.
+  if (deep) roll.deep = true;
+  if (deep && ench2Id != null) roll.ench2 = ench2Id;
+  if (quality2 != null) roll.q2 = quality2;
   return roll;
 }
 
@@ -729,9 +737,12 @@ export class AccountStore {
       coat_until: number | null;
       ench_id: string | null;
       quality: number | null;
+      deep: number | null;
+      ench2_id: string | null;
+      quality2: number | null;
       stolen: number | null;
     }>(
-      'SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, quality, stolen FROM inventory_slots WHERE character_id = ?',
+      'SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, quality, deep, ench2_id, quality2, stolen FROM inventory_slots WHERE character_id = ?',
       [characterId],
     );
     const slots = new Array<{ item: string; qty: number; roll?: ItemRoll; stolen?: true } | null>(
@@ -742,7 +753,7 @@ export class AccountStore {
         slots[row.slot] = {
           item: row.item_id,
           qty: row.qty,
-          roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id, row.quality),
+          roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id, row.quality, row.deep, row.ench2_id, row.quality2),
           ...(row.stolen ? { stolen: true as const } : {}),
         };
       }
@@ -1073,15 +1084,18 @@ export class AccountStore {
       coat_until: number | null;
       ench_id: string | null;
       quality: number | null;
+      deep: number | null;
+      ench2_id: string | null;
+      quality2: number | null;
     }>(
-      'SELECT slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality FROM equipment WHERE character_id = ?',
+      'SELECT slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality, deep, ench2_id, quality2 FROM equipment WHERE character_id = ?',
       [characterId],
     );
     const out: Record<string, { id: string; roll?: ItemRoll }> = {};
     for (const row of rows) {
       out[row.slot] = {
         id: row.item_id,
-        roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id, row.quality),
+        roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id, row.quality, row.deep, row.ench2_id, row.quality2),
       };
     }
     return out;
@@ -1096,12 +1110,13 @@ export class AccountStore {
       for (const [slot, worn] of Object.entries(equipment)) {
         if (worn) {
           await tx.run(
-            'INSERT INTO equipment (character_id, slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO equipment (character_id, slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality, deep, ench2_id, quality2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
               characterId, slot, worn.id,
               worn.roll?.rar ?? null, worn.roll?.seed ?? null, worn.roll?.pwr ?? null,
               worn.roll?.coat?.id ?? null, worn.roll?.coat?.until ?? null,
               worn.roll?.ench ?? null, worn.roll?.q ?? null,
+              worn.roll?.deep ? 1 : null, worn.roll?.ench2 ?? null, worn.roll?.q2 ?? null,
             ],
           );
         }
@@ -1125,13 +1140,16 @@ export class AccountStore {
       coat_until: number | null;
       ench_id: string | null;
       quality: number | null;
+      deep: number | null;
+      ench2_id: string | null;
+      quality2: number | null;
     }>(
-      'SELECT id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality FROM bank_gear WHERE character_id = ? ORDER BY id',
+      'SELECT id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality, deep, ench2_id, quality2 FROM bank_gear WHERE character_id = ? ORDER BY id',
       [characterId],
     );
     const out: Array<{ id: number; item: string; roll: ItemRoll }> = [];
     for (const row of rows) {
-      const roll = rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id, row.quality);
+      const roll = rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id, row.quality, row.deep, row.ench2_id, row.quality2);
       if (roll) out.push({ id: row.id, item: row.item_id, roll });
     }
     return out;
@@ -1139,10 +1157,11 @@ export class AccountStore {
 
   async insertBankGear(characterId: number, item: string, roll: ItemRoll): Promise<number> {
     const row = await this.db.get<{ id: number }>(
-      'INSERT INTO bank_gear (character_id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+      'INSERT INTO bank_gear (character_id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id, quality, deep, ench2_id, quality2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
       [
         characterId, item, roll.rar, roll.seed, roll.pwr ?? null,
         roll.coat?.id ?? null, roll.coat?.until ?? null, roll.ench ?? null, roll.q ?? null,
+        roll.deep ? 1 : null, roll.ench2 ?? null, roll.q2 ?? null,
       ],
     );
     return row!.id;
@@ -1258,12 +1277,13 @@ export class AccountStore {
         const slot = slots[i];
         if (slot) {
           await tx.run(
-            'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, quality, stolen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, quality, deep, ench2_id, quality2, stolen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
               characterId, i, slot.item, slot.qty,
               slot.roll?.rar ?? null, slot.roll?.seed ?? null, slot.roll?.pwr ?? null,
               slot.roll?.coat?.id ?? null, slot.roll?.coat?.until ?? null,
               slot.roll?.ench ?? null, slot.roll?.q ?? null,
+              slot.roll?.deep ? 1 : null, slot.roll?.ench2 ?? null, slot.roll?.q2 ?? null,
               slot.stolen ? 1 : null,
             ],
           );

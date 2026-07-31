@@ -739,6 +739,22 @@ const MIGRATIONS: string[] = [
   ALTER TABLE equipment ADD COLUMN IF NOT EXISTS quality INTEGER;
   ALTER TABLE bank_gear ADD COLUMN IF NOT EXISTS quality INTEGER;
   `,
+  // v19: THE DEEPENING — a piece opened to a second working carries the
+  // seat itself (`deep`), the art bonded into it, and the art's own
+  // quality. Additive and nullable across the same three roll tables;
+  // absent reads as an ordinary undeepened piece, which is what every
+  // item in the world already is.
+  `
+  ALTER TABLE inventory_slots ADD COLUMN IF NOT EXISTS deep INTEGER;
+  ALTER TABLE inventory_slots ADD COLUMN IF NOT EXISTS ench2_id TEXT;
+  ALTER TABLE inventory_slots ADD COLUMN IF NOT EXISTS quality2 INTEGER;
+  ALTER TABLE equipment ADD COLUMN IF NOT EXISTS deep INTEGER;
+  ALTER TABLE equipment ADD COLUMN IF NOT EXISTS ench2_id TEXT;
+  ALTER TABLE equipment ADD COLUMN IF NOT EXISTS quality2 INTEGER;
+  ALTER TABLE bank_gear ADD COLUMN IF NOT EXISTS deep INTEGER;
+  ALTER TABLE bank_gear ADD COLUMN IF NOT EXISTS ench2_id TEXT;
+  ALTER TABLE bank_gear ADD COLUMN IF NOT EXISTS quality2 INTEGER;
+  `,
 ];
 
 /**

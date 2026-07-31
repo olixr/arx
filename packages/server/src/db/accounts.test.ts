@@ -241,6 +241,52 @@ test('enchant ids ride every roll path: inventory, equipment, bank gear', async 
   assert.equal(bank.find((r) => r.id === rowId)?.roll.ench, 'clever', 'bank keeps the enchant');
 });
 
+test("an inscription's quality and a deepened seat ride every roll path", async () => {
+  // THE ENCHANTER'S HAND and THE DEEPENING both live on the roll, and
+  // the roll persists as COLUMNS rather than JSON — so every new field
+  // is a hand-threaded column in three tables and three inserts. This
+  // is the test that catches a missed one, because the symptom in play
+  // would be a masterwork quietly becoming ordinary at logout.
+  const store = await makeStore();
+  const reg = await store.register('eric', 'hunter22', 'Aeriek', SPAWN);
+  assert.ok(reg.ok);
+  if (!reg.ok) return;
+  const cid = reg.character.id;
+
+  const deepened: import('@arx/shared').ItemRoll = {
+    rar: 'legendary',
+    seed: 77,
+    ench: 'inferno_edge',
+    q: 113,
+    deep: true,
+    ench2: 'thunderchain',
+    q2: 96,
+  };
+
+  const inv = new Array<{ item: string; qty: number; roll?: import('@arx/shared').ItemRoll } | null>(28).fill(null);
+  inv[0] = { item: 'bronze_sword', qty: 1, roll: { ...deepened } };
+  // A scroll's quality is its maker's mark and must survive too.
+  inv[1] = { item: 'scroll_keen_edge', qty: 1, roll: { rar: 'common', seed: 0, q: 108 } };
+  store.saveInventory(cid, inv);
+  const loaded = await store.loadInventory(cid, 28);
+  assert.deepEqual(loaded[0]?.roll, deepened, 'the pack keeps the whole roll');
+  assert.equal(loaded[1]?.roll?.q, 108, 'the pack keeps a scroll imprint');
+
+  store.saveEquipment(cid, { weapon: { id: 'bronze_sword', roll: { ...deepened } } });
+  const eq = await store.loadEquipment(cid);
+  assert.deepEqual(eq.weapon?.roll, deepened, 'the body keeps the whole roll');
+
+  const rowId = await store.insertBankGear(cid, 'iron_helm', { ...deepened });
+  const bank = await store.loadBankGear(cid);
+  assert.deepEqual(bank.find((r) => r.id === rowId)?.roll, deepened, 'the vault keeps it too');
+
+  // A seat stays open with no art in it: the steel was reworked, and
+  // sundering the art does not close it again.
+  const bare: import('@arx/shared').ItemRoll = { rar: 'epic', seed: 3, ench: 'clever', q: 91, deep: true };
+  store.saveEquipment(cid, { head: { id: 'iron_helm', roll: { ...bare } } });
+  assert.deepEqual((await store.loadEquipment(cid)).head?.roll, bare, 'an empty seat persists');
+});
+
 test('per-hand grip preferences persist independently', async () => {
   const store = await makeStore();
   const reg = await store.register('eric', 'hunter22', 'Aeriek', SPAWN);

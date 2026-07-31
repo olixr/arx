@@ -281,7 +281,7 @@ export interface StrikeEffects {
 export function weaponStrikeEffects(itemId: string, roll?: ItemRoll): StrikeEffects {
   const out: StrikeEffects = { onHit: [], lifestealFrac: 0, backstabBonus: 0, procs: [] };
   const def = itemDef(itemId);
-  for (const fx of instanceEffects(def?.gear?.effects, roll?.ench, roll?.q)) {
+  for (const fx of instanceEffects(def?.gear?.effects, roll)) {
     if (fx.kind === 'proc') {
       if (isStrikeTrigger(fx.trigger.on)) addProc(out.procs, fx);
     } else if (fx.kind === 'onHitStatus') {
@@ -330,7 +330,7 @@ export function aggregateGearStats(
     // channels stay with the weapon instance (weaponStrikeEffects).
     // THE ENCHANTER'S HAND: the bonded working folds in at the strength
     // it was inscribed at, so a master's scroll is felt in the numbers.
-    for (const fx of instanceEffects(def.gear?.effects, worn.roll?.ench, worn.roll?.q)) {
+    for (const fx of instanceEffects(def.gear?.effects, worn.roll)) {
       foldEffect(out, fx);
     }
   }

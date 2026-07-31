@@ -32,7 +32,7 @@ import {
   describeEffect,
   effectiveReq,
   enchantDef,
-  instanceEffects,
+  bondedEffects,
   qualityWord,
   instanceName,
   isTwoHanded,
@@ -730,23 +730,35 @@ export class Panels {
         stat('Trait', def.gear.effects.map(describeEffect).join(' · '), '#e8c04c');
       }
       // The bonded enchantment — permanent, tier-colored, spelled out.
-      const ench = enchantDef(roll?.ench);
-      if (ench) {
-        // THE ENCHANTER'S HAND: the working's own quality is part of
-        // what this piece IS, so the card names it beside the working.
-        const q = roll?.q ?? QUALITY_BASE;
+      // THE ENCHANTER'S HAND and THE DEEPENING: a piece may carry a
+      // ward and an art, each with its own quality, and both are part
+      // of what this object IS.
+      const seatRow = (label: string, id: string | undefined, q0: number | undefined): void => {
+        const e = enchantDef(id);
+        if (!e) return;
+        const q = q0 ?? QUALITY_BASE;
         stat(
-          'Enchant',
-          q === QUALITY_BASE ? ench.name : `${ench.name} · ${qualityWord(q)} (${q}%)`,
-          ELEMENT_COLORS[ench.element],
+          label,
+          q === QUALITY_BASE ? e.name : `${e.name} · ${qualityWord(q)} (${q}%)`,
+          ELEMENT_COLORS[e.element],
         );
         const ed = document.createElement('div');
         ed.className = 'card-passive-desc';
         // Scaled, so the numbers on the card are the numbers in the
         // fight. A card that showed the authored strength while the
         // body felt a scaled one would be lying about the item.
-        ed.textContent = instanceEffects(undefined, ench.id, q).map(describeEffect).join(' · ');
+        ed.textContent = bondedEffects(e.id, q).map(describeEffect).join(' · ');
         this.card.appendChild(ed);
+      };
+      // An undeepened piece has one working and calls it what it always
+      // was; a deepened one names its two seats, because which seat a
+      // working sits in is the whole rule of the feature.
+      if (roll?.deep) {
+        stat('Deepened', 'opened to a second working', '#e8d8a8');
+        seatRow('Ward', roll.ench, roll.q);
+        seatRow('Art', roll.ench2, roll.q2);
+      } else {
+        seatRow('Enchant', roll?.ench, roll?.q);
       }
       // A re-issued instance wears its power openly — the heirloom row.
       const native = def.gear?.levelReq?.level ?? 1;
@@ -799,7 +811,7 @@ export class Panels {
         stat('Applies to', se.slot === 'weapon' ? 'weapons' : `${se.slot} gear`, '#c4b590');
         const sd = document.createElement('div');
         sd.className = 'card-passive-desc';
-        sd.textContent = instanceEffects(undefined, se.id, q).map(describeEffect).join(' · ');
+        sd.textContent = bondedEffects(se.id, q).map(describeEffect).join(' · ');
         this.card.appendChild(sd);
       }
     }

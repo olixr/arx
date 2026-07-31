@@ -215,6 +215,12 @@ export class CraftHud {
       this.write(this.kicker, 'wroteKicker', 'Too far from the work');
       this.root.classList.add('wc-halt');
       holdMs = HOLD_HALT_MS;
+    } else if (reason === 'full') {
+      // The craft halts BEFORE eating its materials, so this has to
+      // read as a refusal and not as a loss.
+      this.write(this.kicker, 'wroteKicker', 'No room in your pack');
+      this.root.classList.add('wc-halt');
+      holdMs = HOLD_HALT_MS;
     } else {
       this.write(this.kicker, 'wroteKicker', 'Work set down');
     }

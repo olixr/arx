@@ -285,7 +285,7 @@ export class Session {
       case 'sunder': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.sunder(this.playerEid, msg.slot, msg.worn);
+        this.game.sunder(this.playerEid, msg.slot, msg.worn, msg.seat);
         return;
       }
       case 'craft': {

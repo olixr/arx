@@ -579,8 +579,69 @@ is a footgun, not a feature).
 Deferred: Solvei's high-band teaching is dialogue work that wants a writing pass
 of its own rather than being bolted onto a systems phase.
 
-**Phase 6 — THE DEEPENING.** The second slot, the tier-5 named workings, capstone
-acquisition, and the full balance pass across everything above.
+**Phase 6 — THE DEEPENING. SHIPPED. THE EPIC IS COMPLETE.**
+
+The second slot shipped, and it shipped in the one form that does not contradict
+the epic's own strongest law.
+
+**THE ART MUST DO SOMETHING.** A deepened piece holds two workings: its **ward**
+(any working, keeping the slot's channel) and its **art** (which must carry a
+proc). That restriction is not a balance dial, it is what lets the feature exist.
+THE WORN LIGHT gives every slot exactly one continuous channel, so a second
+*passive* working would be mechanically live and visually silent, in an epic
+built on the premise that an enchantment you cannot see is a spreadsheet entry.
+A proc has no channel: it lives in the event layer and announces itself by
+firing. The ward keeps the channel, the art speaks when it wakes, nothing shares.
+
+It keeps the rest of the system unambiguous too. **Resonance always reads the
+ward**, because the ward is what school the piece IS, so a deepened piece stays a
+coherent object instead of two unrelated workings sharing steel. **Sundering
+names a seat**, and the seat stays open afterward: the steel was reworked and
+stays reworked, so a sundered art is replaceable without another sigil.
+
+The key is a `deepening_sigil` — **found, never made**. The trade can teach you to
+inscribe a masterwork; nobody alive remembers how to open steel to a second
+working. Gated on the PIECE, not the player: epic rarity or better, a ward
+already in it, not already opened. Two candidates worn at once and the sigil
+declines to choose for you. Persisted as db v19.
+
+**The balance pass** ships as `epic.test.ts`, which scores every working and
+asserts the ladder actually climbs by tier, that no working towers over its own
+band, and that a masterwork inscription is a bonus rather than a second tier. It
+immediately caught a real outlier (Quarrier's Grip carried +2 to three gathering
+skills *and* a working at tier 2, where its only sibling gives +1 to three) and a
+flaw in my own scorer (gather and stride workings are paced by the player, not by
+their rest timer). Both were fixed; the content one was the right call on its own
+merits.
+
+**The final review** also caught a data-loss bug older than this epic: `tickCraft`
+consumed a recipe's inputs and then added the output with **no pack-space check**,
+so a full pack silently destroyed both. It has always been possible (every
+crafted weapon and armor piece is non-stackable) and became easy the day
+inscriptions stopped stacking. Now checked before anything is consumed, and
+refused out loud.
+
+---
+
+## The epic, closed
+
+Six phases: the proc engine, the visual grammar, the roster to 99, the unmaking,
+the enchanter's hand, the deepening. What began as 37 workings that stopped at
+level 54 and were invisible on seven of eight slots is now 88 workings running to
+95, every slot lit with its own channel, a trade with a gathering half of its own,
+and a maker's mark that makes one Keen Edge scroll worth more than another.
+
+Every open question from the top of this document is answered:
+
+1. **Do procs show damage numbers?** No. A working floats its name once and never
+   a figure; the damage is already in the hit stream.
+2. **Should tier 4/5 visuals be hideable?** Not built. Nobody has asked, and the
+   readability caps solved the crowding problem the question was really about.
+3. **Does quality apply retroactively?** Absent quality reads as baseline, so
+   nothing anyone owned changed strength on the day it shipped.
+4. **Is the second slot worth it at all?** Yes, in the proc-only form. The
+   objection was never the power, it was the silence, and requiring the art to be
+   a proc removes the silence entirely.
 
 ---
 

@@ -214,7 +214,11 @@ export class StationPanels {
     /** THE UNMAKING: break the gear in this pack slot down for dust. */
     private readonly onUnmake: (slot: number) => void = () => {},
     /** SUNDERING: draw the working out of this slot, keep the piece. */
-    private readonly onSunder: (slot: number, worn?: EquipSlot) => void = () => {},
+    private readonly onSunder: (
+      slot: number,
+      worn?: EquipSlot,
+      seat?: 'ward' | 'art',
+    ) => void = () => {},
     /** The live pack — feeds every have/need figure. */
     private readonly getInventory: () => InvSlot[] = () => [],
     /** The worn kit — the unmaking bench sunders straight off the body. */
@@ -803,7 +807,7 @@ export class StationPanels {
     // Destroy button aimed at the armor you are wearing is a footgun,
     // not a feature.
     for (const [wslot, w] of Object.entries(this.getEquipment())) {
-      if (w?.roll?.ench) {
+      if (w?.roll?.ench || w?.roll?.ench2) {
         rows.push({ slot: -1, item: w.id, roll: w.roll, worn: wslot as EquipSlot });
       }
     }
@@ -832,7 +836,15 @@ export class StationPanels {
           key: `unmake:${row.worn ?? row.slot}`,
           iconUrl: itemIconUrl(row.item, 40),
           name: instanceName(row.item, row.roll),
-          note: row.worn ? 'worn' : row.stolen ? 'hot' : enchantDef(row.roll?.ench) ? 'worked' : `${dust} dust`,
+          note: row.worn
+            ? 'worn'
+            : row.stolen
+              ? 'hot'
+              : row.roll?.deep
+                ? 'deepened'
+                : enchantDef(row.roll?.ench)
+                  ? 'worked'
+                  : `${dust} dust`,
           noteTone: row.stolen ? 'lock' : 'ok',
           selected: this.unmakeSel === (row.worn ? -1 : row.slot) && this.unmakeWorn === row.worn,
           onPick: () => {
@@ -901,26 +913,43 @@ export class StationPanels {
     // SUNDERING is offered first and framed as the gentler answer: most
     // players opening this bench with an enchanted piece want the
     // working gone, not the piece gone.
-    const bonded = enchantDef(picked.roll?.ench);
-    if (bonded) {
-      this.craftDetail.appendChild(sectionHead('Or draw the working out'));
+    const ward = enchantDef(picked.roll?.ench);
+    const art = enchantDef(picked.roll?.ench2);
+    if (ward || art) {
+      this.craftDetail.appendChild(sectionHead('Or draw a working out'));
       const note = document.createElement('div');
       note.className = 'work-result';
       const nf = document.createElement('div');
       nf.className = 'work-result-flavor';
-      nf.textContent = `Sundering strips the ${bonded.name} and leaves the piece whole. Bare steel takes the next working cleanly; worked steel of another school fights it.`;
+      nf.textContent = art
+        ? 'Sundering strips one working and leaves the piece whole. The opened seat stays open, so a sundered art can be replaced without another sigil.'
+        : `Sundering strips the ${ward!.name} and leaves the piece whole. Bare steel takes the next working cleanly; worked steel of another school fights it.`;
       note.appendChild(nf);
       this.craftDetail.appendChild(note);
       const sunderRow = document.createElement('div');
       sunderRow.className = 'work-actions';
-      sunderRow.appendChild(
-        bigButton(
-          'Sunder',
-          `sunder:${picked.worn ?? picked.slot}`,
-          () => this.onSunder(picked.slot, picked.worn),
-          { minor: true, acta: 'Sunder' },
-        ),
-      );
+      // A deepened piece names its seats, because which one you are
+      // about to lose is the only thing that matters here.
+      if (ward) {
+        sunderRow.appendChild(
+          bigButton(
+            art ? `Sunder ward (${ward.name})` : 'Sunder',
+            `sunder:ward:${picked.worn ?? picked.slot}`,
+            () => this.onSunder(picked.slot, picked.worn, 'ward'),
+            { minor: true, acta: 'Sunder' },
+          ),
+        );
+      }
+      if (art) {
+        sunderRow.appendChild(
+          bigButton(
+            `Sunder art (${art.name})`,
+            `sunder:art:${picked.worn ?? picked.slot}`,
+            () => this.onSunder(picked.slot, picked.worn, 'art'),
+            { minor: true, acta: 'Sunder' },
+          ),
+        );
+      }
       this.craftDetail.appendChild(sunderRow);
     }
 

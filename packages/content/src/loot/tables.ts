@@ -747,6 +747,8 @@ const defs: LootTableDef[] = [
       { item: 'crimson_essence', qty: [2, 4], chance: 0.5 },
       { item: 'radiant_essence', qty: [1, 3], chance: 0.35 },
       { item: 'astral_essence', qty: [1, 3], chance: 0.3 },
+      // THE DEEPENING's key, and the rarest ordinary thing in the game.
+      { item: 'deepening_sigil', chance: 0.04 },
       // The king under the hill banked with the house he built.
       ...setDrops('barrowking', 0.008),
       // A rook got here first, once. It left the feathers behind.
@@ -775,6 +777,7 @@ const defs: LootTableDef[] = [
       // The gate looks somewhere very far away. Some of it condenses.
       { item: 'astral_essence', qty: [1, 2], chance: 0.3 },
       { table: 'crypt_arms', mult: 8 },
+      { item: 'deepening_sigil', chance: 0.03 },
       // Ground from a pane of this very gate.
       { item: 'riftglass', chance: 0.006 },
       // Woven from the same dark the blade was ground from.

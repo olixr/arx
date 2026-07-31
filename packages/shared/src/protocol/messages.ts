@@ -141,6 +141,11 @@ export interface C2SSunder {
    * would mean unequipping first for no reason a player could name.
    */
   worn?: EquipSlot;
+  /**
+   * Which working to draw out of a DEEPENED piece. Absent reads as the
+   * ward, which is what every undeepened piece has.
+   */
+  seat?: 'ward' | 'art';
 }
 
 /** Craft a recipe (validated against station adjacency server-side). */

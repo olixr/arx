@@ -42,6 +42,7 @@ import {
   type InvSlot,
   MAX_ITEM_POWER,
   QUALITY_BASE,
+  rarityIndex,
   QUALITY_CEIL,
   QUALITY_FLOOR,
   type ItemRoll,
@@ -114,6 +115,9 @@ import {
   inscriptionQuality,
   qualityWord,
   resonanceShift,
+  seatFor,
+  carriesProc,
+  DEEPEN_MIN_RARITY,
   enchantDef,
   unmakingOf,
   type ArxElement,
@@ -4127,6 +4131,20 @@ export class GameServer {
       this.cancelAction(eid, player, 'materials');
       return;
     }
+    // THE CRAFT NEVER EATS ITSELF. The inputs come out of the pack on
+    // the next line, and until now nothing checked that the RESULT
+    // would fit: a full pack silently destroyed both the materials and
+    // the thing they made.
+    //
+    // It has always been possible (every crafted weapon and every piece
+    // of armor is non-stackable) and it became easy the day inscriptions
+    // stopped stacking, because a scroll can no longer fold into a
+    // stack that is already there. Checked before anything is consumed,
+    // and refused out loud.
+    if (!hasSpaceFor(player.inventory, recipe.output.item)) {
+      this.cancelAction(eid, player, 'full');
+      return;
+    }
     for (const input of recipe.inputs) removeItem(player.inventory, input.item, input.qty);
     // Sparing Hammer / Clean Grain / Fine Seams / Salvager / Dust
     // Thrift: the trade's Calling sometimes hands one input back.
@@ -7514,6 +7532,30 @@ export class GameServer {
   }
 
   /**
+   * The one worn piece a deepening sigil may open, or null.
+   *
+   * The gates are all on the PIECE, never on the player: fine enough
+   * steel to be worth it, a working already in it (the ward is what an
+   * art answers to), and not already opened. Nothing here asks the
+   * player's level, because the sigil is a found thing and the item it
+   * lands on is the achievement.
+   *
+   * Ambiguity is refused rather than guessed: if two worn pieces
+   * qualify, the sigil declines to choose for you.
+   */
+  private deepenTarget(player: PlayerComp): EquippedItem | null {
+    let found: EquippedItem | null = null;
+    for (const worn of Object.values(player.equipment)) {
+      if (!worn?.roll || worn.roll.deep) continue;
+      if (!worn.roll.ench) continue;
+      if (rarityIndex(worn.roll.rar) < rarityIndex(DEEPEN_MIN_RARITY)) continue;
+      if (found) return null; // two candidates: let the player unequip and mean it
+      found = worn;
+    }
+    return found;
+  }
+
+  /**
    * SUNDERING: strip the working off a piece and keep the piece.
    *
    * The other half of RESONANCE. Bonding a different school onto worked
@@ -7526,7 +7568,7 @@ export class GameServer {
    * back, and paying them here too would make sunder-and-rebond a
    * cheaper source of essence than breaking the item.
    */
-  sunder(eid: EntityId, slotIndex: number, wornSlot?: EquipSlot): void {
+  sunder(eid: EntityId, slotIndex: number, wornSlot?: EquipSlot, seat: 'ward' | 'art' = 'ward'): void {
     const player = this.players.get(eid);
     if (!player?.session) return;
     const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
@@ -7549,14 +7591,21 @@ export class GameServer {
       sys('You need to stand by an enchanting table for that.');
       return;
     }
-    const ench = enchantDef(target.roll?.ench);
+    const ench = enchantDef(seat === 'art' ? target.roll?.ench2 : target.roll?.ench);
     if (!ench) {
       sys('There is no working on that to strip.');
       return;
     }
-    // Mutate the ROLL, which both shapes share by reference.
-    delete target.roll!.ench;
-    delete target.roll!.q;
+    // Mutate the ROLL, which both shapes share by reference. The seat
+    // itself stays open: the steel was reworked and stays reworked, so
+    // a sundered art can be replaced without spending another sigil.
+    if (seat === 'art') {
+      delete target.roll!.ench2;
+      delete target.roll!.q2;
+    } else {
+      delete target.roll!.ench;
+      delete target.roll!.q;
+    }
     // A worn piece's aggregate really does change; a packed one's does
     // not, but recomputing is cheap and idempotent and getting this
     // wrong would leave a stripped working still buffing the body.
@@ -7683,6 +7732,43 @@ export class GameServer {
     // craft went into inscribing the scroll, so scrolls are how a
     // specialist enchants the whole town's gear. Re-enchanting replaces
     // the old work outright.
+    // THE DEEPENING: the sigil opens a worn piece to a second working.
+    // Deliberately NOT a bench recipe — it is found, never made, so the
+    // ceiling of the trade is a thing the world hands you rather than
+    // something you can grind toward on a schedule.
+    if (def.id === 'deepening_sigil') {
+      const worn = this.deepenTarget(player);
+      if (!worn) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `The sigil wants a worked ${DEEPEN_MIN_RARITY} piece or better on your body, one that is not already opened.`,
+        });
+        return;
+      }
+      if (!takeSlot(player.inventory, slotIndex, 1)) return;
+      worn.roll!.deep = true;
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `The sigil sinks in and the ${itemDef(worn.id)?.name ?? 'piece'} opens. There is room in it now for a working that DOES something.`,
+      });
+      const pos = this.positions.get(eid);
+      if (pos) {
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'proc',
+          x: pos.x,
+          y: pos.y,
+          radius: 1.1,
+          color: ELEMENT_COLORS.astral,
+          text: 'Deepened',
+          id: 'surge:deepen',
+        });
+      }
+      return;
+    }
     if (def.enchant) {
       const ench = enchantDef(def.enchant);
       if (!ench) return;
@@ -7695,7 +7781,7 @@ export class GameServer {
         });
         return;
       }
-      if (worn.roll?.ench === ench.id) {
+      if (worn.roll?.ench === ench.id || worn.roll?.ench2 === ench.id) {
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
@@ -7703,14 +7789,24 @@ export class GameServer {
         });
         return;
       }
-      const replaced = enchantDef(worn.roll?.ench);
+      // THE DEEPENING: a deepened piece holds a ward and an art, and a
+      // working that DOES something takes the art seat. See enchants.ts
+      // for why the art must carry a proc.
+      const seat = seatFor(worn.roll, ench.id);
+      const replaced = enchantDef(seat === 'art' ? worn.roll?.ench2 : worn.roll?.ench);
       // RESONANCE: the steel remembers what it already carries. Same
       // school and the sigils agree; a different one has to be argued
       // in, and the working lands weaker for it. Sundering the old
       // working first bonds onto bare steel at no penalty — a choice
       // with a shape, never a dice roll, and nothing is ever destroyed
       // by bad luck.
-      const shift = resonanceShift(ench.element, replaced?.element);
+      //
+      // Resonance always reads the WARD, because the ward is what
+      // school the piece IS. An art grafted onto a piece answers to
+      // that school too, which is what keeps a deepened piece a
+      // coherent object instead of two unrelated workings sharing steel.
+      const standing = enchantDef(worn.roll?.ench)?.element;
+      const shift = resonanceShift(ench.element, seat === 'art' ? standing : replaced?.element);
       const scrollQ = slot.roll?.q ?? QUALITY_BASE;
       const q = Math.max(QUALITY_FLOOR, Math.min(QUALITY_CEIL, scrollQ + shift));
       // INSTANCE-ADDRESSING LAW: the scroll that was CLICKED is the one
@@ -7720,8 +7816,13 @@ export class GameServer {
       if (!takeSlot(player.inventory, slotIndex, 1)) return;
       // Legacy-grace materialization: an unrolled instance IS common/0.
       const roll = worn.roll ?? { rar: 'common' as const, seed: 0 };
-      roll.ench = ench.id;
-      roll.q = q;
+      if (seat === 'art') {
+        roll.ench2 = ench.id;
+        roll.q2 = q;
+      } else {
+        roll.ench = ench.id;
+        roll.q = q;
+      }
       worn.roll = roll;
       // Enchants move aggregate stats (maxHp, speed, cooldowns...) —
       // recompute exactly like an equip change.
@@ -7733,7 +7834,9 @@ export class GameServer {
         channel: 'system',
         text: replaced
           ? `The ${replaced.name} fades as the ${ench.name} takes its place on the ${itemName}.`
-          : `The scroll crumbles as the ${ench.name} sinks into the ${itemName}. It ${BONDING_VOICE[ench.tier]}.`,
+          : seat === 'art'
+            ? `The ${ench.name} settles into the opened seat. The ${itemName} carries two workings now.`
+            : `The scroll crumbles as the ${ench.name} sinks into the ${itemName}. It ${BONDING_VOICE[ench.tier]}.`,
       });
       if (shift > 0) {
         player.session?.sendJson({

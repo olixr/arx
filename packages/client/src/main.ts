@@ -390,9 +390,9 @@ const stationPanels = new StationPanels(
     sfx.stow();
     game.unmakeSend(slot);
   },
-  (slot, worn) => {
+  (slot, worn, seat) => {
     sfx.stow();
-    game.sunderSend(slot, worn);
+    game.sunderSend(slot, worn, seat);
   },
   // The live pack — every maker panel's have/need chips read it.
   () => game.inventory,
@@ -773,7 +773,9 @@ const game = new ClientGame(input, {
           ? 'Someone is in the way.'
           : reason === 'materials'
             ? 'Out of materials.'
-            : null;
+            : reason === 'full'
+              ? 'No room in your pack. Nothing was used up.'
+              : null;
     if (line) chat.addLine({ channel: 'system', text: line });
     if (reason === 'materials') buildQueue.length = 0;
   },

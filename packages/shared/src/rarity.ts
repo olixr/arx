@@ -80,6 +80,20 @@ export interface ItemRoll {
    * shipped is exactly as strong as it always was.
    */
   q?: number;
+  /**
+   * THE DEEPENING: this piece has been opened to hold a second working.
+   * Set once by a deepening sigil and never cleared — the steel has
+   * been reworked, and sundering an art does not close the seat.
+   */
+  deep?: true;
+  /**
+   * The ART: a deepened piece's second working. Always a working that
+   * carries a proc, never a passive one, and that is the law that makes
+   * the whole feature possible — see THE DEEPENING in enchants.ts.
+   */
+  ench2?: string;
+  /** The art's own inscription quality. Absent reads as QUALITY_BASE. */
+  q2?: number;
 }
 
 /** Sanity ceiling for wire/DB power values (above every skill cap). */
@@ -116,16 +130,22 @@ export function isItemRoll(v: unknown): v is ItemRoll {
   if (r.ench !== undefined && (typeof r.ench !== 'string' || r.ench.length === 0 || r.ench.length > 40)) {
     return false;
   }
-  if (r.q !== undefined) {
-    if (
-      typeof r.q !== 'number' ||
-      !Number.isInteger(r.q) ||
-      r.q < QUALITY_FLOOR ||
-      r.q > QUALITY_CEIL
-    ) {
+  for (const key of ['q', 'q2'] as const) {
+    const v = r[key];
+    if (v === undefined) continue;
+    if (typeof v !== 'number' || !Number.isInteger(v) || v < QUALITY_FLOOR || v > QUALITY_CEIL) {
       return false;
     }
   }
+  if (r.deep !== undefined && r.deep !== true) return false;
+  if (
+    r.ench2 !== undefined &&
+    (typeof r.ench2 !== 'string' || r.ench2.length === 0 || r.ench2.length > 40)
+  ) {
+    return false;
+  }
+  // An art without a seat is a roll that could never have been made.
+  if (r.ench2 !== undefined && r.deep !== true) return false;
   return true;
 }
 
@@ -137,6 +157,9 @@ export function sameRoll(a?: ItemRoll, b?: ItemRoll): boolean {
     (a.pwr ?? 0) === (b.pwr ?? 0) &&
     (a.coat?.id ?? '') === (b.coat?.id ?? '') &&
     (a.ench ?? '') === (b.ench ?? '') &&
-    (a.q ?? QUALITY_BASE) === (b.q ?? QUALITY_BASE)
+    (a.q ?? QUALITY_BASE) === (b.q ?? QUALITY_BASE) &&
+    (a.ench2 ?? '') === (b.ench2 ?? '') &&
+    (a.q2 ?? QUALITY_BASE) === (b.q2 ?? QUALITY_BASE) &&
+    !a.deep === !b.deep
   );
 }

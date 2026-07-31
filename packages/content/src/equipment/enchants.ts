@@ -1,4 +1,4 @@
-import type { SkillId, StatusId } from '@arx/shared';
+import type { ItemRoll, RarityTier, SkillId, StatusId } from '@arx/shared';
 import { QUALITY_BASE, QUALITY_CEIL, QUALITY_FLOOR } from '@arx/shared';
 import type { CombatStyle, ArxElement } from '../items.js';
 import type { GearSlot } from './types.js';
@@ -1054,9 +1054,12 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     id: 'quarriers_grip', name: "Quarrier's Grip", prefix: 'Quarrying', tier: 2, slot: 'gloves',
     element: 'verdant', level: 30,
     effects: [
-      E({ kind: 'skill', skill: 'mining', amount: 2 }),
-      E({ kind: 'skill', skill: 'woodcutting', amount: 2 }),
-      E({ kind: 'skill', skill: 'fishing', amount: 2 }),
+      // +1, matching Adept's shape at the same tier. It carried +2 to
+      // three skills AND a working, which made it the only sensible
+      // tier-2 glove and quietly deleted the choice.
+      E({ kind: 'skill', skill: 'mining', amount: 1 }),
+      E({ kind: 'skill', skill: 'woodcutting', amount: 1 }),
+      E({ kind: 'skill', skill: 'fishing', amount: 1 }),
       E({
         kind: 'proc', id: 'good_seam', name: 'Good Seam',
         trigger: { on: 'gather', chance: 0.15 },
@@ -1541,25 +1544,85 @@ export function scaleEffect(fx: EnchantEffect, q: number): EnchantEffect {
 }
 
 /** Effects granted by an instance = native gear effects + its enchant. */
+// ----------------------------------------------------- THE DEEPENING
+
+/**
+ * THE DEEPENING — the customization ceiling, and the one law that makes
+ * it possible.
+ *
+ * A deepened piece holds TWO workings: its WARD and its ART.
+ *   - the ward is any working at all, and it is what an ordinary piece
+ *     has always carried;
+ *   - **the art must be a working that DOES something** — one that
+ *     carries a proc.
+ *
+ * That restriction is not a balance dial, it is what lets the feature
+ * exist at all. THE WORN LIGHT gives every slot exactly ONE continuous
+ * channel (the brow, the weave, the knuckles, the trail), because eight
+ * slots each glowing their own way is the difference between a
+ * character you can read and a lit blob. Two passive workings on one
+ * piece would mean a second working that is mechanically live and
+ * visually silent, and this epic exists on the premise that an
+ * enchantment you cannot see is a spreadsheet entry.
+ *
+ * A proc has no continuous channel. It lives in the EVENT layer: it
+ * announces itself by firing, with its own name and its own
+ * action-shaped moment. So the ward keeps the slot's channel, the art
+ * speaks when it wakes, and nothing has to share.
+ *
+ * It also keeps the rest of the system unambiguous. RESONANCE reads the
+ * ward, because the ward is the piece's school. SUNDERING names a seat.
+ * Neither had to grow a "which one?" question.
+ */
+export function carriesProc(ench: string | undefined): boolean {
+  return enchantDef(ench)?.effects.some((fx) => fx.kind === 'proc') ?? false;
+}
+
+/** Rarity a piece must reach before it can be opened to a second seat. */
+export const DEEPEN_MIN_RARITY: RarityTier = 'epic';
+
+/** Which seat a working takes on a piece, or why it cannot take one. */
+export function seatFor(
+  roll: ItemRoll | undefined,
+  incoming: string,
+): 'ward' | 'art' | null {
+  if (!enchantDef(incoming)) return null;
+  // Only a deepened piece has an art seat, and only a working that
+  // does something may sit in it.
+  if (roll?.deep && carriesProc(incoming)) return 'art';
+  return 'ward';
+}
+
+/**
+ * Effects granted by an instance: the def's own native effects, plus
+ * its ward, plus its art. Takes the whole ROLL rather than loose
+ * fields, so a piece's full identity travels as one thing and no caller
+ * can read half of it by accident.
+ */
 export function instanceEffects(
   nativeEffects: EnchantEffect[] | undefined,
-  ench: string | undefined,
-  /**
-   * The bonded working's inscription quality. Scales the ENCHANT's
-   * effects only: a def's native effects are the item's own identity
-   * and no enchanter's hand touches them.
-   */
-  quality = QUALITY_BASE,
+  roll: ItemRoll | undefined,
 ): EnchantEffect[] {
+  const ward = bondedEffects(roll?.ench, roll?.q);
+  const art = roll?.ench2 ? bondedEffects(roll.ench2, roll.q2) : [];
+  if (ward.length === 0 && art.length === 0) return nativeEffects ?? [];
+  return nativeEffects ? [...nativeEffects, ...ward, ...art] : [...ward, ...art];
+}
+
+/**
+ * One bonded working's effects, at the strength it was inscribed at.
+ * Quality scales the ENCHANT's effects only: a def's native effects are
+ * the item's own identity and no enchanter's hand touches them.
+ */
+export function bondedEffects(ench: string | undefined, quality = QUALITY_BASE): EnchantEffect[] {
   const e = enchantDef(ench);
-  if (!e) return nativeEffects ?? [];
-  const carried = e.effects.map((fx0) => {
+  if (!e) return [];
+  return e.effects.map((fx0) => {
     const fx = scaleEffect(fx0, quality);
     // A proc inherits its carrier's element unless it names its own —
     // so an ember edge's working burns ember without saying so twice.
     return fx.kind === 'proc' && fx.element === undefined ? { ...fx, element: e.element } : fx;
   });
-  return nativeEffects ? [...nativeEffects, ...carried] : carried;
 }
 
 // ------------------------------------------------ the working's own clock
