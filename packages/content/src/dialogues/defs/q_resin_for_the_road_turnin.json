@@ -1,0 +1,10 @@
+{
+ "id": "q_resin_for_the_road_turnin",
+ "start": "paid",
+ "requires": ["quest:resin_for_the_road:ready"],
+ "bindings": [{ "kind": "actor", "target": "pitchmaster_rullo", "priority": 21 }],
+ "nodes": [
+  { "id": "paid", "text": "Twelve, and not one of them cut deep. Odd will never know we had this conversation.\n\nCoin, and a flask off the last burn. Upright. I mean it.",
+    "hooks": [{ "kind": "quest_turnin", "quest": "resin_for_the_road" }] }
+ ]
+}

@@ -1,0 +1,21 @@
+{
+ "id": "q_past_the_wardline_offer",
+ "start": "hub",
+ "requires": ["quest:past_the_wardline:available"],
+ "bindings": [{ "kind": "actor", "target": "reeve_halla", "priority": 6 }],
+ "nodes": [
+  { "id": "hub", "text": "Somebody is cutting in the old wood, and has been for two seasons, and is moving great sticks through my boom in the dark.\n\nOut the Wardline gate. Follow the blazed pine north-east until the moss stops closing over the ground. Find the cut.",
+    "hooks": [{ "kind": "quest_offer", "quest": "past_the_wardline" }],
+    "choices": [
+      { "text": "Find it. Then what?", "next": "then" },
+      { "text": "Why not send the watch?", "next": "watch" },
+      { "text": "Not for me.", "next": "declined" } ] },
+  { "id": "then", "text": "Then you use your judgement, and I will not write down what I think your judgement will be.\n\nThey will have men on the approach. Take that as the answer to whether they will talk.",
+    "choices": [ { "text": "I will go.", "next": "sworn" } ] },
+  { "id": "watch", "text": "The watch is a sawyer, a carter, and somebody's aunt, and they are all on the tower tonight because the tower is what they are for. I am not sending Kettil into the old wood with a pike-pole.",
+    "choices": [ { "text": "Then I will go.", "next": "sworn" }, { "text": "Fair. Still not for me.", "next": "declined" } ] },
+  { "id": "sworn", "text": "Bring me the stone. There will be one. Whoever they are, they pulled up the line and they did not throw it away, because men like that never do.",
+    "hooks": [{ "kind": "quest_accept", "quest": "past_the_wardline" }] },
+  { "id": "declined", "text": "Then it stands another season. It has stood two." }
+ ]
+}

@@ -1,6 +1,10 @@
 import type { QuestDef } from './types.js';
 import { validateQuest } from './validate.js';
 
+import theWetCount from './defs/the_wet_count.json';
+import pastTheWardline from './defs/past_the_wardline.json';
+import aNameForTheStone from './defs/a_name_for_the_stone.json';
+import resinForTheRoad from './defs/resin_for_the_road.json';
 import hobbsHens from './defs/hobbs_hens.json';
 import thinTheMeadow from './defs/thin_the_meadow.json';
 import theLayOfTheLand from './defs/the_lay_of_the_land.json';
@@ -57,6 +61,10 @@ import theHerdStands from './defs/the_herd_stands.json';
  * if a file is missing from this roster.
  */
 const SOURCES: readonly unknown[] = [
+  theWetCount,
+  pastTheWardline,
+  aNameForTheStone,
+  resinForTheRoad,
   // Dawnmead starters — ungated, one lesson each.
   hobbsHens,
   thinTheMeadow,

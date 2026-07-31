@@ -1,0 +1,17 @@
+{
+ "id": "q_a_name_for_the_stone_offer",
+ "start": "hub",
+ "requires": ["quest:a_name_for_the_stone:available"],
+ "bindings": [{ "kind": "actor", "target": "old_torvi", "priority": 5 }],
+ "nodes": [
+  { "id": "hub", "text": "I have not asked anybody for anything in forty years and I am about to spoil it.\n\nPut his name on the stone. Halla will say she cannot write what she cannot bury. Let her say it to you instead of to me.",
+    "hooks": [{ "kind": "quest_offer", "quest": "a_name_for_the_stone" }],
+    "choices": [
+      { "text": "I will speak to her.", "next": "sworn" },
+      { "text": "She may be right.", "next": "right" } ] },
+  { "id": "right", "text": "She is right. That has never once been the same thing as being finished.",
+    "choices": [ { "text": "Then I will speak to her.", "next": "sworn" } ] },
+  { "id": "sworn", "text": "Aslak. Do not soften it and do not make a speech of it. Say the name and let her do the rest.",
+    "hooks": [{ "kind": "quest_accept", "quest": "a_name_for_the_stone" }] }
+ ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "the_wet_count",
+  "name": "The Wet Count and the Dry",
+  "giver": "tallyman_bram",
+  "requires": { "flags": ["dlg:bram_tally"] },
+  "stages": [
+    {
+      "id": "the_books",
+      "journal": "Bram counts the logs in at the boom and again at the deck, and twice this year the two numbers have not agreed. Great sticks, both times, gone between the water and the saw. He has not been able to get anybody in this town to care. Ask *Groa* at the Great Saw whether a log can go missing between the pond and her floor.",
+      "objectives": [{ "kind": "talk", "actor": "sawmistress_groa" }]
+    },
+    {
+      "id": "the_bays",
+      "journal": "Groa says nothing goes missing on her floor and she is not a woman you argue with twice. That leaves the other end. *Ospren* buys for the Crown at the wain bays east of the Charterhouse, and he wants spars that do not grow inside the line.",
+      "objectives": [{ "kind": "talk", "actor": "buyer_ospren" }]
+    },
+    {
+      "id": "the_word",
+      "journal": "Ospren said what he said, and then said carefully that it was a matter for the reeve. Take it to *Halla*. She keeps the rota and she keeps the boundary, and she is going to want the books.",
+      "objectives": [{ "kind": "talk", "actor": "reeve_halla" }]
+    }
+  ],
+  "rewards": {
+    "coins": 220,
+    "xp": [{ "skill": "woodcutting", "amount": 400 }],
+    "flags": ["wardline_doubted"],
+    "standing": [{ "faction": "crown", "delta": 3 }]
+  }
+}

@@ -1,0 +1,16 @@
+{
+ "id": "q_resin_for_the_road_offer",
+ "start": "hub",
+ "requires": ["quest:resin_for_the_road:available"],
+ "bindings": [{ "kind": "actor", "target": "pitchmaster_rullo", "priority": 5 }],
+ "nodes": [
+  { "id": "hub", "text": "Kilns are hungry and my tappers are slow and Sigrun wants her lamps burning by the tenth. Twelve pots of resin. Inside the line, mind, or Halla will have all of our ears.",
+    "hooks": [{ "kind": "quest_offer", "quest": "resin_for_the_road" }],
+    "choices": [
+      { "text": "Twelve pots. Done.", "next": "sworn" },
+      { "text": "Ask a tapper.", "next": "declined" } ] },
+  { "id": "sworn", "text": "Cut shallow and cut slanted. Bleed a pine wrong and it dies and then Odd finds out and then I hear about it.",
+    "hooks": [{ "kind": "quest_accept", "quest": "resin_for_the_road" }] },
+  { "id": "declined", "text": "I have asked the tappers. The tappers have opinions about the tenth as well." }
+ ]
+}

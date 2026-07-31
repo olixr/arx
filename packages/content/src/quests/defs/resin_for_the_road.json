@@ -1,0 +1,18 @@
+{
+  "id": "resin_for_the_road",
+  "name": "Resin for the Road",
+  "giver": "pitchmaster_rullo",
+  "repeat": { "cooldownHours": 18 },
+  "stages": [
+    {
+      "id": "the_bleed",
+      "journal": "Rullo's kilns eat resin faster than his tappers can bleed it, and the Timber Road's lamps burn firepitch, and Sigrun has opinions about lamps that go out. Twelve pots of pine resin. The pines inside the line will give it up if you know where to cut, and Rullo says everyone knows where to cut.",
+      "objectives": [{ "kind": "collect", "item": "pine_resin", "count": 12 }]
+    }
+  ],
+  "rewards": {
+    "coins": 140,
+    "xp": [{ "skill": "woodcutting", "amount": 260 }],
+    "items": [{ "item": "firepitch_oil", "qty": 1 }]
+  }
+}

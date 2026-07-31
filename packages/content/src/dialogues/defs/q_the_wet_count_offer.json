@@ -1,0 +1,16 @@
+{
+ "id": "q_the_wet_count_offer",
+ "start": "hub",
+ "requires": ["quest:the_wet_count:available"],
+ "bindings": [{ "kind": "actor", "target": "tallyman_bram", "priority": 5 }],
+ "nodes": [
+  { "id": "hub", "text": "You listened. Nobody listens. Eleven sticks in spring and nineteen at midsummer, and every one of them a great one. Go and ask Groa whether a log can walk off her floor. She will say no. I want somebody who is not me to hear her say it.",
+    "hooks": [{ "kind": "quest_offer", "quest": "the_wet_count" }],
+    "choices": [
+      { "text": "I will ask her.", "next": "sworn" },
+      { "text": "That is the reeve's work, not mine.", "next": "declined" } ] },
+  { "id": "sworn", "text": "Wet count at the boom, dry count at the deck. Hold both numbers in your head while you talk to her. That is the whole trick.",
+    "hooks": [{ "kind": "quest_accept", "quest": "the_wet_count" }] },
+  { "id": "declined", "text": "It is. She has not asked. Nineteen years and she has not asked once." }
+ ]
+}

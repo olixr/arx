@@ -1,0 +1,82 @@
+{
+  "id": "past_the_wardline",
+  "name": "Past the Wardline",
+  "giver": "reeve_halla",
+  "requires": {
+    "quests": [
+      "the_wet_count"
+    ]
+  },
+  "stages": [
+    {
+      "id": "the_line",
+      "journal": "Halla read Bram's books at the yard fire without saying a word, and then said one. Somebody is cutting in the old wood. Out the *Wardline gate* on the town's east side, follow the blazed pine and the boundary stones north-east into the deep stands. Whoever is out there posts men on the approach, and they will find you first.",
+      "objectives": [
+        {
+          "kind": "kill",
+          "npc": "brigand_archer",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "the_cut",
+      "journal": "The cut is real and it is old. A skid road dragged through moss that has not closed over, spars stacked where no honest wain could reach them, and a lean-to that has been slept in for more than one season. Break the camp and bring Halla the proof: the boundary stone they pulled up and used for a table.",
+      "objectives": [
+        {
+          "kind": "kill",
+          "npc": "brigand",
+          "count": 6
+        },
+        {
+          "kind": "collect",
+          "item": "wardstone",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "questDrops": [
+    {
+      "npc": "brigand_reaver",
+      "item": "wardstone",
+      "chance": 1
+    }
+  ],
+  "rewards": {
+    "coins": 900,
+    "xp": [
+      {
+        "skill": "combat",
+        "amount": 1800
+      },
+      {
+        "skill": "woodcutting",
+        "amount": 600
+      }
+    ],
+    "items": [
+      {
+        "item": "steel_axe",
+        "qty": 1
+      },
+      {
+        "item": "mending_salve",
+        "qty": 2
+      }
+    ],
+    "flags": [
+      "wardline_kept"
+    ],
+    "standing": [
+      {
+        "faction": "crown",
+        "delta": 8
+      },
+      {
+        "faction": "reavers",
+        "delta": -6
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+ "id": "q_past_the_wardline_turnin",
+ "start": "paid",
+ "requires": ["quest:past_the_wardline:ready"],
+ "bindings": [{ "kind": "actor", "target": "reeve_halla", "priority": 21 }],
+ "nodes": [
+  { "id": "paid", "text": "Set it down. That is Odd's grandfather's mark on the blazed face, and they ate off it.\n\nIt goes back in the ground tomorrow with the whole town watching, which is the part that matters. The axe is Vigga's work and the town's coin. Take both.",
+    "hooks": [{ "kind": "quest_turnin", "quest": "past_the_wardline" }],
+    "choices": [ { "text": "Will they come back?", "next": "back" } ] },
+  { "id": "back", "text": "Somebody will. There is a hundred years of standing timber out there and a hall in Silverfall that wants a roof. The line is not a wall. It is an agreement, and agreements need somebody to keep walking them." }
+ ]
+}

@@ -425,6 +425,7 @@ const defs: ItemDef[] = [
 
   // Quest items — worthless by law (the flood law's price for
   // quest-gated drops), stackable so an errand rides one slot.
+  { id: 'wardstone', name: 'Boundary stone', stackable: true, value: 0, quest: true, desc: "Blazed on one face, chiselled flat on the other. They pulled up the line and ate their supper off it.", color: '#8f9099', code: 'Ws' },
   { id: 'redmask_writ', name: 'Redmask writ', stackable: true, value: 0, quest: true, desc: 'Marching orders in a hand Captain Aldis would know asleep.', color: '#b0392e', code: 'Rw' },
   { id: 'reavers_mark', name: "Reaver's mark", stackable: true, value: 0, quest: true, desc: 'A crew\'s iron token. Whoever holds it keeps the shares.', color: '#2b2735', code: 'Rm' },
   { id: 'torn_ledger_page', name: 'Torn ledger page', stackable: true, value: 0, quest: true, startsQuest: 'the_stolen_ledger', desc: 'Bank-ruled lines torn out rough. Someone kept accounts; someone else kept the accounts.', color: '#efe3c2', code: 'Lp' },

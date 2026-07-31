@@ -1,0 +1,10 @@
+{
+ "id": "q_the_wet_count_turnin",
+ "start": "paid",
+ "requires": ["quest:the_wet_count:ready"],
+ "bindings": [{ "kind": "actor", "target": "reeve_halla", "priority": 21 }],
+ "nodes": [
+  { "id": "paid", "text": "Give me the books. No, all of them.\n\nGroa says no, Ospren says nothing very carefully, and Bram has been right for a year while this town patted him on the head. That is on me. Take the coin and do not go past the line yet.",
+    "hooks": [{ "kind": "quest_turnin", "quest": "the_wet_count" }] }
+ ]
+}

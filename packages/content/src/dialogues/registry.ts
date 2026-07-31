@@ -1,6 +1,14 @@
 import { dialogueDoneFlag, type DialogueDef } from './types.js';
 import { validateDialogue } from './validate.js';
 
+import qWetCountOffer from './defs/q_the_wet_count_offer.json';
+import qWetCountTurnin from './defs/q_the_wet_count_turnin.json';
+import qWardlineOffer from './defs/q_past_the_wardline_offer.json';
+import qWardlineTurnin from './defs/q_past_the_wardline_turnin.json';
+import qNameStoneOffer from './defs/q_a_name_for_the_stone_offer.json';
+import qNameStoneTurnin from './defs/q_a_name_for_the_stone_turnin.json';
+import qResinOffer from './defs/q_resin_for_the_road_offer.json';
+import qResinTurnin from './defs/q_resin_for_the_road_turnin.json';
 import hallaRota from './defs/halla_rota.json';
 import torviStone from './defs/torvi_stone.json';
 import groaSaw from './defs/groa_saw.json';
@@ -209,6 +217,14 @@ import qPatrolTurnin from './defs/q_the_last_patrol_turnin.json';
  * and fails if a file is missing from this roster.
  */
 const SOURCES: readonly unknown[] = [
+  qWetCountOffer,
+  qWetCountTurnin,
+  qWardlineOffer,
+  qWardlineTurnin,
+  qNameStoneOffer,
+  qNameStoneTurnin,
+  qResinOffer,
+  qResinTurnin,
   hallaRota,
   torviStone,
   groaSaw,

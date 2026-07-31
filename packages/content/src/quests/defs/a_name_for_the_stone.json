@@ -1,0 +1,51 @@
+{
+  "id": "a_name_for_the_stone",
+  "name": "A Name for the Stone",
+  "giver": "old_torvi",
+  "requires": {
+    "flags": [
+      "torvi_name"
+    ]
+  },
+  "stages": [
+    {
+      "id": "the_ask",
+      "journal": "Torvi's father went out after her the night the water went hard, and did not come back, and is not on the stone because this town writes down what it buries. She has never asked anyone for anything. She asked for this. *Halla* keeps the stone.",
+      "objectives": [
+        {
+          "kind": "talk",
+          "actor": "reeve_halla"
+        }
+      ]
+    },
+    {
+      "id": "the_cutting",
+      "journal": "Halla will not write a name she cannot bury, and she will not say no to Torvi either, so she has said the thing reeves say: find me somebody to cut it. Vigga will cut the letters if the chisel is re-steeled first, and she was careful to say that she is doing it for the stone and not for the argument.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "iron_bar",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 160,
+    "xp": [
+      {
+        "skill": "smithing",
+        "amount": 300
+      }
+    ],
+    "flags": [
+      "aslak_written"
+    ],
+    "standing": [
+      {
+        "faction": "crown",
+        "delta": 4
+      }
+    ]
+  }
+}
