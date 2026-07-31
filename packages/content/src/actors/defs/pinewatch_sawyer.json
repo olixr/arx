@@ -1,0 +1,14 @@
+{
+  "id": "pinewatch_sawyer",
+  "name": "Sawyer",
+  "title": "Of the Great Saw",
+  "examine": "Sawdust in the cuffs, the collar, the beard, and the bread. It stops being a nuisance in about a year.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 4, "hair": 3, "hairColor": 1, "beard": 4, "eyes": 0, "ears": 0, "feature": 1, "shirt": 9, "pants": 7 } },
+  "inventory": [{ "item": "board", "qty": 2 }],
+  "lines": [
+    "Groa can hear a wet board. I do not know how and I have stopped asking.",
+    "Boards to Amberford, beams to the ford, spars to the sea. We never see any of it.",
+    "Mind the deck when the slip is running. It does not stop for anyone."
+  ]
+}

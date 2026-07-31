@@ -1,0 +1,20 @@
+{
+ "id": "groa_saw",
+ "start": "greet",
+ "bindings": [{ "kind": "actor", "target": "sawmistress_groa" }],
+ "nodes": [
+  { "id": "greet", "text": "OTHER side. I do not hear a thing out of that ear and I never will, so save us both the shouting.", "next": "hub" },
+  { "id": "hub", "text": "Right. What.", "choices": [
+    { "text": "What do you sell?", "next": "browse" },
+    { "text": "How old is this wheel?", "next": "wheel" },
+    { "text": "Where does all of it go?", "next": "goes" },
+    { "text": "Nothing, thanks.", "next": "off" } ] },
+  { "id": "wheel", "text": "The race is my great-grandfather's. The wheel is mine, in the sense that I have replaced every part of it twice, which my mother said means it is a different wheel and I said means it is the same one.", "next": "hub" },
+  { "id": "goes", "text": "Boards to Amberford, beams to the ford, staves to the cooper in Silverfall. And Yannick's spars, which do not go through me and which he will tell you about at length.", "choices": [
+    { "text": "Why not through you?", "next": "spars" },
+    { "text": "Right.", "next": "hub" } ] },
+  { "id": "spars", "text": "Because a mast is not sawn, it is shaped. You cut a mast and you have made two of something worse. He is right about it and I have never once said so to his face.", "next": "hub" },
+  { "id": "browse", "text": "Boards, beams, and whole sticks if you have a wain. Cut wet and you are lying to somebody's roof, so mine are stacked a year.", "hooks": [{ "kind": "shop", "shop": "groa_boards" }] },
+  { "id": "off", "text": "Mind the deck. The slip does not stop." }
+ ]
+}

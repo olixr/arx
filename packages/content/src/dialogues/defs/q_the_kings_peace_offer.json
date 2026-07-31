@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_kings_peace_offer__hub",
       "text": "You came recommended by the registry, which is the only recommendation I read. Here's the work: brigands are camped on the open road again. My grandfather's grandfather saw the ford chained once. We don't do that twice.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_kings_peace" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "why",
+      "voice": "q_the_kings_peace_offer__why",
       "text": "The watch holds walls. Roads need someone who walks them anyway. That's you, or I've read the registry wrong.",
       "choices": [
         { "text": "You read it right.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_kings_peace_offer__sworn",
       "text": "Camps first, archers included. Then whoever keeps their shares. There's always one. The Crown pays when the road is quiet, not before.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_kings_peace" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_kings_peace_offer__declined",
       "text": "Honest answer. Come back when you are."
     }
   ]

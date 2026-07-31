@@ -1,0 +1,17 @@
+{
+  "id": "warden_sigrun",
+  "name": "Sigrun",
+  "title": "Waykeeper of the Timber Road",
+  "examine": "The lamp on her shoulder is the Waykeepers' and the mud on her boots is the Timber Road's. She has opinions about which of the two ways here you took.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": { "level": 30, "respawnSec": 90, "stats": { "maxHp": 130, "damage": 9, "speed": 3.5, "leashRange": 12 } },
+  "model": { "kind": "humanoid", "look": { "skin": 3, "hair": 1, "hairColor": 1, "beard": 0, "eyes": 1, "ears": 0, "feature": 0, "shirt": 10, "pants": 10 } },
+  "equipment": { "head": "iron_helm", "body": "iron_platebody", "legs": "iron_greaves", "boots": "iron_sabatons", "weapon": "iron_sword", "offhand": "oak_kiteshield" },
+  "inventory": [{ "item": "coins", "qty": 40 }],
+  "lines": [
+    "Came up the Sparway, did you. I can always tell. You have the face for it.",
+    "Two lamps on the Timber Road and a hamlet at the turn. That took the Waykeepers nine years to argue for.",
+    "The long road is longer. That is the entire point of the long road."
+  ]
+}

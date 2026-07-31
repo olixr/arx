@@ -1,0 +1,39 @@
+{
+  "id": "pine_storekeep",
+  "base": {
+    "kind": "post",
+    "dir": -1.5707963,
+    "speed": 1.5
+  },
+  "slots": [
+    {
+      "from": 12.5,
+      "to": 13.5,
+      "task": {
+        "kind": "wander",
+        "radius": 2,
+        "speed": 1.3
+      }
+    },
+    {
+      "from": 21.5,
+      "to": 6,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.3,
+        "waypoints": [
+          {
+            "x": -2,
+            "y": 4
+          },
+          {
+            "x": -3,
+            "y": 4,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}

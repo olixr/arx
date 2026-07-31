@@ -1,0 +1,39 @@
+{
+  "id": "pine_nurseryman",
+  "base": {
+    "kind": "wander",
+    "radius": 4,
+    "speed": 1.2
+  },
+  "slots": [
+    {
+      "from": 13,
+      "to": 14,
+      "task": {
+        "kind": "post",
+        "sit": true,
+        "speed": 1.2
+      }
+    },
+    {
+      "from": 20.5,
+      "to": 6.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.3,
+        "waypoints": [
+          {
+            "x": -82,
+            "y": 43
+          },
+          {
+            "x": -83,
+            "y": 43,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}

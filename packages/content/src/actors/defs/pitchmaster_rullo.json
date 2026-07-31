@@ -1,0 +1,15 @@
+{
+  "id": "pitchmaster_rullo",
+  "name": "Rullo",
+  "title": "Pitchmaster",
+  "examine": "Singed in a different place every week and cheerful about all of them. There is a sign in his own yard with his name on it and it is not a compliment.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 3, "hair": 3, "hairColor": 2, "beard": 5, "eyes": 0, "ears": 0, "feature": 2, "shirt": 5, "pants": 7 } },
+  "inventory": [{ "item": "pine_resin", "qty": 6 }],
+  "lines": [
+    "Resin burns, pitch burns, my eyebrows burn. It is a whole trade of things burning.",
+    "That sign was Halla's idea. I keep meaning to take it down.",
+    "Bleed a pine wrong and it dies. Bleed it right and it pays you for forty years."
+  ],
+  "shop": "rullo_pitch"
+}

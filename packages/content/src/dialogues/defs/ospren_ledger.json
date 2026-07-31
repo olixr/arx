@@ -1,0 +1,23 @@
+{
+ "id": "ospren_ledger",
+ "start": "greet",
+ "bindings": [{ "kind": "actor", "target": "buyer_ospren" }],
+ "nodes": [
+  { "id": "greet", "text": "Ospren. I buy for the Crown, which in practice means I buy for three craftsmen in Silverfall who have never agreed about anything.", "next": "hub" },
+  { "id": "hub", "text": "Was there something?", "choices": [
+    { "text": "Which three?", "next": "three" },
+    { "text": "You and the factor share a house?", "next": "ebba" },
+    { "text": "How is the cut this year?", "next": "cut" },
+    { "text": "Nothing. Good day.", "next": "off" } ] },
+  { "id": "three", "text": "Stig wants ridgepoles for the carpenters' hall. Dagny wants staves and will take nothing with a knot. Haki wants shafts, which is the easy one, and he complains the loudest.", "next": "hub" },
+  { "id": "ebba", "text": "Ebba counts volume for the Charter, I take one tree in a hundred for the Crown. We share a strongroom and a door and no opinions. It works because neither of us can leave.", "next": "hub" },
+  { "id": "cut", "text": "Down, and the price is up, and the spars I actually need are not inside the line any more.", "choices": [
+    { "text": "Then where are they?", "next": "past" },
+    { "text": "Hm.", "next": "hub" } ] },
+  { "id": "past", "text": "Past the Wardline, where I am not allowed to want them. Which I do not, officially, and will say so to the reeve, and have.", "choices": [
+    { "text": "Officially.", "next": "wink" },
+    { "text": "Good.", "next": "hub" } ] },
+  { "id": "wink", "text": "I said what I said. If somebody is bringing great sticks down to the bays that did not grow inside the line, that is a matter for Halla and not for a man with a list.", "next": "hub", "set": ["ospren_hint"] },
+  { "id": "off", "text": "Mind the wains at the bays. They do not stop either." }
+ ]
+}

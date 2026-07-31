@@ -17,6 +17,23 @@ import fallMason from './defs/fall_mason.json';
 import fallShrinekeeper from './defs/fall_shrinekeeper.json';
 import fallTrader from './defs/fall_trader.json';
 import fallWarden from './defs/fall_warden.json';
+import pineReeve from './defs/pine_reeve.json';
+import pineSawmistress from './defs/pine_sawmistress.json';
+import pineSparmaster from './defs/pine_sparmaster.json';
+import pineSmith from './defs/pine_smith.json';
+import pineInnkeep from './defs/pine_innkeep.json';
+import pinePitchmaster from './defs/pine_pitchmaster.json';
+import pineFactor from './defs/pine_factor.json';
+import pineBuyer from './defs/pine_buyer.json';
+import pineStorekeep from './defs/pine_storekeep.json';
+import pineTallyman from './defs/pine_tallyman.json';
+import pineBoomsman from './defs/pine_boomsman.json';
+import pineNurseryman from './defs/pine_nurseryman.json';
+import pineWarden from './defs/pine_warden.json';
+import pineElder from './defs/pine_elder.json';
+import pineFisher from './defs/pine_fisher.json';
+import pineWatch from './defs/pine_watch.json';
+import pineSawyer from './defs/pine_sawyer.json';
 import fallWatch from './defs/fall_watch.json';
 import fallWatchPostern from './defs/fall_watch_postern.json';
 import fallWatchMuster from './defs/fall_watch_muster.json';
@@ -101,6 +118,23 @@ const SOURCES: readonly unknown[] = [
   fallShrinekeeper,
   fallTrader,
   fallWarden,
+  pineReeve,
+  pineSawmistress,
+  pineSparmaster,
+  pineSmith,
+  pineInnkeep,
+  pinePitchmaster,
+  pineFactor,
+  pineBuyer,
+  pineStorekeep,
+  pineTallyman,
+  pineBoomsman,
+  pineNurseryman,
+  pineWarden,
+  pineElder,
+  pineFisher,
+  pineWatch,
+  pineSawyer,
   fallWatch,
   fallWatchPostern,
   fallWatchMuster,

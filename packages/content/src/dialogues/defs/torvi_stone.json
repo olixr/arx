@@ -1,0 +1,29 @@
+{
+ "id": "torvi_stone",
+ "start": "greet",
+ "bindings": [{ "kind": "actor", "target": "old_torvi" }],
+ "nodes": [
+  { "id": "greet", "text": "Sit if you are sitting. If you are standing there to ask me about the ice, stand somewhere I can see you.", "next": "hub" },
+  { "id": "hub", "text": "Well?", "choices": [
+    { "text": "Tell me about the ice.", "next": "ice" },
+    { "text": "Halla says there should be fifteen names.", "next": "fifteen" },
+    { "text": "Are you not afraid of the far shore?", "next": "afraid" },
+    { "text": "I will let you be.", "next": "off" } ] },
+  { "id": "ice", "text": "It was not a hard winter. It was a hard water. Cold came down and sat, and the Glasswater went quiet, and quiet is the wrong sound for a lake.", "choices": [
+    { "text": "Then what?", "next": "then" },
+    { "text": "Thank you.", "next": "hub" } ] },
+  { "id": "then", "text": "Then the far shore was not far any more. I was eleven and I was outside, which nobody was supposed to be, and I saw them come over it like the water was a road.", "choices": [
+    { "text": "You were outside?", "next": "outside" } ] },
+  { "id": "outside", "text": "Fetching a pail. Eleven-year-olds fetch pails. My father came out after me and did not come back in, and that is the whole of it, and I have told it now.", "next": "hub" },
+  { "id": "fifteen", "text": "My father. He is not on the stone because they never found him, and this town writes down what it buries. Halla says that is honest. I say a name is not a body.", "choices": [
+    { "text": "What was his name?", "next": "name" },
+    { "text": "I am sorry.", "next": "sorry" } ] },
+  { "id": "name", "text": "Aslak. Say it once and go on with your day. That is all I have ever wanted anybody to do with it.", "next": "hub", "set": ["torvi_name"] },
+  { "id": "sorry", "text": "Everyone is. Sit down, then, and be sorry where it is warm.", "next": "hub" },
+  { "id": "afraid", "text": "I am eighty-one. I am afraid of the stair. The far shore has had forty years to come back and has not managed it.", "choices": [
+    { "text": "It could freeze again.", "next": "again" },
+    { "text": "Fair.", "next": "hub" } ] },
+  { "id": "again", "text": "It could. That is why there is a rota and a bell and a girl up that tower tonight who would rather be asleep. We are not fools. We are just not frightened any more.", "next": "hub" },
+  { "id": "off", "text": "Go on. Mind the fire, it spits." }
+ ]
+}

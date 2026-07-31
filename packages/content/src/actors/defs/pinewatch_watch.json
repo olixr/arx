@@ -1,0 +1,48 @@
+{
+  "id": "pinewatch_watch",
+  "name": "Pinewatch Watch",
+  "title": "On the Rota",
+  "examine": "Not a soldier. A sawyer, or a carter, or somebody's aunt, taking their night on the board like everyone else.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 26,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 105,
+      "damage": 7,
+      "speed": 3.4,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 2,
+      "hairColor": 2,
+      "beard": 3,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 14
+    }
+  ],
+  "lines": [
+    "My night. I cut boards all day and I will cut them all day tomorrow.",
+    "We watch the water. That is what the tower is for, whatever anyone tells you.",
+    "Every roof takes a night. You are under a roof."
+  ]
+}

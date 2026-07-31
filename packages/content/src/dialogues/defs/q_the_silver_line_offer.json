@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_silver_line_offer__hub",
       "text": "You've done the queen's errand and walked the Marshal's line. One more, and it's the heaviest. The high passes are turning bold: trolls off the scree, worgs on the shepherds' shoulders. The Line holds because someone does the work. This season, I'm asking you.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_silver_line" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "after",
+      "voice": "q_the_silver_line_offer__after",
       "text": "After, you present yourself to the Castellan. Maren weighs who the Crown may trust, and she doesn't take my word for it. That's why her word is worth having.",
       "choices": [
         { "text": "Then I'll earn hers too.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_silver_line_offer__sworn",
       "text": "Two trolls, four worgs, and the shepherds sleep again. Then the Castellan. Then me. Go steady.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_silver_line" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_silver_line_offer__declined",
       "text": "The mountain keeps. So does the offer."
     }
   ]

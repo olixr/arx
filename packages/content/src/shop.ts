@@ -419,6 +419,88 @@ const defs: ShopDef[] = [
       { item: 'smoked_trout', price: 34 },
     ],
   },
+  // ------------------------------------------------------- PINEWATCH
+  // The town that watches the deep wood sells what the deep wood is
+  // worth: sawn boards by the stack, spars nobody else can shape, and
+  // the pitch that comes off the kilns downwind of everything.
+  {
+    id: 'groa_boards',
+    name: 'The Great Saw',
+    stock: [
+      { item: 'board', price: 6 },
+      { item: 'pine_log', price: 26 },
+      { item: 'log', price: 20 },
+    ],
+  },
+  // Yannick sells the raw stick and the resin off it. The mast itself
+  // is not for sale to anyone who has to ask.
+  {
+    id: 'yannick_spars',
+    name: "Sparwrights' Row",
+    stock: [
+      { item: 'pine_log', price: 24 },
+      { item: 'pine_resin', price: 7 },
+      { item: 'board', price: 7 },
+    ],
+  },
+  // Vigga hangs heads and sets teeth. The ladder here is honest iron
+  // and steel: this is a working town, not an armoury.
+  {
+    id: 'vigga_edges',
+    name: 'The Axe-Smith',
+    stock: [
+      { item: 'bronze_axe', price: 26 },
+      { item: 'iron_axe', price: 120 },
+      { item: 'steel_axe', price: 420 },
+      { item: 'iron_bar', price: 42 },
+    ],
+  },
+  // The Pine and Bell keeps the four o clock fire and feeds whoever
+  // comes off the tower stair.
+  {
+    id: 'bell_board',
+    name: 'The Pine and Bell',
+    stock: [
+      { item: 'bread', price: 18 },
+      { item: 'cooked_beef', price: 16 },
+      { item: 'hearty_stew', price: 44 },
+      { item: 'milk', price: 12 },
+    ],
+  },
+  // Rullo's kilns: resin in, firepitch out, eyebrows optional.
+  {
+    id: 'rullo_pitch',
+    name: 'The Pitch Yard',
+    stock: [
+      { item: 'pine_resin', price: 6 },
+      { item: 'firepitch_oil', price: 90 },
+    ],
+  },
+  // Nial keeps two of everything and three of what people lose.
+  {
+    id: 'pinewatch_stores',
+    name: 'Pinewatch Stores',
+    stock: [
+      { item: 'bronze_axe', price: 28 },
+      { item: 'fishing_rod', price: 22 },
+      { item: 'arrow', price: 4 },
+      { item: 'healing_tincture', price: 60 },
+      { item: 'mending_salve', price: 170 },
+      { item: 'ironbark_tonic', price: 135 },
+      { item: 'leather_boots', price: 64 },
+      { item: 'brass_key', price: 250 },
+    ],
+  },
+  // Ylva fishes the one water nobody else wants. Cold, slow, big.
+  {
+    id: 'ylva_catch',
+    name: 'The Fisher Steps',
+    stock: [
+      { item: 'fishing_rod', price: 18 },
+      { item: 'raw_trout', price: 11 },
+      { item: 'trout', price: 22 },
+    ],
+  },
   // Voss sells tackle and yesterday's catch, in that order of pride.
   {
     id: 'voss_tackle',

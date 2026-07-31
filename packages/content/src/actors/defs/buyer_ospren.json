@@ -1,0 +1,14 @@
+{
+  "id": "buyer_ospren",
+  "name": "Ospren",
+  "title": "The Crown's Timber Buyer",
+  "examine": "Silverfall's man, in Silverfall's good coat, on his fourth winter of promising himself it is his last.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 4, "hair": 1, "hairColor": 0, "beard": 2, "eyes": 1, "ears": 0, "feature": 0, "shirt": 3, "pants": 10 } },
+  "inventory": [{ "item": "coins", "qty": 180 }],
+  "lines": [
+    "Stig wants ridgepoles, Dagny wants staves, Haki wants shafts. Nobody wants to hear about the grain.",
+    "I buy one tree in a hundred and I am hated for the ninety-nine.",
+    "There is a hall in Silverfall with a roof I bought. I have not stood under it."
+  ]
+}

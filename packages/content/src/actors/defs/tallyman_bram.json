@@ -1,0 +1,14 @@
+{
+  "id": "tallyman_bram",
+  "name": "Bram",
+  "title": "Tallyman of the Boom",
+  "examine": "He counts the logs in and he counts the logs out. He has done this for nineteen years and can describe all of them.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 4, "hair": 1, "hairColor": 1, "beard": 1, "eyes": 0, "ears": 0, "feature": 0, "shirt": 7, "pants": 6 } },
+  "inventory": [{ "item": "coins", "qty": 24 }],
+  "lines": [
+    "Wet count and dry count. They should match. Twice this year they have not.",
+    "Nineteen years. I have the books for all of it if you want to see them.",
+    "Some people find this dull. I find it restful."
+  ]
+}

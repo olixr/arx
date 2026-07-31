@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "aeriex_court__greet",
       "text": "The guards let you through, which means you climbed the High Road on your own feet. Come in, then.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "aeriex_court__hub",
       "text": "Ask. I'm told kings are supposed to make people wait. My grandfather was a quarry foreman. Waiting wastes daylight.",
       "choices": [
         {
@@ -37,11 +39,13 @@
     },
     {
       "id": "line",
+      "voice": "aeriex_court__line",
       "text": "Five kings, one name. The first Aeriex was a quarry foreman who paid the shepherds' debts in silver. Folk called him *king* for it, half as a joke, and the name held. The bargain hasn't changed since: the Crown pays first, and the roads stay lit.",
       "next": "hub"
     },
     {
       "id": "maren",
+      "voice": "aeriex_court__maren",
       "text": "Maren speaks for the mountain. She was Castellan under my father; she'll be Castellan under my heir, if she consents to it. When she says a gallery is unsafe, it closes before I've finished nodding.",
       "choices": [
         {
@@ -56,16 +60,19 @@
     },
     {
       "id": "rookery",
+      "voice": "aeriex_court__rookery",
       "text": "Yes. Behind the bank, past the scree. The Magpie's people were quarrymen before my family were kings; if we're honest about it, theirs is the older claim. They watch what my watch can't. I leave them their dark, and it stays civil.",
       "next": "hub"
     },
     {
       "id": "seal",
+      "voice": "aeriex_court__seal",
       "text": "Twenty years my father kept his grief sealed behind good stonework, and the kobolds dug on regardless. Maren came to me with the surveys and said the seal was keeping out miners and nothing else. I gave the order the same hour. If we must fight for the deep, I'd rather do it with the lamps lit.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "aeriex_court__bye",
       "text": "And a good road to you. Mind the edge."
     }
   ]

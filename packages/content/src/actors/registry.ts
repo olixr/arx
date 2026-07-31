@@ -60,6 +60,23 @@ import roundTrader from './defs/round_trader.json';
 import innkeepDunna from './defs/innkeep_dunna.json';
 import keeperAnsel from './defs/keeper_ansel.json';
 import lampkeeperEdda from './defs/lampkeeper_edda.json';
+import reeveHalla from './defs/reeve_halla.json';
+import sawmistressGroa from './defs/sawmistress_groa.json';
+import sparmasterYannick from './defs/sparmaster_yannick.json';
+import smithVigga from './defs/smith_vigga.json';
+import innkeepSunniva from './defs/innkeep_sunniva.json';
+import pitchmasterRullo from './defs/pitchmaster_rullo.json';
+import factorEbba from './defs/factor_ebba.json';
+import buyerOspren from './defs/buyer_ospren.json';
+import storekeepNial from './defs/storekeep_nial.json';
+import tallymanBram from './defs/tallyman_bram.json';
+import boomsmanKettil from './defs/boomsman_kettil.json';
+import nurserymanOdd from './defs/nurseryman_odd.json';
+import wardenSigrun from './defs/warden_sigrun.json';
+import oldTorvi from './defs/old_torvi.json';
+import fisherYlva from './defs/fisher_ylva.json';
+import pinewatchWatch from './defs/pinewatch_watch.json';
+import pinewatchSawyer from './defs/pinewatch_sawyer.json';
 import hoargateWatch from './defs/hoargate_watch.json';
 import serjeantOttar from './defs/serjeant_ottar.json';
 import masterTilo from './defs/master_tilo.json';
@@ -107,6 +124,23 @@ import saltmereFisher from './defs/saltmere_fisher.json';
 // Waykeeper sergeants holding the marches, and Edda holding the
 // Last Lamp against the Silverspine dark.
 const SOURCES: readonly unknown[] = [
+  reeveHalla,
+  sawmistressGroa,
+  sparmasterYannick,
+  smithVigga,
+  innkeepSunniva,
+  pitchmasterRullo,
+  factorEbba,
+  buyerOspren,
+  storekeepNial,
+  tallymanBram,
+  boomsmanKettil,
+  nurserymanOdd,
+  wardenSigrun,
+  oldTorvi,
+  fisherYlva,
+  pinewatchWatch,
+  pinewatchSawyer,
   hoargateWatch,
   serjeantOttar,
   portreeveBrack,

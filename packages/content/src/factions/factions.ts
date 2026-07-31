@@ -46,6 +46,9 @@ export const FACTIONS: FactionsDef = {
         'farmer_jorel',
         'farmer_tamsin',
         'round_trader',
+        // Pinewatch: the Charter's own factor, eleven years north and
+        // counting every stick that leaves.
+        'factor_ebba',
         // Dawnmead — one hearth-country with the ford (no politics of its own)
         'elder_rowan',
         'warden_bryn',
@@ -103,10 +106,34 @@ export const FACTIONS: FactionsDef = {
         'veteran_skarn',
         'broker_varga',
         'curio_ninebrass',
+        // Pinewatch: a Crown charter town at the far end of the
+        // Timber Road. The reeve holds the Wardline, the watch is the
+        // whole town by rota, and Ospren buys here for the Timberway.
+        // The Hoargate: the Crown's cold post across the north pass.
+        'serjeant_ottar',
+        'hoargate_watch',
+        'reeve_halla',
+        'pinewatch_watch',
+        'pinewatch_sawyer',
+        'buyer_ospren',
+        'sawmistress_groa',
+        'sparmaster_yannick',
+        'smith_vigga',
+        'innkeep_sunniva',
+        'pitchmaster_rullo',
+        'storekeep_nial',
+        'tallyman_bram',
+        'boomsman_kettil',
+        'nurseryman_odd',
+        'old_torvi',
+        'fisher_ylva',
       ],
-      enforcers: ['castle_guard', 'silverfall_watch'],
+      enforcers: ['castle_guard', 'silverfall_watch', 'pinewatch_watch', 'hoargate_watch'],
       npcPrefixes: [],
-      anchors: [{ x: -288, y: -160 }],
+      anchors: [
+        { x: -288, y: -160 },
+        { x: 584, y: -136 },
+      ],
       refusals: [
         'The crown remembers. Move along.',
         'No business with you while the guard is watching.',
@@ -125,6 +152,8 @@ export const FACTIONS: FactionsDef = {
         'waykeeper_brant',
         'wayward_watch',
         'lampkeeper_edda',
+        // The Timber Road is theirs too, and Sigrun holds its far end.
+        'warden_sigrun',
         'shrinekeeper_sella',
         // The hamlets stand under the wardens' lamps
         'crofter_maida',

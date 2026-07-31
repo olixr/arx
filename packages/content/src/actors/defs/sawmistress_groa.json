@@ -1,0 +1,15 @@
+{
+  "id": "sawmistress_groa",
+  "name": "Groa",
+  "title": "Sawmistress of the Great Saw",
+  "examine": "Forearms like the beams she cuts and a permanent squint from thirty years of sighting down grain. Shout twice. She is deaf on the left and unembarrassed about it.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 4, "hair": 3, "hairColor": 1, "beard": 0, "eyes": 0, "ears": 0, "feature": 1, "shirt": 9, "pants": 7 } },
+  "inventory": [{ "item": "pine_log", "qty": 4 }, { "item": "board", "qty": 6 }],
+  "lines": [
+    "OTHER side. I do not hear a thing out of that ear and I never will.",
+    "A board is a promise. Cut it wet and you are lying to a roof.",
+    "That wheel has turned since my grandmother. I have replaced every part of it twice."
+  ],
+  "shop": "groa_boards"
+}

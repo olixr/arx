@@ -1,0 +1,15 @@
+{
+  "id": "fisher_ylva",
+  "name": "Ylva",
+  "title": "Of the Fisher Steps",
+  "examine": "She fishes the one water in the Dawnlands that nobody else wants, and she is fed, so the argument is settled.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 5, "hair": 2, "hairColor": 2, "beard": 0, "eyes": 3, "ears": 0, "feature": 1, "shirt": 8, "pants": 3 } },
+  "inventory": [{ "item": "raw_trout", "qty": 3 }],
+  "lines": [
+    "Cold water, slow fish, big fish. You want quick, go to the ford.",
+    "The steps are the only place on this water a child is allowed. Mind that.",
+    "I have never once seen it freeze. Torvi has. We do not discuss it."
+  ],
+  "shop": "ylva_catch"
+}

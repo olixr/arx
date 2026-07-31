@@ -1,0 +1,15 @@
+{
+  "id": "smith_vigga",
+  "name": "Vigga",
+  "title": "The Axe-Smith",
+  "examine": "Every tooth in this town comes off her stone. She hangs axe-heads the way other smiths sign their work, and can tell whose axe it is by the wear.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 5, "hair": 0, "hairColor": 0, "beard": 0, "eyes": 3, "ears": 0, "feature": 1, "shirt": 10, "pants": 7 } },
+  "inventory": [{ "item": "iron_axe", "qty": 1 }, { "item": "iron_bar", "qty": 3 }],
+  "lines": [
+    "Bring it before it chips, not after. After is a new head and a new price.",
+    "The boom chain is one job and it takes me a fortnight. Ask Kettil what happens when it goes.",
+    "Wedges. Everyone forgets wedges until the tree sits down on the blade."
+  ],
+  "shop": "vigga_edges"
+}

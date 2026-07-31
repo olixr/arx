@@ -15,6 +15,7 @@ import {
   QUESTS,
   ROUTINES,
   buildAmberford,
+  buildPinewatch,
   buildSaltmere,
   buildDawnmead,
   buildSilverfall,
@@ -67,7 +68,14 @@ import { WorldSource } from './world/worldSource.js';
 // Dawnmead stays FIRST: the world spawn (rescue law, underground
 // surfacing) is the first zone declaring one — the Waking Ring.
 const builtinZones = new Map<string, ZoneDef>(
-  [buildDawnmead(), buildAmberford(), buildSilverfall(), buildSaltmere(), buildUndercroft()].map((z) => [z.id, z]),
+  [
+    buildDawnmead(),
+    buildAmberford(),
+    buildSilverfall(),
+    buildSaltmere(),
+    buildPinewatch(),
+    buildUndercroft(),
+  ].map((z) => [z.id, z]),
 );
 const zones: ZoneDef[] = [...builtinZones.values()];
 try {

@@ -1,0 +1,40 @@
+{
+  "id": "pine_factor",
+  "base": {
+    "kind": "post",
+    "dir": 3.1415927,
+    "speed": 1.5
+  },
+  "slots": [
+    {
+      "from": 10,
+      "to": 12,
+      "task": {
+        "kind": "path",
+        "speed": 1.5,
+        "waypoints": [
+          {
+            "x": 4,
+            "y": 10,
+            "waitSec": 150,
+            "dir": 1.5707963
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "waitSec": 60
+          }
+        ]
+      }
+    },
+    {
+      "from": 22,
+      "to": 6.5,
+      "task": {
+        "kind": "wander",
+        "radius": 2,
+        "speed": 1.2
+      }
+    }
+  ]
+}

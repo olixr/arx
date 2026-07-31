@@ -1,0 +1,15 @@
+{
+  "id": "innkeep_sunniva",
+  "name": "Sunniva",
+  "title": "Keeper of the Pine and Bell",
+  "examine": "She banks the fire at midnight and builds it again at half three, because the watch comes off the tower at four and has to go somewhere.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 4, "hair": 1, "hairColor": 3, "beard": 0, "eyes": 1, "ears": 0, "feature": 0, "shirt": 8, "pants": 6 } },
+  "inventory": [{ "item": "hearty_stew", "qty": 3 }, { "item": "bread", "qty": 4 }],
+  "lines": [
+    "Sit anywhere. The corner by the fire is Torvi's and she will tell you so herself.",
+    "Four in the morning is my busiest hour. You get used to it or you get out of the trade.",
+    "The bell in my sign is the tower's bell. My grandfather thought that was funny."
+  ],
+  "shop": "bell_board"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "pine_watch",
+  "base": { "kind": "post", "speed": 1.6 },
+  "slots": [
+    { "from": 9.5, "to": 10.5, "task": { "kind": "wander", "radius": 2.5, "speed": 1.5 } },
+    { "from": 15.5, "to": 16.5, "task": { "kind": "wander", "radius": 2.5, "speed": 1.5 } }
+  ]
+}

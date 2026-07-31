@@ -1,6 +1,15 @@
 import { dialogueDoneFlag, type DialogueDef } from './types.js';
 import { validateDialogue } from './validate.js';
 
+import hallaRota from './defs/halla_rota.json';
+import torviStone from './defs/torvi_stone.json';
+import groaSaw from './defs/groa_saw.json';
+import yannickRow from './defs/yannick_row.json';
+import ospreLedger from './defs/ospren_ledger.json';
+import rulloKilns from './defs/rullo_kilns.json';
+import sunnivaBell from './defs/sunniva_bell.json';
+import bramTally from './defs/bram_tally.json';
+import sigrunRoad from './defs/sigrun_road.json';
 import coppinReeve from './defs/coppin_reeve.json';
 import ninebrassStall from './defs/ninebrass_stall.json';
 import skarnLine from './defs/skarn_line.json';
@@ -200,6 +209,15 @@ import qPatrolTurnin from './defs/q_the_last_patrol_turnin.json';
  * and fails if a file is missing from this roster.
  */
 const SOURCES: readonly unknown[] = [
+  hallaRota,
+  torviStone,
+  groaSaw,
+  yannickRow,
+  ospreLedger,
+  rulloKilns,
+  sunnivaBell,
+  bramTally,
+  sigrunRoad,
   brackHarbor,
   neaveLedger,
   dorritGull,

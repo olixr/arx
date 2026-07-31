@@ -1,0 +1,37 @@
+{
+  "id": "reeve_halla",
+  "name": "Halla",
+  "title": "Reeve of Pinewatch",
+  "examine": "She keeps the rota, the boundary, and her temper, in that order of difficulty. Nine years old the winter the ice came.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 1,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 6,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 60
+    }
+  ],
+  "lines": [
+    "You are on the board like everyone else while you sleep under our roofs.",
+    "Fell inside the line, plant what you fell, and we will never have words.",
+    "I was nine. I remember the quiet more than the wolves."
+  ]
+}

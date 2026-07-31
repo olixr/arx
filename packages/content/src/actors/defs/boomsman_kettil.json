@@ -1,0 +1,14 @@
+{
+  "id": "boomsman_kettil",
+  "name": "Kettil",
+  "title": "Boomsman",
+  "examine": "Twenty-one, quick on a rolling log, and entirely convinced that nothing bad is coming for him specifically.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 3, "hair": 3, "hairColor": 3, "beard": 0, "eyes": 1, "ears": 0, "feature": 0, "shirt": 9, "pants": 3 } },
+  "inventory": [{ "item": "coins", "qty": 18 }],
+  "lines": [
+    "I have walked the chain four times. Do not tell Halla and do not tell Vigga.",
+    "You want to see something, come down when a raft breaks. Everybody runs the wrong way.",
+    "Cold? You stop noticing about the knees."
+  ]
+}

@@ -17,6 +17,7 @@ import { buildDawnmead } from './maps/dawnmead.js';
 import { buildAmberford } from './maps/amberford.js';
 import { buildSilverfall } from './maps/silverfall.js';
 import { buildSaltmere } from './maps/saltmere.js';
+import { buildPinewatch } from './maps/pinewatch.js';
 import { buildUndercroft } from './maps/undercroft.js';
 import { AMBERFORD_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
@@ -1624,4 +1625,126 @@ test('sign records survive the editor JSON round trip', () => {
   // A title-only board stores no lines key at all (the absent-stays-
   // absent law every placement keeps).
   assert.equal(z.signs![1]!.lines, undefined);
+});
+
+// ---------------------------------------------------------- PINEWATCH
+// The town that watches the deep wood. The anchors pinned here are the
+// ones routines and quests measure from: move one and something walks
+// into a wall at midnight.
+test('pinewatch: the watch town holds its knoll, its water, and three gates', () => {
+  const z = buildPinewatch();
+  assert.equal(z.id, 'pinewatch');
+  assert.equal(z.width, 128);
+  assert.equal(z.height, 96);
+  assert.equal(z.origin.x, 520);
+  assert.equal(z.origin.y, -184);
+  assert.ok(z.elev, 'the Old Watch stands on a knoll, so the zone carries elevation');
+  const at = (x: number, y: number): Tile => z.ground[y * z.width + x] as Tile;
+  const n = (t: Tile): number => z.ground.reduce((c, g) => (g === t ? c + 1 : c), 0);
+  // The Glasswater is the fourth wall, and most of the north of the map.
+  assert.ok(n(Tile.WaterDeep) + n(Tile.Water) > 1800, 'the Glasswater shrank');
+  assert.ok(n(Tile.WaterShallow) >= 150, 'the wading margin and the millrace');
+  assert.ok(n(Tile.Sand) >= 150, 'the working strand');
+  assert.ok(n(Tile.Dock) >= 40, 'the boom, the piers, the slip, the fisher steps');
+  assert.equal(n(Tile.FishingSpot), 5, 'the pond, the bay, the steps');
+  // The knoll: one stair, and only one.
+  assert.equal(n(Tile.Ramp), 3, 'the Old Watch keeps exactly one flight');
+  assert.ok(n(Tile.Cliff) >= 60, 'the knoll lost its rim');
+  // The trades that exist nowhere else in the Dawnlands at this scale.
+  assert.ok(n(Tile.Sawhorse) >= 14, 'the spar beds and the saw floor');
+  assert.ok(n(Tile.Stump) >= 20, 'the timber strand, the skidway, the cordwood');
+  assert.ok(n(Tile.SaplingPine) >= 20, 'the nursery is the Wardline is the town');
+  assert.ok(n(Tile.TreePine) >= 300, 'the Pinereach comes in over the walls');
+  assert.equal(n(Tile.Furnace), 2, "the axe-smith's forge");
+  assert.equal(n(Tile.Anvil), 2);
+  assert.equal(n(Tile.Vault), 2, 'the Charterhouse strongroom');
+  assert.equal(n(Tile.BankChest), 2);
+  // Three gates and a curtain on three sides only.
+  assert.equal(n(Tile.GateGarrison), 8, 'south, west, and the Wardline');
+  assert.ok(n(Tile.WallGarrison) >= 190, 'the curtain came down');
+  // The gate mouths meet the carved routes tile-exact.
+  for (const x of [63, 64, 65]) {
+    assert.equal(at(x, 95), Tile.Path, `the Timber Road mouth must reach the south edge at ${x}`);
+    assert.equal(at(x, 88), Tile.GateGarrison, `the south gate stands at ${x}`);
+  }
+  for (const y of [47, 48, 49]) {
+    assert.equal(at(0, y), Tile.Path, `the Sparway mouth must reach the west edge at ${y}`);
+  }
+  assert.equal(at(6, 49), Tile.GateGarrison, 'the west gate stands');
+  assert.equal(at(106, 60), Tile.GateGarrison, 'the Wardline gate stands');
+  // The spawn is the muster yard: the respawn hearth of the north-east.
+  assert.deepEqual(z.spawn, { x: 520 + 66.5, y: -184 + 50.5 });
+  // The cast.
+  const actors = z.actorSpawns ?? [];
+  assert.equal(actors.length, 21, 'Pinewatch lost residents');
+  for (const slug of [
+    'reeve_halla', 'old_torvi', 'sawmistress_groa', 'sparmaster_yannick', 'smith_vigga',
+    'innkeep_sunniva', 'pitchmaster_rullo', 'factor_ebba', 'buyer_ospren', 'storekeep_nial',
+    'tallyman_bram', 'boomsman_kettil', 'nurseryman_odd', 'warden_sigrun', 'fisher_ylva',
+  ]) {
+    assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from Pinewatch`);
+  }
+  assert.equal(actors.filter((a) => a.actor === 'pinewatch_watch').length, 3);
+  assert.equal(actors.filter((a) => a.actor === 'pinewatch_sawyer').length, 3);
+  assert.equal(actors.filter((a) => a.routine).length, 21, 'every keeper keeps hours');
+  assert.ok((z.signs ?? []).length >= 16, 'the town lost its boards');
+  // The elevation layer round-trips (the Silverfall law, not the flat one).
+  const json = zoneToJson(z);
+  assert.ok(json.elev !== undefined, 'the knoll must serialize');
+  assert.deepEqual(zoneToJson(zoneFromJson(json)), json);
+});
+
+test('pinewatch: every door, pier, kiln and bed walks from the muster yard', () => {
+  const z = buildPinewatch();
+  const lvl = (i: number): number => z.elev![i] ?? 0;
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const start = 50 * z.width + 66;
+  const queue: number[] = [start];
+  seen[start] = 1;
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!walkable(nx, ny)) continue;
+      const ni = ny * z.width + nx;
+      if (seen[ni]) continue;
+      if (lvl(ni) !== lvl(i) && z.ground[i] !== Tile.Ramp && z.ground[ni] !== Tile.Ramp) continue;
+      seen[ni] = 1;
+      queue.push(ni);
+    }
+  }
+  const unreachable: string[] = [];
+  for (let i = 0; i < z.ground.length; i++) {
+    const t = z.ground[i];
+    if (
+      (t === Tile.DoorwayStone || t === Tile.DoorwayWood ||
+        t === Tile.DoorwayStoneWide || t === Tile.DoorwayWoodWide) && !seen[i]
+    ) {
+      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
+    }
+  }
+  assert.deepEqual(unreachable, [], `doorways cut off from the yard: ${unreachable.join(' ')}`);
+  for (const [what, x, y] of [
+    ['the tower stair top', 66, 38], ['the tower floor', 66, 40],
+    ['the west pier', 50, 20], ['the raft dock', 60, 18], ['the fisher steps', 88, 12],
+    ['the saw floor', 33, 48], ['the log deck', 36, 38], ['the board yard', 28, 58],
+    ['the spar beds', 33, 82], ['the pitch kilns', 96, 82], ['the nursery beds', 94, 24],
+    ['the Charterhouse floor', 90, 43], ['the inn hearth room', 79, 69],
+    ['the Timber Road mouth', 64, 95], ['the Sparway mouth', 1, 49],
+    ['the Wardline gate', 106, 60], ['the Wardline path', 120, 59],
+  ] as const) {
+    assert.equal(seen[y * z.width + x], 1, `${what} is severed`);
+  }
+  // Every post a routine measures from stands on ground you can stand on.
+  for (const a of z.actorSpawns ?? []) {
+    const lx = Math.floor(a.x - z.origin.x);
+    const ly = Math.floor(a.y - z.origin.y);
+    assert.equal(seen[ly * z.width + lx], 1, `${a.actor}'s post at (${lx},${ly}) is unreachable`);
+  }
 });

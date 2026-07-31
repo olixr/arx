@@ -1,0 +1,14 @@
+{
+  "id": "factor_ebba",
+  "name": "Ebba",
+  "title": "Factor of the Charter",
+  "examine": "Amberford sent her north eleven years ago to count timber for a season. She has counted every stick that left since, and she has stopped talking about the season.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 2, "hair": 0, "hairColor": 1, "beard": 0, "eyes": 3, "ears": 0, "feature": 0, "shirt": 4, "pants": 4 } },
+  "inventory": [{ "item": "coins", "qty": 140 }],
+  "lines": [
+    "The Charter buys volume. The Crown buys the one tree in a hundred. Both of us pay late.",
+    "Coin goes in the strongroom. The strongroom is the only thing in this building Ospren and I agree about.",
+    "Cormund taught me the ledger hand. Amberford, the bank on the Round. Tell him it is cold."
+  ]
+}

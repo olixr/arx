@@ -1,0 +1,15 @@
+{
+  "id": "sparmaster_yannick",
+  "name": "Yannick",
+  "title": "Spar-master of the Row",
+  "examine": "He walks the length of a mast three times before he touches it. Nobody has ever seen him hurry and nobody has ever seen one of his spars fail.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 2, "hair": 2, "hairColor": 6, "beard": 3, "eyes": 1, "ears": 0, "feature": 0, "shirt": 7, "pants": 6 } },
+  "inventory": [{ "item": "pine_log", "qty": 2 }, { "item": "pine_resin", "qty": 3 }],
+  "lines": [
+    "A mast is one tree or it is firewood. There is no third thing.",
+    "I turned down a Crown order last spring. The grain ran off at the shoulder. He can wait for a better tree.",
+    "Saltmere buys my spars and puts eyes on the hull. I have never seen the sea."
+  ],
+  "shop": "yannick_spars"
+}

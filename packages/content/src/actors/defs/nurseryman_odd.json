@@ -1,0 +1,14 @@
+{
+  "id": "nurseryman_odd",
+  "name": "Odd",
+  "title": "Of the Nursery",
+  "examine": "He has set more trees than the town has felled, which is the only boast he has ever made, and he made it to a seedling.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 2, "hair": 0, "hairColor": 6, "beard": 6, "eyes": 1, "ears": 0, "feature": 2, "shirt": 5, "pants": 6 } },
+  "inventory": [{ "item": "pine_resin", "qty": 2 }],
+  "lines": [
+    "Sixty years for a saw log. I will not see one of these. That is the arrangement.",
+    "Every wain that goes out owes seedlings back. Ebba counts the boards. I count the beds.",
+    "The row by the walk is from the year of the ice. Look how crooked. They grew scared."
+  ]
+}

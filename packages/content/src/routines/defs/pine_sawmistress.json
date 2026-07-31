@@ -1,0 +1,52 @@
+{
+  "id": "pine_sawmistress",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963,
+    "speed": 1.5,
+    "work": true
+  },
+  "slots": [
+    {
+      "from": 12.5,
+      "to": 13.5,
+      "task": {
+        "kind": "path",
+        "speed": 1.4,
+        "waypoints": [
+          {
+            "x": 2,
+            "y": 7,
+            "waitSec": 120,
+            "dir": 1.5707963
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "waitSec": 30
+          }
+        ]
+      }
+    },
+    {
+      "from": 21.5,
+      "to": 5.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.3,
+        "waypoints": [
+          {
+            "x": 5,
+            "y": 6
+          },
+          {
+            "x": 5,
+            "y": 5,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}

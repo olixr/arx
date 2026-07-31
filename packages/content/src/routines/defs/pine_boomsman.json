@@ -1,0 +1,58 @@
+{
+  "id": "pine_boomsman",
+  "base": {
+    "kind": "wander",
+    "radius": 3,
+    "speed": 1.6
+  },
+  "slots": [
+    {
+      "from": 7,
+      "to": 12,
+      "task": {
+        "kind": "path",
+        "speed": 1.6,
+        "waypoints": [
+          {
+            "x": 10,
+            "y": -2,
+            "waitSec": 60,
+            "dir": -1.5707963
+          },
+          {
+            "x": 0,
+            "y": -6,
+            "waitSec": 60,
+            "dir": -1.5707963
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "waitSec": 45
+          }
+        ]
+      }
+    },
+    {
+      "from": 19,
+      "to": 23,
+      "task": {
+        "kind": "path",
+        "mode": "loop",
+        "speed": 1.5,
+        "waypoints": [
+          {
+            "x": 19,
+            "y": 45,
+            "waitSec": 240
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "waitSec": 30
+          }
+        ]
+      }
+    }
+  ]
+}

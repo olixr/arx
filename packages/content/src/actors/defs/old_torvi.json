@@ -1,0 +1,26 @@
+{
+  "id": "old_torvi",
+  "name": "Torvi",
+  "title": "Of the Wolfwinter",
+  "examine": "The bench by the yard fire is hers. She was eleven when the water went hard, and she is the last one left who was outside that night.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 0,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 4,
+      "pants": 5
+    }
+  },
+  "lines": [
+    "Fourteen names on that stone. There should be fifteen. Ask me when you have sat a while.",
+    "You will hear it called a hard winter. It was not a hard winter. It was a hard water.",
+    "They ask me if I am afraid of the far shore. I am eighty-one. I am afraid of the stair."
+  ]
+}

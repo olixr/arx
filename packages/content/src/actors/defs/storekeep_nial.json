@@ -1,0 +1,15 @@
+{
+  "id": "storekeep_nial",
+  "name": "Nial",
+  "title": "Pinewatch Stores",
+  "examine": "Iron, rope, resin and salve, arranged so the salve is nearest the door. He knows which one you came in for.",
+  "disposition": "friendly",
+  "model": { "kind": "humanoid", "look": { "skin": 3, "hair": 2, "hairColor": 2, "beard": 4, "eyes": 1, "ears": 0, "feature": 1, "shirt": 6, "pants": 3 } },
+  "inventory": [{ "item": "coins", "qty": 70 }],
+  "lines": [
+    "Salve is by the door for a reason. Second week is when the hands go.",
+    "Rope I can get. Good rope comes up from Saltmere and takes a month.",
+    "I keep two of everything and three of the things people lose."
+  ],
+  "shop": "pinewatch_stores"
+}
