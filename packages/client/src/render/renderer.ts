@@ -8600,6 +8600,20 @@ export class Renderer {
         member(hr, railT * 1.15);
         ctx.fillStyle = shade(rail, 14);
         member(hr, Math.max(1, s * 0.02));
+        // Outline-shader law: the slanted handrail's silhouette
+        // lines carry the ring corner to corner along the 45° edge,
+        // butt-capped to fuse with the straight members they meet.
+        if (this.outlineOn) {
+          const octx = this.ctx;
+          this.beginStructOutline();
+          octx.lineCap = 'butt';
+          octx.beginPath();
+          octx.moveTo(a.x, a.y - hr);
+          octx.lineTo(b.x, b.y - hr);
+          octx.moveTo(a.x, a.y - hr + railT * 1.15);
+          octx.lineTo(b.x, b.y - hr + railT * 1.15);
+          octx.stroke();
+        }
       },
     });
   }
@@ -8640,6 +8654,25 @@ export class Renderer {
       !edgeFilled(x, y, dx, dy) &&
       (isWaterTile(g(x + dx, y + dy)) || this.bridgeApron(game, x, y) !== 'none') &&
       (dy !== 0 ? !this.bridgeWalkVert(game, x, y) : this.bridgeWalkVert(game, x, y));
+    // THE PARAPET IS ONE LINE: a rail continues wherever a WATER
+    // fill's diagonal picks it up at EXACTLY the shared tile corner.
+    // The old legs-table only saw fills straight along the run and
+    // missed the diagonal neighbors, so strips died mid-tile in
+    // floating stubs at every staircase turn. Geometry, not tables:
+    // a fill's hyp endpoints are its two off-corner tile corners.
+    const fillHoldsCorner = (fx: number, fy: number, cx2: number, cy2: number): boolean => {
+      const f = fill(fx, fy);
+      if (f === null || f.bank) return false;
+      const dm = f.legs === 'NE' || f.legs === 'SW';
+      return dm
+        ? (cx2 === fx && cy2 === fy) || (cx2 === fx + 1 && cy2 === fy + 1)
+        : (cx2 === fx + 1 && cy2 === fy) || (cx2 === fx && cy2 === fy + 1);
+    };
+    const cornerHeld = (cx2: number, cy2: number): boolean =>
+      fillHoldsCorner(cx2 - 1, cy2 - 1, cx2, cy2) ||
+      fillHoldsCorner(cx2, cy2 - 1, cx2, cy2) ||
+      fillHoldsCorner(cx2 - 1, cy2, cx2, cy2) ||
+      fillHoldsCorner(cx2, cy2, cx2, cy2);
     const elevated = game.world.elevAt(tx, ty) !== 0;
     const elevLift = game.world.elevAt(tx, ty) * ELEV_H;
     // On an apron the rail rides the ramp: lift varies along the walk
@@ -8666,18 +8699,12 @@ export class Renderer {
       if (dy !== 0) {
         const north = dy < 0;
         // A rail continues past its end when the straight run does OR
-        // when a WATER fill's hypotenuse picks the line up at exactly
-        // that corner — the specific legs whose hyp endpoint lands
-        // there (a bank fill carries no rail, so the post plants).
+        // when a water fill's diagonal holds the shared corner (a
+        // bank fill carries no rail, so the post plants).
         // Continuation only suppresses the end post.
-        const fW = fill(tx - 1, ty);
-        const fE = fill(tx + 1, ty);
-        const contW =
-          railEdge(tx - 1, ty, dx, dy) ||
-          (fW !== null && !fW.bank && fW.legs === (north ? 'SE' : 'NE'));
-        const contE =
-          railEdge(tx + 1, ty, dx, dy) ||
-          (fE !== null && !fE.bank && fE.legs === (north ? 'SW' : 'NW'));
+        const edgeY = north ? ty : ty + 1;
+        const contW = railEdge(tx - 1, ty, dx, dy) || cornerHeld(tx, edgeY);
+        const contE = railEdge(tx + 1, ty, dx, dy) || cornerHeld(tx + 1, edgeY);
         items.push({
           sortY: north ? ty + 0.04 : ty + 1.02,
           elevated,
@@ -8710,22 +8737,41 @@ export class Renderer {
             member(hr, railT * 1.15);
             ctx.fillStyle = shade(rail, 14);
             member(hr, Math.max(1, s * 0.02));
+            // Outline-shader law (the fence dialect): the handrail
+            // board's silhouette lines ride the slope BUTT-capped so
+            // neighbor segments fuse into one continuous line, and a
+            // PLANTED end post rings whole; interior posts stay slats.
+            if (this.outlineOn) {
+              const octx = this.ctx;
+              this.beginStructOutline();
+              octx.lineCap = 'butt';
+              octx.beginPath();
+              octx.moveTo(p.x - 0.25, yAt(0) - hr);
+              octx.lineTo(p.x + s + 0.25, yAt(1) - hr);
+              octx.moveTo(p.x - 0.25, yAt(0) - hr + railT * 1.15);
+              octx.lineTo(p.x + s + 0.25, yAt(1) - hr + railT * 1.15);
+              octx.stroke();
+              if (!contW) octx.strokeRect(p.x - 0.25, yAt(0) - hr, s * 0.1, hr);
+              if (!contE) octx.strokeRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hr, s * 0.1, hr);
+            }
           },
         });
       } else {
         const west = dx < 0;
-        // Same fill-continuation law as the horizontal rails: the
-        // twin verticals run all the way to the corner where a WATER
-        // fill's diagonal rail takes over, instead of stopping at the
-        // half-tile end-of-run post (bank fills carry no rail).
-        const fN = fill(tx, ty - 1);
-        const fS = fill(tx, ty + 1);
-        const contN =
-          railEdge(tx, ty - 1, dx, dy) ||
-          (fN !== null && !fN.bank && fN.legs === (west ? 'SE' : 'SW'));
-        const contS =
-          railEdge(tx, ty + 1, dx, dy) ||
-          (fS !== null && !fS.bank && fS.legs === (west ? 'NE' : 'NW'));
+        // Same corner law as the horizontal rails: the twin verticals
+        // run all the way to the corner where a WATER fill's diagonal
+        // rail takes over, instead of stopping at the half-tile
+        // end-of-run post (bank fills carry no rail). A fill joint
+        // additionally plants a JOINT POST at the exact corner — the
+        // fence family's post-covers-every-joint law — swallowing the
+        // seam where the edge-on strip meets the slanted handrail.
+        const edgeX = west ? tx : tx + 1;
+        const runN = railEdge(tx, ty - 1, dx, dy);
+        const runS = railEdge(tx, ty + 1, dx, dy);
+        const jointN = !runN && cornerHeld(edgeX, ty);
+        const jointS = !runS && cornerHeld(edgeX, ty + 1);
+        const contN = runN || jointN;
+        const contS = runS || jointS;
         items.push({
           sortY: ty + 1,
           elevated,
@@ -8745,12 +8791,45 @@ export class Renderer {
               const yB = yAt(fBot) + railT;
               ctx.fillRect(ex + rx * s - railT / 2, yT, railT, yB - yT);
             }
-            ctx.fillStyle = post;
-            ctx.beginPath();
-            chamferRect(ctx, ex - s * 0.06, cy - hr, s * 0.12, hr, [s * 0.035, s * 0.035, 0, 0]);
-            ctx.fill();
-            ctx.fillStyle = shade(post, 16);
-            ctx.fillRect(ex - s * 0.045, cy - hr + s * 0.015, s * 0.09, s * 0.045);
+            // Outline-shader law (the railNS dialect): the edge-on
+            // pair's outer silhouette marches up-screen, BUTT-capped
+            // so overlapping neighbor segments fuse into one line.
+            // Posts stay UNringed interior detail — ringing them
+            // pinched the strip into capsule segments.
+            if (this.outlineOn) {
+              const octx = this.ctx;
+              this.beginStructOutline();
+              octx.lineCap = 'butt';
+              const xw2 = ex - 0.045 * s - railT / 2;
+              const xe2 = ex + 0.045 * s + railT / 2;
+              octx.beginPath();
+              octx.moveTo(xw2, yAt(fTop) - hr * 0.88);
+              octx.lineTo(xw2, yAt(fBot) + railT);
+              octx.moveTo(xe2, yAt(fTop) - hr * 0.88);
+              octx.lineTo(xe2, yAt(fBot) + railT);
+              octx.stroke();
+            }
+            // The mid post rides over the strip; a fill joint plants
+            // its post at the exact corner, ringed, covering the seam
+            // where the strip's dive meets the diagonal's handrail.
+            const postAt = (px2: number, py2: number, ringed: boolean): void => {
+              ctx.fillStyle = post;
+              ctx.beginPath();
+              chamferRect(ctx, px2 - s * 0.06, py2 - hr, s * 0.12, hr, [s * 0.035, s * 0.035, 0, 0]);
+              ctx.fill();
+              ctx.fillStyle = shade(post, 16);
+              ctx.fillRect(px2 - s * 0.045, py2 - hr + s * 0.015, s * 0.09, s * 0.045);
+              if (ringed && this.outlineOn) {
+                const octx = this.ctx;
+                this.beginStructOutline();
+                octx.beginPath();
+                chamferRect(octx, px2 - s * 0.06, py2 - hr, s * 0.12, hr, [s * 0.035, s * 0.035, 0, 0]);
+                octx.stroke();
+              }
+            };
+            postAt(ex, cy, false);
+            if (jointN) postAt(ex, yAt(0) + railT, true);
+            if (jointS) postAt(ex, yAt(1) + railT, true);
           },
         });
       }
