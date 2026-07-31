@@ -185,6 +185,48 @@ export class Sfx {
     src.start(t0);
   }
 
+  /**
+   * A soft brass voice: two sawtooths detuned a few cents apart (the
+   * ensemble beat that makes horns warm) through a lowpass that
+   * BLOSSOMS open over the attack — brass brightens as the player
+   * leans in — with a gentle linear onset instead of tone()'s instant
+   * strike. Built for fanfares that repeat without wearing thin.
+   */
+  private horn(
+    freq: number,
+    duration: number,
+    opts: { volume?: number; delay?: number; attack?: number; bright?: number } = {},
+  ): void {
+    const ctx = this.ctx;
+    const out = this.dest ?? this.engine.sfx;
+    if (!ctx || !out) return;
+    const t0 = ctx.currentTime + (opts.delay ?? 0);
+    const vol = opts.volume ?? 0.2;
+    const attack = opts.attack ?? 0.05;
+    const bright = opts.bright ?? 3.4;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.Q.value = 0.7;
+    lp.frequency.setValueAtTime(freq * 1.6, t0);
+    lp.frequency.linearRampToValueAtTime(freq * bright, t0 + attack * 1.8);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.linearRampToValueAtTime(vol, t0 + attack);
+    gain.gain.setValueAtTime(vol, t0 + Math.max(attack, duration - 0.12));
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+    lp.connect(gain);
+    gain.connect(out);
+    for (const cents of [-4, 5]) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t0);
+      osc.detune.setValueAtTime(cents, t0);
+      osc.connect(lp);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.02);
+    }
+  }
+
   hit(): void {
     this.tone(160, 0.08, { type: 'square', slide: -80, volume: 0.4 });
     this.noise(0.06, 0.2);
@@ -282,31 +324,34 @@ export class Sfx {
   }
 
   /**
-   * The level-up fanfare — a ceremony, not a blip: a grounded thump
-   * the moment lands on, a four-note herald climbing the major triad,
-   * then the full chord planted on top with a glitter tail. Sized to
-   * the world show (~5.6s of pillar and rings) without overstaying.
+   * The level-up fanfare v3 — a small brass choir, not a chiptune
+   * arpeggio: a felt timpani landing, then horns lift G4 - C5 - E5
+   * and plant a full C major chord over a low root, a soft ensemble
+   * "ta - da - daaa" with real attack and a shimmer of air on top.
+   * Soft-edged on purpose: several skills can level in one hunt, and
+   * the herald must stay welcome on the fifth hearing. Sized to the
+   * world show without overstaying.
    */
   levelUp(): void {
-    // The ground beat: the moment arrives with weight.
-    this.tone(72, 0.22, { type: 'sine', slide: -24, volume: 0.38, detune: false });
-    this.noise(0.12, 0.1);
-    // The herald climbs: G4 B4 D5 G5.
-    const notes = [392, 494, 587, 784];
-    notes.forEach((f, i) =>
-      this.tone(f, 0.16, { type: 'triangle', volume: 0.3, delay: 0.06 + i * 0.085, detune: false }),
-    );
-    // The chord plants the flag: root-third-fifth held together, a
-    // soft sine octave underneath for warmth.
-    const chordAt = 0.06 + 4 * 0.085;
-    for (const f of [784, 988, 1175]) {
-      this.tone(f, 0.8, { type: 'triangle', volume: 0.2, delay: chordAt, detune: false });
-    }
-    this.tone(392, 0.8, { type: 'sine', volume: 0.18, delay: chordAt, detune: false });
-    // Glitter: two high sparkles answering, and a bright hiss of air.
-    this.tone(1568, 0.3, { type: 'triangle', volume: 0.11, delay: chordAt + 0.28, detune: false });
-    this.tone(2093, 0.35, { type: 'triangle', volume: 0.08, delay: chordAt + 0.46, detune: false });
-    this.noise(0.5, 0.045, chordAt, { band: 5200 });
+    // The felt timpani: the moment lands with weight, not a click.
+    this.tone(82, 0.34, { type: 'sine', slide: -28, volume: 0.34, detune: false });
+    this.noise(0.1, 0.05, 0, { band: 220 });
+    // The lift: two pickup horns stepping up...
+    this.horn(392, 0.16, { volume: 0.16, delay: 0.03, attack: 0.035 });
+    this.horn(523.25, 0.17, { volume: 0.17, delay: 0.17, attack: 0.035 });
+    // ...into the held call, a third above.
+    this.horn(659.26, 0.62, { volume: 0.18, delay: 0.31, attack: 0.045, bright: 4 });
+    // The chord blooms under the held note: C major planted broad and
+    // warm, horns on the triad, a low horn root and a sine sub for
+    // the chest of it.
+    const chordAt = 0.44;
+    this.horn(523.25, 0.85, { volume: 0.13, delay: chordAt, attack: 0.07 });
+    this.horn(783.99, 0.8, { volume: 0.1, delay: chordAt, attack: 0.07 });
+    this.horn(261.63, 0.9, { volume: 0.15, delay: chordAt, attack: 0.06, bright: 2.6 });
+    this.tone(130.81, 0.9, { type: 'sine', volume: 0.15, delay: chordAt, detune: false });
+    // The shimmer: one glockenspiel star and a breath of bright air.
+    this.tone(2093, 0.5, { type: 'triangle', volume: 0.055, delay: chordAt + 0.3, detune: false });
+    this.noise(0.55, 0.03, chordAt + 0.12, { band: 4800 });
   }
 
   /**

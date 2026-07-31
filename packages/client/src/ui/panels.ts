@@ -103,8 +103,11 @@ export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
   shield: { icon: 'tower_shield', color: '#9db6cc' },
 };
 
-/** One quiet line under each skill's name — what the craft IS. */
-const SKILL_STORY: Record<string, string> = {
+/**
+ * One quiet line under each skill's name — what the craft IS. Shared
+ * with the level-up plaque, which says it once as the citation line.
+ */
+export const SKILL_STORY: Record<string, string> = {
   vitality: 'Health and the will to keep it',
   melee: 'Blades, bludgeons and closed distance',
   defence: 'Standing where the blow lands',

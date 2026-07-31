@@ -931,12 +931,13 @@ export class Renderer {
   private readonly rings: Array<{ x: number; y: number; color: string; bornAt: number; maxR: number }> = [];
   /**
    * The level-up ceremony: ONE record, ~5.6s of staged show anchored
-   * to the live player — light pillar, slow ground rings, a sustained
-   * pooled-particle fountain, four climbing orbit sparks and a
-   * wheeling crown star, all in gold + the skill's accent color.
-   * Zero steady-state allocation: the record is built once at start,
-   * every mote rides the pooled particle system, and rings are bornAt
-   * stamps in one small array.
+   * to the live player and split across the three honest FX strata —
+   * ground (light pool, honor seal, pressure rings), volume (pillar
+   * behind the body + the y-sorted shard orbit wheeling around it),
+   * air (fountain, crown star, farewell) — all in gold + the skill's
+   * accent color. Zero steady-state allocation: the record is built
+   * once at start, every mote rides the pooled particle system, and
+   * rings are bornAt stamps in one small array.
    */
   private levelFx: {
     t0: number;
@@ -3029,6 +3030,10 @@ export class Renderer {
     // the caster, the near rim rolls out in front of their feet.
     this.drawGroundFx(game);
     this.drawRings();
+    // The level ceremony's ground half — honor seal, light pool and
+    // pressure rings lie ON the turf like every other spell floor: the
+    // far rim hides behind the body, the near rim rolls out in front.
+    this.drawLevelCeremonyGround(game);
 
     const items: DrawItem[] = [];
     // Tall thickets y-sort with the world: you walk THROUGH them.
@@ -3045,6 +3050,10 @@ export class Renderer {
     // north of you rises BEHIND your body, a bar south of you rises
     // in front. The spell stands in the world, not on the screen.
     this.collectFxVolumes(game, items);
+    // The level ceremony's standing matter — the light pillar rising
+    // behind the body, the shard orbit wheeling around it — y-sorts
+    // with the world so power visibly wraps the character.
+    this.collectLevelFxVolumes(game, items);
 
     // Ground shadow prepass, batched: every shape lands opaque on one
     // layer, composited once at the sky's alpha — overlapping dusk
@@ -3734,17 +3743,23 @@ export class Renderer {
 
   /**
    * The level-up ceremony's world half, staged over 5.6s and anchored
-   * to the live player every frame:
-   *  - Act 1 (0–0.5s): the pillar of light rises out of the opening
-   *    crack, the first ground ring rolls out.
-   *  - Act 2 (0.5–4.2s): the show holds court — slow gold/accent
-   *    rings every ~0.8s, a sustained mote-and-shard fountain, four
-   *    sparks spiraling up the pillar, a wheeling crown star at the
-   *    top, and a lightmap glow so the world itself answers.
-   *  - Act 3 (4.2–5.6s): one farewell ring and drifting settle motes
-   *    while the pillar thins and bows out.
-   * Direct draws are a dozen flat shapes; everything thrown rides the
-   * pooled particle system — no steady-state allocation.
+   * to the live player every frame — rebuilt on the three honest FX
+   * strata so the show stands IN the world instead of on the screen:
+   *  - GROUND (drawLevelCeremonyGround, under the y-sort): the light
+   *    pool, the wheeling honor seal with its arming rune chips, and
+   *    the slow pressure rings — the body stands ON all of it, the
+   *    far rims slide behind the legs.
+   *  - VOLUME (collectLevelFxVolumes, y-sorted items): the pillar of
+   *    light rising just BEHIND the body so the character reads as a
+   *    silhouette inside the radiance, and twelve shard-motes wheeling
+   *    around the body on two counter-rotating foreshortened orbits —
+   *    each anchored at its own ground point, so a shard vanishes
+   *    behind the shoulders and swings back across the chest.
+   *  - AIR (this method, overlay): the lightmap glow, the outward
+   *    mote fountain, the wheeling crown star at the pillar's head,
+   *    and the farewell burst.
+   * Direct draws are a few dozen flat shapes; everything thrown rides
+   * the pooled particle system — no steady-state allocation.
    */
   private drawLevelCeremony(game: ClientGame): void {
     const fx = this.levelFx;
@@ -3759,22 +3774,21 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const squash = Renderer.FX_SQUASH;
-    // In fast, out slow: the show lands hard and leaves politely.
-    const env =
-      Math.min(1, t / 240) *
-      (t > 4200 ? Math.max(0, 1 - (t - 4200) / (Renderer.LEVEL_FX_MS - 4200)) : 1);
+    const env = this.levelFxEnv(t);
 
     // The world answers: lightmap punch + bloom around the player.
     this.queueGlow(own.x, own.y - 0.55, 1.5, fx.glowRgb, 0.32 * env);
 
     // The fountain: gold motes climb and flicker, accent shards leap
-    // and tumble back down. Budgeted by frameDt (hitstop slows it too).
+    // and tumble back down. Emission rides a ring OUTSIDE the body's
+    // silhouette so the sparks rise around the character, never off
+    // their face. Budgeted by frameDt (hitstop slows it too).
     if (t < 4200) {
-      fx.emitCarry += this.frameDt * 26;
+      fx.emitCarry += this.frameDt * 24;
       while (fx.emitCarry >= 1) {
         fx.emitCarry -= 1;
         const a = Math.random() * Math.PI * 2;
-        const r = 0.15 + Math.random() * 0.4;
+        const r = 0.3 + Math.random() * 0.38;
         const px = own.x + Math.cos(a) * r;
         const py = own.y + Math.sin(a) * r * squash;
         if (Math.random() < 0.6) {
@@ -3801,14 +3815,155 @@ export class Renderer {
       }
     }
 
-    // Slow majestic ground rings — the pressure-front dialect of
-    // drawRings, but each front takes a full second to roll out.
+    // The crown: a wheeling four-point star at the pillar's head —
+    // well above every body, so the overlay is its honest home.
+    const rise = Math.min(1, t / 460);
+    const easeRise = 1 - (1 - rise) * (1 - rise) * (1 - rise);
+    if (easeRise > 0.85) {
+      const p = this.liftedWTS(own.x, own.y);
+      const h = s * 3.1 * easeRise * (1 + 0.03 * Math.sin(t * 0.006));
+      const rot = t * 0.0035;
+      const starR = s * 0.3 * (1 + 0.1 * Math.sin(t * 0.011));
+      const cy = p.y - h;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let pass = 0; pass < 2; pass++) {
+        const rad = pass === 0 ? starR : starR * 0.55;
+        ctx.globalAlpha = (pass === 0 ? 0.35 : 0.85) * env;
+        ctx.fillStyle = pass === 0 ? fx.accentLit : '#fff3d0';
+        ctx.beginPath();
+        for (let k = 0; k < 4; k++) {
+          const a0 = rot + (k * Math.PI) / 2;
+          const a1 = a0 + Math.PI / 4;
+          const ox = p.x + Math.cos(a0) * rad;
+          const oy = cy + Math.sin(a0) * rad;
+          if (k === 0) ctx.moveTo(ox, oy);
+          else ctx.lineTo(ox, oy);
+          ctx.lineTo(p.x + Math.cos(a1) * rad * 0.34, cy + Math.sin(a1) * rad * 0.34);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // The farewell: one last accent ring and a soft settle of motes.
+    if (t >= 4300 && !fx.finaleDone) {
+      fx.finaleDone = true;
+      this.addRing(own.x, own.y, fx.accentLit, 1.3);
+      this.particles.burst(own.x, own.y - 0.6, 14, ['#ffe9a8', '#f2c94c', fx.accentLit], {
+        speed: 1.2,
+        life: 1.4,
+        gravity: -0.6,
+        drag: 1.2,
+        size: 0.06,
+        flicker: 0.6,
+      });
+    }
+  }
+
+  /** In fast, out slow: the show lands hard and leaves politely. */
+  private levelFxEnv(t: number): number {
+    return (
+      Math.min(1, t / 240) *
+      (t > 4200 ? Math.max(0, 1 - (t - 4200) / (Renderer.LEVEL_FX_MS - 4200)) : 1)
+    );
+  }
+
+  /**
+   * The ceremony's GROUND half — painted with the other spell floors,
+   * under the y-sorted world, so the body stands on the light: the
+   * base pool, the honor seal (a wheeling engraved double rim with
+   * eight rune chips that arm one by one), and the slow pressure
+   * rings that used to wash over the character from the overlay.
+   */
+  private drawLevelCeremonyGround(game: ClientGame): void {
+    const fx = this.levelFx;
+    if (!fx) return;
+    const now = performance.now();
+    const t = now - fx.t0;
+    if (t > Renderer.LEVEL_FX_MS) return; // the overlay pass owns expiry
+    const own = game.predictor.renderPos();
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const squash = Renderer.FX_SQUASH;
+    const env = this.levelFxEnv(t);
+    const p = this.liftedWTS(own.x, own.y);
+    const rise = Math.min(1, t / 460);
+    const easeRise = 1 - (1 - rise) * (1 - rise) * (1 - rise);
+
+    ctx.save();
+
+    // The pool of light the body stands in.
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.14 * env;
+    ctx.fillStyle = fx.accent;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, s * 0.68 * easeRise, s * 0.68 * squash * easeRise, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.17 * env;
+    ctx.fillStyle = '#f2c94c';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, s * 0.36 * easeRise, s * 0.36 * squash * easeRise, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // THE HONOR SEAL: two counter-wheeling dashed rims engraved on the
+    // turf, foreshortened like every ground ellipse in the game.
+    const sealR = s * 0.92 * easeRise;
+    if (sealR > 1) {
+      ctx.globalAlpha = 0.55 * env;
+      ctx.strokeStyle = fx.accentDeep;
+      ctx.lineWidth = Math.max(1.5, s * 0.04);
+      ctx.setLineDash([s * 0.17, s * 0.11]);
+      ctx.lineDashOffset = -t * 0.022;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, sealR, sealR * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.4 * env;
+      ctx.strokeStyle = fx.accentLit;
+      ctx.lineWidth = Math.max(1, s * 0.025);
+      ctx.setLineDash([s * 0.09, s * 0.13]);
+      ctx.lineDashOffset = t * 0.017;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, sealR * 0.82, sealR * 0.82 * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Eight rune chips riding the outer rim, arming one by one as
+      // the seal engraves itself — each a dark base block with a lit
+      // inlay, flashing hot the instant it wakes.
+      const wheel = t * 0.00045;
+      for (let k = 0; k < 8; k++) {
+        const wakeAt = 260 + k * 110;
+        const aK = Math.min(1, Math.max(0, (t - wakeAt) / 160));
+        if (aK <= 0) continue;
+        const ang = wheel + (k * Math.PI) / 4;
+        const bx = p.x + Math.cos(ang) * sealR;
+        const by = p.y + Math.sin(ang) * sealR * squash;
+        const c = s * 0.075;
+        ctx.globalAlpha = 0.85 * aK * env;
+        ctx.fillStyle = fx.accentDeep;
+        ctx.fillRect(bx - c * 0.62, by - c * 0.62, c * 1.24, c * 1.24);
+        ctx.fillStyle = k % 2 === 0 ? '#f2c94c' : fx.accentLit;
+        ctx.fillRect(bx - c * 0.3, by - c * 0.3, c * 0.6, c * 0.6);
+        // The waking flash: a hot core the first beat after arming.
+        if (aK < 1) {
+          ctx.globalAlpha = (1 - aK) * env;
+          ctx.fillStyle = '#fff3d0';
+          ctx.fillRect(bx - c * 0.45, by - c * 0.45, c * 0.9, c * 0.9);
+        }
+      }
+    }
+
+    // Slow majestic pressure rings — the pressure-front dialect of
+    // drawRings, each front taking a full second to roll out. Living
+    // on the ground stratum, the far rim now hides behind the body.
+    ctx.globalCompositeOperation = 'source-over';
     if (t >= fx.nextRingAt && t < 3900) {
       fx.ringAt.push(now);
       fx.nextRingAt = t + 820;
     }
     const RLIFE = 1050;
-    const p = this.liftedWTS(own.x, own.y);
     for (let i = fx.ringAt.length - 1; i >= 0; i--) {
       const age = now - fx.ringAt[i]!;
       if (age > RLIFE) {
@@ -3831,105 +3986,108 @@ export class Renderer {
       ctx.ellipse(p.x, p.y, rr, rr * squash, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
-    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
 
-    // The pillar of light: three nested flat bands, additive, rising
-    // out of the crack in half a second and breathing while it holds.
+  /**
+   * The ceremony's VOLUME half — standing matter pushed into the
+   * world y-sort, one DrawItem per element, each anchored at its own
+   * ground point (the collectFxVolumes law):
+   *  - the three-band light pillar rises just BEHIND the body, so the
+   *    character stands silhouetted inside the radiance instead of
+   *    being painted over by it;
+   *  - twelve shard-motes wheel around the body on two counter-
+   *    rotating foreshortened orbits, joining one by one and spiraling
+   *    upward — north of the body they vanish behind the shoulders,
+   *    south of it they cross in front of the chest. Power visibly
+   *    wraps the character; nothing sits ON the sprite.
+   */
+  private collectLevelFxVolumes(game: ClientGame, items: DrawItem[]): void {
+    const fx = this.levelFx;
+    if (!fx) return;
+    const now = performance.now();
+    const t = now - fx.t0;
+    if (t > Renderer.LEVEL_FX_MS) return;
+    const own = game.predictor.renderPos();
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const squash = Renderer.FX_SQUASH;
+    const env = this.levelFxEnv(t);
     const rise = Math.min(1, t / 460);
     const easeRise = 1 - (1 - rise) * (1 - rise) * (1 - rise);
-    const h = s * 3.0 * easeRise * (1 + 0.03 * Math.sin(t * 0.006));
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
+    const h = s * 3.1 * easeRise * (1 + 0.03 * Math.sin(t * 0.006));
 
-    // The pool of light at the base.
-    ctx.globalAlpha = 0.13 * env;
-    ctx.fillStyle = fx.accent;
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y, s * 0.62, s * 0.62 * squash, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 0.16 * env;
-    ctx.fillStyle = '#f2c94c';
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y, s * 0.34, s * 0.34 * squash, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    for (let b = 0; b < 3; b++) {
-      const w = [s * 0.52, s * 0.3, s * 0.13][b]!;
-      ctx.globalAlpha = [0.09, 0.15, 0.28][b]! * env;
-      ctx.fillStyle = [fx.accent, '#f2c94c', '#fff3d0'][b]!;
-      ctx.beginPath();
-      ctx.moveTo(p.x - w / 2, p.y);
-      ctx.lineTo(p.x - w * 0.28, p.y - h);
-      ctx.lineTo(p.x + w * 0.28, p.y - h);
-      ctx.lineTo(p.x + w / 2, p.y);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // Four sparks spiral up the pillar, shedding streaks as they go.
-    for (let i = 0; i < 4; i++) {
-      const climb = (t * 0.00042 + i * 0.25) % 1;
-      const ang = t * 0.004 + i * (Math.PI / 2);
-      const orbR = s * 0.6 * (1 - climb * 0.55);
-      const sx = p.x + Math.cos(ang) * orbR;
-      const sy = p.y - climb * h + Math.sin(ang) * orbR * squash * 0.3;
-      const d = s * 0.07 * (1 - climb * 0.4);
-      ctx.globalAlpha = env * (climb < 0.12 ? climb / 0.12 : 1 - climb * 0.6);
-      ctx.fillStyle = i % 2 === 0 ? '#ffe9a8' : fx.accentLit;
-      ctx.beginPath();
-      ctx.moveTo(sx, sy - d);
-      ctx.lineTo(sx + d, sy);
-      ctx.lineTo(sx, sy + d);
-      ctx.lineTo(sx - d, sy);
-      ctx.closePath();
-      ctx.fill();
-      if (Math.random() < this.frameDt * 4 && env > 0.3) {
-        this.particles.burst(own.x + (sx - p.x) / s, own.y + (sy - p.y) / s, 1, ['#ffe9a8'], {
-          speed: 0.8,
-          life: 0.5,
-          gravity: 1.5,
-          shape: 'streak',
-          size: 0.05,
-        });
-      }
-    }
-
-    // The crown: a wheeling four-point star at the pillar's head.
-    if (easeRise > 0.85) {
-      const rot = t * 0.0035;
-      const starR = s * 0.3 * (1 + 0.1 * Math.sin(t * 0.011));
-      const cy = p.y - h;
-      for (let pass = 0; pass < 2; pass++) {
-        const rad = pass === 0 ? starR : starR * 0.55;
-        ctx.globalAlpha = (pass === 0 ? 0.35 : 0.85) * env;
-        ctx.fillStyle = pass === 0 ? fx.accentLit : '#fff3d0';
-        ctx.beginPath();
-        for (let k = 0; k < 4; k++) {
-          const a0 = rot + (k * Math.PI) / 2;
-          const a1 = a0 + Math.PI / 4;
-          const ox = p.x + Math.cos(a0) * rad;
-          const oy = cy + Math.sin(a0) * rad;
-          if (k === 0) ctx.moveTo(ox, oy);
-          else ctx.lineTo(ox, oy);
-          ctx.lineTo(p.x + Math.cos(a1) * rad * 0.34, cy + Math.sin(a1) * rad * 0.34);
+    // The pillar of light: three nested flat bands, additive,
+    // breathing while it holds — seated a hair north of the player's
+    // sort line so the body always reads against the light.
+    items.push({
+      sortY: own.y - 0.05,
+      draw: () => {
+        const p = this.liftedWTS(own.x, own.y);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (let b = 0; b < 3; b++) {
+          const w = [s * 0.56, s * 0.32, s * 0.14][b]!;
+          ctx.globalAlpha = [0.1, 0.16, 0.3][b]! * env;
+          ctx.fillStyle = [fx.accent, '#f2c94c', '#fff3d0'][b]!;
+          ctx.beginPath();
+          ctx.moveTo(p.x - w / 2, p.y);
+          ctx.lineTo(p.x - w * 0.26, p.y - h);
+          ctx.lineTo(p.x + w * 0.26, p.y - h);
+          ctx.lineTo(p.x + w / 2, p.y);
+          ctx.closePath();
+          ctx.fill();
         }
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-    ctx.restore();
+        ctx.restore();
+      },
+    });
 
-    // The farewell: one last accent ring and a soft settle of motes.
-    if (t >= 4300 && !fx.finaleDone) {
-      fx.finaleDone = true;
-      this.addRing(own.x, own.y, fx.accentLit, 1.3);
-      this.particles.burst(own.x, own.y - 0.6, 14, ['#ffe9a8', '#f2c94c', fx.accentLit], {
-        speed: 1.2,
-        life: 1.4,
-        gravity: -0.6,
-        drag: 1.2,
-        size: 0.06,
-        flicker: 0.6,
+    // The shard orbit. Band 0 swings low and wide, band 1 rides high
+    // and tight the other way; every shard climbs as it circles and
+    // sheds the odd streak against its swing.
+    for (let k = 0; k < 12; k++) {
+      const band = k % 2;
+      const birth = 420 + (k >> 1) * 130;
+      const kt = (t - birth) / 3400;
+      if (kt <= 0 || kt >= 1) continue;
+      const dir = band === 0 ? 1 : -1;
+      const a = (k * Math.PI) / 3 + dir * t * (band === 0 ? 0.0017 : 0.0023);
+      const orbR = (band === 0 ? 0.6 : 0.42) * (1 - kt * 0.5);
+      const ex = own.x + Math.cos(a) * orbR;
+      const ey = own.y + Math.sin(a) * orbR * squash;
+      const lift = (band === 0 ? 0.3 : 0.9) + kt * 2.1;
+      const fadeK = kt < 0.12 ? kt / 0.12 : kt > 0.75 ? (1 - kt) / 0.25 : 1;
+      const gold = k % 3 === 0;
+      items.push({
+        sortY: ey + 0.004,
+        draw: () => {
+          const q = this.liftedWTS(ex, ey);
+          const cy = q.y - lift * s;
+          const d = s * (band === 0 ? 0.085 : 0.065) * (1 - kt * 0.35);
+          ctx.save();
+          ctx.globalAlpha = env * fadeK * 0.95;
+          ctx.fillStyle = gold ? '#ffe9a8' : fx.accentLit;
+          ctx.beginPath();
+          ctx.moveTo(q.x, cy - d);
+          ctx.lineTo(q.x + d * 0.7, cy);
+          ctx.lineTo(q.x, cy + d);
+          ctx.lineTo(q.x - d * 0.7, cy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.globalAlpha = env * fadeK * 0.9;
+          ctx.fillStyle = '#fff3d0';
+          ctx.fillRect(q.x - d * 0.18, cy - d * 0.36, d * 0.36, d * 0.72);
+          ctx.restore();
+          if (Math.random() < this.frameDt * 3 && env > 0.3) {
+            this.particles.burst(ex, ey - lift, 1, [gold ? '#ffe9a8' : fx.accentLit], {
+              speed: 0.5,
+              life: 0.4,
+              gravity: 0.8,
+              shape: 'streak',
+              size: 0.045,
+            });
+          }
+        },
       });
     }
   }

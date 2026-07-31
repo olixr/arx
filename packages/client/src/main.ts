@@ -8,7 +8,7 @@ import { Renderer } from './render/renderer.js';
 import type { SmashKind } from './render/debris.js';
 import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
-import { Panels, SKILL_FACE } from './ui/panels.js';
+import { Panels, SKILL_FACE, SKILL_STORY } from './ui/panels.js';
 import { showLevelUp } from './ui/levelToast.js';
 import { StationPanels, craftStationFace } from './ui/stationPanels.js';
 import { CraftHud } from './ui/craftHud.js';
@@ -1042,7 +1042,7 @@ const game = new ClientGame(input, {
     } else if (ev.kind === 'delve') {
       chat.addLine({
         channel: 'system',
-        text: `${ev.name} has delved into ${ev.detail ?? 'a dungeon'} — any Riftgate can carry you in.`,
+        text: `${ev.name} has delved into ${ev.detail ?? 'a dungeon'}. Any Riftgate can carry you in.`,
       });
       sfx.uiOpen();
     }
@@ -1063,11 +1063,12 @@ const game = new ClientGame(input, {
       const skillName =
         (isSkillId(msg.skill) ? HIDDEN_SKILLS[msg.skill]?.name : undefined) ?? msg.skill;
       // The full reward ceremony: the renderer stages the world show
-      // (pillar, rings, fountain — ~5.6s) while the ceremony card
-      // slams in up top with the skill's face and the new level.
+      // (honor seal, pillar behind the body, the y-sorted shard
+      // orbit — ~5.6s) while the herald's plaque unfurls up top with
+      // the skill's face, its story line, and the level rolling over.
       chat.addLine({
         channel: 'system',
-        text: `⭐ ${msg.skill} level ${msg.level}! Congratulations!`,
+        text: `⭐ ${skillName} level ${msg.level}! Congratulations!`,
       });
       sfx.levelUp();
       renderer.startLevelCeremony(own.x, own.y, face.color);
@@ -1076,6 +1077,7 @@ const game = new ClientGame(input, {
         level: msg.level,
         icon: face.icon,
         color: face.color,
+        story: SKILL_STORY[msg.skill],
       });
     }
   },
