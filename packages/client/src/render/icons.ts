@@ -1927,7 +1927,7 @@ const PAINTERS: Record<string, IconPainter> = {
   dust: (c, col) => {
     // Ground enchantment: a poured mound of powder still holding the
     // pour's cone, motes lifting off it, four-point star glints where
-    // the magic catches — dust that refuses to sit still.
+    // the Arx catches — dust that refuses to sit still.
     c.save();
     c.translate(0.5, 0.6);
     // The mound: a soft cone with a spilled skirt.
@@ -5165,7 +5165,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
       return (c) => p(c);
     },
     legs: (id, tint) => {
-      const p = legsIconPainter(legStyle(id), itemDef(id)?.color ?? tint);
+      const p = legsIconPainter(legStyle(id), itemDef(id)?.color ?? tint, id);
       return (c) => p(c);
     },
     boots: (id) => {
