@@ -1,3 +1,4 @@
+import { type ArxMark } from './wornLight.js';
 /**
  * THE GREATSHIELD CLASS. Above the pavise the roster stops sharing a
  * silhouette: a tank's shield is the first thing anyone sees of them,
@@ -18,6 +19,8 @@ export type ShieldDevice = 'none' | 'chevron' | 'diamond' | 'cross' | 'crown' | 
 /** Field division — how the face is quartered before the charge lands. */
 export type ShieldField = 'plain' | 'pale' | 'bend' | 'chief' | 'quarter';
 export interface ShieldStyle {
+    /** THE WORN LIGHT: the bonded working, overlaid per instance. */
+    arx?: ArxMark;
     shape: ShieldShape;
     material: ShieldMaterial;
     /** The field: the face's own color. */

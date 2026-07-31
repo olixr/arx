@@ -286,12 +286,17 @@ export interface C2SPickup {
 }
 
 /**
- * Slot a Technique on R — THE FREE HAND: any learned art, whatever
- * the equipped weapon (free respec, server validates the unlock).
+ * Seat a technique — THE SECOND HAND: Q (slot 0) and R (slot 2) are
+ * both free technique seats. THE FREE HAND stands: any learned art,
+ * whatever the equipped weapon (free respec, server validates the
+ * unlock — rung by level, page by deed flag, secret art by mastery
+ * or THE LOAN LAW's teaching weapon in hand). `slot` is the tray
+ * index of the seat.
  */
 export interface C2STechnique {
   t: 'technique';
   ability: string;
+  slot: 0 | 2;
 }
 
 /** Answer or set down a Calling (toggleable skill passive). */
@@ -816,13 +821,16 @@ export interface S2CTime {
 }
 
 /**
- * The player's slotted technique (sent on join + change) — one free
- * slot, any school — plus THE UNWRITTEN PAGE's earned hidden arts:
- * the codex shows a page only once the deed has filled it.
+ * The player's seated techniques (sent on join + change) — THE SECOND
+ * HAND's pair, [Q seat, R seat], both free, any school — plus the
+ * earned arts: THE UNWRITTEN PAGE's deed pages and THE SECRET
+ * LEDGER's mastered secrets ride the same `art:<id>` flags, so
+ * `earned` carries both. The codex shows a page or a secret's mastery
+ * only once it is truly owned.
  */
 export interface S2CTechniques {
   t: 'techniques';
-  chosen: string | null;
+  chosen: [string | null, string | null];
   earned?: string[];
 }
 
@@ -1585,7 +1593,8 @@ export function parseC2S(raw: string): C2SMessage | null {
     }
     case 'technique': {
       if (typeof msg.ability !== 'string' || msg.ability.length > 64) return null;
-      return { t: 'technique', ability: msg.ability };
+      if (msg.slot !== 0 && msg.slot !== 2) return null;
+      return { t: 'technique', ability: msg.ability, slot: msg.slot };
     }
     case 'calling': {
       if (typeof msg.calling !== 'string' || msg.calling.length > 64) return null;

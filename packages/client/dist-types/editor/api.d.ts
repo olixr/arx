@@ -96,6 +96,11 @@ export interface WorldCell {
     defName: string | null;
     zoneId: string | null;
     authoredId: string | null;
+    /** THE SMALL FINDS standing in the cell this uptime (Phase 6 lens). */
+    finds: {
+        count: number;
+        cleared: number;
+    } | null;
 }
 export interface WorldSnapshot {
     seed: number;
@@ -124,7 +129,12 @@ export interface WorldSnapshot {
         weight: number;
         tiers: [number, number];
         haven: number | null;
+        /** THE TERRITORY FIELD's country, and the WAR-GROUND flag (Phase 6). */
+        family: string | null;
+        compound: boolean;
     }>;
+    /** THE ONE ATLAS: the countries, as the live def roster names them. */
+    families: string[];
 }
 export declare function fetchWorld(): Promise<WorldSnapshot>;
 /** The political ledger (factions Phase 6) — the Standing lens's truth. */

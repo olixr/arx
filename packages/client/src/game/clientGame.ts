@@ -64,7 +64,7 @@ import {
   type TilePatch,
   type Vec2,
 } from '@arx/shared';
-import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, techniqueDef, type FactionBand, type GeographyDef } from '@arx/content';
+import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
 import { EntityKind, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
@@ -428,9 +428,9 @@ export class ClientGame {
   readonly abilityReadyAt: [number, number, number, number] = [0, 0, 0, 0];
   /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
   abilityMax: [number, number, number, number] = [0, 0, 0, 0];
-  /** THE FREE HAND: the one slotted technique (server-confirmed). */
-  technique: string | null = null;
-  /** THE UNWRITTEN PAGE: hidden arts earned by deed (server truth). */
+  /** THE SECOND HAND: the seated techniques, [Q, R] (server-confirmed). */
+  techniques: [string | null, string | null] = [null, null];
+  /** Earned arts: deed pages and mastered secrets alike (server truth). */
   earnedArts: string[] = [];
   /** Answered Callings (server truth; Focus derives from skills). */
   callings: string[] = [];
@@ -530,29 +530,69 @@ export class ClientGame {
     return this.equippedWeaponDef()?.style ?? 'onehand';
   }
 
-  /** The ability granted by a hotbar slot: Art, relic, technique, sigil. */
+  /**
+   * THE LOAN LAW's teaching hands, mirrored: the arts the held weapons
+   * lend — main hand and offhand both (a dual wielder hears both
+   * blades).
+   */
+  equippedArtIds(): Set<string> {
+    const out = new Set<string>();
+    const main = this.equippedWeaponDef()?.art;
+    if (main) out.add(main);
+    const off = itemDef(this.equipment.offhand?.id ?? '')?.weapon?.art;
+    if (off) out.add(off);
+    return out;
+  }
+
+  /** A mastered or deed-earned art is owned outright (server truth). */
+  ownsArt(ability: string): boolean {
+    return this.earnedArts.includes(ability);
+  }
+
+  /**
+   * Resolve a technique seat (0 = Q, 1 = R), mirroring the server:
+   * THE FREE HAND ignores the equipped weapon; THE HONED-ART LAW ranks
+   * by the BASE skill level; THE LOAN LAW keeps an unmastered secret
+   * at Rank I.
+   */
+  private seatAbilityDef(seat: 0 | 1): AbilityDef | null {
+    const chosen = this.techniques[seat];
+    if (!chosen) return null;
+    const ab = abilityDef(chosen);
+    if (!ab) return null;
+    const tech = techniquePoolDef(chosen);
+    if (!tech?.ranks) return ab;
+    if (tech.secret && !this.ownsArt(chosen)) return ab;
+    const rank = techniqueRankFor(tech, levelForXp(this.skills[tech.style] ?? 0));
+    return honedAbility(ab, tech.ranks, rank);
+  }
+
+  /**
+   * THE LOAN LAW's dormancy, mirrored for the tray: an unmastered
+   * secret sleeps while no teaching weapon is in hand.
+   */
+  seatDormant(slot: AbilitySlot): boolean {
+    const seat = slot === 0 ? 0 : slot === 2 ? 1 : null;
+    if (seat === null) return false;
+    const chosen = this.techniques[seat];
+    if (!chosen) return false;
+    const tech = techniquePoolDef(chosen);
+    if (!tech?.secret) return false;
+    if (this.ownsArt(chosen)) return false;
+    return !this.equippedArtIds().has(chosen);
+  }
+
+  /** The ability in a hotbar slot: two technique seats, relic, sigil. */
   slotAbilityDef(slot: AbilitySlot): AbilityDef | null {
     switch (slot) {
-      case 0: {
-        const artId = this.equippedWeaponDef()?.art;
-        return artId ? (abilityDef(artId) ?? null) : null;
-      }
+      case 0:
+        return this.seatAbilityDef(0);
       case 1: {
         const relic = itemDef(this.equipment.relic?.id ?? '');
         return relic?.relic ? (abilityDef(relic.relic) ?? null) : null;
       }
-      case 2: {
-        // THE FREE HAND, mirrored: the slot ignores the equipped weapon.
-        const chosen = this.technique;
-        if (!chosen) return null;
-        const ab = abilityDef(chosen);
-        if (!ab) return null;
-        // THE HONED-ART LAW, mirrored: rank rides the BASE skill level.
-        const tech = techniqueDef(chosen);
-        if (!tech?.ranks) return ab;
-        const rank = techniqueRankFor(tech, levelForXp(this.skills[tech.style] ?? 0));
-        return honedAbility(ab, tech.ranks, rank);
-      }
+      case 2:
+        return this.seatAbilityDef(1);
       case 3: {
         const sigil = itemDef(this.equipment.sigil?.id ?? '');
         return sigil?.sigil ? (abilityDef(sigil.sigil) ?? null) : null;
@@ -560,9 +600,9 @@ export class ClientGame {
     }
   }
 
-  /** Slot a technique on R (server validates the unlock). */
-  sendTechnique(ability: string): void {
-    this.conn?.send({ t: 'technique', ability });
+  /** Seat a technique on Q (slot 0) or R (slot 2); server validates. */
+  sendTechnique(ability: string, slot: 0 | 2): void {
+    this.conn?.send({ t: 'technique', ability, slot });
   }
 
   /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
@@ -598,6 +638,9 @@ export class ClientGame {
       if (!(pressed & bit)) continue;
       const ab = this.slotAbilityDef(slot);
       if (!ab || now < this.abilityReadyAt[slot]) continue;
+      // THE LOAN LAW, mirrored: a dormant seat refuses locally too —
+      // the radial must never start on a cast the server will refuse.
+      if (this.seatDormant(slot)) continue;
       this.abilityReadyAt[slot] = now + ab.cooldownTicks * TICK_MS;
       this.abilityMax[slot] = ab.cooldownTicks;
       this.drawStartAt = 0; // casting lets the bowstring down
@@ -1161,7 +1204,7 @@ export class ClientGame {
         break;
       }
       case 'techniques': {
-        this.technique = msg.chosen;
+        this.techniques = [msg.chosen[0], msg.chosen[1]];
         this.earnedArts = msg.earned ?? [];
         this.onTechniques?.();
         break;

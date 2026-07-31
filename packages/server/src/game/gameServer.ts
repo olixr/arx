@@ -136,8 +136,10 @@ import {
   stageEndMs,
   stageForElapsed,
   techniqueDef,
+  techniquePoolDef,
   techniquesFor,
   TECHNIQUES,
+  SECRET_ARTS,
   callingDef,
   callingsFor,
   foldEffect,
@@ -277,10 +279,10 @@ import {
   scaledMaxHit,
   InputButton,
   SHOCK_MAX_TICKS,
-  SLOT_ART,
+  SLOT_TECH_Q,
   SLOT_RELIC,
   SLOT_SIGIL,
-  SLOT_TECHNIQUE,
+  SLOT_TECH_R,
   SHEATHED_BIT,
   SNAP_GRACE_TICKS,
   SNAP_RECOVERY_TICKS,
@@ -1030,7 +1032,7 @@ interface PlayerComp {
   comboStage: number;
   /** Swinging again before this tick continues the combo string. */
   comboGraceUntilTick: number;
-  /** Remaining cooldown ticks: [Art, relic, technique, sigil]. */
+  /** Remaining cooldown ticks: [first art (Q), relic, second art (R), sigil]. */
   abilityCd: [number, number, number, number];
   /** Buttons of the last processed frame — abilities fire on press edge. */
   prevButtons: number;
@@ -1038,8 +1040,12 @@ interface PlayerComp {
   castFreezeUntilTick: number;
   /** Active self buffs (ability + passive sources stack). */
   buffs: PlayerBuff[];
-  /** THE FREE HAND: the one slotted technique — any learned art. */
-  technique: string | null;
+  /**
+   * THE SECOND HAND: the two seated techniques, [Q, R]. THE FREE HAND
+   * stands for every learned art; a secret seat may also hold THE
+   * LOAN LAW's lent art while a teaching weapon is in hand.
+   */
+  techniques: [string | null, string | null];
   /** Answered Callings (row-presence mirror of character_callings). */
   callings: Set<string>;
   /** One-site perk dials derived from answered Callings (recomputeGear). */
@@ -2528,7 +2534,7 @@ export class GameServer {
       prevButtons: 0,
       castFreezeUntilTick: 0,
       buffs: [],
-      technique: character.id > 0 ? await this.accounts.loadTechnique(character.id) : null,
+      techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : [null, null],
       callings: character.id > 0 ? new Set(await this.accounts.loadCallings(character.id)) : new Set(),
       perks: defaultPerks(),
       stillTicks: 0,
@@ -2572,6 +2578,22 @@ export class GameServer {
       procs: new Map(),
     });
     this.characterEids.set(character.id, eid);
+    // THE HAND REMEMBERS: on a first arrival under THE SECOND HAND an
+    // empty Q seat takes the equipped weapon's art — yesterday's
+    // loadout, verbatim, with the choice now underneath. A null seat
+    // can only mean never-seated today (no unseat flow exists); the
+    // day one ships, this site needs an explicit emptied marker so an
+    // emptied Q stays empty.
+    {
+      const seeded = this.players.get(eid)!;
+      if (!seeded.techniques[0]) {
+        const art = this.equippedWeapon(seeded)?.weapon.art;
+        if (art) {
+          seeded.techniques[0] = art;
+          if (character.id > 0) this.accounts.saveTechniqueSeat(character.id, 0, art);
+        }
+      }
+    }
     this.updateChunkMembership(eid);
     this.bindSession(session, eid);
     this.systemChatAll(`${character.name} has joined the world.`);
@@ -9583,29 +9605,40 @@ export class GameServer {
     mab_word: 'whisper_fang',
   };
 
-  /** Hidden arts this player has earned, for the codex wire. */
+  /**
+   * Arts this player owns outright, for the codex wire: THE UNWRITTEN
+   * PAGE's deed pages and THE SECRET LEDGER's mastered secrets ride
+   * the same art:<id> flags, so both walk through here.
+   */
   private earnedArts(player: PlayerComp): string[] {
-    return TECHNIQUES.filter(
-      (t) => t.hidden && player.flags.has(artFlag(t.ability)),
-    ).map((t) => t.ability);
+    const out: string[] = [];
+    for (const t of TECHNIQUES) {
+      if (t.hidden && player.flags.has(artFlag(t.ability))) out.push(t.ability);
+    }
+    for (const s of SECRET_ARTS) {
+      if (player.flags.has(artFlag(s.ability))) out.push(s.ability);
+    }
+    return out;
   }
 
   private sendTechniques(player: PlayerComp): void {
     player.session?.sendJson({
       t: 'techniques',
-      chosen: player.technique,
+      chosen: [player.techniques[0], player.techniques[1]],
       earned: this.earnedArts(player),
     });
   }
 
   /**
-   * THE UNWRITTEN PAGE fills itself: a deed done once earns the art
-   * forever (an art:<id> flag — deeds, never dice). The ceremony is
-   * told to the doer alone; the codex seats the page on arrival.
+   * An art becomes the player's own, forever (an art:<id> flag —
+   * deeds and lessons, never dice). THE UNWRITTEN PAGE fills itself by
+   * deed; THE LESSON LAW (phase 3) masters a secret art through here
+   * when its meter fills. The ceremony is told to the doer alone; the
+   * codex seats the art on arrival.
    */
   private grantArt(player: PlayerComp, artId: string): void {
-    const tech = techniqueDef(artId);
-    if (!tech?.hidden) return;
+    const tech = techniquePoolDef(artId);
+    if (!tech || (!tech.hidden && !tech.secret)) return;
     const flag = artFlag(artId);
     if (player.flags.has(flag)) return;
     // Direct write — not setPlayerFlag — so a grant can never re-enter
@@ -9616,8 +9649,52 @@ export class GameServer {
     player.session?.sendJson({
       t: 'chat',
       channel: 'system',
-      text: `An unwritten page fills itself: ${name}. The codex will remember the deed.`,
+      text: tech.hidden
+        ? `An unwritten page fills itself: ${name}. The codex will remember the deed.`
+        : `The art is yours now: ${name}. No blade may take it from you.`,
     });
+    this.sendTechniques(player);
+  }
+
+  /**
+   * THE LOAN LAW's teaching hands: every art the weapons currently
+   * held will lend — main hand and offhand both, so a dual wielder
+   * hears both blades.
+   */
+  private equippedArtIds(player: PlayerComp): Set<string> {
+    const out = new Set<string>();
+    const main = this.equippedWeapon(player)?.weapon.art;
+    if (main) out.add(main);
+    const off = this.offhandWeapon(player)?.weapon.art;
+    if (off) out.add(off);
+    return out;
+  }
+
+  /** A mastered art is owned outright — no blade may take it back. */
+  private masteredArt(player: PlayerComp, ability: string): boolean {
+    return player.flags.has(artFlag(ability));
+  }
+
+  /**
+   * THE LOAN FOLLOWS THE BLADE: when the Q seat holds a lent art
+   * whose teacher just left the hands, the new main hand's art takes
+   * the seat — today's swap feels exactly like yesterday's weapon
+   * art. It only ever replaces an orphaned LOAN: a mastered art, a
+   * rung, a page, or an empty seat is the player's arrangement and
+   * never touched; the R seat never follows anything, and THE ONE
+   * SEAT LAW holds (an art already on R never doubles onto Q).
+   */
+  private followLoanSeat(player: PlayerComp): void {
+    const q = player.techniques[0];
+    if (!q) return;
+    const tech = techniquePoolDef(q);
+    if (!tech?.secret) return;
+    if (this.masteredArt(player, q)) return;
+    if (this.equippedArtIds(player).has(q)) return;
+    const art = this.equippedWeapon(player)?.weapon.art;
+    if (!art || art === player.techniques[1]) return;
+    player.techniques[0] = art;
+    if (player.characterId > 0) this.accounts.saveTechniqueSeat(player.characterId, 0, art);
     this.sendTechniques(player);
   }
 
@@ -9825,6 +9902,7 @@ export class GameServer {
     this.recomputeGear(eid, player);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     player.session?.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle, carryOff: player.carryOff });
+    this.followLoanSeat(player);
     // A new weapon or relic means new abilities on the hotbar.
     this.sendCooldowns(player);
     // Appearance changed — update everyone who can see this player.
@@ -10289,41 +10367,70 @@ export class GameServer {
   }
 
   /**
-   * Resolve the ability in a hotbar slot. Each slot is a different
-   * progression axis: Art = weapon (gear chase), relic (loot hunt),
-   * technique (skill grind), sigil (boss trophies). No source, no
-   * ability — your loadout IS your kit.
+   * The seat index (0 = Q, 1 = R) a tray slot maps to, or null for
+   * the trinket slots. The ONE place the tray order meets the pair.
+   */
+  private techSeat(slot: AbilitySlot): 0 | 1 | null {
+    return slot === SLOT_TECH_Q ? 0 : slot === SLOT_TECH_R ? 1 : null;
+  }
+
+  /**
+   * Resolve a technique seat to the ability it casts. THE FREE HAND:
+   * any learned art, whatever the hand holds. THE HONED-ART LAW: a
+   * learned art casts at the rank the BASE skill level has earned
+   * (gear never jumps a rank) — resolving here means casts, cooldown
+   * mirrors, and codex previews agree. THE LOAN LAW: an unmastered
+   * secret casts at Rank I — the borrowed motion is correct but not
+   * yet yours; mastery starts its anchor clock.
+   */
+  private seatAbility(player: PlayerComp, seat: 0 | 1): AbilityDef | null {
+    const chosen = player.techniques[seat];
+    if (!chosen) return null;
+    const ab = abilityDef(chosen);
+    if (!ab) return null;
+    const tech = techniquePoolDef(chosen);
+    if (!tech?.ranks) return ab;
+    if (tech.secret && !this.masteredArt(player, chosen)) return ab;
+    const rank = techniqueRankFor(tech, levelForXp(player.skills[tech.style] ?? 0));
+    return honedAbility(ab, tech.ranks, rank);
+  }
+
+  /**
+   * Resolve the ability in a hotbar slot. Four actives, three axes:
+   * two technique seats (one earned pool), relic (loot hunt), sigil
+   * (boss trophies). No source, no ability — your loadout IS your kit.
    */
   private slotAbility(player: PlayerComp, slot: AbilitySlot): AbilityDef | null {
     switch (slot) {
-      case SLOT_ART: {
-        const artId = this.equippedWeapon(player)?.weapon.art;
-        return artId ? (abilityDef(artId) ?? null) : null;
-      }
+      case SLOT_TECH_Q:
+        return this.seatAbility(player, 0);
       case SLOT_RELIC: {
         const relicItem = itemDef(player.equipment.relic?.id ?? '');
         return relicItem?.relic ? (abilityDef(relicItem.relic) ?? null) : null;
       }
-      case SLOT_TECHNIQUE: {
-        // THE FREE HAND: the slot holds any learned art — the equipped
-        // weapon never gates it.
-        const chosen = player.technique;
-        if (!chosen) return null;
-        const ab = abilityDef(chosen);
-        if (!ab) return null;
-        // THE HONED-ART LAW: the art casts at the rank the BASE skill
-        // level has earned (gear never jumps a rank). Resolving here
-        // means casts, cooldown mirrors, and codex previews agree.
-        const tech = techniqueDef(chosen);
-        if (!tech?.ranks) return ab;
-        const rank = techniqueRankFor(tech, levelForXp(player.skills[tech.style] ?? 0));
-        return honedAbility(ab, tech.ranks, rank);
-      }
+      case SLOT_TECH_R:
+        return this.seatAbility(player, 1);
       case SLOT_SIGIL: {
         const sigilItem = itemDef(player.equipment.sigil?.id ?? '');
         return sigilItem?.sigil ? (abilityDef(sigilItem.sigil) ?? null) : null;
       }
     }
+  }
+
+  /**
+   * THE LOAN LAW's cast gate: a seat holding an unmastered secret art
+   * answers only while a teaching weapon is in hand. Sheathe or swap
+   * the blade and the seat goes dormant — never emptied; the
+   * arrangement is the player's — until the teacher returns or the
+   * lessons finish (phase 3).
+   */
+  private seatDormant(player: PlayerComp, seat: 0 | 1): boolean {
+    const chosen = player.techniques[seat];
+    if (!chosen) return false;
+    const tech = techniquePoolDef(chosen);
+    if (!tech?.secret) return false;
+    if (this.masteredArt(player, chosen)) return false;
+    return !this.equippedArtIds(player).has(chosen);
   }
 
   private sendCooldowns(player: PlayerComp): void {
@@ -10371,31 +10478,56 @@ export class GameServer {
   }
 
   /**
-   * Slot a Technique on R — THE FREE HAND: any learned art fits,
-   * whatever the equipped weapon. Server-validated against the unlock
-   * ladder (the art's OWN school); respec is always free.
+   * Seat a technique on Q or R — THE SECOND HAND. THE FREE HAND: any
+   * learned art fits, whatever the equipped weapon. Server-validated
+   * per citizenship: a rung by its school's BASE level, a page by its
+   * deed flag, a secret by mastery or THE LOAN LAW's teaching weapon
+   * in hand. THE ONE SEAT LAW: two seats must be two arts. Respec is
+   * always free.
    */
-  setTechnique(eid: EntityId, ability: string): void {
+  setTechnique(eid: EntityId, ability: string, slot: number): void {
     const player = this.players.get(eid);
     if (!player) return;
-    const tech = techniqueDef(ability);
+    const seat = this.techSeat(slot as AbilitySlot);
+    if (seat === null) return;
+    const tech = techniquePoolDef(ability);
     if (!tech) return;
+    const name = abilityDef(ability)?.name ?? ability;
     if (tech.hidden) {
       // An unwritten page opens by deed, never by level.
       if (!player.flags.has(artFlag(ability))) return;
+    } else if (tech.secret) {
+      // A secret seats while mastered or while a teaching weapon is in
+      // hand — the loan is early access, never a gate on the learned.
+      if (!this.masteredArt(player, ability) && !this.equippedArtIds(player).has(ability)) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `${name} answers only to the weapon that teaches it.`,
+        });
+        return;
+      }
     } else {
       const level = levelForXp(player.skills[tech.style] ?? 0);
       if (level < tech.unlockLevel) {
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
-          text: `${abilityDef(ability)?.name ?? ability} unlocks at ${tech.style} level ${tech.unlockLevel}.`,
+          text: `${name} unlocks at ${tech.style} level ${tech.unlockLevel}.`,
         });
         return;
       }
     }
-    player.technique = ability;
-    if (player.characterId > 0) this.accounts.saveTechnique(player.characterId, ability);
+    if (player.techniques[1 - seat] === ability) {
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `${name} already holds your other seat.`,
+      });
+      return;
+    }
+    player.techniques[seat] = ability;
+    if (player.characterId > 0) this.accounts.saveTechniqueSeat(player.characterId, seat, ability);
     this.sendTechniques(player);
     this.sendCooldowns(player);
   }
@@ -10453,6 +10585,12 @@ export class GameServer {
     if (!ab) return;
     if (player.abilityCd[slot] > 0) return;
     if (this.tickCount < player.castFreezeUntilTick) return;
+    // THE LOAN LAW: a dormant seat (unmastered secret, teacher away)
+    // refuses quietly — no cooldown, no freeze, nothing spent.
+    {
+      const seat = this.techSeat(slot);
+      if (seat !== null && this.seatDormant(player, seat)) return;
+    }
 
     // Cloth's cooldown discount lands here — where every cooldown is set.
     player.abilityCd[slot] = Math.max(1, Math.round(ab.cooldownTicks * player.gear.cooldownMult));
@@ -10463,13 +10601,17 @@ export class GameServer {
     if (player.action) this.cancelAction(eid, player, 'cast');
     this.setPose(eid, PoseState.Art, Math.max(6, (ab.castFreezeTicks ?? 0) + 4));
 
-    // A cast scales by (and trains) the school that owns it: Arts and
-    // trinkets ride the weapon's stance, but a technique is a learned
-    // skill — its own school powers it whatever the hand holds.
+    // A cast scales by (and trains) the school that owns it: trinkets
+    // ride the weapon's stance, but a technique is a learned skill —
+    // its own school powers it whatever the hand holds, from either
+    // seat (THE FREE HAND, now THE SECOND HAND's pair).
     let style = this.currentStyle(player);
-    if (slot === SLOT_TECHNIQUE) {
-      const tech = techniqueDef(player.technique ?? '');
-      if (tech) style = tech.style;
+    {
+      const seat = this.techSeat(slot);
+      if (seat !== null) {
+        const tech = techniquePoolDef(player.techniques[seat] ?? '');
+        if (tech) style = tech.style;
+      }
     }
     const level = this.effectiveLevel(player, style);
     // Trinket actives grow with the INSTANCE that grants them: the
@@ -12261,8 +12403,11 @@ export class GameServer {
       return;
     }
 
-    // The rhythm engine: every landed basic pulls both ability
-    // cooldowns forward. Whiffs never count — you have to CONNECT.
+    // The rhythm engine: every landed basic pulls slots 0 and 1
+    // forward. Whiffs never count — you have to CONNECT. THE QUICKENED
+    // HAND: these indices are the law, not an accident — Q is the
+    // quickened seat landed blows accelerate, R keeps its own time;
+    // where an art sits is a build choice.
     if (opts.basic) {
       const attacker = this.players.get(attackerEid);
       if (attacker) {
@@ -12455,7 +12600,9 @@ export class GameServer {
       if (this.hasPassive(killer, 'battle_rush')) {
         killer.buffs.push(mkBuff({ speedMult: 1.25, untilTick: this.tickCount + 50 }));
       }
-      // On-kill haste (Battlecharged etc.): victory shaves the Q/E slots.
+      // On-kill haste (Battlecharged etc.): victory shaves the Q/E
+      // slots — THE QUICKENED HAND's second engine, same index law as
+      // the on-hit site above.
       const haste = killer.gear.onKillHasteTicks;
       if (haste > 0) {
         const before0 = killer.abilityCd[0];

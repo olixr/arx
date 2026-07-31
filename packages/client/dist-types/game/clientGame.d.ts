@@ -11,7 +11,7 @@ import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 export interface OwnShot {
     /** Input-frame seq at the predicted fire — the matching key. */
     seq: number;
-    /** Same defId the server will broadcast ('archery', 'magic:ember'…). */
+    /** Same defId the server will broadcast ('archery', 'arx:ember'…). */
     defId: string;
     x: number;
     y: number;
@@ -511,9 +511,9 @@ export declare class ClientGame {
     readonly abilityReadyAt: [number, number, number, number];
     /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
     abilityMax: [number, number, number, number];
-    /** THE FREE HAND: the one slotted technique (server-confirmed). */
-    technique: string | null;
-    /** THE UNWRITTEN PAGE: hidden arts earned by deed (server truth). */
+    /** THE SECOND HAND: the seated techniques, [Q, R] (server-confirmed). */
+    techniques: [string | null, string | null];
+    /** Earned arts: deed pages and mastered secrets alike (server truth). */
     earnedArts: string[];
     /** Answered Callings (server truth; Focus derives from skills). */
     callings: string[];
@@ -577,10 +577,30 @@ export declare class ClientGame {
     private equippedWeaponDef;
     /** The combat style of the equipped weapon (bare fists = melee). */
     currentStyle(): string;
-    /** The ability granted by a hotbar slot: Art, relic, technique, sigil. */
+    /**
+     * THE LOAN LAW's teaching hands, mirrored: the arts the held weapons
+     * lend — main hand and offhand both (a dual wielder hears both
+     * blades).
+     */
+    equippedArtIds(): Set<string>;
+    /** A mastered or deed-earned art is owned outright (server truth). */
+    ownsArt(ability: string): boolean;
+    /**
+     * Resolve a technique seat (0 = Q, 1 = R), mirroring the server:
+     * THE FREE HAND ignores the equipped weapon; THE HONED-ART LAW ranks
+     * by the BASE skill level; THE LOAN LAW keeps an unmastered secret
+     * at Rank I.
+     */
+    private seatAbilityDef;
+    /**
+     * THE LOAN LAW's dormancy, mirrored for the tray: an unmastered
+     * secret sleeps while no teaching weapon is in hand.
+     */
+    seatDormant(slot: AbilitySlot): boolean;
+    /** The ability in a hotbar slot: two technique seats, relic, sigil. */
     slotAbilityDef(slot: AbilitySlot): AbilityDef | null;
-    /** Slot a technique on R (server validates the unlock). */
-    sendTechnique(ability: string): void;
+    /** Seat a technique on Q (slot 0) or R (slot 2); server validates. */
+    sendTechnique(ability: string, slot: 0 | 2): void;
     /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
     sendCalling(calling: string, on: boolean): void;
     /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */
@@ -718,6 +738,10 @@ export declare class ClientGame {
     walkTo(tx: number, ty: number): boolean;
     get isAutoWalking(): boolean;
     craft(recipe: string, qty: number): void;
+    /** THE UNMAKING: break the gear in a pack slot down for its dust. */
+    unmakeSend(slot: number): void;
+    /** SUNDERING: draw the working back out of a pack slot's gear. */
+    sunderSend(slot: number, worn?: EquipSlot, seat?: 'ward' | 'art'): void;
     /** Set the tools down: stop the running craft batch, keeping what's made. */
     craftStop(): void;
     /** Plant a seed into a tilled plot. */

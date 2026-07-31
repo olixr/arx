@@ -352,7 +352,7 @@ export class Session {
       case 'technique': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.setTechnique(this.playerEid, msg.ability);
+        this.game.setTechnique(this.playerEid, msg.ability, msg.slot);
         return;
       }
       case 'calling': {

@@ -79,9 +79,9 @@ export const ACTIONS: readonly ActionDef[] = [
   { id: 'sit', label: 'Sit / stand', group: 'Movement', kb: ['KeyX'], pad: [13] },
 
   { id: 'attack', label: 'Attack', group: 'Combat', kb: ['Space'], pad: [7, 2] },
-  { id: 'ability1', label: 'Weapon Art', group: 'Combat', kb: ['KeyQ'], pad: [4] },
+  { id: 'ability1', label: 'First Art', group: 'Combat', kb: ['KeyQ'], pad: [4] },
   { id: 'ability2', label: 'Relic', group: 'Combat', kb: ['KeyE'], pad: [5] },
-  { id: 'ability3', label: 'Technique', group: 'Combat', kb: ['KeyR'], pad: [3] },
+  { id: 'ability3', label: 'Second Art', group: 'Combat', kb: ['KeyR'], pad: [3] },
   { id: 'ability4', label: 'Sigil', group: 'Combat', kb: ['KeyT'], pad: [12] },
   { id: 'dodge', label: 'Dodge', group: 'Combat', kb: ['ShiftLeft'], pad: [1] },
   { id: 'sheathe', label: 'Sheathe weapons', group: 'Combat', kb: ['KeyH'], pad: [14] },

@@ -12,6 +12,7 @@ import {
   levelForXp,
   rankLevel,
   skillName,
+  techniqueAnchor,
   techniqueRankFor,
   xpForLevel,
   type EquipSlot,
@@ -38,7 +39,8 @@ import {
   isTwoHanded,
   itemDef,
   rolledStats,
-  techniqueDef,
+  secretArtsFor,
+  techniquePoolDef,
   techniquesFor,
   trinketPowerMult,
   type CallingDef,
@@ -251,7 +253,8 @@ export class Panels {
   private readonly card: HTMLElement;
   private readonly menu: HTMLElement;
   /** THE FREE HAND: the one slotted technique, mirrored from the server. */
-  private technique: string | null = null;
+  /** THE SECOND HAND: the seated techniques, [Q, R] (server truth). */
+  private techniques: [string | null, string | null] = [null, null];
   /** Hidden arts earned by deed, mirrored from the server. */
   private earnedArts: string[] = [];
   private lastSkills: SkillXp = {};
@@ -274,7 +277,7 @@ export class Panels {
   constructor(
     private readonly onUseSlot: (slot: number) => void,
     private readonly onUnequip: (slot: EquipSlot) => void,
-    private readonly onTechnique: (ability: string) => void = () => {},
+    private readonly onTechnique: (ability: string, slot: 0 | 2) => void = () => {},
     private readonly onInvMove: (from: number, to: number) => void = () => {},
     private readonly onDropToWorld: (slot: number) => void = () => {},
     private readonly onSlotAction: (slot: number, action: SlotAction) => void = () => {},
@@ -695,8 +698,10 @@ export class Panels {
           ELEMENT_CHIPS[w.element] ?? '#b49af0',
         );
       }
+      // THE SECRET LEDGER: the weapon names the art it teaches — the
+      // card is the discovery surface for secrets not yet met.
       const art = w.art ? abilityDef(w.art) : undefined;
-      if (art) stat('Art (Q)', art.name, '#9a7ae0', abilityIconUrl(art.id, 40));
+      if (art) stat('Secret Art', art.name, '#9a7ae0', abilityIconUrl(art.id, 40));
       // The instance's oil — poison lives ON the weapon, so the card
       // is where you check which blade carries what.
       const coat = roll?.coat;
@@ -1210,22 +1215,54 @@ export class Panels {
     this.identDeed.textContent = `Total level ${total.toLocaleString()}`;
   }
 
-  /** Server-confirmed technique choice; re-renders whoever shows it. */
-  setTechniques(chosen: string | null, earned: string[] = []): void {
-    this.technique = chosen;
+  /** Server-confirmed technique seats; re-renders whoever shows them. */
+  setTechniques(chosen: [string | null, string | null], earned: string[] = []): void {
+    this.techniques = chosen;
     this.earnedArts = earned;
     this.renderSkills(this.lastSkills);
     if (this.artsOpen) this.renderArts();
   }
 
+  /** The seat an ability occupies (0 = Q, 1 = R), or null. */
+  private seatOf(ability: string): 0 | 1 | null {
+    if (this.techniques[0] === ability) return 0;
+    if (this.techniques[1] === ability) return 1;
+    return null;
+  }
+
+  /** THE LOAN LAW's teaching hands, read off the worn weapons. */
+  private equippedArtIds(): Set<string> {
+    const out = new Set<string>();
+    const main = itemDef(this.lastEquipment.weapon?.id ?? '')?.weapon?.art;
+    if (main) out.add(main);
+    const off = itemDef(this.lastEquipment.offhand?.id ?? '')?.weapon?.art;
+    if (off) out.add(off);
+    return out;
+  }
+
+  /** An art owned outright: a deed page or a mastered secret. */
+  private ownsArt(ability: string): boolean {
+    return this.earnedArts.includes(ability);
+  }
+
   /**
    * THE UNWRITTEN PAGE's codex law: a hidden art simply does not exist
-   * here until its deed is done — no veiled plate, no rumor to min-max.
+   * here until its deed is done — no veiled plate, no rumor to
+   * min-max. THE QUIET SHELF extends it to the secrets: a secret art
+   * shows only while a weapon in hand teaches it, while it holds a
+   * seat, or once it is mastered — 114 arts stay a world of rumors,
+   * never a spreadsheet.
    */
   private visibleTechniques(style: SkillId): TechniqueDef[] {
-    return techniquesFor(style).filter(
-      (t) => !t.hidden || this.earnedArts.includes(t.ability),
+    const inHand = this.equippedArtIds();
+    const secrets = secretArtsFor(style as TechniqueDef['style']).filter(
+      (s) =>
+        this.ownsArt(s.ability) || inHand.has(s.ability) || this.seatOf(s.ability) !== null,
     );
+    return [
+      ...techniquesFor(style).filter((t) => !t.hidden || this.earnedArts.includes(t.ability)),
+      ...secrets,
+    ];
   }
 
   /** Server-confirmed answered Callings; re-renders whoever shows them. */
@@ -1314,8 +1351,10 @@ export class Panels {
       title.className = 'technique-title';
       title.textContent = 'Technique';
       row.appendChild(title);
-      // The card shows this school's art only when it is the one on R.
-      const chosen = techniqueDef(this.technique ?? '')?.style === skill ? this.technique : null;
+      // The card shows this school's art only when one of the seats
+      // carries it (Q first — the tray's own order).
+      const chosen =
+        this.techniques.find((a) => techniquePoolDef(a ?? '')?.style === skill) ?? null;
       const ab = chosen ? abilityDef(chosen) : undefined;
       if (ab) {
         const plate = document.createElement('img');
@@ -1462,8 +1501,13 @@ export class Panels {
     );
   }
 
-  /** THE HONED-ART LAW, mirrored: the rank the BASE level has earned. */
+  /**
+   * THE HONED-ART LAW, mirrored: the rank the BASE level has earned.
+   * THE LOAN LAW holds an unmastered secret at Rank I — the borrowed
+   * motion is correct but not yet yours.
+   */
   private techRank(style: SkillId, tech: TechniqueDef): number {
+    if (tech.secret && !this.ownsArt(tech.ability)) return 1;
     return techniqueRankFor(tech, levelForXp(this.lastSkills[style] ?? 0));
   }
 
@@ -1474,7 +1518,7 @@ export class Panels {
   ): 'equipped' | 'unlocked' | 'locked' | 'veiled' {
     const level = levelForXp(this.lastSkills[style] ?? 0);
     if (level >= tech.unlockLevel) {
-      return this.technique === tech.ability ? 'equipped' : 'unlocked';
+      return this.seatOf(tech.ability) !== null ? 'equipped' : 'unlocked';
     }
     const firstLocked = techniquesFor(style)
       .filter((t) => !t.hidden && level < t.unlockLevel)
@@ -1549,10 +1593,11 @@ export class Panels {
     const all = schools.flatMap((s) => this.visibleTechniques(s).map((t) => ({ style: s, t })));
 
     // Resolve the bench's subject: keep the player's pick if it still
-    // exists, else default to what the R slot is running.
+    // exists, else default to a seated art (Q first — the tray's order).
     if (!this.artsSel || !all.some((e) => e.t.ability === this.artsSel)) {
       this.artsSel =
-        this.technique ??
+        this.techniques[0] ??
+        this.techniques[1] ??
         all.find((e) => this.techState(e.style, e.t) === 'unlocked')?.t.ability ??
         all.find((e) => this.techState(e.style, e.t) !== 'veiled')?.t.ability ??
         all[0]?.t.ability ??
@@ -1572,12 +1617,16 @@ export class Panels {
   private schoolJumpStrip(schools: SkillId[]): HTMLElement {
     const strip = document.createElement('div');
     strip.className = 'school-jump';
-    const inHand = techniqueDef(this.technique ?? '')?.style;
+    const inHand = new Set(
+      this.techniques
+        .map((a) => techniquePoolDef(a ?? '')?.style)
+        .filter((s): s is TechniqueDef['style'] => !!s),
+    );
     for (const style of schools) {
       const face = SKILL_FACE[style] ?? { icon: 'bread', color: '#d9a441' };
       const hidden = HIDDEN_SKILLS[style];
       const chip = document.createElement('button');
-      chip.className = 'jump-chip' + (inHand === style ? ' on-r' : '');
+      chip.className = 'jump-chip' + (inHand.has(style as TechniqueDef['style']) ? ' on-r' : '');
       const unseenHere = this.visibleTechniques(style).some((t) => {
         const s = this.techState(style, t);
         return (s === 'unlocked' || s === 'equipped') && !this.seenTech.has(t.ability);
@@ -1825,8 +1874,6 @@ export class Panels {
 
   /** The live Q/E/R/T strip: every slot, its source, its ability. */
   private renderArtsLoadout(): void {
-    const worn = this.lastEquipment.weapon;
-    const w = worn ? itemDef(worn.id)?.weapon : undefined;
     const relic = itemDef(this.lastEquipment.relic?.id ?? '');
     const sigil = itemDef(this.lastEquipment.sigil?.id ?? '');
     this.artsLoadout.innerHTML = '';
@@ -1835,12 +1882,18 @@ export class Panels {
     title.textContent = 'Battle loadout';
     this.artsLoadout.appendChild(title);
     for (const row of [
-      { action: 'ability1', src: 'Weapon Art', ab: w?.art, empty: 'Equip a weapon' },
+      {
+        action: 'ability1',
+        src: 'First Art',
+        ab: this.techniques[0] ?? undefined,
+        empty: 'Choose below',
+        r: true,
+      },
       { action: 'ability2', src: 'Relic', ab: relic?.relic, empty: 'Wear a relic' },
       {
         action: 'ability3',
-        src: 'Technique',
-        ab: this.technique ?? undefined,
+        src: 'Second Art',
+        ab: this.techniques[1] ?? undefined,
         empty: 'Choose below',
         r: true,
       },
@@ -1926,12 +1979,14 @@ export class Panels {
     count.dataset.tipname = 'The ladder';
     count.dataset.tipsub = `${climbed} of ${rungs.length} arts answer to this school so far.`;
     head.appendChild(count);
-    if (techniqueDef(this.technique ?? '')?.style === style) {
+    for (const seat of [0, 1] as const) {
+      if (techniquePoolDef(this.techniques[seat] ?? '')?.style !== style) continue;
+      const key = seat === 0 ? 'Q' : 'R';
       const hand = document.createElement('span');
       hand.className = 'in-hand';
-      hand.textContent = 'On R';
-      hand.dataset.tipname = 'On R';
-      hand.dataset.tipsub = 'This school owns the art riding your R key.';
+      hand.textContent = `On ${key}`;
+      hand.dataset.tipname = `On ${key}`;
+      hand.dataset.tipsub = `This school owns the art riding your ${key} key.`;
       head.appendChild(hand);
     }
     block.appendChild(head);
@@ -1945,10 +2000,10 @@ export class Panels {
       const st = this.techState(style, tech);
       const btn = document.createElement('button');
       btn.className = `tech-plate-btn ${st}`;
-      // The link back to the previous rung — earned pages sit outside
-      // the ladder, so no link touches them on either side.
+      // The link back to the previous rung — earned pages and secret
+      // arts sit outside the ladder, so no link touches them either side.
       const prev = visible[i - 1];
-      if (i % 5 !== 0 && !tech.hidden && prev && !prev.hidden) {
+      if (i % 5 !== 0 && !tech.hidden && !tech.secret && prev && !prev.hidden && !prev.secret) {
         btn.classList.add('rail-link');
         if (st === 'unlocked' || st === 'equipped') btn.classList.add('rail-lit');
       }
@@ -1977,7 +2032,7 @@ export class Panels {
         if (st === 'equipped') {
           const rBadge = document.createElement('span');
           rBadge.className = 'r-badge';
-          rBadge.textContent = 'R';
+          rBadge.textContent = this.seatOf(tech.ability) === 0 ? 'Q' : 'R';
           wellEl.appendChild(rBadge);
         }
         if (tech.hidden) {
@@ -1988,6 +2043,16 @@ export class Panels {
           seal.dataset.tipsub = 'Earned by deed — no rung of the ladder holds it.';
           wellEl.appendChild(seal);
         }
+        if (tech.secret) {
+          const seal = document.createElement('span');
+          seal.className = 'earned-seal';
+          seal.textContent = this.ownsArt(tech.ability) ? '❖' : '◈';
+          seal.dataset.tipname = 'A secret art';
+          seal.dataset.tipsub = this.ownsArt(tech.ability)
+            ? 'Mastered — yours from any hand, forever.'
+            : 'Lent by the weapon that teaches it. Fight on, and it will stay.';
+          wellEl.appendChild(seal);
+        }
       }
       const nameEl = document.createElement('span');
       nameEl.className = 'tech-plate-name';
@@ -1995,9 +2060,10 @@ export class Panels {
       const sub = document.createElement('span');
       sub.className = 'tech-plate-sub';
       const rank = this.techRank(style, tech);
+      const seat = this.seatOf(tech.ability);
       sub.textContent =
         st === 'equipped'
-          ? `On your R · ${RANK_ROMAN[rank]}`
+          ? `On your ${seat === 0 ? 'Q' : 'R'} · ${RANK_ROMAN[rank]}`
           : st === 'unlocked'
             ? `Rank ${RANK_ROMAN[rank]}`
             : `Lv ${tech.unlockLevel}`;
@@ -2057,19 +2123,28 @@ export class Panels {
     line.className = 'bench-line';
     line.textContent =
       st === 'unlocked' || st === 'equipped'
-        ? `${styleName} · Rank ${RANK_ROMAN[rank]}${t.hidden ? ' · Earned' : ''}`
+        ? `${styleName} · Rank ${RANK_ROMAN[rank]}${
+            t.hidden ? ' · Earned' : t.secret ? (this.ownsArt(t.ability) ? ' · Mastered' : ' · Lent') : ''
+          }`
         : styleName;
     names.append(name, line);
     head.append(well, names);
     this.artsDetail.appendChild(head);
 
+    const seat = this.seatOf(t.ability);
     const state = document.createElement('div');
     state.className = `art-state ${st}`;
     state.textContent =
       st === 'equipped'
-        ? 'Riding your R key'
+        ? t.secret && !this.ownsArt(t.ability)
+          ? this.equippedArtIds().has(t.ability)
+            ? `Riding your ${seat === 0 ? 'Q' : 'R'} key, lent by the weapon in your hand`
+            : `Seated on ${seat === 0 ? 'Q' : 'R'}, asleep. Hold a weapon that teaches it.`
+          : `Riding your ${seat === 0 ? 'Q' : 'R'} key`
         : st === 'unlocked'
-          ? 'Unlocked — ready to slot'
+          ? t.secret && !this.ownsArt(t.ability)
+            ? 'Lent while its weapon is in your hand. Fight with it and the art will stay.'
+            : 'Unlocked — ready to seat'
           : st === 'locked'
             ? `Unlocks at ${styleName} level ${t.unlockLevel}`
             : `A secret of ${styleName} — still veiled`;
@@ -2127,7 +2202,7 @@ export class Panels {
           seal.dataset.tipname = `Rank ${RANK_ROMAN[r]}`;
           seal.dataset.tipsub = note;
         } else {
-          seal.dataset.tipname = `Rank ${RANK_ROMAN[r]} — ${styleName} Lv ${rankLevel(t.hidden?.anchorLevel ?? t.unlockLevel, r)}`;
+          seal.dataset.tipname = `Rank ${RANK_ROMAN[r]} — ${styleName} Lv ${rankLevel(techniqueAnchor(t), r)}`;
           seal.dataset.tipsub = 'Train on, and the art will sharpen itself.';
         }
         ledger.appendChild(seal);
@@ -2138,21 +2213,27 @@ export class Panels {
         if (nextNote) {
           const next = document.createElement('div');
           next.className = 'bench-next';
-          next.textContent = `Rank ${RANK_ROMAN[rank + 1]} at ${styleName} ${rankLevel(t.hidden?.anchorLevel ?? t.unlockLevel, rank + 1)} — ${nextNote}`;
+          next.textContent = `Rank ${RANK_ROMAN[rank + 1]} at ${styleName} ${rankLevel(techniqueAnchor(t), rank + 1)} — ${nextNote}`;
           this.artsDetail.appendChild(next);
         }
       }
     }
 
     if (st === 'unlocked') {
-      this.artsDetail.appendChild(
-        bigButton('Slot on R', `artequip:${t.ability}`, () => this.onTechnique(t.ability)),
+      const seats = document.createElement('div');
+      seats.className = 'bench-seats';
+      seats.appendChild(
+        bigButton('Seat on Q', `artequip:${t.ability}`, () => this.onTechnique(t.ability, 0)),
       );
+      seats.appendChild(
+        bigButton('Seat on R', `artequipr:${t.ability}`, () => this.onTechnique(t.ability, 2)),
+      );
+      this.artsDetail.appendChild(seats);
     }
     const teach = document.createElement('div');
     teach.className = 'bench-teach';
     teach.textContent =
-      'Techniques ride the R key — any learned art, whatever you wield. Swapping is always free.';
+      'Q and R both carry any learned art, whatever you wield. Two seats, two arts. Swapping is always free.';
     this.artsDetail.appendChild(teach);
   }
 }

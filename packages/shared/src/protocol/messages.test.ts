@@ -25,6 +25,18 @@ test('shop sell accepts an exact pack slot', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'shop', op: 'sell', item: 'x', qty: 1, slot: 99 })), null);
 });
 
+test('technique seats name a real tray seat — THE SECOND HAND wire law', () => {
+  const q = parseC2S(JSON.stringify({ t: 'technique', ability: 'lunge', slot: 0 }));
+  assert.deepEqual(q, { t: 'technique', ability: 'lunge', slot: 0 });
+  const r = parseC2S(JSON.stringify({ t: 'technique', ability: 'heavy_slam', slot: 2 }));
+  assert.deepEqual(r, { t: 'technique', ability: 'heavy_slam', slot: 2 });
+  // The trinket slots and the seatless legacy shape are refused whole.
+  assert.equal(parseC2S(JSON.stringify({ t: 'technique', ability: 'lunge', slot: 1 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'technique', ability: 'lunge', slot: 3 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'technique', ability: 'lunge' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'technique', ability: 'x'.repeat(65), slot: 0 })), null);
+});
+
 test('pickup targets one drop entity and rejects bad eids', () => {
   const ok = parseC2S(JSON.stringify({ t: 'pickup', eid: 31 }));
   assert.deepEqual(ok, { t: 'pickup', eid: 31 });

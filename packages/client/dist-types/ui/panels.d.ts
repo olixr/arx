@@ -76,7 +76,8 @@ export declare class Panels {
     private readonly card;
     private readonly menu;
     /** THE FREE HAND: the one slotted technique, mirrored from the server. */
-    private technique;
+    /** THE SECOND HAND: the seated techniques, [Q, R] (server truth). */
+    private techniques;
     /** Hidden arts earned by deed, mirrored from the server. */
     private earnedArts;
     private lastSkills;
@@ -87,7 +88,7 @@ export declare class Panels {
     /** The cell the card is pinned beside (repositions on refresh). */
     private cardAnchor;
     private drag;
-    constructor(onUseSlot: (slot: number) => void, onUnequip: (slot: EquipSlot) => void, onTechnique?: (ability: string) => void, onInvMove?: (from: number, to: number) => void, onDropToWorld?: (slot: number) => void, onSlotAction?: (slot: number, action: SlotAction) => void, 
+    constructor(onUseSlot: (slot: number) => void, onUnequip: (slot: EquipSlot) => void, onTechnique?: (ability: string, slot: 0 | 2) => void, onInvMove?: (from: number, to: number) => void, onDropToWorld?: (slot: number) => void, onSlotAction?: (slot: number, action: SlotAction) => void, 
     /** Which station conversation is open — labels the menu verbs. */
     stationContext?: () => 'bank' | 'shop' | null, 
     /** Active input device — the card's action hints speak its glyphs. */
@@ -157,11 +158,21 @@ export declare class Panels {
      * the world beside the case, wearing every change as it lands.
      */
     private renderIdentity;
-    /** Server-confirmed technique choice; re-renders whoever shows it. */
-    setTechniques(chosen: string | null, earned?: string[]): void;
+    /** Server-confirmed technique seats; re-renders whoever shows them. */
+    setTechniques(chosen: [string | null, string | null], earned?: string[]): void;
+    /** The seat an ability occupies (0 = Q, 1 = R), or null. */
+    private seatOf;
+    /** THE LOAN LAW's teaching hands, read off the worn weapons. */
+    private equippedArtIds;
+    /** An art owned outright: a deed page or a mastered secret. */
+    private ownsArt;
     /**
      * THE UNWRITTEN PAGE's codex law: a hidden art simply does not exist
-     * here until its deed is done — no veiled plate, no rumor to min-max.
+     * here until its deed is done — no veiled plate, no rumor to
+     * min-max. THE QUIET SHELF extends it to the secrets: a secret art
+     * shows only while a weapon in hand teaches it, while it holds a
+     * seat, or once it is mastered — 114 arts stay a world of rumors,
+     * never a spreadsheet.
      */
     private visibleTechniques;
     /** Server-confirmed answered Callings; re-renders whoever shows them. */
@@ -178,7 +189,11 @@ export declare class Panels {
     /** Roman numerals for the four rungs of every school's ladder. */
     /** Combat schools owning a technique ladder, hidden law honored. */
     private artsSchoolIds;
-    /** THE HONED-ART LAW, mirrored: the rank the BASE level has earned. */
+    /**
+     * THE HONED-ART LAW, mirrored: the rank the BASE level has earned.
+     * THE LOAN LAW holds an unmastered secret at Rank I — the borrowed
+     * motion is correct but not yet yours.
+     */
     private techRank;
     /** A technique's rung state against the player's skill level. */
     private techState;

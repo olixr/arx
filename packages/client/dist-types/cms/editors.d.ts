@@ -1,6 +1,7 @@
-import { type LootTableDef, type NpcDef, type PoiDef } from '@arx/content';
+import { type LootTableDef, type MinorDef, type NpcDef, type PoiDef } from '@arx/content';
 export declare function newNpcDef(id: string): NpcDef;
 export declare function newLootTable(id: string): LootTableDef;
 export declare function newPoiDef(id: string): PoiDef;
+export declare function newMinorDef(id: string): MinorDef;
 export declare function buildDetail(body: HTMLElement, linkage: HTMLElement): void;
 //# sourceMappingURL=editors.d.ts.map

@@ -1,4 +1,4 @@
-import type { GeographyDef } from '@arx/content';
+import { type GeographyDef } from '@arx/content';
 import type { WorldSel, WorldState, WorldTool } from './worldState.js';
 /**
  * THE WORLD PANEL — the sidebar while the studio holds the whole

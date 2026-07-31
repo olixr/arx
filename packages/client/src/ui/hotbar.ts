@@ -9,18 +9,20 @@ import { bindings, type ActionId } from '../input/bindings.js';
 /** The four slots' actions, in bar order — badges read live. */
 const SLOT_ACTIONS: readonly ActionId[] = ['ability1', 'ability2', 'ability3', 'ability4'];
 const EMPTY_HINTS = [
-  'Equip a weapon to gain its Art',
+  'Seat your first art in the codex',
   'Wear a relic to gain its power',
-  'Choose a Technique in the codex',
+  'Seat your second art in the codex',
   'Claim a Sigil from a fallen boss',
 ] as const;
 
 /**
- * The combat hotbar: four ability slots — [Q] weapon Art, [E] relic,
- * [R] learned Technique, [T] boss Sigil — each with a radial cooldown
- * wipe, a ready flash, and a tooltip, plus a tray of the passives your
- * worn gear grants. Slots are also buttons: pressing one casts, so
- * touch and mouse players get abilities without a keyboard.
+ * The combat hotbar: four ability slots — [Q] first art, [E] relic,
+ * [R] second art, [T] boss Sigil (THE SECOND HAND: Q and R are both
+ * free technique seats) — each with a radial cooldown wipe, a ready
+ * flash, and a tooltip, plus a tray of the passives your worn gear
+ * grants. A seat holding a lent secret art dims while its teaching
+ * weapon is away (THE LOAN LAW). Slots are also buttons: pressing one
+ * casts, so touch and mouse players get abilities without a keyboard.
  */
 export class Hotbar {
   private readonly root = document.getElementById('hotbar')!;
@@ -37,6 +39,7 @@ export class Hotbar {
   private readonly icons: HTMLElement[] = [];
   private readonly names: string[] = ['', '', '', ''];
   private readonly wasReady: boolean[] = [true, true, true, true];
+  private readonly wasDormant: boolean[] = [false, false, false, false];
   private trayKey = '';
   /** Fires when a slot transitions to ready (for the soft tick). */
   onReady: (() => void) | null = null;
@@ -127,7 +130,9 @@ export class Hotbar {
       if (!ab) {
         if (this.names[slot] !== '') {
           this.names[slot] = '';
+          this.wasDormant[slot] = false;
           el.classList.add('empty');
+          el.classList.remove('dormant');
           icon.replaceChildren();
           el.title = EMPTY_HINTS[slot]!;
           this.wipes[slot]!.style.background = 'none';
@@ -135,10 +140,17 @@ export class Hotbar {
         continue;
       }
 
-      if (this.names[slot] !== ab.name) {
+      // THE LOAN LAW on the tray: a lent secret sleeps while its
+      // teacher is away — dimmed plate, honest tooltip, no radial lie.
+      const dormant = game.seatDormant(slot as AbilitySlot);
+      if (this.names[slot] !== ab.name || dormant !== this.wasDormant[slot]) {
         this.names[slot] = ab.name;
+        this.wasDormant[slot] = dormant;
         el.classList.remove('empty');
-        el.title = `${ab.name} — ${ab.desc}`;
+        el.classList.toggle('dormant', dormant);
+        el.title = dormant
+          ? `${ab.name} sleeps. Hold a weapon that teaches it.`
+          : `${ab.name} — ${ab.desc}`;
         // The spell-plate: a bespoke painted icon, not a lettered chip.
         const img = document.createElement('img');
         img.src = abilityIconUrl(ab.id, 60);

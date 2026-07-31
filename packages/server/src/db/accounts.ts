@@ -1213,33 +1213,38 @@ export class AccountStore {
   }
 
   /**
-   * THE FREE HAND: one slotted technique per character, kept under the
-   * reserved 'slot' key. Legacy per-style rows (or a fresh sqlite
-   * import) are read as a fallback so an old character keeps a chosen
-   * art until their next save collapses it.
+   * THE SECOND HAND: two seated techniques per character, kept under
+   * the reserved keys 'slotq' (the Q seat) and 'slot' (the R seat —
+   * THE FREE HAND's original key, so no row rewrites on the cutover).
+   * Legacy per-style rows (or a fresh sqlite import) still read as an
+   * R-seat fallback so an old character keeps a chosen art until
+   * their next save collapses it. No migration — the table was shaped
+   * so renames never reseed.
    */
-  async loadTechnique(characterId: number): Promise<string | null> {
+  async loadTechniques(characterId: number): Promise<[string | null, string | null]> {
     const rows = await this.db.query<{ style: string; ability: string }>(
       'SELECT style, ability FROM character_techniques WHERE character_id = ?',
       [characterId],
     );
+    const q = rows.find((r) => r.style === 'slotq')?.ability ?? null;
     const order = ['slot', 'onehand', 'melee', 'archery', 'magic', 'sneak', 'twohand', 'shield', 'dualwield', 'combat'];
     const rank = (s: string) => {
       const i = order.indexOf(s);
       return i < 0 ? order.length : i;
     };
-    rows.sort((a, b) => rank(a.style) - rank(b.style));
-    return rows[0]?.ability ?? null;
+    const rRows = rows.filter((r) => r.style !== 'slotq').sort((a, b) => rank(a.style) - rank(b.style));
+    return [q, rRows[0]?.ability ?? null];
   }
 
-  saveTechnique(characterId: number, ability: string): void {
-    this.db.fire("DELETE FROM character_techniques WHERE character_id = ? AND style <> 'slot'", [
-      characterId,
-    ]);
+  saveTechniqueSeat(characterId: number, seat: 0 | 1, ability: string): void {
     this.db.fire(
-      "INSERT INTO character_techniques (character_id, style, ability) VALUES (?, 'slot', ?) " +
+      "DELETE FROM character_techniques WHERE character_id = ? AND style NOT IN ('slot', 'slotq')",
+      [characterId],
+    );
+    this.db.fire(
+      'INSERT INTO character_techniques (character_id, style, ability) VALUES (?, ?, ?) ' +
         'ON CONFLICT (character_id, style) DO UPDATE SET ability = excluded.ability',
-      [characterId, ability],
+      [characterId, seat === 0 ? 'slotq' : 'slot', ability],
     );
   }
 

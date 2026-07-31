@@ -1,4 +1,4 @@
-import { type InvSlot, type ItemRoll, type SkillXp, type StationType } from '@arx/shared';
+import { type EquippedItem, type EquipSlot, type InvSlot, type ItemRoll, type SkillXp, type StationType } from '@arx/shared';
 /** The station's face (label, icon, accent, verb) — the work card wears it too. */
 export declare function craftStationFace(station: StationType | null): {
     label: string;
@@ -12,8 +12,14 @@ export declare class StationPanels {
     private readonly onBank;
     private readonly onShop;
     private readonly onPickBuildable;
+    /** THE UNMAKING: break the gear in this pack slot down for dust. */
+    private readonly onUnmake;
+    /** SUNDERING: draw the working out of this slot, keep the piece. */
+    private readonly onSunder;
     /** The live pack — feeds every have/need figure. */
     private readonly getInventory;
+    /** The worn kit — the unmaking bench sunders straight off the body. */
+    private readonly getEquipment;
     private readonly craftPanel;
     private readonly craftTitle;
     private readonly craftTools;
@@ -43,6 +49,22 @@ export declare class StationPanels {
     private bankSort;
     /** How the Workshop ledger is ordered. */
     private craftSort;
+    /**
+     * THE UNMAKING's bench mode. The enchanting table does two opposite
+     * jobs — it makes workings and it takes things apart — and they share
+     * one screen because they are one trade and they feed each other.
+     */
+    private craftMode;
+    /** The pack slot the unmaking bench is laying out (-1 = a worn piece). */
+    private unmakeSel;
+    /** Set when the bench's subject is on the body instead of in the pack. */
+    private unmakeWorn;
+    /**
+     * The slot the player has asked to break and not yet confirmed.
+     * Destroying gear is irreversible, so it takes two presses and the
+     * second one says what it is about to destroy.
+     */
+    private unmakeArmed;
     /** World tile center the open panel is bound to (null = untethered). */
     private anchor;
     /** Which shop's shelf is on screen — echoed on every buy. */
@@ -50,8 +72,14 @@ export declare class StationPanels {
     /** What the open maker screen is showing — refreshOpen re-renders it. */
     private showing;
     constructor(onCraft: (recipe: string, qty: number) => void, onBank: (op: 'deposit' | 'withdraw', item: string, qty: number, gearId?: number) => void, onShop: (op: 'buy' | 'sell', item: string, qty: number, shop?: string) => void, onPickBuildable: (id: string) => void, 
+    /** THE UNMAKING: break the gear in this pack slot down for dust. */
+    onUnmake?: (slot: number) => void, 
+    /** SUNDERING: draw the working out of this slot, keep the piece. */
+    onSunder?: (slot: number, worn?: EquipSlot, seat?: 'ward' | 'art') => void, 
     /** The live pack — feeds every have/need figure. */
-    getInventory?: () => InvSlot[]);
+    getInventory?: () => InvSlot[], 
+    /** The worn kit — the unmaking bench sunders straight off the body. */
+    getEquipment?: () => Partial<Record<EquipSlot, EquippedItem>>);
     /** Main hands over the Workshop head's dress handles once, at boot. */
     setCraftDress(handles: {
         setHint: (t: string) => void;
@@ -134,6 +162,17 @@ export declare class StationPanels {
      * a glance whether it's within reach — and the chosen work laid out
      * large on the right with the full material story and make buttons.
      */
+    /** The enchanting table's two jobs, as one pair of chips. */
+    private modeBar;
+    /**
+     * THE UNMAKING bench: the pack, filtered to what has Arx in it, and
+     * an honest account of what each piece comes apart into.
+     *
+     * The yield is computed by the SAME pure function the server pays
+     * out from, so the preview and the payout can never disagree. On a
+     * destructive action that would be the worst bug in the system.
+     */
+    private renderUnmake;
     private renderCraft;
     openBank(items: Record<string, number>, at?: {
         tx: number;

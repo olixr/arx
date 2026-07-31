@@ -1,3 +1,4 @@
+import { type ArxMark } from './wornLight.js';
 /**
  * Visual equipment styles — the CAPE_STYLES pattern extended to every
  * armor slot. Each record is pure JSON-shaped data a painter interprets;
@@ -15,6 +16,12 @@
  */
 export type ArmorClassStyle = 'cloth' | 'leather' | 'plate';
 export interface BodyStyle {
+    /**
+     * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+     * resolved style rather than authored into it (see wornLight.ts). A
+     * def never sets this; the rig does, per instance.
+     */
+    arx?: ArxMark;
     color: string;
     trim: string;
     /** Rivets, buckles, plate edges. Default shade(color, -20). */
@@ -68,7 +75,7 @@ export interface BodyStyle {
     mantle?: string;
     /** A second hem layer beneath the skirt — flowing depth. */
     underskirt?: string;
-    /** Drifting magic motes in this color — the quiet aura. */
+    /** Drifting Arx motes in this color — the quiet aura. */
     motes?: string;
     /**
      * Gravity folds: hanging-cloth creases down the torso and skirt with
@@ -278,6 +285,12 @@ export interface BodyStyle {
     };
 }
 export interface HelmStyle {
+    /**
+     * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+     * resolved style rather than authored into it (see wornLight.ts). A
+     * def never sets this; the rig does, per instance.
+     */
+    arx?: ArxMark;
     color: string;
     trim: string;
     /** THE FORGE LAW: every metal kind is a FULL-FACE helm with its own
@@ -428,6 +441,12 @@ export interface HelmStyle {
     };
 }
 export interface LegStyle {
+    /**
+     * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+     * resolved style rather than authored into it (see wornLight.ts). A
+     * def never sets this; the rig does, per instance.
+     */
+    arx?: ArxMark;
     kind: 'pants' | 'greaves' | 'wraps';
     /** Default: today's pants-color law (look pants / darkened body). */
     thigh?: string;
@@ -436,6 +455,12 @@ export interface LegStyle {
     kneeColor?: string;
 }
 export interface BootStyle {
+    /**
+     * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+     * resolved style rather than authored into it (see wornLight.ts). A
+     * def never sets this; the rig does, per instance.
+     */
+    arx?: ArxMark;
     color: string;
     /** Shaft height up the shin, tiles. 0.06 ≈ the bare foot chip. */
     height: number;
@@ -467,6 +492,12 @@ export interface BootStyle {
  * the hand lives in.
  */
 export interface GloveStyle {
+    /**
+     * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+     * resolved style rather than authored into it (see wornLight.ts). A
+     * def never sets this; the rig does, per instance.
+     */
+    arx?: ArxMark;
     /** The hand itself. */
     color: string;
     /** Hand silhouette: gauntlet = squared plated fist with a hard end
@@ -494,6 +525,12 @@ export interface GloveStyle {
     fingerless?: boolean;
 }
 export interface OffhandStyle {
+    /**
+     * THE WORN LIGHT: the working bonded to this piece, overlaid onto the
+     * resolved style rather than authored into it (see wornLight.ts). A
+     * def never sets this; the rig does, per instance.
+     */
+    arx?: ArxMark;
     /** 'weapon' = a dual-wielded blade: the rig paints the actual weapon. */
     kind: 'buckler' | 'kite' | 'tower' | 'tome' | 'quiver' | 'orb' | 'weapon';
     color: string;

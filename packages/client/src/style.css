@@ -2762,6 +2762,16 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   text-shadow: var(--punch-small);
 }
 
+/* THE SECOND HAND: the two seat buttons stand shoulder to shoulder —
+   equal citizens, like the seats they fill. */
+.bench-seats {
+  display: flex;
+  gap: 8px;
+}
+.bench-seats > * {
+  flex: 1;
+}
+
 .bench-teach {
   margin-top: auto;
   padding-top: 10px;
@@ -3883,6 +3893,14 @@ body.pad-mode .bind-chip .kb-glyph,
 
 .hotbar-slot.cooling .hotbar-icon {
   filter: saturate(0.4) brightness(0.8);
+}
+
+/* THE LOAN LAW: a lent secret art whose teaching weapon is away — the
+   seat sleeps rather than empties. Colder and stiller than cooling:
+   the cooldown is motion, dormancy is absence. */
+.hotbar-slot.dormant .hotbar-icon {
+  filter: grayscale(0.85) brightness(0.55);
+  opacity: 0.7;
 }
 
 .hotbar-slot.flash {

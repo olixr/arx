@@ -363,16 +363,21 @@ export interface AbilityDef {
 }
 
 /**
- * Ability slot indices. Four actives, each fed by a different
- * progression axis: Art (gear chase), relic (loot hunt), technique
- * (skill grind), sigil (boss trophies).
+ * Ability slot indices. Four actives: THE SECOND HAND's two free
+ * technique seats (Q and R, one earned pool, one art per seat), the
+ * relic (loot hunt), and the sigil (boss trophies). THE QUICKENED
+ * HAND: on-hit and on-kill haste feed slots 0 and 1 — Q is the
+ * quickened seat that landed blows accelerate, R keeps its own time.
+ * Where an art sits is a build choice, not a wiring accident.
  */
-export const SLOT_ART = 0;
+export const SLOT_TECH_Q = 0;
 export const SLOT_RELIC = 1;
-export const SLOT_TECHNIQUE = 2;
+export const SLOT_TECH_R = 2;
 export const SLOT_SIGIL = 3;
 export const ABILITY_SLOTS = 4;
 export type AbilitySlot = 0 | 1 | 2 | 3;
+/** The two technique seats, in tray order. */
+export const TECH_SEAT_SLOTS = [SLOT_TECH_Q, SLOT_TECH_R] as const;
 
 // --------------------------------------------------------- techniques
 

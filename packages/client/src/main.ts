@@ -440,7 +440,7 @@ const panels = new Panels(
     sfx.unequipGear();
     game.unequip(slot);
   },
-  (ability) => game.sendTechnique(ability),
+  (ability, slot) => game.sendTechnique(ability, slot),
   (from, to) => {
     sfx.stow();
     game.invMove(from, to);
@@ -1150,7 +1150,7 @@ dressPanel(el('skills-panel'), {
 });
 dressPanel(el('arts-panel'), {
   icon: abilityIconUrl('whirlwind', 34),
-  hint: 'Your combat arts, school by school — choose what the R key carries.',
+  hint: 'Your combat arts, school by school — choose what Q and R carry.',
   onClose: () => panels.closeAll(),
 });
 stationPanels.setCraftDress(
@@ -1204,7 +1204,7 @@ dressPanel(el('social-panel'), {
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);
 hotbar.onReady = () => sfx.abilityReady();
-game.onTechniques = () => panels.setTechniques(game.technique, game.earnedArts);
+game.onTechniques = () => panels.setTechniques(game.techniques, game.earnedArts);
 game.onCallings = () => panels.setCallings(game.callings);
 
 // Committing to a cast: sound, hands, and a wind-up ring at the feet.

@@ -14,7 +14,7 @@ import { type BodyStyle, type BootStyle, type GloveStyle, type HelmStyle, type L
 type Painter = (ctx: CanvasRenderingContext2D) => void;
 export declare function helmIconPainter(st: HelmStyle): Painter;
 export declare function bodyIconPainter(st: BodyStyle): Painter;
-export declare function legsIconPainter(st: LegStyle, fallback: string): Painter;
+export declare function legsIconPainter(st: LegStyle, fallback: string, id?: string): Painter;
 export declare function bootsIconPainter(st: BootStyle): Painter;
 export declare function glovesIconPainter(st: GloveStyle): Painter;
 /**

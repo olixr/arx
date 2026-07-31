@@ -91,7 +91,13 @@
 // nothing; nothing is half-destroyed and nothing is half-paid. The
 // version handshake already refuses any mismatched pair outright, so
 // there is no state to protect here. Recorded on purpose.)
-export const PROTOCOL_VERSION = 23;
+// v24: THE SECOND HAND — the weapon-art slot becomes the first free
+// technique seat. C2STechnique grows `slot` (0|2) and S2CTechniques'
+// `chosen` becomes the [Q, R] pair. A v23 client would read the pair
+// as null, show a dead Q slot, and send seatless technique picks the
+// server can't place — the loadout itself changed shape, so the
+// handshake turns the old client away to refresh.
+export const PROTOCOL_VERSION = 24;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

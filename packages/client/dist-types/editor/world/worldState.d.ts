@@ -88,6 +88,10 @@ export declare class WorldState {
         rings: boolean;
         /** The political map (factions Phase 6) — marches and counters. */
         standing: boolean;
+        /** THE COUNTRY wash (lived-in-land Phase 5/6) — whose land is whose. */
+        territory: boolean;
+        /** THE SMALL FINDS pips — the texture layer, Studio-eyes only. */
+        finds: boolean;
     };
     /**
      * THE STANDING LENS's truth (factions Phase 6): the live political
@@ -101,6 +105,8 @@ export declare class WorldState {
         x: number;
         y: number;
     }>;
+    /** THE ONE ATLAS (Phase 6): the countries the territory wash paints. */
+    families: string[];
     private readonly undoStack;
     private readonly redoStack;
     private static readonly UNDO_CAP;

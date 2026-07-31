@@ -35,6 +35,7 @@
  * phase-2 wire, through their own lookups below.
  */
 import type { CombatStyleId, TechniqueDef } from '@arx/shared';
+import { techniqueDef } from './abilities.js';
 
 export const SECRET_ARTS: readonly TechniqueDef[] = [
 
@@ -287,4 +288,14 @@ export function secretArtDef(ability: string): TechniqueDef | undefined {
 /** The secret shelf of one school, anchor-ordered as authored. */
 export function secretArtsFor(style: CombatStyleId): TechniqueDef[] {
   return SECRET_ARTS.filter((s) => s.style === style);
+}
+
+/**
+ * The whole technique pool's one lookup — rung, page, or secret seat.
+ * THE SECOND HAND's seats resolve through here so every citizenship
+ * answers at the same door; the ladder-only queries stay on
+ * `techniqueDef`.
+ */
+export function techniquePoolDef(ability: string): TechniqueDef | undefined {
+  return techniqueDef(ability) ?? BY_ABILITY.get(ability);
 }

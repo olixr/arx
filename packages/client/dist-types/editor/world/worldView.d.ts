@@ -22,6 +22,9 @@ export declare class WorldView {
     private zoneArt;
     private dangerRev;
     private dangerBlocks;
+    /** THE COUNTRY wash cache (Phase 6) — seed + atlas only, no drafts. */
+    private territoryRev;
+    private territoryBlocks;
     constructor(canvas: HTMLCanvasElement, ws: WorldState);
     tileAtFloat(mx: number, my: number): {
         x: number;
@@ -41,6 +44,12 @@ export declare class WorldView {
     invalidateTerrain(): void;
     /** The draft changed the anchor list — danger wash only. */
     invalidateDanger(): void;
+    /**
+     * The atlas changed (snapshot adopt) — territory wash only. The
+     * country field reads seed + family roster, never the draft, so
+     * this stays OFF the danger/terrain invalidation paths.
+     */
+    invalidateTerritory(): void;
     /** A zone's tiles changed (save/adopt) — refetch its art. */
     invalidateZone(id: string): void;
     invalidateAllZones(): void;
@@ -60,6 +69,14 @@ export declare class WorldView {
      */
     thumbUrl(id: string): Promise<string | null>;
     private dangerBlock;
+    /**
+     * THE COUNTRY wash block (Phase 6): one territoryAt sample per
+     * 16-tile square (the field's 384-tile countries need no finer),
+     * inked per family — the same pure field every lean reads.
+     */
+    private territoryBlock;
+    /** Family → the country wash ink (unrostered families get grey). */
+    private static readonly TERRITORY_INK;
     render(): void;
     /** Faction id → the lens's ink. Unrostered ids get the road grey. */
     private static readonly FACTION_INK;

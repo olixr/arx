@@ -1,4 +1,4 @@
-import type { DialogueDef, FactionsDef, FrontierDef, LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, VoiceBankDef, VoiceClipDef, VoiceDoc, ZoneJson } from '@arx/content';
+import type { DialogueDef, FactionsDef, FrontierDef, LootTableDef, MinorDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, VoiceBankDef, VoiceClipDef, VoiceDoc, ZoneJson } from '@arx/content';
 /** Content Studio's wire to the running server's /dev/content API. */
 export interface Editable<T> {
     def: T;
@@ -104,6 +104,14 @@ export declare function listPois(): Promise<{
     pois: Array<Editable<PoiDef>>;
     prefabIds: string[];
 }>;
+export declare function listMinors(): Promise<{
+    minors: Array<Editable<MinorDef>>;
+    prefabIds: string[];
+}>;
+export declare function saveMinor(def: MinorDef): Promise<void>;
+export declare function revertMinor(id: string): Promise<{
+    outcome: string;
+}>;
 export declare function savePoi(def: PoiDef): Promise<void>;
 export declare function revertPoi(id: string): Promise<{
     outcome: string;
@@ -117,6 +125,21 @@ export interface PoiSimStats {
         count: number;
         tiers: Record<number, number>;
         prefabs: Record<string, number>;
+    }>;
+    /** THE DENSITY SURVEY (Phase 6): the whole land, observed at once. */
+    finds: {
+        total: number;
+        histogram: Record<number, number>;
+        byDef: Record<string, number>;
+    };
+    /** Promotion runs UNGATED in a fresh scan — the upper bound, and the bench says so. */
+    holds: {
+        sites: number;
+        byDef: Record<string, number>;
+    };
+    territory: Record<string, {
+        sites: number;
+        familyTrue: number;
     }>;
 }
 /** The observed panel: the server runs the REAL scaffold over a fresh scan. */
