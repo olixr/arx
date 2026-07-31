@@ -1,8 +1,8 @@
 {
   "elder_rowan": {
     "where": "dawnmead",
-    "direction": "Keeper of the Waking Ring, the first voice every new arrival hears. Grandmotherly and unhurried; she has welcomed hundreds of wakers and carries the ones who didn't come back. Full warm sentences, old-fashioned turns, calls you 'child' or 'waker'. Practical wisdom, never cosmic. Warm, low, steady pace.",
-    "ttsVoice": "gran_ruth",
+    "direction": "Keeper of the Waking Ring, the first voice every new arrival hears. Grandfatherly and unhurried; he has welcomed hundreds of wakers and carries the ones who didn't come back. Full warm sentences, old-fashioned turns, calls you 'child' or 'waker'. Practical wisdom, never cosmic. Warm, low, steady pace.",
+    "ttsVoice": "king_bob",
     "exaggeration": 0.45,
     "cfgWeight": 0.55,
     "firstWave": true
@@ -133,15 +133,15 @@
   },
   "peddler_nix": {
     "where": "roads",
-    "direction": "Road peddler. The quiet one of the three; short lines, sharp eyes, prices that end in odd numbers.",
-    "ttsVoice": "ember_tadhg",
+    "direction": "Road peddler and mender. The quiet one of the three; short lines, sharp eyes, a tool in every pocket and a name for each. Speaks plainly and stops when the sentence is done.",
+    "ttsVoice": "clear_liz",
     "exaggeration": 0.4,
     "cfgWeight": 0.55
   },
   "crofter_beck": {
     "where": "roads",
-    "direction": "Frontier crofter holding a claim against the wilds. Plain worried farm talk; grateful and a little embarrassed to need help.",
-    "ttsVoice": "hearth_kara",
+    "direction": "Frontier crofter built like a gate post and about as talkative. Wolf-wise, measures winter in firewood. Terse, level, unimpressed by danger.",
+    "ttsVoice": "plain_mark",
     "exaggeration": 0.45,
     "cfgWeight": 0.5
   },
@@ -272,8 +272,8 @@
   },
   "courier_nib": {
     "where": "amberford",
-    "direction": "Courier who wants to be everywhere already. Breathless, arrives mid-thought, leaves before finishing, knows everyone's business a day early. Fast; clip the ends of lines like he's already turning away.",
-    "ttsVoice": "ember_tadhg",
+    "direction": "Courier who wants to be everywhere already. All elbows, freckles and forward motion. Breathless, arrives mid-thought, leaves before finishing, knows everyone's business a day early. Fast; clip the ends of lines like she's already turning away.",
+    "ttsVoice": "bright_karen",
     "exaggeration": 0.65,
     "cfgWeight": 0.35
   },
@@ -517,8 +517,8 @@
   },
   "broker_varga": {
     "where": "undercroft",
-    "direction": "Ore broker; every rumor priced. Quick, numeric, friendly the way scales are friendly. The smile is part of the transaction.",
-    "ttsVoice": "hale_andy",
+    "direction": "Ore broker of the Deep Market; every barrow crosses her counter and every rumor gets a price. Quick, numeric, friendly the way scales are friendly. The smile is part of the transaction.",
+    "ttsVoice": "bright_karen",
     "exaggeration": 0.5,
     "cfgWeight": 0.5
   },

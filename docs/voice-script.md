@@ -39,9 +39,9 @@ ford town's daily faces. Quips are authored for all twelve.
 
 *Has greeted every waker for forty years. Remembers most of their names.*
 
-**Who they are, and how to say it:** Keeper of the Waking Ring, the first voice every new arrival hears. Grandmotherly and unhurried; she has welcomed hundreds of wakers and carries the ones who didn't come back. Full warm sentences, old-fashioned turns, calls you 'child' or 'waker'. Practical wisdom, never cosmic. Warm, low, steady pace.
+**Who they are, and how to say it:** Keeper of the Waking Ring, the first voice every new arrival hears. Grandfatherly and unhurried; he has welcomed hundreds of wakers and carries the ones who didn't come back. Full warm sentences, old-fashioned turns, calls you 'child' or 'waker'. Practical wisdom, never cosmic. Warm, low, steady pace.
 
-**Chatterbox casting:** `gran_ruth` *(provisional)* · exaggeration 0.45 · cfg 0.55
+**Chatterbox casting:** `king_bob` *(provisional)* · exaggeration 0.45 · cfg 0.55
 
 ### Quips — short fillers, one file each
 
@@ -1701,9 +1701,9 @@ ford town's daily faces. Quips are authored for all twelve.
 
 *Built like a gate post and about as talkative. The woodpile is squared to the finger.*
 
-**Who they are, and how to say it:** Frontier crofter holding a claim against the wilds. Plain worried farm talk; grateful and a little embarrassed to need help.
+**Who they are, and how to say it:** Frontier crofter built like a gate post and about as talkative. Wolf-wise, measures winter in firewood. Terse, level, unimpressed by danger.
 
-**Chatterbox casting:** `hearth_kara` *(provisional)* · exaggeration 0.45 · cfg 0.5
+**Chatterbox casting:** `plain_mark` *(provisional)* · exaggeration 0.45 · cfg 0.5
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1855,9 +1855,9 @@ ford town's daily faces. Quips are authored for all twelve.
 
 *Every pocket has a tool in it and every tool has a name. The cart squeaks on purpose. She says a silent axle hides its faults.*
 
-**Who they are, and how to say it:** Road peddler. The quiet one of the three; short lines, sharp eyes, prices that end in odd numbers.
+**Who they are, and how to say it:** Road peddler and mender. The quiet one of the three; short lines, sharp eyes, a tool in every pocket and a name for each. Speaks plainly and stops when the sentence is done.
 
-**Chatterbox casting:** `ember_tadhg` *(provisional)* · exaggeration 0.4 · cfg 0.55
+**Chatterbox casting:** `clear_liz` *(provisional)* · exaggeration 0.4 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2197,9 +2197,9 @@ ford town's daily faces. Quips are authored for all twelve.
 
 *All elbows, freckles, and forward motion. Her satchel has more patches than satchel, each one a story she'll sell you for a sweet.*
 
-**Who they are, and how to say it:** Courier who wants to be everywhere already. Breathless, arrives mid-thought, leaves before finishing, knows everyone's business a day early. Fast; clip the ends of lines like he's already turning away.
+**Who they are, and how to say it:** Courier who wants to be everywhere already. All elbows, freckles and forward motion. Breathless, arrives mid-thought, leaves before finishing, knows everyone's business a day early. Fast; clip the ends of lines like she's already turning away.
 
-**Chatterbox casting:** `ember_tadhg` *(provisional)* · exaggeration 0.65 · cfg 0.35
+**Chatterbox casting:** `bright_karen` *(provisional)* · exaggeration 0.65 · cfg 0.35
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4413,9 +4413,9 @@ ford town's daily faces. Quips are authored for all twelve.
 
 *Scales true to the grain, and an eye truer. Every barrow of deep ore crosses her counter before it sees daylight.*
 
-**Who they are, and how to say it:** Ore broker; every rumor priced. Quick, numeric, friendly the way scales are friendly. The smile is part of the transaction.
+**Who they are, and how to say it:** Ore broker of the Deep Market; every barrow crosses her counter and every rumor gets a price. Quick, numeric, friendly the way scales are friendly. The smile is part of the transaction.
 
-**Chatterbox casting:** `hale_andy` *(provisional)* · exaggeration 0.5 · cfg 0.5
+**Chatterbox casting:** `bright_karen` *(provisional)* · exaggeration 0.5 · cfg 0.5
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 

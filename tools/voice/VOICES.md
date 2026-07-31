@@ -15,16 +15,16 @@ recast freely, then `npx tsx tools/voice/generate.mts <actor> --force`.
 
 | id | sound | born to play |
 |---|---|---|
-| gran_ruth | mature British, warm, unhurried | Rowan, Perl |
+| gran_ruth | mature British, warm, unhurried | Perl |
 | hearth_kara | warm American, homely, kind | Iona, Senna, Signy |
-| bright_karen | light, quick, bright | Dunna, Tamsin, Pip, Dagny |
-| clear_liz | precise, calm, cool-headed | Kayri, Elowen, Runa, Odele, Ragna |
+| bright_karen | light, quick, bright | Dunna, Tamsin, Pip, Dagny, Nib, Varga |
+| clear_liz | precise, calm, cool-headed | Kayri, Elowen, Runa, Odele, Ragna, Nix |
 | steel_cori | rich British, firm, command | Bryn, Aldis, Maren, Kestrel, Edda |
 | stage_mil | grand, theatrical, huge character range | Ottilie, Balla, Mab, Solvei, Osa |
 | matron_michele | plain mature American, level | Bretta, Merra, Sella |
-| king_bob | deep, grave, measured | King Aeriex, Grettir, Garton, castle guard |
+| king_bob | deep, grave, measured; a fairy-tale elder's warmth when slowed | Elder Rowan, King Aeriex, Grettir, Garton, castle guard |
 | wry_peter | dry British, antiquarian wit | Ferrick, Ansel, Pike |
-| hale_andy | hale British, money-wry | Cormund, Varga |
+| hale_andy | hale British, money-wry | Cormund |
 | plain_mark | steady American narrator, dependable | Hask, Stig, Haki, the watches |
 | showman_martin | theatrical, relishing | Ninebrass, Tove, criers |
 | gentle_simon | soft-spoken British, gentle | Fen, Tilo, Ivo |

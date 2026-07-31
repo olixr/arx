@@ -15,7 +15,7 @@
  * generator politely steps around any line that already has one.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildManifest, orderedActors, REPO, type ManifestLine } from './lib.mts';
 
@@ -88,25 +88,25 @@ for (const actor of wanted) {
       skipped++;
       continue;
     }
-    const res = await fetch(`${service}/v1/audio/speech`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'tts-1',
-        input: line.text,
-        voice,
-        exaggeration: note?.exaggeration ?? 0.5,
-        cfg_weight: note?.cfgWeight ?? 0.5,
-        temperature: 0.6,
-      }),
-    });
-    if (!res.ok) {
-      console.error(`✗ ${line.clipId}: TTS ${res.status} ${await res.text()}`);
-      process.exit(1);
-    }
-    const wav = Buffer.from(await res.arrayBuffer());
+    // Long lines on a tired MPS session can outlast fetch's 5-minute
+    // header timeout — curl carries the request with a 15-minute
+    // ceiling instead, writing the WAV straight to disk.
     const tmp = `${dest}.tmp.wav`;
-    writeFileSync(tmp, wav);
+    const body = JSON.stringify({
+      model: 'tts-1',
+      input: line.text,
+      voice,
+      exaggeration: note?.exaggeration ?? 0.5,
+      cfg_weight: note?.cfgWeight ?? 0.5,
+      temperature: 0.6,
+    });
+    execFileSync('curl', [
+      '-sf', '--max-time', '900', '-X', 'POST',
+      `${service}/v1/audio/speech`,
+      '-H', 'Content-Type: application/json',
+      '--data-binary', body, '-o', tmp,
+    ]);
+    const wav = readFileSync(tmp);
     // Mono Opus-in-Ogg at 48k: the web-native speech codec, ~6x smaller
     // than WAV, and the ledger's preferred food.
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', tmp, '-ac', '1', '-c:a', 'libopus', '-b:a', '48k', dest]);

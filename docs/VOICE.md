@@ -147,9 +147,9 @@ it dictates sentence shape. (Pooled actors share one card.)
 
 ### Dawnmead
 - **Elder Rowan** (Keeper of the Waking Ring): wants every waker to leave
-  ready; carries the weight of all the ones who didn't come back. Grandmotherly,
+  ready; carries the weight of all the ones who didn't come back. Grandfatherly,
   unhurried. Cadence: full warm sentences, old-fashioned turns, calls you
-  "child" or "waker". The ONE elder allowed gentle wisdom — but hers is
+  "child" or "waker". The ONE elder allowed gentle wisdom — but his is
   practical, never cosmic.
 - **Warden Bryn**: wants Dawnmead never to need her; misses real soldiering.
   Drill-yard bark softened by real fondness. Cadence: imperatives, short.
