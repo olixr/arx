@@ -1,0 +1,31 @@
+{
+  "id": "poi_gnoll_boneyard",
+  "name": "Gnoll boneyard",
+  "width": 12,
+  "height": 8,
+  "ground": "//////////8CAAIAAgACAP///////////////wIAAwADAAMAAwADAAMAAgD///////8CAAMAfwABAAgAAQABAH8AAwACAP//AgADAAMAAQABABgAAQABAAEAAwADAAIAAgADAAMACAABAG8AAQB/AAEAAwADAAIA//8CAAMAAQABAAMAAQABAAEAAwACAP///////wIAAwADAH8AAwADAAMAAgD///////////////8CAAIAAgACAP//////////",
+  "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "spawns": [
+    {
+      "dx": 5,
+      "dy": 2,
+      "npc": "gnoll",
+      "radius": 2,
+      "count": 1
+    },
+    {
+      "dx": 3,
+      "dy": 4,
+      "npc": "gnoll",
+      "radius": 2,
+      "count": 1
+    },
+    {
+      "dx": 5,
+      "dy": 5,
+      "npc": "gnoll",
+      "radius": 2,
+      "count": 1
+    }
+  ]
+}

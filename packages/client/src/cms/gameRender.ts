@@ -8,6 +8,7 @@ import {
   drawSlime,
   drawSnake,
   koboldLook,
+  gnollLook,
   skeletonLook,
 } from '../render/rig.js';
 
@@ -100,6 +101,8 @@ function ringComposite(
  */
 const MOB_EQUIP: Record<string, Partial<Record<string, string>>> = {
   goblin: { weapon: 'bronze_sword' },
+  gnoll: { weapon: 'rustbite' },
+  gnoll_champion: { weapon: 'iron_greatblade' },
   skeleton: { weapon: 'iron_sword' },
   skeleton_archer: { weapon: 'marrowpoint', offhand: 'hunters_quiver' },
   skeleton_guard: { weapon: 'iron_sword', offhand: 'oak_kiteshield', head: 'iron_helm' },
@@ -122,6 +125,8 @@ const MOB_EQUIP: Record<string, Partial<Record<string, string>>> = {
   },
 };
 const MOB_SIZE: Record<string, number> = {
+  gnoll: 1.18,
+  gnoll_champion: 1.42,
   skeleton: 0.95,
   skeleton_archer: 0.92,
   skeleton_guard: 1.05,
@@ -147,6 +152,7 @@ function isHumanoidMob(defId: string): boolean {
     defId.startsWith('skeleton') ||
     defId.startsWith('kobold') ||
     defId.startsWith('brigand') ||
+    defId.startsWith('gnoll') ||
     defId === 'troll'
   );
 }
@@ -159,6 +165,9 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
   const hip = 0.1 * S;
   const skel = def.id.startsWith('skeleton') ? skeletonLook(def.id) : undefined;
   const kob = def.id.startsWith('kobold') ? koboldLook(def.id) : undefined;
+  // The portrait sits for the DESIGN: seed 0 pins the dust-coat
+  // cluster so the bestiary card never flickers between colorways.
+  const gno = def.id.startsWith('gnoll') ? gnollLook(def.id, 0) : undefined;
   drawHumanoid(ctx, {
     x: cx,
     y: yFeet,
@@ -191,10 +200,11 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
         ? '#6a7d5c'
         : def.id.startsWith('goblin')
           ? '#7aa74a'
-          : (kob?.hide ?? MOB_SKIN[def.id]),
+          : (kob?.hide ?? gno?.fur ?? MOB_SKIN[def.id]),
     size: sizeK,
     skeletal: skel,
     kobold: kob,
+    gnoll: gno,
     gatherPhase: 0,
     craftKind: null,
   } as unknown as Parameters<typeof drawHumanoid>[1]);

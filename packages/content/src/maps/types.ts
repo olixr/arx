@@ -39,6 +39,14 @@ export interface ZoneSpawn {
    * always active, exactly as before.
    */
   hours?: { from: number; to: number };
+  /**
+   * THE WAR-GROUND (lived-in-land Phase 4): which wing of a compound
+   * hold this spawn belongs to. Rides into the spawn record so the
+   * server can detect a WING falling as its own chapter (the
+   * wing-break line) separately from the full clear. Absent = court,
+   * sentry, or an ordinary site's body.
+   */
+  wing?: number;
 }
 
 /**

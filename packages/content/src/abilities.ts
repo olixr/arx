@@ -3039,6 +3039,19 @@ const defs: AbilityDef[] = [
     // Dread runs cold: slowed legs while every wolf in earshot closes.
     status: { status: 'chill', power: 1, durationTicks: 50 },
   },
+  {
+    id: 'ravening_cackle',
+    name: 'Ravening Cackle',
+    desc: 'The packlord throws back its head and laughs the blood cold. Legs slow. The warband answers.',
+    color: '#c9a44a',
+    code: 'Rc',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'nova',
+    damage: 2, // the laugh barely bruises — the WARBAND is the payload
+    radius: 2.6,
+    // The same cold dread as the howl, in an uglier register.
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
 ];
 
 export const ABILITIES: ReadonlyMap<string, AbilityDef> = new Map(defs.map((d) => [d.id, d]));

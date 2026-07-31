@@ -70,6 +70,7 @@ import {
   shade,
   taperedSpinePath,
   type BeastSpec,
+  type GnollLook,
   type KoboldLook,
   type SkeletonLook,
 } from './rig.js';
@@ -469,6 +470,8 @@ export interface HumanoidCorpseLook {
   skel?: SkeletonLook;
   /** Set = this corpse is a kobold: horns, muzzle, and tail stay. */
   kob?: KoboldLook;
+  /** Set = this corpse is a gnoll: muzzle, crest, and coat stay. */
+  gno?: GnollLook;
   /** Worn equipment — the corpse keeps everything it died in. */
   gear?: CorpseGear;
 }
@@ -544,10 +547,20 @@ export function drawHumanoidRagdoll(
   // (the live dialect's law carried into death).
   const legCol = look.kob
     ? shade(look.kob.hide, -5)
-    : (legSt?.thigh ?? shade(look.bodyColor, -28));
-  const shinCol = look.kob ? shade(look.kob.hide, -12) : (legSt?.shin ?? legCol);
+    : look.gno
+      ? shade(look.gno.fur, -5)
+      : (legSt?.thigh ?? shade(look.bodyColor, -28));
+  const shinCol = look.kob
+    ? shade(look.kob.hide, -12)
+    : look.gno
+      ? shade(look.gno.fur, -14)
+      : (legSt?.shin ?? legCol);
   const sleeveCol = bodySt?.sleeve ?? shade(cloth, -10);
-  const footCol = look.kob ? shade(look.kob.hide, -8) : (bootSt?.color ?? BOOT);
+  const footCol = look.kob
+    ? shade(look.kob.hide, -8)
+    : look.gno
+      ? shade(look.gno.skin, -6)
+      : (bootSt?.color ?? BOOT);
   const mittCol = gloveSt?.color ?? look.skinColor;
   const foreCol = gloveSt ? (gloveSt.bracer ?? shade(gloveSt.color, -8)) : look.skinColor;
 
@@ -631,6 +644,35 @@ export function drawHumanoidRagdoll(
       ctx.stroke();
     }
     ctx.lineCap = 'butt';
+  }
+
+  // The gnoll's bushy tail likewise goes down first — a slack brush
+  // off the pelvis with its dark tip, still speaking the species from
+  // a body-pile (corpse identity law).
+  if (look.gno) {
+    const gn = look.gno;
+    const tipX = pelvis.x - ux * s * 0.34 * gn.heavy;
+    const tipY = pelvis.y - uy * s * 0.34 * gn.heavy + s * 0.09;
+    const cx = pelvis.x - ux * s * 0.16 * gn.heavy + s * 0.02;
+    const cy = pelvis.y - uy * s * 0.16 * gn.heavy + s * 0.07;
+    const spine = scaleRibbon(
+      ctx, pelvis.x, pelvis.y, cx, cy, tipX, tipY,
+      s * 0.11 * gn.heavy, gn.fur, shade(gn.fur, -26),
+    );
+    const tip = spine[spine.length - 1]!;
+    const pre = spine[spine.length - 3]!;
+    ctx.fillStyle = gn.spot;
+    ctx.beginPath();
+    ctx.ellipse(
+      (tip.x + pre.x) / 2,
+      (tip.y + pre.y) / 2,
+      s * 0.055 * gn.heavy,
+      s * 0.04 * gn.heavy,
+      Math.atan2(tip.y - pre.y, tip.x - pre.x),
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
   }
 
   // Far pair behind the trunk.
@@ -814,6 +856,75 @@ export function drawHumanoidRagdoll(
         ctx.fill();
       }
     }
+  } else if (look.gno) {
+    // The gnoll corpse head in profile: the tall round ear behind a
+    // broad low cranium, the blunt deep muzzle out one side with the
+    // pale mandible slack under it and the underbite still proud of
+    // the lip — the laugh finally out of it. Crest collapsed over the
+    // crown, dapple on the cheek. Identity by silhouette.
+    const gn = look.gno;
+    const hv = gn.heavy;
+    // The tall ear behind the skull, dish down against the fall.
+    ctx.fillStyle = shade(gn.fur, -8);
+    ctx.beginPath();
+    ctx.ellipse(-hw * 0.58, -hh * 0.66, hh * 0.3 * (0.9 + 0.16 * hv), hh * 0.5 * (0.9 + 0.16 * hv), -0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = shade(gn.fur, -26);
+    ctx.lineWidth = Math.max(1, hh * 0.06);
+    ctx.stroke();
+    // Broad low cranium.
+    ctx.fillStyle = gn.fur;
+    ctx.beginPath();
+    chamferRect(ctx, -hw * 1.06, -hh * 0.66, hw * 2.06, hh * 1.24, [cut * 1.3, cut * 1.3, cut * 0.6, cut * 0.6]);
+    ctx.fill();
+    // Cheek dapple — the coat reads even in death.
+    ctx.fillStyle = gn.spot;
+    const dseed = gn.seed ?? 0;
+    for (let i = 0; i < 3; i++) {
+      const h = ((dseed >>> (i * 4)) ^ (dseed * 37 + i * 61)) | 0;
+      const bx = -hw * 0.5 + ((h & 15) / 15) * hw * 0.9;
+      const by = -hh * 0.3 + (((h >> 4) & 15) / 15) * hh * 0.6;
+      ctx.beginPath();
+      ctx.ellipse(bx, by, hh * 0.09, hh * 0.07, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The crest collapses over the crown and nape.
+    ctx.fillStyle = gn.mane;
+    for (let i = 0; i < 4; i++) {
+      const bx = -hw * 0.8 + i * hw * 0.38;
+      ctx.beginPath();
+      ctx.moveTo(bx - hw * 0.14, -hh * 0.56);
+      ctx.lineTo(bx - hw * 0.3, -hh * (0.9 + 0.12 * Math.sin(i * 2.3)) * (1 + 0.3 * (hv - 1)));
+      ctx.lineTo(bx + hw * 0.16, -hh * 0.52);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The blunt deep muzzle out the +x side — half the wolf's reach,
+    // twice the depth; bare hide, not fur.
+    ctx.fillStyle = gn.skin;
+    ctx.beginPath();
+    chamferRect(ctx, hw * 0.6, -hh * 0.3, hw * 0.98, hh * 0.78, [0, cut * 0.5, cut * 0.6, 0]);
+    ctx.fill();
+    // Slack pale mandible under it.
+    ctx.fillStyle = gn.underfur;
+    ctx.beginPath();
+    chamferRect(ctx, hw * 0.56, hh * 0.5, hw * 0.86, hh * 0.22, [0, 0, cut * 0.4, cut * 0.4]);
+    ctx.fill();
+    // The underbite: up-teeth still proud of the slack jaw.
+    ctx.fillStyle = '#efe6cf';
+    for (const off of [0.72, 1.02]) {
+      ctx.beginPath();
+      ctx.moveTo(hw * off - hh * 0.05, hh * 0.5);
+      ctx.lineTo(hw * off, hh * 0.5 - hh * 0.18 * (1 + 0.25 * (hv - 1)));
+      ctx.lineTo(hw * off + hh * 0.05, hh * 0.5);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The broad nose on the blunt tip; no eye ever again.
+    ctx.fillStyle = gn.nose;
+    ctx.beginPath();
+    ctx.ellipse(hw * 1.5, -hh * 0.02, hh * 0.18, hh * 0.13, 0, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     ctx.fillStyle = look.skinColor;
     ctx.beginPath();

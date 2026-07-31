@@ -3757,6 +3757,54 @@ Object.assign(PLATES, {
     // The ember eye — the champion tier reads through it.
     dot(c, '#ff9a3d', -0.15, -0.07, 0.032);
   },
+  // Ravening Cackle — the packlord's muzzle thrown back, the laugh
+  // breaking up in stuttered barks. (NPC special: bestiary/staging.)
+  ravening_cackle: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    // The cackle: broken bark-arcs, staggered ha-ha pairs — never the
+    // howl's smooth rings.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    for (const [r, a0, a1, w] of [
+      [0.2, -2.1, -1.6, 0.05],
+      [0.3, -1.5, -1.0, 0.042],
+      [0.36, -2.3, -1.9, 0.038],
+      [0.46, -1.7, -1.3, 0.032],
+    ] as const) {
+      c.lineWidth = w;
+      c.beginPath();
+      c.arc(0.1, -0.12, r, a0, a1);
+      c.stroke();
+    }
+    // Gnoll head in profile, muzzle to the sky: blunt deep jaw, the
+    // tall round ear, the crest bristling down the nape.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.16, -0.18); // blunt muzzle tip, raised
+    c.lineTo(0.06, -0.04); // deep jaw
+    c.lineTo(-0.06, 0.1); // throat
+    c.quadraticCurveTo(-0.08, 0.3, -0.28, 0.38); // chest fall-away
+    c.lineTo(-0.34, 0.1); // shoulder
+    c.lineTo(-0.24, -0.04); // nape
+    c.lineTo(-0.34, -0.16); // crest kick
+    c.lineTo(-0.24, -0.14); // crest root
+    c.lineTo(-0.26, -0.3); // tall ear back
+    c.lineTo(-0.14, -0.16); // ear front to crown
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The underbite tick on the raised jaw.
+    c.strokeStyle = '#efe6cf';
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(0.09, -0.07);
+    c.lineTo(0.12, -0.12);
+    c.stroke();
+    // The scavenger's eye — bone-gold, sizing you up.
+    dot(c, '#e8b64c', -0.13, -0.05, 0.032);
+  },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
 // ------------------------------------------------------------ lookup

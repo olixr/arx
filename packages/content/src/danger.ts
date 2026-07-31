@@ -89,21 +89,29 @@ export interface DangerLaw {
    * like every other density.
    */
   findChance: number;
+  /**
+   * THE WAR-GROUND (lived-in-land phase 4): chance a cell that rolled
+   * a site PROMOTES to a compound hold instead — court, wings, chief,
+   * the region's landmark. Zero below tier 3 by law: a war-ground is
+   * deep-frontier furniture, and the region law (one hold per
+   * neighborhood) caps it harder than the chance does.
+   */
+  holdChance: number;
 }
 
 export const DANGER_LAWS: readonly DangerLaw[] = [
   // 0 — settled: authored content only. The scaffold never rolls here.
-  { npcLevel: [1, 4], chest: 'wood', rarityBonus: 0, poiChance: 0, wildDensity: 0, findChance: 0 },
+  { npcLevel: [1, 4], chest: 'wood', rarityBonus: 0, poiChance: 0, wildDensity: 0, findChance: 0, holdChance: 0 },
   // 1 — the near frontier: a first camp just past the town fields.
-  { npcLevel: [4, 9], chest: 'wood', rarityBonus: 0, poiChance: 0.3, wildDensity: 0.25, findChance: 0.14 },
+  { npcLevel: [4, 9], chest: 'wood', rarityBonus: 0, poiChance: 0.3, wildDensity: 0.25, findChance: 0.14, holdChance: 0 },
   // 2 — the walk-out: worth packing food for.
-  { npcLevel: [9, 16], chest: 'mossy', rarityBonus: 1, poiChance: 0.38, wildDensity: 0.35, findChance: 0.18 },
+  { npcLevel: [9, 16], chest: 'mossy', rarityBonus: 1, poiChance: 0.38, wildDensity: 0.35, findChance: 0.18, holdChance: 0 },
   // 3 — the expedition line: brass keys start mattering.
-  { npcLevel: [15, 24], chest: 'iron', rarityBonus: 2, poiChance: 0.42, wildDensity: 0.45, findChance: 0.2 },
+  { npcLevel: [15, 24], chest: 'iron', rarityBonus: 2, poiChance: 0.42, wildDensity: 0.45, findChance: 0.2, holdChance: 0.1 },
   // 4 — deep frontier: champions wear names out here.
-  { npcLevel: [22, 34], chest: 'gilded', rarityBonus: 4, poiChance: 0.45, wildDensity: 0.5, findChance: 0.22 },
+  { npcLevel: [22, 34], chest: 'gilded', rarityBonus: 4, poiChance: 0.45, wildDensity: 0.5, findChance: 0.22, holdChance: 0.14 },
   // 5 — the far dark: the overworld's dungeon-grade band.
-  { npcLevel: [32, 48], chest: 'boss', rarityBonus: 6, poiChance: 0.5, wildDensity: 0.55, findChance: 0.22 },
+  { npcLevel: [32, 48], chest: 'boss', rarityBonus: 6, poiChance: 0.5, wildDensity: 0.55, findChance: 0.22, holdChance: 0.18 },
 ];
 
 /** Danger tier at a world tile over the settled anchors. */

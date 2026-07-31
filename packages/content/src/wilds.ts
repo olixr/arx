@@ -130,6 +130,21 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   { npc: 'skeleton', weight: 1, tiers: [3, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow' },
   { npc: 'worg', weight: 1.5, tiers: [4, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 2] },
   { npc: 'troll', weight: 0.5, tiers: [5, 5], biomes: ['forest'], hours: NIGHT },
+  // Daylight gnolls range in scavenging pairs, wide of the squat.
+  { npc: 'gnoll', weight: 1.5, tiers: [3, 4], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den' },
+  {
+    // The night raid: the warband runs behind its packlord, and the
+    // cackle carries further than any fire-light.
+    npc: 'gnoll',
+    weight: 2,
+    tiers: [4, 5],
+    biomes: ['grass', 'forest'],
+    hours: NIGHT,
+    band: [2, 3],
+    spread: 4,
+    lead: { npc: 'gnoll_champion' },
+    habitat: 'den',
+  },
 ];
 
 /**

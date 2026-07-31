@@ -710,6 +710,63 @@ const defs: NpcDef[] = [
     special: { ability: 'ground_slam', everyTicks: 140 },
   },
   {
+    id: 'gnoll',
+    name: 'Gnoll',
+    level: 13,
+    maxHp: 44,
+    damage: 4,
+    // Long arms and a longer reach: seven feet of scavenger swings
+    // wide even carried low in the shoulders.
+    attackRange: 1.1,
+    attackCooldownTicks: 40,
+    aggroRange: 6,
+    // A hyena's head: the muzzle points one way, the ears hear most ways.
+    sightArc: 210,
+    leashRange: 30,
+    // The lope: quicker than a goblin, never as quick as the wolves
+    // it steals kills from.
+    speed: 4.2,
+    xpReward: 150,
+    loot: ['gnoll', 'goblin_arms', 'heirlooms'],
+    respawnSec: 40,
+    color: '#8a7a58',
+    radius: 0.36,
+    hitHeight: 2.3,
+    // Scavenged edges are jagged edges: the wound keeps paying.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 50 },
+    pack: 'gnoll',
+    // A gnoll's nerve is a pack ration: bloodied and alone, it bolts
+    // for a packmate and drags the whole cackle back with it.
+    craven: true,
+  },
+  {
+    id: 'gnoll_champion',
+    name: 'Gnoll packlord',
+    level: 20,
+    maxHp: 100,
+    damage: 6,
+    attackRange: 1.2,
+    // The packlord sets the warband's tempo, same as the matriarch
+    // sets the pack's.
+    attackCooldownTicks: 38,
+    aggroRange: 7,
+    sightArc: 240,
+    leashRange: 34,
+    speed: 4.4,
+    xpReward: 370,
+    loot: ['gnoll_champion', 'goblin_arms', 'heirlooms'],
+    respawnSec: 90,
+    color: '#6b5a44',
+    radius: 0.44,
+    hitHeight: 2.6,
+    // Packlord jaws finish what the warband starts.
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 60 },
+    pack: 'gnoll',
+    // The laugh that runs the warband: dread in your legs, and every
+    // gnoll in earshot answering it. The champion fight is the PACK.
+    special: { ability: 'ravening_cackle', everyTicks: 150 },
+  },
+  {
     id: 'bear',
     name: 'Black bear',
     level: 16,

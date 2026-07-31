@@ -61,6 +61,9 @@ const ST_KIND = 0x501e58;
 const ST_VARIANT = 0x501e59;
 const ST_SITE = 0x501e5a;
 const ST_MUSTER = 0x501e5b;
+/** THE WAR-GROUND's promotion stream (Phase 4) — its own salt, so
+ * adding holds never reshuffled a single standing camp. */
+const ST_HOLD = 0x501e62;
 
 /** Tiles a POI footprint (and its stamps) must keep clear of zones. */
 export const ZONE_CLEARANCE = 24;
@@ -154,6 +157,14 @@ export function poiForCell(
   epoch: number,
   ctx: PoiContext,
   force?: string | true,
+  /**
+   * THE REGION LAW's gate (Phase 4): holds may only stand where the
+   * caller says the neighborhood holds none — region knowledge lives
+   * in the ledger, so the CALLER answers it and this pure function
+   * stays pure. Defaults closed: sweeps, sims, and renewals that never
+   * opted in cannot deal a war-ground by accident.
+   */
+  allowHold = false,
 ): PoiSite | null {
   const x0 = cellX * POI_CELL;
   const y0 = cellY * POI_CELL;
@@ -166,84 +177,123 @@ export function poiForCell(
     if (roll >= law.poiChance) return null;
   }
 
+  // VARIANT + SITE as one decision, extracted so a PROMOTED cell whose
+  // big court finds no ground can fall back to its ordinary roll — the
+  // land refusing a war-ground deals a camp, never nothing.
+  const decideSite = (def: PoiDef): PoiSite | null => {
+    // VARIANT: which prefab from the pool.
+    const variant = stream(seed, ST_VARIANT, cellX, cellY, epoch) % def.prefabs.length;
+    const prefabId = def.prefabs[variant]!;
+    const prefab = ctx.prefabs.get(prefabId);
+    if (!prefab) {
+      console.warn(`[poi] archetype '${def.id}' references unknown prefab '${prefabId}'`);
+      return null;
+    }
+
+    // SITE: hashed candidate anchors, best standable footprint wins.
+    // A compound's margin covers its whole EXTENT (court + wing ring +
+    // wing bodies) so the war-ground never pokes out of its cell — the
+    // scan still probes only the court's footprint; wings probe their
+    // own ground at compose time and skip honestly when it refuses.
+    const margin = def.compound
+      ? Math.ceil(compoundExtent(def, prefab, ctx)) + 14
+      : Math.ceil(Math.max(prefab.width, prefab.height) / 2) + 14;
+    const span = POI_CELL - margin * 2;
+    if (span <= 0) return null; // a footprint bigger than its cell
+    const siteBase = stream(seed, ST_SITE, cellX, cellY, epoch);
+    let best: { tx: number; ty: number; score: number } | null = null;
+    for (let k = 0; k < SITE_TRIES; k++) {
+      const tx = x0 + margin + (hashCoords(siteBase, k, 0) % span);
+      const ty = y0 + margin + (hashCoords(siteBase, k, 1) % span);
+      // Quick rejects before the full footprint scan.
+      if (ty + prefab.height / 2 >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
+      if (!standable(groundProbeAt(seed, tx, ty))) continue;
+      const fx0 = tx - Math.floor(prefab.width / 2);
+      const fy0 = ty - Math.floor(prefab.height / 2);
+      if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects)) continue;
+      // THE EXCLUSION LAW (Phase 4): a claimed yard refuses every
+      // materialization candidate — satellites, tolls, renewals, wakes
+      // and fresh rolls alike, since they all pass through this scan.
+      if (intersectsRings(fx0, fy0, prefab.width, prefab.height, ctx.claimRings)) continue;
+      let score = 0;
+      let ok = true;
+      for (let dy = 0; dy < prefab.height && ok; dy++) {
+        for (let dx = 0; dx < prefab.width; dx++) {
+          const cls = groundProbeAt(seed, fx0 + dx, fy0 + dy);
+          if (!standable(cls)) {
+            ok = false;
+            break;
+          }
+          if (cls === 'grass') score++; // open ground beats tree-choked
+        }
+      }
+      if (!ok) continue;
+      if (!best || score > best.score) best = { tx, ty, score };
+    }
+    if (!best) return null;
+
+    return {
+      cellX,
+      cellY,
+      epoch,
+      tier: centerTier,
+      defId: def.id,
+      prefabId,
+      anchorX: best.tx,
+      anchorY: best.ty,
+    };
+  };
+
   // KIND: weighted pick among archetypes eligible at this tier.
-  let def: PoiDef | undefined;
+  // Compound holds never sit in the ordinary pool — they arrive by
+  // PROMOTION: a cell that already earned a site may promote to the
+  // region's war-ground on its own stream, under the caller's region
+  // gate and the law table's holdChance. A promotion the LAND refuses
+  // (no court-sized ground) falls back to the ordinary roll.
   if (typeof force === 'string') {
-    def = ctx.defs.find((d) => d.id === force);
-    if (!def) return null;
-  } else {
-    // Weight-0 archetypes never roll on their own — they exist only
-    // for the authored-sites law (the Last Lamp is placed, not found).
-    const eligible = ctx.defs.filter(
-      (d) => d.weight > 0 && centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
-    );
-    if (eligible.length === 0) return null;
-    const totalW = eligible.reduce((s, d) => s + d.weight, 0);
-    let pick = (stream(seed, ST_KIND, cellX, cellY, epoch) % totalW + totalW) % totalW;
-    for (const d of eligible) {
+    const def = ctx.defs.find((d) => d.id === force);
+    return def ? decideSite(def) : null;
+  }
+  const holds = ctx.defs.filter(
+    (d) => d.compound && d.weight > 0 && centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
+  );
+  if (
+    allowHold &&
+    holds.length > 0 &&
+    stream(seed, ST_HOLD, cellX, cellY, epoch) / 4294967296 < law.holdChance
+  ) {
+    const totalW = holds.reduce((s, d) => s + d.weight, 0);
+    let pick = ((stream(seed, ST_HOLD ^ 0x9, cellX, cellY, epoch) % totalW) + totalW) % totalW;
+    let holdDef: PoiDef | undefined;
+    for (const d of holds) {
       pick -= d.weight;
       if (pick < 0) {
-        def = d;
+        holdDef = d;
         break;
       }
     }
-    def ??= eligible[eligible.length - 1]!;
+    holdDef ??= holds[holds.length - 1]!;
+    const site = decideSite(holdDef);
+    if (site) return site;
   }
-
-  // VARIANT: which prefab from the pool.
-  const variant = stream(seed, ST_VARIANT, cellX, cellY, epoch) % def.prefabs.length;
-  const prefabId = def.prefabs[variant]!;
-  const prefab = ctx.prefabs.get(prefabId);
-  if (!prefab) {
-    console.warn(`[poi] archetype '${def.id}' references unknown prefab '${prefabId}'`);
-    return null;
-  }
-
-  // SITE: hashed candidate anchors, best standable footprint wins.
-  const margin = Math.ceil(Math.max(prefab.width, prefab.height) / 2) + 14;
-  const span = POI_CELL - margin * 2;
-  const siteBase = stream(seed, ST_SITE, cellX, cellY, epoch);
-  let best: { tx: number; ty: number; score: number } | null = null;
-  for (let k = 0; k < SITE_TRIES; k++) {
-    const tx = x0 + margin + (hashCoords(siteBase, k, 0) % span);
-    const ty = y0 + margin + (hashCoords(siteBase, k, 1) % span);
-    // Quick rejects before the full footprint scan.
-    if (ty + prefab.height / 2 >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
-    if (!standable(groundProbeAt(seed, tx, ty))) continue;
-    const fx0 = tx - Math.floor(prefab.width / 2);
-    const fy0 = ty - Math.floor(prefab.height / 2);
-    if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects)) continue;
-    // THE EXCLUSION LAW (Phase 4): a claimed yard refuses every
-    // materialization candidate — satellites, tolls, renewals, wakes
-    // and fresh rolls alike, since they all pass through this scan.
-    if (intersectsRings(fx0, fy0, prefab.width, prefab.height, ctx.claimRings)) continue;
-    let score = 0;
-    let ok = true;
-    for (let dy = 0; dy < prefab.height && ok; dy++) {
-      for (let dx = 0; dx < prefab.width; dx++) {
-        const cls = groundProbeAt(seed, fx0 + dx, fy0 + dy);
-        if (!standable(cls)) {
-          ok = false;
-          break;
-        }
-        if (cls === 'grass') score++; // open ground beats tree-choked
-      }
+  // Weight-0 archetypes never roll on their own — they exist only
+  // for the authored-sites law (the Last Lamp is placed, not found).
+  const eligible = ctx.defs.filter(
+    (d) => !d.compound && d.weight > 0 && centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
+  );
+  if (eligible.length === 0) return null;
+  const totalW = eligible.reduce((s, d) => s + d.weight, 0);
+  let pick = ((stream(seed, ST_KIND, cellX, cellY, epoch) % totalW) + totalW) % totalW;
+  let def: PoiDef | undefined;
+  for (const d of eligible) {
+    pick -= d.weight;
+    if (pick < 0) {
+      def = d;
+      break;
     }
-    if (!ok) continue;
-    if (!best || score > best.score) best = { tx, ty, score };
   }
-  if (!best) return null;
-
-  return {
-    cellX,
-    cellY,
-    epoch,
-    tier: centerTier,
-    defId: def.id,
-    prefabId,
-    anchorX: best.tx,
-    anchorY: best.ty,
-  };
+  def ??= eligible[eligible.length - 1]!;
+  return decideSite(def);
 }
 
 export function intersectsZones(
@@ -284,6 +334,21 @@ export function intersectsRings(
     if (dx * dx + dy * dy <= ring.r * ring.r) return true;
   }
   return false;
+}
+
+/**
+ * A compound hold's furthest reach from its anchor (tiles): court half
+ * + the ring gap + a wing's own span. The SITE scan margins by this so
+ * a war-ground never pokes out of its cell or into a neighbor's work.
+ */
+export function compoundExtent(def: PoiDef, court: PrefabDef, ctx: PoiContext): number {
+  const courtHalf = Math.max(court.width, court.height) / 2;
+  let wingHalf = 0;
+  for (const pid of def.compound?.wings.pool ?? []) {
+    const p = ctx.prefabs.get(pid);
+    if (p) wingHalf = Math.max(wingHalf, Math.max(p.width, p.height) / 2);
+  }
+  return courtHalf + wingHalf * 2 + 8;
 }
 
 export interface TrailPoint {
@@ -457,10 +522,80 @@ export function composePoi(
         ctx.zoneRects,
       )
     : null;
+  // THE WAR-GROUND (Phase 4): wings muster on ring bearings around
+  // the court — computed BEFORE the rect (the rect must hold them),
+  // rolled on stage-independent streams (the prefix-stability law),
+  // each footprint probed and SKIPPED when the ground refuses. The
+  // land decides how big the hold got to be; a failed wing is not an
+  // error, it is geography.
+  interface PlacedWing {
+    prefab: PrefabDef;
+    x0: number;
+    y0: number;
+    cx: number;
+    cy: number;
+    wing: number;
+  }
+  const wings: PlacedWing[] = [];
+  if (def.compound) {
+    const comp = def.compound;
+    const wingBase = hashCoords(musterBase, 0x417, 0);
+    const wingCount =
+      comp.wings.count[0] +
+      (hashCoords(wingBase, 1, 3) % (comp.wings.count[1] - comp.wings.count[0] + 1));
+    const courtHalf = Math.max(prefab.width, prefab.height) / 2;
+    const cx0 = site.anchorX - Math.floor(prefab.width / 2);
+    const cy0 = site.anchorY - Math.floor(prefab.height / 2);
+    const angle0 = ((hashCoords(wingBase, 2, 5) % 1000) / 1000) * Math.PI * 2;
+    const overlaps = (
+      ax0: number, ay0: number, aw: number, ah: number,
+      bx0: number, by0: number, bw: number, bh: number,
+    ): boolean =>
+      ax0 - 2 < bx0 + bw && ax0 + aw + 2 > bx0 && ay0 - 2 < by0 + bh && ay0 + ah + 2 > by0;
+    for (let i = 0; i < wingCount; i++) {
+      const wp = ctx.prefabs.get(
+        comp.wings.pool[hashCoords(wingBase, i, 7) % comp.wings.pool.length]!,
+      );
+      if (!wp) continue;
+      const wingHalf = Math.max(wp.width, wp.height) / 2;
+      const ang =
+        angle0 +
+        (i / wingCount) * Math.PI * 2 +
+        ((hashCoords(wingBase, i, 11) % 100) / 100 - 0.5) * 0.35;
+      const radius = courtHalf + wingHalf + 4 + (hashCoords(wingBase, i, 13) % 5);
+      const wcx = Math.round(site.anchorX + Math.cos(ang) * radius);
+      const wcy = Math.round(site.anchorY + Math.sin(ang) * radius);
+      const wx0 = wcx - Math.floor(wp.width / 2);
+      const wy0 = wcy - Math.floor(wp.height / 2);
+      if (wcy + wp.height / 2 >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
+      if (intersectsZones(wx0, wy0, wp.width, wp.height, ctx.zoneRects, 8)) continue;
+      if (intersectsRings(wx0, wy0, wp.width, wp.height, ctx.claimRings)) continue;
+      if (overlaps(wx0, wy0, wp.width, wp.height, cx0, cy0, prefab.width, prefab.height)) continue;
+      if (
+        wings.some((w) =>
+          overlaps(wx0, wy0, wp.width, wp.height, w.x0, w.y0, w.prefab.width, w.prefab.height),
+        )
+      ) {
+        continue;
+      }
+      let ok = true;
+      for (let dy = 0; dy < wp.height && ok; dy++) {
+        for (let dx = 0; dx < wp.width; dx++) {
+          if (!standable(groundProbeAt(seed, wx0 + dx, wy0 + dy))) {
+            ok = false;
+            break;
+          }
+        }
+      }
+      if (!ok) continue;
+      wings.push({ prefab: wp, x0: wx0, y0: wy0, cx: wcx, cy: wcy, wing: i });
+    }
+  }
+
   // The rect: prefab + symmetric pad, then grown (asymmetrically)
-  // to hold the trail with a 2-tile transparent margin — the margin
-  // is LAW: a composed zone's perimeter must stay all-TILE_SKIP or
-  // the edge-harmony machinery would read the trail as the zone's
+  // to hold the trail and the wings with a transparent margin — the
+  // margin is LAW: a composed zone's perimeter must stay all-TILE_SKIP
+  // or the edge-harmony machinery would read the trail as the zone's
   // border intention and re-shape worldgen around it.
   let minX = site.anchorX - Math.floor(prefab.width / 2) - pad;
   let minY = site.anchorY - Math.floor(prefab.height / 2) - pad;
@@ -473,6 +608,12 @@ export function composePoi(
       maxX = Math.max(maxX, p.x + 4);
       maxY = Math.max(maxY, p.y + 4);
     }
+  }
+  for (const w of wings) {
+    minX = Math.min(minX, w.x0 - 3);
+    minY = Math.min(minY, w.y0 - 3);
+    maxX = Math.max(maxX, w.x0 + w.prefab.width + 3);
+    maxY = Math.max(maxY, w.y0 + w.prefab.height + 3);
   }
   const zw = maxX - minX;
   const zh = maxY - minY;
@@ -500,6 +641,24 @@ export function composePoi(
       const zi = (dy + py0) * zw + (dx + px0);
       ground[zi] = g;
       detail[zi] = prefab.detail[dy * prefab.width + dx]!;
+    }
+  }
+
+  // Wing blits — the camps around the court. Their chests keep their
+  // AUTHORED kinds (a wing's wood chest stays a wood chest): the
+  // chest-law upgrade is the COURT's cache alone, or a hold would
+  // mint a boss chest per wing (texture-is-not-treasure at hold
+  // scale). The hold-wide ward still covers them — break the hold to
+  // loot anything.
+  for (const w of wings) {
+    for (let dy = 0; dy < w.prefab.height; dy++) {
+      for (let dx = 0; dx < w.prefab.width; dx++) {
+        const g = w.prefab.ground[dy * w.prefab.width + dx]!;
+        if (g === TILE_SKIP) continue;
+        const zi = (w.y0 + dy - originY) * zw + (w.x0 + dx - originX);
+        ground[zi] = g;
+        detail[zi] = w.prefab.detail[dy * w.prefab.width + dx]!;
+      }
     }
   }
 
@@ -603,6 +762,27 @@ export function composePoi(
       const mouth = trail.points[trail.points.length - 1]!;
       stamp(mouth.x + perpX * 2, mouth.y + perpY * 2, Tile.Grass);
       stamp(mouth.x - perpX * 2, mouth.y - perpY * 2, Tile.Grass);
+    }
+  }
+
+  // The wing walks: worn ground from each wing's mouth to the court —
+  // the compound reads as ONE inhabited place, not a scatter of camps
+  // that happen to be neighbors.
+  for (const w of wings) {
+    const d = Math.hypot(w.cx - site.anchorX, w.cy - site.anchorY);
+    const ux = (site.anchorX - w.cx) / Math.max(1, d);
+    const uy = (site.anchorY - w.cy) / Math.max(1, d);
+    const start = Math.max(1, Math.floor(Math.min(w.prefab.width, w.prefab.height) / 2) - 1);
+    for (let t = start; t < d; t++) {
+      const wob = ((hashCoords(musterBase ^ 0x41b, w.wing * 131 + t, 0) % 3) - 1) * 0.6;
+      const wx = Math.round(w.cx + ux * t - uy * wob);
+      const wy = Math.round(w.cy + uy * t + ux * wob);
+      const zx = wx - originX;
+      const zy = wy - originY;
+      if (!fringeSkip(zx, zy)) continue;
+      const cls = groundProbeAt(seed, wx, wy);
+      if (cls !== 'grass' && cls !== 'forest') continue;
+      ground[zy * zw + zx] = Tile.Dirt;
     }
   }
 
@@ -721,7 +901,18 @@ export function composePoi(
     staff.some((s) => s.post === 'watch') ||
     rungWants.some(({ g }) => g.role === 'sentry')
   ) {
-    const ringR = Math.max(prefab.width, prefab.height) / 2 + 5;
+    // A hold's watchers post OUTSIDE the wings — the whole compound
+    // watches the road, not just the court.
+    const ringR =
+      wings.length > 0
+        ? Math.max(
+            ...wings.map(
+              (w) =>
+                Math.hypot(w.cx - site.anchorX, w.cy - site.anchorY) +
+                Math.max(w.prefab.width, w.prefab.height) / 2,
+            ),
+          ) + 4
+        : Math.max(prefab.width, prefab.height) / 2 + 5;
     for (let b = 0; b < 12; b++) {
       const ang = (b / 12) * Math.PI * 2;
       const dirX = Math.cos(ang);
@@ -868,6 +1059,50 @@ export function composePoi(
           ...(entry.routine !== undefined ? { routine: entry.routine } : {}),
         });
       }
+    }
+  }
+
+  // ---- THE WING CHAPTERS (Phase 4): each wing musters its own knot —
+  // the wing prefab's posted bodies plus the def's wingGarrison, all
+  // tagged with the wing ordinal so a falling wing reads as its own
+  // chapter (the wing-break line). Appended AFTER the whole base court
+  // composition and BEFORE the rungs on the shared level counter, so
+  // stage climbs never reshuffle a standing hold.
+  for (const w of wings) {
+    for (const s of w.prefab.spawns) {
+      spawns.push({
+        npc: s.npc,
+        x: w.x0 + s.dx + 0.5,
+        y: w.y0 + s.dy + 0.5,
+        radius: s.radius,
+        count: s.count,
+        level: s.level ?? levelRoll(n++),
+        name: s.name,
+        hours: s.hours,
+        wing: w.wing,
+      });
+    }
+    const wingHoldR = Math.max(2, Math.min(w.prefab.width, w.prefab.height) / 2 - 1);
+    for (const [gi, g] of (def.compound?.wingGarrison ?? []).entries()) {
+      if (g.minTier !== undefined && site.tier < g.minTier) continue;
+      const count =
+        g.count[0] +
+        (hashCoords(musterBase, 0x517 + w.wing, gi) % (g.count[1] - g.count[0] + 1));
+      if (count <= 0) continue;
+      const gname = g.names
+        ? g.names[hashCoords(musterBase, 0x519 + w.wing, gi) % g.names.length]
+        : g.name;
+      spawns.push({
+        npc: g.npc,
+        x: w.cx + 0.5,
+        y: w.cy + 0.5,
+        radius: wingHoldR,
+        count,
+        level: levelRoll(n++) + (g.levelOffset ?? 0),
+        name: gname,
+        hours: g.hours,
+        wing: w.wing,
+      });
     }
   }
 

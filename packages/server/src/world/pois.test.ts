@@ -127,6 +127,9 @@ test('the frontier hosts POIs and every rollable archetype occurs', () => {
   const kinds = new Set(sites.map((s) => s.defId));
   for (const def of POI_DEFS.values()) {
     if (def.weight === 0) continue;
+    // Compound holds never sit in the ordinary pool — they arrive by
+    // PROMOTION under the region gate (holds.test.ts pins that door).
+    if (def.compound) continue;
     assert.ok(kinds.has(def.id), `archetype '${def.id}' never rolled in the scan`);
   }
 });

@@ -214,6 +214,75 @@ const goblinCampPair = sketch(
   goblinMarks,
 );
 
+const gnollMarks: Record<string, Marker> = {
+  '1': { npc: 'gnoll', radius: 2, under: Tile.StoneFloor },
+  '2': { npc: 'gnoll', radius: 2, under: Tile.StoneFloor },
+  '3': { npc: 'gnoll', radius: 2.5, under: Tile.Dirt },
+  '4': { npc: 'gnoll', radius: 2, under: Tile.StoneFloor },
+  '5': { npc: 'gnoll', radius: 2, under: Tile.Dirt },
+};
+
+/**
+ * A tumbled steading the warband moved into: a roofless stone shell,
+ * bones at the door, and the fire out in the yard where the roof
+ * used to be. Gnolls build nothing — they SQUAT, so every gnoll
+ * prefab is somebody else's ruin with the warband's litter on it.
+ */
+const gnollSquat = sketch(
+  'poi_gnoll_squat',
+  'Gnoll squat',
+  [
+    '_____,,,,_____',
+    '__,::::::::,__',
+    '_,:#z#y#S##:,_',
+    '_,:#So..S1#:,_',
+    '_,:S..2..SS:,_',
+    '_,:#S..W.S#:,_',
+    '_,:##S:S###:,_',
+    ',::.o.f..3.::,',
+    '_,::::o:::,,__',
+    '____,,,,______',
+  ],
+  gnollMarks,
+);
+
+/** The kill-ground: an open camp ringed in gnawed bone piles. */
+const gnollBoneyard = sketch(
+  'poi_gnoll_boneyard',
+  'Gnoll boneyard',
+  [
+    '____,,,,____',
+    '__,::::::,__',
+    '_,:o.1..o:,_',
+    ',::..f...::,',
+    ',::2.W.o.::,',
+    '_,:..5...:,_',
+    '__,::o:::,__',
+    '____,,,,____',
+  ],
+  gnollMarks,
+);
+
+/** The den-hall: a gutted long-hall, the deep squat of a whole warband. */
+const gnollDenhall = sketch(
+  'poi_gnoll_denhall',
+  'Gnoll den-hall',
+  [
+    '______,,,,______',
+    '__,::::::::::,__',
+    '_,:##z##S#z##:,_',
+    '_,:#S..o..S.#:,_',
+    '_,:#.1..4...#:,_',
+    '_,:y..X..b..#:,_',
+    '_,:#.2....S.#:,_',
+    '_,:##S::S####:,_',
+    ',::.o..f..3.::,_',
+    '_,::::o:::::,___',
+    '____,,,,________',
+  ],
+  gnollMarks,
+);
+
 const ruinMarks: Record<string, Marker> = {
   '1': { npc: 'skeleton', radius: 2, under: Tile.StoneFloor },
   '2': { npc: 'skeleton_guard', radius: 2, under: Tile.StoneFloor },
@@ -1129,6 +1198,56 @@ const findBarrow = sketch('find_barrow', 'Old barrow', [
   '_,....,_',
 ]);
 
+// ----------------------------------------------------- THE WAR-GROUND
+// (lived-in-land Phase 4.) Courts — the heart of a compound hold: the
+// named chief's ground, the warded boss cache, the last stand. Wings
+// come from the ordinary camp shelves; the court is the piece that
+// says THIS one is the region's landmark.
+
+/** The goblin war-hold's court: a palisade ring around the chief's fires. */
+const warholdCourt = sketch('poi_warhold_court', 'War-hold court', [
+  '_____,,::,,_____',
+  '__,::::::::::,__',
+  '_,::F::::::F::,_',
+  '_,:F........F:,_',
+  ',::....ff....::,',
+  ',::.o..nZ....::,',
+  ',::..........::,',
+  '_,:F........F:,_',
+  '_,::F::::::F::,_',
+  '__,::::::::::,__',
+  '_____,,::,,_____',
+]);
+
+/** The stockade court: rough timber walls, two gates, the tally's cache. */
+const stockadeCourt = sketch('poi_stockade_court', 'Stockade court', [
+  '______,,,______',
+  '__,::::::::,___',
+  '_,:wwwg:gwww:,_',
+  '_,:w.......w:,_',
+  ',::w..a.c..w::,',
+  ',::v...Z...v::,',
+  ',::w..f....w::,',
+  '_,:w.......w:,_',
+  '_,:wwwg:gwww:,_',
+  '__,::::::::,___',
+  '______,,,______',
+]);
+
+/** The great den's court: a bone-strewn rise under the old rocks. */
+const greatdenCourt = sketch('poi_greatden_court', 'Great den court', [
+  '____,,rr,,____',
+  '__,rrRRRRrr,__',
+  '_,rR::::::Rr,_',
+  ',rR:.o..o.:Rr,',
+  ',rR:..SZ..:Rr,',
+  ',rR:.o..o.:Rr,',
+  '_,rR::::::Rr,_',
+  '__,rrRRrrr,___',
+  '____,,rr,,____',
+  '______,,______',
+]);
+
 export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
   [
     goblinCampRing,
@@ -1171,6 +1290,14 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     // The Pinereach (the north wall and the deep wood):
     hoargateFort,
     wardlineCut,
+    // The War-Ground (the lived-in land, phase 4):
+    warholdCourt,
+    stockadeCourt,
+    greatdenCourt,
+    // The gnoll warband (savage scavengers in other people's ruins):
+    gnollSquat,
+    gnollBoneyard,
+    gnollDenhall,
     // The Small Finds (the lived-in land, phase 2):
     findHuntersRest,
     findSnareLine,

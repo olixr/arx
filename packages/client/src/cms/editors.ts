@@ -2148,6 +2148,15 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       ? [pill(`haven r${draft.haven.safeR}`, 'a runtime danger anchor — the lamp in the dark', 'ok')]
       : []),
     ...(draft.chestWarded ? [pill('warded chest', 'the lid holds while the garrison stands', 'brass')] : []),
+    ...(draft.compound !== undefined
+      ? [
+          pill(
+            `war-ground · ${draft.compound.wings.count[0]}–${draft.compound.wings.count[1]} wings`,
+            'a compound hold: court plus wings, cleared in chapters — arrives by promotion under the region law (wing bench: phase 6)',
+            'brass',
+          ),
+        ]
+      : []),
     ...(draft.clearedFlag !== undefined
       ? [pill(`flag: ${draft.clearedFlag}`, 'stamped on whoever fells the last garrison body', 'brass')]
       : []),
@@ -3383,7 +3392,7 @@ function frontierDetail(body: HTMLElement, linkage: HTMLElement): void {
   const bandDial = (
     label: string,
     hint: string,
-    key: 'emberLingerMs' | 'fallowMs' | 'stageMs' | 'scatterLingerMs' | 'creepMs' | 'peddlerLingerMs',
+    key: 'emberLingerMs' | 'fallowMs' | 'stageMs' | 'scatterLingerMs' | 'creepMs' | 'peddlerLingerMs' | 'holdEmberMs',
     unitMs: number,
     lo: number,
     hi: number,
@@ -3450,6 +3459,8 @@ function frontierDetail(body: HTMLElement, linkage: HTMLElement): void {
       })(), () => `a beat every ${humanMs((draft.tickTicks / 20) * 1000)}`),
       bandDial('ember linger', 'the broken trophy stands (minutes)', 'emberLingerMs', MINU, 0.2, 1440,
         () => `dissolves in ${humanMs(draft.emberLingerMs[0])}–${humanMs(draft.emberLingerMs[1])}`),
+      bandDial('hold ember', 'a broken WAR-GROUND stands longer (minutes)', 'holdEmberMs', MINU, 1, 120,
+        () => `a felled hold savors ${humanMs(draft.holdEmberMs[0])}–${humanMs(draft.holdEmberMs[1])}`),
       bandDial('fallow rest', 'the meadow heals (hours)', 'fallowMs', HOUR, 0.02, 336,
         () => `may host again in ${humanMs(draft.fallowMs[0])}–${humanMs(draft.fallowMs[1])}`),
       numDial('dignity', 'no stand/dissolve within this many tiles of anyone', 'dignityTiles', 8, 256, 1,

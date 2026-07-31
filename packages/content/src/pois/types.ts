@@ -126,6 +126,35 @@ export interface PoiBoldness {
    * (source-and-kill-switch).
    */
   satellites?: boolean;
+  /**
+   * The archetype the satellites stand as, when it isn't this def
+   * itself — a WAR-HOLD (Phase 4 compound) seeds ordinary warcamps
+   * townward, never sibling holds (the region law would refuse them
+   * anyway; the hold is the heart, the camps are its reach). Absent =
+   * same-archetype satellites, exactly as before.
+   */
+  satelliteDef?: string;
+}
+
+/**
+ * THE WAR-GROUND (lived-in-land Phase 4): a compound hold — the def's
+ * own prefab pool is the COURT (the heart: the named chief, the warded
+ * cache, the last stand), and wings muster around it on ring bearings,
+ * each with its own garrison chapter. A failed wing footprint is
+ * SKIPPED, never forced — the land decides how big the hold got to be.
+ * Compound defs never roll on the ordinary KIND stream: they arrive by
+ * PROMOTION (DANGER_LAWS.holdChance at tier 3+) under the region law —
+ * one hold per neighborhood, the landmark the region steers by.
+ */
+export interface PoiCompound {
+  /** Wing prefab pool + how many wings muster [min, max] (site hash). */
+  wings: { pool: readonly string[]; count: readonly [number, number] };
+  /**
+   * Garrison stamped PER WING at the wing's heart — the pull-able
+   * chapter. Wing spawns carry ZoneSpawn.wing so a falling wing reads
+   * as its own beat before the court's last stand.
+   */
+  wingGarrison: readonly PoiGarrisonEntry[];
 }
 
 export interface PoiDef {
@@ -194,4 +223,11 @@ export interface PoiDef {
    * (the dialogue system owns that namespace).
    */
   clearedFlag?: string;
+  /**
+   * THE WAR-GROUND: this def composes as a compound hold — court plus
+   * wings, cleared in chapters. See PoiCompound. Mutually exclusive
+   * with actors/haven (a hold is hostile by definition; the validator
+   * refuses the contradiction).
+   */
+  compound?: PoiCompound;
 }

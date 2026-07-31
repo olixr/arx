@@ -175,6 +175,7 @@ import {
   creepWaitFor,
   dangerLaw,
   emberLingerFor,
+  holdEmberFor,
   fallowRestFor,
   FACTIONS,
   STANDING_CLAMP,
@@ -853,6 +854,8 @@ interface SpawnState {
   patrol?: ReadonlyArray<{ x: number; y: number }>;
   /** Activity window (game hours, midnight-wrapping) — see ZoneSpawn.hours. */
   hours?: { from: number; to: number };
+  /** THE WAR-GROUND: which wing of a compound hold this body defends. */
+  wing?: number;
 }
 
 /** One placed actor's post — exact spot, no scatter, no count. */
@@ -1710,7 +1713,13 @@ export class GameServer {
    */
   private readonly poiLive = new Map<
     string,
-    { zoneId?: string; spawnIdx: number[]; fighters?: Set<number> }
+    {
+      zoneId?: string;
+      spawnIdx: number[];
+      fighters?: Set<number>;
+      /** THE WAR-GROUND: wings whose chapter line already fired this uptime. */
+      wingsBroken?: Set<number>;
+    }
   >();
   /** spawnPoints index → owning POI cell key (cleared-wipe detection). */
   private readonly poiSpawnCells = new Map<number, string>();
@@ -2043,6 +2052,7 @@ export class GameServer {
       name?: string;
       patrol?: ReadonlyArray<{ x: number; y: number }>;
       hours?: { from: number; to: number };
+      wing?: number;
     }>,
     zoneId?: string,
   ): number[] {
@@ -2064,6 +2074,7 @@ export class GameServer {
           name: spawn.name,
           patrol: spawn.patrol,
           hours: spawn.hours,
+          wing: spawn.wing,
         });
       }
     }
@@ -6240,7 +6251,11 @@ export class GameServer {
           { this.satTrace.push(`${nkey}:fallow`); continue; }
         if (this.calmNear(cand.ncx, cand.ncy, now)) { this.satTrace.push(`${nkey}:calm`); continue; }
         const epoch = (nrow?.epoch ?? 0) + 1;
-        const site = poiForCell(config.worldSeed, cand.ncx, cand.ncy, epoch, ctx, def.id);
+        // THE WAR-GROUND's reach (Phase 4): a hold seeds its
+        // satelliteDef — ordinary camps townward, never sibling holds
+        // (the region law would refuse them anyway).
+        const satDefId = def.boldness?.satelliteDef ?? def.id;
+        const site = poiForCell(config.worldSeed, cand.ncx, cand.ncy, epoch, ctx, satDefId);
         if (!site) { this.satTrace.push(`${nkey}:noground`); continue; }
         if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) { this.satTrace.push(`${nkey}:dignity`); continue; }
         this.accounts.recordPoiCell(
@@ -6650,7 +6665,11 @@ export class GameServer {
     let row = this.poiLedger.get(key);
     if (!row || opts.epoch !== undefined) {
       const epoch = opts.epoch ?? 0;
-      const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, opts.force);
+      // THE REGION LAW (Phase 4): a fresh organic decision may promote
+      // to a war-ground only when the neighborhood holds none. Forced
+      // rolls (dev levers, authored seeding) answer for themselves.
+      const allowHold = opts.force === undefined && !this.holdsNear(cellX, cellY);
+      const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, opts.force, allowHold);
       row = { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null };
       // Deviations only: a settled cell writes no row (it is 0 by law).
       const centerTier = this.liveDangerTier(
@@ -6819,6 +6838,72 @@ export class GameServer {
    * musters anew — the plan's fixed points never churn.
    */
   /**
+   * THE REGION LAW (Phase 4): does any ledger cell in the ±regionCells
+   * neighborhood already hold a WAR-GROUND? Standing, cleared, or
+   * embering alike — the region keeps ONE landmark until the cell
+   * itself re-rolls to something else.
+   */
+  private holdsNear(cellX: number, cellY: number): boolean {
+    const r = FRONTIER.regionCells;
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const row = this.poiLedger.get(poiCellKey(cellX + dx, cellY + dy));
+        if (row?.site && POI_DEFS.get(row.site.defId)?.compound) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * THE WING CHAPTERS (Phase 4): when the last fighting body of a
+   * compound hold's WING falls while the rest of the hold still
+   * stands, the participation set hears the chapter close — progress
+   * acknowledged mid-clear, the way a five-to-ten-minute site must.
+   * When nothing else stands, this stays silent: the full-wipe
+   * ceremony in notePoiKill speaks instead. Once per wing per uptime.
+   */
+  private noteHoldWing(spawnIndex: number, killerEid?: EntityId): void {
+    const key = this.poiSpawnCells.get(spawnIndex);
+    if (key === undefined) return;
+    const dying = this.spawnPoints[spawnIndex];
+    if (dying?.wing === undefined) return;
+    const live = this.poiLive.get(key);
+    if (!live) return;
+    const wing = dying.wing;
+    let wingStands = false;
+    let otherStands = false;
+    for (const i of live.spawnIdx) {
+      const s = this.spawnPoints[i];
+      if (!s?.active || s.eid === null || !this.poiSpawnFights(s)) continue;
+      if (s.wing === wing) wingStands = true;
+      else otherStands = true;
+    }
+    if (wingStands || !otherStands) return;
+    const broken = (live.wingsBroken ??= new Set<number>());
+    if (broken.has(wing)) return;
+    broken.add(wing);
+    const site = this.poiLedger.get(key)?.site;
+    if (!site) return;
+    const dir = compass8(dying.x - site.anchorX, dying.y - site.anchorY);
+    const heard = new Set<PlayerComp>();
+    const killer = killerEid !== undefined ? this.players.get(killerEid) : undefined;
+    if (killer) heard.add(killer);
+    for (const characterId of live.fighters ?? []) {
+      const feid = this.characterEids.get(characterId);
+      const p = feid !== undefined ? this.players.get(feid) : undefined;
+      if (p) heard.add(p);
+    }
+    for (const p of heard) {
+      p.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `The ${dir} camp goes quiet. The hold thins.`,
+      });
+    }
+  }
+
+  /**
    * Find-wipe watch (THE SMALL FINDS): when the last living fighting
    * body of a SLOT falls, the slot's bit stamps into world_minors for
    * the cell's epoch, the whisper stands down for good, and the
@@ -6873,9 +6958,14 @@ export class GameServer {
       this.accounts.markPoiCleared(cx!, cy!);
     } else {
       this.standDownGarrison(live.spawnIdx);
+      // A felled WAR-GROUND savors longer (Phase 4): the five-minute
+      // clear earns the fifteen-minute trophy.
+      const isHold = row?.site !== null && POI_DEFS.get(row?.site?.defId ?? '')?.compound;
       const emberUntil =
         Date.now() +
-        emberLingerFor(config.worldSeed, cx!, cy!, row?.epoch ?? 0);
+        (isHold
+          ? holdEmberFor(config.worldSeed, cx!, cy!, row?.epoch ?? 0)
+          : emberLingerFor(config.worldSeed, cx!, cy!, row?.epoch ?? 0));
       if (row) row.emberUntil = emberUntil;
       this.accounts.markPoiCleared(cx!, cy!, emberUntil);
     }
@@ -12426,6 +12516,7 @@ export class GameServer {
           ? Math.max(baseSec, GameServer.POI_RESPAWN_MIN_SEC)
           : baseSec;
       spawn.respawnAt = Date.now() + sec * 1000;
+      this.noteHoldWing(npc.spawnIndex, killerEid);
       this.notePoiKill(npc.spawnIndex, killerEid);
       this.noteMinorKill(npc.spawnIndex);
       // THE UNWRITTEN PAGE: felling a delve's named boss (the only

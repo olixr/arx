@@ -1348,6 +1348,126 @@ const rallying_howl: AbilitySig = {
   },
 };
 
+/**
+ * RAVENING_CACKLE — "the laugh that runs the warband."
+ * The howl's ugly cousin, STACCATO where the howl is smooth: broken
+ * bark-arcs stutter up off the thrown-back muzzle in ha-ha pairs, and
+ * the answer at the rim is worse than ears — GRINS. Paired tooth-rows
+ * flick on one after another around the circle, every one turned
+ * inward, while claw-scuff ticks rake the dirt just inside the edge.
+ * The warband has your position now, and it thinks that's funny.
+ */
+const ravening_cackle: AbilitySig = {
+  spawn(c) {
+    // The head goes back: a bark of breath, uglier and lower than the
+    // howl's — two quick puffs, not one clean column.
+    for (const [dx, up] of [[-0.12, 0.9], [0.14, 1.15]] as const) {
+      c.particles.burst(c.wx + dx, c.wy - up, 3, [c.st.core, c.st.mid], {
+        speed: 0.6, life: 0.7, size: 0.1, gravity: -1.0, up: true, drag: 1.5, grow: 0.18, shape: 'puff', fade: '#3c3648', wobble: 0.8,
+      });
+    }
+    const rand = srand(c.seed ^ 0x141);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + rand() * 0.5;
+      c.particles.burst(c.wx + Math.cos(a) * c.radius, c.wy + Math.sin(a) * c.radius * c.squash - 0.2, 1, [c.st.spark, c.st.core], {
+        speed: 0.35, life: 0.55, size: 0.07, gravity: 0.3, drag: 1.8, shape: 'glint',
+      });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, rPx } = c;
+    const rand = srand(c.seed ^ 0x142);
+    const fade = 1 - t;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // Claw scuffs: paired drag ticks just inside the rim, raked
+    // inward — the pack shifting its weight toward you.
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2 + rand() * 0.3;
+      const on = cl(t * 3 - k * 0.14);
+      if (on <= 0) continue;
+      const p = pt(c, rPx * 0.88, a);
+      const inX = Math.cos(a + Math.PI);
+      const inY = Math.sin(a + Math.PI) * squash;
+      const l = sc * 0.11 * on;
+      ctx.globalAlpha = 0.6 * fade;
+      ctx.strokeStyle = st.deep;
+      ctx.lineWidth = Math.max(1.5, sc * 0.03);
+      for (const off of [-1, 1]) {
+        const ox = -inY * off * sc * 0.035;
+        const oy = inX * off * sc * 0.035;
+        ctx.beginPath();
+        ctx.moveTo(p.x + ox, p.y + oy);
+        ctx.lineTo(p.x + ox + inX * l, p.y + oy + inY * l);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x143);
+    const fade = 1 - t;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // The cackle: broken bark-arcs stuttering upward in ha-ha pairs —
+    // short arcs at alternating offsets, never one smooth chevron.
+    ctx.strokeStyle = st.core;
+    for (let k = 0; k < 4; k++) {
+      const rise = t * sc * 1.15 + k * sc * 0.22;
+      const a = cl(1 - rise / (sc * 1.25)) * fade;
+      if (a <= 0) continue;
+      const side = k % 2 === 0 ? -1 : 1;
+      const hy = py - sc * 0.9 - rise;
+      const hx = px + side * sc * (0.08 + rise / sc * 0.12);
+      const w = sc * (0.1 + rise / sc * 0.16);
+      ctx.globalAlpha = 0.8 * a;
+      ctx.lineWidth = Math.max(1.5, sc * 0.038);
+      ctx.beginPath();
+      ctx.arc(hx, hy, w, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+    }
+    // The answer: GRINS flick on around the rim — paired tooth-row
+    // ticks with a dark gap, each turned toward the center.
+    for (let k = 0; k < 6; k++) {
+      const a0 = (k / 6) * Math.PI * 2 + rand() * 0.5;
+      const on = cl(t * 2.8 - k * 0.2);
+      if (on <= 0) continue;
+      const p = pt(c, rPx * 1.02, a0);
+      const gy = p.y - sc * 0.26 * on;
+      const gw = sc * 0.09;
+      const leanX = px > p.x ? 1 : -1;
+      ctx.globalAlpha = 0.85 * on * fade;
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(1.5, sc * 0.032);
+      // Upper and lower rows, slightly staggered toward the quarry.
+      for (const [oy, ox] of [[-0.028, 0], [0.028, 0.02]] as const) {
+        ctx.beginPath();
+        ctx.moveTo(p.x - gw + leanX * ox * sc, gy + oy * sc);
+        ctx.lineTo(p.x + gw + leanX * ox * sc, gy + oy * sc);
+        ctx.stroke();
+      }
+      // Tooth ticks bridging the rows — the grin reads at one glance.
+      ctx.lineWidth = Math.max(1, sc * 0.02);
+      for (const tx of [-0.5, 0, 0.5]) {
+        ctx.beginPath();
+        ctx.moveTo(p.x + tx * gw, gy - 0.028 * sc);
+        ctx.lineTo(p.x + tx * gw + leanX * 0.02 * sc, gy + 0.028 * sc);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    // Dread drifts inward here too — the same cold pull, an uglier
+    // throat behind it.
+    if (Math.random() < c.frameDt * 8 * fade) {
+      const a = Math.random() * Math.PI * 2;
+      c.particles.burst(c.wx + Math.cos(a) * c.radius, c.wy + Math.sin(a) * c.radius * squash - 0.25, 1, [st.spark, st.deep], {
+        speed: 1.0, life: 0.6, size: 0.06, gravity: 0, dir: a + Math.PI, spread: 0.25, drag: 0.8, flicker: 0.5,
+      });
+    }
+  },
+};
+
 // -------------------------------------------------------- registry
 
 /** The relic actives, the Bone Tempest sigil, and the NPC specials. */
@@ -1365,4 +1485,5 @@ export const RELIC_SIGS: Record<string, AbilitySig> = {
   bone_tempest,
   ground_slam,
   rallying_howl,
+  ravening_cackle,
 };

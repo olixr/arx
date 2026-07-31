@@ -1,0 +1,56 @@
+{
+  "id": "bandit_stockade",
+  "name": "Bandit stockade",
+  "description": "A timber-walled court where the road's takings are tallied, with whole camps of blades around it.",
+  "tiers": [3, 5],
+  "weight": 3,
+  "prefabs": ["poi_stockade_court"],
+  "garrison": [
+    {
+      "npc": "brigand_reaver",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 5,
+      "names": [
+        "Harn the Ledger",
+        "Sella Twoknives",
+        "Dren Underbridge",
+        "Marrow Jack",
+        "Weyla the Quiet",
+        "Coll the Tally"
+      ]
+    },
+    { "npc": "brigand", "count": [2, 3], "role": "holdfast" },
+    { "npc": "brigand", "count": [2, 2], "role": "sentry", "patrol": true }
+  ],
+  "chestTierBonus": 1,
+  "chestWarded": true,
+  "clearedFlag": "poi_stockade_broken",
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [{ "tile": "Barrel", "count": 2 }, { "tile": "BonePile", "count": 2 }]
+  },
+  "compound": {
+    "wings": { "pool": ["poi_bandit_hollow"], "count": [2, 3] },
+    "wingGarrison": [
+      { "npc": "brigand", "count": [2, 3], "role": "holdfast" },
+      { "npc": "brigand_reaver", "count": [1, 1], "role": "holdfast", "minTier": 4 }
+    ]
+  },
+  "boldness": {
+    "stages": [
+      { "garrison": [{ "npc": "brigand", "count": [1, 2], "role": "holdfast" }] },
+      {
+        "garrison": [{ "npc": "brigand", "count": [1, 2], "role": "sentry", "patrol": true }],
+        "scatter": [{ "tile": "Barrel", "count": 2 }]
+      },
+      {
+        "garrison": [{ "npc": "brigand_reaver", "count": [1, 1], "role": "holdfast" }],
+        "scatter": [{ "tile": "BonePile", "count": 2 }]
+      }
+    ],
+    "satellites": true,
+    "satelliteDef": "bandit_camp"
+  }
+}

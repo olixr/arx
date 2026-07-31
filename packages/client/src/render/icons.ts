@@ -3957,6 +3957,107 @@ const PAINTERS: Record<string, IconPainter> = {
     dot(c, shade(col, 42), 0.09, -0.36, 0.025);
     c.restore();
   },
+  spottedhide: (c, col) => {
+    // The gnoll's pelt: the tanner's splay with a raggedier flank line
+    // (a scavenger's hide never comes off clean) and the hyena dapple
+    // scattered over the shoulder field.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(0.05);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(0, -0.4); // neck
+    c.quadraticCurveTo(0.15, -0.37, 0.2, -0.29);
+    c.quadraticCurveTo(0.35, -0.33, 0.36, -0.2); // fore flare
+    c.quadraticCurveTo(0.26, -0.1, 0.31, 0.03);
+    c.lineTo(0.24, 0.08); // torn notch
+    c.quadraticCurveTo(0.28, 0.16, 0.34, 0.25); // hind flare
+    c.quadraticCurveTo(0.28, 0.36, 0.15, 0.31);
+    c.quadraticCurveTo(0.03, 0.4, -0.09, 0.32);
+    c.quadraticCurveTo(-0.25, 0.38, -0.3, 0.23);
+    c.lineTo(-0.24, 0.14); // torn notch
+    c.quadraticCurveTo(-0.3, 0.04, -0.28, -0.02);
+    c.quadraticCurveTo(-0.36, -0.15, -0.3, -0.25);
+    c.quadraticCurveTo(-0.32, -0.34, -0.17, -0.3);
+    c.quadraticCurveTo(-0.11, -0.38, 0, -0.4);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The pale belly field.
+    c.fillStyle = shade(col, 18);
+    c.beginPath();
+    c.ellipse(-0.01, 0.02, 0.17, 0.2, 0.05, 0, Math.PI * 2);
+    c.fill();
+    // The dapple: broken spots over the shoulder, never a grid.
+    c.fillStyle = shade(col, -30);
+    for (const [x, y, r] of [
+      [-0.16, -0.2, 0.035], [0.08, -0.24, 0.03], [0.2, -0.1, 0.035],
+      [-0.22, -0.02, 0.028], [0.14, 0.16, 0.032], [-0.12, 0.22, 0.028],
+      [0.0, -0.08, 0.026],
+    ] as const) {
+      c.beginPath();
+      c.ellipse(x, y, r * 1.25, r, 0.2, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.restore();
+  },
+  mane: (c, col) => {
+    // The packlord's crest, taken whole: a strip of hide bearing the
+    // standing bristle ridge, cord-bound at the root end — a trophy
+    // you could hang over a door, and somewhere somebody will.
+    c.save();
+    c.translate(0.5, 0.54);
+    c.rotate(-0.5);
+    // The hide strip.
+    c.fillStyle = shade(col, 14);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(-0.34, 0.1);
+    c.quadraticCurveTo(0, 0.16, 0.34, 0.08);
+    c.lineTo(0.33, 0.2);
+    c.quadraticCurveTo(0, 0.28, -0.33, 0.22);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The bristles: stiff locks marching root to tip, tallest mid-run.
+    c.fillStyle = col;
+    for (let i = 0; i < 6; i++) {
+      const t = i / 5;
+      const bx = -0.3 + t * 0.6;
+      const tall = 0.2 + 0.16 * Math.sin(t * Math.PI) + 0.04 * Math.sin(i * 2.3);
+      c.beginPath();
+      c.moveTo(bx - 0.055, 0.12);
+      c.lineTo(bx - 0.02 + 0.05 * Math.sin(i * 1.7), 0.12 - tall);
+      c.lineTo(bx + 0.055, 0.13);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.018;
+      c.stroke();
+    }
+    // Frost ticks on the crest tips — the packlord's gray coming in.
+    c.strokeStyle = shade(col, 34);
+    c.lineWidth = 0.02;
+    for (const [x, y] of [[-0.18, -0.16], [0.02, -0.24], [0.2, -0.12]] as const) {
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + 0.03, y - 0.06);
+      c.stroke();
+    }
+    // The cord binding at the root end.
+    c.strokeStyle = shade(col, -20);
+    c.lineWidth = 0.035;
+    for (const o of [0, 0.05]) {
+      c.beginPath();
+      c.moveTo(-0.34 + o, 0.08);
+      c.lineTo(-0.31 + o, 0.24);
+      c.stroke();
+    }
+    c.restore();
+  },
   vial: (c, col) => {
     // The tonic: a tall slim vial, corked and collared, the draught
     // filling two-thirds with one rising bubble.
@@ -4609,6 +4710,8 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   wolf_fur: { icon: 'hide', color: '#8a90a0' },
   direwolf_pelt: { icon: 'hide', color: '#5d5a68' },
   worg_fang: { icon: 'fang', color: '#d8ccb0' },
+  gnoll_hide: { icon: 'spottedhide', color: '#8a7a58' },
+  packlord_mane: { icon: 'mane', color: '#4e4034' },
   leather_body: { icon: 'jerkin', color: '#b08a5c' },
   bones: { icon: 'bones', color: '#efe8d8' },
   feather: { icon: 'feather', color: '#f4efe4' },

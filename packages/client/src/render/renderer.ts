@@ -63,8 +63,10 @@ import {
   drawSnake,
   shade,
   koboldLook,
+  gnollLook,
   skeletonLook,
   type RigPose,
+  type GnollLook,
   type KoboldLook,
   type SkeletonLook,
 } from './rig.js';
@@ -22779,6 +22781,8 @@ export class Renderer {
     skeletal?: SkeletonLook;
     /** Scale-dialect override: this humanoid is a kobold. */
     kobold?: KoboldLook;
+    /** Fur-dialect override: this humanoid is a gnoll. */
+    gnoll?: GnollLook;
     /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
     sheathed?: boolean;
     /**
@@ -23154,8 +23158,10 @@ export class Renderer {
     }|${e.size ?? 1}|${e.carry ?? ''}|${e.carryOff ?? ''}|${e.skinColor ?? ''}|${this.olObjSig(
       e.equip,
     )}|${this.olObjSig(e.ench)}|${this.olObjSig(e.look)}|${e.skeletal ? 1 : 0}${e.kobold ? 'k' : ''}${
-      seat ? `|${seat.kind}${seat.head ?? ''}` : ''
-    }`;
+      // The gnoll's coat cluster AND spot field ride the spawn seed —
+      // the seed byte keeps same-fur bodies from sharing spot sprites.
+      e.gnoll ? `g${(e.gnoll.seed ?? 0) & 0xff}` : ''
+    }${seat ? `|${seat.kind}${seat.head ?? ''}` : ''}`;
 
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
     const paintCape =
@@ -23396,6 +23402,7 @@ export class Renderer {
           look: e.look,
           skeletal: e.skeletal,
           kobold: e.kobold,
+          gnoll: e.gnoll,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
           foraging: gather?.kind === 'forage',
@@ -24225,6 +24232,25 @@ export class Renderer {
   };
 
   /**
+   * Gnoll kit — the loot-story law: scavenged pieces that really drop
+   * from the warband's tables. The skulker swings rusted camp iron;
+   * the packlord hauls the greatblade no goblin could lift.
+   */
+  private static readonly GNOLL_EQUIP: Record<string, Partial<Record<string, string>>> = {
+    gnoll: { weapon: 'rustbite' },
+    gnoll_champion: { weapon: 'iron_greatblade' },
+  };
+
+  /**
+   * Gnoll stature: seven feet carried low — the skulker stands over
+   * any brigand even hunched, and the packlord looms near the troll.
+   */
+  private static readonly GNOLL_SIZE: Record<string, number> = {
+    gnoll: 1.18,
+    gnoll_champion: 1.42,
+  };
+
+  /**
    * The road-thieves' kit — leathers and honest iron, every piece a
    * real drop from the wearer's table (the loot-story law). The
    * archer slings a shortbow and quiver; the reaver fights sword-and-
@@ -24306,11 +24332,15 @@ export class Renderer {
       defId.startsWith('skeleton') ||
       defId.startsWith('kobold') ||
       defId.startsWith('brigand') ||
+      defId.startsWith('gnoll') ||
       defId === 'troll'
     ) {
       const def = npcDef(defId);
       const skel = defId.startsWith('skeleton') ? skeletonLook(defId) : undefined;
       const kob = defId.startsWith('kobold') ? koboldLook(defId) : undefined;
+      // The gnoll look rolls its coat cluster from the spawn eid — a
+      // warband sorts into families instead of stamping one body.
+      const gno = defId.startsWith('gnoll') ? gnollLook(defId, eid) : undefined;
       return this.humanoidItem({
         eid,
         x: s.x,
@@ -24327,7 +24357,7 @@ export class Renderer {
         equip:
           // Static per defId — a fresh literal here would churn the
           // body-sprite signature's identity ids every frame.
-          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.BRIGAND_EQUIP[defId] ?? Renderer.NO_EQUIP,
+          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.GNOLL_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.BRIGAND_EQUIP[defId] ?? Renderer.NO_EQUIP,
         color: def?.color ?? '#999',
         skinColor:
           defId === 'troll'
@@ -24336,15 +24366,19 @@ export class Renderer {
               ? '#7aa74a'
               : kob
                 ? kob.hide
-                : Renderer.BRIGAND_SKIN[defId],
+                : gno
+                  ? gno.fur
+                  : Renderer.BRIGAND_SKIN[defId],
         size:
           Renderer.KOBOLD_SIZE[defId] ??
+          Renderer.GNOLL_SIZE[defId] ??
           Renderer.SKELETON_SIZE[defId] ??
           Renderer.BRIGAND_SIZE[defId] ??
           (defId === 'troll' ? 1.4 : 0.85),
         nameInk,
         skeletal: skel,
         kobold: kob,
+        gnoll: gno,
       });
     }
 
@@ -25669,6 +25703,7 @@ export class Renderer {
       death.defId.startsWith('skeleton') ||
       death.defId.startsWith('kobold') ||
       death.defId.startsWith('brigand') ||
+      death.defId.startsWith('gnoll') ||
       death.defId === 'troll';
     let rag: Ragdoll;
     let look: (typeof this.corpses)[number]['look'];
@@ -25708,12 +25743,18 @@ export class Renderer {
     } else if (humanoid) {
       const size =
         Renderer.KOBOLD_SIZE[death.defId] ??
+        Renderer.GNOLL_SIZE[death.defId] ??
         Renderer.SKELETON_SIZE[death.defId] ??
         Renderer.BRIGAND_SIZE[death.defId] ??
         (death.defId === 'troll' ? 1.4 : 0.85);
       const bodyColor = def.color ?? '#999';
       const corpseKob = death.defId.startsWith('kobold')
         ? koboldLook(death.defId)
+        : undefined;
+      // The corpse keeps the coat the body wore: the live look seeds
+      // by raw eid, so the fall must too — never the mixed rag seed.
+      const corpseGno = death.defId.startsWith('gnoll')
+        ? gnollLook(death.defId, death.eid)
         : undefined;
       rag = buildHumanoidRagdoll(size, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
@@ -25724,15 +25765,17 @@ export class Renderer {
           skinColor:
             death.defId === 'troll'
               ? '#6a7d5c'
-              : (corpseKob?.hide ?? Renderer.BRIGAND_SKIN[death.defId] ?? '#7aa74a'),
+              : (corpseKob?.hide ?? corpseGno?.fur ?? Renderer.BRIGAND_SKIN[death.defId] ?? '#7aa74a'),
           hairColor: shade(bodyColor, -24),
           size,
           // Skeleton corpses keep the bone dialect — crown and all;
-          // kobold corpses keep the scale dialect — horns and tail.
+          // kobold corpses keep the scale dialect — horns and tail;
+          // gnoll corpses keep the fur dialect — muzzle, crest, coat.
           skel: death.defId.startsWith('skeleton')
             ? skeletonLook(death.defId)
             : undefined,
           kob: corpseKob,
+          gno: corpseGno,
         },
       };
     } else {

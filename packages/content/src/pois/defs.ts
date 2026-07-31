@@ -2,8 +2,12 @@ import type { PoiDef } from './types.js';
 import { validatePoiDef } from './validate.js';
 
 import banditCamp from './defs/bandit_camp.json';
+import banditStockade from './defs/bandit_stockade.json';
+import goblinWarhold from './defs/goblin_warhold.json';
+import wolfkinGreatden from './defs/wolfkin_greatden.json';
 import championsTor from './defs/champions_tor.json';
 import forestRuin from './defs/forest_ruin.json';
+import gnollSquat from './defs/gnoll_squat.json';
 import goblinWarcamp from './defs/goblin_warcamp.json';
 import koboldDigs from './defs/kobold_digs.json';
 import lastLamp from './defs/last_lamp.json';
@@ -31,8 +35,12 @@ import wolfkinDen from './defs/wolfkin_den.json';
  */
 const SOURCES: readonly unknown[] = [
   banditCamp,
+  banditStockade,
+  goblinWarhold,
+  wolfkinGreatden,
   championsTor,
   forestRuin,
+  gnollSquat,
   goblinWarcamp,
   koboldDigs,
   lastLamp,

@@ -39,6 +39,7 @@ export interface FrontierDef {
   wildBudgetBase: number;
   wildKnotProbes: number;
   trailReach: number;
+  holdEmberMs: FrontierRange;
 }
 
 /**
@@ -212,6 +213,13 @@ export const FRONTIER: FrontierDef = {
    * discovery affordance: cross it anywhere and follow it home.
    */
   trailReach: 48,
+  /**
+   * THE WAR-GROUND (lived-in-land Phase 4): how long a broken hold
+   * stands as the player's trophy before dissolving — longer than a
+   * camp's ember because a five-to-ten-minute clear earns a longer
+   * savor. [min, max] ms, hash-jittered per site.
+   */
+  holdEmberMs: [15 * 60_000, 20 * 60_000],
 };
 
 /** Frontier RNG salts — the named-streams law (the ST_* family's kin). */
@@ -271,6 +279,16 @@ export function peddlerLingerFor(
   return jitter(seed, ST_EMBER ^ 0x9edd, cellX, cellY, epoch, FRONTIER.peddlerLingerMs);
 }
 
+/** How long a broken WAR-GROUND lingers (Phase 4) — pure per cell + epoch. */
+export function holdEmberFor(
+  seed: number,
+  cellX: number,
+  cellY: number,
+  epoch: number,
+): number {
+  return jitter(seed, ST_EMBER ^ 0x401d, cellX, cellY, epoch, FRONTIER.holdEmberMs);
+}
+
 // ------------------------------------------------- the Studio's half
 
 /** The authored dials exactly as shipped — the CMS revert target. */
@@ -283,6 +301,7 @@ export const AUTHORED_FRONTIER: Readonly<FrontierDef> = Object.freeze({
   scatterLingerMs: [...FRONTIER.scatterLingerMs] as [number, number],
   creepMs: [...FRONTIER.creepMs] as [number, number],
   peddlerLingerMs: [...FRONTIER.peddlerLingerMs] as [number, number],
+  holdEmberMs: [...FRONTIER.holdEmberMs] as [number, number],
 });
 
 export type ValidateFrontierResult =
@@ -374,6 +393,7 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
     wildBudgetBase: num('wildBudgetBase', 0, 64, true),
     wildKnotProbes: num('wildKnotProbes', 1, 8, true),
     trailReach: num('trailReach', 16, 96, true),
+    holdEmberMs: range('holdEmberMs', MIN, 2 * HOUR),
   };
   // Unknown keys are refused loudly — a typoed dial must never sit in
   // the doc pretending to steer anything.
@@ -413,6 +433,7 @@ export function replaceFrontier(next: FrontierDef): void {
     scatterLingerMs: [...next.scatterLingerMs],
     creepMs: [...next.creepMs],
     peddlerLingerMs: [...next.peddlerLingerMs],
+    holdEmberMs: [...next.holdEmberMs],
   });
 }
 

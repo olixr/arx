@@ -8,6 +8,7 @@ import type {
   PoiActorEntry,
   PoiBoldness,
   PoiBoldnessStage,
+  PoiCompound,
   PoiCues,
   PoiDef,
   PoiGarrisonEntry,
@@ -334,11 +335,84 @@ export function validatePoiDef(
           : typeof b.satellites === 'boolean'
             ? b.satellites
             : (errors.push('boldness.satellites must be a boolean'), undefined);
+      let satelliteDef: string | undefined;
+      if (b.satelliteDef !== undefined) {
+        if (typeof b.satelliteDef !== 'string' || b.satelliteDef.length === 0) {
+          errors.push('boldness.satelliteDef must be a def id');
+        } else if (satellites !== true) {
+          errors.push('boldness.satelliteDef needs satellites: true (a reach with no arm)');
+        } else {
+          satelliteDef = b.satelliteDef;
+        }
+      }
       if (garrison.length === 0) {
         errors.push('boldness needs a garrison — a site with no muster has nothing to embolden');
       }
       if (stages.length > 0) {
-        boldness = { stages, ...(satellites !== undefined ? { satellites } : {}) };
+        boldness = {
+          stages,
+          ...(satellites !== undefined ? { satellites } : {}),
+          ...(satelliteDef !== undefined ? { satelliteDef } : {}),
+        };
+      }
+    }
+  }
+
+  // THE WAR-GROUND (Phase 4): the compound block.
+  let compound: PoiCompound | undefined;
+  if (raw.compound !== undefined) {
+    if (!isRecord(raw.compound)) {
+      errors.push('compound must be an object');
+    } else {
+      const c = raw.compound;
+      const wings = isRecord(c.wings) ? c.wings : undefined;
+      const pool: string[] = [];
+      if (!wings || !Array.isArray(wings.pool) || wings.pool.length === 0) {
+        errors.push('compound.wings.pool must be a non-empty array of prefab ids');
+      } else {
+        for (const p of wings.pool) {
+          if (typeof p !== 'string' || p.length === 0) {
+            errors.push('compound.wings.pool entries must be prefab ids');
+            continue;
+          }
+          if (refs.prefabIds && !refs.prefabIds.has(p)) {
+            errors.push(`compound wing prefab '${p}' is not in the library`);
+          }
+          pool.push(p);
+        }
+      }
+      let count: readonly [number, number] = [2, 3];
+      const rawCount = wings?.count;
+      if (
+        !Array.isArray(rawCount) ||
+        rawCount.length !== 2 ||
+        !Number.isInteger(rawCount[0]) ||
+        !Number.isInteger(rawCount[1]) ||
+        (rawCount[0] as number) < 1 ||
+        (rawCount[0] as number) > (rawCount[1] as number) ||
+        (rawCount[1] as number) > 4
+      ) {
+        errors.push('compound.wings.count must be integers [min, max] inside [1, 4]');
+      } else {
+        count = [rawCount[0] as number, rawCount[1] as number];
+      }
+      const wingGarrison = vetGarrisonList(c.wingGarrison, 'compound.wingGarrison');
+      if (wingGarrison.length === 0) {
+        errors.push('compound.wingGarrison must field at least one entry — a wing IS its chapter');
+      }
+      if (garrison.length === 0) {
+        errors.push('a compound hold needs a court garrison — the last stand is the point');
+      }
+      if (raw.actors !== undefined || raw.haven !== undefined) {
+        errors.push('compound is hostile by definition — it cannot carry actors or a haven');
+      }
+      // weight is the PROMOTION weight among holds — zero would make
+      // the def unreachable even by promotion; refuse the confusion.
+      if (typeof raw.weight === 'number' && !(raw.weight > 0)) {
+        errors.push('a compound def needs weight > 0 (its weight is the promotion pick weight)');
+      }
+      if (errors.length === 0 || pool.length > 0) {
+        compound = { wings: { pool, count }, wingGarrison };
       }
     }
   }
@@ -472,6 +546,7 @@ export function validatePoiDef(
       ...(chestWarded !== undefined ? { chestWarded } : {}),
       ...(clearedFlag !== undefined ? { clearedFlag } : {}),
       ...(signs !== undefined && signs.length > 0 ? { signs } : {}),
+      ...(compound !== undefined ? { compound } : {}),
     },
   };
 }

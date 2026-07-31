@@ -883,6 +883,38 @@ const defs: LootTableDef[] = [
     { item: 'glacierbite', chance: 0.006 },
   ]),
 
+  // ------------------------------------------------------- gnoll warband
+  {
+    id: 'gnoll',
+    desc: 'Scavenger pickings: the speckled hide, and whatever the warband dragged home last.',
+    entries: [
+      { item: 'bones' },
+      { item: 'gnoll_hide', chance: 0.85 },
+      { item: 'coins', qty: [5, 18], chance: 0.55 },
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.3 },
+      // Scavengers keep what flies: pilfered fletching by the fistful.
+      { item: 'arrow', qty: [6, 14], chance: 0.08 },
+      { item: 'crimson_essence', chance: 0.12 },
+      { item: 'arcane_dust', chance: 0.06 },
+      { item: 'brass_key', chance: 0.03 },
+      { item: 'dungeon_key', chance: 0.015 },
+    ],
+  },
+  {
+    id: 'gnoll_champion',
+    desc: 'The packlord pays like the champion it is: the great mane, and the hoard it slept on.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'bones' },
+      { item: 'packlord_mane', chance: 0.9 },
+      { item: 'gnoll_hide', qty: [1, 2], chance: 0.5 },
+      { item: 'coins', qty: [30, 80], chance: 0.7 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'brass_key', chance: 0.08 },
+      { item: 'dungeon_key', chance: 0.04 },
+    ],
+  },
+
   // ------------------------------------------------------- the wilds
   {
     id: 'mudcrab',
