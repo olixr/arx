@@ -706,10 +706,12 @@ export class Panels {
       // tells the courtship's state in a word.
       const art = w.art ? abilityDef(w.art) : undefined;
       if (art) {
+        const secretSeat = techniquePoolDef(art.id);
+        const banked = this.lessons[art.id] ?? 0;
         const state = this.ownsArt(art.id)
           ? ' · mastered'
-          : (this.lessons[art.id] ?? 0) > 0
-            ? ' · learning'
+          : banked > 0 && secretSeat?.secret
+            ? ` · ${Math.min(99, Math.floor(Math.min(1, banked / masteryXp(secretSeat.secret.anchorLevel)) * 100))}% learned`
             : '';
         stat('Secret Art', `${art.name}${state}`, '#9a7ae0', abilityIconUrl(art.id, 40));
       }
@@ -2106,13 +2108,18 @@ export class Panels {
         wellEl.appendChild(seal);
       }
       if (tech.secret) {
+        const pctOf = (banked: number): number =>
+          Math.min(99, Math.floor(Math.min(1, banked / masteryXp(tech.secret!.anchorLevel)) * 100));
+        const bankedNow = this.lessons[tech.ability] ?? 0;
         const seal = document.createElement('span');
         seal.className = 'earned-seal';
         seal.textContent = this.ownsArt(tech.ability) ? '❖' : '◈';
         seal.dataset.tipname = 'A secret art';
         seal.dataset.tipsub = this.ownsArt(tech.ability)
           ? 'Mastered — yours from any hand, forever.'
-          : 'Lent by the weapon that teaches it. Fight on, and it will stay.';
+          : bankedNow > 0
+            ? `Lent by the weapon that teaches it. Mastery ${pctOf(bankedNow)}% — fight on, and it will stay.`
+            : 'Lent by the weapon that teaches it. Fight on, and it will stay.';
         wellEl.appendChild(seal);
         // THE LESSON's fill at plate scale: how far the blade has
         // carried you, told without a number.
@@ -2231,26 +2238,36 @@ export class Panels {
             : `A secret of ${styleName} — still veiled`;
     this.artsDetail.appendChild(state);
 
-    // THE LESSON LAW's quiet fill: the courtship shown without a
-    // number — the flood law's no-grindometer spirit. Only a secret
-    // still being learned wears it.
+    // THE LESSON LAW's meter — the courtship told PLAINLY (user
+    // mandate 2026-07-31, supersedes the launch quiet-fill: the player
+    // must know how close the art is to staying). The bar carries its
+    // percent, and the label under it says what the number means.
     if (t.secret && !this.ownsArt(t.ability)) {
       const banked = this.lessons[t.ability] ?? 0;
       const frac = Math.min(1, banked / masteryXp(t.secret.anchorLevel));
+      const pct = Math.min(99, Math.floor(frac * 100));
+      const row = document.createElement('div');
+      row.className = 'lesson-row';
+      row.dataset.tipname = 'The lesson';
+      row.dataset.tipsub =
+        pct <= 0
+          ? 'Fight with the weapon that teaches this art, and the art will begin to stay.'
+          : pct < 50
+            ? 'The blade still has things to teach. Every fight with it counts.'
+            : pct < 90
+              ? 'More than half yours. Keep fighting with the teacher.'
+              : 'The lesson is nearly yours.';
       const meter = document.createElement('div');
       meter.className = 'lesson-meter';
-      meter.dataset.tipname = 'The lesson';
-      meter.dataset.tipsub =
-        frac <= 0
-          ? 'Fight with the weapon that teaches this art, and the art will begin to stay.'
-          : frac < 1
-            ? 'The blade still has things to teach.'
-            : 'The lesson is nearly yours.';
       const fill = document.createElement('div');
       fill.className = 'lesson-fill';
       fill.style.width = `${Math.round(frac * 100)}%`;
       meter.appendChild(fill);
-      this.artsDetail.appendChild(meter);
+      const label = document.createElement('span');
+      label.className = 'lesson-label';
+      label.textContent = pct <= 0 ? 'Mastery: not yet begun' : `Mastery: ${pct}%`;
+      row.append(meter, label);
+      this.artsDetail.appendChild(row);
     }
 
     const desc = document.createElement('p');

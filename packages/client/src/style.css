@@ -2799,10 +2799,17 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   opacity: 0.7;
 }
 
-/* THE LESSON LAW's quiet fill: a courtship bar, never a grindometer —
-   no numerals, just how far the blade has carried you. */
+/* THE LESSON LAW's meter: the courtship told plainly — the bar shows
+   the shape of it, the label says the number (user mandate: the
+   player must know how close the art is to staying). */
+.lesson-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .lesson-meter {
-  height: 7px;
+  flex: 1;
+  height: 9px;
   border: 1.5px solid var(--line);
   background: rgba(12, 9, 20, 0.55);
   overflow: hidden;
@@ -2811,6 +2818,14 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   height: 100%;
   background: linear-gradient(90deg, #6a5a9a, #b49af0);
   transition: width 0.6s ease;
+}
+.lesson-label {
+  flex: none;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: #b49af0;
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
 }
 
 /* THE SECOND HAND: the two seat buttons stand shoulder to shoulder —

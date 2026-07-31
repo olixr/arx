@@ -254,6 +254,11 @@ haven't. 114 arts must feel like a world of rumors, not a spreadsheet.**
   three registers: *loaned* ("Hold the blade and the art answers. Keep
   fighting with it and the art will stay."), *learning* ("The blade still has
   things to teach."), *mastered* ("Yours. Any hand, any blade.").
+  - **AMENDED by user mandate (2026-07-31, post-epic):** the no-numerals
+    clause is retired. The meter carries an explicit **Mastery: N%**
+    label on the bench, in the plate seal's tooltip, and on the weapon
+    card's learning state — the player must be able to read how close
+    the art is to staying. The bar stays; the silence goes.
 - Slot buttons: **'Seat on Q' / 'Seat on R'** on every slottable art (rung,
   page, secret alike), with the one-seat law reflected (the taken seat's
   button shows the swap). The single `.r-badge`/`On R` chip generalizes to
