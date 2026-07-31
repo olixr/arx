@@ -8,6 +8,7 @@ import {
   AUTHORED_GEOGRAPHY,
   AUTHORED_VOICE,
   AUTHORED_LOOT_TABLES,
+  AUTHORED_MINOR_DEFS,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
   DIALOGUES,
@@ -25,17 +26,20 @@ import {
   replaceFrontier,
   replaceGeography,
   replaceLootTables,
+  replaceMinorDefs,
   replaceNpcDefs,
   replacePoiDefs,
   replaceVoice,
   validateFactions,
   validateFrontier,
   validateGeographyDef,
+  validateMinorDef,
   validateNpcDef,
   validatePoiDef,
   validateVoice,
   zoneFromJson,
   type LootTableDef,
+  type MinorDef,
   type NpcDef,
   type PoiDef,
   type ZoneDef,
@@ -185,6 +189,34 @@ if (config.requireInvite) {
       `(+${poiSeed.added} ~${poiSeed.updated} !${poiSeed.kept} -${poiSeed.removed} =${poiSeed.unchanged})`,
   );
 
+  // THE SMALL FINDS join the same law (lived-in-land Phase 2): the
+  // minor-def roster seeds as content docs, DB rows load back through
+  // the one validator, the live registry swaps.
+  const minorSeed = await seedContentDocs(
+    db,
+    'minor',
+    [...AUTHORED_MINOR_DEFS.values()].map((d) => ({ id: d.id, doc: d })),
+  );
+  const minorDocs = await loadContentDocs(db, 'minor');
+  const goodMinors: MinorDef[] = [];
+  for (const docRow of minorDocs) {
+    const res = validateMinorDef(docRow.doc);
+    if (!res.ok) {
+      console.warn(
+        `[content] DB minor '${docRow.id}' invalid (${res.errors[0]}) — authored def stands`,
+      );
+      const authored = AUTHORED_MINOR_DEFS.get(docRow.id);
+      if (authored) goodMinors.push(authored);
+    } else {
+      goodMinors.push(res.def);
+    }
+  }
+  replaceMinorDefs(goodMinors);
+  console.log(
+    `[content] finds: ${goodMinors.length} loaded ` +
+      `(+${minorSeed.added} ~${minorSeed.updated} !${minorSeed.kept} -${minorSeed.removed} =${minorSeed.unchanged})`,
+  );
+
   // THE GEOGRAPHY joins the law: one 'world' doc holding the whole
   // plan — roads, authored wild sites, anchors, landform fields,
   // planned rects. It MUST swap in before WorldSource exists: the
@@ -285,6 +317,7 @@ game.initHomes(await accounts.allHomes());
 game.initPois(await accounts.loadPoiCells(), await accounts.loadFrontierCredits(), {
   discovered: await accounts.loadDiscoveredPoiCells(),
   calm: await accounts.loadFrontierCalm(),
+  minors: await accounts.loadMinorCells(),
 });
 for (const zone of zones) {
   if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns, zone.id);

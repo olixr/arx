@@ -8,8 +8,10 @@ import {
   AUTHORED_FRONTIER,
   AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
+  AUTHORED_MINOR_DEFS,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
+  MINOR_DEFS,
   DIALOGUES,
   ITEMS,
   LOOT_TABLES,
@@ -28,11 +30,13 @@ import {
   prefabFromJson,
   prefabToJson,
   replaceLootTables,
+  replaceMinorDefs,
   replaceNpcDefs,
   replacePoiDefs,
   validateFactions,
   validateFrontier,
   validateGeographyDef,
+  validateMinorDef,
   validateNpcDef,
   validatePoiDef,
   validateVoice,
@@ -850,6 +854,68 @@ export function createMapsApi(
           prefabIds: [...game.poiPrefabIds()],
         });
         return true;
+      }
+
+      // THE SMALL FINDS bench doors (lived-in-land Phase 2) — the
+      // pois shape wholesale: list with edited/authored pills, PUT
+      // through the one validator + live swap + re-deal, DELETE =
+      // revert-to-authored.
+      if (url.pathname === '/dev/content/minors' && req.method === 'GET') {
+        const edited = new Set(
+          (await loadContentDocs(db, 'minor')).filter((d) => d.edited).map((d) => d.id),
+        );
+        sendJson(res, 200, {
+          minors: [...MINOR_DEFS.values()].map((d) => ({
+            def: d,
+            edited: edited.has(d.id),
+            authored: AUTHORED_MINOR_DEFS.has(d.id),
+          })),
+          prefabIds: [...game.poiPrefabIds()],
+        });
+        return true;
+      }
+
+      const minorMatch = /^\/dev\/content\/minors\/([^/]+)$/.exec(url.pathname);
+      if (minorMatch) {
+        const id = minorMatch[1]!;
+        if (req.method === 'PUT') {
+          let raw: { id?: string };
+          try {
+            raw = JSON.parse(await readBody(req)) as { id?: string };
+            if (raw.id !== id) throw new Error(`body id '${raw.id}' does not match URL '${id}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validateMinorDef(raw, {
+            prefabIds: game.poiPrefabIds(),
+            npcIds: new Set(NPCS.keys()),
+          });
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'minor', id, result.def);
+          const next = new Map(MINOR_DEFS);
+          next.set(id, result.def);
+          replaceMinorDefs(next.values());
+          game.reloadMinorDef(id);
+          console.log(`[content] minor '${id}' saved + live`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const authored = AUTHORED_MINOR_DEFS.get(id) ?? null;
+          const outcome = await revertContentDoc(db, 'minor', id, authored);
+          const next = new Map(MINOR_DEFS);
+          if (authored) next.set(id, authored);
+          else next.delete(id);
+          replaceMinorDefs(next.values());
+          game.reloadMinorDef(id);
+          console.log(`[content] minor '${id}' ${outcome}`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
       }
 
       const poiMatch = /^\/dev\/content\/pois\/([^/]+)$/.exec(url.pathname);

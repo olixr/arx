@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { TILE_DEFS, TILE_SKIP, Tile, chestInfo, closedChestTile } from '@arx/shared';
 import {
   AMBERFORD_RECT,
+  MINOR_DEFS,
   PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
@@ -30,6 +31,7 @@ const CTX: PoiContext = {
   ],
   claimRings: [],
   defs: [...POI_DEFS.values()],
+  minors: [...MINOR_DEFS.values()],
   prefabs: POI_PREFABS,
 };
 

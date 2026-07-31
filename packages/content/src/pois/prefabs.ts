@@ -1046,9 +1046,9 @@ const findHuntersRest = sketch('find_hunters_rest', "Hunter's rest", [
 
 /** Trapper's stakes strung between the tussocks. */
 const findSnareLine = sketch('find_snare_line', 'Snare line', [
-  ',.F.F.,',
+  '_,.F.,_',
   '.:.:.:.',
-  ',F...F,',
+  '_,F.F,_',
 ]);
 
 /** Stacked stones older than any road. */

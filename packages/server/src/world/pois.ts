@@ -14,6 +14,7 @@ import {
   type DangerAnchor,
 } from '@arx/shared';
 import {
+  MINOR_DEFS,
   PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
@@ -21,6 +22,7 @@ import {
   prefabFromJson,
   prefabToJson,
   roadBearingAt,
+  type MinorDef,
   type PoiDef,
   type PoiGarrisonEntry,
   type PrefabDef,
@@ -91,6 +93,14 @@ export interface PoiContext {
   /** Claimed-hearth yards — nothing materializes inside one. */
   claimRings: readonly ClaimRing[];
   defs: readonly PoiDef[];
+  /**
+   * THE SMALL FINDS roster (lived-in-land Phase 2) — REQUIRED, not
+   * defaulted, for the same reason claimRings is: a placement layer
+   * with an optional roster is a layer some call site forgets. The
+   * compiler holds every builder to it; poiContext() fills it from
+   * the live registry.
+   */
+  minors: readonly MinorDef[];
   prefabs: ReadonlyMap<string, PrefabDef>;
 }
 
@@ -233,7 +243,7 @@ export function poiForCell(
   };
 }
 
-function intersectsZones(
+export function intersectsZones(
   x: number,
   y: number,
   w: number,
@@ -255,7 +265,7 @@ function intersectsZones(
 }
 
 /** Footprint rect vs claim rings — the yard-shaped twin of intersectsZones. */
-function intersectsRings(
+export function intersectsRings(
   x: number,
   y: number,
   w: number,
@@ -1035,6 +1045,7 @@ export function poiContext(
     ],
     claimRings,
     defs: [...POI_DEFS.values()],
+    minors: [...MINOR_DEFS.values()],
     prefabs,
   };
 }
