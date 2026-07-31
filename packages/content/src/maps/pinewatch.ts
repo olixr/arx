@@ -128,6 +128,15 @@ export function buildPinewatch(): ZoneDef {
   b.fillRect(50, 20, 2, 6, Tile.Dock); // the west pier
   b.fillRect(60, 18, 2, 8, Tile.Dock); // the raft dock, the long one
   b.set(50, 19, Tile.FishingSpot).set(61, 17, Tile.FishingSpot);
+  for (let x = 45; x <= 67; x++) {
+    if (b.get(x, 26) === Tile.Grass || b.get(x, 26) === Tile.GrassTall) b.set(x, 26, Tile.Sand);
+    if (b.get(x, 27) === Tile.Grass || b.get(x, 27) === Tile.GrassTall) b.set(x, 27, Tile.Sand);
+  }
+  for (let y = 14; y <= 27; y++) {
+    for (const x of [44, 45, 67, 68]) {
+      if (b.get(x, y) === Tile.Grass || b.get(x, y) === Tile.GrassTall) b.set(x, y, Tile.Sand);
+    }
+  }
   b.set(53, 25, Tile.ToolRack).set(57, 25, Tile.ToolRack); // the pike-poles
   b.set(48, 26, Tile.Crate).set(63, 26, Tile.Barrel);
   b.setDetail(52, 26, Detail.Sawdust).setDetail(58, 27, Detail.Sawdust);
@@ -175,11 +184,19 @@ export function buildPinewatch(): ZoneDef {
   b.set(64, 40, Tile.Table).set(65, 40, Tile.Chair);
   b.set(68, 40, Tile.WeaponRack);
   b.set(66, 35, Tile.Lectern); // the watch book
+  b.set(63, 37, Tile.Cabinet).set(63, 40, Tile.Chair);
+  b.set(69, 39, Tile.Barrel);
   b.setDetail(66, 38, Detail.Rug).setDetail(66, 39, Detail.Rug);
   b.setDetail(66, 41, Detail.Doormat);
   b.set(59, 33, Tile.Brazier).set(74, 33, Tile.Brazier);
   b.set(59, 43, Tile.Brazier).set(74, 43, Tile.Brazier);
   b.set(60, 38, Tile.BannerPole).set(73, 38, Tile.BannerPole);
+  b.set(59, 36, Tile.Stump).set(60, 36, Tile.Stump).set(59, 37, Tile.Stump);
+  b.set(74, 36, Tile.Bench).set(74, 40, Tile.Barrel);
+  b.set(58, 40, Tile.LampPost).set(75, 39, Tile.LampPost);
+  b.set(72, 44, Tile.Crate);
+  b.setDetail(66, 44, Detail.Pebbles).setDetail(63, 44, Detail.Tuft);
+  b.set(63, 33, Tile.TreePine).set(71, 32, Tile.TreePine);
   b.sign(64, 42, 'THE OLD WATCH', ['climb it or take your turn below', 'the bell is not decoration'], Tile.HangingSign);
 
   // ---------------------------------------------------------------
@@ -238,6 +255,13 @@ export function buildPinewatch(): ZoneDef {
   b.set(36, 45, Tile.CarvingBench).set(36, 47, Tile.CarvingBench);
   b.set(39, 45, Tile.ToolRack).set(39, 49, Tile.ToolRack);
   b.set(27, 53, Tile.Crate).set(28, 53, Tile.Crate).set(40, 53, Tile.Barrel);
+  b.set(26, 50, Tile.CrateGoods).set(27, 50, Tile.CrateGoods);
+  b.set(26, 51, Tile.CrateGoods).set(27, 51, Tile.CrateGoods);
+  b.set(31, 50, Tile.Hearth); // the sawyers' stove, and the only warm corner
+  b.set(33, 51, Tile.Table).set(33, 52, Tile.Chair).set(34, 51, Tile.Chair);
+  b.set(37, 49, Tile.Barrel).set(41, 44, Tile.Crate);
+  b.setDetail(29, 49, Detail.Sawdust).setDetail(34, 53, Detail.Sawdust);
+  b.setDetail(38, 48, Detail.Sawdust).setDetail(27, 46, Detail.Sawdust);
   b.setDetail(33, 47, Detail.Sawdust).setDetail(35, 50, Detail.Sawdust);
   b.setDetail(30, 51, Detail.Sawdust).setDetail(37, 52, Detail.Sawdust);
   // The sawyer's corner: a cot, a stove, and a chair facing the door.
@@ -471,12 +495,53 @@ export function buildPinewatch(): ZoneDef {
     'the old wood is not ours',
   ], Tile.Signpost);
   b.sign(109, 61, 'BEYOND', ['blazed pine and boundary stone', 'walk it if you must', 'do not cut it'], Tile.Signpost);
-  // The blazed line itself, marching off into the wood outside the wall.
-  for (let y = 20; y <= 92; y += 6) {
-    const jitter = ((y * 7) % 5) - 2;
-    b.set(112 + jitter, y, Tile.TreePine);
-    if (y % 12 === 0) b.set(113 + jitter, y + 1, Tile.Rock);
+  // THE OLD WOOD — everything east of the curtain, and the whole point
+  // of the gate. Step through and the licensed cut ends: stands nobody
+  // has touched in four hundred years, close enough that a wain could
+  // not turn in them, with the blazed line and its boundary stones
+  // marching north and south through the middle. This is dense on
+  // purpose. A gate that opens onto a lawn is a gate that means
+  // nothing, and this one has to mean everything.
+  for (let y = 2; y < R.h - 2; y++) {
+    for (let x = 108; x < R.w; x++) {
+      const t = b.get(x, y);
+      if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+      if (Math.abs(y - 59.5) <= 3) continue; // the Wardline path breathes
+      // THE GATE'S OWN GROUND: the town keeps a fan cut outside its
+      // east gate, because a gate you cannot see out of is a window.
+      // The old wood starts where the cutting stops, and that edge is
+      // the whole threshold the Wardline means.
+      if (x <= 117 && y >= 52 && y <= 68) continue;
+      // Matched to the Pinereach's own canopy density outside the rect
+      // (worldgen's ~0.30 at a taiga heart), so the wall is the only
+      // seam a player ever sees. Denser than that stops reading as a
+      // wood and starts reading as a wall of paint.
+      const roll = pineRng(x * 3, y * 5);
+      if (roll < 0.30) b.set(x, y, Tile.TreePine);
+      else if (roll < 0.325) b.set(x, y, Tile.TreeYew); // the untouched ones
+      else if (roll < 0.345) b.set(x, y, Tile.Rock);
+      else if (roll < 0.365) b.set(x, y, Tile.WildSagewort);
+      else if (roll < 0.44) b.set(x, y, Tile.GrassTall);
+    }
   }
+  // The blazed line itself: marked pine and pulled-up boundary stone,
+  // marching north and south from the gate as far as anyone has walked.
+  for (let y = 6; y <= 92; y += 5) {
+    const jitter = ((y * 7) % 5) - 2;
+    b.set(112 + jitter, y, Tile.Stump); // blazed, not felled: the mark
+    if (y % 10 === 0) b.set(113 + jitter, y + 1, Tile.Rock);
+  }
+  b.set(112, 58, Tile.Grass).set(112, 60, Tile.Grass);
+  // The cut fan outside the Wardline gate: stumps in rows where the
+  // town takes its firewood, and the first great trunks standing just
+  // past them so you can see exactly where the licence ends.
+  for (const [sx, sy] of [
+    [110, 54], [113, 55], [109, 64], [112, 66], [116, 53], [115, 65], [111, 68], [117, 62],
+  ] as const) {
+    if (b.get(sx, sy) === Tile.Grass) b.set(sx, sy, Tile.Stump);
+  }
+  b.set(118, 56, Tile.TreeYew).set(118, 64, Tile.TreeYew);
+  b.setDetail(111, 57, Detail.Sawdust).setDetail(114, 62, Detail.Sawdust);
 
   // ---------------------------------------------------------------
   // THE NURSERY — the other half of the Wardline's bargain, and the

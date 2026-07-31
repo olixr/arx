@@ -95,9 +95,28 @@ const QUIPS: Record<string, string[]> = {
   hm: ['Hm.'],
 };
 
-// Neutral delivery: these sit under many characters, so no strong colouring.
-const EXAGGERATION = 0.45;
-const CFG_WEIGHT = 0.5;
+/**
+ * These sit under many characters, so no strong *character* colouring — but
+ * "neutral" was previously read as "low exaggeration", which just made them
+ * slow and flat. Exaggeration is the pace and expression knob on this pool
+ * (0.45 -> 0.75 measured +11% words/sec, +44% pitch range); cfg_weight is not
+ * a speed control despite the folk wisdom, and dropping it actively slows
+ * delivery. Sit a touch under the character lane so a fallback quip reads
+ * brisk and alive without out-acting the authored line it stands in for.
+ * Shared tuning (tempo, temperature) comes from tools/voice/tuning.json.
+ */
+interface Tuning {
+  tempo: number; temperature: number;
+  defaultExaggeration: number; defaultCfgWeight: number;
+}
+const TUNING = JSON.parse(
+  readFileSync(join(REPO, 'tools', 'voice', 'tuning.json'), 'utf8'),
+) as Tuning;
+// Rounded: binary float leaves 0.7 - 0.02 as 0.6799999999999999, which lands
+// in the stamp verbatim and would churn on any re-derivation.
+const EXAGGERATION = Math.round((TUNING.defaultExaggeration - 0.02) * 1000) / 1000;
+const CFG_WEIGHT = TUNING.defaultCfgWeight;
+const TEMPERATURE = TUNING.temperature;
 
 /** Ceiling at -1 dBFS so Opus intersample overshoot stays under full scale. */
 export const PEAK_LIMIT = 'alimiter=level_in=1:level_out=1:limit=0.891:attack=5:release=50:level=disabled';
@@ -148,15 +167,17 @@ for (const slot of wanted) {
   const dir = join(OUT, slot);
   mkdirSync(dir, { recursive: true });
 
-  // A slot's voice can change when the pool is re-sorted. The clips on disk
-  // would still look complete, so an unforced run would keep them and the slot
-  // would quietly hold the wrong voice. The stamp records what the clips are
-  // actually in; on mismatch, clear them.
+  // A slot's voice can change when the pool is re-sorted, and the tuning can
+  // change when the bank is retuned. Either way the clips on disk still look
+  // complete, so an unforced run would keep them and the slot would quietly
+  // hold the wrong voice or the old delivery. The stamp records the full
+  // signature of what the clips are actually in; on mismatch, clear them.
+  const sig = `${voice} ex=${EXAGGERATION} cfg=${CFG_WEIGHT} tempo=${TUNING.tempo}`;
   const stampFile = join(dir, '.voice');
   const stamp = existsSync(stampFile) ? readFileSync(stampFile, 'utf8').trim() : null;
-  if (stamp !== null && stamp !== voice) {
+  if (stamp !== null && stamp !== sig) {
     const stale = readdirSync(dir).filter((f) => f.endsWith('.ogg'));
-    console.log(`  voice changed (${stamp} -> ${voice}); clearing ${stale.length} stale clip(s)`);
+    console.log(`  changed (${stamp} -> ${sig}); clearing ${stale.length} stale clip(s)`);
     for (const f of stale) rmSync(join(dir, f));
   }
 
@@ -174,21 +195,24 @@ for (const slot of wanted) {
         '-H', 'Content-Type: application/json',
         '--data-binary', JSON.stringify({
           model: 'tts-1', input: text, voice,
-          exaggeration: EXAGGERATION, cfg_weight: CFG_WEIGHT, temperature: 0.6,
+          exaggeration: EXAGGERATION, cfg_weight: CFG_WEIGHT, temperature: TEMPERATURE,
         }),
         '-o', tmp,
       ]);
       // Chatterbox regularly returns takes that sit on 0 dBFS; Opus then
       // reconstructs intersample peaks above full scale (measured up to
       // +1.7 dB) and the clip distorts on any integer output path. Cap it.
+      // atempo before the limiter so the limiter sees the final waveform; it is
+      // pitch-preserving, and buys the pace the model's own timing won't.
+      const af = TUNING.tempo === 1 ? PEAK_LIMIT : `atempo=${TUNING.tempo},${PEAK_LIMIT}`;
       execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', tmp,
-        '-af', PEAK_LIMIT, '-ac', '1', '-c:a', 'libopus', '-b:a', '48k', dest]);
+        '-af', af, '-ac', '1', '-c:a', 'libopus', '-b:a', '48k', dest]);
       rmSync(tmp);
       spoke++;
       console.log(`  ✓ ${slot}/${stem}  "${text}"`);
     });
   }
-  writeFileSync(stampFile, `${voice}\n`);
+  writeFileSync(stampFile, `${sig}\n`);
 }
 
 writeFileSync(join(OUT, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

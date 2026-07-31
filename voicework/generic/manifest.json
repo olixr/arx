@@ -704,6 +704,534 @@
     "file": "male_8/hm_1.ogg"
   },
   {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "male_9/greet_1.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "male_9/greet_2.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "male_9/ack_1.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "male_9/ack_2.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "male_9/yes_1.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "male_9/yes_2.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "male_9/no_1.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "male_9/no_2.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "male_9/farewell_1.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "male_9/farewell_2.ogg"
+  },
+  {
+    "slot": "male_9",
+    "voice": "rpg_fantasy/male/rune_phineas",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "male_9/hm_1.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "male_10/greet_1.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "male_10/greet_2.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "male_10/ack_1.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "male_10/ack_2.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "male_10/yes_1.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "male_10/yes_2.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "male_10/no_1.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "male_10/no_2.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "male_10/farewell_1.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "male_10/farewell_2.ogg"
+  },
+  {
+    "slot": "male_10",
+    "voice": "rpg_fantasy/male/frank",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "male_10/hm_1.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "male_11/greet_1.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "male_11/greet_2.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "male_11/ack_1.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "male_11/ack_2.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "male_11/yes_1.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "male_11/yes_2.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "male_11/no_1.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "male_11/no_2.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "male_11/farewell_1.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "male_11/farewell_2.ogg"
+  },
+  {
+    "slot": "male_11",
+    "voice": "rpg_fantasy/male/jeff",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "male_11/hm_1.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "male_12/greet_1.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "male_12/greet_2.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "male_12/ack_1.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "male_12/ack_2.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "male_12/yes_1.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "male_12/yes_2.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "male_12/no_1.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "male_12/no_2.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "male_12/farewell_1.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "male_12/farewell_2.ogg"
+  },
+  {
+    "slot": "male_12",
+    "voice": "rpg_fantasy/male/george",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "male_12/hm_1.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "male_13/greet_1.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "male_13/greet_2.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "male_13/ack_1.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "male_13/ack_2.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "male_13/yes_1.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "male_13/yes_2.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "male_13/no_1.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "male_13/no_2.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "male_13/farewell_1.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "male_13/farewell_2.ogg"
+  },
+  {
+    "slot": "male_13",
+    "voice": "rpg_fantasy/male/edder",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "male_13/hm_1.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "male_14/greet_1.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "male_14/greet_2.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "male_14/ack_1.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "male_14/ack_2.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "male_14/yes_1.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "male_14/yes_2.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "male_14/no_1.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "male_14/no_2.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "male_14/farewell_1.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "male_14/farewell_2.ogg"
+  },
+  {
+    "slot": "male_14",
+    "voice": "rpg_fantasy/male/larry",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "male_14/hm_1.ogg"
+  },
+  {
     "slot": "female_1",
     "voice": "rpg_fantasy/female/sage_julie",
     "kind": "greet",
@@ -1057,7 +1585,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "greet",
     "index": 1,
     "text": "Well met.",
@@ -1065,7 +1593,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "greet",
     "index": 2,
     "text": "Aye?",
@@ -1073,7 +1601,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "ack",
     "index": 1,
     "text": "Mm.",
@@ -1081,7 +1609,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "ack",
     "index": 2,
     "text": "Go on.",
@@ -1089,7 +1617,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "yes",
     "index": 1,
     "text": "Aye.",
@@ -1097,7 +1625,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "yes",
     "index": 2,
     "text": "It is so.",
@@ -1105,7 +1633,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "no",
     "index": 1,
     "text": "No.",
@@ -1113,7 +1641,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "no",
     "index": 2,
     "text": "Afraid not.",
@@ -1121,7 +1649,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "farewell",
     "index": 1,
     "text": "Safe roads.",
@@ -1129,7 +1657,7 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "farewell",
     "index": 2,
     "text": "Good day.",
@@ -1137,10 +1665,626 @@
   },
   {
     "slot": "female_5",
-    "voice": "rpg_fantasy/female/rune_phineas",
+    "voice": "rpg_fantasy/female/hush_morrow",
     "kind": "hm",
     "index": 1,
     "text": "Hm.",
     "file": "female_5/hm_1.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "female_6/greet_1.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "female_6/greet_2.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "female_6/ack_1.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "female_6/ack_2.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "female_6/yes_1.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "female_6/yes_2.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "female_6/no_1.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "female_6/no_2.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "female_6/farewell_1.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "female_6/farewell_2.ogg"
+  },
+  {
+    "slot": "female_6",
+    "voice": "rpg_fantasy/female/dour_mabel",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "female_6/hm_1.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "female_7/greet_1.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "female_7/greet_2.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "female_7/ack_1.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "female_7/ack_2.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "female_7/yes_1.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "female_7/yes_2.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "female_7/no_1.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "female_7/no_2.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "female_7/farewell_1.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "female_7/farewell_2.ogg"
+  },
+  {
+    "slot": "female_7",
+    "voice": "rpg_fantasy/female/flint_greta",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "female_7/hm_1.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "female_8/greet_1.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "female_8/greet_2.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "female_8/ack_1.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "female_8/ack_2.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "female_8/yes_1.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "female_8/yes_2.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "female_8/no_1.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "female_8/no_2.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "female_8/farewell_1.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "female_8/farewell_2.ogg"
+  },
+  {
+    "slot": "female_8",
+    "voice": "rpg_fantasy/female/trade_nell",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "female_8/hm_1.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "female_9/greet_1.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "female_9/greet_2.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "female_9/ack_1.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "female_9/ack_2.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "female_9/yes_1.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "female_9/yes_2.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "female_9/no_1.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "female_9/no_2.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "female_9/farewell_1.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "female_9/farewell_2.ogg"
+  },
+  {
+    "slot": "female_9",
+    "voice": "rpg_fantasy/female/spite_vex",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "female_9/hm_1.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "female_10/greet_1.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "female_10/greet_2.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "female_10/ack_1.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "female_10/ack_2.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "female_10/yes_1.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "female_10/yes_2.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "female_10/no_1.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "female_10/no_2.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "female_10/farewell_1.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "female_10/farewell_2.ogg"
+  },
+  {
+    "slot": "female_10",
+    "voice": "rpg_fantasy/female/sunny_posy",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "female_10/hm_1.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "female_11/greet_1.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "female_11/greet_2.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "female_11/ack_1.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "female_11/ack_2.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "female_11/yes_1.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "female_11/yes_2.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "female_11/no_1.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "female_11/no_2.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "female_11/farewell_1.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "female_11/farewell_2.ogg"
+  },
+  {
+    "slot": "female_11",
+    "voice": "rpg_fantasy/female/spark_wren",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "female_11/hm_1.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "greet",
+    "index": 1,
+    "text": "Well met.",
+    "file": "female_12/greet_1.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "greet",
+    "index": 2,
+    "text": "Aye?",
+    "file": "female_12/greet_2.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "ack",
+    "index": 1,
+    "text": "Mm.",
+    "file": "female_12/ack_1.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "ack",
+    "index": 2,
+    "text": "Go on.",
+    "file": "female_12/ack_2.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "yes",
+    "index": 1,
+    "text": "Aye.",
+    "file": "female_12/yes_1.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "yes",
+    "index": 2,
+    "text": "It is so.",
+    "file": "female_12/yes_2.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "no",
+    "index": 1,
+    "text": "No.",
+    "file": "female_12/no_1.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "no",
+    "index": 2,
+    "text": "Afraid not.",
+    "file": "female_12/no_2.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "farewell",
+    "index": 1,
+    "text": "Safe roads.",
+    "file": "female_12/farewell_1.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "farewell",
+    "index": 2,
+    "text": "Good day.",
+    "file": "female_12/farewell_2.ogg"
+  },
+  {
+    "slot": "female_12",
+    "voice": "rpg_fantasy/female/perky_tilly",
+    "kind": "hm",
+    "index": 1,
+    "text": "Hm.",
+    "file": "female_12/hm_1.ogg"
   }
 ]

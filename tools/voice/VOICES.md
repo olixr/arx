@@ -56,6 +56,36 @@ fundamental frequency of the sample; lower is deeper.
 | `rpg_fantasy/female/spark_wren` | 266 Hz | fast, energetic | Dagny, Tamsin, Petra |
 | `rpg_fantasy/female/perky_tilly` | 269 Hz | chirpy, eager | Nib |
 
+## Delivery tuning
+
+Global knobs live in `tools/voice/tuning.json`, per-character `exaggeration` /
+`cfgWeight` in `characters.json`. Both feed the stamp signature, so editing
+either re-speaks exactly the takes it affects — no `--fresh` needed.
+
+Measured on this pool (3 takes per setting, `king_bob` + `veil_ethan`):
+
+| change | pace | pitch range |
+|---|---:|---:|
+| exaggeration 0.45 → 0.75 | **+11%** | **+44%** |
+| cfg_weight 0.55 → 0.30 | −12% | +8% |
+| exaggeration 0.75 → 0.85 | −3% | −32% |
+
+Two things worth knowing, both counter to the usual advice:
+
+**Exaggeration is the pace knob, not just the emotion knob** — it buys speed and
+expression together, and peaks around 0.75. Push it to 0.85 and the model
+destabilises: slower *and* flatter.
+
+**Lowering `cfg_weight` does not speed delivery on these samples — it slows it.**
+The widely-repeated "drop cfg_weight to 0.3 for faster speech" measured 12%
+*slower* here and fights the gain exaggeration gives. Keep it mid (0.5–0.62).
+
+The model's own pacing is stochastic — identical settings gave +11% on one voice
+and +3% on another — so `tempo` applies a pitch-preserving ffmpeg `atempo` stage
+after generation to make the speed-up deterministic. Keep it under ~1.15; past
+that it reads clipped rather than brisk. Combined, the current settings measured
+**+30% pace and +20% pitch range** against the pre-tuning takes.
+
 ## Re-running the wave
 
 ```
@@ -72,12 +102,14 @@ more, so it will get interrupted. Two dotfiles per actor track state:
 
 | file | meaning |
 |---|---|
-| `voicework/generated/<actor>/.voice` | finished, in the voice named inside |
+| `voicework/generated/<actor>/.voice` | finished, at the signature named inside |
 | `voicework/generated/<actor>/.inprogress` | stale takes cleared, generation partial |
 
-Per actor: `.voice` matching the cast voice → skip; `.inprogress` matching →
-resume and speak only the missing clips; neither, or the voice changed → delete
-that actor's old takes, mark `.inprogress`, generate.
+The signature is `<voice> ex=<..> cfg=<..> tempo=<..>` — speaker *and*
+performance, since retuning the knobs changes the takes as much as recasting
+does. Per actor: `.voice` matching → skip; `.inprogress` matching → resume and
+speak only the missing clips; neither, or anything in the signature changed →
+delete that actor's old takes, mark `.inprogress`, generate.
 
 That last branch is the point. Recasting leaves correct-*looking* files on disk
 holding the **wrong voice**, and an unforced run keeps them because they exist —

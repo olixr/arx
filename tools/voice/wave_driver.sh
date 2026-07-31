@@ -11,15 +11,20 @@
 # RESUMABLE. An hour-long batch will get interrupted, so the driver has to be
 # safe to just re-run. Two dotfiles per actor track state:
 #
-#   voicework/generated/<actor>/.voice        finished, in this voice
+#   voicework/generated/<actor>/.voice        finished, at this signature
 #   voicework/generated/<actor>/.inprogress   stale takes cleared, mid-generate
 #
+# The signature is "<voice> ex=<..> cfg=<..> tempo=<..>" — the speaker AND the
+# performance, because retuning the knobs changes the takes just as much as
+# recasting does. Per-character values come from characters.json, global ones
+# from tuning.json.
+#
 # On each actor:
-#   .voice matches the cast voice      -> skip entirely
+#   .voice matches the signature       -> skip entirely
 #   .inprogress matches                -> resume; generate.mts skips clips that
 #                                         already exist, so only the missing
 #                                         ones are spoken
-#   neither, or the voice changed      -> delete the actor's old takes, mark
+#   neither, or the signature changed  -> delete the actor's old takes, mark
 #                                         .inprogress, then generate
 #
 # That last branch is why this works without --force. The reason --force was
@@ -52,12 +57,23 @@ actors_where() {          # "first" | "all"
       .map(([k]) => k).join("\n"));
   ' "$1"
 }
+# The stamp is a SIGNATURE, not just the voice. Retuning exaggeration/cfgWeight
+# changes the performance as surely as recasting changes the speaker, and a
+# voice-only stamp would mark every already-generated actor as done and silently
+# keep takes in the old delivery. Including the knobs makes a retune invalidate
+# exactly the actors it affects, with no --fresh sledgehammer.
 voice_of() {
   node -e '
     const c = require("./tools/voice/characters.json");
+    const t = require("./tools/voice/tuning.json");
     const v = c[process.argv[1]];
     if (!v || !v.ttsVoice) { console.error("no ttsVoice for " + process.argv[1]); process.exit(1); }
-    console.log(v.ttsVoice);
+    console.log([
+      v.ttsVoice,
+      "ex=" + (v.exaggeration ?? t.defaultExaggeration),
+      "cfg=" + (v.cfgWeight ?? t.defaultCfgWeight),
+      "tempo=" + t.tempo,
+    ].join(" "));
   ' "$1"
 }
 

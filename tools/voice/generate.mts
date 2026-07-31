@@ -33,6 +33,15 @@ const voiceOverride = flag('--voice');
 const service = flag('--service') ?? 'http://localhost:5002';
 
 const VOICEWORK = join(REPO, 'voicework');
+
+/** Global delivery tuning — see tools/voice/tuning.json for the measurements. */
+interface Tuning {
+  tempo: number; temperature: number;
+  defaultExaggeration: number; defaultCfgWeight: number;
+}
+const TUNING = JSON.parse(
+  readFileSync(join(REPO, 'tools', 'voice', 'tuning.json'), 'utf8'),
+) as Tuning;
 const m = buildManifest();
 const wanted = args.length > 0 ? args : orderedActors(m);
 for (const id of wanted) {
@@ -96,9 +105,15 @@ for (const actor of wanted) {
       model: 'tts-1',
       input: line.text,
       voice,
-      exaggeration: note?.exaggeration ?? 0.5,
-      cfg_weight: note?.cfgWeight ?? 0.5,
-      temperature: 0.6,
+      // Exaggeration is the pace AND expression knob — measured on this pool,
+      // 0.45 -> 0.75 buys +11% words/sec and +44% pitch range. cfg_weight is
+      // NOT a speed control here despite the folk wisdom: dropping it to 0.30
+      // made delivery 12% *slower*. Keep it mid. Above ~0.8 exaggeration
+      // destabilises (0.85 measured slower and flatter than 0.75).
+      // See tools/voice/tuning.json.
+      exaggeration: note?.exaggeration ?? TUNING.defaultExaggeration,
+      cfg_weight: note?.cfgWeight ?? TUNING.defaultCfgWeight,
+      temperature: TUNING.temperature,
     });
     execFileSync('curl', [
       '-sf', '--max-time', '900', '-X', 'POST',
@@ -114,8 +129,15 @@ for (const actor of wanted) {
     // +1.7 dB across the existing bank), which distorts on integer output.
     const PEAK_LIMIT =
       'alimiter=level_in=1:level_out=1:limit=0.891:attack=5:release=50:level=disabled';
+    // atempo first, limiter last — the limiter has to see the final waveform or
+    // the resampler can push peaks back over the ceiling it just enforced.
+    // atempo is pitch-preserving, so this buys pace without chipmunking the
+    // voice; the model's own pacing is too stochastic to rely on alone.
+    const af = TUNING.tempo === 1
+      ? PEAK_LIMIT
+      : `atempo=${TUNING.tempo},${PEAK_LIMIT}`;
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', tmp,
-      '-af', PEAK_LIMIT, '-ac', '1', '-c:a', 'libopus', '-b:a', '48k', dest]);
+      '-af', af, '-ac', '1', '-c:a', 'libopus', '-b:a', '48k', dest]);
     rmSync(tmp);
     spoken++;
     console.log(`✓ ${line.clipId} (${(wav.length / 1024).toFixed(0)}kB wav → ogg) — "${line.text.slice(0, 60)}"`);

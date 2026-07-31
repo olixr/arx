@@ -1,0 +1,30 @@
+{
+  "_comment": [
+    "Global delivery tuning, shared by generate.mts (character lane), generic.mts",
+    "(fallback quip bank) and wave_driver.sh (stamp signatures).",
+    "",
+    "It lives in one file so that changing any of it invalidates the .voice stamps",
+    "and the affected takes get re-spoken. A constant buried in generate.mts would",
+    "not: the driver builds its signature from data, so a retune hidden in code",
+    "would leave every finished actor marked done in the old delivery.",
+    "",
+    "Measured on this voice pool (3 takes per setting, king_bob + veil_ethan):",
+    "  exaggeration 0.45 -> 0.75   pace +11%, pitch range +44%   <- the real knob",
+    "  cfg_weight   0.55 -> 0.30   pace -12%, pitch range  +8%   <- backwards",
+    "  exaggeration 0.85           pace  -3%, pitch range -32%   <- past the peak",
+    "",
+    "Exaggeration is therefore the pace AND expression control, peaking near 0.75;",
+    "the folk wisdom that low cfg_weight speeds delivery is wrong for these",
+    "samples. Per-character exaggeration/cfgWeight live in characters.json.",
+    "",
+    "tempo is an ffmpeg atempo stage applied after generation. The model's own",
+    "pacing is stochastic — the same settings gave +11% on one voice and +3% on",
+    "another — so the last few percent are bought deterministically instead. It is",
+    "pitch-preserving. Keep it under ~1.15; past that it starts to sound clipped",
+    "and artificial rather than brisk."
+  ],
+  "tempo": 1.09,
+  "temperature": 0.7,
+  "defaultExaggeration": 0.7,
+  "defaultCfgWeight": 0.55
+}
