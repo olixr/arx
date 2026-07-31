@@ -347,6 +347,14 @@ const KNEE_SCRATCH = [
   { x: 0, y: 0, d: 0 },
   { x: 0, y: 0, d: 0 },
 ];
+/** Per-draw leg-frame scratch (hot path, no alloc): the solve loop
+ * records each leg's hip and clamped foot so the deferred leg PAINT
+ * layer (THE FAR SIDE GOES BEHIND THE LEGS) redraws without
+ * re-solving. Knee lives in KNEE_SCRATCH. */
+const LEG_POSE_SCRATCH = [
+  { hipX: 0, footX: 0, footY: 0 },
+  { hipX: 0, footX: 0, footY: 0 },
+];
 const LEG_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
 /** Hoisted per-foot paint tables — loop literals in the leg painter
  *  alloc once per LEG per frame otherwise. */
@@ -2029,8 +2037,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
 
   // ---- legs: two-bone IK from SCREEN-FIXED hips to planted feet.
   const L = (LEG_LEN / 2) * s;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
   for (let i = 0; i < 2; i++) {
     const sgn = i === 0 ? -1 : 1;
     const foot = rig.feet[i];
@@ -2070,263 +2076,283 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     kn.x = kx;
     kn.y = ky;
     kn.d = d;
+    const lp = LEG_POSE_SCRATCH[i]!;
+    lp.hipX = hipX;
+    lp.footX = hipX + ex;
+    lp.footY = hipY + ey;
+  }
 
-    // Leg dressing: thigh and shin as separate strokes so greaves and
-    // wraps can recolor the lower leg; default = today's exact colors.
-    // Skeletal legs are bare bone: femur thicker than tibia, a condyle
-    // knob at the knee — no cloth ever dressed these.
-    // Kobold legs are bare scaled hide, never cloth — the shin a
-    // touch darker so the digitigrade read survives at distance.
-    const baseLeg = skel
-      ? shade(skel.bone, -3)
-      : kob
-        ? shade(kob.hide, -5)
-        : rig.look
-          ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
-          : shade(bodyColor, -28);
-    const thighCol = rig.hurt ? '#ffffff' : (legSt?.thigh ?? baseLeg);
-    const shinCol = rig.hurt
-      ? '#ffffff'
-      : skel
-        ? skel.bone
+  // THE LEG LAYER: solved above (the knee scratch feeds the seated arm
+  // vocabulary), painted HERE as a deferred closure so the depth ladder
+  // below can slip far-side gear underneath it (THE FAR SIDE GOES
+  // BEHIND THE LEGS). Same pixels as the old inline paint: nothing
+  // else painted between the old site and the ladder.
+  const paintLegs = (): void => {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let i = 0; i < 2; i++) {
+      if (!rig.feet[i]) continue;
+      const lp = LEG_POSE_SCRATCH[i]!;
+      const hipX = lp.hipX;
+      const kx = KNEE_SCRATCH[i]!.x;
+      const ky = KNEE_SCRATCH[i]!.y;
+      const fxx = lp.footX;
+      const fyy = lp.footY;
+      // Leg dressing: thigh and shin as separate strokes so greaves and
+      // wraps can recolor the lower leg; default = today's exact colors.
+      // Skeletal legs are bare bone: femur thicker than tibia, a condyle
+      // knob at the knee — no cloth ever dressed these.
+      // Kobold legs are bare scaled hide, never cloth — the shin a
+      // touch darker so the digitigrade read survives at distance.
+      const baseLeg = skel
+        ? shade(skel.bone, -3)
         : kob
-          ? shade(kob.hide, -12)
-          : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
-    const fxx = hipX + ex;
-    const fyy = hipY + ey;
-    // THE FOOT CAPS THE LEG: the shin stroke ends at the ANKLE — the
-    // endpoint pulled back up the bone so its round cap tucks inside
-    // the footwear painted below. Stroked all the way to the sole, the
-    // cap's half-disc poked out under every foot chip at zoom.
-    const shinLen0 = Math.hypot(fxx - kx, fyy - ky) || 1;
-    const aux = (fxx - kx) / shinLen0;
-    const auy = (fyy - ky) / shinLen0;
-    const shinLW = Math.max(2, s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : 0.09));
-    const ankPull = shinLW * 0.55;
-    const ankX = fxx - aux * ankPull;
-    const ankY = fyy - auy * ankPull;
-    ctx.strokeStyle = thighCol;
-    ctx.lineWidth = Math.max(2, s * (skel ? 0.066 * skel.heavy : 0.09));
-    ctx.beginPath();
-    ctx.moveTo(hipX, hipY);
-    ctx.lineTo(kx, ky);
-    if (shinCol === thighCol && !skel) {
-      ctx.lineTo(ankX, ankY);
-      ctx.stroke();
-    } else {
-      ctx.stroke();
-      ctx.strokeStyle = shinCol;
-      if (skel) ctx.lineWidth = Math.max(2, s * 0.052 * skel.heavy);
+          ? shade(kob.hide, -5)
+          : rig.look
+            ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
+            : shade(bodyColor, -28);
+      const thighCol = rig.hurt ? '#ffffff' : (legSt?.thigh ?? baseLeg);
+      const shinCol = rig.hurt
+        ? '#ffffff'
+        : skel
+          ? skel.bone
+          : kob
+            ? shade(kob.hide, -12)
+            : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
+      // THE FOOT CAPS THE LEG: the shin stroke ends at the ANKLE — the
+      // endpoint pulled back up the bone so its round cap tucks inside
+      // the footwear painted below. Stroked all the way to the sole, the
+      // cap's half-disc poked out under every foot chip at zoom.
+      const shinLen0 = Math.hypot(fxx - kx, fyy - ky) || 1;
+      const aux = (fxx - kx) / shinLen0;
+      const auy = (fyy - ky) / shinLen0;
+      const shinLW = Math.max(2, s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : 0.09));
+      const ankPull = shinLW * 0.55;
+      const ankX = fxx - aux * ankPull;
+      const ankY = fyy - auy * ankPull;
+      ctx.strokeStyle = thighCol;
+      ctx.lineWidth = Math.max(2, s * (skel ? 0.066 * skel.heavy : 0.09));
       ctx.beginPath();
-      ctx.moveTo(kx, ky);
-      ctx.lineTo(ankX, ankY);
-      ctx.stroke();
-    }
-    if (skel) {
-      // Knee condyle: the joint knob, wider than either shaft, with a
-      // dark seam line — the articulation mark of the bone dialect.
-      ctx.fillStyle = rig.hurt ? '#ffffff' : skel.bone;
-      ctx.beginPath();
-      ctx.arc(kx, ky, Math.max(1.8, s * 0.042 * skel.heavy), 0, Math.PI * 2);
-      ctx.fill();
-      if (!rig.hurt) {
-        ctx.fillStyle = shade(skel.bone, -22);
-        ctx.fillRect(kx - s * 0.028 * skel.heavy, ky - s * 0.007, s * 0.056 * skel.heavy, s * 0.014);
-      }
-    }
-    // Knee dressing: a plate chip riding the shin's angle, or wraps.
-    if (legSt?.knee === 'plate' && !rig.hurt) {
-      ctx.save();
-      ctx.translate(kx, ky);
-      ctx.rotate(Math.atan2(fyy - ky, fxx - kx) - Math.PI / 2);
-      ctx.fillStyle = legSt.kneeColor ?? shinCol;
-      ctx.beginPath();
-      chamferRect(ctx, -0.055 * s, -0.045 * s, 0.11 * s, 0.1 * s, 0.025 * s);
-      ctx.fill();
-      ctx.fillStyle = shade(legSt.kneeColor ?? shinCol, 14);
-      ctx.fillRect(-0.04 * s, -0.038 * s, 0.08 * s, 0.028 * s);
-      ctx.restore();
-    } else if (legSt?.knee === 'wrap' && !rig.hurt) {
-      ctx.strokeStyle = legSt.kneeColor ?? shade(shinCol, -16);
-      ctx.lineWidth = Math.max(1.5, s * 0.028);
-      for (const o of [-0.02, 0.025]) {
+      ctx.moveTo(hipX, hipY);
+      ctx.lineTo(kx, ky);
+      if (shinCol === thighCol && !skel) {
+        ctx.lineTo(ankX, ankY);
+        ctx.stroke();
+      } else {
+        ctx.stroke();
+        ctx.strokeStyle = shinCol;
+        if (skel) ctx.lineWidth = Math.max(2, s * 0.052 * skel.heavy);
         ctx.beginPath();
-        ctx.moveTo(kx - 0.05 * s, ky + o * s - 0.012 * s);
-        ctx.lineTo(kx + 0.05 * s, ky + o * s + 0.012 * s);
+        ctx.moveTo(kx, ky);
+        ctx.lineTo(ankX, ankY);
         ctx.stroke();
       }
-      ctx.lineWidth = Math.max(2, s * 0.09);
-    }
+      if (skel) {
+        // Knee condyle: the joint knob, wider than either shaft, with a
+        // dark seam line — the articulation mark of the bone dialect.
+        ctx.fillStyle = rig.hurt ? '#ffffff' : skel.bone;
+        ctx.beginPath();
+        ctx.arc(kx, ky, Math.max(1.8, s * 0.042 * skel.heavy), 0, Math.PI * 2);
+        ctx.fill();
+        if (!rig.hurt) {
+          ctx.fillStyle = shade(skel.bone, -22);
+          ctx.fillRect(kx - s * 0.028 * skel.heavy, ky - s * 0.007, s * 0.056 * skel.heavy, s * 0.014);
+        }
+      }
+      // Knee dressing: a plate chip riding the shin's angle, or wraps.
+      if (legSt?.knee === 'plate' && !rig.hurt) {
+        ctx.save();
+        ctx.translate(kx, ky);
+        ctx.rotate(Math.atan2(fyy - ky, fxx - kx) - Math.PI / 2);
+        ctx.fillStyle = legSt.kneeColor ?? shinCol;
+        ctx.beginPath();
+        chamferRect(ctx, -0.055 * s, -0.045 * s, 0.11 * s, 0.1 * s, 0.025 * s);
+        ctx.fill();
+        ctx.fillStyle = shade(legSt.kneeColor ?? shinCol, 14);
+        ctx.fillRect(-0.04 * s, -0.038 * s, 0.08 * s, 0.028 * s);
+        ctx.restore();
+      } else if (legSt?.knee === 'wrap' && !rig.hurt) {
+        ctx.strokeStyle = legSt.kneeColor ?? shade(shinCol, -16);
+        ctx.lineWidth = Math.max(1.5, s * 0.028);
+        for (const o of [-0.02, 0.025]) {
+          ctx.beginPath();
+          ctx.moveTo(kx - 0.05 * s, ky + o * s - 0.012 * s);
+          ctx.lineTo(kx + 0.05 * s, ky + o * s + 0.012 * s);
+          ctx.stroke();
+        }
+        ctx.lineWidth = Math.max(2, s * 0.09);
+      }
 
-    // Boots: a shaft climbing the shin, folded cuff, foot, toe cap —
-    // or the bare hardcoded chip when nothing is worn.
-    const bootCol = rig.hurt ? '#ffffff' : (bootSt?.color ?? BOOT);
-    if (bootSt) {
-      const shinLen = Math.hypot(fxx - kx, fyy - ky) || 1;
-      const hK = Math.min(1, (bootSt.height * s) / shinLen);
-      const topX = fxx + (kx - fxx) * hK;
-      const topY = fyy + (ky - fyy) * hK;
-      ctx.strokeStyle = bootCol;
-      ctx.lineWidth = Math.max(2.5, s * 0.1);
-      ctx.beginPath();
-      ctx.moveTo(topX, topY);
-      ctx.lineTo(ankX, ankY);
-      ctx.stroke();
-      if (bootSt.cuff && !rig.hurt) {
-        ctx.strokeStyle = bootSt.cuff.color;
-        ctx.lineWidth = Math.max(2.5, s * 0.115);
+      // Boots: a shaft climbing the shin, folded cuff, foot, toe cap —
+      // or the bare hardcoded chip when nothing is worn.
+      const bootCol = rig.hurt ? '#ffffff' : (bootSt?.color ?? BOOT);
+      if (bootSt) {
+        const shinLen = Math.hypot(fxx - kx, fyy - ky) || 1;
+        const hK = Math.min(1, (bootSt.height * s) / shinLen);
+        const topX = fxx + (kx - fxx) * hK;
+        const topY = fyy + (ky - fyy) * hK;
+        ctx.strokeStyle = bootCol;
+        ctx.lineWidth = Math.max(2.5, s * 0.1);
         ctx.beginPath();
         ctx.moveTo(topX, topY);
-        ctx.lineTo(topX + (fxx - topX) * 0.22, topY + (fyy - topY) * 0.22);
+        ctx.lineTo(ankX, ankY);
         ctx.stroke();
-      }
-      if (bootSt.spike && !rig.hurt) {
-        // A knee-spike off the shaft top — dread sabatons bite upward.
-        ctx.fillStyle = bootSt.toe ?? shade(bootCol, 18);
-        ctx.beginPath();
-        ctx.moveTo(topX + lead * 0.015 * s, topY + 0.015 * s);
-        ctx.lineTo(topX + lead * 0.085 * s, topY - 0.055 * s);
-        ctx.lineTo(topX + lead * 0.045 * s, topY + 0.035 * s);
-        ctx.closePath();
-        ctx.fill();
-      }
-      if (bootSt.wrap && !rig.hurt) {
-        // Crossed straps lacing the shaft — drawn along the solved shin
-        // so the X climbs the leg at any facing or terrain lift.
-        const dxn = (fxx - topX) / shinLen;
-        const dyn = (fyy - topY) / shinLen;
-        const px = -dyn;
-        const py = dxn;
-        const w = 0.056 * s;
-        ctx.strokeStyle = bootSt.wrap.color;
-        ctx.lineWidth = Math.max(1.5, s * 0.032);
-        ctx.beginPath();
-        for (const [t0, t1] of [[0.1, 0.55], [0.55, 0.1]] as const) {
-          ctx.moveTo(topX + (fxx - topX) * t0 + px * w, topY + (fyy - topY) * t0 + py * w);
-          ctx.lineTo(topX + (fxx - topX) * t1 - px * w, topY + (fyy - topY) * t1 - py * w);
-        }
-        ctx.stroke();
-      }
-      if (bootSt.fur && !rig.hurt) {
-        // A lumpy fur top instead of a clean cuff — winter boots.
-        ctx.fillStyle = bootSt.fur.color;
-        for (let i = 0; i < 3; i++) {
-          const u = -1 + i;
+        if (bootSt.cuff && !rig.hurt) {
+          ctx.strokeStyle = bootSt.cuff.color;
+          ctx.lineWidth = Math.max(2.5, s * 0.115);
           ctx.beginPath();
-          ctx.arc(
-            topX + u * 0.048 * s,
-            topY + Math.sin(i * 2.4) * 0.012 * s,
-            (0.04 + 0.009 * Math.sin(i * 3.1)) * s,
-            0,
-            Math.PI * 2,
-          );
-          ctx.fill();
+          ctx.moveTo(topX, topY);
+          ctx.lineTo(topX + (fxx - topX) * 0.22, topY + (fyy - topY) * 0.22);
+          ctx.stroke();
         }
-      }
-      ctx.lineWidth = Math.max(2, s * 0.09);
-    }
-    if (skel) {
-      // Bare bone foot: a narrower chip split by dark toe seams on the
-      // leading half — metatarsals, not a boot.
-      ctx.fillStyle = rig.hurt ? '#ffffff' : skel.bone;
-      ctx.beginPath();
-      chamferRect(ctx, fxx - 0.068 * s, fyy - 0.026 * s, 0.136 * s, 0.052 * s, 0.018 * s);
-      ctx.fill();
-      if (!rig.hurt) {
-        ctx.fillStyle = shade(skel.bone, -28);
-        for (const ot of [0.018, 0.048]) {
-          ctx.fillRect(fxx + lead * ot * s, fyy - 0.018 * s, 0.013 * s, 0.036 * s);
-        }
-      }
-    } else if (kob && !bootSt) {
-      // The bare kobold foot: a scaled chip, slightly narrow, with
-      // pale claw ticks raking off the leading edge — no kobold ever
-      // owned boots worth drawing.
-      ctx.fillStyle = rig.hurt ? '#ffffff' : shade(kob.hide, -8);
-      ctx.beginPath();
-      chamferRect(ctx, fxx - 0.07 * s, fyy - 0.028 * s, 0.14 * s, 0.056 * s, 0.02 * s);
-      ctx.fill();
-      if (!rig.hurt) {
-        ctx.fillStyle = shade(kob.belly, 10);
-        for (const o of [-0.02, 0.012]) {
+        if (bootSt.spike && !rig.hurt) {
+          // A knee-spike off the shaft top — dread sabatons bite upward.
+          ctx.fillStyle = bootSt.toe ?? shade(bootCol, 18);
           ctx.beginPath();
-          ctx.moveTo(fxx + lead * 0.062 * s, fyy + o * s - 0.008 * s);
-          ctx.lineTo(fxx + lead * 0.095 * s, fyy + o * s + 0.004 * s);
-          ctx.lineTo(fxx + lead * 0.062 * s, fyy + o * s + 0.014 * s);
+          ctx.moveTo(topX + lead * 0.015 * s, topY + 0.015 * s);
+          ctx.lineTo(topX + lead * 0.085 * s, topY - 0.055 * s);
+          ctx.lineTo(topX + lead * 0.045 * s, topY + 0.035 * s);
           ctx.closePath();
           ctx.fill();
         }
-      }
-    } else {
-      // The shoe: a heel-to-toe sole block pointed by the facing, an
-      // instep collar carrying the leg's line down into it, a sole
-      // shadow along the ground and a lit toe face at profile —
-      // footwear with anatomy, not a floating pill.
-      const toe = fx * 0.026 * s;
-      const fw = 0.082 * s;
-      const x0 = fxx - fw + Math.min(0, toe);
-      const wF = fw * 2 + Math.abs(toe);
-      if (!rig.hurt) {
-        // Instep first, so the sole block laps over its base.
-        const pxw = -auy * shinLW * 0.62;
-        const pyw = aux * shinLW * 0.62;
-        ctx.fillStyle = shade(bootCol, -6);
-        ctx.beginPath();
-        ctx.moveTo(ankX - pxw, ankY - pyw);
-        ctx.lineTo(ankX + pxw, ankY + pyw);
-        ctx.lineTo(fxx + fw * 0.55, fyy - 0.02 * s);
-        ctx.lineTo(fxx - fw * 0.55, fyy - 0.02 * s);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.fillStyle = bootCol;
-      ctx.beginPath();
-      chamferRect(ctx, x0, fyy - 0.031 * s, wF, 0.062 * s, 0.02 * s);
-      ctx.fill();
-      if (!rig.hurt) {
-        // Sole shadow: the dark welt line the shoe stands on.
-        ctx.fillStyle = shade(bootCol, -22);
-        ctx.fillRect(x0 + 0.008 * s, fyy + 0.017 * s, wF - 0.016 * s, 0.014 * s);
-        if (Math.abs(fx) > 0.35) {
-          // Toe face catches the light at profile; the heel counter
-          // behind darkens — the shoe points where the body walks.
-          ctx.fillStyle = shade(bootCol, 9);
+        if (bootSt.wrap && !rig.hurt) {
+          // Crossed straps lacing the shaft — drawn along the solved shin
+          // so the X climbs the leg at any facing or terrain lift.
+          const dxn = (fxx - topX) / shinLen;
+          const dyn = (fyy - topY) / shinLen;
+          const px = -dyn;
+          const py = dxn;
+          const w = 0.056 * s;
+          ctx.strokeStyle = bootSt.wrap.color;
+          ctx.lineWidth = Math.max(1.5, s * 0.032);
           ctx.beginPath();
-          chamferRect(
-            ctx,
-            fx > 0 ? x0 + wF - 0.048 * s : x0 + 0.003 * s,
-            fyy - 0.026 * s,
-            0.045 * s,
-            0.032 * s,
-            0.012 * s,
-          );
+          for (const [t0, t1] of [[0.1, 0.55], [0.55, 0.1]] as const) {
+            ctx.moveTo(topX + (fxx - topX) * t0 + px * w, topY + (fyy - topY) * t0 + py * w);
+            ctx.lineTo(topX + (fxx - topX) * t1 - px * w, topY + (fyy - topY) * t1 - py * w);
+          }
+          ctx.stroke();
+        }
+        if (bootSt.fur && !rig.hurt) {
+          // A lumpy fur top instead of a clean cuff — winter boots.
+          ctx.fillStyle = bootSt.fur.color;
+          for (let i = 0; i < 3; i++) {
+            const u = -1 + i;
+            ctx.beginPath();
+            ctx.arc(
+              topX + u * 0.048 * s,
+              topY + Math.sin(i * 2.4) * 0.012 * s,
+              (0.04 + 0.009 * Math.sin(i * 3.1)) * s,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
+          }
+        }
+        ctx.lineWidth = Math.max(2, s * 0.09);
+      }
+      if (skel) {
+        // Bare bone foot: a narrower chip split by dark toe seams on the
+        // leading half — metatarsals, not a boot.
+        ctx.fillStyle = rig.hurt ? '#ffffff' : skel.bone;
+        ctx.beginPath();
+        chamferRect(ctx, fxx - 0.068 * s, fyy - 0.026 * s, 0.136 * s, 0.052 * s, 0.018 * s);
+        ctx.fill();
+        if (!rig.hurt) {
+          ctx.fillStyle = shade(skel.bone, -28);
+          for (const ot of [0.018, 0.048]) {
+            ctx.fillRect(fxx + lead * ot * s, fyy - 0.018 * s, 0.013 * s, 0.036 * s);
+          }
+        }
+      } else if (kob && !bootSt) {
+        // The bare kobold foot: a scaled chip, slightly narrow, with
+        // pale claw ticks raking off the leading edge — no kobold ever
+        // owned boots worth drawing.
+        ctx.fillStyle = rig.hurt ? '#ffffff' : shade(kob.hide, -8);
+        ctx.beginPath();
+        chamferRect(ctx, fxx - 0.07 * s, fyy - 0.028 * s, 0.14 * s, 0.056 * s, 0.02 * s);
+        ctx.fill();
+        if (!rig.hurt) {
+          ctx.fillStyle = shade(kob.belly, 10);
+          for (const o of [-0.02, 0.012]) {
+            ctx.beginPath();
+            ctx.moveTo(fxx + lead * 0.062 * s, fyy + o * s - 0.008 * s);
+            ctx.lineTo(fxx + lead * 0.095 * s, fyy + o * s + 0.004 * s);
+            ctx.lineTo(fxx + lead * 0.062 * s, fyy + o * s + 0.014 * s);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+      } else {
+        // The shoe: a heel-to-toe sole block pointed by the facing, an
+        // instep collar carrying the leg's line down into it, a sole
+        // shadow along the ground and a lit toe face at profile —
+        // footwear with anatomy, not a floating pill.
+        const toe = fx * 0.026 * s;
+        const fw = 0.082 * s;
+        const x0 = fxx - fw + Math.min(0, toe);
+        const wF = fw * 2 + Math.abs(toe);
+        if (!rig.hurt) {
+          // Instep first, so the sole block laps over its base.
+          const pxw = -auy * shinLW * 0.62;
+          const pyw = aux * shinLW * 0.62;
+          ctx.fillStyle = shade(bootCol, -6);
+          ctx.beginPath();
+          ctx.moveTo(ankX - pxw, ankY - pyw);
+          ctx.lineTo(ankX + pxw, ankY + pyw);
+          ctx.lineTo(fxx + fw * 0.55, fyy - 0.02 * s);
+          ctx.lineTo(fxx - fw * 0.55, fyy - 0.02 * s);
+          ctx.closePath();
           ctx.fill();
-          ctx.fillStyle = shade(bootCol, -12);
-          ctx.fillRect(fx > 0 ? x0 + 0.004 * s : x0 + wF - 0.026 * s, fyy - 0.024 * s, 0.022 * s, 0.04 * s);
+        }
+        ctx.fillStyle = bootCol;
+        ctx.beginPath();
+        chamferRect(ctx, x0, fyy - 0.031 * s, wF, 0.062 * s, 0.02 * s);
+        ctx.fill();
+        if (!rig.hurt) {
+          // Sole shadow: the dark welt line the shoe stands on.
+          ctx.fillStyle = shade(bootCol, -22);
+          ctx.fillRect(x0 + 0.008 * s, fyy + 0.017 * s, wF - 0.016 * s, 0.014 * s);
+          if (Math.abs(fx) > 0.35) {
+            // Toe face catches the light at profile; the heel counter
+            // behind darkens — the shoe points where the body walks.
+            ctx.fillStyle = shade(bootCol, 9);
+            ctx.beginPath();
+            chamferRect(
+              ctx,
+              fx > 0 ? x0 + wF - 0.048 * s : x0 + 0.003 * s,
+              fyy - 0.026 * s,
+              0.045 * s,
+              0.032 * s,
+              0.012 * s,
+            );
+            ctx.fill();
+            ctx.fillStyle = shade(bootCol, -12);
+            ctx.fillRect(fx > 0 ? x0 + 0.004 * s : x0 + wF - 0.026 * s, fyy - 0.024 * s, 0.022 * s, 0.04 * s);
+          }
         }
       }
+      if (bootSt?.toe && !rig.hurt) {
+        // Steel toe on the leading half of the foot.
+        ctx.fillStyle = bootSt.toe;
+        ctx.beginPath();
+        chamferRect(ctx, fxx + (lead > 0 ? 0.022 : -0.088) * s, fyy - 0.028 * s, 0.066 * s, 0.056 * s, 0.018 * s);
+        ctx.fill();
+      }
+      if (bootSt?.curl && !rig.hurt) {
+        // The curled slipper toe — a hook of cloth rising off the tip.
+        ctx.strokeStyle = bootSt.cuff?.color ?? shade(bootCol, 16);
+        ctx.lineWidth = Math.max(2, s * 0.042);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(fxx + lead * 0.068 * s, fyy - 0.004 * s);
+        ctx.quadraticCurveTo(fxx + lead * 0.14 * s, fyy + 0.006 * s, fxx + lead * 0.118 * s, fyy - 0.052 * s);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+      }
     }
-    if (bootSt?.toe && !rig.hurt) {
-      // Steel toe on the leading half of the foot.
-      ctx.fillStyle = bootSt.toe;
-      ctx.beginPath();
-      chamferRect(ctx, fxx + (lead > 0 ? 0.022 : -0.088) * s, fyy - 0.028 * s, 0.066 * s, 0.056 * s, 0.018 * s);
-      ctx.fill();
-    }
-    if (bootSt?.curl && !rig.hurt) {
-      // The curled slipper toe — a hook of cloth rising off the tip.
-      ctx.strokeStyle = bootSt.cuff?.color ?? shade(bootCol, 16);
-      ctx.lineWidth = Math.max(2, s * 0.042);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(fxx + lead * 0.068 * s, fyy - 0.004 * s);
-      ctx.quadraticCurveTo(fxx + lead * 0.14 * s, fyy + 0.006 * s, fxx + lead * 0.118 * s, fyy - 0.052 * s);
-      ctx.stroke();
-      ctx.lineCap = 'butt';
-    }
-  }
-  ctx.lineCap = 'butt';
-  ctx.lineJoin = 'miter';
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
+  };
 
   // ---- arms + weapon. Hand targets change with what the character is
   // doing; two-segment IK arms connect them back to the shoulder line.
@@ -3796,11 +3822,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // behind the torso — while the off scabbard rides the leading hip in
   // front; face-on both hips sit outside the waist and paint in front.
   const slingFront = fy < -0.16;
-  const beltBehind = profileK > 0.62;
-  if (!quiverFront) paintQuiver();
-  if (stowed && offWorn && !beltBehind) paintStowedOff();
-  if (stowed && !wornBack && beltBehind) paintStowedMain();
-  if (stowed && wornBack && !slingFront && !rig.hasCape) paintStowedMain();
+  // (The leg layer, belt gear, and quiver paint down at the depth
+  // ladder — after every paint closure exists, before the torso.)
   const paintMainArm = (): void => {
     drawArm(
       ctx,
@@ -3954,13 +3977,37 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     ? shieldFr.front
     : !mainBehind && restSettle > 0.5 && fy > offFrontAt;
   if (mem) mem.offFront = offFront;
+  // THE FAR SIDE GOES BEHIND THE LEGS: facing up-and-away, the hang
+  // and the aim live on the body's FAR side — the whole gear layer
+  // paints before the legs, not merely before the torso (dual blades
+  // used to hang OVER the shins on a north-facing idle, the user's
+  // screenshot). Same gate as weaponBehind's aim-away term, so the
+  // layer swap shares that one boundary; the great rest's visible
+  // back-carry keeps its front verdict, and the profile flip
+  // (mainBehind) keeps its own torso-relative lanes.
+  const gearBehindLegs = fy < -0.35 && !greatRestFront;
+  if (gearBehindLegs && !mainBehind) {
+    if (weaponBehind) {
+      paintWeapon();
+      paintMainArm();
+    }
+    if (!offFront) paintOffArm();
+  }
+  paintLegs();
+  // Belt scabbards + the back quiver lie over the legs, under the
+  // torso — exactly the layer they held when the legs painted early.
+  const beltBehind = profileK > 0.62;
+  if (!quiverFront) paintQuiver();
+  if (stowed && offWorn && !beltBehind) paintStowedOff();
+  if (stowed && !wornBack && beltBehind) paintStowedMain();
+  if (stowed && wornBack && !slingFront && !rig.hasCape) paintStowedMain();
   if (mainBehind) {
     paintWeapon();
     paintMainArm();
-  } else if (!offFront) {
+  } else if (!offFront && !gearBehindLegs) {
     paintOffArm();
   }
-  if (weaponBehind && !mainBehind) {
+  if (weaponBehind && !mainBehind && !gearBehindLegs) {
     paintWeapon();
     paintMainArm();
   }
