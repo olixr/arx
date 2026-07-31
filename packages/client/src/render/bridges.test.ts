@@ -81,8 +81,16 @@ test('THE NOTCH-FILL LAW: a stair-step grows 45° fills on both shoulders', () =
     '~BBB~~', // y2: x1-3
     '~~~~~~',
   ]);
-  assert.deepEqual(deckFillAt(g, 2, 1), { legs: 'SE', family: 'bridge' }, 'upper-left notch');
-  assert.deepEqual(deckFillAt(g, 4, 2), { legs: 'NW', family: 'bridge' }, 'lower-right notch');
+  assert.deepEqual(
+    deckFillAt(g, 2, 1),
+    { legs: 'SE', family: 'bridge', bank: false },
+    'upper-left notch',
+  );
+  assert.deepEqual(
+    deckFillAt(g, 4, 2),
+    { legs: 'NW', family: 'bridge', bank: false },
+    'lower-right notch',
+  );
   assert.equal(deckFillAt(g, 0, 0), null, 'open water never fills');
   assert.equal(deckFillAt(g, 1, 1), null, 'one deck side is an edge, not a notch');
   // The fill's leg edges read as covered (interior); the hyp-side
@@ -118,12 +126,12 @@ test('fill family: docks fill as docks, a mixed junction goes to the bridge', ()
     'DD',
     '~D',
   ]);
-  assert.deepEqual(deckFillAt(dock, 0, 1), { legs: 'NE', family: 'dock' });
+  assert.deepEqual(deckFillAt(dock, 0, 1), { legs: 'NE', family: 'dock', bank: false });
   const mixed = samplerOf([
     'BD',
     '~D',
   ]);
-  assert.deepEqual(deckFillAt(mixed, 0, 1), { legs: 'NE', family: 'bridge' });
+  assert.deepEqual(deckFillAt(mixed, 0, 1), { legs: 'NE', family: 'bridge', bank: false });
 });
 
 test('a north-south walk ramps N/S, judged along the horizontal run', () => {
@@ -139,4 +147,47 @@ test('a north-south walk ramps N/S, judged along the horizontal run', () => {
   assert.equal(bridgeApronAt(g, 2, 1, vert), 'N');
   assert.equal(bridgeApronAt(g, 2, 3, vert), 'S');
   assert.equal(bridgeApronAt(g, 2, 2, vert), 'none');
+});
+
+test('THE BANK CHAMFER: a staircase corner on walkable land fills like water does', () => {
+  // A diagonal crossing meeting the bank: the inner corner at (2,2)
+  // is grass hugged by lifted flat deck on N and E — it chamfers,
+  // exactly as a water notch would.
+  const g = samplerOf([
+    '~~~~~~',
+    '~~BBBB', // y1: x2-5
+    '~~GBBB', // y2: deck x3-5; grass notch at x2
+    '~~GGB~', // y3
+    '~~~~~~',
+  ]);
+  assert.deepEqual(
+    deckFillAt(g, 2, 2),
+    { legs: 'NE', family: 'bridge', bank: true },
+    'the bank corner chamfers',
+  );
+  // The bank fill covers its leg edges like any water fill.
+  assert.equal(fillCoversEdge(g, 2, 2, 'N'), true);
+  assert.equal(fillCoversEdge(g, 2, 2, 'E'), true);
+});
+
+test('bank fills refuse ramping apron legs and unlifted decks', () => {
+  // (1,1) is a W apron (lone outer step, land west, deck east): the
+  // grass notch under it at (1,2) must stay square — a sloped leg
+  // would tear against the fill triangle.
+  const ramp = samplerOf([
+    'GGG~GGG',
+    'GBBBBBG', // x1-5; W/E aprons at the row ends
+    'GGBBBGG', // x2-4
+    'GGG~GGG',
+  ]);
+  assert.equal(deckFillAt(ramp, 1, 2), null, 'an apron leg keeps the corner square');
+  // Deck tiles far from any water are not lifted — no bank fill may
+  // lean on them.
+  const dry = samplerOf([
+    'GGGG',
+    'GBBB',
+    'GGBB',
+    'GGBB',
+  ]);
+  assert.equal(deckFillAt(dry, 1, 2), null, 'no water within reach: nothing is lifted');
 });

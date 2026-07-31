@@ -687,9 +687,11 @@ function drawDocks(
       const vertRun = deckN || deckS || (!deckE && !deckW);
       paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, 'dock', vertRun);
 
-      // Perimeter stroke, exposed edges only.
-      ctx.strokeStyle = 'rgba(42, 28, 14, 0.85)';
-      ctx.lineWidth = Math.max(1.5, px * 0.045);
+      // Silhouette ring, exposed edges only (the outline-shader law:
+      // the same struct ink walls and props wear, baked once). The
+      // south face closes at its FOOT too, and the fascia's ends cap
+      // wherever the neighbor doesn't hang a matching face.
+      beginDeckOutline(ctx, px);
       ctx.beginPath();
       if (!hasN) {
         ctx.moveTo(gx, dy0);
@@ -698,6 +700,16 @@ function drawDocks(
       if (!hasS) {
         ctx.moveTo(gx, dy0 + px);
         ctx.lineTo(gx + px, dy0 + px);
+        ctx.moveTo(gx, gy + px);
+        ctx.lineTo(gx + px, gy + px);
+        if (!southExposed(ground, tx - 1, ty) && deckFillAt(ground, tx - 1, ty)?.legs !== 'NE') {
+          ctx.moveTo(gx, dy0 + px);
+          ctx.lineTo(gx, gy + px);
+        }
+        if (!southExposed(ground, tx + 1, ty) && deckFillAt(ground, tx + 1, ty)?.legs !== 'NW') {
+          ctx.moveTo(gx + px, dy0 + px);
+          ctx.lineTo(gx + px, gy + px);
+        }
       }
       if (!hasW) {
         ctx.moveTo(gx, dy0);
@@ -710,6 +722,17 @@ function drawDocks(
       ctx.stroke();
     }
   }
+}
+
+/** Does the deck tile at (x,y) hang an exposed south face? Feeds the
+ *  fascia end-cap law: a rim's end only caps where no neighbor face
+ *  (straight or 45° fill fascia) carries the line onward. */
+function southExposed(ground: GroundSampler, x: number, y: number): boolean {
+  return (
+    isDeckTile(ground, x, y) &&
+    !isDeckGround(ground(x, y + 1)) &&
+    !fillCoversEdge(ground, x, y + 1, 'N')
+  );
 }
 
 /** Bridge carpentry tones — rim joists, piles, sills. The crossing is
@@ -730,6 +753,20 @@ const BRIDGE_TIMBER = {
 /** Board tones for bridge decks — a touch greyer than dock lumber:
  *  a public crossing weathered by every boot in town. */
 const BRIDGE_TONES = ['#997a50', '#8e7049', '#a28356', '#856a44'];
+
+/** The world's outline ink — MUST equal Renderer.STRUCT_OUTLINE. The
+ *  decks wear the same bold dark edge as walls, props and entities
+ *  (the outline "shader"), stroked at BAKE time on exposed silhouette
+ *  edges only, so the ring costs nothing per frame. */
+const STRUCT_INK = '#241a2e';
+
+/** Arm the bake context for a deck silhouette stroke. */
+function beginDeckOutline(ctx: CanvasRenderingContext2D, px: number): void {
+  ctx.strokeStyle = STRUCT_INK;
+  ctx.lineWidth = Math.max(1.5, px * 0.055);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+}
 
 /**
  * THE FLOOR LAW (bridge rework round 5). Deck boards lie in HORIZONTAL
@@ -1006,6 +1043,23 @@ function drawBridges(
           ctx.fillStyle = 'rgba(30, 22, 12, 0.2)';
           ctx.fillRect(gx, gy + px, px, px * 0.07);
         }
+        // Silhouette foot: the rim closes at its bottom edge, capped
+        // at either end unless a neighbor face (straight rim or a 45°
+        // fill fascia) carries the line onward — no more floating rim
+        // ends at the bank junctions.
+        beginDeckOutline(ctx, px);
+        ctx.beginPath();
+        ctx.moveTo(gx, gy + px);
+        ctx.lineTo(gx + px, gy + px);
+        if (!southExposed(ground, tx - 1, ty) && deckFillAt(ground, tx - 1, ty)?.legs !== 'NE') {
+          ctx.moveTo(gx, gy + px - liftB);
+          ctx.lineTo(gx, gy + px);
+        }
+        if (!southExposed(ground, tx + 1, ty) && deckFillAt(ground, tx + 1, ty)?.legs !== 'NW') {
+          ctx.moveTo(gx + px, gy + px - liftB);
+          ctx.lineTo(gx + px, gy + px);
+        }
+        ctx.stroke();
       }
 
       // THE RAMP TRANSFORM: aprons draw the same flat deck kit and
@@ -1093,12 +1147,11 @@ function drawBridges(
       if (thW) ctx.fillRect(gx + th, dy0, joint, px);
       if (thE) ctx.fillRect(gx + px - th - joint, dy0, joint, px);
 
-      // Perimeter stroke, exposed edges only (architecture outline
-      // law) — but NEVER across a ramp mouth: the road runs straight
-      // onto the boards, and a dark line there would cut the seam
-      // the whole apron exists to erase.
-      ctx.strokeStyle = 'rgba(42, 28, 14, 0.85)';
-      ctx.lineWidth = Math.max(1.5, px * 0.045);
+      // Perimeter ring, exposed edges only (the outline-shader law —
+      // struct ink, baked once) — but NEVER across a ramp mouth: the
+      // road runs straight onto the boards, and a dark line there
+      // would cut the seam the whole apron exists to erase.
+      beginDeckOutline(ctx, px);
       ctx.beginPath();
       if (!hasN && apron !== 'N') {
         ctx.moveTo(gx, dy0);
@@ -1170,7 +1223,7 @@ function drawDeckFill(
   axisMemo?: Map<number, boolean>,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
-  const { legs, family } = fill;
+  const { legs, family, bank } = fill;
   const bridge = family === 'bridge';
   const southFacing = legs[0] === 'N'; // hypotenuse faces the camera
   // The hypotenuse runs corner to corner: NE/SW-leg fills span the
@@ -1204,9 +1257,10 @@ function drawDeckFill(
   const ux = (legs === 'NE' || legs === 'SE' ? 1 : -1) * q;
   const uy = (legs === 'SE' || legs === 'SW' ? 1 : -1) * q;
 
-  // Standing shadow on the water below a camera-facing hyp: the same
-  // two stepped AO bands as the straight south edges, sheared along
-  // the diagonal.
+  // Below a camera-facing hyp: over water, the same two stepped AO
+  // bands as the straight south edges plus a driven pile; on a BANK
+  // fill only the thin contact shade — the wedge presses into land,
+  // nothing stands in water.
   if (southFacing) {
     const band = (y0: number, y1: number, style: string): void => {
       ctx.fillStyle = style;
@@ -1218,27 +1272,31 @@ function drawDeckFill(
       ctx.closePath();
       ctx.fill();
     };
-    band(0, px * 0.2, 'rgba(20, 34, 62, 0.26)');
-    band(px * 0.2, px * 0.38, 'rgba(20, 34, 62, 0.12)');
+    if (bank) {
+      band(0, px * 0.07, 'rgba(30, 22, 12, 0.2)');
+    } else {
+      band(0, px * 0.2, 'rgba(20, 34, 62, 0.26)');
+      band(px * 0.2, px * 0.38, 'rgba(20, 34, 62, 0.12)');
 
-    // One leg at the hyp midpoint: a driven timber pile for either
-    // family — the diagonal stands on the water like every straight
-    // bay does.
-    const mx = (ax0 + bx0) / 2;
-    const myG = (ayG + byG) / 2;
-    const pw = bridge ? px * 0.13 : px * 0.11;
-    const pxl = mx - pw / 2;
-    const top = myG - liftB * (bridge ? 0.3 : 0.25);
-    const bot = myG + px * (bridge ? 0.16 : 0.14);
-    ctx.fillStyle = bridge ? BRIDGE_TIMBER.pile : '#4e3a22';
-    ctx.fillRect(pxl, top, pw, bot - top);
-    ctx.fillStyle = bridge ? BRIDGE_TIMBER.pileLit : '#77593a'; // sun-law lit west edge
-    ctx.fillRect(pxl, top, Math.max(1, pw * (bridge ? 0.32 : 0.3)), bot - top);
-    ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
-    ctx.lineWidth = Math.max(1.2, px * 0.03);
-    ctx.beginPath();
-    ctx.ellipse(mx, bot, pw * 0.8, pw * 0.8 * FLAT, 0, 0, Math.PI * 2);
-    ctx.stroke();
+      // One leg at the hyp midpoint: a driven timber pile for either
+      // family — the diagonal stands on the water like every straight
+      // bay does.
+      const mx = (ax0 + bx0) / 2;
+      const myG = (ayG + byG) / 2;
+      const pw = bridge ? px * 0.13 : px * 0.11;
+      const pxl = mx - pw / 2;
+      const top = myG - liftB * (bridge ? 0.3 : 0.25);
+      const bot = myG + px * (bridge ? 0.16 : 0.14);
+      ctx.fillStyle = bridge ? BRIDGE_TIMBER.pile : '#4e3a22';
+      ctx.fillRect(pxl, top, pw, bot - top);
+      ctx.fillStyle = bridge ? BRIDGE_TIMBER.pileLit : '#77593a'; // sun-law lit west edge
+      ctx.fillRect(pxl, top, Math.max(1, pw * (bridge ? 0.32 : 0.3)), bot - top);
+      ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
+      ctx.lineWidth = Math.max(1.2, px * 0.03);
+      ctx.beginPath();
+      ctx.ellipse(mx, bot, pw * 0.8, pw * 0.8 * FLAT, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     // The face under the hyp: deck thickness made visible, sheared
     // along the diagonal — the family's timber rim, wearing the same
@@ -1308,13 +1366,20 @@ function drawDeckFill(
   }
   ctx.restore();
 
-  // Perimeter stroke on the exposed hyp (architecture outline law) —
-  // unclipped, like every straight deck edge.
-  ctx.strokeStyle = 'rgba(42, 28, 14, 0.85)';
-  ctx.lineWidth = Math.max(1.5, px * 0.045);
+  // Silhouette ring on the exposed hyp (the outline-shader law) —
+  // unclipped, like every straight deck edge. A camera-facing fascia
+  // closes at its foot along the ground diagonal and caps its high
+  // end, where the face hangs past the last straight rim.
+  beginDeckOutline(ctx, px);
   ctx.beginPath();
   ctx.moveTo(ax0, ayL);
   ctx.lineTo(bx0, byL);
+  if (southFacing) {
+    ctx.moveTo(ax0, ayG);
+    ctx.lineTo(bx0, byG);
+    ctx.moveTo(ax0, ayL);
+    ctx.lineTo(ax0, ayG);
+  }
   ctx.stroke();
 }
 
@@ -3183,6 +3248,10 @@ export interface DeckFill {
   legs: DeckFillLegs;
   /** Which painter owns the fill — bridge wins a mixed junction. */
   family: 'bridge' | 'dock';
+  /** True when the notch is walkable BANK, not water: the crossing's
+   *  corner chamfers onto the land — same triangle, land dressing
+   *  (contact shade instead of water AO, no pile, no rail). */
+  bank: boolean;
 }
 
 /**
@@ -3200,7 +3269,11 @@ export interface DeckFill {
  */
 export function deckFillAt(ground: GroundSampler, tx: number, ty: number): DeckFill | null {
   const t = ground(tx, ty);
-  if (!isWaterTile(t) || t === Tile.FishingSpot) return null;
+  if (t === undefined || t === Tile.FishingSpot || isDeckGround(t)) return null;
+  const water = isWaterTile(t);
+  // A land notch may chamfer too (THE BANK CHAMFER below) — but only
+  // over bare walkable ground; anything solid or built stays square.
+  if (!water && tileDef(t).solid) return null;
   const nT = ground(tx, ty - 1);
   const sT = ground(tx, ty + 1);
   const eT = ground(tx + 1, ty);
@@ -3217,9 +3290,29 @@ export function deckFillAt(ground: GroundSampler, tx: number, ty: number): DeckF
     : s && w ? 'SW'
     : null;
   if (legs === null) return null;
+  if (!water) {
+    // THE BANK CHAMFER (round 6, user showed square-cornered land
+    // transitions): a stair-step corner that lands on the BANK grows
+    // the same 45° triangle, so the crossing chamfers onto the sand
+    // exactly as it chamfers over the water. Both legs must be truly
+    // LIFTED decks, and neither may be a RAMPING apron — a sloped leg
+    // would tear against the fill's full-height triangle, so those
+    // entrances keep their square sill.
+    const dn = legs[0] === 'N' ? -1 : 1;
+    const de = legs[1] === 'E' ? 1 : -1;
+    if (!isDeckTile(ground, tx, ty + dn) || !isDeckTile(ground, tx + de, ty)) return null;
+    const ramps = (x: number, y: number): boolean =>
+      ground(x, y) === Tile.Bridge &&
+      bridgeApronAt(ground, x, y, deckWalkIsVertical(ground, x, y)) !== 'none';
+    if (ramps(tx, ty + dn) || ramps(tx + de, ty)) return null;
+  }
   const a = legs[0] === 'N' ? nT : sT;
   const b = legs[1] === 'E' ? eT : wT;
-  return { legs, family: a === Tile.Bridge || b === Tile.Bridge ? 'bridge' : 'dock' };
+  return {
+    legs,
+    family: a === Tile.Bridge || b === Tile.Bridge ? 'bridge' : 'dock',
+    bank: !water,
+  };
 }
 
 /** Does a notch fill at (x,y) cover that tile's given edge? The two
@@ -3755,7 +3848,7 @@ export function waterRegionPath(
 }
 
 /** Water tiles that share a shoreline (no foam between each other). */
-function isWaterTile(t: number | undefined): boolean {
+export function isWaterTile(t: number | undefined): boolean {
   return (
     t === Tile.Water ||
     t === Tile.WaterDeep ||
