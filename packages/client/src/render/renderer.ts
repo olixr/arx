@@ -137,6 +137,7 @@ import {
   DOCK_LIFT,
   drawLiveGround,
   type BridgeApron,
+  isWaterTile,
   startChunkBake,
   stepChunkBake,
   waterRegionPath,
@@ -8627,11 +8628,16 @@ export class Renderer {
       const edge = dy < 0 ? 'S' : dy > 0 ? 'N' : dx < 0 ? 'E' : 'W';
       return f.legs[0] === edge || f.legs[1] === edge;
     };
+    // A parapet exists to keep walkers out of the WATER: edges facing
+    // the bank carry no rail (land-facing step edges were stacking
+    // little fence boxes down every staircase junction). Ramp aprons
+    // keep their rails over land — the sloping entrance's furniture.
     const railEdge = (x: number, y: number, dx: number, dy: number): boolean =>
       g(x, y) === Tile.Bridge &&
       this.isDockAt(game, x, y) &&
       !isDeck(g(x + dx, y + dy)) &&
       !edgeFilled(x, y, dx, dy) &&
+      (isWaterTile(g(x + dx, y + dy)) || this.bridgeApron(game, x, y) !== 'none') &&
       (dy !== 0 ? !this.bridgeWalkVert(game, x, y) : this.bridgeWalkVert(game, x, y));
     const elevated = game.world.elevAt(tx, ty) !== 0;
     const elevLift = game.world.elevAt(tx, ty) * ELEV_H;
@@ -8659,13 +8665,18 @@ export class Renderer {
       if (dy !== 0) {
         const north = dy < 0;
         // A rail continues past its end when the straight run does OR
-        // when a notch fill's hypotenuse picks the line up at exactly
+        // when a WATER fill's hypotenuse picks the line up at exactly
         // that corner — the specific legs whose hyp endpoint lands
-        // there. Continuation only suppresses the end post.
+        // there (a bank fill carries no rail, so the post plants).
+        // Continuation only suppresses the end post.
+        const fW = fill(tx - 1, ty);
+        const fE = fill(tx + 1, ty);
         const contW =
-          railEdge(tx - 1, ty, dx, dy) || fill(tx - 1, ty)?.legs === (north ? 'SE' : 'NE');
+          railEdge(tx - 1, ty, dx, dy) ||
+          (fW !== null && !fW.bank && fW.legs === (north ? 'SE' : 'NE'));
         const contE =
-          railEdge(tx + 1, ty, dx, dy) || fill(tx + 1, ty)?.legs === (north ? 'SW' : 'NW');
+          railEdge(tx + 1, ty, dx, dy) ||
+          (fE !== null && !fE.bank && fE.legs === (north ? 'SW' : 'NW'));
         items.push({
           sortY: north ? ty + 0.04 : ty + 1.02,
           elevated,
@@ -8703,13 +8714,17 @@ export class Renderer {
       } else {
         const west = dx < 0;
         // Same fill-continuation law as the horizontal rails: the
-        // twin verticals run all the way to the corner where a notch
+        // twin verticals run all the way to the corner where a WATER
         // fill's diagonal rail takes over, instead of stopping at the
-        // half-tile end-of-run post.
+        // half-tile end-of-run post (bank fills carry no rail).
+        const fN = fill(tx, ty - 1);
+        const fS = fill(tx, ty + 1);
         const contN =
-          railEdge(tx, ty - 1, dx, dy) || fill(tx, ty - 1)?.legs === (west ? 'SE' : 'SW');
+          railEdge(tx, ty - 1, dx, dy) ||
+          (fN !== null && !fN.bank && fN.legs === (west ? 'SE' : 'SW'));
         const contS =
-          railEdge(tx, ty + 1, dx, dy) || fill(tx, ty + 1)?.legs === (west ? 'NE' : 'NW');
+          railEdge(tx, ty + 1, dx, dy) ||
+          (fS !== null && !fS.bank && fS.legs === (west ? 'NE' : 'NW'));
         items.push({
           sortY: ty + 1,
           elevated,
