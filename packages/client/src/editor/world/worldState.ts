@@ -98,6 +98,8 @@ export class WorldState {
     territory: false,
     /** THE SMALL FINDS pips — the texture layer, Studio-eyes only. */
     finds: false,
+    /** THE FORESTER'S GLASS — the regrowth wave, age by age. */
+    growth: false,
   };
 
   /**
@@ -110,6 +112,15 @@ export class WorldState {
   actorSites: Array<{ actor: string; x: number; y: number }> = [];
   /** THE ONE ATLAS (Phase 6): the countries the territory wash paints. */
   families: string[] = [];
+  /** The wild-harvest ledger (second-growth Phase 6). */
+  growth: Array<{
+    tx: number;
+    ty: number;
+    state: number;
+    dialect: string;
+    sown: boolean;
+    due: number | null;
+  }> = [];
 
   private readonly undoStack: WorldOp[] = [];
   private readonly redoStack: WorldOp[] = [];
@@ -139,6 +150,7 @@ export class WorldState {
     this.claimRings = snap.claimRings;
     this.poiDefs = snap.poiDefs;
     this.families = snap.families ?? [];
+    this.growth = snap.growth ?? [];
     this.warnings = snap.warnings;
     this.edited = snap.geographyEdited;
     this.savedJson = JSON.stringify(snap.geography);

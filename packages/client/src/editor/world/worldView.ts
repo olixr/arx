@@ -573,6 +573,7 @@ export class WorldView {
     }
 
     this.drawClaimRings(ctx);
+    this.drawGrowth(ctx);
     this.drawFamilyLines(ctx);
     this.drawCells(ctx, t0.x, t0.y, t1.x, t1.y);
     this.drawPlanned(ctx);
@@ -648,6 +649,56 @@ export class WorldView {
             this.label(ctx, x, y - 7, `⚖ ${f.fineActor}`, `rgb(${ink})`);
           }
         }
+      }
+    }
+  }
+
+  /**
+   * THE FORESTER'S GLASS (second-growth Phase 6): every wild harvest
+   * still healing, drawn at its own tile, aged by ink — the regrowth
+   * wave visible on the map. Scar = the cut's dark mark, bare = a
+   * hollow ring (dormant, waiting on the world), a seeded tile fills
+   * amber, the sapling stands green, and a drifted crown reads violet
+   * (the ledger IS the tree). Sown ground wears a ring — the
+   * gardener's mark.
+   */
+  private drawGrowth(ctx: CanvasRenderingContext2D): void {
+    if (!this.ws.show.growth) return;
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
+    for (const g of this.ws.growth) {
+      const x = this.sx(g.tx + 0.5);
+      const y = this.sy(g.ty + 0.5);
+      if (x < -6 || y < -6 || x > w + 6 || y > h + 6) continue;
+      const seeded = g.state === 1 && g.due !== null;
+      const color =
+        g.state === 0
+          ? '#8a6a45'
+          : g.state === 2
+            ? '#6da24f'
+            : g.state === 3
+              ? g.dialect === 'sealed'
+                ? '#8d8798'
+                : '#a98fd6'
+              : seeded
+                ? '#d9a84c'
+                : '#bdb49f';
+      ctx.beginPath();
+      ctx.arc(x, y, 2.4, 0, Math.PI * 2);
+      if (g.state === 1 && !seeded) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+      if (g.sown) {
+        ctx.beginPath();
+        ctx.arc(x, y, 4.2, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(217, 168, 76, 0.8)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
     }
   }

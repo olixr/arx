@@ -1,6 +1,6 @@
 # THE SECOND GROWTH — resources that deplete, and a land that heals slowly
 
-*Proposed 2026-07-31. Status: awaiting green-light.*
+*Proposed 2026-07-31. GREEN-LIT the same day. ALL SIX PHASES SHIPPED 2026-07-31 — THE EPIC IS COMPLETE: Ph1 LEDGER OF THE LAND b8e7091, Ph2 LIVING WOOD 720fc6b, Ph3 PATIENT STONE/QUICK MEADOW 4e2d880, Ph4 SOWN LINE fbed9b5, Ph5 ROSTER SPEAKS 7fbc23e, Ph6 FORESTER'S GLASS (this commit). Plus the polish pass d9910ac: bespoke sapling models + the face contest completed for elevated objects.*
 
 The fourth act of the procedural world epic. The Living Frontier taught camps to rise and
 fall. The Lived-In Land filled the walk between them. This epic makes the land itself
@@ -297,3 +297,34 @@ the vein moves — the pay-per-swing is identical everywhere.
    germination — the Building epic's forage-to-buildable precedent.
 3. **POI felled clearings.** Camps already stamp stumps into their zones; those stay
    kept (zone-owned) and are re-dealt on epoch turns. No change proposed.
+
+## 9. The epic ledger (as shipped, 2026-07-31)
+
+Every phase landed the day the epic was green-lit, live-verified end to
+end on the running world:
+
+1. **THE LEDGER OF THE LAND** (b8e7091) — kept-vs-wild domains,
+   world_growth v20, the pure-projection ages via the ensure overlay
+   (restart-proven on screen), the growth beat, the 'growth' dial doc.
+2. **THE LIVING WOOD** (720fc6b) — time alone never stands a tree:
+   dormant bare ground, germination against standing crowns, the
+   edge-inward wave as one pure number, species drift with the
+   convergence law (a 4-crown fell crowned and self-deleted live; the
+   0-crown pioneer control still waits, by design).
+3. **THE PATIENT STONE AND THE QUICK MEADOW** (4e2d880) — wandering
+   veins and meadow patches with the homing bias; conservation by
+   construction (the full circle emptied the ledger on screen). Zero
+   yield changes — the balance ledger is §7a.
+4. **THE SOWN LINE** (fbed9b5) — spilled seeds, the plant flow through
+   the seed picker, owner-stamped orchards, THE SEED TAKES THE PLOT.
+5. **THE ROSTER SPEAKS** (7fbc23e) — every node def is Studio content
+   with the renewal class as data; the Resources bench with The Land's
+   Clock; the Map Studio growth mark.
+6. **THE FORESTER'S GLASS** — the growth ledger rides /dev/world; the
+   World Studio Growth lens draws the wave age by age (scar, dormant
+   hollow, seeded amber, sapling green, drifted violet, sealed gray,
+   the gardener's ring on sown ground); /growth reports sown counts.
+
+The first wild scar in Arx — the oak at 492,299 — is still healing on
+the authored clock as this ledger is written, and a planted oak rests
+at 513,280 carrying its gardener's name. The world remembers.

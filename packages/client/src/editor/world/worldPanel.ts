@@ -788,5 +788,6 @@ function buildLenses(root: HTMLElement, deps: WorldPanelDeps): void {
   lens('standing', 'Standing');
   lens('territory', 'Territory');
   lens('finds', 'Finds');
+  lens('growth', 'Growth');
   root.appendChild(box);
 }

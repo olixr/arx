@@ -6097,6 +6097,16 @@ export class GameServer {
     credits: number;
     calm: Array<{ cellX: number; cellY: number; calmUntil: number }>;
     claimRings: Array<{ x: number; y: number; r: number }>;
+    /** THE FORESTER'S GLASS (second-growth Phase 6): every wild
+     *  harvest still healing — the regrowth wave, one read. */
+    growth: Array<{
+      tx: number;
+      ty: number;
+      state: number;
+      dialect: string;
+      sown: boolean;
+      due: number | null;
+    }>;
   } {
     const authored = this.authoredCells();
     const cells = [...this.poiLedger.entries()].map(([key, row]) => ({
@@ -6137,6 +6147,14 @@ export class GameServer {
       credits: this.frontierCredits,
       calm,
       claimRings: this.claimRings().map((r) => ({ ...r })),
+      growth: [...this.world.growthLedger.values()].map((r) => ({
+        tx: r.tx,
+        ty: r.ty,
+        state: r.state,
+        dialect: growthDialectOf(r.tile) ?? 'sealed',
+        sown: r.owner !== null,
+        due: r.due,
+      })),
     };
   }
 
@@ -16956,8 +16974,10 @@ export class GameServer {
           `${nearest.tx},${nearest.ty} (${Math.round(nearestD)} tiles) ` +
           `${GROWTH_STATE_NAMES[proj.state] ?? proj.state}, ${eta}`;
       }
+      const sown = [...this.world.growthLedger.values()].filter((r) => r.owner !== null).length;
       say(
         `growth: ${domain} ground underfoot | ledger ${this.world.growthLedger.size}` +
+          (sown > 0 ? ` (${sown} sown)` : '') +
           (parts.length > 0 ? ` (${parts})` : '') +
           ` | nearest: ${near}`,
       );
