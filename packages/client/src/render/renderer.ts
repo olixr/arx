@@ -17613,16 +17613,8 @@ export class Renderer {
             // Patchwork blocks under seam lines — a quilt sewn from
             // scraps, softened by a white fold-back of the sheet.
             // A bedpost capped with a turned finial.
-            const finialPost = (fx2: number, fy2: number, ph2: number) => {
-              ctx.fillStyle = postC;
-              ctx.fillRect(fx2 - s * 0.045, fy2 - ph2, s * 0.09, ph2);
-              ctx.fillStyle = shade(postC, 10);
-              ctx.fillRect(fx2 - s * 0.045, fy2 - ph2, s * 0.03, ph2);
-              ctx.fillStyle = shade(postC, 18);
-              ctx.beginPath();
-              facetCircle(ctx, fx2, fy2 - ph2 - s * 0.035, s * 0.05, 6, 0.3);
-              ctx.fill();
-            };
+            const finialPost = (fx2: number, fy2: number, ph2: number) =>
+              this.bedFinialPost(fx2, fy2, ph2);
             if (head === 'n') {
               // FACING THE CAMERA. Everything soft rides the raised
               // deck [dTop..dBot]; everything structural stands on the
@@ -17727,15 +17719,10 @@ export class Renderer {
                 ctx.lineTo(x0 - s * 0.005, dBot + s * 0.16);
                 ctx.closePath();
                 ctx.fill();
-                // Footboard: a low rail shin-high over the drape,
-                // between finial posts standing on the near floor —
-                // the piece of the bed that clears a sunken wall.
-                ctx.fillStyle = frameC;
-                ctx.fillRect(x0 - s * 0.01, dBot - s * 0.13, x1 - x0 + s * 0.02, s * 0.065);
-                ctx.fillStyle = shade(frameC, 12);
-                ctx.fillRect(x0 - s * 0.01, dBot - s * 0.13, x1 - x0 + s * 0.02, s * 0.024);
-                finialPost(x0 - s * 0.008, yFn, bedH + s * 0.22);
-                finialPost(x1 + s * 0.008, yFn, bedH + s * 0.22);
+                // Footboard: its own LAYER (shared painter) — every
+                // cloth pass repaints it on top, so the posts always
+                // stand in front of the blanket.
+                this.bedFootboardVert(x0, x1, dBot, yFn);
               }
             } else {
               // SIDE-ON: head against the east or west wall, the whole
@@ -22233,6 +22220,8 @@ export class Renderer {
         }
         ctx.stroke();
       }
+      // The footboard layer stands back in front of the flying cloth.
+      this.bedFootboardVert(xL, xR, dBot, dBot + 0.3 * s);
     } else {
       const sgn = flip.head === 'e' ? 1 : -1;
       const dTop = p.y - 0.5 * syT - 0.3 * s;
@@ -22278,6 +22267,39 @@ export class Renderer {
         ctx.stroke();
       }
     }
+  }
+
+  /** A bedpost capped with a turned finial — the shared post brush. */
+  private bedFinialPost(fx2: number, fy2: number, ph2: number): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const postC = '#5e3f1e';
+    ctx.fillStyle = postC;
+    ctx.fillRect(fx2 - s * 0.045, fy2 - ph2, s * 0.09, ph2);
+    ctx.fillStyle = shade(postC, 10);
+    ctx.fillRect(fx2 - s * 0.045, fy2 - ph2, s * 0.03, ph2);
+    ctx.fillStyle = shade(postC, 18);
+    ctx.beginPath();
+    facetCircle(ctx, fx2, fy2 - ph2 - s * 0.035, s * 0.05, 6, 0.3);
+    ctx.fill();
+  }
+
+  /**
+   * The vertical bed's footboard — rail and finial posts as their OWN
+   * layer: the bed paints it over the drape, and the sleeper's tuck
+   * and the thrown-cover flip repaint it over their cloth, so the
+   * posts always stand in FRONT of the blanket (user z-index law).
+   */
+  private bedFootboardVert(x0: number, x1: number, dBot: number, yFn: number): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const frameC = '#6f4d26';
+    ctx.fillStyle = frameC;
+    ctx.fillRect(x0 - s * 0.01, dBot - s * 0.13, x1 - x0 + s * 0.02, s * 0.065);
+    ctx.fillStyle = shade(frameC, 12);
+    ctx.fillRect(x0 - s * 0.01, dBot - s * 0.13, x1 - x0 + s * 0.02, s * 0.024);
+    this.bedFinialPost(x0 - s * 0.008, yFn, s * 0.52);
+    this.bedFinialPost(x1 + s * 0.008, yFn, s * 0.52);
   }
 
   /**
@@ -23085,6 +23107,10 @@ export class Renderer {
               ctx.save();
               ctx.globalAlpha = tuckA;
               this.bedCoversVert(xL, xR, yQ, dBot, qMain, qDark);
+              // The footboard is its own layer: back in FRONT of the
+              // covers (identical pixels to the bed's own, so the
+              // partial-alpha blend lands on itself).
+              this.bedFootboardVert(xL, xR, dBot, dBot + 0.3 * s);
               ctx.restore();
             };
           } else {
