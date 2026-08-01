@@ -75,6 +75,16 @@ export const MOUNTS: readonly MountDef[] = [
     coat: 'shag',
     flavor: 'A shaggy mountain pony out of the Hoargate pass, sure footed where coursers balk.',
   },
+  // The prestige tier: found, never bought (chest_boss, flat rate per
+  // the flood-law). The ladder's top stays under the cap with room.
+  {
+    id: 'sabercat_night',
+    name: 'Night Sabercat',
+    speedMult: 1.75,
+    body: 'sabercat',
+    coat: 'night',
+    flavor: 'A deep country cat broken to harness by nobody living, and it remembers that.',
+  },
 ];
 
 const BY_ID = new Map(MOUNTS.map((m) => [m.id, m]));

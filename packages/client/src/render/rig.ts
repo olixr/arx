@@ -10854,8 +10854,33 @@ export const COURSER_SADDLE = {
 
 /** One rig for every coat — only the sock color varies. */
 export function mountSpec(mountId: string): BeastSpec {
-  const look = COURSER_LOOKS[mountId] ?? COURSER_LOOKS.courser_bay!;
   let spec = MOUNT_SPEC_CACHE.get(mountId);
+  if (!spec && mountId.startsWith('sabercat')) {
+    // The cat: long and low on springy paws, quick through the turn —
+    // the wolf family's athletic grammar at riding scale.
+    const catLook = SABERCAT_LOOKS[mountId] ?? SABERCAT_LOOKS.sabercat_night!;
+    spec = {
+      rig: {
+        legs: quadLegs(0.34, 0.14),
+        legLen: 0.46,
+        rise: 0.4,
+        liftAmp: 0.09,
+        runSpeed: 7.5,
+        turnRate: 7.5,
+      },
+      bodyLen: 0.62,
+      bodyRise: 0.46,
+      kneeFwd: [1, 1, -1, -1],
+      hipFwd: 0.9,
+      hipSide: 0.52,
+      legW: 0.085,
+      foot: 'paw',
+      legColor: shade(catLook.coat, -14),
+    };
+    MOUNT_SPEC_CACHE.set(mountId, spec);
+    return spec;
+  }
+  const look = COURSER_LOOKS[mountId] ?? COURSER_LOOKS.courser_bay!;
   if (!spec) {
     // The garron is the courser's rig a hand shorter and a hand
     // stockier — same gait laws, lower center, thicker bone.
@@ -10891,6 +10916,7 @@ export function mountSpec(mountId: string): BeastSpec {
  * Same shape as COURSER_SADDLE; the renderer picks by mount id.
  */
 export function saddleFor(mountId: string): typeof COURSER_SADDLE {
+  if (mountId.startsWith('sabercat')) return SABER_SADDLE;
   return mountId.startsWith('garron') ? GARRON_SADDLE : COURSER_SADDLE;
 }
 const GARRON_SADDLE = {
@@ -10901,6 +10927,18 @@ const GARRON_SADDLE = {
   pommelFwd: 0.14,
   pommelH: 0.82,
   radius: 0.4,
+};
+// The cat is ridden LOW and close — the night-saber crouch: seat on
+// the harness pad behind the shoulder rise, feet tucked high, grip on
+// the strap-ring horn.
+const SABER_SADDLE = {
+  seatH: 0.64,
+  stirrupH: 0.26,
+  stirrupSide: 0.19,
+  stirrupFwd: 0.02,
+  pommelFwd: 0.15,
+  pommelH: 0.76,
+  radius: 0.42,
 };
 const MOUNT_SPEC_CACHE = new Map<string, BeastSpec>();
 
@@ -11120,6 +11158,295 @@ export function drawCourserHead(
       const ey = cy + (fy * w * 0.06 + py * es * w * 0.32) * ys - h * 0.1;
       ctx.fillStyle = OUTLINE;
       ctx.fillRect(ex - s * 0.014, ey - s * 0.018, s * 0.028, s * 0.036);
+    }
+  }
+}
+
+/**
+ * The night sabercat — the prestige saddle beast (THE ROAD GROWS
+ * SHORT Phase 5). A cat is not a horse and is not painted like one:
+ * low-slung length, shoulder blades riding ABOVE the spine line, a
+ * deep waist tuck, flank stripes, a round skull with a short broad
+ * muzzle, and the two ivory sabers that name it. It wears a HARNESS,
+ * not a saddle: strap ring at the shoulders, low seat pad, breast
+ * band. Ridden low — the seat sits where the cat's back actually is.
+ */
+export interface SabercatLook {
+  coat: string;
+  /** Flank banding — the saber stripe read. */
+  stripe: string;
+  under: string;
+  earIn: string;
+  eye: string;
+  fang: string;
+  /** Harness leather (the tack constant) and the seat pad's cloth. */
+  leather: string;
+  pad: string;
+  bodyW: number;
+  backH: number;
+  /** The feline shoulder rise — blades above the spine at the walk. */
+  shoulderH: number;
+  chestH: number;
+  tuckH: number;
+  headW: number;
+  headH: number;
+}
+
+export const SABERCAT_LOOKS: Record<string, SabercatLook> = {
+  sabercat_night: {
+    coat: '#4a4f63',
+    stripe: '#343849',
+    under: '#9aa0b5',
+    earIn: '#2c2938',
+    eye: '#c9d97a',
+    fang: '#efe9da',
+    leather: '#4a3423',
+    pad: '#5d3550',
+    bodyW: 0.19,
+    backH: 0.5,
+    shoulderH: 0.11,
+    chestH: 0.24,
+    tuckH: 0.34,
+    headW: 0.3,
+    headH: 0.24,
+  },
+};
+
+export function paintSabercatBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: SabercatLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // Longer than the wolf's wedge, rump fuller — a cat is carried
+  // between its shoulders and its haunches, not on a chest keel.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.78],
+    [hl, hw * 0.78],
+    [hl * 0.55, hw],
+    [-hl * 0.4, hw * 0.96],
+    [-hl, hw * 0.74],
+    [-hl, -hw * 0.74],
+    [-hl * 0.4, -hw * 0.96],
+    [hl * 0.55, -hw],
+  ];
+  const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    // The feline topline: shoulder rise forward, a shallow dip, the
+    // haunch swelling again over the rear legs.
+    (X) =>
+      look.backH +
+      Math.max(0, X / hl - 0.15) * look.shoulderH -
+      0.03 * Math.max(0, 1 - Math.abs(X / hl + 0.1) / 0.5) +
+      0.05 * Math.max(0, -X / hl - 0.45),
+    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.55 - X / hl) / 1.1)),
+    coat,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      const bh = look.backH * tk * s;
+      // Flank stripes: dark bands raking down-back from the spine to
+      // mid-flank, seeded per body — the saber tiger's name written
+      // on it. Long enough to survive daylight at world zoom.
+      if (!f.hurt) {
+        ctx.strokeStyle = shade(look.stripe, -8);
+        ctx.lineCap = 'round';
+        for (let k = 0; k < 5; k++) {
+          const rr = ((((f.seed >>> (k % 11)) * 2654435761 + k * 131) >>> 0) % 1000) / 1000;
+          const X = (-0.68 + 0.34 * k + (rr - 0.5) * 0.12) * hl;
+          const sx0 = gx(X, 0);
+          const sy0 = gyy(X, 0) - bh * (0.94 - 0.05 * (k % 2)) - lift;
+          ctx.lineWidth = Math.max(1.8, s * (0.05 - 0.006 * (k % 2)));
+          ctx.beginPath();
+          ctx.moveTo(sx0, sy0);
+          ctx.quadraticCurveTo(
+            sx0 - f.fx * s * 0.045,
+            sy0 + s * 0.1,
+            sx0 - f.fx * s * 0.09,
+            sy0 + s * (0.2 + 0.03 * rr),
+          );
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
+      // Pale bib at the chest (the wolf's law: only while the chest
+      // can face the camera).
+      if (f.fy > -0.15 && !f.hurt) {
+        ctx.fillStyle = look.under;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(hl * 0.86, 0),
+          gyy(hl * 0.86, 0) - (look.chestH + 0.1) * s,
+          hw * s * 0.78,
+          f.seed ^ 0x33,
+          7,
+          0.85,
+          1.7,
+        );
+        ctx.fill();
+      }
+      // ---- THE HARNESS (SABER_SADDLE ruler): a low seat pad between
+      // the shoulder rise and the haunch, shoulder strap ring forward,
+      // breast band dropping at the chest line. No blanket, no cantle:
+      // a cat is ridden close.
+      const px0 = gx(-0.04 * hl * 2, 0);
+      const py0 = gyy(-0.04 * hl * 2, 0) - bh * 0.98 - lift;
+      const px1 = gx(0.26 * hl, 0);
+      const py1 = gyy(0.26 * hl, 0) - bh * 0.98 - lift;
+      ctx.strokeStyle = f.hurt ? '#ffffff' : look.pad;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(3, s * 0.11);
+      ctx.beginPath();
+      ctx.moveTo(px0, py0);
+      ctx.lineTo(px1, py1);
+      ctx.stroke();
+      // The strap ring at the shoulders and its girth line.
+      const rgx = gx(0.34 * hl, 0);
+      const rgy = gyy(0.34 * hl, 0);
+      ctx.strokeStyle = f.hurt ? '#ffffff' : shade(look.leather, -8);
+      ctx.lineWidth = Math.max(1.8, s * 0.04);
+      ctx.beginPath();
+      ctx.moveTo(rgx, rgy - bh * 1.02 - lift);
+      ctx.lineTo(rgx, rgy - look.chestH * tk * s * 0.5 - lift);
+      ctx.stroke();
+      // The pommel horn on the strap ring — the rider's grip point,
+      // on the same ruler the hands settle to.
+      ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.leather, 10);
+      ctx.beginPath();
+      facetCircle(ctx, px1, py1 - s * 0.035, s * 0.04, 5, f.seed ^ 0x59);
+      ctx.fill();
+      ctx.lineCap = 'butt';
+    },
+  );
+}
+
+/**
+ * The sabercat head: a round skull where the wolf carries a slab, a
+ * short broad muzzle where the wolf runs a spike, blunt round-backed
+ * ears, pale-gold eyes, and the two ivory sabers dropping past the
+ * jaw — visible at every facing the muzzle is, because they ARE the
+ * animal.
+ */
+export function drawSabercatHead(
+  ctx: CanvasRenderingContext2D,
+  look: SabercatLook,
+  o: { x: number; y: number; s: number; fx: number; fy: number; ys: number; hurt?: boolean; dead?: boolean },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+
+  // Blunt round-backed ears, set wide and low.
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.34 + fx * es * w * 0.08;
+    const byr = cy + (py * es * w * 0.34 + fy * es * w * 0.08) * ys - h * 0.34;
+    const tx = bxr + px * es * w * 0.12;
+    const ty = byr - h * 0.5;
+    ctx.fillStyle = C(shade(look.coat, -6));
+    ctx.beginPath();
+    ctx.moveTo(bxr - px * es * w * 0.15, byr + h * 0.04);
+    ctx.quadraticCurveTo(tx - px * es * w * 0.02, ty, tx + px * es * w * 0.1, byr - h * 0.1);
+    ctx.lineTo(bxr + px * es * w * 0.16, byr + h * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    if (fy > 0.05 && !o.hurt && !o.dead) {
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      ctx.moveTo(bxr - px * es * w * 0.04, byr);
+      ctx.lineTo(bxr + (tx - bxr) * 0.55, byr + (ty - byr) * 0.55);
+      ctx.lineTo(bxr + px * es * w * 0.09, byr + h * 0.05);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Round skull: deeper chamfers than any canid — the cat's circle.
+  ctx.fillStyle = C(look.coat);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.34, w * 0.34, w * 0.38, w * 0.38]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.34, w * 0.34, w * 0.38, w * 0.38]);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.14)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.2);
+    ctx.fillStyle = C(look.under);
+    ctx.fillRect(cx - w / 2, cy + h * 0.2, w, h * 0.3);
+    ctx.restore();
+  }
+
+  // Short broad muzzle + THE SABERS. The muzzle barely leaves the
+  // skull (the feline read); the fangs drop from its leading corners,
+  // splayed a whisker outward, ivory over everything.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.2;
+    const by0 = cy + fy * w * 0.2 * ys + h * 0.12;
+    const sl = w * (0.14 + 0.12 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.06;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.2 * (1 - profileK * 0.15);
+    const ht = hb * 0.85;
+    ctx.fillStyle = C(shade(look.coat, 6));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    // Dark nose leather at the muzzle tip.
+    ctx.fillStyle = C(look.earIn);
+    ctx.beginPath();
+    facetCircle(ctx, tx, ty - h * 0.04, w * 0.06, 5, fx);
+    ctx.fill();
+    // The sabers: two tapered ivory drops off the muzzle corners.
+    if (!o.hurt) {
+      ctx.fillStyle = look.fang;
+      for (const es of [-1, 1]) {
+        // At full profile the far saber hides behind the near one.
+        if (Math.abs(fx) > 0.75 && es * py < 0) continue;
+        const fx0 = tx + nx * es * ht * 0.72;
+        const fy0 = ty + ny * es * ht * 0.72 + h * 0.06;
+        const drop = h * 0.52;
+        ctx.beginPath();
+        ctx.moveTo(fx0 - w * 0.035, fy0);
+        ctx.lineTo(fx0 + w * 0.035, fy0);
+        ctx.lineTo(fx0 + px * es * w * 0.03 + fx * w * 0.02, fy0 + drop);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
+  // The eyes: pale gold-green, set wide, unblinking.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.08 + px * es * w * 0.3;
+      const ey = cy + (fy * w * 0.08 + py * es * w * 0.3) * ys - h * 0.12;
+      ctx.fillStyle = o.hurt ? '#ffffff' : look.eye;
+      ctx.fillRect(ex - s * 0.016, ey - s * 0.014, s * 0.032, s * 0.028);
+      if (!o.hurt) {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(ex - s * 0.005, ey - s * 0.012, s * 0.01, s * 0.024);
+      }
     }
   }
 }
@@ -11354,6 +11681,9 @@ export function drawBeast(
     opts.defId.startsWith('courser') || opts.defId.startsWith('garron')
       ? (COURSER_LOOKS[opts.defId] ?? COURSER_LOOKS.courser_bay)
       : undefined;
+  const sabercatL = opts.defId.startsWith('sabercat')
+    ? (SABERCAT_LOOKS[opts.defId] ?? SABERCAT_LOOKS.sabercat_night)
+    : undefined;
   const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
   const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
   const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;
@@ -11416,6 +11746,10 @@ export function drawBeast(
     }
     if (courserL) {
       paintCourserBody(ctx, spec, courserL, blockFrame());
+      return;
+    }
+    if (sabercatL) {
+      paintSabercatBody(ctx, spec, sabercatL, blockFrame());
       return;
     }
     if (bearL) {
@@ -11644,6 +11978,32 @@ export function drawBeast(
         ctx.stroke();
       }
       drawCourserHead(ctx, courserL, { x: chx, y: chy, s, fx, fy, ys, hurt: opts.hurt });
+      return;
+    }
+    if (sabercatL) {
+      // The cat carries its head LOW and forward on a thick ruff — no
+      // horse column: a broad short wedge off the shoulder rise.
+      const hl = spec.bodyLen * s;
+      const hw2 = sabercatL.headW * s;
+      const nod = opts.pose.bob * 0.35 * s;
+      const chx = bx + fx * (hl * 0.92 + hw2 * 0.3);
+      const chy =
+        by +
+        fy * (hl * 0.92 + hw2 * 0.3) * ys -
+        (sabercatL.backH + sabercatL.shoulderH + 0.2) * s -
+        nod;
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(sabercatL.coat, -4);
+      ctx.beginPath();
+      const nb = (sabercatL.backH + sabercatL.shoulderH * 0.8) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * sabercatL.bodyW * 0.8 * s;
+      const nwy = py * sabercatL.bodyW * 0.8 * s;
+      ctx.moveTo(bx + fx * hl * 0.62 + nwx, by + (fy * hl * 0.62 + nwy) * ys - nb);
+      ctx.lineTo(bx + fx * hl * 0.62 - nwx, by + (fy * hl * 0.62 - nwy) * ys - nb);
+      ctx.lineTo(chx - px * hw2 * 0.4, chy - py * hw2 * 0.4 * ys + sabercatL.headH * s * 0.34);
+      ctx.lineTo(chx + px * hw2 * 0.4, chy + py * hw2 * 0.4 * ys + sabercatL.headH * s * 0.34);
+      ctx.closePath();
+      ctx.fill();
+      drawSabercatHead(ctx, sabercatL, { x: chx, y: chy, s, fx, fy, ys, hurt: opts.hurt });
       return;
     }
     if (bearL) {
@@ -12003,6 +12363,48 @@ export function drawBeast(
         seed * 0.3,
       );
       ctx.fill();
+      return;
+    }
+    if (sabercatL) {
+      // The feline tail: one long low sweep off the haunch, curling UP
+      // at the tip — swaying at rest, streaming flat at speed, dark
+      // banding near the end.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const run = opts.pose.poleStrength;
+      const sway = now > 0 ? Math.sin(now * 0.0014 + seed * 0.9) * (1 - run * 0.7) : 0;
+      const tbx = bx - fx * hl * 0.98;
+      const tby = by - fy * hl * 0.98 * ys - sabercatL.backH * 0.7 * s - lift;
+      const backA = Math.atan2(-fy * ys, -fx);
+      const len = s * 0.42;
+      const droop = (1 - run * 0.8) * 0.3;
+      const midx = tbx + Math.cos(backA + sway * 0.25) * len * 0.55;
+      const midy = tby + Math.sin(backA + sway * 0.25) * len * 0.55 * ys + len * droop;
+      const tipx = tbx + Math.cos(backA + sway * 0.4) * len;
+      // The curl: the tip lifts back up past the sweep's low point.
+      const tipy = midy - len * (0.22 + 0.1 * (1 - run)) + Math.sin(backA) * len * 0.3 * ys;
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : sabercatL.coat;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(2, s * 0.055);
+      ctx.beginPath();
+      ctx.moveTo(tbx, tby);
+      ctx.quadraticCurveTo(midx, midy, tipx, tipy);
+      ctx.stroke();
+      // Dark tip band.
+      if (!opts.hurt) {
+        ctx.strokeStyle = sabercatL.stripe;
+        ctx.lineWidth = Math.max(2, s * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(midx + (tipx - midx) * 0.6, midy + (tipy - midy) * 0.6);
+        ctx.quadraticCurveTo(
+          midx + (tipx - midx) * 0.8,
+          midy + (tipy - midy) * 0.8,
+          tipx,
+          tipy,
+        );
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
       return;
     }
     if (courserL) {

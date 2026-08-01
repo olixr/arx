@@ -377,6 +377,16 @@ const defs: ItemDef[] = [
     code: 'Gh',
   },
   {
+    id: 'night_sabercat',
+    name: 'Night sabercat',
+    stackable: false,
+    value: 5000,
+    mount: 'sabercat_night',
+    desc: 'A harness cut for no horse, and the cat that answers to it. Nobody sells these.',
+    color: '#4a4f63',
+    code: 'Sn',
+  },
+  {
     id: 'ironbark_tonic',
     name: 'Ironbark tonic',
     stackable: false,

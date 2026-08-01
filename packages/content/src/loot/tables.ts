@@ -762,6 +762,10 @@ const defs: LootTableDef[] = [
       // The storm kept its anvil, though, and nailed it over a war
       // bow's tip. The hoard hears the hammering on bad nights.
       { item: 'thunderhead', chance: 0.008 },
+      // THE ROAD GROWS SHORT, Phase 5: the night sabercat's harness —
+      // the rarest ordinary thing in the game, flat rate FOREVER (the
+      // flood-law: no pity, no dials; rare for everyone, every time).
+      { item: 'night_sabercat', chance: 0.006 },
     ],
   },
   {
