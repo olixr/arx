@@ -707,6 +707,12 @@ export declare class Renderer {
     private frameEma;
     private lastFrameAt;
     private dprHoldUntil;
+    private lastDprDownAt;
+    /** Decaying floor of observed frame intervals ≈ the display's vsync
+     *  budget: a machine that ever hits its refresh pins this at the
+     *  panel's period (8.3ms at 120Hz, 16.7 at 60), and a machine that
+     *  never does decays it to the clamp — the budget of last resort. */
+    private minDt;
     private dpr;
     private adaptResolution;
     private resize;

@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "coppin_reeve__greet",
       "text": "Welcome below, traveler. *Mine-Reeve Coppin*. The Castellan runs the mountain, I run what's under it. Market spine's swept and lit. Guild law holds to the rubble line. Past that, you're your own rescue party. Questions are free. Everything else has a price chalked on it.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "coppin_reeve__hub",
       "text": "What'll it be?",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "market",
+      "voice": "coppin_reeve__market",
       "text": "Varga brokers the ore. Ninebrass sells the strange. The spring waters the lot, and every night the take walks up the stair to the bank under guard. Signy's stew comes down at shift change, and the Riftgate vault stays lit at guild expense. The Castellan's one standing order: _the deep stays lamped._ It's a town, traveler. Just one with a ceiling.",
       "next": "hub"
     },
     {
       "id": "rubble",
+      "voice": "coppin_reeve__rubble",
       "text": "The warren. Kobolds, the same stock that broke the first Undercroft, twenty years older and no less thorough. Their digmaster's cut a tunnel that aims straight at the starfall vein, and the spider in the deep walk answers to nobody's ledger. Adventurers who thin the warren find the reeve's office *generous*. The ones who don't come back get their names chalked by the landing. We keep both lists current.",
       "next": "hub"
     },
     {
       "id": "swept",
+      "voice": "coppin_reeve__swept",
       "text": "Aye. Twenty years sealed, and the guild broke through to a market floor clean as Signy's counters. Petra put it in her report; the report went up the stair; nobody sent a reply down. Skarn says the deep keeps its own house. I say I don't sweep it and it stays swept, and a reeve learns which questions pay wages. That one doesn't. Mind the rubble line.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "coppin_reeve__bye",
       "text": "Lamps lit, counts matched. Mind the line. And if you're headed for the galleries, chalk your name by the landing first."
     }
   ]

@@ -2705,6 +2705,12 @@ export class Renderer {
   private frameEma = 16.7;
   private lastFrameAt = 0;
   private dprHoldUntil = 0;
+  private lastDprDownAt = 0;
+  /** Decaying floor of observed frame intervals ≈ the display's vsync
+   *  budget: a machine that ever hits its refresh pins this at the
+   *  panel's period (8.3ms at 120Hz, 16.7 at 60), and a machine that
+   *  never does decays it to the clamp — the budget of last resort. */
+  private minDt = 1000 / 60;
 
   private dpr(): number {
     return Math.min(window.devicePixelRatio || 1, this.dprCap);
@@ -2714,14 +2720,25 @@ export class Renderer {
     if (nowMs < this.dprHoldUntil) return;
     const native = window.devicePixelRatio || 1;
     const cur = this.dpr();
-    if (this.frameEma > 45 && cur > 1) {
+    // A smooth game at the panel's own refresh beats extra pixels: step
+    // down when frames sustainedly miss THIS display's budget (never
+    // punishing 30Hz panels for being 30Hz), floor 1.
+    const budget = this.minDt;
+    if (this.frameEma > Math.max(budget * 1.25, 21) && cur > 1) {
       this.dprCap = Math.max(1, cur - 0.5);
       this.dprHoldUntil = nowMs + 4000;
-    } else if (this.frameEma < 18 && cur < native) {
-      // Stepping up costs pixels immediately — long dwell so a
-      // borderline machine doesn't seesaw.
+      this.lastDprDownAt = nowMs;
+    } else if (
+      this.frameEma < Math.max(budget * 1.06, 17.6) &&
+      cur < native &&
+      nowMs - this.lastDprDownAt > 60_000
+    ) {
+      // Stepping up costs pixels immediately, and a vsync-locked frame
+      // time can't reveal headroom — retry gently, at most once a
+      // minute after the last step down, so a borderline machine
+      // wobbles on a minutes scale, not seconds.
       this.dprCap = Math.min(native, cur + 0.5);
-      this.dprHoldUntil = nowMs + 10000;
+      this.dprHoldUntil = nowMs + 10_000;
     }
   }
 
@@ -2748,7 +2765,9 @@ export class Renderer {
     this.game = game;
     const nowMs = performance.now();
     if (this.lastFrameAt > 0) {
-      this.frameEma += (Math.min(200, nowMs - this.lastFrameAt) - this.frameEma) * 0.08;
+      const dt = Math.min(200, nowMs - this.lastFrameAt);
+      this.frameEma += (dt - this.frameEma) * 0.08;
+      this.minDt = Math.min(Math.max(6.9, dt), Math.min(33.4, this.minDt * 1.015));
       this.adaptResolution(nowMs);
     }
     this.lastFrameAt = nowMs;
