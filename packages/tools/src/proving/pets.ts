@@ -546,76 +546,183 @@ const main = async () => {
   );
   receipt('whiff-0 on the live wire: some rolls wrote nothing', hitZeros() > zerosBefore, `${hitZeros() - zerosBefore} whiffs`);
 
-  // THE FALL IS SURVIVED (the Phase 3 ceremony will replace this):
-  // a bear is too much beetle for a beetle. Top the keeper up first —
-  // /xp raises the ceiling, never the fill (live-caught: a half-full
-  // keeper died to the maul before the pet's fall could land).
-  mark = c.mark();
-  await say(c, '/give healing_tincture 12');
-  await c.waitFor((m) => m.t === 'inv', 'tinctures in pack', 5000, mark);
-  for (let i = 0; i < 14; i++) {
-    if ((c.pos?.hpPct ?? 0) >= 250) break;
-    const invNow = c.latest('inv');
-    const tSlot = invNow!.slots.findIndex((x: any) => x && x.item === 'healing_tincture');
-    if (tSlot < 0) break;
-    c.send({ t: 'use', slot: tSlot });
-    await sleep(350);
-  }
-  // The mark opens BEFORE the staging: a bear can fell a beetle in
-  // the very first exchange, mid-stage (live-caught — the fall line
-  // arrived before a later mark and the wait starved on history).
-  const bearMark = c.mark();
-  await stageFight('bear', 'the bear');
-  // Step back out of the maul: the bear chases, the companion cuts it
-  // off, and the receipt watches the fall from a survivable distance.
-  const backT0 = Date.now();
-  while (Date.now() - backT0 < 1300) {
-    c.frame(0, -1, 0.3);
-    await sleep(50);
-  }
-  c.frame(0);
-  mark = bearMark;
-  try {
-    const fallT0 = Date.now();
+  // ==== THE FALL IS NEVER THE END (Phase 3) ==============================
+
+  // Top the keeper up first — /xp raises the ceiling, never the fill
+  // (live-caught: a half-full keeper died to the maul mid-receipt).
+  const topUp = async (): Promise<void> => {
+    const tm = c.mark();
+    await say(c, '/give healing_tincture 12');
+    await c.waitFor((m) => m.t === 'inv', 'tinctures in pack', 5000, tm);
+    for (let i = 0; i < 14; i++) {
+      if ((c.pos?.hpPct ?? 0) >= 250) break;
+      const invNow = c.latest('inv');
+      const tSlot = invNow!.slots.findIndex((x: any) => x && x.item === 'healing_tincture');
+      if (tSlot < 0) break;
+      c.send({ t: 'use', slot: tSlot });
+      await sleep(350);
+    }
+  };
+  /** Feed the heel companion to a fresh bear; return once it is down.
+   *  The mark opens BEFORE the staging — a bear can fell a small
+   *  friend in the very first exchange, mid-stage. */
+  const downThePet = async (): Promise<void> => {
+    const bm = c.mark();
+    await stageFight('bear', 'the bear');
+    const backT0 = Date.now();
+    while (Date.now() - backT0 < 1300) {
+      c.frame(0, -1, 0.3);
+      await sleep(50);
+    }
+    c.frame(0);
+    const t0 = Date.now();
     let probed = 0;
     for (;;) {
-      if (c.msgs.slice(mark).some((m) => m.t === 'chat' && /lick its wounds/.test(m.text ?? ''))) break;
-      if (Date.now() - fallT0 > 60000) throw new Error('timeout waiting for the fall line');
-      if (Date.now() - fallT0 > probed * 6000) {
+      if (c.msgs.slice(bm).some((m) => m.t === 'chat' && /goes down, breath ragged/.test(m.text ?? ''))) return;
+      if (Date.now() - t0 > 60000) {
+        await say(c, '/npcstate');
+        await sleep(1200);
+        console.error('DOWN DEBUG chats:', JSON.stringify(c.msgs.filter((m) => m.t === 'chat').slice(-12).map((m) => m.text)));
+        console.error('DOWN DEBUG mirror:', JSON.stringify(c.latest('pet')?.pets));
+        throw new Error('timeout waiting for the down line');
+      }
+      if (Date.now() - t0 > probed * 6000) {
         probed++;
         c.send({ t: 'chat', text: '/petstate' });
       }
       await sleep(200);
     }
-  } catch (e) {
-    // The post-mortem lens: what was everyone doing when it hung?
-    await say(c, '/npcstate');
-    await sleep(1200);
-    const chats = c.msgs.filter((m) => m.t === 'chat').slice(-14).map((m) => m.text);
-    const pm = c.latest('pet');
-    console.error('FALL DEBUG chats:', JSON.stringify(chats, null, 1));
-    console.error('FALL DEBUG mirror:', JSON.stringify(pm?.pets));
-    console.error('FALL DEBUG pet sample:', JSON.stringify(c.ents.get(livePet() ?? -1)));
-    throw e;
-  }
+  };
+  /** Swing at a mob until it is dead — the keeper cleans up. */
+  const killTarget = async (targetEid: number, label: string): Promise<void> => {
+    const t0 = Date.now();
+    for (;;) {
+      if (Date.now() - t0 > 45000) throw new Error(`could not fell ${label}`);
+      const b = c.ents.get(targetEid);
+      if (!b || b.hpPct === 0 || Date.now() - b.at > 2000) return;
+      const me = c.pos!;
+      const d = Math.hypot(b.x - me.x, b.y - me.y);
+      const aim = Math.atan2(b.y - me.y, b.x - me.x);
+      if (d > 1.4) {
+        c.frame(0, Math.cos(aim), Math.sin(aim), aim);
+        await sleep(60);
+        continue;
+      }
+      c.frame(ATTACK, 0, 0, aim);
+      await sleep(80);
+      c.frame(0, 0, 0, aim);
+      await sleep(420);
+    }
+  };
+
+  await topUp();
+  await downThePet();
+
+  // The body STAYS: breathing at zero, lying, mirror saying so.
+  await sleep(600);
+  const downedEid = livePet();
+  const downedSample = downedEid !== null ? c.ents.get(downedEid) : null;
+  receipt(
+    'the fall leaves a body, not an absence: lying at zero, still on the wire',
+    downedEid !== null && downedSample?.hpPct === 0 && downedSample?.pose === 16,
+    `pose ${downedSample?.pose}, hpPct ${downedSample?.hpPct}`,
+  );
+  const downMirror = await c.waitFor(
+    (m) => m.t === 'pet' && m.pets?.some((p: Msg) => p.state === 'downed'),
+    'the mirror says downed',
+    6000,
+  );
+  receipt('the mirror carries the vigil: state downed', downMirror.pets.some((p: Msg) => p.state === 'downed'));
+
+  // Clean up the bear so the kneel has quiet, then prove the fallen
+  // body drew no further wounds while the fight raged past it.
+  const bearNow = c.msgs
+    .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+    .filter((e: Msg) => e.defId === 'bear')
+    .map((e: Msg) => e.eid)
+    .filter((e2: number) => {
+      const smp = c.ents.get(e2);
+      return smp && smp.hpPct > 0 && Date.now() - smp.at < 2000;
+    })
+    .pop();
+  if (bearNow !== undefined) await killTarget(bearNow, 'the bear');
+  const stillDown = downedEid !== null ? c.ents.get(downedEid) : null;
+  receipt(
+    'a fallen body takes no further wounds, and no mob worries it',
+    stillDown != null && stillDown.hpPct === 0,
+  );
+
+  // THE TEND: kneel to it where it lies; it rises shaky.
+  await walkTo(downedEid!, 1.8);
+  mark = c.mark();
+  c.send({ t: 'interactnpc', eid: downedEid! });
+  await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'the tend kneel starts', 5000, mark);
+  await c.waitFor((m) => m.t === 'chat' && /finds its feet/.test(m.text ?? ''), 'the rise', 9000, mark);
+  const tendXp = c.msgs.slice(mark).some((m) => m.t === 'xp' && m.skill === 'beastcraft');
+  await sleep(500);
+  const risen = c.ents.get(downedEid!);
+  receipt(
+    'THE TEND: the friend rises where it fell, shaky but standing',
+    risen !== undefined && risen.hpPct > 60 && risen.hpPct < 140 && tendXp,
+    `hpPct ${risen?.hpPct}, tend xp ${tendXp}`,
+  );
+
+  // THE BOND MOMENT: its own lure, offered by hand — then the plain
+  // pat while the snack clock runs.
+  await walkTo(downedEid!, 1.8);
+  mark = c.mark();
+  c.send({ t: 'interactnpc', eid: downedEid! });
+  await c.waitFor((m) => m.t === 'chat' && /takes the berries gently/.test(m.text ?? ''), 'the bond moment', 5000, mark);
+  const bondInv = await c.waitFor((m) => m.t === 'inv', 'the lure spent', 5000, mark);
+  const berriesNow = bondInv.slots.find((x: any) => x && x.item === 'berries')?.qty ?? 0;
+  receipt('KINDNESS PAYS: the bond moment feeds, heals, and teaches', berriesNow === 3, `berries ${berriesNow}`);
+  mark = c.mark();
+  c.send({ t: 'interactnpc', eid: downedEid! });
+  await c.waitFor((m) => m.t === 'chat' && /leans into your hand/.test(m.text ?? ''), 'the pat', 5000, mark);
+  receipt('the snack clock holds: the second offer is only a hand', true);
+
+  // THE KEEPER FLED exit: down it again, then walk out of its world.
+  await downThePet();
+  mark = c.mark();
+  await tp(c, course[0] - 70, course[1] - 45);
+  await c.waitFor((m) => m.t === 'chat' && /drags itself off toward your stalls/.test(m.text ?? ''), 'the limp home', 9000, mark);
   const restMirror = await c.waitFor(
-    (m) => m.t === 'pet' && m.pets?.some((p: Msg) => p.state === 'resting'),
-    'the mirror says resting',
+    (m) => m.t === 'pet' && m.pets?.some((p: Msg) => p.state === 'resting' && (p.restSec ?? 0) > 0),
+    'the mirror says resting, clock running',
     6000,
     mark,
   );
   receipt(
-    'THE FALL IS NEVER THE END, interim: the friend breaks off, resting, never lost',
-    restMirror.pets.some((p: Msg) => p.state === 'resting'),
+    'left behind, the friend limps home: resting, clock honest on the wire',
+    restMirror.pets.some((p: Msg) => p.state === 'resting' && (p.restSec ?? 0) > 0),
   );
-  // Shed the bear, then prove the rest holds the door shut.
-  await tp(c, course[0] - 60, course[1] - 40);
-  const restT0 = Date.now();
-  while (Date.now() - restT0 < 3000) {
-    c.frame(0);
-    await sleep(150);
+
+  // THE RESTED RISE: stand calm; it finds you when it is well.
+  mark = c.mark();
+  {
+    const t0 = Date.now();
+    for (;;) {
+      if (c.msgs.slice(mark).some((m) => m.t === 'chat' && /returns to your side, rested and whole/.test(m.text ?? ''))) break;
+      if (Date.now() - t0 > 160000) throw new Error('timeout waiting for the rested rise');
+      c.frame(0);
+      await sleep(300);
+    }
   }
-  receipt('the rest holds: no body returns before its hour', livePet() === null);
+  {
+    const t0 = Date.now();
+    let whole = false;
+    while (Date.now() - t0 < 8000) {
+      c.frame(0);
+      const lp = livePet();
+      const smp = lp !== null ? c.ents.get(lp) : null;
+      if (smp && smp.hpPct === 255) {
+        whole = true;
+        break;
+      }
+      await sleep(200);
+    }
+    receipt('the rested rise: it returns on its own, whole, at heel', whole);
+  }
 
   // --- THREE STALLS: fill the household, then hear the refusal.
   mark = c.mark();
@@ -634,10 +741,17 @@ const main = async () => {
   );
   receipt('THREE STALLS, ONE HEEL: the fourth ask is refused, aloud', true);
 
-  // --- THE DB IS THE ANIMAL: a full logout keeps the household whole,
-  // the names kept, the heel row standing back up beside the keeper.
+  // --- THE FORCE-QUIT: down the fresh heel friend (the rat), then
+  // slam the window shut mid-vigil. The grace runs out with nobody
+  // home, and the row must land 'resting' — a force-quit on the
+  // downed screen loses NOTHING, and the rest clock survives the
+  // logout because it is wall-clock in the row.
+  await topUp();
+  await downThePet();
   c.ws.close();
-  await sleep(600);
+  console.log('  (force-quit mid-vigil; waiting out the reconnect grace...)');
+  await sleep(36000);
+
   const c2 = new Client();
   await c2.open();
   c2.send({ t: 'hello', v: PROTOCOL_VERSION });
@@ -646,25 +760,18 @@ const main = async () => {
   c2.eid = w2.eid;
   const mirror2 = await c2.waitFor((m) => m.t === 'pet' && (m.pets?.length ?? 0) > 0, 'relogin mirror', 7000);
   const bramble = mirror2.pets.find((p: Msg) => p.name === 'Bramble');
-  const heel2 = mirror2.pets.find((p: Msg) => p.state === 'heel' || p.state === 'trailing');
+  const ratRow = mirror2.pets.find((p: Msg) => p.species === 'rat' && p.state === 'resting');
+  receipt(
+    'the force-quit loses nothing: the downed friend lands resting, clock kept',
+    ratRow !== undefined && (ratRow.restSec ?? 0) > 0,
+    `restSec ${ratRow?.restSec}`,
+  );
   receipt(
     'the household survives the night: three stalls, the name kept',
-    mirror2.pets.length === 3 && bramble?.species === 'giant_beetle' && heel2?.species === 'rat',
+    mirror2.pets.length === 3 && bramble?.species === 'giant_beetle',
   );
-  const spawnT0 = Date.now();
-  let backAtHeel = false;
-  while (Date.now() - spawnT0 < 7000) {
-    c2.frame(0);
-    for (const eid2 of c2.petEids(c2.eid)) {
-      const s = c2.ents.get(eid2);
-      if (s && c2.pos && Math.hypot(s.x - c2.pos.x, s.y - c2.pos.y) < 6) backAtHeel = true;
-    }
-    if (backAtHeel) break;
-    await sleep(150);
-  }
-  receipt('the heel companion stands back up with its keeper', backAtHeel);
 
-  console.log(`\nTHE OPEN HAND AND THE FANG BOTH HOLD — ${passed} receipts.`);
+  console.log(`\nTHE OPEN HAND, THE FANG, AND THE FALL ALL HOLD — ${passed} receipts.`);
   c2.ws.close();
   process.exit(0);
 };

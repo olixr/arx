@@ -1784,7 +1784,9 @@ export class ClientGame {
       // crouched hand asks a different question (factions Phase 5):
       // the same press is the pickpocket verb, and the prompt says so.
       const verb = owned
-        ? 'Pet'
+        ? latest != null && latest.hpPct === 0
+          ? 'Tend'
+          : 'Pet'
         : def?.produce
           ? 'Milk'
           : gentleReady

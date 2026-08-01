@@ -73,10 +73,38 @@ export const PET_WINDUP_TICKS = 6;
 export const PET_FIGHT_LEASH = 10;
 /** THE HARRY's per-mob cooldown: a flat dial, never scaled by anyone's state. */
 export const PET_HARRY_COOLDOWN_TICKS = 200;
-/** The interim fall (Phase 3 brings the true ceremony): rest before returning. */
-export const PET_FALL_REST_TICKS = 600;
-/** A rested companion returns at this fraction of its health. */
-export const PET_RETURN_HP_FRAC = 0.5;
+
+/**
+ * THE FALL IS NEVER THE END (Phase 3) — the true ceremony. At zero a
+ * companion is DOWNED, never destroyed: the body stays, breathing,
+ * untargetable, for this long. Tend it and it rises where it fell;
+ * leave it (or leave) and it limps home to rest.
+ */
+export const PET_DOWNED_TICKS = 2400;
+/** The tend kneel, in ticks — the gentling's length, the milk grammar. */
+export const PET_TEND_TICKS = 80;
+/** A tended friend rises at this fraction of its health. */
+export const PET_TEND_HP_FRAC = 0.4;
+/** The tender's beastcraft grant — kindness pays (plan Part 5). */
+export const PET_TEND_XP = 12;
+/**
+ * The limp-home rest, in real ms (persisted via rested_at, so a
+ * logout never resets the clock). When it ends the friend takes the
+ * heel again on its own if the heel stands empty — no fee, no dead
+ * end; Phase 4's stable door adds the manual collect.
+ */
+export const PET_REST_HOME_MS = 120_000;
+/**
+ * THE BOND MOMENT — the care faucet: feed a healthy companion its
+ * own lure and the bond pays, on a produce-style per-pet cooldown.
+ * KINDNESS PAYS, NEGLECT NEVER PUNISHES: there is no hunger meter,
+ * and an unfed friend is exactly as strong next month.
+ */
+export const PET_BOND_COOLDOWN_MS = 240_000;
+export const PET_BOND_XP = 6;
+export const PET_BOND_PET_XP = 20;
+/** The meal closes wounds too — a quarter of the body, out of combat only. */
+export const PET_BOND_HEAL_FRAC = 0.25;
 /** Out-of-combat regen: one point every this many ticks... */
 export const PET_REGEN_TICKS = 40;
 /** ...once this many ticks have passed since the last wound. */

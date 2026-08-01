@@ -943,7 +943,14 @@ export interface PetInfo {
   xp: number;
   hp: number;
   maxHp: number;
-  state: 'heel' | 'trailing' | 'stabled' | 'resting';
+  /**
+   * 'downed' (Phase 3): the body lies where it fell, breathing,
+   * waiting on the tend or the limp home. Additive to v27 — a client
+   * that never reads it merely shows nothing (recorded on purpose).
+   */
+  state: 'heel' | 'trailing' | 'stabled' | 'resting' | 'downed';
+  /** Seconds of rest left on a 'resting' friend (additive, v27). */
+  restSec?: number;
 }
 
 export interface S2CPet {

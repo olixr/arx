@@ -13,6 +13,8 @@ export interface PetRow {
   name: string;
   xp: number;
   state: PetState;
+  /** When the limp home began (ms), or null — only 'resting' carries it. */
+  restedAt: number | null;
 }
 
 /** NULL-tolerant roll reader for legacy rows (pre-migration-11). */
@@ -1372,8 +1374,9 @@ export class AccountStore {
       name: string;
       xp: number;
       state: string;
+      rested_at: number | null;
     }>(
-      'SELECT slot, species, name, xp, state FROM character_pets WHERE character_id = ? ORDER BY slot',
+      'SELECT slot, species, name, xp, state, rested_at FROM character_pets WHERE character_id = ? ORDER BY slot',
       [characterId],
     );
     return rows.map((r) => ({
@@ -1384,14 +1387,17 @@ export class AccountStore {
       // An unknown state (a future phase's word, an edited row) reads
       // as safely stabled — never a phantom body at heel.
       state: r.state === 'heel' || r.state === 'resting' ? r.state : 'stabled',
+      restedAt: r.rested_at === null ? null : Number(r.rested_at),
     }));
   }
 
-  /** The gentling ceremony's write: the full row, fired at the moment. */
+  /** The gentling ceremony's write: the full row, fired at the moment.
+   *  A re-used stall clears any stale rest clock — a fresh bond never
+   *  inherits a predecessor's convalescence. */
   savePet(characterId: number, pet: PetRow, tamedAtMs: number): void {
     this.db.fire(
       'INSERT INTO character_pets (character_id, slot, species, name, xp, state, tamed_at) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
-        'ON CONFLICT (character_id, slot) DO UPDATE SET species = excluded.species, name = excluded.name, xp = excluded.xp, state = excluded.state',
+        'ON CONFLICT (character_id, slot) DO UPDATE SET species = excluded.species, name = excluded.name, xp = excluded.xp, state = excluded.state, rested_at = NULL',
       [characterId, pet.slot, pet.species, pet.name, pet.xp, pet.state, tamedAtMs],
     );
   }
@@ -1418,6 +1424,14 @@ export class AccountStore {
       characterId,
       slot,
     ]);
+  }
+
+  /** The limp home and the rested rise — state and clock move together. */
+  savePetRest(characterId: number, slot: number, state: PetState, restedAtMs: number | null): void {
+    this.db.fire(
+      'UPDATE character_pets SET state = ?, rested_at = ? WHERE character_id = ? AND slot = ?',
+      [state, restedAtMs, characterId, slot],
+    );
   }
 
   /** The release. Phase 4 gives it its ceremony; the dev lever uses it today. */

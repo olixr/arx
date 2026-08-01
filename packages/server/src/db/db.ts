@@ -809,6 +809,14 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (character_id, slot)
   );
   `,
+  // v23: THE FALL IS NEVER THE END (beastcraft v2 Phase 3) — when a
+  // fallen companion limped home to rest. Wall-clock ms so the rest
+  // survives a logout honestly (a timer that resets on relogin is a
+  // dead end, and a timer that vanishes is a cheat); NULL everywhere
+  // except state='resting'.
+  `
+  ALTER TABLE character_pets ADD COLUMN rested_at BIGINT;
+  `,
 ];
 
 /**

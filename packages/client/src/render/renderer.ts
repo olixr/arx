@@ -1004,6 +1004,18 @@ export class Renderer {
   /** Body-thud hook: the renderer sees the landing, main.ts owns sfx. */
   onCorpseThud?: (heavy: boolean, x: number, y: number) => void;
 
+  /**
+   * THE FALL IS NEVER THE END (beastcraft v2 Phase 3): downed
+   * companions — live entities lying at zero — render in the settled
+   * ragdoll dialect, pre-settled once and cached per eid. A downed
+   * friend must read FALLEN, never as a standing rig at zero; the
+   * slow breath is what says it is not a corpse.
+   */
+  private readonly downedRags = new Map<
+    number,
+    { rag: Ragdoll; look: BeastCorpseLook; lastSeen: number }
+  >();
+
   /** A quick camera zoom kick — the killing-blow exclamation point. */
   zoomPulse(amount = 0.045): void {
     this.zoomPulseAmount = Math.min(0.08, this.zoomPulseAmount + amount);
@@ -24680,6 +24692,115 @@ export class Renderer {
     kobold_digmaster: 1.0,
   };
 
+  /**
+   * The downed companion: a pre-settled beast ragdoll breathing where
+   * it fell (THE FALL IS NEVER THE END). Built once per eid, physics
+   * run to rest at build time; the live frame adds only the slow
+   * breath — a scale swell no corpse ever has.
+   */
+  private downedBeastItem(
+    eid: number,
+    defId: string,
+    meta: { name?: string; level?: number },
+    s: { x: number; y: number; dir: number; hpPct: number; pose: number },
+    nameInk?: string,
+  ): DrawItem {
+    const def = npcDef(defId);
+    const radius = def?.radius ?? 0.3;
+    const scale = this.camera.scale;
+    const terrainLift = this.renderLift(s.x, s.y) * scale;
+    const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
+    p.y -= terrainLift;
+    let entry = this.downedRags.get(eid);
+    if (!entry) {
+      const spec = beastSpec(defId, radius, def?.speed ?? 2);
+      const seed = (eid * 2654435761) >>> 0;
+      const rag = buildBeastRagdoll(spec, radius, seed);
+      const feet: number[] = [];
+      for (let i = 4; i < rag.pts.length; i += 2) feet.push(i);
+      // A slump, not a launch: it went down where it stood.
+      rag.launch(0.3, 0.1, 1.2, BEAST_UPPER, feet);
+      const impacts: RagImpact[] = [];
+      for (let i = 0; i < 600 && !rag.settled; i++) {
+        rag.step(1 / 60, 0, 0, impacts);
+        impacts.length = 0;
+      }
+      const corpseOwl =
+        defId === 'great_owl' || defId === 'elder_great_owl' ? owlLook(defId, eid) : undefined;
+      entry = {
+        rag,
+        look: {
+          spec,
+          radius,
+          color: def?.color ?? '#999',
+          defId,
+          seed,
+          ...(corpseOwl ? { owl: corpseOwl } : {}),
+        },
+        lastSeen: performance.now(),
+      };
+      this.downedRags.set(eid, entry);
+      // The cache holds only what the screen holds — prune the stale.
+      if (this.downedRags.size > 16) {
+        let oldest: number | null = null;
+        let oldestAt = Infinity;
+        for (const [k, v] of this.downedRags) {
+          if (v.lastSeen < oldestAt) {
+            oldestAt = v.lastSeen;
+            oldest = k;
+          }
+        }
+        if (oldest !== null && oldest !== eid) this.downedRags.delete(oldest);
+      }
+    }
+    entry.lastSeen = performance.now();
+    const rag = entry.rag;
+    const look = entry.look;
+    const b = rag.bounds();
+    const margin = (0.35 + look.spec.bodyLen * 0.6) * scale;
+    return {
+      sortY: s.y + 0.01,
+      elevated: terrainLift !== 0,
+      // The breath makes it dynamic — a downed friend never blits stale.
+      olKey: eid,
+      olSig: `down|${defId}`,
+      olDyn: true,
+      baseX: s.x,
+      baseY: s.y,
+      body: {
+        x: p.x + b.minX * scale - margin,
+        y: p.y + b.minY * scale - margin,
+        w: (b.maxX - b.minX) * scale + margin * 2,
+        h: (b.maxY - b.minY) * scale + margin * 2,
+      },
+      drawShadow: () => {
+        const cx = p.x + ((b.minX + b.maxX) / 2) * scale;
+        const spread = Math.max(0.35, (b.maxX - b.minX) * 0.5) * scale;
+        this.castBody(cx, p.y, spread);
+      },
+      draw: () => {
+        // The breath: a slow swell no corpse has — alive, just down.
+        const breath = 1 + 0.018 * Math.sin(performance.now() / 480 + eid);
+        drawBeastRagdoll(this.ctx, rag, { ax: p.x, ay: p.y, s: scale * breath }, look);
+      },
+      drawLabel: () => {
+        const ctx = this.ctx;
+        const r = radius * scale;
+        if (meta.name) {
+          const topY = p.y - r * 2.6;
+          ctx.font = `600 ${Math.max(10, scale * 0.24)}px 'Trebuchet MS', sans-serif`;
+          ctx.textAlign = 'center';
+          const label = meta.level ? `${meta.name} (${meta.level})` : meta.name;
+          ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
+          ctx.fillText(label, p.x + 1.5, topY + 1.5);
+          ctx.fillStyle = nameInk ?? '#f0cf8a';
+          ctx.fillText(label, p.x, topY);
+        }
+        this.drawMiniHp(p.x, p.y - r * 2.45, r * 2, 0);
+      },
+    };
+  }
+
   private npcItem(
     eid: number,
     defId: string,
@@ -24749,6 +24870,14 @@ export class Renderer {
     if (defId === 'slime' || defId === 'slime_small' || defId === 'cave_bat' || defId === 'adder') {
       return this.leglessItem(eid, defId, meta, s, hurt, nameInk);
     }
+
+    // A downed companion (the only living Npc that ever lies at zero)
+    // is a fallen body with breath in it — the ragdoll dialect.
+    if (s.pose === PoseState.Lie && s.hpPct === 0) {
+      return this.downedBeastItem(eid, defId, meta, s, nameInk);
+    }
+    // On its feet again: the next fall sprawls fresh.
+    this.downedRags.delete(eid);
 
     const def = npcDef(defId);
     const scale = this.camera.scale;

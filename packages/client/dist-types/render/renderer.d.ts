@@ -299,6 +299,14 @@ export declare class Renderer {
     private readonly corpses;
     /** Body-thud hook: the renderer sees the landing, main.ts owns sfx. */
     onCorpseThud?: (heavy: boolean, x: number, y: number) => void;
+    /**
+     * THE FALL IS NEVER THE END (beastcraft v2 Phase 3): downed
+     * companions — live entities lying at zero — render in the settled
+     * ragdoll dialect, pre-settled once and cached per eid. A downed
+     * friend must read FALLEN, never as a standing rig at zero; the
+     * slow breath is what says it is not a corpse.
+     */
+    private readonly downedRags;
     /** A quick camera zoom kick — the killing-blow exclamation point. */
     zoomPulse(amount?: number): void;
     /**
@@ -2218,6 +2226,13 @@ export declare class Renderer {
     private static readonly KOBOLD_EQUIP;
     /** Kobold stature: knee-high nuisance to a boss you look up at. */
     private static readonly KOBOLD_SIZE;
+    /**
+     * The downed companion: a pre-settled beast ragdoll breathing where
+     * it fell (THE FALL IS NEVER THE END). Built once per eid, physics
+     * run to rest at build time; the live frame adds only the slow
+     * breath — a scale swell no corpse ever has.
+     */
+    private downedBeastItem;
     private npcItem;
     /**
      * The leg-less menagerie: slimes (hopping gel blocks), cave bats
