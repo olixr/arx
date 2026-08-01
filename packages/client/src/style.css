@@ -7338,6 +7338,7 @@ body.pad-mode .map-reticle {
   padding: 3px 8px 3px 4px;
   min-width: 96px;
   border-color: rgba(159, 211, 154, 0.55);
+  cursor: pointer;
 }
 
 .pet-chip-face {
@@ -7393,4 +7394,22 @@ body.pad-mode .map-reticle {
 
 .pet-chip.pet-resting .pet-chip-name {
   color: #a9c6de;
+}
+
+/* THE QUIET HEEL: the bond moment reopened — a warm, slow breath on
+   the chip's edge asks for the treat without shouting over play. */
+.pet-chip.pet-bond {
+  animation: pet-bond-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes pet-bond-breathe {
+  0%,
+  100% {
+    border-color: rgba(159, 211, 154, 0.55);
+    box-shadow: none;
+  }
+  50% {
+    border-color: rgba(214, 196, 118, 0.9);
+    box-shadow: 0 0 7px rgba(214, 196, 118, 0.4);
+  }
 }

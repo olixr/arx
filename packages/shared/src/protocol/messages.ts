@@ -966,6 +966,14 @@ export interface PetInfo {
   state: 'heel' | 'trailing' | 'stabled' | 'resting' | 'downed';
   /** Seconds of rest left on a 'resting' friend (additive, v27). */
   restSec?: number;
+  /**
+   * THE QUIET HEEL: seconds until the bond moment reopens for the
+   * walking slot (0 = open now). The client counts down locally so
+   * the prompt and chip glint surface exactly when kindness would
+   * pay — the plain pat never owns the interact prompt. Additive to
+   * v27 like restSec; sent for heel rows only.
+   */
+  bondSec?: number;
 }
 
 export interface S2CPet {

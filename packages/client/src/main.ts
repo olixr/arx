@@ -1294,6 +1294,12 @@ dressPanel(el('social-panel'), {
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);
 hotbar.onReady = () => sfx.abilityReady();
+// THE QUIET HEEL: the chip pats the friend at your side. The server
+// range-gates the press, so a trailing or far body simply no-ops.
+hotbar.onPetChip = () => {
+  const petEid = game.ownPetEid();
+  if (petEid !== null) game.interactNpc(petEid);
+};
 game.onTechniques = () => panels.setTechniques(game.techniques, game.earnedArts, game.lessons);
 game.onCallings = () => panels.setCallings(game.callings);
 
@@ -2082,7 +2088,16 @@ canvas.addEventListener('mousedown', (e) => {
   const pos = game.predictor.pos;
   const dx = tx + 0.5 - pos.x;
   const dy = ty + 0.5 - pos.y;
-  if (dx * dx + dy * dy <= 2.2 * 2.2) activateTarget(game.targetAt(tx, ty));
+  if (dx * dx + dy * dy > 2.2 * 2.2) return;
+  // THE QUIET HEEL: the companion's body is its own button — a
+  // deliberate click lands the hand on its flank (the server answers
+  // pat, offer, or kneel). It never rides the proximity prompt.
+  const petHit = game.petAtTile(tx, ty);
+  if (petHit !== null) {
+    game.interactNpc(petHit);
+    return;
+  }
+  activateTarget(game.targetAt(tx, ty));
 });
 
 // Touch controls (virtual joystick + tap-to-move) on coarse pointers.
@@ -2098,6 +2113,12 @@ setupTouch(input, game, renderer, canvas, (tx, ty) => {
   const dx = tx + 0.5 - pos.x;
   const dy = ty + 0.5 - pos.y;
   if (dx * dx + dy * dy > 2.2 * 2.2) return false;
+  // THE QUIET HEEL: a tap on the companion is the pat (see mousedown).
+  const petTap = game.petAtTile(tx, ty);
+  if (petTap !== null) {
+    game.interactNpc(petTap);
+    return true;
+  }
   const target = game.targetAt(tx, ty);
   if (!target) return false;
   activateTarget(target);

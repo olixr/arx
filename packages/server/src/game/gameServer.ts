@@ -10240,6 +10240,12 @@ export class GameServer {
       if (p.state === 'resting' && p.restedAt !== null) {
         info.restSec = Math.max(0, Math.ceil((p.restedAt + PET_REST_HOME_MS - now) / 1000));
       }
+      // THE QUIET HEEL: the walking friend carries its bond clock so
+      // the client can surface the Offer prompt only when the moment
+      // is real. In-memory like petBondAt itself (relogin forgives).
+      if (p.state === 'heel') {
+        info.bondSec = Math.max(0, Math.ceil(((player.petBondAt.get(p.slot) ?? 0) - now) / 1000));
+      }
       return info;
     });
     player.session.sendJson(

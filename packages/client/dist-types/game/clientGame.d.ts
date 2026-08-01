@@ -240,6 +240,10 @@ export interface GameEvents {
             name: string;
             rewards?: QuestRewardsWire;
         };
+        questChoices?: Array<{
+            idx: number;
+            kind: 'accept' | 'turnin';
+        }>;
         voice?: {
             url: string;
             durMs: number;
@@ -543,6 +547,8 @@ export declare class ClientGame {
     onRide: (() => void) | null;
     /** THE OPEN HAND: the household mirror — every kept companion. */
     ownPets: PetInfo[];
+    /** THE QUIET HEEL: slot → local ms when the bond moment reopens. */
+    private petBondReadyAt;
     /** Fires when the household changes (HUD refresh). */
     onPet: (() => void) | null;
     /** Fires once per fresh tame: raise the naming card for this slot. */
@@ -742,6 +748,24 @@ export declare class ClientGame {
     targetAt(tx: number, ty: number): InteractTarget | null;
     /** The nearest interactable tile (or gatherable animal) in reach. */
     findNearbyTarget(): InteractTarget | null;
+    /**
+     * THE QUIET HEEL: the bond moment is worth a prompt only when the
+     * press would land it — clock open AND the species' own lure in
+     * the pack. (The server also wants the pet out of a fight; we
+     * cannot see its target, but a mid-fight press just lands a plain
+     * pat without spending the lure or the clock, so the prompt is
+     * never a lie — it simply keeps offering until the offer takes.)
+     */
+    private petOfferReady;
+    /** Is the bond moment open for this stall? (Counts down locally.) */
+    petBondReady(slot: number): boolean;
+    /** The walking companion's live body, if it is spawned right now. */
+    ownPetEid(): EntityId | null;
+    /**
+     * Your own companion near this tile's center — the deliberate pat
+     * channel (THE QUIET HEEL: the body is the button, not the prompt).
+     */
+    petAtTile(tx: number, ty: number): EntityId | null;
     /** The drop nearest this tile's center (touch taps land on tiles). */
     lootAtTile(tx: number, ty: number): EntityId | null;
     /** Where a ground drop lies, if it is still in view. */

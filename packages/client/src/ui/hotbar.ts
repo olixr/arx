@@ -1,5 +1,5 @@
 import { EQUIP_SLOTS, PASSIVES, type AbilitySlot } from '@arx/shared';
-import { ENCHANTS, itemDef } from '@arx/content';
+import { ENCHANTS, itemDef, tameDef } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 import { itemIconUrl, sneakEyeUrl } from '../render/icons.js';
@@ -170,8 +170,14 @@ export class Hotbar {
     col.appendChild(hpBar);
     this.petChip.appendChild(this.petFace);
     this.petChip.appendChild(col);
+    // THE QUIET HEEL: the chip is the always-there hand — clicking it
+    // pats the friend at your side (the world prompt stays quiet).
+    this.petChip.addEventListener('click', () => this.onPetChip?.());
     this.buffTray.appendChild(this.petChip);
   }
+
+  /** Fires when the companion chip is clicked (the pat channel). */
+  onPetChip: (() => void) | null = null;
 
   /** Called once per frame — cheap DOM writes only on change. */
   update(game: ClientGame): void {
@@ -371,8 +377,12 @@ export class Hotbar {
     const active =
       game.ownPets.find((pp) => pp.state === 'heel' || pp.state === 'trailing' || pp.state === 'downed') ??
       game.ownPets.find((pp) => pp.state === 'resting');
+    // THE QUIET HEEL: a soft glint when the bond moment reopens — the
+    // chip carries the care-loop reminder so the world prompt never
+    // has to. The glint asks for the treat; holding it is your side.
+    const bond = active !== undefined && active.state === 'heel' && game.petBondReady(active.slot);
     const pKey = active
-      ? `${active.slot}:${active.species}:${active.name}:${active.state}:${active.hp}:${active.maxHp}:${active.restSec ?? ''}`
+      ? `${active.slot}:${active.species}:${active.name}:${active.state}:${active.hp}:${active.maxHp}:${active.restSec ?? ''}:${bond ? 'B' : ''}`
       : '';
     if (pKey !== this.petKey) {
       this.petKey = pKey;
@@ -391,11 +401,15 @@ export class Hotbar {
                 : active.name;
         this.petChip.classList.toggle('pet-downed', active.state === 'downed');
         this.petChip.classList.toggle('pet-resting', active.state === 'resting');
+        this.petChip.classList.toggle('pet-bond', bond);
         this.petHpFill.style.width = `${Math.round((100 * active.hp) / Math.max(1, active.maxHp))}%`;
+        const lureName = itemDef(tameDef(active.species)?.lure ?? '')?.name.toLowerCase();
         this.petChip.title =
           active.state === 'downed'
             ? `${active.name} is down. Kneel to it before it drags itself home.`
-            : `${active.name}, your companion`;
+            : bond && lureName
+              ? `${active.name} watches your hands. ${lureName.charAt(0).toUpperCase()}${lureName.slice(1)} offered by hand would deepen the bond.`
+              : `${active.name}, your companion. Click to give it a pat.`;
       }
     }
   }

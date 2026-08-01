@@ -462,6 +462,8 @@ export class ClientGame {
   onRide: (() => void) | null = null;
   /** THE OPEN HAND: the household mirror — every kept companion. */
   ownPets: PetInfo[] = [];
+  /** THE QUIET HEEL: slot → local ms when the bond moment reopens. */
+  private petBondReadyAt = new Map<number, number>();
   /** Fires when the household changes (HUD refresh). */
   onPet: (() => void) | null = null;
   /** Fires once per fresh tame: raise the naming card for this slot. */
@@ -1278,6 +1280,14 @@ export class ClientGame {
       }
       case 'pet': {
         this.ownPets = msg.pets;
+        // THE QUIET HEEL: the wire says how long until kindness pays
+        // again; we pin it to a local clock and count down between
+        // sends (the mirror only resends when a pet fact changes).
+        for (const p of msg.pets) {
+          if (p.bondSec !== undefined) {
+            this.petBondReadyAt.set(p.slot, Date.now() + p.bondSec * 1000);
+          }
+        }
         if (msg.ceremony !== undefined) {
           const fresh = msg.pets.find((p) => p.slot === msg.ceremony);
           this.onPetCeremony?.(msg.ceremony, fresh?.name ?? '');
@@ -1753,6 +1763,9 @@ export class ClientGame {
     if (this.ownEid === null) return null;
     const pos = this.predictor.pos;
     let best: { target: InteractTarget; d: number } | null = null;
+    // THE QUIET HEEL: the bond-moment Offer waits at the back of the
+    // line — held here and returned only if nothing else is in reach.
+    let offer: InteractTarget | null = null;
     const cx = Math.floor(pos.x);
     const cy = Math.floor(pos.y);
     for (let ty = cy - 2; ty <= cy + 2; ty++) {
@@ -1771,8 +1784,13 @@ export class ClientGame {
       if (remote.meta.kind !== EntityKind.Npc) continue;
       const def = npcDef(remote.meta.defId ?? '');
       const latest = remote.buffer.latest();
-      // Companions first: your own offers a hand on its flank;
-      // another keeper's minds its keeper and offers nothing.
+      // THE QUIET HEEL: your companion walks in arm's reach all day,
+      // so the plain pat never owns this prompt (it would eclipse
+      // every door, station, and bag you pass). The heel surfaces
+      // here only when the press MEANS something: the kneel to a
+      // fallen friend, or the bond moment with its lure in the pack.
+      // The everyday pat moved to a deliberate click on the body and
+      // the companion chip. Another keeper's beast offers nothing.
       const owned = remote.meta.ownerEid !== undefined;
       if (owned && remote.meta.ownerEid !== this.ownEid) continue;
       // A tamable beast worn under the gentling window offers the
@@ -1793,7 +1811,9 @@ export class ClientGame {
       const verb = owned
         ? latest != null && latest.hpPct === 0
           ? 'Tend'
-          : 'Pet'
+          : this.petOfferReady()
+            ? 'Offer'
+            : null
         : def?.produce
           ? 'Milk'
           : gentleReady
@@ -1809,7 +1829,15 @@ export class ClientGame {
       const dx = x - pos.x;
       const dy = y - pos.y;
       const d = dx * dx + dy * dy;
-      if (d <= 2.2 * 2.2 && (!best || d < best.d)) {
+      if (d > 2.2 * 2.2) continue;
+      // The Offer stands aside for everything: the moment keeps until
+      // claimed, so the heel must never eclipse a door or a bag while
+      // the window is open. It surfaces only when nothing else does.
+      if (verb === 'Offer') {
+        offer ??= { kind: 'npc', tx: Math.floor(x), ty: Math.floor(y), eid, verb };
+        continue;
+      }
+      if (!best || d < best.d) {
         best = {
           target: { kind: 'npc', tx: Math.floor(x), ty: Math.floor(y), eid, verb },
           d,
@@ -1830,7 +1858,67 @@ export class ClientGame {
         best = { target: { kind: 'loot', tx: Math.floor(x), ty: Math.floor(y), eid }, d };
       }
     }
-    return best?.target ?? null;
+    return best?.target ?? offer ?? null;
+  }
+
+  /**
+   * THE QUIET HEEL: the bond moment is worth a prompt only when the
+   * press would land it — clock open AND the species' own lure in
+   * the pack. (The server also wants the pet out of a fight; we
+   * cannot see its target, but a mid-fight press just lands a plain
+   * pat without spending the lure or the clock, so the prompt is
+   * never a lie — it simply keeps offering until the offer takes.)
+   */
+  private petOfferReady(): boolean {
+    const active = this.ownPets.find((p) => p.state === 'heel');
+    if (!active || !this.petBondReady(active.slot)) return false;
+    const lure = tameDef(active.species)?.lure;
+    return lure !== undefined && this.inventory.some((s) => s !== null && s.item === lure && s.qty > 0);
+  }
+
+  /** Is the bond moment open for this stall? (Counts down locally.) */
+  petBondReady(slot: number): boolean {
+    return Date.now() >= (this.petBondReadyAt.get(slot) ?? 0);
+  }
+
+  /** The walking companion's live body, if it is spawned right now. */
+  ownPetEid(): EntityId | null {
+    for (const [eid, remote] of this.entities) {
+      if (remote.meta.kind === EntityKind.Npc && remote.meta.ownerEid === this.ownEid) return eid;
+    }
+    return null;
+  }
+
+  /**
+   * Your own companion near this tile's center — the deliberate pat
+   * channel (THE QUIET HEEL: the body is the button, not the prompt).
+   */
+  petAtTile(tx: number, ty: number): EntityId | null {
+    const eid = this.ownPetEid();
+    if (eid === null) return null;
+    const remote = this.entities.get(eid);
+    if (!remote) return null;
+    const latest = remote.buffer.latest();
+    const x = latest?.x ?? remote.meta.x;
+    const y = latest?.y ?? remote.meta.y;
+    const dx = x - (tx + 0.5);
+    const dy = y - (ty + 0.5);
+    if (dx * dx + dy * dy > 0.9 * 0.9) return null;
+    // A scrum is not a petting zoo: mouse-down is ALSO the swing, and
+    // the companion fights pressed against its mark. With a fightable
+    // body near the same spot the click stays combat — spam-clicking
+    // through a melee never lands an accidental pat (the chip still
+    // pats any time).
+    for (const other of this.entities.values()) {
+      if (other.meta.kind !== EntityKind.Npc || other.meta.ownerEid !== undefined) continue;
+      if (other.meta.friendly || other.meta.talk) continue;
+      const ol = other.buffer.latest();
+      if (ol != null && ol.hpPct === 0) continue;
+      const ox = (ol?.x ?? other.meta.x) - (tx + 0.5);
+      const oy = (ol?.y ?? other.meta.y) - (ty + 0.5);
+      if (ox * ox + oy * oy <= 1.75 * 1.75) return null;
+    }
+    return eid;
   }
 
   /** The drop nearest this tile's center (touch taps land on tiles). */

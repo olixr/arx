@@ -41,6 +41,8 @@ export declare class Hotbar {
     /** Fires when a slot transitions to ready (for the soft tick). */
     onReady: (() => void) | null;
     constructor(input: InputManager);
+    /** Fires when the companion chip is clicked (the pat channel). */
+    onPetChip: (() => void) | null;
     /** Called once per frame — cheap DOM writes only on change. */
     update(game: ClientGame): void;
 }
