@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "odele_vaults__greet",
       "text": "Bank of Silverfall. Four vaults, one ledger, no exceptions. State your business. In figures, where possible.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "odele_vaults__hub",
       "text": "Next item.",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "vaults",
+      "voice": "odele_vaults__vaults",
       "text": "Deposit at any bank chest; withdraw at any other. Your holdings live in the ledger, not the box. A brigand who steals a box has acquired a box. The vault row behind me guards the ledger itself, and nothing in twenty years has got past it.",
       "next": "hub"
     },
     {
       "id": "cormund",
+      "voice": "odele_vaults__cormund",
       "text": "Cormund of Amberford. Twelve pages a season, each one requiring a single line of reply. He calls the letters bank business. I call them enthusiasm. His vault-work is immaculate all the same, and his Toll War chain hangs in his own vault.",
       "next": "hub"
     },
     {
       "id": "seal",
+      "voice": "odele_vaults__seal",
       "text": "Materially. Deep Market silver moves through my counters now, and the ore brokers below bank their take up here nightly. I have ruled a new column in a ledger that had not needed one since my predecessor's predecessor. We are watching it with both eyes.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "odele_vaults__bye",
       "text": "Filed. Good day."
     }
   ]

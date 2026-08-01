@@ -73,6 +73,15 @@ location /assets/ {
     expires 30d;
     add_header Cache-Control "public, immutable";
 }
+
+# Voice clips — served by the game server out of its data/voice store
+# (hash-named; the node response already carries the immutable cache
+# header, nginx just relays). WITHOUT this block every clip 404s from
+# the internet and voiced NPCs stay silent.
+location /voice/ {
+    proxy_pass http://127.0.0.1:8790;
+    proxy_set_header Host $host;
+}
 ```
 
 What each piece does:
@@ -238,6 +247,22 @@ deploys never carry clips or banks, so production stays silent until
 they are pushed through its own `/dev` door. The dialogue `voice` refs
 ship via git as usual (and are ghost-safe: an unmatched ref resolves to
 silence, never an error). To push the clips and banks themselves:
+
+Two prerequisites, both one-time:
+
+- the live nginx config needs the `location /voice/` block above (Forge
+  → site → Edit Nginx Configuration) — without it clips upload fine but
+  404 from the internet, and voiced NPCs stay silent;
+- `scripts/arx-run.sh` self-heals the `data/voice → shared/voice`
+  symlink on every daemon start (and rescues clips a symlink-less boot
+  wrote into a release), so clips survive releases even if the Forge
+  deploy script lacks the mkdir/ln step. Keep the step anyway — belt
+  and braces.
+
+Beware: if Forge quick-deploy is on, every `git push` builds and
+activates a release and restarts the game server. Push (or pause
+quick-deploy) before starting a long import so a mid-import restart
+doesn't cut the door out from under it.
 
 1. On the server, set `DEV_COMMANDS=1` in the site environment (Forge →
    Environment) and `scripts/arxctl.sh restart` — this opens the `/dev`

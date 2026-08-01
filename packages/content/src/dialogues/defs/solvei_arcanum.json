@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "solvei_arcanum__greet",
       "text": "Careful with the door, the wards dislike drafts. Come in, come in. You have questions. Everyone who climbs this far... hm. That's a stronger binding note than yesterday. Interesting. ...Questions. Yes. Ask them.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "solvei_arcanum__hub",
       "text": "Which will it be?",
       "choices": [
         {
@@ -37,6 +39,7 @@
     },
     {
       "id": "runes",
+      "voice": "solvei_arcanum__runes",
       "text": "Four theories. Thinner air. Older stone. The starfall vein singing through the bedrock, and it does sing. That's measurement, not poetry. Or my favorite: that altitude is simply *closer to where the runes are from*. Every enchanter who works a season up here burns brighter. The mountain takes part. On what terms, I'm... still negotiating.",
       "choices": [
         {
@@ -51,20 +54,24 @@
     },
     {
       "id": "seal",
+      "voice": "solvei_arcanum__seal",
       "text": "Eleven years of petitions. I could feel the Riftgate through eighty feet of rock. A hum, in a key I *almost* recognize. Almost is everything in my work. Now the way is open, the hum is louder, and I sleep... differently. Was I right to ask for the breaking? Yes. I check that answer every night. So far it holds.",
       "next": "hub"
     },
     {
       "id": "rift",
+      "voice": "solvei_arcanum__rift",
       "text": "The Masons found it already standing when they first cut the deep galleries. Older than the city. Older than the guild. Keys turn there, and places answer. Where ARE the places? That's the... sorry, I've wandered off again. The deep folk treat the gate as furniture. That's the healthiest attitude there is, and I can't manage it.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "solvei_arcanum__bye",
       "text": "Mind the wards on your way out. They remember everyone. ...Not a figure of speech."
     },
     {
       "id": "browse",
+      "voice": "solvei_arcanum__browse",
       "text": "Scrolls of the craft, and dust to practice with. The runes charge nothing extra this high. That part the mountain gives away.",
       "hooks": [
         {
