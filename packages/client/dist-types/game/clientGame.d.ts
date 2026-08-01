@@ -525,6 +525,12 @@ export declare class ClientGame {
     buffsAt: number;
     /** Fires when the buff list changes (HUD refresh). */
     onBuffs: (() => void) | null;
+    /** The saddle: active mount def id (server truth), null afoot. */
+    ownMount: string | null;
+    /** Mount def ids this character owns — the stable row's truth. */
+    ownedMounts: string[];
+    /** Fires when saddle state changes (HUD / stable row refresh). */
+    onRide: (() => void) | null;
     /** Fires when the local player commits a cast (FX + audio hooks). */
     onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null;
     /** Fires when the technique loadout changes (UI refresh). */

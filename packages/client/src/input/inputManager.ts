@@ -77,6 +77,13 @@ export class InputManager {
   private sheatheQueued = false;
   private padSheatheWasDown = false;
   private padSneakWasDown = false;
+  /**
+   * One queued mount-toggle press (P; pad unbound by default) — the
+   * sit protocol again: one frame carries the bit, the server owns
+   * the saddle and every dismount law.
+   */
+  private mountQueued = false;
+  private padMountWasDown = false;
 
   constructor(target: HTMLElement) {
     window.addEventListener('keydown', (e) => {
@@ -90,6 +97,7 @@ export class InputManager {
         if (!this.buildCapture) {
           if (bindings.kbMatches('sit', e.code)) this.sitQueued = true;
           if (bindings.kbMatches('sheathe', e.code)) this.sheatheQueued = true;
+          if (bindings.kbMatches('mount', e.code)) this.mountQueued = true;
         }
       }
       this.keys.add(e.code);
@@ -210,6 +218,7 @@ export class InputManager {
     if (this.cinemaCapture) {
       this.sitQueued = false;
       this.sheatheQueued = false;
+      this.mountQueued = false;
       return 0;
     }
     let b = 0;
@@ -220,6 +229,7 @@ export class InputManager {
     if (this.buildCapture) {
       this.sitQueued = false;
       this.sheatheQueued = false;
+      this.mountQueued = false;
       if (bindings.kbDown('dodge', this.keys)) b |= InputButton.Dodge;
       if (this.sneakMode) b |= InputButton.Sneak;
       return b;
@@ -276,6 +286,18 @@ export class InputManager {
     if (this.sheatheQueued) {
       b |= InputButton.Sheathe;
       this.sheatheQueued = false;
+    }
+    // Mount: unbound on pads by default, but the edge path is wired so
+    // a rebind Just Works; the key press queues like sit.
+    const padMount = bindings.padHeld('mount', snap);
+    if (padMount && !this.padMountWasDown) {
+      this.mountQueued = true;
+      this.padUsed = true;
+    }
+    this.padMountWasDown = padMount;
+    if (this.mountQueued) {
+      b |= InputButton.Mount;
+      this.mountQueued = false;
     }
     return b;
   }

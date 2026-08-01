@@ -869,6 +869,24 @@ export interface S2CBuffs {
 }
 
 /**
+ * THE PREDICTOR LEARNS ITS LEGS: the own player's saddle state and
+ * steady speed multiplier, sent on join and whenever either changes
+ * (mount, dismount, a buff or gear stride shifting the stack). The
+ * client mirrors `mult` into its predictor so mounted prediction stops
+ * drifting; frame-local factors (draw slow, cast freeze, chill, wade)
+ * stay out of it — each side already derives those per frame.
+ */
+export interface S2CRide {
+  t: 'ride';
+  /** Active mount def id, or null afoot. */
+  mount: string | null;
+  /** Steady speed multiplier over PLAYER_SPEED (rideSpeedMult output). */
+  mult: number;
+  /** Mount def ids this character owns (the stable row's truth). */
+  owned: string[];
+}
+
+/**
  * The Riftgate answered an interact: show the key panel. The client
  * reads key details from its own inventory (slots carry rolls); this
  * message just opens the gate's side of the conversation.
@@ -1346,6 +1364,7 @@ export type S2CMessage =
   | S2CTechniques
   | S2CCallings
   | S2CBuffs
+  | S2CRide
   | S2CRiftgate
   | S2CDungeonEnter
   | S2CSigns

@@ -443,6 +443,12 @@ export class ClientGame {
   buffsAt = 0;
   /** Fires when the buff list changes (HUD refresh). */
   onBuffs: (() => void) | null = null;
+  /** The saddle: active mount def id (server truth), null afoot. */
+  ownMount: string | null = null;
+  /** Mount def ids this character owns — the stable row's truth. */
+  ownedMounts: string[] = [];
+  /** Fires when saddle state changes (HUD / stable row refresh). */
+  onRide: (() => void) | null = null;
   /** Fires when the local player commits a cast (FX + audio hooks). */
   onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null = null;
   /** Fires when the technique loadout changes (UI refresh). */
@@ -1236,6 +1242,16 @@ export class ClientGame {
         this.buffs = msg.buffs;
         this.buffsAt = performance.now();
         this.onBuffs?.();
+        break;
+      }
+      case 'ride': {
+        // THE PREDICTOR LEARNS ITS LEGS: the steady multiplier lands
+        // in the predictor the same message that changes the truth,
+        // so mounted prediction agrees with the server to the digit.
+        this.ownMount = msg.mount;
+        this.ownedMounts = msg.owned;
+        this.predictor.speedMult = msg.mult;
+        this.onRide?.();
         break;
       }
       case 'time': {

@@ -39,6 +39,14 @@ export declare class Predictor {
      * updates it from equip messages.
      */
     weaponStyle: string | null;
+    /**
+     * THE PREDICTOR LEARNS ITS LEGS: the steady speed multiplier over
+     * base — saddle, tonics, stride enchants, composed server-side by
+     * the one law (rideSpeedMult) and mirrored here via S2CRide. Before
+     * this mirror existed the predictor ran at base speed and mounted
+     * prediction would have rubber-banded every frame.
+     */
+    speedMult: number;
     constructor(collision: CollisionSource, speed: number);
     reset(pos: Vec2): void;
     /** ClientGame commits a cast on input frame `seq`. */

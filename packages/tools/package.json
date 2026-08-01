@@ -7,7 +7,8 @@
     "bot": "tsx src/bot/bot.ts",
     "validate": "tsx src/validate/validate.ts",
     "prove:secret-arts": "tsx src/proving/secretArts.ts",
-    "prove:lesson-combat": "tsx src/proving/lessonCombat.ts"
+    "prove:lesson-combat": "tsx src/proving/lessonCombat.ts",
+    "prove:mounts": "tsx src/proving/mounts.ts"
   },
   "dependencies": {
     "@arx/shared": "*",

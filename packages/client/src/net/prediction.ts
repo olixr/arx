@@ -50,6 +50,14 @@ export class Predictor {
    * updates it from equip messages.
    */
   weaponStyle: string | null = null;
+  /**
+   * THE PREDICTOR LEARNS ITS LEGS: the steady speed multiplier over
+   * base — saddle, tonics, stride enchants, composed server-side by
+   * the one law (rideSpeedMult) and mirrored here via S2CRide. Before
+   * this mirror existed the predictor ran at base speed and mounted
+   * prediction would have rubber-banded every frame.
+   */
+  speedMult = 1;
 
   constructor(
     private readonly collision: CollisionSource,
@@ -93,9 +101,10 @@ export class Predictor {
     if (frame.seq > this.lastCastSeq && frame.seq <= this.lastCastSeq + this.lastCastFreeze) {
       return 0;
     }
-    return isDrawSlowed(frame, this.weaponStyle)
-      ? this.speed * DRAW_MOVE_FACTOR
-      : this.speed;
+    return (
+      (isDrawSlowed(frame, this.weaponStyle) ? this.speed * DRAW_MOVE_FACTOR : this.speed) *
+      this.speedMult
+    );
   }
 
   /** The shared per-frame move: normal step + optional dodge impulse. */

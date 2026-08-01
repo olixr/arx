@@ -30,6 +30,8 @@ export enum InputButton {
   Sit = 1 << 8,
   /** Sheathe toggle (H / pad D-left) — press edge stows/draws the weapons. */
   Sheathe = 1 << 9,
+  /** Mount toggle (P) — press edge calls the beast or steps down. */
+  Mount = 1 << 10,
 }
 
 export function hasButton(buttons: number, b: InputButton): boolean {

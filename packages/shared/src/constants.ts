@@ -100,7 +100,11 @@
 // (THE LESSON, still v24: S2CTechniques grows the optional `lessons`
 // meter map. Additive — a peer that ignores it merely shows no fill,
 // and no v23 peers exist past the v24 gate. Recorded on purpose.)
-export const PROTOCOL_VERSION = 24;
+// v25 — THE ROAD GROWS SHORT: PoseState.Ride joins the pose byte and
+// AppearanceData carries `mount`. A v24 client shown a rider would
+// draw an unknown pose as a standing body sliding at 8 t/s — the
+// stance changed shape, so the handshake turns the old client away.
+export const PROTOCOL_VERSION = 25;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

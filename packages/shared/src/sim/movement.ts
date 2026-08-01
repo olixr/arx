@@ -34,6 +34,19 @@ export function applyDodge(
 }
 
 /**
+ * THE SADDLE OUTRANKS THE SOLES: a mounted body moves at the mount's
+ * multiplier OR the foot stack (tonics, stride enchants, passives,
+ * gear), whichever is greater — never the product. Stacking would let
+ * a tonic ride the saddle past the remote-smoothing ceiling the
+ * netcode reserved for mounts (12 t/s); the max keeps the fastest
+ * possible body provable from this one site, and tonics stay worth
+ * drinking on foot.
+ */
+export function rideSpeedMult(mountMult: number | null, footMult: number): number {
+  return mountMult == null ? footMult : Math.max(mountMult, footMult);
+}
+
+/**
  * Advance a body one tick from an input frame. Pure and shared: the server
  * runs it authoritatively, the client runs the identical code for
  * prediction, so reconciliation corrections stay tiny.

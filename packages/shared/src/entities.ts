@@ -54,6 +54,13 @@ export enum PoseState {
    * axis and deck height, so the wire stays one byte.
    */
   Lie = 16,
+  /**
+   * In the saddle — the travel stance. WHAT is ridden travels on
+   * AppearanceData (the flaming-blade law: identity every watcher
+   * needs rides appearance), so the wire stays one byte; the client
+   * derives gait from motion exactly as it does for beasts.
+   */
+  Ride = 17,
 }
 
 /**
@@ -129,6 +136,11 @@ export interface AppearanceData {
    * carries its own way — grips belong to hands, not to weapons.
    */
   carryOff?: CarryStyle;
+  /**
+   * Active mount def id while PoseState.Ride — the beast every watcher
+   * must draw under this body (the flaming-blade law). Absent afoot.
+   */
+  mount?: string;
 }
 
 /** Cosmetic idle weapon-carry preference (never affects combat). */

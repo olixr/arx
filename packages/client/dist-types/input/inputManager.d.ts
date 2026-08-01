@@ -65,6 +65,13 @@ export declare class InputManager {
     private sheatheQueued;
     private padSheatheWasDown;
     private padSneakWasDown;
+    /**
+     * One queued mount-toggle press (P; pad unbound by default) — the
+     * sit protocol again: one frame carries the bit, the server owns
+     * the saddle and every dismount law.
+     */
+    private mountQueued;
+    private padMountWasDown;
     constructor(target: HTMLElement);
     setTypingCheck(fn: () => boolean): void;
     isDown(code: string): boolean;

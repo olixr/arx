@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DODGE_DIST, applyDodge, stepMovement } from './movement.js';
+import { DODGE_DIST, applyDodge, rideSpeedMult, stepMovement } from './movement.js';
 import { NO_COLLISION, type CollisionSource } from '../world/collision.js';
 import { Tile, WADE_SPEED_FACTOR } from '../world/tiles.js';
 
@@ -83,4 +83,16 @@ test('dodge is deterministic and stops at walls', () => {
 test('dodge with no direction goes nowhere', () => {
   const out = applyDodge({ x: 2, y: 2 }, 0, 0, NO_COLLISION);
   assert.deepEqual(out, { x: 2, y: 2 });
+});
+
+test('THE SADDLE OUTRANKS THE SOLES: max, never product', () => {
+  // Afoot: the foot stack passes through untouched.
+  assert.equal(rideSpeedMult(null, 1.2), 1.2);
+  // Mounted with a lesser foot stack: the beast's stride rules.
+  assert.equal(rideSpeedMult(1.6, 1.2), 1.6);
+  // A foot stack that outruns the beast keeps its own legs (never
+  // slower for mounting) — and crucially never 1.6 × 1.2 = 1.92.
+  assert.equal(rideSpeedMult(1.6, 1.7), 1.7);
+  // Naked foot, plain saddle.
+  assert.equal(rideSpeedMult(1.6, 1), 1.6);
 });

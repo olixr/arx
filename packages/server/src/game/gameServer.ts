@@ -34,6 +34,7 @@ import {
   lessonFlag,
   masteryXp,
   RANK_ROMAN,
+  rideSpeedMult,
   stepMovement,
   xpForLevel,
   type EntityId,
@@ -120,6 +121,7 @@ import {
   resonanceShift,
   seatFor,
   carriesProc,
+  TARGETED_ACTIONS,
   DEEPEN_MIN_RARITY,
   enchantDef,
   unmakingOf,
@@ -236,6 +238,8 @@ import {
   type VoiceBankDef,
   type VoiceClipDef,
   type VoiceSlot,
+  mountDef,
+  MOUNTS,
 } from '@arx/content';
 import {
   collectVoicePrefetch,
@@ -397,6 +401,7 @@ import { dungeonOrigin, generateDungeon } from '../dungeon/generate.js';
 import {
   DUNGEON_KEY_ITEM,
   DUNGEON_MIN_Y,
+  UNDERGROUND_Y,
   EXPLORED_PUSH_BATCH,
   ExploredMask,
   RARITY_TIERS,
@@ -1100,6 +1105,19 @@ interface PlayerComp {
    * releases the occupancy claim. Facing locks to `dir` while mounted.
    */
   seat: { tiles: Array<{ x: number; y: number }>; retX: number; retY: number; dir: number } | null;
+  /**
+   * THE SADDLE IS A STANCE: the active mount def id, or null afoot.
+   * The mount is the player's appearance, never a second entity.
+   * Riding yields to every deed — attack, art, dodge, action, sneak,
+   * sit, landed damage, dungeon ground — and only movement keeps it.
+   */
+  mountId: string | null;
+  /** Mount def ids this character owns. Persisted in Phase 4. */
+  mountsOwned: Set<string>;
+  /** The stable's pick — which owned beast the whistle calls. */
+  mountChosen: string | null;
+  /** Last mirrored ride signature (mount|mult) — resend only on change. */
+  rideSigSent: string;
   /**
    * Weapons stowed on the body (the H toggle) — blades at the hip,
    * bow/staff across the back. While stowed, attacks and casts are
@@ -2572,6 +2590,10 @@ export class GameServer {
       sitting: false,
       lying: false,
       seat: null,
+      mountId: null,
+      mountsOwned: new Set(),
+      mountChosen: null,
+      rideSigSent: '',
       sheathed: false,
       drawLockUntilTick: 0,
       sneakStillTicks: 0,
@@ -3698,6 +3720,89 @@ export class GameServer {
     if (!seat) return;
     player.seat = null;
     this.releaseSeat(eid, seat, restore ? pos : null);
+  }
+
+  /**
+   * The steady foot multiplier: buffs × fleet_footed × gear stride.
+   * Frame-local factors (draw slow, chill, cast freeze, wade) stay
+   * OUT — the client re-derives those per frame, so only this number
+   * needs mirroring for prediction to agree (S2CRide).
+   */
+  private footSpeedMult(player: PlayerComp): number {
+    let mult = 1;
+    for (const b of player.buffs) mult *= b.speedMult;
+    if (this.hasPassive(player, 'fleet_footed')) mult *= 1.08;
+    mult *= player.gear.speedMult; // plate drags, leather springs
+    return mult;
+  }
+
+  /** The one steady multiplier: THE SADDLE OUTRANKS THE SOLES. */
+  private steadySpeedMult(player: PlayerComp): number {
+    const mount = player.mountId ? (mountDef(player.mountId)?.speedMult ?? null) : null;
+    return rideSpeedMult(mount, this.footSpeedMult(player));
+  }
+
+  /**
+   * THE PREDICTOR LEARNS ITS LEGS: mirror saddle state + steady mult
+   * to the own client whenever either changes. Called every tick from
+   * the input pass — the signature check makes the steady state free.
+   */
+  private sendRide(player: PlayerComp): void {
+    const mult = this.steadySpeedMult(player);
+    const sig = `${player.mountId ?? ''}|${mult.toFixed(4)}|${player.mountsOwned.size}`;
+    if (sig === player.rideSigSent) return;
+    player.rideSigSent = sig;
+    player.session?.sendJson({
+      t: 'ride',
+      mount: player.mountId,
+      mult,
+      owned: [...player.mountsOwned],
+    });
+  }
+
+  /**
+   * The whistle answers once: step down if riding, otherwise call the
+   * chosen beast. Mounting is a deed — it stands the body out of any
+   * seat or crouch first — and dungeon ground refuses the saddle.
+   */
+  private mountToggle(eid: EntityId, player: PlayerComp, pos: PositionComp): void {
+    if (player.mountId) {
+      this.dismount(eid, player);
+      return;
+    }
+    const id = player.mountChosen;
+    if (!id || !player.mountsOwned.has(id) || !mountDef(id)) {
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: 'You have no mount to call.',
+      });
+      return;
+    }
+    // The whole underground refuses the saddle: the dark band (the
+    // Undercroft, the delve galleries) as much as the far dungeon
+    // slots. Beasts do not go down the stairs. UNDERGROUND_Y covers
+    // both bands (512 <= 8192).
+    if (pos.y >= UNDERGROUND_Y) {
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: 'No room to ride down here.',
+      });
+      return;
+    }
+    this.standUp(eid, player, pos);
+    player.mountId = id;
+    this.broadcastMetaUpdate(eid);
+    this.sendRide(player);
+  }
+
+  /** Boots on the ground. Safe no-op afoot, so every yield site may call it. */
+  private dismount(eid: EntityId, player: PlayerComp): void {
+    if (!player.mountId) return;
+    player.mountId = null;
+    this.broadcastMetaUpdate(eid);
+    this.sendRide(player);
   }
 
   /**
@@ -5067,35 +5172,116 @@ export class GameServer {
     try {
 
     if (op === 'deposit') {
-      // Rolled instances live in bank_gear rows (they can never stack);
-      // a slot-addressed deposit moves exactly the instance clicked.
       const src = slot !== undefined ? player.inventory[slot] : undefined;
+      // NO LAUNDERING: the vault keeps no theft facet, so a stolen
+      // stack or instance would come back out of it clean. The teller
+      // refuses; the fences are the only outlet for hot goods.
+      if (src && src.item === item && src.stolen) {
+        player.session.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'This is an honest ledger. A fence will take that off your hands.',
+        });
+        return;
+      }
       if (src && src.item === item && src.roll) {
-        const taken = takeSlot(player.inventory, slot!, 1);
-        if (taken?.roll && player.characterId > 0) {
-          // Enqueued in FIFO order: the sendBank below sees this row.
-          void this.accounts
-            .insertBankGear(player.characterId, taken.item, taken.roll)
-            .catch((err: Error) => console.error('[bank]', err.message));
+        // Rolled instances live in bank_gear rows (they can never
+        // stack); a slot-addressed deposit moves exactly the instance
+        // clicked. The row insert is AWAITED: the row committing is
+        // what the deposit IS, and a fire-and-forget failure would
+        // silently destroy the piece.
+        if (player.characterId > 0) {
+          const taken = takeSlot(player.inventory, slot!, 1);
+          if (taken?.roll) {
+            const stored = await this.accounts
+              .insertBankGear(player.characterId, taken.item, taken.roll)
+              .then(() => true)
+              .catch((err: Error) => {
+                console.error('[bank]', err.message);
+                return false;
+              });
+            if (stored) {
+              // The instance now lives only in its row — flush the
+              // pack ahead of the 30s cadence so a crash inside the
+              // window can't restore (and so duplicate) the piece.
+              this.accounts.saveInventory(player.characterId, player.inventory);
+            } else {
+              // Refuse cleanly: the piece goes straight back in hand.
+              if (addItem(player.inventory, taken.item, 1, taken.roll) === 0) {
+                const pos = this.positions.get(eid);
+                if (pos) {
+                  this.placeDrop(taken.item, 1, pos.x, pos.y, {
+                    ownerEid: eid,
+                    ownerUntil: Date.now() + 30_000,
+                    despawnAt: Date.now() + 12 * 60_000,
+                    pickupAfter: Date.now() + 400,
+                    roll: taken.roll,
+                  });
+                }
+              }
+              player.session.sendJson({
+                t: 'chat',
+                channel: 'system',
+                text: 'The vault will not take that just now.',
+              });
+            }
+          }
         }
-      } else {
-        const removed =
-          src && src.item === item
-            ? (takeSlot(player.inventory, slot!, qty)?.qty ?? 0)
-            : removeItem(player.inventory, item, qty);
+      } else if (src && src.item === item) {
+        const removed = takeSlot(player.inventory, slot!, qty)?.qty ?? 0;
+        if (removed > 0) {
+          player.bank[item] = (player.bank[item] ?? 0) + removed;
+          player.bankDirty = true;
+        }
+      } else if (itemDef(item)?.stackable) {
+        const removed = removeItem(player.inventory, item, qty);
         if (removed > 0) {
           player.bank[item] = (player.bank[item] ?? 0) + removed;
           player.bankDirty = true;
         }
       }
+      // Id-addressed removal is for stackable materials ONLY (the
+      // instance-addressing law): aimed at a rolled def it would null
+      // the first honest same-id slot and erase its workings. Gear
+      // must name its slot; anything else falls through untouched.
     } else if (gearId !== undefined) {
       // Withdraw an exact stored instance by its stable row id.
-      if (player.characterId > 0 && hasSpaceFor(player.inventory, item)) {
+      if (player.characterId > 0) {
         const stored = (await this.accounts.loadBankGear(player.characterId)).find(
           (g) => g.id === gearId && g.item === item,
         );
-        if (stored && (await this.accounts.deleteBankGear(gearId, player.characterId))) {
-          addItem(player.inventory, stored.item, 1, stored.roll);
+        // Space is proved AFTER the await, and the proof and the add
+        // run back to back with no await between them: the 20Hz tick
+        // (tickCraft, the walk-over vacuum) can fill the pack while
+        // the load is in flight, and the old order deleted the row
+        // before learning the piece had nowhere to land.
+        if (stored) {
+          if (addItem(player.inventory, stored.item, 1, stored.roll) === 1) {
+            // The piece is in hand; only now may the row die. If the
+            // delete then fails the instance exists twice until the
+            // row is cleaned up — logged loudly, because a rare dupe
+            // on a db error beats a guaranteed loss.
+            const deleted = await this.accounts
+              .deleteBankGear(gearId, player.characterId)
+              .catch((err: Error) => {
+                console.error('[bank]', err.message);
+                return false;
+              });
+            if (!deleted) {
+              console.error(
+                `[bank] gear row ${gearId} survived its own withdraw (character ${player.characterId}): instance duplicated until the row is removed`,
+              );
+            }
+            // The row is gone and only the pack knows the piece now —
+            // flush it ahead of the 30s cadence.
+            this.accounts.saveInventory(player.characterId, player.inventory);
+          } else {
+            player.session.sendJson({
+              t: 'chat',
+              channel: 'system',
+              text: 'Your pack has no room for that.',
+            });
+          }
         }
       }
     } else {
@@ -5258,6 +5444,11 @@ export class GameServer {
           Math.max(1, Math.floor(taken.qty * payFor(each) * stolenMult)),
         );
       } else {
+        // Id-addressed sales are for stackable materials ONLY (the
+        // instance-addressing law): aimed at a rolled def, removeItem
+        // would null the first honest same-id slot and erase its
+        // workings for a base-value coin. Gear must name its slot.
+        if (!def.stackable) return;
         const sold = removeItem(player.inventory, item, qty);
         if (sold === 0) return;
         addItem(player.inventory, 'coins', sold * payFor(def.value));
@@ -8214,6 +8405,13 @@ export class GameServer {
       sys('You need to stand by an enchanting table for that.');
       return;
     }
+    // NO LAUNDERING: the unmaking door refuses stolen goods and this
+    // one must match — a sundering that paid XP off hot steel would be
+    // a quieter fence than the real ones.
+    if (packRef?.stolen) {
+      sys('That one is hot. No honest bench will work it for you.');
+      return;
+    }
     const ench = enchantDef(seat === 'art' ? target.roll?.ench2 : target.roll?.ench);
     if (!ench) {
       sys('There is no working on that to strip.');
@@ -8234,7 +8432,15 @@ export class GameServer {
     // wrong would leave a stripped working still buffing the body.
     this.onEquipmentChanged(eid, player);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
-    sys(`You draw the ${ench.name} back out. The ${itemDef(target.item)?.name ?? 'piece'} is bare steel again.`);
+    // Say what is true of the steel: only a piece with NO working left
+    // is bare again — a deepened piece may still carry its other seat.
+    const remains = enchantDef(seat === 'art' ? target.roll?.ench : target.roll?.ench2);
+    const pieceName = itemDef(target.item)?.name ?? 'piece';
+    sys(
+      remains
+        ? `You draw the ${ench.name} back out. The ${remains.name} still rides the ${pieceName}.`
+        : `You draw the ${ench.name} back out. The ${pieceName} is bare steel again.`,
+    );
     this.grantXp(eid, player, 'enchanting', SUNDER_XP);
 
     const pos = this.positions.get(eid);
@@ -8275,7 +8481,11 @@ export class GameServer {
         });
         return;
       }
-      removeItem(player.inventory, slot.item, 1);
+      // Consume the CLICKED slot (the enchant-scroll door's law): an
+      // id-addressed removal skips stolen slots by the laundering law,
+      // and an unconsumed scroll must never still teach. A stolen
+      // scroll studied is destroyed — that is fine and lawful.
+      if (!takeSlot(player.inventory, slotIndex, 1)) return;
       player.knownRecipes.add(recipe.id);
       if (player.characterId > 0) this.accounts.learnRecipe(player.characterId, recipe.id);
       player.session?.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
@@ -8314,7 +8524,10 @@ export class GameServer {
         );
         return;
       }
-      removeItem(player.inventory, slot.item, 1);
+      // The clicked writ is the one consumed — slot-addressed, so a
+      // stolen note is destroyed on reading rather than starting the
+      // errand forever while it never leaves the pack.
+      if (!takeSlot(player.inventory, slotIndex, 1)) return;
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
       this.questAccept(eid, player, qdef.id);
       return;
@@ -8335,7 +8548,10 @@ export class GameServer {
         });
         return;
       }
-      removeItem(player.inventory, slot.item, 1);
+      // The clicked vial is the one spent — slot-addressed, so the oil
+      // is consumed whatever its history (a stolen vial worked into
+      // the blade is destroyed, never an everlasting coat).
+      if (!takeSlot(player.inventory, slotIndex, 1)) return;
       // Legacy-grace materialization: an unrolled instance IS common/0.
       const roll = worn.roll ?? { rar: 'common' as const, seed: 0 };
       roll.coat = { id: def.id, until: Date.now() + c.durationSec * 1000 };
@@ -8371,7 +8587,11 @@ export class GameServer {
       }
       if (!takeSlot(player.inventory, slotIndex, 1)) return;
       worn.roll!.deep = true;
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      // The worn instance changed shape — recompute and broadcast the
+      // full equip change (the bond/sunder door's law), or the tooltip
+      // and bench keep showing an un-deepened piece until the next
+      // equipment change happens to refresh them.
+      this.onEquipmentChanged(eid, player);
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
@@ -8409,6 +8629,24 @@ export class GameServer {
           t: 'chat',
           channel: 'system',
           text: `The ${itemDef(worn.id)?.name ?? 'item'} already bears that enchantment.`,
+        });
+        return;
+      }
+      // A block-woken working answers only THE RAISED WALL, and only a
+      // fist-held armored shield ever raises one (equippedShield's
+      // law). Bonded onto a quiver or an off blade it would be silent
+      // forever — refuse instead of selling a dead working.
+      const listensForBlock = ench.effects.some(
+        (fx) =>
+          fx.kind === 'proc' &&
+          (fx.trigger.on === 'block' ||
+            (fx.trigger.on === 'stacks' && fx.trigger.per === 'block')),
+      );
+      if (listensForBlock && ench.slot === 'offhand' && !this.equippedShield(player)) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `The ${ench.name} listens for a shield's answer, and that hand holds no shield.`,
         });
         return;
       }
@@ -8502,7 +8740,9 @@ export class GameServer {
         });
         return;
       }
-      removeItem(player.inventory, slot.item, 1);
+      // The clicked stone is the one seated — slot-addressed (the
+      // stolen-gem forever-socket had the same shape as the oil's).
+      if (!takeSlot(player.inventory, slotIndex, 1)) return;
       worn.id = socketStaff;
       this.onEquipmentChanged(eid, player);
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
@@ -8518,7 +8758,9 @@ export class GameServer {
     // new drink replaces your drink, a new meal replaces your meal.
     if (def.buff) {
       const b = def.buff;
-      removeItem(player.inventory, slot.item, 1);
+      // Eat what was clicked, slot-addressed: nothing swallows twice
+      // and a stolen meal is destroyed with the eating.
+      if (!takeSlot(player.inventory, slotIndex, 1)) return;
       if (def.heals) {
         const health = this.healths.must(eid);
         health.hp = Math.min(
@@ -8555,7 +8797,9 @@ export class GameServer {
         player.session?.sendJson({ t: 'chat', channel: 'system', text: 'You are at full health.' });
         return;
       }
-      removeItem(player.inventory, slot.item, 1);
+      // Eat what was clicked, slot-addressed: the effect lands only if
+      // the bite was really taken (a stolen loaf eaten is destroyed).
+      if (!takeSlot(player.inventory, slotIndex, 1)) return;
       health.hp = Math.min(
           health.maxHp,
           // Hearty Meals: the practiced constitution wastes no bite.
@@ -8566,6 +8810,17 @@ export class GameServer {
     }
 
     if (def.equipSlot) {
+      // NO LAUNDERING: EquippedItem carries no theft facet, so a
+      // stolen piece worn once would come back off the body honest.
+      // The facet has nowhere to live up there — refuse at the door.
+      if (slot.stolen) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'That one is hot. Keep it in your pack or find a fence.',
+        });
+        return;
+      }
       // Equip gate: BASE level only — worn +skill bonuses never
       // bootstrap their way into more gear. A re-issued instance gates
       // at its POWER, not its native floor: a power-45 heirloom robe is
@@ -12191,8 +12446,12 @@ export class GameServer {
           } else if (this.players.has(eid)) {
             // Bitter Blood: the herbalist's constitution dulls the drip.
             const p = this.players.get(eid)!;
+            // The pulse carries its burner: a hurt moment with no
+            // source in hand left every targeted hurt working rolling,
+            // winning, and no-oping — its rest banked against nothing.
             this.damagePlayer(eid, Math.max(1, Math.round(s.power * p.perks.dotResistMult)), {
               pierceArmor: true,
+              sourceEid: s.sourceEid,
             });
           }
         }
@@ -12530,10 +12789,18 @@ export class GameServer {
             // The surge is read where the shaft LANDS, not where it was
             // loosed: a working that woke mid-flight still sharpens the
             // arrow already in the air. Cheaper than stamping every
-            // projectile, and it reads the same in the hand.
+            // projectile, and it reads the same in the hand. Basic
+            // shots fold the damage surge here too (abilities folded
+            // it at cast — see castAbility's gearMult — so only the
+            // basic shaft would otherwise never feel it), under the
+            // melee door's own rounding law.
             const shooter = this.players.get(proj.ownerEid);
             const critPct = shooter ? shooter.gear.critPct + surgeCritPct(shooter) : 0;
-            const roll = proj.basic ? rollBasic(proj.maxHit, critPct) : rollDamage(proj.maxHit, critPct);
+            const maxHit =
+              proj.basic && shooter
+                ? Math.max(1, Math.round(proj.maxHit * surgeDmgMult(shooter)))
+                : proj.maxHit;
+            const roll = proj.basic ? rollBasic(maxHit, critPct) : rollDamage(maxHit, critPct);
             const dmg = this.executeAdjust(npcEid, roll.dmg, proj.executeBelow);
             const crit = roll.crit;
             this.damageNpc(npcEid, dmg, proj.ownerEid, proj.style, {
@@ -12570,8 +12837,10 @@ export class GameServer {
               });
             }
             // Heavy orbs burst on impact, splashing everything close.
+            // The splash is part of the same landing, so it reads the
+            // same surge-folded maxHit the direct hit rolled from.
             if (proj.splashRadius) {
-              const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
+              const splashHit = Math.max(1, Math.round(maxHit * 0.5));
               for (const [otherEid, other] of this.npcs) {
                 if (otherEid === npcEid) continue;
                 const opos = this.positions.get(otherEid);
@@ -12655,7 +12924,20 @@ export class GameServer {
     ctx: ProcContext,
   ): number {
     let extra = 0;
-    for (const p of player.gear.procs) extra += this.offerProc(eid, player, p, on, ctx);
+    for (const p of player.gear.procs) {
+      // A targeted working cannot answer a moment that arrives with no
+      // live foe in hand — the door refuses BEFORE arbitration, so no
+      // chance is rolled and no rest is stamped on an answer that
+      // could only ever no-op. A door-side precondition, not
+      // arbitration: procWakes stays pure and untouched.
+      if (
+        (TARGETED_ACTIONS as readonly string[]).includes(p.action.do) &&
+        (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid))
+      ) {
+        continue;
+      }
+      extra += this.offerProc(eid, player, p, on, ctx);
+    }
     return extra;
   }
 
@@ -12681,25 +12963,25 @@ export class GameServer {
 
   /**
    * THE CROSSING: a lowHp working answers the fall past its line and
-   * then goes quiet until the wearer climbs back over it. Called from
-   * the two places health moves — the wound and the mend — so one dive
-   * is one answer however many small hits carried it down.
+   * then goes quiet until the wearer climbs back over it. The crossing
+   * is read from the health BEFORE the wound against the health after
+   * it, so re-arming needs no call from any heal site — food, tonics,
+   * drains, totems, lifesteal, and the regen tick all re-arm the
+   * working simply by lifting the wearer over the line before the
+   * next fall. One dive past the mark is one answer however many
+   * small hits carried it down.
    */
-  private lowHpMoment(eid: EntityId, player: PlayerComp): void {
+  private lowHpMoment(eid: EntityId, player: PlayerComp, prevHp: number): void {
     const health = this.healths.get(eid);
-    if (!health || health.maxHp <= 0) return;
+    if (!health || health.maxHp <= 0 || health.hp <= 0) return;
     const frac = health.hp / health.maxHp;
+    const prevFrac = prevHp / health.maxHp;
     const pos = this.positions.get(eid);
     for (const p of player.gear.procs) {
       if (p.trigger.on !== 'lowHp') continue;
+      if (prevFrac <= p.trigger.pct || frac > p.trigger.pct) continue;
       const st = this.procState(player, p.id);
-      if (frac > p.trigger.pct) {
-        st.armed = true;
-        continue;
-      }
-      if (!st.armed || health.hp <= 0) continue;
       if (this.tickCount < st.restUntil) continue;
-      st.armed = false;
       st.restUntil = this.tickCount + p.icd;
       this.runProc(eid, player, p, { x: pos?.x ?? 0, y: pos?.y ?? 0 });
     }
@@ -12759,13 +13041,16 @@ export class GameServer {
           x2 = tp.x;
           y2 = tp.y;
         }
-        this.damageNpc(ctx.targetEid, a.damage, eid, style, {});
+        this.damageNpc(ctx.targetEid, a.damage, eid, style, { fromProc: true });
         break;
       }
       case 'nova': {
         radius = a.radius;
         for (const npcEid of this.npcsWithin(ctx.x, ctx.y, a.radius)) {
-          this.damageNpc(npcEid, a.damage, eid, style, { knockFrom: { x: ctx.x, y: ctx.y } });
+          this.damageNpc(npcEid, a.damage, eid, style, {
+            knockFrom: { x: ctx.x, y: ctx.y },
+            fromProc: true,
+          });
         }
         break;
       }
@@ -12790,11 +13075,13 @@ export class GameServer {
               y2: tp.y,
               radius: 0.4,
               color,
-              id: p.id,
+              // The final broadcast's `<action>:<procId>` convention —
+              // a bare proc id fell back to the status shape client-side.
+              id: `${a.do}:${p.id}`,
             });
             from = { x: tp.x, y: tp.y };
           }
-          this.damageNpc(npcEid, a.damage, eid, style, {});
+          this.damageNpc(npcEid, a.damage, eid, style, { fromProc: true });
         }
         break;
       }
@@ -12804,11 +13091,12 @@ export class GameServer {
         break;
       }
       case 'heal': {
+        // A mend that lifts the wearer over a lowHp line re-arms the
+        // workings that watch it by nature now: the crossing is read
+        // from prev-vs-new health at the next wound, so no re-arm
+        // call is owed here (or at any other heal site).
         const health = this.healths.get(eid);
         if (health) health.hp = Math.min(health.maxHp, health.hp + a.amount);
-        // A mend can lift the wearer back over a lowHp line, re-arming
-        // the workings that watch it.
-        this.lowHpMoment(eid, player);
         break;
       }
       case 'surge': {
@@ -12946,6 +13234,13 @@ export class GameServer {
        * mult the same vector becomes a vortex pull into this point.
        */
       knockFrom?: { x: number; y: number };
+      /**
+       * Damage dealt by a woken working (bolt/nova/chain). The
+       * working's damage is the working's: it earns no skill or
+       * vitality XP in whatever style rode the door — kill credit and
+       * loot attribution still land as the wielder's.
+       */
+      fromProc?: boolean;
     } = {},
   ): void {
     const crit = opts.crit ?? false;
@@ -13050,6 +13345,12 @@ export class GameServer {
     // The status may have detonated a reaction that already killed the
     // target (and cascaded further) — never strike a corpse.
     if (!this.ecs.isAlive(npcEid) || !this.npcs.has(npcEid)) return;
+    // A DYING BODY TAKES NO FURTHER WOUNDS: while its own killNpc runs
+    // the victim still sits in this.npcs with hp <= 0 and the entity
+    // still alive, so a kill-woken working that strikes it would
+    // recurse a FULL second death — loot, XP, quest credit, splits,
+    // all doubled. Structural, so no future proc pairing reopens it.
+    if (health.hp <= 0) return;
 
     // Knockback: shove the target away from the attacker (crits shove
     // harder), respecting collision. The direction also travels to
@@ -13100,8 +13401,10 @@ export class GameServer {
           if (live) (live.fighters ??= new Set()).add(attacker.characterId);
         }
       }
-      this.grantXp(attackerEid, attacker, style, dmg * 4);
-      this.grantXp(attackerEid, attacker, 'vitality', dmg * 2);
+      if (!opts.fromProc) {
+        this.grantXp(attackerEid, attacker, style, dmg * 4);
+        this.grantXp(attackerEid, attacker, 'vitality', dmg * 2);
+      }
       if (opts.backstab) {
         this.grantXp(attackerEid, attacker, 'sneak', BACKSTAB_XP_BASE + dmg * 3);
       }
@@ -13473,19 +13776,29 @@ export class GameServer {
         style: 'defence',
       };
       this.bodyMoment(eid, player, 'hurt', ctx);
-      this.lowHpMoment(eid, player);
+      this.lowHpMoment(eid, player, health.hp + dmg);
     }
     // THE TURNED BLOW: the stance sends part of what landed back to
     // whoever sent it, dealt in the shield school (the wall's own
-    // damage trains the wall — and credits the kill).
-    if (reflectFrac > 0 && opts.sourceEid !== undefined && this.npcs.has(opts.sourceEid)) {
+    // damage trains the wall — and credits the kill). Armor-piercing
+    // damage (DoT pulses) is never a blow the wall met, so it can
+    // never be turned — the wound is already inside the armor.
+    if (
+      reflectFrac > 0 &&
+      !opts.pierceArmor &&
+      opts.sourceEid !== undefined &&
+      this.npcs.has(opts.sourceEid)
+    ) {
       const back = Math.round(dmg * reflectFrac);
       if (back > 0) this.damageNpc(opts.sourceEid, back, eid, 'shield');
     }
     // A landed blow ends the rest — and tips a sleeper out of bed.
+    // It unhorses the rider too: getting caught mounted is the cost
+    // of riding through danger; speed is the defense, not the saddle.
     const hitPos = this.positions.get(eid);
     if (hitPos) this.standUp(eid, player, hitPos);
     else player.sitting = player.lying = false;
+    this.dismount(eid, player);
     this.setPose(eid, PoseState.Hurt, 4);
     // Second Wind: fires only on the CROSSING into danger, so a string
     // of low hits can't re-trigger it every tick.
@@ -13585,6 +13898,7 @@ export class GameServer {
       health.hp = health.maxHp;
       this.statuses.delete(eid); // death is at least a clean slate
       player.buffs = [];
+      this.dismount(eid, player); // nobody wakes up in the saddle
       this.updateChunkMembership(eid);
       this.cancelAction(eid, player);
       player.session?.sendJson({
@@ -15998,7 +16312,7 @@ export class GameServer {
       sys('That spoil belongs to another for a moment yet.');
       return;
     }
-    if (!hasSpaceFor(player.inventory, drop.item)) {
+    if (!hasSpaceFor(player.inventory, drop.item, drop.stolen)) {
       sys('Your pack has no room for that.');
       return;
     }
@@ -16046,7 +16360,7 @@ export class GameServer {
         const dx = ppos.x - pos.x;
         const dy = ppos.y - pos.y;
         if (dx * dx + dy * dy > 0.55 * 0.55) continue;
-        if (!hasSpaceFor(player.inventory, drop.item)) continue;
+        if (!hasSpaceFor(player.inventory, drop.item, drop.stolen)) continue;
         // Partial fits leave the remainder on the ground — the vacuum
         // must never destroy more than the pack actually held.
         const got = addItem(player.inventory, drop.item, drop.qty, drop.roll, drop.stolen);
@@ -16312,6 +16626,39 @@ export class GameServer {
         },
         { x: tp?.x ?? pos.x, y: tp?.y ?? pos.y, targetEid: target, style: 'arx' },
       );
+      return;
+    }
+    if (config.devCommands && text.startsWith('/mount')) {
+      // /mount            — list mounts and what's owned
+      // /mount <id>       — grant + choose + saddle up (the dev whistle)
+      // /mount off        — boots on the ground
+      const [, arg] = text.split(/\s+/);
+      const pos = this.positions.get(eid);
+      if (!arg) {
+        const rows = MOUNTS.map(
+          (m) => `${player.mountsOwned.has(m.id) ? '●' : '○'} ${m.id} (${m.speedMult}×)`,
+        );
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Mounts: ${rows.join(', ')}${player.mountId ? ` — riding ${player.mountId}` : ''}`,
+        });
+        return;
+      }
+      if (arg === 'off') {
+        this.dismount(eid, player);
+        return;
+      }
+      const def = mountDef(arg);
+      if (!def || !pos) {
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `No mount '${arg}'.` });
+        return;
+      }
+      player.mountsOwned.add(def.id);
+      player.mountChosen = def.id;
+      player.rideSigSent = ''; // owned set changed — force the mirror
+      this.dismount(eid, player); // switching beasts steps down first
+      this.mountToggle(eid, player, pos);
       return;
     }
     if (config.devCommands && text.startsWith('/give ')) {
@@ -17359,6 +17706,13 @@ export class GameServer {
       // A tonic or meal ran out — clear its HUD chip.
       if (expired) this.sendBuffs(player);
     }
+    // Underground refuses the saddle — checked per tick so every way
+    // down (delve stair, riftgate, /tp) dismounts honestly at the
+    // threshold. UNDERGROUND_Y covers the dark band AND the dungeon
+    // slots above DUNGEON_MIN_Y.
+    if (player.mountId && pos.y >= UNDERGROUND_Y) this.dismount(eid, player);
+    // The steady-mult mirror: a change-signature no-op on quiet ticks.
+    this.sendRide(player);
     const equipped = this.equippedWeapon(player);
     const style = equipped?.weapon.style ?? null;
     let moved = false;
@@ -17377,9 +17731,10 @@ export class GameServer {
         ? // Longstride raises the drawn-bow floor — walk your aim.
           player.speed * Math.max(DRAW_MOVE_FACTOR, player.perks.drawMoveFactor)
         : player.speed;
-      for (const b of player.buffs) speed *= b.speedMult;
-      if (this.hasPassive(player, 'fleet_footed')) speed *= 1.08;
-      speed *= player.gear.speedMult; // plate drags, leather springs
+      // THE SADDLE OUTRANKS THE SOLES: mounted, the beast's stride
+      // replaces the foot stack (max, never product). This is the same
+      // number sendRide mirrors, so prediction agrees to the digit.
+      speed *= this.steadySpeedMult(player);
       if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
       if (casting) speed = 0; // committed to the cast
       // A step off the furniture dismounts FIRST — the body walks on
@@ -17410,9 +17765,13 @@ export class GameServer {
       // below (moving, dodging, swinging, casting) stands the body up.
       // From furniture (or a bed) the same press is simply "stand".
       if (pressed & InputButton.Sit) {
-        if (player.sitting || player.lying) this.standUp(eid, player, pos);
+        if (player.mountId) this.dismount(eid, player);
+        else if (player.sitting || player.lying) this.standUp(eid, player, pos);
         else player.sitting = true;
       }
+      // The whistle answers once: the same press-edge grammar as the
+      // sit — riding steps down, standing calls the chosen beast.
+      if (pressed & InputButton.Mount) this.mountToggle(eid, player, pos);
       // The sheathe toggle: weapons away, weapons out. Sheathing mid-draw
       // lets the bowstring down; sitting and sheathing compose freely.
       if (pressed & InputButton.Sheathe) {
@@ -17422,7 +17781,10 @@ export class GameServer {
       const abilityPressed =
         pressed &
         (InputButton.Ability1 | InputButton.Ability2 | InputButton.Ability3 | InputButton.Ability4);
-      if (abilityPressed) this.standUp(eid, player, pos);
+      if (abilityPressed) {
+        this.standUp(eid, player, pos);
+        this.dismount(eid, player); // arts are cast from the ground
+      }
       // THE SAFETY: while stowed, no press can deal damage. A combat
       // press DRAWS instead — the weapon comes out (the client plays
       // the pull), and the draw-lock holds the first real swing until
@@ -17450,6 +17812,7 @@ export class GameServer {
         pos.y = dashed.y;
         moved = true;
         player.drawTicks = 0; // dodging lets the string down
+        this.dismount(eid, player); // a dodge is the body's own deed
         // Wolf Reflexes: the dodge itself becomes an engage/escape tool.
         if (this.hasPassive(player, 'dodge_haste')) {
           player.buffs.push(mkBuff({ speedMult: 1.35, untilTick: this.tickCount + 30 }));
@@ -17462,7 +17825,10 @@ export class GameServer {
       const stillCasting = this.tickCount < player.castFreezeUntilTick;
       const attackHeld =
         hasButton(frame.buttons, InputButton.Attack) && !stillCasting && !weaponsAway;
-      if (attackHeld) this.standUp(eid, player, pos);
+      if (attackHeld) {
+        this.standUp(eid, player, pos);
+        this.dismount(eid, player); // no mounted combat, ever
+      }
       if (style === 'archery') {
         this.tickBowDraw(eid, player, equipped!.weapon, attackHeld, frame.aim, frame.seq);
       } else if (attackHeld) {
@@ -17478,6 +17844,9 @@ export class GameServer {
     // Rest yields to everything: a step, a crouch, or a running action
     // (gathering, crafting) ends the sit — no half-seated walkers.
     if (moved || player.sneaking || player.action) this.standUp(eid, player, pos);
+    // Riding yields to every deed EXCEPT movement — that is the point
+    // of the mount. Crouching low or working with the hands steps down.
+    if (player.sneaking || player.action) this.dismount(eid, player);
     // The planted-stance clock (Bulwark) counts sneaking or not.
     player.stillTicks = moved ? 0 : player.stillTicks + 1;
     if (strideStep > 0) this.strideMoment(eid, player, strideStep);
@@ -17515,15 +17884,19 @@ export class GameServer {
     } else {
       this.poses.set(
         eid,
-        player.lying
-          ? PoseState.Lie
-          : player.sitting
-            ? PoseState.Sit
-            : player.sneaking
-              ? PoseState.Sneak
-              : moved
-                ? PoseState.Walk
-                : PoseState.Idle,
+        player.mountId
+          ? // In the saddle, moving or standing — the client derives
+            // gait from motion exactly as it does for beasts.
+            PoseState.Ride
+          : player.lying
+            ? PoseState.Lie
+            : player.sitting
+              ? PoseState.Sit
+              : player.sneaking
+                ? PoseState.Sneak
+                : moved
+                  ? PoseState.Walk
+                  : PoseState.Idle,
       );
     }
     if (moved) this.updateChunkMembership(eid);
@@ -17753,6 +18126,7 @@ export class GameServer {
         look: player.look ?? undefined,
         carry: player.carryStyle === 'rogue' ? 'rogue' : undefined,
         carryOff: player.carryOff === 'rogue' ? 'rogue' : undefined,
+        mount: player.mountId ?? undefined,
       };
     }
     const npc = this.npcs.get(eid);

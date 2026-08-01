@@ -32,6 +32,7 @@ export type ActionId =
   | 'buildRotate'
   | 'sit'
   | 'sheathe'
+  | 'mount'
   | 'walkToggle'
   | 'sneakToggle'
   | 'screenPack'
@@ -77,6 +78,10 @@ export const ACTIONS: readonly ActionDef[] = [
   { id: 'walkToggle', label: 'Walk / run', group: 'Movement', kb: ['KeyZ'], pad: [] },
   { id: 'sneakToggle', label: 'Sneak', group: 'Movement', kb: ['KeyC'], pad: [10] },
   { id: 'sit', label: 'Sit / stand', group: 'Movement', kb: ['KeyX'], pad: [13] },
+  // Pad ships unbound — all sixteen buttons answer elsewhere (ONE
+  // KEYMAP: overloading a taken button was the founding bug). Pads
+  // call the beast from the character screen's stable row instead.
+  { id: 'mount', label: 'Call mount', group: 'Movement', kb: ['KeyP'], pad: [] },
 
   { id: 'attack', label: 'Attack', group: 'Combat', kb: ['Space'], pad: [7, 2] },
   { id: 'ability1', label: 'First Art', group: 'Combat', kb: ['KeyQ'], pad: [4] },
