@@ -363,40 +363,51 @@ function buttonIngot(face: string, lit: string, dark: string, rim: string): stri
  * with an inset bevel (dark upper lip where the light stops, lit lower
  * lip where it lands) and the signature corner cuts.
  */
+/** Rounded-rect path inset by `d` display px on a square canvas. */
+function easedPath(ctx: Ctx, S: number, d: number, r: number): void {
+  const a = d * K;
+  ctx.beginPath();
+  ctx.roundRect(a, a, S - a * 2, S - a * 2, r * K);
+}
+
+/**
+ * THE SOCKET WELL v3 — the hole an item sits in. THE TWO-CORNER
+ * GRAMMAR: objects (buttons, trays, seals) wear the 45° chamfer;
+ * HOLES wear a quiet corner ease instead. The old chamfered lip put
+ * three strokes through every corner at 45° and the collision read
+ * as a hash mark — the eased well has nothing for the eye to catch:
+ * one soft lit edge, one bold ink ring, a deep flat floor, a shade
+ * under the top lip, a whisper of light where the floor meets it.
+ */
 function socketWell(): string {
   const B = 7;
   const S = B * K * 3;
   const { c, ctx } = makeCanvas(S);
   const px = (v: number): number => v * K;
-  const cut = 5;
 
-  // The lit lip: the one bright edge where the case's face is cut —
-  // it separates the ink ring from the leather around the well, so
-  // the well reads carved, not printed.
-  chamferPath(ctx, S, 0.5, cut);
-  ctx.strokeStyle = 'rgba(150, 128, 90, 0.85)';
-  ctx.lineWidth = px(1.5);
+  // The soft lit edge where the case's face meets the hole.
+  easedPath(ctx, S, 0.7, 3);
+  ctx.strokeStyle = 'rgba(150, 128, 90, 0.55)';
+  ctx.lineWidth = px(1.2);
   ctx.stroke();
-  // THE INK RING — the same bold dark line the outline shader draws
-  // around the item that will sit in this well (The Ink Pass).
-  chamferPath(ctx, S, 1.5, cut);
+  // The bold ink ring — the outline shader's line around the hole.
+  easedPath(ctx, S, 1.7, 2.4);
   ctx.strokeStyle = INK;
-  ctx.lineWidth = px(2.6);
+  ctx.lineWidth = px(2.4);
   ctx.stroke();
-  // The floor: a shade deeper than the old sunk so items pop harder.
-  chamferPath(ctx, S, 2.6, cut);
+  // The floor.
+  easedPath(ctx, S, 2.7, 1.8);
   ctx.fillStyle = '#151009';
   ctx.fill();
-  // Inset bevel — dark shadow band under the top lip…
   ctx.save();
-  chamferPath(ctx, S, 2.6, cut);
+  easedPath(ctx, S, 2.7, 1.8);
   ctx.clip();
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-  ctx.fillRect(0, px(2.6), S, px(2.2));
-  ctx.fillRect(px(2.6), 0, px(2.2), S);
-  // …and a lit floor edge at the bottom.
-  ctx.fillStyle = 'rgba(122, 103, 74, 0.34)';
-  ctx.fillRect(0, S - px(4.2), S, px(1.6));
+  // Shade under the top lip…
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.fillRect(0, px(2.7), S, px(2));
+  // …and a lit floor line at the bottom.
+  ctx.fillStyle = 'rgba(122, 103, 74, 0.3)';
+  ctx.fillRect(0, S - px(4), S, px(1.3));
   ctx.restore();
   return c.toDataURL();
 }

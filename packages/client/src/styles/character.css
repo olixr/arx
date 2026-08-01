@@ -29,13 +29,17 @@
   top: 0.875rem;
   bottom: 0.875rem;
   transform: none;
-  width: min(62rem, max(39rem, 66vw));
+  /* THE ROOM TAKES ITS SPACE: gear management earns the grand table.
+     Three trays — stand, bench, pack — need the width to breathe. */
+  width: min(105rem, 92vw);
   height: auto;
   max-height: none;
-  /* The room's corner ladder — the only cuts this room may use. */
+  /* The room's corner ladder — the only cuts this room may use.
+     The tray cut is deliberately shallow: a dressed corner, never a
+     corner that reads cut off. */
   --cut-chip: 0.3125rem;
   --cut-plate: 0.5625rem;
-  --cut-tray: 0.8125rem;
+  --cut-tray: 0.5rem;
 }
 
 .char-body {
@@ -56,7 +60,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0.75rem 1rem 1rem;
+  padding: 0.875rem 1.25rem 1.25rem;
   background: var(--raise);
   --cut: var(--cut-tray);
   clip-path: polygon(
@@ -133,7 +137,7 @@
 
 .worn-kit {
   flex: none;
-  width: 18.5rem; /* the stand's span + the tray's own padding */
+  width: 20.875rem; /* the stand's span + the tray's own padding */
 }
 
 .ident-name {
@@ -262,8 +266,8 @@
 }
 
 #equip-anatomy .inv-slot {
-  width: 5rem;
-  height: 5rem;
+  width: 5.5rem;
+  height: 5.5rem;
   z-index: 1;
 }
 
@@ -367,10 +371,85 @@
   );
 }
 
+/* ---- THE BENCH TRAY: the standing inspector between stand and
+   pack. Rest your eye on any item and it lays out here at full size,
+   its verbs beneath — see, compare, act, no floating card. ---- */
+
+.char-bench {
+  flex: 0 1 28rem;
+  min-width: 19rem;
+}
+
+.bench-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bench-card {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* The bench shows the item grander than any tooltip would. */
+.bench-card .card-head img {
+  width: 6.5rem;
+  height: 6.5rem;
+}
+
+.bench-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  text-align: center;
+  font-size: var(--t-body);
+  font-style: italic;
+  color: var(--parchment-faint);
+  text-shadow: var(--punch-small);
+}
+
+.bench-empty.hidden {
+  display: none;
+}
+
+.bench-empty::before {
+  content: '';
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  transform: rotate(45deg);
+  border: var(--rim) solid rgba(217, 164, 65, 0.35);
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0 0 0.5rem rgba(0, 0, 0, 0.35);
+}
+
+.bench-acts {
+  flex: none;
+  display: flex;
+  gap: 0.625rem;
+  padding-top: 0.875rem;
+}
+
+.bench-acts .act-btn {
+  flex: 1;
+}
+
+.bench-acts .bench-danger {
+  color: var(--red-soft);
+}
+
 /* ---- THE PACK TRAY: the screen's protagonist ---- */
 
 .char-pack-col {
-  flex: 1;
+  flex: 1 1 0;
 }
 
 /* The filter lens rides the head band's right end. */
@@ -394,20 +473,44 @@
 /* The capacity gauge: a real meter in the painted channel, the exact
    count beside it. `--fill` is set by the renderer. */
 .pack-fill {
-  flex: 1;
-  min-width: 0;
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
 }
 
+/* The tidy cluster: the pack sorts itself with one press. */
+.pack-tidy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin-left: 0.5rem;
+}
+
+.purse-label {
+  margin-left: auto;
+}
+
+/* The channel is a HOLE, so it wears the eased corner, one ink ring,
+   one shade band — and the fill rides inside with one hard stop. */
 .fill-meter {
   flex: none;
-  width: min(13rem, 55%);
-  height: 1.0625rem;
-  border: 0.3125rem solid transparent;
-  border-image: var(--ui-gauge) 25 fill / 0.3125rem;
-  /* The fill: one hard stop — flat, honest, no gradient wash. */
+  width: 9rem;
+  height: 1.125rem;
+  position: relative;
+  overflow: hidden;
+  background: var(--sunk);
+  border-radius: 0.25rem;
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0.25rem 0 rgba(0, 0, 0, 0.4);
+}
+
+.fill-meter::before {
+  content: '';
+  position: absolute;
+  inset: 0.3125rem;
+  border-radius: 0.125rem;
   background: linear-gradient(
     90deg,
     var(--fill-tone, var(--gold)) calc(var(--fill, 0) * 100%),
@@ -521,7 +624,7 @@
   --pack-cell: clamp(
     2.5rem,
     min(calc((100cqh - 2.25rem) / 5), calc((100cqw - 2.8125rem) / 6)),
-    5.75rem
+    7rem
   );
   display: grid;
   grid-template-columns: repeat(6, var(--pack-cell));
@@ -681,6 +784,10 @@ body:has(#shop-panel:not(.hidden)) #inventory-panel .panel-head h3 {
 
 body:has(#bank-panel:not(.hidden)) #inventory-panel .worn-kit,
 body:has(#shop-panel:not(.hidden)) #inventory-panel .worn-kit,
+/* The bench folds away with the stand — the paired column is the
+   pack alone, and the floating card speaks beside the station. */
+body:has(#bank-panel:not(.hidden)) #inventory-panel .char-bench,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .char-bench,
 /* In the narrow paired column the banner already says CHARACTER —
    the tray-title yields its head band to the filter keys. */
 body:has(#bank-panel:not(.hidden)) #inventory-panel .tray-title,
@@ -823,6 +930,14 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   letter-spacing: 0.075rem;
   text-transform: uppercase;
   color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* The comparison line: the equip-or-not answer, told in one breath. */
+.card-compare {
+  font-size: var(--t-body);
+  font-weight: 700;
+  padding: 0.125rem 0 0.375rem;
   text-shadow: var(--punch-small);
 }
 

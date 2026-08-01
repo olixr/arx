@@ -260,6 +260,15 @@ export class Panels {
     })(),
   );
   private readonly gearStrip = document.getElementById('gear-strip')!;
+  /** THE BENCH: the open case's standing inspector tray. */
+  private readonly benchCard = document.getElementById('bench-card')!;
+  private readonly benchEmpty = document.getElementById('bench-empty')!;
+  private readonly benchActs = document.getElementById('bench-acts')!;
+  /** What lies on the bench (survives hover leaving the cell). */
+  private benchSource:
+    | { kind: 'inv'; slot: number }
+    | { kind: 'equip'; slot: string }
+    | null = null;
   private readonly card: HTMLElement;
   private readonly menu: HTMLElement;
   /** THE FREE HAND: the one slotted technique, mirrored from the server. */
@@ -332,6 +341,27 @@ export class Panels {
       });
       this.packFilters.appendChild(chip);
     }
+    // THE TIDY HAND: one press sorts the whole pack server-true — by
+    // kind (coins, gear, food, mats, each a-z) or by worth. Built on
+    // the same invmove swaps a drag makes; no new wire.
+    const tidyHost = document.getElementById('pack-tidy')!;
+    const tidyLabel = document.createElement('span');
+    tidyLabel.className = 'sort-label';
+    tidyLabel.textContent = 'Tidy';
+    tidyHost.appendChild(tidyLabel);
+    for (const [mode, label] of [
+      ['kind', 'Kind'],
+      ['worth', 'Worth'],
+    ] as const) {
+      const chip = document.createElement('button');
+      chip.className = 'sort-chip';
+      chip.textContent = label;
+      chip.dataset.nav = '';
+      chip.dataset.navkey = `tidy:${mode}`;
+      chip.dataset.acta = 'Tidy';
+      chip.addEventListener('click', () => this.tidyPack(mode));
+      tidyHost.appendChild(chip);
+    }
     window.addEventListener('pointermove', (e) => this.dragMove(e));
     window.addEventListener('pointerup', (e) => this.dragEnd(e));
 
@@ -378,7 +408,10 @@ export class Panels {
     this.skillsPanel.classList.add('hidden');
     this.artsPanel.classList.add('hidden');
     if (this.invPanel.classList.contains('hidden')) this.closeInspect();
-    else this.renderIdentity();
+    else {
+      this.renderIdentity();
+      this.refreshBench();
+    }
   }
 
   showInventory(): void {
@@ -386,6 +419,7 @@ export class Panels {
     this.skillsPanel.classList.add('hidden');
     this.artsPanel.classList.add('hidden');
     this.renderIdentity();
+    this.refreshBench();
   }
 
   toggleSkills(): void {
@@ -581,6 +615,152 @@ export class Panels {
     this.closeMenu();
   }
 
+  // ---- the bench (the open case's standing inspector) ---------------
+
+  /** The bench speaks when the case is open and no station is paired. */
+  private benchActive(): boolean {
+    return !this.invPanel.classList.contains('hidden') && this.stationContext() === null;
+  }
+
+  /**
+   * Re-lay the bench from its remembered source after a state push —
+   * the benched item keeps its numbers honest through equips, eats,
+   * and tidies. A vanished source re-seeds.
+   */
+  private refreshBench(): void {
+    if (!this.benchActive()) return;
+    const b = this.benchSource;
+    if (b?.kind === 'inv') {
+      const s = this.lastSlots[b.slot];
+      if (s) {
+        this.cardSource = b;
+        this.renderCard(s.item, s.qty, null, s.roll);
+        return;
+      }
+    } else if (b?.kind === 'equip') {
+      const w = this.lastEquipment[b.slot];
+      if (w) {
+        this.cardSource = b;
+        this.renderCard(w.id, 1, b.slot, w.roll);
+        return;
+      }
+    }
+    this.benchSeed();
+  }
+
+  /** First lay: the worn weapon, else the first thing in the pack. */
+  private benchSeed(): void {
+    if (!this.benchActive()) return;
+    const weapon = this.lastEquipment['weapon'];
+    if (weapon) {
+      this.benchSource = { kind: 'equip', slot: 'weapon' };
+      this.cardSource = this.benchSource;
+      this.renderCard(weapon.id, 1, 'weapon', weapon.roll);
+      return;
+    }
+    const idx = this.lastSlots.findIndex(Boolean);
+    if (idx >= 0) {
+      const s = this.lastSlots[idx]!;
+      this.benchSource = { kind: 'inv', slot: idx };
+      this.cardSource = this.benchSource;
+      this.renderCard(s.item, s.qty, null, s.roll);
+      return;
+    }
+    this.benchSource = null;
+    this.benchCard.replaceChildren();
+    this.benchActs.replaceChildren();
+    this.benchEmpty.classList.remove('hidden');
+  }
+
+  /** The benched item's verbs, as standing buttons under the card. */
+  private renderBenchActs(): void {
+    this.benchActs.replaceChildren();
+    const verbs: Array<{ label: string; act: () => void; danger?: boolean }> = [];
+    const src = this.benchSource;
+    if (src?.kind === 'inv') {
+      const idx = src.slot;
+      const slot = this.lastSlots[idx];
+      if (slot) {
+        const def = itemDef(slot.item);
+        if (def?.equipSlot) verbs.push({ label: 'Equip', act: () => this.onSlotAction(idx, 'use') });
+        else if (def?.heals) verbs.push({ label: 'Eat', act: () => this.onSlotAction(idx, 'use') });
+        verbs.push({ label: 'Drop', act: () => this.onSlotAction(idx, 'drop'), danger: true });
+      }
+    } else if (src?.kind === 'equip') {
+      const worn = this.lastEquipment[src.slot];
+      if (worn) verbs.push({ label: 'Remove', act: () => this.onUnequip(src.slot as EquipSlot) });
+    }
+    for (const v of verbs) {
+      const b = document.createElement('button');
+      b.className = v.danger ? 'act-btn minor bench-danger' : 'act-btn';
+      b.textContent = v.label;
+      b.addEventListener('click', v.act);
+      this.benchActs.appendChild(b);
+    }
+  }
+
+  /**
+   * THE TIDY HAND: sort the whole pack with one press. Computes the
+   * wanted order from the last server truth, then walks there as a
+   * minimal chain of the same `invmove` swaps a drag makes — server-
+   * true, rate-limit-friendly (staggered), no new protocol.
+   */
+  private tidyPack(mode: 'kind' | 'worth'): void {
+    const n = Math.max(28, this.lastSlots.length);
+    const slots: Array<NonNullable<InvSlot> | null> = Array.from(
+      { length: n },
+      (_, i) => this.lastSlots[i] ?? null,
+    );
+    const rank = (s: NonNullable<InvSlot>): number => {
+      if (s.item === 'coins') return 0;
+      const d = itemDef(s.item);
+      return d?.equipSlot ? 1 : d?.heals ? 2 : 3;
+    };
+    const filled = slots
+      .map((s, i) => ({ s, i }))
+      .filter((x): x is { s: NonNullable<InvSlot>; i: number } => x.s !== null);
+    filled.sort((a, b) => {
+      if (mode === 'kind') {
+        const r = rank(a.s) - rank(b.s);
+        if (r !== 0) return r;
+        const an = itemDef(a.s.item)?.name ?? a.s.item;
+        const bn = itemDef(b.s.item)?.name ?? b.s.item;
+        if (an !== bn) return an.localeCompare(bn);
+        return b.s.qty - a.s.qty;
+      }
+      const av = (itemDef(a.s.item)?.value ?? 0) * a.s.qty;
+      const bv = (itemDef(b.s.item)?.value ?? 0) * b.s.qty;
+      if (bv !== av) return bv - av;
+      return (itemDef(a.s.item)?.name ?? a.s.item).localeCompare(itemDef(b.s.item)?.name ?? b.s.item);
+    });
+    // Walk the permutation as swaps on a working copy: each position
+    // takes its wanted occupant from wherever it currently sits.
+    const cur: Array<number | null> = slots.map((s, i) => (s !== null ? i : null));
+    const want: Array<number | null> = filled.map((x) => x.i);
+    while (want.length < n) want.push(null);
+    const swaps: Array<[number, number]> = [];
+    for (let pos = 0; pos < n; pos++) {
+      if (cur[pos] === want[pos]) continue;
+      let j = -1;
+      if (want[pos] === null) {
+        for (let k = pos + 1; k < n; k++) {
+          if (cur[k] === null) {
+            j = k;
+            break;
+          }
+        }
+      } else {
+        j = cur.indexOf(want[pos]!);
+      }
+      if (j < 0 || j === pos) continue;
+      [cur[pos], cur[j]] = [cur[j]!, cur[pos]!];
+      swaps.push([pos, j]);
+    }
+    // Staggered under the misc bucket (10/s, burst 20) — a full-pack
+    // tidy is at most 27 swaps and lands in about two seconds.
+    swaps.forEach((sw, k) => window.setTimeout(() => this.onInvMove(sw[0], sw[1]), k * 80));
+  }
+
   /** A speed word beats raw ticks for at-a-glance weapon reads. */
   private static speedWord(cooldownTicks: number): string {
     if (cooldownTicks <= 7) return 'Quick';
@@ -699,6 +879,47 @@ export class Panels {
         strip.appendChild(plaque);
       }
       this.card.appendChild(strip);
+    }
+
+    // THE COMPARISON: a pack piece measures itself against what is
+    // worn in its slot — the whole equip-or-not read in one line.
+    if (!wornSlot && def.equipSlot) {
+      const worn = this.lastEquipment[def.equipSlot];
+      if (worn && worn.id !== itemId) {
+        const wDef = itemDef(worn.id);
+        const wRolled = rolledStats(worn.id, worn.roll);
+        let mine: number | undefined;
+        let theirs: number | undefined;
+        let word = '';
+        if (def.weapon) {
+          mine = rolled?.damage ?? def.weapon.damage;
+          theirs = wRolled?.damage ?? wDef?.weapon?.damage;
+          word = 'damage';
+        } else if (def.tool && wDef?.tool) {
+          mine = def.tool.power;
+          theirs = wDef.tool.power;
+          word = 'tool power';
+        } else {
+          mine = rolled ? rolled.armor : def.armor ?? 0;
+          theirs = wRolled ? wRolled.armor : wDef?.armor ?? 0;
+          word = 'armor';
+        }
+        if (mine !== undefined && theirs !== undefined) {
+          const delta = Math.round((mine - theirs) * 10) / 10;
+          const line = document.createElement('div');
+          line.className = 'card-compare';
+          const wornName = wDef?.name ?? def.equipSlot;
+          line.textContent =
+            delta === 0
+              ? `Even with your worn ${wornName}.`
+              : delta > 0
+                ? `+${delta} ${word} over your worn ${wornName}.`
+                : `${delta} ${word} under your worn ${wornName}.`;
+          line.style.color =
+            delta > 0 ? 'var(--green)' : delta < 0 ? 'var(--red-soft)' : 'var(--parchment-dim)';
+          this.card.appendChild(line);
+        }
+      }
     }
 
     const stat = (label: string, text: string, color?: string, iconUrl?: string): void => {
@@ -949,6 +1170,23 @@ export class Panels {
     }
     this.card.appendChild(hints);
 
+    // THE BENCH ROUTE: with the open case up and no station pairing,
+    // pack and stand inspections lay out on the bench tray — big,
+    // standing, verbs beneath — instead of floating. The floating
+    // card remains the voice for loot rows, vault sockets, and the
+    // paired pack column.
+    if (
+      (this.cardSource?.kind === 'inv' || this.cardSource?.kind === 'equip') &&
+      this.benchActive()
+    ) {
+      this.benchSource = this.cardSource;
+      this.card.classList.add('hidden');
+      this.benchCard.replaceChildren(...Array.from(this.card.childNodes));
+      this.benchEmpty.classList.add('hidden');
+      this.renderBenchActs();
+      return;
+    }
+
     // Pin where the case stays readable: with the character case docked
     // at the right edge, the card stands in the OPEN WORLD at the case's
     // left, riding the hovered row. In a station pairing (bank/shop) it
@@ -1157,11 +1395,17 @@ export class Panels {
     this.packFill.classList.toggle('full', filled >= count);
     this.applyPackFilter();
 
-    // The card may be describing a slot that just changed — refresh it.
+    // The card may be describing a slot that just changed — refresh it;
+    // the bench re-lays or re-seeds the same way.
     if (this.cardSource?.kind === 'inv') {
       const src = this.lastSlots[this.cardSource.slot];
       if (src) this.renderCard(src.item, src.qty, null, src.roll);
-      else this.hideCard();
+      else {
+        this.hideCard();
+        this.refreshBench();
+      }
+    } else if (this.benchSource?.kind === 'inv') {
+      this.refreshBench();
     }
   }
 
@@ -1225,7 +1469,12 @@ export class Panels {
     if (this.cardSource?.kind === 'equip') {
       const worn = this.lastEquipment[this.cardSource.slot];
       if (worn) this.renderCard(worn.id, 1, this.cardSource.slot, worn.roll);
-      else this.hideCard();
+      else {
+        this.hideCard();
+        this.refreshBench();
+      }
+    } else if (this.benchSource?.kind === 'equip') {
+      this.refreshBench();
     }
 
     // A weapon swap can re-aim the R key at another school's ladder —

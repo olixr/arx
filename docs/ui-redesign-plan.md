@@ -4,6 +4,36 @@
 EPIC COMPLETE** (THE ONE RULER 8839680 → THE WORLD'S WING & THE LIVING
 CHROME). The hall fits the hand. Post-epic: THE INK PASS (below).*
 
+**THE QUARTERMASTER'S TABLE as-built (2026-08-01, post-epic round 3 —
+the room becomes a management surface):** the user's brief: build the
+UI around the JOB (managing gear and pack), not around inherited
+elements; kill the corner hash marks; add conveniences; use the
+space. Industry survey grounded the design: a persistent inspector
+pane (Diablo/Elden Ring), compare-against-worn (every ARPG), one-
+press auto-sort (Terraria/Monster Hunter), big couch-readable cells
+(Zelda). As built: the room is now THREE trays — stand | THE BENCH |
+pack — at `min(105rem, 92vw)`. THE BENCH = a standing inspector: any
+pack/stand hover or pad focus lays the item out full-size (the
+floating card's own content routed into `#bench-card` at the pin
+step; the floating card still serves loot/vault/paired-column),
+seeded from the worn weapon on open, re-laid on every server push
+(`benchSource` survives hover leaving), verbs as real buttons beneath
+(Equip/Eat/Remove brass, Drop iron-ember). THE COMPARISON: a pack
+piece states its delta against the worn piece in its slot in one
+colored line (damage/tool power/armor). THE TIDY HAND: `#pack-tidy`
+chips Kind/Worth sort the whole pack as a staggered chain of the SAME
+`invmove` swaps a drag makes (80ms apart under the 10/s+20 misc
+bucket; ≤27 swaps; no new protocol, no server edits). THE TWO-CORNER
+GRAMMAR: objects wear the chamfer, HOLES wear a quiet corner ease —
+socket well repainted on `ctx.roundRect` (soft lit edge, bold ink
+ring, deep floor; the 45° triple-stroke corner hash is dead), the
+capacity meter is now a CSS-only eased channel (painted gauge
+border-image dropped there). Tray chamfer eased to 0.5rem (corners
+no longer read cut off), tray padding 1.25rem, stand sockets 5.5rem,
+pack cells cap 7rem. Receipts: tidy-by-worth photographed live
+(sorted+compacted server-true), compare line photographed
+(+2 damage over worn), bench/verbs/4K green; 337 tests, build, tsc.
+
 **THE OPEN CASE as-built (2026-08-01, post-epic: the character room
 rebuilt from the foundation):** the Ink Pass re-dressed the old boxes;
 the user's verdict was right that the boxes themselves were four

@@ -115,6 +115,20 @@
               <div class="worn-sum-empty">Nothing worn adds to the sum yet &mdash; armor and trinkets will.</div>
             </footer>
           </section>
+          <!-- THE BENCH: the middle tray is a standing inspector —
+               rest your eye on any item (hover or pad focus) and it
+               lays out here at full size with its verbs under it. No
+               floating card, no travel: see, compare, act. -->
+          <section class="char-tray char-bench">
+            <header class="tray-head">
+              <span class="tray-title">The bench</span>
+            </header>
+            <div class="tray-body bench-body">
+              <div id="bench-card" class="bench-card"></div>
+              <div id="bench-empty" class="bench-empty">Rest your eye on any item and it lays out here.</div>
+              <div id="bench-acts" class="bench-acts"></div>
+            </div>
+          </section>
           <section class="char-tray char-pack-col">
             <header class="tray-head">
               <span class="tray-title">Backpack</span>
@@ -125,6 +139,7 @@
             </div>
             <footer class="tray-foot pack-foot">
               <span id="pack-fill" class="pack-fill"></span>
+              <span id="pack-tidy" class="pack-tidy"></span>
               <span class="purse-label">Purse</span>
               <span id="coin-readout" data-tipname="Coins" title="Coins"></span>
             </footer>
