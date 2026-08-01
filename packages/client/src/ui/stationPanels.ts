@@ -33,8 +33,7 @@ import {
 } from '@arx/content';
 import { buildableIconUrl, itemIconUrl, uiIconUrl } from '../render/icons.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
-import { beastSpec, drawBeast } from '../render/rig.js';
-import { LegRig } from '../render/legs.js';
+import { petPortraitUrl } from '../render/petPortrait.js';
 
 /**
  * The station screens: Workshop (craft), Vault (bank), Store (shop)
@@ -304,8 +303,6 @@ export class StationPanels {
    * bench's own arming discipline).
    */
   private releaseArmed: number | null = null;
-  /** Species portraits, painted once per species and kept. */
-  private static readonly petPortraits = new Map<string, string>();
   /** THE THREE STALLS' acts — wired from main once at boot. */
   private onStable: (op: 'heel' | 'stable' | 'release', slot: number) => void = () => {};
   private onStableRename: (slot: number, current: string) => void = () => {};
@@ -332,66 +329,6 @@ export class StationPanels {
     if (this.stableOpen) this.renderStable();
   }
 
-  /**
-   * The companion's face on its stall card: the real species body,
-   * painted once by the same rig that walks it through the world —
-   * a portrait, never a placeholder glyph.
-   */
-  private petPortrait(species: string): string {
-    const cached = StationPanels.petPortraits.get(species);
-    if (cached) return cached;
-    const def = npcDef(species);
-    const size = 92;
-    const cnv = document.createElement('canvas');
-    cnv.width = size;
-    cnv.height = size;
-    const ctx = cnv.getContext('2d')!;
-    try {
-      const radius = def?.radius ?? 0.3;
-      const spec = beastSpec(species, radius, def?.speed ?? 2);
-      const rig = new LegRig(spec.rig);
-      // A few settled beats plant the feet at their home stance.
-      let pose = rig.update(0, 0, Math.PI, 1 / 20);
-      for (let i = 0; i < 8; i++) pose = rig.update(0, 0, Math.PI, 1 / 20);
-      const scale = size * 0.44;
-      const ax = size * 0.5;
-      const ay = size * 0.66;
-      const feet = pose.feet.map((f: { x: number; y: number; lift: number }) => ({
-        x: ax + f.x * scale,
-        y: ay + f.y * scale * 0.55,
-        lift: f.lift,
-      }));
-      drawBeast(ctx, {
-        x: ax,
-        y: ay,
-        scale,
-        dir: pose.dir,
-        radius,
-        color: def?.color ?? '#999',
-        defId: species,
-        spec,
-        pose,
-        feet,
-        yScale: 0.55,
-        walkPhase: 0,
-        hurt: false,
-        kneeMemory: [],
-        attackT: 0,
-        seed: 7,
-        nowMs: 0,
-      });
-    } catch {
-      // A species the rig cannot pose still gets an honest medallion.
-      ctx.fillStyle = def?.color ?? '#8a6234';
-      ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size * 0.34, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    const url = cnv.toDataURL();
-    StationPanels.petPortraits.set(species, url);
-    return url;
-  }
-
   private renderStable(): void {
     this.stableList.innerHTML = '';
     const bySlot = new Map(this.lastPets.map((p) => [p.slot, p]));
@@ -412,7 +349,7 @@ export class StationPanels {
       head.className = 'stall-head';
       const img = document.createElement('img');
       img.className = 'stall-portrait';
-      img.src = this.petPortrait(p.species);
+      img.src = petPortraitUrl(p.species);
       img.draggable = false;
       head.appendChild(img);
       const id = document.createElement('div');

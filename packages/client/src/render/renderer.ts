@@ -24822,10 +24822,11 @@ export class Renderer {
   private downedBeastItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number },
+    meta: { name?: string; level?: number; ownerEid?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number },
     nameInk?: string,
   ): DrawItem {
+    if (meta.ownerEid !== undefined) nameInk = '#9fd39a';
     const def = npcDef(defId);
     const radius = def?.radius ?? 0.3;
     const scale = this.camera.scale;
@@ -24925,11 +24926,16 @@ export class Renderer {
   private npcItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number },
+    meta: { name?: string; level?: number; ownerEid?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number },
     hurt: boolean,
     nameInk?: string,
   ): DrawItem {
+    // THE COLLAR TELLS THE TALE: ownership on the meta is the one
+    // companion fact every watcher has — strap on the body, bond
+    // green on the tag line, and the alert glyph never shows (a pet
+    // has no perception to alert).
+    if (meta.ownerEid !== undefined) nameInk = '#9fd39a';
     // Humanoid monsters use the full IK rig with size/skin overrides.
     if (
       defId.startsWith('goblin') ||
@@ -24986,19 +24992,20 @@ export class Renderer {
       });
     }
 
-    // Leg-less bodies skip the rig entirely: gel blocks hop, wings
-    // hover, coils slither — each through its own dedicated painter.
-    if (defId === 'slime' || defId === 'slime_small' || defId === 'cave_bat' || defId === 'adder') {
-      return this.leglessItem(eid, defId, meta, s, hurt, nameInk);
-    }
-
     // A downed companion (the only living Npc that ever lies at zero)
-    // is a fallen body with breath in it — the ragdoll dialect.
+    // is a fallen body with breath in it — the ragdoll dialect. This
+    // outranks the legless branch: a fallen adder lies like anyone.
     if (s.pose === PoseState.Lie && s.hpPct === 0) {
       return this.downedBeastItem(eid, defId, meta, s, nameInk);
     }
     // On its feet again: the next fall sprawls fresh.
     this.downedRags.delete(eid);
+
+    // Leg-less bodies skip the rig entirely: gel blocks hop, wings
+    // hover, coils slither — each through its own dedicated painter.
+    if (defId === 'slime' || defId === 'slime_small' || defId === 'cave_bat' || defId === 'adder') {
+      return this.leglessItem(eid, defId, meta, s, hurt, nameInk);
+    }
 
     const def = npcDef(defId);
     const scale = this.camera.scale;
@@ -25075,6 +25082,7 @@ export class Renderer {
           attackT,
           seed: eid,
           nowMs: performance.now(),
+          collar: meta.ownerEid !== undefined ? '#6e4a26' : undefined,
         });
       },
       // Bounds from the SPECIES SPEC, not the collision radius: a

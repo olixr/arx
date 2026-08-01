@@ -114,8 +114,10 @@ test('BRACKET: THE HAND BEHIND THE FANG is real but never absurd', () => {
   const dmgRatio = high.dmgMult / low.dmgMult;
   assert.ok(hpRatio > 1.6 && hpRatio < 2.0, `hand hp ratio ${hpRatio.toFixed(2)}`);
   assert.ok(dmgRatio > 1.3 && dmgRatio < 1.6, `hand dmg ratio ${dmgRatio.toFixed(2)}`);
-  assert.equal(high.armor, 24);
-  assert.equal(low.armor, 2);
+  // Moved deliberately with THE SPECIES SPEAK: the shell's +4 rides
+  // on top of the hand at every beastcraft (the one stat site).
+  assert.equal(high.armor, 24 + 4);
+  assert.equal(low.armor, 2 + 4);
 });
 
 test('BRACKET: the ladder climbs — a leveled pet strictly outgrows its fresh self', () => {
@@ -136,4 +138,48 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
   // A mountain of xp means nothing past the keeper's skill.
   assert.equal(petLevelFor(50_000_000, 6, 25), 25);
   assert.equal(petLevelFor(50_000_000, 6, 99), 99);
+});
+
+test('THE SPECIES SPEAK: the whole ladder stands, rungs ascending', () => {
+  assert.equal(TAME_DEFS.length, 9, 'entry pair through the worg capstone');
+  const rungs = TAME_DEFS.map((t) => t.level);
+  for (let i = 1; i < rungs.length; i++) {
+    assert.ok(rungs[i]! >= rungs[i - 1]!, 'the ladder never dips');
+  }
+  assert.equal(rungs[0], 10);
+  assert.equal(rungs[rungs.length - 1], 45);
+});
+
+test('kits are the species\' own teeth re-aimed, never an invented spellbook', () => {
+  // The fangs carry venom, the cold things chill, the shells armor,
+  // the cart shoves — and the wolf and bear need no kit at all
+  // because their wild teeth already are the kit.
+  assert.equal(tameDef('rat')?.kit?.bite?.status, 'venom');
+  assert.equal(tameDef('adder')?.kit?.bite?.status, 'venom');
+  assert.ok((tameDef('adder')?.kit?.bite?.power ?? 0) > (tameDef('rat')?.kit?.bite?.power ?? 0), 'deep venom runs deeper');
+  assert.equal(tameDef('mudcrab')?.kit?.bite?.status, 'chill');
+  assert.equal(tameDef('great_owl')?.kit?.bite?.status, 'chill');
+  assert.ok((tameDef('giant_beetle')?.kit?.armor ?? 0) > 0, 'the shell is armor');
+  assert.ok((tameDef('boar')?.kit?.knockback ?? 0) > 1, 'the gore shoves');
+  assert.equal(tameDef('wolf')?.kit, undefined);
+  assert.equal(tameDef('bear')?.kit, undefined);
+  assert.ok(NPCS.get('wolf')?.attackStatus, 'the wolf bleeds on its own');
+  assert.ok(NPCS.get('bear')?.attackStatus, 'the bear mauls on its own');
+  // Pounce openers are anatomy, not kit: the chargers were born leaping.
+  for (const sp of ['boar', 'bear', 'great_owl', 'worg']) {
+    assert.ok(NPCS.get(sp)?.pounce, `${sp} pounces as it was born to`);
+  }
+});
+
+test('BRACKET: THE SHELL is real armor at the one stat site', () => {
+  const bare = Math.floor(10 / 4); // hand alone at BC 10
+  assert.equal(petStatBlock('giant_beetle', 6, 10)!.armor, bare + 4);
+  assert.equal(petStatBlock('rat', 2, 10)!.armor, bare);
+});
+
+test('BRACKET: the bear beside a keeper of 25 handles the goblin camp', () => {
+  const goblin = NPCS.get('goblin')!;
+  const avg = petAvgLanded('bear', 16, 25, 0, 0);
+  const swings = Math.ceil(goblin.maxHp / avg);
+  assert.ok(swings >= 1 && swings <= 4, `the bear fells a goblin in ${swings} swings`);
 });

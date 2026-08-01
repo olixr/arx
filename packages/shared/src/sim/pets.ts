@@ -85,6 +85,12 @@ export const PET_DOWNED_TICKS = 2400;
 export const PET_TEND_TICKS = 80;
 /** A tended friend rises at this fraction of its health. */
 export const PET_TEND_HP_FRAC = 0.4;
+/**
+ * With a mending salve in the keeper's pack the same kneel rises the
+ * friend at this fraction instead — the brewer sells to the hunter
+ * (Phase 5; the salve is herbalism's own shipped jar, spent whole).
+ */
+export const PET_TEND_SALVE_FRAC = 0.8;
 /** The tender's beastcraft grant — kindness pays (plan Part 5). */
 export const PET_TEND_XP = 12;
 /**

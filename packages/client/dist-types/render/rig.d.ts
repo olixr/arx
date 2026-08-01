@@ -1380,5 +1380,11 @@ export declare function drawBeast(ctx: CanvasRenderingContext2D, opts: {
      * barrel going away).
      */
     rider?: () => void;
+    /**
+     * THE COLLAR TELLS THE TALE (beastcraft v2): strap color for a
+     * tamed body — worn gear in the saddle's tradition, never a
+     * palette swap. Absent on every wild thing.
+     */
+    collar?: string;
 }): void;
 //# sourceMappingURL=rig.d.ts.map

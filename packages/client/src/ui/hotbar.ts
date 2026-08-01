@@ -3,6 +3,7 @@ import { ENCHANTS, itemDef } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 import { itemIconUrl, sneakEyeUrl } from '../render/icons.js';
+import { petPortraitUrl } from '../render/petPortrait.js';
 import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
 import { bindings, type ActionId } from '../input/bindings.js';
 import { elementTint } from '../render/wornLight.js';
@@ -47,6 +48,19 @@ const EMPTY_HINTS = [
  * casts, so touch and mouse players get abilities without a keyboard.
  */
 export class Hotbar {
+  /**
+   * THE COMPANION CHIP (beastcraft v2 Phase 5): the heel friend's
+   * face, name, and health beside the buff chips — one glance says
+   * fighting fit, wounded, downed, resting, or catching up. A
+   * permanent tray resident on the sneak-eye pattern; DOM writes only
+   * on change (the perf law of this file).
+   */
+  private readonly petChip = document.createElement('div');
+  private readonly petFace = document.createElement('img');
+  private readonly petName = document.createElement('div');
+  private readonly petHpFill = document.createElement('div');
+  private petKey = '';
+
   private readonly root = document.getElementById('hotbar')!;
   private readonly tray = document.getElementById('passive-tray')!;
   private readonly buffTray = document.getElementById('buff-tray')!;
@@ -139,6 +153,24 @@ export class Hotbar {
     this.sneakEye.draggable = false;
     this.sneakChip.appendChild(this.sneakEye);
     this.buffTray.appendChild(this.sneakChip);
+
+    // The companion chip: portrait, name, and a health sliver.
+    this.petChip.className = 'buff-chip pet-chip';
+    this.petChip.style.display = 'none';
+    this.petFace.className = 'pet-chip-face';
+    this.petFace.draggable = false;
+    this.petName.className = 'pet-chip-name';
+    const hpBar = document.createElement('div');
+    hpBar.className = 'pet-chip-hp';
+    this.petHpFill.className = 'pet-chip-hp-fill';
+    hpBar.appendChild(this.petHpFill);
+    const col = document.createElement('div');
+    col.className = 'pet-chip-col';
+    col.appendChild(this.petName);
+    col.appendChild(hpBar);
+    this.petChip.appendChild(this.petFace);
+    this.petChip.appendChild(col);
+    this.buffTray.appendChild(this.petChip);
   }
 
   /** Called once per frame — cheap DOM writes only on change. */
@@ -243,8 +275,10 @@ export class Hotbar {
     if (bKey !== this.buffKey) {
       this.buffKey = bKey;
       this.buffTray.innerHTML = '';
-      // The eye chip is a permanent resident — survive the rebuild.
+      // The eye and companion chips are permanent residents — survive
+      // the rebuild.
       this.buffTray.appendChild(this.sneakChip);
+      this.buffTray.appendChild(this.petChip);
       this.buffSecsEls.length = 0;
       for (const b of game.buffs) {
         const chip = document.createElement('div');
@@ -328,6 +362,40 @@ export class Hotbar {
             : state === 'detected'
               ? 'Detected: a hostile has found you'
               : 'Sneaking: harder to notice (lvl 50: vanish while still; lvl 90: vanish while moving)';
+      }
+    }
+
+    // The companion chip: the active friend (heel, trailing, downed)
+    // or the nearest resting one — one truth per frame, written only
+    // on change.
+    const active =
+      game.ownPets.find((pp) => pp.state === 'heel' || pp.state === 'trailing' || pp.state === 'downed') ??
+      game.ownPets.find((pp) => pp.state === 'resting');
+    const pKey = active
+      ? `${active.slot}:${active.species}:${active.name}:${active.state}:${active.hp}:${active.maxHp}:${active.restSec ?? ''}`
+      : '';
+    if (pKey !== this.petKey) {
+      this.petKey = pKey;
+      if (!active) {
+        this.petChip.style.display = 'none';
+      } else {
+        this.petChip.style.display = '';
+        this.petFace.src = petPortraitUrl(active.species, 40);
+        this.petName.textContent =
+          active.state === 'resting'
+            ? `${active.name} · rests ${Math.max(1, active.restSec ?? 0)}s`
+            : active.state === 'downed'
+              ? `${active.name} · down`
+              : active.state === 'trailing'
+                ? `${active.name} · behind`
+                : active.name;
+        this.petChip.classList.toggle('pet-downed', active.state === 'downed');
+        this.petChip.classList.toggle('pet-resting', active.state === 'resting');
+        this.petHpFill.style.width = `${Math.round((100 * active.hp) / Math.max(1, active.maxHp))}%`;
+        this.petChip.title =
+          active.state === 'downed'
+            ? `${active.name} is down. Kneel to it before it drags itself home.`
+            : `${active.name}, your companion`;
       }
     }
   }

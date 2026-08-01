@@ -11512,6 +11512,12 @@ export function drawBeast(
      * barrel going away).
      */
     rider?: () => void;
+    /**
+     * THE COLLAR TELLS THE TALE (beastcraft v2): strap color for a
+     * tamed body — worn gear in the saddle's tradition, never a
+     * palette swap. Absent on every wild thing.
+     */
+    collar?: string;
   },
 ): void {
   const s = opts.scale;
@@ -12738,11 +12744,45 @@ export function drawBeast(
   const headBack = fy < -0.25;
   const tailFront = fy < -0.2;
   const udderBehind = fy > 0.15;
+  // THE COLLAR: a strap across the hull's neck end with a brass tag
+  // hung under it — one universal anchor (every species hull runs
+  // bodyLen along the facing), painted over the body and under a
+  // down-screen head so the face is never covered. Shell-bodied
+  // species (crab, beetle, spider) have no neck to strap: their tag
+  // rides the shell rim instead, same brass, same read.
+  const paintCollar = (): void => {
+    if (!opts.collar) return;
+    const shellBody = !!(crabL || beetleL || spiderL);
+    const cx = bx + fx * len * (shellBody ? 0.5 : 0.72);
+    const cy = bodyY + fy * len * (shellBody ? 0.34 : 0.5) * ys;
+    const bw = Math.max(2, r * (shellBody ? 0.4 : 0.58));
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (!shellBody) {
+      ctx.rotate(Math.atan2(fy * ys, fx) + Math.PI / 2);
+      ctx.fillStyle = opts.collar;
+      ctx.fillRect(-r * 0.17, -bw, r * 0.34, bw * 2);
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.6)';
+      ctx.lineWidth = Math.max(1, s * 0.02);
+      ctx.strokeRect(-r * 0.17, -bw, r * 0.34, bw * 2);
+    }
+    // The tag: one brass drop — the thing a keeper's eye finds first.
+    ctx.fillStyle = '#d8a83d';
+    ctx.beginPath();
+    ctx.arc(0, bw * (shellBody ? 0.4 : 1.05), Math.max(1.4, r * 0.12), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
+    ctx.lineWidth = Math.max(1, s * 0.018);
+    ctx.stroke();
+    ctx.restore();
+  };
+
   if (!tailFront) paintTail();
   if (headBack) paintHead();
   if (udderBehind) paintUdder();
   for (const i of farLegs) drawLeg(i);
   paintBody();
+  paintCollar();
   if (!udderBehind) paintUdder();
   if (!headBack && !headFront) paintHead();
   for (const i of nearLegs) drawLeg(i);

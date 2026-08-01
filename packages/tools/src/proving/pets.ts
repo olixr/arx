@@ -33,7 +33,7 @@ const CHAR = `Keeper ${STAMP}`;
 type Msg = Record<string, any>;
 const ATTACK = 1 << 0;
 
-type Sample = { x: number; y: number; pose: number; hpPct: number; at: number };
+type Sample = { x: number; y: number; pose: number; hpPct: number; status: number; at: number };
 
 class Client {
   ws!: WebSocket;
@@ -52,7 +52,7 @@ class Client {
         if (r.u8() !== BinaryMsgType.Snapshot) return;
         const snap = decodeSnapshot(r);
         for (const e of snap.entities) {
-          const s: Sample = { x: e.x, y: e.y, pose: e.pose, hpPct: e.hpPct, at: Date.now() };
+          const s: Sample = { x: e.x, y: e.y, pose: e.pose, hpPct: e.hpPct, status: e.status, at: Date.now() };
           this.ents.set(e.eid, s);
           if (e.eid === this.eid) this.pos = s;
         }
@@ -174,9 +174,15 @@ const main = async () => {
     6000,
     mark,
   );
+  // Scoped to the spawn mark AND to unowned bodies: another keeper's
+  // companion (a live keeper idling at the Dawnmead pen, say) enters
+  // the stream at register time and courting it is a silent refusal
+  // by law (live-caught: the harness spent two runs proposing to a
+  // browser session's beetle).
   const beetleMeta = c.msgs
+    .slice(mark)
     .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
-    .find((e: Msg) => e.defId === 'giant_beetle');
+    .find((e: Msg) => e.defId === 'giant_beetle' && e.ownerEid === undefined);
   const beetle: number = beetleMeta.eid;
   await sleep(400);
 
@@ -464,7 +470,7 @@ const main = async () => {
         const eid2: number = c.msgs
           .slice(sm)
           .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
-          .find((e: Msg) => e.defId === species).eid;
+          .find((e: Msg) => e.defId === species && e.ownerEid === undefined).eid;
         await sleep(300);
         await landOne(eid2, label);
         return eid2;
@@ -579,7 +585,8 @@ const main = async () => {
    *  the flakiest block in the harness. The mark opens BEFORE the
    *  staging — a bear can fell a small friend in the very first
    *  exchange, mid-stage. */
-  const downThePet = async (spot: [number, number]): Promise<void> => {
+  const downThePet = async (spot: [number, number], retried = false): Promise<void> => {
+    const deathMark = c.mark();
     await tp(c, spot[0], spot[1]);
     {
       // The pet must be standing beside us before anything is fed to it.
@@ -618,6 +625,17 @@ const main = async () => {
         if (smp && c.pos && Math.hypot(smp.x - c.pos.x, smp.y - c.pos.y) < 30) {
           await tp(c, Math.round(smp.x), Math.round(smp.y) + 1);
         }
+      }
+      // The keeper dying dissolves the stage (death teleport drags
+      // the pet home) — top up and try once more on fresh ground.
+      if (
+        !retried &&
+        c.msgs.slice(deathMark).some((m) => m.t === 'chat' && /You went down/.test(m.text ?? ''))
+      ) {
+        console.log('  (the keeper fell mid-stage — topping up and restaging)');
+        await topUp();
+        await downThePet([spot[0] + 9, spot[1] + 7], true);
+        return;
       }
       if (Date.now() - t0 > 60000) {
         await say(c, '/npcstate');
@@ -678,7 +696,7 @@ const main = async () => {
   // body drew no further wounds while the fight raged past it.
   const bearNow = c.msgs
     .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
-    .filter((e: Msg) => e.defId === 'bear')
+    .filter((e: Msg) => e.defId === 'bear' && e.ownerEid === undefined)
     .map((e: Msg) => e.eid)
     .filter((e2: number) => {
       const smp = c.ents.get(e2);
@@ -724,6 +742,73 @@ const main = async () => {
   c.send({ t: 'interactnpc', eid: downedEid! });
   await c.waitFor((m) => m.t === 'chat' && /leans into your hand/.test(m.text ?? ''), 'the pat', 5000, mark);
   receipt('the snack clock holds: the second offer is only a hand', true);
+
+  // ==== THE SPECIES SPEAK (Phase 5) ======================================
+
+  // THE SALVE: the brewer sells to hunters — the same kneel, nearly
+  // whole, and the jar is spent.
+  mark = c.mark();
+  await say(c, '/give mending_salve 1');
+  await c.waitFor((m) => m.t === 'inv', 'salve in pack', 5000, mark);
+  await downThePet([course[0] + 32, course[1] + 6]);
+  const salveDowned = livePet();
+  {
+    const bearNow2 = c.msgs
+      .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+      .filter((e: Msg) => e.defId === 'bear' && e.ownerEid === undefined)
+      .map((e: Msg) => e.eid)
+      .filter((e2: number) => {
+        const smp = c.ents.get(e2);
+        return smp && smp.hpPct > 0 && Date.now() - smp.at < 2000;
+      })
+      .pop();
+    if (bearNow2 !== undefined) await killTarget(bearNow2, 'the second bear');
+  }
+  await walkTo(salveDowned!, 1.8);
+  mark = c.mark();
+  c.send({ t: 'interactnpc', eid: salveDowned! });
+  await c.waitFor((m) => m.t === 'chat' && /salve does its quiet work/.test(m.text ?? ''), 'the salve rise', 9000, mark);
+  await sleep(500);
+  {
+    const risen2 = c.ents.get(salveDowned!);
+    receipt(
+      'THE SALVE: the same kneel, nearly whole, the jar spent',
+      risen2 !== undefined && risen2.hpPct > 180 && risen2.hpPct < 235,
+      `hpPct ${risen2?.hpPct}`,
+    );
+  }
+
+  // THE KIT RIDES THE BITE: a wolf's worry leaves a wound that keeps
+  // bleeding — the status byte on the mark says so while the keeper
+  // stands idle.
+  mark = c.mark();
+  await say(c, '/tame wolf');
+  await c.waitFor((m) => m.t === 'pet' && m.pets?.length === 2, 'the wolf joins', 5000, mark);
+  const wolfSlot = c.latest('pet')!.pets.find((p: Msg) => p.state === 'heel')!.slot;
+  const kitGoblin = await stageFight('goblin', 'the kit goblin');
+  {
+    const t0 = Date.now();
+    let bitten = false;
+    while (Date.now() - t0 < 30000) {
+      c.frame(0);
+      const gsmp = c.ents.get(kitGoblin);
+      if (!gsmp || gsmp.hpPct === 0) break;
+      if (gsmp.status !== 0) {
+        bitten = true;
+        break;
+      }
+      await sleep(150);
+    }
+    receipt('THE KIT RIDES THE BITE: the worry keeps bleeding on the wire', bitten);
+  }
+  await say(c, `/tame drop ${wolfSlot}`);
+  await c.waitFor((m) => m.t === 'pet' && m.pets?.length === 1, 'the wolf returned (dev)', 5000);
+  await say(c, '/tame heel 0');
+  await c.waitFor(
+    (m) => m.t === 'pet' && m.pets?.some((p: Msg) => p.slot === 0 && (p.state === 'heel' || p.state === 'trailing')),
+    'the beetle takes the heel again',
+    5000,
+  );
 
   // THE KEEPER FLED exit: down it again, then walk out of its world.
   await downThePet([course[0] + 38, course[1] + 24]);
@@ -895,7 +980,7 @@ const main = async () => {
     mirror2.pets.length === 3 && bramble?.species === 'giant_beetle',
   );
 
-  console.log(`\nTHE OPEN HAND, THE FANG, THE FALL, AND THE STALLS ALL HOLD — ${passed} receipts.`);
+  console.log(`\nTHE OPEN HAND, THE FANG, THE FALL, THE STALLS, AND THE SPECIES ALL HOLD — ${passed} receipts.`);
   c2.ws.close();
   process.exit(0);
 };

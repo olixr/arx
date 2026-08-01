@@ -113,8 +113,6 @@ export declare class StationPanels {
      * bench's own arming discipline).
      */
     private releaseArmed;
-    /** Species portraits, painted once per species and kept. */
-    private static readonly petPortraits;
     /** THE THREE STALLS' acts — wired from main once at boot. */
     private onStable;
     private onStableRename;
@@ -125,12 +123,6 @@ export declare class StationPanels {
     }, pets: PetInfo[]): void;
     /** The household mirror moved — re-render if the stalls are open. */
     refreshStable(pets: PetInfo[]): void;
-    /**
-     * The companion's face on its stall card: the real species body,
-     * painted once by the same rig that walks it through the world —
-     * a portrait, never a placeholder glyph.
-     */
-    private petPortrait;
     private renderStable;
     /**
      * Called every frame with the player's position: an anchored panel

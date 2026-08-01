@@ -10,6 +10,18 @@ import type { InputManager } from '../input/inputManager.js';
  * casts, so touch and mouse players get abilities without a keyboard.
  */
 export declare class Hotbar {
+    /**
+     * THE COMPANION CHIP (beastcraft v2 Phase 5): the heel friend's
+     * face, name, and health beside the buff chips — one glance says
+     * fighting fit, wounded, downed, resting, or catching up. A
+     * permanent tray resident on the sneak-eye pattern; DOM writes only
+     * on change (the perf law of this file).
+     */
+    private readonly petChip;
+    private readonly petFace;
+    private readonly petName;
+    private readonly petHpFill;
+    private petKey;
     private readonly root;
     private readonly tray;
     private readonly buffTray;

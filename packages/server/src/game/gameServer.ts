@@ -50,6 +50,7 @@ import {
   PET_DOWNED_TICKS,
   PET_TEND_TICKS,
   PET_TEND_HP_FRAC,
+  PET_TEND_SALVE_FRAC,
   PET_TEND_XP,
   PET_REST_HOME_MS,
   PET_BOND_COOLDOWN_MS,
@@ -879,6 +880,12 @@ interface ServerStatus extends ActiveStatus {
   sourceEid: EntityId;
   /** Shock only: remaining hard-stun ticks (shorter than the status). */
   stunLeft?: number;
+  /**
+   * A companion's tooth put this here (beastcraft v2 Phase 5): the
+   * drip still credits the keeper's KILL, but its ticks train no
+   * school — a sleeping keeper's venom must never level a blade.
+   */
+  fromPet?: boolean;
 }
 
 /** A placed totem/trap/decoy. */
@@ -9714,7 +9721,29 @@ export class GameServer {
         // Mid-windup: planted, committed — the mob telegraph grammar.
         if (npc.windupTicks > 0) {
           if (--npc.windupTicks === 0) {
-            const d = Math.hypot(tpos.x - pos.x, tpos.y - pos.y) - tnpc.def.radius;
+            // THE SPECIES SPEAK: a pouncer's windup ends in the leap —
+            // the boar's gore, the bear's charge, the owl's swoop —
+            // exactly the wild body's own opener (mob pounce math).
+            let d = Math.hypot(tpos.x - pos.x, tpos.y - pos.y) - tnpc.def.radius;
+            if (npc.def.pounce && d > npc.def.attackRange && d < 3.2) {
+              const leap = Math.min(1.3, d - 0.4);
+              const ldx = (tpos.x - pos.x) / (d + tnpc.def.radius);
+              const ldy = (tpos.y - pos.y) / (d + tnpc.def.radius);
+              for (let step = 0; step < 4; step++) {
+                const next = stepMovement(
+                  pos,
+                  { mx: ldx, my: ldy },
+                  leap,
+                  1 / 4,
+                  this.world,
+                  npc.def.radius,
+                );
+                pos.x = next.x;
+                pos.y = next.y;
+              }
+              this.updateChunkMembership(eid);
+              d = Math.hypot(tpos.x - pos.x, tpos.y - pos.y) - tnpc.def.radius;
+            }
             // Stepping out of a windup dodges a pet's bite too
             // (+0.85 = the mobs' own +0.55 land grace over the +0.3
             // open grace, kept in the same proportion).
@@ -9726,11 +9755,16 @@ export class GameServer {
           return;
         }
         const d = Math.hypot(tpos.x - pos.x, tpos.y - pos.y) - tnpc.def.radius;
-        // The mob melee gate, +0.3 grace included — a stricter gate
-        // left the pet hovering at separation distance, unable to
-        // open on a target that wasn't walking into it (live-caught:
-        // the bear ate the keeper while the beetle circled).
-        if (d <= npc.def.attackRange + 0.3) {
+        // THE STAND-GROUND BAND: the pet stops and fights anywhere
+        // inside its own LANDING grace (+0.85), not just its opening
+        // reach. A tighter stop bred the mutual-dodge orbit (pet
+        // micro-chases a target that is itself chasing the pet, both
+        // perpetually stepping out of each other's windups — a
+        // live-caught stalemate that could stall a fight for a
+        // minute). Standing inside the land grace means both sides'
+        // blows connect and the fight RESOLVES. Pouncers open from
+        // leap distance: the telegraph is the crouch.
+        if (d <= npc.def.attackRange + (npc.def.pounce ? 1.6 : 0.85)) {
           pos.dir = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
           if (npc.attackCooldown === 0) {
             npc.windupTicks = PET_WINDUP_TICKS;
@@ -9855,7 +9889,16 @@ export class GameServer {
     if (!stats) return;
     const maxHit = Math.round(npcMaxHit(stats.die, level) * stats.dmgMult);
     const dmg = Math.floor(Math.random() * (maxHit + 1));
-    this.damageNpc(targetEid, dmg, pet.ownerEid, 'beastcraft', { viaPet: { petEid } });
+    // THE SPECIES SPEAK: the bite carries the kit's status (or the
+    // wild body's own), and the gore shoves — the same teeth it was
+    // born with, re-aimed. Status DoTs are marked fromPet at the
+    // application site so their ticks train nobody's school.
+    const kit = tameDef(row.species)?.kit;
+    this.damageNpc(targetEid, dmg, pet.ownerEid, 'beastcraft', {
+      viaPet: { petEid },
+      status: kit?.bite ?? base.attackStatus,
+      knockbackMult: kit?.knockback ?? 1,
+    });
   }
 
   /**
@@ -9979,13 +10022,20 @@ export class GameServer {
     }
     if (--action.ticksLeft > 0) return;
 
-    // The rise: on its feet where it fell, shaky but standing.
+    // The rise: on its feet where it fell, shaky but standing — or
+    // near whole when the keeper's pack carries the brewer's salve
+    // (THE SALVE: herbalism sells to hunters; the jar is spent).
     const row = player.pets.find((p) => p.slot === pet.slot);
     const bc = levelForXp(player.skills.beastcraft ?? 0);
     const base = row ? NPCS.get(row.species) : undefined;
     const stats =
       row && base ? petStatBlock(row.species, petLevelFor(row.xp, base.level, bc), bc) : null;
-    health.hp = Math.max(1, Math.ceil((stats?.maxHp ?? health.maxHp) * PET_TEND_HP_FRAC));
+    let riseFrac = PET_TEND_HP_FRAC;
+    if (removeItem(player.inventory, 'mending_salve', 1) >= 1) {
+      riseFrac = PET_TEND_SALVE_FRAC;
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+    }
+    health.hp = Math.max(1, Math.ceil((stats?.maxHp ?? health.maxHp) * riseFrac));
     pet.downedUntil = 0;
     pet.lastHurtTick = this.tickCount; // the rise is not yet the mend
     this.poses.set(action.targetEid, PoseState.Idle);
@@ -9995,7 +10045,10 @@ export class GameServer {
     player.session?.sendJson({
       t: 'chat',
       channel: 'system',
-      text: `${row?.name ?? 'Your companion'} finds its feet, shaky but standing.`,
+      text:
+        riseFrac === PET_TEND_SALVE_FRAC
+          ? `The salve does its quiet work. ${row?.name ?? 'Your companion'} stands, nearly whole.`
+          : `${row?.name ?? 'Your companion'} finds its feet, shaky but standing.`,
     });
     this.sendPet(player);
     this.cancelAction(eid, player, 'done');
@@ -13420,6 +13473,7 @@ export class GameServer {
     apply: StatusApply,
     sourceEid: EntityId,
     style: SkillId,
+    fromPet = false,
   ): void {
     const npc = this.npcs.get(npcEid);
     if (!npc) return;
@@ -13537,6 +13591,7 @@ export class GameServer {
         sourceEid,
         // The stagger is brief; the charge rides on as reaction fodder.
         stunLeft: apply.status === 'shock' ? Math.min(duration, SHOCK_MAX_TICKS) : undefined,
+        ...(fromPet ? { fromPet: true } : {}),
       });
     }
     this.statuses.set(npcEid, list);
@@ -13611,7 +13666,7 @@ export class GameServer {
             // already inside.
             this.damagePet(eid, s.power, { pierceArmor: true, sourceEid: s.sourceEid });
           } else if (this.npcs.has(eid)) {
-            this.dotNpc(eid, s.power, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom');
+            this.dotNpc(eid, s.power, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom', s.fromPet);
           } else if (this.players.has(eid)) {
             // Bitter Blood: the herbalist's constitution dulls the drip.
             const p = this.players.get(eid)!;
@@ -13639,6 +13694,7 @@ export class GameServer {
     dmg: number,
     sourceEid: EntityId,
     kind: 'burn' | 'bleed' | 'venom',
+    fromPet = false,
   ): void {
     const npc = this.npcs.get(npcEid);
     const health = this.healths.get(npcEid);
@@ -13649,7 +13705,7 @@ export class GameServer {
     this.broadcastHit(npcEid, dmg);
     health.hp -= dmg;
     const source = this.players.get(sourceEid);
-    if (source) {
+    if (source && !fromPet) {
       const style: SkillId = kind === 'burn' ? 'arx' : kind === 'venom' ? 'sneak' : 'onehand';
       this.grantXp(sourceEid, source, style, dmg * 2);
     }
@@ -14524,7 +14580,7 @@ export class GameServer {
       }
     }
 
-    if (opts.status) this.applyStatusToNpc(npcEid, opts.status, attackerEid, style);
+    if (opts.status) this.applyStatusToNpc(npcEid, opts.status, attackerEid, style, opts.viaPet !== undefined);
     // Poisoned-edge + Envenom law: every landed BASIC carries what
     // rides the blade and the stance — never the ability rotation.
     // The oil lives ON the weapon instance, so style gating is
@@ -18048,7 +18104,8 @@ export class GameServer {
     if (config.devCommands && text.startsWith('/tame')) {
       // /tame               — list the tame roster and the household
       // /tame <species>     — grant a companion at heel (skips the gentling)
-      // /tame drop <slot>   — release a stall (Phase 4 gives this a ceremony)
+      // /tame drop <slot>   — release a stall (the stable door owns the real ceremony)
+      // /tame heel <slot>   — the stable door's swap, penless (staging lever)
       const [, arg, arg2] = text.split(/\s+/);
       const say = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
       if (!arg) {
@@ -18057,6 +18114,28 @@ export class GameServer {
           .map((p) => `${p.slot}:${p.name} (${p.species}, ${p.state})`)
           .join(', ');
         say(`Tames: ${roster}. Stalls: ${held || 'empty'}.`);
+        return;
+      }
+      if (arg === 'heel') {
+        const slot = Number.parseInt(arg2 ?? '', 10);
+        const row2 = player.pets.find((p) => p.slot === slot);
+        if (!row2) {
+          say(`No companion in stall ${arg2}.`);
+          return;
+        }
+        const prevHeel = player.pets.find((p) => p.state === 'heel');
+        if (prevHeel && prevHeel !== row2) {
+          prevHeel.state = 'stabled';
+          if (player.characterId > 0) this.accounts.savePetState(player.characterId, prevHeel.slot, 'stabled');
+          this.despawnPetEntity(player);
+        }
+        row2.state = 'heel';
+        row2.restedAt = null;
+        if (player.characterId > 0) this.accounts.savePetRest(player.characterId, row2.slot, 'heel', null);
+        player.petHp = null;
+        this.trySpawnPet(eid, player);
+        this.sendPet(player);
+        say(`${row2.name} comes to your side.`);
         return;
       }
       if (arg === 'drop') {
