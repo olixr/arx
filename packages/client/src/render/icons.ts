@@ -1,4 +1,4 @@
-import { ELEMENT_COLORS, ENCHANT_DEFS, UNLOCKABLE_RECIPES, itemDef, recipeScrollId } from '@arx/content';
+import { ELEMENT_COLORS, ENCHANT_DEFS, ITEMS, RECIPES, itemDef } from '@arx/content';
 import { shade } from './rig.js';
 import { BOW_STYLES, DAGGER_STYLES, GREAT_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawGreatweapon, drawStaff, drawSword } from './weapons.js';
 import { TOOL_STYLES, drawTool } from './tools.js';
@@ -5411,11 +5411,12 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
 
 // ---- recipe scrolls: one rolled-parchment painter, ribbon tinted by
 // the profession's ink (the item def's color) — new unlockable recipes
-// get icons for free.
+// get icons for free. Keyed off the teaches pointer so retired legacy
+// scrolls (items.ts LEGACY_RECIPE_SCROLLS) keep their paper too.
 {
-  for (const r of UNLOCKABLE_RECIPES) {
-    const id = recipeScrollId(r.id);
-    ITEM_ICON[id] = { icon: 'recipe', color: itemDef(id)?.color ?? '#c9b98a' };
+  for (const def of ITEMS.values()) {
+    if (!def.teaches || !RECIPES.has(def.teaches)) continue;
+    ITEM_ICON[def.id] = { icon: 'recipe', color: def.color ?? '#c9b98a' };
   }
 }
 

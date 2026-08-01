@@ -2689,6 +2689,10 @@ interface MetalStep {
   value: number;
   code: string;
   desc: string;
+  /** Override the level-band unlock default (compile.ts). THE FIRST
+   * TRADE: bronze is the starter metal, so every bronze design is
+   * core knowledge whatever its smithing level. */
+  unlock?: 'core' | 'trainer' | 'drop';
 }
 
 function metalLine(
@@ -2726,6 +2730,7 @@ function metalLine(
       recipe: {
         skill: 'smithing', levelReq: m.smithReq, xp: m.xp, station: 'anvil',
         ticks: design.ticks, inputs: [{ item: m.bar, qty: design.bars }],
+        ...(m.unlock ? { unlock: m.unlock } : {}),
       },
       value: m.value, color: m.color, code: m.code, desc: m.desc,
     };
@@ -3262,7 +3267,10 @@ function swordDefs(): EquipmentDef[] {
       art: 'crescent_sweep', backstabMult: 1.4, bars: 2, ticks: 70, pool: ROGUE_POOL,
     },
     [
-      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 1, meleeReq: 6, smithReq: 12, xp: 70, value: 60, code: 'Sx',
+      // The one bronze design whose level lands past the core band —
+      // pinned core anyway (THE FIRST TRADE: the starter metal is
+      // everyone's; its retired scroll survives as legacy paper).
+      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 1, meleeReq: 6, smithReq: 12, xp: 70, value: 60, code: 'Sx', unlock: 'core',
         desc: 'A grin of bronze. Fights sideways, wins sideways.' },
       { metal: 'iron', bar: 'iron_bar', color: '#8d9299', damage: 2, meleeReq: 16, smithReq: 24, xp: 150, value: 170, code: 'Si',
         desc: 'The curve finds what a straight edge misses.' },
@@ -3672,7 +3680,9 @@ function daggerDefs(): EquipmentDef[] {
       art: 'serpents_kiss', backstabMult: 2.4, bars: 1, ticks: 60, pool: THIEF_POOL,
     },
     [
-      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 1, meleeReq: 0, smithReq: 14, xp: 80, value: 55, code: 'Qk',
+      // Past the core band by level, core by law (THE FIRST TRADE:
+      // bronze arms are everyone's; its retired scroll is legacy paper).
+      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 1, meleeReq: 0, smithReq: 14, xp: 80, value: 55, code: 'Qk', unlock: 'core',
         desc: 'The blade waves so the wound cannot close its eyes.' },
       { metal: 'iron', bar: 'iron_bar', color: '#8d9299', damage: 2, meleeReq: 0, smithReq: 26, xp: 160, value: 160, code: 'Ki',
         desc: 'Seven bends of iron, each one an opinion.' },

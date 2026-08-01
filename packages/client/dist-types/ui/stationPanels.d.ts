@@ -196,6 +196,7 @@ export declare class StationPanels {
      * destructive action that would be the worst bug in the system.
      */
     private renderUnmake;
+    private craftRumor;
     private renderCraft;
     openBank(items: Record<string, number>, at?: {
         tx: number;

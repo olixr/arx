@@ -28,8 +28,10 @@ import {
   npcDef,
   RECIPES,
   recipesForStation,
+  trainerPostFor,
   type BuildableDef,
   type RecipeDef,
+  type TrainerPost,
 } from '@arx/content';
 import { buildableIconUrl, itemIconUrl, uiIconUrl } from '../render/icons.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
@@ -1144,6 +1146,39 @@ export class StationPanels {
     this.craftDetail.appendChild(actions);
   }
 
+  // THE BENCH NAMES ITS TEACHERS: the rumor line points at a real
+  // door. Taught lore names its teacher and town (TRAINER_DIRECTORY);
+  // found lore stays a rumor of the wilds. Returns null when this
+  // station keeps no secrets from the character.
+  private craftRumor(all: readonly RecipeDef[], known: ReadonlySet<string>): string | null {
+    const hidden = all.filter((r) => r.unlock !== 'core' && !known.has(r.id));
+    if (hidden.length === 0) return null;
+    const byDoor = new Map<string, { post: TrainerPost; count: number }>();
+    let wild = 0;
+    for (const r of hidden) {
+      const post = r.unlock === 'trainer' ? trainerPostFor(r.skill) : undefined;
+      if (post) {
+        const key = `${post.teacher}|${post.town}`;
+        const entry = byDoor.get(key) ?? { post, count: 0 };
+        entry.count += 1;
+        byDoor.set(key, entry);
+      } else {
+        wild += 1;
+      }
+    }
+    const n = hidden.length;
+    const lead = `${n} ${n === 1 ? 'recipe waits' : 'recipes wait'} to be discovered.`;
+    if (byDoor.size === 0) return `${lead} The wilds hide ${n === 1 ? 'it' : 'them'}.`;
+    if (byDoor.size === 1 && wild === 0) {
+      const { post } = [...byDoor.values()][0]!;
+      return `${lead} ${post.teacher} in ${post.town} sells ${n === 1 ? 'it' : 'them all'}.`;
+    }
+    const doors = [...byDoor.values()]
+      .map(({ post, count }) => `${post.teacher} in ${post.town} sells ${count}`)
+      .join(', ');
+    return wild > 0 ? `${lead} ${doors}; the wilds hide the rest.` : `${lead} ${doors}.`;
+  }
+
   private renderCraft(): void {
     if (this.showing?.kind !== 'craft') return;
     const showing = this.showing;
@@ -1170,13 +1205,13 @@ export class StationPanels {
     const all = recipesForStation(station);
     const recipes = all.filter((r) => r.unlock === 'core' || known.has(r.id));
     const undiscovered = all.length - recipes.length;
+    const rumor = this.craftRumor(all, known);
     if (recipes.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'make-empty';
-      empty.textContent =
-        undiscovered > 0
-          ? `You know no recipes for this station yet. ${undiscovered} await discovery.`
-          : 'Nothing can be made here yet.';
+      empty.textContent = rumor
+        ? `You know no recipes for this station yet. ${rumor}`
+        : 'Nothing can be made here yet.';
       this.craftList.appendChild(empty);
       return;
     }
@@ -1237,10 +1272,10 @@ export class StationPanels {
     }
 
     // The rumor line: how much this station still keeps from you.
-    if (undiscovered > 0) {
+    if (undiscovered > 0 && rumor) {
       const hint = document.createElement('div');
       hint.className = 'make-undiscovered';
-      hint.textContent = `${undiscovered} more ${undiscovered === 1 ? 'recipe waits' : 'recipes wait'} to be discovered. Trainers sell some, the wilds hide the rest.`;
+      hint.textContent = rumor;
       this.craftList.appendChild(hint);
     }
 

@@ -8724,8 +8724,8 @@ export class GameServer {
         channel: 'system',
         text:
           level >= recipe.levelReq
-            ? `You study the ${def.name.toLowerCase()} — ${recipe.name} joins your repertoire.`
-            : `You study the ${def.name.toLowerCase()} — ${recipe.name} joins your repertoire (needs ${recipe.skill} ${recipe.levelReq}).`,
+            ? `You study the ${def.name.toLowerCase()}. ${recipe.name} joins your repertoire.`
+            : `You study the ${def.name.toLowerCase()}. ${recipe.name} joins your repertoire (needs ${recipe.skill} ${recipe.levelReq}).`,
       });
       return;
     }

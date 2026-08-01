@@ -613,10 +613,14 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
   },
   // (flower_crown's recipe now generates from equipment/defs.ts)
   {
+    // THE FIRST TRADE: the apprentice piece. Level 1 so the anvil
+    // greets a brand-new smith with real work on the very first visit
+    // (the weapon line starts at 2); a farm pan is the classic first
+    // hammering, and it feeds the homestead loop besides.
     id: 'smith_watering_can',
     name: 'Watering can',
     skill: 'smithing',
-    levelReq: 5,
+    levelReq: 1,
     xp: 40,
     station: 'anvil',
     inputs: [{ item: 'bronze_bar', qty: 1 }],

@@ -1199,7 +1199,38 @@ const recipeScrollDefs: ItemDef[] = UNLOCKABLE_RECIPES.map((r) => ({
   code: 'Rx',
 }));
 
-const allDefs: ItemDef[] = [...defs, ...scrollDefs, ...recipeScrollDefs, ...COMPILED_EQUIPMENT.items];
+// THE RETIRED SCROLL — taught lore that later went core. The item must
+// outlive its shelf: live inventories may still hold the paper, and a
+// vanished id becomes a ghost slot. Study refuses core recipes without
+// consuming (gameServer.useItem answers "you already know"), so the
+// page stays honest and trades on. Never shelved, never looted again.
+export const LEGACY_RECIPE_SCROLLS: readonly ItemDef[] = [
+  {
+    // Sold as trainer lore until THE FIRST TRADE made every bronze
+    // design core knowledge; value keeps its old shelf price.
+    id: recipeScrollId('craft_scimitar'),
+    name: 'Schematic: Scimitar',
+    stackable: true,
+    value: 164,
+    teaches: 'craft_scimitar',
+    desc: 'The scimitar\'s measures. Every smith learns these at the anvil now.',
+    color: RECIPE_INK.smithing ?? '#c9b98a',
+    code: 'Rx',
+  },
+  {
+    // Retired with the scimitar's, same law, same shelf price.
+    id: recipeScrollId('craft_kris'),
+    name: 'Schematic: Kris',
+    stackable: true,
+    value: 188,
+    teaches: 'craft_kris',
+    desc: 'The kris and its seven bends. Every smith learns these at the anvil now.',
+    color: RECIPE_INK.smithing ?? '#c9b98a',
+    code: 'Rx',
+  },
+];
+
+const allDefs: ItemDef[] = [...defs, ...scrollDefs, ...recipeScrollDefs, ...LEGACY_RECIPE_SCROLLS, ...COMPILED_EQUIPMENT.items];
 
 // NATIVE procs pass the same load guards a bonded working does. A proc
 // baked into a chase item's def.gear.effects fires through the same

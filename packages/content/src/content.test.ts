@@ -33,13 +33,13 @@ import {
 } from './structures/templates.js';
 import { ABILITIES, TECHNIQUES, abilityDef } from './abilities.js';
 import { SECRET_ARTS, secretArtDef } from './secretArts.js';
-import { ITEMS } from './items.js';
+import { ITEMS, LEGACY_RECIPE_SCROLLS } from './items.js';
 import { NPCS, TOWN_SPAWNS } from './npcs.js';
 import { LOOT_TABLES } from './loot/tables.js';
 import { RECIPES } from './recipes.js';
 import { NODES } from './nodes.js';
 import { BUILDABLES, BUILD_CATEGORIES } from './buildables.js';
-import { GENERAL_STORE, SHOPS } from './shop.js';
+import { GENERAL_STORE, SHOPS, TRAINER_DIRECTORY } from './shop.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 import { NPC_ACTORS } from './actors/registry.js';
 import {
@@ -637,10 +637,23 @@ test('recipe unlocks are honest: scrolls exist, shelves and troves cover them', 
     for (const e of t.entries) if (e.item) lootable.add(e.item);
   }
 
+  // THE RETIRED SCROLL: taught lore that later went core keeps its
+  // item (live inventories hold the paper) but leaves every shelf and
+  // every loot table — the knowledge is free now.
+  const legacy = new Set(LEGACY_RECIPE_SCROLLS.map((d) => d.id));
+  for (const id of legacy) {
+    assert.ok(!shelved.has(id), `legacy scroll '${id}' is still on a shelf`);
+    assert.ok(!lootable.has(id), `legacy scroll '${id}' is still in loot`);
+    const taught = ITEMS.get(id)?.teaches;
+    assert.ok(taught && RECIPES.get(taught)?.unlock === 'core', `legacy scroll '${id}' should point at a core recipe`);
+  }
+
   for (const r of RECIPES.values()) {
     const scroll = recipeScrollId(r.id);
     if (r.unlock === 'core') {
-      assert.ok(!ITEMS.has(scroll), `core recipe '${r.id}' should not have a scroll`);
+      if (!legacy.has(scroll)) {
+        assert.ok(!ITEMS.has(scroll), `core recipe '${r.id}' should not have a scroll`);
+      }
       continue;
     }
     const def = ITEMS.get(scroll);
@@ -654,12 +667,15 @@ test('recipe unlocks are honest: scrolls exist, shelves and troves cover them', 
       assert.ok(!shelved.has(scroll), `drop recipe '${r.id}' leaked onto a shelf`);
     }
   }
-  // Every teaches pointer resolves to a real, non-core recipe.
+  // Every teaches pointer resolves to a real recipe; only retired
+  // legacy paper may point at a core one.
   for (const def of ITEMS.values()) {
     if (!def.teaches) continue;
     const r = RECIPES.get(def.teaches);
     assert.ok(r, `item '${def.id}' teaches unknown recipe '${def.teaches}'`);
-    assert.notEqual(r!.unlock, 'core', `item '${def.id}' teaches a core recipe`);
+    if (!legacy.has(def.id)) {
+      assert.notEqual(r!.unlock, 'core', `item '${def.id}' teaches a core recipe`);
+    }
   }
   // Every shop an actor advertises exists; every trainer shop has a keeper.
   const carried = new Set<string>();
@@ -675,6 +691,78 @@ test('recipe unlocks are honest: scrolls exist, shelves and troves cover them', 
     // defined, and the settlements that keep them come later.
     if (shop.id.startsWith('trainer_')) continue;
     assert.ok(carried.has(shop.id), `shop '${shop.id}' has no actor to keep it`);
+  }
+});
+
+/**
+ * THE FIRST TRADE — the entry to every craft is a birthright. A fresh
+ * character walking into the first craft town must find the door open:
+ * each trade offers work at its very first level, the starter kits
+ * (first-material weapons and a full armor wardrobe) are core
+ * knowledge, and every taught trade names a teacher the bench can
+ * point at. Higher shelves stay sought-out; the ground floor is free.
+ */
+test('THE FIRST TRADE: every craft opens at the first level', () => {
+  const bySkill = new Map<string, number>();
+  for (const r of RECIPES.values()) {
+    if (r.unlock !== 'core') continue;
+    const best = bySkill.get(r.skill);
+    if (best === undefined || r.levelReq < best) bySkill.set(r.skill, r.levelReq);
+  }
+  for (const [skill, min] of bySkill) {
+    assert.ok(min <= 2, `${skill}: first core recipe waits until level ${min}`);
+  }
+});
+
+test('THE FIRST TRADE: every bronze weapon design is core', () => {
+  // The starter metal's arms belong to every hand, whatever their
+  // smithing level (the scimitar at 12 rides an explicit core pin).
+  // Armor sets past the starter kit (Warden) and specialty reagent
+  // work (Briarfang) may still be guild-taught.
+  for (const r of RECIPES.values()) {
+    if (r.skill !== 'smithing') continue;
+    if (!ITEMS.get(r.output.item)?.weapon) continue;
+    if (!r.inputs.some((i) => i.item === 'bronze_bar')) continue;
+    const plain = r.inputs.every((i) => i.item === 'bronze_bar' || i.item === 'log' || i.item === 'oak_log');
+    if (plain) assert.equal(r.unlock, 'core', `${r.id}: a plain bronze weapon behind a lock`);
+  }
+});
+
+test('THE FIRST TRADE: the starter kit covers every hand and every slot', () => {
+  const styles = new Set<string>();
+  const slots = new Set<string>();
+  for (const r of RECIPES.values()) {
+    if (r.unlock !== 'core' || r.levelReq > 10) continue;
+    const item = ITEMS.get(r.output.item);
+    if (!item) continue;
+    if (item.weapon?.style) styles.add(item.weapon.style);
+    if (item.equipSlot) slots.add(item.equipSlot);
+  }
+  // Dual wield is the offhand use of any onehand blade, so onehand
+  // coverage covers it; shield rides the offhand slot check below.
+  for (const style of ['onehand', 'twohand', 'archery', 'arx']) {
+    assert.ok(styles.has(style), `no core starter weapon for ${style}`);
+  }
+  for (const slot of ['head', 'body', 'legs', 'boots', 'gloves', 'offhand']) {
+    assert.ok(slots.has(slot), `no core starter craft for the ${slot} slot`);
+  }
+});
+
+test('THE FIRST TRADE: every taught trade names its teacher', () => {
+  const posted = new Set(TRAINER_DIRECTORY.map((p) => p.skill));
+  for (const r of RECIPES.values()) {
+    if (r.unlock !== 'trainer') continue;
+    assert.ok(posted.has(r.skill), `${r.skill} has taught lore but no TRAINER_DIRECTORY post`);
+  }
+  // Every post is a real door: the teacher stands somewhere with that
+  // name, and their trade really has lore to sell.
+  const actorNames = new Set([...NPC_ACTORS.values()].map((a) => a.name));
+  const taughtSkills = new Set(
+    [...RECIPES.values()].filter((r) => r.unlock === 'trainer').map((r) => r.skill),
+  );
+  for (const post of TRAINER_DIRECTORY) {
+    assert.ok(actorNames.has(post.teacher), `directory names unknown teacher '${post.teacher}'`);
+    assert.ok(taughtSkills.has(post.skill), `directory post for ${post.skill} has nothing to teach`);
   }
 });
 

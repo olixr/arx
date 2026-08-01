@@ -565,3 +565,30 @@ export const SHOPS: ReadonlyMap<string, ShopDef> = new Map(defs.map((d) => [d.id
 export function shopDef(id: string): ShopDef | undefined {
   return SHOPS.get(id);
 }
+
+/** Where a beginner first learns each taught trade. */
+export interface TrainerPost {
+  skill: SkillId;
+  /** The teacher's name as the town knows it. */
+  teacher: string;
+  town: string;
+}
+
+// THE BENCH NAMES ITS TEACHERS: the crafting ledger's rumor line
+// points at a real door instead of shrugging "trainers somewhere".
+// One post per skill — the nearest school for a beginner (Amberford
+// is the first craft town; cooking's school moved south with Alba).
+// Second-town shelves (Stig, Solvei) stay discoveries of their own.
+export const TRAINER_DIRECTORY: readonly TrainerPost[] = [
+  { skill: 'smithing', teacher: 'Bretta Ironhewn', town: 'Amberford' },
+  { skill: 'leatherworking', teacher: 'Tilo', town: 'Amberford' },
+  { skill: 'tailoring', teacher: 'Tilo', town: 'Amberford' },
+  { skill: 'woodworking', teacher: 'Tilo', town: 'Amberford' },
+  { skill: 'herbalism', teacher: 'Elowen', town: 'Amberford' },
+  { skill: 'enchanting', teacher: 'Elowen', town: 'Amberford' },
+  { skill: 'cooking', teacher: 'Smokemistress Alba', town: 'Saltmere' },
+];
+
+export function trainerPostFor(skill: SkillId): TrainerPost | undefined {
+  return TRAINER_DIRECTORY.find((p) => p.skill === skill);
+}
