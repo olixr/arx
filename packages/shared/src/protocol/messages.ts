@@ -1,4 +1,5 @@
 import { EQUIP_SLOTS } from '../entities.js';
+import { DYE_COUNT } from '../world/tiles.js';
 import type { CarryStyle, EntityId, EntityMeta, EquipSlot, GripHand } from '../entities.js';
 import { sanitizeLook, type Look } from '../look.js';
 import type { ItemRoll } from '../rarity.js';
@@ -1723,7 +1724,17 @@ export function parseC2S(raw: string): C2SMessage | null {
         msg.orient === 'NE' || msg.orient === 'NW' || msg.orient === 'SE' || msg.orient === 'SW'
           ? msg.orient
           : undefined;
-      return { t: 'build', buildable: msg.buildable, tx: msg.tx, ty: msg.ty, orient };
+      // THE DYE LAW's dial rides the same whitelist: only a real
+      // roster index passes the door (the game server re-checks the
+      // piece is dyeable — this gate only vouches for the shape).
+      const dye =
+        typeof msg.dye === 'number' &&
+        Number.isInteger(msg.dye) &&
+        msg.dye >= 0 &&
+        msg.dye < DYE_COUNT
+          ? msg.dye
+          : undefined;
+      return { t: 'build', buildable: msg.buildable, tx: msg.tx, ty: msg.ty, orient, dye };
     }
     case 'demolish': {
       if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;

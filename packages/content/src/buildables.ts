@@ -1,4 +1,4 @@
-import { DYE_COUNT, Tile, diagWallInfo, type SkillId } from '@arx/shared';
+import { DYE_COUNT, Tile, awningInfo, diagWallInfo, type SkillId } from '@arx/shared';
 
 /**
  * THE DYE LAW's roster — the ten cloths of the Dawnlands, index-married
@@ -23,12 +23,37 @@ if (DYES.length !== DYE_COUNT) {
   throw new Error(`DYES roster (${DYES.length}) must match shared DYE_COUNT (${DYE_COUNT})`);
 }
 
+/**
+ * What each dye costs at placement, over the piece's own materials —
+ * the cloth-colorway pigment precedent (berries stew madder, moonbell
+ * steeps woad) walked onto the build lane. Index-married to DYES;
+ * null = the undyed default asks nothing. The server validates and
+ * consumes these beside def.materials, so dye choice feeds the
+ * foraging and farming loops instead of being a free menu.
+ */
+export const DYE_PIGMENTS: ReadonlyArray<{ item: string; qty: number } | null> = [
+  null, // linen — undyed
+  { item: 'berries', qty: 2 }, // madder
+  { item: 'moonbell', qty: 1 }, // woad
+  { item: 'sunflower', qty: 1 }, // weld
+  { item: 'sagewort', qty: 2 }, // ivy
+  { item: 'berries', qty: 3 }, // mulberry — stewed deep
+  { item: 'pine_resin', qty: 2 }, // ochre
+  { item: 'coal', qty: 1 }, // charcoal
+  { item: 'sagewort', qty: 1 }, // moss
+  { item: 'berries', qty: 1 }, // rose — a pale wash
+];
+if (DYE_PIGMENTS.length !== DYE_COUNT) {
+  throw new Error(`DYE_PIGMENTS (${DYE_PIGMENTS.length}) must match shared DYE_COUNT (${DYE_COUNT})`);
+}
+
 /** The palette's shelves — every buildable sits on exactly one. */
 export type BuildCategory =
   | 'foundation'
   | 'wall'
   | 'furnishing'
   | 'station'
+  | 'decor'
   | 'defense'
   | 'waymark';
 
@@ -38,6 +63,7 @@ export const BUILD_CATEGORIES: ReadonlyArray<{ id: BuildCategory; label: string 
   { id: 'wall', label: 'Walls & Openings' },
   { id: 'station', label: 'Stations' },
   { id: 'furnishing', label: 'Furnishings' },
+  { id: 'decor', label: 'Decor' },
   { id: 'defense', label: 'Defenses' },
   { id: 'waymark', label: 'Waymarks' },
 ];
@@ -395,6 +421,60 @@ const defs: BuildableDef[] = [
     ticks: 50,
   },
   {
+    // THE OUTWARD FACE: awnings bolt to a wall face and shade the
+    // street row south of it (the server holds the wall-north footing
+    // law). Dye is chosen at placement (THE DYE LAW) and pigment is
+    // paid beside the materials — see DYE_PIGMENTS. Tiles land as
+    // shape anchor + dye; salvage folds every dyed id back to its one
+    // def through buildableForTile's awning fold.
+    id: 'awning_shed',
+    cat: 'decor',
+    name: 'Shed awning',
+    tile: Tile.AwningShed,
+    levelReq: 10,
+    xp: 55,
+    materials: [{ item: 'board', qty: 2 }, { item: 'cloth', qty: 2 }],
+    ticks: 30,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
+    // All timber, no cloth: the rain roof for smokehouses and wood
+    // shops. It takes the host wall's own wood; dye paints the trim.
+    id: 'awning_board',
+    cat: 'decor',
+    name: 'Board awning',
+    tile: Tile.AwningBoard,
+    levelReq: 12,
+    xp: 62,
+    materials: [{ item: 'board', qty: 5 }],
+    ticks: 30,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
+    // The stall's scalloped valance, re-cut for a shopfront.
+    id: 'awning_market',
+    cat: 'decor',
+    name: 'Market awning',
+    tile: Tile.AwningMarket,
+    levelReq: 14,
+    xp: 72,
+    materials: [{ item: 'board', qty: 2 }, { item: 'cloth', qty: 3 }],
+    ticks: 32,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
+    // The grand shopfront: a barrel-bowed canvas over real framing.
+    id: 'awning_bowed',
+    cat: 'decor',
+    name: 'Bowed awning',
+    tile: Tile.AwningBowed,
+    levelReq: 20,
+    xp: 130,
+    materials: [{ item: 'board', qty: 3 }, { item: 'cloth', qty: 4 }],
+    ticks: 40,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
     id: 'tanning_rack',
     cat: 'station',
     name: 'Tanning rack',
@@ -684,5 +764,9 @@ export function buildableForTile(tile: Tile): BuildableDef | undefined {
   const dw = diagWallInfo(tile);
   if (dw) return BUILDABLES.get(DIAG_CORNER_ID[dw.material] ?? '');
   if (tile === Tile.FenceDiagNE || tile === Tile.FenceDiagNW) return BUILDABLES.get('fence_corner');
+  // THE DYE LAW's reverse: every dyed awning id folds to its shape's
+  // one def, so salvage and the own-work overlay never care about dye.
+  const awn = awningInfo(tile);
+  if (awn) return BUILDABLES.get(`awning_${awn.shape}`);
   return BY_TILE.get(tile);
 }

@@ -1,5 +1,5 @@
-import { itemDef, BUILDABLES } from '@arx/content';
-import { buildableIconUrl, itemIconUrl } from '../render/icons.js';
+import { itemDef, BUILDABLES, DYES } from '@arx/content';
+import { buildableIconUrl, itemIconUrl, DYE_SWATCHES } from '../render/icons.js';
 import { needChip } from './panel.js';
 
 /**
@@ -22,13 +22,18 @@ export interface BuildTrayState {
   armed: boolean;
   /** Recently used pieces (excluding the current one), most recent first. */
   recents: readonly string[];
+  /** THE DYE LAW's dial: chosen index for a dyeable piece, null = not dyeable. */
+  dye: number | null;
 }
 
 export class BuildTray {
   private readonly el = document.getElementById('build-tray')!;
   private sig = '';
 
-  constructor(private readonly onPick: (id: string) => void) {}
+  constructor(
+    private readonly onPick: (id: string) => void,
+    private readonly onDye: (dye: number) => void,
+  ) {}
 
   hide(): void {
     if (this.sig === '') return;
@@ -44,6 +49,7 @@ export class BuildTray {
       state.armed ? 'A' : '',
       state.mats.map((m) => `${m.item}:${m.have}/${m.need}`).join(','),
       state.recents.join(','),
+      state.dye === null ? '' : `d${state.dye}`,
     ].join('|');
     if (sig === this.sig) return;
     this.sig = sig;
@@ -85,6 +91,22 @@ export class BuildTray {
       );
     }
     this.el.appendChild(mats);
+
+    // THE DYE LAW's swatch row: ten cloths, the chosen one ringed.
+    // One click re-dyes the NEXT placement — the ghost answers live.
+    if (state.dye !== null) {
+      const dyes = document.createElement('div');
+      dyes.className = 'tray-dyes';
+      for (let i = 0; i < DYE_SWATCHES.length; i++) {
+        const b = document.createElement('button');
+        b.className = 'tray-dye' + (i === state.dye ? ' picked' : '');
+        b.title = DYES[i]?.name ?? `Dye ${i}`;
+        b.style.background = DYE_SWATCHES[i]!;
+        b.addEventListener('click', () => this.onDye(i));
+        dyes.appendChild(b);
+      }
+      this.el.appendChild(dyes);
+    }
 
     if (state.recents.length > 0) {
       const recents = document.createElement('div');

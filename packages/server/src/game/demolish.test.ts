@@ -33,6 +33,8 @@ function slate(opts: {
   inventory?: InvSlot[];
   /** THE SECOND LAYER: a hanging on the doomed wall, if any. */
   hung?: { detail: number; owner: number; prevDetail: number };
+  /** THE CANOPY FALLS: a built record on the tile SOUTH of the wall. */
+  south?: BuiltRec;
 }) {
   const events: string[] = [];
   const sent: Array<Record<string, unknown>> = [];
@@ -41,6 +43,7 @@ function slate(opts: {
   const drops: Array<{ item: string; qty: number }> = [];
   let builtNow: BuiltRec | undefined = opts.built;
   let hungNow = opts.hung;
+  let southNow: BuiltRec | undefined = opts.south;
   const player = {
     characterId: opts.owner ?? 7,
     home: null as { x: number; y: number } | null,
@@ -57,10 +60,13 @@ function slate(opts: {
     homesByCharacter: new Map(),
     ringCache: null,
     world: {
-      builtAt: () => builtNow,
-      unregisterBuilt: () => {
-        events.push('unregister');
-        builtNow = undefined;
+      // The demolish action targets (4,5); (4,6) is the tile south of
+      // the wall — the canopy-falls probe reads it.
+      builtAt: (_tx: number, ty: number) => (ty === 6 ? southNow : ty === 5 ? builtNow : undefined),
+      unregisterBuilt: (_tx: number, ty: number) => {
+        events.push(ty === 6 ? 'unregisterSouth' : 'unregister');
+        if (ty === 6) southNow = undefined;
+        else builtNow = undefined;
       },
       naturalGround: () => Tile.Grass,
       registerBuilt: (_tx: number, _ty: number, tile: number, owner: number, prevTile: number) => {
@@ -190,4 +196,31 @@ test('THE SECOND LAYER: a bare wall demolishes without touching the detail lane'
   proto.tickDemolish.call(s, 1, s.player);
   assert.ok(!s.events.some((e) => e.startsWith('detailPatch:')), 'no detail patch for no hanging');
   assert.ok(!s.events.includes('deleteDetailRow'));
+});
+
+test('THE CANOPY FALLS WITH ITS WALL: a hosted awning drops, salvage spills at the site', () => {
+  const shed = BUILDABLES.get('awning_shed')!;
+  const s = slate({
+    built: { tile: Tile.WallWood, owner: 7, prevTile: Tile.Grass },
+    south: { tile: Tile.AwningShed + 3, owner: 9, prevTile: Tile.Grass },
+  });
+  proto.tickDemolish.call(s, 1, s.player);
+  assert.ok(s.events.includes('unregisterSouth'), 'the awning record clears');
+  // Ceil-half of the awning ledger lands as ground drops (the wall's
+  // owner may not be the canopy's — an unowned pile is the honest cut).
+  for (const m of shed.materials) {
+    assert.ok(
+      s.drops.some((d) => d.item === m.item && d.qty === Math.ceil(m.qty / 2)),
+      `${m.item} salvage spills`,
+    );
+  }
+  // Both fx fire, canopy first or wall first is not pinned — but both.
+  assert.ok(s.events.filter((e) => e.startsWith('fx:demolish')).length >= 2);
+  assert.ok(s.events.includes(`patch:${Tile.Grass}`));
+});
+
+test('a bare wall drops no canopy and probes no salvage', () => {
+  const s = slate({ built: { tile: Tile.WallWood, owner: 7, prevTile: Tile.Grass } });
+  proto.tickDemolish.call(s, 1, s.player);
+  assert.ok(!s.events.includes('unregisterSouth'));
 });

@@ -247,13 +247,48 @@ the lane, rendered by the shipped wallHangings pass, DB row in built_details,
 survived a full relog through the chunk stream, removal bared the face and
 cleared the row.
 
-**Phase 1 — THE CLOTH TAKES THE STREET (awnings).**
-40 banded tile ids + generated TILE_DEFS entries; four painters to the laws above;
-buildables (`awning_shed` L10 / `awning_market` L14 / `awning_board` L12 /
-`awning_bowed` L20 — boards + canvas + the dye's pigment, canvas = new loom recipe
-from flax); tray swatch row + piece-true ghost showing exact shape+dye; footing
-reason chip; Map Studio palette group; `effectiveGround` + walk-through; run-merge.
-Proof: a five-shop street with five different awnings, one gust rolling down it.
+**Phase 1 — THE CLOTH TAKES THE STREET (awnings). SHIPPED 2026-08-01.**
+As built: four painters in one banded `awningItem` (renderer routes all 40 ids
+through `awningInfo`, never forty cases): rod bolted ~1.95 tiles up the host
+face, hem 1.58-1.7 tiles high at 0.65-0.85 tiles south — a true foreshortened
+plane with **THE TRAPEZOID CUE** (hem spreads ±0.16s toward camera; without it
+the canopy reads as a wall decal — the pass-1 verdict); market keeps the
+4-per-tile seamless stripe law + scalloped valance with per-tooth wind phase;
+shed wears a breathing drop band; bowed carries a barrel-bulge hem arc + rib
+seams + crown-light curvature; board = three chunky WEATHERED slat courses
+(shade(skin,-16/-8) — fresh-lumber-on-lumber camouflaged into the wall, the
+pass-2 verdict) + rafter tails + dyed fascia. All cloth samples `windAtInto`
+(gusts roll down a street), `castEdgeQuad` shadow at the drip line, struct
+outline on exposed silhouettes only, sortY ty+0.78 stall grammar, live-drawn.
+**THE VEIL LAW ONE TILE OVER**: the painter sheds when
+`wallHeightAt(host) < 1.99` or the host stops being a host. **THE CANOPY
+FALLS WITH ITS WALL** (server): demolishing a host wall drops the hosted
+awning — record, fx, ceil-half salvage as an unowned ground pile (the wall's
+owner may not be the canopy's), test-pinned. Footing = `AWNING_HOST_TILES`
+(full walls, glazing, straight doorways; corners + garrison refuse), enforced
+at build start, completion, ghost, AND drag-queue (runs skip gaps
+wordlessly). Pigments: `DYE_PIGMENTS` (berries→madder, moonbell→woad,
+sunflower→weld, sagewort→ivy/moss, pine_resin→ochre, coal→charcoal; linen
+free) validated + consumed beside materials, never salvaged (spent color).
+Buildables on the new **decor** shelf: shed L10 / board L12 / market L14 /
+bowed L20 (existing `cloth` item is the canvas — no new loom recipe needed;
+the plan's "flax canvas" was already woven). UX: tray dye-swatch row (ten
+dots, picked ringed gold, remembered across pieces), pigment need-chip, ghost
+lands the exact dyed id with 'Needs a wall behind it' chip, dyed ghost color;
+`DYE_SWATCHES` in icons.ts = the ONE client color truth (renderer cloths
+derive from it); awning glyph + 4 icon entries; Map Studio 'Awnings' shelf
+dealt from the band math; footsteps sound the street beneath.
+**THE WHITELIST LESSON (protocol)**: `parseC2S` rebuilds every message from a
+field whitelist — the dye dial died silently on the wire until it joined the
+build case (validated 0..DYE_COUNT). Pinned in messages.test.ts: EVERY future
+C2S field must join parseC2S or it never existed.
+PROVEN: 4 suites green (shared 190 / content 394 / server 351 / client 337);
+three visual iteration passes (staged 4-shape × dye lineup on a wood-wall run,
+noon + night, run-merge + dye-break verified); live on the dev rig — woad shed
+and madder market built through the full pipeline on Dawnmead's cottage
+(pigment counts fell exactly, refusals spoke: dye-wants-pigment, wall-behind,
+someone-in-the-way), demolish salvage lines confirmed, and the cottage's
+street face wears shed + market + bowed in the final frame.
 
 **Phase 2 — THE WALL TAKES A HANGING.**
 Wall banner, pennant string, bracket sign, trellis vine, wall basket — `wallHangings`

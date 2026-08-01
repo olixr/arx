@@ -2223,8 +2223,8 @@ export class ClientGame {
     this.conn?.send({ t: 'shop', op, item, qty, slot, shop });
   }
 
-  buildSend(buildable: string, tx: number, ty: number, orient?: BuildOrient): void {
-    this.conn?.send({ t: 'build', buildable, tx, ty, orient });
+  buildSend(buildable: string, tx: number, ty: number, orient?: BuildOrient, dye?: number): void {
+    this.conn?.send({ t: 'build', buildable, tx, ty, orient, dye });
   }
 
   demolishSend(tx: number, ty: number): void {

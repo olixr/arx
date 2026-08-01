@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import {
+  AWNING_HOST_TILES,
   AWNING_SHAPES,
   AWNING_TILES,
   CHEST_TILES,
@@ -344,4 +345,28 @@ test('HANGABLE_WALL_TILES: solid full walls only, dressed by a hangings pass', (
   assert.ok(HANGABLE_WALL_TILES.has(Tile.WallWood));
   assert.ok(HANGABLE_WALL_TILES.has(Tile.WallStone));
   assert.ok(HANGABLE_WALL_TILES.has(Tile.WallGarrison));
+});
+
+test('AWNING_HOST_TILES: framed south faces only — corners and curtains refuse', () => {
+  // Every classic shopfront host bolts an awning: full walls, glazed
+  // walls, straight doorways in every posture and width.
+  for (const t of [
+    Tile.WallWood,
+    Tile.WallStone,
+    Tile.WallWoodWindow,
+    Tile.WallStoneWindow,
+    Tile.DoorwayWood,
+    Tile.DoorwayStoneWide,
+    Tile.DoorwayWoodShut,
+  ]) {
+    assert.ok(AWNING_HOST_TILES.has(t), `${tileDef(t).name} hosts an awning`);
+  }
+  // No 45° corner presents the full south face the brackets need,
+  // and the garrison curtain keeps its martial bareness.
+  for (const t of DIAG_WALL_TILES) {
+    assert.ok(!AWNING_HOST_TILES.has(t), `${tileDef(t).name} refuses`);
+  }
+  for (const t of GARRISON_TILES) {
+    assert.ok(!AWNING_HOST_TILES.has(t), `${tileDef(t).name} refuses`);
+  }
 });

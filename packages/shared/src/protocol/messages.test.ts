@@ -124,3 +124,22 @@ test('questabandon carries one bounded quest id', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'questabandon', quest: 'x'.repeat(65) })), null);
   assert.equal(parseC2S(JSON.stringify({ t: 'questabandon', quest: 7 })), null);
 });
+
+test('build message carries the dye dial through the whitelist', () => {
+  // THE DYE LAW: a valid roster index survives the parse (the door
+  // that silently swallowed it in the first live proof — this pin
+  // keeps any future C2SBuild field from dying the same quiet death).
+  const dyed = parseC2S(
+    JSON.stringify({ t: 'build', buildable: 'awning_shed', tx: -58, ty: 33, dye: 7 }),
+  );
+  assert.equal(dyed?.t === 'build' && dyed.dye, 7);
+  // Absent stays absent; junk is dropped without killing the message.
+  const plain = parseC2S(JSON.stringify({ t: 'build', buildable: 'wood_wall', tx: 0, ty: 0 }));
+  assert.equal(plain?.t === 'build' && plain.dye, undefined);
+  for (const bad of [-1, 10, 1.5, '3', null]) {
+    const m = parseC2S(
+      JSON.stringify({ t: 'build', buildable: 'awning_shed', tx: 0, ty: 0, dye: bad }),
+    );
+    assert.equal(m?.t === 'build' && m.dye, undefined, `dye ${String(bad)} dropped, build kept`);
+  }
+});

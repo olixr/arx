@@ -114,6 +114,7 @@ import {
   BUILDABLES,
   buildableForTile,
   buildableGround,
+  DYE_PIGMENTS,
   CROP_BY_SEED,
   CROPS,
   SHOPS,
@@ -403,6 +404,7 @@ import {
   orientDiagFence,
   encodeDetailPatch,
   HANGABLE_WALL_TILES,
+  AWNING_HOST_TILES,
   wallHungInfo,
   wallBannerDetail,
   pennantDetail,
@@ -5152,6 +5154,16 @@ export class GameServer {
       sys('Someone is in the way.');
       return;
     }
+    // THE OUTWARD FACE: an awning bolts to the wall behind it — the
+    // footing is the tile NORTH of the canopy, and only a framed
+    // south face (full wall, glazing, straight doorway) takes bolts.
+    if (awningInfo(def.tile) !== null) {
+      const host = this.world.groundAt(tx, ty - 1);
+      if (host === undefined || !AWNING_HOST_TILES.has(host as Tile)) {
+        sys('An awning needs a wall behind it.');
+        return;
+      }
+    }
     if (!def.materials.every((m) => countItem(player.inventory, m.item) >= m.qty)) {
       sys("You don't have the materials.");
       return;
@@ -5173,6 +5185,15 @@ export class GameServer {
       dye! < DYE_COUNT
         ? dye
         : undefined;
+    // The pigment is paid beside the materials (DYE_PIGMENTS): a dye
+    // is foraged color, not a free menu. Linen (0/absent) asks nothing.
+    const pigment = dyed !== undefined ? DYE_PIGMENTS[dyed] : null;
+    if (pigment && countItem(player.inventory, pigment.item) < pigment.qty) {
+      sys(
+        `That dye wants ${pigment.qty} ${(itemDef(pigment.item)?.name ?? pigment.item).toLowerCase()}.`,
+      );
+      return;
+    }
     player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks, orient: orientable, dye: dyed };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks: buildTicks });
@@ -5206,11 +5227,28 @@ export class GameServer {
       this.cancelAction(eid, player, 'occupied');
       return;
     }
+    // The host wall may have fallen mid-swing — a canopy bolted to
+    // open air is not a thing this world contains.
+    if (awningInfo(def.tile) !== null) {
+      const host = this.world.groundAt(action.tx, action.ty - 1);
+      if (host === undefined || !AWNING_HOST_TILES.has(host as Tile)) {
+        this.cancelAction(eid, player, 'blocked');
+        return;
+      }
+    }
+    const pigment = action.dye !== undefined ? DYE_PIGMENTS[action.dye] : null;
     if (!def.materials.every((m) => countItem(player.inventory, m.item) >= m.qty)) {
       this.cancelAction(eid, player, 'materials');
       return;
     }
+    if (pigment && countItem(player.inventory, pigment.item) < pigment.qty) {
+      this.cancelAction(eid, player, 'materials');
+      return;
+    }
     for (const m of def.materials) removeItem(player.inventory, m.item, m.qty);
+    // The dye is spent color: consumed with the materials, never
+    // salvaged back (demolish refunds ceil-half of the PIECE only).
+    if (pigment) removeItem(player.inventory, pigment.item, pigment.qty);
     // Salvager: the builder's Calling sometimes hands one piece back.
     const buildSave = player.perks.materialSave[def.skill ?? 'construction'] ?? 0;
     if (buildSave > 0 && def.materials.length > 0 && Math.random() < buildSave) {
@@ -5430,6 +5468,36 @@ export class GameServer {
       this.world.unregisterBuiltDetail(tx, ty);
       this.accounts.deleteBuiltDetail(tx, ty);
       this.setWorldDetail(tx, ty, hungHere.prevDetail);
+    }
+    // THE CANOPY FALLS WITH ITS WALL: if the doomed tile hosts an
+    // awning on its south side, the brackets have nothing left to
+    // bolt to — the awning comes down WITH the wall, its ceil-half
+    // salvage spilling at the site for whoever owned it (an unowned
+    // ground pile: the wall's owner may not be the awning's).
+    const southBuilt = this.world.builtAt(tx, ty + 1);
+    if (southBuilt && awningInfo(southBuilt.tile) !== null) {
+      const adef = buildableForTile(southBuilt.tile as Tile);
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'demolish',
+        x: tx + 0.5,
+        y: ty + 1.5,
+        radius: 1,
+        id: String(southBuilt.tile),
+      });
+      if (adef) {
+        for (const m of adef.materials) {
+          this.placeDrop(m.item, Math.ceil(m.qty / 2), tx + 0.5, ty + 1.5, {
+            ownerEid: null,
+            ownerUntil: 0,
+            despawnAt: Date.now() + 12 * 60_000,
+            pickupAfter: Date.now() + 400,
+          });
+        }
+      }
+      this.world.unregisterBuilt(tx, ty + 1);
+      this.accounts.deleteBuiltTile(tx, ty + 1);
+      this.setWorldTile(tx, ty + 1, southBuilt.prevTile as Tile);
     }
     this.world.unregisterBuilt(tx, ty);
     this.accounts.deleteBuiltTile(tx, ty);

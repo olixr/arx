@@ -546,6 +546,14 @@ export declare class Renderer {
      */
     private static readonly STALL_BANNERS;
     /**
+     * THE DYE LAW's cloths, index-married to the shared roster (linen 0
+     * … rose 9; rename in place, never reorder). The bolt color `a`
+     * comes from icons' DYE_SWATCHES — the one client color truth for
+     * dyes — and `b` is its stripe/trim partner: undyed cream for most,
+     * a paler self for pale cloths so stripes never vanish.
+     */
+    private static readonly AWNING_CLOTHS;
+    /**
      * One ware on a stall's display top. Kinds: produce, bread, bottles,
      * cloth bolts, pottery, berry basket — small enough to sit under the
      * awning window, distinct enough to read at market distance.
@@ -2035,6 +2043,28 @@ export declare class Renderer {
      */
     private fenceGateItem;
     private objectItem;
+    /**
+     * THE CLOTH TAKES THE STREET — the awning painter, one method for
+     * all four shapes × ten dyes (the id carries both; the caller read
+     * it with awningInfo). Laws in force:
+     * - TOP-PLANE: the canopy is a foreshortened sloped plane — the rod
+     *   bolts high on the wall behind (tile north), the hem lands lower
+     *   and ~0.8 tiles south, so the slab reads as a true pitched top
+     *   under the tilted bird's eye, never a painted stripe.
+     * - HEM CLEARS THE HEAD (stall architecture law): the lowest cloth
+     *   sits ≥ ~1.45 tiles over the street — a body under the canopy
+     *   shows hips-to-face, never a decapitating band.
+     * - RUN LAW: adjacent tiles of the SAME id (shape + dye) merge into
+     *   one cloth — stripes run 4-per-tile with even parity so the bolt
+     *   continues seamlessly; a dye change breaks the run on purpose.
+     * - SKIN LAW: rod, brackets and the board shape's slats read the
+     *   HOST wall's wood skin, so the canopy belongs to its house.
+     * - WIND LAW: cloth samples the real wind field (windAtInto), the
+     *   valance teeth each a beat out of phase — one gust rolls down a
+     *   street of awnings. The board shape is timber and holds still.
+     * Live-painted every frame (never ring-cached): cloth moves.
+     */
+    private awningItem;
     /**
      * Every body the grass should feel: players and NPCs, own player
      * included. The grass system derives velocities itself (it remembers

@@ -875,7 +875,7 @@ export declare class ClientGame {
     /** Confirm character creation (optimistic — the server locks it). */
     setLookSend(look: Look): void;
     shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number, shop?: string): void;
-    buildSend(buildable: string, tx: number, ty: number, orient?: BuildOrient): void;
+    buildSend(buildable: string, tx: number, ty: number, orient?: BuildOrient, dye?: number): void;
     demolishSend(tx: number, ty: number): void;
     /** Ask for the own-built ledger (THE OWN-WORK OVERLAY refresh). */
     ownBuiltRequest(): void;

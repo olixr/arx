@@ -22,12 +22,15 @@ export interface BuildTrayState {
     armed: boolean;
     /** Recently used pieces (excluding the current one), most recent first. */
     recents: readonly string[];
+    /** THE DYE LAW's dial: chosen index for a dyeable piece, null = not dyeable. */
+    dye: number | null;
 }
 export declare class BuildTray {
     private readonly onPick;
+    private readonly onDye;
     private readonly el;
     private sig;
-    constructor(onPick: (id: string) => void);
+    constructor(onPick: (id: string) => void, onDye: (dye: number) => void);
     hide(): void;
     /** Frame-safe: rebuilds the DOM only when the state actually moved. */
     update(state: BuildTrayState): void;

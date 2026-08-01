@@ -1,4 +1,4 @@
-import { Detail, TILE_PX, TILE_SKIP, Tile, tileDef } from '@arx/shared';
+import { AWNING_SHAPES, DYE_COUNT, Detail, TILE_PX, TILE_SKIP, Tile, awningTile, tileDef } from '@arx/shared';
 import { BUILDABLES } from '@arx/content';
 import { bakeChunk, bakeGutter } from '../render/terrain.js';
 import { buildableIconUrl } from '../render/icons.js';
@@ -98,6 +98,16 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.ToolRack, Tile.WeaponRack, Tile.Vault, Tile.Lectern, Tile.Basin,
       Tile.LampPost, Tile.Brazier,
     ],
+  },
+  {
+    // THE OUTWARD FACE: every shape × dye, dealt from the shared band
+    // math so the shelf can never drift from the world ids. Authors
+    // paint the awning ROW (the tile south of a wall run).
+    id: 'awnings',
+    label: 'Awnings',
+    tiles: AWNING_SHAPES.flatMap((shape) =>
+      Array.from({ length: DYE_COUNT }, (_, dye) => awningTile(shape, dye)),
+    ),
   },
   {
     id: 'chests',

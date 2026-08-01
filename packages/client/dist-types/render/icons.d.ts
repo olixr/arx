@@ -18,6 +18,14 @@ export declare function itemIconUrl(itemId: string, size?: number): string;
  * has no art yet — the panel falls back to its tile color swatch, so a
  * missing mapping degrades instead of breaking.
  */
+/**
+ * THE DYE LAW's swatches, index-married to the shared roster (linen 0
+ * … rose 9). The ONE client-side color truth for dyes: the renderer's
+ * AWNING_CLOTHS derives its bolt colors from this list, and the build
+ * tray's swatch row paints its dots with it — change a dye here and
+ * every reader agrees.
+ */
+export declare const DYE_SWATCHES: readonly string[];
 export declare function buildableIconUrl(buildableId: string, size: number): string | null;
 /** Dim placeholder glyph telling an empty equipment slot's purpose. */
 export declare function slotGlyphUrl(slot: string, size?: number): string;

@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  AWNING_SHAPES,
   Detail,
   DYE_COUNT,
   PASSIVES,
+  awningTile,
   SIGN_MAX_LINE,
   SIGN_MAX_LINES,
   SIGN_MAX_TITLE,
@@ -39,7 +41,7 @@ import { NPCS, TOWN_SPAWNS } from './npcs.js';
 import { LOOT_TABLES } from './loot/tables.js';
 import { RECIPES } from './recipes.js';
 import { NODES } from './nodes.js';
-import { BUILDABLES, BUILD_CATEGORIES, DYES } from './buildables.js';
+import { BUILDABLES, BUILD_CATEGORIES, DYES, DYE_PIGMENTS, buildableForTile } from './buildables.js';
 import { GENERAL_STORE, SHOPS, TRAINER_DIRECTORY } from './shop.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 import { NPC_ACTORS } from './actors/registry.js';
@@ -591,6 +593,31 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
   assert.equal(DYES[0]!.id, 'linen', 'the undyed default holds index 0');
   for (const d of DYES) {
     assert.ok(d.name.length > 0 && !/[—–]|--/.test(d.name), `${d.id} name honest + dash-free`);
+  }
+  // Pigments: index-married, real items, and the undyed default free.
+  assert.equal(DYE_PIGMENTS.length, DYE_COUNT, 'pigment ledger matches the roster');
+  assert.equal(DYE_PIGMENTS[0], null, 'linen asks nothing');
+  for (let i = 1; i < DYE_PIGMENTS.length; i++) {
+    const p = DYE_PIGMENTS[i];
+    assert.ok(p && ITEMS.has(p.item) && p.qty > 0, `${DYES[i]!.id} pigment is a real cost`);
+  }
+
+  // THE OUTWARD FACE: one buildable per awning shape, anchored at the
+  // shape's dye-0 tile, cloth-costed on the decor shelf — and every
+  // dyed id in every band folds back to its shape's one def (salvage
+  // and the own-work overlay never care about dye).
+  for (const shape of AWNING_SHAPES) {
+    const def = BUILDABLES.get(`awning_${shape}`);
+    assert.ok(def, `awning_${shape} exists`);
+    assert.equal(def!.tile, awningTile(shape, 0), `awning_${shape} anchors at dye 0`);
+    assert.equal(def!.cat, 'decor', `awning_${shape} sits on the decor shelf`);
+    for (let dye = 0; dye < DYE_COUNT; dye++) {
+      assert.equal(
+        buildableForTile(awningTile(shape, dye))?.id,
+        `awning_${shape}`,
+        `${shape} dye ${dye} folds home`,
+      );
+    }
   }
   const WHOLE_TIMBER = new Set([
     'sawhorse',

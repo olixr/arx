@@ -545,6 +545,28 @@ export const HANGABLE_WALL_TILES: ReadonlySet<Tile> = new Set([
   Tile.WallGarrison,
 ]);
 
+/**
+ * Walls an awning may bolt to (the tile NORTH of the awning): full
+ * building walls, glazed walls, and straight doorways — every classic
+ * shopfront host presents a framed south face for the brackets. 45°
+ * corners never host (no full south face to bolt into), and the
+ * garrison curtain keeps its martial bareness.
+ */
+export const AWNING_HOST_TILES: ReadonlySet<Tile> = new Set([
+  Tile.WallStone,
+  Tile.WallWood,
+  Tile.WallStoneWindow,
+  Tile.WallWoodWindow,
+  Tile.DoorwayStone,
+  Tile.DoorwayWood,
+  Tile.DoorwayStoneWide,
+  Tile.DoorwayWoodWide,
+  Tile.DoorwayStoneShut,
+  Tile.DoorwayWoodShut,
+  Tile.DoorwayStoneWideShut,
+  Tile.DoorwayWoodWideShut,
+]);
+
 export interface TileDef {
   name: string;
   solid: boolean;

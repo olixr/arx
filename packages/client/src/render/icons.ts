@@ -2702,6 +2702,34 @@ const PAINTERS: Record<string, IconPainter> = {
     c.lineTo(0.64, 0.54);
     c.stroke();
   },
+  awning: (c, col) => {
+    // A sloped canvas off a wall bar: trapezoid spread toward the
+    // viewer, three valance teeth swinging under the hem.
+    c.fillStyle = shade(col, -25);
+    c.fillRect(0.22, 0.24, 0.56, 0.07);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.26, 0.3);
+    c.lineTo(0.74, 0.3);
+    c.lineTo(0.84, 0.62);
+    c.lineTo(0.16, 0.62);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 22);
+    c.fillRect(0.2, 0.5, 0.6, 0.1);
+    c.fillStyle = shade(col, -14);
+    for (const x of [0.2, 0.42, 0.64]) {
+      c.beginPath();
+      c.moveTo(x, 0.61);
+      c.lineTo(x + 0.18, 0.61);
+      c.quadraticCurveTo(x + 0.09, 0.74, x, 0.61);
+      c.closePath();
+      c.fill();
+    }
+  },
   flowerbox: (c, col) => {
     // A timber trough with three blooms nodding over the rim.
     // Stems first so the box overlaps them.
@@ -5466,6 +5494,10 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   counter: { icon: 'counter', color: '#94693a' },
   hearth: { icon: 'hearth', color: '#e8823d' },
   hanging_sign: { icon: 'signpost', color: '#a5793f' },
+  awning_shed: { icon: 'awning', color: '#a8433a' },
+  awning_market: { icon: 'awning', color: '#c9962e' },
+  awning_board: { icon: 'awning', color: '#8a6534' },
+  awning_bowed: { icon: 'awning', color: '#7a3f8f' },
   signpost: { icon: 'signpost', color: '#c2a068' },
   flower_box: { icon: 'flowerbox', color: '#d977a8' },
   banner_pole: { icon: 'banner', color: '#7a3f8f' },
@@ -5609,6 +5641,26 @@ export function itemIconUrl(itemId: string, size = 48): string {
  * has no art yet — the panel falls back to its tile color swatch, so a
  * missing mapping degrades instead of breaking.
  */
+/**
+ * THE DYE LAW's swatches, index-married to the shared roster (linen 0
+ * … rose 9). The ONE client-side color truth for dyes: the renderer's
+ * AWNING_CLOTHS derives its bolt colors from this list, and the build
+ * tray's swatch row paints its dots with it — change a dye here and
+ * every reader agrees.
+ */
+export const DYE_SWATCHES: readonly string[] = [
+  '#cfc5aa', // linen
+  '#a8433a', // madder
+  '#31589c', // woad
+  '#c9962e', // weld
+  '#3f7a48', // ivy
+  '#7a3f8f', // mulberry
+  '#b9772e', // ochre
+  '#4a4a54', // charcoal
+  '#5c6b38', // moss
+  '#c9738f', // rose
+];
+
 export function buildableIconUrl(buildableId: string, size: number): string | null {
   const spec = BUILDABLE_ICON[buildableId];
   return spec ? renderIcon(spec.icon, spec.color, size) : null;

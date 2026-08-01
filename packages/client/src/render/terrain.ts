@@ -4,6 +4,7 @@ import {
   Detail,
   GARRISON_TILES,
   Tile,
+  awningInfo,
   diagWallInfo,
   hashCoords,
   isFishingTile,
@@ -376,6 +377,23 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
         pick(ground(tx + 1, ty)) ??
         pick(ground(tx - 1, ty)) ??
         Tile.StoneFloor
+      );
+    }
+    // An awning is cloth OVERHEAD: the street runs on beneath it —
+    // the garrison-gate law's pick, south first (that side's base
+    // sliver is the visible one), flanks next. A run-mate is canopy,
+    // not ground, and never lends a skin.
+    if (awningInfo(t) !== null) {
+      const pick = (tt: Tile | undefined): Tile | null =>
+        tt !== undefined && !tileDef(tt).solid && awningInfo(tt) === null && tt !== Tile.Ramp
+          ? tt
+          : null;
+      return (
+        pick(ground(tx, ty + 1)) ??
+        pick(ground(tx + 1, ty)) ??
+        pick(ground(tx - 1, ty)) ??
+        pick(ground(tx, ty - 1)) ??
+        Tile.Grass
       );
     }
     // Walk-through structure: the ground continues under the frame —

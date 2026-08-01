@@ -1,6 +1,6 @@
 import { procShape } from './render/wornLight.js';
-import { EntityKind, FENCE_TILES, GARRISON_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling } from '@arx/shared';
-import { BUILDABLES, RECIPES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift } from '@arx/content';
+import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling } from '@arx/shared';
+import { BUILDABLES, DYE_PIGMENTS, RECIPES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { GroundAimController } from './input/groundAim.js';
@@ -39,7 +39,7 @@ import { AudioMenu } from './ui/audioMenu.js';
 import { UNDERGROUND_Y, zoneWeights } from './audio/zones.js';
 import { scanFallEar, SILENT_EAR, type FallEar } from './audio/falls.js';
 import { setupTouch } from './input/touch.js';
-import { buildableIconUrl, dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
+import { DYE_SWATCHES, buildableIconUrl, dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
 import { abilityIconUrl } from './render/abilityIcons.js';
 import { fxStyleFor } from './render/abilityFx.js';
 import { PORTAL_BURST_COLORS } from './render/portal.js';
@@ -339,6 +339,12 @@ input.setTypingCheck(
 let buildMode: string | null = null;
 /** THE TRUE GHOST's dial: the chosen mass for an orientable corner. */
 let buildOrient: 'auto' | 'NE' | 'NW' | 'SE' | 'SW' = 'auto';
+/**
+ * THE DYE LAW's dial: the chosen cloth for dyeable pieces. Remembered
+ * ACROSS pieces and sessions of the mode on purpose — a builder
+ * dressing a street in woad should not re-pick it per awning.
+ */
+let buildDye = 0;
 /** The drag-run: tiles waiting their turn, drained one action at a time. */
 const buildQueue: Array<{ tx: number; ty: number }> = [];
 let buildDragging = false;
@@ -427,9 +433,23 @@ function pumpBuildQueue(): void {
     ) {
       continue;
     }
+    // An awning tile in the run must still have its wall — a drag
+    // along a street skips the gaps between buildings wordlessly.
+    if (
+      awningInfo(def.tile) !== null &&
+      !AWNING_HOST_TILES.has(game.world.groundAt(next.tx, next.ty - 1) as Tile)
+    ) {
+      continue;
+    }
     sentSite = { tx: next.tx, ty: next.ty, at: now };
     sfx.uiTap();
-    game.buildSend(buildMode, next.tx, next.ty, buildOrient === 'auto' ? undefined : buildOrient);
+    game.buildSend(
+      buildMode,
+      next.tx,
+      next.ty,
+      buildOrient === 'auto' ? undefined : buildOrient,
+      awningInfo(def.tile) !== null && buildDye > 0 ? buildDye : undefined,
+    );
     return;
   }
 }
@@ -457,7 +477,13 @@ const PROMPT_LABELS: Record<string, string> = {
   sign: 'Read Sign',
 };
 
-const buildTray = new BuildTray((id) => pickBuildable(id));
+const buildTray = new BuildTray(
+  (id) => pickBuildable(id),
+  (d) => {
+    buildDye = d;
+    sfx.uiTap();
+  },
+);
 
 const stationPanels = new StationPanels(
   (recipe, qty) => game.craft(recipe, qty),
@@ -1693,6 +1719,10 @@ renderer.onPoseChange = (key, pose, x, y) => {
 // to their side of you, and only from close by.
 function stepMaterial(tx: number, ty: number): 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet' {
   const g = game.world.groundAt(tx, ty);
+  // An awning is cloth overhead — feet sound the street beneath (the
+  // south neighbour can never itself be an awning: an awning needs a
+  // wall to its north, and an awning is not a wall).
+  if (g !== undefined && awningInfo(g) !== null) return stepMaterial(tx, ty + 1);
   switch (g) {
     case Tile.Grass:
     case Tile.GrassTall:
@@ -2791,6 +2821,12 @@ function frame(now: number): void {
         }
         landTile = diag === 'NE' ? Tile.FenceDiagNE : Tile.FenceDiagNW;
       }
+      // THE DYE LAW: the ghost lands the exact dyed id the server
+      // will place — the preview never lies about the cloth either.
+      const awn = awningInfo(def.tile);
+      if (awn && buildDye > 0) {
+        landTile = awningTile(AWNING_SHAPES[awn.shapeIndex]!, buildDye);
+      }
 
       // THE GHOST NEVER LIES: the full server gate, mirrored, with the
       // first failing check naming itself in one breath.
@@ -2801,6 +2837,11 @@ function frame(now: number): void {
         reason = `${skill.charAt(0).toUpperCase()}${skill.slice(1)} ${def.levelReq}`;
       } else if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
         reason = 'No footing';
+      } else if (
+        awn &&
+        !AWNING_HOST_TILES.has(game.world.groundAt(tx, ty - 1) as Tile)
+      ) {
+        reason = 'Needs a wall behind it';
       } else if (dist2 > 3 * 3) {
         reason = 'Too far';
       } else if (dist2 < 0.8 * 0.8) {
@@ -2815,7 +2856,11 @@ function frame(now: number): void {
           }
         }
         if (!reason) {
-          for (const m of def.materials) {
+          // The dye's pigment is a material like any other — the
+          // ghost names the missing color before the server would.
+          const pigment = awn && buildDye > 0 ? DYE_PIGMENTS[buildDye] : null;
+          const wants = pigment ? [...def.materials, pigment] : def.materials;
+          for (const m of wants) {
             const have = game.inventory.reduce(
               (n, sl) => n + (sl && sl.item === m.item ? sl.qty : 0),
               0,
@@ -2837,8 +2882,8 @@ function frame(now: number): void {
         kind: wallish ? 'wall' : landDef.raised === true ? 'prop' : 'flat',
         diag,
         icon: wallish || landDef.raised !== true ? null : def.id,
-        color: landDef.color,
-        topColor: landDef.topColor ?? landDef.color,
+        color: awn ? DYE_SWATCHES[buildDye]! : landDef.color,
+        topColor: awn ? DYE_SWATCHES[buildDye]! : (landDef.topColor ?? landDef.color),
         reason,
         queued: buildQueue,
       };
@@ -2848,16 +2893,20 @@ function frame(now: number): void {
     // THE BUILDER'S TRAY: the mode's face, refreshed only when its
     // signature moves (the class diffes internally).
     if (def) {
+      const dyeable = awningInfo(def.tile) !== null;
+      const trayPigment = dyeable && buildDye > 0 ? DYE_PIGMENTS[buildDye] : null;
+      const trayMats = trayPigment ? [...def.materials, trayPigment] : def.materials;
       buildTray.update({
         id: def.id,
         orient: orientRing() ? (buildOrient === 'auto' ? 'Auto' : buildOrient) : null,
-        mats: def.materials.map((m) => ({
+        mats: trayMats.map((m) => ({
           item: m.item,
           have: game.inventory.reduce((n, sl) => n + (sl && sl.item === m.item ? sl.qty : 0), 0),
           need: m.qty,
         })),
         armed,
         recents: buildRecents.filter((r) => r !== def.id).slice(0, 5),
+        dye: dyeable ? buildDye : null,
       });
     } else {
       buildTray.hide();
