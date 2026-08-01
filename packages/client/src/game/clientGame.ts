@@ -220,6 +220,7 @@ export interface GameEvents {
     last?: boolean;
     gifts?: Array<{ item: string; qty: number }>;
     quest?: { id: string; name: string; rewards?: QuestRewardsWire };
+    questChoices?: Array<{ idx: number; kind: 'accept' | 'turnin' }>;
     voice?: { url: string; durMs: number; kind: 'line' | 'quip' };
   }): void;
   /** The conversation is over — tear the frame down. */
@@ -1201,6 +1202,7 @@ export class ClientGame {
           last: msg.last,
           gifts: msg.gifts,
           quest: msg.quest,
+          questChoices: msg.questChoices,
           voice: msg.voice,
         });
         break;

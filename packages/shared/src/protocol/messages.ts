@@ -1051,6 +1051,15 @@ export interface S2CDialogueNode {
    * what they'd be agreeing to before the choice plates appear.
    */
   quest?: QuestOfferWire;
+  /**
+   * Choices with quest weight, by index into `choices`: 'accept'
+   * swears a quest the moment it's picked, 'turnin' hands one in.
+   * Server-resolved against the live ledger (a plate never wears a
+   * badge it can't honor), so the cinema can dress consequence apart
+   * from small talk. Additive + cosmetic — a client that drops it
+   * reads the same plates unbadged.
+   */
+  questChoices?: Array<{ idx: number; kind: 'accept' | 'turnin' }>;
   /** The beat's spoken audio, when the node has a voiced line. */
   voice?: VoiceWire;
 }

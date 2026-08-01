@@ -1,6 +1,7 @@
 import { itemDef, parseDialogueMarkup } from '@arx/content';
 import type { Sfx } from '../audio/sfx.js';
 import { voicePaceScale } from '../audio/voice.js';
+import { bindings } from '../input/bindings.js';
 import { dockGlyphUrl, itemIconUrl } from '../render/icons.js';
 
 /**
@@ -24,8 +25,14 @@ import { dockGlyphUrl, itemIconUrl } from '../render/icons.js';
  * name — into the sentence as one revealed beat. The FIRST advance
  * press completes the line instantly; the next one turns the page.
  * Questions slide their choice plates in only after the line lands,
- * and are answered — never skipped. Gifts granted by a beat are
- * staged the moment its line completes: a socket chip and a chime.
+ * and are answered — never skipped. THE TWO-VERB LAW: on keyboard
+ * the skim verb (Space / the interact key) can never answer a
+ * question — answering rides its own keys (Enter, the digits, a
+ * click on the plate) — and every confirm bounces for a beat after
+ * the plates land (CHOICE_ARM_MS), so a hand racing through pages
+ * can never swear to something it hasn't read. Gifts granted by a
+ * beat are staged the moment its line completes: a socket chip and
+ * a chime.
  *
  * The server owns the conversation: this class renders exactly what
  * it was sent and reports back (advance / choose index / excuse me).
@@ -48,6 +55,13 @@ interface CinemaNode {
       coins?: number;
     };
   };
+  /**
+   * Choices with quest weight, by index: picking an 'accept' plate
+   * swears a quest, a 'turnin' plate hands one in. The plates wear
+   * the overhead mark's own grammar — gold ! and gold ? — so a
+   * consequential answer never dresses like small talk.
+   */
+  questChoices?: Array<{ idx: number; kind: 'accept' | 'turnin' }>;
 }
 
 /** One reveal beat: an element to light, how long to rest after it. */
@@ -62,6 +76,13 @@ interface RevealStep {
 const CHAR_SEC = 1 / 52;
 /** Foreboding is read slowly — the temperature drop needs room. */
 const GRIM_MULT = 1.75;
+/**
+ * THE ARMED QUESTION: for a beat after the choice plates land, every
+ * confirm is swallowed — the press that was skimming the line must
+ * never be the press that answers it. Longer than any key-mash
+ * cadence, shorter than the time it takes to read one plate.
+ */
+const CHOICE_ARM_MS = 450;
 
 function charHold(ch: string, grim: boolean): number {
   let hold = CHAR_SEC;
@@ -107,6 +128,8 @@ export class DialogueCinema {
   private scratchGap = 0;
   private choicesShown = false;
   private selIdx = 0;
+  /** When the plates landed — confirms inside CHOICE_ARM_MS bounce. */
+  private choicesAt = 0;
   private closeTimer = 0;
 
   /**
@@ -372,7 +395,7 @@ export class DialogueCinema {
     if (node.gifts && node.gifts.length > 0) this.stageGifts(node.gifts);
     if (node.quest) this.stageQuestOffer(node.quest);
     if (node.choices && node.choices.length > 0) {
-      this.buildChoices(node.choices);
+      this.buildChoices(node.choices, node.questChoices);
       this.setHints('question');
     } else {
       this.moreEl.classList.add('show');
@@ -419,7 +442,13 @@ export class DialogueCinema {
       return;
     }
     const edge = (i: number): boolean => pressed.has(i) && !this.padPrev.has(i);
-    if (edge(0) || edge(2)) this.advance(); // Ⓐ / Ⓧ
+    // Ⓐ / Ⓧ: the pad keeps its one-button vocabulary — the same
+    // finger skims AND answers — so the arm window inside choose()
+    // is the whole accident guard on this device.
+    if (edge(0) || edge(2)) {
+      if (this.choicesShown && !this.typing) this.confirmSelected();
+      else this.advance();
+    }
     if (edge(1)) this.hooks.onEnd(); // Ⓑ
 
     // Choice walking: d-pad or stick, UiNav's exact repeat cadence.
@@ -512,8 +541,9 @@ export class DialogueCinema {
     this.hooks.onGift?.();
   }
 
-  private buildChoices(choices: string[]): void {
+  private buildChoices(choices: string[], marks?: CinemaNode['questChoices']): void {
     this.choicesShown = true;
+    this.choicesAt = performance.now();
     this.choicesEl.textContent = '';
     choices.forEach((text, i) => {
       const btn = document.createElement('button');
@@ -527,6 +557,17 @@ export class DialogueCinema {
       label.className = 'dlg-choice-label';
       label.textContent = text;
       btn.append(num, label);
+      // A quest-weighted answer wears the overhead mark's grammar:
+      // gold ! swears the work, gold ? hands it in. Small talk stays
+      // unbadged, so consequence is legible before the press.
+      const mark = marks?.find((m) => m.idx === i);
+      if (mark) {
+        btn.classList.add('quest');
+        const badge = document.createElement('span');
+        badge.className = 'dlg-choice-quest';
+        badge.textContent = mark.kind === 'turnin' ? '?' : '!';
+        btn.appendChild(badge);
+      }
       btn.addEventListener('mouseenter', () => this.select(i));
       btn.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -547,10 +588,30 @@ export class DialogueCinema {
   }
 
   private choose(i: number): void {
-    if (!this.choicesShown) return;
+    if (!this.choicesShown || this.typing) return;
+    // Freshly-landed plates bounce the press: a confirm inside the
+    // arm window is the tail of a skim, not a read answer.
+    if (performance.now() - this.choicesAt < CHOICE_ARM_MS) {
+      this.insist();
+      return;
+    }
     this.choicesShown = false;
     this.sfx.uiTap();
     this.hooks.onChoose(i);
+  }
+
+  /**
+   * A press that cannot answer (the skim key on a question, or a
+   * confirm still inside the arm window) gets a gentle refusal: the
+   * selected plate nudges and the quiet tick stays silent — the
+   * question visibly waits to be read.
+   */
+  private insist(): void {
+    const sel = this.choicesEl.querySelector('.dlg-choice.sel');
+    if (!sel) return;
+    sel.classList.remove('insist');
+    void (sel as HTMLElement).offsetWidth;
+    sel.classList.add('insist');
   }
 
   /** The key legend in the bottom bar — always honest about the verbs. */
@@ -582,7 +643,10 @@ export class DialogueCinema {
         chip('dlg-key', '↑↓', 'Select');
         chip('pad-glyph a', 'A', 'Choose');
       } else {
-        chip('dlg-key', '1–4', 'Choose');
+        // The plates carry their own numbers — the legend teaches the
+        // deliberate path: walk, then answer on its own key.
+        chip('dlg-key', '↑↓', 'Select');
+        chip('dlg-key', 'Enter', 'Choose');
       }
     } else {
       const verb = state === 'farewell' ? 'Farewell' : 'Continue';
@@ -594,8 +658,10 @@ export class DialogueCinema {
   }
 
   /**
-   * The one verb the player needs: finish the line if it's still
-   * arriving, otherwise turn the page (questions wait for an answer).
+   * The skim verb: finish the line if it's still arriving, otherwise
+   * turn the page. On a question it only insists — answering belongs
+   * to confirmSelected/choose (THE TWO-VERB LAW), so the hand racing
+   * through pages can never pick a plate by accident.
    */
   advance(): void {
     if (!this.open || !this.node) return;
@@ -607,25 +673,45 @@ export class DialogueCinema {
       return;
     }
     if (this.choicesShown) {
-      this.choose(this.selIdx);
+      this.insist();
       return;
     }
     this.sfx.uiTick();
     this.hooks.onAdvance();
   }
 
-  /** Keyboard driving; returns true when the key was consumed. */
-  handleKey(code: string): boolean {
+  /** The answer verb: confirm the selected plate (arm-window gated). */
+  private confirmSelected(): void {
+    if (!this.choicesShown || this.typing) return;
+    this.choose(this.selIdx);
+  }
+
+  /**
+   * Keyboard driving; returns true when the key was consumed.
+   * Movement/interact verbs come from the ONE KEYMAP (a rebound hand
+   * keeps its habits mid-conversation); Space/Enter/Escape are the
+   * UI's fixed grammar (RESERVED_KB — unbindable). Held-key repeats
+   * never turn a page or answer: every beat costs a fresh press.
+   */
+  handleKey(code: string, repeat = false): boolean {
     if (!this.open) return false;
     if (code === 'Escape') {
       this.hooks.onEnd();
       return true;
     }
-    if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter' || code === 'KeyF') {
-      this.advance();
-      return true;
-    }
+    if (repeat) return true;
+    const skimKey = code === 'Space' || bindings.kbMatches('interact', code);
+    const answerKey = code === 'Enter' || code === 'NumpadEnter';
     if (this.choicesShown && !this.typing) {
+      if (answerKey) {
+        this.confirmSelected();
+        return true;
+      }
+      if (skimKey) {
+        // The skim key never answers — the question insists instead.
+        this.insist();
+        return true;
+      }
       if (code.startsWith('Digit')) {
         const n = Number(code.slice(5)) - 1;
         if (n >= 0 && n < this.choicesEl.children.length) {
@@ -634,16 +720,21 @@ export class DialogueCinema {
           return true;
         }
       }
-      if (code === 'ArrowUp' || code === 'KeyW') {
+      if (code === 'ArrowUp' || bindings.kbMatches('moveUp', code)) {
         this.select((this.selIdx + this.choicesEl.children.length - 1) % this.choicesEl.children.length);
         this.sfx.uiTick();
         return true;
       }
-      if (code === 'ArrowDown' || code === 'KeyS') {
+      if (code === 'ArrowDown' || bindings.kbMatches('moveDown', code)) {
         this.select((this.selIdx + 1) % this.choicesEl.children.length);
         this.sfx.uiTick();
         return true;
       }
+      return true;
+    }
+    if (skimKey || answerKey) {
+      this.advance();
+      return true;
     }
     // Swallow everything else — a cinematic owns the keyboard.
     return true;

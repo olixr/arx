@@ -20,8 +20,14 @@ import type { Sfx } from '../audio/sfx.js';
  * name — into the sentence as one revealed beat. The FIRST advance
  * press completes the line instantly; the next one turns the page.
  * Questions slide their choice plates in only after the line lands,
- * and are answered — never skipped. Gifts granted by a beat are
- * staged the moment its line completes: a socket chip and a chime.
+ * and are answered — never skipped. THE TWO-VERB LAW: on keyboard
+ * the skim verb (Space / the interact key) can never answer a
+ * question — answering rides its own keys (Enter, the digits, a
+ * click on the plate) — and every confirm bounces for a beat after
+ * the plates land (CHOICE_ARM_MS), so a hand racing through pages
+ * can never swear to something it hasn't read. Gifts granted by a
+ * beat are staged the moment its line completes: a socket chip and
+ * a chime.
  *
  * The server owns the conversation: this class renders exactly what
  * it was sent and reports back (advance / choose index / excuse me).
@@ -56,6 +62,16 @@ interface CinemaNode {
             coins?: number;
         };
     };
+    /**
+     * Choices with quest weight, by index: picking an 'accept' plate
+     * swears a quest, a 'turnin' plate hands one in. The plates wear
+     * the overhead mark's own grammar — gold ! and gold ? — so a
+     * consequential answer never dresses like small talk.
+     */
+    questChoices?: Array<{
+        idx: number;
+        kind: 'accept' | 'turnin';
+    }>;
 }
 export declare class DialogueCinema {
     private readonly sfx;
@@ -93,6 +109,8 @@ export declare class DialogueCinema {
     private scratchGap;
     private choicesShown;
     private selIdx;
+    /** When the plates landed — confirms inside CHOICE_ARM_MS bounce. */
+    private choicesAt;
     private closeTimer;
     /**
      * Gamepad state — the cinema drives the pad itself (it is not a
@@ -162,6 +180,13 @@ export declare class DialogueCinema {
     private buildChoices;
     private select;
     private choose;
+    /**
+     * A press that cannot answer (the skim key on a question, or a
+     * confirm still inside the arm window) gets a gentle refusal: the
+     * selected plate nudges and the quiet tick stays silent — the
+     * question visibly waits to be read.
+     */
+    private insist;
     /** The key legend in the bottom bar — always honest about the verbs. */
     private setHints;
     /**
@@ -171,12 +196,22 @@ export declare class DialogueCinema {
      */
     private renderHints;
     /**
-     * The one verb the player needs: finish the line if it's still
-     * arriving, otherwise turn the page (questions wait for an answer).
+     * The skim verb: finish the line if it's still arriving, otherwise
+     * turn the page. On a question it only insists — answering belongs
+     * to confirmSelected/choose (THE TWO-VERB LAW), so the hand racing
+     * through pages can never pick a plate by accident.
      */
     advance(): void;
-    /** Keyboard driving; returns true when the key was consumed. */
-    handleKey(code: string): boolean;
+    /** The answer verb: confirm the selected plate (arm-window gated). */
+    private confirmSelected;
+    /**
+     * Keyboard driving; returns true when the key was consumed.
+     * Movement/interact verbs come from the ONE KEYMAP (a rebound hand
+     * keeps its habits mid-conversation); Space/Enter/Escape are the
+     * UI's fixed grammar (RESERVED_KB — unbindable). Held-key repeats
+     * never turn a page or answer: every beat costs a fresh press.
+     */
+    handleKey(code: string, repeat?: boolean): boolean;
 }
 export {};
 //# sourceMappingURL=dialogueCinema.d.ts.map

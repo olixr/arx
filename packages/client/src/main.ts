@@ -211,7 +211,10 @@ const chat = new ChatUI(
     }
     game.sendChat(text);
   },
-  () => !hud.classList.contains('hidden'),
+  // A running cinematic owns the keyboard outright: the conversation's
+  // confirm key is Enter, and chat may not steal it to focus its input
+  // (the HUD is only faded during a talk, never class-hidden).
+  () => !hud.classList.contains('hidden') && !cinema.open,
 );
 renderer.outlineOn = localStorage.getItem('arx.outline') !== 'off';
 
@@ -1913,7 +1916,7 @@ window.addEventListener('keydown', (e) => {
   // A running cinematic owns the keyboard: advance, choose, or excuse
   // yourself — no screen may open over a conversation.
   if (cinema.open) {
-    cinema.handleKey(e.code);
+    cinema.handleKey(e.code, e.repeat);
     return;
   }
   for (const id of KB_SCREEN_ACTIONS) {

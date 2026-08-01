@@ -784,9 +784,16 @@ interface ActiveDialogue {
   /** The eligible choices exactly as sent — dlgchoice indexes these. */
   choices: DialogueChoice[];
   /**
+   * Every tree this conversation has walked (the opener plus each
+   * chained offer) — the chain guard: a tree never opens twice in one
+   * sitting, so a declined offer can't re-pitch on its own heels.
+   */
+  seen: Set<string>;
+  /**
    * A shop hook armed along the walk: the shelf opens when the
    * conversation ENDS WELL (terminal advance or farewell) — never on
-   * Esc, damage, or drifting out of earshot.
+   * Esc, damage, or drifting out of earshot. Armed state survives
+   * offer chaining; it fires at the final close.
    */
   shop?: string;
 }
@@ -9199,7 +9206,7 @@ export class GameServer {
       if (def) {
         // The spoken-to turn to face you — small thing, reads as alive.
         npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
-        player.dialogue = { targetEid, def, nodeId: def.start, choices: [] };
+        player.dialogue = { targetEid, def, nodeId: def.start, choices: [], seen: new Set([def.id]) };
         // THE SPOKEN LINE: the frame carries the warm list (the
         // speaker's bank quips first, then every voiced beat reachable
         // from start) and the live duck dials — a wholly silent
@@ -10509,6 +10516,26 @@ export class GameServer {
       (h): h is Extract<DialogueHook, { kind: 'quest_offer' }> => h.kind === 'quest_offer',
     );
     const offerDef = offerHook ? this.questDefs.get(offerHook.quest) : undefined;
+    // Quest-weighted plates wear the overhead mark's grammar: a choice
+    // whose next beat swears a quest gets the gold !, one that hands a
+    // quest in gets the gold ?. Resolved against the live ledger with
+    // the same predicate the hooks themselves are guarded by, so a
+    // badge is a promise the press will keep — never a costume.
+    const questChoices: Array<{ idx: number; kind: 'accept' | 'turnin' }> = [];
+    eligible.forEach((c, idx) => {
+      if (c.next === undefined) return;
+      const dest = this.dialogueNodes.get(dlg.def.id)?.get(c.next);
+      for (const h of dest?.hooks ?? []) {
+        if (h.kind === 'quest_accept' && has(`quest:${h.quest}:available`)) {
+          questChoices.push({ idx, kind: 'accept' });
+          return;
+        }
+        if (h.kind === 'quest_turnin' && has(`quest:${h.quest}:ready`)) {
+          questChoices.push({ idx, kind: 'turnin' });
+          return;
+        }
+      }
+    });
     player.session.sendJson({
       t: 'dlgnode',
       speaker: node.speaker ?? 'npc',
@@ -10519,6 +10546,7 @@ export class GameServer {
       quest: offerDef
         ? { id: offerDef.id, name: offerDef.name, rewards: this.questRewardsWire(offerDef) }
         : undefined,
+      questChoices: questChoices.length > 0 ? questChoices : undefined,
       // THE ONE RESOLVER's answer for this beat: the node's full line,
       // else the speaker's bank slot for the moment, else silence.
       voice: this.resolveBeatVoice(dlg.targetEid, node, first, last),
@@ -10595,8 +10623,10 @@ export class GameServer {
     if (node?.next !== undefined) {
       this.dialogueEnterNode(eid, player, node.next);
     } else {
-      // Completion was recorded on entry; an armed shop opens as the
-      // frame drops — "have a look, then" becomes the shelf.
+      // A good ending first offers the mark's business (the chain),
+      // then completion stands as recorded on entry; an armed shop
+      // opens as the frame drops — "have a look, then" becomes the shelf.
+      if (this.dialogueChainOffer(eid, player)) return;
       const shop = dlg.shop;
       this.dialogueClose(player);
       if (shop !== undefined) {
@@ -10616,14 +10646,59 @@ export class GameServer {
     if (choice.next !== undefined) {
       this.dialogueEnterNode(eid, player, choice.next);
     } else {
-      // An authored farewell is a real ending, not an interruption.
+      // An authored farewell is a real ending, not an interruption —
+      // and a real ending keeps the mark's promise before the frame drops.
       this.setPlayerFlag(player, dialogueDoneFlag(dlg.def.id));
+      if (this.dialogueChainOffer(eid, player)) return;
       const shop = dlg.shop;
       this.dialogueClose(player);
       if (shop !== undefined) {
         player.session?.sendJson({ t: 'shopopen', shop, priceMult: this.shopPriceMultFor(player, shop) });
       }
     }
+  }
+
+  /**
+   * THE MARK KEEPS ITS PROMISE: a conversation that ends well on an
+   * actor still wearing the "!" chains straight into the offer tree
+   * instead of dropping the frame — an intro, a watch report, or a
+   * fine can no longer eclipse the work the mark advertised (offer
+   * trees ride priority 5 under intros at 10 and watch trees at 6-8,
+   * so pickDialogue alone could starve them indefinitely). Only trees
+   * that swear a currently-available quest by this actor chain; each
+   * tree at most once per sitting (a declined offer never re-pitches
+   * on its own heels — dlg.seen); Esc and interruptions never chain
+   * (walking away stays a whole verb). Multi-quest givers chain
+   * through each offer in priority order, one good ending at a time.
+   */
+  private dialogueChainOffer(eid: EntityId, player: PlayerComp): boolean {
+    const dlg = player.dialogue;
+    if (!dlg) return false;
+    const actorComp = this.actors.get(dlg.targetEid);
+    if (!actorComp) return false;
+    const trees = this.dialoguesByActor.get(actorComp.actor.id);
+    if (!trees || trees.length === 0) return false;
+    const ctx = this.questCtx(player);
+    const wanted = new Set<string>();
+    for (const qid of this.questsByGiver.get(actorComp.actor.id) ?? []) {
+      if (this.itemStartQuests.has(qid)) continue;
+      const qdef = this.questDefs.get(qid);
+      if (qdef && questAvailable(qdef, ctx)) wanted.add(qid);
+    }
+    if (wanted.size === 0) return false;
+    const candidates = trees.filter(
+      (o) =>
+        !dlg.seen.has(o.def.id) &&
+        o.def.nodes.some((n) => n.hooks?.some((h) => h.kind === 'quest_accept' && wanted.has(h.quest))),
+    );
+    const def = pickDialogue(candidates, this.dialogueHas(player, dlg.targetEid));
+    if (!def) return false;
+    dlg.seen.add(def.id);
+    dlg.def = def;
+    dlg.nodeId = def.start;
+    dlg.choices = [];
+    this.dialogueEnterNode(eid, player, def.start);
+    return true;
   }
 
   /** The player excuses themselves (Esc) — no completion recorded. */

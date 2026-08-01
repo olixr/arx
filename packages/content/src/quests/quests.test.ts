@@ -49,6 +49,31 @@ test('every shipped quest references only real world slugs', () => {
   }
 });
 
+test('every NPC-given quest is swearable at its giver (the mark keeps its promise)', () => {
+  // The "!" over a giver's head promises the offer is reachable in
+  // conversation. The server keeps that promise by chaining into the
+  // offer tree at any good ending — which needs, per quest: a tree
+  // bound to the giver, holding a quest_accept hook for the quest,
+  // gated on quest:<id>:available so it retires the moment the work
+  // is taken. Item-started quests wear no mark and need no tree.
+  const itemStarted = new Set(
+    [...ITEMS.values()].map((i) => i.startsQuest).filter((q): q is string => q !== undefined),
+  );
+  for (const q of QUESTS.values()) {
+    if (itemStarted.has(q.id)) continue;
+    const offers = [...DIALOGUES.values()].filter(
+      (d) =>
+        d.bindings?.some((b) => b.kind === 'actor' && b.target === q.giver) &&
+        d.nodes.some((n) => n.hooks?.some((h) => h.kind === 'quest_accept' && h.quest === q.id)),
+    );
+    assert.ok(offers.length > 0, `${q.id}: giver '${q.giver}' has a tree that swears it`);
+    assert.ok(
+      offers.some((d) => (d.requires ?? []).includes(`quest:${q.id}:available`)),
+      `${q.id}: an offer tree is gated on quest:${q.id}:available (retires once taken)`,
+    );
+  }
+});
+
 test('requires.quests chains are acyclic (a gate must be earnable)', () => {
   const visiting = new Set<string>();
   const done = new Set<string>();
