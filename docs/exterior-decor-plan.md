@@ -217,15 +217,35 @@ top-plane check per the art laws; character stood beside every new piece at noon
 night). All player-facing names through VOICE.md (dash ban, Dawnlands diction). All
 salvage per the ceil-half SALVAGE LAW. Commit after every phase.
 
-**Phase 0 — THE SECOND LAYER (foundations).**
-Detail id bands + `wallHungInfo`/`awningInfo` helpers + truth-table tests
-(`tiles.test.ts` idiom); `DetailPatch` binary message + protocol bump (27→28);
-`built_details` table (migration v24: tx, ty, detail, owner, prev_detail) + boot
-replay + worldSource map; `C2SBuild` optional `dye` + `BuildableDef.detail?` (a
-buildable that writes the target wall's detail instead of placing a tile — footing
-law: target is a south-facing wall run tile); demolish/remove branch restoring
-prev_detail with salvage. Proof: round-trip test — hang, relog, see it; remove, see
-the wall bare.
+**Phase 0 — THE SECOND LAYER (foundations). SHIPPED 2026-08-01.**
+As built: detail bands at DETAIL_BAND-16 stride (WallBanner 16 / Pennant 32 /
+BracketSign 48 / Trellis 64 / WallBasket 80) + awning tile bands (shed 160 /
+market 176 / board 192 / bowed 208, defs generated from the four anchors);
+`wallHungInfo`/`awningInfo`/`awningTile` + per-family builders, truth-table
+tests; `WALL_HUNG_DETAILS` now GENERATED from `wallHungInfo` (the set and the
+reader cannot disagree); content `DYES` roster (linen0..rose9) pinned to shared
+`DYE_COUNT`. Wire: `DetailPatch` binary type 4 + `ChunkStore.setDetail`,
+protocol 27→28. Persistence: `built_details` (migration v24, LAYER-LAW shape),
+accounts CRUD, worldSource `builtDetails` map + owner index + regen reapply
+(after overlayZone, so a hanging on an authored town wall survives), boot
+replay. Server: `setWorldDetail` broadcast, `hangDetail`/`removeHanging` with
+**THE HANGING LAW** — footing = `HANGABLE_WALL_TILES` (plain full walls + the
+garrison curtain ONLY; doorways/windows/45° corners refuse because their
+painters never run the hangings pass — a detail there would be invisible
+orphan state) presenting an unburied south face, empty or own-hung only,
+re-hang keeps the FIRST hang's prev (depth-1); demolish drops the hanging with
+the wall (record, row, and patch — pinned in demolish.test). `C2SBuild.dye`
+enum-sanitized like orient, `BuildAction.dye`, tickBuild resolves awning
+anchor+dye → placed tile. Dev levers `/hang kind[:variant] [tx ty]` +
+`/unhang [tx ty]` drive the REAL lane. Client: DetailPatch decode → world
+setDetail + neighborhood rebake + `onDetailChange`.
+DEVIATION: `BuildableDef.detail?` deferred to Phase 2 — it ships with its
+consumers (tray/ghost/salvage) rather than as a dead field.
+PROVEN: 4 suites green (shared 188 / content 394 / server 349 / client 337);
+live round-trip on the dev rig — tapestry hung on a Dawnmead stone wall via
+the lane, rendered by the shipped wallHangings pass, DB row in built_details,
+survived a full relog through the chunk stream, removal bared the face and
+cleared the row.
 
 **Phase 1 — THE CLOTH TAKES THE STREET (awnings).**
 40 banded tile ids + generated TILE_DEFS entries; four painters to the laws above;

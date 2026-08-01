@@ -364,6 +364,19 @@ export enum Tile {
   EelRun = 152,
   SalmonRun = 153,
   GlimmerShoal = 154,
+  // THE OUTWARD FACE — awnings, dealt in bands of DETAIL_BAND (16):
+  // each anchor is the shape at dye 0 and `anchor + dye` wears the
+  // dye roster (awningInfo reads it back). Walkable canopy tiles —
+  // the cloth is overhead, the street runs on beneath. Ids in a band
+  // are the state (never reorder); 155..159 stay free for the porch.
+  /** Plain sloped canvas on two timber brackets: +dye (160..175). */
+  AwningShed = 160,
+  /** Sloped canvas with the scalloped valance: +dye (176..191). */
+  AwningMarket = 176,
+  /** Flat timber-slat rain roof; dye paints the trim: +dye (192..207). */
+  AwningBoard = 192,
+  /** Barrel-curved canvas, the grand shopfront: +dye (208..223). */
+  AwningBowed = 208,
 }
 
 export enum Detail {
@@ -403,16 +416,133 @@ export enum Detail {
    * tiles carrying Tapestry merge into ONE wide hanging.
    */
   Tapestry = 14,
+  // THE OUTWARD FACE — player-hung wall decor, dealt in BANDS of
+  // DETAIL_BAND (16) so every dyeable family has room to grow without
+  // renumbering (the id IS the state — never reorder a shipped band).
+  // Each anchor below is dye/motif index 0; wallHungInfo() reads any
+  // id in a band back to {kind, dye|motif|species}.
+  /** Vertical dyed cloth off an iron rod: +dye 0..9 (16..31 reserved). */
+  WallBanner = 16,
+  /** Swagged string of small pennant flags: +dye (32..47 reserved). */
+  Pennant = 32,
+  /** Trade shingle on a wrought bracket: +motif (48..63 reserved). */
+  BracketSign = 48,
+  /** Timber lattice with a climbing plant: +species (64..79 reserved). */
+  Trellis = 64,
+  /** Hanging bloom basket on a bracket arm (80; band 80..95 reserved). */
+  WallBasket = 80,
+}
+
+/**
+ * THE DYE LAW (exterior decor): shape is structure, color is dye — one
+ * ten-dye roster shared by every dyeable piece, carried in the id band
+ * (detail or tile) as `base + dye`. Index order is FOREVER (rename a
+ * dye in place, never reorder — the affix-pool law). Player-facing
+ * names live in content's DYES table, pinned to this count.
+ */
+export const DYE_COUNT = 10;
+/** Stride of every banded decor family — room for dyes yet unmixed. */
+export const DETAIL_BAND = 16;
+/** Carved trade motifs on the bracket sign, index order FOREVER. */
+export const SIGN_MOTIF_COUNT = 8;
+/** Climbing species on the trellis, index order FOREVER. */
+export const TRELLIS_SPECIES_COUNT = 3;
+
+export type WallHungKind =
+  | 'crown'
+  | 'moon'
+  | 'tapestry'
+  | 'banner'
+  | 'pennant'
+  | 'sign'
+  | 'trellis'
+  | 'basket';
+
+export interface WallHungInfo {
+  kind: WallHungKind;
+  /** Dye index (banner/pennant families). */
+  dye?: number;
+  /** Trade-motif index (bracket sign). */
+  motif?: number;
+  /** Climbing-plant species index (trellis). */
+  species?: number;
+}
+
+/**
+ * Read any wall-hung detail id back to its family + variant. Null for
+ * ground details and unused band slots — the one gate every consumer
+ * (painters, build lane, editors) resolves through.
+ */
+export function wallHungInfo(d: number): WallHungInfo | null {
+  switch (d) {
+    case Detail.BannerCrown:
+      return { kind: 'crown' };
+    case Detail.BannerMoon:
+      return { kind: 'moon' };
+    case Detail.Tapestry:
+      return { kind: 'tapestry' };
+  }
+  if (d >= Detail.WallBanner && d < Detail.WallBanner + DYE_COUNT)
+    return { kind: 'banner', dye: d - Detail.WallBanner };
+  if (d >= Detail.Pennant && d < Detail.Pennant + DYE_COUNT)
+    return { kind: 'pennant', dye: d - Detail.Pennant };
+  if (d >= Detail.BracketSign && d < Detail.BracketSign + SIGN_MOTIF_COUNT)
+    return { kind: 'sign', motif: d - Detail.BracketSign };
+  if (d >= Detail.Trellis && d < Detail.Trellis + TRELLIS_SPECIES_COUNT)
+    return { kind: 'trellis', species: d - Detail.Trellis };
+  if (d === Detail.WallBasket) return { kind: 'basket' };
+  return null;
+}
+
+/** The banner detail wearing this dye (validated — bad dye throws). */
+export function wallBannerDetail(dye: number): Detail {
+  if (!Number.isInteger(dye) || dye < 0 || dye >= DYE_COUNT) throw new Error(`bad dye ${dye}`);
+  return Detail.WallBanner + dye;
+}
+
+/** The pennant-string detail wearing this dye. */
+export function pennantDetail(dye: number): Detail {
+  if (!Number.isInteger(dye) || dye < 0 || dye >= DYE_COUNT) throw new Error(`bad dye ${dye}`);
+  return Detail.Pennant + dye;
+}
+
+/** The bracket sign carrying this trade motif. */
+export function bracketSignDetail(motif: number): Detail {
+  if (!Number.isInteger(motif) || motif < 0 || motif >= SIGN_MOTIF_COUNT)
+    throw new Error(`bad motif ${motif}`);
+  return Detail.BracketSign + motif;
+}
+
+/** The trellis growing this climbing species. */
+export function trellisDetail(species: number): Detail {
+  if (!Number.isInteger(species) || species < 0 || species >= TRELLIS_SPECIES_COUNT)
+    throw new Error(`bad species ${species}`);
+  return Detail.Trellis + species;
 }
 
 /**
  * Details that hang on wall faces instead of lying on the ground —
- * the terrain bake skips them; wall painters own their art.
+ * the terrain bake skips them; wall painters own their art. Built
+ * from wallHungInfo so the set and the reader can never disagree.
  */
-export const WALL_HUNG_DETAILS: ReadonlySet<Detail> = new Set([
-  Detail.BannerCrown,
-  Detail.BannerMoon,
-  Detail.Tapestry,
+export const WALL_HUNG_DETAILS: ReadonlySet<Detail> = new Set(
+  Array.from({ length: 256 }, (_, d) => d).filter((d) => wallHungInfo(d) !== null),
+) as ReadonlySet<Detail>;
+
+/**
+ * THE HANGING LAW's footing: only walls whose painters actually dress
+ * a south face may carry a hanging — plain full walls (wallItem) and
+ * the garrison curtain. Doorways, window walls, and 45° corners are
+ * wall-run members whose painters never call the hangings pass, so a
+ * detail written there would be INVISIBLE orphan state; the build
+ * lane refuses them here, at the one shared gate.
+ */
+export const HANGABLE_WALL_TILES: ReadonlySet<Tile> = new Set([
+  Tile.WallStone,
+  Tile.WallWood,
+  Tile.CaveWall,
+  Tile.CrackedCaveWall,
+  Tile.WallGarrison,
 ]);
 
 export interface TileDef {
@@ -627,7 +757,65 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.GateGarrison]: { name: 'garrison gate', solid: false, color: '#453f52', raised: true, topColor: '#716b80' },
   [Tile.GateGarrisonShut]: { name: 'shut garrison gate', solid: true, color: '#453f52', raised: true, topColor: '#716b80' },
   [Tile.Throne]: { name: 'throne', solid: true, color: '#7a552e', raised: true, topColor: '#c9962e' },
+  // THE OUTWARD FACE — awning anchors (dye 0 = linen). Walkable: the
+  // canvas is overhead, the street runs on beneath. The other dyes'
+  // defs are generated right below the literal from these anchors.
+  [Tile.AwningShed]: { name: 'shed awning', solid: false, color: '#c9bfa8', raised: true, topColor: '#d8cfba' },
+  [Tile.AwningMarket]: { name: 'market awning', solid: false, color: '#c9bfa8', raised: true, topColor: '#d8cfba' },
+  [Tile.AwningBoard]: { name: 'board awning', solid: false, color: '#6e4b29', raised: true, topColor: '#8a6336' },
+  [Tile.AwningBowed]: { name: 'bowed awning', solid: false, color: '#c9bfa8', raised: true, topColor: '#d8cfba' },
 };
+
+/** The four awning silhouettes, index order FOREVER (the id math). */
+export const AWNING_SHAPES = ['shed', 'market', 'board', 'bowed'] as const;
+export type AwningShape = (typeof AWNING_SHAPES)[number];
+
+const AWNING_BASES: readonly Tile[] = [
+  Tile.AwningShed,
+  Tile.AwningMarket,
+  Tile.AwningBoard,
+  Tile.AwningBowed,
+];
+
+export interface AwningInfo {
+  shape: AwningShape;
+  /** Index into AWNING_SHAPES — the buildable/painter family key. */
+  shapeIndex: number;
+  /** Index into the shared dye roster (THE DYE LAW). */
+  dye: number;
+}
+
+/** Read any awning tile back to {shape, dye}; null for everything else. */
+export function awningInfo(t: number): AwningInfo | null {
+  for (let i = 0; i < AWNING_BASES.length; i++) {
+    const base = AWNING_BASES[i]!;
+    if (t >= base && t < base + DYE_COUNT)
+      return { shape: AWNING_SHAPES[i]!, shapeIndex: i, dye: t - base };
+  }
+  return null;
+}
+
+/** The tile of this shape wearing this dye (validated — bad input throws). */
+export function awningTile(shape: AwningShape, dye: number): Tile {
+  const i = AWNING_SHAPES.indexOf(shape);
+  if (i < 0) throw new Error(`bad awning shape ${shape}`);
+  if (!Number.isInteger(dye) || dye < 0 || dye >= DYE_COUNT) throw new Error(`bad dye ${dye}`);
+  return AWNING_BASES[i]! + dye;
+}
+
+/** Every awning id, all shapes and dyes — palette/test sweeps. */
+export const AWNING_TILES: ReadonlySet<Tile> = new Set(
+  AWNING_BASES.flatMap((base) => Array.from({ length: DYE_COUNT }, (_, dye) => base + dye)),
+) as ReadonlySet<Tile>;
+
+// Dye 1..9 defs derive from their shape's anchor — same physics, same
+// silhouette; the painter reads the dye, the def only names the shape.
+for (const base of AWNING_BASES) {
+  const anchor = TILE_DEFS[base]!;
+  for (let dye = 1; dye < DYE_COUNT; dye++) {
+    (TILE_DEFS as Record<number, TileDef>)[base + dye] = anchor;
+  }
+}
 
 /**
  * Tiles that merge into continuous wall runs for the renderer's

@@ -401,6 +401,18 @@ import {
   diagWallTile,
   orientDiagWall,
   orientDiagFence,
+  encodeDetailPatch,
+  HANGABLE_WALL_TILES,
+  wallHungInfo,
+  wallBannerDetail,
+  pennantDetail,
+  bracketSignDetail,
+  trellisDetail,
+  awningInfo,
+  awningTile,
+  AWNING_SHAPES,
+  DYE_COUNT,
+  Detail,
   chargedShot,
   circleHitsSolid,
   findPathNav,
@@ -521,6 +533,8 @@ interface BuildAction {
   ticksLeft: number;
   /** THE TRUE GHOST's dial: the player's chosen corner mass; absent = auto-orient. */
   orient?: BuildOrient;
+  /** THE DYE LAW's dial: chosen dye index for a dyeable piece; absent = linen (0). */
+  dye?: number;
 }
 
 interface HarvestAction {
@@ -5099,7 +5113,7 @@ export class GameServer {
 
   // ------------------------------------------------------ construction
 
-  build(eid: EntityId, buildableId: string, tx: number, ty: number, orient?: BuildOrient): void {
+  build(eid: EntityId, buildableId: string, tx: number, ty: number, orient?: BuildOrient, dye?: number): void {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
     if (!player || !pos || player.session === null) return;
@@ -5149,7 +5163,17 @@ export class GameServer {
     // else silently drops it (a stale client can't skew a bed).
     const orientable =
       diagWallInfo(def.tile) !== null || def.tile === Tile.FenceDiagNE ? orient : undefined;
-    player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks, orient: orientable };
+    // THE DYE LAW's dial, sanitized the same way: only a dyeable piece
+    // keeps it, and only a real roster index (a stale client can't
+    // tint a bed or invent an eleventh cloth).
+    const dyed =
+      awningInfo(def.tile) !== null &&
+      Number.isInteger(dye) &&
+      dye! >= 0 &&
+      dye! < DYE_COUNT
+        ? dye
+        : undefined;
+    player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks, orient: orientable, dye: dyed };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks: buildTicks });
   }
@@ -5228,6 +5252,12 @@ export class GameServer {
           isWall(action.tx - 1, action.ty),
         );
       }
+    }
+    // THE DYE LAW: a dyeable piece lands as its shape's anchor plus
+    // the chosen dye — the id IS the color, no metadata anywhere.
+    const awn = awningInfo(def.tile);
+    if (awn && action.dye !== undefined) {
+      placed = awningTile(AWNING_SHAPES[awn.shapeIndex]!, action.dye);
     }
     // A 45° fence turn joins whichever diagonal already carries
     // fencing — same build-the-runs-first law as the wall corner.
@@ -5390,6 +5420,16 @@ export class GameServer {
     if (this.playerSigns.delete(`${tx},${ty}`)) {
       this.accounts.deleteSign(tx, ty);
       this.broadcastSign(tx, ty, true);
+    }
+    // THE SECOND LAYER: a hanging falls with its wall — the cloth has
+    // no face left to hold it, and an orphan detail row would re-dress
+    // whatever rises here next. (Hanging salvage arrives with the
+    // hanging buildables in Phase 2 — today the record simply clears.)
+    const hungHere = this.world.builtDetailAt(tx, ty);
+    if (hungHere) {
+      this.world.unregisterBuiltDetail(tx, ty);
+      this.accounts.deleteBuiltDetail(tx, ty);
+      this.setWorldDetail(tx, ty, hungHere.prevDetail);
     }
     this.world.unregisterBuilt(tx, ty);
     this.accounts.deleteBuiltTile(tx, ty);
@@ -5840,6 +5880,94 @@ export class GameServer {
       }
     }
     if (ladderMoved) this.sendCooldowns(player);
+  }
+
+  /**
+   * THE SECOND LAYER's mirror of setWorldTile: mutate one detail-layer
+   * id and stream the DetailPatch to everyone who knows the chunk.
+   */
+  private setWorldDetail(tx: number, ty: number, detail: number): void {
+    this.world.setDetail(tx, ty, detail);
+    const key = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    const patch = encodeDetailPatch({ tx, ty, detail });
+    for (const s of this.sessions) {
+      if (s.knownChunks.has(key)) s.sendBinary(patch);
+    }
+  }
+
+  /**
+   * THE HANGING LAW (exterior decor Phase 0): a wall-hung detail lands
+   * on a wall tile that PRESENTS A SOUTH FACE (a wall-run member whose
+   * south neighbour is not) — the face the wall painters dress is the
+   * only honest place for cloth. The hosting wall may be anyone's
+   * (authored town walls welcome a shingle); the DETAIL is owned, and
+   * only an empty face or your own earlier hanging accepts one.
+   * Returns true when the cloth goes up.
+   */
+  hangDetail(eid: EntityId, tx: number, ty: number, detail: number): boolean {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return false;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    if (player.characterId < 0) {
+      sys('Guests cannot hang decor. Make an account!');
+      return false;
+    }
+    if (wallHungInfo(detail) === null) return false;
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 3 * 3) return false;
+    this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    const ground = this.world.groundAt(tx, ty);
+    const south = this.world.groundAt(tx, ty + 1);
+    // Footing = a hangable wall (one whose painter dresses faces —
+    // doorways/windows/corners refuse; see HANGABLE_WALL_TILES) that
+    // PRESENTS its south face (south neighbour is not wall mass).
+    const presentsFace =
+      ground !== undefined &&
+      HANGABLE_WALL_TILES.has(ground as Tile) &&
+      (south === undefined ||
+        (!WALL_RUN_TILES.includes(south as Tile) && !GARRISON_TILES.has(south as Tile)));
+    if (!presentsFace) {
+      sys('There is no wall face there to carry it.');
+      return false;
+    }
+    const current = this.world.detailAt(tx, ty);
+    const hung = this.world.builtDetailAt(tx, ty);
+    if (current !== 0 && (!hung || hung.owner !== player.characterId)) {
+      sys('That wall already bears its cloth.');
+      return false;
+    }
+    // Re-hanging your own replaces the row whole; the prev captured at
+    // the FIRST hang carries through (depth-1 layer law, detail lane).
+    const prevDetail = hung ? hung.prevDetail : current;
+    this.world.registerBuiltDetail(tx, ty, detail, player.characterId, prevDetail);
+    this.accounts.saveBuiltDetail(tx, ty, detail, player.characterId, prevDetail);
+    this.setWorldDetail(tx, ty, detail);
+    return true;
+  }
+
+  /** Take down your own hanging; the face's prior detail returns. */
+  removeHanging(eid: EntityId, tx: number, ty: number): boolean {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return false;
+    const hung = this.world.builtDetailAt(tx, ty);
+    if (!hung || hung.owner !== player.characterId) {
+      player.session.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: 'Nothing of yours hangs there.',
+      });
+      return false;
+    }
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 3 * 3) return false;
+    this.world.unregisterBuiltDetail(tx, ty);
+    this.accounts.deleteBuiltDetail(tx, ty);
+    this.setWorldDetail(tx, ty, hung.prevDetail);
+    return true;
   }
 
   /** Mutate the world and stream the patch to everyone nearby. */
@@ -19106,6 +19234,82 @@ export class GameServer {
         });
       } else {
         player.session?.sendJson({ t: 'chat', channel: 'system', text: `Can't give '${item}'.` });
+      }
+      return;
+    }
+    if (config.devCommands && text.startsWith('/hang')) {
+      // /hang <what> [tx ty] — THE SECOND LAYER's Playwright lever,
+      // driving the REAL hang lane (register + persist + patch).
+      // <what> = a raw detail id, or kind[:variant]: banner:3,
+      // pennant:0, sign:2, trellis:1, basket, tapestry, crown, moon.
+      // Default target: the tile one north (stand before the wall).
+      const [, whatRaw, txRaw, tyRaw] = text.split(/\s+/);
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const tx = Number.isInteger(Number.parseInt(txRaw ?? '', 10))
+        ? Number.parseInt(txRaw!, 10)
+        : Math.floor(pos.x);
+      const ty = Number.isInteger(Number.parseInt(tyRaw ?? '', 10))
+        ? Number.parseInt(tyRaw!, 10)
+        : Math.floor(pos.y) - 1;
+      const [kind, variantRaw] = (whatRaw ?? '').split(':');
+      const variant = Number.parseInt(variantRaw ?? '0', 10) || 0;
+      let detail = Number.parseInt(kind ?? '', 10);
+      if (!Number.isInteger(detail)) {
+        try {
+          detail =
+            kind === 'banner'
+              ? wallBannerDetail(variant)
+              : kind === 'pennant'
+                ? pennantDetail(variant)
+                : kind === 'sign'
+                  ? bracketSignDetail(variant)
+                  : kind === 'trellis'
+                    ? trellisDetail(variant)
+                    : kind === 'basket'
+                      ? Detail.WallBasket
+                      : kind === 'tapestry'
+                        ? Detail.Tapestry
+                        : kind === 'crown'
+                          ? Detail.BannerCrown
+                          : kind === 'moon'
+                            ? Detail.BannerMoon
+                            : -1;
+        } catch {
+          detail = -1;
+        }
+      }
+      if (wallHungInfo(detail) === null) {
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Can't hang '${whatRaw}'.` });
+        return;
+      }
+      if (this.hangDetail(eid, tx, ty, detail)) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Hung detail ${detail} at ${tx},${ty}.`,
+        });
+      }
+      return;
+    }
+    if (config.devCommands && text.startsWith('/unhang')) {
+      // /unhang [tx ty] — take your own hanging down through the real
+      // removal lane; the face's prior detail returns.
+      const [, txRaw, tyRaw] = text.split(/\s+/);
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const tx = Number.isInteger(Number.parseInt(txRaw ?? '', 10))
+        ? Number.parseInt(txRaw!, 10)
+        : Math.floor(pos.x);
+      const ty = Number.isInteger(Number.parseInt(tyRaw ?? '', 10))
+        ? Number.parseInt(tyRaw!, 10)
+        : Math.floor(pos.y) - 1;
+      if (this.removeHanging(eid, tx, ty)) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Taken down at ${tx},${ty}.`,
+        });
       }
       return;
     }

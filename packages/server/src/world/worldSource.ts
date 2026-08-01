@@ -256,6 +256,47 @@ export class WorldSource extends ChunkStore {
   }
 
   /**
+   * THE SECOND LAYER: player-hung wall decor, the detail-lane mirror
+   * of builtTiles — reapplied whenever a chunk regenerates, indexed by
+   * owner for the own-work overlay's second lane.
+   */
+  private readonly builtDetails = new Map<
+    string,
+    { detail: number; owner: number; prevDetail: number }
+  >();
+  private readonly builtDetailsByOwner = new Map<number, Set<string>>();
+
+  registerBuiltDetail(tx: number, ty: number, detail: number, owner: number, prevDetail: number): void {
+    const key = `${tx},${ty}`;
+    const existing = this.builtDetails.get(key);
+    if (existing && existing.owner !== owner) this.builtDetailsByOwner.get(existing.owner)?.delete(key);
+    this.builtDetails.set(key, { detail, owner, prevDetail });
+    let mine = this.builtDetailsByOwner.get(owner);
+    if (!mine) this.builtDetailsByOwner.set(owner, (mine = new Set()));
+    mine.add(key);
+    this.setDetail(tx, ty, detail);
+  }
+
+  unregisterBuiltDetail(tx: number, ty: number): void {
+    const key = `${tx},${ty}`;
+    const existing = this.builtDetails.get(key);
+    if (existing) this.builtDetailsByOwner.get(existing.owner)?.delete(key);
+    this.builtDetails.delete(key);
+  }
+
+  builtDetailAt(
+    tx: number,
+    ty: number,
+  ): { detail: number; owner: number; prevDetail: number } | undefined {
+    return this.builtDetails.get(`${tx},${ty}`);
+  }
+
+  /** One settler's hung-detail keys ("tx,ty"), or nothing. */
+  builtDetailKeysOf(owner: number): ReadonlySet<string> | undefined {
+    return this.builtDetailsByOwner.get(owner);
+  }
+
+  /**
    * Planted-crop stage tiles, applied over builtTiles so a crop wins
    * over its plot's stored Tilled ground when a chunk regenerates.
    */
@@ -411,6 +452,15 @@ export class WorldSource extends ChunkStore {
       const [tx, ty] = key.split(',').map(Number);
       if (tx! >= baseX && tx! < baseX + CHUNK_SIZE && ty! >= baseY && ty! < baseY + CHUNK_SIZE) {
         chunk.ground[tileIndex(tx!, ty!)] = built.tile;
+      }
+    }
+    // THE SECOND LAYER: hung decor survives regeneration too — after
+    // overlayZone so a hanging on an authored town wall outlives the
+    // zone's own detail stamp.
+    for (const [key, hung] of this.builtDetails) {
+      const [tx, ty] = key.split(',').map(Number);
+      if (tx! >= baseX && tx! < baseX + CHUNK_SIZE && ty! >= baseY && ty! < baseY + CHUNK_SIZE) {
+        chunk.detail[tileIndex(tx!, ty!)] = hung.detail;
       }
     }
     // Crops overwrite their plot's Tilled ground.

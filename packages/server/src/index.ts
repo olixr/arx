@@ -368,6 +368,11 @@ const world = new WorldSource(config.worldSeed, zones);
 for (const built of await accounts.loadBuiltTiles()) {
   world.registerBuilt(built.tx, built.ty, built.tile, built.owner, built.prevTile);
 }
+// THE SECOND LAYER: hung decor rehydrates beside the built tiles, so
+// a chunk's first generation already carries every player's cloth.
+for (const hung of await accounts.loadBuiltDetails()) {
+  world.registerBuiltDetail(hung.tx, hung.ty, hung.detail, hung.owner, hung.prevDetail);
+}
 // THE SECOND GROWTH: the wild-harvest ledger rehydrates before any
 // chunk exists — the ensure() overlay projects every row against the
 // clock at generation time, so a regrowth that crossed ages (or fully

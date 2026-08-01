@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Tile } from '@arx/shared';
+import { Detail, Tile } from '@arx/shared';
 import { BUILDABLES, buildableForTile } from '@arx/content';
 import { GameServer } from './gameServer.js';
 import { countItem, emptyInventory } from './inventory.js';
@@ -31,6 +31,8 @@ function slate(opts: {
   prevSolid?: boolean;
   bodyOnTile?: boolean;
   inventory?: InvSlot[];
+  /** THE SECOND LAYER: a hanging on the doomed wall, if any. */
+  hung?: { detail: number; owner: number; prevDetail: number };
 }) {
   const events: string[] = [];
   const sent: Array<Record<string, unknown>> = [];
@@ -38,6 +40,7 @@ function slate(opts: {
   const saved: Array<{ tile: number; owner: number; prevTile: number }> = [];
   const drops: Array<{ item: string; qty: number }> = [];
   let builtNow: BuiltRec | undefined = opts.built;
+  let hungNow = opts.hung;
   const player = {
     characterId: opts.owner ?? 7,
     home: null as { x: number; y: number } | null,
@@ -64,14 +67,22 @@ function slate(opts: {
         events.push('register');
         registered.push({ tile, owner, prevTile });
       },
+      builtDetailAt: () => hungNow,
+      unregisterBuiltDetail: () => {
+        events.push('unregisterDetail');
+        hungNow = undefined;
+      },
     },
     accounts: {
       deleteBuiltTile: () => events.push('deleteRow'),
       saveBuiltTile: (_tx: number, _ty: number, tile: number, owner: number, prevTile: number) =>
         saved.push({ tile, owner, prevTile }),
+      deleteBuiltDetail: () => events.push('deleteDetailRow'),
       deleteSign: () => {},
       clearHome: () => {},
     },
+    setWorldDetail: (_tx: number, _ty: number, detail: number) =>
+      events.push(`detailPatch:${detail}`),
     broadcastFx: (fx: Record<string, unknown>) => events.push(`fx:${fx['kind']}:${fx['id']}`),
     setWorldTile: (_tx: number, _ty: number, tile: number) => events.push(`patch:${tile}`),
     placeDrop: (item: string, qty: number) => drops.push({ item, qty }),
@@ -158,4 +169,25 @@ test('oriented corner variants salvage through their one corner def', () => {
   }
   assert.equal(buildableForTile(Tile.FenceDiagNW)?.id, 'fence_corner');
   assert.equal(buildableForTile(Tile.Sawhorse)?.id, 'sawhorse');
+});
+
+test('THE SECOND LAYER: a hanging falls with its wall, record and all', () => {
+  const s = slate({
+    built: { tile: Tile.WallWood, owner: 7, prevTile: Tile.Grass },
+    hung: { detail: Detail.WallBanner + 3, owner: 7, prevDetail: 0 },
+  });
+  proto.tickDemolish.call(s, 1, s.player);
+  assert.ok(s.events.includes('unregisterDetail'), 'the memory record clears');
+  assert.ok(s.events.includes('deleteDetailRow'), 'the DB row clears');
+  assert.ok(s.events.includes('detailPatch:0'), 'the face goes bare on the wire');
+  // The wall itself still tears down normally around it.
+  assert.ok(s.events.includes(`patch:${Tile.Grass}`));
+  assert.ok(s.events.includes('cancel:done'));
+});
+
+test('THE SECOND LAYER: a bare wall demolishes without touching the detail lane', () => {
+  const s = slate({ built: { tile: Tile.WallWood, owner: 7, prevTile: Tile.Grass } });
+  proto.tickDemolish.call(s, 1, s.player);
+  assert.ok(!s.events.some((e) => e.startsWith('detailPatch:')), 'no detail patch for no hanging');
+  assert.ok(!s.events.includes('deleteDetailRow'));
 });

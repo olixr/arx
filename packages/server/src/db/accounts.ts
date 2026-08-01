@@ -801,6 +801,31 @@ export class AccountStore {
     this.db.fire('DELETE FROM built_tiles WHERE tx = ? AND ty = ?', [tx, ty]);
   }
 
+  // ------------------------------- THE SECOND LAYER (wall hangings)
+
+  async loadBuiltDetails(): Promise<
+    Array<{ tx: number; ty: number; detail: number; owner: number; prevDetail: number }>
+  > {
+    return this.db.query<{ tx: number; ty: number; detail: number; owner: number; prevDetail: number }>(
+      'SELECT tx, ty, detail, owner_character_id AS owner, prev_detail AS "prevDetail" FROM built_details',
+    );
+  }
+
+  saveBuiltDetail(tx: number, ty: number, detail: number, owner: number, prevDetail: number): void {
+    // The LAYER LAW, one lane over: prev_detail is what hung here AT
+    // THIS HANG. Re-hanging replaces the row whole (built_tiles'
+    // always-update shape) — the chain stays honest at depth 1.
+    this.db.fire(
+      'INSERT INTO built_details (tx, ty, detail, owner_character_id, created_at, prev_detail) VALUES (?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (tx, ty) DO UPDATE SET detail = excluded.detail, owner_character_id = excluded.owner_character_id, prev_detail = excluded.prev_detail',
+      [tx, ty, detail, owner, Date.now(), prevDetail],
+    );
+  }
+
+  deleteBuiltDetail(tx: number, ty: number): void {
+    this.db.fire('DELETE FROM built_details WHERE tx = ? AND ty = ?', [tx, ty]);
+  }
+
   // ------------------------------------------------- player signs
 
   /**

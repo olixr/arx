@@ -1,4 +1,27 @@
-import { Tile, diagWallInfo, type SkillId } from '@arx/shared';
+import { DYE_COUNT, Tile, diagWallInfo, type SkillId } from '@arx/shared';
+
+/**
+ * THE DYE LAW's roster — the ten cloths of the Dawnlands, index-married
+ * to the shared id bands (shared DYE_COUNT pins the length; a content
+ * test refuses drift). Index order is FOREVER: rename a dye in place,
+ * never reorder — the index is baked into world tiles and details.
+ * Dye 0 is the undyed default every dyeable piece falls back to.
+ */
+export const DYES: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'linen', name: 'Linen' },
+  { id: 'madder', name: 'Madder' },
+  { id: 'woad', name: 'Woad' },
+  { id: 'weld', name: 'Weld' },
+  { id: 'ivy', name: 'Ivy' },
+  { id: 'mulberry', name: 'Mulberry' },
+  { id: 'ochre', name: 'Ochre' },
+  { id: 'charcoal', name: 'Charcoal' },
+  { id: 'moss', name: 'Moss' },
+  { id: 'rose', name: 'Rose' },
+];
+if (DYES.length !== DYE_COUNT) {
+  throw new Error(`DYES roster (${DYES.length}) must match shared DYE_COUNT (${DYE_COUNT})`);
+}
 
 /** The palette's shelves — every buildable sits on exactly one. */
 export type BuildCategory =

@@ -817,6 +817,22 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE character_pets ADD COLUMN rested_at BIGINT;
   `,
+  // v24: THE SECOND LAYER (exterior decor Phase 0) — player-hung wall
+  // decor persists beside built_tiles, one row per hung detail, on the
+  // same LAYER-LAW shape: prev_detail is what hung there at THIS hang
+  // (almost always 0 — hanging over a stranger's cloth is refused at
+  // the door; re-hanging your own replaces the row and the prev).
+  `
+  CREATE TABLE built_details (
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    detail INTEGER NOT NULL,
+    owner_character_id INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
+    prev_detail INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (tx, ty)
+  );
+  `,
 ];
 
 /**

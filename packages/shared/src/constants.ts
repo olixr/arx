@@ -120,7 +120,13 @@
 // restSec, and C2SStable joins the catalog. Additive both ways — a
 // client that never reads or sends them merely lacks the stalls
 // screen, and nothing misrenders. Recorded on purpose.)
-export const PROTOCOL_VERSION = 27;
+// v28 — THE SECOND LAYER (exterior decor): the detail layer opens to
+// players. A new DetailPatch binary lane streams wall-hung decor
+// mutations, and C2SBuild grows the optional `dye` dial. A v27 client
+// would silently drop the unknown binary frame and show a bare wall
+// where everyone else sees a hanging — shared world state would
+// disagree between peers, so the handshake turns the old client away.
+export const PROTOCOL_VERSION = 28;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

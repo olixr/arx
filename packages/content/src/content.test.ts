@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   Detail,
+  DYE_COUNT,
   PASSIVES,
   SIGN_MAX_LINE,
   SIGN_MAX_LINES,
@@ -38,7 +39,7 @@ import { NPCS, TOWN_SPAWNS } from './npcs.js';
 import { LOOT_TABLES } from './loot/tables.js';
 import { RECIPES } from './recipes.js';
 import { NODES } from './nodes.js';
-import { BUILDABLES, BUILD_CATEGORIES } from './buildables.js';
+import { BUILDABLES, BUILD_CATEGORIES, DYES } from './buildables.js';
 import { GENERAL_STORE, SHOPS, TRAINER_DIRECTORY } from './shop.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 import { NPC_ACTORS } from './actors/registry.js';
@@ -579,6 +580,17 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
       [...BUILDABLES.values()].some((b) => b.cat === c.id),
       `build shelf '${c.id}' is empty`,
     );
+  }
+
+  // THE DYE LAW (exterior decor): ten cloths, index-married to the
+  // shared id bands. Length pinned to DYE_COUNT, ids unique, and the
+  // undyed default sits at 0 — index order is FOREVER (rename in
+  // place, never reorder; the index is baked into world ids).
+  assert.equal(DYES.length, DYE_COUNT, 'dye roster matches the shared band width');
+  assert.equal(new Set(DYES.map((d) => d.id)).size, DYES.length, 'dye ids unique');
+  assert.equal(DYES[0]!.id, 'linen', 'the undyed default holds index 0');
+  for (const d of DYES) {
+    assert.ok(d.name.length > 0 && !/[—–]|--/.test(d.name), `${d.id} name honest + dash-free`);
   }
   const WHOLE_TIMBER = new Set([
     'sawhorse',

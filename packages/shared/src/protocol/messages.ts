@@ -204,6 +204,13 @@ export interface C2SBuild {
   tx: number;
   ty: number;
   orient?: BuildOrient;
+  /**
+   * THE DYE LAW's dial: the chosen dye index (0..DYE_COUNT-1) for a
+   * dyeable piece. Absent = dye 0 (linen). The server enum-validates
+   * and silently drops it on pieces that take no dye — a stale client
+   * can't tint a bed.
+   */
+  dye?: number;
 }
 
 /** Tear down one of your own constructions. */

@@ -1,15 +1,30 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import {
+  AWNING_SHAPES,
+  AWNING_TILES,
   CHEST_TILES,
   DIAG_WALL_TILES,
   DOOR_TILES,
+  DYE_COUNT,
   FENCE_TILES,
   GARRISON_TILES,
+  HANGABLE_WALL_TILES,
   INTERIOR_BOUNDARY_TILES,
   LIGHT_BLOCKING_TILES,
+  SIGN_MOTIF_COUNT,
+  TRELLIS_SPECIES_COUNT,
+  WALL_HUNG_DETAILS,
   WALL_RUN_TILES,
+  Detail,
   Tile,
+  awningInfo,
+  awningTile,
+  bracketSignDetail,
+  pennantDetail,
+  trellisDetail,
+  wallBannerDetail,
+  wallHungInfo,
   chestInfo,
   closedChestTile,
   destructibleInfo,
@@ -226,4 +241,107 @@ test('nearestFloorTile mirrors the underlay law: ring 1, ring 2, grass', () => {
   );
   // Open air falls back to grass.
   assert.equal(nearestFloorTile(world({}), 0, 0), Tile.Grass);
+});
+
+// ---------------------------------------------------------------------------
+// THE OUTWARD FACE — the second layer's truth tables.
+
+test('wall-hung bands: wallHungInfo reads every id back exactly', () => {
+  // The authored royals keep their standing identities.
+  assert.deepEqual(wallHungInfo(Detail.BannerCrown), { kind: 'crown' });
+  assert.deepEqual(wallHungInfo(Detail.BannerMoon), { kind: 'moon' });
+  assert.deepEqual(wallHungInfo(Detail.Tapestry), { kind: 'tapestry' });
+  // Every dyed banner and pennant round-trips through its builder.
+  for (let dye = 0; dye < DYE_COUNT; dye++) {
+    assert.deepEqual(wallHungInfo(wallBannerDetail(dye)), { kind: 'banner', dye });
+    assert.deepEqual(wallHungInfo(pennantDetail(dye)), { kind: 'pennant', dye });
+  }
+  for (let motif = 0; motif < SIGN_MOTIF_COUNT; motif++) {
+    assert.deepEqual(wallHungInfo(bracketSignDetail(motif)), { kind: 'sign', motif });
+  }
+  for (let species = 0; species < TRELLIS_SPECIES_COUNT; species++) {
+    assert.deepEqual(wallHungInfo(trellisDetail(species)), { kind: 'trellis', species });
+  }
+  assert.deepEqual(wallHungInfo(Detail.WallBasket), { kind: 'basket' });
+  // Ground details never read as hangings.
+  for (const d of [Detail.None, Detail.Flowers, Detail.Rug, Detail.Doormat, Detail.CarpetRoyal]) {
+    assert.equal(wallHungInfo(d), null, `detail ${d} stays on the ground`);
+  }
+  // Unused band slots stay dark until a dye is actually mixed.
+  assert.equal(wallHungInfo(Detail.WallBanner + DYE_COUNT), null);
+  assert.equal(wallHungInfo(Detail.BracketSign + SIGN_MOTIF_COUNT), null);
+  // Builders refuse what the roster doesn't hold.
+  assert.throws(() => wallBannerDetail(DYE_COUNT));
+  assert.throws(() => wallBannerDetail(-1));
+  assert.throws(() => bracketSignDetail(SIGN_MOTIF_COUNT));
+  assert.throws(() => trellisDetail(TRELLIS_SPECIES_COUNT));
+});
+
+test('wall-hung bands: the set and the reader agree, and bands never overlap', () => {
+  // WALL_HUNG_DETAILS is generated FROM wallHungInfo — pin the shape
+  // anyway so a refactor can't quietly split them.
+  for (const d of WALL_HUNG_DETAILS) {
+    assert.notEqual(wallHungInfo(d), null, `set member ${d} resolves`);
+  }
+  for (let d = 0; d < 256; d++) {
+    if (wallHungInfo(d) !== null) {
+      assert.ok(WALL_HUNG_DETAILS.has(d as Detail), `resolving id ${d} is in the set`);
+    }
+  }
+  // No two hanging ids collide (bands are disjoint by construction —
+  // pinned so a future band can't land on an occupied range).
+  const seen = new Map<number, string>();
+  for (const d of WALL_HUNG_DETAILS) {
+    const info = wallHungInfo(d)!;
+    const key = `${info.kind}:${info.dye ?? info.motif ?? info.species ?? 0}`;
+    assert.ok(!seen.has(d), `id ${d} dealt once`);
+    seen.set(d, key);
+  }
+  // Hanging bands live clear of the ground details.
+  for (const d of WALL_HUNG_DETAILS) assert.ok(d >= Detail.WallBanner || d <= Detail.Tapestry);
+});
+
+test('awning bands: awningInfo/awningTile round-trip, defs stand, walk-under holds', () => {
+  assert.equal(AWNING_TILES.size, AWNING_SHAPES.length * DYE_COUNT);
+  for (const shape of AWNING_SHAPES) {
+    for (let dye = 0; dye < DYE_COUNT; dye++) {
+      const t = awningTile(shape, dye);
+      assert.ok(AWNING_TILES.has(t));
+      const info = awningInfo(t);
+      assert.equal(info?.shape, shape);
+      assert.equal(info?.dye, dye);
+      assert.equal(AWNING_SHAPES[info!.shapeIndex], shape);
+      // Every dyed id has a real def: named, walkable (the street
+      // runs on beneath the cloth), and raised for the collect scan.
+      const def = tileDef(t);
+      assert.ok(def.name.includes('awning'), `${t} named`);
+      assert.equal(def.solid, false, `${def.name} walk-under`);
+      assert.equal(def.raised, true, `${def.name} raised`);
+    }
+  }
+  // The band reader claims nothing outside its bands.
+  assert.equal(awningInfo(Tile.Throne), null);
+  assert.equal(awningInfo(Tile.AwningShed + DYE_COUNT), null);
+  assert.equal(awningInfo(Tile.AwningBowed + DYE_COUNT), null);
+  assert.throws(() => awningTile('shed', DYE_COUNT));
+  assert.throws(() => awningTile('shed', -1));
+  // Awning bands collide with no shipped tile id.
+  for (const t of AWNING_TILES) assert.ok(t >= Tile.AwningShed, `${t} above the shipped roster`);
+});
+
+test('HANGABLE_WALL_TILES: solid full walls only, dressed by a hangings pass', () => {
+  for (const t of HANGABLE_WALL_TILES) {
+    assert.ok(tileDef(t).solid, `${tileDef(t).name} is wall mass`);
+    // Full walls only: never a doorway, window, corner, or gate.
+    assert.ok(!DOOR_TILES.has(t), `${tileDef(t).name} is not a door`);
+    assert.ok(!DIAG_WALL_TILES.has(t), `${tileDef(t).name} is not a corner`);
+    assert.ok(
+      t !== Tile.WallWoodWindow && t !== Tile.WallStoneWindow,
+      `${tileDef(t).name} is not glazing`,
+    );
+  }
+  // The two families the painters actually dress.
+  assert.ok(HANGABLE_WALL_TILES.has(Tile.WallWood));
+  assert.ok(HANGABLE_WALL_TILES.has(Tile.WallStone));
+  assert.ok(HANGABLE_WALL_TILES.has(Tile.WallGarrison));
 });

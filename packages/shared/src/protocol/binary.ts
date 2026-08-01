@@ -8,6 +8,8 @@ export enum BinaryMsgType {
   Snapshot = 1,
   Chunk = 2,
   TilePatch = 3,
+  /** THE SECOND LAYER: one detail-layer change (wall hangings). */
+  DetailPatch = 4,
 }
 
 export class ByteWriter {

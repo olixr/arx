@@ -691,6 +691,15 @@ export declare class ClientGame {
     /** Fires with (tx, ty, previous, next) whenever a tile mutates. */
     onTileChange: ((tx: number, ty: number, prev: number | undefined, next: number) => void) | null;
     private handleTilePatch;
+    /** Fires with (tx, ty, previous, next) whenever a detail mutates. */
+    onDetailChange: ((tx: number, ty: number, prev: number, next: number) => void) | null;
+    /**
+     * THE SECOND LAYER: a detail-layer mutation (a hanging goes up or
+     * comes down). Rooms are ground geography, so interiors never
+     * re-derive — but the bake neighborhood refreshes like any patch
+     * (wall painters read the detail live; ground details are baked).
+     */
+    private handleDetailPatch;
     /** Bump neighboring chunks' revs so organic borders re-bake. */
     private touchNeighbors;
     /**

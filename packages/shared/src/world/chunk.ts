@@ -76,6 +76,30 @@ export function decodeTilePatch(r: ByteReader): TilePatch {
   return { tx: r.i32(), ty: r.i32(), ground: r.u16() };
 }
 
+/**
+ * A single detail-layer change — THE SECOND LAYER (exterior decor):
+ * player-hung wall decor mutates the detail a chunk already streams,
+ * so the patch mirrors TilePatch exactly, one lane over.
+ */
+export interface DetailPatch {
+  tx: number;
+  ty: number;
+  detail: number;
+}
+
+export function encodeDetailPatch(patch: DetailPatch): ArrayBuffer {
+  const w = new ByteWriter(16);
+  w.u8(BinaryMsgType.DetailPatch);
+  w.i32(patch.tx);
+  w.i32(patch.ty);
+  w.u16(patch.detail);
+  return w.finish();
+}
+
+export function decodeDetailPatch(r: ByteReader): DetailPatch {
+  return { tx: r.i32(), ty: r.i32(), detail: r.u16() };
+}
+
 export function decodeChunk(r: ByteReader): ChunkData {
   const cx = r.i32();
   const cy = r.i32();
@@ -178,6 +202,15 @@ export class ChunkStore implements CollisionSource {
     const chunk = this.chunkFor(tx, ty);
     if (!chunk) return false;
     chunk.ground[tileIndex(tx, ty)] = tile;
+    chunk.rev = (chunk.rev ?? 0) + 1;
+    return true;
+  }
+
+  /** Mutate one detail-layer id in place (THE SECOND LAYER's write). */
+  setDetail(tx: number, ty: number, detail: number): boolean {
+    const chunk = this.chunkFor(tx, ty);
+    if (!chunk) return false;
+    chunk.detail[tileIndex(tx, ty)] = detail;
     chunk.rev = (chunk.rev ?? 0) + 1;
     return true;
   }

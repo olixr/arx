@@ -65,6 +65,7 @@ import {
   type Snapshot,
   type StationType,
   type TilePatch,
+  type DetailPatch,
   type Vec2,
 } from '@arx/shared';
 import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
@@ -832,6 +833,7 @@ export class ClientGame {
       onSnapshot: (snap) => this.handleSnapshot(snap),
       onChunk: (chunk) => this.handleChunk(chunk),
       onTilePatch: (patch) => this.handleTilePatch(patch),
+      onDetailPatch: (patch) => this.handleDetailPatch(patch),
     });
     this.conn.connect();
   }
@@ -1552,6 +1554,23 @@ export class ClientGame {
       shutDoorTile(prev) === shutDoorTile(patch.ground);
     if (!doorSwap) this.interiorsVersion++;
     this.onTileChange?.(patch.tx, patch.ty, prev, patch.ground);
+  }
+
+  /** Fires with (tx, ty, previous, next) whenever a detail mutates. */
+  onDetailChange: ((tx: number, ty: number, prev: number, next: number) => void) | null = null;
+
+  /**
+   * THE SECOND LAYER: a detail-layer mutation (a hanging goes up or
+   * comes down). Rooms are ground geography, so interiors never
+   * re-derive — but the bake neighborhood refreshes like any patch
+   * (wall painters read the detail live; ground details are baked).
+   */
+  private handleDetailPatch(patch: DetailPatch): void {
+    const prev = this.world.detailAt(patch.tx, patch.ty);
+    this.world.setDetail(patch.tx, patch.ty, patch.detail);
+    this.touchNeighbors(Math.floor(patch.tx / CHUNK_SIZE), Math.floor(patch.ty / CHUNK_SIZE));
+    this.worldVersion++;
+    this.onDetailChange?.(patch.tx, patch.ty, prev, patch.detail);
   }
 
   /** Bump neighboring chunks' revs so organic borders re-bake. */

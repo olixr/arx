@@ -2,10 +2,12 @@ import {
   BinaryMsgType,
   ByteReader,
   decodeChunk,
+  decodeDetailPatch,
   decodeSnapshot,
   decodeTilePatch,
   type C2SMessage,
   type ChunkData,
+  type DetailPatch,
   type S2CMessage,
   type Snapshot,
   type TilePatch,
@@ -16,6 +18,7 @@ export interface ConnectionHandlers {
   onSnapshot(snap: Snapshot): void;
   onChunk(chunk: ChunkData): void;
   onTilePatch(patch: TilePatch): void;
+  onDetailPatch(patch: DetailPatch): void;
   onClose(): void;
   onOpen(): void;
 }
@@ -52,6 +55,8 @@ export class Connection {
           this.handlers.onChunk(decodeChunk(r));
         } else if (type === BinaryMsgType.TilePatch) {
           this.handlers.onTilePatch(decodeTilePatch(r));
+        } else if (type === BinaryMsgType.DetailPatch) {
+          this.handlers.onDetailPatch(decodeDetailPatch(r));
         }
       }
     };
