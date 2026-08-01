@@ -31,6 +31,15 @@ export const SNEAK_XP_MIN_MOVE = 0.5;
 /** Hostile-NPC proximity window for passive XP, in tiles. */
 export const SNEAK_XP_RADIUS = 8;
 
+/**
+ * THE CASED CAMP: an unaware body is a lesson with a bottom. Each
+ * watcher can draw at most this much passive XP per its level from
+ * one body per its life (~30s of point-blank casing) — the craft is
+ * moving through a camp, not orbiting one sentry. World-state on the
+ * NPC, never the player; the bank dies with the body.
+ */
+export const SNEAK_CASE_CAP_PER_LEVEL = 30;
+
 /** Width of the cone centered on a target's back that counts as "behind". */
 export const BACKSTAB_ARC = (2 * Math.PI) / 3;
 

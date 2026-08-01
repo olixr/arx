@@ -26,6 +26,10 @@ import {
   resolveSkillId,
   isCombatSchool,
   COMBAT_LESSON_FRAC,
+  XP_PER_DMG_SCHOOL,
+  XP_PER_DMG_VITALITY,
+  XP_KILL_SCHOOL_FRAC,
+  xpMarkAllowance,
   levelForXp,
   honedAbility,
   techniqueRank,
@@ -38,7 +42,6 @@ import {
   stepMovement,
   xpForLevel,
   GENTLE_HP_FRAC,
-  GENTLE_TICKS,
   PET_CAP,
   PET_CALM_SPEED,
   PET_CALM_TICKS,
@@ -319,7 +322,7 @@ import {
   BURN_TICK_EVERY,
   BLEED_TICK_EVERY,
   CHILL_SPEED_FACTOR,
-  COMBAT_STYLES,
+  TECHNIQUE_STYLES,
   HEAVY_BOLT_KNOCKBACK,
   HEAVY_BOLT_MULT,
   HEAVY_BOLT_RECOVERY_MULT,
@@ -358,6 +361,7 @@ import {
   SNEAK_XP_PERIOD_TICKS,
   SNEAK_XP_MIN_MOVE,
   SNEAK_XP_RADIUS,
+  SNEAK_CASE_CAP_PER_LEVEL,
   BACKSTAB_MULT_DEFAULT,
   BACKSTAB_XP_BASE,
   DUALWIELD_UNLOCK_ONEHAND,
@@ -418,6 +422,7 @@ import {
   type ActiveStatus,
   type CollisionSource,
   type CombatStyleId,
+  type TechniqueStyleId,
   type EquipSlot,
   type PassiveId,
   type BuildOrient,
@@ -529,12 +534,15 @@ interface MilkAction {
 }
 
 /**
- * The gentling kneel (beastcraft v2): winning a worn-down wild heart.
- * `startHp` is the beast's hp at the kneel — any wound to it since
- * breaks the working (a whiff writes nothing and breaks nothing).
+ * The tame channel (THE WILD ANSWERS THE CALL, beastcraft arts): a
+ * survival cast replacing the old gentling kneel. `startHp` is the
+ * beast's hp when the asking began — any wound to it since breaks
+ * the working (a whiff writes nothing and breaks nothing); the
+ * keeper's own blood does NOT break it, standing through the teeth
+ * is the test.
  */
-interface GentleAction {
-  kind: 'gentle';
+interface TameAction {
+  kind: 'tame';
   targetEid: EntityId;
   ticksLeft: number;
   startHp: number;
@@ -569,7 +577,7 @@ type PlayerAction =
   | BuildAction
   | HarvestAction
   | MilkAction
-  | GentleAction
+  | TameAction
   | TendAction
   | DemolishAction;
 
@@ -706,6 +714,19 @@ interface NpcComp {
    * carries it and old bodies never need touching.
    */
   harriedUntilTick?: number;
+  /**
+   * THE MARK'S WORTH: damage points already paid out as school XP,
+   * per attacker, this life (allowance law in shared/skills.ts — the
+   * player's twin of the pet trickle bank). Optional on purpose —
+   * absent reads as empty, so neither NpcComp literal site grows a
+   * field and the bank dies with the body.
+   */
+  xpMarks?: Map<EntityId, number>;
+  /**
+   * THE CASED CAMP: passive sneak XP already paid per watcher this
+   * life (cap law in shared/sim/sneak.ts). Same optional-bank idiom.
+   */
+  casedMarks?: Map<EntityId, number>;
   /** The packmate a craven runner is fleeing toward (seekhelp). */
   helpEid: EntityId | null;
   /** Give-up tick for the help run — shout where you stand and turn. */
@@ -3756,7 +3777,7 @@ export class GameServer {
     else if (kind === 'craft') this.tickCraft(eid, player);
     else if (kind === 'harvest') this.tickHarvest(eid, player);
     else if (kind === 'milk') this.tickMilk(eid, player);
-    else if (kind === 'gentle') this.tickGentle(eid, player);
+    else if (kind === 'tame') this.tickTame(eid, player);
     else if (kind === 'tend') this.tickTend(eid, player);
     else if (kind === 'demolish') this.tickDemolish(eid, player);
     else this.tickBuild(eid, player);
@@ -5720,7 +5741,9 @@ export class GameServer {
         });
       }
     }
-    if (!(COMBAT_STYLES as readonly string[]).includes(skill)) return;
+    // Every school that owns a ladder gets its climbs spoken —
+    // beastcraft included (THE FOURTH CITIZENSHIP OF STYLE).
+    if (!(TECHNIQUE_STYLES as readonly string[]).includes(skill)) return;
     let ladderMoved = false;
     // Mastered secrets ride the same rank clock as the ladder; their
     // climbs will speak here the day RANKS FOR THE SHELF authors
@@ -9340,10 +9363,10 @@ export class GameServer {
       return;
     }
 
-    if (!npc.def.produce) {
-      this.tryGentle(eid, player, pos, targetEid, npc, sys);
-      return;
-    }
+    // A wild beast offers the interact hand nothing since THE WILD
+    // ANSWERS THE CALL: taming is Gentle the Wild, cast from a
+    // technique seat. (Maren teaches it; the codex names the rung.)
+    if (!npc.def.produce) return;
 
     const produce = npc.def.produce;
     const now = Date.now();
@@ -9425,16 +9448,53 @@ export class GameServer {
    * and an unbroken kneel. No dice, no pity, no player-state odds.
    * Every refusal speaks, so the refusal IS the tutorial.
    */
-  private tryGentle(
+  /**
+   * THE WILD ANSWERS THE CALL (docs/beastcraft-arts-plan.md): the tame
+   * cast. Resolves the mark from the aim cone, speaks the WHOLE
+   * refusal ladder before any cost is paid (the dormant-seat
+   * discipline), then provokes the beast onto the caster and opens
+   * the survival channel on the action rail. Replaces the kneel.
+   */
+  private tryTameCast(
     eid: EntityId,
     player: PlayerComp,
-    pos: PositionComp,
-    targetEid: EntityId,
-    npc: NpcComp,
-    sys: (text: string) => void,
+    slot: AbilitySlot,
+    ab: AbilityDef,
+    aim: number,
   ): void {
-    const tame = tameDef(npc.def.id);
-    if (!tame) return;
+    const pos = this.positions.get(eid);
+    if (!pos) return;
+    const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
+
+    // The mark: nearest tamable body in the aim cone (the homingMarks
+    // discipline — forgiving on purpose, pad parity by construction).
+    const range = ab.range ?? 5;
+    let best: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
+    let bestD = Infinity;
+    for (const [npcEid, npc] of this.npcs) {
+      if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
+      if (!tameDef(npc.def.id)) continue;
+      const npos = this.positions.get(npcEid);
+      if (!npos) continue;
+      const dx = npos.x - pos.x;
+      const dy = npos.y - pos.y;
+      const d = Math.hypot(dx, dy) - npc.def.radius;
+      if (d > range) continue;
+      let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff > 0.65 && d > 1.5) continue;
+      if (d < bestD) {
+        bestD = d;
+        best = { eid: npcEid, npc, x: npos.x, y: npos.y };
+      }
+    }
+    if (!best) {
+      sys('Nothing wild in reach answers the call.');
+      return;
+    }
+    const npc = best.npc;
+    const targetEid = best.eid;
+    const tame = tameDef(npc.def.id)!;
     if (player.characterId < 0) {
       sys('A companion needs a keeper the world will remember. Guests pass through.');
       return;
@@ -9448,12 +9508,6 @@ export class GameServer {
       sys('Your stalls are full. Three is a household.');
       return;
     }
-    const health = this.healths.get(targetEid);
-    if (!health) return;
-    if (health.hp > Math.floor(health.maxHp * GENTLE_HP_FRAC)) {
-      sys('It has too much fight left in it.');
-      return;
-    }
     // You may finish a fight it started with you — never steal one it
     // is having with somebody else.
     if (npc.state === 'chase' && npc.targetEid !== null && npc.targetEid !== eid) {
@@ -9465,36 +9519,40 @@ export class GameServer {
       sys(`It noses your pack for ${lureName} and finds none.`);
       return;
     }
-    if (player.action) this.cancelAction(eid, player);
-    // Call the current companion off first — a dog still worrying the
-    // beast you are courting would break its own keeper's kneel.
+    const health = this.healths.get(targetEid);
+    if (!health || health.hp <= 0) return;
+
+    // Every refusal has spoken — NOW the cast is paid for.
+    player.abilityCd[slot] = Math.max(1, Math.round(ab.cooldownTicks * player.gear.cooldownMult));
+    player.lastCombatAt = Date.now();
+    this.revealPlayer(eid, player);
+    player.drawTicks = 0;
+    if (player.action) this.cancelAction(eid, player, 'cast');
+    // Call the current companion off — a dog still worrying the beast
+    // you are courting would break its own keeper's asking (and the
+    // petDefend door holds it off the mark for the channel's length).
     if (player.petEid !== null) {
       const heelPet = this.pets.get(player.petEid);
       if (heelPet) heelPet.target = null;
     }
-    // The lure quiets the fight: the beast stands down and plants for
-    // the kneel. A fresh wound — to either party — breaks the working
-    // (a whiff writes nothing and breaks nothing, as everywhere).
-    npc.state = 'idle';
-    npc.targetEid = null;
-    npc.windupTicks = 0;
-    npc.alert = 0;
-    npc.alertEid = null;
-    npc.holdUntilTick = this.tickCount + GENTLE_TICKS + 20;
-    npc.noAggroUntilTick = this.tickCount + GENTLE_TICKS + 40;
-    player.action = { kind: 'gentle', targetEid, ticksLeft: GENTLE_TICKS, startHp: health.hp };
-    pos.dir = Math.atan2(
-      this.positions.must(targetEid).y - pos.y,
-      this.positions.must(targetEid).x - pos.x,
-    );
-    // Dairy hands and gentling hands are the same hands: the settled
-    // bare-handed kneel the client already knows how to play.
-    this.poses.set(eid, PoseState.Milk);
-    player.session?.sendJson({ t: 'action', state: 'start', ticks: GENTLE_TICKS });
+    // The wild resists the working: the mark turns on the caster.
+    // Standing in its teeth to the end IS the test — a beast already
+    // worn into the craven window answers in half the time.
+    this.npcAggro(targetEid, npc, eid, { force: true });
+    const channel = ab.channelTicks ?? 200;
+    const craven = health.hp <= Math.floor(health.maxHp * GENTLE_HP_FRAC);
+    const ticks = craven ? Math.floor(channel / 2) : channel;
+    player.action = { kind: 'tame', targetEid, ticksLeft: ticks, startHp: health.hp };
+    pos.dir = Math.atan2(best.y - pos.y, best.x - pos.x);
+    this.setPose(eid, PoseState.Art, ticks + 4);
+    player.session?.sendJson({ t: 'action', state: 'start', ticks });
+    this.broadcastFx({ t: 'fx', kind: 'tame', x: pos.x, y: pos.y, x2: best.x, y2: best.y, radius: 0, id: ab.id, color: ab.color });
+    this.bodyMoment(eid, player, 'cast', { x: pos.x, y: pos.y, style: 'beastcraft' });
+    this.sendCooldowns(player);
   }
 
-  private tickGentle(eid: EntityId, player: PlayerComp): void {
-    const action = player.action! as GentleAction;
+  private tickTame(eid: EntityId, player: PlayerComp): void {
+    const action = player.action! as TameAction;
     const pos = this.positions.get(eid);
     const npc = this.npcs.get(action.targetEid);
     const npos = this.positions.get(action.targetEid);
@@ -9503,21 +9561,29 @@ export class GameServer {
       this.cancelAction(eid, player, 'gone');
       return;
     }
+    // The beast is LIVE through the whole channel (no becalming): it
+    // is usually chewing on the caster. Break only if it truly leaves
+    // the working's reach — flees home, gets dragged off, despawns.
     const dx = npos.x - pos.x;
     const dy = npos.y - pos.y;
-    if (dx * dx + dy * dy > 2.6 * 2.6) {
+    if (dx * dx + dy * dy > 10 * 10) {
       this.cancelAction(eid, player, 'gone');
       return;
     }
-    // A wound since the kneel began breaks the working — hp is the
-    // whole test, so a whiff (which writes nothing) breaks nothing.
+    // A wound TO the beast since the asking began breaks the working —
+    // its hp DROPPING is the whole test (a whiff writes nothing and
+    // breaks nothing; the keeper's own blood deliberately never
+    // cancels a tame — see damagePlayer's cancel list).
     const health = this.healths.get(action.targetEid);
-    if (!health || health.hp !== action.startHp) {
+    if (!health || health.hp <= 0 || health.hp < action.startHp) {
       this.cancelAction(eid, player, 'hurt');
       return;
     }
-    npc.holdUntilTick = this.tickCount + 10;
-    npc.noAggroUntilTick = this.tickCount + 60;
+    // THE VISIBLE WORKING: the calm drifts hand-to-beast while the
+    // asking runs — watchers see it too, on a quiet pulse.
+    if (action.ticksLeft % 20 === 0) {
+      this.broadcastFx({ t: 'fx', kind: 'tame', x: pos.x, y: pos.y, x2: npos.x, y2: npos.y, radius: 0, id: 'gentle_the_wild' });
+    }
     if (--action.ticksLeft > 0) return;
 
     const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
@@ -9563,8 +9629,10 @@ export class GameServer {
     player.petHp = null;
     player.petBondAt.delete(slot);
     // The same beast, changed: its wild body leaves the world's books
-    // and the companion stands up exactly where it knelt.
+    // and the companion stands up exactly where the asking held it.
     const at = { x: npos.x, y: npos.y };
+    // The bond closing is a moment everyone nearby can read.
+    this.broadcastFx({ t: 'fx', kind: 'tame', x: pos.x, y: pos.y, x2: at.x, y2: at.y, radius: 1.4, id: 'gentle_the_wild' });
     this.removeTamedNpc(action.targetEid, eid);
     this.trySpawnPet(eid, player, at);
     this.grantXp(eid, player, 'beastcraft', tame.tameXp);
@@ -9852,6 +9920,11 @@ export class GameServer {
    */
   private petDefend(ownerEid: EntityId, owner: PlayerComp, mobEid: EntityId, urgent = false): void {
     if (!owner.petEid) return;
+    // THE ASKING HOLDS THE FANG: while the keeper channels a tame, the
+    // very beast being courted draws keeper blood — the companion must
+    // hold back from the channel's own mark, or it would break every
+    // full-health asking its keeper ever attempts.
+    if (owner.action?.kind === 'tame' && owner.action.targetEid === mobEid) return;
     const pet = this.pets.get(owner.petEid);
     if (!pet) return;
     // A downed friend defends nobody — it is busy breathing.
@@ -12701,6 +12774,14 @@ export class GameServer {
       if (seat !== null && this.seatDormant(player, seat)) return;
     }
 
+    // THE WILD ANSWERS THE CALL: the tame is a channel, not a strike —
+    // it pre-flights its whole refusal ladder aloud BEFORE any cost,
+    // then runs on the action rail (the kneel's grammar at cast range).
+    if (ab.shape === 'tame') {
+      this.tryTameCast(eid, player, slot, ab, aim);
+      return;
+    }
+
     // Cloth's cooldown discount lands here — where every cooldown is set.
     player.abilityCd[slot] = Math.max(1, Math.round(ab.cooldownTicks * player.gear.cooldownMult));
     player.castFreezeUntilTick = this.tickCount + (ab.castFreezeTicks ?? 0);
@@ -12714,7 +12795,9 @@ export class GameServer {
     // ride the weapon's stance, but a technique is a learned skill —
     // its own school powers it whatever the hand holds, from either
     // seat (THE FREE HAND, now THE SECOND HAND's pair).
-    let style = this.currentStyle(player);
+    // TechniqueStyleId, not CombatStyleId: a beastcraft art powers
+    // its cast by the beastcraft hand (the fourth citizenship).
+    let style: TechniqueStyleId = this.currentStyle(player);
     {
       const seat = this.techSeat(slot);
       if (seat !== null) {
@@ -13788,7 +13871,9 @@ export class GameServer {
     const source = this.players.get(sourceEid);
     if (source && !fromPet) {
       const style: SkillId = kind === 'burn' ? 'arx' : kind === 'venom' ? 'sneak' : 'onehand';
-      this.grantXp(sourceEid, source, style, dmg * 2);
+      // The drip draws the same mark budget as the blow that set it.
+      const credited = this.creditMark(npc, sourceEid, dmg);
+      if (credited > 0) this.grantXp(sourceEid, source, style, credited * 2);
     }
     // A DoT tail is not a struck blow — no style rides to the deed rail.
     if (health.hp <= 0) this.killNpc(npcEid, npc, sourceEid);
@@ -14778,19 +14863,27 @@ export class GameServer {
           if (live) (live.fighters ??= new Set()).add(attacker.characterId);
         }
       }
+      let credited = 0;
       if (opts.viaPet) {
         // The teeth train the beast and the bond — never the keeper's
         // schools (beastcraft is not a combat school; no half-echo).
         this.grantPetBattleXp(attackerEid, attacker, opts.viaPet.petEid, npcEid, npc, dmg);
       } else if (!opts.fromProc) {
-        this.grantXp(attackerEid, attacker, style, dmg * 4);
-        this.grantXp(attackerEid, attacker, 'vitality', dmg * 2);
+        // THE MARK'S WORTH: the blow lands in full; only the lesson
+        // draws on the mark's budget (shared/skills.ts).
+        credited = this.creditMark(npc, attackerEid, dmg);
+        if (credited > 0) {
+          this.grantXp(attackerEid, attacker, style, credited * XP_PER_DMG_SCHOOL);
+          this.grantXp(attackerEid, attacker, 'vitality', credited * XP_PER_DMG_VITALITY);
+        }
       }
       // DEFEND THE HAND: the keeper's own landed blow points the
       // companion at the mark (quiet door — never re-aims a fight).
       if (!opts.viaPet) this.petDefend(attackerEid, attacker, npcEid, false);
       if (opts.backstab) {
-        this.grantXp(attackerEid, attacker, 'sneak', BACKSTAB_XP_BASE + dmg * 3);
+        // The deed's flat lesson always pays; the dmg-scaled share
+        // rides the same budget as the school XP it doubles.
+        this.grantXp(attackerEid, attacker, 'sneak', BACKSTAB_XP_BASE + credited * 3);
       }
       // Bloodlust buffs feed one-handed wounds; a leeching weapon
       // enchant feeds every basic ITS steel lands, whatever the style.
@@ -14856,6 +14949,22 @@ export class GameServer {
     if (health.hp <= 0) this.killNpc(npcEid, npc, attackerEid, style);
   }
 
+  /**
+   * THE MARK'S WORTH: how much of this landed damage still pays XP.
+   * Allowance is priced by the mark's own xpReward (shared/skills.ts);
+   * each attacker draws their own budget down independently and the
+   * bank dies with the body. Returns credited damage points.
+   */
+  private creditMark(npc: NpcComp, attackerEid: EntityId, dmg: number): number {
+    const allowance = xpMarkAllowance(npc.def.xpReward);
+    const bank = (npc.xpMarks ??= new Map());
+    const spent = bank.get(attackerEid) ?? 0;
+    const credited = Math.min(dmg, allowance - spent);
+    if (credited <= 0) return 0;
+    bank.set(attackerEid, spent + credited);
+    return credited;
+  }
+
   private killNpc(npcEid: EntityId, npc: NpcComp, killerEid: EntityId, style?: SkillId): void {
     // Idempotent: reaction cascades can route two lethal blows into the
     // same tick — the second finds the entity already gone.
@@ -14872,6 +14981,13 @@ export class GameServer {
     if (killer) {
       // Kill bonus xp on top of damage xp.
       this.grantXp(killerEid, killer, 'vitality', Math.round(npc.def.xpReward * 0.5));
+      // THE MARK'S WORTH: the felling pays the school its share of the
+      // body's price, so finishing a fight always outpays parking on a
+      // sponge. Exempt from the mark budget (it IS the threat payout);
+      // a DoT tail arrives styleless and pays none (not a struck blow).
+      if (style && isCombatSchool(style)) {
+        this.grantXp(killerEid, killer, style, Math.round(npc.def.xpReward * XP_KILL_SCHOOL_FRAC));
+      }
       // Battle Rush: each kill feeds the next chase.
       if (this.hasPassive(killer, 'battle_rush')) {
         killer.buffs.push(mkBuff({ speedMult: 1.25, untilTick: this.tickCount + 50 }));
@@ -15178,9 +15294,11 @@ export class GameServer {
     player.lastCombatAt = Date.now();
     if (dmg <= 0) return;
 
-    // A wound that reached flesh breaks the gentling kneel and the
-    // tend alike — kneeling hands need an unbloodied keeper.
-    if (player.action?.kind === 'gentle' || player.action?.kind === 'tend') {
+    // A wound that reached flesh breaks the tend — kneeling hands
+    // need an unbloodied keeper. The tame channel deliberately
+    // survives keeper blood: standing through the teeth IS the test
+    // (THE WILD ANSWERS THE CALL).
+    if (player.action?.kind === 'tend') {
       this.cancelAction(eid, player, 'hurt');
     }
 
@@ -17778,6 +17896,7 @@ export class GameServer {
       const pos = this.positions.get(eid);
       if (!pos) continue;
       let best = 0;
+      let bestNpc: NpcComp | null = null;
       for (const [npcEid, npc] of this.npcs) {
         if (npc.def.aggroRange <= 0 || npc.def.damage <= 0) continue;
         if ((npc.state === 'chase' || npc.state === 'seekhelp') && npc.targetEid === eid) continue;
@@ -17785,11 +17904,21 @@ export class GameServer {
         if (!npos) continue;
         const dist = Math.hypot(npos.x - pos.x, npos.y - pos.y);
         if (dist > SNEAK_XP_RADIUS) continue;
-        // Closer and stronger threats teach more.
-        const xp = Math.ceil(npc.def.level * (1.25 - dist / SNEAK_XP_RADIUS));
-        best = Math.max(best, Math.min(25, xp));
+        // Closer and stronger threats teach more — until this body has
+        // taught this watcher all it knows (THE CASED CAMP,
+        // shared/sim/sneak.ts): the pulse offers only what remains.
+        const xp = Math.min(25, Math.ceil(npc.def.level * (1.25 - dist / SNEAK_XP_RADIUS)));
+        const cap = npc.def.level * SNEAK_CASE_CAP_PER_LEVEL;
+        const avail = Math.min(xp, cap - (npc.casedMarks?.get(eid) ?? 0));
+        if (avail > best) {
+          best = avail;
+          bestNpc = npc;
+        }
       }
-      if (best > 0) this.grantXp(eid, player, 'sneak', best);
+      if (best > 0 && bestNpc) {
+        (bestNpc.casedMarks ??= new Map()).set(eid, (bestNpc.casedMarks.get(eid) ?? 0) + best);
+        this.grantXp(eid, player, 'sneak', best);
+      }
     }
   }
 

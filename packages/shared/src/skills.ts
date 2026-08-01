@@ -204,6 +204,32 @@ export function isCombatSchool(s: SkillId): boolean {
   return (COMBAT_SCHOOL_IDS as readonly string[]).includes(s);
 }
 
+// --------------------------------------------------- the mark's worth
+
+/**
+ * THE MARK'S WORTH: a body's lessons are priced by its own xpReward,
+ * never by how much meat it carries. Landed damage pays school XP only
+ * while the mark's lesson budget lasts — each attacker draws their own
+ * budget down, and the bank dies with the body — so a thick-skinned
+ * punching bag never becomes a training dummy. The keeper's trickle
+ * bank taught this law (pets shipped it first); this is the same
+ * bottom under the player's own blade. Damage itself always lands in
+ * full: only the LESSON has a floor under it, so whiff-0 and the
+ * damage pipeline are untouched.
+ */
+export const XP_PER_DMG_SCHOOL = 3;
+/** Vitality rides every landed blow at this rate (no echo, no cap change). */
+export const XP_PER_DMG_VITALITY = 2;
+/** The felling pays the school this share of xpReward, on top of damage XP. */
+export const XP_KILL_SCHOOL_FRAC = 0.5;
+/** School damage-XP per attacker per mark tops out at this many xpRewards. */
+export const XP_MARK_CAP_MULT = 1.25;
+
+/** The mark's lesson budget, in damage points, per attacker. */
+export function xpMarkAllowance(xpReward: number): number {
+  return Math.ceil((xpReward * XP_MARK_CAP_MULT) / XP_PER_DMG_SCHOOL);
+}
+
 // ------------------------------------------------------------- focus
 
 /** Base Focus every character carries before any milestone. */

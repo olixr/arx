@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BURN_TICK_EVERY } from '@arx/shared';
+import { BURN_TICK_EVERY, XP_PER_DMG_SCHOOL, XP_PER_DMG_VITALITY } from '@arx/shared';
 import { GameServer } from './gameServer.js';
 
 /**
@@ -215,6 +215,7 @@ function damageNpcSlate(hp: number) {
       grants.push([skill, amount]),
     killNpc: (...a: unknown[]) => kills.push(a),
     damageNpc: proto.damageNpc,
+    creditMark: proto.creditMark,
   };
   return { s, npc, health, kills, grants };
 }
@@ -242,11 +243,13 @@ test("THE WORKING'S DAMAGE IS THE WORKING'S: fromProc earns no skill or vitality
   (s.players as Map<number, unknown>).set(1, attacker);
   call(proto.damageNpc, s, 9, 5, 1, 'shield', { fromProc: true });
   assert.deepEqual(grants, [], 'nova damage trained nothing');
-  // The wielder's own blow still pays as ever.
+  // The wielder's own blow still pays as ever (THE MARK'S WORTH:
+  // xpReward 10 prices an allowance of 5 damage points — this
+  // 5-damage blow credits in full).
   call(proto.damageNpc, s, 9, 5, 1, 'shield', {});
   assert.deepEqual(grants, [
-    ['shield', 20],
-    ['vitality', 10],
+    ['shield', 5 * XP_PER_DMG_SCHOOL],
+    ['vitality', 5 * XP_PER_DMG_VITALITY],
   ]);
 });
 
