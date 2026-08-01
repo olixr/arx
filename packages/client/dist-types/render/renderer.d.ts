@@ -2088,28 +2088,29 @@ export declare class Renderer {
     private fenceGateItem;
     private objectItem;
     /**
-     * THE CLOTH TAKES THE STREET — the awning painter, one method for
-     * all four shapes × ten dyes, rebuilt to the masterwork bar:
-     * - THE TRUE SILHOUETTE: the ink follows the real edge — scallops
-     *   and drop bands live INSIDE the outline, never dangling past a
-     *   straight hem line — and it is struck at the ARCHITECTURE weight
-     *   (beginStructOutline), the same ring the walls wear.
-     * - THREE JOIN STATES per side: the same id merges into one cloth
-     *   (RUN LAW); a DIFFERENT awning butts FLUSH like built neighbours
-     *   (each keeps its own side ink — two framed canopies sharing a
-     *   post); open air is a FREE end and only free ends earn the
-     *   flare, the side rafter, and the wall stay.
-     * - IN-PLANE CLOTH: stripes, seams and ribs are projected through
-     *   the trapezoid (they splay with the plane), never left
-     *   screen-vertical inside a flared shape.
-     * - THE CARPENTRY SHOWS: a ledger bolted under the wall plate with
-     *   plate-and-pip fixings, side rafters at free ends, a front rail
-     *   the valance hangs from, and an underside lip that gives the
-     *   cloth thickness.
-     * Standing laws from the first build: TOP-PLANE + TRAPEZOID CUE,
-     * HEM CLEARS THE HEAD, SKIN LAW (the host wall's own wood), WIND
-     * LAW (windAtInto — the board shape is timber and holds still),
-     * THE VEIL LAW one tile over. Live-drawn every frame.
+     * THE CLOTH TAKES THE STREET — the awning painter, v3, the
+     * pixel-lock rebuild:
+     * - THE ONE PATH LAW: a single silhouette Path2D is BOTH the base
+     *   fill and the ink stroke — the outline sits exactly on the
+     *   cloth's edge, and a gap between fill and ink is impossible by
+     *   construction. All interior work clips to the same path.
+     * - THE PLANE SPEAKS IN VALUE (crate-lid grammar): the canopy slab
+     *   is the SKY-LIT top plane — brighter than any vertical face —
+     *   rolling darker into the tuck at the wall, with a sunlit arris
+     *   where it breaks over the front rail; the valance hangs PLUMB in
+     *   the darker unlit dye. That value split, not the trapezoid
+     *   alone, is what reads as looking DOWN onto a canopy instead of
+     *   straight at a curtain.
+     * - THE FRAME IS VISIBLE: timber cheek boards ride both side edges
+     *   (free and flush ends alike — flush neighbours pair theirs into
+     *   a shared post), diagonal wall braces catch the rail ends at
+     *   free ends, the ledger bolts through on plates, and the front
+     *   rail carries the skirt. The canopy is BUILT to its wall.
+     * - THE SKIRT HAS PRESENCE: deep scallops (market), a full drop
+     *   skirt with fold shading (shed), a piped bow band (bowed) — the
+     *   hanging edge is impactful, plumb, and breathes in the gusts.
+     * - Join states, in-plane projection, SKIN, WIND, VEIL, and
+     *   HEM-CLEARS-THE-HEAD all carried from v2. Live-drawn.
      */
     private awningItem;
     /**
