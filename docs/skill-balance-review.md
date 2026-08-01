@@ -3,6 +3,42 @@
 Date: 2026-08-01. Scope: the full XP economy across all 24 skills, as built. This is an
 audit, not a change; every claim carries a file anchor. Nothing here was modified.
 
+## 0. AS BUILT (2026-08-01, same day): the epic shipped in five commits
+
+Sections 4-5 below are the review as written; this ledger records what was done about it.
+
+- THE MARK'S WORTH + THE CASED CAMP (e597f7f): school XP 4 to 3 per damage; the felling
+  pays the school round(xpReward x 0.5) (styleless DoT deaths pay none); per-attacker
+  damage-XP bank on every body caps school damage-XP at 1.25 x xpReward per mark
+  (creditMark, the pet trickle pattern; DoTs and the backstab dmg-share draw the same
+  bank; kill bonus exempt). Sneak's passive pulse now saturates per witness
+  (30 x level per body life, world-state on the NPC). Constants in shared/skills.ts and
+  shared/sim/sneak.ts. Fixes F1 (partly), F2, F6.
+- ONE CLOCK FOR EVERY SWING (ca90295): repeat-gather path now pays tool tier, level
+  surplus, and Callings on every swing (gatherTicks, one helper both paths). Fixes F5.
+- THE PLOT PAYS FOR ITS TIME (d6e0fa9): crop xp = growMinutes x 10 exactly (carrot 80,
+  moonbell 400); watering pays ceil(xp/10) per stage behind the existing once-per-stage
+  bit. A tended 20-plot field is ~17k XP/hour of wall-clock. Fixes the worst of F3.
+- THE LADDER READS THE WATER (3f17ef3): five fishing waters (trout 1 / pike 15 /
+  eel 30 / salmon 45 / glimmer shoal 60), tier spots rest 45-90s into plain water
+  (fishing stays OUTSIDE the growth ledger, now test-spoken); four cooked dishes walk
+  cooking to 58 (42+ are drop recipes riding the vault trove automatically); placement
+  reads fen/deep/cold water on its own salt; each water wears one read-at-a-glance
+  accent over the shared rise-ring dialect. Fixes F4's worst hole (fishing L1) and
+  stretches cooking's dead road.
+- THE XP CONTRACT (this commit): packages/content/src/xpEconomy.test.ts pins the combat
+  coefficients, the mob xpReward/maxHp band [1.8, 6] plus the honest-kill floor on the
+  mark budget, node xp/second bands with per-skill tier monotonicity, the exact crop
+  law, the blessed bench ramp cap (xp <= ticks x (1 + levelReq x 0.4)), and the fishing
+  ladder's rest law. Server-side laws are pinned in
+  packages/server/src/game/xpEconomy.test.ts. Implements R1; R8 decided as BLESSED and
+  recorded in the ramp cap's comment.
+
+Deliberately NOT done: dual wield's ~1.5x stream stays (a hidden-skill discovery reward,
+now bounded per mark like everything else); defence-by-tanking stays uncapped (food is
+the throttle; revisit if live data shows AFK tanking); no XP multipliers or player-state
+dials were added anywhere, per the flood law.
+
 ## 1. The curve (the spine everything hangs on)
 
 `packages/shared/src/skills.ts:132-152`: exact RuneScape cumulative curve, MAX_LEVEL 99.
