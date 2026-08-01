@@ -79,17 +79,19 @@ if (new URLSearchParams(location.search).has('kit')) {
 // wears the quiet console's monoline sigils; each button carries a
 // device-aware shortcut badge read LIVE from the one keymap, so a
 // rebind in Controls redraws every badge at once.
+// ONE TABLE, ONE ORDER: the dock keys, the bumper cycle, and the
+// Screen Ring all read this roster — they can never disagree again.
 const DOCK_BUTTONS = [
-  ['btn-inventory', 'pack', 'Pack', 'screenPack'],
-  ['btn-skills', 'skills', 'Skills', 'screenSkills'],
-  ['btn-arts', 'arts', 'Techniques', 'screenArts'],
-  ['btn-craft', 'handiwork', 'Handiwork', 'screenCraft'],
-  ['btn-build', 'build', 'Build', 'screenBuild'],
-  ['btn-social', 'social', 'Social', 'screenSocial'],
-  ['btn-quests', 'quest', 'Journal', 'screenQuests'],
-  ['btn-rep', 'rep', 'Standing', 'screenRep'],
-  ['btn-map', 'map', 'Map', 'screenMap'],
-  ['btn-audio', 'sound', 'Settings', 'screenSettings'],
+  ['btn-inventory', 'pack', 'Pack', 'screenPack', 'inv'],
+  ['btn-skills', 'skills', 'Skills', 'screenSkills', 'skills'],
+  ['btn-arts', 'arts', 'Techniques', 'screenArts', 'arts'],
+  ['btn-craft', 'handiwork', 'Handiwork', 'screenCraft', 'craft'],
+  ['btn-build', 'build', 'Build', 'screenBuild', 'build'],
+  ['btn-social', 'social', 'Social', 'screenSocial', 'social'],
+  ['btn-quests', 'quest', 'Journal', 'screenQuests', 'quests'],
+  ['btn-rep', 'rep', 'Standing', 'screenRep', 'rep'],
+  ['btn-map', 'map', 'Map', 'screenMap', 'map'],
+  ['btn-audio', 'sound', 'Settings', 'screenSettings', 'audio'],
 ] as const;
 
 function renderDockBadges(): void {
@@ -239,6 +241,26 @@ renderer.outlineOn = localStorage.getItem('arx.outline') !== 'off';
 // section for anyone chasing frames.
 renderer.reflectionsOn = localStorage.getItem('arx.reflections') !== 'off';
 renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
+// SETTINGS' TAB RAIL: Sound / Display / Controls, one bench standing
+// at a time, LT/RT stepping them like every room's pager.
+{
+  const { tabRail } = await import('./ui/kit/tabs.js');
+  const tabs = tabRail(
+    [
+      { id: 'sound', label: 'Sound' },
+      { id: 'display', label: 'Display' },
+      { id: 'controls', label: 'Controls' },
+    ],
+    (id) => {
+      for (const sec of ['sound', 'display', 'controls']) {
+        document.getElementById(`settings-sec-${sec}`)?.classList.toggle('hidden', sec !== id);
+      }
+    },
+    'settingstab',
+  );
+  document.getElementById('settings-tabs')!.appendChild(tabs.root);
+}
+
 {
   const rows = document.getElementById('display-rows')!;
   const toggle = (label: string, initial: boolean, apply: (on: boolean) => void): void => {
@@ -631,7 +653,15 @@ function dropSlot(slot: number): void {
 const nav = new UiNav(input, {
   onInvMove: (from, to) => game.invMove(from, to),
   onDropToWorld: (slot) => dropSlot(slot),
-  onInspect: (el): boolean => panels.showCardFor(el),
+  onInspect: (el): boolean => {
+    // The journal's page renders on focus like every inspector pane.
+    const key = el?.dataset.navkey;
+    if (key?.startsWith('quest:') && key !== 'quest:track' && key !== 'quest:abandon') {
+      questLog.inspectQuest(key.slice('quest:'.length));
+      return false;
+    }
+    return panels.showCardFor(el);
+  },
   onItemMenu: (el): void => {
     panels.openMenuFor(el);
   },
@@ -677,10 +707,12 @@ document.addEventListener('pointerover', (e) => {
     nav.hideTooltip();
     return;
   }
-  // Hovering a technique plate or a skill emblem lights its
-  // inspector pane — exactly as pad focus does.
+  // Hovering a technique plate, a skill emblem, or an errand row
+  // lights its inspector pane — exactly as pad focus does.
   const inspectable = target?.closest?.('[data-navkey^="art:"], [data-navkey^="skill:"]');
   if (inspectable) panels.showCardFor(inspectable as HTMLElement);
+  const questRow = target?.closest?.('.quest-row[data-navkey^="quest:"]');
+  if (questRow) questLog.inspectQuest((questRow as HTMLElement).dataset.navkey!.slice('quest:'.length));
   panels.hideCard();
   const el = target?.closest?.('[data-tipname]');
   if (el) nav.showTooltipFor(el as HTMLElement);
@@ -778,18 +810,8 @@ function toggleScreen(
  * The shelf of screens, in bumper order — LB/RB walk it while any
  * screen is open, so every screen is pad-reachable from any other.
  */
-const SCREEN_ORDER = [
-  'inv',
-  'skills',
-  'arts',
-  'craft',
-  'build',
-  'social',
-  'quests',
-  'rep',
-  'map',
-  'audio',
-] as const;
+/** Derived from the one dock roster — never a second hand-kept list. */
+const SCREEN_ORDER = DOCK_BUTTONS.map(([, , , , which]) => which);
 
 function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
   if (panels.invOpen) return 'inv';

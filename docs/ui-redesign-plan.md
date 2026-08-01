@@ -1,8 +1,31 @@
 # The Grand Refit — THE HALL FITS THE HAND
 
-*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phases 1–5
-SHIPPED (THE ONE RULER, THE KIT OF ROOMS, THE HAND KNOWS THE ROOM,
-THE PERSONAL WING, THE MAKER'S WING), Phase 6 pending.***
+*Design review 2026-08-01. Status: **ALL SIX PHASES SHIPPED 2026-08-01 —
+EPIC COMPLETE** (THE ONE RULER 8839680 → THE WORLD'S WING & THE LIVING
+CHROME). The hall fits the hand.*
+
+**Phase 6 as-built (2026-08-01):** THE JOURNAL — errands deal onto paged
+leaves; THE DOG-EAR RIDES FIRST (the followed quest pins to a "Followed"
+shelf at the top wearing a gold diamond); the page renders on focus/hover
+(`inspectQuest`, wired through UiNav `onInspect` — `quest:track`/
+`quest:abandon` excluded from the prefix). STANDING — the five powers as
+chamfered crest cards: a ring gauge in the band's own ink around each
+faction's mark (initials of weight-bearing words — articles walk, so the
+Rookery and the Red Company never share a crest), band + meaning + banded
+meter + lately line; no scroll. SOCIAL — five tabs on the rail (Party
+first; Requests wears a pip whenever someone is asking, and its empty
+state speaks); typing lock unchanged. SETTINGS — Sound/Display/Controls
+on a tab rail (Display carries Interface size + motion); the capture
+plate's law untouched. THE LIVING CHROME — `dressPanel` attaches the
+ambient ember layer to every dressed screen (rooms breathe game-wide,
+gated by Interface motion + reduced-motion); the dock roster is ONE
+table (`DOCK_BUTTONS` carries the screen id; `SCREEN_ORDER` derives from
+it — the duplicate list is dead); the chat log's px cap went
+viewport-honest (`min(13.75rem, 24vh)`). Receipts: journal/standing/
+social/settings photographed live in pad mode; 7 ambient motes counted
+in a dressed room; 337 tests + build green. Standing notes: the Chart's
+hint strings already swap by device (left as-is); ceremonies ride the
+rem sweep and keep their fireworks.
 
 **Phase 5 as-built (2026-08-01):** THE VAULT — stored goods dealt onto
 paged leaves of eight-socket rows (`dealIntoLedger` + `vaultCell`), family
@@ -527,7 +550,8 @@ Each phase lands green, committed, and provable before the next begins.
    head of this doc.**
 6. **THE WORLD'S WING & THE LIVING CHROME** — Journal, Standing, Social,
    Settings, Riftgate, Chart dressing, HUD/hotbar/dock/trays, ceremonies
-   re-base, final delight pass.
+   re-base, final delight pass. **SHIPPED 2026-08-01 — see as-built note
+   at the head of this doc. THE EPIC IS COMPLETE.**
 
 ### The proving rig
 

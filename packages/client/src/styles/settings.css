@@ -7,6 +7,11 @@
 }
 
 /* Settings grew a Controls wing — the whole body scrolls as one page. */
+#settings-tabs {
+  flex: none;
+  margin: 0.25rem 0 0.625rem;
+}
+
 .settings-scroll {
   max-height: min(66vh, 45rem);
   overflow-y: auto;

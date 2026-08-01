@@ -19,7 +19,9 @@
 }
 
 #chat-log {
-  max-height: 11rem;
+  /* Viewport-honest: the log grows a little with a taller stage but
+     never crowds the lanes above the hotbar. */
+  max-height: min(13.75rem, 24vh);
   overflow-y: auto;
   display: flex;
   flex-direction: column;

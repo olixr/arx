@@ -3,6 +3,7 @@ import type { QuestObjectiveWire, QuestWire } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { dockGlyphUrl, itemIconUrl, uiIconUrl } from '../render/icons.js';
 import { bigButton, dressPanel, needChip, sectionHead } from './panel.js';
+import { createLedger } from './kit/ledger.js';
 
 /**
  * THE JOURNAL — the quest log (J). List left, the open page right.
@@ -25,6 +26,8 @@ export class QuestLog {
   private selected: string | null = null;
   private confirmAbandon: string | null = null;
   private renderedVersion = -1;
+  /** The reader's leaf in the errand ledger, kept across repaints. */
+  private leaf = 0;
 
   constructor(private readonly game: ClientGame) {
     dressPanel(this.panel, {
@@ -102,9 +105,16 @@ export class QuestLog {
     }
 
     this.list.innerHTML = '';
-    const addRow = (id: string, name: string, chip: string, tone: string): void => {
+    const rows: HTMLElement[] = [];
+    // THE DOG-EAR RIDES FIRST: the followed errand pins to the top of
+    // the ledger, whatever shelf it belongs to.
+    const followedId =
+      localStorage.getItem(this.trackKey) && this.game.quests.has(localStorage.getItem(this.trackKey)!)
+        ? localStorage.getItem(this.trackKey)
+        : null;
+    const makeRow = (id: string, name: string, chip: string, tone: string): HTMLElement => {
       const row = document.createElement('button');
-      row.className = `quest-row${this.selected === id ? ' sel' : ''}`;
+      row.className = `quest-row${this.selected === id ? ' sel' : ''}${followedId === id ? ' followed' : ''}`;
       row.dataset.nav = '';
       row.dataset.navkey = `quest:${id}`;
       row.dataset.acta = 'Read';
@@ -115,36 +125,78 @@ export class QuestLog {
       state.className = `quest-row-state ${tone}`;
       state.textContent = chip;
       row.append(label, state);
-      row.addEventListener('click', () => {
-        this.selected = id;
-        this.confirmAbandon = null;
-        this.render();
-      });
-      this.list.appendChild(row);
+      row.addEventListener('click', () => this.inspectQuest(id));
+      return row;
     };
-    if (ready.length > 0) {
-      this.list.appendChild(sectionHead('Ready to turn in'));
-      for (const q of ready) addRow(q.id, q.name, `${q.turnInName}`, 'ready');
+    const followed = followedId ? active.find((q) => q.id === followedId) : undefined;
+    if (followed) {
+      rows.push(sectionHead('Followed'));
+      rows.push(
+        makeRow(
+          followed.id,
+          followed.name,
+          followed.status === 'ready'
+            ? followed.turnInName
+            : followed.stages > 1
+              ? `part ${followed.stage + 1} of ${followed.stages}`
+              : '',
+          followed.status === 'ready' ? 'ready' : 'active',
+        ),
+      );
     }
-    if (underway.length > 0) {
-      this.list.appendChild(sectionHead('Underway'));
-      for (const q of underway) addRow(q.id, q.name, q.stages > 1 ? `part ${q.stage + 1} of ${q.stages}` : '', 'active');
+    const rest = (list: QuestWire[]): QuestWire[] => list.filter((q) => q.id !== followedId);
+    if (rest(ready).length > 0) {
+      rows.push(sectionHead('Ready to turn in'));
+      for (const q of rest(ready)) rows.push(makeRow(q.id, q.name, `${q.turnInName}`, 'ready'));
+    }
+    if (rest(underway).length > 0) {
+      rows.push(sectionHead('Underway'));
+      for (const q of rest(underway))
+        rows.push(makeRow(q.id, q.name, q.stages > 1 ? `part ${q.stage + 1} of ${q.stages}` : '', 'active'));
     }
     if (resting.length > 0) {
-      this.list.appendChild(sectionHead('Resting'));
-      for (const d of resting) addRow(d.id, d.name, cooldownWord((d.cooldownUntil ?? now) - now), 'resting');
+      rows.push(sectionHead('Resting'));
+      for (const d of resting) rows.push(makeRow(d.id, d.name, cooldownWord((d.cooldownUntil ?? now) - now), 'resting'));
     }
     if (finished.length > 0) {
-      this.list.appendChild(sectionHead('Finished'));
-      for (const d of finished) addRow(d.id, d.name, d.completions > 1 ? `×${d.completions}` : '', 'done');
+      rows.push(sectionHead('Finished'));
+      for (const d of finished) rows.push(makeRow(d.id, d.name, d.completions > 1 ? `×${d.completions}` : '', 'done'));
     }
-    if (this.list.childElementCount === 0) {
+    if (rows.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'quest-empty';
       empty.textContent = 'No errands sworn yet. Folk with work to give wear a mark over their heads — go and talk.';
       this.list.appendChild(empty);
+    } else {
+      // The errands deal onto leaves — nothing lives below the fold.
+      const ledger = createLedger<HTMLElement>({
+        renderRow: (el) => el,
+        seedRows: 9,
+        initialLeaf: this.leaf,
+        onLeaf: (leaf) => {
+          this.leaf = leaf;
+        },
+      });
+      this.list.appendChild(ledger.root);
+      ledger.setItems(rows);
     }
 
+    this.renderBench();
+  }
+
+  /**
+   * Light the page for one errand without redealing the ledger —
+   * focus and hover ride this, so reading costs nothing.
+   */
+  inspectQuest(id: string): void {
+    if (!this.game.quests.has(id) && !this.game.questsDone.has(id)) return;
+    if (this.selected === id) return;
+    this.selected = id;
+    this.confirmAbandon = null;
+    this.list.querySelectorAll('.quest-row.sel').forEach((r) => r.classList.remove('sel'));
+    this.list
+      .querySelector(`[data-navkey="${CSS.escape(`quest:${id}`)}"]`)
+      ?.classList.add('sel');
     this.renderBench();
   }
 

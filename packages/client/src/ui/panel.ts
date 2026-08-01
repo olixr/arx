@@ -22,11 +22,16 @@
  * sized for a couch and a controller.
  */
 
+import { attachAmbient } from './kit/ambient.js';
+
 /** Dress a panel: icon plaque + existing h3 title + hint + close chip. */
 export function dressPanel(
   panel: HTMLElement,
   opts: { icon?: string; hint?: string; onClose?: () => void },
 ): { setHint: (text: string) => void; setIcon: (url: string) => void } {
+  // THE ROOM BREATHES: every dressed screen carries the ambient ember
+  // layer behind its content — a whisper, gated by Interface motion.
+  attachAmbient(panel);
   const h3 = panel.querySelector('h3');
   const head = document.createElement('div');
   head.className = 'panel-head';

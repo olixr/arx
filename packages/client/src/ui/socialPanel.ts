@@ -3,6 +3,7 @@ import type { EntityId } from '@arx/shared';
 import { instanceName } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
+import { tabRail } from './kit/tabs.js';
 import type { ClientGame } from '../game/clientGame.js';
 
 /** The social snapshot as the server tells it. */
@@ -57,18 +58,46 @@ export class SocialPanel {
   /** Two-click Disband confirmation. */
   private armedDisband = false;
 
+  /** The standing tab and its wrappers (Grand Refit Ph6). */
+  private socialTab = 'party';
+  private readonly tabWraps = new Map<string, HTMLElement>();
+  private readonly rail: ReturnType<typeof tabRail>;
+
   constructor(private readonly game: ClientGame) {
     this.ledger = document.createElement('div');
     this.ledger.className = 'social-body';
 
+    // THE FELLOWSHIP'S TABS: five sections, one standing at a time —
+    // LT/RT step them; Requests wears a pip when someone is asking.
+    this.rail = tabRail(
+      [
+        { id: 'party', label: 'Party' },
+        { id: 'nearby', label: 'Nearby' },
+        { id: 'friends', label: 'Friends' },
+        { id: 'requests', label: 'Requests' },
+        { id: 'find', label: 'Find' },
+      ],
+      (id) => {
+        this.socialTab = id;
+        for (const [tab, wrap] of this.tabWraps) wrap.classList.toggle('hidden', tab !== id);
+      },
+      'socialtab',
+    );
+    this.ledger.appendChild(this.rail.root);
+    const wrap = (id: string, ...els: HTMLElement[]): void => {
+      const box = document.createElement('div');
+      box.className = 'social-sec' + (id === this.socialTab ? '' : ' hidden');
+      box.append(...els);
+      this.tabWraps.set(id, box);
+      this.ledger.appendChild(box);
+    };
+
     // PARTY — the fellowship you actively walk with.
-    this.ledger.appendChild(sectionHead('Party'));
     this.partyList = document.createElement('div');
     this.partyList.className = 'row-list';
-    this.ledger.appendChild(this.partyList);
+    wrap('party', this.partyList);
 
     // SEARCH — the only text the HUD asks you to type outside chat.
-    this.ledger.appendChild(sectionHead('Find a Friend'));
     const searchRow = document.createElement('div');
     searchRow.className = 'social-search';
     this.searchInput = document.createElement('input');
@@ -89,26 +118,23 @@ export class SocialPanel {
     });
     searchRow.appendChild(this.searchInput);
     searchRow.appendChild(bigButton('Search', 'social:search', () => this.doSearch()));
-    this.ledger.appendChild(searchRow);
     this.searchResults = document.createElement('div');
     this.searchResults.className = 'row-list';
-    this.ledger.appendChild(this.searchResults);
 
-    this.ledger.appendChild(sectionHead('Nearby Players'));
     this.nearbyList = document.createElement('div');
     this.nearbyList.className = 'row-list';
-    this.ledger.appendChild(this.nearbyList);
+    wrap('nearby', this.nearbyList);
 
-    this.ledger.appendChild(sectionHead('Friends'));
     this.friendsList = document.createElement('div');
     this.friendsList.className = 'row-list';
-    this.ledger.appendChild(this.friendsList);
+    wrap('friends', this.friendsList);
 
     this.requestsHead = sectionHead('Requests');
-    this.ledger.appendChild(this.requestsHead);
+    this.requestsHead.classList.add('hidden');
     this.requestsList = document.createElement('div');
     this.requestsList.className = 'row-list';
-    this.ledger.appendChild(this.requestsList);
+    wrap('requests', this.requestsList);
+    wrap('find', searchRow, this.searchResults);
 
     this.inspectView = document.createElement('div');
     this.inspectView.className = 'social-body hidden';
@@ -459,8 +485,15 @@ export class SocialPanel {
   private renderRequests(): void {
     this.requestsList.innerHTML = '';
     const none = this.snap.incoming.length === 0 && this.snap.outgoing.length === 0;
-    this.requestsHead.classList.toggle('hidden', none);
-    if (none) return;
+    // Someone asking lights the tab's pip — the ask is never buried.
+    this.rail.setPip('requests', this.snap.incoming.length > 0);
+    if (none) {
+      const empty = document.createElement('div');
+      empty.className = 'quest-empty';
+      empty.textContent = 'No asks standing. Friends you seek wait under Find.';
+      this.requestsList.appendChild(empty);
+      return;
+    }
     for (const name of this.snap.incoming) {
       const { row, actions } = this.row(name, 'wants to be your friend');
       actions.appendChild(

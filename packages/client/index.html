@@ -128,16 +128,22 @@
       </div>
 
       <!-- SETTINGS — sound, display, and controls, dialed from the couch. -->
+      <!-- SETTINGS (Grand Refit Ph6): three benches on a tab rail —
+           Sound, Display (with the ruler's hand), Controls. -->
       <div id="audio-panel" class="ui-screen screen-settings hidden">
         <h3>Settings</h3>
+        <div id="settings-tabs"></div>
         <div class="settings-scroll">
-          <h4 class="menu-section">Sound</h4>
-          <div id="audio-rows"></div>
-          <h4 class="menu-section">Display</h4>
-          <div id="display-rows"></div>
-          <h4 class="menu-section">Controls</h4>
-          <div id="controls-rows"></div>
-          <p id="audio-nowplaying" class="audio-now"></p>
+          <div id="settings-sec-sound">
+            <div id="audio-rows"></div>
+            <p id="audio-nowplaying" class="audio-now"></p>
+          </div>
+          <div id="settings-sec-display" class="hidden">
+            <div id="display-rows"></div>
+          </div>
+          <div id="settings-sec-controls" class="hidden">
+            <div id="controls-rows"></div>
+          </div>
         </div>
       </div>
 

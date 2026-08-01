@@ -9,6 +9,23 @@
   height: min(50rem, 88vh);
 }
 
+/* The tabs' floor space (Grand Refit Ph6). */
+.social-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  flex: 1;
+}
+
+.social-body > .tab-rail {
+  margin-bottom: 0.75rem;
+  flex: none;
+}
+
 .social-body {
   flex: 1;
   min-height: 0;

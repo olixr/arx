@@ -2,6 +2,7 @@ import type { RepStandingWire } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { dockGlyphUrl } from '../render/icons.js';
 import { dressPanel } from './panel.js';
+import { ringGauge } from './kit/ring.js';
 
 /**
  * THE STANDING SCREEN — the name you carry, read back (Phase 1 of
@@ -92,14 +93,35 @@ export class RepScreen {
 
     const head = document.createElement('div');
     head.className = 'rep-row-head';
+    // The crest: the faction's mark ringed by the weight of its
+    // opinion, inked in the band's own color (Grand Refit Ph6).
+    const ink = BAND_INK[s.band] ?? '#efe3c2';
+    const ring = ringGauge(Math.min(1, Math.abs(s.value) / 100), { tone: ink });
+    ring.root.classList.add('rep-crest');
+    const initials = document.createElement('span');
+    initials.className = 'rep-crest-mark';
+    // The mark: initials of the WEIGHT-BEARING words (articles walk),
+    // so the Rookery and the Red Company never share a crest.
+    const words = s.name.split(/\s+/).filter((w) => !/^(the|of|and)$/i.test(w));
+    initials.textContent = (
+      words.length >= 2 ? words.map((w) => w[0] ?? '').join('') : (words[0] ?? s.name).slice(0, 2)
+    )
+      .slice(0, 2)
+      .toUpperCase();
+    initials.style.color = ink;
+    ring.center.appendChild(initials);
+    head.appendChild(ring.root);
+    const titles = document.createElement('span');
+    titles.className = 'rep-titles';
     const name = document.createElement('span');
     name.className = 'rep-name';
     name.textContent = s.name;
     const band = document.createElement('span');
     band.className = 'rep-band';
     band.textContent = bandLabel(s.band);
-    band.style.color = BAND_INK[s.band] ?? '#efe3c2';
-    head.append(name, band);
+    band.style.color = ink;
+    titles.append(name, band);
+    head.appendChild(titles);
 
     // The banded meter: a centered notch, standing filling out from it.
     const meter = document.createElement('div');
