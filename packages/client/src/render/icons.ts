@@ -2702,6 +2702,24 @@ const PAINTERS: Record<string, IconPainter> = {
     c.lineTo(0.64, 0.54);
     c.stroke();
   },
+  timberpost: (c, col) => {
+    // A hewn post: plinth, shaft with lit facet, capped square.
+    c.fillStyle = shade(col, -10);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.fillRect(0.36, 0.74, 0.28, 0.12);
+    c.strokeRect(0.36, 0.74, 0.28, 0.12);
+    c.fillStyle = col;
+    c.fillRect(0.42, 0.28, 0.16, 0.46);
+    c.strokeRect(0.42, 0.28, 0.16, 0.46);
+    c.fillStyle = shade(col, 22);
+    c.fillRect(0.42, 0.28, 0.05, 0.46);
+    c.fillStyle = shade(col, -4);
+    c.fillRect(0.38, 0.18, 0.24, 0.1);
+    c.strokeRect(0.38, 0.18, 0.24, 0.1);
+    c.fillStyle = shade(col, 30);
+    c.fillRect(0.38, 0.15, 0.24, 0.04);
+  },
   pennants: (c, col) => {
     // A swagged rope of three little flags.
     c.strokeStyle = '#6e5638';
@@ -5584,6 +5602,8 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   awning_market: { icon: 'awning', color: '#c9962e' },
   awning_board: { icon: 'awning', color: '#8a6534' },
   awning_bowed: { icon: 'awning', color: '#7a3f8f' },
+  porch_deck: { icon: 'floortile', color: '#9a7040' },
+  timber_post: { icon: 'timberpost', color: '#8a6534' },
   wall_banner: { icon: 'banner', color: '#31589c' },
   pennant_string: { icon: 'pennants', color: '#a8433a' },
   bracket_sign: { icon: 'brasign', color: '#8a6534' },

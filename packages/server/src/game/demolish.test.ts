@@ -264,3 +264,11 @@ test('a wall-fall spills its hanging salvage as an unowned pile', () => {
     );
   }
 });
+
+test('THE PORCH LAYER: a rail off the deck tears down to the DECK, re-registered', () => {
+  const s = slate({ built: { tile: Tile.RailWood, owner: 7, prevTile: Tile.PorchDeck } });
+  proto.tickDemolish.call(s, 1, s.player);
+  assert.ok(s.events.includes(`patch:${Tile.PorchDeck}`), 'the deck comes back, not grass');
+  assert.deepEqual(s.registered, [{ tile: Tile.PorchDeck, owner: 7, prevTile: Tile.Grass }]);
+  assert.deepEqual(s.saved, s.registered, 'memory and DB re-register in lockstep');
+});

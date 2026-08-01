@@ -27,7 +27,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
     tiles: [
       Tile.Grass, Tile.GrassTall, Tile.Dirt, Tile.Path, Tile.Sand, Tile.Snow,
       Tile.Swamp, Tile.Tilled, Tile.StoneFloor, Tile.WoodFloor, Tile.CaveFloor,
-      Tile.CaveRubble, Tile.DungeonFloor, Tile.Bridge, Tile.Dock, Tile.Ramp, Tile.Cliff,
+      Tile.CaveRubble, Tile.DungeonFloor, Tile.Bridge, Tile.Dock, Tile.PorchDeck, Tile.Ramp, Tile.Cliff,
       Tile.Void, TILE_SKIP as Tile,
     ],
   },
@@ -96,7 +96,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.Counter, Tile.Hearth, Tile.Barrel, Tile.Crate, Tile.CrateGoods,
       Tile.MarketStall, Tile.BannerPole, Tile.HangingSign, Tile.Signpost, Tile.FlowerBox,
       Tile.ToolRack, Tile.WeaponRack, Tile.Vault, Tile.Lectern, Tile.Basin,
-      Tile.LampPost, Tile.Brazier,
+      Tile.LampPost, Tile.Brazier, Tile.TimberPost,
     ],
   },
   {

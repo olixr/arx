@@ -364,11 +364,25 @@ export enum Tile {
   EelRun = 152,
   SalmonRun = 153,
   GlimmerShoal = 154,
+  // THE PORCH (exterior decor Phase 3): the deck comes ashore.
+  /**
+   * A lifted timber deck on dry land — the dock's stance (DOCK_LIFT)
+   * without the water. Walkable; render-only lift; boards take the
+   * house's own wood when the deck touches a building.
+   */
+  PorchDeck = 155,
+  /**
+   * A hewn wooden porch post — the stone pillar's stance in cottage
+   * timber. Solid; you walk around it; rails and awnings compose
+   * beside it, it carries nothing structurally.
+   */
+  TimberPost = 156,
   // THE OUTWARD FACE — awnings, dealt in bands of DETAIL_BAND (16):
   // each anchor is the shape at dye 0 and `anchor + dye` wears the
   // dye roster (awningInfo reads it back). Walkable canopy tiles —
   // the cloth is overhead, the street runs on beneath. Ids in a band
-  // are the state (never reorder); 155..159 stay free for the porch.
+  // are the state (never reorder); 157..159 stay free for the porch's
+  // kin (a stone stoop, a step, whatever the wing needs).
   /** Plain sloped canvas on two timber brackets: +dye (160..175). */
   AwningShed = 160,
   /** Sloped canvas with the scalloped valance: +dye (176..191). */
@@ -779,6 +793,8 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.GateGarrison]: { name: 'garrison gate', solid: false, color: '#453f52', raised: true, topColor: '#716b80' },
   [Tile.GateGarrisonShut]: { name: 'shut garrison gate', solid: true, color: '#453f52', raised: true, topColor: '#716b80' },
   [Tile.Throne]: { name: 'throne', solid: true, color: '#7a552e', raised: true, topColor: '#c9962e' },
+  [Tile.PorchDeck]: { name: 'porch deck', solid: false, color: '#9a7040', variants: ['#93693a'] },
+  [Tile.TimberPost]: { name: 'timber post', solid: true, color: '#7a5c34', raised: true, topColor: '#93713f' },
   // THE OUTWARD FACE — awning anchors (dye 0 = linen). Walkable: the
   // canvas is overhead, the street runs on beneath. The other dyes'
   // defs are generated right below the literal from these anchors.
@@ -1419,6 +1435,7 @@ export function nearestFloorTile(
   const isFloor = (t: number | undefined) =>
     t === Tile.WoodFloor ||
     t === Tile.StoneFloor ||
+    t === Tile.PorchDeck ||
     t === Tile.CaveFloor ||
     t === Tile.DungeonFloor ||
     t === Tile.CaveRubble ||

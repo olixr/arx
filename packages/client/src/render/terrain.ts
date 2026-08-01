@@ -4,6 +4,7 @@ import {
   Detail,
   GARRISON_TILES,
   Tile,
+  WALL_RUN_TILES,
   awningInfo,
   diagWallInfo,
   wallHungInfo,
@@ -14,6 +15,7 @@ import {
   valueNoise,
 } from '@arx/shared';
 import { chamferRect, facetCircle } from './shapes.js';
+import { shade } from './rig.js';
 import { DYE_SWATCHES } from './icons.js';
 import type { WoodSkin } from './woodSkins.js';
 
@@ -381,6 +383,22 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
         Tile.StoneFloor
       );
     }
+    // THE PORCH: the yard continues under the lifted deck — the
+    // garrison-gate pick, south first (that side's base sliver shows
+    // beneath the fascia); deck kin never lend a skin.
+    if (t === Tile.PorchDeck) {
+      const pick = (tt: Tile | undefined): Tile | null =>
+        tt !== undefined && !tileDef(tt).solid && tt !== Tile.PorchDeck && tt !== Tile.Ramp
+          ? tt
+          : null;
+      return (
+        pick(ground(tx, ty + 1)) ??
+        pick(ground(tx + 1, ty)) ??
+        pick(ground(tx - 1, ty)) ??
+        pick(ground(tx, ty - 1)) ??
+        Tile.Grass
+      );
+    }
     // An awning is cloth OVERHEAD: the street runs on beneath it —
     // the garrison-gate law's pick, south first (that side's base
     // sliver is the visible one), flanks next. A run-mate is canopy,
@@ -413,6 +431,7 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       t === Tile.DoorwayStoneWideShut ||
       t === Tile.ArchStone ||
       t === Tile.PillarStone ||
+      t === Tile.TimberPost ||
       t === Tile.RailWood
     ) {
       return nearestFloor(ground, tx, ty);
@@ -580,6 +599,7 @@ export function startChunkBake(
   const groundDeck = (tx: number, ty: number): boolean => elev(tx, ty) === 0;
   steps.push(() => drawDocks(ctx, ground, baseX, baseY, px, groundDeck));
   steps.push(() => drawBridges(ctx, ground, baseX, baseY, px, groundDeck));
+  steps.push(() => drawPorchDecks(ctx, ground, baseX, baseY, px, woodSkin, groundDeck));
 
   return { canvas, steps, next: 0 };
 }
@@ -622,6 +642,140 @@ const DOCK_TONES = ['#9c7a4a', '#92714a', '#a5834f', '#8a683c'];
  * butting a bridge keeps its boards open); everything is world-keyed,
  * so chunk seams and resolution tiers agree.
  */
+/**
+ * THE PORCH — the deck ashore. Boards ride paintDeckBoards' porch
+ * family at DOCK_LIFT; THE DECK TAKES THE HOUSE'S WOOD (the connected
+ * patch probes for an adjoining wall run and wears that building's
+ * floor tones — one skin per patch, cached per bake); the dressing is
+ * BLOCKY per the masterwork laws: rim-joist fascia with squared
+ * footing blocks, a full-width tread step onto walkable ground, and
+ * the architecture ring struck at bake time on exposed edges only.
+ */
+function drawPorchDecks(
+  ctx: CanvasRenderingContext2D,
+  ground: GroundSampler,
+  baseX: number,
+  baseY: number,
+  px: number,
+  skinAt?: WoodSkinSampler,
+  include?: (tx: number, ty: number) => boolean,
+): void {
+  const liftB = Math.round((DOCK_LIFT / FLAT) * px);
+  // One skin per connected patch: flood (capped) looking for a wall.
+  const patchSkin = new Map<string, readonly string[] | null>();
+  const skinFor = (sx: number, sy: number): readonly string[] | null => {
+    const rootKey = `${sx},${sy}`;
+    const hit = patchSkin.get(rootKey);
+    if (hit !== undefined) return hit;
+    let found: readonly string[] | null = null;
+    const seen = new Set<string>([rootKey]);
+    const queue: Array<[number, number]> = [[sx, sy]];
+    const members: string[] = [rootKey];
+    while (queue.length > 0 && seen.size <= 64) {
+      const [qx, qy] = queue.pop()!;
+      for (const [dx, dy] of [[0, -1], [1, 0], [-1, 0], [0, 1]] as const) {
+        const nx = qx + dx;
+        const ny = qy + dy;
+        const nt = ground(nx, ny);
+        if (found === null && nt !== undefined && WALL_RUN_TILES.includes(nt as Tile)) {
+          found = skinAt ? skinAt(nx, ny).floorTones : null;
+        }
+        const key = `${nx},${ny}`;
+        if (nt === Tile.PorchDeck && !seen.has(key)) {
+          seen.add(key);
+          members.push(key);
+          queue.push([nx, ny]);
+        }
+      }
+    }
+    for (const m of members) patchSkin.set(m, found);
+    return found;
+  };
+  for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
+    for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
+      const tx = baseX + lx;
+      const ty = baseY + ly;
+      if (!isPorchSurface(ground, tx, ty)) continue;
+      if (include && !include(tx, ty)) continue;
+      const gx = lx * px;
+      const gy = ly * px;
+      const hasN = isPorchSurface(ground, tx, ty - 1);
+      const hasS = isPorchSurface(ground, tx, ty + 1);
+      const hasE = isPorchSurface(ground, tx + 1, ty);
+      const hasW = isPorchSurface(ground, tx - 1, ty);
+      const tones = skinFor(tx, ty) ?? undefined;
+      const fasciaBase = tones ? tones[3]! : '#856a44';
+      // Standing shadow on the land south of the deck: flat-art AO.
+      if (!hasS) {
+        ctx.fillStyle = 'rgba(30, 22, 12, 0.2)';
+        ctx.fillRect(gx, gy + px, px, px * 0.16);
+        ctx.fillStyle = 'rgba(30, 22, 12, 0.1)';
+        ctx.fillRect(gx, gy + px + px * 0.16, px, px * 0.14);
+      }
+      // Root shade where the deck meets its house or the yard north.
+      if (!hasN) {
+        ctx.fillStyle = 'rgba(30, 22, 12, 0.24)';
+        ctx.fillRect(gx, gy - liftB - px * 0.045, px, px * 0.045);
+      }
+      // The boards, in the house's own wood when a wall adjoins.
+      paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, 'porch', false, tones);
+      // South fascia: the rim joist that makes the lift honest, with
+      // squared footing blocks carrying it to the ground.
+      if (!hasS) {
+        const fy = gy + px - liftB;
+        ctx.fillStyle = shade(fasciaBase, -26);
+        ctx.fillRect(gx, fy, px, liftB);
+        ctx.fillStyle = shade(fasciaBase, -8);
+        ctx.fillRect(gx, fy, px, Math.max(1.5, liftB * 0.24));
+        ctx.fillStyle = 'rgba(24, 15, 6, 0.35)';
+        ctx.fillRect(gx, fy + liftB - Math.max(1.5, liftB * 0.18), px, Math.max(1.5, liftB * 0.18));
+        for (const fpos of [0.16, 0.84] as const) {
+          const bw = px * 0.12;
+          const bx = gx + fpos * px - bw / 2;
+          ctx.fillStyle = shade(fasciaBase, -34);
+          ctx.fillRect(bx, gy + px - Math.max(1.5, liftB * 0.2), bw, Math.max(2, liftB * 0.2) + px * 0.05);
+        }
+      }
+      // The tread step: a full-width squared course where the deck
+      // opens onto walkable ground (the porch invites the yard in).
+      const southT = ground(tx, ty + 1);
+      if (!hasS && southT !== undefined && !tileDef(southT).solid && southT !== Tile.PorchDeck) {
+        const sw = px * 0.56;
+        const sx2 = gx + (px - sw) / 2;
+        const stepH = Math.max(2, liftB * 0.5);
+        ctx.fillStyle = shade(fasciaBase, -30);
+        ctx.fillRect(sx2, gy + px, sw, stepH);
+        ctx.fillStyle = tones ? tones[0]! : '#997a50';
+        ctx.fillRect(sx2, gy + px - Math.max(1.5, px * 0.02), sw, Math.max(2, px * 0.035));
+        beginDeckOutline(ctx, px);
+        ctx.strokeRect(sx2, gy + px - Math.max(1.5, px * 0.02), sw, stepH + Math.max(1.5, px * 0.02));
+      }
+      // THE RING at bake time, exposed edges only (the deck-outline
+      // law): lifted top edge, side verticals, fascia foot and caps.
+      beginDeckOutline(ctx, px);
+      ctx.beginPath();
+      const topY = gy - liftB;
+      if (!hasN) {
+        ctx.moveTo(gx, topY);
+        ctx.lineTo(gx + px, topY);
+      }
+      if (!hasW) {
+        ctx.moveTo(gx, topY);
+        ctx.lineTo(gx, gy + px - (hasS ? liftB : 0));
+      }
+      if (!hasE) {
+        ctx.moveTo(gx + px, topY);
+        ctx.lineTo(gx + px, gy + px - (hasS ? liftB : 0));
+      }
+      if (!hasS) {
+        ctx.moveTo(gx, gy + px);
+        ctx.lineTo(gx + px, gy + px);
+      }
+      ctx.stroke();
+    }
+  }
+}
+
 function drawDocks(
   ctx: CanvasRenderingContext2D,
   ground: GroundSampler,
@@ -780,6 +934,37 @@ const BRIDGE_TONES = ['#997a50', '#8e7049', '#a28356', '#856a44'];
  *  decks wear the same bold dark edge as walls, props and entities
  *  (the outline "shader"), stroked at BAKE time on exposed silhouette
  *  edges only, so the ring costs nothing per frame. */
+
+/**
+ * THE PORCH (exterior decor Phase 3): a lifted deck on dry land — the
+ * dock's stance without the water gate. THE CARRIED DECK rule: porch
+ * furniture (rails, posts, lamps, and the prop family) laid ON the
+ * deck replaces the tile, but the boards must run beneath it — any
+ * such tile with a PorchDeck cardinal neighbour keeps its decking and
+ * its lift. The renderer's porchAt mirrors this exactly.
+ */
+export function porchCarries(t: number | undefined): boolean {
+  if (t === undefined) return false;
+  return (
+    t === Tile.RailWood ||
+    t === Tile.TimberPost ||
+    t === Tile.LampPost ||
+    (t >= Tile.Barrel && t <= Tile.Basin)
+  );
+}
+
+export function isPorchSurface(ground: GroundSampler, tx: number, ty: number): boolean {
+  const t = ground(tx, ty);
+  if (t === Tile.PorchDeck) return true;
+  if (!porchCarries(t)) return false;
+  return (
+    ground(tx, ty - 1) === Tile.PorchDeck ||
+    ground(tx, ty + 1) === Tile.PorchDeck ||
+    ground(tx + 1, ty) === Tile.PorchDeck ||
+    ground(tx - 1, ty) === Tile.PorchDeck
+  );
+}
+
 const STRUCT_INK = '#241a2e';
 
 /** Arm the bake context for a deck silhouette stroke. */
@@ -818,13 +1003,15 @@ function paintDeckBoards(
   gy: number,
   px: number,
   liftB: number,
-  family: 'bridge' | 'dock',
+  family: 'bridge' | 'dock' | 'porch',
   vertRun: boolean,
+  tonesOverride?: readonly string[],
 ): void {
   const seam = Math.max(1, px * 0.02);
   const dy0 = gy - liftB;
-  const tones = family === 'bridge' ? BRIDGE_TONES : DOCK_TONES;
-  ctx.fillStyle = family === 'bridge' ? '#54402a' : '#5a4326';
+  const tones =
+    tonesOverride ?? (family === 'bridge' ? BRIDGE_TONES : DOCK_TONES);
+  ctx.fillStyle = family === 'bridge' ? '#54402a' : family === 'porch' ? '#574128' : '#5a4326';
   ctx.fillRect(gx, dy0, px, px);
   const ROWS = 5;
   // Foreshortened course grid: cumulative fractions on a mild power
@@ -2595,6 +2782,7 @@ export function bakeElevated(
   const deckHere = (tx: number, ty: number): boolean => elev(tx, ty) === level;
   drawDocks(ctx, ground, baseX, baseY, px, deckHere);
   drawBridges(ctx, ground, baseX, baseY, px, deckHere);
+  drawPorchDecks(ctx, ground, baseX, baseY, px, undefined, deckHere);
 
   return { canvas, rows };
 }

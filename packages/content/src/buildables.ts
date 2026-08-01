@@ -144,8 +144,9 @@ export function buildableGround(def: BuildableDef): readonly Tile[] {
   return def.ground ?? BUILDABLE_GROUND;
 }
 
-/** Indoor furniture: only stands on a laid floor. */
-const FLOORS: readonly Tile[] = [Tile.WoodFloor, Tile.StoneFloor];
+/** Indoor furniture: only stands on a laid floor — and THE PORCH is
+ *  a floor of the outdoors: benches, rails and lamps rise from it. */
+const FLOORS: readonly Tile[] = [Tile.WoodFloor, Tile.StoneFloor, Tile.PorchDeck];
 
 /**
  * Structural and civic pieces: open ground OR a laid floor, so walls,
@@ -382,6 +383,7 @@ const defs: BuildableDef[] = [
     xp: 35,
     materials: [{ item: 'log', qty: 1 }, { item: 'coal', qty: 1 }],
     ticks: 30,
+    ground: OUTDOOR_AND_FLOORS,
   },
   {
     id: 'alembic',
@@ -522,6 +524,33 @@ const defs: BuildableDef[] = [
     xp: 80,
     materials: [{ item: 'oak_board', qty: 4 }, { item: 'board', qty: 4 }],
     ticks: 50,
+  },
+  {
+    // THE PORCH: a lifted timber deck on open ground — the dock's
+    // stance brought ashore. It takes the house's own wood when it
+    // touches a building, and rails, posts, lamps and awnings all
+    // rise from it (it joins the FLOORS allowlist).
+    id: 'porch_deck',
+    cat: 'foundation',
+    name: 'Porch deck',
+    tile: Tile.PorchDeck,
+    levelReq: 8,
+    xp: 44,
+    materials: [{ item: 'board', qty: 3 }],
+    ticks: 28,
+  },
+  {
+    // A hewn post driven whole (the milled-and-whole law: posts are
+    // never sawn to boards) — the porch's corner bones.
+    id: 'timber_post',
+    cat: 'wall',
+    name: 'Timber post',
+    tile: Tile.TimberPost,
+    levelReq: 6,
+    xp: 34,
+    materials: [{ item: 'log', qty: 1 }],
+    ticks: 22,
+    ground: OUTDOOR_AND_FLOORS,
   },
   {
     // THE OUTWARD FACE: awnings bolt to a wall face and shade the

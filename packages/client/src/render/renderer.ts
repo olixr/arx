@@ -1876,6 +1876,32 @@ export class Renderer {
    * feet climb tread by tread. Everything drawn in the world asks this
    * one function.
    */
+  /**
+   * The renderer's mirror of terrain's isPorchSurface, closure-free:
+   * renderLift runs for every body and item every frame, and a per-
+   * call sampler allocation is real garbage in a hot path.
+   */
+  private porchAt(game: ClientGame, tx: number, ty: number): boolean {
+    const w = game.world;
+    const t = w.groundAt(tx, ty);
+    if (t === Tile.PorchDeck) return true;
+    if (
+      t === undefined ||
+      (t !== Tile.RailWood &&
+        t !== Tile.TimberPost &&
+        t !== Tile.LampPost &&
+        !(t >= Tile.Barrel && t <= Tile.Basin))
+    ) {
+      return false;
+    }
+    return (
+      w.groundAt(tx, ty - 1) === Tile.PorchDeck ||
+      w.groundAt(tx, ty + 1) === Tile.PorchDeck ||
+      w.groundAt(tx + 1, ty) === Tile.PorchDeck ||
+      w.groundAt(tx - 1, ty) === Tile.PorchDeck
+    );
+  }
+
   renderLift(x: number, y: number): number {
     const game = this.game;
     if (!game) return 0;
@@ -1897,6 +1923,12 @@ export class Renderer {
           return lvl * ELEV_H + DOCK_LIFT * Math.min(1, Math.max(0, u));
         }
       }
+      return lvl * ELEV_H + DOCK_LIFT;
+    }
+    // THE PORCH: the deck ashore rides the same lift as the docks —
+    // a pure tile test (no water gate), and THE CARRIED DECK rule
+    // keeps rails, posts, lamps and props on the boards.
+    if (this.porchAt(game, tx, ty)) {
       return lvl * ELEV_H + DOCK_LIFT;
     }
     if (t === Tile.Ramp) {
@@ -9140,6 +9172,8 @@ export class Renderer {
     const syT = s * this.camera.yScale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    // A porch rail stands on the boards (the carried-deck rule).
+    if (this.porchAt(game, tx, ty)) p.y -= DOCK_LIFT * s;
     const baseY = p.y + syT * 0.14;
     const isRail = (x: number, y: number) => game.world.groundAt(x, y) === Tile.RailWood;
     const cn = isRail(tx, ty - 1);
@@ -14519,6 +14553,7 @@ export class Renderer {
     Tile.BannerPole,
     Tile.HangingSign,
     Tile.Signpost,
+    Tile.TimberPost,
     Tile.FlowerBox,
     Tile.ToolRack,
     Tile.WeaponRack,
@@ -14609,6 +14644,7 @@ export class Renderer {
     Tile.PillarStone,
     // A driven post does not sway: the signpost's art is wholly still.
     Tile.Signpost,
+    Tile.TimberPost,
     // Dungeon statics — the glowshroom's painted art is still (its
     // breathing is all in the live light pass), so it idles here too.
     Tile.Stalagmite,
@@ -16485,6 +16521,9 @@ export class Renderer {
     const syT = s * this.camera.yScale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    // A prop on the porch stands ON the boards (the carried-deck
+    // rule): its whole painter rides the same lift the feet do.
+    if (this.porchAt(game, tx, ty)) p.y -= DOCK_LIFT * s;
     const h = hashCoords(41, tx, ty);
     const baseY = p.y + syT * 0.14;
     const straight = tile === Tile.Fence;
@@ -16837,6 +16876,9 @@ export class Renderer {
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    // A prop on the porch stands ON the boards (the carried-deck
+    // rule): its whole painter rides the same lift the feet do.
+    if (this.porchAt(game, tx, ty)) p.y -= DOCK_LIFT * s;
     const h = hashCoords(41, tx, ty);
     const t = performance.now() / 1000;
     // Interactables wear the character outline ring — one generous
@@ -22865,6 +22907,78 @@ export class Renderer {
                 ctx.fillRect(p.x + s * 0.265, topY - s * 0.27, s * 0.09, s * 0.02);
                 ctx.fillRect(p.x + s * 0.3, topY - s * 0.305, s * 0.02, s * 0.09);
               }
+            }
+          },
+        };
+      }
+
+      case Tile.TimberPost: {
+        // THE PORCH's corner bones: a hewn post, blocky per the
+        // masterwork laws — squared plinth, squared shaft with one
+        // sun-law lit facet, a cap whose TOP PLANE foreshortens (the
+        // crate-lid grammar), and ONE architecture ring around the
+        // whole stepped silhouette.
+        const syT = s * this.camera.yScale;
+        const base = '#6e4b29';
+        const lit = '#8a6534';
+        const bx = p.x;
+        const footY = p.y + syT * 0.3;
+        const shaftW = s * 0.17;
+        const plinthW = s * 0.3;
+        const capW = s * 0.26;
+        const postH = s * 1.68;
+        const capH = s * 0.1;
+        const plinthH = s * 0.13;
+        const capY = footY - postH;
+        return {
+          sortY: ty + 0.62,
+          body: stationBody(0.45, 1.9, 0.5),
+          drawShadow: () =>
+            this.castEdgeQuad(bx - shaftW / 2, footY, bx + shaftW / 2, footY, 1.5),
+          draw: () => {
+            const ctx = this.ctx;
+            // Contact shade seats the post.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(bx, footY + s * 0.015, plinthW * 0.68, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Plinth block.
+            ctx.fillStyle = shade(base, -10);
+            ctx.fillRect(bx - plinthW / 2, footY - plinthH, plinthW, plinthH);
+            ctx.fillStyle = shade(base, 8);
+            ctx.fillRect(bx - plinthW / 2, footY - plinthH, plinthW, s * 0.03);
+            // Shaft with the sun-law lit west facet and a peg band.
+            ctx.fillStyle = base;
+            ctx.fillRect(bx - shaftW / 2, capY + capH, shaftW, postH - capH - plinthH);
+            ctx.fillStyle = lit;
+            ctx.fillRect(bx - shaftW / 2, capY + capH, s * 0.055, postH - capH - plinthH);
+            ctx.fillStyle = shade(base, -22);
+            ctx.fillRect(bx - shaftW / 2, capY + capH + s * 0.16, shaftW, s * 0.045);
+            // Cap block, its top plane foreshortened to the camera.
+            ctx.fillStyle = shade(base, -4);
+            ctx.fillRect(bx - capW / 2, capY, capW, capH);
+            ctx.fillStyle = shade(lit, 18);
+            ctx.fillRect(bx - capW / 2, capY - syT * 0.09, capW, syT * 0.09);
+            ctx.fillStyle = 'rgba(24, 15, 6, 0.3)';
+            ctx.fillRect(bx - capW / 2, capY - syT * 0.09, capW, s * 0.02);
+            // ONE RING around the stepped silhouette.
+            if (this.outlineOn) {
+              this.beginStructOutline();
+              const o = new Path2D();
+              o.moveTo(bx - capW / 2, capY - syT * 0.09);
+              o.lineTo(bx + capW / 2, capY - syT * 0.09);
+              o.lineTo(bx + capW / 2, capY + capH);
+              o.lineTo(bx + shaftW / 2, capY + capH);
+              o.lineTo(bx + shaftW / 2, footY - plinthH);
+              o.lineTo(bx + plinthW / 2, footY - plinthH);
+              o.lineTo(bx + plinthW / 2, footY);
+              o.lineTo(bx - plinthW / 2, footY);
+              o.lineTo(bx - plinthW / 2, footY - plinthH);
+              o.lineTo(bx - shaftW / 2, footY - plinthH);
+              o.lineTo(bx - shaftW / 2, capY + capH);
+              o.lineTo(bx - capW / 2, capY + capH);
+              o.closePath();
+              ctx.stroke(o);
             }
           },
         };

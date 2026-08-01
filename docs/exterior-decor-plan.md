@@ -325,12 +325,42 @@ re-dyed for one berry, hammer sign + rose trellis landed exact banded ids,
 trellis torn back down for 2 boards, rows in built_details.
 DEVIATION: none — the phase shipped whole.
 
-**Phase 3 — THE PORCH.**
-`PorchDeck` + `TimberPost` tiles, `isPorchTile`, `renderLift` branch, `'porch'`
-board family, fascia + step course, skin inheritance, buildables (`porch_deck` L8,
-`timber_post` L6), rails/props riding the lift verified. Proof: rebuild Fen's
-Dawnmead porch as a true lifted deck with rail, post, awning, and lamp — screenshot
-beside the old grade-level version.
+**Phase 3 — THE PORCH. SHIPPED 2026-08-01.**
+As built: `Tile.PorchDeck = 155` + `Tile.TimberPost = 156` (157-159 stay
+reserved for the wing's kin). The deck rides `DOCK_LIFT` via a pure tile test
+— no water gate — through ONE `renderLift` branch, and everything stands on
+it for free. **THE CARRIED DECK rule**: porch furniture (RailWood,
+TimberPost, LampPost, the 80-99 prop family) laid ON the deck replaces the
+tile but keeps its decking and its lift when a PorchDeck cardinal adjoins —
+`isPorchSurface` in terrain (bake) and a closure-free `porchAt` mirror in the
+renderer (renderLift is HOT; a per-call sampler allocation is real garbage —
+measured, inlined). Boards via `paintDeckBoards`'s new `'porch'` family
+(tones override param; the ONE board painter stays the one board painter),
+long E-W planks parallel to the facade. **THE DECK TAKES THE HOUSE'S WOOD**:
+the connected patch floods (capped 64) for an adjoining wall run and wears
+that building's floorTones — one skin per patch, cached per bake; no wall =
+dock-neutral. Dressing per the masterwork laws: rim-joist fascia with
+squared footing blocks, a full-width tread step onto walkable ground
+(ringed), root shade at the house join, flat-art standing AO south, and the
+bake-time architecture ring on exposed edges only. `TimberPost` painter =
+squared plinth / shaft with sun-law lit facet + peg band / cap with
+foreshortened top plane, ONE ring around the stepped silhouette, static ring
+caches, slim mass so it never blocks lamplight. Content: `porch_deck` L8
+(boards×3, foundation) + `timber_post` L6 (ONE WHOLE LOG — the
+milled-and-whole law, allowlist-pinned); **PorchDeck joins FLOORS** so
+chairs, benches, rails, lamps, flower boxes AND awnings all accept the deck
+as footing (lamp_post gained floors for the porch-lamp classic);
+`nearestFloorTile` learned the deck. Server: THE PORCH LAYER — demolishing a
+rail off the deck restores and RE-REGISTERS the deck (Wood/StoneFloor law
+extended, test-pinned AND proven live: rail over deck, torn down, deck 155
+returned). Editor palette + icons + wood footsteps wired.
+PROVEN: 1276 tests green; staged full composition (deck 6×2 off the cottage
+with rails, post, lamp, flower box — every piece riding the lift, body on
+the boards) + live build-lane proof (deck/post/rail built, layer law live);
+fps dip investigated and cleared as environmental (rAF probe far from any
+porch read identical — the porch costs nothing measurable).
+NOTE: walking onto the deck snaps the 0.22 lift like the shipped docks; a
+step-blend can ride Phase 4 polish if it ever reads rough in play.
 
 **Phase 4 — THE WIND REMEMBERS THE STREET (unification + polish).**
 Shipped cloth props onto `windAtInto`; banner-pole dye lane; shadow/contact audit;

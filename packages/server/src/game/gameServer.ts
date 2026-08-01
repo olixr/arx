@@ -5716,10 +5716,15 @@ export class GameServer {
     this.world.unregisterBuilt(tx, ty);
     this.accounts.deleteBuiltTile(tx, ty);
     // THE LAYER LAW: give back what stood here at build time — a wall
-    // cut into your floor tears down to the FLOOR. A restored player
-    // floor re-registers to the same owner over the pristine ground,
-    // so it stays owned, demolishable, and salvageable in turn.
-    if (built.prevTile === Tile.WoodFloor || built.prevTile === Tile.StoneFloor) {
+    // cut into your floor tears down to the FLOOR, a rail off the
+    // porch tears down to the DECK. A restored player floor
+    // re-registers to the same owner over the pristine ground, so it
+    // stays owned, demolishable, and salvageable in turn.
+    if (
+      built.prevTile === Tile.WoodFloor ||
+      built.prevTile === Tile.StoneFloor ||
+      built.prevTile === Tile.PorchDeck
+    ) {
       const natural = this.world.naturalGround(tx, ty);
       this.world.registerBuilt(tx, ty, built.prevTile, built.owner, natural);
       this.accounts.saveBuiltTile(tx, ty, built.prevTile, built.owner, natural);

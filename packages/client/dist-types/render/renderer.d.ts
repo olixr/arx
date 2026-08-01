@@ -593,6 +593,12 @@ export declare class Renderer {
      * feet climb tread by tread. Everything drawn in the world asks this
      * one function.
      */
+    /**
+     * The renderer's mirror of terrain's isPorchSurface, closure-free:
+     * renderLift runs for every body and item every frame, and a per-
+     * call sampler allocation is real garbage in a hot path.
+     */
+    private porchAt;
     renderLift(x: number, y: number): number;
     /** Memoized deck test (water within Chebyshev 2 — callers gate on
      *  the Dock/Bridge tile themselves), keyed by

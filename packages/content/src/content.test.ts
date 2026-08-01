@@ -42,7 +42,7 @@ import { NPCS, TOWN_SPAWNS } from './npcs.js';
 import { LOOT_TABLES } from './loot/tables.js';
 import { RECIPES } from './recipes.js';
 import { NODES } from './nodes.js';
-import { BUILDABLES, BUILD_CATEGORIES, DYES, DYE_PIGMENTS, buildableForDetail, buildableForTile } from './buildables.js';
+import { BUILDABLES, BUILD_CATEGORIES, DYES, DYE_PIGMENTS, buildableForDetail, buildableForTile, buildableGround } from './buildables.js';
 import { GENERAL_STORE, SHOPS, TRAINER_DIRECTORY } from './shop.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 import { NPC_ACTORS } from './actors/registry.js';
@@ -628,6 +628,24 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
     assert.ok(p && ITEMS.has(p.item) && p.qty > 0, `${DYES[i]!.id} pigment is a real cost`);
   }
 
+  // THE PORCH: the deck is a floor of the outdoors — furniture,
+  // rails, posts and awnings all accept it as footing, and the deck
+  // itself rises from open ground.
+  {
+    const deck = BUILDABLES.get('porch_deck');
+    const post = BUILDABLES.get('timber_post');
+    assert.ok(deck && deck.tile === Tile.PorchDeck && deck.cat === 'foundation');
+    assert.ok(post && post.tile === Tile.TimberPost);
+    assert.ok(buildableGround(deck!).includes(Tile.Grass), 'a deck rises from open ground');
+    for (const id of ['chair', 'bench', 'wood_railing', 'flower_box', 'lamp_post', 'awning_shed']) {
+      const b = BUILDABLES.get(id)!;
+      assert.ok(
+        buildableGround(b).includes(Tile.PorchDeck),
+        `${id} stands on the porch deck`,
+      );
+    }
+  }
+
   // THE OUTWARD FACE: one buildable per awning shape, anchored at the
   // shape's dye-0 tile, cloth-costed on the decor shelf — and every
   // dyed id in every band folds back to its shape's one def (salvage
@@ -652,6 +670,8 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
     'banner_pole',
     'garrison_gate',
     'signpost',
+    // THE PORCH: posts are driven whole, never sawn.
+    'timber_post',
   ]);
   for (const b of BUILDABLES.values()) {
     if (b.materials.some((m) => m.item === 'log' || m.item === 'oak_log')) {

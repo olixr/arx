@@ -68,6 +68,20 @@ export declare function startChunkBake(ground: GroundSampler, detail: DetailSamp
 /** The one-shot bake: start + run every step. Output is identical to
  *  the sliced path — this is the sliced path, run to completion. */
 export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler): HTMLCanvasElement;
+/** The world's outline ink — MUST equal Renderer.STRUCT_OUTLINE. The
+ *  decks wear the same bold dark edge as walls, props and entities
+ *  (the outline "shader"), stroked at BAKE time on exposed silhouette
+ *  edges only, so the ring costs nothing per frame. */
+/**
+ * THE PORCH (exterior decor Phase 3): a lifted deck on dry land — the
+ * dock's stance without the water gate. THE CARRIED DECK rule: porch
+ * furniture (rails, posts, lamps, and the prop family) laid ON the
+ * deck replaces the tile, but the boards must run beneath it — any
+ * such tile with a PorchDeck cardinal neighbour keeps its decking and
+ * its lift. The renderer's porchAt mirrors this exactly.
+ */
+export declare function porchCarries(t: number | undefined): boolean;
+export declare function isPorchSurface(ground: GroundSampler, tx: number, ty: number): boolean;
 /**
  * Bake the LIFTED terrain surface of one chunk at one elevation level:
  * every tile at `level` or higher (ramps excluded — they get bespoke
