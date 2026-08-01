@@ -47,6 +47,22 @@
   height: 1.25rem;
 }
 
+/* The shoulders speak two families: bumpers are warm brass, triggers
+   cool iron — and a trigger's chip wears the curled top of the
+   hardware it names. */
+.pad-glyph.lb,
+.pad-glyph.rb {
+  border-color: var(--gold-deep);
+  color: var(--gold-bright);
+}
+
+.pad-glyph.lt,
+.pad-glyph.rt {
+  border-color: var(--iron-lit);
+  color: #cfe7f2;
+  border-radius: 0.625rem 0.625rem 0.25rem 0.25rem;
+}
+
 .pad-glyph.dup,
 .pad-glyph.ddown,
 .pad-glyph.dleft,
@@ -103,7 +119,7 @@ body.pad-mode .hint-inline { display: none; }
   background: rgba(12, 9, 5, 0.92);
   border: 0.0625rem solid rgba(222, 190, 128, 0.3);
   border-radius: 0.25rem;
-  box-shadow: 0 0.125rem 0.1875rem rgba(6, 4, 2, 0.5);
+  box-shadow: var(--punch-small);
 }
 
 /* Pad glyphs keep their console-color language at the same weight. */
@@ -114,7 +130,7 @@ body.pad-mode .hint-inline { display: none; }
   font-size: 0.6875rem;
   background: rgba(12, 9, 5, 0.92);
   border-width: 0.09375rem;
-  box-shadow: 0 0.125rem 0.1875rem rgba(6, 4, 2, 0.5);
+  box-shadow: var(--punch-small);
 }
 
 .dock-badge {
@@ -248,7 +264,7 @@ body.pad-mode .hint-inline { display: none; }
   background: rgba(12, 9, 5, 0.68);
   border: 0.0625rem solid rgba(222, 190, 128, 0.28);
   border-radius: 0.8125rem;
-  box-shadow: 0 0.125rem 0.3125rem rgba(6, 4, 2, 0.45);
+  box-shadow: var(--punch-small);
   pointer-events: none;
   transition: padding 0.35s ease, opacity 0.4s ease;
   animation: prompt-in 0.16s ease-out;

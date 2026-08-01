@@ -1,7 +1,30 @@
 # The Grand Refit — THE HALL FITS THE HAND
 
-*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phase 1 SHIPPED
-(THE ONE RULER), Phases 2–6 pending.***
+*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phases 1–2
+SHIPPED (THE ONE RULER, THE KIT OF ROOMS), Phases 3–6 pending.***
+
+**Phase 2 as-built (2026-08-01):** the stylesheet monolith split into
+`src/styles/` (25 files, cascade order preserved byte-identical, manifest
+style.css — never reorder its imports). `ui/kit/` gained the component
+library: `glyphs.ts` (seatChip/glyphChip/glyphLine — the only legal way to
+name a button), `ring.ts` (RingGauge, SVG hard-edge arc), `contextSheet.ts`
+(#ctx-sheet singleton, z 95, max-height + scroll), `ledger.ts` (paged
+leaves, ResizeObserver refit, page dots), `plates.ts` (plate/socket/
+emptyState/inspector), `tabs.ts` (tabRail + pips + step()), `ambient.ts`
+(ember motes, z -1 inside the room's isolated stacking context, ≤0.13
+opacity, pure CSS animation). Material reconciliation: need-chip and
+lvl-badge re-cut onto the chamfer clip + hairline-ring vocabulary (the
+plain rounded rectangle is dead); bumpers wear brass rims, triggers wear
+cool iron rims + the curled-top trigger silhouette; every blurred badge/
+prompt shadow replaced with the hard punch. Motion layer: room-in settle on
+the independent `translate` channel (composes with any screen transform),
+hover lifts on all pressables, socket landing flash, all gated by
+`body.no-ui-motion` (Settings → Interface motion, `arx.uimotion`) and
+`prefers-reduced-motion`. `.ui-screen` gained `isolation: isolate`.
+Receipt: `?kit` gallery (dev-only, z 90) lays out palette, ladders, both
+glyph languages forced visible, gauges, chips, sockets, tabs, ledger,
+inspector, sheet, empty state, ambient — photographed at 1080p and 4K;
+337 client tests + build green.
 
 **Phase 1 as-built (2026-08-01):** `ui/kit/tokens.ts` is the one material
 truth (palette + type/space/radius/stroke ladders + bottom lanes, injected on
@@ -407,7 +430,8 @@ Each phase lands green, committed, and provable before the next begins.
 2. **THE KIT OF ROOMS** — `ui/kit/` components, material reconciliation
    (chip family re-cut), stylesheet split, Room open/close motion, Ambient.
    *Receipt: a kit gallery room (dev-only) shows every component in both
-   input modes.*
+   input modes.* **SHIPPED 2026-08-01 — see as-built note at the head of
+   this doc.**
 3. **THE HAND KNOWS THE ROOM** — UiNav v2 regions, LT/RT paging, Ⓐ/Ⓨ verb
    law, ContextSheet everywhere, THE SEAT ANSWERS ITS OWN BUTTON, the
    Screen Ring, the glyph truth sweep (seatKey dies).

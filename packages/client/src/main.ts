@@ -58,12 +58,21 @@ import { DialogueCinema } from './ui/dialogueCinema.js';
 installTokens();
 installScale();
 installChrome();
+// The Interface motion preference stands before anything animates.
+document.body.classList.toggle('no-ui-motion', localStorage.getItem('arx.uimotion') === 'off');
 
 // Dev audit surface: `?icons` overlays the full icon gallery. The game
 // boots underneath untouched; the overlay simply outranks it.
 if (new URLSearchParams(location.search).has('icons')) {
   const { showIconGallery } = await import('./editor/iconGallery.js');
   showIconGallery();
+}
+
+// `?kit` lays the whole component kit on one bench — the Grand
+// Refit's audit surface, same contract as the icon gallery.
+if (new URLSearchParams(location.search).has('kit')) {
+  const { showKitGallery } = await import('./editor/kitGallery.js');
+  showKitGallery();
 }
 
 // Painted UI glyphs — no emoji anywhere in the universe. The dock
@@ -257,6 +266,11 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
   toggle('Water motion', renderer.waterFxFull, (on) => {
     renderer.waterFxFull = on;
     localStorage.setItem('arx.waterfx', on ? 'full' : 'basic');
+  });
+
+  toggle('Interface motion', localStorage.getItem('arx.uimotion') !== 'off', (on) => {
+    localStorage.setItem('arx.uimotion', on ? 'on' : 'off');
+    document.body.classList.toggle('no-ui-motion', !on);
   });
 
   // The player's hand on the one ruler: Snug / Standard / Grand
