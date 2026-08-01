@@ -53,6 +53,7 @@ import {
   FORAGE_CYCLE_MS,
   FURNACE_CYCLE_MS,
   COURSER_SADDLE,
+  saddleFor,
   LegSolver,
   MINE_CYCLE_MS,
   beastSpec,
@@ -23032,6 +23033,8 @@ export class Renderer {
     const rideE = rideK * rideK * (3 - 2 * rideK);
     if (e.mount) anim.mountKey = e.mount; // held through the dismount blend
     const riding = rideK > 0 && anim.mountKey !== undefined;
+    // The rider geometry ruler for THIS body (garron seats lower).
+    const mSaddle = anim.mountKey ? saddleFor(anim.mountKey) : COURSER_SADDLE;
     let beastPose: LegPose | null = null;
     let beastFeet: Array<{ x: number; y: number; lift: number }> | null = null;
     let mSpec: BeastSpec | null = null;
@@ -23216,10 +23219,10 @@ export class Renderer {
       const fwx2 = Math.cos(bd);
       const fwy2 = Math.sin(bd);
       const sti = [-1, 1].map((es) => {
-        const wx = e.x + fwx2 * COURSER_SADDLE.stirrupFwd - fwy2 * es * COURSER_SADDLE.stirrupSide;
-        const wy = e.y + fwy2 * COURSER_SADDLE.stirrupFwd + fwx2 * es * COURSER_SADDLE.stirrupSide;
+        const wx = e.x + fwx2 * mSaddle.stirrupFwd - fwy2 * es * mSaddle.stirrupSide;
+        const wy = e.y + fwy2 * mSaddle.stirrupFwd + fwx2 * es * mSaddle.stirrupSide;
         const fp = this.camera.worldToScreen(wx, wy, this.w, this.h);
-        fp.y -= this.renderLift(wx, wy) * s + COURSER_SADDLE.stirrupH * s;
+        fp.y -= this.renderLift(wx, wy) * s + mSaddle.stirrupH * s;
         return { x: fp.x, y: fp.y, lift: 0 };
       });
       const ordered = sti[0]!.x <= sti[1]!.x ? sti : [sti[1]!, sti[0]!];
@@ -23358,7 +23361,7 @@ export class Renderer {
       // clasp holds that much more height and the hem drapes down the
       // chair back instead of pooling in the seat.
       const azSeat =
-        (riding ? COURSER_SADDLE.seatH : chairSit ? seat!.seatH : 0.13) + 0.44 * hSc;
+        (riding ? mSaddle.seatH : chairSit ? seat!.seatH : 0.13) + 0.44 * hSc;
       const az = (azStand + (azSeat - azStand) * Math.max(sitE, rideE)) * capeK;
       capeSim.update(
         e.x + Math.cos(dir) * lunge,
@@ -23672,18 +23675,18 @@ export class Renderer {
             : chairSit
               ? (seat!.kind === 'throne' ? 'throne' : 'chair')
               : 'floor',
-          seatH: riding ? COURSER_SADDLE.seatH : chairSit ? seat!.seatH : undefined,
+          seatH: riding ? mSaddle.seatH : chairSit ? seat!.seatH : undefined,
           // The pommel grip, on the same ruler the tack painter draws
           // its rein knob with — leather and fists always meet.
           reinX:
             riding && beastPose
-              ? p.x + Math.cos(beastPose.dir) * COURSER_SADDLE.pommelFwd * s
+              ? p.x + Math.cos(beastPose.dir) * mSaddle.pommelFwd * s
               : undefined,
           reinY:
             riding && beastPose
               ? p.y +
-                Math.sin(beastPose.dir) * COURSER_SADDLE.pommelFwd * s * this.camera.yScale -
-                COURSER_SADDLE.pommelH * s
+                Math.sin(beastPose.dir) * mSaddle.pommelFwd * s * this.camera.yScale -
+                mSaddle.pommelH * s
               : undefined,
           sleepT: lieE,
           sheathT: sheathK,
@@ -23816,7 +23819,7 @@ export class Renderer {
             y: p.y,
             scale: s,
             dir: beastPose.dir,
-            radius: COURSER_SADDLE.radius,
+            radius: mSaddle.radius,
             color: '#7b4a2e',
             defId: anim.mountKey!,
             spec: mSpec,
@@ -23885,7 +23888,7 @@ export class Renderer {
         // crown, topknot) with real air underneath — never resting on
         // the skull. Drawn OUTSIDE the outline pass: text gets no ring.
         // A mounted head rides a saddle-height higher.
-        const topY = p.y - (1.32 * (e.size ?? 1) + COURSER_SADDLE.seatH * rideE) * s;
+        const topY = p.y - (1.32 * (e.size ?? 1) + mSaddle.seatH * rideE) * s;
         if (e.name) {
           ctx.font = `600 ${Math.max(11, s * 0.28)}px 'Trebuchet MS', sans-serif`;
           ctx.textAlign = 'center';

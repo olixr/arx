@@ -65,6 +65,16 @@ export const MOUNTS: readonly MountDef[] = [
     coat: 'dun',
     flavor: 'A black legged dun off the Silverfall roads, steady past every waystone.',
   },
+  // Phase 5, A HERD OF ONE'S OWN: variety is identity, never power —
+  // the ladder stays close (plan law: 1.6 / 1.7 / 1.75, capped 1.9).
+  {
+    id: 'garron_hoargate',
+    name: 'Hoargate Garron',
+    speedMult: 1.6,
+    body: 'garron',
+    coat: 'shag',
+    flavor: 'A shaggy mountain pony out of the Hoargate pass, sure footed where coursers balk.',
+  },
 ];
 
 const BY_ID = new Map(MOUNTS.map((m) => [m.id, m]));

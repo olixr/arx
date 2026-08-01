@@ -484,6 +484,8 @@ const defs: ShopDef[] = [
       { item: 'bronze_axe', price: 28 },
       { item: 'fishing_rod', price: 22 },
       { item: 'arrow', price: 4 },
+      // The pass pony: Nial outfits the cold country, beast included.
+      { item: 'hoargate_garron', price: 3500 },
       { item: 'healing_tincture', price: 60 },
       { item: 'mending_salve', price: 170 },
       { item: 'ironbark_tonic', price: 135 },

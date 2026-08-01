@@ -367,6 +367,16 @@ const defs: ItemDef[] = [
     code: 'Cd',
   },
   {
+    id: 'hoargate_garron',
+    name: 'Hoargate garron',
+    stackable: false,
+    value: 1200,
+    mount: 'garron_hoargate',
+    desc: 'A shaggy pass pony off the Pinewatch strings, sold saddled and shod.',
+    color: '#6d5c49',
+    code: 'Gh',
+  },
+  {
     id: 'ironbark_tonic',
     name: 'Ironbark tonic',
     stackable: false,

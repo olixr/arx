@@ -10768,6 +10768,8 @@ export interface CourserLook {
   leather: string;
   /** Grey coats dapple; solid coats stay plain. */
   dapple?: boolean;
+  /** Mountain shag: belly fringe and a heavier mane fall (the garron). */
+  shaggy?: boolean;
   bodyW: number;
   backH: number;
   chestH: number;
@@ -10815,6 +10817,24 @@ COURSER_LOOKS.courser_dun = {
   sock: '#2e241a',
   blanket: '#5a6238',
 };
+// The Hoargate garron: stocky pass pony under a winter shag — smaller
+// in every measure, deeper in the barrel, pine-green tack.
+COURSER_LOOKS.garron_hoargate = {
+  coat: '#6d5c49',
+  belly: '#857462',
+  mane: '#3a322a',
+  muzzle: '#2c241c',
+  sock: '#3a322a',
+  blanket: '#4c5a45',
+  leather: '#4a3423',
+  shaggy: true,
+  bodyW: 0.2,
+  backH: 0.58,
+  chestH: 0.3,
+  headW: 0.24,
+  headH: 0.19,
+  neckRise: 0.3,
+};
 
 /**
  * Rider anchor geometry, tile units above the beast's ground point.
@@ -10837,24 +10857,27 @@ export function mountSpec(mountId: string): BeastSpec {
   const look = COURSER_LOOKS[mountId] ?? COURSER_LOOKS.courser_bay!;
   let spec = MOUNT_SPEC_CACHE.get(mountId);
   if (!spec) {
+    // The garron is the courser's rig a hand shorter and a hand
+    // stockier — same gait laws, lower center, thicker bone.
+    const garron = mountId.startsWith('garron');
     spec = {
       rig: {
-        legs: quadLegs(0.36, 0.15),
-        legLen: 0.52,
-        rise: 0.46,
+        legs: quadLegs(garron ? 0.32 : 0.36, garron ? 0.16 : 0.15),
+        legLen: garron ? 0.42 : 0.52,
+        rise: garron ? 0.37 : 0.46,
         liftAmp: 0.075,
         // The gait ceiling sits at canter: at mount speed (8 t/s) the
         // blend rides full-run and cadence scales with true speed.
         runSpeed: 6.5,
         // A horse commits to a line — statelier than a wolf's snap.
-        turnRate: 5.5,
+        turnRate: garron ? 6 : 5.5,
       },
-      bodyLen: 0.58,
-      bodyRise: 0.54,
+      bodyLen: garron ? 0.5 : 0.58,
+      bodyRise: garron ? 0.44 : 0.54,
       kneeFwd: [1, 1, -1, -1],
       hipFwd: 0.9,
       hipSide: 0.5,
-      legW: 0.09,
+      legW: garron ? 0.105 : 0.09,
       foot: 'hoof',
       legColor: look.sock,
     };
@@ -10862,6 +10885,23 @@ export function mountSpec(mountId: string): BeastSpec {
   }
   return spec;
 }
+
+/**
+ * Rider geometry per body — the garron seats lower than the courser.
+ * Same shape as COURSER_SADDLE; the renderer picks by mount id.
+ */
+export function saddleFor(mountId: string): typeof COURSER_SADDLE {
+  return mountId.startsWith('garron') ? GARRON_SADDLE : COURSER_SADDLE;
+}
+const GARRON_SADDLE = {
+  seatH: 0.7,
+  stirrupH: 0.28,
+  stirrupSide: 0.19,
+  stirrupFwd: 0.05,
+  pommelFwd: 0.14,
+  pommelH: 0.82,
+  radius: 0.4,
+};
 const MOUNT_SPEC_CACHE = new Map<string, BeastSpec>();
 
 export function paintCourserBody(
@@ -10897,6 +10937,23 @@ export function paintCourserBody(
       const s = f.s;
       const tk = f.topScale ?? 1;
       const bh = look.backH * tk * s;
+      // Mountain shag: a ragged fringe along the belly line — the
+      // winter coat that makes a garron read garron beside a courser.
+      if (look.shaggy && !f.hurt) {
+        ctx.strokeStyle = shade(look.coat, -12);
+        ctx.lineCap = 'round';
+        ctx.lineWidth = Math.max(1.5, s * 0.035);
+        for (let k = 0; k < 6; k++) {
+          const X = (k / 5 - 0.5) * 1.5 * hl;
+          const fx0 = gx(X, 0);
+          const fy0 = gyy(X, 0) - look.chestH * tk * s * 0.72 - lift;
+          ctx.beginPath();
+          ctx.moveTo(fx0, fy0);
+          ctx.lineTo(fx0 + s * 0.012 * ((k % 3) - 1), fy0 + s * (0.07 + 0.02 * (k % 2)));
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
       // Grey coats dapple: a scatter of paler facets over the croup
       // and shoulder, seeded per body so no two greys match.
       if (look.dapple && !f.hurt) {
@@ -11293,9 +11350,10 @@ export function drawBeast(
   const ramL = opts.defId === 'ram' ? RAM_LOOK : undefined;
   const stagL =
     opts.defId === 'stag' ? STAG_LOOK : opts.defId === 'hind' ? HIND_LOOK : undefined;
-  const courserL = opts.defId.startsWith('courser')
-    ? (COURSER_LOOKS[opts.defId] ?? COURSER_LOOKS.courser_bay)
-    : undefined;
+  const courserL =
+    opts.defId.startsWith('courser') || opts.defId.startsWith('garron')
+      ? (COURSER_LOOKS[opts.defId] ?? COURSER_LOOKS.courser_bay)
+      : undefined;
   const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
   const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
   const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;
