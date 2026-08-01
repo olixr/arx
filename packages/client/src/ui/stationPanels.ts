@@ -36,6 +36,9 @@ import {
 import { buildableIconUrl, itemIconUrl, uiIconUrl } from '../render/icons.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
 import { petPortraitUrl } from '../render/petPortrait.js';
+import { createLedger } from './kit/ledger.js';
+import { tabRail } from './kit/tabs.js';
+import { registerSheetProvider } from './kit/contextSheet.js';
 
 /**
  * The station screens: Workshop (craft), Vault (bank), Store (shop)
@@ -179,6 +182,10 @@ export class StationPanels {
   private lastBankGear: Array<{ id: number; item: string; roll: ItemRoll }> = [];
   /** The vault's selected pile — the detail strip's subject. */
   private bankSel: string | null = null;
+  /** The vault's standing tab (armory shows only when gear hangs). */
+  private bankTab: 'armory' | 'all' | 'gear' | 'food' | 'mats' = 'all';
+  /** The reader's place in each paged ledger, kept across re-renders. */
+  private leafAt: Record<string, number> = {};
   /** How the vault wall is ordered. */
   private bankSort: 'az' | 'qty' = 'az';
   /** How the Workshop ledger is ordered. */
@@ -232,7 +239,17 @@ export class StationPanels {
     private readonly getInventory: () => InvSlot[] = () => [],
     /** The worn kit — the unmaking bench sunders straight off the body. */
     private readonly getEquipment: () => Partial<Record<EquipSlot, EquippedItem>> = () => ({}),
-  ) {}
+  ) {
+    // Ⓨ on a shelf plate offers the counting-house verbs.
+    registerSheetProvider('shopcard', (el) => {
+      const item = (el.dataset.navkey ?? '').slice('shopcard:'.length);
+      if (!item) return [];
+      return [
+        { label: 'Buy one', act: () => this.onShop('buy', item, 1, this.shopId) },
+        { label: 'Buy five', act: () => this.onShop('buy', item, 5, this.shopId) },
+      ];
+    });
+  }
   // Close chips + header dressing come from ui/panel.ts (dressPanel),
   // wired in main — one anatomy for every screen in the game.
 
@@ -438,6 +455,11 @@ export class StationPanels {
    * closes once its station is out of reach (a little past the 2.2
    * interaction radius, so standing at the edge doesn't flicker it).
    */
+  /** Dev-only (`?room=` audit lever): stand a room without a station. */
+  releaseAnchor(): void {
+    this.anchor = null;
+  }
+
   enforceAnchor(px: number, py: number): void {
     if (!this.anchor || !this.anyOpen) return;
     const dx = this.anchor.x - px;
@@ -545,17 +567,18 @@ export class StationPanels {
 
     // The shelves: every category in its fixed order, each sorted
     // the player's way inside.
+    const dealtPlans: HTMLElement[] = [];
     for (const cat of BUILD_CATEGORIES) {
       const shelf = defs.filter((d) => d.cat === cat.id);
       if (shelf.length === 0) continue;
       const head = document.createElement('div');
       head.className = 'build-shelf';
       head.textContent = cat.label;
-      this.buildList.appendChild(head);
+      dealtPlans.push(head);
       for (const def of ordered(shelf)) {
         const locked = lockedOf(def);
         const count = this.placeable(def);
-        this.buildList.appendChild(
+        dealtPlans.push(
           this.ledgerRow({
             key: `plan:${def.id}`,
             iconUrl: buildableIconUrl(def.id, 40) ?? itemIconUrl('log', 40),
@@ -571,6 +594,7 @@ export class StationPanels {
         );
       }
     }
+    this.dealIntoLedger(this.buildList, 'build', dealtPlans, 8);
 
     // ---- the chosen plan, laid out large
     const def = BUILDABLES.get(showing.sel)!;
@@ -799,13 +823,15 @@ export class StationPanels {
     const seeds = [...held.keys()];
     if (!showing.sel || !held.has(showing.sel)) showing.sel = seeds[0]!;
 
-    for (const seed of seeds) {
-      // THE SOWN LINE: tree and bush seeds share the picker with crops
-      // but carry no crop def — the wild owns their clock.
-      const crop = CROP_BY_SEED.get(seed);
-      const locked = crop !== undefined && level < crop.levelReq;
-      this.craftList.appendChild(
-        this.ledgerRow({
+    this.dealIntoLedger(
+      this.craftList,
+      'plant',
+      seeds.map((seed) => {
+        // THE SOWN LINE: tree and bush seeds share the picker with
+        // crops but carry no crop def — the wild owns their clock.
+        const crop = CROP_BY_SEED.get(seed);
+        const locked = crop !== undefined && level < crop.levelReq;
+        return this.ledgerRow({
           key: `plantrow:${seed}`,
           iconUrl: itemIconUrl(seed, 40),
           name: crop?.name ?? itemDef(seed)?.name ?? seed,
@@ -816,9 +842,10 @@ export class StationPanels {
             showing.sel = seed;
             this.renderPlant();
           },
-        }),
-      );
-    }
+        });
+      }),
+      8,
+    );
 
     // The chosen seed, laid out large.
     const seed = showing.sel;
@@ -986,11 +1013,13 @@ export class StationPanels {
       this.unmakeWorn = rows[0]!.worn;
     }
 
-    for (const row of rows) {
-      const result = unmakingOf(row.item, row.roll);
-      const dust = result?.yields.find((y) => y.item === 'arcane_dust')?.qty ?? 0;
-      this.craftList.appendChild(
-        this.ledgerRow({
+    this.dealIntoLedger(
+      this.craftList,
+      'unmake',
+      rows.map((row) => {
+        const result = unmakingOf(row.item, row.roll);
+        const dust = result?.yields.find((y) => y.item === 'arcane_dust')?.qty ?? 0;
+        return this.ledgerRow({
           key: `unmake:${row.worn ?? row.slot}`,
           iconUrl: itemIconUrl(row.item, 40),
           name: instanceName(row.item, row.roll),
@@ -1011,9 +1040,10 @@ export class StationPanels {
             this.unmakeArmed = null;
             this.renderCraft();
           },
-        }),
-      );
-    }
+        });
+      }),
+      8,
+    );
 
     const picked = rows.find(
       (r) => (r.worn ? -1 : r.slot) === this.unmakeSel && r.worn === this.unmakeWorn,
@@ -1251,33 +1281,31 @@ export class StationPanels {
       rows.sort((a, b) => a.levelReq - b.levelReq || a.name.localeCompare(b.name));
     else rows.sort((a, b) => reachScore(b) - reachScore(a));
 
-    for (const recipe of rows) {
+    const dealt: HTMLElement[] = rows.map((recipe) => {
       const level = levelForXp(skills[recipe.skill] ?? 0);
       const locked = level < recipe.levelReq;
       const count = this.makeable(recipe);
-      this.craftList.appendChild(
-        this.ledgerRow({
-          key: `recipe:${recipe.id}`,
-          iconUrl: itemIconUrl(recipe.output.item, 40),
-          name: recipe.name,
-          note: locked ? `lvl ${recipe.levelReq}` : count > 0 ? `× ${count}` : 'short',
-          noteTone: locked ? 'lock' : count > 0 ? 'ok' : 'short',
-          selected: showing.sel === recipe.id,
-          onPick: () => {
-            showing.sel = recipe.id;
-            this.renderCraft();
-          },
-        }),
-      );
-    }
-
+      return this.ledgerRow({
+        key: `recipe:${recipe.id}`,
+        iconUrl: itemIconUrl(recipe.output.item, 40),
+        name: recipe.name,
+        note: locked ? `lvl ${recipe.levelReq}` : count > 0 ? `× ${count}` : 'short',
+        noteTone: locked ? 'lock' : count > 0 ? 'ok' : 'short',
+        selected: showing.sel === recipe.id,
+        onPick: () => {
+          showing.sel = recipe.id;
+          this.renderCraft();
+        },
+      });
+    });
     // The rumor line: how much this station still keeps from you.
     if (undiscovered > 0 && rumor) {
       const hint = document.createElement('div');
       hint.className = 'make-undiscovered';
       hint.textContent = rumor;
-      this.craftList.appendChild(hint);
+      dealt.push(hint);
     }
+    this.dealIntoLedger(this.craftList, `craft:${station ?? 'handiwork'}`, dealt, 8);
 
     // ---- the chosen work, laid out large
     const recipe = recipes.find((r) => r.id === showing.sel)!;
@@ -1444,25 +1472,126 @@ export class StationPanels {
     if (this.bankOpen) this.renderBank();
   }
 
+  /** The vault's shelving law: what family a stored good belongs to. */
+  private familyOf(item: string): 'gear' | 'food' | 'mats' {
+    const def = itemDef(item);
+    return def?.equipSlot ? 'gear' : def?.heals ? 'food' : 'mats';
+  }
+
   /**
-   * The Vault: stored goods as a WALL OF SOCKETS you read like your
-   * own pack — pick a pile and the counter beneath offers Take 1/5/
-   * All. Rolled gear hangs apart on the armory rack, tinted by tier,
-   * each piece taken back with one press. Hover or focus any socket
-   * for the full item card, exactly like the pack.
+   * Deal prebuilt rows into a paged ledger — NOTHING LIVES BELOW THE
+   * FOLD for every maker's list. The reader's place survives the
+   * wholesale re-renders the pack mirror forces.
+   */
+  private dealIntoLedger(
+    host: HTMLElement,
+    key: string,
+    rows: HTMLElement[],
+    seedRows: number,
+    emptyLine?: string,
+  ): void {
+    const ledger = createLedger<HTMLElement>({
+      renderRow: (el) => el,
+      seedRows,
+      emptyLine,
+      initialLeaf: this.leafAt[key] ?? 0,
+      onLeaf: (leaf) => {
+        this.leafAt[key] = leaf;
+      },
+    });
+    host.appendChild(ledger.root);
+    ledger.setItems(rows);
+  }
+
+  /** One vault socket — goods pile or rolled armory piece. */
+  private vaultCell(opts: {
+    navkey: string;
+    acta: string;
+    item: string;
+    qty?: number;
+    roll?: ItemRoll;
+    selected?: boolean;
+    onPick: () => void;
+  }): HTMLElement {
+    const cell = document.createElement('div');
+    cell.className =
+      'inv-slot vault-slot clickable' + (opts.roll ? ` rarity-${opts.roll.rar}` : '');
+    if (opts.selected) cell.classList.add('selected');
+    cell.dataset.nav = '';
+    cell.dataset.navkey = opts.navkey;
+    cell.dataset.acta = opts.acta;
+    cell.dataset.tipname = opts.roll
+      ? instanceName(opts.item, opts.roll)
+      : (itemDef(opts.item)?.name ?? opts.item);
+    cell.dataset.lootitem = opts.item;
+    cell.dataset.lootqty = String(opts.qty ?? 1);
+    if (opts.roll) cell.dataset.lootroll = JSON.stringify(opts.roll);
+    const img = document.createElement('img');
+    img.className = 'inv-item';
+    img.src = itemIconUrl(opts.item, 48);
+    img.draggable = false;
+    cell.appendChild(img);
+    if (opts.qty !== undefined && opts.qty > 1) {
+      const q = document.createElement('span');
+      q.className = 'inv-qty';
+      q.textContent = opts.qty > 9999 ? `${Math.floor(opts.qty / 1000)}k` : opts.qty.toLocaleString();
+      cell.appendChild(q);
+    }
+    cell.addEventListener('click', opts.onPick);
+    return cell;
+  }
+
+  /**
+   * The Vault (Grand Refit Ph5): stored goods dealt onto paged
+   * LEAVES of sockets — family tabs shelve them, the armory hangs on
+   * its own tab when rolled gear exists, and nothing hides behind a
+   * scrollbar. Pick a pile and the counter beneath offers Take 1/5/
+   * All. Hover or focus any socket for the full item card.
    */
   private renderBank(): void {
     this.bankList.innerHTML = '';
     this.bankArmory.innerHTML = '';
     this.bankDetail.innerHTML = '';
     this.bankTools.innerHTML = '';
+    this.bankArmory.classList.add('hidden');
+    if (this.bankSel && !this.lastBank[this.bankSel]) this.bankSel = null;
+    if (this.bankTab === 'armory' && this.lastBankGear.length === 0) this.bankTab = 'all';
+
     const entries = Object.entries(this.lastBank).sort(([a, an], [b, bn]) =>
       this.bankSort === 'qty'
         ? bn - an || a.localeCompare(b)
         : (itemDef(a)?.name ?? a).localeCompare(itemDef(b)?.name ?? b),
     );
-    if (this.bankSel && !this.lastBank[this.bankSel]) this.bankSel = null;
-    if (entries.length > 1) {
+
+    if (entries.length === 0 && this.lastBankGear.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'make-empty';
+      empty.textContent = 'Your vault is empty. Deposit from the pack beside you.';
+      this.bankList.appendChild(empty);
+      this.bankDetail.classList.add('hidden');
+      return;
+    }
+
+    // ---- the shelving tabs: families, armory last when it hangs.
+    const tabs: Array<{ id: string; label: string }> = [
+      { id: 'all', label: 'All' },
+      { id: 'gear', label: 'Gear' },
+      { id: 'food', label: 'Food' },
+      { id: 'mats', label: 'Mats' },
+    ];
+    if (this.lastBankGear.length > 0) tabs.push({ id: 'armory', label: 'Armory' });
+    const rail = tabRail(
+      tabs,
+      (id) => {
+        this.bankTab = id as typeof this.bankTab;
+        this.leafAt['bank'] = 0;
+        this.renderBank();
+      },
+      'banktab',
+    );
+    rail.setActive(this.bankTab);
+    this.bankTools.appendChild(rail.root);
+    if (this.bankTab !== 'armory' && entries.length > 1) {
       this.sortBar(
         this.bankTools,
         'bank',
@@ -1475,80 +1604,53 @@ export class StationPanels {
           this.bankSort = k;
           this.renderBank();
         },
+        // The family tabs already stand in this strip — keep them.
+        { keep: true },
       );
     }
 
-    if (entries.length === 0 && this.lastBankGear.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'make-empty';
-      empty.textContent = 'Your vault is empty. Deposit from the pack beside you.';
-      this.bankList.appendChild(empty);
-      this.bankArmory.classList.add('hidden');
-      this.bankDetail.classList.add('hidden');
-      return;
+    // ---- the wall, dealt onto leaves: rows of eight sockets.
+    const PER_ROW = 8;
+    const cells: HTMLElement[] =
+      this.bankTab === 'armory'
+        ? this.lastBankGear.map((g) =>
+            this.vaultCell({
+              navkey: `bankgear:${g.id}`,
+              acta: 'Take',
+              item: g.item,
+              roll: g.roll,
+              onPick: () => this.onBank('withdraw', g.item, 1, g.id),
+            }),
+          )
+        : entries
+            .filter(([item]) => this.bankTab === 'all' || this.familyOf(item) === this.bankTab)
+            .map(([item, qty]) =>
+              this.vaultCell({
+                navkey: `bank:${item}`,
+                acta: 'Choose',
+                item,
+                qty,
+                selected: this.bankSel === item,
+                onPick: () => {
+                  this.bankSel = item;
+                  this.renderBank();
+                },
+              }),
+            );
+    const rows: HTMLElement[] = [];
+    for (let i = 0; i < cells.length; i += PER_ROW) {
+      const row = document.createElement('div');
+      row.className = 'vault-row';
+      row.append(...cells.slice(i, i + PER_ROW));
+      rows.push(row);
     }
-
-    // ---- armory rack: one socket per rolled instance.
-    if (this.lastBankGear.length > 0) {
-      this.bankArmory.classList.remove('hidden');
-      this.bankArmory.appendChild(sectionHead('Armory: rolled gear'));
-      const rack = document.createElement('div');
-      rack.className = 'vault-grid';
-      for (const g of this.lastBankGear) {
-        const cell = document.createElement('div');
-        cell.className = `inv-slot vault-slot clickable rarity-${g.roll.rar}`;
-        cell.dataset.nav = '';
-        cell.dataset.navkey = `bankgear:${g.id}`;
-        cell.dataset.acta = 'Take';
-        cell.dataset.tipname = instanceName(g.item, g.roll);
-        // The full inspect card serves vault gear like pack gear.
-        cell.dataset.lootitem = g.item;
-        cell.dataset.lootqty = '1';
-        cell.dataset.lootroll = JSON.stringify(g.roll);
-        const img = document.createElement('img');
-        img.className = 'inv-item';
-        img.src = itemIconUrl(g.item, 48);
-        img.draggable = false;
-        cell.appendChild(img);
-        cell.addEventListener('click', () => this.onBank('withdraw', g.item, 1, g.id));
-        rack.appendChild(cell);
-      }
-      this.bankArmory.appendChild(rack);
-    } else {
-      this.bankArmory.classList.add('hidden');
-    }
-
-    // ---- the goods wall.
-    if (entries.length > 0) {
-      const grid = document.createElement('div');
-      grid.className = 'vault-grid';
-      for (const [item, qty] of entries) {
-        const cell = document.createElement('div');
-        cell.className = 'inv-slot vault-slot clickable';
-        if (this.bankSel === item) cell.classList.add('selected');
-        cell.dataset.nav = '';
-        cell.dataset.navkey = `bank:${item}`;
-        cell.dataset.acta = 'Choose';
-        cell.dataset.tipname = itemDef(item)?.name ?? item;
-        cell.dataset.lootitem = item;
-        cell.dataset.lootqty = String(qty);
-        const img = document.createElement('img');
-        img.className = 'inv-item';
-        img.src = itemIconUrl(item, 48);
-        img.draggable = false;
-        cell.appendChild(img);
-        const q = document.createElement('span');
-        q.className = 'inv-qty';
-        q.textContent = qty > 9999 ? `${Math.floor(qty / 1000)}k` : qty.toLocaleString();
-        cell.appendChild(q);
-        cell.addEventListener('click', () => {
-          this.bankSel = item;
-          this.renderBank();
-        });
-        grid.appendChild(cell);
-      }
-      this.bankList.appendChild(grid);
-    }
+    this.dealIntoLedger(
+      this.bankList,
+      'bank',
+      rows,
+      4,
+      this.bankTab === 'armory' ? undefined : 'Nothing shelved here yet.',
+    );
 
     // ---- the counter: the chosen pile's take actions.
     if (this.bankSel) {
@@ -1594,9 +1696,11 @@ export class StationPanels {
   // ------------------------------------------------------------- shop
 
   /**
-   * The Store: goods SHELVED in a grid — big portrait, name, an honest
-   * coin price tag, and the buy buttons right on the shelf. Your pack
-   * stands beside the counter; tap items there to sell them.
+   * The Store (Grand Refit Ph5): goods shelved as PLATES — portrait,
+   * name, an honest coin tag. THE VERB COMES TO THE HAND: pressing a
+   * shelf buys one; Ⓨ or right-click offers Buy one / Buy five on
+   * the sheet. Your pack stands beside the counter; tap items there
+   * to sell them. Standing pricing is told once, on the hint line.
    */
   openShop(shopId = 'general_store', at?: { tx: number; ty: number }, priceMult = 1): void {
     const shop = shopDef(shopId);
@@ -1611,13 +1715,26 @@ export class StationPanels {
     // actually be charged (same pure function, never a disagreement).
     const priceOf = (base: number): number => Math.max(1, Math.round(base * priceMult));
     this.shopList.innerHTML = '';
+    // The standing's word, said once at the top, quartermaster-plain.
+    if (priceMult !== 1) {
+      const word = document.createElement('div');
+      word.className = 'shop-standing' + (priceMult < 1 ? ' fair' : ' dear');
+      word.textContent =
+        priceMult < 1
+          ? 'Your name is good here. The prices show it.'
+          : 'Your name costs you here. The prices show it.';
+      this.shopList.appendChild(word);
+    }
     for (const entry of shop.stock) {
       const def = itemDef(entry.item);
-      const card = document.createElement('div');
+      const card = document.createElement('button');
       card.className = 'shelf-card';
       // Hover / pad focus raises the full item card for shop goods.
       card.dataset.lootitem = entry.item;
       card.dataset.lootqty = '1';
+      card.dataset.nav = '';
+      card.dataset.navkey = `shopcard:${entry.item}`;
+      card.dataset.acta = 'Buy one';
       card.appendChild(iconTile(itemIconUrl(entry.item, 48), 'sm'));
       const mid = document.createElement('div');
       mid.className = 'shelf-mid';
@@ -1632,26 +1749,12 @@ export class StationPanels {
       const amount = document.createElement('span');
       amount.textContent = priceOf(entry.price).toLocaleString();
       if (priceMult !== 1) {
-        tag.title = priceMult < 1 ? 'Your standing earns a better price.' : 'Your standing costs you here.';
         amount.style.color = priceMult < 1 ? '#e8b64c' : '#c8a36a';
       }
       tag.append(coin, amount);
       mid.append(name, tag);
       card.appendChild(mid);
-      const actions = document.createElement('div');
-      actions.className = 'shelf-actions';
-      for (const [label, n] of [
-        ['Buy 1', 1],
-        ['Buy 5', 5],
-      ] as const) {
-        actions.appendChild(
-          bigButton(label, `shop:${entry.item}:${n}`, () => this.onShop('buy', entry.item, n, this.shopId), {
-            acta: 'Buy',
-            minor: n !== 1,
-          }),
-        );
-      }
-      card.appendChild(actions);
+      card.addEventListener('click', () => this.onShop('buy', entry.item, 1, this.shopId));
       this.shopList.appendChild(card);
     }
     this.shopPanel.classList.remove('hidden');

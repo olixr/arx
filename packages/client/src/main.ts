@@ -469,6 +469,43 @@ stationPanels.onPlant = (tx, ty, seed) => {
   game.plantSend(tx, ty, seed);
 };
 
+// Dev audit lever: `?room=bank|shop|stable` stands a maker room on
+// fixture goods after entering the world — the Grand Refit's way of
+// photographing anchored rooms without walking to their stations.
+// Same contract as `?kit`: dev-only, read-only, never shipped logic.
+{
+  const room = new URLSearchParams(location.search).get('room');
+  if (room === 'bank' || room === 'shop' || room === 'stable') {
+    const openFixture = (): void => {
+      if (hud.classList.contains('hidden')) {
+        setTimeout(openFixture, 500);
+        return;
+      }
+      if (room === 'bank') {
+        stationPanels.openBank(
+          {
+            log: 512, oak_log: 128, bronze_bar: 42, leather: 30, cloth: 18,
+            trout: 64, bread: 12, carrot: 9, berries: 21, sagewort: 7,
+            arcane_dust: 88, bones: 140, bronze_sword: 2, bronze_axe: 1,
+            bronze_pickaxe: 1, fishing_rod: 1, apprentice_staff: 1, stickbow: 1,
+          },
+          undefined,
+          [],
+        );
+      } else if (room === 'shop') {
+        stationPanels.openShop('general_store', undefined, 0.9);
+      } else {
+        stationPanels.openStable({ tx: 0, ty: 0 }, [
+          { slot: 0, species: 'rat', name: 'Whisker', level: 4, state: 'heel', hp: 18, maxHp: 24 },
+          { slot: 1, species: 'wolf', name: 'Bracken', level: 9, state: 'stabled', hp: 40, maxHp: 40 },
+        ] as never);
+      }
+      stationPanels.releaseAnchor();
+    };
+    setTimeout(openFixture, 800);
+  }
+}
+
 // THE WORK CARD: starting a craft closes the Workshop and this card
 // speaks for the batch from above the hotbar — item bar, batch tally,
 // and the end ceremony. Stop chip, Esc, and walking all set it down.

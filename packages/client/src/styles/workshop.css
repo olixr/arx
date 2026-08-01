@@ -26,12 +26,11 @@
   flex: none;
 }
 
+/* The recipe list is a paged ledger now (Grand Refit Ph5): leaves
+   turn, nothing scrolls out of sight. */
 .craft-ledger {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
   padding-right: 0.25rem;
   display: flex;
   flex-direction: column;

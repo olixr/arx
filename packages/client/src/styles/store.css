@@ -1,6 +1,8 @@
 /* ==================================================================
-   THE STORE — goods shelved in a grid with honest price tags; the
-   pack stands beside the counter to sell from.
+   THE STORE (Grand Refit Ph5) — goods shelved as pressable plates
+   with honest price tags: press to buy one, the sheet offers five.
+   The pack stands beside the counter to sell from; the standing's
+   word on prices is said once at the top.
    ================================================================== */
 
 .screen-shop {
@@ -20,16 +22,44 @@
   gap: 0.5625rem;
 }
 
+/* The shelf is a pressable plate now — the cut-plate group cuts its
+   silhouette; the button chrome stands down. */
 .shelf-card {
   display: flex;
   align-items: center;
   gap: 0.875rem;
+  text-align: left;
   background: var(--raise);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.4375rem;
+  border: none;
+  border-radius: 0;
   padding: 0.6875rem 0.875rem;
+  color: var(--parchment);
   text-shadow: var(--punch-small);
+  cursor: pointer;
   flex: none;
+}
+
+.shelf-card:hover {
+  background: var(--raise-hi);
+}
+
+/* The standing's one word on prices. */
+.shop-standing {
+  flex: none;
+  font-size: var(--t-label);
+  font-style: italic;
+  text-align: center;
+  padding: 0.375rem 0.5rem;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.shop-standing.fair {
+  color: var(--gold-bright);
+}
+
+.shop-standing.dear {
+  color: var(--red-soft);
 }
 
 .shelf-mid {
@@ -68,9 +98,4 @@
   height: 1.1875rem;
 }
 
-.shelf-actions {
-  flex: none;
-  display: flex;
-  gap: 0.5rem;
-}
 

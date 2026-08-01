@@ -1,11 +1,12 @@
 /* ==================================================================
-   THE VAULT — a wall of sockets read like your own pack; the armory
-   rack holds rolled gear apart; the counter under the wall offers
-   Take 1 / 5 / All for the chosen pile.
+   THE VAULT (Grand Refit Ph5) — stored goods dealt onto paged leaves
+   of sockets: family tabs shelve them, the armory hangs on its own
+   tab when rolled gear exists, nothing hides behind a scrollbar. The
+   counter under the wall offers Take 1 / 5 / All for the chosen pile.
    ================================================================== */
 
 .screen-bank {
-  width: min(45rem, 50vw);
+  width: min(48rem, 52vw);
   height: min(52.5rem, 88vh);
 }
 
@@ -20,14 +21,25 @@
   flex: none;
 }
 
+#bank-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 #bank-list {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-  padding-right: 0.25rem;
+  display: flex;
+  flex-direction: column;
   margin-top: 0.625rem;
+}
+
+/* One dealt row: eight sockets shoulder to shoulder. */
+.vault-row {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.5625rem;
 }
 
 .vault-grid {

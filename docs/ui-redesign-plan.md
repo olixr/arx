@@ -1,8 +1,32 @@
 # The Grand Refit — THE HALL FITS THE HAND
 
-*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phases 1–4
+*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phases 1–5
 SHIPPED (THE ONE RULER, THE KIT OF ROOMS, THE HAND KNOWS THE ROOM,
-THE PERSONAL WING), Phases 5–6 pending.***
+THE PERSONAL WING, THE MAKER'S WING), Phase 6 pending.***
+
+**Phase 5 as-built (2026-08-01):** THE VAULT — stored goods dealt onto
+paged leaves of eight-socket rows (`dealIntoLedger` + `vaultCell`), family
+tabs shelve them (All/Gear/Food/Mats via `familyOf`; the ARMORY becomes a
+TAB shown only when rolled gear hangs), sort chips ride beside the tabs
+(`sortBar` MUST get `keep: true` there — it wipes its host otherwise),
+counter unchanged. THE STORE — shelf cards are pressable plates: press
+buys one, Ⓨ sheet offers Buy one/Buy five (`shopcard` provider), the
+standing's word on prices said once at the top in the quartermaster voice
+(fair gold / dear ember), inline Buy buttons retired. THE STALLS — a real
+room at last: `.screen-stable` sized, three chamfered stalls shoulder to
+shoulder with 4.5rem portraits, verbs stacked to each card's floor, the
+420px cap dead. THE WORKSHOP/BUILDER'S TABLE/SEED POUCH/UNMAKING — every
+maker's list deals onto paged leaves (`dealIntoLedger`; the reader's place
+survives the pack-mirror re-renders via `leafAt` + Ledger's
+`initialLeaf`/`onLeaf`); build shelf heads page along as rows; Ledger
+`refit` now measures the TALLEST row, never the first (short shelf heads
+overpromised the fit and left a clipped sliver). Dev lever: `?room=
+bank|shop|stable` stands a maker room on fixture goods after login (same
+contract as `?kit`; `releaseAnchor()` is its dev-only helper). Receipts:
+live shots of all five rooms in pad mode; leaf scroll-gap 0 and no
+clipped sliver measured; 337 tests + build green. Deferred within scope:
+vault capacity ring (no cap exists on the wire to gauge); the workbench
+composition polish rides Ph6's final pass.
 
 **Phase 4 as-built (2026-08-01):** THE CODEX FLAGSHIP — the loadout ALTAR
 (four kit sockets wearing live chips, dormant secrets dimmed, a filled art
@@ -499,7 +523,8 @@ Each phase lands green, committed, and provable before the next begins.
    the codebase's one native adaptive layout; the item card already scales
    post-Ph1; worn-socket set-glow awaits enchant-set data in Ph5's orbit.)*
 5. **THE MAKER'S WING** — Workshop, Builder's Table, Vault, Store, Stalls,
-   work card, build tray.
+   work card, build tray. **SHIPPED 2026-08-01 — see as-built note at the
+   head of this doc.**
 6. **THE WORLD'S WING & THE LIVING CHROME** — Journal, Standing, Social,
    Settings, Riftgate, Chart dressing, HUD/hotbar/dock/trays, ceremonies
    re-base, final delight pass.

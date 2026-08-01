@@ -28,6 +28,10 @@ export function createLedger<T>(opts: {
   seedRows?: number;
   /** One quiet line for the empty case (quartermaster voice). */
   emptyLine?: string;
+  /** Open on this leaf (a re-render keeping the reader's place). */
+  initialLeaf?: number;
+  /** The leaf turned — callers remember the reader's place with it. */
+  onLeaf?: (leaf: number) => void;
 }): Ledger<T> {
   const root = document.createElement('div');
   root.className = 'kit-ledger';
@@ -55,7 +59,7 @@ export function createLedger<T>(opts: {
   root.append(leaf, foot);
 
   let items: T[] = [];
-  let at = 0;
+  let at = Math.max(0, opts.initialLeaf ?? 0);
   let per = Math.max(1, opts.seedRows ?? 8);
 
   const leaves = (): number => Math.max(1, Math.ceil(items.length / per));
@@ -92,10 +96,14 @@ export function createLedger<T>(opts: {
   };
 
   const refit = (): void => {
-    /* Measure one dealt row against the leaf's height. */
-    const row = leaf.firstElementChild as HTMLElement | null;
-    if (!row || leaf.clientHeight === 0) return;
-    const rowH = row.getBoundingClientRect().height;
+    /* Measure the TALLEST dealt row against the leaf's height — a
+       short header row must not overpromise the fit and leave a
+       clipped sliver peeking at the leaf's edge. */
+    if (leaf.clientHeight === 0 || leaf.childElementCount === 0) return;
+    let rowH = 0;
+    for (const child of leaf.children) {
+      rowH = Math.max(rowH, (child as HTMLElement).getBoundingClientRect().height);
+    }
     if (rowH <= 0) return;
     const gap = parseFloat(getComputedStyle(leaf).rowGap) || 0;
     const fit = Math.max(1, Math.floor((leaf.clientHeight + gap) / (rowH + gap)));
@@ -109,12 +117,14 @@ export function createLedger<T>(opts: {
     if (at > 0) {
       at--;
       deal();
+      opts.onLeaf?.(at);
     }
   });
   next.addEventListener('click', () => {
     if (at < leaves() - 1) {
       at++;
       deal();
+      opts.onLeaf?.(at);
     }
   });
 
