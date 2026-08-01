@@ -3470,18 +3470,7 @@ export class GameServer {
       return;
     }
 
-    // Faster with better tools, higher levels, and a gatherer's brew.
-    let speedup =
-      (1 + (tool.power - 1) * 0.25 + (level - node.levelReq) * 0.01) * this.gatherSpeedOf(player);
-    // The gathering Callings: a per-trade pace (Heartwood/Verdant Eye),
-    // Deep Lungs below the dark band, Night Angler once the sun is down.
-    speedup *= player.perks.gatherSpeed[node.skill] ?? 1;
-    if (ty >= DARK_BAND_Y) speedup *= player.perks.undergroundGatherMult;
-    if (node.skill === 'fishing' && player.perks.nightGatherMult !== 1) {
-      const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
-      if (hours < SUNRISE || hours > SUNSET) speedup *= player.perks.nightGatherMult;
-    }
-    const ticks = Math.max(GameServer.MIN_GATHER_TICKS, Math.round(node.baseTicks / speedup));
+    const ticks = this.gatherTicks(player, node, ty);
     player.action = { kind: 'gather', tx, ty, node, ticksLeft: ticks };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks });
@@ -3751,6 +3740,36 @@ export class GameServer {
     return mult;
   }
 
+  /**
+   * ONE CLOCK FOR EVERY SWING: tool tier, level surplus, brews, and
+   * the gathering Callings pace the first swing and every swing after.
+   * (The repeat path once rebuilt its ticks from the brew alone — a
+   * starsteel axe that only bit once was a bug, not a law.)
+   */
+  private gatherTicks(player: PlayerComp, node: NodeDef, ty: number): number {
+    let tool = node.tool ? bestTool(player.inventory, node.tool) : { item: '', power: 1 };
+    if (node.tool && player.equipment.tool) {
+      const worn = itemDef(player.equipment.tool.id)?.tool;
+      if (worn && worn.type === node.tool && (!tool || worn.power >= tool.power)) {
+        tool = { item: player.equipment.tool.id, power: worn.power };
+      }
+    }
+    const power = tool?.power ?? 1;
+    const level = this.effectiveLevel(player, node.skill);
+    // Faster with better tools, higher levels, and a gatherer's brew.
+    let speedup =
+      (1 + (power - 1) * 0.25 + (level - node.levelReq) * 0.01) * this.gatherSpeedOf(player);
+    // The gathering Callings: a per-trade pace (Heartwood/Verdant Eye),
+    // Deep Lungs below the dark band, Night Angler once the sun is down.
+    speedup *= player.perks.gatherSpeed[node.skill] ?? 1;
+    if (ty >= DARK_BAND_Y) speedup *= player.perks.undergroundGatherMult;
+    if (node.skill === 'fishing' && player.perks.nightGatherMult !== 1) {
+      const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+      if (hours < SUNRISE || hours > SUNSET) speedup *= player.perks.nightGatherMult;
+    }
+    return Math.max(GameServer.MIN_GATHER_TICKS, Math.round(node.baseTicks / speedup));
+  }
+
   private cancelAction(eid: EntityId, player: PlayerComp, reason?: string): void {
     if (!player.action) return;
     // A craft batch reports its tally on the way out — the work card's
@@ -3873,11 +3892,8 @@ export class GameServer {
       }
       this.cancelAction(eid, player, 'done');
     } else {
-      // Keep gathering the same node.
-      action.ticksLeft = Math.max(
-        GameServer.MIN_GATHER_TICKS,
-        Math.round(node.baseTicks / this.gatherSpeedOf(player)),
-      );
+      // Keep gathering the same node — same clock as the first swing.
+      action.ticksLeft = this.gatherTicks(player, node, action.ty);
       player.session?.sendJson({ t: 'action', state: 'start', ticks: action.ticksLeft });
     }
   }

@@ -28,6 +28,7 @@ const proto = GameServer.prototype as unknown as {
   procState: AnyFn;
   lowHpMoment: AnyFn;
   damageNpc: AnyFn;
+  creditMark: AnyFn;
   tickStatuses: AnyFn;
   tickProjectiles: AnyFn;
   executeAdjust: AnyFn;

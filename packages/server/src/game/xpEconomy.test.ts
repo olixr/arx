@@ -10,9 +10,15 @@ import { GameServer } from './gameServer.js';
 
 // The slate idiom: assemble a minimal `this` from real proto methods
 // plus stubs, so the law under test runs the SHIPPED code path.
-type AnyFn = (...args: unknown[]) => unknown;
-const proto = GameServer.prototype as unknown as Record<string, AnyFn>;
-const call = (fn: AnyFn, self: unknown, ...args: unknown[]) => fn.call(self, ...args);
+type AnyFn = (...args: never[]) => unknown;
+const proto = GameServer.prototype as unknown as {
+  damageNpc: AnyFn;
+  dotNpc: AnyFn;
+  creditMark: AnyFn;
+  tickSneakXp: AnyFn;
+};
+const call = (fn: AnyFn, self: unknown, ...args: unknown[]): unknown =>
+  (fn as (...a: unknown[]) => unknown).call(self, ...args);
 
 function markSlate(hp: number, xpReward: number) {
   const grants: Array<[string, number]> = [];
