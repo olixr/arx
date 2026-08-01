@@ -3283,7 +3283,7 @@ export class Renderer {
       for (const [, remote] of game.entities) {
         const kind = remote.meta.kind;
         if (kind !== EntityKind.Player && kind !== EntityKind.Npc) continue;
-        const bs = remote.buffer.sampleAt(btl);
+        const bs = remote.buffer.sampleSmoothed(btl);
         tc = this.pushBirdThreat(tc, bs?.x ?? remote.meta.x, bs?.y ?? remote.meta.y);
       }
       env.threatCount = tc;
@@ -22139,7 +22139,7 @@ export class Renderer {
     for (const [eid, remote] of game.entities) {
       const kind = remote.meta.kind;
       if (kind !== EntityKind.Player && kind !== EntityKind.Npc) continue;
-      const s = remote.buffer.sampleAt(t);
+      const s = remote.buffer.sampleSmoothed(t);
       const radius = kind === EntityKind.Npc ? (npcDef(remote.meta.defId ?? '')?.radius ?? 0.3) : 0.3;
       const d = claim();
       d.id = eid;
@@ -22186,7 +22186,10 @@ export class Renderer {
 
     for (const [eid, remote] of game.entities) {
       const timeline = remote.meta.kind === EntityKind.Projectile ? tProj : t;
-      const s = remote.buffer.sampleAt(timeline) ?? {
+      const s =
+        (remote.meta.kind === EntityKind.Projectile
+          ? remote.buffer.sampleAt(timeline)
+          : remote.buffer.sampleSmoothed(timeline)) ?? {
         x: remote.meta.x,
         y: remote.meta.y,
         dir: 0,

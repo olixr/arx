@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "skarn_line__greet",
       "text": "Sit if you like. Stew's Signy's. The bench is the guild's. *Skarn.* Youngest pick on the crew that cut these galleries. The only one left now.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "skarn_line__hub",
       "text": "Ask, then.",
       "choices": [
         {
@@ -37,6 +39,7 @@
     },
     {
       "id": "fell",
+      "voice": "skarn_line__fell",
       "text": "Ninth day of the eleven it took the guild to raise the seal, I came out. Last one through, on this leg. The digmaster's tunnels came up under the east gallery, quiet. The foreman, Grettir's own brother, put his crew behind him and bought the rest of us the stair. _The count went up unmatched._ Twenty years. Now the door's open again. Here I sit. Somebody from that count should be present.",
       "choices": [
         {
@@ -58,30 +61,36 @@
     },
     {
       "id": "tools",
+      "voice": "skarn_line__tools",
       "text": "Aye. Marked hafts, guild stamps, somewhere past the far warren. Nobody's swept that ground in twenty years. If it ever clears, bring anything with the mark to Grettir at the yard. Not me. I did my carrying already.",
       "next": "hub"
     },
     {
       "id": "bought",
+      "voice": "skarn_line__bought",
       "text": "Aye, he did. Drink to him at Signy's if you're the drinking kind. She knows the name. Everyone up there does.",
       "next": "hub"
     },
     {
       "id": "kobolds",
+      "voice": "skarn_line__kobolds",
       "text": "Not wicked. *Thorough.* They dig for their own reasons, in their own time, and they were under this mountain before the guild ever chalked a line on it. The trouble twenty years back was two thorough peoples meeting in the same seam. No word for yours between them. I don't hate the little diggers. I watch them. There's a difference.",
       "next": "hub"
     },
     {
       "id": "watch",
+      "voice": "skarn_line__watch",
       "text": "Because everyone else hurries past it. The reeve has her ledgers, the traders have their scales. The day that line moves, somebody who remembers the last time should be sitting here to say so. That's the whole job.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "skarn_line__bye",
       "text": "Mind the line, pick."
     },
     {
       "id": "home",
+      "voice": "skarn_line__home",
       "text": "Shallow on the upstroke, one of them. His brother never fixed that either. Runs in families, bad habits. Thank you for carrying them up.",
       "next": "hub"
     }

@@ -10,6 +10,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "varga_scales__hub",
       "text": "Ore bought, ore sold, everything weighed where you can watch the needle. What's your business?",
       "choices": [
         {
@@ -28,16 +29,19 @@
     },
     {
       "id": "trade",
+      "voice": "varga_scales__trade",
       "text": "Silver out of the swept faces, iron and coal steady, and the first mithril dust anyone's weighed in twenty years. The old galleries run richer than the yard's, which is why half of Grettir's shift keeps asking to come down. Everything crosses this counter, gets its chalk mark, and walks up the stair to the bank at close.",
       "next": "hub"
     },
     {
       "id": "advice",
+      "voice": "varga_scales__advice",
       "text": "Chalk your name at the landing. Keep to the swept walks your first three trips. I count trips, it's what I do. And price the starfall honestly: the vein is real, the spider is realer, and the digmaster's tunnel gets closer to both every week. Come back with ore, I pay fair. Come back empty and alive, I call it a profit anyway. Broker's discretion.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "varga_scales__browse",
       "text": "The counter's yours. Weighed to the grain, priced to the day.",
       "hooks": [
         {

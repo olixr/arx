@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_a_word_from_the_crown_offer__hub",
       "text": "Word went up the stair after you left. Came back the same day. Crown seal. They want you at the *court*.",
       "hooks": [{ "kind": "quest_offer", "quest": "a_word_from_the_crown" }],
       "choices": [
@@ -15,11 +16,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_a_word_from_the_crown_offer__sworn",
       "text": "Crowns don't say why to the likes of us. Court Gate. Your chart has it now. Don't polish anything. The king doesn't. Come tell me how he seemed, after.",
       "hooks": [{ "kind": "quest_accept", "quest": "a_word_from_the_crown" }]
     },
     {
       "id": "declined",
+      "voice": "q_a_word_from_the_crown_offer__declined",
       "text": "Nobody is. ... It'll keep."
     }
   ]

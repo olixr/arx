@@ -42,8 +42,24 @@ function lerpAngle(a: number, b: number, t: number): number {
  * the buffer slightly in the past (INTERP_DELAY_MS) so there is almost
  * always a pair of snapshots to interpolate between.
  */
+/** Fastest motion the smoother treats as legitimate, tiles/sec — a
+ *  sprinting mount stays under this; a correction snap does not. */
+const SMOOTH_MAX_SPEED = 12;
+/** Beyond this a jump is a real teleport (tp, respawn, door): snap. */
+const SMOOTH_SNAP_TILES = 3;
+/** Visual offset half-life, ms: how fast a hidden correction bleeds
+ *  away. Short enough to feel live, long enough to hide a 20Hz snap. */
+const SMOOTH_HALF_LIFE_MS = 80;
+
 export class InterpBuffer {
   private samples: InterpSample[] = [];
+  /** RENDER CONTINUITY state — see sampleSmoothed. */
+  private smTime: number | null = null;
+  private smOut: InterpSample | null = null;
+  private smRawX = 0;
+  private smRawY = 0;
+  private smErrX = 0;
+  private smErrY = 0;
 
   push(s: InterpSample): void {
     const last = this.samples[this.samples.length - 1];
@@ -57,6 +73,67 @@ export class InterpBuffer {
 
   latest(): InterpSample | undefined {
     return this.samples[this.samples.length - 1];
+  }
+
+  /**
+   * RENDER CONTINUITY: sampleAt with the discontinuities hidden. A late
+   * snapshot burst moves the sampled position in one visible snap —
+   * extrapolation guessed, reality disagreed, or the buffer ran dry and
+   * then refilled. Any frame-to-frame jump beyond plausible motion is
+   * folded into a visual offset that decays with an 80ms half-life, so
+   * the body GLIDES onto its corrected path instead of teleporting.
+   * Real teleports (3+ tiles) still snap — nobody should watch a
+   * neighbor slide across the map. Idempotent per timestamp: every
+   * caller in one frame shares one answer.
+   */
+  sampleSmoothed(t: number): InterpSample | null {
+    if (this.smTime === t) return this.smOut;
+    const raw = this.sampleAt(t);
+    if (!raw) {
+      this.smTime = t;
+      this.smOut = null;
+      return null;
+    }
+    const prevT = this.smTime;
+    const hadPrev = prevT !== null && this.smOut !== null;
+    const dtMs = hadPrev ? t - prevT! : 0;
+    if (hadPrev && dtMs > 0 && dtMs < 500) {
+      const k = Math.pow(0.5, dtMs / SMOOTH_HALF_LIFE_MS);
+      this.smErrX *= k;
+      this.smErrY *= k;
+      const jx = raw.x - this.smRawX;
+      const jy = raw.y - this.smRawY;
+      const jump = Math.hypot(jx, jy);
+      const plausible = (SMOOTH_MAX_SPEED * dtMs) / 1000 + 0.02;
+      if (jump >= SMOOTH_SNAP_TILES) {
+        this.smErrX = 0;
+        this.smErrY = 0;
+      } else if (jump > plausible) {
+        // Hold the body where it stood; the offset now carries the
+        // whole disagreement and the decay walks it onto the truth.
+        this.smErrX -= jx;
+        this.smErrY -= jy;
+        const mag = Math.hypot(this.smErrX, this.smErrY);
+        if (mag > 1.5) {
+          this.smErrX *= 1.5 / mag;
+          this.smErrY *= 1.5 / mag;
+        }
+      }
+    } else if (!hadPrev || dtMs >= 500) {
+      // First sample, or the entity went unrendered for half a second —
+      // nothing on screen to stay continuous with. (A slightly
+      // backwards t — the interp delay slews — keeps the offset as-is.)
+      this.smErrX = 0;
+      this.smErrY = 0;
+    }
+    this.smRawX = raw.x;
+    this.smRawY = raw.y;
+    this.smTime = t;
+    this.smOut =
+      this.smErrX === 0 && this.smErrY === 0
+        ? raw
+        : { ...raw, x: raw.x + this.smErrX, y: raw.y + this.smErrY };
+    return this.smOut;
   }
 
   sampleAt(t: number): InterpSample | null {
