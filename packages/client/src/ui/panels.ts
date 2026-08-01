@@ -1144,8 +1144,16 @@ export class Panels {
     const coinText = document.createElement('span');
     coinText.textContent = coins.toLocaleString();
     this.coinReadout.append(coinIcon, coinText);
-    // The room left in the bag, told plainly.
-    this.packFill.textContent = `${filled} / ${count}`;
+    // The room left in the bag: a real gauge, read at a glance, the
+    // count beside it for the exact answer.
+    this.packFill.style.setProperty('--fill', String(count === 0 ? 0 : filled / count));
+    this.packFill.innerHTML = '';
+    const meter = document.createElement('span');
+    meter.className = 'fill-meter';
+    const fillCount = document.createElement('span');
+    fillCount.className = 'fill-count';
+    fillCount.textContent = `${filled} / ${count}`;
+    this.packFill.append(meter, fillCount);
     this.packFill.classList.toggle('full', filled >= count);
     this.applyPackFilter();
 
@@ -1269,7 +1277,16 @@ export class Panels {
       return n + levelForXp(this.lastSkills[s] ?? 0);
     }, 0);
     this.identName.textContent = this.identityInfo().name || 'Adventurer';
-    this.identDeed.textContent = `Total level ${total.toLocaleString()}`;
+    // The level seal: the total worn as a faceted gem beside the name
+    // (the same trophy grammar the skills wall speaks).
+    this.identDeed.innerHTML = '';
+    const word = document.createElement('span');
+    word.className = 'seal-word';
+    word.textContent = 'Total level';
+    const gem = document.createElement('span');
+    gem.className = 'seal-gem';
+    gem.textContent = total.toLocaleString();
+    this.identDeed.append(word, gem);
   }
 
   /** Server-confirmed technique seats; re-renders whoever shows them. */

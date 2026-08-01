@@ -1442,9 +1442,10 @@ renderer.signHasText = (tx, ty) => {
 
 // ---- one anatomy for every panel: icon plaque, title, hint, close ----
 const el = (id: string): HTMLElement => document.getElementById(id)!;
+// The case teaches by its verbs (the item sheet carries Drop) — no
+// standing mouse-lesson headlining a gamepad-first room.
 dressPanel(el('inventory-panel'), {
   icon: uiIconUrl('backpack', 34),
-  hint: 'Drag an item onto the open world to drop it.',
   onClose: () => panels.closeAll(),
 });
 dressPanel(el('skills-panel'), {

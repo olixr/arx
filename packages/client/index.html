@@ -93,36 +93,41 @@
            the left of the screen open — the camera slides the world
            over so your LIVE character stands there, wearing every
            change the moment you make it. No duplicate figure. -->
+      <!-- THE OPEN CASE (rebuilt from the ground up): the room is TWO
+           TRAYS of identical anatomy — head band / body / foot band —
+           cut from one stock on one chamfer ladder, feet sharing one
+           baseline. Left tray: the armor stand, named by its owner,
+           its sum told at its feet. Right tray: the backpack, filters
+           in the head band, capacity gauge and purse in the foot. -->
       <div id="inventory-panel" class="ui-screen screen-character hidden">
         <h3>Character</h3>
         <div class="char-body">
-          <!-- LEFT WING: who you are + what you wear + what it sums to. -->
-          <section class="worn-kit">
-            <div class="char-identity">
+          <section class="char-tray worn-kit">
+            <header class="tray-head">
               <span id="char-name" class="ident-name"></span>
-              <span id="char-deed" class="ident-deed"></span>
+              <span id="char-deed" class="level-seal"></span>
+            </header>
+            <div class="tray-body stand-body">
+              <div id="equip-anatomy"></div>
             </div>
-            <div id="equip-anatomy"></div>
-            <div class="worn-sum">
-              <div class="worn-sum-title">The kit&rsquo;s sum</div>
+            <footer class="tray-foot stand-foot">
               <div id="gear-strip" class="hidden"></div>
               <div class="worn-sum-empty">Nothing worn adds to the sum yet &mdash; armor and trinkets will.</div>
-            </div>
+            </footer>
           </section>
-          <!-- RIGHT WING: the whole backpack, every socket on screen. -->
-          <section class="char-pack-col">
-            <div class="pack-header">
-              <div class="section-title">Backpack</div>
-              <span id="pack-fill" class="pack-fill"></span>
-            </div>
-            <div id="pack-filters"></div>
-            <div class="pack-case">
+          <section class="char-tray char-pack-col">
+            <header class="tray-head">
+              <span class="tray-title">Backpack</span>
+              <div id="pack-filters"></div>
+            </header>
+            <div class="tray-body pack-case">
               <div id="inventory-grid"></div>
             </div>
-            <div class="pack-foot">
+            <footer class="tray-foot pack-foot">
+              <span id="pack-fill" class="pack-fill"></span>
               <span class="purse-label">Purse</span>
               <span id="coin-readout" data-tipname="Coins" title="Coins"></span>
-            </div>
+            </footer>
           </section>
         </div>
       </div>

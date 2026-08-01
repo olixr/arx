@@ -4,6 +4,36 @@
 EPIC COMPLETE** (THE ONE RULER 8839680 → THE WORLD'S WING & THE LIVING
 CHROME). The hall fits the hand. Post-epic: THE INK PASS (below).*
 
+**THE OPEN CASE as-built (2026-08-01, post-epic: the character room
+rebuilt from the foundation):** the Ink Pass re-dressed the old boxes;
+the user's verdict was right that the boxes themselves were four
+generations of patches — three corner systems, boxes-in-boxes,
+unaligned zone edges, a mouse-only hint headlining a pad-first room.
+The rebuild: the room now holds exactly TWO TRAYS cut from one stock
+with one shared anatomy (head band / body / foot band), stretched to
+one shared baseline (`.char-tray` — raise fill, tray chamfer, ink
+ring, facets; feet meet on one line). THE ONE CORNER LAW: the room
+declares its own three-step chamfer ladder (`--cut-chip/plate/tray`)
+and NO rounded rectangle survives (count seals, label plates all
+chamfer-clipped). Stand tray: head = owner's name (the set-mark
+diamond pins every head band) + total level as a faceted gold gem
+(`.level-seal`/`.seal-gem` hexagon — the skills-wall trophy grammar);
+body = the stand centered, its sockets lashed to bold STITCHED STRAPS
+(spine + shoulder pseudo-elements, ink-edged, lashing-segmented —
+still honest grid items per Ph4); foot = `#gear-strip` plaques or the
+compact ghost-setting line (`min-height` holds the baseline). Pack
+tray: head = BACKPACK + the filter keys (their own row is dead);
+body = the 6×5 spread CENTERED via auto margins on the grid (never
+`justify-content` — it clips the emergency-scroll case); foot = a
+real capacity gauge (`.fill-meter`, painted channel + one hard-stop
+fill from `--fill`, ember when full) + count + purse on one line.
+The drag-to-drop hint is gone (the item sheet's Drop verb teaches
+it). Station pairing keeps `.worn-kit`/`.char-pack-col` hooks; the
+paired narrow column hides the tray-title so BACKPACK never
+ellipsizes. `.char-identity`/`.pack-header`/`.section-title`/
+`.worn-sum` are all dead. Receipts: rest/worn/paired/4K photographed
+(4K = identical composition ×2); 337 tests, build, tsc green.
+
 **THE INK PASS as-built (2026-08-01, post-epic skin deepening):** the
 epic fixed the bones; this pass makes the furniture speak the icons'
 language. THE LAW: the world's outline-shader color (`#241a2e`,

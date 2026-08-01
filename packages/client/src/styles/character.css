@@ -1,19 +1,24 @@
 /* ==================================================================
-   THE CHARACTER SCREEN — the expedition case docked at the RIGHT edge
-   of the world. It deliberately owns only that column: the camera
-   slides the world so your live character stands in the open ground
-   to its left — the game itself is the mirror.
+   THE CHARACTER SCREEN — THE OPEN CASE (rebuilt from the foundation).
 
-   THE TWO-WING LAW: inside, the case opens like a field kit — the
-   worn kit (identity, armor stand, ledger) is the LEFT wing; the
-   backpack is the RIGHT wing and the protagonist. The wings sit side
-   by side so neither steals the other's height, and THE WHOLE PACK IS
-   ALWAYS ON SCREEN: 6 across × 5 down, cells sized by the room the
-   case actually has (container query), never scrolled out of reach.
-   THE BIG-SOCKET LAW: the pack spreads WIDE (6×5, not tall) so its
-   cells run ~5.125rem on a full screen — an item is readable at a glance,
-   not a thumbnail you must hover to understand. Every socket in the
-   case (stand and pack alike) wears the same 5.125rem scale.
+   The case docks at the RIGHT edge; the camera slides the world so
+   your live character stands in the open ground beside it — the game
+   itself is the mirror.
+
+   THE TRAY LAW: the room holds exactly TWO TRAYS cut from one stock,
+   with one shared anatomy — head band / body / foot band — stretched
+   to one shared baseline. The stand tray (left) is named by its
+   owner and sums its kit at its feet; the pack tray (right) is the
+   protagonist, filters in its head, capacity and purse in its foot.
+
+   THE ONE CORNER LAW: every corner in this room is a chamfer from
+   the room's own three-step ladder (chip / plate / tray). No rounded
+   rectangle survives here.
+
+   THE WHOLE-PACK LAW: 6 across × 5 down, all 28 sockets always on
+   screen, cells sized by container query — scrolling is the
+   emergency exit, never the plan. THE BIG-SOCKET LAW: sockets run
+   ~5rem on a full screen, readable from the couch.
    ================================================================== */
 
 /* A true dock: the case rides the right EDGE, full height, leaving
@@ -24,49 +29,36 @@
   top: 0.875rem;
   bottom: 0.875rem;
   transform: none;
-  width: min(57.5rem, max(37.5rem, 64vw));
+  width: min(62rem, max(39rem, 66vw));
   height: auto;
   max-height: none;
+  /* The room's corner ladder — the only cuts this room may use. */
+  --cut-chip: 0.3125rem;
+  --cut-plate: 0.5625rem;
+  --cut-tray: 0.8125rem;
 }
 
-/* The identity plate: who this case belongs to, atop the armor stand. */
-.char-identity {
-  flex: none;
+.char-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: stretch;
+  margin-top: 0.375rem;
+}
+
+/* ---- THE TRAY: the room's only container. One step raised off the
+   leather, cut at the tray chamfer, bound in the ink ring, lit and
+   shadowed like every plate in the hall — at zone scale. ---- */
+.char-tray {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.4375rem;
-  margin: 0.125rem 0 0.625rem;
-  max-width: 100%;
-}
-
-.ident-name {
-  font-family: var(--serif);
-  font-size: var(--t-title);
-  font-weight: 700;
-  letter-spacing: 0.0625rem;
-  color: var(--gold-bright);
-  text-shadow: var(--punch);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-/* The deed chip: a small stamped seal, cut and inked like the kit. */
-.ident-deed {
-  flex: none;
-  font-size: var(--t-whisper);
-  font-weight: 800;
-  letter-spacing: 0.09375rem;
-  text-transform: uppercase;
-  color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
-  padding: 0.375rem 0.6875rem 0.3125rem;
-  background: var(--sunk);
-  border: none;
-  border-radius: 0;
-  --cut: 0.375rem;
+  padding: 0.75rem 1rem 1rem;
+  background: var(--raise);
+  --cut: var(--cut-tray);
   clip-path: polygon(
     var(--cut) 0,
     calc(100% - var(--cut)) 0,
@@ -78,27 +70,129 @@
     0 var(--cut)
   );
   box-shadow:
-    inset 0 0 0 var(--rule) var(--ink-line),
-    inset 0 0.3125rem 0 rgba(0, 0, 0, 0.35);
+    inset 0 0 0 0.15625rem var(--ink-line),
+    inset 0 0.3125rem 0 rgba(255, 236, 190, 0.09),
+    inset 0 -0.375rem 0 rgba(10, 7, 3, 0.4);
 }
 
-.char-body {
+/* The head band: title voice left, instruments right, one rule under. */
+.tray-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding-bottom: 0.625rem;
+  margin-bottom: 0.875rem;
+  border-bottom: var(--rule) solid var(--line);
+}
+
+.tray-title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--serif);
+  font-size: var(--t-lead);
+  font-weight: 700;
+  letter-spacing: 0.15625rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The gold set-mark pins every head band. */
+.tray-title::before,
+.ident-name::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.625rem;
+  vertical-align: 0.125rem;
+  background: var(--gold);
+  transform: rotate(45deg);
+  border: var(--hairline) solid var(--ink-line);
+}
+
+.tray-body {
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: row;
-  gap: 1.25rem;
-  align-items: stretch;
 }
 
-/* ---- LEFT WING: identity + armor stand + the kit's sum ---- */
+/* The foot band: the tray's sum, one rule over, one shared baseline. */
+.tray-foot {
+  flex: none;
+  margin-top: 0.875rem;
+  padding-top: 0.75rem;
+  border-top: var(--rule) solid var(--line);
+}
+
+/* ---- THE STAND TRAY: named by its owner ---- */
 
 .worn-kit {
   flex: none;
-  width: 16.125rem; /* the stand's exact span: 3 big sockets + 2 gaps */
-  min-height: 0;
+  width: 18.5rem; /* the stand's span + the tray's own padding */
+}
+
+.ident-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--serif);
+  font-size: var(--t-title);
+  font-weight: 700;
+  letter-spacing: 0.03125rem;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The level seal: the total, worn as a faceted gem in the head band
+   (the trophy grammar the skills wall already speaks). */
+.level-seal {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.seal-word {
+  font-size: var(--t-whisper);
+  font-weight: 800;
+  letter-spacing: 0.0625rem;
+  text-transform: uppercase;
+  color: var(--parchment-faint);
+  text-shadow: var(--punch-small);
+}
+
+.seal-gem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.875rem;
+  height: 2.125rem;
+  padding: 0 0.625rem;
+  clip-path: polygon(0.6875rem 0, calc(100% - 0.6875rem) 0, 100% 50%, calc(100% - 0.6875rem) 100%, 0.6875rem 100%, 0 50%);
+  background: var(--gold);
+  color: var(--brass-ink);
+  font-family: var(--serif);
+  font-size: var(--t-lead);
+  font-weight: 700;
+  box-shadow:
+    inset 0 0.25rem 0 rgba(255, 236, 190, 0.45),
+    inset 0 -0.25rem 0 rgba(0, 0, 0, 0.28);
+  text-shadow: 0 0.0625rem 0 rgba(255, 235, 180, 0.4);
+}
+
+/* The stand centers in the tray's leftover height — balanced, not
+   clinging to the head band. */
+.stand-body {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 /* The stand: sockets hung where they sit on the body — head over
@@ -113,25 +207,36 @@
     'weapon body  offhand'
     'gloves legs  relic'
     'tool   boots .';
-  gap: 0.5625rem;
+  /* A breath wider than the pack's gap: the straps show through. */
+  gap: 0.6875rem;
   align-content: start;
 }
 
-/* The armor stand itself: a quiet spine + shoulder bar the sockets
-   hang on, visible only in the gaps between wells. HONEST GRID MATH
-   (Grand Refit Ph4): the pseudo-elements are grid ITEMS spanning the
-   stand's own rows and columns — resize the cells and the stand
-   follows; no hand-derived pixel anchors survive. */
+/* The rack the kit is lashed to: a stitched leather SPINE STRAP down
+   the center column and a SHOULDER STRAP across the hand row — bold
+   ink-edged bands segmented like lashing, not hairline decoration.
+   HONEST GRID MATH (Grand Refit Ph4): the pseudo-elements are grid
+   ITEMS spanning the stand's own rows and columns — resize the cells
+   and the rack follows; no hand-derived pixel anchors survive. */
 #equip-anatomy::before {
   content: '';
   grid-row: 1 / 5;
   grid-column: 2;
   justify-self: center;
   align-self: stretch;
-  margin: 2.5rem 0;
-  width: 0.25rem;
-  background: var(--line-strong);
-  box-shadow: 0.0625rem 0.0625rem 0 var(--ink-line);
+  margin: 2.25rem 0 0.625rem;
+  width: 0.625rem;
+  background-color: var(--line-strong);
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(16, 10, 20, 0) 0,
+    rgba(16, 10, 20, 0) 0.6875rem,
+    rgba(16, 10, 20, 0.55) 0.6875rem,
+    rgba(16, 10, 20, 0.55) 0.875rem
+  );
+  box-shadow:
+    inset 0.125rem 0 0 rgba(16, 10, 20, 0.9),
+    inset -0.125rem 0 0 rgba(16, 10, 20, 0.9);
   pointer-events: none;
 }
 
@@ -139,12 +244,20 @@
   content: '';
   grid-row: 2;
   grid-column: 1 / 4;
-  align-self: start;
-  /* Rides the gap between the head row and the shoulder row. */
-  margin: -0.375rem 0.8125rem 0;
-  height: 0.25rem;
-  background: var(--line-strong);
-  box-shadow: 0.0625rem 0.0625rem 0 var(--ink-line);
+  align-self: center;
+  margin: 0 0.9375rem;
+  height: 0.625rem;
+  background-color: var(--line-strong);
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(16, 10, 20, 0) 0,
+    rgba(16, 10, 20, 0) 0.6875rem,
+    rgba(16, 10, 20, 0.55) 0.6875rem,
+    rgba(16, 10, 20, 0.55) 0.875rem
+  );
+  box-shadow:
+    inset 0 0.125rem 0 rgba(16, 10, 20, 0.9),
+    inset 0 -0.125rem 0 rgba(16, 10, 20, 0.9);
   pointer-events: none;
 }
 
@@ -154,62 +267,15 @@
   z-index: 1;
 }
 
-/* The sum: the worn kit's ledger, a sunken inked well at the stand's
-   feet. (Renamed from .kit-ledger — that class belongs to the paged
-   ledger component and the character's box was leaking onto it.) It
-   takes whatever height the wing has left and scrolls only if a kit
-   ever outgrows it. */
-.worn-sum {
-  min-width: 0;
-  flex: 1;
-  min-height: 0;
-  margin-top: 0.625rem;
+/* ---- the stand's foot band: what the kit sums to ---- */
+
+.stand-foot {
+  /* The sum band holds its shape whether plaques or the ghost line
+     stand in it — the feet of both trays stay on one baseline. */
+  min-height: 5.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.625rem 0.75rem;
-  background: var(--sunk);
-  border: none;
-  border-radius: 0;
-  --cut: 0.5625rem;
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
-  box-shadow:
-    inset 0 0 0 var(--rule) var(--ink-line),
-    inset 0 0.375rem 0 rgba(0, 0, 0, 0.32);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-}
-
-.worn-sum-title {
-  font-family: var(--serif);
-  font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: 0.15625rem;
-  text-transform: uppercase;
-  color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
-}
-
-.worn-sum-title::before {
-  content: '';
-  display: inline-block;
-  width: 0.4375rem;
-  height: 0.4375rem;
-  margin-right: 0.5625rem;
-  vertical-align: 0.09375rem;
-  background: var(--gold);
-  transform: rotate(45deg);
-  border: var(--hairline) solid var(--ink-line);
+  justify-content: center;
 }
 
 #gear-strip {
@@ -233,19 +299,18 @@
   font-size: 0.65625rem;
 }
 
-/* Bare kit: a ghost mark and one quiet line where the plaques will
-   be — the empty well is furnished, never blank. */
+/* Bare kit: the ghost setting and one quiet line — the foot band is
+   furnished, never blank, and never a void. */
 .worn-sum-empty {
   display: none;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
   gap: 0.875rem;
-  flex: 1;
-  padding: 0 0.75rem;
-  text-align: center;
+  padding: 0.25rem 0.125rem;
+  text-align: left;
   font-size: var(--t-label);
   font-style: italic;
+  line-height: 1.45;
   color: var(--parchment-faint);
   text-shadow: var(--punch-small);
 }
@@ -253,13 +318,15 @@
 /* The mark: an empty setting where the first sum will be struck. */
 .worn-sum-empty::before {
   content: '';
-  width: 2.75rem;
-  height: 2.75rem;
+  flex: none;
+  width: 1.625rem;
+  height: 1.625rem;
+  margin: 0.375rem;
   transform: rotate(45deg);
-  border: var(--rim) solid rgba(217, 164, 65, 0.4);
+  border: var(--rule) solid rgba(217, 164, 65, 0.4);
   box-shadow:
-    inset 0 0 0 var(--rule) var(--ink-line),
-    inset 0 0 0 0.5625rem rgba(0, 0, 0, 0.35);
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    inset 0 0 0 0.375rem rgba(0, 0, 0, 0.35);
 }
 
 #gear-strip.hidden ~ .worn-sum-empty {
@@ -286,74 +353,8 @@
 .equip-cell.equipped .slot-label {
   opacity: 1;
   background: var(--ink-wash);
-  border-radius: 0.1875rem;
   margin: 0 0.375rem;
-}
-
-/* ---- RIGHT WING: the backpack, the screen's protagonist ---- */
-
-.char-pack-col {
-  min-width: 0;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.pack-header {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  margin: 0.125rem 0 0.625rem;
-}
-
-/* The filter lens rides its own rail under the title. */
-#pack-filters {
-  flex: none;
-  display: flex;
-  gap: 0.5rem;
-  margin: 0 0 0.75rem;
-}
-
-.section-title {
-  font-family: var(--serif);
-  font-size: var(--t-lead);
-  font-weight: 700;
-  letter-spacing: 0.15625rem;
-  text-transform: uppercase;
-  color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
-  flex: 1;
-}
-
-/* The gold set-mark: every section heading is pinned by the same
-   inked diamond the ruled section lines wear. */
-.section-title::before {
-  content: '';
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-right: 0.625rem;
-  vertical-align: 0.09375rem;
-  background: var(--gold);
-  transform: rotate(45deg);
-  border: var(--hairline) solid var(--ink-line);
-}
-
-/* The fill gauge chip: the pack's count, cut and inked. */
-.pack-fill {
-  --chip-ring: var(--ink-line);
-  font-size: 0.9375rem;
-  font-weight: 800;
-  letter-spacing: 0.03125rem;
-  color: var(--parchment);
-  text-shadow: var(--punch-small);
-  padding: 0.375rem 0.6875rem;
-  background: var(--sunk);
-  border: none;
-  border-radius: 0;
-  --cut: 0.375rem;
+  --cut: 0.25rem;
   clip-path: polygon(
     var(--cut) 0,
     calc(100% - var(--cut)) 0,
@@ -364,28 +365,71 @@
     0 calc(100% - var(--cut)),
     0 var(--cut)
   );
-  box-shadow:
-    inset 0 0 0 var(--rule) var(--chip-ring),
-    inset 0 0.3125rem 0 rgba(0, 0, 0, 0.35);
+}
+
+/* ---- THE PACK TRAY: the screen's protagonist ---- */
+
+.char-pack-col {
+  flex: 1;
+}
+
+/* The filter lens rides the head band's right end. */
+.tray-head #pack-filters {
+  flex: none;
+  display: flex;
+  gap: 0.4375rem;
+  margin-left: auto;
+}
+
+/* ---- the pack's foot band: capacity read at a glance, purse right,
+   everything on one line, one baseline with the stand tray ---- */
+
+.pack-foot {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 3.25rem;
+}
+
+/* The capacity gauge: a real meter in the painted channel, the exact
+   count beside it. `--fill` is set by the renderer. */
+.pack-fill {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fill-meter {
+  flex: none;
+  width: min(13rem, 55%);
+  height: 1.0625rem;
+  border: 0.3125rem solid transparent;
+  border-image: var(--ui-gauge) 25 fill / 0.3125rem;
+  /* The fill: one hard stop — flat, honest, no gradient wash. */
+  background: linear-gradient(
+    90deg,
+    var(--fill-tone, var(--gold)) calc(var(--fill, 0) * 100%),
+    transparent calc(var(--fill, 0) * 100%)
+  );
+}
+
+.fill-count {
+  font-size: var(--t-body);
+  font-weight: 800;
+  letter-spacing: 0.03125rem;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
 }
 
 .pack-fill.full {
-  color: var(--red-soft);
-  --chip-ring: rgba(217, 87, 99, 0.55);
+  --fill-tone: var(--red);
 }
 
-/* The purse shelf under the pack: the coins, told big and plain. */
-.pack-foot {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-  padding: 0.5rem 0.875rem;
-  background: var(--sunk);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.4375rem;
+.pack-fill.full .fill-count {
+  color: var(--red-soft);
 }
 
 .purse-label {
@@ -460,6 +504,17 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
+  /* The spread centers in the tray's leftover height — a composed
+     case, not a heap against the head band. Auto margins (not
+     justify-content) so the emergency-scroll case never clips the
+     first row. */
+  display: flex;
+  flex-direction: column;
+}
+
+.pack-case > #inventory-grid {
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 #inventory-grid {
@@ -472,8 +527,10 @@
   grid-template-columns: repeat(6, var(--pack-cell));
   grid-auto-rows: var(--pack-cell);
   gap: 0.5625rem;
+  /* The pack sits centered in its tray — a composed spread, not a
+     heap pushed against the head band with dead leather below. */
   justify-content: center;
-  align-content: start;
+  align-content: center;
 }
 
 /* Every item cell is a painted recessed well from the kit. */
@@ -567,7 +624,17 @@
   color: var(--gold-bright);
   text-shadow: var(--punch-small);
   background: var(--ink-wash);
-  border-radius: 0.25rem;
+  --cut: 0.25rem;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
   box-shadow: inset 0 0 0 var(--hairline) rgba(217, 164, 65, 0.35);
 }
 
@@ -614,11 +681,21 @@ body:has(#shop-panel:not(.hidden)) #inventory-panel .panel-head h3 {
 
 body:has(#bank-panel:not(.hidden)) #inventory-panel .worn-kit,
 body:has(#shop-panel:not(.hidden)) #inventory-panel .worn-kit,
+/* In the narrow paired column the banner already says CHARACTER —
+   the tray-title yields its head band to the filter keys. */
+body:has(#bank-panel:not(.hidden)) #inventory-panel .tray-title,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .tray-title,
 /* The drop-to-world lesson is the station's noise — the bank/shop
    panel carries its own hint; the pack spends the line on sockets. */
 body:has(#bank-panel:not(.hidden)) #inventory-panel .panel-hint,
 body:has(#shop-panel:not(.hidden)) #inventory-panel .panel-hint {
   display: none;
+}
+
+/* With the title away, the filter keys hold the head band's center. */
+body:has(#bank-panel:not(.hidden)) #inventory-panel .tray-head #pack-filters,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .tray-head #pack-filters {
+  margin: 0 auto;
 }
 
 body:has(#inventory-panel:not(.hidden)) #bank-panel,
@@ -927,7 +1004,17 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   font-weight: 800;
   color: var(--gold-bright);
   background: var(--ink-wash);
-  border-radius: 0.1875rem;
+  --cut: 0.1875rem;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
   text-shadow: var(--punch-small);
   box-shadow: inset 0 0 0 var(--hairline) rgba(217, 164, 65, 0.3);
 }
