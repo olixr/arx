@@ -143,6 +143,12 @@ export interface ItemDef {
    * takes no skill at all (that's how you enchant a friend's blade).
    */
   enchant?: string;
+  /**
+   * Saddle paper: using it adds this MountDef id to the character's
+   * stable (consumed on the grant) — the recipe-scroll pattern for
+   * beasts. The mount itself is never an inventory item.
+   */
+  mount?: string;
   /** Relic active ability granted while worn in the relic slot (E). */
   relic?: string;
   /** Sigil ultimate granted while worn in the sigil slot (T). */
@@ -326,6 +332,39 @@ const defs: ItemDef[] = [
     desc: 'Tastes like wind. Works like it too.',
     color: '#8fd0e8',
     code: 'St',
+  },
+  // ---- THE STABLE DOOR (docs/mounts-plan.md Phase 4): a saddle item
+  // IS the purchase — using it brings the beast to your string and the
+  // paper leaves the pack. Sold at Osa's yard in Silverfall.
+  {
+    id: 'bay_courser',
+    name: 'Bay courser',
+    stackable: false,
+    value: 1200,
+    mount: 'courser_bay',
+    desc: 'A steady bay off the High Road strings, sold saddled and shod.',
+    color: '#7b4a2e',
+    code: 'Cb',
+  },
+  {
+    id: 'grey_courser',
+    name: 'Grey courser',
+    stackable: false,
+    value: 1200,
+    mount: 'courser_grey',
+    desc: "A thaw grey courser out of Osa's yard, sold saddled and shod.",
+    color: '#b7b3a8',
+    code: 'Cg',
+  },
+  {
+    id: 'dun_courser',
+    name: 'Dun courser',
+    stackable: false,
+    value: 1200,
+    mount: 'courser_dun',
+    desc: 'A black legged dun, mountain bred, sold saddled and shod.',
+    color: '#b2905e',
+    code: 'Cd',
   },
   {
     id: 'ironbark_tonic',

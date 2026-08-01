@@ -1327,6 +1327,25 @@ export class AccountStore {
     ]);
   }
 
+  /** THE STABLE DOOR: the beasts a character keeps; `chosen` answers the whistle. */
+  async loadMounts(characterId: number): Promise<Array<{ id: string; chosen: boolean }>> {
+    const rows = await this.db.query<{ mount_id: string; chosen: number }>(
+      'SELECT mount_id, chosen FROM character_mounts WHERE character_id = ?',
+      [characterId],
+    );
+    return rows.map((r) => ({ id: r.mount_id, chosen: Number(r.chosen) !== 0 }));
+  }
+
+  /** A new beast joins the string and takes the whistle. */
+  saveMountGrant(characterId: number, mountId: string, nowMs: number): void {
+    this.db.fire('UPDATE character_mounts SET chosen = 0 WHERE character_id = ?', [characterId]);
+    this.db.fire(
+      'INSERT INTO character_mounts (character_id, mount_id, chosen, acquired_at) VALUES (?, ?, 1, ?) ' +
+        'ON CONFLICT (character_id, mount_id) DO UPDATE SET chosen = 1',
+      [characterId, mountId, nowMs],
+    );
+  }
+
   saveInventory(
     characterId: number,
     slots: Array<{ item: string; qty: number; roll?: ItemRoll; stolen?: true } | null>,

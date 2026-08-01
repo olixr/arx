@@ -778,6 +778,18 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (tx, ty)
   );
   `,
+  // v21: THE STABLE DOOR (mounts Phase 4) — the beasts a character
+  // keeps. Row presence = owned (the callings pattern); `chosen` marks
+  // the one the whistle answers with.
+  `
+  CREATE TABLE character_mounts (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    mount_id TEXT NOT NULL,
+    chosen SMALLINT NOT NULL DEFAULT 0,
+    acquired_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, mount_id)
+  );
+  `,
 ];
 
 /**

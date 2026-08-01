@@ -2592,8 +2592,15 @@ export class GameServer {
       lying: false,
       seat: null,
       mountId: null,
-      mountsOwned: new Set(),
-      mountChosen: null,
+      // THE STABLE DOOR: the owned string returns with the character
+      // (row presence = owned, `chosen` answers the whistle).
+      mountsOwned: new Set(
+        (character.id > 0 ? await this.accounts.loadMounts(character.id) : []).map((m) => m.id),
+      ),
+      mountChosen:
+        character.id > 0
+          ? ((await this.accounts.loadMounts(character.id)).find((m) => m.chosen)?.id ?? null)
+          : null,
       rideSigSent: '',
       sheathed: false,
       drawLockUntilTick: 0,
@@ -2680,6 +2687,10 @@ export class GameServer {
     }
     player.session = session;
     player.disconnectedAt = null;
+    // THE MIRROR STARTS OVER: the ride signature belongs to the OLD
+    // socket — without this reset a reconnecting rider's fresh client
+    // never hears its own saddle and predicts at foot speed forever.
+    player.rideSigSent = '';
     player.inputQueue.length = 0;
     // A fresh client restarts its input numbering from 1 — accepting the
     // old high-water mark would silently drop all of its movement.
@@ -8761,6 +8772,35 @@ export class GameServer {
 
     // Buff consumables (tonics, buff food) — one active per channel; a
     // new drink replaces your drink, a new meal replaces your meal.
+    // THE STABLE DOOR: a saddle paper brings its beast to your string
+    // and leaves the pack with the buying — the recipe-scroll pattern.
+    if (def.mount) {
+      const mdef = mountDef(def.mount);
+      if (!mdef) return;
+      if (player.mountsOwned.has(def.mount)) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'Your stable already holds this one.',
+        });
+        return;
+      }
+      if (!takeSlot(player.inventory, slotIndex, 1)) return;
+      player.mountsOwned.add(def.mount);
+      player.mountChosen = def.mount;
+      player.rideSigSent = ''; // the mirror carries the new string
+      if (player.characterId > 0) {
+        this.accounts.saveMountGrant(player.characterId, def.mount, Date.now());
+      }
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `The ${def.name.toLowerCase()} is yours. It answers on open ground.`,
+      });
+      return;
+    }
+
     if (def.buff) {
       const b = def.buff;
       // Eat what was clicked, slot-addressed: nothing swallows twice

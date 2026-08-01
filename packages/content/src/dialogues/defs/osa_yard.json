@@ -56,6 +56,26 @@
       "id": "yard",
       "voice": "osa_yard__yard",
       "text": "Everything the mountain buys and everything it sells, with mules in between. Silver down, cotton up, deep-ore out of the new cellar, and every kind of traveler the road makes. They go up to the Undercroft eager and come back quiet. The mules prefer them quiet.",
+      "choices": [
+        {
+          "text": "Any of the coursers for sale?",
+          "next": "stable"
+        },
+        {
+          "text": "Busy yard.",
+          "next": "hub"
+        }
+      ]
+    },
+    {
+      "id": "stable",
+      "text": "The coursers, aye. Not the mules. Bay, grey, and the dun. Sound feet, road manners, shod for the long miles. Coin buys the saddle and the beast wears it. Look them over.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "osa_stable"
+        }
+      ],
       "next": "hub"
     },
     {

@@ -530,6 +530,17 @@ const defs: ShopDef[] = [
       { item: 'snare_kit', price: 280 },
     ],
   },
+  // Osa's yard sells the road itself: coursers, saddled and shod.
+  // The price IS the gate (the weapon idiom: economic, never levels).
+  {
+    id: 'osa_stable',
+    name: 'The High Yard',
+    stock: [
+      { item: 'bay_courser', price: 3500 },
+      { item: 'grey_courser', price: 3500 },
+      { item: 'dun_courser', price: 3500 },
+    ],
+  },
   // Bretta sells the forge's knowledge: every guild-taught schematic
   // in the smithing line, jewellery to platebodies.
   { id: 'trainer_smithing', name: 'Ironhewn Schematics', stock: trainerStock(['smithing']) },

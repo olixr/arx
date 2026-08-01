@@ -190,13 +190,16 @@ const main = async () => {
   await sleep(300);
   let course: [number, number] | null = null;
   let afoot = 0;
+  // Jittered per run: proving wolves (the damage receipt) leash where
+  // they spawned, and a fixed course collects them run over run.
+  const jit = Number(STAMP) % 11;
   for (const cand of [
-    [200, 60],
-    [240, 100],
-    [160, 130],
-    [280, 90],
-    [220, 140],
-    [180, 90],
+    [200 + jit, 60 + jit],
+    [240 + jit, 100],
+    [160, 130 + jit],
+    [280, 90 + jit],
+    [220 + jit, 140],
+    [180, 90 + jit],
   ] as Array<[number, number]>) {
     await tp(c, cand[0], cand[1]);
     afoot = await measureRun(c, 1.8);
@@ -340,12 +343,88 @@ const main = async () => {
   receipt('the neighbor sees the boots come down', true);
   b.ws.close();
 
-  // --- Landed damage unhorses the rider (last: it invites a wolf).
+  // --- Landed damage unhorses the rider (last: it invites a wolf —
+  // spawned far OFF the course so reruns never inherit the pack).
+  await tp(c, course[0] - 40, course[1] + 30);
   await mountUp(c);
   mark = c.mark();
   c.send({ t: 'chat', text: '/spawnmob wolf' });
   await c.waitFor((m) => m.t === 'ride' && m.mount === null, 'damage dismount', 12000, mark);
   receipt('a landed blow unhorses the rider', true);
+
+  // --- THE STABLE DOOR: the real player path (no dev whistle) — the
+  // saddle paper grants the beast, P calls it, and the string SURVIVES
+  // a full logout: the DB is the stable.
+  const d = new Client();
+  await d.open();
+  d.send({ t: 'hello', v: PROTOCOL_VERSION });
+  d.send({ t: 'register', user: `stable_${STAMP}`, pass: 'proving123', name: `Stable ${STAMP}` });
+  const dw = await d.waitFor((m) => m.t === 'welcome', 'stable welcome');
+  d.eid = dw.eid;
+  await sleep(400);
+  let dm = d.mark();
+  d.send({ t: 'chat', text: '/give bay_courser 1' });
+  const dinv = await d.waitFor((m) => m.t === 'inv', 'saddle paper in pack', 4000, dm);
+  const dslot = dinv.slots.findIndex((s: any) => s && s.item === 'bay_courser');
+  dm = d.mark();
+  d.send({ t: 'use', slot: dslot });
+  await d.waitFor((m) => m.t === 'chat' && /is yours/.test(m.text ?? ''), 'grant ceremony', 4000, dm);
+  const dRide = await d.waitFor(
+    (m) => m.t === 'ride' && m.owned?.includes('courser_bay'),
+    'granted mirror',
+    4000,
+    dm,
+  );
+  receipt('the saddle paper brings the beast to the string', dRide.owned.includes('courser_bay'));
+  dm = d.mark();
+  await d.press(MOUNT);
+  await d.waitFor((m) => m.t === 'ride' && m.mount === 'courser_bay', 'P calls the bought beast', 4000, dm);
+  receipt('the whistle answers with no dev hand at all', true);
+  // Double-buy refusal, aloud.
+  dm = d.mark();
+  d.send({ t: 'chat', text: '/give bay_courser 1' });
+  await d.waitFor((m) => m.t === 'inv', 'second paper', 4000, dm);
+  const dinv2 = d.latest('inv');
+  const dslot2 = dinv2!.slots.findIndex((s: any) => s && s.item === 'bay_courser');
+  dm = d.mark();
+  d.send({ t: 'use', slot: dslot2 });
+  await d.waitFor(
+    (m) => m.t === 'chat' && /already holds/.test(m.text ?? ''),
+    'double-buy refusal',
+    4000,
+    dm,
+  );
+  receipt('the stable refuses a double buy, aloud', true);
+  // The reconnect: a fresh session must find the beast in the stable.
+  d.ws.close();
+  await sleep(600);
+  const d2 = new Client();
+  await d2.open();
+  d2.send({ t: 'hello', v: PROTOCOL_VERSION });
+  d2.send({ t: 'login', user: `stable_${STAMP}`, pass: 'proving123' });
+  await d2.waitFor((m) => m.t === 'welcome', 'relogin welcome', 8000);
+  const d2Ride = await d2.waitFor((m) => m.t === 'ride', 'relogin mirror', 6000);
+  receipt(
+    'THE DB IS THE STABLE: the string survives the logout',
+    d2Ride.owned.includes('courser_bay'),
+  );
+  // The grace window kept the body IN the saddle — the relogin mirror
+  // must say so (this is the reconnect bug's receipt), and the
+  // whistle must still answer both ways.
+  receipt('the rider comes back still in the saddle', d2Ride.mount === 'courser_bay');
+  dm = d2.mark();
+  await d2.press(MOUNT);
+  await d2.waitFor((m) => m.t === 'ride' && m.mount === null, 'relogin step-down', 4000, dm);
+  dm = d2.mark();
+  await d2.press(MOUNT);
+  await d2.waitFor(
+    (m) => m.t === 'ride' && m.mount === 'courser_bay',
+    'relogin whistle',
+    4000,
+    dm,
+  );
+  receipt('the chosen beast still answers after the night', true);
+  d2.ws.close();
 
   console.log(`\nTHE SADDLE LAW HOLDS — ${passed} receipts.`);
   c.ws.close();
