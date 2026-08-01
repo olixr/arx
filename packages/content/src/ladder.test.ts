@@ -107,6 +107,23 @@ test('THE OPEN LADDER: an art every five levels, 5 through 50, no gaps, no doubl
   }
 });
 
+test('THE KEEPER LADDER: beastcraft holds exactly its authored rungs', () => {
+  // The fourth citizenship of style (docs/beastcraft-arts-plan.md):
+  // a non-combat school's ladder grows art by art — this pin is the
+  // deliberate record of what stands, extended per new art, and it
+  // guards against the school leaking into the combat-style pins.
+  const arts = techniquesFor('beastcraft');
+  assert.deepEqual(
+    arts.map((t) => [t.ability, t.unlockLevel]),
+    [['gentle_the_wild', 10]],
+    'the beastcraft ladder is exactly its authored roster',
+  );
+  for (const t of arts) {
+    const ab = abilityDef(t.ability)!;
+    assert.equal(ab.damage, 0, `${t.ability}: a keeper art is a working, never a strike`);
+  }
+});
+
 test('THE UNWRITTEN PAGE: hidden arts are well-formed, one per style at launch', () => {
   const hidden = TECHNIQUES.filter((t) => t.hidden);
   const byStyle = new Map<string, number>();

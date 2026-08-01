@@ -136,4 +136,5 @@ export const HONABLE: ReadonlySet<string> = new Set([
   'drainFrac',
   'summon',
   'tauntRadius',
+  'channelTicks',
 ]);

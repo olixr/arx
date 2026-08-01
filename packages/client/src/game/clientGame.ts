@@ -40,7 +40,6 @@ import {
   type BuffInfo,
   type ChargeInfo,
   type PetInfo,
-  GENTLE_HP_FRAC,
   type InputFrame,
   type BuildOrient,
   type InvSlot,
@@ -1793,17 +1792,9 @@ export class ClientGame {
       // the companion chip. Another keeper's beast offers nothing.
       const owned = remote.meta.ownerEid !== undefined;
       if (owned && remote.meta.ownerEid !== this.ownEid) continue;
-      // A tamable beast worn under the gentling window offers the
-      // kneel — shown even when the rung or lure is short, because
-      // the server's spoken refusal IS the tutorial (hpPct rides the
-      // snapshot: 255 = whole, the window is the craven fraction).
-      const gentleReady =
-        def &&
-        !def.produce &&
-        tameDef(def.id) !== undefined &&
-        latest != null &&
-        latest.hpPct > 0 &&
-        latest.hpPct <= Math.floor(255 * GENTLE_HP_FRAC);
+      // Taming left this prompt with THE WILD ANSWERS THE CALL: the
+      // tame is Gentle the Wild, a technique cast from a seat — a
+      // wild beast offers the interact hand nothing anymore.
       // A voice (dialogue tree or barks) offers Talk even on fightable
       // neutrals — the guard you COULD strike would rather chat. A
       // crouched hand asks a different question (factions Phase 5):
@@ -1816,13 +1807,11 @@ export class ClientGame {
             : null
         : def?.produce
           ? 'Milk'
-          : gentleReady
-            ? 'Gentle'
-            : remote.meta.talk || remote.meta.friendly
-              ? this.isSneaking
-                ? 'Pickpocket'
-                : 'Talk'
-              : null;
+          : remote.meta.talk || remote.meta.friendly
+            ? this.isSneaking
+              ? 'Pickpocket'
+              : 'Talk'
+            : null;
       if (!verb) continue;
       const x = latest?.x ?? remote.meta.x;
       const y = latest?.y ?? remote.meta.y;

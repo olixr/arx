@@ -244,7 +244,16 @@ export type AbilityShape =
   /** Leap to an aimed point and detonate a blast on landing. */
   | 'leap_slam'
   /** A rapid burst of melee-arc strikes over a few beats (you keep moving). */
-  | 'flurry';
+  | 'flurry'
+  /**
+   * THE WILD ANSWERS THE CALL (beastcraft arts): a survival channel
+   * cast at a tamable beast in the aim cone. The working provokes the
+   * beast onto the caster; standing in its teeth for `channelTicks`
+   * (halved on a craven mark) completes the tame through the one
+   * ceremony rail. Moving breaks it; any wound TO the beast breaks
+   * it; keeper blood does not.
+   */
+  | 'tame';
 
 export interface AbilitySelf {
   heal?: number;
@@ -360,6 +369,12 @@ export interface AbilityDef {
    * force-switch, worn as a knight's shout). Tiles.
    */
   tauntRadius?: number;
+  /**
+   * tame: the survival channel's length in ticks. A craven mark
+   * (hp <= GENTLE_HP_FRAC) channels in floor(channelTicks / 2) —
+   * one factor, derived, never authored twice. Honable by rank.
+   */
+  channelTicks?: number;
 }
 
 /**
@@ -414,13 +429,26 @@ export const COMBAT_STYLES: readonly CombatStyleId[] = [
 ];
 
 /**
+ * THE FOURTH CITIZENSHIP OF STYLE (beastcraft arts): a technique's
+ * school may also be a non-combat craft that owns a ladder —
+ * beastcraft is the first. COMBAT_STYLES and the combat half-echo
+ * NEVER gain these (beastcraft is never a combat school); the style
+ * only gates learning and powers the cast through its own skill,
+ * exactly as THE FREE HAND already allows.
+ */
+export type TechniqueStyleId = CombatStyleId | 'beastcraft';
+
+/** Every school that owns a technique ladder — codex + climb criers. */
+export const TECHNIQUE_STYLES: readonly TechniqueStyleId[] = [...COMBAT_STYLES, 'beastcraft'];
+
+/**
  * A learnable active: unlocked by raising the style's skill, then
  * slotted freely — the R slot takes ANY learned art regardless of the
  * equipped weapon (respec is always free — experiment!).
  */
 export interface TechniqueDef {
   ability: string;
-  style: CombatStyleId;
+  style: TechniqueStyleId;
   unlockLevel: number;
   /**
    * THE HONED-ART LAW: the steps this art climbs past Rank I, in

@@ -24,16 +24,12 @@ export type PetState = 'heel' | 'stabled' | 'resting';
  * THE GENTLING IS EARNED, NEVER ROLLED: a wild heart opens only once
  * its nerve breaks — deliberately the craven-break threshold, shared
  * so the two laws can never drift apart. Deterministic end to end:
- * skill rung + worn-down heart + the right lure + an unbroken kneel.
+ * skill rung + the right lure + an unbroken survival channel (THE
+ * WILD ANSWERS THE CALL: the cast replaced the kneel; a beast worn
+ * under this fraction is CRAVEN and answers in half the channel).
  * No dice, no pity, no player-state odds (the flood-law's spirit).
  */
 export const GENTLE_HP_FRAC = 0.35;
-
-/**
- * The gentling kneel, in ticks (4s at 20 tps). Flat on purpose — a
- * heart is not a node, so no gather-speed brew ever shortens it.
- */
-export const GENTLE_TICKS = 80;
 
 /** Close enough to count as at heel — where the follow settles. */
 export const PET_HEEL_DIST = 1.6;

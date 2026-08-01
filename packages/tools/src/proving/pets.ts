@@ -25,7 +25,10 @@ import {
   GENTLE_HP_FRAC,
 } from '@arx/shared';
 
-const URL = 'ws://localhost:8790/ws';
+// Overridable so a proving run can aim at an isolated rig (own port,
+// own database) when the shared dev server is being hot-reloaded by
+// a concurrent session's edits.
+const URL = process.env.ARX_PROVE_URL ?? 'ws://localhost:8790/ws';
 const STAMP = process.argv[2] ?? String(Math.floor(Math.random() * 1e6));
 const USER = `keeper_${STAMP}`;
 const CHAR = `Keeper ${STAMP}`;
@@ -215,9 +218,9 @@ const main = async () => {
       await tp(c, Math.round(far.x), Math.round(far.y) + 1);
     }
     const t0 = Date.now();
-    let sidled = false;
+    let sidled = 0;
     for (;;) {
-      if (Date.now() - t0 > 15000) {
+      if (Date.now() - t0 > 16000) {
         const b = c.ents.get(targetEid);
         const me = c.pos;
         throw new Error(
@@ -225,11 +228,27 @@ const main = async () => {
         );
       }
       // A boulder or a trunk on the straight line: sidle around it by
-      // asking the dev lift for the target's other shoulder.
-      if (!sidled && Date.now() - t0 > 6500) {
-        sidled = true;
+      // asking the dev lift for another shoulder — all four in turn
+      // (live-caught: a downed body against a rock line left the one
+      // authored shoulder blocked too), and a refused shoulder never
+      // kills the walk.
+      if (sidled < 4 && Date.now() - t0 > 5000 + sidled * 3000) {
         const b2 = c.ents.get(targetEid);
-        if (b2) await tp(c, Math.round(b2.x) - 1, Math.round(b2.y));
+        if (b2) {
+          const spots: Array<[number, number]> = [
+            [Math.round(b2.x) - 1, Math.round(b2.y)],
+            [Math.round(b2.x) + 1, Math.round(b2.y)],
+            [Math.round(b2.x), Math.round(b2.y) + 1],
+            [Math.round(b2.x), Math.round(b2.y) - 1],
+          ];
+          const [sx, sy] = spots[sidled % spots.length]!;
+          sidled++;
+          try {
+            await tp(c, sx, sy);
+          } catch {
+            /* refused ground: the next shoulder answers */
+          }
+        }
       }
       const b = c.ents.get(targetEid);
       const me = c.pos;
@@ -247,49 +266,166 @@ const main = async () => {
     }
   };
 
-  // --- Refusal 1: the rung. Beastcraft 1 asks and is told, aloud.
-  await walkTo(beetle);
+  // ==== THE WILD ANSWERS THE CALL (docs/beastcraft-arts-plan.md): the
+  // tame is a technique now — seated on Q, cast at the beast, survived.
+
+  const killTarget = async (targetEid: number, label: string): Promise<void> => {
+    const t0 = Date.now();
+    let lastNear = Date.now();
+    for (;;) {
+      if (Date.now() - t0 > 50000) throw new Error(`could not fell ${label}`);
+      const b = c.ents.get(targetEid);
+      if (!b || b.hpPct === 0 || Date.now() - b.at > 2000) return;
+      const me = c.pos!;
+      const d = Math.hypot(b.x - me.x, b.y - me.y);
+      const aim = Math.atan2(b.y - me.y, b.x - me.x);
+      // Swing whenever plausibly in reach — a circling mob spends
+      // half its time on the gate's far side, and pressing early
+      // costs nothing (the cone forgives, the whiff is honest).
+      if (d > 1.9) {
+        // A grown tree line pins a straight walk forever (no client
+        // pathing) — after 6s of failing to close, take the dev lift
+        // to the mob's shoulder (the walkTo sidle, weaponized).
+        if (Date.now() - lastNear > 3500) {
+          lastNear = Date.now();
+          await tp(c, Math.round(b.x), Math.round(b.y) + 1);
+          continue;
+        }
+        c.frame(0, Math.cos(aim), Math.sin(aim), aim);
+        await sleep(60);
+        continue;
+      }
+      lastNear = Date.now();
+      c.frame(ATTACK, 0, 0, aim);
+      await sleep(80);
+      c.frame(0, 0, 0, aim);
+      await sleep(380);
+    }
+  };
+
+  /** One cast press-edge of Ability1 (Q seat), aimed at a body. */
+  const castAt = async (targetEid: number): Promise<void> => {
+    const b = c.ents.get(targetEid);
+    const me = c.pos;
+    const aim = b && me ? Math.atan2(b.y - me.y, b.x - me.x) : 0;
+    c.frame(8, 0, 0, aim); // Ability1 = 1 << 3, press edge
+    await sleep(80);
+    c.frame(0, 0, 0, aim);
+  };
+
+  // --- THE SEAT GATE: below the rung, the codex refuses the seat.
   mark = c.mark();
-  c.send({ t: 'interactnpc', eid: beetle });
+  c.send({ t: 'technique', ability: 'gentle_the_wild', slot: 0 });
   await c.waitFor(
-    (m) => m.t === 'chat' && /need beastcraft level 10/.test(m.text ?? ''),
-    'rung refusal',
+    (m) => m.t === 'chat' && /unlocks at beastcraft level 10/.test(m.text ?? ''),
+    'seat refusal',
     5000,
     mark,
   );
-  receipt('the rung refuses, aloud, and teaches the number', true);
+  receipt('the ladder gates the seat: an unlearned art refuses, aloud', true);
 
-  // --- Refusal 2: a whole heart. Level up, ask again untouched.
+  // --- THE SCHOOL OPENS: at the rung, the art takes the Q seat.
   await say(c, '/xp beastcraft 1200');
-  await walkTo(beetle);
   mark = c.mark();
-  c.send({ t: 'interactnpc', eid: beetle });
+  c.send({ t: 'technique', ability: 'gentle_the_wild', slot: 0 });
   await c.waitFor(
-    (m) => m.t === 'chat' && /too much fight left/.test(m.text ?? ''),
-    'whole-heart refusal',
+    (m) => m.t === 'techniques' && m.chosen?.[0] === 'gentle_the_wild',
+    'the art takes the seat',
     5000,
     mark,
   );
-  receipt('a whole heart refuses the hand', true);
+  receipt('THE SCHOOL OPENS: Gentle the Wild takes the seat at beastcraft 10', true);
 
-  // --- Wear it down into the craven window (whiff-0 makes this a
-  // real fight: some swings write nothing, and that is the law).
-  const swingUntilWorn = async (): Promise<void> => {
+  // --- Refusal: an empty cone. The call finds nothing, costs nothing.
+  {
+    const b0 = c.ents.get(beetle);
+    const bx = b0 ? Math.round(b0.x) : course[0];
+    const by = b0 ? Math.round(b0.y) : course[1];
+    let landed = false;
+    for (const [ox, oy] of [[40, 30], [44, 18], [31, 42]] as const) {
+      try {
+        await tp(c, bx + ox, by + oy);
+        landed = true;
+        break;
+      } catch {
+        /* refused ground: the next offset asks elsewhere */
+      }
+    }
+    if (!landed) throw new Error('no ground for the empty-cone receipt');
+    mark = c.mark();
+    await castAt(-1);
+    await c.waitFor(
+      (m) => m.t === 'chat' && /Nothing wild in reach answers the call/.test(m.text ?? ''),
+      'empty-cone refusal',
+      5000,
+      mark,
+    );
+    receipt('an empty cone refuses, aloud, and nothing is spent', true);
+  }
+
+  // --- Refusal: the rung, spoken through the cast door (a mudcrab
+  // asks for beastcraft 15; the keeper stands at 10).
+  {
+    mark = c.mark();
+    await say(c, '/spawnmob mudcrab 1');
+    await c.waitFor(
+      (m) => (m.t === 'enter' || m.t === 'update') && m.entities?.some((e: Msg) => e.defId === 'mudcrab' && e.ownerEid === undefined),
+      'mudcrab enters',
+      6000,
+      mark,
+    );
+    const crab = c.msgs
+      .slice(mark)
+      .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+      .find((e: Msg) => e.defId === 'mudcrab' && e.ownerEid === undefined).eid;
+    await walkTo(crab, 3);
+    mark = c.mark();
+    await castAt(crab);
+    await c.waitFor(
+      (m) => m.t === 'chat' && /need beastcraft level 15/.test(m.text ?? ''),
+      'rung refusal via cast',
+      5000,
+      mark,
+    );
+    receipt('the rung refuses through the cast, aloud, and teaches the number', true);
+    await killTarget(crab, 'the mudcrab');
+  }
+
+  // --- Refusal: the empty pack (right rung, no lure in the cone).
+  await walkTo(beetle, 3);
+  mark = c.mark();
+  await castAt(beetle);
+  await c.waitFor(
+    (m) => m.t === 'chat' && /noses your pack for berries/.test(m.text ?? ''),
+    'lure refusal',
+    5000,
+    mark,
+  );
+  receipt('the empty pack refuses, and names the lure', true);
+
+  // --- The cast pays a real cooldown (10s) only when a channel truly
+  // opens — refusals are free. Track paid casts so the next one waits.
+  let lastPaidCastAt = 0;
+  const waitTameCd = async (): Promise<void> => {
+    const left = lastPaidCastAt + 10600 - Date.now();
+    if (left > 0) await sleep(left);
+  };
+
+  /** Wear a body into the craven window (whiff-0 makes it a real fight). */
+  const swingUntilWorn = async (markEid: number): Promise<void> => {
     const t0 = Date.now();
     for (;;) {
       if (Date.now() - t0 > 60000) {
-        const b = c.ents.get(beetle);
+        const b = c.ents.get(markEid);
         const me = c.pos;
-        const hits = c.msgs.filter((m) => m.t === 'hit' && m.eid === beetle).length;
-        const anyHits = c.msgs.filter((m) => m.t === 'hit').length;
         throw new Error(
-          `could not wear the beetle down in 60s (hpPct ${b?.hpPct}, d ${b && me ? Math.hypot(b.x - me.x, b.y - me.y).toFixed(2) : '?'}, hits-on-beetle ${hits}, hits-any ${anyHits})`,
+          `could not wear ${markEid} down in 60s (hpPct ${b?.hpPct}, d ${b && me ? Math.hypot(b.x - me.x, b.y - me.y).toFixed(2) : '?'})`,
         );
       }
-      const b = c.ents.get(beetle);
+      const b = c.ents.get(markEid);
       const me = c.pos;
       if (b && b.hpPct > 0 && b.hpPct <= WINDOW_PCT) return;
-      if (!b || b.hpPct === 0) throw new Error('the beetle died — the wound overshot the window');
+      if (!b || b.hpPct === 0) throw new Error('the mark died — the wound overshot the window');
       if (b && me) {
         const d = Math.hypot(b.x - me.x, b.y - me.y);
         const aim = Math.atan2(b.y - me.y, b.x - me.x);
@@ -306,70 +442,219 @@ const main = async () => {
       await sleep(100);
     }
   };
-  await swingUntilWorn();
-  const worn = c.ents.get(beetle)!;
-  receipt(
-    'the wound opens the door: the beetle stands in the craven window',
-    worn.hpPct > 0 && worn.hpPct <= WINDOW_PCT,
-    `hpPct ${worn.hpPct}/${WINDOW_PCT}`,
-  );
 
-  // --- Refusal 3: the empty pack (worn down, right rung, no lure).
-  await walkTo(beetle);
-  mark = c.mark();
-  c.send({ t: 'interactnpc', eid: beetle });
-  await c.waitFor(
-    (m) => m.t === 'chat' && /noses your pack for berries/.test(m.text ?? ''),
-    'lure refusal',
-    5000,
-    mark,
-  );
-  receipt('the empty pack refuses, and names the lure', true);
-
-  // --- The broken kneel: start the gentling, walk away. The lure
-  // must still be whole — an interrupt costs nothing.
+  // --- THE BROKEN ASKING: open the channel on the whole beetle, then
+  // walk. The channel breaks and the lure is still whole.
   await say(c, '/give berries 5');
-  await walkTo(beetle);
+  await walkTo(beetle, 2.5);
   mark = c.mark();
-  c.send({ t: 'interactnpc', eid: beetle });
-  await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'kneel starts', 5000, mark);
+  lastPaidCastAt = Date.now();
+  await castAt(beetle);
+  const brokenStart = await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'the asking opens', 5000, mark);
+  receipt('a whole heart takes the FULL asking: the channel opens at 200 ticks', brokenStart.ticks === 200, `ticks ${brokenStart.ticks}`);
   const walkT0 = Date.now();
   while (Date.now() - walkT0 < 1400) {
     c.frame(0, -1, 0);
     await sleep(50);
   }
   c.frame(0);
-  await c.waitFor((m) => m.t === 'action' && m.state === 'stop', 'kneel breaks', 5000, mark);
-  receipt('walking off breaks the kneel', true);
-
-  // --- The true gentling: kneel it out, unbroken. A wild bite can
-  // break a kneel honestly (the law working as written); the lure
-  // survives a broken kneel by the same law, so the court retries.
-  let ceremony: Msg | null = null;
-  for (let attempt = 1; attempt <= 3 && !ceremony; attempt++) {
-    await walkTo(beetle);
-    mark = c.mark();
-    c.send({ t: 'interactnpc', eid: beetle });
-    try {
-      await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'kneel starts again', 5000, mark);
-      ceremony = await c.waitFor((m) => m.t === 'pet' && m.ceremony !== undefined, 'the ceremony', 9000, mark);
-    } catch (err) {
-      if (attempt === 3) throw err;
-      console.log(`  (the kneel broke honestly, attempt ${attempt} — courting again)`);
-      await sleep(1000);
-    }
+  await c.waitFor((m) => m.t === 'action' && m.state === 'stop', 'the asking breaks', 5000, mark);
+  {
+    const still = c.latest('inv')?.slots.find((s: any) => s && s.item === 'berries')?.qty ?? 0;
+    receipt('moving breaks the asking, and it costs nothing', still === 5, `berries ${still}`);
   }
-  if (!ceremony) throw new Error('no ceremony');
+
+  // The teeth ahead are real chip damage on a fresh keeper — stock
+  // the pack once; each block chugs what it needs.
+  {
+    mark = c.mark();
+    await say(c, '/give healing_tincture 6');
+    await c.waitFor((m) => m.t === 'inv', 'tinctures in pack', 5000, mark);
+  }
+  const chug = async (n: number): Promise<void> => {
+    for (let i = 0; i < n; i++) {
+      const ts = c.latest('inv')?.slots.findIndex((s: any) => s && s.item === 'healing_tincture') ?? -1;
+      if (ts < 0) return;
+      c.send({ t: 'use', slot: ts });
+      await sleep(700);
+    }
+  };
+
+  // --- THE CRAVEN ACCELERATOR, first (live-caught ordering law): this
+  // receipt must run BEFORE any companion exists — a heel friend joins
+  // the wear-down through the quiet defend door and then kills or
+  // re-wounds the worn mark straight through the cooldown wait. It
+  // also runs on SEPARATE ground, out past the provoked first
+  // beetle's leash, so the cone holds exactly one candidate.
+  {
+    let landed = false;
+    for (const [ox, oy] of [[60, 45], [52, 18], [38, 55]] as const) {
+      try {
+        await tp(c, course[0] + ox, course[1] + oy);
+        landed = true;
+        break;
+      } catch {
+        /* refused ground: the next offset asks elsewhere */
+      }
+    }
+    if (!landed) throw new Error('no ground for the craven receipt');
+    mark = c.mark();
+    await say(c, '/spawnmob giant_beetle 1');
+    await c.waitFor(
+      (m) => (m.t === 'enter' || m.t === 'update') && m.entities?.some((e: Msg) => e.defId === 'giant_beetle' && e.ownerEid === undefined),
+      'second beetle enters',
+      6000,
+      mark,
+    );
+    const beetle2 = c.msgs
+      .slice(mark)
+      .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+      .find((e: Msg) => e.defId === 'giant_beetle' && e.ownerEid === undefined && e.eid !== beetle).eid;
+    await walkTo(beetle2);
+    await swingUntilWorn(beetle2);
+    const worn = c.ents.get(beetle2)!;
+    receipt(
+      'the wound opens the short road: the second beetle stands craven',
+      worn.hpPct > 0 && worn.hpPct <= WINDOW_PCT,
+      `hpPct ${worn.hpPct}/${WINDOW_PCT}`,
+    );
+    await chug(1);
+    await waitTameCd();
+    mark = c.mark();
+    lastPaidCastAt = Date.now();
+    const cravenT0 = Date.now();
+    await castAt(beetle2);
+    const cravenStart = await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'the short asking opens', 5000, mark);
+    const ceremony2 = await c.waitFor((m) => m.t === 'pet' && m.ceremony !== undefined, 'the short ceremony', 10000, mark);
+    const cravenMs = Date.now() - cravenT0;
+    receipt(
+      'THE CRAVEN ACCELERATOR: a worn heart answers in half the asking',
+      cravenStart.ticks === 100 && cravenMs >= 4200 && cravenMs <= 8500,
+      `ticks ${cravenStart.ticks}, ${(cravenMs / 1000).toFixed(1)}s`,
+    );
+    await say(c, `/tame drop ${ceremony2.ceremony}`);
+    await c.waitFor((m) => m.t === 'pet' && m.pets?.length === 0, 'the short-road friend returned (dev)', 5000);
+  }
+
+  // --- THE SURVIVAL TAME: cast on the whole beetle and STAND. The
+  // working provokes it; teeth land on the keeper the whole channel
+  // and break nothing; the finish is the same old ceremony.
+  await chug(3);
+  await waitTameCd();
+  await walkTo(beetle, 2.5);
+  // A wound during the channel must be CERTAIN, never dice (live-
+  // caught: ten whole seconds of beetle rolls once came up all
+  // whiffs and the bleed read as a lottery). A goblin dropped at
+  // arm's length opens on the keeper at once — the spawn ring's
+  // documented instant aggro — so the receipt proves keeper blood
+  // AND a third party's teeth break nothing. It is not tamable, so
+  // the cone never sees it.
+  mark = c.mark();
+  await say(c, '/spawnmob goblin 1');
+  await c.waitFor(
+    (m) => (m.t === 'enter' || m.t === 'update') && m.entities?.some((e: Msg) => e.defId === 'goblin' && e.ownerEid === undefined),
+    'the chewer enters',
+    6000,
+    mark,
+  );
+  const chewer = c.msgs
+    .slice(mark)
+    .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+    .find((e: Msg) => e.defId === 'goblin' && e.ownerEid === undefined).eid;
+  const hpBefore = c.eid !== null ? (c.ents.get(c.eid)?.hpPct ?? 255) : 255;
+  mark = c.mark();
+  lastPaidCastAt = Date.now();
+  const castT0 = Date.now();
+  await castAt(beetle);
+  await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'the asking opens again', 5000, mark);
+  const ceremony = await c.waitFor((m) => m.t === 'pet' && m.ceremony !== undefined, 'the ceremony', 16000, mark);
+  const channelMs = Date.now() - castT0;
+  const hpDuring = c.eid !== null ? (c.ents.get(c.eid)?.hpPct ?? 255) : 255;
   const tamed = ceremony.pets.find((p: Msg) => p.slot === ceremony.ceremony);
   receipt(
-    'THE GENTLING IS EARNED: the beetle is yours, at heel, level true',
+    'THE WILD ANSWERS THE CALL: survive the asking and the beetle is yours',
     tamed?.species === 'giant_beetle' && tamed?.state === 'heel' && tamed?.level === 6,
     `slot ${ceremony.ceremony}, level ${tamed?.level}`,
   );
+  receipt(
+    'the whole heart holds the full ten seconds',
+    channelMs >= 9200 && channelMs <= 15000,
+    `${(channelMs / 1000).toFixed(1)}s`,
+  );
+  receipt(
+    'THE TEETH BREAK NOTHING: the keeper bled through the channel and the working held',
+    hpDuring < hpBefore,
+    `hpPct ${hpBefore} -> ${hpDuring}`,
+  );
   await c.waitFor((m) => m.t === 'chat' && /It is yours now/.test(m.text ?? ''), 'ceremony line', 5000, mark);
-  const invAfter = await c.waitFor((m) => m.t === 'inv', 'lure consumed', 5000, mark);
-  const berriesLeft = invAfter.slots.find((s: any) => s && s.item === 'berries')?.qty ?? 0;
-  receipt('one lure spent at the finish, none on the broken kneel', berriesLeft === 4, `berries ${berriesLeft}`);
+  {
+    // Five given; the craven finish spent one, this finish spends one,
+    // and the broken asking spent NOTHING — three remain.
+    const left = c.latest('inv')?.slots.find((s: any) => s && s.item === 'berries')?.qty ?? 0;
+    receipt('each finish spends one lure, the broken asking spent none', left === 3, `berries ${left}`);
+  }
+  await killTarget(chewer, 'the chewer');
+
+  // --- THE WOUND BREAKS THE ASKING: a third beetle, a channel opened,
+  // then the keeper's own steel touches the mark — the working dies
+  // and the lure survives.
+  {
+    mark = c.mark();
+    await say(c, '/spawnmob giant_beetle 1');
+    await c.waitFor(
+      (m) => (m.t === 'enter' || m.t === 'update') && m.entities?.some((e: Msg) => e.defId === 'giant_beetle' && e.ownerEid === undefined),
+      'third beetle enters',
+      6000,
+      mark,
+    );
+    const beetle3 = c.msgs
+      .slice(mark)
+      .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+      .find((e: Msg) => e.defId === 'giant_beetle' && e.ownerEid === undefined).eid;
+    const lureBefore = c.latest('inv')?.slots.find((s: any) => s && s.item === 'berries')?.qty ?? 0;
+    // The keeper has been chewed on for two receipts straight — top
+    // up before standing in a third set of teeth.
+    await chug(1);
+    await waitTameCd();
+    await walkTo(beetle3, 2.0);
+    mark = c.mark();
+    lastPaidCastAt = Date.now();
+    await castAt(beetle3);
+    await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'the third asking opens', 5000, mark);
+    await sleep(900);
+    // Swing until steel writes (whiff-0: a whiff breaks nothing, so
+    // keep swinging until the stop proves a wound landed).
+    const stopMark = mark;
+    const swingT0 = Date.now();
+    let stopped: Msg | null = null;
+    while (!stopped && Date.now() - swingT0 < 20000) {
+      const b = c.ents.get(beetle3);
+      const me = c.pos;
+      if (b && me) {
+        const aim = Math.atan2(b.y - me.y, b.x - me.x);
+        c.frame(ATTACK, 0, 0, aim);
+        await sleep(80);
+        c.frame(0, 0, 0, aim);
+      }
+      stopped = c.msgs.slice(stopMark).find((m) => m.t === 'action' && m.state === 'stop') ?? null;
+      await sleep(300);
+    }
+    const lureAfter = c.latest('inv')?.slots.find((s: any) => s && s.item === 'berries')?.qty ?? 0;
+    receipt(
+      'a wound to the beast breaks the asking, and the lure survives',
+      stopped !== null && stopped.reason === 'hurt' && lureAfter === lureBefore,
+      `reason ${stopped?.reason}, berries ${lureBefore} -> ${lureAfter}`,
+    );
+    await killTarget(beetle3, 'the third beetle');
+    // The fight's dev lifts may have trailed the companion — stand
+    // calm until the body re-emerges (the downstream receipts count
+    // on a live second entity, not a promise of one).
+    const calm0 = Date.now();
+    while (c.petEids(c.eid).length < 1 && Date.now() - calm0 < 15000) {
+      c.frame(0);
+      await sleep(250);
+    }
+  }
 
   // --- The wild body left the world's books; the companion stands.
   await sleep(600);
@@ -493,40 +778,6 @@ const main = async () => {
     }
   };
   /** Swing at a mob until it is dead — the keeper cleans up. */
-  const killTarget = async (targetEid: number, label: string): Promise<void> => {
-    const t0 = Date.now();
-    let lastNear = Date.now();
-    for (;;) {
-      if (Date.now() - t0 > 50000) throw new Error(`could not fell ${label}`);
-      const b = c.ents.get(targetEid);
-      if (!b || b.hpPct === 0 || Date.now() - b.at > 2000) return;
-      const me = c.pos!;
-      const d = Math.hypot(b.x - me.x, b.y - me.y);
-      const aim = Math.atan2(b.y - me.y, b.x - me.x);
-      // Swing whenever plausibly in reach — a circling mob spends
-      // half its time on the gate's far side, and pressing early
-      // costs nothing (the cone forgives, the whiff is honest).
-      if (d > 1.9) {
-        // A grown tree line pins a straight walk forever (no client
-        // pathing) — after 6s of failing to close, take the dev lift
-        // to the mob's shoulder (the walkTo sidle, weaponized).
-        if (Date.now() - lastNear > 3500) {
-          lastNear = Date.now();
-          await tp(c, Math.round(b.x), Math.round(b.y) + 1);
-          continue;
-        }
-        c.frame(0, Math.cos(aim), Math.sin(aim), aim);
-        await sleep(60);
-        continue;
-      }
-      lastNear = Date.now();
-      c.frame(ATTACK, 0, 0, aim);
-      await sleep(80);
-      c.frame(0, 0, 0, aim);
-      await sleep(380);
-    }
-  };
-
   /** Spawn a mob and open on it, retrying whole bodies on stage flakes. */
   const stageFight = async (species: string, label: string): Promise<number> => {
     let lastEid: number | null = null;
@@ -561,6 +812,22 @@ const main = async () => {
             await killTarget(lastEid, `${label} (failed stage)`);
           }
           lastEid = null;
+        }
+        // Bad ground refuses spawns whole, or seats them across a
+        // rock line the walk can never cross (live-caught: a course
+        // lottery pocketed the kit stage and three asks landed
+        // nothing) — shift the stage before asking again.
+        const me = c.pos;
+        if (me) {
+          for (const [ox, oy] of [[11, -7], [-13, 9], [7, 13]] as const) {
+            try {
+              await tp(c, Math.round(me.x) + ox * attempt, Math.round(me.y) + oy);
+              break;
+            } catch {
+              /* refused ground: the next offset asks elsewhere */
+            }
+          }
+          await sleep(500);
         }
       }
     }

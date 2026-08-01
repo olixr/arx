@@ -816,7 +816,15 @@ export interface S2CFx {
      * event instead of adding noise to the damage stream. `x2/y2` carry
      * the segment for the workings that travel.
      */
-    | 'proc';
+    | 'proc'
+    /**
+     * THE VISIBLE WORKING (beastcraft arts): a tame channel's calm
+     * drifting from the caster's hand at (x,y) to the beast at
+     * (x2,y2) — pulsed along the channel so watchers see the asking;
+     * `radius` 0 while it runs, >0 exactly once at the completion
+     * burst (the bond closing).
+     */
+    | 'tame';
   x: number;
   y: number;
   radius: number;

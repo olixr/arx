@@ -10,11 +10,13 @@
     { "text": "Do you keep one yourself?", "next": "own" },
     { "text": "That's all.", "next": "off" } ] },
   { "id": "pen", "text": "Three stalls to a household, one friend at your heel. Swap them here. Rest one that limped home. And when a bond has run its course, this is where you slip the collar.", "next": "hub" },
-  { "id": "gentle", "text": "Wear its fight down first. Not out. Down. Then offer what it wants from your pack and kneel. Keep your hands steady and it will follow you home.", "choices": [
+  { "id": "gentle", "text": "It is a working now, the old drovers' asking. Learn it when your hands know beasts well enough, and keep it ready. Call the beast, hold your ground, and carry what it wants in your pack. It will come at you the whole while. Stand through it.", "choices": [
     { "text": "What do they want?", "next": "lure" },
+    { "text": "It keeps attacking you?", "next": "teeth" },
     { "text": "Sounds simple.", "next": "simple" } ] },
+  { "id": "teeth", "text": "The wild does not shake hands. Easy now. Yes, the whole while. Wear its fight down first and the asking is half as long. Or stand there whole and eat every bite. Your choice, your hide.", "next": "hub" },
   { "id": "lure", "text": "Depends on the belly. Beetles come for berries. A rat wants an egg, whole, no cracks. Ask Hobb, he farms by the pasture, what the rats take already.", "next": "hub" },
-  { "id": "simple", "text": "Carrying water is simple too and people still drop the pail. Bears are not simple. Keep your feet where you can use them.", "next": "hub" },
+  { "id": "simple", "text": "Standing still is simple too and people still flinch. Move a foot and the asking breaks. Bears are not simple. Plant yourself where you mean to stay.", "next": "hub" },
   { "id": "own", "text": "Kept droves forty years. People call hunters cruel, but a hunting beast is spoken to all day. A yard beast is counted. I know which one comes when I whistle.", "next": "hub" },
   { "id": "off", "text": "Gate on your way out. They notice." }
  ]

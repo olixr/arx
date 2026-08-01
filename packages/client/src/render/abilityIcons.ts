@@ -3863,6 +3863,23 @@ Object.assign(PLATES, {
     c.lineTo(0, 0.005);
     c.stroke();
   },
+
+  // ---------------------------- beastcraft arts (THE WILD ANSWERS THE
+  // CALL). Gentle the Wild — the asking: a beast's neck bowing to an
+  // open hand, the collar waiting between them, the working calm above.
+  gentle_the_wild: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    // The bowed neck, dipping in from the right.
+    crescent(c, 0.16, -0.08, 0.3, 0.21, Math.PI * 0.55, Math.PI * 1.45, st.mid, 0.04);
+    // The offered hand, an open cup rising from the left.
+    crescent(c, -0.18, 0.1, 0.26, 0.17, -Math.PI * 0.45, Math.PI * 0.45, st.deep, 0.04);
+    // The collar between them, not yet worn.
+    ringDot(c, st.core, 0, 0.18, 0.11, 0.032);
+    // The calm of the working, holding the air still.
+    star4(c, -0.02, -0.26, 0.07, st.core);
+    dot(c, st.spark, 0.22, -0.32, 0.028);
+    dot(c, st.spark, -0.26, -0.14, 0.022);
+  },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
 // ------------------------------------------------------------ lookup

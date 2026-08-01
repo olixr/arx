@@ -452,6 +452,11 @@ export const FX_STYLES: Record<string, FxStyle> = {
   ravening_cackle: SHADOW({ mid: '#c9a44a', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.3 }),
   // Moon-pale over shadow: the scream is a spike, the answer is eyes.
   hushing_screech: SHADOW({ mid: '#b8c4d8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.32 }),
+
+  // ---------------------------------------------------- beastcraft arts
+  // Gentle the Wild — bond-green calm over living wood: soft petals, a
+  // drifting leaf, no punch at all. The working is an asking, not a blow.
+  gentle_the_wild: VERDANT({ mid: '#9fd39a', deep: '#4a6e46', spark: '#e8ffe0', ring: 'petals', debris: 'leaf', decal: undefined, motif: 'wisps', punch: 0.1, wash: 0.3 }),
 };
 
 /**

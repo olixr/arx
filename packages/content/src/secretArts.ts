@@ -34,7 +34,7 @@
  * stay rung-and-page shaped; secret seats join the live pool at the
  * phase-2 wire, through their own lookups below.
  */
-import type { CombatStyleId, TechniqueDef } from '@arx/shared';
+import type { CombatStyleId, TechniqueDef, TechniqueStyleId } from '@arx/shared';
 import { techniqueDef } from './abilities.js';
 import { SECRET_RANKS } from './secretRanks.js';
 
@@ -297,7 +297,9 @@ export function secretArtDef(ability: string): TechniqueDef | undefined {
 }
 
 /** The secret shelf of one school, anchor-ordered as authored. */
-export function secretArtsFor(style: CombatStyleId): TechniqueDef[] {
+export function secretArtsFor(style: TechniqueStyleId): TechniqueDef[] {
+  // Secrets are weapon-taught, so only combat styles ever match — the
+  // widened signature just lets the codex ask about ANY school shelf.
   return SECRET_ARTS.filter((s) => s.style === style);
 }
 

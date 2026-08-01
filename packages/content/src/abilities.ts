@@ -3071,6 +3071,23 @@ const defs: AbilityDef[] = [
     // The hush runs cold: rooted legs while every owl in earshot stoops.
     status: { status: 'chill', power: 1, durationTicks: 50 },
   },
+
+  // -------------------------------- beastcraft arts (THE WILD ANSWERS
+  // THE CALL, docs/beastcraft-arts-plan.md): the keeper's school joins
+  // the technique pool. The tame is a survival channel, not a strike —
+  // damage 0, whiff-0 untouched, the ceremony rail does the rest.
+  {
+    id: 'gentle_the_wild',
+    name: 'Gentle the Wild',
+    desc: 'Call a wild beast and stand your ground. Survive its answer, and it walks home at your heel.',
+    color: '#9fd39a', // the collar's bond-green ink
+    code: 'Gw',
+    cooldownTicks: 200, // 10 s — a broken asking is not spammed away
+    shape: 'tame',
+    damage: 0, // pure working: the beast is won, never worn
+    range: 5,
+    channelTicks: 200, // 10 s whole; a craven mark answers in half
+  },
 ];
 
 export const ABILITIES: ReadonlyMap<string, AbilityDef> = new Map(defs.map((d) => [d.id, d]));
@@ -4161,6 +4178,20 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
         radius: 2.5,
         self: { speedMult: 1.14, armor: 2, durationTicks: 100 },
       },
+    ],
+  },
+
+  // ------------------------- beastcraft, the keeper's ladder (THE
+  // WILD ANSWERS THE CALL): the fourth citizenship of style. One rung
+  // at launch — the ladder grows art by art, never a filled table.
+  {
+    ability: 'gentle_the_wild',
+    style: 'beastcraft',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'The call carries further, and the hand recovers sooner.', range: 6.5, cooldownTicks: 160 },
+      { note: 'The asking grows shorter.', channelTicks: 170 },
+      { note: 'The wild answers a familiar hand almost at once.', channelTicks: 140 },
     ],
   },
 ];

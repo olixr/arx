@@ -9581,9 +9581,18 @@ export class GameServer {
       this.cancelAction(eid, player, 'gone');
       return;
     }
-    // The beast is LIVE through the whole channel (no becalming): it
-    // is usually chewing on the caster. Break only if it truly leaves
-    // the working's reach — flees home, gets dragged off, despawns.
+    // THE ASKING HOLDS ITS EYES: the beast stays LIVE through the
+    // whole channel (no becalming) — but the working keeps it
+    // committed to the hand raised at it. A craven heart would
+    // otherwise cry for help and bolt toward its kin mid-asking
+    // (live-caught: seekhelp broke every craven tame near a wild
+    // knot), and a kited mark could idle out of the test entirely.
+    // It fights, or it stands; it never leaves.
+    if (npc.state !== 'chase' || npc.targetEid !== eid) {
+      this.npcAggro(action.targetEid, npc, eid, { force: true });
+    }
+    // Break only if it truly leaves the working's reach regardless —
+    // dragged off, shoved, despawned.
     const dx = npos.x - pos.x;
     const dy = npos.y - pos.y;
     if (dx * dx + dy * dy > 10 * 10) {
