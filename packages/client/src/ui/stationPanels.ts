@@ -1,11 +1,13 @@
 import {
   Tile,
+  PET_CAP,
   diagWallInfo,
   levelForXp,
   type EquippedItem,
   type EquipSlot,
   type InvSlot,
   type ItemRoll,
+  type PetInfo,
   type SkillXp,
   type StationType,
 } from '@arx/shared';
@@ -23,6 +25,7 @@ import {
   shopDef,
   instanceName,
   itemDef,
+  npcDef,
   RECIPES,
   recipesForStation,
   type BuildableDef,
@@ -30,6 +33,8 @@ import {
 } from '@arx/content';
 import { buildableIconUrl, itemIconUrl, uiIconUrl } from '../render/icons.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
+import { beastSpec, drawBeast } from '../render/rig.js';
+import { LegRig } from '../render/legs.js';
 
 /**
  * The station screens: Workshop (craft), Vault (bank), Store (shop)
@@ -155,6 +160,8 @@ export class StationPanels {
   private readonly bankDetail = document.getElementById('bank-detail')!;
   private readonly shopPanel = document.getElementById('shop-panel')!;
   private readonly shopList = document.getElementById('shop-list')!;
+  private readonly stablePanel = document.getElementById('stable-panel')!;
+  private readonly stableList = document.getElementById('stable-list')!;
   private readonly buildPanel = document.getElementById('build-panel')!;
   private readonly buildTools = document.getElementById('build-tools')!;
   private readonly buildList = document.getElementById('build-list')!;
@@ -237,6 +244,10 @@ export class StationPanels {
     return !this.bankPanel.classList.contains('hidden');
   }
 
+  get stableOpen(): boolean {
+    return !this.stablePanel.classList.contains('hidden');
+  }
+
   get shopOpen(): boolean {
     return !this.shopPanel.classList.contains('hidden');
   }
@@ -253,6 +264,7 @@ export class StationPanels {
     return (
       this.bankOpen ||
       this.shopOpen ||
+      this.stableOpen ||
       !this.craftPanel.classList.contains('hidden') ||
       !this.buildPanel.classList.contains('hidden')
     );
@@ -274,9 +286,212 @@ export class StationPanels {
     this.bankPanel.classList.add('hidden');
     this.shopPanel.classList.add('hidden');
     this.buildPanel.classList.add('hidden');
+    this.stablePanel.classList.add('hidden');
     this.anchor = null;
     this.showing = null;
     this.bankSel = null;
+    this.releaseArmed = null;
+  }
+
+  // ------------------------------------------------- THE THREE STALLS
+
+  /** The household as last mirrored — openStable/refreshStable feed it. */
+  private lastPets: PetInfo[] = [];
+  /**
+   * The slot the keeper has asked to release and not yet confirmed.
+   * A bond is irreversible to break, so it takes two presses and the
+   * second one says whose collar it is about to slip (the unmaking
+   * bench's own arming discipline).
+   */
+  private releaseArmed: number | null = null;
+  /** Species portraits, painted once per species and kept. */
+  private static readonly petPortraits = new Map<string, string>();
+  /** THE THREE STALLS' acts — wired from main once at boot. */
+  private onStable: (op: 'heel' | 'stable' | 'release', slot: number) => void = () => {};
+  private onStableRename: (slot: number, current: string) => void = () => {};
+
+  setStableHooks(
+    onOp: (op: 'heel' | 'stable' | 'release', slot: number) => void,
+    onRename: (slot: number, current: string) => void,
+  ): void {
+    this.onStable = onOp;
+    this.onStableRename = onRename;
+  }
+
+  openStable(at: { tx: number; ty: number }, pets: PetInfo[]): void {
+    this.closeAll();
+    this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
+    this.lastPets = pets;
+    this.renderStable();
+    this.stablePanel.classList.remove('hidden');
+  }
+
+  /** The household mirror moved — re-render if the stalls are open. */
+  refreshStable(pets: PetInfo[]): void {
+    this.lastPets = pets;
+    if (this.stableOpen) this.renderStable();
+  }
+
+  /**
+   * The companion's face on its stall card: the real species body,
+   * painted once by the same rig that walks it through the world —
+   * a portrait, never a placeholder glyph.
+   */
+  private petPortrait(species: string): string {
+    const cached = StationPanels.petPortraits.get(species);
+    if (cached) return cached;
+    const def = npcDef(species);
+    const size = 92;
+    const cnv = document.createElement('canvas');
+    cnv.width = size;
+    cnv.height = size;
+    const ctx = cnv.getContext('2d')!;
+    try {
+      const radius = def?.radius ?? 0.3;
+      const spec = beastSpec(species, radius, def?.speed ?? 2);
+      const rig = new LegRig(spec.rig);
+      // A few settled beats plant the feet at their home stance.
+      let pose = rig.update(0, 0, Math.PI, 1 / 20);
+      for (let i = 0; i < 8; i++) pose = rig.update(0, 0, Math.PI, 1 / 20);
+      const scale = size * 0.44;
+      const ax = size * 0.5;
+      const ay = size * 0.66;
+      const feet = pose.feet.map((f: { x: number; y: number; lift: number }) => ({
+        x: ax + f.x * scale,
+        y: ay + f.y * scale * 0.55,
+        lift: f.lift,
+      }));
+      drawBeast(ctx, {
+        x: ax,
+        y: ay,
+        scale,
+        dir: pose.dir,
+        radius,
+        color: def?.color ?? '#999',
+        defId: species,
+        spec,
+        pose,
+        feet,
+        yScale: 0.55,
+        walkPhase: 0,
+        hurt: false,
+        kneeMemory: [],
+        attackT: 0,
+        seed: 7,
+        nowMs: 0,
+      });
+    } catch {
+      // A species the rig cannot pose still gets an honest medallion.
+      ctx.fillStyle = def?.color ?? '#8a6234';
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size * 0.34, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const url = cnv.toDataURL();
+    StationPanels.petPortraits.set(species, url);
+    return url;
+  }
+
+  private renderStable(): void {
+    this.stableList.innerHTML = '';
+    const bySlot = new Map(this.lastPets.map((p) => [p.slot, p]));
+    for (let slot = 0; slot < PET_CAP; slot++) {
+      const card = document.createElement('div');
+      card.className = 'stall-card';
+      const p = bySlot.get(slot);
+      if (!p) {
+        card.classList.add('stall-empty');
+        const empty = document.createElement('div');
+        empty.className = 'stall-empty-note';
+        empty.textContent = 'An empty stall. The wild is full of candidates.';
+        card.appendChild(empty);
+        this.stableList.appendChild(card);
+        continue;
+      }
+      const head = document.createElement('div');
+      head.className = 'stall-head';
+      const img = document.createElement('img');
+      img.className = 'stall-portrait';
+      img.src = this.petPortrait(p.species);
+      img.draggable = false;
+      head.appendChild(img);
+      const id = document.createElement('div');
+      id.className = 'stall-id';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'stall-name';
+      nameEl.textContent = p.name;
+      const kindEl = document.createElement('div');
+      kindEl.className = 'stall-kind';
+      kindEl.textContent = `${npcDef(p.species)?.name ?? p.species}, level ${p.level}`;
+      const stateEl = document.createElement('div');
+      stateEl.className = `stall-state stall-state-${p.state}`;
+      stateEl.textContent =
+        p.state === 'heel'
+          ? 'At your heel'
+          : p.state === 'trailing'
+            ? 'At your heel, catching up'
+            : p.state === 'downed'
+              ? 'Down in the field'
+              : p.state === 'resting'
+                ? `Resting. On its feet in ${Math.max(1, p.restSec ?? 0)}s`
+                : 'Waiting in its stall';
+      id.appendChild(nameEl);
+      id.appendChild(kindEl);
+      id.appendChild(stateEl);
+      head.appendChild(id);
+      card.appendChild(head);
+      // The health sliver: the same truth the nameplate carries.
+      const bar = document.createElement('div');
+      bar.className = 'stall-hp';
+      const fill = document.createElement('div');
+      fill.className = 'stall-hp-fill';
+      fill.style.width = `${Math.round((100 * p.hp) / Math.max(1, p.maxHp))}%`;
+      bar.appendChild(fill);
+      card.appendChild(bar);
+
+      const acts = document.createElement('div');
+      acts.className = 'stall-acts';
+      const armed = this.releaseArmed === slot;
+      if (p.state === 'stabled') {
+        acts.appendChild(
+          bigButton('Take to heel', `stable:heel:${slot}`, () => {
+            this.releaseArmed = null;
+            this.onStable('heel', slot);
+          }, { acta: 'Heel' }),
+        );
+      } else if (p.state === 'heel' || p.state === 'trailing') {
+        acts.appendChild(
+          bigButton('Rest in the stall', `stable:rest:${slot}`, () => {
+            this.releaseArmed = null;
+            this.onStable('stable', slot);
+          }, { acta: 'Rest' }),
+        );
+      }
+      acts.appendChild(
+        bigButton('Rename', `stable:rename:${slot}`, () => {
+          this.releaseArmed = null;
+          this.onStableRename(slot, p.name);
+        }, { acta: 'Rename', minor: true }),
+      );
+      acts.appendChild(
+        bigButton(
+          armed ? `Release ${p.name}, truly?` : 'Release',
+          `stable:release:${slot}`,
+          () => {
+            if (this.releaseArmed === slot) {
+              this.releaseArmed = null;
+              this.onStable('release', slot);
+            } else {
+              this.releaseArmed = slot;
+              this.renderStable();
+            }
+          },
+          { acta: armed ? 'Release' : 'Arm', minor: !armed },
+        ),
+      );
+      card.appendChild(acts);
+      this.stableList.appendChild(card);
+    }
   }
 
   /**

@@ -10212,6 +10212,90 @@ export class GameServer {
     player.session?.sendJson({ t: 'chat', channel: 'system', text: `${name} knows its name.` });
   }
 
+  /**
+   * THE THREE STALLS, ONE HEEL (beastcraft v2 Phase 4): the stable
+   * door. Rotation is a household decision made AT the stalls — the
+   * tile is re-checked here exactly as the vault re-checks its chest,
+   * so a walked-away panel's stale click refuses aloud instead of
+   * acting at a distance. Every refusal speaks.
+   */
+  stableOp(eid: EntityId, op: 'heel' | 'stable' | 'release', slot: number): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
+    if (!this.nearTile(eid, Tile.BeastPen)) {
+      sys('The stalls are elsewhere. Stand at a beast pen.');
+      return;
+    }
+    const row = player.pets.find((p) => p.slot === slot);
+    if (!row) return;
+    const heel = player.pets.find((p) => p.state === 'heel');
+    const heelDowned =
+      player.petEid !== null && (this.healths.get(player.petEid)?.hp ?? 1) <= 0;
+
+    if (op === 'heel') {
+      if (row.state === 'heel') {
+        sys(`${row.name} is already at your side.`);
+        return;
+      }
+      if (row.state === 'resting') {
+        sys(`${row.name} is still resting. Its legs come back soon.`);
+        return;
+      }
+      if (heelDowned) {
+        sys('Tend your fallen friend before you call another.');
+        return;
+      }
+      if (heel) {
+        heel.state = 'stabled';
+        if (player.characterId > 0) this.accounts.savePetState(player.characterId, heel.slot, 'stabled');
+        this.despawnPetEntity(player);
+        player.petHp = null;
+      }
+      row.state = 'heel';
+      if (player.characterId > 0) this.accounts.savePetState(player.characterId, row.slot, 'heel');
+      player.petHp = null;
+      this.trySpawnPet(eid, player);
+      this.sendPet(player);
+      sys(`${row.name} comes to your side.`);
+      return;
+    }
+
+    if (op === 'stable') {
+      if (row.state !== 'heel') {
+        sys(`${row.name} is already in its stall.`);
+        return;
+      }
+      if (heelDowned) {
+        sys('Tend your fallen friend first. A stall is no place to bleed.');
+        return;
+      }
+      this.despawnPetEntity(player);
+      player.petHp = null;
+      row.state = 'stabled';
+      if (player.characterId > 0) this.accounts.savePetState(player.characterId, row.slot, 'stabled');
+      this.sendPet(player);
+      sys(`${row.name} settles into the stall.`);
+      return;
+    }
+
+    // The release: a ceremony with a confirm on the client side, and
+    // an honest goodbye on this one. The row is gone; nothing else is.
+    if (row.state === 'heel') {
+      if (heelDowned) {
+        sys('Tend your fallen friend first. Nothing leaves like this.');
+        return;
+      }
+      this.despawnPetEntity(player);
+      player.petHp = null;
+    }
+    player.pets = player.pets.filter((p) => p.slot !== slot);
+    player.petBondAt.delete(slot);
+    if (player.characterId > 0) this.accounts.deletePet(player.characterId, slot);
+    this.sendPet(player);
+    sys(`You slip the collar. ${row.name} looks back once, and the wild takes it home.`);
+  }
+
   // ------------------------------------------------------- dialogue
 
   /**

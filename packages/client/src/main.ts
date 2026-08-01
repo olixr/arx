@@ -38,7 +38,7 @@ import { AudioMenu } from './ui/audioMenu.js';
 import { UNDERGROUND_Y, zoneWeights } from './audio/zones.js';
 import { scanFallEar, SILENT_EAR, type FallEar } from './audio/falls.js';
 import { setupTouch } from './input/touch.js';
-import { dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
+import { buildableIconUrl, dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
 import { abilityIconUrl } from './render/abilityIcons.js';
 import { fxStyleFor } from './render/abilityFx.js';
 import { PORTAL_BURST_COLORS } from './render/portal.js';
@@ -358,6 +358,7 @@ const PROMPT_LABELS: Record<string, string> = {
   node: 'Gather',
   loot: 'Pick up',
   bank: 'Open Bank',
+  stable: 'Open Stalls',
   chest: 'Open Chest',
   shop: 'Browse Wares',
   portal: 'Enter',
@@ -1186,6 +1187,13 @@ const petNaming = new PetNamingCard();
 game.onPetCeremony = (slot, currentName) => {
   petNaming.open(slot, currentName, (name) => game.petRename(slot, name));
 };
+// THE THREE STALLS: the stable door's acts ride the wire; the rename
+// re-uses the naming card whole. The mirror re-renders the open panel.
+stationPanels.setStableHooks(
+  (op, slot) => game.stableOp(op, slot),
+  (slot, current) => petNaming.open(slot, current, (name) => game.petRename(slot, name)),
+);
+game.onPet = () => stationPanels.refreshStable(game.ownPets);
 renderer.signHasText = (tx, ty) => {
   const sign = game.signAt(tx, ty);
   return !!sign && (sign.title !== '' || sign.lines.some((l) => l !== ''));
@@ -1223,6 +1231,11 @@ dressPanel(el('build-panel'), {
 dressPanel(el('bank-panel'), {
   icon: itemIconUrl('coins', 34),
   hint: 'Tap pack items to deposit — choose a socket here to take back.',
+  onClose: () => stationPanels.closeAll(),
+});
+dressPanel(el('stable-panel'), {
+  icon: buildableIconUrl('beast_pen', 34) ?? itemIconUrl('egg', 34),
+  hint: 'Three stalls, one heel. Swap, rest, rename, or release here.',
   onClose: () => stationPanels.closeAll(),
 });
 dressPanel(el('shop-panel'), {
@@ -1762,6 +1775,12 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       closeAllUi();
       lastBankAnchor = { tx: target.tx, ty: target.ty };
       game.interact(target.tx, target.ty); // server replies with the vault
+      break;
+    case 'stable':
+      // The household mirror is already here — the stalls open on
+      // local truth, and every act re-proves the tile server-side.
+      closeAllUi();
+      stationPanels.openStable({ tx: target.tx, ty: target.ty }, game.ownPets);
       break;
     case 'portal': {
       game.interact(target.tx, target.ty);

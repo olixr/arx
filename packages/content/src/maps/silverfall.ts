@@ -1091,6 +1091,10 @@ export function buildSilverfall(): ZoneDef {
   b.set(54, 106, Tile.Bench).set(58, 106, Tile.Bench).set(56, 108, Tile.Bench);
   b.set(69, 107, Tile.Workbench).set(70, 108, Tile.ToolRack); // the farrier
   b.sign(51, 105, 'THE CARAVANSERAI', ['beasts watered,', 'wheels mended']);
+  // The stalls' west bay: Osa boards companions beside the coursers
+  // (beastcraft v2 — the stable door works in every town that keeps
+  // animals, and this yard has kept them longest).
+  b.set(52, 103, Tile.BeastPen);
   b.fillRect(73, 103, 11, 2, Tile.Path); // the yard apron to the avenue
   // THE GATEHOUSE: the watch's desk at the door of the city —
   // duty desk facing the door, bunk for the night watch, mess table.

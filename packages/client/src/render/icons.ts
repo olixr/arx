@@ -383,6 +383,7 @@ const PAINTERS: Record<string, IconPainter> = {
   log_pine: (c, col) => drawLog(c, col, 'pine'),
   board: (c, col) => drawBoards(c, col),
   sawhorse: (c, col) => drawSawhorse(c, col),
+  beast_pen: (c, col) => drawBeastPen(c, col),
   // Each ore is its own find, cut in the game's blocky node language:
   // a deep-toned frame, a bright mineral face, one hard square glint —
   // the icon IS the chunk the deposit gives up, no generic host rock.
@@ -4515,6 +4516,63 @@ function drawBoards(c: CanvasRenderingContext2D, col: string): void {
  * across them, and the rip saw parked upright in its kerf — the icon
  * reads as the work mid-stroke, not the furniture alone.
  */
+/**
+ * The beast pen: a post-and-rail corner with hay heaped inside — the
+ * icon reads as a kept animal's home corner, never bare fencing.
+ */
+function drawBeastPen(c: CanvasRenderingContext2D, col: string): void {
+  const postCol = shade(col, -16);
+  // Two posts, square-set, with sun on their sawn tops.
+  c.fillStyle = postCol;
+  c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.03;
+  for (const x of [0.16, 0.84] as const) {
+    c.beginPath();
+    c.roundRect(x - 0.055, 0.3, 0.11, 0.58, 0.03);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(postCol, 24);
+    c.fillRect(x - 0.055, 0.3, 0.11, 0.05);
+    c.fillStyle = postCol;
+  }
+  // Two rails spanning the posts, the upper catching light.
+  c.fillStyle = col;
+  for (const [y, lit] of [
+    [0.42, 22],
+    [0.62, 8],
+  ] as const) {
+    c.beginPath();
+    c.roundRect(0.1, y, 0.8, 0.09, 0.04);
+    c.fill();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.026;
+    c.stroke();
+    c.fillStyle = shade(col, lit);
+    c.fillRect(0.14, y + 0.012, 0.72, 0.028);
+    c.fillStyle = col;
+  }
+  // Hay heaped against the rail foot, a few straws escaping.
+  c.fillStyle = '#c9a64b';
+  c.beginPath();
+  c.ellipse(0.5, 0.85, 0.26, 0.1, 0, Math.PI, 0);
+  c.fill();
+  c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.024;
+  c.stroke();
+  c.strokeStyle = shade('#c9a64b', -22);
+  c.lineWidth = 0.018;
+  for (const [x0, y0, x1, y1] of [
+    [0.34, 0.79, 0.26, 0.72],
+    [0.52, 0.76, 0.56, 0.68],
+    [0.66, 0.8, 0.74, 0.74],
+  ] as const) {
+    c.beginPath();
+    c.moveTo(x0, y0);
+    c.lineTo(x1, y1);
+    c.stroke();
+  }
+}
+
 function drawSawhorse(c: CanvasRenderingContext2D, col: string): void {
   const legCol = shade(col, -18);
   // The two X-frames.
@@ -5386,6 +5444,7 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   loom: { icon: 'loombuild', color: '#d8cbb0' },
   carving_bench: { icon: 'bow', color: '#9b7440' },
   sawhorse: { icon: 'sawhorse', color: '#a8794a' },
+  beast_pen: { icon: 'beast_pen', color: '#96703f' },
   enchanting_table: { icon: 'tome', color: '#7a6aa8' },
   barrel: { icon: 'barrel', color: '#94693a' },
   crate: { icon: 'crate', color: '#a5793f' },

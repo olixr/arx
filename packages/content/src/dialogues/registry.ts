@@ -17,6 +17,7 @@ import ospreLedger from './defs/ospren_ledger.json';
 import rulloKilns from './defs/rullo_kilns.json';
 import sunnivaBell from './defs/sunniva_bell.json';
 import bramTally from './defs/bram_tally.json';
+import droverStalls from './defs/drover_stalls.json';
 import sigrunRoad from './defs/sigrun_road.json';
 import coppinReeve from './defs/coppin_reeve.json';
 import ninebrassStall from './defs/ninebrass_stall.json';
@@ -233,6 +234,7 @@ const SOURCES: readonly unknown[] = [
   rulloKilns,
   sunnivaBell,
   bramTally,
+  droverStalls,
   sigrunRoad,
   brackHarbor,
   neaveLedger,

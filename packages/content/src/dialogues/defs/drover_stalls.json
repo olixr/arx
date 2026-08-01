@@ -1,0 +1,21 @@
+{
+ "id": "drover_stalls",
+ "start": "greet",
+ "bindings": [{ "kind": "actor", "target": "drover_maren" }],
+ "nodes": [
+  { "id": "greet", "text": "Hold. Let them smell you first. Right. Now we can talk.", "next": "hub" },
+  { "id": "hub", "text": "What is it, then?", "choices": [
+    { "text": "What is this pen for?", "next": "pen" },
+    { "text": "How do you gentle a wild thing?", "next": "gentle" },
+    { "text": "Do you keep one yourself?", "next": "own" },
+    { "text": "That's all.", "next": "off" } ] },
+  { "id": "pen", "text": "Three stalls to a household, one friend at your heel. Swap them here. Rest one that limped home. And when a bond has run its course, this is where you slip the collar.", "next": "hub" },
+  { "id": "gentle", "text": "Wear its fight down first. Not out. Down. Then offer what it wants from your pack and kneel. Keep your hands steady and it will follow you home.", "choices": [
+    { "text": "What do they want?", "next": "lure" },
+    { "text": "Sounds simple.", "next": "simple" } ] },
+  { "id": "lure", "text": "Depends on the belly. Beetles come for berries. A rat wants an egg, whole, no cracks. Ask Hobb, he farms by the pasture, what the rats take already.", "next": "hub" },
+  { "id": "simple", "text": "Carrying water is simple too and people still drop the pail. Bears are not simple. Keep your feet where you can use them.", "next": "hub" },
+  { "id": "own", "text": "Kept droves forty years. People call hunters cruel, but a hunting beast is spoken to all day. A yard beast is counted. I know which one comes when I whistle.", "next": "hub" },
+  { "id": "off", "text": "Gate on your way out. They notice." }
+ ]
+}

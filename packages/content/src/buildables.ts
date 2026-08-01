@@ -87,6 +87,23 @@ const defs: BuildableDef[] = [
     ticks: 25,
   },
   {
+    // THE THREE STALLS (beastcraft v2): the household's own stable
+    // door — a keeper rotates companions from home. Boards and twine;
+    // the craft is in the keeping, not the carpentry.
+    id: 'beast_pen',
+    cat: 'station',
+    name: 'Beast pen',
+    tile: Tile.BeastPen,
+    skill: 'beastcraft',
+    levelReq: 10,
+    xp: 30,
+    materials: [
+      { item: 'board', qty: 4 },
+      { item: 'twine', qty: 2 },
+    ],
+    ticks: 30,
+  },
+  {
     id: 'wood_floor',
     cat: 'foundation',
     name: 'Wood floor',

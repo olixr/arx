@@ -165,6 +165,11 @@ it dictates sentence shape. (Pooled actors share one card.)
   things. Weather, hens, fence posts. Wisdom by accident, never on purpose.
 - **Pip**: a kid. Wants to be sent on errands like Nib. Cadence: fast, literal,
   too honest, questions back.
+- **Drover Maren** (keeps the stalls): wants animals treated as company, not
+  stock. Forty years on the droves; the wound is every beast she handed over
+  and heard counted like sacks. Quirk: half her words go to the animal, not
+  to you. Cadence: short handler's instructions, plain and unhurried; warmer
+  to beasts than to people; no wit, no hurry.
 
 ### The roads
 - **Wayfarer Senna / Dray / Petch** (waystations): each keeps a stretch of

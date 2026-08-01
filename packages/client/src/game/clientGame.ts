@@ -102,6 +102,7 @@ export type InteractTarget =
   | { kind: 'node'; tx: number; ty: number }
   | { kind: 'station'; tx: number; ty: number; station: StationType }
   | { kind: 'bank'; tx: number; ty: number }
+  | { kind: 'stable'; tx: number; ty: number }
   | { kind: 'shop'; tx: number; ty: number }
   | { kind: 'portal'; tx: number; ty: number }
   | { kind: 'plot'; tx: number; ty: number }
@@ -1720,6 +1721,10 @@ export class ClientGame {
       return { kind: 'door', tx, ty, open: door.open, gate };
     }
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
+    // THE THREE STALLS: the pen opens the stable door. The household
+    // already lives client-side (S2CPet), so the panel needs no
+    // server reply — the acts themselves re-check this tile.
+    if (ground === Tile.BeastPen) return { kind: 'stable', tx, ty };
     if (ground === Tile.ShopCounter) return { kind: 'shop', tx, ty };
     // Boards offer a read. A blank one is only a target for the hand
     // that raised it (there is nothing there for anyone else to do),
@@ -1954,6 +1959,11 @@ export class ClientGame {
   /** Name (or rename) a companion by stall slot — the server judges. */
   petRename(slot: number, name: string): void {
     this.conn?.send({ t: 'petname', slot, name });
+  }
+
+  /** A stable-door act — the server re-proves the pen tile. */
+  stableOp(op: 'heel' | 'stable' | 'release', slot: number): void {
+    this.conn?.send({ t: 'stable', op, slot });
   }
 
   /** Advance the current dialogue beat (the server owns the walk). */

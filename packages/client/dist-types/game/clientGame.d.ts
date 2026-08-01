@@ -39,6 +39,10 @@ export type InteractTarget = {
     tx: number;
     ty: number;
 } | {
+    kind: 'stable';
+    tx: number;
+    ty: number;
+} | {
     kind: 'shop';
     tx: number;
     ty: number;
@@ -776,6 +780,8 @@ export declare class ClientGame {
     interactNpc(eid: EntityId): void;
     /** Name (or rename) a companion by stall slot — the server judges. */
     petRename(slot: number, name: string): void;
+    /** A stable-door act — the server re-proves the pen tile. */
+    stableOp(op: 'heel' | 'stable' | 'release', slot: number): void;
     /** Advance the current dialogue beat (the server owns the walk). */
     dialogueAdvance(): void;
     /** Answer the current dialogue question by choice index. */

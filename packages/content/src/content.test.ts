@@ -828,9 +828,10 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
   assert.equal(spawnKinds.get('chicken'), 4);
   assert.equal(spawnKinds.get('cow'), 2);
   assert.equal(spawnKinds.get('rat'), 3);
-  // Six villagers, each with their post; five keep routine hours.
+  // Seven villagers, each with their post; six keep routine hours —
+  // Maren stands the stalls all day by choice (beastcraft v2 Phase 4).
   const actors = z.actorSpawns ?? [];
-  assert.equal(actors.length, 6);
+  assert.equal(actors.length, 7);
   for (const slug of [
     'elder_rowan',
     'warden_bryn',
@@ -838,10 +839,13 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
     'farmer_hobb',
     'tinker_fen',
     'young_pip',
+    'drover_maren',
   ]) {
     assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from the village`);
   }
   assert.equal(actors.filter((a) => a.routine).length, 6, 'every villager keeps hours');
+  // The stable door stands by the pasture (THE THREE STALLS).
+  assert.equal(counts.get(Tile.BeastPen) ?? 0, 1, 'the beast pen missing');
   // The zone survives the editor's JSON round trip. zoneFromJson
   // zero-fills the flat elev layer and the re-export then carries it,
   // so elevation is compared out; everything else must be byte-exact.

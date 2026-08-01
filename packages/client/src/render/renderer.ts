@@ -1692,6 +1692,7 @@ export class Renderer {
     Tile.CarvingBench,
     Tile.EnchantingTable,
     Tile.Sawhorse,
+    Tile.BeastPen,
     Tile.BankChest,
     Tile.ShopCounter,
   ]);
@@ -14010,6 +14011,7 @@ export class Renderer {
     Tile.Loom,
     Tile.CarvingBench,
     Tile.Sawhorse,
+    Tile.BeastPen,
   ]);
 
   /**
@@ -20786,6 +20788,125 @@ export class Renderer {
         };
       }
 
+      case Tile.BeastPen: {
+        const syT = s * this.camera.yScale;
+        // THE THREE STALLS: a pen corner, not bare fencing — two set
+        // posts carrying doubled rails, a hay manger heaped inside,
+        // a water pail by the near post, and ground scuffed bare by
+        // hooves and paws. It reads as a kept animal's home corner
+        // even when every stall is empty.
+        const xL = p.x - s * 0.5;
+        const xR = p.x + s * 0.5;
+        const yB = p.y + syT * 0.42;
+        const postC = '#5f4426';
+        const railC = '#8a6234';
+        const hayC = '#c9a64b';
+        const railY1 = yB - s * 0.58; // upper rail: hip height
+        const railY2 = yB - s * 0.32;
+        return {
+          sortY: ty + 0.85,
+          body: stationBody(1.05, 1.5, 0.7),
+          drawShadow: () => {
+            this.castEdgeQuad(xL, yB + syT * 0.06, xR, yB + syT * 0.06, 0.7);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            // Hoof-scuffed earth: the pen floor worn bare of grass.
+            ctx.fillStyle = 'rgba(94, 70, 44, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, yB - s * 0.04, s * 0.46, syT * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.fillRect(xL + s * 0.04, yB + s * 0.005, xR - xL - s * 0.08, s * 0.04);
+            // The two posts: square-set, sun on the sawn tops (the
+            // top-plane law), a grain check hash-jittered per pen.
+            const post = (cx: number) => {
+              ctx.fillStyle = postC;
+              ctx.fillRect(cx - s * 0.06, railY1 - s * 0.14, s * 0.12, yB - (railY1 - s * 0.14));
+              ctx.fillStyle = shade(postC, -16);
+              ctx.fillRect(cx + s * 0.02, railY1 - s * 0.14, s * 0.04, yB - (railY1 - s * 0.14));
+              ctx.fillStyle = shade(postC, 30);
+              ctx.fillRect(cx - s * 0.06, railY1 - s * 0.14, s * 0.12, s * 0.045);
+              ctx.strokeStyle = shade(postC, -26);
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.beginPath();
+              ctx.moveTo(cx - s * 0.02, railY1 + s * ((h % 3) * 0.05));
+              ctx.lineTo(cx - s * 0.01, railY2 + s * 0.08);
+              ctx.stroke();
+            };
+            post(xL + s * 0.12);
+            post(xR - s * 0.12);
+            // Doubled rails spanning the posts: lit top band on the
+            // upper arris, belly shade under each.
+            for (const ry of [railY1, railY2]) {
+              ctx.fillStyle = railC;
+              ctx.beginPath();
+              ctx.roundRect(xL + s * 0.02, ry - s * 0.05, xR - xL - s * 0.04, s * 0.1, s * 0.04);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1.2, s * 0.026);
+              ctx.stroke();
+              ctx.fillStyle = shade(railC, ry === railY1 ? 24 : 12);
+              ctx.fillRect(xL + s * 0.08, ry - s * 0.04, xR - xL - s * 0.16, s * 0.03);
+              ctx.fillStyle = 'rgba(26, 16, 8, 0.28)';
+              ctx.fillRect(xL + s * 0.08, ry + s * 0.02, xR - xL - s * 0.16, s * 0.022);
+            }
+            // The hay manger inside: a low board box heaped over its
+            // rim, straws escaping at hash-jittered angles.
+            const mx = p.x - s * 0.1;
+            const myY = yB - s * 0.1;
+            ctx.fillStyle = shade(railC, -18);
+            ctx.fillRect(mx - s * 0.24, myY - s * 0.1, s * 0.48, s * 0.12);
+            ctx.fillStyle = hayC;
+            ctx.beginPath();
+            ctx.ellipse(mx, myY - s * 0.1, s * 0.26, s * 0.09, 0, Math.PI, 0);
+            ctx.fill();
+            ctx.strokeStyle = shade(hayC, -24);
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (let i = 0; i < 4; i++) {
+              const a = -0.6 - ((h >> i) % 5) * 0.28;
+              const sx = mx - s * 0.18 + i * s * 0.12;
+              ctx.beginPath();
+              ctx.moveTo(sx, myY - s * 0.12);
+              ctx.lineTo(sx + Math.cos(a) * s * 0.1, myY - s * 0.12 + Math.sin(a) * s * 0.1);
+              ctx.stroke();
+            }
+            // The water pail by the near post: staved, banded, a
+            // still disc of sky in the mouth.
+            const px2 = xR - s * 0.3;
+            const py2 = yB - s * 0.02;
+            ctx.fillStyle = '#6b5138';
+            ctx.beginPath();
+            ctx.moveTo(px2 - s * 0.075, py2 - s * 0.14);
+            ctx.lineTo(px2 + s * 0.075, py2 - s * 0.14);
+            ctx.lineTo(px2 + s * 0.06, py2);
+            ctx.lineTo(px2 - s * 0.06, py2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = shade('#6b5138', -24);
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.stroke();
+            ctx.fillStyle = '#5a7d9e';
+            ctx.beginPath();
+            ctx.ellipse(px2, py2 - s * 0.14, s * 0.07, s * 0.024, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // A warm pen breathes: hay motes drift while the stalls
+            // are worked (panel open or a stable-door act running).
+            if (act > 0.05) {
+              ctx.fillStyle = `rgba(222, 196, 120, ${0.5 * act})`;
+              for (let i = 0; i < 3; i++) {
+                const ph = t * 0.9 + i * 2.1 + (h % 7);
+                const wob = Math.sin(ph) * s * 0.1;
+                const rise = (ph % 1.6) / 1.6;
+                ctx.fillRect(mx + wob + i * s * 0.14 - s * 0.1, myY - s * 0.16 - rise * s * 0.3, s * 0.03, s * 0.03);
+              }
+            }
+          },
+        };
+      }
       case Tile.Sawhorse: {
         const syT = s * this.camera.yScale;
         // The sawyer's stand: two X-trestles at the hip, a whole log

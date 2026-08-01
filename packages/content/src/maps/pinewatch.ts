@@ -213,6 +213,10 @@ export function buildPinewatch(): ZoneDef {
   b.set(56, 48, Tile.LampPost).set(78, 48, Tile.LampPost);
   b.set(56, 54, Tile.LampPost).set(78, 54, Tile.LampPost);
   b.set(72, 50, Tile.Basin); // the yard trough
+  // The muster yard boards companions too (beastcraft v2): the pen
+  // stands past the trough where the rota can see it — every roof
+  // takes a night, and somebody's beast is always waiting on one.
+  b.set(74, 50, Tile.BeastPen);
   b.setDetail(66, 53, Detail.Pebbles);
   // THE WOLFWINTER STONE: the memorial. Fourteen names, and the town
   // still argues about the fifteenth.

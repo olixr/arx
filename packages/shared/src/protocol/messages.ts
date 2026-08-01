@@ -266,6 +266,20 @@ export interface C2SPetName {
 }
 
 /**
+ * A stable-door act (beastcraft v2 Phase 4, THE THREE STALLS): take a
+ * stall's companion to heel, settle the heel companion into its
+ * stall, or release one back to the wild. Only ever honored beside a
+ * beast pen — the server re-checks the tile exactly as the vault
+ * re-checks its chest, and rotation stays a household decision made
+ * at the stalls, never a mid-field hotswap.
+ */
+export interface C2SStable {
+  t: 'stable';
+  op: 'heel' | 'stable' | 'release';
+  slot: number;
+}
+
+/**
  * Dialogue intents. The server owns the whole walk — the client never
  * sees node ids or conditions, it only answers the beat it was shown:
  * advance a linear line, pick a choice by the index it was sent, or
@@ -480,6 +494,7 @@ export type C2SMessage =
   | C2SPlant
   | C2SInteractNpc
   | C2SPetName
+  | C2SStable
   | C2SPickup
   | C2STechnique
   | C2SCalling
@@ -1720,6 +1735,11 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (msg.slot !== 0 && msg.slot !== 1 && msg.slot !== 2) return null;
       if (typeof msg.name !== 'string' || msg.name.length > 40) return null;
       return { t: 'petname', slot: msg.slot, name: msg.name };
+    }
+    case 'stable': {
+      if (msg.op !== 'heel' && msg.op !== 'stable' && msg.op !== 'release') return null;
+      if (msg.slot !== 0 && msg.slot !== 1 && msg.slot !== 2) return null;
+      return { t: 'stable', op: msg.op, slot: msg.slot };
     }
     case 'social':
       return { t: 'social' };

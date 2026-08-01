@@ -1,4 +1,4 @@
-import { type EquippedItem, type EquipSlot, type InvSlot, type ItemRoll, type SkillXp, type StationType } from '@arx/shared';
+import { type EquippedItem, type EquipSlot, type InvSlot, type ItemRoll, type PetInfo, type SkillXp, type StationType } from '@arx/shared';
 /** The station's face (label, icon, accent, verb) — the work card wears it too. */
 export declare function craftStationFace(station: StationType | null): {
     label: string;
@@ -32,6 +32,8 @@ export declare class StationPanels {
     private readonly bankDetail;
     private readonly shopPanel;
     private readonly shopList;
+    private readonly stablePanel;
+    private readonly stableList;
     private readonly buildPanel;
     private readonly buildTools;
     private readonly buildList;
@@ -86,6 +88,7 @@ export declare class StationPanels {
         setIcon: (u: string) => void;
     }): void;
     get bankOpen(): boolean;
+    get stableOpen(): boolean;
     get shopOpen(): boolean;
     get craftOpen(): boolean;
     get buildOpen(): boolean;
@@ -101,6 +104,34 @@ export declare class StationPanels {
         ty: number;
     } | null;
     closeAll(): void;
+    /** The household as last mirrored — openStable/refreshStable feed it. */
+    private lastPets;
+    /**
+     * The slot the keeper has asked to release and not yet confirmed.
+     * A bond is irreversible to break, so it takes two presses and the
+     * second one says whose collar it is about to slip (the unmaking
+     * bench's own arming discipline).
+     */
+    private releaseArmed;
+    /** Species portraits, painted once per species and kept. */
+    private static readonly petPortraits;
+    /** THE THREE STALLS' acts — wired from main once at boot. */
+    private onStable;
+    private onStableRename;
+    setStableHooks(onOp: (op: 'heel' | 'stable' | 'release', slot: number) => void, onRename: (slot: number, current: string) => void): void;
+    openStable(at: {
+        tx: number;
+        ty: number;
+    }, pets: PetInfo[]): void;
+    /** The household mirror moved — re-render if the stalls are open. */
+    refreshStable(pets: PetInfo[]): void;
+    /**
+     * The companion's face on its stall card: the real species body,
+     * painted once by the same rig that walks it through the world —
+     * a portrait, never a placeholder glyph.
+     */
+    private petPortrait;
+    private renderStable;
     /**
      * Called every frame with the player's position: an anchored panel
      * closes once its station is out of reach (a little past the 2.2

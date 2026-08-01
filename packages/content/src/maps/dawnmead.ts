@@ -228,6 +228,12 @@ export function buildDawnmead(): ZoneDef {
   b.set(47, 23, Tile.GrassTall).set(50, 23, Tile.GrassTall);
   b.set(53, 23, Tile.GrassTall).set(56, 23, Tile.GrassTall);
   b.set(57, 20, Tile.GrassTall);
+  // THE STALLS (beastcraft v2): the town's beast pen, south of the
+  // pasture past the lane's end — the level-10 moment happens in
+  // Dawnmead, so the first stable door stands here, with Maren the
+  // drover keeping it. Straw drifts where kept animals wait.
+  b.set(48, 24, Tile.BeastPen);
+  b.setDetail(47, 25, Detail.Straw).setDetail(49, 24, Detail.Straw);
 
   // ---------------------------------------------------------------
   // THE WARDEN'S LODGE — Bryn's stone watch-house on its drill yard
@@ -446,6 +452,9 @@ export function buildDawnmead(): ZoneDef {
   b.actor('tinker_fen', 40.5, 34.3, Math.PI / 2, 'tinker_hours');
   // Pip orbits the green at a dead run until bedtime.
   b.actor('young_pip', 28.5, 33.5, 0, 'green_scamp');
+  // Maren keeps the stalls and talks to the animals more than the
+  // owners. No routine: the pen is her whole day, by choice.
+  b.actor('drover_maren', 49.5, 25.5, Math.PI);
 
   b.spawn(14.5, 32.5);
   return b.build();

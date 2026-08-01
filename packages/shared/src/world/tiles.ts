@@ -351,6 +351,13 @@ export enum Tile {
   TreePine = 148,
   /** A pine sapling. */
   SaplingPine = 149,
+  /**
+   * THE THREE STALLS (beastcraft v2 Phase 4): the beast pen — where a
+   * keeper's household rotates. Buildable at home, authored in towns;
+   * the stable panel opens beside it and every stable-door act
+   * re-checks this tile server-side (the vault's own law).
+   */
+  BeastPen = 150,
 }
 
 export enum Detail {
@@ -557,6 +564,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.Loom]: { name: 'loom', solid: true, color: '#6f4d26', raised: true, topColor: '#d8cbb0' },
   [Tile.CarvingBench]: { name: 'carving bench', solid: true, color: '#7d5a2e', raised: true, topColor: '#9b7440' },
   [Tile.Sawhorse]: { name: 'sawhorse', solid: true, color: '#7d5a2e', raised: true, topColor: '#a8794a' },
+  [Tile.BeastPen]: { name: 'beast pen', solid: true, color: '#6e5433', raised: true, topColor: '#96703f' },
   [Tile.EnchantingTable]: { name: 'enchanting table', solid: true, color: '#4a3f5e', raised: true, topColor: '#7a6aa8' },
   // Saplings: the middle beat of tree regrowth (stump → sapling →
   // tree). Walkable — you step over a knee-high whip — and not a

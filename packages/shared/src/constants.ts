@@ -116,6 +116,10 @@
 // carries ownerEid would read it as a wild beast dogging a stranger's
 // heels and offer to fight it — ownership changed what an entity IS,
 // so the handshake turns the old client away.
+// (THE FALL and THE THREE STALLS, still v27: PetInfo grows 'downed' +
+// restSec, and C2SStable joins the catalog. Additive both ways — a
+// client that never reads or sends them merely lacks the stalls
+// screen, and nothing misrenders. Recorded on purpose.)
 export const PROTOCOL_VERSION = 27;
 
 /** The most souls one party can hold. */

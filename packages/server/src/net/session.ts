@@ -349,6 +349,12 @@ export class Session {
         this.game.petRename(this.playerEid, msg.slot, msg.name);
         return;
       }
+      case 'stable': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.stableOp(this.playerEid, msg.op, msg.slot);
+        return;
+      }
       case 'pickup': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

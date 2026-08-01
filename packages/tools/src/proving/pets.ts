@@ -115,7 +115,17 @@ async function say(c: Client, text: string): Promise<void> {
 }
 
 async function tp(c: Client, x: number, y: number): Promise<void> {
-  await say(c, `/tp ${x} ${y}`);
+  // The chat bucket eats rapid teleports silently — verify arrival
+  // and ask again rather than run the next receipt from the wrong
+  // county (a lesson paid for twice now).
+  for (let i = 0; i < 3; i++) {
+    await say(c, `/tp ${x} ${y}`);
+    await sleep(300);
+    if (c.pos && Math.hypot(c.pos.x - x, c.pos.y - y) < 6) return;
+  }
+  throw new Error(
+    `tp to ${x},${y} never landed (standing at ${c.pos?.x.toFixed(1)},${c.pos?.y.toFixed(1)})`,
+  );
 }
 
 /** The gentling window on the wire: hpPct is a u8, 255 = whole. */
@@ -564,9 +574,25 @@ const main = async () => {
     }
   };
   /** Feed the heel companion to a fresh bear; return once it is down.
-   *  The mark opens BEFORE the staging — a bear can fell a small
-   *  friend in the very first exchange, mid-stage. */
-  const downThePet = async (): Promise<void> => {
+   *  Stages on FRESH ground with the pet verified at heel first —
+   *  leftover mobs and drifted fights made the old in-place staging
+   *  the flakiest block in the harness. The mark opens BEFORE the
+   *  staging — a bear can fell a small friend in the very first
+   *  exchange, mid-stage. */
+  const downThePet = async (spot: [number, number]): Promise<void> => {
+    await tp(c, spot[0], spot[1]);
+    {
+      // The pet must be standing beside us before anything is fed to it.
+      const w0 = Date.now();
+      for (;;) {
+        c.frame(0);
+        const lp = livePet();
+        const smp = lp !== null ? c.ents.get(lp) : null;
+        if (smp && c.pos && Math.hypot(smp.x - c.pos.x, smp.y - c.pos.y) < 8) break;
+        if (Date.now() - w0 > 20000) throw new Error('the pet never re-heeled for the staging');
+        await sleep(200);
+      }
+    }
     const bm = c.mark();
     await stageFight('bear', 'the bear');
     const backT0 = Date.now();
@@ -577,8 +603,22 @@ const main = async () => {
     c.frame(0);
     const t0 = Date.now();
     let probed = 0;
+    let collapsed = false;
     for (;;) {
       if (c.msgs.slice(bm).some((m) => m.t === 'chat' && /goes down, breath ragged/.test(m.text ?? ''))) return;
+      // The mutual-dodge orbit (bear chases pet chases bear, both
+      // stepping out of each other's windups at fixed range — a real
+      // emergent wart, noted for Phase 6): collapse the geometry by
+      // walking the keeper back into the knot. Sanity-bounded — a
+      // ghost sample must never teleport the stage across the map.
+      if (!collapsed && Date.now() - t0 > 20000) {
+        collapsed = true;
+        const lp = livePet();
+        const smp = lp !== null ? c.ents.get(lp) : null;
+        if (smp && c.pos && Math.hypot(smp.x - c.pos.x, smp.y - c.pos.y) < 30) {
+          await tp(c, Math.round(smp.x), Math.round(smp.y) + 1);
+        }
+      }
       if (Date.now() - t0 > 60000) {
         await say(c, '/npcstate');
         await sleep(1200);
@@ -616,7 +656,7 @@ const main = async () => {
   };
 
   await topUp();
-  await downThePet();
+  await downThePet([course[0] + 26, course[1] + 16]);
 
   // The body STAYS: breathing at zero, lying, mirror saying so.
   await sleep(600);
@@ -645,6 +685,10 @@ const main = async () => {
       return smp && smp.hpPct > 0 && Date.now() - smp.at < 2000;
     })
     .pop();
+  // The cleanup needs a real sword arm — the keeper trained nothing
+  // but constitution until now (deliberately: the fang receipts had
+  // to be the pet's own work).
+  await say(c, '/xp onehand 13000000');
   if (bearNow !== undefined) await killTarget(bearNow, 'the bear');
   const stillDown = downedEid !== null ? c.ents.get(downedEid) : null;
   receipt(
@@ -682,7 +726,7 @@ const main = async () => {
   receipt('the snack clock holds: the second offer is only a hand', true);
 
   // THE KEEPER FLED exit: down it again, then walk out of its world.
-  await downThePet();
+  await downThePet([course[0] + 38, course[1] + 24]);
   mark = c.mark();
   await tp(c, course[0] - 70, course[1] - 45);
   await c.waitFor((m) => m.t === 'chat' && /drags itself off toward your stalls/.test(m.text ?? ''), 'the limp home', 9000, mark);
@@ -724,6 +768,70 @@ const main = async () => {
     receipt('the rested rise: it returns on its own, whole, at heel', whole);
   }
 
+  // ==== THE THREE STALLS (Phase 4) =======================================
+
+  // The stable door refuses at a distance, aloud.
+  mark = c.mark();
+  c.send({ t: 'stable', op: 'stable', slot: 0 });
+  await c.waitFor(
+    (m) => m.t === 'chat' && /The stalls are elsewhere/.test(m.text ?? ''),
+    'far refusal',
+    5000,
+    mark,
+  );
+  receipt('the stable door refuses at a distance, aloud', true);
+
+  // The authored Dawnmead pen: the level-10 town keeps the first one.
+  await tp(c, -47, 41);
+  await sleep(800);
+  mark = c.mark();
+  c.send({ t: 'stable', op: 'stable', slot: 0 });
+  await c.waitFor((m) => m.t === 'chat' && /settles into the stall/.test(m.text ?? ''), 'the rest', 5000, mark);
+  await c.waitFor(
+    (m) => m.t === 'pet' && m.pets?.some((p: Msg) => p.slot === 0 && p.state === 'stabled'),
+    'mirror says stabled',
+    5000,
+    mark,
+  );
+  // Outwait the sample-freshness window — the body is gone the moment
+  // the mirror says so; the snapshot ghost takes 1.5s to age out.
+  await sleep(2200);
+  receipt('REST IN THE STALL: the heel friend settles, its body withdrawn', livePet() === null);
+  mark = c.mark();
+  c.send({ t: 'stable', op: 'heel', slot: 0 });
+  await c.waitFor((m) => m.t === 'chat' && /comes to your side/.test(m.text ?? ''), 'the call', 5000, mark);
+  {
+    const t0 = Date.now();
+    let back = false;
+    while (Date.now() - t0 < 6000) {
+      c.frame(0);
+      if (livePet() !== null) {
+        back = true;
+        break;
+      }
+      await sleep(150);
+    }
+    receipt('TAKE TO HEEL: the stall opens and the friend stands up', back);
+  }
+
+  // The keeper of the stalls has a voice (and opinions).
+  const marenEid = c.msgs
+    .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+    .find((e: Msg) => e.actor === 'drover_maren')?.eid;
+  receipt('Maren keeps the Dawnmead stalls', marenEid !== undefined);
+  {
+    const b2 = c.ents.get(marenEid);
+    if (b2 && c.pos && Math.hypot(b2.x - c.pos.x, b2.y - c.pos.y) > 2) {
+      await walkTo(marenEid, 1.6);
+    }
+    mark = c.mark();
+    c.send({ t: 'interactnpc', eid: marenEid });
+    const dlg = await c.waitFor((m) => m.t === 'dlgopen', 'Maren speaks', 6000, mark);
+    receipt('the drover answers in her own voice', dlg.name === 'Maren');
+    c.send({ t: 'dlgend' });
+    await sleep(400);
+  }
+
   // --- THREE STALLS: fill the household, then hear the refusal.
   mark = c.mark();
   await say(c, '/tame rat');
@@ -741,13 +849,29 @@ const main = async () => {
   );
   receipt('THREE STALLS, ONE HEEL: the fourth ask is refused, aloud', true);
 
+  // THE RELEASE: a collar slipped at the stalls, and room again.
+  mark = c.mark();
+  const heelSlot = c.latest('pet')!.pets.find((p: Msg) => p.state === 'heel' || p.state === 'trailing')!.slot;
+  c.send({ t: 'stable', op: 'release', slot: heelSlot });
+  await c.waitFor((m) => m.t === 'chat' && /the wild takes it home/.test(m.text ?? ''), 'the goodbye', 5000, mark);
+  await c.waitFor((m) => m.t === 'pet' && m.pets?.length === 2, 'a stall stands empty', 5000, mark);
+  receipt('THE RELEASE: the collar slips, the household honestly smaller', true);
+  mark = c.mark();
+  await say(c, '/tame rat');
+  await c.waitFor((m) => m.t === 'pet' && m.pets?.length === 3, 'the stall refills', 5000, mark);
+
+  // Leave town before the bears come out — the force-quit stage is
+  // wild business, not Dawnmead's.
+  await tp(c, course[0] - 70, course[1] - 45);
+  await sleep(600);
+
   // --- THE FORCE-QUIT: down the fresh heel friend (the rat), then
   // slam the window shut mid-vigil. The grace runs out with nobody
   // home, and the row must land 'resting' — a force-quit on the
   // downed screen loses NOTHING, and the rest clock survives the
   // logout because it is wall-clock in the row.
   await topUp();
-  await downThePet();
+  await downThePet([course[0] - 70, course[1] - 45]);
   c.ws.close();
   console.log('  (force-quit mid-vigil; waiting out the reconnect grace...)');
   await sleep(36000);
@@ -771,7 +895,7 @@ const main = async () => {
     mirror2.pets.length === 3 && bramble?.species === 'giant_beetle',
   );
 
-  console.log(`\nTHE OPEN HAND, THE FANG, AND THE FALL ALL HOLD — ${passed} receipts.`);
+  console.log(`\nTHE OPEN HAND, THE FANG, THE FALL, AND THE STALLS ALL HOLD — ${passed} receipts.`);
   c2.ws.close();
   process.exit(0);
 };

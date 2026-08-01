@@ -74,6 +74,7 @@ import storekeepNial from './defs/storekeep_nial.json';
 import tallymanBram from './defs/tallyman_bram.json';
 import boomsmanKettil from './defs/boomsman_kettil.json';
 import nurserymanOdd from './defs/nurseryman_odd.json';
+import droverMaren from './defs/drover_maren.json';
 import wardenSigrun from './defs/warden_sigrun.json';
 import oldTorvi from './defs/old_torvi.json';
 import fisherYlva from './defs/fisher_ylva.json';
@@ -138,6 +139,7 @@ const SOURCES: readonly unknown[] = [
   tallymanBram,
   boomsmanKettil,
   nurserymanOdd,
+  droverMaren,
   wardenSigrun,
   oldTorvi,
   fisherYlva,
