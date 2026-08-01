@@ -389,6 +389,7 @@ import {
   type EquipSlot,
   type PassiveId,
   type BuildOrient,
+  type ChargeInfo,
   type S2CFx,
   type StatusApply,
   type SteerMemory,
@@ -2722,6 +2723,10 @@ export class GameServer {
     // against defs retired between sessions.
     this.sanitizeCallings(player);
     this.recomputeGear(eid, player);
+    // The stacking meters the worn kit carries, at whatever count the
+    // last session banked (state is per-fight RAM; a fresh boot reads
+    // zeroes, which is the truth).
+    this.sendCharges(player);
     session.sendJson({ t: 'callings', answered: [...player.callings] });
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
@@ -10728,6 +10733,8 @@ export class GameServer {
     this.followLoanSeat(player);
     // A new weapon or relic means new abilities on the hotbar.
     this.sendCooldowns(player);
+    // The roster of stacking meters may have changed with the gear.
+    this.sendCharges(player);
     // Appearance changed — update everyone who can see this player.
     this.broadcastMetaUpdate(eid);
   }
@@ -12882,6 +12889,13 @@ export class GameServer {
    * one timer and one meter, which is what stops five copies of the
    * same working from answering the same moment five times.
    */
+  /**
+   * Players whose stacking meters moved this tick. Flushed once at the
+   * end of tick() so a whirlwind that feeds three meters in one blow
+   * still costs one message.
+   */
+  private chargesDirty = new Set<EntityId>();
+
   private procState(player: PlayerComp, id: string): ProcRuntime {
     let st = player.procs.get(id);
     if (!st) {
@@ -12889,6 +12903,23 @@ export class GameServer {
       player.procs.set(id, st);
     }
     return st;
+  }
+
+  /**
+   * THE METER SHOWS ITS HAND: the own player's stacking-working meters,
+   * one row per working id (THE METER BELONGS TO THE FIGHTER — one
+   * count however many pieces answer it). Sent when a meter moves, when
+   * gear changes the roster of meters, and on join. The wire carries
+   * only what the server alone knows; the client resolves name, school,
+   * and icon from the roster by id.
+   */
+  private sendCharges(player: PlayerComp): void {
+    const charges: ChargeInfo[] = [];
+    for (const p of player.gear.procs) {
+      if (p.trigger.on !== 'stacks') continue;
+      charges.push({ id: p.id, have: this.procState(player, p.id).stacks, need: p.trigger.count });
+    }
+    player.session?.sendJson({ t: 'charges', charges });
   }
 
   /**
@@ -12908,7 +12939,12 @@ export class GameServer {
     ctx: ProcContext,
   ): number {
     const st = this.procState(player, p.id);
-    if (!procWakes(p, st, on, this.tickCount)) return 0;
+    // A stacking meter that moves — a charge banked, or the spend when
+    // the working answers — reaches the wearer's HUD at tick end.
+    const banked = st.stacks;
+    const woke = procWakes(p, st, on, this.tickCount);
+    if (st.stacks !== banked) this.chargesDirty.add(eid);
+    if (!woke) return 0;
     return this.runProc(eid, player, p, ctx);
   }
 
@@ -17680,6 +17716,16 @@ export class GameServer {
       }
       this.setWorldTile(entry.tx, entry.ty, entry.tile);
       this.respawnQueue.splice(i, 1);
+    }
+
+    // Stacking meters that moved this tick reach their wearers once,
+    // however many moments moved them.
+    if (this.chargesDirty.size > 0) {
+      for (const eid of this.chargesDirty) {
+        const p = this.players.get(eid);
+        if (p) this.sendCharges(p);
+      }
+      this.chargesDirty.clear();
     }
 
     for (const session of this.sessions) {

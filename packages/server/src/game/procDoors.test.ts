@@ -328,3 +328,42 @@ test('chain per-jump fx carry the `<action>:<procId>` id, same as the closing br
     assert.equal(jump.id, 'chain:zap', 'every stroke names its action and working');
   }
 });
+
+test('THE METER SHOWS ITS HAND: a moved meter reaches the wearer once, as (id, have, need)', () => {
+  const stackProc = {
+    kind: 'proc' as const,
+    id: 'bastion_t',
+    name: 'Bastion',
+    trigger: { on: 'stacks' as const, per: 'block' as const, count: 4 },
+    action: { do: 'ward' as const, absorb: 10, ticks: 100 },
+    icd: 80,
+  };
+  const sent: { t: string; charges?: { id: string; have: number; need: number }[] }[] = [];
+  const player = {
+    procs: new Map(),
+    gear: { procs: [stackProc] },
+    session: { sendJson: (m: (typeof sent)[number]) => sent.push(m) },
+  };
+  const s = {
+    tickCount: 100,
+    chargesDirty: new Set<number>(),
+    procState: proto.procState,
+    runProc: () => 0,
+  };
+  // Two blocks bank two charges; each marks the wearer dirty.
+  call(proto.offerProc, s, 1, player, stackProc, 'block', { x: 0, y: 0 });
+  call(proto.offerProc, s, 1, player, stackProc, 'block', { x: 0, y: 0 });
+  assert.ok(s.chargesDirty.has(1), 'the moved meter marked its wearer');
+  // The flush speaks only what the server alone knows.
+  call((GameServer.prototype as unknown as { sendCharges: AnyFn }).sendCharges, s, player);
+  assert.deepEqual(sent.at(-1), {
+    t: 'charges',
+    charges: [{ id: 'bastion_t', have: 2, need: 4 }],
+  });
+  // A chance proc never touches the meter and never dirties the set.
+  s.chargesDirty.clear();
+  withRolls([0.99], () => {
+    call(proto.offerProc, s, 1, player, targetedProc, 'hurt', { x: 0, y: 0, targetEid: 9 });
+  });
+  assert.equal(s.chargesDirty.size, 0, 'a resting chance working moves no meter');
+});

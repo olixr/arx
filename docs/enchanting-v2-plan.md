@@ -281,8 +281,13 @@ An XP method for the low bands, a required input for the high ones, and a sink
 that keeps early-zone drops relevant at level 80.
 
 **The missing reagents.** Astral needs one (night, height, the Pinereach). Void
-needs its own instead of borrowing tailoring's thread. Void, radiant, blood, and
-astral each need a tier-3+ gem so no line falls back to `gold_bar`.
+needs its own instead of borrowing tailoring's thread. ~~Void, radiant, blood,
+and astral each need a tier-3+ gem so no line falls back to `gold_bar`.~~
+AS-BUILT CORRECTION (Phase 3): NO new gems, deliberately. The four element gems
+ARE the battlestaff swap stones (`GEM_BATTLESTAFFS`); a voidglass would look
+exactly like a socketing stone and socket nothing. Four schools have staves and
+gems; the rest pay the capstone in gold. `ELEMENT_GEM` in enchants.ts documents
+the law. Do not "fix" this gap.
 
 **Placement.** New reagents get authored sources across the zone ladder so the
 material chase walks the world rather than sitting on one table.
@@ -670,3 +675,126 @@ Every open question from the top of this document is answered:
    quality. They should probably read as the band's midpoint rather than its
    floor, so nobody's stock is devalued by a patch.
 4. **Is the second slot worth it at all?** Genuinely open. See Pillar F.
+
+---
+
+## 6. THE BOUND WORKING, AUDITED (2026-07-31, post-epic)
+
+A four-lane adversarial audit of the shipped epic (engine, roster and economy,
+visuals, persistence and lifecycle), every confirmed finding fixed the same day.
+Test floor rose 1151 to ~1200; every law below is pinned.
+
+### What the audit caught, and the shape of each fix
+
+**Engine (server doors).**
+- Basic projectiles never folded `surgeDmgMult` where the shaft lands; melee
+  did. An archer's damage surge was dead. Folded at the landing read.
+- DoT pulses fired the hurt door with no source, so a targeted hurt working
+  could wake, do nothing, and bank its whole rest. Pulses now arrive with the
+  burner in hand, AND the door skips a targeted working outright when the
+  moment carries no live foe: no roll, no rest stamped. Threading the source
+  required `!pierceArmor` on THE TURNED BLOW, or reflections would have begun
+  answering fires.
+- lowHp re-armed only on paths that happened to call it; food, regen, and
+  lifesteal heals left the ward deaf to a later burst crossing. The crossing is
+  now read from prev-vs-new health, so re-arming needs no cooperation from any
+  heal site, present or future.
+- A DYING BODY TAKES NO FURTHER WOUNDS: during its own killNpc a victim was
+  still strikeable, so a kill-triggered nova would have run a full second
+  killNpc (double loot, double credit). Guarded structurally in damageNpc.
+- Proc damage granted door-styled XP (a block working trained shield off nova
+  damage; stride procs fed arx and the combat half-echo while jogging).
+  `fromProc` damage now grants no skill or vitality XP; credit and loot stand.
+
+**Economy and roster.**
+- The two gather workings were chance-doubled yield: the Callings' own channel,
+  which the roster's header law forbids enchants to copy. Re-shaped to
+  deterministic rhythm (`stacks per:'gather'`, every 6th/7th take), expected
+  value at or under the old rates. The yield vocabulary lives; the shape is now
+  honestly the enchanter's.
+- Astral essence existed only in boss and riftgate chests while its tier-1
+  recipes unlock at enchanting 6. Sourcing ladder built from existing content:
+  `press_astral_essence` (moonbell, enchanting 5), the great owls carry it mid
+  band, chests stay the rich top. Radiant's press dropped 12 -> 3 so Keen Edge,
+  the trade's front door, feeds itself.
+- The unmaking ignored the art seat: a deepened piece broke for its ward alone.
+  Both seats now pay the same half-essence law; NOT-A-REFUND re-pinned across
+  ward x art at masterwork quality.
+- Block-triggered runes bonded cleanly onto quivers and stayed silent forever
+  (the block door answers only a shield). The bond door now refuses.
+- The epic.test scorer had three blind spots (multi-style grants summed,
+  player-paced procs flat-rated, one scroll sampled per tier). Strengthened;
+  the roster holds with no rebalance under the honest scorer.
+
+**Persistence and lifecycle (the audit's sharpest lane).**
+- CRITICAL: `addItem` stamped one shared `ItemRoll` reference across every
+  slot it filled; bonding mutates the roll in place, so one scroll enchanted
+  both twins and the fork persisted. Rolls now clone per slot.
+- CRITICAL: five consume doors ignored `removeItem`'s return while removeItem
+  skips stolen slots, making stolen consumables infinite. All consume the
+  clicked slot and apply only on success.
+- The stolen facet laundered through the bank (no facet columns) and through
+  equip/unequip (EquippedItem carries none). Both doors refuse hot goods now;
+  sunder gained the same refusal unmake always had.
+- Bank gear withdraw could destroy the instance on a pack-space race across DB
+  awaits; deposits committed to the bank while the pack rode the 30s cadence
+  (crash = dupe or loss). Reordered add-before-delete with the sync-window
+  guarantee; bank gear ops flush the inventory save in the same breath.
+- Id-addressed deposit and sell fell through to removeItem on rolled gear,
+  silently erasing the roll. Non-stackable defs now demand slot addressing.
+- Deepening never pushed the equip message; the client held a stale roll on
+  the piece the player had just spent the game's rarest ordinary item on. It
+  routes through onEquipmentChanged like bond and sunder.
+
+**Visuals.**
+- CRITICAL: the head channel was dead code. Every slot passed through
+  `withArx` except the helm, so drawArxBrow could never fire and seven ranks
+  of head workings showed nothing. One resolution line, and the brow band
+  lives; pinned by a render test so a channel cannot die silently again.
+- Tiers 4 and 5 were pixel-identical to tier 3 in every channel; the roster
+  shipped, the promised visuals had not. Now: t4/t5 steps on glow alpha,
+  radius, and mote rate; prints that linger (1.2s / 1.8s / 2.6s by tier); a
+  deeper faster mark breath; the comet wake standing off a still t5 mantle;
+  and THE AURA BLADE, a second edge a hand's width off tier-5 steel. Grammar
+  pinned t5 > t4 > t3.
+- The tested remote falloff was dead code (the renderer ran a plateau-less
+  line); trail prints stamped along the AIM, not the travel line, and a hitch
+  stamped its banked prints in one blob; the corona breath strobed with
+  world-x; the own body defeated the identity cache every frame; bloom's deep
+  soil tint never applied; verdant's edge wore the tier-1 gleam and astral
+  shared arcane's star. All fixed; verdant grew a living tendril edge, astral
+  a drifting constellation, so nine schools are nine shapes on the weapon too.
+- Netcode correction glides could stamp phantom prints under a standing body;
+  `InterpBuffer.gliding()` now zeroes shed for the frame.
+- Chain procs shipped link geometry the client never drew, and per-jump fx
+  wore the wrong id. Links draw; ids follow `<action>:<procId>`.
+- Non-shield offhands (tome, orb, quiver) had no channel; each now carries a
+  modest lit read on the shield face's rhythm. The offhand rune face flares on
+  guard, as its own doc always claimed. Tier-1 capes got their owed glint.
+- RESONANCE AT THE MOMENT OF CHOOSING: binding over an existing working, or
+  across schools, now arms first and names the piece, the working it will
+  destroy, and the shift; the second press binds. Bare same-school steel stays
+  one press.
+
+### THE METER SHOWS ITS HAND (protocol v26)
+
+The Phase 2 deferral ("stack reads ride with Phase 3's roster") came due the
+day Phase 3 shipped five stacking workings, and nobody collected: the meters
+lived server-side only. Now `S2CCharges` carries the own player's stacking
+meters (id, have, need — the wire speaks only what the server alone knows;
+the client dresses the chip from the roster). Sent when a meter moves
+(coalesced per tick at THE ONE PROC DOOR), on gear change, and on join. HUD
+chips ride the buff tray with the school's hue and a primed breath one moment
+from the answer. The body stays silent by design: a proc lives in the event
+layer, so its progress lives on the HUD.
+
+### Standing corrections
+
+- Pillar D's gem line is struck through above: NO new gems is the shipped law.
+- The chain proc count is correct as shipped (seed + jumps, both shapes).
+- Proc-before-corpse-guard ordering in damageNpc is Phase 1 law, not a bug.
+- Death-spill drops staying RAM-only is accepted risk, recorded here.
+- Known debts, deliberately left: bows do not draw the aura blade (drawBow
+  ignores the field; documented); older server chat lines outside enchanting
+  still carry em dashes and want their own sweep; the crowd budget counts
+  off-screen bodies before the cull.

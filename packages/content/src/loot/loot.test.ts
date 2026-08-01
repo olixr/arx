@@ -277,3 +277,19 @@ test('the flood law: every foe’s per-kill expectation stays under its station�
     assert.ok(gear <= maxGear, `${id} expects ${gear.toFixed(3)} gear/kill > ${maxGear}`);
   }
 });
+
+test('astral essence climbs a level-banded ladder, not a cliff', () => {
+  // Astral's tier-1 workings open at enchanting 6-8, but for a long
+  // time the reagent's only drops were the boss chest and the riftgate
+  // cache — an endgame seam under an apprentice recipe. The ladder now:
+  // press recipe low (recipes.ts), the parliament's owls mid-band,
+  // boss chest and riftgate at the rich top end.
+  const carries = (tableId: string): boolean =>
+    LOOT_TABLES.get(tableId)!.entries.some((e) => e.item === 'astral_essence');
+  assert.ok(carries('great_owl'), 'the great owl is the mid-band astral seam');
+  assert.ok(carries('elder_great_owl'), 'the elder pays the seam richer');
+  assert.ok(carries('chest_boss'), 'the top end must keep paying');
+  assert.ok(carries('chest_riftgate'), 'the top end must keep paying');
+  // And the roster still validates whole with the new lines in it.
+  validateLootTables([...LOOT_TABLES.values()]);
+});

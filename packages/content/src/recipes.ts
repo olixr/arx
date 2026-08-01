@@ -823,7 +823,11 @@ const pressRecipes: RecipeDef[] = [
     id: 'press_radiant_essence',
     name: 'Radiant essence',
     skill: 'enchanting' as SkillId,
-    levelReq: 12,
+    // Level 3, deliberately UNDER Keen Edge (enchanting 2, radiant):
+    // the trade's front door is a radiant working, so the press that
+    // sources its reagent cannot sit ten levels past it. First scroll,
+    // then the means to feed it, in the same session.
+    levelReq: 3,
     xp: 45,
     station: 'enchanting_table' as StationType,
     inputs: [
@@ -831,6 +835,30 @@ const pressRecipes: RecipeDef[] = [
       { item: 'arcane_dust', qty: 1 },
     ],
     output: { item: 'radiant_essence', qty: 1 },
+    ticks: 40,
+    unlock: 'core' as RecipeUnlock,
+  },
+  // The astral mirror of the radiant press. Astral's tier-1 workings
+  // unlock at enchanting 6-8, and until this recipe the reagent's only
+  // sources were the boss chest and the riftgate cache — an endgame
+  // seam under an apprentice recipe. Moonbell is the crop that glows
+  // after dusk (farmed at 30, foraged wild at 20, and on Wyn's shelf
+  // for coppers), so the low road runs through the herbalist the same
+  // way radiant's runs through the sunflower row. The full sourcing
+  // ladder: press here at 5, the parliament's owls mid-band (loot
+  // tables), boss chest and riftgate at the rich top end.
+  {
+    id: 'press_astral_essence',
+    name: 'Astral essence',
+    skill: 'enchanting' as SkillId,
+    levelReq: 5,
+    xp: 50,
+    station: 'enchanting_table' as StationType,
+    inputs: [
+      { item: 'moonbell', qty: 4 },
+      { item: 'arcane_dust', qty: 1 },
+    ],
+    output: { item: 'astral_essence', qty: 1 },
     ticks: 40,
     unlock: 'core' as RecipeUnlock,
   },

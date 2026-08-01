@@ -38,6 +38,7 @@ import {
   type EntityMeta,
   type EquipSlot,
   type BuffInfo,
+  type ChargeInfo,
   type InputFrame,
   type BuildOrient,
   type InvSlot,
@@ -443,6 +444,12 @@ export class ClientGame {
   buffsAt = 0;
   /** Fires when the buff list changes (HUD refresh). */
   onBuffs: (() => void) | null = null;
+  /**
+   * THE METER SHOWS ITS HAND: the own body's stacking-working meters
+   * (proc id, banked count, count asked). Name, school, and icon are
+   * resolved from the roster by id at render time.
+   */
+  charges: ChargeInfo[] = [];
   /** The saddle: active mount def id (server truth), null afoot. */
   ownMount: string | null = null;
   /** Mount def ids this character owns — the stable row's truth. */
@@ -1242,6 +1249,10 @@ export class ClientGame {
         this.buffs = msg.buffs;
         this.buffsAt = performance.now();
         this.onBuffs?.();
+        break;
+      }
+      case 'charges': {
+        this.charges = msg.charges;
         break;
       }
       case 'ride': {

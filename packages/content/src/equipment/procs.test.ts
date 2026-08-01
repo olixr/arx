@@ -124,6 +124,26 @@ test('CHANCE IS NOT ROLLED WHILE IT RESTS — the published rate stays honest', 
   assert.equal(rolls, 1, 'a resting working must not burn rolls');
 });
 
+test('a harvest rhythm is deterministic: every Nth gather, no dice', () => {
+  // The re-shaped yield workings (Good Footing, Good Seam). The count
+  // is the whole law — a roll() that would always fail must never be
+  // consulted, or the rhythm is secretly a chance.
+  const p = proc({ trigger: { on: 'stacks', per: 'gather', count: 3 }, icd: 1 });
+  const st = mkProcRuntime();
+  const neverRoll = (): number => {
+    throw new Error('a rhythm must not roll dice');
+  };
+  assert.equal(procWakes(p, st, 'gather', 1, neverRoll), false);
+  assert.equal(procWakes(p, st, 'gather', 2, neverRoll), false);
+  assert.equal(procWakes(p, st, 'gather', 3, neverRoll), true);
+  assert.equal(procWakes(p, st, 'gather', 4, neverRoll), false);
+  // ...and it folds aggregate-side like every stacks working, so the
+  // meter is the gatherer's own whatever carries it.
+  const stats = emptyGearStats();
+  foldEffect(stats, p);
+  assert.equal(stats.procs.length, 1);
+});
+
 test('a stacking working spends its charge and starts again', () => {
   const p = proc({ trigger: { on: 'stacks', per: 'block', count: 3 }, icd: 1 });
   const st = mkProcRuntime();
@@ -173,6 +193,7 @@ test('every trigger and every action can be spoken', () => {
     { on: 'lowHp', pct: 0.3 },
     { on: 'cadence', every: 12 },
     { on: 'stacks', per: 'cast', count: 4 },
+    { on: 'stacks', per: 'gather', count: 6 },
     { on: 'gather', chance: 0.05 },
     { on: 'stride', tiles: 40 },
   ];
@@ -192,10 +213,43 @@ test('every trigger and every action can be spoken', () => {
     for (const action of actions) {
       const line = describeEffect(proc({ trigger, action }));
       assert.match(line, /^Test Working: on .+, .+$/, `unreadable: ${trigger.on}/${action.do}`);
-      // THE DASH BAN holds for every generated line too.
-      assert.doesNotMatch(line, /[—–]|--/, `dash in: ${line}`);
+      // THE DASH BAN holds for every generated line too — including
+      // U+2212 MINUS SIGN, which reads as an en dash on a card.
+      assert.doesNotMatch(line, /[—–−]|--/, `dash in: ${line}`);
     }
   }
+});
+
+test('a surge card speaks the server’s own units', () => {
+  // armor and regen surges resolve FLAT server-side (+pct armor, +pct
+  // health every 4s); speed/damage/crit are true percentages. The card
+  // must say what the dial does, not what the field is named.
+  const surge = (stat: 'speed' | 'armor' | 'crit' | 'damage' | 'regen'): string =>
+    describeEffect(proc({ trigger: { on: 'cast' }, action: { do: 'surge', stat, pct: 12, ticks: 80 } }));
+  assert.equal(surge('armor'), 'Test Working: on an ability fired, +12 armor for 4s');
+  assert.equal(surge('regen'), 'Test Working: on an ability fired, +12 health every 4s for 4s');
+  assert.equal(surge('speed'), 'Test Working: on an ability fired, +12% speed for 4s');
+  assert.equal(surge('damage'), 'Test Working: on an ability fired, +12% damage for 4s');
+  assert.equal(surge('crit'), 'Test Working: on an ability fired, +12% crit for 4s');
+});
+
+test('the cooldown line carries an ASCII hyphen, never U+2212', () => {
+  // The MINUS SIGN evaded the dash ban once; this pins the exact line.
+  const line = describeEffect({ kind: 'cooldown', pct: 8 });
+  assert.equal(line, '-8% ability cooldowns');
+  assert.ok(!line.includes('−'), 'U+2212 crept back into the cooldown line');
+});
+
+test('a gather rhythm reads as a clean card line', () => {
+  // The re-shaped yield workings: deterministic counts, spoken plainly.
+  const line = describeEffect(
+    proc({
+      name: 'Good Footing',
+      trigger: { on: 'stacks', per: 'gather', count: 6 },
+      action: { do: 'yield', extra: 1 },
+    }),
+  );
+  assert.equal(line, 'Good Footing: on every 6 harvests, +1 to the basket');
 });
 
 test('the ordinal reader does not embarrass itself', () => {

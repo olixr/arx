@@ -1,10 +1,32 @@
 import { EQUIP_SLOTS, PASSIVES, type AbilitySlot } from '@arx/shared';
-import { itemDef } from '@arx/content';
+import { ENCHANTS, itemDef } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 import { itemIconUrl, sneakEyeUrl } from '../render/icons.js';
 import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
 import { bindings, type ActionId } from '../input/bindings.js';
+import { elementTint } from '../render/wornLight.js';
+
+/**
+ * THE METER SHOWS ITS HAND: the wire carries only (id, have, need) for
+ * a stacking working; the roster answers everything else. Built once.
+ * ONE ID = ONE TIMER = ONE METER means a proc id names one working
+ * across the whole roster, so the map cannot be ambiguous.
+ */
+let procHomes: Map<string, { ench: string; name: string; element: string }> | null = null;
+function procHome(id: string) {
+  if (!procHomes) {
+    procHomes = new Map();
+    for (const e of ENCHANTS.values()) {
+      for (const fx of e.effects) {
+        if (fx.kind === 'proc') {
+          procHomes.set(fx.id, { ench: e.id, name: fx.name, element: fx.element ?? e.element });
+        }
+      }
+    }
+  }
+  return procHomes.get(id);
+}
 
 /** The four slots' actions, in bar order — badges read live. */
 const SLOT_ACTIONS: readonly ActionId[] = ['ability1', 'ability2', 'ability3', 'ability4'];
@@ -199,7 +221,7 @@ export class Hotbar {
         if (!meta) continue;
         const chip = document.createElement('div');
         chip.className = 'passive-chip';
-        chip.title = `${meta.name} — ${meta.desc}`;
+        chip.title = `${meta.name}: ${meta.desc}`;
         const img = document.createElement('img');
         img.src = passiveIconUrl(id, 26);
         img.draggable = false;
@@ -215,7 +237,9 @@ export class Hotbar {
     const coat = game.equipment.weapon?.roll?.coat;
     const oil = coat && coat.until > Date.now() ? coat : undefined;
     const bKey =
-      game.buffs.map((b) => `${b.id}:${b.channel}`).join('|') + (oil ? `|oil:${oil.id}` : '');
+      game.buffs.map((b) => `${b.id}:${b.channel}`).join('|') +
+      (oil ? `|oil:${oil.id}` : '') +
+      game.charges.map((c) => `|chg:${c.id}:${c.have}`).join('');
     if (bKey !== this.buffKey) {
       this.buffKey = bKey;
       this.buffTray.innerHTML = '';
@@ -225,7 +249,7 @@ export class Hotbar {
       for (const b of game.buffs) {
         const chip = document.createElement('div');
         chip.className = `buff-chip ${b.channel}`;
-        chip.title = `${b.name} — ${b.channel === 'food' ? 'well fed' : 'tonic'}`;
+        chip.title = `${b.name}: ${b.channel === 'food' ? 'well fed' : 'tonic'}`;
         const img = document.createElement('img');
         img.src = itemIconUrl(b.id, 34);
         img.draggable = false;
@@ -239,7 +263,7 @@ export class Hotbar {
         const c = itemDef(oil.id)?.coating;
         const chip = document.createElement('div');
         chip.className = 'buff-chip coating';
-        chip.title = `${c?.name ?? 'Weapon oil'} — on your equipped weapon`;
+        chip.title = `${c?.name ?? 'Weapon oil'}: on your equipped weapon`;
         const img = document.createElement('img');
         img.src = itemIconUrl(oil.id, 34);
         img.draggable = false;
@@ -248,6 +272,29 @@ export class Hotbar {
         chip.append(img, secs);
         this.buffTray.appendChild(chip);
         this.buffSecsEls.push(secs);
+      }
+      // Stacking-working meters (THE METER SHOWS ITS HAND). The count
+      // is baked into the rebuild key, so the text never needs the
+      // per-frame countdown walk — these spans stay OUT of buffSecsEls.
+      for (const c of game.charges) {
+        const home = procHome(c.id);
+        if (!home) continue;
+        const chip = document.createElement('div');
+        chip.className = 'buff-chip charge' + (c.have >= c.need - 1 ? ' primed' : '');
+        const tint = elementTint(home.element);
+        chip.style.boxShadow = `inset 0 0 0 1.5px rgba(${tint.glow}, 0.55), 0 2px 4px rgba(6, 4, 2, 0.45)`;
+        chip.title =
+          c.have >= c.need - 1
+            ? `${home.name}: one moment from answering`
+            : `${home.name}: ${c.have} of ${c.need} banked`;
+        const img = document.createElement('img');
+        img.src = itemIconUrl(`scroll_${home.ench}`, 34);
+        img.draggable = false;
+        const count = document.createElement('span');
+        count.className = 'buff-secs';
+        count.textContent = `${c.have}/${c.need}`;
+        chip.append(img, count);
+        this.buffTray.appendChild(chip);
       }
     }
     for (let i = 0; i < this.buffSecsEls.length; i++) {
@@ -277,10 +324,10 @@ export class Hotbar {
         this.sneakEye.src = sneakEyeUrl(state as 'sneaking' | 'hidden' | 'detected');
         this.sneakChip.title =
           state === 'hidden'
-            ? 'Hidden — no one can see you'
+            ? 'Hidden: no one can see you'
             : state === 'detected'
-              ? 'Detected — a hostile has found you'
-              : 'Sneaking — harder to notice (lvl 50: vanish while still; lvl 90: vanish while moving)';
+              ? 'Detected: a hostile has found you'
+              : 'Sneaking: harder to notice (lvl 50: vanish while still; lvl 90: vanish while moving)';
       }
     }
   }

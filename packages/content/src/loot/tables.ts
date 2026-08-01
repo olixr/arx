@@ -882,6 +882,10 @@ const defs: LootTableDef[] = [
       // Silent wings hold a little of the night sky's weather.
       { item: 'storm_essence', chance: 0.12 },
       { item: 'umbral_essence', chance: 0.08 },
+      // ...and of the night sky itself. The parliament is astral's
+      // mid-band seam: press recipe low (enchanting 5, recipes.ts),
+      // owls here, boss chest and riftgate at the rich top end.
+      { item: 'astral_essence', chance: 0.08 },
       // Owls swallow their prey whole — rings and all.
       { item: 'silver_ring', chance: 0.015 },
     ],
@@ -897,6 +901,9 @@ const defs: LootTableDef[] = [
       { item: 'feather', qty: [5, 12], chance: 0.9 },
       { item: 'storm_essence', qty: [1, 3], chance: 0.35 },
       { item: 'umbral_essence', qty: [1, 2], chance: 0.2 },
+      // The elder has watched the sky the longest (astral's mid-band
+      // champion line; the ladder is commented on the great_owl table).
+      { item: 'astral_essence', qty: [1, 2], chance: 0.2 },
       // A century of swallowed glitter: the crop gives back the
       // wood's little fortunes.
       { item: 'silver_ring', chance: 0.06 },

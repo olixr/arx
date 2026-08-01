@@ -88,8 +88,10 @@ export const ARMOR_CLASS_MODS: Record<
 };
 
 /** Short player-facing blurb per class, shown on the item card. */
+// ASCII hyphen-minus only: U+2212 MINUS SIGN reads as an en dash on a
+// card and slips past the dash-ban regex.
 export const ARMOR_CLASS_BLURB: Record<ArmorClass, string> = {
-  plate: 'Plate: +one-handed and two-handed damage, −Arx damage, slightly slower',
+  plate: 'Plate: +one-handed and two-handed damage, -Arx damage, slightly slower',
   leather: 'Leather: +archery damage, slightly faster',
   cloth: 'Cloth: +Arx damage, faster ability cooldowns',
 };

@@ -88,6 +88,63 @@ test('THE UNMAKING IS NOT A REFUND: no working can be farmed through it', () => 
   }
 });
 
+test('THE ART SEAT PAYS TOO, and a deepened piece is still not a refund', () => {
+  // The v19 omission: a deepened piece's ench2 yielded nothing at the
+  // table, so the art seat simply vanished. It now pays the ward's own
+  // law (half its essence, rounded down, in the ART's school), and the
+  // combined return must stay strictly under the combined recipe spend
+  // at every pairing — masterwork quality on both seats included,
+  // because quality must never lift the return.
+  const id = anyGear();
+  const arts = ENCHANT_DEFS.filter((e) => e.effects.some((fx) => fx.kind === 'proc'));
+  for (const ward of ENCHANT_DEFS) {
+    for (const art of arts) {
+      const out = unmakingOf(
+        id,
+        roll('legendary', { pwr: 99, deep: true, ench: ward.id, q: 127, ench2: art.id, q2: 127 }),
+      )!;
+      // Combined spend per reagent across BOTH recipes.
+      const spend = new Map<string, number>();
+      for (const rid of [`inscribe_${ward.id}`, `inscribe_${art.id}`]) {
+        for (const i of RECIPES.get(rid)!.inputs) {
+          spend.set(i.item, (spend.get(i.item) ?? 0) + i.qty);
+        }
+      }
+      for (const y of out.yields) {
+        if (y.item === 'arcane_dust') continue; // dust comes from the ITEM
+        assert.ok(
+          y.qty < (spend.get(y.item) ?? 0),
+          `${ward.id}+${art.id} returns ${y.qty} ${y.item} against ${spend.get(y.item) ?? 0} spent: a cycle`,
+        );
+      }
+    }
+  }
+});
+
+test('the art seat returns half the ART scroll’s essence, in the art’s school', () => {
+  const id = anyGear();
+  // A ward with no essence of its own (arcane) isolates the art's line.
+  const arcaneWard = ENCHANT_DEFS.find((e) => e.element === 'arcane')!;
+  const arts = ENCHANT_DEFS.filter((e) => e.effects.some((fx) => fx.kind === 'proc'));
+  for (const art of arts) {
+    const out = unmakingOf(id, roll('epic', { deep: true, ench: arcaneWard.id, ench2: art.id }))!;
+    const reagent = ELEMENT_REAGENT[art.element];
+    const back = out.yields.find((y) => y.item === reagent)?.qty ?? 0;
+    const expected = reagent ? Math.floor(ESSENCE_BY_TIER[art.tier] / 2) : 0;
+    assert.equal(back, expected, `${art.id} in the art seat returns the wrong essence`);
+  }
+  // Twin schools merge onto one line rather than printing two rows.
+  const ward = ENCHANT_DEFS.find((e) => e.element === 'ember' && e.tier >= 2)!;
+  const art = arts.find((e) => e.element === 'ember')!;
+  const out = unmakingOf(id, roll('epic', { deep: true, ench: ward.id, ench2: art.id }))!;
+  const lines = out.yields.filter((y) => y.item === ELEMENT_REAGENT.ember);
+  assert.equal(lines.length, 1, 'one school, one line');
+  assert.equal(
+    lines[0]!.qty,
+    Math.floor(ESSENCE_BY_TIER[ward.tier] / 2) + Math.floor(ESSENCE_BY_TIER[art.tier] / 2),
+  );
+});
+
 test('a working returns half its essence, rounded down', () => {
   const id = anyGear();
   for (const e of ENCHANT_DEFS) {

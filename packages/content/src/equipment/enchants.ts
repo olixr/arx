@@ -76,10 +76,25 @@ export type EnchantTrigger =
   /** Every N tiles covered on foot. */
   | { on: 'stride'; tiles: number };
 
-/** The moments a stacking working may count toward its charge. */
-export type StackSource = 'hit' | 'crit' | 'hurt' | 'block' | 'cast' | 'kill';
+/**
+ * The moments a stacking working may count toward its charge.
+ * `gather` is here so a yield working can be a RHYTHM (every Nth
+ * harvest, deterministically) rather than a chance — the doubling
+ * channel belongs to the Callings, and a chance-gated extra yield
+ * would be that channel wearing an enchant's clothes.
+ */
+export type StackSource = 'hit' | 'crit' | 'hurt' | 'block' | 'cast' | 'kill' | 'gather';
 
-/** What a timed surge lifts. Each maps to exactly one live dial. */
+/**
+ * What a timed surge lifts. Each maps to exactly one live dial.
+ *
+ * `armor` and `regen` are RESERVED GRAMMAR: the server resolves both
+ * as FLAT lifts (+pct armor, +pct health every 4s), describeAction
+ * speaks them in those units, and no roster working uses them yet.
+ * They are held open on purpose for future content, not leftovers —
+ * remove one and the /proc dev lever loses a shape the vocabulary
+ * already knows how to say.
+ */
 export type SurgeStat = 'speed' | 'armor' | 'crit' | 'damage' | 'regen';
 
 /** What a woken working actually does. */
@@ -98,11 +113,20 @@ export type ProcAction =
   | { do: 'heal'; amount: number }
   /** A timed lift on one dial. */
   | { do: 'surge'; stat: SurgeStat; pct: number; ticks: number }
-  /** Strip every status riding the wearer. */
+  /**
+   * Strip every status riding the wearer. RESERVED GRAMMAR: no roster
+   * working casts it yet (only the /proc dev lever reaches it). Kept
+   * deliberately — it is the vocabulary's one defensive answer to
+   * statuses, waiting for the working that earns it.
+   */
   | { do: 'cleanse' }
   /** Gathering only: more in the basket. */
   | { do: 'yield'; extra: number }
-  /** Mark what is nearby but unseen. */
+  /**
+   * Mark what is nearby but unseen. `of: 'chest'` is RESERVED GRAMMAR:
+   * node and foe reveals ship on the roster, the cache reveal awaits
+   * the working that wants it. Intent, not rot.
+   */
   | { do: 'reveal'; radius: number; of: 'node' | 'chest' | 'foe' };
 
 /**
@@ -129,10 +153,10 @@ export function isStrikeTrigger(on: EnchantTrigger['on']): boolean {
  * `kill` is absent on purpose. The foe that died is the only candidate,
  * and poisoning a corpse is not an effect.
  */
-const TARGETED_TRIGGERS: readonly EnchantTrigger['on'][] = ['hit', 'crit', 'cadence', 'hurt', 'block'];
+export const TARGETED_TRIGGERS: readonly EnchantTrigger['on'][] = ['hit', 'crit', 'cadence', 'hurt', 'block'];
 
 /** Actions that cannot do anything without a foe. */
-const TARGETED_ACTIONS: readonly ProcAction['do'][] = ['status', 'bolt'];
+export const TARGETED_ACTIONS: readonly ProcAction['do'][] = ['status', 'bolt'];
 
 export function triggerHasTarget(t: EnchantTrigger): boolean {
   if (t.on === 'stacks') {
@@ -150,10 +174,15 @@ export function procMismatch(p: ProcEffect): string | null {
   if (needsFoe && !triggerHasTarget(p.trigger)) {
     return `'${p.action.do}' needs a foe, and '${p.trigger.on}' never brings one`;
   }
-  if (p.action.do === 'yield' && p.trigger.on !== 'gather') {
+  // A yield answers a harvest and nothing else — either the harvest
+  // itself, or a rhythm counted in harvests. Any other pairing fills a
+  // basket that was never held out.
+  const gatherPaced =
+    p.trigger.on === 'gather' || (p.trigger.on === 'stacks' && p.trigger.per === 'gather');
+  if (p.action.do === 'yield' && !gatherPaced) {
     return `'yield' fills a basket, so it only answers 'gather'`;
   }
-  if (p.trigger.on === 'gather' && p.action.do !== 'yield' && p.action.do !== 'reveal') {
+  if (gatherPaced && p.action.do !== 'yield' && p.action.do !== 'reveal') {
     return `'gather' happens away from any fight; '${p.action.do}' has nothing to work on`;
   }
   return null;
@@ -924,13 +953,18 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     element: 'verdant', level: 28,
     effects: [
       E({
+        // A RHYTHM, not a roll: the doubling-by-chance channel belongs
+        // to the Callings (see the law comment atop THE LONG LADDER),
+        // so the enchant counts harvests instead. Every sixth take
+        // answers, deterministically — expected value sits just under
+        // the old 18%-per-gather it replaced.
         kind: 'proc', id: 'good_footing', name: 'Good Footing',
-        trigger: { on: 'gather', chance: 0.18 },
+        trigger: { on: 'stacks', per: 'gather', count: 6 },
         action: { do: 'yield', extra: 1 },
         icd: 40,
       }),
     ],
-    desc: 'You end up standing in the right spot more often than chance allows.',
+    desc: 'The ground falls into step with you. Every sixth take comes up heavier.',
   },
   {
     id: 'emberstep', name: 'Emberstep Stride', prefix: 'Emberstep', tier: 3, slot: 'boots',
@@ -1061,8 +1095,10 @@ export const ENCHANT_DEFS: EnchantDef[] = [
       E({ kind: 'skill', skill: 'woodcutting', amount: 1 }),
       E({ kind: 'skill', skill: 'fishing', amount: 1 }),
       E({
+        // Same law as Good Footing: harvests counted, never rolled.
+        // Every seventh, a shade under the old 15% per gather.
         kind: 'proc', id: 'good_seam', name: 'Good Seam',
-        trigger: { on: 'gather', chance: 0.15 },
+        trigger: { on: 'stacks', per: 'gather', count: 7 },
         action: { do: 'yield', extra: 1 },
         icd: 60,
       }),
@@ -1189,13 +1225,57 @@ export const ENCHANT_DEFS: EnchantDef[] = [
 
 export const ENCHANTS = new Map<string, EnchantDef>();
 /**
- * Every proc shape in the roster, by id. Sharing an id is LEGAL and
+ * Every proc shape seen at load, by id. Sharing an id is LEGAL and
  * meaningful (one rest timer, one meter across a matched set), but two
  * workings that share an id must be the same working — otherwise the
  * timer they share is silently arbitrating between two different
- * effects. Checked at load so it can never reach a player.
+ * effects. Checked at load so it can never reach a player. Native
+ * gear-def procs register into the SAME ledger (items.ts), because the
+ * runtime keys their timers from the same id space.
  */
 const PROC_SHAPES = new Map<string, string>();
+
+/**
+ * A working's identity for the ONE-ID law. `icd` is part of the shape
+ * on purpose: two same-id workings differing only in their rest would
+ * share one timer arbitrating two different rest laws, which is the
+ * exact drift the ledger exists to catch.
+ */
+export function procShape(fx: ProcEffect): string {
+  return JSON.stringify([fx.name, fx.trigger, fx.action, fx.icd]);
+}
+
+/**
+ * Why this working would be rejected at load, or null if it is sound.
+ * One helper, two callers: the enchant roster below, and the item
+ * registry (items.ts) for NATIVE def.gear.effects procs — a proc baked
+ * into a chase item obeys every law a bonded one does.
+ */
+export function procLoadFault(fx: ProcEffect, slot: GearSlot): string | null {
+  if (fx.icd <= 0) return 'must rest: icd > 0';
+  const bad = procMismatch(fx);
+  if (bad) return `can never fire: ${bad}`;
+  // A strike-triggered working on a piece that never lands a blow is
+  // the other unfirable pairing: hit/crit/cadence resolve from the
+  // WEAPON INSTANCE, so a glove or a helm carrying one is silent.
+  if (isStrikeTrigger(fx.trigger.on) && slot !== 'weapon' && slot !== 'offhand') {
+    return `triggers on '${fx.trigger.on}', which only steel can answer`;
+  }
+  return null;
+}
+
+/** Run every load guard on one proc and enter it in the ONE-ID ledger. */
+export function registerProc(fx: ProcEffect, slot: GearSlot, owner: string): void {
+  const fault = procLoadFault(fx, slot);
+  if (fault) throw new Error(`proc ${fx.id} (${owner}) ${fault}`);
+  const shape = procShape(fx);
+  const seen = PROC_SHAPES.get(fx.id);
+  if (seen !== undefined && seen !== shape) {
+    throw new Error(`proc id ${fx.id} carries two different workings`);
+  }
+  PROC_SHAPES.set(fx.id, shape);
+}
+
 for (const e of ENCHANT_DEFS) {
   if (ENCHANTS.has(e.id)) throw new Error(`duplicate enchant id: ${e.id}`);
   if (e.effects.length === 0) throw new Error(`enchant ${e.id} has no effects`);
@@ -1207,23 +1287,7 @@ for (const e of ENCHANT_DEFS) {
   }
   for (const fx of e.effects) {
     if (fx.kind !== 'proc') continue;
-    if (fx.icd <= 0) throw new Error(`proc ${fx.id} (${e.id}) must rest: icd > 0`);
-    const bad = procMismatch(fx);
-    if (bad) throw new Error(`proc ${fx.id} (${e.id}) can never fire: ${bad}`);
-    // A strike-triggered working on a piece that never lands a blow is
-    // the other unfirable pairing: hit/crit/cadence resolve from the
-    // WEAPON INSTANCE, so a glove or a helm carrying one is silent.
-    if (isStrikeTrigger(fx.trigger.on) && e.slot !== 'weapon' && e.slot !== 'offhand') {
-      throw new Error(
-        `proc ${fx.id} (${e.id}) triggers on '${fx.trigger.on}', which only steel can answer`,
-      );
-    }
-    const shape = JSON.stringify([fx.name, fx.trigger, fx.action]);
-    const seen = PROC_SHAPES.get(fx.id);
-    if (seen !== undefined && seen !== shape) {
-      throw new Error(`proc id ${fx.id} carries two different workings`);
-    }
-    PROC_SHAPES.set(fx.id, shape);
+    registerProc(fx, e.slot, e.id);
   }
   ENCHANTS.set(e.id, e);
 }
@@ -1308,6 +1372,7 @@ const STACK_WORD: Record<StackSource, string> = {
   block: 'blows turned',
   cast: 'abilities fired',
   kill: 'kills',
+  gather: 'harvests',
 };
 
 /** The moment a working waits for, as a phrase that follows "on". */
@@ -1354,6 +1419,11 @@ export function describeAction(a: ProcAction): string {
     case 'heal':
       return `${a.amount} health closed`;
     case 'surge':
+      // The card owes the player the server's own units: armor and
+      // regen surges resolve FLAT (+pct armor, +pct health every 4s),
+      // so printing them as percentages would be a polite lie.
+      if (a.stat === 'armor') return `+${a.pct} armor for ${secs(a.ticks)}`;
+      if (a.stat === 'regen') return `+${a.pct} health every 4s for ${secs(a.ticks)}`;
       return `+${a.pct}% ${a.stat} for ${secs(a.ticks)}`;
     case 'cleanse':
       return 'every status on you stripped';
@@ -1382,7 +1452,9 @@ export function describeEffect(fx: EnchantEffect): string {
     case 'elementDmg':
       return `+${fx.pct}% ${fx.element} damage`;
     case 'cooldown':
-      return `−${fx.pct}% ability cooldowns`;
+      // ASCII hyphen-minus on purpose: U+2212 MINUS SIGN reads as an
+      // en dash on a card and slips past the dash-ban regex.
+      return `-${fx.pct}% ability cooldowns`;
     case 'speed':
       return `+${fx.pct}% move speed`;
     case 'thorns':

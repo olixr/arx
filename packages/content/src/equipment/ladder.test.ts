@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 import {
   ELEMENT_REAGENT,
   ENCHANT_DEFS,
+  ENCHANTS,
   TIER_BANDS,
   isStrikeTrigger,
+  procLoadFault,
   procMismatch,
+  procShape,
+  registerProc,
   type EnchantTier,
   type ProcEffect,
 } from './enchants.js';
@@ -148,11 +152,86 @@ test('the high bands are where the workings live', () => {
 test('two workings never share an id unless they are the same working', () => {
   const byId = new Map<string, string>();
   for (const p of procs()) {
-    const shape = JSON.stringify([p.name, p.trigger, p.action]);
+    const shape = procShape(p);
     const seen = byId.get(p.id);
     if (seen !== undefined) assert.equal(shape, seen, `proc id '${p.id}' means two things`);
     byId.set(p.id, shape);
   }
+});
+
+test('the rest is part of the shape: same id, different icd is two workings', () => {
+  // A shared id shares one timer. Two workings that agree on everything
+  // but their rest would leave that timer arbitrating two different
+  // rest laws, and the hash used to be blind to exactly this.
+  const base: ProcEffect = {
+    kind: 'proc',
+    id: 't_shape_icd',
+    name: 'Shape Test',
+    trigger: { on: 'kill' },
+    action: { do: 'heal', amount: 5 },
+    icd: 100,
+  };
+  assert.notEqual(procShape(base), procShape({ ...base, icd: 200 }));
+  registerProc(base, 'cape', 'test_a');
+  assert.throws(
+    () => registerProc({ ...base, icd: 200 }, 'cape', 'test_b'),
+    /two different workings/,
+    'a same-id working with a different rest must be refused at load',
+  );
+  // The identical working registers freely — sharing is the point.
+  registerProc({ ...base }, 'cape', 'test_c');
+});
+
+test('NATIVE gear procs pass the same load guards as bonded ones', () => {
+  // def.gear.effects procs fire through the same runtime and key the
+  // same timers, so items.ts runs them through registerProc at load.
+  // None exist today; this walk keeps the door locked either way.
+  for (const [id, def] of ITEMS) {
+    for (const fx of def.gear?.effects ?? []) {
+      if (fx.kind !== 'proc') continue;
+      assert.equal(procLoadFault(fx, def.gear!.slot), null, `${id}/${fx.id}`);
+    }
+  }
+  // And the guard itself refuses each unfirable pairing.
+  const bad: ProcEffect = {
+    kind: 'proc',
+    id: 't_native_guard',
+    name: 'Guard Test',
+    trigger: { on: 'crit' },
+    action: { do: 'bolt', damage: 5 },
+    icd: 40,
+  };
+  assert.equal(procLoadFault(bad, 'weapon'), null);
+  assert.match(procLoadFault(bad, 'body')!, /only steel/);
+  assert.match(procLoadFault({ ...bad, icd: 0 }, 'weapon')!, /must rest/);
+  assert.match(
+    procLoadFault({ ...bad, trigger: { on: 'stride', tiles: 20 } }, 'boots')!,
+    /never brings one/,
+  );
+});
+
+test('the doubling channel stays with the Callings: yields are rhythms, never rolls', () => {
+  // The roster's own law comment (THE LONG LADDER): chance-gated extra
+  // yield IS the Callings' doubling channel. An enchant yield must be
+  // a deterministic count of harvests — mechanically distinct, and
+  // honest about it on the card.
+  for (const e of ENCHANT_DEFS) {
+    for (const fx of e.effects) {
+      if (fx.kind !== 'proc' || fx.action.do !== 'yield') continue;
+      assert.equal(
+        fx.trigger.on,
+        'stacks',
+        `${e.id}/${fx.id}: a yield working must count, not roll`,
+      );
+      assert.equal(fx.trigger.on === 'stacks' && fx.trigger.per, 'gather', `${e.id}/${fx.id}`);
+    }
+  }
+  // Expected value sits at or under the chance rates they replaced
+  // (good_footing was 18% per gather, good_seam 15%).
+  const footing = procs().find((p) => p.id === 'good_footing')!;
+  const seam = procs().find((p) => p.id === 'good_seam')!;
+  assert.ok(footing.trigger.on === 'stacks' && 1 / footing.trigger.count <= 0.18);
+  assert.ok(seam.trigger.on === 'stacks' && 1 / seam.trigger.count <= 0.15);
 });
 
 // ---------------------------------------------------------- it is craftable
@@ -168,6 +247,34 @@ test('every working can actually be inscribed', () => {
       assert.ok(ITEMS.has(input.item), `${e.id} asks for '${input.item}', which is not an item`);
     }
     assert.ok(ITEMS.has(`scroll_${e.id}`), `${e.id} has no scroll`);
+  }
+});
+
+test('the front door feeds itself: presses sit beside the workings they source', () => {
+  // A reagent whose only makeable source sits ten levels past the
+  // working that needs it is a locked front door. The radiant press
+  // must be reachable by the time Keen Edge (the trade's showcase
+  // level-2 working) is one session old, and the astral press by the
+  // time the tier-1 astral workings open at 6-8.
+  const radiantPress = RECIPES.get('press_radiant_essence')!;
+  assert.equal(radiantPress.levelReq, 3, 'the radiant press belongs beside Keen Edge');
+  assert.ok(radiantPress.levelReq <= ENCHANTS.get('keen_edge')!.level + 1);
+  assert.equal(radiantPress.unlock, 'core');
+
+  const astralPress = RECIPES.get('press_astral_essence');
+  assert.ok(astralPress, 'astral needs a level-banded source of its own');
+  const firstAstral = Math.min(
+    ...ENCHANT_DEFS.filter((e) => e.element === 'astral').map((e) => e.level),
+  );
+  assert.ok(
+    astralPress!.levelReq <= firstAstral,
+    `the astral press (${astralPress!.levelReq}) opens after the first astral working (${firstAstral})`,
+  );
+  assert.equal(astralPress!.unlock, 'core');
+  for (const press of [radiantPress, astralPress!]) {
+    for (const input of press.inputs) {
+      assert.ok(ITEMS.has(input.item), `${press.id} asks for '${input.item}'`);
+    }
   }
 });
 

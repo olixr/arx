@@ -37,6 +37,18 @@ test('Calling ids are unique, named, and honestly described', () => {
   }
 });
 
+test('every Calling speaks under the dash ban', () => {
+  // docs/VOICE.md: no em dashes, en dashes, or double hyphens in any
+  // player-facing line — and U+2212 MINUS SIGN is in the net too, since
+  // it reads as an en dash on a card. The codex descs were the last
+  // dash nest in the content package.
+  for (const [id, def] of CALLINGS) {
+    for (const [what, text] of [['name', def.name], ['desc', def.desc]] as const) {
+      assert.doesNotMatch(text, /[—–−]|--/, `${id} ${what} carries a banned dash`);
+    }
+  }
+});
+
 test('THE FOCUS LAW costs: minors hold 1, majors hold 2', () => {
   for (const [id, def] of CALLINGS) {
     const expected = def.unlockLevel === 20 ? 1 : 2;

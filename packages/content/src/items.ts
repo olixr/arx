@@ -1,6 +1,6 @@
 import type { EquipSlot, PassiveId, RarityTier, SkillId, StatusApply } from '@arx/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
-import { ELEMENT_COLORS, ENCHANT_DEFS, type EnchantEffect, type EnchantTier } from './equipment/enchants.js';
+import { ELEMENT_COLORS, ENCHANT_DEFS, registerProc, type EnchantEffect, type EnchantTier } from './equipment/enchants.js';
 import type { ArmorClass, GearSlot } from './equipment/types.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 
@@ -1072,10 +1072,11 @@ for (const t of TOOL_LADDER) {
   );
 }
 
-// Enchant scrolls — one per EnchantDef, pure generation. A scroll is a
-// plain stackable trade good: the enchanter's skill went into
-// INSCRIBING it (see recipes.ts); anyone may apply one, which is how a
-// specialist enchanter powers up the whole town's gear.
+// Enchant scrolls — one per EnchantDef, pure generation. A scroll is an
+// UNSTACKABLE trade good (each carries its inscriber's quality roll,
+// and addItem drops the roll when merging stackables): the enchanter's
+// skill went into INSCRIBING it (see recipes.ts); anyone may apply one,
+// which is how a specialist enchanter powers up the whole town's gear.
 const SCROLL_VALUE_BY_TIER: Record<EnchantTier, number> = {
   1: 90, 2: 260, 3: 700, 4: 1800, 5: 4500,
 };
@@ -1132,6 +1133,18 @@ const recipeScrollDefs: ItemDef[] = UNLOCKABLE_RECIPES.map((r) => ({
 }));
 
 const allDefs: ItemDef[] = [...defs, ...scrollDefs, ...recipeScrollDefs, ...COMPILED_EQUIPMENT.items];
+
+// NATIVE procs pass the same load guards a bonded working does. A proc
+// baked into a chase item's def.gear.effects fires through the same
+// runtime and keys the same per-id timer, so it must obey every law the
+// enchant roster is held to (icd > 0, a firable pairing, strike
+// triggers on steel only, ONE id = ONE working). None exist today —
+// this is the door being locked before anyone walks through it wrong.
+for (const d of allDefs) {
+  for (const fx of d.gear?.effects ?? []) {
+    if (fx.kind === 'proc') registerProc(fx, d.gear!.slot, d.id);
+  }
+}
 
 export const ITEMS: ReadonlyMap<string, ItemDef> = new Map(allDefs.map((d) => [d.id, d]));
 

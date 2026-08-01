@@ -11,6 +11,7 @@ import {
 import { ARX_ELEMENTS, ITEMS } from '../items.js';
 import { RECIPES } from '../recipes.js';
 import { unmakingOf } from './unmaking.js';
+import { ARMOR_CLASS_BLURB } from './tables.js';
 import { GEAR_SLOTS } from './types.js';
 
 /**
@@ -42,16 +43,26 @@ function power(fx: EnchantEffect): number {
     case 'onHitStatus': return fx.power * fx.chance * 40;
     case 'proc': {
       const a = fx.action;
+      const t = fx.trigger;
       // Everything a working does, divided by how long it must rest.
       // A big number on a long timer is not a big number.
       //
-      // Gather and stride workings are the exception: what gates them
-      // is how often the PLAYER swings at a seam or crosses ground, not
-      // their rest timer, so rating them by icd alone reads a 2-second
-      // rest as though it fired thirty times a minute. They get a flat
-      // modest rate instead.
-      const paced = fx.trigger.on === 'gather' || fx.trigger.on === 'stride';
-      const rate = paced ? 0.5 : 100 / Math.max(20, fx.icd);
+      // Gather and stride workings rest on the PLAYER's own pace as
+      // well as their icd: a stride nova cannot fire before the tiles
+      // are crossed, a harvest rhythm before the harvests land. The
+      // gate is whichever wall is further, so a short icd on a long
+      // walk no longer reads as thirty firings a minute. (Pacing
+      // constants: 20 ticks/s; a sustained run covers ~4 tiles/s and
+      // a harvest lands roughly every 4s.)
+      const TICKS_PER_TILE = 5;
+      const TICKS_PER_GATHER = 80;
+      let gate = Math.max(20, fx.icd);
+      if (t.on === 'stride') gate = Math.max(gate, t.tiles * TICKS_PER_TILE);
+      else if (t.on === 'gather') gate = Math.max(gate, TICKS_PER_GATHER / t.chance);
+      else if (t.on === 'stacks' && t.per === 'gather') {
+        gate = Math.max(gate, t.count * TICKS_PER_GATHER);
+      }
+      const rate = 100 / gate;
       const raw =
         a.do === 'nova' ? a.damage * 1.4
         : a.do === 'bolt' ? a.damage
@@ -67,8 +78,23 @@ function power(fx: EnchantEffect): number {
   }
 }
 
-const scoreOf = (id: string, q?: number): number =>
-  bondedEffects(id, q).reduce((n, fx) => n + power(fx), 0);
+/**
+ * Effects that only ever apply one at a time: a build swings ONE
+ * style, so a working granting all four schools is worth its best
+ * grant, not the sum of grants three of which are dead weight.
+ */
+const COMBAT_STYLES: readonly string[] = ['onehand', 'twohand', 'archery', 'arx'];
+const styleBound = (fx: EnchantEffect): boolean =>
+  fx.kind === 'styleDmg' || (fx.kind === 'skill' && COMBAT_STYLES.includes(fx.skill));
+
+const scoreOf = (id: string, q?: number): number => {
+  const fxs = bondedEffects(id, q);
+  const bound = fxs.filter(styleBound).map(power);
+  return (
+    fxs.filter((fx) => !styleBound(fx)).reduce((n, fx) => n + power(fx), 0) +
+    (bound.length > 0 ? Math.max(...bound) : 0)
+  );
+};
 
 // ------------------------------------------------------- the ladder holds
 
@@ -124,15 +150,25 @@ test('a masterwork inscription is a bonus, never a second tier', () => {
 test('every working speaks in the game’s own voice', () => {
   // docs/VOICE.md, THE DASH BAN. Fifty-one of these descriptions were
   // written in one sitting, which is exactly when a stray dash slips in.
+  // U+2212 MINUS SIGN is in the net too: it reads as an en dash on a
+  // card and once slipped through here on the cooldown line.
   for (const e of ENCHANT_DEFS) {
     for (const [what, text] of [['desc', e.desc], ['name', e.name], ['prefix', e.prefix]] as const) {
-      assert.doesNotMatch(text, /[—–]|--/, `${e.id} ${what} carries a banned dash`);
+      assert.doesNotMatch(text, /[—–−]|--/, `${e.id} ${what} carries a banned dash`);
     }
     // Every generated effect line is player-facing too.
     for (const fx of e.effects) {
-      assert.doesNotMatch(describeEffect(fx), /[—–]|--/, `${e.id} effect line carries a dash`);
+      assert.doesNotMatch(describeEffect(fx), /[—–−]|--/, `${e.id} effect line carries a dash`);
     }
     assert.ok(e.desc.length > 12, `${e.id} has no flavor worth reading`);
+  }
+});
+
+test('the armor-class blurbs honor the dash ban', () => {
+  // Player-facing on every item card. The plate line once wore a
+  // U+2212 for its minus, which is an en dash to the eye.
+  for (const [cls, blurb] of Object.entries(ARMOR_CLASS_BLURB)) {
+    assert.doesNotMatch(blurb, /[—–−]|--/, `${cls} blurb carries a banned dash`);
   }
 });
 
@@ -203,12 +239,27 @@ test('THE WHOLE CHAIN CLOSES: junk becomes dust becomes a masterwork', () => {
   );
 });
 
+test('a scroll never stacks: the maker’s mark rides the instance', () => {
+  // THE ENCHANTER'S HAND: each scroll carries its inscriber's quality
+  // roll, and addItem drops the roll when merging stackables. A
+  // stackable scroll would quietly erase the maker's mark, which is
+  // the whole point of the quality system.
+  for (const e of ENCHANT_DEFS) {
+    assert.equal(ITEMS.get(`scroll_${e.id}`)!.stackable, false, `scroll_${e.id} stacks`);
+  }
+});
+
 test('a scroll is worth more the deeper the working it carries', () => {
+  // EVERY def, not the first per tier: one mispriced scroll in the
+  // middle of a band is exactly what a single-sample walk misses.
   let last = 0;
   for (const tier of [1, 2, 3, 4, 5] as const) {
-    const e = ENCHANT_DEFS.find((x) => x.tier === tier)!;
-    const v = ITEMS.get(`scroll_${e.id}`)!.value;
-    assert.ok(v > last, `tier ${tier} scrolls are not worth more than tier ${tier - 1}`);
-    last = v;
+    const values = ENCHANT_DEFS.filter((x) => x.tier === tier).map(
+      (e) => ITEMS.get(`scroll_${e.id}`)!.value,
+    );
+    for (const v of values) {
+      assert.ok(v > last, `a tier-${tier} scroll (${v}) is not worth more than tier ${tier - 1} (${last})`);
+    }
+    last = Math.max(...values);
   }
 });

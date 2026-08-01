@@ -4078,6 +4078,18 @@ body.pad-mode .bind-chip .kb-glyph,
   white-space: nowrap;
 }
 
+/* A stacking working's meter (THE METER SHOWS ITS HAND). The school's
+   hue rides an inline box-shadow; primed means one moment from the
+   answer, and the whole chip breathes to say so. */
+.buff-chip.charge.primed {
+  animation: charge-primed 1.1s ease-in-out infinite;
+}
+
+@keyframes charge-primed {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.45); }
+}
+
 /* ==================================================================
    Gamepad-first UI layer: glyph language, focus ring, action strip,
    tooltip, interact prompt, drag & drop. The HUD speaks the player's

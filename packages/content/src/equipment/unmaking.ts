@@ -29,6 +29,14 @@ import { effectiveReq } from './roll.js';
  * strictly less than inscribing cost. There is no cycle to farm here:
  * bond a scroll, break the item, and you are down on the deal every
  * time. What you get is the thing you would otherwise have thrown away.
+ *
+ * A DEEPENED piece pays for BOTH its seats. The ward and the art are
+ * each a bonded working, so each returns under the same law: half its
+ * own scroll's essence, rounded down, in its own school (the sigil that
+ * opened the second seat returns nothing — FOUND NEVER MADE has no
+ * recipe to refund against). Before this, the art seat simply vanished
+ * at the table, which made a deepened piece worth LESS to break than a
+ * plain one carrying the same art.
  */
 
 /** What a piece comes apart into. */
@@ -90,17 +98,27 @@ export function unmakingOf(itemId: string, roll?: ItemRoll): Unmaking | null {
   // A bonded working gives some of its essence back. Half of what the
   // scroll asked for, rounded DOWN, so the humblest workings return
   // nothing at all and no tier is ever worth bonding to break.
-  const ench = enchantDef(roll?.ench);
-  if (ench) {
-    const reagent = ELEMENT_REAGENT[ench.element];
-    const spent = ESSENCE_BY_TIER[ench.tier];
+  //
+  // ONE law for BOTH seats: a deepened piece's art (ench2) is a bonded
+  // working like any other, and pays out under the identical rule, in
+  // the ART's own school. Same school twice merges onto one line.
+  const payWorking = (id: string | undefined): void => {
+    const w = enchantDef(id);
+    if (!w) return;
+    const reagent = ELEMENT_REAGENT[w.element];
+    const spent = ESSENCE_BY_TIER[w.tier];
     // Half, rounded down, and quality does NOT lift it: what comes back
     // is a share of the reagents the scroll ate, and a finer hand did
     // not use finer reagents. Letting quality raise the return would
     // hand a master a way to profit by breaking their own work.
     const back = Math.floor(spent / 2);
-    if (reagent && back > 0) yields.push({ item: reagent, qty: back });
-  }
+    if (!reagent || back <= 0) return;
+    const line = yields.find((y) => y.item === reagent);
+    if (line) line.qty += back;
+    else yields.push({ item: reagent, qty: back });
+  };
+  payWorking(roll?.ench);
+  payWorking(roll?.ench2);
 
   // Xp follows the same two axes as the dust. Breaking things is a real
   // way to train the trade from level 1, which is the point: an

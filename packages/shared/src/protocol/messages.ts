@@ -869,6 +869,34 @@ export interface S2CBuffs {
 }
 
 /**
+ * One stacking working's live meter. THE METER BELONGS TO THE FIGHTER:
+ * a stacking working keeps ONE count however many pieces answer it, so
+ * one row per proc id is the whole truth. The client resolves name,
+ * school, and icon from the roster by id; the wire carries only what
+ * the server alone knows.
+ */
+export interface ChargeInfo {
+  /** Proc id (the working's own id, not the enchant's). */
+  id: string;
+  /** Moments banked toward the answer. */
+  have: number;
+  /** Moments the working asks for. */
+  need: number;
+}
+
+/**
+ * The own player's stacking-working meters (sent when a meter moves,
+ * on gear change, and on join). A build-and-spend mechanic the wearer
+ * cannot see is a spreadsheet entry; this is the read the worn light
+ * deliberately does not carry (a proc lives in the event layer, so its
+ * progress lives on the HUD, not the body).
+ */
+export interface S2CCharges {
+  t: 'charges';
+  charges: ChargeInfo[];
+}
+
+/**
  * THE PREDICTOR LEARNS ITS LEGS: the own player's saddle state and
  * steady speed multiplier, sent on join and whenever either changes
  * (mount, dismount, a buff or gear stride shifting the stack). The
@@ -1364,6 +1392,7 @@ export type S2CMessage =
   | S2CTechniques
   | S2CCallings
   | S2CBuffs
+  | S2CCharges
   | S2CRide
   | S2CRiftgate
   | S2CDungeonEnter

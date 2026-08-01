@@ -104,7 +104,13 @@
 // AppearanceData carries `mount`. A v24 client shown a rider would
 // draw an unknown pose as a standing body sliding at 8 t/s — the
 // stance changed shape, so the handshake turns the old client away.
-export const PROTOCOL_VERSION = 25;
+// v26 — THE METER SHOWS ITS HAND: S2CCharges carries the own player's
+// stacking-working meters. Cosmetic breath like 'buffs', and a v25
+// client would merely show no pips; bumped anyway because a build-and-
+// spend mechanic whose meter silently never fills reads as a broken
+// enchant, not a missing nicety, and the handshake is how this repo
+// keeps that judgment honest.
+export const PROTOCOL_VERSION = 26;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;
