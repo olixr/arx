@@ -177,12 +177,157 @@ neighbor's edits by construction.
   ground (a downed body against a rock line blocked the one authored
   shoulder).
 
-## Part 6 — The ledger and the road
+## Part 6 — Gentle the Wild's ledger
 
 Dials as planned: range 5 (II 6.5), cooldown 200 (II 160), channel
 200/craven 100 (III 170/85, IV 140/70), unlock 10.
-The school's roadmap (NOT shipped, user chose tame-only launch):
-`come_to_heel` ~20 (the whistle the beastcraft ledger deferred — call
-the trailing friend to your side), `point_the_fang` ~30 (a pointed
-harry command). Future arts ride the exact same citizenship — no new
-grammar will be needed.
+
+---
+
+# THE KEEPER'S TONGUE — the ladder fills to ten
+
+Status: green-lit 2026-08-01 (user mandate, same day THE WILD ANSWERS
+THE CALL shipped): nine NEW beastcraft techniques beside the tame, so
+the school stands at the full ten-rung standard every combat ladder
+holds. Every art bespoke — its own intent, its own face, its own
+grammar — never a palette swap. Some speak to the wild itself, some
+through the companion; all are active casts, pad-parity by
+construction, and the school stays what it is: **never a combat
+school, damage 0 on every art, no new XP faucets** (beastcraft XP
+still flows only from tames, care, and the fang's trickle — THE XP
+CONTRACT holds).
+
+## Part 7 — The ten words (roster, rungs 5..50)
+
+The keeper learns the wild's tongue one word at a time. Rungs match
+the OPEN LADDER's 5-per-5 cadence; the tame keeps its shipped seat.
+
+| lvl | art | shape | the word |
+|---|---|---|---|
+| 5 | `soothe_the_wild` Soothe the Wild | becalm | still one beast's blood: fight forgotten, eyes down |
+| 10 | `gentle_the_wild` ✓ (shipped) | tame | the asking |
+| 15 | `come_to_heel` Come to Heel | pet_command heel | the whistle: the far friend arrives at your side NOW |
+| 20 | `point_the_fang` Point the Fang | pet_command fang | the pointed harry: friend breaks for the mark, mark's eyes pulled onto it |
+| 25 | `keepers_balm` Keeper's Balm | pet_command mend | a poultice thrown to the fighting friend: heal, later cleanse |
+| 30 | `strewn_bait` Strewn Bait | summon 'bait' | a scattered table: idle wild beasts drift to the spot |
+| 35 | `the_quiet_walk` The Quiet Walk | self_buff truce | wild beasts do not mark you while the walk lasts |
+| 40 | `blood_of_the_pack` Blood of the Pack | pet_command surge | the shared howl: the friend's teeth and stride quicken |
+| 45 | `the_keepers_cry` The Keeper's Cry | pet_command rise | the fallen friend hears you and stands, mid-fight |
+| 50 | `voice_of_the_wild` Voice of the Wild | wild_howl | the capstone: a great ring of awe; the wild stills, the friend surges |
+
+## Part 8 — Laws
+
+1. **THE WILD'S OWN WORDS** (soothe / bait / truce / howl) act only on
+   WILD BEASTS: a new content predicate `isWildBeast(def)` beside the
+   tames validator (not humanoid/undead by prefix, no splitInto, no
+   produce/lays, never an actor or a pet at the call site). Champions
+   and the crowned terrors (`_champion`, dire_wolf, elder_great_owl)
+   refuse the becalm words aloud — too proud to be stilled.
+2. **A WORD COSTS NOTHING UNTIL IT IS HEARD**: every art pre-flights
+   its refusal ladder aloud BEFORE the cooldown is paid (the tame
+   door's discipline, now a shared `tryKeeperArt` dispatcher for the
+   becalm / pet_command / wild_howl shapes).
+3. **THE BECALM IS THE SULK'S BIG SIBLING**: soothe/howl = state
+   idle, target cleared, `noAggroUntilTick` stamped. No new NPC state.
+4. **THE TRUCE IS HONEST**: The Quiet Walk rides a PlayerBuff flag
+   (`beastTruce`) checked inside the ONE perception scan; the caster's
+   own landed wound on any wild beast ends it early.
+5. **THE BAIT PULLS, NEVER BREAKS**: strewn bait steers only beasts at
+   rest (idle/suspicious) through the existing `investigate` grammar —
+   a blood-up chase never cares. Board control, not an escape hatch
+   (soothe is the fight-breaker; they never overlap).
+6. **THE COMPANION'S WORDS NEED THE COMPANION**: heel/fang/mend/surge
+   refuse aloud without a standing friend afield; the cry refuses
+   without a fallen one in reach. The rise rides the tend's completion
+   body — one rail, two doors.
+7. **SURGE IS A PET FACT**: PetComp carries the surge/guard windows;
+   petStrike and tickPet read them; damagePet folds guard armor at the
+   ONE stat site's mitigate line. No keeper benefit rides a pet blow
+   (the Ph2 law holds).
+8. **THE FLOURISH CONTRACT, PAID IN FULL**: every art ships with a
+   bespoke FX_STYLES face (unique ring+debris+motif), a bespoke icon
+   plate, an in-world moment of its own (three new additive S2CFx
+   kinds: 'becalm', 'command', 'howl' — id-branched painters, the
+   'tame' precedent), VOICE-passed copy, and a rank ladder whose IV is
+   visible in the world.
+9. **DB: none. Protocol: additive only** (fx kind strings). New shared
+   fields honable where ranked: becalmTicks, petHealFrac, petSurge,
+   petGuard, petCleanse, command; AbilitySummon kind += 'bait';
+   AbilitySelf.beastTruce.
+
+## Part 9 — The dials (authored; ranks in content beside each def)
+
+- soothe: range 5, cd 300, becalm 200t. II becalm 300 + cd 240 · III
+  range 6.5 · IV radius 2 (the calm spreads to beasts beside the mark).
+- come_to_heel: cd 200, self-shaped. II cd 120 · III arrives mended
+  (petHealFrac 0.1) · IV arrives blood-up (petSurge 1.15x/1.1x, 100t).
+- point_the_fang: range 7 cone, cd 200. II range 9 + cd 160 · III the
+  first bite deep (surge 1.5x dmg, 60t) · IV the dare carries (foes
+  within 2 of the mark also turn on the friend).
+- keepers_balm: range 8, cd 400, petHealFrac 0.3. II 0.45 + cd 320 ·
+  III cleanse (petCleanse) · IV 0.6 + petGuard {armor 6, 200t}.
+- strewn_bait: range 6, cd 500, summon {kind bait, radius 6, 300t}.
+  II radius 8 + 400t · III cd 380 · IV the table calms (beasts nosing
+  the bait are becalmed while they eat).
+- the_quiet_walk: cd 600, self {beastTruce, 400t}. II 600t · III cd
+  460 · IV the wild parts (beasts within 1.5 ease aside as you pass).
+- blood_of_the_pack: cd 600, petSurge {1.3x dmg, 1.15x stride, 240t}.
+  II 1.4x · III 300t · IV the whole temper (kit status power doubled +
+  blows shove, knockback 1.2, while the surge runs).
+- the_keepers_cry: range 10, cd 1200, rise at petHealFrac 0.35.
+  II 0.5 · III cd 900 · IV it rises angry (petSurge 1.3x/1.15x 160t +
+  petGuard {armor 6, 160t}).
+- voice_of_the_wild: radius 7 nova of awe, cd 1200, becalm 160t,
+  petHealFrac 0.25, petSurge {1.3x/1.15x, 200t}. II radius 9 · III
+  becalm 240t + heal 0.35 · IV the wild answers (the awe also sheds
+  the knot's aggro on EVERYONE, and the ghost pack runs the rim).
+
+## Part 10a — SHIPPED (2026-08-01)
+
+All nine words landed the same day: `prove:pets` = **70 receipts, one
+full unbroken green run** on the isolated rig, all 1,256 workspace
+tests green. As-built notes and live-caught laws:
+
+- **THE TABLE WALKS LIKE A HUNT**: the bait steer originally pushed a
+  straight vector and the very first hind wedged against a tree line
+  forever (live-caught by probe: it steered 1.2 tiles then froze).
+  The walk now routes through `npcNavToward` — the hunt legs' own
+  navigation, watchdog included.
+- Maren's stalls dialogue grew the 'words' node under the gentling
+  talk (a node holds at most 4 choices — a fifth silently orphans the
+  exit, caught by the reachability validator).
+- FX: three additive S2CFx kinds ('becalm'/'command'/'howl', protocol
+  unchanged); SigCtx grew the wire's `ticks` so the ghost pack keys on
+  the rank IV hold (>= 300) honestly; the surge windows pulse their
+  granting art at the friend's shoulders every 25 ticks (THE VISIBLE
+  WORKING, the tame channel's cadence).
+- Harness laws minted this build: seat swaps wait for the
+  `techniques` echo (a 250ms sleep raced once and cast the previous
+  seat's art); the blade-proof receipt judges pre/post around its own
+  swings (a landing lurker's 1-hp bystander bite read as 243/255 and
+  convicted the blade twice); the whiff receipt buys a second table
+  before convicting the dice (one 14-hp fight rolled zero 0-rolls);
+  the balm judgment accepts the u8 ceiling (240 -> 255 is a full
+  mend, not a shortfall); the down-stage restages once on a barren
+  60s stand-off, not only on keeper death; `stand()` walks the
+  offset ring when ground refuses.
+- Runtime note: the full suite is ~14 minutes green; the cost of a
+  flake is a whole lap. Future lever (agreed with the user): a fast
+  iteration lane (`ARX_PROVE_FROM=tongue`) that synthesizes keeper
+  state with dev levers and runs one chapter, plus a rig-side relaxed
+  chat bucket to shave the ~2 minutes of dev-command spacing. The
+  70-receipt full run stays the record before any commit.
+
+## Part 10 — The proving (prove:pets grows)
+
+New live receipts, isolated-rig discipline: soothe stills a chasing
+beetle (state leaves chase, sulk stamped, champion refuses aloud);
+heel recall lands the trailing friend at the keeper's side; fang sets
+the friend's mark AND turns the mark's eyes; balm mends a wounded
+friend on the wire; bait walks an idle beast to the spot
+(investigate); the quiet walk crosses a wolf's eye unmarked and a
+landed blow ends it; surge quickens the friend (petstate ticks);
+the cry stands a downed friend where it lies; the howl stills a knot
+and mends the friend; every companion word refuses aloud with the
+stalls empty. The seat/rung/cooldown doors are already proven by the
+tame's receipts and hold for the school.

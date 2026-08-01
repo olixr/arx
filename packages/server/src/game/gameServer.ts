@@ -18439,8 +18439,12 @@ export class GameServer {
         if (bait) {
           const bd = Math.hypot(bait.x - pos.x, bait.y - pos.y);
           if (bd > 1.1) {
-            moveX = (bait.x - pos.x) / bd;
-            moveY = (bait.y - pos.y) / bd;
+            // The walk to the table navigates like a hunt leg — a
+            // straight vector wedged the very first hind against a
+            // tree line and left it standing forever (live-caught).
+            const h = this.npcNavToward(npc, pos, bait.x, bait.y);
+            moveX = h.mx;
+            moveY = h.my;
           } else {
             // Nosing the ground: feet planted, head at the supper —
             // and a rank IV table calms its guests while they eat.
