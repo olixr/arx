@@ -22935,7 +22935,10 @@ export class Renderer {
     const outH = shape === 'market' ? 1.7 : shape === 'bowed' ? 1.66 : shape === 'shed' ? 1.64 : 1.7;
     const vDepth = shape === 'market' ? s * 0.3 : shape === 'shed' ? s * 0.17 : shape === 'bowed' ? s * 0.15 : 0;
     const yN = p.y - syT * 0.5;
-    const rootY = yN - s * 1.95;
+    // THE SCRUNCH: the rod sits at 1.76 tiles so the slab's screen
+    // height compresses — a plane seen from high above is SHORT on
+    // screen; a tall slab reads as a curtain (user verdict, v3).
+    const rootY = yN - s * 1.76;
     const railY = yN + syT * depth - s * outH;
     const railH = s * 0.045;
     const vTop = railY + railH;
@@ -23008,46 +23011,48 @@ export class Renderer {
         silh.closePath();
         // ---- The wall behind: graded washes weld cloth to masonry.
         ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
-        ctx.fillRect(topL, rootY + s * 0.05, topR - topL, s * 0.13);
+        ctx.fillRect(topL, rootY + s * 0.05, topR - topL, s * 0.1);
         ctx.fillStyle = 'rgba(18, 12, 26, 0.1)';
-        ctx.fillRect(topL, rootY + s * 0.18, topR - topL, s * 0.14);
+        ctx.fillRect(topL, rootY + s * 0.15, topR - topL, s * 0.11);
         // ---- Diagonal wall braces at TRUE free ends: drawn first so
         // they pass BEHIND the cloth and catch the rail ends.
         const brace = (edge: 'L' | 'R'): void => {
-          const dir = edge === 'L' ? -1 : 1;
-          const wallX = edge === 'L' ? xL + s * 0.06 : xR - s * 0.06;
-          const railX = (edge === 'L' ? botL : botR) + dir * s * 0.01;
-          ctx.strokeStyle = '#241a2e';
-          ctx.lineWidth = Math.max(1.5, s * 0.062);
-          ctx.beginPath();
-          ctx.moveTo(wallX, rootY + s * 0.58);
-          ctx.lineTo(railX, railY + railH * 0.6);
-          ctx.stroke();
-          ctx.strokeStyle = shade(frame, -8);
-          ctx.lineWidth = Math.max(1, s * 0.036);
-          ctx.beginPath();
-          ctx.moveTo(wallX, rootY + s * 0.58);
-          ctx.lineTo(railX, railY + railH * 0.6);
-          ctx.stroke();
+          const wallX = edge === 'L' ? xL + s * 0.07 : xR - s * 0.07;
+          const railX = (edge === 'L' ? botL : botR) + (edge === 'L' ? 1 : -1) * s * 0.02;
+          const y0 = rootY + s * 0.46;
+          const y1 = railY + railH * 0.5;
+          // A squared timber strut, not a stroked line — the game's
+          // vocabulary is blocky; detail comes from layering.
+          const hw = s * 0.032;
+          const strut = new Path2D();
+          strut.moveTo(wallX - hw, y0);
+          strut.lineTo(wallX + hw, y0);
+          strut.lineTo(railX + hw, y1);
+          strut.lineTo(railX - hw, y1);
+          strut.closePath();
+          ctx.fillStyle = shade(frame, -8);
+          ctx.fill(strut);
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.stroke(strut);
+          }
           ctx.fillStyle = '#454052';
-          ctx.fillRect(wallX - s * 0.028, rootY + s * 0.55, s * 0.056, s * 0.07);
-          ctx.fillStyle = 'rgba(255, 236, 200, 0.45)';
-          ctx.fillRect(wallX - s * 0.009, rootY + s * 0.572, s * 0.018, s * 0.018);
+          ctx.fillRect(wallX - s * 0.04, y0 - s * 0.05, s * 0.08, s * 0.08);
         };
         if (!jw && !fw) brace('L');
         if (!je && !fe) brace('R');
         // ---- The ledger, bolted through under the wall plate.
         ctx.fillStyle = frame;
-        ctx.fillRect(topL, rootY - s * 0.045, topR - topL, s * 0.1);
+        ctx.fillRect(topL, rootY - s * 0.05, topR - topL, s * 0.105);
         ctx.fillStyle = shade(frame, 16);
-        ctx.fillRect(topL, rootY - s * 0.045, topR - topL, s * 0.028);
+        ctx.fillRect(topL, rootY - s * 0.05, topR - topL, s * 0.032);
         ctx.fillStyle = shade(frame, -30);
         for (const bx of [0.18, 0.82] as const) {
-          ctx.fillRect(xL + bx * s - s * 0.026, rootY - s * 0.03, s * 0.052, s * 0.07);
+          ctx.fillRect(xL + bx * s - s * 0.03, rootY - s * 0.035, s * 0.06, s * 0.08);
         }
-        ctx.fillStyle = 'rgba(255, 236, 200, 0.5)';
-        for (const bx of [0.18, 0.82] as const) {
-          ctx.fillRect(xL + bx * s - s * 0.008, rootY - s * 0.014, s * 0.016, s * 0.016);
+        if (this.outlineOn) {
+          this.beginStructOutline();
+          ctx.strokeRect(topL, rootY - s * 0.05, topR - topL, s * 0.105);
         }
         // ---- THE CLOTH: base fill = the darkest tone in the piece
         // (the plumb valance's own), then every plane models over it.
@@ -23101,14 +23106,6 @@ export class Renderer {
               ctx.closePath();
               ctx.fill();
             }
-            ctx.strokeStyle = 'rgba(20, 14, 28, 0.12)';
-            ctx.lineWidth = Math.max(1, s * 0.012);
-            for (let k = 1; k < 4; k++) {
-              ctx.beginPath();
-              ctx.moveTo(atTop(k / 4), rootY);
-              ctx.lineTo(atHem(k / 4), railY);
-              ctx.stroke();
-            }
           } else if (shape === 'bowed') {
             // The barrel: lit crown band arched across the bow, the
             // slope rolling darker toward tuck and rail alike.
@@ -23126,25 +23123,25 @@ export class Renderer {
             );
             ctx.stroke();
             ctx.strokeStyle = 'rgba(20, 14, 28, 0.14)';
-            ctx.lineWidth = Math.max(1, s * 0.014);
-            for (let k = 1; k < 4; k++) {
+            ctx.lineWidth = Math.max(1, s * 0.026);
+            for (let k = 1; k < 3; k++) {
               ctx.beginPath();
-              ctx.moveTo(atTop(k / 4), rootY);
-              ctx.lineTo(atHem(k / 4), railY);
+              ctx.moveTo(atTop(k / 3), rootY);
+              ctx.lineTo(atHem(k / 3), railY);
               ctx.stroke();
             }
           } else {
             // Shed: lacing ticks over the ledger + panel seams.
             ctx.fillStyle = shade(cloth.a, -6);
-            for (let k = 0; k < 5; k++) {
-              ctx.fillRect(atTop(0.1 + k * 0.2) - s * 0.012, rootY, s * 0.024, s * 0.05);
+            for (let k = 0; k < 4; k++) {
+              ctx.fillRect(atTop(0.12 + k * 0.25) - s * 0.02, rootY, s * 0.04, s * 0.055);
             }
             ctx.strokeStyle = 'rgba(20, 14, 28, 0.1)';
-            ctx.lineWidth = Math.max(1, s * 0.012);
-            for (let k = 1; k < 4; k++) {
+            ctx.lineWidth = Math.max(1, s * 0.024);
+            for (let k = 1; k < 3; k++) {
               ctx.beginPath();
-              ctx.moveTo(atTop(k / 4), rootY);
-              ctx.lineTo(atHem(k / 4), railY);
+              ctx.moveTo(atTop(k / 3), rootY);
+              ctx.lineTo(atHem(k / 3), railY);
               ctx.stroke();
             }
           }
@@ -23155,7 +23152,7 @@ export class Renderer {
           ctx.fillRect(topL, rootY + s * 0.1, topR - topL, s * 0.08);
           // …and breaks over the rail in a sunlit arris.
           ctx.fillStyle = 'rgba(255, 246, 224, 0.28)';
-          ctx.fillRect(botL, railY - s * 0.03, botR - botL, s * 0.03);
+          ctx.fillRect(botL, railY - s * 0.045, botR - botL, s * 0.045);
           // The wind's broad shimmer, top plane only.
           ctx.fillStyle = `rgba(255, 252, 235, ${0.03 + 0.05 * Math.max(0, wind.l)})`;
           ctx.fillRect(botL, rootY, botR - botL, railY - rootY);
@@ -23185,17 +23182,17 @@ export class Renderer {
               ctx.arc(cxk, vTop, rk * 0.55, 0, Math.PI, false);
               ctx.closePath();
               ctx.fill();
-              ctx.strokeStyle = 'rgba(255, 246, 224, 0.42)';
-              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.strokeStyle = 'rgba(255, 246, 224, 0.32)';
+              ctx.lineWidth = Math.max(1, s * 0.032);
               ctx.beginPath();
-              ctx.arc(cxk, vTop, rk - s * 0.024, 0.25, Math.PI - 0.25, false);
+              ctx.arc(cxk, vTop, rk - s * 0.032, 0.35, Math.PI - 0.35, false);
               ctx.stroke();
             }
           } else if (shape === 'shed') {
             // Fold shading down the drop skirt, then the sewn thread.
             ctx.fillStyle = 'rgba(20, 14, 28, 0.14)';
-            for (let k = 0; k < 6; k++) {
-              ctx.fillRect(atHem(0.08 + k * 0.16), vTop, s * 0.03, vDepth + s * 0.03);
+            for (let k = 0; k < 4; k++) {
+              ctx.fillRect(atHem(0.11 + k * 0.24), vTop, s * 0.048, vDepth + s * 0.03);
             }
             ctx.fillStyle = 'rgba(20, 14, 28, 0.2)';
             ctx.fillRect(botL, vTop, botR - botL, s * 0.03);
@@ -23227,27 +23224,31 @@ export class Renderer {
         // hangs between (free AND flush — neighbours pair into a
         // shared post). Drawn over the ink at the exact side edge.
         const cheek = (topX: number, hemX: number): void => {
-          ctx.strokeStyle = '#241a2e';
-          ctx.lineWidth = Math.max(1.5, s * 0.075);
+          const hw = s * 0.048;
+          const board = new Path2D();
+          board.moveTo(topX - hw, rootY - s * 0.05);
+          board.lineTo(topX + hw, rootY - s * 0.05);
+          board.lineTo(hemX + hw, railY + railH + s * 0.015);
+          board.lineTo(hemX - hw, railY + railH + s * 0.015);
+          board.closePath();
+          ctx.fillStyle = frame;
+          ctx.fill(board);
+          // One lit facet, block against block — no hairlines.
+          ctx.fillStyle = shade(frame, 14);
           ctx.beginPath();
-          ctx.moveTo(topX, rootY - s * 0.03);
-          ctx.lineTo(hemX, railY + railH);
-          ctx.stroke();
-          ctx.strokeStyle = frame;
-          ctx.lineWidth = Math.max(1, s * 0.048);
-          ctx.beginPath();
-          ctx.moveTo(topX, rootY - s * 0.025);
-          ctx.lineTo(hemX, railY + railH - s * 0.008);
-          ctx.stroke();
-          ctx.strokeStyle = 'rgba(255, 236, 200, 0.32)';
-          ctx.lineWidth = Math.max(1, s * 0.016);
-          ctx.beginPath();
-          ctx.moveTo(topX - s * 0.012, rootY - s * 0.02);
-          ctx.lineTo(hemX - s * 0.012, railY + railH * 0.5);
-          ctx.stroke();
+          ctx.moveTo(topX - hw, rootY - s * 0.05);
+          ctx.lineTo(topX - hw + s * 0.032, rootY - s * 0.05);
+          ctx.lineTo(hemX - hw + s * 0.032, railY + railH + s * 0.015);
+          ctx.lineTo(hemX - hw, railY + railH + s * 0.015);
+          ctx.closePath();
+          ctx.fill();
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.stroke(board);
+          }
         };
-        if (!jw) cheek(topL + s * 0.008, botL + s * 0.008);
-        if (!je) cheek(topR - s * 0.008, botR - s * 0.008);
+        if (!jw) cheek(topL + s * 0.012, botL + s * 0.012);
+        if (!je) cheek(topR - s * 0.012, botR - s * 0.012);
       },
     };
   }
