@@ -229,11 +229,19 @@ const defs: ItemDef[] = [
 
   // Fish & food
   { id: 'raw_trout', name: 'Raw trout', stackable: false, value: 8, desc: 'A river trout, cold and slick. Cook it over a fire.', color: '#7fb2d9', code: 'Tr' },
+  { id: 'raw_pike', name: 'Raw pike', stackable: false, value: 16, desc: 'A fen pike, all teeth and temper. Cook it over a fire.', color: '#7fa8c9', code: 'Pk' },
+  { id: 'raw_eel', name: 'Raw eel', stackable: false, value: 26, desc: 'A channel eel, dark and strong. Cook it over a fire.', color: '#6b87a8', code: 'El' },
+  { id: 'raw_salmon', name: 'Raw salmon', stackable: false, value: 38, desc: 'A cold-water salmon, bright as struck silver. Cook it over a fire.', color: '#9fb8d9', code: 'Sa' },
+  { id: 'raw_glimmerfish', name: 'Raw glimmerfish', stackable: false, value: 60, desc: 'It shines faintly even out of the water. Cook it over a fire.', color: '#a8c4e8', code: 'Gl' },
   { id: 'raw_chicken', name: 'Raw chicken', stackable: false, value: 4, desc: 'Best not eaten as-is. The fire fixes that.', color: '#e8c9b0', code: 'Ch' },
   { id: 'raw_beef', name: 'Raw beef', stackable: false, value: 5, desc: 'A hearty cut from the pasture. Needs a fire.', color: '#c46a5a', code: 'Bf' },
 
   // Cooked food (heals on click)
   { id: 'trout', name: 'Trout', stackable: false, value: 12, heals: 4, desc: 'Flaky and hot off the fire.', color: '#d98a6a', code: 'Tr' },
+  { id: 'pike', name: 'Pike', stackable: false, value: 24, heals: 6, desc: 'White flakes under crisp skin. Worth the teeth.', color: '#d9925f', code: 'Pk' },
+  { id: 'eel', name: 'Eel', stackable: false, value: 38, heals: 9, desc: 'Rich and buttery. Best eaten hot.', color: '#d99a54', code: 'El' },
+  { id: 'salmon', name: 'Salmon', stackable: false, value: 55, heals: 13, desc: 'Deep pink and hot off the fire.', color: '#e08a72', code: 'Sa' },
+  { id: 'glimmerfish', name: 'Glimmerfish', stackable: false, value: 85, heals: 18, desc: 'The shine cooks into the flesh. It tastes like a clear night.', color: '#e8b072', code: 'Gl' },
   { id: 'cooked_chicken', name: 'Cooked chicken', stackable: false, value: 7, heals: 3, desc: 'Simple food that keeps an adventurer standing.', color: '#d9a86a', code: 'Ch' },
   { id: 'cooked_beef', name: 'Cooked beef', stackable: false, value: 8, heals: 4, desc: 'A proper meal after a proper fight.', color: '#b06a4a', code: 'Bf' },
   { id: 'burnt_food', name: 'Burnt food', stackable: false, value: 1, desc: 'You looked away for one moment. It noticed.', color: '#3a363f', code: 'Bt' },

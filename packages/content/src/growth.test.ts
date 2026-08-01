@@ -89,6 +89,13 @@ test('ONE ENGINE, FOUR DIALECTS: every depleting node speaks exactly one', () =>
       assert.equal(dialect, null, `${node.name} never depletes and must have no dialect`);
       continue;
     }
+    if (node.skill === 'fishing') {
+      // The fishing ladder rests and returns on the plain respawn
+      // queue — water regrows nothing, so fishing NEVER enters the
+      // growth ledger (the second-growth law, now with depleting spots).
+      assert.equal(dialect, null, `${node.name} fishes outside the growth ledger`);
+      continue;
+    }
     const expected =
       node.skill === 'woodcutting'
         ? 'tree'

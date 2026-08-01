@@ -6,6 +6,7 @@ import {
   Tile,
   diagWallInfo,
   hashCoords,
+  isFishingTile,
   nearestFloorTile,
   tileDef,
   valueNoise,
@@ -166,7 +167,7 @@ const BLOB_LAYERS: BlobLayer[] = [
   {
     // Open water. Its band is the DEPTH SHELF — the underwater shade
     // step where the wadeable rim drops away into swimming water.
-    match: (t) => t === Tile.Water || t === Tile.FishingSpot,
+    match: (t) => t === Tile.Water || isFishingTile(t),
     color: () => '#4979b8',
     wobble: 0.14,
     band: 'rgba(24, 44, 84, 0.3)',
@@ -3270,7 +3271,7 @@ export interface DeckFill {
  */
 export function deckFillAt(ground: GroundSampler, tx: number, ty: number): DeckFill | null {
   const t = ground(tx, ty);
-  if (t === undefined || t === Tile.FishingSpot || isDeckGround(t)) return null;
+  if (t === undefined || isFishingTile(t) || isDeckGround(t)) return null;
   const water = isWaterTile(t);
   // A land notch may chamfer too (THE BANK CHAMFER below) — but only
   // over bare walkable ground; anything solid or built stays square.
@@ -3491,7 +3492,7 @@ function deckUnderGround(
         const t = ground(tx + dx, ty + dy);
         if (t === undefined || isDeckGround(t)) continue;
         if (t === Tile.WaterShallow) shallow++;
-        else if (t === Tile.Water || t === Tile.FishingSpot) water++;
+        else if (t === Tile.Water || isFishingTile(t)) water++;
         else if (t === Tile.WaterDeep) deep++;
         else if (!tileDef(t).solid) land.set(t, (land.get(t) ?? 0) + 1);
       }
@@ -3746,9 +3747,11 @@ export function drawLiveGround(
             path.lineTo(p.x + s * 0.16, p.y);
           }
         }
-      } else if (tile === Tile.FishingSpot) {
+      } else if (isFishingTile(tile)) {
         // Rise rings: FLAT-squashed, staggered so the pair never pulses
-        // in lockstep.
+        // in lockstep. Every tier of the fishing ladder speaks this
+        // dialect; each adds one quiet accent so an angler reads the
+        // water at a glance without a tooltip.
         const p = worldToScreen(tx + 0.5, ty + 0.5);
         for (let ring = 0; ring < 2; ring++) {
           const phase = (t * 0.6 + ring * 0.37 + (h % 10) / 10) % 1;
@@ -3761,6 +3764,81 @@ export function drawLiveGround(
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
+        if (tile === Tile.PikeHole) {
+          // Stillwater reeds at the rim — the pike's cover. Two blades,
+          // hash-leaned so no two holes match.
+          const path = bk.stroke('#3e6b3a', 0.05, 0.75 * tones.dim);
+          if (path) {
+            for (let blade = 0; blade < 2; blade++) {
+              const bx = tx + 0.22 + blade * 0.5 + ((h >>> (3 + blade * 4)) % 20) / 100;
+              const lean = (((h >>> (6 + blade * 3)) % 21) - 10) / 60;
+              const base = worldToScreen(bx, ty + 0.82);
+              const tip = worldToScreen(bx + lean, ty + 0.82 - 0.34);
+              path.moveTo(base.x, base.y);
+              path.lineTo(tip.x, tip.y);
+            }
+          }
+        } else if (tile === Tile.EelRun) {
+          // A dark body under the surface: one slow S-curve sliding
+          // around the rings, phase-locked to the tile's own hash.
+          const sw = (t * 0.25 + (h % 47) / 47) % 1;
+          const a0 = sw * Math.PI * 2;
+          ctx.globalAlpha = 0.4 * tones.dim;
+          ctx.strokeStyle = '#1e3350';
+          ctx.lineWidth = Math.max(1.5, s * 0.06);
+          ctx.beginPath();
+          const rr = 0.3 * s;
+          for (let seg = 0; seg <= 6; seg++) {
+            const a = a0 + seg * 0.22;
+            const wob = Math.sin(seg * 1.6 + t * 2) * 0.05 * s;
+            const x = p.x + Math.cos(a) * (rr + wob);
+            const y = p.y + Math.sin(a) * (rr + wob) * FLAT;
+            if (seg === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        } else if (tile === Tile.SalmonRun) {
+          // The leap: a silver flash arcing out of the rings every few
+          // seconds — visible from a screen away, gone before it lands.
+          const phase = (t * 0.22 + (h % 31) / 31) % 1;
+          if (phase < 0.18) {
+            const k = phase / 0.18;
+            const arc = Math.sin(k * Math.PI);
+            ctx.globalAlpha = arc * 0.85 * tones.dim;
+            ctx.strokeStyle = '#d6e4f0';
+            ctx.lineWidth = Math.max(1.5, s * 0.06);
+            ctx.beginPath();
+            const lx0 = p.x + (k - 0.5) * 0.5 * s;
+            const ly0 = p.y - arc * 0.3 * s;
+            ctx.moveTo(lx0 - s * 0.09, ly0 + s * 0.03);
+            ctx.quadraticCurveTo(lx0, ly0 - s * 0.05, lx0 + s * 0.09, ly0 + s * 0.03);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+        } else if (tile === Tile.GlimmerShoal) {
+          // The shoal glimmers: three staggered twinkles riding their
+          // own phases — the only fishing water that shines at night.
+          for (let tw = 0; tw < 3; tw++) {
+            const phase = (t * 0.5 + ((h >>> (tw * 5)) % 29) / 29) % 1;
+            const a = Math.sin(phase * Math.PI);
+            if (a <= 0.05) continue;
+            const gx = tx + 0.2 + ((h >>> (2 + tw * 6)) % 60) / 100;
+            const gy = ty + 0.2 + ((h >>> (7 + tw * 4)) % 60) / 100;
+            const g = worldToScreen(gx, gy);
+            ctx.globalAlpha = a * 0.8;
+            ctx.strokeStyle = '#cfe2ff';
+            ctx.lineWidth = Math.max(1, s * 0.03);
+            const gr = 0.05 * s * (0.7 + a * 0.6);
+            ctx.beginPath();
+            ctx.moveTo(g.x - gr, g.y);
+            ctx.lineTo(g.x + gr, g.y);
+            ctx.moveTo(g.x, g.y - gr * FLAT);
+            ctx.lineTo(g.x, g.y + gr * FLAT);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
       } else if (isDeckGround(tile)) {
         // The deck's live waterline: the surface visibly LAPS against
         // the structure — breathing white lines hug every deck edge
@@ -3814,7 +3892,7 @@ export function drawLiveGround(
 
 /** Open (non-wadeable) water — the only surface swell bands ride. */
 function isOpenWater(t: number | undefined): boolean {
-  return t === Tile.Water || t === Tile.WaterDeep || t === Tile.FishingSpot;
+  return t === Tile.Water || t === Tile.WaterDeep || isFishingTile(t);
 }
 
 /**
@@ -3854,7 +3932,7 @@ export function isWaterTile(t: number | undefined): boolean {
     t === Tile.Water ||
     t === Tile.WaterDeep ||
     t === Tile.WaterShallow ||
-    t === Tile.FishingSpot
+    isFishingTile(t)
   );
 }
 

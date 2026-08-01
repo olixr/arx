@@ -76,6 +76,10 @@ const BAKED_FULLY = new Set<Tile>([
   Tile.WaterDeep,
   Tile.WaterShallow,
   Tile.FishingSpot,
+  Tile.PikeHole,
+  Tile.EelRun,
+  Tile.SalmonRun,
+  Tile.GlimmerShoal,
 ]);
 
 export type OverlayKind = 'none' | 'block' | 'tree' | 'door' | 'portal';

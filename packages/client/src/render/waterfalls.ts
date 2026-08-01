@@ -1,4 +1,4 @@
-import { Tile } from '@arx/shared';
+import { Tile , isFishingTile } from '@arx/shared';
 
 /**
  * WATERFALLS — THE SPILL LAW.
@@ -45,7 +45,7 @@ type Sampler = (tx: number, ty: number) => number | undefined;
 
 export function isFallWater(t: number | undefined): boolean {
   return (
-    t === Tile.Water || t === Tile.WaterDeep || t === Tile.WaterShallow || t === Tile.FishingSpot
+    t === Tile.Water || t === Tile.WaterDeep || t === Tile.WaterShallow || isFishingTile(t)
   );
 }
 

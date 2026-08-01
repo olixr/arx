@@ -82,6 +82,61 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     burnResult: 'burnt_food',
   },
 
+  // The fish ladder's table (XP balance epic): cooking's road past 22
+  // — each tier of water pays a tier of the hearth.
+  {
+    id: 'cook_pike',
+    name: 'Pike',
+    skill: 'cooking',
+    levelReq: 15,
+    xp: 110,
+    station: 'fire',
+    inputs: [{ item: 'raw_pike', qty: 1 }],
+    output: { item: 'pike', qty: 1 },
+    ticks: 45,
+    burnChance: 0.25,
+    burnResult: 'burnt_food',
+  },
+  {
+    id: 'cook_eel',
+    name: 'Eel',
+    skill: 'cooking',
+    levelReq: 28,
+    xp: 180,
+    station: 'fire',
+    inputs: [{ item: 'raw_eel', qty: 1 }],
+    output: { item: 'eel', qty: 1 },
+    ticks: 55,
+    burnChance: 0.25,
+    burnResult: 'burnt_food',
+  },
+  {
+    id: 'cook_salmon',
+    name: 'Salmon',
+    skill: 'cooking',
+    levelReq: 42,
+    xp: 260,
+    station: 'fire',
+    inputs: [{ item: 'raw_salmon', qty: 1 }],
+    output: { item: 'salmon', qty: 1 },
+    ticks: 65,
+    burnChance: 0.25,
+    burnResult: 'burnt_food',
+  },
+  {
+    id: 'cook_glimmerfish',
+    name: 'Glimmerfish',
+    skill: 'cooking',
+    levelReq: 58,
+    xp: 380,
+    station: 'fire',
+    inputs: [{ item: 'raw_glimmerfish', qty: 1 }],
+    output: { item: 'glimmerfish', qty: 1 },
+    ticks: 75,
+    burnChance: 0.25,
+    burnResult: 'burnt_food',
+  },
+
   // ------------------------------------------------ smithing
   {
     id: 'smelt_bronze',
@@ -932,6 +987,12 @@ const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
   cook_cake: 'trainer',
   cook_smoked_trout: 'trainer',
   cook_fishers_pot: 'trainer',
+  // The fish ladder: taught while the water still forgives, found once
+  // it stops (40+ = drop, the trove law — the vault shelf carries them).
+  cook_pike: 'trainer',
+  cook_eel: 'trainer',
+  cook_salmon: 'drop',
+  cook_glimmerfish: 'drop',
 
   // Smithing — baseline metals stay open to all hands.
   smelt_bronze: 'core',

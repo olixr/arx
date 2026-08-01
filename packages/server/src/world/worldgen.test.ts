@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
+import { isFishingTile,
   ByteReader,
   CHUNK_SIZE,
   Tile,
@@ -212,6 +212,10 @@ test('sinks never cut water or shoreline, and every ramp is a straight-edge flig
     Tile.WaterDeep,
     Tile.WaterShallow,
     Tile.FishingSpot,
+    Tile.PikeHole,
+    Tile.EelRun,
+    Tile.SalmonRun,
+    Tile.GlimmerShoal,
     Tile.Sand,
   ]);
   for (const [cx, cy] of findSinkChunks(seed, 4)) {
@@ -476,7 +480,7 @@ test('the Amberfen is a true wetland: wet mosaic, reed banks, dry islets', () =>
         g === Tile.Water ||
         g === Tile.WaterDeep ||
         g === Tile.WaterShallow ||
-        g === Tile.FishingSpot
+        isFishingTile(g)
       ) {
         wet++;
       } else if (g === Tile.Swamp) reeds++;

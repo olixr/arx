@@ -358,6 +358,12 @@ export enum Tile {
    * re-checks this tile server-side (the vault's own law).
    */
   BeastPen = 150,
+  // The fishing ladder (XP balance epic): each tier is its own water
+  // dialect — same rise-ring language as FishingSpot, its own accent.
+  PikeHole = 151,
+  EelRun = 152,
+  SalmonRun = 153,
+  GlimmerShoal = 154,
 }
 
 export enum Detail {
@@ -565,6 +571,10 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.CarvingBench]: { name: 'carving bench', solid: true, color: '#7d5a2e', raised: true, topColor: '#9b7440' },
   [Tile.Sawhorse]: { name: 'sawhorse', solid: true, color: '#7d5a2e', raised: true, topColor: '#a8794a' },
   [Tile.BeastPen]: { name: 'beast pen', solid: true, color: '#6e5433', raised: true, topColor: '#96703f' },
+  [Tile.PikeHole]: { name: 'pike hole', solid: true, color: '#39679c', variants: ['#366293'] },
+  [Tile.EelRun]: { name: 'eel run', solid: true, color: '#31578c', variants: ['#2e5284'] },
+  [Tile.SalmonRun]: { name: 'salmon run', solid: true, color: '#457bbd', variants: ['#4174b3'] },
+  [Tile.GlimmerShoal]: { name: 'glimmer shoal', solid: true, color: '#4f84c9', variants: ['#4a7dc0'] },
   [Tile.EnchantingTable]: { name: 'enchanting table', solid: true, color: '#4a3f5e', raised: true, topColor: '#7a6aa8' },
   // Saplings: the middle beat of tree regrowth (stump → sapling →
   // tree). Walkable — you step over a knee-high whip — and not a
@@ -1047,6 +1057,23 @@ const TREE_OF_SAPLING = new Map<Tile, Tile>(
 
 /** The tree tiles that fell, stump, and regrow. */
 export const TREE_TILES: ReadonlySet<Tile> = new Set(SAPLING_OF.keys());
+
+/**
+ * The fishing ladder: every fishing-spot tile shares one water dialect
+ * (shoreline, reflections, waterfalls, the deck's never-board-over
+ * law) — client and worldgen read this set, never a tile equality.
+ */
+export const FISHING_TILES: ReadonlySet<Tile> = new Set([
+  Tile.FishingSpot,
+  Tile.PikeHole,
+  Tile.EelRun,
+  Tile.SalmonRun,
+  Tile.GlimmerShoal,
+]);
+
+export function isFishingTile(t: number | undefined): boolean {
+  return t !== undefined && FISHING_TILES.has(t as Tile);
+}
 
 /** The sapling stage for a tree tile, or null if it isn't a tree. */
 export function saplingOf(id: number): Tile | null {

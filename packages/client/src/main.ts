@@ -1,5 +1,5 @@
 import { procShape } from './render/wornLight.js';
-import { EntityKind, FENCE_TILES, GARRISON_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, levelForXp, skillName, tileDef, treeOfSapling } from '@arx/shared';
+import { EntityKind, FENCE_TILES, GARRISON_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling } from '@arx/shared';
 import { BUILDABLES, RECIPES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -1460,7 +1460,7 @@ function autoEquipTool(): void {
       let kind: string | null = null;
       if (t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew || t === Tile.TreePine) kind = 'axe';
       else if (t !== undefined && ROCK_TILES.includes(t)) kind = 'pickaxe';
-      else if (t === Tile.FishingSpot) kind = 'rod';
+      else if (isFishingTile(t)) kind = 'rod';
       else if (
         t === Tile.BerryBush || t === Tile.FibrePlant || t === Tile.WildSagewort || t === Tile.WildMoonbell
       ) kind = 'hands';

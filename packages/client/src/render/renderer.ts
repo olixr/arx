@@ -43,6 +43,7 @@ import {
   type Look,
   type SeatSpec,
   type Vec2,
+  isFishingTile,
 } from '@arx/shared';
 import { bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
@@ -443,6 +444,10 @@ const LOW_STICK_TILES = new Set<number>([
   Tile.Crate,
   Tile.CrateGoods,
   Tile.FishingSpot,
+  Tile.PikeHole,
+  Tile.EelRun,
+  Tile.SalmonRun,
+  Tile.GlimmerShoal,
   Tile.ChestWood,
   Tile.ChestWoodOpen,
   Tile.ChestIron,
@@ -1768,7 +1773,7 @@ export class Renderer {
           t === Tile.RockObsidian ||
           t === Tile.RockStarfall
         ? 'rock'
-        : t === Tile.FishingSpot
+        : isFishingTile(t)
           ? 'fish'
           : t === Tile.BerryBush ||
               t === Tile.FibrePlant ||
@@ -1889,7 +1894,7 @@ export class Renderer {
             t === Tile.Water ||
             t === Tile.WaterDeep ||
             t === Tile.WaterShallow ||
-            t === Tile.FishingSpot
+            isFishingTile(t)
           ) {
             v = true;
             break outer;
@@ -2627,7 +2632,7 @@ export class Renderer {
             t === Tile.Water ||
             t === Tile.WaterDeep ||
             t === Tile.WaterShallow ||
-            t === Tile.FishingSpot
+            isFishingTile(t)
           ) {
             this.reflectables.push({ x, y, wading: false, item });
             return;
@@ -27386,6 +27391,11 @@ export class Renderer {
         // draws every proc; a bespoke signature registered under the
         // full `<action>:<procId>` id or the bare proc id overrides it.
         return 520;
+      case 'tame':
+        // The asking pulses from the server once a second — each
+        // pulse lives just past the next so the file of motes never
+        // gutters mid-channel.
+        return 1150;
       default:
         return 380;
     }
@@ -29524,6 +29534,46 @@ export class Renderer {
           ctx.beginPath();
           ctx.ellipse(q0.x, q0.y, sc * 0.26 * grow, sc * 0.26 * grow * squash, 0, 0, Math.PI * 2);
           ctx.fill();
+          ctx.restore();
+          break;
+        }
+
+        case 'tame': {
+          // THE VISIBLE WORKING (beastcraft arts): the asking drifts
+          // hand-to-beast as a slow file of calm motes; the closing
+          // bond rings the beast once (radius > 0 exactly then).
+          const bx = fx.x2 ?? fx.x;
+          const by = fx.y2 ?? fx.y;
+          const q1 = this.camera.worldToScreen(bx, by, this.w, this.h);
+          q1.y -= this.renderLift(bx, by) * sc;
+          ctx.save();
+          if (fx.radius > 0) {
+            const rr = rPx * Math.sqrt(t);
+            ctx.globalAlpha = (1 - t) * 0.55;
+            ctx.strokeStyle = st.mid;
+            ctx.lineWidth = Math.max(2, sc * 0.06);
+            ctx.beginPath();
+            ctx.ellipse(q1.x, q1.y, rr, rr * squash, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = (1 - t) * 0.4;
+            ctx.strokeStyle = st.core;
+            ctx.lineWidth = Math.max(1, sc * 0.035);
+            ctx.beginPath();
+            ctx.ellipse(q1.x, q1.y, rr * 0.62, rr * 0.62 * squash, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          } else {
+            for (let k = 0; k < 5; k++) {
+              const f = (t + k / 5) % 1;
+              const mx = p.x + (q1.x - p.x) * f;
+              const my =
+                p.y + (q1.y - p.y) * f - sc * (0.35 + 0.08 * Math.sin(now / 260 + k * 1.7));
+              ctx.globalAlpha = Math.sin(f * Math.PI) * 0.6;
+              ctx.fillStyle = k % 2 ? st.core : st.mid;
+              ctx.beginPath();
+              ctx.arc(mx, my, Math.max(1.5, sc * (0.05 + 0.015 * (k % 3))), 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
           ctx.restore();
           break;
         }

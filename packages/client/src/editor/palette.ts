@@ -34,7 +34,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
   {
     id: 'water',
     label: 'Water',
-    tiles: [Tile.WaterShallow, Tile.Water, Tile.WaterDeep, Tile.FishingSpot],
+    tiles: [Tile.WaterShallow, Tile.Water, Tile.WaterDeep, Tile.FishingSpot, Tile.PikeHole, Tile.EelRun, Tile.SalmonRun, Tile.GlimmerShoal],
   },
   {
     id: 'walls',

@@ -550,7 +550,35 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
           E(lx - 1, ly) < 0.345 ||
           E(lx, ly + 1) < 0.345 ||
           E(lx, ly - 1) < 0.345;
-        ground = offMargin && roll < 0.06 ? Tile.FishingSpot : Tile.WaterShallow;
+        if (offMargin && roll < 0.06) {
+          // THE LADDER READS THE WATER (XP balance epic): a sub-roll
+          // on its own salt splits the spot by the water it sits in —
+          // margin density never moves. Trout keeps the common share
+          // everywhere; fen stillwater hides pike; a spot beside the
+          // deep cores runs eels, or on a rare cast, glimmers; the
+          // cold country's water runs salmon.
+          const cast = hashCoords(seed ^ 0xf15b7, tx, ty) / 4294967296;
+          // Deep water sits behind the open-water shelf, so the read
+          // reaches the halo's full 3 tiles (M = 3) — a margin tile
+          // never touches a deep core directly.
+          let deepNear = false;
+          for (let dy = -3; dy <= 3 && !deepNear; dy++) {
+            for (let dx = -3; dx <= 3; dx++) {
+              if (E(lx + dx, ly + dy) < 0.3) {
+                deepNear = true;
+                break;
+              }
+            }
+          }
+          if (cast >= 0.45) ground = Tile.FishingSpot;
+          else if (deepNear && cast < 0.06) ground = Tile.GlimmerShoal;
+          else if (coldAt(seed, tx, ty) > 0.55) ground = Tile.SalmonRun;
+          else if (deepNear) ground = Tile.EelRun;
+          else if (fenAt(tx, ty) > 0.25 || moisture > 0.62) ground = Tile.PikeHole;
+          else ground = Tile.FishingSpot;
+        } else {
+          ground = Tile.WaterShallow;
+        }
       } else if (elevation < 0.4) {
         // Shore band: beach sand — except inside the fen, where a damp
         // shore grows reed flats instead (walkable wet ground, the
