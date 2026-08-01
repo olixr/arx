@@ -1,8 +1,16 @@
 # Mounts — THE ROAD GROWS SHORT
 
-*Design review 2026-07-31. Status: GREEN-LIT, unshipped. Phases land in
-order; each phase is a commit with its laws proven by tests before the
-next begins.*
+*Design review 2026-07-31. Status: **ALL SIX PHASES SHIPPED — EPIC
+COMPLETE** (Ph1 SADDLE LAW 65fa070, Ph2 BEAST UNDER THE BODY 1cb2884,
+Ph3 NEIGHBOR RIDES d875f4b, Ph4 STABLE DOOR 386c2dd, Ph5 garron
+2a54671 + sabercat a47a22f, Ph6 polish). Proven by
+`npm run prove:mounts -w @arx/tools` — 24 live wire receipts. Accepted
+debts, recorded on purpose: touch UI has no call button (the sit-emote
+precedent), pads call via rebind or the pack, hoof audio rides the
+material footstep bus without a bespoke timbre, and town doorways
+admit mounted bodies (the underground refusal is the server-honest
+line; a doorway law needs client-predictable collision and waits for
+a need).*
 
 The Dawnlands are about to get big — Pinereach opened the mountains,
 Saltmere opened the water, and the map will keep growing. Feet that were

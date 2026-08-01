@@ -3039,9 +3039,14 @@ export class Renderer {
     if (this.revealArmed) {
       const s = this.camera.scale;
       const a = this.liftedWTS(this.ownPX, this.ownPY);
-      this.fadeBX0 = a.x - FADE_BODY_HW * s;
-      this.fadeBX1 = a.x + FADE_BODY_HW * s;
-      this.fadeBY0 = a.y - FADE_BODY_HT * s;
+      // Horse and rider are one silhouette: the step-aside box grows
+      // to the mounted envelope so a wall never crops the beast while
+      // faithfully revealing only the boots.
+      const rideW = game.ownPose === PoseState.Ride ? 0.75 : FADE_BODY_HW;
+      const rideH = game.ownPose === PoseState.Ride ? 1.95 : FADE_BODY_HT;
+      this.fadeBX0 = a.x - rideW * s;
+      this.fadeBX1 = a.x + rideW * s;
+      this.fadeBY0 = a.y - rideH * s;
       this.fadeBY1 = a.y + FADE_BODY_BELOW * s;
       const btx = Math.floor(this.ownPX);
       const bty = Math.floor(this.ownPY);
@@ -22187,7 +22192,13 @@ export class Renderer {
       const kind = remote.meta.kind;
       if (kind !== EntityKind.Player && kind !== EntityKind.Npc) continue;
       const s = remote.buffer.sampleSmoothed(t);
-      const radius = kind === EntityKind.Npc ? (npcDef(remote.meta.defId ?? '')?.radius ?? 0.3) : 0.3;
+      // A mounted body parts the grass at beast width, not boot width.
+      const radius =
+        kind === EntityKind.Npc
+          ? (npcDef(remote.meta.defId ?? '')?.radius ?? 0.3)
+          : s?.pose === PoseState.Ride && remote.meta.appearance?.mount
+            ? 0.45
+            : 0.3;
       const d = claim();
       d.id = eid;
       d.x = s?.x ?? remote.meta.x;
@@ -22201,7 +22212,7 @@ export class Renderer {
       d.id = 'own';
       d.x = own.x;
       d.y = own.y;
-      d.r = 0.3;
+      d.r = game.ownPose === PoseState.Ride && game.ownMount ? 0.45 : 0.3;
       out.push(d);
     }
     return out;
@@ -23392,17 +23403,21 @@ export class Renderer {
     // pixels; the dir term also catches facing snaps.
     const olMoving = this.bodyMotion(anim, e.x, e.y, e.dir);
     const locomotion =
-      olMoving || e.pose === PoseState.Walk || e.pose === PoseState.Sneak;
+      olMoving || e.pose === PoseState.Walk || e.pose === PoseState.Sneak || riding;
     const fullDyn =
       (e.pose !== PoseState.Idle &&
         e.pose !== PoseState.Walk &&
         e.pose !== PoseState.Sneak &&
-        e.pose !== PoseState.Sit) ||
+        e.pose !== PoseState.Sit &&
+        // A settled rider is locomotion-class (half-rate rebake), the
+        // same budget a walking crowd body pays — not combat-class.
+        e.pose !== PoseState.Ride) ||
       now - anim.poseStartedAt < 900 ||
       (e.hurt ?? false) ||
       capeSim !== null ||
       (sitK > 0 && sitK < 1) ||
       (lieK > 0 && lieK < 1) ||
+      (rideK > 0 && rideK < 1) ||
       (sheathK > 0 && sheathK < 1) ||
       (e.drawTOverride !== undefined && e.drawTOverride > 0) ||
       (e.isOwn && locomotion);
