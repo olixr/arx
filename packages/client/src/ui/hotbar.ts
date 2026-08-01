@@ -29,7 +29,7 @@ function procHome(id: string) {
   return procHomes.get(id);
 }
 
-/** The four slots' actions, in bar order — badges read live. */
+/** Per-SLOT action ids and empty hints (indexed by slot, not bar order). */
 const SLOT_ACTIONS: readonly ActionId[] = ['ability1', 'ability2', 'ability3', 'ability4'];
 const EMPTY_HINTS = [
   'Seat your first art in the codex',
@@ -39,13 +39,23 @@ const EMPTY_HINTS = [
 ] as const;
 
 /**
- * The combat hotbar: four ability slots — [Q] first art, [E] relic,
- * [R] second art, [T] boss Sigil (THE SECOND HAND: Q and R are both
- * free technique seats) — each with a radial cooldown wipe, a ready
- * flash, and a tooltip, plus a tray of the passives your worn gear
- * grants. A seat holding a lent secret art dims while its teaching
- * weapon is away (THE LOAN LAW). Slots are also buttons: pressing one
- * casts, so touch and mouse players get abilities without a keyboard.
+ * THE PAIRED HAND: the bar shows the two technique seats TOGETHER,
+ * arts first, trinkets after — [Q] first art, [E] second art, then a
+ * breath of space, [R] relic, [T] Sigil. Display order only; slot
+ * INDICES are wire truth and never move (relic stays slot 1, second
+ * seat stays slot 2).
+ */
+const BAR_ORDER = [0, 2, 1, 3] as const;
+
+/**
+ * The combat hotbar: four ability slots — [Q] first art, [E] second
+ * art (THE SECOND HAND: both free technique seats, side by side),
+ * [R] relic, [T] boss Sigil — each with a radial cooldown wipe, a
+ * ready flash, and a tooltip, plus a tray of the passives your worn
+ * gear grants. A seat holding a lent secret art dims while its
+ * teaching weapon is away (THE LOAN LAW). Slots are also buttons:
+ * pressing one casts, so touch and mouse players get abilities
+ * without a keyboard.
  */
 export class Hotbar {
   /**
@@ -81,9 +91,11 @@ export class Hotbar {
   onReady: (() => void) | null = null;
 
   constructor(input: InputManager) {
-    for (let i = 0; i < 4; i++) {
+    for (const i of BAR_ORDER) {
       const slot = document.createElement('button');
       slot.className = 'hotbar-slot empty';
+      // The trinket pair stands a breath apart from the art pair.
+      if (i === 1) slot.classList.add('trinket-lead');
       // The empty-state hint is painted here and on empty TRANSITIONS
       // only — update() must never write styles on unchanged frames.
       slot.title = EMPTY_HINTS[i]!;
@@ -140,9 +152,11 @@ export class Hotbar {
       slot.addEventListener('pointerleave', () => set(false));
 
       this.root.appendChild(slot);
-      this.slots.push(slot);
-      this.wipes.push(wipe);
-      this.icons.push(icon);
+      // Indexed by SLOT, not by bar position — update()/setAiming()
+      // speak slot numbers and must land on the right well.
+      this.slots[i] = slot;
+      this.wipes[i] = wipe;
+      this.icons[i] = icon;
     }
 
     // The stealth eye lives beside the buff chips, shown only while the

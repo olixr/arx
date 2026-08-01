@@ -841,7 +841,7 @@ const game = new ClientGame(input, {
         localStorage.setItem('arx.tipsShown', '1');
         const useKey = bindings.kbBadge('interact') || 'F';
         for (const tip of [
-          `Move with WASD. Click or press ${useKey} to chop, mine, fish, and use things. ${bindings.kbBadge('ability1') || 'Q'} and ${bindings.kbBadge('ability2') || 'E'} fire your abilities.`,
+          `Move with WASD. Click or press ${useKey} to chop, mine, fish, and use things. ${bindings.kbBadge('ability1') || 'Q'} and ${bindings.kbBadge('ability3') || 'E'} fire your arts.`,
           `Press ${bindings.kbBadge('screenPack') || 'I'} for your pack — click a tool or weapon to wield it.`,
           `The villagers of Dawnmead know this land. Talk to them (${useKey}) before you take the lane east.`,
         ]) {

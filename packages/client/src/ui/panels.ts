@@ -1890,7 +1890,21 @@ export class Panels {
     this.artsDetail.appendChild(teach);
   }
 
-  /** The live Q/E/R/T strip: every slot, its source, its ability. */
+  /**
+   * The letter a technique seat answers to RIGHT NOW, read from the
+   * one keymap so the codex never lies after a rebind (seat 0 casts
+   * ability1, seat 1 ability3 — Q and E are only the shipped
+   * defaults).
+   */
+  private seatKey(seat: 0 | 1): string {
+    return bindings.kbBadge(seat === 0 ? 'ability1' : 'ability3') || (seat === 0 ? 'Q' : 'E');
+  }
+
+  /**
+   * The live loadout strip: every slot, its source, its ability. THE
+   * PAIRED HAND's order — the two art seats side by side, then the
+   * trinkets — matching the hotbar exactly.
+   */
   private renderArtsLoadout(): void {
     const relic = itemDef(this.lastEquipment.relic?.id ?? '');
     const sigil = itemDef(this.lastEquipment.sigil?.id ?? '');
@@ -1907,7 +1921,6 @@ export class Panels {
         empty: 'Choose below',
         r: true,
       },
-      { action: 'ability2', src: 'Relic', ab: relic?.relic, empty: 'Wear a relic' },
       {
         action: 'ability3',
         src: 'Second Art',
@@ -1915,6 +1928,7 @@ export class Panels {
         empty: 'Choose below',
         r: true,
       },
+      { action: 'ability2', src: 'Relic', ab: relic?.relic, empty: 'Wear a relic' },
       { action: 'ability4', src: 'Sigil', ab: sigil?.sigil, empty: 'Fell a boss' },
     ] as const) {
       const ab = row.ab ? abilityDef(row.ab) : undefined;
@@ -2006,7 +2020,7 @@ export class Panels {
     head.appendChild(count);
     for (const seat of [0, 1] as const) {
       if (techniquePoolDef(this.techniques[seat] ?? '')?.style !== style) continue;
-      const key = seat === 0 ? 'Q' : 'R';
+      const key = this.seatKey(seat);
       const hand = document.createElement('span');
       hand.className = 'in-hand';
       hand.textContent = `On ${key}`;
@@ -2096,7 +2110,7 @@ export class Panels {
       if (st === 'equipped') {
         const rBadge = document.createElement('span');
         rBadge.className = 'r-badge';
-        rBadge.textContent = this.seatOf(tech.ability) === 0 ? 'Q' : 'R';
+        rBadge.textContent = this.seatKey(this.seatOf(tech.ability) === 0 ? 0 : 1);
         wellEl.appendChild(rBadge);
       }
       if (tech.hidden) {
@@ -2145,7 +2159,7 @@ export class Panels {
     sub.className = 'tech-plate-sub';
     const rank = this.techRank(style, tech);
     const seat = this.seatOf(tech.ability);
-    const key = seat === 0 ? 'Q' : 'R';
+    const key = this.seatKey(seat === 0 ? 0 : 1);
     if (tech.secret && !this.ownsArt(tech.ability)) {
       // A lent secret speaks its citizenship, not a rank it cannot climb.
       sub.textContent =
@@ -2222,15 +2236,16 @@ export class Panels {
     this.artsDetail.appendChild(head);
 
     const seat = this.seatOf(t.ability);
+    const seatLetter = this.seatKey(seat === 0 ? 0 : 1);
     const state = document.createElement('div');
     state.className = `art-state ${st}`;
     state.textContent =
       st === 'equipped'
         ? t.secret && !this.ownsArt(t.ability)
           ? this.equippedArtIds().has(t.ability)
-            ? `Riding your ${seat === 0 ? 'Q' : 'R'} key, lent by the weapon in your hand`
-            : `Seated on ${seat === 0 ? 'Q' : 'R'}, asleep. Hold a weapon that teaches it.`
-          : `Riding your ${seat === 0 ? 'Q' : 'R'} key`
+            ? `Riding your ${seatLetter} key, lent by the weapon in your hand`
+            : `Seated on ${seatLetter}, asleep. Hold a weapon that teaches it.`
+          : `Riding your ${seatLetter} key`
         : st === 'unlocked'
           ? t.secret && !this.ownsArt(t.ability)
             ? 'Lent while its weapon is in your hand. Fight with it and the art will stay.'
@@ -2257,7 +2272,7 @@ export class Panels {
       row.className = 'lesson-row';
       row.dataset.tipname = 'The lesson';
       row.dataset.tipsub = !seated
-        ? 'The lesson only counts while this art holds your Q or R seat. Seat it, take up its weapon, and fight.'
+        ? `The lesson only counts while this art holds your ${this.seatKey(0)} or ${this.seatKey(1)} seat. Seat it, take up its weapon, and fight.`
         : !taught
           ? 'The seat is set, but the teacher is away. Hold a weapon that teaches this art, and every fight counts.'
           : pct <= 0
@@ -2362,17 +2377,20 @@ export class Panels {
       const seats = document.createElement('div');
       seats.className = 'bench-seats';
       seats.appendChild(
-        bigButton('Seat on Q', `artequip:${t.ability}`, () => this.onTechnique(t.ability, 0)),
+        bigButton(`Seat on ${this.seatKey(0)}`, `artequip:${t.ability}`, () =>
+          this.onTechnique(t.ability, 0),
+        ),
       );
       seats.appendChild(
-        bigButton('Seat on R', `artequipr:${t.ability}`, () => this.onTechnique(t.ability, 2)),
+        bigButton(`Seat on ${this.seatKey(1)}`, `artequipr:${t.ability}`, () =>
+          this.onTechnique(t.ability, 2),
+        ),
       );
       this.artsDetail.appendChild(seats);
     }
     const teach = document.createElement('div');
     teach.className = 'bench-teach';
-    teach.textContent =
-      'Q and R both carry any learned art, whatever you wield. Two seats, two arts. Swapping is always free.';
+    teach.textContent = `${this.seatKey(0)} and ${this.seatKey(1)} both carry any learned art, whatever you wield. Two seats, two arts. Swapping is always free.`;
     this.artsDetail.appendChild(teach);
   }
 }

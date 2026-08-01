@@ -66,9 +66,14 @@ export interface ActionDef {
  * The shipped layout. Keyboard: WASD moves, Space attacks, QERT casts,
  * F uses, Shift dodges; the stance row is Z walk / X sit / C sneak;
  * screens live on I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses,
- * Ⓑ dodges, LB/RB/Ⓨ/▲ cast; d-pad ▼ sits, ◀ sheathes, ▶ raises the
- * glass; L3 sneaks, R3 steps the camera; Start is the pack, Select the
- * chart.
+ * Ⓑ dodges, LB/LT/RB/▲ cast, Ⓨ names the loot; d-pad ▼ sits,
+ * ◀ sheathes, ▶ raises the glass; L3 sneaks, R3 steps the camera;
+ * Start is the pack, Select the chart.
+ *
+ * THE PAIRED HAND: the two technique seats ride TOGETHER — Q and E on
+ * keys, LB and LT under the left hand — because arts are the first
+ * things earned and the most cast. The trinkets (relic R/RB, sigil
+ * T/▲) arrive later and sit behind them.
  */
 export const ACTIONS: readonly ActionDef[] = [
   { id: 'moveUp', label: 'Move north', group: 'Movement', kb: ['KeyW', 'ArrowUp'], pad: [] },
@@ -85,14 +90,14 @@ export const ACTIONS: readonly ActionDef[] = [
 
   { id: 'attack', label: 'Attack', group: 'Combat', kb: ['Space'], pad: [7, 2] },
   { id: 'ability1', label: 'First Art', group: 'Combat', kb: ['KeyQ'], pad: [4] },
-  { id: 'ability2', label: 'Relic', group: 'Combat', kb: ['KeyE'], pad: [5] },
-  { id: 'ability3', label: 'Second Art', group: 'Combat', kb: ['KeyR'], pad: [3] },
+  { id: 'ability3', label: 'Second Art', group: 'Combat', kb: ['KeyE'], pad: [6] },
+  { id: 'ability2', label: 'Relic', group: 'Combat', kb: ['KeyR'], pad: [5] },
   { id: 'ability4', label: 'Sigil', group: 'Combat', kb: ['KeyT'], pad: [12] },
   { id: 'dodge', label: 'Dodge', group: 'Combat', kb: ['ShiftLeft'], pad: [1] },
   { id: 'sheathe', label: 'Sheathe weapons', group: 'Combat', kb: ['KeyH'], pad: [14] },
 
   { id: 'interact', label: 'Use / talk', group: 'World', kb: ['KeyF'], pad: [0] },
-  { id: 'lootReveal', label: 'Name the loot', group: 'World', kb: ['AltLeft', 'AltRight'], pad: [6] },
+  { id: 'lootReveal', label: 'Name the loot', group: 'World', kb: ['AltLeft', 'AltRight'], pad: [3] },
   // Build-mode only: turns an orientable corner piece under the ghost.
   // The wheel does the same while a corner is picked; pads turn on Ⓧ
   // (contextual build grammar, like Ⓐ place / Ⓨ demolish).

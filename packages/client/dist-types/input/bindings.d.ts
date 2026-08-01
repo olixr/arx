@@ -30,9 +30,14 @@ export interface ActionDef {
  * The shipped layout. Keyboard: WASD moves, Space attacks, QERT casts,
  * F uses, Shift dodges; the stance row is Z walk / X sit / C sneak;
  * screens live on I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses,
- * Ⓑ dodges, LB/RB/Ⓨ/▲ cast; d-pad ▼ sits, ◀ sheathes, ▶ raises the
- * glass; L3 sneaks, R3 steps the camera; Start is the pack, Select the
- * chart.
+ * Ⓑ dodges, LB/LT/RB/▲ cast, Ⓨ names the loot; d-pad ▼ sits,
+ * ◀ sheathes, ▶ raises the glass; L3 sneaks, R3 steps the camera;
+ * Start is the pack, Select the chart.
+ *
+ * THE PAIRED HAND: the two technique seats ride TOGETHER — Q and E on
+ * keys, LB and LT under the left hand — because arts are the first
+ * things earned and the most cast. The trinkets (relic R/RB, sigil
+ * T/▲) arrive later and sit behind them.
  */
 export declare const ACTIONS: readonly ActionDef[];
 /** KeyboardEvent.code → short badge text. */

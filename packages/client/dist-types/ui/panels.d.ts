@@ -227,7 +227,18 @@ export declare class Panels {
     private callingChip;
     /** The bench: the chosen Calling laid out large, the answer button. */
     private renderCallingBench;
-    /** The live Q/E/R/T strip: every slot, its source, its ability. */
+    /**
+     * The letter a technique seat answers to RIGHT NOW, read from the
+     * one keymap so the codex never lies after a rebind (seat 0 casts
+     * ability1, seat 1 ability3 — Q and E are only the shipped
+     * defaults).
+     */
+    private seatKey;
+    /**
+     * The live loadout strip: every slot, its source, its ability. THE
+     * PAIRED HAND's order — the two art seats side by side, then the
+     * trinkets — matching the hotbar exactly.
+     */
     private renderArtsLoadout;
     /** One school: its face, level, and the four-rung ladder. */
     private artsSchool;

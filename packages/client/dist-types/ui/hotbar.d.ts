@@ -2,13 +2,14 @@ import { type AbilitySlot } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 /**
- * The combat hotbar: four ability slots — [Q] first art, [E] relic,
- * [R] second art, [T] boss Sigil (THE SECOND HAND: Q and R are both
- * free technique seats) — each with a radial cooldown wipe, a ready
- * flash, and a tooltip, plus a tray of the passives your worn gear
- * grants. A seat holding a lent secret art dims while its teaching
- * weapon is away (THE LOAN LAW). Slots are also buttons: pressing one
- * casts, so touch and mouse players get abilities without a keyboard.
+ * The combat hotbar: four ability slots — [Q] first art, [E] second
+ * art (THE SECOND HAND: both free technique seats, side by side),
+ * [R] relic, [T] boss Sigil — each with a radial cooldown wipe, a
+ * ready flash, and a tooltip, plus a tray of the passives your worn
+ * gear grants. A seat holding a lent secret art dims while its
+ * teaching weapon is away (THE LOAN LAW). Slots are also buttons:
+ * pressing one casts, so touch and mouse players get abilities
+ * without a keyboard.
  */
 export declare class Hotbar {
     /**

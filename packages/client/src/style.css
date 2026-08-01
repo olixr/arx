@@ -3915,6 +3915,13 @@ body.pad-mode .bind-chip .kb-glyph,
   filter: drop-shadow(0 2px 5px rgba(6, 4, 2, 0.5));
 }
 
+/* THE PAIRED HAND: the trinket pair (relic, sigil) stands a breath
+   apart from the two art seats — the grouping reads at a glance
+   without a frame or a divider saying so. */
+.hotbar-slot.trinket-lead {
+  margin-left: 12px;
+}
+
 /* An empty socket is a promise, not a demand — nearly let go of. */
 .hotbar-slot.empty {
   opacity: 0.34;

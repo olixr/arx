@@ -501,20 +501,26 @@ export function groundAimRange(ab: AbilityDef): number {
 
 /**
  * Ability slot indices. Four actives: THE SECOND HAND's two free
- * technique seats (Q and R, one earned pool, one art per seat), the
- * relic (loot hunt), and the sigil (boss trophies). THE QUICKENED
- * HAND: on-hit and on-kill haste feed slots 0 and 1 — Q is the
- * quickened seat that landed blows accelerate, R keeps its own time.
- * Where an art sits is a build choice, not a wiring accident.
+ * technique seats (Q and E by default — THE PAIRED HAND keeps them
+ * under the same fingers, LB and LT on a pad), the relic (loot hunt),
+ * and the sigil (boss trophies). THE QUICKENED HAND: on-hit and
+ * on-kill haste feed slots 0 and 1 — Q is the quickened seat that
+ * landed blows accelerate, the E seat keeps its own time. Where an
+ * art sits is a build choice, not a wiring accident.
+ *
+ * The INDICES are wire and disk truth and never move: the second
+ * seat's slot index stays 2 (db key 'slot', C2STechnique pins 0|2)
+ * however the keymap letters it. Only the default key changed
+ * (R → E, 2026-08-01); the constant is named for today's key.
  */
 export const SLOT_TECH_Q = 0;
 export const SLOT_RELIC = 1;
-export const SLOT_TECH_R = 2;
+export const SLOT_TECH_E = 2;
 export const SLOT_SIGIL = 3;
 export const ABILITY_SLOTS = 4;
 export type AbilitySlot = 0 | 1 | 2 | 3;
-/** The two technique seats, in tray order. */
-export const TECH_SEAT_SLOTS = [SLOT_TECH_Q, SLOT_TECH_R] as const;
+/** The two technique seats, in seat order (first, second). */
+export const TECH_SEAT_SLOTS = [SLOT_TECH_Q, SLOT_TECH_E] as const;
 
 // --------------------------------------------------------- techniques
 

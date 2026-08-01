@@ -345,7 +345,7 @@ import {
   SLOT_TECH_Q,
   SLOT_RELIC,
   SLOT_SIGIL,
-  SLOT_TECH_R,
+  SLOT_TECH_E,
   SHEATHED_BIT,
   SNAP_GRACE_TICKS,
   SNAP_RECOVERY_TICKS,
@@ -12387,8 +12387,9 @@ export class GameServer {
    * the seat — today's swap feels exactly like yesterday's weapon
    * art. It only ever replaces an orphaned LOAN: a mastered art, a
    * rung, a page, or an empty seat is the player's arrangement and
-   * never touched; the R seat never follows anything, and THE ONE
-   * SEAT LAW holds (an art already on R never doubles onto Q).
+   * never touched; the second seat never follows anything, and THE
+   * ONE SEAT LAW holds (an art already on the second seat never
+   * doubles onto Q).
    */
   private followLoanSeat(player: PlayerComp): void {
     const q = player.techniques[0];
@@ -13077,11 +13078,12 @@ export class GameServer {
   }
 
   /**
-   * The seat index (0 = Q, 1 = R) a tray slot maps to, or null for
-   * the trinket slots. The ONE place the tray order meets the pair.
+   * The seat index (0 = first art, 1 = second) a tray slot maps to,
+   * or null for the trinket slots. The ONE place the tray order meets
+   * the pair.
    */
   private techSeat(slot: AbilitySlot): 0 | 1 | null {
-    return slot === SLOT_TECH_Q ? 0 : slot === SLOT_TECH_R ? 1 : null;
+    return slot === SLOT_TECH_Q ? 0 : slot === SLOT_TECH_E ? 1 : null;
   }
 
   /**
@@ -13118,7 +13120,7 @@ export class GameServer {
         const relicItem = itemDef(player.equipment.relic?.id ?? '');
         return relicItem?.relic ? (abilityDef(relicItem.relic) ?? null) : null;
       }
-      case SLOT_TECH_R:
+      case SLOT_TECH_E:
         return this.seatAbility(player, 1);
       case SLOT_SIGIL: {
         const sigilItem = itemDef(player.equipment.sigil?.id ?? '');
@@ -13188,7 +13190,8 @@ export class GameServer {
   }
 
   /**
-   * Seat a technique on Q or R — THE SECOND HAND. THE FREE HAND: any
+   * Seat a technique on either art seat — THE SECOND HAND. THE FREE
+   * HAND: any
    * learned art fits, whatever the equipped weapon. Server-validated
    * per citizenship: a rung by its school's BASE level, a page by its
    * deed flag, a secret by mastery or THE LOAN LAW's teaching weapon

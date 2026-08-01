@@ -49,6 +49,19 @@ test('core actions are reachable on the pad', () => {
   }
 });
 
+// THE PAIRED HAND: the two technique seats ship side by side — Q/E on
+// keys, LB/LT under a pad's left hand — because arts are earned first
+// and cast most. The trinkets sit behind them (relic R/RB, sigil T/▲).
+test('the two art seats ride together by default', () => {
+  const def = (id: string) => ACTIONS.find((a) => a.id === id)!;
+  assert.deepEqual([...def('ability1').kb], ['KeyQ']);
+  assert.deepEqual([...def('ability1').pad], [4]); // LB
+  assert.deepEqual([...def('ability3').kb], ['KeyE']);
+  assert.deepEqual([...def('ability3').pad], [6]); // LT
+  assert.deepEqual([...def('ability2').kb], ['KeyR']);
+  assert.deepEqual([...def('ability2').pad], [5]); // RB
+});
+
 test('rebinding steals the key from its old owner', () => {
   const b = new Bindings();
   b.resetAll();
