@@ -52,9 +52,11 @@ import {
   CHOP_CYCLE_MS,
   FORAGE_CYCLE_MS,
   FURNACE_CYCLE_MS,
+  COURSER_SADDLE,
   LegSolver,
   MINE_CYCLE_MS,
   beastSpec,
+  mountSpec,
   drawBackGear,
   drawBat,
   drawBeast,
@@ -67,11 +69,12 @@ import {
   owlLook,
   skeletonLook,
   type RigPose,
+  type BeastSpec,
   type GnollLook,
   type KoboldLook,
   type SkeletonLook,
 } from './rig.js';
-import { LegRig } from './legs.js';
+import { LegRig, type LegPose } from './legs.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
 import { GREAT_FINISHER_PHASES, GREAT_PHASES } from './wield.js';
 import { greatStyle } from './weapons.js';
@@ -506,6 +509,19 @@ interface AnimState {
    * that enters view already sheathed doesn't pantomime the stow.
    */
   sheathK?: number;
+  /** Saddle blend (THE ROAD GROWS SHORT) — the sitK pattern. */
+  rideK?: number;
+  /** Last seen mount id — held through the dismount blend. */
+  mountKey?: string;
+  /** The beast's own rig, separate from the rider's humanoid solver. */
+  mountLegs?: LegRig;
+  mountRigKey?: string;
+  mountKnees?: number[];
+  mountLastPlants?: number;
+  mountLastX?: number;
+  mountLastY?: number;
+  /** The beast faces its travel — derived from motion, held at rest. */
+  mountDir?: number;
   /** The entity's cape cloth sim — present only while one is worn. */
   cape?: CapeSim;
   /** Which cape item `cape` was built for; a change rebuilds the cloth. */
@@ -22253,6 +22269,7 @@ export class Renderer {
             carryOff: remote.meta.appearance?.carryOff,
             look: remote.meta.appearance?.look,
             sheathed: (s.status & SHEATHED_BIT) !== 0,
+            mount: remote.meta.appearance?.mount,
             color: remote.meta.appearance?.look
               ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
               : PLAYER_COLORS[hashString(remote.meta.name ?? String(eid)) % PLAYER_COLORS.length]!,
@@ -22430,6 +22447,7 @@ export class Renderer {
           : PLAYER_COLORS[hashString(game.ownName) % PLAYER_COLORS.length]!,
         drawTOverride: game.ownDrawT,
         sheathed: game.isSheathed,
+        mount: game.ownMount ?? undefined,
       });
       // Only WE see ourselves while stealthed — a ghost of our own body.
       if (game.isHidden) ownItem.alpha = 0.45;
@@ -22926,6 +22944,12 @@ export class Renderer {
      * you). Resolved per-viewer by clientGame.repTintFor.
      */
     nameInk?: string;
+    /**
+     * Active mount def id (AppearanceData.mount / the own ride
+     * mirror). With PoseState.Ride it saddles the whole draw: the
+     * courser paints under this body and the rig takes the saddle sit.
+     */
+    mount?: string;
   }): DrawItem {
     const s = this.camera.scale;
     const now = performance.now();
@@ -22995,6 +23019,60 @@ export class Renderer {
     // with what other players see.
     const varEid = typeof e.eid === 'number' ? e.eid : (this.game?.ownEid ?? 0);
     const sitVariant = (Math.abs(varEid) % 2) as 0 | 1;
+    // ---- THE BEAST UNDER THE BODY (THE ROAD GROWS SHORT Phase 2).
+    // The mount is appearance, never a second entity: pose Ride + a
+    // mount id, and this one entity draws horse-and-rider as one
+    // depth-laddered body. The blend is the vault up / the step down.
+    const rideTarget = e.pose === PoseState.Ride && e.mount ? 1 : 0;
+    let rideK = anim.rideK ?? (rideTarget ? 1 : 0); // first sight AT target
+    rideK += (rideTarget - rideK) * (1 - Math.exp(-5 * this.frameDt));
+    if (rideK < 0.004) rideK = 0;
+    else if (rideK > 0.996) rideK = 1;
+    anim.rideK = rideK;
+    const rideE = rideK * rideK * (3 - 2 * rideK);
+    if (e.mount) anim.mountKey = e.mount; // held through the dismount blend
+    const riding = rideK > 0 && anim.mountKey !== undefined;
+    let beastPose: LegPose | null = null;
+    let beastFeet: Array<{ x: number; y: number; lift: number }> | null = null;
+    let mSpec: BeastSpec | null = null;
+    if (riding) {
+      mSpec = mountSpec(anim.mountKey!);
+      if (!anim.mountLegs || anim.mountRigKey !== anim.mountKey) {
+        anim.mountLegs = new LegRig(mSpec.rig);
+        anim.mountRigKey = anim.mountKey;
+        anim.mountKnees = [];
+        anim.mountLastPlants = undefined;
+        anim.mountDir = e.dir;
+      }
+      // The beast faces its TRAVEL, never the rider's aim — derived
+      // from motion (own and remote bodies agree by construction) and
+      // slewed by the rig's own turnRate into legPose.dir.
+      const mdx = e.x - (anim.mountLastX ?? e.x);
+      const mdy = e.y - (anim.mountLastY ?? e.y);
+      anim.mountLastX = e.x;
+      anim.mountLastY = e.y;
+      if (Math.hypot(mdx, mdy) > 0.02) anim.mountDir = Math.atan2(mdy, mdx);
+      beastPose = anim.mountLegs.update(e.x, e.y, anim.mountDir ?? e.dir, this.frameDt);
+      beastFeet = beastPose.feet.map((f) => {
+        const fp = this.camera.worldToScreen(f.x, f.y, this.w, this.h);
+        fp.y -= this.renderLift(f.x, f.y) * s;
+        return { x: fp.x, y: fp.y, lift: f.lift };
+      });
+      // Hoof-falls own the ground story while mounted: heavier dust,
+      // and the footstep bus hears hooves instead of boots.
+      if (anim.mountLastPlants === undefined) {
+        anim.mountLastPlants = anim.mountLegs.plants;
+      } else if (anim.mountLegs.plants !== anim.mountLastPlants) {
+        anim.mountLastPlants = anim.mountLegs.plants;
+        if (rideE > 0.5) {
+          this.onFootstep?.(e.x, e.y, anim.mountLegs.plantSpeed, e.isOwn === true, false);
+          this.kickDust(anim.mountLegs, 1.25);
+        }
+      }
+    } else if (anim.mountLegs) {
+      anim.mountLegs = undefined;
+      anim.mountRigKey = undefined;
+    }
     // THE CROWD BREATHES OUT OF STEP: every body owns a fixed offset
     // on the cosmetic clock — the idle wrist life, blade flourishes,
     // standing breath, and station strokes all read rig.nowMs, so one
@@ -23009,9 +23087,13 @@ export class Renderer {
       anim.lastPlants = anim.legs.plants;
     } else if (anim.legs.plants !== anim.lastPlants) {
       anim.lastPlants = anim.legs.plants;
-      this.onFootstep?.(e.x, e.y, anim.legs.plantSpeed, e.isOwn === true, e.pose === PoseState.Sneak);
-      // Sneaking feet roll heel-to-toe — nothing gets kicked loose.
-      if (e.pose !== PoseState.Sneak) this.kickDust(anim.legs);
+      // In the saddle the boots are in the stirrups — the hooves own
+      // every ground event (see the mount block above).
+      if (rideE === 0) {
+        this.onFootstep?.(e.x, e.y, anim.legs.plantSpeed, e.isOwn === true, e.pose === PoseState.Sneak);
+        // Sneaking feet roll heel-to-toe — nothing gets kicked loose.
+        if (e.pose !== PoseState.Sneak) this.kickDust(anim.legs);
+      }
     }
     // The finisher (and the wand's heavy bolt) rides its full 8-tick
     // pose — a heavier beat deserves its whole 400ms; everything else
@@ -23124,6 +23206,34 @@ export class Renderer {
       fp.y -= this.renderLift(wx, wy) * s;
       return { x: fp.x, y: fp.y, lift: f.lift * (1 - sitE) };
     });
+    // In the saddle the humanoid feet ARE the stirrups — placed off
+    // the beast's own frame on the COURSER_SADDLE ruler, ordered by
+    // screen x so the screen-left hip keeps the left leg (the seat
+    // law), and blended from wherever the boots were so the mount-up
+    // reads as a vault, never a teleport.
+    if (riding && beastPose) {
+      const bd = beastPose.dir;
+      const fwx2 = Math.cos(bd);
+      const fwy2 = Math.sin(bd);
+      const sti = [-1, 1].map((es) => {
+        const wx = e.x + fwx2 * COURSER_SADDLE.stirrupFwd - fwy2 * es * COURSER_SADDLE.stirrupSide;
+        const wy = e.y + fwy2 * COURSER_SADDLE.stirrupFwd + fwx2 * es * COURSER_SADDLE.stirrupSide;
+        const fp = this.camera.worldToScreen(wx, wy, this.w, this.h);
+        fp.y -= this.renderLift(wx, wy) * s + COURSER_SADDLE.stirrupH * s;
+        return { x: fp.x, y: fp.y, lift: 0 };
+      });
+      const ordered = sti[0]!.x <= sti[1]!.x ? sti : [sti[1]!, sti[0]!];
+      for (let i = 0; i < 2; i++) {
+        const cur = feet[i];
+        const tgt = ordered[i];
+        if (!cur || !tgt) continue;
+        feet[i] = {
+          x: cur.x + (tgt.x - cur.x) * rideE,
+          y: cur.y + (tgt.y - cur.y) * rideE,
+          lift: cur.lift * (1 - rideE),
+        };
+      }
+    }
 
     // Attack lunge: the body rocks back then punches toward the aim
     // while the feet stay planted — the legs lean into the strike.
@@ -23191,12 +23301,16 @@ export class Renderer {
     // Milking: square up to the animal being worked, same as a node.
     const milkCow = e.pose === PoseState.Milk ? this.findMilkTarget(e.x, e.y) : null;
     if (milkCow) dir = Math.atan2(milkCow.y - e.y, milkCow.x - e.x);
+    // A rider faces the way the beast carries them — never the mouse.
+    if (riding && beastPose && rideE > 0.5) dir = beastPose.dir;
 
     // Seated lean: on the ground the hips and torso settle BEHIND the
     // ground point while the feet hold their forward plant — the
     // stretched-out rest. On furniture the spine stays over the seat
     // (a whisper of settle so the transition still reads).
     if (sitE > 0) lunge -= (chairSit ? 0.04 : 0.15) * sitE;
+    // The saddle settles the seat a whisper behind the withers.
+    if (rideE > 0) lunge -= 0.02 * rideE;
 
     // The sheathe blend: the player's own toggle, and every state that
     // used to VANISH the weapon (station work, foraging, the seated
@@ -23209,6 +23323,7 @@ export class Renderer {
       e.pose === PoseState.Sit ||
       e.pose === PoseState.Lie ||
       e.pose === PoseState.Milk ||
+      e.pose === PoseState.Ride ||
       gather?.kind === 'forage'
         ? 1
         : 0;
@@ -23242,8 +23357,9 @@ export class Renderer {
       // On furniture the shoulders ride the SEAT surface, so the
       // clasp holds that much more height and the hem drapes down the
       // chair back instead of pooling in the seat.
-      const azSeat = (chairSit ? seat!.seatH : 0.13) + 0.44 * hSc;
-      const az = (azStand + (azSeat - azStand) * sitE) * capeK;
+      const azSeat =
+        (riding ? COURSER_SADDLE.seatH : chairSit ? seat!.seatH : 0.13) + 0.44 * hSc;
+      const az = (azStand + (azSeat - azStand) * Math.max(sitE, rideE)) * capeK;
       capeSim.update(
         e.x + Math.cos(dir) * lunge,
         e.y + Math.sin(dir) * lunge,
@@ -23296,7 +23412,7 @@ export class Renderer {
       // The gnoll's coat cluster AND spot field ride the spawn seed —
       // the seed byte keeps same-fur bodies from sharing spot sprites.
       e.gnoll ? `g${(e.gnoll.seed ?? 0) & 0xff}` : ''
-    }${seat ? `|${seat.kind}${seat.head ?? ''}` : ''}`;
+    }${seat ? `|${seat.kind}${seat.head ?? ''}` : ''}${riding ? `|m${anim.mountKey}` : ''}`;
 
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
     const paintCape =
@@ -23348,7 +23464,12 @@ export class Renderer {
       baseY: e.y,
       drawShadow: () => {
         // A body in bed casts no pool of its own — the bed already did.
-        this.castBody(p.x, p.y + s * 0.05, 0.26 * s * (e.size ?? 1) * (1 - 0.85 * lieE));
+        // In the saddle the POOL IS THE BEAST'S: one body, one shadow.
+        this.castBody(
+          p.x,
+          p.y + s * 0.05,
+          0.26 * s * (e.size ?? 1) * (1 - 0.85 * lieE) * (1 + 1.1 * rideE),
+        );
       },
       draw: () => {
         const ctx = this.ctx;
@@ -23544,10 +23665,26 @@ export class Renderer {
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
           foraging: gather?.kind === 'forage',
-          sitT: sitE,
+          sitT: riding ? rideE : sitE,
           sitVariant,
-          sitStyle: chairSit ? (seat!.kind === 'throne' ? 'throne' : 'chair') : 'floor',
-          seatH: chairSit ? seat!.seatH : undefined,
+          sitStyle: riding
+            ? 'saddle'
+            : chairSit
+              ? (seat!.kind === 'throne' ? 'throne' : 'chair')
+              : 'floor',
+          seatH: riding ? COURSER_SADDLE.seatH : chairSit ? seat!.seatH : undefined,
+          // The pommel grip, on the same ruler the tack painter draws
+          // its rein knob with — leather and fists always meet.
+          reinX:
+            riding && beastPose
+              ? p.x + Math.cos(beastPose.dir) * COURSER_SADDLE.pommelFwd * s
+              : undefined,
+          reinY:
+            riding && beastPose
+              ? p.y +
+                Math.sin(beastPose.dir) * COURSER_SADDLE.pommelFwd * s * this.camera.yScale -
+                COURSER_SADDLE.pommelH * s
+              : undefined,
           sleepT: lieE,
           sheathT: sheathK,
         };
@@ -23658,14 +23795,43 @@ export class Renderer {
         // Layer law with a cape worn: gear straps OVER the cloth, so
         // the quiver paints immediately after the cape on whichever
         // side of the body the cape lands this frame.
-        if (paintCape && !capeFront) {
-          paintCape(ctx);
-          if (rigPose.hasCape) drawBackGear(ctx, rigPose);
-        }
-        drawHumanoid(ctx, rigPose);
-        if (paintCape && capeFront) {
-          paintCape(ctx);
-          if (rigPose.hasCape) drawBackGear(ctx, rigPose);
+        const paintRider = (): void => {
+          if (paintCape && !capeFront) {
+            paintCape(ctx);
+            if (rigPose.hasCape) drawBackGear(ctx, rigPose);
+          }
+          drawHumanoid(ctx, rigPose);
+          if (paintCape && capeFront) {
+            paintCape(ctx);
+            if (rigPose.hasCape) drawBackGear(ctx, rigPose);
+          }
+        };
+        if (riding && beastPose && beastFeet && mSpec) {
+          // THE BEAST UNDER THE BODY: horse and rider are one entity
+          // drawn as one sandwich — the rider slots into drawBeast's
+          // own depth ladder (far legs, barrel and tack, near legs,
+          // rider, a down-screen head over everything).
+          drawBeast(ctx, {
+            x: p.x,
+            y: p.y,
+            scale: s,
+            dir: beastPose.dir,
+            radius: COURSER_SADDLE.radius,
+            color: '#7b4a2e',
+            defId: anim.mountKey!,
+            spec: mSpec,
+            pose: beastPose,
+            feet: beastFeet,
+            yScale: this.camera.yScale,
+            walkPhase: anim.walkPhase,
+            hurt: e.hurt ?? false,
+            kneeMemory: anim.mountKnees ?? (anim.mountKnees = []),
+            seed: varEid,
+            nowMs: now + lifeMs,
+            rider: paintRider,
+          });
+        } else {
+          paintRider();
         }
         if (lying) {
           ctx.restore();
@@ -23695,9 +23861,17 @@ export class Renderer {
         // 2.4s. The great tier clears each by ≥0.4s — margin bought
         // deliberately after two user-caught crops.
         const armed = e.equip.weapon !== undefined || e.equip.offhand !== undefined;
-        const rx = greatArms ? 1.5 : armed ? 1.0 : 0;
-        const ry = greatArms ? 1.7 : armed ? 1.2 : 0; // sky side
-        const rb = greatArms ? 0.8 : 0; // ground side: buried strikes
+        let rx = greatArms ? 1.5 : armed ? 1.0 : 0;
+        let ry = greatArms ? 1.7 : armed ? 1.2 : 0; // sky side
+        let rb = greatArms ? 0.8 : 0; // ground side: buried strikes
+        // Horse and rider: the barrel runs past the sides, the rider's
+        // crown sits a saddle-height over a standing head, and the
+        // muzzle reaches ~1.2s along the facing.
+        if (riding) {
+          rx = Math.max(rx, 1.1);
+          ry = Math.max(ry, 1.0);
+          rb = Math.max(rb, 0.2);
+        }
         return {
           x: p.x - (1.55 + rx) * s * capeK,
           y: p.y - (1.75 + ry) * s * capeK,
@@ -23710,7 +23884,8 @@ export class Renderer {
         // Nameplate baseline: clear of the tallest headwear (helmet
         // crown, topknot) with real air underneath — never resting on
         // the skull. Drawn OUTSIDE the outline pass: text gets no ring.
-        const topY = p.y - (1.32 * (e.size ?? 1)) * s;
+        // A mounted head rides a saddle-height higher.
+        const topY = p.y - (1.32 * (e.size ?? 1) + COURSER_SADDLE.seatH * rideE) * s;
         if (e.name) {
           ctx.font = `600 ${Math.max(11, s * 0.28)}px 'Trebuchet MS', sans-serif`;
           ctx.textAlign = 'center';
