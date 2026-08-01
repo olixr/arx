@@ -41,7 +41,11 @@ export function addItem(
 
   for (let i = 0; i < slots.length && remaining > 0; i++) {
     if (slots[i] === null) {
-      slots[i] = { item: itemId, qty: 1, roll, ...facet };
+      // Each slot gets its OWN roll object. Sharing one reference
+      // across siblings (shop buy qty>1, merged ground piles) meant a
+      // later bond/oil/deepen/sunder on one instance mutated its twin
+      // too — an item-dupe of the working that survived save/load.
+      slots[i] = { item: itemId, qty: 1, roll: roll && { ...roll }, ...facet };
       remaining--;
     }
   }
@@ -101,10 +105,15 @@ export function countItem(slots: InvSlot[], itemId: string): number {
   return n;
 }
 
-export function hasSpaceFor(slots: InvSlot[], itemId: string): boolean {
+/**
+ * Honors the theft facet exactly as addItem does: a stolen stack is
+ * never a home for honest goods (nor the reverse), so the space
+ * check can never bless a merge the add would then refuse.
+ */
+export function hasSpaceFor(slots: InvSlot[], itemId: string, stolen?: boolean): boolean {
   const def = itemDef(itemId);
   if (!def) return false;
-  if (def.stackable && slots.some((s) => s?.item === itemId)) return true;
+  if (def.stackable && slots.some((s) => s?.item === itemId && !s.stolen === !stolen)) return true;
   return slots.some((s) => s === null);
 }
 

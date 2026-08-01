@@ -83,3 +83,30 @@ test('takeSlot carries the facet out with the goods', () => {
   const cidx = clean.findIndex((s) => s !== null);
   assert.equal(takeSlot(clean, cidx, 1)?.stolen, undefined);
 });
+
+test('INSTANCE LAW: siblings placed together never share one roll object', () => {
+  // Shop buy qty>1, merged ground piles, and craft qty>1 all hand ONE
+  // roll to addItem. Each filled slot must get its own copy, or a
+  // later bond/oil/deepen on one twin silently enchants the other.
+  const inv = emptyInventory();
+  const roll = { rar: 'rare' as const, seed: 7 };
+  assert.equal(addItem(inv, 'log', 2, roll), 2);
+  const [a, b] = inv.filter(Boolean);
+  assert.ok(a?.roll && b?.roll);
+  assert.notEqual(a.roll, b.roll, 'two slots, two roll objects');
+  (a.roll as { ench?: string }).ench = 'keen_edge';
+  assert.equal((b.roll as { ench?: string }).ench, undefined, 'the twin is untouched');
+  assert.notEqual(a.roll, roll, 'the caller keeps its own object too');
+});
+
+test('hasSpaceFor honors the theft facet exactly as addItem does', () => {
+  // A full pack whose only same-id stack is STOLEN offers no home to
+  // honest goods — addItem would refuse the merge, so the space check
+  // must refuse it first (unmake/craft yields die otherwise).
+  const inv = emptyInventory();
+  addItem(inv, 'twine', 2, undefined, true);
+  addItem(inv, 'log', 27);
+  assert.equal(hasSpaceFor(inv, 'twine'), false, 'the hot stack is no home for honest twine');
+  assert.equal(hasSpaceFor(inv, 'twine', true), true, 'more hot twine still merges');
+  assert.equal(addItem(inv, 'twine', 1), 0, 'and addItem agrees');
+});
