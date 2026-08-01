@@ -119,6 +119,7 @@ import {
   type WornLight,
 } from './wornLight.js';
 import { buildableIconUrl } from './icons.js';
+import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
 import { paintTree, saplingModel,
@@ -2395,7 +2396,7 @@ export class Renderer {
     // water shows is the character as the game draws them, whole.
     // Clear and composite only the UNION RECT the mirrors actually
     // cover: the layer cost scales with reflection area, not screen.
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     if (this.reflLayer.width !== this.canvas.width || this.reflLayer.height !== this.canvas.height) {
       this.reflLayer.width = this.canvas.width;
       this.reflLayer.height = this.canvas.height;
@@ -2690,8 +2691,42 @@ export class Renderer {
     return anim;
   }
 
+  /**
+   * ADAPTIVE RESOLUTION: the painting is fill-bound, so backing-store
+   * pixels convert almost linearly into frame time. Machines that hold
+   * the pace render every native devicePixelRatio pixel; a machine
+   * demonstrably grinding (sustained frame time past ~45ms) steps the
+   * cap down half a point at a time — floor 1 — and only climbs back
+   * when frames are comfortable. All backing stores size through this
+   * one accessor, so a cap change reflows every layer on the next
+   * resize() guard.
+   */
+  private dprCap = Number.POSITIVE_INFINITY;
+  private frameEma = 16.7;
+  private lastFrameAt = 0;
+  private dprHoldUntil = 0;
+
+  private dpr(): number {
+    return Math.min(window.devicePixelRatio || 1, this.dprCap);
+  }
+
+  private adaptResolution(nowMs: number): void {
+    if (nowMs < this.dprHoldUntil) return;
+    const native = window.devicePixelRatio || 1;
+    const cur = this.dpr();
+    if (this.frameEma > 45 && cur > 1) {
+      this.dprCap = Math.max(1, cur - 0.5);
+      this.dprHoldUntil = nowMs + 4000;
+    } else if (this.frameEma < 18 && cur < native) {
+      // Stepping up costs pixels immediately — long dwell so a
+      // borderline machine doesn't seesaw.
+      this.dprCap = Math.min(native, cur + 0.5);
+      this.dprHoldUntil = nowMs + 10000;
+    }
+  }
+
   private resize(): void {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
     // Round BEFORE comparing: the width setter truncates, so a
@@ -2711,6 +2746,12 @@ export class Renderer {
 
   render(game: ClientGame, frameDt: number): void {
     this.game = game;
+    const nowMs = performance.now();
+    if (this.lastFrameAt > 0) {
+      this.frameEma += (Math.min(200, nowMs - this.lastFrameAt) - this.frameEma) * 0.08;
+      this.adaptResolution(nowMs);
+    }
+    this.lastFrameAt = nowMs;
     this.resize();
     this.frameNo++;
     this.treeBakeBudget = TREE_BAKE_BUDGET;
@@ -3101,7 +3142,7 @@ export class Renderer {
     // Ground shadow prepass, batched: every shape lands opaque on one
     // layer, composited once at the sky's alpha — overlapping dusk
     // shadows merge into a single density instead of stacking.
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     if (this.shadowLayer.width !== this.canvas.width || this.shadowLayer.height !== this.canvas.height) {
       this.shadowLayer.width = this.canvas.width;
       this.shadowLayer.height = this.canvas.height;
@@ -3567,12 +3608,22 @@ export class Renderer {
     for (const g of this.glows) {
       const p = this.liftedWTS(g.x, g.y);
       const r = g.r * s;
-      const grad = ctx.createRadialGradient(p.x, p.y, r * 0.08, p.x, p.y, r);
-      grad.addColorStop(0, `rgba(${g.rgb}, ${g.a})`);
-      grad.addColorStop(0.55, `rgba(${g.rgb}, ${g.a * 0.38})`);
-      grad.addColorStop(1, `rgba(${g.rgb}, 0)`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      ctx.globalAlpha = Math.min(1, g.a);
+      ctx.drawImage(
+        radialGlowSprite(
+          g.rgb,
+          [
+            [0, 1],
+            [0.55, 0.38],
+            [1, 0],
+          ],
+          0.08,
+        ),
+        p.x - r,
+        p.y - r,
+        r * 2,
+        r * 2,
+      );
     }
     ctx.restore();
     this.glows.length = 0;
@@ -13768,7 +13819,7 @@ export class Renderer {
     const below = 0.3 * s;
     const cw = Math.ceil(half * 2);
     const ch = Math.ceil(top + below);
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const pw = Math.max(1, Math.ceil(cw * dpr));
     const ph = Math.max(1, Math.ceil(ch * dpr));
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
@@ -14070,7 +14121,7 @@ export class Renderer {
     const m = Math.ceil(r) + 2;
     const cw = Math.ceil(b.w) + m * 2;
     const ch = Math.ceil(b.h) + m * 2;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const pw = Math.max(1, Math.ceil(cw * dpr));
     const ph = Math.max(1, Math.ceil(ch * dpr));
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
@@ -14179,7 +14230,7 @@ export class Renderer {
     // a budgeted frame bakes it before it scrolls in.
     if (!sp) return;
     sp.used = this.frameNo;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const k = s / sp.scale;
     const sw = Math.ceil(sp.cw * dpr);
     const sh = Math.ceil(sp.ch * dpr);
@@ -14272,7 +14323,7 @@ export class Renderer {
     const below = 0.35 * s;
     const cw = Math.ceil(half * 2);
     const ch = Math.ceil(top + below);
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const pw = Math.max(1, Math.ceil(cw * dpr));
     const ph = Math.max(1, Math.ceil(ch * dpr));
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
@@ -14338,7 +14389,7 @@ export class Renderer {
     }
     if (!sp) return;
     sp.used = this.frameNo;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const k = s / sp.scale;
     this.ctx.drawImage(
       sp.canvas,
@@ -14368,7 +14419,7 @@ export class Renderer {
     pw: number,
     ph: number,
   ): void {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const r = Math.max(1.25, this.camera.scale * 0.04) * dpr;
     // INTEGER tap offsets, unlike paintOutlined's fractional ones:
     // fractional offsets force a bilinear resample per tap and made
@@ -14419,7 +14470,7 @@ export class Renderer {
     const item = this.ownItem;
     if (!this.revealArmed || !item?.body || this.ghostK < 0.03) return;
     const b = item.body;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     // Art-only scratch bake; glow/sparkle side effects gated exactly
     // like the mirror pass.
     this.bakingMask = true;
@@ -14620,7 +14671,7 @@ export class Renderer {
       }
       if (!sp) return;
       sp.used = this.frameNo;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = this.dpr();
       const k = s / sp.scale;
       const sw = Math.ceil(sp.cw * dpr);
       const sh = Math.ceil(sp.ch * dpr);
@@ -24032,7 +24083,7 @@ export class Renderer {
         // No sprite yet: fall through to the direct path (no write —
         // the main pass owns the cache).
       } else if (sp) {
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = this.dpr();
         const phase = typeof key === 'number' ? key : 7;
         const due = (this.frameNo + phase) % OL_IDLE_CADENCE === 0;
         const drift = Math.abs(sp.scale - s) > s * 0.2;
@@ -24085,7 +24136,7 @@ export class Renderer {
   private bakeBodySprite(item: DrawItem, key: number | string): void {
     const b = item.body!;
     const s = this.camera.scale;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const geo = this.paintOutlineScratch(item);
     let sp = this.bodySprites.get(key);
     const prev = sp ? { canvas: sp.canvas, ctx: sp.ctx } : undefined;
@@ -24135,7 +24186,7 @@ export class Renderer {
   /** Direct (uncached) outline pass: scratch build + two blits. */
   private paintOutlinedDirect(item: DrawItem): void {
     const b = item.body!;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const geo = this.paintOutlineScratch(item);
     this.ctx.drawImage(this.outlineB, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
     this.ctx.drawImage(this.outlineA, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
@@ -24168,7 +24219,7 @@ export class Renderer {
     // body at HALF resolution on retina — the "soft characters in a
     // crisp world" bug. Scratch A now rasterizes at dpr and the final
     // blit maps texels 1:1, so the sprite is as sharp as direct paint.
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr();
     const r = Math.max(1.25, this.camera.scale * 0.04);
     const m = Math.ceil(r) + 2;
     const wCss = Math.ceil(b.w) + m * 2;

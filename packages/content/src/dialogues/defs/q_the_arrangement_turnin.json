@@ -6,16 +6,19 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_arrangement_turnin__paid",
       "text": "Well? The face.",
       "next": "face"
     },
     {
       "id": "face",
+      "voice": "q_the_arrangement_turnin__face",
       "text": "'Like she'd bitten a coin and found it real.' Yes. That's the one she makes. Twenty years of that face, and the roads still think the Rookery is a rumor.",
       "next": "closed"
     },
     {
       "id": "closed",
+      "voice": "q_the_arrangement_turnin__closed",
       "text": "The arrangement holds, then, and you're part of the sweeping now. The seeker stone is yours. It finds things. So do you.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_arrangement" }]
     }

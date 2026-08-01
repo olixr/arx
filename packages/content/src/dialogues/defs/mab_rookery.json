@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "mab_rookery__greet",
       "text": "Sit if you like. Pike gave you one whistle, so you get to talk to me. I'm Mab. The city calls me the Magpie. It thinks that stings. Now, what carried you up my ledge?",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "mab_rookery__hub",
       "text": "Ask what you came to ask. Curiosity is the only coin we don't take here. We just note who spends it.",
       "choices": [
         {
@@ -43,11 +45,13 @@
     },
     {
       "id": "rookery",
+      "voice": "mab_rookery__rookery",
       "text": "Older than the castle, and I can prove it in stone. The first quarrymen pitched camp here, out of the wind, over the workings. Then an Aeriex got called king, the terraces got grand, and somebody drew the city's maps *around* us. Do we mind? A quarter the maps forget suits us well. We're the quarrymen's grandchildren. We found quieter work. Mostly.",
       "next": "hub"
     },
     {
       "id": "crown",
+      "voice": "mab_rookery__crown",
       "text": "*Tolerates* is the castle's word. Mine is arrangement. The watch holds the wall and the road, but a city's real trouble comes up its alleys, and the alleys are ours. When something moves in the dark that shouldn't, the castle hears of it before its own spies do. In exchange: no lamps back here, no ledgers, no questions at Calder's counter. Aeriex's father shook on it. Aeriex keeps it.",
       "choices": [
         {
@@ -69,20 +73,24 @@
     },
     {
       "id": "stair",
+      "voice": "mab_rookery__stair",
       "text": "Because we use it more than the miners ever did. The Undercroft's back ways were our roads for twenty sealed years. You can move a great deal through a mountain everyone believes is shut. Now the seal's broken and the Deep Market pays rent to the Crown, and my people still keep those braziers fed. Habits outlive their reasons.",
       "next": "hub"
     },
     {
       "id": "swept",
+      "voice": "mab_rookery__swept",
       "text": "So Coppin talks. Twenty years that floor stayed swept, and the city calls it a mystery, as if the mountain did its own housekeeping. It was my people. Down the back ways, once a season, with brooms and lamp-oil. My grandmother said you keep a road open by keeping it *swept*, and the Undercroft was always going to be needed again. Tell whoever you like. Nobody official will believe the rogues kept faith with the deep.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "mab_rookery__bye",
       "text": "Shadows keep you. Leave by the ledge and Pike will think better of you."
     },
     {
       "id": "plumbing",
+      "voice": "mab_rookery__plumbing",
       "text": "So you have. Do you know what that makes you? No, truly, I'm asking. Even I don't have a word for the ones who carry it and come back. Colleague will do until something quieter turns up.",
       "next": "hub"
     }

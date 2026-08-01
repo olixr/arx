@@ -36,6 +36,7 @@
  *   1/3 scale and stretches up. Gradients stay smooth, fills stay tiny.
  */
 import type { DaylightSample } from '@arx/shared';
+import { radialGlowSprite, rampSprite } from './glowSprite.js';
 
 /** A light living in the world, gathered fresh each frame. */
 export interface WorldLight {
@@ -110,6 +111,23 @@ export class LightingSystem {
   /** Scratch collections, reused across lights — no per-frame garbage. */
   private readonly rects: OccRect[] = [];
   private readonly runs: FaceRun[] = [];
+  /**
+   * THE STANDING LAMP REMEMBERS: an occluding light is architecture —
+   * fixed position, fixed geometry — yet its pool/shadow/wrap/face
+   * composite was rebuilt from scratch every frame, the dearest work in
+   * the whole pass. Each one is composed ONCE into a patch and stamped
+   * per frame; the flicker rides the stamp (alpha for intensity, a
+   * center-scale for the radius wobble), and a staggered TTL rebuild
+   * absorbs geometry changes within a second. Keyed by position+color;
+   * cleared whenever the camera zoom changes.
+   */
+  private readonly patches = new Map<
+    string,
+    { c: HTMLCanvasElement; w: number; h: number; r: number; intensity: number; builtAt: number }
+  >();
+  private frame = 0;
+  private patchSx = 0;
+  private patchSy = 0;
 
   /**
    * Paint the frame's exposure. `blocks` answers whether a tile stops
@@ -151,6 +169,13 @@ export class LightingSystem {
     const tx = view.ox * k;
     const ty = view.oy * k;
 
+    this.frame++;
+    if (sx !== this.patchSx || sy !== this.patchSy) {
+      this.patches.clear();
+      this.patchSx = sx;
+      this.patchSy = sy;
+    }
+
     for (const light of lights) {
       if (light.intensity <= 0.01) continue;
       if (light.occlude) {
@@ -158,8 +183,9 @@ export class LightingSystem {
       } else {
         m.setTransform(sx, 0, 0, sy, tx, ty);
         m.globalCompositeOperation = 'screen';
-        m.fillStyle = this.gradient(m, light);
-        m.fillRect(light.x - light.r, light.y - light.r, light.r * 2, light.r * 2);
+        m.globalAlpha = Math.min(1, light.intensity);
+        m.drawImage(this.poolSprite(light), light.x - light.r, light.y - light.r, light.r * 2, light.r * 2);
+        m.globalAlpha = 1;
         // Standing content in the pool catches the light — no shadow
         // math for free-floating lights, so no LOS gate either.
         this.gatherFaceRuns(light, tallH, null);
@@ -192,28 +218,34 @@ export class LightingSystem {
     ctx.restore();
   }
 
-  /** The light's radial falloff, in the ctx's world-space frame. */
-  private gradient(g: CanvasRenderingContext2D, light: WorldLight): CanvasGradient {
+  /** The light's radial falloff, pre-rendered — intensity rides
+   *  globalAlpha at the stamp, so the sprite is shared per color. */
+  private poolSprite(light: WorldLight): HTMLCanvasElement {
     const [r, gg, b] = light.rgb;
-    const grad = g.createRadialGradient(light.x, light.y, light.r * 0.06, light.x, light.y, light.r);
-    const stop = (a: number): string => `rgba(${r}, ${gg}, ${b}, ${a * light.intensity})`;
-    grad.addColorStop(0, stop(1));
-    grad.addColorStop(0.4, stop(0.72));
-    grad.addColorStop(0.75, stop(0.28));
-    grad.addColorStop(1, stop(0));
-    return grad;
+    return radialGlowSprite(
+      `${r}, ${gg}, ${b}`,
+      [
+        [0, 1],
+        [0.4, 0.72],
+        [0.75, 0.28],
+        [1, 0],
+      ],
+      0.06,
+    );
   }
 
   /** The soft indirect halo: wider and dimmer than the pool. */
-  private wrapGradient(g: CanvasRenderingContext2D, light: WorldLight): CanvasGradient {
+  private wrapSprite(light: WorldLight): HTMLCanvasElement {
     const [r, gg, b] = light.rgb;
-    const wr = light.r * WRAP_R;
-    const grad = g.createRadialGradient(light.x, light.y, wr * 0.05, light.x, light.y, wr);
-    const a = light.intensity * WRAP_K;
-    grad.addColorStop(0, `rgba(${r}, ${gg}, ${b}, ${a})`);
-    grad.addColorStop(0.6, `rgba(${r}, ${gg}, ${b}, ${a * 0.55})`);
-    grad.addColorStop(1, `rgba(${r}, ${gg}, ${b}, 0)`);
-    return grad;
+    return radialGlowSprite(
+      `${r}, ${gg}, ${b}`,
+      [
+        [0, WRAP_K],
+        [0.6, WRAP_K * 0.55],
+        [1, 0],
+      ],
+      0.05,
+    );
   }
 
   /**
@@ -351,12 +383,7 @@ export class LightingSystem {
       fc.fillRect(run.x0, run.ye - run.h, run.x1 - run.x0, run.h);
       // The base-anchored fade: hottest at the foot, dead at the top.
       fc.globalCompositeOperation = 'destination-in';
-      const vg = fc.createLinearGradient(0, run.ye, 0, run.ye - run.h);
-      vg.addColorStop(0, 'rgba(255,255,255,1)');
-      vg.addColorStop(0.55, 'rgba(255,255,255,0.45)');
-      vg.addColorStop(1, 'rgba(255,255,255,0)');
-      fc.fillStyle = vg;
-      fc.fillRect(run.x0, run.ye - run.h, run.x1 - run.x0, run.h);
+      fc.drawImage(rampSprite(0.55, 0.45), run.x0, run.ye - run.h, run.x1 - run.x0, run.h);
       dest.save();
       dest.setTransform(1, 0, 0, 1, 0, 0);
       dest.globalCompositeOperation = 'screen';
@@ -432,13 +459,48 @@ export class LightingSystem {
     tx: number,
     ty: number,
   ): void {
-    // Scratch bbox in map pixels around the light's WRAP reach.
+    const key = `${light.x},${light.y}|${light.rgb.join()}`;
+    let p = this.patches.get(key);
+    // Staggered TTL so a whole town's lamps never rebuild on one frame.
+    const ttl = 45 + ((key.length * 7) & 15);
+    if (!p || this.frame - p.builtAt > ttl) {
+      const built = this.buildLightPatch(light, blocks, tallH, sx, sy);
+      if (!built) return;
+      if (this.patches.size >= 128) this.patches.clear();
+      this.patches.set(key, built);
+      p = built;
+    }
+    // The flicker rides the stamp: intensity as alpha, radius as a
+    // center-scale — both hover near 1 while the TTL keeps the patch's
+    // reference values current.
+    const scale = light.r / p.r;
+    const dw = p.w * scale;
+    const dh = p.h * scale;
+    const m = this.mctx;
+    m.setTransform(1, 0, 0, 1, 0, 0);
+    m.globalCompositeOperation = 'screen';
+    m.globalAlpha = Math.min(1, light.intensity / p.intensity);
+    m.drawImage(p.c, light.x * sx + tx - dw / 2, light.y * sy + ty - dh / 2, dw, dh);
+    m.globalAlpha = 1;
+  }
+
+  /**
+   * Compose an occluding light's full patch — pool, graded shadow
+   * erase, wrap halo, lit faces — in a frame anchored to the light's
+   * own center, camera-independent by construction.
+   */
+  private buildLightPatch(
+    light: WorldLight,
+    blocks: (tx: number, ty: number) => boolean,
+    tallH: (tx: number, ty: number) => number,
+    sx: number,
+    sy: number,
+  ): { c: HTMLCanvasElement; w: number; h: number; r: number; intensity: number; builtAt: number } | null {
+    // Patch bbox in map pixels around the light's WRAP reach.
     const reach = light.r * WRAP_R;
-    const bx = Math.floor(light.x * sx + tx - reach * sx) - 1;
-    const by = Math.floor(light.y * sy + ty - reach * sy) - 1;
     const bw = Math.ceil(reach * 2 * sx) + 2;
     const bh = Math.ceil(reach * 2 * sy) + 2;
-    if (bw <= 0 || bh <= 0) return;
+    if (bw <= 0 || bh <= 0) return null;
     if (this.tmp.width < bw || this.tmp.height < bh) {
       this.tmp.width = Math.max(this.tmp.width, bw);
       this.tmp.height = Math.max(this.tmp.height, bh);
@@ -452,10 +514,13 @@ export class LightingSystem {
     t.globalCompositeOperation = 'source-over';
     t.globalAlpha = 1;
     t.clearRect(0, 0, bw, bh);
-    // Same world→map transform, shifted into the scratch frame.
-    t.setTransform(sx, 0, 0, sy, tx - bx, ty - by);
-    t.fillStyle = this.gradient(t, light);
-    t.fillRect(light.x - light.r, light.y - light.r, light.r * 2, light.r * 2);
+    // The world→map transform, anchored so the light sits at center.
+    const tx = bw / 2 - light.x * sx;
+    const ty = bh / 2 - light.y * sy;
+    t.setTransform(sx, 0, 0, sy, tx, ty);
+    t.globalAlpha = Math.min(1, light.intensity);
+    t.drawImage(this.poolSprite(light), light.x - light.r, light.y - light.r, light.r * 2, light.r * 2);
+    t.globalAlpha = 1;
 
     // Shadows from merged geometry, graded rim to core.
     this.collectRects(light, blocks);
@@ -476,8 +541,9 @@ export class LightingSystem {
     // bounce that turns corners, fills the boxed room, and keeps a
     // shadowed nook readable beside a burning brazier.
     t.globalCompositeOperation = 'screen';
-    t.fillStyle = this.wrapGradient(t, light);
-    t.fillRect(light.x - reach, light.y - reach, reach * 2, reach * 2);
+    t.globalAlpha = Math.min(1, light.intensity);
+    t.drawImage(this.wrapSprite(light), light.x - reach, light.y - reach, reach * 2, reach * 2);
+    t.globalAlpha = 1;
     t.globalCompositeOperation = 'source-over';
 
     // THE LIT FACES: everything standing in the pool — the walls that
@@ -485,13 +551,14 @@ export class LightingSystem {
     // the shadow math never knew — catches the lamp on the side the
     // camera sees, LOS-gated so nothing glows through a wall.
     this.gatherFaceRuns(light, tallH, blocks);
-    this.paintFaceRuns(t, light, sx, sy, tx - bx, ty - by);
+    this.paintFaceRuns(t, light, sx, sy, tx, ty);
     t.setTransform(1, 0, 0, 1, 0, 0);
 
-    const m = this.mctx;
-    m.setTransform(1, 0, 0, 1, 0, 0);
-    m.globalCompositeOperation = 'screen';
-    m.drawImage(this.tmp, 0, 0, bw, bh, bx, by, bw, bh);
+    const c = document.createElement('canvas');
+    c.width = bw;
+    c.height = bh;
+    c.getContext('2d')!.drawImage(this.tmp, 0, 0, bw, bh, 0, 0, bw, bh);
+    return { c, w: bw, h: bh, r: light.r, intensity: Math.max(0.05, Math.min(1, light.intensity)), builtAt: this.frame };
   }
 
   /**

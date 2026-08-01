@@ -693,6 +693,22 @@ export declare class Renderer {
      */
     private dressForWater;
     private animFor;
+    /**
+     * ADAPTIVE RESOLUTION: the painting is fill-bound, so backing-store
+     * pixels convert almost linearly into frame time. Machines that hold
+     * the pace render every native devicePixelRatio pixel; a machine
+     * demonstrably grinding (sustained frame time past ~45ms) steps the
+     * cap down half a point at a time — floor 1 — and only climbs back
+     * when frames are comfortable. All backing stores size through this
+     * one accessor, so a cap change reflows every layer on the next
+     * resize() guard.
+     */
+    private dprCap;
+    private frameEma;
+    private lastFrameAt;
+    private dprHoldUntil;
+    private dpr;
+    private adaptResolution;
     private resize;
     render(game: ClientGame, frameDt: number): void;
     /** Deep-cave ambient the underground blend rides to: cool, slightly

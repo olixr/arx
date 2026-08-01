@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_gilded_cage_offer__hub",
       "text": "A commission, since you're now a colleague. A locket, gold over brass, sentimental weight considerable, was *orphaned* some years ago when a courier misjudged the first climb. It remains with the, ah, current residents of the watchtower there.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_gilded_cage" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "residents",
+      "voice": "q_the_gilded_cage_offer__residents",
       "text": "The tower's old garrison. Previously alive. They observe traditional hours: sunset onward. By day you'll find swept stone and a view. _Go at night, and go armed._",
       "choices": [
         { "text": "Night it is.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_gilded_cage_offer__sworn",
       "text": "The shielded ones keep the good things. The watch always did. Bring the locket whole and unopened. Provenance is my trade.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_gilded_cage" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_gilded_cage_offer__declined",
       "text": "Pity. It was a *very* reasonable commission, considering the residents."
     }
   ]

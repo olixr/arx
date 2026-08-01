@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "mab_fine__greet",
       "text": "You want something washed. Tell me: what do you think a clean name costs, in a house that keeps its floors swept?",
       "choices": [
         { "text": "You tell me.", "next": "quote" },
@@ -15,17 +16,20 @@
     },
     {
       "id": "quote",
+      "voice": "mab_fine__quote",
       "text": "A fair question. It deserves arithmetic.",
       "hooks": [{ "kind": "fine", "faction": "rookery", "quote": true }],
       "next": "greet"
     },
     {
       "id": "pay",
+      "voice": "mab_fine__pay",
       "text": "Everything here is a trade. This one is even simple.",
       "hooks": [{ "kind": "fine", "faction": "rookery" }]
     },
     {
       "id": "bye",
+      "voice": "mab_fine__bye",
       "text": "Already forgotten. That costs nothing. Once."
     }
   ]

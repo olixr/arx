@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_arrangement_offer__hub",
       "text": "You've stood in the court. Tell me. Did anyone up there mention how a city this clean keeps its shadows so tidy?",
       "hooks": [{ "kind": "quest_offer", "quest": "the_arrangement" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "arrangement",
+      "voice": "q_the_arrangement_offer__arrangement",
       "text": "There's an understanding, and understandings need tending, by someone both sides can pretend they didn't send. Two calls. Bursar Odele, at the bank: ask if the tithe balances. Marshal Kestrel, at the chapter house: tell her the sweeping is done and the floor is clean.",
       "choices": [
         { "text": "And they'll just know?", "next": "know" },
@@ -25,6 +27,7 @@
     },
     {
       "id": "know",
+      "voice": "q_the_arrangement_offer__know",
       "text": "Odele will say the arithmetic is unquestionable. Kestrel will make a face. Both of those are answers. You'll bring me the second one.",
       "choices": [
         { "text": "Done.", "next": "sworn" },
@@ -33,11 +36,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_arrangement_offer__sworn",
       "text": "Softly, colleague. Keep this one in your pocket.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_arrangement" }]
     },
     {
       "id": "declined",
+      "voice": "q_the_arrangement_offer__declined",
       "text": "Wise, possibly. The floor stays swept either way."
     }
   ]

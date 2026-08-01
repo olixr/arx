@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_a_quiet_word_offer__hub",
       "text": "You kept the floor's secret. So, a question for you: do you know what a person who keeps secrets is worth in this city?",
       "hooks": [{ "kind": "quest_offer", "quest": "a_quiet_word" }],
       "choices": [
@@ -16,6 +17,7 @@
     },
     {
       "id": "worth",
+      "voice": "q_a_quiet_word_offer__worth",
       "text": "Neither do I, until I've seen their hands. Calder keeps a counter at the Broken Lantern, behind the scree. Go and be looked at. He'll have a small ask. Small asks are how I count.",
       "choices": [
         { "text": "I'll pay the visit.", "next": "sworn" },
@@ -24,11 +26,13 @@
     },
     {
       "id": "sworn",
+      "voice": "q_a_quiet_word_offer__sworn",
       "text": "Mind the alley by the bank wall. Or don't. Finding the other way in would also tell me something.",
       "hooks": [{ "kind": "quest_accept", "quest": "a_quiet_word" }]
     },
     {
       "id": "declined",
+      "voice": "q_a_quiet_word_offer__declined",
       "text": "No? Then who did I just watch keep one?"
     }
   ]

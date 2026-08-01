@@ -74,6 +74,20 @@ export declare class LightingSystem {
     private readonly rects;
     private readonly runs;
     /**
+     * THE STANDING LAMP REMEMBERS: an occluding light is architecture —
+     * fixed position, fixed geometry — yet its pool/shadow/wrap/face
+     * composite was rebuilt from scratch every frame, the dearest work in
+     * the whole pass. Each one is composed ONCE into a patch and stamped
+     * per frame; the flicker rides the stamp (alpha for intensity, a
+     * center-scale for the radius wobble), and a staggered TTL rebuild
+     * absorbs geometry changes within a second. Keyed by position+color;
+     * cleared whenever the camera zoom changes.
+     */
+    private readonly patches;
+    private frame;
+    private patchSx;
+    private patchSy;
+    /**
      * Paint the frame's exposure. `blocks` answers whether a tile stops
      * light (walls, cliffs); it is only consulted near occluding lights.
      * `tallH` reports the camera-facing face height of whatever stands
@@ -81,10 +95,11 @@ export declare class LightingSystem {
      * lit-face response for walls AND standing props alike.
      */
     draw(ctx: CanvasRenderingContext2D, view: LightView, sky: DaylightSample, lights: WorldLight[], blocks: (tx: number, ty: number) => boolean, tallH: (tx: number, ty: number) => number): void;
-    /** The light's radial falloff, in the ctx's world-space frame. */
-    private gradient;
+    /** The light's radial falloff, pre-rendered — intensity rides
+     *  globalAlpha at the stamp, so the sprite is shared per color. */
+    private poolSprite;
     /** The soft indirect halo: wider and dimmer than the pool. */
-    private wrapGradient;
+    private wrapSprite;
     /**
      * The light's brightness on a camera-facing face at world x, base
      * row ye: N·L (how squarely the face looks at the pool) times the
@@ -131,6 +146,12 @@ export declare class LightingSystem {
      * exactly the band a wall's own occlusion blacked out.
      */
     private drawOccludedLight;
+    /**
+     * Compose an occluding light's full patch — pool, graded shadow
+     * erase, wrap halo, lit faces — in a frame anchored to the light's
+     * own center, camera-independent by construction.
+     */
+    private buildLightPatch;
     /**
      * Project a merged rectangle's silhouette away from the light with
      * corner rays splayed outward by `splay` radians (0 = the exact hard
