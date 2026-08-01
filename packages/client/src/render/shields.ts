@@ -696,6 +696,13 @@ export interface ShieldFrame {
   front: boolean;
   /** How far onto the back the shield has traveled, 0 in hand → 1 slung. */
   sling: number;
+  /**
+   * 1 = combat guard, 0 = the relaxed carry. The rune face reads this
+   * ("flares on guard" — the offhand's documented rhythm): the sigil
+   * ring brightens as the shield squares up. Optional because the
+   * free-standing frames (icons, ragdolls) have no bearer to guard.
+   */
+  guard?: number;
 }
 
 /**
@@ -966,6 +973,9 @@ export function solveShield(
     open: Math.abs(Math.cos(theta)),
     front: fyE > -0.14,
     sling,
+    // Slung, nobody is guarding with it — the flare fades with the swing
+    // onto the back.
+    guard: guard * (1 - sling),
   };
 }
 
@@ -1210,7 +1220,12 @@ function drawArxFace(
   nowMs: number,
 ): void {
   if (fr.seeBack) return;
-  const a = markPulse(mark, nowMs, SLOT_GLINT_PHASE.offhand ?? 0, 0.6);
+  // "Flares on guard": the ring brightens as the shield squares up —
+  // the raised shield IS the offhand's rhythm. Tier 1 keeps its glint
+  // vocabulary only; a steady guard-lit face would be a channel it has
+  // not earned.
+  const flare = mark.tier >= 2 ? 0.3 * (fr.guard ?? 0) : 0;
+  const a = markPulse(mark, nowMs, SLOT_GLINT_PHASE.offhand ?? 0, 0.6) + flare;
   if (a <= 0.02) return;
   // The face's own basis: `hxU/hyU` runs across the plane, `nxU/nyU`
   // stands out of it. Every fitting on this shield is placed through

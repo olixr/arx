@@ -116,6 +116,13 @@ export interface ShieldFrame {
     front: boolean;
     /** How far onto the back the shield has traveled, 0 in hand → 1 slung. */
     sling: number;
+    /**
+     * 1 = combat guard, 0 = the relaxed carry. The rune face reads this
+     * ("flares on guard" — the offhand's documented rhythm): the sigil
+     * ring brightens as the shield squares up. Optional because the
+     * free-standing frames (icons, ragdolls) have no bearer to guard.
+     */
+    guard?: number;
 }
 /**
  * THE GUARD LAW. Out of combat the shield rides at a relaxed carry —

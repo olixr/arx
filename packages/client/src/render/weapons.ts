@@ -64,7 +64,9 @@ export type BladeFx =
   | 'storm'  // hard spark flickers
   | 'blood'  // slow beads running the seam
   | 'sun'    // warm sparks at the edge
-  | 'star'   // twinkling starlight
+  | 'star'   // twinkling starlight (arcane's hard pulse)
+  | 'tendril' // a living vine-light growing the edge and withering back
+  | 'drift'  // a small constellation adrift along the steel (astral)
   | 'gleam'  // a single glint traveling the edge
   // ---- the legendary signature words (ten-crowns law: each chase
   // blade owns ONE of these and no other blade wears it):
@@ -109,6 +111,13 @@ export interface SwordStyle {
   gems?: { color: string; n?: number };
   fx?: BladeFx;
   fxColor?: string;
+  /**
+   * THE AURA BLADE — a tier-5 working's silhouette-touching read: a
+   * second edge standing a hand's width off the steel. Overlaid by
+   * enchantedStyle, never authored; painted under the fx channel so
+   * the school's own voice stays on top.
+   */
+  aura?: string;
 }
 
 /**
@@ -1741,7 +1750,7 @@ function drawPommel(
  */
 function drawBladeFx(
   ctx: CanvasRenderingContext2D,
-  st: Pick<SwordStyle, 'fx' | 'fxColor'>,
+  st: Pick<SwordStyle, 'fx' | 'fxColor' | 'aura'>,
   bx: number,
   tip: number,
   s: number,
@@ -1749,6 +1758,27 @@ function drawBladeFx(
 ): void {
   const c = st.fxColor ?? '#ffffff';
   const len = tip - bx;
+  // THE AURA BLADE (tier 5): a second edge standing a hand's width off
+  // the steel, breathing on the world clock. Painted FIRST so the
+  // school's own fx channel keeps its identity on top of it.
+  if (st.aura) {
+    const lift = 0.052 * s + 0.005 * s * Math.sin(nowMs * 0.0021);
+    ctx.strokeStyle = st.aura;
+    ctx.lineWidth = Math.max(1, 0.02 * s);
+    ctx.globalAlpha = 0.32 + 0.08 * Math.sin(nowMs * 0.0035);
+    ctx.beginPath();
+    ctx.moveTo(bx + len * 0.08, -lift * 0.5);
+    ctx.quadraticCurveTo(bx + len * 0.5, -lift, bx + len * 0.96, -lift * 0.35);
+    ctx.stroke();
+    // Its hot core, thinner and brighter.
+    ctx.lineWidth = Math.max(0.8, 0.009 * s);
+    ctx.globalAlpha = 0.5 + 0.1 * Math.sin(nowMs * 0.0035);
+    ctx.beginPath();
+    ctx.moveTo(bx + len * 0.12, -lift * 0.52);
+    ctx.quadraticCurveTo(bx + len * 0.5, -lift * 0.98, bx + len * 0.92, -lift * 0.38);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
   // Deterministic jitter for the re-jag words — seeded on the world
   // clock, never Math.random (icons pin one frame; replays agree).
   const jag = (seed: number, k: number): number => {
@@ -2003,6 +2033,87 @@ function drawBladeFx(
         ctx.beginPath();
         ctx.arc(x - 0.014 * s * Math.cos(ph * 6.5 + i * 2.2), y + 0.016 * s, Math.max(0.8, 0.008 * s), 0, Math.PI * 2);
         ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'tendril': {
+      // Verdant: a living vine-light GROWS from the guard along the
+      // edge, sprouts leaf ticks as it passes, and withers back into
+      // the steel — the only edge whose light has a life cycle rather
+      // than a clock of sparks (the same read as its bloom print).
+      const cyc = (nowMs * 0.0003) % 1;
+      const grow = Math.min(1, cyc / 0.45);
+      const wither = cyc < 0.7 ? 1 : (1 - cyc) / 0.3;
+      const reach = 0.14 + 0.72 * grow;
+      ctx.strokeStyle = c;
+      ctx.globalAlpha = 0.85 * wither;
+      ctx.lineWidth = Math.max(1, 0.013 * s);
+      ctx.beginPath();
+      const segs = 8;
+      for (let k = 0; k <= segs; k++) {
+        const t = (k / segs) * reach;
+        const x = bx + len * t;
+        const y = -0.02 * s - Math.sin(t * 14) * 0.02 * s * (0.35 + (0.65 * t) / reach);
+        if (k === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      // The curl at the growing tip: a small hook seeking sunward.
+      const hx = bx + len * reach;
+      const hy = -0.02 * s - Math.sin(reach * 14) * 0.02 * s;
+      ctx.beginPath();
+      ctx.arc(hx + 0.012 * s, hy - 0.011 * s, 0.013 * s, Math.PI * 0.2, Math.PI * 1.4);
+      ctx.stroke();
+      // Leaf ticks open where the vine has already passed.
+      ctx.fillStyle = c;
+      for (const lt of [0.3, 0.55] as const) {
+        if (reach < lt) continue;
+        const open = Math.min(1, (reach - lt) / 0.12);
+        const lx = bx + len * lt;
+        const ly = -0.02 * s - Math.sin(lt * 14) * 0.02 * s;
+        ctx.globalAlpha = 0.9 * wither * open;
+        ctx.beginPath();
+        ctx.ellipse(lx, ly - 0.016 * s * open, 0.016 * s * open, 0.008 * s * open, -0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    case 'drift': {
+      // Astral: a small constellation adrift along the steel — five
+      // pinpoints in a fixed figure on a hair-thin line, sliding
+      // tipward and fading through the ends of its pass. Distant
+      // things passing, not sparks; arcane keeps the hard 'star'
+      // twinkle, and the two no longer share a shape.
+      const cyc = (nowMs * 0.00008) % 1;
+      const anchor = 0.08 + 0.5 * cyc;
+      const fade = Math.min(1, cyc / 0.12, (1 - cyc) / 0.12);
+      if (fade <= 0.02) return;
+      const FIG = [
+        [0, -0.026], [0.055, -0.048], [0.115, -0.018], [0.16, -0.04], [0.21, -0.03],
+      ] as const;
+      // The figure's line first — what reads it as a CONSTELLATION.
+      ctx.strokeStyle = c;
+      ctx.globalAlpha = 0.28 * fade;
+      ctx.lineWidth = Math.max(0.6, 0.005 * s);
+      ctx.beginPath();
+      for (let k = 0; k < FIG.length; k++) {
+        const x = bx + len * (anchor + FIG[k]![0]);
+        const y = FIG[k]![1] * s;
+        if (k === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      // The stars, each twinkling on its own slow clock.
+      ctx.fillStyle = c;
+      for (let k = 0; k < FIG.length; k++) {
+        const tw = 0.55 + 0.45 * Math.sin(nowMs * 0.0009 + k * 1.9);
+        const r = Math.max(0.8, 0.008 * s * (0.7 + 0.6 * tw));
+        const x = bx + len * (anchor + FIG[k]![0]);
+        const y = FIG[k]![1] * s;
+        ctx.globalAlpha = fade * (0.35 + 0.65 * tw);
+        ctx.fillRect(x - r / 2, y - r / 2, r, r);
       }
       ctx.globalAlpha = 1;
       return;

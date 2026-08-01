@@ -73,6 +73,19 @@ test('THE DEPTH LAW: the plane rides the camera side of the body, and the sling 
   assert.ok(!slungAway.seeBack, 'and it shows its FACE, not its straps');
 });
 
+test('THE GUARD REACHES THE RUNE FACE: the frame carries the guard channel', () => {
+  // "The offhand's rhythm: a sigil that sits quiet and FLARES ON GUARD"
+  // (wornLight.ts). drawArxFace lerps its alpha up by the frame's guard,
+  // so the channel exists only if solveShield threads it through.
+  const rest = solve(KITE, Math.PI / 2, { restSettle: 1 });
+  const guard = solve(KITE, Math.PI / 2, { restSettle: 0 });
+  assert.equal(rest.guard, 0, 'settled carry has no flare');
+  assert.equal(guard.guard, 1, 'the raised shield flares at full');
+  // Slung, nobody is guarding with it: the flare fades with the swing.
+  const slung = solve(KITE, Math.PI / 2, { restSettle: 0, sling: 1 });
+  assert.equal(slung.guard, 0, 'a shield on the back cannot be a guard');
+});
+
 test('the shield stays in front of the body — and never drifts onto its back', () => {
   for (let i = 0; i < 32; i++) {
     const dir = (i / 32) * Math.PI * 2;

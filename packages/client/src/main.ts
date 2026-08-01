@@ -1,6 +1,6 @@
 import { procShape } from './render/wornLight.js';
 import { EntityKind, FENCE_TILES, GARRISON_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, levelForXp, skillName, tileDef, treeOfSapling } from '@arx/shared';
-import { BUILDABLES, RECIPES, buildableForTile, buildableGround, itemDef, npcDef } from '@arx/content';
+import { BUILDABLES, RECIPES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { bindings, type ActionId } from './input/bindings.js';
@@ -419,6 +419,53 @@ function useSlotSound(itemId: string): void {
   else sfx.uiTap();
 }
 
+/**
+ * THE SECOND PRESS NAMES ITS VICTIM, at the bind too. An enchant
+ * scroll aimed at a piece that already carries a working will destroy
+ * that working, and the resonance shift lands silently on the server —
+ * so the first press ARMS and names the piece, the working it will
+ * replace, and the shape of the choice (resonance or discord); the
+ * second press binds. A clean bind onto bare steel stays one press.
+ * Same pattern as the unmake bench's armed confirm (stationPanels.ts).
+ */
+let bindArmed: { slot: number; item: string; until: number } | null = null;
+
+function useSlotGuarded(slot: number): void {
+  const item = game.inventory[slot];
+  if (!item) return;
+  const def = itemDef(item.item);
+  const se = def?.enchant ? enchantDef(def.enchant) : undefined;
+  if (se) {
+    const worn = game.equipment[se.slot];
+    const standing = worn?.roll?.ench ? enchantDef(worn.roll.ench) : undefined;
+    if (worn && standing) {
+      const armed =
+        bindArmed !== null &&
+        bindArmed.slot === slot &&
+        bindArmed.item === item.item &&
+        performance.now() < bindArmed.until;
+      if (!armed) {
+        bindArmed = { slot, item: item.item, until: performance.now() + 8000 };
+        const pieceName = itemDef(worn.id)?.name ?? worn.id;
+        const shift = resonanceShift(se.element, standing.element);
+        const shape =
+          shift > 0
+            ? `same school: resonance +${shift}%`
+            : `crossed schools: discord ${shift}%`;
+        chat.addLine({
+          channel: 'system',
+          text: `Binding ${se.name} onto your ${pieceName} will destroy ${standing.name} (${shape}). Use the scroll again to bind.`,
+        });
+        sfx.uiTap();
+        return;
+      }
+      bindArmed = null;
+    }
+  }
+  useSlotSound(item.item);
+  game.useSlot(slot);
+}
+
 const panels = new Panels(
   (slot) => {
     // Pack clicks are contextual: deposit while banking, sell in a shop,
@@ -432,8 +479,7 @@ const panels = new Panels(
       sfx.coins();
       game.shopSend('sell', item.item, 1, slot);
     } else {
-      useSlotSound(item.item);
-      game.useSlot(slot);
+      useSlotGuarded(slot);
     }
   },
   (slot) => {
@@ -458,8 +504,7 @@ const panels = new Panels(
       sfx.coins();
       game.shopSend('sell', item.item, 1, slot);
     } else {
-      useSlotSound(item.item);
-      game.useSlot(slot);
+      useSlotGuarded(slot);
     }
   },
   () => (stationPanels.bankOpen ? 'bank' : stationPanels.shopOpen ? 'shop' : null),

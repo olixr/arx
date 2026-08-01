@@ -1,5 +1,6 @@
 import { itemDef } from '@arx/content';
 import { shade } from './rig.js';
+import { SLOT_GLINT_PHASE, glintAt, type SlotLight } from './wornLight.js';
 
 /**
  * Capes: a verlet chain simulated in WORLD space plus a height axis, so
@@ -469,6 +470,13 @@ export interface CapeDrawOpts {
    * instead of a taut hanging ribbon lying on its side.
    */
   spread?: number;
+  /**
+   * THE WORN LIGHT: the working bonded to this cape. At tier 1 the
+   * cape's whole voice is one travelling glint on the trailing hem —
+   * higher tiers speak through the wake and corona instead, so the
+   * hem stays quiet for them.
+   */
+  arx?: SlotLight;
 }
 
 const lerpPt = (a: Pt, b: Pt, t: number): Pt => ({
@@ -803,4 +811,37 @@ export function drawCape(
   }
 
   ctx.restore();
+
+  // THE WORN LIGHT, tier 1: one spark travelling the trailing hem on
+  // the kit-wide glint clock (SLOT_GLINT_PHASE.cape keeps it in the
+  // round). Painted after the clip so it sits ON the hem edge — the
+  // same restraint as every other slot's tier-1 mark: no particles,
+  // no glow, mostly dark.
+  if (opts.arx && opts.arx.tier <= 1) {
+    const g = glintAt(tSec * 1000, SLOT_GLINT_PHASE.cape ?? 0);
+    if (g > 0.02) {
+      // The spark slides along the hem inside its own bright pass.
+      const u = 0.2 + 0.6 * fract(tSec * 0.9 + (SLOT_GLINT_PHASE.cape ?? 0));
+      const hp = lerpPt(hemL, hemR, u);
+      const r = Math.max(1.5, wk * 0.045) * (0.6 + 0.4 * g);
+      ctx.save();
+      ctx.globalAlpha = 0.85 * g;
+      ctx.fillStyle = opts.arx.tint.core;
+      ctx.beginPath();
+      ctx.moveTo(hp.x, hp.y - r);
+      ctx.lineTo(hp.x + r * 0.7, hp.y);
+      ctx.lineTo(hp.x, hp.y + r);
+      ctx.lineTo(hp.x - r * 0.7, hp.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 0.45 * g;
+      ctx.strokeStyle = opts.arx.tint.mid;
+      ctx.lineWidth = Math.max(1, wk * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(hp.x - r * 1.7, hp.y);
+      ctx.lineTo(hp.x + r * 1.7, hp.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
 }

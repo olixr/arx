@@ -481,6 +481,7 @@ export declare function shade(hex: string, amount: number): string;
 export declare function enchantedStyle<T extends {
     fx?: unknown;
     fxColor?: string;
+    aura?: string;
 }>(st: T, ench: string | undefined, family: 'blade' | 'staff'): T;
 /**
  * Beast bodies: every non-humanoid NPC walks on the same universal

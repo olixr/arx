@@ -15,7 +15,7 @@
 export type BladeKind = 'arming' | 'falchion' | 'gladius' | 'scimitar' | 'saber' | 'rapier' | 'cutlass' | 'cleaver' | 'runeblade' | 'cloven' | 'crystal' | 'flared' | 'dirk' | 'stiletto' | 'kris' | 'karambit' | 'tanto' | 'shivkind' | 'talon' | 'leafblade';
 export type GuardKind = 'cross' | 'swept' | 'shell' | 'disc' | 'fang' | 'thorn' | 'crown' | 'wing' | 'bolt' | 'coil' | 'stub' | 'none';
 export type PommelKind = 'round' | 'gem' | 'fang' | 'ring' | 'crescent' | 'star' | 'crown' | 'none';
-export type BladeFx = 'ember' | 'frost' | 'void' | 'storm' | 'blood' | 'sun' | 'star' | 'gleam' | 'ripple' | 'drip' | 'arc' | 'slither' | 'sunflare' | 'frostbloom' | 'petalfall' | 'orbit' | 'gravemist';
+export type BladeFx = 'ember' | 'frost' | 'void' | 'storm' | 'blood' | 'sun' | 'star' | 'tendril' | 'drift' | 'gleam' | 'ripple' | 'drip' | 'arc' | 'slither' | 'sunflare' | 'frostbloom' | 'petalfall' | 'orbit' | 'gravemist';
 export interface SwordStyle {
     blade: BladeKind;
     /** Blade steel. Edge defaults to shade(+34), fuller to shade(−24). */
@@ -50,6 +50,13 @@ export interface SwordStyle {
     };
     fx?: BladeFx;
     fxColor?: string;
+    /**
+     * THE AURA BLADE — a tier-5 working's silhouette-touching read: a
+     * second edge standing a hand's width off the steel. Overlaid by
+     * enchantedStyle, never authored; painted under the fx channel so
+     * the school's own voice stays on top.
+     */
+    aura?: string;
 }
 /**
  * The blade roster's wardrobe. Metal-line variants share their design's

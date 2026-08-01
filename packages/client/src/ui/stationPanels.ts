@@ -332,7 +332,7 @@ export class StationPanels {
     const floors = ground.includes(Tile.WoodFloor);
     if (outdoor && floors) return 'open ground, or a laid floor';
     if (floors) return 'a laid floor';
-    return 'open ground — grass, dirt, or sand';
+    return 'open ground: grass, dirt, or sand';
   }
 
   /**
@@ -364,7 +364,7 @@ export class StationPanels {
       [
         ['reach', 'In reach'],
         ['level', 'By level'],
-        ['az', 'A–Z'],
+        ['az', 'A-Z'],
       ],
       this.buildSort,
       (k) => {
@@ -454,7 +454,7 @@ export class StationPanels {
       facts.appendChild(f);
     };
     fact(
-      locked ? '—' : `× ${count}`,
+      locked ? '·' : `× ${count}`,
       'you can place',
       locked ? undefined : count > 0 ? 'var(--green)' : 'var(--red-soft)',
     );
@@ -520,7 +520,7 @@ export class StationPanels {
     this.anchor = at ? { x: at.tx + 0.5, y: at.ty + 0.5 } : { x: tx + 0.5, y: ty + 0.5 };
     this.showing = { kind: 'plant', tx, ty, skills, sel: null };
     this.dressCraft('Planting', itemIconUrl('carrot', 34), '#7ac46a',
-      'The furrow is cut — choose what grows in it.');
+      'The furrow is cut. Choose what grows in it.');
     this.renderPlant();
     this.craftPanel.classList.remove('hidden');
   }
@@ -638,7 +638,7 @@ export class StationPanels {
     if (held.size === 0) {
       const empty = document.createElement('div');
       empty.className = 'make-empty';
-      empty.textContent = 'No seeds in your pack — buy some at the shop, or forage wild herbs.';
+      empty.textContent = 'No seeds in your pack. Buy some at the shop, or forage wild herbs.';
       this.craftList.appendChild(empty);
       return;
     }
@@ -1023,7 +1023,7 @@ export class StationPanels {
       empty.className = 'make-empty';
       empty.textContent =
         undiscovered > 0
-          ? `You know no recipes for this station yet — ${undiscovered} await discovery.`
+          ? `You know no recipes for this station yet. ${undiscovered} await discovery.`
           : 'Nothing can be made here yet.';
       this.craftList.appendChild(empty);
       return;
@@ -1045,7 +1045,7 @@ export class StationPanels {
       [
         ['reach', 'In reach'],
         ['level', 'By level'],
-        ['az', 'A–Z'],
+        ['az', 'A-Z'],
       ],
       this.craftSort,
       (k) => {
@@ -1088,7 +1088,7 @@ export class StationPanels {
     if (undiscovered > 0) {
       const hint = document.createElement('div');
       hint.className = 'make-undiscovered';
-      hint.textContent = `${undiscovered} more ${undiscovered === 1 ? 'recipe waits' : 'recipes wait'} to be discovered — trainers sell some, the wilds hide the rest.`;
+      hint.textContent = `${undiscovered} more ${undiscovered === 1 ? 'recipe waits' : 'recipes wait'} to be discovered. Trainers sell some, the wilds hide the rest.`;
       this.craftList.appendChild(hint);
     }
 
@@ -1133,7 +1133,7 @@ export class StationPanels {
       f.append(v, l);
       facts.appendChild(f);
     };
-    fact(locked ? '—' : `× ${count}`, 'you can make', locked ? undefined : count > 0 ? 'var(--green)' : 'var(--red-soft)');
+    fact(locked ? '·' : `× ${count}`, 'you can make', locked ? undefined : count > 0 ? 'var(--green)' : 'var(--red-soft)');
     fact(`${level}`, `your ${recipe.skill}`, locked ? 'var(--red-soft)' : undefined);
     if (recipe.output.qty > 1) fact(`× ${recipe.output.qty}`, 'per make');
     // THE ENCHANTER'S HAND: an inscription carries the mark of the hand
@@ -1280,7 +1280,7 @@ export class StationPanels {
         this.bankTools,
         'bank',
         [
-          ['az', 'A–Z'],
+          ['az', 'A-Z'],
           ['qty', 'Most stored'],
         ],
         this.bankSort,
@@ -1294,7 +1294,7 @@ export class StationPanels {
     if (entries.length === 0 && this.lastBankGear.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'make-empty';
-      empty.textContent = 'Your vault is empty — deposit from the pack beside you.';
+      empty.textContent = 'Your vault is empty. Deposit from the pack beside you.';
       this.bankList.appendChild(empty);
       this.bankArmory.classList.add('hidden');
       this.bankDetail.classList.add('hidden');
@@ -1304,7 +1304,7 @@ export class StationPanels {
     // ---- armory rack: one socket per rolled instance.
     if (this.lastBankGear.length > 0) {
       this.bankArmory.classList.remove('hidden');
-      this.bankArmory.appendChild(sectionHead('Armory — rolled gear'));
+      this.bankArmory.appendChild(sectionHead('Armory: rolled gear'));
       const rack = document.createElement('div');
       rack.className = 'vault-grid';
       for (const g of this.lastBankGear) {

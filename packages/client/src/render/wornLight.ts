@@ -146,11 +146,19 @@ function buildWornLight(ench: Partial<Record<string, string>>): WornLight {
  * Tier 1 contributes none on purpose. A mark is a mark.
  */
 export function tierGlowAlpha(tier: number): number {
-  return tier <= 1 ? 0 : tier === 2 ? 0.1 : 0.2;
+  if (tier <= 1) return 0;
+  if (tier === 2) return 0.1;
+  if (tier === 3) return 0.2;
+  // Tiers 4 and 5 climb PAST the tier-3 voice — restrained steps, so a
+  // masterwork still reads as a masterwork standing next to one.
+  return tier === 4 ? 0.24 : 0.3;
 }
 
 export function tierGlowRadius(tier: number): number {
-  return tier <= 1 ? 0 : tier === 2 ? 0.7 : 1.0;
+  if (tier <= 1) return 0;
+  if (tier === 2) return 0.7;
+  if (tier === 3) return 1.0;
+  return tier === 4 ? 1.1 : 1.3;
 }
 
 /**
@@ -158,7 +166,10 @@ export function tierGlowRadius(tier: number): number {
  * vocabulary is the timed glint, so a tier-1 kit stays clean.
  */
 export function tierMoteRate(tier: number): number {
-  return tier <= 1 ? 0 : tier === 2 ? 2.2 : 5;
+  if (tier <= 1) return 0;
+  if (tier === 2) return 2.2;
+  if (tier === 3) return 5;
+  return tier === 4 ? 6.5 : 8;
 }
 
 /**
@@ -222,6 +233,14 @@ export function arxMark(slot: SlotLight | undefined): ArxMark | undefined {
  */
 export function markPulse(mark: ArxMark, nowMs: number, phase: number, rate = 1): number {
   if (mark.tier <= 1) return 0.25 * glintAt(nowMs, phase);
+  if (mark.tier >= 4) {
+    // Tiers 4 and 5 breathe DEEPER and a shade FASTER: the same lungs,
+    // working harder. The rhythm answers the high bands so the slot
+    // channels read louder without changing their place or shape.
+    const base = mark.tier === 4 ? 0.6 : 0.64;
+    const swing = mark.tier === 4 ? 0.33 : 0.36;
+    return base + swing * Math.sin(nowMs * 0.0035 * rate + phase * Math.PI * 2);
+  }
   const base = mark.tier === 2 ? 0.34 : 0.55;
   const swing = mark.tier === 2 ? 0.16 : 0.3;
   return base + swing * Math.sin(nowMs * 0.0026 * rate + phase * Math.PI * 2);
@@ -359,6 +378,17 @@ export const TRAIL_STRIDE = 0.62;
 export const TRAIL_STANCE = 0.11;
 /** A print's whole life, ms. Short: the ground must clear behind you. */
 export const TRAIL_PRINT_MS = 1200;
+
+/**
+ * Tiers 4 and 5 LINGER: the prints that stay lit after the runner is
+ * gone are the silhouette-touching read the high bands earn on this
+ * channel. Still finite, still clearing — the ground always wins.
+ */
+export function trailPrintMs(tier: number): number {
+  if (tier >= 5) return 2600;
+  if (tier === 4) return 1800;
+  return TRAIL_PRINT_MS;
+}
 /** Hard ceiling on live prints across every body on screen. */
 export const TRAIL_PRINT_CAP = 96;
 

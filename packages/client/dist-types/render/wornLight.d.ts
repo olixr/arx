@@ -194,6 +194,12 @@ export declare const TRAIL_STRIDE = 0.62;
 export declare const TRAIL_STANCE = 0.11;
 /** A print's whole life, ms. Short: the ground must clear behind you. */
 export declare const TRAIL_PRINT_MS = 1200;
+/**
+ * Tiers 4 and 5 LINGER: the prints that stay lit after the runner is
+ * gone are the silhouette-touching read the high bands earn on this
+ * channel. Still finite, still clearing — the ground always wins.
+ */
+export declare function trailPrintMs(tier: number): number;
 /** Hard ceiling on live prints across every body on screen. */
 export declare const TRAIL_PRINT_CAP = 96;
 export declare function trailStrength(speed: number): number;

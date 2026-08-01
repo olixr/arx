@@ -359,6 +359,15 @@ export declare class Renderer {
     private wornOrigin;
     /** Lit bodies counted this frame, for the crowd backstop. */
     private wornLitBodies;
+    /**
+     * The own body's equip/ench maps, rebuilt only when the equipment
+     * actually changes. resolveWornLight's cache keys on the ench
+     * OBJECT's identity, so handing it a fresh object per frame would
+     * miss forever on the one body always on screen. game.equipment is
+     * replaced wholesale on change and never mutated (clientGame.ts), so
+     * its identity IS the generation counter.
+     */
+    private ownWornCache;
     /** Placement preview set by the build mode; null when inactive. */
     /**
      * THE TRUE GHOST: the placement preview is the piece, not a colored
@@ -2387,6 +2396,13 @@ export declare class Renderer {
      * TUMBLE under gravity, sparks streak, leaves flutter down, shadow
      * curls upward. The material read is half the identity.
      */
+    /**
+     * THE SIGNATURE CONTRACT: a bespoke set-piece may register under the
+     * fx's full id or — for woken workings, whose ids arrive structured
+     * as `<action>:<procId>` — under the bare proc id. Either key wins
+     * (wornLight.ts documents the promise; this honors both halves).
+     */
+    private sigFor;
     /**
      * Build the per-frame context a bespoke signature hook receives.
      * One small object per signature-bearing fx per stratum — bounded

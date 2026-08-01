@@ -1,3 +1,4 @@
+import { type SlotLight } from './wornLight.js';
 /**
  * Capes: a verlet chain simulated in WORLD space plus a height axis, so
  * the cloth genuinely lives behind the body — turn and it swings around
@@ -101,6 +102,13 @@ export interface CapeDrawOpts {
      * instead of a taut hanging ribbon lying on its side.
      */
     spread?: number;
+    /**
+     * THE WORN LIGHT: the working bonded to this cape. At tier 1 the
+     * cape's whole voice is one travelling glint on the trailing hem —
+     * higher tiers speak through the wake and corona instead, so the
+     * hem stays quiet for them.
+     */
+    arx?: SlotLight;
 }
 /**
  * Paint the projected ribbon: base fill, hard-shade fold half, spine

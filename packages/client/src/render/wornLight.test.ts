@@ -8,6 +8,7 @@ import {
   SLOT_GLINT_PHASE,
   TRAIL_FULL_SPEED,
   TRAIL_MIN_SPEED,
+  TRAIL_PRINT_MS,
   arxMark,
   elementTint,
   glintAt,
@@ -17,7 +18,9 @@ import {
   procVoice,
   resolveWornLight,
   tierGlowAlpha,
+  tierGlowRadius,
   tierMoteRate,
+  trailPrintMs,
   trailStrength,
   wornLightFalloff,
 } from './wornLight.js';
@@ -92,6 +95,42 @@ test('THE DARKNESS LAW: tier 2 and up are real light, and climb', () => {
   // answer them rather than falling back to darkness.
   assert.ok(tierGlowAlpha(4) > 0);
   assert.ok(tierMoteRate(5) > 0);
+});
+
+test('TIER IS LOUDNESS all the way up: 5 > 4 > 3 on every dial', () => {
+  // The high bands must never collapse back into tier 3 — that
+  // regression shipped once (every dial stepped at 3 and stopped) and
+  // made a 15-working tier-4 roster pixel-identical to tier 3.
+  assert.ok(tierGlowAlpha(4) > tierGlowAlpha(3));
+  assert.ok(tierGlowAlpha(5) > tierGlowAlpha(4));
+  assert.ok(tierGlowRadius(4) > tierGlowRadius(3));
+  assert.ok(tierGlowRadius(5) > tierGlowRadius(4));
+  assert.ok(tierMoteRate(4) > tierMoteRate(3));
+  assert.ok(tierMoteRate(5) > tierMoteRate(4));
+});
+
+test('the high bands LINGER on the ground: print life climbs 3 < 4 < 5', () => {
+  assert.equal(trailPrintMs(3), TRAIL_PRINT_MS);
+  assert.ok(trailPrintMs(4) > trailPrintMs(3));
+  assert.ok(trailPrintMs(5) > trailPrintMs(4));
+  // Tiers 1 and 2 stay on the short clock — the ground must clear.
+  assert.equal(trailPrintMs(1), TRAIL_PRINT_MS);
+  assert.equal(trailPrintMs(2), TRAIL_PRINT_MS);
+});
+
+test('the high bands breathe deeper: markPulse peaks climb with tier', () => {
+  const peak = (tier: number): number => {
+    const mark = { mid: '#fff', core: '#fff', tier, element: 'arcane' };
+    let hi = 0;
+    for (let ms = 0; ms < 4000; ms += 20) hi = Math.max(hi, markPulse(mark, ms, 0));
+    return hi;
+  };
+  const p3 = peak(3);
+  const p4 = peak(4);
+  const p5 = peak(5);
+  assert.ok(p4 > p3, `tier 4 must out-breathe tier 3 (${p4} vs ${p3})`);
+  assert.ok(p5 > p4, `tier 5 must out-breathe tier 4 (${p5} vs ${p4})`);
+  assert.ok(p5 <= 1.001, 'the pulse stays a usable alpha');
 });
 
 test('the glint is mostly dark — a glint, never a pulse', () => {

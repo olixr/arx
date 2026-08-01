@@ -4568,7 +4568,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // the arm itself so the strap never breaks. An archer's off hand is
     // busy holding the bow — the shield sits this one out.
     if (offSt && offSt.kind !== 'quiver' && !archer && !offWeapon && !shieldSt) {
-      drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
+      drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt, rig.nowMs);
     }
   };
   // Back-mounted quiver. Depth follows the cape's facing law — behind
@@ -4578,7 +4578,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const quiverFront = offSt?.kind === 'quiver' && fy < -0.16;
   const paintQuiver = (): void => {
     if (!offSt || offSt.kind !== 'quiver' || rig.hasCape) return;
-    drawQuiver(ctx, offSt, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt);
+    drawQuiver(ctx, offSt, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt, rig.nowMs);
   };
   // ---- stowed weapons on the body. A sheathed BLADE wears its
   // scabbard: a leather sleeve covering the steel from guard to point,
@@ -4965,7 +4965,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
   const helm = itemDef(rig.headItem ?? '');
-  const helmSt = helm ? helmStyle(helm.id) : null;
+  // THE WORN LIGHT reaches the head too: the brow band (drawArxBrow)
+  // only paints when the resolved style carries the working, exactly
+  // like every other slot above.
+  const helmSt = helm ? withArx(helm.id, helmStyle(helm.id), worn.slots.head) : null;
   // THE COVERAGE LAW: a helmet never deletes a hairstyle, it CONTAINS it.
   //   free   — bare head or a circlet: the full hairdo.
   //   brim   — wizard's hat: the fringe cap only (cloth holds the rest).
@@ -5742,7 +5745,7 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const shoulderY = hipY - th * hScale + 0.06 * s;
   const lead = fx >= 0 ? 1 : -1;
   if (st?.kind === 'quiver') {
-    drawQuiver(ctx, st, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt);
+    drawQuiver(ctx, st, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt, rig.nowMs);
   }
   // A stowed bow/staff straps over the cape exactly like the quiver.
   if (sling && worn) {
@@ -5785,8 +5788,11 @@ const ENCH_BLADE_FX: Record<string, BladeFx> = {
   void: 'void',
   radiant: 'sun',
   arcane: 'star',
-  astral: 'star',
-  verdant: 'gleam',
+  // NINE SCHOOLS on the weapon channel too: astral drifts a small
+  // constellation (never arcane's hard twinkle), and verdant grows a
+  // living tendril instead of borrowing the tier-1 gleam.
+  astral: 'drift',
+  verdant: 'tendril',
 };
 const ENCH_STAFF_FX: Record<string, StaffFx> = {
   ember: 'embers',
@@ -5850,7 +5856,7 @@ const ARX_STYLE_CACHE_MAX = 512;
  * style object is data, so a shallow clone re-aims the existing mote
  * painters at the enchant's element without touching the silhouette.
  */
-export function enchantedStyle<T extends { fx?: unknown; fxColor?: string }>(
+export function enchantedStyle<T extends { fx?: unknown; fxColor?: string; aura?: string }>(
   st: T,
   ench: string | undefined,
   family: 'blade' | 'staff',
@@ -5862,11 +5868,18 @@ export function enchantedStyle<T extends { fx?: unknown; fxColor?: string }>(
     // A whisper of Arx: the traveling glint (staffs: drifting motes).
     return { ...st, fx: family === 'staff' ? 'motes' : 'gleam', fxColor: color };
   }
-  const fx =
-    family === 'staff'
-      ? (ENCH_STAFF_FX[def.element] ?? 'motes')
-      : (ENCH_BLADE_FX[def.element] ?? 'gleam');
-  return { ...st, fx, fxColor: color };
+  const out: T = {
+    ...st,
+    fx:
+      family === 'staff'
+        ? (ENCH_STAFF_FX[def.element] ?? 'motes')
+        : (ENCH_BLADE_FX[def.element] ?? 'gleam'),
+    fxColor: color,
+  };
+  // THE AURA BLADE: a tier-5 working stands a second edge a hand's
+  // width off the steel (drawBladeFx paints it under the fx channel).
+  if (family === 'blade' && def.tier >= 5) out.aura = color;
+  return out;
 }
 
 function drawHeldItem(

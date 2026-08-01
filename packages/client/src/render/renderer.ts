@@ -100,7 +100,6 @@ import {
 import { Debris, type SmashKind } from './debris.js';
 import {
   TRAIL_PRINT_CAP,
-  TRAIL_PRINT_MS,
   TRAIL_STANCE,
   TRAIL_STRIDE,
   WORN_LIGHT_BODY_BUDGET,
@@ -112,8 +111,10 @@ import {
   tierGlowAlpha,
   tierGlowRadius,
   tierMoteRate,
+  trailPrintMs,
   trailStrength,
   procVoice,
+  wornLightFalloff,
   type ElementTint,
   type PrintKind,
   type WornLight,
@@ -1192,7 +1193,22 @@ export class Renderer {
    */
   private readonly wornMotion = new Map<
     string | number,
-    { x: number; y: number; t: number; speed: number; stride: number; foot: number; seen: number }
+    {
+      x: number;
+      y: number;
+      t: number;
+      speed: number;
+      stride: number;
+      foot: number;
+      seen: number;
+      /**
+       * Direction of TRAVEL, measured from the position delta before
+       * the sync — never the aim. In a mouse-aim game the two disagree
+       * constantly (strafing), and prints must land along the line the
+       * feet actually ran. NaN until the body has moved.
+       */
+      heading: number;
+    }
   >();
 
   /**
@@ -1217,6 +1233,20 @@ export class Renderer {
   private wornOrigin = { x: 0, y: 0 };
   /** Lit bodies counted this frame, for the crowd backstop. */
   private wornLitBodies = 0;
+
+  /**
+   * The own body's equip/ench maps, rebuilt only when the equipment
+   * actually changes. resolveWornLight's cache keys on the ench
+   * OBJECT's identity, so handing it a fresh object per frame would
+   * miss forever on the one body always on screen. game.equipment is
+   * replaced wholesale on change and never mutated (clientGame.ts), so
+   * its identity IS the generation counter.
+   */
+  private ownWornCache: {
+    src: object;
+    equip: Partial<Record<string, string>>;
+    ench: Partial<Record<string, string>> | undefined;
+  } | null = null;
 
   /** Placement preview set by the build mode; null when inactive. */
   /**
@@ -22201,7 +22231,9 @@ export class Renderer {
       const hurt = (remote.hurtUntil ?? 0) > now;
       if (s.status) this.statusAmbience(s.x, s.y, s.status);
       const remoteEnch = remote.meta.appearance?.ench;
-      if (remoteEnch) this.wornLight(eid, s.x, s.y, s.dir, remoteEnch, false);
+      if (remoteEnch) {
+        this.wornLight(eid, s.x, s.y, s.dir, remoteEnch, false, remote.buffer.gliding());
+      }
 
       switch (remote.meta.kind) {
         case EntityKind.Player: {
@@ -22358,17 +22390,25 @@ export class Renderer {
       const own = game.predictor.renderPos();
       if (game.ownStatus) this.statusAmbience(own.x, own.y, game.ownStatus);
       // The rig only wants item IDS — strip the equip map's rolls,
-      // keeping just the enchant ids (they ARE appearance).
-      const ownEquip: Partial<Record<string, string>> = {};
-      let ownEnch: Partial<Record<string, string>> | undefined;
-      for (const [slot, worn] of Object.entries(game.equipment)) {
-        if (!worn) continue;
-        ownEquip[slot] = worn.id;
-        if (worn.roll?.ench) {
-          ownEnch ??= {};
-          ownEnch[slot] = worn.roll.ench;
+      // keeping just the enchant ids (they ARE appearance). Rebuilt
+      // only when the equipment object itself changes, so the worn
+      // light's identity caches hold between equips.
+      let ownWorn = this.ownWornCache;
+      if (!ownWorn || ownWorn.src !== game.equipment) {
+        const equip: Partial<Record<string, string>> = {};
+        let ench: Partial<Record<string, string>> | undefined;
+        for (const [slot, worn] of Object.entries(game.equipment)) {
+          if (!worn) continue;
+          equip[slot] = worn.id;
+          if (worn.roll?.ench) {
+            ench ??= {};
+            ench[slot] = worn.roll.ench;
+          }
         }
+        ownWorn = this.ownWornCache = { src: game.equipment, equip, ench };
       }
+      const ownEquip = ownWorn.equip;
+      const ownEnch = ownWorn.ench;
       if (ownEnch) this.wornLight('own', own.x, own.y, game.aim, ownEnch, true);
       const ownItem = this.humanoidItem({
         eid: 'own',
@@ -23276,6 +23316,9 @@ export class Renderer {
               tSec: now / 1000,
               phase: capeSim.phase,
               spread: sitE,
+              // The cape's tier-1 hem glint (resolveWornLight is
+              // identity-cached, so this is a WeakMap hit per frame).
+              arx: resolveWornLight(e.ench).slots.cape,
             });
           }
         : null;
@@ -26323,6 +26366,12 @@ export class Renderer {
     dir: number,
     ench: Partial<Record<string, string>> | undefined,
     isOwn: boolean,
+    /**
+     * True while this body is riding a netcode correction glide
+     * (InterpBuffer.gliding): the motion on screen is presentation,
+     * not travel, so the trail and wake must not read it as a sprint.
+     */
+    gliding = false,
   ): void {
     if (!ench) {
       this.wornMotion.delete(key);
@@ -26340,18 +26389,31 @@ export class Renderer {
       this.wornMotion.delete(key);
       return;
     }
-    const voice = isOwn ? 1 : 1 - dist / WORN_LIGHT_FAR;
+    // Full voice inside the near ring, easing to silence at the far
+    // mark — a party member two tiles away speaks as loudly as you do.
+    const voice = wornLightFalloff(dist, isOwn);
     // The crowd backstop: past the budget, remote bodies keep their glow
     // (which is cheap and reads at a glance) and stop shedding matter.
     this.wornLitBodies++;
     const mayShed = isOwn || this.wornLitBodies <= WORN_LIGHT_BODY_BUDGET;
 
     const now = performance.now();
-    const speed = this.trackWornMotion(key, x, y, now);
+    let speed = this.trackWornMotion(key, x, y, now);
+    if (gliding) {
+      // A correction glide is not travel: bank no stride, report no
+      // speed, and let the corona (which only needs a position) keep
+      // the body lit while it slides onto the truth.
+      const m = this.wornMotion.get(key);
+      if (m) {
+        m.stride = 0;
+        m.speed = 0;
+      }
+      speed = 0;
+    }
 
     if (light.slots.boots) this.trail(key, x, y, dir, speed, light.slots.boots, voice, mayShed);
     if (light.slots.cape) this.capeWake(x, y, dir, speed, light.slots.cape, voice, mayShed);
-    this.wornCorona(x, y, light, voice, mayShed);
+    this.wornCorona(key, x, y, light, voice, mayShed);
   }
 
   /**
@@ -26364,7 +26426,7 @@ export class Renderer {
   private trackWornMotion(key: string | number, x: number, y: number, now: number): number {
     const m = this.wornMotion.get(key);
     if (!m) {
-      this.wornMotion.set(key, { x, y, t: now, speed: 0, stride: 0, foot: 0, seen: this.frameNo });
+      this.wornMotion.set(key, { x, y, t: now, speed: 0, stride: 0, foot: 0, seen: this.frameNo, heading: NaN });
       return 0;
     }
     const dt = (now - m.t) / 1000;
@@ -26372,7 +26434,9 @@ export class Renderer {
     // A long gap means the body left interest and came back somewhere
     // else; teleports and respawns land here too. Re-seed rather than
     // reporting a thousand tiles per second and painting a stripe
-    // across the map.
+    // across the map. (Sub-3-tile correction GLIDES pass this guard on
+    // purpose — wornLight gates them with InterpBuffer.gliding, so a
+    // standing body sliding onto its corrected path sheds nothing.)
     const step = Math.hypot(x - m.x, y - m.y);
     if (dt <= 0) return m.speed;
     if (dt > 0.5 || step > 3) {
@@ -26381,8 +26445,14 @@ export class Renderer {
       m.t = now;
       m.speed = 0;
       m.stride = 0;
+      m.heading = NaN;
       return 0;
     }
+    // The travel heading is measured HERE, from the delta, before the
+    // sync erases it — trail() consumes it so prints point the way the
+    // body ran, never the way it aimed. Kept through pauses (a runner
+    // who stops mid-stride still knows which way they were going).
+    if (step > 1e-4) m.heading = Math.atan2(y - m.y, x - m.x);
     // Low-passed: raw frame deltas jitter badly against interpolation,
     // and a trail that flickers on and off at the speed gate would be
     // worse than no trail at all.
@@ -26419,16 +26489,26 @@ export class Renderer {
       m.stride = 0;
       return;
     }
+    // Feet land either side of the line of TRAVEL — the heading stored
+    // by trackWornMotion before it synced positions. The aim is only a
+    // fallback for a body with no motion history: using it live would
+    // rotate every print to the mouse and land the stance alternation
+    // perpendicular to the run.
+    const heading = Number.isFinite(m.heading) ? m.heading : dir;
+    const hx = Math.cos(heading);
+    const hy = Math.sin(heading);
     while (m.stride >= TRAIL_STRIDE) {
       m.stride -= TRAIL_STRIDE;
       m.foot = m.foot === 0 ? 1 : 0;
-      // Feet land either side of the line of travel. Using the heading
-      // rather than the aim keeps prints under a strafing body.
-      const heading = Math.atan2(y - m.y || Math.sin(dir), x - m.x || Math.cos(dir));
       const side = (m.foot === 0 ? 1 : -1) * TRAIL_STANCE;
+      // After the decrement, m.stride is the distance run SINCE this
+      // footfall — space the print that far back along the travel line,
+      // so a frame hitch that banks several strides lays them out as
+      // strides instead of stamping a blob at the current heel.
+      const back = Math.min(m.stride, 3);
       this.trailPrints.push({
-        x: x + Math.cos(heading + Math.PI / 2) * side,
-        y: y + Math.sin(heading + Math.PI / 2) * side * 0.5,
+        x: x - hx * back + Math.cos(heading + Math.PI / 2) * side,
+        y: y - hy * back + Math.sin(heading + Math.PI / 2) * side * 0.5,
         a: heading,
         kind: printKind(slot.element),
         tint: slot.tint,
@@ -26482,8 +26562,11 @@ export class Renderer {
     if (!mayShed) return;
     const drive = Math.min(1, speed / 4.2) * voice;
     // A tier-3 mantle keeps a slow wake even at rest: the cloth is
-    // charged, not merely moving.
-    const rate = tierMoteRate(slot.tier) * (0.15 + drive * 0.85);
+    // charged, not merely moving. A tier-5 mantle keeps a REAL one —
+    // the comet wake standing off a still body is the fifth band's
+    // silhouette-touching read on this channel.
+    const rest = slot.tier >= 5 ? 0.4 : 0.15;
+    const rate = tierMoteRate(slot.tier) * (rest + drive * (1 - rest));
     if (rate <= 0 || Math.random() >= this.frameDt * rate) return;
     const back = dir + Math.PI;
     this.particles.burst(
@@ -26514,7 +26597,7 @@ export class Renderer {
    * of them would put a bonfire on anyone with a full kit and undo the
    * per-slot reading the whole grammar is built on.
    */
-  private wornCorona(x: number, y: number, light: WornLight, voice: number, mayShed: boolean): void {
+  private wornCorona(key: string | number, x: number, y: number, light: WornLight, voice: number, mayShed: boolean): void {
     const best = light.best;
     if (!best) return;
     const alpha = tierGlowAlpha(best.tier);
@@ -26522,7 +26605,11 @@ export class Renderer {
     const t = performance.now() / 1000;
     const dt = this.frameDt;
     // The corona breathes — never a steady lamp, always a living charge.
-    const breath = 0.5 + 0.5 * Math.sin(t * 2.1 + x * 3.7);
+    // Phased by a stable per-body seed, never by position: a phase that
+    // rode world-x would flutter at ~2.7 Hz on a running body, turning
+    // the slow breath into a strobe.
+    const phase = (typeof key === 'number' ? key : hashString(key)) % 61;
+    const breath = 0.5 + 0.5 * Math.sin(t * 2.1 + phase);
     const r = tierGlowRadius(best.tier);
     this.queueGlow(x, y - 0.45, r + breath * 0.25, best.tint.glow, (alpha + breath * 0.1) * voice);
     if (!mayShed || best.tier < 3) return;
@@ -26813,7 +26900,9 @@ export class Renderer {
         return 500;
       case 'proc':
         // A working reads as a quick flare, deliberately shorter than
-        // any ability moment — Phase 2 gives each one its own signature.
+        // any ability moment. The action-shaped floor (PROC_VOICE)
+        // draws every proc; a bespoke signature registered under the
+        // full `<action>:<procId>` id or the bare proc id overrides it.
         return 520;
       default:
         return 380;
@@ -26980,6 +27069,19 @@ export class Renderer {
    * TUMBLE under gravity, sparks streak, leaves flutter down, shadow
    * curls upward. The material read is half the identity.
    */
+  /**
+   * THE SIGNATURE CONTRACT: a bespoke set-piece may register under the
+   * fx's full id or — for woken workings, whose ids arrive structured
+   * as `<action>:<procId>` — under the bare proc id. Either key wins
+   * (wornLight.ts documents the promise; this honors both halves).
+   */
+  private sigFor(id: string): (typeof SIGNATURES)[string] | undefined {
+    const sig = SIGNATURES[id];
+    if (sig) return sig;
+    const colon = id.indexOf(':');
+    return colon >= 0 ? SIGNATURES[id.slice(colon + 1)] : undefined;
+  }
+
   /**
    * Build the per-frame context a bespoke signature hook receives.
    * One small object per signature-bearing fx per stratum — bounded
@@ -28142,7 +28244,9 @@ export class Renderer {
     const squash = Renderer.FX_SQUASH;
     for (let i = this.trailPrints.length - 1; i >= 0; i--) {
       const pr = this.trailPrints[i]!;
-      const t = (now - pr.bornAt) / TRAIL_PRINT_MS;
+      // Tiers 4 and 5 linger — the burning footprints that stay lit
+      // after the runner has gone (trailPrintMs holds the steps).
+      const t = (now - pr.bornAt) / trailPrintMs(pr.tier);
       if (t >= 1) {
         this.trailPrints.splice(i, 1);
         continue;
@@ -28251,7 +28355,10 @@ export class Renderer {
           const open = Math.min(1, t / 0.35);
           const wilt = Math.max(0, 1 - Math.max(0, t - 0.55) / 0.45);
           ctx.globalAlpha = 0.5 * fade;
-          ctx.fillStyle = tint.deep.startsWith('#') ? tint.deep : tint.mid;
+          // `deep` is an 'r, g, b' triple (queueGlow's format) — wrap
+          // it, as the shadow/stain painters below do, so the soil
+          // ellipse actually paints the deep earth tone.
+          ctx.fillStyle = `rgb(${tint.deep})`;
           ctx.beginPath();
           ctx.ellipse(0, 0, lx * 0.75, wid * 0.75, 0, 0, Math.PI * 2);
           ctx.fill();
@@ -28369,7 +28476,8 @@ export class Renderer {
       // leaves a fading line of lamps behind them. Void is exempt —
       // its print is an absence, and an absence must not glow.
       if (pr.tier >= 3 && pr.kind !== 'shadow') {
-        this.queueGlow(pr.x, pr.y, 0.4, tint.glow, 0.1 * fade);
+        const lamp = pr.tier >= 5 ? 0.16 : pr.tier === 4 ? 0.13 : 0.1;
+        this.queueGlow(pr.x, pr.y, 0.4, tint.glow, lamp * fade);
       }
     }
   }
@@ -28806,6 +28914,22 @@ export class Renderer {
           const voice = procVoice(fx.id);
           const inward = voice.flow < 0;
           ctx.save();
+          // THE LINK: a chain jump arrives carrying its origin in
+          // x2/y2. A brief school-tinted stroke ties the two points so
+          // the hops read as one working travelling, not disconnected
+          // pings. Proc-quiet: thin, short-lived, gone before the ring.
+          if (fx.x2 !== undefined && t < 0.5) {
+            const lx2 = fx.x2;
+            const ly2 = fx.y2 ?? fx.y;
+            const q = this.camera.worldToScreen(lx2, ly2, this.w, this.h);
+            q.y -= this.renderLift(lx2, ly2) * sc;
+            ctx.globalAlpha = (1 - t / 0.5) * 0.5 * voice.weight;
+            ctx.strokeStyle = t < 0.18 ? st.core : st.mid;
+            ctx.lineWidth = Math.max(1, sc * 0.03);
+            ctx.beginPath();
+            boltPath(ctx, q.x, q.y, p.x, p.y, seed ^ 0x55, sc * 0.05);
+            ctx.stroke();
+          }
           // The stain lands instantly and burns off fast.
           if (t < 0.45) {
             ctx.globalAlpha = (1 - t / 0.45) * 0.22 * voice.weight;
@@ -28943,7 +29067,7 @@ export class Renderer {
       // THE SIGNATURE LAW: the ability's bespoke ground set-piece
       // crowns the grammar (telegraphs stay pure instrument).
       if (fx.id && fx.kind !== 'telegraph') {
-        const sig = SIGNATURES[fx.id];
+        const sig = this.sigFor(fx.id);
         if (sig?.ground) sig.ground(this.makeSigCtx(fx, st, t, age, now, seed));
       }
     }
@@ -29763,7 +29887,7 @@ export class Renderer {
       // THE SIGNATURE LAW: the bespoke crown — one-shot spawn matter
       // the frame the cast arrives, then the per-frame air set-piece.
       if (fx.id && fx.kind !== 'telegraph') {
-        const sig = SIGNATURES[fx.id];
+        const sig = this.sigFor(fx.id);
         if (sig) {
           const sf = fx as typeof fx & { sigSpawned?: boolean };
           const c = this.makeSigCtx(fx, st, t, age, now, seed);

@@ -7372,6 +7372,7 @@ export function drawOffhandOnArm(
   s: number,
   profileK: number,
   hurt: boolean,
+  nowMs = 0,
 ): void {
   const col = hurt ? '#ffffff' : st.color;
   if (st.kind === 'tome') {
@@ -7388,6 +7389,22 @@ export function drawOffhandOnArm(
       ctx.fillRect(-0.02 * s, -0.085 * s, 0.035 * s, 0.17 * s);
       ctx.fillStyle = shade(st.color, 22);
       ctx.fillRect(0.03 * s, -0.06 * s, 0.09 * s, 0.026 * s);
+      // THE WORN LIGHT on a non-shield offhand: the spine carries the
+      // rune face's little cousin — a lit clasp line on the binding,
+      // on the offhand's own pulse, with a tier-3 core dot.
+      if (st.arx) {
+        const a = markPulse(st.arx, nowMs, SLOT_GLINT_PHASE.offhand ?? 0, 0.6);
+        if (a > 0.02) {
+          ctx.globalAlpha = Math.min(1, a);
+          ctx.fillStyle = st.arx.mid;
+          ctx.fillRect(-0.012 * s, -0.07 * s, 0.016 * s, 0.14 * s);
+          if (st.arx.tier >= 3) {
+            ctx.fillStyle = st.arx.core;
+            ctx.fillRect(-0.012 * s, -0.012 * s, 0.016 * s, 0.024 * s);
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
     }
     ctx.restore();
     return;
@@ -7405,6 +7422,28 @@ export function drawOffhandOnArm(
       ctx.beginPath();
       ctx.arc(ox - 0.018 * s, oy - 0.02 * s, 0.02 * s, 0, Math.PI * 2);
       ctx.fill();
+      // THE WORN LIGHT: an enchanted focus wears a thin lit ring just
+      // off its surface — the bound working held in orbit, breathing
+      // on the offhand's pulse. Tier 3 lights the heart too.
+      if (st.arx) {
+        const a = markPulse(st.arx, nowMs, SLOT_GLINT_PHASE.offhand ?? 0, 0.6);
+        if (a > 0.02) {
+          ctx.globalAlpha = Math.min(1, a * 0.9);
+          ctx.strokeStyle = st.arx.mid;
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.arc(ox, oy, 0.078 * s, 0, Math.PI * 2);
+          ctx.stroke();
+          if (st.arx.tier >= 3) {
+            ctx.globalAlpha = Math.min(1, a);
+            ctx.fillStyle = st.arx.core;
+            ctx.beginPath();
+            ctx.arc(ox, oy, 0.018 * s, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
     }
     return;
   }
@@ -7528,6 +7567,7 @@ export function drawQuiver(
   s: number,
   lead: number,
   hurt: boolean,
+  nowMs = 0,
 ): void {
   ctx.save();
   ctx.translate(x, y);
@@ -7543,6 +7583,24 @@ export function drawQuiver(
     ctx.fillStyle = '#e6e0d0';
     for (const k of [-0.026, 0.004, 0.03]) {
       ctx.fillRect(k * s - 0.008 * s, -0.225 * s, 0.016 * s, 0.07 * s);
+    }
+    // THE WORN LIGHT: an enchanted quiver lights its mouth band — the
+    // working sits where the arrows leave, on the offhand's own pulse.
+    // Tier 3 tips the fletching in the school's core.
+    if (st.arx) {
+      const a = markPulse(st.arx, nowMs, SLOT_GLINT_PHASE.offhand ?? 0, 0.6);
+      if (a > 0.02) {
+        ctx.globalAlpha = Math.min(1, a);
+        ctx.fillStyle = st.arx.mid;
+        ctx.fillRect(-0.05 * s, -0.125 * s, 0.1 * s, 0.014 * s);
+        if (st.arx.tier >= 3) {
+          ctx.fillStyle = st.arx.core;
+          for (const k of [-0.026, 0.004, 0.03]) {
+            ctx.fillRect(k * s - 0.008 * s, -0.225 * s, 0.016 * s, 0.014 * s);
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
     }
   }
   ctx.restore();

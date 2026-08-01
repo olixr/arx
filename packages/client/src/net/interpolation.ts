@@ -136,6 +136,18 @@ export class InterpBuffer {
     return this.smOut;
   }
 
+  /**
+   * True while sampleSmoothed is still bleeding off a correction
+   * offset: the body is GLIDING onto its authoritative path, and the
+   * glide is presentation, not travel. Consumers that turn motion into
+   * matter (the worn-light trail and wake) gate on this, so a standing
+   * body taking a sub-3-tile correction cannot shed footprints at the
+   * ~13 t/s the glide briefly reads as.
+   */
+  gliding(): boolean {
+    return Math.abs(this.smErrX) + Math.abs(this.smErrY) > 0.02;
+  }
+
   sampleAt(t: number): InterpSample | null {
     const n = this.samples.length;
     if (n === 0) return null;

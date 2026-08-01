@@ -710,7 +710,7 @@ export function drawHumanoidRagdoll(
     } else if (offSt.kind !== 'quiver') {
       const el = P(f, g[H.elbowL]!);
       const hd = P(f, g[H.handL]!);
-      drawOffhandOnArm(ctx, offSt, { kx: el.x, ky: el.y, ex: hd.x, ey: hd.y }, s, 0.3, false);
+      drawOffhandOnArm(ctx, offSt, { kx: el.x, ky: el.y, ex: hd.x, ey: hd.y }, s, 0.3, false, nowMs);
     }
   }
 
