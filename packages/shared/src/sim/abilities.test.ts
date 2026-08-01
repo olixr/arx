@@ -9,10 +9,13 @@ import {
   STATUS_AMBIENCE_MASK,
   STATUS_BIT,
   STATUS_IDS,
+  groundAimRange,
+  groundAimed,
   hasteOnHit,
   reactionDamage,
   reactionFor,
 } from './abilities.js';
+import { sanitizeInputFrame } from './input.js';
 
 test('every distinct status pair has a reaction; same-status has none', () => {
   for (const a of STATUS_IDS) {
@@ -221,4 +224,61 @@ test('THE SECRET LEDGER: secret arts rank from their anchor exactly like pages',
   assert.equal(techniqueAnchor(page), 30, 'the clock reads the page anchor');
   const rung = { ability: 'r', style: 'arx' as const, unlockLevel: 15 };
   assert.equal(techniqueAnchor(rung), 15, 'the clock reads the rung');
+});
+
+test('THE HELD SIGIL: the point-aimed shapes and no others', () => {
+  const ab = (over: Partial<AbilityDef>): AbilityDef => ({
+    id: 'x',
+    name: 'X',
+    desc: '',
+    color: '#fff',
+    code: 'XX',
+    cooldownTicks: 10,
+    shape: 'melee_arc',
+    damage: 1,
+    ...over,
+  });
+  assert.ok(groundAimed(ab({ shape: 'ground_aoe' })));
+  assert.ok(groundAimed(ab({ shape: 'ground_field' })));
+  assert.ok(groundAimed(ab({ shape: 'leap_slam' })));
+  // A summon aims at the ground only when it has reach; a rangeless
+  // one keeps planting at the feet.
+  assert.ok(groundAimed(ab({ shape: 'summon', range: 8 })));
+  assert.ok(!groundAimed(ab({ shape: 'summon' })));
+  for (const shape of ['melee_arc', 'nova', 'beam', 'dash_strike', 'tame', 'pet_command'] as const) {
+    assert.ok(!groundAimed(ab({ shape })), `${shape} aims a direction, not a point`);
+  }
+});
+
+test('THE HELD SIGIL: one ruler for reach, mirroring the interpreter defaults', () => {
+  const ab = (over: Partial<AbilityDef>): AbilityDef => ({
+    id: 'x',
+    name: 'X',
+    desc: '',
+    color: '#fff',
+    code: 'XX',
+    cooldownTicks: 10,
+    shape: 'ground_aoe',
+    damage: 1,
+    ...over,
+  });
+  assert.equal(groundAimRange(ab({ range: 7 })), 7);
+  assert.equal(groundAimRange(ab({})), 4, 'ground_aoe falls back to the cast door default');
+  assert.equal(groundAimRange(ab({ shape: 'ground_field' })), 6);
+  assert.equal(groundAimRange(ab({ shape: 'leap_slam', dashTiles: -5 })), 5, 'a pull-leap still reaches forward');
+  assert.equal(groundAimRange(ab({ shape: 'summon', range: 8 })), 8);
+});
+
+test('THE HELD SIGIL: sanitize keeps the aimed point only whole and finite', () => {
+  const base = { seq: 1, mx: 0, my: 0, aim: 0, buttons: 0 };
+  const whole = sanitizeInputFrame({ ...base, tx: 3.25, ty: -1 });
+  assert.equal(whole.tx, 3.25);
+  assert.equal(whole.ty, -1);
+  const absent = sanitizeInputFrame(base);
+  assert.ok(!('tx' in absent), 'no point in, no point out');
+  const half = sanitizeInputFrame({ ...base, tx: 3 });
+  assert.equal(half.tx, undefined);
+  const hostile = sanitizeInputFrame({ ...base, tx: Number.NaN, ty: 4 });
+  assert.equal(hostile.tx, undefined);
+  assert.equal(hostile.ty, undefined);
 });

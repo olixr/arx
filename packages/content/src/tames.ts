@@ -13,7 +13,7 @@
  */
 
 import type { StatusApply } from '@arx/shared';
-import { NPCS, scaleNpcDef } from './npcs.js';
+import { NPCS, scaleNpcDef, type NpcDef } from './npcs.js';
 import { itemDef } from './items.js';
 
 /**
@@ -150,6 +150,33 @@ const HUMANOID_PREFIXES = ['goblin', 'brigand', 'kobold', 'skeleton', 'gnoll', '
  * the wild keeps what makes it the wild.
  */
 const NEVER_TAMED = new Set(['dire_wolf', 'elder_great_owl', 'stag', 'hind']);
+
+/**
+ * THE WILD'S OWN WORDS (THE KEEPER'S TONGUE): which bodies the wild-
+ * facing beastcraft arts speak to. A wild beast is anything that
+ * walks the beast rig and answers to no one: humanoids and the risen
+ * dead are out by prefix, slimes split instead of listening, and
+ * livestock already has a place in your life. Callers exclude actors
+ * and pets at the site (the store knows those, content does not).
+ */
+export function isWildBeast(def: NpcDef): boolean {
+  if (def.splitInto) return false;
+  if (def.produce || def.lays) return false;
+  for (const prefix of HUMANOID_PREFIXES) {
+    if (def.id.startsWith(prefix)) return false;
+  }
+  if (def.id.startsWith('slime')) return false;
+  return true;
+}
+
+/**
+ * Too proud to be stilled: champions and the crowned terrors hear the
+ * becalm words and refuse them. The truce and the bait simply pass
+ * them by (a sovereign neither pauses for supper nor grants one).
+ */
+export function isBeastSovereign(def: NpcDef): boolean {
+  return def.id.endsWith('_champion') || def.id === 'dire_wolf' || def.id === 'elder_great_owl';
+}
 
 /** Every law a TameDef must clear. Empty array = clean. */
 export function tameErrors(def: TameDef): string[] {

@@ -1318,6 +1318,26 @@ export class Renderer {
    */
   demolishGhost: { tx: number; ty: number; salvage: string | null } | null = null;
 
+  /**
+   * THE HELD SIGIL: the hold-to-aim ghost — a point-art's landing
+   * ring while its button is still held. `x,y` is the aimed point,
+   * `ox,oy` the caster (range hoop + tether anchor), `radius` the
+   * blast footprint and `range` the art's whole reach. main.ts feeds
+   * it every frame; null the moment the hold ends.
+   */
+  aimGhost: {
+    x: number;
+    y: number;
+    ox: number;
+    oy: number;
+    radius: number;
+    range: number;
+    color: string;
+    id: string;
+    shape: string;
+    bornAt: number;
+  } | null = null;
+
   /** THE OWN-WORK OVERLAY: parsed own-built tiles, glinted in build mode. */
   private ownBuiltTiles: Array<{ tx: number; ty: number }> = [];
 
@@ -3200,6 +3220,10 @@ export class Renderer {
     // y-sorted world so bodies stand on them: the far rim hides behind
     // the caster, the near rim rolls out in front of their feet.
     this.drawGroundFx(game);
+    // THE HELD SIGIL rides the same stratum: the aim ghost is a spell
+    // floor still in the hand, so bodies stand on it exactly as they
+    // will stand on the telegraph it becomes.
+    this.drawAimGhost();
     // THE TRAIL lies with the spell floors: under every body, over the
     // turf. Drawn before the rings so a waypoint ring still reads on
     // top of a trail that ran through it.
@@ -27341,6 +27365,58 @@ export class Renderer {
             ctx.closePath();
             ctx.fill();
           }
+        } else if (defId === 'summon_bait') {
+          // THE STREWN TABLE: a laid meal, not a device — grain heaps,
+          // a couple of berries, one strip of dried meat, and thin
+          // scent wisps rising so the table reads alive at a glance.
+          const rand = srand(1337);
+          // The scatter ground: a faint trodden patch under the meal.
+          ctx.fillStyle = 'rgba(90, 80, 58, 0.35)';
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, sc * 0.38, sc * 0.18, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Grain heaps: seeded lumps in two golden tones.
+          for (let i = 0; i < 6; i++) {
+            const a = rand() * Math.PI * 2;
+            const rr = rand() * sc * 0.26;
+            const gx = p.x + Math.cos(a) * rr;
+            const gy = p.y + Math.sin(a) * rr * 0.5;
+            ctx.fillStyle = i % 2 === 0 ? '#c4a35a' : '#d9bc78';
+            ctx.beginPath();
+            ctx.ellipse(gx, gy, sc * (0.05 + rand() * 0.03), sc * 0.035, a, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // Two dark berries and the strip of dried meat.
+          ctx.fillStyle = '#7a3a4a';
+          ctx.beginPath();
+          ctx.arc(p.x - sc * 0.16, p.y - sc * 0.03, sc * 0.035, 0, Math.PI * 2);
+          ctx.arc(p.x - sc * 0.1, p.y + sc * 0.05, sc * 0.03, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#8a5438';
+          ctx.save();
+          ctx.translate(p.x + sc * 0.14, p.y + sc * 0.02);
+          ctx.rotate(0.5);
+          ctx.fillRect(-sc * 0.09, -sc * 0.025, sc * 0.18, sc * 0.05);
+          ctx.restore();
+          // Scent wisps: two thin waving strokes, breathing upward.
+          ctx.strokeStyle = 'rgba(232, 216, 160, 0.5)';
+          ctx.lineWidth = Math.max(1, sc * 0.022);
+          for (let i = 0; i < 2; i++) {
+            const bx = p.x + (i === 0 ? -sc * 0.06 : sc * 0.09);
+            const drift = ((now / 1400 + i * 0.5) % 1) * sc * 0.3;
+            const wig = Math.sin(now / 320 + i * 2.2) * sc * 0.05;
+            ctx.globalAlpha = 0.7 - (drift / (sc * 0.3)) * 0.5;
+            ctx.beginPath();
+            ctx.moveTo(bx, p.y - sc * 0.06 - drift);
+            ctx.quadraticCurveTo(
+              bx + wig,
+              p.y - sc * 0.2 - drift,
+              bx - wig * 0.6,
+              p.y - sc * 0.34 - drift,
+            );
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
         } else if (defId === 'summon_decoy') {
           // The straw double, arms out, taking it like a champ.
           ctx.fillStyle = '#5d452c';
@@ -27396,6 +27472,15 @@ export class Renderer {
         // pulse lives just past the next so the file of motes never
         // gutters mid-channel.
         return 1150;
+      case 'becalm':
+        // The lowered eyes take their time going down.
+        return 1000;
+      case 'command':
+        // A keeper's word travels, lands, and settles.
+        return 850;
+      case 'howl':
+        // The capstone's rings deserve their whole roll.
+        return 1600;
       default:
         return 380;
     }
@@ -27580,7 +27665,16 @@ export class Renderer {
    * by the 48-fx cap, never per particle.
    */
   private makeSigCtx(
-    fx: { x: number; y: number; x2?: number; y2?: number; radius: number; kind: string; dir?: number },
+    fx: {
+      x: number;
+      y: number;
+      x2?: number;
+      y2?: number;
+      radius: number;
+      kind: string;
+      dir?: number;
+      ticks?: number;
+    },
     st: FxStyle,
     t: number,
     age: number,
@@ -27616,6 +27710,7 @@ export class Renderer {
       radius: fx.radius,
       rPx: fx.radius * sc,
       dir: fx.dir ?? 0,
+      ticks: fx.ticks,
       particles: this.particles,
       glow: (gx, gy, r, a) => this.queueGlow(gx, gy, r, st.glow, a),
     };
@@ -28972,6 +29067,185 @@ export class Renderer {
         this.queueGlow(pr.x, pr.y, 0.4, tint.glow, lamp * fade);
       }
     }
+  }
+
+  /**
+   * THE HELD SIGIL: the hold-to-aim ghost. It speaks the telegraph's
+   * exact dialect — stained floor, dark under-band, rotating identity
+   * dashes, rune blocks, the center instrument — but at whisper alpha
+   * and with NO clock: no contracting fuse, no sweep wedge, no arming
+   * sequence. A telegraph is a countdown; the ghost is a promise still
+   * in the hand. Three voices, quietest first: the range hoop around
+   * the body (how far the art can reach), the tether (whose promise
+   * this is), and the ring itself (where it lands, how wide it bites).
+   */
+  private drawAimGhost(): void {
+    const g = this.aimGhost;
+    if (!g) return;
+    const ctx = this.ctx;
+    const sc = this.camera.scale;
+    const squash = Renderer.FX_SQUASH;
+    const now = performance.now();
+    const st = fxStyleFor(g.id, g.color);
+    // Materialize-in: the ring grows out of the press, one breath.
+    const inT = Math.min(1, (now - g.bornAt) / 140);
+    const ease = 1 - (1 - inT) * (1 - inT);
+
+    const o = this.camera.worldToScreen(g.ox, g.oy, this.w, this.h);
+    o.y -= this.renderLift(g.ox, g.oy) * sc;
+    const p = this.camera.worldToScreen(g.x, g.y, this.w, this.h);
+    p.y -= this.renderLift(g.x, g.y) * sc;
+    const rPx = g.radius * sc * (0.75 + 0.25 * ease);
+    const rangePx = g.range * sc;
+
+    ctx.save();
+
+    // The range hoop: the art's whole reach, whispered — a thin slow
+    // dashed breath around the caster, never louder than the ring.
+    ctx.globalAlpha = 0.13 * ease * (0.8 + 0.2 * Math.sin(now / 640));
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1, sc * 0.025);
+    ctx.setLineDash([sc * 0.12, sc * 0.18]);
+    ctx.lineDashOffset = now / 90;
+    ctx.beginPath();
+    ctx.ellipse(o.x, o.y, rangePx, rangePx * squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // The tether: hand to ring. It starts clear of the feet and dies
+    // at the rim; drift runs toward the ring so the line reads as
+    // intent leaving the body. Leap arts march travel chevrons
+    // instead — the body itself is what will cross this line.
+    const tdx = p.x - o.x;
+    const tdy = p.y - o.y;
+    const tlen = Math.hypot(tdx, tdy);
+    if (tlen > sc * 0.9) {
+      const ux = tdx / tlen;
+      const uy = tdy / tlen;
+      const from = sc * 0.55;
+      const to = tlen - rPx * 0.95;
+      if (to > from) {
+        if (g.shape === 'leap_slam') {
+          ctx.strokeStyle = st.mid;
+          ctx.lineWidth = Math.max(1.5, sc * 0.045);
+          ctx.lineCap = 'round';
+          const step = sc * 0.55;
+          const ang = Math.atan2(uy, ux);
+          for (let d = from + ((now / 240) % step); d < to; d += step) {
+            const fade = Math.sin(Math.PI * ((d - from) / (to - from)));
+            ctx.globalAlpha = 0.32 * ease * fade;
+            ctx.save();
+            ctx.translate(o.x + ux * d, o.y + uy * d);
+            ctx.rotate(ang);
+            ctx.beginPath();
+            ctx.moveTo(-sc * 0.07, -sc * 0.08);
+            ctx.lineTo(sc * 0.07, 0);
+            ctx.lineTo(-sc * 0.07, sc * 0.08);
+            ctx.stroke();
+            ctx.restore();
+          }
+          ctx.lineCap = 'butt';
+        } else {
+          ctx.globalAlpha = 0.16 * ease;
+          ctx.strokeStyle = st.mid;
+          ctx.lineWidth = Math.max(1, sc * 0.03);
+          ctx.setLineDash([sc * 0.16, sc * 0.12]);
+          ctx.lineDashOffset = -now / 45;
+          ctx.beginPath();
+          ctx.moveTo(o.x + ux * from, o.y + uy * from);
+          ctx.lineTo(o.x + ux * to, o.y + uy * to);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+    }
+
+    // The ring: the blast's floor as a promise. Same stain, thinner ink.
+    const breath = 1 + 0.02 * Math.sin(now / 300);
+    ctx.globalAlpha = 0.12 * ease;
+    ctx.fillStyle = st.deep;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, rPx * breath, rPx * breath * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (g.shape === 'ground_field') {
+      // A lingering art owns more floor than edge, even as a ghost.
+      ctx.globalAlpha = 0.06 * ease;
+      ctx.fillStyle = st.mid;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, rPx * 0.7, rPx * 0.7 * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Dark under-band: the stroke that grounds every spell floor.
+    ctx.globalAlpha = 0.38 * ease;
+    ctx.strokeStyle = shade(st.deep, -14);
+    ctx.lineWidth = Math.max(2.5, sc * 0.07);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, rPx, rPx * squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Rotating identity dashes — the family signature at half the
+    // telegraph's hurry: alive, not arming.
+    ctx.globalAlpha = 0.7 * ease * (0.85 + 0.15 * Math.sin(now / 240));
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(2, sc * 0.05);
+    ctx.setLineDash([sc * 0.18, sc * 0.12]);
+    ctx.lineDashOffset = -now / 60;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, rPx, rPx * squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    if (g.shape === 'ground_field') {
+      // The counter-rotating inner rim: the lingering family's mark.
+      ctx.globalAlpha = 0.3 * ease;
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.035);
+      ctx.setLineDash([sc * 0.12, sc * 0.2]);
+      ctx.lineDashOffset = now / 70;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, rPx * 0.84, rPx * 0.84 * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    // Rune blocks, dormant: all six lit low and even — nothing counts
+    // down on a spell still held.
+    const gsz = sc * 0.09;
+    ctx.globalAlpha = 0.32 * ease;
+    ctx.fillStyle = st.mid;
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + now / 1400;
+      const gx = p.x + Math.cos(a) * rPx * 0.82;
+      const gy = p.y + Math.sin(a) * rPx * 0.82 * squash;
+      ctx.fillRect(gx - gsz / 2, gy - gsz, gsz, gsz * 2);
+    }
+    // Center: the landing pip. The telegraph's instrument unarmed — a
+    // small rotating hollow diamond over a steady heart-dot, so the
+    // exact point reads at a glance even inside a wide ring.
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(1, squash);
+    ctx.rotate(now / 1800);
+    const ds = sc * 0.12;
+    ctx.globalAlpha = 0.5 * ease;
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1.5, sc * 0.035);
+    ctx.strokeRect(-ds, -ds, ds * 2, ds * 2);
+    ctx.restore();
+    ctx.globalAlpha = 0.8 * ease;
+    ctx.fillStyle = st.core;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, sc * 0.05, sc * 0.05 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (g.shape === 'summon') {
+      // A planted thing: one small stake stands at the point so the
+      // ghost reads "placed here", not "detonates here".
+      ctx.globalAlpha = 0.6 * ease;
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.04);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x, p.y - sc * 0.42);
+      ctx.stroke();
+    }
+
+    ctx.restore();
   }
 
   private drawGroundFx(game: ClientGame): void {

@@ -48,6 +48,7 @@ import { DUALWIELD_SIGS } from './fxSigsDualwield.js';
 import { COMBAT_SIGS } from './fxSigsCombat.js';
 import { VOICES_SIGS } from './fxSigsVoices.js';
 import { FLIGHTS_SIGS } from './fxSigsFlights.js';
+import { BEASTCRAFT_SIGS } from './fxSigsBeastcraft.js';
 
 // --------------------------------------------------------------- ctx
 
@@ -81,6 +82,8 @@ export interface SigCtx {
   radius: number;
   rPx: number;
   dir: number;
+  /** The wire's `ticks` payload, when the cast carried one (holds, channels). */
+  ticks?: number;
   particles: Particles;
   /** Queue an emissive wash at world (x,y), r tiles, strength a. */
   glow(x: number, y: number, r: number, a: number): void;
@@ -718,4 +721,5 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...COMBAT_SIGS,
   ...VOICES_SIGS,
   ...FLIGHTS_SIGS,
+  ...BEASTCRAFT_SIGS,
 };

@@ -60,6 +60,8 @@ export interface SigCtx {
     radius: number;
     rPx: number;
     dir: number;
+    /** The wire's `ticks` payload, when the cast carried one (holds, channels). */
+    ticks?: number;
     particles: Particles;
     /** Queue an emissive wash at world (x,y), r tiles, strength a. */
     glow(x: number, y: number, r: number, a: number): void;

@@ -10,6 +10,16 @@ export interface InputFrame {
   aim: number;
   /** Bitfield of InputButton. */
   buttons: number;
+  /**
+   * THE HELD SIGIL: the aimed ground point (world tiles) for a
+   * point-targeted art cast this frame. Present ONLY on the frame
+   * whose press edge carries a ground-aimed ability release; absent
+   * frames fall back to the server's aim-assisted resolve (touch and
+   * hotbar taps keep their old smart cast). Server clamps to the
+   * art's own reach — the client's ring is a promise, not authority.
+   */
+  tx?: number;
+  ty?: number;
 }
 
 export enum InputButton {
@@ -54,11 +64,18 @@ export function sanitizeInputFrame(f: InputFrame): InputFrame {
     mx = (mx / len) * SNEAK_FACTOR;
     my = (my / len) * SNEAK_FACTOR;
   }
-  return {
+  const out: InputFrame = {
     seq: f.seq >>> 0,
     mx,
     my,
     aim: Number.isFinite(f.aim) ? f.aim : 0,
     buttons: f.buttons >>> 0,
   };
+  // The aimed ground point survives only whole and finite — a half
+  // point (or a hostile NaN) casts as if no point was sent.
+  if (Number.isFinite(f.tx) && Number.isFinite(f.ty)) {
+    out.tx = f.tx;
+    out.ty = f.ty;
+  }
+  return out;
 }

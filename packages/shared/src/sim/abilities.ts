@@ -253,7 +253,54 @@ export type AbilityShape =
    * ceremony rail. Moving breaks it; any wound TO the beast breaks
    * it; keeper blood does not.
    */
-  | 'tame';
+  | 'tame'
+  /**
+   * THE KEEPER'S TONGUE: still one wild beast's blood — its fight
+   * forgotten, its eyes down for `becalmTicks`. `radius` > 0 lets the
+   * calm spread to beasts beside the mark. Champions and the crowned
+   * terrors are too proud to be stilled.
+   */
+  | 'becalm'
+  /**
+   * A word spoken to the companion (`command` picks which): the
+   * whistle home, the pointed fang, the thrown balm, the shared
+   * surge, the cry that stands a fallen friend. Refuses aloud, before
+   * any cost, when the friend the word needs is not there.
+   */
+  | 'pet_command'
+  /**
+   * The capstone ring of awe: every wild beast in `radius` is
+   * becalmed, the companion is mended and surged. The wild stills
+   * because the keeper finally speaks its whole tongue.
+   */
+  | 'wild_howl';
+
+/** Which word a pet_command art speaks to the companion. */
+export type PetCommandKind = 'heel' | 'fang' | 'mend' | 'surge' | 'rise';
+
+/**
+ * A surge window laid on the companion: its teeth and stride quicken
+ * for the duration. A pet fact (PetComp carries the window) — no
+ * keeper benefit ever rides a pet blow.
+ */
+export interface PetSurge {
+  /** Multiplier on the companion's max hit. */
+  dmgMult: number;
+  /** Multiplier on the companion's stride. */
+  speedMult: number;
+  durationTicks: number;
+  /**
+   * THE WHOLE TEMPER (a rank IV flourish): while the surge runs, the
+   * companion's kit status lands at double power and its blows shove.
+   */
+  temper?: boolean;
+}
+
+/** A guard window laid on the companion: flat armor at the mitigate site. */
+export interface PetGuard {
+  armor: number;
+  durationTicks: number;
+}
 
 export interface AbilitySelf {
   heal?: number;
@@ -283,11 +330,28 @@ export interface AbilitySelf {
    * even honed). The twin school's stance rail.
    */
   offhandWeight?: number;
+  /**
+   * THE QUIET WALK: while active, wild beasts do not mark the wearer
+   * (checked inside the one perception scan). The truce is honest —
+   * the wearer's own landed wound on a wild beast ends it early.
+   */
+  beastTruce?: boolean;
+  /**
+   * THE WILD PARTS (a rank IV flourish on the truce): wild beasts
+   * within this many tiles ease aside as the wearer passes.
+   */
+  beastPart?: number;
   durationTicks: number;
 }
 
 export interface AbilitySummon {
-  kind: 'heal_totem' | 'snare_trap' | 'decoy';
+  /**
+   * 'bait' (THE KEEPER'S TONGUE): a scattered table on the ground —
+   * wild beasts at rest within `radius` drift over to nose it through
+   * the investigate grammar. It pulls, never breaks: a blood-up chase
+   * does not care about supper.
+   */
+  kind: 'heal_totem' | 'snare_trap' | 'decoy' | 'bait';
   durationTicks: number;
   /** Effect radius around the summon. */
   radius: number;
@@ -375,6 +439,64 @@ export interface AbilityDef {
    * one factor, derived, never authored twice. Honable by rank.
    */
   channelTicks?: number;
+  /** pet_command: which word this art speaks to the companion. */
+  command?: PetCommandKind;
+  /** becalm / wild_howl: how long the stilled blood stays down, ticks. */
+  becalmTicks?: number;
+  /**
+   * Fraction of the companion's max hp restored (mend, the rise, the
+   * howl, a whistle that arrives mended). The rise words read it as
+   * the fraction the friend STANDS at.
+   */
+  petHealFrac?: number;
+  /** A surge window laid on the companion by this cast. */
+  petSurge?: PetSurge;
+  /** A guard window laid on the companion by this cast. */
+  petGuard?: PetGuard;
+  /** mend: the balm also sheds every status riding the friend. */
+  petCleanse?: boolean;
+}
+
+/**
+ * THE HELD SIGIL: the shapes a caster aims at a POINT on the ground
+ * rather than a direction. These arts arm on press and cast on
+ * release — the held window steers a ghost ring (right stick or
+ * mouse) so a gamepad can place the blast, not just face it. A
+ * summon is point-aimed only when it has reach; rangeless summons
+ * keep planting at the feet.
+ */
+export function groundAimed(ab: AbilityDef): boolean {
+  switch (ab.shape) {
+    case 'ground_aoe':
+    case 'ground_field':
+    case 'leap_slam':
+      return true;
+    case 'summon':
+      return (ab.range ?? 0) > 0;
+    default:
+      return false;
+  }
+}
+
+/**
+ * The one ruler for a point-aimed art's reach, in tiles — the client
+ * clamps its ghost ring by this and the server clamps the sent point
+ * by the SAME rule, so what the ring promises is what the cast does.
+ * Defaults mirror the interpreter's own (`castAbility`) fallbacks.
+ */
+export function groundAimRange(ab: AbilityDef): number {
+  switch (ab.shape) {
+    case 'ground_aoe':
+      return ab.range ?? 4;
+    case 'ground_field':
+      return ab.range ?? 6;
+    case 'leap_slam':
+      return Math.abs(ab.dashTiles ?? 4);
+    case 'summon':
+      return ab.range ?? 0;
+    default:
+      return 0;
+  }
 }
 
 /**
@@ -541,7 +663,7 @@ export function techniqueRankFor(tech: TechniqueDef, baseLevel: number): number 
  * flourish lands; the note is player-facing bench copy.
  */
 export type RankStep = Partial<
-  Omit<AbilityDef, 'id' | 'name' | 'desc' | 'color' | 'code' | 'shape'>
+  Omit<AbilityDef, 'id' | 'name' | 'desc' | 'color' | 'code' | 'shape' | 'command'>
 > & {
   /** What this rank honed — one player-facing line. */
   note: string;

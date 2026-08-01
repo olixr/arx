@@ -115,12 +115,25 @@ test('THE KEEPER LADDER: beastcraft holds exactly its authored rungs', () => {
   const arts = techniquesFor('beastcraft');
   assert.deepEqual(
     arts.map((t) => [t.ability, t.unlockLevel]),
-    [['gentle_the_wild', 10]],
+    [
+      ['soothe_the_wild', 5],
+      ['gentle_the_wild', 10],
+      ['come_to_heel', 15],
+      ['point_the_fang', 20],
+      ['keepers_balm', 25],
+      ['strewn_bait', 30],
+      ['the_quiet_walk', 35],
+      ['blood_of_the_pack', 40],
+      ['the_keepers_cry', 45],
+      ['voice_of_the_wild', 50],
+    ],
     'the beastcraft ladder is exactly its authored roster',
   );
   for (const t of arts) {
     const ab = abilityDef(t.ability)!;
     assert.equal(ab.damage, 0, `${t.ability}: a keeper art is a working, never a strike`);
+    // THE HONED-ART LAW holds for the keeper too: three steps each.
+    assert.equal(t.ranks?.length, 3, `${t.ability}: a keeper art carries its full rank ladder`);
   }
 });
 

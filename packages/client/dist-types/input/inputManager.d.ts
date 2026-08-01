@@ -91,6 +91,11 @@ export declare class InputManager {
         my: number;
     };
     buttons(): number;
+    /**
+     * Ability bits currently driven by the touch/hotbar buttons — the
+     * hold-to-aim layer skips these (a thumb tap keeps its smart cast).
+     */
+    touchAbilityBits(): number;
     /** The pad's Interact button (Ⓐ default) — polled for edge detection. */
     padInteractPressed(): boolean;
     /** True when a connected gamepad is the player's active input device. */

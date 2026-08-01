@@ -137,4 +137,10 @@ export const HONABLE: ReadonlySet<string> = new Set([
   'summon',
   'tauntRadius',
   'channelTicks',
+  // THE KEEPER'S TONGUE: the keeper dials rank like any other number.
+  'becalmTicks',
+  'petHealFrac',
+  'petSurge',
+  'petGuard',
+  'petCleanse',
 ]);

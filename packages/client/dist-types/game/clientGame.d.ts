@@ -1,4 +1,4 @@
-import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type ChargeInfo, type PetInfo, type BuildOrient, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type RepStandingWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type ChargeInfo, type PetInfo, type InputFrame, type BuildOrient, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type RepStandingWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -562,6 +562,16 @@ export declare class ClientGame {
     onFx: ((fx: ActiveFx) => void) | null;
     /** Buttons of the previous outgoing frame — press-edge detection. */
     private prevSentButtons;
+    /**
+     * THE HELD SIGIL: the hold-to-aim layer (main.ts owns it) rewrites
+     * each outgoing frame — withholding a held point-art's bit, then
+     * raising it for one frame with the aimed `tx`/`ty` on release. Runs
+     * BEFORE the cast mirror so the radial and freeze track the release,
+     * exactly like the server will.
+     */
+    groundAim: {
+        filterFrame(frame: InputFrame): void;
+    } | null;
     /** Local player's status bits from the latest snapshot. */
     ownStatus: number;
     /** Crouch latch — mirrors the input toggle for HUD/render. */

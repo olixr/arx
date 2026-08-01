@@ -1,3 +1,4 @@
+import { type AbilitySlot } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 /**
@@ -43,6 +44,9 @@ export declare class Hotbar {
     constructor(input: InputManager);
     /** Fires when the companion chip is clicked (the pat channel). */
     onPetChip: (() => void) | null;
+    /** THE HELD SIGIL: the slot whose ring is being aimed right now. */
+    private aimingSlot;
+    setAiming(slot: AbilitySlot | null): void;
     /** Called once per frame — cheap DOM writes only on change. */
     update(game: ClientGame): void;
 }

@@ -179,6 +179,16 @@ export class Hotbar {
   /** Fires when the companion chip is clicked (the pat channel). */
   onPetChip: (() => void) | null = null;
 
+  /** THE HELD SIGIL: the slot whose ring is being aimed right now. */
+  private aimingSlot: AbilitySlot | null = null;
+
+  setAiming(slot: AbilitySlot | null): void {
+    if (slot === this.aimingSlot) return;
+    if (this.aimingSlot !== null) this.slots[this.aimingSlot]?.classList.remove('aiming');
+    if (slot !== null) this.slots[slot]?.classList.add('aiming');
+    this.aimingSlot = slot;
+  }
+
   /** Called once per frame — cheap DOM writes only on change. */
   update(game: ClientGame): void {
     const now = performance.now();

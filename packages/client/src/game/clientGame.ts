@@ -476,6 +476,14 @@ export class ClientGame {
   onFx: ((fx: ActiveFx) => void) | null = null;
   /** Buttons of the previous outgoing frame — press-edge detection. */
   private prevSentButtons = 0;
+  /**
+   * THE HELD SIGIL: the hold-to-aim layer (main.ts owns it) rewrites
+   * each outgoing frame — withholding a held point-art's bit, then
+   * raising it for one frame with the aimed `tx`/`ty` on release. Runs
+   * BEFORE the cast mirror so the radial and freeze track the release,
+   * exactly like the server will.
+   */
+  groundAim: { filterFrame(frame: InputFrame): void } | null = null;
   /** Local player's status bits from the latest snapshot. */
   ownStatus = 0;
 
@@ -2363,6 +2371,7 @@ export class ClientGame {
         aim: this.aim,
         buttons: this.input.buttons(),
       };
+      this.groundAim?.filterFrame(frame);
       this.trackOwnCasts(frame);
       // viewMs (v8): report the live interp delay so melee lag comp
       // rewinds by what this screen is ACTUALLY showing.

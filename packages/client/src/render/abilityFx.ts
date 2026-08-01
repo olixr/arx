@@ -454,9 +454,33 @@ export const FX_STYLES: Record<string, FxStyle> = {
   hushing_screech: SHADOW({ mid: '#b8c4d8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.32 }),
 
   // ---------------------------------------------------- beastcraft arts
-  // Gentle the Wild — bond-green calm over living wood: soft petals, a
-  // drifting leaf, no punch at all. The working is an asking, not a blow.
+  // THE KEEPER'S TONGUE — the school speaks LIVING GREEN AND HIDE:
+  // bond-greens, herb and grain, one russet howl and one horn-gold
+  // cry. Nothing here detonates; the punches stay near the floor and
+  // the washes stay soft — these are words, not blows. Every face
+  // keeps a unique ring+debris+motif hand within the family.
   gentle_the_wild: VERDANT({ mid: '#9fd39a', deep: '#4a6e46', spark: '#e8ffe0', ring: 'petals', debris: 'leaf', decal: undefined, motif: 'wisps', punch: 0.1, wash: 0.3 }),
+  // Soothe the Wild — the breath let out: pale sage, a soft halo, no
+  // motif of its own (the signature's closing ring IS the word).
+  soothe_the_wild: VERDANT({ mid: '#b8dcc0', deep: '#4a6a54', spark: '#f0fff0', ring: 'halo', debris: 'leaf', decal: undefined, punch: 0, wash: 0.2 }),
+  // Come to Heel — the road folded shut: heel-green echo rings.
+  come_to_heel: VERDANT({ mid: '#8fc7a4', deep: '#3e6450', spark: '#e0f8ea', ring: 'petals', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.1, wash: 0.2 }),
+  // Point the Fang — blood warmed, not spilled: fang amber, a darting
+  // swarm over bared teeth.
+  point_the_fang: EMBER({ mid: '#d98a5a', deep: '#7a4630', spark: '#ffe0c0', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.3, wash: 0.25 }),
+  // Keeper's Balm — crushed herb unfurling where it lands.
+  keepers_balm: VERDANT({ mid: '#a8d978', deep: '#4a6a2e', spark: '#f0ffd8', ring: 'petals', debris: 'leaf', decal: 'stain', motif: 'bloom', punch: 0.1, wash: 0.25 }),
+  // Strewn Bait — grain and drippings scattered from the hand.
+  strewn_bait: fx('#fff8e0', '#c4a35a', '#6a5426', '#e8d8a0', '200, 170, 100', 'shards', 'leaf', undefined, 0.1, 'rain'),
+  // The Quiet Walk — dawn mist through pines, wisps at the heel.
+  the_quiet_walk: VERDANT({ mid: '#9ab8a0', deep: '#3c5044', spark: '#d8e8dc', ring: 'halo', debris: 'leaf', decal: undefined, motif: 'wisps', punch: 0, wash: 0.12 }),
+  // Blood of the Pack — the shared howl: pack russet, a breaking wave.
+  blood_of_the_pack: BLOOD({ mid: '#c46a4a', deep: '#5c2c20', spark: '#ffcaa8', ring: 'teeth', debris: 'blood', decal: undefined, motif: 'wave', punch: 0.35, wash: 0.3 }),
+  // The Keeper's Cry — horn gold; the rise is a pillar, not a blast.
+  the_keepers_cry: GOLD({ mid: '#e8d8a0', deep: '#8a7440', spark: '#fffbe8', ring: 'halo', debris: 'star', decal: undefined, motif: 'pillar', punch: 0.3, wash: 0.4 }),
+  // Voice of the Wild — the whole tongue: deep wildsong green, rings
+  // that keep answering, roots left where the word passed.
+  voice_of_the_wild: VERDANT({ mid: '#7ac4a0', deep: '#2c5a48', spark: '#eafff4', ring: 'petals', debris: 'leaf', decal: 'roots', motif: 'echo', punch: 0.5, wash: 0.45 }),
 };
 
 /**

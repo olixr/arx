@@ -9,10 +9,12 @@
     { "text": "How do you gentle a wild thing?", "next": "gentle" },
     { "text": "Do you keep one yourself?", "next": "own" },
     { "text": "That's all.", "next": "off" } ] },
+  { "id": "words", "text": "No. The asking is the first word of a long tongue. A hush for a riled heart. A whistle that folds the road. A howl you share with your friend. They come to your hands as your hands earn them. Steady. Steady, I said. Not you.", "next": "hub" },
   { "id": "pen", "text": "Three stalls to a household, one friend at your heel. Swap them here. Rest one that limped home. And when a bond has run its course, this is where you slip the collar.", "next": "hub" },
   { "id": "gentle", "text": "It is a working now, the old drovers' asking. Learn it when your hands know beasts well enough, and keep it ready. Call the beast, hold your ground, and carry what it wants in your pack. It will come at you the whole while. Stand through it.", "choices": [
     { "text": "What do they want?", "next": "lure" },
     { "text": "It keeps attacking you?", "next": "teeth" },
+    { "text": "Is the asking all there is?", "next": "words" },
     { "text": "Sounds simple.", "next": "simple" } ] },
   { "id": "teeth", "text": "The wild does not shake hands. Easy now. Yes, the whole while. Wear its fight down first and the asking is half as long. Or stand there whole and eat every bite. Your choice, your hide.", "next": "hub" },
   { "id": "lure", "text": "Depends on the belly. Beetles come for berries. A rat wants an egg, whole, no cracks. Ask Hobb, he farms by the pasture, what the rats take already.", "next": "hub" },

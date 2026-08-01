@@ -3,6 +3,7 @@ import { EntityKind, FENCE_TILES, GARRISON_TILES, PoseState, ROCK_TILES, TICK_MS
 import { BUILDABLES, RECIPES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
+import { GroundAimController } from './input/groundAim.js';
 import { bindings, type ActionId } from './input/bindings.js';
 import { installControlsMenu } from './ui/controlsMenu.js';
 import { Renderer } from './render/renderer.js';
@@ -1303,6 +1304,18 @@ hotbar.onPetChip = () => {
 game.onTechniques = () => panels.setTechniques(game.techniques, game.earnedArts, game.lessons);
 game.onCallings = () => panels.setCallings(game.callings);
 
+// THE HELD SIGIL: hold a point-targeted art to aim its ghost ring,
+// release to cast. The controller rewrites outgoing input frames
+// (press withheld, release carries the point); the ring itself is
+// steered once per render frame further down.
+const groundAim = new GroundAimController({
+  slotAbility: (slot) => game.slotAbilityDef(slot),
+  slotReady: (slot) => game.abilityCdFraction(slot) === 0 && !game.seatDormant(slot),
+  sheathed: () => game.isSheathed,
+  touchBits: () => input.touchAbilityBits(),
+});
+game.groundAim = groundAim;
+
 // Committing to a cast: sound, hands, and a wind-up ring at the feet.
 game.onCastFx = (_slot, ab) => {
   if (ab.shape === 'chain_zap') sfx.chainZap();
@@ -2159,6 +2172,49 @@ let lastWalkMode = false;
  */
 let padBuildCur: { dx: number; dy: number } | null = null;
 
+/** THE HELD SIGIL's arm edge — a soft pad tick says "the ring is yours". */
+let aimWasActive = false;
+
+/**
+ * The held ring's honest resting mark: the nearest live NPC inside the
+ * art's reach within the server's own resolve cone. This mirrors
+ * resolveGroundTarget exactly, so an un-steered ring shows where a
+ * bare tap would truly land — the ghost never lies about the default.
+ */
+function nearestNpcPoint(
+  own: { x: number; y: number },
+  range: number,
+  aim: number,
+): { x: number; y: number } | null {
+  let best: { x: number; y: number } | null = null;
+  let bestD = Infinity;
+  for (const remote of game.entities.values()) {
+    if (remote.meta.kind !== EntityKind.Npc) continue;
+    const latest = remote.buffer.latest();
+    const x = latest?.x ?? remote.meta.x;
+    const y = latest?.y ?? remote.meta.y;
+    const dx = x - own.x;
+    const dy = y - own.y;
+    const d = Math.hypot(dx, dy);
+    if (d > range) continue;
+    let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+    if (diff > Math.PI) diff = Math.PI * 2 - diff;
+    if (diff > 0.65) continue;
+    if (d < bestD) {
+      bestD = d;
+      best = { x, y };
+    }
+  }
+  return best;
+}
+
+/** The ghost ring's footprint — the interpreter's own radius defaults. */
+function aimGhostRadius(ab: { shape: string; radius?: number; summon?: { radius: number } }): number {
+  if (ab.shape === 'summon') return ab.radius ?? ab.summon?.radius ?? 0.9;
+  if (ab.shape === 'ground_aoe') return ab.radius ?? 1.5;
+  return ab.radius ?? 2; // ground_field and the leap's landing blast
+}
+
 /** Soft aim assist: the nearest live NPC within reach, for pad players. */
 function nearestNpcAim(): number | null {
   const own = game.predictor.pos;
@@ -2303,7 +2359,28 @@ function frame(now: number): void {
       nav.showModeStrip(`build:kb:${turnable ? 't' : 'p'}`, rows);
     }
   } else {
-    nav.clearModeStrip();
+    // THE HELD SIGIL's strip: only once the hold has clearly become a
+    // hold (a quick tap never flashes it), naming the two verbs the
+    // gesture answers to — let go to cast, dodge to bail out.
+    const held = groundAim.gesture();
+    if (held && now - held.bornAt > 250) {
+      const action = `ability${held.slot + 1}` as ActionId;
+      if (nav.mode === 'pad') {
+        const g = bindings.padBadge(action);
+        const d = bindings.padBadge('dodge');
+        const rows: Array<[string, string, string]> = [];
+        if (g) rows.push([`pad-glyph ${g.cls}`, g.text, 'Release to Cast']);
+        if (d) rows.push([`pad-glyph ${d.cls}`, d.text, 'Cancel']);
+        nav.showModeStrip(`aim:pad:${held.slot}`, rows);
+      } else {
+        nav.showModeStrip(`aim:kb:${held.slot}`, [
+          ['kb-glyph', bindings.kbBadge(action) || 'Q', 'Release to Cast'],
+          ['kb-glyph', bindings.kbBadge('dodge') || 'Shift', 'Cancel'],
+        ]);
+      }
+    } else {
+      nav.clearModeStrip();
+    }
   }
   nav.update(now, uiOpen, buildMode !== null);
   // The chart reads the pad directly while open: stick pans, triggers
@@ -2403,6 +2480,56 @@ function frame(now: number): void {
         game.aim = mouseAim;
       }
     }
+  }
+
+  // THE HELD SIGIL: steer the held ring, face the throw, hand the
+  // renderer its ghost. Any opened screen, the build ghost, or a
+  // cinematic dissolves the hold without casting.
+  {
+    const held = groundAim.gesture();
+    if (held && game.ownEid !== null) {
+      const own = game.predictor.renderPos();
+      const snap = input.padPrimary() ? input.padSnapshot() : null;
+      const stick = snap ? { x: snap.axes[2] ?? 0, y: snap.axes[3] ?? 0 } : null;
+      const touchDriven = input.touchMoveX !== 0 || input.touchMoveY !== 0;
+      groundAim.update({
+        blocked: uiOpen || buildMode !== null || cinema.open,
+        own,
+        aim: game.aim,
+        stick,
+        mouseWorld:
+          stick || touchDriven ? null : renderer.pickWorld(input.mouseX, input.mouseY),
+        assist: nearestNpcPoint(own, held.range, game.aim),
+        dtSec: frameDt,
+      });
+    }
+    const live = groundAim.gesture();
+    if (live && game.ownEid !== null && Number.isFinite(live.x)) {
+      const own = game.predictor.renderPos();
+      const dx = live.x - own.x;
+      const dy = live.y - own.y;
+      // The body squares to the throw — facing, fx and the server's
+      // derived angle all agree with the ring.
+      if (Math.hypot(dx, dy) > 0.05) game.aim = Math.atan2(dy, dx);
+      renderer.aimGhost = {
+        x: live.x,
+        y: live.y,
+        ox: own.x,
+        oy: own.y,
+        radius: aimGhostRadius(live.ab),
+        range: live.range,
+        color: live.ab.color,
+        id: live.ab.id,
+        shape: live.ab.shape,
+        bornAt: live.bornAt,
+      };
+    } else {
+      renderer.aimGhost = null;
+    }
+    hotbar.setAiming(live?.slot ?? null);
+    // The arm moment travels through the hands — one soft tick, pad only.
+    if (live !== null && !aimWasActive && input.padPrimary()) input.rumble(0.06, 0.22, 45);
+    aimWasActive = live !== null;
   }
 
   // Build-mode ghost: rides the mouse tile — or, on pad, the sticky

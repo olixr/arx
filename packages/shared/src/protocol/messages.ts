@@ -774,6 +774,22 @@ export interface S2CFx {
     | 'beam'
     /** A self-buff flourish rising off the caster. */
     | 'buff'
+    /**
+     * THE KEEPER'S TONGUE (additive, protocol unchanged): a becalm
+     * landing at (x,y) — `radius` > 0 is the spread, `ticks` the hold.
+     */
+    | 'becalm'
+    /**
+     * A keeper's word traveling (x,y)→(x2,y2): the whistle's arrival
+     * line, the pointed fang, the thrown balm, the shared howl, the
+     * cry to a fallen friend. `id` picks the painter's dialect.
+     */
+    | 'command'
+    /**
+     * The capstone ring of awe rolling out from (x,y) to `radius`;
+     * `ticks` carries the awe's hold (the ghost pack runs at >= 300).
+     */
+    | 'howl'
     /** A lingering hazard zone living `ticks` at (x,y). */
     | 'field'
     /** A locked door refusing at (x,y) — the leaf shudders in its frame. */
@@ -1574,6 +1590,12 @@ export function parseC2S(raw: string): C2SMessage | null {
         t: 'input',
         frame: { seq: f.seq, mx: f.mx, my: f.my, aim: f.aim, buttons: f.buttons },
       };
+      // Optional aimed ground point (THE HELD SIGIL) — carried only
+      // whole; sanitizeInputFrame and the cast door re-clamp it.
+      if (isFiniteNum(f.tx) && isFiniteNum(f.ty)) {
+        out.frame.tx = f.tx;
+        out.frame.ty = f.ty;
+      }
       // Optional view-delay report; clamped here so the game code
       // never sees a hostile value.
       if (isFiniteNum(msg.viewMs)) out.viewMs = Math.max(0, Math.min(400, msg.viewMs));

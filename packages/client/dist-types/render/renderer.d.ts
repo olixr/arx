@@ -417,6 +417,25 @@ export declare class Renderer {
         ty: number;
         salvage: string | null;
     } | null;
+    /**
+     * THE HELD SIGIL: the hold-to-aim ghost — a point-art's landing
+     * ring while its button is still held. `x,y` is the aimed point,
+     * `ox,oy` the caster (range hoop + tether anchor), `radius` the
+     * blast footprint and `range` the art's whole reach. main.ts feeds
+     * it every frame; null the moment the hold ends.
+     */
+    aimGhost: {
+        x: number;
+        y: number;
+        ox: number;
+        oy: number;
+        radius: number;
+        range: number;
+        color: string;
+        id: string;
+        shape: string;
+        bornAt: number;
+    } | null;
     /** THE OWN-WORK OVERLAY: parsed own-built tiles, glinted in build mode. */
     private ownBuiltTiles;
     setOwnBuilt(keys: ReadonlySet<string>): void;
@@ -2485,6 +2504,17 @@ export declare class Renderer {
      * would still be able to tell which school ran past.
      */
     private drawTrail;
+    /**
+     * THE HELD SIGIL: the hold-to-aim ghost. It speaks the telegraph's
+     * exact dialect — stained floor, dark under-band, rotating identity
+     * dashes, rune blocks, the center instrument — but at whisper alpha
+     * and with NO clock: no contracting fuse, no sweep wedge, no arming
+     * sequence. A telegraph is a countdown; the ghost is a promise still
+     * in the hand. Three voices, quietest first: the range hoop around
+     * the body (how far the art can reach), the tether (whose promise
+     * this is), and the ring itself (where it lands, how wide it bites).
+     */
+    private drawAimGhost;
     private drawGroundFx;
     /**
      * The VOLUME stratum of combat FX — kind-level standing matter,

@@ -3880,6 +3880,188 @@ Object.assign(PLATES, {
     dot(c, st.spark, 0.22, -0.32, 0.028);
     dot(c, st.spark, -0.26, -0.14, 0.022);
   },
+
+  // ------------------- THE KEEPER'S TONGUE — the nine words' plates.
+  // Soothe the Wild — the closed eye: a lid at rest, lashes down, one
+  // feather settling beneath the quiet.
+  soothe_the_wild: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, -0.12, 0.3, 0.2, Math.PI * 0.12, Math.PI * 0.88, st.core, 0.045);
+    // Lashes, resting downward.
+    for (const [lx, la] of [
+      [-0.22, 0.5],
+      [0, 0.35],
+      [0.22, 0.2],
+    ] as const) {
+      poly(c, st.mid, [
+        [lx, -0.02],
+        [lx + 0.05 * Math.cos(Math.PI * la + Math.PI / 2), 0.08],
+      ], 0.03);
+    }
+    // The feather settling below.
+    crescent(c, -0.02, 0.24, 0.16, 0.1, -Math.PI * 0.2, Math.PI * 0.75, st.spark, 0.032);
+    dot(c, st.spark, 0.24, 0.14, 0.024);
+    dot(c, st.mid, -0.28, 0.3, 0.02);
+  },
+
+  // Come to Heel — the whistle and the print: sound rings leaving a
+  // mouth-point, a paw already arriving under them.
+  come_to_heel: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The whistle: nested rings off-center, the call going out.
+    crescent(c, -0.14, -0.16, 0.13, 0.13, -Math.PI * 0.35, Math.PI * 0.35, st.core, 0.036);
+    crescent(c, -0.14, -0.16, 0.22, 0.22, -Math.PI * 0.3, Math.PI * 0.3, st.mid, 0.032);
+    crescent(c, -0.14, -0.16, 0.31, 0.31, -Math.PI * 0.25, Math.PI * 0.25, st.deep, 0.03);
+    // The paw, arrived: pad and three toes.
+    dot(c, st.core, 0.1, 0.2, 0.085);
+    dot(c, st.core, -0.01, 0.09, 0.037);
+    dot(c, st.core, 0.1, 0.05, 0.04);
+    dot(c, st.core, 0.21, 0.09, 0.037);
+    dot(c, st.spark, -0.3, -0.34, 0.024);
+  },
+
+  // Point the Fang — the pointing hand become a dart, twin fangs
+  // waiting where it lands.
+  point_the_fang: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    arrow(c, -0.3, -0.22, Math.PI * 0.28, 0.34, st, 0.9);
+    // The fangs: two down-teeth, bright over deep.
+    fill(c, st.core, [
+      [0.02, 0.08],
+      [0.09, 0.32],
+      [0.16, 0.08],
+    ]);
+    fill(c, st.spark, [
+      [0.18, 0.06],
+      [0.25, 0.28],
+      [0.32, 0.06],
+    ]);
+    dot(c, st.mid, -0.24, 0.18, 0.028);
+    dot(c, st.mid, -0.12, 0.28, 0.022);
+  },
+
+  // Keeper's Balm — the thrown jar breaking into a leaf: the drop,
+  // the leaf it feeds, the mending glint.
+  keepers_balm: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    droplet(c, -0.1, -0.16, 0.2, st);
+    // The leaf drinking it in.
+    crescent(c, 0.08, 0.16, 0.24, 0.15, -Math.PI * 0.15, Math.PI * 0.85, st.mid, 0.04);
+    poly(c, st.deep, [
+      [-0.06, 0.3],
+      [0.22, 0.02],
+    ], 0.03);
+    star4(c, 0.24, -0.2, 0.075, st.core);
+    dot(c, st.spark, -0.3, 0.08, 0.024);
+  },
+
+  // Strewn Bait — the laid table: grain scatter, two berries, the
+  // strip of meat, one scent curl above.
+  strewn_bait: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.34, st);
+    for (const [gx, gy, gr] of [
+      [-0.2, 0.06, 0.045],
+      [-0.06, 0.12, 0.05],
+      [0.1, 0.04, 0.042],
+      [-0.13, -0.04, 0.038],
+      [0.2, 0.12, 0.045],
+    ] as const) {
+      dot(c, st.mid, gx, gy, gr);
+    }
+    dot(c, '#7a3a4a', 0.02, -0.06, 0.045);
+    dot(c, '#7a3a4a', 0.24, -0.02, 0.038);
+    // The strip of dried meat, angled across.
+    poly(c, st.deep, [
+      [-0.28, -0.12],
+      [-0.08, -0.2],
+    ], 0.06);
+    // One scent curl rising.
+    crescent(c, 0.06, -0.3, 0.1, 0.08, Math.PI * 0.6, Math.PI * 1.6, st.spark, 0.028);
+  },
+
+  // The Quiet Walk — prints through mist: three paws walking a soft
+  // diagonal, the ground breathing low around them.
+  the_quiet_walk: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // Low mist bands.
+    crescent(c, -0.05, 0.24, 0.3, 0.3, Math.PI * 1.05, Math.PI * 1.95, st.deep, 0.045);
+    crescent(c, 0.1, 0.32, 0.2, 0.2, Math.PI * 1.1, Math.PI * 1.9, st.mid, 0.035);
+    // The walked line: three prints, small to large, passing through.
+    for (const [pxp, pyp, s] of [
+      [-0.24, 0.14, 0.55],
+      [-0.02, -0.04, 0.75],
+      [0.2, -0.22, 1],
+    ] as const) {
+      dot(c, st.core, pxp, pyp, 0.052 * s);
+      dot(c, st.core, pxp - 0.055 * s, pyp - 0.07 * s, 0.024 * s);
+      dot(c, st.core, pxp + 0.005 * s, pyp - 0.09 * s, 0.026 * s);
+      dot(c, st.core, pxp + 0.06 * s, pyp - 0.065 * s, 0.024 * s);
+    }
+  },
+
+  // Blood of the Pack — one howl from two throats: facing crescents
+  // over the taut cord between them.
+  blood_of_the_pack: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // Two muzzles thrown back, facing each other.
+    crescent(c, -0.2, -0.06, 0.2, 0.13, -Math.PI * 0.4, Math.PI * 0.5, st.mid, 0.042);
+    crescent(c, 0.2, -0.06, 0.2, 0.13, Math.PI * 0.5, Math.PI * 1.4, st.mid, 0.042);
+    // The shared howl rising between them.
+    crescent(c, 0, -0.26, 0.12, 0.12, Math.PI * 1.1, Math.PI * 1.9, st.core, 0.036);
+    crescent(c, 0, -0.14, 0.2, 0.2, Math.PI * 1.15, Math.PI * 1.85, st.spark, 0.03);
+    // The pack cord, heartbeat-thick at its middle.
+    poly(c, st.core, [
+      [-0.2, 0.2],
+      [0, 0.24],
+      [0.2, 0.2],
+    ], 0.045);
+    dot(c, st.spark, 0, 0.24, 0.036);
+  },
+
+  // The Keeper's Cry — the voice that stands them up: the ray, the
+  // halo finding its feet, the heartbeat rings below.
+  the_keepers_cry: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The cry: one bright ray falling in from on high.
+    poly(c, st.core, [
+      [-0.26, -0.3],
+      [0.08, 0.06],
+    ], 0.05);
+    poly(c, st.spark, [
+      [-0.3, -0.18],
+      [-0.02, 0.12],
+    ], 0.028);
+    // The risen halo.
+    crescent(c, 0.12, -0.1, 0.14, 0.09, Math.PI * 1.1, Math.PI * 1.9, st.spark, 0.032);
+    // Thump, thump: the ground answering twice.
+    crescent(c, 0.1, 0.24, 0.14, 0.09, Math.PI * 0.05, Math.PI * 0.95, st.mid, 0.036);
+    crescent(c, 0.1, 0.28, 0.24, 0.14, Math.PI * 0.1, Math.PI * 0.9, st.deep, 0.032);
+    star4(c, 0.12, -0.28, 0.06, st.core);
+  },
+
+  // Voice of the Wild — the whole tongue: echo rings wearing the
+  // living crown, the wild's head raised at the center.
+  voice_of_the_wild: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    novaRing(c, 0, 0.02, 0.34, st, 10, 0.16, 0.036);
+    ringDot(c, st.mid, 0, 0.02, 0.22, 0.032);
+    // The raised head at the heart: muzzle up, mid-howl.
+    fill(c, st.core, [
+      [-0.08, 0.1],
+      [-0.02, -0.12],
+      [0.09, -0.06],
+      [0.05, 0.1],
+    ]);
+    poly(c, st.core, [
+      [-0.02, -0.12],
+      [0.03, -0.2],
+    ], 0.035);
+    // The crown the rings wear.
+    crown(c, 0, -0.3, 0.2, st.spark, st.core);
+    dot(c, st.spark, 0.3, 0.24, 0.024);
+    dot(c, st.spark, -0.3, 0.2, 0.024);
+  },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
 // ------------------------------------------------------------ lookup

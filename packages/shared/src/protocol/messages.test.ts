@@ -71,6 +71,23 @@ test('input viewMs (v8) is optional, clamped, and hostile-proof', () => {
   assert.equal(junk?.t === 'input' && junk.viewMs, undefined);
 });
 
+test('input aimed point (THE HELD SIGIL) survives only whole and finite', () => {
+  const at = (f: Record<string, unknown>) => {
+    const m = parseC2S(JSON.stringify({ t: 'input', frame: f }));
+    return m?.t === 'input' ? [m.frame.tx, m.frame.ty] : null;
+  };
+  const base = { seq: 1, mx: 0, my: 0, aim: 0, buttons: 0 };
+  // Absent: the frame casts by the server's own resolve, as ever.
+  assert.deepEqual(at(base), [undefined, undefined]);
+  // Whole and finite: carried through verbatim (the cast door clamps).
+  assert.deepEqual(at({ ...base, tx: 12.5, ty: -3 }), [12.5, -3]);
+  // Half a point is no point; hostile types are dropped, not fatal.
+  assert.deepEqual(at({ ...base, tx: 12.5 }), [undefined, undefined]);
+  assert.deepEqual(at({ ...base, ty: 4 }), [undefined, undefined]);
+  assert.deepEqual(at({ ...base, tx: 'evil', ty: 4 }), [undefined, undefined]);
+  assert.deepEqual(at({ ...base, tx: null, ty: 4 }), [undefined, undefined]);
+});
+
 test('carrystyle sets a grip per fist, defaulting to the main hand', () => {
   const main = parseC2S(JSON.stringify({ t: 'carrystyle', style: 'rogue' }));
   assert.deepEqual(main, { t: 'carrystyle', style: 'rogue', hand: undefined });

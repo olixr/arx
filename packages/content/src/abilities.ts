@@ -3088,6 +3088,123 @@ const defs: AbilityDef[] = [
     range: 5,
     channelTicks: 200, // 10 s whole; a craven mark answers in half
   },
+
+  // THE KEEPER'S TONGUE — the nine words beside the asking. Every one
+  // is a working, never a strike (damage 0 forever, the school trains
+  // through tames and care alone); the wild-facing words act only on
+  // wild beasts, the companion words need the companion, and every
+  // refusal speaks before a cooldown is paid.
+  {
+    id: 'soothe_the_wild',
+    name: 'Soothe the Wild',
+    desc: 'Still one wild heart. The fight leaves it, and its eyes stay down a while.',
+    color: '#b8dcc0', // pale sage, the breath let out
+    code: 'So',
+    cooldownTicks: 300,
+    shape: 'becalm',
+    damage: 0,
+    range: 5,
+    becalmTicks: 200, // 10 s of lowered eyes
+  },
+  {
+    id: 'come_to_heel',
+    name: 'Come to Heel',
+    desc: 'A whistle the friend always hears. However far the road, it arrives at your side.',
+    color: '#8fc7a4', // heel-green, the road folded shut
+    code: 'Ch',
+    cooldownTicks: 200,
+    shape: 'pet_command',
+    command: 'heel',
+    damage: 0,
+  },
+  {
+    id: 'point_the_fang',
+    name: 'Point the Fang',
+    desc: 'Point once. Your companion breaks for the mark, and the mark forgets you entirely.',
+    color: '#d98a5a', // fang amber, blood warmed not spilled
+    code: 'Pf',
+    cooldownTicks: 200,
+    shape: 'pet_command',
+    command: 'fang',
+    damage: 0,
+    range: 7,
+  },
+  {
+    id: 'keepers_balm',
+    name: "Keeper's Balm",
+    desc: 'A poultice thrown true. The friend is mended without breaking stride.',
+    color: '#a8d978', // crushed-herb green
+    code: 'Kb',
+    cooldownTicks: 400,
+    shape: 'pet_command',
+    command: 'mend',
+    damage: 0,
+    range: 8,
+    petHealFrac: 0.3,
+  },
+  {
+    id: 'strewn_bait',
+    name: 'Strewn Bait',
+    desc: 'Scatter a table on the ground. The wild at rest comes to nose it.',
+    color: '#c4a35a', // grain and drippings
+    code: 'Sb',
+    cooldownTicks: 500,
+    shape: 'summon',
+    damage: 0,
+    range: 6,
+    summon: { kind: 'bait', durationTicks: 300, radius: 6, power: 0 },
+  },
+  {
+    id: 'the_quiet_walk',
+    name: 'The Quiet Walk',
+    desc: 'Walk as the wild walks. No beast marks you until the quiet ends, or you break it.',
+    color: '#9ab8a0', // dawn mist through pines
+    code: 'Qw',
+    cooldownTicks: 600,
+    shape: 'self_buff',
+    damage: 0,
+    self: { beastTruce: true, durationTicks: 400 },
+  },
+  {
+    id: 'blood_of_the_pack',
+    name: 'Blood of the Pack',
+    desc: 'One howl, shared. The friend fights quicker and harder while the blood is up.',
+    color: '#c46a4a', // pack russet
+    code: 'Bp',
+    cooldownTicks: 600,
+    shape: 'pet_command',
+    command: 'surge',
+    damage: 0,
+    petSurge: { dmgMult: 1.3, speedMult: 1.15, durationTicks: 240 },
+  },
+  {
+    id: 'the_keepers_cry',
+    name: "The Keeper's Cry",
+    desc: 'The cry a fallen friend hears anywhere near. It stands where it lies, shaky but yours.',
+    color: '#e8d8a0', // pale horn gold
+    code: 'Kc',
+    cooldownTicks: 1200, // a minute — the clutch word is not a habit
+    shape: 'pet_command',
+    command: 'rise',
+    damage: 0,
+    range: 10,
+    petHealFrac: 0.35, // the fraction the friend STANDS at
+  },
+  {
+    id: 'voice_of_the_wild',
+    name: 'Voice of the Wild',
+    desc: 'Speak the whole tongue at once. The wild stills, and your friend answers first.',
+    color: '#7ac4a0', // deep wildsong green
+    code: 'Vw',
+    cooldownTicks: 1200,
+    castFreezeTicks: 8, // the head goes back; the world waits a beat
+    shape: 'wild_howl',
+    damage: 0,
+    radius: 7,
+    becalmTicks: 160,
+    petHealFrac: 0.25,
+    petSurge: { dmgMult: 1.3, speedMult: 1.15, durationTicks: 200 },
+  },
 ];
 
 export const ABILITIES: ReadonlyMap<string, AbilityDef> = new Map(defs.map((d) => [d.id, d]));
@@ -4182,8 +4299,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   },
 
   // ------------------------- beastcraft, the keeper's ladder (THE
-  // WILD ANSWERS THE CALL): the fourth citizenship of style. One rung
-  // at launch — the ladder grows art by art, never a filled table.
+  // KEEPER'S TONGUE): the fourth citizenship of style at the full
+  // ten-rung standard. Four words spoken to the wild itself, five
+  // through the companion, and the asking at its shipped seat.
+  {
+    ability: 'soothe_the_wild',
+    style: 'beastcraft',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'The calm holds longer, and the word returns sooner.', becalmTicks: 300, cooldownTicks: 240 },
+      { note: 'The word carries further.', range: 6.5 },
+      { note: 'The calm spreads to beasts standing beside the mark.', radius: 2 },
+    ],
+  },
   {
     ability: 'gentle_the_wild',
     style: 'beastcraft',
@@ -4192,6 +4320,109 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'The call carries further, and the hand recovers sooner.', range: 6.5, cooldownTicks: 160 },
       { note: 'The asking grows shorter.', channelTicks: 170 },
       { note: 'The wild answers a familiar hand almost at once.', channelTicks: 140 },
+    ],
+  },
+  {
+    ability: 'come_to_heel',
+    style: 'beastcraft',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'The whistle is always on your lips.', cooldownTicks: 120 },
+      { note: 'The friend arrives a little mended.', petHealFrac: 0.1 },
+      {
+        note: 'It arrives with its blood up, ready for whatever called it.',
+        petSurge: { dmgMult: 1.15, speedMult: 1.1, durationTicks: 100 },
+      },
+    ],
+  },
+  {
+    ability: 'point_the_fang',
+    style: 'beastcraft',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The point reaches further, and comes back sooner.', range: 9, cooldownTicks: 160 },
+      {
+        note: 'The first bite after the point lands deep.',
+        petSurge: { dmgMult: 1.5, speedMult: 1, durationTicks: 60 },
+      },
+      { note: 'The dare carries: foes beside the mark turn on the friend too.', radius: 2 },
+    ],
+  },
+  {
+    ability: 'keepers_balm',
+    style: 'beastcraft',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'The poultice is packed thicker.', petHealFrac: 0.45, cooldownTicks: 320 },
+      { note: 'The balm sheds whatever rides the friend.', petCleanse: true },
+      {
+        note: 'It mends near whole, and the hide stays tough a while.',
+        petHealFrac: 0.6,
+        petGuard: { armor: 6, durationTicks: 200 },
+      },
+    ],
+  },
+  {
+    ability: 'strewn_bait',
+    style: 'beastcraft',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'A wider table, laid longer.', summon: { kind: 'bait', durationTicks: 400, radius: 8, power: 0 } },
+      { note: 'The hand scatters it sooner.', cooldownTicks: 380 },
+      {
+        note: 'The table calms its guests while they eat.',
+        summon: { kind: 'bait', durationTicks: 400, radius: 8, power: 1 },
+      },
+    ],
+  },
+  {
+    ability: 'the_quiet_walk',
+    style: 'beastcraft',
+    unlockLevel: 35,
+    ranks: [
+      { note: 'The quiet holds longer.', self: { beastTruce: true, durationTicks: 600 } },
+      { note: 'The walk begins again sooner.', cooldownTicks: 460 },
+      {
+        note: 'The wild parts: beasts ease aside as you pass.',
+        self: { beastTruce: true, beastPart: 1.5, durationTicks: 600 },
+      },
+    ],
+  },
+  {
+    ability: 'blood_of_the_pack',
+    style: 'beastcraft',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The howl runs hotter.', petSurge: { dmgMult: 1.4, speedMult: 1.15, durationTicks: 240 } },
+      { note: 'The blood stays up longer.', petSurge: { dmgMult: 1.4, speedMult: 1.15, durationTicks: 300 } },
+      {
+        note: 'The whole temper: its teeth carry their full wild weight, and its blows shove.',
+        petSurge: { dmgMult: 1.4, speedMult: 1.15, durationTicks: 300, temper: true },
+      },
+    ],
+  },
+  {
+    ability: 'the_keepers_cry',
+    style: 'beastcraft',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'The friend stands with more of itself.', petHealFrac: 0.5 },
+      { note: 'The cry returns to you sooner.', cooldownTicks: 900 },
+      {
+        note: 'It rises angry, hide tough and teeth quick.',
+        petSurge: { dmgMult: 1.3, speedMult: 1.15, durationTicks: 160 },
+        petGuard: { armor: 6, durationTicks: 160 },
+      },
+    ],
+  },
+  {
+    ability: 'voice_of_the_wild',
+    style: 'beastcraft',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The voice carries further.', radius: 9 },
+      { note: 'The awe holds longer, and the friend is mended deeper.', becalmTicks: 240, petHealFrac: 0.35 },
+      { note: 'The wild answers: the ghost pack runs the rim of the ring.', becalmTicks: 320 },
     ],
   },
 ];

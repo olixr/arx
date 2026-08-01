@@ -302,6 +302,19 @@ export class InputManager {
     return b;
   }
 
+  /**
+   * Ability bits currently driven by the touch/hotbar buttons — the
+   * hold-to-aim layer skips these (a thumb tap keeps its smart cast).
+   */
+  touchAbilityBits(): number {
+    let b = 0;
+    if (this.touchAbility1) b |= InputButton.Ability1;
+    if (this.touchAbility2) b |= InputButton.Ability2;
+    if (this.touchAbility3) b |= InputButton.Ability3;
+    if (this.touchAbility4) b |= InputButton.Ability4;
+    return b;
+  }
+
   /** The pad's Interact button (Ⓐ default) — polled for edge detection. */
   padInteractPressed(): boolean {
     if (this.uiCapture || this.buildCapture) return false;

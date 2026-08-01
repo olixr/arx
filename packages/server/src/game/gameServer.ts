@@ -100,6 +100,8 @@ import {
   type ChestKind,
   type DoorInfo,
   destructibleInfo,
+  groundAimed,
+  groundAimRange,
   nearestFloorTile,
   isSignTile,
   sanitizeSignText,
@@ -177,6 +179,8 @@ import {
   techniquesFor,
   tameDef,
   TAMES,
+  isWildBeast,
+  isBeastSovereign,
   petStatBlock,
   TECHNIQUES,
   SECRET_ARTS,
@@ -916,9 +920,9 @@ interface ServerStatus extends ActiveStatus {
   fromPet?: boolean;
 }
 
-/** A placed totem/trap/decoy. */
+/** A placed totem/trap/decoy — or the keeper's strewn table. */
 interface SummonComp {
-  kind: 'heal_totem' | 'snare_trap' | 'decoy';
+  kind: 'heal_totem' | 'snare_trap' | 'decoy' | 'bait';
   ownerEid: EntityId;
   radius: number;
   power: number;
@@ -957,6 +961,17 @@ interface PetComp {
    * limps home to rest. 0 = on its feet.
    */
   downedUntil: number;
+  /**
+   * THE KEEPER'S TONGUE: a surge window — the friend's teeth and
+   * fighting stride quicken until the tick passes; `temper` doubles
+   * the kit status and lets the blows shove; `artId` names the word
+   * that lit it (the quiet fx pulse keeps the working VISIBLE for its
+   * whole life, the tame-channel precedent). Optional on purpose:
+   * neither PetComp literal site carries it.
+   */
+  surge?: { dmgMult: number; speedMult: number; untilTick: number; temper?: boolean; artId?: string };
+  /** THE KEEPER'S TONGUE: a guard window — flat armor at the mitigate site. */
+  guard?: { armor: number; untilTick: number };
 }
 
 /** A telegraphed blast waiting on its fuse. */
@@ -1457,6 +1472,10 @@ interface PlayerBuff {
   critPct: number;
   /** Multiplier on this player's outgoing max hits (a surge working's lift). */
   dmgMult: number;
+  /** THE QUIET WALK: wild beasts do not mark the wearer while active. */
+  beastTruce: boolean;
+  /** THE WILD PARTS (rank IV): beasts within this many tiles ease aside. */
+  beastPart: number;
   untilTick: number;
   /**
    * Consumable channel: one 'tonic' + one 'food' buff may be active at
@@ -1483,6 +1502,8 @@ function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuf
     regenPer4s: 0,
     critPct: 0,
     dmgMult: 1,
+    beastTruce: false,
+    beastPart: 0,
     ...partial,
   };
 }
@@ -1503,6 +1524,23 @@ function surgeDmgMult(player: PlayerComp): number {
   let mult = 1;
   for (const b of player.buffs) mult += b.dmgMult - 1;
   return mult;
+}
+
+/** THE QUIET WALK: is a beast truce riding this walker right now? */
+function beastTruceActive(player: PlayerComp, tick: number): boolean {
+  for (const b of player.buffs) {
+    if (b.beastTruce && tick < b.untilTick) return true;
+  }
+  return false;
+}
+
+/** THE WILD PARTS: the widest live parting ring, 0 when none rides. */
+function beastPartRadius(player: PlayerComp, tick: number): number {
+  let r = 0;
+  for (const b of player.buffs) {
+    if (b.beastTruce && tick < b.untilTick && b.beastPart > r) r = b.beastPart;
+  }
+  return r;
 }
 
 /**
@@ -9697,6 +9735,438 @@ export class GameServer {
   }
 
   /**
+   * THE KEEPER'S TONGUE: still one wild heart. The fight leaves it —
+   * state, target, meter, all forgotten — and the sulk ledger keeps
+   * its eyes down for the hold. The feet plant too, so the calm READS
+   * as calm. A direct wound re-arms it regardless (damageNpc's forced
+   * aggro outranks every mercy — the becalm is a word, not a cage).
+   */
+  private becalmNpc(npcEid: EntityId, npc: NpcComp, ticks: number): void {
+    npc.state = 'idle';
+    npc.targetEid = null;
+    npc.windupTicks = 0;
+    npc.alert = 0;
+    npc.alertEid = null;
+    npc.helpEid = null;
+    npc.noAggroUntilTick = Math.max(npc.noAggroUntilTick, this.tickCount + ticks);
+    // The stilled body stands a breath before it drifts again —
+    // capped short of the hold so the calm ends in a wander, not a jolt.
+    npc.holdUntilTick = Math.max(npc.holdUntilTick, this.tickCount + Math.min(ticks, 120));
+    if (this.tickCount >= npc.poseUntilTick) this.poses.set(npcEid, PoseState.Idle);
+  }
+
+  /**
+   * The nearest live strewn table this beast may answer: inside the
+   * table's draw, and never further from home than the leash allows.
+   */
+  private baitNear(
+    pos: { x: number; y: number },
+    npc: NpcComp,
+  ): { x: number; y: number; power: number } | null {
+    let best: { x: number; y: number; power: number } | null = null;
+    let bestD = Infinity;
+    for (const [sumEid, sum] of this.summons) {
+      if (sum.kind !== 'bait') continue;
+      const spos = this.positions.get(sumEid);
+      if (!spos) continue;
+      const d = Math.hypot(spos.x - pos.x, spos.y - pos.y);
+      if (d > sum.radius || d >= bestD) continue;
+      if (Math.hypot(spos.x - npc.originX, spos.y - npc.originY) > npc.def.leashRange) continue;
+      bestD = d;
+      best = { x: spos.x, y: spos.y, power: sum.power };
+    }
+    return best;
+  }
+
+  /**
+   * The shared pay block for a keeper word: every refusal has spoken
+   * by the time this runs (A WORD COSTS NOTHING UNTIL IT IS HEARD).
+   * Mirrors the tame door's cost line for line.
+   */
+  private payKeeperCast(
+    eid: EntityId,
+    player: PlayerComp,
+    slot: AbilitySlot,
+    ab: AbilityDef,
+  ): void {
+    player.abilityCd[slot] = Math.max(1, Math.round(ab.cooldownTicks * player.gear.cooldownMult));
+    player.castFreezeUntilTick = this.tickCount + (ab.castFreezeTicks ?? 0);
+    player.lastCombatAt = Date.now();
+    this.revealPlayer(eid, player);
+    player.drawTicks = 0;
+    if (player.action) this.cancelAction(eid, player, 'cast');
+    this.setPose(eid, PoseState.Art, Math.max(6, (ab.castFreezeTicks ?? 0) + 4));
+    const pos = this.positions.get(eid);
+    this.bodyMoment(eid, player, 'cast', { x: pos?.x ?? 0, y: pos?.y ?? 0, style: 'beastcraft' });
+    this.sendCooldowns(player);
+  }
+
+  /** The nearest wild beast in the aim cone (the tame door's own eye). */
+  private wildBeastInCone(
+    pos: { x: number; y: number },
+    aim: number,
+    range: number,
+  ): { eid: EntityId; npc: NpcComp; x: number; y: number } | null {
+    let best: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
+    let bestD = Infinity;
+    for (const [npcEid, npc] of this.npcs) {
+      if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
+      if (!isWildBeast(npc.def)) continue;
+      if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
+      const npos = this.positions.get(npcEid);
+      if (!npos) continue;
+      const dx = npos.x - pos.x;
+      const dy = npos.y - pos.y;
+      const d = Math.hypot(dx, dy) - npc.def.radius;
+      if (d > range) continue;
+      let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff > 0.65 && d > 1.5) continue;
+      if (d < bestD) {
+        bestD = d;
+        best = { eid: npcEid, npc, x: npos.x, y: npos.y };
+      }
+    }
+    return best;
+  }
+
+  /**
+   * THE KEEPER'S TONGUE — the nine words' one door. Each word speaks
+   * its whole refusal ladder aloud BEFORE the cooldown is paid, then
+   * pays once and acts. The becalm words act only on the wild; the
+   * companion words need the companion; the capstone needs an ear of
+   * either kind in reach.
+   */
+  private tryKeeperArt(
+    eid: EntityId,
+    player: PlayerComp,
+    slot: AbilitySlot,
+    ab: AbilityDef,
+    aim: number,
+  ): void {
+    const pos = this.positions.get(eid);
+    if (!pos) return;
+    const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
+
+    if (ab.shape === 'becalm') {
+      const best = this.wildBeastInCone(pos, aim, ab.range ?? 5);
+      if (!best) {
+        sys('Nothing wild in reach hears you.');
+        return;
+      }
+      if (isBeastSovereign(best.npc.def)) {
+        sys('That one is too proud to be stilled.');
+        return;
+      }
+      this.payKeeperCast(eid, player, slot, ab);
+      const hold = ab.becalmTicks ?? 200;
+      this.becalmNpc(best.eid, best.npc, hold);
+      pos.dir = Math.atan2(best.y - pos.y, best.x - pos.x);
+      // Rank IV: the calm spreads to beasts standing beside the mark.
+      const spread = ab.radius ?? 0;
+      if (spread > 0) {
+        for (const [oEid, other] of this.npcs) {
+          if (oEid === best.eid || this.pets.has(oEid) || this.actors.has(oEid)) continue;
+          if (!isWildBeast(other.def) || isBeastSovereign(other.def)) continue;
+          const opos = this.positions.get(oEid);
+          if (!opos || Math.hypot(opos.x - best.x, opos.y - best.y) > spread) continue;
+          this.becalmNpc(oEid, other, hold);
+        }
+      }
+      this.broadcastFx({
+        t: 'fx', kind: 'becalm', x: best.x, y: best.y, radius: spread,
+        ticks: hold, id: ab.id, color: ab.color,
+      });
+      return;
+    }
+
+    if (ab.shape === 'wild_howl') {
+      const radius = ab.radius ?? 7;
+      const ears: Array<{ eid: EntityId; npc: NpcComp }> = [];
+      for (const [npcEid, npc] of this.npcs) {
+        if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
+        if (!isWildBeast(npc.def) || isBeastSovereign(npc.def)) continue;
+        if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
+        const npos = this.positions.get(npcEid);
+        if (!npos || Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > radius) continue;
+        ears.push({ eid: npcEid, npc });
+      }
+      const petEid = player.petEid;
+      const petUp = petEid !== null && (this.healths.get(petEid)?.hp ?? 0) > 0;
+      if (ears.length === 0 && !petUp) {
+        sys('Nothing wild is near enough to hear you.');
+        return;
+      }
+      this.payKeeperCast(eid, player, slot, ab);
+      const hold = ab.becalmTicks ?? 160;
+      for (const ear of ears) this.becalmNpc(ear.eid, ear.npc, hold);
+      if (petUp && petEid !== null) {
+        const pet = this.pets.get(petEid);
+        const health = this.healths.get(petEid);
+        if (pet && health) {
+          if (ab.petHealFrac) {
+            health.hp = Math.min(health.maxHp, health.hp + Math.ceil(health.maxHp * ab.petHealFrac));
+          }
+          if (ab.petSurge) {
+            pet.surge = {
+              dmgMult: ab.petSurge.dmgMult,
+              speedMult: ab.petSurge.speedMult,
+              untilTick: this.tickCount + ab.petSurge.durationTicks,
+              temper: ab.petSurge.temper,
+              artId: ab.id,
+            };
+          }
+        }
+      }
+      this.broadcastFx({
+        t: 'fx', kind: 'howl', x: pos.x, y: pos.y, radius,
+        ticks: hold, id: ab.id, color: ab.color,
+      });
+      // Every stilled head is its own readable beat (capped — the
+      // ring fx already owns the moment in a crowd).
+      for (const ear of ears.slice(0, 8)) {
+        const epos = this.positions.get(ear.eid);
+        if (!epos) continue;
+        this.broadcastFx({
+          t: 'fx', kind: 'becalm', x: epos.x, y: epos.y, radius: 0,
+          ticks: hold, id: ab.id, color: ab.color,
+        });
+      }
+      return;
+    }
+
+    // ---- pet_command: the words spoken to the companion.
+    const row = player.pets.find((p) => p.state === 'heel');
+    if (!row) {
+      sys('No friend walks with you.');
+      return;
+    }
+    const petEid = player.petEid;
+    const petHealth = petEid !== null ? this.healths.get(petEid) : undefined;
+    const petDown = petEid !== null && (petHealth?.hp ?? 0) <= 0;
+
+    switch (ab.command) {
+      case 'heel': {
+        if (petDown) {
+          sys('Your friend is down. Kneel to it instead.');
+          return;
+        }
+        this.payKeeperCast(eid, player, slot, ab);
+        // The road folds shut: the body (wherever it is, or isn't)
+        // re-forms at the keeper's side, its fight dropped, its
+        // wounds walking with it as they always do.
+        if (petEid !== null) {
+          const pet = this.pets.get(petEid);
+          if (pet) pet.target = null;
+          this.despawnPetEntity(player);
+        }
+        this.trySpawnPet(eid, player);
+        if (player.petEid !== null) {
+          const pet = this.pets.get(player.petEid);
+          const health = this.healths.get(player.petEid);
+          if (health && ab.petHealFrac) {
+            health.hp = Math.min(health.maxHp, health.hp + Math.ceil(health.maxHp * ab.petHealFrac));
+          }
+          if (pet && ab.petSurge) {
+            pet.surge = {
+              dmgMult: ab.petSurge.dmgMult,
+              speedMult: ab.petSurge.speedMult,
+              untilTick: this.tickCount + ab.petSurge.durationTicks,
+              temper: ab.petSurge.temper,
+              artId: ab.id,
+            };
+          }
+          const ppos = this.positions.get(player.petEid);
+          if (ppos) {
+            this.broadcastFx({
+              t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: ppos.x, y2: ppos.y,
+              radius: 0, id: ab.id, color: ab.color,
+            });
+          }
+          sys(`${row.name} is at your side.`);
+        }
+        return;
+      }
+      case 'fang': {
+        if (petEid === null) {
+          sys('Your friend is not beside you.');
+          return;
+        }
+        if (petDown) {
+          sys('Your friend is down. Kneel to it instead.');
+          return;
+        }
+        const range = ab.range ?? 7;
+        let mark: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
+        let bestD = Infinity;
+        for (const [npcEid, npc] of this.npcs) {
+          if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
+          if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
+          const npos = this.positions.get(npcEid);
+          if (!npos) continue;
+          const dx = npos.x - pos.x;
+          const dy = npos.y - pos.y;
+          const d = Math.hypot(dx, dy) - npc.def.radius;
+          if (d > range) continue;
+          let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+          if (diff > Math.PI) diff = Math.PI * 2 - diff;
+          if (diff > 0.65 && d > 1.5) continue;
+          if (d < bestD) {
+            bestD = d;
+            mark = { eid: npcEid, npc, x: npos.x, y: npos.y };
+          }
+        }
+        if (!mark) {
+          sys('Nothing in reach to point at.');
+          return;
+        }
+        this.payKeeperCast(eid, player, slot, ab);
+        pos.dir = Math.atan2(mark.y - pos.y, mark.x - pos.x);
+        const pet = this.pets.get(petEid);
+        if (pet) {
+          pet.target = mark.eid;
+          // Rank III: the first bite after the point lands deep.
+          if (ab.petSurge) {
+            pet.surge = {
+              dmgMult: ab.petSurge.dmgMult,
+              speedMult: ab.petSurge.speedMult,
+              untilTick: this.tickCount + ab.petSurge.durationTicks,
+              temper: ab.petSurge.temper,
+              artId: ab.id,
+            };
+          }
+        }
+        // The mark forgets you entirely: its eyes are pulled onto the
+        // friend through the one aggro door (peace-break aims the pet
+        // and charges no assault — the Phase 2 law).
+        this.npcAggro(mark.eid, mark.npc, petEid, { force: true });
+        // Rank IV: the dare carries to whoever stands beside the mark.
+        const dare = ab.radius ?? 0;
+        if (dare > 0) {
+          for (const [oEid, other] of this.npcs) {
+            if (oEid === mark.eid || this.pets.has(oEid) || this.actors.has(oEid)) continue;
+            if (other.def.damage <= 0 || (this.healths.get(oEid)?.hp ?? 0) <= 0) continue;
+            const opos = this.positions.get(oEid);
+            if (!opos || Math.hypot(opos.x - mark.x, opos.y - mark.y) > dare) continue;
+            this.npcAggro(oEid, other, petEid, { force: true });
+          }
+        }
+        this.broadcastFx({
+          t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: mark.x, y2: mark.y,
+          radius: dare, id: ab.id, color: ab.color,
+        });
+        return;
+      }
+      case 'mend': {
+        if (petEid === null) {
+          sys('Your friend is not beside you.');
+          return;
+        }
+        if (petDown) {
+          sys('Your friend is down. Kneel to it instead.');
+          return;
+        }
+        const ppos = this.positions.get(petEid);
+        if (!ppos || Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > (ab.range ?? 8)) {
+          sys('Your friend is too far for the throw.');
+          return;
+        }
+        this.payKeeperCast(eid, player, slot, ab);
+        const pet = this.pets.get(petEid);
+        const health = this.healths.get(petEid);
+        if (health && ab.petHealFrac) {
+          health.hp = Math.min(health.maxHp, health.hp + Math.max(1, Math.ceil(health.maxHp * ab.petHealFrac)));
+        }
+        // Rank III: the balm sheds whatever rides the friend.
+        if (ab.petCleanse) this.statuses.delete(petEid);
+        // Rank IV: the hide stays tough a while.
+        if (pet && ab.petGuard) {
+          pet.guard = { armor: ab.petGuard.armor, untilTick: this.tickCount + ab.petGuard.durationTicks };
+        }
+        this.broadcastFx({
+          t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: ppos.x, y2: ppos.y,
+          radius: 0, id: ab.id, color: ab.color,
+        });
+        return;
+      }
+      case 'surge': {
+        if (petEid === null) {
+          sys('Your friend is not beside you.');
+          return;
+        }
+        if (petDown) {
+          sys('Your friend is down. Kneel to it instead.');
+          return;
+        }
+        this.payKeeperCast(eid, player, slot, ab);
+        const pet = this.pets.get(petEid);
+        if (pet && ab.petSurge) {
+          pet.surge = {
+            dmgMult: ab.petSurge.dmgMult,
+            speedMult: ab.petSurge.speedMult,
+            untilTick: this.tickCount + ab.petSurge.durationTicks,
+            temper: ab.petSurge.temper,
+              artId: ab.id,
+          };
+        }
+        const ppos = this.positions.get(petEid);
+        this.broadcastFx({
+          t: 'fx', kind: 'command', x: pos.x, y: pos.y,
+          x2: ppos?.x ?? pos.x, y2: ppos?.y ?? pos.y,
+          radius: 0, ticks: ab.petSurge?.durationTicks ?? 0, id: ab.id, color: ab.color,
+        });
+        return;
+      }
+      case 'rise': {
+        if (petEid === null || !petDown) {
+          sys('No fallen friend hears you.');
+          return;
+        }
+        const ppos = this.positions.get(petEid);
+        if (!ppos || Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > (ab.range ?? 10)) {
+          sys('No fallen friend hears you.');
+          return;
+        }
+        this.payKeeperCast(eid, player, slot, ab);
+        // The rise, by word instead of kneel: the tend's completion
+        // body at range — no salve, no kneel XP (the cry is an art,
+        // never a new faucet), the same honest stand-where-it-fell.
+        const pet = this.pets.get(petEid)!;
+        const npc = this.npcs.get(petEid);
+        const health = this.healths.get(petEid)!;
+        const bc = levelForXp(player.skills.beastcraft ?? 0);
+        const base = NPCS.get(row.species);
+        const stats = base ? petStatBlock(row.species, petLevelFor(row.xp, base.level, bc), bc) : null;
+        health.hp = Math.max(1, Math.ceil((stats?.maxHp ?? health.maxHp) * (ab.petHealFrac ?? 0.35)));
+        pet.downedUntil = 0;
+        pet.lastHurtTick = this.tickCount;
+        this.poses.set(petEid, PoseState.Idle);
+        if (npc) npc.poseUntilTick = 0;
+        // Rank IV: it rises angry, hide tough and teeth quick.
+        if (ab.petSurge) {
+          pet.surge = {
+            dmgMult: ab.petSurge.dmgMult,
+            speedMult: ab.petSurge.speedMult,
+            untilTick: this.tickCount + ab.petSurge.durationTicks,
+            temper: ab.petSurge.temper,
+              artId: ab.id,
+          };
+        }
+        if (ab.petGuard) {
+          pet.guard = { armor: ab.petGuard.armor, untilTick: this.tickCount + ab.petGuard.durationTicks };
+        }
+        this.broadcastFx({
+          t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: ppos.x, y2: ppos.y,
+          radius: 1, id: ab.id, color: ab.color,
+        });
+        sys(`${row.name} hears you and stands.`);
+        this.sendPet(player);
+        return;
+      }
+    }
+  }
+
+  /**
    * Stand the heel companion beside its keeper (or exactly where it
    * was gentled). Safe no-op when a body already stands or nothing
    * is at heel — every arrival path may call it blind.
@@ -9804,6 +10274,22 @@ export class GameServer {
       return;
     }
 
+    // THE VISIBLE WORKING: while a surge rides the friend, the word
+    // that lit it pulses quietly at its shoulders (the tame channel's
+    // cadence), so the working stays readable for its whole life.
+    if (pet.surge && this.tickCount < pet.surge.untilTick && (this.tickCount + eid) % 25 === 0) {
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'command',
+        x: pos.x,
+        y: pos.y,
+        x2: pos.x,
+        y2: pos.y,
+        radius: 0,
+        id: pet.surge.artId ?? 'blood_of_the_pack',
+      });
+    }
+
     // ---- THE FANG BESIDE YOU: the fight, when one is on.
     if (pet.target !== null) {
       const tnpc = this.npcs.get(pet.target);
@@ -9885,6 +10371,10 @@ export class GameServer {
         let mx = (tpos.x - pos.x) / (d + tnpc.def.radius);
         let my = (tpos.y - pos.y) / (d + tnpc.def.radius);
         let speed = npc.def.speed;
+        // The surge quickens the FIGHTING stride only — the heel walk
+        // keeps its own unhurried law (and the 12 t/s lane is never
+        // in question from a wild body's base).
+        if (pet.surge && this.tickCount < pet.surge.untilTick) speed *= pet.surge.speedMult;
         if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
         if (d > npc.def.attackRange * 1.5 + 0.3) {
           ({ mx, my } = this.separateHeading(eid, pos, npc.def.radius, mx, my));
@@ -9996,17 +10486,22 @@ export class GameServer {
     const level = petLevelFor(row.xp, base.level, bc);
     const stats = petStatBlock(row.species, level, bc);
     if (!stats) return;
-    const maxHit = Math.round(npcMaxHit(stats.die, level) * stats.dmgMult);
+    // THE KEEPER'S TONGUE: a live surge window quickens the teeth;
+    // THE WHOLE TEMPER doubles the kit's status and lets blows shove.
+    const surge = pet.surge && this.tickCount < pet.surge.untilTick ? pet.surge : undefined;
+    const maxHit = Math.round(npcMaxHit(stats.die, level) * stats.dmgMult * (surge?.dmgMult ?? 1));
     const dmg = Math.floor(Math.random() * (maxHit + 1));
     // THE SPECIES SPEAK: the bite carries the kit's status (or the
     // wild body's own), and the gore shoves — the same teeth it was
     // born with, re-aimed. Status DoTs are marked fromPet at the
     // application site so their ticks train nobody's school.
     const kit = tameDef(row.species)?.kit;
+    const bite = kit?.bite ?? base.attackStatus;
+    const temper = surge?.temper === true;
     this.damageNpc(targetEid, dmg, pet.ownerEid, 'beastcraft', {
       viaPet: { petEid },
-      status: kit?.bite ?? base.attackStatus,
-      knockbackMult: kit?.knockback ?? 1,
+      status: bite && temper ? { ...bite, power: bite.power * 2 } : bite,
+      knockbackMult: temper ? Math.max(kit?.knockback ?? 1, 1.2) : (kit?.knockback ?? 1),
     });
   }
 
@@ -10039,7 +10534,11 @@ export class GameServer {
     const base = row ? NPCS.get(row.species) : undefined;
     const stats =
       row && base ? petStatBlock(row.species, petLevelFor(row.xp, base.level, bc), bc) : null;
-    const dmg = opts.pierceArmor ? raw : mitigate(raw, 0, stats?.armor ?? 0, opts.attackerLevel ?? 1);
+    // THE KEEPER'S TONGUE: a live guard window thickens the hide.
+    const guardArmor = pet.guard && this.tickCount < pet.guard.untilTick ? pet.guard.armor : 0;
+    const dmg = opts.pierceArmor
+      ? raw
+      : mitigate(raw, 0, (stats?.armor ?? 0) + guardArmor, opts.attackerLevel ?? 1);
     this.broadcastHit(petEid, dmg);
     pet.lastHurtTick = this.tickCount;
     if (dmg <= 0) return; // the whiff and the clank both write nothing
@@ -12791,7 +13290,14 @@ export class GameServer {
     }
   }
 
-  private tryCastAbility(eid: EntityId, player: PlayerComp, slot: AbilitySlot, aim: number): void {
+  private tryCastAbility(
+    eid: EntityId,
+    player: PlayerComp,
+    slot: AbilitySlot,
+    aim: number,
+    /** THE HELD SIGIL: the client ring's aimed ground point, if any. */
+    aimPt?: { x: number; y: number },
+  ): void {
     const ab = this.slotAbility(player, slot);
     if (!ab) return;
     if (player.abilityCd[slot] > 0) return;
@@ -12809,6 +13315,30 @@ export class GameServer {
     if (ab.shape === 'tame') {
       this.tryTameCast(eid, player, slot, ab, aim);
       return;
+    }
+    // THE KEEPER'S TONGUE: every keeper word pre-flights its refusals
+    // aloud before any cost, exactly as the asking does.
+    if (ab.shape === 'becalm' || ab.shape === 'pet_command' || ab.shape === 'wild_howl') {
+      this.tryKeeperArt(eid, player, slot, ab, aim);
+      return;
+    }
+
+    // THE HELD SIGIL: a point-aimed art honors the ring the caster
+    // released on — clamped to the art's OWN reach by the same ruler
+    // the client ring used, so the promise and the blast agree. The
+    // aim angle re-derives from the point (facing, leap direction and
+    // cast fx all follow the throw). Frames without a point (touch,
+    // hotbar taps, old clients) keep the aim-assisted resolve.
+    let targetPos: { x: number; y: number } | undefined;
+    if (aimPt && groundAimed(ab)) {
+      const cpos = this.positions.must(eid);
+      const reach = groundAimRange(ab);
+      const dx = aimPt.x - cpos.x;
+      const dy = aimPt.y - cpos.y;
+      const dist = Math.hypot(dx, dy);
+      const k = dist > reach && dist > 0 ? reach / dist : 1;
+      targetPos = { x: cpos.x + dx * k, y: cpos.y + dy * k };
+      if (dist > 0.05) aim = Math.atan2(dy, dx);
     }
 
     // Cloth's cooldown discount lands here — where every cooldown is set.
@@ -12845,7 +13375,7 @@ export class GameServer {
           ? player.equipment.sigil
           : undefined;
     const powerMult = trinket?.roll ? trinketPowerMult(trinket.roll.rar, trinket.roll.pwr) : 1;
-    this.castAbility(eid, ab, aim, style, level, false, undefined, powerMult);
+    this.castAbility(eid, ab, aim, style, level, false, targetPos, powerMult);
     // THE DEEPER SIGIL: the art is away, so the cast is a moment. Fired
     // here rather than inside castAbility on purpose — that door also
     // serves NPC casters and every relic and trinket echo, and only a
@@ -13398,7 +13928,12 @@ export class GameServer {
       case 'leap_slam': {
         // Cross the gap the loud way: the landing is a real blast that
         // shoves (or with negative knockback, DRAGS) from the crater.
-        const dist = Math.abs(ab.dashTiles ?? 4);
+        // An aimed point (THE HELD SIGIL) sets the hop's length too —
+        // a ring placed short lands short; the art's reach still caps it.
+        const hop = Math.abs(ab.dashTiles ?? 4);
+        const dist = targetPos
+          ? Math.min(hop, Math.hypot(targetPos.x - pos.x, targetPos.y - pos.y))
+          : hop;
         const dirX = Math.cos(aim);
         const dirY = Math.sin(aim);
         const startX = pos.x;
@@ -13594,7 +14129,8 @@ export class GameServer {
       self.onHitStatus !== undefined ||
       self.armor !== undefined ||
       self.reflectFrac !== undefined ||
-      self.offhandWeight !== undefined
+      self.offhandWeight !== undefined ||
+      self.beastTruce !== undefined
     ) {
       player.buffs.push(
         mkBuff({
@@ -13607,6 +14143,9 @@ export class GameServer {
           reflectFrac: self.reflectFrac ?? 0,
           // THE MIRRORED HAND: the twin school's stance rail.
           offhandWeight: self.offhandWeight ?? 0,
+          // THE QUIET WALK: the truce (and rank IV's parting) ride the buff.
+          beastTruce: self.beastTruce ?? false,
+          beastPart: self.beastPart ?? 0,
           onHitStatus: self.onHitStatus,
           untilTick: this.tickCount + self.durationTicks,
         }),
@@ -14862,6 +15401,19 @@ export class GameServer {
     health.hp -= dmg;
     this.setNpcPose(npcEid, npc, PoseState.Hurt, 4);
     npc.windupTicks = 0; // a solid hit interrupts a wound-up attack
+
+    // THE TRUCE IS HONEST: the walker's OWN landed wound on a wild
+    // beast ends The Quiet Walk at once (a companion's bite is the
+    // companion's — viaPet never breaks its keeper's quiet).
+    if (!opts.viaPet && isWildBeast(npc.def)) {
+      const walker = this.players.get(attackerEid);
+      if (walker && beastTruceActive(walker, this.tickCount)) {
+        for (const b of walker.buffs) {
+          if (b.beastTruce) b.untilTick = this.tickCount;
+        }
+        walker.session?.sendJson({ t: 'chat', channel: 'system', text: 'The quiet is broken.' });
+      }
+    }
 
     const npos = this.positions.get(npcEid);
     if (npos && (kx !== 0 || ky !== 0)) {
@@ -17076,6 +17628,17 @@ export class GameServer {
     for (const [playerEid, player] of this.players) {
       if (player.session === null && player.disconnectedAt !== null) continue;
       if (player.hidden) continue;
+      // THE QUIET WALK: a wild beast simply does not mark a walker
+      // under truce — checked here, inside the one perception scan
+      // (the factions precedent). People and their posted watch see
+      // straight through the working; it is the wild's own word.
+      if (
+        !this.actors.has(eid) &&
+        isWildBeast(npc.def) &&
+        beastTruceActive(player, this.tickCount)
+      ) {
+        continue;
+      }
       const ppos = this.positions.get(playerEid);
       if (!ppos) continue;
       const dx = ppos.x - pos.x;
@@ -17845,26 +18408,66 @@ export class GameServer {
         // Hands on the flank: a milked animal plants its feet — no
         // wander roll, no origin pull, until the milker lets go.
       } else {
-        // Idle wander: drift somewhere near the origin now and then.
-        if (this.tickCount >= npc.wanderUntilTick) {
-          if (Math.random() < 0.4) {
-            const angle = Math.random() * Math.PI * 2;
-            npc.wanderX = Math.cos(angle);
-            npc.wanderY = Math.sin(angle);
-          } else {
-            npc.wanderX = 0;
-            npc.wanderY = 0;
+        // THE WILD PARTS (THE KEEPER'S TONGUE, rank IV of the truce):
+        // a beast at rest eases aside as a walker under the parted
+        // quiet passes — never shoved, just yielding the ground.
+        let parted = false;
+        const wildHere = isWildBeast(npc.def) && !isBeastSovereign(npc.def);
+        if (wildHere) {
+          for (const [wEid, walker] of this.players) {
+            if (walker.session === null && walker.disconnectedAt !== null) continue;
+            const pr = beastPartRadius(walker, this.tickCount);
+            if (pr <= 0) continue;
+            const wpos = this.positions.get(wEid);
+            if (!wpos) continue;
+            const pd = Math.hypot(pos.x - wpos.x, pos.y - wpos.y);
+            if (pd > pr || pd < 0.01) continue;
+            moveX = ((pos.x - wpos.x) / pd) * 0.5;
+            moveY = ((pos.y - wpos.y) / pd) * 0.5;
+            parted = true;
+            break;
           }
-          npc.wanderUntilTick = this.tickCount + 20 + Math.floor(Math.random() * 60);
         }
-        // Pull back toward origin when drifting too far.
-        const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
-        if (fromOrigin > 3) {
-          npc.wanderX = (npc.originX - pos.x) / fromOrigin;
-          npc.wanderY = (npc.originY - pos.y) / fromOrigin;
+        // THE STREWN TABLE: a laid bait draws the wild at rest to come
+        // and nose it. It pulls, never breaks — only this idle branch
+        // answers, a blood-up chase does not care about supper — and
+        // the leash stays honest: no table drags a beast off its range.
+        const bait = !parted && wildHere ? this.baitNear(pos, npc) : null;
+        if (bait) {
+          const bd = Math.hypot(bait.x - pos.x, bait.y - pos.y);
+          if (bd > 1.1) {
+            moveX = (bait.x - pos.x) / bd;
+            moveY = (bait.y - pos.y) / bd;
+          } else {
+            // Nosing the ground: feet planted, head at the supper —
+            // and a rank IV table calms its guests while they eat.
+            pos.dir = Math.atan2(bait.y - pos.y, bait.x - pos.x);
+            if (bait.power > 0) {
+              npc.noAggroUntilTick = Math.max(npc.noAggroUntilTick, this.tickCount + 30);
+            }
+          }
+        } else if (!parted) {
+          // Idle wander: drift somewhere near the origin now and then.
+          if (this.tickCount >= npc.wanderUntilTick) {
+            if (Math.random() < 0.4) {
+              const angle = Math.random() * Math.PI * 2;
+              npc.wanderX = Math.cos(angle);
+              npc.wanderY = Math.sin(angle);
+            } else {
+              npc.wanderX = 0;
+              npc.wanderY = 0;
+            }
+            npc.wanderUntilTick = this.tickCount + 20 + Math.floor(Math.random() * 60);
+          }
+          // Pull back toward origin when drifting too far.
+          const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
+          if (fromOrigin > 3) {
+            npc.wanderX = (npc.originX - pos.x) / fromOrigin;
+            npc.wanderY = (npc.originY - pos.y) / fromOrigin;
+          }
+          moveX = npc.wanderX * 0.5;
+          moveY = npc.wanderY * 0.5;
         }
-        moveX = npc.wanderX * 0.5;
-        moveY = npc.wanderY * 0.5;
       }
 
       if (moveX !== 0 || moveY !== 0) {
@@ -18442,9 +19045,21 @@ export class GameServer {
           p.state === 'resting' && p.restedAt !== null
             ? ` rest=${Math.max(0, Math.ceil((p.restedAt + PET_REST_HOME_MS - Date.now()) / 1000))}s`
             : '';
+        // THE KEEPER'S TONGUE: live surge/guard windows, for the bench
+        // and the proving harness both.
+        const surgeLeft =
+          comp?.surge && comp.surge.untilTick > this.tickCount
+            ? ` surge=${comp.surge.untilTick - this.tickCount}t x${comp.surge.dmgMult}${comp.surge.temper ? ' temper' : ''}`
+            : '';
+        const guardLeft =
+          comp?.guard && comp.guard.untilTick > this.tickCount
+            ? ` guard=${comp.guard.untilTick - this.tickCount}t +${comp.guard.armor}`
+            : '';
         return (
           `${p.slot}: ${p.name} (${p.species}) ${p.state}${restLeft}` +
-          (live ? ` LIVE d=${d} hp=${hp?.hp}/${hp?.maxHp} tgt=${comp?.target ?? '-'}${downLeft}` : '') +
+          (live
+            ? ` LIVE d=${d} hp=${hp?.hp}/${hp?.maxHp} tgt=${comp?.target ?? '-'}${downLeft}${surgeLeft}${guardLeft}`
+            : '') +
           ` xp=${p.xp}`
         );
       });
@@ -19599,10 +20214,17 @@ export class GameServer {
       }
       const weaponsAway = player.sheathed || this.tickCount < player.drawLockUntilTick;
       if (!weaponsAway) {
-        if (pressed & InputButton.Ability1) this.tryCastAbility(eid, player, 0, frame.aim);
-        if (pressed & InputButton.Ability2) this.tryCastAbility(eid, player, 1, frame.aim);
-        if (pressed & InputButton.Ability3) this.tryCastAbility(eid, player, 2, frame.aim);
-        if (pressed & InputButton.Ability4) this.tryCastAbility(eid, player, 3, frame.aim);
+        // THE HELD SIGIL: a frame may carry the aimed ground point the
+        // client's held ring settled on. sanitizeInputFrame already
+        // dropped half or hostile points; the cast door range-clamps.
+        const aimPt =
+          frame.tx !== undefined && frame.ty !== undefined
+            ? { x: frame.tx, y: frame.ty }
+            : undefined;
+        if (pressed & InputButton.Ability1) this.tryCastAbility(eid, player, 0, frame.aim, aimPt);
+        if (pressed & InputButton.Ability2) this.tryCastAbility(eid, player, 1, frame.aim, aimPt);
+        if (pressed & InputButton.Ability3) this.tryCastAbility(eid, player, 2, frame.aim, aimPt);
+        if (pressed & InputButton.Ability4) this.tryCastAbility(eid, player, 3, frame.aim, aimPt);
       }
       // Dodge dash: same seq-cooldown rule the client predicts with.
       if (
