@@ -28,6 +28,7 @@ import {
   awningInfo,
   type AwningInfo,
   AWNING_HOST_TILES,
+  wallHungInfo,
   diagWallInfo,
   doorInfo,
   hashCoords,
@@ -6013,11 +6014,32 @@ export class Renderer {
     garrison: boolean,
   ): void {
     const d = game.world.detailAt(tx, ty);
-    if (d !== Detail.BannerCrown && d !== Detail.BannerMoon && d !== Detail.Tapestry) return;
+    const info = wallHungInfo(d);
+    if (!info) return;
     if (whT < (garrison ? 2.7 : 1.9)) return;
-    if (d === Detail.Tapestry) {
-      this.tapestryOnFace(game, tx, ty, px0, s, garrison);
-      return;
+    // THE WALL TAKES A HANGING: the player families dispatch to their
+    // own painters; the authored royals keep the code below.
+    switch (info.kind) {
+      case 'tapestry':
+        this.tapestryOnFace(game, tx, ty, px0, s, garrison);
+        return;
+      case 'banner':
+        this.playerBannerOnFace(tx, ty, px0, s, info.dye ?? 0);
+        return;
+      case 'pennant':
+        this.pennantOnFace(tx, ty, px0, s, info.dye ?? 0);
+        return;
+      case 'sign':
+        this.bracketSignOnFace(tx, ty, px0, s, info.motif ?? 0);
+        return;
+      case 'trellis':
+        this.trellisOnFace(tx, ty, px0, s, info.species ?? 0);
+        return;
+      case 'basket':
+        this.wallBasketOnFace(tx, ty, px0, s);
+        return;
+      default:
+        break; // crown/moon fall through to the royal banner below
     }
     const ctx = this.ctx;
     // ---- The hanging banner: the house sigil on a swallowtail drop.
@@ -6150,6 +6172,480 @@ export class Renderer {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.fillRect(cx - bw / 2 - s * 0.108, rodY - s * 0.016, s * 0.015, s * 0.015);
     ctx.fillRect(cx + bw / 2 + s * 0.082, rodY - s * 0.016, s * 0.015, s * 0.015);
+  }
+
+  /**
+   * THE WALL TAKES A HANGING — the player's banner: the royal
+   * swallowtail grammar in the ten common dyes, a woven diamond
+   * where the crown would sit. Two-beat cloth (hoist sways, tails
+   * trail), its own shadow seating it on the masonry.
+   */
+  private playerBannerOnFace(tx: number, ty: number, px0: number, s: number, dye: number): void {
+    const ctx = this.ctx;
+    const cloth = Renderer.AWNING_CLOTHS[dye]!.a;
+    const trim = Renderer.AWNING_CLOTHS[dye]!.b;
+    const cx = px0 + s * 0.5;
+    const rodY = -s * 1.75;
+    const bw = s * 0.46;
+    const bl = s * 1.05;
+    const t = performance.now() / 1000;
+    const ph = tx * 1.7 + ty * 0.9;
+    const sway = Math.sin(t * 1.15 + ph) * s * 0.02;
+    const lag = Math.sin(t * 1.15 + ph - 0.9) * s * 0.03;
+    const yTop = rodY + s * 0.035;
+    const yMid = yTop + bl * 0.66;
+    const yBot = yTop + bl;
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+    ctx.fillRect(cx - bw / 2 + s * 0.04, yTop + s * 0.05, bw, bl - s * 0.1);
+    const path = new Path2D();
+    path.moveTo(cx - bw / 2, yTop);
+    path.lineTo(cx + bw / 2, yTop);
+    path.lineTo(cx + bw / 2 + sway, yMid);
+    path.lineTo(cx + bw / 2 + lag, yBot);
+    path.lineTo(cx + lag, yBot - s * 0.16);
+    path.lineTo(cx - bw / 2 + lag, yBot);
+    path.lineTo(cx - bw / 2 + sway, yMid);
+    path.closePath();
+    ctx.fillStyle = cloth;
+    ctx.fill(path);
+    ctx.save();
+    ctx.clip(path);
+    // Header band + trim thread; folds so the cloth hangs, not prints.
+    ctx.fillStyle = shade(cloth, 14);
+    ctx.fillRect(cx - bw / 2, yTop, bw, s * 0.06);
+    ctx.fillStyle = trim;
+    ctx.fillRect(cx - bw / 2, yTop + s * 0.06, bw, s * 0.02);
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.14)';
+    ctx.fillRect(cx - bw * 0.2, yTop + s * 0.09, s * 0.04, bl * 0.76);
+    ctx.fillRect(cx + bw * 0.14, yTop + s * 0.09, s * 0.04, bl * 0.7);
+    // The woven diamond at the hoist's heart, trim on cloth.
+    const dy2 = yTop + bl * 0.36;
+    const r2 = bw * 0.26;
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.moveTo(cx, dy2 - r2);
+    ctx.lineTo(cx + r2 * 0.72, dy2);
+    ctx.lineTo(cx, dy2 + r2);
+    ctx.lineTo(cx - r2 * 0.72, dy2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = cloth;
+    ctx.beginPath();
+    ctx.moveTo(cx, dy2 - r2 * 0.45);
+    ctx.lineTo(cx + r2 * 0.32, dy2);
+    ctx.lineTo(cx, dy2 + r2 * 0.45);
+    ctx.lineTo(cx - r2 * 0.32, dy2);
+    ctx.closePath();
+    ctx.fill();
+    // Hem thread tracing the swallowtail.
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(cx - bw / 2 + lag + s * 0.015, yBot - s * 0.045);
+    ctx.lineTo(cx + lag, yBot - s * 0.2);
+    ctx.lineTo(cx + bw / 2 + lag - s * 0.015, yBot - s * 0.045);
+    ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.028);
+    ctx.stroke(path);
+    // The iron rod, strapped to the wall, plain caps for plain folk.
+    ctx.fillStyle = '#2c2836';
+    ctx.fillRect(cx - bw / 2 - s * 0.07, rodY - s * 0.022, bw + s * 0.14, s * 0.045);
+    ctx.fillStyle = shade(cloth, -8);
+    for (const fx of [-bw * 0.36, 0, bw * 0.36])
+      ctx.fillRect(cx + fx - s * 0.03, rodY - s * 0.045, s * 0.06, s * 0.1);
+    ctx.fillStyle = '#454052';
+    ctx.fillRect(cx - bw / 2 - s * 0.09, rodY - s * 0.035, s * 0.032, s * 0.07);
+    ctx.fillRect(cx + bw / 2 + s * 0.058, rodY - s * 0.035, s * 0.032, s * 0.07);
+  }
+
+  /**
+   * The pennant string: a swagged line under the eave, little flags
+   * alternating the dye and its cream partner, each a beat out of
+   * phase with its neighbour (the valance law on a rope).
+   */
+  private pennantOnFace(tx: number, ty: number, px0: number, s: number, dye: number): void {
+    const ctx = this.ctx;
+    const cloth = Renderer.AWNING_CLOTHS[dye]!;
+    const t = performance.now() / 1000;
+    const x0 = px0 + s * 0.06;
+    const x1 = px0 + s * 0.94;
+    const yEnd = -s * 1.84;
+    const sag = s * 0.13;
+    const ropeAt = (f: number): { x: number; y: number } => {
+      // Quadratic swag: the catenary's cheap honest cousin.
+      const x = x0 + (x1 - x0) * f;
+      const y = yEnd + sag * 4 * f * (1 - f);
+      return { x, y };
+    };
+    // The swag's soft shadow seats the string on the masonry.
+    ctx.strokeStyle = 'rgba(18, 12, 26, 0.18)';
+    ctx.lineWidth = Math.max(1, s * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(x0 + s * 0.03, yEnd + s * 0.05);
+    ctx.quadraticCurveTo((x0 + x1) / 2 + s * 0.03, yEnd + sag * 2 + s * 0.05, x1 + s * 0.03, yEnd + s * 0.05);
+    ctx.stroke();
+    // Flags first (they hang BEHIND the rope's near edge).
+    for (let k = 0; k < 4; k++) {
+      const f = 0.14 + k * 0.24;
+      const p = ropeAt(f);
+      const fw = s * 0.15;
+      const fh = s * 0.24;
+      const lean = Math.sin(t * 2.0 + tx * 1.3 + k * 1.9) * s * 0.035;
+      ctx.fillStyle = (k & 1) === 0 ? cloth.a : cloth.b;
+      ctx.beginPath();
+      ctx.moveTo(p.x - fw / 2, p.y);
+      ctx.lineTo(p.x + fw / 2, p.y);
+      ctx.lineTo(p.x + lean, p.y + fh);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+      ctx.lineWidth = Math.max(1, s * 0.018);
+      ctx.stroke();
+    }
+    // The rope itself, pinned at both ends.
+    ctx.strokeStyle = '#6e5638';
+    ctx.lineWidth = Math.max(1, s * 0.024);
+    ctx.beginPath();
+    ctx.moveTo(x0, yEnd);
+    ctx.quadraticCurveTo((x0 + x1) / 2, yEnd + sag * 2, x1, yEnd);
+    ctx.stroke();
+    ctx.fillStyle = '#454052';
+    ctx.fillRect(x0 - s * 0.02, yEnd - s * 0.03, s * 0.04, s * 0.06);
+    ctx.fillRect(x1 - s * 0.02, yEnd - s * 0.03, s * 0.04, s * 0.06);
+  }
+
+  /**
+   * The bracket sign: a wrought arm off the wall, the trade shingle
+   * swinging under it on two rings (the HangingSign's lagged bob).
+   * Eight carved motifs — a smith marks a smithy, an inn its bed —
+   * chunky enough to read at street zoom.
+   */
+  private bracketSignOnFace(tx: number, ty: number, px0: number, s: number, motif: number): void {
+    const ctx = this.ctx;
+    const t = performance.now() / 1000;
+    const cx = px0 + s * 0.5;
+    const armY = -s * 1.74;
+    // The arm projects off the face toward the street: in this
+    // projection that reads as a slight down-screen drop to its tip.
+    const mountX = cx - s * 0.3;
+    const tipX = cx + s * 0.16;
+    const tipY = armY + s * 0.05;
+    ctx.strokeStyle = '#2c2836';
+    ctx.lineWidth = Math.max(1, s * 0.038);
+    ctx.beginPath();
+    ctx.moveTo(mountX, armY);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    // The scroll curl at the tip, and the strut bracing the arm.
+    ctx.lineWidth = Math.max(1, s * 0.026);
+    ctx.beginPath();
+    ctx.arc(tipX, tipY + s * 0.045, s * 0.045, -Math.PI / 2, Math.PI * 0.8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(mountX, armY + s * 0.22);
+    ctx.lineTo(mountX + s * 0.22, armY + s * 0.035);
+    ctx.stroke();
+    // Mount plate with two bolt heads.
+    ctx.fillStyle = '#454052';
+    ctx.fillRect(mountX - s * 0.03, armY - s * 0.09, s * 0.06, s * 0.32);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.fillRect(mountX - s * 0.008, armY - s * 0.07, s * 0.016, s * 0.016);
+    ctx.fillRect(mountX - s * 0.008, armY + s * 0.18, s * 0.016, s * 0.016);
+    // The shingle swings from the arm's outer half.
+    const pivX = cx - s * 0.02;
+    const pivY = tipY - s * 0.01;
+    const swing = Math.sin(t * 1.6 + tx * 2.3) * 0.07;
+    const bob = Math.sin(t * 1.6 + tx * 2.3 - 0.5) * s * 0.012;
+    ctx.save();
+    ctx.translate(pivX, pivY + bob);
+    ctx.rotate(swing);
+    const bw = s * 0.52;
+    const bh = s * 0.4;
+    const by = s * 0.1;
+    // Rings, then the board's own drop shadow on the wall.
+    ctx.strokeStyle = '#454052';
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    for (const rx of [-bw * 0.3, bw * 0.3]) {
+      ctx.beginPath();
+      ctx.arc(rx, by - s * 0.045, s * 0.032, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+    ctx.fillRect(-bw / 2 + s * 0.035, by + s * 0.04, bw, bh);
+    // The board: lumber, carved border, painted field.
+    ctx.fillStyle = '#8a6534';
+    ctx.fillRect(-bw / 2, by, bw, bh);
+    ctx.fillStyle = shade('#8a6534', 16);
+    ctx.fillRect(-bw / 2, by, bw, s * 0.03);
+    ctx.strokeStyle = '#5e4322';
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    ctx.strokeRect(-bw / 2 + s * 0.035, by + s * 0.035, bw - s * 0.07, bh - s * 0.07);
+    this.signMotif(motif, 0, by + bh / 2, bw * 0.62);
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.026);
+    ctx.strokeRect(-bw / 2, by, bw, bh);
+    ctx.restore();
+  }
+
+  /**
+   * One carved trade motif, centered at (mx,my) in a w-wide field —
+   * chunky flat-vector, two tones, readable at street zoom. Order is
+   * FOREVER (the id math): mug, loaf, blade, fish, sprig, boot, bed,
+   * hammer.
+   */
+  private signMotif(motif: number, mx: number, my: number, w: number): void {
+    const ctx = this.ctx;
+    const u = w / 10;
+    const ink = '#3a2a16';
+    const paint = '#e8dcc4';
+    ctx.fillStyle = paint;
+    switch (motif) {
+      case 0: // mug — the alehouse tankard, foam proud
+        ctx.fillRect(mx - u * 2.6, my - u * 2, u * 4.4, u * 4.4);
+        ctx.strokeStyle = paint;
+        ctx.lineWidth = u * 0.9;
+        ctx.beginPath();
+        ctx.arc(mx + u * 2.6, my + u * 0.2, u * 1.5, -Math.PI / 2, Math.PI / 2);
+        ctx.stroke();
+        ctx.fillStyle = '#f4efe2';
+        ctx.fillRect(mx - u * 3, my - u * 2.9, u * 5.2, u * 1.2);
+        break;
+      case 1: // loaf — the baker's crusted oval, three slashes
+        ctx.beginPath();
+        ctx.ellipse(mx, my + u * 0.3, u * 3.4, u * 2.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = u * 0.55;
+        for (const k of [-1.4, 0, 1.4]) {
+          ctx.beginPath();
+          ctx.moveTo(mx + k * u - u * 0.7, my - u * 0.8);
+          ctx.lineTo(mx + k * u + u * 0.7, my + u * 0.6);
+          ctx.stroke();
+        }
+        break;
+      case 2: // blade — the smith-sharpened sword, point high
+        ctx.save();
+        ctx.translate(mx, my);
+        ctx.rotate(-Math.PI / 4);
+        ctx.fillRect(-u * 0.6, -u * 3.4, u * 1.2, u * 4.6);
+        ctx.beginPath();
+        ctx.moveTo(-u * 0.6, -u * 3.4);
+        ctx.lineTo(0, -u * 4.4);
+        ctx.lineTo(u * 0.6, -u * 3.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillRect(-u * 1.7, u * 1.2, u * 3.4, u * 0.8);
+        ctx.fillRect(-u * 0.45, u * 2, u * 0.9, u * 1.6);
+        ctx.restore();
+        break;
+      case 3: // fish — the water's silver, tail flicked
+        ctx.beginPath();
+        ctx.ellipse(mx - u * 0.6, my, u * 2.6, u * 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(mx + u * 1.7, my);
+        ctx.lineTo(mx + u * 3.4, my - u * 1.4);
+        ctx.lineTo(mx + u * 3.4, my + u * 1.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = ink;
+        ctx.beginPath();
+        ctx.arc(mx - u * 2, my - u * 0.4, u * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 4: // sprig — the herbalist's three leaves on a stem
+        ctx.strokeStyle = paint;
+        ctx.lineWidth = u * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(mx, my + u * 3);
+        ctx.lineTo(mx, my - u * 2.6);
+        ctx.stroke();
+        for (const [lx, ly, rot] of [
+          [-u * 1.6, -u * 0.4, -0.8],
+          [u * 1.6, -u * 1.2, 0.8],
+          [0, -u * 3, 0],
+        ] as const) {
+          ctx.save();
+          ctx.translate(mx + lx, my + ly);
+          ctx.rotate(rot);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, u * 1.5, u * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        break;
+      case 5: // boot — the cobbler's tall boot, heel square
+        ctx.fillRect(mx - u * 1.8, my - u * 3, u * 1.8, u * 4.6);
+        ctx.fillRect(mx - u * 1.8, my + u * 0.6, u * 4.4, u * 1.6);
+        ctx.fillStyle = ink;
+        ctx.fillRect(mx - u * 1.8, my + u * 1.7, u * 4.4, u * 0.5);
+        break;
+      case 6: // bed — the inn's rest: headboard, mattress, pillow
+        ctx.fillRect(mx - u * 3.4, my - u * 2.4, u * 0.9, u * 4.4);
+        ctx.fillRect(mx - u * 3.4, my + u * 0.2, u * 6.8, u * 1.8);
+        ctx.fillStyle = '#f4efe2';
+        ctx.fillRect(mx - u * 2.2, my - u * 0.7, u * 1.9, u * 1);
+        break;
+      default: // hammer — the smith's own, head heavy
+        ctx.save();
+        ctx.translate(mx, my);
+        ctx.rotate(0.5);
+        ctx.fillRect(-u * 0.5, -u * 1.2, u, u * 4.4);
+        ctx.fillRect(-u * 2.4, -u * 3, u * 4.8, u * 1.9);
+        ctx.restore();
+        break;
+    }
+  }
+
+  /**
+   * The trellis: garden lattice up the wall face, a climbing vine
+   * choosing its species — ivy's deep green, the madder rose in
+   * bloom, the hopvine's pale cones. Leaf tips flutter; the blooms
+   * carry a glint (the beacon law, whispered).
+   */
+  private trellisOnFace(tx: number, ty: number, px0: number, s: number, species: number): void {
+    const ctx = this.ctx;
+    const t = performance.now() / 1000;
+    const cx = px0 + s * 0.5;
+    const half = s * 0.34;
+    const yBase = -s * 0.03;
+    const yTop = -s * 1.36;
+    const rail = '#7a5c34';
+    // Soil shade where the lattice meets the ground.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+    ctx.fillRect(cx - half - s * 0.03, yBase - s * 0.02, half * 2 + s * 0.06, s * 0.045);
+    // Lattice: two rails, three battens, a diamond weave between.
+    ctx.fillStyle = rail;
+    ctx.fillRect(cx - half, yTop, s * 0.05, yBase - yTop);
+    ctx.fillRect(cx + half - s * 0.05, yTop, s * 0.05, yBase - yTop);
+    ctx.strokeStyle = shade(rail, -12);
+    ctx.lineWidth = Math.max(1, s * 0.028);
+    for (let k = 0; k < 3; k++) {
+      const ly = yTop + (yBase - yTop) * (0.18 + k * 0.32);
+      ctx.beginPath();
+      ctx.moveTo(cx - half + s * 0.04, ly);
+      ctx.lineTo(cx + half - s * 0.04, ly);
+      ctx.stroke();
+    }
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    for (const dir of [1, -1]) {
+      for (let k = -1; k <= 1; k++) {
+        ctx.beginPath();
+        ctx.moveTo(cx + k * half * 0.9 - dir * half * 0.5, yBase - s * 0.08);
+        ctx.lineTo(cx + k * half * 0.9 + dir * half * 0.5, yTop + s * 0.08);
+        ctx.stroke();
+      }
+    }
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.024);
+    ctx.strokeRect(cx - half, yTop, half * 2, yBase - yTop);
+    // The vine: leaf clusters dealt up the lattice, species-toned.
+    const leaf = species === 0 ? '#3f7a48' : species === 1 ? '#4a7a44' : '#5c8a4a';
+    const leafDark = shade(leaf, -18);
+    const h = hashCoords(67, tx, ty);
+    for (let k = 0; k < 9; k++) {
+      const hk = (h >>> (k * 3)) & 7;
+      const lx = cx + ((hk & 3) - 1.5) * half * 0.55;
+      const ly = yBase - s * 0.12 - (k / 9) * (yBase - yTop - s * 0.2);
+      const flutter = k % 3 === 0 ? Math.sin(t * 1.9 + k * 1.3 + tx) * s * 0.012 : 0;
+      ctx.fillStyle = (hk & 4) === 0 ? leaf : leafDark;
+      ctx.beginPath();
+      ctx.ellipse(lx + flutter, ly, s * 0.06, s * 0.042, (hk - 3) * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      // The payload: rose blooms glint madder; hop hangs pale cones.
+      if (species === 1 && (hk & 5) === 1) {
+        ctx.fillStyle = '#a8433a';
+        ctx.beginPath();
+        ctx.arc(lx + flutter + s * 0.03, ly - s * 0.03, s * 0.032, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.fillRect(lx + flutter + s * 0.036, ly - s * 0.042, s * 0.012, s * 0.012);
+      } else if (species === 2 && (hk & 5) === 4) {
+        ctx.fillStyle = '#c9d69a';
+        ctx.beginPath();
+        ctx.ellipse(lx + flutter + s * 0.02, ly + s * 0.05, s * 0.024, s * 0.038, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  /**
+   * The wall basket: a wicker bowl off a bracket peg, blooms in the
+   * FlowerBox's own mixed palette, swaying on its rope like a slow
+   * pendulum. The gardener's smallest word.
+   */
+  private wallBasketOnFace(tx: number, ty: number, px0: number, s: number): void {
+    const ctx = this.ctx;
+    const t = performance.now() / 1000;
+    const cx = px0 + s * 0.5;
+    const pegY = -s * 1.52;
+    // The peg: a small iron L bolted to the face.
+    ctx.fillStyle = '#454052';
+    ctx.fillRect(cx - s * 0.02, pegY - s * 0.05, s * 0.04, s * 0.1);
+    ctx.fillRect(cx - s * 0.02, pegY - s * 0.05, s * 0.11, s * 0.035);
+    const sway = Math.sin(t * 1.3 + tx * 1.7 + ty * 0.9) * 0.05;
+    ctx.save();
+    ctx.translate(cx + s * 0.07, pegY - s * 0.02);
+    ctx.rotate(sway);
+    // Rope down to the bowl.
+    ctx.strokeStyle = '#6e5638';
+    ctx.lineWidth = Math.max(1, s * 0.022);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, s * 0.14);
+    ctx.stroke();
+    const bw = s * 0.36;
+    const by = s * 0.14;
+    // Shadow seats the bowl on the masonry behind it.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+    ctx.beginPath();
+    ctx.ellipse(s * 0.03, by + s * 0.14, bw * 0.52, s * 0.11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Blooms first — they crowd above the rim.
+    const hb = hashCoords(61, tx, ty);
+    const BLOOMS = ['#d977a8', '#e8c06a', '#f0ede4', '#8f9ed6'];
+    for (let k = 0; k < 4; k++) {
+      const hk = (hb >>> (k * 4)) & 15;
+      const nod = Math.sin(t * 1.8 + hk * 0.3) * s * 0.01;
+      ctx.fillStyle = BLOOMS[hk % BLOOMS.length]!;
+      ctx.beginPath();
+      ctx.arc((k - 1.5) * bw * 0.24 + nod, by - s * 0.035 - (hk & 3) * s * 0.012, s * 0.038, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Greenery trailing off one side.
+    ctx.strokeStyle = '#4a7a44';
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(-bw * 0.4, by + s * 0.04);
+    ctx.quadraticCurveTo(-bw * 0.62, by + s * 0.16, -bw * 0.5, by + s * 0.26);
+    ctx.stroke();
+    // The wicker bowl: half-round, two weave bands, cross ticks.
+    const bowl = new Path2D();
+    bowl.moveTo(-bw / 2, by);
+    bowl.lineTo(bw / 2, by);
+    bowl.quadraticCurveTo(bw * 0.42, by + s * 0.2, 0, by + s * 0.21);
+    bowl.quadraticCurveTo(-bw * 0.42, by + s * 0.2, -bw / 2, by);
+    bowl.closePath();
+    ctx.fillStyle = '#a8814c';
+    ctx.fill(bowl);
+    ctx.save();
+    ctx.clip(bowl);
+    ctx.fillStyle = shade('#a8814c', -14);
+    ctx.fillRect(-bw / 2, by + s * 0.065, bw, s * 0.028);
+    ctx.fillRect(-bw / 2, by + s * 0.13, bw, s * 0.028);
+    ctx.fillStyle = 'rgba(58, 42, 22, 0.35)';
+    for (let k = 0; k < 6; k++) {
+      ctx.fillRect(-bw / 2 + (k * bw) / 6 + s * 0.01, by, s * 0.014, s * 0.21);
+    }
+    ctx.fillStyle = 'rgba(255, 236, 200, 0.25)';
+    ctx.fillRect(-bw / 2, by + s * 0.01, bw, s * 0.02);
+    ctx.restore();
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.024);
+    ctx.stroke(bowl);
+    ctx.restore();
   }
 
   /**

@@ -113,6 +113,7 @@ import {
 import {
   BUILDABLES,
   buildableForTile,
+  buildableForDetail,
   buildableGround,
   DYE_PIGMENTS,
   CROP_BY_SEED,
@@ -405,6 +406,8 @@ import {
   encodeDetailPatch,
   HANGABLE_WALL_TILES,
   AWNING_HOST_TILES,
+  SIGN_MOTIF_COUNT,
+  TRELLIS_SPECIES_COUNT,
   wallHungInfo,
   wallBannerDetail,
   pennantDetail,
@@ -589,6 +592,12 @@ interface DemolishAction {
   tx: number;
   ty: number;
   ticksLeft: number;
+  /**
+   * THE SECOND LAYER: this teardown takes down the HANGING on the
+   * wall, not the wall itself — the top layer always comes down
+   * first, so a wall wearing your cloth needs two teardowns.
+   */
+  hanging?: boolean;
 }
 
 type PlayerAction =
@@ -5144,6 +5153,56 @@ export class GameServer {
       return;
     }
     this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    // Homesteader: walls rise quickly for the practiced hand.
+    const buildTicks = Math.max(1, Math.round(def.ticks * player.perks.buildSpeedMult));
+    // The variant dial (dye / trade motif / vine species) rides the
+    // one wire field, sanitized to the roster width; families with
+    // narrower rosters re-clamp in hangVariant.
+    const variant =
+      Number.isInteger(dye) && dye! >= 0 && dye! < DYE_COUNT ? dye : undefined;
+
+    // THE WALL TAKES A HANGING: a detail def aims at the WALL itself —
+    // no ground lane, no occupancy (nobody stands inside a wall). The
+    // face law is the one gate, and re-dressing your own hanging of
+    // the same family costs only the new pigment: the cloth is up.
+    if (def.detail !== undefined) {
+      if (!this.hangFaceOk(tx, ty)) {
+        sys('There is no wall face there to carry it.');
+        return;
+      }
+      const current = this.world.detailAt(tx, ty);
+      const hung = this.world.builtDetailAt(tx, ty);
+      if (current !== 0 && (!hung || hung.owner !== player.characterId)) {
+        sys('That wall already bears its cloth.');
+        return;
+      }
+      const kind = wallHungInfo(def.detail)!.kind;
+      const redye =
+        !!hung &&
+        hung.owner === player.characterId &&
+        wallHungInfo(hung.detail)?.kind === kind;
+      const pigment =
+        (kind === 'banner' || kind === 'pennant') && variant !== undefined && variant > 0
+          ? DYE_PIGMENTS[variant]
+          : null;
+      if (!redye && !def.materials.every((m) => countItem(player.inventory, m.item) >= m.qty)) {
+        sys("You don't have the materials.");
+        return;
+      }
+      if (pigment && countItem(player.inventory, pigment.item) < pigment.qty) {
+        sys(
+          `That dye wants ${pigment.qty} ${(itemDef(pigment.item)?.name ?? pigment.item).toLowerCase()}.`,
+        );
+        return;
+      }
+      player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks, dye: variant };
+      this.poses.set(eid, PoseState.Gather);
+      player.session.sendJson({ t: 'action', state: 'start', ticks: buildTicks });
+      return;
+    }
+
+    const pieceTile = def.tile;
+    if (pieceTile === undefined) return;
     const ground = this.world.groundAt(tx, ty);
     if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
       sys("You can't build there.");
@@ -5157,7 +5216,7 @@ export class GameServer {
     // THE OUTWARD FACE: an awning bolts to the wall behind it — the
     // footing is the tile NORTH of the canopy, and only a framed
     // south face (full wall, glazing, straight doorway) takes bolts.
-    if (awningInfo(def.tile) !== null) {
+    if (awningInfo(pieceTile) !== null) {
       const host = this.world.groundAt(tx, ty - 1);
       if (host === undefined || !AWNING_HOST_TILES.has(host as Tile)) {
         sys('An awning needs a wall behind it.');
@@ -5169,22 +5228,13 @@ export class GameServer {
       return;
     }
 
-    // Homesteader: walls rise quickly for the practiced hand.
-    const buildTicks = Math.max(1, Math.round(def.ticks * player.perks.buildSpeedMult));
     // The orient dial only turns pieces that HAVE a dial — anything
     // else silently drops it (a stale client can't skew a bed).
     const orientable =
-      diagWallInfo(def.tile) !== null || def.tile === Tile.FenceDiagNE ? orient : undefined;
-    // THE DYE LAW's dial, sanitized the same way: only a dyeable piece
-    // keeps it, and only a real roster index (a stale client can't
-    // tint a bed or invent an eleventh cloth).
-    const dyed =
-      awningInfo(def.tile) !== null &&
-      Number.isInteger(dye) &&
-      dye! >= 0 &&
-      dye! < DYE_COUNT
-        ? dye
-        : undefined;
+      diagWallInfo(pieceTile) !== null || pieceTile === Tile.FenceDiagNE ? orient : undefined;
+    // THE DYE LAW's dial: only a dyeable piece keeps it (a stale
+    // client can't tint a bed).
+    const dyed = awningInfo(pieceTile) !== null ? variant : undefined;
     // The pigment is paid beside the materials (DYE_PIGMENTS): a dye
     // is foraged color, not a free menu. Linen (0/absent) asks nothing.
     const pigment = dyed !== undefined ? DYE_PIGMENTS[dyed] : null;
@@ -5197,6 +5247,45 @@ export class GameServer {
     player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks, orient: orientable, dye: dyed };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks: buildTicks });
+  }
+
+  /**
+   * THE HANGING LAW's face test, shared by the dev lever, the build
+   * lane, and completion re-validation: a hangable wall (one whose
+   * painter dresses faces) presenting its south face to open ground.
+   */
+  private hangFaceOk(tx: number, ty: number): boolean {
+    const ground = this.world.groundAt(tx, ty);
+    const south = this.world.groundAt(tx, ty + 1);
+    return (
+      ground !== undefined &&
+      HANGABLE_WALL_TILES.has(ground as Tile) &&
+      (south === undefined ||
+        (!WALL_RUN_TILES.includes(south as Tile) && !GARRISON_TILES.has(south as Tile)))
+    );
+  }
+
+  /**
+   * Resolve a hanging def's anchor + the variant dial into the banded
+   * detail id. Families with rosters narrower than the dye band
+   * (motifs 8, species 3) clamp to their anchor rather than throwing —
+   * the dial was sanitized to the WIDEST roster upstream.
+   */
+  private hangVariant(anchor: Detail, variant: number | undefined): Detail {
+    const info = wallHungInfo(anchor);
+    if (!info || variant === undefined || variant <= 0) return anchor;
+    switch (info.kind) {
+      case 'banner':
+        return wallBannerDetail(variant);
+      case 'pennant':
+        return pennantDetail(variant);
+      case 'sign':
+        return variant < SIGN_MOTIF_COUNT ? bracketSignDetail(variant) : anchor;
+      case 'trellis':
+        return variant < TRELLIS_SPECIES_COUNT ? trellisDetail(variant) : anchor;
+      default:
+        return anchor;
+    }
   }
 
   /** Anyone — player or NPC — standing on this tile right now? */
@@ -5215,7 +5304,65 @@ export class GameServer {
     if (--action.ticksLeft > 0) return;
     const def = action.buildable;
 
+    // THE WALL TAKES A HANGING — completion, one lane over: the face
+    // may have fallen or been dressed mid-swing, so everything
+    // re-proves before the detail lands. Re-dyeing your own hanging
+    // of the same family pays pigment only and earns NO xp (a
+    // pigment-cheap swap must never become an xp faucet).
+    if (def.detail !== undefined) {
+      if (!this.hangFaceOk(action.tx, action.ty)) {
+        this.cancelAction(eid, player, 'blocked');
+        return;
+      }
+      const current = this.world.detailAt(action.tx, action.ty);
+      const hung = this.world.builtDetailAt(action.tx, action.ty);
+      if (current !== 0 && (!hung || hung.owner !== player.characterId)) {
+        this.cancelAction(eid, player, 'blocked');
+        return;
+      }
+      const kind = wallHungInfo(def.detail)!.kind;
+      const redye =
+        !!hung &&
+        hung.owner === player.characterId &&
+        wallHungInfo(hung.detail)?.kind === kind;
+      const pigment =
+        (kind === 'banner' || kind === 'pennant') && action.dye !== undefined && action.dye > 0
+          ? DYE_PIGMENTS[action.dye]
+          : null;
+      if (!redye && !def.materials.every((m) => countItem(player.inventory, m.item) >= m.qty)) {
+        this.cancelAction(eid, player, 'materials');
+        return;
+      }
+      if (pigment && countItem(player.inventory, pigment.item) < pigment.qty) {
+        this.cancelAction(eid, player, 'materials');
+        return;
+      }
+      if (!redye) for (const m of def.materials) removeItem(player.inventory, m.item, m.qty);
+      if (pigment) removeItem(player.inventory, pigment.item, pigment.qty);
+      const placedDetail = this.hangVariant(def.detail, action.dye);
+      // The layer law, detail lane: the FIRST hang's capture carries.
+      const prevDetail = hung ? hung.prevDetail : current;
+      this.world.registerBuiltDetail(
+        action.tx,
+        action.ty,
+        placedDetail,
+        player.characterId,
+        prevDetail,
+      );
+      this.accounts.saveBuiltDetail(action.tx, action.ty, placedDetail, player.characterId, prevDetail);
+      this.setWorldDetail(action.tx, action.ty, placedDetail);
+      if (!redye) this.grantXp(eid, player, def.skill ?? 'construction', def.xp);
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      this.cancelAction(eid, player, 'done');
+      return;
+    }
+
     // Final re-validation before mutating the world.
+    const pieceTile = def.tile;
+    if (pieceTile === undefined) {
+      this.cancelAction(eid, player, 'blocked');
+      return;
+    }
     const ground = this.world.groundAt(action.tx, action.ty);
     if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
       this.cancelAction(eid, player, 'blocked');
@@ -5229,7 +5376,7 @@ export class GameServer {
     }
     // The host wall may have fallen mid-swing — a canopy bolted to
     // open air is not a thing this world contains.
-    if (awningInfo(def.tile) !== null) {
+    if (awningInfo(pieceTile) !== null) {
       const host = this.world.groundAt(action.tx, action.ty - 1);
       if (host === undefined || !AWNING_HOST_TILES.has(host as Tile)) {
         this.cancelAction(eid, player, 'blocked');
@@ -5264,8 +5411,8 @@ export class GameServer {
     // A diagonal wall corner auto-orients to span the two
     // perpendicular wall neighbours present right now — the builder
     // raises the adjoining runs first, then cuts the corner.
-    let placed = def.tile;
-    const dw = diagWallInfo(def.tile);
+    let placed = pieceTile;
+    const dw = diagWallInfo(pieceTile);
     if (dw) {
       if (action.orient) {
         // THE TRUE GHOST's dial: the player chose the mass — the
@@ -5293,7 +5440,7 @@ export class GameServer {
     }
     // THE DYE LAW: a dyeable piece lands as its shape's anchor plus
     // the chosen dye — the id IS the color, no metadata anywhere.
-    const awn = awningInfo(def.tile);
+    const awn = awningInfo(pieceTile);
     if (awn && action.dye !== undefined) {
       placed = awningTile(AWNING_SHAPES[awn.shapeIndex]!, action.dye);
     }
@@ -5301,7 +5448,7 @@ export class GameServer {
     // fencing — same build-the-runs-first law as the wall corner.
     // The fence dial has TWO stops (the piece is 180° symmetric):
     // NE/SW mean the NE-SW rail, NW/SE the other.
-    if (def.tile === Tile.FenceDiagNE || def.tile === Tile.FenceDiagNW) {
+    if (pieceTile === Tile.FenceDiagNE || pieceTile === Tile.FenceDiagNW) {
       if (action.orient) {
         placed =
           action.orient === 'NE' || action.orient === 'SW'
@@ -5363,8 +5510,15 @@ export class GameServer {
   sendOwnBuilt(eid: EntityId): void {
     const player = this.players.get(eid);
     if (!player || player.session === null) return;
-    const keys = player.characterId > 0 ? this.world.builtKeysOf(player.characterId) : undefined;
-    player.session.sendJson({ t: 'ownbuilt', keys: keys ? [...keys] : [] });
+    if (player.characterId <= 0) {
+      player.session.sendJson({ t: 'ownbuilt', keys: [] });
+      return;
+    }
+    // Both layers answer: built tiles AND hung details — the overlay
+    // marks every coordinate the armed hand may touch.
+    const keys = new Set<string>(this.world.builtKeysOf(player.characterId) ?? []);
+    for (const k of this.world.builtDetailKeysOf(player.characterId) ?? []) keys.add(k);
+    player.session.sendJson({ t: 'ownbuilt', keys: [...keys] });
   }
 
   /** How long a teardown swings — the same practiced-hand Calling that
@@ -5376,15 +5530,22 @@ export class GameServer {
     const pos = this.positions.get(eid);
     if (!player || !pos || player.session === null) return;
     const built = this.world.builtAt(tx, ty);
-    if (!built) return;
-    if (built.owner !== player.characterId) {
-      player.session.sendJson({ t: 'chat', channel: 'system', text: "That isn't yours to tear down." });
+    // THE SECOND LAYER: your own hanging is the TOP layer — it comes
+    // down before the wall under it ever could, and a hanging on an
+    // authored wall (no built record at all) is still yours to take.
+    const hung = this.world.builtDetailAt(tx, ty);
+    const ownHanging = !!hung && hung.owner === player.characterId;
+    const ownTile = !!built && built.owner === player.characterId;
+    if (!ownHanging && !ownTile) {
+      if (built || hung) {
+        player.session.sendJson({ t: 'chat', channel: 'system', text: "That isn't yours to tear down." });
+      }
       return;
     }
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 3 * 3) return;
-    if (this.crops.has(`${tx},${ty}`)) {
+    if (!ownHanging && this.crops.has(`${tx},${ty}`)) {
       player.session.sendJson({ t: 'chat', channel: 'system', text: 'Harvest the crop first.' });
       return;
     }
@@ -5392,7 +5553,7 @@ export class GameServer {
     // swing time is the confirmation dialog, and the wire can't strobe
     // a floor out from under anyone.
     const ticks = Math.max(1, Math.round(GameServer.DEMOLISH_TICKS * player.perks.buildSpeedMult));
-    player.action = { kind: 'demolish', tx, ty, ticksLeft: ticks };
+    player.action = { kind: 'demolish', tx, ty, ticksLeft: ticks, hanging: ownHanging };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks });
   }
@@ -5401,6 +5562,47 @@ export class GameServer {
     const action = player.action! as DemolishAction;
     if (--action.ticksLeft > 0) return;
     const { tx, ty } = action;
+    // THE SECOND LAYER's teardown: the cloth comes down quietly (no
+    // collapse ceremony — a banner is lifted off its rod, not felled),
+    // hands back ceil-half of its ledger, and the face's prior detail
+    // returns. Re-dye pigment is spent color and never refunds.
+    if (action.hanging) {
+      const hung = this.world.builtDetailAt(tx, ty);
+      if (!hung || hung.owner !== player.characterId) {
+        this.cancelAction(eid, player, 'blocked');
+        return;
+      }
+      const hdef = buildableForDetail(hung.detail);
+      if (hdef) {
+        const salvaged: string[] = [];
+        for (const m of hdef.materials) {
+          const back = Math.ceil(m.qty / 2);
+          const kept = addItem(player.inventory, m.item, back);
+          if (kept < back) {
+            this.placeDrop(m.item, back - kept, tx + 0.5, ty + 1.5, {
+              ownerEid: eid,
+              ownerUntil: Date.now() + 30_000,
+              despawnAt: Date.now() + 12 * 60_000,
+              pickupAfter: Date.now() + 400,
+            });
+          }
+          salvaged.push(`${back} ${(itemDef(m.item)?.name ?? m.item).toLowerCase()}`);
+        }
+        if (salvaged.length > 0) {
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `Salvaged: ${salvaged.join(', ')}.`,
+          });
+        }
+        player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      }
+      this.world.unregisterBuiltDetail(tx, ty);
+      this.accounts.deleteBuiltDetail(tx, ty);
+      this.setWorldDetail(tx, ty, hung.prevDetail);
+      this.cancelAction(eid, player, 'done');
+      return;
+    }
     // Re-validate at the moment of the last swing: the record may have
     // changed hands or vanished while the bar filled.
     const built = this.world.builtAt(tx, ty);
@@ -5461,10 +5663,22 @@ export class GameServer {
     }
     // THE SECOND LAYER: a hanging falls with its wall — the cloth has
     // no face left to hold it, and an orphan detail row would re-dress
-    // whatever rises here next. (Hanging salvage arrives with the
-    // hanging buildables in Phase 2 — today the record simply clears.)
+    // whatever rises here next. Its ceil-half salvage spills at the
+    // wall's foot as an UNOWNED pile (the wall's owner may not be the
+    // hanging's — the canopy-falls law, one lane over).
     const hungHere = this.world.builtDetailAt(tx, ty);
     if (hungHere) {
+      const hdef = buildableForDetail(hungHere.detail);
+      if (hdef) {
+        for (const m of hdef.materials) {
+          this.placeDrop(m.item, Math.ceil(m.qty / 2), tx + 0.5, ty + 1.5, {
+            ownerEid: null,
+            ownerUntil: 0,
+            despawnAt: Date.now() + 12 * 60_000,
+            pickupAfter: Date.now() + 400,
+          });
+        }
+      }
       this.world.unregisterBuiltDetail(tx, ty);
       this.accounts.deleteBuiltDetail(tx, ty);
       this.setWorldDetail(tx, ty, hungHere.prevDetail);
@@ -5986,17 +6200,7 @@ export class GameServer {
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 3 * 3) return false;
     this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-    const ground = this.world.groundAt(tx, ty);
-    const south = this.world.groundAt(tx, ty + 1);
-    // Footing = a hangable wall (one whose painter dresses faces —
-    // doorways/windows/corners refuse; see HANGABLE_WALL_TILES) that
-    // PRESENTS its south face (south neighbour is not wall mass).
-    const presentsFace =
-      ground !== undefined &&
-      HANGABLE_WALL_TILES.has(ground as Tile) &&
-      (south === undefined ||
-        (!WALL_RUN_TILES.includes(south as Tile) && !GARRISON_TILES.has(south as Tile)));
-    if (!presentsFace) {
+    if (!this.hangFaceOk(tx, ty)) {
       sys('There is no wall face there to carry it.');
       return false;
     }

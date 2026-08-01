@@ -1,6 +1,6 @@
 import { procShape } from './render/wornLight.js';
-import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling } from '@arx/shared';
-import { BUILDABLES, DYE_PIGMENTS, RECIPES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift } from '@arx/content';
+import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo } from '@arx/shared';
+import { BUILDABLES, DYE_PIGMENTS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { GroundAimController } from './input/groundAim.js';
@@ -345,6 +345,12 @@ let buildOrient: 'auto' | 'NE' | 'NW' | 'SE' | 'SW' = 'auto';
  * dressing a street in woad should not re-pick it per awning.
  */
 let buildDye = 0;
+/** The bracket sign's trade motif and the trellis's vine species —
+ *  each family keeps its own memory (a smith stays a smith). */
+let buildMotif = 0;
+let buildSpecies = 0;
+const SIGN_MOTIF_NAMES = SIGN_MOTIFS.map((m) => m.name);
+const TRELLIS_SPECIES_NAMES = TRELLIS_SPECIES.map((sp) => sp.name);
 /** The drag-run: tiles waiting their turn, drained one action at a time. */
 const buildQueue: Array<{ tx: number; ty: number }> = [];
 let buildDragging = false;
@@ -359,7 +365,7 @@ const FENCE_ORIENTS = ['auto', 'NE', 'NW'] as const;
 /** Which dial a piece owns: 4-stop corners, 2-stop fence rails, or none. */
 function orientRing(): readonly ('auto' | 'NE' | 'NW' | 'SE' | 'SW')[] | null {
   const def = buildMode ? BUILDABLES.get(buildMode) : undefined;
-  if (!def) return null;
+  if (!def || def.tile === undefined) return null;
   if (diagWallInfo(def.tile)) return WALL_ORIENTS;
   if (def.tile === Tile.FenceDiagNE) return FENCE_ORIENTS;
   return null;
@@ -425,21 +431,38 @@ function pumpBuildQueue(): void {
     const dy = next.ty + 0.5 - own.y;
     const d2 = dx * dx + dy * dy;
     const ground = game.world.groundAt(next.tx, next.ty);
-    if (
-      d2 > 9 ||
-      d2 < 0.64 ||
-      ground === undefined ||
-      !buildableGround(def).includes(ground as Tile)
-    ) {
-      continue;
-    }
-    // An awning tile in the run must still have its wall — a drag
-    // along a street skips the gaps between buildings wordlessly.
-    if (
-      awningInfo(def.tile) !== null &&
-      !AWNING_HOST_TILES.has(game.world.groundAt(next.tx, next.ty - 1) as Tile)
-    ) {
-      continue;
+    if (def.detail !== undefined) {
+      // A hanging drag dresses a wall run: faces that refuse (wrong
+      // wall, buried, already bearing another's cloth) skip without
+      // a word and the run flows on.
+      const south = game.world.groundAt(next.tx, next.ty + 1);
+      const faceOk =
+        ground !== undefined &&
+        HANGABLE_WALL_TILES.has(ground as Tile) &&
+        (south === undefined ||
+          (!WALL_RUN_TILES.includes(south as Tile) && !GARRISON_TILES.has(south as Tile)));
+      const cur = game.world.detailAt(next.tx, next.ty);
+      if (d2 > 9 || !faceOk || (cur !== 0 && !game.ownBuilt.has(`${next.tx},${next.ty}`))) {
+        continue;
+      }
+    } else {
+      if (
+        d2 > 9 ||
+        d2 < 0.64 ||
+        ground === undefined ||
+        !buildableGround(def).includes(ground as Tile)
+      ) {
+        continue;
+      }
+      // An awning tile in the run must still have its wall — a drag
+      // along a street skips the gaps between buildings wordlessly.
+      if (
+        def.tile !== undefined &&
+        awningInfo(def.tile) !== null &&
+        !AWNING_HOST_TILES.has(game.world.groundAt(next.tx, next.ty - 1) as Tile)
+      ) {
+        continue;
+      }
     }
     sentSite = { tx: next.tx, ty: next.ty, at: now };
     sfx.uiTap();
@@ -448,10 +471,27 @@ function pumpBuildQueue(): void {
       next.tx,
       next.ty,
       buildOrient === 'auto' ? undefined : buildOrient,
-      awningInfo(def.tile) !== null && buildDye > 0 ? buildDye : undefined,
+      buildVariantFor(def),
     );
     return;
   }
+}
+
+/**
+ * THE ONE DIAL, three memories: dye for dyeable cloth, trade motif
+ * for the bracket sign, vine species for the trellis — each family
+ * remembers its last pick, and the wire carries whichever applies.
+ */
+function buildVariantFor(def: BuildableDef): number | undefined {
+  if (def.detail !== undefined) {
+    const kind = wallHungInfo(def.detail)?.kind;
+    if (kind === 'banner' || kind === 'pennant') return buildDye > 0 ? buildDye : undefined;
+    if (kind === 'sign') return buildMotif > 0 ? buildMotif : undefined;
+    if (kind === 'trellis') return buildSpecies > 0 ? buildSpecies : undefined;
+    return undefined;
+  }
+  if (def.tile !== undefined && awningInfo(def.tile) !== null && buildDye > 0) return buildDye;
+  return undefined;
 }
 /** The bank chest tile that asked the server for the vault — anchors the panel. */
 let lastBankAnchor: { tx: number; ty: number } | null = null;
@@ -481,6 +521,14 @@ const buildTray = new BuildTray(
   (id) => pickBuildable(id),
   (d) => {
     buildDye = d;
+    sfx.uiTap();
+  },
+  (v) => {
+    // The named dial writes whichever family memory is armed.
+    const def = buildMode ? BUILDABLES.get(buildMode) : undefined;
+    const kind = def?.detail !== undefined ? wallHungInfo(def.detail)?.kind : undefined;
+    if (kind === 'sign') buildMotif = v;
+    else if (kind === 'trellis') buildSpecies = v;
     sfx.uiTap();
   },
 );
@@ -2775,7 +2823,68 @@ function frame(now: number): void {
     } else {
       renderer.demolishGhost = null;
     }
-    if (def && !armed) {
+    if (def && !armed && def.detail !== undefined) {
+      // THE HANG GHOST: a hanging aims at the WALL itself — the ghost
+      // anchors there and mirrors the server's face law in one breath.
+      const ground = game.world.groundAt(tx, ty);
+      const south = game.world.groundAt(tx, ty + 1);
+      const dx = tx + 0.5 - pos.x;
+      const dy = ty + 0.5 - pos.y;
+      const dist2 = dx * dx + dy * dy;
+      const kind = wallHungInfo(def.detail)?.kind;
+      const faceOk =
+        ground !== undefined &&
+        HANGABLE_WALL_TILES.has(ground as Tile) &&
+        (south === undefined ||
+          (!WALL_RUN_TILES.includes(south as Tile) && !GARRISON_TILES.has(south as Tile)));
+      const cur = game.world.detailAt(tx, ty);
+      const ownHere = game.ownBuilt.has(`${tx},${ty}`);
+      const redye = cur !== 0 && ownHere && wallHungInfo(cur)?.kind === kind;
+      const skill = def.skill ?? 'construction';
+      const level = levelForXp(game.skills[skill] ?? 0);
+      let reason: string | null = null;
+      if (level < def.levelReq) {
+        reason = `${skill.charAt(0).toUpperCase()}${skill.slice(1)} ${def.levelReq}`;
+      } else if (!faceOk) {
+        reason = 'No wall face';
+      } else if (cur !== 0 && !ownHere) {
+        reason = 'Cloth already hangs';
+      } else if (dist2 > 3 * 3) {
+        reason = 'Too far';
+      } else {
+        const variant = buildVariantFor(def);
+        const pigment =
+          (kind === 'banner' || kind === 'pennant') && variant !== undefined && variant > 0
+            ? DYE_PIGMENTS[variant]
+            : null;
+        const wants = redye ? (pigment ? [pigment] : []) : pigment ? [...def.materials, pigment] : def.materials;
+        for (const m of wants) {
+          const have = game.inventory.reduce(
+            (n, sl) => n + (sl && sl.item === m.item ? sl.qty : 0),
+            0,
+          );
+          if (have < m.qty) {
+            reason = `Needs ${m.qty} ${(itemDef(m.item)?.name ?? m.item).toLowerCase()}`;
+            break;
+          }
+        }
+      }
+      const clothColor =
+        kind === 'banner' || kind === 'pennant' ? DYE_SWATCHES[buildDye]! : '#8a6534';
+      renderer.buildGhost = {
+        tx,
+        ty,
+        valid: reason === null,
+        kind: 'prop',
+        diag: null,
+        icon: def.id,
+        color: clothColor,
+        topColor: clothColor,
+        reason,
+        queued: buildQueue,
+      };
+    } else if (def && !armed) {
+      const pieceTile = def.tile!;
       const ground = game.world.groundAt(tx, ty);
       const dx = tx + 0.5 - pos.x;
       const dy = ty + 0.5 - pos.y;
@@ -2784,9 +2893,9 @@ function frame(now: number): void {
       // Resolve the tile that would actually land — the explicit dial,
       // or the auto-orient read live off the neighbours (the ghost
       // shows what Auto will decide, so the guess is never a surprise).
-      const dw = diagWallInfo(def.tile);
+      const dw = diagWallInfo(pieceTile);
       let diag: 'NE' | 'NW' | 'SE' | 'SW' | null = null;
-      let landTile: Tile = def.tile;
+      let landTile: Tile = pieceTile;
       if (dw) {
         if (buildOrient !== 'auto') diag = buildOrient;
         else {
@@ -2804,7 +2913,7 @@ function frame(now: number): void {
           diag = n && ee ? 'NE' : n && ww ? 'NW' : ss && ee ? 'SE' : ss && ww ? 'SW' : 'NE';
         }
         landTile = diagWallTile(dw.material, diag);
-      } else if (def.tile === Tile.FenceDiagNE) {
+      } else if (pieceTile === Tile.FenceDiagNE) {
         if (buildOrient !== 'auto') {
           diag = buildOrient === 'NE' || buildOrient === 'SW' ? 'NE' : 'NW';
         } else {
@@ -2823,7 +2932,7 @@ function frame(now: number): void {
       }
       // THE DYE LAW: the ghost lands the exact dyed id the server
       // will place — the preview never lies about the cloth either.
-      const awn = awningInfo(def.tile);
+      const awn = awningInfo(pieceTile);
       if (awn && buildDye > 0) {
         landTile = awningTile(AWNING_SHAPES[awn.shapeIndex]!, buildDye);
       }
@@ -2893,7 +3002,11 @@ function frame(now: number): void {
     // THE BUILDER'S TRAY: the mode's face, refreshed only when its
     // signature moves (the class diffes internally).
     if (def) {
-      const dyeable = awningInfo(def.tile) !== null;
+      const hangKind = def.detail !== undefined ? wallHungInfo(def.detail)?.kind : undefined;
+      const dyeable =
+        (def.tile !== undefined && awningInfo(def.tile) !== null) ||
+        hangKind === 'banner' ||
+        hangKind === 'pennant';
       const trayPigment = dyeable && buildDye > 0 ? DYE_PIGMENTS[buildDye] : null;
       const trayMats = trayPigment ? [...def.materials, trayPigment] : def.materials;
       buildTray.update({
@@ -2907,6 +3020,12 @@ function frame(now: number): void {
         armed,
         recents: buildRecents.filter((r) => r !== def.id).slice(0, 5),
         dye: dyeable ? buildDye : null,
+        variant:
+          hangKind === 'sign'
+            ? { index: buildMotif, options: SIGN_MOTIF_NAMES }
+            : hangKind === 'trellis'
+              ? { index: buildSpecies, options: TRELLIS_SPECIES_NAMES }
+              : null,
       });
     } else {
       buildTray.hide();

@@ -24,13 +24,19 @@ export interface BuildTrayState {
     recents: readonly string[];
     /** THE DYE LAW's dial: chosen index for a dyeable piece, null = not dyeable. */
     dye: number | null;
+    /** Named-variant dial (trade motifs, vine species): text chips. */
+    variant?: {
+        index: number;
+        options: readonly string[];
+    } | null;
 }
 export declare class BuildTray {
     private readonly onPick;
     private readonly onDye;
+    private readonly onVariant;
     private readonly el;
     private sig;
-    constructor(onPick: (id: string) => void, onDye: (dye: number) => void);
+    constructor(onPick: (id: string) => void, onDye: (dye: number) => void, onVariant: (index: number) => void);
     hide(): void;
     /** Frame-safe: rebuilds the DOM only when the state actually moved. */
     update(state: BuildTrayState): void;

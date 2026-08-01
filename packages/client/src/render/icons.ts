@@ -2702,6 +2702,92 @@ const PAINTERS: Record<string, IconPainter> = {
     c.lineTo(0.64, 0.54);
     c.stroke();
   },
+  pennants: (c, col) => {
+    // A swagged rope of three little flags.
+    c.strokeStyle = '#6e5638';
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(0.14, 0.3);
+    c.quadraticCurveTo(0.5, 0.46, 0.86, 0.3);
+    c.stroke();
+    for (const [i, x] of [0.24, 0.44, 0.64].entries()) {
+      c.fillStyle = i === 1 ? shade(col, 40) : col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.03;
+      const y = 0.34 + (i === 1 ? 0.05 : 0.02);
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + 0.16, y);
+      c.lineTo(x + 0.08, y + 0.22);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+  },
+  brasign: (c, col) => {
+    // The wrought arm and its swinging shingle.
+    c.strokeStyle = '#454052';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.2, 0.16);
+    c.lineTo(0.2, 0.5);
+    c.moveTo(0.2, 0.22);
+    c.lineTo(0.74, 0.26);
+    c.stroke();
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(0.34, 0.34, 0.42, 0.34, 0.03);
+    c.fill();
+    c.stroke();
+    c.fillStyle = '#e8dcc4';
+    c.beginPath();
+    c.arc(0.55, 0.51, 0.09, 0, Math.PI * 2);
+    c.fill();
+  },
+  trellisicon: (c, col) => {
+    // Lattice with a vine winding through.
+    c.strokeStyle = '#7a5c34';
+    c.lineWidth = 0.05;
+    c.strokeRect(0.24, 0.2, 0.52, 0.6);
+    c.beginPath();
+    c.moveTo(0.24, 0.2);
+    c.lineTo(0.76, 0.8);
+    c.moveTo(0.76, 0.2);
+    c.lineTo(0.24, 0.8);
+    c.stroke();
+    for (const [x, y] of [
+      [0.34, 0.62],
+      [0.5, 0.44],
+      [0.66, 0.3],
+    ] as const) {
+      dot(c, col, x, y, 0.075);
+    }
+  },
+  wallbasket: (c, col) => {
+    // A wicker bowl on a peg, blooms above the rim.
+    c.strokeStyle = '#454052';
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(0.5, 0.14);
+    c.lineTo(0.5, 0.3);
+    c.stroke();
+    for (const [i, x] of [0.36, 0.5, 0.64].entries()) {
+      dot(c, i === 1 ? shade(col, 35) : col, x, 0.36, 0.07);
+    }
+    c.fillStyle = '#a8814c';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.24, 0.44);
+    c.lineTo(0.76, 0.44);
+    c.quadraticCurveTo(0.68, 0.74, 0.5, 0.75);
+    c.quadraticCurveTo(0.32, 0.74, 0.24, 0.44);
+    c.closePath();
+    c.fill();
+    c.stroke();
+  },
   awning: (c, col) => {
     // A sloped canvas off a wall bar: trapezoid spread toward the
     // viewer, three valance teeth swinging under the hem.
@@ -5498,6 +5584,11 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   awning_market: { icon: 'awning', color: '#c9962e' },
   awning_board: { icon: 'awning', color: '#8a6534' },
   awning_bowed: { icon: 'awning', color: '#7a3f8f' },
+  wall_banner: { icon: 'banner', color: '#31589c' },
+  pennant_string: { icon: 'pennants', color: '#a8433a' },
+  bracket_sign: { icon: 'brasign', color: '#8a6534' },
+  trellis: { icon: 'trellisicon', color: '#3f7a48' },
+  wall_basket: { icon: 'wallbasket', color: '#d977a8' },
   signpost: { icon: 'signpost', color: '#c2a068' },
   flower_box: { icon: 'flowerbox', color: '#d977a8' },
   banner_pole: { icon: 'banner', color: '#7a3f8f' },

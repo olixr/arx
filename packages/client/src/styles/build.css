@@ -120,6 +120,37 @@
   box-shadow: 0 0 0 0.09375rem rgba(30, 22, 40, 0.8);
 }
 
+/* Named-variant chips (trade motifs, vine species): small word
+   buttons, the chosen one ringed gold like the dye dots. */
+#build-tray .tray-variants {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  border-left: 0.0625rem solid rgba(122, 104, 144, 0.45);
+  padding-left: 0.75rem;
+  flex-wrap: wrap;
+  max-width: 22rem;
+}
+
+#build-tray .tray-variant {
+  padding: 0.125rem 0.4375rem;
+  border: 0.09375rem solid rgba(122, 104, 144, 0.5);
+  border-radius: 0.4375rem;
+  background: rgba(44, 32, 56, 0.7);
+  color: rgba(232, 224, 240, 0.85);
+  font-size: 0.6875rem;
+  cursor: pointer;
+}
+
+#build-tray .tray-variant:hover {
+  border-color: var(--gold);
+}
+
+#build-tray .tray-variant.picked {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
 #build-tray .tray-recents {
   display: flex;
   gap: 0.3125rem;

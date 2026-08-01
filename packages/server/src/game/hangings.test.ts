@@ -13,7 +13,11 @@ import { GameServer } from './gameServer.js';
  */
 
 type Fn = (...a: unknown[]) => unknown;
-const proto = GameServer.prototype as unknown as { hangDetail: Fn; removeHanging: Fn };
+const proto = GameServer.prototype as unknown as {
+  hangDetail: Fn;
+  removeHanging: Fn;
+  hangFaceOk: Fn;
+};
 
 function slate(opts: {
   ground?: number;
@@ -67,6 +71,10 @@ function slate(opts: {
       events.push(`detailPatch:${detail}`);
       detailNow = detail;
     },
+    // The slate is not a real instance — the prototype's own face
+    // test binds here so `this.hangFaceOk(...)` resolves against the
+    // mock world (it reads only world.groundAt).
+    hangFaceOk: proto.hangFaceOk,
     // observation taps
     events,
     sent,
@@ -154,4 +162,20 @@ test('removal restores the prior detail and clears the row', () => {
   const theirs = slate({ hung: { detail: BANNER, owner: 9, prevDetail: 0 } });
   assert.equal(proto.removeHanging.call(theirs, 1, 4, 5), false);
   assert.ok(theirs.sent.some((m) => String(m['text']).includes('Nothing of yours')));
+});
+
+test('hangVariant: dyes band, narrow rosters clamp home, anchors hold', () => {
+  const hv = (a: number, v?: number) =>
+    (proto as unknown as { hangVariant: Fn }).hangVariant.call({}, a, v);
+  assert.equal(hv(Detail.WallBanner, 4), Detail.WallBanner + 4);
+  assert.equal(hv(Detail.Pennant, 9), Detail.Pennant + 9);
+  assert.equal(hv(Detail.BracketSign, 5), Detail.BracketSign + 5);
+  // Motifs stop at 8, species at 3 — a wider dial clamps to anchor
+  // instead of wandering into a neighbouring band.
+  assert.equal(hv(Detail.BracketSign, 9), Detail.BracketSign);
+  assert.equal(hv(Detail.Trellis, 2), Detail.Trellis + 2);
+  assert.equal(hv(Detail.Trellis, 5), Detail.Trellis);
+  assert.equal(hv(Detail.WallBasket, 7), Detail.WallBasket);
+  assert.equal(hv(Detail.WallBanner, undefined), Detail.WallBanner);
+  assert.equal(hv(Detail.WallBanner, 0), Detail.WallBanner);
 });

@@ -1,5 +1,5 @@
-import { AWNING_SHAPES, DYE_COUNT, Detail, TILE_PX, TILE_SKIP, Tile, awningTile, tileDef } from '@arx/shared';
-import { BUILDABLES } from '@arx/content';
+import { AWNING_SHAPES, DYE_COUNT, Detail, TILE_PX, TILE_SKIP, Tile, awningTile, bracketSignDetail, pennantDetail, tileDef, trellisDetail, wallBannerDetail } from '@arx/shared';
+import { BUILDABLES, DYES, SIGN_MOTIFS, TRELLIS_SPECIES } from '@arx/content';
 import { bakeChunk, bakeGutter } from '../render/terrain.js';
 import { buildableIconUrl } from '../render/icons.js';
 import { paintTree, treeModel } from '../render/trees.js';
@@ -151,6 +151,25 @@ export const DETAILS: Array<{ d: Detail; label: string }> = [
   { d: Detail.Doormat, label: 'doormat' },
   { d: Detail.Sawdust, label: 'sawdust' },
   { d: Detail.Straw, label: 'straw' },
+  // THE WALL TAKES A HANGING — the player families, authorable too.
+  // Dealt from the band math so the shelf can never drift.
+  ...DYES.map((dye, i) => ({
+    d: wallBannerDetail(i),
+    label: `${dye.name.toLowerCase()} banner (on wall)`,
+  })),
+  ...DYES.map((dye, i) => ({
+    d: pennantDetail(i),
+    label: `${dye.name.toLowerCase()} pennants (on wall)`,
+  })),
+  ...SIGN_MOTIFS.map((m, i) => ({
+    d: bracketSignDetail(i),
+    label: `${m.name.toLowerCase()} sign (on wall)`,
+  })),
+  ...TRELLIS_SPECIES.map((sp, i) => ({
+    d: trellisDetail(i),
+    label: `${sp.name.toLowerCase()} trellis (on wall)`,
+  })),
+  { d: Detail.WallBasket, label: 'wall basket (on wall)' },
 ];
 
 /** Palette display name — the transparency sentinel isn't a TileDef. */
@@ -165,7 +184,8 @@ const THUMB = 44;
 /** tile -> buildable id, for build-panel icon reuse. */
 const BUILDABLE_OF = new Map<number, string>();
 for (const [id, def] of BUILDABLES) {
-  if (!BUILDABLE_OF.has(def.tile)) BUILDABLE_OF.set(def.tile, id);
+  // Hanging defs place a detail, not a tile — no tile icon to lend.
+  if (def.tile !== undefined && !BUILDABLE_OF.has(def.tile)) BUILDABLE_OF.set(def.tile, id);
 }
 
 /**

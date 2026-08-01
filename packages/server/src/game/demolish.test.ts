@@ -224,3 +224,43 @@ test('a bare wall drops no canopy and probes no salvage', () => {
   proto.tickDemolish.call(s, 1, s.player);
   assert.ok(!s.events.includes('unregisterSouth'));
 });
+
+test('the hanging teardown: quiet removal, ceil-half back, prior detail returns', () => {
+  const banner = BUILDABLES.get('wall_banner')!;
+  const s = slate({
+    built: undefined,
+    hung: { detail: Detail.WallBanner + 5, owner: 7, prevDetail: Detail.Tapestry },
+  });
+  (s.player as { action: unknown }).action = { kind: 'demolish', tx: 4, ty: 5, ticksLeft: 1, hanging: true };
+  proto.tickDemolish.call(s, 1, s.player);
+  // Ceil-half of the banner's ledger lands in the pack.
+  for (const m of banner.materials) {
+    assert.equal(
+      countItem(s.player.inventory, m.item),
+      Math.ceil(m.qty / 2),
+      `${m.item} salvage banked`,
+    );
+  }
+  assert.ok(s.events.includes('unregisterDetail'));
+  assert.ok(s.events.includes('deleteDetailRow'));
+  assert.ok(s.events.includes(`detailPatch:${Detail.Tapestry}`), 'the prior cloth returns');
+  // No collapse ceremony and no tile patch: a banner is lifted, not felled.
+  assert.ok(!s.events.some((e) => e.startsWith('fx:')), 'quiet removal');
+  assert.ok(!s.events.some((e) => e.startsWith('patch:')), 'the wall stands');
+  assert.ok(s.events.includes('cancel:done'));
+});
+
+test('a wall-fall spills its hanging salvage as an unowned pile', () => {
+  const banner = BUILDABLES.get('wall_banner')!;
+  const s = slate({
+    built: { tile: Tile.WallWood, owner: 7, prevTile: Tile.Grass },
+    hung: { detail: Detail.WallBanner + 2, owner: 9, prevDetail: 0 },
+  });
+  proto.tickDemolish.call(s, 1, s.player);
+  for (const m of banner.materials) {
+    assert.ok(
+      s.drops.some((d) => d.item === m.item && d.qty === Math.ceil(m.qty / 2)),
+      `${m.item} spills at the foot`,
+    );
+  }
+});

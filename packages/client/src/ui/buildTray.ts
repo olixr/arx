@@ -24,6 +24,8 @@ export interface BuildTrayState {
   recents: readonly string[];
   /** THE DYE LAW's dial: chosen index for a dyeable piece, null = not dyeable. */
   dye: number | null;
+  /** Named-variant dial (trade motifs, vine species): text chips. */
+  variant?: { index: number; options: readonly string[] } | null;
 }
 
 export class BuildTray {
@@ -33,6 +35,7 @@ export class BuildTray {
   constructor(
     private readonly onPick: (id: string) => void,
     private readonly onDye: (dye: number) => void,
+    private readonly onVariant: (index: number) => void,
   ) {}
 
   hide(): void {
@@ -50,6 +53,7 @@ export class BuildTray {
       state.mats.map((m) => `${m.item}:${m.have}/${m.need}`).join(','),
       state.recents.join(','),
       state.dye === null ? '' : `d${state.dye}`,
+      state.variant ? `v${state.variant.index}/${state.variant.options.length}` : '',
     ].join('|');
     if (sig === this.sig) return;
     this.sig = sig;
@@ -106,6 +110,20 @@ export class BuildTray {
         dyes.appendChild(b);
       }
       this.el.appendChild(dyes);
+    }
+
+    // Named-variant chips: the sign's trade motif, the vine's species.
+    if (state.variant) {
+      const row = document.createElement('div');
+      row.className = 'tray-variants';
+      state.variant.options.forEach((label, i) => {
+        const b = document.createElement('button');
+        b.className = 'tray-variant' + (i === state.variant!.index ? ' picked' : '');
+        b.textContent = label;
+        b.addEventListener('click', () => this.onVariant(i));
+        row.appendChild(b);
+      });
+      this.el.appendChild(row);
     }
 
     if (state.recents.length > 0) {

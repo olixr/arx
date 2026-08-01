@@ -6,6 +6,7 @@ import {
   Tile,
   awningInfo,
   diagWallInfo,
+  wallHungInfo,
   hashCoords,
   isFishingTile,
   nearestFloorTile,
@@ -13,6 +14,7 @@ import {
   valueNoise,
 } from '@arx/shared';
 import { chamferRect, facetCircle } from './shapes.js';
+import { DYE_SWATCHES } from './icons.js';
 import type { WoodSkin } from './woodSkins.js';
 
 /**
@@ -2208,6 +2210,63 @@ function drawTileDetail(
           ctx.fill();
           ctx.fillStyle = trim;
           ctx.fillRect(gx + px * 0.3, gy + px * 0.28, px * 0.4, px * 0.05);
+        }
+      } else if (wallHungInfo(d) !== null) {
+        // Player hangings — Studio-only glyphs like the royals above:
+        // the ground under a wall is never seen in game, but authors
+        // must see at a glance what hangs where, in what color.
+        const info = wallHungInfo(d)!;
+        ctx.fillStyle = '#241a2e';
+        ctx.fillRect(gx + px * 0.14, gy + px * 0.16, px * 0.72, px * 0.06);
+        if (info.kind === 'banner') {
+          ctx.fillStyle = DYE_SWATCHES[info.dye ?? 0]!;
+          ctx.beginPath();
+          ctx.moveTo(gx + px * 0.32, gy + px * 0.22);
+          ctx.lineTo(gx + px * 0.68, gy + px * 0.22);
+          ctx.lineTo(gx + px * 0.68, gy + px * 0.7);
+          ctx.lineTo(gx + px * 0.5, gy + px * 0.58);
+          ctx.lineTo(gx + px * 0.32, gy + px * 0.7);
+          ctx.closePath();
+          ctx.fill();
+        } else if (info.kind === 'pennant') {
+          ctx.fillStyle = DYE_SWATCHES[info.dye ?? 0]!;
+          for (let k = 0; k < 3; k++) {
+            const fx = gx + px * (0.24 + k * 0.22);
+            ctx.beginPath();
+            ctx.moveTo(fx, gy + px * 0.24);
+            ctx.lineTo(fx + px * 0.14, gy + px * 0.24);
+            ctx.lineTo(fx + px * 0.07, gy + px * 0.44);
+            ctx.closePath();
+            ctx.fill();
+          }
+        } else if (info.kind === 'sign') {
+          ctx.fillStyle = '#8a6534';
+          ctx.fillRect(gx + px * 0.3, gy + px * 0.3, px * 0.4, px * 0.32);
+          ctx.fillStyle = '#e8dcc4';
+          ctx.fillRect(gx + px * 0.4, gy + px * 0.38, px * 0.2, px * 0.16);
+        } else if (info.kind === 'trellis') {
+          ctx.strokeStyle = info.species === 1 ? '#a8433a' : '#3f7a48';
+          ctx.lineWidth = px * 0.05;
+          ctx.strokeRect(gx + px * 0.28, gy + px * 0.24, px * 0.44, px * 0.5);
+          ctx.beginPath();
+          ctx.moveTo(gx + px * 0.28, gy + px * 0.24);
+          ctx.lineTo(gx + px * 0.72, gy + px * 0.74);
+          ctx.moveTo(gx + px * 0.72, gy + px * 0.24);
+          ctx.lineTo(gx + px * 0.28, gy + px * 0.74);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = '#a8814c';
+          ctx.beginPath();
+          ctx.ellipse(gx + px * 0.5, gy + px * 0.46, px * 0.18, px * 0.12, 0, 0, Math.PI);
+          ctx.fill();
+          ctx.fillStyle = '#d977a8';
+          ctx.beginPath();
+          ctx.arc(gx + px * 0.44, gy + px * 0.36, px * 0.05, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#e8c06a';
+          ctx.beginPath();
+          ctx.arc(gx + px * 0.56, gy + px * 0.34, px * 0.05, 0, Math.PI * 2);
+          ctx.fill();
         }
       } else if (d === Detail.Doormat) {
         // A bound coir mat: woven crosshatch inside a stitched edge,

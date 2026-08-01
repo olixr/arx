@@ -13,6 +13,7 @@ import {
   STATUS_IDS,
   Tile,
   TILE_DEFS,
+  wallHungInfo,
 } from '@arx/shared';
 import type { ZoneSign } from './maps/types.js';
 import { ZoneBuilder } from './maps/builder.js';
@@ -41,7 +42,7 @@ import { NPCS, TOWN_SPAWNS } from './npcs.js';
 import { LOOT_TABLES } from './loot/tables.js';
 import { RECIPES } from './recipes.js';
 import { NODES } from './nodes.js';
-import { BUILDABLES, BUILD_CATEGORIES, DYES, DYE_PIGMENTS, buildableForTile } from './buildables.js';
+import { BUILDABLES, BUILD_CATEGORIES, DYES, DYE_PIGMENTS, buildableForDetail, buildableForTile } from './buildables.js';
 import { GENERAL_STORE, SHOPS, TRAINER_DIRECTORY } from './shop.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 import { NPC_ACTORS } from './actors/registry.js';
@@ -564,7 +565,32 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
   assert.ok(foraging.length >= 4, 'foraging needs wild plants to pick');
   for (const b of BUILDABLES.values()) {
     for (const m of b.materials) assert.ok(ITEMS.has(m.item), `${b.id} material missing`);
-    assert.ok(TILE_DEFS[b.tile], `${b.id} tile has no def`);
+    // Exactly one lane: a piece places a tile OR hangs a detail.
+    assert.ok(
+      (b.tile !== undefined) !== (b.detail !== undefined),
+      `${b.id} must set exactly one of tile/detail`,
+    );
+    if (b.tile !== undefined) assert.ok(TILE_DEFS[b.tile], `${b.id} tile has no def`);
+    if (b.detail !== undefined) {
+      // A hanging def anchors at variant 0 of a real hanging family,
+      // and folds home through buildableForDetail across its band.
+      const info = wallHungInfo(b.detail);
+      assert.ok(info, `${b.id} detail is a real hanging`);
+      assert.equal(info!.dye ?? info!.motif ?? info!.species ?? 0, 0, `${b.id} anchors variant 0`);
+      assert.equal(buildableForDetail(b.detail)?.id, b.id, `${b.id} folds home`);
+    }
+  }
+  // Every band member folds to its family's one def; the authored
+  // royals hang free of the ledger.
+  for (let d = 0; d < 128; d++) {
+    const info = wallHungInfo(d);
+    if (!info) continue;
+    const def = buildableForDetail(d);
+    if (info.kind === 'crown' || info.kind === 'moon' || info.kind === 'tapestry') {
+      assert.equal(def, undefined, `royal ${d} is never player salvage`);
+    } else {
+      assert.ok(def, `hanging ${d} folds to a def`);
+    }
   }
 
   // THE MILLED-AND-WHOLE LAW (building v2): milled wood stacks, and

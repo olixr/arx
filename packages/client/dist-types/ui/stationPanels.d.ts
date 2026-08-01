@@ -47,6 +47,10 @@ export declare class StationPanels {
     private lastBankGear;
     /** The vault's selected pile — the detail strip's subject. */
     private bankSel;
+    /** The vault's standing tab (armory shows only when gear hangs). */
+    private bankTab;
+    /** The reader's place in each paged ledger, kept across re-renders. */
+    private leafAt;
     /** How the vault wall is ordered. */
     private bankSort;
     /** How the Workshop ledger is ordered. */
@@ -129,6 +133,8 @@ export declare class StationPanels {
      * closes once its station is out of reach (a little past the 2.2
      * interaction radius, so standing at the edge doesn't flicker it).
      */
+    /** Dev-only (`?room=` audit lever): stand a room without a station. */
+    releaseAnchor(): void;
     enforceAnchor(px: number, py: number): void;
     /** The pack changed — keep the open maker screen's figures honest. */
     refreshOpen(): void;
@@ -211,18 +217,30 @@ export declare class StationPanels {
         item: string;
         roll: ItemRoll;
     }>): void;
+    /** The vault's shelving law: what family a stored good belongs to. */
+    private familyOf;
     /**
-     * The Vault: stored goods as a WALL OF SOCKETS you read like your
-     * own pack — pick a pile and the counter beneath offers Take 1/5/
-     * All. Rolled gear hangs apart on the armory rack, tinted by tier,
-     * each piece taken back with one press. Hover or focus any socket
-     * for the full item card, exactly like the pack.
+     * Deal prebuilt rows into a paged ledger — NOTHING LIVES BELOW THE
+     * FOLD for every maker's list. The reader's place survives the
+     * wholesale re-renders the pack mirror forces.
+     */
+    private dealIntoLedger;
+    /** One vault socket — goods pile or rolled armory piece. */
+    private vaultCell;
+    /**
+     * The Vault (Grand Refit Ph5): stored goods dealt onto paged
+     * LEAVES of sockets — family tabs shelve them, the armory hangs on
+     * its own tab when rolled gear exists, and nothing hides behind a
+     * scrollbar. Pick a pile and the counter beneath offers Take 1/5/
+     * All. Hover or focus any socket for the full item card.
      */
     private renderBank;
     /**
-     * The Store: goods SHELVED in a grid — big portrait, name, an honest
-     * coin price tag, and the buy buttons right on the shelf. Your pack
-     * stands beside the counter; tap items there to sell them.
+     * The Store (Grand Refit Ph5): goods shelved as PLATES — portrait,
+     * name, an honest coin tag. THE VERB COMES TO THE HAND: pressing a
+     * shelf buys one; Ⓨ or right-click offers Buy one / Buy five on
+     * the sheet. Your pack stands beside the counter; tap items there
+     * to sell them. Standing pricing is told once, on the hint line.
      */
     openShop(shopId?: string, at?: {
         tx: number;

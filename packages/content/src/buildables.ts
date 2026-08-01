@@ -1,4 +1,12 @@
-import { DYE_COUNT, Tile, awningInfo, diagWallInfo, type SkillId } from '@arx/shared';
+import {
+  Detail,
+  DYE_COUNT,
+  Tile,
+  awningInfo,
+  diagWallInfo,
+  wallHungInfo,
+  type SkillId,
+} from '@arx/shared';
 
 /**
  * THE DYE LAW's roster — the ten cloths of the Dawnlands, index-married
@@ -47,6 +55,28 @@ if (DYE_PIGMENTS.length !== DYE_COUNT) {
   throw new Error(`DYE_PIGMENTS (${DYE_PIGMENTS.length}) must match shared DYE_COUNT (${DYE_COUNT})`);
 }
 
+/**
+ * The bracket sign's carved trade motifs, index-married to the shared
+ * band (SIGN_MOTIF_COUNT pins the length). Order is FOREVER.
+ */
+export const SIGN_MOTIFS: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'mug', name: 'Mug' },
+  { id: 'loaf', name: 'Loaf' },
+  { id: 'blade', name: 'Blade' },
+  { id: 'fish', name: 'Fish' },
+  { id: 'sprig', name: 'Sprig' },
+  { id: 'boot', name: 'Boot' },
+  { id: 'bed', name: 'Bed' },
+  { id: 'hammer', name: 'Hammer' },
+];
+
+/** The trellis's climbing species, index-married to the shared band. */
+export const TRELLIS_SPECIES: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'ivy', name: 'Ivy' },
+  { id: 'rose', name: 'Rose' },
+  { id: 'hopvine', name: 'Hopvine' },
+];
+
 /** The palette's shelves — every buildable sits on exactly one. */
 export type BuildCategory =
   | 'foundation'
@@ -72,7 +102,19 @@ export const BUILD_CATEGORIES: ReadonlyArray<{ id: BuildCategory; label: string 
 export interface BuildableDef {
   id: string;
   name: string;
-  tile: Tile;
+  /**
+   * The tile this piece places — absent for WALL-HUNG pieces, which
+   * place no tile at all: they write the target wall's DETAIL layer
+   * instead (see `detail`). Exactly one of tile/detail is set.
+   */
+  tile?: Tile;
+  /**
+   * THE SECOND LAYER's build lane: the detail this piece hangs on the
+   * target wall face, at variant 0 (dye/motif/species) — the server
+   * resolves the chosen variant into the band. A def with `detail`
+   * aims at an existing wall tile; `ground` is ignored.
+   */
+  detail?: Detail;
   levelReq: number;
   xp: number;
   materials: Array<{ item: string; qty: number }>;
@@ -376,6 +418,67 @@ const defs: BuildableDef[] = [
     materials: [{ item: 'board', qty: 3 }],
     ticks: 25,
     ground: OUTDOOR_AND_FLOORS,
+  },
+  {
+    // THE WALL TAKES A HANGING: these five place no tile — they hang
+    // a DETAIL on the wall face the builder aims at (THE SECOND
+    // LAYER's build lane; the server holds the hangable-face law).
+    // The trellis is the gardener's first rung: lattice up the wall,
+    // the vine chooses its species at placement.
+    id: 'trellis',
+    cat: 'decor',
+    name: 'Trellis',
+    detail: Detail.Trellis,
+    levelReq: 9,
+    xp: 45,
+    materials: [{ item: 'board', qty: 3 }],
+    ticks: 25,
+  },
+  {
+    id: 'wall_basket',
+    cat: 'decor',
+    name: 'Wall basket',
+    detail: Detail.WallBasket,
+    levelReq: 9,
+    xp: 45,
+    materials: [{ item: 'board', qty: 1 }, { item: 'twine', qty: 1 }],
+    ticks: 22,
+  },
+  {
+    // A swagged line of little flags — the festival read. Dyed at
+    // placement; the pigment is paid beside the cloth.
+    id: 'pennant_string',
+    cat: 'decor',
+    name: 'Pennant string',
+    detail: Detail.Pennant,
+    levelReq: 11,
+    xp: 58,
+    materials: [{ item: 'cloth', qty: 1 }, { item: 'twine', qty: 2 }],
+    ticks: 26,
+  },
+  {
+    // The vertical cloth off an iron rod — the authored royal banner
+    // grammar, opened to every house in ten dyes.
+    id: 'wall_banner',
+    cat: 'decor',
+    name: 'Wall banner',
+    detail: Detail.WallBanner,
+    levelReq: 13,
+    xp: 68,
+    materials: [{ item: 'cloth', qty: 2 }, { item: 'board', qty: 1 }],
+    ticks: 30,
+  },
+  {
+    // The folklore shingle on a wrought arm: a smith marks a smithy.
+    // The trade motif is chosen at placement.
+    id: 'bracket_sign',
+    cat: 'decor',
+    name: 'Bracket sign',
+    detail: Detail.BracketSign,
+    levelReq: 13,
+    xp: 68,
+    materials: [{ item: 'board', qty: 2 }, { item: 'iron_bar', qty: 1 }],
+    ticks: 30,
   },
   {
     id: 'stone_doorway',
@@ -744,7 +847,9 @@ const defs: BuildableDef[] = [
 
 export const BUILDABLES: ReadonlyMap<string, BuildableDef> = new Map(defs.map((d) => [d.id, d]));
 
-const BY_TILE: ReadonlyMap<Tile, BuildableDef> = new Map(defs.map((d) => [d.tile, d]));
+const BY_TILE: ReadonlyMap<Tile, BuildableDef> = new Map(
+  defs.filter((d) => d.tile !== undefined).map((d) => [d.tile!, d]),
+);
 
 /** Corner defs by wall material — auto-orient scatters one def across
  *  four placed tiles, and salvage must find its way back. */
@@ -769,4 +874,25 @@ export function buildableForTile(tile: Tile): BuildableDef | undefined {
   const awn = awningInfo(tile);
   if (awn) return BUILDABLES.get(`awning_${awn.shape}`);
   return BY_TILE.get(tile);
+}
+
+/** The five hanging families' defs, keyed by wallHungInfo kind. */
+const DETAIL_DEF_ID: Record<string, string> = {
+  banner: 'wall_banner',
+  pennant: 'pennant_string',
+  sign: 'bracket_sign',
+  trellis: 'trellis',
+  basket: 'wall_basket',
+};
+
+/**
+ * The def that hung this detail — salvage's reverse ledger, one lane
+ * over, dye/motif/species-blind like the awning fold. The authored
+ * royals (crown/moon/tapestry) answer undefined: no player def hangs
+ * them and none salvages them.
+ */
+export function buildableForDetail(detail: number): BuildableDef | undefined {
+  const info = wallHungInfo(detail);
+  if (!info) return undefined;
+  return BUILDABLES.get(DETAIL_DEF_ID[info.kind] ?? '');
 }

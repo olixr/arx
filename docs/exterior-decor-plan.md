@@ -290,12 +290,40 @@ and madder market built through the full pipeline on Dawnmead's cottage
 someone-in-the-way), demolish salvage lines confirmed, and the cottage's
 street face wears shed + market + bowed in the final frame.
 
-**Phase 2 — THE WALL TAKES A HANGING.**
-Wall banner, pennant string, bracket sign, trellis vine, wall basket — `wallHangings`
-branches, veil-shed thresholds, buildable entries (banner L13, pennant L11, sign L13,
-trellis L9, basket L9), re-dye/re-motif interaction on owned decor (pigment cost,
-DetailPatch swap — no rebuild). Proof: hang all five on one cottage, veil-walk
-through the door and watch them shed in order; sign motifs readable at zoom 1.15.
+**Phase 2 — THE WALL TAKES A HANGING. SHIPPED 2026-08-01.**
+As built: `BuildableDef` gained the deferred `detail?` lane (`tile` now optional —
+exactly one of the two, test-pinned; BY_TILE filters, `buildableForDetail` is the
+dye/motif/species-blind reverse fold, royals fold to nothing). Five defs on the
+decor shelf: trellis L9 (board×3), wall_basket L9 (board+twine), pennant_string
+L11 (cloth+twine×2), wall_banner L13 (cloth×2+board), bracket_sign L13
+(board×2+iron_bar). Server: build()/tickBuild hang branches on the shared
+`hangFaceOk` law (extracted — dev lever, build lane, and completion all one
+gate); `hangVariant` clamps narrow rosters (motifs 8, species 3) to anchor
+instead of throwing; **THE RE-DYE DISCOUNT**: re-dressing your OWN hanging of
+the same family waives materials, costs pigment only, and grants NO xp (a
+pigment-cheap swap must never become an xp faucet) — proven live: banner
+madder→rose cost exactly 1 berry, 0 cloth, 0 boards. **Removal = the demolish
+lane**: the hanging is the TOP layer (comes down before the wall could), quiet
+(no collapse fx — a banner is lifted, not felled), ceil-half salvage, prior
+detail returns; a wall-fall now spills its hanging's salvage as an unowned
+pile; `ownbuilt` answers BOTH layers. Painters: wallHangings dispatches via
+wallHungInfo — player banner (swallowtail + woven diamond, two-beat), pennant
+swag (quadratic rope, four flags alternating dye/cream, per-flag phase),
+bracket sign (wrought arm + mount plate + scroll curl, shingle swinging with
+the lagged bob, EIGHT carved motifs readable at street zoom: mug loaf blade
+fish sprig boot bed hammer), trellis (lattice + species vine: ivy/rose-with-
+glint-blooms/hopvine-cones, fluttering leaf tips), wall basket (peg + rope +
+wicker bowl + FlowerBox bloom mix, slow pendulum). Studio: flat-map glyphs for
+every family (dye-true via DYE_SWATCHES) + all 32 details on the palette,
+dealt from band math. Tray: generalized variant row (dye dots OR named chips
+for motifs/species, each family remembering its pick); hang ghost mirrors the
+face law ('No wall face' / 'Cloth already hangs') and prices the re-dye
+discount honestly; drag-run dresses a wall run, skipping refusing faces.
+PROVEN: 1275 tests green; staged five-family lineup (all variants) + close-up
+motif readability; live on the cottage — banner hung (pigment fell exactly),
+re-dyed for one berry, hammer sign + rose trellis landed exact banded ids,
+trellis torn back down for 2 boards, rows in built_details.
+DEVIATION: none — the phase shipped whole.
 
 **Phase 3 — THE PORCH.**
 `PorchDeck` + `TimberPost` tiles, `isPorchTile`, `renderLift` branch, `'porch'`

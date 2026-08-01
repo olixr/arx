@@ -503,6 +503,8 @@ export class StationPanels {
 
   /** The footing rule in world-words — where a piece agrees to stand. */
   private footingWords(def: BuildableDef): string {
+    // Hangings aim at the wall itself, not the ground before it.
+    if (def.detail !== undefined) return 'a bare wall face';
     const ground = buildableGround(def);
     const outdoor = ground.includes(Tile.Grass);
     const floors = ground.includes(Tile.WoodFloor);
@@ -602,7 +604,9 @@ export class StationPanels {
     const level = levelOf(def);
     const locked = lockedOf(def);
     const count = this.placeable(def);
-    const turnable = diagWallInfo(def.tile) !== null || def.tile === Tile.FenceDiagNE;
+    const turnable =
+      def.tile !== undefined &&
+      (diagWallInfo(def.tile) !== null || def.tile === Tile.FenceDiagNE);
 
     const head = document.createElement('div');
     head.className = 'work-head';

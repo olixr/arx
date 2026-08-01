@@ -1098,6 +1098,46 @@ export declare class Renderer {
      */
     private wallHangings;
     /**
+     * THE WALL TAKES A HANGING — the player's banner: the royal
+     * swallowtail grammar in the ten common dyes, a woven diamond
+     * where the crown would sit. Two-beat cloth (hoist sways, tails
+     * trail), its own shadow seating it on the masonry.
+     */
+    private playerBannerOnFace;
+    /**
+     * The pennant string: a swagged line under the eave, little flags
+     * alternating the dye and its cream partner, each a beat out of
+     * phase with its neighbour (the valance law on a rope).
+     */
+    private pennantOnFace;
+    /**
+     * The bracket sign: a wrought arm off the wall, the trade shingle
+     * swinging under it on two rings (the HangingSign's lagged bob).
+     * Eight carved motifs — a smith marks a smithy, an inn its bed —
+     * chunky enough to read at street zoom.
+     */
+    private bracketSignOnFace;
+    /**
+     * One carved trade motif, centered at (mx,my) in a w-wide field —
+     * chunky flat-vector, two tones, readable at street zoom. Order is
+     * FOREVER (the id math): mug, loaf, blade, fish, sprig, boot, bed,
+     * hammer.
+     */
+    private signMotif;
+    /**
+     * The trellis: garden lattice up the wall face, a climbing vine
+     * choosing its species — ivy's deep green, the madder rose in
+     * bloom, the hopvine's pale cones. Leaf tips flutter; the blooms
+     * carry a glint (the beacon law, whispered).
+     */
+    private trellisOnFace;
+    /**
+     * The wall basket: a wicker bowl off a bracket peg, blooms in the
+     * FlowerBox's own mixed palette, swaying on its rope like a slow
+     * pendulum. The gardener's smallest word.
+     */
+    private wallBasketOnFace;
+    /**
      * The grand tapestry — the Silverfall weave. Adjacent wall tiles of
      * the same run carrying Detail.Tapestry merge into ONE wide hanging:
      * every member computes the run's extent, draws the ENTIRE
