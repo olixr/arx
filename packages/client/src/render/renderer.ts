@@ -6317,74 +6317,82 @@ export class Renderer {
   }
 
   /**
-   * The bracket sign: a wrought arm off the wall, the trade shingle
-   * swinging under it on two rings (the HangingSign's lagged bob).
-   * Eight carved motifs — a smith marks a smithy, an inn its bed —
+   * The bracket sign — PERSPECTIVE-HONEST: a board hung perpendicular
+   * to a south face would show the camera only its edge, so on these
+   * faces the trade board hangs FLAT IN THE WALL PLANE — a wrought
+   * rod above it, two chains to its corners, the whole sign swinging
+   * as a pendulum in that plane (an honest motion for an in-plane
+   * board). The face-on read is legitimate carpentry, not a cheat:
+   * wall-hung painted boards are period signage. Eight carved motifs,
    * chunky enough to read at street zoom.
    */
   private bracketSignOnFace(tx: number, ty: number, px0: number, s: number, motif: number): void {
     const ctx = this.ctx;
     const t = performance.now() / 1000;
     const cx = px0 + s * 0.5;
-    const armY = -s * 1.74;
-    // The arm projects off the face toward the street: in this
-    // projection that reads as a slight down-screen drop to its tip.
-    const mountX = cx - s * 0.3;
-    const tipX = cx + s * 0.16;
-    const tipY = armY + s * 0.05;
+    const rodY = -s * 1.76;
+    const rodHalf = s * 0.26;
+    // The wrought rod on its wall plates, a center curl for the
+    // smith's pride, bolt pips catching light.
     ctx.strokeStyle = '#2c2836';
-    ctx.lineWidth = Math.max(1, s * 0.038);
+    ctx.lineWidth = Math.max(1, s * 0.04);
     ctx.beginPath();
-    ctx.moveTo(mountX, armY);
-    ctx.lineTo(tipX, tipY);
+    ctx.moveTo(cx - rodHalf - s * 0.05, rodY);
+    ctx.lineTo(cx + rodHalf + s * 0.05, rodY);
     ctx.stroke();
-    // The scroll curl at the tip, and the strut bracing the arm.
-    ctx.lineWidth = Math.max(1, s * 0.026);
+    ctx.lineWidth = Math.max(1, s * 0.024);
     ctx.beginPath();
-    ctx.arc(tipX, tipY + s * 0.045, s * 0.045, -Math.PI / 2, Math.PI * 0.8);
+    ctx.arc(cx, rodY - s * 0.045, s * 0.04, Math.PI * 0.15, Math.PI * 1.6);
     ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(mountX, armY + s * 0.22);
-    ctx.lineTo(mountX + s * 0.22, armY + s * 0.035);
-    ctx.stroke();
-    // Mount plate with two bolt heads.
     ctx.fillStyle = '#454052';
-    ctx.fillRect(mountX - s * 0.03, armY - s * 0.09, s * 0.06, s * 0.32);
+    for (const dx2 of [-rodHalf - s * 0.05, rodHalf + s * 0.05]) {
+      ctx.fillRect(cx + dx2 - s * 0.026, rodY - s * 0.05, s * 0.052, s * 0.1);
+    }
     ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    ctx.fillRect(mountX - s * 0.008, armY - s * 0.07, s * 0.016, s * 0.016);
-    ctx.fillRect(mountX - s * 0.008, armY + s * 0.18, s * 0.016, s * 0.016);
-    // The shingle swings from the arm's outer half.
-    const pivX = cx - s * 0.02;
-    const pivY = tipY - s * 0.01;
-    const swing = Math.sin(t * 1.6 + tx * 2.3) * 0.07;
-    const bob = Math.sin(t * 1.6 + tx * 2.3 - 0.5) * s * 0.012;
+    for (const dx2 of [-rodHalf - s * 0.05, rodHalf + s * 0.05]) {
+      ctx.fillRect(cx + dx2 - s * 0.008, rodY - s * 0.014, s * 0.016, s * 0.028);
+    }
+    // The pendulum: board and chains swing together IN THE PLANE,
+    // pivoting at the rod (the HangingSign's beat, made honest).
+    const swing = Math.sin(t * 1.6 + tx * 2.3) * 0.055;
+    const bob = Math.sin(t * 1.6 + tx * 2.3 - 0.5) * s * 0.01;
     ctx.save();
-    ctx.translate(pivX, pivY + bob);
+    ctx.translate(cx, rodY + bob);
     ctx.rotate(swing);
-    const bw = s * 0.52;
-    const bh = s * 0.4;
-    const by = s * 0.1;
-    // Rings, then the board's own drop shadow on the wall.
+    const bw = s * 0.56;
+    const bh = s * 0.42;
+    const by = s * 0.16;
+    // Chains: two links each, rod to the board's top corners.
     ctx.strokeStyle = '#454052';
     ctx.lineWidth = Math.max(1, s * 0.02);
-    for (const rx of [-bw * 0.3, bw * 0.3]) {
+    for (const rx of [-rodHalf, rodHalf]) {
+      const bxTo = rx * 0.82;
       ctx.beginPath();
-      ctx.arc(rx, by - s * 0.045, s * 0.032, 0, Math.PI * 2);
+      ctx.moveTo(rx, s * 0.01);
+      ctx.lineTo((rx + bxTo) / 2, by * 0.55);
+      ctx.lineTo(bxTo, by - s * 0.01);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc((rx + bxTo) / 2, by * 0.55, s * 0.022, 0, Math.PI * 2);
       ctx.stroke();
     }
-    ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
-    ctx.fillRect(-bw / 2 + s * 0.035, by + s * 0.04, bw, bh);
-    // The board: lumber, carved border, painted field.
+    // Standoff shadow seats the board proud of the masonry.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+    ctx.fillRect(-bw / 2 + s * 0.04, by + s * 0.045, bw, bh);
+    // The board: lumber, sunlit top arris, carved border, painted
+    // field, and a worn lower edge — layer on layer.
     ctx.fillStyle = '#8a6534';
     ctx.fillRect(-bw / 2, by, bw, bh);
     ctx.fillStyle = shade('#8a6534', 16);
-    ctx.fillRect(-bw / 2, by, bw, s * 0.03);
+    ctx.fillRect(-bw / 2, by, bw, s * 0.032);
+    ctx.fillStyle = shade('#8a6534', -18);
+    ctx.fillRect(-bw / 2, by + bh - s * 0.028, bw, s * 0.028);
     ctx.strokeStyle = '#5e4322';
     ctx.lineWidth = Math.max(1, s * 0.02);
-    ctx.strokeRect(-bw / 2 + s * 0.035, by + s * 0.035, bw - s * 0.07, bh - s * 0.07);
-    this.signMotif(motif, 0, by + bh / 2, bw * 0.62);
+    ctx.strokeRect(-bw / 2 + s * 0.04, by + s * 0.04, bw - s * 0.08, bh - s * 0.08);
+    this.signMotif(motif, 0, by + bh / 2, bw * 0.6);
     ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
-    ctx.lineWidth = Math.max(1, s * 0.026);
+    ctx.lineWidth = Math.max(1, s * 0.028);
     ctx.strokeRect(-bw / 2, by, bw, bh);
     ctx.restore();
   }
@@ -6603,7 +6611,13 @@ export class Renderer {
     ctx.beginPath();
     ctx.ellipse(s * 0.03, by + s * 0.14, bw * 0.52, s * 0.11, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Blooms first — they crowd above the rim.
+    // THE TOP-PLANE LAW, basket-sized: the tilted bird's eye sees
+    // INTO the bowl — a dark soil opening behind the rim, and the
+    // blooms rise out of it, not off its front lip.
+    ctx.fillStyle = 'rgba(40, 28, 16, 0.85)';
+    ctx.beginPath();
+    ctx.ellipse(0, by + s * 0.005, bw * 0.46, s * 0.05, 0, 0, Math.PI * 2);
+    ctx.fill();
     const hb = hashCoords(61, tx, ty);
     const BLOOMS = ['#d977a8', '#e8c06a', '#f0ede4', '#8f9ed6'];
     for (let k = 0; k < 4; k++) {
@@ -6611,7 +6625,7 @@ export class Renderer {
       const nod = Math.sin(t * 1.8 + hk * 0.3) * s * 0.01;
       ctx.fillStyle = BLOOMS[hk % BLOOMS.length]!;
       ctx.beginPath();
-      ctx.arc((k - 1.5) * bw * 0.24 + nod, by - s * 0.035 - (hk & 3) * s * 0.012, s * 0.038, 0, Math.PI * 2);
+      ctx.arc((k - 1.5) * bw * 0.24 + nod, by - s * 0.03 - (hk & 3) * s * 0.012, s * 0.038, 0, Math.PI * 2);
       ctx.fill();
     }
     // Greenery trailing off one side.
@@ -6642,6 +6656,12 @@ export class Renderer {
     ctx.fillStyle = 'rgba(255, 236, 200, 0.25)';
     ctx.fillRect(-bw / 2, by + s * 0.01, bw, s * 0.02);
     ctx.restore();
+    // The rim's sunlit front lip closes the opening's near edge.
+    ctx.strokeStyle = '#c09a5e';
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    ctx.beginPath();
+    ctx.ellipse(0, by + s * 0.005, bw * 0.46, s * 0.05, 0, 0.15, Math.PI - 0.15);
+    ctx.stroke();
     ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
     ctx.lineWidth = Math.max(1, s * 0.024);
     ctx.stroke(bowl);
@@ -22857,24 +22877,27 @@ export class Renderer {
 
   /**
    * THE CLOTH TAKES THE STREET — the awning painter, one method for
-   * all four shapes × ten dyes (the id carries both; the caller read
-   * it with awningInfo). Laws in force:
-   * - TOP-PLANE: the canopy is a foreshortened sloped plane — the rod
-   *   bolts high on the wall behind (tile north), the hem lands lower
-   *   and ~0.8 tiles south, so the slab reads as a true pitched top
-   *   under the tilted bird's eye, never a painted stripe.
-   * - HEM CLEARS THE HEAD (stall architecture law): the lowest cloth
-   *   sits ≥ ~1.45 tiles over the street — a body under the canopy
-   *   shows hips-to-face, never a decapitating band.
-   * - RUN LAW: adjacent tiles of the SAME id (shape + dye) merge into
-   *   one cloth — stripes run 4-per-tile with even parity so the bolt
-   *   continues seamlessly; a dye change breaks the run on purpose.
-   * - SKIN LAW: rod, brackets and the board shape's slats read the
-   *   HOST wall's wood skin, so the canopy belongs to its house.
-   * - WIND LAW: cloth samples the real wind field (windAtInto), the
-   *   valance teeth each a beat out of phase — one gust rolls down a
-   *   street of awnings. The board shape is timber and holds still.
-   * Live-painted every frame (never ring-cached): cloth moves.
+   * all four shapes × ten dyes, rebuilt to the masterwork bar:
+   * - THE TRUE SILHOUETTE: the ink follows the real edge — scallops
+   *   and drop bands live INSIDE the outline, never dangling past a
+   *   straight hem line — and it is struck at the ARCHITECTURE weight
+   *   (beginStructOutline), the same ring the walls wear.
+   * - THREE JOIN STATES per side: the same id merges into one cloth
+   *   (RUN LAW); a DIFFERENT awning butts FLUSH like built neighbours
+   *   (each keeps its own side ink — two framed canopies sharing a
+   *   post); open air is a FREE end and only free ends earn the
+   *   flare, the side rafter, and the wall stay.
+   * - IN-PLANE CLOTH: stripes, seams and ribs are projected through
+   *   the trapezoid (they splay with the plane), never left
+   *   screen-vertical inside a flared shape.
+   * - THE CARPENTRY SHOWS: a ledger bolted under the wall plate with
+   *   plate-and-pip fixings, side rafters at free ends, a front rail
+   *   the valance hangs from, and an underside lip that gives the
+   *   cloth thickness.
+   * Standing laws from the first build: TOP-PLANE + TRAPEZOID CUE,
+   * HEM CLEARS THE HEAD, SKIN LAW (the host wall's own wood), WIND
+   * LAW (windAtInto — the board shape is timber and holds still),
+   * THE VEIL LAW one tile over. Live-drawn every frame.
    */
   private awningItem(
     awn: AwningInfo,
@@ -22888,9 +22911,13 @@ export class Renderer {
   ): DrawItem {
     const syT = s * this.camera.yScale;
     const cloth = Renderer.AWNING_CLOTHS[awn.dye]!;
-    const isRun = (t2: number | undefined) => t2 === tile;
-    const je = isRun(game.world.groundAt(tx + 1, ty));
-    const jw = isRun(game.world.groundAt(tx - 1, ty));
+    const east = game.world.groundAt(tx + 1, ty);
+    const west = game.world.groundAt(tx - 1, ty);
+    const je = east === tile;
+    const jw = west === tile;
+    // A different awning next door: butt flush, no flare, own ink.
+    const fe = !je && east !== undefined && awningInfo(east) !== null;
+    const fw = !jw && west !== undefined && awningInfo(west) !== null;
     // The host wall lends its wood: rod and slats match the house.
     const host = game.world.groundAt(tx, ty - 1);
     const woodHost =
@@ -22910,25 +22937,28 @@ export class Renderer {
     const dripGroundY = p.y - syT * 0.5 + syT * depth;
     const xL = p.x - s * 0.5;
     const xR = p.x + 0.5 * s;
-    // THE TRAPEZOID CUE: the hem spreads toward the camera — a plane
-    // projecting off the wall MUST widen as it nears the viewer or it
-    // reads as a decal painted ON the face (pass-1 verdict).
+    // THE TRAPEZOID CUE: the hem spreads toward the camera — but only
+    // past TRUE free ends; runs continue and flush joints butt clean.
     const fl = s * 0.16;
     const topL = jw ? xL - 0.5 : xL - s * 0.01;
     const topR = je ? xR + 0.5 : xR + s * 0.01;
-    const botL = jw ? xL - 0.5 : xL - fl;
-    const botR = je ? xR + 0.5 : xR + fl;
-    const slab = () => {
+    const botL = jw ? xL - 0.5 : fw ? xL - 0.25 : xL - fl;
+    const botR = je ? xR + 0.5 : fe ? xR + 0.25 : xR + fl;
+    // Project an in-plane fraction to screen x at the top and hem —
+    // the one mapping every stripe, seam and rib draws through.
+    const atTop = (f: number): number => topL + (topR - topL) * f;
+    const atHem = (f: number): number => botL + (botR - botL) * f;
+    const railH = s * 0.04;
+    const slab = (): Path2D => {
       const path = new Path2D();
       path.moveTo(topL, rootY);
       path.lineTo(topR, rootY);
       if (shape === 'bowed') {
-        path.lineTo(botR, outY);
-        // The barrel bulge: the hem bellies down between its ends.
-        path.quadraticCurveTo((botL + botR) / 2, outY + s * 0.12, botL, outY);
+        path.lineTo(botR, outY + railH);
+        path.quadraticCurveTo((botL + botR) / 2, outY + railH + s * 0.12, botL, outY + railH);
       } else {
-        path.lineTo(botR, outY);
-        path.lineTo(botL, outY);
+        path.lineTo(botR, outY + railH);
+        path.lineTo(botL, outY + railH);
       }
       path.closePath();
       return path;
@@ -22940,8 +22970,7 @@ export class Renderer {
         const ctx = this.ctx;
         // THE VEIL LAW, one tile over: the canopy is bolted to the
         // wall BEHIND it — when that wall sinks to its reveal stub
-        // (or is gone entirely), the cloth folds away with it. Walls
-        // never fade, so neither does the awning: it sheds.
+        // (or is gone entirely), the cloth folds away with it.
         if (
           host === undefined ||
           !AWNING_HOST_TILES.has(host as Tile) ||
@@ -22951,220 +22980,265 @@ export class Renderer {
         }
         const wind = windAtInto(WIND_TMP, tx + 0.5, ty + 0.5, t);
         const hg = hashCoords(41, tx, ty);
-        // The canopy's own shade on the wall it serves: a soft wash
-        // under the rod that welds cloth to masonry.
-        ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
-        ctx.fillRect(topL, rootY + s * 0.05, topR - topL, s * 0.2);
-        // The ledger rod, bolted through: the house's own beam wood.
+        const gust = 0.6 + 0.35 * Math.max(0, wind.s);
+        // The canopy's own shade on the wall it serves: two graded
+        // washes, deepest in the tuck under the rod.
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+        ctx.fillRect(topL, rootY + s * 0.05, topR - topL, s * 0.13);
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.1)';
+        ctx.fillRect(topL, rootY + s * 0.18, topR - topL, s * 0.14);
+        // The ledger, bolted through under the wall plate: the
+        // house's own beam wood, with plate-and-pip fixings.
         ctx.fillStyle = frame;
         ctx.fillRect(topL, rootY - s * 0.045, topR - topL, s * 0.1);
         ctx.fillStyle = shade(frame, 16);
         ctx.fillRect(topL, rootY - s * 0.045, topR - topL, s * 0.028);
-        // Peg bolts at the tile's own stations (world-keyed).
-        ctx.fillStyle = shade(frame, -28);
-        for (const bx of [0.2, 0.8] as const) {
-          ctx.fillRect(xL + bx * s - s * 0.014, rootY - s * 0.02, s * 0.028, s * 0.05);
+        ctx.fillStyle = shade(frame, -30);
+        for (const bx of [0.18, 0.82] as const) {
+          ctx.fillRect(xL + bx * s - s * 0.026, rootY - s * 0.03, s * 0.052, s * 0.07);
+        }
+        ctx.fillStyle = 'rgba(255, 236, 200, 0.5)';
+        for (const bx of [0.18, 0.82] as const) {
+          ctx.fillRect(xL + bx * s - s * 0.008, rootY - s * 0.014, s * 0.016, s * 0.016);
         }
         const path = slab();
         if (shape === 'board') {
-          // Timber rain roof: three CHUNKY slat courses along the
-          // slope. WEATHERED tones — a rain roof grays under sky, so
-          // it separates from the fresh wall lumber behind it (the
-          // same-skin-on-same-skin camouflage was the pass-2 verdict).
+          // Timber rain roof: three chunky WEATHERED slat courses (a
+          // rain roof grays under sky, so it separates from the fresh
+          // wall lumber behind); the dye paints only the fascia.
           const slat = shade(skin.log, -16);
           const slat2 = shade(skin.log2, -8);
           ctx.save();
           ctx.clip(path);
-          const span = outY - rootY + s * 0.02;
+          const span = outY + railH - rootY + s * 0.02;
           const courses = 3;
           for (let c = 0; c < courses; c++) {
             const y0 = rootY + (span * c) / courses;
             const hC = span / courses;
             ctx.fillStyle = c % 2 === 0 ? slat : slat2;
             ctx.fillRect(topL, y0, topR - topL, hC);
-            // Each course overlaps the one below: a bold arris shadow
-            // plus a sunlit top sliver sell the shingled step.
             ctx.fillStyle = 'rgba(24, 15, 6, 0.38)';
             ctx.fillRect(topL, y0 + hC - s * 0.022, topR - topL, s * 0.022);
             ctx.fillStyle = 'rgba(255, 226, 175, 0.16)';
             ctx.fillRect(topL, y0, topR - topL, s * 0.02);
           }
-          // Long grain streaks, dealt per tile so runs vary honestly.
+          // Long grain, dealt per tile so runs vary honestly.
           ctx.fillStyle = 'rgba(24, 15, 6, 0.16)';
           for (let g = 0; g < 3; g++) {
             const gy = rootY + span * ((0.15 + ((hg >>> (g * 4)) % 5) * 0.17) % 0.95);
             ctx.fillRect(xL + s * 0.06 + ((hg >>> (g * 3)) % 3) * s * 0.1, gy, s * 0.6, s * 0.016);
           }
-          // Sky light on the upper courses (the plane faces the sun).
           ctx.fillStyle = 'rgba(255, 226, 175, 0.1)';
           ctx.fillRect(topL, rootY, topR - topL, span * 0.36);
           ctx.restore();
-          // Dye = the painted fascia board along the hem, and the
-          // rafter tails peek from under it — the honest carpentry.
+          // Rafter tails peek from under the dyed fascia.
           ctx.fillStyle = shade(frame, -10);
           for (const rx of [0.22, 0.72] as const) {
-            ctx.fillRect(xL + rx * s, outY + s * 0.06, s * 0.07, s * 0.08);
+            ctx.fillRect(atHem(rx), outY + s * 0.09, s * 0.07, s * 0.07);
           }
           ctx.fillStyle = cloth.a;
-          ctx.fillRect(botL, outY - s * 0.03, botR - botL, s * 0.12);
+          ctx.fillRect(botL, outY - s * 0.01, botR - botL, s * 0.12);
           ctx.fillStyle = shade(cloth.a, 18);
-          ctx.fillRect(botL, outY - s * 0.03, botR - botL, s * 0.025);
+          ctx.fillRect(botL, outY - s * 0.01, botR - botL, s * 0.025);
           ctx.fillStyle = shade(cloth.a, -26);
-          ctx.fillRect(botL, outY + s * 0.068, botR - botL, s * 0.022);
-          // The fascia's underside throws the roof's own shadow line.
-          ctx.fillStyle = 'rgba(24, 15, 6, 0.28)';
-          ctx.fillRect(botL, outY + s * 0.09, botR - botL, s * 0.03);
+          ctx.fillRect(botL, outY + s * 0.088, botR - botL, s * 0.022);
         } else {
-          // Cloth: the dyed bolt over the street.
+          // Cloth: the dyed bolt over the street, panels sewn in the
+          // plane of the slope.
           ctx.save();
           ctx.clip(path);
           if (shape === 'market') {
-            // THE 4-PER-TILE SEAMLESS STRIPE LAW: even parity per
-            // tile, so the bolt continues across a merged run.
-            const bandW = s / 4;
+            // THE 4-PER-TILE SEAMLESS STRIPE LAW, projected: each
+            // stripe is a QUAD from its top span to its (wider) hem
+            // span — the cloth splays with the plane it lives on.
             for (let k = -1; k < 5; k++) {
               ctx.fillStyle = (k & 1) === 0 ? cloth.a : cloth.b;
-              ctx.fillRect(xL + k * bandW, rootY, bandW + 0.5, outY - rootY + s * 0.03);
+              ctx.beginPath();
+              ctx.moveTo(atTop(k / 4), rootY);
+              ctx.lineTo(atTop((k + 1) / 4), rootY);
+              ctx.lineTo(atHem((k + 1) / 4), outY + railH + s * 0.02);
+              ctx.lineTo(atHem(k / 4), outY + railH + s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // Sewn-panel seams along every stripe boundary.
+            ctx.strokeStyle = 'rgba(20, 14, 28, 0.14)';
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            for (let k = 1; k < 4; k++) {
+              ctx.beginPath();
+              ctx.moveTo(atTop(k / 4), rootY);
+              ctx.lineTo(atHem(k / 4), outY + railH);
+              ctx.stroke();
             }
           } else {
             ctx.fillStyle = cloth.a;
-            ctx.fillRect(botL, rootY, botR - botL, outY - rootY + s * 0.15);
+            ctx.fillRect(botL, rootY, botR - botL, outY + railH - rootY + s * 0.15);
           }
           if (shape === 'bowed') {
-            // Curvature: the crown catches sky, root and hem roll away.
-            const span = outY - rootY;
+            const span = outY + railH - rootY;
             ctx.fillStyle = 'rgba(20, 14, 28, 0.24)';
             ctx.fillRect(botL, rootY, botR - botL, span * 0.22);
             ctx.fillStyle = 'rgba(255, 246, 224, 0.2)';
             ctx.fillRect(botL, rootY + span * 0.32, botR - botL, span * 0.32);
             ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
             ctx.fillRect(botL, rootY + span * 0.78, botR - botL, span * 0.3);
-            // Rib seams over the bow, the sewn panels.
-            ctx.fillStyle = 'rgba(20, 14, 28, 0.12)';
+            // Rib seams over the bow, projected through the plane.
+            ctx.strokeStyle = 'rgba(20, 14, 28, 0.14)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
             for (let k = 1; k < 4; k++) {
-              ctx.fillRect(xL + (k * s) / 4 - s * 0.008, rootY, s * 0.016, span + s * 0.14);
+              ctx.beginPath();
+              ctx.moveTo(atTop(k / 4), rootY);
+              ctx.lineTo(atHem(k / 4), outY + railH + s * 0.1);
+              ctx.stroke();
             }
           } else {
-            // Straight cloth: a deep tuck shadow off the rod (the
-            // plane rolls away under the wall) + seam lines.
+            // The tuck: cloth rolls away under the ledger.
             ctx.fillStyle = 'rgba(20, 14, 28, 0.24)';
             ctx.fillRect(topL, rootY, topR - topL, s * 0.12);
             if (shape === 'shed') {
-              ctx.fillStyle = 'rgba(20, 14, 28, 0.08)';
+              ctx.strokeStyle = 'rgba(20, 14, 28, 0.1)';
+              ctx.lineWidth = Math.max(1, s * 0.012);
               for (let k = 1; k < 4; k++) {
-                ctx.fillRect(xL + (k * s) / 4 - s * 0.006, rootY, s * 0.012, outY - rootY);
+                ctx.beginPath();
+                ctx.moveTo(atTop(k / 4), rootY);
+                ctx.lineTo(atHem(k / 4), outY + railH);
+                ctx.stroke();
               }
             }
             // The sun warms the lower half of the plane — the slope
             // faces the sky, and the gradient IS the pitch.
             ctx.fillStyle = 'rgba(255, 246, 224, 0.14)';
-            ctx.fillRect(botL, rootY + (outY - rootY) * 0.55, botR - botL, (outY - rootY) * 0.45);
+            ctx.fillRect(botL, rootY + (outY - rootY) * 0.55, botR - botL, (outY - rootY) * 0.45 + railH);
           }
           // The cloth answers the same wind the grass feels.
           ctx.fillStyle = `rgba(255, 252, 235, ${0.03 + 0.05 * Math.max(0, wind.l)})`;
           ctx.fill(path);
           ctx.restore();
         }
-        // Side arms at free ends: the stays that hold the spread —
-        // and a thickness sliver so the plane owns an edge.
-        const arm = (ex: number, dir: number) => {
-          ctx.strokeStyle = shade(frame, -18);
-          ctx.lineWidth = Math.max(1, s * 0.028);
+        // The FRONT RAIL the valance hangs from — the frame member
+        // that finishes the hem (cloth shapes only; board has fascia).
+        if (shape !== 'board') {
+          ctx.fillStyle = shade(frame, -6);
+          ctx.fillRect(botL, outY, botR - botL, railH);
+          ctx.fillStyle = shade(frame, 14);
+          ctx.fillRect(botL, outY, botR - botL, s * 0.014);
+          // The underside lip: the rail's shadow gives the cloth its
+          // thickness where the valance takes over.
+          ctx.fillStyle = 'rgba(20, 14, 28, 0.3)';
+          ctx.fillRect(botL, outY + railH, botR - botL, s * 0.022);
+        }
+        // Side rafters at TRUE free ends only: the frame bar the
+        // canvas stretches over, footed on a small wall bracket.
+        const rafter = (edgeTopX: number, edgeHemX: number): void => {
+          ctx.strokeStyle = shade(frame, -14);
+          ctx.lineWidth = Math.max(1, s * 0.045);
           ctx.beginPath();
-          ctx.moveTo(ex + dir * s * 0.01, rootY + s * 0.1);
-          ctx.lineTo(ex + dir * fl * 0.7, outY - s * 0.04);
+          ctx.moveTo(edgeTopX, rootY + s * 0.01);
+          ctx.lineTo(edgeHemX, outY + railH * 0.5);
           ctx.stroke();
-          // The thickness sliver closing the profile: shaded mass with
-          // a sun-law lit west arris (west edges catch the light).
-          ctx.fillStyle = 'rgba(24, 15, 6, 0.3)';
+          ctx.strokeStyle = 'rgba(255, 236, 200, 0.3)';
+          ctx.lineWidth = Math.max(1, s * 0.016);
           ctx.beginPath();
-          ctx.moveTo(ex, rootY);
-          ctx.lineTo(ex + dir * fl, outY);
-          ctx.lineTo(ex + dir * fl, outY + s * 0.05);
-          ctx.lineTo(ex, rootY + s * 0.1);
-          ctx.closePath();
-          ctx.fill();
-          if (dir < 0) {
-            ctx.strokeStyle = 'rgba(255, 236, 200, 0.35)';
-            ctx.lineWidth = Math.max(1, s * 0.02);
-            ctx.beginPath();
-            ctx.moveTo(ex, rootY);
-            ctx.lineTo(ex + dir * fl, outY);
-            ctx.stroke();
-          }
+          ctx.moveTo(edgeTopX, rootY + s * 0.005);
+          ctx.lineTo(edgeHemX, outY + railH * 0.5 - s * 0.01);
+          ctx.stroke();
         };
-        if (!jw) arm(xL, -1);
-        if (!je) arm(xR, 1);
-        // The hanging hem: each shape wears its own edge.
-        const gust = 0.6 + 0.35 * Math.max(0, wind.s);
+        if (!jw && !fw) rafter(topL + s * 0.02, botL + s * 0.02);
+        if (!je && !fe) rafter(topR - s * 0.02, botR - s * 0.02);
+        // The hanging hem, and with it THE TRUE SILHOUETTE the ink
+        // will trace: each shape contributes its real bottom edge.
+        const hemPath = new Path2D();
         if (shape === 'market') {
-          // Scalloped valance, each tooth a beat out of phase.
-          const bandW = s / 4;
-          for (let k = 0; k < 4; k++) {
-            const vx = xL + k * bandW;
+          // Touching half-round scallops, one per stripe, each a beat
+          // out of phase — and each INSIDE the outline.
+          const vTop = outY + railH;
+          hemPath.moveTo(botR, vTop);
+          for (let k = 3; k >= 0; k--) {
+            const xa = atHem((k + 1) / 4);
+            const xb = atHem(k / 4);
             const lean =
-              (wind.bx * 0.4 + Math.sin(t * 2.2 + tx * 1.3 + k * 1.9) * 0.5) * s * 0.045 * gust;
+              (wind.bx * 0.4 + Math.sin(t * 2.2 + tx * 1.3 + k * 1.9) * 0.5) * s * 0.03 * gust;
             ctx.fillStyle = (k & 1) === 0 ? cloth.a : cloth.b;
             ctx.beginPath();
-            ctx.moveTo(vx, outY - s * 0.01);
-            ctx.lineTo(vx + bandW, outY - s * 0.01);
-            ctx.lineTo(vx + bandW, outY + s * 0.06);
-            ctx.quadraticCurveTo(
-              vx + bandW * 0.5 + lean,
-              outY + s * 0.22,
-              vx,
-              outY + s * 0.06,
-            );
+            ctx.moveTo(xa, vTop);
+            ctx.quadraticCurveTo((xa + xb) / 2 + lean, vTop + s * 0.24, xb, vTop);
             ctx.closePath();
             ctx.fill();
+            // Inner shade seats the scallop under the rail; a bright
+            // thread rims its swing.
+            ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
+            ctx.beginPath();
+            ctx.moveTo(xa, vTop);
+            ctx.quadraticCurveTo((xa + xb) / 2 + lean, vTop + s * 0.1, xb, vTop);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 246, 224, 0.35)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(xa - s * 0.01, vTop + s * 0.01);
+            ctx.quadraticCurveTo((xa + xb) / 2 + lean, vTop + s * 0.2, xb + s * 0.01, vTop + s * 0.01);
+            ctx.stroke();
+            hemPath.quadraticCurveTo((xa + xb) / 2 + lean, vTop + s * 0.24, xb, vTop);
           }
         } else if (shape === 'shed') {
           // A plain drop band; its segments breathe in the gusts.
-          const seg = s / 3;
-          for (let k = 0; k < 3; k++) {
+          const vTop = outY + railH;
+          hemPath.moveTo(botR, vTop);
+          let px2 = botR;
+          for (let k = 2; k >= 0; k--) {
+            const xb = atHem(k / 3);
             const lean =
-              (wind.bx * 0.3 + Math.sin(t * 1.9 + tx * 1.1 + k * 2.3) * 0.5) * s * 0.02 * gust;
-            ctx.fillStyle = shade(cloth.a, -14);
-            ctx.fillRect(xL + k * seg, outY - s * 0.01, seg + 0.5, s * 0.1 + lean);
+              (wind.bx * 0.3 + Math.sin(t * 1.9 + tx * 1.1 + k * 2.3) * 0.5) * s * 0.016 * gust;
+            ctx.fillStyle = shade(cloth.a, -12);
+            ctx.fillRect(xb, vTop, px2 - xb + 0.5, s * 0.1 + lean);
+            hemPath.lineTo(px2, vTop + s * 0.1 + lean);
+            hemPath.lineTo(xb, vTop + s * 0.1 + lean);
+            px2 = xb;
           }
+          // The hem thread the maker sewed on.
           ctx.fillStyle = cloth.b;
-          ctx.fillRect(botL, outY - s * 0.022, botR - botL, s * 0.04);
+          ctx.fillRect(botL, vTop + s * 0.062, botR - botL, s * 0.026);
         } else if (shape === 'bowed') {
-          // Piped hem riding the bow's arc.
+          // Piped hem riding the bow's arc — the arc IS the edge.
+          const vTop = outY + railH;
+          const sway = Math.sin(t * 1.4 + tx * 1.7) * s * 0.015 * gust;
           ctx.strokeStyle = shade(cloth.a, -24);
           ctx.lineWidth = Math.max(1, s * 0.045);
           ctx.beginPath();
-          ctx.moveTo(botL, outY + s * 0.01);
-          ctx.quadraticCurveTo((botL + botR) / 2, outY + s * 0.13, botR, outY + s * 0.01);
+          ctx.moveTo(botL, vTop);
+          ctx.quadraticCurveTo((botL + botR) / 2 + sway, vTop + s * 0.13, botR, vTop);
           ctx.stroke();
           ctx.strokeStyle = cloth.b;
           ctx.lineWidth = Math.max(1, s * 0.018);
           ctx.beginPath();
-          ctx.moveTo(botL, outY - s * 0.005);
-          ctx.quadraticCurveTo((botL + botR) / 2, outY + s * 0.115, botR, outY - s * 0.005);
+          ctx.moveTo(botL, vTop - s * 0.01);
+          ctx.quadraticCurveTo((botL + botR) / 2 + sway, vTop + s * 0.115, botR, vTop - s * 0.01);
           ctx.stroke();
+          hemPath.moveTo(botR, vTop);
+          hemPath.quadraticCurveTo((botL + botR) / 2 + sway, vTop + s * 0.14, botL, vTop);
+        } else {
+          // Board: the fascia's bottom edge closes the shape.
+          hemPath.moveTo(botR, outY + s * 0.11);
+          hemPath.lineTo(botL, outY + s * 0.11);
         }
-        // The flat-art edge: the canopy wears the struct outline on
-        // its exposed silhouette (run interiors stay seamless).
+        // THE INK — the architecture ring itself (the same weight the
+        // walls wear), tracing the TRUE silhouette: ledger top, free
+        // and flush sides, and the real hem the shapes just built.
         if (this.outlineOn) {
           this.beginStructOutline();
           const o = new Path2D();
           o.moveTo(topL, rootY - s * 0.045);
           o.lineTo(topR, rootY - s * 0.045);
+          const hemTopY = shape === 'board' ? outY + s * 0.11 : outY + railH;
           if (!je) {
             o.moveTo(topR, rootY - s * 0.045);
-            o.lineTo(botR + fl * 0, outY);
+            o.lineTo(botR, hemTopY);
           }
           if (!jw) {
             o.moveTo(topL, rootY - s * 0.045);
-            o.lineTo(botL, outY);
+            o.lineTo(botL, hemTopY);
           }
-          o.moveTo(botL, outY);
-          if (shape === 'bowed') {
-            o.quadraticCurveTo((botL + botR) / 2, outY + s * 0.12, botR, outY);
-          } else {
-            o.lineTo(botR, outY);
-          }
+          o.addPath(hemPath);
           ctx.stroke(o);
         }
       },

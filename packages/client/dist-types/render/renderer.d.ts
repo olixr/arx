@@ -1111,9 +1111,13 @@ export declare class Renderer {
      */
     private pennantOnFace;
     /**
-     * The bracket sign: a wrought arm off the wall, the trade shingle
-     * swinging under it on two rings (the HangingSign's lagged bob).
-     * Eight carved motifs — a smith marks a smithy, an inn its bed —
+     * The bracket sign — PERSPECTIVE-HONEST: a board hung perpendicular
+     * to a south face would show the camera only its edge, so on these
+     * faces the trade board hangs FLAT IN THE WALL PLANE — a wrought
+     * rod above it, two chains to its corners, the whole sign swinging
+     * as a pendulum in that plane (an honest motion for an in-plane
+     * board). The face-on read is legitimate carpentry, not a cheat:
+     * wall-hung painted boards are period signage. Eight carved motifs,
      * chunky enough to read at street zoom.
      */
     private bracketSignOnFace;
@@ -2085,24 +2089,27 @@ export declare class Renderer {
     private objectItem;
     /**
      * THE CLOTH TAKES THE STREET — the awning painter, one method for
-     * all four shapes × ten dyes (the id carries both; the caller read
-     * it with awningInfo). Laws in force:
-     * - TOP-PLANE: the canopy is a foreshortened sloped plane — the rod
-     *   bolts high on the wall behind (tile north), the hem lands lower
-     *   and ~0.8 tiles south, so the slab reads as a true pitched top
-     *   under the tilted bird's eye, never a painted stripe.
-     * - HEM CLEARS THE HEAD (stall architecture law): the lowest cloth
-     *   sits ≥ ~1.45 tiles over the street — a body under the canopy
-     *   shows hips-to-face, never a decapitating band.
-     * - RUN LAW: adjacent tiles of the SAME id (shape + dye) merge into
-     *   one cloth — stripes run 4-per-tile with even parity so the bolt
-     *   continues seamlessly; a dye change breaks the run on purpose.
-     * - SKIN LAW: rod, brackets and the board shape's slats read the
-     *   HOST wall's wood skin, so the canopy belongs to its house.
-     * - WIND LAW: cloth samples the real wind field (windAtInto), the
-     *   valance teeth each a beat out of phase — one gust rolls down a
-     *   street of awnings. The board shape is timber and holds still.
-     * Live-painted every frame (never ring-cached): cloth moves.
+     * all four shapes × ten dyes, rebuilt to the masterwork bar:
+     * - THE TRUE SILHOUETTE: the ink follows the real edge — scallops
+     *   and drop bands live INSIDE the outline, never dangling past a
+     *   straight hem line — and it is struck at the ARCHITECTURE weight
+     *   (beginStructOutline), the same ring the walls wear.
+     * - THREE JOIN STATES per side: the same id merges into one cloth
+     *   (RUN LAW); a DIFFERENT awning butts FLUSH like built neighbours
+     *   (each keeps its own side ink — two framed canopies sharing a
+     *   post); open air is a FREE end and only free ends earn the
+     *   flare, the side rafter, and the wall stay.
+     * - IN-PLANE CLOTH: stripes, seams and ribs are projected through
+     *   the trapezoid (they splay with the plane), never left
+     *   screen-vertical inside a flared shape.
+     * - THE CARPENTRY SHOWS: a ledger bolted under the wall plate with
+     *   plate-and-pip fixings, side rafters at free ends, a front rail
+     *   the valance hangs from, and an underside lip that gives the
+     *   cloth thickness.
+     * Standing laws from the first build: TOP-PLANE + TRAPEZOID CUE,
+     * HEM CLEARS THE HEAD, SKIN LAW (the host wall's own wood), WIND
+     * LAW (windAtInto — the board shape is timber and holds still),
+     * THE VEIL LAW one tile over. Live-drawn every frame.
      */
     private awningItem;
     /**
