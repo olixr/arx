@@ -463,3 +463,72 @@ this doc; VOICE pass over every line the system speaks.
   Drover sketch), pen ambience (a named pet visible AT the pen while
   stabled — a render-only joy, real scope), Callings swap toward
   companion perks, examine lines on the collar tag.
+
+---
+
+## Part 6 — THE LEDGER (as shipped, 2026-08-01)
+
+The epic ran b7ac92f (this plan) through six phase commits: 18b91a6
+THE OPEN HAND, a1d1626 THE FANG BESIDE YOU, bcb6be6 THE FALL IS NEVER
+THE END, a7f8fc1 THE THREE STALLS, 2ae952c THE SPECIES SPEAK, and the
+closing commit carrying this ledger. `prove:pets` walks all of it live
+(45+ receipts); the memory topic file carries per-phase as-built law.
+
+### The numbers as they stand
+
+| dial | shipped | note |
+|---|---|---|
+| Gentling window | hp <= 35% | the craven threshold, shared constant |
+| Gentling kneel | 80 ticks | flat; no gather-speed brews |
+| Tame xp | 30 + 10 x wild level | beetle 90 ... bear/owl 190 |
+| Pet ladder | dmg x2 + kill xpReward x0.5 | offset curve from species level |
+| Beastcraft trickle | floor(dmg/2), capped per mark | cap = the mark's xpReward |
+| Hand bonuses | +1% hp, +0.5% dmg per BC; armor BC/4 | one site: petStatBlock |
+| Downed window | 2400 ticks (120s) | then the limp home |
+| Tend rise | 40%; 80% with mending salve | salve is herbalism's shipped jar |
+| Rest home | 120s wall-clock | survives logout by design |
+| Bond moment | 240s per stall; +6 bc, +20 pet, heal 25% | kindness pays, never charges |
+| Harry rest | 200 ticks per mob | flat, never player-scaled |
+| Follow | heel 1.6 / catchup 6 / trail-out 24 / sprint cap 9.5 | under the 12 t/s lane |
+| Fight leash | 10 tiles from the keeper | a defender, never send-and-forget |
+| Stand-ground band | attackRange + 0.85 (pounce +1.6) | the orbit fix; land grace = stop band |
+
+### The ladder as shipped
+
+10 beetle (shell +4 armor) and rat (venom nip) · 15 mudcrab (chill
+grip) and boar (gore knockback 1.6) · 20 wolf (wild bleed) · 25 bear
+(wild charge and maul) · 30 great owl (hushing chill) · 35 adder
+(deep venom p2) · 45 worg (cold bite, +2 armor). Wolf and bear carry
+no kit on purpose: their wild teeth already are the kit, and the test
+suite pins that as a design statement.
+
+### Deviations from Part 5's first pass, decided in the field
+
+- The bear-at-15 instinct stayed at 25/30 (bear/owl); the rungs are
+  still one constant each if live play disagrees.
+- Kits ride the bite, the stat site, and the pounce — never the cast
+  rail. Every kit in the table was expressible with shipped teeth;
+  castAbility allegiance work would have bought nothing.
+- The whistle (heel/stay toggle) never shipped: companions are
+  always-heel and defend-the-hand, and no play in six phases wanted
+  the extra key. Deferred with its pad problem intact.
+- The Phase-2 interim fall was fully replaced by Phase 3; its
+  constants were deleted, not deprecated.
+- Dungeon entry/teardown recall ships BY CONSTRUCTION: the instance
+  jump is the same big-displacement trailing the Undercroft receipt
+  proves, and teardown's orphan sweep is the tickPet owner check.
+  No dungeon-specific pet code exists to break.
+- The keeper's kill-moment benefits (on-kill haste, kill procs) fire
+  on pet kills: kill credit is whole, decided in Phase 2.
+
+### Deferred, user-ask gated
+
+- Per-species synthesized voices (the foot rail already sounds every
+  pet body; three small cues shipped for down/rise/bond).
+- Pets aiding against HOSTILE ACTORS (named brigands): THE FANG KNOWS
+  ITS FRIENDS refuses all actors today, cost: pets sit out actor-boss
+  fights.
+- Pen ambience (a stabled friend visible AT the pen), livestock
+  follow (the old Drover sketch), Callings swap toward companion
+  perks, collar examine lines, resting collect UI polish beyond the
+  stalls panel.

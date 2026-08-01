@@ -1185,6 +1185,7 @@ const signHud = new SignHud(game);
 // tag once, through the one modal card.
 const petNaming = new PetNamingCard();
 game.onPetCeremony = (slot, currentName) => {
+  sfx.petBond();
   petNaming.open(slot, currentName, (name) => game.petRename(slot, name));
 };
 // THE THREE STALLS: the stable door's acts ride the wire; the rename
@@ -1193,7 +1194,25 @@ stationPanels.setStableHooks(
   (op, slot) => game.stableOp(op, slot),
   (slot, current) => petNaming.open(slot, current, (name) => game.petRename(slot, name)),
 );
-game.onPet = () => stationPanels.refreshStable(game.ownPets);
+// The companion's moments ride the mirror's state edges — the huff
+// when a friend goes down, the happy nip when it stands again. Event
+// wiring, never chat-text matching.
+const petStates = new Map<number, string>();
+game.onPet = () => {
+  for (const p of game.ownPets) {
+    const prev = petStates.get(p.slot);
+    if (prev !== undefined && prev !== p.state) {
+      if (p.state === 'downed') sfx.petDown();
+      else if (prev === 'downed' && (p.state === 'heel' || p.state === 'trailing')) sfx.petRise();
+      else if (prev === 'resting' && (p.state === 'heel' || p.state === 'stabled')) sfx.petRise();
+    }
+    petStates.set(p.slot, p.state);
+  }
+  for (const slot of [...petStates.keys()]) {
+    if (!game.ownPets.some((p) => p.slot === slot)) petStates.delete(slot);
+  }
+  stationPanels.refreshStable(game.ownPets);
+};
 renderer.signHasText = (tx, ty) => {
   const sign = game.signAt(tx, ty);
   return !!sign && (sign.title !== '' || sign.lines.some((l) => l !== ''));

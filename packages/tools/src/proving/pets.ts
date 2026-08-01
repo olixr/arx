@@ -128,6 +128,25 @@ async function tp(c: Client, x: number, y: number): Promise<void> {
   );
 }
 
+/** Teleport far from here, trying offsets until one lands on ground. */
+async function tpFarFrom(c: Client, base: [number, number]): Promise<void> {
+  for (const [ox, oy] of [
+    [-70, -45],
+    [-52, 31],
+    [64, -27],
+    [41, 52],
+    [-33, -62],
+  ] as Array<[number, number]>) {
+    try {
+      await tp(c, base[0] + ox, base[1] + oy);
+      return;
+    } catch {
+      // that ground refused — try the next quarter
+    }
+  }
+  throw new Error('no far ground would take the keeper');
+}
+
 /** The gentling window on the wire: hpPct is a u8, 255 = whole. */
 const WINDOW_PCT = Math.floor(255 * GENTLE_HP_FRAC);
 
@@ -196,6 +215,7 @@ const main = async () => {
       await tp(c, Math.round(far.x), Math.round(far.y) + 1);
     }
     const t0 = Date.now();
+    let sidled = false;
     for (;;) {
       if (Date.now() - t0 > 15000) {
         const b = c.ents.get(targetEid);
@@ -203,6 +223,13 @@ const main = async () => {
         throw new Error(
           `could not reach entity ${targetEid} (d ${b && me ? Math.hypot(b.x - me.x, b.y - me.y).toFixed(1) : '?'})`,
         );
+      }
+      // A boulder or a trunk on the straight line: sidle around it by
+      // asking the dev lift for the target's other shoulder.
+      if (!sidled && Date.now() - t0 > 6500) {
+        sidled = true;
+        const b2 = c.ents.get(targetEid);
+        if (b2) await tp(c, Math.round(b2.x) - 1, Math.round(b2.y));
       }
       const b = c.ents.get(targetEid);
       const me = c.pos;
@@ -315,12 +342,24 @@ const main = async () => {
   await c.waitFor((m) => m.t === 'action' && m.state === 'stop', 'kneel breaks', 5000, mark);
   receipt('walking off breaks the kneel', true);
 
-  // --- The true gentling: kneel it out, unbroken.
-  await walkTo(beetle);
-  mark = c.mark();
-  c.send({ t: 'interactnpc', eid: beetle });
-  await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'kneel starts again', 5000, mark);
-  const ceremony = await c.waitFor((m) => m.t === 'pet' && m.ceremony !== undefined, 'the ceremony', 9000, mark);
+  // --- The true gentling: kneel it out, unbroken. A wild bite can
+  // break a kneel honestly (the law working as written); the lure
+  // survives a broken kneel by the same law, so the court retries.
+  let ceremony: Msg | null = null;
+  for (let attempt = 1; attempt <= 3 && !ceremony; attempt++) {
+    await walkTo(beetle);
+    mark = c.mark();
+    c.send({ t: 'interactnpc', eid: beetle });
+    try {
+      await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'kneel starts again', 5000, mark);
+      ceremony = await c.waitFor((m) => m.t === 'pet' && m.ceremony !== undefined, 'the ceremony', 9000, mark);
+    } catch (err) {
+      if (attempt === 3) throw err;
+      console.log(`  (the kneel broke honestly, attempt ${attempt} — courting again)`);
+      await sleep(1000);
+    }
+  }
+  if (!ceremony) throw new Error('no ceremony');
   const tamed = ceremony.pets.find((p: Msg) => p.slot === ceremony.ceremony);
   receipt(
     'THE GENTLING IS EARNED: the beetle is yours, at heel, level true',
@@ -453,8 +492,44 @@ const main = async () => {
       if (landed) return;
     }
   };
+  /** Swing at a mob until it is dead — the keeper cleans up. */
+  const killTarget = async (targetEid: number, label: string): Promise<void> => {
+    const t0 = Date.now();
+    let lastNear = Date.now();
+    for (;;) {
+      if (Date.now() - t0 > 50000) throw new Error(`could not fell ${label}`);
+      const b = c.ents.get(targetEid);
+      if (!b || b.hpPct === 0 || Date.now() - b.at > 2000) return;
+      const me = c.pos!;
+      const d = Math.hypot(b.x - me.x, b.y - me.y);
+      const aim = Math.atan2(b.y - me.y, b.x - me.x);
+      // Swing whenever plausibly in reach — a circling mob spends
+      // half its time on the gate's far side, and pressing early
+      // costs nothing (the cone forgives, the whiff is honest).
+      if (d > 1.9) {
+        // A grown tree line pins a straight walk forever (no client
+        // pathing) — after 6s of failing to close, take the dev lift
+        // to the mob's shoulder (the walkTo sidle, weaponized).
+        if (Date.now() - lastNear > 3500) {
+          lastNear = Date.now();
+          await tp(c, Math.round(b.x), Math.round(b.y) + 1);
+          continue;
+        }
+        c.frame(0, Math.cos(aim), Math.sin(aim), aim);
+        await sleep(60);
+        continue;
+      }
+      lastNear = Date.now();
+      c.frame(ATTACK, 0, 0, aim);
+      await sleep(80);
+      c.frame(0, 0, 0, aim);
+      await sleep(380);
+    }
+  };
+
   /** Spawn a mob and open on it, retrying whole bodies on stage flakes. */
   const stageFight = async (species: string, label: string): Promise<number> => {
+    let lastEid: number | null = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       const sm = c.mark();
       await say(c, `/spawnmob ${species} 1`);
@@ -472,11 +547,21 @@ const main = async () => {
           .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
           .find((e: Msg) => e.defId === species && e.ownerEid === undefined).eid;
         await sleep(300);
+        lastEid = eid2;
         await landOne(eid2, label);
         return eid2;
       } catch (err) {
         if (attempt === 3) throw err;
-        console.log(`  (stage flake on ${label}, attempt ${attempt}: ${String((err as Error).message)} — respawning)`);
+        console.log(`  (stage flake on ${label}, attempt ${attempt}: ${String((err as Error).message)} — sweeping and respawning)`);
+        // A failed stage's mob is live litter that steals the pet's
+        // attention from the NEXT stage's mark — sweep it first.
+        if (lastEid !== null) {
+          const smp = c.ents.get(lastEid);
+          if (smp && smp.hpPct > 0 && Date.now() - smp.at < 2500) {
+            await killTarget(lastEid, `${label} (failed stage)`);
+          }
+          lastEid = null;
+        }
       }
     }
     throw new Error('unreachable');
@@ -501,15 +586,22 @@ const main = async () => {
   receipt('DEFEND THE HAND: the keeper points, the companion carries', true);
 
   // THE HARRY: the mob's eye moves off the keeper and onto the pet.
+  // The pet's ENTITY can be re-minted by trailing cycles during stage
+  // sweeps — compare against the live body at match time, never a
+  // captured eid (live-caught).
   mark = c.mark();
   await say(c, '/npcstate');
-  await c.waitFor(
-    (m) => m.t === 'chat' && new RegExp(`^goblin#${goblinEid} .*tgt=${petNow}\\b`).test(m.text ?? ''),
-    'goblin brain shows the pet as its mark',
-    6000,
-    mark,
-  );
-  receipt('THE HARRY: the companion holds the eye', true);
+  {
+    const line = await c.waitFor(
+      (m) => m.t === 'chat' && new RegExp(`^goblin#${goblinEid} .*chase tgt=\\d+`).test(m.text ?? ''),
+      'goblin brain shows a chase',
+      6000,
+      mark,
+    );
+    const tgt = Number(/tgt=(\d+)/.exec(line.text ?? '')?.[1]);
+    const nowPet = livePet();
+    receipt('THE HARRY: the companion holds the eye', tgt === nowPet, `tgt ${tgt}, pet ${nowPet}`);
+  }
   // The clean solo window closes HERE — the next act is a deliberate
   // keeper swing, whose own onehand xp is the keeper's business.
   const soloEndMark = c.mark();
@@ -525,11 +617,14 @@ const main = async () => {
     6000,
     mark,
   );
-  receipt(
-    'THE FIRST EYE HOLDS: the keeper shoots free, the mob stays on the pet',
-    new RegExp(`tgt=${petNow}\\b`).test(still.text ?? '') || /hp=0/.test(still.text ?? ''),
-    still.text,
-  );
+  {
+    const tgt2 = Number(/tgt=(\d+)/.exec(still.text ?? '')?.[1]);
+    receipt(
+      'THE FIRST EYE HOLDS: the keeper shoots free, the mob stays on the pet',
+      tgt2 === livePet() || /hp=0/.test(still.text ?? ''),
+      still.text,
+    );
+  }
   const shootFreeMark = c.mark();
 
   // The pet finishes the mark alone; the ledgers speak.
@@ -651,28 +746,6 @@ const main = async () => {
       await sleep(200);
     }
   };
-  /** Swing at a mob until it is dead — the keeper cleans up. */
-  const killTarget = async (targetEid: number, label: string): Promise<void> => {
-    const t0 = Date.now();
-    for (;;) {
-      if (Date.now() - t0 > 45000) throw new Error(`could not fell ${label}`);
-      const b = c.ents.get(targetEid);
-      if (!b || b.hpPct === 0 || Date.now() - b.at > 2000) return;
-      const me = c.pos!;
-      const d = Math.hypot(b.x - me.x, b.y - me.y);
-      const aim = Math.atan2(b.y - me.y, b.x - me.x);
-      if (d > 1.4) {
-        c.frame(0, Math.cos(aim), Math.sin(aim), aim);
-        await sleep(60);
-        continue;
-      }
-      c.frame(ATTACK, 0, 0, aim);
-      await sleep(80);
-      c.frame(0, 0, 0, aim);
-      await sleep(420);
-    }
-  };
-
   await topUp();
   await downThePet([course[0] + 26, course[1] + 16]);
 
@@ -692,22 +765,93 @@ const main = async () => {
   );
   receipt('the mirror carries the vigil: state downed', downMirror.pets.some((p: Msg) => p.state === 'downed'));
 
-  // Clean up the bear so the kneel has quiet, then prove the fallen
-  // body drew no further wounds while the fight raged past it.
-  const bearNow = c.msgs
-    .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
-    .filter((e: Msg) => e.defId === 'bear' && e.ownerEid === undefined)
-    .map((e: Msg) => e.eid)
-    .filter((e2: number) => {
-      const smp = c.ents.get(e2);
-      return smp && smp.hpPct > 0 && Date.now() - smp.at < 2000;
-    })
-    .pop();
-  // The cleanup needs a real sword arm — the keeper trained nothing
-  // but constitution until now (deliberately: the fang receipts had
-  // to be the pet's own work).
+  // The kneel needs quiet: fell every live bear (walking away is not
+  // an option — past the trail-out the fled exit sends the friend
+  // home, Phase 3's own law, learned the hard way).
   await say(c, '/xp onehand 13000000');
-  if (bearNow !== undefined) await killTarget(bearNow, 'the bear');
+  /**
+   * GUARD THE VIGIL: stand AT the fallen body and slay only what
+   * comes within reach. Never chase — the kill-chase lift once
+   * followed a homeward-leashing bear past the trail-out and the
+   * KEEPER fled his own vigil (diagnosed from the wire). A bear that
+   * keeps its distance is no threat to the kneel: it is provoked-only
+   * and cannot re-open on a keeper it has lost.
+   */
+  const guardTheVigil = async (bodyEid: number): Promise<void> => {
+    const t0 = Date.now();
+    let quietSince = Date.now();
+    for (;;) {
+      if (Date.now() - t0 > 45000) return; // enough — the kneel decides
+      const body = c.ents.get(bodyEid);
+      const me = c.pos!;
+      // Hold position beside the body.
+      if (body && Math.hypot(body.x - me.x, body.y - me.y) > 2.2) {
+        const aim = Math.atan2(body.y - me.y, body.x - me.x);
+        c.frame(0, Math.cos(aim), Math.sin(aim), aim);
+        await sleep(60);
+        continue;
+      }
+      const threats = c.msgs
+        .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+        .filter((e: Msg) => e.defId === 'bear' && e.ownerEid === undefined)
+        .map((e: Msg) => e.eid)
+        .filter((e2: number, i: number, arr: number[]) => arr.indexOf(e2) === i)
+        .map((e2: number) => c.ents.get(e2))
+        .filter((smp: Sample | undefined): smp is Sample => !!smp && smp.hpPct > 0 && Date.now() - smp.at < 2000)
+        .filter((smp: Sample) => Math.hypot(smp.x - me.x, smp.y - me.y) < 2.6);
+      if (threats.length > 0) {
+        quietSince = Date.now();
+        const b = threats[0]!;
+        const aim = Math.atan2(b.y - me.y, b.x - me.x);
+        c.frame(ATTACK, 0, 0, aim);
+        await sleep(80);
+        c.frame(0, 0, 0, aim);
+        await sleep(380);
+        continue;
+      }
+      if (Date.now() - quietSince > 6000) return;
+      c.frame(0);
+      await sleep(250);
+    }
+  };
+  /** Walk to a downed body and kneel until the given rise line lands.
+   *  Kneeling hands need an unbloodied keeper (the tend breaks on
+   *  every landed wound INCLUDING DoT ticks — found live, kept as
+   *  design: you stop bleeding before you tend), so each attempt
+   *  first waits out the keeper's own statuses and re-guards the
+   *  vigil against whatever is still pressing. */
+  const tendAt = async (bodyEid: number, riseRe: RegExp, label: string): Promise<void> => {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      // Let the bleed dry: a ticking wound breaks every kneel.
+      {
+        const w0 = Date.now();
+        while (Date.now() - w0 < 9000 && (c.pos?.status ?? 0) !== 0) {
+          c.frame(0);
+          await sleep(250);
+        }
+      }
+      await walkTo(bodyEid, 1.8);
+      const tm = c.mark();
+      c.send({ t: 'interactnpc', eid: bodyEid });
+      try {
+        await c.waitFor((m) => m.t === 'action' && m.state === 'start', `${label} kneel starts`, 5000, tm);
+        await c.waitFor((m) => m.t === 'chat' && riseRe.test(m.text ?? ''), `${label} rise`, 9000, tm);
+        return;
+      } catch (err) {
+        if (attempt === 3) {
+          const dsmp = c.ents.get(bodyEid);
+          console.error(`${label} DEBUG mirror:`, JSON.stringify(c.latest('pet')?.pets));
+          console.error(`${label} DEBUG body:`, JSON.stringify(dsmp), 'me:', JSON.stringify(c.pos));
+          console.error(`${label} DEBUG chats:`, JSON.stringify(c.msgs.filter((m) => m.t === 'chat').slice(-8).map((m) => m.text)));
+          throw err;
+        }
+        // Something is still pressing the vigil — stand and settle it.
+        await guardTheVigil(bodyEid);
+      }
+    }
+  };
+
+  await guardTheVigil(downedEid!);
   const stillDown = downedEid !== null ? c.ents.get(downedEid) : null;
   receipt(
     'a fallen body takes no further wounds, and no mob worries it',
@@ -715,11 +859,8 @@ const main = async () => {
   );
 
   // THE TEND: kneel to it where it lies; it rises shaky.
-  await walkTo(downedEid!, 1.8);
   mark = c.mark();
-  c.send({ t: 'interactnpc', eid: downedEid! });
-  await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'the tend kneel starts', 5000, mark);
-  await c.waitFor((m) => m.t === 'chat' && /finds its feet/.test(m.text ?? ''), 'the rise', 9000, mark);
+  await tendAt(downedEid!, /finds its feet/, 'tend');
   const tendXp = c.msgs.slice(mark).some((m) => m.t === 'xp' && m.skill === 'beastcraft');
   await sleep(500);
   const risen = c.ents.get(downedEid!);
@@ -730,7 +871,17 @@ const main = async () => {
   );
 
   // THE BOND MOMENT: its own lure, offered by hand — then the plain
-  // pat while the snack clock runs.
+  // pat while the snack clock runs. The staging can cost the keeper
+  // his pack (see the salve note below) — the receipt counts on four
+  // berries in hand, so top the pouch back up first.
+  {
+    const have = c.latest('inv')?.slots.find((x: any) => x && x.item === 'berries')?.qty ?? 0;
+    if (have < 4) {
+      mark = c.mark();
+      await say(c, `/give berries ${4 - have}`);
+      await c.waitFor((m) => m.t === 'inv', 'berries back in the pouch', 5000, mark);
+    }
+  }
   await walkTo(downedEid!, 1.8);
   mark = c.mark();
   c.send({ t: 'interactnpc', eid: downedEid! });
@@ -751,23 +902,17 @@ const main = async () => {
   await say(c, '/give mending_salve 1');
   await c.waitFor((m) => m.t === 'inv', 'salve in pack', 5000, mark);
   await downThePet([course[0] + 32, course[1] + 6]);
-  const salveDowned = livePet();
-  {
-    const bearNow2 = c.msgs
-      .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
-      .filter((e: Msg) => e.defId === 'bear' && e.ownerEid === undefined)
-      .map((e: Msg) => e.eid)
-      .filter((e2: number) => {
-        const smp = c.ents.get(e2);
-        return smp && smp.hpPct > 0 && Date.now() - smp.at < 2000;
-      })
-      .pop();
-    if (bearNow2 !== undefined) await killTarget(bearNow2, 'the second bear');
+  // The staging can cost the keeper his life and his pack with it
+  // (live-caught: the restage tended PLAIN because the jar died with
+  // him) — make sure the jar is in the pack before the kneel.
+  if (!c.latest('inv')?.slots.some((x: any) => x && x.item === 'mending_salve')) {
+    mark = c.mark();
+    await say(c, '/give mending_salve 1');
+    await c.waitFor((m) => m.t === 'inv', 'salve back in pack', 5000, mark);
   }
-  await walkTo(salveDowned!, 1.8);
-  mark = c.mark();
-  c.send({ t: 'interactnpc', eid: salveDowned! });
-  await c.waitFor((m) => m.t === 'chat' && /salve does its quiet work/.test(m.text ?? ''), 'the salve rise', 9000, mark);
+  const salveDowned = livePet();
+  await guardTheVigil(salveDowned!);
+  await tendAt(salveDowned!, /salve does its quiet work/, 'salve');
   await sleep(500);
   {
     const risen2 = c.ents.get(salveDowned!);
@@ -785,22 +930,33 @@ const main = async () => {
   await say(c, '/tame wolf');
   await c.waitFor((m) => m.t === 'pet' && m.pets?.length === 2, 'the wolf joins', 5000, mark);
   const wolfSlot = c.latest('pet')!.pets.find((p: Msg) => p.state === 'heel')!.slot;
-  const kitGoblin = await stageFight('goblin', 'the kit goblin');
+  // A bear, not a goblin: the wolf fells small marks before the wire
+  // can even show the wound (live-caught) — the worry needs a neck
+  // thick enough to keep bleeding on camera.
+  const kitMark = await stageFight('bear', 'the kit bear');
   {
     const t0 = Date.now();
     let bitten = false;
-    while (Date.now() - t0 < 30000) {
+    let rePointed = false;
+    while (Date.now() - t0 < 50000) {
       c.frame(0);
-      const gsmp = c.ents.get(kitGoblin);
+      const gsmp = c.ents.get(kitMark);
       if (!gsmp || gsmp.hpPct === 0) break;
       if (gsmp.status !== 0) {
         bitten = true;
         break;
       }
+      // A slow first bite (orbit variance): another keeper blow
+      // shakes the fight loose and re-points the wolf.
+      if (!rePointed && Date.now() - t0 > 18000) {
+        rePointed = true;
+        await landOne(kitMark, 'the kit bear (re-point)');
+      }
       await sleep(150);
     }
     receipt('THE KIT RIDES THE BITE: the worry keeps bleeding on the wire', bitten);
   }
+  await killTarget(kitMark, 'the kit bear');
   await say(c, `/tame drop ${wolfSlot}`);
   await c.waitFor((m) => m.t === 'pet' && m.pets?.length === 1, 'the wolf returned (dev)', 5000);
   await say(c, '/tame heel 0');
@@ -813,7 +969,7 @@ const main = async () => {
   // THE KEEPER FLED exit: down it again, then walk out of its world.
   await downThePet([course[0] + 38, course[1] + 24]);
   mark = c.mark();
-  await tp(c, course[0] - 70, course[1] - 45);
+  await tpFarFrom(c, course);
   await c.waitFor((m) => m.t === 'chat' && /drags itself off toward your stalls/.test(m.text ?? ''), 'the limp home', 9000, mark);
   const restMirror = await c.waitFor(
     (m) => m.t === 'pet' && m.pets?.some((p: Msg) => p.state === 'resting' && (p.restSec ?? 0) > 0),
@@ -917,6 +1073,189 @@ const main = async () => {
     await sleep(400);
   }
 
+  // ==== THE LONG ROAD TOGETHER (Phase 6) =================================
+
+  // THE SADDLE AND THE HEEL: the courser outruns every species — the
+  // friend slips honestly to trailing on the ride and the dismount
+  // calls it back. Two systems, no shared law, no collision. Open
+  // country first: a gallop into the Dawnmead river never breaks 24
+  // tiles (live-caught).
+  mark = c.mark();
+  await say(c, '/mount courser_bay');
+  await c.waitFor((m) => m.t === 'ride' && m.mount === 'courser_bay', 'saddled', 5000, mark);
+  {
+    // The check rides IN the saddle: stopping first lets the calm
+    // counter stand the friend back up before the assert (a race
+    // lost twice). Trailing must be observed mid-gallop.
+    // The probe proved the mechanism sound (the beetle gives up
+    // 3.8 t/s and falls to trailing ~6.3s into a clean gallop); what
+    // fails in the wild is the GROUND — the ~70-tile clean lane the
+    // shed needs is a lottery near any one start (live-caught three
+    // times). So: sweep spread-out candidate runways (the mounts
+    // harness pattern), remount on any bite, and judge by wire truth —
+    // the friend's snapshot going stale mid-gallop — never by keeper
+    // displacement.
+    const jit2 = Number(STAMP) % 13;
+    const RUNWAYS: Array<[number, number]> = [
+      [200 + jit2, 60],
+      [240, 100 + jit2],
+      [160, 130],
+      [280 + jit2, 90],
+      [220, 140 + jit2],
+      [180, 90],
+    ];
+    let trailedMidRide = false;
+    const rideLog: string[] = [];
+    // The current pet body is the newest owned eid: every trailing
+    // return mints a fresh entity, and server eids are monotonic.
+    const pet0 = () => Math.max(...c.petEids(c.eid));
+    for (let cast = 0; cast < RUNWAYS.length && !trailedMidRide; cast++) {
+      const [hx, hy] = cast % 2 ? [0, 1] : [1, 0];
+      await tp(c, RUNWAYS[cast]![0], RUNWAYS[cast]![1]);
+      await sleep(900);
+      const castT0 = Date.now();
+      const start = { x: c.pos!.x, y: c.pos!.y };
+      // The staleness clock only runs during CONTIGUOUS clean gallop —
+      // pinned or slow ground lets the friend legally hold the 24-tile
+      // leash forever (live-caught: 66 tiles at 4 t/s average shed
+      // nothing). The gate sits between foot speed (~4.2 t/s) and the
+      // courser's ~8.0 t/s: 8 itself never armed (live-caught again).
+      const trace: Array<{ t: number; x: number; y: number }> = [];
+      let cleanSince: number | null = null;
+      let maxGap = 0;
+      let cleanBest = 0;
+      while (Date.now() - castT0 < 22000 && !trailedMidRide) {
+        c.frame(0, hx, hy);
+        const now = Date.now();
+        const saddle = c.latest('ride');
+        if (!saddle?.mount) {
+          // A wild bite broke the saddle: climb back up; the gallop
+          // clock restarts on its own (dismount reads as slow ground).
+          rideLog.push(`cast ${cast}: bitten off the saddle at +${now - castT0}ms`);
+          mark = c.mark();
+          await say(c, '/mount courser_bay');
+          await c.waitFor((m) => m.t === 'ride' && m.mount === 'courser_bay', 'resaddled', 5000, mark);
+          cleanSince = null;
+          continue;
+        }
+        trace.push({ t: now, x: c.pos!.x, y: c.pos!.y });
+        while (trace.length && trace[0]!.t < now - 1100) trace.shift();
+        const w0 = trace[0]!;
+        const dt = (now - w0.t) / 1000;
+        const speed = dt > 0.5 ? Math.hypot(c.pos!.x - w0.x, c.pos!.y - w0.y) / dt : 0;
+        if (speed > 6) cleanSince ??= now;
+        else cleanSince = null;
+        if (cleanSince !== null) cleanBest = Math.max(cleanBest, now - cleanSince);
+        const s = c.ents.get(pet0());
+        if (s && now - s.at < 1500) {
+          maxGap = Math.max(maxGap, Math.hypot(c.pos!.x - s.x, c.pos!.y - s.y));
+        }
+        if (cleanSince !== null && now - cleanSince > 5000) {
+          // Past 5s of unbroken gallop, a truly-trailing friend has no
+          // body on the wire: its sample ages past 2.5s.
+          if (!s || now - s.at > 2500) trailedMidRide = true;
+        }
+        // Pinned heading: rotate early instead of grinding the clock.
+        if (now - castT0 > 5000 && Math.hypot(c.pos!.x - start.x, c.pos!.y - start.y) < 8) break;
+        await sleep(50);
+      }
+      if (!trailedMidRide) {
+        const d = Math.hypot(c.pos!.x - start.x, c.pos!.y - start.y);
+        rideLog.push(
+          `cast ${cast}: heading ${hx},${hy} ran ${d.toFixed(1)} tiles, clean gallop best ${(cleanBest / 1000).toFixed(1)}s, max gap ${maxGap.toFixed(1)}, never shed the heel`,
+        );
+      }
+    }
+    c.frame(0);
+    if (!trailedMidRide) for (const l of rideLog) console.log(`  RIDE DEBUG ${l}`);
+    receipt('THE ROAD OUTRUNS THE HEEL: trailing at courser speed', trailedMidRide);
+  }
+  await say(c, '/mount off');
+  {
+    const t0 = Date.now();
+    let back = false;
+    while (Date.now() - t0 < 9000) {
+      c.frame(0);
+      if (livePet() !== null) {
+        back = true;
+        break;
+      }
+      await sleep(150);
+    }
+    receipt('the dismount calls the friend back', back);
+  }
+
+  // THE QUIET SHADOW, lived: the companion stands nearly nose to
+  // nose with an idle goblin and is never seen — perception belongs
+  // to players alone.
+  // The spawn ring drops the goblin at arm's length and arm's length
+  // is instant aggro for the KEEPER (live-caught twice) — so shed any
+  // spawn-side grudge on the leash first (19 tiles: past the goblin's
+  // 16, inside the pet's 24), let it settle home, then return to a
+  // polite three tiles. What remains is the pure claim: the PET
+  // stands nearer than the keeper and is never seen. Wild country
+  // still fouls a staging (a roaming herd mauls the keeper, DEFEND
+  // fires, the goblin rightly chases the biter — live-caught after
+  // the runway sweep moved the dismount into open plains), so: up to
+  // three stagings on spread ground back in the swept course band.
+  let shadowGoblin = -1;
+  let shadowLine: Msg | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await tp(c, course[0] + 20 + attempt * 17, course[1] + 33 + attempt * 9);
+    await sleep(700);
+    mark = c.mark();
+    await say(c, '/spawnmob goblin 1');
+    await c.waitFor(
+      (m) => (m.t === 'enter' || m.t === 'update') && m.entities?.some((e: Msg) => e.defId === 'goblin' && e.ownerEid === undefined),
+      'shadow goblin enters',
+      6000,
+      mark,
+    );
+    shadowGoblin = c.msgs
+      .slice(mark)
+      .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+      .find((e: Msg) => e.defId === 'goblin' && e.ownerEid === undefined).eid;
+    const g0 = c.ents.get(shadowGoblin)!;
+    await tp(c, Math.round(g0.x) + 19, Math.round(g0.y));
+    await sleep(9000);
+    await tp(c, Math.round(g0.x) + 3, Math.round(g0.y));
+    await sleep(4600);
+    mark = c.mark();
+    await say(c, '/npcstate');
+    shadowLine = await c.waitFor(
+      (m) => m.t === 'chat' && new RegExp(`^goblin#${shadowGoblin} `).test(m.text ?? ''),
+      'shadow goblin brain',
+      6000,
+      mark,
+    );
+    if (/idle tgt=-/.test(shadowLine.text ?? '')) break;
+    console.log(`  (shadow staging fouled, attempt ${attempt + 1}: ${shadowLine.text} — restaging)`);
+    await killTarget(shadowGoblin, 'the fouled shadow goblin');
+  }
+  receipt(
+    'THE QUIET SHADOW, lived: the goblin never sees the friend beside it',
+    /idle tgt=-/.test(shadowLine?.text ?? ''),
+    shadowLine?.text,
+  );
+  await killTarget(shadowGoblin, 'the shadow goblin');
+
+  // THE ROAD SOAK: every authored pen answers — the caravanserai bay
+  // at Silverfall and the Pinewatch muster yard, the whole map apart.
+  for (const [px, py, label] of [
+    [-323, -120, 'Silverfall'],
+    [595, -133, 'Pinewatch'],
+  ] as Array<[number, number, string]>) {
+    await tp(c, px, py);
+    await sleep(900);
+    mark = c.mark();
+    c.send({ t: 'stable', op: 'stable', slot: 0 });
+    await c.waitFor((m) => m.t === 'chat' && /settles into the stall/.test(m.text ?? ''), `${label} rest`, 6000, mark);
+    mark = c.mark();
+    c.send({ t: 'stable', op: 'heel', slot: 0 });
+    await c.waitFor((m) => m.t === 'chat' && /comes to your side/.test(m.text ?? ''), `${label} heel`, 6000, mark);
+    receipt(`the road soak: the ${label} pen answers, the whole map from home`, true);
+  }
+
   // --- THREE STALLS: fill the household, then hear the refusal.
   mark = c.mark();
   await say(c, '/tame rat');
@@ -947,7 +1286,7 @@ const main = async () => {
 
   // Leave town before the bears come out — the force-quit stage is
   // wild business, not Dawnmead's.
-  await tp(c, course[0] - 70, course[1] - 45);
+  await tpFarFrom(c, course);
   await sleep(600);
 
   // --- THE FORCE-QUIT: down the fresh heel friend (the rat), then
@@ -956,7 +1295,7 @@ const main = async () => {
   // downed screen loses NOTHING, and the rest clock survives the
   // logout because it is wall-clock in the row.
   await topUp();
-  await downThePet([course[0] - 70, course[1] - 45]);
+  await downThePet([Math.round(c.pos!.x) + 6, Math.round(c.pos!.y)]);
   c.ws.close();
   console.log('  (force-quit mid-vigil; waiting out the reconnect grace...)');
   await sleep(36000);

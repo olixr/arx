@@ -340,7 +340,7 @@ export class StationPanels {
         card.classList.add('stall-empty');
         const empty = document.createElement('div');
         empty.className = 'stall-empty-note';
-        empty.textContent = 'An empty stall. The wild is full of candidates.';
+        empty.textContent = 'An empty stall. The wild is wide.';
         card.appendChild(empty);
         this.stableList.appendChild(card);
         continue;

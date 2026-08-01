@@ -152,6 +152,16 @@ export declare class Sfx {
      */
     portal(): void;
     death(): void;
+    /**
+     * THE LONG ROAD TOGETHER (beastcraft v2): the companion's three
+     * moments, kept small and warm — these are house sounds, not
+     * fanfares. The fall is a low huff folding down; the rise is the
+     * happy nip, two quick notes upward; the bond is one soft chirp
+     * with a breath under it.
+     */
+    petDown(): void;
+    petRise(): void;
+    petBond(): void;
     crit(): void;
     bowTwang(): void;
     /** Steel leaves the scabbard: a bright scrape ringing UP and open. */

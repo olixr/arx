@@ -425,6 +425,32 @@ export class Sfx {
     this.tone(220, 0.5, { type: 'sawtooth', slide: -160, volume: 0.4 });
   }
 
+  /**
+   * THE LONG ROAD TOGETHER (beastcraft v2): the companion's three
+   * moments, kept small and warm — these are house sounds, not
+   * fanfares. The fall is a low huff folding down; the rise is the
+   * happy nip, two quick notes upward; the bond is one soft chirp
+   * with a breath under it.
+   */
+  petDown(): void {
+    // The huff: breath out, low and short, with a soft body thud.
+    this.noise(0.22, 0.1, 0, { band: 420 });
+    this.tone(140, 0.3, { type: 'sine', slide: -55, volume: 0.28, delay: 0.03 });
+  }
+
+  petRise(): void {
+    // The happy nip: two quick warm notes stepping up.
+    this.tone(392, 0.12, { type: 'triangle', volume: 0.16 });
+    this.tone(523, 0.16, { type: 'triangle', volume: 0.14, delay: 0.1 });
+    this.noise(0.1, 0.02, 0.08, { band: 3200 });
+  }
+
+  petBond(): void {
+    // One soft chirp over a breath — the snack taken gently.
+    this.tone(660, 0.1, { type: 'triangle', volume: 0.1 });
+    this.noise(0.14, 0.03, 0.04, { band: 900 });
+  }
+
   crit(): void {
     this.tone(200, 0.1, { type: 'square', slide: -120, volume: 0.5 });
     this.tone(90, 0.16, { type: 'sawtooth', slide: -40, volume: 0.4, delay: 0.015 });
