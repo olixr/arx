@@ -22940,7 +22940,7 @@ export class Renderer {
     // screen; a tall slab reads as a curtain (user verdict, v3).
     const rootY = yN - s * 1.76;
     const railY = yN + syT * depth - s * outH;
-    const railH = s * 0.045;
+    const railH = s * 0.015;
     const vTop = railY + railH;
     const dripGroundY = yN + syT * depth;
     const xL = p.x - s * 0.5;
@@ -23041,19 +23041,38 @@ export class Renderer {
         };
         if (!jw && !fw) brace('L');
         if (!je && !fe) brace('R');
-        // ---- The ledger, bolted through under the wall plate.
-        ctx.fillStyle = frame;
-        ctx.fillRect(topL, rootY - s * 0.05, topR - topL, s * 0.105);
-        ctx.fillStyle = shade(frame, 16);
-        ctx.fillRect(topL, rootY - s * 0.05, topR - topL, s * 0.032);
-        ctx.fillStyle = shade(frame, -30);
-        for (const bx of [0.18, 0.82] as const) {
-          ctx.fillRect(xL + bx * s - s * 0.03, rootY - s * 0.035, s * 0.06, s * 0.08);
-        }
-        if (this.outlineOn) {
-          this.beginStructOutline();
-          ctx.strokeRect(topL, rootY - s * 0.05, topR - topL, s * 0.105);
-        }
+        // ---- The cheek boards go UNDER the cloth (canvas stretches
+        // OVER its frame): each rides mostly OUTSIDE the side edge,
+        // and the cloth will overlap its inner half — from above you
+        // see fabric, with timber peeking at the sides.
+        const cheek = (edge: 'L' | 'R'): void => {
+          const dir = edge === 'L' ? -1 : 1;
+          const topX = (edge === 'L' ? topL : topR) + dir * s * 0.03;
+          const hemX = (edge === 'L' ? botL : botR) + dir * s * 0.03;
+          const hw = s * 0.05;
+          const board = new Path2D();
+          board.moveTo(topX - hw, rootY);
+          board.lineTo(topX + hw, rootY);
+          board.lineTo(hemX + hw, railY + railH + s * 0.03);
+          board.lineTo(hemX - hw, railY + railH + s * 0.03);
+          board.closePath();
+          ctx.fillStyle = frame;
+          ctx.fill(board);
+          ctx.fillStyle = shade(frame, 14);
+          ctx.beginPath();
+          ctx.moveTo(topX - dir * hw, rootY);
+          ctx.lineTo(topX - dir * hw + dir * s * 0.034, rootY);
+          ctx.lineTo(hemX - dir * hw + dir * s * 0.034, railY + railH + s * 0.03);
+          ctx.lineTo(hemX - dir * hw, railY + railH + s * 0.03);
+          ctx.closePath();
+          ctx.fill();
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.stroke(board);
+          }
+        };
+        if (!jw) cheek('L');
+        if (!je) cheek('R');
         // ---- THE CLOTH: base fill = the darkest tone in the piece
         // (the plumb valance's own), then every plane models over it.
         const slabLit = shade(cloth.a, 16);
@@ -23145,22 +23164,18 @@ export class Renderer {
               ctx.stroke();
             }
           }
-          // The tuck: the plane rolls away under the ledger…
-          ctx.fillStyle = 'rgba(20, 14, 28, 0.26)';
-          ctx.fillRect(topL, rootY, topR - topL, s * 0.1);
-          ctx.fillStyle = 'rgba(20, 14, 28, 0.12)';
-          ctx.fillRect(topL, rootY + s * 0.1, topR - topL, s * 0.08);
+          // The tuck: one quiet band where the plane meets the wall.
+          ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
+          ctx.fillRect(topL, rootY, topR - topL, s * 0.09);
           // …and breaks over the rail in a sunlit arris.
           ctx.fillStyle = 'rgba(255, 246, 224, 0.28)';
           ctx.fillRect(botL, railY - s * 0.045, botR - botL, s * 0.045);
           // The wind's broad shimmer, top plane only.
           ctx.fillStyle = `rgba(255, 252, 235, ${0.03 + 0.05 * Math.max(0, wind.l)})`;
           ctx.fillRect(botL, rootY, botR - botL, railY - rootY);
-          // -- The FRONT RAIL the skirt hangs from.
-          ctx.fillStyle = shade(frame, -6);
-          ctx.fillRect(botL, railY, botR - botL, railH);
-          ctx.fillStyle = shade(frame, 14);
-          ctx.fillRect(botL, railY, botR - botL, s * 0.014);
+          // -- The fold crease where the cloth breaks to hang.
+          ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
+          ctx.fillRect(botL, railY, botR - botL, railH + s * 0.02);
           // -- The SKIRT: plumb, in the unlit dye, with real depth.
           if (shape === 'market') {
             for (let k = 0; k < 4; k++) {
@@ -23223,32 +23238,6 @@ export class Renderer {
         // ---- The cheek boards: the visible side frame every awning
         // hangs between (free AND flush — neighbours pair into a
         // shared post). Drawn over the ink at the exact side edge.
-        const cheek = (topX: number, hemX: number): void => {
-          const hw = s * 0.048;
-          const board = new Path2D();
-          board.moveTo(topX - hw, rootY - s * 0.05);
-          board.lineTo(topX + hw, rootY - s * 0.05);
-          board.lineTo(hemX + hw, railY + railH + s * 0.015);
-          board.lineTo(hemX - hw, railY + railH + s * 0.015);
-          board.closePath();
-          ctx.fillStyle = frame;
-          ctx.fill(board);
-          // One lit facet, block against block — no hairlines.
-          ctx.fillStyle = shade(frame, 14);
-          ctx.beginPath();
-          ctx.moveTo(topX - hw, rootY - s * 0.05);
-          ctx.lineTo(topX - hw + s * 0.032, rootY - s * 0.05);
-          ctx.lineTo(hemX - hw + s * 0.032, railY + railH + s * 0.015);
-          ctx.lineTo(hemX - hw, railY + railH + s * 0.015);
-          ctx.closePath();
-          ctx.fill();
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.stroke(board);
-          }
-        };
-        if (!jw) cheek(topL + s * 0.012, botL + s * 0.012);
-        if (!je) cheek(topR - s * 0.012, botR - s * 0.012);
       },
     };
   }
