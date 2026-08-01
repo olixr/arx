@@ -123,6 +123,12 @@ export function createLedger<T>(opts: {
      detached still lands on the true row count. */
   new ResizeObserver(() => refit()).observe(leaf);
 
+  /* LT/RT reach the ledger through the pad grammar's pager wire. */
+  root.addEventListener('kit-page', (e) => {
+    const dir = (e as CustomEvent<-1 | 1>).detail;
+    (dir === -1 ? prev : next).click();
+  });
+
   return {
     root,
     setItems(next_: T[]): void {

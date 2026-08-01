@@ -33,6 +33,15 @@ export function tabRail(tabs: TabDef[], onPick: (id: string) => void, navPrefix 
     for (const [id, chip] of chips) chip.classList.toggle('active', id === active);
   };
 
+  /* LT/RT reach the rail through the pad grammar's pager wire. */
+  root.addEventListener('kit-page', (e) => {
+    const dir = (e as CustomEvent<-1 | 1>).detail;
+    const ids = tabs.map((t) => t.id);
+    const i = ids.indexOf(active);
+    const next = ids[Math.max(0, Math.min(ids.length - 1, i + dir))];
+    if (next && next !== active) chips.get(next)?.click();
+  });
+
   for (const tab of tabs) {
     const chip = document.createElement('button');
     chip.className = 'tab-chip';

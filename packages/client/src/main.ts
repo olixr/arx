@@ -606,6 +606,18 @@ const nav = new UiNav(input, {
   packActionLabel: () =>
     stationPanels.bankOpen ? 'Deposit' : stationPanels.shopOpen ? 'Sell' : null,
   onFocusMove: () => sfx.uiTick(),
+  // The device changed hands: screens that set glyphs into sentences
+  // (the codex) redraw for the new truth.
+  onModeChange: () => panels.refreshDevice(),
+  // THE SCREEN RING: hold Start, flick, release — any room, one
+  // gesture. Same exclusivity gate as every other door.
+  onRingPick: (id) => toggleScreen(id as Parameters<typeof toggleScreen>[0]),
+  ringItems: () =>
+    DOCK_BUTTONS.map(([, kind, label], i) => ({
+      id: SCREEN_ORDER[i]!,
+      label,
+      icon: dockGlyphUrl(kind, 40),
+    })),
 });
 
 // The Controls table in Settings: every binding shown, every binding
@@ -896,10 +908,22 @@ const game = new ClientGame(input, {
       if (game.sessionToken) localStorage.setItem('arx.token', game.sessionToken);
       if (!localStorage.getItem('arx.tipsShown')) {
         localStorage.setItem('arx.tipsShown', '1');
-        const useKey = bindings.kbBadge('interact') || 'F';
+        // The first words the game says obey the device in hand.
+        const onPad = nav.mode === 'pad';
+        const useKey = onPad
+          ? (bindings.padBadge('interact')?.text ?? 'X')
+          : bindings.kbBadge('interact') || 'F';
+        const artKeys = onPad
+          ? `${bindings.padBadge('ability1')?.text ?? 'LB'} and ${bindings.padBadge('ability3')?.text ?? 'LT'}`
+          : `${bindings.kbBadge('ability1') || 'Q'} and ${bindings.kbBadge('ability3') || 'E'}`;
+        const packKey = onPad
+          ? (bindings.padBadge('screenPack')?.text ?? 'Start')
+          : bindings.kbBadge('screenPack') || 'I';
         for (const tip of [
-          `Move with WASD. Click or press ${useKey} to chop, mine, fish, and use things. ${bindings.kbBadge('ability1') || 'Q'} and ${bindings.kbBadge('ability3') || 'E'} fire your arts.`,
-          `Press ${bindings.kbBadge('screenPack') || 'I'} for your pack — click a tool or weapon to wield it.`,
+          onPad
+            ? `Move with the left stick. Press ${useKey} to chop, mine, fish, and use things. ${artKeys} fire your arts.`
+            : `Move with WASD. Click or press ${useKey} to chop, mine, fish, and use things. ${artKeys} fire your arts.`,
+          `Press ${packKey} for your pack${onPad ? '' : ' — click a tool or weapon to wield it'}.`,
           `The villagers of Dawnmead know this land. Talk to them (${useKey}) before you take the lane east.`,
         ]) {
           chat.addLine({ channel: 'system', text: `Tip: ${tip}` });
@@ -1293,7 +1317,7 @@ dressPanel(el('skills-panel'), {
 });
 dressPanel(el('arts-panel'), {
   icon: abilityIconUrl('whirlwind', 34),
-  hint: 'Your combat arts, school by school — choose what Q and R carry.',
+  hint: 'Your combat arts, school by school. Press an art to seat it at your hand.',
   onClose: () => panels.closeAll(),
 });
 stationPanels.setCraftDress(

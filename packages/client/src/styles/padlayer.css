@@ -172,6 +172,93 @@ body.pad-mode .hint-inline { display: none; }
   50% { box-shadow: 0 0 0 0.125rem rgba(10, 6, 16, 0.65), 0 0 1.125rem rgba(232, 182, 76, 0.5); }
 }
 
+/* ---- THE SCREEN RING: hold Start, the rooms fan around the stick ---- */
+
+#screen-ring {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  z-index: 96;
+  pointer-events: none;
+}
+
+/* The stage dims behind the ring so the crests own the eye. */
+#screen-ring::before {
+  content: '';
+  position: fixed;
+  inset: -100vmax;
+  background: rgba(10, 7, 4, 0.45);
+}
+
+#screen-ring .ring-item {
+  --ring-angle: 0deg;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  /* Out to the rim by angle, then stand upright again. */
+  transform: translate(-50%, -50%) rotate(var(--ring-angle)) translateY(-13.5rem)
+    rotate(calc(-1 * var(--ring-angle)));
+}
+
+#screen-ring .ring-item img {
+  width: 3.375rem;
+  height: 3.375rem;
+  padding: 0.5625rem;
+  background: rgba(22, 17, 11, 0.86);
+  border: 0.125rem solid var(--line-strong);
+  border-radius: 50%;
+  box-shadow: var(--punch-small);
+}
+
+#screen-ring .ring-item span {
+  font-size: var(--t-whisper);
+  font-weight: 800;
+  letter-spacing: 0.0375rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  opacity: 0;
+}
+
+#screen-ring .ring-item.sel img {
+  border-color: var(--gold-bright);
+  background: rgba(48, 38, 22, 0.94);
+  scale: 1.18;
+}
+
+#screen-ring .ring-item.sel span {
+  color: var(--gold-hot);
+  opacity: 1;
+}
+
+body:not(.no-ui-motion) #screen-ring .ring-item img {
+  transition: scale 90ms ease, border-color 90ms ease;
+}
+
+/* The chosen room's name, told large at the hub. */
+#screen-ring .ring-name {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  min-width: 12rem;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: var(--t-title);
+  font-weight: 700;
+  letter-spacing: 0.125rem;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+}
+
 /* ---- contextual action strip ---- */
 
 #ui-action-strip {

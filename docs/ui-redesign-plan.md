@@ -1,7 +1,34 @@
 # The Grand Refit — THE HALL FITS THE HAND
 
-*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phases 1–2
-SHIPPED (THE ONE RULER, THE KIT OF ROOMS), Phases 3–6 pending.***
+*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phases 1–3
+SHIPPED (THE ONE RULER, THE KIT OF ROOMS, THE HAND KNOWS THE ROOM),
+Phases 4–6 pending.***
+
+**Phase 3 as-built (2026-08-01):** `seatKey` is deleted — every seat is
+named by a seatChip (both languages, CSS-swapped), including the school-head
+"On" chip, the plate corner seal (the chip IS the badge now), plate
+sub-lines, bench state lines, both bench seat buttons, and the teach line;
+the arts screen re-renders on device flip (UiNav `onModeChange` →
+`panels.refreshDevice`) and on rebind (`bindings.onChange`). THE VERB COMES
+TO THE HAND: pressing a seatable plate raises the seat sheet AT the plate
+(mouse and pad, same wire) with verbs carrying chips; THE SEAT ANSWERS ITS
+OWN BUTTON via `SheetVerb.padButton` (LB seats the LB seat) — live-proven:
+two presses from plate to seated socket. The ContextSheet gained provider
+registry (`registerSheetProvider('art', …)`), node labels, and pad-answer;
+UiNav v2: region-scoped spatial focus (`[data-region]` first, hop on
+exhaustion), LT/RT dispatch `kit-page` to the open room's `[data-pager]`
+(ledgers turn, rails step; the Chart declares none so its zoom stands),
+Ⓨ raises the sheet for any provider-backed focusable, the strip says
+`Ⓨ Options` truthfully, sheet is modal in `navigables()`. THE SCREEN RING:
+hold Start 220ms fans the ten crests around the stick (flick, release,
+open; tap keeps Start's own binding) — `#screen-ring`, z 96. Triggers
+joined NAV_RESERVED. Glyph truth sweep: stale "Q and R" hint, "choose your
+R" tooltip, and the first-login tips (now device-aware at send time)
+rewritten; petNaming is pad-navigable and modal-scoped. Receipts: grep
+zero seatKey; live isolated-rig walk (DB `arx_refit_proof`, PORT 8790):
+codex photographed in pad mode with zero bare seat letters (DOM-audited),
+seat sheet at the plate, socket filled after one verb; 337 tests + build
+green.
 
 **Phase 2 as-built (2026-08-01):** the stylesheet monolith split into
 `src/styles/` (25 files, cascade order preserved byte-identical, manifest
@@ -436,7 +463,9 @@ Each phase lands green, committed, and provable before the next begins.
    law, ContextSheet everywhere, THE SEAT ANSWERS ITS OWN BUTTON, the
    Screen Ring, the glyph truth sweep (seatKey dies).
    *Receipt: pad-walk script seats a technique in ≤4 presses from a cold
-   open; DOM audit finds zero bare seat letters in pad mode.*
+   open; DOM audit finds zero bare seat letters in pad mode.* **SHIPPED
+   2026-08-01 — see as-built note at the head of this doc; live receipt
+   beat the target at two presses.**
 4. **THE PERSONAL WING** — Codex flagship, Character/Pack, Skills Hall.
 5. **THE MAKER'S WING** — Workshop, Builder's Table, Vault, Store, Stalls,
    work card, build tray.

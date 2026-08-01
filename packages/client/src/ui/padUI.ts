@@ -1,5 +1,6 @@
 import type { InputManager } from '../input/inputManager.js';
 import { ACTIONS, bindings, type ActionId } from '../input/bindings.js';
+import { closeSheet, openSheetFor, sheetOpen, sheetPadVerb, hasSheetVerbs } from './kit/contextSheet.js';
 
 /**
  * Gamepad-first UI navigation — the console layer over the DOM UI.
@@ -28,6 +29,8 @@ const BTN = {
   y: 3,
   lb: 4,
   rb: 5,
+  lt: 6,
+  rt: 7,
   select: 8,
   start: 9,
   up: 12,
@@ -36,17 +39,24 @@ const BTN = {
   right: 15,
 } as const;
 
+/** How long Start must be held before the Screen Ring fans open. */
+const RING_HOLD_MS = 220;
+/** Stick throw that counts as pointing at a ring sector. */
+const RING_PICK_THRESHOLD = 0.45;
+
 const REPEAT_DELAY_MS = 300;
 const REPEAT_RATE_MS = 125;
 const STICK_NAV_THRESHOLD = 0.55;
 
 /**
- * Buttons the MENU grammar owns while navigating: faces, bumpers, and
- * the d-pad. A screen shortcut (rebindable) only fires inside menus
- * when it lives on a button outside this set (Start/Select/L3/R3/LT/RT),
- * so d-pad navigation never doubles as a shortcut.
+ * Buttons the MENU grammar owns while navigating: faces, bumpers,
+ * triggers (they page since the Grand Refit), and the d-pad. A screen
+ * shortcut (rebindable) only fires inside menus when it lives on a
+ * button outside this set (Select/L3/R3), so navigation never doubles
+ * as a shortcut. Start belongs to the Screen Ring and is handled by
+ * its own state machine, never by the shortcut loops.
  */
-const NAV_RESERVED = new Set([0, 1, 2, 3, 4, 5, 12, 13, 14, 15]);
+const NAV_RESERVED = new Set([0, 1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 15]);
 
 /** The rebindable screen-opening actions the pad can fire directly. */
 const SCREEN_ACTIONS: readonly ActionId[] = ACTIONS.filter(
@@ -81,6 +91,12 @@ export interface UiNavHooks {
   packActionLabel?: () => string | null;
   /** Focus stepped to a new control — the barely-there cursor tick. */
   onFocusMove?: () => void;
+  /** The device changed hands — screens re-render their glyphs. */
+  onModeChange?: (mode: 'kb' | 'pad') => void;
+  /** The Screen Ring chose a room. */
+  onRingPick?: (id: string) => void;
+  /** The rooms the ring fans out — id, name, painted crest. */
+  ringItems?: () => Array<{ id: string; label: string; icon: string }>;
 }
 
 export class UiNav {
@@ -104,6 +120,12 @@ export class UiNav {
   private readonly strip: HTMLElement;
   private readonly tooltip: HTMLElement;
   private readonly prompt: HTMLElement;
+  /** The Screen Ring overlay (hold Start). */
+  private readonly screenRing: HTMLElement;
+  private ringShown = false;
+  private ringStartAt = 0;
+  private ringSel: string | null = null;
+  private ringButtons: Array<{ id: string; el: HTMLElement }> = [];
 
   private prevPressed = new Set<number>();
   private wasUiActive = false;
@@ -136,6 +158,7 @@ export class UiNav {
     this.strip = this.el('ui-action-strip');
     this.tooltip = this.el('ui-tooltip');
     this.prompt = this.el('ui-interact-prompt');
+    this.screenRing = this.el('screen-ring');
     // A rebind redraws the cached chips (prompt glyph, action strip).
     bindings.onChange(() => {
       this.promptKey = '';
@@ -157,17 +180,20 @@ export class UiNav {
 
   /** All currently-visible navigable elements. */
   private navigables(): HTMLElement[] {
-    // An open item verb menu is MODAL: focus stays inside it until it
-    // closes — spatial nav must never wander back into the pack grid.
-    // Character creation is modal the same way.
-    const menu = document.getElementById('item-menu');
-    const lookPanel = document.getElementById('look-panel');
+    // An open verb sheet or item menu is MODAL: focus stays inside it
+    // until it closes — spatial nav must never wander back into the
+    // grid behind it. Character creation and the pet naming are modal
+    // the same way.
+    const visible = (id: string): HTMLElement | null => {
+      const el = document.getElementById(id);
+      return el && !el.classList.contains('hidden') ? el : null;
+    };
     const scope =
-      menu && !menu.classList.contains('hidden')
-        ? menu
-        : lookPanel && !lookPanel.classList.contains('hidden')
-          ? lookPanel
-          : document;
+      visible('ctx-sheet') ??
+      visible('item-menu') ??
+      visible('petname-stage') ??
+      visible('look-panel') ??
+      document;
     const out: HTMLElement[] = [];
     for (const el of scope.querySelectorAll<HTMLElement>('[data-nav]')) {
       if (el.closest('.hidden')) continue;
@@ -187,7 +213,13 @@ export class UiNav {
     return el;
   }
 
-  /** Spatial move: best candidate in the pressed direction. */
+  /**
+   * Spatial move: best candidate in the pressed direction — but THE
+   * REGION HOLDS THE RING first. Candidates sharing the focused
+   * element's `[data-region]` container win outright; only when the
+   * region offers nothing in that direction does the ring hop out.
+   * A list column can never bleed focus into its neighbor mid-walk.
+   */
   private moveFocus(dir: 'up' | 'down' | 'left' | 'right'): void {
     const items = this.navigables();
     if (items.length === 0) {
@@ -205,22 +237,29 @@ export class UiNav {
     const cy = cr.y + cr.height / 2;
     const dx = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
     const dy = dir === 'up' ? -1 : dir === 'down' ? 1 : 0;
-    let best: HTMLElement | null = null;
-    let bestScore = Infinity;
-    for (const el of items) {
-      if (el === cur) continue;
-      const r = el.getBoundingClientRect();
-      const ex = r.x + r.width / 2 - cx;
-      const ey = r.y + r.height / 2 - cy;
-      const along = ex * dx + ey * dy;
-      if (along <= 4) continue; // must actually lie in that direction
-      const perp = Math.abs(ex * dy) + Math.abs(ey * dx);
-      const score = along + perp * 2.2;
-      if (score < bestScore) {
-        bestScore = score;
-        best = el;
+    const region = cur.closest('[data-region]');
+    const pick = (pool: HTMLElement[]): HTMLElement | null => {
+      let best: HTMLElement | null = null;
+      let bestScore = Infinity;
+      for (const el of pool) {
+        if (el === cur) continue;
+        const r = el.getBoundingClientRect();
+        const ex = r.x + r.width / 2 - cx;
+        const ey = r.y + r.height / 2 - cy;
+        const along = ex * dx + ey * dy;
+        if (along <= 4) continue; // must actually lie in that direction
+        const perp = Math.abs(ex * dy) + Math.abs(ey * dx);
+        const score = along + perp * 2.2;
+        if (score < bestScore) {
+          bestScore = score;
+          best = el;
+        }
       }
-    }
+      return best;
+    };
+    const best = region
+      ? (pick(items.filter((el) => el.closest('[data-region]') === region)) ?? pick(items))
+      : pick(items);
     if (best) {
       this.setFocus(best);
       this.hooks.onFocusMove?.();
@@ -287,6 +326,9 @@ export class UiNav {
     if (newMode !== this.mode) {
       this.mode = newMode;
       document.body.classList.toggle('pad-mode', newMode === 'pad');
+      // Screens that write glyphs into sentences re-render for the
+      // new device — the codex may not keep yesterday's letters.
+      this.hooks.onModeChange?.(newMode);
     }
 
     const uiActive = uiOpen && this.mode === 'pad' && snap !== null;
@@ -300,6 +342,16 @@ export class UiNav {
       this.prevPressed = snap
         ? new Set(snap.buttons.map((b, i) => (b.pressed ? i : -1)).filter((i) => i >= 0))
         : new Set();
+      return;
+    }
+
+    // THE SCREEN RING: Start belongs to the ring's state machine on a
+    // pad — hold fans the rooms open, a tap keeps its old shortcut.
+    // While the ring owns the frame, every other grammar stands down.
+    if (snap && this.mode === 'pad' && this.handleRing(snap, nowMs)) {
+      this.prevPressed = new Set(
+        snap.buttons.map((b, i) => (b.pressed ? i : -1)).filter((i) => i >= 0),
+      );
       return;
     }
 
@@ -396,6 +448,33 @@ export class UiNav {
       return;
     }
 
+    // ---- the verb sheet is modal, and THE SEAT ANSWERS ITS OWN
+    // BUTTON: while it stands, a verb wearing a pad button takes that
+    // button's press directly; Ⓐ presses the focused verb; Ⓑ folds
+    // the sheet and walks focus home. Nothing else fires.
+    if (sheetOpen()) {
+      for (const i of pressed) {
+        if (!edge(i) || i === BTN.a || i === BTN.b) continue;
+        const verb = sheetPadVerb(i);
+        if (verb) {
+          verb.click();
+          this.focusKey = this.menuReturnKey ?? this.focusKey;
+        }
+      }
+      if (edge(BTN.a)) this.focused()?.click();
+      if (edge(BTN.b)) closeSheet();
+      if (!sheetOpen() && this.focusKey?.startsWith('ctx:')) {
+        this.focusKey = this.menuReturnKey ?? null;
+      }
+      this.prevPressed = pressed;
+      this.positionRing(nowMs);
+      if (this.focusKey !== this.ringKey) {
+        this.updateStrip();
+        this.updateTooltip();
+      }
+      return;
+    }
+
     // ---- actions
     if (edge(BTN.a)) {
       const el = this.focused();
@@ -407,6 +486,12 @@ export class UiNav {
         el.focus();
       } else {
         el?.click();
+        // The click may have raised a verb sheet at the element (the
+        // codex's seat sheet) — the ring steps inside it.
+        if (sheetOpen()) {
+          this.menuReturnKey = this.focusKey;
+          this.focusKey = 'ctx:0';
+        }
       }
     }
     if (edge(BTN.x)) this.handleCarry();
@@ -416,7 +501,8 @@ export class UiNav {
         this.hooks.onDropToWorld(this.carrying);
         this.carrying = null;
       } else {
-        // Ⓨ on an item: its verb menu, focus jumping inside.
+        // Ⓨ on an item: its verb menu, focus jumping inside. Anything
+        // else with a registered provider raises the one verb sheet.
         const el = this.focused();
         if (el?.dataset.filled === '1') {
           this.hooks.onItemMenu?.(el);
@@ -425,6 +511,9 @@ export class UiNav {
             this.menuReturnKey = this.focusKey;
             this.focusKey = 'menu:0';
           }
+        } else if (el && openSheetFor(el)) {
+          this.menuReturnKey = this.focusKey;
+          this.focusKey = 'ctx:0';
         }
       }
     }
@@ -452,11 +541,18 @@ export class UiNav {
     if (edge(BTN.lb)) this.hooks.onCycleScreen(-1);
     if (edge(BTN.rb)) this.hooks.onCycleScreen(1);
 
-    // Rebindable screen shortcuts still land inside menus (Start
-    // closes the pack it opened) — but only from buttons the menu
-    // grammar doesn't own.
+    // LT / RT: the room's own pager — tab rails step, ledgers turn
+    // leaves. Only rooms that declare a pager listen; the Chart keeps
+    // its trigger zoom because it declares none.
+    if (edge(BTN.lt)) this.dispatchPage(-1);
+    if (edge(BTN.rt)) this.dispatchPage(1);
+
+    // Rebindable screen shortcuts still land inside menus — but only
+    // from buttons the menu grammar doesn't own, and never Start:
+    // that press belongs to the ring's own tap-or-hold machine.
     for (const id of SCREEN_ACTIONS) {
       for (const btn of bindings.pad(id)) {
+        if (btn === BTN.start) continue;
         if (!NAV_RESERVED.has(btn) && edge(btn)) this.hooks.onScreenAction(id);
       }
     }
@@ -485,9 +581,106 @@ export class UiNav {
     if (this.mode !== 'pad') return;
     for (const id of SCREEN_ACTIONS) {
       for (const btn of bindings.pad(id)) {
+        if (btn === BTN.start) continue; // the ring's tap machine fires it
         if (edge(btn)) this.hooks.onScreenAction(id);
       }
     }
+  }
+
+  /** LT/RT: hand the press to the open room's declared pager. */
+  private dispatchPage(dir: -1 | 1): void {
+    const pager = document.querySelector<HTMLElement>(
+      '.ui-screen:not(.hidden) [data-pager], .ui-tray:not(.hidden) [data-pager]',
+    );
+    pager?.dispatchEvent(new CustomEvent('kit-page', { detail: dir }));
+  }
+
+  // ---- THE SCREEN RING ---------------------------------------------
+
+  /**
+   * Start's tap-or-hold machine. Hold past the threshold and the ten
+   * rooms fan around the stick; flick, release, the room opens. A tap
+   * shorter than the threshold fires whatever screen action Start is
+   * bound to — the shipped default (open the Pack) survives intact.
+   * Returns true while it owns the frame.
+   */
+  private handleRing(
+    snap: { buttons: readonly GamepadButton[]; axes: readonly number[] },
+    nowMs: number,
+  ): boolean {
+    const down = snap.buttons[BTN.start]?.pressed ?? false;
+    const was = this.prevPressed.has(BTN.start);
+    if (down && !was) this.ringStartAt = nowMs;
+    if (down && !this.ringShown && nowMs - this.ringStartAt > RING_HOLD_MS) this.showScreenRing();
+
+    if (this.ringShown) {
+      this.input.uiCapture = true;
+      const ax = snap.axes[0] ?? 0;
+      const ay = snap.axes[1] ?? 0;
+      let sel: string | null = null;
+      if (Math.hypot(ax, ay) > RING_PICK_THRESHOLD && this.ringButtons.length > 0) {
+        const step = 360 / this.ringButtons.length;
+        const deg = (Math.atan2(ay, ax) * 180) / Math.PI; // 0° = east
+        const idx = Math.round(((deg + 90 + 360) % 360) / step) % this.ringButtons.length;
+        sel = this.ringButtons[idx]?.id ?? null;
+      }
+      if (sel !== this.ringSel) {
+        this.ringSel = sel;
+        for (const item of this.ringButtons) {
+          item.el.classList.toggle('sel', item.id === sel);
+        }
+        const name = this.screenRing.querySelector('.ring-name');
+        if (name) name.textContent = this.ringButtons.find((i) => i.id === sel)?.el.dataset.label ?? '';
+      }
+    }
+
+    if (!down && was) {
+      if (this.ringShown) {
+        const pick = this.ringSel;
+        this.hideScreenRing();
+        if (pick) this.hooks.onRingPick?.(pick);
+        return true;
+      }
+      // A clean tap: fire the screen actions riding Start.
+      for (const id of SCREEN_ACTIONS) {
+        if (bindings.pad(id).includes(BTN.start)) this.hooks.onScreenAction(id);
+      }
+      return false;
+    }
+    return down || this.ringShown;
+  }
+
+  private showScreenRing(): void {
+    const items = this.hooks.ringItems?.() ?? [];
+    if (items.length === 0) return;
+    this.ringShown = true;
+    this.ringSel = null;
+    this.screenRing.classList.remove('hidden');
+    this.screenRing.innerHTML = '';
+    const name = document.createElement('div');
+    name.className = 'ring-name';
+    this.screenRing.appendChild(name);
+    this.ringButtons = items.map((item, i) => {
+      const el = document.createElement('div');
+      el.className = 'ring-item';
+      el.dataset.label = item.label;
+      el.style.setProperty('--ring-angle', `${(i * 360) / items.length}deg`);
+      const img = document.createElement('img');
+      img.src = item.icon;
+      img.draggable = false;
+      const lab = document.createElement('span');
+      lab.textContent = item.label;
+      el.append(img, lab);
+      this.screenRing.appendChild(el);
+      return { id: item.id, el };
+    });
+  }
+
+  private hideScreenRing(): void {
+    this.ringShown = false;
+    this.ringSel = null;
+    this.ringButtons = [];
+    this.screenRing.classList.add('hidden');
   }
 
   private positionRing(nowMs: number): void {
@@ -545,7 +738,12 @@ export class UiNav {
     } else if (el?.dataset.equipslot !== undefined && el.dataset.filled === '1') {
       actions.push(['a', 'Remove'], ['y', 'Options'], ['b', 'Close']);
     } else {
-      if (el) actions.push(['a', el.dataset.acta ?? 'Select']);
+      if (el) {
+        actions.push(['a', el.dataset.acta ?? 'Select']);
+        // The strip tells the truth: anything holding a verb sheet
+        // says so.
+        if (hasSheetVerbs(el)) actions.push(['y', 'Options']);
+      }
       actions.push(['b', 'Close']);
     }
     const items: Array<[string, string, string]> = actions.map(([btn, label]) => [

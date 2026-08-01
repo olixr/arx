@@ -50,8 +50,10 @@ import {
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
 import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
 import { bigButton, sectionHead, statPlaque } from './panel.js';
-import { bindings } from '../input/bindings.js';
+import { bindings, type ActionId } from '../input/bindings.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
+import { seatChip, glyphLine } from './kit/glyphs.js';
+import { openSheet, registerSheetProvider, type SheetVerb } from './kit/contextSheet.js';
 
 /** Card display colors for the three armor weight classes. */
 const CLASS_COLORS: Record<string, string> = {
@@ -340,6 +342,28 @@ export class Panels {
         this.closeMenu();
       }
     });
+
+    // Ⓨ on a technique plate offers the seat sheet — the same verbs
+    // the plate's own press raises.
+    registerSheetProvider('art', (el) => {
+      const ability = (el.dataset.navkey ?? '').slice('art:'.length);
+      const def = techniquePoolDef(ability);
+      if (!def) return [];
+      const st = this.techState(def.style, def);
+      if (st !== 'unlocked' && st !== 'equipped') return [];
+      return this.seatVerbs(ability, st);
+    });
+
+    // A rebind redraws every seat chip the codex is showing.
+    bindings.onChange(() => this.refreshDevice());
+  }
+
+  /**
+   * The device changed hands (or the keymap changed): any open screen
+   * that writes glyphs into sentences redraws for the new truth.
+   */
+  refreshDevice(): void {
+    if (this.artsOpen) this.renderArts();
   }
 
   toggleInventory(): void {
@@ -1397,7 +1421,7 @@ export class Panels {
       go.dataset.navkey = `techgo:${skill}`;
       go.dataset.acta = 'Open';
       go.dataset.tipname = 'Techniques';
-      go.dataset.tipsub = `Every ${hidden ? hidden.name : skill} art — inspect and choose your R.`;
+      go.dataset.tipsub = `Every ${hidden ? hidden.name : skill} art — inspect them, and seat two at your hand.`;
       go.addEventListener('click', () => this.onOpenArts());
       row.appendChild(go);
       card.appendChild(row);
@@ -1891,13 +1915,42 @@ export class Panels {
   }
 
   /**
-   * The letter a technique seat answers to RIGHT NOW, read from the
-   * one keymap so the codex never lies after a rebind (seat 0 casts
-   * ability1, seat 1 ability3 — Q and E are only the shipped
-   * defaults).
+   * The action a technique seat answers to (seat 0 casts ability1,
+   * seat 1 ability3). EVERY GLYPH KNOWS ITS DEVICE: the seat is only
+   * ever NAMED by a seatChip built from this action — never by a bare
+   * letter baked into a sentence. `seatKey` died here in the Grand
+   * Refit, Phase 3.
    */
-  private seatKey(seat: 0 | 1): string {
-    return bindings.kbBadge(seat === 0 ? 'ability1' : 'ability3') || (seat === 0 ? 'Q' : 'E');
+  private seatAction(seat: 0 | 1): ActionId {
+    return seat === 0 ? 'ability1' : 'ability3';
+  }
+
+  /** The raw pad button a seat rides — THE SEAT ANSWERS ITS OWN BUTTON. */
+  private seatPadButton(seat: 0 | 1): number | undefined {
+    return bindings.pad(this.seatAction(seat))[0];
+  }
+
+  /**
+   * The seat sheet: the verbs a technique plate offers, seat chips
+   * set into them. Seating an art is one press at the plate — the
+   * two-column trip to the bench buttons is over.
+   */
+  private seatVerbs(ability: string, st: 'unlocked' | 'equipped'): SheetVerb[] {
+    const verbs: SheetVerb[] = [];
+    const seatOf = this.seatOf(ability);
+    for (const seat of [0, 1] as const) {
+      if (st === 'equipped' && seatOf === seat) continue;
+      const label =
+        st === 'equipped'
+          ? glyphLine('Move to the • seat', seatChip(this.seatAction(seat)))
+          : glyphLine('Seat on •', seatChip(this.seatAction(seat)));
+      verbs.push({
+        label,
+        act: () => this.onTechnique(ability, seat === 0 ? 0 : 2),
+        padButton: this.seatPadButton(seat),
+      });
+    }
+    return verbs;
   }
 
   /**
@@ -2020,12 +2073,11 @@ export class Panels {
     head.appendChild(count);
     for (const seat of [0, 1] as const) {
       if (techniquePoolDef(this.techniques[seat] ?? '')?.style !== style) continue;
-      const key = this.seatKey(seat);
       const hand = document.createElement('span');
       hand.className = 'in-hand';
-      hand.textContent = `On ${key}`;
-      hand.dataset.tipname = `On ${key}`;
-      hand.dataset.tipsub = `This school owns the art riding your ${key} key.`;
+      hand.appendChild(glyphLine('On •', seatChip(this.seatAction(seat))));
+      hand.dataset.tipname = 'In hand';
+      hand.dataset.tipsub = 'This school owns an art riding one of your seats.';
       head.appendChild(hand);
     }
     block.appendChild(head);
@@ -2110,7 +2162,9 @@ export class Panels {
       if (st === 'equipped') {
         const rBadge = document.createElement('span');
         rBadge.className = 'r-badge';
-        rBadge.textContent = this.seatKey(this.seatOf(tech.ability) === 0 ? 0 : 1);
+        rBadge.appendChild(
+          seatChip(this.seatAction(this.seatOf(tech.ability) === 0 ? 0 : 1)),
+        );
         wellEl.appendChild(rBadge);
       }
       if (tech.hidden) {
@@ -2159,25 +2213,32 @@ export class Panels {
     sub.className = 'tech-plate-sub';
     const rank = this.techRank(style, tech);
     const seat = this.seatOf(tech.ability);
-    const key = this.seatKey(seat === 0 ? 0 : 1);
+    const chip = (): HTMLElement => seatChip(this.seatAction(seat === 0 ? 0 : 1));
     if (tech.secret && !this.ownsArt(tech.ability)) {
       // A lent secret speaks its citizenship, not a rank it cannot climb.
-      sub.textContent =
-        st === 'equipped'
-          ? `On your ${key} · ${this.secretDormant(tech) ? 'asleep' : 'lent'}`
-          : 'Lent';
+      if (st === 'equipped') {
+        sub.appendChild(glyphLine(`On • · ${this.secretDormant(tech) ? 'asleep' : 'lent'}`, chip()));
+      } else {
+        sub.textContent = 'Lent';
+      }
+    } else if (st === 'equipped') {
+      sub.appendChild(glyphLine(`On • · ${RANK_ROMAN[rank]}`, chip()));
     } else {
-      sub.textContent =
-        st === 'equipped'
-          ? `On your ${key} · ${RANK_ROMAN[rank]}`
-          : st === 'unlocked'
-            ? `Rank ${RANK_ROMAN[rank]}`
-            : `Lv ${tech.unlockLevel}`;
+      sub.textContent = st === 'unlocked' ? `Rank ${RANK_ROMAN[rank]}` : `Lv ${tech.unlockLevel}`;
     }
     btn.append(wellEl, nameEl, sub);
     btn.addEventListener('click', () => {
       this.artsSel = tech.ability;
       this.renderArts();
+      // THE VERB COMES TO THE HAND: a seatable art raises its seat
+      // sheet AT the plate — mouse and pad ride the same wire. The
+      // panel just re-rendered, so anchor on the plate's new body.
+      if (st === 'unlocked' || st === 'equipped') {
+        const anchor = document.querySelector<HTMLElement>(
+          `[data-navkey="${CSS.escape(`art:${tech.ability}`)}"]`,
+        );
+        if (anchor) openSheet(anchor, this.seatVerbs(tech.ability, st));
+      }
     });
     return btn;
   }
@@ -2236,23 +2297,29 @@ export class Panels {
     this.artsDetail.appendChild(head);
 
     const seat = this.seatOf(t.ability);
-    const seatLetter = this.seatKey(seat === 0 ? 0 : 1);
+    const benchChip = (): HTMLElement => seatChip(this.seatAction(seat === 0 ? 0 : 1));
     const state = document.createElement('div');
     state.className = `art-state ${st}`;
-    state.textContent =
-      st === 'equipped'
-        ? t.secret && !this.ownsArt(t.ability)
-          ? this.equippedArtIds().has(t.ability)
-            ? `Riding your ${seatLetter} key, lent by the weapon in your hand`
-            : `Seated on ${seatLetter}, asleep. Hold a weapon that teaches it.`
-          : `Riding your ${seatLetter} key`
-        : st === 'unlocked'
+    if (st === 'equipped') {
+      if (t.secret && !this.ownsArt(t.ability)) {
+        if (this.equippedArtIds().has(t.ability)) {
+          state.appendChild(glyphLine('Riding your • seat, lent by the weapon in your hand', benchChip()));
+        } else {
+          state.appendChild(glyphLine('Seated on •, asleep. Hold a weapon that teaches it.', benchChip()));
+        }
+      } else {
+        state.appendChild(glyphLine('Riding your • seat', benchChip()));
+      }
+    } else {
+      state.textContent =
+        st === 'unlocked'
           ? t.secret && !this.ownsArt(t.ability)
             ? 'Lent while its weapon is in your hand. Fight with it and the art will stay.'
             : 'Unlocked — ready to seat'
           : st === 'locked'
             ? `Unlocks at ${styleName} level ${t.unlockLevel}`
             : `A secret of ${styleName} — still veiled`;
+    }
     this.artsDetail.appendChild(state);
 
     // THE LESSON LAW's meter — the courtship told PLAINLY (user
@@ -2272,7 +2339,7 @@ export class Panels {
       row.className = 'lesson-row';
       row.dataset.tipname = 'The lesson';
       row.dataset.tipsub = !seated
-        ? `The lesson only counts while this art holds your ${this.seatKey(0)} or ${this.seatKey(1)} seat. Seat it, take up its weapon, and fight.`
+        ? 'The lesson only counts while this art holds one of your two seats. Seat it, take up its weapon, and fight.'
         : !taught
           ? 'The seat is set, but the teacher is away. Hold a weapon that teaches this art, and every fight counts.'
           : pct <= 0
@@ -2376,21 +2443,25 @@ export class Panels {
     if (st === 'unlocked') {
       const seats = document.createElement('div');
       seats.className = 'bench-seats';
-      seats.appendChild(
-        bigButton(`Seat on ${this.seatKey(0)}`, `artequip:${t.ability}`, () =>
-          this.onTechnique(t.ability, 0),
-        ),
-      );
-      seats.appendChild(
-        bigButton(`Seat on ${this.seatKey(1)}`, `artequipr:${t.ability}`, () =>
-          this.onTechnique(t.ability, 2),
-        ),
-      );
+      for (const s of [0, 1] as const) {
+        const btn = bigButton('Seat', s === 0 ? `artequip:${t.ability}` : `artequipr:${t.ability}`, () =>
+          this.onTechnique(t.ability, s === 0 ? 0 : 2),
+        );
+        btn.textContent = '';
+        btn.appendChild(glyphLine('Seat on •', seatChip(this.seatAction(s))));
+        seats.appendChild(btn);
+      }
       this.artsDetail.appendChild(seats);
     }
     const teach = document.createElement('div');
     teach.className = 'bench-teach';
-    teach.textContent = `${this.seatKey(0)} and ${this.seatKey(1)} both carry any learned art, whatever you wield. Two seats, two arts. Swapping is always free.`;
+    teach.appendChild(
+      glyphLine(
+        'The • and • seats both carry any learned art, whatever you wield. Two seats, two arts. Swapping is always free.',
+        seatChip(this.seatAction(0)),
+        seatChip(this.seatAction(1)),
+      ),
+    );
     this.artsDetail.appendChild(teach);
   }
 }

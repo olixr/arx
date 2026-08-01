@@ -47,6 +47,10 @@ export class PetNamingCard {
     input.spellcheck = false;
     input.value = currentName;
     input.className = 'petname-input';
+    // The naming is modal to the pad too: the ring walks the card.
+    input.dataset.nav = '';
+    input.dataset.navkey = 'petname:input';
+    input.dataset.acta = 'Write';
     card.appendChild(input);
 
     const hint = document.createElement('div');
@@ -59,9 +63,15 @@ export class PetNamingCard {
     const keep = document.createElement('button');
     keep.className = 'act-btn';
     keep.textContent = 'Keep its name';
+    keep.dataset.nav = '';
+    keep.dataset.navkey = 'petname:keep';
+    keep.dataset.acta = 'Keep';
     const confirm = document.createElement('button');
     confirm.className = 'act-btn petname-confirm';
     confirm.textContent = 'So be it';
+    confirm.dataset.nav = '';
+    confirm.dataset.navkey = 'petname:confirm';
+    confirm.dataset.acta = 'Name it';
     row.appendChild(keep);
     row.appendChild(confirm);
     card.appendChild(row);
