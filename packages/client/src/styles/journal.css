@@ -78,10 +78,37 @@
   color: #f2c94c;
 }
 
+/* The bare page: a furnished center, never a whisper in a corner —
+   ghost mark first, the invitation under it (The Ink Pass). */
 .quest-empty {
+  flex: 1;
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
   padding: 1.125rem 0.75rem;
+  text-align: center;
+  max-width: 26rem;
+  margin: 0 auto;
   color: var(--parchment-faint);
-  font: 500 0.8125rem/1.5 'Trebuchet MS', sans-serif;
+  font-size: var(--t-body);
+  font-style: italic;
+  line-height: 1.5;
+  text-shadow: var(--punch-small);
+}
+
+.quest-empty::before {
+  content: '';
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  transform: rotate(45deg);
+  border: var(--rim) solid rgba(217, 164, 65, 0.4);
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0 0 0.5625rem rgba(0, 0, 0, 0.35);
 }
 
 .quest-bench {

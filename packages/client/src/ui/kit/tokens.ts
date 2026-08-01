@@ -24,6 +24,14 @@
 /* kit and published to CSS so the stylesheet can echo them.         */
 /* ---------------------------------------------------------------- */
 
+/**
+ * THE INK — the world's outline-shader color (renderer STRUCT_OUTLINE
+ * and the icons' eight-tap ring). The Ink Pass makes it a UI material:
+ * every raised or sunken piece of furniture wears this same bold line,
+ * so a button and the axe painted on it finally speak one language.
+ */
+export const INK = '#241a2e';
+
 /** Structure: riveted case bands, key buttons. */
 export const IRON = { rim: '#0f0c08', base: '#3b4048', lit: '#5a626d', dark: '#22262b' };
 /** The touchable: action ingots, brackets, crests, fillet lines. */
@@ -91,6 +99,13 @@ export const PALETTE: Record<string, string> = {
 
   /* the one silhouette shadow */
   shadow: 'rgba(12, 8, 4, 0.55)',
+
+  /* THE INK — the outline shader's line, worn by the furniture too.
+     `ink-line` is the ring furniture cuts inward from its silhouette;
+     `ink-wash` is the translucent version for seals and count pills. */
+  outline: INK,
+  'ink-line': 'rgba(16, 10, 20, 0.9)',
+  'ink-wash': 'rgba(16, 10, 14, 0.85)',
 };
 
 /* ---------------------------------------------------------------- */

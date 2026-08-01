@@ -30,7 +30,7 @@
  * any DPI.
  */
 
-import { BRASS, IRON, LEATHER, PANEL_FILL, PAPER, SUNK_FILL } from './kit/tokens.js';
+import { BRASS, INK, IRON, LEATHER, PANEL_FILL, PAPER, SUNK_FILL } from './kit/tokens.js';
 
 export { PANEL_FILL };
 
@@ -119,10 +119,11 @@ function caseFrame(): string {
   ctx.strokeStyle = IRON.dark;
   ctx.lineWidth = px(1.5);
   ctx.stroke();
-  // Hard outline against the world.
+  // Hard outline against the world — the same bold ink ring the
+  // world's outline shader draws around every object (The Ink Pass).
   chamferPath(ctx, S, 1, 15);
-  ctx.strokeStyle = IRON.rim;
-  ctx.lineWidth = px(2.2);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = px(3.4);
   ctx.stroke();
   // Dark seam between iron and brass.
   chamferPath(ctx, S, 11, 15);
@@ -230,9 +231,10 @@ function trayFrame(): string {
   ctx.strokeStyle = IRON.lit;
   ctx.lineWidth = px(1.1);
   ctx.stroke();
+  // The bold ink silhouette line (The Ink Pass).
   chamferPath(ctx, S, 0.8, 8);
-  ctx.strokeStyle = IRON.rim;
-  ctx.lineWidth = px(1.6);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = px(2.4);
   ctx.stroke();
   chamferPath(ctx, S, 5.6, 8);
   ctx.strokeStyle = LEATHER.seam;
@@ -264,10 +266,11 @@ function quietWell(): string {
   chamferPath(ctx, S, 0.6, cut);
   ctx.fillStyle = 'rgba(13, 10, 6, 0.62)';
   ctx.fill();
-  // Dark rim hairline against the world.
+  // Dark rim against the world — a half-weight echo of the ink ring
+  // (the live HUD stays quieter than the case furniture).
   chamferPath(ctx, S, 0.6, cut);
-  ctx.strokeStyle = 'rgba(8, 6, 3, 0.8)';
-  ctx.lineWidth = px(1.3);
+  ctx.strokeStyle = 'rgba(20, 12, 22, 0.85)';
+  ctx.lineWidth = px(1.8);
   ctx.stroke();
   // One whisper of warm brass on the lip — the premium tell.
   chamferPath(ctx, S, 1.7, cut);
@@ -310,8 +313,8 @@ function quietKey(): string {
   ctx.fillRect(0, S - px(3), S, px(1.5));
   ctx.restore();
   chamferPath(ctx, S, 0.6, cut);
-  ctx.strokeStyle = 'rgba(8, 6, 3, 0.78)';
-  ctx.lineWidth = px(1.3);
+  ctx.strokeStyle = 'rgba(20, 12, 22, 0.82)';
+  ctx.lineWidth = px(1.8);
   ctx.stroke();
   return c.toDataURL();
 }
@@ -329,21 +332,28 @@ function buttonIngot(face: string, lit: string, dark: string, rim: string): stri
   const px = (v: number): number => v * K;
   const cut = 7;
 
-  chamferPath(ctx, S, 1, cut);
+  chamferPath(ctx, S, 1.4, cut);
   ctx.fillStyle = face;
   ctx.fill();
   // Facets: lit shelf along the top, dark shelf along the bottom.
   ctx.save();
-  chamferPath(ctx, S, 1, cut);
+  chamferPath(ctx, S, 1.4, cut);
   ctx.clip();
   ctx.fillStyle = lit;
-  ctx.fillRect(0, px(1), S, px(3.4));
+  ctx.fillRect(0, px(1.4), S, px(3.6));
   ctx.fillStyle = dark;
-  ctx.fillRect(0, S - px(4.4), S, px(4.4));
+  ctx.fillRect(0, S - px(4.8), S, px(4.8));
   ctx.restore();
-  chamferPath(ctx, S, 1, cut);
+  // The material's own rim…
+  chamferPath(ctx, S, 1.4, cut);
   ctx.strokeStyle = rim;
-  ctx.lineWidth = px(2);
+  ctx.lineWidth = px(1.8);
+  ctx.stroke();
+  // …inside the bold ink silhouette every pressable wears now, the
+  // same ring the icons carry (The Ink Pass).
+  chamferPath(ctx, S, 0.6, cut);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = px(2.2);
   ctx.stroke();
   return c.toDataURL();
 }
@@ -360,24 +370,33 @@ function socketWell(): string {
   const px = (v: number): number => v * K;
   const cut = 5;
 
-  chamferPath(ctx, S, 0.6, cut);
-  ctx.fillStyle = SUNK_FILL;
-  ctx.fill();
-  // Outer rim: the metal lip of the well.
-  chamferPath(ctx, S, 0.6, cut);
-  ctx.strokeStyle = '#31291d';
-  ctx.lineWidth = px(1.6);
+  // The lit lip: the one bright edge where the case's face is cut —
+  // it separates the ink ring from the leather around the well, so
+  // the well reads carved, not printed.
+  chamferPath(ctx, S, 0.5, cut);
+  ctx.strokeStyle = 'rgba(150, 128, 90, 0.85)';
+  ctx.lineWidth = px(1.5);
   ctx.stroke();
+  // THE INK RING — the same bold dark line the outline shader draws
+  // around the item that will sit in this well (The Ink Pass).
+  chamferPath(ctx, S, 1.5, cut);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = px(2.6);
+  ctx.stroke();
+  // The floor: a shade deeper than the old sunk so items pop harder.
+  chamferPath(ctx, S, 2.6, cut);
+  ctx.fillStyle = '#151009';
+  ctx.fill();
   // Inset bevel — dark shadow band under the top lip…
   ctx.save();
-  chamferPath(ctx, S, 1.4, cut);
+  chamferPath(ctx, S, 2.6, cut);
   ctx.clip();
   ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-  ctx.fillRect(0, px(1.4), S, px(2.2));
-  ctx.fillRect(px(1.4), 0, px(2.2), S);
+  ctx.fillRect(0, px(2.6), S, px(2.2));
+  ctx.fillRect(px(2.6), 0, px(2.2), S);
   // …and a lit floor edge at the bottom.
   ctx.fillStyle = 'rgba(122, 103, 74, 0.34)';
-  ctx.fillRect(0, S - px(3.2), S, px(1.6));
+  ctx.fillRect(0, S - px(4.2), S, px(1.6));
   ctx.restore();
   return c.toDataURL();
 }
@@ -395,9 +414,10 @@ function gaugeChannel(): string {
   chamferPath(ctx, S, 0.5, 3);
   ctx.fillStyle = '#120e09';
   ctx.fill();
+  // The channel's own bold ink rim (The Ink Pass).
   chamferPath(ctx, S, 0.5, 3);
-  ctx.strokeStyle = '#0d0a06';
-  ctx.lineWidth = px(1.8);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = px(2.2);
   ctx.stroke();
   chamferPath(ctx, S, 1.6, 3);
   ctx.strokeStyle = LEATHER.echo;
@@ -421,8 +441,8 @@ function titleBanner(): string {
   ctx.fillStyle = '#1d1710';
   ctx.fill();
   chamferPath(ctx, S, 0.8, cut);
-  ctx.strokeStyle = '#0e0b07';
-  ctx.lineWidth = px(1.6);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = px(2.4);
   ctx.stroke();
   // Brass binding rails top and bottom (clipped to the plaque).
   ctx.save();
@@ -449,11 +469,14 @@ function crestMedallion(): string {
   const cx = D / 2;
   const r = D / 2 - 2 * K;
 
-  // Outer dark ring.
+  // Outer dark ring, bound in the bold ink line (The Ink Pass).
   ctx.beginPath();
   ctx.arc(cx, cx, r, 0, Math.PI * 2);
   ctx.fillStyle = '#14100a';
   ctx.fill();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2.2 * K;
+  ctx.stroke();
   // Faceted brass ring: eight flat segments, two alternating tones,
   // the top-left quadrant running one tone lighter (the light side).
   const R0 = r - 1.6 * K;
@@ -508,9 +531,11 @@ function parchmentSheet(): string {
   ctx.strokeStyle = PAPER.edge;
   ctx.lineWidth = px(2.6);
   ctx.stroke();
+  // The sheet's silhouette wears the same bold ink line a scroll icon
+  // does — a document held over the case, not printed on it.
   chamferPath(ctx, S, 0.8, cut);
-  ctx.strokeStyle = PAPER.rim;
-  ctx.lineWidth = px(1.3);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = px(2);
   ctx.stroke();
   // One engraved rule inside the worn band.
   chamferPath(ctx, S, 4.4, cut);

@@ -2,7 +2,39 @@
 
 *Design review 2026-08-01. Status: **ALL SIX PHASES SHIPPED 2026-08-01 —
 EPIC COMPLETE** (THE ONE RULER 8839680 → THE WORLD'S WING & THE LIVING
-CHROME). The hall fits the hand.*
+CHROME). The hall fits the hand. Post-epic: THE INK PASS (below).*
+
+**THE INK PASS as-built (2026-08-01, post-epic skin deepening):** the
+epic fixed the bones; this pass makes the furniture speak the icons'
+language. THE LAW: the world's outline-shader color (`#241a2e`,
+renderer `STRUCT_OUTLINE` = the icons' eight-tap ring) is now a UI
+material — `INK` in `ui/kit/tokens.ts`, published as `--outline`,
+`--ink-line` (the ring furniture cuts inward from its silhouette) and
+`--ink-wash` (translucent, for count seals and label plates). Every
+painted chrome asset got the bold ink ring: case + tray frames' outer
+silhouette line, the socket well (lit lip `rgba(150,128,90,.85)` →
+ink ring → deepened floor `#151009`), button ingots (material rim
+INSIDE an ink silhouette), gauge channel, title banner, crest
+medallion, parchment sheet; the quiet HUD wells/keys got a half-weight
+echo only (the live HUD stays quieter than case furniture). The cut-
+plate stock and `.kit-plate` wear `inset 0 0 0 0.15625rem
+var(--ink-line)` FIRST in their shadow stack (ring paints over the
+facets), facet contrast roughly doubled; `need-chip`/`lvl-badge` rings
+went hairline → rule; sort/tab chips grew to 2.625rem min-height.
+Character screen (the reference room): deed/fill/coin chips re-cut as
+chamfered inked seals, ghost icons etched (`opacity .42, grayscale(.7)
+brightness(1.15)`), count seals wear a faint brass ring inside ink
+wash, equipped = bold double ring + brass flood, armor-stand spine
+inked, section titles pinned by the gold set-mark diamond. Empty
+states furnished center-stage with the ghost-diamond mark (`worn-sum`,
+`quest-empty`, `social-empty`). RENAME: the character's sum box was
+`.kit-ledger`/`.kit-empty` — colliding with the paged-ledger component
+classes and leaking styles onto every ledger — now `.worn-sum`/
+`.worn-sum-empty` (index.html + character.css; the component classes
+belong to `ui/kit/` alone). The stray cold-purple `rgba(12,8,24,…)`
+inks are dead. Receipts: character/codex/skills/journal/standing/
+social/settings/handiwork + bank/shop/stable fixture rooms
+photographed live; 337 tests, build, tsc all green.
 
 **Phase 6 as-built (2026-08-01):** THE JOURNAL — errands deal onto paged
 leaves; THE DOG-EAR RIDES FIRST (the followed quest pins to a "Followed"

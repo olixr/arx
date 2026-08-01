@@ -42,7 +42,7 @@
 
 .ident-name {
   font-family: var(--serif);
-  font-size: 1.3125rem;
+  font-size: var(--t-title);
   font-weight: 700;
   letter-spacing: 0.0625rem;
   color: var(--gold-bright);
@@ -53,18 +53,33 @@
   max-width: 100%;
 }
 
+/* The deed chip: a small stamped seal, cut and inked like the kit. */
 .ident-deed {
   flex: none;
   font-size: var(--t-whisper);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.09375rem;
   text-transform: uppercase;
   color: var(--parchment-dim);
   text-shadow: var(--punch-small);
-  padding: 0.3125rem 0.625rem 0.25rem;
+  padding: 0.375rem 0.6875rem 0.3125rem;
   background: var(--sunk);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.3125rem;
+  border: none;
+  border-radius: 0;
+  --cut: 0.375rem;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0.3125rem 0 rgba(0, 0, 0, 0.35);
 }
 
 .char-body {
@@ -114,8 +129,9 @@
   justify-self: center;
   align-self: stretch;
   margin: 2.5rem 0;
-  width: 0.1875rem;
-  background: var(--line);
+  width: 0.25rem;
+  background: var(--line-strong);
+  box-shadow: 0.0625rem 0.0625rem 0 var(--ink-line);
   pointer-events: none;
 }
 
@@ -126,8 +142,9 @@
   align-self: start;
   /* Rides the gap between the head row and the shoulder row. */
   margin: -0.375rem 0.8125rem 0;
-  height: 0.1875rem;
-  background: var(--line);
+  height: 0.25rem;
+  background: var(--line-strong);
+  box-shadow: 0.0625rem 0.0625rem 0 var(--ink-line);
   pointer-events: none;
 }
 
@@ -137,10 +154,12 @@
   z-index: 1;
 }
 
-/* The ledger: the worn kit's sum, told in plaques at the stand's
-   feet. It takes whatever height the wing has left and scrolls only
-   if a kit ever outgrows it. */
-.kit-ledger {
+/* The sum: the worn kit's ledger, a sunken inked well at the stand's
+   feet. (Renamed from .kit-ledger — that class belongs to the paged
+   ledger component and the character's box was leaking onto it.) It
+   takes whatever height the wing has left and scrolls only if a kit
+   ever outgrows it. */
+.worn-sum {
   min-width: 0;
   flex: 1;
   min-height: 0;
@@ -150,14 +169,28 @@
   gap: 0.5rem;
   padding: 0.625rem 0.75rem;
   background: var(--sunk);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.4375rem;
+  border: none;
+  border-radius: 0;
+  --cut: 0.5625rem;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0.375rem 0 rgba(0, 0, 0, 0.32);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
 
-.kit-ledger-title {
+.worn-sum-title {
   font-family: var(--serif);
   font-size: 0.9375rem;
   font-weight: 700;
@@ -165,6 +198,18 @@
   text-transform: uppercase;
   color: var(--parchment-dim);
   text-shadow: var(--punch-small);
+}
+
+.worn-sum-title::before {
+  content: '';
+  display: inline-block;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  margin-right: 0.5625rem;
+  vertical-align: 0.09375rem;
+  background: var(--gold);
+  transform: rotate(45deg);
+  border: var(--hairline) solid var(--ink-line);
 }
 
 #gear-strip {
@@ -188,17 +233,37 @@
   font-size: 0.65625rem;
 }
 
-/* Bare kit: one quiet line where the plaques will be. */
-.kit-empty {
+/* Bare kit: a ghost mark and one quiet line where the plaques will
+   be — the empty well is furnished, never blank. */
+.worn-sum-empty {
   display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.875rem;
+  flex: 1;
+  padding: 0 0.75rem;
+  text-align: center;
   font-size: var(--t-label);
   font-style: italic;
-  color: var(--parchment-dim);
+  color: var(--parchment-faint);
   text-shadow: var(--punch-small);
 }
 
-#gear-strip.hidden ~ .kit-empty {
-  display: block;
+/* The mark: an empty setting where the first sum will be struck. */
+.worn-sum-empty::before {
+  content: '';
+  width: 2.75rem;
+  height: 2.75rem;
+  transform: rotate(45deg);
+  border: var(--rim) solid rgba(217, 164, 65, 0.4);
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0 0 0.5625rem rgba(0, 0, 0, 0.35);
+}
+
+#gear-strip.hidden ~ .worn-sum-empty {
+  display: flex;
 }
 
 /* An empty socket names itself; a filled one wears a quiet nameplate. */
@@ -206,20 +271,21 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0.3125rem;
+  bottom: 0.375rem;
   text-align: center;
-  font-size: 0.71875rem;
+  font-size: var(--t-whisper);
   font-weight: 800;
   letter-spacing: 0.05rem;
   text-transform: uppercase;
   color: var(--parchment-dim);
-  opacity: 0.75;
+  text-shadow: var(--punch-small);
+  opacity: 0.85;
   pointer-events: none;
 }
 
 .equip-cell.equipped .slot-label {
-  opacity: 0.9;
-  background: rgba(12, 8, 24, 0.72);
+  opacity: 1;
+  background: var(--ink-wash);
   border-radius: 0.1875rem;
   margin: 0 0.375rem;
 }
@@ -261,21 +327,51 @@
   flex: 1;
 }
 
+/* The gold set-mark: every section heading is pinned by the same
+   inked diamond the ruled section lines wear. */
+.section-title::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.625rem;
+  vertical-align: 0.09375rem;
+  background: var(--gold);
+  transform: rotate(45deg);
+  border: var(--hairline) solid var(--ink-line);
+}
+
+/* The fill gauge chip: the pack's count, cut and inked. */
 .pack-fill {
-  font-size: 0.875rem;
-  font-weight: 700;
+  --chip-ring: var(--ink-line);
+  font-size: 0.9375rem;
+  font-weight: 800;
   letter-spacing: 0.03125rem;
-  color: var(--parchment-dim);
+  color: var(--parchment);
   text-shadow: var(--punch-small);
-  padding: 0.3125rem 0.625rem;
+  padding: 0.375rem 0.6875rem;
   background: var(--sunk);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.3125rem;
+  border: none;
+  border-radius: 0;
+  --cut: 0.375rem;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--chip-ring),
+    inset 0 0.3125rem 0 rgba(0, 0, 0, 0.35);
 }
 
 .pack-fill.full {
   color: var(--red-soft);
-  border-color: rgba(217, 87, 99, 0.55);
+  --chip-ring: rgba(217, 87, 99, 0.55);
 }
 
 /* The purse shelf under the pack: the coins, told big and plain. */
@@ -307,25 +403,41 @@
   background: none;
   padding: 0;
   font-size: 1.3125rem;
+  clip-path: none;
+  box-shadow: none;
 }
 
 #coin-readout {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.5625rem;
   padding: 0.3125rem 0.875rem;
   font-size: 1.1875rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--gold-bright);
-  text-shadow: var(--punch-small);
+  text-shadow: var(--punch);
   background: var(--sunk);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.3125rem;
+  border: none;
+  border-radius: 0;
+  --cut: 0.375rem;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0.3125rem 0 rgba(0, 0, 0, 0.35);
 }
 
 #coin-readout img {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 /* Filtered-out sockets dim but stay live — the filter is a lens. */
@@ -388,8 +500,12 @@
   z-index: 2;
 }
 
+/* A worn piece: a bold double ring — brass inside the well's own ink,
+   the same grammar as a selected icon in the world. */
 .equip-cell.equipped {
-  box-shadow: inset 0 0 0 0.125rem rgba(217, 164, 65, 0.55);
+  box-shadow:
+    inset 0 0 0 0.1875rem rgba(217, 164, 65, 0.65),
+    inset 0 0 0 12.5rem rgba(217, 164, 65, 0.07);
 }
 
 /* ---- rarity: the well is lined with the tier's color, flat ----
@@ -421,11 +537,14 @@
     0 0 0.75rem rgba(255, 179, 71, 0.3);
 }
 
+/* The ghost: what belongs here, etched into the floor of the well —
+   bold enough to read from the couch, quiet enough to yield. */
 .slot-ghost {
-  width: 56%;
-  height: 56%;
+  width: 60%;
+  height: 60%;
   object-fit: contain;
-  opacity: 0.3;
+  opacity: 0.42;
+  filter: grayscale(0.7) brightness(1.15);
   pointer-events: none;
 }
 
@@ -436,17 +555,20 @@
   pointer-events: none;
 }
 
+/* The count seal: a bold inked pill with a faint brass ring — the
+   number reads like the icons do, ringed and popped. */
 .inv-qty {
   position: absolute;
   right: 0.25rem;
   bottom: 0.25rem;
   padding: 0.0625rem 0.5rem;
   font-size: var(--t-body);
-  font-weight: bold;
+  font-weight: 800;
   color: var(--gold-bright);
   text-shadow: var(--punch-small);
-  background: rgba(12, 8, 24, 0.85);
+  background: var(--ink-wash);
   border-radius: 0.25rem;
+  box-shadow: inset 0 0 0 var(--hairline) rgba(217, 164, 65, 0.35);
 }
 
 /* THE STOLEN TAG (factions Phase 5): a red corner tick on goods with
@@ -460,7 +582,7 @@
   height: 0.5625rem;
   border-radius: 50%;
   background: var(--ember-deep);
-  box-shadow: 0 0 0 0.125rem rgba(12, 8, 24, 0.85);
+  box-shadow: 0 0 0 0.125rem var(--ink-wash);
   pointer-events: none;
 }
 
@@ -804,8 +926,9 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   font-size: 0.8125rem;
   font-weight: 800;
   color: var(--gold-bright);
-  background: rgba(12, 8, 24, 0.85);
+  background: var(--ink-wash);
   border-radius: 0.1875rem;
   text-shadow: var(--punch-small);
+  box-shadow: inset 0 0 0 var(--hairline) rgba(217, 164, 65, 0.3);
 }
 

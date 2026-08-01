@@ -219,10 +219,13 @@ h3 {
     0 calc(100% - var(--cut)),
     0 var(--cut)
   );
-  /* The stock's facets: lit top edge, shadowed bottom edge. */
+  /* The Ink Pass: every plate is cut on the world's bold outline
+     line, then faceted — lit top edge, shadowed bottom edge. The
+     ring paints first so the facets read as bands just inside it. */
   box-shadow:
-    inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
-    inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.4);
+    inset 0 0 0 0.15625rem var(--ink-line),
+    inset 0 0.3125rem 0 rgba(255, 236, 190, 0.11),
+    inset 0 -0.375rem 0 rgba(10, 7, 3, 0.45);
 }
 
 .price-tag,
@@ -367,9 +370,9 @@ h3 {
     0 var(--cut)
   );
   box-shadow:
-    inset 0 0 0 var(--hairline) var(--chip-ring),
-    inset 0 0.1875rem 0 rgba(0, 0, 0, 0.35),
-    inset 0 -0.125rem 0 rgba(122, 103, 74, 0.22);
+    inset 0 0 0 var(--rule) var(--chip-ring),
+    inset 0 0.3125rem 0 rgba(0, 0, 0, 0.35),
+    inset 0 -0.1875rem 0 rgba(122, 103, 74, 0.22);
   font-size: 0.9375rem;
   font-weight: 700;
   text-shadow: var(--punch-small);
@@ -447,9 +450,9 @@ h3 {
   background: var(--raise);
   color: var(--parchment-dim);
   box-shadow:
-    inset 0 0 0 var(--hairline) var(--chip-ring),
-    inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
-    inset 0 -0.125rem 0 rgba(10, 7, 3, 0.4);
+    inset 0 0 0 var(--rule) var(--chip-ring),
+    inset 0 0.25rem 0 rgba(255, 236, 190, 0.1),
+    inset 0 -0.25rem 0 rgba(10, 7, 3, 0.42);
   text-shadow: var(--punch-small);
   white-space: nowrap;
 }
@@ -521,9 +524,9 @@ h3 {
 
 /* Sort chips are small iron keys; the active one is pressed brass. */
 .sort-chip {
-  padding: 0 0.625rem;
-  min-height: 2.375rem;
-  font-size: 0.8125rem;
+  padding: 0 0.8125rem;
+  min-height: 2.625rem;
+  font-size: 0.875rem;
   font-weight: 800;
   letter-spacing: 0.0375rem;
   text-transform: uppercase;
@@ -812,8 +815,9 @@ body:not(.no-ui-motion) .kit-plate:hover {
     0 var(--cut)
   );
   box-shadow:
-    inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
-    inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.4);
+    inset 0 0 0 0.15625rem var(--ink-line),
+    inset 0 0.3125rem 0 rgba(255, 236, 190, 0.11),
+    inset 0 -0.375rem 0 rgba(10, 7, 3, 0.45);
 }
 
 .kit-plate:hover {
@@ -1023,9 +1027,9 @@ body:not(.no-ui-motion) .socket-well.landed {
 
 .tab-chip {
   position: relative;
-  padding: 0 0.875rem;
-  min-height: 2.375rem;
-  font-size: 0.8125rem;
+  padding: 0 1rem;
+  min-height: 2.625rem;
+  font-size: 0.875rem;
   font-weight: 800;
   letter-spacing: 0.0375rem;
   text-transform: uppercase;
