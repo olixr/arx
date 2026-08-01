@@ -8,7 +8,8 @@
     "validate": "tsx src/validate/validate.ts",
     "prove:secret-arts": "tsx src/proving/secretArts.ts",
     "prove:lesson-combat": "tsx src/proving/lessonCombat.ts",
-    "prove:mounts": "tsx src/proving/mounts.ts"
+    "prove:mounts": "tsx src/proving/mounts.ts",
+    "prove:pets": "tsx src/proving/pets.ts"
   },
   "dependencies": {
     "@arx/shared": "*",

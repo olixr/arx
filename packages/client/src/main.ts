@@ -45,6 +45,7 @@ import { PORTAL_BURST_COLORS } from './render/portal.js';
 import { installChrome } from './ui/chrome.js';
 import { dressPanel } from './ui/panel.js';
 import { SignHud } from './ui/signs.js';
+import { PetNamingCard } from './ui/petNaming.js';
 import { LookCreator } from './ui/lookCreator.js';
 import { DialogueCinema } from './ui/dialogueCinema.js';
 
@@ -249,7 +250,9 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
     localStorage.setItem('arx.waterfx', on ? 'full' : 'basic');
   });
 }
-input.setTypingCheck(() => chat.isTyping || looks.open || socialPanel.isTyping || signHud.isTyping);
+input.setTypingCheck(
+  () => chat.isTyping || looks.open || socialPanel.isTyping || signHud.isTyping || petNaming.isTyping,
+);
 let buildMode: string | null = null;
 /** THE TRUE GHOST's dial: the chosen mass for an orientable corner. */
 let buildOrient: 'auto' | 'NE' | 'NW' | 'SE' | 'SW' = 'auto';
@@ -1176,6 +1179,13 @@ const repScreen = new RepScreen(game);
 // Signage: the approach plaque over every board, and the sheet that
 // opens when you stop to read one properly.
 const signHud = new SignHud(game);
+
+// THE NAMING — the gentling's last beat: a fresh tame asks its collar
+// tag once, through the one modal card.
+const petNaming = new PetNamingCard();
+game.onPetCeremony = (slot, currentName) => {
+  petNaming.open(slot, currentName, (name) => game.petRename(slot, name));
+};
 renderer.signHasText = (tx, ty) => {
   const sign = game.signAt(tx, ty);
   return !!sign && (sign.title !== '' || sign.lines.some((l) => l !== ''));
@@ -1856,6 +1866,7 @@ window.addEventListener('keydown', (e) => {
     chat.isTyping ||
     socialPanel.isTyping ||
     signHud.isTyping ||
+    petNaming.isTyping ||
     looks.open ||
     game.ownEid === null
   ) {

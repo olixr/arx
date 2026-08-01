@@ -790,6 +790,25 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (character_id, mount_id)
   );
   `,
+  // v22: THE OPEN HAND (beastcraft v2 Phase 1) — the companions a
+  // character keeps. Slot-addressed (0..2, THREE STALLS ONE HEEL):
+  // the (character, slot) pair IS the pet's identity, so every write
+  // in the tick path is a plain fire-and-forget upsert and no id
+  // sequence ever blocks the sim loop. `state` is the durable truth
+  // ('heel' | 'stabled' | 'resting'); the wire-only 'trailing' is
+  // never stored because it is never true across a login.
+  `
+  CREATE TABLE character_pets (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    slot SMALLINT NOT NULL,
+    species TEXT NOT NULL,
+    name TEXT NOT NULL,
+    xp BIGINT NOT NULL DEFAULT 0,
+    state TEXT NOT NULL DEFAULT 'heel',
+    tamed_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, slot)
+  );
+  `,
 ];
 
 /**

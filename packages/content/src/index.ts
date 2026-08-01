@@ -39,6 +39,7 @@ export * from './territory.js';
 export * from './crops.js';
 export * from './npcs.js';
 export * from './mounts.js';
+export * from './tames.js';
 export * from './actors/types.js';
 export * from './actors/validate.js';
 export * from './actors/registry.js';

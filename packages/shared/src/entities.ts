@@ -104,9 +104,11 @@ export interface EntityMeta {
   /** Instance roll for dropped gear — tints the nameplate, survives pickup. */
   roll?: import('./rarity.js').ItemRoll;
   /**
-   * Projectiles only: who fired it. With `seq`, the identity a client
+   * Projectiles: who fired it — with `seq`, the identity a client
    * needs to hand its zero-latency predicted tracer off to the real
-   * entity (v8).
+   * entity (v8). Tamed companions (v27): the keeper — the one
+   * ownership fact every watcher must know, because it changes what
+   * the entity IS (somebody's, not the wild's; never a fight offer).
    */
   ownerEid?: EntityId;
   /** Projectiles only: the input-frame seq whose press/release fired

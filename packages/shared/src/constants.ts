@@ -110,7 +110,13 @@
 // spend mechanic whose meter silently never fills reads as a broken
 // enchant, not a missing nicety, and the handshake is how this repo
 // keeps that judgment honest.
-export const PROTOCOL_VERSION = 26;
+// v27 — THE OPEN HAND: the tamed companion arrives (S2CPet household
+// mirror, C2SPetName, and the first player-owned second entity on
+// the ordinary Npc lanes). A v26 client meeting an Npc whose meta
+// carries ownerEid would read it as a wild beast dogging a stranger's
+// heels and offer to fight it — ownership changed what an entity IS,
+// so the handshake turns the old client away.
+export const PROTOCOL_VERSION = 27;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

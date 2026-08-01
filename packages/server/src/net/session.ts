@@ -343,6 +343,12 @@ export class Session {
         this.game.interactNpc(this.playerEid, msg.eid);
         return;
       }
+      case 'petname': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.petRename(this.playerEid, msg.slot, msg.name);
+        return;
+      }
       case 'pickup': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

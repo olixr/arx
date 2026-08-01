@@ -301,3 +301,37 @@ test('per-hand grip preferences persist independently', async () => {
   store.saveCarryStyle(id, 'off', 'normal');
   assert.deepEqual(await store.loadCarryStyles(id), { main: 'rogue', off: 'normal' });
 });
+
+test('the stalls persist: pet rows round-trip with state discipline', async () => {
+  const store = await makeStore();
+  const reg = await store.register('keeper', 'hunter22', 'Keeper', SPAWN);
+  assert.ok(reg.ok);
+  const cid = reg.ok ? reg.character.id : -1;
+  // An empty household loads empty, not undefined.
+  assert.deepEqual(await store.loadPets(cid), []);
+  // The gentling ceremony's write, twice over (THREE STALLS has room).
+  store.savePet(cid, { slot: 0, species: 'giant_beetle', name: 'Giant beetle', xp: 0, state: 'heel' }, Date.now());
+  store.savePet(cid, { slot: 1, species: 'rat', name: 'Whisper', xp: 120, state: 'stabled' }, Date.now());
+  let pets = await store.loadPets(cid);
+  assert.equal(pets.length, 2);
+  assert.deepEqual(pets[0], { slot: 0, species: 'giant_beetle', name: 'Giant beetle', xp: 0, state: 'heel' });
+  assert.deepEqual(pets[1], { slot: 1, species: 'rat', name: 'Whisper', xp: 120, state: 'stabled' });
+  // The collar tag, the stall swap, and the ladder each write alone.
+  store.savePetName(cid, 0, 'Bramble');
+  store.savePetState(cid, 0, 'stabled');
+  store.savePetXp(cid, 1, 999);
+  pets = await store.loadPets(cid);
+  assert.equal(pets[0]?.name, 'Bramble');
+  assert.equal(pets[0]?.state, 'stabled');
+  assert.equal(pets[1]?.xp, 999);
+  // A state the phase has never heard of reads as safely stabled —
+  // never a phantom body at heel.
+  store.savePetState(cid, 1, 'sleepwalking' as never);
+  pets = await store.loadPets(cid);
+  assert.equal(pets[1]?.state, 'stabled');
+  // The release removes the row whole.
+  store.deletePet(cid, 0);
+  pets = await store.loadPets(cid);
+  assert.equal(pets.length, 1);
+  assert.equal(pets[0]?.slot, 1);
+});

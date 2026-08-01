@@ -7120,3 +7120,73 @@ body.pad-mode .map-reticle {
   text-shadow: var(--punch-small);
   margin-right: 10px;
 }
+
+/* THE NAMING — the gentling's one modal breath (ui/petNaming.ts). */
+#petname-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 58;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 14, 0.45);
+}
+
+.petname-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 28px 16px;
+  max-width: min(420px, 92vw);
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  animation: lvl-rays-in 260ms ease-out both;
+}
+
+.petname-kicker {
+  color: #c4b590;
+  font-size: 11px;
+  letter-spacing: 5px;
+}
+
+.petname-lede {
+  color: #d8d2c4;
+  font-size: 13px;
+}
+
+.petname-input {
+  width: 220px;
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 17px;
+  color: #f0e8d8;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(196, 181, 144, 0.5);
+  border-radius: 3px;
+  outline: none;
+}
+
+.petname-input:focus {
+  border-color: #c4b590;
+}
+
+.petname-hint {
+  color: rgba(216, 210, 196, 0.6);
+  font-size: 11px;
+}
+
+.petname-acts {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.petname-confirm:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

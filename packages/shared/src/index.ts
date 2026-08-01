@@ -17,6 +17,7 @@ export * from './sim/damage.js';
 export * from './sim/abilities.js';
 export * from './sim/sneak.js';
 export * from './sim/perception.js';
+export * from './sim/pets.js';
 export * from './sim/daylight.js';
 export * from './dungeon/key.js';
 export * from './world/collision.js';

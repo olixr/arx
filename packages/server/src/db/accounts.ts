@@ -1,6 +1,19 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
-import { isRarityTier, sanitizeLook, type ItemRoll, type Look } from '@arx/shared';
+import { isRarityTier, sanitizeLook, type ItemRoll, type Look, type PetState } from '@arx/shared';
 import type { Db } from './db.js';
+
+/**
+ * A kept companion as the stalls know it (beastcraft v2, THE OPEN
+ * HAND). `slot` 0..2 is the stall; `state` is the durable truth —
+ * the wire-only 'trailing' never lands here.
+ */
+export interface PetRow {
+  slot: number;
+  species: string;
+  name: string;
+  xp: number;
+  state: PetState;
+}
 
 /** NULL-tolerant roll reader for legacy rows (pre-migration-11). */
 function rowRoll(
@@ -1344,6 +1357,75 @@ export class AccountStore {
         'ON CONFLICT (character_id, mount_id) DO UPDATE SET chosen = 1',
       [characterId, mountId, nowMs],
     );
+  }
+
+  /**
+   * THE OPEN HAND: one kept companion. The (character, slot) pair is
+   * its whole identity (THREE STALLS), so the row rides plain upserts
+   * with no id sequence anywhere near the tick path. The DB row is
+   * the animal; the world entity is only its visit.
+   */
+  async loadPets(characterId: number): Promise<PetRow[]> {
+    const rows = await this.db.query<{
+      slot: number;
+      species: string;
+      name: string;
+      xp: number;
+      state: string;
+    }>(
+      'SELECT slot, species, name, xp, state FROM character_pets WHERE character_id = ? ORDER BY slot',
+      [characterId],
+    );
+    return rows.map((r) => ({
+      slot: Number(r.slot),
+      species: r.species,
+      name: r.name,
+      xp: Number(r.xp),
+      // An unknown state (a future phase's word, an edited row) reads
+      // as safely stabled — never a phantom body at heel.
+      state: r.state === 'heel' || r.state === 'resting' ? r.state : 'stabled',
+    }));
+  }
+
+  /** The gentling ceremony's write: the full row, fired at the moment. */
+  savePet(characterId: number, pet: PetRow, tamedAtMs: number): void {
+    this.db.fire(
+      'INSERT INTO character_pets (character_id, slot, species, name, xp, state, tamed_at) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (character_id, slot) DO UPDATE SET species = excluded.species, name = excluded.name, xp = excluded.xp, state = excluded.state',
+      [characterId, pet.slot, pet.species, pet.name, pet.xp, pet.state, tamedAtMs],
+    );
+  }
+
+  savePetName(characterId: number, slot: number, name: string): void {
+    this.db.fire('UPDATE character_pets SET name = ? WHERE character_id = ? AND slot = ?', [
+      name,
+      characterId,
+      slot,
+    ]);
+  }
+
+  savePetXp(characterId: number, slot: number, xp: number): void {
+    this.db.fire('UPDATE character_pets SET xp = ? WHERE character_id = ? AND slot = ?', [
+      xp,
+      characterId,
+      slot,
+    ]);
+  }
+
+  savePetState(characterId: number, slot: number, state: PetState): void {
+    this.db.fire('UPDATE character_pets SET state = ? WHERE character_id = ? AND slot = ?', [
+      state,
+      characterId,
+      slot,
+    ]);
+  }
+
+  /** The release. Phase 4 gives it its ceremony; the dev lever uses it today. */
+  deletePet(characterId: number, slot: number): void {
+    this.db.fire('DELETE FROM character_pets WHERE character_id = ? AND slot = ?', [
+      characterId,
+      slot,
+    ]);
   }
 
   saveInventory(

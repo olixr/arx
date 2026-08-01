@@ -135,7 +135,7 @@ export const SKILL_STORY: Record<string, string> = {
   foraging: 'The wild pantry, read closely',
   herbalism: 'Leaf and root distilled',
   enchanting: 'Power bound into gear',
-  beastcraft: 'Trophies worked from the hunt',
+  beastcraft: 'The wild answers a gentle hand',
   sneak: 'Unseen, unheard, unhurried',
   twohand: 'Both hands, one argument',
   dualwield: 'A blade in each fist',

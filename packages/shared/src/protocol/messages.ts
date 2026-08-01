@@ -255,6 +255,17 @@ export interface C2SInteractNpc {
 }
 
 /**
+ * Name (or rename) a companion by stall slot. The server re-runs the
+ * shared sanitizer whatever the client showed — the wire carries the
+ * raw ask, the collar tag is always the server's judgment.
+ */
+export interface C2SPetName {
+  t: 'petname';
+  slot: number;
+  name: string;
+}
+
+/**
  * Dialogue intents. The server owns the whole walk — the client never
  * sees node ids or conditions, it only answers the beat it was shown:
  * advance a linear line, pick a choice by the index it was sent, or
@@ -468,6 +479,7 @@ export type C2SMessage =
   | C2SOwnBuilt
   | C2SPlant
   | C2SInteractNpc
+  | C2SPetName
   | C2SPickup
   | C2STechnique
   | C2SCalling
@@ -912,6 +924,33 @@ export interface S2CRide {
   mult: number;
   /** Mount def ids this character owns (the stable row's truth). */
   owned: string[];
+}
+
+/**
+ * THE WIRE STAYS LEAN (beastcraft v2 Phase 1): the keeper's own
+ * household, sent on join and whenever any pet fact changes (the
+ * S2CRide signature-gate discipline). Watchers need none of this —
+ * the companion entity itself rides the ordinary snapshot and meta
+ * lanes. `state: 'trailing'` is the wire-only derivation of a heel
+ * pet whose body slipped behind and waits to re-emerge.
+ */
+export interface PetInfo {
+  slot: number;
+  /** NpcDef id — the species body every watcher already knows. */
+  species: string;
+  name: string;
+  level: number;
+  xp: number;
+  hp: number;
+  maxHp: number;
+  state: 'heel' | 'trailing' | 'stabled' | 'resting';
+}
+
+export interface S2CPet {
+  t: 'pet';
+  pets: PetInfo[];
+  /** Slot just tamed — the client raises the naming card exactly once. */
+  ceremony?: number;
 }
 
 /**
@@ -1394,6 +1433,7 @@ export type S2CMessage =
   | S2CBuffs
   | S2CCharges
   | S2CRide
+  | S2CPet
   | S2CRiftgate
   | S2CDungeonEnter
   | S2CSigns
@@ -1665,6 +1705,14 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (msg.style !== 'normal' && msg.style !== 'rogue') return null;
       if (msg.hand !== undefined && msg.hand !== 'main' && msg.hand !== 'off') return null;
       return { t: 'carrystyle', style: msg.style, hand: msg.hand };
+    }
+    case 'petname': {
+      // Slot bounds are THREE STALLS; the name is only length-gated
+      // here — the shared sanitizer renders the real verdict server-
+      // side, so a junk ask costs a refusal line, never a strike.
+      if (msg.slot !== 0 && msg.slot !== 1 && msg.slot !== 2) return null;
+      if (typeof msg.name !== 'string' || msg.name.length > 40) return null;
+      return { t: 'petname', slot: msg.slot, name: msg.name };
     }
     case 'social':
       return { t: 'social' };
