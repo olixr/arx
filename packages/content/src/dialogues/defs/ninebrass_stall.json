@@ -10,6 +10,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "ninebrass_stall__hub",
       "text": "Curios! Oddments! Things the dark coughed up and I dusted off! Every piece has a story, half the stories are true, and the true ones cost extra! What catches your eye?",
       "choices": [
         {
@@ -28,16 +29,19 @@
     },
     {
       "id": "stock",
+      "voice": "ninebrass_stall__stock",
       "text": "The grotto grows my lamp-shrooms! The cistern gives up blindfish bones carved prettier than they've any right to be! And the galleries produce what galleries produce: ember-stones, frost-shards, dust that remembers being Arx. The miners bring it up, I dust it off, you carry it away. The deep provides, friend. The deep PROVIDES.",
       "next": "hub"
     },
     {
       "id": "before",
+      "voice": "ninebrass_stall__before",
       "text": "Ahhh, THE question. Everyone asks. The price keeps going up. I'll say this much for free: the seal was built to keep things out. Nobody ever asked it to keep things in. The floor didn't sweep itself, the brazier in the old works didn't feed itself, and Ninebrass didn't teach himself to haggle in the dark. Or I walked down with the guild crews like everyone else and I'm salting my legend. That's the beauty of the deep, friend. _Both stories weigh the same._",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "ninebrass_stall__browse",
       "text": "Browse, browse! Mind the frost-shard, it holds grudges.",
       "hooks": [
         {

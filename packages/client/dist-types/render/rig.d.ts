@@ -1247,6 +1247,8 @@ export interface CourserLook {
     leather: string;
     /** Grey coats dapple; solid coats stay plain. */
     dapple?: boolean;
+    /** Mountain shag: belly fringe and a heavier mane fall (the garron). */
+    shaggy?: boolean;
     bodyW: number;
     backH: number;
     chestH: number;
@@ -1272,7 +1274,12 @@ export declare const COURSER_SADDLE: {
 };
 /** One rig for every coat — only the sock color varies. */
 export declare function mountSpec(mountId: string): BeastSpec;
-export declare function paintCourserBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: CourserLook, f: BeastBlockFrame): void;
+/**
+ * Rider geometry per body — the garron seats lower than the courser.
+ * Same shape as COURSER_SADDLE; the renderer picks by mount id.
+ */
+export declare function saddleFor(mountId: string): typeof COURSER_SADDLE;
+export declare function paintCourserBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: CourserLook, f: BeastBlockFrame, saddle?: typeof COURSER_SADDLE): void;
 /**
  * The courser's head: a long plain skull with pricked ears, the
  * muzzle running well past the cheek to a soft dark nose — the length
@@ -1287,6 +1294,54 @@ export declare function drawCourserHead(ctx: CanvasRenderingContext2D, look: Cou
     fy: number;
     ys: number;
     hurt?: boolean;
+}): void;
+/**
+ * The night sabercat — the prestige saddle beast (THE ROAD GROWS
+ * SHORT Phase 5). A cat is not a horse and is not painted like one:
+ * low-slung length, shoulder blades riding ABOVE the spine line, a
+ * deep waist tuck, flank stripes, a round skull with a short broad
+ * muzzle, and the two ivory sabers that name it. It wears a HARNESS,
+ * not a saddle: strap ring at the shoulders, low seat pad, breast
+ * band. Ridden low — the seat sits where the cat's back actually is.
+ */
+export interface SabercatLook {
+    coat: string;
+    /** Flank banding — the saber stripe read. */
+    stripe: string;
+    under: string;
+    earIn: string;
+    eye: string;
+    fang: string;
+    /** Harness leather (the tack constant) and the seat pad's cloth. */
+    leather: string;
+    pad: string;
+    bodyW: number;
+    backH: number;
+    /** The feline shoulder rise — blades above the spine at the walk. */
+    shoulderH: number;
+    chestH: number;
+    tuckH: number;
+    headW: number;
+    headH: number;
+}
+export declare const SABERCAT_LOOKS: Record<string, SabercatLook>;
+export declare function paintSabercatBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: SabercatLook, f: BeastBlockFrame): void;
+/**
+ * The sabercat head: a round skull where the wolf carries a slab, a
+ * short broad muzzle where the wolf runs a spike, blunt round-backed
+ * ears, pale-gold eyes, and the two ivory sabers dropping past the
+ * jaw — visible at every facing the muzzle is, because they ARE the
+ * animal.
+ */
+export declare function drawSabercatHead(ctx: CanvasRenderingContext2D, look: SabercatLook, o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
 }): void;
 export declare function drawBeast(ctx: CanvasRenderingContext2D, opts: {
     /** Screen position of the body's ground point. */

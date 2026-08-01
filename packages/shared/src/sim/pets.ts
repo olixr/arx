@@ -62,6 +62,32 @@ export const PET_CALM_TICKS = 20;
  */
 export const PET_SPRINT_CAP = 9.5;
 
+/**
+ * THE FANG BESIDE YOU (Phase 2) — the fight's flat dials. Every one
+ * is a constant, never a player-state function (the flood-law's
+ * spirit governs combat pacing the same as drops).
+ */
+/** The companion's telegraph, in ticks — the mob melee grammar. */
+export const PET_WINDUP_TICKS = 6;
+/** The fight never ranges past this from the keeper — the heel outranks the hunt. */
+export const PET_FIGHT_LEASH = 10;
+/** THE HARRY's per-mob cooldown: a flat dial, never scaled by anyone's state. */
+export const PET_HARRY_COOLDOWN_TICKS = 200;
+/** The interim fall (Phase 3 brings the true ceremony): rest before returning. */
+export const PET_FALL_REST_TICKS = 600;
+/** A rested companion returns at this fraction of its health. */
+export const PET_RETURN_HP_FRAC = 0.5;
+/** Out-of-combat regen: one point every this many ticks... */
+export const PET_REGEN_TICKS = 40;
+/** ...once this many ticks have passed since the last wound. */
+export const PET_REGEN_DELAY_TICKS = 200;
+/** The pet's own ladder: xp per point of landed damage. */
+export const PET_XP_PER_DMG = 2;
+/** The keeper's beastcraft trickle: landed damage over this, capped per mark. */
+export const PET_TRICKLE_DIVISOR = 2;
+/** The kill share on the pet's ladder: fraction of the mark's xpReward. */
+export const PET_KILL_XP_FRAC = 0.5;
+
 /** Follow stride for one tick: settle, walk, or sprint the gap shut. */
 export function petFollowSpeed(speciesSpeed: number, dist: number): number {
   if (dist <= PET_HEEL_DIST) return 0;

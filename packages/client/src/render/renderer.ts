@@ -22317,6 +22317,10 @@ export class Renderer {
                 ench: remote.meta.appearance.ench,
                 look: remote.meta.appearance.look,
                 sheathed: (s.status & SHEATHED_BIT) !== 0,
+                // THE SADDLE IN THE SCHEDULE: a riding actor carries
+                // its beast on appearance exactly like a player — the
+                // one ride block draws outrider and adventurer alike.
+                mount: remote.meta.appearance.mount,
                 color: remote.meta.appearance.look
                   ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
                   : '#c8b89a',

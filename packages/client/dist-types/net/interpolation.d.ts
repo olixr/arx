@@ -34,6 +34,15 @@ export declare class InterpBuffer {
      * caller in one frame shares one answer.
      */
     sampleSmoothed(t: number): InterpSample | null;
+    /**
+     * True while sampleSmoothed is still bleeding off a correction
+     * offset: the body is GLIDING onto its authoritative path, and the
+     * glide is presentation, not travel. Consumers that turn motion into
+     * matter (the worn-light trail and wake) gate on this, so a standing
+     * body taking a sub-3-tile correction cannot shed footprints at the
+     * ~13 t/s the glide briefly reads as.
+     */
+    gliding(): boolean;
     sampleAt(t: number): InterpSample | null;
 }
 //# sourceMappingURL=interpolation.d.ts.map

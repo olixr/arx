@@ -154,3 +154,45 @@ test('a seated stop survives validation at post and waypoint level', () => {
   assert.ok(path.kind === 'path');
   assert.equal(path.waypoints[0]!.sit, true);
 });
+
+test('THE SADDLE IN THE SCHEDULE: mounted tasks validate, layered like speed', () => {
+  const res = validateRoutine({
+    id: 'test_rider',
+    base: {
+      kind: 'path',
+      mount: 'courser_bay',
+      speed: 2.9,
+      waypoints: [
+        { x: 2, y: 0, ride: false },
+        { x: 12, y: 0 },
+        { x: 12, y: 8, waitSec: 10 },
+      ],
+    },
+    slots: [{ from: 21, to: 6, task: { kind: 'post', mount: 'garron_hoargate' } }],
+  });
+  assert.ok(res.ok);
+  const path = res.routine.base;
+  assert.ok(path.kind === 'path');
+  assert.equal(path.mount, 'courser_bay', 'the task names the beast');
+  assert.equal(path.waypoints[0]!.ride, false, 'a leg walked on foot stores its override');
+  assert.equal(path.waypoints[1]!.ride, undefined, 'a ridden leg stores as absent');
+  const night = res.routine.slots![0]!.task;
+  assert.ok(night.kind === 'post');
+  assert.equal(night.mount, 'garron_hoargate', 'a posted rider is a valid statement');
+});
+
+test('the saddle validator rejects the dishonest riders', () => {
+  const unknown = validateRoutine({
+    id: 'test_ghost_horse',
+    base: { kind: 'post', mount: 'ghost_horse' },
+  });
+  assert.ok(!unknown.ok && unknown.errors.some((e) => e.includes('not a registered mount')));
+  const rideless = validateRoutine({
+    id: 'test_rideless',
+    base: { kind: 'path', waypoints: [{ x: 1, y: 0, ride: false }] },
+  });
+  assert.ok(
+    !rideless.ok && rideless.errors.some((e) => e.includes('meaningless without a task mount')),
+    'ride overrides demand a mounted task',
+  );
+});

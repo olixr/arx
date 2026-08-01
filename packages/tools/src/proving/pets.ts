@@ -1,13 +1,17 @@
 /**
- * THE PROVING — live receipts for THE OPEN HAND (docs/beastcraft-plan.md
- * Phase 1), driven over the real wire against the running dev server.
- * Registers a throwaway keeper and walks the whole law: the join
- * mirror, every spoken refusal (rung, whole heart, empty pack), the
+ * THE PROVING — live receipts for THE OPEN HAND and THE FANG BESIDE
+ * YOU (docs/beastcraft-plan.md Phases 1-2), driven over the real wire
+ * against the running dev server. Registers a throwaway keeper and
+ * walks the whole law: the join mirror, every spoken refusal, the
  * broken kneel that costs nothing, the true gentling with its
  * ceremony, the collar tag, the heel across real ground, trailing and
  * the calm re-emergence (underground, where the saddle refuses and
- * the companion follows), the untouchable-body law, THREE STALLS, and
- * a full logout: the DB is the animal.
+ * the companion follows), the untouchable-body law — then the fight:
+ * DEFEND THE HAND, THE HARRY holding a mob off the keeper, whiff-0 on
+ * live rolls, the xp discipline (beastcraft trickle, never a combat
+ * school), kill credit, the mob-side rail wounding the pet, the
+ * interim fall and its rest — then THREE STALLS and a full logout:
+ * the DB is the animal.
  *
  * Usage (against a running dev server):
  *   npm run prove:pets -w @arx/tools
@@ -132,12 +136,18 @@ const main = async () => {
     Array.isArray(first.pets) && first.pets.length === 0,
   );
 
-  // --- Stage: open ground, a thick neck (the beetle bites back), a blade.
-  const jit = Number(STAMP) % 11;
-  const course: [number, number] = [200 + jit, 60 + jit];
+  // --- Stage: open ground, a thick neck (the beetle bites back), a
+  // blade. The course spreads wide per run — earlier runs leave live
+  // bears and goblins behind, and inheriting one mid-receipt reads as
+  // a law failure when it is only litter.
+  const course: [number, number] = [160 + (Number(STAMP) % 97), 40 + (Number(STAMP) % 61)];
   await tp(c, course[0], course[1]);
-  await say(c, '/xp vitality 200000');
-  await say(c, '/xp defence 200000');
+  // Level-99 constitution: the combat block later feeds the keeper to
+  // a bear on purpose, and the receipt is the PET's fall, not the
+  // keeper's (live-caught: a worn keeper died first and the death
+  // teleport dissolved the fight before the fall could land).
+  await say(c, '/xp vitality 13000000');
+  await say(c, '/xp defence 13000000');
   let mark = c.mark();
   await say(c, '/give bronze_sword 1');
   const inv0 = await c.waitFor((m) => m.t === 'inv', 'sword in pack', 5000, mark);
@@ -160,7 +170,42 @@ const main = async () => {
   const beetle: number = beetleMeta.eid;
   await sleep(400);
 
+  // Interact reach is 2.2 tiles and rejects silently — walk up first,
+  // every time (the beetle wanders, and the spawn ring is 1.0-3.4).
+  const walkTo = async (targetEid: number, within = 1.3): Promise<void> => {
+    // A long gap gets the dev lift first — walking a wandering body
+    // down across open country is not what these receipts measure.
+    const far = c.ents.get(targetEid);
+    if (far && c.pos && Math.hypot(far.x - c.pos.x, far.y - c.pos.y) > 4) {
+      await tp(c, Math.round(far.x), Math.round(far.y) + 1);
+    }
+    const t0 = Date.now();
+    for (;;) {
+      if (Date.now() - t0 > 15000) {
+        const b = c.ents.get(targetEid);
+        const me = c.pos;
+        throw new Error(
+          `could not reach entity ${targetEid} (d ${b && me ? Math.hypot(b.x - me.x, b.y - me.y).toFixed(1) : '?'})`,
+        );
+      }
+      const b = c.ents.get(targetEid);
+      const me = c.pos;
+      if (b && me) {
+        const d = Math.hypot(b.x - me.x, b.y - me.y);
+        if (d <= within) {
+          c.frame(0);
+          await sleep(150);
+          return;
+        }
+        const aim = Math.atan2(b.y - me.y, b.x - me.x);
+        c.frame(0, Math.cos(aim), Math.sin(aim), aim);
+      }
+      await sleep(60);
+    }
+  };
+
   // --- Refusal 1: the rung. Beastcraft 1 asks and is told, aloud.
+  await walkTo(beetle);
   mark = c.mark();
   c.send({ t: 'interactnpc', eid: beetle });
   await c.waitFor(
@@ -173,6 +218,7 @@ const main = async () => {
 
   // --- Refusal 2: a whole heart. Level up, ask again untouched.
   await say(c, '/xp beastcraft 1200');
+  await walkTo(beetle);
   mark = c.mark();
   c.send({ t: 'interactnpc', eid: beetle });
   await c.waitFor(
@@ -188,7 +234,15 @@ const main = async () => {
   const swingUntilWorn = async (): Promise<void> => {
     const t0 = Date.now();
     for (;;) {
-      if (Date.now() - t0 > 60000) throw new Error('could not wear the beetle down in 60s');
+      if (Date.now() - t0 > 60000) {
+        const b = c.ents.get(beetle);
+        const me = c.pos;
+        const hits = c.msgs.filter((m) => m.t === 'hit' && m.eid === beetle).length;
+        const anyHits = c.msgs.filter((m) => m.t === 'hit').length;
+        throw new Error(
+          `could not wear the beetle down in 60s (hpPct ${b?.hpPct}, d ${b && me ? Math.hypot(b.x - me.x, b.y - me.y).toFixed(2) : '?'}, hits-on-beetle ${hits}, hits-any ${anyHits})`,
+        );
+      }
       const b = c.ents.get(beetle);
       const me = c.pos;
       if (b && b.hpPct > 0 && b.hpPct <= WINDOW_PCT) return;
@@ -218,6 +272,7 @@ const main = async () => {
   );
 
   // --- Refusal 3: the empty pack (worn down, right rung, no lure).
+  await walkTo(beetle);
   mark = c.mark();
   c.send({ t: 'interactnpc', eid: beetle });
   await c.waitFor(
@@ -230,8 +285,9 @@ const main = async () => {
 
   // --- The broken kneel: start the gentling, walk away. The lure
   // must still be whole — an interrupt costs nothing.
-  mark = c.mark();
   await say(c, '/give berries 5');
+  await walkTo(beetle);
+  mark = c.mark();
   c.send({ t: 'interactnpc', eid: beetle });
   await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'kneel starts', 5000, mark);
   const walkT0 = Date.now();
@@ -244,19 +300,7 @@ const main = async () => {
   receipt('walking off breaks the kneel', true);
 
   // --- The true gentling: kneel it out, unbroken.
-  const b0 = c.ents.get(beetle)!;
-  const me0 = c.pos!;
-  const back = Math.atan2(b0.y - me0.y, b0.x - me0.x);
-  const rt0 = Date.now();
-  while (Date.now() - rt0 < 1600) {
-    const b = c.ents.get(beetle)!;
-    const me = c.pos!;
-    if (Math.hypot(b.x - me.x, b.y - me.y) < 1.4) break;
-    c.frame(0, Math.cos(back), Math.sin(back), back);
-    await sleep(50);
-  }
-  c.frame(0);
-  await sleep(200);
+  await walkTo(beetle);
   mark = c.mark();
   c.send({ t: 'interactnpc', eid: beetle });
   await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'kneel starts again', 5000, mark);
@@ -341,6 +385,238 @@ const main = async () => {
   const after = c.ents.get(reunited!);
   receipt('no blade touches a companion', (after?.hpPct ?? 0) === 255, `hpPct ${after?.hpPct}`);
 
+  // ==== THE FANG BESIDE YOU (Phase 2) ====================================
+
+  // Fresh surface ground for the fight, clear of the tame-spot litter.
+  await tp(c, course[0] + 14, course[1] + 10);
+  await sleep(600);
+  const livePet = (): number | null => {
+    let best: number | null = null;
+    for (const eid2 of c.petEids(c.eid)) {
+      const s = c.ents.get(eid2);
+      if (s && Date.now() - s.at < 1500) best = eid2;
+    }
+    return best;
+  };
+  const petNow = livePet();
+  if (petNow === null) throw new Error('no live companion for the combat block');
+
+  // Track every hit broadcast for the whiff ledger as we go.
+  const hitZeros = () =>
+    c.msgs.filter((m) => m.t === 'hit' && m.dmg === 0 && !m.warded).length;
+  const zerosBefore = hitZeros();
+
+  // The keeper opens with ONE landed blow, then stands down. The
+  // world is alive (wild knots roam, mobs kite and flee), so the
+  // helper refuses stale samples and the stager retries whole mobs.
+  const landOne = async (targetEid: number, label: string, timeoutMs = 20000): Promise<void> => {
+    const t0 = Date.now();
+    for (;;) {
+      if (Date.now() - t0 > timeoutMs) throw new Error(`could not land a blow on ${label}`);
+      const b = c.ents.get(targetEid);
+      const me = c.pos;
+      if (!b || !me || Date.now() - b.at > 1500 || b.hpPct === 0) {
+        // Dead, despawned, or out of the interest window — hopeless.
+        throw new Error(`${label} is gone or stale`);
+      }
+      const d = Math.hypot(b.x - me.x, b.y - me.y);
+      const aim = Math.atan2(b.y - me.y, b.x - me.x);
+      if (d > 1.4) {
+        c.frame(0, Math.cos(aim), Math.sin(aim), aim);
+        await sleep(60);
+        continue;
+      }
+      const hm = c.mark();
+      c.frame(ATTACK, 0, 0, aim);
+      await sleep(80);
+      c.frame(0, 0, 0, aim);
+      await sleep(450);
+      const landed = c.msgs
+        .slice(hm)
+        .some((m) => m.t === 'hit' && m.eid === targetEid && (m.dmg ?? 0) > 0);
+      if (landed) return;
+    }
+  };
+  /** Spawn a mob and open on it, retrying whole bodies on stage flakes. */
+  const stageFight = async (species: string, label: string): Promise<number> => {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const sm = c.mark();
+      await say(c, `/spawnmob ${species} 1`);
+      try {
+        await c.waitFor(
+          (m) =>
+            (m.t === 'enter' || m.t === 'update') &&
+            m.entities?.some((e: Msg) => e.defId === species),
+          `${label} enters`,
+          6000,
+          sm,
+        );
+        const eid2: number = c.msgs
+          .slice(sm)
+          .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+          .find((e: Msg) => e.defId === species).eid;
+        await sleep(300);
+        await landOne(eid2, label);
+        return eid2;
+      } catch (err) {
+        if (attempt === 3) throw err;
+        console.log(`  (stage flake on ${label}, attempt ${attempt}: ${String((err as Error).message)} — respawning)`);
+      }
+    }
+    throw new Error('unreachable');
+  };
+
+  const goblinEid = await stageFight('goblin', 'the goblin');
+  await sleep(700); // the keeper's own xp lines land before the window opens
+  const soloMark = c.mark();
+
+  // DEFEND THE HAND: the keeper stands idle; the companion carries it.
+  const gob0 = c.ents.get(goblinEid)?.hpPct ?? 255;
+  await (async () => {
+    const t0 = Date.now();
+    for (;;) {
+      if (Date.now() - t0 > 25000) throw new Error('the companion never took the fight');
+      c.frame(0);
+      const g = c.ents.get(goblinEid);
+      if (!g || g.hpPct === 0 || g.hpPct < gob0 - 20) return;
+      await sleep(120);
+    }
+  })();
+  receipt('DEFEND THE HAND: the keeper points, the companion carries', true);
+
+  // THE HARRY: the mob's eye moves off the keeper and onto the pet.
+  mark = c.mark();
+  await say(c, '/npcstate');
+  await c.waitFor(
+    (m) => m.t === 'chat' && new RegExp(`^goblin#${goblinEid} .*tgt=${petNow}\\b`).test(m.text ?? ''),
+    'goblin brain shows the pet as its mark',
+    6000,
+    mark,
+  );
+  receipt('THE HARRY: the companion holds the eye', true);
+  // The clean solo window closes HERE — the next act is a deliberate
+  // keeper swing, whose own onehand xp is the keeper's business.
+  const soloEndMark = c.mark();
+
+  // The keeper shoots free mid-fight and the eye does not come back.
+  await landOne(goblinEid, 'the goblin (mid-fight)');
+  await sleep(400);
+  mark = c.mark();
+  await say(c, '/npcstate');
+  const still = await c.waitFor(
+    (m) => m.t === 'chat' && new RegExp(`^goblin#${goblinEid} `).test(m.text ?? ''),
+    'goblin brain re-read',
+    6000,
+    mark,
+  );
+  receipt(
+    'THE FIRST EYE HOLDS: the keeper shoots free, the mob stays on the pet',
+    new RegExp(`tgt=${petNow}\\b`).test(still.text ?? '') || /hp=0/.test(still.text ?? ''),
+    still.text,
+  );
+  const shootFreeMark = c.mark();
+
+  // The pet finishes the mark alone; the ledgers speak.
+  await c.waitFor((m) => m.t === 'death' && m.eid === goblinEid, 'the goblin falls', 45000);
+  const window = c.msgs.slice(soloMark);
+  const xpIn = (skill: string, from = window) =>
+    from.filter((m: Msg) => m.t === 'xp' && m.skill === skill).length;
+  receipt(
+    'the trickle pays the bond: beastcraft xp flowed from the teeth',
+    xpIn('beastcraft') >= 1,
+    `${xpIn('beastcraft')} grants`,
+  );
+  const soloToSwing = c.msgs.slice(soloMark, soloEndMark);
+  receipt(
+    'never a combat school: the pet solo window carries no onehand or combat xp',
+    xpIn('onehand', soloToSwing) === 0 && xpIn('combat', soloToSwing) === 0,
+  );
+  receipt(
+    'A COMPANION\'S DEED IS ITS KEEPER\'S: the kill pays the keeper vitality',
+    c.msgs.slice(shootFreeMark).some((m) => m.t === 'xp' && m.skill === 'vitality'),
+  );
+  const mirrorNow = c.latest('pet');
+  const heelInfo = mirrorNow?.pets?.find((p: Msg) => p.state === 'heel' || p.state === 'trailing');
+  receipt('the pet ladder banks its own xp', (heelInfo?.xp ?? 0) > 0, `xp ${heelInfo?.xp}`);
+  const petSample = c.ents.get(petNow);
+  receipt(
+    'the mob-side rail is real: the companion carries wounds',
+    (petSample?.hpPct ?? 255) < 255,
+    `hpPct ${petSample?.hpPct}`,
+  );
+  receipt('whiff-0 on the live wire: some rolls wrote nothing', hitZeros() > zerosBefore, `${hitZeros() - zerosBefore} whiffs`);
+
+  // THE FALL IS SURVIVED (the Phase 3 ceremony will replace this):
+  // a bear is too much beetle for a beetle. Top the keeper up first —
+  // /xp raises the ceiling, never the fill (live-caught: a half-full
+  // keeper died to the maul before the pet's fall could land).
+  mark = c.mark();
+  await say(c, '/give healing_tincture 12');
+  await c.waitFor((m) => m.t === 'inv', 'tinctures in pack', 5000, mark);
+  for (let i = 0; i < 14; i++) {
+    if ((c.pos?.hpPct ?? 0) >= 250) break;
+    const invNow = c.latest('inv');
+    const tSlot = invNow!.slots.findIndex((x: any) => x && x.item === 'healing_tincture');
+    if (tSlot < 0) break;
+    c.send({ t: 'use', slot: tSlot });
+    await sleep(350);
+  }
+  // The mark opens BEFORE the staging: a bear can fell a beetle in
+  // the very first exchange, mid-stage (live-caught — the fall line
+  // arrived before a later mark and the wait starved on history).
+  const bearMark = c.mark();
+  await stageFight('bear', 'the bear');
+  // Step back out of the maul: the bear chases, the companion cuts it
+  // off, and the receipt watches the fall from a survivable distance.
+  const backT0 = Date.now();
+  while (Date.now() - backT0 < 1300) {
+    c.frame(0, -1, 0.3);
+    await sleep(50);
+  }
+  c.frame(0);
+  mark = bearMark;
+  try {
+    const fallT0 = Date.now();
+    let probed = 0;
+    for (;;) {
+      if (c.msgs.slice(mark).some((m) => m.t === 'chat' && /lick its wounds/.test(m.text ?? ''))) break;
+      if (Date.now() - fallT0 > 60000) throw new Error('timeout waiting for the fall line');
+      if (Date.now() - fallT0 > probed * 6000) {
+        probed++;
+        c.send({ t: 'chat', text: '/petstate' });
+      }
+      await sleep(200);
+    }
+  } catch (e) {
+    // The post-mortem lens: what was everyone doing when it hung?
+    await say(c, '/npcstate');
+    await sleep(1200);
+    const chats = c.msgs.filter((m) => m.t === 'chat').slice(-14).map((m) => m.text);
+    const pm = c.latest('pet');
+    console.error('FALL DEBUG chats:', JSON.stringify(chats, null, 1));
+    console.error('FALL DEBUG mirror:', JSON.stringify(pm?.pets));
+    console.error('FALL DEBUG pet sample:', JSON.stringify(c.ents.get(livePet() ?? -1)));
+    throw e;
+  }
+  const restMirror = await c.waitFor(
+    (m) => m.t === 'pet' && m.pets?.some((p: Msg) => p.state === 'resting'),
+    'the mirror says resting',
+    6000,
+    mark,
+  );
+  receipt(
+    'THE FALL IS NEVER THE END, interim: the friend breaks off, resting, never lost',
+    restMirror.pets.some((p: Msg) => p.state === 'resting'),
+  );
+  // Shed the bear, then prove the rest holds the door shut.
+  await tp(c, course[0] - 60, course[1] - 40);
+  const restT0 = Date.now();
+  while (Date.now() - restT0 < 3000) {
+    c.frame(0);
+    await sleep(150);
+  }
+  receipt('the rest holds: no body returns before its hour', livePet() === null);
+
   // --- THREE STALLS: fill the household, then hear the refusal.
   mark = c.mark();
   await say(c, '/tame rat');
@@ -388,7 +664,7 @@ const main = async () => {
   }
   receipt('the heel companion stands back up with its keeper', backAtHeel);
 
-  console.log(`\nTHE OPEN HAND HOLDS — ${passed} receipts.`);
+  console.log(`\nTHE OPEN HAND AND THE FANG BOTH HOLD — ${passed} receipts.`);
   c2.ws.close();
   process.exit(0);
 };

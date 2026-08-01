@@ -249,3 +249,38 @@ Silverfall → Pinewatch → Saltmere.
 - **No second entity.** The day a mount needs to exist without its
   rider is the day this law is re-argued, in a new design review, not
   in a patch.
+
+## Part 5 — THE WORLD RIDES (NPC saddles, shipped post-epic)
+
+*Shipped 2026-07-31. The saddle joined the routine system: NPCs ride
+the same stance, the same wire, the same render path as players.*
+
+### THE SADDLE IN THE SCHEDULE (the law)
+
+An NPC's mount is **the routine task's statement, never the actor
+def's** — identity stays in `NpcActorDef`, the saddle lives where the
+pace lives. `RoutineTaskPost/Path/Wander.mount` names a MOUNTS id;
+`RoutineWaypoint.ride: false` walks one leg on foot, layered exactly
+like `speed` (waypoint > task). The validator refuses unknown mounts
+and `ride` overrides without a task mount.
+
+- **One wire grammar**: the server stamps `appearance.mount` in
+  buildMeta and drives `PoseState.Ride` from the routine ticker —
+  the client's one ride block draws outrider and adventurer alike
+  (the actor call site passes `mount` like the player site does).
+- **Every yield binds the rider**: work/sit/lie stops, combat, and
+  schedule flips step the routine rider down (`setActorRide(null)`);
+  a plain wait is held IN the saddle, and a talked-at rider answers
+  from it. Only humanoid-model actors take a saddle.
+- **The saddle moves the DEFAULT pace only**: an unmounted-speed task
+  rides at `ROUTINE_WALK_SPEED × mountDef.speedMult` (1.8 × 1.6 =
+  2.88 t/s for a courser); an authored speed outranks the horse.
+- **Riders are RARE BY AUTHORSHIP**: two in the world at ship —
+  Outrider Joss (Waykeeper, grey courser) watering at the Silverfall
+  caravanserai and riding the gate loop out to the SILVERFALL sign;
+  Outrider Haldis (Waykeeper, Hoargate garron) bouncing Pinewatch's
+  Watch Road. Both sit the Waykeeper voice card ("the order's riders,
+  the road report on four legs").
+
+Proven by receipts 25-26 (`prove:mounts`): the placed outrider carries
+the mount on appearance and the Ride pose byte on the live wire.

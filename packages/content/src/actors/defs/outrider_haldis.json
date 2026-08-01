@@ -1,0 +1,50 @@
+{
+  "id": "outrider_haldis",
+  "name": "Outrider Haldis",
+  "title": "Waykeeper",
+  "examine": "A Waykeeper of the mountain roads. Rider and garron wear the same weather.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 25,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 110,
+      "damage": 8,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 2,
+      "hairColor": 0,
+      "beard": 3,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 14
+    }
+  ],
+  "lines": [
+    "Timber Road is clear to the first milepost. Past that, ask the wolves.",
+    "Mountain garron. She knew this road before the town had a wall.",
+    "Count out, count back. The road likes an even ledger."
+  ]
+}

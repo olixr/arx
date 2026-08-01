@@ -44,6 +44,16 @@ import {
   PET_CALM_TICKS,
   PET_CATCHUP_DIST,
   PET_TRAIL_OUT,
+  PET_WINDUP_TICKS,
+  PET_FIGHT_LEASH,
+  PET_HARRY_COOLDOWN_TICKS,
+  PET_FALL_REST_TICKS,
+  PET_RETURN_HP_FRAC,
+  PET_REGEN_TICKS,
+  PET_REGEN_DELAY_TICKS,
+  PET_XP_PER_DMG,
+  PET_TRICKLE_DIVISOR,
+  PET_KILL_XP_FRAC,
   petFollowSpeed,
   petLevelFor,
   sanitizePetName,
@@ -156,6 +166,7 @@ import {
   techniquesFor,
   tameDef,
   TAMES,
+  petStatBlock,
   TECHNIQUES,
   SECRET_ARTS,
   callingDef,
@@ -668,6 +679,13 @@ interface NpcComp {
   navRefY: number;
   /** A failed chase sulks: no aggro scans until this tick. */
   noAggroUntilTick: number;
+  /**
+   * THE HARRY's per-mob rest (beastcraft v2 Phase 2): no companion
+   * blow re-takes this body's eye until the tick passes. Optional on
+   * purpose — absent reads as 0, so neither NpcComp literal site
+   * carries it and old bodies never need touching.
+   */
+  harriedUntilTick?: number;
   /** The packmate a craven runner is fleeing toward (seekhelp). */
   helpEid: EntityId | null;
   /** Give-up tick for the help run — shout where you stand and turn. */
@@ -724,6 +742,14 @@ interface ActorComp {
   nextGazeTick: number;
   /** Rotating cursor into actor.lines for interactions. */
   nextLine: number;
+  /**
+   * THE SADDLE IN THE SCHEDULE: the beast this body is riding right
+   * now (a MOUNTS id), or null afoot. Runtime state owned by the
+   * routine ticker — the mount is the ROUTINE TASK's statement, never
+   * the actor def's. Stamped onto appearance in buildMeta; changes
+   * re-broadcast meta so every watcher sees the swing up.
+   */
+  mount: string | null;
 }
 
 /**
@@ -860,6 +886,17 @@ interface PetComp {
   slot: number;
   /** Ticks of no follow progress while far — the give-up-to-trailing watchdog. */
   stuckTicks: number;
+  /**
+   * THE FANG BESIDE YOU: the mark the companion is fighting, or null
+   * at heel. Set ONLY through petDefend (keeper wounded, keeper
+   * wounds, pet wounded) — never by perception, which cannot see it.
+   */
+  target: EntityId | null;
+  /** Last tick a wound landed — gates the licked-wounds regen. */
+  lastHurtTick: number;
+  /** Beastcraft-trickle ledger for the CURRENT mark (cap = its xpReward). */
+  trickleTarget: EntityId | null;
+  trickleBank: number;
 }
 
 /** A telegraphed blast waiting on its fuse. */
@@ -1174,6 +1211,12 @@ interface PlayerComp {
   petCalmTicks: number;
   /** Last mirrored household signature — resend only on change (the ride discipline). */
   petSigSent: string;
+  /** Wounds carried across trailing: the hp the body left with (null = whole). */
+  petHp: number | null;
+  /** The interim fall's rest: no body returns before this tick (Phase 3 supersedes). */
+  petRecoverAtTick: number;
+  /** Pet ladder trickle awaiting the savePlayer cadence (POSTGRES write law). */
+  petXpDirty: boolean;
   /**
    * Weapons stowed on the body (the H toggle) — blades at the hip,
    * bow/staff across the back. While stowed, attacks and casts are
@@ -2665,6 +2708,9 @@ export class GameServer {
       petEid: null,
       petCalmTicks: 0,
       petSigSent: '',
+      petHp: null,
+      petRecoverAtTick: 0,
+      petXpDirty: false,
       sheathed: false,
       drawLockUntilTick: 0,
       sneakStillTicks: 0,
@@ -3062,6 +3108,12 @@ export class GameServer {
         if (bytes) this.accounts.saveExploredRegion(player.characterId, rx, ry, bytes);
       }
       player.exploredDirty.clear();
+    }
+    // The pet ladder's trickle rides the same cadence (bankDirty
+    // pattern) — tame/name/state writes fire at their own moments.
+    if (player.petXpDirty) {
+      for (const p of player.pets) this.accounts.savePetXp(player.characterId, p.slot, p.xp);
+      player.petXpDirty = false;
     }
   }
 
@@ -9329,6 +9381,12 @@ export class GameServer {
       return;
     }
     if (player.action) this.cancelAction(eid, player);
+    // Call the current companion off first — a dog still worrying the
+    // beast you are courting would break its own keeper's kneel.
+    if (player.petEid !== null) {
+      const heelPet = this.pets.get(player.petEid);
+      if (heelPet) heelPet.target = null;
+    }
     // The lure quiets the fight: the beast stands down and plants for
     // the kneel. A fresh wound — to either party — breaks the working
     // (a whiff writes nothing and breaks nothing, as everywhere).
@@ -9409,6 +9467,10 @@ export class GameServer {
     const row: PetRow = { slot, species: npc.def.id, name: speciesName, xp: 0, state: 'heel' };
     player.pets.push(row);
     if (player.characterId > 0) this.accounts.savePet(player.characterId, row, Date.now());
+    // A fresh bond starts whole: it inherits no rest clock and no
+    // carried wounds from whoever held the heel before it.
+    player.petRecoverAtTick = 0;
+    player.petHp = null;
     // The same beast, changed: its wild body leaves the world's books
     // and the companion stands up exactly where it knelt.
     const at = { x: npos.x, y: npos.y };
@@ -9453,6 +9515,8 @@ export class GameServer {
    */
   private trySpawnPet(eid: EntityId, player: PlayerComp, at?: { x: number; y: number }): void {
     if (player.petEid !== null) return;
+    // The interim fall's rest holds the door (Phase 3 supersedes).
+    if (this.tickCount < player.petRecoverAtTick) return;
     const row = player.pets.find((p) => p.state === 'heel');
     if (!row) return;
     const def = NPCS.get(row.species);
@@ -9478,7 +9542,26 @@ export class GameServer {
       }
     }
     const petEid = this.spawnNpc(def, x, y, -1);
-    this.pets.set(petEid, { ownerEid: eid, slot: row.slot, stuckTicks: 0 });
+    this.pets.set(petEid, {
+      ownerEid: eid,
+      slot: row.slot,
+      stuckTicks: 0,
+      target: null,
+      lastHurtTick: 0,
+      trickleTarget: null,
+      trickleBank: 0,
+    });
+    // THE ONE STAT SITE: health from petStatBlock (species curve under
+    // the keeper's hand), wounds carried back in from trailing.
+    const bc = levelForXp(player.skills.beastcraft ?? 0);
+    const stats = petStatBlock(row.species, petLevelFor(row.xp, def.level, bc), bc);
+    if (stats) {
+      this.healths.set(petEid, {
+        hp: Math.min(player.petHp ?? stats.maxHp, stats.maxHp),
+        maxHp: stats.maxHp,
+      });
+    }
+    player.petHp = null;
     player.petEid = petEid;
     player.petCalmTicks = 0;
   }
@@ -9486,6 +9569,9 @@ export class GameServer {
   /** Take the companion's body out of the world (trailing, stabling, logout). */
   private despawnPetEntity(player: PlayerComp): void {
     if (player.petEid === null) return;
+    // Wounds walk with the body — trailing is never a heal.
+    const h = this.healths.get(player.petEid);
+    if (h && h.hp > 0) player.petHp = h.hp;
     this.removeFromChunks(player.petEid);
     this.ecs.destroy(player.petEid);
     player.petEid = null;
@@ -9516,7 +9602,85 @@ export class GameServer {
       this.despawnPetEntity(owner);
       return;
     }
-    const speed = petFollowSpeed(npc.def.speed, dist);
+
+    // ---- THE FANG BESIDE YOU: the fight, when one is on.
+    if (pet.target !== null) {
+      const tnpc = this.npcs.get(pet.target);
+      const thp = this.healths.get(pet.target);
+      const tpos = this.positions.get(pet.target);
+      if (
+        !tnpc ||
+        !thp ||
+        thp.hp <= 0 ||
+        !tpos ||
+        // The heel outranks the hunt: a keeper walking away ends the
+        // fight — the companion is a defender, never a send-and-forget.
+        dist > PET_FIGHT_LEASH ||
+        Math.hypot(tpos.x - opos.x, tpos.y - opos.y) > PET_FIGHT_LEASH + 6
+      ) {
+        pet.target = null;
+        npc.windupTicks = 0;
+      } else {
+        // Mid-windup: planted, committed — the mob telegraph grammar.
+        if (npc.windupTicks > 0) {
+          if (--npc.windupTicks === 0) {
+            const d = Math.hypot(tpos.x - pos.x, tpos.y - pos.y) - tnpc.def.radius;
+            // Stepping out of a windup dodges a pet's bite too
+            // (+0.85 = the mobs' own +0.55 land grace over the +0.3
+            // open grace, kept in the same proportion).
+            if (d <= npc.def.attackRange + 0.85) {
+              this.petStrike(eid, npc, pet, owner, pet.target);
+            }
+            npc.attackCooldown = npc.def.attackCooldownTicks;
+          }
+          return;
+        }
+        const d = Math.hypot(tpos.x - pos.x, tpos.y - pos.y) - tnpc.def.radius;
+        // The mob melee gate, +0.3 grace included — a stricter gate
+        // left the pet hovering at separation distance, unable to
+        // open on a target that wasn't walking into it (live-caught:
+        // the bear ate the keeper while the beetle circled).
+        if (d <= npc.def.attackRange + 0.3) {
+          pos.dir = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
+          if (npc.attackCooldown === 0) {
+            npc.windupTicks = PET_WINDUP_TICKS;
+            this.setNpcPose(eid, npc, PoseState.Attack, PET_WINDUP_TICKS + 4);
+          } else if (this.tickCount >= npc.poseUntilTick) {
+            this.poses.set(eid, PoseState.Idle);
+          }
+          return;
+        }
+        // Close the gap at fighting stride. Inside pressing distance
+        // the polite step-aside is waived — the closest body must be
+        // ALLOWED to close (the packmate-wedge wart's cure, applied
+        // to the one body it hurt most).
+        let mx = (tpos.x - pos.x) / (d + tnpc.def.radius);
+        let my = (tpos.y - pos.y) / (d + tnpc.def.radius);
+        let speed = npc.def.speed;
+        if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
+        if (d > npc.def.attackRange * 1.5 + 0.3) {
+          ({ mx, my } = this.separateHeading(eid, pos, npc.def.radius, mx, my));
+        }
+        const next = stepMovement(pos, { mx, my }, speed, TICK_DT, this.world, npc.def.radius);
+        if (next.x !== pos.x || next.y !== pos.y) {
+          pos.dir = Math.atan2(my, mx);
+          pos.x = next.x;
+          pos.y = next.y;
+          this.updateChunkMembership(eid);
+        }
+        if (this.tickCount >= npc.poseUntilTick) this.poses.set(eid, PoseState.Walk);
+        return;
+      }
+    }
+
+    // ---- Licked wounds close out of combat: slow, steady, staggered.
+    if (this.tickCount - pet.lastHurtTick > PET_REGEN_DELAY_TICKS) {
+      const h = this.healths.get(eid);
+      if (h && h.hp < h.maxHp && (this.tickCount + eid) % PET_REGEN_TICKS === 0) h.hp++;
+    }
+
+    // ---- THE HEEL.
+    const speed = petFollowSpeed(npc.def.speed, dist) * (this.isChilled(eid) ? CHILL_SPEED_FACTOR : 1);
     if (speed > 0) {
       let mx = dx / dist;
       let my = dy / dist;
@@ -9543,6 +9707,194 @@ export class GameServer {
       // At heel: settle, eyes on the keeper.
       if (dist > 0.01) pos.dir = Math.atan2(dy, dx);
       if (this.tickCount >= npc.poseUntilTick) this.poses.set(eid, PoseState.Idle);
+    }
+  }
+
+  /**
+   * DEFEND THE HAND — the only three doors into a companion's fight:
+   * something wounds the keeper (urgent — the new threat takes the
+   * teeth), the keeper wounds something, or something wounds the pet.
+   * Never perception, never proximity, never another keeper's fight.
+   * THE FANG KNOWS ITS FRIENDS: actors are refused outright — a
+   * companion joins no crime and fights no townsperson, whatever its
+   * keeper is up to.
+   */
+  private petDefend(ownerEid: EntityId, owner: PlayerComp, mobEid: EntityId, urgent = false): void {
+    if (!owner.petEid) return;
+    const pet = this.pets.get(owner.petEid);
+    if (!pet) return;
+    if (
+      !urgent &&
+      pet.target !== null &&
+      this.npcs.has(pet.target) &&
+      (this.healths.get(pet.target)?.hp ?? 0) > 0
+    ) {
+      return; // one mark at a time; only the keeper's blood re-aims
+    }
+    if (!this.npcs.has(mobEid) || this.pets.has(mobEid)) return;
+    if (this.actors.has(mobEid)) return;
+    const hp = this.healths.get(mobEid);
+    if (!hp || hp.hp <= 0) return;
+    pet.target = mobEid;
+  }
+
+  /**
+   * One companion bite: ONE PIPELINE end to end — the species die
+   * through npcMaxHit at the pet's own level, the keeper's hand
+   * multiplier from the one stat site, a uniform 0..maxHit roll at
+   * the strike site (0 = whiff, sacred), then the same damageNpc door
+   * every blow in the game walks through, flagged viaPet so credit
+   * lands on the keeper and benefit lands nowhere.
+   */
+  private petStrike(
+    petEid: EntityId,
+    npc: NpcComp,
+    pet: PetComp,
+    owner: PlayerComp,
+    targetEid: EntityId,
+  ): void {
+    const row = owner.pets.find((p) => p.slot === pet.slot);
+    if (!row) return;
+    const bc = levelForXp(owner.skills.beastcraft ?? 0);
+    const base = NPCS.get(row.species);
+    if (!base) return;
+    const level = petLevelFor(row.xp, base.level, bc);
+    const stats = petStatBlock(row.species, level, bc);
+    if (!stats) return;
+    const maxHit = Math.round(npcMaxHit(stats.die, level) * stats.dmgMult);
+    const dmg = Math.floor(Math.random() * (maxHit + 1));
+    this.damageNpc(targetEid, dmg, pet.ownerEid, 'beastcraft', { viaPet: { petEid } });
+  }
+
+  /**
+   * The mob-side rail: every wound a companion takes routes here.
+   * Strike sites roll upstream (whiff-0 held there); this door
+   * mitigates with the keeper's hand (armor from the one stat site)
+   * and applies the species' own resists to whatever rode the blow.
+   * Players never reach it — their door, damageNpc, refuses pets.
+   */
+  private damagePet(
+    petEid: EntityId,
+    raw: number,
+    opts: {
+      status?: StatusApply;
+      attackerLevel?: number;
+      sourceEid?: EntityId;
+      pierceArmor?: boolean;
+    } = {},
+  ): void {
+    const pet = this.pets.get(petEid);
+    const health = this.healths.get(petEid);
+    const npc = this.npcs.get(petEid);
+    if (!pet || !health || !npc) return;
+    // A fallen body takes no further wounds (the dying-body law).
+    if (health.hp <= 0) return;
+    const owner = this.players.get(pet.ownerEid);
+    const row = owner?.pets.find((p) => p.slot === pet.slot);
+    const bc = owner ? levelForXp(owner.skills.beastcraft ?? 0) : 1;
+    const base = row ? NPCS.get(row.species) : undefined;
+    const stats =
+      row && base ? petStatBlock(row.species, petLevelFor(row.xp, base.level, bc), bc) : null;
+    const dmg = opts.pierceArmor ? raw : mitigate(raw, 0, stats?.armor ?? 0, opts.attackerLevel ?? 1);
+    this.broadcastHit(petEid, dmg);
+    pet.lastHurtTick = this.tickCount;
+    if (dmg <= 0) return; // the whiff and the clank both write nothing
+    health.hp -= dmg;
+    this.setNpcPose(petEid, npc, PoseState.Hurt, 4);
+    npc.windupTicks = 0; // a solid hit interrupts the bite
+    if (health.hp > 0 && opts.status) {
+      // The shell keeps its wild virtues: species resists and
+      // weaknesses answer exactly as they did before the collar.
+      this.applyStatusToNpc(petEid, opts.status, opts.sourceEid ?? petEid, 'beastcraft');
+    }
+    if (owner && opts.sourceEid !== undefined) {
+      this.petDefend(pet.ownerEid, owner, opts.sourceEid, false);
+    }
+    if (health.hp <= 0) {
+      health.hp = 0;
+      if (owner) this.petFalls(owner, row?.name);
+    }
+  }
+
+  /**
+   * The interim fall (Phase 3, THE FALL IS NEVER THE END, brings the
+   * true ceremony: downed, the tend, the limp home). Until then the
+   * friend is never lost and never a corpse: it breaks off, rests out
+   * of the world, and returns at half strength — no fee, no walk.
+   */
+  private petFalls(owner: PlayerComp, name?: string): void {
+    const pet = owner.petEid !== null ? this.pets.get(owner.petEid) : null;
+    const row = pet ? owner.pets.find((p) => p.slot === pet.slot) : undefined;
+    const bc = levelForXp(owner.skills.beastcraft ?? 0);
+    const base = row ? NPCS.get(row.species) : undefined;
+    const stats =
+      row && base ? petStatBlock(row.species, petLevelFor(row.xp, base.level, bc), bc) : null;
+    this.despawnPetEntity(owner);
+    owner.petRecoverAtTick = this.tickCount + PET_FALL_REST_TICKS;
+    owner.petHp = stats ? Math.max(1, Math.ceil(stats.maxHp * PET_RETURN_HP_FRAC)) : null;
+    owner.session?.sendJson({
+      t: 'chat',
+      channel: 'system',
+      text: `${name ?? row?.name ?? 'Your companion'} breaks off and slips away to lick its wounds.`,
+    });
+  }
+
+  /** The pet's own ladder: xp in, level ceremonies out, cadence-saved. */
+  private grantPetXp(owner: PlayerComp, pet: PetComp, row: PetRow, amount: number): void {
+    if (amount <= 0) return;
+    const bc = levelForXp(owner.skills.beastcraft ?? 0);
+    const base = NPCS.get(row.species)?.level ?? 1;
+    const before = petLevelFor(row.xp, base, bc);
+    row.xp += amount;
+    owner.petXpDirty = true;
+    const after = petLevelFor(row.xp, base, bc);
+    if (after > before) {
+      // The body grows where it stands: new ceiling, the growth kept
+      // as health, the nameplate retold to every watcher.
+      const stats = petStatBlock(row.species, after, bc);
+      const h = owner.petEid !== null ? this.healths.get(owner.petEid) : null;
+      if (stats && h) {
+        const grown = Math.max(0, stats.maxHp - h.maxHp);
+        h.maxHp = stats.maxHp;
+        h.hp = Math.min(stats.maxHp, h.hp + grown);
+      }
+      if (owner.petEid !== null) this.broadcastMetaUpdate(owner.petEid);
+      owner.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `${row.name} grows stronger. Level ${after}.`,
+      });
+    }
+  }
+
+  /**
+   * A COMPANION'S DEED IS ITS KEEPER'S — the teeth train the beast
+   * and the bond, never the keeper's weapon schools. The beastcraft
+   * trickle is capped per mark by that mark's own xpReward, so a
+   * thick-skinned punching bag never becomes a training dummy.
+   */
+  private grantPetBattleXp(
+    ownerEid: EntityId,
+    owner: PlayerComp,
+    petEid: EntityId,
+    targetEid: EntityId,
+    targetNpc: NpcComp,
+    dmg: number,
+  ): void {
+    const pet = this.pets.get(petEid);
+    if (!pet) return;
+    const row = owner.pets.find((p) => p.slot === pet.slot);
+    if (!row) return;
+    this.grantPetXp(owner, pet, row, dmg * PET_XP_PER_DMG);
+    if (pet.trickleTarget !== targetEid) {
+      pet.trickleTarget = targetEid;
+      pet.trickleBank = 0;
+    }
+    const room = Math.max(0, targetNpc.def.xpReward - pet.trickleBank);
+    const trickle = Math.min(room, Math.floor(dmg / PET_TRICKLE_DIVISOR));
+    if (trickle > 0) {
+      pet.trickleBank += trickle;
+      this.grantXp(ownerEid, owner, 'beastcraft', trickle);
     }
   }
 
@@ -9577,12 +9929,13 @@ export class GameServer {
     if (!player.session) return;
     const bc = levelForXp(player.skills.beastcraft ?? 0);
     const petHp = player.petEid !== null ? this.healths.get(player.petEid) : null;
+    const resting = this.tickCount < player.petRecoverAtTick;
     const sig =
       player.pets
         .map(
           (p) =>
             `${p.slot}:${p.species}:${p.name}:${p.xp}:${p.state}:` +
-            `${p.state === 'heel' ? (player.petEid === null ? 'T' : (petHp?.hp ?? 0)) : ''}`,
+            `${p.state === 'heel' ? (player.petEid === null ? (resting ? 'R' : 'T') : (petHp?.hp ?? 0)) : ''}`,
         )
         .join('|') + `@${bc}`;
     if (ceremony === undefined && sig === player.petSigSent) return;
@@ -9590,16 +9943,30 @@ export class GameServer {
     const pets: PetInfo[] = player.pets.map((p) => {
       const def = NPCS.get(p.species);
       const base = def?.level ?? 1;
-      const maxHp = def?.maxHp ?? 1;
+      const level = petLevelFor(p.xp, base, bc);
+      // THE ONE STAT SITE feeds the mirror too — the card must show
+      // the same ceiling the fight uses.
+      const maxHp = petStatBlock(p.species, level, bc)?.maxHp ?? def?.maxHp ?? 1;
+      const hp =
+        p.state === 'heel'
+          ? petHp
+            ? petHp.hp
+            : Math.min(player.petHp ?? maxHp, maxHp)
+          : maxHp;
       return {
         slot: p.slot,
         species: p.species,
         name: p.name,
-        level: petLevelFor(p.xp, base, bc),
+        level,
         xp: p.xp,
-        hp: p.state === 'heel' && petHp ? petHp.hp : maxHp,
+        hp,
         maxHp,
-        state: p.state === 'heel' && player.petEid === null ? 'trailing' : p.state,
+        state:
+          p.state === 'heel' && player.petEid === null
+            ? resting
+              ? 'resting'
+              : 'trailing'
+            : p.state,
       };
     });
     player.session.sendJson(
@@ -12730,6 +13097,17 @@ export class GameServer {
       if (Math.hypot(spos.x - x, spos.y - y) > radius) continue;
       this.damageSummon(sumEid, Math.floor(Math.random() * (maxHit + 1)));
     }
+    // A companion standing in the blast eats it like anyone standing
+    // in a blast — splash is physical, not perceptual.
+    for (const [petEid] of this.pets) {
+      const ppos = this.positions.get(petEid);
+      if (!ppos) continue;
+      if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
+      this.damagePet(petEid, Math.floor(Math.random() * (maxHit + 1)), {
+        status,
+        attackerLevel,
+      });
+    }
   }
 
   // ----------------------------------------------------------- statuses
@@ -12929,7 +13307,13 @@ export class GameServer {
         const every =
           s.id === 'burn' ? BURN_TICK_EVERY : s.id === 'venom' ? VENOM_TICK_EVERY : BLEED_TICK_EVERY;
         if (dot && s.ticksLeft > 0 && s.ticksLeft % every === 0) {
-          if (this.npcs.has(eid)) {
+          if (this.pets.has(eid)) {
+            // A companion's DoT walks the pet rail (dotNpc would hit
+            // the friendly-fire wall in damageNpc) — the drip pierces
+            // armor exactly as it does for players: the wound's
+            // already inside.
+            this.damagePet(eid, s.power, { pierceArmor: true, sourceEid: s.sourceEid });
+          } else if (this.npcs.has(eid)) {
             this.dotNpc(eid, s.power, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom');
           } else if (this.players.has(eid)) {
             // Bitter Blood: the herbalist's constitution dulls the drip.
@@ -13262,6 +13646,26 @@ export class GameServer {
             const dy = spos.y - pos.y;
             if (dx * dx + dy * dy < 0.5 ** 2) {
               this.damageSummon(sumEid, Math.floor(Math.random() * (proj.maxHit + 1)));
+              dead = true;
+              break;
+            }
+          }
+        }
+        if (!dead) {
+          // A mob's shaft finds a companion body in its line — the
+          // arrow is physical; being unseen never made it a ghost.
+          for (const [petEid] of this.pets) {
+            const ppos = this.positions.get(petEid);
+            const pnpc = this.npcs.get(petEid);
+            if (!ppos || !pnpc) continue;
+            const dx = ppos.x - pos.x;
+            const dy = bandDy(pos.y, ppos.y, npcHitHeight(pnpc.def));
+            if (dx * dx + dy * dy < 0.5 ** 2) {
+              this.damagePet(petEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
+                status: proj.status,
+                attackerLevel: proj.attackerLevel,
+                sourceEid: proj.ownerEid,
+              });
               dead = true;
               break;
             }
@@ -13763,6 +14167,17 @@ export class GameServer {
        * loot attribution still land as the wielder's.
        */
       fromProc?: boolean;
+      /**
+       * A companion's bite (beastcraft v2 Phase 2): attackerEid is
+       * the KEEPER (so quest wounders, participation, faction deeds,
+       * kill credit, and loot locks all land on the keeper for free),
+       * and this flag re-aims everything that must not follow: no
+       * style/vitality XP (the beastcraft trickle pays instead), no
+       * assault deed, and the wounded body's eye goes to the PET.
+       * Keeper-benefit sites (haste, coats, procs, lifesteal) all sit
+       * behind opts.basic, which a pet blow never sets.
+       */
+      viaPet?: { petEid: EntityId };
     } = {},
   ): void {
     const crit = opts.crit ?? false;
@@ -13771,11 +14186,10 @@ export class GameServer {
     const health = this.healths.get(npcEid);
     if (!npc || !health) return;
 
-    // Phase 1 of THE WILD AT HEEL: a companion takes no wounds — no
-    // rail exists for a fair fight yet, so no blade, arrow, splash,
-    // or trap may touch one through any door. When Phase 2 (THE FANG
-    // BESIDE YOU) builds the honest rails, this guard narrows to
-    // friendly fire.
+    // THE FANG KNOWS ITS FRIENDS, mirrored: this door is the players'
+    // (and pets') door, and neither may wound a companion — friendly
+    // fire is refused structurally. The mob-side rail is damagePet;
+    // DoTs route there through tickStatuses.
     if (this.pets.has(npcEid)) return;
 
     // THE WARD: an invulnerable actor is a full combat participant
@@ -13930,10 +14344,17 @@ export class GameServer {
           if (live) (live.fighters ??= new Set()).add(attacker.characterId);
         }
       }
-      if (!opts.fromProc) {
+      if (opts.viaPet) {
+        // The teeth train the beast and the bond — never the keeper's
+        // schools (beastcraft is not a combat school; no half-echo).
+        this.grantPetBattleXp(attackerEid, attacker, opts.viaPet.petEid, npcEid, npc, dmg);
+      } else if (!opts.fromProc) {
         this.grantXp(attackerEid, attacker, style, dmg * 4);
         this.grantXp(attackerEid, attacker, 'vitality', dmg * 2);
       }
+      // DEFEND THE HAND: the keeper's own landed blow points the
+      // companion at the mark (quiet door — never re-aims a fight).
+      if (!opts.viaPet) this.petDefend(attackerEid, attacker, npcEid, false);
       if (opts.backstab) {
         this.grantXp(attackerEid, attacker, 'sneak', BACKSTAB_XP_BASE + dmg * 3);
       }
@@ -13957,8 +14378,29 @@ export class GameServer {
     // forces the aggro past any faction peace, and breaking an
     // enforcer's peace is the assault deed.
     if (this.npcAtPeace(npc) && npc.def.damage > 0) {
-      this.chargeAssault(attackerEid, npcEid);
-      this.npcAggro(npcEid, npc, attackerEid, { force: true });
+      if (opts.viaPet) {
+        // A companion's tooth wakes the body onto the COMPANION, and
+        // no assault deed charges — a beast cannot commit a crime.
+        this.npcAggro(npcEid, npc, opts.viaPet.petEid, { force: true });
+      } else {
+        this.chargeAssault(attackerEid, npcEid);
+        this.npcAggro(npcEid, npc, attackerEid, { force: true });
+      }
+    }
+
+    // THE HARRY (beastcraft v2 Phase 2): when a mob has its eye on
+    // the keeper, the companion's LANDED blow takes it — the decoy's
+    // lesson through the one aggro door, on a flat per-mob cooldown
+    // (never a player-state dial). This is the archer's whole rhythm:
+    // the beast breaks for the bow, the companion cuts it off.
+    if (
+      opts.viaPet &&
+      npc.state === 'chase' &&
+      npc.targetEid === attackerEid &&
+      this.tickCount >= (npc.harriedUntilTick ?? 0)
+    ) {
+      npc.harriedUntilTick = this.tickCount + PET_HARRY_COOLDOWN_TICKS;
+      this.npcAggro(npcEid, npc, opts.viaPet.petEid, { force: true });
     }
 
     // The craven break: a badly hurt pack-fighter decides ONCE, at the
@@ -14021,6 +14463,17 @@ export class GameServer {
         y: pos.y,
         style: style ?? 'onehand',
       });
+      // The companion that fought this mark shares the fall on its
+      // OWN ladder (beastcraft v2) — the keeper's credit above is
+      // untouched; the beast's growth is the beast's.
+      if (killer.petEid) {
+        const kPet = this.pets.get(killer.petEid);
+        const kRow = kPet ? killer.pets?.find((p) => p.slot === kPet.slot) : undefined;
+        if (kPet && kRow && kPet.target === npcEid) {
+          this.grantPetXp(killer, kPet, kRow, Math.round(npc.def.xpReward * PET_KILL_XP_FRAC));
+          kPet.target = null;
+        }
+      }
     }
 
     // Roll the loot table onto the ground.
@@ -14294,6 +14747,10 @@ export class GameServer {
     // A wound that reached flesh breaks the gentling kneel — the
     // beast's side of the same law lives in tickGentle's hp check.
     if (player.action?.kind === 'gentle') this.cancelAction(eid, player, 'hurt');
+
+    // DEFEND THE HAND, the urgent door: whatever just drew the
+    // keeper's blood takes the companion's teeth, current mark or no.
+    if (opts.sourceEid !== undefined) this.petDefend(eid, player, opts.sourceEid, true);
 
     health.hp -= dmg;
     this.grantXp(eid, player, 'defence', dmg * 3);
@@ -14925,6 +15382,7 @@ export class GameServer {
       gazeDir: homeDir,
       nextGazeTick: 0,
       nextLine: 0,
+      mount: null,
     });
     // The daily life rides its own comp: slot -2 forces a schedule
     // resolve on the very first tick, so a respawn (or a boot at any
@@ -15486,6 +15944,22 @@ export class GameServer {
   }
 
   /**
+   * Swing up / step down (THE SADDLE IN THE SCHEDULE): flip the
+   * actor's saddle state and tell every watcher. Only a humanoid
+   * body takes a saddle — a creature-bodied actor keeps its own legs
+   * no matter what a routine claims. No-op when nothing changes, so
+   * the meta wire only speaks at the mount and dismount moments.
+   */
+  private setActorRide(eid: EntityId, mount: string | null): void {
+    const ac = this.actors.get(eid);
+    if (!ac) return;
+    const next = mount && ac.actor.model.kind === 'humanoid' ? mount : null;
+    if (ac.mount === next) return;
+    ac.mount = next;
+    this.broadcastMetaUpdate(eid);
+  }
+
+  /**
    * The daily lives, one step per tick. Runs AFTER tickNpcs so the
    * routine's pose wins over the combat ticker's idle reset, and only
    * ever steers bodies whose combat state (if any) is 'idle' — chase
@@ -15509,6 +15983,9 @@ export class GameServer {
       if (npc && npc.state !== 'idle') {
         // Combat owns the body; the errand resumes where life left it.
         // Off the furniture first — legs can't engage from a solid tile.
+        // And out of the saddle: the rider's own dismount law (a fight
+        // is fought on foot) binds the routine rider identically.
+        this.setActorRide(eid, null);
         this.routineDismount(eid, rc, pos);
         rc.holdFacing = false;
         rc.stuckTicks = 0;
@@ -15529,14 +16006,21 @@ export class GameServer {
         this.routineRetarget(rc, this.routineTask(rc));
       }
       const task = this.routineTask(rc);
+      // THE SADDLE IN THE SCHEDULE: the task names the beast; the
+      // ticker owns the swing-up. Every yield the player's saddle law
+      // knows steps the routine rider down too (work, rest, combat).
+      const saddle = task.mount ?? null;
 
       // Conversations and barks park the body mid-errand. A mounted
       // body holds its seat through the talk — royalty does not rise
-      // for petitioners, and a sleeper answers from the pillow.
+      // for petitioners, a sleeper answers from the pillow, and a
+      // rider speaks from the saddle.
       if (talking?.has(eid) || this.tickCount < rc.pauseUntilTick) {
         rc.stuckTicks = 0;
         if (rc.seat) {
           this.routinePose(eid, npc, rc.seat.lie ? PoseState.Lie : PoseState.Sit);
+        } else if (this.actors.get(eid)?.mount) {
+          this.routinePose(eid, npc, PoseState.Ride);
         } else {
           rc.holdFacing = false;
           this.routinePose(eid, npc, PoseState.Idle);
@@ -15598,6 +16082,12 @@ export class GameServer {
           const seated = task.kind === 'post' ? task.sit : wp?.sit;
           const lying = task.kind === 'post' ? task.lie : wp?.lie;
           const dir = task.kind === 'path' ? wp?.dir : task.kind === 'post' ? task.dir : undefined;
+          // The stop decides the saddle: work and rest always step
+          // down (the saddle law), a plain wait is held mounted — a
+          // patrol pauses IN the saddle — and a ride:false stop is an
+          // authored on-foot moment.
+          const stopRide = saddle !== null && !working && !seated && !lying && wp?.ride !== false;
+          this.setActorRide(eid, stopRide ? saddle : null);
           if (working) {
             // The client squares the rig up to the nearest station and
             // plays the full work choreography off this one byte.
@@ -15618,17 +16108,23 @@ export class GameServer {
             if (rc.seat) pos.dir = rc.seat.dir;
             else if (dir !== undefined) pos.dir = dir;
           } else {
-            this.routinePose(eid, npc, PoseState.Idle);
+            this.routinePose(eid, npc, stopRide ? PoseState.Ride : PoseState.Idle);
             // An authored facing is held; otherwise tickActors may
-            // let the body glance at whoever wanders past.
-            rc.holdFacing = dir !== undefined;
+            // let the body glance at whoever wanders past. A rider is
+            // planted like a seated body — the whole horse would turn.
+            rc.holdFacing = dir !== undefined || stopRide;
             if (dir !== undefined) pos.dir = dir;
           }
           continue;
         }
       }
 
-      // Travel.
+      // Travel. The leg is ridden when the task holds a saddle and
+      // the leg's waypoint doesn't call for boots (ride: false) —
+      // layered exactly like the stride.
+      const legRide = saddle !== null && wp?.ride !== false;
+      this.setActorRide(eid, legRide ? saddle : null);
+      const riding = this.actors.get(eid)?.mount != null;
       const dx = rc.targetX - pos.x;
       const dy = rc.targetY - pos.y;
       const dist = Math.hypot(dx, dy);
@@ -15637,7 +16133,7 @@ export class GameServer {
         if (task.kind === 'path' && !(wp!.waitSec || (task.mode === 'once' && rc.wpIndex >= task.waypoints.length - 1))) {
           // A pass-through stop: no linger, straight to the next leg.
           this.routineAdvance(rc, task);
-          this.routinePose(eid, npc, PoseState.Walk);
+          this.routinePose(eid, npc, riding ? PoseState.Ride : PoseState.Walk);
           continue;
         }
         rc.phase = 'linger';
@@ -15653,7 +16149,7 @@ export class GameServer {
             : task.kind === 'wander'
               ? this.tickCount + Math.round((2 + Math.random() * 5) * (1000 / TICK_MS))
               : Number.MAX_SAFE_INTEGER;
-        this.routinePose(eid, npc, PoseState.Idle);
+        this.routinePose(eid, npc, riding ? PoseState.Ride : PoseState.Idle);
         // The walk-in facing becomes the rest anchor at this stop:
         // the alone-gaze drifts around wherever the errand left the
         // body looking, never snapping back to the spawn facing from
@@ -15670,8 +16166,15 @@ export class GameServer {
 
       // THE PACE IS AUTHORED CHARACTER: the leg's waypoint speed, else
       // the task's, else the default townsfolk stride — a shuffling
-      // elder and a jogging courier come from content, not code.
-      const speed = wp?.speed ?? task.speed ?? GameServer.ROUTINE_WALK_SPEED;
+      // elder and a jogging courier come from content, not code. A
+      // saddle only moves the DEFAULT (the walk stride at the beast's
+      // own multiplier); an authored pace outranks the horse.
+      const speed =
+        wp?.speed ??
+        task.speed ??
+        (riding
+          ? GameServer.ROUTINE_WALK_SPEED * (mountDef(saddle!)?.speedMult ?? 1)
+          : GameServer.ROUTINE_WALK_SPEED);
       const radius = npc?.def.radius ?? 0.3;
       // Authored legs are straight and walkable, so the fast path is
       // the plain steer fan — but a fight, a shove, or a player-shut
@@ -15711,9 +16214,9 @@ export class GameServer {
           npc.originY = pos.y;
         }
         rc.holdFacing = true;
-        this.routinePose(eid, npc, PoseState.Walk);
+        this.routinePose(eid, npc, riding ? PoseState.Ride : PoseState.Walk);
       } else {
-        this.routinePose(eid, npc, PoseState.Idle);
+        this.routinePose(eid, npc, riding ? PoseState.Ride : PoseState.Idle);
       }
       // Progress watchdog: authored paths are walked segments, not a
       // pathfinder. The trip condition is CLOSEST APPROACH stalling,
@@ -16219,6 +16722,13 @@ export class GameServer {
     if (this.summons.get(targetEid)?.kind === 'decoy') {
       return this.positions.get(targetEid) ?? null;
     }
+    // THE FANG BESIDE YOU: a companion is a chaseable body. It can
+    // only ever BE a target through its own teeth or the harry —
+    // perception still cannot see it (THE QUIET SHADOW) — but once it
+    // has a mob's eye, the chase runs on the ordinary rails.
+    if (this.pets.has(targetEid)) {
+      return this.positions.get(targetEid) ?? null;
+    }
     return null;
   }
 
@@ -16241,6 +16751,12 @@ export class GameServer {
       if (thorns > 0) {
         this.damageNpc(npcEid, thorns, targetEid, 'defence', {});
       }
+    } else if (this.pets.has(targetEid)) {
+      this.damagePet(targetEid, raw, {
+        status: npc.def.attackStatus,
+        sourceEid: npcEid,
+        attackerLevel: npc.def.level,
+      });
     } else {
       this.damageSummon(targetEid, raw);
     }
@@ -16252,14 +16768,6 @@ export class GameServer {
       const pos = this.positions.must(eid);
       if (npc.attackCooldown > 0) npc.attackCooldown--;
       if (npc.specialCooldown > 0) npc.specialCooldown--;
-
-      // THE WILD AT HEEL: a companion answers to its keeper, not to
-      // the wild brain below — no lays, no perception, no states.
-      const pet = this.pets.get(eid);
-      if (pet) {
-        this.tickPet(eid, npc, pos, pet);
-        continue;
-      }
 
       // Hens lay while someone is around to hear the cluck. A skipped
       // lay (nobody near / egg pile) just re-rolls — no backlog.
@@ -16286,8 +16794,19 @@ export class GameServer {
       }
 
       // Shock is a hard stagger: no thinking, no moving, no swinging.
+      // Companions obey it the same as everyone (their branch sits
+      // below on purpose — a shocked pet stands staggered too).
       if (this.isShocked(eid)) {
         npc.windupTicks = 0;
+        continue;
+      }
+
+      // THE WILD AT HEEL: a companion answers to its keeper, not to
+      // the wild brain below — no perception, no wander, no states.
+      // (Lays can't apply: the tame validator refuses livestock.)
+      const pet = this.pets.get(eid);
+      if (pet) {
+        this.tickPet(eid, npc, pos, pet);
         continue;
       }
 
@@ -17273,6 +17792,8 @@ export class GameServer {
       };
       player.pets.push(row);
       if (player.characterId > 0) this.accounts.savePet(player.characterId, row, Date.now());
+      player.petRecoverAtTick = 0;
+      player.petHp = null;
       this.trySpawnPet(eid, player);
       // Ceremony on purpose: the dev whistle exercises the naming card.
       this.sendPet(player, slot);
@@ -17286,14 +17807,19 @@ export class GameServer {
         const live = player.petEid !== null && this.pets.get(player.petEid)?.slot === p.slot;
         const ppos = live ? this.positions.get(player.petEid!) : null;
         const hp = live ? this.healths.get(player.petEid!) : null;
+        const tgt = live ? this.pets.get(player.petEid!)?.target : null;
         const d = ppos && pos2 ? Math.hypot(ppos.x - pos2.x, ppos.y - pos2.y).toFixed(1) : null;
         return (
           `${p.slot}: ${p.name} (${p.species}) ${p.state}` +
-          (live ? ` LIVE d=${d} hp=${hp?.hp}/${hp?.maxHp}` : '') +
+          (live ? ` LIVE d=${d} hp=${hp?.hp}/${hp?.maxHp} tgt=${tgt ?? '-'}` : '') +
           ` xp=${p.xp}`
         );
       });
-      say(rows.length > 0 ? rows.join(' | ') + ` calm=${player.petCalmTicks}` : 'No companions.');
+      const rest =
+        this.tickCount < player.petRecoverAtTick
+          ? ` resting=${player.petRecoverAtTick - this.tickCount}t`
+          : '';
+      say(rows.length > 0 ? rows.join(' | ') + ` calm=${player.petCalmTicks}${rest}` : 'No companions.');
       return;
     }
     if (config.devCommands && text.startsWith('/give ')) {
@@ -18813,7 +19339,13 @@ export class GameServer {
         // Humanoids ride the wire exactly like players: a Look plus
         // worn item ids, rendered by the one humanoid rig.
         const appearance = actorAppearance(actor);
-        if (appearance) meta.appearance = appearance;
+        if (appearance) {
+          // THE SADDLE IN THE SCHEDULE: a riding body carries its
+          // beast on the same appearance channel a player does — one
+          // identity fact, every watcher, one render path.
+          if (actorComp.mount) appearance.mount = actorComp.mount;
+          meta.appearance = appearance;
+        }
       }
       // No combat body = never attackable: clients offer Talk, and no
       // combat loop can even see this entity.

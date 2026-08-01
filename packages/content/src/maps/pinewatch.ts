@@ -719,6 +719,9 @@ export function buildPinewatch(): ZoneDef {
   b.actor('warden_sigrun', 64.5, 84.5, Math.PI / 2, 'pine_warden');
   b.actor('fisher_ylva', 88.5, 12.5, -Math.PI / 2, 'pine_fisher');
   b.actor('pinewatch_watch', 66.5, 43.5, Math.PI / 2, 'pine_watch');
+  // THE SADDLE IN THE SCHEDULE: the mountain Waykeeper rides the
+  // Watch Road on a garron, yard to the Timber Road gate and back.
+  b.actor('outrider_haldis', 65.5, 58.5, -Math.PI / 2, 'pine_outrider');
   b.actor('pinewatch_watch', 64.5, 86.5, Math.PI / 2, 'pine_watch');
   b.actor('pinewatch_watch', 104.5, 60.5, Math.PI / 2, 'pine_watch');
   b.actor('pinewatch_sawyer', 35.5, 45.5, Math.PI / 2, 'pine_sawyer');

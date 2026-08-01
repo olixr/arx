@@ -1142,7 +1142,7 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // The capital's cast: the Crown, the districts' masters, the Row's
   // keepers, the Rookery — and the pooled watch, guard, and stalls.
   const fallActors = z.actorSpawns ?? [];
-  assert.equal(fallActors.length, 41, 'Silverfall lost residents');
+  assert.equal(fallActors.length, 42, 'Silverfall lost residents');
   for (const slug of [
     'king_aeriex',
     'queen_kayri',
@@ -1178,7 +1178,7 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.equal(fallActors.filter((a) => a.actor === 'castle_guard').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'galleria_trader').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'gate_monger').length, 2);
-  assert.equal(fallActors.filter((a) => a.routine).length, 41, 'every keeper keeps hours');
+  assert.equal(fallActors.filter((a) => a.routine).length, 42, 'every keeper keeps hours');
   // The editor JSON round trip holds WITH the elevation layer.
   const json = zoneToJson(z);
   assert.ok(json.elev !== undefined, 'the elevation layer must serialize');
@@ -1715,7 +1715,7 @@ test('pinewatch: the watch town holds its knoll, its water, and three gates', ()
   assert.deepEqual(z.spawn, { x: 520 + 66.5, y: -184 + 50.5 });
   // The cast.
   const actors = z.actorSpawns ?? [];
-  assert.equal(actors.length, 21, 'Pinewatch lost residents');
+  assert.equal(actors.length, 22, 'Pinewatch lost residents');
   for (const slug of [
     'reeve_halla', 'old_torvi', 'sawmistress_groa', 'sparmaster_yannick', 'smith_vigga',
     'innkeep_sunniva', 'pitchmaster_rullo', 'factor_ebba', 'buyer_ospren', 'storekeep_nial',
@@ -1725,7 +1725,7 @@ test('pinewatch: the watch town holds its knoll, its water, and three gates', ()
   }
   assert.equal(actors.filter((a) => a.actor === 'pinewatch_watch').length, 3);
   assert.equal(actors.filter((a) => a.actor === 'pinewatch_sawyer').length, 3);
-  assert.equal(actors.filter((a) => a.routine).length, 21, 'every keeper keeps hours');
+  assert.equal(actors.filter((a) => a.routine).length, 22, 'every keeper keeps hours');
   assert.ok((z.signs ?? []).length >= 16, 'the town lost its boards');
   // The elevation layer round-trips (the Silverfall law, not the flat one).
   const json = zoneToJson(z);

@@ -1,4 +1,4 @@
-import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type BuildOrient, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type RepStandingWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type ChargeInfo, type PetInfo, type BuildOrient, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type RepStandingWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -525,12 +525,24 @@ export declare class ClientGame {
     buffsAt: number;
     /** Fires when the buff list changes (HUD refresh). */
     onBuffs: (() => void) | null;
+    /**
+     * THE METER SHOWS ITS HAND: the own body's stacking-working meters
+     * (proc id, banked count, count asked). Name, school, and icon are
+     * resolved from the roster by id at render time.
+     */
+    charges: ChargeInfo[];
     /** The saddle: active mount def id (server truth), null afoot. */
     ownMount: string | null;
     /** Mount def ids this character owns — the stable row's truth. */
     ownedMounts: string[];
     /** Fires when saddle state changes (HUD / stable row refresh). */
     onRide: (() => void) | null;
+    /** THE OPEN HAND: the household mirror — every kept companion. */
+    ownPets: PetInfo[];
+    /** Fires when the household changes (HUD refresh). */
+    onPet: (() => void) | null;
+    /** Fires once per fresh tame: raise the naming card for this slot. */
+    onPetCeremony: ((slot: number, currentName: string) => void) | null;
     /** Fires when the local player commits a cast (FX + audio hooks). */
     onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null;
     /** Fires when the technique loadout changes (UI refresh). */
@@ -762,6 +774,8 @@ export declare class ClientGame {
     plantSend(tx: number, ty: number, seed: string): void;
     /** Interact with a living NPC (talk to an actor, milk a cow). */
     interactNpc(eid: EntityId): void;
+    /** Name (or rename) a companion by stall slot — the server judges. */
+    petRename(slot: number, name: string): void;
     /** Advance the current dialogue beat (the server owns the walk). */
     dialogueAdvance(): void;
     /** Answer the current dialogue question by choice index. */

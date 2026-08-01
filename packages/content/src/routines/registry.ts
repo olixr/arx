@@ -12,6 +12,7 @@ import fallForgemistress from './defs/fall_forgemistress.json';
 import fallGardener from './defs/fall_gardener.json';
 import fallHerbalist from './defs/fall_herbalist.json';
 import fallHostler from './defs/fall_hostler.json';
+import fallOutrider from './defs/fall_outrider.json';
 import fallMarshal from './defs/fall_marshal.json';
 import fallMason from './defs/fall_mason.json';
 import fallShrinekeeper from './defs/fall_shrinekeeper.json';
@@ -32,6 +33,7 @@ import pineNurseryman from './defs/pine_nurseryman.json';
 import pineWarden from './defs/pine_warden.json';
 import pineElder from './defs/pine_elder.json';
 import pineFisher from './defs/pine_fisher.json';
+import pineOutrider from './defs/pine_outrider.json';
 import pineWatch from './defs/pine_watch.json';
 import pineSawyer from './defs/pine_sawyer.json';
 import fallWatch from './defs/fall_watch.json';
@@ -113,6 +115,7 @@ const SOURCES: readonly unknown[] = [
   fallGardener,
   fallHerbalist,
   fallHostler,
+  fallOutrider,
   fallMarshal,
   fallMason,
   fallShrinekeeper,
@@ -133,6 +136,7 @@ const SOURCES: readonly unknown[] = [
   pineWarden,
   pineElder,
   pineFisher,
+  pineOutrider,
   pineWatch,
   pineSawyer,
   fallWatch,

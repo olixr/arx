@@ -1,0 +1,50 @@
+{
+  "id": "outrider_joss",
+  "name": "Outrider Joss",
+  "title": "Waykeeper",
+  "examine": "A Waykeeper of the road service. The grey does the thinking on bad ground, and Joss lets her.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 30,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 130,
+      "damage": 9,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 5,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "iron_platebody",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 22
+    }
+  ],
+  "lines": [
+    "Road's open to the low country. Two bridges, one bad shoulder. Keep your lamp trimmed.",
+    "The watch holds the wall. We hold the road. Longer post, ours.",
+    "Ask Osa at the High Yard if you want a horse of your own. She does the shoeing. I do the sitting."
+  ]
+}

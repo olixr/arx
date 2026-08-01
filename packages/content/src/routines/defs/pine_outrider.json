@@ -1,0 +1,20 @@
+{
+  "id": "pine_outrider",
+  "base": {
+    "kind": "path",
+    "mode": "bounce",
+    "mount": "garron_hoargate",
+    "waypoints": [
+      { "x": 0, "y": 0, "waitSec": 30, "ride": false, "dir": -1.5708 },
+      { "x": 0, "y": 33 },
+      { "x": -1, "y": 35.5, "waitSec": 15, "dir": 1.5708 }
+    ]
+  },
+  "slots": [
+    {
+      "from": 23,
+      "to": 5,
+      "task": { "kind": "post", "dir": 1.5708 }
+    }
+  ]
+}

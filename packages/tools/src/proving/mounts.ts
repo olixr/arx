@@ -426,6 +426,49 @@ const main = async () => {
   receipt('the chosen beast still answers after the night', true);
   d2.ws.close();
 
+  // ---- THE WORLD RIDES (THE SADDLE IN THE SCHEDULE): the placed
+  // Waykeeper outrider at the Silver Gate carries the mount on
+  // appearance and the Ride pose byte, exactly like a player — one
+  // wire grammar for every rider. The routine cycles through an
+  // authored on-foot watering beat, so the receipt watches until the
+  // mounted leg comes around (the loop is ~2 minutes end to end).
+  const w = new Client();
+  await w.open();
+  w.send({ t: 'register', user: `world_${STAMP}`, pass: 'proving123', name: `World ${STAMP}` });
+  await w.waitFor((m) => m.t === 'welcome', 'world-rides welcome', 8000);
+  w.send({ t: 'chat', text: '/tp -288 -110' });
+  await sleep(600);
+  const joss = await w.waitFor(
+    (m) =>
+      (m.t === 'enter' || m.t === 'update') &&
+      m.entities?.some((en: Msg) => en.actor === 'outrider_joss'),
+    'the outrider in view',
+    8000,
+  );
+  const jossMeta = joss.entities.find((en: Msg) => en.actor === 'outrider_joss');
+  w.watchEid = jossMeta.eid;
+  const t0 = Date.now();
+  let sawRide = false;
+  let sawMountMeta = jossMeta.appearance?.mount === 'courser_grey';
+  while (Date.now() - t0 < 150_000 && !(sawRide && sawMountMeta)) {
+    await sleep(500);
+    if (w.watched.some((s) => s.pose === PoseState.Ride)) sawRide = true;
+    if (!sawMountMeta) {
+      for (const m of w.msgs) {
+        if ((m.t === 'enter' || m.t === 'update') && m.entities) {
+          for (const en of m.entities) {
+            if (en.actor === 'outrider_joss' && en.appearance?.mount === 'courser_grey') {
+              sawMountMeta = true;
+            }
+          }
+        }
+      }
+    }
+  }
+  receipt('THE WORLD RIDES: the outrider wears the grey on appearance', sawMountMeta);
+  receipt('the outrider carries the Ride pose byte on patrol', sawRide);
+  w.ws.close();
+
   console.log(`\nTHE SADDLE LAW HOLDS — ${passed} receipts.`);
   c.ws.close();
   process.exit(0);

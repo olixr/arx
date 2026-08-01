@@ -17,6 +17,8 @@ import gardenerIvo from './defs/gardener_ivo.json';
 import gateMonger from './defs/gate_monger.json';
 import herbalistWyn from './defs/herbalist_wyn.json';
 import hostlerOsa from './defs/hostler_osa.json';
+import outriderHaldis from './defs/outrider_haldis.json';
+import outriderJoss from './defs/outrider_joss.json';
 import marshalKestrel from './defs/marshal_kestrel.json';
 import masonPetra from './defs/mason_petra.json';
 import shrinekeeperSella from './defs/shrinekeeper_sella.json';
@@ -170,6 +172,8 @@ const SOURCES: readonly unknown[] = [
   gateMonger,
   herbalistWyn,
   hostlerOsa,
+  outriderHaldis,
+  outriderJoss,
   marshalKestrel,
   masonPetra,
   shrinekeeperSella,

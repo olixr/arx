@@ -1224,6 +1224,11 @@ export function buildSilverfall(): ZoneDef {
   b.actor('gardener_ivo', 157.5, 71.5, Math.PI / 2, 'fall_gardener');
   // The Gatefront.
   b.actor('hostler_osa', 60.5, 101.5, -Math.PI / 2, 'fall_hostler');
+  // THE SADDLE IN THE SCHEDULE: the Waykeeper outrider waters the
+  // grey at the caravanserai, swings up, and rides the gate loop out
+  // through the Silver Gate to the SILVERFALL sign and back — the
+  // road service made visible at the city's mouth.
+  b.actor('outrider_joss', 60.5, 103.5, -Math.PI / 2, 'fall_outrider');
   b.actor('gate_monger', 120.5, 102.4, Math.PI / 2, 'fall_trader');
   b.actor('gate_monger', 130.5, 106.4, Math.PI / 2, 'fall_trader');
   // The Rookery.

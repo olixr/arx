@@ -67,6 +67,15 @@ export interface RoutineWaypoint {
    * otherwise ambling round). Absent = the task's pace.
    */
   speed?: number;
+  /**
+   * Whether the leg INTO this stop is ridden — only meaningful on a
+   * task that names a `mount`, layered exactly like speed: the
+   * waypoint rules its own leg, else the mounted task rides every
+   * leg. `ride: false` walks a leg on foot mid-patrol (the outrider
+   * leads through the yard, swings up at the gate). Riding still
+   * yields to the stop itself: a work/sit/lie stop always steps down.
+   */
+  ride?: boolean;
 }
 
 /**
@@ -96,6 +105,16 @@ export interface RoutineTaskPost {
   lie?: boolean;
   /** Stride when traveling to (or back to) the post, tiles/sec. */
   speed?: RoutineSpeed;
+  /**
+   * THE SADDLE IN THE SCHEDULE (mounts Part 5): the beast this task
+   * is ridden on — a MOUNTS registry id. The body wears the mount
+   * exactly like a player does (appearance, never a second entity),
+   * takes the Ride pose on its legs, and steps down for everything
+   * the saddle law already yields to: work/sit/lie stops, combat,
+   * and the schedule flipping to an unmounted task. Riders are RARE
+   * BY AUTHORSHIP — a saddle is a statement, not a default.
+   */
+  mount?: string;
 }
 
 /**
@@ -109,6 +128,16 @@ export interface RoutineTaskPath {
   waypoints: RoutineWaypoint[];
   /** Default stride for every leg, tiles/sec (waypoint speed overrides). */
   speed?: RoutineSpeed;
+  /**
+   * THE SADDLE IN THE SCHEDULE (mounts Part 5): the beast this task
+   * is ridden on — a MOUNTS registry id. The body wears the mount
+   * exactly like a player does (appearance, never a second entity),
+   * takes the Ride pose on its legs, and steps down for everything
+   * the saddle law already yields to: work/sit/lie stops, combat,
+   * and the schedule flipping to an unmounted task. Riders are RARE
+   * BY AUTHORSHIP — a saddle is a statement, not a default.
+   */
+  mount?: string;
 }
 
 /**
@@ -124,6 +153,16 @@ export interface RoutineTaskWander {
   radius: number;
   /** Drift stride, tiles/sec. */
   speed?: RoutineSpeed;
+  /**
+   * THE SADDLE IN THE SCHEDULE (mounts Part 5): the beast this task
+   * is ridden on — a MOUNTS registry id. The body wears the mount
+   * exactly like a player does (appearance, never a second entity),
+   * takes the Ride pose on its legs, and steps down for everything
+   * the saddle law already yields to: work/sit/lie stops, combat,
+   * and the schedule flipping to an unmounted task. Riders are RARE
+   * BY AUTHORSHIP — a saddle is a statement, not a default.
+   */
+  mount?: string;
 }
 
 export type RoutineTask = RoutineTaskPost | RoutineTaskPath | RoutineTaskWander;

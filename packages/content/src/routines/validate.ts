@@ -1,3 +1,4 @@
+import { mountDef } from '../mounts.js';
 import type {
   RoutineDef,
   RoutineSlot,
@@ -96,6 +97,16 @@ function validateSpeed(raw: unknown, where: string, errors: string[]): number | 
   return raw;
 }
 
+/** The task's saddle: a mount id must name a registered beast. */
+function validateMount(raw: unknown, where: string, errors: string[]): string | undefined {
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'string' || !mountDef(raw)) {
+    errors.push(`${where}.mount '${String(raw)}' is not a registered mount id`);
+    return undefined;
+  }
+  return raw;
+}
+
 function validateWaypoint(
   raw: unknown,
   where: string,
@@ -121,6 +132,13 @@ function validateWaypoint(
   wp.lie = validateFlag(raw.lie, where, 'lie', errors);
   rejectWorkSit(wp.work, wp.sit, wp.lie, where, errors);
   wp.speed = validateSpeed(raw.speed, where, errors);
+  if (raw.ride !== undefined) {
+    if (typeof raw.ride !== 'boolean') {
+      errors.push(`${where}.ride must be a boolean`);
+    } else if (!raw.ride) {
+      wp.ride = false; // only the on-foot override is worth storing
+    }
+  }
   return wp;
 }
 
@@ -140,6 +158,7 @@ function validateTask(raw: unknown, where: string, errors: string[]): RoutineTas
     task.lie = validateFlag(raw.lie, where, 'lie', errors);
     rejectWorkSit(task.work, task.sit, task.lie, where, errors);
     task.speed = validateSpeed(raw.speed, where, errors);
+    task.mount = validateMount(raw.mount, where, errors);
     return task;
   }
   if (raw.kind === 'path') {
@@ -160,7 +179,21 @@ function validateTask(raw: unknown, where: string, errors: string[]): RoutineTas
       const v = validateWaypoint(wp, `${where}.waypoints[${i}]`, errors);
       if (v) waypoints.push(v);
     }
-    return { kind: 'path', mode, waypoints, speed: validateSpeed(raw.speed, where, errors) };
+    const mount = validateMount(raw.mount, where, errors);
+    if (!mount) {
+      for (const [i, wp] of waypoints.entries()) {
+        if (wp.ride === false) {
+          errors.push(`${where}.waypoints[${i}].ride is meaningless without a task mount`);
+        }
+      }
+    }
+    return {
+      kind: 'path',
+      mode,
+      waypoints,
+      speed: validateSpeed(raw.speed, where, errors),
+      mount,
+    };
   }
   if (raw.kind === 'wander') {
     const off = validateOffset(raw, where, false, errors);
@@ -172,6 +205,7 @@ function validateTask(raw: unknown, where: string, errors: string[]): RoutineTas
     if (off.x !== undefined) task.x = off.x;
     if (off.y !== undefined) task.y = off.y;
     task.speed = validateSpeed(raw.speed, where, errors);
+    task.mount = validateMount(raw.mount, where, errors);
     return task;
   }
   errors.push(`${where}.kind must be 'post', 'path', or 'wander'`);

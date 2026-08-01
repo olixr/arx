@@ -645,12 +645,12 @@ export declare function drawOffhandOnArm(ctx: CanvasRenderingContext2D, st: Offh
     ey: number;
     kx: number;
     ky: number;
-}, s: number, profileK: number, hurt: boolean): void;
+}, s: number, profileK: number, hurt: boolean, nowMs?: number): void;
 /**
  * Back-mounted quiver (screen space, at the shoulder line). Depth is
  * the caller's: behind the torso when the player faces the camera, in
  * front when they face away — the cape's facing law. When a cape is
  * worn the quiver drops to the off hip so cloth and leather never fight.
  */
-export declare function drawQuiver(ctx: CanvasRenderingContext2D, st: OffhandStyle, x: number, y: number, s: number, lead: number, hurt: boolean): void;
+export declare function drawQuiver(ctx: CanvasRenderingContext2D, st: OffhandStyle, x: number, y: number, s: number, lead: number, hurt: boolean, nowMs?: number): void;
 //# sourceMappingURL=armor.d.ts.map

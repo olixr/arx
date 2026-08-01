@@ -209,6 +209,7 @@ function damageNpcSlate(hp: number) {
     setNpcPose: () => {},
     updateChunkMembership: () => {},
     applyStatusToNpc: () => {},
+    petDefend: () => {},
     npcAtPeace: () => false,
     grantXp: (_e: unknown, _p: unknown, skill: string, amount: number) =>
       grants.push([skill, amount]),

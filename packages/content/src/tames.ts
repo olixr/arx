@@ -12,7 +12,7 @@
  * worg) lands with its kits in Phase 5, THE SPECIES SPEAK.
  */
 
-import { NPCS } from './npcs.js';
+import { NPCS, scaleNpcDef } from './npcs.js';
 import { itemDef } from './items.js';
 
 export interface TameDef {
@@ -100,6 +100,39 @@ export function tameErrors(def: TameDef): string[] {
     errs.push(`${def.species}: flavor must be one honest sentence`);
   }
   return errs;
+}
+
+/**
+ * THE LEASH ON THE LADDER, second half — the ONE stat composition
+ * site (beastcraft v2 Phase 2). The species def rides scaleNpcDef
+ * exactly as a dungeon garrison would (the coupled-curve law in
+ * npcs.ts holds: the die only drifts, the level multiplies at the
+ * strike site), then THE HAND BEHIND THE FANG: the keeper's
+ * beastcraft leans on the same beast — +1% health and +0.5% damage
+ * per level, and a hide toughened a point of armor every 4 levels.
+ * First-pass magnitudes; the Phase 6 ledger owns them. Anything that
+ * reads a pet stat reads it from here or not at all.
+ */
+export interface PetStats {
+  maxHp: number;
+  /** The strike die — npcMaxHit(die, petLevel) at the strike site. */
+  die: number;
+  /** The hand's lean on every landed blow. */
+  dmgMult: number;
+  /** Mitigation armor (THREAT LAW rating: armor × 3). */
+  armor: number;
+}
+
+export function petStatBlock(species: string, petLevel: number, bcLevel: number): PetStats | null {
+  const base = NPCS.get(species);
+  if (!base) return null;
+  const scaled = petLevel > base.level ? scaleNpcDef(base, petLevel) : base;
+  return {
+    maxHp: Math.round(scaled.maxHp * (1 + 0.01 * bcLevel)),
+    die: scaled.damage,
+    dmgMult: 1 + 0.005 * bcLevel,
+    armor: Math.floor(bcLevel / 4),
+  };
 }
 
 /** Roster-wide gate — content tests refuse against THIS, never a copy. */

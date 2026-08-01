@@ -1,0 +1,22 @@
+{
+  "id": "fall_outrider",
+  "base": {
+    "kind": "path",
+    "mount": "courser_grey",
+    "waypoints": [
+      { "x": 0, "y": 0, "waitSec": 45, "ride": false, "dir": -1.5708 },
+      { "x": 14, "y": 0.5 },
+      { "x": 27, "y": 0 },
+      { "x": 27.5, "y": 21.5, "waitSec": 18, "dir": 1.5708 },
+      { "x": 27.5, "y": 4.5 },
+      { "x": 27, "y": -6.5, "waitSec": 8, "dir": -1.5708 }
+    ]
+  },
+  "slots": [
+    {
+      "from": 23,
+      "to": 5,
+      "task": { "kind": "post", "x": -2.5, "y": 2.5, "sit": true }
+    }
+  ]
+}

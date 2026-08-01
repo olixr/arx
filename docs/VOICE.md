@@ -174,6 +174,10 @@ it dictates sentence shape. (Pooled actors share one card.)
 - **Sergeants Hale / Odessa / Brant, Wayward Watch** (Waykeepers): soldiers
   far from relief. Cadence: report-speak, understatement, dark road humor kept
   short. They say "the lamp stays lit" like a password, not a poem.
+- **Outriders Joss / Haldis** (Waykeepers, mounted): the order's riders, the
+  road report on four legs. Want the whole route seen every day; each trusts
+  the horse's judgement over most people's. Cadence: route facts first, then
+  the understatement. Fond of the beast, never sentimental out loud.
 - **Edda** (Last Lamp, Sella's sister): wants the worst mile of road to stay
   survivable. Cadence: BLUNT. Shortest sentences in the game. Kindness shown
   in deeds (fire, stew, warnings), never in words.
