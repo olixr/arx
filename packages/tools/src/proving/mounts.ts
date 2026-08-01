@@ -31,6 +31,9 @@ class Client {
   eid = -1;
   /** Latest authoritative own position, stamped on arrival. */
   pos: { x: number; y: number; pose: number; at: number } | null = null;
+  /** THE NEIGHBOR RIDES: another eid this client is watching. */
+  watchEid = -1;
+  watched: Array<{ x: number; y: number; pose: number; at: number }> = [];
   open(): Promise<void> {
     this.ws = new WebSocket(URL);
     this.ws.on('message', (d: Buffer, isBinary: boolean) => {
@@ -42,6 +45,9 @@ class Client {
         for (const e of snap.entities) {
           if (e.eid === this.eid) {
             this.pos = { x: e.x, y: e.y, pose: e.pose, at: Date.now() };
+          }
+          if (e.eid === this.watchEid) {
+            this.watched.push({ x: e.x, y: e.y, pose: e.pose, at: Date.now() });
           }
         }
         return;
@@ -271,6 +277,68 @@ const main = async () => {
   await c.waitFor((m) => m.t === 'chat' && /No room to ride/.test(m.text ?? ''), 'underground refusal', 4000, mark);
   receipt('the underground refuses the saddle, aloud', true);
   await tp(c, course[0], course[1]);
+
+  // --- THE NEIGHBOR RIDES: a second client must see the saddle on
+  // the wire — the mount id on appearance, the Ride pose byte, and
+  // the full stride through its own raw snapshots.
+  const b = new Client();
+  await b.open();
+  b.send({ t: 'hello', v: PROTOCOL_VERSION });
+  b.send({ t: 'register', user: `watch_${STAMP}`, pass: 'proving123', name: `Watch ${STAMP}` });
+  const bWelcome = await b.waitFor((m) => m.t === 'welcome', 'observer welcome');
+  b.eid = bWelcome.eid;
+  b.send({ t: 'chat', text: `/tp ${course[0]} ${course[1] + 2}` });
+  await sleep(600);
+  await mountUp(c);
+  const seen = await b.waitFor(
+    (m) =>
+      (m.t === 'enter' || m.t === 'update') &&
+      m.entities?.some((en: Msg) => en.appearance?.mount === 'courser_bay'),
+    'observer sees the saddle',
+    6000,
+  );
+  const riderMeta = seen.entities.find((en: Msg) => en.appearance?.mount === 'courser_bay');
+  b.watchEid = riderMeta.eid;
+  receipt('the neighbor sees WHAT is ridden on appearance', riderMeta.eid === c.eid);
+  // A gallops; B measures the stride from its own snapshot stream.
+  b.watched.length = 0;
+  const tg0 = Date.now();
+  while (Date.now() - tg0 < 1600) {
+    c.frame(0, 1, 0);
+    await sleep(50);
+  }
+  c.frame(0);
+  await sleep(300);
+  let remotePeak = 0;
+  let sawRidePose = false;
+  for (let i = 0; i < b.watched.length; i++) {
+    if (b.watched[i]!.pose === PoseState.Ride) sawRidePose = true;
+    for (let j = i + 1; j < b.watched.length; j++) {
+      const dt = (b.watched[j]!.at - b.watched[i]!.at) / 1000;
+      if (dt < 0.45) continue;
+      const d = Math.hypot(b.watched[j]!.x - b.watched[i]!.x, b.watched[j]!.y - b.watched[i]!.y);
+      remotePeak = Math.max(remotePeak, d / dt);
+    }
+  }
+  receipt('the neighbor reads the Ride pose byte', sawRidePose);
+  receipt(
+    'the neighbor rides at full stride on the remote lane',
+    remotePeak > 7.0 && remotePeak < 8.8,
+    `${remotePeak.toFixed(2)} t/s (lane ceiling 12)`,
+  );
+  // The step-down reaches the neighbor too.
+  let mark2 = b.mark();
+  await c.press(SIT);
+  await b.waitFor(
+    (m) =>
+      m.t === 'update' &&
+      m.entities?.some((en: Msg) => en.eid === c.eid && en.appearance && !en.appearance.mount),
+    'observer sees the dismount',
+    6000,
+    mark2,
+  );
+  receipt('the neighbor sees the boots come down', true);
+  b.ws.close();
 
   // --- Landed damage unhorses the rider (last: it invites a wolf).
   await mountUp(c);
