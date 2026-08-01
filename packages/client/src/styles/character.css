@@ -1,0 +1,810 @@
+/* ==================================================================
+   THE CHARACTER SCREEN — the expedition case docked at the RIGHT edge
+   of the world. It deliberately owns only that column: the camera
+   slides the world so your live character stands in the open ground
+   to its left — the game itself is the mirror.
+
+   THE TWO-WING LAW: inside, the case opens like a field kit — the
+   worn kit (identity, armor stand, ledger) is the LEFT wing; the
+   backpack is the RIGHT wing and the protagonist. The wings sit side
+   by side so neither steals the other's height, and THE WHOLE PACK IS
+   ALWAYS ON SCREEN: 6 across × 5 down, cells sized by the room the
+   case actually has (container query), never scrolled out of reach.
+   THE BIG-SOCKET LAW: the pack spreads WIDE (6×5, not tall) so its
+   cells run ~5.125rem on a full screen — an item is readable at a glance,
+   not a thumbnail you must hover to understand. Every socket in the
+   case (stand and pack alike) wears the same 5.125rem scale.
+   ================================================================== */
+
+/* A true dock: the case rides the right EDGE, full height, leaving
+   the rest of the viewport as clean open world for the live you. */
+.screen-character {
+  left: auto;
+  right: 1rem;
+  top: 0.875rem;
+  bottom: 0.875rem;
+  transform: none;
+  width: min(57.5rem, max(37.5rem, 64vw));
+  height: auto;
+  max-height: none;
+}
+
+/* The identity plate: who this case belongs to, atop the armor stand. */
+.char-identity {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4375rem;
+  margin: 0.125rem 0 0.625rem;
+  max-width: 100%;
+}
+
+.ident-name {
+  font-family: var(--serif);
+  font-size: 1.3125rem;
+  font-weight: 700;
+  letter-spacing: 0.0625rem;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ident-deed {
+  flex: none;
+  font-size: var(--t-whisper);
+  font-weight: 700;
+  letter-spacing: 0.09375rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  padding: 0.3125rem 0.625rem 0.25rem;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+}
+
+.char-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+/* ---- LEFT WING: identity + armor stand + the kit's sum ---- */
+
+.worn-kit {
+  flex: none;
+  width: 16.125rem; /* the stand's exact span: 3 big sockets + 2 gaps */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The stand: sockets hung where they sit on the body — head over
+   chest over legs over boots down the spine, weapon hand left,
+   shield hand right, cape at the shoulder, tools on the belt. */
+#equip-anatomy {
+  position: relative;
+  flex: none;
+  display: grid;
+  grid-template-areas:
+    'cape   head  sigil'
+    'weapon body  offhand'
+    'gloves legs  relic'
+    'tool   boots .';
+  gap: 0.5625rem;
+  align-content: start;
+}
+
+/* The armor stand itself: a quiet spine + shoulder bar the sockets
+   hang on, visible only in the gaps between wells. Pixel-anchored:
+   the rows are fixed 5rem + 0.5625rem gaps, the container may run taller.
+   (80 beside the pack's ~82 reads as one scale; the 0.125rem buys the
+   ledger its clean fit below.) */
+#equip-anatomy::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 2.5rem;
+  height: 16.6875rem;
+  width: 0.1875rem;
+  transform: translateX(-50%);
+  background: var(--line);
+  pointer-events: none;
+}
+
+#equip-anatomy::after {
+  content: '';
+  position: absolute;
+  left: 0.8125rem;
+  right: 0.8125rem;
+  top: 5.125rem;
+  height: 0.1875rem;
+  background: var(--line);
+  pointer-events: none;
+}
+
+#equip-anatomy .inv-slot {
+  width: 5rem;
+  height: 5rem;
+  z-index: 1;
+}
+
+/* The ledger: the worn kit's sum, told in plaques at the stand's
+   feet. It takes whatever height the wing has left and scrolls only
+   if a kit ever outgrows it. */
+.kit-ledger {
+  min-width: 0;
+  flex: 1;
+  min-height: 0;
+  margin-top: 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.4375rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.kit-ledger-title {
+  font-family: var(--serif);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.15625rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+#gear-strip {
+  flex: none;
+  display: grid;
+  /* Two plaques per row in the wing's 12.3125rem inner span. */
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+  align-content: start;
+}
+
+#gear-strip .stat-plaque {
+  padding: 0.375rem 0.5625rem 0.3125rem;
+}
+
+#gear-strip .stat-plaque-value {
+  font-size: var(--t-lead);
+}
+
+#gear-strip .stat-plaque-label {
+  font-size: 0.65625rem;
+}
+
+/* Bare kit: one quiet line where the plaques will be. */
+.kit-empty {
+  display: none;
+  font-size: var(--t-label);
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+#gear-strip.hidden ~ .kit-empty {
+  display: block;
+}
+
+/* An empty socket names itself; a filled one wears a quiet nameplate. */
+.slot-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.3125rem;
+  text-align: center;
+  font-size: 0.71875rem;
+  font-weight: 800;
+  letter-spacing: 0.05rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.equip-cell.equipped .slot-label {
+  opacity: 0.9;
+  background: rgba(12, 8, 24, 0.72);
+  border-radius: 0.1875rem;
+  margin: 0 0.375rem;
+}
+
+/* ---- RIGHT WING: the backpack, the screen's protagonist ---- */
+
+.char-pack-col {
+  min-width: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pack-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin: 0.125rem 0 0.625rem;
+}
+
+/* The filter lens rides its own rail under the title. */
+#pack-filters {
+  flex: none;
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.section-title {
+  font-family: var(--serif);
+  font-size: var(--t-lead);
+  font-weight: 700;
+  letter-spacing: 0.15625rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  flex: 1;
+}
+
+.pack-fill {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.03125rem;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  padding: 0.3125rem 0.625rem;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+}
+
+.pack-fill.full {
+  color: var(--red-soft);
+  border-color: rgba(217, 87, 99, 0.55);
+}
+
+/* The purse shelf under the pack: the coins, told big and plain. */
+.pack-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.4375rem;
+}
+
+.purse-label {
+  font-family: var(--serif);
+  font-size: var(--t-label);
+  font-weight: 700;
+  letter-spacing: 0.15625rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.pack-foot #coin-readout {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 1.3125rem;
+}
+
+#coin-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3125rem 0.875rem;
+  font-size: 1.1875rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+}
+
+#coin-readout img {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Filtered-out sockets dim but stay live — the filter is a lens. */
+.inv-slot.filtered-out {
+  opacity: 0.22;
+  filter: saturate(0.3);
+}
+
+/* THE WHOLE-PACK LAW: 6 across × 5 down = all 28 sockets on screen,
+   always (the last row runs four and rests). The case measures the
+   room the pack actually has (this wrapper is a size container) and
+   the cells size themselves to fit — height-fit and width-fit both,
+   capped at 5.75rem. Five rows instead of seven is what buys the BIG
+   sockets: ~5.125rem on a full screen, readable without hovering.
+   Scrolling is the emergency exit (sub-2.5rem rooms), never the plan. */
+.pack-case {
+  flex: 1;
+  min-height: 0;
+  container-type: size;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+#inventory-grid {
+  --pack-cell: clamp(
+    2.5rem,
+    min(calc((100cqh - 2.25rem) / 5), calc((100cqw - 2.8125rem) / 6)),
+    5.75rem
+  );
+  display: grid;
+  grid-template-columns: repeat(6, var(--pack-cell));
+  grid-auto-rows: var(--pack-cell);
+  gap: 0.5625rem;
+  justify-content: center;
+  align-content: start;
+}
+
+/* Every item cell is a painted recessed well from the kit. */
+.inv-slot {
+  aspect-ratio: 1;
+  background: none;
+  border: 0.4375rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+  border-radius: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inv-slot.clickable {
+  cursor: pointer;
+  transition: transform 0.08s ease-out, filter 0.08s ease-out;
+}
+
+.inv-slot.clickable:hover {
+  filter: brightness(1.35);
+  transform: translateY(-0.125rem);
+  z-index: 2;
+}
+
+.equip-cell.equipped {
+  box-shadow: inset 0 0 0 0.125rem rgba(217, 164, 65, 0.55);
+}
+
+/* ---- rarity: the well is lined with the tier's color, flat ----
+   (Inset shadows ride above the painted well, below the item art.) */
+
+.inv-slot.rarity-uncommon {
+  box-shadow:
+    inset 0 0 0 0.15625rem rgba(125, 196, 106, 0.8),
+    inset 0 0 0 12.5rem rgba(125, 196, 106, 0.1);
+}
+
+.inv-slot.rarity-rare {
+  box-shadow:
+    inset 0 0 0 0.15625rem rgba(111, 168, 255, 0.85),
+    inset 0 0 0 12.5rem rgba(111, 168, 255, 0.11);
+}
+
+.inv-slot.rarity-epic {
+  box-shadow:
+    inset 0 0 0 0.15625rem rgba(180, 122, 255, 0.9),
+    inset 0 0 0 12.5rem rgba(180, 122, 255, 0.12);
+}
+
+.inv-slot.rarity-legendary {
+  box-shadow:
+    inset 0 0 0 0.15625rem rgba(255, 179, 71, 0.95),
+    inset 0 0 0 12.5rem rgba(255, 179, 71, 0.14),
+    /* The one permitted smolder in the whole HUD. */
+    0 0 0.75rem rgba(255, 179, 71, 0.3);
+}
+
+.slot-ghost {
+  width: 56%;
+  height: 56%;
+  object-fit: contain;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.inv-item {
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.inv-qty {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  padding: 0.0625rem 0.5rem;
+  font-size: var(--t-body);
+  font-weight: bold;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+  background: rgba(12, 8, 24, 0.85);
+  border-radius: 0.25rem;
+}
+
+/* THE STOLEN TAG (factions Phase 5): a red corner tick on goods with
+   a history — no honest counter will touch them. */
+.inv-stolen::after {
+  content: '';
+  position: absolute;
+  top: 0.1875rem;
+  right: 0.1875rem;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  border-radius: 50%;
+  background: var(--ember-deep);
+  box-shadow: 0 0 0 0.125rem rgba(12, 8, 24, 0.85);
+  pointer-events: none;
+}
+
+/* ---- station pairing: talking to a bank chest or shop counter, the
+   character screen steps aside into a right-hand PACK COLUMN so the
+   deposit/sell conversation reads left-to-right as one composition.
+   The left wing (identity + stand + ledger) folds away with it; the
+   pack keeps its whole 4×7 spread and the purse — you sell for coins,
+   the coins stay in view. */
+
+body:has(#bank-panel:not(.hidden)) #inventory-panel,
+body:has(#shop-panel:not(.hidden)) #inventory-panel {
+  left: calc(50% + 0.875rem);
+  right: auto;
+  top: 47%;
+  bottom: auto;
+  transform: translate(0, -50%);
+  width: min(35rem, 40vw);
+  height: min(52.5rem, 88vh);
+}
+
+/* The narrow pack column tells its name in smaller capitals so the
+   banner never ellipsizes the word CHARACTER. */
+body:has(#bank-panel:not(.hidden)) #inventory-panel .panel-head h3,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .panel-head h3 {
+  font-size: 1.375rem;
+  letter-spacing: 0.125rem;
+}
+
+body:has(#bank-panel:not(.hidden)) #inventory-panel .worn-kit,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .worn-kit,
+/* The drop-to-world lesson is the station's noise — the bank/shop
+   panel carries its own hint; the pack spends the line on sockets. */
+body:has(#bank-panel:not(.hidden)) #inventory-panel .panel-hint,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .panel-hint {
+  display: none;
+}
+
+body:has(#inventory-panel:not(.hidden)) #bank-panel,
+body:has(#inventory-panel:not(.hidden)) #shop-panel {
+  left: calc(50% - 0.875rem);
+  transform: translate(-100%, -50%);
+}
+
+/* ---- item inspect card ---- */
+
+#item-card {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  width: 28.125rem;
+  padding: 0.875rem 1.25rem 1rem;
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--frame-border) solid transparent;
+  border-image-source: var(--ui-frame);
+  border-image-slice: var(--frame-slice);
+  border-image-width: var(--frame-border);
+  border-image-repeat: round;
+  filter: drop-shadow(0.4375rem 0.5rem 0 var(--shadow));
+  color: var(--parchment);
+  pointer-events: none;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.625rem;
+  position: relative;
+  padding-right: 0.25rem;
+}
+
+.card-head img {
+  width: 5.25rem;
+  height: 5.25rem;
+  flex: none;
+  padding: 0.375rem;
+  background: var(--sunk);
+  border: 0.15625rem solid var(--line);
+  border-radius: 0.4375rem;
+}
+
+.card-name {
+  font-family: var(--serif);
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: 0.03125rem;
+  line-height: 1.1;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+  padding-right: 7rem; /* room for the tier seal */
+}
+
+/* Rarity nameplates ride a solid tier color (set inline). */
+.card-name.rarity-name {
+  text-shadow: var(--punch);
+}
+
+.card-cat {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--parchment-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.0875rem;
+  margin-top: 0.3125rem;
+  text-shadow: var(--punch-small);
+}
+
+/* The tier seal, stamped in the head's corner. */
+.card-tier {
+  position: absolute;
+  right: 0;
+  top: 0.125rem;
+  padding: 0.3125rem 0.75rem;
+  font-size: var(--t-whisper);
+  font-weight: 800;
+  letter-spacing: 0.1rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  border: 0.09375rem solid var(--line-strong);
+  background: var(--sunk);
+  text-shadow: var(--punch-small);
+}
+
+.card-tier.tier-legendary {
+  box-shadow: 0 0 0.625rem rgba(255, 179, 71, 0.35);
+}
+
+/* The headline strip: the item's defining numbers, told huge. */
+.card-headline {
+  display: flex;
+  gap: 0.625rem;
+  margin: 0.25rem 0 0.625rem;
+}
+
+.headline-fact {
+  flex: 1;
+  padding: 0.6875rem 0.75rem 0.5625rem;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  text-align: center;
+  --cut: 0.625rem;
+}
+
+.headline-fact strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 2.125rem;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: var(--punch);
+}
+
+.headline-fact span {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: var(--t-whisper);
+  font-weight: 800;
+  letter-spacing: 0.075rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.card-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5625rem;
+  font-size: var(--t-body);
+  padding: 0.25rem 0;
+  text-shadow: var(--punch-small);
+}
+
+.stat-chip {
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 0.125rem;
+  border: 0.0625rem solid rgba(10, 6, 16, 0.85);
+  box-shadow: 0.0625rem 0.0625rem 0 rgba(10, 6, 16, 0.7);
+}
+
+/* An ability row wears its spell-plate in miniature: bigger than the
+   color square, borderless — the painted icon carries its own ring. */
+.stat-chip.icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: -0.1875rem -0.3125rem -0.1875rem -0.3125rem;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.stat-label {
+  color: var(--parchment-dim);
+  min-width: 5.5rem;
+}
+
+.card-passive-desc {
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+  padding: 0.0625rem 0 0.25rem 1.1875rem;
+  text-shadow: var(--punch-small);
+}
+
+.card-flavor {
+  font-family: var(--serif);
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--parchment-dim);
+  border-top: 0.09375rem solid var(--line);
+  margin-top: 0.5625rem;
+  padding-top: 0.5625rem;
+  text-shadow: var(--punch-small);
+}
+
+.card-foot {
+  margin-top: 0.5625rem;
+  font-size: var(--t-body);
+}
+
+.card-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--gold-bright);
+  font-weight: 700;
+  text-shadow: var(--punch-small);
+}
+
+.card-value img {
+  width: 1.375rem;
+  height: 1.375rem;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.card-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.875rem;
+  border-top: 0.09375rem solid var(--line);
+  margin-top: 0.625rem;
+  padding-top: 0.5625rem;
+}
+
+.hint-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  font-size: 0.8125rem;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* ---- item context menu ---- */
+
+#item-menu {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 75;
+  min-width: 15rem;
+  padding: 0.125rem;
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  border-image-repeat: round;
+  border-radius: 0;
+  filter: drop-shadow(0.3125rem 0.375rem 0 var(--shadow));
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.8125rem 1.125rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0.025rem;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  background: transparent;
+  border: 0.09375rem solid transparent;
+  border-radius: 0.3125rem;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  color: var(--gold-hot);
+  background: var(--raise);
+  border-color: var(--gold);
+}
+
+.menu-item.danger {
+  color: var(--red-soft);
+}
+
+.menu-item.danger:hover {
+  color: #ffc4b8;
+  background: rgba(196, 85, 61, 0.16);
+  border-color: rgba(217, 87, 99, 0.6);
+}
+
+.make-empty {
+  padding: 1.125rem;
+  font-size: var(--t-body);
+  color: var(--parchment-dim);
+  background: var(--raise);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.4375rem;
+  text-shadow: var(--punch-small);
+}
+
+/* The rumor line under the recipe ledger: what the station still
+   keeps from you — a whisper, not a list. */
+.make-undiscovered {
+  margin-top: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--parchment-dim);
+  opacity: 0.75;
+  text-shadow: var(--punch-small);
+}
+
+.out-qty {
+  position: absolute;
+  right: 0.125rem;
+  bottom: 0.0625rem;
+  padding: 0.0625rem 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--gold-bright);
+  background: rgba(12, 8, 24, 0.85);
+  border-radius: 0.1875rem;
+  text-shadow: var(--punch-small);
+}
+

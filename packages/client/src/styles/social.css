@@ -1,0 +1,297 @@
+/* ==================================================================
+   SOCIAL — the fellowship ledger: who stands near, who walks with
+   you, who is asking to. Rows speak the loot-row dialect; the search
+   box is the HUD's one typing field outside chat, dressed like it.
+   ================================================================== */
+
+.screen-social {
+  width: min(40rem, 62vw);
+  height: min(50rem, 88vh);
+}
+
+.social-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  padding-right: 0.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.social-search {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.social-search input {
+  flex: 1;
+  min-width: 0;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+  color: var(--parchment);
+  padding: 0.625rem 0.75rem;
+  font-size: var(--t-body);
+  outline: none;
+}
+
+.social-search input:focus {
+  border-color: var(--gold);
+}
+
+/* An online friend's row carries the accent on its leading edge. */
+.social-online {
+  border-left-color: var(--screen-accent);
+}
+
+/* Offline and awaiting rows step back into the case's shadow. */
+.social-dim {
+  opacity: 0.72;
+}
+
+.social-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.social-empty {
+  font-size: 0.90625rem;
+  font-style: italic;
+  color: var(--parchment-dim);
+  padding: 0.125rem 0.25rem;
+}
+
+.social-inspect-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  padding: 0.25rem 0 0.5rem;
+}
+
+/* THE CHART TABLE — the fullscreen map (M). The chart wants room:
+   near-viewport case, canvas as the protagonist, one quiet rail. */
+.screen-map {
+  width: min(92.5rem, 92vw);
+  height: min(58.75rem, 90vh);
+}
+
+.map-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+}
+
+/* The pad's reading spot: where Ⓨ plants the flag. Pad mode only;
+   positioned over the canvas center by the chart each frame. */
+.map-reticle {
+  display: none;
+  position: absolute;
+  width: 1.625rem;
+  height: 1.625rem;
+  transform: translate(-50%, -50%);
+  border: 0.15625rem solid rgba(240, 228, 196, 0.85);
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.125rem rgba(10, 6, 16, 0.55), inset 0 0 0 0.125rem rgba(10, 6, 16, 0.55);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.map-reticle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.25rem;
+  height: 0.25rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(240, 228, 196, 0.9);
+}
+
+body.pad-mode .map-reticle {
+  display: block;
+}
+
+.map-canvas {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0.4375rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.map-rail {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: none;
+}
+
+.map-coords {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-whisper);
+  color: var(--parchment-faint);
+  letter-spacing: 0.04em;
+}
+
+/* THE DISCOVERY CEREMONY — top-center toast under wheeling rays. */
+#discovery-stage {
+  position: fixed;
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+  z-index: 57;
+  pointer-events: none;
+}
+
+.disc-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28.75rem;
+  height: 28.75rem;
+  margin: -14.375rem 0 0 -14.375rem;
+  background: repeating-conic-gradient(
+    rgba(242, 201, 76, 0.16) 0deg 10deg,
+    rgba(242, 201, 76, 0) 10deg 30deg
+  );
+  -webkit-mask-image: radial-gradient(closest-side, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.26) 55%, transparent 74%);
+  mask-image: radial-gradient(closest-side, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.26) 55%, transparent 74%);
+  animation:
+    lvl-rays-in 700ms ease-out both,
+    lvl-rays-spin 26s linear infinite;
+}
+
+#discovery-stage.leaving .disc-rays {
+  animation: lvl-exit 650ms ease-in both;
+}
+
+.disc-card {
+  position: relative;
+}
+
+#discovery-stage.leaving .disc-card {
+  animation: lvl-exit 650ms ease-in both;
+}
+
+.disc-card .rift-plaque {
+  box-shadow:
+    0 0 0 0.125rem var(--disc-accent),
+    0 0 1rem var(--disc-accent);
+}
+
+.disc-kicker {
+  color: var(--disc-accent);
+  letter-spacing: 0.3125rem;
+}
+
+/* THE TRAVELER'S GLASS — the Tab overlay chart. */
+#map-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.82;
+  z-index: 30;
+}
+
+/* THE WAYFINDER — the waypoint's smoked-glass compass pill. */
+#waypoint-hud {
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.25rem 0.5625rem 0.25rem 0.375rem;
+  background: rgba(13, 10, 6, 0.62);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.16);
+  border-radius: 62.4375rem;
+  box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 40;
+  transition: opacity 300ms ease;
+}
+
+#waypoint-hud.wp-near {
+  opacity: 0.45;
+}
+
+#waypoint-hud .wp-arrow {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#waypoint-hud.wp-onspot .wp-arrow {
+  transform: rotate(90deg) !important;
+}
+
+#waypoint-hud .wp-dist {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: #cfe7f2;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.6);
+}
+
+/* The party wayfinder — the waypoint pill's pooled sibling, one per
+ * off-screen fellow. Same smoked-glass tier, a step quieter. */
+.party-pill {
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem 0.5rem 0.1875rem 0.25rem;
+  background: rgba(13, 10, 6, 0.62);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.16);
+  border-radius: 62.4375rem;
+  box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 39;
+  opacity: 0.85;
+  transition: opacity 300ms ease;
+}
+
+.party-pill .wp-arrow {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.party-pill .pp-name {
+  font-size: var(--t-whisper);
+  color: #ece4d0;
+  letter-spacing: 0.02em;
+  max-width: 6rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.6);
+}
+
+.party-pill .pp-dist {
+  font-size: var(--t-whisper);
+  font-variant-numeric: tabular-nums;
+  color: #cfe7f2;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.6);
+}
+

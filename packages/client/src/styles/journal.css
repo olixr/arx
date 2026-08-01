@@ -1,0 +1,397 @@
+/* ==================================================================
+   THE JOURNAL — the quest log (J). List left, the open page right.
+   ================================================================== */
+
+.screen-quests {
+  width: min(67.5rem, 94vw);
+  height: min(47.5rem, 88vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.quest-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 21.25rem 1fr;
+  gap: 0.875rem;
+}
+
+.quest-list {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.quest-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  background: rgba(30, 22, 14, 0.5);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.14);
+  border-radius: 0.25rem;
+  color: #efe3c2;
+  font: 600 0.875rem/1.2 'Trebuchet MS', sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quest-row:hover {
+  border-color: rgba(222, 190, 128, 0.4);
+}
+
+.quest-row.sel {
+  background: rgba(58, 44, 24, 0.6);
+  border-color: #d8c08c;
+}
+
+.quest-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quest-row-state {
+  font: 600 0.6875rem/1 'Trebuchet MS', sans-serif;
+  color: var(--parchment-faint);
+  white-space: nowrap;
+}
+
+.quest-row-state.ready {
+  color: #f2c94c;
+}
+
+.quest-empty {
+  padding: 1.125rem 0.75rem;
+  color: var(--parchment-faint);
+  font: 500 0.8125rem/1.5 'Trebuchet MS', sans-serif;
+}
+
+.quest-bench {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0.25rem 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.quest-bench-name {
+  font: 700 1.5rem/1.2 Georgia, 'Times New Roman', serif;
+  color: #efe3c2;
+}
+
+.quest-bench-sub {
+  margin-top: 0.25rem;
+  font: 600 0.75rem/1.3 'Trebuchet MS', sans-serif;
+  color: var(--parchment-faint);
+}
+
+.quest-bench-sub.ready {
+  color: #f2c94c;
+}
+
+/* The written page — directions in the world's voice, no markers. */
+.quest-entry {
+  font: 500 0.9375rem/1.55 Georgia, 'Times New Roman', serif;
+  color: #d8ccae;
+  max-width: 62ch;
+}
+
+.quest-em {
+  color: #f2c94c;
+  font-weight: 700;
+}
+
+.quest-grim {
+  color: #8f8bb0;
+  letter-spacing: 0.06em;
+}
+
+.quest-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.375rem 0.0625rem 0.125rem;
+  margin: 0 0.125rem;
+  background: rgba(30, 22, 14, 0.6);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.25);
+  border-radius: 0.25rem;
+  font: 600 0.8125rem/1.2 'Trebuchet MS', sans-serif;
+  color: #efe3c2;
+  vertical-align: -0.25rem;
+}
+
+.quest-item-chip img {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.quest-objectives {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quest-obj-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.quest-obj-label {
+  font: 600 0.875rem/1.2 'Trebuchet MS', sans-serif;
+  color: #d8ccae;
+}
+
+.quest-actions {
+  display: flex;
+  gap: 0.625rem;
+  margin-top: 0.25rem;
+}
+
+.quest-teach {
+  font: 500 0.75rem/1.4 'Trebuchet MS', sans-serif;
+  color: var(--parchment-faint);
+}
+
+#btn-quests.has-new::after,
+#btn-rep.has-new::after {
+  content: '';
+  position: absolute;
+  right: 0.1875rem;
+  top: 0.1875rem;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  border-radius: 50%;
+  background: #ffd98a;
+  box-shadow: 0 0 0.375rem rgba(255, 217, 138, 0.8);
+}
+
+/* STANDING — the name you carry (docs/factions-plan.md Phase 1).
+   One banded row per faction: head, centered meter, meaning line. */
+.screen-rep {
+  width: min(42.5rem, 94vw);
+  max-height: min(45rem, 88vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.rep-body {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.25rem 0.375rem;
+}
+
+.rep-row {
+  padding: 0.625rem 0.75rem;
+  background: rgba(30, 22, 14, 0.5);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.14);
+  border-radius: 0.25rem;
+}
+
+.rep-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.rep-name {
+  font: 700 1.0625rem/1.2 Georgia, 'Times New Roman', serif;
+  color: #efe3c2;
+}
+
+.rep-band {
+  font: 700 0.75rem/1 'Trebuchet MS', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rep-meter {
+  position: relative;
+  margin-top: 0.5rem;
+  height: 0.4375rem;
+  border-radius: 0.25rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.12);
+  overflow: hidden;
+}
+
+.rep-meter-notch {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 0.0625rem;
+  background: rgba(222, 190, 128, 0.5);
+}
+
+.rep-meter-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 0.1875rem;
+}
+
+.rep-word {
+  margin-top: 0.4375rem;
+  font: 500 0.75rem/1.4 'Trebuchet MS', sans-serif;
+  color: var(--parchment-faint);
+}
+
+.rep-lately {
+  margin-top: 0.25rem;
+  font: 600 0.6875rem/1 'Trebuchet MS', sans-serif;
+}
+
+/* THE ERRAND CARD — the tracked quest's smoked-glass face, top-right
+   clear of the chrome (dock bottom-right, chat left, hotbar bottom). */
+#objective-tracker {
+  position: fixed;
+  right: 0.875rem;
+  top: 3.75rem;
+  max-width: 15rem;
+  padding: 0.5rem 0.6875rem;
+  background: rgba(13, 10, 6, 0.62);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.16);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 40;
+  transition: opacity 300ms ease;
+}
+
+#objective-tracker .obj-quest-name {
+  font: 700 0.8125rem/1.25 'Trebuchet MS', sans-serif;
+  color: #efe3c2;
+  margin-bottom: 0.3125rem;
+}
+
+#objective-tracker.obj-ready .obj-quest-name {
+  color: #f2c94c;
+}
+
+#objective-tracker .obj-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.0625rem 0;
+}
+
+#objective-tracker .obj-row img {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+#objective-tracker .obj-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 0.75rem/1.3 'Trebuchet MS', sans-serif;
+  color: #d8ccae;
+}
+
+#objective-tracker .obj-count {
+  font: 600 0.75rem/1.3 'Trebuchet MS', sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #cbb789;
+}
+
+#objective-tracker .obj-row.met .obj-count {
+  color: #9fd489;
+}
+
+/* THE QUEST CEREMONIES — accepted (quiet) and completed (rays). */
+#quest-stage,
+#rep-stage {
+  position: fixed;
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+  z-index: 57;
+  pointer-events: none;
+}
+
+#quest-stage.leaving .disc-rays,
+#quest-stage.leaving .quest-card,
+#rep-stage.leaving .disc-rays,
+#rep-stage.leaving .quest-card {
+  animation: lvl-exit 650ms ease-in both;
+}
+
+/* The standing ceremony's band word under the faction name. */
+.quest-banner-sub {
+  margin-top: 0.125rem;
+  font: 700 0.8125rem/1 'Trebuchet MS', sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quest-card {
+  position: relative;
+}
+
+.quest-card .rift-plaque {
+  box-shadow:
+    0 0 0 0.125rem var(--quest-accent),
+    0 0 1rem var(--quest-accent);
+}
+
+.quest-kicker {
+  color: var(--quest-accent);
+  letter-spacing: 0.3125rem;
+}
+
+.quest-reward-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.quest-reward-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.125rem 0.5rem 0.125rem 0.25rem;
+  background: rgba(30, 22, 14, 0.7);
+  border: 0.0625rem solid rgba(242, 201, 76, 0.35);
+  border-radius: 0.25rem;
+  font: 600 0.8125rem/1.3 'Trebuchet MS', sans-serif;
+  color: #efe3c2;
+}
+
+.quest-reward-chip img {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+/* The cinema's contract chip — the quest offer beside the line. */
+.dlg-quest-offer .dlg-quest-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+
+.dlg-quest-kicker {
+  font: 700 0.625rem/1 'Trebuchet MS', sans-serif;
+  letter-spacing: 0.1875rem;
+  text-transform: uppercase;
+  color: #f2c94c;
+}
+
+.dlg-quest-pay {
+  font: 600 0.6875rem/1.3 'Trebuchet MS', sans-serif;
+  color: var(--parchment-faint);
+}
+

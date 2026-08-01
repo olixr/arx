@@ -1,0 +1,98 @@
+/* ==================================================================
+   THE VAULT — a wall of sockets read like your own pack; the armory
+   rack holds rolled gear apart; the counter under the wall offers
+   Take 1 / 5 / All for the chosen pile.
+   ================================================================== */
+
+.screen-bank {
+  width: min(45rem, 50vw);
+  height: min(52.5rem, 88vh);
+}
+
+.bank-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#bank-armory {
+  flex: none;
+}
+
+#bank-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  padding-right: 0.25rem;
+  margin-top: 0.625rem;
+}
+
+.vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.125rem, 1fr));
+  gap: 0.5625rem;
+  align-content: start;
+}
+
+.vault-slot {
+  aspect-ratio: 1;
+}
+
+.vault-slot.selected {
+  box-shadow:
+    inset 0 0 0 0.15625rem var(--gold),
+    inset 0 0 0 12.5rem rgba(217, 164, 65, 0.1);
+}
+
+/* The counter: chosen pile + take actions. */
+#bank-detail {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin-top: 0.875rem;
+  padding: 0.75rem 1rem;
+  background: var(--sunk);
+  border: 0.125rem solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.counter-face {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.counter-face img {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+}
+
+.counter-name {
+  font-size: var(--t-lead);
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.counter-sub {
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.counter-actions {
+  flex: none;
+  display: flex;
+  gap: 0.5rem;
+}
+

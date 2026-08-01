@@ -1,0 +1,63 @@
+/* ==================================================================
+   Arx HUD — THE EXPEDITION CASE under THE ONE RULER
+   (design language v4 · The Grand Refit, Phase 1)
+
+   Every surface is painted chrome from ui/chrome.ts — iron case
+   frames, brass ingot buttons, recessed socket wells, crest
+   medallions, parchment sheets. The stylesheet's job is to LAY OUT
+   the kit, never to fake it with borders.
+
+   Laws:
+   - THE ONE RULER. Every size in this file is rem. The root font
+     size is set by ui/kit/scale.ts from a 1920×1080 reference
+     canvas, so one composition serves every display. A bare px is
+     a defect (the sole exception: @media viewport conditions).
+   - ONE MATERIAL TRUTH. This file holds NO values. All color
+     tokens, type/space/radius/stroke ladders and HUD lanes are
+     injected at boot from ui/kit/tokens.ts — the same module the
+     chrome painter draws from. Add tokens there, never here.
+   - MATERIALS, NOT BOXES. Iron = structure, brass = touchable,
+     leather/oak = fields, parchment = documents. If an element is a
+     plain bordered rectangle, it isn't finished.
+   - FLAT FACETS ONLY. 2–3 hard tones per material, exactly like the
+     world's art. No gradients, no gloss, no blur.
+   - THE CHAMFER IS THE SIGNATURE. 45° corner cuts on every
+     silhouette, baked into the painted art or cut by clip-path.
+   - SHADOWS ARE SHAPES. One hard offset shadow per floating thing —
+     never a blur, never a glow (legendary gear alone may smolder).
+   - SCREENS, NOT SIDEBARS. Every major menu is a bespoke SCREEN with
+     a crest, a banner and its own architecture — couch-readable:
+     1rem body floor, huge serif titles, 44-design-px+ hit targets.
+   ================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  touch-action: none;
+}
+
+#game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hidden {
+  display: none !important;
+}
+
+button {
+  font-family: inherit;
+}
+

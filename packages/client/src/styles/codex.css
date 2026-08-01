@@ -1,0 +1,955 @@
+/* ==================================================================
+   THE TECHNIQUES CODEX — the combat arts' own screen. The live
+   Q/E/R/T loadout strip up top tells the R key's place in the kit;
+   below it every school lays its four-rung ladder on a rail, and the
+   chosen art is spread out large on the bench to the right.
+   ================================================================== */
+
+.screen-arts {
+  width: min(77.5rem, 94vw);
+  height: min(53.75rem, 90vh);
+}
+
+/* ---- the loadout strip: four keys, four sources, one story. */
+
+#arts-loadout {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 0.75rem 1.125rem 0.625rem;
+  margin-bottom: 0.875rem;
+  background: var(--sunk);
+  border: 0.125rem solid var(--line);
+}
+
+.load-title {
+  align-self: center;
+  flex: none;
+  width: 6rem;
+  font-family: var(--serif);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  letter-spacing: 0.125rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.load-slot {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1875rem;
+}
+
+.load-well {
+  position: relative;
+  width: 4rem;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.4375rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+}
+
+.load-well img {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.load-well.empty::after {
+  content: '—';
+  font-size: 1.25rem;
+  color: var(--parchment-dim);
+  opacity: 0.45;
+}
+
+/* The key badge overhangs the well's corner, hotbar-style. */
+.load-key {
+  position: absolute;
+  right: -0.75rem;
+  bottom: -0.75rem;
+}
+
+/* The R slot is why this screen exists — it wears the gold lining. */
+.load-slot.the-r .load-well {
+  box-shadow:
+    inset 0 0 0 0.15625rem var(--gold),
+    inset 0 0 12.5rem rgba(217, 164, 65, 0.13);
+}
+
+.load-slot.the-r .load-src {
+  color: var(--gold-bright);
+}
+
+.load-src {
+  margin-top: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.075rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.load-name {
+  max-width: 100%;
+  font-size: var(--t-label);
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.load-name.empty {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--parchment-dim);
+  opacity: 0.75;
+}
+
+/* ---- the body: school ladders left, the bench right. */
+
+.arts-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 25rem;
+  gap: 0.875rem;
+}
+
+#arts-schools {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 0.375rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* THE SCHOOL JUMP-STRIP: one chip per school, riding sticky at the
+   top of the ledger — eight ladders is a long scroll, and both the
+   mouse and the pad deserve a short road to any of them. */
+.school-jump {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  flex: none;
+  display: flex;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  background: var(--raise);
+  border: 0.09375rem solid var(--line);
+  box-shadow: 0 0.1875rem 0.5rem rgba(10, 6, 2, 0.45);
+}
+
+.jump-chip {
+  position: relative;
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3125rem;
+  padding: 0.3125rem 0.25rem;
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.03125rem;
+  text-transform: capitalize;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: 0.09375rem solid color-mix(in srgb, var(--skill-accent, var(--line)) 40%, var(--line));
+  border-bottom: 0.1875rem solid var(--skill-accent, var(--line));
+  border-radius: 0.25rem;
+  cursor: pointer;
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.jump-chip img {
+  flex: none;
+  width: 1.0625rem;
+  height: 1.0625rem;
+}
+
+.jump-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Something new waits down this school's ladder. */
+.jump-chip.has-new::after {
+  content: '';
+  position: absolute;
+  right: 0.1875rem;
+  top: 0.1875rem;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background: #ffd98a;
+  box-shadow: 0 0 0.3125rem rgba(255, 217, 138, 0.8);
+}
+
+.jump-chip:hover {
+  color: var(--parchment);
+  filter: brightness(1.15);
+}
+
+/* The school whose art rides the R key wears the gold underline. */
+.jump-chip.on-r {
+  color: var(--gold-bright);
+  border-bottom-color: var(--gold);
+}
+
+.arts-school {
+  flex: none;
+  scroll-margin-top: 3.25rem;
+  background: color-mix(in srgb, var(--skill-accent, var(--line)) 9%, var(--raise));
+  border: 0.09375rem solid color-mix(in srgb, var(--skill-accent, var(--line)) 45%, var(--line));
+  border-left: 0.3125rem solid var(--skill-accent, var(--line));
+  padding: 0.75rem 1rem 0.875rem;
+}
+
+/* "N of 10" — how much of the ladder this hand has climbed. */
+.arts-school-count {
+  font-size: 0.71875rem;
+  font-weight: 800;
+  letter-spacing: 0.0375rem;
+  padding: 0.1875rem 0.5rem;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.25rem;
+  text-shadow: var(--punch-small);
+}
+
+.arts-school-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+
+.skill-plaque.sm {
+  width: 2.625rem;
+  height: 2.625rem;
+}
+
+.skill-plaque.sm img {
+  width: 1.875rem;
+  height: 1.875rem;
+}
+
+.arts-school-name {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.025rem;
+  text-transform: capitalize;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+.arts-school.secret-skill .arts-school-name {
+  color: var(--gold-bright);
+}
+
+.arts-school-lv {
+  font-size: 0.78125rem;
+  font-weight: 800;
+  letter-spacing: 0.05rem;
+  padding: 0.1875rem 0.5625rem;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.25rem;
+  text-shadow: var(--punch-small);
+}
+
+/* "In hand": this ladder is the one the R key channels right now. */
+.in-hand {
+  margin-left: auto;
+  font-size: 0.71875rem;
+  font-weight: 800;
+  letter-spacing: 0.075rem;
+  text-transform: uppercase;
+  padding: 0.25rem 0.625rem;
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 18%, var(--sunk));
+  border: 0.09375rem solid var(--gold);
+  border-radius: 0.25rem;
+  text-shadow: var(--punch-small);
+}
+
+/* THE OPEN LADDER: ten plates, five to a row. The rail is no longer
+   one line drawn through the row — each plate carries its own LINK
+   back to the rung before it, so the path lights up plate by plate as
+   the school levels. Links live under the wells (the well socket is
+   opaque and z-raised), which is what killed the old line-over-icon
+   artifact for good. */
+.tech-rail {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.875rem 0.625rem;
+}
+
+.tech-plate-btn {
+  position: relative;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3125rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--parchment);
+}
+
+/* The link to the previous rung: a short bar at well height, running
+   center-to-center under the opaque sockets. Dim until the rung it
+   arrives at is unlocked — then it carries the lit brass of the path
+   already walked. */
+.tech-plate-btn.rail-link::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: 1.8125rem;
+  left: calc(-50% - 0.3125rem);
+  width: calc(100% + 0.625rem);
+  height: 0.1875rem;
+  background: var(--line);
+}
+
+.tech-plate-btn.rail-link.rail-lit::before {
+  height: 0.25rem;
+  top: 1.78125rem;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 55%, var(--line)), var(--gold));
+  box-shadow: 0 0 0.3125rem rgba(217, 164, 65, 0.35);
+}
+
+.tech-plate-well {
+  position: relative;
+  z-index: 1;
+  width: 3.875rem;
+  height: 3.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.4375rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+}
+
+.tech-plate-well img {
+  width: 2.625rem;
+  height: 2.625rem;
+}
+
+.tech-plate-btn:hover .tech-plate-well {
+  filter: brightness(1.18);
+}
+
+.tech-plate-btn.locked {
+  color: var(--parchment-dim);
+}
+
+.tech-plate-btn.locked .tech-plate-well img {
+  filter: saturate(0.2) brightness(0.55);
+}
+
+.tech-plate-btn.veiled {
+  color: var(--parchment-dim);
+}
+
+.tech-mystery {
+  font-family: var(--serif);
+  font-size: 1.6875rem;
+  font-weight: 700;
+  color: rgba(216, 192, 140, 0.38);
+  text-shadow: var(--punch-small);
+}
+
+.tech-mystery.lg {
+  font-size: 3rem;
+}
+
+/* Rarity-law states: rings are INSET box-shadows over the well art. */
+.tech-plate-btn.equipped .tech-plate-well {
+  box-shadow:
+    inset 0 0 0 0.15625rem var(--gold),
+    inset 0 0 12.5rem rgba(217, 164, 65, 0.14);
+}
+
+.tech-plate-btn.selected .tech-plate-well {
+  box-shadow:
+    inset 0 0 0 0.15625rem rgba(239, 227, 194, 0.9),
+    inset 0 0 12.5rem rgba(239, 227, 194, 0.08);
+}
+
+.tech-plate-btn.equipped.selected .tech-plate-well {
+  box-shadow:
+    inset 0 0 0 0.15625rem var(--gold-hot),
+    inset 0 0 12.5rem rgba(217, 164, 65, 0.2);
+}
+
+.tech-plate-btn.selected .tech-plate-name {
+  color: var(--gold-bright);
+}
+
+.tech-plate-name {
+  max-width: 100%;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tech-plate-sub {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.0375rem;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.tech-plate-btn.equipped .tech-plate-sub {
+  color: var(--gold-bright);
+}
+
+/* The chosen-on-R brass seal, overhanging the well's corner. */
+.r-badge {
+  position: absolute;
+  right: -0.5625rem;
+  bottom: -0.5625rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78125rem;
+  font-weight: 900;
+  color: var(--brass-ink);
+  background: var(--gold);
+  border: 0.09375rem solid #140e04;
+  border-radius: 0.25rem;
+}
+
+/* A freshly unlocked art announces itself until inspected once. */
+.new-pip {
+  position: absolute;
+  left: -0.5625rem;
+  top: -0.5625rem;
+  padding: 0.125rem 0.3125rem;
+  font-size: 0.59375rem;
+  font-weight: 900;
+  letter-spacing: 0.05rem;
+  color: #f6ead0;
+  background: var(--red-soft);
+  border: 0.09375rem solid #140e04;
+  border-radius: 0.1875rem;
+  text-shadow: none;
+}
+
+/* On a plate well the pip tucks into the corner instead of covering
+   the art — the plate is the point, the pip is the whisper.
+   (Right-anchored overrides MUST reset left, or the base left:-0.5625rem
+   stretches the pip across the whole well.) */
+.tech-plate-well .new-pip {
+  left: auto;
+  right: -0.5rem;
+  top: -0.5rem;
+  z-index: 2;
+  padding: 0.09375rem 0.25rem;
+  font-size: 0.53125rem;
+  letter-spacing: 0.0375rem;
+}
+
+/* The dock button's glint: something new waits in the codex. */
+#btn-arts.has-new::after {
+  content: '';
+  position: absolute;
+  right: 0.1875rem;
+  top: 0.1875rem;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  border-radius: 50%;
+  background: #ffd98a;
+  box-shadow: 0 0 0.375rem rgba(255, 217, 138, 0.8);
+}
+
+/* ---- the bench: the chosen art, spread out and told honestly. */
+
+#arts-detail {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8125rem;
+  padding: 1.125rem 1.25rem;
+  background: var(--sunk);
+  border: 0.125rem solid var(--line);
+}
+
+.bench-head {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.bench-plate {
+  flex: none;
+  width: 6rem;
+  height: 6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.4375rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+}
+
+.bench-plate img {
+  width: 4.625rem;
+  height: 4.625rem;
+}
+
+.bench-names {
+  min-width: 0;
+}
+
+.bench-name {
+  font-family: var(--serif);
+  font-size: 1.6875rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--parchment);
+  text-shadow: var(--punch);
+}
+
+.bench-line {
+  margin-top: 0.25rem;
+  font-size: 0.78125rem;
+  font-weight: 800;
+  letter-spacing: 0.09375rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.art-state {
+  align-self: flex-start;
+  padding: 0.3125rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.0375rem;
+  border: 0.09375rem solid var(--line);
+  text-shadow: var(--punch-small);
+}
+
+.art-state.equipped {
+  color: var(--gold-bright);
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 14%, var(--sunk));
+}
+
+.art-state.unlocked {
+  color: var(--green);
+  border-color: rgba(125, 196, 106, 0.5);
+}
+
+.art-state.locked {
+  color: var(--red-soft);
+  border-color: rgba(217, 87, 99, 0.5);
+}
+
+.art-state.veiled {
+  font-style: italic;
+  color: var(--parchment-dim);
+}
+
+.bench-desc {
+  margin: 0;
+  font-size: 0.96875rem;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+.bench-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.25rem, 1fr));
+  gap: 0.5rem;
+}
+
+#arts-detail .act-btn {
+  align-self: stretch;
+  margin-top: 0.125rem;
+}
+
+/* THE CODEX WINGS: Arts (actives) and Callings (passives). */
+#arts-wings {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+}
+
+.wing-tab {
+  position: relative;
+  appearance: none;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.0875rem;
+  text-transform: uppercase;
+  padding: 0.4375rem 1.125rem;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+  cursor: pointer;
+  text-shadow: var(--punch-small);
+}
+
+.wing-tab.active {
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 16%, var(--sunk));
+  border-color: var(--gold);
+}
+
+.wing-tab .new-pip {
+  position: absolute;
+  left: auto;
+  top: -0.4375rem;
+  right: -0.4375rem;
+}
+
+/* THE FOCUS METER — what the milestones earned, what answering holds. */
+.focus-nums {
+  font-size: var(--t-body);
+  font-weight: 800;
+  letter-spacing: 0.0625rem;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+}
+
+.focus-bar {
+  flex: 1;
+  height: 0.625rem;
+  min-width: 7.5rem;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+  overflow: hidden;
+}
+
+.focus-fill {
+  height: 100%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 65%, #7a5a1a), var(--gold));
+  transition: width 200ms ease;
+}
+
+.focus-fill.full {
+  background: linear-gradient(90deg, #a8623a, #d98a5a);
+}
+
+.focus-teach {
+  font-size: var(--t-whisper);
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* Calling rows: each skill's pair of passives. */
+.calling-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4375rem 0.625rem;
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, var(--sunk) 55%, transparent);
+}
+
+.calling-row-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 7.375rem;
+}
+
+.calling-skill-name {
+  font-size: var(--t-label);
+  font-weight: 800;
+  letter-spacing: 0.0375rem;
+  text-transform: capitalize;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+.calling-skill-name.secret {
+  color: var(--gold-bright);
+}
+
+.calling-skill-lv {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--parchment-dim);
+}
+
+.calling-chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.call-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  appearance: none;
+  font-family: inherit;
+  text-align: left;
+  padding: 0.375rem 0.625rem;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+  cursor: pointer;
+  color: var(--parchment);
+}
+
+.call-chip.answered {
+  background: color-mix(in srgb, var(--gold) 14%, var(--sunk));
+  border-color: var(--gold);
+}
+
+.call-chip.locked {
+  opacity: 0.55;
+}
+
+.call-chip.selected {
+  box-shadow: 0 0 0 0.125rem color-mix(in srgb, var(--gold) 45%, transparent);
+}
+
+.call-chip .new-pip {
+  position: absolute;
+  left: auto;
+  top: -0.4375rem;
+  right: -0.375rem;
+}
+
+.call-gem {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff8a, var(--gem) 45%, #00000055);
+  border: 0.09375rem solid var(--line);
+}
+
+.call-gem.lg {
+  width: 2.125rem;
+  height: 2.125rem;
+  border-width: 0.125rem;
+}
+
+.call-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.01875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: var(--punch-small);
+}
+
+.call-sub {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--parchment-dim);
+  white-space: nowrap;
+}
+
+.call-chip.answered .call-sub {
+  color: var(--gold-bright);
+}
+
+.bench-plate.call-plate {
+  display: grid;
+  place-items: center;
+}
+
+#arts-detail .act-btn.cant {
+  filter: saturate(0.4) brightness(0.75);
+}
+
+/* THE UNWRITTEN PAGE's mark: this art was earned, not leveled. */
+.earned-seal {
+  position: absolute;
+  left: -0.4375rem;
+  bottom: -0.4375rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: grid;
+  place-items: center;
+  font-size: 0.6875rem;
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 22%, var(--sunk));
+  border: 0.09375rem solid var(--gold);
+  border-radius: 50%;
+  text-shadow: var(--punch-small);
+}
+
+/* THE HONED-ART ledger: four rank seals, brass when attained. */
+.rank-ledger {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.rank-seal {
+  min-width: 2.125rem;
+  padding: 0.25rem 0;
+  text-align: center;
+  font-size: 0.78125rem;
+  font-weight: 800;
+  letter-spacing: 0.0625rem;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.25rem;
+  text-shadow: var(--punch-small);
+}
+
+.rank-seal.attained {
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 14%, var(--sunk));
+  border-color: var(--gold);
+}
+
+.rank-seal.current {
+  box-shadow: 0 0 0 0.125rem color-mix(in srgb, var(--gold) 45%, transparent);
+}
+
+.bench-next {
+  font-size: 0.78125rem;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* THE QUIET SHELF: the school's secrets sit under their own quiet
+   plaque — a shelf, not more rungs. */
+.secret-shelf-head {
+  margin: 0.625rem 0 0.125rem;
+  font-size: 0.71875rem;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* THE LESSON at plate scale: a sliver of progress along the well's
+   foot — visible at a glance, still no numerals. */
+.plate-lesson {
+  position: absolute;
+  left: 0.25rem;
+  right: 0.25rem;
+  bottom: 0.125rem;
+  height: 0.1875rem;
+  background: rgba(12, 9, 20, 0.65);
+  overflow: hidden;
+  pointer-events: none;
+}
+.plate-lesson-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--arcane-deep), var(--arcane));
+}
+
+/* A dormant plate sleeps like the hotbar seat does — same language. */
+.tech-plate-btn.dormant .tech-plate-well img,
+.load-slot.dormant .load-well img {
+  filter: grayscale(0.85) brightness(0.55);
+  opacity: 0.7;
+}
+
+/* THE LESSON LAW's meter: the courtship told plainly — the bar shows
+   the shape of it, the label says the number (user mandate: the
+   player must know how close the art is to staying). */
+.lesson-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.lesson-meter {
+  flex: 1;
+  height: 0.5625rem;
+  border: 0.09375rem solid var(--line);
+  background: rgba(12, 9, 20, 0.55);
+  overflow: hidden;
+}
+.lesson-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--arcane-deep), var(--arcane));
+  transition: width 0.6s ease;
+}
+.lesson-label {
+  flex: none;
+  font-size: var(--t-whisper);
+  letter-spacing: 0.03em;
+  color: var(--arcane);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+}
+
+/* THE SECOND HAND: the two seat buttons stand shoulder to shoulder —
+   equal citizens, like the seats they fill. */
+.bench-seats {
+  display: flex;
+  gap: 0.5rem;
+}
+.bench-seats > * {
+  flex: 1;
+}
+
+.bench-teach {
+  margin-top: auto;
+  padding-top: 0.625rem;
+  border-top: 0.09375rem solid var(--line);
+  font-size: 0.78125rem;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.bench-empty {
+  font-style: italic;
+  color: var(--parchment-dim);
+}
+

@@ -1,0 +1,483 @@
+/* ---------------------------------- screen architecture
+   Every major menu is a .ui-screen: a grand centered surface wearing
+   the chamfered frame (painted in ui/chrome.ts, 9-sliced here) with
+   one hard silhouette shadow. Each screen sizes and lays out its own
+   body — bespoke rooms off one hallway. */
+
+.panel,
+.ui-screen {
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--frame-border) solid transparent;
+  border-image-source: var(--ui-frame);
+  border-image-slice: var(--frame-slice);
+  border-image-width: var(--frame-border);
+  border-image-repeat: round;
+  border-radius: 0;
+  filter: drop-shadow(0.5625rem 0.625rem 0 var(--shadow));
+  color: var(--parchment);
+  padding: 0.375rem 1.5rem 1.375rem;
+}
+
+/* The tray wears the lighter iron frame — quick furniture. */
+.ui-tray {
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  border-image-repeat: round;
+  border-radius: 0;
+  filter: drop-shadow(0.4375rem 0.5rem 0 var(--shadow));
+  color: var(--parchment);
+}
+
+.ui-screen {
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  transform: translate(-50%, -50%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  font-size: var(--t-body);
+}
+
+h1,
+h3 {
+  font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: 0.21875rem;
+  text-transform: uppercase;
+  font-size: var(--t-display);
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+}
+
+/* ---- the shared screen anatomy (ui/panel.ts dresses every menu) ---- */
+
+/* THE BANNER: every screen's name is stamped on a painted brass-bound
+   plaque that runs wider than the body — it belongs to the case, not
+   to the content flow. The crest medallion rides its left end,
+   breaking the frame's silhouette. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem 0.5rem 0.625rem;
+  margin: 0 -0.625rem 0.375rem;
+  position: relative;
+  flex: none;
+  border: 0.6875rem solid transparent;
+  border-image-source: var(--ui-banner);
+  border-image-slice: 55 fill;
+  border-image-width: 0.6875rem;
+  border-image-repeat: round;
+  filter: drop-shadow(0.1875rem 0.25rem 0 rgba(12, 8, 4, 0.4));
+}
+
+/* The accent inlay: the screen's color, set into the banner's bottom
+   brass rail like enamel. */
+.panel-head::after {
+  content: '';
+  position: absolute;
+  left: 5.375rem;
+  bottom: -0.5625rem;
+  width: 11.875rem;
+  height: 0.25rem;
+  background: var(--screen-accent);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.3125rem) 100%, 0.3125rem 100%);
+}
+
+.panel-head h3 {
+  flex: 1;
+  text-align: left;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The crest: the screen's emblem set in the painted brass medallion,
+   worn large and half off the banner — the wax seal on the case. */
+.panel-icon {
+  flex: none;
+  width: 6rem;
+  height: 6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ui-crest) center / contain no-repeat;
+  border: none;
+  margin: -1.375rem 0 -1.625rem -1rem;
+  filter: drop-shadow(0.1875rem 0.25rem 0 rgba(12, 8, 4, 0.45));
+  z-index: 1;
+}
+
+/* A screen with a face (the Workshop) tints its ribbon. */
+.ui-screen {
+  --screen-accent: var(--gold);
+}
+
+.panel-icon img {
+  width: 2.875rem;
+  height: 2.875rem;
+}
+
+.panel-hint {
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  margin: 0.75rem 0.125rem 0.75rem 5.625rem;
+  text-align: left;
+  flex: none;
+}
+
+/* The close chip: an iron key, a real target. */
+.panel-close {
+  flex: none;
+  width: 2.875rem;
+  height: 2.875rem;
+  padding: 0;
+  line-height: 1;
+  font-size: 1.1875rem;
+  font-weight: 700;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  background: none;
+  border: 0.625rem solid transparent;
+  border-image: var(--btn-iron) 50 fill / 0.625rem;
+  cursor: pointer;
+}
+
+.panel-close:hover {
+  color: var(--gold-hot);
+  filter: brightness(1.2);
+}
+
+/* ---- THE CUT PLATE — the interface's flat stock ----
+   Cards and rows are chamfered PLATES cut from leather-faced stock:
+   the 45° corner cut plus one lit top facet and one shadowed bottom
+   facet, so every plate reads as a physical piece, not a colored
+   rectangle. Buttons and sockets don't appear here — they wear
+   painted skins from the kit instead. */
+
+.skill-card,
+.ledger-row,
+.mat-row,
+.work-fact,
+.work-result,
+.stat-plaque,
+.shelf-card,
+.loot-row,
+.rift-row,
+.rift-power,
+.skills-total,
+.price-tag,
+.pack-foot,
+.make-empty,
+.card-tier,
+.headline-fact,
+#bank-detail {
+  --cut: 0.5625rem;
+  border-radius: 0;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+  /* The stock's facets: lit top edge, shadowed bottom edge. */
+  box-shadow:
+    inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
+    inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.4);
+}
+
+.price-tag,
+.card-tier {
+  --cut: 0.375rem;
+}
+
+.skills-total,
+#bank-detail {
+  --cut: 0.8125rem;
+}
+
+/* A section headline inside a screen: serif capitals on a ruled line. */
+.screen-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0 0.625rem;
+  flex: none;
+}
+
+.screen-section span {
+  font-family: var(--serif);
+  font-size: var(--t-body);
+  font-weight: 700;
+  letter-spacing: 0.15625rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+}
+
+.screen-section::after {
+  content: '';
+  flex: 1;
+  height: 0.125rem;
+  background: var(--line);
+}
+
+.screen-section::before {
+  content: '';
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--gold);
+  transform: rotate(45deg);
+  border: 0.09375rem solid rgba(10, 6, 16, 0.85);
+}
+
+/* ---- the shared action vocabulary (ui/panel.ts helpers) ---- */
+
+/* The action button IS a brass ingot — painted face, baked chamfer,
+   its hard shadow thrown from the true silhouette. */
+.act-btn {
+  background: none;
+  border: 0.6875rem solid transparent;
+  border-image: var(--btn-brass) 55 fill / 0.6875rem;
+  color: var(--brass-ink);
+  font-weight: 800;
+  font-size: 1.09375rem;
+  letter-spacing: 0.03125rem;
+  padding: 0.1875rem 1rem;
+  min-height: 3rem;
+  cursor: pointer;
+  text-shadow: 0 0.0625rem 0 rgba(255, 235, 180, 0.35);
+  filter: drop-shadow(0.1875rem 0.25rem 0 var(--shadow));
+}
+
+.act-btn:hover {
+  filter: brightness(1.1) drop-shadow(0.1875rem 0.25rem 0 var(--shadow));
+}
+
+.act-btn:active {
+  transform: translate(0.125rem, 0.125rem);
+  filter: drop-shadow(0.0625rem 0.125rem 0 var(--shadow));
+}
+
+.act-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Minor actions press iron keys, not brass. */
+.act-btn.minor {
+  border-image: var(--btn-iron) 55 fill / 0.6875rem;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+.act-btn.minor:hover {
+  color: var(--gold-hot);
+  filter: brightness(1.18) drop-shadow(0.1875rem 0.25rem 0 var(--shadow));
+}
+
+/* The portrait well: a painted recessed socket. */
+.icon-tile {
+  flex: none;
+  width: 5.5rem;
+  height: 5.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0.4375rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+  border-radius: 0;
+  position: relative;
+}
+
+.icon-tile img {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+}
+
+.icon-tile.sm {
+  width: 4.125rem;
+  height: 4.125rem;
+}
+
+.need-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3125rem 0.6875rem 0.3125rem 0.3125rem;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-shadow: var(--punch-small);
+}
+
+.need-chip img {
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
+.need-chip.ok {
+  color: var(--green);
+  border-color: rgba(125, 196, 106, 0.45);
+}
+
+.need-chip.short {
+  color: var(--red-soft);
+  border-color: rgba(217, 87, 99, 0.55);
+}
+
+/* The gauge: fill runs inside a painted iron channel. */
+.ui-meter {
+  height: 1.25rem;
+  background: none;
+  border: 0.3125rem solid transparent;
+  border-image: var(--ui-gauge) 25 fill / 0.3125rem;
+  border-radius: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.ui-meter-fill {
+  height: 100%;
+  background: var(--gold);
+  border-right: 0.125rem solid var(--gold-hot);
+}
+
+/* Engraved tick marks every tenth — flat hard stops, the gauge read. */
+.ui-meter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(10% - 0.125rem),
+    rgba(14, 10, 5, 0.5) calc(10% - 0.125rem),
+    rgba(14, 10, 5, 0.5) 10%
+  );
+}
+
+.lvl-badge {
+  display: inline-block;
+  font-size: var(--t-label);
+  font-weight: 800;
+  letter-spacing: 0.01875rem;
+  padding: 0.25rem 0.6875rem;
+  border-radius: 0.25rem;
+  background: var(--raise);
+  color: var(--parchment-dim);
+  border: 0.09375rem solid var(--line);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+}
+
+.lvl-badge.unmet {
+  color: var(--red-soft);
+  border-color: rgba(217, 87, 99, 0.55);
+}
+
+/* A stat plaque: one number told big over a plain label. */
+.stat-plaque {
+  padding: 0.625rem 0.75rem 0.5625rem;
+  background: var(--raise);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.375rem;
+  text-align: center;
+}
+
+.stat-plaque-value {
+  font-family: var(--serif);
+  font-size: var(--t-title);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+  white-space: nowrap;
+}
+
+.stat-plaque-label {
+  margin-top: 0.1875rem;
+  font-size: 0.78125rem;
+  font-weight: 700;
+  letter-spacing: 0.0375rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+}
+
+.lock-note {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--red-soft);
+  text-shadow: var(--punch-small);
+}
+
+/* ---- sort chips: the ordering controls every ledger shares ---- */
+
+.sort-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin: 0 0 0.625rem;
+}
+
+.sort-label {
+  font-size: var(--t-whisper);
+  font-weight: 800;
+  letter-spacing: 0.09375rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  margin-right: 0.125rem;
+}
+
+/* Sort chips are small iron keys; the active one is pressed brass. */
+.sort-chip {
+  padding: 0 0.625rem;
+  min-height: 2.375rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.0375rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  background: none;
+  border: 0.5625rem solid transparent;
+  border-image: var(--btn-iron) 45 fill / 0.5625rem;
+  cursor: pointer;
+  filter: drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+
+.sort-chip:hover {
+  color: var(--parchment);
+  filter: brightness(1.15) drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+
+.sort-chip.active {
+  color: var(--brass-ink);
+  text-shadow: 0 0.0625rem 0 rgba(255, 235, 180, 0.35);
+  border-image: var(--btn-brass) 45 fill / 0.5625rem;
+}
+

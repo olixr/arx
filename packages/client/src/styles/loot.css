@@ -1,0 +1,126 @@
+/* ==================================================================
+   ON THE GROUND — the loot tray: a quick grab-list docked beside the
+   action, never a screen. Rarity paints each row's leading edge.
+   LAYOUT LIVES ON #loot-panel: .ui-tray is shared painted chrome, and
+   loading it with docking/width/flex once hijacked every other tray
+   (the level-up card stacked into a misaligned column).
+   ================================================================== */
+
+#loot-panel {
+  position: absolute;
+  right: 0.875rem;
+  bottom: var(--lane-loot);
+  width: 29.375rem;
+  max-height: 74vh;
+  pointer-events: auto;
+  padding: 0.5rem 1rem 0.875rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The tray wears lighter chrome than a screen — quick in, quick out. */
+.ui-tray .panel-head {
+  gap: 0.625rem;
+  padding: 0.125rem 0 0.5rem;
+}
+
+.ui-tray .panel-head h3 {
+  font-size: 1.25rem;
+  letter-spacing: 0.125rem;
+}
+
+.ui-tray .panel-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: -0.625rem 0 -0.75rem -0.25rem;
+}
+
+.ui-tray .panel-icon img {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.ui-tray .panel-close {
+  width: 2.375rem;
+  height: 2.375rem;
+  font-size: var(--t-body);
+}
+
+.ui-tray .panel-hint {
+  font-size: 0.8125rem;
+  margin: 0.125rem 0 0.5rem;
+}
+
+.ui-tray .row-list {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  padding-right: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.loot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--raise);
+  border: 0.09375rem solid var(--line);
+  border-left: 0.25rem solid var(--loot-tint, var(--line));
+  border-radius: 0.4375rem;
+  padding: 0.5625rem 0.75rem;
+  text-shadow: var(--punch-small);
+  flex: none;
+}
+
+.loot-row.loot-all {
+  background: var(--sunk);
+  border-left-color: var(--gold);
+}
+
+.loot-mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+
+.loot-name {
+  font-size: 1.03125rem;
+  font-weight: 700;
+  color: var(--parchment);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loot-sub {
+  font-size: 0.8125rem;
+  color: var(--parchment-dim);
+}
+
+.loot-actions {
+  flex: none;
+}
+
+.loot-actions .act-btn {
+  padding: 0.625rem 1rem;
+  font-size: 0.9375rem;
+}
+
+/* Legacy row list (still used by small trays). */
+.row-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tile-swatch {
+  border-radius: 0.25rem;
+  border: 0.09375rem solid rgba(10, 6, 16, 0.6);
+  box-shadow: 0.125rem 0.125rem 0 rgba(10, 6, 16, 0.5);
+}
+

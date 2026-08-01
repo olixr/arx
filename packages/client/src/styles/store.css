@@ -1,0 +1,76 @@
+/* ==================================================================
+   THE STORE — goods shelved in a grid with honest price tags; the
+   pack stands beside the counter to sell from.
+   ================================================================== */
+
+.screen-shop {
+  width: min(43.75rem, 48vw);
+  height: min(52.5rem, 88vh);
+}
+
+#shop-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  padding-right: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5625rem;
+}
+
+.shelf-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  background: var(--raise);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.4375rem;
+  padding: 0.6875rem 0.875rem;
+  text-shadow: var(--punch-small);
+  flex: none;
+}
+
+.shelf-mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  align-items: flex-start;
+}
+
+.shelf-name {
+  font-size: 1.09375rem;
+  font-weight: 700;
+  color: var(--parchment);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.price-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.6875rem;
+  font-size: 0.96875rem;
+  font-weight: 800;
+  color: var(--gold-bright);
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.25rem;
+}
+
+.price-tag img {
+  width: 1.1875rem;
+  height: 1.1875rem;
+}
+
+.shelf-actions {
+  flex: none;
+  display: flex;
+  gap: 0.5rem;
+}
+

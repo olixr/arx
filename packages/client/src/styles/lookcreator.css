@@ -1,0 +1,397 @@
+/* ---- character creation (the hero's mirror) ---- */
+#look-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 6, 16, 0.66);
+}
+#look-panel.hidden {
+  display: none;
+}
+#look-card {
+  width: min(58.75rem, 96vw);
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--frame-border) solid transparent;
+  border-image-source: var(--ui-frame);
+  border-image-slice: var(--frame-slice);
+  border-image-width: var(--frame-border);
+  border-image-repeat: round;
+  filter: drop-shadow(0.625rem 0.75rem 0 var(--shadow));
+  color: var(--parchment);
+  padding: 0 0.875rem 0.75rem;
+}
+
+/* The banner: brass-bound leather — and the crest wears YOUR face. */
+.look-head {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.375rem 1rem 0.375rem 0.5rem;
+  margin: 0 -0.625rem 0.5rem;
+  flex: none;
+  border: 0.6875rem solid transparent;
+  border-image-source: var(--ui-banner);
+  border-image-slice: 55 fill;
+  border-image-width: 0.6875rem;
+  border-image-repeat: round;
+  filter: drop-shadow(0.1875rem 0.25rem 0 rgba(12, 8, 4, 0.4));
+}
+.look-crest {
+  flex: none;
+  background: var(--ui-crest) center / contain no-repeat;
+  margin: -0.875rem 0 -1.125rem -0.25rem;
+  filter: drop-shadow(0.1875rem 0.25rem 0 rgba(12, 8, 4, 0.45));
+}
+.look-head h3 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--t-title);
+  text-shadow: var(--punch);
+}
+.look-sub {
+  margin-left: auto;
+  font-style: italic;
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+#look-body {
+  display: flex;
+  gap: 0.875rem;
+  min-height: 0;
+  flex: 1;
+}
+
+/* The stage: a sunken velvet well in an iron tray — drag to turn. */
+#look-stage {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#look-preview {
+  display: block;
+  background: radial-gradient(ellipse at 50% 30%, #453a54 0%, #322842 55%, #221a30 100%);
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  border-image-repeat: round;
+  cursor: grab;
+  touch-action: none;
+}
+#look-preview:active {
+  cursor: grabbing;
+}
+
+/* The compass studs: eight facings and the turntable latch. */
+#look-turn {
+  display: flex;
+  gap: 0.3125rem;
+  margin: 0.5rem 0 0;
+}
+.turn-stud {
+  width: 2.125rem;
+  height: 2.125rem;
+  padding: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  background: none;
+  border: 0.5rem solid transparent;
+  border-image: var(--btn-iron) 45 fill / 0.5rem;
+  cursor: pointer;
+  filter: drop-shadow(0.125rem 0.125rem 0 var(--shadow));
+}
+.turn-stud:hover,
+.turn-stud.nav-focus {
+  color: var(--parchment);
+  filter: brightness(1.15) drop-shadow(0.125rem 0.125rem 0 var(--shadow));
+}
+.turn-stud.active {
+  color: var(--brass-ink);
+  text-shadow: 0 0.0625rem 0 rgba(255, 235, 180, 0.35);
+  border-image: var(--btn-brass) 45 fill / 0.5rem;
+}
+
+/* The mirror reads your choices back — one living line of identity. */
+.look-summary {
+  margin: 0.5rem 0 0;
+  font-family: var(--serif);
+  font-size: 0.875rem;
+  color: #e2c07a;
+  text-shadow: var(--punch-small);
+  max-width: 20rem;
+  text-align: center;
+  min-height: 1.125rem;
+}
+
+.look-note {
+  margin: 0.3125rem 0 0;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: #b89b6a;
+  text-shadow: var(--punch-small);
+  max-width: 19.375rem;
+  text-align: center;
+}
+
+#look-controls {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#look-tabs {
+  display: flex;
+  gap: 0.375rem;
+  margin: 0 0 0.5rem;
+  flex-wrap: wrap;
+  flex: none;
+}
+.look-tab {
+  padding: 0 0.75rem;
+  min-height: 2.375rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.0375rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  background: none;
+  border: 0.5625rem solid transparent;
+  border-image: var(--btn-iron) 45 fill / 0.5625rem;
+  cursor: pointer;
+  filter: drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+.look-tab:hover,
+.look-tab.nav-focus {
+  color: var(--parchment);
+  filter: brightness(1.15) drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+.look-tab.active {
+  color: var(--brass-ink);
+  text-shadow: 0 0.0625rem 0 rgba(255, 235, 180, 0.35);
+  border-image: var(--btn-brass) 45 fill / 0.5625rem;
+}
+#look-tabpanel {
+  overflow-y: auto;
+  min-height: 21.25rem;
+  max-height: 56vh;
+  padding: 0.125rem 0.25rem 0.375rem 0;
+}
+
+.look-row {
+  margin: 0.25rem 0 0.75rem;
+}
+.look-label {
+  display: block;
+  font-family: var(--serif);
+  font-size: 0.96875rem;
+  color: #e2c07a;
+  text-shadow: var(--punch-small);
+  margin: 0 0 0.375rem;
+}
+
+/* Option tiles: live-rendered busts set into socket wells — the true
+   head art, not an icon of it. Selection lines the well in brass. */
+.look-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4375rem;
+}
+.look-tile {
+  width: 5.25rem;
+  padding: 0.125rem 0.125rem 0.3125rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.0625rem;
+  background: none;
+  border: 0.4375rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+  cursor: pointer;
+  color: var(--parchment-dim);
+}
+.look-tile canvas {
+  display: block;
+}
+.tile-name {
+  font-size: 0.65625rem;
+  font-weight: 700;
+  letter-spacing: 0.025rem;
+  text-transform: uppercase;
+  text-shadow: var(--punch-small);
+  max-width: 4.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.look-tile:hover {
+  filter: brightness(1.12);
+}
+.look-tile.selected,
+.look-tile:focus-visible,
+.look-tile.nav-focus {
+  outline: none;
+  color: var(--gold-bright);
+  box-shadow:
+    inset 0 0 0 0.15625rem var(--gold-bright),
+    inset 0 0 12.5rem rgba(232, 182, 76, 0.14);
+}
+
+/* Dye swatches: enamel chips seated in the same wells. */
+.look-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.look-swatch {
+  position: relative;
+  width: 2.375rem;
+  height: 2.375rem;
+  padding: 0;
+  background: none;
+  border: 0.4375rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+  cursor: pointer;
+}
+.look-swatch i {
+  position: absolute;
+  inset: 0.375rem;
+  clip-path: polygon(
+    0.1875rem 0,
+    calc(100% - 0.1875rem) 0,
+    100% 0.1875rem,
+    100% calc(100% - 0.1875rem),
+    calc(100% - 0.1875rem) 100%,
+    0.1875rem 100%,
+    0 calc(100% - 0.1875rem),
+    0 0.1875rem
+  );
+}
+.look-swatch:hover {
+  filter: brightness(1.15);
+}
+.look-swatch.selected,
+.look-swatch:focus-visible,
+.look-swatch.nav-focus {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 0.15625rem var(--gold-bright),
+    inset 0 0 12.5rem rgba(232, 182, 76, 0.14);
+}
+
+/* Heritage: parchment plaques, each wearing a live bust of the folk. */
+.look-blurb {
+  margin: 0.125rem 0 0.625rem;
+  font-size: var(--t-label);
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+.heritage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.625rem;
+}
+.heritage-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1875rem;
+  padding: 0.5rem 0.5rem 0.625rem;
+  text-align: center;
+  background: none;
+  border: 0.5625rem solid transparent;
+  border-image: var(--ui-sheet) 45 fill / 0.5625rem;
+  color: var(--sheet-ink);
+  cursor: pointer;
+  filter: drop-shadow(0.1875rem 0.25rem 0 var(--shadow));
+}
+.heritage-card:hover,
+.heritage-card.nav-focus {
+  filter: brightness(1.06) drop-shadow(0.1875rem 0.25rem 0 var(--shadow));
+}
+.heritage-card canvas {
+  display: block;
+}
+.heritage-name {
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+.heritage-blurb {
+  font-size: 0.71875rem;
+  font-style: italic;
+  line-height: 1.25;
+}
+
+.look-actions {
+  display: flex;
+  gap: 0.625rem;
+  justify-content: space-between;
+  margin-top: 0.625rem;
+  flex: none;
+}
+.look-dice {
+  font-family: var(--serif);
+  font-size: var(--t-body);
+  padding: 0.5rem 1rem;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  background: none;
+  border: 0.6875rem solid transparent;
+  border-image: var(--btn-iron) 55 fill / 0.6875rem;
+  cursor: pointer;
+  filter: drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+.look-dice:hover,
+.look-dice.nav-focus {
+  color: var(--parchment);
+  filter: brightness(1.15) drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+#look-confirm {
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  padding: 0.5rem 1.375rem;
+  color: var(--brass-ink);
+  text-shadow: 0 0.0625rem 0 rgba(255, 235, 180, 0.35);
+  background: none;
+  border: 0.6875rem solid transparent;
+  border-image: var(--btn-brass) 55 fill / 0.6875rem;
+  cursor: pointer;
+  filter: drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+#look-confirm:hover,
+#look-confirm.nav-focus {
+  filter: brightness(1.12) drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+
+/* Narrow screens: the stage stacks over the option shelf. */
+@media (max-width: 900px) {
+  #look-body {
+    flex-direction: column;
+    align-items: center;
+  }
+  #look-card {
+    overflow-y: auto;
+  }
+  #look-tabpanel {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+

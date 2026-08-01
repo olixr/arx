@@ -1,0 +1,289 @@
+/* ==================================================================
+   Gamepad-first UI layer: glyph language, focus ring, action strip,
+   tooltip, interact prompt, drag & drop. The HUD speaks the player's
+   device: body.pad-mode swaps every shortcut badge from key caps to
+   controller glyphs.
+   ================================================================== */
+
+/* ---- glyph chips: the one button language everywhere ---- */
+
+.pad-glyph,
+.kb-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.3125rem;
+  font-size: 0.78125rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--parchment);
+  background: var(--sunk);
+  border: 0.125rem solid var(--line-strong);
+  border-radius: 50%;
+  box-shadow: 0.09375rem 0.09375rem 0 var(--shadow);
+  text-shadow: 0.0625rem 0.0625rem 0 rgba(10, 6, 16, 0.9);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Face buttons carry their console color as a rim accent. */
+.pad-glyph.a { border-color: #5da865; color: #a8e0b0; }
+.pad-glyph.b { border-color: #c4553d; color: #f0b0a0; }
+.pad-glyph.x { border-color: #4d7fc4; color: #a8c8f0; }
+.pad-glyph.y { border-color: var(--gold); color: #f2d894; }
+
+/* Bumpers, triggers, start/select: wide angular chips, not circles. */
+.pad-glyph.lb,
+.pad-glyph.rb,
+.pad-glyph.lt,
+.pad-glyph.rt,
+.pad-glyph.start,
+.pad-glyph.select {
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
+  min-width: 1.875rem;
+  height: 1.25rem;
+}
+
+.pad-glyph.dup,
+.pad-glyph.ddown,
+.pad-glyph.dleft,
+.pad-glyph.dright {
+  border-radius: 0.25rem;
+  font-size: 0.71875rem;
+}
+
+/* Stick clicks: round like the sticks themselves. */
+.pad-glyph.l3,
+.pad-glyph.r3 {
+  font-size: 0.65625rem;
+}
+
+/* Key caps: square chips with the classic keyboard read. */
+.kb-glyph {
+  border-radius: 0.25rem;
+  background: var(--raise);
+  border-color: var(--line-strong);
+}
+
+.kb-glyph.small {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.6875rem;
+}
+
+/* Device swap: only one shortcut language is visible at a time. */
+body.pad-mode .kb-glyph { display: none; }
+body:not(.pad-mode) .pad-glyph { display: none; }
+/* Inside the action strip / prompt the caller picks the device's
+   glyphs itself (build mode shows kb chips too) — always show both. */
+#ui-action-strip .pad-glyph,
+#ui-action-strip .kb-glyph,
+#ui-interact-prompt .pad-glyph { display: inline-flex; }
+
+/* Mouse-language panel hints have no meaning on a pad — the action
+   strip teaches those verbs instead. */
+body.pad-mode .hint-inline { display: none; }
+
+/* ---- hotbar + dock badges ---- */
+
+/* The shortcut token: a small solid tab that overhangs the tile's
+   bottom-right corner — big enough to read at a glance, hanging off
+   the edge so it never covers the icon it belongs to. */
+.hotbar-key .kb-glyph,
+.dock-badge .kb-glyph {
+  min-width: 1.1875rem;
+  height: 1.1875rem;
+  padding: 0 0.25rem;
+  font-size: 0.71875rem;
+  font-weight: 800;
+  color: rgba(240, 228, 196, 0.95);
+  background: rgba(12, 9, 5, 0.92);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.3);
+  border-radius: 0.25rem;
+  box-shadow: 0 0.125rem 0.1875rem rgba(6, 4, 2, 0.5);
+}
+
+/* Pad glyphs keep their console-color language at the same weight. */
+.hotbar-key .pad-glyph,
+.dock-badge .pad-glyph {
+  min-width: 1.3125rem;
+  height: 1.3125rem;
+  font-size: 0.6875rem;
+  background: rgba(12, 9, 5, 0.92);
+  border-width: 0.09375rem;
+  box-shadow: 0 0.125rem 0.1875rem rgba(6, 4, 2, 0.5);
+}
+
+.dock-badge {
+  position: absolute;
+  right: -0.4375rem;
+  bottom: -0.4375rem;
+  pointer-events: none;
+}
+
+/* ---- focus ring: the pad cursor ---- */
+
+#ui-focus-ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  pointer-events: none;
+  border: 0.1875rem solid var(--gold-bright);
+  border-radius: 0.4375rem;
+  box-shadow:
+    0 0 0 0.125rem rgba(10, 6, 16, 0.65),
+    inset 0 0 0 0.09375rem rgba(10, 6, 16, 0.5);
+  transition:
+    transform 0.11s cubic-bezier(0.3, 1.2, 0.5, 1),
+    width 0.11s ease-out,
+    height 0.11s ease-out;
+  animation: focus-breathe 1.6s ease-in-out infinite;
+}
+
+#ui-focus-ring.carrying {
+  border-color: #a8c8f0;
+  box-shadow:
+    0 0 0 0.125rem rgba(10, 6, 16, 0.65),
+    0 0 1rem rgba(120, 160, 230, 0.5);
+}
+
+@keyframes focus-breathe {
+  0%, 100% { box-shadow: 0 0 0 0.125rem rgba(10, 6, 16, 0.65), 0 0 0.625rem rgba(232, 182, 76, 0.28); }
+  50% { box-shadow: 0 0 0 0.125rem rgba(10, 6, 16, 0.65), 0 0 1.125rem rgba(232, 182, 76, 0.5); }
+}
+
+/* ---- contextual action strip ---- */
+
+#ui-action-strip {
+  position: fixed;
+  left: 50%;
+  bottom: var(--lane-strip);
+  transform: translateX(-50%);
+  z-index: 55;
+  display: flex;
+  gap: 1.125rem;
+  padding: 0.25rem 0.75rem;
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  border-radius: 0;
+  filter: drop-shadow(0.25rem 0.3125rem 0 var(--shadow));
+  pointer-events: none;
+}
+
+#ui-action-strip .strip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+/* ---- shared tooltip ---- */
+
+#ui-tooltip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 70;
+  max-width: 21.875rem;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  border-radius: 0;
+  filter: drop-shadow(0.25rem 0.3125rem 0 var(--shadow));
+  pointer-events: none;
+}
+
+#ui-tooltip .tip-name {
+  font-family: var(--serif);
+  font-size: var(--t-lead);
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 0.03125rem;
+  text-shadow: var(--punch-small);
+}
+
+#ui-tooltip .tip-sub {
+  font-size: 0.875rem;
+  color: var(--parchment-dim);
+  margin-top: 0.25rem;
+  text-shadow: var(--punch-small);
+}
+
+/* ---- world interact prompt ---- */
+
+/* The quiet console over the world: a small smoked-glass pill — key
+   cap + a short verb — never the case furniture. Park beside the same
+   target a few seconds and the label folds away (.settled), leaving
+   only a dim key cap so the world stays visible while you stand. */
+#ui-interact-prompt {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 0.125rem 0.5625rem 0.125rem 0.1875rem;
+  font-size: var(--t-whisper);
+  font-weight: 700;
+  letter-spacing: 0.0125rem;
+  white-space: nowrap;
+  color: rgba(240, 228, 196, 0.95);
+  text-shadow: 0.0625rem 0.0625rem 0 rgba(6, 4, 2, 0.85);
+  background: rgba(12, 9, 5, 0.68);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.28);
+  border-radius: 0.8125rem;
+  box-shadow: 0 0.125rem 0.3125rem rgba(6, 4, 2, 0.45);
+  pointer-events: none;
+  transition: padding 0.35s ease, opacity 0.4s ease;
+  animation: prompt-in 0.16s ease-out;
+}
+
+@keyframes prompt-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+#ui-interact-prompt .kb-glyph,
+#ui-interact-prompt .pad-glyph {
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.25rem;
+  font-size: 0.65625rem;
+  border-width: 0.09375rem;
+  box-shadow: none;
+}
+
+#ui-interact-prompt .prompt-label {
+  max-width: 13.75rem;
+  margin-left: 0.375rem;
+  overflow: hidden;
+  transition: max-width 0.35s ease, opacity 0.25s ease, margin-left 0.35s ease;
+}
+
+#ui-interact-prompt.settled {
+  padding: 0.125rem 0.1875rem;
+  opacity: 0.55;
+}
+
+#ui-interact-prompt.settled .prompt-label {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+}
+

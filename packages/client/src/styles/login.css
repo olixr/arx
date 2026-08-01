@@ -1,0 +1,98 @@
+/* ---------------------------------- login */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #232c1c 0%, var(--ink) 85%);
+  z-index: 20;
+}
+
+.login-panel {
+  text-align: center;
+  min-width: 25rem;
+  padding: 2rem 2.5rem;
+}
+
+.login-panel h1 {
+  font-size: 3rem;
+  letter-spacing: 0.1875rem;
+  margin-bottom: 0.125rem;
+  text-shadow: 0.25rem 0.25rem 0 rgba(10, 6, 16, 0.85);
+}
+
+.login-panel .tagline {
+  margin: 0 0 1.5rem;
+  color: var(--parchment-dim);
+  font-style: italic;
+  font-size: 0.9375rem;
+}
+
+.login-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.login-panel input,
+#chat-input {
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+  color: var(--parchment);
+  padding: 0.75rem 0.875rem;
+  font-size: var(--t-body);
+  outline: none;
+}
+
+.login-panel input:focus,
+#chat-input:focus {
+  border-color: var(--gold);
+}
+
+.login-panel button[type='submit'] {
+  background: var(--gold);
+  border: 0.125rem solid #10091c;
+  border-radius: 0.3125rem;
+  box-shadow: 0.25rem 0.25rem 0 var(--shadow);
+  color: var(--brass-ink);
+  font-size: var(--t-lead);
+  font-weight: bold;
+  letter-spacing: 0.0625rem;
+  padding: 0.8125rem;
+  cursor: pointer;
+}
+
+.login-panel button[type='submit']:hover {
+  background: var(--gold-bright);
+}
+
+.login-panel button[type='submit']:active {
+  transform: translate(0.125rem, 0.125rem);
+  box-shadow: 0.125rem 0.125rem 0 var(--shadow);
+}
+
+.link-button {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--parchment-dim) !important;
+  font-size: 0.84375rem !important;
+  font-weight: normal !important;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.125rem !important;
+}
+
+.error {
+  margin-top: 0.875rem;
+  color: var(--red-soft);
+}
+
+.status {
+  margin-top: 0.875rem;
+  color: var(--parchment-dim);
+}
+

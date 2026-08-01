@@ -1,0 +1,250 @@
+/* THE NAMING — the gentling's one modal breath (ui/petNaming.ts). */
+#petname-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 58;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 14, 0.45);
+}
+
+.petname-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 1.125rem 1.75rem 1rem;
+  max-width: min(26.25rem, 92vw);
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  animation: lvl-rays-in 260ms ease-out both;
+}
+
+.petname-kicker {
+  color: #c4b590;
+  font-size: 0.6875rem;
+  letter-spacing: 0.3125rem;
+}
+
+.petname-lede {
+  color: #d8d2c4;
+  font-size: 0.8125rem;
+}
+
+.petname-input {
+  width: 13.75rem;
+  padding: 0.5rem 0.625rem;
+  text-align: center;
+  font-size: 1.0625rem;
+  color: #f0e8d8;
+  background: rgba(0, 0, 0, 0.35);
+  border: 0.0625rem solid rgba(196, 181, 144, 0.5);
+  border-radius: 0.1875rem;
+  outline: none;
+}
+
+.petname-input:focus {
+  border-color: #c4b590;
+}
+
+.petname-hint {
+  color: rgba(216, 210, 196, 0.6);
+  font-size: 0.6875rem;
+}
+
+.petname-acts {
+  display: flex;
+  gap: 0.625rem;
+  margin-top: 0.25rem;
+}
+
+.petname-confirm:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* THE STALLS — three stall cards (ui/stationPanels.ts renderStable). */
+#stable-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.375rem 0.125rem;
+  max-height: 26.25rem;
+  overflow-y: auto;
+}
+
+.stall-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  background: rgba(0, 0, 0, 0.22);
+  border: 0.0625rem solid rgba(196, 181, 144, 0.28);
+  border-radius: 0.25rem;
+}
+
+.stall-empty {
+  align-items: center;
+  justify-content: center;
+  min-height: 4rem;
+  border-style: dashed;
+}
+
+.stall-empty-note {
+  color: rgba(216, 210, 196, 0.55);
+  font-size: var(--t-whisper);
+}
+
+.stall-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stall-portrait {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.25rem;
+  /* A straw-warm well: dark species must still read as bodies. */
+  background: linear-gradient(180deg, rgba(201, 166, 75, 0.28), rgba(122, 94, 52, 0.34));
+  border: 0.0625rem solid rgba(196, 181, 144, 0.35);
+  image-rendering: auto;
+}
+
+.stall-name {
+  color: #f0cf8a;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.stall-kind {
+  color: #d8d2c4;
+  font-size: var(--t-whisper);
+}
+
+.stall-state {
+  font-size: 0.6875rem;
+  color: rgba(216, 210, 196, 0.7);
+}
+
+.stall-state-heel,
+.stall-state-trailing {
+  color: #9fd39a;
+}
+
+.stall-state-downed {
+  color: #e08a7a;
+}
+
+.stall-state-resting {
+  color: #8fb8d9;
+}
+
+.stall-hp {
+  height: 0.3125rem;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 0.125rem;
+  overflow: hidden;
+}
+
+.stall-hp-fill {
+  height: 100%;
+  background: #7fae5c;
+}
+
+.stall-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* THE COMPANION CHIP — the heel friend beside the buff chips. */
+.pet-chip {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.1875rem 0.5rem 0.1875rem 0.25rem;
+  min-width: 6rem;
+  border-color: rgba(159, 211, 154, 0.55);
+  cursor: pointer;
+}
+
+.pet-chip-face {
+  flex: 0 0 auto;
+}
+
+.pet-chip-face {
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 0.1875rem;
+  background: linear-gradient(180deg, rgba(201, 166, 75, 0.28), rgba(122, 94, 52, 0.34));
+}
+
+.pet-chip-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.pet-chip-name {
+  font-size: 0.625rem;
+  color: #cfe8c9;
+  max-width: 6.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pet-chip-hp {
+  height: 0.1875rem;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 0.125rem;
+  overflow: hidden;
+}
+
+.pet-chip-hp-fill {
+  height: 100%;
+  background: #7fae5c;
+}
+
+.pet-chip.pet-downed {
+  border-color: rgba(224, 138, 122, 0.7);
+}
+
+.pet-chip.pet-downed .pet-chip-name {
+  color: #e0a396;
+}
+
+.pet-chip.pet-resting {
+  border-color: rgba(143, 184, 217, 0.6);
+}
+
+.pet-chip.pet-resting .pet-chip-name {
+  color: #a9c6de;
+}
+
+/* THE QUIET HEEL: the bond moment reopened — a warm, slow breath on
+   the chip's edge asks for the treat without shouting over play. */
+.pet-chip.pet-bond {
+  animation: pet-bond-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes pet-bond-breathe {
+  0%,
+  100% {
+    border-color: rgba(159, 211, 154, 0.55);
+    box-shadow: none;
+  }
+  50% {
+    border-color: rgba(214, 196, 118, 0.9);
+    box-shadow: 0 0 0.4375rem rgba(214, 196, 118, 0.4);
+  }
+}
+

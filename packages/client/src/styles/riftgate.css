@@ -1,0 +1,118 @@
+/* ==================================================================
+   THE RIFTGATE — the gate's question: which key turns? Each row is a
+   dungeon read pure from a key's roll; its tier paints the leading
+   edge and the POWER plaque leads, because "am I strong enough" is
+   the question you stand at the gate asking.
+   ================================================================== */
+
+.screen-riftgate {
+  width: min(42.5rem, 64vw);
+}
+
+#riftgate-list {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  padding: 0.125rem 0.25rem 0.125rem 0.125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+/* A whole row is one brass-touchable choice — states are brightness,
+   never background swaps (the painted-kit law). */
+.rift-row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  background: var(--raise);
+  border: 0.09375rem solid var(--line);
+  border-left: 0.25rem solid var(--rift-tint, var(--line));
+  border-radius: 0.4375rem;
+  padding: 0.625rem 0.875rem;
+  text-shadow: var(--punch-small);
+  cursor: pointer;
+  flex: none;
+}
+
+.rift-row:hover {
+  filter: brightness(1.12);
+}
+
+.rift-mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+
+.rift-name {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--parchment);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rift-sub {
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+  text-transform: capitalize;
+}
+
+/* The sigil is a minted code, not a word — set like an engraving. */
+.rift-sigil {
+  font-weight: 800;
+  letter-spacing: 0.09375rem;
+  color: var(--arcane-soft);
+}
+
+/* The headline number, told huge (the inspect card's plaque dialect). */
+.rift-power {
+  flex: none;
+  min-width: 5.25rem;
+  padding: 0.5rem 0.75rem 0.375rem;
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line);
+  text-align: center;
+  --cut: 0.625rem;
+}
+
+.rift-power strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: var(--t-display);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--rift-tint, var(--gold-bright));
+  text-shadow: var(--punch);
+}
+
+.rift-power span {
+  display: block;
+  margin-top: 0.1875rem;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.075rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* No key, no passage — the parchment says so in ink. */
+.rift-empty {
+  border: 0.5625rem solid transparent;
+  border-image: var(--ui-sheet) 45 fill / 0.5625rem;
+  padding: 0.625rem 0.75rem;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.03125rem;
+  color: var(--sheet-ink);
+  text-shadow: none;
+  filter: drop-shadow(0.25rem 0.3125rem 0 var(--shadow));
+}
+
