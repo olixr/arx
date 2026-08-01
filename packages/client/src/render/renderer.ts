@@ -512,6 +512,8 @@ interface AnimState {
   sheathK?: number;
   /** Saddle blend (THE ROAD GROWS SHORT) — the sitK pattern. */
   rideK?: number;
+  /** Last frame's ride target — the whistle-lands dust bloom edge. */
+  ridePrev?: number;
   /** Last seen mount id — held through the dismount blend. */
   mountKey?: string;
   /** The beast's own rig, separate from the rider's humanoid solver. */
@@ -23086,6 +23088,31 @@ export class Renderer {
     } else if (anim.mountLegs) {
       anim.mountLegs = undefined;
       anim.mountRigKey = undefined;
+    }
+    // THE WHISTLE LANDS: arrival and step-down each stir a low bloom
+    // of ground dust around the hooves — weight arriving, never a
+    // sprite toggling on. First sight seeds silently (a rider who
+    // enters view mounted was always mounted).
+    if (anim.ridePrev === undefined) {
+      anim.ridePrev = rideTarget;
+    } else if (anim.ridePrev !== rideTarget) {
+      anim.ridePrev = rideTarget;
+      const world = this.game?.world;
+      const dust = world
+        ? Renderer.dustFor(world.groundAt(Math.floor(e.x), Math.floor(e.y)))
+        : null;
+      if (dust) {
+        const power = rideTarget ? 1 : 0.7;
+        this.particles.burst(e.x, e.y, Math.round(14 * power * dust.mult), dust.colors, {
+          speed: 1.5 * power,
+          life: 0.55,
+          size: 0.06 + 0.05 * power,
+          gravity: 0.3,
+          drag: 3.0,
+          grow: 0.18 * power,
+          ground: true,
+        });
+      }
     }
     // THE CROWD BREATHES OUT OF STEP: every body owns a fixed offset
     // on the cosmetic clock — the idle wrist life, blade flourishes,

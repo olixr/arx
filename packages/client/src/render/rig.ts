@@ -10947,6 +10947,7 @@ export function paintCourserBody(
   spec: BeastSpec,
   look: CourserLook,
   f: BeastBlockFrame,
+  saddle: typeof COURSER_SADDLE = COURSER_SADDLE,
 ): void {
   const hl = spec.bodyLen;
   const hw = look.bodyW;
@@ -11057,6 +11058,26 @@ export function paintCourserBody(
       ctx.moveTo(gxm, gym - bh * 0.94 - lift);
       ctx.lineTo(gxm, gym - look.chestH * tk * s * 0.5 - lift);
       ctx.stroke();
+      // Stirrup leather: seat edge down the near flank to the iron,
+      // on the same ruler the rider's boot lands on — a hung boot
+      // with no strap is a floating boot. Side-on bands only; dead
+      // ahead the legs own that column.
+      if (Math.abs(f.fx) > 0.25) {
+        const stx = gx(0.04 * hl, 0);
+        const sty = gyy(0.04 * hl, 0);
+        const ironY = sty - saddle.stirrupH * tk * s - lift;
+        ctx.strokeStyle = f.hurt ? '#ffffff' : look.leather;
+        ctx.lineWidth = Math.max(1.5, s * 0.04);
+        ctx.beginPath();
+        ctx.moveTo(stx, sty - bh * 0.98 - lift);
+        ctx.lineTo(stx + f.fx * s * 0.02, ironY);
+        ctx.stroke();
+        ctx.strokeStyle = f.hurt ? '#ffffff' : '#55545c';
+        ctx.lineWidth = Math.max(1.5, s * 0.025);
+        ctx.beginPath();
+        ctx.arc(stx + f.fx * s * 0.02, ironY + s * 0.022, s * 0.028, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       ctx.lineCap = 'butt';
     },
   );
@@ -11127,14 +11148,19 @@ export function drawCourserHead(
     const by0 = cy + fy * w * 0.22 * ys + h * 0.1;
     const sl = w * (0.34 + 0.3 * profileK);
     const tx = bx0 + fx * sl;
-    const ty = by0 + fy * sl * ys + h * 0.16;
+    // The head axis BREAKS DOWN off the poll — seen side-on the nose
+    // line falls near 45 degrees; head-on it stays a hung drop. This
+    // angle is the whole difference between a horse and a llama.
+    const ty = by0 + fy * sl * ys + h * (0.16 + 0.62 * profileK);
     const axv = tx - bx0;
     const ayv = ty - by0;
     const al = Math.hypot(axv, ayv) || 1e-4;
     const nx = -ayv / al;
     const ny = axv / al;
-    const hb = w * 0.19 * (1 - profileK * 0.2);
-    const ht = hb * 0.72;
+    // The jaw DEEPENS at the cheek side-on (never narrows) and tapers
+    // to a squared nose — the working head, not a stuffed sock.
+    const hb = w * (0.19 + 0.055 * profileK);
+    const ht = hb * 0.62;
     ctx.fillStyle = C(shade(look.coat, 4));
     ctx.beginPath();
     ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
@@ -11745,7 +11771,7 @@ export function drawBeast(
       return;
     }
     if (courserL) {
-      paintCourserBody(ctx, spec, courserL, blockFrame());
+      paintCourserBody(ctx, spec, courserL, blockFrame(), saddleFor(opts.defId));
       return;
     }
     if (sabercatL) {
@@ -11929,7 +11955,6 @@ export function drawBeast(
       // The mane: the crest line first, then the fall — hung to one
       // seed-stable side so it reads at every facing.
       if (!opts.hurt) {
-        const maneSide = (seed & 1) === 0 ? 1 : -1;
         ctx.strokeStyle = courserL.mane;
         ctx.lineCap = 'round';
         // Crest: one continuous stroke withers → poll.
@@ -11943,35 +11968,54 @@ export function drawBeast(
           chy - fy * hw2 * 0.2 * ys - courserL.headH * s * 0.3,
         );
         ctx.stroke();
-        // The fall: five tufts dropping off the crest.
-        for (let k = 0; k < 5; k++) {
-          const t = k / 4;
-          const rx0 = bx + fx * hl * (0.62 + 0.22 * t) + nwx * 0.25 * maneSide;
-          const ry0 =
-            by +
-            (fy * hl * (0.62 + 0.22 * t) + nwy * 0.25 * maneSide) * ys -
-            (nb + (courserL.neckRise * s * 0.8 + nod) * t);
-          const fall = s * (0.16 - 0.05 * t);
-          ctx.lineWidth = Math.max(1.8, s * (0.06 - 0.01 * t));
+        // The fall: a hanging ribbon of hair off the crest's rear
+        // edge. Side-on it drapes BEHIND the neck line as one mass
+        // (never a rope down the centerline); head-on it slims to the
+        // top ridge. At speed the whole fall streams back.
+        const run = opts.pose.poleStrength;
+        const wxp = bx + fx * hl * 0.62;
+        const wyp = by + fy * hl * 0.62 * ys - nb - s * 0.02;
+        const pxp = chx - fx * hw2 * 0.2;
+        const pyp = chy - fy * hw2 * 0.2 * ys - courserL.headH * s * 0.3;
+        const cqx = bx + fx * hl * 0.78;
+        const cqy = by + fy * hl * 0.78 * ys - nb - courserL.neckRise * s * 0.75;
+        const slim = 0.35 + 0.65 * Math.min(1, Math.abs(fx) * 1.2);
+        const offx = -fx * s * (0.055 + 0.05 * run) * slim;
+        const offy = s * (0.11 - 0.04 * run) * slim;
+        ctx.fillStyle = courserL.mane;
+        ctx.beginPath();
+        ctx.moveTo(wxp, wyp);
+        ctx.quadraticCurveTo(cqx, cqy, pxp, pyp);
+        ctx.lineTo(pxp + offx * 0.5, pyp + offy * 0.6);
+        ctx.quadraticCurveTo(cqx + offx, cqy + offy, wxp + offx * 0.8, wyp + offy);
+        ctx.closePath();
+        ctx.fill();
+        // Three loose strands off the ribbon's hem for texture.
+        ctx.lineWidth = Math.max(1.5, s * 0.035);
+        for (let k = 0; k < 3; k++) {
+          const t = 0.2 + 0.3 * k;
+          const hx = wxp + (pxp - wxp) * t + offx * (0.6 + 0.3 * (k % 2));
+          const hy = wyp + (pyp - wyp) * t + offy * 0.8;
           ctx.beginPath();
-          ctx.moveTo(rx0, ry0 - s * 0.02);
-          ctx.lineTo(rx0 + px * maneSide * s * 0.05, ry0 + fall);
+          ctx.moveTo(hx, hy);
+          ctx.lineTo(hx + offx * 0.6 - fx * s * 0.03 * run, hy + s * (0.05 + 0.015 * (k % 2)));
           ctx.stroke();
         }
         ctx.lineCap = 'butt';
         // The rein: bit to pommel, sagging its own weight — tied, so
-        // it never has to find a hand it can't see.
+        // it never has to find a hand it can't see. Pale against the
+        // coat (tack must READ), breathing with the gait.
         const bitX = chx + fx * hw2 * 0.5;
         const bitY = chy + fy * hw2 * 0.5 * ys + courserL.headH * s * 0.3;
         const pomX = bx + fx * COURSER_SADDLE.pommelFwd * s;
         const pomY = by + fy * COURSER_SADDLE.pommelFwd * s * ys - COURSER_SADDLE.pommelH * s;
-        ctx.strokeStyle = shade(courserL.leather, -6);
-        ctx.lineWidth = Math.max(1.5, s * 0.03);
+        ctx.strokeStyle = shade(courserL.leather, 22);
+        ctx.lineWidth = Math.max(1.5, s * 0.032);
         ctx.beginPath();
         ctx.moveTo(bitX, bitY);
         ctx.quadraticCurveTo(
           (bitX + pomX) / 2,
-          (bitY + pomY) / 2 + s * 0.09,
+          (bitY + pomY) / 2 + s * 0.085 + nod * 0.5,
           pomX,
           pomY,
         );
@@ -12417,19 +12461,55 @@ export function drawBeast(
       const tbx = bx - fx * hl * 1.0;
       const tby = by - fy * hl * 1.0 * ys - courserL.backH * 0.9 * s - lift;
       const backA = Math.atan2(-fy * ys, -fx);
+      // The fall has MASS: a filled tapered drape first, so the tail
+      // reads as hair from every facing — straight from behind it is
+      // a full dark fall down the croup, never three shadow threads.
+      // It ends above the hocks; a tail that touches the ground reads
+      // as a fourth shadow, not a tail.
+      const droop = (1 - run * 0.75) * 0.5 + 0.22;
+      const len = s * 0.3;
+      const a0 = backA + swish * 0.22;
+      const tipx = tbx + Math.cos(a0) * len;
+      const tipy = tby + Math.sin(a0) * len * ys + len * droop;
+      const pxr = -Math.sin(a0);
+      const pyr = Math.cos(a0);
+      const w0 = s * 0.06;
+      const w1 = s * 0.026;
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(courserL.mane, 18);
+      ctx.beginPath();
+      ctx.moveTo(tbx + pxr * w0, tby + pyr * w0);
+      ctx.quadraticCurveTo(
+        tbx + Math.cos(a0) * len * 0.5 + pxr * w0,
+        tby + Math.sin(a0) * len * 0.5 * ys + len * droop * 0.3 + pyr * w0,
+        tipx + pxr * w1,
+        tipy + pyr * w1,
+      );
+      ctx.lineTo(tipx - pxr * w1, tipy - pyr * w1);
+      ctx.quadraticCurveTo(
+        tbx + Math.cos(a0) * len * 0.5 - pxr * w0,
+        tby + Math.sin(a0) * len * 0.5 * ys + len * droop * 0.3 - pyr * w0,
+        tbx - pxr * w0,
+        tby - pyr * w0,
+      );
+      ctx.closePath();
+      ctx.fill();
+      // Two strands over the mass keep the hair read.
       ctx.strokeStyle = opts.hurt ? '#ffffff' : courserL.mane;
       ctx.lineCap = 'round';
-      for (let k = 0; k < 3; k++) {
-        const a = backA + (k - 1) * 0.16 + swish * 0.22;
-        // Speed streams the fall out behind; at rest it droops full.
-        const droop = (1 - run * 0.75) * 0.55 + 0.25;
-        const len = s * (0.34 - 0.04 * Math.abs(k - 1));
-        const tex = tbx + Math.cos(a) * len;
-        const tey = tby + Math.sin(a) * len * ys + len * droop;
-        ctx.lineWidth = Math.max(1.6, s * (0.055 - 0.012 * Math.abs(k - 1)));
+      for (const k of [-1, 1]) {
+        const a = a0 + k * 0.14;
+        const kl = len * 0.94;
+        const tex = tbx + Math.cos(a) * kl;
+        const tey = tby + Math.sin(a) * kl * ys + kl * droop;
+        ctx.lineWidth = Math.max(1.5, s * 0.038);
         ctx.beginPath();
         ctx.moveTo(tbx, tby);
-        ctx.quadraticCurveTo(tbx + Math.cos(a) * len * 0.5, tby + Math.sin(a) * len * 0.5 * ys + len * droop * 0.3, tex, tey);
+        ctx.quadraticCurveTo(
+          tbx + Math.cos(a) * kl * 0.5,
+          tby + Math.sin(a) * kl * 0.5 * ys + kl * droop * 0.3,
+          tex,
+          tey,
+        );
         ctx.stroke();
       }
       ctx.lineCap = 'butt';
