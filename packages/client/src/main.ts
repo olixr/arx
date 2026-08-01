@@ -44,14 +44,19 @@ import { abilityIconUrl } from './render/abilityIcons.js';
 import { fxStyleFor } from './render/abilityFx.js';
 import { PORTAL_BURST_COLORS } from './render/portal.js';
 import { installChrome } from './ui/chrome.js';
+import { installTokens } from './ui/kit/tokens.js';
+import { installScale, setUiSize, uiSize, UI_SIZES } from './ui/kit/scale.js';
 import { dressPanel } from './ui/panel.js';
 import { SignHud } from './ui/signs.js';
 import { PetNamingCard } from './ui/petNaming.js';
 import { LookCreator } from './ui/lookCreator.js';
 import { DialogueCinema } from './ui/dialogueCinema.js';
 
-// Paint the HUD's chrome (the flat chamfered frame) before any panel
-// shows — the stylesheet reads it from CSS custom properties.
+// THE ONE RULER, then the one material truth, then the painted chrome
+// cut from it — all before any panel shows. The stylesheet holds no
+// values of its own; everything reads from CSS custom properties.
+installTokens();
+installScale();
 installChrome();
 
 // Dev audit surface: `?icons` overlays the full icon gallery. The game
@@ -253,6 +258,44 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
     renderer.waterFxFull = on;
     localStorage.setItem('arx.waterfx', on ? 'full' : 'basic');
   });
+
+  // The player's hand on the one ruler: Snug / Standard / Grand
+  // multiply the automatic fit. Applies live, no restart.
+  const sizeRow = document.createElement('div');
+  sizeRow.className = 'audio-row';
+  const sizeLab = document.createElement('label');
+  sizeLab.textContent = 'Interface size';
+  const chips = document.createElement('span');
+  chips.className = 'size-chips';
+  const paint = (): void => {
+    chips.querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('active', b.dataset.size === uiSize());
+    });
+  };
+  for (const s of UI_SIZES) {
+    const chip = document.createElement('button');
+    chip.className = 'sort-chip';
+    chip.textContent = s.label;
+    chip.dataset.size = s.id;
+    chip.dataset.nav = '';
+    chip.dataset.navkey = `display:uisize:${s.id}`;
+    chip.dataset.acta = 'Choose';
+    chip.dataset.tipname = `${s.label} interface`;
+    chip.dataset.tipsub =
+      s.id === 'grand'
+        ? 'Larger menus and HUD. Suits a far couch.'
+        : s.id === 'snug'
+          ? 'Smaller menus and HUD. More world in view.'
+          : 'The fitted size for this display.';
+    chip.addEventListener('click', () => {
+      setUiSize(s.id);
+      paint();
+    });
+    chips.appendChild(chip);
+  }
+  sizeRow.append(sizeLab, chips);
+  rows.appendChild(sizeRow);
+  paint();
 }
 input.setTypingCheck(
   () => chat.isTyping || looks.open || socialPanel.isTyping || signHud.isTyping || petNaming.isTyping,

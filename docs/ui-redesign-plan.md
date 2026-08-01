@@ -1,6 +1,21 @@
 # The Grand Refit — THE HALL FITS THE HAND
 
-*Design review 2026-08-01. Status: **PROPOSED — awaiting green-light.***
+*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phase 1 SHIPPED
+(THE ONE RULER), Phases 2–6 pending.***
+
+**Phase 1 as-built (2026-08-01):** `ui/kit/tokens.ts` is the one material
+truth (palette + type/space/radius/stroke ladders + bottom lanes, injected on
+`:root` at boot; chrome.ts imports the same swatches — its local copies are
+gone). `ui/kit/scale.ts` is the one ruler: root font-size =
+`16px × clamp(0.75, min(vw/1920, vh/1080), 2.75)` snapped to eighths, plus the
+`Interface size` setting (Snug/Standard/Grand, `arx.uisize`). style.css is
+100% rem — the sole surviving px is the look-creator `@media` viewport
+condition; exact ladder matches use `var(--t-*)` (62 sites); the five stale
+var() fallbacks are repaired; brass-ink/gold/parchment-faint/ember-deep/
+arcane families consolidated onto tokens; the five bottom-lane constants ride
+`var(--lane-*)`. Receipt: login + icon gallery photographed at 1920×1080
+(scale 1, panel 400w) and 3840×2160 (scale 2, panel 800w) — identical
+composition, crisp chrome; client build + tests green.
 
 Four chrome passes have shipped (f17d8ef linen/gold → 8a474dc flat slate →
 c9e74b8 iron/oak/brass case → 614be7c quiet console) and the menus still fight
@@ -387,7 +402,8 @@ Each phase lands green, committed, and provable before the next begins.
 1. **THE ONE RULER** — scale system, px→rem sweep, palette/token module
    feeding CSS and chrome painter, HUD lane tokens, UI Size setting.
    *Receipt: the same screen photographed at 1080p and 4K is the same
-   composition; a token-sheet page renders every ladder.*
+   composition; a token-sheet page renders every ladder.* **SHIPPED
+   2026-08-01 — see as-built note at the head of this doc.**
 2. **THE KIT OF ROOMS** — `ui/kit/` components, material reconciliation
    (chip family re-cut), stylesheet split, Room open/close motion, Ambient.
    *Receipt: a kit gallery room (dev-only) shows every component in both

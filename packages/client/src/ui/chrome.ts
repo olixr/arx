@@ -30,21 +30,16 @@
  * any DPI.
  */
 
-/** Source-space pixels per display pixel — drawn oversized for retina. */
+import { BRASS, IRON, LEATHER, PANEL_FILL, PAPER, SUNK_FILL } from './kit/tokens.js';
+
+export { PANEL_FILL };
+
+/** Source-space pixels per display pixel — drawn oversized so the
+ *  slices stay crisp to the scale ruler's 2.75× ceiling. */
 const K = 5;
 
-/** The case-bottom field color — the stylesheet's --panel must match. */
-export const PANEL_FILL = '#262019';
-/** The recessed well color — must match the stylesheet's --sunk. */
-const SUNK_FILL = '#191510';
-
-/* The kit's material swatches. */
-const IRON = { rim: '#0f0c08', base: '#3b4048', lit: '#5a626d', dark: '#22262b' };
-const BRASS = { rim: '#22150a', base: '#c99a3e', lit: '#eec66e', dark: '#8a6420' };
-const LEATHER = { seam: '#171208', echo: '#4a3f2e' };
-const PAPER = { field: '#e9dcba', edge: '#c3b189', rim: '#6b5c3d', ink: '#3a2f1d' };
-
-/** Display-space border width of the grand case frame. */
+/** Design-space border width of the grand case frame (rem-published,
+ *  so the frame rides the one ruler like everything else). */
 export const FRAME_BORDER = 24;
 export const FRAME_SLICE = FRAME_BORDER * K;
 /** Lighter tray frame (loot tray, cards, menus, prompts). */
@@ -533,10 +528,10 @@ export function installChrome(): void {
   const root = document.documentElement.style;
   root.setProperty('--ui-frame', `url(${caseFrame()})`);
   root.setProperty('--frame-slice', String(FRAME_SLICE));
-  root.setProperty('--frame-border', `${FRAME_BORDER}px`);
+  root.setProperty('--frame-border', `${FRAME_BORDER / 16}rem`);
   root.setProperty('--ui-tray-frame', `url(${trayFrame()})`);
   root.setProperty('--tray-slice', String(TRAY_SLICE));
-  root.setProperty('--tray-border', `${TRAY_BORDER}px`);
+  root.setProperty('--tray-border', `${TRAY_BORDER / 16}rem`);
   root.setProperty('--ui-quiet', `url(${quietWell()})`);
   root.setProperty('--btn-quiet', `url(${quietKey()})`);
   root.setProperty('--ui-banner', `url(${titleBanner()})`);
