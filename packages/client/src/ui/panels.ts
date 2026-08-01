@@ -54,6 +54,8 @@ import { bindings, type ActionId } from '../input/bindings.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 import { seatChip, glyphLine } from './kit/glyphs.js';
 import { openSheet, registerSheetProvider, type SheetVerb } from './kit/contextSheet.js';
+import { ringGauge } from './kit/ring.js';
+import { socket } from './kit/plates.js';
 
 /** Card display colors for the three armor weight classes. */
 const CLASS_COLORS: Record<string, string> = {
@@ -216,14 +218,19 @@ export class Panels {
   private readonly identName = document.getElementById('char-name')!;
   private readonly identDeed = document.getElementById('char-deed')!;
   private readonly skillsPanel = document.getElementById('skills-panel')!;
-  private readonly skillsList = document.getElementById('skills-list')!;
+  private readonly skillsWall = document.getElementById('skills-wall')!;
+  private readonly skillsHero = document.getElementById('skills-hero')!;
+  /** The skill standing on the hero pane. */
+  private skillSel: SkillId | null = null;
   private readonly artsPanel = document.getElementById('arts-panel')!;
-  private readonly artsWings = document.getElementById('arts-wings')!;
+  private readonly artsRail = document.getElementById('arts-rail')!;
   private readonly artsLoadout = document.getElementById('arts-loadout')!;
   private readonly artsSchools = document.getElementById('arts-schools')!;
   private readonly artsDetail = document.getElementById('arts-detail')!;
   /** The technique the codex bench is laying out (null = auto-pick). */
   private artsSel: string | null = null;
+  /** The school standing on the stage (the rail's choice). */
+  private artsSchoolSel: SkillId | null = null;
   /** Which wing of the codex is open: the actives or the passives. */
   private artsWing: 'arts' | 'callings' = 'arts';
   /** The Calling the bench is laying out (callings wing). */
@@ -506,6 +513,19 @@ export class Panels {
    * Returns false when the element isn't an inspectable item.
    */
   showCardFor(el: HTMLElement | null): boolean {
+    // THE BENCH IS THE INSPECTOR: focus landing on a technique plate
+    // renders that art on the bench in place — inspection costs no
+    // press and no travel. (No card floats; the bench is the card.)
+    const artKey = el?.dataset.navkey;
+    if (artKey?.startsWith('art:')) {
+      this.inspectArt(artKey.slice('art:'.length));
+      return false;
+    }
+    // The hall's emblems inspect the same way: focus lights the hero.
+    if (artKey?.startsWith('skill:')) {
+      this.inspectSkill(artKey.slice('skill:'.length) as SkillId);
+      return false;
+    }
     // Ground loot rows (loot panel) and vault sockets inspect like pack
     // cells — the same full card, for gear not in your hands yet.
     const lootEl = el?.closest?.('[data-lootitem]') as HTMLElement | null;
@@ -1315,170 +1335,75 @@ export class Panels {
   }
 
   /** Build one skill card for the hall. */
-  private skillCard(skill: SkillId, xp: SkillXp): HTMLElement {
+  /**
+   * One emblem on the wall: the skill's mark ringed by its climb to
+   * the next level, the level told as the trophy numeral. Focus or
+   * hover raises the hero pane; the emblem itself stays quiet.
+   */
+  private skillEmblem(skill: SkillId, xp: SkillXp): HTMLElement {
     const hidden = HIDDEN_SKILLS[skill];
     const value = xp[skill] ?? 0;
     const level = levelForXp(value);
     const floor = xpForLevel(level);
     const ceil = xpForLevel(level + 1);
     const frac = level >= 99 ? 1 : (value - floor) / Math.max(1, ceil - floor);
-    const techs = techniquesFor(skill);
     const face = SKILL_FACE[skill] ?? { icon: 'bread', color: '#d9a441' };
 
-    const card = document.createElement('div');
-    card.className = 'skill-card';
-    if (techs.length > 0) card.classList.add('hero');
-    if (level >= 99) card.classList.add('maxed');
-    if (hidden) card.classList.add('secret-skill');
-    card.style.setProperty('--skill-accent', face.color);
-    // Every card is a nav stop, so the pad can read (and scroll) the
-    // whole hall of deeds — not just the cards with a codex button.
-    card.dataset.nav = '';
-    card.dataset.navkey = `skill:${skill}`;
-    card.dataset.tipname = skillName(skill);
-    card.dataset.acta = 'Read';
+    const btn = document.createElement('button');
+    btn.className = 'skill-emblem';
+    if (level >= 99) btn.classList.add('maxed');
+    if (hidden) btn.classList.add('secret-skill');
+    if (this.skillSel === skill) btn.classList.add('selected');
+    btn.style.setProperty('--skill-accent', face.color);
+    btn.dataset.nav = '';
+    btn.dataset.navkey = `skill:${skill}`;
+    btn.dataset.acta = 'Read';
 
-    const head = document.createElement('div');
-    head.className = 'skill-card-head';
-    const plaque = document.createElement('span');
-    plaque.className = 'skill-plaque';
-    plaque.style.borderColor = face.color;
+    const ring = ringGauge(frac, { tone: face.color });
+    ring.root.classList.add('emblem-ring');
     const img = document.createElement('img');
-    img.src = itemIconUrl(face.icon, 34);
+    img.src = itemIconUrl(face.icon, 30);
     img.draggable = false;
-    plaque.appendChild(img);
-    const names = document.createElement('span');
-    names.className = 'skill-names';
-    const name = document.createElement('span');
-    name.className = 'skill-name';
-    name.textContent = skillName(skill);
-    const tale = document.createElement('span');
-    tale.className = 'skill-tale';
-    tale.textContent = hidden ? 'A secret art — you earned knowing it' : SKILL_STORY[skill] ?? '';
-    names.append(name, tale);
-    // The level rides a faceted gem — the number IS the trophy.
+    ring.center.appendChild(img);
     const gem = document.createElement('span');
-    gem.className = 'lvl-gem';
-    const gemNum = document.createElement('span');
-    gemNum.className = 'lvl-gem-num';
-    gemNum.textContent = String(level);
-    gem.appendChild(gemNum);
-    head.append(plaque, names, gem);
-    card.appendChild(head);
+    gem.className = 'emblem-gem';
+    gem.textContent = String(level);
+    ring.root.appendChild(gem);
+    const name = document.createElement('span');
+    name.className = 'emblem-name';
+    name.textContent = skillName(skill);
+    btn.append(ring.root, name);
+    btn.addEventListener('click', () => this.inspectSkill(skill));
+    return btn;
+  }
 
-    const bar = document.createElement('div');
-    bar.className = 'ui-meter skill-meter';
-    const fill = document.createElement('div');
-    fill.className = 'ui-meter-fill';
-    fill.style.width = `${Math.round(frac * 100)}%`;
-    if (level < 99) fill.style.background = face.color;
-    bar.appendChild(fill);
-    card.appendChild(bar);
-
-    const story = document.createElement('div');
-    story.className = 'skill-story';
-    story.textContent =
-      level >= 99
-        ? `${value.toLocaleString()} xp · mastered`
-        : `${value.toLocaleString()} xp · ${(ceil - value).toLocaleString()} to level ${level + 1}`;
-    card.appendChild(story);
-
-    // Combat skills point at the Techniques codex: the card shows what
-    // rides your R key today and hands you through — the picker itself
-    // lives on its own dedicated screen now.
-    if (techs.length > 0) {
-      const row = document.createElement('div');
-      row.className = 'tech-link-row';
-      const title = document.createElement('span');
-      title.className = 'technique-title';
-      title.textContent = 'Technique';
-      row.appendChild(title);
-      // The card shows this school's art only when one of the seats
-      // carries it (Q first — the tray's own order).
-      const chosen =
-        this.techniques.find((a) => techniquePoolDef(a ?? '')?.style === skill) ?? null;
-      const ab = chosen ? abilityDef(chosen) : undefined;
-      if (ab) {
-        const plate = document.createElement('img');
-        plate.className = 'technique-plate';
-        plate.src = abilityIconUrl(ab.id, 34);
-        plate.draggable = false;
-        row.appendChild(plate);
-        const name = document.createElement('span');
-        name.className = 'tech-link-name';
-        name.textContent = ab.name;
-        row.appendChild(name);
-      } else {
-        const none = document.createElement('span');
-        none.className = 'tech-link-none';
-        none.textContent = 'None chosen';
-        row.appendChild(none);
-      }
-      const go = document.createElement('button');
-      go.className = 'act-btn minor tech-link-go';
-      go.textContent = 'Open Techniques';
-      go.dataset.nav = '';
-      go.dataset.navkey = `techgo:${skill}`;
-      go.dataset.acta = 'Open';
-      go.dataset.tipname = 'Techniques';
-      go.dataset.tipsub = `Every ${hidden ? hidden.name : skill} art — inspect them, and seat two at your hand.`;
-      go.addEventListener('click', () => this.onOpenArts());
-      row.appendChild(go);
-      card.appendChild(row);
-    }
-
-    // Every skill points at its Callings — the quiet half of the build.
-    {
-      const defs = callingsFor(skill);
-      if (defs.length > 0) {
-        const row = document.createElement('div');
-        row.className = 'tech-link-row calling-link-row';
-        const title = document.createElement('span');
-        title.className = 'technique-title';
-        title.textContent = 'Callings';
-        row.appendChild(title);
-        const answered = defs.filter((d) => this.callings.includes(d.id));
-        const label = document.createElement('span');
-        label.className = answered.length > 0 ? 'tech-link-name' : 'tech-link-none';
-        label.textContent =
-          answered.length > 0 ? answered.map((d) => d.name).join(' · ') : 'None answered';
-        row.appendChild(label);
-        const go = document.createElement('button');
-        go.className = 'act-btn minor tech-link-go';
-        go.textContent = 'Open Callings';
-        go.dataset.nav = '';
-        go.dataset.navkey = `callgo:${skill}`;
-        go.dataset.acta = 'Open';
-        go.dataset.tipname = 'Callings';
-        go.dataset.tipsub = `The ${hidden ? hidden.name : skill} passives — answer them within your Focus.`;
-        go.addEventListener('click', () => {
-          this.artsWing = 'callings';
-          this.callingSel = defs[0]?.id ?? null;
-          this.onOpenArts();
-        });
-        row.appendChild(go);
-        card.appendChild(row);
-      }
-    }
-    return card;
+  /** Light the hero pane for one skill without rebuilding the wall. */
+  private inspectSkill(skill: SkillId): void {
+    if (this.skillSel === skill) return;
+    this.skillSel = skill;
+    this.skillsWall
+      .querySelectorAll('.skill-emblem.selected')
+      .forEach((e) => e.classList.remove('selected'));
+    this.skillsWall
+      .querySelector(`[data-navkey="${CSS.escape(`skill:${skill}`)}"]`)
+      ?.classList.add('selected');
+    this.renderSkillHero();
   }
 
   /**
-   * The hall of deeds: disciplines grouped into named wings — Combat
-   * Arts as wide hero cards with their technique ladders, Fieldcraft
-   * and Maker's Arts as galleries, Secret Arts appearing only once
-   * discovered. A total-level crown plaque presides over the hall.
+   * THE HERO PANE — the chosen deed told whole: the crown of totals
+   * presiding, then the skill's face, its climb, and its doors into
+   * the codex. Renders on focus; travel costs nothing.
    */
-  renderSkills(xp: SkillXp): void {
-    this.lastSkills = xp;
-    this.renderIdentity();
-    this.skillsList.innerHTML = '';
+  private renderSkillHero(): void {
+    const xp = this.lastSkills;
+    this.skillsHero.innerHTML = '';
 
     let total = 0;
     let mastered = 0;
-    for (const skill of SKILL_IDS) {
-      if (HIDDEN_SKILLS[skill] && xp[skill] === undefined) continue;
-      const lv = levelForXp(xp[skill] ?? 0);
+    for (const s of SKILL_IDS) {
+      if (HIDDEN_SKILLS[s] && xp[s] === undefined) continue;
+      const lv = levelForXp(xp[s] ?? 0);
       total += lv;
       if (lv >= 99) mastered++;
     }
@@ -1496,23 +1421,176 @@ export class Panels {
         ? `${mastered} ${mastered === 1 ? 'skill' : 'skills'} mastered`
         : 'Deeds raise levels — go do';
     crown.append(crownLeft, crownValue, crownRight);
-    this.skillsList.appendChild(crown);
+    this.skillsHero.appendChild(crown);
+
+    const skill = this.skillSel;
+    if (!skill) return;
+    const hidden = HIDDEN_SKILLS[skill];
+    const value = xp[skill] ?? 0;
+    const level = levelForXp(value);
+    const floor = xpForLevel(level);
+    const ceil = xpForLevel(level + 1);
+    const frac = level >= 99 ? 1 : (value - floor) / Math.max(1, ceil - floor);
+    const face = SKILL_FACE[skill] ?? { icon: 'bread', color: '#d9a441' };
+
+    const head = document.createElement('div');
+    head.className = 'hero-head';
+    head.style.setProperty('--skill-accent', face.color);
+    const plaque = document.createElement('span');
+    plaque.className = 'skill-plaque';
+    plaque.style.borderColor = face.color;
+    const img = document.createElement('img');
+    img.src = itemIconUrl(face.icon, 34);
+    img.draggable = false;
+    plaque.appendChild(img);
+    const names = document.createElement('span');
+    names.className = 'skill-names';
+    const name = document.createElement('span');
+    name.className = 'skill-name';
+    name.textContent = skillName(skill);
+    const tale = document.createElement('span');
+    tale.className = 'skill-tale';
+    tale.textContent = hidden ? 'A secret art — you earned knowing it' : (SKILL_STORY[skill] ?? '');
+    names.append(name, tale);
+    const gem = document.createElement('span');
+    gem.className = 'lvl-gem';
+    const gemNum = document.createElement('span');
+    gemNum.className = 'lvl-gem-num';
+    gemNum.textContent = String(level);
+    gem.appendChild(gemNum);
+    head.append(plaque, names, gem);
+    this.skillsHero.appendChild(head);
+
+    const bar = document.createElement('div');
+    bar.className = 'ui-meter skill-meter';
+    const fill = document.createElement('div');
+    fill.className = 'ui-meter-fill';
+    fill.style.width = `${Math.round(frac * 100)}%`;
+    if (level < 99) fill.style.background = face.color;
+    bar.appendChild(fill);
+    this.skillsHero.appendChild(bar);
+
+    const story = document.createElement('div');
+    story.className = 'skill-story';
+    story.textContent =
+      level >= 99
+        ? `${value.toLocaleString()} xp · mastered`
+        : `${value.toLocaleString()} xp · ${(ceil - value).toLocaleString()} to level ${level + 1}`;
+    this.skillsHero.appendChild(story);
+
+    // A combat school opens into the codex: the seat riding this
+    // school today, and the door through.
+    const techs = techniquesFor(skill);
+    if (techs.length > 0) {
+      const row = document.createElement('div');
+      row.className = 'tech-link-row';
+      const title = document.createElement('span');
+      title.className = 'technique-title';
+      title.textContent = 'Technique';
+      row.appendChild(title);
+      const chosen =
+        this.techniques.find((a) => techniquePoolDef(a ?? '')?.style === skill) ?? null;
+      const ab = chosen ? abilityDef(chosen) : undefined;
+      if (ab) {
+        const plate = document.createElement('img');
+        plate.className = 'technique-plate';
+        plate.src = abilityIconUrl(ab.id, 34);
+        plate.draggable = false;
+        row.appendChild(plate);
+        const chosenName = document.createElement('span');
+        chosenName.className = 'tech-link-name';
+        chosenName.textContent = ab.name;
+        row.appendChild(chosenName);
+      } else {
+        const none = document.createElement('span');
+        none.className = 'tech-link-none';
+        none.textContent = 'None chosen';
+        row.appendChild(none);
+      }
+      const go = document.createElement('button');
+      go.className = 'act-btn minor tech-link-go';
+      go.textContent = 'Open Techniques';
+      go.dataset.nav = '';
+      go.dataset.navkey = `techgo:${skill}`;
+      go.dataset.acta = 'Open';
+      go.dataset.tipname = 'Techniques';
+      go.dataset.tipsub = `Every ${hidden ? hidden.name : skill} art — inspect them, and seat two at your hand.`;
+      go.addEventListener('click', () => {
+        this.artsWing = 'arts';
+        this.artsSchoolSel = skill;
+        this.onOpenArts();
+      });
+      row.appendChild(go);
+      this.skillsHero.appendChild(row);
+    }
+
+    // Every skill points at its Callings — the quiet half of the build.
+    const defs = callingsFor(skill);
+    if (defs.length > 0) {
+      const row = document.createElement('div');
+      row.className = 'tech-link-row calling-link-row';
+      const title = document.createElement('span');
+      title.className = 'technique-title';
+      title.textContent = 'Callings';
+      row.appendChild(title);
+      const answered = defs.filter((d) => this.callings.includes(d.id));
+      const label = document.createElement('span');
+      label.className = answered.length > 0 ? 'tech-link-name' : 'tech-link-none';
+      label.textContent =
+        answered.length > 0 ? answered.map((d) => d.name).join(' · ') : 'None answered';
+      row.appendChild(label);
+      const go = document.createElement('button');
+      go.className = 'act-btn minor tech-link-go';
+      go.textContent = 'Open Callings';
+      go.dataset.nav = '';
+      go.dataset.navkey = `callgo:${skill}`;
+      go.dataset.acta = 'Open';
+      go.dataset.tipname = 'Callings';
+      go.dataset.tipsub = `The ${hidden ? hidden.name : skill} passives — answer them within your Focus.`;
+      go.addEventListener('click', () => {
+        this.artsWing = 'callings';
+        this.callingSel = defs[0]?.id ?? null;
+        this.onOpenArts();
+      });
+      row.appendChild(go);
+      this.skillsHero.appendChild(row);
+    }
+  }
+
+  /**
+   * The hall of deeds: every discipline an emblem ringed by its
+   * climb, grouped into named wings, all of it visible at once —
+   * the chosen skill reads whole on the hero pane to the right.
+   */
+  renderSkills(xp: SkillXp): void {
+    this.lastSkills = xp;
+    this.renderIdentity();
+    this.skillsWall.innerHTML = '';
+
+    // The hero pane's default subject: the highest deed in the house.
+    const present = SKILL_IDS.filter((s) => !(HIDDEN_SKILLS[s] && xp[s] === undefined));
+    if (!this.skillSel || !present.includes(this.skillSel)) {
+      this.skillSel = present.reduce(
+        (best, s) =>
+          best === null || levelForXp(xp[s] ?? 0) > levelForXp(xp[best] ?? 0) ? s : best,
+        null as SkillId | null,
+      );
+    }
 
     for (const wing of SKILL_WINGS) {
       // Hidden-skill law: a secret skill simply does not exist in this
       // panel until the character's skill record carries its key — the
       // server writes the row only at the moment of discovery. A wing
       // with nothing to show is not built at all.
-      const present = wing.skills.filter(
-        (s) => !(HIDDEN_SKILLS[s] && xp[s] === undefined),
-      );
-      if (present.length === 0) continue;
-      this.skillsList.appendChild(sectionHead(wing.title));
+      const here = wing.skills.filter((s) => !(HIDDEN_SKILLS[s] && xp[s] === undefined));
+      if (here.length === 0) continue;
+      this.skillsWall.appendChild(sectionHead(wing.title));
       const grid = document.createElement('div');
-      grid.className = 'skills-wing';
-      for (const skill of present) grid.appendChild(this.skillCard(skill, xp));
-      this.skillsList.appendChild(grid);
+      grid.className = 'skill-wall';
+      for (const skill of here) grid.appendChild(this.skillEmblem(skill, xp));
+      this.skillsWall.appendChild(grid);
     }
+    this.renderSkillHero();
 
     // Leveling can unveil a new rung — keep the codex pip honest.
     this.updateArtsPip();
@@ -1593,49 +1671,115 @@ export class Panels {
     document.getElementById('btn-arts')?.classList.toggle('has-new', unseen);
   }
 
-  /** The two wings of the codex: Arts (actives) and Callings (passives). */
-  private renderArtsWingTabs(): void {
-    this.artsWings.innerHTML = '';
-    for (const [wing, label] of [
-      ['arts', 'Arts'],
-      ['callings', 'Callings'],
-    ] as const) {
-      const tab = document.createElement('button');
-      tab.className = 'wing-tab' + (this.artsWing === wing ? ' active' : '');
-      tab.dataset.nav = '';
-      tab.dataset.navkey = `wing:${wing}`;
-      tab.dataset.acta = 'Open';
-      tab.textContent = label;
-      if (wing === 'callings') {
-        const unseen = this.unseenCallings();
-        if (unseen > 0) {
-          const pip = document.createElement('span');
-          pip.className = 'new-pip';
-          pip.textContent = 'NEW';
-          tab.appendChild(pip);
-        }
-      }
-      tab.addEventListener('click', () => {
-        if (this.artsWing === wing) return;
-        this.artsWing = wing;
-        this.renderArts();
+  /**
+   * THE SCHOOL RAIL — one crest per school, the Callings last, LT/RT
+   * stepping the stops. It replaced the wing tabs AND the jump strip:
+   * one school stands on the stage at a time, so the eight-ladder
+   * scroll is gone and nothing lives below the fold.
+   */
+  private renderArtsRail(schools: SkillId[]): void {
+    this.artsRail.innerHTML = '';
+    this.artsRail.dataset.pager = '';
+    const stops: Array<SkillId | 'callings'> = [...schools, 'callings'];
+    if (!this.artsRail.dataset.pagerWired) {
+      this.artsRail.dataset.pagerWired = '1';
+      this.artsRail.addEventListener('kit-page', (e) => {
+        const dir = (e as CustomEvent<-1 | 1>).detail;
+        const current: SkillId | 'callings' =
+          this.artsWing === 'callings' ? 'callings' : (this.artsSchoolSel ?? 'callings');
+        const order = [...this.artsSchoolIds(), 'callings' as const];
+        const i = order.indexOf(current);
+        const next = order[Math.max(0, Math.min(order.length - 1, i + dir))];
+        if (next !== undefined && next !== current) this.pickRailStop(next);
       });
-      this.artsWings.appendChild(tab);
+    }
+    for (const stop of stops) {
+      const isCallings = stop === 'callings';
+      const active = isCallings ? this.artsWing === 'callings' : this.artsWing === 'arts' && this.artsSchoolSel === stop;
+      const face = isCallings
+        ? { icon: 'arcane_dust', color: '#b49af0' }
+        : (SKILL_FACE[stop] ?? { icon: 'bread', color: '#d9a441' });
+      const btn = document.createElement('button');
+      btn.className = 'rail-stop' + (active ? ' active' : '');
+      btn.style.setProperty('--skill-accent', face.color);
+      btn.dataset.nav = '';
+      btn.dataset.navkey = `rail:${stop}`;
+      btn.dataset.acta = 'Open';
+      // The crest: the school's mark ringed by its climb.
+      let frac: number;
+      let sub: string;
+      if (isCallings) {
+        const budget = focusBudget(this.lastSkills);
+        const used = this.focusUsed();
+        frac = budget > 0 ? used / budget : 0;
+        sub = `${used} of ${budget}`;
+      } else {
+        const level = levelForXp(this.lastSkills[stop] ?? 0);
+        frac = level / 99;
+        sub = `Lv ${level}`;
+      }
+      const ring = ringGauge(frac, { tone: face.color });
+      const img = document.createElement('img');
+      img.src = itemIconUrl(face.icon, 26);
+      img.draggable = false;
+      ring.center.appendChild(img);
+      const text = document.createElement('span');
+      text.className = 'rail-text';
+      const name = document.createElement('span');
+      name.className = 'rail-name';
+      name.textContent = isCallings ? 'Callings' : skillName(stop);
+      const lv = document.createElement('span');
+      lv.className = 'rail-sub';
+      lv.textContent = sub;
+      text.append(name, lv);
+      btn.append(ring.root, text);
+      const unseenHere = isCallings
+        ? this.unseenCallings() > 0
+        : this.visibleTechniques(stop).some((t) => {
+            const s = this.techState(stop, t);
+            return (s === 'unlocked' || s === 'equipped') && !this.seenTech.has(t.ability);
+          });
+      if (unseenHere) btn.classList.add('has-pip');
+      // A school holding a seated art wears its quiet in-hand mark.
+      if (
+        !isCallings &&
+        this.techniques.some((a) => techniquePoolDef(a ?? '')?.style === stop)
+      ) {
+        btn.classList.add('in-hand-stop');
+      }
+      btn.addEventListener('click', () => this.pickRailStop(stop));
+      this.artsRail.appendChild(btn);
     }
   }
 
-  /** The codex, whole: wing tabs, then whichever wing is open. */
-  renderArts(): void {
-    this.renderArtsWingTabs();
-    if (this.artsWing === 'callings') {
-      this.renderCallingsWing();
-      return;
+  /** Step or click to a rail stop: a school onto the stage, or Callings. */
+  private pickRailStop(stop: SkillId | 'callings'): void {
+    if (stop === 'callings') {
+      this.artsWing = 'callings';
+    } else {
+      this.artsWing = 'arts';
+      this.artsSchoolSel = stop;
+      // The bench follows the stage: keep the pick if it lives here,
+      // else lift the school's best face onto the bench.
+      const here = this.visibleTechniques(stop);
+      if (!here.some((t) => t.ability === this.artsSel)) {
+        this.artsSel =
+          here.find((t) => this.techState(stop, t) === 'equipped')?.ability ??
+          here.find((t) => this.techState(stop, t) === 'unlocked')?.ability ??
+          here[0]?.ability ??
+          this.artsSel;
+      }
     }
+    this.renderArts();
+  }
+
+  /** The codex, whole: altar, rail, the standing stop, the bench. */
+  renderArts(): void {
     const schools = this.artsSchoolIds();
     const all = schools.flatMap((s) => this.visibleTechniques(s).map((t) => ({ style: s, t })));
 
     // Resolve the bench's subject: keep the player's pick if it still
-    // exists, else default to a seated art (Q first — the tray's order).
+    // exists, else default to a seated art (first seat first).
     if (!this.artsSel || !all.some((e) => e.t.ability === this.artsSel)) {
       this.artsSel =
         this.techniques[0] ??
@@ -1645,53 +1789,24 @@ export class Panels {
         all[0]?.t.ability ??
         null;
     }
+    // The stage follows the bench's subject on first open.
+    if (this.artsWing === 'arts' && (!this.artsSchoolSel || !schools.includes(this.artsSchoolSel))) {
+      this.artsSchoolSel =
+        all.find((e) => e.t.ability === this.artsSel)?.style ?? schools[0] ?? null;
+    }
     this.markTechSeen(this.artsSel);
+    this.renderArtsRail(schools);
+
+    if (this.artsWing === 'callings') {
+      this.renderCallingsWing();
+      return;
+    }
 
     this.renderArtsLoadout();
     this.artsSchools.innerHTML = '';
-    if (schools.length > 1) this.artsSchools.appendChild(this.schoolJumpStrip(schools));
-    for (const style of schools) this.artsSchools.appendChild(this.artsSchool(style));
+    if (this.artsSchoolSel) this.artsSchools.appendChild(this.artsSchool(this.artsSchoolSel));
     this.renderArtsBench(all);
     this.updateArtsPip();
-  }
-
-  /** The jump-strip: one chip per school — a short road down a long ledger. */
-  private schoolJumpStrip(schools: SkillId[]): HTMLElement {
-    const strip = document.createElement('div');
-    strip.className = 'school-jump';
-    const inHand = new Set(
-      this.techniques
-        .map((a) => techniquePoolDef(a ?? '')?.style)
-        .filter((s): s is TechniqueDef['style'] => !!s),
-    );
-    for (const style of schools) {
-      const face = SKILL_FACE[style] ?? { icon: 'bread', color: '#d9a441' };
-      const hidden = HIDDEN_SKILLS[style];
-      const chip = document.createElement('button');
-      chip.className = 'jump-chip' + (inHand.has(style as TechniqueDef['style']) ? ' on-r' : '');
-      const unseenHere = this.visibleTechniques(style).some((t) => {
-        const s = this.techState(style, t);
-        return (s === 'unlocked' || s === 'equipped') && !this.seenTech.has(t.ability);
-      });
-      if (unseenHere) chip.classList.add('has-new');
-      chip.style.setProperty('--skill-accent', face.color);
-      chip.dataset.nav = '';
-      chip.dataset.navkey = `jump:${style}`;
-      chip.dataset.acta = 'Go';
-      const img = document.createElement('img');
-      img.src = itemIconUrl(face.icon, 17);
-      img.draggable = false;
-      const label = document.createElement('span');
-      label.textContent = skillName(style);
-      chip.append(img, label);
-      chip.addEventListener('click', () => {
-        document
-          .getElementById(`arts-school-${style}`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-      strip.appendChild(chip);
-    }
-    return strip;
   }
 
   // ---------------------------------------------- the Callings wing
@@ -1954,81 +2069,61 @@ export class Panels {
   }
 
   /**
-   * The live loadout strip: every slot, its source, its ability. THE
-   * PAIRED HAND's order — the two art seats side by side, then the
-   * trinkets — matching the hotbar exactly.
+   * THE LOADOUT ALTAR — four painted seats, always visible: the two
+   * art seats side by side, then the trinkets, THE PAIRED HAND's
+   * order matching the hotbar exactly. Each seat is a kit socket
+   * wearing its live chip; a filled art seat presses through to its
+   * plate on the stage.
    */
   private renderArtsLoadout(): void {
     const relic = itemDef(this.lastEquipment.relic?.id ?? '');
     const sigil = itemDef(this.lastEquipment.sigil?.id ?? '');
     this.artsLoadout.innerHTML = '';
+    this.artsLoadout.dataset.region = '';
     const title = document.createElement('span');
     title.className = 'load-title';
     title.textContent = 'Battle loadout';
     this.artsLoadout.appendChild(title);
     for (const row of [
-      {
-        action: 'ability1',
-        src: 'First Art',
-        ab: this.techniques[0] ?? undefined,
-        empty: 'Choose below',
-        r: true,
-      },
-      {
-        action: 'ability3',
-        src: 'Second Art',
-        ab: this.techniques[1] ?? undefined,
-        empty: 'Choose below',
-        r: true,
-      },
-      { action: 'ability2', src: 'Relic', ab: relic?.relic, empty: 'Wear a relic' },
-      { action: 'ability4', src: 'Sigil', ab: sigil?.sigil, empty: 'Fell a boss' },
+      { action: 'ability1', src: 'First art', ab: this.techniques[0] ?? undefined, empty: 'Choose below', art: true },
+      { action: 'ability3', src: 'Second art', ab: this.techniques[1] ?? undefined, empty: 'Choose below', art: true },
+      { action: 'ability2', src: 'Relic', ab: relic?.relic, empty: 'Wear a relic', art: false },
+      { action: 'ability4', src: 'Sigil', ab: sigil?.sigil, empty: 'Fell a boss', art: false },
     ] as const) {
       const ab = row.ab ? abilityDef(row.ab) : undefined;
-      // THE LOAN LAW in the strip: a seated secret with its teacher
-      // away reads asleep here too — the strip never overpromises.
+      // THE LOAN LAW at the altar: a seated secret with its teacher
+      // away reads asleep here too — the altar never overpromises.
       const tdef = row.ab ? techniquePoolDef(row.ab) : undefined;
       const dormant = !!tdef && this.secretDormant(tdef);
-      const slot = document.createElement('div');
-      slot.className =
-        'load-slot' + ('r' in row && row.r ? ' the-r' : '') + (dormant ? ' dormant' : '');
-      if (dormant && ab) slot.title = `${ab.name} sleeps. Hold a weapon that teaches it.`;
-      const well = document.createElement('div');
-      well.className = 'load-well';
-      if (ab) {
-        const img = document.createElement('img');
-        img.src = abilityIconUrl(ab.id, 44);
-        img.draggable = false;
-        well.appendChild(img);
-      } else {
-        well.classList.add('empty');
-      }
-      const key = document.createElement('span');
-      key.className = 'load-key';
-      const kbText = bindings.kbBadge(row.action);
-      if (kbText) {
-        const kb = document.createElement('span');
-        kb.className = 'kb-glyph small';
-        kb.textContent = kbText;
-        key.appendChild(kb);
-      }
-      const g = bindings.padBadge(row.action);
-      if (g) {
-        const pad = document.createElement('span');
-        pad.className = `pad-glyph ${g.cls}`;
-        pad.textContent = g.text;
-        key.appendChild(pad);
-      }
-      well.appendChild(key);
-      slot.appendChild(well);
-      const src = document.createElement('span');
-      src.className = 'load-src';
-      src.textContent = row.src;
+      const seat = socket({ action: row.action, label: row.src });
+      seat.root.classList.add('altar-seat');
+      if (dormant) seat.root.classList.add('dormant');
+      if (ab) seat.fill(abilityIconUrl(ab.id, 44), ab.name);
       const name = document.createElement('span');
       name.className = 'load-name' + (ab ? '' : ' empty');
-      name.textContent = ab ? ab.name : row.empty;
-      slot.append(src, name);
-      this.artsLoadout.appendChild(slot);
+      name.textContent = ab
+        ? dormant
+          ? `${ab.name} (asleep)`
+          : ab.name
+        : row.empty;
+      seat.root.appendChild(name);
+      if (dormant && ab) seat.root.title = `${ab.name} sleeps. Hold a weapon that teaches it.`;
+      // A filled art seat is a door to its plate on the stage.
+      if (row.art && ab) {
+        seat.root.dataset.nav = '';
+        seat.root.dataset.navkey = `load:${row.action}`;
+        seat.root.dataset.acta = 'Inspect';
+        seat.root.addEventListener('click', () => {
+          const style = techniquePoolDef(ab.id)?.style;
+          if (style) {
+            this.artsWing = 'arts';
+            this.artsSchoolSel = style;
+            this.artsSel = ab.id;
+            this.renderArts();
+          }
+        });
+      }
+      this.artsLoadout.appendChild(seat.root);
     }
   }
 
@@ -2228,23 +2323,41 @@ export class Panels {
     }
     btn.append(wellEl, nameEl, sub);
     btn.addEventListener('click', () => {
-      this.artsSel = tech.ability;
-      this.renderArts();
+      this.inspectArt(tech.ability);
       // THE VERB COMES TO THE HAND: a seatable art raises its seat
       // sheet AT the plate — mouse and pad ride the same wire. The
-      // panel just re-rendered, so anchor on the plate's new body.
+      // inspect is bench-only, so the plate under the sheet stands.
       if (st === 'unlocked' || st === 'equipped') {
-        const anchor = document.querySelector<HTMLElement>(
-          `[data-navkey="${CSS.escape(`art:${tech.ability}`)}"]`,
-        );
-        if (anchor) openSheet(anchor, this.seatVerbs(tech.ability, st));
+        openSheet(btn, this.seatVerbs(tech.ability, st));
       }
     });
     return btn;
   }
 
+  /**
+   * Light the bench for one art without rebuilding the stage: focus
+   * and hover ride this, so reading is free and the ring never loses
+   * the plate it stands on.
+   */
+  private inspectArt(ability: string): void {
+    if (this.artsSel === ability) return;
+    this.artsSel = ability;
+    this.markTechSeen(ability);
+    this.artsSchools
+      .querySelectorAll('.tech-plate-btn.selected')
+      .forEach((p) => p.classList.remove('selected'));
+    this.artsSchools
+      .querySelector(`[data-navkey="${CSS.escape(`art:${ability}`)}"]`)
+      ?.classList.add('selected');
+    this.renderArtsBench();
+    this.updateArtsPip();
+  }
+
   /** The bench: the chosen art laid out large, stats told honestly. */
-  private renderArtsBench(all: Array<{ style: SkillId; t: TechniqueDef }>): void {
+  private renderArtsBench(all?: Array<{ style: SkillId; t: TechniqueDef }>): void {
+    all ??= this.artsSchoolIds().flatMap((s) =>
+      this.visibleTechniques(s).map((t) => ({ style: s, t })),
+    );
     this.artsDetail.innerHTML = '';
     const entry = all.find((e) => e.t.ability === this.artsSel);
     if (!entry) {

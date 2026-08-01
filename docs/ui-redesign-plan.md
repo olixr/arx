@@ -1,8 +1,34 @@
 # The Grand Refit — THE HALL FITS THE HAND
 
-*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phases 1–3
-SHIPPED (THE ONE RULER, THE KIT OF ROOMS, THE HAND KNOWS THE ROOM),
-Phases 4–6 pending.***
+*Design review 2026-08-01. Status: **GREEN-LIT 2026-08-01 — Phases 1–4
+SHIPPED (THE ONE RULER, THE KIT OF ROOMS, THE HAND KNOWS THE ROOM,
+THE PERSONAL WING), Phases 5–6 pending.***
+
+**Phase 4 as-built (2026-08-01):** THE CODEX FLAGSHIP — the loadout ALTAR
+(four kit sockets wearing live chips, dormant secrets dimmed, a filled art
+seat presses through to its plate), the SCHOOL RAIL (one chamfered stop per
+school: ring-gauged crest + capitalized name + level, Callings the last
+stop with its Focus ring; LT/RT step the stops via `kit-page`; pips for
+unseen arts; the wing tabs AND the sticky jump strip retired), ONE school's
+ladder on the stage at a time (`artsSchoolSel`), and THE BENCH RENDERS ON
+FOCUS (`inspectArt` — bench-only update, the ring never loses its plate;
+mouse hover rides the same wire via `showCardFor`). Plate press = light
+inspect + seat sheet at the plate (no full re-render — the Ph3 re-anchor
+gotcha died). THE SKILLS HALL — every discipline an emblem (ring gauge of
+progress-to-next-level, trophy gem numeral hung off the ring, wing
+grouping), all 22+ visible at once (scroll gap 0); focus/hover raises the
+HERO PANE (crown of totals presiding, plaque + story + meter + xp line +
+Technique/Callings doors that land pre-aimed in the codex). THE CHARACTER
+CASE — the paper-doll spine and shoulder bar are now grid ITEMS spanning
+the stand's own tracks (pseudo-elements with grid-row/column; the
+hand-derived pixel anchors are gone). `glyph-line` became true inline flow
+so chip-bearing sentences wrap like sentences. GOTCHAS: never pass an
+inline `size` to a ringGauge a stylesheet needs to govern (inline beats
+CSS — the rail's fold bug); a concurrent session bumping the shared
+protocol requires restarting the isolated rig server. Receipts: rail and
+wall measured scroll-gap 0 at 1080p; 4K scale 2 identical composition
+(codex 2480px wide, 65% of display); live shots of codex/callings/skills/
+character in pad mode; 337 tests + build green.
 
 **Phase 3 as-built (2026-08-01):** `seatKey` is deleted — every seat is
 named by a seatChip (both languages, CSS-swapped), including the school-head
@@ -467,6 +493,11 @@ Each phase lands green, committed, and provable before the next begins.
    2026-08-01 — see as-built note at the head of this doc; live receipt
    beat the target at two presses.**
 4. **THE PERSONAL WING** — Codex flagship, Character/Pack, Skills Hall.
+   **SHIPPED 2026-08-01 — see as-built note at the head of this doc.**
+   *(Deliberately deferred within scope: the pack grid stays a container-
+   clamped grid — it already satisfies NOTHING LIVES BELOW THE FOLD and is
+   the codebase's one native adaptive layout; the item card already scales
+   post-Ph1; worn-socket set-glow awaits enchant-set data in Ph5's orbit.)*
 5. **THE MAKER'S WING** — Workshop, Builder's Table, Vault, Store, Stalls,
    work card, build tray.
 6. **THE WORLD'S WING & THE LIVING CHROME** — Journal, Standing, Social,

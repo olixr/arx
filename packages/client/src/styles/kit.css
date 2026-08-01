@@ -606,10 +606,18 @@ body:not(.no-ui-motion) .kit-plate:hover {
   vertical-align: middle;
 }
 
+/* A sentence with chips set into it must still WRAP like a sentence —
+   inline flow, the chips riding the text line. */
 .glyph-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3125rem;
+  display: inline;
+  line-height: 1.6;
+}
+
+.glyph-line > .seat-chip,
+.glyph-line > .kb-glyph,
+.glyph-line > .pad-glyph {
+  margin: 0 0.1875rem;
+  vertical-align: middle;
 }
 
 /* ---- the ring gauge: the gauge channel bent into a circle ---- */

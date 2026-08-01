@@ -103,28 +103,29 @@
 }
 
 /* The armor stand itself: a quiet spine + shoulder bar the sockets
-   hang on, visible only in the gaps between wells. Pixel-anchored:
-   the rows are fixed 5rem + 0.5625rem gaps, the container may run taller.
-   (80 beside the pack's ~82 reads as one scale; the 0.125rem buys the
-   ledger its clean fit below.) */
+   hang on, visible only in the gaps between wells. HONEST GRID MATH
+   (Grand Refit Ph4): the pseudo-elements are grid ITEMS spanning the
+   stand's own rows and columns — resize the cells and the stand
+   follows; no hand-derived pixel anchors survive. */
 #equip-anatomy::before {
   content: '';
-  position: absolute;
-  left: 50%;
-  top: 2.5rem;
-  height: 16.6875rem;
+  grid-row: 1 / 5;
+  grid-column: 2;
+  justify-self: center;
+  align-self: stretch;
+  margin: 2.5rem 0;
   width: 0.1875rem;
-  transform: translateX(-50%);
   background: var(--line);
   pointer-events: none;
 }
 
 #equip-anatomy::after {
   content: '';
-  position: absolute;
-  left: 0.8125rem;
-  right: 0.8125rem;
-  top: 5.125rem;
+  grid-row: 2;
+  grid-column: 1 / 4;
+  align-self: start;
+  /* Rides the gap between the head row and the shoulder row. */
+  margin: -0.375rem 0.8125rem 0;
   height: 0.1875rem;
   background: var(--line);
   pointer-events: none;

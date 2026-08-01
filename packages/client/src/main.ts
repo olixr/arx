@@ -640,6 +640,10 @@ document.addEventListener('pointerover', (e) => {
     nav.hideTooltip();
     return;
   }
+  // Hovering a technique plate or a skill emblem lights its
+  // inspector pane — exactly as pad focus does.
+  const inspectable = target?.closest?.('[data-navkey^="art:"], [data-navkey^="skill:"]');
+  if (inspectable) panels.showCardFor(inspectable as HTMLElement);
   panels.hideCard();
   const el = target?.closest?.('[data-tipname]');
   if (el) nav.showTooltipFor(el as HTMLElement);

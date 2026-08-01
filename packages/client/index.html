@@ -143,21 +143,28 @@
 
       <!-- SKILLS — the hall of deeds: disciplines grouped into wings.
            Techniques moved out to their own codex screen. -->
+      <!-- SKILLS — the hall of deeds (Grand Refit Ph4): every
+           discipline an emblem ringed by its climb, the chosen one
+           told whole on the hero pane. -->
       <div id="skills-panel" class="ui-screen screen-skills hidden">
         <h3>Skills</h3>
-        <div id="skills-list"></div>
+        <div class="skills-main">
+          <div id="skills-wall" data-region></div>
+          <div id="skills-hero" data-region></div>
+        </div>
       </div>
 
-      <!-- TECHNIQUES — the codex of combat arts: your live Q/E/R/T
-           loadout up top, each school's ladder of techniques below,
-           the chosen art laid out large on the bench to the right. -->
+      <!-- TECHNIQUES — the codex of combat arts (Grand Refit Ph4):
+           the loadout altar up top, the school rail on the left (one
+           crest per school, Callings last), ONE school's ladder on
+           the stage, and the chosen art on the bench to the right. -->
       <div id="arts-panel" class="ui-screen screen-arts hidden">
         <h3>Techniques</h3>
-        <div id="arts-wings"></div>
         <div id="arts-loadout"></div>
         <div class="arts-main">
-          <div id="arts-schools"></div>
-          <div id="arts-detail"></div>
+          <div id="arts-rail" data-region></div>
+          <div id="arts-schools" data-region></div>
+          <div id="arts-detail" data-region></div>
         </div>
       </div>
 

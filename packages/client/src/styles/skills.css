@@ -1,7 +1,9 @@
 /* ==================================================================
-   THE SKILLS HALL — disciplines grouped into named wings, combat arts
-   as wide hero cards carrying their technique ladders, a total-level
-   crown presiding.
+   THE SKILLS HALL — the wall of deeds (Grand Refit Ph4): every
+   discipline an emblem ringed by its climb to the next level, the
+   level numeral its trophy, grouped into named wings — all of it
+   visible at once. The chosen skill reads whole on the hero pane,
+   the total-level crown presiding over it.
    ================================================================== */
 
 .screen-skills {
@@ -9,13 +11,125 @@
   height: min(55rem, 90vh);
 }
 
-#skills-list {
+.skills-main {
   flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 24rem;
+  gap: 1rem;
+}
+
+#skills-wall {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
   padding-right: 0.375rem;
+}
+
+#skills-hero {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* One wing's emblems, shoulder to shoulder. */
+.skill-wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.25rem, 1fr));
+  gap: 0.375rem 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.skill-emblem {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.25rem 0.4375rem;
+  background: none;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  color: var(--parchment);
+}
+
+.skill-emblem:hover,
+.skill-emblem.selected {
+  background: var(--raise);
+  --cut: 0.5625rem;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+  box-shadow:
+    inset 0 0 0 var(--hairline) color-mix(in srgb, var(--skill-accent) 55%, var(--line)),
+    inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
+    inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.4);
+}
+
+.skill-emblem .ring-gauge {
+  --ring-size: 3.75rem;
+}
+
+.skill-emblem .ring-center img {
+  width: 1.875rem;
+  height: 1.875rem;
+}
+
+/* The trophy numeral, hung off the ring's shoulder. */
+.emblem-gem {
+  position: absolute;
+  right: -0.4375rem;
+  bottom: -0.25rem;
+  min-width: 1.375rem;
+  padding: 0.0625rem 0.25rem;
+  font-family: var(--serif);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--brass-ink);
+  background: var(--gold);
+  clip-path: polygon(0.25rem 0, calc(100% - 0.25rem) 0, 100% 50%, calc(100% - 0.25rem) 100%, 0.25rem 100%, 0 50%);
+  text-shadow: none;
+}
+
+.skill-emblem.maxed .emblem-gem {
+  background: var(--gold-hot);
+}
+
+.emblem-name {
+  max-width: 100%;
+  font-size: var(--t-whisper);
+  font-weight: 800;
+  letter-spacing: 0.025rem;
+  text-transform: capitalize;
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skill-emblem.secret-skill .emblem-name {
+  color: var(--gold-bright);
+}
+
+/* The hero pane's head reuses the hall's plaque language. */
+.hero-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6875rem;
 }
 
 .skills-total {

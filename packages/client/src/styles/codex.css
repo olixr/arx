@@ -1,8 +1,11 @@
 /* ==================================================================
-   THE TECHNIQUES CODEX — the combat arts' own screen. The live
-   Q/E/R/T loadout strip up top tells the R key's place in the kit;
-   below it every school lays its four-rung ladder on a rail, and the
-   chosen art is spread out large on the bench to the right.
+   THE TECHNIQUES CODEX — the combat arts' own screen (Grand Refit
+   Ph4, the flagship room). The loadout ALTAR up top: four painted
+   seats wearing their live chips. The school RAIL on the left: one
+   crest per school ringed by its climb, Callings last, LT/RT
+   stepping the stops. ONE school's ladder stands on the stage — the
+   eight-ladder scroll is gone — and the chosen art reads on the
+   bench, which renders on focus: inspection costs nothing.
    ================================================================== */
 
 .screen-arts {
@@ -10,15 +13,16 @@
   height: min(53.75rem, 90vh);
 }
 
-/* ---- the loadout strip: four keys, four sources, one story. */
+/* ---- THE LOADOUT ALTAR: four seats, one story. */
 
 #arts-loadout {
   flex: none;
   display: flex;
-  align-items: stretch;
-  gap: 0.75rem;
-  padding: 0.75rem 1.125rem 0.625rem;
-  margin-bottom: 0.875rem;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2.25rem;
+  padding: 0.5rem 1.125rem 0.375rem;
+  margin-bottom: 0.625rem;
   background: var(--sunk);
   border: 0.125rem solid var(--line);
 }
@@ -36,68 +40,24 @@
   text-shadow: var(--punch-small);
 }
 
-.load-slot {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* The altar seat: a kit socket wearing its chip, its office, and the
+   seated art's name under it. */
+.altar-seat {
+  --socket-size: 3.5rem;
   gap: 0.1875rem;
+  cursor: pointer;
 }
 
-.load-well {
-  position: relative;
-  width: 4rem;
-  height: 4rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 0.4375rem solid transparent;
-  border-image: var(--ui-socket) 35 fill / 0.4375rem;
-}
-
-.load-well img {
-  width: 2.75rem;
-  height: 2.75rem;
-}
-
-.load-well.empty::after {
-  content: '—';
-  font-size: 1.25rem;
-  color: var(--parchment-dim);
-  opacity: 0.45;
-}
-
-/* The key badge overhangs the well's corner, hotbar-style. */
-.load-key {
-  position: absolute;
-  right: -0.75rem;
-  bottom: -0.75rem;
-}
-
-/* The R slot is why this screen exists — it wears the gold lining. */
-.load-slot.the-r .load-well {
-  box-shadow:
-    inset 0 0 0 0.15625rem var(--gold),
-    inset 0 0 12.5rem rgba(217, 164, 65, 0.13);
-}
-
-.load-slot.the-r .load-src {
+.altar-seat .socket-label {
   color: var(--gold-bright);
 }
 
-.load-src {
-  margin-top: 0.25rem;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.075rem;
-  text-transform: uppercase;
-  color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
+.altar-seat.dormant .socket-well img {
+  filter: grayscale(0.9) brightness(0.75);
 }
 
 .load-name {
-  max-width: 100%;
+  max-width: 8.5rem;
   font-size: var(--t-label);
   font-weight: 700;
   color: var(--parchment);
@@ -114,16 +74,127 @@
   opacity: 0.75;
 }
 
-/* ---- the body: school ladders left, the bench right. */
+/* ---- the body: rail left, one school on the stage, bench right. */
 
 .arts-main {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 25rem;
+  grid-template-columns: 13.5rem 1fr 25rem;
   gap: 0.875rem;
 }
 
+/* THE SCHOOL RAIL: crests down the left edge. */
+#arts-rail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.rail-stop {
+  --cut: 0.5625rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.3125rem 0.625rem;
+  text-align: left;
+  background: var(--raise);
+  color: var(--parchment);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+  box-shadow:
+    inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
+    inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.4);
+}
+
+.rail-stop:hover {
+  background: var(--raise-hi);
+}
+
+/* The standing stop: the school's own color floods its left edge. */
+.rail-stop.active {
+  background: var(--raise-hi);
+  box-shadow:
+    inset 0.25rem 0 0 var(--skill-accent),
+    inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
+    inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.4);
+}
+
+.rail-stop .ring-gauge {
+  --ring-size: 2.375rem;
+  --ring-tone: var(--skill-accent);
+  flex: none;
+}
+
+.rail-stop .ring-center img {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.rail-text {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.rail-text .rail-sub {
+  margin-left: auto;
+  flex: none;
+}
+
+.rail-name {
+  font-weight: 800;
+  font-size: var(--t-label);
+  text-transform: capitalize;
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rail-sub {
+  font-size: var(--t-whisper);
+  color: var(--parchment-faint);
+  text-shadow: var(--punch-small);
+}
+
+/* Something unseen waits behind this stop. */
+.rail-stop.has-pip::after {
+  content: '';
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  background: var(--gold-bright);
+  transform: rotate(45deg);
+  border: var(--hairline) solid rgba(10, 6, 16, 0.85);
+}
+
+/* A school with an art in hand wears a quiet brass tick. */
+.rail-stop.in-hand-stop .rail-name {
+  color: var(--gold-bright);
+}
+
+/* THE STAGE: one school's ladder, whole, no scroll at reference. */
 #arts-schools {
   min-height: 0;
   overflow-y: auto;
@@ -133,84 +204,6 @@
   padding-right: 0.375rem;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
-}
-
-/* THE SCHOOL JUMP-STRIP: one chip per school, riding sticky at the
-   top of the ledger — eight ladders is a long scroll, and both the
-   mouse and the pad deserve a short road to any of them. */
-.school-jump {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  flex: none;
-  display: flex;
-  gap: 0.375rem;
-  padding: 0.375rem 0.5rem;
-  background: var(--raise);
-  border: 0.09375rem solid var(--line);
-  box-shadow: 0 0.1875rem 0.5rem rgba(10, 6, 2, 0.45);
-}
-
-.jump-chip {
-  position: relative;
-  appearance: none;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3125rem;
-  padding: 0.3125rem 0.25rem;
-  font-family: inherit;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.03125rem;
-  text-transform: capitalize;
-  color: var(--parchment-dim);
-  background: var(--sunk);
-  border: 0.09375rem solid color-mix(in srgb, var(--skill-accent, var(--line)) 40%, var(--line));
-  border-bottom: 0.1875rem solid var(--skill-accent, var(--line));
-  border-radius: 0.25rem;
-  cursor: pointer;
-  text-shadow: var(--punch-small);
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.jump-chip img {
-  flex: none;
-  width: 1.0625rem;
-  height: 1.0625rem;
-}
-
-.jump-chip span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Something new waits down this school's ladder. */
-.jump-chip.has-new::after {
-  content: '';
-  position: absolute;
-  right: 0.1875rem;
-  top: 0.1875rem;
-  width: 0.4375rem;
-  height: 0.4375rem;
-  border-radius: 50%;
-  background: #ffd98a;
-  box-shadow: 0 0 0.3125rem rgba(255, 217, 138, 0.8);
-}
-
-.jump-chip:hover {
-  color: var(--parchment);
-  filter: brightness(1.15);
-}
-
-/* The school whose art rides the R key wears the gold underline. */
-.jump-chip.on-r {
-  color: var(--gold-bright);
-  border-bottom-color: var(--gold);
 }
 
 .arts-school {
@@ -602,43 +595,6 @@
   margin-top: 0.125rem;
 }
 
-/* THE CODEX WINGS: Arts (actives) and Callings (passives). */
-#arts-wings {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.625rem;
-}
-
-.wing-tab {
-  position: relative;
-  appearance: none;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  font-weight: 800;
-  letter-spacing: 0.0875rem;
-  text-transform: uppercase;
-  padding: 0.4375rem 1.125rem;
-  color: var(--parchment-dim);
-  background: var(--sunk);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.3125rem;
-  cursor: pointer;
-  text-shadow: var(--punch-small);
-}
-
-.wing-tab.active {
-  color: var(--gold-bright);
-  background: color-mix(in srgb, var(--gold) 16%, var(--sunk));
-  border-color: var(--gold);
-}
-
-.wing-tab .new-pip {
-  position: absolute;
-  left: auto;
-  top: -0.4375rem;
-  right: -0.4375rem;
-}
-
 /* THE FOCUS METER — what the milestones earned, what answering holds. */
 .focus-nums {
   font-size: var(--t-body);
@@ -888,8 +844,7 @@
 }
 
 /* A dormant plate sleeps like the hotbar seat does — same language. */
-.tech-plate-btn.dormant .tech-plate-well img,
-.load-slot.dormant .load-well img {
+.tech-plate-btn.dormant .tech-plate-well img {
   filter: grayscale(0.85) brightness(0.55);
   opacity: 0.7;
 }
