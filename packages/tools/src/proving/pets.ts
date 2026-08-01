@@ -153,6 +153,473 @@ async function tpFarFrom(c: Client, base: [number, number]): Promise<void> {
 /** The gentling window on the wire: hpPct is a u8, 255 = whole. */
 const WINDOW_PCT = Math.floor(255 * GENTLE_HP_FRAC);
 
+/**
+ * THE KEEPER'S TONGUE (docs/beastcraft-arts-plan.md Part 7): the
+ * nine words beside the asking, proven on the live wire. Called by
+ * the full suite with the proven household's Bramble slot, or by
+ * the FAST LANE (ARX_PROVE_FROM=tongue) with null — the lane mints
+ * a companion with dev levers and exists for iteration speed only;
+ * the 70-receipt full run remains the record before any commit.
+ */
+const proveTongue = async (
+  c2: Client,
+  course: [number, number],
+  brambleSlot: number | null,
+): Promise<void> => {
+  let mark = c2.mark();
+  void mark;
+  await say(c2, '/xp beastcraft 13000000'); // the whole ladder, rank IV
+  await say(c2, '/xp onehand 13000000'); // the bear stage needs a real blade hand
+
+  // Seat + cast bookkeeping: a slot still cooling refuses SILENTLY at
+  // the door, so every paid cast records when its seat frees and the
+  // next cast on that seat waits its turn.
+  const seatFree = [0, 0] as [number, number]; // wall-clock ms, Q and R
+  const seatArt = async (seat: 0 | 1, ability: string): Promise<void> => {
+    // Deterministic: wait for the seat's own echo — a press raced
+    // against a 250ms sleep cast the PREVIOUS art once (live-caught:
+    // soothe judged sulk=0 because the Q seat still held the whistle).
+    const m0 = c2.mark();
+    c2.send({ t: 'technique', ability, slot: seat === 0 ? 0 : 2 });
+    await c2.waitFor(
+      (m) => m.t === 'techniques' && m.chosen?.[seat] === ability,
+      `seat ${ability}`,
+      5000,
+      m0,
+    );
+    await sleep(150);
+  };
+  const castSeat = async (seat: 0 | 1, aim: number, paysMs = 0): Promise<void> => {
+    const wait = seatFree[seat] - Date.now();
+    if (wait > 0) await sleep(wait + 400);
+    c2.frame(seat === 0 ? 1 << 3 : 1 << 5, 0, 0, aim);
+    await sleep(80);
+    c2.frame(0, 0, 0, aim);
+    if (paysMs > 0) seatFree[seat] = Date.now() + paysMs;
+  };
+  const aimAt = (targetEid: number): number => {
+    const b = c2.ents.get(targetEid);
+    const me = c2.pos;
+    return b && me ? Math.atan2(b.y - me.y, b.x - me.x) : 0;
+  };
+  const spawnOne = async (species: string, not = -1): Promise<number> => {
+    mark = c2.mark();
+    await say(c2, `/spawnmob ${species} 1`);
+    // A later update can re-broadcast an EARLIER body's meta — scope
+    // to the spawn mark AND exclude the body the caller already holds.
+    await c2.waitFor(
+      (m) =>
+        (m.t === 'enter' || m.t === 'update') &&
+        m.entities?.some((e: Msg) => e.defId === species && e.ownerEid === undefined && e.eid !== not),
+      `${species} enters`,
+      6000,
+      mark,
+    );
+    return c2.msgs
+      .slice(mark)
+      .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
+      .find((e: Msg) => e.defId === species && e.ownerEid === undefined && e.eid !== not).eid;
+  };
+  const npcLine = async (npcEid: number, species: string): Promise<string> => {
+    mark = c2.mark();
+    await say(c2, '/npcstate');
+    const line = await c2.waitFor(
+      (m) => m.t === 'chat' && new RegExp(`^${species}#${npcEid} `).test(m.text ?? ''),
+      `${species} brain line`,
+      6000,
+      mark,
+    );
+    return line.text as string;
+  };
+  const petLine = async (): Promise<string> => {
+    mark = c2.mark();
+    await say(c2, '/petstate');
+    const line = await c2.waitFor(
+      (m) => m.t === 'chat' && /LIVE|companions|resting|stabled/.test(m.text ?? ''),
+      'petstate',
+      6000,
+      mark,
+    );
+    return line.text as string;
+  };
+  const stand = async (x: number, y: number): Promise<void> => {
+    // The ground lottery is real (live-caught at the hind stage): a
+    // refused spot slides to the next shoulder instead of killing the
+    // run — the tpFarFrom medicine, applied close-in.
+    for (const [ox, oy] of [
+      [0, 0],
+      [3, 0],
+      [-3, 1],
+      [0, 4],
+      [5, -3],
+      [-5, -4],
+      [8, 2],
+    ] as Array<[number, number]>) {
+      try {
+        await tp(c2, Math.round(x) + ox, Math.round(y) + oy);
+        return;
+      } catch {
+        // refused ground: the next shoulder answers
+      }
+    }
+    throw new Error(`no ground near ${Math.round(x)},${Math.round(y)} would take the keeper`);
+  };
+  /** Walk the keeper onto a body (point blank), tp-assisted. */
+  const standOn = async (targetEid: number): Promise<void> => {
+    const b = c2.ents.get(targetEid);
+    if (!b) throw new Error(`entity ${targetEid} vanished before the approach`);
+    await stand(b.x, b.y + 1);
+    const t0 = Date.now();
+    for (;;) {
+      const bb = c2.ents.get(targetEid);
+      const me = c2.pos;
+      if (bb && me && Math.hypot(bb.x - me.x, bb.y - me.y) < 1.0) return;
+      if (Date.now() - t0 > 8000) return; // close enough: the eye's ring is generous
+      if (bb && me) {
+        const a = Math.atan2(bb.y - me.y, bb.x - me.x);
+        c2.frame(0, Math.cos(a), Math.sin(a), a);
+      }
+      await sleep(60);
+    }
+  };
+  const fellWith = async (targetEid: number, label: string): Promise<void> => {
+    const t0 = Date.now();
+    let lastNear = Date.now();
+    for (;;) {
+      if (Date.now() - t0 > 50000) throw new Error(`could not fell ${label}`);
+      const b = c2.ents.get(targetEid);
+      if (!b || b.hpPct === 0 || Date.now() - b.at > 2000) return;
+      const me = c2.pos!;
+      const d = Math.hypot(b.x - me.x, b.y - me.y);
+      const aim2 = Math.atan2(b.y - me.y, b.x - me.x);
+      if (d > 1.9) {
+        // A homeward-leashing body outwalks a keeper on foot forever
+        // (live-caught: the bear went home unfelled) — the dev lift
+        // catches up, exactly killTarget's own medicine.
+        if (Date.now() - lastNear > 3500) {
+          lastNear = Date.now();
+          await tp(c2, Math.round(b.x), Math.round(b.y) + 1);
+          continue;
+        }
+        c2.frame(0, Math.cos(aim2), Math.sin(aim2), aim2);
+        await sleep(60);
+        continue;
+      }
+      lastNear = Date.now();
+      c2.frame(ATTACK, 0, 0, aim2);
+      await sleep(80);
+      c2.frame(0, 0, 0, aim2);
+      await sleep(380);
+    }
+  };
+  const tongueGround: [number, number] = [course[0] + 23, course[1] + 17];
+
+  // --- R57: the companion words refuse aloud with nobody at heel.
+  await seatArt(0, 'come_to_heel');
+  mark = c2.mark();
+  await castSeat(0, 0);
+  await c2.waitFor((m) => m.t === 'chat' && /No friend walks with you/.test(m.text ?? ''), 'heel refusal', 5000, mark);
+  receipt('THE KEEPER\'S TONGUE: a companion word refuses aloud, nobody at heel', true);
+
+  // --- R58: Soothe the Wild stills a chasing heart.
+  await stand(tongueGround[0], tongueGround[1]);
+  const sootheMark = await spawnOne('giant_beetle');
+  await standOn(sootheMark); // point blank: the close ring aggros outright
+  await sleep(2500); // a scan cycle or two — let the eye commit to the chase
+  await seatArt(0, 'soothe_the_wild');
+  const sootheMark0 = c2.mark();
+  await castSeat(0, aimAt(sootheMark), 12500);
+  await sleep(700);
+  let stilled = await npcLine(sootheMark, 'giant_beetle');
+  if (!/sulk=[1-9]/.test(stilled)) {
+    // One honest second asking (the word has a cooldown, not a mood) —
+    // and the server's own voice in the log, so a refusal is NAMED.
+    const spoke = c2.msgs.slice(sootheMark0).filter((m) => m.t === 'chat').map((m) => m.text);
+    console.log(`  (the first word missed — server said ${JSON.stringify(spoke)} — asking once more: ${stilled})`);
+    await castSeat(0, aimAt(sootheMark), 12500);
+    await sleep(700);
+    stilled = await npcLine(sootheMark, 'giant_beetle');
+  }
+  receipt(
+    'SOOTHE THE WILD: the fight leaves it, eyes down and sulking',
+    / idle /.test(stilled) && /sulk=[1-9]/.test(stilled),
+    stilled,
+  );
+
+  // --- R59: the crowned terrors are too proud to be stilled.
+  await stand(tongueGround[0] + 26, tongueGround[1] - 14);
+  const terror = await spawnOne('dire_wolf');
+  mark = c2.mark();
+  await castSeat(0, aimAt(terror));
+  await c2.waitFor((m) => m.t === 'chat' && /too proud to be stilled/.test(m.text ?? ''), 'sovereign refusal', 8000, mark);
+  receipt('the matriarch refuses the word: too proud to be stilled', true);
+  await stand(tongueGround[0] + 52, tongueGround[1] + 9); // leave her to her wood
+
+  // --- R60: Strewn Bait draws the wild at rest, and the rank IV
+  // table calms its guests while they eat.
+  const hind = await spawnOne('hind');
+  const hindAt = c2.ents.get(hind)!;
+  await stand(hindAt.x + 8, hindAt.y);
+  await seatArt(1, 'strewn_bait');
+  await castSeat(1, aimAt(hind), 19500);
+  console.log('  (the table is laid; waiting on supper...)');
+  await sleep(14000);
+  const fed = await npcLine(hind, 'hind');
+  receipt(
+    'STREWN BAIT: the wild at rest comes to nose it, calmed while it eats',
+    /sulk=[1-9]/.test(fed),
+    fed,
+  );
+
+  // --- R61+R62: The Quiet Walk crosses the eye unmarked; the
+  // walker's own blow ends it aloud. The truce goes up BEFORE the
+  // wolf arrives — a spawn at arm's length would otherwise take the
+  // close ring's honest aggro before the word was even spoken.
+  await stand(tongueGround[0] - 31, tongueGround[1] + 22);
+  await seatArt(0, 'the_quiet_walk');
+  await castSeat(0, 0, 23500);
+  const wolf = await spawnOne('wolf');
+  await standOn(wolf); // point blank INSIDE the reflex ring, under truce
+  await sleep(3000);
+  const unmarked = await npcLine(wolf, 'wolf');
+  receipt(
+    'THE QUIET WALK: point blank in the reflex ring, and never marked',
+    / idle /.test(unmarked) && /alert=0/.test(unmarked),
+    unmarked,
+  );
+  mark = c2.mark();
+  const brokeT0 = Date.now();
+  for (;;) {
+    if (Date.now() - brokeT0 > 12000) throw new Error('the quiet never broke');
+    c2.frame(ATTACK, 0, 0, aimAt(wolf));
+    await sleep(80);
+    c2.frame(0, 0, 0, 0);
+    await sleep(400);
+    if (c2.msgs.slice(mark).some((m) => m.t === 'chat' && /The quiet is broken/.test(m.text ?? ''))) break;
+  }
+  receipt('the truce is honest: the walker\'s own blow breaks it, aloud', true);
+  await fellWith(wolf, 'the insulted wolf');
+
+  // --- R63: Come to Heel folds the road shut (and rank IV arrives
+  // with its blood up).
+  if (brambleSlot !== null) {
+    await say(c2, `/tame heel ${brambleSlot}`);
+  } else {
+    // FAST LANE: no household was proven into being — mint one.
+    await say(c2, '/tame giant_beetle');
+    await c2.waitFor((m) => m.t === 'pet' && m.pets?.some((p: Msg) => p.state === 'heel'), 'fast-lane companion', 6000);
+  }
+  await sleep(1200);
+  await stand(tongueGround[0] + 40, tongueGround[1] + 41); // 50+ tiles: the heel slips to trailing
+  await sleep(2500);
+  await seatArt(1, 'come_to_heel');
+  mark = c2.mark();
+  await castSeat(1, 0, 6500);
+  await c2.waitFor((m) => m.t === 'chat' && /is at your side/.test(m.text ?? ''), 'the arrival', 6000, mark);
+  await sleep(600);
+  const arrived = Math.max(...c2.petEids(c2.eid));
+  const aPos = c2.ents.get(arrived);
+  const near = aPos && c2.pos ? Math.hypot(aPos.x - c2.pos.x, aPos.y - c2.pos.y) : 99;
+  const surgedIn = await petLine();
+  receipt(
+    'COME TO HEEL: however far the road, the friend arrives at your side',
+    near < 4 && /surge=\d+t/.test(surgedIn),
+    `d=${near.toFixed(1)} ${surgedIn.includes('surge') ? 'blood up' : surgedIn}`,
+  );
+
+  // --- R64: the cry finds no fallen friend while this one stands.
+  await seatArt(0, 'the_keepers_cry');
+  mark = c2.mark();
+  await castSeat(0, 0);
+  await c2.waitFor((m) => m.t === 'chat' && /No fallen friend hears you/.test(m.text ?? ''), 'cry refusal', 5000, mark);
+  receipt('THE KEEPER\'S CRY refuses while the friend stands', true);
+
+  // --- R65+R66: Point the Fang aims the friend, pulls the mark's
+  // eyes, and the rank IV dare carries to the mark's neighbor.
+  const gob1 = await spawnOne('goblin');
+  const gob2 = await spawnOne('goblin', gob1);
+  await seatArt(1, 'point_the_fang');
+  await castSeat(1, aimAt(gob1), 8500);
+  await sleep(900);
+  const pointed = await petLine();
+  const petEidNow = Math.max(...c2.petEids(c2.eid));
+  // The cone takes the NEAREST throat — either goblin is a lawful
+  // mark; the receipt judges the pair, not the roll of the spawn ring.
+  const markEid = Number(pointed.match(/tgt=(\d+)/)?.[1] ?? -1);
+  const otherEid = markEid === gob1 ? gob2 : gob1;
+  // The eye is judged pulled whether it still HOLDS the friend
+  // (chase tgt=) or lost the line and is hunting it (search, alert@)
+  // — a body searching for the friend was turned by the dare all the
+  // same (live-caught: the neighbor went 'search alert=97@pet' in
+  // the second between the point and the read).
+  const eyeOn = (line: string): boolean =>
+    new RegExp(`(tgt=${petEidNow}\\b|@${petEidNow}\\b)`).test(line);
+  const eyeMark = await npcLine(markEid, 'goblin');
+  receipt(
+    'POINT THE FANG: the friend breaks for the mark, and the mark forgets you',
+    (markEid === gob1 || markEid === gob2) && eyeOn(eyeMark),
+    `pet tgt=${markEid} · mark ${eyeMark.match(/tgt=\d+|@\d+/)?.[0]}`,
+  );
+  const eyeOther = await npcLine(otherEid, 'goblin');
+  receipt(
+    'the dare carries: the neighbor turns on the friend too',
+    eyeOn(eyeOther),
+    eyeOther,
+  );
+
+  // --- R67: Keeper's Balm mends the fighting friend on the wire.
+  console.log('  (letting the goblins land their teeth...)');
+  const woundT0 = Date.now();
+  let preBalm = 255;
+  for (;;) {
+    const s = c2.ents.get(petEidNow);
+    if (s && s.hpPct < 210 && s.hpPct > 0) {
+      preBalm = s.hpPct;
+      break;
+    }
+    if (Date.now() - woundT0 > 30000) {
+      preBalm = s?.hpPct ?? 255;
+      break;
+    }
+    await sleep(300);
+  }
+  await seatArt(0, 'keepers_balm');
+  await castSeat(0, aimAt(petEidNow), 16500);
+  await sleep(1200);
+  const postBalm = c2.ents.get(petEidNow)?.hpPct ?? 0;
+  receipt(
+    'KEEPER\'S BALM: the poultice lands true mid-fight',
+    // A small wound heals PAST the u8 ceiling — full counts (live-
+    // caught: 240 -> 255 judged a failure by a flat +30 margin).
+    preBalm < 255 ? postBalm === 255 || postBalm > preBalm + 30 : postBalm === 255,
+    `hpPct ${preBalm} -> ${postBalm}`,
+  );
+  await fellWith(gob1, 'the first goblin');
+  await fellWith(gob2, 'the second goblin');
+
+  // --- R68: Blood of the Pack, the shared howl — the whole temper on
+  // the wire, dials and all.
+  await seatArt(1, 'blood_of_the_pack');
+  await castSeat(1, 0, 30500);
+  await sleep(600);
+  const howled = await petLine();
+  receipt(
+    'BLOOD OF THE PACK: teeth and stride quicken, the whole temper up',
+    /surge=\d+t x1\.4 temper/.test(howled),
+    howled.match(/surge=[^ ]+ [^ ]+ temper/)?.[0] ?? howled,
+  );
+
+  // --- R69: the fall, then THE KEEPER'S CRY stands the friend where
+  // it lies — no kneel, mid-field.
+  await stand(tongueGround[0] + 61, tongueGround[1] - 27);
+  await sleep(2000); // the long lift trailed the friend — let the calm bring it back
+  const bear = await spawnOne('bear');
+  await seatArt(0, 'point_the_fang');
+  await castSeat(0, aimAt(bear), 8500);
+  // Step back inside the fight leash and let the wild do its work.
+  await stand(c2.pos!.x + 7, c2.pos!.y);
+  mark = c2.mark();
+  await c2.waitFor((m) => m.t === 'chat' && /goes down, breath ragged/.test(m.text ?? ''), 'the fall', 90000, mark);
+  // GUARD THE VIGIL, the tongue's edition: fell the bear only while
+  // it stays near the fallen body — a leashing bear twelve tiles out
+  // is already harmless, and chasing it past the trail-out would
+  // send the very vigil home (fellWith's dev lift must never fire
+  // here for the same reason).
+  const fallenEid = Math.max(...c2.petEids(c2.eid));
+  const bodyAt = c2.ents.get(fallenEid);
+  if (bodyAt) await stand(bodyAt.x + 1, bodyAt.y);
+  {
+    const bt0 = Date.now();
+    for (;;) {
+      const bs = c2.ents.get(bear);
+      if (!bs || bs.hpPct === 0 || Date.now() - bs.at > 2000) break;
+      if (bodyAt && Math.hypot(bs.x - bodyAt.x, bs.y - bodyAt.y) > 12) break;
+      if (Date.now() - bt0 > 60000) break;
+      const me2 = c2.pos!;
+      const bd2 = Math.hypot(bs.x - me2.x, bs.y - me2.y);
+      const baim = Math.atan2(bs.y - me2.y, bs.x - me2.x);
+      if (bd2 > 1.9) {
+        c2.frame(0, Math.cos(baim), Math.sin(baim), baim);
+        await sleep(60);
+        continue;
+      }
+      c2.frame(ATTACK, 0, 0, baim);
+      await sleep(80);
+      c2.frame(0, 0, 0, baim);
+      await sleep(380);
+    }
+    // Back to the body's side for the cry's reach.
+    if (bodyAt) await stand(bodyAt.x + 1, bodyAt.y);
+  }
+  await seatArt(1, 'the_keepers_cry');
+  mark = c2.mark();
+  // The cry needs no aim: the word finds the fallen friend itself.
+  await castSeat(1, 0, 45500);
+  await c2.waitFor((m) => m.t === 'chat' && /hears you and stands/.test(m.text ?? ''), 'the rise', 6000, mark);
+  await sleep(600);
+  const criedUp = await petLine();
+  receipt(
+    'THE KEEPER\'S CRY: the fallen friend stands where it lies, angry',
+    !/downed/.test(criedUp) && /surge=\d+t/.test(criedUp) && /guard=\d+t/.test(criedUp),
+    criedUp,
+  );
+
+  // --- R70: VOICE OF THE WILD — the field stills, the friend answers.
+  await stand(tongueGround[0] + 74, tongueGround[1] + 6);
+  const ear1 = await spawnOne('giant_beetle');
+  const ear2 = await spawnOne('rat');
+  await seatArt(0, 'voice_of_the_wild');
+  await castSeat(0, 0, 60500);
+  await sleep(800);
+  const awed1 = await npcLine(ear1, 'giant_beetle');
+  const awed2 = await npcLine(ear2, 'rat');
+  const answered = await petLine();
+  receipt(
+    'VOICE OF THE WILD: the whole field stills, and the friend answers first',
+    /sulk=[1-9]/.test(awed1) && /sulk=[1-9]/.test(awed2) && /surge=\d+t/.test(answered),
+    `beetle ${awed1.match(/sulk=\d+/)?.[0]} · rat ${awed2.match(/sulk=\d+/)?.[0]} · friend surging`,
+  );
+
+};
+
+const fastLane = async (): Promise<void> => {
+  console.log("(FAST LANE: THE KEEPER'S TONGUE only — the 70-receipt full suite remains the record)");
+  const c2 = new Client();
+  await c2.open();
+  c2.send({ t: 'hello', v: PROTOCOL_VERSION });
+  c2.send({ t: 'register', user: `tongue_${STAMP}`, pass: 'proving123', name: `Tongue ${STAMP}` });
+  const w = await c2.waitFor((m) => m.t === 'welcome', 'welcome (fast lane)');
+  c2.eid = w.eid;
+  await c2.waitFor((m) => m.t === 'pet', 'join mirror (fast lane)');
+  const course: [number, number] = [160 + (Number(STAMP) % 97), 40 + (Number(STAMP) % 61)];
+  await tp(c2, course[0], course[1]);
+  await say(c2, '/xp vitality 13000000');
+  await say(c2, '/xp defence 13000000');
+  const m0 = c2.mark();
+  await say(c2, '/give bronze_sword 1');
+  const inv = await c2.waitFor((m) => m.t === 'inv', 'sword (fast lane)', 5000, m0);
+  c2.send({ t: 'use', slot: inv.slots.findIndex((sl: any) => sl && sl.item === 'bronze_sword') });
+  await sleep(500);
+  // /xp raises the CEILING, never the FILL (the gotcha bank's oldest
+  // entry): a register-fresh keeper at 13M vitality still walks at
+  // spawn hp, and the matriarch stage ate one whole (live-caught).
+  const tm = c2.mark();
+  await say(c2, '/give healing_tincture 12');
+  await c2.waitFor((m) => m.t === 'inv', 'tinctures (fast lane)', 5000, tm);
+  for (let i = 0; i < 14; i++) {
+    if ((c2.pos?.hpPct ?? 0) >= 250) break;
+    const invNow = c2.latest('inv');
+    const tSlot = invNow!.slots.findIndex((x: any) => x && x.item === 'healing_tincture');
+    if (tSlot < 0) break;
+    c2.send({ t: 'use', slot: tSlot });
+    await sleep(350);
+  }
+  await proveTongue(c2, course, null);
+  console.log(`\nTHE TEN WORDS HOLD (fast lane) — ${passed} receipts.`);
+  c2.ws.close();
+  process.exit(0);
+};
+
 const main = async () => {
   const c = new Client();
   await c.open();
@@ -1762,375 +2229,19 @@ const main = async () => {
   );
 
   // ==================================================================
-  // THE KEEPER'S TONGUE (docs/beastcraft-arts-plan.md Part 7): the
-  // nine words beside the asking, proven on the same live wire with
-  // the reconnected keeper. The household stands at three with no
-  // friend at heel — exactly the ground the refusal receipts need.
+  // THE KEEPER'S TONGUE — extracted so the fast lane can run the
+  // chapter alone (ARX_PROVE_FROM=tongue); the full suite remains
+  // the record before any commit.
   // ==================================================================
-
-  await say(c2, '/xp beastcraft 13000000'); // the whole ladder, rank IV
-  await say(c2, '/xp onehand 13000000'); // the bear stage needs a real blade hand
   const brambleSlot: number = mirror2.pets.find((p: Msg) => p.name === 'Bramble')!.slot;
-
-  // Seat + cast bookkeeping: a slot still cooling refuses SILENTLY at
-  // the door, so every paid cast records when its seat frees and the
-  // next cast on that seat waits its turn.
-  const seatFree = [0, 0] as [number, number]; // wall-clock ms, Q and R
-  const seatArt = async (seat: 0 | 1, ability: string): Promise<void> => {
-    // Deterministic: wait for the seat's own echo — a press raced
-    // against a 250ms sleep cast the PREVIOUS art once (live-caught:
-    // soothe judged sulk=0 because the Q seat still held the whistle).
-    const m0 = c2.mark();
-    c2.send({ t: 'technique', ability, slot: seat === 0 ? 0 : 2 });
-    await c2.waitFor(
-      (m) => m.t === 'techniques' && m.chosen?.[seat] === ability,
-      `seat ${ability}`,
-      5000,
-      m0,
-    );
-    await sleep(150);
-  };
-  const castSeat = async (seat: 0 | 1, aim: number, paysMs = 0): Promise<void> => {
-    const wait = seatFree[seat] - Date.now();
-    if (wait > 0) await sleep(wait + 400);
-    c2.frame(seat === 0 ? 1 << 3 : 1 << 5, 0, 0, aim);
-    await sleep(80);
-    c2.frame(0, 0, 0, aim);
-    if (paysMs > 0) seatFree[seat] = Date.now() + paysMs;
-  };
-  const aimAt = (targetEid: number): number => {
-    const b = c2.ents.get(targetEid);
-    const me = c2.pos;
-    return b && me ? Math.atan2(b.y - me.y, b.x - me.x) : 0;
-  };
-  const spawnOne = async (species: string, not = -1): Promise<number> => {
-    mark = c2.mark();
-    await say(c2, `/spawnmob ${species} 1`);
-    // A later update can re-broadcast an EARLIER body's meta — scope
-    // to the spawn mark AND exclude the body the caller already holds.
-    await c2.waitFor(
-      (m) =>
-        (m.t === 'enter' || m.t === 'update') &&
-        m.entities?.some((e: Msg) => e.defId === species && e.ownerEid === undefined && e.eid !== not),
-      `${species} enters`,
-      6000,
-      mark,
-    );
-    return c2.msgs
-      .slice(mark)
-      .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
-      .find((e: Msg) => e.defId === species && e.ownerEid === undefined && e.eid !== not).eid;
-  };
-  const npcLine = async (npcEid: number, species: string): Promise<string> => {
-    mark = c2.mark();
-    await say(c2, '/npcstate');
-    const line = await c2.waitFor(
-      (m) => m.t === 'chat' && new RegExp(`^${species}#${npcEid} `).test(m.text ?? ''),
-      `${species} brain line`,
-      6000,
-      mark,
-    );
-    return line.text as string;
-  };
-  const petLine = async (): Promise<string> => {
-    mark = c2.mark();
-    await say(c2, '/petstate');
-    const line = await c2.waitFor(
-      (m) => m.t === 'chat' && /LIVE|companions|resting|stabled/.test(m.text ?? ''),
-      'petstate',
-      6000,
-      mark,
-    );
-    return line.text as string;
-  };
-  const stand = async (x: number, y: number): Promise<void> => {
-    // The ground lottery is real (live-caught at the hind stage): a
-    // refused spot slides to the next shoulder instead of killing the
-    // run — the tpFarFrom medicine, applied close-in.
-    for (const [ox, oy] of [
-      [0, 0],
-      [3, 0],
-      [-3, 1],
-      [0, 4],
-      [5, -3],
-      [-5, -4],
-      [8, 2],
-    ] as Array<[number, number]>) {
-      try {
-        await tp(c2, Math.round(x) + ox, Math.round(y) + oy);
-        return;
-      } catch {
-        // refused ground: the next shoulder answers
-      }
-    }
-    throw new Error(`no ground near ${Math.round(x)},${Math.round(y)} would take the keeper`);
-  };
-  /** Walk the keeper onto a body (point blank), tp-assisted. */
-  const standOn = async (targetEid: number): Promise<void> => {
-    const b = c2.ents.get(targetEid);
-    if (!b) throw new Error(`entity ${targetEid} vanished before the approach`);
-    await stand(b.x, b.y + 1);
-    const t0 = Date.now();
-    for (;;) {
-      const bb = c2.ents.get(targetEid);
-      const me = c2.pos;
-      if (bb && me && Math.hypot(bb.x - me.x, bb.y - me.y) < 1.0) return;
-      if (Date.now() - t0 > 8000) return; // close enough: the eye's ring is generous
-      if (bb && me) {
-        const a = Math.atan2(bb.y - me.y, bb.x - me.x);
-        c2.frame(0, Math.cos(a), Math.sin(a), a);
-      }
-      await sleep(60);
-    }
-  };
-  const fellWith = async (targetEid: number, label: string): Promise<void> => {
-    const t0 = Date.now();
-    for (;;) {
-      if (Date.now() - t0 > 50000) throw new Error(`could not fell ${label}`);
-      const b = c2.ents.get(targetEid);
-      if (!b || b.hpPct === 0 || Date.now() - b.at > 2000) return;
-      const me = c2.pos!;
-      const d = Math.hypot(b.x - me.x, b.y - me.y);
-      const aim2 = Math.atan2(b.y - me.y, b.x - me.x);
-      if (d > 1.9) {
-        c2.frame(0, Math.cos(aim2), Math.sin(aim2), aim2);
-        await sleep(60);
-        continue;
-      }
-      c2.frame(ATTACK, 0, 0, aim2);
-      await sleep(80);
-      c2.frame(0, 0, 0, aim2);
-      await sleep(380);
-    }
-  };
-  const tongueGround: [number, number] = [course[0] + 23, course[1] + 17];
-
-  // --- R57: the companion words refuse aloud with nobody at heel.
-  await seatArt(0, 'come_to_heel');
-  mark = c2.mark();
-  await castSeat(0, 0);
-  await c2.waitFor((m) => m.t === 'chat' && /No friend walks with you/.test(m.text ?? ''), 'heel refusal', 5000, mark);
-  receipt('THE KEEPER\'S TONGUE: a companion word refuses aloud, nobody at heel', true);
-
-  // --- R58: Soothe the Wild stills a chasing heart.
-  await stand(tongueGround[0], tongueGround[1]);
-  const sootheMark = await spawnOne('giant_beetle');
-  await standOn(sootheMark); // point blank: the close ring aggros outright
-  await sleep(2500); // a scan cycle or two — let the eye commit to the chase
-  await seatArt(0, 'soothe_the_wild');
-  await castSeat(0, aimAt(sootheMark), 12500);
-  await sleep(700);
-  let stilled = await npcLine(sootheMark, 'giant_beetle');
-  if (!/sulk=[1-9]/.test(stilled)) {
-    // One honest second asking (the word has a cooldown, not a mood).
-    console.log(`  (the first word missed — asking once more: ${stilled})`);
-    await castSeat(0, aimAt(sootheMark), 12500);
-    await sleep(700);
-    stilled = await npcLine(sootheMark, 'giant_beetle');
-  }
-  receipt(
-    'SOOTHE THE WILD: the fight leaves it, eyes down and sulking',
-    / idle /.test(stilled) && /sulk=[1-9]/.test(stilled),
-    stilled,
-  );
-
-  // --- R59: the crowned terrors are too proud to be stilled.
-  await stand(tongueGround[0] + 26, tongueGround[1] - 14);
-  const terror = await spawnOne('dire_wolf');
-  mark = c2.mark();
-  await castSeat(0, aimAt(terror));
-  await c2.waitFor((m) => m.t === 'chat' && /too proud to be stilled/.test(m.text ?? ''), 'sovereign refusal', 8000, mark);
-  receipt('the matriarch refuses the word: too proud to be stilled', true);
-  await stand(tongueGround[0] + 52, tongueGround[1] + 9); // leave her to her wood
-
-  // --- R60: Strewn Bait draws the wild at rest, and the rank IV
-  // table calms its guests while they eat.
-  const hind = await spawnOne('hind');
-  const hindAt = c2.ents.get(hind)!;
-  await stand(hindAt.x + 8, hindAt.y);
-  await seatArt(1, 'strewn_bait');
-  await castSeat(1, aimAt(hind), 19500);
-  console.log('  (the table is laid; waiting on supper...)');
-  await sleep(14000);
-  const fed = await npcLine(hind, 'hind');
-  receipt(
-    'STREWN BAIT: the wild at rest comes to nose it, calmed while it eats',
-    /sulk=[1-9]/.test(fed),
-    fed,
-  );
-
-  // --- R61+R62: The Quiet Walk crosses the eye unmarked; the
-  // walker's own blow ends it aloud. The truce goes up BEFORE the
-  // wolf arrives — a spawn at arm's length would otherwise take the
-  // close ring's honest aggro before the word was even spoken.
-  await stand(tongueGround[0] - 31, tongueGround[1] + 22);
-  await seatArt(0, 'the_quiet_walk');
-  await castSeat(0, 0, 23500);
-  const wolf = await spawnOne('wolf');
-  await standOn(wolf); // point blank INSIDE the reflex ring, under truce
-  await sleep(3000);
-  const unmarked = await npcLine(wolf, 'wolf');
-  receipt(
-    'THE QUIET WALK: point blank in the reflex ring, and never marked',
-    / idle /.test(unmarked) && /alert=0/.test(unmarked),
-    unmarked,
-  );
-  mark = c2.mark();
-  const brokeT0 = Date.now();
-  for (;;) {
-    if (Date.now() - brokeT0 > 12000) throw new Error('the quiet never broke');
-    c2.frame(ATTACK, 0, 0, aimAt(wolf));
-    await sleep(80);
-    c2.frame(0, 0, 0, 0);
-    await sleep(400);
-    if (c2.msgs.slice(mark).some((m) => m.t === 'chat' && /The quiet is broken/.test(m.text ?? ''))) break;
-  }
-  receipt('the truce is honest: the walker\'s own blow breaks it, aloud', true);
-  await fellWith(wolf, 'the insulted wolf');
-
-  // --- R63: Come to Heel folds the road shut (and rank IV arrives
-  // with its blood up).
-  await say(c2, `/tame heel ${brambleSlot}`);
-  await sleep(1200);
-  await stand(tongueGround[0] + 40, tongueGround[1] + 41); // 50+ tiles: the heel slips to trailing
-  await sleep(2500);
-  await seatArt(1, 'come_to_heel');
-  mark = c2.mark();
-  await castSeat(1, 0, 6500);
-  await c2.waitFor((m) => m.t === 'chat' && /is at your side/.test(m.text ?? ''), 'the arrival', 6000, mark);
-  await sleep(600);
-  const arrived = Math.max(...c2.petEids(c2.eid));
-  const aPos = c2.ents.get(arrived);
-  const near = aPos && c2.pos ? Math.hypot(aPos.x - c2.pos.x, aPos.y - c2.pos.y) : 99;
-  const surgedIn = await petLine();
-  receipt(
-    'COME TO HEEL: however far the road, the friend arrives at your side',
-    near < 4 && /surge=\d+t/.test(surgedIn),
-    `d=${near.toFixed(1)} ${surgedIn.includes('surge') ? 'blood up' : surgedIn}`,
-  );
-
-  // --- R64: the cry finds no fallen friend while this one stands.
-  await seatArt(0, 'the_keepers_cry');
-  mark = c2.mark();
-  await castSeat(0, 0);
-  await c2.waitFor((m) => m.t === 'chat' && /No fallen friend hears you/.test(m.text ?? ''), 'cry refusal', 5000, mark);
-  receipt('THE KEEPER\'S CRY refuses while the friend stands', true);
-
-  // --- R65+R66: Point the Fang aims the friend, pulls the mark's
-  // eyes, and the rank IV dare carries to the mark's neighbor.
-  const gob1 = await spawnOne('goblin');
-  const gob2 = await spawnOne('goblin', gob1);
-  await seatArt(1, 'point_the_fang');
-  await castSeat(1, aimAt(gob1), 8500);
-  await sleep(900);
-  const pointed = await petLine();
-  const petEidNow = Math.max(...c2.petEids(c2.eid));
-  // The cone takes the NEAREST throat — either goblin is a lawful
-  // mark; the receipt judges the pair, not the roll of the spawn ring.
-  const markEid = Number(pointed.match(/tgt=(\d+)/)?.[1] ?? -1);
-  const otherEid = markEid === gob1 ? gob2 : gob1;
-  const eyeMark = await npcLine(markEid, 'goblin');
-  receipt(
-    'POINT THE FANG: the friend breaks for the mark, and the mark forgets you',
-    (markEid === gob1 || markEid === gob2) && new RegExp(`tgt=${petEidNow}\\b`).test(eyeMark),
-    `pet tgt=${markEid} · mark ${eyeMark.match(/tgt=\d+/)?.[0]}`,
-  );
-  const eyeOther = await npcLine(otherEid, 'goblin');
-  receipt(
-    'the dare carries: the neighbor turns on the friend too',
-    new RegExp(`tgt=${petEidNow}\\b`).test(eyeOther),
-    eyeOther,
-  );
-
-  // --- R67: Keeper's Balm mends the fighting friend on the wire.
-  console.log('  (letting the goblins land their teeth...)');
-  const woundT0 = Date.now();
-  let preBalm = 255;
-  for (;;) {
-    const s = c2.ents.get(petEidNow);
-    if (s && s.hpPct < 210 && s.hpPct > 0) {
-      preBalm = s.hpPct;
-      break;
-    }
-    if (Date.now() - woundT0 > 30000) {
-      preBalm = s?.hpPct ?? 255;
-      break;
-    }
-    await sleep(300);
-  }
-  await seatArt(0, 'keepers_balm');
-  await castSeat(0, aimAt(petEidNow), 16500);
-  await sleep(1200);
-  const postBalm = c2.ents.get(petEidNow)?.hpPct ?? 0;
-  receipt(
-    'KEEPER\'S BALM: the poultice lands true mid-fight',
-    // A small wound heals PAST the u8 ceiling — full counts (live-
-    // caught: 240 -> 255 judged a failure by a flat +30 margin).
-    preBalm < 255 ? postBalm === 255 || postBalm > preBalm + 30 : postBalm === 255,
-    `hpPct ${preBalm} -> ${postBalm}`,
-  );
-  await fellWith(gob1, 'the first goblin');
-  await fellWith(gob2, 'the second goblin');
-
-  // --- R68: Blood of the Pack, the shared howl — the whole temper on
-  // the wire, dials and all.
-  await seatArt(1, 'blood_of_the_pack');
-  await castSeat(1, 0, 30500);
-  await sleep(600);
-  const howled = await petLine();
-  receipt(
-    'BLOOD OF THE PACK: teeth and stride quicken, the whole temper up',
-    /surge=\d+t x1\.4 temper/.test(howled),
-    howled.match(/surge=[^ ]+ [^ ]+ temper/)?.[0] ?? howled,
-  );
-
-  // --- R69: the fall, then THE KEEPER'S CRY stands the friend where
-  // it lies — no kneel, mid-field.
-  await stand(tongueGround[0] + 61, tongueGround[1] - 27);
-  await sleep(2000); // the long lift trailed the friend — let the calm bring it back
-  const bear = await spawnOne('bear');
-  await seatArt(0, 'point_the_fang');
-  await castSeat(0, aimAt(bear), 8500);
-  // Step back inside the fight leash and let the wild do its work.
-  await stand(c2.pos!.x + 7, c2.pos!.y);
-  mark = c2.mark();
-  await c2.waitFor((m) => m.t === 'chat' && /goes down, breath ragged/.test(m.text ?? ''), 'the fall', 90000, mark);
-  await fellWith(bear, 'the bear');
-  await seatArt(1, 'the_keepers_cry');
-  mark = c2.mark();
-  // The cry needs no aim: the word finds the fallen friend itself.
-  await castSeat(1, 0, 45500);
-  await c2.waitFor((m) => m.t === 'chat' && /hears you and stands/.test(m.text ?? ''), 'the rise', 6000, mark);
-  await sleep(600);
-  const criedUp = await petLine();
-  receipt(
-    'THE KEEPER\'S CRY: the fallen friend stands where it lies, angry',
-    !/downed/.test(criedUp) && /surge=\d+t/.test(criedUp) && /guard=\d+t/.test(criedUp),
-    criedUp,
-  );
-
-  // --- R70: VOICE OF THE WILD — the field stills, the friend answers.
-  await stand(tongueGround[0] + 74, tongueGround[1] + 6);
-  const ear1 = await spawnOne('giant_beetle');
-  const ear2 = await spawnOne('rat');
-  await seatArt(0, 'voice_of_the_wild');
-  await castSeat(0, 0, 60500);
-  await sleep(800);
-  const awed1 = await npcLine(ear1, 'giant_beetle');
-  const awed2 = await npcLine(ear2, 'rat');
-  const answered = await petLine();
-  receipt(
-    'VOICE OF THE WILD: the whole field stills, and the friend answers first',
-    /sulk=[1-9]/.test(awed1) && /sulk=[1-9]/.test(awed2) && /surge=\d+t/.test(answered),
-    `beetle ${awed1.match(/sulk=\d+/)?.[0]} · rat ${awed2.match(/sulk=\d+/)?.[0]} · friend surging`,
-  );
+  await proveTongue(c2, course, brambleSlot);
 
   console.log(`\nTHE OPEN HAND, THE FANG, THE FALL, THE STALLS, THE SPECIES, AND THE TEN WORDS ALL HOLD — ${passed} receipts.`);
   c2.ws.close();
   process.exit(0);
 };
 
-main().catch((e) => {
+(process.env.ARX_PROVE_FROM === 'tongue' ? fastLane() : main()).catch((e) => {
   console.error(String(e?.message ?? e));
   process.exit(1);
 });

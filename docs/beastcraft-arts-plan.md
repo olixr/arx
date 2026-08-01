@@ -312,11 +312,19 @@ tests green. As-built notes and live-caught laws:
   60s stand-off, not only on keeper death; `stand()` walks the
   offset ring when ground refuses.
 - Runtime note: the full suite is ~14 minutes green; the cost of a
-  flake is a whole lap. Future lever (agreed with the user): a fast
-  iteration lane (`ARX_PROVE_FROM=tongue`) that synthesizes keeper
-  state with dev levers and runs one chapter, plus a rig-side relaxed
-  chat bucket to shave the ~2 minutes of dev-command spacing. The
-  70-receipt full run stays the record before any commit.
+  flake is a whole lap. **THE FAST LANE (built same day, user ask):**
+  `npm run prove:tongue -w @arx/tools` (ARX_PROVE_FROM=tongue) mints a
+  keeper with dev levers and runs the tongue chapter alone — 14
+  receipts, ~7 minutes, for iteration only. The 70-receipt full run
+  stays the record before any commit. The fast lane's own shakedown
+  hardened the shared harness: fellWith gained killTarget's dev-lift
+  (a homeward bear outwalks feet), the bear clear is vigil-bounded
+  (never chase past the trail-out with a friend down), the dare's eye
+  judgment accepts a hunt of the friend (search alert=@pet — the eye
+  was pulled all the same), and the fast keeper chugs tinctures at
+  birth (/xp raises the ceiling, never the fill — the matriarch ate
+  the first one whole). Remaining lever if wanted later: a rig-side
+  relaxed chat bucket (~2 minutes of dev-command spacing per lap).
 
 ## Part 10 — The proving (prove:pets grows)
 
