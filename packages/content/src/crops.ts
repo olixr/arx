@@ -19,7 +19,13 @@ export interface CropDef {
   /** Seeds returned on harvest — fields sustain themselves. */
   seedReturn: { min: number; max: number };
   levelReq: number;
-  /** Farming XP on harvest. */
+  /**
+   * Farming XP on harvest. THE PLOT PAYS FOR ITS TIME (contract law,
+   * xpEconomy.test.ts): xp = growMinutes x 10, so a tended plot-hour
+   * is worth the same whatever the crop. Planting pays a quarter of
+   * this and each watering a tenth (gameServer sites) — the trade's
+   * pace scales with plots worked, never with a faster clock.
+   */
   xp: number;
 }
 
@@ -37,7 +43,7 @@ const defs: CropDef[] = [
     yield: { item: 'carrot', min: 2, max: 4 },
     seedReturn: { min: 1, max: 2 },
     levelReq: 1,
-    xp: 8,
+    xp: 80,
   },
   {
     id: 'sagewort',
@@ -49,7 +55,7 @@ const defs: CropDef[] = [
     yield: { item: 'sagewort', min: 1, max: 3 },
     seedReturn: { min: 1, max: 2 },
     levelReq: 5,
-    xp: 12,
+    xp: 100,
   },
   {
     id: 'sunflower',
@@ -61,7 +67,7 @@ const defs: CropDef[] = [
     yield: { item: 'sunflower', min: 1, max: 3 },
     seedReturn: { min: 1, max: 2 },
     levelReq: 10,
-    xp: 16,
+    xp: 120,
   },
   {
     id: 'wheat',
@@ -73,7 +79,7 @@ const defs: CropDef[] = [
     yield: { item: 'wheat', min: 2, max: 4 },
     seedReturn: { min: 1, max: 2 },
     levelReq: 15,
-    xp: 24,
+    xp: 180,
   },
   {
     id: 'cotton',
@@ -85,7 +91,7 @@ const defs: CropDef[] = [
     yield: { item: 'cotton', min: 2, max: 4 },
     seedReturn: { min: 1, max: 2 },
     levelReq: 20,
-    xp: 34,
+    xp: 250,
   },
   {
     id: 'moonbell',
@@ -97,7 +103,7 @@ const defs: CropDef[] = [
     yield: { item: 'moonbell', min: 1, max: 3 },
     seedReturn: { min: 1, max: 2 },
     levelReq: 30,
-    xp: 55,
+    xp: 400,
   },
 ];
 

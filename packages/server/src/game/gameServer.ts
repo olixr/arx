@@ -4283,6 +4283,10 @@ export class GameServer {
       this.accounts.upsertCrop(
         tx, ty, state.def.id, state.plantedAt, state.boostMs, state.watered, state.owner,
       );
+      // THE PLOT PAYS FOR ITS TIME: tending is farming too — a tenth
+      // of the crop's worth per stage, gated by the once-per-stage
+      // watered bit above (never a repeatable faucet).
+      this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
       sys(`You water the ${state.def.name.toLowerCase()}. It perks up.`);
       return;
     }
