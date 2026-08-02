@@ -9,6 +9,13 @@
  * everything here is thrown, dropped, or split — dust falls in banks,
  * stone leaves the ground in slabs, and every centerpiece is the
  * moment AFTER the mass arrives.
+ *
+ * FX v5 wave 3e: this is dust's home school, and its earth now
+ * lands TRUE — dust.slam under every great landing, gouges down the
+ * furrows, fog for the school's three colds, plumes for its two
+ * forges (ONE-VOICE LAW; gates retired where a sustained emitter
+ * covers them). Steel sweeps, wood chips, gold, brass, bone, and
+ * the elsewhere-sky stay bespoke.
  */
 import type { AbilitySig } from './fxSignatures.js';
 export declare const TWOHAND_SIGS: Record<string, AbilitySig>;

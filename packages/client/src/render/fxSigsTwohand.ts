@@ -9,10 +9,18 @@
  * everything here is thrown, dropped, or split — dust falls in banks,
  * stone leaves the ground in slabs, and every centerpiece is the
  * moment AFTER the mass arrives.
+ *
+ * FX v5 wave 3e: this is dust's home school, and its earth now
+ * lands TRUE — dust.slam under every great landing, gouges down the
+ * furrows, fog for the school's three colds, plumes for its two
+ * forges (ONE-VOICE LAW; gates retired where a sustained emitter
+ * covers them). Steel sweeps, wood chips, gold, brass, bone, and
+ * the elsewhere-sky stay bespoke.
  */
 
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { dust, fire, frost, storm, blood, asMatter } from './matter/index.js';
 
 /** Screen point r px from the heart along ground angle a. */
 function groundPt(c: SigCtx, r: number, a: number): { x: number; y: number } {
@@ -176,26 +184,17 @@ const iron_pendulum: AbilitySig = {
  */
 const fault_line: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2b4);
-    for (let k = 0; k < 5; k++) {
-      const along = 0.2 + rand() * 0.8;
-      c.particles.burst(
-        c.wx + Math.cos(c.dir) * c.radius * along,
-        c.wy + Math.sin(c.dir) * c.radius * along * c.squash,
-        1,
-        [c.st.mid, c.st.deep],
-        { speed: 1.2 + rand(), life: 0.6, size: 0.1, gravity: 7, dir: -Math.PI / 2, spread: 0.7 },
-      );
-    }
-    for (let k = 0; k < 3; k++) {
-      c.particles.burst(
-        c.wx + Math.cos(c.dir) * c.radius * (0.4 + rand() * 0.5),
-        c.wy + Math.sin(c.dir) * c.radius * (0.4 + rand() * 0.5) * c.squash,
-        1,
-        [c.st.deep],
-        { speed: 0.5, life: 0.8, size: 0.14, gravity: -0.6, shape: 'puff', wobble: 0.3 },
-      );
-    }
+    const m = asMatter(c);
+    // TRUE earth leaves the crack: a gouge of hopping chunks and
+    // billow down the fissure, and a standing bank on the far lip.
+    dust.deployments.gouge!(m,
+      c.wx + Math.cos(c.dir) * c.radius * 0.4,
+      c.wy + Math.sin(c.dir) * c.radius * 0.4 * c.squash,
+      { dir: c.dir, scale: 0.8 });
+    dust.deployments.billow!(m,
+      c.wx + Math.cos(c.dir) * c.radius * 0.8,
+      c.wy + Math.sin(c.dir) * c.radius * 0.8 * c.squash,
+      { radius: 0.4, dur: 1.0, scale: 0.6 });
   },
   ground(c) {
     const { ctx, st, t, sc } = c;
@@ -246,31 +245,13 @@ const fault_line: AbilitySig = {
  */
 const colossus_stance: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2b6);
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * 0.45,
-        c.wy + Math.sin(a) * 0.45 * c.squash,
-        1,
-        [c.st.mid, c.st.spark],
-        { speed: 0.5, life: 0.5, size: 0.11, gravity: -2.6, shape: 'lick', flicker: 0.3, fade: c.st.deep },
-      );
-    }
+    // The forge lights TRUE: one standing plume at the body — licks
+    // through the full combustion story, sparks climbing the column,
+    // soot breathing off the top. (The old gated climb retired into
+    // the plume — one voice.)
+    fire.deployments.plume!(asMatter(c), c.wx, c.wy, { dur: 1.3, scale: 0.45 });
   },
   air(c) {
-    if (c.t > 0.8 || c.frameDt <= 0) return;
-    // Climbing glints: a slow column of sparks up the body line.
-    if (srand(c.seed ^ (c.age | 0))() < c.frameDt * 8) {
-      const rand = srand(c.seed ^ 0x2b7 ^ (c.age | 0));
-      c.particles.burst(c.wx + (rand() - 0.5) * 0.5, c.wy - rand() * 0.8, 1, [c.st.spark], {
-        speed: 0.4,
-        life: 0.6,
-        size: 0.06,
-        gravity: -1.8,
-        shape: 'glint',
-      });
-    }
     c.glow(c.wx, c.wy, 0.9, 0.18 * (1 - c.t));
   },
 };
@@ -283,27 +264,10 @@ const colossus_stance: AbilitySig = {
  */
 const skysunder: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2b8);
-    for (let k = 0; k < 7; k++) {
-      const a = (k / 7) * Math.PI * 2 + rand() * 0.4;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.5,
-        c.wy + Math.sin(a) * c.radius * 0.5 * c.squash,
-        1,
-        [c.st.mid, c.st.deep],
-        { speed: 1.8 + rand() * 1.2, life: 0.6, size: 0.11, gravity: 7, dir: a, spread: 0.2 },
-      );
-    }
-    for (let k = 0; k < 4; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.7,
-        c.wy + Math.sin(a) * c.radius * 0.7 * c.squash,
-        1,
-        [c.st.deep],
-        { speed: 0.7, life: 0.9, size: 0.16, gravity: -0.4, shape: 'puff', wobble: 0.4, fade: c.st.deep },
-      );
-    }
+    // The landing is TRUE: the library's four-voice ground smash —
+    // shock skirt, lofted chunk heroes, the billow, and fines that
+    // rain back and lie in the crater.
+    dust.deployments.slam!(asMatter(c), c.wx, c.wy, { scale: 1.1 });
   },
   air(c) {
     const { ctx, st, t, sc } = c;
@@ -406,18 +370,28 @@ const avalanche: AbilitySig = {
       }
       ctx.restore();
     }
+    // Each volley LANDS on its crossing frame: one TRUE dust stamp
+    // in the arc as the painted stones touch down.
+    const lifeMs = t > 0 ? c.age / t : 0;
+    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
+    for (let v = 0; v < 3; v++) {
+      const landT = v * 0.22 + 0.28;
+      if (tPrev < landT && t >= landT) {
+        const a = c.dir + (srand(c.seed ^ (0x2cc + v))() - 0.5) * 1.1;
+        dust.deployments.kick!(asMatter(c),
+          c.wx + Math.cos(a) * c.radius * 0.55,
+          c.wy + Math.sin(a) * c.radius * 0.55 * c.squash,
+          { scale: 0.6 });
+      }
+    }
   },
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2bc);
-    for (let k = 0; k < 4; k++) {
-      c.particles.burst(
-        c.wx + Math.cos(c.dir) * c.radius * (0.3 + rand() * 0.5),
-        c.wy + Math.sin(c.dir) * c.radius * (0.3 + rand() * 0.5) * c.squash,
-        1,
-        [c.st.deep],
-        { speed: 0.5, life: 0.7, size: 0.13, gravity: -0.5, shape: 'puff', wobble: 0.3 },
-      );
-    }
+    // The hill announces itself: a rolling TRUE dust cloud over the
+    // arc while the volleys arrive.
+    dust.deployments.billow!(asMatter(c),
+      c.wx + Math.cos(c.dir) * c.radius * 0.5,
+      c.wy + Math.sin(c.dir) * c.radius * 0.5 * c.squash,
+      { radius: 0.5, dur: 1.0, scale: 0.7 });
   },
 };
 
@@ -429,22 +403,19 @@ const avalanche: AbilitySig = {
  */
 const breaker_charge: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2bd);
+    const m = asMatter(c);
     const dx = c.wx2 - c.wx;
     const dy = c.wy2 - c.wy;
     const ang = Math.atan2(dy, dx);
-    for (let k = 0; k < 7; k++) {
-      const along = rand();
-      const side = k % 2 === 0 ? 1 : -1;
-      c.particles.burst(c.wx + dx * along, c.wy + dy * along, 1, [c.st.mid, c.st.deep], {
-        speed: 1.3 + rand() * 0.8,
-        life: 0.5,
-        size: 0.09,
-        gravity: 7,
-        dir: ang + side * 1.9,
-        spread: 0.3,
+    // The plow throws TRUE clods to both sides along the run: two
+    // opposed gouges at stations down the furrow.
+    for (const [f, side] of [[0.3, 1], [0.7, -1]] as const) {
+      dust.deployments.gouge!(m, c.wx + dx * f, c.wy + dy * f, {
+        dir: ang + side * (Math.PI / 2), scale: 0.5,
       });
     }
+    // The shoulder arrives: one true breath at the far end.
+    dust.deployments.kick!(m, c.wx2, c.wy2, { scale: 0.6 });
   },
   ground(c) {
     const { ctx, st, t } = c;
@@ -515,17 +486,9 @@ const titans_verdict: AbilitySig = {
     c.glow(c.wx, c.wy, c.radius * (0.4 + 0.6 * f), 0.2 * (1 - f));
   },
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2bf);
-    for (let k = 0; k < 5; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.4,
-        c.wy + Math.sin(a) * c.radius * 0.4 * c.squash,
-        1,
-        [c.st.mid, c.st.spark],
-        { speed: 1.4 + rand(), life: 0.5, size: 0.09, gravity: 6, dir: a, spread: 0.3 },
-      );
-    }
+    // The gavel falls TRUE: the four-voice ground smash under the
+    // spoken rings.
+    dust.deployments.slam!(asMatter(c), c.wx, c.wy, { scale: 0.8 });
   },
 };
 
@@ -564,27 +527,9 @@ const colossus_arc: AbilitySig = {
  */
 const quakefall: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2c1);
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + rand() * 0.3;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.6,
-        c.wy + Math.sin(a) * c.radius * 0.6 * c.squash,
-        1,
-        [c.st.mid, c.st.deep],
-        { speed: 1.6 + rand() * 1.4, life: 0.7, size: 0.12, gravity: 7, dir: a, spread: 0.2 },
-      );
-    }
-    for (let k = 0; k < 5; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.8,
-        c.wy + Math.sin(a) * c.radius * 0.8 * c.squash,
-        1,
-        [c.st.deep],
-        { speed: 0.6, life: 1.1, size: 0.18, gravity: -0.3, shape: 'puff', wobble: 0.3, fade: c.st.deep },
-      );
-    }
+    // The county line: the library's ground smash at the school's
+    // heaviest working weight — everything lands, everything LIES.
+    dust.deployments.slam!(asMatter(c), c.wx, c.wy, { scale: 1.3 });
   },
   ground(c) {
     const { ctx, st, t, sc } = c;
@@ -638,6 +583,11 @@ const giantsfall: AbilitySig = {
         { speed: 2.0 + rand() * 1.4, life: 0.5, size: 0.08, gravity: 6, dir: a, spread: 0.5, shape: 'glint' },
       );
     }
+    // The ground answers the felling: one TRUE breath at the mark.
+    dust.deployments.kick!(asMatter(c),
+      c.wx + Math.cos(c.dir) * c.radius * 0.6,
+      c.wy + Math.sin(c.dir) * c.radius * 0.6 * c.squash,
+      { scale: 0.6 });
   },
   air(c) {
     const { ctx, st, t, sc } = c;
@@ -750,19 +700,13 @@ const mournfield: AbilitySig = {
     ctx.stroke();
     ctx.restore();
   },
-  air(c) {
-    if (c.frameDt <= 0 || c.t > 0.9) return;
-    if (srand(c.seed ^ (c.age * 7 | 0))() < c.frameDt * 5) {
-      const rand = srand(c.seed ^ 0x2d2 ^ (c.age * 13 | 0));
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * rand() * 0.8,
-        c.wy + Math.sin(a) * c.radius * rand() * 0.8 * c.squash,
-        1,
-        [c.st.mid],
-        { speed: 0.25, life: 1.3, size: 0.1, gravity: -0.5, shape: 'puff', wobble: 0.2, fade: c.st.deep },
-      );
-    }
+  spawn(c) {
+    // The plot breathes TRUE cold: standing frost fog for the grave's
+    // whole watch — sinking motes, patient sparkle. (The gated wisps
+    // retired into it — one quiet, not two.)
+    frost.deployments.fog!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.7, dur: 2.0, scale: 0.6,
+    });
   },
 };
 
@@ -773,20 +717,18 @@ const mournfield: AbilitySig = {
  * passed — the harvest smoulders where it fell.
  */
 const ash_harvest: AbilitySig = {
+  spawn(c) {
+    // The harvest smoulders where it fell: TRUE burning ground —
+    // low hungry flame carpeting the swept side, embers standing up
+    // out of it for a beat after the stroke. (The gated licks
+    // retired into the pool — one smoulder.)
+    fire.deployments.pool!(asMatter(c),
+      c.wx + Math.cos(c.dir) * c.radius * 0.3,
+      c.wy + Math.sin(c.dir) * c.radius * 0.3 * c.squash,
+      { radius: c.radius * 0.55, dur: 1.2, scale: 0.55 });
+  },
   air(c) {
     if (c.t < 0.55) sweepBand(c, c.dir - 1.1, c.dir + 1.1, c.t / 0.55, 0.76);
-    if (c.frameDt <= 0 || c.t > 0.85) return;
-    if (srand(c.seed ^ (c.age * 9 | 0))() < c.frameDt * 10) {
-      const rand = srand(c.seed ^ 0x2d3 ^ (c.age * 11 | 0));
-      const a = c.dir + (rand() - 0.5) * 2.2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.7,
-        c.wy + Math.sin(a) * c.radius * 0.7 * c.squash,
-        1,
-        [c.st.spark, c.st.core],
-        { speed: 0.5, life: 0.7, size: 0.07, gravity: -2.4, shape: 'lick', flicker: 0.4, fade: c.st.deep },
-      );
-    }
   },
 };
 
@@ -798,17 +740,9 @@ const ash_harvest: AbilitySig = {
  */
 const glacier_sunder: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2d4);
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.55,
-        c.wy + Math.sin(a) * c.radius * 0.55 * c.squash,
-        1,
-        [c.st.core, c.st.mid],
-        { speed: 1.5 + rand(), life: 0.55, size: 0.09, gravity: 6, dir: a, spread: 0.25, shape: 'glint' },
-      );
-    }
+    // The shelf calves TRUE: shard heroes snap outward tumbling,
+    // crystal dust flashes, and the cold sinks to the floor after.
+    frost.deployments.shatter!(asMatter(c), c.wx, c.wy, { scale: 0.9 });
   },
   air(c) {
     const { ctx, st, t, sc } = c;
@@ -974,17 +908,11 @@ const barrow_bite: AbilitySig = {
  */
 const thunder_fell: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2d8);
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.5,
-        c.wy + Math.sin(a) * c.radius * 0.5 * c.squash,
-        1,
-        [c.st.mid, c.st.deep],
-        { speed: 1.6 + rand() * 1.1, life: 0.55, size: 0.1, gravity: 7, dir: a, spread: 0.25 },
-      );
-    }
+    const m = asMatter(c);
+    // The bolt discharges TRUE at the mark, and the fell answers
+    // with the four-voice ground smash under it.
+    storm.deployments.impact!(m, c.wx, c.wy, { scale: 0.7 });
+    dust.deployments.slam!(m, c.wx, c.wy, { scale: 0.8 });
   },
   air(c) {
     const { ctx, st, t, sc } = c;
@@ -1027,31 +955,14 @@ const thunder_fell: AbilitySig = {
  */
 const white_heat: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2d9);
-    for (let k = 0; k < 5; k++) {
-      const a = (k / 5) * Math.PI * 2 + rand() * 0.6;
-      c.particles.burst(
-        c.wx + Math.cos(a) * 0.4,
-        c.wy + Math.sin(a) * 0.4 * c.squash,
-        1,
-        [c.st.spark, c.st.core],
-        { speed: 0.5, life: 0.5, size: 0.09, gravity: -3.0, shape: 'lick', flicker: 0.4, fade: c.st.deep },
-      );
-    }
+    const m = asMatter(c);
+    // The forge lit TRUE: a burning ring at the boots wrapping the
+    // body, and a plume of forge embers climbing off it for as long
+    // as the metal is willing. (The gated risers retired — one heat.)
+    fire.deployments.ring!(m, c.wx, c.wy, { radius: 0.42, dur: 1.0, scale: 0.45 });
+    fire.deployments.plume!(m, c.wx, c.wy, { dur: 1.4, scale: 0.4 });
   },
   air(c) {
-    if (c.t > 0.85 || c.frameDt <= 0) return;
-    if (srand(c.seed ^ (c.age * 6 | 0))() < c.frameDt * 7) {
-      const rand = srand(c.seed ^ 0x2da ^ (c.age * 19 | 0));
-      c.particles.burst(c.wx + (rand() - 0.5) * 0.55, c.wy - rand() * 0.7, 1, [c.st.spark], {
-        speed: 0.4,
-        life: 0.6,
-        size: 0.07,
-        gravity: -2.2,
-        shape: 'lick',
-        flicker: 0.5,
-      });
-    }
     c.glow(c.wx, c.wy, 0.9, 0.2 * (1 - c.t));
   },
 };
@@ -1079,18 +990,15 @@ const pale_crescent: AbilitySig = {
       ctx.stroke();
       ctx.restore();
     }
-    if (c.frameDt <= 0 || c.t > 0.8) return;
-    if (srand(c.seed ^ (c.age * 5 | 0))() < c.frameDt * 8) {
-      const rand = srand(c.seed ^ 0x2db ^ (c.age * 23 | 0));
-      const a = c.dir + (rand() - 0.5) * 2.2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.75,
-        c.wy + Math.sin(a) * c.radius * 0.75 * c.squash - 0.3,
-        1,
-        [c.st.core],
-        { speed: 0.1, life: 0.9, size: 0.06, gravity: -0.2, shape: 'glint' },
-      );
-    }
+  },
+  spawn(c) {
+    // Where the ebb has passed, the cold HANGS: quiet TRUE frost fog
+    // on the swept side — still dots, sinking chill. (The gated
+    // hanging glints retired into it.)
+    frost.deployments.fog!(asMatter(c),
+      c.wx + Math.cos(c.dir) * c.radius * 0.35,
+      c.wy + Math.sin(c.dir) * c.radius * 0.35 * c.squash,
+      { radius: c.radius * 0.5, dur: 1.2, scale: 0.4 });
   },
 };
 
@@ -1102,27 +1010,12 @@ const pale_crescent: AbilitySig = {
  */
 const horizon_fall: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2dc);
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + rand() * 0.4;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.55,
-        c.wy + Math.sin(a) * c.radius * 0.55 * c.squash,
-        1,
-        [c.st.mid, c.st.deep],
-        { speed: 2.0 + rand() * 1.4, life: 0.65, size: 0.12, gravity: 7, dir: a, spread: 0.2 },
-      );
-    }
-    for (let k = 0; k < 5; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.8,
-        c.wy + Math.sin(a) * c.radius * 0.8 * c.squash,
-        1,
-        [c.st.deep],
-        { speed: 0.6, life: 1.2, size: 0.18, gravity: -0.3, shape: 'puff', wobble: 0.35, fade: c.st.deep },
-      );
-    }
+    const m = asMatter(c);
+    // The brought mountain: the library's ground smash at the FILE'S
+    // heaviest weight, and a standing dust bank that lies down where
+    // the horizon used to be.
+    dust.deployments.slam!(m, c.wx, c.wy, { scale: 1.45 });
+    dust.deployments.billow!(m, c.wx, c.wy, { radius: c.radius * 0.6, dur: 1.4, scale: 0.8 });
   },
   air(c) {
     const { ctx, st, t, sc } = c;
@@ -1185,6 +1078,12 @@ const road_opens: AbilitySig = {
         { speed: 1.6 + rand() * 1.2, life: 0.4, size: 0.08, gravity: 2, dir: c.dir, spread: 0.9 },
       );
     }
+    // The push writes itself in TRUE dust: a shock skirt driven out
+    // from under the falling bar.
+    dust.deployments.skirt!(asMatter(c),
+      c.wx + Math.cos(c.dir) * 0.5,
+      c.wy + Math.sin(c.dir) * 0.5 * c.squash,
+      { radius: 0.35, dur: 0.4, scale: 0.7 });
   },
   air(c) {
     if (c.t < 0.5) sweepBand(c, c.dir - 1.15, c.dir + 1.15, c.t / 0.5, 0.8);
@@ -1323,17 +1222,11 @@ const riftfall: AbilitySig = {
  */
 const winters_hunger: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x3a5);
-    for (let k = 0; k < 4; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * 0.5,
-        c.wy + Math.sin(a) * 0.5 * c.squash,
-        1,
-        [c.st.mid, c.st.deep],
-        { speed: 0.7, life: 0.6, size: 0.1, gravity: -1.2, shape: 'puff', wobble: 0.3, fade: c.st.deep },
-      );
-    }
+    // The walker's cold arrives as TRUE frost fog — patient, low,
+    // barely a breath.
+    frost.deployments.fog!(asMatter(c), c.wx, c.wy, {
+      radius: 0.5, dur: 1.2, scale: 0.4,
+    });
   },
   ground(c) {
     const { ctx, st, t } = c;
@@ -1356,12 +1249,11 @@ const winters_hunger: AbilitySig = {
     ctx.restore();
   },
   air(c) {
+    // Slow blood rides the air: on patient gated beats the library
+    // wells one TRUE bead that falls, splats, and dries.
     if (c.frameDt <= 0 || c.t > 0.9) return;
-    if (srand(c.seed ^ (c.age * 5 | 0))() < c.frameDt * 4) {
-      const rand = srand(c.seed ^ 0x3a7 ^ (c.age * 13 | 0));
-      c.particles.burst(c.wx + (rand() - 0.5) * 0.5, c.wy - 0.4 - rand() * 0.5, 1, [c.st.spark], {
-        speed: 0.2, life: 0.9, size: 0.06, gravity: 1.4, shape: 'mote',
-      });
+    if (srand(c.seed ^ (c.age * 5 | 0))() < c.frameDt * 3) {
+      blood.deployments.spatter!(asMatter(c), c.wx, c.wy, { scale: 0.15, radius: 0.15 });
     }
   },
 };
@@ -1412,6 +1304,11 @@ const open_seam: AbilitySig = {
       const a = rand() * Math.PI * 2;
       const p = groundPt(c, c.rPx * rand() * 0.7, a);
       stone(c.ctx, p.x, p.y, c.sc * (0.06 + rand() * 0.06), c.st.deep, c.st.mid, rand() * 1.2);
+      // The floor jumps TRUE on the beat — the painted stone lands
+      // in its own breath of earth; the pay-dirt glint stays gold.
+      dust.deployments.kick!(asMatter(c),
+        c.wx + Math.cos(a) * 0.4, c.wy + Math.sin(a) * 0.4 * c.squash,
+        { scale: 0.3 });
       c.particles.burst(c.wx + Math.cos(a) * 0.4, c.wy + Math.sin(a) * 0.4 * c.squash, 1, [c.st.core], {
         speed: 0.8, life: 0.4, size: 0.06, gravity: 3, shape: 'glint', flicker: 0.4,
       });

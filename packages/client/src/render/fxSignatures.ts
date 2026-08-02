@@ -171,6 +171,18 @@ export const MATTER_MIGRATED: readonly string[] = [
   'galvanic_arc', 'overgrowth', 'grave_chill', 'gloom_burst',
   'venom_lash', 'magma_orb', 'shatterfrost', 'solar_lance',
   'eye_of_the_storm', 'red_eclipse',
+  // Wave 3e — the twohand roster, dust's home school: WEIGHT AND
+  // AFTERMATH, so the great landings are dust.slam at rising weights
+  // (skysunder 1.1, quakefall 1.3, horizon_fall 1.45), the furrows
+  // gouge true, avalanche's volleys stamp crossing-fired kicks, the
+  // forges stand true plumes, and the school's three colds breathe
+  // fog. Thirteen stay bespoke: pure-steel sweeps, wood, gold,
+  // brass, bone, fen-light, and the elsewhere-sky.
+  'fault_line', 'colossus_stance', 'skysunder', 'avalanche',
+  'breaker_charge', 'titans_verdict', 'quakefall', 'giantsfall',
+  'mournfield', 'ash_harvest', 'glacier_sunder', 'thunder_fell',
+  'white_heat', 'pale_crescent', 'horizon_fall', 'road_opens',
+  'winters_hunger', 'open_seam',
 ];
 
 // ------------------------------------------------------- exemplars
