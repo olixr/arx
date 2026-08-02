@@ -52,13 +52,12 @@ export const FACTIONS: FactionsDef = {
         // Dawnmead — one hearth-country with the ford (no politics of its own)
         'elder_rowan',
         'warden_bryn',
-        'dawnmead_ward',
         'hearthkeeper_iona',
         'farmer_hobb',
         'tinker_fen',
         'young_pip',
       ],
-      enforcers: ['amberford_watch', 'captain_aldis', 'warden_bryn', 'dawnmead_ward'],
+      enforcers: ['amberford_watch', 'captain_aldis', 'warden_bryn'],
       npcPrefixes: [],
       anchors: [
         { x: -64, y: 48 },

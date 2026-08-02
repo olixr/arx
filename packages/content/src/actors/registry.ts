@@ -51,7 +51,6 @@ import crofterBeck from './defs/crofter_beck.json';
 import crofterHolt from './defs/crofter_holt.json';
 import crofterMaida from './defs/crofter_maida.json';
 import crofterTam from './defs/crofter_tam.json';
-import dawnmeadWard from './defs/dawnmead_ward.json';
 import elderRowan from './defs/elder_rowan.json';
 import farmerHobb from './defs/farmer_hobb.json';
 import hearthkeeperIona from './defs/hearthkeeper_iona.json';
@@ -207,7 +206,6 @@ const SOURCES: readonly unknown[] = [
   crofterHolt,
   crofterMaida,
   crofterTam,
-  dawnmeadWard,
   elderRowan,
   farmerHobb,
   hearthkeeperIona,

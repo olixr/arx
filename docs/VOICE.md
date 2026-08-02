@@ -170,10 +170,6 @@ it dictates sentence shape. (Pooled actors share one card.)
   and heard counted like sacks. Quirk: half her words go to the animal, not
   to you. Cadence: short handler's instructions, plain and unhurried; warmer
   to beasts than to people; no wit, no hurry.
-- **Vale Wards** (pooled, Bryn's rota): villagers with a season of drill, proud
-  of the turn they walk and a little stiff in the leather. Cadence: plain
-  village speech wearing a soldier's clip it hasn't fully earned; reports
-  small things seriously (a fox, a loose gate); defers to Bryn by name.
 
 ### The roads
 - **Wayfarer Senna / Dray / Petch** (waystations): each keeps a stretch of
