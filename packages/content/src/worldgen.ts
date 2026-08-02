@@ -259,6 +259,20 @@ export function groundProbeAt(seed: number, tx: number, ty: number): GroundClass
   if (e < 0.37) return 'water';
   if (e < 0.4) return 'sand';
   if (levelAt(seed, tx, ty) !== 0) return 'rock';
+  // THE CLIFF-FOOT LAW: a flat tile bordering ANY level change is the
+  // fence line's doorstep — the high side wears the Cliff/Ramp rim and
+  // worldgen dresses the base with talus, so nothing procedural may
+  // stand there: a camp, find, trail, or wild knot placed against the
+  // wall reads as punched through the rock face. One rule here covers
+  // every downstream scanner at once (POIs, finds, trails, wilds).
+  if (
+    levelAt(seed, tx - 1, ty) !== 0 ||
+    levelAt(seed, tx + 1, ty) !== 0 ||
+    levelAt(seed, tx, ty - 1) !== 0 ||
+    levelAt(seed, tx, ty + 1) !== 0
+  ) {
+    return 'rock';
+  }
   // Roads read as not-standable so no POI footprint ever severs one —
   // camps prey on the road from beside it, never across it.
   if (roadDistanceAt(seed, tx, ty) <= ROAD_SHOULDER) return 'rock';

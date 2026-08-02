@@ -25,6 +25,7 @@ import {
   basinFieldAt,
   elevationAt,
   generateChunk,
+  groundProbeAt,
   levelAt,
   moistureAt,
 } from '@arx/content';
@@ -203,6 +204,43 @@ test('levels are fenced: no walkable step between levels except ramps', () => {
     }
   }
   assert.ok(sinkTiles > 0, 'basin probe found no actual sink tiles — thresholds drifted?');
+});
+
+test('THE CLIFF-FOOT LAW: the probe refuses every tile that borders a level change', () => {
+  // groundProbeAt is the one terrain oracle every procedural placer
+  // reads (POI sites, finds, trails, wild knots). A flat tile bordering
+  // ANY level change is the fence line's doorstep — the rim's Cliff/Ramp
+  // dressing and the talus at the wall base live there, so anything a
+  // scanner stands on it clips through the rock face. The probe must
+  // read 'rock' both ON non-flat levels and BESIDE them.
+  const seed = 1337;
+  let boundaryTiles = 0;
+  for (const [cx, cy] of [[3, 3], [-4, 2], [7, -6], [12, 12], ...findSinkChunks(seed, 2)] as Array<
+    [number, number]
+  >) {
+    for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+      for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+        const tx = cx * CHUNK_SIZE + lx;
+        const ty = cy * CHUNK_SIZE + ly;
+        if (levelAt(seed, tx, ty) !== 0) continue;
+        const beside =
+          levelAt(seed, tx - 1, ty) !== 0 ||
+          levelAt(seed, tx + 1, ty) !== 0 ||
+          levelAt(seed, tx, ty - 1) !== 0 ||
+          levelAt(seed, tx, ty + 1) !== 0;
+        if (!beside) continue;
+        boundaryTiles++;
+        // Water/sand beside a waterline crag are already unstandable —
+        // the law only demands the probe never answers standable ground.
+        const cls = groundProbeAt(seed, tx, ty);
+        assert.ok(
+          cls !== 'grass' && cls !== 'forest',
+          `probe standable ('${cls}') at cliff boundary (${tx},${ty})`,
+        );
+      }
+    }
+  }
+  assert.ok(boundaryTiles > 0, 'scan found no level boundaries — coordinates drifted?');
 });
 
 test('sinks never cut water or shoreline, and every ramp is a straight-edge flight', () => {

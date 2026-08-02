@@ -663,6 +663,33 @@ interface BakedChunk {
 
 interface DrawItem {
   sortY: number;
+  /**
+   * THE SHELF LAW — the world sort runs on ONE compound key:
+   * (strat, sortY). `sortY` is always the item's RAW world row (its
+   * true camera depth — never a lifted/screen-space row), and `strat`
+   * is the shelf the item STANDS ON:
+   *
+   *   - objects, entities, and airborne matter: the elevation level of
+   *     the tile under their feet (omitted when 0);
+   *   - cliff faces and side planes: their BASE level (level − 1) — a
+   *     wall loses to everything standing on its own crown, and wins
+   *     over everything at its base level standing behind it (raw row
+   *     settles that within the shelf);
+   *   - elevated ground rows: shelf 0 for positive levels (the crown
+   *     is landscape — bodies at a cliff foot must peek over it), the
+   *     level itself for sunken rows (pit floors draw under whatever
+   *     stands in the pit);
+   *   - ramp flights/aprons: the LOW level (a body at the mouth paints
+   *     over the treads); landings: the high level.
+   *
+   * Higher shelves draw later. Within a shelf, the proven flat-land
+   * raw-row order applies unchanged — flat ground (all shelf 0) is
+   * bit-for-bit the old sort. This one key retires three generations
+   * of pairwise patches (the armory-crop face law, the Lantern Row
+   * awning exemption, the face-contest object shift) whose mixed sort
+   * spaces let plateau rows slice standing trees and ore.
+   */
+  strat?: number;
   draw: () => void;
   drawShadow?: () => void;
   /**
@@ -2490,6 +2517,12 @@ export class Renderer {
               const level = layer.level;
               items.push({
                 sortY: worldTy - 0.01,
+                // THE SHELF LAW: positive crowns are landscape (shelf 0
+                // — a body at the cliff foot peeks over the rim, and
+                // everything standing on the crown paints over its own
+                // rows); sunken rows sink with their level so the pit
+                // floor draws under whatever stands in the pit.
+                strat: level < 0 ? level : undefined,
                 draw: () => {
                   // Shared-corner snap law (see drawGroundChunks): row
                   // slices round their shared row edges to the same
@@ -3472,6 +3505,7 @@ export class Renderer {
     for (const p of this.particles.groundParticles()) {
       items.push({
         sortY: p.y,
+        strat: this.stratAt(p.x, p.y),
         draw: () => this.particles.drawOne(this.ctx, p, this.liftedWTS, this.camera.scale),
       });
     }
@@ -3479,10 +3513,12 @@ export class Renderer {
     // a fire ring's north arc passes behind the caster, a venom cloud
     // swallows its victim. Sorted on the ground anchor; altitude is a
     // full-scale screen lift inside drawOne (contact shadow included,
-    // debris-style).
+    // debris-style). THE SHELF LAW: matter rides the shelf of the
+    // ground under its anchor, exactly like the body it wraps.
     for (const p of this.particles.worldParticles()) {
       items.push({
         sortY: p.y,
+        strat: this.stratAt(p.x, p.y),
         draw: () => this.particles.drawOne(this.ctx, p, this.liftedWTS, this.camera.scale),
       });
     }
@@ -3493,6 +3529,7 @@ export class Renderer {
     for (const c of this.debris.chunks()) {
       items.push({
         sortY: c.y + 0.02,
+        strat: this.stratAt(c.x, c.y),
         // Each chunk wears its own brand ring (drawn inside drawOne),
         // gated on the same /outline switch as everything standing.
         draw: () =>
@@ -3544,12 +3581,14 @@ export class Renderer {
       for (const bd of this.birds.grounded()) {
         items.push({
           sortY: bd.y + 0.01,
+          strat: this.stratAt(bd.x, bd.y),
           draw: () =>
             this.birds.drawOne(this.ctx, bd, this.liftedWTS, this.camera.scale, this.outlineOn, env.tSec),
         });
       }
     }
-    items.sort((a, b) => a.sortY - b.sortY);
+    // THE SHELF LAW (see DrawItem.strat): shelf first, raw row within.
+    items.sort((a, b) => (a.strat ?? 0) - (b.strat ?? 0) || a.sortY - b.sortY);
     for (const item of items) {
       // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
       // silhouette ring fades with the body (alpha inside draw() would
@@ -4392,6 +4431,7 @@ export class Renderer {
     // sort line so the body always reads against the light.
     items.push({
       sortY: own.y - 0.05,
+      strat: this.stratAt(own.x, own.y),
       draw: () => {
         const p = this.liftedWTS(own.x, own.y);
         ctx.save();
@@ -4430,6 +4470,7 @@ export class Renderer {
       const gold = k % 3 === 0;
       items.push({
         sortY: ey + 0.004,
+        strat: this.stratAt(ex, ey),
         draw: () => {
           const q = this.liftedWTS(ex, ey);
           const cy = q.y - lift * s;
@@ -4562,6 +4603,22 @@ export class Renderer {
       return this.fgElev[iy * this.fgW + ix]!;
     }
     return this.fgWorld?.elevAt(tx, ty) ?? 0;
+  }
+
+  /**
+   * THE SHELF LAW: the shelf a standing item sorts on — the elevation
+   * level of the tile under its feet (see DrawItem.strat). Undefined
+   * at level 0 keeps flat-land items lean and their sort unchanged.
+   */
+  private stratAt(x: number, y: number): number | undefined {
+    const e = this.fgElevAt(Math.floor(x), Math.floor(y));
+    return e !== 0 ? e : undefined;
+  }
+
+  /** Stamp a shelf onto every item pushed since `from` (multi-item emitters). */
+  private stampStrat(items: DrawItem[], from: number, strat: number | undefined): void {
+    if (strat === undefined || strat === 0) return;
+    for (let i = from; i < items.length; i++) items[i]!.strat = strat;
   }
 
   /** Ground tile through the frame grid; ChunkStore fallback off-window. */
@@ -5111,13 +5168,34 @@ export class Renderer {
             const runKey = packTile(ax, ty);
             if (runSeen.has(runKey)) continue;
             runSeen.add(runKey);
-            items.push(this.rampItem(ax, ty, game, runLen));
+            // THE SHELF LAW: the flight and its apron stand on the LOW
+            // level — a body at the mouth paints over the treads, and
+            // both still beat the flanking curtain faces' base shelf by
+            // raw row. The landing opens onto the crown and rides the
+            // high shelf with everything standing there.
+            const lowShelf = rlvl - 1 !== 0 ? rlvl - 1 : undefined;
+            const flight = this.rampItem(ax, ty, game, runLen);
+            flight.strat = lowShelf;
+            // A hair past the flanking faces/side strips (+0.001) so
+            // the flight still owns the shared cheek seam.
+            flight.sortY += 0.002;
+            items.push(flight);
             const landing = this.rampLandingItem(ax, ty, game, runLen);
-            if (landing) items.push(landing);
+            if (landing) {
+              landing.strat = rlvl !== 0 ? rlvl : undefined;
+              items.push(landing);
+            }
             const apron = this.rampApronItem(ax, ty, game, runLen);
-            if (apron) items.push(apron);
+            if (apron) {
+              apron.strat = lowShelf;
+              items.push(apron);
+            }
           } else {
-            items.push(this.rampItem(tx, ty, game, 1));
+            const flight = this.rampItem(tx, ty, game, 1);
+            const flvl = game.world.elevAt(tx, ty);
+            flight.strat = flvl - 1 !== 0 ? flvl - 1 : undefined;
+            flight.sortY += 0.002;
+            items.push(flight);
           }
           continue;
         }
@@ -5139,7 +5217,9 @@ export class Renderer {
               const vKey = packTile(tx, ay);
               if (runSeen.has(vKey)) continue;
               runSeen.add(vKey);
+              const n0 = items.length;
               this.garrisonSideGateItems(ground as Tile, tx, ay, game, vLen, items);
+              this.stampStrat(items, n0, this.stratAt(tx, ay));
               continue;
             }
             // E-W gatehouse: adjacent gate tiles merge into ONE arched
@@ -5157,6 +5237,7 @@ export class Renderer {
             const gwhT = this.garrisonHeightAt(game, ax + ((runLen - 1) >> 1), ty);
             const gitem = this.garrisonGateItem(ground as Tile, ax, ty, game, gwhT, runLen);
             if (game.world.elevAt(ax, ty) !== 0) gitem.elevated = true;
+            gitem.strat = this.stratAt(ax, ty);
             items.push(gitem);
             continue;
           }
@@ -5165,6 +5246,7 @@ export class Renderer {
             ? this.garrisonDiagItem(ground as Tile, tx, ty, game, whT)
             : this.garrisonWallItem(ground as Tile, tx, ty, game, whT);
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          item.strat = this.stratAt(tx, ty);
           items.push(item);
           continue;
         }
@@ -5188,7 +5270,9 @@ export class Renderer {
               if (runSeen.has(vKey)) continue;
               runSeen.add(vKey);
             }
+            const n0 = items.length;
             this.sideDoorwayItems(ground, tx, ay, game, vLen, items);
+            this.stampStrat(items, n0, this.stratAt(tx, ay));
             continue;
           }
           // WIDE-DOORWAY RUN LAW: adjacent wide tiles in an E-W run
@@ -5214,18 +5298,21 @@ export class Renderer {
           const dwhT = this.wallHeightAt(game, ax, ty);
           const item = this.doorwayItem(ground, ax, ty, game, dwhT, runLen, dregion);
           if (game.world.elevAt(ax, ty) !== 0) item.elevated = true;
+          item.strat = this.stratAt(ax, ty);
           items.push(item);
           continue;
         }
         if (ground === Tile.ArchStone) {
           const item = this.archItem(tx, ty, game);
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          item.strat = this.stratAt(tx, ty);
           items.push(item);
           continue;
         }
         if (ground === Tile.PortalDown || ground === Tile.PortalUp) {
           const item = this.portalItem(tx, ty, ground === Tile.PortalUp, game);
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          item.strat = this.stratAt(tx, ty);
           items.push(item);
           continue;
         }
@@ -5241,19 +5328,23 @@ export class Renderer {
             item.body = undefined;
           }
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          item.strat = this.stratAt(tx, ty);
           items.push(item);
           continue;
         }
         if (ground === Tile.RailWood) {
           const item = this.railItem(tx, ty, game);
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          item.strat = this.stratAt(tx, ty);
           items.push(item);
           continue;
         }
         if (ground === Tile.Bridge && this.isDockAt(game, tx, ty)) {
           // A bridge grows its own parapet: live rail items on every
           // deck edge that faces water, so bodies sort against them.
+          const n0 = items.length;
           this.bridgeRailItems(tx, ty, game, items);
+          this.stampStrat(items, n0, this.stratAt(tx, ty));
           continue;
         }
         if (
@@ -5266,7 +5357,9 @@ export class Renderer {
           // like every straight one, so bodies sort against it.
           const f = this.deckFill(game, tx, ty);
           if (f !== null && f.family === 'bridge') {
+            const n0 = items.length;
             this.deckFillRailItem(tx, ty, f.legs, game, items);
+            this.stampStrat(items, n0, this.stratAt(tx, ty));
           }
           continue;
         }
@@ -5277,6 +5370,7 @@ export class Renderer {
           // a cut run never ends at a full-height stump.
           const item = this.diagWallItem(ground as Tile, tx, ty, game, this.wallHeightAt(game, tx, ty), this.wallRegion(game, tx, ty));
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          item.strat = this.stratAt(tx, ty);
           items.push(item);
           continue;
         }
@@ -5312,6 +5406,7 @@ export class Renderer {
             }
           }
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          item.strat = this.stratAt(tx, ty);
           items.push(item);
           continue;
         }
@@ -5329,25 +5424,14 @@ export class Renderer {
           continue;
         }
         const item = this.objectItem(ground as Tile, tx, ty, game);
-        // THE FACE CONTEST, completed for objects: cliff faces and
-        // side planes sort in LIFTED space (their row minus the level
-        // lift — the face-contest law), but objects sorted at raw tile
-        // rows — so an ore on a terrace one tile north of a HIGHER
-        // band out-sorted that band's lifted face and punched a tower
-        // of blocks through the wall in front of it. An elevated
-        // object joins the same lifted space; flat ground (elev 0)
-        // keeps its exact old sort, so every settled contest stands.
-        const oElev = this.fgElevAt(tx, ty);
-        // THE CANOPY SORTS WITH ITS WALL: awnings overpaint their
-        // host wall's face pixels by design, and WALLS sort in raw
-        // row space — an awning shifted into lifted space sorts
-        // BEFORE its wall on a terrace and is buried under the very
-        // face it hangs from (the Lantern Row bug). It never contests
-        // a cliff face (it lives against a wall inside town), so the
-        // raw row is the honest space for it.
-        if (oElev > 0 && awningInfo(ground) === null) {
-          item.sortY -= (oElev * ELEV_H) / this.camera.yScale;
-        }
+        // THE SHELF LAW: a standing object sorts on the shelf of its
+        // own tile, at its raw row. Awnings need no exemption — their
+        // host wall shares the tile's shelf, so the Lantern Row order
+        // (canopy after wall, raw rows) holds on every terrace. The
+        // retired lifted-space shift made every plateau's own ground
+        // rows draw over the trees and ore standing on it (the cut
+        // trunks and rim-sliced nodes this law replaces).
+        item.strat = this.stratAt(tx, ty);
         // Discrete props ride the ring-baked sprite cache instead of
         // the per-frame outline pass — 76 live-outlined props in town
         // cost 2.5ms/frame. Their slow ambient animation (canopy sway,
@@ -10215,15 +10299,18 @@ export class Renderer {
       // construction and must win. Straight south faces (ay === by)
       // are unchanged by min().
       //
-      // THE FACE LOSES EVERY CONTEST (the armory-crop fix): behind a
-      // cliff face is the mountain — nothing can ever honestly stand
-      // there, so like the side strips the face sorts at its VISUAL
-      // TOP (base row minus the crown lift). A blade swung out over
-      // the rim, a body mid-lunge at the brink, or a climber on the
-      // ramp beside the wall now paints OVER the face instead of
-      // being cropped by it; entities at the foot still win (their
-      // feet row sorts past the base row regardless of the lift).
-      sortY: Math.min(ay, by) + 0.001 - (level * ELEV_H) / this.camera.yScale,
+      // THE SHELF LAW settles both historic face contests at once: the
+      // face stands on its BASE level (strat level−1), so anything on
+      // its own crown (a blade swung over the rim, a climber on the
+      // flight beside the wall — shelf `level`) paints over it by
+      // shelf, while everything at the base level behind the wall (an
+      // ore on the terrace against a higher band — same shelf, smaller
+      // raw row) is buried by it. The old fix sorted the face at its
+      // visual top in LIFTED space, which let base-level content punch
+      // through and forced the object shift that sliced every tree on
+      // a plateau.
+      strat: level - 1 !== 0 ? level - 1 : undefined,
+      sortY: Math.min(ay, by) + 0.001,
       drawShadow:
         level - 1 === 0
           ? () => {
@@ -10587,6 +10674,12 @@ export class Renderer {
     const topLift = level * ELEV_H * s;
     const baseLift = (level - 1) * ELEV_H * s;
     return {
+      // Edge-on strips keep their pre-shelf sort: first at their
+      // visual top on shelf 0, so everything else near the corner
+      // paints over them exactly as it always has. (The strip is a
+      // sliver at a crown corner — the shelf law's raw-row order
+      // would draw it over the crown surface north of it, turning
+      // the sliver into a bar down the plateau top.)
       sortY: runTop - (level * ELEV_H) / this.camera.yScale,
       drawShadow:
         level - 1 === 0
@@ -11374,6 +11467,11 @@ export class Renderer {
     const landLift = info.landElev * ELEV_H * s;
     const levels = level - info.landElev;
     return {
+      // THE SHELF LAW: the fall hangs down to its landing — it rides
+      // the landing's shelf so a body at the foot (same shelf, larger
+      // raw row) paints over it, and everything on the crown above
+      // (higher shelf) beats it outright.
+      strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: Math.min(ay, by) + 0.0015,
       draw: () => {
         const t = performance.now() / 1000;
@@ -11965,6 +12063,7 @@ export class Renderer {
       game.world.elevAt(Math.floor(wx), Math.floor(wy)) === info.landElev &&
       isFallWater(game.world.groundAt(Math.floor(wx), Math.floor(wy)));
     return {
+      strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: rowY + 0.0015,
       draw: () => {
         const t = performance.now() / 1000;
@@ -12286,6 +12385,7 @@ export class Renderer {
     const landLift = info.landElev * ELEV_H * s;
     const levels = level - info.landElev;
     return {
+      strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: r0 + 0.001,
       draw: () => {
         const t = performance.now() / 1000;
@@ -12474,6 +12574,7 @@ export class Renderer {
     const landLift = info.landElev * ELEV_H * s;
     const dir = nx >= 0 ? 1 : -1;
     return {
+      strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: r1 - 1 + 0.03,
       draw: () => {
         const t = performance.now() / 1000;
@@ -12732,6 +12833,8 @@ export class Renderer {
     const s = this.camera.scale;
     const topLift = level * ELEV_H * s;
     return {
+      // The race runs ON the crown — it rides the crown's shelf.
+      strat: level !== 0 ? level : undefined,
       sortY: yEdge + info.race - 1 + 0.02,
       draw: () => {
         const t = performance.now() / 1000;
@@ -12904,6 +13007,7 @@ export class Renderer {
     const landLift = info.landElev * ELEV_H * s;
     const impactY = yEdge - info.drop - 0.45;
     return {
+      strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: yEdge - 1 + 0.001,
       draw: () => {
         const t = performance.now() / 1000;
@@ -14983,6 +15087,7 @@ export class Renderer {
     items.push({
       sortY: y1 + cfg.sortOff,
       elevated: game.world.elevAt(ax, ay) !== 0,
+      strat: this.stratAt(ax, ay),
       drawShadow: () => {
         for (const mi of memberItems) mi.drawShadow?.();
       },
@@ -15907,6 +16012,7 @@ export class Renderer {
         // A hair above the depleted rock underneath, which it hides.
         sortY: br.ty + 0.86,
         elevated: lift !== 0,
+        strat: this.stratAt(br.tx, br.ty),
         draw: () => {
           const ctx = this.ctx;
           const s = this.camera.scale;
@@ -15998,6 +16104,7 @@ export class Renderer {
       items.push({
         sortY: ft.ty + 0.9,
         elevated: this.renderLift(cx, cy) !== 0,
+        strat: this.stratAt(cx, cy),
         body: fellBody,
         draw: () => {
           const ctx = this.ctx;
@@ -23743,6 +23850,7 @@ export class Renderer {
               : PLAYER_COLORS[hashString(remote.meta.name ?? String(eid)) % PLAYER_COLORS.length]!,
           });
           this.dressForWater(game, item, eid, s.x, s.y);
+          item.strat = this.stratAt(s.x, s.y);
           items.push(item);
           break;
         }
@@ -23782,9 +23890,17 @@ export class Renderer {
               })
             : this.npcItem(eid, remote.meta.defId ?? '', remote.meta, s, hurt, nameInk);
           this.dressForWater(game, item, eid, s.x, s.y);
+          // THE SHELF LAW: the body (and every glyph riding it) sorts
+          // on the shelf under its feet.
+          const eStrat = this.stratAt(s.x, s.y);
+          item.strat = eStrat;
           items.push(item);
           const pins = this.npcArrows.get(eid);
-          if (pins && pins.length > 0) items.push(this.npcArrowsItem(pins, s));
+          if (pins && pins.length > 0) {
+            const pinItem = this.npcArrowsItem(pins, s);
+            pinItem.strat = eStrat;
+            items.push(pinItem);
+          }
           const alertItem = this.alertIconItem(
             eid,
             s.alert ?? 0,
@@ -23792,7 +23908,10 @@ export class Renderer {
             remote.meta.appearance !== undefined,
             npcDef(remote.meta.defId ?? '')?.radius ?? 0.45,
           );
-          if (alertItem) items.push(alertItem);
+          if (alertItem) {
+            alertItem.strat = eStrat;
+            items.push(alertItem);
+          }
           // The quest mark — resolved from THIS client's own ledger
           // against the actor slug; combat truth outranks errand truth
           // (a live alert glyph owns the spot).
@@ -23800,16 +23919,20 @@ export class Renderer {
             const mark = game.questMarkFor(remote.meta.actor);
             if (mark) {
               const questItem = this.questIconItem(eid, mark, s, remote.meta.appearance !== undefined);
-              if (questItem) items.push(questItem);
+              if (questItem) {
+                questItem.strat = eStrat;
+                items.push(questItem);
+              }
             }
           }
           break;
         }
-        case EntityKind.ItemDrop:
-          items.push(
-            this.dropItem(eid, remote.meta.defId ?? '', remote.meta.qty ?? 1, s, now, remote.meta.roll),
-          );
+        case EntityKind.ItemDrop: {
+          const dItem = this.dropItem(eid, remote.meta.defId ?? '', remote.meta.qty ?? 1, s, now, remote.meta.roll);
+          dItem.strat = this.stratAt(s.x, s.y);
+          items.push(dItem);
           break;
+        }
         case EntityKind.Projectile: {
           // Tracer handoff (v8): on this entity's FIRST draw, measure
           // the gap between where the predicted tracer flew and where
@@ -23833,14 +23956,20 @@ export class Renderer {
               sp = { ...s, x: s.x + h.ox * k, y: s.y + h.oy * k };
             }
           }
-          items.push(this.projectileItem(eid, remote.meta.defId ?? '', sp));
+          const pItem = this.projectileItem(eid, remote.meta.defId ?? '', sp);
+          pItem.strat = this.stratAt(sp.x, sp.y);
+          items.push(pItem);
           break;
         }
         case EntityKind.Prop:
           if (remote.meta.defId?.startsWith('summon_')) {
-            items.push(this.summonItem(remote.meta.defId, s, now));
+            const sItem = this.summonItem(remote.meta.defId, s, now);
+            sItem.strat = this.stratAt(s.x, s.y);
+            items.push(sItem);
           } else if (remote.meta.defId === 'gravestone') {
-            items.push(this.gravestoneItem(eid, s));
+            const gItem = this.gravestoneItem(eid, s);
+            gItem.strat = this.stratAt(s.x, s.y);
+            items.push(gItem);
           }
           break;
         default:
@@ -23864,16 +23993,29 @@ export class Renderer {
       // fade its last 150ms instead of vanishing mid-air.
       const ageMs = now - shot.bornAt;
       if (ageMs > 400) item.alpha = Math.max(0, 1 - (ageMs - 400) / 150);
+      item.strat = this.stratAt(shot.x + shot.dirX * flown, shot.y + shot.dirY * flown);
       items.push(item);
     }
 
     // Arrows standing where they landed — the field remembers the fight.
-    for (const a of this.stuckArrows) items.push(this.stuckArrowItem(a, now));
-    for (const f of this.fallingShafts) items.push(this.fallingShaftItem(f, now));
+    for (const a of this.stuckArrows) {
+      const aItem = this.stuckArrowItem(a, now);
+      aItem.strat = this.stratAt(a.x, a.y);
+      items.push(aItem);
+    }
+    for (const f of this.fallingShafts) {
+      const fItem = this.fallingShaftItem(f, now);
+      fItem.strat = this.stratAt(f.x, f.y);
+      items.push(fItem);
+    }
 
     // Ragdolls mid-tumble and corpses at rest.
     this.tickCorpses(game, now);
-    for (const c of this.corpses) items.push(this.corpseItem(c, now));
+    for (const c of this.corpses) {
+      const cItem = this.corpseItem(c, now);
+      cItem.strat = this.stratAt(c.x, c.y);
+      items.push(cItem);
+    }
 
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
@@ -23925,6 +24067,7 @@ export class Renderer {
       if (game.isHidden) ownItem.alpha = 0.45;
       else if (game.isSneaking) ownItem.alpha = 0.8;
       this.dressForWater(game, ownItem, 'own', own.x, own.y);
+      ownItem.strat = this.stratAt(own.x, own.y);
       // The ghost ember pass reads this after the sorted loop — the
       // ONLY body it may redraw (the anti-wallhack law).
       this.ownItem = ownItem;

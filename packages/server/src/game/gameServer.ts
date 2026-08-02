@@ -4693,6 +4693,11 @@ export class GameServer {
     const chance = dialect === 'ore' ? GROWTH.oreDriftChance : GROWTH.forageDriftChance;
     if (this.growthRand() >= chance) return false;
     const reach = dialect === 'ore' ? GROWTH.oreDriftReach : GROWTH.forageDriftReach;
+    // THE CLIFF-FOOT LAW: a vein never drifts across a level change —
+    // an ore surfacing one terrace over renders punched through the
+    // rock face between them. Levels read through the pristine oracle
+    // (naturalLevel), never live elevAt: unloaded space reads 0 there.
+    const srcLevel = this.world.naturalLevel(row.tx, row.ty);
     const homing: Array<{ tx: number; ty: number }> = [];
     const fresh: Array<{ tx: number; ty: number }> = [];
     for (let dy = -reach; dy <= reach; dy++) {
@@ -4705,6 +4710,7 @@ export class GameServer {
         if (this.world.builtAt(tx, ty) !== undefined) continue;
         if (this.world.hasCropTile(tx, ty)) continue;
         if (this.inClaimRing(tx, ty)) continue;
+        if (this.world.naturalLevel(tx, ty) !== srcLevel) continue;
         const other = this.world.growthAt(tx, ty);
         const truth = this.world.naturalGround(tx, ty) as Tile;
         if (other) {
@@ -16803,6 +16809,10 @@ export class GameServer {
           const cy = Math.floor(ty + Math.sin(a) * d);
           const g = this.world.groundAt(cx, cy);
           if (g !== Tile.Grass && g !== Tile.GrassTall) continue;
+          // THE CLIFF-FOOT LAW: the pack stands on ONE shelf — a member
+          // scattered across a level change spawns on the far side of an
+          // unwalkable fence, stranded from its knot.
+          if (this.world.naturalLevel(cx, cy) !== this.world.naturalLevel(tx, ty)) continue;
           bx = cx;
           by = cy;
           found = true;

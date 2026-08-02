@@ -403,6 +403,21 @@ export class WorldSource extends ChunkStore {
    * land grows back toward.
    */
   naturalGround(tx: number, ty: number): number {
+    return this.pristineChunk(tx, ty).ground[tileIndex(tx, ty)]!;
+  }
+
+  /**
+   * The terrain LEVEL as the world would deal it — worldgen plus zone
+   * overlays, chunk-load-free (the pristine memo). THE CLIFF-FOOT LAW's
+   * server oracle: growth drift and germination compare levels through
+   * this, never through live elevAt (which reads 0 for unloaded space
+   * and would let a vein drift across a cliff line at the world's edge).
+   */
+  naturalLevel(tx: number, ty: number): number {
+    return this.pristineChunk(tx, ty).elev[tileIndex(tx, ty)]!;
+  }
+
+  private pristineChunk(tx: number, ty: number): ChunkData {
     const cx = Math.floor(tx / CHUNK_SIZE);
     const cy = Math.floor(ty / CHUNK_SIZE);
     const hit = this.pristineMemo.findIndex((m) => m.cx === cx && m.cy === cy);
@@ -416,7 +431,7 @@ export class WorldSource extends ChunkStore {
     }
     this.pristineMemo.unshift(entry);
     if (this.pristineMemo.length > 4) this.pristineMemo.pop();
-    return entry.chunk.ground[tileIndex(tx, ty)]!;
+    return entry.chunk;
   }
 
   ensure(cx: number, cy: number): ChunkData {
