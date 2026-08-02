@@ -79,6 +79,27 @@ const slam: Deployment = (c: MatterCtx, x: number, y: number, o: MatterOpts = {}
   ps.burst(x, y, nOf(15, k), [SAND, PALE], { ...FINES, size: sOf(0.04, k) });
 };
 
+/**
+ * The gouge — earth thrown ALONG a blow. A directional cone of
+ * hopping chunks and low billow with fines raining after: the heavy
+ * swing's wake, the lodged edge's grit. The slam's aimed sibling.
+ */
+const gouge: Deployment = (c, x, y, o = {}) => {
+  const k = o.scale ?? 1;
+  const d = o.dir ?? 0;
+  const ps = c.particles;
+  ps.burst(x, y, nOf(6, k), [LOAM, SHADE], {
+    ...CHUNK, size: sOf(0.06, k), speed: 1.4, vz: 1.9,
+    dir: d, spread: 0.7,
+  });
+  ps.burst(x, y, nOf(8, k), [PALE, LOAM], {
+    ...BILLOW, size: sOf(0.1, k), speed: 0.7, dir: d, spread: 0.9,
+  });
+  ps.burst(x, y, nOf(8, k), [SAND, PALE], {
+    ...FINES, size: sOf(0.036, k), vz: 1.6, dir: d, spread: 1.0,
+  });
+};
+
 /** A footfall / small strike — one breath of earth. */
 const kick: Deployment = (c, x, y, o = {}) => {
   const k = o.scale ?? 1;
@@ -113,5 +134,5 @@ export const dust: Material = {
   id: 'dust',
   name: 'Dust',
   palette: [SAND, PALE, LOAM, SHADE, DEEP],
-  deployments: { slam, kick, billow, skirt },
+  deployments: { slam, gouge, kick, billow, skirt },
 };

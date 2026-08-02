@@ -13,6 +13,7 @@
 import { shade } from './rig.js';
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { dust, blood, asMatter } from './matter/index.js';
 
 /** Screen point r px from the heart along ground angle a. */
 function groundPt(c: SigCtx, r: number, a: number): { x: number; y: number } {
@@ -28,26 +29,18 @@ function groundPt(c: SigCtx, r: number, a: number): { x: number; y: number } {
  */
 const heavy_slam: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x51);
-    // The blow lands: slabs fan low and hard along the swing.
-    for (let k = 0; k < 5; k++) {
-      c.particles.burst(
-        c.wx + Math.cos(c.dir) * c.radius * 0.55,
-        c.wy + Math.sin(c.dir) * c.radius * 0.55 * c.squash,
-        1, [c.st.deep, c.st.mid, '#6a6375'], {
-          speed: 2.4 + rand() * 1.4, life: 0.55, size: 0.11, gravity: 8,
-          dir: c.dir + (rand() - 0.5) * 1.1, spread: 0.25, shape: 'shard', spin: 10,
-        },
-      );
-    }
+    const m = asMatter(c);
+    // The blow lands: earth gouges out ALONG the swing — chunks hop
+    // off the fault, low billow rides them, fines rain back and lie.
+    dust.deployments.gouge!(m,
+      c.wx + Math.cos(c.dir) * c.radius * 0.55,
+      c.wy + Math.sin(c.dir) * c.radius * 0.55,
+      { dir: c.dir, scale: 1.1 });
     // A dust wall stands up where the shock dies at reach.
-    for (let k = 0; k < 4; k++) {
-      const a = c.dir + (k / 3 - 0.5) * 1.0;
-      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.9, c.wy + Math.sin(a) * c.radius * 0.9 * c.squash, 1, ['#4a4252', c.st.deep], {
-        speed: 0.7, life: 0.9, size: 0.13, gravity: 0.4, drag: 1.6, grow: 0.3,
-        shape: 'puff', wobble: 0.4, ground: true,
-      });
-    }
+    dust.deployments.billow!(m,
+      c.wx + Math.cos(c.dir) * c.radius * 0.9,
+      c.wy + Math.sin(c.dir) * c.radius * 0.9,
+      { radius: 0.4, dur: 0.7, scale: 0.8 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, rPx, dir } = c;
@@ -101,16 +94,13 @@ const heavy_slam: AbilitySig = {
     ctx.restore();
   },
   air(c) {
-    // Grit keeps popping out of the widening gap while it yawns.
-    if (c.t < 0.6 && Math.random() < c.frameDt * 16) {
+    // Grit keeps popping out of the widening gap while it yawns —
+    // a tiny library breath at a random station along the fault.
+    if (c.t < 0.6 && Math.random() < c.frameDt * 12) {
       const f = 0.2 + Math.random() * 0.8 * Math.min(1, c.t / 0.3);
-      c.particles.burst(
+      dust.deployments.kick!(asMatter(c),
         c.wx + Math.cos(c.dir) * c.radius * f,
-        c.wy + Math.sin(c.dir) * c.radius * f * c.squash,
-        1, [c.st.mid, c.st.deep], {
-          speed: 1.3, life: 0.4, size: 0.06, gravity: 7, up: true, shape: 'square',
-        },
-      );
+        c.wy + Math.sin(c.dir) * c.radius * f, { scale: 0.25 });
     }
     c.glow(c.wx + Math.cos(c.dir) * c.radius * 0.5, c.wy + Math.sin(c.dir) * c.radius * 0.5, c.radius * 0.7, 0.3 * (1 - c.t));
   },
@@ -125,16 +115,12 @@ const heavy_slam: AbilitySig = {
  */
 const bloodlust: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x61);
-    // The tithe is called: droplets rise around and fly to the body.
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + rand() * 0.5;
-      const rr = 0.9 + rand() * 0.5;
-      c.particles.burst(c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash, 1, [c.st.mid, c.st.spark], {
-        speed: 1.9, life: 0.5, size: 0.08, gravity: -2.0, dir: a + Math.PI,
-        spread: 0.15, drag: 0.5, trail: 8, trailColor: c.st.deep,
-      });
-    }
+    // The circle drinks: blood converges out of the ring INTO the
+    // caster — the library's tithe, real streaks and gobbets flowing
+    // the wrong way for as long as the rite holds.
+    blood.deployments.drink!(asMatter(c), c.wx, c.wy, {
+      radius: 1.15, dur: 1.1, scale: 1,
+    });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py } = c;
@@ -175,12 +161,7 @@ const bloodlust: AbilitySig = {
     }
     ctx.restore();
     // Stray droplets keep tithing in for the buff's whole life.
-    if (Math.random() < c.frameDt * 7 * (1 - t)) {
-      const a = Math.random() * Math.PI * 2;
-      c.particles.burst(c.wx + Math.cos(a) * 1.1, c.wy + Math.sin(a) * 1.1 * squash, 1, [st.mid, st.deep], {
-        speed: 1.6, life: 0.5, size: 0.07, gravity: -1.6, dir: a + Math.PI, spread: 0.1, drag: 0.4,
-      });
-    }
+    // (The inward flow itself is the blood.drink emitter from spawn.)
   },
 };
 
@@ -274,18 +255,11 @@ const twin_strike: AbilitySig = {
 const earthbreaker: AbilitySig = {
   spawn(c) {
     if (c.kind !== 'blast') return;
-    const rand = srand(c.seed ^ 0x81);
-    // The landing throws its weight once, low and heavy.
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + rand() * 0.4;
-      c.particles.burst(c.wx + Math.cos(a) * 0.3, c.wy + Math.sin(a) * 0.3 * c.squash, 1, [c.st.deep, c.st.mid, '#6a6375'], {
-        speed: 3.0 + rand(), life: 0.6, size: 0.12, gravity: 8, dir: a, spread: 0.3, shape: 'shard', spin: 9,
-      });
-    }
-    c.particles.burst(c.wx, c.wy, 6, ['#4a4252', '#3a3442'], {
-      speed: 1.5, life: 1.1, size: 0.13, gravity: 0.4, drag: 1.7, grow: 0.3,
-      shape: 'puff', wobble: 0.4, ground: true,
-    });
+    // The plates concede: the full ground smash where the leap lands,
+    // and a standing column of thrown earth breathing off it.
+    const m = asMatter(c);
+    dust.deployments.slam!(m, c.wx, c.wy, { scale: 1.25 });
+    dust.deployments.billow!(m, c.wx, c.wy, { radius: 0.45, dur: 1.1, scale: 0.9 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -369,21 +343,15 @@ const earthbreaker: AbilitySig = {
       ctx.lineTo(fx, fy);
       ctx.stroke();
       ctx.restore();
-      if (Math.random() < c.frameDt * 20) {
-        c.particles.burst(c.wx + (c.wx2 - c.wx) * t, c.wy + (c.wy2 - c.wy) * t - (1.1 - t) * 1.4, 1, [st.deep, st.mid], {
-          speed: 0.8, life: 0.4, size: 0.08, gravity: 4, shape: 'square',
-        });
+      // Grit shakes loose off the leaping body — one library breath
+      // per gated beat, falling from the flight line.
+      if (Math.random() < c.frameDt * 14) {
+        dust.deployments.kick!(asMatter(c),
+          c.wx + (c.wx2 - c.wx) * t, c.wy + (c.wy2 - c.wy) * t, { scale: 0.3 });
       }
       return;
     }
-    if (c.kind !== 'blast' || c.t >= 0.5) return;
-    // The dust column stands off the settlement, then thins.
-    if (Math.random() < c.frameDt * 12) {
-      c.particles.burst(c.wx, c.wy - 0.2, 1, ['#4a4252', c.st.deep], {
-        speed: 0.7, life: 0.9, size: 0.13, gravity: -1.4, up: true, drag: 1.3,
-        grow: 0.25, shape: 'puff', wobble: 0.5, fade: '#3a3442',
-      });
-    }
+    // (The settlement's dust column is the billow emitter from spawn.)
   },
 };
 
@@ -396,19 +364,14 @@ const earthbreaker: AbilitySig = {
  */
 const rend: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x91);
-    // First blood leaps off the cut, drying dark where it lands.
-    for (let k = 0; k < 6; k++) {
-      const a = c.dir + (rand() - 0.5) * 0.9;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.7,
-        c.wy + Math.sin(a) * c.radius * 0.7 * c.squash,
-        1, [c.st.mid, c.st.spark], {
-          speed: 1.8, life: 0.7, size: 0.08, gravity: 6, dir: a, spread: 0.5,
-          fade: shade(c.st.deep, -10), ground: true,
-        },
-      );
-    }
+    const m = asMatter(c);
+    const wx = c.wx + Math.cos(c.dir) * c.radius * 0.7;
+    const wy = c.wy + Math.sin(c.dir) * c.radius * 0.7;
+    // The seam opens: a directed spray leaves along the cut...
+    blood.deployments.spray!(m, wx, wy, { dir: c.dir, scale: 0.9 });
+    // ...and the wound keeps giving — drops falling and flecking the
+    // ground for as long as the seam weeps.
+    blood.deployments.drip!(m, wx, wy, { dur: 1.3, scale: 1 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, dir, rPx } = c;
@@ -467,17 +430,7 @@ const rend: AbilitySig = {
   },
   air(c) {
     // The seam keeps weeping: slow drips off the cut line.
-    if (c.t > 0.3 && Math.random() < c.frameDt * 10) {
-      const a = c.dir + (Math.random() - 0.5) * 0.8;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.7,
-        c.wy + Math.sin(a) * c.radius * 0.7 * c.squash,
-        1, [c.st.mid, c.st.deep], {
-          speed: 0.3, life: 0.6, size: 0.06, gravity: 5,
-          fade: shade(c.st.deep, -10), ground: true,
-        },
-      );
-    }
+    // (The seep itself is the blood.drip emitter from spawn.)
   },
 };
 
@@ -490,15 +443,11 @@ const rend: AbilitySig = {
  */
 const bull_rush: AbilitySig = {
   spawn(c) {
-    // The launch: dirt kicks back from the plant foot.
-    const rand = srand(c.seed ^ 0xa1);
     const ang = Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx);
-    for (let k = 0; k < 5; k++) {
-      c.particles.burst(c.wx, c.wy, 1, [c.st.deep, '#6a6375'], {
-        speed: 1.8 + rand(), life: 0.5, size: 0.09, gravity: 6,
-        dir: ang + Math.PI, spread: 0.6, shape: 'square', ground: true,
-      });
-    }
+    // The launch: earth gouges out BEHIND the charge — the push-off.
+    dust.deployments.gouge!(asMatter(c), c.wx, c.wy, {
+      dir: ang + Math.PI, scale: 0.7,
+    });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, px2, py2 } = c;
@@ -568,12 +517,11 @@ const bull_rush: AbilitySig = {
       ctx.fillRect(hx - Math.cos(ang) * d - sc * 0.1, hy - Math.sin(ang) * d - Math.max(1, sc * 0.02), sc * 0.2, Math.max(2, sc * 0.04));
     }
     ctx.restore();
-    // Hoof-dust hammers up under the charge.
-    if (t < 0.75 && Math.random() < c.frameDt * 18) {
-      c.particles.burst(c.wx + (c.wx2 - c.wx) * ease, c.wy + (c.wy2 - c.wy) * ease, 1, ['#4a4252', st.deep], {
-        speed: 0.9, life: 0.6, size: 0.1, gravity: 0.5, drag: 1.5, grow: 0.25,
-        shape: 'puff', wobble: 0.4, ground: true,
-      });
+    // Hoof-dust hammers up under the charge — one library breath per
+    // gated beat, at wherever the charge has reached.
+    if (t < 0.75 && Math.random() < c.frameDt * 13) {
+      dust.deployments.kick!(asMatter(c),
+        c.wx + (c.wx2 - c.wx) * ease, c.wy + (c.wy2 - c.wy) * ease, { scale: 0.4 });
     }
   },
 };
@@ -753,14 +701,8 @@ const steel_wave: AbilitySig = {
  */
 const stagger_stomp: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0xc1);
-    // The heel-strike: grit jumps straight up around the boot.
-    for (let k = 0; k < 6; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx + Math.cos(a) * 0.25, c.wy + Math.sin(a) * 0.25 * c.squash, 1, [c.st.deep, '#6a6375'], {
-        speed: 1.6, life: 0.5, size: 0.08, gravity: 7, up: true, shape: 'square',
-      });
-    }
+    // The floor rings: one hard breath of earth off the stamp.
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 1.1 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -819,9 +761,10 @@ const stagger_stomp: AbilitySig = {
     if (t < 0.7 && Math.random() < c.frameDt * 14) {
       const a = Math.random() * Math.PI * 2;
       const rf = Math.min(1, t * 1.6);
-      c.particles.burst(c.wx + Math.cos(a) * c.radius * rf, c.wy + Math.sin(a) * c.radius * rf * c.squash, 1, [st.deep, st.mid], {
-        speed: 0.8, life: 0.4, size: 0.06, gravity: 8, up: true, shape: 'square', ground: true,
-      });
+      // Grit pops off the traveling ring — a tiny library breath at
+      // wherever the ring front stands this beat.
+      dust.deployments.kick!(asMatter(c),
+        c.wx + Math.cos(a) * c.radius * rf, c.wy + Math.sin(a) * c.radius * rf, { scale: 0.22 });
     }
   },
 };
@@ -835,19 +778,11 @@ const stagger_stomp: AbilitySig = {
  */
 const headsman_stroke: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0xd1);
-    // The spray at the block: heavy, low, and brief.
-    for (let k = 0; k < 7; k++) {
-      const a = c.dir + (rand() - 0.5) * 1.0;
-      c.particles.burst(
-        c.wx + Math.cos(c.dir) * c.radius * 0.65,
-        c.wy + Math.sin(c.dir) * c.radius * 0.65 * c.squash,
-        1, [c.st.mid, c.st.deep], {
-          speed: 2.0 + rand(), life: 0.6, size: 0.08, gravity: 8, dir: a,
-          spread: 0.5, fade: shade(c.st.deep, -12), ground: true,
-        },
-      );
-    }
+    // The edge lodges DEAD: earth gouges out both sides of the bite.
+    dust.deployments.gouge!(asMatter(c),
+      c.wx + Math.cos(c.dir) * c.radius * 0.65,
+      c.wy + Math.sin(c.dir) * c.radius * 0.65,
+      { dir: c.dir, scale: 0.85 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, dir, rPx } = c;

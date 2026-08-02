@@ -110,6 +110,11 @@ export interface AbilitySig {
  */
 export const MATTER_MIGRATED: readonly string[] = [
   'fireburst', 'shockwave', 'frost_nova', 'smoke_bomb', 'envenom',
+  // Wave 2a — the melee ladder's earth and blood (steel accents in
+  // style colors remain bespoke by design: the library owns MATERIALS,
+  // not an ability's own metal).
+  'heavy_slam', 'bloodlust', 'earthbreaker', 'rend', 'bull_rush',
+  'stagger_stomp', 'headsman_stroke',
 ];
 
 // ------------------------------------------------------- exemplars

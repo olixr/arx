@@ -65,6 +65,29 @@ const spatter: Deployment = (c, x, y, o = {}) => {
   });
 };
 
+/**
+ * The drink — blood flowing the WRONG way: streaks and gobbets
+ * converging out of a circle into the heart. The tithe-taker's
+ * verb; every drain and red bargain reuses it.
+ */
+const drink: Deployment = (c, x, y, o = {}) => {
+  const k = o.scale ?? 1;
+  return c.particles.emit({
+    kind: 'rim', x, y, radius: o.radius ?? 1.1, outward: -2.4,
+    rate: 42 * k, dur: o.dur ?? 1.0, attack: 0.08, release: 0.25,
+    pops: [
+      { colors: [WET, RED], opts: {
+        ...STREAK, z: 0.25, vz: 0.15, zg: 0, land: 'none', life: 0.5, drag: 0.4,
+      }, weight: 1.6 },
+      { colors: [RED, DARK], opts: {
+        shape: 'drop', speed: 1, life: 0.55, gravity: 0, size: 0.06,
+        z: 0.2, vz: 0.1, zg: 0, layer: 'world', shadow: 0, drag: 0.4,
+        fade: DARK, fadeAt: 0.6,
+      }, weight: 1 },
+    ],
+  });
+};
+
 /** A wound that keeps giving — drops falling from a carried hurt. */
 const drip: Deployment = (c, x, y, o = {}) => {
   const k = o.scale ?? 1;
@@ -81,5 +104,5 @@ export const blood: Material = {
   id: 'blood',
   name: 'Blood',
   palette: [WET, RED, DARK, CLOT, DRIED],
-  deployments: { spray, gush, spatter, drip },
+  deployments: { spray, gush, spatter, drip, drink },
 };
