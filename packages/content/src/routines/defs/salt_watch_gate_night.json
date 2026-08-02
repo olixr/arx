@@ -1,0 +1,26 @@
+{
+  "id": "salt_watch_gate_night",
+  "base": { "kind": "post", "dir": 1.5707963267948966, "speed": 1.6 },
+  "slots": [
+    {
+      "from": 6.5,
+      "to": 13.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.5,
+        "waypoints": [
+          { "x": -7, "y": 6 },
+          { "x": -6, "y": 5 },
+          { "x": -6, "y": 4 },
+          { "x": -5, "y": 4, "lie": true }
+        ]
+      }
+    },
+    {
+      "from": 13.5,
+      "to": 21.75,
+      "task": { "kind": "wander", "x": -7, "y": 7, "radius": 3, "speed": 1.5 }
+    }
+  ]
+}

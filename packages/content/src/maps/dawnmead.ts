@@ -259,9 +259,12 @@ export function buildDawnmead(): ZoneDef {
   b.set(20, 39, Tile.WallStoneWindow);
   b.set(17, 45, Tile.WallStoneWindow).set(20, 45, Tile.WallStoneWindow);
   // Bunks: Bryn's west, the spare east (Fen boards here). Night paths
-  // lie down on the foot tiles (16,41) and (20,41).
+  // lie down on the foot tiles (16,41) and (20,41). The east-wall
+  // bunk is the ward's hot bunk: the day ward sleeps it by night, the
+  // night ward by day, so the rota always has a body in the lanes.
   b.set(16, 40, Tile.Bed).set(16, 41, Tile.Bed);
   b.set(20, 40, Tile.Bed).set(20, 41, Tile.Bed);
+  b.set(21, 40, Tile.Bed).set(21, 41, Tile.Bed);
   b.set(18, 41, Tile.Table); // the duty table between the bunks
   b.set(21, 44, Tile.WeaponRack); // south wall — the east aisle stays open past the bunks
   b.set(16, 44, Tile.Crate);
@@ -455,6 +458,12 @@ export function buildDawnmead(): ZoneDef {
   b.actor('elder_rowan', 19.5, 30.5, Math.PI, 'rowan_hours');
   // Bryn keeps the yard, walks the green at first light and dusk.
   b.actor('warden_bryn', 23.5, 43.5, -Math.PI / 2, 'warden_rounds');
+  // THE VALE WARDS — Bryn's rota, two bodies and one hot bunk. The
+  // day ward keeps the bridge and walks the green twice; the night
+  // ward takes the well court at dusk and carries the lantern round
+  // past the ford and the drill yard while the village sleeps.
+  b.actor('dawnmead_ward', 55.5, 32.5, 0, 'dawn_ward_day');
+  b.actor('dawnmead_ward', 35.5, 29.5, Math.PI / 2, 'dawn_ward_night');
   // Iona owns the campfire the way captains own ships.
   b.actor('hearthkeeper_iona', 33.5, 37.6, -Math.PI / 2, 'hearth_hours');
   // Hobb's whole day is the corridor between coop and pasture.

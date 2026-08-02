@@ -1,0 +1,26 @@
+{
+  "id": "amber_watch_east_night",
+  "base": { "kind": "post", "dir": 0, "speed": 1.6 },
+  "slots": [
+    {
+      "from": 6.5,
+      "to": 13.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.5,
+        "waypoints": [
+          { "x": -2, "y": 0 },
+          { "x": -2, "y": 1 },
+          { "x": -1, "y": 3 },
+          { "x": 0, "y": 3, "lie": true }
+        ]
+      }
+    },
+    {
+      "from": 13.5,
+      "to": 21.75,
+      "task": { "kind": "wander", "x": -5, "y": -1, "radius": 3, "speed": 1.5 }
+    }
+  ]
+}

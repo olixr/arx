@@ -5,6 +5,7 @@ import {
   EntityKind,
   INTEREST_CHUNK_RADIUS,
   PLAYER_SPEED,
+  POS_SCALE,
   PoseState,
   RECONNECT_GRACE_MS,
   TICK_DT,
@@ -1209,6 +1210,9 @@ interface PlayerComp {
   disconnectedAt: number | null;
   inputQueue: InputFrame[];
   lastProcessedSeq: number;
+  /** THE STEADY HAND: consecutive ticks the input queue has held a
+   *  standing 2-frame cushion — drives the slow bleed back to 1. */
+  inputBleedRun: number;
   skills: SkillXp;
   inventory: InvSlot[];
   action: PlayerAction | null;
@@ -1656,15 +1660,14 @@ function defaultPerks(): Perks {
 /** Ticks of standing still before Bulwark's armor answers. */
 const STILL_ARMOR_TICKS = 12;
 
-const MAX_QUEUED_INPUTS = 8;
 /**
- * Input frames simulated per tick. Nominal flow is 1/tick; the surplus
- * is CATCH-UP after a network stall — at 2, a 500ms burst of buffered
- * inputs took another 500ms to drain (sustained input lag); at 4 the
- * same backlog clears in ~150ms. Sustained speed cheating is bounded
- * by the session input token bucket (25/s), not this number.
+ * Input queue depth cap. Nominal flow is 1/tick and THE STEADY HAND
+ * drains 1/tick (2 during catch-up), so 8 covers a 250ms client
+ * hitch-burst with room; beyond it the oldest frames drop. Sustained
+ * speed cheating is bounded by the session input token bucket (25/s)
+ * and the paced drain, not this number.
  */
-const MAX_INPUTS_PER_TICK = 4;
+const MAX_QUEUED_INPUTS = 8;
 const SAVE_INTERVAL_TICKS = 600; // 30s
 /** World-y extent of the player's visual body above its ground point
  * (screen height ÷ camera pitch) — NPC shots test the feet→crown band. */
@@ -2781,6 +2784,7 @@ export class GameServer {
       session: null,
       disconnectedAt: null,
       inputQueue: [],
+      inputBleedRun: 0,
       lastProcessedSeq: 0,
       skills,
       inventory,
@@ -2945,6 +2949,7 @@ export class GameServer {
     session.playerEid = eid;
     session.knownEntities.clear();
     session.knownChunks.clear();
+    session.sentSnapSig.clear();
     this.sessions.add(session);
     session.sendJson({
       t: 'welcome',
@@ -20643,8 +20648,30 @@ export class GameServer {
     let moved = false;
     /** Tiles covered across every frame this tick — feeds stride workings. */
     let strideStep = 0;
+    // THE STEADY HAND (input dejitter): drain ONE frame per tick.
+    // Clients send exactly one frame per tick; transport jitter used
+    // to collapse a late pair into a single tick — every watcher saw
+    // the body stall 50ms then double-step, and the seq↔tick mapping
+    // shifted under the client's cast mirrors. Pacing the drain keeps
+    // remote motion even, and after any late burst a standing 1-frame
+    // cushion remains in the queue, absorbing the next wobble for
+    // free. A real backlog (≥3) catches up at 2/tick — added input
+    // latency is bounded at two ticks — and a cushion that stands at
+    // 2 for a full second is jitter's leftovers, bled off the same way.
+    let budget = 1;
+    if (player.inputQueue.length >= 3) {
+      budget = 2;
+      player.inputBleedRun = 0;
+    } else if (player.inputQueue.length === 2) {
+      if (++player.inputBleedRun > 20) {
+        budget = 2;
+        player.inputBleedRun = 0;
+      }
+    } else {
+      player.inputBleedRun = 0;
+    }
     let frames = 0;
-    while (frames < MAX_INPUTS_PER_TICK && player.inputQueue.length > 0) {
+    while (frames < budget && player.inputQueue.length > 0) {
       const frame = player.inputQueue.shift()!;
       const casting = this.tickCount < player.castFreezeUntilTick;
       // Moving cancels any in-progress gather.
@@ -21004,8 +21031,22 @@ export class GameServer {
         if (set) for (const e of set) visible.add(e);
       }
     }
+    // CHUNK HYSTERESIS: forget a streamed chunk only when it falls a
+    // full ring beyond the interest window. Evicting at the window's
+    // exact edge meant a player pacing across a chunk border
+    // re-downloaded the same five chunks (~25KB) on every crossing —
+    // the client caches them forever, so the resend was pure waste.
     for (const key of session.knownChunks) {
-      if (!windowKeys.has(key)) session.knownChunks.delete(key);
+      if (windowKeys.has(key)) continue;
+      const comma = key.indexOf(',');
+      const cx = Number(key.slice(0, comma));
+      const cy = Number(key.slice(comma + 1));
+      if (
+        Math.abs(cx - ccx) > INTEREST_CHUNK_RADIUS + 1 ||
+        Math.abs(cy - ccy) > INTEREST_CHUNK_RADIUS + 1
+      ) {
+        session.knownChunks.delete(key);
+      }
     }
 
     // Fully-hidden players simply aren't there to anyone else: the diff
@@ -21026,6 +21067,7 @@ export class GameServer {
     for (const e of session.knownEntities) {
       if (!visible.has(e)) {
         session.knownEntities.delete(e);
+        session.sentSnapSig.delete(e);
         leaves.push(e);
       }
     }
@@ -21165,20 +21207,65 @@ export class GameServer {
   private sendSnapshot(session: Session): void {
     const player = this.players.get(session.playerEid!);
     if (!player) return;
+    // BACKPRESSURE: a congested socket gets no snapshots — they are
+    // superseded data, and stacking them onto a stalled receiver only
+    // deepens how far behind it wakes. Events and chunks still queue
+    // (they are one-shot truths); the first drained snapshot carries
+    // the current world.
+    if (session.congested) return;
+    const TAU = Math.PI * 2;
     const entities: SnapshotEntity[] = [];
     for (const eid of session.knownEntities) {
       const pos = this.positions.get(eid);
       if (!pos) continue;
       const health = this.healths.get(eid);
+      // A living body never rounds to the death byte — 1/255 is the
+      // honest floor for "bloodied but breathing".
+      const hpPct = health
+        ? health.hp > 0
+          ? Math.max(1, Math.round((health.hp / health.maxHp) * 255))
+          : 0
+        : 255;
+      const pose = this.poses.get(eid) ?? PoseState.Idle;
+      const status = this.statusBits(eid);
+      const alert = this.npcAlertByte(eid);
+      // THE QUIET WIRE: compare in WIRE precision (the encoder's own
+      // quantization) so float dust can't force a resend, and skip
+      // any entity whose whole row is unchanged. The own body always
+      // ships — reconciliation runs on its presence.
+      const xq = Math.round(pos.x * POS_SCALE);
+      const yq = Math.round(pos.y * POS_SCALE);
+      const dirq = Math.round(((((pos.dir % TAU) + TAU) % TAU) / TAU) * 255) & 0xff;
+      if (eid !== session.playerEid) {
+        const sig = session.sentSnapSig.get(eid);
+        if (
+          sig &&
+          sig[0] === xq &&
+          sig[1] === yq &&
+          sig[2] === dirq &&
+          sig[3] === pose &&
+          sig[4] === hpPct &&
+          sig[5] === status &&
+          sig[6] === alert
+        ) {
+          continue;
+        }
+        if (sig) {
+          sig[0] = xq; sig[1] = yq; sig[2] = dirq; sig[3] = pose;
+          sig[4] = hpPct; sig[5] = status; sig[6] = alert;
+        } else {
+          session.sentSnapSig.set(eid, Int32Array.of(xq, yq, dirq, pose, hpPct, status, alert));
+        }
+      }
       entities.push({
         eid,
         x: pos.x,
         y: pos.y,
         dir: pos.dir,
-        pose: this.poses.get(eid) ?? PoseState.Idle,
-        hpPct: health ? Math.round((health.hp / health.maxHp) * 255) : 255,
-        status: this.statusBits(eid),
-        alert: this.npcAlertByte(eid),
+        pose,
+        hpPct,
+        status,
+        alert,
       });
     }
     session.sendBinary(

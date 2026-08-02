@@ -39,6 +39,11 @@ import pineSawyer from './defs/pine_sawyer.json';
 import fallWatch from './defs/fall_watch.json';
 import fallWatchPostern from './defs/fall_watch_postern.json';
 import fallWatchMuster from './defs/fall_watch_muster.json';
+import fallWatchMusterNight from './defs/fall_watch_muster_night.json';
+import fallWatchGateDay from './defs/fall_watch_gate_day.json';
+import fallWatchGateNight from './defs/fall_watch_gate_night.json';
+import fallWatchRoundDay from './defs/fall_watch_round_day.json';
+import fallWatchRoundNight from './defs/fall_watch_round_night.json';
 import fallWeaver from './defs/fall_weaver.json';
 import fallKing from './defs/fall_king.json';
 import fallQueen from './defs/fall_queen.json';
@@ -58,6 +63,16 @@ import amberArtisan from './defs/amber_artisan.json';
 import amberBanker from './defs/amber_banker.json';
 import amberCaptain from './defs/amber_captain.json';
 import amberWatch from './defs/amber_watch.json';
+import amberWatchFordDay from './defs/amber_watch_ford_day.json';
+import amberWatchFordNight from './defs/amber_watch_ford_night.json';
+import amberWatchNorthDay from './defs/amber_watch_north_day.json';
+import amberWatchNorthNight from './defs/amber_watch_north_night.json';
+import amberWatchEastDay from './defs/amber_watch_east_day.json';
+import amberWatchEastNight from './defs/amber_watch_east_night.json';
+import amberWatchSaltDay from './defs/amber_watch_salt_day.json';
+import amberWatchSaltNight from './defs/amber_watch_salt_night.json';
+import amberWatchRoundDay from './defs/amber_watch_round_day.json';
+import amberWatchRoundNight from './defs/amber_watch_round_night.json';
 import amberCourier from './defs/amber_courier.json';
 import amberFarmer from './defs/amber_farmer.json';
 import amberFarmwife from './defs/amber_farmwife.json';
@@ -73,6 +88,8 @@ import amberSmith from './defs/amber_smith.json';
 import amberTraderA from './defs/amber_trader_a.json';
 import amberTraderB from './defs/amber_trader_b.json';
 import dawnmeadFarmhand from './defs/dawnmead_farmhand.json';
+import dawnWardDay from './defs/dawn_ward_day.json';
+import dawnWardNight from './defs/dawn_ward_night.json';
 import greenScamp from './defs/green_scamp.json';
 import saltPortreeve from './defs/salt_portreeve.json';
 import saltFactor from './defs/salt_factor.json';
@@ -86,6 +103,7 @@ import saltRoper from './defs/salt_roper.json';
 import saltBeacon from './defs/salt_beacon.json';
 import saltPilot from './defs/salt_pilot.json';
 import saltWatchGate from './defs/salt_watch_gate.json';
+import saltWatchGateNight from './defs/salt_watch_gate_night.json';
 import saltWatchSquare from './defs/salt_watch_square.json';
 import saltWatchQuay from './defs/salt_watch_quay.json';
 import saltFisherPiers from './defs/salt_fisher_piers.json';
@@ -142,6 +160,11 @@ const SOURCES: readonly unknown[] = [
   fallWatch,
   fallWatchPostern,
   fallWatchMuster,
+  fallWatchMusterNight,
+  fallWatchGateDay,
+  fallWatchGateNight,
+  fallWatchRoundDay,
+  fallWatchRoundNight,
   fallWeaver,
   fallKing,
   fallQueen,
@@ -161,6 +184,16 @@ const SOURCES: readonly unknown[] = [
   amberBanker,
   amberCaptain,
   amberWatch,
+  amberWatchFordDay,
+  amberWatchFordNight,
+  amberWatchNorthDay,
+  amberWatchNorthNight,
+  amberWatchEastDay,
+  amberWatchEastNight,
+  amberWatchSaltDay,
+  amberWatchSaltNight,
+  amberWatchRoundDay,
+  amberWatchRoundNight,
   amberCourier,
   amberFarmer,
   amberFarmwife,
@@ -176,6 +209,8 @@ const SOURCES: readonly unknown[] = [
   amberTraderA,
   amberTraderB,
   dawnmeadFarmhand,
+  dawnWardDay,
+  dawnWardNight,
   greenScamp,
   saltPortreeve,
   saltFactor,
@@ -189,6 +224,7 @@ const SOURCES: readonly unknown[] = [
   saltBeacon,
   saltPilot,
   saltWatchGate,
+  saltWatchGateNight,
   saltWatchSquare,
   saltWatchQuay,
   saltFisherPiers,

@@ -1,0 +1,49 @@
+{
+  "id": "dawn_ward_day",
+  "base": { "kind": "post", "dir": 0, "speed": 1.6 },
+  "slots": [
+    {
+      "from": 22.25,
+      "to": 5.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.5,
+        "waypoints": [
+          { "x": -25, "y": 0 },
+          { "x": -37, "y": 5 },
+          { "x": -37, "y": 7 },
+          { "x": -34, "y": 10 },
+          { "x": -34, "y": 9, "lie": true }
+        ]
+      }
+    },
+    {
+      "from": 8,
+      "to": 9,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.5,
+        "waypoints": [
+          { "x": -20, "y": -3, "waitSec": 15 },
+          { "x": -41, "y": 0, "waitSec": 20, "dir": 3.141592653589793 }
+        ]
+      }
+    },
+    { "from": 11.5, "to": 12.1, "task": { "kind": "wander", "radius": 2, "speed": 1.4 } },
+    {
+      "from": 16.5,
+      "to": 17.5,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.5,
+        "waypoints": [
+          { "x": -20, "y": -3, "waitSec": 15 },
+          { "x": -41, "y": 0, "waitSec": 20, "dir": 3.141592653589793 }
+        ]
+      }
+    }
+  ]
+}

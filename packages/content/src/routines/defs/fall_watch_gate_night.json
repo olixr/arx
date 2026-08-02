@@ -1,0 +1,28 @@
+{
+  "id": "fall_watch_gate_night",
+  "base": { "kind": "post", "dir": 1.5707963267948966, "speed": 1.6 },
+  "slots": [
+    {
+      "from": 6.5,
+      "to": 13.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.5,
+        "waypoints": [
+          { "x": -18, "y": -6 },
+          { "x": -44, "y": -6 },
+          { "x": -47, "y": -5 },
+          { "x": -50, "y": -4 },
+          { "x": -50, "y": -2 },
+          { "x": -49, "y": -2, "lie": true }
+        ]
+      }
+    },
+    {
+      "from": 13.5,
+      "to": 21.75,
+      "task": { "kind": "wander", "x": -43, "y": -6, "radius": 3, "speed": 1.5 }
+    }
+  ]
+}

@@ -514,6 +514,10 @@ const wss = new WebSocketServer({
   // Snapshots are 20Hz and tiny — compression would add per-message
   // CPU + latency for nothing. Explicit so nobody "enables a win".
   perMessageDeflate: false,
+  // Clients only ever send small JSON intents (Session drops anything
+  // over 4KB after receipt) — without this cap the ws default lets a
+  // hostile peer stage a 100MiB frame in server memory first.
+  maxPayload: 16 * 1024,
 });
 httpServer.listen(config.port, config.host);
 wss.on('connection', (ws, req) => {

@@ -34,6 +34,16 @@ export class Session {
   /** Entities this client currently knows about (interest set). */
   readonly knownEntities = new Set<EntityId>();
 
+  /**
+   * THE QUIET WIRE: per-entity wire-quantized state as last sent in a
+   * snapshot — [xq, yq, dirq, pose, hpPct, status, alert]. An entity
+   * whose row is identical is SKIPPED this tick: TCP is ordered and
+   * reliable, so the client's newest sample for it stays true without
+   * ack machinery, and a town of idle bodies stops re-shipping itself
+   * 20 times a second. Rows die with interest (leave) or the session.
+   */
+  readonly sentSnapSig = new Map<EntityId, Int32Array>();
+
   /** Chunk keys currently streamed to this client. */
   readonly knownChunks = new Set<string>();
 
@@ -98,6 +108,19 @@ export class Session {
   /** RTT as the CLIENT experiences it (real + simulated fake lag). */
   get viewRttMs(): number {
     return this.rttMs + (config.fakeLagMs > 0 ? config.fakeLagMs + config.fakeJitterMs : 0);
+  }
+
+  /**
+   * BACKPRESSURE: bytes the OS/ws stack is still holding for this
+   * socket. A stalled receiver (backgrounded phone, dying route) can't
+   * drain — piling 20Hz snapshots onto that queue only deepens how far
+   * behind the client will be when it wakes. Snapshots are superseded
+   * data: while this reads true the tick skips them (latest-state-only
+   * law) and the next delivered snapshot carries the current truth.
+   * Reliable one-shot messages (JSON events, chunks) still queue.
+   */
+  get congested(): boolean {
+    return this.ws.bufferedAmount > 256 * 1024;
   }
 
   private handleRaw(raw: string): void {
@@ -452,6 +475,14 @@ export class Session {
 
   private sendRaw(data: string | ArrayBuffer): void {
     if (this.closed || this.ws.readyState !== this.ws.OPEN) return;
+    // A receiver this far gone (4MB ≈ minutes of traffic) is a dead
+    // route the TCP stack hasn't given up on yet. Cut it — the
+    // reconnect grace window holds the body for an honest rejoin, and
+    // every byte queued here is memory held hostage until then.
+    if (this.ws.bufferedAmount > 4 * 1024 * 1024) {
+      this.ws.close();
+      return;
+    }
     if (config.fakeLagMs > 0) {
       const at = Math.max(performance.now() + fakeDelay(), this.lastOutAt);
       this.lastOutAt = at;

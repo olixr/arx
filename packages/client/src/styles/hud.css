@@ -170,3 +170,38 @@
   filter: drop-shadow(0 0.0625rem 0.1875rem rgba(6, 4, 2, 0.55)) brightness(1.2);
 }
 
+
+/* THE THIN THREAD — shown only while the socket is down: the world on
+   screen is coasting on its last truth and the player deserves to
+   know. Non-blocking; input and HUD stay live for the rejoin. */
+.net-pill {
+  position: fixed;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.9rem;
+  background: var(--ink-wash);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-chip);
+  color: var(--parchment);
+  font-size: var(--t-body);
+  box-shadow: var(--shadow);
+  z-index: 40;
+  pointer-events: none;
+}
+
+.net-pill::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ember-deep);
+  animation: net-pill-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes net-pill-pulse {
+  50% { opacity: 0.35; }
+}

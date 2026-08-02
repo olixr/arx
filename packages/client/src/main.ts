@@ -169,6 +169,8 @@ const debugEl = document.getElementById('debug')!;
 
 let registerMode = false;
 let authReady = false;
+/** THE THIN THREAD: the reconnecting pill, live only while the socket is down. */
+let netPill: HTMLElement | null = null;
 
 const input = new InputManager(canvas);
 const renderer = new Renderer(canvas);
@@ -1044,6 +1046,8 @@ const game = new ClientGame(input, {
   },
   onStatus: (status, detail) => {
     if (status === 'ingame') {
+      netPill?.remove();
+      netPill = null;
       loginOverlay.classList.add('hidden');
       hud.classList.remove('hidden');
       if (game.sessionToken) localStorage.setItem('arx.token', game.sessionToken);
@@ -1084,7 +1088,15 @@ const game = new ClientGame(input, {
       showLoginError(detail ?? 'connection rejected');
       localStorage.removeItem('arx.token');
     } else if (status === 'reconnecting') {
-      chat.addLine({ channel: 'system', text: 'Connection lost — reconnecting…' });
+      chat.addLine({ channel: 'system', text: 'Connection lost. Reconnecting…' });
+      // THE THIN THREAD: the world on screen is coasting on its last
+      // truth until the socket returns — say so, without blocking it.
+      if (!netPill) {
+        netPill = document.createElement('div');
+        netPill.className = 'net-pill';
+        netPill.textContent = 'Reconnecting…';
+        document.body.appendChild(netPill);
+      }
     } else if (status === 'connecting') {
       loginStatus.textContent = 'Connecting…';
       loginStatus.classList.remove('hidden');
