@@ -18,10 +18,17 @@
  * All authoring laws of fxSignatures.ts bind here: hard edges,
  * save/restore hygiene, squash on ground, srand-deterministic
  * geometry, frameDt-gated emission, ≤~60 path ops per hook.
+ *
+ * FX v5 wave 3c: dust, blood, frost, and fire route through the
+ * MATTER LIBRARY (ONE-VOICE LAW); cinder_rain fires the library's
+ * new fire.rain volley on its own strike beats. Seven stay lawfully
+ * bespoke — wind, sound, sap, ghost, gold, star-stuff, and thunder
+ * own no material.
  */
 
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { dust, blood, frost, fire, asMatter } from './matter/index.js';
 
 // ------------------------------------------------------------ helpers
 
@@ -46,11 +53,11 @@ function entryAngle(c: SigCtx, salt: number): number {
 const broadhead: AbilitySig = {
   spawn(c) {
     const ang = entryAngle(c, 0xb0);
-    // Turf flaps shear off both sides of the cut.
+    const m = asMatter(c);
+    // Turf shears off both sides of the cut as TRUE earth — two
+    // opposed gouges, chunks hopping away from the kerf.
     for (const s of [-1, 1]) {
-      c.particles.burst(c.wx, c.wy, 2, ['#5a5045', '#4a4252'], {
-        speed: 1.6, life: 0.5, size: 0.1, gravity: 6, dir: ang + s * (Math.PI / 2), spread: 0.3, shape: 'shard', spin: 8,
-      });
+      dust.deployments.gouge!(m, c.wx, c.wy, { dir: ang + s * (Math.PI / 2), scale: 0.4 });
     }
     // The head carries THROUGH: one heavy sliver punches past.
     c.particles.burst(c.wx, c.wy - 0.3, 2, [c.st.spark, c.st.core], {
@@ -120,11 +127,10 @@ const broadhead: AbilitySig = {
       ctx.fill();
     }
     ctx.restore();
-    // The wound weeps while the sig lives.
-    if (Math.random() < c.frameDt * 6 * (1 - t)) {
-      c.particles.burst(c.wx, c.wy - 0.3, 1, ['#c4372a', '#6a1518'], {
-        speed: 0.5, life: 0.4, size: 0.05, gravity: 6, fade: '#6a1518',
-      });
+    // The wound weeps TRUE while the sig lives: on gated beats the
+    // library wells red that lands, splats, and dries downstream.
+    if (Math.random() < c.frameDt * 4 * (1 - t)) {
+      blood.deployments.spatter!(asMatter(c), c.wx, c.wy, { scale: 0.18, radius: 0.2 });
     }
   },
 };
@@ -216,16 +222,15 @@ const verdant_burst: AbilitySig = {
     c.particles.burst(c.wx, c.wy - 0.2, 6, [c.st.mid, c.st.spark], {
       speed: 2.0, life: 0.6, size: 0.07, gravity: 8, up: true, fade: c.st.deep,
     });
-    // Soil kicked at the rim.
-    for (let k = 0; k < 4; k++) {
+    // Soil kicked at the rim: TRUE breaths of earth where the roots
+    // are about to break ground.
+    const m = asMatter(c);
+    for (let k = 0; k < 3; k++) {
       const a = rand() * Math.PI * 2;
-      c.particles.burst(
+      dust.deployments.kick!(m,
         c.wx + Math.cos(a) * c.radius * 0.5,
         c.wy + Math.sin(a) * c.radius * 0.5 * c.squash,
-        1, ['#4a4234', '#5a5045'], {
-          speed: 0.9, life: 0.6, size: 0.09, gravity: -0.4, drag: 1.8, grow: 0.2, shape: 'puff', ground: true,
-        },
-      );
+        { scale: 0.45 });
     }
   },
   ground(c) {
@@ -468,8 +473,10 @@ const howling_loose: AbilitySig = {
     c.particles.burst(c.wx, c.wy - 0.3, 3, [c.st.core, c.st.mid], {
       speed: 2.6, life: 0.22, size: 0.06, gravity: 0, dir: ang, spread: 0.3, shape: 'streak',
     });
-    c.particles.burst(c.wx, c.wy - 0.4, 2, ['#ffffff', c.st.core], {
-      speed: 0.6, life: 0.8, size: 0.09, gravity: 0.4, drag: 2, shape: 'glint',
+    // The cold arrives BREATHING: TRUE frost fog hangs at the wound —
+    // sinking cold motes with ice-dust sparkle winking through them.
+    frost.deployments.fog!(asMatter(c), c.wx, c.wy, {
+      radius: 0.35, dur: 0.6, scale: 0.5,
     });
   },
   ground(c) {
@@ -545,18 +552,12 @@ const howling_loose: AbilitySig = {
  */
 const hoarfrost: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x101);
-    // Sea-smoke rolls off the closing ice.
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.6,
-        c.wy + Math.sin(a) * c.radius * 0.6 * c.squash,
-        1, [c.st.mid, c.st.core], {
-          speed: 0.8, life: 1.0, size: 0.12, gravity: 0.3, dir: a, spread: 0.4, drag: 1.6, grow: 0.2, shape: 'puff', fade: '#ffffff', ground: true,
-        },
-      );
-    }
+    // Sea-smoke rolls off the closing ice: TRUE frost weather — the
+    // library's quiet bloom, cold sinking outward from the shelves
+    // with sparkle winking through it.
+    frost.deployments.bloom!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.7, dur: 0.9, scale: 0.9,
+    });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -716,6 +717,12 @@ const cinder_rain: AbilitySig = {
     c.particles.burst(c.wx, c.wy - 0.4, 1, [c.st.spark, c.st.core], {
       speed: 6, life: 0.4, size: 0.09, gravity: 2, dir: -Math.PI / 2, spread: 0.1, shape: 'streak', trail: 14, trailColor: c.st.deep,
     });
+    // The first volley arrives: TRUE falling fire — steep streaks
+    // dying at the dirt, coal heroes landing to lie and cool, soot
+    // sighing off the bed.
+    fire.deployments.rain!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.85, dur: 0.85, scale: 0.9,
+    });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -751,22 +758,16 @@ const cinder_rain: AbilitySig = {
     c.glow(c.wx, c.wy, c.radius, (0.25 + 0.3 * flare) * fade);
   },
   air(c) {
-    const { st, squash } = c;
-    const beat = (c.age % 800) / 800;
-    const surge = beat < 0.2 ? 2.2 : 1;
-    // It KEEPS coming: steep burning streaks fall inside the ring,
-    // surging on the beat; the bed sighs smoke between strikes.
-    if (Math.random() < c.frameDt * 7 * surge * (1 - c.t * 0.5)) {
-      const a = Math.random() * Math.PI * 2;
-      const rr = Math.sqrt(Math.random()) * c.radius * 0.85;
-      c.particles.burst(c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * squash - 2.2, 1, [st.spark, st.mid], {
-        speed: 7, life: 0.3, size: 0.08, gravity: 4, dir: Math.PI / 2, spread: 0.06, shape: 'streak', fade: st.deep,
-      });
-    }
-    if (Math.random() < c.frameDt * 4) {
-      const a = Math.random() * Math.PI * 2;
-      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.5, c.wy + Math.sin(a) * c.radius * 0.5 * squash - 0.2, 1, [st.deep, '#2e2622'], {
-        speed: 0.4, life: 0.9, size: 0.09, gravity: -1.2, drag: 1.4, grow: 0.15, shape: 'puff', wobble: 0.6,
+    // It KEEPS coming, and it comes ON THE BEAT: a fresh library
+    // volley fires on each 800ms strike-beat crossing — the same
+    // clock the painted bed flares to — true streaks, landing coals,
+    // and soot in one voice. (The old faked-height streaks fell from
+    // a screen offset; these fall on real altitude.)
+    const beat = Math.floor(c.age / 800);
+    const prevBeat = Math.floor((c.age - c.frameDt * 1000) / 800);
+    if (beat !== prevBeat && beat > 0 && c.t < 0.85) {
+      fire.deployments.rain!(asMatter(c), c.wx, c.wy, {
+        radius: c.radius * 0.85, dur: 0.7, scale: 0.8,
       });
     }
   },

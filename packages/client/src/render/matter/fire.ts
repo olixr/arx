@@ -212,6 +212,35 @@ const fan: Deployment = (c, x, y, o = {}) => {
   c.glow?.(x + Math.cos(d) * 0.5, y + Math.sin(d) * 0.5, 1.1 * Math.sqrt(k), GLOW_RGB, 0.26);
 };
 
+/**
+ * The rain — fire falling from a sky that means it: steep burning
+ * streaks plummet on TRUE altitude and die at the dirt, while coal
+ * heroes come down heavy, LAND, and lie there cooling through deep
+ * red to soot — the downpour plants its own ember bed. Soot sighs
+ * up from ground level between strikes. Cinder volleys, meteor
+ * drizzle, any orchard of falling fire reuses it.
+ */
+const rain: Deployment = (c, x, y, o = {}) => {
+  const k = o.scale ?? 1;
+  return c.particles.emit({
+    kind: 'disc', x, y, radius: o.radius ?? 1.0,
+    rate: 26 * k, dur: o.dur ?? 1.8, attack: 0.1, release: 0.4,
+    pops: [
+      { colors: [BRIGHT, FLAME], opts: {
+        shape: 'streak', speed: 0.1, life: 0.45, gravity: 0, size: 0.08,
+        z: 2.2, vz: -7.5, zg: 0, land: 'die', layer: 'world', shadow: 0,
+        flicker: 0.4, trail: 8, trailColor: DEEP,
+      }, weight: 2.2 },
+      { colors: [EMBER, COAL], opts: {
+        speed: 0.15, life: 2.0, gravity: 0, size: 0.055,
+        z: 2.0, vz: -6, zg: 2, land: 'settle', layer: 'world',
+        flicker: 0.5, fade: DEEP, fadeAt: 0.55, fade2: SOOT, fade2At: 0.85,
+      }, weight: 0.7 },
+      { colors: [SMOKE, SOOT], opts: { ...SOOT_PUFF, z: 0.05, size: 0.085 }, weight: 0.9 },
+    ],
+  });
+};
+
 /** Burning ground — low, hungry flame carpeting a disc. */
 const pool: Deployment = (c, x, y, o = {}) => {
   const k = o.scale ?? 1;
@@ -228,5 +257,5 @@ export const fire: Material = {
   id: 'fire',
   name: 'Fire',
   palette: [HEART, FLAME, EMBER, DEEP, SOOT],
-  deployments: { burst, plume, ring, path, pool, gobbets, fan },
+  deployments: { burst, plume, ring, path, pool, gobbets, fan, rain },
 };

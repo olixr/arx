@@ -150,6 +150,14 @@ export const MATTER_MIGRATED: readonly string[] = [
   // punctuation, and soul-light own no material.
   'serpents_kiss', 'stinger', 'cold_snap', 'shadow_fang',
   'crimson_tithe', 'spark_lash', 'garden_close',
+  // Wave 3c — the archer roster speaks in what each bow DOES to the
+  // world, and most of those voices own no material: wind, sound,
+  // sap, ghost, gold, star-stuff, and thunder stay bespoke. Five
+  // speak the library — and cinder_rain grew fire.rain, TRUE falling
+  // fire that plants the coals it promises, volleyed on the same
+  // 800ms beat the painted orchard flares to.
+  'broadhead', 'verdant_burst', 'howling_loose', 'hoarfrost',
+  'cinder_rain',
 ];
 
 // ------------------------------------------------------- exemplars

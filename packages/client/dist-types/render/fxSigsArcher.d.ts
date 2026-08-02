@@ -18,6 +18,12 @@
  * All authoring laws of fxSignatures.ts bind here: hard edges,
  * save/restore hygiene, squash on ground, srand-deterministic
  * geometry, frameDt-gated emission, ≤~60 path ops per hook.
+ *
+ * FX v5 wave 3c: dust, blood, frost, and fire route through the
+ * MATTER LIBRARY (ONE-VOICE LAW); cinder_rain fires the library's
+ * new fire.rain volley on its own strike beats. Seven stay lawfully
+ * bespoke — wind, sound, sap, ghost, gold, star-stuff, and thunder
+ * own no material.
  */
 import type { AbilitySig } from './fxSignatures.js';
 /**
