@@ -1,4 +1,4 @@
-import { Detail, Tile } from '@arx/shared';
+import { Detail, Tile, awningTile, bracketSignDetail, pennantDetail, trellisDetail } from '@arx/shared';
 import { AMBERFORD_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';
@@ -164,6 +164,9 @@ export function buildAmberford(): ZoneDef {
   // The facade wears the charter: crown west of the doors, moon east
   // (the paired-seat order), the way the castle gate flies them.
   b.setDetail(39, 35, Detail.BannerCrown).setDetail(42, 35, Detail.BannerMoon);
+  // Market-day pennants between the charter cloths — the bank fronts
+  // the Round, and the Round is a fair (weld, the ford's gold).
+  b.setDetail(37, 35, pennantDetail(3)).setDetail(44, 35, pennantDetail(3));
   b.sign(37, 36, 'BANK OF AMBERFORD', ['coin kept, word kept']);
   // The Toll War memorial — the reason there is a bank at all. A
   // pillar for the ones who held the ford against the Redmasks,
@@ -391,6 +394,10 @@ export function buildAmberford(): ZoneDef {
   b.set(67, 44, Tile.WallWoodWindow).set(71, 44, Tile.WallWoodWindow);
   b.set(60, 47, Tile.WallWoodWindow).set(60, 51, Tile.WallWoodWindow).set(60, 55, Tile.WallWoodWindow);
   b.set(66, 57, Tile.WallWoodWindow).set(71, 57, Tile.WallWoodWindow);
+  // The Rest greets the dock lane the way coaching inns do: the mug
+  // on its bracket, and madder-striped canvas over the south windows.
+  b.setDetail(68, 57, bracketSignDetail(0));
+  b.set(66, 58, awningTile('market', 1)).set(71, 58, awningTile('market', 1));
   b.set(74, 46, Tile.WallWoodWindow).set(74, 53, Tile.WallWoodWindow);
   // The guest wing: a corridor wall and two rooms with real doors.
   for (let y = 45; y <= 51; y++) b.set(69, y, Tile.WallWood);

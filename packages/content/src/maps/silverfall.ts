@@ -1,4 +1,4 @@
-import { Detail, Tile } from '@arx/shared';
+import { Detail, Tile, awningTile, bracketSignDetail, pennantDetail, trellisDetail } from '@arx/shared';
 import { SILVERFALL_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';
@@ -542,6 +542,11 @@ export function buildSilverfall(): ZoneDef {
   b.outlineRect(105, 51, 11, 9, Tile.WallWood);
   b.set(110, 59, Tile.DoorwayWood);
   b.set(107, 59, Tile.WallWoodWindow).set(113, 59, Tile.WallWoodWindow);
+  // The Cloth Hall shows its trade: bowed weld canvas over both
+  // windows, a weld pennant string between them — Lantern Row is the
+  // one street in the realm that dresses like a capital.
+  b.set(107, 60, awningTile('bowed', 3)).set(113, 60, awningTile('bowed', 3));
+  b.setDetail(110 - 1, 59, pennantDetail(3));
   b.set(105, 55, Tile.WallWoodWindow).set(115, 55, Tile.WallWoodWindow);
   b.set(107, 53, Tile.Loom).set(107, 56, Tile.Loom);
   b.set(109, 52, Tile.Crate); // raw wool off the High Road
@@ -563,6 +568,9 @@ export function buildSilverfall(): ZoneDef {
   b.outlineRect(118, 51, 9, 9, Tile.WallWood);
   b.set(122, 59, Tile.DoorwayWood);
   b.set(119, 59, Tile.WallWoodWindow).set(125, 59, Tile.WallWoodWindow);
+  // The second shopfront answers in mulberry — no two neighbours on
+  // the Row fly the same bolt.
+  b.set(119, 60, awningTile('bowed', 5)).set(125, 60, awningTile('bowed', 5));
   b.set(118, 55, Tile.WallWoodWindow).set(126, 55, Tile.WallWoodWindow);
   b.set(119, 52, Tile.Bookshelf).set(120, 52, Tile.Bookshelf);
   b.set(124, 52, Tile.Bookshelf).set(125, 52, Tile.Bookshelf);
@@ -719,6 +727,8 @@ export function buildSilverfall(): ZoneDef {
   b.outlineRect(61, 66, 21, 15, Tile.WallStone);
   b.set(70, 80, Tile.DoorwayStoneWide).set(71, 80, Tile.DoorwayStoneWide);
   b.set(65, 80, Tile.WallStoneWindow).set(77, 80, Tile.WallStoneWindow);
+  // The Great Forge hangs the blade — a smith marks a smithy.
+  b.setDetail(73, 80, bracketSignDetail(2));
   b.set(61, 71, Tile.WallStoneWindow).set(61, 76, Tile.WallStoneWindow);
   b.set(81, 71, Tile.WallStoneWindow).set(66, 66, Tile.WallStoneWindow).set(76, 66, Tile.WallStoneWindow);
   b.set(63, 69, Tile.Furnace).set(63, 74, Tile.Furnace);

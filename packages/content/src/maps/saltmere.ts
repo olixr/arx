@@ -1,4 +1,4 @@
-import { Detail, Tile } from '@arx/shared';
+import { Detail, Tile, awningTile, bracketSignDetail, pennantDetail, trellisDetail } from '@arx/shared';
 import { SALTMERE_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';
@@ -274,6 +274,12 @@ export function buildSaltmere(): ZoneDef {
   b.set(65, 27, Tile.Bed).set(65, 28, Tile.Bed);
   b.set(63, 31, Tile.Crate).set(65, 31, Tile.Barrel).set(65, 30, Tile.Crate);
   b.setDetail(59, 29, Detail.Doormat);
+  // The chandlery wears the water's own color: woad shed canvas on
+  // the south wall, the fish on its bracket, a woad string for the
+  // quay wind to worry at.
+  b.set(63, 33, awningTile('shed', 2)).set(64, 33, awningTile('shed', 2));
+  b.setDetail(60, 32, bracketSignDetail(3));
+  b.setDetail(65, 32, pennantDetail(2));
   b.path({ x: 55, y: 29 }, { x: 57, y: 29 }, 2);
   b.sign(63, 32, 'SALTMERE STORES', ['rope, tar, biscuit, and better'], Tile.HangingSign);
 

@@ -1,4 +1,4 @@
-import { Detail, Tile } from '@arx/shared';
+import { Detail, Tile, awningTile, bracketSignDetail, pennantDetail, trellisDetail } from '@arx/shared';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -106,11 +106,17 @@ export function buildDawnmead(): ZoneDef {
   b.set(28, 22, Tile.Bed).set(28, 23, Tile.Bed);
   b.setDetail(27, 23, Detail.RugRound);
   b.setDetail(29, 26, Detail.Doormat);
-  // The porch: boards, his evening chair, and flowers either side.
-  for (let x = 24; x <= 29; x++) b.set(x, 28, Tile.WoodFloor);
+  // The porch: a TRUE lifted deck now (THE OUTWARD FACE) — boards
+  // off the dock's stance, his evening chair riding them, flowers
+  // either side, and the worn step where his boots come down.
+  for (let x = 24; x <= 29; x++) b.set(x, 28, Tile.PorchDeck);
   b.set(25, 28, Tile.Chair);
   b.set(23, 28, Tile.FlowerBox).set(30, 28, Tile.FlowerBox);
   b.set(29, 29, Tile.Dirt); // the worn step
+  // The keeper's wall garden: a rose trellis climbing beside the
+  // study window, a bloom basket by the door he watches from.
+  b.setDetail(23, 27, trellisDetail(1));
+  b.setDetail(28, 27, Detail.WallBasket);
   // The herb strip between his back wall and the coop.
   b.setDetail(24, 18, Detail.Flowers).setDetail(27, 19, Detail.Flowers);
   b.setDetail(29, 18, Detail.Flowers);
@@ -193,6 +199,11 @@ export function buildDawnmead(): ZoneDef {
   b.outlineRect(36, 16, 8, 8, Tile.WallWood);
   b.set(39, 23, Tile.DoorwayWood); // south door onto the farm lane
   b.set(37, 23, Tile.WallWoodWindow).set(41, 23, Tile.WallWoodWindow);
+  // A plain linen shed awning over the farm door — Hobb keeps the
+  // rain off his threshold, nothing fancier than that. Ivy takes the
+  // wall beside the window, the way it does on working houses.
+  b.set(39, 24, awningTile('shed', 0));
+  b.setDetail(38, 23, trellisDetail(0));
   b.set(36, 19, Tile.WallWoodWindow).set(43, 19, Tile.WallWoodWindow);
   // Beds along the north wall: Hobb's and Pip's, heads to the wall.
   // Both night paths lie down on the FOOT tiles (37,19) and (42,19).

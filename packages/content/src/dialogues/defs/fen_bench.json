@@ -1,50 +1,83 @@
 {
-  "id": "fen_bench",
-  "start": "hub",
-  "bindings": [{ "kind": "actor", "target": "tinker_fen" }],
-  "nodes": [
+ "id": "fen_bench",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "tinker_fen"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "fen_bench__hub",
+   "text": "Hold still, you... no, not you, the vice. It slips. *Fen*. Tinker, whittler, mender of latches nobody thanks me for. You've the look of somebody who wants to MAKE something. Am I right?",
+   "choices": [
     {
-      "id": "hub",
-      "voice": "fen_bench__hub",
-      "text": "Hold still, you... no, not you, the vice. It slips. *Fen*. Tinker, whittler, mender of latches nobody thanks me for. You've the look of somebody who wants to MAKE something. Am I right?",
-      "choices": [
-        { "text": "What can I make out here?", "next": "make" },
-        { "text": "Where does a crafter go to grow?", "next": "grow" },
-        { "text": "What's with all the twine?", "next": "twine" },
-        { "text": "Another time, Fen.", "next": "farewell" }
-      ]
+     "text": "What can I make out here?",
+     "next": "make"
     },
     {
-      "id": "make",
-      "voice": "fen_bench__make",
-      "text": "This *workbench* answers to anyone. Bring it logs from the axe, hides from the hunt, ore from the pick. It'll show you what your hands can shape. Iona's fire does the food; my bench does the rest. You could walk out of this village wearing nothing you didn't make yourself. I have. This shirt's older than Pip.",
-      "choices": [
-        { "text": "And if I want to build a house?", "next": "boards" },
-        { "text": "Something else.", "next": "hub" }
-      ]
+     "text": "Where does a crafter go to grow?",
+     "next": "grow"
     },
     {
-      "id": "boards",
-      "voice": "fen_bench__boards",
-      "text": "A wall wants *boards*, not whole trunks... hold the... there. Two logs make a sawhorse; the sawhorse makes any log three boards. Raise one where you fell timber, stack the boards flat, walk home light. Mine's just past the crate. The trees never... well. They never carry themselves.",
-      "next": "hub"
+     "text": "What's with all the twine?",
+     "next": "twine"
     },
     {
-      "id": "grow",
-      "voice": "fen_bench__grow",
-      "text": "Out there? Better benches in stranger places: old forges in ruins, waystation kits, whatever you raise with your own hands. And watch for *recipe scrolls*. Read one and your hands keep it forever. Chests carry them. So do the pockets of things that... hm. Things you'll have to argue with first.",
-      "next": "hub"
-    },
-    {
-      "id": "twine",
-      "voice": "fen_bench__twine",
-      "text": "Twine! Twine is... hand me that... thank you. *Fibre plant*, down by the brook. Twist it, and bows have strings, hooks have lines, and my winter repairs hold.",
-      "next": "hub"
-    },
-    {
-      "id": "farewell",
-      "voice": "fen_bench__farewell",
-      "text": "Bench is here when the urge takes you. Now hold still, you..."
+     "text": "Another time, Fen.",
+     "next": "farewell"
     }
-  ]
+   ]
+  },
+  {
+   "id": "make",
+   "voice": "fen_bench__make",
+   "text": "This *workbench* answers to anyone. Bring it logs from the axe, hides from the hunt, ore from the pick. It'll show you what your hands can shape. Iona's fire does the food; my bench does the rest. You could walk out of this village wearing nothing you didn't make yourself. I have. This shirt's older than Pip.",
+   "choices": [
+    {
+     "text": "And if I want to build a house?",
+     "next": "boards"
+    },
+    {
+     "text": "And who hangs a sign for me?",
+     "next": "decor"
+    },
+    {
+     "text": "Something else.",
+     "next": "hub"
+    }
+   ]
+  },
+  {
+   "id": "boards",
+   "voice": "fen_bench__boards",
+   "text": "A wall wants *boards*, not whole trunks... hold the... there. Two logs make a sawhorse; the sawhorse makes any log three boards. Raise one where you fell timber, stack the boards flat, walk home light. Mine's just past the crate. The trees never... well. They never carry themselves.",
+   "next": "hub"
+  },
+  {
+   "id": "decor",
+   "voice": "fen_bench__decor",
+   "text": "Nobody. You do. A banner off a rod, a trade board on its bracket, canvas over a window if the sun sits wrong... any wall you can touch will carry it. The dye you steep yourself. Berries do a red, moonbell does the blue that... hm. The blue. Take it down and the wall hands most of it back.",
+   "next": "hub"
+  },
+  {
+   "id": "grow",
+   "voice": "fen_bench__grow",
+   "text": "Out there? Better benches in stranger places: old forges in ruins, waystation kits, whatever you raise with your own hands. And watch for *recipe scrolls*. Read one and your hands keep it forever. Chests carry them. So do the pockets of things that... hm. Things you'll have to argue with first.",
+   "next": "hub"
+  },
+  {
+   "id": "twine",
+   "voice": "fen_bench__twine",
+   "text": "Twine! Twine is... hand me that... thank you. *Fibre plant*, down by the brook. Twist it, and bows have strings, hooks have lines, and my winter repairs hold.",
+   "next": "hub"
+  },
+  {
+   "id": "farewell",
+   "voice": "fen_bench__farewell",
+   "text": "Bench is here when the urge takes you. Now hold still, you..."
+  }
+ ]
 }

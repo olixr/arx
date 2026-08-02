@@ -1,4 +1,4 @@
-import { Detail, Tile } from '@arx/shared';
+import { Detail, Tile, awningTile, bracketSignDetail, pennantDetail, trellisDetail } from '@arx/shared';
 import { PINEWATCH_RECT } from '../geography.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
@@ -397,6 +397,12 @@ export function buildPinewatch(): ZoneDef {
   b.set(50, 68, Tile.Crate).set(50, 69, Tile.CrateGoods).set(50, 71, Tile.Barrel);
   b.set(41, 71, Tile.Bed).set(42, 71, Tile.Bed);
   b.set(45, 71, Tile.ToolRack);
+  // The wood's answer to weather: a board rain-roof pair on the
+  // south wall (cloth would hold the snow; timber sheds it), ochre-
+  // trimmed, the hammer on its bracket, hopvine up the storeroom.
+  b.set(43, 73, awningTile('board', 6)).set(44, 73, awningTile('board', 6));
+  b.setDetail(46, 72, bracketSignDetail(7));
+  b.setDetail(50, 72, trellisDetail(2));
   b.setDetail(45, 65, Detail.Doormat);
   b.path({ x: 45, y: 63 }, { x: 45, y: 63 }, 1);
   b.sign(43, 64, 'PINEWATCH STORES', ['iron, rope, resin, and salve', 'the salve first, mostly'], Tile.HangingSign);

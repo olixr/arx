@@ -1,7 +1,7 @@
 # EXTERIOR DECOR — THE OUTWARD FACE
 ### The house learns to greet the street: awnings, hangings, signs, wall gardens, and porches
 *Drafted 2026-08-01 from a three-lens code audit (prop inventory + animation, buildable/variant/protocol systems, wall-face + deck render hooks).*
-*Status: PROPOSAL — awaiting green light.*
+*Status: **EPIC COMPLETE 2026-08-01 — all six phases shipped and live-verified** (Ph0 aa68403, Ph1 f780f37, Ph2 5b582a3, masterwork passes a2060ba/4bca1d4/a9df9bc/ae24019, Ph3 9b712ad, Ph4 758e8fb, Ph5 below).*
 
 ---
 
@@ -389,12 +389,30 @@ saturated by the session's toolchain). Shadow/contact audit: all Phase 1-3
 pieces already carry castEdgeQuad or masonry contact from the masterwork
 passes — no gaps found.
 
-**Phase 5 — THE TOWNS DRESS UP (authoring).**
-Awnings, bracket signs, trellises, pennants, and porches authored across Dawnmead,
-Amberford, Silverfall, Pinewatch, Saltmere per each town's voice card (Silverfall
-bowed + weld; Saltmere shed + woad, salt-faded; Pinewatch board awnings under snow
-load; Amberford market pennants); teaching crumb off a maker NPC ("Who hangs a sign
-for me?"); full five-town before/after screenshot ledger.
+**Phase 5 — THE TOWNS DRESS UP. SHIPPED 2026-08-01 — EPIC COMPLETE.**
+As built, per voice card: **Dawnmead** — Elder Rowan's porch is a TRUE lifted
+deck now (his evening chair rides the boards), rose trellis at the study
+window, wall basket by his door; Hobb's farm wears a plain linen shed over
+the door and ivy on the wall. **Amberford** — the Wanderer's Rest hangs the
+mug and madder market canvas over its south windows; weld pennants flank the
+bank's charter cloths on the Round. **Silverfall** — Lantern Row's Cloth
+Hall flies bowed weld over both windows with a weld string between; the
+second shopfront answers in mulberry (no two neighbours the same bolt); the
+Great Forge hangs the blade. **Pinewatch** — a board rain-roof pair on the
+stores' south wall (cloth would hold the snow; timber sheds it), the hammer
+on its bracket, hopvine up the storeroom. **Saltmere** — the chandlery in
+woad shed canvas, the fish on its bracket, a woad string for the quay wind.
+Teaching crumb: Fen's bench gained 'And who hangs a sign for me?' → the
+decor node in his own drifting voice (dyes steeped from berries and
+moonbell, walls hand most of it back) — threaded at the make node, under
+the 4-choice cap. **THE LANTERN ROW BUG, found and fixed by the ledger
+pass**: on ELEVATED ground, objects sort in lifted space but walls sort in
+raw rows — a terrace awning sorted BEFORE its host wall and was buried
+under the very face it hangs from. THE CANOPY SORTS WITH ITS WALL: awnings
+are exempt from the fgElevAt lifted-space shift (they never contest a
+cliff; they live against walls). Proven by pixel-probe + A/B stage, then
+the fixed Row rendered true. Five-town screenshot ledger captured; 1278
+tests green.
 
 ### Open decisions for green-light
 1. **Pigment economy**: dye pigments as real material costs per the cloth-colorway

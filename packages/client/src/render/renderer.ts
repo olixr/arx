@@ -5267,7 +5267,16 @@ export class Renderer {
         // object joins the same lifted space; flat ground (elev 0)
         // keeps its exact old sort, so every settled contest stands.
         const oElev = this.fgElevAt(tx, ty);
-        if (oElev > 0) item.sortY -= (oElev * ELEV_H) / this.camera.yScale;
+        // THE CANOPY SORTS WITH ITS WALL: awnings overpaint their
+        // host wall's face pixels by design, and WALLS sort in raw
+        // row space — an awning shifted into lifted space sorts
+        // BEFORE its wall on a terrace and is buried under the very
+        // face it hangs from (the Lantern Row bug). It never contests
+        // a cliff face (it lives against a wall inside town), so the
+        // raw row is the honest space for it.
+        if (oElev > 0 && awningInfo(ground) === null) {
+          item.sortY -= (oElev * ELEV_H) / this.camera.yScale;
+        }
         // Discrete props ride the ring-baked sprite cache instead of
         // the per-frame outline pass — 76 live-outlined props in town
         // cost 2.5ms/frame. Their slow ambient animation (canopy sway,
