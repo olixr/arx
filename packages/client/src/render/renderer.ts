@@ -5639,14 +5639,28 @@ export class Renderer {
           const skew = (lx(p.x + s / 2) - (p.x + s / 2)) / -hs;
           // The glazed opening, set at the body's eye line: sill at
           // ~0.9 tiles, head at ~1.6 — a window a person stands at.
-          const wx = p.x + s * 0.28;
-          const ww = s * 0.44;
+          // THE WIDE LIGHT: consecutive window tiles in a run merge
+          // into ONE casement — a double or triple light with a
+          // shared mullion post at each tile seam, never a repeated
+          // stamp. Each tile carves its own SLICE of the merged
+          // hole; slices butt pixel-true on the snapped shared edge.
+          const winW = window && this.fgGroundAt(tx - 1, ty) === tile;
+          const winE = window && this.fgGroundAt(tx + 1, ty) === tile;
+          const wx = winW ? x0 : p.x + s * 0.28;
+          const wxE = winE ? x1 : p.x + s * 0.72;
+          const ww = wxE - wx;
           const wy = -s * 1.62;
           const wh2 = s * 0.7;
           let hole: Path2D | null = null;
           if (window) {
             hole = new Path2D();
-            chamferRect(hole, wx, wy, ww, wh2, s * 0.05);
+            const cr = s * 0.05;
+            chamferRect(hole, wx, wy, ww, wh2, [
+              winW ? 0 : cr,
+              winE ? 0 : cr,
+              winE ? 0 : cr,
+              winW ? 0 : cr,
+            ]);
           }
           // The skewed face frame as a matrix: detail coordinates in,
           // leaned screen geometry out — it maps the hole into the
@@ -5869,13 +5883,24 @@ export class Renderer {
             // Frame dressing AROUND the see-through opening: a dark
             // reveal ring and material-true trim — timber walls hang
             // plank shutters, masonry beds a stone sill and lintel.
-            // The clip keeps every stroke of it off the glass.
+            // The clip keeps every stroke of it off the glass. On a
+            // merged light every horizontal member runs the full
+            // span (each tile draws its slice, butting pixel-true),
+            // and the end-of-window furniture — shutters, pegs, knee
+            // braces — stands only where the casement truly ends.
             const wood2 = mat === Tile.WallWood;
+            const rvL = winW ? wx : wx - s * 0.035;
+            const rvR = winE ? wxE : wxE + s * 0.035;
             ctx.fillStyle = shade(face, -22);
-            ctx.fillRect(wx - s * 0.035, wy - s * 0.035, ww + s * 0.07, wh2 + s * 0.07);
+            ctx.fillRect(rvL, wy - s * 0.035, rvR - rvL, wh2 + s * 0.07);
+            const trmL = winW ? wx : wx - s * 0.18;
+            const trmR = winE ? wxE : wxE + s * 0.18;
             if (wood2) {
               // Plank shutters pinned open against the wall.
-              for (const shx of [wx - s * 0.15, wx + ww + s * 0.03]) {
+              const shutters: number[] = [];
+              if (!winW) shutters.push(wx - s * 0.15);
+              if (!winE) shutters.push(wxE + s * 0.03);
+              for (const shx of shutters) {
                 ctx.fillStyle = shade(skin.log, -20);
                 ctx.beginPath();
                 chamferRect(ctx, shx, wy - s * 0.02, s * 0.12, wh2 + s * 0.04, s * 0.02);
@@ -5885,15 +5910,18 @@ export class Renderer {
               }
               // Timber lintel + sill boards, pegged into the wall.
               ctx.fillStyle = skin.plate;
-              ctx.fillRect(wx - s * 0.18, wy - s * 0.085, ww + s * 0.36, s * 0.055);
+              ctx.fillRect(trmL, wy - s * 0.085, trmR - trmL, s * 0.055);
               ctx.fillStyle = 'rgba(40, 24, 10, 0.55)';
-              ctx.fillRect(wx - s * 0.15, wy - s * 0.078, s * 0.04, s * 0.04);
-              ctx.fillRect(wx + ww + s * 0.11, wy - s * 0.078, s * 0.04, s * 0.04);
+              if (!winW) ctx.fillRect(wx - s * 0.15, wy - s * 0.078, s * 0.04, s * 0.04);
+              if (!winE) ctx.fillRect(wxE + s * 0.11, wy - s * 0.078, s * 0.04, s * 0.04);
               ctx.fillStyle = shade(skin.plate, 18);
-              ctx.fillRect(wx - s * 0.18, wy + wh2 + s * 0.035, ww + s * 0.36, s * 0.06);
+              ctx.fillRect(trmL, wy + wh2 + s * 0.035, trmR - trmL, s * 0.06);
               // Knee braces under the sill ends root it to the wall.
               ctx.fillStyle = shade(skin.plate, -8);
-              for (const bx of [wx - s * 0.08, wx + ww - s * 0.02]) {
+              const braces: number[] = [];
+              if (!winW) braces.push(wx - s * 0.08);
+              if (!winE) braces.push(wxE - s * 0.02);
+              for (const bx of braces) {
                 ctx.beginPath();
                 ctx.moveTo(bx, wy + wh2 + s * 0.095);
                 ctx.lineTo(bx + s * 0.1, wy + wh2 + s * 0.095);
@@ -5903,12 +5931,14 @@ export class Renderer {
               }
             } else {
               // Dressed stone: shadowed lintel block, lit sill course.
+              const stnL = winW ? wx : wx - s * 0.09;
+              const stnR = winE ? wxE : wxE + s * 0.09;
               ctx.fillStyle = shade(face, -14);
-              ctx.fillRect(wx - s * 0.09, wy - s * 0.1, ww + s * 0.18, s * 0.07);
+              ctx.fillRect(stnL, wy - s * 0.1, stnR - stnL, s * 0.07);
               ctx.fillStyle = shade(face, 22);
-              ctx.fillRect(wx - s * 0.1, wy + wh2 + s * 0.035, ww + s * 0.2, s * 0.065);
+              ctx.fillRect(stnL, wy + wh2 + s * 0.035, stnR - stnL, s * 0.065);
               ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
-              ctx.fillRect(wx - s * 0.1, wy + wh2 + s * 0.1, ww + s * 0.2, s * 0.03);
+              ctx.fillRect(stnL, wy + wh2 + s * 0.1, stnR - stnL, s * 0.03);
             }
           }
           // Wall-hung cloth (banners, tapestry) on the face — skipped
@@ -5921,29 +5951,66 @@ export class Renderer {
           if (hole) {
             // The glass itself, over the open hole: cold daylight
             // tint (warm lamplight after dark when the room has a
-            // hearth), a diagonal glint, and the mullion cross
-            // sitting proud of the pane.
+            // hearth — kept SHEER so the room behind always shows;
+            // glass is transparent before it is lit), a diagonal
+            // glint at the casement's west light, and the mullion
+            // carpentry sitting proud of the pane.
             ctx.save();
             ctx.translate(0, yBase);
             ctx.transform(1, 0, skew, 1, 0, 0);
             const warm = hearth ? this.sky.flame : 0;
             ctx.fillStyle =
               warm > 0.05
-                ? `rgba(255, 205, 130, ${0.18 + 0.3 * warm})`
+                ? `rgba(255, 205, 130, ${0.14 + 0.18 * warm})`
                 : 'rgba(168, 192, 228, 0.16)';
             ctx.fill(hole);
-            if (warm <= 0.05) {
-              ctx.fillStyle = 'rgba(214, 228, 248, 0.22)';
+            if (!winW) {
+              // One glint per window, at its west light — glass
+              // catches the sky in every mode, day or hearth-lit.
+              const gl = Math.min(ww, s * 0.44);
+              ctx.fillStyle = `rgba(214, 228, 248, ${warm > 0.05 ? 0.14 : 0.22})`;
               ctx.beginPath();
               ctx.moveTo(wx + s * 0.03, wy + s * 0.03);
-              ctx.lineTo(wx + ww * 0.55, wy + s * 0.03);
+              ctx.lineTo(wx + gl * 0.55, wy + s * 0.03);
               ctx.lineTo(wx + s * 0.03, wy + wh2 * 0.6);
               ctx.closePath();
               ctx.fill();
             }
+            // THE MULLIONS: a single window wears the classic
+            // four-pane cross; a merged light drops the centre
+            // vertical and stands a shared mullion POST on each tile
+            // seam instead — two or three big lights under one rail,
+            // never a repeated stamp.
             ctx.fillStyle = mat === Tile.WallWood ? shade(skin.log, -22) : shade(face, -8);
-            ctx.fillRect(wx + ww / 2 - s * 0.022, wy, s * 0.044, wh2);
+            if (!winW && !winE) {
+              ctx.fillRect(wx + ww / 2 - s * 0.022, wy, s * 0.044, wh2);
+            } else if (winE) {
+              ctx.fillRect(x1 - s * 0.03, wy, s * 0.06, wh2);
+            }
             ctx.fillRect(wx, wy + wh2 * 0.46 - s * 0.02, ww, s * 0.04);
+            // THE ONE RING for glazing: the window is an OBJECT set
+            // into the wall, and it wears the same single silhouette
+            // ring as everything else in the world — head and sill
+            // lines always, jamb verticals only where the merged
+            // casement truly ends. Seam slices butt pixel-true, so
+            // the ring reads as one line around the whole light.
+            if (this.outlineOn) {
+              const ring = new Path2D();
+              ring.moveTo(wx, wy);
+              ring.lineTo(wxE, wy);
+              ring.moveTo(wx, wy + wh2);
+              ring.lineTo(wxE, wy + wh2);
+              if (!winW) {
+                ring.moveTo(wx, wy);
+                ring.lineTo(wx, wy + wh2);
+              }
+              if (!winE) {
+                ring.moveTo(wxE, wy);
+                ring.lineTo(wxE, wy + wh2);
+              }
+              this.beginStructOutline();
+              ctx.stroke(ring);
+            }
             ctx.restore();
           }
         }
