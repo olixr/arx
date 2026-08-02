@@ -1,4 +1,13 @@
-import { Detail, Tile, awningTile, bracketSignDetail, pennantDetail, trellisDetail } from '@arx/shared';
+import {
+  Detail,
+  Tile,
+  awningTile,
+  bannerPoleTile,
+  bracketSignDetail,
+  pennantDetail,
+  trellisDetail,
+  wallBannerDetail,
+} from '@arx/shared';
 import { SALTMERE_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';
@@ -110,11 +119,15 @@ export function buildSaltmere(): ZoneDef {
   b.stamp(MARKET_STALL, 44, 41);
   b.stamp(MARKET_STALL, 44, 45);
   b.stamp(MARKET_STALL, 59, 45);
-  b.set(48, 41, Tile.BannerPole).set(58, 41, Tile.BannerPole);
+  // The square flies the water's own color: woad on both poles, the
+  // Waykeepers' working blue over the fish market.
+  b.set(48, 41, bannerPoleTile(2)).set(58, 41, bannerPoleTile(2));
   b.set(51, 47, Tile.Basin); // the gutting trough
   b.set(62, 42, Tile.Bench).set(49, 40, Tile.Bench);
   b.set(49, 48, Tile.LampPost).set(64, 48, Tile.LampPost).set(79, 48, Tile.LampPost);
-  b.sign(58, 41, 'THE QUAY', ['fresh at dawn, smoked by dusk'], Tile.Signpost);
+  // The quay board stands clear of both poles (a sign never eats the
+  // furniture it names, and never eats a wall — the standing law).
+  b.sign(56, 41, 'THE QUAY', ['fresh at dawn, smoked by dusk'], Tile.Signpost);
   // The piers: A off the square, B the long one, C by the east end.
   b.fillRect(46, 52, 2, 8, Tile.Dock);
   b.fillRect(58, 52, 2, 12, Tile.Dock);
@@ -145,7 +158,12 @@ export function buildSaltmere(): ZoneDef {
   b.set(49, 7, Tile.Bed).set(49, 8, Tile.Bed);
   b.setDetail(47, 8, Detail.Doormat);
   b.set(44, 11, Tile.Brazier);
-  b.sign(46, 10, 'THE WATCH HOUSE', ['the lamp stays lit, even here'], Tile.HangingSign);
+  // The shingle stands in the street, one pace off the facade — a
+  // sign in front of a wall, never in it. The healed wall carries the
+  // Waykeepers' woad, and the off-watch bench faces the road they keep.
+  b.sign(48, 11, 'THE WATCH HOUSE', ['the lamp stays lit, even here'], Tile.HangingSign);
+  b.setDetail(46, 10, wallBannerDetail(2));
+  b.set(45, 12, Tile.Bench);
   // The carters' bays: two rail stalls open to the south, a back
   // rail against the wall hem — the road's last stop, readable at a
   // glance (E-W rails face the camera; N-S runs read as bare posts).
@@ -177,6 +195,10 @@ export function buildSaltmere(): ZoneDef {
   b.setDetail(28, 19, Detail.Rug).setDetail(29, 19, Detail.Rug);
   b.setDetail(31, 18, Detail.Doormat);
   b.set(35, 16, Tile.LampPost);
+  // The office wears its age: ivy up the south stone, and the port's
+  // woad streamer so a captain can find the desk from the lane.
+  b.setDetail(26, 22, pennantDetail(2));
+  b.setDetail(30, 22, trellisDetail(0));
 
   // ---------------------------------------------------------------
   // THE COUNTING HOUSE — the bank of the south: a teller line facing
@@ -197,7 +219,12 @@ export function buildSaltmere(): ZoneDef {
   b.setDetail(63, 13, Detail.Tapestry).setDetail(64, 13, Detail.Tapestry);
   b.set(63, 20, Tile.Table).set(64, 20, Tile.Chair); // the factor's ledger desk
   b.path({ x: 55, y: 17 }, { x: 57, y: 17 }, 2);
-  b.sign(63, 21, 'THE COUNTING HOUSE', ['coin kept dry'], Tile.HangingSign);
+  // The bank's shingle stands at the Brinewalk turn, where the coin
+  // comes from; the south face wears its dignity instead — charcoal
+  // bowed canopies over the lane, weld banners for the coin itself.
+  b.sign(55, 15, 'THE COUNTING HOUSE', ['coin kept dry'], Tile.HangingSign);
+  b.set(63, 22, awningTile('bowed', 7)).set(64, 22, awningTile('bowed', 7));
+  b.setDetail(60, 21, wallBannerDetail(3)).setDetail(66, 21, wallBannerDetail(3));
 
   // ---------------------------------------------------------------
   // THE ROPEWALK — the longest room in the Dawnlands: two looms at
@@ -219,7 +246,13 @@ export function buildSaltmere(): ZoneDef {
   b.set(95, 14, Tile.Barrel); // a coil, resting
   b.setDetail(75, 18, Detail.Doormat);
   b.set(71, 14, Tile.Crate).set(71, 15, Tile.Crate); // flax in from the retting
-  b.sign(78, 19, 'THE ROPEWALK', ['four hundred feet of patience'], Tile.HangingSign);
+  // The longest room hangs its work out front: linen streamers off
+  // the south wall (the rope's own fibre, flying), the day's coils
+  // and bales set down where the wains stop.
+  b.sign(78, 20, 'THE ROPEWALK', ['four hundred feet of patience'], Tile.HangingSign);
+  b.setDetail(83, 19, pennantDetail(0)).setDetail(90, 19, pennantDetail(0));
+  b.set(93, 20, Tile.Crate).set(97, 20, Tile.Barrel);
+  b.setDetail(85, 20, Detail.Straw);
   b.path({ x: 75, y: 20 }, { x: 75, y: 21 }, 1);
 
   // ---------------------------------------------------------------
@@ -237,6 +270,10 @@ export function buildSaltmere(): ZoneDef {
   b.set(78, 28, Tile.Table).set(77, 28, Tile.Chair);
   b.setDetail(76, 28, Detail.RugRound);
   b.setDetail(76, 29, Detail.Doormat);
+  // The fish on its bracket by his door, and a crab pot he means to
+  // mend. He has meant to for a season.
+  b.setDetail(75, 30, bracketSignDetail(3));
+  b.set(73, 31, Tile.Crate);
   // The middle cottage: a crew's bunk and a full net loft.
   b.fillRect(82, 24, 6, 7, Tile.WoodFloor);
   b.outlineRect(82, 24, 6, 7, Tile.WallWood);
@@ -246,6 +283,10 @@ export function buildSaltmere(): ZoneDef {
   b.set(86, 25, Tile.Crate).set(85, 25, Tile.Crate); // nets, folded wet
   b.set(86, 28, Tile.Table).set(85, 28, Tile.Chair);
   b.setDetail(84, 28, Detail.Doormat);
+  // The crew's woad streamer (their boat's color), and the net rack
+  // out front where the mending happens in daylight.
+  b.setDetail(87, 30, pennantDetail(2));
+  b.set(81, 31, Tile.ToolRack);
   // The east cottage: the tidy one. Somebody's mother trained them.
   b.fillRect(90, 24, 6, 7, Tile.WoodFloor);
   b.outlineRect(90, 24, 6, 7, Tile.WallWood);
@@ -256,6 +297,11 @@ export function buildSaltmere(): ZoneDef {
   b.set(94, 28, Tile.Table).set(93, 28, Tile.Chair);
   b.setDetail(92, 27, Detail.Rug).setDetail(93, 27, Detail.Rug);
   b.setDetail(92, 29, Detail.Doormat);
+  // Somebody's mother trained them: a wall basket in bloom, roses up
+  // the corner, a flower box under the gable. The row's one garden.
+  b.setDetail(93, 30, Detail.WallBasket);
+  b.setDetail(95, 30, trellisDetail(1));
+  b.set(89, 31, Tile.FlowerBox);
   for (const dx of [76, 84, 92]) b.set(dx, 31, Tile.Dirt).set(dx, 32, Tile.Dirt);
 
   // ---------------------------------------------------------------
@@ -274,14 +320,19 @@ export function buildSaltmere(): ZoneDef {
   b.set(65, 27, Tile.Bed).set(65, 28, Tile.Bed);
   b.set(63, 31, Tile.Crate).set(65, 31, Tile.Barrel).set(65, 30, Tile.Crate);
   b.setDetail(59, 29, Detail.Doormat);
-  // The chandlery wears the water's own color: woad shed canvas on
-  // the south wall, the fish on its bracket, a woad string for the
-  // quay wind to worry at.
+  // The chandlery wears the water's own color: a three-bay run of
+  // woad shed canvas down the south wall (one rail, one rod — the
+  // run merges seamless), the fish on its bracket, a woad string for
+  // the quay wind to worry at, and a tar barrel under the eave.
+  b.set(62, 33, awningTile('shed', 2));
   b.set(63, 33, awningTile('shed', 2)).set(64, 33, awningTile('shed', 2));
   b.setDetail(60, 32, bracketSignDetail(3));
   b.setDetail(65, 32, pennantDetail(2));
+  b.set(66, 34, Tile.Barrel);
   b.path({ x: 55, y: 29 }, { x: 57, y: 29 }, 2);
-  b.sign(63, 32, 'SALTMERE STORES', ['rope, tar, biscuit, and better'], Tile.HangingSign);
+  // The shingle stands on the shore lane's south side, clear of the
+  // canvas — in front of the wall it names, never in it.
+  b.sign(61, 34, 'SALTMERE STORES', ['rope, tar, biscuit, and better'], Tile.HangingSign);
 
   // ---------------------------------------------------------------
   // THE PAINTED GULL — the inn: a common room with the fire on the
@@ -322,7 +373,16 @@ export function buildSaltmere(): ZoneDef {
   b.set(35, 34, Tile.Basin).set(35, 36, Tile.Cabinet).set(36, 37, Tile.Table);
   b.setDetail(47, 31, Detail.Doormat).setDetail(47, 32, Detail.Doormat);
   b.set(49, 28, Tile.FlowerBox).set(49, 35, Tile.FlowerBox);
-  b.sign(43, 38, 'THE PAINTED GULL', ['beds, broth, and the view south'], Tile.HangingSign);
+  // The painted inn is PAINTED: rose canvas over both south windows
+  // (the view rooms), the mug on its bracket, roses climbing the
+  // kitchen corner, and a bench by the door for whoever is waiting
+  // on a bed. The shingle stands between the two canopies.
+  b.set(38, 39, awningTile('shed', 9)).set(39, 39, awningTile('shed', 9));
+  b.set(44, 39, awningTile('shed', 9)).set(45, 39, awningTile('shed', 9));
+  b.setDetail(46, 38, bracketSignDetail(0));
+  b.setDetail(35, 38, trellisDetail(1));
+  b.set(50, 33, Tile.Bench);
+  b.sign(42, 39, 'THE PAINTED GULL', ['beds, broth, and the view south'], Tile.HangingSign);
   // The supper fire on the lane: the town's cookfire, always fed.
   b.set(41, 41, Tile.Campfire);
   b.set(39, 41, Tile.Bench).set(43, 41, Tile.Bench);
@@ -354,7 +414,10 @@ export function buildSaltmere(): ZoneDef {
   b.setDetail(21, 34, Detail.Rug).setDetail(22, 34, Detail.Rug);
   b.setDetail(17, 39, Detail.Doormat);
   b.path({ x: 17, y: 41 }, { x: 17, y: 41 }, 1);
-  b.sign(15, 40, "SALTERS' HALL", ['the white harvest, weighed'], Tile.HangingSign);
+  // The hall flies the harvest itself: linen banners, salt-white on
+  // grey stone, flanking the door. The shingle stands on the lane.
+  b.sign(14, 41, "SALTERS' HALL", ['the white harvest, weighed'], Tile.HangingSign);
+  b.setDetail(15, 40, wallBannerDetail(0)).setDetail(19, 40, wallBannerDetail(0));
 
   // ---------------------------------------------------------------
   // THE PANS — six shallow beds with dressed stone lips on the sand
@@ -377,6 +440,7 @@ export function buildSaltmere(): ZoneDef {
   b.set(35, 46, Tile.ToolRack).set(37, 46, Tile.Basin);
   b.set(35, 48, Tile.Crate);
   b.setDetail(36, 47, Detail.Straw);
+  b.setDetail(36, 49, pennantDetail(2)); // the pans' colors, toward the pans
   b.path({ x: 36, y: 43 }, { x: 36, y: 44 }, 1);
 
   // ---------------------------------------------------------------
@@ -394,8 +458,14 @@ export function buildSaltmere(): ZoneDef {
   b.set(18, 66, Tile.Table).set(18, 67, Tile.Chair);
   b.setDetail(17, 67, Detail.RugRound);
   b.set(13, 67, Tile.Brazier).set(21, 67, Tile.Brazier);
-  b.set(19, 69, Tile.LampPost);
-  b.sign(18, 65, 'THE MERE LIGHT', ['lit from the mother flame', 'it has not gone out since'], Tile.HangingSign);
+  // The light itself stands on the islet stone off the tower's south
+  // shoulder — never cut into the corner of the wall that holds it up.
+  b.set(20, 68, Tile.LampPost);
+  // The keeper's board stands beside the door on the islet stone; the
+  // south wall hangs one linen banner, the light's own white, facing
+  // the water it watches.
+  b.sign(19, 64, 'THE MERE LIGHT', ['lit from the mother flame', 'it has not gone out since'], Tile.HangingSign);
+  b.setDetail(17, 69, wallBannerDetail(0));
   b.sign(14, 59, "THE MERE'S TOLL", ['Berta. Coll. Ashon. Grev.', 'the water kept them', 'the light remembers'], Tile.Signpost);
 
   // ---------------------------------------------------------------
@@ -423,6 +493,11 @@ export function buildSaltmere(): ZoneDef {
   b.set(79, 45, Tile.Barrel).set(90, 45, Tile.Crate);
   b.setDetail(82, 44, Detail.Straw).setDetail(86, 44, Detail.Straw);
   b.sign(76, 41, 'THE SMOKEHOUSES', ['slow smoke, honest fish'], Tile.Signpost);
+  // The kilns wear their trade: the fish on the west kiln's bracket,
+  // and a charcoal streamer on the east one — anything lighter would
+  // be kippered by the first week.
+  b.setDetail(79, 41, bracketSignDetail(3));
+  b.setDetail(91, 41, pennantDetail(7));
   // Alba's cottage, east of the row.
   b.fillRect(94, 36, 6, 7, Tile.WoodFloor);
   b.outlineRect(94, 36, 6, 7, Tile.WallWood);
@@ -433,6 +508,10 @@ export function buildSaltmere(): ZoneDef {
   b.set(98, 41, Tile.Cabinet);
   b.setDetail(96, 39, Detail.Rug).setDetail(97, 39, Detail.Rug);
   b.setDetail(96, 37, Detail.Doormat);
+  // The teacher's house: the loaf on the back-garden bracket (her
+  // school is food, not just fish) and a flower box by the lane door.
+  b.setDetail(96, 42, bracketSignDetail(1));
+  b.set(93, 37, Tile.FlowerBox);
   b.path({ x: 96, y: 35 }, { x: 96, y: 35 }, 1);
 
   // ---------------------------------------------------------------
@@ -451,6 +530,7 @@ export function buildSaltmere(): ZoneDef {
   b.setDetail(98, 47, Detail.Sawdust).setDetail(96, 48, Detail.Sawdust);
   b.set(94, 53, Tile.Sawhorse);
   b.set(97, 52, Tile.CarvingBench);
+  b.setDetail(99, 50, pennantDetail(2)); // the yard flies the hulls' woad
   b.fillRect(99, 52, 2, 7, Tile.Dock); // the slipway, down into the water
   b.set(96, 55, Tile.Stump).set(94, 55, Tile.Stump); // timber, waiting
   b.setDetail(95, 53, Detail.Sawdust).setDetail(95, 55, Detail.Sawdust);
@@ -469,6 +549,7 @@ export function buildSaltmere(): ZoneDef {
   b.set(76, 43, Tile.Cabinet);
   b.set(75, 44, Tile.Chair);
   b.setDetail(74, 45, Detail.Doormat);
+  b.setDetail(75, 46, pennantDetail(2)); // a pilot's woad, faded but flown
 
   // ---------------------------------------------------------------
   // THE TOWN WALL — a garrison curtain on the three land sides, both
@@ -480,6 +561,10 @@ export function buildSaltmere(): ZoneDef {
   b.fillRect(6, 2, 46, 1, Tile.WallGarrison); // north curtain, west of the gate
   b.set(52, 2, Tile.GateGarrison).set(53, 2, Tile.GateGarrison).set(54, 2, Tile.GateGarrison);
   b.fillRect(55, 2, 47, 1, Tile.WallGarrison); // north curtain, east of the gate
+  // The gate wears the Waykeepers' woad on both cheeks: this is their
+  // port, and the curtain says so before the sign does. The rest of
+  // the wall keeps its martial bareness.
+  b.setDetail(51, 2, wallBannerDetail(2)).setDetail(55, 2, wallBannerDetail(2));
   b.set(5, 3, Tile.WallGarrisonDiagSE);
   b.set(102, 3, Tile.WallGarrisonDiagSW);
   b.fillRect(4, 4, 1, 52, Tile.WallGarrison); // west curtain, y4-55: into the water

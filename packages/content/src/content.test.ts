@@ -972,6 +972,38 @@ test('structure stamping: space cells are transparent', () => {
   assert.equal(b.get(4, 2), Tile.StoneFloor);
 });
 
+test('a sign stands in front of a wall, never in it', () => {
+  // The Saltmere/Pinewatch lesson: b.sign() writes a tile, and a sign
+  // tile written over a wall-run member punches a hole in the
+  // building's silhouette. The builder now refuses at build-authoring
+  // time, with coordinates, for every wall family.
+  const b = new ZoneBuilder('scratch', 'Scratch', { x: 0, y: 0 }, 24, 24, Tile.Grass);
+  b.building(4, 4, 7, 7, {
+    wall: Tile.WallWood,
+    floor: Tile.WoodFloor,
+    doors: [{ side: 's', at: 3 }],
+  });
+  assert.throws(
+    () => b.sign(5, 10, 'CUT WALL', [], Tile.HangingSign),
+    /would overwrite 'wood wall'/,
+    'a hanging sign on the south wall must refuse',
+  );
+  assert.throws(
+    () => b.sign(7, 10, 'CUT DOOR', [], Tile.Signpost),
+    /would overwrite/,
+    'a signpost on a doorway must refuse',
+  );
+  b.set(2, 2, Tile.WallGarrison);
+  assert.throws(
+    () => b.sign(2, 2, 'CUT CURTAIN', []),
+    /would overwrite/,
+    'the garrison curtain refuses too',
+  );
+  // Open ground in front of the wall is the legal footing.
+  b.sign(5, 11, 'THE FRONT', ['one pace off the facade'], Tile.HangingSign);
+  assert.equal(b.get(5, 11), Tile.HangingSign);
+});
+
 test('structure templates: JSON round-trip is lossless and re-validated', () => {
   for (const tpl of STRUCTURE_TEMPLATES) {
     const back = templateFromJson(templateToJson(tpl));

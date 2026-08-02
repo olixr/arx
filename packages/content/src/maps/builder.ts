@@ -6,6 +6,7 @@ import {
   SIGN_TILES,
   TILE_DEFS,
   Tile,
+  WALL_RUN_TILES,
   hashString,
   isSolidTile,
   sanitizeSignText,
@@ -299,6 +300,23 @@ export class ZoneBuilder {
    * unit. `tile` picks the furniture: a hanging shingle off a
    * building's wall (the default) or a free-standing roadside post.
    */
+  /**
+   * A sign stands IN FRONT of a wall, never in it: writing the sign
+   * tile over a wall-run member (or the garrison curtain) punches a
+   * hole in the building's silhouette — the renderer draws a
+   * free-standing post where the wall face should continue. Fail the
+   * build with coordinates instead of shipping a cut wall.
+   */
+  private static readonly SIGN_REFUSES: ReadonlySet<number> = new Set([
+    ...WALL_RUN_TILES,
+    Tile.WallGarrison,
+    Tile.GateGarrison,
+    Tile.WallGarrisonDiagNE,
+    Tile.WallGarrisonDiagNW,
+    Tile.WallGarrisonDiagSE,
+    Tile.WallGarrisonDiagSW,
+  ]);
+
   sign(
     x: number,
     y: number,
@@ -306,6 +324,13 @@ export class ZoneBuilder {
     lines: string[] = [],
     tile: Tile = Tile.HangingSign,
   ): this {
+    const under = this.get(x, y);
+    if (ZoneBuilder.SIGN_REFUSES.has(under)) {
+      throw new Error(
+        `${this.id}: sign "${title}" at (${x},${y}) would overwrite '${this.tileName(under)}' — ` +
+          `stand it on open ground in front of the wall, never in the wall`,
+      );
+    }
     this.set(x, y, tile);
     const text = sanitizeSignText({ title, lines });
     const record: ZoneSign = { x: this.origin.x + x, y: this.origin.y + y, title: text.title };

@@ -1,4 +1,12 @@
-import { Detail, Tile, awningTile, bracketSignDetail, pennantDetail, trellisDetail } from '@arx/shared';
+import {
+  Detail,
+  Tile,
+  awningTile,
+  bracketSignDetail,
+  pennantDetail,
+  trellisDetail,
+  wallBannerDetail,
+} from '@arx/shared';
 import { PINEWATCH_RECT } from '../geography.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
@@ -152,7 +160,12 @@ export function buildPinewatch(): ZoneDef {
   b.set(69, 26, Tile.Table).set(70, 26, Tile.Chair);
   b.set(74, 26, Tile.Crate).set(74, 27, Tile.Barrel);
   b.setDetail(71, 27, Detail.Doormat);
-  b.sign(73, 28, 'THE TALLY SHED', ['every stick counted twice', 'once wet, once dry'], Tile.HangingSign);
+  // The shed keeps its counters dry under a board rain-roof (cloth
+  // would hold the snow; timber sheds it), hopvine up the east end,
+  // and the shingle standing on the strand, one pace off the wall.
+  b.sign(73, 29, 'THE TALLY SHED', ['every stick counted twice', 'once wet, once dry'], Tile.HangingSign);
+  b.set(69, 29, awningTile('board', 6)).set(70, 29, awningTile('board', 6));
+  b.setDetail(74, 28, trellisDetail(2));
   // Timber strand: the season's cut, stacked and waiting for the saw.
   for (const [sx, sy] of [[38, 22], [42, 24], [36, 26], [40, 28], [44, 30]] as const) {
     b.set(sx, sy, Tile.Stump).set(sx + 1, sy, Tile.Stump);
@@ -197,7 +210,11 @@ export function buildPinewatch(): ZoneDef {
   b.set(72, 44, Tile.Crate);
   b.setDetail(66, 44, Detail.Pebbles).setDetail(63, 44, Detail.Tuft);
   b.set(63, 33, Tile.TreePine).set(71, 32, Tile.TreePine);
-  b.sign(64, 42, 'THE OLD WATCH', ['climb it or take your turn below', 'the bell is not decoration'], Tile.HangingSign);
+  // The tower's board stands on the knoll grass before the door; the
+  // south stone hangs the watch's charcoal on both shoulders — iron
+  // colors on the oldest wall in town, nothing brighter.
+  b.sign(64, 43, 'THE OLD WATCH', ['climb it or take your turn below', 'the bell is not decoration'], Tile.HangingSign);
+  b.setDetail(63, 42, wallBannerDetail(7)).setDetail(69, 42, wallBannerDetail(7));
 
   // ---------------------------------------------------------------
   // THE MUSTER YARD — the knoll's south foot, and the town's whole
@@ -217,6 +234,7 @@ export function buildPinewatch(): ZoneDef {
   // stands past the trough where the rota can see it — every roof
   // takes a night, and somebody's beast is always waiting on one.
   b.set(74, 50, Tile.BeastPen);
+  b.setDetail(75, 51, Detail.Straw); // mucked toward the trough, not the fire
   b.setDetail(66, 53, Detail.Pebbles);
   // THE WOLFWINTER STONE: the memorial. Fourteen names, and the town
   // still argues about the fifteenth.
@@ -271,7 +289,14 @@ export function buildPinewatch(): ZoneDef {
   // The sawyer's corner: a cot, a stove, and a chair facing the door.
   b.set(38, 52, Tile.Bed).set(39, 52, Tile.Bed);
   b.set(37, 54, Tile.Chair);
-  b.sign(35, 55, 'THE GREAT SAW', ['boards, beams, and battens', 'shout twice, she is deaf on the left'], Tile.HangingSign);
+  // The loudest building dresses like a working shed: board rain-
+  // roofs both sides of the wain door, sawdust drifting out from
+  // under them, and the shingle planted where the track meets the
+  // stacks — in front of the wall, never cut into it.
+  b.sign(35, 56, 'THE GREAT SAW', ['boards, beams, and battens', 'shout twice, she is deaf on the left'], Tile.HangingSign);
+  b.set(27, 56, awningTile('board', 6)).set(28, 56, awningTile('board', 6));
+  b.set(38, 56, awningTile('board', 6)).set(39, 56, awningTile('board', 6));
+  b.setDetail(30, 56, Detail.Sawdust).setDetail(37, 56, Detail.Sawdust);
   // The log deck and the slip up from the pond.
   b.fillRect(30, 36, 14, 5, Tile.Dirt);
   b.fillRect(36, 30, 2, 7, Tile.Dock); // the slip
@@ -302,7 +327,12 @@ export function buildPinewatch(): ZoneDef {
   b.set(49, 39, Tile.Counter); // the commission counter, facing the door
   b.set(48, 41, Tile.Crate).set(52, 34, Tile.Barrel);
   b.setDetail(49, 41, Detail.Doormat);
-  b.sign(51, 42, 'THE AXE-SMITH', ['teeth set, heads hung, chain mended', 'the chain takes a fortnight'], Tile.HangingSign);
+  // Her trade on the wall: the blade on its bracket west of the door,
+  // a charcoal board-roof over the quench corner (forge colors), and
+  // the shingle standing in the yard.
+  b.sign(51, 43, 'THE AXE-SMITH', ['teeth set, heads hung, chain mended', 'the chain takes a fortnight'], Tile.HangingSign);
+  b.setDetail(47, 42, bracketSignDetail(2));
+  b.set(52, 43, awningTile('board', 7)).set(53, 43, awningTile('board', 7));
   b.fillRect(49, 43, 1, 4, Tile.Dirt);
   b.set(44, 36, Tile.Stump).set(55, 40, Tile.Stump);
   b.set(56, 47, Tile.Brazier);
@@ -338,7 +368,14 @@ export function buildPinewatch(): ZoneDef {
   b.setDetail(90, 43, Detail.Rug).setDetail(91, 43, Detail.Rug);
   b.setDetail(90, 44, Detail.Doormat).setDetail(91, 44, Detail.Doormat);
   b.set(83, 40, Tile.LampPost).set(102, 40, Tile.LampPost);
-  b.sign(94, 45, 'THE CHARTERHOUSE', ['timber bought, coin kept', 'the two are not the same window'], Tile.HangingSign);
+  // Two houses under one roof, and the facade admits it: the Crown's
+  // weld canopy and banner west of the door, the Charter's charcoal
+  // east of it — bowed canvas, the only dressed-stone finery in town.
+  // The shingle stands clear of both, on the walk.
+  b.sign(94, 46, 'THE CHARTERHOUSE', ['timber bought, coin kept', 'the two are not the same window'], Tile.HangingSign);
+  b.set(86, 46, awningTile('bowed', 3)).set(87, 46, awningTile('bowed', 3));
+  b.set(95, 46, awningTile('bowed', 7)).set(96, 46, awningTile('bowed', 7));
+  b.setDetail(89, 45, wallBannerDetail(3)).setDetail(93, 45, wallBannerDetail(7));
   b.fillRect(90, 46, 2, 1, Tile.Path);
 
   // ---------------------------------------------------------------
@@ -375,7 +412,13 @@ export function buildPinewatch(): ZoneDef {
   b.set(81, 63, Tile.Cabinet);
   b.setDetail(80, 72, Detail.Doormat).setDetail(81, 72, Detail.Doormat);
   b.set(92, 64, Tile.FlowerBox).set(92, 71, Tile.FlowerBox);
-  b.sign(85, 73, 'THE PINE AND BELL', ['beds, broth, and the four o clock fire'], Tile.HangingSign);
+  // The inn earns its warm face: ochre board-roofs flanking the wide
+  // door (snow country; the timber sheds it), the mug on its bracket,
+  // and the shingle standing on the lane where the watch comes off.
+  b.sign(88, 74, 'THE PINE AND BELL', ['beds, broth, and the four o clock fire'], Tile.HangingSign);
+  b.set(76, 74, awningTile('board', 6)).set(77, 74, awningTile('board', 6));
+  b.set(83, 74, awningTile('board', 6)).set(84, 74, awningTile('board', 6));
+  b.setDetail(82, 73, bracketSignDetail(0));
   // The coaching fire on the lane: the supper fire, outside, always.
   b.set(82, 77, Tile.Campfire);
   b.set(80, 77, Tile.Bench).set(84, 77, Tile.Bench);
@@ -403,9 +446,12 @@ export function buildPinewatch(): ZoneDef {
   b.set(43, 73, awningTile('board', 6)).set(44, 73, awningTile('board', 6));
   b.setDetail(46, 72, bracketSignDetail(7));
   b.setDetail(50, 72, trellisDetail(2));
+  b.setDetail(41, 72, pennantDetail(6));
   b.setDetail(45, 65, Detail.Doormat);
   b.path({ x: 45, y: 63 }, { x: 45, y: 63 }, 1);
-  b.sign(43, 64, 'PINEWATCH STORES', ['iron, rope, resin, and salve', 'the salve first, mostly'], Tile.HangingSign);
+  // The shingle stands on the Mill Lane verge, before the door it
+  // names — in front of the wall, never in it.
+  b.sign(43, 63, 'PINEWATCH STORES', ['iron, rope, resin, and salve', 'the salve first, mostly'], Tile.HangingSign);
 
   // ---------------------------------------------------------------
   // SPARWRIGHTS' ROW — an open shed thirty tiles long, because a mast
@@ -427,7 +473,13 @@ export function buildPinewatch(): ZoneDef {
   b.set(21, 84, Tile.Barrel).set(48, 79, Tile.Crate);
   b.setDetail(25, 82, Detail.Sawdust).setDetail(33, 82, Detail.Sawdust);
   b.setDetail(41, 82, Detail.Sawdust).setDetail(29, 85, Detail.Sawdust);
-  b.sign(31, 78, "SPARWRIGHTS' ROW", ['a mast is one tree or it is firewood', 'mind the beds'], Tile.HangingSign);
+  // A spar rides trestles OUTSIDE the row too — the work spills onto
+  // the lane verge the way thirty-tile work must — and the shingle
+  // stands beside it, off the wall.
+  b.sign(31, 77, "SPARWRIGHTS' ROW", ['a mast is one tree or it is firewood', 'mind the beds'], Tile.HangingSign);
+  b.set(36, 77, Tile.Sawhorse).set(38, 77, Tile.Sawhorse);
+  b.setDetail(37, 77, Detail.Sawdust);
+  b.setDetail(26, 86, trellisDetail(2)).setDetail(38, 86, trellisDetail(2));
   // The spar-master's cot at the row's east end, behind a partition.
   for (let y = 79; y <= 86; y++) b.set(44, y, Tile.WallWood);
   b.set(44, 82, Tile.DoorwayWood);
@@ -458,6 +510,10 @@ export function buildPinewatch(): ZoneDef {
   b.set(102, 65, Tile.Cabinet).set(102, 68, Tile.Table).set(101, 68, Tile.Chair);
   b.setDetail(99, 68, Detail.RugRound);
   b.setDetail(99, 69, Detail.Doormat);
+  // Upwind or not, the trade follows him home: hopvine up the south
+  // wall and a pitch barrel by the door he swears is empty.
+  b.setDetail(101, 70, trellisDetail(2));
+  b.set(96, 71, Tile.Barrel);
   b.fillRect(99, 71, 1, 4, Tile.Dirt);
 
   // ---------------------------------------------------------------
@@ -489,6 +545,18 @@ export function buildPinewatch(): ZoneDef {
   b.set(17, 64, Tile.BerryBush).set(28, 64, Tile.BerryBush);
   b.set(18, 65, Tile.FlowerBox).set(62, 70, Tile.FlowerBox);
   b.set(37, 70, Tile.TreePine).set(52, 64, Tile.TreePine);
+  // Same bones, different lives, and the south walls say whose is
+  // whose: the first flies work-ochre over a chopping block; the
+  // second keeps a basket in bloom and roses at the corner; the third
+  // flies charcoal beside a barrel it has not returned; the fourth
+  // grows ivy and keeps its basket watered. Nobody planned it, which
+  // is the plan.
+  b.setDetail(11, 72, pennantDetail(6));
+  b.set(16, 73, Tile.Stump);
+  b.setDetail(21, 72, Detail.WallBasket).setDetail(25, 72, trellisDetail(1));
+  b.setDetail(34, 72, pennantDetail(7));
+  b.set(36, 73, Tile.Barrel);
+  b.setDetail(59, 72, trellisDetail(0)).setDetail(56, 72, Detail.WallBasket);
 
   // ---------------------------------------------------------------
   // THE WARDLINE GATE — east, and the only gate in this town that is
@@ -577,7 +645,11 @@ export function buildPinewatch(): ZoneDef {
   b.set(79, 21, Tile.Workbench).set(83, 21, Tile.Lectern);
   b.set(79, 24, Tile.Crate).set(83, 24, Tile.Cabinet);
   b.setDetail(81, 24, Detail.Doormat);
-  b.sign(83, 25, 'THE NURSERY', ['seedlings owed and seedlings set', 'the beds are counted too'], Tile.HangingSign);
+  // The gentlest wall in town: the sprig on its bracket, ivy over the
+  // count-book corner, and the shingle standing by the barrow walk.
+  b.sign(83, 26, 'THE NURSERY', ['seedlings owed and seedlings set', 'the beds are counted too'], Tile.HangingSign);
+  b.setDetail(79, 25, bracketSignDetail(4));
+  b.setDetail(83, 25, trellisDetail(0));
   b.fillRect(81, 26, 1, 4, Tile.Dirt);
 
   // ---------------------------------------------------------------
@@ -652,6 +724,10 @@ export function buildPinewatch(): ZoneDef {
   b.fillRect(7, 88, 56, 1, Tile.WallGarrison);
   b.set(63, 88, Tile.GateGarrison).set(64, 88, Tile.GateGarrison).set(65, 88, Tile.GateGarrison);
   b.fillRect(66, 88, 41, 1, Tile.WallGarrison);
+  // The Timber Road gate wears the watch's charcoal on both cheeks —
+  // iron colors over the gate fires; the rest of the curtain keeps
+  // its martial bareness.
+  b.setDetail(62, 88, wallBannerDetail(7)).setDetail(66, 88, wallBannerDetail(7));
   // East curtain, north from the corner to the water, with the
   // Wardline gate in it.
   for (let y = 8; y <= 88; y++) b.set(106, y, Tile.WallGarrison);
