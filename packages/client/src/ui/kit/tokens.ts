@@ -100,6 +100,12 @@ export const PALETTE: Record<string, string> = {
   green: '#7dc46a',
   blue: '#7fb4d9',
 
+  /* the bond family — the companion's color. `bond` is the collar's
+     bond-green ink the world already paints on a tamed friend; the
+     deep tone is its shaded half for two-tone gauge fills. */
+  bond: '#9fd39a',
+  'bond-deep': '#5f8f58',
+
   /* the arcane family — Callings, lessons, the cinema's law lines.
      Lived as scattered literals since the codex shipped; now named. */
   arcane: '#b49af0',

@@ -1,0 +1,332 @@
+/* ---------------------------------- THE COMPANION PLAQUE
+
+   The friend at your heel, standing above the buff tray as a real
+   piece of the HUD: crest medallion with the painted portrait on its
+   suede bed, cut-plate nameplate, level gem, ink-rimmed vigor gauge
+   with a trailing damage ghost, and one state ring — the rest clock
+   in blue or the reopened bond breathing gold beside the treat it
+   asks for. Pressing the plaque is the pat (THE QUIET HEEL). */
+
+#companion-plaque {
+  position: absolute;
+  right: calc(50% + 9.375rem);
+  bottom: 4.0625rem;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The medallion overhangs the nameplate's left edge — a floating
+   piece wears the sharp half-offset shadow, never a blur. */
+.comp-medal {
+  position: relative;
+  flex: none;
+  width: 4.75rem;
+  height: 4.75rem;
+  z-index: 1;
+  border-radius: 50%;
+  background: var(--ui-crest) center / contain no-repeat;
+  filter: drop-shadow(0.1875rem 0.25rem 0 rgba(12, 8, 4, 0.45));
+}
+
+/* The portrait sits in the crest's dark well, on its painted suede
+   bed — the well's inner rim stays visible around it. */
+.comp-face {
+  position: absolute;
+  inset: 0.84375rem;
+  width: calc(100% - 1.6875rem);
+  height: calc(100% - 1.6875rem);
+  border-radius: 50%;
+}
+
+/* The state ring rides the crest's outer dark rim, where blue and
+   gold both cut instead of sinking into the brass band. */
+.comp-ring {
+  position: absolute;
+  inset: 0.0625rem;
+  --ring-size: 4.625rem;
+  pointer-events: none;
+}
+
+/* The offer pip: the very treat the friend waits on, held up at the
+   medallion's shoulder while the bond moment stands open. */
+.comp-offer {
+  position: absolute;
+  right: -0.4375rem;
+  bottom: -0.0625rem;
+  width: 1.625rem;
+  height: 1.625rem;
+  padding: 0.1875rem;
+  border-radius: 50%;
+  background: var(--well-bed);
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--gold-bright),
+    0.125rem 0.1875rem 0 rgba(12, 8, 4, 0.45);
+}
+
+/* The nameplate: cut-plate stock, tucked under the medallion. */
+.comp-card {
+  min-width: 11.25rem;
+  margin-left: -1.5rem;
+  border: 0.5625rem solid transparent;
+  border-image: var(--ui-plate) 45 fill / 0.5625rem;
+  padding: 0.125rem 0.375rem 0.1875rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  box-shadow: 0.1875rem 0.25rem 0 rgba(12, 8, 4, 0.35);
+}
+
+.comp-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.comp-name {
+  flex: 1;
+  font-family: var(--serif);
+  font-size: var(--t-lead);
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 9.5rem;
+}
+
+/* The level gem — the faceted trophy grammar the skills wall and the
+   character stand already speak, cut small for the plaque. */
+.comp-lvl {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.875rem;
+  height: 1.375rem;
+  padding: 0 0.4375rem;
+  clip-path: polygon(
+    0.4375rem 0,
+    calc(100% - 0.4375rem) 0,
+    100% 50%,
+    calc(100% - 0.4375rem) 100%,
+    0.4375rem 100%,
+    0 50%
+  );
+  background: var(--gold);
+  color: var(--brass-ink);
+  font-family: var(--serif);
+  font-size: var(--t-label);
+  font-weight: 700;
+  box-shadow:
+    inset 0 0.1875rem 0 rgba(255, 236, 190, 0.45),
+    inset 0 -0.1875rem 0 rgba(0, 0, 0, 0.28);
+}
+
+/* The vigor gauge: the kit's ink-rimmed channel; the fill snaps to
+   the truth and the pale ghost eases after it, so a wound leaves a
+   visible bite before it fades. Both widths ride --comp-vigor. */
+.comp-hp {
+  position: relative;
+  height: 0.9375rem;
+  border: 0.3125rem solid transparent;
+  border-image: var(--ui-gauge) 25 fill / 0.3125rem;
+}
+
+.comp-hp-ghost,
+.comp-hp-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(100% * var(--comp-vigor, 1));
+}
+
+.comp-hp-ghost {
+  background: var(--parchment-dim);
+  opacity: 0.5;
+  transition: width 0.9s ease 0.4s;
+}
+
+/* Flat two-tone fill with a lit top seam — a painted bar, no bloom. */
+.comp-hp-fill {
+  background: linear-gradient(180deg, var(--bond) 0 52%, var(--bond-deep) 52% 100%);
+  box-shadow: inset 0 var(--hairline) 0 rgba(255, 236, 190, 0.4);
+}
+
+#companion-plaque[data-vigor='worn'] .comp-hp-fill {
+  background: linear-gradient(180deg, var(--gold-bright) 0 52%, var(--gold-deep) 52% 100%);
+}
+
+#companion-plaque[data-vigor='dire'] .comp-hp-fill {
+  background: linear-gradient(180deg, var(--red) 0 52%, var(--ember-deep) 52% 100%);
+}
+
+/* The state word: one quiet line under the gauge. */
+.comp-state {
+  font-size: var(--t-whisper);
+  font-weight: 700;
+  letter-spacing: 0.03125rem;
+  text-transform: uppercase;
+  color: var(--parchment-faint);
+  text-shadow: var(--punch-small);
+}
+
+/* ---- states ---- */
+
+/* Downed: the color drains from the face — grief, never a black
+   hole; the crest carries a slow ember ring; the word turns to the
+   wound. */
+#companion-plaque.state-downed .comp-face {
+  filter: grayscale(0.9) brightness(0.78);
+}
+
+#companion-plaque.state-downed .comp-medal {
+  box-shadow: 0 0 0 0.1875rem rgba(200, 72, 62, 0.65);
+}
+
+#companion-plaque.state-downed .comp-state {
+  color: var(--red-soft);
+}
+
+/* Resting: cooled and quiet; the blue ring is the clock. */
+#companion-plaque.state-resting .comp-face {
+  filter: saturate(0.55) brightness(0.82);
+}
+
+#companion-plaque.state-resting .comp-state {
+  color: var(--blue);
+}
+
+/* Trailing: the friend is behind — a touch dimmer, nothing louder. */
+#companion-plaque.state-trailing .comp-face {
+  filter: brightness(0.82);
+}
+
+/* Bond reopened: the word warms with the ring. */
+#companion-plaque.bond .comp-state {
+  color: var(--gold-bright);
+}
+
+/* ---- the hand ---- */
+
+#companion-plaque:hover .comp-medal {
+  filter: drop-shadow(0.1875rem 0.25rem 0 rgba(12, 8, 4, 0.45)) brightness(1.08);
+}
+
+#companion-plaque:active {
+  translate: 0 0.0625rem;
+}
+
+/* ---- motion (all of it lives behind the motion gate) ---- */
+
+/* The portrait breathes — the smallest sign of life, grounded at
+   the feet so the animal swells rather than floats. A downed friend
+   does not breathe easy; its face holds still (the body in the world
+   carries the ragged breath). */
+.comp-face {
+  transform-origin: 50% 79%;
+}
+
+body:not(.no-ui-motion) #companion-plaque:not(.state-downed) .comp-face {
+  animation: comp-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes comp-breathe {
+  0%,
+  100% {
+    scale: 1;
+  }
+  50% {
+    scale: 1.02;
+  }
+}
+
+/* The downed ember ring pulses instead of standing still. */
+body:not(.no-ui-motion) #companion-plaque.state-downed .comp-medal {
+  animation: comp-down-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes comp-down-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0.125rem rgba(200, 72, 62, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 0.1875rem rgba(200, 72, 62, 0.9);
+  }
+}
+
+/* The reopened bond breathes gold on the ring, and the offered treat
+   bobs once a breath — asking, never shouting. */
+body:not(.no-ui-motion) #companion-plaque.bond .comp-ring {
+  animation: comp-bond-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes comp-bond-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+body:not(.no-ui-motion) #companion-plaque.bond .comp-offer {
+  animation: comp-offer-bob 2.4s ease-in-out infinite;
+}
+
+@keyframes comp-offer-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -0.1875rem;
+  }
+}
+
+/* The hurt jolt: one sharp flinch when blood is drawn. */
+body:not(.no-ui-motion) #companion-plaque.hurt {
+  animation: comp-hurt 0.3s ease-out;
+}
+
+@keyframes comp-hurt {
+  0% {
+    translate: 0 0;
+  }
+  25% {
+    translate: -0.1875rem 0;
+  }
+  55% {
+    translate: 0.125rem 0;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+/* A dire wound keeps a slow warning breath on the fill. */
+body:not(.no-ui-motion) #companion-plaque[data-vigor='dire']:not(.state-downed) .comp-hp-fill {
+  animation: comp-dire-breathe 1.4s ease-in-out infinite;
+}
+
+@keyframes comp-dire-breathe {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.35);
+  }
+}

@@ -11,6 +11,7 @@ import { Renderer } from './render/renderer.js';
 import type { SmashKind } from './render/debris.js';
 import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
+import { CompanionPlaque } from './ui/companionPlaque.js';
 import { Panels, SKILL_FACE, SKILL_STORY } from './ui/panels.js';
 import { showLevelUp } from './ui/levelToast.js';
 import { StationPanels, craftStationFace } from './ui/stationPanels.js';
@@ -1525,9 +1526,11 @@ dressPanel(el('social-panel'), {
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);
 hotbar.onReady = () => sfx.abilityReady();
-// THE QUIET HEEL: the chip pats the friend at your side. The server
-// range-gates the press, so a trailing or far body simply no-ops.
-hotbar.onPetChip = () => {
+// THE COMPANION PLAQUE: the friend at your heel as a standing HUD
+// piece. THE QUIET HEEL holds — pressing it pats the friend at your
+// side; the server range-gates the press, so a far body just no-ops.
+const companionPlaque = new CompanionPlaque();
+companionPlaque.onPat = () => {
   const petEid = game.ownPetEid();
   if (petEid !== null) game.interactNpc(petEid);
 };
@@ -3096,6 +3099,7 @@ function frame(now: number): void {
   game.update(now);
   renderer.render(game, frameDt);
   hotbar.update(game);
+  companionPlaque.update(game);
 
   // The world's voice: zone-weighted music and ambience follow the
   // listener's position and the game clock every frame.
