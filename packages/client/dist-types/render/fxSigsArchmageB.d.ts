@@ -16,6 +16,12 @@
  * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
  * 120fps is a law. No signature shares a centerpiece with any other
  * file's — these are new sentences, not louder readings of old ones.
+ *
+ * FX v5 wave 3d: venom, fire, frost, radiance, storm, water, and
+ * blood route through the MATTER LIBRARY (ONE-VOICE LAW); red_eclipse
+ * and galvanic_arc honor their standing earmarks. rune_echo's arcane
+ * lettering, marrow_pulse's bone, void_rift's void, and realm_rend's
+ * world-fabric stay bespoke — no material owns those voices.
  */
 import type { AbilitySig } from './fxSignatures.js';
 /**

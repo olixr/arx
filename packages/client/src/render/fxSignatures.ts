@@ -158,6 +158,19 @@ export const MATTER_MIGRATED: readonly string[] = [
   // 800ms beat the painted orchard flares to.
   'broadhead', 'verdant_burst', 'howling_loose', 'hoarfrost',
   'cinder_rain',
+  // Wave 3d — the archmage roster, fifteen of twenty-one across both
+  // halves: the staff asks worlds to speak, and most worlds ARE
+  // materials. water.curtain grew for the walking weather-wall;
+  // undertow finally speaks the verb it named; galvanic_arc and
+  // red_eclipse honor their standing earmarks. Where a sustained
+  // library emitter covers old gated wisps, the gates were retired —
+  // one voice. Arcane light, bone, void, and world-fabric stay
+  // bespoke (arcane_ring, wisp_flare, rune_echo, marrow_pulse,
+  // void_rift, realm_rend).
+  'hearth_flare', 'undertow', 'stormlash', 'cinderstorm', 'glaciate',
+  'galvanic_arc', 'overgrowth', 'grave_chill', 'gloom_burst',
+  'venom_lash', 'magma_orb', 'shatterfrost', 'solar_lance',
+  'eye_of_the_storm', 'red_eclipse',
 ];
 
 // ------------------------------------------------------- exemplars

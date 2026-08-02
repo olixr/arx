@@ -16,11 +16,18 @@
  * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
  * 120fps is a law. No signature shares a centerpiece with any other
  * file's — these are new sentences, not louder readings of old ones.
+ *
+ * FX v5 wave 3d: venom, fire, frost, radiance, storm, water, and
+ * blood route through the MATTER LIBRARY (ONE-VOICE LAW); red_eclipse
+ * and galvanic_arc honor their standing earmarks. rune_echo's arcane
+ * lettering, marrow_pulse's bone, void_rift's void, and realm_rend's
+ * world-fabric stay bespoke — no material owns those voices.
  */
 
 import { shade } from './rig.js';
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { venom, fire, frost, radiance, storm, water, blood, asMatter } from './matter/index.js';
 
 // --------------------------------------------------------- venom_lash
 
@@ -34,21 +41,15 @@ import type { AbilitySig, SigCtx } from './fxSignatures.js';
  */
 const venom_lash: AbilitySig = {
   spawn(c: SigCtx) {
-    // The spit sheet: heavy droplets thrown low, dragging green
-    // micro-motes, drying dark where they land.
-    const rand = srand(c.seed ^ 0xa1);
-    for (let k = 0; k < 7; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx, c.wy - 0.25, 1, [c.st.mid, c.st.spark], {
-        speed: 1.6 + rand() * 1.2, life: 0.5, size: 0.08, gravity: 8,
-        dir: a, spread: 0.3, trail: 9, trailColor: c.st.mid,
-        fade: c.st.deep, up: false,
-      });
-    }
-    // The first acrid breath off the strike.
-    c.particles.burst(c.wx, c.wy - 0.2, 3, [c.st.deep, c.st.mid], {
-      speed: 0.5, life: 0.9, size: 0.1, gravity: -1.2, drag: 1.4,
-      grow: 0.16, shape: 'puff', fade: c.st.deep, wobble: 0.6,
+    const m = asMatter(c);
+    // The spit sheet: TRUE venom flung all ways — fat drops on real
+    // arcs that land as stains and dry near-black.
+    venom.deployments.burst!(m, c.wx, c.wy, { scale: 0.9 });
+    // The acrid air over the wet ground: a standing venom cloud,
+    // bright miasma clinging low with bubbles popping through it —
+    // the seethe and the threads in one sustained voice.
+    venom.deployments.cloud!(m, c.wx, c.wy, {
+      radius: c.radius * 0.55, dur: 1.4, scale: 0.6,
     });
   },
   ground(c: SigCtx) {
@@ -80,27 +81,10 @@ const venom_lash: AbilitySig = {
       ctx.fill();
     }
     ctx.restore();
-    // Bubbles pop off a random blot — the seethe made audible.
-    if (Math.random() < c.frameDt * 10 * fade) {
-      const a = Math.random() * Math.PI * 2;
-      const d = (Math.random() * 0.7 * rr) / sc;
-      c.particles.burst(c.wx + Math.cos(a) * d, c.wy + Math.sin(a) * d * squash, 1, [st.spark, st.core], {
-        speed: 0.4, life: 0.35, size: 0.06, gravity: -2.2, shape: 'glint',
-      });
-    }
     c.glow(c.wx, c.wy, 0.9, 0.2 * fade);
   },
-  air(c: SigCtx) {
-    // Acrid threads lean off the wet ground — thin, staggering, brief.
-    if (c.t < 0.8 && Math.random() < c.frameDt * 7 * (1 - c.t)) {
-      const a = Math.random() * Math.PI * 2;
-      const d = (Math.random() * 0.6 * Math.max(c.rPx, c.sc * 0.9)) / c.sc;
-      c.particles.burst(c.wx + Math.cos(a) * d, c.wy + Math.sin(a) * d * c.squash - 0.15, 1, [c.st.mid, c.st.deep], {
-        speed: 0.3, life: 0.8, size: 0.07, gravity: -1.6, drag: 1.2,
-        grow: 0.1, shape: 'puff', fade: c.st.deep, wobble: 0.8,
-      });
-    }
-  },
+  // (The bubbles and acrid threads live in the sustained library
+  // cloud spawned with the spit — one mouth, not three.)
 };
 
 // ---------------------------------------------------------- magma_orb
@@ -115,21 +99,13 @@ const venom_lash: AbilitySig = {
  */
 const magma_orb: AbilitySig = {
   spawn(c: SigCtx) {
-    // Slag gobbets slop out heavy and low, smoking as they fly.
-    const rand = srand(c.seed ^ 0xa5);
-    for (let k = 0; k < 5; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx, c.wy - 0.2, 1, [c.st.mid, c.st.spark], {
-        speed: 1.4 + rand() * 1.1, life: 0.6, size: 0.11, gravity: 9,
-        dir: a, spread: 0.25, trail: 10, trailColor: c.st.deep,
-        fade: c.st.deep, up: false,
-      });
-    }
-    // The splash burns where it stands, briefly.
-    c.particles.burst(c.wx, c.wy - 0.25, 4, [c.st.mid, c.st.core], {
-      speed: 0.7, life: 0.5, size: 0.12, gravity: -2.8, shape: 'lick',
-      flicker: 0.3, fade: c.st.deep, wobble: 0.4,
-    });
+    const m = asMatter(c);
+    // Slag slops out as TRUE molten gobbets — real arcs, landing
+    // still burning, cooling to dead coals in the crusting pool.
+    fire.deployments.gobbets!(m, c.wx, c.wy, { scale: 0.9 });
+    // The splash burns where it stands: one full library detonation
+    // at reduced weight — heart flash, tongues, sparks, soot exhale.
+    fire.deployments.burst!(m, c.wx, c.wy, { scale: 0.55 });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc, squash, px, py } = c;
@@ -210,16 +186,11 @@ const magma_orb: AbilitySig = {
  */
 const shatterfrost: AbilitySig = {
   spawn(c: SigCtx) {
-    // Cold breath rolls off both closing jaws.
-    const rand = srand(c.seed ^ 0xa9);
-    for (let k = 0; k < 6; k++) {
-      const side = k % 2 === 0 ? -1 : 1;
-      const off = (rand() - 0.5) * c.radius * 1.2;
-      c.particles.burst(c.wx + off, c.wy + side * c.radius * 0.7 * c.squash, 1, [c.st.mid, c.st.core], {
-        speed: 0.7, life: 1.0, size: 0.12, gravity: 0.2, dir: side > 0 ? -Math.PI / 2 : Math.PI / 2,
-        spread: 0.5, drag: 1.6, grow: 0.2, shape: 'puff', fade: '#ffffff', wobble: 0.4, ground: true,
-      });
-    }
+    // Cold breath rolls off both closing jaws: TRUE frost weather
+    // over the whole bite.
+    frost.deployments.fog!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.8, dur: 0.7, scale: 0.7,
+    });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -277,12 +248,16 @@ const shatterfrost: AbilitySig = {
       }
     }
     ctx.restore();
-    // Crushed ice sprays along the bite line the moment it closes.
-    if (t >= 0.45 && t < 0.6 && Math.random() < c.frameDt * 26) {
-      const off = ((Math.random() - 0.5) * rPx * 1.2) / sc;
-      c.particles.burst(c.wx + off, c.wy, 1, ['#ffffff', st.core], {
-        speed: 1.4, life: 0.5, size: 0.08, gravity: 3, up: true, shape: 'glint',
-      });
+    // The crush lands ON the crossing frame: the instant the teeth
+    // meet, TRUE frost shatters at both ends of the bite line —
+    // shards that tumble, lie, and steam off where the grind kept them.
+    const lifeMs = t > 0 ? c.age / t : 0;
+    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
+    if (tPrev < 0.45 && t >= 0.45) {
+      const m = asMatter(c);
+      for (const s of [-1, 1]) {
+        frost.deployments.shatter!(m, c.wx + s * c.radius * 0.45, c.wy, { scale: 0.5 });
+      }
     }
   },
   air(c: SigCtx) {
@@ -302,13 +277,11 @@ const shatterfrost: AbilitySig = {
  */
 const solar_lance: AbilitySig = {
   spawn(c: SigCtx) {
-    // Gold motes hang in the lit air the instant the line exists.
-    const rand = srand(c.seed ^ 0xad);
-    for (let k = 0; k < 6; k++) {
-      const f = 0.15 + rand() * 0.75;
-      c.particles.burst(c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f - 0.4, 1, [c.st.spark, c.st.core], {
-        speed: 0.4, life: 0.9, size: 0.09, gravity: -0.4, drag: 1.6, shape: 'glint',
-      });
+    const m = asMatter(c);
+    // Noon fills the corridor with TRUE light: two rising
+    // congregations stationed along the line the instant it exists.
+    for (const f of [0.3, 0.7]) {
+      radiance.deployments.bloom!(m, c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f, { scale: 0.5 });
     }
     // The far end takes the point of the spear.
     c.particles.burst(c.wx2, c.wy2 - 0.3, 6, [c.st.core, c.st.spark], {
@@ -403,12 +376,12 @@ const solar_lance: AbilitySig = {
       ctx.fillRect(x1 + dx * f - shaftW / 2, y1 + dy * f - h, shaftW, h);
     }
     ctx.restore();
-    // Burnt-off gold drifts up out of the cooling line.
-    if (t > 0.5 && Math.random() < c.frameDt * 10 * spend) {
-      const f = Math.random();
-      c.particles.burst(c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f - 0.3, 1, [st.spark, st.core], {
-        speed: 0.3, life: 0.7, size: 0.07, gravity: -1.4, drag: 1.2, shape: 'glint', wobble: 0.5,
-      });
+    // The noon burns off ON the crossing frame: one last congregation
+    // rises from mid-line as the light departs upward.
+    const lifeMs = t > 0 ? c.age / t : 0;
+    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
+    if (tPrev < 0.5 && t >= 0.5) {
+      radiance.deployments.bloom!(asMatter(c), (c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2, { scale: 0.45 });
     }
   },
 };
@@ -689,14 +662,22 @@ const void_rift: AbilitySig = {
  */
 const eye_of_the_storm: AbilitySig = {
   spawn(c: SigCtx) {
-    // Thunder ticks the rim awake at three bearings.
+    const m = asMatter(c);
     const rand = srand(c.seed ^ 0xbd);
+    // Thunder ticks the rim awake at three bearings — each one TRUE.
     for (let k = 0; k < 3; k++) {
       const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.85, c.wy + Math.sin(a) * c.radius * 0.85 * c.squash, 2, [c.st.spark, '#ffffff'], {
-        speed: 1.2, life: 0.3, size: 0.06, gravity: 1.5, shape: 'streak',
-      });
+      storm.deployments.impact!(m,
+        c.wx + Math.cos(a) * c.radius * 0.85,
+        c.wy + Math.sin(a) * c.radius * 0.85 * c.squash,
+        { scale: 0.3 });
     }
+    // The weather-wall rains TRUE: the library's new curtain — drops
+    // plummet from height onto the rim line and splat exactly there,
+    // never a drop on the eye.
+    water.deployments.curtain!(m, c.wx, c.wy, {
+      radius: c.radius * 0.8, dur: 1.6, scale: 0.9,
+    });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -752,19 +733,8 @@ const eye_of_the_storm: AbilitySig = {
     ctx.restore();
   },
   air(c: SigCtx) {
-    // Rim rain: slanted streaks fall ONLY on the wall — never a drop
-    // on the eye.
-    if (Math.random() < c.frameDt * 16 * (1 - c.t)) {
-      const a = Math.random() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * (0.7 + Math.random() * 0.25),
-        c.wy + Math.sin(a) * c.radius * (0.7 + Math.random() * 0.25) * c.squash - 0.8,
-        1, [c.st.mid, c.st.core], {
-          speed: 2.6, life: 0.3, size: 0.07, gravity: 5, dir: Math.PI * 0.42,
-          spread: 0.1, shape: 'streak',
-        },
-      );
-    }
+    // (The rim rain lives in the sustained library curtain spawned
+    // with the storm — honest z-fall, splats on the wall line.)
     c.glow(c.wx, c.wy, c.radius, 0.25 * (1 - c.t));
   },
 };
@@ -867,13 +837,23 @@ const red_eclipse: AbilitySig = {
       ctx.fillRect(px - R - g * 2, cy - g / 2, g * 4, g);
     }
     ctx.restore();
-    // The drink: during totality the ground pays upward — red
-    // threads stream off the rim into the disc's underside.
-    if (total && Math.random() < c.frameDt * 18) {
+    // The drink begins AT totality: on that crossing frame the
+    // library pulls the tribute — TRUE red reeling out of the whole
+    // circle to gather beneath the disc (the standing earmark for
+    // this art, honored). The last hop into the moon's underside
+    // stays the eclipse's own red light.
+    const lifeMs = t > 0 ? c.age / t : 0;
+    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
+    if (tPrev < 0.3 && t >= 0.3) {
+      blood.deployments.drink!(asMatter(c), c.wx, c.wy, {
+        radius: c.radius * 0.85, dur: 0.85, scale: 0.75,
+      });
+    }
+    if (total && Math.random() < c.frameDt * 9) {
       const a = Math.random() * Math.PI * 2;
       c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.7,
-        c.wy + Math.sin(a) * c.radius * 0.7 * c.squash,
+        c.wx + Math.cos(a) * c.radius * 0.4,
+        c.wy + Math.sin(a) * c.radius * 0.4 * c.squash,
         1, [st.mid, st.spark], {
           speed: 1.8, life: 0.5, size: 0.07, gravity: -6, dir: -Math.PI / 2,
           spread: 0.3, shape: 'streak', trail: 6, trailColor: st.deep,

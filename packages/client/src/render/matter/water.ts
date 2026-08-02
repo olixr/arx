@@ -112,6 +112,24 @@ const undertow: Deployment = (c, x, y, o = {}) => {
   });
 };
 
+/**
+ * The curtain — rain that falls on a CIRCLE: drops plummet from
+ * height onto the rim line and splat exactly there, mist standing
+ * at the wall's foot. The storm-wall's verb; waterfall rims and
+ * rain curtains reuse it.
+ */
+const curtain: Deployment = (c, x, y, o = {}) => {
+  const k = o.scale ?? 1;
+  return c.particles.emit({
+    kind: 'ring', x, y, radius: o.radius ?? 1.0,
+    rate: 44 * k, dur: o.dur ?? 1.6, attack: 0.15, release: 0.4,
+    pops: [
+      { colors: [LIGHT, CHANNEL], opts: { ...DROP, speed: 0.08, z: 1.5, vz: -1.2, zg: 7, size: 0.06 }, weight: 2.2 },
+      { colors: [FOAM], opts: { ...MIST, z: 0.05, vz: 0.12 }, weight: 0.8 },
+    ],
+  });
+};
+
 /** The churn — standing white violence, rapids over a body. */
 const churn: Deployment = (c, x, y, o = {}) => {
   const k = o.scale ?? 1;
@@ -130,5 +148,5 @@ export const water: Material = {
   id: 'water',
   name: 'Water',
   palette: [DEEP, CHANNEL, LIGHT, FOAM, WHITE],
-  deployments: { splash, spray, rain, churn, undertow },
+  deployments: { splash, spray, rain, churn, undertow, curtain },
 };

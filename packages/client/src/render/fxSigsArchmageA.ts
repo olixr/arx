@@ -15,11 +15,18 @@
  * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
  * 120fps is a law. No signature shares a centerpiece with any other,
  * in this file or any wave shipped before it.
+ *
+ * FX v5 wave 3d: fire, water, storm, dust, frost, smoke, and shadow
+ * route through the MATTER LIBRARY (ONE-VOICE LAW). Where a sustained
+ * library emitter covers a signature's old gated wisps, the gate was
+ * RETIRED — one voice, not two. arcane_ring and wisp_flare stay
+ * bespoke: arcane light owns no material.
  */
 
 import { shade } from './rig.js';
 import { boltPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { fire, water, storm, dust, frost, smoke, shadow, asMatter } from './matter/index.js';
 
 // ------------------------------------------------------------ helpers
 
@@ -243,11 +250,10 @@ const wisp_flare: AbilitySig = {
  */
 const hearth_flare: AbilitySig = {
   spawn(c: SigCtx) {
-    // The roar-up: tongues leap straight off the hidden grate.
-    c.particles.burst(c.wx, c.wy - 0.25, 5, [c.st.mid, c.st.core], {
-      speed: 1.4, life: 0.6, size: 0.13, gravity: -3.2, up: true,
-      shape: 'lick', flicker: 0.3, fade: c.st.deep, wobble: 0.5,
-    });
+    // The roar-up: a TRUE standing burn off the hidden grate — the
+    // library's plume, licks through the full four-band combustion
+    // story with its own sparks and soot riding the draft.
+    fire.deployments.plume!(asMatter(c), c.wx, c.wy, { dur: 1.1, scale: 0.7 });
     // The warmth wave: a low shove of hot air rolling out.
     const rand = srand(c.seed ^ 0xc1);
     for (let k = 0; k < 6; k++) {
@@ -294,7 +300,6 @@ const hearth_flare: AbilitySig = {
   },
   air(c: SigCtx) {
     const { ctx, st, t, sc, px, py } = c;
-    const rand = srand(c.seed ^ 0xc3);
     ctx.save();
     // The draft column: a stack of tongues narrowing as it climbs —
     // a chimney of fire standing where the flue should be.
@@ -324,13 +329,8 @@ const hearth_flare: AbilitySig = {
       }
     }
     ctx.restore();
-    // Sparks climb the flue while the draft holds.
-    if (Math.random() < c.frameDt * 14 * (1 - t)) {
-      c.particles.burst(c.wx + (rand() - 0.5) * 0.3, c.wy - 0.5, 1, [st.spark, st.core], {
-        speed: 1.8, life: 0.55, size: 0.06, gravity: -2.6, dir: -Math.PI / 2,
-        spread: 0.35, flicker: 0.5, fade: st.deep, wobble: 0.6,
-      });
-    }
+    // (The flue's climbing sparks now ride the library plume spawned
+    // with the grate — one voice, not two.)
   },
 };
 
@@ -347,20 +347,12 @@ const hearth_flare: AbilitySig = {
 const undertow: AbilitySig = {
   spawn(c: SigCtx) {
     if (c.kind === 'telegraph') return;
-    const rand = srand(c.seed ^ 0xd1);
-    // The rim floods backward: foam banks dragged toward the drain.
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.9,
-        c.wy + Math.sin(a) * c.radius * 0.9 * c.squash,
-        1, [c.st.mid, c.st.core], {
-          speed: 2.0, life: 0.8, size: 0.11, gravity: 0.2, dir: a + Math.PI,
-          spread: 0.25, drag: 1.1, grow: 0.16, shape: 'puff', fade: '#ffffff',
-          wobble: 0.3, ground: true,
-        },
-      );
-    }
+    // The rim floods backward: the library verb this signature NAMED
+    // — TRUE foam and mist hauled out of the circle into the drain,
+    // sustained for the whole pull.
+    water.deployments.undertow!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.9, dur: 1.0, scale: 1.0,
+    });
   },
   ground(c: SigCtx) {
     if (c.kind === 'telegraph') return;
@@ -422,21 +414,8 @@ const undertow: AbilitySig = {
     ctx.restore();
     c.glow(c.wx, c.wy, c.radius * 0.8, 0.3 * fade);
   },
-  air(c: SigCtx) {
-    if (c.kind === 'telegraph') return;
-    // Spray dragged into the drain while the tide still pulls.
-    if (Math.random() < c.frameDt * 12 * (1 - c.t)) {
-      const a = Math.random() * Math.PI * 2;
-      const rr = c.radius * (0.5 + Math.random() * 0.45);
-      c.particles.burst(
-        c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash - 0.15,
-        1, [c.st.core, c.st.spark], {
-          speed: 2.0, life: 0.4, size: 0.07, gravity: 1.4, dir: a + Math.PI,
-          spread: 0.25, drag: 1.0, shape: 'streak',
-        },
-      );
-    }
-  },
+  // (The dragged spray now lives in the sustained library undertow
+  // spawned with the cast — one voice for the whole pull.)
 };
 
 // ---------------------------------------------------------- stormlash
@@ -451,15 +430,11 @@ const undertow: AbilitySig = {
  */
 const stormlash: AbilitySig = {
   spawn(c: SigCtx) {
-    // The cracker bursts at the struck end.
-    c.particles.burst(c.wx2, c.wy2 - 0.45, 6, [c.st.spark, c.st.core], {
-      speed: 2.8, life: 0.3, size: 0.07, gravity: 2.5, shape: 'streak', flicker: 0.6,
-    });
-    // The strike scorches: one dark shove of dust at the target's feet.
-    c.particles.burst(c.wx2, c.wy2, 3, ['#4a4438', c.st.deep], {
-      speed: 0.9, life: 0.6, size: 0.1, gravity: -0.3, drag: 1.9, grow: 0.18,
-      shape: 'puff', ground: true,
-    });
+    const m = asMatter(c);
+    // The cracker bursts at the struck end: one TRUE discharge.
+    storm.deployments.impact!(m, c.wx2, c.wy2, { scale: 0.85 });
+    // The strike scorches: one TRUE breath of earth at the feet.
+    dust.deployments.kick!(m, c.wx2, c.wy2, { scale: 0.5 });
   },
   air(c: SigCtx) {
     const { ctx, st, t, sc } = c;
@@ -509,11 +484,10 @@ const stormlash: AbilitySig = {
       }
     }
     ctx.restore();
-    // Sparks shake off the tip while the lash is live.
-    if (t < 0.4 && Math.random() < c.frameDt * 16) {
-      c.particles.burst(c.wx2, c.wy2 - 0.45, 1, [st.spark, '#ffffff'], {
-        speed: 1.8, life: 0.25, size: 0.05, gravity: 3, shape: 'streak', flicker: 0.5,
-      });
+    // Sparks shake off the tip while the lash is live — each gated
+    // beat one small TRUE discharge.
+    if (t < 0.4 && Math.random() < c.frameDt * 5) {
+      storm.deployments.impact!(asMatter(c), c.wx2, c.wy2, { scale: 0.25 });
     }
     c.glow(c.wx2, c.wy2, 0.9, 0.35 * fade);
   },
@@ -530,24 +504,12 @@ const stormlash: AbilitySig = {
  */
 const cinderstorm: AbilitySig = {
   spawn(c: SigCtx) {
-    // The exhale: soot rolls out at the base as the whirl stands up.
-    const rand = srand(c.seed ^ 0xf1);
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.4,
-        c.wy + Math.sin(a) * c.radius * 0.4 * c.squash,
-        1, [c.st.deep, '#3a2018'], {
-          speed: 1.2, life: 0.8, size: 0.11, gravity: -0.4, dir: a, spread: 0.3,
-          drag: 1.6, grow: 0.2, shape: 'puff', fade: '#241410', ground: true,
-        },
-      );
-    }
-    // First cinders leap: tongues catching in the young wind.
-    c.particles.burst(c.wx, c.wy - 0.3, 4, [c.st.mid, c.st.spark], {
-      speed: 1.3, life: 0.5, size: 0.1, gravity: -2.4, up: true,
-      shape: 'lick', flicker: 0.4, fade: c.st.deep, wobble: 0.7,
-    });
+    const m = asMatter(c);
+    // The exhale: TRUE soot crawls out low at the base of the whirl.
+    smoke.deployments.creep!(m, c.wx, c.wy, { radius: 0.5, dur: 0.8, scale: 0.6 });
+    // The standing fire the wind feeds on: a TRUE plume at the eye,
+    // full combustion story, its sparks caught up the column.
+    fire.deployments.plume!(m, c.wx, c.wy, { dur: 1.2, scale: 0.55 });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -590,7 +552,9 @@ const cinderstorm: AbilitySig = {
       }
     }
     ctx.restore();
-    // The whirl feeds: cinders join at the base and ride up.
+    // The whirl feeds: cinders join at the base and ride up — kept
+    // bespoke for their TANGENTIAL launch; no library verb owns the
+    // wind that bends fire sideways.
     if (Math.random() < c.frameDt * 18 * fade) {
       const a = Math.random() * Math.PI * 2;
       c.particles.burst(
@@ -615,22 +579,11 @@ const cinderstorm: AbilitySig = {
  */
 const glaciate: AbilitySig = {
   spawn(c: SigCtx) {
-    const rand = srand(c.seed ^ 0x101);
-    // The breath: frost smoke rolls out low across the freezing circle.
-    for (let k = 0; k < 7; k++) {
-      const a = (k / 7) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.45,
-        c.wy + Math.sin(a) * c.radius * 0.45 * c.squash,
-        1, [c.st.mid, c.st.core], {
-          speed: 1.2, life: 1.1, size: 0.12, gravity: 0.2, dir: a, spread: 0.35,
-          drag: 1.4, grow: 0.22, shape: 'puff', fade: '#ffffff', wobble: 0.4, ground: true,
-        },
-      );
-    }
-    // The air itself seizes: hanging glints where the cold passed.
-    c.particles.burst(c.wx, c.wy - 0.55, 6, ['#ffffff', c.st.core], {
-      speed: 0.6, life: 1.0, size: 0.11, gravity: 0.2, drag: 2.2, shape: 'glint',
+    // The breath: TRUE frost weather over the whole freezing circle —
+    // sinking cold motes and seized-air sparkle in one standing fog
+    // that outlasts the floes snapping in beneath it.
+    frost.deployments.fog!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.8, dur: 1.4, scale: 0.9,
     });
   },
   ground(c: SigCtx) {
@@ -689,20 +642,8 @@ const glaciate: AbilitySig = {
     ctx.restore();
     c.glow(c.wx, c.wy, c.radius * 0.9, 0.3 * fade);
   },
-  air(c: SigCtx) {
-    // The shelf breathes cold: frost smoke keeps rolling off it.
-    if (Math.random() < c.frameDt * 8 * (1 - c.t)) {
-      const a = Math.random() * Math.PI * 2;
-      const rr = c.radius * (0.4 + Math.random() * 0.5);
-      c.particles.burst(
-        c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash - 0.1,
-        1, [c.st.core, '#ffffff'], {
-          speed: 0.4, life: 0.9, size: 0.09, gravity: -0.4, drag: 1.6,
-          grow: 0.14, shape: 'puff', wobble: 0.4,
-        },
-      );
-    }
-  },
+  // (The shelf's breathing cold lives in the sustained library fog
+  // spawned with the freeze — one weather, not two.)
 };
 
 // ------------------------------------------------------- galvanic_arc
@@ -717,13 +658,12 @@ const glaciate: AbilitySig = {
  */
 const galvanic_arc: AbilitySig = {
   spawn(c: SigCtx) {
-    // Discharge at the pearl, arrival static at the conductor.
-    c.particles.burst(c.wx, c.wy - 0.4, 3, [c.st.core, '#ffffff'], {
-      speed: 0.9, life: 0.35, size: 0.08, gravity: 0.5, drag: 1.8, shape: 'glint',
-    });
-    c.particles.burst(c.wx2, c.wy2 - 0.45, 5, [c.st.spark, c.st.core], {
-      speed: 2.4, life: 0.3, size: 0.06, gravity: 2.8, shape: 'streak', flicker: 0.6,
-    });
+    const m = asMatter(c);
+    // The circuit closes as TRUE charge: a small discharge at the
+    // pearl, the full arrival discharge at the conductor — the
+    // standing earmark for this art, honored.
+    storm.deployments.impact!(m, c.wx, c.wy, { scale: 0.4 });
+    storm.deployments.impact!(m, c.wx2, c.wy2, { scale: 0.85 });
   },
   air(c: SigCtx) {
     const { ctx, st, t, sc } = c;
@@ -778,11 +718,9 @@ const galvanic_arc: AbilitySig = {
       ctx.stroke();
     }
     ctx.restore();
-    // The gap sheds static while it buzzes.
-    if (t < 0.8 && Math.random() < c.frameDt * 10) {
-      c.particles.burst(c.wx2, c.wy2 - 0.85, 1, [st.spark, '#ffffff'], {
-        speed: 1.2, life: 0.25, size: 0.05, gravity: 4, shape: 'streak', flicker: 0.6,
-      });
+    // The gap sheds static while it buzzes — gated TRUE discharges.
+    if (t < 0.8 && Math.random() < c.frameDt * 5) {
+      storm.deployments.impact!(asMatter(c), c.wx2, c.wy2, { scale: 0.25 });
     }
     c.glow(c.wx2, c.wy2, 0.8, 0.3 * fade);
   },
@@ -800,11 +738,9 @@ const galvanic_arc: AbilitySig = {
  */
 const overgrowth: AbilitySig = {
   spawn(c: SigCtx) {
-    // The soil breaks first: turf thrown by shoots in a hurry.
-    c.particles.burst(c.wx, c.wy, 6, ['#5a5045', '#4a4252'], {
-      speed: 1.3, life: 0.7, size: 0.1, gravity: -0.4, drag: 1.7, grow: 0.18,
-      shape: 'puff', ground: true,
-    });
+    // The soil breaks first: one TRUE breath of earth thrown by
+    // shoots in a hurry; the green stays the season's own.
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 0.9 });
     c.particles.burst(c.wx, c.wy - 0.2, 5, [c.st.mid, c.st.spark], {
       speed: 1.6, life: 0.6, size: 0.09, gravity: 2.5, up: true, shape: 'shard', spin: 8,
     });
@@ -909,22 +845,11 @@ const overgrowth: AbilitySig = {
  */
 const grave_chill: AbilitySig = {
   spawn(c: SigCtx) {
-    const rand = srand(c.seed ^ 0x121);
-    // The ground exhales: slow, heavy mist that barely rises.
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + rand() * 0.6;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.5,
-        c.wy + Math.sin(a) * c.radius * 0.5 * c.squash,
-        1, [c.st.mid, c.st.core], {
-          speed: 0.5, life: 1.3, size: 0.12, gravity: -0.25, dir: a, spread: 0.4,
-          drag: 1.8, grow: 0.18, shape: 'puff', fade: '#ffffff', wobble: 0.3, ground: true,
-        },
-      );
-    }
-    // The air stops: glints hang nearly motionless where it froze.
-    c.particles.burst(c.wx, c.wy - 0.6, 5, ['#ffffff', c.st.core], {
-      speed: 0.3, life: 1.2, size: 0.1, gravity: 0.1, drag: 2.6, shape: 'glint',
+    // The ground exhales the air that will not warm: TRUE frost fog
+    // over the risen stones — cold that SINKS, sparkle that hangs —
+    // standing for most of the chill's life.
+    frost.deployments.fog!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.7, dur: 1.5, scale: 0.8,
     });
   },
   ground(c: SigCtx) {
@@ -983,20 +908,8 @@ const grave_chill: AbilitySig = {
     ctx.restore();
     c.glow(c.wx, c.wy, c.radius * 0.8, 0.2 * fade);
   },
-  air(c: SigCtx) {
-    // Breath-slow wisps stand up off the stones and hang.
-    if (Math.random() < c.frameDt * 7 * (1 - c.t)) {
-      const a = Math.random() * Math.PI * 2;
-      const rr = c.radius * Math.random() * 0.7;
-      c.particles.burst(
-        c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash - 0.2,
-        1, [c.st.core, c.st.mid], {
-          speed: 0.25, life: 1.1, size: 0.09, gravity: -0.5, drag: 1.4,
-          grow: 0.1, shape: 'puff', wobble: 0.35,
-        },
-      );
-    }
-  },
+  // (The breath-slow wisps live in the sustained library fog spawned
+  // with the chill — one cold, not two.)
 };
 
 // -------------------------------------------------------- gloom_burst
@@ -1011,11 +924,10 @@ const grave_chill: AbilitySig = {
  */
 const gloom_burst: AbilitySig = {
   spawn(c: SigCtx) {
-    // The planting: dark soil turned over something that wants out.
-    c.particles.burst(c.wx, c.wy, 5, [c.st.deep, '#3a2440'], {
-      speed: 1.0, life: 0.8, size: 0.11, gravity: -0.3, drag: 1.7, grow: 0.2,
-      shape: 'puff', fade: '#1c1424', ground: true,
-    });
+    // The planting: TRUE dark crawls out of the turned soil — ink
+    // tongues along the floor with void motes over them; something
+    // wants out, and it is the library's dark that answers.
+    shadow.deployments.tendrils!(asMatter(c), c.wx, c.wy, { scale: 0.5 });
     c.particles.burst(c.wx, c.wy - 0.3, 4, [c.st.spark, c.st.mid], {
       speed: 1.1, life: 0.5, size: 0.08, gravity: 1.2, up: true, shape: 'glint',
     });

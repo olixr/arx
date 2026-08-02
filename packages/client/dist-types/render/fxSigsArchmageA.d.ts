@@ -15,6 +15,12 @@
  * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
  * 120fps is a law. No signature shares a centerpiece with any other,
  * in this file or any wave shipped before it.
+ *
+ * FX v5 wave 3d: fire, water, storm, dust, frost, smoke, and shadow
+ * route through the MATTER LIBRARY (ONE-VOICE LAW). Where a sustained
+ * library emitter covers a signature's old gated wisps, the gate was
+ * RETIRED — one voice, not two. arcane_ring and wisp_flare stay
+ * bespoke: arcane light owns no material.
  */
 import type { AbilitySig } from './fxSignatures.js';
 /**
