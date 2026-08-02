@@ -594,20 +594,40 @@ export class Camera {
   readonly yScale = 0.6;
 
   /**
-   * The camera's screen-space origin, SNAPPED to whole pixels. Every
-   * layer then translates by the same integer each frame — terrain
-   * blits, wall geometry and sprites move in lockstep. With a subpixel
-   * origin, anything that pixel-rounds its own coordinates (walls,
-   * stair seams) crosses pixel boundaries on different frames than the
-   * smoothly-resampled ground and appears to oscillate on its own
-   * layer. Standard pixel-camera discipline: snap once, at the source.
+   * THE DEVICE GRID: the real pixel lattice belongs to the BACKING
+   * STORE, not CSS space. The context is scaled by the (possibly
+   * FRACTIONAL) devicePixelRatio — adaptive resolution steps it in
+   * halves (2 -> 1.5), browser zoom mints 1.25/1.75 — so a CSS-integer
+   * coordinate can land exactly on a half device pixel. Two abutting
+   * fills that "share" such an edge each get partial AA coverage of
+   * the same pixel column, and the double-blend prints a uniform
+   * under-color hairline (the wall-joint / stall-counter seam bug).
+   * Every pixel-snap in the renderer must round on THIS lattice.
+   * resize() feeds the live ratio each frame.
+   */
+  snapDpr = 1;
+
+  /** Round a CSS-space coordinate onto the device pixel lattice. */
+  snapPx(v: number): number {
+    return Math.round(v * this.snapDpr) / this.snapDpr;
+  }
+
+  /**
+   * The camera's screen-space origin, SNAPPED to whole DEVICE pixels.
+   * Every layer then translates by the same device-pixel step each
+   * frame — terrain blits, wall geometry and sprites move in lockstep.
+   * With a subpixel origin, anything that pixel-rounds its own
+   * coordinates (walls, stair seams) crosses pixel boundaries on
+   * different frames than the smoothly-resampled ground and appears
+   * to oscillate on its own layer. Standard pixel-camera discipline:
+   * snap once, at the source, on the true lattice.
    */
   private originX(w: number): number {
-    return Math.round(w / 2 - this.x * this.scale);
+    return this.snapPx(w / 2 - this.x * this.scale);
   }
 
   private originY(h: number): number {
-    return Math.round(h / 2 - this.y * this.scale * this.yScale);
+    return this.snapPx(h / 2 - this.y * this.scale * this.yScale);
   }
 
   worldToScreen(wx: number, wy: number, w: number, h: number): Vec2 {
@@ -3023,6 +3043,10 @@ export class Renderer {
       this.canvas.height = bh;
     }
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // THE DEVICE GRID: every pixel-snap in the frame (camera origin,
+    // shared wall edges, chunk blit corners) rounds on the backing
+    // store's lattice, which only the live ratio defines.
+    this.camera.snapDpr = dpr;
     this.w = w;
     this.h = h;
   }
@@ -4716,15 +4740,17 @@ export class Renderer {
         if (baked.pending) this.chunkJobQueue.push(baked);
         // SHARED-CORNER SNAP LAW: each chunk's destination rect comes
         // from rounding its corner projections — the same corner a
-        // neighbor rounds to the same integer, so adjacent blits share
+        // neighbor rounds to the same value, so adjacent blits share
         // pixel edges EXACTLY. A float destination antialiases its edge
         // rows to partial alpha and a hairline seam shows at chunk
         // boundaries; a "+0.5 overdraw" only hides gaps, not the
-        // half-covered darkened edge pixels.
+        // half-covered darkened edge pixels. Rounding happens on THE
+        // DEVICE GRID: a CSS-integer corner under a fractional dpr
+        // still splits a device pixel, and both blits half-cover it.
         const p0 = this.camera.worldToScreen(cx * CHUNK_SIZE, cy * CHUNK_SIZE, this.w, this.h);
         const p1 = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, (cy + 1) * CHUNK_SIZE, this.w, this.h);
-        const x0 = Math.round(p0.x);
-        const y0 = Math.round(p0.y);
+        const x0 = this.camera.snapPx(p0.x);
+        const y0 = this.camera.snapPx(p0.y);
         this.ctx.imageSmoothingEnabled = true;
         // Chunks are baked square and drawn uniformly foreshortened —
         // the ground compresses evenly while heights stay full. The
@@ -4741,8 +4767,8 @@ export class Renderer {
           srcSz,
           x0,
           y0,
-          Math.round(p1.x) - x0,
-          Math.round(p1.y) - y0,
+          this.camera.snapPx(p1.x) - x0,
+          this.camera.snapPx(p1.y) - y0,
         );
       }
     }
@@ -5681,10 +5707,13 @@ export class Renderer {
     // seam column up the face at every joint. Abutting snapped edges
     // cover exactly; the bleed survives only on exposed ends, where
     // it hides the background sliver under the silhouette outline.
-    const x0 = w ? Math.round(p.x) : p.x - 0.25;
-    const x1 = e ? Math.round(p.x + s) : p.x + s + 0.25;
-    const y0 = n || nDoor ? Math.round(p.y) : p.y - 0.25;
-    const y1 = sw ? Math.round(p.y + syT) : p.y + syT + 0.25;
+    // Snapping lives on THE DEVICE GRID (camera.snapPx): a CSS-round
+    // under a fractional dpr parks the joint on a half device pixel
+    // and the abutting fills half-cover it — the seam returns.
+    const x0 = w ? this.camera.snapPx(p.x) : p.x - 0.25;
+    const x1 = e ? this.camera.snapPx(p.x + s) : p.x + s + 0.25;
+    const y0 = n || nDoor ? this.camera.snapPx(p.y) : p.y - 0.25;
+    const y1 = sw ? this.camera.snapPx(p.y + syT) : p.y + syT + 0.25;
     const sideCol = shade(mat === Tile.WallWood ? skin.log : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -6);
     // Shared timber course geometry — face, flanks, and corner ends
     // must agree on where every log beds. The stack reads bottom-up:
@@ -7700,11 +7729,12 @@ export class Renderer {
     const hs = whT * s;
     // THE SHARED-EDGE LAW: run-mates meet on one pixel-snapped edge
     // (the wallItem seam lesson — a bleed on a joined side prints a
-    // pale AA column up the face at every joint).
-    const x0 = w ? Math.round(p.x) : p.x - 0.25;
-    const x1 = e ? Math.round(p.x + s) : p.x + s + 0.25;
-    const y0 = n ? Math.round(p.y) : p.y - 0.25;
-    const y1 = sw ? Math.round(p.y + syT) : p.y + syT + 0.25;
+    // pale AA column up the face at every joint). Snapped on THE
+    // DEVICE GRID, never in CSS space (fractional-dpr seam lesson).
+    const x0 = w ? this.camera.snapPx(p.x) : p.x - 0.25;
+    const x1 = e ? this.camera.snapPx(p.x + s) : p.x + s + 0.25;
+    const y0 = n ? this.camera.snapPx(p.y) : p.y - 0.25;
+    const y1 = sw ? this.camera.snapPx(p.y + syT) : p.y + syT + 0.25;
     const nH = n ? this.garrisonHeightAt(game, tx, ty - 1) : whT;
     // Parapet teeth melt with the veil: full at standing height, gone
     // at the stub, easing between on the same continuous cut.
@@ -19849,8 +19879,15 @@ export class Renderer {
           Renderer.STALL_BANNERS[hashCoords(97, ax, ty) % Renderer.STALL_BANNERS.length]!;
         const hg = hashCoords(53, tx, ty);
         const baseY = p.y + syT * 0.42;
-        const xL = p.x - s * 0.5 - (jw ? 0.5 : 0);
-        const xR = p.x + s * 0.5 + (je ? 0.5 : 0);
+        // THE SHARED-EDGE LAW (the wallItem lesson): run-mates' base
+        // fills meet on ONE device-grid edge. The stall used raw
+        // float joints — the counter, display top and trim printed a
+        // permanent AA seam column at almost every zoom, the one
+        // multi-tile painter with neither snap nor bleed. Free ends
+        // stay float; the cloth overhead keeps its overlap bleed
+        // (same-color run cloth re-covers invisibly).
+        const xL = jw ? this.camera.snapPx(p.x - s * 0.5) : p.x - s * 0.5;
+        const xR = je ? this.camera.snapPx(p.x + s * 0.5) : p.x + s * 0.5;
         // STALL ARCHITECTURE LAW: chest-high counter with a FULL-TILE
         // display top, then open air, then the awning high overhead.
         // The valance hem clears the head of a seller standing one row
@@ -19873,24 +19910,28 @@ export class Renderer {
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
             const wind = windAtInto(WIND_TMP, tx + 0.5, ty + 0.5, t);
-            const tileL = p.x - s * 0.5;
-            const tileR = p.x + s * 0.5;
+            // Base fills span edge-to-edge between the SHARED-EDGE
+            // joints — a hardcoded `s` width from a snapped left edge
+            // would miss the snapped right edge by the snap remainder.
+            const tileL = xL;
+            const tileR = xR;
+            const tw = tileR - tileL;
             // Contact shade under the stand.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
-            ctx.fillRect(tileL, baseY - s * 0.01, s, s * 0.05);
+            ctx.fillRect(tileL, baseY - s * 0.01, tw, s * 0.05);
             // Display top first: a full tile of goods room, dimmer at
             // the back where the awning's shade falls.
             ctx.fillStyle = '#9a7040';
-            ctx.fillRect(tileL, topBack, s, syT);
+            ctx.fillRect(tileL, topBack, tw, syT);
             ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
-            ctx.fillRect(tileL, topBack, s, syT * 0.3);
+            ctx.fillRect(tileL, topBack, tw, syT * 0.3);
             // Counter face: the ShopCounter family's joinery — plinth
             // and recessed panels — so stalls, counters, and tables
             // compose into one market vocabulary.
             ctx.fillStyle = '#4a3116';
-            ctx.fillRect(tileL, baseY - s * 0.07, s, s * 0.07);
+            ctx.fillRect(tileL, baseY - s * 0.07, tw, s * 0.07);
             ctx.fillStyle = '#5e3f1e';
-            ctx.fillRect(tileL, faceTop, s, faceH - s * 0.07);
+            ctx.fillRect(tileL, faceTop, tw, faceH - s * 0.07);
             ctx.fillStyle = shade('#5e3f1e', -12);
             for (const px2 of [-0.42, 0.04] as const) {
               ctx.fillRect(p.x + px2 * s, faceTop + s * 0.1, s * 0.38, faceH - s * 0.28);
@@ -19901,7 +19942,7 @@ export class Renderer {
             }
             // The bright working lip along the top's south edge.
             ctx.fillStyle = '#b08347';
-            ctx.fillRect(tileL, faceTop - s * 0.035, s, s * 0.05);
+            ctx.fillRect(tileL, faceTop - s * 0.035, tw, s * 0.05);
             // Wares: two or three goods per tile, hash-picked so no
             // two stalls stock the same shelf.
             const slots = (hg & 1) === 0 ? [-0.28, 0.28] : [-0.3, 0, 0.3];
@@ -19931,7 +19972,9 @@ export class Renderer {
             // The awning slab, styled per the run's banner.
             const oxL = jw ? tileL - 0.5 : tileL - s * 0.07;
             const oxR = je ? tileR + 0.5 : tileR + s * 0.07;
-            const bandW = s / 4;
+            // Stripe/valance bands quarter the SNAPPED span, so the
+            // last band lands exactly on the shared joint edge.
+            const bandW = tw / 4;
             if (style.kind === 'stripes') {
               for (let k = 0; k < 4; k++) {
                 ctx.fillStyle = k % 2 === 0 ? style.a : style.b;
@@ -19997,7 +20040,7 @@ export class Renderer {
             if (style.kind === 'solid') {
               // The trim line the merchant sewed on.
               ctx.fillStyle = style.b;
-              ctx.fillRect(tileL, hemY - s * 0.018, s, s * 0.036);
+              ctx.fillRect(tileL, hemY - s * 0.018, tw, s * 0.036);
             }
           },
         };
