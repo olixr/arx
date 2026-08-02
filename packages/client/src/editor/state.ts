@@ -9,6 +9,7 @@ export type ToolId =
   | 'line'
   | 'rect'
   | 'ellipse'
+  | 'polygon'
   | 'fill'
   | 'road'
   | 'select'
@@ -20,6 +21,12 @@ export type ToolId =
   | 'actor'
   | 'sign'
   | 'spawn';
+
+/** How the select tool chooses: drag a box, draw a loop, or match tiles. */
+export type SelectMode = 'marquee' | 'lasso' | 'wand' | 'same';
+
+/** How the paint tool lays cells: plain, clipboard pattern, or scatter. */
+export type BrushMode = 'normal' | 'pattern' | 'scatter';
 
 /** Which sidebar tab is showing. */
 export type SidebarTab = 'tiles' | 'structures' | 'placements' | 'people';
@@ -47,6 +54,8 @@ export interface ClipBuf {
   ground: Uint16Array;
   detail: Uint16Array;
   elev: Int8Array;
+  /** Lasso/wand captures: 1 = the cell travels, 0 = a hole. */
+  mask?: Uint8Array;
 }
 
 export function newZone(id = 'myzone', name = 'My Zone', width = 96, height = 96): ZoneDef {
@@ -79,10 +88,21 @@ export class EditorState {
   elevLevel = 1;
   brushSize = 1;
   brushShape: 'round' | 'square' = 'round';
-  /** Rect/ellipse tools: filled or outline. */
+  /** Rect/ellipse/polygon tools: filled or outline. */
   shapeFill = true;
+  /** Rect tool: outline as a wall shell with a south doorway. */
+  rectWalls = false;
   roadWidth = 3;
+  selectMode: SelectMode = 'marquee';
+  brushMode: BrushMode = 'normal';
+  /** Scatter brush: chance a stroked cell takes the detail, 0..1. */
+  scatterDensity = 0.35;
   selection: Selection | null = null;
+  /**
+   * Lasso/wand refinement of `selection` (its bbox): LOCAL cell
+   * indices that are truly selected. Null = the whole rect.
+   */
+  selectionMask: Set<number> | null = null;
   clip: ClipBuf | null = null;
   hover: { x: number; y: number } | null = null;
 
@@ -123,6 +143,7 @@ export class EditorState {
     this.dirty = false;
     this.serverBacked = opts.serverBacked;
     this.selection = null;
+    this.selectionMask = null;
     this.selected = null;
     this.hoverPlacement = null;
     this.armedPrefab = null;

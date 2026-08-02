@@ -156,6 +156,7 @@ export function installKeys(deps: KeysDeps): KeysHandle {
       case 'Enter':
         if (ops.commitPatrolEdit()) break;
         if (state.tool === 'road' && ops.roadPts.length >= 2) ops.commitRoad();
+        if (state.tool === 'polygon') ops.commitPolygon();
         break;
       case 'Escape': {
         // One cancel per press, most-transient first — predictable exits.
@@ -163,15 +164,27 @@ export function installKeys(deps: KeysDeps): KeysHandle {
         if (ops.cancelPaste()) break;
         if (ops.disarmStamp()) break;
         if (ops.abandonRoad()) break;
+        if (ops.abandonPolygon()) break;
         if (state.selected) {
           state.selected = null;
           state.changed();
           break;
         }
         if (state.selection) {
-          state.selection = null;
-          state.changed();
+          ops.clearSelection();
         }
+        break;
+      }
+      case 'ArrowLeft':
+      case 'ArrowRight':
+      case 'ArrowUp':
+      case 'ArrowDown': {
+        // THE NUDGE: arrows carry the selection's content one tile.
+        if (!state.selection) break;
+        e.preventDefault();
+        const dx = e.code === 'ArrowLeft' ? -1 : e.code === 'ArrowRight' ? 1 : 0;
+        const dy = e.code === 'ArrowUp' ? -1 : e.code === 'ArrowDown' ? 1 : 0;
+        ops.nudgeSelection(dx, dy);
         break;
       }
       case 'Delete':
@@ -181,9 +194,8 @@ export function installKeys(deps: KeysDeps): KeysHandle {
           ops.removePlacementRef(state.selected);
           break;
         }
-        const r = ops.selRect();
-        if (r) {
-          ops.clearRegion(r, 'delete selection');
+        if (state.selection) {
+          ops.clearSelectedCells('delete selection');
           toast('cleared selection');
         }
         break;

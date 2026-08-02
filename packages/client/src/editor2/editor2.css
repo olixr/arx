@@ -895,6 +895,86 @@
   white-space: nowrap;
 }
 
+/* ------------------------------------------------- the context bar */
+
+#ctxbar {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: color-mix(in srgb, var(--bg1) 94%, transparent);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--r2);
+  box-shadow: var(--shadow-2);
+  animation: k-dialog-in var(--t-fast) var(--ease-out);
+}
+
+#ctxbar button {
+  height: 26px;
+  padding: 0 var(--s2);
+  font-size: var(--fs-dense);
+}
+
+.ctx-dims {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--ink2);
+  padding: 0 var(--s2);
+  border-right: 1px solid var(--edge);
+  margin-right: 2px;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------ the history panel */
+
+#history-host {
+  padding: 0 var(--s3) var(--s2);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.hist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.hist-row {
+  height: 22px;
+  padding: 0 var(--s2);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: var(--r1);
+  text-align: left;
+  font-size: 11.5px;
+  color: var(--ink1);
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.hist-row:hover {
+  background: var(--bg2);
+}
+
+.hist-row.at {
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+
+.hist-row.undone {
+  color: var(--ink2);
+  font-style: italic;
+}
+
 /* ---------------------------------------------------- people library */
 
 .people-search {

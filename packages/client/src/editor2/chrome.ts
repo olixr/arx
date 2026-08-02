@@ -119,6 +119,34 @@ export class Chrome {
       return;
     }
 
+    // The select tool: its four hands, then nothing else.
+    if (state.tool === 'select') {
+      const modeRow = el('div', 'opt-row');
+      for (const [id, label, tip] of [
+        ['marquee', 'marquee', 'Drag a box'],
+        ['lasso', 'lasso', 'Draw a freehand loop'],
+        ['wand', 'wand', 'Click a region — contiguous same tile'],
+        ['same', 'same', 'Click a tile — EVERY match in the zone'],
+      ] as Array<[typeof state.selectMode, string, string]>) {
+        const b = el('button', 'opt-btn' + (state.selectMode === id ? ' active' : ''), label);
+        b.title = tip;
+        b.onclick = () => {
+          state.selectMode = id;
+          state.changed();
+        };
+        modeRow.appendChild(b);
+      }
+      root.appendChild(modeRow);
+      root.appendChild(
+        el(
+          'p',
+          'muted',
+          'Drag inside a selection to move it · Alt-drag copies · arrows nudge · Delete clears · ⌘C/X/V travel across zones.',
+        ),
+      );
+      return;
+    }
+
     const layerRow = el('div', 'opt-row');
     for (const [id, label, key] of [
       ['ground', 'Ground', '1'],
@@ -173,7 +201,39 @@ export class Chrome {
     }
     root.appendChild(brushRow);
 
-    if (state.tool === 'rect' || state.tool === 'ellipse') {
+    // The paint tool's three hands: plain, the clipboard as a nib,
+    // and the scatter die for organic dressing.
+    if (state.tool === 'paint') {
+      const modeRow = el('div', 'opt-row');
+      for (const [id, label, tip] of [
+        ['normal', 'plain', 'The picked tile, every cell'],
+        ['pattern', 'pattern', 'The clipboard tiles as the nib (copy a region first)'],
+        ['scatter', 'scatter', 'Each cell rolls the density — organic dressing'],
+      ] as Array<[typeof state.brushMode, string, string]>) {
+        const b = el('button', 'opt-btn' + (state.brushMode === id ? ' active' : ''), label);
+        b.title = tip;
+        b.onclick = () => {
+          state.brushMode = id;
+          state.changed();
+        };
+        modeRow.appendChild(b);
+      }
+      root.appendChild(modeRow);
+      if (state.brushMode === 'scatter') {
+        const dRow = el('div', 'opt-row');
+        dRow.appendChild(
+          sliderRow('density %', 5, 95, Math.round(state.scatterDensity * 100), (v) => {
+            state.scatterDensity = v / 100;
+          }).root,
+        );
+        root.appendChild(dRow);
+      }
+      if (state.brushMode === 'pattern' && !state.clip) {
+        root.appendChild(el('p', 'muted', 'Copy a region first (M, then ⌘C) — the clipboard is the nib.'));
+      }
+    }
+
+    if (state.tool === 'rect' || state.tool === 'ellipse' || state.tool === 'polygon') {
       const row = el('div', 'opt-row');
       for (const [fill, label] of [
         [true, 'filled'],
@@ -186,7 +246,20 @@ export class Chrome {
         };
         row.appendChild(b);
       }
+      if (state.tool === 'rect') {
+        // THE WALL SHELL: the drag raises a building's bones.
+        const w = el('button', 'opt-btn' + (state.rectWalls ? ' active' : ''), 'walls + door');
+        w.title = 'Outline in the picked wall tile with a doorway on the south face';
+        w.onclick = () => {
+          state.rectWalls = !state.rectWalls;
+          state.changed();
+        };
+        row.appendChild(w);
+      }
       root.appendChild(row);
+      if (state.tool === 'polygon') {
+        root.appendChild(el('p', 'muted', 'Click corners · Enter or double-click closes it · right-click removes the last corner.'));
+      }
     }
 
     if (state.tool === 'road') {

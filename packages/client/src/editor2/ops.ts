@@ -30,9 +30,11 @@ import {
   ellipseCells,
   floodCells,
   footprint,
+  polygonCells,
   rectCells,
   roadCells,
   thickLine,
+  wallShellCells,
   type Pt,
 } from '../editor/tools.js';
 import type { RegistrySnapshot } from '../editor/api.js';
@@ -41,12 +43,21 @@ import { TOOL_SPECS } from './commands.js';
 
 export type { Pt };
 
+/** Small deterministic hash → [0,1) (the scatter die). */
+function hash01(a: number, b: number, c = 0): number {
+  let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263) + Math.imul(c | 0, 2147483647)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) | 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
 export interface ClipRegion {
   w: number;
   h: number;
   ground: Uint16Array;
   detail: Uint16Array;
   elev: Int8Array;
+  /** Lasso/wand captures: 1 = the cell travels, 0 = a hole. */
+  mask?: Uint8Array;
 }
 
 export class EditorOps {
@@ -59,6 +70,10 @@ export class EditorOps {
    * waypoints to this cluster's patrol; Enter commits, Esc restores.
    */
   patrolEdit: { index: number; points: Array<{ x: number; y: number }> } | null = null;
+  /** Polygon tool corners-in-progress (LOCAL tiles). */
+  polyPts: Pt[] = [];
+  /** Per-stroke die for the scatter brush — same stroke, same holes. */
+  private scatterSeed = 1;
   private pendingZoneBefore: ZoneDef | null = null;
 
   constructor(
@@ -95,19 +110,48 @@ export class EditorOps {
 
   // ------------------------------------------------- brush & strokes
 
+  /** Roll a new die for the coming stroke (scatter's hole pattern). */
+  newStrokeSeed(): void {
+    this.scatterSeed = (Math.random() * 0xffff) | 1;
+  }
+
   applyBrush(rec: StrokeRecorder, x: number, y: number, erase: boolean): void {
     if (!this.inBounds(x, y)) return;
+    const s = this.state;
+    // THE SCATTER BRUSH: each cell rolls against the density — organic
+    // dressing (flowers, tufts, pebbles) without cell-by-cell labor.
+    if (!erase && s.brushMode === 'scatter' && s.tool === 'paint') {
+      if (hash01(x * 3 + this.scatterSeed, y * 7, this.scatterSeed) > s.scatterDensity) return;
+    }
     const i = this.idx(x, y);
-    const z = this.state.zone;
+    const z = s.zone;
     const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
-    if (this.state.layer === 'ground') {
-      c.g1 = erase ? Tile.Grass : this.state.brushTile;
+    // THE PATTERN BRUSH: the clipboard is the nib, tiled world-stable —
+    // fences, hedgerows, and crop rows paint as fabric, not cells.
+    if (!erase && s.brushMode === 'pattern' && s.clip && s.tool === 'paint') {
+      const p = s.clip;
+      const px = ((x % p.w) + p.w) % p.w;
+      const py = ((y % p.h) + p.h) % p.h;
+      const pi = py * p.w + px;
+      if (p.mask && p.mask[pi] === 0) return;
+      const g = p.ground[pi]!;
+      if (g === GHOST_SKIP) return;
+      c.g1 = g;
+      z.ground[i] = g;
+      c.d1 = p.detail[pi]!;
+      z.detail[i] = c.d1;
+      c.e1 = p.elev[pi]!;
+      z.elev![i] = c.e1;
+      return;
+    }
+    if (s.layer === 'ground') {
+      c.g1 = erase ? Tile.Grass : s.brushTile;
       z.ground[i] = c.g1;
-    } else if (this.state.layer === 'detail') {
-      c.d1 = erase ? Detail.None : this.state.brushDetail;
+    } else if (s.layer === 'detail') {
+      c.d1 = erase ? Detail.None : s.brushDetail;
       z.detail[i] = c.d1;
     } else {
-      c.e1 = erase ? 0 : Math.max(-2, Math.min(3, this.state.elevLevel));
+      c.e1 = erase ? 0 : Math.max(-2, Math.min(3, s.elevLevel));
       z.elev![i] = c.e1;
     }
   }
@@ -165,6 +209,24 @@ export class EditorOps {
     this.state.changed();
   }
 
+  /** Jump the history cursor to `target` (the History panel's click). */
+  jumpHistory(target: number): void {
+    let guard = 400;
+    while (this.history.cursor > target && guard-- > 0) {
+      const r = this.history.undo(this.state.zone);
+      if (!r) break;
+      if (r.zone !== this.state.zone) this.state.zone = r.zone;
+    }
+    while (this.history.cursor < target && guard-- > 0) {
+      const r = this.history.redo(this.state.zone);
+      if (!r) break;
+      if (r.zone !== this.state.zone) this.state.zone = r.zone;
+    }
+    this.view.markAllDirty();
+    this.state.dirty = true;
+    this.state.changed();
+  }
+
   undoRedo(dir: 'undo' | 'redo'): void {
     const res = dir === 'undo' ? this.history.undo(this.state.zone) : this.history.redo(this.state.zone);
     if (!res) {
@@ -186,6 +248,7 @@ export class EditorOps {
       this.roadPts = [];
       this.view.preview = null;
     }
+    if (tool !== 'polygon') this.polyPts = [];
     if (tool !== 'structure' && tool !== 'prefab') this.view.ghost = null;
     const spec = TOOL_SPECS.get(tool);
     if (spec?.tab) this.state.tab = spec.tab;
@@ -227,7 +290,7 @@ export class EditorOps {
     toast(`picked ${tileDef(z.ground[i]!).name}`);
   }
 
-  setPreview(pts: Pt[], erase: boolean): void {
+  setPreview(pts: Pt[], erase: boolean, dims?: { x: number; y: number; w: number; h: number }): void {
     const indices = new Set<number>();
     for (const p of pts) if (this.inBounds(p.x, p.y)) indices.add(this.idx(p.x, p.y));
     this.view.preview = {
@@ -237,6 +300,7 @@ export class EditorOps {
         : this.state.layer === 'ground'
           ? 'rgba(233, 236, 243, 0.30)'
           : 'rgba(140, 210, 240, 0.30)',
+      ...(dims ? { dims } : {}),
     };
   }
 
@@ -272,6 +336,99 @@ export class EditorOps {
           ? (i: number): number => z.detail[i]!
           : (i: number): number => z.elev![i]!;
     return floodCells(x, y, z.width, z.height, sample);
+  }
+
+  // ------------------------------------------------------- polygon
+
+  polygonPreviewCells(extra?: Pt): Pt[] {
+    const pts = extra ? [...this.polyPts, extra] : this.polyPts;
+    if (pts.length < 2) return pts.slice();
+    return polygonCells(pts, pts.length >= 3 && this.state.shapeFill);
+  }
+
+  commitPolygon(): boolean {
+    if (this.polyPts.length < 3) return false;
+    const pts = polygonCells(this.polyPts, this.state.shapeFill).filter((p) =>
+      this.inBounds(p.x, p.y),
+    );
+    this.applyCellsOp('polygon', pts);
+    this.polyPts = [];
+    this.view.preview = null;
+    toast(`polygon laid (${pts.length} tiles)`);
+    return true;
+  }
+
+  /** The lasso loop's filled region (its own path closes it). */
+  lassoPreview(path: Pt[]): Pt[] {
+    return polygonCells(path, true);
+  }
+
+  abandonPolygon(): boolean {
+    if (this.polyPts.length === 0) return false;
+    this.polyPts = [];
+    this.view.preview = null;
+    toast('polygon abandoned');
+    return true;
+  }
+
+  // ----------------------------------------------------- wall shell
+
+  /**
+   * THE WALL SHELL (rect tool, walls mode): the outline in the chosen
+   * wall tile with a doorway centered on the south face — a building's
+   * bones in one drag. The doorway follows the wall's material.
+   */
+  applyWallShell(anchor: Pt, cur: Pt): void {
+    const wall = this.state.brushTile;
+    const door = wall === Tile.WallStone ? Tile.DoorwayStone : Tile.DoorwayWood;
+    const cells = wallShellCells(anchor.x, anchor.y, cur.x, cur.y, wall, door).filter((c) =>
+      this.inBounds(c.x, c.y),
+    );
+    const rec = new StrokeRecorder();
+    const z = this.state.zone;
+    const pts: Pt[] = [];
+    for (const cell of cells) {
+      const i = this.idx(cell.x, cell.y);
+      const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+      c.g1 = cell.tile;
+      z.ground[i] = c.g1;
+      pts.push({ x: cell.x, y: cell.y });
+    }
+    this.commitStroke(rec, 'wall shell', pts);
+    toast('wall shell raised — the doorway faces south');
+  }
+
+  wallShellPreview(anchor: Pt, cur: Pt): Pt[] {
+    return wallShellCells(anchor.x, anchor.y, cur.x, cur.y, 0, 0).map((c) => ({ x: c.x, y: c.y }));
+  }
+
+  // ------------------------------------------------- select helpers
+
+  /** Contiguous same-value region under the cursor (the wand). */
+  wandCells(x: number, y: number): Pt[] {
+    if (!this.inBounds(x, y)) return [];
+    return this.floodFrom(x, y);
+  }
+
+  /** EVERY cell matching the value under the cursor (select-same). */
+  selectSameCells(x: number, y: number): Pt[] {
+    if (!this.inBounds(x, y)) return [];
+    const z = this.state.zone;
+    const layer = this.state.layer;
+    const sample =
+      layer === 'ground'
+        ? (i: number): number => z.ground[i]!
+        : layer === 'detail'
+          ? (i: number): number => z.detail[i]!
+          : (i: number): number => z.elev![i]!;
+    const want = sample(this.idx(x, y));
+    const out: Pt[] = [];
+    for (let ty = 0; ty < z.height; ty++) {
+      for (let tx = 0; tx < z.width; tx++) {
+        if (sample(ty * z.width + tx) === want) out.push({ x: tx, y: ty });
+      }
+    }
+    return out;
   }
 
   // ---------------------------------------------------------- road
@@ -313,72 +470,137 @@ export class EditorOps {
     };
   }
 
+  /** Is this LOCAL cell inside the live selection (mask-aware)? */
+  inSelection(x: number, y: number): boolean {
+    const r = this.selRect();
+    if (!r || x < r.x0 || x > r.x1 || y < r.y0 || y > r.y1) return false;
+    const mask = this.state.selectionMask;
+    return !mask || mask.has(this.idx(x, y));
+  }
+
+  /** Every selected LOCAL cell (the rect, refined by the mask). */
+  selectionCells(): Pt[] {
+    const r = this.selRect();
+    if (!r) return [];
+    const mask = this.state.selectionMask;
+    const out: Pt[] = [];
+    for (let y = r.y0; y <= r.y1; y++) {
+      for (let x = r.x0; x <= r.x1; x++) {
+        if (!this.inBounds(x, y)) continue;
+        if (mask && !mask.has(this.idx(x, y))) continue;
+        out.push({ x, y });
+      }
+    }
+    return out;
+  }
+
+  /** Adopt an arbitrary cell set as the selection (lasso/wand/same). */
+  setSelectionFromCells(pts: Pt[]): void {
+    const inPts = pts.filter((p) => this.inBounds(p.x, p.y));
+    if (inPts.length === 0) {
+      this.clearSelection();
+      return;
+    }
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    const mask = new Set<number>();
+    for (const p of inPts) {
+      x0 = Math.min(x0, p.x);
+      y0 = Math.min(y0, p.y);
+      x1 = Math.max(x1, p.x);
+      y1 = Math.max(y1, p.y);
+      mask.add(this.idx(p.x, p.y));
+    }
+    this.state.selection = { x0, y0, x1, y1 };
+    // A full rect needs no mask — plain marquee semantics downstream.
+    const full = (x1 - x0 + 1) * (y1 - y0 + 1) === mask.size;
+    this.state.selectionMask = full ? null : mask;
+    this.state.changed();
+  }
+
+  clearSelection(): void {
+    this.state.selection = null;
+    this.state.selectionMask = null;
+    this.state.changed();
+  }
+
   copySelection(): boolean {
     const r = this.selRect();
     if (!r) return false;
     const w = r.x1 - r.x0 + 1;
     const h = r.y1 - r.y0 + 1;
     const z = this.state.zone;
+    const mask = this.state.selectionMask;
     const buf: ClipRegion = {
       w,
       h,
       ground: new Uint16Array(w * h),
       detail: new Uint16Array(w * h),
       elev: new Int8Array(w * h),
+      ...(mask ? { mask: new Uint8Array(w * h) } : {}),
     };
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const src = this.idx(r.x0 + x, r.y0 + y);
-        buf.ground[y * w + x] = z.ground[src]!;
-        buf.detail[y * w + x] = z.detail[src]!;
-        buf.elev[y * w + x] = z.elev![src]!;
+        const di = y * w + x;
+        const inMask = !mask || mask.has(src);
+        // Holes carry the skip sentinel so every ghost path draws
+        // them transparent; stampBuffer skips them by mask anyway.
+        buf.ground[di] = inMask ? z.ground[src]! : GHOST_SKIP;
+        buf.detail[di] = inMask ? z.detail[src]! : 0;
+        buf.elev[di] = inMask ? z.elev![src]! : 0;
+        if (buf.mask) buf.mask[di] = inMask ? 1 : 0;
       }
     }
     this.state.clip = buf;
     return true;
   }
 
-  clearRegion(r: { x0: number; y0: number; x1: number; y1: number }, label: string): void {
-    const pts: Pt[] = [];
+  /** Clear the SELECTED cells (mask-aware) as one op. */
+  clearSelectedCells(label: string): void {
+    const pts = this.selectionCells();
+    if (pts.length === 0) return;
     const rec = new StrokeRecorder();
     const z = this.state.zone;
-    for (let y = r.y0; y <= r.y1; y++) {
-      for (let x = r.x0; x <= r.x1; x++) {
-        if (!this.inBounds(x, y)) continue;
-        const i = this.idx(x, y);
-        const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
-        c.g1 = Tile.Grass;
-        c.d1 = Detail.None;
-        c.e1 = 0;
-        z.ground[i] = c.g1;
-        z.detail[i] = c.d1;
-        z.elev![i] = c.e1;
-        pts.push({ x, y });
-      }
+    for (const p of pts) {
+      const i = this.idx(p.x, p.y);
+      const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+      c.g1 = Tile.Grass;
+      c.d1 = Detail.None;
+      c.e1 = 0;
+      z.ground[i] = c.g1;
+      z.detail[i] = c.d1;
+      z.elev![i] = c.e1;
     }
     this.commitStroke(rec, label, pts);
   }
 
-  /** Clear a region into an open recorder (the cut half of a move). */
+  /** Legacy rect clear (delete-selection path keeps its name). */
+  clearRegion(r: { x0: number; y0: number; x1: number; y1: number }, label: string): void {
+    void r;
+    this.clearSelectedCells(label);
+  }
+
+  /** Clear the selection's cells into an open recorder (a move's cut). */
   clearRegionInto(
     r: { x0: number; y0: number; x1: number; y1: number },
     rec: StrokeRecorder,
     pts: Pt[],
   ): void {
+    void r;
     const z = this.state.zone;
-    for (let y = r.y0; y <= r.y1; y++) {
-      for (let x = r.x0; x <= r.x1; x++) {
-        if (!this.inBounds(x, y)) continue;
-        const i = this.idx(x, y);
-        const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
-        c.g1 = Tile.Grass;
-        c.d1 = Detail.None;
-        c.e1 = 0;
-        z.ground[i] = c.g1;
-        z.detail[i] = c.d1;
-        z.elev![i] = c.e1;
-        pts.push({ x, y });
-      }
+    for (const p of this.selectionCells()) {
+      const i = this.idx(p.x, p.y);
+      const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+      c.g1 = Tile.Grass;
+      c.d1 = Detail.None;
+      c.e1 = 0;
+      z.ground[i] = c.g1;
+      z.detail[i] = c.d1;
+      z.elev![i] = c.e1;
+      pts.push({ x: p.x, y: p.y });
     }
   }
 
@@ -386,14 +608,17 @@ export class EditorOps {
     const z = this.state.zone;
     for (let y = 0; y < buf.h; y++) {
       for (let x = 0; x < buf.w; x++) {
+        const bi = y * buf.w + x;
+        // Lasso holes stay holes: masked-out cells never land.
+        if (buf.mask && buf.mask[bi] === 0) continue;
         const lx = at.x + x;
         const ly = at.y + y;
         if (!this.inBounds(lx, ly)) continue;
         const i = this.idx(lx, ly);
         const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
-        c.g1 = buf.ground[y * buf.w + x]!;
-        c.d1 = buf.detail[y * buf.w + x]!;
-        c.e1 = buf.elev[y * buf.w + x]!;
+        c.g1 = buf.ground[bi]!;
+        c.d1 = buf.detail[bi]!;
+        c.e1 = buf.elev[bi]!;
         z.ground[i] = c.g1;
         z.detail[i] = c.d1;
         z.elev![i] = c.e1;
@@ -403,11 +628,71 @@ export class EditorOps {
   }
 
   cutSelection(): void {
-    const r = this.selRect();
-    if (r && this.copySelection()) {
-      this.clearRegion(r, 'cut selection');
+    if (this.copySelection()) {
+      this.clearSelectedCells('cut selection');
       toast('cut selection');
     }
+  }
+
+  /**
+   * THE SWAP — replace one ground tile with another inside the
+   * selection, one undoable op. The quick "this fence was the wrong
+   * wood" verb every marquee wants.
+   */
+  swapTiles(from: number, to: number): number {
+    const pts = this.selectionCells();
+    if (pts.length === 0 || from === to) return 0;
+    const rec = new StrokeRecorder();
+    const z = this.state.zone;
+    let n = 0;
+    const touched: Pt[] = [];
+    for (const p of pts) {
+      const i = this.idx(p.x, p.y);
+      if (z.ground[i] !== from) continue;
+      const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+      c.g1 = to;
+      z.ground[i] = to;
+      touched.push(p);
+      n++;
+    }
+    this.commitStroke(rec, `swap ${tileDef(from).name} → ${tileDef(to).name}`, touched);
+    return n;
+  }
+
+  /** Ground-tile census of the selection (the swap dialog's menu). */
+  selectionTileCensus(): Array<{ tile: number; count: number }> {
+    const z = this.state.zone;
+    const counts = new Map<number, number>();
+    for (const p of this.selectionCells()) {
+      const g = z.ground[this.idx(p.x, p.y)]!;
+      counts.set(g, (counts.get(g) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([tile, count]) => ({ tile, count }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  /**
+   * THE NUDGE — arrow keys carry the selection's content (and the
+   * selection itself) one tile over, one undoable op per press.
+   */
+  nudgeSelection(dx: number, dy: number): void {
+    const r = this.selRect();
+    if (!r || !this.copySelection()) return;
+    const clip = this.state.clip!;
+    const rec = new StrokeRecorder();
+    const pts: Pt[] = [];
+    this.clearRegionInto(r, rec, pts);
+    this.stampBuffer(clip, { x: r.x0 + dx, y: r.y0 + dy }, rec, pts);
+    this.commitStroke(rec, 'nudge selection', pts);
+    this.state.selection = { x0: r.x0 + dx, y0: r.y0 + dy, x1: r.x1 + dx, y1: r.y1 + dy };
+    if (this.state.selectionMask) {
+      const w = this.state.zone.width;
+      this.state.selectionMask = new Set(
+        [...this.state.selectionMask].map((i) => i + dy * w + dx),
+      );
+    }
+    this.state.changed();
   }
 
   armPaste(): boolean {
@@ -647,7 +932,14 @@ export class EditorOps {
         if (cell.detail !== undefined) detail[y * w + x] = cell.detail;
       }
     }
-    this.view.ghost = { w, h, ground, detail, at: { x: t.x - (w >> 1), y: t.y - (h >> 1) } };
+    this.view.ghost = {
+      w,
+      h,
+      ground,
+      detail,
+      key: `tpl:${tpl.id}${this.state.stampFlip ? ':f' : ''}`,
+      at: { x: t.x - (w >> 1), y: t.y - (h >> 1) },
+    };
   }
 
   stampTemplateAt(t: Pt): void {
@@ -703,6 +995,8 @@ export class EditorOps {
       h: p.height,
       ground: p.ground,
       detail: p.detail,
+      elev: p.elev,
+      key: `pf:${p.id}`,
       at: { x: t.x - (p.width >> 1), y: t.y - (p.height >> 1) },
       pins,
     };

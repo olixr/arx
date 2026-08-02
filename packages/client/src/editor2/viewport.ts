@@ -13,6 +13,7 @@
 import { CHUNK_SIZE, TILE_PX, tileDef } from '@arx/shared';
 import { EditorView, GHOST_SKIP } from '../editor/render.js';
 import { sameRef } from '../editor/placements.js';
+import { renderLayersPreview } from '../editor/preview.js';
 import type { EditorState } from '../editor/state.js';
 import { toast } from '../studio2/kit.js';
 import { EditorStage } from './stage.js';
@@ -60,6 +61,8 @@ export class Viewport {
     | null = null;
 
   private warnedFallback = false;
+  /** TRUE-RENDER GHOSTS: baked stamp canvases keyed by ghost identity. */
+  private readonly ghostBakes = new Map<string, HTMLCanvasElement>();
 
   constructor(
     readonly draft: EditorView,
@@ -143,6 +146,22 @@ export class Viewport {
     this.pxPerTile = this.clampScale(Math.min(w / z.width, h / (z.height * ys)) * 0.92);
     this.centerX = z.width / 2;
     this.centerY = z.height / 2;
+  }
+
+  /** A LOCAL tile's screen position inside the canvas-wrap (context bar). */
+  localToScreen(lx: number, ly: number): { x: number; y: number } {
+    const z = this.state.zone;
+    if (this.onStage) {
+      const rect = this.stageCanvas.getBoundingClientRect();
+      const cam = this.stage.renderer.camera;
+      const p = cam.worldToScreen(z.origin.x + lx, z.origin.y + ly, rect.width, rect.height);
+      return { x: p.x, y: p.y };
+    }
+    const rect = this.draftCanvas.getBoundingClientRect();
+    return {
+      x: rect.width / 2 + (lx - this.centerX) * this.pxPerTile,
+      y: rect.height / 2 + (ly - this.centerY) * this.pxPerTile,
+    };
   }
 
   /** The visible LOCAL-tile rect (minimap window, culling). */
@@ -325,7 +344,7 @@ export class Viewport {
       ctx.stroke();
     }
 
-    // Brush/shape/road preview cells.
+    // Brush/shape/road preview cells + the live measurement chip.
     const preview = this.draft.preview;
     if (preview) {
       ctx.fillStyle = preview.color;
@@ -334,29 +353,86 @@ export class Viewport {
         const y = Math.floor(i / z.width);
         ctx.fillRect(sx(x), sy(y), s, s * ys);
       }
+      if (preview.dims && preview.dims.w + preview.dims.h > 2) {
+        const label = `${preview.dims.w} × ${preview.dims.h}`;
+        ctx.font = '600 11px ui-monospace, Menlo, monospace';
+        const tw = ctx.measureText(label).width;
+        const px = sx(preview.dims.x);
+        const py = sy(preview.dims.y) - 20;
+        ctx.fillStyle = 'rgba(4, 6, 10, 0.85)';
+        ctx.fillRect(px, py, tw + 12, 16);
+        ctx.fillStyle = '#e9ecf3';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, px + 6, py + 8.5);
+      }
     }
 
-    // Stamp/paste ghost — flat v1 fidelity (true-render ghosts: Ph4).
+    // THE GHOST IS THE STAMP: armed template/prefab ghosts render
+    // through the real bake (cached per identity); everything else
+    // keeps the flat v1 cells. The bake carries a 1-tile meadow ring —
+    // cropped at draw so only the stamp's own ground lands.
     const g = this.draft.ghost;
     if (g) {
-      ctx.globalAlpha = 0.68;
-      for (let y = 0; y < g.h; y++) {
-        for (let x = 0; x < g.w; x++) {
-          const t = g.ground[y * g.w + x]!;
-          if (t === GHOST_SKIP) continue;
-          const lx = g.at.x + x;
-          const ly = g.at.y + y;
-          if (lx < 0 || ly < 0 || lx >= z.width || ly >= z.height) continue;
-          const def = tileDef(t);
-          ctx.fillStyle = def.color;
-          ctx.fillRect(sx(lx), sy(ly), s, s * ys);
-          if (def.raised && def.topColor) {
-            ctx.fillStyle = def.topColor;
-            ctx.fillRect(sx(lx), sy(ly), s, s * ys * 0.35);
+      let baked: HTMLCanvasElement | null = null;
+      if (g.key) {
+        baked = this.ghostBakes.get(g.key) ?? null;
+        if (!baked && !this.ghostBakes.has(g.key)) {
+          try {
+            baked = renderLayersPreview(
+              {
+                width: g.w,
+                height: g.h,
+                ground: g.ground,
+                detail: g.detail ?? new Uint16Array(g.w * g.h),
+                ...(g.elev ? { elev: g.elev } : {}),
+              },
+              Math.min(768, Math.max(g.w, g.h) * TILE_PX),
+            );
+          } catch {
+            baked = null;
+          }
+          if (baked) {
+            this.ghostBakes.set(g.key, baked);
+            if (this.ghostBakes.size > 40) this.ghostBakes.clear();
           }
         }
       }
-      ctx.globalAlpha = 1;
+      if (baked) {
+        const ppt = baked.width / (g.w + 2); // bake px per tile incl. pad ring
+        ctx.globalAlpha = 0.72;
+        ctx.drawImage(
+          baked,
+          ppt,
+          ppt,
+          g.w * ppt,
+          g.h * ppt,
+          sx(g.at.x),
+          sy(g.at.y),
+          g.w * s,
+          g.h * s * ys,
+        );
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.globalAlpha = 0.68;
+        for (let y = 0; y < g.h; y++) {
+          for (let x = 0; x < g.w; x++) {
+            const t = g.ground[y * g.w + x]!;
+            if (t === GHOST_SKIP) continue;
+            const lx = g.at.x + x;
+            const ly = g.at.y + y;
+            if (lx < 0 || ly < 0 || lx >= z.width || ly >= z.height) continue;
+            const def = tileDef(t);
+            ctx.fillStyle = def.color;
+            ctx.fillRect(sx(lx), sy(ly), s, s * ys);
+            if (def.raised && def.topColor) {
+              ctx.fillStyle = def.topColor;
+              ctx.fillRect(sx(lx), sy(ly), s, s * ys * 0.35);
+            }
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
       for (const pin of g.pins ?? []) {
         const px = sx(g.at.x + pin.dx) + s / 2;
         const py = sy(g.at.y + pin.dy) + (s * ys) / 2;
@@ -374,22 +450,59 @@ export class Viewport {
       ctx.setLineDash([]);
     }
 
-    // Selection marquee + the dims chip.
+    // Selection — the marquee's ants, or the mask's true boundary
+    // (lasso/wand regions outline exactly the cells they hold).
     const sel = this.state.selection;
     if (sel) {
       const x = sx(Math.min(sel.x0, sel.x1));
       const y = sy(Math.min(sel.y0, sel.y1));
       const w = (Math.abs(sel.x1 - sel.x0) + 1) * s;
       const h = (Math.abs(sel.y1 - sel.y0) + 1) * s * ys;
-      ctx.strokeStyle = 'rgba(4, 6, 10, 0.9)';
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(x, y, w, h);
-      ctx.strokeStyle = '#e9ecf3';
-      ctx.lineWidth = 1.25;
-      ctx.setLineDash([5, 4]);
-      ctx.lineDashOffset = -(nowMs / 40) % 9;
-      ctx.strokeRect(x, y, w, h);
-      ctx.setLineDash([]);
+      const mask = this.state.selectionMask;
+      if (mask) {
+        // Wash the member cells, then stroke every edge that borders
+        // a non-member — the region's true coastline, marching.
+        ctx.fillStyle = 'rgba(94, 155, 245, 0.10)';
+        ctx.strokeStyle = '#e9ecf3';
+        ctx.lineWidth = 1.25;
+        ctx.setLineDash([5, 4]);
+        ctx.lineDashOffset = -(nowMs / 40) % 9;
+        ctx.beginPath();
+        const has = (tx: number, ty: number): boolean => mask.has(ty * z.width + tx);
+        for (const i of mask) {
+          const cx = i % z.width;
+          const cy = Math.floor(i / z.width);
+          ctx.fillRect(sx(cx), sy(cy), s, s * ys);
+          if (!has(cx, cy - 1)) {
+            ctx.moveTo(sx(cx), sy(cy));
+            ctx.lineTo(sx(cx + 1), sy(cy));
+          }
+          if (!has(cx, cy + 1)) {
+            ctx.moveTo(sx(cx), sy(cy + 1));
+            ctx.lineTo(sx(cx + 1), sy(cy + 1));
+          }
+          if (!has(cx - 1, cy)) {
+            ctx.moveTo(sx(cx), sy(cy));
+            ctx.lineTo(sx(cx), sy(cy + 1));
+          }
+          if (!has(cx + 1, cy)) {
+            ctx.moveTo(sx(cx + 1), sy(cy));
+            ctx.lineTo(sx(cx + 1), sy(cy + 1));
+          }
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        ctx.strokeStyle = 'rgba(4, 6, 10, 0.9)';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(x, y, w, h);
+        ctx.strokeStyle = '#e9ecf3';
+        ctx.lineWidth = 1.25;
+        ctx.setLineDash([5, 4]);
+        ctx.lineDashOffset = -(nowMs / 40) % 9;
+        ctx.strokeRect(x, y, w, h);
+        ctx.setLineDash([]);
+      }
       const label = `${Math.abs(sel.x1 - sel.x0) + 1} × ${Math.abs(sel.y1 - sel.y0) + 1}`;
       ctx.font = '600 11px ui-monospace, Menlo, monospace';
       const tw = ctx.measureText(label).width;

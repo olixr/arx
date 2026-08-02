@@ -206,3 +206,82 @@ export function roadCells(points: Pt[], width: number): Pt[] {
   }
   return out;
 }
+
+/**
+ * Cells inside a closed polygon (LOCAL tile coords) — even-odd
+ * scanline over tile centers, plus the outline itself so thin shapes
+ * never vanish. Powers the polygon tool and the lasso's freehand loop.
+ */
+export function polygonCells(pts: Pt[], fill: boolean): Pt[] {
+  if (pts.length < 3) return pts.slice();
+  const out: Pt[] = [];
+  const seen = new Set<number>();
+  const KEY = (x: number, y: number): number => y * 65536 + x + 32768;
+  const add = (x: number, y: number): void => {
+    const k = KEY(x, y);
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push({ x, y });
+    }
+  };
+  // The outline: every edge rasterized.
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i]!;
+    const b = pts[(i + 1) % pts.length]!;
+    for (const p of lineCells(a.x, a.y, b.x, b.y)) add(p.x, p.y);
+  }
+  if (!fill) return out;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (const p of pts) {
+    y0 = Math.min(y0, p.y);
+    y1 = Math.max(y1, p.y);
+  }
+  // Even-odd fill against tile centers.
+  for (let y = y0; y <= y1; y++) {
+    const xs: number[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i]!;
+      const b = pts[(i + 1) % pts.length]!;
+      const cy = y + 0.5;
+      if (a.y + 0.5 <= cy === b.y + 0.5 <= cy) continue;
+      xs.push(a.x + ((cy - (a.y + 0.5)) / (b.y - a.y)) * (b.x - a.x));
+    }
+    xs.sort((m, n) => m - n);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const xa = Math.ceil(xs[k]! - 0.5);
+      const xb = Math.floor(xs[k + 1]! - 0.5);
+      for (let x = xa; x <= xb; x++) add(x, y);
+    }
+  }
+  return out;
+}
+
+/**
+ * A wall shell: the rect outline in the chosen wall tile with one
+ * doorway centered on the south face — a building's bones in a drag.
+ */
+export function wallShellCells(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  wall: number,
+  door: number,
+): Array<Pt & { tile: number }> {
+  const xa = Math.min(x0, x1);
+  const xb = Math.max(x0, x1);
+  const ya = Math.min(y0, y1);
+  const yb = Math.max(y0, y1);
+  const out: Array<Pt & { tile: number }> = [];
+  const doorX = Math.floor((xa + xb) / 2);
+  for (let x = xa; x <= xb; x++) {
+    out.push({ x, y: ya, tile: wall });
+    out.push({ x, y: yb, tile: x === doorX && xb - xa >= 2 ? door : wall });
+  }
+  for (let y = ya + 1; y < yb; y++) {
+    out.push({ x: xa, y, tile: wall });
+    out.push({ x: xb, y, tile: wall });
+  }
+  return out;
+}

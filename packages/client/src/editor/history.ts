@@ -30,9 +30,16 @@ export function cloneZone(zone: ZoneDef): ZoneDef {
     detail: new Uint16Array(zone.detail),
     elev: zone.elev ? new Int8Array(zone.elev) : undefined,
     spawn: zone.spawn ? { ...zone.spawn } : undefined,
-    portals: zone.portals?.map((p) => ({ ...p })),
-    spawns: zone.spawns?.map((s) => ({ ...s })),
+    portals: zone.portals?.map((p) => ({ ...p, dest: p.dest ? { ...p.dest } : undefined })),
+    spawns: zone.spawns?.map((s) => ({
+      ...s,
+      ...(s.hours ? { hours: { ...s.hours } } : {}),
+      ...(s.patrol ? { patrol: s.patrol.map((p) => ({ ...p })) } : {}),
+    })),
     actorSpawns: zone.actorSpawns?.map((a) => ({ ...a })),
+    // Signs were SHALLOW-shared before — an edited board mutated its
+    // own undo snapshot and sign undos restored nothing. Deep now.
+    signs: zone.signs?.map((g) => ({ ...g, ...(g.lines ? { lines: [...g.lines] } : {}) })),
   };
 }
 
@@ -78,6 +85,23 @@ export class History {
 
   get canRedo(): boolean {
     return this.redoStack.length > 0;
+  }
+
+  /**
+   * THE VISIBLE PAST (v2 History panel): every op oldest-first with
+   * the cursor sitting after the last applied op. entries[cursor-1]
+   * is the newest applied change; entries[cursor..] await redo.
+   */
+  entries(): Array<{ label: string; cells: number }> {
+    const describe = (op: HistoryOp): { label: string; cells: number } => ({
+      label: op.label,
+      cells: op.kind === 'cells' ? op.cells.length : 0,
+    });
+    return [...this.undoStack.map(describe), ...[...this.redoStack].reverse().map(describe)];
+  }
+
+  get cursor(): number {
+    return this.undoStack.length;
   }
 
   /** Pop + apply; returns the new zone (structural ops swap the object). */

@@ -15,6 +15,7 @@ type Drag =
   | { kind: 'stroke'; rec: StrokeRecorder; erase: boolean; last: Pt; pts: Pt[] }
   | { kind: 'shape'; anchor: Pt; cur: Pt; erase: boolean }
   | { kind: 'marquee'; anchor: Pt; cur: Pt }
+  | { kind: 'lasso'; pts: Pt[] }
   | { kind: 'movesel'; from: Pt; cur: Pt; copy: boolean }
   | { kind: 'placeMove'; ref: PlacementRef; label: string; moved: boolean }
   | { kind: 'clusterSize'; index: number };
@@ -81,6 +82,7 @@ export function installPointer(deps: PointerDeps): void {
       case 'paint':
       case 'erase': {
         const rec = new StrokeRecorder();
+        ops.newStrokeSeed();
         const pts = ops.brushFootprint(t.x, t.y);
         for (const p of pts) ops.applyBrush(rec, p.x, p.y, erase || state.tool === 'erase');
         ops.markDirtyCells(pts);
@@ -93,6 +95,16 @@ export function installPointer(deps: PointerDeps): void {
       case 'ellipse':
         drag = { kind: 'shape', anchor: t, cur: t, erase };
         break;
+      case 'polygon': {
+        if (erase) {
+          ops.polyPts.pop();
+          ops.setPreview(ops.polygonPreviewCells(), false);
+          break;
+        }
+        ops.polyPts.push(t);
+        ops.setPreview(ops.polygonPreviewCells(), false);
+        break;
+      }
       case 'fill': {
         if (!ops.inBounds(t.x, t.y)) break;
         const pts = ops.floodFrom(t.x, t.y);
@@ -110,14 +122,28 @@ export function installPointer(deps: PointerDeps): void {
         break;
       }
       case 'select': {
-        const r = ops.selRect();
-        if (r && t.x >= r.x0 && t.x <= r.x1 && t.y >= r.y0 && t.y <= r.y1 && !erase) {
+        if (erase) {
+          ops.clearSelection();
+          break;
+        }
+        // Inside the live selection (mask-true): a drag moves it.
+        if (ops.inSelection(t.x, t.y)) {
           drag = { kind: 'movesel', from: t, cur: t, copy: e.altKey };
-        } else if (!erase) {
-          drag = { kind: 'marquee', anchor: t, cur: t };
-        } else {
-          state.selection = null;
-          state.changed();
+          break;
+        }
+        switch (state.selectMode) {
+          case 'marquee':
+            drag = { kind: 'marquee', anchor: t, cur: t };
+            break;
+          case 'lasso':
+            drag = { kind: 'lasso', pts: [t] };
+            break;
+          case 'wand':
+            ops.setSelectionFromCells(ops.wandCells(t.x, t.y));
+            break;
+          case 'same':
+            ops.setSelectionFromCells(ops.selectSameCells(t.x, t.y));
+            break;
         }
         break;
       }
@@ -196,17 +222,37 @@ export function installPointer(deps: PointerDeps): void {
     }
     if (drag.kind === 'shape') {
       drag.cur = t;
-      ops.setPreview(ops.shapeCells(drag, e.shiftKey), drag.erase);
+      const dims = {
+        x: Math.min(drag.anchor.x, t.x),
+        y: Math.min(drag.anchor.y, t.y),
+        w: Math.abs(t.x - drag.anchor.x) + 1,
+        h: Math.abs(t.y - drag.anchor.y) + 1,
+      };
+      if (state.tool === 'rect' && state.rectWalls && !drag.erase && state.layer === 'ground') {
+        ops.setPreview(ops.wallShellPreview(drag.anchor, drag.cur), false, dims);
+      } else {
+        ops.setPreview(ops.shapeCells(drag, e.shiftKey), drag.erase, dims);
+      }
       return;
     }
     if (drag.kind === 'marquee') {
       drag.cur = t;
+      state.selectionMask = null;
       state.selection = {
         x0: Math.max(0, Math.min(drag.anchor.x, t.x)),
         y0: Math.max(0, Math.min(drag.anchor.y, t.y)),
         x1: Math.min(state.zone.width - 1, Math.max(drag.anchor.x, t.x)),
         y1: Math.min(state.zone.height - 1, Math.max(drag.anchor.y, t.y)),
       };
+      return;
+    }
+    if (drag.kind === 'lasso') {
+      const last = drag.pts[drag.pts.length - 1]!;
+      if (last.x !== t.x || last.y !== t.y) {
+        drag.pts.push(t);
+        // The loop-in-progress previews as its filled region.
+        ops.setPreview(ops.lassoPreview(drag.pts), false);
+      }
       return;
     }
     if (drag.kind === 'movesel') {
@@ -260,6 +306,8 @@ export function installPointer(deps: PointerDeps): void {
       ops.setPreview(ops.brushFootprint(t.x, t.y), state.tool === 'erase');
     } else if (state.tool === 'road' && ops.roadPts.length > 0) {
       ops.setPreview(ops.roadPreviewCells(t), false);
+    } else if (state.tool === 'polygon' && ops.polyPts.length > 0) {
+      ops.setPreview(ops.polygonPreviewCells(t), false);
     } else if (drag.kind === 'none' && state.tool !== 'select') {
       view.preview = null;
     }
@@ -295,8 +343,16 @@ export function installPointer(deps: PointerDeps): void {
       view.strokeActive = false;
       ops.commitStroke(drag.rec, state.tool === 'erase' || drag.erase ? 'erase' : 'paint', drag.pts);
     } else if (drag.kind === 'shape') {
-      const pts = ops.shapeCells(drag, e.shiftKey);
-      ops.applyCellsOp(state.tool, pts, drag.erase);
+      // Walls mode: the rect drags a building's bones instead.
+      if (state.tool === 'rect' && state.rectWalls && !drag.erase && state.layer === 'ground') {
+        ops.applyWallShell(drag.anchor, drag.cur);
+      } else {
+        const pts = ops.shapeCells(drag, e.shiftKey);
+        ops.applyCellsOp(state.tool, pts, drag.erase);
+      }
+      view.preview = null;
+    } else if (drag.kind === 'lasso') {
+      ops.setSelectionFromCells(ops.lassoPreview(drag.pts));
       view.preview = null;
     } else if (drag.kind === 'movesel') {
       const r = ops.selRect()!;
@@ -331,6 +387,7 @@ export function installPointer(deps: PointerDeps): void {
   onEachCanvas('dblclick', () => {
     if (!deps.isActive()) return;
     if (state.tool === 'road' && ops.roadPts.length >= 2) ops.commitRoad();
+    if (state.tool === 'polygon') ops.commitPolygon();
   });
 
   for (const c of deps.canvases) {

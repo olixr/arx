@@ -107,6 +107,16 @@ const ellipse: Painter = (ctx) => {
   }
 };
 
+/** An irregular five-corner plot with drafting handles — the polygon. */
+const polygon: Painter = (ctx) => {
+  const pts: Array<[number, number]> = [[12, 3.5], [20, 9], [17.5, 19], [7, 20], [4, 10]];
+  path(ctx, pts, true);
+  ctx.stroke();
+  for (const [x, y] of pts) {
+    ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+  }
+};
+
 /** A tipped bucket, paint committing to the ground. */
 const fill: Painter = (ctx) => {
   ctx.save();
@@ -578,6 +588,7 @@ export const EDITOR_ICONS: Record<string, string> = {
   line: draw(line),
   rect: draw(rect),
   ellipse: draw(ellipse),
+  polygon: draw(polygon),
   fill: draw(fill),
   road: draw(road),
   select: draw(select),

@@ -43,7 +43,8 @@ import { EditorView } from '../editor/render.js';
 import { EditorState, newZone as newZoneDef, type SidebarTab } from '../editor/state.js';
 import { validateZone } from '../editor/validate.js';
 import { WorldMode } from '../editor/world/worldMode.js';
-import { chip as kitChip, confirmDialog, el, kbd, seg, toast } from '../studio2/kit.js';
+import { tileDef } from '@arx/shared';
+import { btn as btnKit, chip as kitChip, confirmDialog, el, kbd, seg, toast } from '../studio2/kit.js';
 import { Chrome } from './chrome.js';
 import { CommandPalette } from './cmdk.js';
 import { buildCommands, type Command, type StudioMode } from './commands.js';
@@ -200,6 +201,7 @@ async function openZoneById(id: string): Promise<void> {
     const json = await fetchZone(id);
     adoptZone(zoneFromJson(json), true);
     noteRecentZone(id);
+    offerDraftRestore(id);
     if (id.startsWith('poi:')) {
       toast('a composed frontier site — look freely; adopt it from the World view to make it yours', 4600);
     } else {
@@ -230,6 +232,7 @@ async function saveToServer(): Promise<void> {
     await saveZone(zoneToJson(state.zone));
     state.dirty = false;
     state.serverBacked = true;
+    clearDraft(); // the truth is on the server now
     state.changed();
     toast(`saved '${state.zone.id}' — live on the server`, 2600, 'success');
     chrome.setServerStatus(`saved ${new Date().toLocaleTimeString()}`, true);
@@ -710,6 +713,190 @@ installPointer({
 
 shell.init();
 
+// ------------------------------------------- the context bar (Ph4)
+
+/**
+ * THE VERB COMES TO THE HAND: a floating bar anchored above the live
+ * selection with everything a marquee wants — swap, stamp, clipboard,
+ * delete. Repositioned each frame from the shared camera.
+ */
+const ctxbar = $('ctxbar');
+
+function swapDialog(): void {
+  const census = ops.selectionTileCensus();
+  if (census.length === 0) return;
+  showModal((body, close) => {
+    body.appendChild(el('h2', undefined, 'Swap tiles in selection'));
+    const rows = el('div', 'form-rows');
+    const fromSel = el('select');
+    for (const c of census) {
+      const opt = el('option', undefined, `${tileDefName(c.tile)} — ${c.count} cells`);
+      opt.value = String(c.tile);
+      fromSel.appendChild(opt);
+    }
+    const rowFrom = el('label', 'form-row');
+    rowFrom.appendChild(el('span', undefined, 'replace'));
+    rowFrom.appendChild(fromSel);
+    rowFrom.appendChild(el('em', undefined, 'Every cell of this ground tile inside the selection.'));
+    rows.appendChild(rowFrom);
+    const rowTo = el('div', 'form-row');
+    rowTo.appendChild(el('span', undefined, 'with'));
+    rowTo.appendChild(el('b', undefined, tileDefName(state.brushTile)));
+    rowTo.appendChild(el('em', undefined, 'The current brush tile — pick another in the palette first if this is wrong.'));
+    rows.appendChild(rowTo);
+    body.appendChild(rows);
+    const actions = el('div', 'dialog-actions');
+    actions.appendChild(btnKit('Cancel', { onClick: close }));
+    actions.appendChild(
+      btnKit('Swap', {
+        variant: 'primary',
+        onClick: () => {
+          const n = ops.swapTiles(Number(fromSel.value), state.brushTile);
+          toast(n > 0 ? `swapped ${n} cells` : 'nothing matched');
+          close();
+        },
+      }),
+    );
+    body.appendChild(actions);
+  });
+}
+
+function buildCtxbar(): void {
+  ctxbar.innerHTML = '';
+  const r = ops.selRect();
+  if (!r || mode !== 'zone') {
+    ctxbar.classList.add('hidden');
+    return;
+  }
+  ctxbar.classList.remove('hidden');
+  const cells = state.selectionMask ? state.selectionMask.size : (r.x1 - r.x0 + 1) * (r.y1 - r.y0 + 1);
+  ctxbar.appendChild(el('span', 'ctx-dims', `${r.x1 - r.x0 + 1}×${r.y1 - r.y0 + 1} · ${cells}`));
+  const verb = (label: string, title: string, run: () => void): void => {
+    const b = el('button', 'ghost', label);
+    b.title = title;
+    b.onclick = run;
+    ctxbar.appendChild(b);
+  };
+  verb('Swap…', 'Replace one ground tile with the brush tile, selection-wide', swapDialog);
+  verb('Stamp', 'Save this selection to the prefab library', () => savePrefabDialog(dialogDeps));
+  verb('Copy', '⌘C', () => {
+    if (ops.copySelection()) toast('copied selection');
+  });
+  verb('Cut', '⌘X', () => ops.cutSelection());
+  verb('Delete', 'Clear the selected cells to meadow', () => {
+    ops.clearSelectedCells('delete selection');
+    toast('cleared selection');
+  });
+  verb('✕', 'Deselect (Esc)', () => ops.clearSelection());
+}
+
+function positionCtxbar(): void {
+  if (ctxbar.classList.contains('hidden')) return;
+  const r = ops.selRect();
+  if (!r) return;
+  const p = view.localToScreen(r.x0, r.y0);
+  const wrap = $('canvas-wrap').getBoundingClientRect();
+  const bw = ctxbar.offsetWidth;
+  ctxbar.style.left = `${Math.max(8, Math.min(wrap.width - bw - 8, p.x))}px`;
+  ctxbar.style.top = `${Math.max(8, p.y - 44)}px`;
+}
+
+function tileDefName(t: number): string {
+  return tileDef(t).name;
+}
+
+// ------------------------------------------- the history panel (Ph4)
+
+function buildHistoryPanel(): void {
+  const host = $('history-host');
+  host.innerHTML = '';
+  const entries = history.entries();
+  if (entries.length === 0) return;
+  const head = el('div', 'panel-head', 'History');
+  head.appendChild(el('span', 'count', String(entries.length)));
+  host.appendChild(head);
+  const list = el('div', 'hist-list');
+  const cursor = history.cursor;
+  const start = Math.max(0, entries.length - 30);
+  // Step 0 — before everything (visible when the tail is shown).
+  if (start === 0) {
+    const zero = el('button', 'hist-row' + (cursor === 0 ? ' at' : ' undone'), '· opened');
+    zero.onclick = () => {
+      ops.jumpHistory(0);
+      toast('history: before every change');
+    };
+    list.appendChild(zero);
+  }
+  entries.slice(start).forEach((e, k) => {
+    const i = start + k;
+    const applied = i < cursor;
+    const row = el(
+      'button',
+      'hist-row' + (i === cursor - 1 ? ' at' : applied ? '' : ' undone'),
+      e.label + (e.cells > 0 ? ` · ${e.cells}` : ''),
+    );
+    row.title = applied ? 'Click to rewind to just after this change' : 'Click to redo through this change';
+    row.onclick = () => {
+      ops.jumpHistory(i + 1);
+      toast(`history: ${e.label}`);
+    };
+    list.appendChild(row);
+  });
+  host.appendChild(list);
+  list.scrollTop = list.scrollHeight;
+}
+
+// ---------------------------------------------- autosave drafts (Ph4)
+
+const DRAFT_KEY = 'dc2-draft';
+
+function saveDraft(): void {
+  if (!state.dirty || mode !== 'zone') return;
+  try {
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ id: state.zone.id, at: Date.now(), json: zoneToJson(state.zone) }),
+    );
+  } catch {
+    /* quota — a draft is a kindness, never an error */
+  }
+}
+
+function clearDraft(): void {
+  localStorage.removeItem(DRAFT_KEY);
+}
+
+/** After opening a zone: an unsaved draft of it may outrank the disk. */
+function offerDraftRestore(id: string): void {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    const draft = JSON.parse(raw) as { id: string; at: number; json: ZoneJson };
+    if (draft.id !== id) return;
+    const when = new Date(draft.at).toLocaleTimeString();
+    void confirmDialog(
+      `An unsaved draft of '${id}' from ${when} survived (autosave). Restore it over the server copy?`,
+      { title: 'Restore unsaved draft?', action: 'Restore draft' },
+    ).then((yes) => {
+      if (yes) {
+        adoptZone(zoneFromJson(draft.json), true);
+        state.dirty = true;
+        state.changed();
+        toast('draft restored — Save ▸ Live when it stands right');
+      } else {
+        clearDraft();
+      }
+    });
+  } catch {
+    clearDraft();
+  }
+}
+
+window.setInterval(saveDraft, 30_000);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) saveDraft();
+});
+
 state.onChange(() => {
   chrome.buildRail();
   chrome.buildOptions();
@@ -719,6 +906,8 @@ state.onChange(() => {
   chrome.updateStatus();
   minimap.dirty = true;
   people.markStale();
+  buildCtxbar();
+  buildHistoryPanel();
 });
 
 world.ws.onChange(() => {
@@ -772,6 +961,7 @@ async function boot(): Promise<void> {
       list.zones[0];
     if (pick) {
       adoptZone(zoneFromJson(await fetchZone(pick.id)), true, { stay: !wanted });
+      offerDraftRestore(pick.id);
       if (wanted) toast(`opened '${pick.id}' from server`);
     }
   } catch {
@@ -795,6 +985,7 @@ function frame(nowMs: number): void {
     people.update();
     view.render(nowMs);
     minimap.draw(nowMs);
+    positionCtxbar();
   }
   requestAnimationFrame(frame);
 }

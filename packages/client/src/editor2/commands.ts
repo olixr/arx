@@ -29,6 +29,7 @@ export const TOOL_GROUPS: ReadonlyArray<{ caption: string; tools: ToolSpec[] }> 
       { id: 'line', name: 'Line', key: 'L', code: 'KeyL', icon: 'line', hint: 'Drag a straight run · Shift snaps the angle' },
       { id: 'rect', name: 'Rectangle', key: 'R', code: 'KeyR', icon: 'rect', hint: 'Drag a rectangle · Shift squares it · filled/outline in options' },
       { id: 'ellipse', name: 'Ellipse', key: 'O', code: 'KeyO', icon: 'ellipse', hint: 'Drag an ellipse · Shift rounds it · filled/outline in options' },
+      { id: 'polygon', name: 'Polygon', key: 'K', code: 'KeyK', icon: 'polygon', hint: 'Click corners · Enter or double-click closes it · right-click removes the last' },
       { id: 'fill', name: 'Fill', key: 'G', code: 'KeyG', icon: 'fill', hint: 'Flood a connected region on the active layer' },
       { id: 'road', name: 'Road', key: 'T', code: 'KeyT', icon: 'road', hint: 'Click waypoints · Enter or double-click lays the road · Esc abandons' },
     ],

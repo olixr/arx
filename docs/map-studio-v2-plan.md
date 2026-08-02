@@ -468,6 +468,45 @@ Each phase ships, proves, and commits on its own. Laws named in caps become stan
 - **Phase 4 — THE MASTER'S HANDS** (tool depth): select suite (lasso/wand/same/swap),
   smart terrain + pattern + scatter brushes, wall-mode shapes, polygon, true-render
   ghosts everywhere, snapping + guides + measurements, History panel, autosave drafts.
+
+  **SHIPPED 2026-08-02 — as built:**
+  - **The selection suite**: the select tool grew four hands (marquee/lasso/wand/same,
+    an options seg). Lasso and wand introduce THE SELECTION MASK — a cell-set refining
+    the bbox rect, drawn as its true marching coastline; every verb is mask-aware
+    (copy/cut/clear/move/paste — clip holes carry the skip sentinel and never land),
+    ⌘C/V already travels across zones (clip survives adopt). New verbs: **Swap**
+    (census-driven replace-inside-selection, one undoable op), **nudge** (arrows carry
+    content + selection + mask), Delete clears exactly the mask.
+  - **THE CONTEXT BAR** (the Ph1 deferral honored): selection-anchored floating bar,
+    repositioned per frame off the shared camera — dims · Swap… · Stamp · Copy · Cut ·
+    Delete · deselect.
+  - **Brush depth**: paint gained three hands — plain, **pattern** (the clipboard as a
+    world-stable tiling nib), **scatter** (per-cell density roll, per-stroke seed,
+    density slider; verified 12/37 cells at 40%). **Polygon** tool (K): click corners,
+    Enter/double-click closes, scanline even-odd fill, outline mode. **Wall shell**
+    (rect + "walls + door"): the outline in the picked wall tile with a doorway
+    centered on the south face, material-matched (stone wall → stone doorway).
+  - **THE GHOST IS THE STAMP**: armed template/prefab ghosts render through the real
+    bake (renderLayersPreview, cached per identity, meadow pad ring cropped at draw);
+    clip/paste ghosts stay flat cells. Shape drags wear a live W×H chip.
+  - **The History panel**: every op named with its cell count, cursor highlighted,
+    undone tail italic, click jumps the cursor (ops.jumpHistory); "· opened" returns
+    to before everything.
+  - **Autosave drafts**: 30s + tab-hide snapshots to localStorage (one slot); opening
+    a zone with a surviving draft offers restore (verified across a reload); a
+    successful save clears it.
+  - **Fixed in passing**: cloneZone never deep-copied `signs` (an edited board shared
+    objects with its own undo snapshot — sign undos restored nothing) and portal
+    `dest` was shallow; sign/portal/spawn hours/patrol snapshots are deep now.
+  - Deferred with reasons: smart terrain MATERIAL brushes (needs a curated per-family
+    edge-tile grammar — a content-design pass, not a tool pass; the palette's real
+    families make it Ph6-ready), placement rotation (single-point placements),
+    smart alignment guides (thin value until multi-placement selection exists).
+  - Verified headless (zero console errors): wand mask 3, ctxbar visible, swap 3/3 +
+    undo, select-same 4203, nudge, real-mouse lasso 87 cells, polygon commit, pattern
+    nib, scatter ratio, wall shell north-wall + south-door true, ghost key tpl:smithy,
+    history jump + exact restore, draft written on the 30s clock + restore offered
+    after reload. tsc + 379 tests + STUDIO build green.
 - **Phase 5 — THE LAW IS VISIBLE** (elevation + lenses): sculpt tools with live
   auto-fence + legal-stair arming, shelf/interiors/reachability/edge/growth/faction
   lenses, sign editor, zone card, multi-select field editing, conflict guard.
