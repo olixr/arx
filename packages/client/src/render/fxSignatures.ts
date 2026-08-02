@@ -215,6 +215,12 @@ export const MATTER_MIGRATED: readonly string[] = [
   'ember_dash', 'healing_totem', 'snare_trap', 'storm_bell',
   'stone_aegis', 'coil_lance', 'bramble_burst', 'venom_dart',
   'bone_tempest', 'ground_slam',
+  // Wave 3j — the keeper's tongue: workings, never blows. One
+  // library voice (come_to_heel's doc-promised honest dust-up);
+  // strewn_bait's grain took true settle physics without joining.
+  // Everything else is the wild's own — forcing fire or venom onto
+  // CARE would make the library lie.
+  'come_to_heel',
 ];
 
 // ------------------------------------------------------- exemplars

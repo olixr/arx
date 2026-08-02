@@ -11,11 +11,19 @@
  * Several ids arrive on more than one wire kind (the capstone's ring
  * is 'howl' while its per-beast pips ride 'becalm') — hooks branch on
  * c.kind, the registry's designed dialect switch.
+ *
+ * FX v5 wave 3j: the keeper's tongue is workings, never blows, and
+ * the audit honored it — ONE library voice (come_to_heel's honest
+ * dust-up) and one true-physics upgrade (strewn_bait's grain lands
+ * and settles). Breath, command-light, balm-herb, wild mist, the
+ * russet pack-spirit, feathers, and the ghost pack stay the wild's
+ * own: forcing fire or venom onto CARE would make the library lie.
  */
 
 import { shade } from './rig.js';
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { dust, asMatter } from './matter/index.js';
 
 // ------------------------------------------------------------ shared
 
@@ -213,17 +221,9 @@ const soothe_the_wild: AbilitySig = {
  */
 const come_to_heel: AbilitySig = {
   spawn(c) {
-    // Arrival dust at the friend's landing (the far point).
-    c.particles.burst(c.wx2, c.wy2, 5, ['#5a5045', '#4a4252'], {
-      speed: 0.9,
-      life: 0.6,
-      size: 0.1,
-      gravity: -0.3,
-      drag: 1.9,
-      grow: 0.2,
-      shape: 'puff',
-      ground: true,
-    });
+    // Arrival dust at the friend's landing: the "small honest
+    // dust-up" the doc promises, kept as one TRUE breath of earth.
+    dust.deployments.kick!(asMatter(c), c.wx2, c.wy2, { scale: 0.45 });
     // A fleck of bond-green joy in the dust.
     c.particles.burst(c.wx2, c.wy2 - 0.4, 3, [c.st.spark, c.st.core], {
       speed: 0.8,
@@ -521,19 +521,23 @@ const keepers_balm: AbilitySig = {
 const strewn_bait: AbilitySig = {
   spawn(c) {
     const rand = srand(c.seed ^ 0x81);
-    // The toss: grain and scraps fan out and drop, ground-bound.
+    // The toss: grain fans from the hand on TRUE arcs — the sower's
+    // own seed with v5 physics (loft, land, SETTLE), so the meal
+    // visibly lies where it was strewn. Bespoke matter; the wild's
+    // table is not library dust.
     for (let k = 0; k < 8; k++) {
       const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx, c.wy - 0.45, 1, [c.st.mid, c.st.spark, c.st.deep], {
+      c.particles.burst(c.wx, c.wy, 1, [c.st.mid, c.st.spark, c.st.deep], {
         speed: 0.9 + rand() * 1.1,
-        life: 0.6,
+        life: 1.6,
         size: 0.055,
-        gravity: 6,
+        gravity: 0,
         dir: a,
         spread: 0.3,
-        up: false,
         shape: 'shard',
         spin: 6,
+        z: 0.45, vz: 1.2 + rand() * 0.8, zg: 7, land: 'settle', layer: 'world',
+        fade: c.st.deep, fadeAt: 0.7,
       });
     }
   },
