@@ -23185,38 +23185,53 @@ export class Renderer {
           );
         }
         const bowSway = Math.sin(t * 1.4 + tx * 1.7) * s * 0.02 * gust;
-        // ---- THE SILHOUETTE: one path, fill and ink alike.
+        // ---- THE SILHOUETTE: one geometry, appended to both the
+        // fill path and the selective ink path (the one-path law —
+        // the ink is always a subset of the very fill boundary).
+        // `eEdge`/`wEdge` gate the short skirt-end verticals so a
+        // merged run's interior seams never exist in any path.
+        const hemInto = (p2: Path2D, eEdge: boolean, wEdge: boolean): void => {
+          if (shape === 'board') {
+            if (eEdge) p2.lineTo(botR, railY + s * 0.12);
+            else p2.moveTo(botR, railY + s * 0.12);
+            p2.lineTo(botL, railY + s * 0.12);
+            if (wEdge) p2.lineTo(botL, railY);
+          } else if (shape === 'market') {
+            if (eEdge) p2.lineTo(botR, vTop);
+            else p2.moveTo(botR, vTop);
+            // TRUE HALF-ROUND scallops (the classic): arcs, not
+            // teeth — each swings a breath on the gust via its
+            // centre.
+            for (let k = 3; k >= 0; k--) {
+              const xa = atHem((k + 1) / 4);
+              const xb = atHem(k / 4);
+              p2.arc((xa + xb) / 2 + leans[k]! * 0.5, vTop, (xa - xb) / 2, 0, Math.PI, false);
+            }
+            if (wEdge) p2.lineTo(botL, railY);
+          } else if (shape === 'shed') {
+            if (eEdge) p2.lineTo(botR, vTop);
+            else p2.moveTo(botR, vTop);
+            let px2 = botR;
+            for (let k = 2; k >= 0; k--) {
+              const xb = atHem(k / 3);
+              const dropK = vDepth + leans[k]! * 0.6;
+              p2.lineTo(px2, vTop + dropK);
+              p2.lineTo(xb, vTop + dropK);
+              px2 = xb;
+            }
+            if (wEdge) p2.lineTo(botL, railY);
+          } else {
+            if (eEdge) p2.lineTo(botR, vTop);
+            else p2.moveTo(botR, vTop);
+            p2.quadraticCurveTo((botL + botR) / 2 + bowSway, vTop + vDepth + s * 0.09, botL, vTop);
+            if (wEdge) p2.lineTo(botL, railY);
+          }
+        };
         const silh = new Path2D();
         silh.moveTo(topL, rootY);
         silh.lineTo(topR, rootY);
         silh.lineTo(botR, railY);
-        if (shape === 'board') {
-          silh.lineTo(botR, railY + s * 0.12);
-          silh.lineTo(botL, railY + s * 0.12);
-        } else if (shape === 'market') {
-          silh.lineTo(botR, vTop);
-          // TRUE HALF-ROUND scallops (the classic): arcs, not teeth —
-          // each swings a breath on the gust via its centre.
-          for (let k = 3; k >= 0; k--) {
-            const xa = atHem((k + 1) / 4);
-            const xb = atHem(k / 4);
-            silh.arc((xa + xb) / 2 + leans[k]! * 0.5, vTop, (xa - xb) / 2, 0, Math.PI, false);
-          }
-        } else if (shape === 'shed') {
-          silh.lineTo(botR, vTop);
-          let px2 = botR;
-          for (let k = 2; k >= 0; k--) {
-            const xb = atHem(k / 3);
-            const dropK = vDepth + leans[k]! * 0.6;
-            silh.lineTo(px2, vTop + dropK);
-            silh.lineTo(xb, vTop + dropK);
-            px2 = xb;
-          }
-        } else {
-          silh.lineTo(botR, vTop);
-          silh.quadraticCurveTo((botL + botR) / 2 + bowSway, vTop + vDepth + s * 0.09, botL, vTop);
-        }
-        silh.lineTo(botL, railY);
+        hemInto(silh, true, true);
         silh.closePath();
         // ---- The wall behind: graded washes weld cloth to masonry.
         ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
@@ -23253,49 +23268,15 @@ export class Renderer {
           strut.lineTo(railX + hw, y1);
           strut.lineTo(railX - hw, y1);
           strut.closePath();
+          // Fill-only: internal carpentry separates by VALUE. The
+          // outline shader rings the object, never its members.
           ctx.fillStyle = shade(frame, -8);
           ctx.fill(strut);
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.stroke(strut);
-          }
           ctx.fillStyle = '#454052';
           ctx.fillRect(wallX - s * 0.04, y0 - s * 0.05, s * 0.08, s * 0.08);
         };
         if (!jw && !fw) brace('L');
         if (!je && !fe) brace('R');
-        // ---- The cheek boards go UNDER the cloth (canvas stretches
-        // OVER its frame): each rides mostly OUTSIDE the side edge,
-        // and the cloth will overlap its inner half — from above you
-        // see fabric, with timber peeking at the sides.
-        const cheek = (edge: 'L' | 'R'): void => {
-          const dir = edge === 'L' ? -1 : 1;
-          const topX = (edge === 'L' ? topL : topR) + dir * s * 0.03;
-          const hemX = (edge === 'L' ? botL : botR) + dir * s * 0.03;
-          const hw = s * 0.05;
-          const board = new Path2D();
-          board.moveTo(topX - hw, rootY);
-          board.lineTo(topX + hw, rootY);
-          board.lineTo(hemX + hw, railY + railH + s * 0.03);
-          board.lineTo(hemX - hw, railY + railH + s * 0.03);
-          board.closePath();
-          ctx.fillStyle = frame;
-          ctx.fill(board);
-          ctx.fillStyle = shade(frame, 14);
-          ctx.beginPath();
-          ctx.moveTo(topX - dir * hw, rootY);
-          ctx.lineTo(topX - dir * hw + dir * s * 0.034, rootY);
-          ctx.lineTo(hemX - dir * hw + dir * s * 0.034, railY + railH + s * 0.03);
-          ctx.lineTo(hemX - dir * hw, railY + railH + s * 0.03);
-          ctx.closePath();
-          ctx.fill();
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.stroke(board);
-          }
-        };
-        if (!jw && !fw) cheek('L');
-        if (!je && !fe) cheek('R');
         // ---- THE CLOTH: base fill = the darkest tone in the piece
         // (the plumb valance's own), then every plane models over it.
         const slabLit = shade(cloth.a, 16);
@@ -23463,17 +23444,30 @@ export class Renderer {
           }
         }
         ctx.restore();
-        // ---- THE INK: the very silhouette, architecture weight.
+        // ---- THE ONE RING: the outline shader outlines the OBJECT,
+        // never its internal carpentry. One selective path traces the
+        // true outer boundary — rod line and hem always, slab-side
+        // verticals only at true FREE ends. A flush joint's seam is
+        // the shared post's business (value, not ink), and a merged
+        // run's interior edges never see ink at all.
         if (this.outlineOn) {
+          const freeE = !je && !fe;
+          const freeW = !jw && !fw;
+          const ink = new Path2D();
+          ink.moveTo(topL, rootY);
+          ink.lineTo(topR, rootY);
+          if (freeE) ink.lineTo(botR, railY);
+          else ink.moveTo(botR, railY);
+          hemInto(ink, !je, !jw);
+          if (freeW) ink.lineTo(topL, rootY);
           this.beginStructOutline();
-          ctx.stroke(silh);
+          ctx.stroke(ink);
         }
         // ---- THE JOINT FURNITURE, over cloth and ink alike so the
         // seam between neighbours is capped, never doubled: ONE
         // shared timber post per flush joint, raised by the east
-        // member. It runs rod to rail with a lit west arris and a
-        // shaded east edge, and pokes a breath below the rail so it
-        // visibly CARRIES the two hems it separates.
+        // member — fill-only, value-modeled, with the rod and rail
+        // ink lines dying into it like true carpentry.
         if (fw) {
           const hw = s * 0.055;
           const y1 = railY + railH + s * 0.07;
@@ -23483,10 +23477,6 @@ export class Renderer {
           ctx.fillRect(xL - hw, rootY, s * 0.034, y1 - rootY);
           ctx.fillStyle = shade(frame, -12);
           ctx.fillRect(xL + hw - s * 0.03, rootY, s * 0.03, y1 - rootY);
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.strokeRect(xL - hw, rootY, hw * 2, y1 - rootY);
-          }
         }
       },
     };
