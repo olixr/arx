@@ -125,6 +125,12 @@ export const MATTER_MIGRATED: readonly string[] = [
   // and storm_of_shafts gained TRUE z-fall without joining the
   // library (their shafts are theirs).
   'piercing_bolt', 'tumble_shot', 'longshot', 'skyfall_shot',
+  // Wave 2d — the arx ladder, the densest material school: storm
+  // impacts, true-fall star-stones, the undertow, the frozen rail,
+  // the open hand of fire, first light. blink / ward_shell /
+  // mirror_image keep their arcane glass and glints bespoke.
+  'arc_bolt', 'meteor_shard', 'maelstrom', 'frost_lance',
+  'ember_fan', 'stormcall', 'daybreak', 'riftwalker_step',
 ];
 
 // ------------------------------------------------------- exemplars

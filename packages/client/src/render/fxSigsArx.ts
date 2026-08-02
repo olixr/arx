@@ -19,6 +19,7 @@
 import { shade } from './rig.js';
 import { boltPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { storm, fire, frost, dust, smoke, water, radiance, asMatter } from './matter/index.js';
 
 // ----------------------------------------------------------- arc_bolt
 
@@ -32,24 +33,11 @@ import type { AbilitySig, SigCtx } from './fxSignatures.js';
 const arc_bolt: AbilitySig = {
   spawn(c: SigCtx) {
     // The receiving end takes the charge: static leaps off the body.
-    const rand = srand(c.seed ^ 0x51);
-    for (let k = 0; k < 5; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx2, c.wy2 - 0.45, 1, [c.st.spark, c.st.core], {
-        speed: 2.6, life: 0.28, size: 0.07, gravity: 3, dir: a, spread: 0.3,
-        shape: 'streak', flicker: 0.6,
-      });
-    }
-    // Ionized motes hang where the stroke passed — the air remembers.
-    for (let k = 0; k < 4; k++) {
-      const f = 0.2 + rand() * 0.6;
-      c.particles.burst(
-        c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f - 0.5,
-        1, [c.st.mid, '#ffffff'], {
-          speed: 0.3, life: 0.5, size: 0.09, gravity: -0.4, drag: 2, shape: 'glint',
-        },
-      );
-    }
+    const m = asMatter(c);
+    // The needle lands: the library's full discharge crackle at the
+    // far end, a fainter echo where the seam's middle stitched.
+    storm.deployments.impact!(m, c.wx2, c.wy2, { scale: 1 });
+    storm.deployments.impact!(m, (c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2, { scale: 0.4 });
   },
   air(c: SigCtx) {
     const { ctx, st, t, sc } = c;
@@ -225,26 +213,23 @@ const meteor_shard: AbilitySig = {
   spawn(c: SigCtx) {
     // The incoming matter: comet slivers ride the lance line down.
     const rand = srand(c.seed ^ 0x61);
+    // The last of the fall: burning pieces streak in on TRUE height —
+    // spawned high on the incoming track, flying west and down, dying
+    // where they meet the dirt. (The star-stone's own fire-trail.)
     for (let k = 0; k < 4; k++) {
       const f = 0.35 + rand() * 0.55;
-      c.particles.burst(c.wx + 2.0 * f, c.wy - 3.8 * f, 1, [c.st.spark, c.st.core], {
-        speed: 9, life: 0.25, size: 0.09, gravity: 0,
-        dir: Math.atan2(3.8, -2.0), spread: 0.08, shape: 'streak',
+      c.particles.burst(c.wx + 0.55 * f, c.wy, 1, [c.st.spark, c.st.core], {
+        speed: 2.2, life: 0.6, size: 0.09, gravity: 0,
+        dir: Math.PI, spread: 0.08, shape: 'streak',
         trail: 14, trailColor: c.st.deep,
+        z: 2.6 * f, vz: -8, zg: 0, land: 'die', layer: 'world', shadow: 0,
       });
     }
-    // The ground answers: slabs and soot thrown down-track.
-    for (let k = 0; k < 6; k++) {
-      const a = Math.atan2(3.8, -2.0) + (rand() - 0.5) * 1.6;
-      c.particles.burst(c.wx, c.wy - 0.2, 1, [c.st.deep, c.st.mid, '#6a5a52'], {
-        speed: 2.6 + rand() * 1.8, life: 0.7, size: 0.12, gravity: 8,
-        dir: a, spread: 0.2, shape: 'shard', spin: 10, up: false,
-      });
-    }
-    c.particles.burst(c.wx, c.wy - 0.3, 5, [c.st.deep, '#3a3040'], {
-      speed: 1.2, life: 1.2, size: 0.15, gravity: -0.9, drag: 1.6,
-      grow: 0.3, shape: 'puff', fade: '#241c26', wobble: 0.6,
-    });
+    const m = asMatter(c);
+    // The ground answers down-track: the library's gouge...
+    dust.deployments.gouge!(m, c.wx, c.wy, { dir: Math.atan2(3.8, -2.0), scale: 1 });
+    // ...and the stone smokes while it cools — one standing plume.
+    smoke.deployments.plume!(m, c.wx + 0.15, c.wy, { dur: 1.6, scale: 0.45 });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -353,13 +338,7 @@ const meteor_shard: AbilitySig = {
       }
     }
     ctx.restore();
-    // The stone smokes while it cools.
-    if (t > 0.15 && t < 0.8 && Math.random() < c.frameDt * 7) {
-      c.particles.burst(c.wx + 0.15, c.wy - 0.5, 1, [st.deep, '#3a3040'], {
-        speed: 0.4, life: 0.9, size: 0.1, gravity: -1.2, drag: 1.4,
-        grow: 0.2, shape: 'puff', wobble: 0.5, fade: '#241c26',
-      });
-    }
+    // (The cooling smoke is the smoke.plume emitter from spawn.)
   },
 };
 
@@ -375,19 +354,11 @@ const meteor_shard: AbilitySig = {
 const maelstrom: AbilitySig = {
   spawn(c: SigCtx) {
     // The rim floods inward: foam banks pulled toward the drain.
-    const rand = srand(c.seed ^ 0x71);
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.9,
-        c.wy + Math.sin(a) * c.radius * 0.9 * c.squash,
-        1, [c.st.mid, c.st.core], {
-          speed: 1.8, life: 0.9, size: 0.12, gravity: 0.2, dir: a + Math.PI,
-          spread: 0.3, drag: 1.2, grow: 0.2, shape: 'puff',
-          fade: '#ffffff', wobble: 0.3, ground: true,
-        },
-      );
-    }
+    // The eye swallows: the library's undertow hauls foam and mist
+    // out of the rim and INTO the heart for the spin's whole life.
+    water.deployments.undertow!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.9, dur: 1.4, scale: 1.1,
+    });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -473,14 +444,7 @@ const maelstrom: AbilitySig = {
     }
     ctx.restore();
     // Spray rides the drain inward, dragged as the water takes it.
-    if (Math.random() < c.frameDt * 14 * fade) {
-      const a = Math.random() * Math.PI * 2;
-      const rr = c.radius * (0.5 + Math.random() * 0.45);
-      c.particles.burst(c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * squash - 0.15, 1, [st.core, st.spark], {
-        speed: 2.2, life: 0.45, size: 0.07, gravity: 1.5, dir: a + Math.PI,
-        spread: 0.25, drag: 1.1, shape: 'streak',
-      });
-    }
+    // (The inhaled spray is the water.undertow emitter from spawn.)
   },
 };
 
@@ -496,20 +460,14 @@ const maelstrom: AbilitySig = {
 const frost_lance: AbilitySig = {
   spawn(c: SigCtx) {
     // The corridor fogs the instant the cold crosses it.
-    const rand = srand(c.seed ^ 0x81);
-    for (let k = 0; k < 6; k++) {
-      const f = 0.12 + rand() * 0.8;
-      c.particles.burst(
-        c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f - 0.35,
-        1, [c.st.mid, c.st.core], {
-          speed: 0.5, life: 0.9, size: 0.11, gravity: 0.2, drag: 1.8,
-          grow: 0.2, shape: 'puff', fade: '#ffffff', wobble: 0.3,
-        },
-      );
-    }
-    c.particles.burst(c.wx2, c.wy2 - 0.4, 5, ['#ffffff', c.st.core], {
-      speed: 1.2, life: 0.7, size: 0.1, gravity: 0.6, drag: 1.8, shape: 'glint',
+    const m = asMatter(c);
+    // The rail freezes: the library's lance rides the whole line —
+    // shards, glints, and sinking cold from hilt to point...
+    frost.deployments.lance!(m, c.wx, c.wy, {
+      x2: c.wx2, y2: c.wy2, dur: 1.0, scale: 1,
     });
+    // ...and the point itself shatters cold where it stops.
+    frost.deployments.shatter!(m, c.wx2, c.wy2, { scale: 0.55 });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc } = c;
@@ -592,13 +550,8 @@ const frost_lance: AbilitySig = {
       ctx.fill();
     }
     ctx.restore();
-    // The teeth drip glitter once the rail starts to give.
-    if (t > 0.45 && Math.random() < c.frameDt * 12) {
-      const f = 0.2 + Math.random() * 0.7;
-      c.particles.burst(c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f - 0.3, 1, ['#ffffff', st.core], {
-        speed: 0.3, life: 0.55, size: 0.08, gravity: 2.2, shape: 'glint',
-      });
-    }
+    // (The rail's glitter and sinking cold ride the frost.lance
+    // emitter from spawn.)
     c.glow((c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2, 1.4, 0.25 * (1 - t));
   },
 };
@@ -699,18 +652,11 @@ const ember_fan: AbilitySig = {
     // The hand opens: five tongues splay from the strike.
     const rand = srand(c.seed ^ 0x91);
     const base = rand() * Math.PI * 2;
-    for (let k = 0; k < 5; k++) {
-      const a = base - 0.55 + k * 0.275;
-      c.particles.burst(c.wx, c.wy - 0.25, 1, [c.st.mid, c.st.core], {
-        speed: 1.9, life: 0.45, size: 0.12, gravity: -1.4, dir: a,
-        spread: 0.12, shape: 'lick', flicker: 0.3, fade: c.st.deep, wobble: 0.4,
-      });
-    }
-    // Coals hop out and lie burning where they land.
-    c.particles.burst(c.wx, c.wy - 0.15, 4, [c.st.spark, c.st.mid], {
-      speed: 1.3, life: 1.1, size: 0.07, gravity: 7, dir: base, spread: 1.0,
-      flicker: 0.8, fade: c.st.deep, ground: true,
-    });
+    const m = asMatter(c);
+    // The hand opens: the library's fan of tongues along the palm...
+    fire.deployments.fan!(m, c.wx, c.wy, { dir: base, scale: 1 });
+    // ...and true coals hop out and LIE burning where they land.
+    fire.deployments.gobbets!(m, c.wx, c.wy, { dir: base, scale: 0.7 });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc, squash, px, py } = c;
@@ -759,13 +705,7 @@ const ember_fan: AbilitySig = {
     if (c.t > 0.2 && Math.random() < c.frameDt * 8 * (1 - c.t)) {
       const rand = srand(c.seed ^ 0x92);
       const base = rand() * Math.PI * 2;
-      const k = Math.floor(Math.random() * 5);
-      const a = base - 0.55 + k * 0.275;
-      const len = Math.max(c.radius, 0.85) * 0.65;
-      c.particles.burst(c.wx + Math.cos(a) * len, c.wy + Math.sin(a) * len * c.squash - 0.1, 1, [c.st.deep, '#3a3040'], {
-        speed: 0.25, life: 0.8, size: 0.08, gravity: -1.0, drag: 1.5,
-        shape: 'puff', wobble: 0.6, fade: '#241c26',
-      });
+      // (The fingertips' soot is the fire.fan exhale from spawn.)
     }
   },
 };
@@ -874,10 +814,10 @@ const stormcall: AbilitySig = {
       ctx.beginPath();
       ctx.ellipse(sx, sy, sc * 0.28 * (1 - k * 0.5), sc * 0.28 * (1 - k * 0.5) * squash, 0, 0, Math.PI * 2);
       ctx.stroke();
-      if (Math.random() < c.frameDt * 12) {
-        c.particles.burst(c.wx + (Math.cos(sa) * sr) / sc, c.wy + (Math.sin(sa) * sr * squash) / sc - 0.1, 2, [st.spark, st.core], {
-          speed: 2.6, life: 0.3, size: 0.07, gravity: 4, up: true, shape: 'streak', flicker: 0.6,
-        });
+      if (Math.random() < c.frameDt * 10) {
+        // Each strike's arrival is the library's discharge crackle.
+        storm.deployments.impact!(asMatter(c),
+          c.wx + (Math.cos(sa) * sr) / sc, c.wy + (Math.sin(sa) * sr * squash) / sc, { scale: 0.7 });
       }
       c.glow(c.wx + (Math.cos(sa) * sr) / sc, c.wy + (Math.sin(sa) * sr * squash) / sc, 1.2, 0.5 * k);
     }
@@ -979,13 +919,11 @@ const mirror_image: AbilitySig = {
  */
 const daybreak: AbilitySig = {
   spawn(c: SigCtx) {
-    // First light: star glints thrown high, gold dust settling after.
-    c.particles.burst(c.wx, c.wy - 0.6, 7, ['#ffffff', c.st.spark], {
-      speed: 1.8, life: 0.7, size: 0.11, gravity: -1.2, up: true, drag: 1.2, shape: 'glint',
-    });
-    c.particles.burst(c.wx, c.wy - 0.3, 6, [c.st.mid, c.st.spark], {
-      speed: 1.2, life: 1.0, size: 0.08, gravity: 1.5, flicker: 0.4, fade: c.st.deep, ground: true,
-    });
+    const m = asMatter(c);
+    // First light: the library's congregation rises off the horizon
+    // line, and gold falls gently over the risen disc's ground.
+    radiance.deployments.bloom!(m, c.wx, c.wy, { scale: 1.1 });
+    radiance.deployments.rain!(m, c.wx, c.wy, { radius: c.radius * 0.6, dur: 1.2, scale: 0.8 });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -1057,13 +995,7 @@ const daybreak: AbilitySig = {
     }
     ctx.restore();
     // Morning burns off: gold dust drifts up through the young light.
-    if (t > 0.3 && Math.random() < c.frameDt * 9 * fade) {
-      const a = Math.random() * Math.PI * 2;
-      const rr = Math.sqrt(Math.random()) * c.radius * 0.8;
-      c.particles.burst(c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash - 0.2, 1, [st.spark, '#ffffff'], {
-        speed: 0.25, life: 0.8, size: 0.09, gravity: -0.9, drag: 1.2, shape: 'glint',
-      });
-    }
+    // (The lingering gold is the radiance.rain emitter from spawn.)
   },
 };
 
@@ -1086,12 +1018,9 @@ const riftwalker_step: AbilitySig = {
         speed: 0.5, life: 0.5, size: 0.09, gravity: -0.4, drag: 1.6, shape: 'glint',
       });
     }
-    // The exit spits the charge you carried through.
-    c.particles.burst(c.wx2, c.wy2 - 0.4, 6, [c.st.spark, c.st.core], {
-      speed: 2.4, life: 0.3, size: 0.07, gravity: 3,
-      dir: Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx), spread: 0.8,
-      shape: 'streak', flicker: 0.5,
-    });
+    // The exit spits the charge you carried through — the library's
+    // discharge crackle at the corridor's far mouth.
+    storm.deployments.impact!(asMatter(c), c.wx2, c.wy2, { scale: 0.85 });
   },
   ground(c: SigCtx) {
     const { ctx, st, t, sc } = c;

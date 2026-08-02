@@ -105,6 +105,20 @@ const crackle: Deployment = (c, x, y, o = {}) => {
   c.glow?.(x, y, r + 0.3, GLOW_RGB, 0.2);
 };
 
+/**
+ * The impact — one discharge's worth of crackle at a point: ion
+ * glints popping on their own clocks over hair-thin scratches.
+ * Every electric arrival reuses this; the bolt itself is the arc's
+ * (or a signature's painted) business.
+ */
+const impact: Deployment = (c, x, y, o = {}) => {
+  const k = o.scale ?? 1;
+  const ps = c.particles;
+  ps.burst(x, y, nOf(6, k), [CORE, HOT], { ...STATIC, size: sOf(0.04, k), z: 0.12 });
+  ps.burst(x, y, nOf(5, k), [HOT, CHARGE], { ...ION, size: sOf(0.07, k), z: 0.15 });
+  c.glow?.(x, y, 0.9 * Math.sqrt(k), GLOW_RGB, 0.24);
+};
+
 /** The gather — air converging into the heart before the discharge. */
 const charge: Deployment = (c, x, y, o = {}) => {
   const k = o.scale ?? 1;
@@ -131,5 +145,5 @@ export const storm: Material = {
   id: 'storm',
   name: 'Storm',
   palette: [CORE, HOT, CHARGE, HALO, FADEOUT],
-  deployments: { arc, crackle, charge, static: staticField },
+  deployments: { arc, crackle, charge, impact, static: staticField },
 };

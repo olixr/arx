@@ -95,6 +95,23 @@ const rain: Deployment = (c, x, y, o = {}) => {
   });
 };
 
+/**
+ * The undertow — water hauled the wrong way: foam and mist dragged
+ * out of a circle INTO the eye. The maelstrom's verb; every drag
+ * and drowning pull reuses it.
+ */
+const undertow: Deployment = (c, x, y, o = {}) => {
+  const k = o.scale ?? 1;
+  return c.particles.emit({
+    kind: 'rim', x, y, radius: o.radius ?? 1.0, outward: -2.0,
+    rate: 54 * k, dur: o.dur ?? 1.2, attack: 0.1, release: 0.3,
+    pops: [
+      { colors: [FOAM, WHITE], opts: { ...FOAM_MOTE, vz: 0.2, zg: 0, land: 'none', life: 0.6, drag: 0.5 }, weight: 1.8 },
+      { colors: [LIGHT, CHANNEL], opts: { ...MIST, z: 0.06, vz: 0.1, zg: 0, land: 'none', drag: 0.6 }, weight: 1 },
+    ],
+  });
+};
+
 /** The churn — standing white violence, rapids over a body. */
 const churn: Deployment = (c, x, y, o = {}) => {
   const k = o.scale ?? 1;
@@ -113,5 +130,5 @@ export const water: Material = {
   id: 'water',
   name: 'Water',
   palette: [DEEP, CHANNEL, LIGHT, FOAM, WHITE],
-  deployments: { splash, spray, rain, churn },
+  deployments: { splash, spray, rain, churn, undertow },
 };

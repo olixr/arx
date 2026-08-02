@@ -185,6 +185,33 @@ const gobbets: Deployment = (c, x, y, o = {}) => {
   });
 };
 
+/**
+ * The fan — an aimed spread of tongues, the breath-weapon shape:
+ * hot licks leaping in a cone (two bands, the cohort law), a few
+ * sparks scratching past them, one soot exhale after. Hand-flames
+ * and breath attacks reuse it.
+ */
+const fan: Deployment = (c, x, y, o = {}) => {
+  const k = o.scale ?? 1;
+  const d = o.dir ?? 0;
+  const ps = c.particles;
+  ps.burst(x, y, nOf(7, k), [HEART, BRIGHT, FLAME], {
+    ...LICK, size: sOf(0.11, k), speed: 1.6, life: 0.5,
+    dir: d, spread: 1.0, vz: 0.35, zg: -0.2,
+    fade: EMBER, fadeAt: 0.5, fade2: DEEP, fade2At: 0.85,
+    fade3: '', fade3At: 0.92,
+  });
+  ps.burst(x, y, nOf(4, k), ['#ffd27a', BRIGHT], {
+    ...SPARK, size: sOf(0.04, k), dir: d, spread: 1.1,
+  });
+  ps.emit({
+    x: x + Math.cos(d) * 0.4, y: y + Math.sin(d) * 0.4,
+    rate: 14 * k, dur: 0.6, attack: 0.08, release: 0.25,
+    pops: [{ colors: [SMOKE, SOOT], opts: { ...SOOT_PUFF, size: 0.075 } }],
+  });
+  c.glow?.(x + Math.cos(d) * 0.5, y + Math.sin(d) * 0.5, 1.1 * Math.sqrt(k), GLOW_RGB, 0.26);
+};
+
 /** Burning ground — low, hungry flame carpeting a disc. */
 const pool: Deployment = (c, x, y, o = {}) => {
   const k = o.scale ?? 1;
@@ -201,5 +228,5 @@ export const fire: Material = {
   id: 'fire',
   name: 'Fire',
   palette: [HEART, FLAME, EMBER, DEEP, SOOT],
-  deployments: { burst, plume, ring, path, pool, gobbets },
+  deployments: { burst, plume, ring, path, pool, gobbets, fan },
 };
