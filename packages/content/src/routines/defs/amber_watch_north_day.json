@@ -1,0 +1,27 @@
+{
+  "id": "amber_watch_north_day",
+  "base": { "kind": "post", "dir": -1.5707963267948966, "speed": 1.6 },
+  "slots": [
+    {
+      "from": 22.25,
+      "to": 5.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.5,
+        "waypoints": [
+          { "x": 0, "y": 3 },
+          { "x": -5, "y": 5 },
+          { "x": -7, "y": 5 },
+          { "x": -7, "y": 4 },
+          { "x": -7, "y": 2 },
+          { "x": -7, "y": 0 },
+          { "x": -8, "y": 0 },
+          { "x": -9, "y": 0, "lie": true }
+        ]
+      }
+    },
+    { "from": 10.1, "to": 10.7, "task": { "kind": "wander", "radius": 2, "speed": 1.4 } },
+    { "from": 16.3, "to": 16.9, "task": { "kind": "wander", "radius": 2, "speed": 1.4 } }
+  ]
+}

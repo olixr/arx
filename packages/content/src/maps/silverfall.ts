@@ -1072,6 +1072,10 @@ export function buildSilverfall(): ZoneDef {
   b.set(171, 10, Tile.DoorwayWood);
   b.set(169, 7, Tile.WallWoodWindow).set(173, 7, Tile.WallWoodWindow);
   b.set(170, 6, Tile.Bed).set(170, 7, Tile.Bed);
+  // The second bunk: the muster keeps a night body now, and the two
+  // sleep in shifts — day guard by night in the north bed, night
+  // guard by day in this one. Foot on (170,9).
+  b.set(170, 8, Tile.Bed).set(170, 9, Tile.Bed);
   b.set(172, 6, Tile.WeaponRack);
   b.set(172, 8, Tile.Table).set(172, 9, Tile.Chair);
   b.setDetail(171, 9, Detail.Doormat);
@@ -1118,6 +1122,11 @@ export function buildSilverfall(): ZoneDef {
   b.set(37, 101, Tile.WeaponRack).set(37, 103, Tile.WeaponRack);
   b.set(44, 101, Tile.Cabinet);
   b.set(44, 107, Tile.Bed).set(44, 108, Tile.Bed); // the night-watch bunk
+  // The bunkroom grows with the rota: the inner gate pair hot-bunk
+  // the east beds (day sentry by night, night sentry by day) and the
+  // patrol pair share the west-wall bed the same way. Feet south.
+  b.set(42, 107, Tile.Bed).set(42, 108, Tile.Bed);
+  b.set(37, 105, Tile.Bed).set(37, 106, Tile.Bed);
   b.set(40, 107, Tile.Table).set(39, 107, Tile.Chair); // the mess corner
   b.set(37, 107, Tile.Brazier);
   b.setDetail(45, 104, Detail.Doormat).setDetail(45, 105, Detail.Doormat);
@@ -1215,6 +1224,18 @@ export function buildSilverfall(): ZoneDef {
   b.actor('silverfall_watch', 41.5, 105.5, 0, 'fall_watch');
   b.actor('silverfall_watch', 92.5, 33.5, Math.PI / 2, 'fall_watch');
   b.actor('silverfall_watch', 82.5, 61.5, Math.PI / 2, 'fall_watch');
+  // THE CHANGING OF THE GUARD — the rota behind the standing posts:
+  // an inner gate pair splits the clock at the gatefront (day west,
+  // night east, reliefs overlapping so the arch never stands bare),
+  // a patrol pair walks opposite rounds (trades and working lanes by
+  // day, the low city by lantern), and the muster yard keeps a night
+  // body so the postern head is never empty while the day guard
+  // sleeps. Sleepers walk to the gatehouse bunkroom and muster hut.
+  b.actor('silverfall_watch', 86.5, 110.5, Math.PI / 2, 'fall_watch_gate_day');
+  b.actor('silverfall_watch', 90.5, 110.5, Math.PI / 2, 'fall_watch_gate_night');
+  b.actor('silverfall_watch', 88.5, 101.5, Math.PI / 2, 'fall_watch_round_day');
+  b.actor('silverfall_watch', 88.5, 107.5, Math.PI / 2, 'fall_watch_round_night');
+  b.actor('silverfall_watch', 169.5, 11.5, -Math.PI / 2, 'fall_watch_muster_night');
   // Lantern Row.
   b.actor('silversmith_vigdis', 54.5, 54.4, Math.PI / 2, 'fall_silversmith');
   b.actor('weaver_ottilie', 110.5, 56.4, Math.PI / 2, 'fall_weaver');

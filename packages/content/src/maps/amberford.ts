@@ -290,6 +290,11 @@ export function buildAmberford(): ZoneDef {
   b.set(49, 5, Tile.ToolRack);
   b.set(46, 4, Tile.Table).set(47, 4, Tile.Chair);
   b.set(45, 5, Tile.Brazier); // the watch fire
+  // The gate pair's bunks flank the racks: the day sentry sleeps the
+  // west one by night, the night sentry the east one by day — the
+  // tower is the North Gate's own squad room. Feet on (45,3)/(49,3).
+  b.set(45, 2, Tile.Bed).set(45, 3, Tile.Bed);
+  b.set(49, 2, Tile.Bed).set(49, 3, Tile.Bed);
   b.setDetail(48, 0, Detail.BannerCrown); // the watch serves the crown
   b.setDetail(47, 6, Detail.Doormat);
   // The gate furniture: lamps where the lamplight ENDS, the sign that
@@ -962,6 +967,35 @@ export function buildAmberford(): ZoneDef {
   }
 
   // ---------------------------------------------------------------
+  // THE WARDROOM — the watch finally owns a roof. Four bunks worked
+  // in shifts (day sentries sleep them by night, night sentries by
+  // day), the duty table between, racks and the hearth on the south
+  // wall. It stands on the East Road so every relief walks the same
+  // lane to work. The tower commands; the wardroom sleeps.
+  // ---------------------------------------------------------------
+  b.fillRect(103, 63, 7, 8, Tile.StoneFloor);
+  b.outlineRect(103, 63, 7, 8, Tile.WallStone);
+  b.set(103, 63, Tile.WallStoneDiagSE).set(109, 63, Tile.WallStoneDiagSW);
+  b.set(106, 63, Tile.DoorwayStone); // north door onto the East Road
+  b.set(104, 63, Tile.WallStoneWindow).set(108, 63, Tile.WallStoneWindow);
+  b.set(103, 66, Tile.WallStoneWindow).set(109, 66, Tile.WallStoneWindow);
+  b.set(105, 70, Tile.WallStoneWindow).set(107, 70, Tile.WallStoneWindow);
+  // Bunks in the four corners, feet toward the aisle rows.
+  b.set(104, 64, Tile.Bed).set(104, 65, Tile.Bed);
+  b.set(108, 64, Tile.Bed).set(108, 65, Tile.Bed);
+  b.set(104, 67, Tile.Bed).set(104, 68, Tile.Bed);
+  b.set(108, 67, Tile.Bed).set(108, 68, Tile.Bed);
+  b.set(106, 66, Tile.Table); // the duty table
+  b.set(104, 69, Tile.WeaponRack).set(108, 69, Tile.WeaponRack);
+  b.set(105, 69, Tile.Crate);
+  b.set(107, 69, Tile.Hearth);
+  b.setDetail(106, 64, Detail.Doormat);
+  b.setDetail(105, 66, Detail.Rug).setDetail(107, 66, Detail.Rug);
+  b.setDetail(107, 63, Detail.BannerCrown); // the watch serves the crown
+  b.set(106, 62, Tile.Path); // the door step meets the East Road
+  b.set(104, 62, Tile.LampPost); // lit for the changing of the guard
+  b.sign(102, 62, 'THE WARDROOM', ['the watch sleeps in shifts'], Tile.HangingSign);
+
   // ---------------------------------------------------------------
   // THE PEOPLE (Epic 6): fifteen lives on the town's own clock.
   // Placements are the POST each routine measures from — the smith's
@@ -982,10 +1016,22 @@ export function buildAmberford(): ZoneDef {
   b.actor('keeper_ansel', 42.5, 69.5, Math.PI / 2, 'amber_keeper');
   b.actor('orchardist_perl', 74.5, 68.5, -Math.PI / 2, 'amber_orchardist');
   b.actor('courier_nib', 52.5, 44.5, 0, 'amber_courier');
-  // The town watch — two of Aldis's people on the wall's other
-  // gates: one at the Fordgate mouth, one by the East Road gate.
-  b.actor('amberford_watch', 4.5, 50.5, Math.PI, 'amber_watch');
-  b.actor('amberford_watch', 108.5, 59.5, 0, 'amber_watch');
+  // THE CHANGING OF THE GUARD — Aldis's watch grown to a real rota:
+  // every gate keeps a day sentry and a night sentry who hand over
+  // at the gate itself (the reliefs overlap on purpose, so no gate
+  // ever stands empty), and a patrol pair walks the walls' streets
+  // in opposite halves of the clock. Day sentries sleep the wardroom
+  // and tower bunks by night; night sentries sleep them by day.
+  b.actor('amberford_watch', 4.5, 50.5, Math.PI, 'amber_watch_ford_day');
+  b.actor('amberford_watch', 4.5, 54.5, Math.PI, 'amber_watch_ford_night');
+  b.actor('amberford_watch', 54.5, 3.5, -Math.PI / 2, 'amber_watch_north_day');
+  b.actor('amberford_watch', 53.5, 4.5, -Math.PI / 2, 'amber_watch_north_night');
+  b.actor('amberford_watch', 108.5, 59.5, 0, 'amber_watch_east_day');
+  b.actor('amberford_watch', 108.5, 62.5, 0, 'amber_watch_east_night');
+  b.actor('amberford_watch', 52.5, 76.5, Math.PI / 2, 'amber_watch_salt_day');
+  b.actor('amberford_watch', 51.5, 76.5, Math.PI / 2, 'amber_watch_salt_night');
+  b.actor('amberford_watch', 52.5, 38.5, Math.PI / 2, 'amber_watch_round_day');
+  b.actor('amberford_watch', 52.5, 41.5, Math.PI / 2, 'amber_watch_round_night');
   // The traveling traders: stalls on the produce row by day, the
   // inn's guest wing by night — the market finally has voices.
   b.actor('round_trader', 60.0, 28.8, Math.PI / 2, 'amber_trader_a');

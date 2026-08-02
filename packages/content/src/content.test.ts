@@ -1034,10 +1034,12 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
   assert.equal(spawnKinds.get('chicken'), 4);
   assert.equal(spawnKinds.get('cow'), 2);
   assert.equal(spawnKinds.get('rat'), 3);
-  // Seven villagers, each with their post; six keep routine hours —
-  // Maren stands the stalls all day by choice (beastcraft v2 Phase 4).
+  // Seven villagers plus Bryn's two vale wards; all but Maren keep
+  // routine hours — she stands the stalls all day by choice
+  // (beastcraft v2 Phase 4). The wards split the clock on one hot
+  // bunk (THE CHANGING OF THE GUARD).
   const actors = z.actorSpawns ?? [];
-  assert.equal(actors.length, 7);
+  assert.equal(actors.length, 9);
   for (const slug of [
     'elder_rowan',
     'warden_bryn',
@@ -1049,7 +1051,8 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
   ]) {
     assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from the village`);
   }
-  assert.equal(actors.filter((a) => a.routine).length, 6, 'every villager keeps hours');
+  assert.equal(actors.filter((a) => a.actor === 'dawnmead_ward').length, 2, 'the ward rota changed');
+  assert.equal(actors.filter((a) => a.routine).length, 8, 'every villager keeps hours');
   // The stable door stands by the pasture (THE THREE STALLS).
   assert.equal(counts.get(Tile.BeastPen) ?? 0, 1, 'the beast pen missing');
   // The zone survives the editor's JSON round trip. zoneFromJson
@@ -1179,15 +1182,17 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   // traders on the produce row and the two town watch on the wall's
   // far gates, every one on routine hours.
   const amberActors = z.actorSpawns ?? [];
-  assert.equal(amberActors.length, 19, 'Amberford lost residents');
+  assert.equal(amberActors.length, 27, 'Amberford lost residents');
   assert.equal(
     amberActors.filter((a) => a.actor === 'round_trader').length,
     2,
     'the produce row lost its traders',
   );
+  // THE CHANGING OF THE GUARD: a day and a night sentry on each of
+  // the four gates plus the patrol pair — ten bodies on the rota.
   assert.equal(
     amberActors.filter((a) => a.actor === 'amberford_watch').length,
-    2,
+    10,
     'the wall lost its watch',
   );
   for (const slug of [
@@ -1209,7 +1214,7 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   ]) {
     assert.ok(amberActors.some((a) => a.actor === slug), `${slug} missing from Amberford`);
   }
-  assert.equal(amberActors.filter((a) => a.routine).length, 19, 'every resident keeps hours');
+  assert.equal(amberActors.filter((a) => a.routine).length, 27, 'every resident keeps hours');
   // The editor JSON round trip holds, flat-zone law included.
   const json = zoneToJson(z);
   assert.equal(json.elev, undefined, 'amberford is a flat zone');
@@ -1352,7 +1357,7 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // The capital's cast: the Crown, the districts' masters, the Row's
   // keepers, the Rookery — and the pooled watch, guard, and stalls.
   const fallActors = z.actorSpawns ?? [];
-  assert.equal(fallActors.length, 42, 'Silverfall lost residents');
+  assert.equal(fallActors.length, 47, 'Silverfall lost residents');
   for (const slug of [
     'king_aeriex',
     'queen_kayri',
@@ -1383,12 +1388,14 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   ]) {
     assert.ok(fallActors.some((a) => a.actor === slug), `${slug} missing from Silverfall`);
   }
-  // 5 in the city + 2 on the Postern Lane (the Pinereach epic).
-  assert.equal(fallActors.filter((a) => a.actor === 'silverfall_watch').length, 7);
+  // 5 standing posts + 2 on the Postern Lane (the Pinereach epic)
+  // + the rota: inner gate pair, patrol pair, and the muster's night
+  // body (THE CHANGING OF THE GUARD).
+  assert.equal(fallActors.filter((a) => a.actor === 'silverfall_watch').length, 12);
   assert.equal(fallActors.filter((a) => a.actor === 'castle_guard').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'galleria_trader').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'gate_monger').length, 2);
-  assert.equal(fallActors.filter((a) => a.routine).length, 42, 'every keeper keeps hours');
+  assert.equal(fallActors.filter((a) => a.routine).length, 47, 'every keeper keeps hours');
   // The editor JSON round trip holds WITH the elevation layer.
   const json = zoneToJson(z);
   assert.ok(json.elev !== undefined, 'the elevation layer must serialize');
@@ -1652,9 +1659,10 @@ test('saltmere: the town at the waters end holds its shore, trades, and gate', (
   assert.ok((counts.get(Tile.Sand) ?? 0) >= 300, 'the flats washed away');
   assert.ok((counts.get(Tile.Water) ?? 0) >= 400, 'the mere shrank');
   assert.ok((counts.get(Tile.Bed) ?? 0) >= 30, 'the town lost its beds');
-  // The people: seventeen posts, every one keeping hours.
+  // The people: eighteen posts, every one keeping hours (the gate
+  // gained its night relief — THE CHANGING OF THE GUARD).
   const actors = z.actorSpawns ?? [];
-  assert.equal(actors.length, 17, 'the cast changed size');
+  assert.equal(actors.length, 18, 'the cast changed size');
   for (const slug of [
     'portreeve_brack',
     'factor_neave',
@@ -1670,7 +1678,7 @@ test('saltmere: the town at the waters end holds its shore, trades, and gate', (
   ] as const) {
     assert.ok(actors.some((a) => a.actor === slug), `missing resident: ${slug}`);
   }
-  assert.equal(actors.filter((a) => a.actor === 'saltmere_watch').length, 3, 'the watch changed');
+  assert.equal(actors.filter((a) => a.actor === 'saltmere_watch').length, 4, 'the watch changed');
   assert.equal(actors.filter((a) => a.actor === 'saltmere_fisher').length, 3, 'the crews changed');
   assert.equal(actors.filter((a) => a.routine).length, actors.length, 'every resident keeps hours');
   const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));

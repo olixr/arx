@@ -610,6 +610,10 @@ export function buildSaltmere(): ZoneDef {
   b.actor('lightkeeper_lund', 17.5, 70.4, Math.PI / 2, 'salt_beacon');
   b.actor('pilot_fane', 78.5, 49.5, Math.PI / 2, 'salt_pilot');
   b.actor('saltmere_watch', 53.5, 4.5, Math.PI / 2, 'salt_watch_gate');
+  // The gate's night relief: when the day guard walks to the Watch
+  // House bunk at ten bells, this one is already on the arch — the
+  // road end is never unwatched. Sleeps the east bunk by day.
+  b.actor('saltmere_watch', 54.5, 4.5, Math.PI / 2, 'salt_watch_gate_night');
   b.actor('saltmere_watch', 49.5, 46.5, Math.PI / 2, 'salt_watch_square');
   b.actor('saltmere_watch', 68.5, 49.5, Math.PI / 2, 'salt_watch_quay');
   b.actor('saltmere_fisher', 47.5, 55.5, Math.PI / 2, 'salt_fisher_piers');
