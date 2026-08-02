@@ -131,6 +131,16 @@ export const MATTER_MIGRATED: readonly string[] = [
   // mirror_image keep their arcane glass and glints bespoke.
   'arc_bolt', 'meteor_shard', 'maelstrom', 'frost_lance',
   'ember_fan', 'stormcall', 'daybreak', 'riftwalker_step',
+  // Wave 3a — the blade roster, the widest wave: sixteen of twenty
+  // speak the library across seven materials (water, fire, frost,
+  // storm, blood, radiance, dust). quicksilver keeps its mercury,
+  // reapers_arc its chaff, green_verse its notes, still_air its
+  // stillness — no material owns those voices, and the roster reads
+  // better for the restraint.
+  'sundering_chop', 'thorn_lash', 'riptide', 'cinder_arc',
+  'winters_edge', 'red_harvest', 'storm_brand', 'kings_decree',
+  'sunburst', 'starfall_strike', 'vow_unbroken', 'drag_under',
+  'spoken_light', 'slagfall', 'sky_splits', 'sun_court',
 ];
 
 // ------------------------------------------------------- exemplars

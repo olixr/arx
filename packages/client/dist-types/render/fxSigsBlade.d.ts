@@ -16,6 +16,12 @@
  * Starfall lands as 'blast' after its telegraph; the vow is a 'buff'.
  * Every hook stays graceful for any kind — far-end fields collapse
  * to the heart when a cast carries no second point.
+ *
+ * FX v5 wave 3a: particle matter routes through the MATTER LIBRARY
+ * (ONE-VOICE LAW) — water, fire, frost, storm, blood, radiance, and
+ * dust all speak mastered. The painted centerpieces stay bespoke,
+ * as do quicksilver's mercury, reapers_arc's chaff, green_verse's
+ * notes, and still_air's stillness: no material owns those voices.
  */
 import type { AbilitySig } from './fxSignatures.js';
 export declare const BLADE_SIGS: Record<string, AbilitySig>;

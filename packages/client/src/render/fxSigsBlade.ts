@@ -16,11 +16,18 @@
  * Starfall lands as 'blast' after its telegraph; the vow is a 'buff'.
  * Every hook stays graceful for any kind — far-end fields collapse
  * to the heart when a cast carries no second point.
+ *
+ * FX v5 wave 3a: particle matter routes through the MATTER LIBRARY
+ * (ONE-VOICE LAW) — water, fire, frost, storm, blood, radiance, and
+ * dust all speak mastered. The painted centerpieces stay bespoke,
+ * as do quicksilver's mercury, reapers_arc's chaff, green_verse's
+ * notes, and still_air's stillness: no material owns those voices.
  */
 
 import { shade } from './rig.js';
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { dust, blood, fire, frost, storm, water, radiance, smoke, asMatter } from './matter/index.js';
 
 /** Screen point r px from the heart along ground angle a. */
 function pt(c: SigCtx, r: number, a: number): { x: number; y: number } {
@@ -36,31 +43,14 @@ function pt(c: SigCtx, r: number, a: number): { x: number; y: number } {
  */
 const sundering_chop: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x61);
-    // Chips leap sideways out of the cut — matter the edge displaced.
-    for (let k = 0; k < 6; k++) {
-      const f = 0.3 + rand() * 0.65;
-      c.particles.burst(
-        c.wx + Math.cos(c.dir) * c.radius * f,
-        c.wy + Math.sin(c.dir) * c.radius * f * c.squash,
-        1, [c.st.deep, c.st.mid, '#6a6375'], {
-          speed: 2.0 + rand() * 1.2, life: 0.5, size: 0.09, gravity: 8,
-          dir: c.dir + (rand() < 0.5 ? 1 : -1) * (0.9 + rand() * 0.5),
-          spread: 0.3, shape: 'shard', spin: 11,
-        },
-      );
-    }
-    // The halves take the shove: dust rolls off both flanks at once.
+    const m = asMatter(c);
+    const cx = c.wx + Math.cos(c.dir) * c.radius * 0.55;
+    const cy = c.wy + Math.sin(c.dir) * c.radius * 0.55 * c.squash;
+    // The halves take the shove: TRUE earth off both flanks of the
+    // kerf at once — two opposed gouges, chunk heroes hopping and
+    // billow rolling away from the cut, fines raining after.
     for (const side of [-1, 1]) {
-      c.particles.burst(
-        c.wx + Math.cos(c.dir) * c.radius * 0.55,
-        c.wy + Math.sin(c.dir) * c.radius * 0.55 * c.squash,
-        2, ['#4a4252', c.st.deep], {
-          speed: 1.1, life: 0.8, size: 0.12, gravity: 0.4, drag: 1.7,
-          grow: 0.28, dir: c.dir + (side * Math.PI) / 2, spread: 0.4,
-          shape: 'puff', wobble: 0.4, ground: true,
-        },
-      );
+      dust.deployments.gouge!(m, cx, cy, { dir: c.dir + (side * Math.PI) / 2, scale: 0.55 });
     }
   },
   ground(c) {
@@ -215,16 +205,15 @@ const thorn_lash: AbilitySig = {
     ctx.restore();
   },
   air(c) {
-    // The barbs drip: red beads tick off the row, late and unhurried.
-    if (c.t > 0.45 && Math.random() < c.frameDt * 8) {
+    // The barbs drip TRUE: on late beats a barb wells over and the
+    // library takes the drop — it falls, splats, and dries on the
+    // dirt where the briar planted it.
+    if (c.t > 0.45 && Math.random() < c.frameDt * 5) {
       const a = c.dir + (Math.random() - 0.5) * 1.2;
-      c.particles.burst(
+      blood.deployments.spatter!(asMatter(c),
         c.wx + Math.cos(a) * c.radius * 0.72,
         c.wy + Math.sin(a) * c.radius * 0.72 * c.squash,
-        1, ['#c4372a', '#6a1518'], {
-          speed: 0.4, life: 0.4, size: 0.05, gravity: 6, fade: '#6a1518',
-        },
-      );
+        { scale: 0.22, radius: 0.25 });
     }
   },
 };
@@ -333,19 +322,14 @@ const quicksilver: AbilitySig = {
  */
 const riptide: AbilitySig = {
   spawn(c) {
+    const m = asMatter(c);
     const ang = Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx);
-    // The arrival splashes AGAINST the run — tide over the shoulder.
-    c.particles.burst(c.wx2, c.wy2 - 0.3, 6, [c.st.core, c.st.mid, '#ffffff'], {
-      speed: 2.6, life: 0.35, size: 0.06, gravity: 3, dir: ang + Math.PI,
-      spread: 0.5, shape: 'streak',
-    });
-    // Cold hangs where the body passed: brine glints down the line.
-    c.particles.burst(
-      (c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2 - 0.4,
-      4, ['#ffffff', c.st.core], {
-        speed: 0.5, life: 0.8, size: 0.09, gravity: 0.4, drag: 2.0, shape: 'glint',
-      },
-    );
+    // The arrival throws its spray AGAINST the run — a pressured cone
+    // of TRUE water breaking over the shoulder of the dash.
+    water.deployments.spray!(m, c.wx2, c.wy2, { dir: ang + Math.PI, dur: 0.45, scale: 0.8 });
+    // The wake splashes where the body passed: drops with honest
+    // ballistics, foam, and the mist that hangs after violence.
+    water.deployments.splash!(m, (c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2, { scale: 0.5 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, px2, py2 } = c;
@@ -397,17 +381,14 @@ const riptide: AbilitySig = {
     ctx.restore();
   },
   air(c) {
-    // Chill mist beads off the receding water while the wake lives.
-    if (Math.random() < c.frameDt * 10 * (1 - c.t)) {
+    // Sea-breath rides the wake while it lives: each gated beat pops
+    // one small TRUE splash somewhere along the traveled line.
+    if (Math.random() < c.frameDt * 5 * (1 - c.t)) {
       const f = Math.random();
-      c.particles.burst(
+      water.deployments.splash!(asMatter(c),
         c.wx + (c.wx2 - c.wx) * f,
-        c.wy + (c.wy2 - c.wy) * f - 0.2,
-        1, [c.st.mid, c.st.core], {
-          speed: 0.4, life: 0.7, size: 0.1, gravity: 0.3, drag: 1.6,
-          grow: 0.18, shape: 'puff', fade: '#ffffff', wobble: 0.4,
-        },
-      );
+        c.wy + (c.wy2 - c.wy) * f,
+        { scale: 0.25 });
     }
   },
 };
@@ -421,19 +402,11 @@ const riptide: AbilitySig = {
  */
 const cinder_arc: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x71);
-    // The swing torches the fan: tongues stand where the edge went.
-    for (let k = 0; k < 5; k++) {
-      const a = c.dir + (k / 4 - 0.5) * 1.1;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * (0.6 + rand() * 0.25),
-        c.wy + Math.sin(a) * c.radius * (0.6 + rand() * 0.25) * c.squash,
-        1, [c.st.mid, c.st.core], {
-          speed: 0.7, life: 0.5, size: 0.12, gravity: -3.0, shape: 'lick',
-          flicker: 0.3, fade: c.st.deep, wobble: 0.5,
-        },
-      );
-    }
+    // The swing torches the fan: the library's open hand of fire —
+    // hot tongues leaping in the swing's own cone, sparks scratching
+    // past them, one soot exhale after. (The fuse's spitting front
+    // stays the painted rind's own accent.)
+    fire.deployments.fan!(asMatter(c), c.wx, c.wy, { dir: c.dir, scale: 0.8 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, dir, px, py, rPx } = c;
@@ -517,19 +490,13 @@ const cinder_arc: AbilitySig = {
  */
 const winters_edge: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x75);
-    // The cut shatters what it touched: facets and hanging twinkle.
-    for (let k = 0; k < 4; k++) {
-      const a = c.dir + (k / 3 - 0.5) * 1.0;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * (0.55 + rand() * 0.3),
-        c.wy + Math.sin(a) * c.radius * (0.55 + rand() * 0.3) * c.squash,
-        1, [c.st.mid, c.st.core, '#ffffff'], {
-          speed: 1.8, life: 0.5, size: 0.08, gravity: 6, dir: a,
-          spread: 0.4, shape: 'shard', spin: 10, fade: c.st.core,
-        },
-      );
-    }
+    // The cut shatters the air it froze: TRUE frost — shard heroes
+    // that tumble, land, lie, and steam off; crystal dust; the cold
+    // itself sinking to the floor after the break.
+    frost.deployments.shatter!(asMatter(c),
+      c.wx + Math.cos(c.dir) * c.radius * 0.6,
+      c.wy + Math.sin(c.dir) * c.radius * 0.6 * c.squash,
+      { scale: 0.7 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, dir, px, py, rPx } = c;
@@ -591,16 +558,16 @@ const winters_edge: AbilitySig = {
       ctx.fill();
     }
     ctx.restore();
-    // The fall glitters: glints wink where the teeth let go.
-    if (t > release && Math.random() < c.frameDt * 14) {
-      const a = dir + (Math.random() - 0.5) * 1.0;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.88,
-        c.wy + Math.sin(a) * c.radius * 0.88 * c.squash - 0.15,
-        1, ['#ffffff', st.core], {
-          speed: 0.4, life: 0.5, size: 0.09, gravity: 1.2, shape: 'glint',
-        },
-      );
+    // The comb lets go ON the crossing frame: one TRUE frost shatter
+    // where the teeth drop — the library owns the glitter and the
+    // cold that sinks after it.
+    const lifeMs = t > 0 ? c.age / t : 0;
+    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
+    if (tPrev < release && t >= release) {
+      frost.deployments.shatter!(asMatter(c),
+        c.wx + Math.cos(dir) * c.radius * 0.88,
+        c.wy + Math.sin(dir) * c.radius * 0.88 * c.squash,
+        { scale: 0.5 });
     }
   },
 };
@@ -704,18 +671,22 @@ const reapers_arc: AbilitySig = {
 const red_harvest: AbilitySig = {
   spawn(c) {
     const rand = srand(c.seed ^ 0x85);
-    // Steel flashes outward at the rim; the first red follows it.
+    // Steel flashes outward at the rim — the blades' own metal, in
+    // style colors, lawfully bespoke.
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2 + rand() * 0.4;
       c.particles.burst(
         c.wx + Math.cos(a) * c.radius * 0.75,
         c.wy + Math.sin(a) * c.radius * 0.75 * c.squash,
-        1, [c.st.spark, '#c4372a', c.st.mid], {
+        1, [c.st.spark, c.st.mid], {
           speed: 1.8, life: 0.45, size: 0.07, gravity: 5, dir: a,
-          spread: 0.3, shape: 'streak', fade: '#6a1518',
+          spread: 0.3, shape: 'streak',
         },
       );
     }
+    // The first red follows the steel: TRUE blood lobbed over the
+    // threshing floor — drops that arc low, splat, and dry near-black.
+    blood.deployments.spatter!(asMatter(c), c.wx, c.wy, { scale: 0.9, radius: 0.9 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -782,16 +753,14 @@ const red_harvest: AbilitySig = {
       }
       ctx.restore();
     }
-    // The floor keeps giving: red drips tick off the nicks, late.
-    if (t > 0.35 && Math.random() < c.frameDt * 8) {
+    // The floor keeps giving: on late beats a nick wells over and
+    // the library drops TRUE red — every fleck lands and stays.
+    if (t > 0.35 && Math.random() < c.frameDt * 5) {
       const a = Math.random() * Math.PI * 2;
-      c.particles.burst(
+      blood.deployments.spatter!(asMatter(c),
         c.wx + Math.cos(a) * c.radius * 0.78,
         c.wy + Math.sin(a) * c.radius * 0.78 * c.squash,
-        1, ['#c4372a', '#6a1518'], {
-          speed: 0.5, life: 0.4, size: 0.05, gravity: 6, up: true, fade: '#6a1518',
-        },
-      );
+        { scale: 0.2, radius: 0.2 });
     }
     c.glow(c.wx, c.wy, c.radius * 0.8, 0.3 * (1 - t));
   },
@@ -806,10 +775,9 @@ const red_harvest: AbilitySig = {
  */
 const storm_brand: AbilitySig = {
   spawn(c) {
-    // The strike spits: hot slivers off the point of contact.
-    c.particles.burst(c.wx2, c.wy2 - 0.4, 6, [c.st.spark, c.st.core, '#ffffff'], {
-      speed: 2.6, life: 0.3, size: 0.06, gravity: 4, shape: 'streak', flicker: 0.6,
-    });
+    // The strike arrives as one TRUE discharge: ion glints popping
+    // on their own clocks over hair-thin static scratches.
+    storm.deployments.impact!(asMatter(c), c.wx2, c.wy2, { scale: 0.9 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px2, py2 } = c;
@@ -884,11 +852,10 @@ const storm_brand: AbilitySig = {
     ctx.lineTo(bx - s * 0.15 + j2, by + s * 0.1);
     ctx.stroke();
     ctx.restore();
-    // Static ticks off the brand while it holds.
-    if (Math.random() < c.frameDt * 12 * (1 - t)) {
-      c.particles.burst(c.wx2, c.wy2 - 0.5, 1, [st.spark, st.core], {
-        speed: 1.0, life: 0.25, size: 0.04, gravity: 2, shape: 'streak', flicker: 0.7,
-      });
+    // Static ticks off the brand while it holds — each gated beat is
+    // one small TRUE discharge from the library.
+    if (Math.random() < c.frameDt * 6 * (1 - t)) {
+      storm.deployments.impact!(asMatter(c), c.wx2, c.wy2, { scale: 0.3 });
     }
     c.glow(c.wx2, c.wy2, 0.8, 0.4 * (1 - t));
   },
@@ -917,10 +884,9 @@ const kings_decree: AbilitySig = {
         },
       );
     }
-    c.particles.burst(c.wx, c.wy, 4, ['#4a4252', c.st.deep], {
-      speed: 1.0, life: 0.9, size: 0.13, gravity: 0.4, drag: 1.6,
-      grow: 0.3, shape: 'puff', wobble: 0.4, ground: true,
-    });
+    // Dust where the court stood — one TRUE breath of earth, fines
+    // raining back to lie inside the rail.
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 1.2 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -1007,22 +973,10 @@ const kings_decree: AbilitySig = {
  */
 const sunburst: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0xa1);
-    // The flash ignites the air over the circle: tongues and motes.
-    for (let k = 0; k < 5; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.4,
-        c.wy + Math.sin(a) * c.radius * 0.4 * c.squash - 0.2,
-        1, [c.st.mid, c.st.core], {
-          speed: 0.8, life: 0.5, size: 0.12, gravity: -3.2, shape: 'lick',
-          flicker: 0.3, fade: c.st.deep, wobble: 0.5,
-        },
-      );
-    }
-    c.particles.burst(c.wx, c.wy - 0.5, 5, [c.st.spark, '#ffffff'], {
-      speed: 1.2, life: 0.7, size: 0.1, gravity: 0.4, drag: 1.8, shape: 'glint',
-    });
+    // Dawn lands as a blessing: the library's rising congregation —
+    // weightless motes, annunciation glints, a breath of gold that
+    // departs upward. Light doesn't die here; it goes home.
+    radiance.deployments.bloom!(asMatter(c), c.wx, c.wy, { scale: 1.0 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -1109,6 +1063,10 @@ const starfall_strike: AbilitySig = {
       speed: 3.2, life: 0.45, size: 0.06, gravity: 4, up: true,
       shape: 'streak', trail: 9, trailColor: c.st.mid,
     });
+    // The ground answers the sky: a TRUE dust slam — shock skirt,
+    // lofted chunks, billow, and the fines that rain back to lie in
+    // the crater's ring. (The violet sky-stuff stays the star's own.)
+    dust.deployments.slam!(asMatter(c), c.wx, c.wy, { scale: 0.55 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -1283,17 +1241,13 @@ const vow_unbroken: AbilitySig = {
       ctx.fillRect(px - gl * 2, chestY - gl / 2, gl * 4, gl);
     }
     ctx.restore();
-    // The give-back: red motes reel INWARD to the knot while it holds.
-    if (Math.random() < c.frameDt * 10 * (1 - t)) {
-      const a = Math.random() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * 0.85,
-        c.wy + Math.sin(a) * 0.85 * c.squash - 0.6,
-        1, ['#c4372a', st.core], {
-          speed: 1.6, life: 0.45, size: 0.05, gravity: 0, dir: a + Math.PI,
-          spread: 0.15, drag: 0.6, shape: 'glint',
-        },
-      );
+    // The give-back happens AT the cinch: on that crossing frame the
+    // library pulls the tithe home — TRUE red streaks and gobbets
+    // reeling out of a circle into the knot, once, decisively.
+    const lifeMs = t > 0 ? c.age / t : 0;
+    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
+    if (tPrev < 0.38 && t >= 0.38) {
+      blood.deployments.drink!(asMatter(c), c.wx, c.wy, { radius: 0.85, dur: 0.9, scale: 0.6 });
     }
     c.glow(c.wx, c.wy, 0.9, 0.25 * (1 - t));
   },
@@ -1307,18 +1261,26 @@ const vow_unbroken: AbilitySig = {
  */
 const drag_under: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x5a);
-    // Spray leaps off the crest line.
-    for (let k = 0; k < 5; k++) {
-      const a = c.dir + (rand() - 0.5) * 1.3;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.7,
-        c.wy + Math.sin(a) * c.radius * 0.7 * c.squash,
-        1, [c.st.core, c.st.mid], {
-          speed: 1.4 + rand(), life: 0.5, size: 0.07, gravity: 3,
-          dir: a, spread: 0.3, shape: 'glint',
-        },
-      );
+    const m = asMatter(c);
+    // The crest breaks as TRUE water: a pressured cone of spray
+    // toward the swing, and a splash where the wave reached — drops
+    // with honest ballistics, foam, hanging mist.
+    water.deployments.spray!(m, c.wx, c.wy, { dir: c.dir, dur: 0.4, scale: 0.85 });
+    water.deployments.splash!(m,
+      c.wx + Math.cos(c.dir) * c.radius * 0.6,
+      c.wy + Math.sin(c.dir) * c.radius * 0.6 * c.squash,
+      { scale: 0.45 });
+  },
+  air(c) {
+    // The water goes home ON the turn: at the crossing frame the
+    // library hauls foam and mist back into the heart — the undertow
+    // beneath the painted drag-streaks.
+    const lifeMs = c.t > 0 ? c.age / c.t : 0;
+    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
+    if (tPrev < 0.45 && c.t >= 0.45) {
+      water.deployments.undertow!(asMatter(c), c.wx, c.wy, {
+        radius: c.radius * 0.75, dur: 0.6, scale: 0.75,
+      });
     }
   },
   ground(c) {
@@ -1412,10 +1374,9 @@ const spoken_light: AbilitySig = {
     c.glow(c.wx, c.wy, c.radius, 0.3 * (1 - t));
   },
   spawn(c) {
-    c.particles.burst(c.wx, c.wy - 0.4, 6, [c.st.core, '#ffffff'], {
-      speed: 1.2, life: 0.6, size: 0.07, gravity: -1.2, drag: 1.2,
-      shape: 'glint', flicker: 0.4,
-    });
+    // The word takes light: a small TRUE congregation rises as the
+    // ticks begin to read themselves.
+    radiance.deployments.bloom!(asMatter(c), c.wx, c.wy, { scale: 0.55 });
   },
 };
 
@@ -1427,14 +1388,14 @@ const spoken_light: AbilitySig = {
  */
 const slagfall: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2f);
-    // Spatter comets out of the landing.
-    for (let k = 0; k < 7; k++) {
-      c.particles.burst(c.wx2, c.wy2, 1, [c.st.core, c.st.mid, c.st.spark], {
-        speed: 1.6 + rand() * 1.8, life: 0.55 + rand() * 0.3, size: 0.09,
-        gravity: 7, dir: rand() * Math.PI * 2, spread: 0.2, shape: 'shard', spin: 8,
-      });
-    }
+    const m = asMatter(c);
+    // Spatter comets out of the landing as TRUE molten gobbets —
+    // they arc, land still burning, and cool white to deep to soot
+    // in plain sight, exactly as the mouth promised.
+    fire.deployments.gobbets!(m, c.wx2, c.wy2, { scale: 1.0 });
+    // The poured forge breathes: a standing smoke column over the
+    // pool while the veins cool.
+    smoke.deployments.plume!(m, c.wx2, c.wy2, { dur: 1.4, scale: 0.4 });
   },
   ground(c) {
     const { ctx, st, t, squash } = c;
@@ -1533,10 +1494,9 @@ const sky_splits: AbilitySig = {
     c.glow(c.wx2, c.wy2, 0.8, 0.35 * (1 - t));
   },
   spawn(c) {
-    c.particles.burst(c.wx2, c.wy2, 5, [c.st.core, c.st.spark], {
-      speed: 2.2, life: 0.35, size: 0.06, gravity: 0, drag: 2.2,
-      shape: 'glint', flicker: 0.6,
-    });
+    // The visit is paid in TRUE charge: one library discharge at the
+    // struck door — ion glints over hair-thin scratches.
+    storm.deployments.impact!(asMatter(c), c.wx2, c.wy2, { scale: 0.85 });
   },
 };
 
@@ -1597,18 +1557,9 @@ const green_verse: AbilitySig = {
  */
 const sun_court: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x0c);
-    for (let k = 0; k < 6; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.8,
-        c.wy + Math.sin(a) * c.radius * 0.8 * c.squash,
-        1, ['#e8dcc0', c.st.deep], {
-          speed: 1.3, life: 0.7, size: 0.12, gravity: 0.3, drag: 1.6,
-          grow: 0.3, dir: a, spread: 0.3,
-        },
-      );
-    }
+    // The shove is TRUE dust rolling out under the light: the
+    // library's shock skirt, driven from beneath the opening doors.
+    dust.deployments.skirt!(asMatter(c), c.wx, c.wy, { radius: 0.4, dur: 0.5, scale: 0.9 });
   },
   ground(c) {
     const { ctx, st, t, squash } = c;
