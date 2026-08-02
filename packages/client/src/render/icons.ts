@@ -2721,25 +2721,28 @@ const PAINTERS: Record<string, IconPainter> = {
     c.fillRect(0.38, 0.15, 0.24, 0.04);
   },
   pennants: (c, col) => {
-    // A swagged rope of three little flags.
-    c.strokeStyle = '#6e5638';
-    c.lineWidth = 0.04;
-    c.beginPath();
-    c.moveTo(0.14, 0.3);
-    c.quadraticCurveTo(0.5, 0.46, 0.86, 0.3);
-    c.stroke();
-    for (const [i, x] of [0.24, 0.44, 0.64].entries()) {
-      c.fillStyle = i === 1 ? shade(col, 40) : col;
+    // Three long pennons on their rail, cream-bordered in the dye.
+    c.fillStyle = '#2c2836';
+    c.fillRect(0.08, 0.16, 0.84, 0.05);
+    for (const [i, x] of [0.13, 0.41, 0.69].entries()) {
+      const len = i === 1 ? 0.66 : 0.52;
+      c.fillStyle = '#e8dcc4';
       c.strokeStyle = OUTLINE;
-      c.lineWidth = 0.03;
-      const y = 0.34 + (i === 1 ? 0.05 : 0.02);
+      c.lineWidth = 0.035;
       c.beginPath();
-      c.moveTo(x, y);
-      c.lineTo(x + 0.16, y);
-      c.lineTo(x + 0.08, y + 0.22);
+      c.moveTo(x, 0.21);
+      c.lineTo(x + 0.18, 0.21);
+      c.lineTo(x + 0.09, 0.21 + len);
       c.closePath();
       c.fill();
       c.stroke();
+      c.fillStyle = col;
+      c.beginPath();
+      c.moveTo(x + 0.035, 0.24);
+      c.lineTo(x + 0.145, 0.24);
+      c.lineTo(x + 0.09, 0.21 + len - 0.1);
+      c.closePath();
+      c.fill();
     }
   },
   brasign: (c, col) => {

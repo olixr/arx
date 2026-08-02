@@ -448,11 +448,11 @@ const defs: BuildableDef[] = [
     ticks: 22,
   },
   {
-    // A swagged line of little flags — the festival read. Dyed at
-    // placement; the pigment is paid beside the cloth.
+    // A wrought rail of long tapered pennons — the herald's read.
+    // Dyed at placement; the pigment is paid beside the cloth.
     id: 'pennant_string',
     cat: 'decor',
-    name: 'Pennant string',
+    name: 'Hanging pennants',
     detail: Detail.Pennant,
     levelReq: 11,
     xp: 58,

@@ -6349,7 +6349,7 @@ export class Renderer {
         this.playerBannerOnFace(tx, ty, px0, s, info.dye ?? 0);
         return;
       case 'pennant':
-        this.pennantOnFace(tx, ty, px0, s, info.dye ?? 0);
+        this.pennantOnFace(game, tx, ty, px0, s, info.dye ?? 0);
         return;
       case 'sign':
         this.bracketSignOnFace(tx, ty, px0, s, info.motif ?? 0);
@@ -6581,59 +6581,152 @@ export class Renderer {
   }
 
   /**
-   * The pennant string: a swagged line under the eave, little flags
-   * alternating the dye and its cream partner, each a beat out of
-   * phase with its neighbour (the valance law on a rope).
+   * THE HERALD'S ROW — hanging pennants: a wrought rail bearing three
+   * long tapered pennons in the chosen dye, each bordered in its cream
+   * partner (the fill is trim, the inner field cloth — a true sewn
+   * border, never a stroked cheat), the center pennon longer and
+   * charged with the woven diamond, the points running out solid trim
+   * into a bound tassel. Headers are pinned to the rail; the body
+   * sways and the tip trails a beat behind (the two-beat law), each
+   * pennon a phase out of step with its neighbours. Adjacent pennant
+   * tiles merge into one continuous rail — straps only at true free
+   * ends (the ONE RAIL law brought to the wall). ONE PATH: each
+   * pennon's silhouette is both its fill and its ring.
    */
-  private pennantOnFace(tx: number, ty: number, px0: number, s: number, dye: number): void {
+  private pennantOnFace(
+    game: ClientGame,
+    tx: number,
+    ty: number,
+    px0: number,
+    s: number,
+    dye: number,
+  ): void {
     const ctx = this.ctx;
-    const cloth = Renderer.AWNING_CLOTHS[dye]!;
+    const cloth = Renderer.AWNING_CLOTHS[dye]!.a;
+    const trim = Renderer.AWNING_CLOTHS[dye]!.b;
     const t = performance.now() / 1000;
-    const x0 = px0 + s * 0.06;
-    const x1 = px0 + s * 0.94;
-    const yEnd = -s * 1.84;
-    const sag = s * 0.13;
-    const ropeAt = (f: number): { x: number; y: number } => {
-      // Quadratic swag: the catenary's cheap honest cousin.
-      const x = x0 + (x1 - x0) * f;
-      const y = yEnd + sag * 4 * f * (1 - f);
-      return { x, y };
-    };
-    // The swag's soft shadow seats the string on the masonry.
-    ctx.strokeStyle = 'rgba(18, 12, 26, 0.18)';
-    ctx.lineWidth = Math.max(1, s * 0.03);
-    ctx.beginPath();
-    ctx.moveTo(x0 + s * 0.03, yEnd + s * 0.05);
-    ctx.quadraticCurveTo((x0 + x1) / 2 + s * 0.03, yEnd + sag * 2 + s * 0.05, x1 + s * 0.03, yEnd + s * 0.05);
-    ctx.stroke();
-    // Flags first (they hang BEHIND the rope's near edge).
-    for (let k = 0; k < 4; k++) {
-      const f = 0.14 + k * 0.24;
-      const p = ropeAt(f);
-      const fw = s * 0.15;
-      const fh = s * 0.24;
-      const lean = this.breezeAt(tx, ty, t, tx * 1.3 + k * 1.9, s, 0.035, 0.035).sway;
-      ctx.fillStyle = (k & 1) === 0 ? cloth.a : cloth.b;
+    const cx = px0 + s * 0.5;
+    const rodY = -s * 1.76;
+    const w = s * 0.3;
+    const b = s * 0.05;
+    // Run-merge: a neighbouring pennant tile shares the rail.
+    const sameKind = (nx: number): boolean =>
+      wallHungInfo(game.world.detailAt(nx, ty))?.kind === 'pennant';
+    const runW = sameKind(tx - 1);
+    const runE = sameKind(tx + 1);
+    const rodX0 = runW ? px0 : cx - s * 0.32 - w / 2 - s * 0.07;
+    const rodX1 = runE ? px0 + s : cx + s * 0.32 + w / 2 + s * 0.07;
+    for (let k = 0; k < 3; k++) {
+      const x = cx + (k - 1) * s * 0.32;
+      const len = k === 1 ? s * 1.2 : s * 1.0;
+      const ph = tx * 1.7 + ty * 0.9 + k * 1.9;
+      // A long narrow drop kinks if the mid swings hard — keep the
+      // body quiet and let the point do the fluttering.
+      const { sway, lag } = this.breezeAt(tx, ty, t, ph, s, 0.012, 0.03);
+      const yTop = rodY + s * 0.035;
+      const yMid = yTop + len * 0.55;
+      const yTip = yTop + len;
+      const midHalf = w * 0.3;
+      const tipDx = lag * 1.4;
+      const path = new Path2D();
+      path.moveTo(x - w / 2, yTop);
+      path.lineTo(x + w / 2, yTop);
+      path.lineTo(x + midHalf + sway, yMid);
+      path.lineTo(x + tipDx, yTip);
+      path.lineTo(x - midHalf + sway, yMid);
+      path.closePath();
+      // Its own shadow seats the cloth on the masonry.
+      ctx.save();
+      ctx.translate(s * 0.04, s * 0.05);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+      ctx.fill(path);
+      ctx.restore();
+      // The sewn border: the whole silhouette in trim, the field
+      // inset inside it — the point runs out solid cream on purpose.
+      ctx.fillStyle = trim;
+      ctx.fill(path);
+      ctx.fillStyle = cloth;
       ctx.beginPath();
-      ctx.moveTo(p.x - fw / 2, p.y);
-      ctx.lineTo(p.x + fw / 2, p.y);
-      ctx.lineTo(p.x + lean, p.y + fh);
+      ctx.moveTo(x - w / 2 + b, yTop);
+      ctx.lineTo(x + w / 2 - b, yTop);
+      ctx.lineTo(x + midHalf - b + sway, yMid);
+      ctx.lineTo(x + tipDx, yTip - b * 2.4);
+      ctx.lineTo(x - midHalf + b + sway, yMid);
       ctx.closePath();
       ctx.fill();
+      ctx.save();
+      ctx.clip(path);
+      // Header band under the rail, struck with a trim thread.
+      ctx.fillStyle = shade(cloth, 18);
+      ctx.fillRect(x - w / 2, yTop, w, s * 0.06);
+      ctx.fillStyle = trim;
+      ctx.fillRect(x - w / 2, yTop + s * 0.06, w, s * 0.02);
+      // Folds: the cloth hangs, not prints.
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+      ctx.fillRect(x - w * 0.16, yTop + s * 0.09, s * 0.038, len * 0.6);
+      ctx.fillRect(x + w * 0.1, yTop + s * 0.09, s * 0.038, len * 0.52);
+      // The flanking pennons wear a trim fess bar; the center pennon
+      // carries the woven diamond charge (the heraldic grammar).
+      if (k !== 1) {
+        ctx.fillStyle = trim;
+        ctx.fillRect(x - w / 2, yTop + len * 0.3, w, s * 0.05);
+      }
+      if (k === 1) {
+        const dy2 = yTop + len * 0.3;
+        const r2 = w * 0.42;
+        ctx.fillStyle = trim;
+        ctx.beginPath();
+        ctx.moveTo(x, dy2 - r2);
+        ctx.lineTo(x + r2 * 0.72, dy2);
+        ctx.lineTo(x, dy2 + r2);
+        ctx.lineTo(x - r2 * 0.72, dy2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = cloth;
+        ctx.beginPath();
+        ctx.moveTo(x, dy2 - r2 * 0.45);
+        ctx.lineTo(x + r2 * 0.32, dy2);
+        ctx.lineTo(x, dy2 + r2 * 0.45);
+        ctx.lineTo(x - r2 * 0.32, dy2);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+      // Cloth-weight ink — the player banner's own line, not the
+      // architecture ring (which would swallow the sewn border).
       ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
-      ctx.lineWidth = Math.max(1, s * 0.018);
-      ctx.stroke();
+      ctx.lineWidth = Math.max(1, s * 0.028);
+      ctx.stroke(path);
+      // The bound tassel at the point — trim jewelry, fill-only (no
+      // ring on a piece this small; the frame-member law's cousin).
+      const tipX = x + tipDx;
+      ctx.fillStyle = shade(trim, -22);
+      ctx.fillRect(tipX - s * 0.025, yTip, s * 0.05, s * 0.045);
+      ctx.fillStyle = trim;
+      ctx.beginPath();
+      ctx.moveTo(tipX - s * 0.02, yTip + s * 0.045);
+      ctx.lineTo(tipX + s * 0.02, yTip + s * 0.045);
+      ctx.lineTo(tipX + s * 0.045 + lag * 0.4, yTip + s * 0.145);
+      ctx.lineTo(tipX - s * 0.045 + lag * 0.4, yTip + s * 0.145);
+      ctx.closePath();
+      ctx.fill();
     }
-    // The rope itself, pinned at both ends.
-    ctx.strokeStyle = '#6e5638';
-    ctx.lineWidth = Math.max(1, s * 0.024);
-    ctx.beginPath();
-    ctx.moveTo(x0, yEnd);
-    ctx.quadraticCurveTo((x0 + x1) / 2, yEnd + sag * 2, x1, yEnd);
-    ctx.stroke();
+    // The rail: one iron rod over every header, merged across a run,
+    // a lit top facet so the bar reads against a dark top plate.
+    ctx.fillStyle = '#2c2836';
+    ctx.fillRect(rodX0, rodY - s * 0.022, rodX1 - rodX0, s * 0.045);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.fillRect(rodX0, rodY - s * 0.022, rodX1 - rodX0, s * 0.012);
+    // Cloth ties binding each pennon to its rail.
+    ctx.fillStyle = shade(cloth, -8);
+    for (let k = 0; k < 3; k++) {
+      const x = cx + (k - 1) * s * 0.32;
+      ctx.fillRect(x - s * 0.03, rodY - s * 0.045, s * 0.06, s * 0.1);
+    }
+    // Wall straps at true free ends only.
     ctx.fillStyle = '#454052';
-    ctx.fillRect(x0 - s * 0.02, yEnd - s * 0.03, s * 0.04, s * 0.06);
-    ctx.fillRect(x1 - s * 0.02, yEnd - s * 0.03, s * 0.04, s * 0.06);
+    if (!runW) ctx.fillRect(rodX0 - s * 0.02, rodY - s * 0.035, s * 0.032, s * 0.07);
+    if (!runE) ctx.fillRect(rodX1 - s * 0.012, rodY - s * 0.035, s * 0.032, s * 0.07);
   }
 
   /**

@@ -2472,11 +2472,12 @@ function drawTileDetail(
         } else if (info.kind === 'pennant') {
           ctx.fillStyle = DYE_SWATCHES[info.dye ?? 0]!;
           for (let k = 0; k < 3; k++) {
-            const fx = gx + px * (0.24 + k * 0.22);
+            const fx = gx + px * (0.2 + k * 0.22);
+            const len = k === 1 ? 0.52 : 0.4;
             ctx.beginPath();
-            ctx.moveTo(fx, gy + px * 0.24);
-            ctx.lineTo(fx + px * 0.14, gy + px * 0.24);
-            ctx.lineTo(fx + px * 0.07, gy + px * 0.44);
+            ctx.moveTo(fx, gy + px * 0.22);
+            ctx.lineTo(fx + px * 0.16, gy + px * 0.22);
+            ctx.lineTo(fx + px * 0.08, gy + px * (0.22 + len));
             ctx.closePath();
             ctx.fill();
           }
