@@ -141,6 +141,15 @@ export const MATTER_MIGRATED: readonly string[] = [
   'winters_edge', 'red_harvest', 'storm_brand', 'kings_decree',
   'sunburst', 'starfall_strike', 'vow_unbroken', 'drag_under',
   'spoken_light', 'slagfall', 'sky_splits', 'sun_court',
+  // Wave 3b — the rogue roster: precision and payment, so restraint
+  // led. Seven speak the library (venom, dust, frost, shadow, blood,
+  // storm — crimson_tithe and spark_lash honor their standing
+  // earmarks for blood.drink and storm.impact). Six stay bespoke:
+  // bone and marrow, wrong-way pale fire (the library tells TRUE
+  // stories — a deliberate lie stays hand-painted), gold, coins,
+  // punctuation, and soul-light own no material.
+  'serpents_kiss', 'stinger', 'cold_snap', 'shadow_fang',
+  'crimson_tithe', 'spark_lash', 'garden_close',
 ];
 
 // ------------------------------------------------------- exemplars

@@ -12,6 +12,14 @@
  * geometry with frameDt-gated emission as the only per-frame chance,
  * ≤ ~60 path ops per hook per frame. 120fps is a law. No signature
  * shares a centerpiece with any other file's.
+ *
+ * FX v5 wave 3b: particle matter routes through the MATTER LIBRARY
+ * (ONE-VOICE LAW) — venom, dust, frost, shadow, blood, and storm
+ * speak mastered. Six stay lawfully bespoke: bone_needle's bone and
+ * marrow, pale_flame's wrong-way fire (the library tells TRUE
+ * stories; a deliberate lie must stay hand-painted), kings_bane's
+ * gold and thread, last_word's punctuation, beak_first's coins,
+ * pale_lantern's soul-light.
  */
 import type { AbilitySig } from './fxSignatures.js';
 export declare const ROGUE_SIGS: Record<string, AbilitySig>;
