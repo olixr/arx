@@ -2,9 +2,12 @@ import {
   STRUCTURE_TEMPLATES,
   templateWidth,
   templateHeight,
+  type NpcActorDef,
   type ZoneDef,
 } from '@arx/content';
 import { SIGN_MAX_LINE, SIGN_MAX_LINES, SIGN_MAX_TITLE, Tile, sanitizeSignLine } from '@arx/shared';
+import { actorBust } from '../cms/portraits.js';
+import { hourRing } from '../studio2/kit.js';
 import type { PrefabListEntry, RegistrySnapshot } from './api.js';
 import { iconImg } from './editorIcons.js';
 import { placementLabel, sameRef } from './placements.js';
@@ -29,6 +32,9 @@ export interface PanelActions {
   removePlacement(ref: PlacementRef): void;
   /** Mutate the selected placement inside one undoable operation. */
   editPlacement(ref: PlacementRef, label: string, mutate: (zone: ZoneDef) => void): void;
+  /** Phase 3: arm patrol-waypoint editing for a cluster. */
+  beginPatrolEdit(index: number): void;
+  clearPatrol(index: number): void;
 }
 
 export interface PanelDeps {
@@ -38,7 +44,20 @@ export interface PanelDeps {
   prefabsOnline: boolean;
   /** Real-art preview for a prefab, or null while it loads. */
   prefabPreview: (id: string) => HTMLCanvasElement | null;
+  /** Full actor defs (DB truth when online) — portraits + dressing. */
+  actorDefs: ReadonlyMap<string, NpcActorDef>;
   actions: PanelActions;
+}
+
+/** A safe true bust — an exotic look must never break the studio. */
+function actorBustThumb(def: NpcActorDef, size: number): HTMLCanvasElement | null {
+  try {
+    const c = actorBust(def, size);
+    if (c) c.className = 'insp-bust';
+    return c;
+  } catch {
+    return null;
+  }
 }
 
 // ------------------------------------------------------ previews
@@ -457,6 +476,54 @@ function buildInspector(deps: PanelDeps, ref: PlacementRef): HTMLElement {
         else delete z.spawns![ref.index]!.name;
       });
     box.appendChild(field('name override', nameIn));
+    // THE HOURS DIAL — when this camp stands (absent = around the clock).
+    // Outside the window the stage ghosts the bodies at quarter-light.
+    const ring = hourRing(sp.hours ? { ...sp.hours } : null, (win) =>
+      actions.editPlacement(ref, 'cluster hours', (z) => {
+        if (win) z.spawns![ref.index]!.hours = win;
+        else delete z.spawns![ref.index]!.hours;
+      }),
+    );
+    box.appendChild(field('hours', ring.root));
+
+    // THE WING — compound-hold chapter id (the WAR-GROUND law).
+    const wingIn = numInput(sp.wing ?? 0, 0, 32, (v) =>
+      actions.editPlacement(ref, 'cluster wing', (z) => {
+        if (v > 0) z.spawns![ref.index]!.wing = v;
+        else delete z.spawns![ref.index]!.wing;
+      }),
+    );
+    wingIn.title = 'Compound-hold wing id — 0 = none; wings fall as their own chapters';
+    box.appendChild(field('wing', wingIn));
+
+    // THE PATROL — waypoint loop the idle brain paces (count 1).
+    const patrolRow = document.createElement('div');
+    patrolRow.className = 'dir-dial';
+    const patrolCount = document.createElement('span');
+    patrolCount.className = 'muted';
+    patrolCount.textContent = sp.patrol ? `${sp.patrol.length} waypoints` : 'none';
+    patrolRow.appendChild(patrolCount);
+    const editBtn = document.createElement('button');
+    editBtn.className = 'opt-btn';
+    editBtn.textContent = sp.patrol ? 'redraw' : 'draw';
+    editBtn.title = 'Click waypoints on the map · Enter keeps the round · Esc abandons';
+    editBtn.onclick = () => actions.beginPatrolEdit(ref.index);
+    patrolRow.appendChild(editBtn);
+    if (sp.patrol) {
+      const clrBtn = document.createElement('button');
+      clrBtn.className = 'opt-btn';
+      clrBtn.textContent = 'clear';
+      clrBtn.onclick = () => actions.clearPatrol(ref.index);
+      patrolRow.appendChild(clrBtn);
+    }
+    box.appendChild(field('patrol', patrolRow));
+    if (sp.count > 1 && sp.patrol) {
+      const warn = document.createElement('p');
+      warn.className = 'muted';
+      warn.textContent = 'Patrols walk with count 1 — a larger camp ignores the round.';
+      box.appendChild(warn);
+    }
+
     const tip = document.createElement('p');
     tip.className = 'muted';
     tip.textContent = 'Drag the dashed ring edge on the map to resize the wander radius.';
@@ -466,6 +533,33 @@ function buildInspector(deps: PanelDeps, ref: PlacementRef): HTMLElement {
   if (ref.kind === 'actor') {
     const a = zone.actorSpawns?.[ref.index];
     if (!a) return box;
+    // The face above the fields — the true bust, the game's own rig.
+    const def = deps.actorDefs.get(a.actor);
+    if (def) {
+      const stageRow = document.createElement('div');
+      stageRow.className = 'insp-stage';
+      const bust = actorBustThumb(def, 72);
+      if (bust) stageRow.appendChild(bust);
+      const who = document.createElement('div');
+      who.className = 'insp-stage-facts';
+      const nm = document.createElement('b');
+      nm.textContent = def.name;
+      who.appendChild(nm);
+      if (def.title) {
+        const t = document.createElement('span');
+        t.className = 'muted';
+        t.textContent = def.title;
+        who.appendChild(t);
+      }
+      const cms = document.createElement('a');
+      cms.className = 'studio-link mini-link';
+      cms.href = `/cms.html#actors/${a.actor}`;
+      cms.textContent = 'Open in Content Studio ↗';
+      cms.title = 'Identity, wardrobe, dialogue, and combat live in the CMS';
+      who.appendChild(cms);
+      stageRow.appendChild(who);
+      box.appendChild(stageRow);
+    }
     const actorOpts = registry.actors
       .slice()
       .sort((x, y) => x.name.localeCompare(y.name))

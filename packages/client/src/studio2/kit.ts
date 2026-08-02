@@ -144,6 +144,180 @@ export function kbd(keys: string): HTMLElement {
   return root;
 }
 
+// -------------------------------------------------------- hour ring
+
+export interface HourRingHandle {
+  root: HTMLElement;
+  set(win: { from: number; to: number } | null): void;
+}
+
+/**
+ * THE HOURS DIAL — a 24h ring with two draggable handles. The lit arc
+ * is the active window (from → to clockwise, midnight at the top,
+ * wrap supported); null = always. Drag a handle to move it (snaps to
+ * half hours); the center reads the window; the small button clears
+ * it back to "always".
+ */
+export function hourRing(
+  win: { from: number; to: number } | null,
+  onCommit: (win: { from: number; to: number } | null) => void,
+): HourRingHandle {
+  const SIZE = 108;
+  const R = 40;
+  const root = el('div', 'k-hourring');
+  const canvas = el('canvas');
+  canvas.width = SIZE * 2;
+  canvas.height = SIZE * 2;
+  canvas.style.width = `${SIZE}px`;
+  canvas.style.height = `${SIZE}px`;
+  canvas.setAttribute('role', 'slider');
+  canvas.setAttribute('aria-label', 'Active hours window');
+  root.appendChild(canvas);
+  const clear = btn('always', {
+    dense: true,
+    title: 'Clear the window — active around the clock',
+    onClick: () => {
+      current = null;
+      paint();
+      onCommit(null);
+    },
+  });
+  clear.classList.add('k-hourring-clear');
+  root.appendChild(clear);
+
+  let current = win ? { ...win } : null;
+  let dragging: 'from' | 'to' | null = null;
+
+  const hourToAngle = (h: number): number => (h / 24) * Math.PI * 2 - Math.PI / 2;
+  const angleToHour = (a: number): number => {
+    let h = ((a + Math.PI / 2) / (Math.PI * 2)) * 24;
+    h = Math.round(h * 2) / 2; // half-hour snap
+    return ((h % 24) + 24) % 24;
+  };
+  const fmt = (h: number): string => {
+    const hh = Math.floor(h);
+    const mm = Math.round((h - hh) * 60);
+    return mm === 0 ? String(hh) : `${hh}:${String(mm).padStart(2, '0')}`;
+  };
+
+  const paint = (): void => {
+    const ctx = canvas.getContext('2d')!;
+    ctx.setTransform(2, 0, 0, 2, 0, 0);
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    const cx = SIZE / 2;
+    const cy = SIZE / 2;
+    const styles = getComputedStyle(document.documentElement);
+    const edge = styles.getPropertyValue('--edge').trim() || '#262c3b';
+    const accent = styles.getPropertyValue('--accent').trim() || '#5e9bf5';
+    const ink1 = styles.getPropertyValue('--ink1').trim() || '#a7aebf';
+    const ink2 = styles.getPropertyValue('--ink2').trim() || '#687183';
+    // The full day track.
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.stroke();
+    // Hour ticks at the quarters, midnight told.
+    ctx.fillStyle = ink2;
+    ctx.font = '600 8.5px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const [h, label] of [[0, '0'], [6, '6'], [12, '12'], [18, '18']] as const) {
+      const a = hourToAngle(h);
+      ctx.fillText(label, cx + Math.cos(a) * (R + 12), cy + Math.sin(a) * (R + 12));
+    }
+    if (current) {
+      // The lit window, from → to clockwise (wrap rides through 2π).
+      const a0 = hourToAngle(current.from);
+      let a1 = hourToAngle(current.to);
+      if (a1 <= a0) a1 += Math.PI * 2;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, a0, a1);
+      ctx.stroke();
+      // Handles: from = filled, to = hollow (reads direction).
+      for (const [h, filled] of [[current.from, true], [current.to, false]] as const) {
+        const a = hourToAngle(h);
+        const hx = cx + Math.cos(a) * R;
+        const hy = cy + Math.sin(a) * R;
+        ctx.beginPath();
+        ctx.arc(hx, hy, 6, 0, Math.PI * 2);
+        ctx.fillStyle = filled ? accent : '#0b0d13';
+        ctx.fill();
+        ctx.strokeStyle = filled ? '#0b0d13' : accent;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+    // The center reads the window.
+    ctx.fillStyle = current ? ink1 : ink2;
+    ctx.font = '600 12px ui-monospace, Menlo, monospace';
+    ctx.fillText(current ? `${fmt(current.from)}–${fmt(current.to)}` : 'always', cx, cy - 5);
+    ctx.font = '500 8.5px system-ui, sans-serif';
+    ctx.fillStyle = ink2;
+    ctx.fillText(current ? 'active hours' : 'around the clock', cx, cy + 9);
+  };
+
+  const handleAt = (mx: number, my: number): 'from' | 'to' | null => {
+    if (!current) return null;
+    const cx = SIZE / 2;
+    const cy = SIZE / 2;
+    for (const [h, which] of [[current.from, 'from'], [current.to, 'to']] as const) {
+      const a = hourToAngle(h);
+      if (Math.hypot(mx - (cx + Math.cos(a) * R), my - (cy + Math.sin(a) * R)) < 10) return which;
+    }
+    return null;
+  };
+
+  canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const hit = handleAt(mx, my);
+    if (hit) {
+      dragging = hit;
+    } else {
+      // Click the bare track: start a fresh 12h window at the click.
+      const h = angleToHour(Math.atan2(my - SIZE / 2, mx - SIZE / 2));
+      current = current ?? { from: h, to: (h + 12) % 24 };
+      dragging = 'from';
+      current.from = h;
+      paint();
+    }
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging || !current) return;
+    const rect = canvas.getBoundingClientRect();
+    const h = angleToHour(
+      Math.atan2(e.clientY - rect.top - SIZE / 2, e.clientX - rect.left - SIZE / 2),
+    );
+    current[dragging] = h;
+    paint();
+  });
+  window.addEventListener('mouseup', () => {
+    if (!dragging || !current) {
+      dragging = null;
+      return;
+    }
+    dragging = null;
+    if (current.from === current.to) current = null; // degenerate = always
+    paint();
+    onCommit(current ? { ...current } : null);
+  });
+
+  paint();
+  return {
+    root,
+    set(w) {
+      current = w ? { ...w } : null;
+      paint();
+    },
+  };
+}
+
 // ------------------------------------------------------------ toast
 
 let toastTimer = 0;

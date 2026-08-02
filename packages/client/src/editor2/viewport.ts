@@ -44,6 +44,21 @@ export class Viewport {
   showMarkers = true;
   showElev = false;
 
+  /**
+   * The people plane (Phase 3): ghosted out-of-hours clusters, the
+   * selected actor's projected routine, patrol paths — composed by
+   * the root where people/ops both live, drawn under the markers.
+   */
+  peopleOverlay:
+    | ((h: {
+        ctx: CanvasRenderingContext2D;
+        sx: (lx: number) => number;
+        sy: (ly: number) => number;
+        s: number;
+        ys: number;
+      }) => void)
+    | null = null;
+
   private warnedFallback = false;
 
   constructor(
@@ -389,6 +404,8 @@ export class Viewport {
       ctx.textBaseline = 'middle';
       ctx.fillText(label, x + 6, ly2 + 8.5);
     }
+
+    this.peopleOverlay?.({ ctx, sx, sy, s, ys });
 
     if (this.showMarkers) this.drawMarkers(ctx, sx, sy, s, ys);
 

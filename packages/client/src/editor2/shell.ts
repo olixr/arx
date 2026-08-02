@@ -202,7 +202,7 @@ export class Shell {
   // ------------------------------------------------- mode visibility
 
   /** Flip every mode-owned surface. The composition root owns the rest. */
-  setModeDom(mode: StudioMode, tab: 'tiles' | 'structures' | 'placements'): void {
+  setModeDom(mode: StudioMode, tab: 'tiles' | 'structures' | 'placements' | 'people'): void {
     const isWorld = mode === 'world';
     // In zone mode the viewport owns which zone canvas shows (true vs
     // draft); world mode hides both behind the world canvas.
@@ -222,9 +222,10 @@ export class Shell {
     this.syncLibTabs(isWorld ? null : tab);
   }
 
-  syncLibTabs(tab: 'tiles' | 'structures' | 'placements' | null): void {
+  syncLibTabs(tab: 'tiles' | 'structures' | 'placements' | 'people' | null): void {
     $('tab-tiles').classList.toggle('hidden', tab !== 'tiles');
     $('tab-structures').classList.toggle('hidden', tab !== 'structures');
     $('tab-placements').classList.toggle('hidden', tab !== 'placements');
+    $('tab-people').classList.toggle('hidden', tab !== 'people');
   }
 }

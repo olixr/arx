@@ -154,10 +154,12 @@ export function installKeys(deps: KeysDeps): KeysHandle {
         deps.focusPaletteSearch();
         break;
       case 'Enter':
+        if (ops.commitPatrolEdit()) break;
         if (state.tool === 'road' && ops.roadPts.length >= 2) ops.commitRoad();
         break;
       case 'Escape': {
         // One cancel per press, most-transient first — predictable exits.
+        if (ops.cancelPatrolEdit()) break;
         if (ops.cancelPaste()) break;
         if (ops.disarmStamp()) break;
         if (ops.abandonRoad()) break;

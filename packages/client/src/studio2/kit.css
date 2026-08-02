@@ -287,6 +287,22 @@ button:disabled:hover {
   text-align: right;
 }
 
+/* The 24h hours dial. */
+.k-hourring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.k-hourring canvas {
+  cursor: pointer;
+}
+
+.k-hourring-clear {
+  align-self: center;
+}
+
 /* --------------------------------------------------- text voices */
 
 .muted {

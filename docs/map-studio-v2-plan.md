@@ -428,6 +428,43 @@ Each phase ships, proves, and commits on its own. Laws named in caps become stan
   the full-field inspector (hours dial, patrol editor, wing), People library tab,
   LIVING MODE.
   *Prove: scrub 0–24h over Amberford; the watch rota's 10 posts change shift correctly.*
+
+  **SHIPPED 2026-08-02 — as built:**
+  - **`editor2/people.ts`** — every placement synthesizes a REAL entity: actors dress
+    through the server's own exported `actorAppearance` (DB-truth defs via the new
+    `fetchActorDefs()` → `/dev/content/actors`; the bundle stands in offline; unknown
+    slugs get a plain villager body, never invisible). Creature-model actors ride the
+    `defId` path; clusters scatter deterministic bodies (golden-angle spiral, capped
+    12) inside their rings; count-1 patrol clusters WALK their round. Bodies live on
+    the renderer's no-sample fallback — meta.x/y/dir mutated per frame, so movement
+    earns its gait from the renderer's own frame-delta animation. Out-of-hours
+    clusters leave the entity set and ghost at quarter-light in the overlay with
+    their window told ("asleep · 19–5h") — AUTHORED IS ALWAYS VISIBLE.
+  - **`editor2/routines.ts`** — the pure interpreter: first-matching slot wins,
+    `from>to` wraps midnight, base fills the rest; post/path/wander positions with
+    waypoint legs parametrized by seconds (waitSec, per-leg speed, loop/bounce/once);
+    deterministic per-post phase so parallel rounds interleave. LIVING MODE walks
+    real time; the still frame derives motion from the scrubbed hour. Position truth
+    only — work/sit/lie POSE fidelity is deferred (bodies stand at their stops).
+  - **Inspector** (panels.ts grown): clusters gained THE HOURS DIAL (`kit.hourRing` —
+    a 24h ring, two draggable handles, wrap, half-hour snap, "always" cleared state),
+    `wing`, and the patrol section (draw/redraw/clear; clicks lay world waypoints,
+    Enter keeps, Esc abandons — first in the cascade); actors gained the true bust,
+    title, and "Open in Content Studio". The selected actor's whole day projects on
+    the map (active task lit blue, off-hour tasks faint; posts/rounds/wander rings);
+    patrol rounds draw in the field tone, lit while editing.
+  - **`editor2/peoplePanel.ts`** — the People library tab: 110 actors + the bestiary
+    in level bands, ALL with true portraits (actorBust/creatureRender, cached);
+    search; click-to-arm sets pendingNpc/pendingActor so the next map click plants
+    exactly who you picked (the library keeps focus until something plants). Library
+    tabs went text-only (four tabs outgrew the icon row).
+  - **THE ROTA PROOF: Amberford at 12:00 vs 02:00 — all 10 amberford_watch bodies
+    stand different posts (10/10 moved), relief pairs visibly walking each other's
+    ground (the HOT BUNK LAW on screen); farmers leave the fields; the Furrowfields
+    stand at their beds under warm windows.** Also verified: hours ghosting empties
+    the entity set at noon for a 19–5 camp; library pick→plant round-trip (chicken);
+    3-waypoint patrol laid and committed; zero console errors; tsc + 379 tests +
+    STUDIO build green. 33 entities on the Amberford stage.
 - **Phase 4 — THE MASTER'S HANDS** (tool depth): select suite (lasso/wand/same/swap),
   smart terrain + pattern + scatter brushes, wall-mode shapes, polygon, true-render
   ghosts everywhere, snapping + guides + measurements, History panel, autosave drafts.

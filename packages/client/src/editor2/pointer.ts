@@ -66,6 +66,15 @@ export function installPointer(deps: PointerDeps): void {
       ops.pickAt(t.x, t.y);
       return;
     }
+    // Patrol editing outranks the tools: clicks lay waypoints.
+    if (ops.patrolEdit) {
+      if (e.button === 2) ops.removeLastPatrolPoint();
+      else if (e.button === 0) {
+        const z = state.zone;
+        ops.addPatrolPoint(z.origin.x + t.x, z.origin.y + t.y);
+      }
+      return;
+    }
     const erase = e.button === 2;
 
     switch (state.tool) {

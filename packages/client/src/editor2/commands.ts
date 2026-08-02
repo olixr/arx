@@ -120,6 +120,7 @@ export interface CommandDeps {
   zoomActual(): void;
   toggleView(key: 'showGrid' | 'showChunkGrid' | 'showMarkers' | 'showElev'): void;
   toggleDraftView(): void;
+  toggleLiving(): void;
   setClock(hours: number): void;
   toggleInstrument(id: 'minimap' | 'zoom' | 'clock'): void;
   toggleDockPanel(id: 'tool' | 'lib'): void;
@@ -176,7 +177,12 @@ export function buildCommands(d: CommandDeps): Command[] {
     mode: 'zone',
     run: () => d.setTab(id),
   });
-  cmds.push(tab('tiles', 'Tiles'), tab('structures', 'Structures'), tab('placements', 'Placements'));
+  cmds.push(
+    tab('tiles', 'Tiles'),
+    tab('structures', 'Structures'),
+    tab('placements', 'Placements'),
+    tab('people', 'People'),
+  );
 
   cmds.push(
     { id: 'file.new', title: 'New zone…', group: 'File', icon: 'docnew', run: d.newZone },
@@ -204,6 +210,7 @@ export function buildCommands(d: CommandDeps): Command[] {
     { id: 'clock.noon', title: 'Clock: Noon (12:00)', group: 'View', mode: 'zone', run: () => d.setClock(12) },
     { id: 'clock.dusk', title: 'Clock: Dusk (18:30)', group: 'View', mode: 'zone', run: () => d.setClock(18.5) },
     { id: 'clock.night', title: 'Clock: Midnight (0:00)', group: 'View', mode: 'zone', run: () => d.setClock(0) },
+    { id: 'view.living', title: 'Toggle Living mode', group: 'View', mode: 'zone', hint: 'Rounds and drifts walk in real time', run: d.toggleLiving },
     { id: 'view.minimap', title: 'Toggle minimap', group: 'View', run: () => d.toggleInstrument('minimap') },
     { id: 'view.zoomcluster', title: 'Toggle zoom instrument', group: 'View', run: () => d.toggleInstrument('zoom') },
     { id: 'view.clock', title: 'Toggle clock instrument', group: 'View', mode: 'zone', run: () => d.toggleInstrument('clock') },

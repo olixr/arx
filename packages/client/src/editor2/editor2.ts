@@ -18,10 +18,12 @@ import {
   prefabFromJson,
   zoneFromJson,
   zoneToJson,
+  type NpcActorDef,
   type ZoneDef,
   type ZoneJson,
 } from '@arx/content';
 import {
+  fetchActorDefs,
   fetchPrefab,
   fetchRegistry,
   fetchZone,
@@ -41,7 +43,7 @@ import { EditorView } from '../editor/render.js';
 import { EditorState, newZone as newZoneDef, type SidebarTab } from '../editor/state.js';
 import { validateZone } from '../editor/validate.js';
 import { WorldMode } from '../editor/world/worldMode.js';
-import { confirmDialog, el, kbd, seg, toast } from '../studio2/kit.js';
+import { chip as kitChip, confirmDialog, el, kbd, seg, toast } from '../studio2/kit.js';
 import { Chrome } from './chrome.js';
 import { CommandPalette } from './cmdk.js';
 import { buildCommands, type Command, type StudioMode } from './commands.js';
@@ -59,6 +61,8 @@ import { ClockInstrument } from './clock.js';
 import { installKeys } from './keys.js';
 import { Minimap } from './minimap.js';
 import { EditorOps } from './ops.js';
+import { StagePeople } from './people.js';
+import { buildPeoplePanel, invalidatePeopleThumbs } from './peoplePanel.js';
 import { installPointer } from './pointer.js';
 import { Shell } from './shell.js';
 import { EditorStage } from './stage.js';
@@ -94,9 +98,12 @@ let registry: RegistrySnapshot = {
 };
 let prefabList: PrefabListEntry[] = [];
 let prefabsOnline = false;
+/** Full actor defs — DB truth once fetched; the bundle stands in. */
+let actorDefs: ReadonlyMap<string, NpcActorDef> = NPC_ACTORS;
 
 const ops = new EditorOps(state, view, history, () => registry);
 const shell = new Shell();
+const people = new StagePeople(stage, () => state.zone);
 
 // ---------------------------------------------------------- world
 
@@ -374,6 +381,7 @@ const commands: Command[] = buildCommands({
     view.toggleDraftView();
     state.changed();
   },
+  toggleLiving: () => livingChip.click(),
   setClock: (hours) => clock.set(hours),
   toggleInstrument: (id) => shell.toggleInstrument(id),
   toggleDockPanel: (id) => shell.togglePanel(id),
@@ -403,7 +411,8 @@ const cmdk = new CommandPalette(() => commands, () => mode, [zoneCommands]);
 const TAB_LABELS: Array<[SidebarTab, string, string]> = [
   ['tiles', 'Tiles', 'paint'],
   ['structures', 'Structures', 'structure'],
-  ['placements', 'Placements', 'actor'],
+  ['placements', 'Placements', 'spawn'],
+  ['people', 'People', 'actor'],
 ];
 
 function panelDeps(): PanelDeps {
@@ -472,19 +481,21 @@ function panelDeps(): PanelDeps {
         void ref;
         ops.zoneOp(label, mutate, { tiles: false });
       },
+      beginPatrolEdit: (index) => ops.beginPatrolEdit(index),
+      clearPatrol: (index) => ops.clearPatrol(index),
     },
+    actorDefs,
   };
 }
 
 function buildPanels(): void {
   const tabs = $('side-tabs');
   tabs.innerHTML = '';
-  for (const [id, label, icon] of TAB_LABELS) {
+  for (const [id, label] of TAB_LABELS) {
     const b = el('button', 'lib-tab' + (state.tab === id ? ' active' : ''));
     b.setAttribute('role', 'tab');
     b.setAttribute('aria-selected', String(state.tab === id));
-    b.appendChild(iconImg(icon, 15));
-    b.append(` ${label}`);
+    b.append(label);
     b.onclick = () => {
       state.tab = id;
       state.changed();
@@ -494,6 +505,28 @@ function buildPanels(): void {
   if (mode === 'zone') shell.syncLibTabs(state.tab);
   if (state.tab === 'structures') buildStructuresPanel($('tab-structures'), panelDeps());
   if (state.tab === 'placements') buildPlacementsPanel($('tab-placements'), panelDeps());
+  if (state.tab === 'people') {
+    buildPeoplePanel($('tab-people'), {
+      state,
+      actorDefs,
+      armCluster: (npcId) => {
+        state.pendingNpc = npcId;
+        state.pendingActor = null;
+        ops.setTool('cluster');
+        state.tab = 'people'; // stay in the library until something plants
+        state.changed();
+        toast(`armed ${npcId} — the next click plants the camp`);
+      },
+      armActor: (slug) => {
+        state.pendingActor = slug;
+        state.pendingNpc = null;
+        ops.setTool('actor');
+        state.tab = 'people';
+        state.changed();
+        toast(`armed ${actorDefs.get(slug)?.name ?? slug} — the next click posts them`);
+      },
+    });
+  }
 }
 
 // -------------------------------------------------------------- mode
@@ -604,6 +637,56 @@ const minimap = new Minimap(
 );
 
 const clock = new ClockInstrument($('inst-clock-body'), stage);
+// LIVING MODE — rounds walk in real time; off = the settled hour.
+const livingChip = kitChip(
+  'Living',
+  false,
+  (on) => {
+    people.living = on;
+  },
+  'Rounds and drifts walk in real time; off holds the settled hour frame',
+);
+livingChip.style.alignSelf = 'center';
+$('inst-clock-body').appendChild(livingChip);
+
+// THE PEOPLE PLANE: ghosts, the selected actor's projected day, and
+// patrol rounds (committed + mid-edit) ride over the true frame.
+view.peopleOverlay = (h) => {
+  people.drawGhosts(h);
+  if (state.selected?.kind === 'actor') people.drawRoutineProjection(h, state.selected.index);
+  const z = state.zone;
+  const drawRound = (pts: ReadonlyArray<{ x: number; y: number }>, editing: boolean): void => {
+    if (pts.length === 0) return;
+    const { ctx } = h;
+    ctx.save();
+    ctx.strokeStyle = editing ? 'rgba(216, 179, 106, 0.95)' : 'rgba(216, 179, 106, 0.55)';
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.lineWidth = editing ? 2 : 1.5;
+    if (!editing) ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      const px = h.sx(p.x - z.origin.x + 0.5);
+      const py = h.sy(p.y - z.origin.y + 0.5);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    if (pts.length > 2) ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (const p of pts) {
+      ctx.beginPath();
+      ctx.arc(h.sx(p.x - z.origin.x + 0.5), h.sy(p.y - z.origin.y + 0.5), editing ? 4 : 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  };
+  if (ops.patrolEdit) {
+    drawRound(ops.patrolEdit.points, true);
+  } else if (state.selected?.kind === 'cluster') {
+    const sp = z.spawns?.[state.selected.index];
+    if (sp?.patrol) drawRound(sp.patrol, false);
+  }
+};
 
 const keys = installKeys({
   ops,
@@ -635,6 +718,7 @@ state.onChange(() => {
   chrome.syncZoneChip();
   chrome.updateStatus();
   minimap.dirty = true;
+  people.markStale();
 });
 
 world.ws.onChange(() => {
@@ -654,6 +738,16 @@ async function boot(): Promise<void> {
   void fetchRegistry()
     .then((r) => {
       registry = r;
+      state.changed();
+    })
+    .catch(() => {});
+  // Full actor defs: the stage dresses bodies with DB truth (CMS
+  // edits included); the shipped bundle stands in until they land.
+  void fetchActorDefs()
+    .then((defs) => {
+      actorDefs = defs;
+      people.adoptActorDefs(defs);
+      invalidatePeopleThumbs();
       state.changed();
     })
     .catch(() => {});
@@ -698,6 +792,7 @@ function frame(nowMs: number): void {
   if (mode === 'world') {
     world.frame();
   } else {
+    people.update();
     view.render(nowMs);
     minimap.draw(nowMs);
   }

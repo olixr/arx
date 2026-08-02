@@ -97,6 +97,18 @@ export async function fetchRegistry(): Promise<RegistrySnapshot> {
   return (await res.json()) as RegistrySnapshot;
 }
 
+/**
+ * Full actor definitions — DB truth (CMS edits included), so the
+ * stage dresses every posted body exactly as the running game does.
+ */
+export async function fetchActorDefs(): Promise<Map<string, import('@arx/content').NpcActorDef>> {
+  const res = await request('/dev/content/actors');
+  const body = (await res.json()) as {
+    actors: Array<{ def: import('@arx/content').NpcActorDef }>;
+  };
+  return new Map(body.actors.map((row) => [row.def.id, row.def]));
+}
+
 // ------------------------------------------------- prefab library
 
 export interface PrefabListEntry {

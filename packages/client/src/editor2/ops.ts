@@ -54,6 +54,11 @@ export class EditorOps {
   roadPts: Pt[] = [];
   /** ⌘V armed: next click stamps the clipboard. */
   pasteArmed = false;
+  /**
+   * PATROL EDITING (Phase 3): while set, canvas clicks append WORLD
+   * waypoints to this cluster's patrol; Enter commits, Esc restores.
+   */
+  patrolEdit: { index: number; points: Array<{ x: number; y: number }> } | null = null;
   private pendingZoneBefore: ZoneDef | null = null;
 
   constructor(
@@ -504,13 +509,14 @@ export class EditorOps {
       }
       case 'cluster': {
         z.spawns ??= [];
-        const npc = registry.npcs[0]?.id ?? 'goblin';
+        // A People-library pick names the next camp's creature.
+        const npc = this.state.pendingNpc ?? registry.npcs[0]?.id ?? 'goblin';
         z.spawns.push({ npc, x: wx, y: wy, radius: 4, count: 3 });
         return { kind: 'cluster', index: z.spawns.length - 1 };
       }
       case 'actor': {
         z.actorSpawns ??= [];
-        const actor = registry.actors[0]?.id;
+        const actor = this.state.pendingActor ?? registry.actors[0]?.id;
         if (!actor) {
           toast('no actors in the registry — is the server running?', 3600);
           return null;
@@ -534,6 +540,67 @@ export class EditorOps {
       default:
         return null;
     }
+  }
+
+  // ------------------------------------------------- patrol editing
+
+  beginPatrolEdit(index: number): void {
+    const sp = this.state.zone.spawns?.[index];
+    if (!sp) return;
+    this.patrolEdit = { index, points: (sp.patrol ?? []).map((p) => ({ ...p })) };
+    this.selectPlacement({ kind: 'cluster', index });
+    toast('patrol: click waypoints on the map · right-click removes the last · Enter keeps it · Esc abandons', 5200);
+    this.state.changed();
+  }
+
+  addPatrolPoint(wx: number, wy: number): void {
+    if (!this.patrolEdit) return;
+    this.patrolEdit.points.push({ x: wx, y: wy });
+    this.state.changed();
+  }
+
+  removeLastPatrolPoint(): void {
+    if (!this.patrolEdit) return;
+    this.patrolEdit.points.pop();
+    this.state.changed();
+  }
+
+  commitPatrolEdit(): boolean {
+    const edit = this.patrolEdit;
+    if (!edit) return false;
+    this.patrolEdit = null;
+    this.zoneOp(
+      'cluster patrol',
+      (z) => {
+        const sp = z.spawns?.[edit.index];
+        if (!sp) return;
+        if (edit.points.length >= 2) sp.patrol = edit.points;
+        else delete sp.patrol; // one point is no round — absent stays absent
+      },
+      { tiles: false },
+    );
+    toast(edit.points.length >= 2 ? `patrol laid (${edit.points.length} waypoints)` : 'patrol cleared');
+    return true;
+  }
+
+  cancelPatrolEdit(): boolean {
+    if (!this.patrolEdit) return false;
+    this.patrolEdit = null;
+    this.state.changed();
+    toast('patrol abandoned — the old round stands');
+    return true;
+  }
+
+  clearPatrol(index: number): void {
+    this.zoneOp(
+      'clear patrol',
+      (z) => {
+        const sp = z.spawns?.[index];
+        if (sp) delete sp.patrol;
+      },
+      { tiles: false },
+    );
+    toast('patrol cleared — the camp holds its ring');
   }
 
   placementHit(fx: number, fy: number): PlacementRef | null {

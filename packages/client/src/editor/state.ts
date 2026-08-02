@@ -22,7 +22,7 @@ export type ToolId =
   | 'spawn';
 
 /** Which sidebar tab is showing. */
-export type SidebarTab = 'tiles' | 'structures' | 'placements';
+export type SidebarTab = 'tiles' | 'structures' | 'placements' | 'people';
 
 export type PlacementKind = 'portal' | 'cluster' | 'actor' | 'spawn' | 'sign';
 
@@ -98,6 +98,10 @@ export class EditorState {
   selected: PlacementRef | null = null;
   /** Placement under the cursor (hover affordance). */
   hoverPlacement: PlacementRef | null = null;
+  /** People-library pick: the NEXT cluster placement uses this npc. */
+  pendingNpc: string | null = null;
+  /** People-library pick: the NEXT actor placement uses this slug. */
+  pendingActor: string | null = null;
 
   private readonly listeners = new Set<() => void>();
 
