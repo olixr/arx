@@ -15,6 +15,13 @@
  * ground_slam is threat with total clarity, rallying_howl is the
  * moment a player feels the pack turn as one. No centerpiece here
  * repeats another's, nor any exemplar's.
+ *
+ * FX v5 wave 3i: the old machines run on library matter now — fire,
+ * smoke, dust, storm, blood, and venom (ONE-VOICE LAW); the hedge's
+ * bite draws true blood on its 800ms beat-crossing, and ground_slam
+ * lands the four-voice smash at threat weight. The straw twin, the
+ * arcane question, and the three champion voices (breath and dread)
+ * stay bespoke.
  */
 import type { AbilitySig } from './fxSignatures.js';
 /** The relic actives, the Bone Tempest sigil, and the NPC specials. */

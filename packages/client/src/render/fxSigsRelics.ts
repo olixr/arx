@@ -15,11 +15,19 @@
  * ground_slam is threat with total clarity, rallying_howl is the
  * moment a player feels the pack turn as one. No centerpiece here
  * repeats another's, nor any exemplar's.
+ *
+ * FX v5 wave 3i: the old machines run on library matter now — fire,
+ * smoke, dust, storm, blood, and venom (ONE-VOICE LAW); the hedge's
+ * bite draws true blood on its 800ms beat-crossing, and ground_slam
+ * lands the four-voice smash at threat weight. The straw twin, the
+ * arcane question, and the three champion voices (breath and dread)
+ * stay bespoke.
  */
 
 import { shade } from './rig.js';
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { fire, smoke, dust, storm, blood, venom, asMatter } from './matter/index.js';
 
 /** Screen point r px from the heart along ground angle a. */
 function pt(c: SigCtx, r: number, a: number): { x: number; y: number } {
@@ -41,17 +49,12 @@ function cl(v: number): number {
  */
 const ember_dash: AbilitySig = {
   spawn(c) {
-    const ang = Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx);
-    // Arrival flare: the bead's destination already burns.
-    c.particles.burst(c.wx2, c.wy2 - 0.3, 5, [c.st.mid, c.st.core], {
-      speed: 1.4, life: 0.5, size: 0.11, gravity: -2.6, dir: ang, spread: 0.9,
-      shape: 'lick', flicker: 0.3, fade: c.st.deep, wobble: 0.5,
-    });
-    // Departure snuff: the body left, the smoke stays.
-    c.particles.burst(c.wx, c.wy - 0.2, 3, [c.st.deep, '#3a3442'], {
-      speed: 0.6, life: 0.8, size: 0.12, gravity: -0.9, drag: 1.6, grow: 0.24,
-      shape: 'puff', fade: '#2a2431', wobble: 0.5,
-    });
+    const m = asMatter(c);
+    // Arrival flare: the bead's destination already burns TRUE — a
+    // small full detonation, heart-flash to soot.
+    fire.deployments.burst!(m, c.wx2, c.wy2, { scale: 0.45 });
+    // Departure snuff: the body left; TRUE smoke stays.
+    smoke.deployments.billow!(m, c.wx, c.wy, { scale: 0.3 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, px2, py2 } = c;
@@ -159,11 +162,9 @@ const ember_dash: AbilitySig = {
  */
 const healing_totem: AbilitySig = {
   spawn(c) {
-    // Planting: soil crumbs jump where the base bites the turf.
-    c.particles.burst(c.wx, c.wy, 5, ['#4a4252', '#5a5045'], {
-      speed: 1.0, life: 0.7, size: 0.1, gravity: -0.3, drag: 1.9, grow: 0.2,
-      shape: 'puff', ground: true,
-    });
+    // Planting: TRUE soil jumps where the base bites the turf; the
+    // life-glints stay the totem's own light.
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 0.5 });
     c.particles.burst(c.wx, c.wy - 0.4, 3, [c.st.spark, c.st.core], {
       speed: 0.6, life: 0.9, size: 0.1, gravity: 0.3, drag: 2.2, shape: 'glint',
     });
@@ -267,9 +268,8 @@ const snare_trap: AbilitySig = {
     c.particles.burst(c.wx, c.wy - 0.7, 6, [c.st.mid, '#6a5a30', c.st.deep], {
       speed: 0.7, life: 0.9, size: 0.09, gravity: 2.2, shape: 'shard', spin: 6, wobble: 0.6,
     });
-    c.particles.burst(c.wx, c.wy, 3, ['#4a4252', '#5a5045'], {
-      speed: 0.6, life: 0.6, size: 0.09, gravity: -0.2, drag: 2.0, grow: 0.18, shape: 'puff', ground: true,
-    });
+    // The peg bites: one TRUE breath of soil under the litter.
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 0.35 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -337,13 +337,9 @@ const snare_trap: AbilitySig = {
  */
 const storm_bell: AbilitySig = {
   spawn(c) {
-    // The first crack: white forks and a spark ring off the mouth.
-    c.particles.burst(c.wx, c.wy - 1.1, 6, [c.st.spark, c.st.core], {
-      speed: 3.2, life: 0.3, size: 0.07, gravity: 2, shape: 'streak',
-    });
-    c.particles.burst(c.wx, c.wy - 0.6, 4, [c.st.core, c.st.mid], {
-      speed: 0.8, life: 0.8, size: 0.1, gravity: 0.3, drag: 2.0, shape: 'glint',
-    });
+    // The first crack: one TRUE discharge off the mouth — static
+    // scratches under ion glints popping on their own clocks.
+    storm.deployments.impact!(asMatter(c), c.wx, c.wy, { scale: 0.8 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -415,12 +411,11 @@ const storm_bell: AbilitySig = {
     const kb = sc * 0.07;
     ctx.fillRect(-kb / 2, bh * 1.08 - kb / 2, kb, kb);
     ctx.restore();
-    // Lightning off the lip at the swing extremes.
-    if (Math.abs(Math.sin(c.now / 90)) > 0.9 && Math.random() < c.frameDt * 26 * fade) {
+    // Lightning off the lip at the swing extremes — each a small
+    // TRUE discharge where the voice leaves the bronze.
+    if (Math.abs(Math.sin(c.now / 90)) > 0.9 && Math.random() < c.frameDt * 8 * fade) {
       const side = Math.sin(c.now / 90) > 0 ? 1 : -1;
-      c.particles.burst(c.wx + side * 0.3, c.wy - 1.1, 1, [st.spark, st.core], {
-        speed: 3.0, life: 0.22, size: 0.06, gravity: 1, dir: side > 0 ? 0.3 : Math.PI - 0.3, spread: 0.5, shape: 'streak', flicker: 0.6,
-      });
+      storm.deployments.impact!(asMatter(c), c.wx + side * 0.3, c.wy, { scale: 0.25 });
     }
   },
 };
@@ -552,15 +547,12 @@ const hunters_decoy: AbilitySig = {
 const stone_aegis: AbilitySig = {
   spawn(c) {
     const rand = srand(c.seed ^ 0xd1);
-    // Ground breaks at five stations around the body.
+    const m = asMatter(c);
+    // Ground breaks at five stations around the body — each slab
+    // surfaces with its own TRUE soil-burst.
     for (let k = 0; k < 5; k++) {
       const a = (k / 5) * Math.PI * 2 + rand() * 0.4;
-      c.particles.burst(
-        c.wx + Math.cos(a) * 0.7, c.wy + Math.sin(a) * 0.7 * c.squash, 1,
-        ['#4a4252', '#5a5045'], {
-          speed: 0.7, life: 0.7, size: 0.1, gravity: -0.3, drag: 1.8, grow: 0.22, shape: 'puff', ground: true,
-        },
-      );
+      dust.deployments.kick!(m, c.wx + Math.cos(a) * 0.7, c.wy + Math.sin(a) * 0.7 * c.squash, { scale: 0.35 });
     }
     c.particles.burst(c.wx, c.wy - 0.2, 4, [c.st.mid, c.st.deep], {
       speed: 1.8, life: 0.5, size: 0.08, gravity: 7, up: true, shape: 'shard', spin: 8,
@@ -637,15 +629,11 @@ const stone_aegis: AbilitySig = {
  */
 const coil_lance: AbilitySig = {
   spawn(c) {
-    const ang = Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx);
-    // The release: storm slivers ram out past the terminus.
-    c.particles.burst(c.wx2, c.wy2 - 0.35, 6, [c.st.core, c.st.spark], {
-      speed: 3.6, life: 0.28, size: 0.06, gravity: 1, dir: ang, spread: 0.3, shape: 'streak', flicker: 0.4,
-    });
-    // Recoil at the muzzle end.
-    c.particles.burst(c.wx, c.wy - 0.35, 3, [c.st.mid, c.st.core], {
-      speed: 1.2, life: 0.4, size: 0.08, gravity: 0.5, dir: ang + Math.PI, spread: 0.6, shape: 'glint',
-    });
+    const m = asMatter(c);
+    // The release: one TRUE discharge past the terminus, and the
+    // muzzle's recoil crackle behind it.
+    storm.deployments.impact!(m, c.wx2, c.wy2, { scale: 0.8 });
+    storm.deployments.impact!(m, c.wx, c.wy, { scale: 0.35 });
   },
   ground(c) {
     const { ctx, st, t, sc, px, py, px2, py2 } = c;
@@ -809,13 +797,21 @@ const bramble_burst: AbilitySig = {
         speed: 0.3, life: 0.8, size: 0.07, gravity: 0.8, shape: 'shard', spin: 4, wobble: 0.6,
       });
     }
-    // The bite draws blood: red flecks tick off the rim on the pulse.
-    const ph = (age % 800) / 800;
-    if (wither > 0 && ph < 0.15 && Math.random() < c.frameDt * 14) {
-      const a = Math.random() * Math.PI * 2;
-      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.85, c.wy + Math.sin(a) * c.radius * 0.85 * squash, 1, ['#c4372a', '#6a1518'], {
-        speed: 0.7, life: 0.4, size: 0.05, gravity: 5, up: true, fade: '#6a1518',
-      });
+    // The bite draws TRUE blood ON the pulse: each 800ms beat
+    // crossing, the library wells red at two rim points — drops that
+    // land inside the hedge and dry there.
+    const beat = Math.floor(age / 800);
+    const prevBeat = Math.floor((age - c.frameDt * 1000) / 800);
+    if (wither > 0 && beat !== prevBeat && beat > 0) {
+      const m = asMatter(c);
+      const rand = srand(c.seed ^ (0xe3 + beat));
+      for (let k = 0; k < 2; k++) {
+        const a = rand() * Math.PI * 2;
+        blood.deployments.spatter!(m,
+          c.wx + Math.cos(a) * c.radius * 0.85,
+          c.wy + Math.sin(a) * c.radius * 0.85 * squash,
+          { scale: 0.25, radius: 0.25 });
+      }
     }
   },
 };
@@ -916,13 +912,9 @@ const arcane_seekers: AbilitySig = {
  */
 const venom_dart: AbilitySig = {
   spawn(c) {
-    // The puncture: a tight lime spray, one drop already falling.
-    c.particles.burst(c.wx, c.wy - 0.35, 4, [c.st.mid, c.st.spark], {
-      speed: 1.6, life: 0.3, size: 0.06, gravity: 3, shape: 'streak',
-    });
-    c.particles.burst(c.wx, c.wy - 0.3, 1, [c.st.mid], {
-      speed: 0.3, life: 0.5, size: 0.07, gravity: 6, fade: c.st.deep,
-    });
+    // The puncture sprays TRUE venom — fat drops that land as stains
+    // and dry dark beneath the wound.
+    venom.deployments.spit!(asMatter(c), c.wx, c.wy, { dir: Math.PI / 2, scale: 0.5 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash } = c;
@@ -1002,11 +994,10 @@ const venom_dart: AbilitySig = {
       }
     }
     ctx.restore();
-    // Late: the beads drip.
-    if (t > 0.5 && Math.random() < c.frameDt * 8 * fade) {
-      c.particles.burst(c.wx + (Math.random() - 0.5) * 0.5, c.wy - 0.3, 1, [st.mid, st.spark], {
-        speed: 0.2, life: 0.5, size: 0.05, gravity: 5, fade: st.deep,
-      });
+    // Late: the crawling tips' beads finally drip TRUE — one library
+    // drop per gated beat, falling from the vein height to its splat.
+    if (t > 0.5 && Math.random() < c.frameDt * 4 * fade) {
+      venom.deployments.bead!(asMatter(c), c.wx + (Math.random() - 0.5) * 0.5, c.wy, { z: 0.45, scale: 0.7 });
     }
   },
 };
@@ -1033,9 +1024,8 @@ const bone_tempest: AbilitySig = {
         },
       );
     }
-    c.particles.burst(c.wx, c.wy - 0.1, 4, ['#4a4252', c.st.deep], {
-      speed: 0.9, life: 0.9, size: 0.13, gravity: 0.3, drag: 1.6, grow: 0.26, shape: 'puff', wobble: 0.4, ground: true,
-    });
+    // Grave dust rises TRUE where the ground gave way.
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 0.8 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -1135,20 +1125,10 @@ const bone_tempest: AbilitySig = {
  */
 const ground_slam: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x121);
-    // The floor lets go: heavy slabs and a rim-wide dust skirt.
-    for (let k = 0; k < 6; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.3, c.wy + Math.sin(a) * c.radius * 0.3 * c.squash, 1, ['#5a5045', c.st.deep, '#6a6375'], {
-        speed: 2.2, life: 0.6, size: 0.13, gravity: 8, up: true, shape: 'shard', spin: 8,
-      });
-    }
-    for (let k = 0; k < 5; k++) {
-      const a = (k / 5) * Math.PI * 2 + rand() * 0.4;
-      c.particles.burst(c.wx + Math.cos(a) * c.radius, c.wy + Math.sin(a) * c.radius * c.squash, 1, ['#4a4252', '#3a3442'], {
-        speed: 0.9, life: 1.0, size: 0.13, gravity: 0.4, drag: 1.6, grow: 0.3, dir: a, spread: 0.3, shape: 'puff', wobble: 0.4, ground: true,
-      });
-    }
+    // The floor lets go TRUE: the library's four-voice ground smash
+    // at threat weight — read from the receiving end, with total
+    // clarity.
+    dust.deployments.slam!(asMatter(c), c.wx, c.wy, { scale: 1.2 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -1230,11 +1210,11 @@ const ground_slam: AbilitySig = {
       ctx.fillStyle = st.mid;
       ctx.fillRect(-sw / 2, -sw * 0.22, sw, Math.max(1, sw * 0.12));
       ctx.restore();
-      // Dust pops where a plate slams back down.
-      if (u > 0.88 && Math.random() < c.frameDt * 22) {
-        c.particles.burst(c.wx + Math.cos(a) * (rr / sc), c.wy + Math.sin(a) * (rr / sc) * squash, 1, ['#4a4252', st.deep], {
-          speed: 0.6, life: 0.5, size: 0.08, gravity: -0.2, drag: 1.8, grow: 0.2, shape: 'puff', ground: true,
-        });
+      // TRUE dust pops where a plate slams back down.
+      if (u > 0.88 && Math.random() < c.frameDt * 10) {
+        dust.deployments.kick!(asMatter(c),
+          c.wx + Math.cos(a) * (rr / sc), c.wy + Math.sin(a) * (rr / sc) * squash,
+          { scale: 0.3 });
       }
     }
     ctx.restore();

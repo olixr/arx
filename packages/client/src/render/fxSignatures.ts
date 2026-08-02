@@ -206,6 +206,15 @@ export const MATTER_MIGRATED: readonly string[] = [
   // the star-net.
   'day_breaks', 'moonfall', 'the_molt', 'red_toll', 'crownstorm',
   'stormskip', 'charfall', 'hushfall', 'the_anvil',
+  // Wave 3i — the relics, the sigil, and the NPC specials: old
+  // machines running on library matter (bramble_burst's hedge bites
+  // true blood on its 800ms beat; ground_slam is the four-voice
+  // smash at threat weight). The straw twin, the arcane question,
+  // and the three champion voices stay bespoke — breath and dread
+  // own no material.
+  'ember_dash', 'healing_totem', 'snare_trap', 'storm_bell',
+  'stone_aegis', 'coil_lance', 'bramble_burst', 'venom_dart',
+  'bone_tempest', 'ground_slam',
 ];
 
 // ------------------------------------------------------- exemplars
