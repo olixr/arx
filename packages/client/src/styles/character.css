@@ -25,13 +25,16 @@
    the rest of the viewport as clean open world for the live you. */
 .screen-character {
   left: auto;
-  right: 1rem;
+  /* The dock lane stays clear: the room is grand, but the screen
+     switcher at the right edge is never buried under it — switching
+     rooms by mouse stays one click even with the case open. */
+  right: 8.25rem;
   top: 0.875rem;
   bottom: 0.875rem;
   transform: none;
   /* THE ROOM TAKES ITS SPACE: gear management earns the grand table.
      Three trays — stand, bench, pack — need the width to breathe. */
-  width: min(105rem, 92vw);
+  width: min(101rem, calc(100vw - 10rem));
   height: auto;
   max-height: none;
   /* The room's corner ladder — the only cuts this room may use.
@@ -60,23 +63,18 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0.875rem 1.25rem 1.25rem;
-  background: var(--raise);
-  --cut: var(--cut-tray);
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
-  box-shadow:
-    inset 0 0 0 0.15625rem var(--ink-line),
-    inset 0 0.3125rem 0 rgba(255, 236, 190, 0.09),
-    inset 0 -0.375rem 0 rgba(10, 7, 3, 0.4);
+  padding: 0.5rem 0.75rem 0.75rem;
+  background: none;
+  /* The painted stock: ink ring and facets follow the chamfer, so
+     the tray's border sits equally on every edge — no nipped
+     corners, ever. */
+  border: 0.875rem solid transparent;
+  border-image: var(--ui-plate) 45 fill / 0.875rem;
+  box-shadow: none;
+  /* Each tray is its own small weather system: the ambient dust
+     rides z -1 inside it, behind the content, above the stock. */
+  position: relative;
+  isolation: isolate;
 }
 
 /* The head band: title voice left, instruments right, one rule under. */
@@ -100,7 +98,7 @@
   letter-spacing: 0.15625rem;
   text-transform: uppercase;
   color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
+  text-shadow: var(--punch);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -168,8 +166,8 @@
   font-weight: 800;
   letter-spacing: 0.0625rem;
   text-transform: uppercase;
-  color: var(--parchment-faint);
-  text-shadow: var(--punch-small);
+  color: var(--parchment-dim);
+  text-shadow: var(--punch);
 }
 
 .seal-gem {
@@ -358,17 +356,7 @@
   opacity: 1;
   background: var(--ink-wash);
   margin: 0 0.375rem;
-  --cut: 0.25rem;
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
+  border-radius: 0.1875rem;
 }
 
 /* ---- THE BENCH TRAY: the standing inspector between stand and
@@ -542,7 +530,7 @@
   letter-spacing: 0.15625rem;
   text-transform: uppercase;
   color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
+  text-shadow: var(--punch);
 }
 
 .pack-foot #coin-readout {
@@ -564,22 +552,9 @@
   color: var(--gold-bright);
   text-shadow: var(--punch);
   background: var(--sunk);
-  border: none;
-  border-radius: 0;
-  --cut: 0.375rem;
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
-  box-shadow:
-    inset 0 0 0 var(--rule) var(--ink-line),
-    inset 0 0.3125rem 0 rgba(0, 0, 0, 0.35);
+  border: var(--rule) solid var(--ink-line);
+  border-radius: 0.25rem;
+  box-shadow: inset 0 0.25rem 0 rgba(0, 0, 0, 0.35);
 }
 
 #coin-readout img {
@@ -716,7 +691,7 @@
 }
 
 /* The count seal: a bold inked pill with a faint brass ring — the
-   number reads like the icons do, ringed and popped. */
+   ring rides the rounded edge, even everywhere. */
 .inv-qty {
   position: absolute;
   right: 0.25rem;
@@ -727,17 +702,7 @@
   color: var(--gold-bright);
   text-shadow: var(--punch-small);
   background: var(--ink-wash);
-  --cut: 0.25rem;
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
+  border-radius: 0.25rem;
   box-shadow: inset 0 0 0 var(--hairline) rgba(217, 164, 65, 0.35);
 }
 
@@ -906,11 +871,8 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 
 .headline-fact {
   flex: 1;
-  padding: 0.6875rem 0.75rem 0.5625rem;
-  background: var(--sunk);
-  border: 0.09375rem solid var(--line);
+  padding: 0.4375rem 0.5rem 0.3125rem;
   text-align: center;
-  --cut: 0.625rem;
 }
 
 .headline-fact strong {
@@ -1089,12 +1051,11 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 }
 
 .make-empty {
-  padding: 1.125rem;
+  padding: 0.75rem 0.875rem;
   font-size: var(--t-body);
   color: var(--parchment-dim);
-  background: var(--raise);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.4375rem;
+  /* Dressed by the painted plate stock (kit.css) — no own border. */
+  background: none;
   text-shadow: var(--punch-small);
 }
 
@@ -1119,17 +1080,7 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   font-weight: 800;
   color: var(--gold-bright);
   background: var(--ink-wash);
-  --cut: 0.1875rem;
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
+  border-radius: 0.1875rem;
   text-shadow: var(--punch-small);
   box-shadow: inset 0 0 0 var(--hairline) rgba(217, 164, 65, 0.3);
 }

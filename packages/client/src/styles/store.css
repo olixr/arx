@@ -29,10 +29,9 @@
   align-items: center;
   gap: 0.875rem;
   text-align: left;
-  background: var(--raise);
-  border: none;
-  border-radius: 0;
-  padding: 0.6875rem 0.875rem;
+  /* Dressed by the painted plate stock (kit.css) — no own border. */
+  background: none;
+  padding: 0.4375rem 0.625rem;
   color: var(--parchment);
   text-shadow: var(--punch-small);
   cursor: pointer;

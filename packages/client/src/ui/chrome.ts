@@ -413,6 +413,41 @@ function socketWell(): string {
 }
 
 /**
+ * THE CUT PLATE — the flat stock every card, row, and tray is cut
+ * from. Painted, because a CSS ring on a clip-path box stops dead at
+ * the diagonals (the nipped-corner bug): here the ink ring and both
+ * facets FOLLOW the chamfer, so the border reads applied equally on
+ * every edge including the cuts. One asset serves every size — the
+ * element's border-image-width scales the chamfer with the object.
+ */
+function cutPlate(): string {
+  const B = 12;
+  const S = B * K * 3;
+  const { c, ctx } = makeCanvas(S);
+  const px = (v: number): number => v * K;
+  const cut = 6;
+
+  chamferPath(ctx, S, 1.1, cut);
+  ctx.fillStyle = '#332a1f';
+  ctx.fill();
+  ctx.save();
+  chamferPath(ctx, S, 1.1, cut);
+  ctx.clip();
+  // The stock's facets: lit top shelf, shadowed bottom shelf.
+  ctx.fillStyle = 'rgba(255, 236, 190, 0.1)';
+  ctx.fillRect(0, px(1.1), S, px(2.6));
+  ctx.fillStyle = 'rgba(10, 7, 3, 0.42)';
+  ctx.fillRect(0, S - px(3.8), S, px(3.8));
+  ctx.restore();
+  // The ink ring rides the true silhouette — diagonals included.
+  chamferPath(ctx, S, 1.1, cut);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = px(2);
+  ctx.stroke();
+  return c.toDataURL();
+}
+
+/**
  * THE GAUGE CHANNEL — meters run inside this: a dark channel with an
  * iron rim and a shadow band under the top edge.
  */
@@ -573,6 +608,7 @@ export function installChrome(): void {
   root.setProperty('--ui-banner', `url(${titleBanner()})`);
   root.setProperty('--ui-crest', `url(${crestMedallion()})`);
   root.setProperty('--ui-socket', `url(${socketWell()})`);
+  root.setProperty('--ui-plate', `url(${cutPlate()})`);
   root.setProperty('--ui-gauge', `url(${gaugeChannel()})`);
   root.setProperty('--ui-sheet', `url(${parchmentSheet()})`);
   root.setProperty(

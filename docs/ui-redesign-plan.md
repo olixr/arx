@@ -4,6 +4,36 @@
 EPIC COMPLETE** (THE ONE RULER 8839680 → THE WORLD'S WING & THE LIVING
 CHROME). The hall fits the hand. Post-epic: THE INK PASS (below).*
 
+**THE EVEN HAND as-built (2026-08-01, post-epic round 4 — corner
+truth, living dust, bolder ink):** the user's screenshots showed the
+last corner sin precisely: a CSS ring or border on a clip-path box
+stops dead at the diagonals, so chamfered chips read as NIPPED. The
+standing law now: NOTHING clips a border, anywhere. Three legal
+dressings — (1) THE PAINTED PLATE `--ui-plate` (chrome painter
+`cutPlate()`): chamfered stock whose ink ring and facets FOLLOW the
+cut, worn by clean cards (stat-plaque, shelf-card, make-empty,
+headline-fact, kit-plate, char-tray at 0.875rem width); (2) A REAL
+BORDER on straight/eased corners for anything whose border carries
+meaning (need-chip/lvl-badge state rings, loot/rift accent stripes,
+card-tier/price-tag seals, count pills — inset rings follow
+border-radius, so eased + ring is always even); (3) HOLES stay eased.
+The big cut-group selector is REDUCED to the clean-plate four —
+members with semantic borders were dropped and keep their own even
+borders (their instance `border:` shorthands would break the slice
+anyway: border shorthand resets border-image-width). Small floating
+furniture (tooltip, pad strip) throws a half-offset shadow now — the
+fat offset copy doubled the chamfer silhouette. THE DUST: ambient
+motes slowed (14–26s), grown, opacity 0.22/0.14, every third
+parchment-pale, default 9 per room, AND each char-tray hosts its own
+6 (`.char-tray` is `position:relative; isolation:isolate`) — still
+translate+opacity only, still gated by Interface motion. Text punch:
+tray-title/sort-label/purse-label/seal-word step up to `--punch`.
+UX payoff found by the sweep: the grand room was BURYING the dock —
+the character screen now reserves the dock lane (`right: 8.25rem`,
+width `calc(100vw - 10rem)`) so mouse room-switching stays one click
+with the case open. Receipts: character + all rooms re-photographed;
+337 tests, build, tsc green.
+
 **THE QUARTERMASTER'S TABLE as-built (2026-08-01, post-epic round 3 —
 the room becomes a management surface):** the user's brief: build the
 UI around the JOB (managing gear and pack), not around inherited

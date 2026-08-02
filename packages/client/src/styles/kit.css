@@ -190,52 +190,29 @@ h3 {
    rectangle. Buttons and sockets don't appear here — they wear
    painted skins from the kit instead. */
 
-.skill-card,
-.ledger-row,
-.mat-row,
-.work-fact,
-.work-result,
+/* THE CORNER TRUTH: a CSS ring on a clip-path box stops dead at the
+   diagonals and the corners read nipped — so nothing clips a border
+   anymore, anywhere. Three legal dressings:
+   1. THE PAINTED PLATE (--ui-plate): chamfered stock whose ink ring
+      and facets FOLLOW the cut — for clean cards with no semantic
+      border of their own.
+   2. A REAL BORDER on straight or eased corners — for rows and seals
+      whose border carries meaning (state rings, accent stripes).
+   3. HOLES stay eased (the socket grammar).
+   Never combine clip-path with a border or ring. */
 .stat-plaque,
 .shelf-card,
-.loot-row,
-.rift-row,
-.rift-power,
-.skills-total,
-.price-tag,
-.pack-foot,
 .make-empty,
-.card-tier,
-.headline-fact,
-#bank-detail {
-  --cut: 0.5625rem;
+.headline-fact {
   border-radius: 0;
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
-  /* The Ink Pass: every plate is cut on the world's bold outline
-     line, then faceted — lit top edge, shadowed bottom edge. The
-     ring paints first so the facets read as bands just inside it. */
-  box-shadow:
-    inset 0 0 0 0.15625rem var(--ink-line),
-    inset 0 0.3125rem 0 rgba(255, 236, 190, 0.11),
-    inset 0 -0.375rem 0 rgba(10, 7, 3, 0.45);
+  border: 0.5625rem solid transparent;
+  border-image: var(--ui-plate) 45 fill / 0.5625rem;
+  box-shadow: none;
 }
 
 .price-tag,
 .card-tier {
-  --cut: 0.375rem;
-}
-
-.skills-total,
-#bank-detail {
-  --cut: 0.8125rem;
+  border-radius: 0.1875rem;
 }
 
 /* A section headline inside a screen: serif capitals on a ruled line. */
@@ -350,28 +327,17 @@ h3 {
    chamfered like everything else, its state told by the ring set
    into the lip. The plain rounded rectangle retires. */
 .need-chip {
-  --cut: 0.375rem;
   --chip-ring: var(--line);
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
   padding: 0.3125rem 0.6875rem 0.3125rem 0.3125rem;
   background: var(--sunk);
-  border: none;
-  border-radius: 0;
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
+  /* A real border: even on every edge, and the state ring recolors. */
+  border: var(--rule) solid var(--chip-ring);
+  border-radius: 0.25rem;
   box-shadow:
-    inset 0 0 0 var(--rule) var(--chip-ring),
-    inset 0 0.3125rem 0 rgba(0, 0, 0, 0.35),
+    inset 0 0.25rem 0 rgba(0, 0, 0, 0.35),
     inset 0 -0.1875rem 0 rgba(122, 103, 74, 0.22);
   font-size: 0.9375rem;
   font-weight: 700;
@@ -428,31 +394,19 @@ h3 {
 /* The level seal is a small RAISED plate cut from the stock: lit top
    facet, shadowed bottom, its ring naming the state. */
 .lvl-badge {
-  --cut: 0.3125rem;
   --chip-ring: var(--line);
   display: inline-block;
   font-size: var(--t-label);
   font-weight: 800;
   letter-spacing: 0.01875rem;
   padding: 0.25rem 0.6875rem;
-  border: none;
-  border-radius: 0;
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
+  border: var(--rule) solid var(--chip-ring);
+  border-radius: 0.25rem;
   background: var(--raise);
   color: var(--parchment-dim);
   box-shadow:
-    inset 0 0 0 var(--rule) var(--chip-ring),
-    inset 0 0.25rem 0 rgba(255, 236, 190, 0.1),
-    inset 0 -0.25rem 0 rgba(10, 7, 3, 0.42);
+    inset 0 0.1875rem 0 rgba(255, 236, 190, 0.1),
+    inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.42);
   text-shadow: var(--punch-small);
   white-space: nowrap;
 }
@@ -465,10 +419,8 @@ h3 {
 /* A stat plaque: one number told big over a plain label. The cut-
    plate group cuts its silhouette; the hairline ring rides inside. */
 .stat-plaque {
-  padding: 0.625rem 0.75rem 0.5625rem;
-  background: var(--raise);
-  border: none;
-  border-radius: 0;
+  padding: 0.3125rem 0.4375rem 0.25rem;
+  background: none;
   text-align: center;
 }
 
@@ -518,7 +470,7 @@ h3 {
   letter-spacing: 0.09375rem;
   text-transform: uppercase;
   color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
+  text-shadow: var(--punch);
   margin-right: 0.125rem;
 }
 
@@ -793,35 +745,22 @@ body:not(.no-ui-motion) .kit-plate:hover {
 
 /* ---- the plate: the big graphical unit collections are made of ---- */
 .kit-plate {
-  --cut: 0.5625rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.375rem 0.5rem;
   text-align: left;
-  background: var(--raise);
+  background: none;
   color: var(--parchment);
-  border: none;
+  border: 0.5625rem solid transparent;
+  border-image: var(--ui-plate) 45 fill / 0.5625rem;
   border-radius: 0;
   cursor: pointer;
-  clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
-  );
-  box-shadow:
-    inset 0 0 0 0.15625rem var(--ink-line),
-    inset 0 0.3125rem 0 rgba(255, 236, 190, 0.11),
-    inset 0 -0.375rem 0 rgba(10, 7, 3, 0.45);
+  box-shadow: none;
 }
 
 .kit-plate:hover {
-  background: var(--raise-hi);
+  filter: brightness(1.12);
 }
 
 .plate-well {
@@ -1102,16 +1041,21 @@ body.no-ui-motion .kit-ambient {
   animation: mote-rise var(--mote-dur, 12s) linear var(--mote-delay, 0s) infinite;
 }
 
+/* Mixed dust: the pale motes read as air, the gold ones as embers. */
+.ambient-mote.pale {
+  background: var(--parchment-faint);
+}
+
 @keyframes mote-rise {
   0% {
     translate: 0 0;
     opacity: 0;
   }
   12% {
-    opacity: 0.13;
+    opacity: 0.22;
   }
   70% {
-    opacity: 0.09;
+    opacity: 0.14;
   }
   100% {
     translate: var(--mote-drift, 0.5rem) calc(-1 * min(34rem, 80vh));

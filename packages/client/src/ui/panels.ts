@@ -56,6 +56,7 @@ import { seatChip, glyphLine } from './kit/glyphs.js';
 import { openSheet, registerSheetProvider, type SheetVerb } from './kit/contextSheet.js';
 import { ringGauge } from './kit/ring.js';
 import { socket } from './kit/plates.js';
+import { attachAmbient } from './kit/ambient.js';
 
 /** Card display colors for the three armor weight classes. */
 const CLASS_COLORS: Record<string, string> = {
@@ -379,6 +380,15 @@ export class Panels {
         this.closeMenu();
       }
     });
+
+    // Each tray of the open case breathes its own dust — the ambient
+    // layer fills the flat leather behind the content (compositor-only,
+    // gated by the Interface motion setting like every room's).
+    for (const tray of Array.from(
+      document.querySelectorAll<HTMLElement>('#inventory-panel .char-tray'),
+    )) {
+      attachAmbient(tray, 6);
+    }
 
     // Ⓨ on a technique plate offers the seat sheet — the same verbs
     // the plate's own press raises.
