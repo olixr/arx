@@ -5,22 +5,27 @@
  * data URL so buttons can clone them freely.
  */
 
+// STUDIO2 metrics: the glyph geometry is authored in the same 24-box
+// dialect, rendered at 3x supersample with the v2 instrument ink and a
+// finer 1.6px stroke — the sigils keep their hand, the chrome gets its
+// precision (Map Studio v2 plan §3.3).
 const SIZE = 44;
-const INK = '#ece4d0';
+const INK = '#e9ecf3';
+const STROKE = 1.6;
 
 type Painter = (ctx: CanvasRenderingContext2D) => void;
 
 function draw(painter: Painter): string {
   const canvas = document.createElement('canvas');
-  canvas.width = SIZE * 2;
-  canvas.height = SIZE * 2;
+  canvas.width = SIZE * 3;
+  canvas.height = SIZE * 3;
   const ctx = canvas.getContext('2d')!;
-  ctx.scale(2, 2);
+  ctx.scale(3, 3);
   // Authored in a 24x24 box, centered in the 44px tile.
   ctx.translate((SIZE - 24) / 2, (SIZE - 24) / 2);
   ctx.strokeStyle = INK;
   ctx.fillStyle = INK;
-  ctx.lineWidth = 1.9;
+  ctx.lineWidth = STROKE;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   painter(ctx);
@@ -41,9 +46,9 @@ const brush: Painter = (ctx) => {
   ctx.stroke();
   // Ferrule.
   path(ctx, [[12.8, 9.2], [14.8, 11.2]]);
-  ctx.lineWidth = 3.4;
+  ctx.lineWidth = 3.2;
   ctx.stroke();
-  ctx.lineWidth = 1.9;
+  ctx.lineWidth = STROKE;
   // Bristle body sweeping to the tip.
   ctx.beginPath();
   ctx.moveTo(11.6, 10.4);
@@ -386,9 +391,9 @@ const wroute: Painter = (ctx) => {
   ctx.moveTo(4.5, 19.5);
   ctx.quadraticCurveTo(9, 15, 8, 11);
   ctx.quadraticCurveTo(7.2, 7, 12.5, 5.5);
-  ctx.lineWidth = 3.2;
+  ctx.lineWidth = 3;
   ctx.stroke();
-  ctx.lineWidth = 1.9;
+  ctx.lineWidth = STROKE;
   ctx.beginPath();
   ctx.arc(4.5, 19.5, 2.4, 0, Math.PI * 2);
   ctx.stroke();
@@ -465,7 +470,109 @@ const wplanned: Painter = (ctx) => {
   }
 };
 
+// -------------------------------------------- the bench's own sigils
+// (v2 chrome: topbar verbs and the command lens, same hand as the rest)
+
+/** A fresh sheet, corner folded — New. */
+const docNew: Painter = (ctx) => {
+  path(ctx, [[6, 21], [6, 3], [14.5, 3], [18, 6.5], [18, 21]], true);
+  ctx.stroke();
+  path(ctx, [[14.5, 3], [14.5, 6.5], [18, 6.5]]);
+  ctx.stroke();
+  path(ctx, [[9.5, 13.5], [14.5, 13.5]]);
+  ctx.stroke();
+  path(ctx, [[12, 11], [12, 16]]);
+  ctx.stroke();
+};
+
+/** A drawer of maps, one sliding out — Open. */
+const folderOpen: Painter = (ctx) => {
+  path(ctx, [[3.5, 8], [3.5, 5], [9.5, 5], [11.5, 7.5], [20.5, 7.5]]);
+  ctx.stroke();
+  path(ctx, [[3.5, 8], [20.5, 8], [18.8, 19], [5.2, 19]], true);
+  ctx.stroke();
+};
+
+/** The sheet descending into the world tray — Save to live. */
+const saveLive: Painter = (ctx) => {
+  path(ctx, [[12, 3], [12, 13.5]]);
+  ctx.stroke();
+  path(ctx, [[8, 10], [12, 14.5], [16, 10]]);
+  ctx.stroke();
+  path(ctx, [[4, 15.5], [4, 20], [20, 20], [20, 15.5]]);
+  ctx.stroke();
+};
+
+/** An arrow entering the case — Import. */
+const importIn: Painter = (ctx) => {
+  path(ctx, [[13.5, 3.5], [20.5, 3.5], [20.5, 20.5], [13.5, 20.5]]);
+  ctx.stroke();
+  path(ctx, [[3.5, 12], [15.5, 12]]);
+  ctx.stroke();
+  path(ctx, [[11, 8], [15.5, 12], [11, 16]]);
+  ctx.stroke();
+};
+
+/** An arrow leaving the case — Export. */
+const exportOut: Painter = (ctx) => {
+  path(ctx, [[10.5, 3.5], [3.5, 3.5], [3.5, 20.5], [10.5, 20.5]]);
+  ctx.stroke();
+  path(ctx, [[8.5, 12], [20.5, 12]]);
+  ctx.stroke();
+  path(ctx, [[16, 8], [20.5, 12], [16, 16]]);
+  ctx.stroke();
+};
+
+/** The surveyor's tick in its ring — Validate. */
+const checkRing: Painter = (ctx) => {
+  ctx.beginPath();
+  ctx.arc(12, 12, 8.5, 0, Math.PI * 2);
+  ctx.stroke();
+  path(ctx, [[8, 12.2], [11, 15.2], [16.2, 8.8]]);
+  ctx.stroke();
+};
+
+/** A quiet question in the round — Help. */
+const helpRing: Painter = (ctx) => {
+  ctx.beginPath();
+  ctx.arc(12, 12, 8.5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(9.4, 9.6);
+  ctx.quadraticCurveTo(9.4, 7, 12, 7);
+  ctx.quadraticCurveTo(14.6, 7, 14.6, 9.3);
+  ctx.quadraticCurveTo(14.6, 11.2, 12, 11.8);
+  ctx.lineTo(12, 13.6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(12, 16.8, 1.15, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+/** The command lens — search everything, run anything (⌘K). */
+const lens: Painter = (ctx) => {
+  ctx.beginPath();
+  ctx.arc(10.5, 10.5, 6.5, 0, Math.PI * 2);
+  ctx.stroke();
+  path(ctx, [[15.4, 15.4], [20.5, 20.5]]);
+  ctx.lineWidth = 2.2;
+  ctx.stroke();
+  ctx.lineWidth = STROKE;
+  // The spark inside: a found thing.
+  ctx.beginPath();
+  ctx.arc(10.5, 10.5, 1.1, 0, Math.PI * 2);
+  ctx.fill();
+};
+
 export const EDITOR_ICONS: Record<string, string> = {
+  docnew: draw(docNew),
+  folder: draw(folderOpen),
+  save: draw(saveLive),
+  importin: draw(importIn),
+  exportout: draw(exportOut),
+  check: draw(checkRing),
+  help: draw(helpRing),
+  lens: draw(lens),
   paint: draw(brush),
   erase: draw(eraser),
   line: draw(line),

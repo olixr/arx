@@ -1,0 +1,747 @@
+/*
+ * STUDIO2 KIT — the component layer of the v2 studio system. Reusable
+ * controls and surfaces only; page layout lives in each studio's own
+ * sheet. Every class here is RESERVED for kit.ts factories and the
+ * carried-over studio panels; ad-hoc restyling of these names is a bug.
+ */
+
+@import './tokens.css';
+
+/* -------------------------------------------------------- controls */
+
+input,
+button,
+select,
+textarea {
+  font: inherit;
+  color: var(--ink0);
+  letter-spacing: inherit;
+}
+
+input[type='text'],
+input[type='number'],
+input[type='search'],
+input:not([type]),
+select,
+textarea {
+  background: var(--well);
+  border: 1px solid var(--edge);
+  border-radius: var(--r1);
+  padding: 0 var(--s2);
+  outline: none;
+  min-width: 0;
+  height: var(--ctl);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+
+input::placeholder {
+  color: var(--ink2);
+}
+
+input[type='number'] {
+  width: 72px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-dense);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+textarea {
+  resize: vertical;
+  height: auto;
+  padding: var(--s2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-dense);
+  line-height: 1.5;
+}
+
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink2) 50%),
+    linear-gradient(135deg, var(--ink2) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 55%, calc(100% - 9px) 55%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: var(--s5);
+}
+
+button {
+  background: var(--bg2);
+  border: 1px solid var(--edge);
+  border-radius: var(--r1);
+  padding: 0 var(--s3);
+  height: var(--ctl);
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: inset 0 1px 0 var(--hi), var(--shadow-1);
+  transition:
+    background var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
+}
+
+button:hover {
+  background: var(--bg3);
+  border-color: var(--edge-strong);
+}
+
+button:active {
+  transform: translateY(0.5px);
+  box-shadow: inset 0 1px 0 transparent, var(--shadow-1);
+}
+
+button.primary {
+  background: linear-gradient(var(--accent-solid), var(--accent-solid-2));
+  border-color: var(--accent-solid);
+  color: #f2f7ff;
+  font-weight: 600;
+}
+
+button.primary:hover {
+  filter: brightness(1.1);
+  border-color: var(--accent);
+}
+
+button.ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ink1);
+}
+
+button.ghost:hover {
+  background: var(--bg2);
+  border-color: var(--edge);
+  color: var(--ink0);
+}
+
+button.danger {
+  border-color: transparent;
+  background: var(--danger-wash);
+  color: var(--danger);
+}
+
+button.danger:hover {
+  border-color: var(--danger);
+  background: var(--danger-wash);
+}
+
+button.mini {
+  height: var(--ctl-s);
+  padding: 0 var(--s2);
+  font-size: 11px;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+
+button:disabled:hover {
+  background: var(--bg2);
+  border-color: var(--edge);
+  color: var(--ink0);
+}
+
+/* Toggle chip — a small stateful pill (lenses, view toggles). */
+.k-chip {
+  height: var(--ctl-s);
+  padding: 0 var(--s3);
+  border-radius: var(--r-round);
+  font-size: var(--fs-dense);
+  background: transparent;
+  border: 1px solid var(--edge);
+  color: var(--ink1);
+  box-shadow: none;
+}
+
+.k-chip:hover {
+  color: var(--ink0);
+  border-color: var(--edge-strong);
+  background: var(--bg2);
+}
+
+.k-chip.active {
+  background: var(--accent-wash);
+  border-color: var(--accent-ring);
+  color: var(--accent-ink);
+}
+
+/* Segmented control. */
+.k-seg {
+  display: inline-flex;
+  background: var(--well);
+  border: 1px solid var(--edge);
+  border-radius: var(--r1);
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.k-seg button {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  height: calc(var(--ctl) - 8px);
+  padding: 0 var(--s3);
+  color: var(--ink1);
+  font-weight: 500;
+  border-radius: calc(var(--r1) - 2px);
+}
+
+.k-seg button:hover {
+  color: var(--ink0);
+  background: var(--bg2);
+}
+
+.k-seg button.active {
+  background: var(--bg3);
+  color: var(--ink0);
+  box-shadow: inset 0 1px 0 var(--hi), var(--shadow-1);
+}
+
+/* Key caps — every taught shortcut wears one. */
+.k-kbd {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.k-kbd i {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 17px;
+  min-width: 17px;
+  padding: 0 4px;
+  text-align: center;
+  color: var(--ink1);
+  background: var(--bg2);
+  border: 1px solid var(--edge);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+/* Slider row: label · track · live readout. */
+.k-slider {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  color: var(--ink1);
+  font-size: var(--fs-dense);
+}
+
+.k-slider input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.k-slider input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-round);
+  background: var(--bg3);
+}
+
+.k-slider input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--ink0);
+  border: 1px solid var(--edge-strong);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--t-fast) var(--ease);
+}
+
+.k-slider input[type='range']:hover::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+.k-slider output {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  color: var(--ink0);
+  min-width: 20px;
+  text-align: right;
+}
+
+/* --------------------------------------------------- text voices */
+
+.muted {
+  color: var(--ink2);
+  font-size: var(--fs-dense);
+  line-height: 1.5;
+  margin: 2px 0;
+}
+
+.empty {
+  font-style: italic;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caps);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink2);
+  margin: var(--s4) 0 var(--s2);
+}
+
+.panel-head:first-child {
+  margin-top: 0;
+}
+
+.panel-head .count {
+  margin-left: auto;
+  background: var(--bg2);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-round);
+  padding: 0 7px;
+  font-size: 10px;
+  line-height: 16px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-head .mini {
+  margin-left: auto;
+}
+
+.pill {
+  display: inline-block;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-round);
+  padding: 2px 9px;
+  font-size: 11px;
+  color: var(--ink1);
+  background: var(--bg2);
+  white-space: nowrap;
+}
+
+.pill.brass {
+  color: var(--field);
+  border-color: var(--field-ring);
+  background: var(--field-wash);
+}
+
+.pill.gold {
+  color: var(--warn);
+  border-color: var(--warn);
+  background: var(--warn-wash);
+}
+
+.pill.green {
+  color: var(--ok);
+  border-color: var(--ok);
+  background: var(--ok-wash);
+}
+
+.pill.blue {
+  color: var(--accent-ink);
+  border-color: var(--accent-ring);
+  background: var(--accent-wash);
+}
+
+/* -------------------------------------------------------- cards */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2);
+}
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--edge);
+  border-radius: var(--r2);
+  padding: var(--s2);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  text-align: left;
+  cursor: pointer;
+  height: auto;
+  min-width: 0;
+  box-shadow: inset 0 1px 0 var(--hi), var(--shadow-1);
+  transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
+}
+
+.card:hover {
+  border-color: var(--edge-strong);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 var(--hi), var(--shadow-2);
+}
+
+.card.armed {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow-2);
+}
+
+.card-pic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--well);
+  border-radius: var(--r1);
+  height: 96px;
+  padding: var(--s1);
+  overflow: hidden;
+}
+
+.card-pic canvas {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 3px;
+}
+
+.pic-loading {
+  font-size: 11px;
+  color: var(--ink2);
+  font-style: italic;
+}
+
+.card-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.card-cap b {
+  font-size: 12.5px;
+  color: var(--ink0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-cap span {
+  font-size: 10.5px;
+  color: var(--ink2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.card-actions button:first-child {
+  flex: 1;
+}
+
+/* -------------------------------------------------------- dialogs */
+
+#modal,
+#k-confirm {
+  background: var(--bg1);
+  color: var(--ink0);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--r3);
+  padding: var(--s5);
+  min-width: 520px;
+  max-width: 780px;
+  max-height: 82vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-3);
+}
+
+#modal::backdrop,
+#k-confirm::backdrop {
+  background: rgba(4, 6, 10, 0.62);
+  backdrop-filter: blur(2px);
+}
+
+#modal[open],
+#k-confirm[open] {
+  animation: k-dialog-in var(--t-slow) var(--ease-out);
+}
+
+@keyframes k-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+#modal h2,
+#k-confirm h2 {
+  margin: 0 0 var(--s4);
+  color: var(--ink0);
+  font-size: var(--fs-title);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+#k-confirm {
+  min-width: 380px;
+  max-width: 460px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3) var(--s4);
+  margin-bottom: var(--s3);
+}
+
+.form-grid label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  color: var(--ink1);
+}
+
+.form-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  margin-bottom: var(--s4);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 3px var(--s4);
+  align-items: center;
+  color: var(--ink1);
+}
+
+.form-row > span:first-child {
+  font-size: var(--fs-dense);
+}
+
+.form-row .pair {
+  display: flex;
+  gap: var(--s2);
+}
+
+.form-row em {
+  grid-column: 2;
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--ink2);
+  line-height: 1.4;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  margin-top: var(--s1);
+}
+
+ul.help {
+  padding-left: 18px;
+  line-height: 1.55;
+}
+
+ul.help li {
+  margin: 6px 0;
+}
+
+code {
+  background: var(--well);
+  border: 1px solid var(--edge-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-dense);
+}
+
+/* ---------------------------------------------------------- toast */
+
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 44px;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--bg3);
+  border: 1px solid var(--edge-strong);
+  color: var(--ink0);
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-med) var(--ease), transform var(--t-med) var(--ease-out);
+  box-shadow: var(--shadow-2);
+  max-width: 70vw;
+  font-size: 12.5px;
+  z-index: 60;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#toast.info {
+  border-left: 3px solid var(--accent);
+}
+
+#toast.success {
+  border-left: 3px solid var(--ok);
+}
+
+#toast.error {
+  border-left: 3px solid var(--danger);
+}
+
+/* ----------------------------------------------- command palette */
+
+#cmdk {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 16vh;
+  background: rgba(4, 6, 10, 0.45);
+}
+
+#cmdk.open {
+  display: flex;
+}
+
+.cmdk-panel {
+  width: min(580px, 90vw);
+  background: var(--bg1);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--r3);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+  animation: k-dialog-in var(--t-med) var(--ease-out);
+}
+
+.cmdk-input {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--edge);
+}
+
+.cmdk-input input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  height: var(--ctl);
+  font-size: 14.5px;
+  padding: 0;
+}
+
+.cmdk-input input:focus {
+  box-shadow: none;
+}
+
+.cmdk-list {
+  max-height: min(46vh, 420px);
+  overflow-y: auto;
+  padding: var(--s2);
+}
+
+.cmdk-group {
+  font-size: var(--fs-caps);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink2);
+  padding: var(--s2) var(--s2) var(--s1);
+}
+
+.cmdk-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  height: 36px;
+  padding: 0 var(--s2);
+  border-radius: var(--r1);
+  text-align: left;
+  color: var(--ink1);
+}
+
+.cmdk-row img {
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.cmdk-row .t {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink0);
+}
+
+.cmdk-row .g {
+  font-size: 11px;
+  color: var(--ink2);
+  flex-shrink: 0;
+}
+
+.cmdk-row:hover {
+  background: var(--bg2);
+}
+
+.cmdk-row.sel {
+  background: var(--accent-wash);
+}
+
+.cmdk-row.sel .t {
+  color: var(--accent-ink);
+}
+
+.cmdk-empty {
+  padding: var(--s4);
+  color: var(--ink2);
+  font-size: var(--fs-dense);
+  text-align: center;
+}
+
+.cmdk-foot {
+  display: flex;
+  gap: var(--s4);
+  align-items: center;
+  padding: var(--s2) var(--s4);
+  border-top: 1px solid var(--edge);
+  color: var(--ink2);
+  font-size: 11px;
+}

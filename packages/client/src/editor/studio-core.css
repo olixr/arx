@@ -1,28 +1,30 @@
 /*
- * The studio design system — shared foundation for Map Studio and
- * Content Studio: expedition-case dark tokens, the 28px control
- * language, cards, modals, and toast voices. Page layouts live in
- * each studio's own sheet.
+ * The v1 studio foundation, TOKENS RE-POINTED at the studio2 system
+ * (Map Studio v2 Phase 1: "Content Studio adopts tokens only"). The
+ * legacy names below are ALIASES onto studio2/tokens.css values so the
+ * CMS wears the v2 surfaces and accent without structural change; its
+ * full re-skin on the v2 kit lands in Phase 6. New studio work must
+ * use the studio2 tokens directly, never these aliases.
  */
 
+@import '../studio2/tokens.css';
+
 :root {
-  --bg: #100c1a;
-  --panel: #191324;
-  --panel-2: #221a30;
-  --panel-3: #2a2138;
-  --ink: #e8dfc8;
-  --ink-mid: #b8ad9d;
-  --ink-dim: #8f8499;
-  --brass: #e8a33d;
-  --brass-soft: rgba(232, 163, 61, 0.5);
-  --line: #352c44;
-  --line-soft: rgba(53, 44, 68, 0.55);
-  --danger: #d4544a;
-  --ok: #6fbf6a;
-  --focus: rgba(232, 163, 61, 0.55);
-  --radius-s: 6px;
-  --radius-m: 8px;
-  --radius-l: 10px;
+  --bg: var(--bg0);
+  --panel: var(--bg1);
+  --panel-2: var(--bg2);
+  --panel-3: var(--bg3);
+  --ink: var(--ink0);
+  --ink-mid: var(--ink1);
+  --ink-dim: var(--ink2);
+  --brass: var(--accent);
+  --brass-soft: var(--accent-ring);
+  --line: var(--edge);
+  --line-soft: var(--edge-soft);
+  --focus: var(--accent-ring);
+  --radius-s: var(--r1);
+  --radius-m: var(--r2);
+  --radius-l: var(--r3);
 }
 
 * {
@@ -79,7 +81,7 @@ input[type='search'],
 input:not([type]),
 select,
 textarea {
-  background: #0d0916;
+  background: var(--well);
   border: 1px solid var(--line);
   border-radius: var(--radius-s);
   padding: 4px 8px;
@@ -133,9 +135,9 @@ button:hover {
 }
 
 button.primary {
-  background: linear-gradient(#8a5d1f, #6e4a18);
-  border-color: #a97a2e;
-  color: #ffe9c4;
+  background: linear-gradient(var(--accent-solid), var(--accent-solid-2));
+  border-color: var(--accent-solid);
+  color: #f2f7ff;
   font-weight: 600;
 }
 
@@ -246,7 +248,7 @@ button:disabled:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0d0916;
+  background: var(--well);
   border-radius: 5px;
   height: 96px;
   padding: 4px;
@@ -415,7 +417,7 @@ ul.help li {
 }
 
 code {
-  background: #0d0916;
+  background: var(--well);
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 12px;

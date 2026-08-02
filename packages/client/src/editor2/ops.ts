@@ -1,0 +1,704 @@
+/**
+ * EDITOR OPS — the document verbs of the zone editor, extracted from
+ * the v1 god module. Everything that mutates the zone (brush strokes,
+ * shapes, stamps, placements, clipboard, road, undo) lives here as one
+ * testable seam; the pointer machine, the keyboard, the rail, and the
+ * ⌘K palette are all just hands reaching for these verbs.
+ */
+
+import { Detail, Tile, tileDef } from '@arx/shared';
+import {
+  STRUCTURE_TEMPLATES,
+  flipTemplate,
+  templateHeight,
+  templateWidth,
+  type StructureTemplate,
+  type ZoneDef,
+} from '@arx/content';
+import { History, StrokeRecorder, cloneZone } from '../editor/history.js';
+import {
+  clusterEdgeAt,
+  deletePlacement,
+  movePlacement,
+  placementAt,
+  placementPos,
+} from '../editor/placements.js';
+import { EditorView, GHOST_SKIP } from '../editor/render.js';
+import type { EditorState, PlacementRef, ToolId } from '../editor/state.js';
+import {
+  ellipseCells,
+  floodCells,
+  footprint,
+  rectCells,
+  roadCells,
+  thickLine,
+  type Pt,
+} from '../editor/tools.js';
+import type { RegistrySnapshot } from '../editor/api.js';
+import { toast } from '../studio2/kit.js';
+import { TOOL_SPECS } from './commands.js';
+
+export type { Pt };
+
+export interface ClipRegion {
+  w: number;
+  h: number;
+  ground: Uint16Array;
+  detail: Uint16Array;
+  elev: Int8Array;
+}
+
+export class EditorOps {
+  /** Road tool waypoints-in-progress. */
+  roadPts: Pt[] = [];
+  /** ⌘V armed: next click stamps the clipboard. */
+  pasteArmed = false;
+  private pendingZoneBefore: ZoneDef | null = null;
+
+  constructor(
+    readonly state: EditorState,
+    readonly view: EditorView,
+    readonly history: History,
+    private readonly getRegistry: () => RegistrySnapshot,
+  ) {}
+
+  // ------------------------------------------------------- geometry
+
+  idx(x: number, y: number): number {
+    return y * this.state.zone.width + x;
+  }
+
+  inBounds(x: number, y: number): boolean {
+    const z = this.state.zone;
+    return x >= 0 && y >= 0 && x < z.width && y < z.height;
+  }
+
+  markDirtyCells(pts: Pt[]): void {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const p of pts) {
+      x0 = Math.min(x0, p.x);
+      y0 = Math.min(y0, p.y);
+      x1 = Math.max(x1, p.x);
+      y1 = Math.max(y1, p.y);
+    }
+    if (x0 <= x1) this.view.markDirty(x0, y0, x1, y1);
+  }
+
+  // ------------------------------------------------- brush & strokes
+
+  applyBrush(rec: StrokeRecorder, x: number, y: number, erase: boolean): void {
+    if (!this.inBounds(x, y)) return;
+    const i = this.idx(x, y);
+    const z = this.state.zone;
+    const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+    if (this.state.layer === 'ground') {
+      c.g1 = erase ? Tile.Grass : this.state.brushTile;
+      z.ground[i] = c.g1;
+    } else if (this.state.layer === 'detail') {
+      c.d1 = erase ? Detail.None : this.state.brushDetail;
+      z.detail[i] = c.d1;
+    } else {
+      c.e1 = erase ? 0 : Math.max(-2, Math.min(3, this.state.elevLevel));
+      z.elev![i] = c.e1;
+    }
+  }
+
+  commitStroke(rec: StrokeRecorder, label: string, pts: Pt[]): void {
+    const op = rec.finish(label);
+    if (!op) return;
+    this.history.push(op);
+    this.state.dirty = true;
+    this.markDirtyCells(pts);
+    this.state.changed();
+  }
+
+  /** One-shot cell application (fill, shapes, road). */
+  applyCellsOp(label: string, pts: Pt[], erase = false): void {
+    const rec = new StrokeRecorder();
+    for (const p of pts) this.applyBrush(rec, p.x, p.y, erase);
+    this.commitStroke(rec, label, pts);
+  }
+
+  // ------------------------------------------------------- zone ops
+
+  /**
+   * Structural zone op (resize, origin, placements): full snapshots.
+   * Placement-only edits pass tiles:false and skip the ground rebake.
+   */
+  zoneOp(label: string, mutate: (z: ZoneDef) => void, opts?: { tiles?: boolean }): void {
+    const before = cloneZone(this.state.zone);
+    mutate(this.state.zone);
+    this.history.push({ kind: 'zone', label, before, after: cloneZone(this.state.zone) });
+    this.state.dirty = true;
+    if (opts?.tiles !== false) this.view.markAllDirty();
+    this.state.changed();
+  }
+
+  beginZoneGesture(): void {
+    this.pendingZoneBefore = cloneZone(this.state.zone);
+  }
+
+  cancelZoneGesture(): void {
+    this.pendingZoneBefore = null;
+  }
+
+  endZoneGesture(label: string, opts?: { tiles?: boolean }): void {
+    if (!this.pendingZoneBefore) return;
+    this.history.push({
+      kind: 'zone',
+      label,
+      before: this.pendingZoneBefore,
+      after: cloneZone(this.state.zone),
+    });
+    this.pendingZoneBefore = null;
+    this.state.dirty = true;
+    if (opts?.tiles !== false) this.view.markAllDirty();
+    this.state.changed();
+  }
+
+  undoRedo(dir: 'undo' | 'redo'): void {
+    const res = dir === 'undo' ? this.history.undo(this.state.zone) : this.history.redo(this.state.zone);
+    if (!res) {
+      toast(`nothing to ${dir}`);
+      return;
+    }
+    if (res.zone !== this.state.zone) this.state.zone = res.zone;
+    this.view.markAllDirty(); // cell ops know their rect, but cheap & safe
+    this.state.dirty = true;
+    this.state.changed();
+    toast(`${dir}: ${res.label}`);
+  }
+
+  // ------------------------------------------------------ the tools
+
+  setTool(tool: ToolId): void {
+    this.state.tool = tool;
+    if (tool !== 'road') {
+      this.roadPts = [];
+      this.view.preview = null;
+    }
+    if (tool !== 'structure' && tool !== 'prefab') this.view.ghost = null;
+    const spec = TOOL_SPECS.get(tool);
+    if (spec?.tab) this.state.tab = spec.tab;
+    else if (
+      tool === 'paint' || tool === 'fill' || tool === 'line' ||
+      tool === 'rect' || tool === 'ellipse' || tool === 'road'
+    ) {
+      this.state.tab = 'tiles';
+    }
+    this.state.changed();
+  }
+
+  /** Put an armed structure/prefab stamp away without placing it. */
+  disarmStamp(quiet = false): boolean {
+    if (this.state.armedTemplate === null && this.state.armedPrefab === null) return false;
+    this.state.armedTemplate = null;
+    this.state.armedPrefab = null;
+    this.view.ghost = null;
+    this.state.changed();
+    if (!quiet) toast('stamp put away');
+    return true;
+  }
+
+  pickAt(x: number, y: number): void {
+    if (!this.inBounds(x, y)) return;
+    const i = this.idx(x, y);
+    const z = this.state.zone;
+    const d = z.detail[i]! as Detail;
+    const e = z.elev![i]!;
+    if (this.state.layer === 'detail' && d !== Detail.None) {
+      this.state.brushDetail = d;
+    } else if (this.state.layer === 'elev' && e !== 0) {
+      this.state.elevLevel = e;
+    } else {
+      this.state.brushTile = z.ground[i]! as Tile;
+      this.state.layer = 'ground';
+    }
+    this.state.changed();
+    toast(`picked ${tileDef(z.ground[i]!).name}`);
+  }
+
+  setPreview(pts: Pt[], erase: boolean): void {
+    const indices = new Set<number>();
+    for (const p of pts) if (this.inBounds(p.x, p.y)) indices.add(this.idx(p.x, p.y));
+    this.view.preview = {
+      indices,
+      color: erase
+        ? 'rgba(224, 100, 86, 0.35)'
+        : this.state.layer === 'ground'
+          ? 'rgba(233, 236, 243, 0.30)'
+          : 'rgba(140, 210, 240, 0.30)',
+    };
+  }
+
+  shapeCells(d: { anchor: Pt; cur: Pt }, shift: boolean): Pt[] {
+    let { x: x1, y: y1 } = d.cur;
+    if (shift) {
+      const dx = x1 - d.anchor.x;
+      const dy = y1 - d.anchor.y;
+      const m = Math.max(Math.abs(dx), Math.abs(dy));
+      x1 = d.anchor.x + Math.sign(dx || 1) * m;
+      y1 = d.anchor.y + Math.sign(dy || 1) * m;
+    }
+    const s = this.state;
+    if (s.tool === 'rect') return rectCells(d.anchor.x, d.anchor.y, x1, y1, s.shapeFill);
+    if (s.tool === 'ellipse') return ellipseCells(d.anchor.x, d.anchor.y, x1, y1, s.shapeFill);
+    return thickLine(d.anchor.x, d.anchor.y, x1, y1, s.brushSize, s.brushShape);
+  }
+
+  brushFootprint(x: number, y: number): Pt[] {
+    return footprint(x, y, this.state.brushSize, this.state.brushShape);
+  }
+
+  strokeLine(a: Pt, b: Pt): Pt[] {
+    return thickLine(a.x, a.y, b.x, b.y, this.state.brushSize, this.state.brushShape);
+  }
+
+  floodFrom(x: number, y: number): Pt[] {
+    const z = this.state.zone;
+    const sample =
+      this.state.layer === 'ground'
+        ? (i: number): number => z.ground[i]!
+        : this.state.layer === 'detail'
+          ? (i: number): number => z.detail[i]!
+          : (i: number): number => z.elev![i]!;
+    return floodCells(x, y, z.width, z.height, sample);
+  }
+
+  // ---------------------------------------------------------- road
+
+  roadPreviewCells(extra?: Pt): Pt[] {
+    return roadCells(extra ? [...this.roadPts, extra] : this.roadPts, this.state.roadWidth);
+  }
+
+  commitRoad(): void {
+    const pts = this.roadPreviewCells().filter((p) => this.inBounds(p.x, p.y));
+    // Roads paint the active ground brush — Path by default.
+    const prevLayer = this.state.layer;
+    this.state.layer = 'ground';
+    this.applyCellsOp('road', pts);
+    this.state.layer = prevLayer;
+    this.roadPts = [];
+    this.view.preview = null;
+    toast(`road laid (${pts.length} tiles)`);
+  }
+
+  abandonRoad(): boolean {
+    if (this.roadPts.length === 0) return false;
+    this.roadPts = [];
+    this.view.preview = null;
+    toast('road abandoned');
+    return true;
+  }
+
+  // ----------------------------------------------------- selection
+
+  selRect(): { x0: number; y0: number; x1: number; y1: number } | null {
+    const s = this.state.selection;
+    if (!s) return null;
+    return {
+      x0: Math.min(s.x0, s.x1),
+      y0: Math.min(s.y0, s.y1),
+      x1: Math.max(s.x0, s.x1),
+      y1: Math.max(s.y0, s.y1),
+    };
+  }
+
+  copySelection(): boolean {
+    const r = this.selRect();
+    if (!r) return false;
+    const w = r.x1 - r.x0 + 1;
+    const h = r.y1 - r.y0 + 1;
+    const z = this.state.zone;
+    const buf: ClipRegion = {
+      w,
+      h,
+      ground: new Uint16Array(w * h),
+      detail: new Uint16Array(w * h),
+      elev: new Int8Array(w * h),
+    };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const src = this.idx(r.x0 + x, r.y0 + y);
+        buf.ground[y * w + x] = z.ground[src]!;
+        buf.detail[y * w + x] = z.detail[src]!;
+        buf.elev[y * w + x] = z.elev![src]!;
+      }
+    }
+    this.state.clip = buf;
+    return true;
+  }
+
+  clearRegion(r: { x0: number; y0: number; x1: number; y1: number }, label: string): void {
+    const pts: Pt[] = [];
+    const rec = new StrokeRecorder();
+    const z = this.state.zone;
+    for (let y = r.y0; y <= r.y1; y++) {
+      for (let x = r.x0; x <= r.x1; x++) {
+        if (!this.inBounds(x, y)) continue;
+        const i = this.idx(x, y);
+        const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+        c.g1 = Tile.Grass;
+        c.d1 = Detail.None;
+        c.e1 = 0;
+        z.ground[i] = c.g1;
+        z.detail[i] = c.d1;
+        z.elev![i] = c.e1;
+        pts.push({ x, y });
+      }
+    }
+    this.commitStroke(rec, label, pts);
+  }
+
+  /** Clear a region into an open recorder (the cut half of a move). */
+  clearRegionInto(
+    r: { x0: number; y0: number; x1: number; y1: number },
+    rec: StrokeRecorder,
+    pts: Pt[],
+  ): void {
+    const z = this.state.zone;
+    for (let y = r.y0; y <= r.y1; y++) {
+      for (let x = r.x0; x <= r.x1; x++) {
+        if (!this.inBounds(x, y)) continue;
+        const i = this.idx(x, y);
+        const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+        c.g1 = Tile.Grass;
+        c.d1 = Detail.None;
+        c.e1 = 0;
+        z.ground[i] = c.g1;
+        z.detail[i] = c.d1;
+        z.elev![i] = c.e1;
+        pts.push({ x, y });
+      }
+    }
+  }
+
+  stampBuffer(buf: ClipRegion, at: Pt, rec: StrokeRecorder, pts: Pt[]): void {
+    const z = this.state.zone;
+    for (let y = 0; y < buf.h; y++) {
+      for (let x = 0; x < buf.w; x++) {
+        const lx = at.x + x;
+        const ly = at.y + y;
+        if (!this.inBounds(lx, ly)) continue;
+        const i = this.idx(lx, ly);
+        const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+        c.g1 = buf.ground[y * buf.w + x]!;
+        c.d1 = buf.detail[y * buf.w + x]!;
+        c.e1 = buf.elev[y * buf.w + x]!;
+        z.ground[i] = c.g1;
+        z.detail[i] = c.d1;
+        z.elev![i] = c.e1;
+        pts.push({ x: lx, y: ly });
+      }
+    }
+  }
+
+  cutSelection(): void {
+    const r = this.selRect();
+    if (r && this.copySelection()) {
+      this.clearRegion(r, 'cut selection');
+      toast('cut selection');
+    }
+  }
+
+  armPaste(): boolean {
+    if (!this.state.clip) return false;
+    this.pasteArmed = true;
+    toast('paste: click to place (Esc cancels)');
+    return true;
+  }
+
+  cancelPaste(): boolean {
+    if (!this.pasteArmed) return false;
+    this.pasteArmed = false;
+    this.view.ghost = null;
+    toast('paste cancelled');
+    return true;
+  }
+
+  // ---------------------------------------------------- placements
+
+  selectPlacement(ref: PlacementRef | null): void {
+    this.state.selected = ref;
+    if (ref) this.state.tab = 'placements';
+    this.state.changed();
+  }
+
+  focusPlacement(ref: PlacementRef): void {
+    const pos = placementPos(this.state.zone, ref);
+    if (pos) this.view.centerOn(pos.x, pos.y);
+  }
+
+  removePlacementRef(ref: PlacementRef): void {
+    const label = `remove ${ref.kind}`;
+    this.zoneOp(
+      label,
+      (z) => {
+        if (ref.kind === 'sign') {
+          // The board leaves with its words — the pair is the unit.
+          const g = z.signs?.[ref.index];
+          if (g) {
+            const lx = g.x - z.origin.x;
+            const ly = g.y - z.origin.y;
+            if (lx >= 0 && ly >= 0 && lx < z.width && ly < z.height) {
+              z.ground[ly * z.width + lx] = Tile.Grass;
+            }
+          }
+        }
+        if (ref.kind === 'portal') {
+          // The entrance tile leaves with its portal.
+          const p = z.portals?.[ref.index];
+          if (p) {
+            const lx = p.x - z.origin.x;
+            const ly = p.y - z.origin.y;
+            if (lx >= 0 && ly >= 0 && lx < z.width && ly < z.height) {
+              z.ground[ly * z.width + lx] = Tile.Grass;
+            }
+          }
+        }
+        deletePlacement(z, ref);
+      },
+      { tiles: ref.kind === 'portal' || ref.kind === 'sign' },
+    );
+    this.state.selected = null;
+    this.state.changed();
+    toast(`${label}d`);
+  }
+
+  /** Portal/sign markers carry their entrance tile: moving one swaps tiles. */
+  carryPlacementTile(z: ZoneDef, fromW: Pt, toW: Pt): void {
+    const li = (w: Pt): number | null => {
+      const lx = w.x - z.origin.x;
+      const ly = w.y - z.origin.y;
+      return lx >= 0 && ly >= 0 && lx < z.width && ly < z.height ? ly * z.width + lx : null;
+    };
+    const a = li(fromW);
+    const b = li(toW);
+    if (a === null || b === null || a === b) return;
+    const t = z.ground[a]!;
+    z.ground[a] = z.ground[b]!;
+    z.ground[b] = t;
+    this.view.markDirty(fromW.x - z.origin.x, fromW.y - z.origin.y, fromW.x - z.origin.x, fromW.y - z.origin.y);
+    this.view.markDirty(toW.x - z.origin.x, toW.y - z.origin.y, toW.x - z.origin.x, toW.y - z.origin.y);
+  }
+
+  /** Create the active placement tool's object at a local tile. */
+  createPlacementAt(t: Pt): PlacementRef | null {
+    const z = this.state.zone;
+    if (!this.inBounds(t.x, t.y)) return null;
+    const wx = z.origin.x + t.x;
+    const wy = z.origin.y + t.y;
+    const registry = this.getRegistry();
+    switch (this.state.tool) {
+      case 'portal': {
+        z.portals ??= [];
+        z.portals.push({ x: wx, y: wy, dest: { x: z.origin.x, y: z.origin.y } });
+        const i = t.y * z.width + t.x;
+        z.ground[i] = Tile.PortalDown;
+        this.view.markDirty(t.x, t.y, t.x, t.y);
+        return { kind: 'portal', index: z.portals.length - 1 };
+      }
+      case 'cluster': {
+        z.spawns ??= [];
+        const npc = registry.npcs[0]?.id ?? 'goblin';
+        z.spawns.push({ npc, x: wx, y: wy, radius: 4, count: 3 });
+        return { kind: 'cluster', index: z.spawns.length - 1 };
+      }
+      case 'actor': {
+        z.actorSpawns ??= [];
+        const actor = registry.actors[0]?.id;
+        if (!actor) {
+          toast('no actors in the registry — is the server running?', 3600);
+          return null;
+        }
+        z.actorSpawns.push({ actor, x: wx, y: wy });
+        return { kind: 'actor', index: z.actorSpawns.length - 1 };
+      }
+      case 'sign': {
+        // Board AND words in one act — the tool never makes half the pair.
+        z.signs ??= [];
+        z.signs.push({ x: wx, y: wy, title: 'NEW SIGN' });
+        const i = t.y * z.width + t.x;
+        z.ground[i] = Tile.Signpost;
+        this.view.markDirty(t.x, t.y, t.x, t.y);
+        return { kind: 'sign', index: z.signs.length - 1 };
+      }
+      case 'spawn': {
+        z.spawn = { x: wx + 0.5, y: wy + 0.5 };
+        return { kind: 'spawn', index: 0 };
+      }
+      default:
+        return null;
+    }
+  }
+
+  placementHit(fx: number, fy: number): PlacementRef | null {
+    return placementAt(this.state.zone, fx, fy);
+  }
+
+  /** A placement's current LOCAL tile position. */
+  placementLocalPos(ref: PlacementRef): { x: number; y: number } | null {
+    return placementPos(this.state.zone, ref);
+  }
+
+  clusterEdgeHit(fx: number, fy: number): number | null {
+    return clusterEdgeAt(this.state.zone, fx, fy, Math.max(0.35, 8 / this.view.scale));
+  }
+
+  movePlacementTo(ref: PlacementRef, lx: number, ly: number): void {
+    movePlacement(this.state.zone, ref, lx, ly);
+  }
+
+  // -------------------------------------------------------- stamps
+
+  armedTemplateDef(): StructureTemplate | null {
+    const tpl = STRUCTURE_TEMPLATES.find((t) => t.id === this.state.armedTemplate) ?? null;
+    return tpl && this.state.stampFlip ? flipTemplate(tpl) : tpl;
+  }
+
+  templateGhost(t: Pt): void {
+    const tpl = this.armedTemplateDef();
+    if (!tpl) {
+      this.view.ghost = null;
+      return;
+    }
+    const w = templateWidth(tpl);
+    const h = templateHeight(tpl);
+    const ground = new Uint16Array(w * h).fill(GHOST_SKIP);
+    const detail = new Uint16Array(w * h);
+    for (let y = 0; y < h; y++) {
+      const row = tpl.rows[y]!;
+      for (let x = 0; x < w; x++) {
+        const cell = row[x] === ' ' ? undefined : tpl.legend[row[x]!];
+        if (!cell) continue;
+        if (cell.tile !== undefined) ground[y * w + x] = cell.tile;
+        else ground[y * w + x] = GHOST_SKIP;
+        if (cell.detail !== undefined) detail[y * w + x] = cell.detail;
+      }
+    }
+    this.view.ghost = { w, h, ground, detail, at: { x: t.x - (w >> 1), y: t.y - (h >> 1) } };
+  }
+
+  stampTemplateAt(t: Pt): void {
+    const tpl = this.armedTemplateDef();
+    if (!tpl) {
+      toast('pick a structure template first (Library · Structures)');
+      return;
+    }
+    const w = templateWidth(tpl);
+    const h = templateHeight(tpl);
+    const at = { x: t.x - (w >> 1), y: t.y - (h >> 1) };
+    const rec = new StrokeRecorder();
+    const pts: Pt[] = [];
+    const z = this.state.zone;
+    for (let y = 0; y < h; y++) {
+      const row = tpl.rows[y]!;
+      for (let x = 0; x < w; x++) {
+        const cell = row[x] === ' ' ? undefined : tpl.legend[row[x]!];
+        if (!cell) continue;
+        const lx = at.x + x;
+        const ly = at.y + y;
+        if (!this.inBounds(lx, ly)) continue;
+        const i = this.idx(lx, ly);
+        const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+        if (cell.tile !== undefined) {
+          c.g1 = cell.tile;
+          z.ground[i] = c.g1;
+        }
+        if (cell.detail !== undefined) {
+          c.d1 = cell.detail;
+          z.detail[i] = c.d1;
+        }
+        pts.push({ x: lx, y: ly });
+      }
+    }
+    this.commitStroke(rec, `stamp ${tpl.meta?.label ?? tpl.id}`, pts);
+    toast(`stamped ${tpl.meta?.label ?? tpl.id}${this.state.stampFlip ? ' (mirrored)' : ''}`);
+  }
+
+  prefabGhost(t: Pt): void {
+    const p = this.state.armedPrefab;
+    if (!p) {
+      this.view.ghost = null;
+      return;
+    }
+    const pins = [
+      ...p.spawns.map((s) => ({ dx: s.dx, dy: s.dy, color: '#e06456' })),
+      ...p.actorSpawns.map((a) => ({ dx: a.dx, dy: a.dy, color: '#5fc9c4' })),
+      ...p.portals.map((pt) => ({ dx: pt.dx, dy: pt.dy, color: '#b48fe8' })),
+    ];
+    this.view.ghost = {
+      w: p.width,
+      h: p.height,
+      ground: p.ground,
+      detail: p.detail,
+      at: { x: t.x - (p.width >> 1), y: t.y - (p.height >> 1) },
+      pins,
+    };
+  }
+
+  stampPrefabAt(t: Pt): void {
+    const p = this.state.armedPrefab;
+    if (!p) {
+      toast('arm a prefab first (Library · Structures)');
+      return;
+    }
+    const at = { x: t.x - (p.width >> 1), y: t.y - (p.height >> 1) };
+    this.zoneOp(`stamp prefab ${p.name}`, (z) => {
+      for (let y = 0; y < p.height; y++) {
+        for (let x = 0; x < p.width; x++) {
+          const lx = at.x + x;
+          const ly = at.y + y;
+          if (lx < 0 || ly < 0 || lx >= z.width || ly >= z.height) continue;
+          const i = ly * z.width + lx;
+          z.ground[i] = p.ground[y * p.width + x]!;
+          z.detail[i] = p.detail[y * p.width + x]!;
+          z.elev![i] = p.elev[y * p.width + x]!;
+        }
+      }
+      const inZone = (dx: number, dy: number): boolean => {
+        const lx = at.x + dx;
+        const ly = at.y + dy;
+        return lx >= 0 && ly >= 0 && lx < z.width && ly < z.height;
+      };
+      z.portals ??= [];
+      z.spawns ??= [];
+      z.actorSpawns ??= [];
+      for (const pt of p.portals) {
+        if (!inZone(pt.dx, pt.dy)) continue;
+        z.portals.push({
+          x: z.origin.x + at.x + pt.dx,
+          y: z.origin.y + at.y + pt.dy,
+          ...(pt.delve ? { delve: true } : { dest: pt.dest ?? { x: z.origin.x, y: z.origin.y } }),
+        });
+      }
+      for (const s of p.spawns) {
+        if (!inZone(s.dx, s.dy)) continue;
+        z.spawns.push({
+          npc: s.npc,
+          x: z.origin.x + at.x + s.dx,
+          y: z.origin.y + at.y + s.dy,
+          radius: s.radius,
+          count: s.count,
+          ...(s.level !== undefined ? { level: s.level } : {}),
+          ...(s.name !== undefined ? { name: s.name } : {}),
+        });
+      }
+      for (const a of p.actorSpawns) {
+        if (!inZone(a.dx, a.dy)) continue;
+        z.actorSpawns.push({
+          actor: a.actor,
+          x: z.origin.x + at.x + a.dx,
+          y: z.origin.y + at.y + a.dy,
+          ...(a.dir !== undefined ? { dir: a.dir } : {}),
+          ...(a.routine !== undefined ? { routine: a.routine } : {}),
+        });
+      }
+    });
+    const dropped = p.spawns.length + p.actorSpawns.length + p.portals.length;
+    toast(`stamped '${p.name}'${dropped > 0 ? ` with ${dropped} placement${dropped > 1 ? 's' : ''}` : ''}`);
+  }
+}

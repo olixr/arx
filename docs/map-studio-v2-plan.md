@@ -353,6 +353,34 @@ Each phase ships, proves, and commits on its own. Laws named in caps become stan
   floating instruments), icon redraw, editor.ts split into `editor2/` modules
   (stage-less: v1 viewport temporarily embedded). Content Studio adopts tokens only.
   *Prove: full keyboard path audit; panel resize/persist; ⌘K executes every v1 command.*
+
+  **SHIPPED 2026-08-02 — as built:**
+  - `src/studio2/`: `tokens.css` (the one token file; COOL CHROME, WARM WORLD —
+    surveyor blue `--accent` for the tool, `--field` warm brass ONLY for world-truth
+    chrome: zone chip name, dirty dot, live-server lamp, minimap viewport), `kit.css` +
+    `kit.ts` (btn/seg/chip/sliderRow/kbd/toast/confirmDialog — window.confirm is dead).
+  - `src/editor2/`: `editor2.ts` (composition root), `commands.ts` (THE COMMAND
+    REGISTRY — tools, world tools, layers, file, view, go; rail + keyboard + ⌘K + help
+    all read it), `ops.ts` (every document verb as one seam), `pointer.ts`, `keys.ts`,
+    `chrome.ts`, `shell.ts` (dock resize 280–460 + split + collapse + corner-snapping
+    instruments, all persisted under `dc2-*` keys), `minimap.ts`, `dialogs.ts`,
+    `cmdk.ts` (prefix>word-start>substring>subsequence scoring, recents, dynamic
+    zone-by-name provider), `editor2.css`. v1 `editor.ts`/`editor.css` RETIRED;
+    state/render/tools/panels/palette/placements/history/validate/api/preview/world/*
+    carry over intact. `editorIcons.ts` re-metriced (1.6px stroke, v2 ink, 3×
+    supersample) + 8 new sigils (docnew/folder/save/importin/exportout/check/help/lens).
+    `studio-core.css` = alias shim over studio2 tokens (CMS adopts tokens only).
+  - Deviations from the letter of the plan: control heights proved 30/24 in the hand
+    (not 32/26); rail flyouts + context bar deferred to Phase 4 (they arrive with the
+    first sub-tools and real selection verbs); help sheet is generated FROM the
+    registry (the drift-prone hand list is dead).
+  - Fixes beyond scope, found in the port: sign remove/move now rebakes its ground
+    tile (v1 left a stale board); origin move now carries `signs[]` (v1 dropped them);
+    zone-chip/dialog values no longer ride innerHTML.
+  - Verified: tsc clean; 379 client tests green; STUDIO=1 build green; headless audit
+    (world boot → zone step-in → ⌘K open/filter/run → hotkeys/layers/brush → paint+
+    undo → dock resize 332→416 persisted → collapse via ⌘K → tab auto-switch →
+    zone-open-by-name → world rail; zero console errors; 20 focusable chrome controls).
 - **Phase 2 — THE WORLD SITS FOR ITS PORTRAIT** (the True Viewport, still frame): the
   Editor Stage (headless ClientGame, zone→chunks at true origin with worldgen apron),
   renderer seams (free camera, clock override, overlay hook), sliced bakes, clock

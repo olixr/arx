@@ -4,60 +4,75 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Arx Map Studio</title>
-    <link rel="stylesheet" href="/src/editor/editor.css" />
+    <link rel="stylesheet" href="/src/editor2/editor2.css" />
   </head>
   <body>
     <div id="editor">
       <header id="topbar">
         <div class="brand">Arx <span>Map Studio</span></div>
-        <div id="mode-seg" class="mode-seg" role="tablist" aria-label="Studio view">
-          <button id="mode-world" title="The whole plan — zones, roads, landmarks, the frontier (W)">World</button>
-          <button id="mode-zone" title="The open zone, tile by tile">Zone</button>
-        </div>
-        <div class="group">
-          <button id="btn-new" title="Start a fresh zone">New</button>
-          <button id="btn-open" title="Open anything the world holds (⌘O)">Open</button>
+        <div id="mode-seg-host"></div>
+        <div class="tb-group">
+          <button id="btn-new" class="ghost" title="Start a fresh zone">New</button>
+          <button id="btn-open" class="ghost" title="Open anything the world holds (⌘O)">Open</button>
           <button id="btn-save" class="primary" title="Save to the server and hot-swap it into the running world (⌘S)">Save ▸ Live</button>
           <span id="dirty-dot" title="Unsaved changes"></span>
         </div>
         <button id="zone-chip" title="Zone properties — id, name, origin, and size"></button>
-        <div class="group push-right">
+        <div class="tb-group push-right">
+          <button id="btn-cmdk" title="Search commands, tools, zones (⌘K)">Search commands…</button>
+          <button id="btn-validate" class="ghost" title="Run the zone laws without saving">Validate</button>
+          <button id="btn-import" class="ghost" title="Load a local .json zone file">Import</button>
+          <button id="btn-export" class="ghost" title="Download this zone as .json">Export</button>
+          <button id="btn-help" class="ghost" title="Shortcuts and how saves work">Help</button>
           <a class="studio-link" href="/cms.html" title="Open the content CMS — bestiary, loot tables, actors, items">Content Studio ↗</a>
-          <button id="btn-validate" title="Run the zone laws without saving">Validate</button>
-          <button id="btn-import" title="Load a local .json zone file">Import</button>
-          <button id="btn-export" title="Download this zone as .json">Export</button>
-          <button id="btn-help" title="Shortcuts and how saves work">Help</button>
         </div>
       </header>
       <div id="main">
-        <nav id="toolbar"></nav>
+        <nav id="rail" aria-label="Tools"></nav>
         <div id="canvas-wrap">
           <canvas id="editor-canvas"></canvas>
           <canvas id="world-canvas" class="hidden"></canvas>
-          <div id="zoom-cluster">
-            <button id="zoom-out" title="Zoom out">−</button>
-            <button id="zoom-pct" title="Zoom to 100%">100%</button>
-            <button id="zoom-in" title="Zoom in">+</button>
-            <span class="zoom-rule"></span>
-            <button id="zoom-fit" title="Fit the zone in view (0)">Fit</button>
-          </div>
-          <div id="minimap-wrap" title="Click to jump; drag to pan">
+          <div id="inst-minimap" class="instrument" title="Click to jump; drag to pan">
+            <div class="inst-grip" title="Drag to a corner"></div>
             <canvas id="minimap"></canvas>
           </div>
+          <div id="inst-zoom" class="instrument">
+            <div class="inst-grip" title="Drag to a corner"></div>
+            <div class="zoom-row">
+              <button id="zoom-out" title="Zoom out">−</button>
+              <button id="zoom-pct" title="Zoom to 100%">100%</button>
+              <button id="zoom-in" title="Zoom in">+</button>
+              <span class="zoom-rule"></span>
+              <button id="zoom-fit" title="Fit in view (0)">Fit</button>
+            </div>
+          </div>
         </div>
-        <aside id="sidebar">
-          <section id="tool-options"></section>
-          <section id="validation" class="hidden"></section>
-          <div id="side-tabs"></div>
-          <section id="tab-tiles"><div id="palette"></div></section>
-          <section id="tab-structures" class="hidden side-panel"></section>
-          <section id="tab-placements" class="hidden side-panel"></section>
-          <section id="world-panel" class="hidden side-panel"></section>
+        <aside id="dock" aria-label="Panels">
+          <div id="dock-resize" title="Drag to resize the dock; double-click resets"></div>
+          <section id="dock-tool" class="dock-panel">
+            <header id="dock-tool-head" class="dock-head">Tool</header>
+            <div class="dock-body">
+              <section id="tool-options"></section>
+              <section id="validation" class="hidden"></section>
+            </div>
+          </section>
+          <div id="dock-split" title="Drag to resize; double-click resets"></div>
+          <section id="dock-lib" class="dock-panel">
+            <header id="dock-lib-head" class="dock-head"><span id="dock-lib-title">Library</span></header>
+            <div class="dock-body">
+              <div id="side-tabs" role="tablist" aria-label="Library sections"></div>
+              <section id="tab-tiles"><div id="palette"></div></section>
+              <section id="tab-structures" class="hidden side-panel"></section>
+              <section id="tab-placements" class="hidden side-panel"></section>
+              <section id="world-panel" class="hidden side-panel"></section>
+            </div>
+          </section>
         </aside>
       </div>
       <footer id="statusbar">
         <span id="st-hint" class="hint"></span>
         <span id="st-tile"></span>
+        <span id="st-shelf"></span>
         <span id="st-coords">—</span>
         <span id="st-zoom"></span>
         <span id="st-server">…</span>
@@ -66,6 +81,6 @@
     <dialog id="modal"><div id="modal-body"></div></dialog>
     <div id="toast"></div>
     <input type="file" id="file-load" accept=".json" hidden />
-    <script type="module" src="/src/editor/editor.ts"></script>
+    <script type="module" src="/src/editor2/editor2.ts"></script>
   </body>
 </html>
