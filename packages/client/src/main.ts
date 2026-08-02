@@ -1407,7 +1407,7 @@ const riftgate = new RiftgatePanel(game);
 
 // The fellowship ledger: nearby players, friends, and requests.
 const socialPanel = new SocialPanel(game);
-const mapScreen = new MapScreen(game);
+const mapScreen = new MapScreen(game, () => renderer.effectiveDpr());
 const mapOverlay = new MapOverlay(game);
 // The chart pans with the left stick while open — UiNav lends it and
 // walks the rail chips on the d-pad alone.
@@ -2409,6 +2409,9 @@ let fpsWindowStart = performance.now();
 // Riftgate earshot: throttled nearest-portal scan feeding the drone.
 // The fall-earshot scan rides the same 2.5 Hz throttle.
 let nextPortalScanAt = 0;
+/** Fall-earshot scan, half-phase offset from the portal scan so the
+ *  two 441-tile sweeps never land in the same frame. */
+let nextFallScanAt = 200;
 let portalNear = 0;
 let fallEar: FallEar = SILENT_EAR;
 
@@ -3143,6 +3146,13 @@ function frame(now: number): void {
         }
       }
       portalNear = best === Infinity ? 0 : Math.max(0, Math.min(1, 1 - best / 9.5));
+      // The fall scan runs on the SAME cadence but a HALF-PHASE later:
+      // both scans landing in one frame stacked into a periodic spike
+      // (one visibly slow frame every 400ms on throttled machines).
+      nextFallScanAt = Math.min(nextFallScanAt, now + 200);
+    }
+    if (now >= nextFallScanAt) {
+      nextFallScanAt = now + 400;
       // Fall earshot: ask THE SPILL LAW itself where falling water
       // crosses a cliff near the ear (audio/falls.ts) — the voice can
       // only sound where the renderer hangs a curtain.

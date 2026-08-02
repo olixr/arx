@@ -96,6 +96,32 @@ const PENUMBRA: ReadonlyArray<readonly [number, number]> = [
 const WRAP_K = 0.12;
 const WRAP_R = 1.25;
 
+/** Falloff profiles, hoisted: per-light-per-frame array literals
+ *  defeated the glow sprite cache's identity memo (see glowSprite). */
+const POOL_STOPS: ReadonlyArray<readonly [number, number]> = [
+  [0, 1],
+  [0.4, 0.72],
+  [0.75, 0.28],
+  [1, 0],
+];
+const WRAP_STOPS: ReadonlyArray<readonly [number, number]> = [
+  [0, WRAP_K],
+  [0.6, WRAP_K * 0.55],
+  [1, 0],
+];
+
+/** rgb triple → "r, g, b", memoized by array identity — one string
+ *  per palette color instead of one per light per frame. */
+const rgbCsvMemo = new WeakMap<readonly number[], string>();
+function rgbCsv(rgb: readonly number[]): string {
+  let s = rgbCsvMemo.get(rgb);
+  if (s === undefined) {
+    s = `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
+    rgbCsvMemo.set(rgb, s);
+  }
+  return s;
+}
+
 export class LightingSystem {
   private readonly map = document.createElement('canvas');
   private readonly mctx = this.map.getContext('2d')!;
@@ -118,16 +144,21 @@ export class LightingSystem {
    * the whole pass. Each one is composed ONCE into a patch and stamped
    * per frame; the flicker rides the stamp (alpha for intensity, a
    * center-scale for the radius wobble), and a staggered TTL rebuild
-   * absorbs geometry changes within a second. Keyed by position+color;
-   * cleared whenever the camera zoom changes.
+   * absorbs geometry changes within a second. Keyed by position+color.
+   * THE LAMP RIDES THE GLIDE: patches remember their build scale and
+   * the stamp rescales — a zoom no longer clears the whole cache (that
+   * clear re-minted every lamp's canvas on the next frame, a
+   * guaranteed hitch on wheel-zoom in a lamplit town). A slightly
+   * soft light pool during the glide is invisible; the staggered TTL
+   * re-crisps everything within a second of settling, and a bounded
+   * number of far-off-scale patches rebuild early each frame.
    */
   private readonly patches = new Map<
     string,
-    { c: HTMLCanvasElement; w: number; h: number; r: number; intensity: number; builtAt: number }
+    { c: HTMLCanvasElement; w: number; h: number; r: number; intensity: number; builtAt: number; sx: number; sy: number }
   >();
   private frame = 0;
-  private patchSx = 0;
-  private patchSy = 0;
+  private offScaleRebuilds = 0;
 
   /**
    * Paint the frame's exposure. `blocks` answers whether a tile stops
@@ -170,11 +201,7 @@ export class LightingSystem {
     const ty = view.oy * k;
 
     this.frame++;
-    if (sx !== this.patchSx || sy !== this.patchSy) {
-      this.patches.clear();
-      this.patchSx = sx;
-      this.patchSy = sy;
-    }
+    this.offScaleRebuilds = 2;
 
     for (const light of lights) {
       if (light.intensity <= 0.01) continue;
@@ -221,31 +248,12 @@ export class LightingSystem {
   /** The light's radial falloff, pre-rendered — intensity rides
    *  globalAlpha at the stamp, so the sprite is shared per color. */
   private poolSprite(light: WorldLight): HTMLCanvasElement {
-    const [r, gg, b] = light.rgb;
-    return radialGlowSprite(
-      `${r}, ${gg}, ${b}`,
-      [
-        [0, 1],
-        [0.4, 0.72],
-        [0.75, 0.28],
-        [1, 0],
-      ],
-      0.06,
-    );
+    return radialGlowSprite(rgbCsv(light.rgb), POOL_STOPS, 0.06);
   }
 
   /** The soft indirect halo: wider and dimmer than the pool. */
   private wrapSprite(light: WorldLight): HTMLCanvasElement {
-    const [r, gg, b] = light.rgb;
-    return radialGlowSprite(
-      `${r}, ${gg}, ${b}`,
-      [
-        [0, WRAP_K],
-        [0.6, WRAP_K * 0.55],
-        [1, 0],
-      ],
-      0.05,
-    );
+    return radialGlowSprite(rgbCsv(light.rgb), WRAP_STOPS, 0.05);
   }
 
   /**
@@ -463,7 +471,15 @@ export class LightingSystem {
     let p = this.patches.get(key);
     // Staggered TTL so a whole town's lamps never rebuild on one frame.
     const ttl = 45 + ((key.length * 7) & 15);
-    if (!p || this.frame - p.builtAt > ttl) {
+    // Far off the build scale (deep zoom since the bake): rebuild early
+    // rather than stamp a visibly resampled pool — but only a bounded
+    // number per frame, so a zoom never re-mints the whole town at once.
+    const offScale =
+      p !== undefined &&
+      (Math.abs(sx / p.sx - 1) > 0.25 || Math.abs(sy / p.sy - 1) > 0.25) &&
+      this.offScaleRebuilds > 0;
+    if (!p || offScale || this.frame - p.builtAt > ttl) {
+      if (offScale) this.offScaleRebuilds--;
       const built = this.buildLightPatch(light, blocks, tallH, sx, sy);
       if (!built) return;
       if (this.patches.size >= 128) this.patches.clear();
@@ -472,10 +488,11 @@ export class LightingSystem {
     }
     // The flicker rides the stamp: intensity as alpha, radius as a
     // center-scale — both hover near 1 while the TTL keeps the patch's
-    // reference values current.
+    // reference values current. The extra sx/sy ratio rescales patches
+    // baked at another zoom (THE LAMP RIDES THE GLIDE).
     const scale = light.r / p.r;
-    const dw = p.w * scale;
-    const dh = p.h * scale;
+    const dw = p.w * scale * (sx / p.sx);
+    const dh = p.h * scale * (sy / p.sy);
     const m = this.mctx;
     m.setTransform(1, 0, 0, 1, 0, 0);
     m.globalCompositeOperation = 'screen';
@@ -495,7 +512,7 @@ export class LightingSystem {
     tallH: (tx: number, ty: number) => number,
     sx: number,
     sy: number,
-  ): { c: HTMLCanvasElement; w: number; h: number; r: number; intensity: number; builtAt: number } | null {
+  ): { c: HTMLCanvasElement; w: number; h: number; r: number; intensity: number; builtAt: number; sx: number; sy: number } | null {
     // Patch bbox in map pixels around the light's WRAP reach.
     const reach = light.r * WRAP_R;
     const bw = Math.ceil(reach * 2 * sx) + 2;
@@ -558,7 +575,7 @@ export class LightingSystem {
     c.width = bw;
     c.height = bh;
     c.getContext('2d')!.drawImage(this.tmp, 0, 0, bw, bh, 0, 0, bw, bh);
-    return { c, w: bw, h: bh, r: light.r, intensity: Math.max(0.05, Math.min(1, light.intensity)), builtAt: this.frame };
+    return { c, w: bw, h: bh, r: light.r, intensity: Math.max(0.05, Math.min(1, light.intensity)), builtAt: this.frame, sx, sy };
   }
 
   /**

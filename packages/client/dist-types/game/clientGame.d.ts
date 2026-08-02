@@ -681,6 +681,13 @@ export declare class ClientGame {
     private trackOwnStaff;
     /** Spawn a predicted tracer at the body, capped to a small roster. */
     private predictShot;
+    /**
+     * The live connection status, mirrored from every onStatus emit —
+     * the renderer reads it so a reconnect blip can keep visual state
+     * (occluder fades) armed instead of snapping the world for a beat.
+     */
+    connStatus: 'connecting' | 'ingame' | 'reconnecting' | 'rejected' | 'authRequired' | 'authErr';
+    private emitStatus;
     /** Connect; the server answers welcome (valid token) or authRequired. */
     connect(token: string | null): void;
     sendLogin(user: string, pass: string): void;

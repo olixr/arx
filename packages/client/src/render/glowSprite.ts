@@ -24,8 +24,21 @@ const cache = new Map<string, HTMLCanvasElement>();
  * drawImage(sprite, x - r, y - r, r * 2, r * 2) — with globalAlpha
  * carrying the light's intensity.
  */
+/** Stops-array → key fragment, memoized by identity: callers hoist
+ *  their stop arrays to constants, so the join runs once per profile
+ *  instead of allocating arrays + strings per light per frame. */
+const stopsKeyMemo = new WeakMap<GlowStops, string>();
+function stopsKey(stops: GlowStops): string {
+  let k = stopsKeyMemo.get(stops);
+  if (k === undefined) {
+    k = stops.map((s) => s.join(':')).join(',');
+    stopsKeyMemo.set(stops, k);
+  }
+  return k;
+}
+
 export function radialGlowSprite(rgb: string, stops: GlowStops, innerK: number): HTMLCanvasElement {
-  const key = `${rgb}|${innerK}|${stops.map((s) => s.join(':')).join(',')}`;
+  const key = `${rgb}|${innerK}|${stopsKey(stops)}`;
   let c = cache.get(key);
   if (c) return c;
   // Safety valve: profiles and palette are content-driven and small,

@@ -56,8 +56,11 @@ export class RepScreen {
 
   open(): void {
     this.panel.classList.remove('hidden');
-    this.renderedVersion = -1;
-    this.render();
+    // Rebuild only when the ledger moved — the version check replaces
+    // the old forced full rebuild on every open. The rows are pure
+    // presentation of the pushed standings, so an unmoved version
+    // means an already-true page.
+    if (this.renderedVersion !== this.game.repVersion) this.render();
   }
 
   close(): void {

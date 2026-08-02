@@ -32,7 +32,11 @@ export class MapScreen {
   private readonly hintDefault = 'Click to plant your waypoint · click the flag to lift it · drag to pan · wheel to zoom';
   private readonly hintPad = 'Stick pans · LT / RT zoom · Ⓨ plants or lifts the waypoint · Ⓧ centers on you';
 
-  constructor(private readonly game: ClientGame) {
+  constructor(
+    private readonly game: ClientGame,
+    /** The game renderer's adaptive dpr, threaded down to the view. */
+    effectiveDpr?: () => number,
+  ) {
     const dress = dressPanel(this.panel, {
       icon: dockGlyphUrl('map', 44),
       hint: this.hintDefault,
@@ -79,7 +83,7 @@ export class MapScreen {
     stage.appendChild(rail);
     this.panel.appendChild(stage);
 
-    this.view = new MapView(this.canvas, game);
+    this.view = new MapView(this.canvas, game, effectiveDpr);
     this.wireInput();
   }
 

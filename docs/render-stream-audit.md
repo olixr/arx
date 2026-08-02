@@ -62,84 +62,96 @@ Measured (isolated rig, 4x CPU throttle, identical protocol):
 frames>50ms 27→1. Reconnect blip p99 66.8→33.4ms, frames>50ms 21→0.
 Unthrottled 25s walk into fresh forest at 120Hz: p99 9.3ms.
 
-## Roadmap — remaining findings, prioritized
+## Roadmap — status after round 2 (THE QUIET FRAME KEEPS ITS WORD)
 
-### P1 — visible-jitter class (each is a small, shippable fix)
+### P1 — visible-jitter class — SHIPPED (round 2) except #2
 
-1. **Entity interest has no hysteresis** (`gameServer.updateInterest`):
-   chunks got the +1-ring hysteresis in f757d2a, entities did not — a
-   player pacing a chunk border leave/enters every entity in the outer
-   ring each crossing, wiping their `sentSnapSig` and interp buffers
-   (client re-enter = frozen at meta.x/y, then a jump). Give
-   `knownEntities` the same +1 ring.
-2. **Sneak-hidden is expressed as leave/enter**: a sneaker stepping
-   every second repeatedly destroys and respawns their entity for every
-   watcher (pop → freeze → jump, in plain view). Ship a hidden bit and
-   fade client-side.
-3. **Reconnect wipes the reveal system's arm** (`ownEid = null` →
-   `occluderFade` returns 1): every faded canopy snaps to full opacity
-   for one frame on any blip. Keep the last fade state through
-   'reconnecting'.
-4. **Ledger seed-then-refit re-deal** (`ui/kit/ledger.ts`): rows paint
-   at the seed count, then a ResizeObserver re-deals at the measured
-   count one frame later — the "menu contents vanish and redraw" the
-   user sees. Workshop makes it deterministic (renders before unhide,
-   first refit sees height 0). Render after unhide, or seed from the
-   panel's known height.
-5. **Reveal fade oscillation** (`reveal.ts` rect test): tangential walks
-   flip occlusion across a 1px boundary and the 0.18s ease flickers
-   trees between 1.0 and 0.32. Add hysteresis (enter/exit insets differ)
-   or a minimum-hold.
+1. ~~Entity interest hysteresis~~ **SHIPPED**: `knownEntities` keeps
+   the same +1 ring `knownChunks` got in f757d2a (exists + not-hidden +
+   within radius+1). Border pacing no longer leave/enters the outer
+   ring; `sentSnapSig` survives.
+2. **Sneak-hidden leave/enter — WON'T FIX, by design**: hidden players
+   genuinely absent from the wire is the anti-ESP property (a client
+   that isn't told a sneaker's position cannot be made to leak it).
+   The visible artifact is instead softened by THE ENTER GLIDE (see
+   #1b). Keep the leave/enter.
+   1b. **THE ENTER GLIDE (shipped, new finding)**: every non-projectile
+   enter seeds the InterpBuffer at the enter position on the render
+   timeline — a fresh body renders at once and interpolates onto its
+   first real samples, instead of freezing at meta.x/y for the interp
+   delay and hopping. Projectiles exempt (v9 ballistic path owns them).
+3. ~~Reconnect reveal snap~~ **SHIPPED**: THE VEIL SURVIVES THE BLIP —
+   `revealArmed` holds through `connStatus === 'reconnecting'` (new
+   `ClientGame.connStatus` mirror of every onStatus emit).
+4. ~~Ledger re-deal~~ **SHIPPED**: measured rows-per-leaf remembered
+   per host (WeakMap) so re-opens deal the right count immediately;
+   station panels unhide before rendering so the first measure is
+   honest (craft/bank/shop/build/plant/stable).
+5. ~~Reveal fade oscillation~~ **SHIPPED**: FADE HYSTERESIS — a sprite
+   already fading keeps a slack margin (6% of width) on the occlusion
+   rect; enter needs true overlap, exit needs clear separation.
 
-### P2 — frame-loop hygiene (GC pressure; the "combat feels rough" tail)
+### P2 — frame-loop hygiene — SHIPPED (round 2) except the long tail
 
-6. **Draw-list churn**: `items[]` rebuilt + fully sorted every frame
-   with a fresh comparator and 60+ push sites minting closures; the four
-   particle/bird/debris loops allocate a DrawItem + closure per particle
-   per frame (~150-300k objects/sec in combat at 120Hz). Pool the list,
-   hoist the comparator, write particles into pooled items.
-7. **`resize()` reads `clientWidth` every frame** after the HUD's DOM
-   writes — a forced synchronous layout per frame. Cache CSS size from a
-   ResizeObserver. Same class: the per-frame
-   `querySelector('.ui-screen:not(.hidden)…')` in main.ts, and the
-   600ms of per-frame `getBoundingClientRect` after pack-open.
-8. **Per-body string signatures** (`olSig`: ~13 concats + `toFixed(3)`
-   per humanoid per frame; mirrors for beasts). Numeric/versioned sigs.
-9. **Glow/light key allocation** (stop-array literals + join-keys per
-   light per frame in glowSprite/lighting). Hoist constants, key by
-   identity.
-10. **Lighting patch cache clears wholesale on zoom glide**
-    (`sx/sy` change → `patches.clear()`), re-minting every lamp patch
-    canvas next frame — a guaranteed hitch on wheel-zoom in a lamplit
-    town. Scale-key the cache or defer the clear to glide-settle.
-11. **Periodic scan spikes**: the 441-tile portal scan + `scanFallEar`
-    land in the same frame at 2.5Hz; `findNearbyTarget` runs twice per
-    frame. Slice/stagger/cache-per-frame.
+6. ~~Draw-list churn~~ **SHIPPED (the hot half)**: comparator hoisted
+   (`DRAW_ORDER`), `items[]` persistent, and the four bulk loops
+   (ground/world particles, debris, grounded birds) route through the
+   CLOSURE-FREE BULK LANE (`DrawItem.bulk`/`bulkArg` + `drawBulkItem`)
+   — no closure per particle per frame. Remaining tail: the ~60
+   entity/tile push sites still mint closures (bounded by entity
+   count, not particle count) — full pooling is a future pass.
+7. ~~`resize()` forced layout~~ **SHIPPED**: THE FRAME NEVER ASKS THE
+   DOM — a ResizeObserver feeds `cssW/cssH`; `resize()` is pure math.
+   Still open: main.ts per-frame `querySelector` and the 600ms
+   pack-open rect read (minor next to the per-frame layout, now gone).
+8. ~~olSig `toFixed`~~ **SHIPPED**: `Math.round(v*1000)` at all three
+   sig sites. Full numeric-signature refactor remains future work.
+9. ~~Glow/light key allocation~~ **SHIPPED**: stop arrays hoisted
+   (GLOW_STOPS / POOL_STOPS / WRAP_STOPS), stops→key memoized by
+   identity in glowSprite, rgb CSV memoized per palette array.
+10. ~~Lighting patch clear on zoom~~ **SHIPPED**: THE LAMP RIDES THE
+    GLIDE — patches remember their build scale, the stamp rescales,
+    TTL re-crisps after settle, and at most 2 far-off-scale patches
+    (>25%) rebuild early per frame. The per-glide-frame full clear is
+    gone.
+11. ~~Periodic scan spike~~ **SHIPPED**: fall-earshot scan runs
+    half-phase offset from the portal scan (never the same frame).
+    (`findNearbyTarget` "twice per frame" was a misread — the second
+    site is edge-triggered on pad press; left alone.)
 
-### P3 — menu-open polish
+### P3 — menu-open polish — partially shipped (round 2)
 
-12. First-open icon raster bursts (workshop rasterizes an icon per
-    recipe, arts per technique at up to 4 sizes, each with a synchronous
-    `toDataURL`). Pre-warm lazily off-frame or cap per frame.
-13. Rooms carry `filter: drop-shadow` while animating opacity and
-    hosting infinite mote animations — continuous full-panel re-raster
-    over the canvas. Move the shadow to a non-animated wrapper or a
-    pre-baked border asset.
-14. Map screen runs a second rAF loop at native dpr, ignoring `dprCap`.
-15. Quest log / rep screen force `renderedVersion = -1` on every open;
-    `body:has()` selectors (8 rules) invalidate document-wide on any
-    `.hidden` toggle.
+12. First-open icon raster bursts — OPEN (pre-warm or per-frame cap).
+13. `filter: drop-shadow` + animated opacity + infinite motes on rooms
+    — OPEN (visual-risk change; needs a design pass).
+14. ~~Map ignores dprCap~~ **SHIPPED**: `Renderer.effectiveDpr()`
+    threaded into MapView; the map renders at the adaptive cap.
+15. ~~Quest log / rep screen forced rebuild~~ **SHIPPED**: open()
+    renders only when the version moved (quest log also re-renders
+    when a resting-shelf clock could have; skip path refreshes the
+    bench so cooldown words and confirm state stay honest).
+    `body:has()` selector cost — OPEN.
 
-### P4 — scale (server, hundreds of players)
+### P4 — scale — SHIPPED (round 2)
 
-16. **`WorldSource.ensure()` sweeps every built tile, hung detail, and
-    crop WORLD-WIDE per generated chunk** (with a string-split per
-    entry). O(world) per chunk gen is the one true scaling landmine
-    found — index all three ledgers by chunk key. Generation itself
-    measured cheap (~1.5ms/surface chunk, ~9ms per 5-chunk leading
-    edge, dark band ~0).
-17. `isSolid`/`tileAt` can trigger generation mid-tick from any
-    movement/AI query — fine today, worth a guard/metric at scale.
+16. ~~`ensure()` world-wide sweeps~~ **SHIPPED**: all four ledgers
+    (built tiles, hung details, crops, growth rows) carry per-chunk-key
+    indexes maintained by their register/unregister pairs; `ensure()`
+    reads only its own chunk's sets. Overlay order and law semantics
+    unchanged; 356 server tests pass.
+17. `isSolid`/`tileAt` mid-tick generation — OPEN (metric at scale).
+
+### New findings (round 2 measurement)
+
+18. **Reconnect residue is body-sprite churn, not chunks**: with the
+    dedupe in, a blip's remaining cost (equal in old and new arms) is
+    `entities.clear()` → re-enter → body/outline sprite re-bakes for
+    every visible actor. Candidate: let bodySprites survive a
+    reconnect (they key on stable identity) or pace re-enters' bakes.
+19. **Zoom-tier re-bakes are inherently heavy at 64px/tile** — paced
+    now (2 starts/frame), but a hi-res chunk bake remains ~4x a
+    normal one; if wheel-zoom polish is ever wanted, pre-bake the
+    other tier for the visible center ring.
 
 ### Known ceilings (documented, not defects)
 

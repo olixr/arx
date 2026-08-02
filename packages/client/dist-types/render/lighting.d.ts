@@ -80,13 +80,18 @@ export declare class LightingSystem {
      * the whole pass. Each one is composed ONCE into a patch and stamped
      * per frame; the flicker rides the stamp (alpha for intensity, a
      * center-scale for the radius wobble), and a staggered TTL rebuild
-     * absorbs geometry changes within a second. Keyed by position+color;
-     * cleared whenever the camera zoom changes.
+     * absorbs geometry changes within a second. Keyed by position+color.
+     * THE LAMP RIDES THE GLIDE: patches remember their build scale and
+     * the stamp rescales — a zoom no longer clears the whole cache (that
+     * clear re-minted every lamp's canvas on the next frame, a
+     * guaranteed hitch on wheel-zoom in a lamplit town). A slightly
+     * soft light pool during the glide is invisible; the staggered TTL
+     * re-crisps everything within a second of settling, and a bounded
+     * number of far-off-scale patches rebuild early each frame.
      */
     private readonly patches;
     private frame;
-    private patchSx;
-    private patchSy;
+    private offScaleRebuilds;
     /**
      * Paint the frame's exposure. `blocks` answers whether a tile stops
      * light (walls, cliffs); it is only consulted near occluding lights.

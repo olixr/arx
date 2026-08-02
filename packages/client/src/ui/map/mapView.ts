@@ -104,6 +104,9 @@ export class MapView {
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly game: ClientGame,
+    /** The game renderer's adaptive-resolution dpr — the chart must
+     *  not out-render a main view that has already stepped down. */
+    private readonly effectiveDpr: () => number = () => window.devicePixelRatio || 1,
   ) {}
 
   // ---------------------------------------------------------- camera
@@ -305,7 +308,7 @@ export class MapView {
   // --------------------------------------------------------- render
 
   render(nowMs: number): void {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.effectiveDpr();
     const cw = this.canvas.clientWidth;
     const ch = this.canvas.clientHeight;
     if (cw === 0 || ch === 0) return;

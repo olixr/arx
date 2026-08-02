@@ -338,8 +338,10 @@ export class StationPanels {
     this.closeAll();
     this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
     this.lastPets = pets;
-    this.renderStable();
+    // Unhide before the render (same law as openCraft — any measuring
+    // render sees an honest height on its first pass).
     this.stablePanel.classList.remove('hidden');
+    this.renderStable();
   }
 
   /** The household mirror moved — re-render if the stalls are open. */
@@ -489,8 +491,10 @@ export class StationPanels {
   openBuild(skills: SkillXp, sel: string | null = null): void {
     this.closeAll();
     this.showing = { kind: 'build', skills, sel };
-    this.renderBuild();
+    // Unhide before the render — the plans ledger's first measure must
+    // see an honest height (same law as openCraft).
     this.buildPanel.classList.remove('hidden');
+    this.renderBuild();
   }
 
   /** How many of a buildable the pack covers right now. */
@@ -703,8 +707,10 @@ export class StationPanels {
     this.showing = { kind: 'plant', tx, ty, skills, sel: null };
     this.dressCraft('Planting', itemIconUrl('carrot', 34), '#7ac46a',
       'The furrow is cut. Choose what grows in it.');
-    this.renderPlant();
+    // Unhide before the render — the seed ledger's first measure must
+    // see an honest height (same law as openCraft).
     this.craftPanel.classList.remove('hidden');
+    this.renderPlant();
   }
 
   /** Dress the Workshop head for whoever owns it right now. */
@@ -932,8 +938,11 @@ export class StationPanels {
       face.accent,
       face.hint,
     );
-    this.renderCraft();
+    // Unhide BEFORE the render: the ledger's first measure must see an
+    // honest height, so the first deal is the only deal (no visible
+    // re-deal from the ResizeObserver a frame later).
     this.craftPanel.classList.remove('hidden');
+    this.renderCraft();
   }
 
   /** How many of a recipe the pack can cover right now. */
@@ -1463,8 +1472,10 @@ export class StationPanels {
     if (gear) this.lastBankGear = gear;
     this.closeAll();
     if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
-    this.renderBank();
+    // Unhide before the render — the vault ledger's first measure must
+    // see an honest height (same law as openCraft).
     this.bankPanel.classList.remove('hidden');
+    this.renderBank();
   }
 
   refreshBank(
@@ -1712,6 +1723,9 @@ export class StationPanels {
     this.closeAll();
     this.shopId = shopId;
     if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
+    // Unhide before the shelves build — same law as openCraft: any
+    // measuring render sees an honest height on its first pass.
+    this.shopPanel.classList.remove('hidden');
     const head = this.shopPanel.querySelector('h3');
     if (head) head.textContent = shop.name;
     // THE PRICE OF A NAME: the server pushed the viewer's live band
@@ -1761,6 +1775,5 @@ export class StationPanels {
       card.addEventListener('click', () => this.onShop('buy', entry.item, 1, this.shopId));
       this.shopList.appendChild(card);
     }
-    this.shopPanel.classList.remove('hidden');
   }
 }

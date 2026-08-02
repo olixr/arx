@@ -528,6 +528,9 @@ export declare class Renderer {
      */
     private addCrownPerimeter;
     constructor(canvas: HTMLCanvasElement);
+    /** Canvas CSS size, observer-maintained (0 until first layout). */
+    private cssW;
+    private cssH;
     /** The game being rendered this frame (for world lookups in painters). */
     private game;
     /**
@@ -795,6 +798,13 @@ export declare class Renderer {
     /** Last frame's raw dt — the spike filter's "was it already slow" test. */
     private prevFrameDt;
     private dpr;
+    /**
+     * The adaptive-resolution effective dpr, readable from outside — so
+     * satellite canvases (the map screen) render at the same capped
+     * resolution instead of raw devicePixelRatio on a machine that has
+     * already stepped down.
+     */
+    effectiveDpr(): number;
     private adaptResolution;
     private resize;
     render(game: ClientGame, frameDt: number): void;
@@ -1866,6 +1876,10 @@ export declare class Renderer {
      *  cadence re-bakes) — see SPRITE_BAKE_MS. */
     private spriteBakeMsLeft;
     private visSpriteMsLeft;
+    /** The frame's y-sorted draw list — persistent, cleared at reuse. */
+    private readonly drawItems;
+    /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
+    private drawBulkItem;
     /** Per-frame shadow-mask bake allowance — see shadowMask. */
     private maskBakeBudget;
     private frameNo;

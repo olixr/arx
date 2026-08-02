@@ -26,6 +26,9 @@ export class QuestLog {
   private selected: string | null = null;
   private confirmAbandon: string | null = null;
   private renderedVersion = -1;
+  /** When the list last painted — the resting shelf's clocks read
+   *  Date.now() at render time, so a reopen must know if they moved. */
+  private renderedAt = 0;
   /** The reader's leaf in the errand ledger, kept across repaints. */
   private leaf = 0;
 
@@ -51,8 +54,17 @@ export class QuestLog {
 
   open(): void {
     this.panel.classList.remove('hidden');
-    this.renderedVersion = -1;
-    this.render();
+    // Rebuild only when the data moved (or a resting errand's clock
+    // could have) — the version check replaces the old forced full
+    // rebuild on every open.
+    if (this.renderedVersion !== this.game.questVersion || this.restingMoved()) {
+      this.render();
+    } else {
+      // The bench alone repaints cheap: close() clears a pending
+      // abandon-confirm without a render, and the done-shelf cooldown
+      // line reads the clock — neither stale word may survive reopen.
+      this.renderBench();
+    }
   }
 
   close(): void {
@@ -64,6 +76,18 @@ export class QuestLog {
   refresh(): void {
     if (!this.isOpen || this.renderedVersion === this.game.questVersion) return;
     this.render();
+  }
+
+  /**
+   * True when any repeatable's cooldown was still running at the last
+   * paint — its shelf or countdown word may have changed since, even
+   * with the data version unmoved.
+   */
+  private restingMoved(): boolean {
+    for (const d of this.game.questsDone.values()) {
+      if (d.repeatable && (d.cooldownUntil ?? 0) > this.renderedAt) return true;
+    }
+    return false;
   }
 
   private get trackKey(): string {
@@ -91,6 +115,7 @@ export class QuestLog {
 
   private render(): void {
     this.renderedVersion = this.game.questVersion;
+    this.renderedAt = Date.now();
     const game = this.game;
     const active = [...game.quests.values()];
     const ready = active.filter((q) => q.status === 'ready');

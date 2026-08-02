@@ -29,7 +29,9 @@ export declare class MapScreen {
     private padPrev;
     private readonly hintDefault;
     private readonly hintPad;
-    constructor(game: ClientGame);
+    constructor(game: ClientGame, 
+    /** The game renderer's adaptive dpr, threaded down to the view. */
+    effectiveDpr?: () => number);
     get isOpen(): boolean;
     open(): void;
     close(): void;

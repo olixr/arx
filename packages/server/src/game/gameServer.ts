@@ -21065,11 +21065,30 @@ export class GameServer {
     }
     const leaves: EntityId[] = [];
     for (const e of session.knownEntities) {
-      if (!visible.has(e)) {
-        session.knownEntities.delete(e);
-        session.sentSnapSig.delete(e);
-        leaves.push(e);
+      if (visible.has(e)) continue;
+      // ENTITY HYSTERESIS: the mirror of the chunk rule above. Leaving
+      // at the window's exact edge meant a player pacing across a chunk
+      // border leave/re-entered every outer-ring entity on each crossing
+      // — the re-enter wipes sentSnapSig and the client's interp buffer,
+      // so the entity visibly pops. Keep a known entity for one extra
+      // ring instead: it stays in knownEntities so snapshots keep
+      // streaming it, and THE QUIET WIRE makes the ring nearly free (an
+      // unchanged row never resends). Hidden players still leave at
+      // once (anti-ESP), and a despawned body has no ring to hold.
+      const kept = this.positions.get(e);
+      if (kept && !this.players.get(e)?.hidden) {
+        const ecx = Math.floor(kept.x / CHUNK_SIZE);
+        const ecy = Math.floor(kept.y / CHUNK_SIZE);
+        if (
+          Math.abs(ecx - ccx) <= INTEREST_CHUNK_RADIUS + 1 &&
+          Math.abs(ecy - ccy) <= INTEREST_CHUNK_RADIUS + 1
+        ) {
+          continue;
+        }
       }
+      session.knownEntities.delete(e);
+      session.sentSnapSig.delete(e);
+      leaves.push(e);
     }
 
     if (enters.length > 0) session.sendJson({ t: 'enter', entities: enters });

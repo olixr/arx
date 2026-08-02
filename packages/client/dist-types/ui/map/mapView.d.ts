@@ -8,6 +8,9 @@ export interface MapPick {
 export declare class MapView {
     private readonly canvas;
     private readonly game;
+    /** The game renderer's adaptive-resolution dpr — the chart must
+     *  not out-render a main view that has already stepped down. */
+    private readonly effectiveDpr;
     panX: number;
     panY: number;
     /** Pixels per world tile. */
@@ -27,7 +30,10 @@ export declare class MapView {
     private readonly dungeonFog;
     private layer;
     private fogCnv;
-    constructor(canvas: HTMLCanvasElement, game: ClientGame);
+    constructor(canvas: HTMLCanvasElement, game: ClientGame, 
+    /** The game renderer's adaptive-resolution dpr — the chart must
+     *  not out-render a main view that has already stepped down. */
+    effectiveDpr?: () => number);
     tileAtFloat(mx: number, my: number): {
         x: number;
         y: number;

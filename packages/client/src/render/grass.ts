@@ -1106,7 +1106,7 @@ export class GrassSystem {
    * blades behind it draw first, blades in front draw over.
    */
   collectTall(
-    items: Array<{ sortY: number; draw: () => void }>,
+    items: Array<{ sortY: number; draw?: () => void }>,
     ctx: CanvasRenderingContext2D,
     ground: Sampler,
     detail: DetailFn,

@@ -100,7 +100,7 @@ import {
   type RagImpact,
 } from './ragdoll.js';
 import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
-import { Particles } from './particles.js';
+import { Particles, type Particle } from './particles.js';
 import {
   FALL_LOOKAHEAD,
   FALL_LOOKBACK,
@@ -108,7 +108,7 @@ import {
   spillAt,
   type SpillInfo,
 } from './waterfalls.js';
-import { Debris, type SmashKind } from './debris.js';
+import { Debris, type DebrisChunk, type SmashKind } from './debris.js';
 import {
   TRAIL_PRINT_CAP,
   TRAIL_STANCE,
@@ -132,7 +132,7 @@ import {
 } from './wornLight.js';
 import { buildableIconUrl, DYE_SWATCHES } from './icons.js';
 import { radialGlowSprite } from './glowSprite.js';
-import { Birds, type BirdEnv } from './birds.js';
+import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
 import { paintTree, saplingModel,
   treeModel, type TreeModel } from './trees.js';
@@ -157,6 +157,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
+import { TailSim, drawTail } from './tail.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
@@ -561,6 +562,8 @@ interface AnimState {
   cape?: CapeSim;
   /** Which cape item `cape` was built for; a change rebuilds the cloth. */
   capeKey?: string;
+  /** The fur dialect's tail sim — present only on tailed species. */
+  tail?: TailSim;
   /** Body-sprite cache motion tracker (see bodyMotion): last observed
    *  world pos/facing, and the frame the dynamic cool window ends. */
   olX?: number;
@@ -704,6 +707,25 @@ interface BakedChunk {
   };
 }
 
+const enum BulkKind {
+  Particle,
+  Debris,
+  GroundedBird,
+}
+
+/** THE SHELF LAW's one comparator, hoisted — a fresh closure per frame
+ *  de-optimized the hottest sort in the engine. */
+const DRAW_ORDER = (a: DrawItem, b: DrawItem): number =>
+  (a.strat ?? 0) - (b.strat ?? 0) || a.sortY - b.sortY;
+
+/** The dynamic-glow falloff profile, hoisted — a per-glow-per-frame
+ *  array literal defeated the glow sprite cache's identity memo. */
+const GLOW_STOPS: ReadonlyArray<readonly [number, number]> = [
+  [0, 1],
+  [0.55, 0.38],
+  [1, 0],
+];
+
 interface DrawItem {
   sortY: number;
   /**
@@ -733,7 +755,16 @@ interface DrawItem {
    * spaces let plateau rows slice standing trees and ore.
    */
   strat?: number;
-  draw: () => void;
+  draw?: () => void;
+  /**
+   * CLOSURE-FREE BULK LANE (particles, debris, grounded birds): the
+   * hot loops used to mint a DrawItem closure PER PARTICLE PER FRAME
+   * (~150-300k allocations/sec in combat at 120Hz — the frame loop's
+   * largest GC source). Bulk items carry a kind tag + datum instead
+   * and route through drawBulkItem; `draw` stays for everything else.
+   */
+  bulk?: BulkKind;
+  bulkArg?: unknown;
   drawShadow?: () => void;
   /**
    * Screen-space bounds of the body paint. Present = this entity is a
@@ -1575,7 +1606,21 @@ export class Renderer {
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
+    // THE FRAME NEVER ASKS THE DOM: reading clientWidth every frame
+    // forced a synchronous layout AFTER the HUD's DOM writes — a
+    // style/layout pass per frame, paid even standing still. The
+    // observer keeps the CSS size current; resize() only does math.
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => {
+        this.cssW = this.canvas.clientWidth;
+        this.cssH = this.canvas.clientHeight;
+      }).observe(canvas);
+    }
   }
+
+  /** Canvas CSS size, observer-maintained (0 until first layout). */
+  private cssW = 0;
+  private cssH = 0;
 
   /** The game being rendered this frame (for world lookups in painters). */
   private game: ClientGame | null = null;
@@ -2715,7 +2760,7 @@ export class Renderer {
         rc.transform(1, 0, shear, -0.8, 0, 0);
         rc.translate(-e.px, -e.axis);
         if (this.outlineOn && e.r.item.body) this.paintOutlined(e.r.item);
-        else e.r.item.draw();
+        else e.r.item.draw!(); // mirror entries are entity items — draw always set
         rc.restore();
       }
     } finally {
@@ -2898,7 +2943,7 @@ export class Renderer {
         drag: 2,
       });
     }
-    const orig = item.draw;
+    const orig = item.draw!; // entity items always paint
     // Wading bodies stay on the live pass: the waterline clip and the
     // sink ride the breathing surface, not a cacheable still.
     item.olDyn = true;
@@ -3027,6 +3072,16 @@ export class Renderer {
     return Math.min(window.devicePixelRatio || 1, this.dprCap);
   }
 
+  /**
+   * The adaptive-resolution effective dpr, readable from outside — so
+   * satellite canvases (the map screen) render at the same capped
+   * resolution instead of raw devicePixelRatio on a machine that has
+   * already stepped down.
+   */
+  effectiveDpr(): number {
+    return this.dpr();
+  }
+
   private adaptResolution(nowMs: number): void {
     if (nowMs < this.dprHoldUntil) return;
     const native = window.devicePixelRatio || 1;
@@ -3055,8 +3110,14 @@ export class Renderer {
 
   private resize(): void {
     const dpr = this.dpr();
-    const w = this.canvas.clientWidth;
-    const h = this.canvas.clientHeight;
+    // Observer-fed CSS size (see constructor); the one direct read
+    // covers the first frames before the observer's initial fire.
+    if (this.cssW === 0 || this.cssH === 0) {
+      this.cssW = this.canvas.clientWidth;
+      this.cssH = this.canvas.clientHeight;
+    }
+    const w = this.cssW;
+    const h = this.cssH;
     // Round BEFORE comparing: the width setter truncates, so a
     // fractional w*dpr (browser zoom, 1.25/1.5-dpr displays) would
     // fail the guard every frame and reallocate the full backing
@@ -3312,7 +3373,12 @@ export class Renderer {
     // reveal — flooring pops per row) and both gate on OCCLUSION,
     // never proximity. Wall cover is veil-cut aware via wallHeightAt
     // so a sunken stub never argues with the wall reveal.
-    this.revealArmed = game.ownEid !== null;
+    // THE VEIL SURVIVES THE BLIP: a reconnect drops ownEid for a beat,
+    // and snapping every faded canopy to full opacity for that beat is
+    // a world-wide flash. Stay armed on the last body box until the
+    // session resolves — welcome re-arms with live data.
+    this.revealArmed =
+      game.ownEid !== null || (this.revealArmed && game.connStatus === 'reconnecting');
     this.ownItem = null; // collectEntities re-stashes each frame
     let cover = 0;
     if (this.revealArmed) {
@@ -3473,7 +3539,12 @@ export class Renderer {
     // far rim hides behind the body, the near rim rolls out in front.
     this.drawLevelCeremonyGround(game);
 
-    const items: DrawItem[] = [];
+    // Persistent draw list: cleared at reuse, never reallocated — a
+    // fresh array plus hundreds of entries per frame was pure GC feed.
+    // (The array is recycled; the DrawItem objects live as long as
+    // anything — e.g. the reflection registry — holds them.)
+    const items = this.drawItems;
+    items.length = 0;
     // Tall thickets y-sort with the world: you walk THROUGH them.
     this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
     this.collectElevatedGround(game, items);
@@ -3566,7 +3637,8 @@ export class Renderer {
       items.push({
         sortY: p.y,
         strat: this.stratAt(p.x, p.y),
-        draw: () => this.particles.drawOne(this.ctx, p, this.liftedWTS, this.camera.scale),
+        bulk: BulkKind.Particle,
+        bulkArg: p,
       });
     }
     // THE WORLD LAYER: airborne matter that lives WITH the bodies —
@@ -3579,7 +3651,8 @@ export class Renderer {
       items.push({
         sortY: p.y,
         strat: this.stratAt(p.x, p.y),
-        draw: () => this.particles.drawOne(this.ctx, p, this.liftedWTS, this.camera.scale),
+        bulk: BulkKind.Particle,
+        bulkArg: p,
       });
     }
     // Smashed-prop chunks are world matter: they y-sort with the scene
@@ -3592,8 +3665,8 @@ export class Renderer {
         strat: this.stratAt(c.x, c.y),
         // Each chunk wears its own brand ring (drawn inside drawOne),
         // gated on the same /outline switch as everything standing.
-        draw: () =>
-          this.debris.drawOne(this.ctx, c, this.liftedWTS, this.camera.scale, this.outlineOn),
+        bulk: BulkKind.Debris,
+        bulkArg: c,
       });
     }
     // THE THROWN COVER: dismount cloth flips — tiny one-shot spring
@@ -3642,13 +3715,13 @@ export class Renderer {
         items.push({
           sortY: bd.y + 0.01,
           strat: this.stratAt(bd.x, bd.y),
-          draw: () =>
-            this.birds.drawOne(this.ctx, bd, this.liftedWTS, this.camera.scale, this.outlineOn, env.tSec),
+          bulk: BulkKind.GroundedBird,
+          bulkArg: bd,
         });
       }
     }
     // THE SHELF LAW (see DrawItem.strat): shelf first, raw row within.
-    items.sort((a, b) => (a.strat ?? 0) - (b.strat ?? 0) || a.sortY - b.sortY);
+    items.sort(DRAW_ORDER);
     for (const item of items) {
       // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
       // silhouette ring fades with the body (alpha inside draw() would
@@ -3656,7 +3729,8 @@ export class Renderer {
       if (item.alpha !== undefined) this.ctx.globalAlpha = item.alpha;
       if (item.elevated) item.drawShadow?.();
       if (this.outlineOn && item.body) this.paintOutlined(item);
-      else item.draw();
+      else if (item.draw) item.draw();
+      else this.drawBulkItem(item);
       if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
       item.drawLabel?.();
     }
@@ -3985,15 +4059,7 @@ export class Renderer {
       const r = g.r * s;
       ctx.globalAlpha = Math.min(1, g.a);
       ctx.drawImage(
-        radialGlowSprite(
-          g.rgb,
-          [
-            [0, 1],
-            [0.55, 0.38],
-            [1, 0],
-          ],
-          0.08,
-        ),
+        radialGlowSprite(g.rgb, GLOW_STOPS, 0.08),
         p.x - r,
         p.y - r,
         r * 2,
@@ -5405,7 +5471,7 @@ export class Renderer {
           // cadence and costs one blit a frame.
           if (this.outlineOn && item.body) {
             const b = item.body;
-            const inner = item.draw;
+            const inner = item.draw!; // prop items always paint
             item.draw = () => this.drawPropOutlined(ground as Tile, tx, ty, b, inner);
             item.body = undefined;
           }
@@ -5477,7 +5543,7 @@ export class Renderer {
           if (this.propShakes.size > 0 && destructibleInfo(ground)) {
             const shakeX = this.propShakeX(tx, ty);
             if (shakeX !== 0) {
-              const inner = item.draw;
+              const inner = item.draw!; // prop items always paint
               item.draw = () => {
                 const wctx = this.ctx;
                 wctx.save();
@@ -5529,7 +5595,7 @@ export class Renderer {
             (this.stationHeat.get(packTile(tx, ty)) ?? 0) < 0.01);
         if (this.outlineOn && item.body && ringCached) {
           const b = item.body;
-          const inner = item.draw;
+          const inner = item.draw!; // prop items always paint
           item.draw = () => this.drawPropOutlined(ground as Tile, tx, ty, b, inner);
           item.body = undefined;
         }
@@ -5538,7 +5604,7 @@ export class Renderer {
         if (this.propShakes.size > 0 && destructibleInfo(ground)) {
           const shakeX = this.propShakeX(tx, ty);
           if (shakeX !== 0) {
-            const inner = item.draw;
+            const inner = item.draw!; // prop items always paint
             item.draw = () => {
               const ctx = this.ctx;
               ctx.save();
@@ -14965,6 +15031,23 @@ export class Renderer {
    *  cadence re-bakes) — see SPRITE_BAKE_MS. */
   private spriteBakeMsLeft = 0;
   private visSpriteMsLeft = 0;
+  /** The frame's y-sorted draw list — persistent, cleared at reuse. */
+  private readonly drawItems: DrawItem[] = [];
+
+  /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
+  private drawBulkItem(item: DrawItem): void {
+    switch (item.bulk) {
+      case BulkKind.Particle:
+        this.particles.drawOne(this.ctx, item.bulkArg as Particle, this.liftedWTS, this.camera.scale);
+        break;
+      case BulkKind.Debris:
+        this.debris.drawOne(this.ctx, item.bulkArg as DebrisChunk, this.liftedWTS, this.camera.scale, this.outlineOn);
+        break;
+      case BulkKind.GroundedBird:
+        this.birds.drawOne(this.ctx, item.bulkArg as Bird, this.liftedWTS, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
+        break;
+    }
+  }
   /** Per-frame shadow-mask bake allowance — see shadowMask. */
   private maskBakeBudget = 0;
   private frameNo = 0;
@@ -15278,7 +15361,7 @@ export class Renderer {
           ctx.translate(shakeX, 0);
         }
         this.drawPropOutlined(tile, ax, ay, b, () => {
-          for (const mi of memberItems) mi.draw();
+          for (const mi of memberItems) mi.draw!();
         });
         if (shakeX !== 0) ctx.restore();
       },
@@ -15746,13 +15829,21 @@ export class Renderer {
   ): number {
     if (!this.revealArmed) return 1;
     const ix = dw * FADE_INSET_X;
+    // FADE HYSTERESIS: the overlap test is a step function on the
+    // sprite's screen rect, so a tangential walk grazing the boundary
+    // flipped occlusion every few frames and the ease oscillated —
+    // trees flickering between clear and glass. A sprite already
+    // fading keeps a slack margin: entering needs true overlap,
+    // leaving needs clear separation, and the boundary can't strobe.
+    const f0 = this.fadeMap.get(key);
+    const slack = f0 !== undefined && f0.k > 0.05 ? dw * 0.06 : 0;
     const occludes =
       fronts &&
-      dx0 + ix < this.fadeBX1 &&
-      dx0 + dw - ix > this.fadeBX0 &&
-      dy0 + dh * FADE_INSET_TOP < this.fadeBY1 &&
-      dy0 + dh > this.fadeBY0;
-    let f = this.fadeMap.get(key);
+      dx0 + ix - slack < this.fadeBX1 &&
+      dx0 + dw - ix + slack > this.fadeBX0 &&
+      dy0 + dh * FADE_INSET_TOP - slack < this.fadeBY1 &&
+      dy0 + dh + slack > this.fadeBY0;
+    let f = f0;
     if (!f) {
       if (!occludes) return 1;
       f = { k: 0, used: this.frameNo };
@@ -25260,6 +25351,32 @@ export class Renderer {
       anim.cape = undefined;
       anim.capeKey = undefined;
     }
+    // THE TAIL IS A SIMULATION (tail.ts): the gnoll's brush is the
+    // cape contract in muscle — a world-space verlet chain on the
+    // anim map, ticked once per frame beside the cloth and painted on
+    // the cape's facing-law side of the whole body. Its lifecycle
+    // rides the anim map; despawn evicts it with everything else.
+    let tailSim: TailSim | null = null;
+    if (e.gnoll) {
+      if (!anim.tail) {
+        anim.tail = new TailSim(e.gnoll.heavy, typeof e.eid === 'number' ? e.eid : 7);
+      }
+      tailSim = anim.tail;
+      const hScT = 1 + (1 - legPose.wScale) * 0.55;
+      tailSim.update(
+        e.x + Math.cos(dir) * lunge,
+        e.y + Math.sin(dir) * lunge,
+        // The HIP height, not the cape's shoulder — the hunched
+        // species roots its tail low.
+        (legPose.rise + legPose.bob * 0.45 + 0.32 * hScT) * (e.size ?? 1),
+        dir,
+        this.frameDt,
+        now / 1000,
+        e.size ?? 1,
+      );
+    } else if (anim.tail) {
+      anim.tail = undefined;
+    }
     // Paint side follows the FACING (the beast head/tail convention):
     // the back — and the cloth on it — is toward the camera only when
     // facing up-screen. Hysteresis in front() keeps the flip steady.
@@ -25286,6 +25403,9 @@ export class Renderer {
       now - anim.poseStartedAt < 900 ||
       (e.hurt ?? false) ||
       capeSim !== null ||
+      // A restless tail (moving body, or still settling after a stop)
+      // re-bakes at full rate; a calm one wags on the idle cadence.
+      (tailSim !== null && tailSim.restless) ||
       (sitK > 0 && sitK < 1) ||
       (lieK > 0 && lieK < 1) ||
       (rideK > 0 && rideK < 1) ||
@@ -25293,7 +25413,7 @@ export class Renderer {
       (e.drawTOverride !== undefined && e.drawTOverride > 0) ||
       (e.isOwn && locomotion);
     const olDyn = fullDyn || (locomotion && (this.frameNo + varEid) % 2 === 0);
-    const olSig = `${e.dir.toFixed(3)}|${e.pose}|${e.hurt ? 1 : 0}|${e.sheathed ? 1 : 0}|${
+    const olSig = `${Math.round(e.dir * 1000)}|${e.pose}|${e.hurt ? 1 : 0}|${e.sheathed ? 1 : 0}|${
       e.color
     }|${e.size ?? 1}|${e.carry ?? ''}|${e.carryOff ?? ''}|${e.skinColor ?? ''}|${this.olObjSig(
       e.equip,
@@ -25325,6 +25445,21 @@ export class Renderer {
               // identity-cached, so this is a WeakMap hit per frame).
               arx: resolveWornLight(e.ench).slots.cape,
             });
+          }
+        : null;
+
+    // The tail projects and paints exactly like the cape: simulated
+    // nodes → screen, depth by the facing law with hysteresis.
+    const tailFront = tailSim !== null && tailSim.front(Math.sin(dir));
+    const gnoLook = e.gnoll;
+    const paintTail =
+      tailSim !== null && gnoLook
+        ? (ctx: CanvasRenderingContext2D) => {
+            const tailPts = tailSim.nodes.map((nd) => {
+              const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
+              return { x: sp.x, y: sp.y - terrainLift - nd.z * s };
+            });
+            drawTail(ctx, tailPts, gnoLook, s * (e.size ?? 1), { hurt: e.hurt ?? false });
           }
         : null;
 
@@ -25685,6 +25820,7 @@ export class Renderer {
         // the quiver paints immediately after the cape on whichever
         // side of the body the cape lands this frame.
         const paintRider = (): void => {
+          if (paintTail && !tailFront) paintTail(ctx);
           if (paintCape && !capeFront) {
             paintCape(ctx);
             if (rigPose.hasCape) drawBackGear(ctx, rigPose);
@@ -25694,6 +25830,7 @@ export class Renderer {
             paintCape(ctx);
             if (rigPose.hasCape) drawBackGear(ctx, rigPose);
           }
+          if (paintTail && tailFront) paintTail(ctx);
         };
         if (riding && beastPose && beastFeet && mSpec) {
           // THE BEAST UNDER THE BODY: horse and rider are one entity
@@ -26377,7 +26514,7 @@ export class Renderer {
     const prev = this.ctx;
     this.ctx = a;
     try {
-      item.draw();
+      item.draw!(); // paintOutlined runs only on body items — draw always set
     } finally {
       this.ctx = prev;
       a.restore();
@@ -26763,7 +26900,7 @@ export class Renderer {
       sortY: s.y,
       elevated: terrainLift !== 0,
       olKey: eid,
-      olSig: `${s.dir.toFixed(3)}|${s.pose}|${hurt ? 1 : 0}|${defId}`,
+      olSig: `${Math.round(s.dir * 1000)}|${s.pose}|${hurt ? 1 : 0}|${defId}`,
       olDyn,
       baseX: s.x,
       baseY: s.y,
@@ -28271,7 +28408,7 @@ export class Renderer {
       // ragdoll still tumbles and through the wisp fade (the fade
       // alpha itself rides item.alpha, outside the cache).
       olKey: `c${this.olObjId(c)}`,
-      olSig: `${c.x.toFixed(3)}|${c.y.toFixed(3)}`,
+      olSig: `${Math.round(c.x * 1000)}|${Math.round(c.y * 1000)}`,
       olDyn: c.settledAt === null || alpha < 1,
       baseX: c.x,
       baseY: c.y,

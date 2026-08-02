@@ -12,13 +12,6 @@
  * intensity-free and a flickering lamp never mints a new sprite.
  */
 export type GlowStops = ReadonlyArray<readonly [number, number]>;
-/**
- * The radial falloff sprite for an `rgb` CSV color ("255, 213, 156")
- * over `stops` [offset, alpha] pairs, with the gradient's inner radius
- * at `innerK` of the outer. Stamp it over the pool's bounding box —
- * drawImage(sprite, x - r, y - r, r * 2, r * 2) — with globalAlpha
- * carrying the light's intensity.
- */
 export declare function radialGlowSprite(rgb: string, stops: GlowStops, innerK: number): HTMLCanvasElement;
 /**
  * The vertical alpha ramp for lit wall faces: transparent at the top,

@@ -217,6 +217,43 @@ export class WorldSource extends ChunkStore {
   /** Player-built tiles, reapplied whenever a chunk regenerates. */
   private readonly builtTiles = new Map<string, { tile: number; owner: number; prevTile: number }>();
   /**
+   * chunkKey → tile keys ("tx,ty") — one such index per overlay ledger
+   * (built, hung, crops, growth), so ensure() reapplies only its own
+   * chunk's entries. Without it every chunk generation swept EVERY
+   * ledger world-wide, splitting keys that could never land in the
+   * chunk — O(world) per chunk. An overwrite at the same key is a
+   * no-op here (same key, same chunk); only a true unregister removes.
+   */
+  private readonly builtByChunk = new Map<string, Set<string>>();
+
+  /** Add a tile key to a per-chunk index. */
+  private static chunkIndexAdd(
+    index: Map<string, Set<string>>,
+    tx: number,
+    ty: number,
+    key: string,
+  ): void {
+    const ck = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    let set = index.get(ck);
+    if (!set) index.set(ck, (set = new Set()));
+    set.add(key);
+  }
+
+  /** Remove a tile key from a per-chunk index, dropping empty sets. */
+  private static chunkIndexRemove(
+    index: Map<string, Set<string>>,
+    tx: number,
+    ty: number,
+    key: string,
+  ): void {
+    const ck = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    const set = index.get(ck);
+    if (set) {
+      set.delete(key);
+      if (set.size === 0) index.delete(ck);
+    }
+  }
+  /**
    * Owner → built-tile keys ("tx,ty") — THE HEARTH WATCH's index: a
    * claim ring grows to cover its owner's homestead, so the flood of
    * one settler's tiles must be readable without walking the world.
@@ -236,6 +273,7 @@ export class WorldSource extends ChunkStore {
     let mine = this.builtByOwner.get(owner);
     if (!mine) this.builtByOwner.set(owner, (mine = new Set()));
     mine.add(key);
+    WorldSource.chunkIndexAdd(this.builtByChunk, tx, ty, key);
     this.setGround(tx, ty, tile);
   }
 
@@ -244,6 +282,7 @@ export class WorldSource extends ChunkStore {
     const existing = this.builtTiles.get(key);
     if (existing) this.builtByOwner.get(existing.owner)?.delete(key);
     this.builtTiles.delete(key);
+    WorldSource.chunkIndexRemove(this.builtByChunk, tx, ty, key);
   }
 
   builtAt(tx: number, ty: number): { tile: number; owner: number; prevTile: number } | undefined {
@@ -265,6 +304,8 @@ export class WorldSource extends ChunkStore {
     { detail: number; owner: number; prevDetail: number }
   >();
   private readonly builtDetailsByOwner = new Map<number, Set<string>>();
+  /** chunkKey → hung-detail keys — the detail lane's ensure() index. */
+  private readonly builtDetailsByChunk = new Map<string, Set<string>>();
 
   registerBuiltDetail(tx: number, ty: number, detail: number, owner: number, prevDetail: number): void {
     const key = `${tx},${ty}`;
@@ -274,6 +315,7 @@ export class WorldSource extends ChunkStore {
     let mine = this.builtDetailsByOwner.get(owner);
     if (!mine) this.builtDetailsByOwner.set(owner, (mine = new Set()));
     mine.add(key);
+    WorldSource.chunkIndexAdd(this.builtDetailsByChunk, tx, ty, key);
     this.setDetail(tx, ty, detail);
   }
 
@@ -282,6 +324,7 @@ export class WorldSource extends ChunkStore {
     const existing = this.builtDetails.get(key);
     if (existing) this.builtDetailsByOwner.get(existing.owner)?.delete(key);
     this.builtDetails.delete(key);
+    WorldSource.chunkIndexRemove(this.builtDetailsByChunk, tx, ty, key);
   }
 
   builtDetailAt(
@@ -301,14 +344,19 @@ export class WorldSource extends ChunkStore {
    * over its plot's stored Tilled ground when a chunk regenerates.
    */
   private readonly cropTiles = new Map<string, number>();
+  /** chunkKey → crop tile keys — ensure()'s crop-lane index. */
+  private readonly cropsByChunk = new Map<string, Set<string>>();
 
   registerCropTile(tx: number, ty: number, tile: number): void {
-    this.cropTiles.set(`${tx},${ty}`, tile);
+    const key = `${tx},${ty}`;
+    this.cropTiles.set(key, tile);
+    WorldSource.chunkIndexAdd(this.cropsByChunk, tx, ty, key);
     this.setGround(tx, ty, tile);
   }
 
   unregisterCropTile(tx: number, ty: number): void {
     this.cropTiles.delete(`${tx},${ty}`);
+    WorldSource.chunkIndexRemove(this.cropsByChunk, tx, ty, `${tx},${ty}`);
   }
 
   /** A crop stands here — the growth beat's claim guard reads this. */
@@ -328,13 +376,18 @@ export class WorldSource extends ChunkStore {
    * later read.
    */
   private readonly growthRows = new Map<string, GrowthRow>();
+  /** chunkKey → growth-row keys — ensure()'s regrowth-lane index. */
+  private readonly growthByChunk = new Map<string, Set<string>>();
 
   registerGrowth(row: GrowthRow): void {
-    this.growthRows.set(`${row.tx},${row.ty}`, row);
+    const key = `${row.tx},${row.ty}`;
+    this.growthRows.set(key, row);
+    WorldSource.chunkIndexAdd(this.growthByChunk, row.tx, row.ty, key);
   }
 
   unregisterGrowth(tx: number, ty: number): void {
     this.growthRows.delete(`${tx},${ty}`);
+    WorldSource.chunkIndexRemove(this.growthByChunk, tx, ty, `${tx},${ty}`);
   }
 
   growthAt(tx: number, ty: number): GrowthRow | undefined {
@@ -438,51 +491,61 @@ export class WorldSource extends ChunkStore {
     const existing = this.get(cx, cy);
     if (existing) return existing;
     const chunk = generateChunk(this.seed, cx, cy);
+    // Every overlay ledger reads through its per-chunk index — only
+    // THIS chunk's entries, never a world-wide sweep (the indexes stay
+    // in sync in the register/unregister pairs above).
+    const ck = chunkKey(cx, cy);
     // THE SECOND GROWTH overlay: the harvest ledger re-stamps the WILD
     // ground before any zone, built, or crop layer — regrowth is a
     // fact of the natural land, and every human layer wins over it.
     // The stamped tile is the PURE PROJECTION at this moment (THE
     // THREE AGES), which is what makes an unloaded chunk correct the
     // instant it generates, restarts included.
-    if (this.growthRows.size > 0) {
-      const baseX = cx * CHUNK_SIZE;
-      const baseY = cy * CHUNK_SIZE;
+    const grown = this.growthByChunk.get(ck);
+    if (grown) {
       const now = Date.now();
-      for (const row of this.growthRows.values()) {
-        if (
-          row.tx >= baseX &&
-          row.tx < baseX + CHUNK_SIZE &&
-          row.ty >= baseY &&
-          row.ty < baseY + CHUNK_SIZE
-        ) {
-          chunk.ground[tileIndex(row.tx, row.ty)] = projectGrowth(this.seed, row, now).tile;
-        }
+      for (const key of grown) {
+        const row = this.growthRows.get(key);
+        if (row) chunk.ground[tileIndex(row.tx, row.ty)] = projectGrowth(this.seed, row, now).tile;
       }
     }
     for (const zone of this.zones) this.overlayZone(chunk, zone);
     // Player constructions survive regeneration.
-    const baseX = cx * CHUNK_SIZE;
-    const baseY = cy * CHUNK_SIZE;
-    for (const [key, built] of this.builtTiles) {
-      const [tx, ty] = key.split(',').map(Number);
-      if (tx! >= baseX && tx! < baseX + CHUNK_SIZE && ty! >= baseY && ty! < baseY + CHUNK_SIZE) {
-        chunk.ground[tileIndex(tx!, ty!)] = built.tile;
+    const builtKeys = this.builtByChunk.get(ck);
+    if (builtKeys) {
+      for (const key of builtKeys) {
+        const built = this.builtTiles.get(key);
+        if (!built) continue;
+        const comma = key.indexOf(',');
+        const tx = Number(key.slice(0, comma));
+        const ty = Number(key.slice(comma + 1));
+        chunk.ground[tileIndex(tx, ty)] = built.tile;
       }
     }
     // THE SECOND LAYER: hung decor survives regeneration too — after
     // overlayZone so a hanging on an authored town wall outlives the
     // zone's own detail stamp.
-    for (const [key, hung] of this.builtDetails) {
-      const [tx, ty] = key.split(',').map(Number);
-      if (tx! >= baseX && tx! < baseX + CHUNK_SIZE && ty! >= baseY && ty! < baseY + CHUNK_SIZE) {
-        chunk.detail[tileIndex(tx!, ty!)] = hung.detail;
+    const hungKeys = this.builtDetailsByChunk.get(ck);
+    if (hungKeys) {
+      for (const key of hungKeys) {
+        const hung = this.builtDetails.get(key);
+        if (!hung) continue;
+        const comma = key.indexOf(',');
+        const tx = Number(key.slice(0, comma));
+        const ty = Number(key.slice(comma + 1));
+        chunk.detail[tileIndex(tx, ty)] = hung.detail;
       }
     }
     // Crops overwrite their plot's Tilled ground.
-    for (const [key, tile] of this.cropTiles) {
-      const [tx, ty] = key.split(',').map(Number);
-      if (tx! >= baseX && tx! < baseX + CHUNK_SIZE && ty! >= baseY && ty! < baseY + CHUNK_SIZE) {
-        chunk.ground[tileIndex(tx!, ty!)] = tile;
+    const cropKeys = this.cropsByChunk.get(ck);
+    if (cropKeys) {
+      for (const key of cropKeys) {
+        const tile = this.cropTiles.get(key);
+        if (tile === undefined) continue;
+        const comma = key.indexOf(',');
+        const tx = Number(key.slice(0, comma));
+        const ty = Number(key.slice(comma + 1));
+        chunk.ground[tileIndex(tx, ty)] = tile;
       }
     }
     this.set(chunk);

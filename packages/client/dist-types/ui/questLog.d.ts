@@ -21,6 +21,9 @@ export declare class QuestLog {
     private selected;
     private confirmAbandon;
     private renderedVersion;
+    /** When the list last painted — the resting shelf's clocks read
+     *  Date.now() at render time, so a reopen must know if they moved. */
+    private renderedAt;
     /** The reader's leaf in the errand ledger, kept across repaints. */
     private leaf;
     constructor(game: ClientGame);
@@ -29,6 +32,12 @@ export declare class QuestLog {
     close(): void;
     /** Quiet-wire hook: repaint only when open and only on change. */
     refresh(): void;
+    /**
+     * True when any repeatable's cooldown was still running at the last
+     * paint — its shelf or countdown word may have changed since, even
+     * with the data version unmoved.
+     */
+    private restingMoved;
     private get trackKey();
     /** The dog-eared page: a valid active quest id, or a sensible default. */
     trackedId(): string | null;

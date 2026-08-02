@@ -204,7 +204,7 @@ export declare class GrassSystem {
      */
     collectTall(items: Array<{
         sortY: number;
-        draw: () => void;
+        draw?: () => void;
     }>, ctx: CanvasRenderingContext2D, ground: Sampler, detail: DetailFn, bounds: GrassBounds, wts: WTS, s: number): void;
     /**
      * Elevated rows: the plateau band item draws its own strip of living

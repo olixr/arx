@@ -819,11 +819,27 @@ export class ClientGame {
     if (this.ownShots.length > 8) this.ownShots.shift();
   }
 
+  /**
+   * The live connection status, mirrored from every onStatus emit —
+   * the renderer reads it so a reconnect blip can keep visual state
+   * (occluder fades) armed instead of snapping the world for a beat.
+   */
+  connStatus: 'connecting' | 'ingame' | 'reconnecting' | 'rejected' | 'authRequired' | 'authErr' =
+    'connecting';
+
+  private emitStatus(
+    status: 'connecting' | 'ingame' | 'reconnecting' | 'rejected' | 'authRequired' | 'authErr',
+    reason?: string,
+  ): void {
+    this.connStatus = status;
+    this.events.onStatus(status, reason);
+  }
+
   /** Connect; the server answers welcome (valid token) or authRequired. */
   connect(token: string | null): void {
     this.token = token;
     this.stopped = false;
-    this.events.onStatus('connecting');
+    this.emitStatus('connecting');
     this.openConnection();
   }
 
@@ -846,7 +862,7 @@ export class ClientGame {
       },
       onClose: () => {
         if (this.stopped) return;
-        this.events.onStatus('reconnecting');
+        this.emitStatus('reconnecting');
         this.ownEid = null;
         if (this.pingTimer) clearInterval(this.pingTimer);
         setTimeout(() => this.openConnection(), this.reconnectDelay);
@@ -935,7 +951,7 @@ export class ClientGame {
         this.castFreezeUntilSeq = 0;
         this.clockOffset = null;
         this.reconnectDelay = 500;
-        this.events.onStatus('ingame');
+        this.emitStatus('ingame');
         if (msg.motd) this.events.onChat({ channel: 'system', text: msg.motd });
         if (!this.ownLook) this.events.onNeedLook?.();
         if (this.pingTimer) clearInterval(this.pingTimer);
@@ -946,15 +962,15 @@ export class ClientGame {
       }
       case 'reject': {
         this.stopped = true;
-        this.events.onStatus('rejected', msg.reason);
+        this.emitStatus('rejected', msg.reason);
         break;
       }
       case 'authRequired': {
-        this.events.onStatus('authRequired');
+        this.emitStatus('authRequired');
         break;
       }
       case 'authErr': {
-        this.events.onStatus('authErr', msg.reason);
+        this.emitStatus('authErr', msg.reason);
         break;
       }
       case 'enter': {
@@ -967,7 +983,32 @@ export class ClientGame {
           if (existing) {
             existing.meta = meta;
           } else {
-            this.entities.set(meta.eid, { meta, buffer: new InterpBuffer() });
+            const buffer = new InterpBuffer();
+            // THE ENTER GLIDE: seed the buffer at the enter position
+            // on the render timeline, so a fresh body renders at once
+            // and its first real samples INTERPOLATE from here — the
+            // old empty buffer froze the body at meta.x/y for the
+            // interp delay, then hopped onto the snapshot path (every
+            // border re-enter and reappear paid it). Projectiles are
+            // exempt: their v9 ballistic enter path projects on the
+            // server-NOW timeline and a delayed seed would misplace
+            // the first-in-flight frames.
+            if (meta.kind !== EntityKind.Projectile) {
+              const t0 = this.renderTime();
+              if (t0 > 0) {
+                buffer.push({
+                  t: t0,
+                  x: meta.x,
+                  y: meta.y,
+                  dir: meta.dir ?? 0,
+                  pose: 0,
+                  hpPct: 100,
+                  status: 0,
+                  alert: 0,
+                });
+              }
+            }
+            this.entities.set(meta.eid, { meta, buffer });
           }
           // Ballistic truth (v9): a projectile's known flight speed
           // lets the buffer project from its very first sample.

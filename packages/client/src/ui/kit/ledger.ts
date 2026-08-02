@@ -22,6 +22,16 @@ export interface Ledger<T> {
   refit(): void;
 }
 
+/**
+ * The kit remembers the measured rows-per-leaf for each host element a
+ * ledger has lived in. Callers rebuild ledgers wholesale on every
+ * repaint, so instance state alone forgets the honest measure — keyed
+ * by the mount point, a re-created ledger deals the right count on its
+ * FIRST paint and refit() finds nothing to change (no visible
+ * re-deal). refit() stays the safety net when the box truly changed.
+ */
+const MEASURED_PER = new WeakMap<Element, number>();
+
 export function createLedger<T>(opts: {
   renderRow: (item: T, index: number) => HTMLElement;
   /** Fallback rows per leaf before the first honest measure. */
@@ -61,6 +71,8 @@ export function createLedger<T>(opts: {
   let items: T[] = [];
   let at = Math.max(0, opts.initialLeaf ?? 0);
   let per = Math.max(1, opts.seedRows ?? 8);
+  /** True once THIS instance has honestly measured its own leaf. */
+  let measured = false;
 
   const leaves = (): number => Math.max(1, Math.ceil(items.length / per));
 
@@ -76,6 +88,12 @@ export function createLedger<T>(opts: {
   };
 
   const deal = (): void => {
+    // Seed from the host's remembered measure until this instance has
+    // measured for itself — the first paint lands on the true count.
+    if (!measured && root.parentElement) {
+      const remembered = MEASURED_PER.get(root.parentElement);
+      if (remembered !== undefined) per = remembered;
+    }
     leaf.innerHTML = '';
     if (items.length === 0) {
       if (opts.emptyLine) {
@@ -99,6 +117,9 @@ export function createLedger<T>(opts: {
     /* Measure the TALLEST dealt row against the leaf's height — a
        short header row must not overpromise the fit and leave a
        clipped sliver peeking at the leaf's edge. */
+    /* Only real rows teach the fit — measuring the empty line would
+       poison the host's remembered rows-per-leaf. */
+    if (items.length === 0) return;
     if (leaf.clientHeight === 0 || leaf.childElementCount === 0) return;
     let rowH = 0;
     for (const child of leaf.children) {
@@ -107,6 +128,8 @@ export function createLedger<T>(opts: {
     if (rowH <= 0) return;
     const gap = parseFloat(getComputedStyle(leaf).rowGap) || 0;
     const fit = Math.max(1, Math.floor((leaf.clientHeight + gap) / (rowH + gap)));
+    measured = true;
+    if (root.parentElement) MEASURED_PER.set(root.parentElement, fit);
     if (fit !== per) {
       per = fit;
       deal();
