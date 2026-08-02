@@ -7,11 +7,18 @@
  * geometry, frameDt-gated emission, ≤60 path ops per hook per frame.
  * The school's grammar is MASONRY AND IRON: flat slabs, laid courses,
  * drawn lines — nothing here billows; walls do not billow.
+ *
+ * FX v5 wave 3f: the no-billow law held under audit. One library
+ * voice only — set_the_wall's mortar grit (dust.kick, small on
+ * purpose); rampart_break's masonry gained v5 loft-land-hop physics
+ * WITHOUT joining the library (its stone is its own, and dry).
+ * Iron, brass, and painted masonry stay bespoke throughout.
  */
 
 import { shade } from './rig.js';
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { dust, asMatter } from './matter/index.js';
 
 /** Screen point r px from the heart along ground angle a. */
 function groundPt(c: SigCtx, r: number, a: number): { x: number; y: number } {
@@ -124,12 +131,15 @@ const set_the_wall: AbilitySig = {
     ctx.restore();
   },
   air(c) {
-    // Grit pops where fresh courses seat, early only.
-    if (c.t < 0.25 && Math.random() < c.frameDt * 14) {
+    // Grit pops where fresh courses seat, early only — TRUE mortar
+    // dust on gated beats, fines that land and lie at the block's
+    // foot. Small on purpose: walls do not billow.
+    if (c.t < 0.25 && Math.random() < c.frameDt * 8) {
       const a = Math.random() * Math.PI * 2;
-      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.85, c.wy + Math.sin(a) * c.radius * 0.85 * c.squash, 1, [c.st.deep, c.st.mid], {
-        speed: 0.8, life: 0.35, size: 0.05, gravity: 5, up: true, shape: 'square',
-      });
+      dust.deployments.kick!(asMatter(c),
+        c.wx + Math.cos(a) * c.radius * 0.85,
+        c.wy + Math.sin(a) * c.radius * 0.85 * c.squash,
+        { scale: 0.25 });
     }
   },
 };
@@ -333,10 +343,16 @@ const turned_blow: AbilitySig = {
 const rampart_break: AbilitySig = {
   spawn(c) {
     const rand = srand(c.seed ^ 0x5a7);
+    // Broken masonry leaves the lip on TRUE arcs — the school's own
+    // stone with v5 physics (loft, land, one hop, lie) but NO billow:
+    // walls do not billow, so this stone stays bespoke and dry.
     for (let k = 0; k < 6; k++) {
       const a = (k / 6) * Math.PI * 2 + rand() * 0.5;
       c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.8, c.wy + Math.sin(a) * c.radius * 0.8 * c.squash, 1, [c.st.deep, c.st.mid], {
-        speed: 1.6 + rand(), life: 0.5, size: 0.09, gravity: 7, dir: a, spread: 0.3, shape: 'shard', spin: 9,
+        speed: 1.2 + rand() * 0.8, life: 1.4, size: 0.09, gravity: 0,
+        dir: a, spread: 0.3, shape: 'shard', spin: 9,
+        vz: 1.6 + rand(), zg: 7.5, land: 'bounce', bounce: 0.4, layer: 'world',
+        fade: c.st.deep, fadeAt: 0.6,
       });
     }
   },

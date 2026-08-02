@@ -183,6 +183,13 @@ export const MATTER_MIGRATED: readonly string[] = [
   'mournfield', 'ash_harvest', 'glacier_sunder', 'thunder_fell',
   'white_heat', 'pale_crescent', 'horizon_fall', 'road_opens',
   'winters_hunger', 'open_seam',
+  // Wave 3f — dualwield + shield, the restraint wave: TWIN STEEL's
+  // only true matter is the blood its knives collect, and MASONRY
+  // AND IRON's no-billow law held under audit — one mortar-grit
+  // voice, and rampart_break's stone took v5 loft-land-hop physics
+  // without joining the library. Twenty of twenty-three stay
+  // bespoke, and both schools read sharper for it.
+  'heron_step', 'red_ribbons', 'set_the_wall',
 ];
 
 // ------------------------------------------------------- exemplars

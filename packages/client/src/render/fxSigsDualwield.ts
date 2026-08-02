@@ -8,10 +8,16 @@
  * STEEL: everything answers twice — paired trails, mirrored strokes,
  * crossed marks, counter-rotation. Nothing in this file arrives alone,
  * and no centerpiece is shared with any other school.
+ *
+ * FX v5 wave 3f: twin steel is lawfully bespoke — the school's only
+ * TRUE matter is the blood its knives collect (heron_step's toll,
+ * red_ribbons' letting drop), and that routes through the library
+ * (ONE-VOICE LAW). Everything else stays the pair's own steel.
  */
 
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { blood, asMatter } from './matter/index.js';
 
 /** Screen point r px from the heart along ground angle a. */
 function groundPt(c: SigCtx, r: number, a: number): { x: number; y: number } {
@@ -119,24 +125,15 @@ const twin_cut: AbilitySig = {
  */
 const heron_step: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0xd2);
-    const a = Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx);
-    for (let k = 0; k < 4; k++) {
-      const f = 0.3 + k * 0.18;
-      c.particles.burst(
+    const m = asMatter(c);
+    // The toll beads TRUE along both wakes: red that wells at two
+    // stations of the stride, lands, splats, and dries where the
+    // knives collected it.
+    for (const f of [0.35, 0.65]) {
+      blood.deployments.spatter!(m,
         c.wx + (c.wx2 - c.wx) * f,
-        c.wy + (c.wy2 - c.wy) * f - 0.45,
-        1,
-        [c.st.deep, '#a83a2e'],
-        {
-          speed: 0.7 + rand() * 0.5,
-          life: 0.4,
-          size: 0.05,
-          gravity: 5,
-          dir: a + (k % 2 ? 1 : -1) * (Math.PI / 2),
-          spread: 0.3,
-        },
-      );
+        c.wy + (c.wy2 - c.wy) * f,
+        { scale: 0.2, radius: 0.2 });
     }
   },
   air(c) {
@@ -359,11 +356,10 @@ const red_ribbons: AbilitySig = {
       ctx.stroke();
     }
     ctx.restore();
-    // The drop the red ribbon lets go.
+    // The drop the red ribbon lets go — a TRUE bead on gated beats,
+    // welling from the spool to land and dry.
     if (Math.random() < c.frameDt * 3 * fade) {
-      c.particles.burst(c.wx, c.wy - 0.5, 1, [st.mid, st.deep], {
-        speed: 0.5, life: 0.5, size: 0.05, gravity: 6, spread: 0.4,
-      });
+      blood.deployments.spatter!(asMatter(c), c.wx, c.wy, { scale: 0.12, radius: 0.1 });
     }
   },
 };

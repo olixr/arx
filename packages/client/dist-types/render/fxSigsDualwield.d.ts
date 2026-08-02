@@ -8,6 +8,11 @@
  * STEEL: everything answers twice — paired trails, mirrored strokes,
  * crossed marks, counter-rotation. Nothing in this file arrives alone,
  * and no centerpiece is shared with any other school.
+ *
+ * FX v5 wave 3f: twin steel is lawfully bespoke — the school's only
+ * TRUE matter is the blood its knives collect (heron_step's toll,
+ * red_ribbons' letting drop), and that routes through the library
+ * (ONE-VOICE LAW). Everything else stays the pair's own steel.
  */
 import type { AbilitySig } from './fxSignatures.js';
 /**
