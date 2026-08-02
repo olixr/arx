@@ -115,6 +115,11 @@ export const MATTER_MIGRATED: readonly string[] = [
   // not an ability's own metal).
   'heavy_slam', 'bloodlust', 'earthbreaker', 'rend', 'bull_rush',
   'stagger_stomp', 'headsman_stroke',
+  // Wave 2b — the sneak ladder's two true material voices. The rest
+  // of the roster is knife-steel and void glints in style colors:
+  // lawfully bespoke, and quieter for it (caltrops' iron gained v5
+  // bounce physics without joining the library — it is its own iron).
+  'feint_double', 'shadowstep',
 ];
 
 // ------------------------------------------------------- exemplars

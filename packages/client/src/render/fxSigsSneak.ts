@@ -16,7 +16,7 @@
 import { shade } from './rig.js';
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
-import { venom, asMatter } from './matter/index.js';
+import { venom, smoke, shadow, asMatter } from './matter/index.js';
 
 // ------------------------------------------------------ shared glyphs
 
@@ -367,9 +367,13 @@ const ghost_step: AbilitySig = {
  */
 const caltrops: AbilitySig = {
   spawn(c) {
-    // The toss: iron pattering out from the drop point, staying low.
-    c.particles.burst(c.wx, c.wy - 0.3, 9, [c.st.deep, c.st.mid], {
-      speed: 2.4, life: 0.45, size: 0.08, gravity: 8, up: true, shape: 'shard', spin: 11, ground: true,
+    // The toss: iron patters out on REAL arcs — each barb hops once
+    // where it lands and lies there. The sowing, sown. (Bespoke iron,
+    // not a library material — but v5 physics all the same.)
+    c.particles.burst(c.wx, c.wy, 9, [c.st.deep, c.st.mid], {
+      speed: 1.3, life: 1.1, size: 0.075, gravity: 0, shape: 'shard',
+      spin: 11, z: 0.35, vz: 1.6, zg: 8.5, land: 'bounce', bounce: 0.35,
+      layer: 'world',
     });
   },
   ground(c) {
@@ -506,10 +510,9 @@ const fan_of_knives: AbilitySig = {
  */
 const feint_double: AbilitySig = {
   spawn(c) {
-    // The swap: a soft gray exhale, no light, no noise.
-    c.particles.burst(c.wx, c.wy - 0.4, 5, [c.st.mid, c.st.deep], {
-      speed: 0.9, life: 0.8, size: 0.12, gravity: -0.4, drag: 1.8, grow: 0.2, shape: 'puff', fade: '#16121f', wobble: 0.5,
-    });
+    // The swap: one soft gray exhale — the library's smoke at a
+    // whisper. No light, no noise, half a breath.
+    smoke.deployments.billow!(asMatter(c), c.wx, c.wy, { scale: 0.4 });
   },
   ground(c) {
     // The stage-seam: a dashed ring turning slowly under the lie.
@@ -819,10 +822,12 @@ const whisper_fang: AbilitySig = {
  */
 const shadowstep: AbilitySig = {
   spawn(c) {
-    // The first door swallows: dark flecks pulled DOWN, not up.
-    c.particles.burst(c.wx, c.wy - 0.3, 4, [c.st.deep, c.st.mid], {
-      speed: 0.6, life: 0.4, size: 0.09, gravity: 5, drag: 1, ground: true,
-    });
+    const m = asMatter(c);
+    // The near mouth: the dark reaches up out of the floor and takes
+    // the body — library tendrils crawling in, not flecks falling.
+    shadow.deployments.tendrils!(m, c.wx, c.wy, { scale: 0.55 });
+    // The far door: a standing slit of dark where the body arrives.
+    shadow.deployments.door!(m, c.wx2, c.wy2, { scale: 0.7 });
     // Over the far door, the blade announces itself with one glint.
     c.particles.burst(c.wx2, c.wy2 - 0.55, 2, [c.st.spark, '#e8e0ff'], {
       speed: 0.2, life: 0.5, size: 0.09, gravity: 0.2, shape: 'glint',
@@ -912,10 +917,12 @@ const shadowstep: AbilitySig = {
       ctx.lineWidth = Math.max(1.5, sc * 0.035);
       strokeFigure(c, px2, py2 + (1 - rise) * sc * 0.9);
       ctx.restore();
-      // The dark drips off the returning body.
+      // The dark drips off the returning body — falling on real
+      // altitude now, dying where it touches the dirt.
       if (Math.random() < c.frameDt * 7 * rise) {
-        c.particles.burst(c.wx2, c.wy2 - 0.4, 1, [st.deep, st.mid], {
-          speed: 0.3, life: 0.4, size: 0.07, gravity: 3, drag: 1, wobble: 0.3,
+        c.particles.burst(c.wx2, c.wy2, 1, [st.deep, st.mid], {
+          speed: 0.25, life: 0.6, size: 0.07, gravity: 0, drag: 1,
+          wobble: 0.3, z: 0.55, vz: -0.2, zg: 5, land: 'die', layer: 'world',
         });
       }
     }
