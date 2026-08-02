@@ -69,7 +69,7 @@ import {
   type Vec2,
 } from '@arx/shared';
 import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
-import { EntityKind, pointHitsSolid, shutDoorTile } from '@arx/shared';
+import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
 /**
@@ -1573,10 +1573,49 @@ export class ClientGame {
   }
 
   private handleChunk(chunk: ChunkData): void {
+    // THE SAME CHUNK IS NO NEWS: the server re-streams chunks it can't
+    // know we hold (reconnect grace, interest-window wobble). A payload
+    // identical to the stored chunk keeps the stored OBJECT — same
+    // identity, same rev — so no bake, memo, or interior cache moves.
+    // Without this, a one-blip reconnect re-sent all 25 chunks and the
+    // whole screen re-baked for nothing.
+    const prev = this.world.get(chunk.cx, chunk.cy);
+    if (prev && sameChunkPayload(prev, chunk)) return;
     this.world.set(chunk);
+    this.chunkWallFlags.set(chunkKey(chunk.cx, chunk.cy), chunkHasBoundary(chunk));
     this.touchNeighbors(chunk.cx, chunk.cy);
     this.worldVersion++;
-    this.interiorsVersion++;
+    // Interiors re-derive only when this arrival can actually touch a
+    // room: rooms are bounded by wall/door tiles, and a region reaches
+    // at most one chunk past its walls (MAX_REGION). A wall-less chunk
+    // in a wall-less neighborhood — the whole frontier — changes no
+    // room, and skipping the bump keeps the veil and the union-find
+    // steady while streaming (the wipe reset every region id and
+    // slammed open buildings shut for a re-ease).
+    if (this.neighborhoodHasWalls(chunk, prev)) this.interiorsVersion++;
+  }
+
+  /** Wall/door flags per streamed chunk key — the interiors gate. */
+  private readonly chunkWallFlags = new Map<string, boolean>();
+
+  private neighborhoodHasWalls(chunk: ChunkData, prev: ChunkData | undefined): boolean {
+    if (prev && chunkHasBoundary(prev)) return true;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const cx = chunk.cx + dx;
+        const cy = chunk.cy + dy;
+        const key = chunkKey(cx, cy);
+        let flag = this.chunkWallFlags.get(key);
+        if (flag === undefined) {
+          const data = dx === 0 && dy === 0 ? chunk : this.world.get(cx, cy);
+          if (!data) continue;
+          flag = chunkHasBoundary(data);
+          this.chunkWallFlags.set(key, flag);
+        }
+        if (flag) return true;
+      }
+    }
+    return false;
   }
 
   /** Fires with (tx, ty, previous, next) whenever a tile mutates. */
@@ -1586,6 +1625,15 @@ export class ClientGame {
   private handleTilePatch(patch: TilePatch): void {
     const prev = this.world.groundAt(patch.tx, patch.ty);
     this.world.setGround(patch.tx, patch.ty, patch.ground);
+    // A built wall must flip its chunk's interiors gate (see
+    // handleChunk); removal leaves the flag standing — a safe
+    // over-approximation, refreshed on the next re-stream.
+    if (BOUNDARY_TILE_SET.has(patch.ground)) {
+      this.chunkWallFlags.set(
+        chunkKey(Math.floor(patch.tx / CHUNK_SIZE), Math.floor(patch.ty / CHUNK_SIZE)),
+        true,
+      );
+    }
     // Blob rendering blends across tiles — rebake the neighborhood.
     this.touchNeighbors(Math.floor(patch.tx / CHUNK_SIZE), Math.floor(patch.ty / CHUNK_SIZE));
     this.worldVersion++;
@@ -2482,4 +2530,30 @@ export class ClientGame {
       }
     }
   }
+}
+
+/** The interiors boundary set, as a Set for the per-chunk scans. */
+const BOUNDARY_TILE_SET = new Set<number>(INTERIOR_BOUNDARY_TILES);
+
+/** Any wall/door tile in the chunk — the interiors-version gate. */
+function chunkHasBoundary(chunk: ChunkData): boolean {
+  const g = chunk.ground;
+  for (let i = 0; i < g.length; i++) {
+    if (BOUNDARY_TILE_SET.has(g[i]!)) return true;
+  }
+  return false;
+}
+
+/** Byte-for-byte identical streamed payload (rev is local-only). */
+function sameChunkPayload(a: ChunkData, b: ChunkData): boolean {
+  for (let i = 0; i < a.ground.length; i++) {
+    if (a.ground[i] !== b.ground[i]) return false;
+  }
+  for (let i = 0; i < a.detail.length; i++) {
+    if (a.detail[i] !== b.detail[i]) return false;
+  }
+  for (let i = 0; i < a.elev.length; i++) {
+    if (a.elev[i] !== b.elev[i]) return false;
+  }
+  return true;
 }

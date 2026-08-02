@@ -514,6 +514,7 @@ export function startChunkBake(
   cy: number,
   px: number,
   woodSkin?: WoodSkinSampler,
+  live = true,
 ): ChunkBakeJob {
   const G = bakeGutter(px);
   const canvas = document.createElement('canvas');
@@ -526,28 +527,70 @@ export function startChunkBake(
 
   const g = effectiveGround(ground);
 
+  const steps: Array<() => void> = [];
+  const darkBand = baseY >= 512;
+
   // 1. Meadow base: large soft noise patches, no per-tile checker.
-  // Painted synchronously — it is the placeholder a brand-new in-view
-  // chunk shows while its remaining steps stream in.
+  // THE PROLOGUE JOINS THE QUEUE: the fine pass is ~17k fillRects with
+  // two noise samples each — far too dear to run synchronously once
+  // per job start (a border crossing starts many jobs in one frame).
+  // Live jobs paint a COARSE placeholder now (one cell per tile, same
+  // tones — a usable stand-in at ~1/16 the cost) and the fine pass
+  // repaints over it in row-band steps. Replacement jobs build behind
+  // the old blit, so they defer even the placeholder to the steps.
   const cell = Math.max(4, Math.floor(px / 4));
-  for (let y = -G; y < CHUNK_SIZE * px + G; y += cell) {
-    for (let x = -G; x < CHUNK_SIZE * px + G; x += cell) {
-      ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
-      ctx.fillRect(x, y, cell, cell);
+  const paintMeadow = (y0: number, y1: number): void => {
+    for (let y = y0; y < y1; y += cell) {
+      for (let x = -G; x < CHUNK_SIZE * px + G; x += cell) {
+        ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
+        ctx.fillRect(x, y, cell, cell);
+      }
+    }
+  };
+  const paintBase = (): void => {
+    if (darkBand) {
+      // Dark band chunks get a cave-rock base instead of the meadow.
+      ctx.fillStyle = '#2e2938';
+      ctx.fillRect(-G, -G, canvas.width, canvas.height);
+    }
+    // Raised/sunken regions darken in the placeholder too — a fresh
+    // mountain chunk must never flash meadow-green while its layers
+    // stream in. The 2b step repeats this AFTER the skins, restoring
+    // the real paint order.
+    fillMask(ctx, (tx, ty) => elev(tx, ty) !== 0, baseX, baseY, px, '#282334');
+  };
+  if (live && !darkBand) {
+    const coarse = Math.max(cell, px);
+    for (let y = -G; y < CHUNK_SIZE * px + G; y += coarse) {
+      for (let x = -G; x < CHUNK_SIZE * px + G; x += coarse) {
+        ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
+        ctx.fillRect(x, y, coarse, coarse);
+      }
     }
   }
-  // Dark band chunks get a cave-rock base instead.
-  if (baseY >= 512) {
-    ctx.fillStyle = '#2e2938';
-    ctx.fillRect(-G, -G, canvas.width, canvas.height);
+  if (live) paintBase();
+  if (!darkBand) {
+    // The fine meadow pass, split into four row bands per the budget.
+    // Each band re-darkens its own rows immediately (clipped fillMask)
+    // so a mountain chunk never flashes meadow-green between steps.
+    const span = CHUNK_SIZE * px + G * 2;
+    const band = Math.ceil(span / 4 / cell) * cell;
+    for (let y0 = -G; y0 < CHUNK_SIZE * px + G; y0 += band) {
+      const y1 = Math.min(y0 + band, CHUNK_SIZE * px + G);
+      steps.push(() => {
+        paintMeadow(y0, y1);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(-G, y0, CHUNK_SIZE * px + G * 2, y1 - y0);
+        ctx.clip();
+        fillMask(ctx, (tx, ty) => elev(tx, ty) !== 0, baseX, baseY, px, '#282334');
+        ctx.restore();
+      });
+    }
   }
-  // Raised/sunken regions darken in the placeholder too — a fresh
-  // mountain chunk must never flash meadow-green while its layers
-  // stream in. The 2b step repeats this AFTER the skins, restoring
-  // the real paint order.
-  fillMask(ctx, (tx, ty) => elev(tx, ty) !== 0, baseX, baseY, px, '#282334');
-
-  const steps: Array<() => void> = [];
+  // Restore the placeholder order over the fine repaint (and paint it
+  // at all, for replacement jobs that skipped the synchronous pass).
+  steps.push(paintBase);
 
   // 2. Material skins, lowest to highest, contoured on the dual grid —
   // one layer per step. The halo index is shared by every layer step.
@@ -2598,7 +2641,18 @@ export interface ElevatedBake {
   rows: boolean[];
 }
 
-export function bakeElevated(
+/**
+ * A sliced elevated-level bake: same shape as ChunkBakeJob so the
+ * renderer's budget loop advances it with stepChunkBake. One level
+ * used to bake atomically (10-40ms — a guaranteed hitch on any
+ * terraced chunk); now the silhouette, each material layer, each
+ * detail band, the rim, and the erase pass are separate steps.
+ */
+export interface ElevatedBakeJob extends ChunkBakeJob {
+  rows: boolean[];
+}
+
+export function startElevatedBake(
   ground: GroundSampler,
   detail: DetailSampler,
   elev: ElevSampler,
@@ -2606,7 +2660,7 @@ export function bakeElevated(
   cy: number,
   px: number,
   level: number,
-): ElevatedBake | null {
+): ElevatedBakeJob | null {
   const baseX = cx * CHUNK_SIZE;
   const baseY = cy * CHUNK_SIZE;
   // Ramps count as mass, matching the cliff-face contour EXACTLY: the
@@ -2691,14 +2745,20 @@ export function bakeElevated(
     (member(baseX + i, baseY + j - 1) ? 2 : 0) |
     (member(baseX + i, baseY + j) ? 4 : 0) |
     (member(baseX + i - 1, baseY + j) ? 8 : 0);
-  for (let j = 0; j <= CHUNK_SIZE; j++) {
-    for (let i = 0; i <= CHUNK_SIZE; i++) {
-      const mask = maskAt(i, j);
-      if (mask === 0) continue;
-      if (nearStair(i, j)) maskQuadrants(path, mask, (i - 0.5) * px, (j - 0.5) * px, px);
-      else maskPolygon(path, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+
+  const steps: Array<() => void> = [];
+
+  // Silhouette build — a pure Path2D construction pass.
+  steps.push(() => {
+    for (let j = 0; j <= CHUNK_SIZE; j++) {
+      for (let i = 0; i <= CHUNK_SIZE; i++) {
+        const mask = maskAt(i, j);
+        if (mask === 0) continue;
+        if (nearStair(i, j)) maskQuadrants(path, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+        else maskPolygon(path, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+      }
     }
-  }
+  });
 
   // Cliff crowns and stairs read as the surface they carry.
   const gInner = (tx: number, ty: number): number | undefined => {
@@ -2721,27 +2781,55 @@ export function bakeElevated(
   };
   const g = effectiveGround(gInner);
 
-  ctx.save();
-  ctx.clip(path);
+  // Every paint step clips to the crown silhouette independently —
+  // the clip cannot persist across budget slices.
+  const clipped = (paint: () => void): (() => void) => {
+    return () => {
+      ctx.save();
+      ctx.clip(path);
+      paint();
+      ctx.restore();
+    };
+  };
 
   // Meadow base under the skins, same recipe as the ground floor.
-  const cell = Math.max(4, Math.floor(px / 4));
-  for (let y = -G; y < CHUNK_SIZE * px + G; y += cell) {
-    for (let x = -G; x < CHUNK_SIZE * px + G; x += cell) {
-      ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
-      ctx.fillRect(x, y, cell, cell);
-    }
+  steps.push(
+    clipped(() => {
+      const cell = Math.max(4, Math.floor(px / 4));
+      for (let y = -G; y < CHUNK_SIZE * px + G; y += cell) {
+        for (let x = -G; x < CHUNK_SIZE * px + G; x += cell) {
+          ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
+          ctx.fillRect(x, y, cell, cell);
+        }
+      }
+    }),
+  );
+  // One material layer per step, sharing the halo index.
+  let idx: Int8Array | null = null;
+  for (let li = 0; li < BLOB_LAYERS.length; li++) {
+    steps.push(
+      clipped(() => {
+        idx ??= computeLayerIdx(g, baseX, baseY);
+        paintLayerSkin(ctx, idx, li, baseX, baseY, px);
+      }),
+    );
   }
-  drawLayerSkins(ctx, g, baseX, baseY, px);
-  for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
-    for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
-      const tx = baseX + lx;
-      const ty = baseY + ly;
-      if (!member(tx, ty)) continue;
-      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g);
-    }
+  // Per-tile details of member tiles, in row bands.
+  for (let r0 = -1; r0 <= CHUNK_SIZE; r0 += DETAIL_STEP_ROWS) {
+    const r1 = Math.min(r0 + DETAIL_STEP_ROWS - 1, CHUNK_SIZE);
+    steps.push(
+      clipped(() => {
+        for (let ly = r0; ly <= r1; ly++) {
+          for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
+            const tx = baseX + lx;
+            const ty = baseY + ly;
+            if (!member(tx, ty)) continue;
+            drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g);
+          }
+        }
+      }),
+    );
   }
-  ctx.restore();
 
   // The rim SHOULDER: a chunky bordered edge along the whole crown
   // contour — the exposed-rock lip every classic cliff tileset gives
@@ -2750,41 +2838,43 @@ export function bakeElevated(
   // are edge-on to the camera (where the wall face itself is nearly
   // invisible). Layered strokes clipped to the crown: only the inner
   // half of each stroke shows, so the band sits entirely on top.
-  const rim = new Path2D();
-  for (let j = 0; j <= CHUNK_SIZE; j++) {
-    for (let i = 0; i <= CHUNK_SIZE; i++) {
-      const mask = maskAt(i, j);
-      if (mask === 0 || mask === 15) continue;
-      const segs = nearStair(i, j) ? contourSegsSquare(mask) : contourSegs(mask);
-      for (const [x0, y0, x1, y1] of segs) {
-        rim.moveTo((i + x0) * px, (j + y0) * px);
-        rim.lineTo((i + x1) * px, (j + y1) * px);
+  steps.push(() => {
+    const rim = new Path2D();
+    for (let j = 0; j <= CHUNK_SIZE; j++) {
+      for (let i = 0; i <= CHUNK_SIZE; i++) {
+        const mask = maskAt(i, j);
+        if (mask === 0 || mask === 15) continue;
+        const segs = nearStair(i, j) ? contourSegsSquare(mask) : contourSegs(mask);
+        for (const [x0, y0, x1, y1] of segs) {
+          rim.moveTo((i + x0) * px, (j + y0) * px);
+          rim.lineTo((i + x1) * px, (j + y1) * px);
+        }
       }
     }
-  }
-  ctx.save();
-  ctx.clip(path);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  // Soft shade band fading in from the edge (inner ~0.26 tile).
-  ctx.strokeStyle = 'rgba(45, 38, 58, 0.18)';
-  ctx.lineWidth = px * 0.52;
-  ctx.stroke(rim);
-  // Rock shoulder: the worn stone border itself (inner ~0.16 tile).
-  ctx.strokeStyle = 'rgba(74, 67, 88, 0.5)';
-  ctx.lineWidth = px * 0.32;
-  ctx.stroke(rim);
-  // Dark crease just inside the lip (inner ~0.08 tile).
-  ctx.strokeStyle = 'rgba(28, 22, 40, 0.35)';
-  ctx.lineWidth = px * 0.16;
-  ctx.stroke(rim);
-  // Sunlit lip at the very edge.
-  ctx.strokeStyle = 'rgba(255, 244, 214, 0.3)';
-  ctx.lineWidth = Math.max(2, px * 0.07);
-  ctx.stroke(rim);
-  ctx.lineCap = 'butt';
-  ctx.lineJoin = 'miter';
-  ctx.restore();
+    ctx.save();
+    ctx.clip(path);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    // Soft shade band fading in from the edge (inner ~0.26 tile).
+    ctx.strokeStyle = 'rgba(45, 38, 58, 0.18)';
+    ctx.lineWidth = px * 0.52;
+    ctx.stroke(rim);
+    // Rock shoulder: the worn stone border itself (inner ~0.16 tile).
+    ctx.strokeStyle = 'rgba(74, 67, 88, 0.5)';
+    ctx.lineWidth = px * 0.32;
+    ctx.stroke(rim);
+    // Dark crease just inside the lip (inner ~0.08 tile).
+    ctx.strokeStyle = 'rgba(28, 22, 40, 0.35)';
+    ctx.lineWidth = px * 0.16;
+    ctx.stroke(rim);
+    // Sunlit lip at the very edge.
+    ctx.strokeStyle = 'rgba(255, 244, 214, 0.3)';
+    ctx.lineWidth = Math.max(2, px * 0.07);
+    ctx.stroke(rim);
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
+    ctx.restore();
+  });
 
   // THE HIGHER MASS IS NOT THIS LAYER'S TO PAINT: membership
   // (elev >= level) keeps the marching-squares silhouette seamless at
@@ -2812,34 +2902,55 @@ export function bakeElevated(
     (memberUp(baseX + i, baseY + j - 1) ? 2 : 0) |
     (memberUp(baseX + i, baseY + j) ? 4 : 0) |
     (memberUp(baseX + i - 1, baseY + j) ? 8 : 0);
-  const erase = new Path2D();
-  let anyUp = false;
-  for (let j = 0; j <= CHUNK_SIZE; j++) {
-    for (let i = 0; i <= CHUNK_SIZE; i++) {
-      const mask = maskUpAt(i, j);
-      if (mask === 0) continue;
-      anyUp = true;
-      if (nearStairUp(i, j)) maskQuadrants(erase, mask, (i - 0.5) * px, (j - 0.5) * px, px);
-      else maskPolygon(erase, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+  steps.push(() => {
+    const erase = new Path2D();
+    let anyUp = false;
+    for (let j = 0; j <= CHUNK_SIZE; j++) {
+      for (let i = 0; i <= CHUNK_SIZE; i++) {
+        const mask = maskUpAt(i, j);
+        if (mask === 0) continue;
+        anyUp = true;
+        if (nearStairUp(i, j)) maskQuadrants(erase, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+        else maskPolygon(erase, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+      }
     }
-  }
-  if (anyUp) {
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fill(erase);
-    ctx.globalCompositeOperation = 'source-over';
-  }
+    if (anyUp) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fill(erase);
+      ctx.globalCompositeOperation = 'source-over';
+    }
 
-  // Raised decks on THIS terrace: the same dock and bridge passes as
-  // the ground floor, drawn unclipped (a lifted top reaches into the
-  // cell north of the deck) and gated to tiles of exactly this level,
-  // so a lower span in the same chunk never paints into a layer that
-  // blits shifted.
-  const deckHere = (tx: number, ty: number): boolean => elev(tx, ty) === level;
-  drawDocks(ctx, ground, baseX, baseY, px, deckHere);
-  drawBridges(ctx, ground, baseX, baseY, px, deckHere);
-  drawPorchDecks(ctx, ground, baseX, baseY, px, undefined, deckHere);
+    // Raised decks on THIS terrace: the same dock and bridge passes as
+    // the ground floor, drawn unclipped (a lifted top reaches into the
+    // cell north of the deck) and gated to tiles of exactly this level,
+    // so a lower span in the same chunk never paints into a layer that
+    // blits shifted.
+    const deckHere = (tx: number, ty: number): boolean => elev(tx, ty) === level;
+    drawDocks(ctx, ground, baseX, baseY, px, deckHere);
+    drawBridges(ctx, ground, baseX, baseY, px, deckHere);
+    drawPorchDecks(ctx, ground, baseX, baseY, px, undefined, deckHere);
+  });
 
-  return { canvas, rows };
+  return { canvas, rows, steps, next: 0 };
+}
+
+/** The one-shot elevated bake: start + run every step. Output is
+ *  identical to the sliced path — this IS the sliced path, run whole. */
+export function bakeElevated(
+  ground: GroundSampler,
+  detail: DetailSampler,
+  elev: ElevSampler,
+  cx: number,
+  cy: number,
+  px: number,
+  level: number,
+): ElevatedBake | null {
+  const job = startElevatedBake(ground, detail, elev, cx, cy, px, level);
+  if (!job) return null;
+  while (!stepChunkBake(job)) {
+    /* run to completion */
+  }
+  return { canvas: job.canvas, rows: job.rows };
 }
 
 /**
@@ -3206,19 +3317,6 @@ function computeLayerIdx(g: GroundSampler, baseX: number, baseY: number): Int8Ar
     }
   }
   return idx;
-}
-
-function drawLayerSkins(
-  ctx: CanvasRenderingContext2D,
-  g: GroundSampler,
-  baseX: number,
-  baseY: number,
-  px: number,
-): void {
-  const idx = computeLayerIdx(g, baseX, baseY);
-  for (let li = 0; li < BLOB_LAYERS.length; li++) {
-    paintLayerSkin(ctx, idx, li, baseX, baseY, px);
-  }
 }
 
 /**

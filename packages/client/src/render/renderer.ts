@@ -165,7 +165,6 @@ import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
 import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from './portal.js';
 import { ELEV_H, solveLiftedY } from './elevPick.js';
 import {
-  bakeElevated,
   bakeGutter,
   bridgeApronAt,
   deckCoverRects,
@@ -179,9 +178,11 @@ import {
   type BridgeApron,
   isWaterTile,
   startChunkBake,
+  startElevatedBake,
   stepChunkBake,
   waterRegionPath,
   type ChunkBakeJob,
+  type ElevatedBakeJob,
   type WaterFx,
 } from './terrain.js';
 
@@ -272,12 +273,30 @@ const TREE_BAKE_BUDGET = 48;
  */
 const CHUNK_BAKE_MS = 3;
 /**
+ * Re-bake job STARTS per frame (rev bumps, zoom-tier flips). A border
+ * crossing bumps most visible chunks in one tick; starting every
+ * replacement at once queued a wave of jobs against one 3ms budget
+ * and spiked the start frame. The stale blit stands a few frames
+ * longer instead — invisible, since replacements swap atomically.
+ * Brand-new chunks (holes) are never gated.
+ */
+const CHUNK_REPLACE_STARTS = 2;
+/**
  * Per-frame time budget (ms) for tree/flora/prop sprite bakes BEYOND
  * the truly-visible set: pad-band pre-bakes and cadence re-bakes stop
  * when it runs out. Sprites whose extent is on screen RIGHT NOW always
  * bake (a skipped visible bake would be pop-in, the worse artifact).
  */
 const SPRITE_BAKE_MS = 2.5;
+/**
+ * Per-frame time budget (ms) for the on-screen emergency sprite bakes
+ * themselves: a forest edge scrolling in used to bake its whole
+ * population unbudgeted in one frame (THE STORM LAW's blind spot).
+ * Within the allowance a visible missing sprite still bakes the same
+ * frame; past it, the straggler lands a frame or two later — a far
+ * smaller artifact than the multi-frame hitch the storm caused.
+ */
+const VIS_SPRITE_BAKE_MS = 4;
 /**
  * Idle body-sprite re-sample cadence, in frames (see the olKey fields
  * on DrawItem): a resting body's cosmetic life — breathing, gaze,
@@ -678,7 +697,10 @@ interface BakedChunk {
     data: ChunkData;
     rev: number;
     px: number;
-    bakeElev: (level: number) => ReturnType<typeof bakeElevated>;
+    /** The in-flight elevated-level bake, itself sliced (was one
+     *  atomic 10-40ms call — the single biggest chunk-stream hitch). */
+    elevJob?: { job: ElevatedBakeJob; level: number };
+    startElev: (level: number) => ElevatedBakeJob | null;
   };
 }
 
@@ -2998,6 +3020,8 @@ export class Renderer {
    *  panel's period (8.3ms at 120Hz, 16.7 at 60), and a machine that
    *  never does decays it to the clamp — the budget of last resort. */
   private minDt = 1000 / 60;
+  /** Last frame's raw dt — the spike filter's "was it already slow" test. */
+  private prevFrameDt = 1000 / 60;
 
   private dpr(): number {
     return Math.min(window.devicePixelRatio || 1, this.dprCap);
@@ -3057,7 +3081,17 @@ export class Renderer {
     const nowMs = performance.now();
     if (this.lastFrameAt > 0) {
       const dt = Math.min(200, nowMs - this.lastFrameAt);
-      this.frameEma += (dt - this.frameEma) * 0.08;
+      // THE LONE HITCH IS NOT LOAD: a single spike (menu open, chunk
+      // burst, tab switch) used to move the EMA far enough in ONE frame
+      // to trip the resolution downshift — which reallocates every
+      // backing store and re-rasters the world, turning one lost frame
+      // into a visible cascade. An isolated spike after a healthy frame
+      // clamps to 2x budget in the EMA; only SUSTAINED slowness (the
+      // previous frame already over budget) counts at full weight.
+      const spikeCap =
+        this.prevFrameDt <= this.minDt * 1.25 ? this.minDt * 2 : 200;
+      this.frameEma += (Math.min(dt, spikeCap) - this.frameEma) * 0.08;
+      this.prevFrameDt = dt;
       this.minDt = Math.min(Math.max(6.9, dt), Math.min(33.4, this.minDt * 1.015));
       this.adaptResolution(nowMs);
     }
@@ -3067,6 +3101,7 @@ export class Renderer {
     this.treeBakeBudget = TREE_BAKE_BUDGET;
     this.treeShadowBudget = TREE_BAKE_BUDGET;
     this.spriteBakeMsLeft = SPRITE_BAKE_MS;
+    this.visSpriteMsLeft = VIS_SPRITE_BAKE_MS;
     // Shadow-mask misses per frame: masks are shared per (kind,
     // variant) — see castRockShadow — so a handful per frame drains
     // any cold field's set within a second, and a skipped cast just
@@ -4710,6 +4745,11 @@ export class Renderer {
     // loop after the blits advances every queued job against ONE
     // per-frame time budget.
     this.chunkJobQueue.length = 0;
+    // Re-bake starts are PACED (see CHUNK_REPLACE_STARTS): a chunk
+    // burst bumps most of the screen in one tick, and starting every
+    // replacement in one frame front-loaded a wave of job prologues.
+    // An ungated stale entry just keeps its old blit a few frames.
+    let replaceStarts = 0;
 
     for (let cy = minCy; cy <= maxCy; cy++) {
       for (let cx = minCx; cx <= maxCx; cx++) {
@@ -4725,18 +4765,28 @@ export class Renderer {
           // Mid-bake: if the world moved on underneath, restart the
           // job at the new content — never finish a stale bake.
           const p = baked.pending;
-          if (p.data !== data || p.rev !== (data.rev ?? 0)) {
+          if (
+            (p.data !== data || p.rev !== (data.rev ?? 0)) &&
+            replaceStarts < CHUNK_REPLACE_STARTS
+          ) {
             this.startChunkReplace(baked, game, cx, cy, data, bakePx);
+            replaceStarts++;
           }
         } else if (baked.data !== data || baked.rev !== (data.rev ?? 0)) {
           // Content re-bake behind the old blit.
-          this.startChunkReplace(baked, game, cx, cy, data, bakePx);
+          if (replaceStarts < CHUNK_REPLACE_STARTS) {
+            this.startChunkReplace(baked, game, cx, cy, data, bakePx);
+            replaceStarts++;
+          }
         } else if (baked.px !== bakePx && !this.zoomGliding) {
           // Tier flips wait out the glide: bakePx is keyed off
           // targetZoom, so mid-glide re-bakes render for a scale the
           // camera hasn't reached — and the settle pass would just
           // re-blit them anyway.
-          this.startChunkReplace(baked, game, cx, cy, data, bakePx);
+          if (replaceStarts < CHUNK_REPLACE_STARTS) {
+            this.startChunkReplace(baked, game, cx, cy, data, bakePx);
+            replaceStarts++;
+          }
         }
         if (baked.pending) this.chunkJobQueue.push(baked);
         // SHARED-CORNER SNAP LAW: each chunk's destination rect comes
@@ -4893,14 +4943,14 @@ export class Renderer {
       levels.push(level);
     }
     return {
-      job: startChunkBake(ground, detail, elev, cx, cy, bakePx, woodSkin),
+      job: startChunkBake(ground, detail, elev, cx, cy, bakePx, woodSkin, live),
       levels,
       lifted: [],
       live,
       data,
       rev: data.rev ?? 0,
       px: bakePx,
-      bakeElev: (level: number) => bakeElevated(ground, detail, elev, cx, cy, bakePx, level),
+      startElev: (level: number) => startElevatedBake(ground, detail, elev, cx, cy, bakePx, level),
     };
   }
 
@@ -4909,16 +4959,14 @@ export class Renderer {
     const p = entry.pending!;
     if (p.job.next < p.job.steps.length) {
       stepChunkBake(p.job);
-      if (p.job.next < p.job.steps.length || p.levels.length > 0) return;
-    } else if (p.levels.length > 0) {
-      const level = p.levels.shift()!;
-      const bake = p.bakeElev(level);
-      if (bake) {
+    } else if (p.elevJob) {
+      const ej = p.elevJob;
+      if (stepChunkBake(ej.job)) {
         // Contiguous row runs, merged across small gaps, padded one
         // row each way for the half-tile contour bleed.
         const bands: Array<[number, number]> = [];
         for (let r = 0; r < CHUNK_SIZE; r++) {
-          if (!bake.rows[r]) continue;
+          if (!ej.job.rows[r]) continue;
           const last = bands[bands.length - 1];
           if (last && r - last[1] <= 3) last[1] = r;
           else bands.push([r, r]);
@@ -4927,10 +4975,17 @@ export class Renderer {
           band[0] = Math.max(0, band[0] - 1);
           band[1] = Math.min(CHUNK_SIZE - 1, band[1] + 1);
         }
-        p.lifted.push({ level, canvas: bake.canvas, bands });
+        p.lifted.push({ level: ej.level, canvas: ej.job.canvas, bands });
+        p.elevJob = undefined;
       }
-      if (p.levels.length > 0) return;
+    } else if (p.levels.length > 0) {
+      // Starting a level is itself one cheap slice: the row scan
+      // decides whether the level bakes at all (most don't).
+      const level = p.levels.shift()!;
+      const job = p.startElev(level);
+      if (job) p.elevJob = { job, level };
     }
+    if (p.job.next < p.job.steps.length || p.elevJob !== undefined || p.levels.length > 0) return;
     // Complete: swap the finished bake into the entry.
     entry.canvas = p.job.canvas;
     entry.lifted = p.lifted;
@@ -14909,6 +14964,7 @@ export class Renderer {
   /** Per-frame time budget for non-visible sprite bakes (pad bands,
    *  cadence re-bakes) — see SPRITE_BAKE_MS. */
   private spriteBakeMsLeft = 0;
+  private visSpriteMsLeft = 0;
   /** Per-frame shadow-mask bake allowance — see shadowMask. */
   private maskBakeBudget = 0;
   private frameNo = 0;
@@ -15351,14 +15407,17 @@ export class Renderer {
       // re-bakes go through the per-frame time budget instead, so a
       // dense field streaming in bakes across frames, not in one.
       const visNow = b.x < this.w && b.x + b.w > 0 && b.y < this.h && b.y + b.h > 0;
+      const emergency = !sp && visNow && this.visSpriteMsLeft > 0;
       const allow = !sp
-        ? visNow || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
+        ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
         : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0 && !this.zoomGliding;
       if (allow) {
         this.treeBakeBudget--;
         const t0 = performance.now();
         sp = this.bakePropSprite(sp, b, paint);
-        this.spriteBakeMsLeft -= performance.now() - t0;
+        const took = performance.now() - t0;
+        this.spriteBakeMsLeft -= took;
+        if (emergency) this.visSpriteMsLeft -= took;
         this.treeSprites.set(key, sp);
       }
     }
@@ -15512,14 +15571,17 @@ export class Renderer {
       const top = (fm.height * 1.25 + 0.2) * s;
       const gy = by + syT * 0.3;
       const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
+      const emergency = !sp && visNow && this.visSpriteMsLeft > 0;
       const allow = !sp
-        ? visNow || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
+        ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
         : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0 && !this.zoomGliding;
       if (allow) {
         this.treeBakeBudget--;
         const t0 = performance.now();
         sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec);
-        this.spriteBakeMsLeft -= performance.now() - t0;
+        const took = performance.now() - t0;
+        this.spriteBakeMsLeft -= took;
+        if (emergency) this.visSpriteMsLeft -= took;
         this.treeSprites.set(key, sp);
       }
     }
@@ -15792,8 +15854,9 @@ export class Renderer {
         const top = (m.height * 1.18 + 0.45) * s;
         const gy = by + syT * 0.3;
         const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
+        const emergency = !sp && visNow && this.visSpriteMsLeft > 0;
         const allow = !sp
-          ? visNow || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
+          ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
           : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0 && !this.zoomGliding;
         if (allow) {
           this.treeBakeBudget--;
@@ -15801,7 +15864,9 @@ export class Renderer {
           // A rigid tree bakes its NEUTRAL pose — the shear below is
           // the only wind it will ever need.
           sp = this.bakeTreeSprite(sp, m, wx, wy, tSec, rigid ? 0 : undefined);
-          this.spriteBakeMsLeft -= performance.now() - t0;
+          const took = performance.now() - t0;
+          this.spriteBakeMsLeft -= took;
+          if (emergency) this.visSpriteMsLeft -= took;
           this.treeSprites.set(key, sp);
         }
       }

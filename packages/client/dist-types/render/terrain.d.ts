@@ -64,7 +64,7 @@ export interface ChunkBakeJob {
 }
 /** Advance a sliced bake by one step; true when the bake is complete. */
 export declare function stepChunkBake(job: ChunkBakeJob): boolean;
-export declare function startChunkBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler): ChunkBakeJob;
+export declare function startChunkBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler, live?: boolean): ChunkBakeJob;
 /** The one-shot bake: start + run every step. Output is identical to
  *  the sliced path — this is the sliced path, run to completion. */
 export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler): HTMLCanvasElement;
@@ -97,6 +97,19 @@ export interface ElevatedBake {
     /** Chunk rows (local ly) containing any lifted content at this level. */
     rows: boolean[];
 }
+/**
+ * A sliced elevated-level bake: same shape as ChunkBakeJob so the
+ * renderer's budget loop advances it with stepChunkBake. One level
+ * used to bake atomically (10-40ms — a guaranteed hitch on any
+ * terraced chunk); now the silhouette, each material layer, each
+ * detail band, the rim, and the erase pass are separate steps.
+ */
+export interface ElevatedBakeJob extends ChunkBakeJob {
+    rows: boolean[];
+}
+export declare function startElevatedBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBakeJob | null;
+/** The one-shot elevated bake: start + run every step. Output is
+ *  identical to the sliced path — this IS the sliced path, run whole. */
 export declare function bakeElevated(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBake | null;
 /** Resolves the wood skin a building floor tile is cut from. */
 export type WoodSkinSampler = (tx: number, ty: number) => WoodSkin;

@@ -696,6 +696,9 @@ export declare class ClientGame {
     private setHavens;
     private handleMessage;
     private handleChunk;
+    /** Wall/door flags per streamed chunk key — the interiors gate. */
+    private readonly chunkWallFlags;
+    private neighborhoodHasWalls;
     /** Fires with (tx, ty, previous, next) whenever a tile mutates. */
     onTileChange: ((tx: number, ty: number, prev: number | undefined, next: number) => void) | null;
     private handleTilePatch;

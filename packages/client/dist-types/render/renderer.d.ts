@@ -792,6 +792,8 @@ export declare class Renderer {
      *  panel's period (8.3ms at 120Hz, 16.7 at 60), and a machine that
      *  never does decays it to the clamp — the budget of last resort. */
     private minDt;
+    /** Last frame's raw dt — the spike filter's "was it already slow" test. */
+    private prevFrameDt;
     private dpr;
     private adaptResolution;
     private resize;
@@ -1863,6 +1865,7 @@ export declare class Renderer {
     /** Per-frame time budget for non-visible sprite bakes (pad bands,
      *  cadence re-bakes) — see SPRITE_BAKE_MS. */
     private spriteBakeMsLeft;
+    private visSpriteMsLeft;
     /** Per-frame shadow-mask bake allowance — see shadowMask. */
     private maskBakeBudget;
     private frameNo;
