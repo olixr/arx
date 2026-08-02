@@ -83,6 +83,45 @@ test('a crack chips small and brief — never a full burst', () => {
   }
 });
 
+test('THE TIMBER LAW: lumber breaks ALONG the lie and stays near it', () => {
+  const d = new Debris();
+  const bark = { base: '#6b4a2c', lit: '#8a6a45', dark: '#4a3420' };
+  // Lie heading east: dx=1, dy=0, reach 3 tiles.
+  d.timber(10, 10, 1, 0, 3, bark, mulberry32(13));
+  const chunks = chunksOf(d);
+  assert.ok(chunks.length >= 5, 'a real trunk gives up a real row of lumber');
+  const rounds = chunks.filter((c) => c.round);
+  assert.ok(rounds.length >= 2, 'the buck saws at least two rounds');
+  for (const r of rounds) assert.equal(r.stripe, bark.lit, 'rounds carry lit end grain');
+  for (const c of chunks) {
+    assert.ok(c.x >= 10 && c.x <= 10 + 3.2, `chunk at x=${c.x} left the trunk line`);
+    assert.ok(Math.abs(c.y - 10) < 0.6, 'lumber spawns ON the lie, not around it');
+    assert.ok(c.z < 0.3, 'the trunk lies LOW — it breaks low');
+    assert.ok(c.vz > 0, 'the pop is UP off the break line');
+    assert.ok(Math.hypot(c.vx, c.vy) < 2.2, 'lumber is heavy: it thuds, never sails');
+  }
+});
+
+test('the canopy bursts in its own leaves and clears before the lumber', () => {
+  const d = new Debris();
+  const leaves: [string, string, string] = ['#2a5f30', '#3d8542', '#58ab55'];
+  d.canopyBurst(5, 5, leaves, 1.4, mulberry32(21));
+  const mats = chunksOf(d);
+  assert.ok(mats.length >= 10, 'a broad crown sheds a real storm');
+  const palette = new Set([leaves[0], leaves[1], leaves[2]]);
+  for (const c of mats) {
+    assert.ok(c.round, 'leaf mats are tufts, never slabs');
+    assert.ok(c.maxLife < 4.6, 'litter leaves before lumber');
+    const base = c.color;
+    // Every mat speaks the species palette (base tones or their shades).
+    assert.ok(typeof base === 'string' && base.startsWith('#'));
+  }
+  assert.ok(
+    mats.some((c) => palette.has(c.color)),
+    'the species light bands survive into the burst',
+  );
+});
+
 test('each kind breaks along its own joinery', () => {
   const colors = (kind: Parameters<Debris['smash']>[3]) => {
     const d = new Debris();

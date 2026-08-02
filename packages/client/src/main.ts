@@ -1974,11 +1974,16 @@ game.onTileChange = (tx, ty, prev, next) => {
     renderer.addFallingTree(tx, ty, prev, dir);
     // A felled tree is a landmark event — heard far, but from its place.
     sfx.spatial(tileAt, 'far', () => sfx.treeFall());
-    // Impact lands at ~720ms of the 3.2s fall timeline.
+    // THE STRIKE lands at 860ms of the felling acts; THE BUCK cracks
+    // the lying trunk into lumber at 1450ms (renderer timeline).
     window.setTimeout(() => {
       sfx.spatial(tileAt, 'far', () => sfx.treeImpact());
       if (sfx.listenerDist(tileAt.x, tileAt.y) < 7) input.rumble(0.45, 0.3, 150);
-    }, 720);
+    }, 860);
+    window.setTimeout(() => {
+      sfx.spatial(tileAt, 'mid', () => sfx.propSmash());
+      if (sfx.listenerDist(tileAt.x, tileAt.y) < 7) input.rumble(0.25, 0.2, 90);
+    }, 1450);
   } else if (
     prev !== undefined &&
     ROCK_TILES.includes(prev) &&

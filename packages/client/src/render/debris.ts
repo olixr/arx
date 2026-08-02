@@ -205,6 +205,106 @@ export class Debris {
   }
 
   /**
+   * THE TIMBER LAW's crown beat: the instant a felled tree strikes
+   * the ground its foliage stops being a canopy and becomes a burst
+   * of leaf mats — round tufts in the species' own light bands,
+   * popped up and out from the crown's landing point, spinning
+   * lively and lying only briefly (litter leaves before lumber).
+   * `spread` is the crown half-width in tiles: a broad oak sheds a
+   * bigger storm than a wiry pine.
+   */
+  canopyBurst(
+    x: number,
+    y: number,
+    leaves: readonly [string, string, string],
+    spread: number,
+    rand: () => number = Math.random,
+  ): void {
+    const tones = [
+      leaves[1], leaves[2], shade(leaves[1], -12), shade(leaves[2], 14), leaves[0],
+    ];
+    const n = 8 + Math.round(spread * 6) + Math.floor(rand() * 3);
+    for (let i = 0; i < n; i++) {
+      const c = this.take();
+      const ang = rand() * Math.PI * 2;
+      const sp = 0.8 + rand() * 1.9;
+      c.x = x + (rand() - 0.5) * spread * 0.9;
+      c.y = y + (rand() - 0.5) * spread * 0.6;
+      c.z = 0.25 + rand() * 0.55; // burst from the crown's body
+      c.vx = Math.cos(ang) * sp;
+      c.vy = Math.sin(ang) * sp * 0.8;
+      c.vz = 1.0 + rand() * 2.1;
+      c.rot = rand() * Math.PI * 2;
+      c.spin = (rand() - 0.5) * 22; // leaves tumble livelier than lumber
+      c.len = 0.1 + rand() * 0.1;
+      c.wid = c.len;
+      c.color = pick(rand, tones);
+      c.stripe = rand() < 0.4 ? shade(leaves[2], 22) : null;
+      c.round = true;
+      c.settled = false;
+      c.life = 0;
+      c.maxLife = 2.6 + rand() * 1.8;
+    }
+  }
+
+  /**
+   * THE TIMBER LAW's last word: the lying trunk bucks into lumber.
+   * Chunks spawn ALONG the lie — butt to crown down the ground
+   * direction the caller measured (dx/dy already foreshortened, so
+   * the lumber line lands exactly where the trunk art lay) — and the
+   * break is heavy: billets and rounds pop UP off the break line,
+   * scatter barely, thud, and lie in a log-strewn row. Rounds carry
+   * a lit end-grain disc; billets carry the bark's own stripe.
+   */
+  timber(
+    x: number,
+    y: number,
+    dx: number,
+    dy: number,
+    reach: number,
+    bark: { base: string; lit: string; dark: string },
+    rand: () => number = Math.random,
+  ): void {
+    const tones = [bark.base, shade(bark.base, 10), shade(bark.base, -10), bark.dark];
+    const nB = 3 + Math.round(reach * 1.1);
+    const nR = 2 + (rand() < 0.5 ? 1 : 0);
+    const n = nB + nR;
+    for (let i = 0; i < n; i++) {
+      const round = i >= nB;
+      const c = this.take();
+      // Every chunk breaks off its own station along the trunk.
+      const u = n > 1 ? i / (n - 1) : 0.5;
+      const along = 0.25 + (u + (rand() - 0.5) * 0.18) * Math.max(0.4, reach - 0.5);
+      const ang = rand() * Math.PI * 2;
+      const sp = (0.4 + rand() * 0.9) * (round ? 1.35 : 1);
+      c.x = x + dx * along + (rand() - 0.5) * 0.12;
+      c.y = y + dy * along + (rand() - 0.5) * 0.12;
+      c.z = 0.08 + rand() * 0.2; // the trunk lies LOW — it breaks low
+      c.vx = Math.cos(ang) * sp;
+      c.vy = Math.sin(ang) * sp * 0.8;
+      c.vz = (1.1 + rand() * 1.5) * (round ? 1.25 : 1); // the pop is UP
+      c.rot = rand() * Math.PI * 2;
+      c.spin = (rand() - 0.5) * 11; // lumber turns heavy, never twirls
+      if (round) {
+        c.len = 0.2 + rand() * 0.1;
+        c.wid = c.len;
+        c.color = pick(rand, tones);
+        c.stripe = bark.lit; // sawn end grain
+        c.round = true;
+      } else {
+        c.len = 0.3 + rand() * 0.25;
+        c.wid = 0.09 + rand() * 0.04;
+        c.color = pick(rand, tones);
+        c.stripe = rand() < 0.65 ? shade(bark.base, 20) : null;
+        c.round = false;
+      }
+      c.settled = false;
+      c.life = 0;
+      c.maxLife = 5.5 + rand() * 3;
+    }
+  }
+
+  /**
    * Step every chunk: gravity, bounce, and axis-separated wall tests
    * against the live collision field (the corpse-skid law) — debris
    * never crosses a wall, it thuds and drops.

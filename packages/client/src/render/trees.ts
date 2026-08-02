@@ -1096,6 +1096,15 @@ export interface TreeFrame {
   windOverride?: number;
   /** 0..1 growth: saplings ~0.45, grow-in eases to 1. Default 1. */
   grow?: number;
+  /**
+   * Foliage presence 0..1 (default 1). THE TIMBER LAW: at the felling
+   * strike the crown bursts into debris and the model keeps painting
+   * as a bare snag — 0 skips every leaf voice (canopy mass, willow
+   * cascade, pine tiers) while the wood (trunk, boughs, root flares,
+   * bark seams) stands untouched. Fractions paint the foliage at that
+   * alpha for handoff frames.
+   */
+  foliage?: number;
 }
 
 /** Fill a tapered branch as a bark polygon, optionally edge-lit. */
@@ -1156,6 +1165,7 @@ function fillLimb(
 export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFrame): number {
   const s = f.s;
   const g = f.grow ?? 1;
+  const fol = Math.max(0, Math.min(1, f.foliage ?? 1));
   // Young trees are thin as well as short.
   const wMul = 0.45 + 0.55 * g;
   const rMul = 0.5 + 0.5 * g;
@@ -1216,9 +1226,9 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
    * left flank into `partPath`, the batched strand part-lines that
    * keep same-tone fronds reading combed instead of fusing flat.
    */
-  const partPath = cSw && f.s > 18 ? new Path2D() : null;
+  const partPath = cSw && fol > 0 && f.s > 18 ? new Path2D() : null;
   const fillFalls = (tone: number, color: string): void => {
-    if (!cSw) return;
+    if (!cSw || fol <= 0) return;
     const path = new Path2D();
     let any = false;
     for (let i = 0; i < nc; i++) {
@@ -1251,7 +1261,12 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     }
     if (!any) return;
     ctx.fillStyle = color;
-    ctx.fill(path);
+    if (fol < 1) {
+      const pa = ctx.globalAlpha;
+      ctx.globalAlpha = pa * fol;
+      ctx.fill(path);
+      ctx.globalAlpha = pa;
+    } else ctx.fill(path);
   };
 
   // Back streamers paint before any wood: the willow's bole stands
@@ -1333,7 +1348,12 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
       ctx.strokeStyle = shade(m.leaves[0], -6);
       ctx.lineWidth = Math.max(1, s * 0.026);
       ctx.lineJoin = 'round';
-      ctx.stroke(partPath);
+      if (fol < 1) {
+        const pa = ctx.globalAlpha;
+        ctx.globalAlpha = pa * fol;
+        ctx.stroke(partPath);
+        ctx.globalAlpha = pa;
+      } else ctx.stroke(partPath);
     }
     fillFalls(3, shade(m.leaves[2], 18));
   }
@@ -1343,6 +1363,7 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   // bright facets on the lit crown. Single-fill-per-tone is what
   // fuses the clusters into one sculpted low-poly volume (and it is
   // 6 fills per tree instead of 30).
+  if (fol <= 0) return wind; // the crown already burst — bare snag
   const shadePath = new Path2D();
   const tonePaths = [new Path2D(), new Path2D(), new Path2D()];
   const litPath = new Path2D();
@@ -1379,6 +1400,8 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     }
   }
   if (drew) {
+    const pa = ctx.globalAlpha;
+    if (fol < 1) ctx.globalAlpha = pa * fol;
     // Depth rim under and right of the whole mass.
     ctx.fillStyle = shade(m.leaves[0], -20);
     ctx.fill(shadePath);
@@ -1392,6 +1415,7 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     // Sun facets on the crown.
     ctx.fillStyle = shade(m.leaves[2], 24);
     ctx.fill(litPath);
+    if (fol < 1) ctx.globalAlpha = pa;
   }
 
   return wind;

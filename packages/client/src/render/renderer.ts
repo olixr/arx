@@ -136,6 +136,7 @@ import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
 import { paintTree, saplingModel,
   treeModel, type TreeModel } from './trees.js';
+import { dust } from './matter/dust.js';
 import {
   DITHER_CELL,
   FADE_BODY_BELOW,
@@ -15943,6 +15944,7 @@ export class Renderer {
     tSec: number,
     bendOverride: number | undefined,
     grow = 1,
+    foliage = 1,
   ): void {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
@@ -15972,6 +15974,7 @@ export class Renderer {
         tSec,
         windOverride: bendOverride,
         grow,
+        foliage,
       });
       if (fade < 1) this.ctx.globalAlpha = 1;
     } else {
@@ -16262,9 +16265,26 @@ export class Renderer {
 
 
   /**
-   * A felled tree: shudder → topple (varied azimuth) → impact with a
-   * rolling wall of dust → it lies on the ground for a beat → it breaks
-   * apart into log chunks and a last billow of dust. Timeline in ms.
+   * THE TREE COMES DOWN IN ACTS — the felling ceremony (timeline ms):
+   *
+   * I   THE BITE (0-260): the cut takes. The tree shudders harder and
+   *     harder, the kerf spits bark chips back at the cutter, one
+   *     breath of dust kicks off the roots. The outline ring HOLDS —
+   *     the body rect now sweeps with the rotation, so the brand ink
+   *     rides the whole fall instead of letting go at the first lean.
+   * II  THE TOPPLE (260-860): the trunk hinges over the stump under a
+   *     gravity ease-in while the crown DRAGS behind the wood (the
+   *     windOverride bend opposes the angular velocity — secondary
+   *     motion), shedding a stream of leaves along the swept arc.
+   * III THE STRIKE (860): the crown slams down. The foliage stops
+   *     being a canopy IN THIS FRAME — it bursts off as spinning leaf
+   *     mats (Debris) under a settling leaf-rain, dust gouges out
+   *     along the lie, and what's left is a bare log that BOUNCES
+   *     twice, whips, and butt-kicks off the stump.
+   * IV  THE BUCK (1450): the snag cracks into rounds and billets
+   *     strewn exactly along the lie — real bodies that tumble, thud,
+   *     skid, lie for seconds, then politely fade. The model never
+   *     fades out: it BECOMES the lumber.
    */
   private readonly fallingTrees: Array<{
     tx: number;
@@ -16276,28 +16296,52 @@ export class Renderer {
     lie: number; // final lie angle magnitude
     az: number; // world fall azimuth (debris direction)
     born: number;
-    impacted: boolean;
-    brokeUp: boolean;
+    struck: boolean; // Act III fired (canopy burst, gouge, shake)
+    b2: boolean; // second-bounce dust kick fired
+    bucked: boolean; // Act IV fired (lumber handoff)
   }> = [];
+
+  /** Ground reach of a lying trunk, butt → crown, in tiles. */
+  private static fellReach(m: TreeModel): number {
+    return 0.5 + m.height * 0.55;
+  }
 
   addFallingTree(tx: number, ty: number, tile: Tile, dir: number): void {
     const h = hashCoords(41, tx, ty);
     const sign = Math.sign(dir) || 1;
     const r = (n: number): number => (hashCoords(17, h & 0xffff, n) % 1000) / 1000;
+    // Azimuth variance: mostly sideways, but each fall differs.
+    const az = sign > 0 ? 0.15 + (r(3) - 0.5) * 0.9 : Math.PI - 0.15 + (r(3) - 0.5) * 0.9;
     this.fallingTrees.push({
       tx,
       ty,
       tile,
       h,
       dir: sign,
-      // Azimuth variance: mostly sideways, but each fall differs.
       tilt: (r(1) - 0.5) * 0.5,
       lie: 1.45 + (r(2) - 0.3) * 0.28,
-      az: sign > 0 ? 0.15 + (r(3) - 0.5) * 0.9 : Math.PI - 0.15 + (r(3) - 0.5) * 0.9,
+      az,
       born: performance.now(),
-      impacted: false,
-      brokeUp: false,
+      struck: false,
+      b2: false,
+      bucked: false,
     });
+    // THE BITE announces itself: kerf chips spit AGAINST the fall
+    // (the cutter's side of the trunk) and the roots kick one breath
+    // of dust as the grip lets go.
+    const m = this.treeOrSaplingModel(tile, h);
+    const cx = tx + 0.5;
+    const cy = ty + 0.5;
+    this.particles.burst(
+      cx - Math.cos(az) * 0.3, cy - Math.sin(az) * 0.18, 6,
+      [m.bark, m.barkLit, shade(m.bark, -14)],
+      {
+        shape: 'shard', speed: 1.6, life: 0.8, size: 0.05, gravity: 0,
+        dir: az + Math.PI, spread: 1.0, z: 0.45, vz: 1.4, zg: 7,
+        land: 'settle', layer: 'world', spin: 14,
+      },
+    );
+    dust.deployments.kick!({ particles: this.particles }, cx, cy + 0.15, { scale: 0.5 });
   }
 
   // --------------------------------------------------- breaking rocks
@@ -16371,111 +16415,181 @@ export class Renderer {
   private collectFallingTrees(items: DrawItem[]): void {
     const now = performance.now();
     const tSec = now / 1000;
-    // Timeline (ms): shudder 0-180, topple 180-720, bounce 720-900,
-    // lie 900-2500, breakup 2500-3200.
-    const END = 3200;
+    // The acts (ms): BITE 0-260, TOPPLE 260-860, STRIKE 860 (canopy
+    // bursts, log bounces/whips/butt-kicks), BUCK 1450 (lumber
+    // handoff — the record ends here; Debris carries the aftermath).
+    const BITE = 260;
+    const STRIKE = 860;
+    const BUCK = 1450;
     for (let i = this.fallingTrees.length - 1; i >= 0; i--) {
       const ft = this.fallingTrees[i]!;
       const ms = now - ft.born;
-      if (ms >= END) {
-        this.fallingTrees.splice(i, 1);
-        continue;
-      }
       const cx = ft.tx + 0.5;
       const cy = ft.ty + 0.5;
       const cosA = Math.cos(ft.az);
       const sinA = Math.sin(ft.az) * this.camera.yScale;
+      const m = this.treeOrSaplingModel(ft.tile, ft.h);
+      const reach = Renderer.fellReach(m);
 
-      // Impact: a wall of dust rolls out along the fall, plus a leaf
-      // burst where the crown slams down.
-      if (ms >= 720 && !ft.impacted) {
-        ft.impacted = true;
-        this.shake(3);
-        const lx = cx + cosA * 2.4;
-        const ly = cy + sinA * 2.4;
-        // Rolling dust: big, slow, billowing blocks that settle.
-        this.particles.burst(lx, ly, 22, ['#a89880', '#bcae94', '#9b8a70', '#c8bca4'], {
-          speed: 2.6, life: 1.1, size: 0.14, gravity: 0.6, drag: 3.2,
-          grow: 0.18, dir: ft.az, spread: 1.5,
-        });
-        this.particles.burst(cx + cosA, cy + sinA, 12, ['#9b8a70', '#b5a488'], {
-          speed: 1.6, life: 0.9, size: 0.12, gravity: 0.5, drag: 3, grow: 0.14,
-        });
-        // Crown leaf spray.
-        this.particles.burst(lx, ly - 0.2, 20, ['#3a8140', '#35773a', '#2f6135', '#c9a441'], {
-          speed: 2.4, life: 0.9, size: 0.07, up: true, gravity: 3.5, drag: 1.2,
-        });
+      // --- Act III, THE STRIKE: the crown slams down and stops being
+      // foliage — leaf mats fly as real bodies, a leaf-rain settles
+      // over them, and the earth answers in the dust library's voice.
+      if (ms >= STRIKE && !ft.struck) {
+        ft.struck = true;
+        this.shake(4);
+        const lx = cx + cosA * reach;
+        const ly = cy + sinA * reach;
+        const host = { particles: this.particles };
+        dust.deployments.gouge!(host, lx, ly, { dir: ft.az, scale: 0.9 + m.height * 0.1 });
+        dust.deployments.skirt!(host, lx, ly, { radius: 0.5, dur: 0.4, scale: 0.8 });
+        dust.deployments.kick!(host, cx + cosA * 0.4, cy + sinA * 0.4, { scale: 0.7 });
+        this.debris.canopyBurst(lx, ly, m.leaves, Math.max(0.8, m.spread));
+        // The leaf-rain: shed high, flutters down, lies where it falls.
+        this.particles.burst(
+          lx, ly, 16 + Math.round(m.spread * 6),
+          [m.leaves[1], m.leaves[2], '#c9a441'],
+          {
+            shape: 'shard', speed: 1.6, life: 1.5, size: 0.055, gravity: 0,
+            z: 0.5, vz: 2.0, zg: 5.5, land: 'settle', layer: 'world',
+            drag: 0.8, spin: 11, shadow: 0,
+          },
+        );
       }
 
-      // Breakup: the trunk splits into tumbling log chunks + a last
-      // dust billow instead of just vanishing.
-      if (ms >= 2500 && !ft.brokeUp) {
-        ft.brokeUp = true;
-        const felled = treeModel(ft.tile, ft.h);
-        const bark = felled.bark;
-        // Bigger trees break into more log chunks along a longer lie.
-        const chunkN = Math.max(4, Math.round(felled.height * 1.1));
-        for (let c = 0; c < chunkN; c++) {
-          const along = 0.6 + c * 0.7;
-          this.particles.burst(cx + cosA * along, cy + sinA * along, 1, [bark, shade(bark, 14)], {
-            speed: 1.4, life: 0.8, size: 0.2, gravity: 6, drag: 1.5, dir: -Math.PI / 2, spread: 1.6,
+      // The second bounce taps the ground again, quieter.
+      if (ft.struck && !ft.b2 && ms >= STRIKE + 210) {
+        ft.b2 = true;
+        const d2 = reach * 0.7;
+        dust.deployments.kick!(
+          { particles: this.particles }, cx + cosA * d2, cy + sinA * d2, { scale: 0.5 },
+        );
+      }
+
+      // --- Act IV, THE BUCK: the snag cracks into lumber strewn along
+      // the lie. The model hands off to Debris and the record ends —
+      // nothing whole ever fades; the tree BECOMES its pieces.
+      if (ms >= BUCK) {
+        if (!ft.bucked) {
+          ft.bucked = true;
+          this.shake(2);
+          const host = { particles: this.particles };
+          const midX = cx + cosA * reach * 0.5;
+          const midY = cy + sinA * reach * 0.5;
+          dust.deployments.billow!(host, midX, midY, {
+            radius: Math.max(0.6, reach * 0.45), dur: 0.8, scale: 0.9,
+          });
+          dust.deployments.kick!(host, cx, cy, { scale: 0.5 });
+          this.debris.timber(cx, cy, cosA, sinA, reach, {
+            base: m.bark, lit: m.barkLit, dark: m.barkDark,
           });
         }
-        this.particles.burst(cx + cosA * 1.6, cy + sinA * 1.6, 14, ['#a89880', '#bcae94', '#9b8a70'], {
-          speed: 1.8, life: 1.0, size: 0.15, gravity: 0.4, drag: 3, grow: 0.16, dir: ft.az, spread: 2,
-        });
+        this.fallingTrees.splice(i, 1);
+        continue;
       }
 
-      // The shudder phase keeps the standing tree's outline ring (its
-      // cached sprite carried one baked in — dropping it a beat early
-      // reads as a flicker). Once the topple starts the ring lets go:
-      // rotation sweeps the bounds and the dust hides the handoff.
-      let fellBody: { x: number; y: number; w: number; h: number } | undefined;
-      if (ms < 180) {
-        const pB = this.camera.worldToScreen(cx, cy, this.w, this.h);
-        pB.y -= this.renderLift(cx, cy) * this.camera.scale;
-        fellBody = this.treeBody(ft.tile, ft.h, pB.x, pB.y);
+      // --- The pose this frame: hinge angle, crown-lag bend, butt-kick
+      // slide. Computed here (not in the draw closure) so the swept
+      // outline body below matches the painted art exactly.
+      let angle: number;
+      let bend: number;
+      if (ms < BITE) {
+        // The cut bites: the shudder escalates toward the letting-go.
+        const u = ms / BITE;
+        angle = 0;
+        bend = Math.sin(now * 0.085) * 0.55 * Math.pow(u, 1.5);
+      } else if (ms < STRIKE) {
+        const u = (ms - BITE) / (STRIKE - BITE);
+        angle = ft.lie * Math.pow(u, 2.2); // gravity accelerates the topple
+        // Secondary motion: the crown DRAGS behind the hinging wood,
+        // harder as the fall speeds up (bend opposes angular velocity).
+        const angVel = (ft.lie * 2.2 * Math.pow(u, 1.2)) / 0.6; // rad/s
+        bend = -ft.dir * Math.min(1.3, angVel * 0.28);
+      } else {
+        const t = ms - STRIKE;
+        // The bare log bounces twice, each rebound smaller...
+        if (t < 210) angle = ft.lie - Math.sin((t / 210) * Math.PI) * 0.13;
+        else if (t < 400) angle = ft.lie - Math.sin(((t - 210) / 190) * Math.PI) * 0.05;
+        else angle = ft.lie;
+        // ...while the arrested crown WHIPS — a damped oscillation
+        // continuing the lag it carried into the ground.
+        bend = -ft.dir * 1.2 * Math.cos(t * 0.024) * Math.exp(-t / 240);
       }
+      // The butt kicks off the stump as the crown arrests (timber's
+      // classic counter-throw), easing out along the fall azimuth.
+      let slide = 0;
+      if (ms >= STRIKE) {
+        const k = Math.min(1, (ms - STRIKE) / 170);
+        slide = 0.24 * (1 - (1 - k) * (1 - k));
+      }
+
+      // --- Act II's leaf-stream: the crown sheds along the swept arc,
+      // thicker as the fall accelerates (frameDt-gated emission).
+      if (ms >= BITE && ms < STRIKE && angle > 0.12) {
+        const prog = angle / ft.lie;
+        if (Math.random() < this.frameDt * 26 * prog) {
+          const dNow = reach * (Math.sin(angle) / Math.sin(ft.lie));
+          const zNow = Math.max(0.2, m.height * 0.8 * Math.cos(angle));
+          this.particles.burst(
+            cx + cosA * dNow, cy + sinA * dNow, 1, [m.leaves[1], m.leaves[2]],
+            {
+              shape: 'shard', speed: 0.5, life: 1.3, size: 0.055, gravity: 0,
+              z: zNow, vz: 0.4, zg: 2.4, land: 'settle', layer: 'world',
+              drag: 1.2, spin: 7, wobble: 0.5, shadow: 0,
+            },
+          );
+        }
+      }
+
+      // --- The swept outline body: the standing tree's bounds rotated
+      // by this frame's hinge angle about the ground pivot (plus the
+      // butt-kick slide), so paintOutlineScratch replays the rotated
+      // art and THE RING RIDES THE WHOLE FALL — the brand ink never
+      // blinks off at the first lean the way it used to.
+      const s = this.camera.scale;
+      const syT = s * this.camera.yScale;
+      const lift = this.renderLift(cx, cy) * s;
+      const p = this.camera.worldToScreen(cx, cy, this.w, this.h);
+      p.y -= lift;
+      const groundY = p.y + syT * 0.3;
+      const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
+      const top = (m.height * 1.18 + 0.45) * s;
+      const theta = ft.dir * angle + ft.tilt * (ft.lie > 0 ? Math.min(1, angle / ft.lie) : 0);
+      const sdx = Math.cos(ft.az) * slide * s;
+      const sdy = Math.sin(ft.az) * slide * syT;
+      const cosT = Math.cos(theta);
+      const sinT = Math.sin(theta);
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const qx of [p.x - half, p.x + half]) {
+        for (const qy of [groundY - top, groundY + 0.3 * s]) {
+          const rx = p.x + (qx - p.x) * cosT - (qy - groundY) * sinT + sdx;
+          const ry = groundY + (qx - p.x) * sinT + (qy - groundY) * cosT + sdy;
+          if (rx < minX) minX = rx;
+          if (rx > maxX) maxX = rx;
+          if (ry < minY) minY = ry;
+          if (ry > maxY) maxY = ry;
+        }
+      }
+      const pad = 0.45 * s; // shudder/lag/whip throw past the rigid bounds
+      const fellBody = {
+        x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2,
+      };
+      const foliage = ft.struck ? 0 : 1;
       items.push({
         sortY: ft.ty + 0.9,
-        elevated: this.renderLift(cx, cy) !== 0,
+        elevated: lift !== 0,
         strat: this.stratAt(cx, cy),
         body: fellBody,
         draw: () => {
           const ctx = this.ctx;
-          const p = this.camera.worldToScreen(cx, cy, this.w, this.h);
-          p.y -= this.renderLift(cx, cy) * this.camera.scale;
-          const syT = this.camera.scale * this.camera.yScale;
-          const pivotY = p.y + syT * 0.3;
-          let angle: number;
-          let bend: number | undefined;
-          if (ms < 180) {
-            // The cut bites: the tree shudders in place.
-            const u = ms / 180;
-            angle = 0;
-            bend = Math.sin(now * 0.08) * 0.5 * u;
-          } else if (ms < 720) {
-            const u = (ms - 180) / 540;
-            angle = ft.lie * u * u; // gravity accelerates the topple
-            bend = 0;
-          } else if (ms < 900) {
-            const u = (ms - 720) / 180;
-            angle = ft.lie - Math.sin(u * Math.PI) * 0.06; // settle bounce
-            bend = 0;
-          } else {
-            angle = ft.lie; // lying on the ground
-            bend = 0;
-          }
-          // Breakup fade only at the very end.
-          const alpha = ms > 2600 ? Math.max(0, 1 - (ms - 2600) / 600) : 1;
           ctx.save();
-          if (alpha < 1) ctx.globalAlpha = alpha;
-          ctx.translate(p.x, pivotY);
-          ctx.rotate(ft.dir * angle + ft.tilt * Math.min(1, angle / ft.lie));
-          ctx.translate(-p.x, -pivotY);
-          this.drawTree(p.x, p.y, cx, cy, ft.h, ft.tile, tSec, bend);
+          ctx.translate(p.x + sdx, groundY + sdy);
+          ctx.rotate(theta);
+          ctx.translate(-p.x, -groundY);
+          this.drawTree(p.x, p.y, cx, cy, ft.h, ft.tile, tSec, bend, 1, foliage);
           ctx.restore();
-          ctx.globalAlpha = 1;
         },
       });
     }
