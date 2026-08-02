@@ -14,6 +14,11 @@
  * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
  * 120fps is a law. No signature shares a centerpiece with any other
  * file's — these are new sentences, not louder readings of old ones.
+ *
+ * FX v5 wave 3h: four bows speak library matter (storm, fire, shadow
+ * — ONE-VOICE LAW; stormskip's touches discharge on their crossing
+ * frames). The briar, the bird-light, the moon-glass, the scent, the
+ * music, and the star-net stay each bow's own.
  */
 import type { AbilitySig } from './fxSignatures.js';
 export declare const FLIGHTS_SIGS: Record<string, AbilitySig>;

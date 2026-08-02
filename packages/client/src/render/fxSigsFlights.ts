@@ -14,10 +14,16 @@
  * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
  * 120fps is a law. No signature shares a centerpiece with any other
  * file's — these are new sentences, not louder readings of old ones.
+ *
+ * FX v5 wave 3h: four bows speak library matter (storm, fire, shadow
+ * — ONE-VOICE LAW; stormskip's touches discharge on their crossing
+ * frames). The briar, the bird-light, the moon-glass, the scent, the
+ * music, and the star-net stay each bow's own.
  */
 
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { storm, fire, shadow, asMatter } from './matter/index.js';
 
 // ----------------------------------------------------------- wakewood
 
@@ -257,26 +263,29 @@ const glasshail: AbilitySig = {
  */
 const stormskip: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x47);
-    for (let k = 0; k < 4; k++) {
-      c.particles.burst(c.wx2, c.wy2, 1, [c.st.spark, c.st.core], {
-        speed: 1.4 + rand(), life: 0.4, size: 0.06, gravity: 2,
-        dir: rand() * Math.PI * 2, spread: 0.5, shape: 'glint',
-      });
-    }
+    // The last skip lands as one TRUE discharge at the far end.
+    storm.deployments.impact!(asMatter(c), c.wx2, c.wy2, { scale: 0.6 });
   },
   ground(c) {
     const { ctx, st, t, squash } = c;
     const fade = 1 - t;
     ctx.save();
     // Three touch points along the strike line, rings spreading in
-    // arrival order.
+    // arrival order — and each touch DISCHARGES on its crossing
+    // frame, a small true crackle as the stone kisses the water.
     const touches = [0.15, 0.55, 0.95];
+    const lifeMs = t > 0 ? c.age / t : 0;
+    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
     for (let k = 0; k < 3; k++) {
       const u = touches[k]!;
       const x = c.px + (c.px2 - c.px) * u;
       const y = c.py + (c.py2 - c.py) * u;
       const born = k * 0.18;
+      if (k > 0 && tPrev < born && t >= born) {
+        storm.deployments.impact!(asMatter(c),
+          c.wx + (c.wx2 - c.wx) * u, c.wy + (c.wy2 - c.wy) * u,
+          { scale: 0.25 });
+      }
       const rt = Math.max(0, Math.min(1, (t - born) * 2.2));
       if (rt <= 0) continue;
       ctx.globalAlpha = (1 - rt) * 0.8 * fade;
@@ -321,14 +330,10 @@ const stormskip: AbilitySig = {
  */
 const charfall: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x49);
-    for (let k = 0; k < 6; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx, c.wy - 0.2, 1, [c.st.spark, c.st.mid], {
-        speed: 1.6 + rand() * 1.2, life: 0.6, size: 0.08, gravity: -2.5,
-        dir: a, spread: 0.4, flicker: 0.3, fade: c.st.deep,
-      });
-    }
+    // The kiln door opens on TRUE fire: a standing plume over the
+    // grate — licks through the full combustion story, sparks up the
+    // draft, soot breathing off the top.
+    fire.deployments.plume!(asMatter(c), c.wx, c.wy, { dur: 0.9, scale: 0.4 });
   },
   ground(c) {
     const { ctx, st, t, squash } = c;
@@ -390,14 +395,9 @@ const charfall: AbilitySig = {
  */
 const hushfall: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x4b);
-    for (let k = 0; k < 5; k++) {
-      const a = c.dir + (rand() - 0.5) * 1.2;
-      c.particles.burst(c.wx, c.wy - 0.3, 1, [c.st.mid, c.st.deep], {
-        speed: 1.0 + rand() * 0.6, life: 0.55, size: 0.08, gravity: 1.2,
-        dir: a, spread: 0.3, fade: c.st.deep,
-      });
-    }
+    // The dark opens its wings as one soft TRUE exhale — a small
+    // shadow bloom, ink with a bruise-violet edge, quiet as the owl.
+    shadow.deployments.bloom!(asMatter(c), c.wx, c.wy, { scale: 0.35 });
   },
   ground(c) {
     const { ctx, st, t, squash } = c;
@@ -660,14 +660,9 @@ const nightweft: AbilitySig = {
  */
 const the_anvil: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x53);
-    for (let k = 0; k < 6; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx, c.wy - 0.2, 1, [c.st.spark, c.st.core], {
-        speed: 2.0 + rand() * 1.2, life: 0.5, size: 0.07, gravity: 5,
-        dir: a, spread: 0.3, shape: 'glint', trail: 8, trailColor: c.st.mid,
-      });
-    }
+    // The strike earths as one TRUE discharge at the bolt's foot —
+    // and nothing round with it: anvils do not ripple.
+    storm.deployments.impact!(asMatter(c), c.wx, c.wy, { scale: 0.8 });
   },
   ground(c) {
     const { ctx, st, t, squash } = c;

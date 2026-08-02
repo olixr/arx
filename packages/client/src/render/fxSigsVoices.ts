@@ -13,11 +13,18 @@
  * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
  * 120fps is a law. No signature shares a centerpiece with any other
  * file's — these are new sentences, not louder readings of old ones.
+ *
+ * FX v5 wave 3h: five staffs speak library matter (radiance, frost,
+ * fire, blood, storm — ONE-VOICE LAW); moonfall's doc-promised cold
+ * fog finally exists. wild_root's growth, shearwind's wind,
+ * hollowing's void, axiom's proof, and perihelion's polite visitor
+ * ("arrival, not explosion") stay the staffs' own.
  */
 
 import { shade } from './rig.js';
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { radiance, frost, fire, blood, storm, asMatter } from './matter/index.js';
 
 // ---------------------------------------------------------- wild_root
 
@@ -125,6 +132,11 @@ const wild_root: AbilitySig = {
  * ground, round, unreasonable, gone by full day.
  */
 const day_breaks: AbilitySig = {
+  spawn(c) {
+    // The delivered dawn arrives as TRUE light: one rising
+    // congregation at the terminus, under the small sun's climb.
+    radiance.deployments.bloom!(asMatter(c), c.wx2, c.wy2, { scale: 0.6 });
+  },
   ground(c) {
     const { ctx, st, t } = c;
     const dx = c.px2 - c.px;
@@ -198,18 +210,12 @@ const day_breaks: AbilitySig = {
  */
 const moonfall: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x51);
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.6,
-        c.wy + Math.sin(a) * c.radius * 0.6 * c.squash,
-        1, [c.st.core, c.st.mid], {
-          speed: 1 + rand() * 0.8, life: 0.6, size: 0.06, gravity: 2,
-          dir: a, spread: 0.2, shape: 'glint',
-        },
-      );
-    }
+    // Cold fog beads roll off the edge — the promise the doc always
+    // made, kept as TRUE frost weather: the quiet bloom pushing cold
+    // and moon-sparkle out over the settling disc's rim.
+    frost.deployments.bloom!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.8, dur: 1.0, scale: 0.8,
+    });
   },
   ground(c) {
     const { ctx, st, t, squash } = c;
@@ -321,14 +327,10 @@ const shearwind: AbilitySig = {
  */
 const the_molt: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x71);
-    for (let k = 0; k < 4; k++) {
-      c.particles.burst(c.wx, c.wy - 0.2, 1, [c.st.core, c.st.spark], {
-        speed: 0.8 + rand(), life: 0.55, size: 0.06, gravity: -2,
-        dir: -Math.PI / 2 + (rand() - 0.5) * 1.2, spread: 0.3,
-        flicker: 0.4, wobble: 0.8, shape: 'glint',
-      });
-    }
+    // The ember lint flutters TRUE: a small standing burn at the
+    // stamp while the quill curls to ash — licks, sparks, and the
+    // soot of everything the feather was.
+    fire.deployments.plume!(asMatter(c), c.wx, c.wy, { dur: 0.6, scale: 0.25 });
   },
   ground(c) {
     const { ctx, st, t } = c;
@@ -438,13 +440,9 @@ const hollowing: AbilitySig = {
  */
 const red_toll: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x91);
-    for (let k = 0; k < 5; k++) {
-      c.particles.burst(c.wx2, c.wy2 - 0.3, 1, [c.st.mid, c.st.core], {
-        speed: 1 + rand(), life: 0.5, size: 0.06, gravity: 5,
-        dir: rand() * Math.PI * 2, spread: 0.2,
-      });
-    }
+    // The far end gives what the cup collects: TRUE red at the
+    // wound — drops that land, splat, and dry where the toll began.
+    blood.deployments.spatter!(asMatter(c), c.wx2, c.wy2, { scale: 0.45, radius: 0.4 });
   },
   ground(c) {
     const { ctx, st, t } = c;
@@ -637,12 +635,16 @@ const perihelion: AbilitySig = {
 const crownstorm: AbilitySig = {
   spawn(c) {
     const rand = srand(c.seed ^ 0xb1);
-    for (let k = 0; k < 6; k++) {
+    // The court's gold scatters — the crown's own light, bespoke.
+    for (let k = 0; k < 4; k++) {
       c.particles.burst(c.wx, c.wy - 0.4, 1, [c.st.core, c.st.spark], {
         speed: 1.6 + rand(), life: 0.5, size: 0.05, gravity: 3,
         dir: rand() * Math.PI * 2, spread: 0.2, shape: 'glint',
       });
     }
+    // The leash earths TRUE: one library discharge where the crown's
+    // arc meets the ground it rules.
+    storm.deployments.impact!(asMatter(c), c.wx, c.wy, { scale: 0.5 });
   },
   ground(c) {
     const { ctx, st, t, squash } = c;

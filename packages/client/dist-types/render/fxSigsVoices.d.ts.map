@@ -1,1 +1,1 @@
-{"version":3,"file":"fxSigsVoices.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsVoices.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;GAeG;AAIH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AA0qB5D,eAAO,MAAM,WAAW,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAWlD,CAAC"}
+{"version":3,"file":"fxSigsVoices.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsVoices.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;;;GAqBG;AAIH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AAsqB5D,eAAO,MAAM,WAAW,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAWlD,CAAC"}

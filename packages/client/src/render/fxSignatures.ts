@@ -197,6 +197,15 @@ export const MATTER_MIGRATED: readonly string[] = [
   // ever. ALL EIGHT WEAPON-ART ROSTERS NOW SPEAK THE LIBRARY.
   'first_blood', 'shoulder_check', 'loose_iron', 'hold_fast',
   'break_the_line', 'no_quarter',
+  // Wave 3h — the Ten Voices and Ten Flights: nine legendary theses
+  // speak library matter (moonfall's doc-promised cold fog finally
+  // exists; stormskip's touches discharge on their crossing frames;
+  // the_anvil takes its impact with nothing round beside it). Eleven
+  // stay each legend's own: growth, wind, void, proof, the polite
+  // visitor, the briar, bird-light, moon-glass, scent, music, and
+  // the star-net.
+  'day_breaks', 'moonfall', 'the_molt', 'red_toll', 'crownstorm',
+  'stormskip', 'charfall', 'hushfall', 'the_anvil',
 ];
 
 // ------------------------------------------------------- exemplars

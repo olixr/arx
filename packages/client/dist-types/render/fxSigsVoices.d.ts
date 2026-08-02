@@ -13,6 +13,12 @@
  * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
  * 120fps is a law. No signature shares a centerpiece with any other
  * file's — these are new sentences, not louder readings of old ones.
+ *
+ * FX v5 wave 3h: five staffs speak library matter (radiance, frost,
+ * fire, blood, storm — ONE-VOICE LAW); moonfall's doc-promised cold
+ * fog finally exists. wild_root's growth, shearwind's wind,
+ * hollowing's void, axiom's proof, and perihelion's polite visitor
+ * ("arrival, not explosion") stay the staffs' own.
  */
 import type { AbilitySig } from './fxSignatures.js';
 export declare const VOICES_SIGS: Record<string, AbilitySig>;
