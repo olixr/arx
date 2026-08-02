@@ -161,6 +161,16 @@ export declare function procShape(id: string | undefined): ProcShape | undefined
  * to shout, a yield is a small good thing happening in your hands and
  * must not. Nothing here reaches an ability's volume, ever — a proc
  * punctuates a fight, it does not interrupt one.
+ *
+ * FX v5 audit verdict (wave 3k, the epic's close): the proc voice is
+ * AUDITED BESPOKE — it never joins the matter library. Three design
+ * properties forbid it: (1) the shards are deterministic painted
+ * choreography, and the inward gather onto a moving wearer cannot be
+ * run by ballistic grains; (2) the grammar of scale — library matter
+ * leaves real stains and settling grains, which would carpet a fight
+ * in leftovers from punctuation marks; (3) procs tint by the worn
+ * school's style, and a material palette would shout over it. The
+ * floor stays the floor; a bespoke signature above it still wins.
  */
 export interface ProcVoice {
     /** Ring scale against the fx radius. */

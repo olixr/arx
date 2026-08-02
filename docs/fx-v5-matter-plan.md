@@ -134,3 +134,54 @@ exists. Matter library gets its own unit coverage on recipe shape.
 Live: the `?fx` lab + Playwright held-key casts + the
 canvas.toDataURL screenshot recipe. `npm test` + typecheck green
 before every commit; 120fps receipts at each cap or draw change.
+
+## As built — THE MATTER RISES, epic complete (2026-08-02)
+
+Three phases, twelve migration waves, every commit live-verified.
+
+**Phase 1 — THE ENGINE (0e00e51).** Height became real: z/vz/zg at
+full scale, (x,y) the ground anchor; land codes die/settle/bounce/
+splat with the per-frame landing queue; overlay/world/ground layers
+with the world layer y-sorted among bodies; 3-stop ramps; drop and
+bolt shapes (bolts re-seed on strike beats); pooled emitters
+(point/ring/rim/path/cone/orbit/disc, negative outward = gather);
+cap 2600 with bucketed overlay draw. Zero visual change shipped —
+back-compatible until migration.
+
+**Phase 2 — THE MATTER LIBRARY (6cc1688).** render/matter/: ten
+mastered materials × 4–7 deployments, each screenshot-mastered in
+the `?fx` MATTER LAB before any ability touched it. Audit laws:
+ONE-SHOT COHORTS DIE BRIGHT; masses ≥0.145 tiles; A SLOW STREAK IS
+A SLIVER; venom leads bright. Nine contract tests.
+
+**Phase 3 — THE MIGRATION (twelve waves, 65edc69 → e83d724).**
+MATTER_MIGRATED ledger: **116 of 227 signatures** speak the library;
+the other 111 are audited-bespoke, every group covered by a written
+doctrine in its file header or ledger comment. Verbs grown on
+demand: fire.gobbets, fire.fan, fire.rain, venom.bead, dust.gouge,
+blood.drink, storm.impact, water.undertow, water.curtain, radiance
+et al. Doctrines written along the way:
+
+- ONE-VOICE LAW: signatures never hand-mix owned materials.
+- THE LIBRARY TELLS TRUE STORIES: deliberate lies (pale_flame's
+  wrong-way fire) stay hand-painted.
+- THE GATE RETIRES: a sustained library emitter replaces its old
+  frameDt-gated wisps — one voice, never two.
+- GRAMMAR REFUSAL OUTRANKS ONE-VOICE: walls do not billow, anvils
+  do not ripple, the keeper's tongue is workings never blows —
+  a school's stated grammar keeps library matter out.
+- THE DOC-PROMISE LAW: audit the doc, not just the bursts —
+  moonfall's cold fog and loose_iron's dust existed in comments
+  only until the audit made them true.
+- CROSSING-FRAME BEATS: stateless lifeMs/tPrev crossings fire
+  library one-shots and emitters at exact story moments (the bite,
+  the cinch, totality, each skip); beat-clock crossings (age/800)
+  volley on a field's own pulse.
+- Bespoke matter may take v5 physics without joining the library:
+  caltrops, rampart_break's masonry, strewn_bait's grain.
+- PROC VOICE: audited bespoke forever (wornLight.ts) — the floor
+  stays the floor.
+
+**Closing receipt (2026-08-02):** 64-cast worst-case barrage,
+2421-particle peak: p50 13.4ms / p90 17.8ms / p99 22.7ms headless
+Chromium. 369 client tests + typecheck green at every wave.
