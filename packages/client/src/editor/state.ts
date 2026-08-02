@@ -122,6 +122,8 @@ export class EditorState {
   pendingNpc: string | null = null;
   /** People-library pick: the NEXT actor placement uses this slug. */
   pendingActor: string | null = null;
+  /** Bulk-edit checkmarks: cluster indices sharing the next field set. */
+  bulkChecked = new Set<number>();
 
   private readonly listeners = new Set<() => void>();
 
@@ -145,6 +147,7 @@ export class EditorState {
     this.selection = null;
     this.selectionMask = null;
     this.selected = null;
+    this.bulkChecked = new Set();
     this.hoverPlacement = null;
     this.armedPrefab = null;
     this.armedTemplate = null;

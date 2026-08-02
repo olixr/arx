@@ -1095,6 +1095,53 @@
   text-decoration: underline;
 }
 
+/* ------------------------------------------ zone card + sign board */
+
+#lens-host {
+  padding: 0 var(--s3) var(--s2);
+}
+
+.edge-strip {
+  border-radius: var(--r1);
+  background: var(--well);
+  padding: 2px;
+}
+
+.sign-preview {
+  background: #382a1b;
+  border: 1px solid #5a4426;
+  border-radius: var(--r1);
+  padding: var(--s2) var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: center;
+}
+
+.sign-preview b {
+  font-size: 12.5px;
+  color: #ecd9ae;
+  letter-spacing: 0.04em;
+}
+
+.sign-preview span {
+  font-size: 11px;
+  color: #cdb787;
+  font-family: var(--font-mono);
+}
+
+.p-check {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.bulk-bar {
+  border-color: var(--accent-ring);
+}
+
 /* --------------------------------------------------------- statusbar */
 
 #statusbar {

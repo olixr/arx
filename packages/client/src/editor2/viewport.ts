@@ -10,16 +10,45 @@
  * perspective-true ellipses).
  */
 
-import { CHUNK_SIZE, TILE_PX, tileDef } from '@arx/shared';
+import { CHUNK_SIZE, SIGN_TILES, TILE_PX, Tile, tileDef } from '@arx/shared';
+import { FACTIONS, zoneEdgeProfileOf, type EdgeClass } from '@arx/content';
 import { EditorView, GHOST_SKIP } from '../editor/render.js';
 import { sameRef } from '../editor/placements.js';
 import { renderLayersPreview } from '../editor/preview.js';
 import type { EditorState } from '../editor/state.js';
 import { toast } from '../studio2/kit.js';
+import { DOORWAY_TILES, fenceLine, reachability, type ReachResult } from './laws.js';
 import { EditorStage } from './stage.js';
 
 const TRUE_VIEW_KEY = 'dc2-true-view';
+const LENSES_KEY = 'dc2-lenses';
 const OUTLINE = '#241a2e';
+
+/** THE LENS SUITE — composable law overlays on the true render. */
+export interface Lenses {
+  shelf: boolean;
+  interiors: boolean;
+  reach: boolean;
+  edges: boolean;
+  growth: boolean;
+  factions: boolean;
+  signs: boolean;
+}
+
+const EDGE_INK: Record<EdgeClass, string> = {
+  open: 'rgba(120, 126, 140, 0.9)',
+  water: 'rgba(92, 158, 236, 0.95)',
+  sand: 'rgba(222, 196, 132, 0.95)',
+  forest: 'rgba(66, 148, 92, 0.95)',
+  meadow: 'rgba(132, 196, 112, 0.95)',
+  worn: 'rgba(190, 148, 92, 0.95)',
+  stark: 'rgba(150, 150, 168, 0.95)',
+};
+
+const FACTION_INKS = ['#e0a34e', '#5e9bf5', '#58bd8a', '#c77fd6', '#e06456'];
+
+/** The theft-is-a-crime ground (townFactionAt's hardcoded roster). */
+const CRIME_GROUND = new Set(['dawnmead', 'amberford', 'silverfall', 'saltmere']);
 
 interface OverlayView {
   w: number;
@@ -44,6 +73,30 @@ export class Viewport {
   showChunkGrid = false;
   showMarkers = true;
   showElev = false;
+  /** The Phase 5 law lenses, persisted per user. */
+  lenses: Lenses = ((): Lenses => {
+    try {
+      return {
+        shelf: false,
+        interiors: false,
+        reach: false,
+        edges: false,
+        growth: false,
+        factions: false,
+        signs: false,
+        ...(JSON.parse(localStorage.getItem(LENSES_KEY) ?? '{}') as Partial<Lenses>),
+      };
+    } catch {
+      return { shelf: false, interiors: false, reach: false, edges: false, growth: false, factions: false, signs: false };
+    }
+  })();
+
+  saveLenses(): void {
+    localStorage.setItem(LENSES_KEY, JSON.stringify(this.lenses));
+  }
+
+  /** Reachability cache — reflooded when the world moves. */
+  private reachCache: { key: string; result: ReachResult } | null = null;
 
   /**
    * The people plane (Phase 3): ghosted out-of-hours clusters, the
@@ -344,6 +397,8 @@ export class Viewport {
       ctx.stroke();
     }
 
+    this.drawLenses(ctx, sx, sy, s, ys, tx0, ty0, tx1, ty1);
+
     // Brush/shape/road preview cells + the live measurement chip.
     const preview = this.draft.preview;
     if (preview) {
@@ -523,6 +578,314 @@ export class Viewport {
     if (this.showMarkers) this.drawMarkers(ctx, sx, sy, s, ys);
 
     ctx.restore();
+  }
+
+  // ------------------------------------------------- the law lenses
+
+  /**
+   * THE LAW IS VISIBLE: each lens draws the derived truth the save
+   * gate enforces — the fence line while you sculpt, the shelf the
+   * draw order reads, the rooms the client will derive, the reach of
+   * a spawned player, the border the wild grows toward, the claim of
+   * every hearth, and the boards' words.
+   */
+  private drawLenses(
+    ctx: CanvasRenderingContext2D,
+    sx: (lx: number) => number,
+    sy: (ly: number) => number,
+    s: number,
+    ys: number,
+    tx0: number,
+    ty0: number,
+    tx1: number,
+    ty1: number,
+  ): void {
+    const z = this.state.zone;
+    const idx = (x: number, y: number): number => y * z.width + x;
+    const chip = (text: string, slot: number, ink = 'rgba(233, 236, 243, 0.85)'): void => {
+      ctx.font = '600 11px ui-monospace, Menlo, monospace';
+      const tw = ctx.measureText(text).width;
+      const px = 12;
+      const py = 12 + slot * 22;
+      ctx.fillStyle = 'rgba(4, 6, 10, 0.78)';
+      ctx.fillRect(px, py, tw + 12, 17);
+      ctx.fillStyle = ink;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, px + 6, py + 9);
+    };
+    let chipSlot = 0;
+
+    // ---- ELEVATION (wash + contour + digits), now on the stage too.
+    if (this.showElev && z.elev) {
+      const lvl = (x: number, y: number): number =>
+        x >= 0 && y >= 0 && x < z.width && y < z.height ? z.elev![idx(x, y)]! : 0;
+      const focus = this.state.layer === 'elev';
+      for (let y = ty0; y <= ty1; y++) {
+        for (let x = tx0; x <= tx1; x++) {
+          const e = lvl(x, y);
+          if (e !== 0) {
+            ctx.fillStyle =
+              e > 0
+                ? `rgba(244, 240, 255, ${(focus ? 0.13 : 0.07) * e})`
+                : `rgba(10, 6, 30, ${(focus ? 0.2 : 0.12) * -e})`;
+            ctx.fillRect(sx(x), sy(y), s, s * ys);
+          }
+          // Contour ink on the high side of every level change.
+          if (lvl(x + 1, y) < e || lvl(x, y + 1) < e) {
+            ctx.strokeStyle = 'rgba(233, 236, 243, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            if (lvl(x + 1, y) < e) {
+              ctx.moveTo(sx(x + 1), sy(y));
+              ctx.lineTo(sx(x + 1), sy(y + 1));
+            }
+            if (lvl(x, y + 1) < e) {
+              ctx.moveTo(sx(x), sy(y + 1));
+              ctx.lineTo(sx(x + 1), sy(y + 1));
+            }
+            ctx.stroke();
+          }
+          if (e !== 0 && s >= 18) {
+            ctx.fillStyle = 'rgba(233, 236, 243, 0.6)';
+            ctx.font = `600 ${Math.min(11, s * 0.32)}px ui-monospace, Menlo, monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(e), sx(x) + s / 2, sy(y) + (s * ys) / 2);
+          }
+        }
+      }
+      // THE FENCE LINE, LIVE while the sculptor works.
+      if (focus) {
+        for (const f of fenceLine(z, tx0, ty0, tx1, ty1)) {
+          ctx.strokeStyle = f.ok ? 'rgba(216, 179, 106, 0.9)' : 'rgba(224, 100, 86, 0.95)';
+          ctx.lineWidth = f.ok ? 1.5 : 2;
+          ctx.setLineDash(f.ok ? [3, 3] : []);
+          ctx.strokeRect(sx(f.x) + 1, sy(f.y) + 1, s - 2, s * ys - 2);
+          ctx.setLineDash([]);
+          if (!f.ok) {
+            ctx.fillStyle = 'rgba(224, 100, 86, 0.25)';
+            ctx.fillRect(sx(f.x), sy(f.y), s, s * ys);
+          }
+        }
+        chip('fence line — dashes become Cliff on save; red REFUSES', chipSlot++, 'rgba(216, 179, 106, 0.9)');
+      }
+    }
+
+    // ---- SHELF (the draw-order strat: crowns ride shelf 0).
+    if (this.lenses.shelf && z.elev) {
+      for (let y = ty0; y <= ty1; y++) {
+        for (let x = tx0; x <= tx1; x++) {
+          const e = z.elev[idx(x, y)]!;
+          if (e === 0) continue;
+          const shelf = e > 0 ? 0 : e;
+          ctx.fillStyle = e > 0 ? 'rgba(216, 179, 106, 0.16)' : 'rgba(94, 155, 245, 0.16)';
+          ctx.fillRect(sx(x), sy(y), s, s * ys);
+          if (s >= 16) {
+            ctx.fillStyle = e > 0 ? 'rgba(216, 179, 106, 0.85)' : 'rgba(148, 190, 250, 0.85)';
+            ctx.font = `600 ${Math.min(10, s * 0.3)}px ui-monospace, Menlo, monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`s${shelf}`, sx(x) + s / 2, sy(y) + (s * ys) / 2);
+          }
+        }
+      }
+      chip('shelf — crowns sort on shelf 0, sunken rows on their own', chipSlot++);
+    }
+
+    // ---- INTERIORS (the client's own derived rooms).
+    if (this.lenses.interiors) {
+      const interiors = this.stage.renderer.interiors;
+      const game = this.stage.game;
+      let doorFails = 0;
+      try {
+        for (let y = ty0; y <= ty1; y++) {
+          for (let x = tx0; x <= tx1; x++) {
+            const wx = z.origin.x + x;
+            const wy = z.origin.y + y;
+            const region = interiors.regionAt(game, wx, wy);
+            if (region) {
+              const hue = (region.id * 63) % 360;
+              ctx.fillStyle = region.hasHearth
+                ? `hsla(${hue}, 60%, 62%, 0.22)`
+                : `hsla(${hue}, 45%, 55%, 0.16)`;
+              ctx.fillRect(sx(x), sy(y), s, s * ys);
+            }
+            // THE DOOR OPENS ONTO A ROOM: a doorway with no region
+            // behind it renders the shadow read — worth knowing here.
+            const g = z.ground[idx(x, y)]!;
+            if (DOORWAY_TILES.has(g) && !interiors.regionAt(game, wx, wy - 1)) {
+              ctx.strokeStyle = 'rgba(224, 100, 86, 0.95)';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(sx(x) + 1, sy(y) + 1, s - 2, s * ys - 2);
+              doorFails++;
+            }
+          }
+        }
+      } catch {
+        /* a mid-stream region wipe must never take the frame down */
+      }
+      chip(
+        doorFails > 0
+          ? `interiors — ${doorFails} doorway(s) open onto no room (red)`
+          : 'interiors — derived rooms; warm tint = hearth-lit',
+        chipSlot++,
+        doorFails > 0 ? 'rgba(224, 100, 86, 0.9)' : undefined,
+      );
+    }
+
+    // ---- REACHABILITY (the validator's flood, live).
+    if (this.lenses.reach) {
+      const key = `${z.id}:${this.stage.game.worldVersion}`;
+      if (this.reachCache?.key !== key) {
+        this.reachCache = { key, result: reachability(z) };
+      }
+      const r = this.reachCache.result;
+      for (const i of r.stranded) {
+        const x = i % z.width;
+        const y = Math.floor(i / z.width);
+        if (x < tx0 || x > tx1 || y < ty0 || y > ty1) continue;
+        ctx.fillStyle = 'rgba(224, 100, 86, 0.3)';
+        ctx.fillRect(sx(x), sy(y), s, s * ys);
+      }
+      if (r.from) {
+        ctx.strokeStyle = 'rgba(88, 189, 138, 0.95)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(sx(r.from.x) + s / 2, sy(r.from.y) + (s * ys) / 2, s * 0.6, s * 0.6 * ys, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      chip(
+        r.from
+          ? r.stranded.size > 0
+            ? `reach — ${r.stranded.size} walkable cells stranded (red)`
+            : 'reach — every walkable cell connects to the spawn'
+          : 'reach — set a world spawn (P) to flood from',
+        chipSlot++,
+        r.stranded.size > 0 ? 'rgba(224, 100, 86, 0.9)' : 'rgba(88, 189, 138, 0.9)',
+      );
+    }
+
+    // ---- EDGE PROFILE (what the wild will grow toward).
+    if (this.lenses.edges) {
+      const profile = zoneEdgeProfileOf(z);
+      if (profile) {
+        const T = Math.max(3, s * 0.22);
+        for (let x = 0; x < z.width; x++) {
+          ctx.fillStyle = EDGE_INK[profile.top[x] ?? 'open'];
+          ctx.fillRect(sx(x), sy(0) - T - 2, s, T);
+          ctx.fillStyle = EDGE_INK[profile.bottom[x] ?? 'open'];
+          ctx.fillRect(sx(x), sy(z.height) + 2, s, T);
+        }
+        for (let y = 0; y < z.height; y++) {
+          ctx.fillStyle = EDGE_INK[profile.left[y] ?? 'open'];
+          ctx.fillRect(sx(0) - T - 2, sy(y), T, s * ys);
+          ctx.fillStyle = EDGE_INK[profile.right[y] ?? 'open'];
+          ctx.fillRect(sx(z.width) + 2, sy(y), T, s * ys);
+        }
+        chip('edges — the border classes worldgen blends toward', chipSlot++);
+      } else {
+        chip('edges — no profile (dark band or all-skip fringe)', chipSlot++);
+      }
+    }
+
+    // ---- GROWTH DOMAIN.
+    if (this.lenses.growth) {
+      const wild = z.growth === 'wild';
+      ctx.fillStyle = wild ? 'rgba(88, 189, 138, 0.06)' : 'rgba(216, 179, 106, 0.05)';
+      ctx.fillRect(sx(0), sy(0), z.width * s, z.height * s * ys);
+      chip(
+        wild
+          ? 'growth: WILD — harvests ride the persistent ledger'
+          : 'growth: KEPT — tended ground, fast in-place respawn',
+        chipSlot++,
+        wild ? 'rgba(88, 189, 138, 0.9)' : 'rgba(216, 179, 106, 0.9)',
+      );
+    }
+
+    // ---- FACTION GROUND (nearest-hearth claims + the crime roster).
+    if (this.lenses.factions) {
+      const anchors: Array<{ x: number; y: number; ink: string; name: string }> = [];
+      FACTIONS.roster.forEach((f, fi) => {
+        for (const a of f.anchors ?? []) {
+          anchors.push({ x: a.x, y: a.y, ink: FACTION_INKS[fi % FACTION_INKS.length]!, name: f.name });
+        }
+      });
+      if (anchors.length > 0) {
+        const REACH2 = 48 * 48;
+        for (let y = ty0; y <= ty1; y += 2) {
+          for (let x = tx0; x <= tx1; x += 2) {
+            const wx = z.origin.x + x;
+            const wy = z.origin.y + y;
+            let best: (typeof anchors)[number] | null = null;
+            let bestD = REACH2;
+            for (const a of anchors) {
+              const d = (a.x - wx) * (a.x - wx) + (a.y - wy) * (a.y - wy);
+              if (d < bestD) {
+                bestD = d;
+                best = a;
+              }
+            }
+            if (best) {
+              ctx.fillStyle = best.ink + '18';
+              ctx.fillRect(sx(x), sy(y), s * 2, s * 2 * ys);
+            }
+          }
+        }
+        for (const a of anchors) {
+          const lx = a.x - z.origin.x;
+          const ly = a.y - z.origin.y;
+          if (lx < tx0 - 4 || lx > tx1 + 4 || ly < ty0 - 4 || ly > ty1 + 4) continue;
+          ctx.fillStyle = a.ink;
+          ctx.beginPath();
+          ctx.ellipse(sx(lx) + s / 2, sy(ly) + (s * ys) / 2, 5, 5 * ys, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      chip(
+        CRIME_GROUND.has(z.id)
+          ? 'factions — CRIME GROUND: theft here is witnessed'
+          : 'factions — nearest-hearth claims (48-tile reach)',
+        chipSlot++,
+      );
+    }
+
+    // ---- SIGNS (every board's words, and the pair law's breaches).
+    if (this.lenses.signs) {
+      let breaches = 0;
+      const recorded = new Set<number>();
+      for (const g of z.signs ?? []) {
+        const lx = g.x - z.origin.x;
+        const ly = g.y - z.origin.y;
+        if (lx < 0 || ly < 0 || lx >= z.width || ly >= z.height) continue;
+        recorded.add(idx(lx, ly));
+        const onBoard = SIGN_TILES.has(z.ground[idx(lx, ly)]! as Tile);
+        ctx.strokeStyle = onBoard ? 'rgba(88, 189, 138, 0.9)' : 'rgba(224, 100, 86, 0.95)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(sx(lx) + 1, sy(ly) + 1, s - 2, s * ys - 2);
+        if (!onBoard) breaches++;
+      }
+      for (let y = ty0; y <= ty1; y++) {
+        for (let x = tx0; x <= tx1; x++) {
+          if (!SIGN_TILES.has(z.ground[idx(x, y)]! as Tile)) continue;
+          if (recorded.has(idx(x, y))) continue;
+          // A blank plank — the zone build refuses it.
+          ctx.strokeStyle = 'rgba(227, 179, 78, 0.95)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([3, 3]);
+          ctx.strokeRect(sx(x) + 1, sy(y) + 1, s - 2, s * ys - 2);
+          ctx.setLineDash([]);
+          breaches++;
+        }
+      }
+      chip(
+        breaches > 0
+          ? `signs — ${breaches} breach(es): red = words off the board, amber = blank plank`
+          : 'signs — every board carries its words',
+        chipSlot++,
+        breaches > 0 ? 'rgba(227, 179, 78, 0.9)' : 'rgba(88, 189, 138, 0.9)',
+      );
+    }
   }
 
   /** The v1 marker dialect on the true projection. */

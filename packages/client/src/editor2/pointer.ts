@@ -5,6 +5,7 @@
  * state only; every mutation goes through EditorOps.
  */
 
+import { Tile } from '@arx/shared';
 import { StrokeRecorder } from '../editor/history.js';
 import type { PlacementRef } from '../editor/state.js';
 import type { EditorOps, Pt } from './ops.js';
@@ -29,6 +30,8 @@ export interface PointerDeps {
   isActive: () => boolean; // zone mode on stage?
   isSpaceHeld: () => boolean;
   updateStatus: () => void;
+  /** The status bar's hint line (the stair law speaks through it). */
+  setHint: (text: string) => void;
 }
 
 export function installPointer(deps: PointerDeps): void {
@@ -304,6 +307,12 @@ export function installPointer(deps: PointerDeps): void {
     // the placement tools, stamp ghosts for structures and prefabs.
     if (state.tool === 'paint' || state.tool === 'erase') {
       ops.setPreview(ops.brushFootprint(t.x, t.y), state.tool === 'erase');
+      // The stair brush tells its legality under the cursor.
+      if (state.tool === 'paint' && state.layer === 'ground' && state.brushTile === Tile.Ramp) {
+        const why = ops.inBounds(t.x, t.y) ? ops.stairReasonAt(t.x, t.y) : null;
+        if (view.preview) view.preview.color = why ? 'rgba(224, 100, 86, 0.45)' : 'rgba(88, 189, 138, 0.4)';
+        deps.setHint(why ? `stairs ${why}` : 'stairs — legal here; the flanks become the framing cliff');
+      }
     } else if (state.tool === 'road' && ops.roadPts.length > 0) {
       ops.setPreview(ops.roadPreviewCells(t), false);
     } else if (state.tool === 'polygon' && ops.polyPts.length > 0) {

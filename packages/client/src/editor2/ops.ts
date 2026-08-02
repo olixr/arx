@@ -40,6 +40,7 @@ import {
 import type { RegistrySnapshot } from '../editor/api.js';
 import { toast } from '../studio2/kit.js';
 import { TOOL_SPECS } from './commands.js';
+import { stairLegalAt } from './laws.js';
 
 export type { Pt };
 
@@ -113,6 +114,15 @@ export class EditorOps {
   /** Roll a new die for the coming stroke (scatter's hole pattern). */
   newStrokeSeed(): void {
     this.scatterSeed = (Math.random() * 0xffff) | 1;
+    this.stairsBlocked = null;
+  }
+
+  /** The last stroke's refused-stair reason (one toast at commit). */
+  stairsBlocked: string | null = null;
+
+  /** THE STAIR ARMS ONLY ON LEGAL GROUND — the reason, or null. */
+  stairReasonAt(x: number, y: number): string | null {
+    return stairLegalAt(this.state.zone, x, y);
   }
 
   applyBrush(rec: StrokeRecorder, x: number, y: number, erase: boolean): void {
@@ -145,6 +155,16 @@ export class EditorOps {
       return;
     }
     if (s.layer === 'ground') {
+      // THE STAIR ARMS ONLY ON LEGAL GROUND: a Ramp refuses to land
+      // where the save-time law would throw — the reason reaches the
+      // status bar live and the commit toast once.
+      if (!erase && s.brushTile === Tile.Ramp) {
+        const why = stairLegalAt(z, x, y);
+        if (why !== null) {
+          this.stairsBlocked = why;
+          return;
+        }
+      }
       c.g1 = erase ? Tile.Grass : s.brushTile;
       z.ground[i] = c.g1;
     } else if (s.layer === 'detail') {
@@ -157,6 +177,10 @@ export class EditorOps {
   }
 
   commitStroke(rec: StrokeRecorder, label: string, pts: Pt[]): void {
+    if (this.stairsBlocked) {
+      toast(`stairs ${this.stairsBlocked}`, 4200, 'error');
+      this.stairsBlocked = null;
+    }
     const op = rec.finish(label);
     if (!op) return;
     this.history.push(op);

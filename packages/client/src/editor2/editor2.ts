@@ -185,7 +185,11 @@ async function refreshPrefabs(announce = false): Promise<void> {
 
 // -------------------------------------------------------- file flow
 
+/** THE CONFLICT GUARD's baseline: the server copy as we received it. */
+let baselineJson: string | null = null;
+
 function adoptZone(zone: ZoneDef, serverBacked: boolean, opts: { stay?: boolean } = {}): void {
+  baselineJson = serverBacked ? JSON.stringify(zoneToJson(zone)) : null;
   state.adopt(zone, { serverBacked });
   history.clear();
   view.markAllDirty();
@@ -228,10 +232,30 @@ async function saveToServer(): Promise<void> {
     });
     toast(`auto-fence added ${v.fenceAdded} cliff tiles`);
   }
+  // THE CONFLICT GUARD: if the server copy moved since we opened it,
+  // another session saved here — overwriting must be a choice.
+  if (baselineJson !== null && !state.zone.id.startsWith('poi:')) {
+    try {
+      const current = JSON.stringify(await fetchZone(state.zone.id));
+      if (current !== baselineJson) {
+        const ok = await confirmDialog(
+          'The server copy of this zone changed since you opened it — another session saved here. Overwrite their work with yours?',
+          { title: 'Zone changed on the server', action: 'Overwrite', danger: true },
+        );
+        if (!ok) {
+          toast('save held — Open the zone again to take the newer copy', 4600);
+          return;
+        }
+      }
+    } catch {
+      /* the fetch failing falls through to the save's own error */
+    }
+  }
   try {
     await saveZone(zoneToJson(state.zone));
     state.dirty = false;
     state.serverBacked = true;
+    baselineJson = JSON.stringify(zoneToJson(state.zone));
     clearDraft(); // the truth is on the server now
     state.changed();
     toast(`saved '${state.zone.id}' — live on the server`, 2600, 'success');
@@ -385,6 +409,11 @@ const commands: Command[] = buildCommands({
     state.changed();
   },
   toggleLiving: () => livingChip.click(),
+  toggleLens: (id) => {
+    view.lenses[id] = !view.lenses[id];
+    view.saveLenses();
+    buildLensHost();
+  },
   setClock: (hours) => clock.set(hours),
   toggleInstrument: (id) => shell.toggleInstrument(id),
   toggleDockPanel: (id) => shell.togglePanel(id),
@@ -709,9 +738,11 @@ installPointer({
   isActive: () => mode === 'zone',
   isSpaceHeld: () => keys.isSpaceHeld(),
   updateStatus: () => chrome.updateStatus(),
+  setHint: (text) => chrome.setHint(text),
 });
 
 shell.init();
+buildLensHost();
 
 // ------------------------------------------- the context bar (Ph4)
 
@@ -803,6 +834,33 @@ function positionCtxbar(): void {
 
 function tileDefName(t: number): string {
   return tileDef(t).name;
+}
+
+// ------------------------------------------------- the lenses (Ph5)
+
+function buildLensHost(): void {
+  const LENS_META: Array<[keyof typeof view.lenses, string, string]> = [
+    ['shelf', 'shelf', 'The draw-order strat: crowns sort on shelf 0'],
+    ['interiors', 'rooms', 'The client-derived rooms; warm = hearth-lit; red doors open onto no room'],
+    ['reach', 'reach', "The validator's flood from the spawn — stranded cells in red"],
+    ['edges', 'edges', 'The border classes worldgen blends the wild toward'],
+    ['growth', 'growth', 'Kept vs wild renewal domain'],
+    ['factions', 'factions', 'Nearest-hearth claims and the crime-ground roster'],
+    ['signs', 'signs', 'Every board and every breach of the words-with-board law'],
+  ];
+  const host = $('lens-host');
+  host.innerHTML = '';
+  host.appendChild(el('div', 'panel-head', 'Lenses'));
+  const row = el('div', 'opt-row');
+  for (const [id, label, tip] of LENS_META) {
+    row.appendChild(
+      kitChip(label, view.lenses[id], (on) => {
+        view.lenses[id] = on;
+        view.saveLenses();
+      }, tip),
+    );
+  }
+  host.appendChild(row);
 }
 
 // ------------------------------------------- the history panel (Ph4)

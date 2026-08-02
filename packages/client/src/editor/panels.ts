@@ -2,12 +2,14 @@ import {
   STRUCTURE_TEMPLATES,
   templateWidth,
   templateHeight,
+  zoneEdgeProfileOf,
   type NpcActorDef,
   type ZoneDef,
 } from '@arx/content';
 import { SIGN_MAX_LINE, SIGN_MAX_LINES, SIGN_MAX_TITLE, Tile, sanitizeSignLine } from '@arx/shared';
 import { actorBust } from '../cms/portraits.js';
 import { hourRing } from '../studio2/kit.js';
+import { validateZone } from './validate.js';
 import type { PrefabListEntry, RegistrySnapshot } from './api.js';
 import { iconImg } from './editorIcons.js';
 import { placementLabel, sameRef } from './placements.js';
@@ -245,11 +247,13 @@ export function buildPlacementsPanel(root: HTMLElement, deps: PanelDeps): void {
   if (state.selected) {
     root.appendChild(buildInspector(deps, state.selected));
   } else {
-    const hint = document.createElement('p');
-    hint.className = 'muted';
-    hint.textContent =
-      'Place with the portal / cluster / actor / sign / spawn tools, or select a marker (click it) to edit its properties here.';
-    root.appendChild(hint);
+    // THE ZONE CARD — nothing selected, so the zone itself answers.
+    root.appendChild(buildZoneCard(deps));
+  }
+
+  // Bulk-edit bar: two or more checked clusters share the next set.
+  if (state.bulkChecked.size >= 2) {
+    root.appendChild(buildBulkBar(deps));
   }
 
   // ------------------------------------------------- grouped lists
@@ -301,11 +305,194 @@ export function buildPlacementsPanel(root: HTMLElement, deps: PanelDeps): void {
   }
 }
 
+/** THE ZONE CARD: the document's own inspector when nothing is picked. */
+function buildZoneCard(deps: PanelDeps): HTMLElement {
+  const { state } = deps;
+  const z = state.zone;
+  const box = document.createElement('div');
+  box.className = 'inspector';
+
+  const head = document.createElement('div');
+  head.className = 'insp-head';
+  const title = document.createElement('b');
+  title.textContent = z.name;
+  head.appendChild(title);
+  box.appendChild(head);
+
+  const facts = document.createElement('div');
+  facts.className = 'wp-facts';
+  const pill = (text: string, cls = ''): void => {
+    const p = document.createElement('span');
+    p.className = `pill ${cls}`;
+    p.textContent = text;
+    facts.appendChild(p);
+  };
+  pill(`${z.width}×${z.height}`);
+  pill(`@ ${z.origin.x},${z.origin.y}`);
+  pill(z.growth === 'wild' ? 'growth: wild' : 'growth: kept', z.growth === 'wild' ? 'green' : 'brass');
+  pill(z.spawn ? `spawn ${Math.floor(z.spawn.x)},${Math.floor(z.spawn.y)}` : 'no world spawn');
+  box.appendChild(facts);
+
+  // The census: what the zone holds, at a glance.
+  const census = document.createElement('p');
+  census.className = 'muted';
+  census.textContent =
+    `${z.spawns?.length ?? 0} clusters · ${z.actorSpawns?.length ?? 0} actors · ` +
+    `${z.portals?.length ?? 0} portals · ${z.signs?.length ?? 0} signs`;
+  box.appendChild(census);
+
+  // The validator's word, live (cheap enough on click-to-open).
+  const v = validateZone(z);
+  const verdict = document.createElement('p');
+  verdict.className = 'muted';
+  verdict.style.color = v.ok ? 'var(--ok)' : 'var(--danger)';
+  verdict.textContent = v.ok
+    ? v.fenceAdded > 0
+      ? `✓ valid — auto-fence adds ${v.fenceAdded} cliff tiles on save`
+      : '✓ the zone laws hold'
+    : `✕ ${v.error}`;
+  box.appendChild(verdict);
+
+  // THE EDGE STRIP: the perimeter the wild grows toward, unrolled.
+  const profile = zoneEdgeProfileOf(z);
+  if (profile) {
+    const EDGE_INK: Record<string, string> = {
+      open: '#787e8c',
+      water: '#5c9eec',
+      sand: '#dec484',
+      forest: '#42945c',
+      meadow: '#84c470',
+      worn: '#be945c',
+      stark: '#9696a8',
+    };
+    const strip = document.createElement('canvas');
+    strip.className = 'edge-strip';
+    const W = 264;
+    const H = 30;
+    strip.width = W * 2;
+    strip.height = H * 2;
+    strip.style.width = `${W}px`;
+    strip.style.height = `${H}px`;
+    const ctx = strip.getContext('2d')!;
+    ctx.setTransform(2, 0, 0, 2, 0, 0);
+    // Unrolled perimeter: N, then E, S, W as four bands.
+    const bands: Array<[string[], number]> = [
+      [profile.top as string[], 0],
+      [profile.right as string[], 8],
+      [(profile.bottom as string[]).slice(), 16],
+      [profile.left as string[], 24],
+    ];
+    const names = ['N', 'E', 'S', 'W'];
+    bands.forEach(([classes, y], bi) => {
+      const step = (W - 16) / classes.length;
+      classes.forEach((c, i) => {
+        ctx.fillStyle = EDGE_INK[c] ?? '#787e8c';
+        ctx.fillRect(14 + i * step, y, Math.max(1, step - 0.5), 6);
+      });
+      ctx.fillStyle = 'rgba(233, 236, 243, 0.5)';
+      ctx.font = '600 7px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(names[bi]!, 2, y);
+    });
+    const stripLabel = document.createElement('p');
+    stripLabel.className = 'muted';
+    stripLabel.textContent = 'The border, as the wild will read it:';
+    box.appendChild(stripLabel);
+    box.appendChild(strip);
+  }
+
+  const discover = document.createElement('p');
+  discover.className = 'muted';
+  discover.textContent = `Discovery card: "${z.name}" — fires on entering the rect.`;
+  box.appendChild(discover);
+
+  const hint = document.createElement('p');
+  hint.className = 'muted';
+  hint.textContent = 'Select any marker on the map to edit it here; check clusters below to bulk-edit.';
+  box.appendChild(hint);
+  return box;
+}
+
+/** Shared-field editing for every checked cluster, one op per apply. */
+function buildBulkBar(deps: PanelDeps): HTMLElement {
+  const { state, actions } = deps;
+  const checked = [...state.bulkChecked].sort((a, b) => a - b);
+  const box = document.createElement('div');
+  box.className = 'inspector bulk-bar';
+  const head = document.createElement('div');
+  head.className = 'insp-head';
+  const b = document.createElement('b');
+  b.textContent = `${checked.length} clusters checked`;
+  head.appendChild(b);
+  const clear = document.createElement('button');
+  clear.className = 'mini';
+  clear.textContent = 'uncheck';
+  clear.onclick = () => {
+    state.bulkChecked.clear();
+    state.changed();
+  };
+  head.appendChild(clear);
+  box.appendChild(head);
+
+  const ring = hourRing(null, (win) =>
+    actions.editPlacement({ kind: 'cluster', index: checked[0]! }, `hours × ${checked.length}`, (z) => {
+      for (const i of checked) {
+        const sp = z.spawns?.[i];
+        if (!sp) continue;
+        if (win) sp.hours = { ...win };
+        else delete sp.hours;
+      }
+    }),
+  );
+  box.appendChild(field('hours (all)', ring.root));
+
+  const wing = numInput(0, 0, 32, (v) =>
+    actions.editPlacement({ kind: 'cluster', index: checked[0]! }, `wing × ${checked.length}`, (z) => {
+      for (const i of checked) {
+        const sp = z.spawns?.[i];
+        if (!sp) continue;
+        if (v > 0) sp.wing = v;
+        else delete sp.wing;
+      }
+    }),
+  );
+  box.appendChild(field('wing (all)', wing));
+
+  const lvl = numInput(0, 0, 99, (v) =>
+    actions.editPlacement({ kind: 'cluster', index: checked[0]! }, `level × ${checked.length}`, (z) => {
+      for (const i of checked) {
+        const sp = z.spawns?.[i];
+        if (!sp) continue;
+        if (v > 0) sp.level = v;
+        else delete sp.level;
+      }
+    }),
+  );
+  box.appendChild(field('level (all)', lvl));
+  return box;
+}
+
 function placementRow(deps: PanelDeps, ref: PlacementRef): HTMLElement {
   const { state, actions } = deps;
   const zone = state.zone;
   const row = document.createElement('div');
   row.className = 'p-row' + (sameRef(state.selected, ref) ? ' selected' : '');
+  // Bulk checkmarks live on cluster rows only.
+  if (ref.kind === 'cluster') {
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.className = 'p-check';
+    check.checked = state.bulkChecked.has(ref.index);
+    check.title = 'Check two or more clusters to edit shared fields at once';
+    check.onclick = (e) => {
+      e.stopPropagation();
+      if (check.checked) state.bulkChecked.add(ref.index);
+      else state.bulkChecked.delete(ref.index);
+      state.changed();
+    };
+    row.appendChild(check);
+  }
   const name = document.createElement('button');
   name.className = 'p-name';
   const pos =
@@ -678,6 +865,19 @@ function buildInspector(deps: PanelDeps, ref: PlacementRef): HTMLElement {
       kindRow.appendChild(b);
     }
     box.appendChild(field('board', kindRow));
+    // THE BOARD READS BACK: the copy as a plaque, live (the true
+    // board itself stands in the viewport).
+    const previewBoard = document.createElement('div');
+    previewBoard.className = 'sign-preview';
+    const pt = document.createElement('b');
+    pt.textContent = g.title || '(blank heading)';
+    previewBoard.appendChild(pt);
+    for (const line of g.lines ?? []) {
+      const pl = document.createElement('span');
+      pl.textContent = line;
+      previewBoard.appendChild(pl);
+    }
+    box.appendChild(previewBoard);
     const note = document.createElement('p');
     note.className = 'muted';
     note.textContent =

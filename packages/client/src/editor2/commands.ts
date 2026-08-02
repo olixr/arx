@@ -122,6 +122,7 @@ export interface CommandDeps {
   toggleView(key: 'showGrid' | 'showChunkGrid' | 'showMarkers' | 'showElev'): void;
   toggleDraftView(): void;
   toggleLiving(): void;
+  toggleLens(id: 'shelf' | 'interiors' | 'reach' | 'edges' | 'growth' | 'factions' | 'signs'): void;
   setClock(hours: number): void;
   toggleInstrument(id: 'minimap' | 'zoom' | 'clock'): void;
   toggleDockPanel(id: 'tool' | 'lib'): void;
@@ -212,6 +213,13 @@ export function buildCommands(d: CommandDeps): Command[] {
     { id: 'clock.dusk', title: 'Clock: Dusk (18:30)', group: 'View', mode: 'zone', run: () => d.setClock(18.5) },
     { id: 'clock.night', title: 'Clock: Midnight (0:00)', group: 'View', mode: 'zone', run: () => d.setClock(0) },
     { id: 'view.living', title: 'Toggle Living mode', group: 'View', mode: 'zone', hint: 'Rounds and drifts walk in real time', run: d.toggleLiving },
+    { id: 'lens.shelf', title: 'Lens: Shelf (draw order)', group: 'Lenses', mode: 'zone', run: () => d.toggleLens('shelf') },
+    { id: 'lens.interiors', title: 'Lens: Interiors (derived rooms)', group: 'Lenses', mode: 'zone', run: () => d.toggleLens('interiors') },
+    { id: 'lens.reach', title: 'Lens: Reachability', group: 'Lenses', mode: 'zone', run: () => d.toggleLens('reach') },
+    { id: 'lens.edges', title: 'Lens: Edge profile', group: 'Lenses', mode: 'zone', run: () => d.toggleLens('edges') },
+    { id: 'lens.growth', title: 'Lens: Growth domain', group: 'Lenses', mode: 'zone', run: () => d.toggleLens('growth') },
+    { id: 'lens.factions', title: 'Lens: Faction ground', group: 'Lenses', mode: 'zone', run: () => d.toggleLens('factions') },
+    { id: 'lens.signs', title: 'Lens: Signs', group: 'Lenses', mode: 'zone', run: () => d.toggleLens('signs') },
     { id: 'view.minimap', title: 'Toggle minimap', group: 'View', run: () => d.toggleInstrument('minimap') },
     { id: 'view.zoomcluster', title: 'Toggle zoom instrument', group: 'View', run: () => d.toggleInstrument('zoom') },
     { id: 'view.clock', title: 'Toggle clock instrument', group: 'View', mode: 'zone', run: () => d.toggleInstrument('clock') },

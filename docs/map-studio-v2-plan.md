@@ -510,6 +510,45 @@ Each phase ships, proves, and commits on its own. Laws named in caps become stan
 - **Phase 5 — THE LAW IS VISIBLE** (elevation + lenses): sculpt tools with live
   auto-fence + legal-stair arming, shelf/interiors/reachability/edge/growth/faction
   lenses, sign editor, zone card, multi-select field editing, conflict guard.
+
+  **SHIPPED 2026-08-02 — as built:**
+  - **`editor2/laws.ts`** — pure readings of the save-time laws: `stairLegalAt`
+    (ZoneBuilder.validateStairs verbatim, WITH its reasons), `fenceLine` (every
+    FENCEABLE tile with a lower 8-neighbor → Cliff at save; non-fenceable → the
+    refusal, both drawn), ramp-gated `reachability` flood, the DOORWAY set, `shelfAt`.
+    FENCEABLE is mirrored from ZoneBuilder (private there — keep in sync).
+  - **THE STAIR ARMS ONLY ON LEGAL GROUND**: the Ramp brush previews green/red under
+    the cursor with the law's own words in the status bar; an illegal cell refuses
+    the stroke (one toast at commit). Verified: a round plateau has NO legal rim
+    (correctly — no straight edge), a square plateau's rim center arms and places,
+    its corner refuses "needs both e/w flanks at the stair level".
+  - **THE FENCE LINE, LIVE**: while sculpting elevation, dashed field-tone cells show
+    exactly what auto-fence will pave; red cells are the saves the validator refuses.
+  - **The lens suite** (dock chips + ⌘K, persisted `dc2-lenses`): elevation lens now
+    on the STAGE (wash/contours/digits — the Ph2 deferral closed); **shelf** (crowns
+    s0, sunken their level); **interiors** — the client's own derived rooms tinted,
+    hearth-lit warmer, and every DOOR-OPENS-ONTO-A-ROOM breach ringed red;
+    **reach** — stranded walkable cells red with the spawn ring; **edges** — the
+    7-class perimeter bands worldgen blends toward; **growth**; **factions** —
+    nearest-hearth voronoi wash (48-tile reach) + anchor dots + the CRIME GROUND
+    roster chip; **signs** — words-off-board red, blank planks amber. Each lens
+    speaks a corner chip stating what it shows and what it found.
+  - **THE ZONE CARD** (nothing selected): facts pills, census, the validator's live
+    verdict, the unrolled N/E/S/W edge strip, the discovery-card line.
+  - **Sign inspector** gained the board read-back plaque; **bulk editing**: checkbox
+    cluster rows + a shared-field bar (hours ring / wing / level, one op across all
+    checked — verified wing×2 in one apply).
+  - **THE CONFLICT GUARD**: the opened server copy is the baseline; Save re-fetches
+    and, if another session moved it, interposes a real choice (verified end-to-end
+    with a second-session PUT on a throwaway zone; declining holds the save).
+  - **Findings surfaced in shipped content by the new lenses** (diagnostics, not
+    regressions): Silverfall carries 197 stranded walkable cells and 8 doorways
+    opening onto no room — now visible to the team for triage.
+  - Verified headless: fence 13 cells on the audit plateau, stair block held +
+    legal placement, lens persistence across reload, zone card + edge strip + sign
+    preview + bulk apply, guard dialog + decline + cleanup. tsc + 379 tests +
+    STUDIO build green. (One boot regression — a LENS_META TDZ — caught by the
+    audit's console watch and fixed before commit.)
 - **Phase 6 — THE DOOR NEVER CLOSES** (completeness + polish): server-side validation,
   TOWN_SPAWNS adoption, Ghost Walk, cross-zone paste, stamp folders/tags, Content
   Studio full re-skin on the v2 kit, motion pass, a11y audit, perf pass (budgets
