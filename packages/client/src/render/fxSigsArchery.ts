@@ -21,6 +21,7 @@
 
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { dust, asMatter } from './matter/index.js';
 
 // ------------------------------------------------------------ helpers
 
@@ -175,11 +176,8 @@ const piercing_bolt: AbilitySig = {
     c.particles.burst(c.wx, c.wy - 0.35, 5, [c.st.spark, c.st.core], {
       speed: 3.2, life: 0.22, size: 0.07, gravity: 1.5, dir: ang, spread: 0.35, shape: 'streak',
     });
-    // Entry dust puffs backward, softer.
-    c.particles.burst(c.wx, c.wy - 0.2, 2, [c.st.mid, c.st.deep], {
-      speed: 0.9, life: 0.5, size: 0.1, gravity: -0.4, dir: ang + Math.PI, spread: 0.5,
-      drag: 1.6, shape: 'puff', wobble: 0.4,
-    });
+    // Entry dust breathes backward off the punch — library earth.
+    dust.deployments.kick!(asMatter(c), c.wx - Math.cos(ang) * 0.15, c.wy - Math.sin(ang) * 0.15, { scale: 0.35 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py } = c;
@@ -267,14 +265,9 @@ const tumble_shot: AbilitySig = {
   spawn(c) {
     if (c.kind === 'dash') {
       // Dust kicks where the roll leaves and where it lands.
-      c.particles.burst(c.wx, c.wy, 3, [c.st.mid, c.st.deep], {
-        speed: 1.1, life: 0.5, size: 0.1, gravity: -0.5, drag: 1.8,
-        shape: 'puff', wobble: 0.4, ground: true,
-      });
-      c.particles.burst(c.wx2, c.wy2, 3, [c.st.mid, c.st.deep], {
-        speed: 1.0, life: 0.5, size: 0.1, gravity: -0.5, drag: 1.8,
-        shape: 'puff', wobble: 0.4, ground: true,
-      });
+      const m = asMatter(c);
+      dust.deployments.kick!(m, c.wx, c.wy, { scale: 0.45 });
+      dust.deployments.kick!(m, c.wx2, c.wy2, { scale: 0.45 });
     } else {
       // The mid-tumble arrow lands: a thin thunk, chips and a feather.
       c.particles.burst(c.wx, c.wy - 0.3, 3, [c.st.spark, c.st.core], {
@@ -356,8 +349,12 @@ const rain_of_arrows: AbilitySig = {
     for (let k = 0; k < 8; k++) {
       const a = rand() * Math.PI * 2;
       const rr = Math.sqrt(rand()) * c.radius * 0.9;
-      c.particles.burst(c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash - 1.7, 1, [c.st.deep, c.st.mid], {
-        speed: 8, life: 0.2, size: 0.09, gravity: 5, dir: 1.35, spread: 0.12, shape: 'streak',
+      // Each shaft falls on TRUE altitude — spawned high over its
+      // own landing point, slanting east as it drops, dying at the
+      // dirt the instant it arrives. (Bespoke shafts, v5 physics.)
+      c.particles.burst(c.wx + Math.cos(a) * rr - 0.22, c.wy + Math.sin(a) * rr, 1, [c.st.deep, c.st.mid], {
+        speed: 1.2, life: 0.5, size: 0.09, gravity: 0, dir: 0, spread: 0.15,
+        shape: 'streak', z: 1.7, vz: -7, zg: 0, land: 'die', layer: 'world', shadow: 0,
       });
     }
   },
@@ -491,8 +488,11 @@ const storm_of_shafts: AbilitySig = {
     if (Math.random() < c.frameDt * rate * fade) {
       const a = Math.random() * Math.PI * 2;
       const rr = Math.sqrt(Math.random()) * c.radius * 0.85;
-      c.particles.burst(c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * squash - 1.6, 1, [st.deep, st.mid], {
-        speed: 9, life: 0.18, size: 0.09, gravity: 5, dir: 1.35, spread: 0.1, shape: 'streak',
+      // The black sky delivers on true altitude — every shaft falls
+      // to its own landing point and dies at the dirt.
+      c.particles.burst(c.wx + Math.cos(a) * rr - 0.22, c.wy + Math.sin(a) * rr, 1, [st.deep, st.mid], {
+        speed: 1.3, life: 0.5, size: 0.09, gravity: 0, dir: 0, spread: 0.12,
+        shape: 'streak', z: 1.6, vz: -7.5, zg: 0, land: 'die', layer: 'world', shadow: 0,
       });
     }
     c.glow(c.wx, c.wy, c.radius * 0.8, 0.2 * fade);
@@ -514,9 +514,8 @@ const longshot: AbilitySig = {
     c.particles.burst(c.wx, c.wy - 0.3, 3, [c.st.spark, c.st.core], {
       speed: 3, life: 0.2, size: 0.06, gravity: 1, dir: ang, spread: 0.3, shape: 'streak',
     });
-    c.particles.burst(c.wx, c.wy, 3, [c.st.mid, c.st.deep], {
-      speed: 0.8, life: 0.55, size: 0.1, gravity: -0.6, drag: 1.7, shape: 'puff', wobble: 0.4, ground: true,
-    });
+    // The weight stamps its dust up — library earth at the strike.
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 0.55 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py } = c;
@@ -747,18 +746,12 @@ const ricochet: AbilitySig = {
 const skyfall_shot: AbilitySig = {
   spawn(c) {
     const rand = srand(c.seed ^ 0x71);
-    // The shove: dust rolls off the rim in every direction.
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + rand() * 0.4;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.4,
-        c.wy + Math.sin(a) * c.radius * 0.4 * c.squash,
-        1, [c.st.mid, c.st.deep], {
-          speed: 2.4, life: 0.6, size: 0.11, gravity: 0.3, dir: a, spread: 0.25,
-          drag: 2, grow: 0.2, shape: 'puff', ground: true,
-        },
-      );
-    }
+    void rand;
+    // The shove: the library's rim skirt drives dust out flat in
+    // every direction — the plumb strike's pressure ring.
+    dust.deployments.skirt!(asMatter(c), c.wx, c.wy, {
+      radius: c.radius * 0.4, dur: 0.35, scale: 1,
+    });
     // Splinters of the strike jump straight up around the shaft.
     c.particles.burst(c.wx, c.wy - 0.2, 5, [c.st.spark, c.st.core], {
       speed: 2.2, life: 0.35, size: 0.07, gravity: 6, up: true, shape: 'streak',

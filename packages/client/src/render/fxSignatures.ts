@@ -120,6 +120,11 @@ export const MATTER_MIGRATED: readonly string[] = [
   // lawfully bespoke, and quieter for it (caltrops' iron gained v5
   // bounce physics without joining the library — it is its own iron).
   'feint_double', 'shadowstep',
+  // Wave 2c — the archery ladder's earth. Shafts, chips, and
+  // fletching stay the archer's own wood and steel; rain_of_arrows
+  // and storm_of_shafts gained TRUE z-fall without joining the
+  // library (their shafts are theirs).
+  'piercing_bolt', 'tumble_shot', 'longshot', 'skyfall_shot',
 ];
 
 // ------------------------------------------------------- exemplars
