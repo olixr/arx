@@ -4,6 +4,27 @@
 EPIC COMPLETE** (THE ONE RULER 8839680 → THE WORLD'S WING & THE LIVING
 CHROME). The hall fits the hand. Post-epic: THE INK PASS (below).*
 
+**THE SUEDE BED as-built (2026-08-01, post-epic round 5 — the wells
+learn to show the art):** the icons wear the world's dark outline
+ring (`#241a2e`), and a dark ring only cuts against ground LIGHTER
+than itself — on the near-black well floors the outline shader was
+invisible and the icons read flat. THE BED LAW: a FILLED well is
+lined with warm suede (`BED_FILL #71603f`, published as
+`--well-bed`, painter and CSS from the one material truth), ground
+the ring cuts against exactly as it cuts against grass; an EMPTY
+well keeps the deep dark floor so a bare pack stays quiet — filled
+vs empty also becomes readable at a glance. The socket painter is
+parameterized (`socketWell(floor, shade)`) publishing `--ui-socket`
+(dark) + `--ui-socket-bed` (suede, lighter lip shade). Wired:
+`.inv-slot[data-filled='1']` + `.vault-slot` swap
+border-image-source; always-full wells (`.icon-tile`, `.plate-well`,
+`.insp-well`, card-head portrait) wear the bed outright;
+`.socket-well:has(img)` beds seated kit sockets. The room's palette
+is now a true triad — dark case leather, suede beds, gold accents —
+with the item art as the star. Receipts: character/vault/store
+photographed (rings visibly cutting on every filled well); 337
+tests + build green.
+
 **THE EVEN HAND as-built (2026-08-01, post-epic round 4 — corner
 truth, living dust, bolder ink):** the user's screenshots showed the
 last corner sin precisely: a CSS ring or border on a clip-path box

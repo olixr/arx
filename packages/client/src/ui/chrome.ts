@@ -30,7 +30,7 @@
  * any DPI.
  */
 
-import { BRASS, INK, IRON, LEATHER, PANEL_FILL, PAPER, SUNK_FILL } from './kit/tokens.js';
+import { BED_FILL, BRASS, INK, IRON, LEATHER, PANEL_FILL, PAPER, SUNK_FILL } from './kit/tokens.js';
 
 export { PANEL_FILL };
 
@@ -371,15 +371,15 @@ function easedPath(ctx: Ctx, S: number, d: number, r: number): void {
 }
 
 /**
- * THE SOCKET WELL v3 — the hole an item sits in. THE TWO-CORNER
- * GRAMMAR: objects (buttons, trays, seals) wear the 45° chamfer;
- * HOLES wear a quiet corner ease instead. The old chamfered lip put
- * three strokes through every corner at 45° and the collision read
- * as a hash mark — the eased well has nothing for the eye to catch:
- * one soft lit edge, one bold ink ring, a deep flat floor, a shade
- * under the top lip, a whisper of light where the floor meets it.
+ * THE SOCKET WELL v4 — the hole an item sits in, with TWO FACES. THE
+ * TWO-CORNER GRAMMAR: objects (buttons, trays, seals) wear the 45°
+ * chamfer; HOLES wear a quiet corner ease. And THE BED LAW: an EMPTY
+ * well keeps a deep dark floor (a bare pack stays quiet), while a
+ * FILLED well is lined with warm suede — ground light enough that
+ * the icon's dark outline ring finally cuts, the same way it cuts
+ * against grass in the world.
  */
-function socketWell(): string {
+function socketWell(floor: string, shade: number): string {
   const B = 7;
   const S = B * K * 3;
   const { c, ctx } = makeCanvas(S);
@@ -397,13 +397,13 @@ function socketWell(): string {
   ctx.stroke();
   // The floor.
   easedPath(ctx, S, 2.7, 1.8);
-  ctx.fillStyle = '#151009';
+  ctx.fillStyle = floor;
   ctx.fill();
   ctx.save();
   easedPath(ctx, S, 2.7, 1.8);
   ctx.clip();
   // Shade under the top lip…
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.fillStyle = `rgba(0, 0, 0, ${shade})`;
   ctx.fillRect(0, px(2.7), S, px(2));
   // …and a lit floor line at the bottom.
   ctx.fillStyle = 'rgba(122, 103, 74, 0.3)';
@@ -607,7 +607,8 @@ export function installChrome(): void {
   root.setProperty('--btn-quiet', `url(${quietKey()})`);
   root.setProperty('--ui-banner', `url(${titleBanner()})`);
   root.setProperty('--ui-crest', `url(${crestMedallion()})`);
-  root.setProperty('--ui-socket', `url(${socketWell()})`);
+  root.setProperty('--ui-socket', `url(${socketWell('#151009', 0.45)})`);
+  root.setProperty('--ui-socket-bed', `url(${socketWell(BED_FILL, 0.22)})`);
   root.setProperty('--ui-plate', `url(${cutPlate()})`);
   root.setProperty('--ui-gauge', `url(${gaugeChannel()})`);
   root.setProperty('--ui-sheet', `url(${parchmentSheet()})`);

@@ -45,6 +45,15 @@ export const PAPER = { field: '#e9dcba', edge: '#c3b189', rim: '#6b5c3d', ink: '
 export const PANEL_FILL = '#262019';
 /** The recessed well floor — CSS `--sunk` and the painter agree. */
 export const SUNK_FILL = '#191510';
+/**
+ * THE SUEDE BED — the floor of a FILLED well. The icons wear the
+ * world's dark outline ring, and a ring only cuts against ground
+ * lighter than itself: on the near-black well floor the shader was
+ * invisible. Occupied wells are lined with this warm mid suede so
+ * every icon pops the way it does standing in the world; empty wells
+ * keep the quiet dark floor so a bare pack never glares.
+ */
+export const BED_FILL = '#71603f';
 
 /* ---------------------------------------------------------------- */
 /* The palette — every CSS color token, by family.                   */
@@ -57,6 +66,7 @@ export const PALETTE: Record<string, string> = {
   raise: '#332a1f',
   'raise-hi': '#3f3425',
   sunk: SUNK_FILL,
+  'well-bed': BED_FILL,
   line: LEATHER.echo,
   'line-strong': '#63543c',
 

@@ -307,7 +307,8 @@ h3 {
   justify-content: center;
   background: none;
   border: 0.4375rem solid transparent;
-  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+  /* A portrait well always holds art — it wears the suede bed. */
+  border-image: var(--ui-socket-bed) 35 fill / 0.4375rem;
   border-radius: 0;
   position: relative;
 }
@@ -771,7 +772,7 @@ body:not(.no-ui-motion) .kit-plate:hover {
   align-items: center;
   justify-content: center;
   border: 0.375rem solid transparent;
-  border-image: var(--ui-socket) 35 fill / 0.375rem;
+  border-image: var(--ui-socket-bed) 35 fill / 0.375rem;
 }
 
 .plate-well img {
@@ -823,6 +824,11 @@ body:not(.no-ui-motion) .kit-plate:hover {
   border: 0.4375rem solid transparent;
   border-image: var(--ui-socket) 35 fill / 0.4375rem;
   position: relative;
+}
+
+/* A seated socket wears the suede bed under its art. */
+.socket-well:has(img) {
+  border-image-source: var(--ui-socket-bed);
 }
 
 .socket-well img {
@@ -904,7 +910,7 @@ body:not(.no-ui-motion) .socket-well.landed {
   align-items: center;
   justify-content: center;
   border: 0.4375rem solid transparent;
-  border-image: var(--ui-socket) 35 fill / 0.4375rem;
+  border-image: var(--ui-socket-bed) 35 fill / 0.4375rem;
 }
 
 .insp-well img {

@@ -624,6 +624,14 @@
   justify-content: center;
 }
 
+/* THE BED LAW: an occupied well is lined with warm suede so the
+   icon's dark outline ring cuts the way it does against the world's
+   ground. Empty wells stay dark and quiet. */
+.inv-slot[data-filled='1'],
+.vault-slot {
+  border-image-source: var(--ui-socket-bed);
+}
+
 .inv-slot.clickable {
   cursor: pointer;
   transition: transform 0.08s ease-out, filter 0.08s ease-out;
@@ -811,8 +819,9 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   height: 5.25rem;
   flex: none;
   padding: 0.375rem;
-  background: var(--sunk);
-  border: 0.15625rem solid var(--line);
+  /* The portrait rests on the suede bed — the outline ring cuts. */
+  background: var(--well-bed);
+  border: 0.15625rem solid var(--ink-line);
   border-radius: 0.4375rem;
 }
 
