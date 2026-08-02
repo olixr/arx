@@ -202,7 +202,7 @@ export interface Landing {
 }
 export declare const LANDING_SPLAT = 0;
 export declare const LANDING_BOUNCE = 1;
-export type EmitterKind = 'point' | 'ring' | 'rim' | 'path' | 'cone' | 'orbit';
+export type EmitterKind = 'point' | 'ring' | 'rim' | 'path' | 'cone' | 'orbit' | 'disc';
 /**
  * One grain population. THE FINE GRAIN LAW: real matter is mostly
  * fines with a few heroes — an emitter carries up to three of these,
@@ -237,7 +237,10 @@ export interface EmitterOpts {
     release?: number;
     /** Orbit head speed, rad/s (default 5). */
     orbitSpeed?: number;
-    /** Rim radial speed, tiles/sec (defaults to each pop's own speed). */
+    /**
+     * Rim radial speed, tiles/sec (defaults to each pop's own speed).
+     * NEGATIVE converges — matter gathers INTO the heart (charge-up).
+     */
     outward?: number;
     pops: EmitterPop[];
 }
@@ -345,6 +348,10 @@ export declare class Particles {
     /** Scratch bolt node buffers — reused, never allocated per frame. */
     private readonly boltNx;
     private readonly boltNy;
+    /** Live particle count (tests + budget audits). */
+    count(): number;
+    /** Every live particle, all layers (tests + budget audits). */
+    live(): IterableIterator<Particle>;
     /** Live particles on the ground layer, for the world y-sort. */
     groundParticles(): IterableIterator<Particle>;
     /**

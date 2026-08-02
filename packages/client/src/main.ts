@@ -1377,6 +1377,14 @@ const game = new ClientGame(input, {
 // Dev/Playwright handle: the renderer beside the game (camera, anims).
 (window as unknown as { dcRenderer: Renderer }).dcRenderer = renderer;
 
+// `?fx` — THE MATTER LAB: cycle material × deployment live, in-world
+// (the `?icons` contract: the game runs untouched, the lever rides on
+// top). Also lands window.dcMatter for the audit harness.
+if (new URLSearchParams(location.search).has('fx')) {
+  const { startFxLab } = await import('./dev/fxLab.js');
+  startFxLab(game, renderer);
+}
+
 // The ground manager: choose from a pile instead of vacuuming it.
 const lootPanel = new LootPanel(game);
 

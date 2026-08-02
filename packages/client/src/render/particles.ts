@@ -261,7 +261,7 @@ export const LANDING_BOUNCE = 1;
 // Emitters — sustained matter without per-signature spawn math.
 // ---------------------------------------------------------------------------
 
-export type EmitterKind = 'point' | 'ring' | 'rim' | 'path' | 'cone' | 'orbit';
+export type EmitterKind = 'point' | 'ring' | 'rim' | 'path' | 'cone' | 'orbit' | 'disc';
 
 /**
  * One grain population. THE FINE GRAIN LAW: real matter is mostly
@@ -298,7 +298,10 @@ export interface EmitterOpts {
   release?: number;
   /** Orbit head speed, rad/s (default 5). */
   orbitSpeed?: number;
-  /** Rim radial speed, tiles/sec (defaults to each pop's own speed). */
+  /**
+   * Rim radial speed, tiles/sec (defaults to each pop's own speed).
+   * NEGATIVE converges — matter gathers INTO the heart (charge-up).
+   */
   outward?: number;
   pops: EmitterPop[];
 }
@@ -310,6 +313,7 @@ const EMITTER_KIND_ID: Record<EmitterKind, number> = {
   path: 3,
   cone: 4,
   orbit: 5,
+  disc: 6,
 };
 
 /** Live emitter record — mutate x/y to follow a body, stop() to end. */
@@ -626,6 +630,18 @@ export class Particles {
         this.spawnOne(
           e.x + Math.cos(a) * e.radius,
           e.y + Math.sin(a) * e.radius,
+          pop.colors, pop.opts, undefined, undefined, e.z,
+        );
+        break;
+      }
+      case 6: {
+        // disc: anywhere INSIDE the hoop, uniform by area — rain
+        // fields, ground fogs, settling veils.
+        const a = rand() * Math.PI * 2;
+        const r = e.radius * Math.sqrt(rand());
+        this.spawnOne(
+          e.x + Math.cos(a) * r,
+          e.y + Math.sin(a) * r,
           pop.colors, pop.opts, undefined, undefined, e.z,
         );
         break;
