@@ -48,7 +48,7 @@ import {
   type ItemDef,
 } from '@arx/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
-import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
+import { abilityIconUrl, passiveIconUrl, queueAbilityIcon } from '../render/abilityIcons.js';
 import { bigButton, sectionHead, statPlaque } from './panel.js';
 import { bindings, type ActionId } from '../input/bindings.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
@@ -413,10 +413,23 @@ export class Panels {
     if (this.artsOpen) this.renderArts();
   }
 
+  /**
+   * Mirror the character screen's open state onto `body.inventory-open`.
+   * The station-pairing CSS (character.css) used to read this panel
+   * through document-scoped `body:has(...)` selectors, which re-match
+   * on EVERY `.hidden` toggle anywhere in the document; a body class
+   * costs only the toggle. Called from every path that shows or hides
+   * the pack (the toggle/show trio and closeAll), so it never leaks.
+   */
+  private syncBodyClass(): void {
+    document.body.classList.toggle('inventory-open', this.invOpen);
+  }
+
   toggleInventory(): void {
     this.invPanel.classList.toggle('hidden');
     this.skillsPanel.classList.add('hidden');
     this.artsPanel.classList.add('hidden');
+    this.syncBodyClass();
     if (this.invPanel.classList.contains('hidden')) this.closeInspect();
     else {
       this.renderIdentity();
@@ -428,6 +441,7 @@ export class Panels {
     this.invPanel.classList.remove('hidden');
     this.skillsPanel.classList.add('hidden');
     this.artsPanel.classList.add('hidden');
+    this.syncBodyClass();
     this.renderIdentity();
     this.refreshBench();
   }
@@ -436,6 +450,7 @@ export class Panels {
     this.skillsPanel.classList.toggle('hidden');
     this.invPanel.classList.add('hidden');
     this.artsPanel.classList.add('hidden');
+    this.syncBodyClass();
     this.closeInspect();
   }
 
@@ -443,6 +458,7 @@ export class Panels {
     this.skillsPanel.classList.remove('hidden');
     this.invPanel.classList.add('hidden');
     this.artsPanel.classList.add('hidden');
+    this.syncBodyClass();
     this.closeInspect();
   }
 
@@ -450,6 +466,7 @@ export class Panels {
     this.artsPanel.classList.remove('hidden');
     this.invPanel.classList.add('hidden');
     this.skillsPanel.classList.add('hidden');
+    this.syncBodyClass();
     this.closeInspect();
     this.renderArts();
   }
@@ -470,6 +487,7 @@ export class Panels {
     this.invPanel.classList.add('hidden');
     this.skillsPanel.classList.add('hidden');
     this.artsPanel.classList.add('hidden');
+    this.syncBodyClass();
     this.closeInspect();
   }
 
@@ -2521,7 +2539,10 @@ export class Panels {
       wellEl.appendChild(q);
     } else {
       const plate = document.createElement('img');
-      plate.src = abilityIconUrl(tech.ability, 44);
+      // The codex grid is a first-open burst (one plate per known
+      // technique) — plates fill through the BUDGETED LANE; cached
+      // plates still land synchronously, so reopen never flickers.
+      queueAbilityIcon(plate, tech.ability, 44);
       plate.draggable = false;
       wellEl.appendChild(plate);
       if ((st === 'unlocked' || st === 'equipped') && !this.seenTech.has(tech.ability)) {

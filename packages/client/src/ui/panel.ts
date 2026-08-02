@@ -95,12 +95,15 @@ export function bigButton(
   return btn;
 }
 
-/** A framed icon well — the standard item/recipe portrait. */
+/** A framed icon well — the standard item/recipe portrait. An empty
+ * url leaves the img unset for a caller filling it through the
+ * budgeted icon lane (an empty-string src would resolve to the page
+ * URL and flash a broken-image glyph). */
 export function iconTile(url: string, cls = ''): HTMLElement {
   const tile = document.createElement('div');
   tile.className = `icon-tile ${cls}`.trim();
   const img = document.createElement('img');
-  img.src = url;
+  if (url !== '') img.src = url;
   img.draggable = false;
   tile.appendChild(img);
   return tile;

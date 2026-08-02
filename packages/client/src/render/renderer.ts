@@ -3248,7 +3248,9 @@ export class Renderer {
 
     // The camera is settled for the frame — snapshot the world window
     // every per-tile scan below reads from.
+    if (this.perfHud) this.perfLast = performance.now();
     this.buildFrameGrid(game);
+    this.perfMark('grid');
 
     this.ctx.fillStyle = '#141020';
     this.ctx.fillRect(0, 0, this.w, this.h);
@@ -3270,6 +3272,7 @@ export class Renderer {
     }
 
     this.drawGroundChunks(game);
+    this.perfMark('chunks');
 
     // Reflections land straight on the baked water, BEFORE the live
     // surface — foam, glints and swells then paint over the mirror the
@@ -3525,6 +3528,7 @@ export class Renderer {
     // y-sorted world so bodies stand on them: the far rim hides behind
     // the caster, the near rim rolls out in front of their feet.
     this.drawGroundFx(game);
+    this.perfMark('ground');
     // THE HELD SIGIL rides the same stratum: the aim ghost is a spell
     // floor still in the hand, so bodies stand on it exactly as they
     // will stand on the telegraph it becomes.
@@ -3720,8 +3724,10 @@ export class Renderer {
         });
       }
     }
+    this.perfMark('collect');
     // THE SHELF LAW (see DrawItem.strat): shelf first, raw row within.
     items.sort(DRAW_ORDER);
+    this.perfMark('sort');
     for (const item of items) {
       // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
       // silhouette ring fades with the body (alpha inside draw() would
@@ -3734,6 +3740,7 @@ export class Renderer {
       if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
       item.drawLabel?.();
     }
+    this.perfMark('world');
     // THE GHOST EMBER rides over the world pass, under the overlay FX.
     this.drawGhostEmber();
 
@@ -3783,6 +3790,7 @@ export class Renderer {
         return 0;
       },
     );
+    this.perfMark('lighting');
     this.lights.length = 0;
     // Moving lights hand their positions to next frame's shadow pass.
     const swap = this.prevDynamic;
@@ -3802,6 +3810,7 @@ export class Renderer {
     this.evictBaked();
     this.evictAnims();
     this.evictTreeSprites();
+    this.perfMark('post');
   }
 
   /** Deep-cave ambient the underground blend rides to: cool, slightly
@@ -4814,8 +4823,10 @@ export class Renderer {
     // Re-bake starts are PACED (see CHUNK_REPLACE_STARTS): a chunk
     // burst bumps most of the screen in one tick, and starting every
     // replacement in one frame front-loaded a wave of job prologues.
-    // An ungated stale entry just keeps its old blit a few frames.
-    let replaceStarts = 0;
+    // Stale entries QUEUE and the CLOSEST to the camera start first —
+    // the ground under the player's feet re-bakes before the screen
+    // corner does. An unstarted stale entry keeps its old blit.
+    this.replaceQueue.length = 0;
 
     for (let cy = minCy; cy <= maxCy; cy++) {
       for (let cx = minCx; cx <= maxCx; cx++) {
@@ -4831,28 +4842,20 @@ export class Renderer {
           // Mid-bake: if the world moved on underneath, restart the
           // job at the new content — never finish a stale bake.
           const p = baked.pending;
-          if (
-            (p.data !== data || p.rev !== (data.rev ?? 0)) &&
-            replaceStarts < CHUNK_REPLACE_STARTS
-          ) {
-            this.startChunkReplace(baked, game, cx, cy, data, bakePx);
-            replaceStarts++;
+          if (p.data !== data || p.rev !== (data.rev ?? 0)) {
+            this.replaceQueue.push({ baked, cx, cy, data });
           }
-        } else if (baked.data !== data || baked.rev !== (data.rev ?? 0)) {
-          // Content re-bake behind the old blit.
-          if (replaceStarts < CHUNK_REPLACE_STARTS) {
-            this.startChunkReplace(baked, game, cx, cy, data, bakePx);
-            replaceStarts++;
-          }
-        } else if (baked.px !== bakePx && !this.zoomGliding) {
+        } else if (
+          baked.data !== data ||
+          baked.rev !== (data.rev ?? 0) ||
           // Tier flips wait out the glide: bakePx is keyed off
           // targetZoom, so mid-glide re-bakes render for a scale the
           // camera hasn't reached — and the settle pass would just
           // re-blit them anyway.
-          if (replaceStarts < CHUNK_REPLACE_STARTS) {
-            this.startChunkReplace(baked, game, cx, cy, data, bakePx);
-            replaceStarts++;
-          }
+          (baked.px !== bakePx && !this.zoomGliding)
+        ) {
+          // Content or tier re-bake behind the old blit.
+          this.replaceQueue.push({ baked, cx, cy, data });
         }
         if (baked.pending) this.chunkJobQueue.push(baked);
         // SHARED-CORNER SNAP LAW: each chunk's destination rect comes
@@ -4914,6 +4917,24 @@ export class Renderer {
           break ring;
         }
       }
+    }
+
+    // CENTER FIRST: start the closest queued replacements, up to the
+    // per-frame cap. Distance is chunk-center to camera in tiles.
+    if (this.replaceQueue.length > 0) {
+      const ccx = this.camera.x / CHUNK_SIZE - 0.5;
+      const ccy = this.camera.y / CHUNK_SIZE - 0.5;
+      this.replaceQueue.sort(
+        (a, b) =>
+          (a.cx - ccx) ** 2 + (a.cy - ccy) ** 2 - ((b.cx - ccx) ** 2 + (b.cy - ccy) ** 2),
+      );
+      const n = Math.min(CHUNK_REPLACE_STARTS, this.replaceQueue.length);
+      for (let i = 0; i < n; i++) {
+        const r = this.replaceQueue[i]!;
+        this.startChunkReplace(r.baked, game, r.cx, r.cy, r.data, bakePx);
+        if (!this.chunkJobQueue.includes(r.baked)) this.chunkJobQueue.push(r.baked);
+      }
+      this.replaceQueue.length = 0;
     }
 
     // THE BAKE BUDGET: advance queued jobs (visible first — the queue
@@ -15033,6 +15054,40 @@ export class Renderer {
   private visSpriteMsLeft = 0;
   /** The frame's y-sorted draw list — persistent, cleared at reuse. */
   private readonly drawItems: DrawItem[] = [];
+
+  /** Stale-chunk re-bake candidates this frame (center-first pacing). */
+  private readonly replaceQueue: Array<{
+    baked: BakedChunk;
+    cx: number;
+    cy: number;
+    data: ChunkData;
+  }> = [];
+
+  /**
+   * THE FRAME CONFESSES (?perf): per-phase millisecond EMAs, so a
+   * stutter can be attributed to a phase instead of guessed at. Zero
+   * cost while off (the flag gates every mark). Enabled from main.ts
+   * when the URL carries ?perf; read via perfSummary() at 1Hz.
+   */
+  perfHud = false;
+  private perfLast = 0;
+  private readonly phaseMs = new Map<string, number>();
+
+  private perfMark(name: string): void {
+    if (!this.perfHud) return;
+    const now = performance.now();
+    const dt = now - this.perfLast;
+    this.perfLast = now;
+    const prev = this.phaseMs.get(name) ?? dt;
+    this.phaseMs.set(name, prev + (dt - prev) * 0.05);
+  }
+
+  perfSummary(): string {
+    if (this.phaseMs.size === 0) return '';
+    const parts: string[] = [];
+    for (const [name, ms] of this.phaseMs) parts.push(`${name} ${ms.toFixed(2)}`);
+    return parts.join('\n');
+  }
 
   /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
   private drawBulkItem(item: DrawItem): void {

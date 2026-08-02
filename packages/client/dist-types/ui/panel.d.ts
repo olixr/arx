@@ -35,7 +35,10 @@ export declare function bigButton(label: string, navkey: string, onClick: () => 
     acta?: string;
     minor?: boolean;
 }): HTMLButtonElement;
-/** A framed icon well — the standard item/recipe portrait. */
+/** A framed icon well — the standard item/recipe portrait. An empty
+ * url leaves the img unset for a caller filling it through the
+ * budgeted icon lane (an empty-string src would resolve to the page
+ * URL and flash a broken-image glyph). */
 export declare function iconTile(url: string, cls?: string): HTMLElement;
 /**
  * A requirement chip: icon + "have/need" count, green when satisfied,

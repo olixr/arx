@@ -1878,6 +1878,19 @@ export declare class Renderer {
     private visSpriteMsLeft;
     /** The frame's y-sorted draw list — persistent, cleared at reuse. */
     private readonly drawItems;
+    /** Stale-chunk re-bake candidates this frame (center-first pacing). */
+    private readonly replaceQueue;
+    /**
+     * THE FRAME CONFESSES (?perf): per-phase millisecond EMAs, so a
+     * stutter can be attributed to a phase instead of guessed at. Zero
+     * cost while off (the flag gates every mark). Enabled from main.ts
+     * when the URL carries ?perf; read via perfSummary() at 1Hz.
+     */
+    perfHud: boolean;
+    private perfLast;
+    private readonly phaseMs;
+    private perfMark;
+    perfSummary(): string;
     /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
     private drawBulkItem;
     /** Per-frame shadow-mask bake allowance — see shadowMask. */

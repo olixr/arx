@@ -33,7 +33,7 @@ import {
   type RecipeDef,
   type TrainerPost,
 } from '@arx/content';
-import { buildableIconUrl, itemIconUrl, uiIconUrl } from '../render/icons.js';
+import { buildableIconUrl, itemIconUrl, queueItemIcon, uiIconUrl } from '../render/icons.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
 import { petPortraitUrl } from '../render/petPortrait.js';
 import { createLedger } from './kit/ledger.js';
@@ -305,10 +305,27 @@ export class StationPanels {
     this.shopPanel.classList.add('hidden');
     this.buildPanel.classList.add('hidden');
     this.stablePanel.classList.add('hidden');
+    this.syncBodyClass();
     this.anchor = null;
     this.showing = null;
     this.bankSel = null;
     this.releaseArmed = null;
+  }
+
+  /**
+   * Mirror the bank/shop panels' open state onto body classes. The
+   * station-pairing CSS (character.css) used to read these panels
+   * through document-scoped `body:has(...)` selectors, which the
+   * engine re-matches on EVERY `.hidden` toggle anywhere in the
+   * document — a standing style-recalc tax. A plain body class costs
+   * only the toggle itself. Called from every path that shows or
+   * hides these panels (openBank/openShop/closeAll — every open goes
+   * through closeAll first, and every close lands in closeAll), so
+   * the class can never leak past its panel.
+   */
+  private syncBodyClass(): void {
+    document.body.classList.toggle('bank-open', this.bankOpen);
+    document.body.classList.toggle('shop-open', this.shopOpen);
   }
 
   // ------------------------------------------------- THE THREE STALLS
@@ -759,10 +776,12 @@ export class StationPanels {
     host.appendChild(row);
   }
 
-  /** One ledger row (Workshop master list). */
+  /** One ledger row (Workshop master list). A string `iconUrl` sets
+   * the portrait synchronously; a function fills it through the
+   * BUDGETED LANE (icons.ts) so a first-open burst never hitches. */
   private ledgerRow(opts: {
     key: string;
-    iconUrl: string;
+    iconUrl: string | ((img: HTMLImageElement) => void);
     name: string;
     note: string;
     noteTone?: 'ok' | 'short' | 'lock';
@@ -775,7 +794,8 @@ export class StationPanels {
     row.dataset.navkey = opts.key;
     row.dataset.acta = 'View';
     const img = document.createElement('img');
-    img.src = opts.iconUrl;
+    if (typeof opts.iconUrl === 'string') img.src = opts.iconUrl;
+    else opts.iconUrl(img);
     img.draggable = false;
     const name = document.createElement('span');
     name.className = 'ledger-name';
@@ -1300,7 +1320,7 @@ export class StationPanels {
       const count = this.makeable(recipe);
       return this.ledgerRow({
         key: `recipe:${recipe.id}`,
-        iconUrl: itemIconUrl(recipe.output.item, 40),
+        iconUrl: (img) => queueItemIcon(img, recipe.output.item, 40),
         name: recipe.name,
         note: locked ? `lvl ${recipe.levelReq}` : count > 0 ? `× ${count}` : 'short',
         noteTone: locked ? 'lock' : count > 0 ? 'ok' : 'short',
@@ -1475,6 +1495,7 @@ export class StationPanels {
     // Unhide before the render — the vault ledger's first measure must
     // see an honest height (same law as openCraft).
     this.bankPanel.classList.remove('hidden');
+    this.syncBodyClass();
     this.renderBank();
   }
 
@@ -1543,7 +1564,9 @@ export class StationPanels {
     if (opts.roll) cell.dataset.lootroll = JSON.stringify(opts.roll);
     const img = document.createElement('img');
     img.className = 'inv-item';
-    img.src = itemIconUrl(opts.item, 48);
+    // A full vault is a first-open burst — the sockets fill through
+    // the budgeted lane (cached piles still land synchronously).
+    queueItemIcon(img, opts.item, 48);
     img.draggable = false;
     cell.appendChild(img);
     if (opts.qty !== undefined && opts.qty > 1) {
@@ -1726,6 +1749,7 @@ export class StationPanels {
     // Unhide before the shelves build — same law as openCraft: any
     // measuring render sees an honest height on its first pass.
     this.shopPanel.classList.remove('hidden');
+    this.syncBodyClass();
     const head = this.shopPanel.querySelector('h3');
     if (head) head.textContent = shop.name;
     // THE PRICE OF A NAME: the server pushed the viewer's live band
@@ -1753,7 +1777,11 @@ export class StationPanels {
       card.dataset.nav = '';
       card.dataset.navkey = `shopcard:${entry.item}`;
       card.dataset.acta = 'Buy one';
-      card.appendChild(iconTile(itemIconUrl(entry.item, 48), 'sm'));
+      // Shelf portraits fill through the budgeted lane — a stocked
+      // store is a first-open burst (cached goods still land sync).
+      const tile = iconTile('', 'sm');
+      queueItemIcon(tile.querySelector('img')!, entry.item, 48);
+      card.appendChild(tile);
       const mid = document.createElement('div');
       mid.className = 'shelf-mid';
       const name = document.createElement('div');

@@ -1,6 +1,6 @@
 import { PASSIVES } from '@arx/shared';
 import { burstStarPath, fxStyleFor, jaggedRingPath, type FxStyle } from './abilityFx.js';
-import { paintedIconUrl } from './icons.js';
+import { paintedIconUrl, paintedIconUrlIfBaked, queueIconTask } from './icons.js';
 import { shade } from './rig.js';
 
 /**
@@ -4081,6 +4081,20 @@ export function abilityIconUrl(id: string, size = 64): string {
         star4(c, 0, 0, 0.12, st.core);
       };
   return paintedIconUrl(`ability:${id}`, painter, st.mid, size);
+}
+
+/**
+ * Fill `el` with an ability spell-plate through the BUDGETED LANE
+ * (see icons.ts): cached plates apply synchronously, cold ones bake at
+ * ~3ms per frame. For burst sites only (the codex's per-technique
+ * grid) — single-plate sites keep calling `abilityIconUrl` so the
+ * focused art never flashes empty.
+ */
+export function queueAbilityIcon(el: HTMLImageElement | HTMLElement, id: string, size = 64): void {
+  const st = fxStyleFor(id, undefined);
+  queueIconTask(el, paintedIconUrlIfBaked(`ability:${id}`, st.mid, size), () =>
+    abilityIconUrl(id, size),
+  );
 }
 
 /** Data URL for a gear passive's chip icon. */

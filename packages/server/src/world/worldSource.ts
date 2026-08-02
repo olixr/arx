@@ -487,9 +487,15 @@ export class WorldSource extends ChunkStore {
     return entry.chunk;
   }
 
+  /** Lifetime count of chunks generated — the tick loop diffs this to
+   *  attribute a slow tick to a generation burst (THE TICK NAMES ITS
+   *  DEBT in gameServer.start). */
+  generatedCount = 0;
+
   ensure(cx: number, cy: number): ChunkData {
     const existing = this.get(cx, cy);
     if (existing) return existing;
+    this.generatedCount++;
     const chunk = generateChunk(this.seed, cx, cy);
     // Every overlay ledger reads through its per-chunk index — only
     // THIS chunk's entries, never a world-wide sweep (the indexes stay

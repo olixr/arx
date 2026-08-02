@@ -1,5 +1,18 @@
 export type IconPainter = (ctx: CanvasRenderingContext2D, color: string) => void;
 /**
+ * The lane's core: `baked` is the cheap cache probe's answer (see
+ * `itemIconUrlIfBaked` / `paintedIconUrlIfBaked`). Hot icons apply
+ * synchronously; cold ones queue for the budgeted drain.
+ */
+export declare function queueIconTask(el: HTMLImageElement | HTMLElement, baked: string | undefined, make: () => string): void;
+/** `itemIconUrl`'s cache probe — same key derivation, no rasterizing. */
+export declare function itemIconUrlIfBaked(itemId: string, size?: number): string | undefined;
+/** `paintedIconUrl`'s cache probe — satellite icon sets build their
+ * own lane wrappers on this (see abilityIcons' queueAbilityIcon). */
+export declare function paintedIconUrlIfBaked(key: string, color: string, size: number): string | undefined;
+/** Fill `el` with an item icon through the budgeted lane. */
+export declare function queueItemIcon(el: HTMLImageElement | HTMLElement, itemId: string, size?: number): void;
+/**
  * Render an externally-authored painter through the SAME pipeline —
  * supersample, eight-tap outline ring, hard shadow — so satellite icon
  * sets (the ability spell-plates) wear the identical dark ring the

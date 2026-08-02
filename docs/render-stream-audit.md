@@ -119,39 +119,58 @@ Unthrottled 25s walk into fresh forest at 120Hz: p99 9.3ms.
     (`findNearbyTarget` "twice per frame" was a misread — the second
     site is edge-triggered on pad press; left alone.)
 
-### P3 — menu-open polish — partially shipped (round 2)
+### P3 — menu-open polish — SHIPPED (round 3)
 
-12. First-open icon raster bursts — OPEN (pre-warm or per-frame cap).
-13. `filter: drop-shadow` + animated opacity + infinite motes on rooms
-    — OPEN (visual-risk change; needs a design pass).
+12. ~~First-open icon raster bursts~~ **SHIPPED**: THE BUDGETED LANE
+    (icons.ts `queueIconTask` + rAF drain, ~3ms/frame) — burst sites
+    (workshop recipe rows, bank vault, shop shelves, arts codex grid)
+    queue their rasters; cached icons still apply synchronously so
+    reopens never flicker. Single focused icons (bench card, sockets,
+    hotbar) stay synchronous by design.
+13. ~~Room drop-shadow re-raster~~ **SHIPPED**: THE SHADOW IS
+    FURNITURE, NOT A FILTER — `.panel`/`.ui-screen`/`.ui-tray` wear
+    the same hard offset as `box-shadow`, so the room is no longer a
+    filter root and the ambient motes composite instead of re-
+    rastering the panel every frame. Screenshot-verified identical.
+    (`.panel-head`/`.panel-icon` keep their small static filters.)
 14. ~~Map ignores dprCap~~ **SHIPPED**: `Renderer.effectiveDpr()`
     threaded into MapView; the map renders at the adaptive cap.
-15. ~~Quest log / rep screen forced rebuild~~ **SHIPPED**: open()
-    renders only when the version moved (quest log also re-renders
-    when a resting-shelf clock could have; skip path refreshes the
-    bench so cooldown words and confirm state stay honest).
-    `body:has()` selector cost — OPEN.
+15. ~~Quest log / rep screen forced rebuild~~ **SHIPPED** (round 2).
+    ~~`body:has()` rules~~ **SHIPPED (round 3)**: the 8 rules read
+    `body.bank-open`/`.shop-open`/`.inventory-open`, stamped by
+    `syncBodyClass()` at every panel toggle site — document-wide
+    :has() invalidation gone. Also: the frame loop's per-frame
+    `.ui-screen:not(.hidden)` selector query replaced by a 1Hz element
+    snapshot + classList checks (`anyUiOpen`).
 
-### P4 — scale — SHIPPED (round 2)
+### P4 — scale — SHIPPED
 
-16. ~~`ensure()` world-wide sweeps~~ **SHIPPED**: all four ledgers
-    (built tiles, hung details, crops, growth rows) carry per-chunk-key
-    indexes maintained by their register/unregister pairs; `ensure()`
-    reads only its own chunk's sets. Overlay order and law semantics
-    unchanged; 356 server tests pass.
-17. `isSolid`/`tileAt` mid-tick generation — OPEN (metric at scale).
+16. ~~`ensure()` world-wide sweeps~~ **SHIPPED** (round 2).
+17. ~~Generation metric~~ **SHIPPED (round 3)**: THE TICK NAMES ITS
+    DEBT — `WorldSource.generatedCount` diffed per tick; ≥20 chunks
+    generated in one tick logs the count + tick ms.
 
-### New findings (round 2 measurement)
+### Round-2/3 findings — resolved or standing
 
-18. **Reconnect residue is body-sprite churn, not chunks**: with the
-    dedupe in, a blip's remaining cost (equal in old and new arms) is
-    `entities.clear()` → re-enter → body/outline sprite re-bakes for
-    every visible actor. Candidate: let bodySprites survive a
-    reconnect (they key on stable identity) or pace re-enters' bakes.
-19. **Zoom-tier re-bakes are inherently heavy at 64px/tile** — paced
-    now (2 starts/frame), but a hi-res chunk bake remains ~4x a
-    normal one; if wheel-zoom polish is ever wanted, pre-bake the
-    other tier for the visible center ring.
+18. ~~Reconnect residue~~ **CLOSED (round 3, measured)**: with dedupe
+    + hysteresis + enter-glide, a reconnect window is statistically
+    identical to standing idle (p50 41.7 vs 41.9ms, 15 vs 16 heavy
+    frames, 4x throttle, phase EMAs flat) — no body-sprite churn
+    survives. Nothing left to fix.
+19. **Zoom-tier re-bakes at 64px/tile** — paced (2 starts/frame) and
+    now CENTER-FIRST (stale chunks re-bake nearest-camera first).
+    Full other-tier pre-bake judged poor cost/benefit after pacing;
+    revisit only if wheel-zoom polish is ever a priority.
+
+### Tooling (round 3)
+
+- **THE FRAME CONFESSES**: `?perf` appends per-phase ms EMAs (grid /
+  chunks / ground / collect / sort / world / lighting / post) to the
+  debug readout — stutters are now attributable, not guessed
+  (renderer.perfMark/perfSummary; zero cost when off). Measured
+  steady-state confirms the standing ceiling: the `world` pass (props,
+  trees, bodies — immediate-mode) dominates; the static-layer epic
+  remains the one big lever left.
 
 ### Known ceilings (documented, not defects)
 

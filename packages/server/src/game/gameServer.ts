@@ -2518,7 +2518,20 @@ export class GameServer {
     let next = performance.now();
     const loop = () => {
       next += TICK_MS;
+      const gensBefore = this.world.generatedCount;
+      const t0 = performance.now();
       this.tick();
+      // THE TICK NAMES ITS DEBT: chunk generation runs synchronously
+      // inside the tick (interest streaming, movement/AI collision
+      // probes into unloaded space). A handful per tick is the normal
+      // leading-edge cost; a burst big enough to threaten the budget
+      // gets logged with the tick time so a stall is attributable
+      // instead of mysterious.
+      const gens = this.world.generatedCount - gensBefore;
+      if (gens >= 20) {
+        const ms = (performance.now() - t0).toFixed(1);
+        console.warn(`[world] ${gens} chunks generated in one tick (${ms}ms tick)`);
+      }
       this.timer = setTimeout(loop, Math.max(0, next - performance.now()));
     };
     this.timer = setTimeout(loop, TICK_MS);

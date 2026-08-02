@@ -5624,6 +5624,95 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
 
 const cache = new Map<string, string>();
 
+/* ------------------------------------------------------------------ */
+/* THE BUDGETED LANE — first-open burst control.                       */
+/*                                                                     */
+/* renderIcon bakes through five supersampled canvases plus a          */
+/* synchronous PNG encode; a panel that wants forty uncached icons at  */
+/* once used to pay for all of them inside one event handler — a       */
+/* visible hitch. Burst call sites (recipe ledgers, vault sockets,     */
+/* shop shelves, the arts grid) route through this lane instead: a     */
+/* cached icon is applied synchronously (no one-frame flicker on       */
+/* reopen), an uncached one joins a queue drained by a self-scheduling */
+/* requestAnimationFrame loop that spends at most ~3ms per frame       */
+/* baking. Elements may be detached by drain time (panel closed or     */
+/* re-rendered) — setting src on a detached element is harmless, and   */
+/* the bake still lands in the cache for the next open. Single-icon    */
+/* sites (detail cards, equip sockets, the hotbar) stay on the sync    */
+/* API so the focused item never flashes empty.                        */
+/* ------------------------------------------------------------------ */
+
+/** Per-frame rasterization budget for the queue drain, in ms. */
+const ICON_BUDGET_MS = 3;
+
+const iconQueue: Array<{ el: HTMLImageElement | HTMLElement; make: () => string }> = [];
+let iconDrainArmed = false;
+
+function applyIconUrl(el: HTMLImageElement | HTMLElement, url: string): void {
+  if (el instanceof HTMLImageElement) el.src = url;
+  else el.style.backgroundImage = `url("${url}")`;
+}
+
+function armIconDrain(): void {
+  if (iconDrainArmed) return;
+  iconDrainArmed = true;
+  requestAnimationFrame(drainIconQueue);
+}
+
+function drainIconQueue(): void {
+  iconDrainArmed = false;
+  const start = performance.now();
+  while (iconQueue.length > 0) {
+    const task = iconQueue.shift()!;
+    // Duplicate keys are fine: the second bake is a cache hit and
+    // costs a Map lookup, so it never eats the frame's budget.
+    applyIconUrl(task.el, task.make());
+    if (performance.now() - start >= ICON_BUDGET_MS) break;
+  }
+  if (iconQueue.length > 0) armIconDrain();
+}
+
+/**
+ * The lane's core: `baked` is the cheap cache probe's answer (see
+ * `itemIconUrlIfBaked` / `paintedIconUrlIfBaked`). Hot icons apply
+ * synchronously; cold ones queue for the budgeted drain.
+ */
+export function queueIconTask(
+  el: HTMLImageElement | HTMLElement,
+  baked: string | undefined,
+  make: () => string,
+): void {
+  if (baked !== undefined) {
+    applyIconUrl(el, baked);
+    return;
+  }
+  iconQueue.push({ el, make });
+  armIconDrain();
+}
+
+/** Cheap probe: the baked URL if this pipeline key is already cached. */
+function bakedIconUrl(icon: string, color: string, size: number): string | undefined {
+  return cache.get(`${icon}|${color}|${size}`);
+}
+
+/** `itemIconUrl`'s cache probe — same key derivation, no rasterizing. */
+export function itemIconUrlIfBaked(itemId: string, size = 48): string | undefined {
+  const spec = ITEM_ICON[itemId];
+  if (spec) return bakedIconUrl(spec.icon, spec.color, size);
+  return bakedIconUrl('burnt', itemDef(itemId)?.color ?? '#888', size);
+}
+
+/** `paintedIconUrl`'s cache probe — satellite icon sets build their
+ * own lane wrappers on this (see abilityIcons' queueAbilityIcon). */
+export function paintedIconUrlIfBaked(key: string, color: string, size: number): string | undefined {
+  return cache.get(`${key}|${color}|${size}`);
+}
+
+/** Fill `el` with an item icon through the budgeted lane. */
+export function queueItemIcon(el: HTMLImageElement | HTMLElement, itemId: string, size = 48): void {
+  queueIconTask(el, itemIconUrlIfBaked(itemId, size), () => itemIconUrl(itemId, size));
+}
+
 /**
  * Eight-tap dilate offsets — the SAME kernel as the renderer's entity
  * outline pass (Renderer.OUTLINE_TAPS). Icons ride through the world's

@@ -2412,6 +2412,25 @@ let nextPortalScanAt = 0;
 /** Fall-earshot scan, half-phase offset from the portal scan so the
  *  two 441-tile sweeps never land in the same frame. */
 let nextFallScanAt = 200;
+
+/**
+ * "Is any room open?" without a per-frame selector query: screens and
+ * trays are built at boot and toggled via .hidden, so a 1Hz-refreshed
+ * element snapshot + classList checks answers the frame loop for free
+ * (the `:not(.hidden)` selector ran the style engine every frame).
+ */
+let uiRoots: Element[] = [];
+let uiRootsAt = -1;
+function anyUiOpen(now: number): boolean {
+  if (now - uiRootsAt > 1000) {
+    uiRoots = [...document.querySelectorAll('.ui-screen, .ui-tray')];
+    uiRootsAt = now;
+  }
+  for (const el of uiRoots) {
+    if (!el.classList.contains('hidden')) return true;
+  }
+  return false;
+}
 let portalNear = 0;
 let fallEar: FallEar = SILENT_EAR;
 
@@ -2574,9 +2593,7 @@ function frame(now: number): void {
   // Gamepad: poll sticks; X button interacts (edge-triggered).
   input.buildCapture = buildMode !== null;
   input.pollGamepad();
-  const uiOpen =
-    document.querySelector('.ui-screen:not(.hidden), .ui-tray:not(.hidden)') !== null ||
-    looks.open;
+  const uiOpen = anyUiOpen(now) || looks.open;
   // The traveler's glass + the wayfinder ride the live HUD only — any
   // opened screen (the chart included) supersedes them.
   mapOverlay.update(now, uiOpen || cinema.open);
@@ -3176,7 +3193,10 @@ function frame(now: number): void {
       `${Math.round(game.rttMs)} ms rtt`,
       `tick ${game.serverTick}`,
       `${game.entities.size + (game.ownEid !== null ? 1 : 0)} entities`,
+      // THE FRAME CONFESSES: ?perf appends per-phase ms EMAs.
+      ...(renderer.perfHud ? [renderer.perfSummary()] : []),
     ].join('\n');
   }
 }
+renderer.perfHud = new URLSearchParams(location.search).has('perf');
 requestAnimationFrame(frame);

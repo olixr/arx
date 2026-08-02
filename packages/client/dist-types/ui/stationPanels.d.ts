@@ -108,6 +108,18 @@ export declare class StationPanels {
         ty: number;
     } | null;
     closeAll(): void;
+    /**
+     * Mirror the bank/shop panels' open state onto body classes. The
+     * station-pairing CSS (character.css) used to read these panels
+     * through document-scoped `body:has(...)` selectors, which the
+     * engine re-matches on EVERY `.hidden` toggle anywhere in the
+     * document — a standing style-recalc tax. A plain body class costs
+     * only the toggle itself. Called from every path that shows or
+     * hides these panels (openBank/openShop/closeAll — every open goes
+     * through closeAll first, and every close lands in closeAll), so
+     * the class can never leak past its panel.
+     */
+    private syncBodyClass;
     /** The household as last mirrored — openStable/refreshStable feed it. */
     private lastPets;
     /**
@@ -167,7 +179,9 @@ export declare class StationPanels {
      * shares. Chips are pad stops; the active one wears the gold.
      */
     private sortBar;
-    /** One ledger row (Workshop master list). */
+    /** One ledger row (Workshop master list). A string `iconUrl` sets
+     * the portrait synchronously; a function fills it through the
+     * BUDGETED LANE (icons.ts) so a first-open burst never hitches. */
     private ledgerRow;
     /** One material row in the Workshop detail: the full story of a need. */
     private materialRow;

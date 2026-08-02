@@ -734,10 +734,15 @@
    deposit/sell conversation reads left-to-right as one composition.
    The left wing (identity + stand + ledger) folds away with it; the
    pack keeps its whole 4×7 spread and the purse — you sell for coins,
-   the coins stay in view. */
+   the coins stay in view.
+   The pairing reads body classes (bank-open / shop-open /
+   inventory-open) stamped by the SAME code that toggles each panel's
+   .hidden (stationPanels/panels syncBodyClass) — the old document-
+   scoped body:has(...) selectors re-matched on every .hidden toggle
+   anywhere in the document. */
 
-body:has(#bank-panel:not(.hidden)) #inventory-panel,
-body:has(#shop-panel:not(.hidden)) #inventory-panel {
+body.bank-open #inventory-panel,
+body.shop-open #inventory-panel {
   left: calc(50% + 0.875rem);
   right: auto;
   top: 47%;
@@ -749,37 +754,37 @@ body:has(#shop-panel:not(.hidden)) #inventory-panel {
 
 /* The narrow pack column tells its name in smaller capitals so the
    banner never ellipsizes the word CHARACTER. */
-body:has(#bank-panel:not(.hidden)) #inventory-panel .panel-head h3,
-body:has(#shop-panel:not(.hidden)) #inventory-panel .panel-head h3 {
+body.bank-open #inventory-panel .panel-head h3,
+body.shop-open #inventory-panel .panel-head h3 {
   font-size: 1.375rem;
   letter-spacing: 0.125rem;
 }
 
-body:has(#bank-panel:not(.hidden)) #inventory-panel .worn-kit,
-body:has(#shop-panel:not(.hidden)) #inventory-panel .worn-kit,
+body.bank-open #inventory-panel .worn-kit,
+body.shop-open #inventory-panel .worn-kit,
 /* The bench folds away with the stand — the paired column is the
    pack alone, and the floating card speaks beside the station. */
-body:has(#bank-panel:not(.hidden)) #inventory-panel .char-bench,
-body:has(#shop-panel:not(.hidden)) #inventory-panel .char-bench,
+body.bank-open #inventory-panel .char-bench,
+body.shop-open #inventory-panel .char-bench,
 /* In the narrow paired column the banner already says CHARACTER —
    the tray-title yields its head band to the filter keys. */
-body:has(#bank-panel:not(.hidden)) #inventory-panel .tray-title,
-body:has(#shop-panel:not(.hidden)) #inventory-panel .tray-title,
+body.bank-open #inventory-panel .tray-title,
+body.shop-open #inventory-panel .tray-title,
 /* The drop-to-world lesson is the station's noise — the bank/shop
    panel carries its own hint; the pack spends the line on sockets. */
-body:has(#bank-panel:not(.hidden)) #inventory-panel .panel-hint,
-body:has(#shop-panel:not(.hidden)) #inventory-panel .panel-hint {
+body.bank-open #inventory-panel .panel-hint,
+body.shop-open #inventory-panel .panel-hint {
   display: none;
 }
 
 /* With the title away, the filter keys hold the head band's center. */
-body:has(#bank-panel:not(.hidden)) #inventory-panel .tray-head #pack-filters,
-body:has(#shop-panel:not(.hidden)) #inventory-panel .tray-head #pack-filters {
+body.bank-open #inventory-panel .tray-head #pack-filters,
+body.shop-open #inventory-panel .tray-head #pack-filters {
   margin: 0 auto;
 }
 
-body:has(#inventory-panel:not(.hidden)) #bank-panel,
-body:has(#inventory-panel:not(.hidden)) #shop-panel {
+body.inventory-open #bank-panel,
+body.inventory-open #shop-panel {
   left: calc(50% - 0.875rem);
   transform: translate(-100%, -50%);
 }

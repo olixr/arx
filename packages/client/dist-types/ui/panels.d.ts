@@ -121,6 +121,15 @@ export declare class Panels {
      * that writes glyphs into sentences redraws for the new truth.
      */
     refreshDevice(): void;
+    /**
+     * Mirror the character screen's open state onto `body.inventory-open`.
+     * The station-pairing CSS (character.css) used to read this panel
+     * through document-scoped `body:has(...)` selectors, which re-match
+     * on EVERY `.hidden` toggle anywhere in the document; a body class
+     * costs only the toggle. Called from every path that shows or hides
+     * the pack (the toggle/show trio and closeAll), so it never leaks.
+     */
+    private syncBodyClass;
     toggleInventory(): void;
     showInventory(): void;
     toggleSkills(): void;
