@@ -190,6 +190,13 @@ export const MATTER_MIGRATED: readonly string[] = [
   // without joining the library. Twenty of twenty-three stay
   // bespoke, and both schools read sharper for it.
   'heron_step', 'red_ribbons', 'set_the_wall',
+  // Wave 3g — the combat roster closes the schools: DUST AND BRASS,
+  // so the yard's grit kicks true and the war-red bleeds true where
+  // blood is the point (first_blood, no_quarter). Brass, breath,
+  // daylight, and milestones stay the veteran's own — no element
+  // ever. ALL EIGHT WEAPON-ART ROSTERS NOW SPEAK THE LIBRARY.
+  'first_blood', 'shoulder_check', 'loose_iron', 'hold_fast',
+  'break_the_line', 'no_quarter',
 ];
 
 // ------------------------------------------------------- exemplars

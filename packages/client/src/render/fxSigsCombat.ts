@@ -9,10 +9,17 @@
  * the school raises its voice, war-red only where blood is the point.
  * No element ever — the veteran's lessons look the same whatever the
  * hand holds, and no centerpiece is shared with any other school.
+ *
+ * FX v5 wave 3g: the school's two true matters route through the
+ * MATTER LIBRARY (ONE-VOICE LAW) — drill-yard dust (kicks, one
+ * gouge) and the war-red of first_blood and no_quarter, where blood
+ * IS the point. Brass, breath, daylight, and milestones stay the
+ * veteran's own; no element ever still holds.
  */
 
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { dust, blood, asMatter } from './matter/index.js';
 
 /** Screen point r px from the heart along ground angle a. */
 function groundPt(c: SigCtx, r: number, a: number): { x: number; y: number } {
@@ -57,23 +64,13 @@ function dustSlab(
  */
 const first_blood: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x1b);
-    for (let k = 0; k < 3; k++) {
-      c.particles.burst(
-        c.wx + Math.cos(c.dir) * c.radius * 0.5,
-        c.wy + Math.sin(c.dir) * c.radius * 0.5 * c.squash - 0.45,
-        1,
-        [c.st.mid, c.st.deep],
-        {
-          speed: 1.2 + rand() * 0.9,
-          life: 0.45,
-          size: 0.06,
-          gravity: 6,
-          dir: c.dir + (rand() - 0.5) * 0.8,
-          spread: 0.2,
-        },
-      );
-    }
+    // The ledger opens in TRUE red: a small directed spray off the
+    // mark — streaks along the cut, heavy drops that arc low, land,
+    // and dry dark. Understated on purpose; blood IS the point here.
+    blood.deployments.spray!(asMatter(c),
+      c.wx + Math.cos(c.dir) * c.radius * 0.5,
+      c.wy + Math.sin(c.dir) * c.radius * 0.5 * c.squash,
+      { dir: c.dir, scale: 0.4 });
   },
   air(c) {
     if (c.t > 0.55) return;
@@ -104,18 +101,9 @@ const first_blood: AbilitySig = {
  */
 const shoulder_check: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x2c);
-    for (let k = 0; k < 5; k++) {
-      c.particles.burst(c.wx2, c.wy2 - 0.15, 1, [c.st.mid, c.st.deep], {
-        speed: 1.6 + rand() * 1.2,
-        life: 0.5,
-        size: 0.09,
-        gravity: 5,
-        dir: c.dir + (rand() - 0.5) * 1.6,
-        spread: 0.3,
-        up: false,
-      });
-    }
+    // The yard's grit jumps TRUE at the landing — one breath of
+    // earth, fines that land and lie where the shoulder arrived.
+    dust.deployments.kick!(asMatter(c), c.wx2, c.wy2, { scale: 0.8 });
   },
   ground(c) {
     if (c.t > 0.5) return;
@@ -250,6 +238,9 @@ const loose_iron: AbilitySig = {
         shape: 'glint',
       });
     }
+    // The hand that threw them kicks TRUE dust off the yard — the
+    // promise the doc always made, now kept.
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 0.35 });
   },
   air(c) {
     if (c.t > 0.5) return;
@@ -284,18 +275,9 @@ const loose_iron: AbilitySig = {
  */
 const hold_fast: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x6a);
-    for (let k = 0; k < 5; k++) {
-      c.particles.burst(c.wx, c.wy, 1, [c.st.mid, c.st.deep], {
-        speed: 0.8 + rand() * 0.5,
-        life: 0.4,
-        size: 0.07,
-        gravity: 5,
-        dir: rand() * Math.PI * 2,
-        spread: 0.4,
-        up: false,
-      });
-    }
+    // The stakes drive home: one TRUE breath of yard grit at the
+    // survey's center.
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 0.6 });
   },
   ground(c) {
     const { ctx, st, t, sc, squash } = c;
@@ -339,17 +321,13 @@ const hold_fast: AbilitySig = {
  */
 const break_the_line: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x7b);
-    for (let k = 0; k < 6; k++) {
-      const a = c.dir + (rand() - 0.5) * 1.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.4,
-        c.wy + Math.sin(a) * c.radius * 0.4 * c.squash,
-        1,
-        [c.st.mid, c.st.deep],
-        { speed: 1.8 + rand(), life: 0.45, size: 0.08, gravity: 6, dir: a, spread: 0.2, up: false },
-      );
-    }
+    // The wall-wave rolls TRUE: dust and rock chips gouged the
+    // breadth of the arc — chunks hopping, billow rolling, fines
+    // raining after the crest.
+    dust.deployments.gouge!(asMatter(c),
+      c.wx + Math.cos(c.dir) * c.radius * 0.35,
+      c.wy + Math.sin(c.dir) * c.radius * 0.35 * c.squash,
+      { dir: c.dir, scale: 0.85 });
   },
   air(c) {
     if (c.t > 0.5) return;
@@ -441,20 +419,12 @@ const no_quarter: AbilitySig = {
   spawn(c) {
     const rand = srand(c.seed ^ 0x9d);
     const side = rand() < 0.5 ? 1 : -1;
-    c.particles.burst(
+    // The grindstone throws TRUE red off alternating sides — war-red
+    // where blood is the point, each beat a small directed spray.
+    blood.deployments.spray!(asMatter(c),
       c.wx + Math.cos(c.dir) * c.radius * 0.5,
-      c.wy + Math.sin(c.dir) * c.radius * 0.5 * c.squash - 0.4,
-      2,
-      [c.st.mid, c.st.spark],
-      {
-        speed: 1.5 + rand(),
-        life: 0.35,
-        size: 0.05,
-        gravity: 5,
-        dir: c.dir + side * 1.1,
-        spread: 0.25,
-      },
-    );
+      c.wy + Math.sin(c.dir) * c.radius * 0.5 * c.squash,
+      { dir: c.dir + side * 1.1, scale: 0.3 });
   },
   air(c) {
     if (c.t > 0.45) return;
