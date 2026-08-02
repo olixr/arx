@@ -28,11 +28,11 @@
         </div>
       </header>
       <div id="main">
-        <nav id="rail" aria-label="Tools"></nav>
+        <nav id="rail" role="toolbar" aria-label="Tools" aria-orientation="vertical"></nav>
         <div id="canvas-wrap">
-          <canvas id="editor-canvas" class="hidden"></canvas>
-          <canvas id="stage-canvas"></canvas>
-          <canvas id="world-canvas" class="hidden"></canvas>
+          <canvas id="editor-canvas" class="hidden" aria-label="Zone editor, schematic draft view"></canvas>
+          <canvas id="stage-canvas" aria-label="Zone editor, the game's own live render"></canvas>
+          <canvas id="world-canvas" class="hidden" aria-label="World map editor"></canvas>
           <div id="inst-minimap" class="instrument" title="Click to jump; drag to pan">
             <div class="inst-grip" title="Drag to a corner"></div>
             <canvas id="minimap"></canvas>
@@ -79,7 +79,7 @@
         </aside>
       </div>
       <footer id="statusbar">
-        <span id="st-hint" class="hint"></span>
+        <span id="st-hint" class="hint" aria-live="polite"></span>
         <span id="st-tile"></span>
         <span id="st-shelf"></span>
         <span id="st-coords">—</span>

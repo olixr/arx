@@ -128,6 +128,7 @@ export interface CommandDeps {
   toggleDockPanel(id: 'tool' | 'lib'): void;
   zoneProperties(): void;
   saveSelectionAsPrefab(): void;
+  ghostWalk(): void;
   openContentStudio(): void;
 }
 
@@ -228,6 +229,7 @@ export function buildCommands(d: CommandDeps): Command[] {
 
     { id: 'go.world', title: 'Go to World view', group: 'Go', keyLabel: 'W', mode: 'zone', icon: 'world', run: () => d.setMode('world') },
     { id: 'go.zone', title: 'Go to Zone view', group: 'Go', keyLabel: 'Z', mode: 'world', run: () => d.setMode('zone') },
+    { id: 'ghost.walk', title: 'Ghost Walk', group: 'Go', keyLabel: 'Q', mode: 'zone', hint: 'Drop a body and walk the map with WASD — walls are real', run: d.ghostWalk },
     { id: 'go.cms', title: 'Open Content Studio', group: 'Go', hint: 'Bestiary, loot, actors, dialogue', run: d.openContentStudio },
     { id: 'help', title: 'Help — shortcuts and how saves work', group: 'Help', icon: 'help', run: d.help },
   );

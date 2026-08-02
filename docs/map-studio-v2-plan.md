@@ -1,6 +1,8 @@
 # MAP STUDIO V2 — THE WORLD ON THE WORKBENCH
 
-*Proposal, 2026-08-02. Status: AWAITING GREEN LIGHT.*
+*Proposal 2026-08-02 · GREEN-LIT same day · **ALL SIX PHASES SHIPPED 2026-08-02 —
+THE EPIC IS COMPLETE.** The §8 per-phase as-builts are the record; §9 lists the
+standing laws this epic leaves behind.*
 
 The Map Studio is the only door through which every future map enters Arx. Today it is a
 capable but schematic tool: real baked ground under gray placeholder boxes, colored dots
@@ -553,6 +555,50 @@ Each phase ships, proves, and commits on its own. Laws named in caps become stan
   TOWN_SPAWNS adoption, Ghost Walk, cross-zone paste, stamp folders/tags, Content
   Studio full re-skin on the v2 kit, motion pass, a11y audit, perf pass (budgets
   honored on a 512×512 zone), docs + in-studio help.
+
+  **SHIPPED 2026-08-02 — as built (the epic closes):**
+  - **THE ONE ZONE GATE**: the validator moved to `content/src/maps/validateZone.ts`
+    (client validate.ts is a shim). PUT `/dev/maps/zone/<id>` now replays the SAME
+    laws — proven on an isolated rig (PORT 8791 + own DB): a border-flat breach
+    got 400 with the law's words; a valid-but-unfenced plateau saved with its
+    16-tile cliff ring completed server-side.
+  - **THE ADOPTED RING**: the Placements panel surfaces TOWN_SPAWNS within a
+    48-tile apron of the zone ("Town ring — code, not yet yours") with Adopt-all;
+    the server keys each constant (npc:x:y), SKIPS adopted ones at boot, and
+    reloadZone retires a newly-adopted constant's records in place (deactivate-
+    never-splice). Proven live: 2 wolves before, 2 after adoption (never 4), and
+    2 at boot with the adopting file present. Cluster-by-cluster retirement — the
+    constant dies as the file takes it over.
+  - **GHOST WALK (Q)**: a real player body drops at the view center and WASD
+    steers it through the shared `stepMovement` over the stage's chunks — walls
+    are REAL (1.3 tiles of travel against Dawnmead's buildings vs a 12-tile free
+    run), water wades, the camera follows; Q/Esc (first in the cascade) returns
+    to the bench. W belongs to the walker while walking.
+  - **THE STAMP SHELVES**: the prefab library gained search and families — ids
+    file by first word once a family has 3+ members ("guard kit"), POI footprints
+    keep their shelf, loners share one.
+  - **THE CMS RIDES THE KIT**: studio-core.css is a thin shim now (@import kit +
+    legacy aliases + map-table only — the duplicated control/card/modal/toast
+    styles are dead); the CMS topbar scrolls its rail with the link/status group
+    docked sticky-right on its own plate.
+  - **A11y + help**: rail role=toolbar, canvas aria-labels, live-region hint;
+    the help sheet teaches Q/nudge/Enter-closes/lenses.
+  - **512×512 perf** (headless, ~30Hz-capped): working zooms hold p50 16–17ms
+    including mid-stroke; the whole-zone fit framing runs ~57ms — the known
+    immediate-mode full-repaint ceiling (render-performance ledger), honest and
+    acceptable for a fit-and-look framing; the static-layer epic remains the
+    lever if it ever matters.
+  - Deferred honestly: smart MATERIAL brushes (a content-design pass: the
+    per-family edge-tile grammar), true prefab folders (needs a PrefabDef schema
+    field), pose fidelity for work/sit/lie stops (Ph3 note stands).
+
+**THE EPIC LEDGER**: six phases, one day, every phase proven live — the premium
+bench (Ph1), the game's own renderer as the canvas with a 98.5% pixel-match
+portrait proof (Ph2), the town living its authored day with a 10/10 rota shift
+proof (Ph3), the master's hands (Ph4), the laws made visible — immediately
+surfacing 197 stranded cells and 8 doorless rooms in shipped Silverfall (Ph5),
+and the door that never closes: one validation gate on both sides of the wire,
+the last hardcoded placements adoptable, and a ghost to walk it all (Ph6).
 
 Out of scope (named so nobody wonders): world-mode architecture (keeps v1 guts under v2
 chrome), multiplayer co-editing, in-editor dialogue/quest authoring (Content Studio's

@@ -58,6 +58,7 @@ import {
   voiceClipUrl,
   zoneFromJson,
   zoneToJson,
+  validateZone,
   type VoiceExt,
   type LootTableDef,
   type NpcActorDef,
@@ -1410,6 +1411,21 @@ export function createMapsApi(
           } catch (err) {
             sendJson(res, 400, { error: (err as Error).message });
             return true;
+          }
+          // THE ONE ZONE GATE, server side (Map Studio v2 Phase 6):
+          // the SAME ZoneBuilder replay the studio runs — a save that
+          // breaks the zone laws never reaches disk or the live world,
+          // whoever sent it. A valid-but-unfenced zone (hand-imported
+          // JSON) has its cliff fence completed here, exactly as the
+          // studio completes it before its own saves.
+          const verdict = validateZone(zone);
+          if (!verdict.ok) {
+            sendJson(res, 400, { error: `zone law: ${verdict.error}` });
+            return true;
+          }
+          if (verdict.fencedGround) {
+            zone.ground.set(verdict.fencedGround);
+            console.log(`[maps] '${id}': auto-fence completed ${verdict.fenceAdded} cliff tiles`);
           }
           mkdirSync(mapsDir, { recursive: true });
           await writeFile(

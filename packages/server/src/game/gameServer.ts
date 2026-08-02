@@ -2060,12 +2060,39 @@ export class GameServer {
     { cell: string; table?: string; warded?: boolean }
   >();
 
+  /**
+   * THE ADOPTED RING (Map Studio v2 Phase 6): the code-side TOWN_SPAWNS
+   * registered at boot, keyed so a zone that ADOPTS one (same npc at
+   * the same tile, saved into its file) retires the constant's copy —
+   * at boot by skipping it, and live in reloadZone by deactivating it.
+   * The constant never doubles an adopted camp, and retires entry by
+   * entry as the file takes them over.
+   */
+  private readonly townRing: Array<{ key: string; indexes: number[] }> = [];
+
+  private static townSpawnKey(s: { npc: string; x: number; y: number }): string {
+    return `${s.npc}:${s.x}:${s.y}`;
+  }
+
+  private zoneOwnsTownSpawn(key: string): boolean {
+    for (const z of this.world.zoneDefs) {
+      for (const sp of z.spawns ?? []) {
+        if (GameServer.townSpawnKey(sp) === key) return true;
+      }
+    }
+    return false;
+  }
+
   constructor(
     // Public: the dev maps API reads the live zone list off it.
     readonly world: WorldSource,
     private readonly accounts: AccountStore,
   ) {
-    this.registerSpawns(TOWN_SPAWNS);
+    for (const s of TOWN_SPAWNS) {
+      const key = GameServer.townSpawnKey(s);
+      if (this.zoneOwnsTownSpawn(key)) continue; // adopted — the file rules
+      this.townRing.push({ key, indexes: this.registerSpawns([s]) });
+    }
     this.social = new SocialSystem(accounts, {
       isOnline: (characterId) => this.characterEids.has(characterId),
       zoneOfCharacter: (characterId) => {
@@ -6312,6 +6339,23 @@ export class GameServer {
     if (zone.spawns && zone.spawns.length > 0) this.registerSpawns(zone.spawns, zone.id);
     if (zone.actorSpawns && zone.actorSpawns.length > 0) {
       this.registerActorSpawns(zone.actorSpawns, zone.id);
+    }
+    // THE ADOPTED RING: a save that took over a code-side town spawn
+    // retires the constant's live copy in place (deactivate-never-
+    // splice, the dungeon-teardown law) — no doubles until reboot.
+    const owned = new Set((zone.spawns ?? []).map((sp) => GameServer.townSpawnKey(sp)));
+    for (const ring of this.townRing) {
+      if (!owned.has(ring.key)) continue;
+      for (const i of ring.indexes) {
+        const spawn = this.spawnPoints[i];
+        if (!spawn || !spawn.active) continue;
+        spawn.active = false;
+        if (spawn.eid !== null) {
+          this.removeFromChunks(spawn.eid);
+          this.ecs.destroy(spawn.eid);
+          spawn.eid = null;
+        }
+      }
     }
   }
 

@@ -59,6 +59,7 @@ import {
   type DialogDeps,
 } from './dialogs.js';
 import { ClockInstrument } from './clock.js';
+import { GhostWalk } from './ghostWalk.js';
 import { installKeys } from './keys.js';
 import { Minimap } from './minimap.js';
 import { EditorOps } from './ops.js';
@@ -105,6 +106,7 @@ let actorDefs: ReadonlyMap<string, NpcActorDef> = NPC_ACTORS;
 const ops = new EditorOps(state, view, history, () => registry);
 const shell = new Shell();
 const people = new StagePeople(stage, () => state.zone);
+const ghost = new GhostWalk(stage, view, people, () => state.zone.origin);
 
 // ---------------------------------------------------------- world
 
@@ -419,6 +421,7 @@ const commands: Command[] = buildCommands({
   toggleDockPanel: (id) => shell.togglePanel(id),
   zoneProperties: () => zonePropertiesDialog(dialogDeps),
   saveSelectionAsPrefab: () => savePrefabDialog(dialogDeps),
+  ghostWalk: () => ghost.toggle(),
   openContentStudio: () => {
     window.location.href = '/cms.html';
   },
@@ -724,6 +727,7 @@ const keys = installKeys({
   ops,
   world,
   cmdk,
+  ghost,
   getMode: () => mode,
   setMode,
   save: doSave,
@@ -1041,6 +1045,7 @@ function frame(nowMs: number): void {
     world.frame();
   } else {
     people.update();
+    ghost.update(nowMs);
     view.render(nowMs);
     minimap.draw(nowMs);
     positionCtxbar();

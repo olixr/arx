@@ -672,6 +672,8 @@ export function helpDialog(): void {
     section('World tools', WORLD_TOOLS.map((t) => [t.key, `${t.name} — ${t.hint}`]));
     section('Everywhere', [
       ['⌘K', 'the command lens — search and run every command'],
+      ['Q', 'ghost walk — a real body, WASD through true collision'],
+      ['↑↓←→', 'nudge the selection one tile (content, rect, and mask together)'],
       ['⌘Z', 'undo · ⇧⌘Z redo'],
       ['⌘S', 'save to the running server'],
       ['⌘O', 'open anything the world holds'],
@@ -681,9 +683,17 @@ export function helpDialog(): void {
       ['0', 'fit in view · wheel zooms · Space or middle-drag pans'],
       ['/', 'focus the tile palette search'],
       ['W', 'world view · Z zone view · double-click a zone to step in'],
-      ['esc', 'cancels the most-transient thing first — paste, stamp, road, selection'],
+      ['esc', 'cancels the most-transient thing first — ghost, patrol, paste, stamp, road, polygon, selection'],
       ['X', 'mirror an armed structure stamp east-west'],
+      ['↵', 'closes the open thing — a patrol round, a road, a polygon'],
     ]);
+    body.appendChild(
+      el(
+        'p',
+        'muted',
+        'Lenses (Tool panel · also in ⌘K): shelf, rooms, reach, edges, growth, factions, signs — each states what it shows and what it found. The elevation lens shows the live fence line while you sculpt; the stair brush arms only on legal ground.',
+      ),
+    );
     body.appendChild(sheet);
     body.appendChild(
       el(

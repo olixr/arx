@@ -13,13 +13,20 @@
 #topbar {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   height: 48px;
   padding: 0 14px;
-  background: linear-gradient(#241b33, #191324);
+  background: var(--panel);
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
   min-width: 0;
+  /* The rail outgrew narrow windows — it scrolls, never overlaps. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+#topbar::-webkit-scrollbar {
+  display: none;
 }
 
 .brand {
@@ -45,6 +52,13 @@
 
 .push-right {
   margin-left: auto;
+  /* The rail scrolls beneath; this group docks at the right edge on
+     its own plate so nothing ever overlaps it. */
+  position: sticky;
+  right: 0;
+  background: var(--panel);
+  box-shadow: -12px 0 12px -6px var(--panel);
+  padding-left: var(--s2);
 }
 
 .studio-link {

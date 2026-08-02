@@ -48,6 +48,8 @@ interface OverlayHelpers {
 export class StagePeople {
   /** LIVING MODE: paths walk in real time; off = the settled hour frame. */
   living = false;
+  /** Entities owned by other systems (ghost walk) — never swept. */
+  readonly external = new Set<number>();
   /** DB-first actor defs (fetched); bundle registry stands in offline. */
   private actorDefs: ReadonlyMap<string, NpcActorDef> = NPC_ACTORS;
   private stale = true;
@@ -206,9 +208,10 @@ export class StagePeople {
       });
     });
 
-    // Placements removed or ghosted this frame leave the stage.
+    // Placements removed or ghosted this frame leave the stage;
+    // externally-owned bodies (the ghost walker) stand apart.
     for (const eid of game.entities.keys()) {
-      if (!keep.has(eid)) game.entities.delete(eid);
+      if (!keep.has(eid) && !this.external.has(eid)) game.entities.delete(eid);
     }
   }
 

@@ -10,12 +10,14 @@ import type { WorldMode } from '../editor/world/worldMode.js';
 import { toast } from '../studio2/kit.js';
 import { TOOL_BY_CODE, type StudioMode } from './commands.js';
 import type { CommandPalette } from './cmdk.js';
+import type { GhostWalk } from './ghostWalk.js';
 import type { EditorOps } from './ops.js';
 
 export interface KeysDeps {
   ops: EditorOps;
   world: WorldMode;
   cmdk: CommandPalette;
+  ghost: GhostWalk;
   getMode: () => StudioMode;
   setMode: (m: StudioMode) => void;
   save: () => void;
@@ -71,6 +73,16 @@ export function installKeys(deps: KeysDeps): KeysHandle {
         return;
       }
       if (world.keydown(e)) e.preventDefault();
+      return;
+    }
+    // GHOST WALK owns WASD while it walks (W never flips the mode
+    // out from under a walker), and Q is its door both ways.
+    if (!inField && !mod && e.code === 'KeyQ') {
+      deps.ghost.toggle();
+      return;
+    }
+    if (!inField && !mod && deps.ghost.keydown(e.code)) {
+      e.preventDefault();
       return;
     }
     if (!inField && !mod && e.code === 'KeyW') {
@@ -160,6 +172,7 @@ export function installKeys(deps: KeysDeps): KeysHandle {
         break;
       case 'Escape': {
         // One cancel per press, most-transient first — predictable exits.
+        if (deps.ghost.end()) break;
         if (ops.cancelPatrolEdit()) break;
         if (ops.cancelPaste()) break;
         if (ops.disarmStamp()) break;
@@ -205,6 +218,7 @@ export function installKeys(deps: KeysDeps): KeysHandle {
 
   window.addEventListener('keyup', (e) => {
     if (e.code === 'Space') spaceHeld = false;
+    deps.ghost.keyup(e.code);
     world.keyup(e);
   });
 

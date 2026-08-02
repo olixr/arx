@@ -1,5 +1,6 @@
 import {
   STRUCTURE_TEMPLATES,
+  TOWN_SPAWNS,
   templateWidth,
   templateHeight,
   zoneEdgeProfileOf,
@@ -156,21 +157,64 @@ export function buildStructuresPanel(root: HTMLElement, deps: PanelDeps): void {
     return;
   }
 
-  // POI footprints file separately — they're the wilderness system's
-  // curated pool (data/prefabs/poi_*), edited here, picked by hash out
-  // in the frontier.
-  const groups: Array<[string, typeof deps.prefabs]> = [
-    ['POI footprints', deps.prefabs.filter((p) => p.id.startsWith('poi_'))],
-    ['Structures & set pieces', deps.prefabs.filter((p) => !p.id.startsWith('poi_'))],
-  ];
-  for (const [glabel, gprefabs] of groups) {
-    if (gprefabs.length === 0) continue;
-    const ghead = document.createElement('div');
-    ghead.className = 'panel-head';
-    ghead.textContent = glabel;
-    root.appendChild(ghead);
-    root.appendChild(buildPrefabGrid(gprefabs, state, actions, deps));
-  }
+  // THE STAMP SHELVES (v2): searchable, filed by family — POI
+  // footprints (the frontier's curated pool), then set pieces filed
+  // by their id's first word (guard_*, camp_*, …) once a family has
+  // three or more members; loners share one shelf.
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.className = 'people-search';
+  search.placeholder = 'Search stamps…';
+  root.appendChild(search);
+  const listHost = document.createElement('div');
+  root.appendChild(listHost);
+
+  const rebuildShelves = (): void => {
+    listHost.innerHTML = '';
+    const q = search.value.trim().toLowerCase();
+    const match = (p: PrefabListEntry): boolean =>
+      q === '' || p.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
+    const pool = deps.prefabs.filter(match);
+    const poi = pool.filter((p) => p.id.startsWith('poi_'));
+    const rest = pool.filter((p) => !p.id.startsWith('poi_'));
+    const families = new Map<string, PrefabListEntry[]>();
+    for (const p of rest) {
+      const fam = p.id.split('_')[0] ?? p.id;
+      if (!families.has(fam)) families.set(fam, []);
+      families.get(fam)!.push(p);
+    }
+    const shelves: Array<[string, PrefabListEntry[]]> = [];
+    const loners: PrefabListEntry[] = [];
+    for (const [fam, members] of [...families.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      if (members.length >= 3) shelves.push([`${fam} kit`, members]);
+      else loners.push(...members);
+    }
+    const groups: Array<[string, PrefabListEntry[]]> = [
+      ['POI footprints', poi],
+      ...shelves,
+      ['Structures & set pieces', loners],
+    ];
+    for (const [glabel, gprefabs] of groups) {
+      if (gprefabs.length === 0) continue;
+      const ghead = document.createElement('div');
+      ghead.className = 'panel-head';
+      ghead.textContent = glabel;
+      const gcount = document.createElement('span');
+      gcount.className = 'count';
+      gcount.textContent = String(gprefabs.length);
+      ghead.appendChild(gcount);
+      listHost.appendChild(ghead);
+      listHost.appendChild(buildPrefabGrid(gprefabs, state, actions, deps));
+    }
+    if (listHost.childElementCount === 0) {
+      const none = document.createElement('p');
+      none.className = 'muted';
+      none.textContent = 'No stamp matches — try an id or a name.';
+      listHost.appendChild(none);
+    }
+  };
+  search.oninput = rebuildShelves;
+  rebuildShelves();
 }
 
 function buildPrefabGrid(
@@ -254,6 +298,63 @@ export function buildPlacementsPanel(root: HTMLElement, deps: PanelDeps): void {
   // Bulk-edit bar: two or more checked clusters share the next set.
   if (state.bulkChecked.size >= 2) {
     root.appendChild(buildBulkBar(deps));
+  }
+
+  // THE LAST INVISIBLE PLACEMENTS (Phase 6): code-side TOWN_SPAWNS
+  // inside this zone's rect, read-only until adopted into the file.
+  // The ring RINGS the town — the camps sit in the wilderness apron
+  // outside the rect, so the reach extends 48 tiles past every edge.
+  const APRON = 48;
+  const codeRing = TOWN_SPAWNS.filter((s) => {
+    const near =
+      s.x >= zone.origin.x - APRON &&
+      s.y >= zone.origin.y - APRON &&
+      s.x < zone.origin.x + zone.width + APRON &&
+      s.y < zone.origin.y + zone.height + APRON;
+    if (!near) return false;
+    // Already adopted (same npc at the same tile) — the file rules.
+    return !(zone.spawns ?? []).some((sp) => sp.npc === s.npc && sp.x === s.x && sp.y === s.y);
+  });
+  if (codeRing.length > 0) {
+    const head = document.createElement('div');
+    head.className = 'panel-head';
+    head.append('Town ring — code, not yet yours');
+    const count = document.createElement('span');
+    count.className = 'count';
+    count.textContent = String(codeRing.length);
+    head.appendChild(count);
+    root.appendChild(head);
+    const note = document.createElement('p');
+    note.className = 'muted';
+    note.textContent =
+      'These camps live in TOWN_SPAWNS, the last hardcoded placements. Adopt them and they become ordinary zone clusters you can edit; the code copy retires on save.';
+    root.appendChild(note);
+    const list = document.createElement('div');
+    list.className = 'row-list';
+    for (const s of codeRing) {
+      const row = document.createElement('div');
+      row.className = 'p-row';
+      const name = document.createElement('span');
+      name.className = 'p-name';
+      name.innerHTML = '<b></b><span></span>';
+      (name.firstChild as HTMLElement).textContent = `${s.npc} ×${s.count}`;
+      (name.lastChild as HTMLElement).textContent = `${s.x}, ${s.y}`;
+      row.appendChild(name);
+      list.appendChild(row);
+    }
+    root.appendChild(list);
+    const adopt = document.createElement('button');
+    adopt.className = 'primary';
+    adopt.textContent = `Adopt all ${codeRing.length} into this zone`;
+    adopt.title = 'Append them as ordinary clusters — Save ▸ Live retires the code copies';
+    adopt.onclick = () =>
+      actions.editPlacement({ kind: 'cluster', index: 0 }, 'adopt town ring', (z) => {
+        z.spawns ??= [];
+        for (const s of codeRing) {
+          z.spawns.push({ npc: s.npc, x: s.x, y: s.y, radius: s.radius, count: s.count });
+        }
+      });
+    root.appendChild(adopt);
   }
 
   // ------------------------------------------------- grouped lists
