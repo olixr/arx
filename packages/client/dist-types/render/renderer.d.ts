@@ -594,6 +594,16 @@ export declare class Renderer {
      * one function.
      */
     /**
+     * THE WIND REMEMBERS THE STREET: the one breeze every cloth prop
+     * breathes. Samples the real wind field at the prop's tile and
+     * blends it with a per-piece phase — half field (a gust rolls down
+     * the whole street together) and half voice (no two cloths move in
+     * lockstep). Returns screen-px offsets for a primary swing and the
+     * lagged secondary beat (the two-beat law), plus the gust factor
+     * for painters with their own extras.
+     */
+    private breezeAt;
+    /**
      * The renderer's mirror of terrain's isPorchSurface, closure-free:
      * renderLift runs for every body and item every frame, and a per-
      * call sampler allocation is real garbage in a hot path.

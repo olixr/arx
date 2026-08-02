@@ -1,5 +1,5 @@
 import { procShape } from './render/wornLight.js';
-import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo } from '@arx/shared';
+import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -490,7 +490,9 @@ function buildVariantFor(def: BuildableDef): number | undefined {
     if (kind === 'trellis') return buildSpecies > 0 ? buildSpecies : undefined;
     return undefined;
   }
-  if (def.tile !== undefined && awningInfo(def.tile) !== null && buildDye > 0) return buildDye;
+  if (def.tile !== undefined && (awningInfo(def.tile) !== null || def.tile === Tile.BannerPole)) {
+    return buildDye;
+  }
   return undefined;
 }
 /** The bank chest tile that asked the server for the vault — anchors the panel. */
@@ -2938,6 +2940,8 @@ function frame(now: number): void {
       if (awn && buildDye > 0) {
         landTile = awningTile(AWNING_SHAPES[awn.shapeIndex]!, buildDye);
       }
+      const poleDye = pieceTile === Tile.BannerPole;
+      if (poleDye) landTile = bannerPoleTile(buildDye);
 
       // THE GHOST NEVER LIES: the full server gate, mirrored, with the
       // first failing check naming itself in one breath.
@@ -2993,8 +2997,8 @@ function frame(now: number): void {
         kind: wallish ? 'wall' : landDef.raised === true ? 'prop' : 'flat',
         diag,
         icon: wallish || landDef.raised !== true ? null : def.id,
-        color: awn ? DYE_SWATCHES[buildDye]! : landDef.color,
-        topColor: awn ? DYE_SWATCHES[buildDye]! : (landDef.topColor ?? landDef.color),
+        color: awn || poleDye ? DYE_SWATCHES[buildDye]! : landDef.color,
+        topColor: awn || poleDye ? DYE_SWATCHES[buildDye]! : (landDef.topColor ?? landDef.color),
         reason,
         queued: buildQueue,
       };
@@ -3006,7 +3010,8 @@ function frame(now: number): void {
     if (def) {
       const hangKind = def.detail !== undefined ? wallHungInfo(def.detail)?.kind : undefined;
       const dyeable =
-        (def.tile !== undefined && awningInfo(def.tile) !== null) ||
+        (def.tile !== undefined &&
+          (awningInfo(def.tile) !== null || def.tile === Tile.BannerPole)) ||
         hangKind === 'banner' ||
         hangKind === 'pennant';
       const trayPigment = dyeable && buildDye > 0 ? DYE_PIGMENTS[buildDye] : null;

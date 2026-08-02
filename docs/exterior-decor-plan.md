@@ -362,10 +362,32 @@ porch read identical — the porch costs nothing measurable).
 NOTE: walking onto the deck snaps the 0.22 lift like the shipped docks; a
 step-blend can ride Phase 4 polish if it ever reads rough in play.
 
-**Phase 4 — THE WIND REMEMBERS THE STREET (unification + polish).**
-Shipped cloth props onto `windAtInto`; banner-pole dye lane; shadow/contact audit;
-night lamp-glow pass; perf audit (live cloth counts vs ring-cache exemptions —
-budget: no measurable frame cost at a 12-awning street, 120fps held).
+**Phase 4 — THE WIND REMEMBERS THE STREET. SHIPPED 2026-08-01.**
+As built: **ONE BREEZE** — `breezeAt(tx,ty,t,ph,s,ampA,ampB)` on the
+renderer samples the real wind field once and blends it half-field/half-voice
+(a gust rolls down the whole street together; no two cloths move in
+lockstep), returning the two-beat pair (sway + lagged beat) plus gust. All
+NINE standalone-sine sites now breathe it: banner pole hoist/tails, hanging
+sign swing/bob, flower-box blooms, royal wall banner, player wall banner,
+pennant flags (per-flag phase), bracket-sign pendulum, wall-basket pendulum,
+trellis leaf-tips. Awnings and the market stall already spoke it — the whole
+street now answers one weather. **The banner pole joined THE DYE LAW**:
+`Tile.BannerPoleDyed = 224` +dye (224-239), `bannerPoleInfo/bannerPoleTile`
+helpers test-pinned, defs generated from the anchor; a builder's pole ALWAYS
+lands dyed (the dial ships even at linen 0 — chosen-dye semantics), the
+authored `Tile.BannerPole` keeps its hash-dealt roster untouched; fold to
+`banner_pole` def dye-blind; ghost lands the exact dyed id in the dye's own
+color; the dyed band rides the SAME ring cache as the classic pole. **THE
+PORCH LIGHT**: the LampPost's collect-time bloom divides the deck lift out
+through the same projAir division as its fixture height — a porch lamp's
+glow sits on its lantern, never a fifth of a tile low.
+PROVEN: 1278 tests green; ten-dye pole row staged and rendered (all cloths
+true); porch-lamp night frame; TWO fps investigations both resolved
+environmental by the far-probe method (empty countryside read SLOWER than
+the pole row — impossible if the props were the cost; the dev machine was
+saturated by the session's toolchain). Shadow/contact audit: all Phase 1-3
+pieces already carry castEdgeQuad or masonry contact from the masterwork
+passes — no gaps found.
 
 **Phase 5 — THE TOWNS DRESS UP (authoring).**
 Awnings, bracket signs, trellises, pennants, and porches authored across Dawnmead,

@@ -3,6 +3,7 @@ import {
   DYE_COUNT,
   Tile,
   awningInfo,
+  bannerPoleInfo,
   diagWallInfo,
   wallHungInfo,
   type SkillId,
@@ -902,6 +903,8 @@ export function buildableForTile(tile: Tile): BuildableDef | undefined {
   // one def, so salvage and the own-work overlay never care about dye.
   const awn = awningInfo(tile);
   if (awn) return BUILDABLES.get(`awning_${awn.shape}`);
+  // A dyed banner pole folds to the one pole def, dye-blind.
+  if (bannerPoleInfo(tile)) return BUILDABLES.get('banner_pole');
   return BY_TILE.get(tile);
 }
 

@@ -13,6 +13,7 @@ import {
   STATUS_IDS,
   Tile,
   TILE_DEFS,
+  bannerPoleTile,
   wallHungInfo,
 } from '@arx/shared';
 import type { ZoneSign } from './maps/types.js';
@@ -1963,4 +1964,11 @@ test('pinewatch: every door, pier, kiln and bed walks from the muster yard', () 
     const ly = Math.floor(a.y - z.origin.y);
     assert.equal(seen[ly * z.width + lx], 1, `${a.actor}'s post at (${lx},${ly}) is unreachable`);
   }
+});
+
+test('the dyed banner pole folds home, dye-blind', () => {
+  for (let dye = 0; dye < DYE_COUNT; dye++) {
+    assert.equal(buildableForTile(bannerPoleTile(dye))?.id, 'banner_pole', `dye ${dye}`);
+  }
+  assert.equal(buildableForTile(Tile.BannerPole)?.id, 'banner_pole', 'the classic pole too');
 });

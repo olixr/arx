@@ -21,6 +21,8 @@ import {
   Tile,
   awningInfo,
   awningTile,
+  bannerPoleInfo,
+  bannerPoleTile,
   bracketSignDetail,
   pennantDetail,
   trellisDetail,
@@ -369,4 +371,18 @@ test('AWNING_HOST_TILES: framed south faces only — corners and curtains refuse
   for (const t of GARRISON_TILES) {
     assert.ok(!AWNING_HOST_TILES.has(t), `${tileDef(t).name} refuses`);
   }
+});
+
+test('banner pole band: dyed poles round-trip, defs stand, hash pole untouched', () => {
+  for (let dye = 0; dye < DYE_COUNT; dye++) {
+    const t = bannerPoleTile(dye);
+    assert.deepEqual(bannerPoleInfo(t), { dye });
+    const def = tileDef(t);
+    assert.equal(def.name, 'banner pole');
+    assert.equal(def.solid, true);
+    assert.equal(def.raised, true);
+  }
+  assert.equal(bannerPoleInfo(Tile.BannerPole), null, 'the authored pole keeps its hash deal');
+  assert.equal(bannerPoleInfo(Tile.BannerPoleDyed + DYE_COUNT), null);
+  assert.throws(() => bannerPoleTile(DYE_COUNT));
 });

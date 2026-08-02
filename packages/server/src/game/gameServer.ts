@@ -415,6 +415,7 @@ import {
   trellisDetail,
   awningInfo,
   awningTile,
+  bannerPoleTile,
   AWNING_SHAPES,
   DYE_COUNT,
   Detail,
@@ -5233,8 +5234,10 @@ export class GameServer {
     const orientable =
       diagWallInfo(pieceTile) !== null || pieceTile === Tile.FenceDiagNE ? orient : undefined;
     // THE DYE LAW's dial: only a dyeable piece keeps it (a stale
-    // client can't tint a bed).
-    const dyed = awningInfo(pieceTile) !== null ? variant : undefined;
+    // client can't tint a bed). The banner pole joined the family in
+    // Phase 4 — a builder's pole flies the cloth they chose.
+    const dyed =
+      awningInfo(pieceTile) !== null || pieceTile === Tile.BannerPole ? variant : undefined;
     // The pigment is paid beside the materials (DYE_PIGMENTS): a dye
     // is foraged color, not a free menu. Linen (0/absent) asks nothing.
     const pigment = dyed !== undefined ? DYE_PIGMENTS[dyed] : null;
@@ -5443,6 +5446,11 @@ export class GameServer {
     const awn = awningInfo(pieceTile);
     if (awn && action.dye !== undefined) {
       placed = awningTile(AWNING_SHAPES[awn.shapeIndex]!, action.dye);
+    }
+    // A builder's banner pole lands dyed; the authored hash-dealt
+    // pole (no dial sent) keeps its old id untouched.
+    if (pieceTile === Tile.BannerPole && action.dye !== undefined) {
+      placed = bannerPoleTile(action.dye);
     }
     // A 45° fence turn joins whichever diagonal already carries
     // fencing — same build-the-runs-first law as the wall corner.

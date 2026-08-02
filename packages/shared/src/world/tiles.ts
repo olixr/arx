@@ -391,6 +391,13 @@ export enum Tile {
   AwningBoard = 192,
   /** Barrel-curved canvas, the grand shopfront: +dye (208..223). */
   AwningBowed = 208,
+  /**
+   * THE WIND REMEMBERS THE STREET: the player-built banner pole,
+   * dyed — +dye (224..239 reserved). The classic Tile.BannerPole
+   * stays the authored, hash-dealt pole; a builder's pole carries
+   * the dye they chose (THE DYE LAW, one more banded family).
+   */
+  BannerPoleDyed = 224,
 }
 
 export enum Detail {
@@ -802,6 +809,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.AwningMarket]: { name: 'market awning', solid: false, color: '#c9bfa8', raised: true, topColor: '#d8cfba' },
   [Tile.AwningBoard]: { name: 'board awning', solid: false, color: '#6e4b29', raised: true, topColor: '#8a6336' },
   [Tile.AwningBowed]: { name: 'bowed awning', solid: false, color: '#c9bfa8', raised: true, topColor: '#d8cfba' },
+  [Tile.BannerPoleDyed]: { name: 'banner pole', solid: true, color: '#6f4d26', raised: true, topColor: '#8a6534' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -841,6 +849,19 @@ export function awningTile(shape: AwningShape, dye: number): Tile {
   return AWNING_BASES[i]! + dye;
 }
 
+/** Read a dyed banner pole back to its dye; null for everything else. */
+export function bannerPoleInfo(t: number): { dye: number } | null {
+  if (t >= Tile.BannerPoleDyed && t < Tile.BannerPoleDyed + DYE_COUNT)
+    return { dye: t - Tile.BannerPoleDyed };
+  return null;
+}
+
+/** The dyed pole tile for this dye (validated — bad dye throws). */
+export function bannerPoleTile(dye: number): Tile {
+  if (!Number.isInteger(dye) || dye < 0 || dye >= DYE_COUNT) throw new Error(`bad dye ${dye}`);
+  return Tile.BannerPoleDyed + dye;
+}
+
 /** Every awning id, all shapes and dyes — palette/test sweeps. */
 export const AWNING_TILES: ReadonlySet<Tile> = new Set(
   AWNING_BASES.flatMap((base) => Array.from({ length: DYE_COUNT }, (_, dye) => base + dye)),
@@ -853,6 +874,10 @@ for (const base of AWNING_BASES) {
   for (let dye = 1; dye < DYE_COUNT; dye++) {
     (TILE_DEFS as Record<number, TileDef>)[base + dye] = anchor;
   }
+}
+for (let dye = 1; dye < DYE_COUNT; dye++) {
+  (TILE_DEFS as Record<number, TileDef>)[Tile.BannerPoleDyed + dye] =
+    TILE_DEFS[Tile.BannerPoleDyed]!;
 }
 
 /**

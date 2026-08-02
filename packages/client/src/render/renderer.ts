@@ -27,6 +27,7 @@ import {
   FENCE_TILES,
   awningInfo,
   type AwningInfo,
+  bannerPoleInfo,
   AWNING_HOST_TILES,
   wallHungInfo,
   diagWallInfo,
@@ -1877,6 +1878,31 @@ export class Renderer {
    * one function.
    */
   /**
+   * THE WIND REMEMBERS THE STREET: the one breeze every cloth prop
+   * breathes. Samples the real wind field at the prop's tile and
+   * blends it with a per-piece phase — half field (a gust rolls down
+   * the whole street together) and half voice (no two cloths move in
+   * lockstep). Returns screen-px offsets for a primary swing and the
+   * lagged secondary beat (the two-beat law), plus the gust factor
+   * for painters with their own extras.
+   */
+  private breezeAt(
+    tx: number,
+    ty: number,
+    t: number,
+    ph: number,
+    s: number,
+    ampA: number,
+    ampB: number,
+  ): { sway: number; lag: number; gust: number } {
+    const wind = windAtInto(WIND_TMP, tx + 0.5, ty + 0.5, t);
+    const gust = 0.6 + 0.35 * Math.max(0, wind.s);
+    const sway = (wind.bx * 0.45 + Math.sin(t * 1.3 + ph) * 0.55) * s * ampA * gust;
+    const lag = (wind.bx * 0.45 + Math.sin(t * 1.3 + ph - 0.85) * 0.55) * s * ampB * gust;
+    return { sway, lag, gust };
+  }
+
+  /**
    * The renderer's mirror of terrain's isPorchSurface, closure-free:
    * renderLift runs for every body and item every frame, and a per-
    * call sampler allocation is real garbage in a hot path.
@@ -3662,10 +3688,14 @@ export class Renderer {
           if (flame > 0.05) {
             // The bloom rides the lantern cage, not the post's foot —
             // world-y offset divides the camera squash back out so the
-            // glow lands on the raised fixture (the projAir law).
+            // glow lands on the raised fixture (the projAir law). A
+            // porch lamp stands on lifted boards: the SAME division
+            // carries the deck lift, so THE PORCH LIGHT sits on its
+            // lantern, never a fifth of a tile low.
+            const deckLift = this.porchAt(game, tx, ty) ? DOCK_LIFT : 0;
             this.glows.push({
               x: tx + 0.5,
-              y: ty + 0.62 - 1.4 / this.camera.yScale,
+              y: ty + 0.62 - (1.4 + deckLift) / this.camera.yScale,
               r: 1.3 * flick,
               rgb: '255, 205, 130',
               a: 0.28 * flame * flick,
@@ -6087,8 +6117,7 @@ export class Renderer {
     const bl = s * (garrison ? 1.6 : 1.18);
     const t = performance.now() / 1000;
     const ph = tx * 1.7 + ty * 0.9;
-    const sway = Math.sin(t * 1.15 + ph) * s * 0.02;
-    const lag = Math.sin(t * 1.15 + ph - 0.9) * s * 0.03;
+    const { sway, lag } = this.breezeAt(tx, ty, t, ph, s, 0.02, 0.03);
     const yTop = rodY + s * 0.035;
     const yMid = yTop + bl * 0.66;
     const yBot = yTop + bl;
@@ -6222,8 +6251,7 @@ export class Renderer {
     const bl = s * 1.05;
     const t = performance.now() / 1000;
     const ph = tx * 1.7 + ty * 0.9;
-    const sway = Math.sin(t * 1.15 + ph) * s * 0.02;
-    const lag = Math.sin(t * 1.15 + ph - 0.9) * s * 0.03;
+    const { sway, lag } = this.breezeAt(tx, ty, t, ph, s, 0.02, 0.03);
     const yTop = rodY + s * 0.035;
     const yMid = yTop + bl * 0.66;
     const yBot = yTop + bl;
@@ -6324,7 +6352,7 @@ export class Renderer {
       const p = ropeAt(f);
       const fw = s * 0.15;
       const fh = s * 0.24;
-      const lean = Math.sin(t * 2.0 + tx * 1.3 + k * 1.9) * s * 0.035;
+      const lean = this.breezeAt(tx, ty, t, tx * 1.3 + k * 1.9, s, 0.035, 0.035).sway;
       ctx.fillStyle = (k & 1) === 0 ? cloth.a : cloth.b;
       ctx.beginPath();
       ctx.moveTo(p.x - fw / 2, p.y);
@@ -6386,8 +6414,9 @@ export class Renderer {
     }
     // The pendulum: board and chains swing together IN THE PLANE,
     // pivoting at the rod (the HangingSign's beat, made honest).
-    const swing = Math.sin(t * 1.6 + tx * 2.3) * 0.055;
-    const bob = Math.sin(t * 1.6 + tx * 2.3 - 0.5) * s * 0.01;
+    const bz = this.breezeAt(tx, ty, t, tx * 2.3, s, 1, 1);
+    const swing = (bz.sway / s) * 0.055;
+    const bob = bz.lag * 0.01;
     ctx.save();
     ctx.translate(cx, rodY + bob);
     ctx.rotate(swing);
@@ -6589,7 +6618,8 @@ export class Renderer {
       const hk = (h >>> (k * 3)) & 7;
       const lx = cx + ((hk & 3) - 1.5) * half * 0.55;
       const ly = yBase - s * 0.12 - (k / 9) * (yBase - yTop - s * 0.2);
-      const flutter = k % 3 === 0 ? Math.sin(t * 1.9 + k * 1.3 + tx) * s * 0.012 : 0;
+      const flutter =
+        k % 3 === 0 ? this.breezeAt(tx, ty, t, k * 1.3 + tx, s, 0.012, 0.012).sway : 0;
       ctx.fillStyle = (hk & 4) === 0 ? leaf : leafDark;
       ctx.beginPath();
       ctx.ellipse(lx + flutter, ly, s * 0.06, s * 0.042, (hk - 3) * 0.3, 0, Math.PI * 2);
@@ -6625,7 +6655,7 @@ export class Renderer {
     ctx.fillStyle = '#454052';
     ctx.fillRect(cx - s * 0.02, pegY - s * 0.05, s * 0.04, s * 0.1);
     ctx.fillRect(cx - s * 0.02, pegY - s * 0.05, s * 0.11, s * 0.035);
-    const sway = Math.sin(t * 1.3 + tx * 1.7 + ty * 0.9) * 0.05;
+    const sway = (this.breezeAt(tx, ty, t, tx * 1.7 + ty * 0.9, s, 1, 1).sway / s) * 0.05;
     ctx.save();
     ctx.translate(cx + s * 0.07, pegY - s * 0.02);
     ctx.rotate(sway);
@@ -14542,6 +14572,7 @@ export class Renderer {
    * so their fire isn't sampled down to cadence rate.
    */
   private static readonly CACHED_RING_TILES = new Set<Tile>([
+    ...Array.from({ length: 10 }, (_, d) => (Tile.BannerPoleDyed + d) as Tile),
     Tile.Stump,
     Tile.Barrel,
     Tile.Crate,
@@ -16897,8 +16928,10 @@ export class Renderer {
     // never forty switch cases.
     const awn = awningInfo(tile);
     if (awn) return this.awningItem(awn, tile, tx, ty, game, p, s, t);
+    // A dyed banner pole is the classic pole flying a chosen cloth.
+    const poleDye = bannerPoleInfo(tile);
 
-    switch (tile) {
+    switch (poleDye ? Tile.BannerPole : tile) {
       case Tile.Tree:
       case Tile.TreeOak:
       case Tile.TreeWillow:
@@ -19685,7 +19718,11 @@ export class Renderer {
       case Tile.BannerPole: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.14;
-        const pal = (['#7a3f8f', '#a8433a', '#2e7d72', '#31589c'] as const)[h % 4]!;
+        // THE DYE LAW: a builder's pole flies the dye they chose; the
+        // authored pole keeps the town's hash-dealt roster.
+        const pal = poleDye
+          ? Renderer.AWNING_CLOTHS[poleDye.dye]!.a
+          : (['#7a3f8f', '#a8433a', '#2e7d72', '#31589c'] as const)[h % 4]!;
         // A civic standard: the crossarm rides well above head height.
         const ph = s * 1.85;
         return {
@@ -19739,8 +19776,7 @@ export class Renderer {
             // The banner: a long swallowtail drop. The hoist swings as
             // one (primary); the tails trail a beat behind (secondary)
             // so the cloth ripples instead of stiffly tilting.
-            const sway = Math.sin(t * 1.4 + tx * 1.7 + ty) * s * 0.045;
-            const lag = Math.sin(t * 1.4 + tx * 1.7 + ty - 0.8) * s * 0.055;
+            const { sway, lag } = this.breezeAt(tx, ty, t, tx * 1.7 + ty, s, 0.045, 0.055);
             const bx0 = p.x + s * 0.07;
             const bw2 = s * 0.34;
             const by0 = baseY - ph + s * 0.06;
@@ -19814,8 +19850,9 @@ export class Renderer {
             // The shingle swings on two ropes; the board lags a
             // fraction behind the arm's phase so it feels hung, not
             // welded (secondary motion).
-            const swing = Math.sin(t * 1.6 + tx * 2.3) * 0.07;
-            const bob = Math.sin(t * 1.6 + tx * 2.3 - 0.5) * s * 0.012;
+            const bz2 = this.breezeAt(tx, ty, t, tx * 2.3, s, 1, 1);
+            const swing = (bz2.sway / s) * 0.07;
+            const bob = bz2.lag * 0.012;
             const ax = p.x + s * 0.2;
             const ay = baseY - ph + s * 0.065;
             ctx.save();
@@ -19984,7 +20021,7 @@ export class Renderer {
             // plastic. Stems lean with their flower heads.
             for (let k = 0; k < 5; k++) {
               const hh = hashCoords(61 + k, tx, ty);
-              const nod = Math.sin(t * 1.8 + hh * 0.3) * s * 0.012;
+              const nod = this.breezeAt(tx, ty, t, hh * 0.3, s, 0.012, 0.012).sway;
               const fx = p.x - s * 0.26 + k * s * 0.13 + ((hh % 5) - 2) * s * 0.01;
               const fy = baseY - s * 0.32 - ((hh >> 4) % 4) * s * 0.025;
               ctx.strokeStyle = '#5f8a44';
