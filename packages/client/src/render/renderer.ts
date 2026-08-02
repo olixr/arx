@@ -3415,6 +3415,17 @@ export class Renderer {
         draw: () => this.particles.drawOne(this.ctx, p, this.liftedWTS, this.camera.scale),
       });
     }
+    // THE WORLD LAYER: airborne matter that lives WITH the bodies —
+    // a fire ring's north arc passes behind the caster, a venom cloud
+    // swallows its victim. Sorted on the ground anchor; altitude is a
+    // full-scale screen lift inside drawOne (contact shadow included,
+    // debris-style).
+    for (const p of this.particles.worldParticles()) {
+      items.push({
+        sortY: p.y,
+        draw: () => this.particles.drawOne(this.ctx, p, this.liftedWTS, this.camera.scale),
+      });
+    }
     // Smashed-prop chunks are world matter: they y-sort with the scene
     // (a stave that lands north of a table paints under it) and test
     // the live collision field so flying wood thuds off walls.
