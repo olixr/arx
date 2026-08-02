@@ -8580,6 +8580,31 @@ export class Renderer {
         // The dark interior seen through the opening; melts away as
         // anyone approaches the threshold.
         const hh = Math.max(0, hs - s * 1.56); // opening is FIXED height; the header grows (stubs have none)
+        // THE DOOR OPENS ONTO A ROOM, NOT THE MAP. A doorway is a
+        // hole, and a hole shows whatever the frame already holds —
+        // which for a door whose far side is open country is raw
+        // meadow floating at head height (the Great Saw's yard doors
+        // taught this). When no interior lies behind the opening,
+        // paint the beyond honestly: the far ground's own tone deep
+        // in the wall's shadow at the threshold, rising into unlit
+        // dark under the header. A true room behind keeps the
+        // see-through read — the melt still reveals the furniture.
+        let roomBehind = false;
+        for (let i = 0; i < runLen && !roomBehind; i++) {
+          roomBehind = this.interiors.regionAt(game, tx + i, ty - 1) !== null;
+        }
+        if (!roomBehind && hh > s * 0.05) {
+          const bt = game.world.groundAt(tx, ty - 1);
+          const gcol = (bt !== undefined ? tileDef(bt)?.color : undefined) ?? '#4a3b28';
+          ctx.fillStyle = shade(gcol, -34);
+          ctx.fillRect(x0 + jw, -hs, x1 - x0 - jw * 2, hs);
+          const depthG = ctx.createLinearGradient(0, -hs, 0, 0);
+          depthG.addColorStop(0, 'rgba(14, 10, 22, 0.9)');
+          depthG.addColorStop(0.72, 'rgba(14, 10, 22, 0.52)');
+          depthG.addColorStop(1, 'rgba(14, 10, 22, 0.2)');
+          ctx.fillStyle = depthG;
+          ctx.fillRect(x0 + jw, -hs, x1 - x0 - jw * 2, hs);
+        }
         const veil = hh > s * 0.05 ? this.doorVeil(game, tx + runLen / 2, ty + 0.5) : 0;
         if (veil > 0.01) {
           ctx.fillStyle = `rgba(14, 10, 22, ${0.5 * veil})`;
@@ -23083,12 +23108,20 @@ export class Renderer {
   ): DrawItem {
     const syT = s * this.camera.yScale;
     const cloth = Renderer.AWNING_CLOTHS[awn.dye]!;
+    const shape = awn.shape;
     const east = game.world.groundAt(tx + 1, ty);
     const west = game.world.groundAt(tx - 1, ty);
+    const eInfo = east === undefined ? null : awningInfo(east);
+    const wInfo = west === undefined ? null : awningInfo(west);
     const je = east === tile;
     const jw = west === tile;
-    const fe = !je && east !== undefined && awningInfo(east) !== null;
-    const fw = !jw && west !== undefined && awningInfo(west) !== null;
+    // THE SHARED POST LAW: every awning pair flush-joins — the ONE
+    // RAIL law makes any two neighbours meet hem-true, whatever the
+    // shape or dye — and the joint wears exactly ONE shared timber
+    // post, raised by the east member (it draws last, so the post
+    // caps both hems' edge ink in a single stroke of carpentry).
+    const fe = !je && eInfo !== null;
+    const fw = !jw && wInfo !== null;
     const host = game.world.groundAt(tx, ty - 1);
     const woodHost =
       host === Tile.WallWood ||
@@ -23099,11 +23132,16 @@ export class Renderer {
       host === Tile.DoorwayWoodWideShut;
     const skin = this.woodSkinFor(woodHost ? this.wallRegion(game, tx, ty - 1) : null);
     const frame = skin.plate;
-    const shape = awn.shape;
-    // Geometry: rail heights keep the lowest cloth ≥ ~1.3 tiles over
-    // the street even under the deepest skirt (hem-clears-the-head).
-    const depth = shape === 'board' ? 0.65 : shape === 'market' ? 0.85 : 0.8;
-    const outH = shape === 'market' ? 1.7 : shape === 'bowed' ? 1.66 : shape === 'shed' ? 1.64 : 1.7;
+    // THE ONE RAIL: every awning on a street hangs from the same
+    // rod height to the same front rail — merchants bolt to a
+    // common ledger, so any two awnings meet hem-true at a joint.
+    // Shape identity lives in the SKIRT (scallops / drop / bow /
+    // wooden fascia), the slab treatment, and the material — never
+    // in a private silhouette. Rail height keeps the lowest cloth
+    // ≥ ~1.3 tiles over the street even under the deepest skirt
+    // (hem-clears-the-head).
+    const depth = 0.85;
+    const outH = 1.7;
     const vDepth = shape === 'market' ? s * 0.3 : shape === 'shed' ? s * 0.17 : shape === 'bowed' ? s * 0.15 : 0;
     const yN = p.y - syT * 0.5;
     // THE SCRUNCH: the rod sits at 1.76 tiles so the slab's screen
@@ -23185,6 +23223,20 @@ export class Renderer {
         ctx.fillRect(topL, rootY + s * 0.05, topR - topL, s * 0.1);
         ctx.fillStyle = 'rgba(18, 12, 26, 0.1)';
         ctx.fillRect(topL, rootY + s * 0.15, topR - topL, s * 0.11);
+        {
+          // Every canopy throws real shade down its wall: a soft
+          // under-eave wash below the hem line, fading out. It seats
+          // the fixture IN the facade, and it dims the wall's bright
+          // log-arris lines that would otherwise glint through the
+          // scallop cusp gaps as amber flecks.
+          const hemY2 = railY + (shape === 'board' ? s * 0.12 : railH);
+          const eave = ctx.createLinearGradient(0, hemY2, 0, hemY2 + s * 0.55);
+          eave.addColorStop(0, 'rgba(18, 12, 26, 0.42)');
+          eave.addColorStop(0.5, 'rgba(18, 12, 26, 0.16)');
+          eave.addColorStop(1, 'rgba(18, 12, 26, 0)');
+          ctx.fillStyle = eave;
+          ctx.fillRect(botL, hemY2, botR - botL, s * 0.55);
+        }
         // ---- Diagonal wall braces at TRUE free ends: drawn first so
         // they pass BEHIND the cloth and catch the rail ends.
         const brace = (edge: 'L' | 'R'): void => {
@@ -23242,8 +23294,8 @@ export class Renderer {
             ctx.stroke(board);
           }
         };
-        if (!jw) cheek('L');
-        if (!je) cheek('R');
+        if (!jw && !fw) cheek('L');
+        if (!je && !fe) cheek('R');
         // ---- THE CLOTH: base fill = the darkest tone in the piece
         // (the plumb valance's own), then every plane models over it.
         const slabLit = shade(cloth.a, 16);
@@ -23256,9 +23308,9 @@ export class Renderer {
           const slat = shade(skin.log, -16);
           const slat2 = shade(skin.log2, -8);
           const span = railY - rootY + s * 0.02;
-          for (let c = 0; c < 3; c++) {
-            const y0 = rootY + (span * c) / 3;
-            const hC = span / 3;
+          for (let c = 0; c < 4; c++) {
+            const y0 = rootY + (span * c) / 4;
+            const hC = span / 4;
             ctx.fillStyle = c % 2 === 0 ? slat : slat2;
             ctx.fillRect(topL, y0, topR - topL, hC);
             ctx.fillStyle = 'rgba(24, 15, 6, 0.38)';
@@ -23344,9 +23396,6 @@ export class Renderer {
           // The wind's broad shimmer, top plane only.
           ctx.fillStyle = `rgba(255, 252, 235, ${0.03 + 0.05 * Math.max(0, wind.l)})`;
           ctx.fillRect(botL, rootY, botR - botL, railY - rootY);
-          // -- The fold crease where the cloth breaks to hang.
-          ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
-          ctx.fillRect(botL, railY, botR - botL, railH + s * 0.02);
           // -- The SKIRT: plumb, in the unlit dye, with real depth.
           if (shape === 'market') {
             for (let k = 0; k < 4; k++) {
@@ -23354,10 +23403,13 @@ export class Renderer {
               const xb = atHem(k / 4);
               const cxk = (xa + xb) / 2 + leans[k]! * 0.5;
               const rk = (xa - xb) / 2;
+              // Each scallop OWNS its column from the rail down —
+              // the base silhouette fill (the a-dye) must never
+              // peek over a b-dye scallop as a colored hairline.
               ctx.fillStyle = (k & 1) === 0 ? cloth.a : cloth.b;
               ctx.beginPath();
-              ctx.moveTo(xa, vTop - s * 0.01);
-              ctx.lineTo(xb, vTop - s * 0.01);
+              ctx.moveTo(xa, railY);
+              ctx.lineTo(xb, railY);
               ctx.arc(cxk, vTop, rk, Math.PI, 0, true);
               ctx.fill();
               // Inner shade seats the scallop under the rail; a
@@ -23374,7 +23426,14 @@ export class Renderer {
               ctx.arc(cxk, vTop, rk - s * 0.032, 0.35, Math.PI - 0.35, false);
               ctx.stroke();
             }
+            // The fold crease draws OVER the scallop tops, one even
+            // shadow where every panel breaks to hang.
+            ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
+            ctx.fillRect(botL, railY, botR - botL, railH + s * 0.02);
           } else if (shape === 'shed') {
+            // The fold crease where the cloth breaks to hang.
+            ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
+            ctx.fillRect(botL, railY, botR - botL, railH + s * 0.02);
             // Fold shading down the drop skirt, then the sewn thread.
             ctx.fillStyle = 'rgba(20, 14, 28, 0.14)';
             for (let k = 0; k < 4; k++) {
@@ -23385,6 +23444,9 @@ export class Renderer {
             ctx.fillStyle = cloth.b;
             ctx.fillRect(botL, vTop + vDepth - s * 0.045, botR - botL, s * 0.028);
           } else {
+            // The fold crease where the cloth breaks to hang.
+            ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
+            ctx.fillRect(botL, railY, botR - botL, railH + s * 0.02);
             ctx.fillStyle = 'rgba(20, 14, 28, 0.2)';
             ctx.fillRect(botL, vTop, botR - botL, s * 0.03);
             ctx.strokeStyle = cloth.b;
@@ -23406,9 +23468,26 @@ export class Renderer {
           this.beginStructOutline();
           ctx.stroke(silh);
         }
-        // ---- The cheek boards: the visible side frame every awning
-        // hangs between (free AND flush — neighbours pair into a
-        // shared post). Drawn over the ink at the exact side edge.
+        // ---- THE JOINT FURNITURE, over cloth and ink alike so the
+        // seam between neighbours is capped, never doubled: ONE
+        // shared timber post per flush joint, raised by the east
+        // member. It runs rod to rail with a lit west arris and a
+        // shaded east edge, and pokes a breath below the rail so it
+        // visibly CARRIES the two hems it separates.
+        if (fw) {
+          const hw = s * 0.055;
+          const y1 = railY + railH + s * 0.07;
+          ctx.fillStyle = frame;
+          ctx.fillRect(xL - hw, rootY, hw * 2, y1 - rootY);
+          ctx.fillStyle = shade(frame, 16);
+          ctx.fillRect(xL - hw, rootY, s * 0.034, y1 - rootY);
+          ctx.fillStyle = shade(frame, -12);
+          ctx.fillRect(xL + hw - s * 0.03, rootY, s * 0.03, y1 - rootY);
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.strokeRect(xL - hw, rootY, hw * 2, y1 - rootY);
+          }
+        }
       },
     };
   }
