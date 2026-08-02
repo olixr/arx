@@ -16,6 +16,7 @@
 import { shade } from './rig.js';
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
+import { venom, asMatter } from './matter/index.js';
 
 // ------------------------------------------------------ shared glyphs
 
@@ -159,23 +160,35 @@ const envenom: AbilitySig = {
     ctx.moveTo(lay.bx, lay.by);
     ctx.lineTo(lay.bx + dx * L * reach, lay.by + dy * L * reach);
     ctx.stroke();
-    // The beads: swell on the edge, hang, then drop straight down.
+    // The beads: swell on the edge, hang — and then the MATTER
+    // LIBRARY owns the fall. On the exact crossing frame each bead
+    // releases one true drop with real weight; it falls, splats, and
+    // flecks the ground through the engine, not through easing math.
+    const lifeMs = t > 0 ? c.age / t : 0;
+    const tPrev = lifeMs > 0 ? Math.max(0, (c.age - c.frameDt * 1000) / lifeMs) : 0;
     for (const b of lay.beads) {
       if (t < b.s0) continue;
-      const swell = Math.min(1, (t - b.s0) / 0.25);
+      const releaseT = b.s0 + 0.25;
       const ex = lay.bx + dx * L * b.f;
       const ey = lay.by + dy * L * b.f;
-      const fallU = Math.max(0, Math.min(1, (t - b.s0 - 0.25) / 0.2));
-      if (fallU >= 1) continue; // landed — the ground hook owns it now
-      const y = ey + (c.py - ey) * fallU * fallU;
+      if (t >= releaseT) {
+        if (tPrev < releaseT) {
+          // The blade lifts ~0.5 tiles; the edge climbs along ang.
+          venom.deployments.bead!(asMatter(c), c.wx + 0.15 + Math.cos(lay.ang) * 0.52 * b.f, c.wy, {
+            z: 0.5 - Math.sin(lay.ang) * 0.52 * b.f, scale: 0.9,
+          });
+        }
+        continue;
+      }
+      const swell = Math.min(1, (t - b.s0) / 0.25);
       ctx.globalAlpha = 0.9;
       ctx.fillStyle = st.mid;
       ctx.beginPath();
-      ctx.ellipse(ex, y, sc * b.r * swell * 0.8, sc * b.r * swell, 0, 0, Math.PI * 2);
+      ctx.ellipse(ex, ey, sc * b.r * swell * 0.8, sc * b.r * swell, 0, 0, Math.PI * 2);
       ctx.fill();
       // The catchlight that makes it a DROP and not a dot.
       ctx.fillStyle = st.core;
-      ctx.fillRect(ex - 1, y - sc * b.r * swell * 0.4, Math.max(1, sc * 0.014), Math.max(1, sc * 0.014));
+      ctx.fillRect(ex - 1, ey - sc * b.r * swell * 0.4, Math.max(1, sc * 0.014), Math.max(1, sc * 0.014));
     }
     ctx.restore();
     c.glow(c.wx, c.wy, 0.8, 0.18 * (1 - t));

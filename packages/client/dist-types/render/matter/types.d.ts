@@ -41,6 +41,8 @@ export interface MatterOpts {
     y2?: number;
     /** Rings and fields: radius in tiles. */
     radius?: number;
+    /** Spawn altitude in tiles, for deployments released from a height. */
+    z?: number;
 }
 /**
  * One arrangement of a material's voice. One-shot deployments return
@@ -61,6 +63,16 @@ export interface Material {
     palette: string[];
     deployments: Record<string, Deployment>;
 }
+/**
+ * Bridge a signature context (or anything shaped like one) to a
+ * MatterCtx. Structural on purpose — no import of SigCtx, no module
+ * cycle. The material's default glow color yields to the host's own
+ * style glow.
+ */
+export declare function asMatter(host: {
+    particles: Particles;
+    glow(x: number, y: number, r: number, a: number): void;
+}): MatterCtx;
 /** Count scaling: linear, floored at 1 grain. */
 export declare function nOf(base: number, scale: number): number;
 /** Size scaling: by √scale so a doubled cast doesn't read cartoonish. */

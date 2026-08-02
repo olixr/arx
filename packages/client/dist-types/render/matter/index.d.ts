@@ -19,5 +19,6 @@ import { shadow } from './shadow.js';
 import { water } from './water.js';
 export declare const MATTER: Record<string, Material>;
 export type { Material, MatterCtx, MatterOpts, Deployment } from './types.js';
+export { asMatter } from './types.js';
 export { fire, smoke, dust, frost, venom, storm, blood, radiance, shadow, water };
 //# sourceMappingURL=index.d.ts.map

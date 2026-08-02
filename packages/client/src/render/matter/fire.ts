@@ -167,6 +167,24 @@ const path: Deployment = (c, x, y, o = {}) => {
   });
 };
 
+/**
+ * Molten gobbets — heavy comet chunks that arc OUT and land still
+ * burning: trail soot in flight, hit the dirt, lie there flickering,
+ * and cool through deep red to a dead coal. Sparse heroes with
+ * staggered lives, so the cohort law doesn't bite. The kiln's throw;
+ * magma and slag abilities reuse it.
+ */
+const gobbets: Deployment = (c, x, y, o = {}) => {
+  const k = o.scale ?? 1;
+  c.particles.burst(x, y, nOf(6, k), [FLAME, EMBER, COAL], {
+    speed: 1.5, life: 2.6, gravity: 0, size: sOf(0.08, k),
+    z: 0.3, vz: 2.4, zg: 7.5, land: 'settle', layer: 'world',
+    flicker: 0.5, trail: 9, trailColor: DEEP,
+    fade: DEEP, fadeAt: 0.45, fade2: SOOT, fade2At: 0.8,
+    ...(o.dir !== undefined ? { dir: o.dir, spread: 0.5 } : {}),
+  });
+};
+
 /** Burning ground — low, hungry flame carpeting a disc. */
 const pool: Deployment = (c, x, y, o = {}) => {
   const k = o.scale ?? 1;
@@ -183,5 +201,5 @@ export const fire: Material = {
   id: 'fire',
   name: 'Fire',
   palette: [HEART, FLAME, EMBER, DEEP, SOOT],
-  deployments: { burst, plume, ring, path, pool },
+  deployments: { burst, plume, ring, path, pool, gobbets },
 };

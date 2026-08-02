@@ -32,6 +32,7 @@
 import { shade } from './rig.js';
 import { srand, type FxStyle } from './abilityFx.js';
 import type { Particles } from './particles.js';
+import { fire, frost, dust, shadow, asMatter } from './matter/index.js';
 import { MELEE_SIGS } from './fxSigsMelee.js';
 import { SNEAK_SIGS } from './fxSigsSneak.js';
 import { ARCHERY_SIGS } from './fxSigsArchery.js';
@@ -95,6 +96,22 @@ export interface AbilitySig {
   air?(c: SigCtx): void;
 }
 
+/**
+ * THE ONE-VOICE LAW (FX v5 Phase 3): a signature composes MATTER
+ * LIBRARY deployments for its particle matter — it never hand-mixes
+ * a material the library owns. The painted centerpiece stays
+ * bespoke; the grains come mastered. `asMatter` (matter/types.ts)
+ * bridges SigCtx to the library. Call it in `spawn` (once per cast)
+ * freely; per-frame hooks should call it only on gated beats.
+ *
+ * Signatures rebuilt on the matter library so far. Grows wave by
+ * wave; the sibling test pins it as append-only bookkeeping until
+ * all 226 speak through the library.
+ */
+export const MATTER_MIGRATED: readonly string[] = [
+  'fireburst', 'shockwave', 'frost_nova', 'smoke_bomb', 'envenom',
+];
+
 // ------------------------------------------------------- exemplars
 
 /**
@@ -105,28 +122,18 @@ export interface AbilitySig {
  */
 const fireburst: AbilitySig = {
   spawn(c) {
-    // Gobbets: heavy molten squares that arc out shedding soot.
-    const rand = srand(c.seed ^ 0x11);
-    for (let k = 0; k < 6; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(c.wx, c.wy - 0.3, 1, [c.st.spark, c.st.mid], {
-        speed: 2.2 + rand() * 1.6, life: 0.7, size: 0.1, gravity: 7,
-        dir: a, spread: 0.2, trail: 12, trailColor: c.st.deep,
-        fade: c.st.deep, up: false,
-      });
-    }
-    // The rim ignites: tongues leap where the shock passes.
-    for (let k = 0; k < 7; k++) {
-      const a = (k / 7) * Math.PI * 2 + rand() * 0.4;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.55,
-        c.wy + Math.sin(a) * c.radius * 0.55 * c.squash,
-        1, [c.st.mid, c.st.core], {
-          speed: 0.8, life: 0.55, size: 0.14, gravity: -3.4,
-          shape: 'lick', flicker: 0.3, fade: c.st.deep, wobble: 0.5,
-        },
-      );
-    }
+    const m = asMatter(c);
+    // The kiln's throw: molten gobbets comet out on REAL arcs and
+    // land still burning — they lie in the crater cooling to coals.
+    fire.deployments.gobbets!(m, c.wx, c.wy, { scale: 1 });
+    // The detonation itself: heart-flash, hot crown, sparks, coals,
+    // one soot exhale — the mastered fire voice at full weight.
+    fire.deployments.burst!(m, c.wx, c.wy, { scale: 1.05 });
+    // The rim ignites where the shock passes: a burning hoop that
+    // WRAPS whoever stands inside it, then starves.
+    fire.deployments.ring!(m, c.wx, c.wy, {
+      radius: c.radius * 0.55, dur: 0.85, scale: 0.75,
+    });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
@@ -222,23 +229,19 @@ const fireburst: AbilitySig = {
  */
 const frost_nova: AbilitySig = {
   spawn(c) {
-    // Mist banks roll outward along the rim, paling as they settle.
-    const rand = srand(c.seed ^ 0x21);
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.5,
-        c.wy + Math.sin(a) * c.radius * 0.5 * c.squash,
-        1, [c.st.mid, c.st.core], {
-          speed: 1.1, life: 1.3, size: 0.13, gravity: 0.3, dir: a,
-          spread: 0.4, drag: 1.5, grow: 0.26, shape: 'puff',
-          fade: '#ffffff', wobble: 0.4, ground: true,
-        },
-      );
-    }
-    // The air freezes where the shock passed: hanging twinkles.
-    c.particles.burst(c.wx, c.wy - 0.5, 7, ['#ffffff', c.st.core], {
-      speed: 0.7, life: 1.1, size: 0.12, gravity: 0.25, drag: 2.4, shape: 'glint',
+    const m = asMatter(c);
+    // The pane breaks at the heart: shards snap out tumbling, LAND,
+    // and lie as frost chips while the cold sinks after them.
+    frost.deployments.shatter!(m, c.wx, c.wy, { scale: 0.8 });
+    // The cold arrives as weather: a slow rim of sinking mist and
+    // sparkle rolling outward off the shock.
+    frost.deployments.bloom!(m, c.wx, c.wy, {
+      radius: c.radius * 0.6, dur: 0.9, scale: 0.9,
+    });
+    // The frozen air over the web: glints winking in for as long as
+    // the web lives — the sustained sparkle the lattice deserves.
+    frost.deployments.fog!(m, c.wx, c.wy, {
+      radius: c.radius * 0.85, dur: 1.1, scale: 0.7,
     });
   },
   ground(c) {
@@ -293,15 +296,8 @@ const frost_nova: AbilitySig = {
     ctx.restore();
   },
   air(c) {
-    // The frozen air remembers: glints keep winking in over the web
-    // while it lives, and mist motes sift down through them.
-    if (Math.random() < c.frameDt * 9 * (1 - c.t)) {
-      const a = Math.random() * Math.PI * 2;
-      const rr = Math.sqrt(Math.random()) * c.radius * 0.9;
-      c.particles.burst(c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash - 0.7, 1, ['#ffffff', c.st.core], {
-        speed: 0.15, life: 0.7, size: 0.1, gravity: 0.5, shape: 'glint',
-      });
-    }
+    // The frozen air remembers — the frost.fog emitter spawned at
+    // the shock keeps the glints winking in; here the cold only glows.
     c.glow(c.wx, c.wy, c.radius * 0.9, 0.3 * (1 - c.t));
   },
 };
@@ -394,20 +390,16 @@ const whirlwind: AbilitySig = {
  */
 const smoke_bomb: AbilitySig = {
   spawn(c) {
-    // The bloom: a dense charcoal shell that rolls out and up.
-    const rand = srand(c.seed ^ 0x41);
-    for (let k = 0; k < 10; k++) {
-      const a = (k / 10) * Math.PI * 2 + rand() * 0.6;
-      c.particles.burst(c.wx, c.wy - 0.35, 1, [c.st.deep, c.st.mid, '#3c3648'], {
-        speed: 1.5 + rand(), life: 1.2, size: 0.15, gravity: -0.7,
-        dir: a, spread: 0.25, drag: 1.7, grow: 0.3, shape: 'puff',
-        fade: '#16121f', wobble: 0.8,
-      });
-    }
-    // Dark tongues curl up through the shell.
-    c.particles.burst(c.wx, c.wy - 0.4, 4, [c.st.mid, c.st.deep], {
-      speed: 1.0, life: 0.8, size: 0.12, gravity: -1.9, up: true,
-      shape: 'lick', drag: 1.2, fade: '#16121f', wobble: 0.7,
+    const m = asMatter(c);
+    // The night blooms: the shadow library's ink masses ARE the
+    // charcoal flower — dense hearts, violet bruise-edge, and the
+    // whole canopy swallowing whoever stands in it (world layer).
+    shadow.deployments.bloom!(m, c.wx, c.wy, { scale: 1.15 });
+    // The dark reaches: tendrils crawl the floor out of the burst.
+    shadow.deployments.tendrils!(m, c.wx, c.wy, { scale: 0.9 });
+    // And it HANGS — a veil holding the room dark past the bloom.
+    shadow.deployments.veil!(m, c.wx, c.wy, {
+      radius: c.radius * 0.75, dur: 1.3, scale: 0.8,
     });
   },
   ground(c) {
@@ -606,18 +598,17 @@ const lunge: AbilitySig = {
  */
 const shockwave: AbilitySig = {
   spawn(c) {
-    const rand = srand(c.seed ^ 0x51);
-    // Sod slabs flip along the front — earth thrown, not sparks.
-    for (let k = 0; k < 7; k++) {
-      const a = (k / 7) * Math.PI * 2 + rand() * 0.5;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.4,
-        c.wy + Math.sin(a) * c.radius * 0.4 * c.squash,
-        1, ['#5a5045', '#4a4252', '#6a6375'], {
-          speed: 2.4, life: 0.6, size: 0.12, gravity: 8, dir: a, spread: 0.25, up: false, shape: 'shard', spin: 9,
-        },
-      );
-    }
+    const m = asMatter(c);
+    // THE GROUND SMASH, in full: the shock skirt races flat along
+    // the floor, chunk heroes loft and HOP where they land, the
+    // billow swallows the strike, and the fines rain back and lie
+    // on the dirt — the earth remembers being struck.
+    dust.deployments.slam!(m, c.wx, c.wy, { scale: 1.2 });
+    // The pressure front's own dust: a rim wave driven outward just
+    // behind the painted bell-ring.
+    dust.deployments.skirt!(m, c.wx, c.wy, {
+      radius: c.radius * 0.45, dur: 0.4, scale: 0.9,
+    });
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;

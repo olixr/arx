@@ -72,6 +72,19 @@ export interface AbilitySig {
     air?(c: SigCtx): void;
 }
 /**
+ * THE ONE-VOICE LAW (FX v5 Phase 3): a signature composes MATTER
+ * LIBRARY deployments for its particle matter — it never hand-mixes
+ * a material the library owns. The painted centerpiece stays
+ * bespoke; the grains come mastered. `asMatter` (matter/types.ts)
+ * bridges SigCtx to the library. Call it in `spawn` (once per cast)
+ * freely; per-frame hooks should call it only on gated beats.
+ *
+ * Signatures rebuilt on the matter library so far. Grows wave by
+ * wave; the sibling test pins it as append-only bookkeeping until
+ * all 226 speak through the library.
+ */
+export declare const MATTER_MIGRATED: readonly string[];
+/**
  * Every ability with a bespoke signature. The grammar keeps abilities
  * without an entry fully dressed — this table is the crown, added
  * wave by wave until the whole roster owns one.

@@ -107,6 +107,19 @@ const drip: Deployment = (c, x, y, o = {}) => {
   });
 };
 
+/**
+ * One bead — a single fat drop released from a held height, falling
+ * straight to its splat. The envenomed edge's tear; anything that
+ * drips one deliberate drop reuses it.
+ */
+const bead: Deployment = (c, x, y, o = {}) => {
+  const k = o.scale ?? 1;
+  c.particles.burst(x, y, 1, [BRIGHT, TOXIN], {
+    ...DROP, size: sOf(0.075, k), speed: 0.05,
+    z: Math.max(0.2, o.z ?? 0.55), vz: -0.15, zg: 7,
+  });
+};
+
 /** The standing puddle — a floor that bubbles and stains. */
 const pool: Deployment = (c, x, y, o = {}) => {
   const k = o.scale ?? 1;
@@ -121,5 +134,5 @@ export const venom: Material = {
   id: 'venom',
   name: 'Venom',
   palette: [FRESH, BRIGHT, TOXIN, MURK, DRIED],
-  deployments: { spit, burst, cloud, drip, pool },
+  deployments: { spit, burst, cloud, drip, pool, bead },
 };
