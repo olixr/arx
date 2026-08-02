@@ -167,12 +167,14 @@ import {
   bakeElevated,
   bakeGutter,
   bridgeApronAt,
+  deckCoverRects,
   deckFillAt,
   type DeckFill,
   type DeckFillLegs,
   deckWalkIsVertical,
   DOCK_LIFT,
   drawLiveGround,
+  fillContains,
   type BridgeApron,
   isWaterTile,
   startChunkBake,
@@ -887,8 +889,11 @@ export class Renderer {
    *  translucent polygons showing through each other. */
   private readonly reflLayer = document.createElement('canvas');
   private readonly reflLayerCtx = this.reflLayer.getContext('2d')!;
-  /** Screen-bounds water region path cache (world coords), see waterClipFor. */
-  private waterClip: { key: string; path: Path2D | null } | null = null;
+  /** Screen-bounds water region path cache (world coords), see waterClipFor.
+   *  `cover` is the deck-structure punch-out (even-odd frame + rects)
+   *  the mirror pass clips by AFTER the water region — null when no
+   *  deck is in view. */
+  private waterClip: { key: string; path: Path2D | null; cover: Path2D | null } | null = null;
   /** Per-body wading state: splash edges + wake phase. */
   private readonly wadeStates = new Map<number | 'own', { x: number; y: number; wading: boolean }>();
   private readonly outlineA = document.createElement('canvas');
@@ -1951,6 +1956,18 @@ export class Renderer {
       }
       return lvl * ELEV_H + DOCK_LIFT;
     }
+    // THE FILL IS REAL GROUND (round 7): a 45° notch fill's triangle
+    // is a standing surface. Its cell can be WALKABLE (a shallow-water
+    // notch, or bare land under a bank chamfer) — feet inside the
+    // triangle ride the deck lift like any board, instead of sinking
+    // shin-deep through painted planks. The memoized fill verdict
+    // keeps this one map-get on the hot path.
+    {
+      const f = this.deckFill(game, tx, ty);
+      if (f !== null && fillContains(f.legs, tx, ty, x, y)) {
+        return lvl * ELEV_H + DOCK_LIFT;
+      }
+    }
     // THE PORCH: the deck ashore rides the same lift as the docks —
     // a pure tile test (no water gate), and THE CARRIED DECK rule
     // keeps rails, posts, lamps and props on the boards.
@@ -2645,6 +2662,12 @@ export class Renderer {
       o.y,
     );
     ctx.clip(path);
+    // Structure occlusion: punch the deck-covered cells out of the
+    // mirror (even-odd: outer frame minus disjoint cover rects) so a
+    // reflection dies at the boards and rim joists it would otherwise
+    // paint across.
+    const cover = this.waterClip?.cover;
+    if (cover) ctx.clip(cover, 'evenodd');
     ctx.setTransform(prior);
     ctx.globalAlpha = 0.38;
     ctx.drawImage(
@@ -2672,7 +2695,34 @@ export class Renderer {
     if (this.waterClip?.key !== key) {
       const ground = (tx: number, ty: number): number | undefined =>
         game.world.elevAt(tx, ty) !== 0 ? undefined : game.world.groundAt(tx, ty);
-      this.waterClip = { key, path: waterRegionPath(ground, bounds) };
+      const path = waterRegionPath(ground, bounds);
+      // THE MIRROR STOPS AT THE STRUCTURE (round 7): the raw water
+      // region includes cells the lifted decks paint INTO — fill
+      // triangles, fascia bands, the boards' reach into the cell
+      // north — and a mirror composited there lays a ghost body
+      // across the planks. The cover rects are subtracted from the
+      // clip in drawReflections via an even-odd path (rects are
+      // disjoint by construction, so even-odd is a pure punch-out).
+      let cover: Path2D | null = null;
+      if (path !== null) {
+        const rects = deckCoverRects(
+          (tx, ty) => game.world.groundAt(tx, ty),
+          bounds,
+        );
+        if (rects.length > 0) {
+          cover = new Path2D();
+          // The outer frame: everything KEPT by the even-odd clip…
+          cover.rect(
+            bounds.minTx - 4,
+            bounds.minTy - 4,
+            bounds.maxTx - bounds.minTx + 8,
+            bounds.maxTy - bounds.minTy + 8,
+          );
+          // …minus each deck-covered rect, punched out once.
+          for (const r of rects) cover.rect(r.x, r.y, r.w, r.h);
+        }
+      }
+      this.waterClip = { key, path, cover };
     }
     return this.waterClip.path;
   }
@@ -2696,8 +2746,18 @@ export class Renderer {
   ): void {
     const tx = Math.floor(x);
     const ty = Math.floor(y);
+    // A shallow tile under a 45° notch fill is only water OUTSIDE the
+    // fill's triangle — feet on the triangle stand on deck boards
+    // (renderLift agrees), so the wade collar, sink and splash stay
+    // off. THE FILL IS REAL GROUND, round 7.
+    const fillDeck = ((): boolean => {
+      const f = this.deckFill(game, tx, ty);
+      return f !== null && fillContains(f.legs, tx, ty, x, y);
+    })();
     const wading =
-      game.world.elevAt(tx, ty) === 0 && game.world.groundAt(tx, ty) === Tile.WaterShallow;
+      !fillDeck &&
+      game.world.elevAt(tx, ty) === 0 &&
+      game.world.groundAt(tx, ty) === Tile.WaterShallow;
     if (this.wadeStates.size > 512) this.wadeStates.clear(); // eid churn backstop
     const st = this.wadeStates.get(key);
     const moved = st ? Math.hypot(x - st.x, y - st.y) : 0;
@@ -9583,13 +9643,22 @@ export class Renderer {
     // the bank carry no rail (land-facing step edges were stacking
     // little fence boxes down every staircase junction). Ramp aprons
     // keep their rails over land — the sloping entrance's furniture.
-    const railEdge = (x: number, y: number, dx: number, dy: number): boolean =>
-      g(x, y) === Tile.Bridge &&
-      this.isDockAt(game, x, y) &&
-      !isDeck(g(x + dx, y + dy)) &&
-      !edgeFilled(x, y, dx, dy) &&
-      (isWaterTile(g(x + dx, y + dy)) || this.bridgeApron(game, x, y) !== 'none') &&
-      (dy !== 0 ? !this.bridgeWalkVert(game, x, y) : this.bridgeWalkVert(game, x, y));
+    // EVERY water-facing edge rails, regardless of the walk axis
+    // (round 7): a stair-stepped span exposes step faces PARALLEL to
+    // the walk, and the old sides-only gate left those over open
+    // water with nothing but an ink line — a walk end can only ever
+    // be an entrance where it meets LAND, and land edges are already
+    // gated to aprons.
+    const railEdge = (x: number, y: number, dx: number, dy: number): boolean => {
+      if (g(x, y) !== Tile.Bridge || !this.isDockAt(game, x, y)) return false;
+      const nb = g(x + dx, y + dy);
+      if (isDeck(nb) || edgeFilled(x, y, dx, dy)) return false;
+      if (isWaterTile(nb)) return true;
+      return (
+        this.bridgeApron(game, x, y) !== 'none' &&
+        (dy !== 0 ? !this.bridgeWalkVert(game, x, y) : this.bridgeWalkVert(game, x, y))
+      );
+    };
     // THE PARAPET IS ONE LINE: a rail continues wherever a WATER
     // fill's diagonal picks it up at EXACTLY the shared tile corner.
     // The old legs-table only saw fills straight along the run and

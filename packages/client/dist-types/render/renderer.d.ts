@@ -215,7 +215,10 @@ export declare class Renderer {
      *  translucent polygons showing through each other. */
     private readonly reflLayer;
     private readonly reflLayerCtx;
-    /** Screen-bounds water region path cache (world coords), see waterClipFor. */
+    /** Screen-bounds water region path cache (world coords), see waterClipFor.
+     *  `cover` is the deck-structure punch-out (even-odd frame + rects)
+     *  the mirror pass clips by AFTER the water region — null when no
+     *  deck is in view. */
     private waterClip;
     /** Per-body wading state: splash edges + wake phase. */
     private readonly wadeStates;

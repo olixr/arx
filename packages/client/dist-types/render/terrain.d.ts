@@ -170,6 +170,42 @@ export interface DeckFill {
  * other fills (legs demand real deck tiles).
  */
 export declare function deckFillAt(ground: GroundSampler, tx: number, ty: number): DeckFill | null;
+/**
+ * THE FILL IS REAL GROUND (bridge rework round 7). A notch fill's
+ * triangle is a standing surface, not paint: anything with feet — the
+ * player wading a shallow notch, a pet, a drop — that stands INSIDE
+ * the triangle stands ON the deck (renderLift lifts it, the wade
+ * dressing stays off, footsteps sound wood). The fill's cell can be
+ * WALKABLE (WaterShallow, or bare land under a bank chamfer), so the
+ * old "pure visual" reading left bodies sunk to the shins in painted
+ * boards. Point-in-triangle by the legs' named solid corner; the
+ * hypotenuse itself counts as deck (feet on the arris stand proud).
+ */
+export declare function fillContains(legs: DeckFillLegs, tx: number, ty: number, x: number, y: number): boolean;
+/**
+ * THE MIRROR STOPS AT THE STRUCTURE (round 7). The reflection pass
+ * clips to the raw water region — but the lifted decks PAINT into
+ * water cells: a fill's triangle and fascia live on a water tile, and
+ * every deck tile's lifted boards reach DOCK_LIFT/FLAT world-rows into
+ * the cell north of it (plus the organic water contour can wobble into
+ * the deck cell's own fascia). Reflections composited over those
+ * pixels lay a ghost body across planks and rim joists. This returns
+ * the deck-COVERED area as disjoint world-space rects (one shape per
+ * cell column, bands tiled so vertically adjacent decks never
+ * overlap — the renderer subtracts them from the clip with an
+ * even-odd path, where any overlap would flip back to a leak).
+ */
+export declare function deckCoverRects(ground: GroundSampler, bounds: {
+    minTx: number;
+    maxTx: number;
+    minTy: number;
+    maxTy: number;
+}): Array<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+}>;
 /** Does a notch fill at (x,y) cover that tile's given edge? The two
  *  leg edges are interior deck — every painter treats them exactly
  *  like a deck neighbor (no fascia, no kerb, no stroke, no rail, no

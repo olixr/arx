@@ -1,4 +1,5 @@
 import { procShape } from './render/wornLight.js';
+import { deckFillAt, fillContains } from './render/terrain.js';
 import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
@@ -1820,7 +1821,16 @@ function stepMaterial(tx: number, ty: number): 'grass' | 'stone' | 'wood' | 'dir
   }
 }
 renderer.onFootstep = (x, y, speed, isOwn, sneaking) => {
-  const mat = stepMaterial(Math.floor(x), Math.floor(y));
+  const tx = Math.floor(x);
+  const ty = Math.floor(y);
+  let mat = stepMaterial(tx, ty);
+  // THE FILL IS REAL GROUND: feet inside a 45° notch fill's triangle
+  // stand on deck boards even where the tile itself is shallow water
+  // or bare bank — the step sounds wood, matching the lift.
+  if (mat !== 'wood') {
+    const f = deckFillAt((gx, gy) => game.world.groundAt(gx, gy), tx, ty);
+    if (f !== null && fillContains(f.legs, tx, ty, x, y)) mat = 'wood';
+  }
   // Kept soft by default (user: footsteps read too loud) — a step is
   // felt underfoot, not announced. Other feet carry a courtesy cut on
   // top of the spatial rolloff so a crowd never drowns your own gait.

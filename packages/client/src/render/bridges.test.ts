@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Tile } from '@arx/shared';
-import { bridgeApronAt, deckFillAt, deckWalkIsVertical, fillCoversEdge } from './terrain.js';
+import { bridgeApronAt, deckCoverRects, deckFillAt, deckWalkIsVertical, DOCK_LIFT, fillContains, fillCoversEdge } from './terrain.js';
 
 /**
  * String-map worlds for the bridge laws: one char per tile, row-major,
@@ -190,4 +190,90 @@ test('bank fills refuse ramping apron legs and unlifted decks', () => {
     'GGBB',
   ]);
   assert.equal(deckFillAt(dry, 1, 2), null, 'no water within reach: nothing is lifted');
+});
+
+test('THE FILL IS REAL GROUND: the triangle is deck underfoot, the open notch stays water', () => {
+  // A NE fill: deck north and east, hypotenuse from the NW corner to
+  // the SE corner — inside (toward the solid NE corner) is boards,
+  // outside is still open water. Water on the west keeps the step
+  // tiles off the apron ladder (a ramping leg refuses its fill).
+  const g = samplerOf([
+    '~BBB',
+    '~~BB', // (1,1) is the notch: deck N and E
+    '~~~B',
+  ]);
+  const f = deckFillAt(g, 1, 1);
+  assert.ok(f !== null && f.legs === 'NE');
+  assert.equal(fillContains('NE', 1, 1, 1.8, 1.2), true, 'near the solid corner: boards');
+  assert.equal(fillContains('NE', 1, 1, 1.2, 1.8), false, 'past the hypotenuse: water');
+  // The four orientations agree on their own solid corners.
+  assert.equal(fillContains('NW', 0, 0, 0.2, 0.2), true);
+  assert.equal(fillContains('NW', 0, 0, 0.9, 0.9), false);
+  assert.equal(fillContains('SE', 0, 0, 0.9, 0.9), true);
+  assert.equal(fillContains('SE', 0, 0, 0.1, 0.1), false);
+  assert.equal(fillContains('SW', 0, 0, 0.2, 0.9), true);
+  assert.equal(fillContains('SW', 0, 0, 0.9, 0.2), false);
+});
+
+test('THE MIRROR STOPS AT THE STRUCTURE: cover rects are disjoint and own every deck cell', () => {
+  const g = samplerOf([
+    'GGGGG',
+    '~~~~~',
+    '~BBB~', // span at y2, water all around — boards poke north into y1
+    '~~~~~',
+  ]);
+  const bounds = { minTx: 0, maxTx: 4, minTy: 0, maxTy: 3 };
+  const rects = deckCoverRects(g, bounds);
+  // Every deck tile owns one rect that spans its cell and reaches
+  // DOCK_LIFT/0.6 north for the lifted boards.
+  const L = DOCK_LIFT / 0.6;
+  for (const x of [1, 2, 3]) {
+    const r = rects.find((c) => c.x === x && Math.abs(c.y - (2 - L)) < 1e-9);
+    assert.ok(r, `deck cell x=${x} carries its cover rect`);
+    assert.ok(Math.abs(r.h - (1 + L)) < 1e-9, 'cover runs boards-top to fascia-foot');
+  }
+  // Disjointness: no two rects overlap (the even-odd punch-out law —
+  // any overlap would flip back to a reflection leak).
+  for (let i = 0; i < rects.length; i++) {
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i]!;
+      const b = rects[j]!;
+      const overlap =
+        a.x < b.x + b.w - 1e-9 &&
+        b.x < a.x + a.w - 1e-9 &&
+        a.y < b.y + b.h - 1e-9 &&
+        b.y < a.y + a.h - 1e-9;
+      assert.equal(overlap, false, 'cover rects must never overlap');
+    }
+  }
+});
+
+test('cover rects stay disjoint where fills, decks and stacked runs meet', () => {
+  // A stair-step with a NE fill at (1,2), deck rows stacked vertically
+  // — the classic overlap traps: deck-above-deck bands and the fill
+  // cell under a deck row.
+  const g = samplerOf([
+    '~BBB',
+    '~BBB', // two stacked deck rows: the lower's band must yield
+    '~~BB', // (1,2) NE fill under the run
+    '~~~B',
+  ]);
+  const rects = deckCoverRects(g, { minTx: 0, maxTx: 3, minTy: 0, maxTy: 3 });
+  for (let i = 0; i < rects.length; i++) {
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i]!;
+      const b = rects[j]!;
+      const overlap =
+        a.x < b.x + b.w - 1e-9 &&
+        b.x < a.x + a.w - 1e-9 &&
+        a.y < b.y + b.h - 1e-9 &&
+        b.y < a.y + a.h - 1e-9;
+      assert.equal(overlap, false, 'no pair may overlap');
+    }
+  }
+  // The fill's own cell is fully covered.
+  assert.ok(
+    rects.some((r) => r.x === 1 && r.y === 2 && r.w === 1 && r.h === 1),
+    'the fill cell is deck-owned for the mirror',
+  );
 });

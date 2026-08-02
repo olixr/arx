@@ -847,6 +847,41 @@ function drawDocks(
         }
       }
 
+      // SIDE LEGS + EDGE SHADE (round 7): a long run's west/east edges
+      // over open water carried no structure at all, so a whole pier
+      // read as a plank mat laid flat on the surface. Each water-facing
+      // side edge hangs ONE pile half-proud of the boards (the deck
+      // overhang covers its inner half when the boards paint over it)
+      // with its waterline collar, and lays a soft AO band on the water
+      // hugging the edge — the overhang's standing shadow, the same
+      // dark the south faces cast.
+      const sideWaterW = !hasW && isWaterTile(ground(tx - 1, ty));
+      const sideWaterE = !hasE && isWaterTile(ground(tx + 1, ty));
+      for (const side of [sideWaterW ? -1 : 0, sideWaterE ? 1 : 0]) {
+        if (side === 0) continue;
+        const edgeX = side < 0 ? gx : gx + px;
+        ctx.fillStyle = 'rgba(20, 34, 62, 0.2)';
+        ctx.fillRect(side < 0 ? edgeX - px * 0.12 : edgeX, gy, px * 0.12, px);
+        ctx.fillStyle = 'rgba(20, 34, 62, 0.09)';
+        ctx.fillRect(side < 0 ? edgeX - px * 0.21 : edgeX + px * 0.12, gy, px * 0.09, px);
+        // The pile: world-keyed row so a 2-tile bay never doubles up.
+        if (hashCoords(151, tx * (side + 2), ty) % 2 === 0) {
+          const pw = px * 0.1;
+          const cyp = gy + 0.55 * px;
+          const top = cyp - liftB * 0.22;
+          const bot = cyp + px * 0.12;
+          ctx.fillStyle = '#4e3a22';
+          ctx.fillRect(edgeX - pw / 2, top, pw, bot - top);
+          ctx.fillStyle = '#77593a'; // sun-law lit west edge
+          ctx.fillRect(edgeX - pw / 2, top, Math.max(1, pw * 0.3), bot - top);
+          ctx.strokeStyle = 'rgba(226, 240, 251, 0.45)';
+          ctx.lineWidth = Math.max(1.2, px * 0.03);
+          ctx.beginPath();
+          ctx.ellipse(edgeX, bot, pw * 0.8, pw * 0.8 * FLAT, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
       // South fascia: the deck's thickness made visible.
       if (!hasS) {
         ctx.fillStyle = '#6d5130';
@@ -1213,6 +1248,25 @@ function drawBridges(
           ctx.beginPath();
           ctx.ellipse(pxl + pw / 2, bot, pw * 0.8, pw * 0.8 * FLAT, 0, 0, Math.PI * 2);
           ctx.stroke();
+        }
+      }
+
+      // SIDE EDGE SHADE (round 7): the span's west/east edges over
+      // water lay the same soft AO band the south faces cast, so a
+      // long crossing's flanks sit IN the water instead of on it.
+      // Aprons skip it — a ramp's falling edge meets the bank, not
+      // the surface.
+      if (apron === 'none' || apron === 'N' || apron === 'S') {
+        for (const side of [
+          !hasW && isWaterTile(wT) ? -1 : 0,
+          !hasE && isWaterTile(eT) ? 1 : 0,
+        ]) {
+          if (side === 0) continue;
+          const edgeX = side < 0 ? gx : gx + px;
+          ctx.fillStyle = 'rgba(20, 34, 62, 0.2)';
+          ctx.fillRect(side < 0 ? edgeX - px * 0.12 : edgeX, gy, px * 0.12, px);
+          ctx.fillStyle = 'rgba(20, 34, 62, 0.09)';
+          ctx.fillRect(side < 0 ? edgeX - px * 0.21 : edgeX + px * 0.12, gy, px * 0.09, px);
         }
       }
 
@@ -3557,22 +3611,36 @@ export function deckFillAt(ground: GroundSampler, tx: number, ty: number): DeckF
     : s && w ? 'SW'
     : null;
   if (legs === null) return null;
+  const dn = legs[0] === 'N' ? -1 : 1;
+  const de = legs[1] === 'E' ? 1 : -1;
   if (!water) {
     // THE BANK CHAMFER (round 6, user showed square-cornered land
     // transitions): a stair-step corner that lands on the BANK grows
     // the same 45° triangle, so the crossing chamfers onto the sand
     // exactly as it chamfers over the water. Both legs must be truly
-    // LIFTED decks, and neither may be a RAMPING apron — a sloped leg
-    // would tear against the fill's full-height triangle, so those
-    // entrances keep their square sill.
-    const dn = legs[0] === 'N' ? -1 : 1;
-    const de = legs[1] === 'E' ? 1 : -1;
+    // LIFTED decks.
     if (!isDeckTile(ground, tx, ty + dn) || !isDeckTile(ground, tx + de, ty)) return null;
-    const ramps = (x: number, y: number): boolean =>
-      ground(x, y) === Tile.Bridge &&
-      bridgeApronAt(ground, x, y, deckWalkIsVertical(ground, x, y)) !== 'none';
-    if (ramps(tx, ty + dn) || ramps(tx + de, ty)) return null;
   }
+  // NEITHER leg may be a RAMPING apron — water and bank alike (round
+  // 7, the Amberford landing): a sloping leg tears against the fill's
+  // full-height triangle, and the fill's full-lift diagonal rail hangs
+  // as a floating hook beside the falling parapet. Those corners keep
+  // their honest square notch. An apron needs a bank BESIDE the leg,
+  // so a leg with no land neighbor skips the span flood outright —
+  // deckFillAt runs per water tile per frame in the live layer, and
+  // mid-water notches must stay cheap.
+  const nearLand = (x: number, y: number): boolean => {
+    for (const [ddx, ddy] of [[0, -1], [0, 1], [-1, 0], [1, 0]] as const) {
+      const t2 = ground(x + ddx, y + ddy);
+      if (t2 !== undefined && !isDeckGround(t2) && !isWaterTile(t2)) return true;
+    }
+    return false;
+  };
+  const ramps = (x: number, y: number): boolean =>
+    ground(x, y) === Tile.Bridge &&
+    nearLand(x, y) &&
+    bridgeApronAt(ground, x, y, deckWalkIsVertical(ground, x, y)) !== 'none';
+  if (ramps(tx, ty + dn) || ramps(tx + de, ty)) return null;
   const a = legs[0] === 'N' ? nT : sT;
   const b = legs[1] === 'E' ? eT : wT;
   return {
@@ -3580,6 +3648,83 @@ export function deckFillAt(ground: GroundSampler, tx: number, ty: number): DeckF
     family: a === Tile.Bridge || b === Tile.Bridge ? 'bridge' : 'dock',
     bank: !water,
   };
+}
+
+/**
+ * THE FILL IS REAL GROUND (bridge rework round 7). A notch fill's
+ * triangle is a standing surface, not paint: anything with feet — the
+ * player wading a shallow notch, a pet, a drop — that stands INSIDE
+ * the triangle stands ON the deck (renderLift lifts it, the wade
+ * dressing stays off, footsteps sound wood). The fill's cell can be
+ * WALKABLE (WaterShallow, or bare land under a bank chamfer), so the
+ * old "pure visual" reading left bodies sunk to the shins in painted
+ * boards. Point-in-triangle by the legs' named solid corner; the
+ * hypotenuse itself counts as deck (feet on the arris stand proud).
+ */
+export function fillContains(legs: DeckFillLegs, tx: number, ty: number, x: number, y: number): boolean {
+  const u = x - tx;
+  const v = y - ty;
+  switch (legs) {
+    case 'NE':
+      return v <= u;
+    case 'SW':
+      return v >= u;
+    case 'NW':
+      return u + v <= 1;
+    case 'SE':
+      return u + v >= 1;
+  }
+}
+
+/**
+ * THE MIRROR STOPS AT THE STRUCTURE (round 7). The reflection pass
+ * clips to the raw water region — but the lifted decks PAINT into
+ * water cells: a fill's triangle and fascia live on a water tile, and
+ * every deck tile's lifted boards reach DOCK_LIFT/FLAT world-rows into
+ * the cell north of it (plus the organic water contour can wobble into
+ * the deck cell's own fascia). Reflections composited over those
+ * pixels lay a ghost body across planks and rim joists. This returns
+ * the deck-COVERED area as disjoint world-space rects (one shape per
+ * cell column, bands tiled so vertically adjacent decks never
+ * overlap — the renderer subtracts them from the clip with an
+ * even-odd path, where any overlap would flip back to a leak).
+ */
+export function deckCoverRects(
+  ground: GroundSampler,
+  bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
+): Array<{ x: number; y: number; w: number; h: number }> {
+  const L = DOCK_LIFT / FLAT;
+  const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
+  for (let y = bounds.minTy - 1; y <= bounds.maxTy + 1; y++) {
+    for (let x = bounds.minTx - 1; x <= bounds.maxTx + 1; x++) {
+      if (isDeckTile(ground, x, y)) {
+        // The tile's full painted footprint: lifted boards (reaching
+        // L into the north cell) down through its fascia at the cell
+        // foot. When the north neighbor is deck (its own rect) or a
+        // fill (its full cell), that band is already owned — start at
+        // the shared edge instead so the shapes stay disjoint.
+        const y0 =
+          isDeckTile(ground, x, y - 1) || deckFillAt(ground, x, y - 1) !== null ? y : y - L;
+        rects.push({ x, y: y0, w: 1, h: y + 1 - y0 });
+        continue;
+      }
+      const f = deckFillAt(ground, x, y);
+      if (f !== null) {
+        // The fill's own cell: triangle + (south-facing) fascia band —
+        // the full cell is deck-owned for the mirror's purposes; the
+        // open sliver under the hypotenuse is the price of a clip that
+        // can never lay a body across the boards.
+        rects.push({ x, y, w: 1, h: 1 });
+        // The lifted triangle's top band pokes L into the cell north;
+        // covered already when that cell is deck (its rect) or a fill
+        // (its full cell) — otherwise it needs its own band.
+        if (!isDeckTile(ground, x, y - 1) && deckFillAt(ground, x, y - 1) === null) {
+          rects.push({ x, y: y - L, w: 1, h: L });
+        }
+      }
+    }
+  }
+  return rects;
 }
 
 /** Does a notch fill at (x,y) cover that tile's given edge? The two
