@@ -967,6 +967,36 @@ export class Renderer {
    */
   outlineOn = true;
   /**
+   * EDITOR SEAMS (Map Studio v2, ADDITIVE SEAMS ONLY law — the studio
+   * grows these two fields and the overlay call, nothing else
+   * editor-shaped; every scene pass stays private).
+   *
+   * cameraOverride: when set, the frame uses this camera verbatim —
+   * the player-follow ease, view-shift, cine pull, and shake all
+   * yield, and zoom escapes the player clamp (the studio frames the
+   * world, no body required).
+   */
+  cameraOverride: { x: number; y: number; zoom: number } | null = null;
+  /**
+   * The editor's one drawing seam: called at the very end of the
+   * frame (over the vignette) with the settled camera's transforms.
+   * The renderer never learns editor concepts; the editor never
+   * reaches into scene passes.
+   */
+  overlayHook:
+    | ((
+        ctx: CanvasRenderingContext2D,
+        view: {
+          w: number;
+          h: number;
+          scale: number;
+          yScale: number;
+          toScreen: (wx: number, wy: number) => Vec2;
+          pickWorld: (sx: number, sy: number) => Vec2;
+        },
+      ) => void)
+    | null = null;
+  /**
    * Water enhancement toggles (settings menu, persisted). Both are
    * ADDITIVE layers over the base water — turning them off costs
    * nothing visually except the enhancement itself: reflections mirror
@@ -3205,6 +3235,19 @@ export class Renderer {
     this.camera.tickZoom(frameDt);
     this.zoomGliding = this.camera.zoom !== this.camera.targetZoom;
 
+    if (this.cameraOverride !== null) {
+      // THE STUDIO FRAMES THE WORLD: the editor owns the camera
+      // verbatim — no follow ease, no shake, no player zoom clamp.
+      // Set zoom AND targetZoom so tickZoom holds still and the
+      // zoom-tier bake logic reads a settled value.
+      const ov = this.cameraOverride;
+      this.camera.zoom = ov.zoom;
+      this.camera.targetZoom = ov.zoom;
+      this.camera.scale = this.camera.baseScale * ov.zoom;
+      this.camera.x = ov.x;
+      this.camera.y = ov.y;
+      this.zoomGliding = false;
+    } else {
     // The UI's frame request glides, then the camera eases onto it —
     // opening the character case pans the world, never cuts.
     this.viewShiftX +=
@@ -3246,6 +3289,7 @@ export class Renderer {
       this.camera.x += ((Math.random() - 0.5) * this.shakeAmount) / this.camera.scale;
       this.camera.y += ((Math.random() - 0.5) * this.shakeAmount) / this.camera.scale;
     }
+    } // end of the player-camera branch (cameraOverride yields above)
 
     // The camera is settled for the frame — snapshot the world window
     // every per-tile scan below reads from.
@@ -3808,6 +3852,19 @@ export class Renderer {
     this.drawLootLabels(game);
     this.drawHpBar(game);
     this.drawVignette();
+    if (this.overlayHook !== null) {
+      // The editor's plane rides over the finished frame with the
+      // settled camera — grids, selection, ghosts, markers all draw
+      // here in screen space with true world transforms.
+      this.overlayHook(this.ctx, {
+        w: this.w,
+        h: this.h,
+        scale: this.camera.scale,
+        yScale: this.camera.yScale,
+        toScreen: (wx, wy) => this.camera.worldToScreen(wx, wy, this.w, this.h),
+        pickWorld: (sx, sy) => this.pickWorld(sx, sy),
+      });
+    }
     this.evictBaked();
     this.evictAnims();
     this.evictTreeSprites();

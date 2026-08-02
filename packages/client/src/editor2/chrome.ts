@@ -7,16 +7,16 @@
 import { tileDef } from '@arx/shared';
 import { STRUCTURE_TEMPLATES } from '@arx/content';
 import { iconImg } from '../editor/editorIcons.js';
-import type { EditorView } from '../editor/render.js';
 import type { EditorState, LayerId } from '../editor/state.js';
 import type { WorldMode } from '../editor/world/worldMode.js';
 import { el, kbd, sliderRow } from '../studio2/kit.js';
 import { TOOL_GROUPS, TOOL_SPECS, WORLD_TOOLS, type StudioMode } from './commands.js';
 import type { EditorOps } from './ops.js';
+import type { Viewport } from './viewport.js';
 
 export interface ChromeDeps {
   state: EditorState;
-  view: EditorView;
+  view: Viewport;
   ops: EditorOps;
   world: WorldMode;
   getMode: () => StudioMode;
@@ -215,6 +215,15 @@ export class Chrome {
       };
       viewRow.appendChild(b);
     }
+    // The draft fallback — the one explicit exit from the true
+    // viewport (elev lens draws in draft until the Phase 5 lenses).
+    const draftBtn = el('button', 'opt-btn' + (view.trueView ? '' : ' active'), 'draft');
+    draftBtn.title = 'Flip to the v1 schematic view (the true viewport is the default)';
+    draftBtn.onclick = () => {
+      view.toggleDraftView();
+      this.deps.state.changed();
+    };
+    viewRow.appendChild(draftBtn);
     root.appendChild(viewRow);
     void ops;
   }

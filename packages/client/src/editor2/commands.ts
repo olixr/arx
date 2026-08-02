@@ -119,7 +119,9 @@ export interface CommandDeps {
   zoomFit(): void;
   zoomActual(): void;
   toggleView(key: 'showGrid' | 'showChunkGrid' | 'showMarkers' | 'showElev'): void;
-  toggleInstrument(id: 'minimap' | 'zoom'): void;
+  toggleDraftView(): void;
+  setClock(hours: number): void;
+  toggleInstrument(id: 'minimap' | 'zoom' | 'clock'): void;
   toggleDockPanel(id: 'tool' | 'lib'): void;
   zoneProperties(): void;
   saveSelectionAsPrefab(): void;
@@ -197,8 +199,14 @@ export function buildCommands(d: CommandDeps): Command[] {
     { id: 'view.chunks', title: 'Toggle chunk grid', group: 'View', mode: 'zone', run: () => d.toggleView('showChunkGrid') },
     { id: 'view.markers', title: 'Toggle placement markers', group: 'View', mode: 'zone', run: () => d.toggleView('showMarkers') },
     { id: 'view.elev', title: 'Toggle elevation lens', group: 'View', mode: 'zone', run: () => d.toggleView('showElev') },
+    { id: 'view.draft', title: 'Toggle Draft view (schematic fallback)', group: 'View', mode: 'zone', hint: 'The true viewport is the default; draft is the v1 bake', run: d.toggleDraftView },
+    { id: 'clock.dawn', title: 'Clock: Dawn (6:00)', group: 'View', mode: 'zone', run: () => d.setClock(6) },
+    { id: 'clock.noon', title: 'Clock: Noon (12:00)', group: 'View', mode: 'zone', run: () => d.setClock(12) },
+    { id: 'clock.dusk', title: 'Clock: Dusk (18:30)', group: 'View', mode: 'zone', run: () => d.setClock(18.5) },
+    { id: 'clock.night', title: 'Clock: Midnight (0:00)', group: 'View', mode: 'zone', run: () => d.setClock(0) },
     { id: 'view.minimap', title: 'Toggle minimap', group: 'View', run: () => d.toggleInstrument('minimap') },
     { id: 'view.zoomcluster', title: 'Toggle zoom instrument', group: 'View', run: () => d.toggleInstrument('zoom') },
+    { id: 'view.clock', title: 'Toggle clock instrument', group: 'View', mode: 'zone', run: () => d.toggleInstrument('clock') },
     { id: 'view.dock.tool', title: 'Collapse/expand Tool panel', group: 'View', run: () => d.toggleDockPanel('tool') },
     { id: 'view.dock.lib', title: 'Collapse/expand Library panel', group: 'View', run: () => d.toggleDockPanel('lib') },
 

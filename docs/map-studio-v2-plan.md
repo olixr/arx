@@ -386,6 +386,43 @@ Each phase ships, proves, and commits on its own. Laws named in caps become stan
   renderer seams (free camera, clock override, overlay hook), sliced bakes, clock
   instrument, Draft-view fallback toggle. Tiles/shapes/fill/road retargeted to the stage.
   *Prove: pixel-diff a stage frame vs a live-game screenshot at the same tile+hour.*
+
+  **SHIPPED 2026-08-02 — as built:**
+  - **Renderer seams** (`render/renderer.ts`, additive only): public `cameraOverride`
+    {x,y,zoom} — the follow ease, view-shift, cine pull, shake, and player zoom clamp
+    all yield when set; public `overlayHook(ctx, {w,h,scale,yScale,toScreen,pickWorld})`
+    called over the finished frame (after vignette). Nothing else editor-shaped.
+  - **`editor2/stage.ts`** — StageGame extends ClientGame overriding only
+    `clockHoursNow()`; construction takes stub input/events (never touched: the stage
+    never connects/ticks — THE STAGE IS INERT). Chunks compose exactly as the server:
+    `generateChunk(seed,cx,cy)` + the overlayZone semantics mirrored (TILE_SKIP
+    transparent incl. elev, detail SKIP→0, elev-less zones level their ground). Seed
+    from `/dev/world` via world.ws; edge profiles/geography ride the live content
+    registries the world module already adopts. Edits recompose whole chunks (rect+1
+    pad) with `worldVersion` bumps; `interiorsVersion` bumps only under the ROOM
+    predicate (boundary tiles before/after). `ensureVisible` composes missing chunks
+    under the camera at 6/frame — the apron is infinite, pan-friendly. A throwing
+    stage frame flips `healthy` and the draft view stands in (never a dead studio).
+  - **`editor2/viewport.ts`** — ONE camera (local center + px/tile) over both views;
+    stage screen→world goes through `renderer.pickWorld` (the standing law — elevation
+    lift solved); zoom clamps [8,160] on stage, [2,160] in draft; fitZone accounts the
+    0.6 y-squash. The whole v1 decoration dialect ported to the overlay hook: outside-
+    zone dim, field-tone zone frame, tile grid, TRUE world-chunk grid, preview cells,
+    flat ghost (true-render ghosts arrive Ph4), marching-ants selection + dims chip,
+    and all markers with wander rings drawn as perspective-true ellipses. Draft toggle
+    persists (`dc2-true-view`); markers anchor at ground footprint; the elevation lens
+    stays draft-side until the Phase 5 lens suite.
+  - **`editor2/clock.ts` + `#inst-clock`** — the daylight scrubber instrument (readout,
+    0–24h slider, Dawn/Noon/Dusk/Night presets), plus ⌘K clock commands; the pointer
+    machine now binds both zone canvases (draft AND stage).
+  - Verified: tsc clean; 379 tests green; STUDIO build green; headless drive (stage
+    boots healthy, 51 chunks composed, strokes/marquee/undo on the true render, clock
+    scrub 12:00→22:00 pools real lamplight, draft round-trip keeps the camera exactly,
+    zero console errors). **THE PORTRAIT PROOF: a registered live-game session and the
+    stage framed the same world window at the same hour — 98.5% of pixels within
+    motion tolerance, mean channel diff 2.06/255** (residual = grass/tree sway phase).
+    Headless rAF pinned ~30Hz in the harness; in-browser perf rides the renderer's own
+    shipped budgets (profile against a 512×512 zone in Ph3).
 - **Phase 3 — THE PEOPLE TAKE THE STAGE**: synthesized entities for every placement,
   routine interpreter + clock-aware posing, hours ghosting, unified People tool with
   the full-field inspector (hours dial, patrol editor, wing), People library tab,

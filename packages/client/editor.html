@@ -30,11 +30,16 @@
       <div id="main">
         <nav id="rail" aria-label="Tools"></nav>
         <div id="canvas-wrap">
-          <canvas id="editor-canvas"></canvas>
+          <canvas id="editor-canvas" class="hidden"></canvas>
+          <canvas id="stage-canvas"></canvas>
           <canvas id="world-canvas" class="hidden"></canvas>
           <div id="inst-minimap" class="instrument" title="Click to jump; drag to pan">
             <div class="inst-grip" title="Drag to a corner"></div>
             <canvas id="minimap"></canvas>
+          </div>
+          <div id="inst-clock" class="instrument">
+            <div class="inst-grip" title="Drag to a corner"></div>
+            <div id="inst-clock-body"></div>
           </div>
           <div id="inst-zoom" class="instrument">
             <div class="inst-grip" title="Drag to a corner"></div>

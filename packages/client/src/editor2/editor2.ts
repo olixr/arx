@@ -55,11 +55,14 @@ import {
   zonePropertiesDialog,
   type DialogDeps,
 } from './dialogs.js';
+import { ClockInstrument } from './clock.js';
 import { installKeys } from './keys.js';
 import { Minimap } from './minimap.js';
 import { EditorOps } from './ops.js';
 import { installPointer } from './pointer.js';
 import { Shell } from './shell.js';
+import { EditorStage } from './stage.js';
+import { Viewport } from './viewport.js';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
@@ -71,9 +74,12 @@ let mode: StudioMode = 'zone';
 let pendingZoneFit = false;
 
 const canvas = $('editor-canvas') as unknown as HTMLCanvasElement;
+const stageCanvas = $('stage-canvas') as unknown as HTMLCanvasElement;
 const worldCanvas = $('world-canvas') as unknown as HTMLCanvasElement;
 const state = new EditorState();
-const view = new EditorView(canvas, state);
+const draftView = new EditorView(canvas, state);
+const stage = new EditorStage(stageCanvas, () => state.zone);
+const view = new Viewport(draftView, stage, state, canvas, stageCanvas);
 const history = new History();
 
 /** Live pick lists — served by the running game, content as fallback. */
@@ -294,7 +300,8 @@ function zoomFromCenter(factor: number): void {
     world.syncZoom();
     return;
   }
-  const rect = canvas.getBoundingClientRect();
+  // The wrap's rect — the active zone canvas may be either of the two.
+  const rect = $('canvas-wrap').getBoundingClientRect();
   view.zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor);
   chrome.updateStatus();
 }
@@ -313,7 +320,7 @@ function zoomActual(): void {
     world.syncZoom();
     return;
   }
-  const rect = canvas.getBoundingClientRect();
+  const rect = $('canvas-wrap').getBoundingClientRect();
   view.zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 32 / view.scale);
   chrome.updateStatus();
 }
@@ -363,6 +370,11 @@ const commands: Command[] = buildCommands({
     view[key] = !view[key];
     state.changed();
   },
+  toggleDraftView: () => {
+    view.toggleDraftView();
+    state.changed();
+  },
+  setClock: (hours) => clock.set(hours),
   toggleInstrument: (id) => shell.toggleInstrument(id),
   toggleDockPanel: (id) => shell.togglePanel(id),
   zoneProperties: () => zonePropertiesDialog(dialogDeps),
@@ -515,6 +527,9 @@ function setMode(m: StudioMode): void {
     world.view.invalidateZone(state.zone.id);
     void world.refresh();
   } else {
+    // World-mode geography edits re-carve the shared live registries
+    // the stage's worldgen reads — returning to the zone re-arms it.
+    stage.rebuildAll();
     state.changed();
   }
 }
@@ -583,11 +598,12 @@ const palette = new PaletteUI($('palette'), state, {
 
 const minimap = new Minimap(
   $('minimap') as unknown as HTMLCanvasElement,
-  canvas,
   state,
   view,
   () => chrome.updateStatus(),
 );
+
+const clock = new ClockInstrument($('inst-clock-body'), stage);
 
 const keys = installKeys({
   ops,
@@ -602,7 +618,7 @@ const keys = installKeys({
 });
 
 installPointer({
-  canvas,
+  canvases: [canvas, stageCanvas],
   ops,
   isActive: () => mode === 'zone',
   isSpaceHeld: () => keys.isSpaceHeld(),
@@ -643,6 +659,9 @@ async function boot(): Promise<void> {
     .catch(() => {});
   void refreshPrefabs();
   void world.boot().then(() => {
+    // The stage generates with the server's seed — armed once the
+    // world snapshot lands (offline keeps the shipped default).
+    stage.setSeed(world.ws.seed);
     if (mode === 'world') {
       chrome.syncZoneChip();
       chrome.updateStatus();
@@ -691,11 +710,13 @@ Object.assign(window, {
   dcEditor: {
     state,
     view,
+    stage,
     history,
     validateZone,
     world,
     ops,
     cmdk,
+    clock,
     setMode: (m: StudioMode) => setMode(m),
   },
 });

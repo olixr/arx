@@ -23,8 +23,9 @@ import {
   placementAt,
   placementPos,
 } from '../editor/placements.js';
-import { EditorView, GHOST_SKIP } from '../editor/render.js';
+import { GHOST_SKIP } from '../editor/render.js';
 import type { EditorState, PlacementRef, ToolId } from '../editor/state.js';
+import type { Viewport } from './viewport.js';
 import {
   ellipseCells,
   floodCells,
@@ -57,7 +58,7 @@ export class EditorOps {
 
   constructor(
     readonly state: EditorState,
-    readonly view: EditorView,
+    readonly view: Viewport,
     readonly history: History,
     private readonly getRegistry: () => RegistrySnapshot,
   ) {}

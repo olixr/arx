@@ -5,8 +5,8 @@
  */
 
 import { tileDef } from '@arx/shared';
-import type { EditorView } from '../editor/render.js';
 import type { EditorState } from '../editor/state.js';
+import type { Viewport } from './viewport.js';
 
 const MM_SIZE = 168;
 
@@ -19,9 +19,8 @@ export class Minimap {
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
-    private readonly viewCanvas: HTMLCanvasElement,
     private readonly state: EditorState,
-    private readonly view: EditorView,
+    private readonly view: Viewport,
     private readonly onJump: () => void,
   ) {
     canvas.addEventListener('mousedown', (e) => {
@@ -91,19 +90,18 @@ export class Minimap {
     const box = this.layout();
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.bitmap, box.x, box.y, box.w, box.h);
-    // The viewport window.
+    // The viewport window (mode-true: the stage window is squashed).
     const z = this.state.zone;
-    const vx0 = -this.view.panX / this.view.scale;
-    const vy0 = -this.view.panY / this.view.scale;
-    const vw = this.viewCanvas.clientWidth / this.view.scale;
-    const vh = this.viewCanvas.clientHeight / this.view.scale;
+    const r = this.view.visibleLocalRect();
+    const vx0 = Math.max(0, r.x0);
+    const vy0 = Math.max(0, r.y0);
     ctx.strokeStyle = '#d8b36a';
     ctx.lineWidth = 1.25;
     ctx.strokeRect(
-      box.x + Math.max(0, vx0) * box.s,
-      box.y + Math.max(0, vy0) * box.s,
-      Math.min(vw, z.width - Math.max(0, vx0)) * box.s,
-      Math.min(vh, z.height - Math.max(0, vy0)) * box.s,
+      box.x + vx0 * box.s,
+      box.y + vy0 * box.s,
+      Math.max(2, (Math.min(r.x1, z.width) - vx0) * box.s),
+      Math.max(2, (Math.min(r.y1, z.height) - vy0) * box.s),
     );
   }
 

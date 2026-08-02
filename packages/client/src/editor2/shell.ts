@@ -39,7 +39,7 @@ function readJson<T>(key: string, fallback: T): T {
 export class Shell {
   private collapsed = readJson<Record<string, boolean>>(COLLAPSED_KEY, {});
   private inst = readJson<InstState>(INST_KEY, {
-    corners: { minimap: 'bl', zoom: 'br' },
+    corners: { minimap: 'bl', zoom: 'br', clock: 'tr' },
     hidden: [],
   });
 
@@ -142,9 +142,9 @@ export class Shell {
   // ----------------------------------------------------- instruments
 
   private initInstruments(): void {
-    for (const id of ['minimap', 'zoom'] as const) {
+    for (const id of ['minimap', 'zoom', 'clock'] as const) {
       const card = $(`inst-${id}`);
-      this.placeInstrument(id, this.inst.corners[id] ?? (id === 'minimap' ? 'bl' : 'br'));
+      this.placeInstrument(id, this.inst.corners[id] ?? (id === 'minimap' ? 'bl' : id === 'clock' ? 'tr' : 'br'));
       if (this.inst.hidden.includes(id)) card.classList.add('hidden');
       const grip = card.querySelector<HTMLElement>('.inst-grip');
       if (!grip) continue;
@@ -190,7 +190,7 @@ export class Shell {
     card.style.bottom = corner === 'bl' || corner === 'br' ? 'var(--s3)' : 'auto';
   }
 
-  toggleInstrument(id: 'minimap' | 'zoom'): void {
+  toggleInstrument(id: 'minimap' | 'zoom' | 'clock'): void {
     const card = $(`inst-${id}`);
     card.classList.toggle('hidden');
     this.inst.hidden = card.classList.contains('hidden')
@@ -204,9 +204,15 @@ export class Shell {
   /** Flip every mode-owned surface. The composition root owns the rest. */
   setModeDom(mode: StudioMode, tab: 'tiles' | 'structures' | 'placements'): void {
     const isWorld = mode === 'world';
-    $('editor-canvas').classList.toggle('hidden', isWorld);
+    // In zone mode the viewport owns which zone canvas shows (true vs
+    // draft); world mode hides both behind the world canvas.
+    if (isWorld) {
+      $('editor-canvas').classList.add('hidden');
+      $('stage-canvas').classList.add('hidden');
+    }
     $('world-canvas').classList.toggle('hidden', !isWorld);
     $('inst-minimap').classList.toggle('mode-hidden', isWorld);
+    $('inst-clock').classList.toggle('mode-hidden', isWorld);
     $('dock-tool').classList.toggle('hidden', isWorld);
     $('side-tabs').classList.toggle('hidden', isWorld);
     // The world panel opens with its own "The plan" head — the dock

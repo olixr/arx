@@ -22,7 +22,8 @@ type Drag =
 const PLACEMENT_TOOLS = new Set(['portal', 'cluster', 'actor', 'sign', 'spawn']);
 
 export interface PointerDeps {
-  canvas: HTMLCanvasElement;
+  /** Both zone canvases — draft AND stage — hear the same machine. */
+  canvases: HTMLCanvasElement[];
   ops: EditorOps;
   isActive: () => boolean; // zone mode on stage?
   isSpaceHeld: () => boolean;
@@ -30,13 +31,22 @@ export interface PointerDeps {
 }
 
 export function installPointer(deps: PointerDeps): void {
-  const { canvas, ops } = deps;
+  const { ops } = deps;
   const { state, view } = ops;
   let drag: Drag = { kind: 'none' };
+  const onEachCanvas = (
+    type: 'mousedown' | 'dblclick' | 'contextmenu',
+    fn: (e: MouseEvent) => void,
+  ): void => {
+    for (const c of deps.canvases) c.addEventListener(type, fn);
+  };
+  const setCursor = (cursor: string): void => {
+    for (const c of deps.canvases) c.style.cursor = cursor;
+  };
 
-  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  onEachCanvas('contextmenu', (e) => e.preventDefault());
 
-  canvas.addEventListener('mousedown', (e) => {
+  onEachCanvas('mousedown', (e) => {
     if (!deps.isActive()) return;
     const t = view.tileAt(e.clientX, e.clientY);
     if (e.button === 1 || deps.isSpaceHeld()) {
@@ -162,8 +172,7 @@ export function installPointer(deps: PointerDeps): void {
     deps.updateStatus();
 
     if (drag.kind === 'pan') {
-      view.panX += e.clientX - drag.lastX;
-      view.panY += e.clientY - drag.lastY;
+      view.panBy(e.clientX - drag.lastX, e.clientY - drag.lastY);
       drag.lastX = e.clientX;
       drag.lastY = e.clientY;
       return;
@@ -261,10 +270,10 @@ export function installPointer(deps: PointerDeps): void {
       const f = view.tileAtFloat(e.clientX, e.clientY);
       state.hoverPlacement = ops.placementHit(f.x, f.y);
       const edge = ops.clusterEdgeHit(f.x, f.y);
-      canvas.style.cursor = state.hoverPlacement ? 'grab' : edge !== null ? 'ew-resize' : 'crosshair';
+      setCursor(state.hoverPlacement ? 'grab' : edge !== null ? 'ew-resize' : 'crosshair');
     } else {
       state.hoverPlacement = null;
-      canvas.style.cursor = 'crosshair';
+      setCursor('crosshair');
     }
   });
 
@@ -310,19 +319,21 @@ export function installPointer(deps: PointerDeps): void {
     drag = { kind: 'none' };
   });
 
-  canvas.addEventListener('dblclick', () => {
+  onEachCanvas('dblclick', () => {
     if (!deps.isActive()) return;
     if (state.tool === 'road' && ops.roadPts.length >= 2) ops.commitRoad();
   });
 
-  canvas.addEventListener(
-    'wheel',
-    (e) => {
-      if (!deps.isActive()) return;
-      e.preventDefault();
-      view.zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.15 : 1 / 1.15);
-      deps.updateStatus();
-    },
-    { passive: false },
-  );
+  for (const c of deps.canvases) {
+    c.addEventListener(
+      'wheel',
+      (e) => {
+        if (!deps.isActive()) return;
+        e.preventDefault();
+        view.zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+        deps.updateStatus();
+      },
+      { passive: false },
+    );
+  }
 }
