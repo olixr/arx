@@ -904,10 +904,15 @@ export function drawHumanoidRagdoll(
       ctx.fill();
     }
     // The blunt deep muzzle out the +x side — half the wolf's reach,
-    // twice the depth; bare hide, not fur.
-    ctx.fillStyle = gn.skin;
+    // twice the depth; fur to the lip with the dark mask saddle on
+    // the bridge, matching the living head.
+    ctx.fillStyle = shade(gn.fur, -4);
     ctx.beginPath();
     chamferRect(ctx, hw * 0.6, -hh * 0.3, hw * 0.98, hh * 0.78, [0, cut * 0.5, cut * 0.6, 0]);
+    ctx.fill();
+    ctx.fillStyle = gn.mask;
+    ctx.beginPath();
+    chamferRect(ctx, hw * 0.6, -hh * 0.3, hw * 0.98, hh * 0.24, [0, cut * 0.4, 0, 0]);
     ctx.fill();
     // Slack pale mandible under it.
     ctx.fillStyle = gn.underfur;

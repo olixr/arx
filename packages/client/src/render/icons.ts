@@ -4912,7 +4912,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   wolf_fur: { icon: 'hide', color: '#8a90a0' },
   direwolf_pelt: { icon: 'hide', color: '#5d5a68' },
   worg_fang: { icon: 'fang', color: '#d8ccb0' },
-  gnoll_hide: { icon: 'spottedhide', color: '#8a7a58' },
+  gnoll_hide: { icon: 'spottedhide', color: '#7f6d4c' },
   packlord_mane: { icon: 'mane', color: '#4e4034' },
   leather_body: { icon: 'jerkin', color: '#b08a5c' },
   bones: { icon: 'bones', color: '#efe8d8' },

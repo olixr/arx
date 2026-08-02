@@ -729,7 +729,7 @@ const defs: NpcDef[] = [
     xpReward: 150,
     loot: ['gnoll', 'goblin_arms', 'heirlooms'],
     respawnSec: 40,
-    color: '#8a7a58',
+    color: '#7f6d4c',
     radius: 0.36,
     hitHeight: 2.3,
     // Scavenged edges are jagged edges: the wound keeps paying.
@@ -756,7 +756,7 @@ const defs: NpcDef[] = [
     xpReward: 370,
     loot: ['gnoll_champion', 'goblin_arms', 'heirlooms'],
     respawnSec: 90,
-    color: '#6b5a44',
+    color: '#4e463c',
     radius: 0.44,
     hitHeight: 2.6,
     // Packlord jaws finish what the warband starts.
