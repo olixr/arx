@@ -11,6 +11,7 @@ import {
   gnollLook,
   skeletonLook,
 } from '../render/rig.js';
+import { TailSim, drawTail } from '../render/tail.js';
 
 /**
  * TRUE IN-GAME RENDERS. Every creature and actor the studio shows is
@@ -168,6 +169,18 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
   // The portrait sits for the DESIGN: seed 0 pins the dust-coat
   // cluster so the bestiary card never flickers between colorways.
   const gno = def.id.startsWith('gnoll') ? gnollLook(def.id, 0) : undefined;
+  if (gno) {
+    // The tail is a simulation in the world (tail.ts); the poster runs
+    // it to rest at a pinned moment and paints the settled brush
+    // behind the south-facing body — a still from the same physics.
+    const sim = new TailSim(gno.heavy, 0);
+    for (let i = 0; i < 40; i++) sim.update(10, 10, 0.36 * sizeK, Math.PI / 2, 1 / 60, i / 60, sizeK);
+    const pts = sim.nodes.map((nd) => ({
+      x: cx + (nd.x - 10) * S,
+      y: yFeet + (nd.y - 10) * S * 0.52 - nd.z * S,
+    }));
+    drawTail(ctx, pts, gno, S * sizeK, { hurt: false });
+  }
   drawHumanoid(ctx, {
     x: cx,
     y: yFeet,

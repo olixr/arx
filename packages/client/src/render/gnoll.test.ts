@@ -18,9 +18,9 @@ import {
   gnollLook,
   paintGnollCrest,
   paintGnollHead,
-  paintGnollTail,
   type GnollLook,
 } from './rig.js';
+import { TailSim, drawTail } from './tail.js';
 
 test('every gnoll NPC has its own authored look', () => {
   const gnollIds = [...NPCS.keys()].filter((id) => id.startsWith('gnoll'));
@@ -160,23 +160,6 @@ function headFrame(dir: number, gape = 0) {
   };
 }
 
-function tailFrame(dir: number) {
-  const fx = Math.cos(dir);
-  const fy = Math.sin(dir);
-  return {
-    s: 44,
-    fx,
-    fy,
-    profileK: Math.abs(fx),
-    backK: Math.max(0, Math.min(1, (-fy - 0.2) / 0.35)),
-    lead: fx >= 0 ? 1 : -1,
-    nowMs: 1234,
-    runF: 0.5,
-    poleX: fx,
-    hurt: false,
-  };
-}
-
 function humpFrame(dir: number) {
   const fx = Math.cos(dir);
   const fy = Math.sin(dir);
@@ -190,17 +173,14 @@ function humpFrame(dir: number) {
   };
 }
 
-test('head, crest, and tail paint clean at all eight facings for every variant', () => {
+test('head and crest paint clean at all eight facings for every variant', () => {
   for (const gn of Object.values(GNOLL_LOOKS) as GnollLook[]) {
     for (const dir of FACINGS) {
       const ctx = mockCtx();
       paintGnollHead(ctx, gn, headFrame(dir), 0x5eed);
       assert.ok(ctx.fills > 4, 'the head is a built form, not a single block');
       paintGnollCrest(ctx, gn, humpFrame(dir));
-      const afterCrest = ctx.fills;
-      assert.ok(afterCrest > 8, 'the crest is a ridge of bristles, not a collar');
-      paintGnollTail(ctx, gn, tailFrame(dir));
-      assert.ok(ctx.fills > afterCrest, 'the tail is a brush with its dark tip');
+      assert.ok(ctx.fills > 8, 'the crest is a ridge of bristles, not a collar');
     }
   }
 });
@@ -227,18 +207,6 @@ test('the spot field is the body’s own — two seeds, two dapples', () => {
   assert.notEqual(a.coordSum, b.coordSum, 'different seeds scatter different dapple');
 });
 
-test('the tail wags on the clock', () => {
-  const gn = GNOLL_LOOKS['gnoll']!;
-  const sums: number[] = [];
-  for (const nowMs of [0, 400, 800]) {
-    const ctx = mockCtx();
-    paintGnollTail(ctx, gn, { ...tailFrame(0), nowMs });
-    sums.push(ctx.coordSum);
-  }
-  assert.notEqual(sums[0], sums[1], 'the wag travels between frames');
-  assert.notEqual(sums[1], sums[2], 'and keeps traveling');
-});
-
 test('the jaw cackles through the strike beat', () => {
   const gn = GNOLL_LOOKS['gnoll_champion']!;
   const shut = mockCtx();
@@ -246,4 +214,67 @@ test('the jaw cackles through the strike beat', () => {
   const open = mockCtx();
   paintGnollHead(open, gn, headFrame(Math.PI / 2, 1), 0x5eed);
   assert.ok(open.fills > shut.fills, 'the gape opens the maw mid-laugh');
+});
+
+// ---- THE SIMULATED TAIL (tail.ts): the cape contract in muscle.
+
+test('the tail is a simulation: it trails the runner, then settles home', () => {
+  const sim = new TailSim(1, 5);
+  // Lope east at 3 tiles/s for a second.
+  for (let i = 0; i < 60; i++) sim.update(10 + i * 0.05, 10, 0.36, 0, 1 / 60, i / 60, 1);
+  const root = sim.nodes[0]!;
+  const tip = sim.nodes[sim.nodes.length - 1]!;
+  assert.ok(tip.x < root.x - 0.15, 'the brush lags behind the run');
+  assert.ok(sim.restless, 'a moving tail re-bakes the body sprite at full rate');
+  // Stop and hold: the muscle brings the brush home and the sim calms.
+  for (let i = 0; i < 240; i++) sim.update(13, 10, 0.36, 0, 1 / 60, 1 + i / 60, 1);
+  assert.ok(sim.tipSpd < 0.45, 'the brush settles to the carry');
+  assert.ok(!sim.restless, 'a settled tail yields to the idle cadence');
+  const settledTip = sim.nodes[sim.nodes.length - 1]!;
+  assert.ok(settledTip.x < sim.nodes[0]!.x, 'settled, the brush hangs behind the facing');
+});
+
+test('teleports snap the chain — never a cross-map whip', () => {
+  const sim = new TailSim(1, 5);
+  for (let i = 0; i < 10; i++) sim.update(10, 10, 0.36, 0, 1 / 60, i / 60, 1);
+  sim.update(40, 40, 0.36, 0, 1 / 60, 0.2, 1);
+  for (const nd of sim.nodes) {
+    assert.ok(Math.hypot(nd.x - 40, nd.y - 40) < 1.2, 'the chain re-lays at the destination');
+  }
+});
+
+test('the paint side is the cape facing law, with hysteresis', () => {
+  const sim = new TailSim(1, 1);
+  assert.equal(sim.front(1), false, 'facing the camera the tail hangs behind the body');
+  assert.equal(sim.front(-0.3), true, 'facing away it swings in front');
+  assert.equal(sim.front(-0.15), true, 'the band holds — no dither at the boundary');
+  assert.equal(sim.front(0.2), false);
+});
+
+test('the simulated brush paints clean at all eight facings for every variant', () => {
+  for (const gn of Object.values(GNOLL_LOOKS) as GnollLook[]) {
+    for (const dir of FACINGS) {
+      const sim = new TailSim(gn.heavy, 7);
+      for (let i = 0; i < 30; i++) sim.update(10, 10, 0.36, dir, 1 / 60, i / 60, 1.18);
+      const ctx = mockCtx();
+      const pts = sim.nodes.map((nd) => ({ x: nd.x * 100, y: nd.y * 52 - nd.z * 100 }));
+      drawTail(ctx, pts, gn, 100, { hurt: false });
+      assert.ok(ctx.fills >= 4, 'brush, form shade, rings, and the mask tip all land');
+    }
+  }
+});
+
+test('the wag lives on the sim clock — two moments, two silhouettes', () => {
+  const gn = GNOLL_LOOKS['gnoll']!;
+  const sums: number[] = [];
+  for (const t0 of [0, 0.4, 0.8]) {
+    const sim = new TailSim(1, 5);
+    for (let i = 0; i < 40; i++) sim.update(10, 10, 0.36, 0, 1 / 60, t0 + i / 60, 1);
+    const ctx = mockCtx();
+    const pts = sim.nodes.map((nd) => ({ x: nd.x * 100, y: nd.y * 52 - nd.z * 100 }));
+    drawTail(ctx, pts, gn, 100, { hurt: false });
+    sums.push(ctx.coordSum);
+  }
+  assert.notEqual(sums[0], sums[1], 'the beat travels between moments');
+  assert.notEqual(sums[1], sums[2], 'and keeps traveling');
 });

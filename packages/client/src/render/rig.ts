@@ -3076,118 +3076,6 @@ export function paintGnollBody(
   }
 }
 
-/**
- * The bushy tail — short and heavy, carried LOW (a hyena's flag only
- * rises for a fight; ours stays sunk, which keeps the silhouette
- * hunched even from behind). A stub spine with a fat fur ribbon and a
- * dark tip cap, wagging a little harder with the gait. Drawn in the
- * torso's squashed frame BEFORE the garment so the root tucks behind
- * the body.
- */
-export function paintGnollTail(
-  ctx: CanvasRenderingContext2D,
-  gn: GnollLook,
-  f: KoboldTailFrame,
-): void {
-  const { s, fx, fy, backK, profileK, lead, nowMs, runF, poleX, hurt } = f;
-  const fur = hurt ? '#ffffff' : gn.fur;
-  const frontK = Math.max(0, fy);
-  const trail = -poleX * 0.1 * s;
-  const rootX = -fx * 0.05 * s;
-  const rootY = -0.04 * s;
-  // Real reach at profile — past the hip, carried sunk — but face-on
-  // only the tip peeks past the thigh, and from behind the brush
-  // swings LOW AND ASIDE, never dangling plumb down the center line.
-  const tipX =
-    -fx * (0.4 + 0.14 * profileK) * s +
-    trail -
-    lead * 0.09 * s * frontK +
-    lead * 0.16 * s * backK;
-  const tipY = 0.3 * s + 0.03 * s * backK;
-  const wag = Math.sin(nowMs * (0.003 + 0.004 * runF)) * s * (0.02 + 0.05 * runF);
-  const cx = rootX + (tipX - rootX) * 0.5 + wag;
-  const cy = rootY + 0.16 * s;
-  const N = 6;
-  const w0 = 0.095 * s * gn.heavy;
-  const pts: Array<{ x: number; y: number }> = [];
-  for (let i = 0; i <= N; i++) {
-    const t = i / N;
-    const mt = 1 - t;
-    pts.push({
-      x: mt * mt * rootX + 2 * mt * t * cx + t * t * tipX,
-      y: mt * mt * rootY + 2 * mt * t * cy + t * t * tipY,
-    });
-  }
-  const sp = pts.map((p, i) => {
-    const a = pts[Math.max(0, i - 1)]!;
-    const b = pts[Math.min(N, i + 1)]!;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const dl = Math.hypot(dx, dy) || 1e-4;
-    const t = i / N;
-    // Bushy: the ribbon BULGES mid-length before tapering — fur, not
-    // the kobold's naked whip.
-    const w = w0 * (0.5 + 0.62 * Math.sin(Math.min(1, t * 1.15) * Math.PI)) * 0.5 + w0 * 0.12;
-    return { x: p.x, y: p.y, px: -dy / dl, py: dx / dl, w };
-  });
-  ctx.fillStyle = fur;
-  ctx.beginPath();
-  for (let i = 0; i < sp.length; i++) {
-    const p = sp[i]!;
-    if (i === 0) ctx.moveTo(p.x + p.px * p.w, p.y + p.py * p.w);
-    else ctx.lineTo(p.x + p.px * p.w, p.y + p.py * p.w);
-  }
-  for (let i = sp.length - 1; i >= 0; i--) {
-    const p = sp[i]!;
-    ctx.lineTo(p.x - p.px * p.w, p.y - p.py * p.w);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = hurt ? '#ffffff' : shade(gn.fur, -26);
-  ctx.lineWidth = Math.max(1, w0 * 0.14);
-  ctx.stroke();
-  if (hurt) return;
-  // Coat bands: two thin dark RINGS across the brush — stripes, not
-  // spots. Drawn as slim bars along the ribbon's perpendicular so
-  // they wrap the volume instead of sitting on it like blobs.
-  ctx.strokeStyle = shade(gn.mask, -4);
-  for (const bi of [2, 4]) {
-    const p = sp[bi]!;
-    ctx.lineWidth = Math.max(1.5, p.w * 0.42);
-    ctx.beginPath();
-    ctx.moveTo(p.x + p.px * p.w * 0.88, p.y + p.py * p.w * 0.88);
-    ctx.lineTo(p.x - p.px * p.w * 0.88, p.y - p.py * p.w * 0.88);
-    ctx.stroke();
-  }
-  // The dark tip: the last knuckle dips in the mask ink.
-  const tip = sp[N]!;
-  const pre = sp[N - 1]!;
-  ctx.fillStyle = gn.mask;
-  ctx.beginPath();
-  ctx.ellipse(
-    (tip.x + pre.x) / 2,
-    (tip.y + pre.y) / 2,
-    pre.w * 1.3,
-    pre.w * 0.95,
-    Math.atan2(tip.y - pre.y, tip.x - pre.x),
-    0,
-    Math.PI * 2,
-  );
-  ctx.fill();
-  // Pale underfur along the low edge of the brush.
-  ctx.strokeStyle = shade(gn.underfur, -6);
-  ctx.lineWidth = Math.max(1, s * 0.018);
-  ctx.beginPath();
-  for (let i = 1; i <= 4; i++) {
-    const p = sp[i]!;
-    const sgn = p.py >= 0 ? 1 : -1;
-    const x = p.x + p.px * p.w * 0.72 * sgn;
-    const y = p.y + p.py * p.w * 0.72 * sgn;
-    if (i === 1) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-}
 
 export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void {
   const k = rig.size ?? 1;
@@ -5490,22 +5378,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hurt: rig.hurt,
     });
   }
-  // The gnoll's bushy tail rides the same torso-frame slot: painted
-  // BEFORE the garment so the root tucks behind the body.
-  if (gno) {
-    paintGnollTail(ctx, gno, {
-      s,
-      fx,
-      fy,
-      profileK,
-      backK,
-      lead,
-      nowMs: rig.nowMs,
-      runF: rig.runF,
-      poleX: rig.poleX,
-      hurt: rig.hurt,
-    });
-  }
+  // The gnoll's tail is NOT painted here: it is a world-space verlet
+  // simulation (tail.ts — the cape contract in muscle) ticked by the
+  // caller and painted on the cape's facing-law side of the whole
+  // body: behind facing the camera, in front facing away.
 
   // ---- head measurements, resolved BEFORE the torso paints. Hair is
   // a two-pass matter (THE HAIR RIDES THE SKULL RING, hair.ts): the
