@@ -48,6 +48,10 @@ export declare class SocialPanel {
     private armedRemove;
     /** Two-click Disband confirmation. */
     private armedDisband;
+    /** The standing tab and its wrappers (Grand Refit Ph6). */
+    private socialTab;
+    private readonly tabWraps;
+    private readonly rail;
     constructor(game: ClientGame);
     get isOpen(): boolean;
     /** True while the search box holds the keyboard (gates WASD/hotkeys). */

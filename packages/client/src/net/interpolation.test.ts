@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { InterpBuffer } from './interpolation.js';
+import { InterpBuffer, shortestAngle } from './interpolation.js';
 
 const sample = (t: number, x: number, y = 0) => ({
   t,
@@ -60,6 +60,42 @@ test('implausible speeds are rejected (teleport, not motion)', () => {
   b.push(sample(50, 10)); // 200 tiles/sec — a teleport
   const s = b.sampleAt(150)!;
   assert.ok(Math.abs(s.x - 10) < 1e-9);
+});
+
+// ---- BALLISTIC TRUTH (v9) ------------------------------------------
+
+test('a ballistic shot flies from its very first sample — no freeze', () => {
+  const b = new InterpBuffer();
+  b.ballisticSpeed = 12;
+  b.push({ ...sample(0, 5), dir: 0 }); // spawn, flying east
+  const s = b.sampleAt(100)!; // one transit later, still only one sample
+  assert.ok(Math.abs(s.x - 6.2) < 1e-6, `expected 6.2 (12 t/s over 100ms), got ${s.x}`);
+});
+
+test('ballistic projection rides the NEWEST heading (homing curves)', () => {
+  const b = new InterpBuffer();
+  b.ballisticSpeed = 10;
+  b.push({ ...sample(0, 0), dir: 0 });
+  b.push({ ...sample(50, 0.5), dir: Math.PI / 2 }); // turned north
+  const s = b.sampleAt(150)!;
+  assert.ok(Math.abs(s.x - 0.5) < 1e-6, 'x should hold on a northward heading');
+  assert.ok(Math.abs(s.y - 1.0) < 1e-6, `y should advance 1 tile, got ${s.y}`);
+});
+
+test('ballistic projection is capped at its longer leash, then holds', () => {
+  const b = new InterpBuffer();
+  b.ballisticSpeed = 12;
+  b.push({ ...sample(0, 0), dir: 0 });
+  const atCap = b.sampleAt(300)!;
+  const beyond = b.sampleAt(2000)!;
+  assert.ok(Math.abs(atCap.x - 3.6) < 1e-6, `cap should sit at 3.6 tiles, got ${atCap.x}`);
+  assert.ok(Math.abs(beyond.x - atCap.x) < 1e-9, 'must hold at the cap');
+});
+
+test('shortestAngle wraps both ways', () => {
+  assert.ok(Math.abs(shortestAngle(0.1, -0.1) + 0.2) < 1e-9);
+  const wrapped = shortestAngle(Math.PI - 0.1, -Math.PI + 0.1);
+  assert.ok(Math.abs(wrapped - 0.2) < 1e-9, `expected +0.2 across the seam, got ${wrapped}`);
 });
 
 // ---- RENDER CONTINUITY (sampleSmoothed) ----------------------------

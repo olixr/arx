@@ -29,9 +29,10 @@
  * every element from one source of truth — no image assets, crisp at
  * any DPI.
  */
-/** The case-bottom field color — the stylesheet's --panel must match. */
-export declare const PANEL_FILL = "#262019";
-/** Display-space border width of the grand case frame. */
+import { PANEL_FILL } from './kit/tokens.js';
+export { PANEL_FILL };
+/** Design-space border width of the grand case frame (rem-published,
+ *  so the frame rides the one ruler like everything else). */
 export declare const FRAME_BORDER = 24;
 export declare const FRAME_SLICE: number;
 /** Lighter tray frame (loot tray, cards, menus, prompts). */

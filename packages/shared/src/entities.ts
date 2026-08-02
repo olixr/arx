@@ -114,6 +114,19 @@ export interface EntityMeta {
   /** Projectiles only: the input-frame seq whose press/release fired
    *  this shot — the tracer↔entity matching key. */
   seq?: number;
+  /**
+   * Projectiles only (v9): flight heading at spawn, radians. With
+   * `speed`, the client renders the shot ballistically from its very
+   * first sample — no waiting for a snapshot pair to infer velocity.
+   */
+  dir?: number;
+  /** Projectiles only (v9): flight speed, tiles/sec. */
+  speed?: number;
+  /**
+   * Projectiles only (v9): a boomerang flight — its return leg ghosts
+   * through walls by law, so clients must not wall-clamp its path.
+   */
+  returns?: boolean;
 }
 
 export interface AppearanceData {

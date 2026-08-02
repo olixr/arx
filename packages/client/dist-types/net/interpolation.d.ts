@@ -11,8 +11,19 @@ export interface InterpSample {
     /** NPC alert telegraph (ALERT_ICON_*): the ?/! over the head. */
     alert: number;
 }
+/** Shortest signed angular distance a→b, in (-π, π]. */
+export declare function shortestAngle(a: number, b: number): number;
 export declare class InterpBuffer {
     private samples;
+    /**
+     * BALLISTIC TRUTH (v9): projectiles carry their flight speed on the
+     * enter meta. When set, sampling past the newest sample projects
+     * along that sample's `dir` at this speed — exact for straight
+     * shots, tracks the newest heading for curving ones (homing,
+     * boomerang return), and works from a single sample, so a fresh
+     * shot never freezes at its spawn point waiting for a pair.
+     */
+    ballisticSpeed: number | null;
     /** RENDER CONTINUITY state — see sampleSmoothed. */
     private smTime;
     private smOut;

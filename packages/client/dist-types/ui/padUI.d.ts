@@ -28,6 +28,16 @@ export interface UiNavHooks {
     packActionLabel?: () => string | null;
     /** Focus stepped to a new control — the barely-there cursor tick. */
     onFocusMove?: () => void;
+    /** The device changed hands — screens re-render their glyphs. */
+    onModeChange?: (mode: 'kb' | 'pad') => void;
+    /** The Screen Ring chose a room. */
+    onRingPick?: (id: string) => void;
+    /** The rooms the ring fans out — id, name, painted crest. */
+    ringItems?: () => Array<{
+        id: string;
+        label: string;
+        icon: string;
+    }>;
 }
 export declare class UiNav {
     private readonly input;
@@ -48,6 +58,12 @@ export declare class UiNav {
     private readonly strip;
     private readonly tooltip;
     private readonly prompt;
+    /** The Screen Ring overlay (hold Start). */
+    private readonly screenRing;
+    private ringShown;
+    private ringStartAt;
+    private ringSel;
+    private ringButtons;
     private prevPressed;
     private wasUiActive;
     /** Where focus returns when the item verb menu closes. */
@@ -75,7 +91,13 @@ export declare class UiNav {
     /** All currently-visible navigable elements. */
     private navigables;
     private focused;
-    /** Spatial move: best candidate in the pressed direction. */
+    /**
+     * Spatial move: best candidate in the pressed direction — but THE
+     * REGION HOLDS THE RING first. Candidates sharing the focused
+     * element's `[data-region]` container win outright; only when the
+     * region offers nothing in that direction does the ring hop out.
+     * A list column can never bleed focus into its neighbor mid-walk.
+     */
     private moveFocus;
     private setFocus;
     /**
@@ -95,6 +117,18 @@ export declare class UiNav {
      * guarantees no button serves both a screen and a swing.
      */
     private handleGlobalButtons;
+    /** LT/RT: hand the press to the open room's declared pager. */
+    private dispatchPage;
+    /**
+     * Start's tap-or-hold machine. Hold past the threshold and the ten
+     * rooms fan around the stick; flick, release, the room opens. A tap
+     * shorter than the threshold fires whatever screen action Start is
+     * bound to — the shipped default (open the Pack) survives intact.
+     * Returns true while it owns the frame.
+     */
+    private handleRing;
+    private showScreenRing;
+    private hideScreenRing;
     private positionRing;
     private updateStrip;
     /**

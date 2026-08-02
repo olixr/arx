@@ -39,13 +39,29 @@ export declare class Camera {
      */
     readonly yScale = 0.6;
     /**
-     * The camera's screen-space origin, SNAPPED to whole pixels. Every
-     * layer then translates by the same integer each frame — terrain
-     * blits, wall geometry and sprites move in lockstep. With a subpixel
-     * origin, anything that pixel-rounds its own coordinates (walls,
-     * stair seams) crosses pixel boundaries on different frames than the
-     * smoothly-resampled ground and appears to oscillate on its own
-     * layer. Standard pixel-camera discipline: snap once, at the source.
+     * THE DEVICE GRID: the real pixel lattice belongs to the BACKING
+     * STORE, not CSS space. The context is scaled by the (possibly
+     * FRACTIONAL) devicePixelRatio — adaptive resolution steps it in
+     * halves (2 -> 1.5), browser zoom mints 1.25/1.75 — so a CSS-integer
+     * coordinate can land exactly on a half device pixel. Two abutting
+     * fills that "share" such an edge each get partial AA coverage of
+     * the same pixel column, and the double-blend prints a uniform
+     * under-color hairline (the wall-joint / stall-counter seam bug).
+     * Every pixel-snap in the renderer must round on THIS lattice.
+     * resize() feeds the live ratio each frame.
+     */
+    snapDpr: number;
+    /** Round a CSS-space coordinate onto the device pixel lattice. */
+    snapPx(v: number): number;
+    /**
+     * The camera's screen-space origin, SNAPPED to whole DEVICE pixels.
+     * Every layer then translates by the same device-pixel step each
+     * frame — terrain blits, wall geometry and sprites move in lockstep.
+     * With a subpixel origin, anything that pixel-rounds its own
+     * coordinates (walls, stair seams) crosses pixel boundaries on
+     * different frames than the smoothly-resampled ground and appears
+     * to oscillate on its own layer. Standard pixel-camera discipline:
+     * snap once, at the source, on the true lattice.
      */
     private originX;
     private originY;
@@ -922,6 +938,14 @@ export declare class Renderer {
     private buildFrameGrid;
     /** Elevation through the frame grid; ChunkStore fallback off-window. */
     private fgElevAt;
+    /**
+     * THE SHELF LAW: the shelf a standing item sorts on — the elevation
+     * level of the tile under its feet (see DrawItem.strat). Undefined
+     * at level 0 keeps flat-land items lean and their sort unchanged.
+     */
+    private stratAt;
+    /** Stamp a shelf onto every item pushed since `from` (multi-item emitters). */
+    private stampStrat;
     /** Ground tile through the frame grid; ChunkStore fallback off-window. */
     private fgGroundAt;
     /** Detail id through the frame grid; ChunkStore fallback off-window. */
@@ -1124,9 +1148,17 @@ export declare class Renderer {
      */
     private playerBannerOnFace;
     /**
-     * The pennant string: a swagged line under the eave, little flags
-     * alternating the dye and its cream partner, each a beat out of
-     * phase with its neighbour (the valance law on a rope).
+     * THE HERALD'S ROW — hanging pennants: a wrought rail bearing three
+     * long tapered pennons in the chosen dye, each bordered in its cream
+     * partner (the fill is trim, the inner field cloth — a true sewn
+     * border, never a stroked cheat), the center pennon longer and
+     * charged with the woven diamond, the points running out solid trim
+     * into a bound tassel. Headers are pinned to the rail; the body
+     * sways and the tip trails a beat behind (the two-beat law), each
+     * pennon a phase out of step with its neighbours. Adjacent pennant
+     * tiles merge into one continuous rail — straps only at true free
+     * ends (the ONE RAIL law brought to the wall). ONE PATH: each
+     * pennon's silhouette is both its fill and its ring.
      */
     private pennantOnFace;
     /**

@@ -12,18 +12,6 @@ import type { InputManager } from '../input/inputManager.js';
  * without a keyboard.
  */
 export declare class Hotbar {
-    /**
-     * THE COMPANION CHIP (beastcraft v2 Phase 5): the heel friend's
-     * face, name, and health beside the buff chips — one glance says
-     * fighting fit, wounded, downed, resting, or catching up. A
-     * permanent tray resident on the sneak-eye pattern; DOM writes only
-     * on change (the perf law of this file).
-     */
-    private readonly petChip;
-    private readonly petFace;
-    private readonly petName;
-    private readonly petHpFill;
-    private petKey;
     private readonly root;
     private readonly tray;
     private readonly buffTray;
@@ -43,8 +31,6 @@ export declare class Hotbar {
     /** Fires when a slot transitions to ready (for the soft tick). */
     onReady: (() => void) | null;
     constructor(input: InputManager);
-    /** Fires when the companion chip is clicked (the pat channel). */
-    onPetChip: (() => void) | null;
     /** THE HELD SIGIL: the slot whose ring is being aimed right now. */
     private aimingSlot;
     setAiming(slot: AbilitySlot | null): void;

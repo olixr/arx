@@ -21,6 +21,8 @@ export declare class QuestLog {
     private selected;
     private confirmAbandon;
     private renderedVersion;
+    /** The reader's leaf in the errand ledger, kept across repaints. */
+    private leaf;
     constructor(game: ClientGame);
     get isOpen(): boolean;
     open(): void;
@@ -32,6 +34,11 @@ export declare class QuestLog {
     trackedId(): string | null;
     private setTracked;
     private render;
+    /**
+     * Light the page for one errand without redealing the ledger —
+     * focus and hover ride this, so reading costs nothing.
+     */
+    inspectQuest(id: string): void;
     private renderBench;
     private renderActiveBench;
     private renderDoneBench;

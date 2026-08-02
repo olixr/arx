@@ -21131,6 +21131,12 @@ export class GameServer {
       // predicted shot to this entity by (ownerEid, seq).
       meta.ownerEid = proj.ownerEid;
       if (proj.spawnSeq !== undefined) meta.seq = proj.spawnSeq;
+      // Ballistic truth (v9): heading + speed let every client fly
+      // this shot from its first sample instead of freezing on it
+      // until a snapshot pair reveals the velocity.
+      meta.dir = Math.atan2(proj.dirY, proj.dirX);
+      meta.speed = proj.speed;
+      if (proj.returns) meta.returns = true;
     }
     const summon = this.summons.get(eid);
     if (summon) meta.defId = `summon_${summon.kind}`;

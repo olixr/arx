@@ -54,14 +54,19 @@ export declare class Panels {
     private readonly identName;
     private readonly identDeed;
     private readonly skillsPanel;
-    private readonly skillsList;
+    private readonly skillsWall;
+    private readonly skillsHero;
+    /** The skill standing on the hero pane. */
+    private skillSel;
     private readonly artsPanel;
-    private readonly artsWings;
+    private readonly artsRail;
     private readonly artsLoadout;
     private readonly artsSchools;
     private readonly artsDetail;
     /** The technique the codex bench is laying out (null = auto-pick). */
     private artsSel;
+    /** The school standing on the stage (the rail's choice). */
+    private artsSchoolSel;
     /** Which wing of the codex is open: the actives or the passives. */
     private artsWing;
     /** The Calling the bench is laying out (callings wing). */
@@ -73,6 +78,12 @@ export declare class Panels {
     /** Unlocked Callings the player has inspected — the NEW-pip ledger. */
     private readonly seenCallings;
     private readonly gearStrip;
+    /** THE BENCH: the open case's standing inspector tray. */
+    private readonly benchCard;
+    private readonly benchEmpty;
+    private readonly benchActs;
+    /** What lies on the bench (survives hover leaving the cell). */
+    private benchSource;
     private readonly card;
     private readonly menu;
     /** THE FREE HAND: the one slotted technique, mirrored from the server. */
@@ -105,6 +116,11 @@ export declare class Panels {
     onOpenArts?: () => void, 
     /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
     onCalling?: (calling: string, on: boolean) => void);
+    /**
+     * The device changed hands (or the keymap changed): any open screen
+     * that writes glyphs into sentences redraws for the new truth.
+     */
+    refreshDevice(): void;
     toggleInventory(): void;
     showInventory(): void;
     toggleSkills(): void;
@@ -129,6 +145,25 @@ export declare class Panels {
     hideCard(): void;
     /** Close every transient inspect element (menu + card). */
     closeInspect(): void;
+    /** The bench speaks when the case is open and no station is paired. */
+    private benchActive;
+    /**
+     * Re-lay the bench from its remembered source after a state push —
+     * the benched item keeps its numbers honest through equips, eats,
+     * and tidies. A vanished source re-seeds.
+     */
+    private refreshBench;
+    /** First lay: the worn weapon, else the first thing in the pack. */
+    private benchSeed;
+    /** The benched item's verbs, as standing buttons under the card. */
+    private renderBenchActs;
+    /**
+     * THE TIDY HAND: sort the whole pack with one press. Computes the
+     * wanted order from the last server truth, then walks there as a
+     * minimal chain of the same `invmove` swaps a drag makes — server-
+     * true, rate-limit-friendly (staggered), no new protocol.
+     */
+    private tidyPack;
     /** A speed word beats raw ticks for at-a-glance weapon reads. */
     private static speedWord;
     private static categoryLine;
@@ -180,12 +215,24 @@ export declare class Panels {
     /** Server-confirmed answered Callings; re-renders whoever shows them. */
     setCallings(answered: string[]): void;
     /** Build one skill card for the hall. */
-    private skillCard;
     /**
-     * The hall of deeds: disciplines grouped into named wings — Combat
-     * Arts as wide hero cards with their technique ladders, Fieldcraft
-     * and Maker's Arts as galleries, Secret Arts appearing only once
-     * discovered. A total-level crown plaque presides over the hall.
+     * One emblem on the wall: the skill's mark ringed by its climb to
+     * the next level, the level told as the trophy numeral. Focus or
+     * hover raises the hero pane; the emblem itself stays quiet.
+     */
+    private skillEmblem;
+    /** Light the hero pane for one skill without rebuilding the wall. */
+    private inspectSkill;
+    /**
+     * THE HERO PANE — the chosen deed told whole: the crown of totals
+     * presiding, then the skill's face, its climb, and its doors into
+     * the codex. Renders on focus; travel costs nothing.
+     */
+    private renderSkillHero;
+    /**
+     * The hall of deeds: every discipline an emblem ringed by its
+     * climb, grouped into named wings, all of it visible at once —
+     * the chosen skill reads whole on the hero pane to the right.
      */
     renderSkills(xp: SkillXp): void;
     /** Roman numerals for the four rungs of every school's ladder. */
@@ -203,12 +250,17 @@ export declare class Panels {
     private markTechSeen;
     /** The dock button's glint: any unlocked art or Calling not yet inspected. */
     private updateArtsPip;
-    /** The two wings of the codex: Arts (actives) and Callings (passives). */
-    private renderArtsWingTabs;
-    /** The codex, whole: wing tabs, then whichever wing is open. */
+    /**
+     * THE SCHOOL RAIL — one crest per school, the Callings last, LT/RT
+     * stepping the stops. It replaced the wing tabs AND the jump strip:
+     * one school stands on the stage at a time, so the eight-ladder
+     * scroll is gone and nothing lives below the fold.
+     */
+    private renderArtsRail;
+    /** Step or click to a rail stop: a school onto the stage, or Callings. */
+    private pickRailStop;
+    /** The codex, whole: altar, rail, the standing stop, the bench. */
     renderArts(): void;
-    /** The jump-strip: one chip per school — a short road down a long ledger. */
-    private schoolJumpStrip;
     /** Skills whose Callings may show — the hidden-skill law honored. */
     private callingSkillIds;
     private callingState;
@@ -228,16 +280,27 @@ export declare class Panels {
     /** The bench: the chosen Calling laid out large, the answer button. */
     private renderCallingBench;
     /**
-     * The letter a technique seat answers to RIGHT NOW, read from the
-     * one keymap so the codex never lies after a rebind (seat 0 casts
-     * ability1, seat 1 ability3 — Q and E are only the shipped
-     * defaults).
+     * The action a technique seat answers to (seat 0 casts ability1,
+     * seat 1 ability3). EVERY GLYPH KNOWS ITS DEVICE: the seat is only
+     * ever NAMED by a seatChip built from this action — never by a bare
+     * letter baked into a sentence. `seatKey` died here in the Grand
+     * Refit, Phase 3.
      */
-    private seatKey;
+    private seatAction;
+    /** The raw pad button a seat rides — THE SEAT ANSWERS ITS OWN BUTTON. */
+    private seatPadButton;
     /**
-     * The live loadout strip: every slot, its source, its ability. THE
-     * PAIRED HAND's order — the two art seats side by side, then the
-     * trinkets — matching the hotbar exactly.
+     * The seat sheet: the verbs a technique plate offers, seat chips
+     * set into them. Seating an art is one press at the plate — the
+     * two-column trip to the bench buttons is over.
+     */
+    private seatVerbs;
+    /**
+     * THE LOADOUT ALTAR — four painted seats, always visible: the two
+     * art seats side by side, then the trinkets, THE PAIRED HAND's
+     * order matching the hotbar exactly. Each seat is a kit socket
+     * wearing its live chip; a filled art seat presses through to its
+     * plate on the stage.
      */
     private renderArtsLoadout;
     /** One school: its face, level, and the four-rung ladder. */
@@ -249,6 +312,12 @@ export declare class Panels {
     private secretDormant;
     /** One plate on a rail — rung, page, and secret speak the same shape. */
     private techPlate;
+    /**
+     * Light the bench for one art without rebuilding the stage: focus
+     * and hover ride this, so reading is free and the ring never loses
+     * the plate it stands on.
+     */
+    private inspectArt;
     /** The bench: the chosen art laid out large, stats told honestly. */
     private renderArtsBench;
 }

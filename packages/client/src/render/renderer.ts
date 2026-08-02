@@ -51,6 +51,7 @@ import {
   isFishingTile,
 } from '@arx/shared';
 import { bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@arx/content';
+import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
 import {
   ANVIL_CYCLE_MS,
@@ -23949,7 +23950,9 @@ export class Renderer {
           : remote.buffer.sampleSmoothed(timeline)) ?? {
         x: remote.meta.x,
         y: remote.meta.y,
-        dir: 0,
+        // A projectile with no sample yet flies its spawn heading —
+        // never east-by-default for a frame (v9).
+        dir: remote.meta.dir ?? 0,
         pose: PoseState.Idle,
         hpPct: 255,
         status: 0,
@@ -24070,26 +24073,65 @@ export class Renderer {
           break;
         }
         case EntityKind.Projectile: {
-          // Tracer handoff (v8): on this entity's FIRST draw, measure
-          // the gap between where the predicted tracer flew and where
-          // the authoritative shot is, then decay it away (~90ms) —
-          // the flight reads as one continuous arrow.
+          // Tracer handoff (v9): on this entity's FIRST draw, measure
+          // the FULL-STATE gap — position offset and heading delta —
+          // between where the predicted tracer flew and where the
+          // authoritative shot is, then decay both together (~120ms):
+          // the arrow STEERS onto its true ray, nose leading the turn,
+          // instead of snapping to a new angle mid-air. The ballistic
+          // sample is consistent from sample one, so the capture and
+          // every later frame measure on the same timeline (v8
+          // captured against a frozen spawn sample and lurched half a
+          // transit forward when pair extrapolation switched on).
           let sp = s;
           const h = game.projHandoffs.get(eid);
           if (h) {
             if (h.capturedAt === 0) {
               const age = (now - h.shot.bornAt) / 1000;
-              h.ox = h.shot.x + h.shot.dirX * h.shot.speed * age - s.x;
-              h.oy = h.shot.y + h.shot.dirY * h.shot.speed * age - s.y;
+              const flown = Math.min(h.shot.speed * age, h.shot.range, h.shot.wallAt);
+              h.ox = h.shot.x + h.shot.dirX * flown - s.x;
+              h.oy = h.shot.y + h.shot.dirY * flown - s.y;
+              h.od = shortestAngle(s.dir, h.shot.dir);
               h.capturedAt = now;
               // The tracer already fired this shot's muzzle flash.
               this.projSeen.add(eid);
+              // A gap this wide is a true misprediction (cadence
+              // drift, a swallowed cast, a wall the tracer sailed
+              // past): truth outranks the glide — snap once.
+              if (Math.hypot(h.ox, h.oy) > 2.5 || Math.abs(h.od) > 0.9) {
+                h.ox = 0;
+                h.oy = 0;
+                h.od = 0;
+              }
             }
-            const k = Math.exp(-(now - h.capturedAt) / 90);
+            const k = Math.exp(-(now - h.capturedAt) / 120);
             if (k < 0.02) {
               game.projHandoffs.delete(eid);
             } else {
-              sp = { ...s, x: s.x + h.ox * k, y: s.y + h.oy * k };
+              sp = { ...s, x: s.x + h.ox * k, y: s.y + h.oy * k, dir: s.dir + h.od * k };
+            }
+          }
+          // No shot pierces a wall while its death notice is in
+          // transit (v9): the span past the newest authoritative
+          // sample is OUR projection, so it walks the world in the
+          // server's own sub-steps and holds at the first solid face.
+          // Boomerang flights are exempt — return legs ghost through
+          // walls by law, and the wire says which shots may.
+          if (!remote.meta.returns) {
+            const anchor = remote.buffer.latest();
+            const ax = anchor?.x ?? remote.meta.x;
+            const ay = anchor?.y ?? remote.meta.y;
+            const span = Math.hypot(sp.x - ax, sp.y - ay);
+            if (span > 0.01) {
+              const subs = Math.ceil(span / 0.25);
+              for (let i = 1; i <= subs; i++) {
+                const f = i / subs;
+                if (pointHitsSolid(game.world, ax + (sp.x - ax) * f, ay + (sp.y - ay) * f)) {
+                  const held = (i - 1) / subs;
+                  sp = { ...sp, x: ax + (sp.x - ax) * held, y: ay + (sp.y - ay) * held };
+                  break;
+                }
+              }
             }
           }
           const pItem = this.projectileItem(eid, remote.meta.defId ?? '', sp);
@@ -24119,7 +24161,7 @@ export class Renderer {
     // first-sight logic works unchanged. Mispredictions fade out.
     for (const shot of game.ownShots) {
       const age = (now - shot.bornAt) / 1000;
-      const flown = Math.min(shot.speed * age, shot.range);
+      const flown = Math.min(shot.speed * age, shot.range, shot.wallAt);
       const item = this.projectileItem(-1 - shot.seq, shot.defId, {
         x: shot.x + shot.dirX * flown,
         y: shot.y + shot.dirY * flown,

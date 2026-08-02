@@ -22,6 +22,12 @@ export interface OwnShot {
     speed: number;
     /** Max flight distance, tiles. */
     range: number;
+    /**
+     * Flight distance to the first solid along the ray, ≤ range (v9).
+     * The tracer's draw holds at this face instead of sailing through
+     * the wall while the real shot's death notice is in transit.
+     */
+    wallAt: number;
     /** performance.now() at spawn. */
     bornAt: number;
 }
@@ -470,13 +476,15 @@ export declare class ClientGame {
     readonly ownShots: OwnShot[];
     /**
      * Matched tracer → entity handoffs. The renderer captures the visual
-     * offset on the entity's first draw and decays it (~90ms), so the
-     * predicted flight blends into the authoritative one seamlessly.
+     * gap — position offset AND heading delta (v9) — on the entity's
+     * first draw and decays both together (~120ms), so the predicted
+     * flight STEERS onto the authoritative ray instead of snapping.
      */
     readonly projHandoffs: Map<number, {
         shot: OwnShot;
         ox: number;
         oy: number;
+        od: number;
         capturedAt: number;
     }>;
     /**

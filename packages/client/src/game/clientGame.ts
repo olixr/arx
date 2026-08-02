@@ -69,7 +69,7 @@ import {
   type Vec2,
 } from '@arx/shared';
 import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
-import { EntityKind, shutDoorTile } from '@arx/shared';
+import { EntityKind, pointHitsSolid, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
 /**
@@ -94,6 +94,12 @@ export interface OwnShot {
   speed: number;
   /** Max flight distance, tiles. */
   range: number;
+  /**
+   * Flight distance to the first solid along the ray, ≤ range (v9).
+   * The tracer's draw holds at this face instead of sailing through
+   * the wall while the real shot's death notice is in transit.
+   */
+  wallAt: number;
   /** performance.now() at spawn. */
   bornAt: number;
 }
@@ -389,10 +395,14 @@ export class ClientGame {
   readonly ownShots: OwnShot[] = [];
   /**
    * Matched tracer → entity handoffs. The renderer captures the visual
-   * offset on the entity's first draw and decays it (~90ms), so the
-   * predicted flight blends into the authoritative one seamlessly.
+   * gap — position offset AND heading delta (v9) — on the entity's
+   * first draw and decays both together (~120ms), so the predicted
+   * flight STEERS onto the authoritative ray instead of snapping.
    */
-  readonly projHandoffs = new Map<EntityId, { shot: OwnShot; ox: number; oy: number; capturedAt: number }>();
+  readonly projHandoffs = new Map<
+    EntityId,
+    { shot: OwnShot; ox: number; oy: number; od: number; capturedAt: number }
+  >();
   /**
    * Local staff-cadence mirror (bolt-bolt-HEAVY, same shared laws).
    * Gated in the SEQ domain, not wall-clock ms: one input frame is one
@@ -781,16 +791,29 @@ export class ClientGame {
   /** Spawn a predicted tracer at the body, capped to a small roster. */
   private predictShot(seq: number, defId: string, aim: number, speed: number, range: number): void {
     const p = this.predictor.renderPos();
+    const dirX = Math.cos(aim);
+    const dirY = Math.sin(aim);
+    // Walk the ray once in the server's sub-steps (v9): the tracer
+    // dies where the world says — same shape-aware pointHitsSolid the
+    // server kills with, so a point-blank shot never pierces the wall.
+    let wallAt = range;
+    for (let d = 0.25; d <= range; d += 0.25) {
+      if (pointHitsSolid(this.world, p.x + dirX * d, p.y + dirY * d)) {
+        wallAt = Math.max(0, d - 0.25);
+        break;
+      }
+    }
     this.ownShots.push({
       seq,
       defId,
       x: p.x,
       y: p.y,
-      dirX: Math.cos(aim),
-      dirY: Math.sin(aim),
+      dirX,
+      dirY,
       dir: aim,
       speed,
       range,
+      wallAt,
       bornAt: performance.now(),
     });
     if (this.ownShots.length > 8) this.ownShots.shift();
@@ -946,6 +969,11 @@ export class ClientGame {
           } else {
             this.entities.set(meta.eid, { meta, buffer: new InterpBuffer() });
           }
+          // Ballistic truth (v9): a projectile's known flight speed
+          // lets the buffer project from its very first sample.
+          if (meta.kind === EntityKind.Projectile && meta.speed !== undefined) {
+            this.entities.get(meta.eid)!.buffer.ballisticSpeed = meta.speed;
+          }
           // Tracer handoff (v8): our own projectile arrived — marry it
           // to the predicted shot that fired on (nearly) that seq. ±2
           // absorbs the case where cooldown expiry lands a frame later
@@ -985,7 +1013,7 @@ export class ClientGame {
             }
             if (best) {
               this.ownShots.splice(bestIdx, 1);
-              this.projHandoffs.set(meta.eid, { shot: best, ox: 0, oy: 0, capturedAt: 0 });
+              this.projHandoffs.set(meta.eid, { shot: best, ox: 0, oy: 0, od: 0, capturedAt: 0 });
             }
           }
         }
@@ -998,12 +1026,26 @@ export class ClientGame {
           // shaft) — hand its last known flight state to the renderer.
           if (e?.meta.kind === EntityKind.Projectile && this.projectileEnds.length < 64) {
             const last = e.buffer.latest();
-            this.projectileEnds.push({
-              x: last?.x ?? e.meta.x,
-              y: last?.y ?? e.meta.y,
-              dir: last?.dir ?? 0,
-              style: e.meta.defId ?? '',
-            });
+            let ex = last?.x ?? e.meta.x;
+            let ey = last?.y ?? e.meta.y;
+            const edir = last?.dir ?? e.meta.dir ?? 0;
+            // The shot died server-side within one tick of its last
+            // sample (v9): advance that final step in the server's own
+            // sub-steps, holding before the first solid — the shaft
+            // sticks AT the wall face instead of a stride short of it.
+            // Boomerangs end in the caster's hand; no advance.
+            if (e.meta.speed !== undefined && !e.meta.returns) {
+              const step = (e.meta.speed * TICK_MS) / 1000;
+              const subs = Math.max(1, Math.ceil(step / 0.25));
+              for (let i = 0; i < subs; i++) {
+                const nx = ex + Math.cos(edir) * (step / subs);
+                const ny = ey + Math.sin(edir) * (step / subs);
+                if (pointHitsSolid(this.world, nx, ny)) break;
+                ex = nx;
+                ey = ny;
+              }
+            }
+            this.projectileEnds.push({ x: ex, y: ey, dir: edir, style: e.meta.defId ?? '' });
           }
           this.entities.delete(eid);
         }

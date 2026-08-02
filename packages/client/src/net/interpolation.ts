@@ -29,12 +29,25 @@ const EXTRAP_MAX_MS = 150;
 const EXTRAP_PAIR_MAX_MS = 160;
 /** Speed cap for projection, tiles/sec (covers arrows; rejects junk). */
 const EXTRAP_MAX_SPEED = 30;
+/**
+ * Ballistic projection cap (v9). A projectile with a known speed rides
+ * `last.dir` — trustworthy from the FIRST sample, so it earns a longer
+ * leash than pair-derived velocity: server-NOW sits a one-way transit
+ * ahead of the newest sample, and a 150ms cap made every >150ms-RTT
+ * flight stall-and-leap once per tick. Flight still ends on `leave`.
+ */
+const EXTRAP_BALLISTIC_MS = 300;
 
-function lerpAngle(a: number, b: number, t: number): number {
+/** Shortest signed angular distance a→b, in (-π, π]. */
+export function shortestAngle(a: number, b: number): number {
   let d = (b - a) % TAU;
   if (d > Math.PI) d -= TAU;
   if (d < -Math.PI) d += TAU;
-  return a + d * t;
+  return d;
+}
+
+function lerpAngle(a: number, b: number, t: number): number {
+  return a + shortestAngle(a, b) * t;
 }
 
 /**
@@ -53,6 +66,15 @@ const SMOOTH_HALF_LIFE_MS = 80;
 
 export class InterpBuffer {
   private samples: InterpSample[] = [];
+  /**
+   * BALLISTIC TRUTH (v9): projectiles carry their flight speed on the
+   * enter meta. When set, sampling past the newest sample projects
+   * along that sample's `dir` at this speed — exact for straight
+   * shots, tracks the newest heading for curving ones (homing,
+   * boomerang return), and works from a single sample, so a fresh
+   * shot never freezes at its spawn point waiting for a pair.
+   */
+  ballisticSpeed: number | null = null;
   /** RENDER CONTINUITY state — see sampleSmoothed. */
   private smTime: number | null = null;
   private smOut: InterpSample | null = null;
@@ -154,6 +176,19 @@ export class InterpBuffer {
     if (t <= this.samples[0]!.t) return this.samples[0]!;
     const last = this.samples[n - 1]!;
     if (t >= last.t) {
+      if (this.ballisticSpeed !== null) {
+        const ahead = Math.min(t - last.t, EXTRAP_BALLISTIC_MS);
+        return {
+          t: last.t + ahead,
+          x: last.x + Math.cos(last.dir) * this.ballisticSpeed * (ahead / 1000),
+          y: last.y + Math.sin(last.dir) * this.ballisticSpeed * (ahead / 1000),
+          dir: last.dir,
+          pose: last.pose,
+          hpPct: last.hpPct,
+          status: last.status,
+          alert: last.alert,
+        };
+      }
       // BOUNDED EXTRAPOLATION: project along the newest velocity for up
       // to EXTRAP_MAX_MS, then hold. Velocity comes from the last pair
       // and must be fresh; a stationary entity never projects (no
