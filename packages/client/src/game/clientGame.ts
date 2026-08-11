@@ -1682,9 +1682,11 @@ export class ClientGame {
           if ((msg.ticks ?? 0) > 0) {
             const endsAt = now + (msg.ticks ?? 0) * TICK_MS;
             const prev = this.npcCasts.get(msg.eid);
-            if (prev && !prev.brokeAt) {
+            if (prev && !prev.brokeAt && prev.id === msg.id) {
               prev.endsAt = endsAt; // re-emit: trust the newest clock
             } else {
+              // A fresh breath (or a different voice over a lingering
+              // entry) opens its own read.
               this.npcCasts.set(msg.eid, { startAt: now, endsAt, color: msg.color, id: msg.id });
             }
           } else {

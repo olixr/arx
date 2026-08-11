@@ -1,6 +1,7 @@
 # The Wild Draws Breath — the bestiary learns to cast
 
-Date: 2026-08-11. Status: **DESIGN + IMPLEMENTATION, same session.**
+Date: 2026-08-11. Status: **ALL FOUR PHASES SHIPPED, same session** —
+see §As built at the end of this document for the canonical record.
 Sibling of docs/cast-channel-plan.md (THE DRAWN BREATH gave players wind-up
 and channel delivery; this epic gives the OTHER side of every fight the same
 vocabulary). Read that plan's audit first — the two systems deliberately share
@@ -294,3 +295,83 @@ matter library per ONE-VOICE; grammar-refusal cases documented per DOC-PROMISE.
   wave; NPC channels (a sustained beam that tracks) are a sequel voice that
   should wait for the charge-up FX dialect from the FX v5 follow-up.
 - **Player-visible enemy cooldowns?** No. The read is the conjure, not a UI.
+
+## As built (2026-08-11, same session — the canonical record)
+
+Shipped in three commits + this closing one: **THE KIT** (2690dd2),
+**THE VISIBLE WORKING** (e470198), **THE VOICES** (a2e3cc2).
+
+What stands, exactly as the laws above describe unless noted:
+
+- `NpcDef.kit: NpcKitEntry[]` replaced `special` (validator refuses the
+  old field; six shipped specials migrated at `maxRange: 4.5`, windup 0,
+  behavior identical — the digmaster additionally gained `windupTicks: 8`).
+- The engine: `pickKitEntry` / `beginNpcCast` / `fireNpcCast` /
+  `cancelNpcCast` on GameServer, kit cooldowns lazily seeded at the tick
+  top (CMS-swap safe), the casting record on NpcComp via the
+  optional-bank idiom. Cancels wired at shock, leash break, target
+  vanish (`npcStartSearch`), the craven run (`npcSeekHelp`), and
+  retarget (`npcAggro`). `NPC_CAST_RETRY_TICKS 50`, `NPC_LEAD_TICKS 16`,
+  `NPC_LEAD_CAP 3`.
+- ONE VOICE holds: NPC wind-ups speak the player engine's own `charge`
+  fx (contracting reach, 10-tick re-emit). `S2CFx` gained additive
+  `eid` — a charge carrying it feeds `game.npcCasts`, the renderer's
+  overhead cast pip (`castPipItem`, drawn beside the alert glyph;
+  `ticks: 0` = the fizzle, the pip gutters). A re-emit refreshes only a
+  matching `id`; a different voice opens a fresh read.
+- Shape coverage: `melee_arc`/`dash_strike`/`chain_zap` gained their
+  fromNpc branches; `applySelf` gained the NPC mend lane (new
+  `AbilitySelf.healFrac` — fraction of maxHp, honest at every tier);
+  `summon` gained `npcSummonAdds` via new `AbilityDef.summonNpc`
+  (ephemeral adds, capped alive, slime-split recipe, recursion banned by
+  contract test); `blastPlayers` learned `sourceEid` + arc crescents
+  (the NPC-flurry full-circle debt is paid). `NPC_SAFE_SHAPES` lives in
+  shared/sim/abilities.ts.
+- THE TELEGRAPH PREMIUM shipped at **24t/2.5x, 12t/1.5x** (not the
+  plan's first 30/15 draft — 24 is the shipped ground_slam reaction
+  window and the content proves under it), enforced in content.test.ts
+  beside the cooldown floor (50), ground fuse floor (15), and
+  pacing-on-the-def pin.
+- THE VOICES content: 14 abilities (goblin_firebolt, cinder_ring,
+  gloom_spittle, miasma_ring, bone_volley, grave_mist, raise_the_fallen,
+  web_snare, reaping_sweep, rattling_volley, gnawed_mending,
+  marrow_chill, rending_lunge, shrilling_dart), each with an authored
+  FX_STYLES face AND a bespoke spell-plate (both contract-tested).
+  Three caster archetypes: goblin_firecaller L7, goblin_gloomcaller
+  L14, and **skeleton_chanter** L22 (renamed from the plan's
+  bone_chanter — the skeleton painter family dispatches on the
+  `skeleton` prefix; authored violet-washed look + stature 1.08).
+  Kits on cave_bat (+bleed bite), giant_spider (lead-aimed web),
+  brigand_reaver, skeleton_archer, troll (+mend below 0.4),
+  skeleton_champion (3 voices, weighted), gnoll_champion (+lunge).
+  Placement: goblin_warcamp (minTier 2) / warhold / fell_barrow
+  (minTier 5) garrisons + mine/stronghold/crypt dungeon rosters —
+  scaled reissues carry kits for free, and the chanter's raising wakes
+  only at minLevel 30 (dungeon depth).
+- CMS bestiary editor: kit chips + per-voice sub-forms (ability,
+  cooldown, windup, max range, add/remove).
+- Tests: kitEngine.test.ts (8 pins: gates, hp fractions, minLevel,
+  pay-at-fire, plant+charge, aim laws incl. capped lead, authored
+  rally, retry-only cancel) + validator pins in npcs.test.ts + the
+  content contracts. Suites at close: shared 192 / content 410 /
+  server 382 / client 383, all green. TTK brackets untouched.
+
+**Live receipts** (isolated rig lane #3, 8795/5178, DB arx_rig3, fresh
+account; screenshots enemy-arts-*.png untracked at repo root +
+.playwright-mcp/): the firecaller held standoff range with the engaged
+glyph and killed a fresh L1 before the first screenshot landed; a WILD
+giant_spider cast web_snare organically (charge → field in the fx
+stream); the cinder ring staked, telegraphed (dashed rim), detonated on
+the player for a floaty **3** (die 4 → maxHit 7 → THREAT LAW mitigation
+at def 55 — the math on screen); the tester went down five times.
+Combat is no longer outrunnable by orbiting.
+
+**Open follow-ups** (small, honest): the overhead pip's pixel frame was
+never eyeballed — the sub-second windups (12-14t) outran the screenshot
+round trip; the ledger datapath is fully verified live and the draw
+code is plain label-pass canvas, but the next session in the world
+should glance at a champion wind (marrow_chill, 10t) or bump a staging
+windup to confirm the pixels. The wild sizing-up floor means low-band
+casters rarely engage leveled players (pre-existing law, correct).
+Deferred by design: NPC channels, damage pushback, player-visible
+enemy cooldowns.
