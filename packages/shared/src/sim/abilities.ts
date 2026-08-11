@@ -370,6 +370,14 @@ export interface AbilityDef {
   cooldownTicks: number;
   /** Ticks the caster is rooted in the cast (commitment window). */
   castFreezeTicks?: number;
+  /**
+   * THE DRAWN BREATH: a wind-up — the press begins a breath this many
+   * ticks long, and the art fires through the one door when it
+   * completes. Full stride while it draws; a planted tick breathes
+   * CAST_STILL_FACTOR instead of 1. Nothing is paid until the fire.
+   * Absent = the press-edge instant every art was born with.
+   */
+  castTicks?: number;
   shape: AbilityShape;
   /** Max hit before style-level scaling. 0 for pure utility. */
   damage: number;

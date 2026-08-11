@@ -1938,7 +1938,9 @@ const defs: AbilityDef[] = [
     color: '#ffd98a',
     code: 'Db',
     cooldownTicks: 280, // 14 s
-    castFreezeTicks: 4,
+    // THE DRAWN BREATH's pilot: 1.2 s wound on the move, ~0.96 s
+    // planted. The post-fire root retires — the wind-up IS the commit.
+    castTicks: 24,
     shape: 'ground_aoe',
     damage: 14,
     range: 12,

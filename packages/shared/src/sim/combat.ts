@@ -14,6 +14,17 @@ export const DRAW_MIN_TICKS = 3;
 /** Movement speed multiplier while drawing a bow. */
 export const DRAW_MOVE_FACTOR = 0.55;
 
+// ------------------------------------------------------- drawn breath
+
+/**
+ * THE DRAWN BREATH: while a casted art winds up, a tick with no
+ * resolved movement accrues this much wind-up instead of 1 — planting
+ * your feet is a read the world can see, and this is what it pays.
+ * ONE ruler: server accrual, the client's own bar, and the bench copy
+ * all read this constant; it is never authored per art.
+ */
+export const CAST_STILL_FACTOR = 1.25;
+
 // ---------------------------------------------------------- snap shots
 
 /**

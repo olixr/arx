@@ -1570,12 +1570,22 @@ const groundAim = new GroundAimController({
 game.groundAim = groundAim;
 
 // Committing to a cast: sound, hands, and a wind-up ring at the feet.
+// (For a casted art this fires at the FIRE, not the press — the breath
+// pays off with the same committed whoomph the instants get.)
 game.onCastFx = (_slot, ab) => {
   if (ab.shape === 'chain_zap') sfx.chainZap();
   else sfx.art();
   input.rumble(0.35, 0.5, 110);
   const own = game.predictor.renderPos();
   renderer.addRing(own.x, own.y, ab.color, 0.55);
+};
+
+// THE DRAWN BREATH begins: a quiet ring and a small tick in the hands —
+// the committed payoff waits for the fire.
+game.onCastStart = (_slot, ab) => {
+  input.rumble(0.12, 0.25, 60);
+  const own = game.predictor.renderPos();
+  renderer.addRing(own.x, own.y, ab.color, 0.35);
 };
 
 // Server combat FX → audio + camera feel, scaled by how close they land
@@ -2819,6 +2829,7 @@ function frame(now: number): void {
       renderer.aimGhost = null;
     }
     hotbar.setAiming(live?.slot ?? null);
+    hotbar.setWinding(game.ownCast?.slot ?? null);
     // The arm moment travels through the hands — one soft tick, pad only.
     if (live !== null && !aimWasActive && input.padPrimary()) input.rumble(0.06, 0.22, 45);
     aimWasActive = live !== null;

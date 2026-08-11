@@ -1,4 +1,5 @@
 import {
+  CAST_STILL_FACTOR,
   CHUNK_SIZE,
   CLIENT_REVEAL_MS,
   COMBO_GRACE_TICKS,
@@ -480,6 +481,18 @@ export class ClientGame {
   onPetCeremony: ((slot: number, currentName: string) => void) | null = null;
   /** Fires when the local player commits a cast (FX + audio hooks). */
   onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null = null;
+  /**
+   * THE DRAWN BREATH: the local wind-up, for the cast bar and the
+   * winding well. Predicted on the press edge from the same content
+   * def the server reads; the server's own S2CCast start/fire/break
+   * keeps it honest within a round trip. `rate` is the last frame's
+   * accrual (1 or CAST_STILL_FACTOR) so the bar renders smooth
+   * between 20 Hz ticks.
+   */
+  ownCast: { slot: AbilitySlot; ab: AbilityDef; progress: number; total: number; rate: number } | null =
+    null;
+  /** Fires when the local player begins a wind-up (cue hooks). */
+  onCastStart: ((slot: AbilitySlot, ab: AbilityDef) => void) | null = null;
   /** Fires when the technique loadout changes (UI refresh). */
   onTechniques: (() => void) | null = null;
   onCallings: (() => void) | null = null;
@@ -556,6 +569,9 @@ export class ClientGame {
   ) {
     this.predictor.onDodge = (x, y, mx, my) => {
       this.drawStartAt = 0; // dodging lets the string down
+      // THE DRAWN BREATH's bail-out, mirrored off the same seq-gated
+      // dodge law the server fires with — the bar and the truth agree.
+      this.ownCast = null;
       this.onDodgeFx?.(x, y, mx, my);
     };
   }
@@ -694,13 +710,37 @@ export class ClientGame {
       [InputButton.Ability3, 2],
       [InputButton.Ability4, 3],
     ];
+    // THE DRAWN BREATH's press-edge bail-outs, mirrored: sheathe, the
+    // saddle, and rest each break the breath on the press the server
+    // breaks it on. (The dodge mirrors via predictor.onDodge — the
+    // seq-gated law — so a dodge press on cooldown never lies.)
+    if (
+      this.ownCast &&
+      pressed & (InputButton.Sheathe | InputButton.Mount | InputButton.Sit)
+    ) {
+      this.ownCast = null;
+    }
     for (const [bit, slot] of slots) {
       if (!(pressed & bit)) continue;
+      // THE DRAWN BREATH, mirrored: a second press of the winding slot
+      // is the cancel; any other slot is refused while the breath holds.
+      if (this.ownCast) {
+        if (this.ownCast.slot === slot) this.ownCast = null;
+        continue;
+      }
       const ab = this.slotAbilityDef(slot);
       if (!ab || now < this.abilityReadyAt[slot]) continue;
       // THE LOAN LAW, mirrored: a dormant seat refuses locally too —
       // the radial must never start on a cast the server will refuse.
       if (this.seatDormant(slot)) continue;
+      if ((ab.castTicks ?? 0) > 0) {
+        // The pay waits for the fire: no radial start, no root — the
+        // bar begins at once and the server's fire starts the cooldown.
+        this.ownCast = { slot, ab, progress: 0, total: ab.castTicks ?? 0, rate: 1 };
+        this.drawStartAt = 0;
+        this.onCastStart?.(slot, ab);
+        continue;
+      }
       this.abilityReadyAt[slot] = now + ab.cooldownTicks * TICK_MS;
       this.abilityMax[slot] = ab.cooldownTicks;
       this.drawStartAt = 0; // casting lets the bowstring down
@@ -949,6 +989,7 @@ export class ClientGame {
         this.boltStageLocal = 0;
         this.boltGraceUntilSeq = 0;
         this.castFreezeUntilSeq = 0;
+        this.ownCast = null;
         this.clockOffset = null;
         this.reconnectDelay = 500;
         this.emitStatus('ingame');
@@ -1330,6 +1371,34 @@ export class ClientGame {
           });
         }
         this.events.onDeath({ x: msg.x, y: msg.y, defId: msg.defId });
+        break;
+      }
+      case 'cast': {
+        // THE DRAWN BREATH's truth channel. `start` backfills a breath
+        // the local mirror missed (it should never happen; belt and
+        // braces); `fire` pays off with the committed cue the instants
+        // play at their press; `break` ends the bar without ceremony.
+        if (msg.state === 'start') {
+          if (!this.ownCast) {
+            const ab = this.slotAbilityDef(msg.slot as AbilitySlot);
+            if (ab) {
+              this.ownCast = {
+                slot: msg.slot as AbilitySlot,
+                ab,
+                progress: 0,
+                total: msg.ticks ?? ab.castTicks ?? 0,
+                rate: 1,
+              };
+            }
+          }
+        } else {
+          const cast = this.ownCast;
+          this.ownCast = null;
+          if (msg.state === 'fire') {
+            const ab = cast?.ab ?? this.slotAbilityDef(msg.slot as AbilitySlot);
+            if (ab) this.onCastFx?.(msg.slot as AbilitySlot, ab);
+          }
+        }
         break;
       }
       case 'cooldowns': {
@@ -2529,6 +2598,18 @@ export class ClientGame {
       this.predictor.applyInput(frame);
       this.trackOwnDraw(frame, now);
       this.trackOwnStaff(frame);
+      // THE DRAWN BREATH accrues per sent frame: a planted frame
+      // breathes CAST_STILL_FACTOR. (The server judges by RESOLVED
+      // motion; intent is the closest the bar can know — a wall-push
+      // drifts it by a tick at most, and the fire message is truth.)
+      if (this.ownCast) {
+        const still = Math.abs(frame.mx) < 0.01 && Math.abs(frame.my) < 0.01;
+        this.ownCast.rate = still ? CAST_STILL_FACTOR : 1;
+        this.ownCast.progress = Math.min(
+          this.ownCast.total,
+          this.ownCast.progress + this.ownCast.rate,
+        );
+      }
     }
     // A walk-to-loot errand completes the moment the bag is in reach
     // (or dissolves if someone else took it first).

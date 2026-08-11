@@ -111,6 +111,7 @@ export const HONABLE: ReadonlySet<string> = new Set([
   'note',
   'cooldownTicks',
   'castFreezeTicks',
+  'castTicks',
   'damage',
   'range',
   'arc',

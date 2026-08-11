@@ -759,6 +759,21 @@ export interface S2CCooldowns {
 }
 
 /**
+ * THE DRAWN BREATH: the own player's wind-up lifecycle. `start`
+ * confirms the breath began (`ticks` = the authored length; the client
+ * quickens its own bar by the same planted law), `fire` completes it,
+ * `break` ends it early — cancelled, invalidated mid-breath, or a
+ * working took the hands. Own-player only; watchers read the held
+ * pose (and, from Phase 4, the charge dialect). Additive, no bump.
+ */
+export interface S2CCast {
+  t: 'cast';
+  state: 'start' | 'fire' | 'break';
+  slot: number;
+  ticks?: number;
+}
+
+/**
  * A combat effect the client should render — one generic event for
  * ability shapes, ground telegraphs, and status reactions so the wire
  * vocabulary stays small while the VFX vocabulary grows freely.
@@ -1502,6 +1517,7 @@ export type S2CMessage =
   | S2CUpdate
   | S2CBank
   | S2CCooldowns
+  | S2CCast
   | S2CFx
   | S2COwnBuilt
   | S2CTime

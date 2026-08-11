@@ -165,6 +165,16 @@ export class Hotbar {
     this.aimingSlot = slot;
   }
 
+  /** THE DRAWN BREATH: the slot whose wind-up is running right now. */
+  private windingSlot: AbilitySlot | null = null;
+
+  setWinding(slot: AbilitySlot | null): void {
+    if (slot === this.windingSlot) return;
+    if (this.windingSlot !== null) this.slots[this.windingSlot]?.classList.remove('winding');
+    if (slot !== null) this.slots[slot]?.classList.add('winding');
+    this.windingSlot = slot;
+  }
+
   /** Called once per frame — cheap DOM writes only on change. */
   update(game: ClientGame): void {
     const now = performance.now();

@@ -1,6 +1,11 @@
 # The Drawn Breath — casted & channeled arts
 
-Status: **PROPOSAL — awaiting green-light** (design review 2026-08-11).
+Status: **GREEN-LIT 2026-08-11. Phase 1 THE DRAWN BREATH SHIPPED same
+day** (cast engine: shared `castTicks` + `CAST_STILL_FACTOR`,
+`player.casting` accrual + pay-at-fire + the full cancel roster,
+additive `S2CCast`, client bar/`.winding` well/predictor mirror,
+daybreak pilot at `castTicks: 24`, 8-pin slate `castEngine.test.ts`).
+Phases 2–5 open.
 Companion to docs/techniques-v2-plan.md (the ladder + THE PAYOFF BRACKET),
 docs/secret-arts-plan.md (the secret shelf), THE HELD SIGIL (ground aim),
 and THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching

@@ -33056,11 +33056,25 @@ export class Renderer {
   }
 
   private drawActionProgress(game: ClientGame): void {
-    if (!game.action || game.ownEid === null) return;
-    const frac = Math.min(
-      1,
-      (performance.now() - game.action.startedAt) / Math.max(1, game.action.durationMs),
-    );
+    if (game.ownEid === null) return;
+    // THE DRAWN BREATH shares the action bar's spot and dialect (the
+    // server keeps the two mutually exclusive) but wears the art's own
+    // color, and its fill rides the tick accrual — visibly quicker the
+    // moment the feet plant. renderAlpha smooths the 20 Hz steps.
+    let frac: number | null = null;
+    let fill = '#e8b64c';
+    if (game.action) {
+      frac = Math.min(
+        1,
+        (performance.now() - game.action.startedAt) / Math.max(1, game.action.durationMs),
+      );
+    } else if (game.ownCast) {
+      const c = game.ownCast;
+      const alpha = Math.min(1, Math.max(0, game.predictor.renderAlpha));
+      frac = Math.min(1, (c.progress + alpha * c.rate) / Math.max(1, c.total));
+      fill = c.ab.color;
+    }
+    if (frac === null) return;
     const ctx = this.ctx;
     const s = this.camera.scale;
     const own = game.predictor.renderPos();
@@ -33071,7 +33085,7 @@ export class Renderer {
     const by = p.y - s * 1.32;
     ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
     ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
-    ctx.fillStyle = '#e8b64c';
+    ctx.fillStyle = fill;
     ctx.fillRect(bx, by, Math.max(2, bw * frac), bh);
   }
 

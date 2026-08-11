@@ -328,6 +328,7 @@ import {
   BODY_RADIUS,
   BURN_TICK_EVERY,
   BLEED_TICK_EVERY,
+  CAST_STILL_FACTOR,
   CHILL_SPEED_FACTOR,
   TECHNIQUE_STYLES,
   HEAVY_BOLT_KNOCKBACK,
@@ -1249,6 +1250,22 @@ interface PlayerComp {
   prevButtons: number;
   /** Rooted mid-cast until this tick (ability commitment window). */
   castFreezeUntilTick: number;
+  /**
+   * THE DRAWN BREATH: the wind-up in progress, if any. The press began
+   * a breath; progress accrues per tick (a planted tick breathes
+   * CAST_STILL_FACTOR) and the art fires through the one door at
+   * `total`. Deliberately NOT the action rail — the rail's law is
+   * move-cancels, and a breath is drawn on the move. The def is the
+   * one resolved at the press (the promise made is the promise kept).
+   */
+  casting: {
+    slot: AbilitySlot;
+    ab: AbilityDef;
+    aim: number;
+    targetPos?: { x: number; y: number };
+    progress: number;
+    total: number;
+  } | null;
   /** Active self buffs (ability + passive sources stack). */
   buffs: PlayerBuff[];
   /**
@@ -2846,6 +2863,7 @@ export class GameServer {
       abilityCd: [0, 0, 0, 0],
       prevButtons: 0,
       castFreezeUntilTick: 0,
+      casting: null,
       buffs: [],
       techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : [null, null],
       lessonDirty: new Set(),
@@ -3083,6 +3101,9 @@ export class GameServer {
     player.disconnectedAt = Date.now();
     // A dropped socket hangs up any conversation (nothing to notify).
     player.dialogue = null;
+    // THE DRAWN BREATH breaks clean on disconnect — no unpiloted
+    // wind-up fires into the reconnect grace window.
+    this.cancelCasting(eid, player);
     // No unpiloted invisible bodies during the reconnect grace window.
     player.sneaking = false;
     if (player.hidden) this.setHidden(eid, player, false);
@@ -4291,6 +4312,7 @@ export class GameServer {
     const retX = player.seat ? player.seat.retX : pos.x;
     const retY = player.seat ? player.seat.retY : pos.y;
     this.cancelAction(eid, player);
+    this.cancelCasting(eid, player); // rest lets the breath go
     player.drawTicks = 0;
     this.standUp(eid, player, pos, false);
     const dir = pickSeatDir(spec, retX, retY);
@@ -8703,6 +8725,7 @@ export class GameServer {
     const pos = this.positions.get(eid);
     if (!player || !pos) return;
     this.cancelAction(eid, player);
+    this.cancelCasting(eid, player); // a step through space breaks the breath
     // Any ride out of a seat releases it — the destination is already
     // decided, so no walk-up restore.
     this.standUp(eid, player, pos, false);
@@ -13782,6 +13805,14 @@ export class GameServer {
     /** THE HELD SIGIL: the client ring's aimed ground point, if any. */
     aimPt?: { x: number; y: number },
   ): void {
+    // THE DRAWN BREATH: while a breath is held, a second press of the
+    // winding slot lets it go (a clean cancel — nothing was spent, so
+    // nothing refunds); any other slot is refused quietly. One working
+    // per pair of hands, and the refusal is predictable, not clever.
+    if (player.casting) {
+      if (player.casting.slot === slot) this.cancelCasting(eid, player);
+      return;
+    }
     const ab = this.slotAbility(player, slot);
     if (!ab) return;
     if (player.abilityCd[slot] > 0) return;
@@ -13825,6 +13856,31 @@ export class GameServer {
       if (dist > 0.05) aim = Math.atan2(dy, dx);
     }
 
+    // THE DRAWN BREATH: an art with a wind-up begins its breath here —
+    // the whole pay block waits for the fire. The staked point (already
+    // clamped by the ruler above) is the promise the release made; it
+    // holds through the breath even as the body keeps its stride.
+    if ((ab.castTicks ?? 0) > 0) {
+      this.beginCasting(eid, player, slot, ab, aim, targetPos);
+      return;
+    }
+
+    this.fireAbility(eid, player, slot, ab, aim, targetPos);
+  }
+
+  /**
+   * The pay block + the strike — everything a cast spends and does,
+   * shared by the press-edge instants and THE DRAWN BREATH's fire.
+   * Nothing before this line has cost the player anything.
+   */
+  private fireAbility(
+    eid: EntityId,
+    player: PlayerComp,
+    slot: AbilitySlot,
+    ab: AbilityDef,
+    aim: number,
+    targetPos?: { x: number; y: number },
+  ): void {
     // Cloth's cooldown discount lands here — where every cooldown is set.
     player.abilityCd[slot] = Math.max(1, Math.round(ab.cooldownTicks * player.gear.cooldownMult));
     player.castFreezeUntilTick = this.tickCount + (ab.castFreezeTicks ?? 0);
@@ -13867,6 +13923,89 @@ export class GameServer {
     const cp = this.positions.get(eid);
     this.bodyMoment(eid, player, 'cast', { x: cp?.x ?? 0, y: cp?.y ?? 0, style });
     this.sendCooldowns(player);
+  }
+
+  /**
+   * THE DRAWN BREATH: the press begins the wind-up. Nothing is paid —
+   * no cooldown, no freeze, no reveal; a broken breath costs only the
+   * time spent winding. The working is visible for its whole length
+   * (the tame's held-pose law), and the own client hears the start so
+   * its locally-predicted bar can never lie for more than a round trip.
+   */
+  private beginCasting(
+    eid: EntityId,
+    player: PlayerComp,
+    slot: AbilitySlot,
+    ab: AbilityDef,
+    aim: number,
+    targetPos?: { x: number; y: number },
+  ): void {
+    if (player.action) this.cancelAction(eid, player, 'cast');
+    player.drawTicks = 0; // the breath lets the bowstring down
+    player.casting = { slot, ab, aim, targetPos, progress: 0, total: ab.castTicks ?? 0 };
+    this.setPose(eid, PoseState.Art, (ab.castTicks ?? 0) + 6);
+    player.session?.sendJson({ t: 'cast', state: 'start', slot, ticks: ab.castTicks });
+  }
+
+  /** A broken breath: nothing was spent, so nothing refunds. */
+  private cancelCasting(eid: EntityId, player: PlayerComp): void {
+    if (!player.casting) return;
+    const slot = player.casting.slot;
+    player.casting = null;
+    player.poseUntilTick = this.tickCount; // the stance lets go at once
+    player.session?.sendJson({ t: 'cast', state: 'break', slot });
+    void eid;
+  }
+
+  /**
+   * Per-tick accrual, called AFTER the tick's movement resolves. A
+   * planted tick breathes CAST_STILL_FACTOR; a moving tick breathes 1.
+   * "Planted" is the tick's RESOLVED motion (the stillTicks law):
+   * pushing a wall counts as planted, and a 0-frame lag tick counts as
+   * planted — a laggy hand is never punished twice. A working that
+   * took the hands mid-breath (any action starting) breaks it.
+   */
+  private tickCasting(eid: EntityId, player: PlayerComp, moved: boolean): void {
+    const c = player.casting;
+    if (!c) return;
+    if (player.action) {
+      this.cancelCasting(eid, player);
+      return;
+    }
+    c.progress += moved ? 1 : CAST_STILL_FACTOR;
+    if (c.progress >= c.total) this.fireCasting(eid, player);
+  }
+
+  /** The breath completes: re-verify the hand, then pay and fire. */
+  private fireCasting(eid: EntityId, player: PlayerComp): void {
+    const c = player.casting;
+    if (!c) return;
+    player.casting = null;
+    // The hand must still hold what it promised: the slot resolves to
+    // the same art, awake. A reseat, an unequipped trinket, or a
+    // teacher stowed mid-breath breaks the working — the door must
+    // never fire a stranger's art.
+    const ab = this.slotAbility(player, c.slot);
+    const seat = this.techSeat(c.slot);
+    if (!ab || ab.id !== c.ab.id || (seat !== null && this.seatDormant(player, seat))) {
+      player.poseUntilTick = this.tickCount;
+      player.session?.sendJson({ t: 'cast', state: 'break', slot: c.slot });
+      return;
+    }
+    // A staked point holds its promise from the press; the facing
+    // re-derives from where the body ended up, so the throw, the leap,
+    // and the fx all agree with where the blast will actually land.
+    let aim = c.aim;
+    if (c.targetPos) {
+      const pos = this.positions.must(eid);
+      const dx = c.targetPos.x - pos.x;
+      const dy = c.targetPos.y - pos.y;
+      if (Math.hypot(dx, dy) > 0.05) aim = Math.atan2(dy, dx);
+    }
+    player.session?.sendJson({ t: 'cast', state: 'fire', slot: c.slot });
+    // The def fired is the one resolved at the press — the promise
+    // made is the promise kept, even if a rank climbed mid-breath.
+    this.fireAbility(eid, player, c.slot, c.ab, aim, c.targetPos);
   }
 
   /** Execute law: a target low enough on HP eats the bonus multiplier. */
@@ -16526,6 +16665,7 @@ export class GameServer {
         }
       }
       this.cancelAction(eid, player);
+      this.cancelCasting(eid, player); // a dying body draws no breath
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
@@ -20774,18 +20914,25 @@ export class GameServer {
       // below (moving, dodging, swinging, casting) stands the body up.
       // From furniture (or a bed) the same press is simply "stand".
       if (pressed & InputButton.Sit) {
+        this.cancelCasting(eid, player); // rest lets the breath go
         if (player.mountId) this.dismount(eid, player);
         else if (player.sitting || player.lying) this.standUp(eid, player, pos);
         else player.sitting = true;
       }
       // The whistle answers once: the same press-edge grammar as the
       // sit — riding steps down, standing calls the chosen beast.
-      if (pressed & InputButton.Mount) this.mountToggle(eid, player, pos);
+      if (pressed & InputButton.Mount) {
+        this.cancelCasting(eid, player); // the saddle takes both hands
+        this.mountToggle(eid, player, pos);
+      }
       // The sheathe toggle: weapons away, weapons out. Sheathing mid-draw
       // lets the bowstring down; sitting and sheathing compose freely.
       if (pressed & InputButton.Sheathe) {
         player.sheathed = !player.sheathed;
-        if (player.sheathed) player.drawTicks = 0;
+        if (player.sheathed) {
+          player.drawTicks = 0;
+          this.cancelCasting(eid, player); // stowed steel casts nothing
+        }
       }
       const abilityPressed =
         pressed &
@@ -20828,6 +20975,10 @@ export class GameServer {
         pos.y = dashed.y;
         moved = true;
         player.drawTicks = 0; // dodging lets the string down
+        // THE DRAWN BREATH's bail-out: the dodge that FIRES breaks the
+        // breath (mirrored client-side off the same seq-gated law, so
+        // a dodge press on cooldown never lies to the bar).
+        this.cancelCasting(eid, player);
         this.dismount(eid, player); // a dodge is the body's own deed
         // Wolf Reflexes: the dodge itself becomes an engage/escape tool.
         if (this.hasPassive(player, 'dodge_haste')) {
@@ -20838,7 +20989,9 @@ export class GameServer {
 
       // A cast this frame (or one still resolving) holds the basic back.
       // Stowed weapons hold it too — the safety again, for the held path.
-      const stillCasting = this.tickCount < player.castFreezeUntilTick;
+      // THE DRAWN BREATH holds it likewise: winding hands swing nothing.
+      const stillCasting =
+        this.tickCount < player.castFreezeUntilTick || player.casting !== null;
       const attackHeld =
         hasButton(frame.buttons, InputButton.Attack) && !stillCasting && !weaponsAway;
       if (attackHeld) {
@@ -20865,6 +21018,9 @@ export class GameServer {
     if (player.sneaking || player.action) this.dismount(eid, player);
     // The planted-stance clock (Bulwark) counts sneaking or not.
     player.stillTicks = moved ? 0 : player.stillTicks + 1;
+    // THE DRAWN BREATH accrues on the tick's resolved motion — after
+    // every frame drained, before the pose ladder reads the outcome.
+    this.tickCasting(eid, player, moved);
     if (strideStep > 0) this.strideMoment(eid, player, strideStep);
     // THE HEEL FORGIVES THE ROAD: the trailing companion's calm
     // counter reads this tick's true stride, right where it's known.
