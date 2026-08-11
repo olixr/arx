@@ -1274,6 +1274,12 @@ export interface DiscoveryWire {
    * character; the chart draws stage pips from it.
    */
   stage?: number;
+  /**
+   * The site's archetype id ('poi:' discoveries only) — the herald
+   * looks the def up in content for its story line. Zone discoveries
+   * carry none: their ledger id IS the zone key.
+   */
+  defId?: string;
 }
 
 /** The full ledger, pushed once at bind. */

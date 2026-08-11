@@ -476,23 +476,11 @@
   );
 }
 
-/* ---------------------------------- dungeon entry banner
-   The threshold announcement (ui/dungeonBanner.ts): the moment the
-   veil sets you down, a tray names where you now stand — title large,
-   sigil and power beneath, keyed to the key's tier. A toast, not a
-   screen: pointer-events none, gone on its own. Like the level-up
-   card it wears its OWN copy of the tray chrome, never .ui-tray (the
-   panel-semantics / input-gate class), and borrows the ceremony's
-   slam/exit/shine keyframes — same stagecraft, different act. */
-
-#dungeon-stage {
-  position: fixed;
-  left: 50%;
-  top: 12%;
-  transform: translateX(-50%);
-  z-index: 57;
-  pointer-events: none;
-}
+/* ---------------------------------- the rift-card chrome
+   The dungeon-entry and discovery banners moved to the Place Herald
+   (styles/herald.css); this tray chrome stays alive for the QUEST and
+   REP banners that still wear it (rift-card/plaque/kicker/text/fact +
+   the shared slam/exit/pop/shine keyframes above). */
 
 .rift-card {
   position: relative;
@@ -514,10 +502,6 @@
   color: var(--parchment);
   filter: drop-shadow(0.4375rem 0.5rem 0 var(--shadow));
   animation: lvl-slam 620ms cubic-bezier(0.2, 1.35, 0.32, 1) both;
-}
-
-#dungeon-stage.leaving .rift-card {
-  animation: lvl-exit 650ms ease-in both;
 }
 
 /* The key that brought you: a socket well ringed in its tier. */

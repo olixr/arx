@@ -1,0 +1,320 @@
+/* ------------------------------------------------- THE PLACE HERALD
+   The ceremony that names where you stand (ui/herald.ts): discovery
+   and the dungeon threshold. A centered typographic announcement over
+   a soft ink veil — sigil, tracked kicker in the kind's accent, serif
+   name, a hairline rule drawing outward from a center gem, story
+   line, facts row. No ray wheels, no slam, no shine sweep: the
+   premium read is restraint, typography, and timing.
+
+   A toast, not a screen — pointer-events none, never .ui-tray. All
+   motion is transform/opacity (compositor work) and gates on
+   body.no-ui-motion like every kit animation; the resting styles ARE
+   the settled show, so no-motion simply shows the finished herald. */
+
+#herald-stage {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 11%;
+  display: flex;
+  justify-content: center;
+  z-index: 57;
+  pointer-events: none;
+}
+
+/* The veil: a full-width band of shade the words rest on — legibility
+   over any world without boxing the ceremony into a card. The band
+   feathers to nothing on every edge (vertical gradient, horizontal
+   mask), so it reads as intentional shade, never a smudge. */
+.herald-veil {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58rem;
+  height: 15rem;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, var(--ink-wash), transparent 78%);
+  opacity: 0.7;
+}
+
+.herald-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4375rem;
+  max-width: 92vw;
+  padding: 1.5rem 0;
+}
+
+/* The chart sigil, seated small above the words. */
+.herald-sigil img {
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  filter: drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+
+.herald-kicker {
+  font-size: var(--t-whisper);
+  font-weight: 700;
+  letter-spacing: 0.28125rem;
+  text-transform: uppercase;
+  color: var(--herald-accent);
+  text-shadow: var(--punch-small);
+}
+
+.herald-name {
+  max-width: 92vw;
+  font-family: var(--serif);
+  font-size: 2.375rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.0625rem;
+  color: var(--parchment);
+  text-shadow: var(--punch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The rule: two hairlines drawing outward from a center gem — the
+   enamel inlay's dialect, laid flat and quiet. */
+.herald-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.125rem;
+}
+
+.herald-rule-line {
+  width: 9.5rem;
+  height: 0.09375rem;
+}
+
+.herald-rule-line.is-left {
+  background: linear-gradient(to left, var(--herald-accent), transparent 92%);
+  transform-origin: right center;
+}
+
+.herald-rule-line.is-right {
+  background: linear-gradient(to right, var(--herald-accent), transparent 92%);
+  transform-origin: left center;
+}
+
+.herald-gem {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  rotate: 45deg;
+  background: var(--herald-accent);
+  box-shadow: 0.0625rem 0.0625rem 0 var(--ink-line);
+}
+
+/* The story line: one plain sentence, said once, quietly. */
+.herald-lore {
+  max-width: 38rem;
+  margin-top: 0.25rem;
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+/* The facts row: danger pips, level band, the walk-out's name. */
+.herald-facts {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-top: 0.375rem;
+  font-size: var(--t-whisper);
+  font-weight: 700;
+  letter-spacing: 0.15625rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.herald-sep {
+  color: var(--parchment-faint);
+}
+
+.herald-pips {
+  display: flex;
+  gap: 0.375rem;
+  margin-right: 0.125rem;
+}
+
+.herald-pip {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  rotate: 45deg;
+  box-shadow: inset 0 0 0 0.0625rem var(--parchment-faint);
+  opacity: 0.55;
+}
+
+.herald-pip[data-lit] {
+  background: var(--herald-accent);
+  box-shadow: 0.0625rem 0.0625rem 0 var(--ink-line);
+  opacity: 1;
+}
+
+/* ------------------------------------------------- the choreography
+   Slow, confident, staggered in reading order. Transform/opacity
+   only; every rule gates on body.no-ui-motion. */
+
+body:not(.no-ui-motion) .herald-veil {
+  animation: herald-veil-in 700ms ease-out both;
+}
+
+body:not(.no-ui-motion) .herald-sigil {
+  animation: herald-drop 560ms cubic-bezier(0.22, 1, 0.36, 1) 60ms both;
+}
+
+body:not(.no-ui-motion) .herald-kicker {
+  animation: herald-track 520ms cubic-bezier(0.22, 1, 0.36, 1) 160ms both;
+}
+
+body:not(.no-ui-motion) .herald-name {
+  animation: herald-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) 240ms both;
+}
+
+body:not(.no-ui-motion) .herald-rule-line {
+  animation: herald-draw 760ms cubic-bezier(0.25, 1, 0.3, 1) 360ms both;
+}
+
+body:not(.no-ui-motion) .herald-gem {
+  animation: herald-gem-in 500ms cubic-bezier(0.2, 1.2, 0.4, 1) 320ms both;
+}
+
+body:not(.no-ui-motion) .herald-lore {
+  animation: herald-fade-up 620ms ease-out 520ms both;
+}
+
+body:not(.no-ui-motion) .herald-facts {
+  animation: herald-fade-up 620ms ease-out 660ms both;
+}
+
+body:not(.no-ui-motion) .herald-pip {
+  animation: herald-pip-in 380ms cubic-bezier(0.2, 1.4, 0.4, 1) calc(760ms + var(--pi) * 70ms) both;
+}
+
+@keyframes herald-veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes herald-drop {
+  from {
+    transform: translateY(-0.5rem) scale(1.05);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* The kicker settles its tracking — a whisper of scaleX reads as the
+   letters easing into place, never a slam. */
+@keyframes herald-track {
+  from {
+    transform: translateY(0.375rem) scaleX(1.08);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes herald-rise {
+  from {
+    transform: translateY(0.875rem);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes herald-draw {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes herald-gem-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes herald-fade-up {
+  from {
+    transform: translateY(0.4375rem);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes herald-pip-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* The bow-out: the whole show lifts and thins together. */
+body:not(.no-ui-motion) #herald-stage.leaving .herald-body {
+  animation: herald-leave 700ms ease-in both;
+}
+
+body:not(.no-ui-motion) #herald-stage.leaving .herald-veil {
+  animation: herald-veil-out 700ms ease-in both;
+}
+
+/* No-motion still needs the herald to go when told. */
+body.no-ui-motion #herald-stage.leaving {
+  opacity: 0;
+}
+
+@keyframes herald-leave {
+  to {
+    transform: translateY(-0.75rem);
+    opacity: 0;
+  }
+}
+
+@keyframes herald-veil-out {
+  to {
+    opacity: 0;
+  }
+}

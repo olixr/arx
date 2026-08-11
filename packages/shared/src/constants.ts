@@ -126,6 +126,10 @@
 // would silently drop the unknown binary frame and show a bare wall
 // where everyone else sees a hanging — shared world state would
 // disagree between peers, so the handshake turns the old client away.
+// (THE PLACE HERALD, still v28: DiscoveryWire grows optional `defId`
+// so the discovery ceremony can speak the site's story from content.
+// Additive — a client that ignores it shows the plainer banner and
+// corrupts nothing. Recorded on purpose.)
 export const PROTOCOL_VERSION = 28;
 
 /** The most souls one party can hold. */

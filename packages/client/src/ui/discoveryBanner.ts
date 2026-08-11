@@ -1,25 +1,25 @@
 /**
  * THE DISCOVERY CEREMONY — "you found a place worth naming."
  *
- * A chrome tray slams in top-center under slow-wheeling gold rays:
- * DISCOVERED as the kicker, the place's name huge in serif, its kind
- * beneath, the ledger sigil on a socket plaque. A toast, not a screen
- * (pointer-events none, own chrome copy — never .ui-tray, that class
- * doubles as the input gate). Fires ONLY on a live S2CDiscovery — the
- * server sends one per place per lifetime, so suppression is
- * structural. Dungeon-kind entries never splash here: the riftgate's
- * threshold banner is their ceremony.
+ * A thin adapter over the Place Herald (herald.ts): it turns a live
+ * S2CDiscovery into the herald's spec — accent by kind, the chart
+ * sigil, an epithet kicker, and the informed lines the wire and
+ * content can speak. Towns read the GAZETTEER; frontier sites read
+ * their PoiDef story by the wire's defId; the danger facts come from
+ * the one law table (DANGER_LAWS) and the threat ladder's words.
+ *
+ * Fires ONLY on a live S2CDiscovery — the server sends one per place
+ * per lifetime, so suppression is structural. Dungeon-kind entries
+ * never splash here: the riftgate's threshold banner is their
+ * ceremony.
  */
+import { GAZETTEER, POI_DEFS, THREAT_WORDS, dangerLaw } from '@arx/content';
 import type { DiscoveryWire } from '@arx/shared';
+import { dismissHerald, raiseHerald } from './herald.js';
 import { drawDiscoveryMarker } from './map/markers.js';
 
-let stage: HTMLElement | null = null;
-let exitTimer = 0;
-let killTimer = 0;
-
-/** Longer than the dungeon threshold (2600), shy of the level-up (4700). */
-const HOLD_MS = 3400;
-const EXIT_MS = 650;
+/** Longer than the dungeon threshold — there is more here to read. */
+const HOLD_MS = 4400;
 
 const KIND_WORD: Record<DiscoveryWire['kind'], string> = {
   town: 'A settlement stands here',
@@ -36,7 +36,7 @@ const KIND_ACCENT: Record<DiscoveryWire['kind'], string> = {
 };
 
 function sigilUrl(d: DiscoveryWire): string {
-  const S = 96;
+  const S = 128;
   const cnv = document.createElement('canvas');
   cnv.width = S;
   cnv.height = S;
@@ -45,73 +45,61 @@ function sigilUrl(d: DiscoveryWire): string {
   return cnv.toDataURL();
 }
 
+/** The story line stays one breath: the description's first sentence. */
+function firstSentence(text: string): string {
+  const cut = text.indexOf('. ');
+  return cut === -1 ? text : text.slice(0, cut + 1);
+}
+
+/** The danger facts a tier speaks: level band and the walk-out's name. */
+function tierNotes(tier: number): string[] {
+  const [lo, hi] = dangerLaw(tier).npcLevel;
+  const threat = THREAT_WORDS[Math.max(0, Math.min(THREAT_WORDS.length - 1, tier))]!;
+  return [`Levels ${lo} to ${hi}`, threat];
+}
+
 export function showDiscovery(d: DiscoveryWire): void {
-  dismissDiscovery();
-  const accent = KIND_ACCENT[d.kind];
+  let kicker = KIND_WORD[d.kind];
+  let lore: string | undefined;
+  let facts: { tier?: number; notes: string[] } | undefined;
 
-  const el = document.createElement('div');
-  el.id = 'discovery-stage';
-  el.style.setProperty('--disc-accent', accent);
-
-  // The slow gold rays behind the card — the level-toast's wheel, a
-  // size down (CSS-only; compositor transforms).
-  const rays = document.createElement('div');
-  rays.className = 'disc-rays';
-  el.appendChild(rays);
-
-  const card = document.createElement('div');
-  card.className = 'rift-card disc-card';
-
-  const plaque = document.createElement('div');
-  plaque.className = 'rift-plaque';
-  const img = document.createElement('img');
-  img.src = sigilUrl(d);
-  img.draggable = false;
-  plaque.appendChild(img);
-  card.appendChild(plaque);
-
-  const text = document.createElement('div');
-  text.className = 'rift-text';
-  const kicker = document.createElement('div');
-  kicker.className = 'rift-kicker disc-kicker';
-  kicker.textContent = 'Discovered';
-  const name = document.createElement('div');
-  name.className = 'rift-title';
-  name.textContent = d.name;
-  const sub = document.createElement('div');
-  sub.className = 'rift-fact';
-  sub.textContent = d.tier !== undefined ? `${KIND_WORD[d.kind]} · tier ${d.tier}` : KIND_WORD[d.kind];
-  text.append(kicker, name, sub);
-  card.appendChild(text);
-
-  const shine = document.createElement('div');
-  shine.className = 'lvl-shine';
-  card.appendChild(shine);
-
-  el.appendChild(card);
-  document.body.appendChild(el);
-  stage = el;
-
-  exitTimer = window.setTimeout(() => {
-    el.classList.add('leaving');
-    killTimer = window.setTimeout(() => {
-      if (stage === el) {
-        el.remove();
-        stage = null;
+  const def = d.defId ? POI_DEFS.get(d.defId) : undefined;
+  if (d.id.startsWith('zone:')) {
+    const entry = GAZETTEER[d.id.slice(5)];
+    if (entry) {
+      kicker = entry.epithet;
+      lore = entry.line;
+      if (entry.country !== undefined) {
+        // The pips speak for the land around the walls, not the town —
+        // say so, or a haven wearing five pips reads as a deathtrap.
+        facts = { tier: entry.country, notes: ['The country beyond', ...tierNotes(entry.country)] };
       }
-    }, EXIT_MS + 80);
-  }, HOLD_MS);
+    }
+  } else if (def) {
+    if (def.haven) kicker = d.kind === 'town' ? 'A haven on the road' : kicker;
+    if (def.description) lore = firstSentence(def.description);
+    if (d.tier !== undefined) {
+      const notes = tierNotes(d.tier);
+      // A site grown bold is BUSIER, not quietly deadlier — say so.
+      if ((d.stage ?? 0) > 0) notes.push('Grown bold');
+      facts = { tier: d.tier, notes };
+    }
+  } else if (d.tier !== undefined) {
+    facts = { tier: d.tier, notes: tierNotes(d.tier) };
+  }
+
+  raiseHerald({
+    kind: d.kind,
+    accent: KIND_ACCENT[d.kind],
+    kicker,
+    name: d.name,
+    iconUrl: sigilUrl(d),
+    lore,
+    facts,
+    holdMs: HOLD_MS,
+  });
 }
 
 export function dismissDiscovery(): void {
-  if (exitTimer) {
-    clearTimeout(exitTimer);
-    exitTimer = 0;
-  }
-  if (killTimer) {
-    clearTimeout(killTimer);
-    killTimer = 0;
-  }
-  stage?.remove();
-  stage = null;
+  dismissHerald();
 }

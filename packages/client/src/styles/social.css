@@ -182,16 +182,10 @@ body.pad-mode .map-reticle {
   letter-spacing: 0.04em;
 }
 
-/* THE DISCOVERY CEREMONY — top-center toast under wheeling rays. */
-#discovery-stage {
-  position: fixed;
-  left: 50%;
-  top: 12%;
-  transform: translateX(-50%);
-  z-index: 57;
-  pointer-events: none;
-}
-
+/* The wheeling gold rays — quest/rep ceremony backdrop. (The
+   discovery ceremony moved to the Place Herald, styles/herald.css;
+   these rays stay alive for the quest and rep banners that append
+   them.) */
 .disc-rays {
   position: absolute;
   left: 50%;
@@ -208,29 +202,6 @@ body.pad-mode .map-reticle {
   animation:
     lvl-rays-in 700ms ease-out both,
     lvl-rays-spin 26s linear infinite;
-}
-
-#discovery-stage.leaving .disc-rays {
-  animation: lvl-exit 650ms ease-in both;
-}
-
-.disc-card {
-  position: relative;
-}
-
-#discovery-stage.leaving .disc-card {
-  animation: lvl-exit 650ms ease-in both;
-}
-
-.disc-card .rift-plaque {
-  box-shadow:
-    0 0 0 0.125rem var(--disc-accent),
-    0 0 1rem var(--disc-accent);
-}
-
-.disc-kicker {
-  color: var(--disc-accent);
-  letter-spacing: 0.3125rem;
 }
 
 /* THE TRAVELER'S GLASS — the Tab overlay chart. */

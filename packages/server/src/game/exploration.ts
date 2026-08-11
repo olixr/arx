@@ -106,6 +106,7 @@ export function findDiscoveries(
         x: site.anchorX,
         y: site.anchorY,
         tier: site.tier,
+        defId: site.defId,
       },
       epoch,
       rediscovered: prior !== undefined,

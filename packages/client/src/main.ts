@@ -77,6 +77,14 @@ if (new URLSearchParams(location.search).has('kit')) {
   showKitGallery();
 }
 
+// `?herald` replays the Place Herald ceremonies on a loop — the
+// discovery and threshold banners on an audit bench (`?herald=N`
+// pins one fixture). Same contract as `?kit`.
+if (new URLSearchParams(location.search).has('herald')) {
+  const { showHeraldAudit } = await import('./editor/heraldAudit.js');
+  showHeraldAudit();
+}
+
 // Painted UI glyphs — no emoji anywhere in the universe. The dock
 // wears the quiet console's monoline sigils; each button carries a
 // device-aware shortcut badge read LIVE from the one keymap, so a
