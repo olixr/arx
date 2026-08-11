@@ -302,6 +302,23 @@ const defs: BuildableDef[] = [
     ticks: 40,
   },
   {
+    // THE ANIMALS OF THE YARD: the herd's anchor. A trough within
+    // reach is where crated young release, where feed loads, and
+    // the point a yard animal grazes around forever.
+    id: 'feed_trough',
+    cat: 'station',
+    name: 'Feed trough',
+    tile: Tile.FeedTrough,
+    skill: 'beastcraft',
+    levelReq: 1,
+    xp: 25,
+    materials: [
+      { item: 'board', qty: 3 },
+      { item: 'twine', qty: 1 },
+    ],
+    ticks: 40,
+  },
+  {
     // THE GROWING FRAME: an oiled-cloth frame raised OVER a garden
     // plot (its one legal ground) — always watered, a touch faster,
     // the cottager's glasshouse. Tearing it down hands the plot back.

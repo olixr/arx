@@ -73,6 +73,7 @@ function slate(opts: {
     players: new Map([[11, player]]),
     positions: new Map([[11, { x: 5, y: 5 }]]),
     pets: new Map(),
+    livestock: new Map(),
     actors: new Map(opts.actorSlug ? [[21, { actor: { id: opts.actorSlug } }]] : []),
     npcAggro: proto.npcAggro,
     cancelNpcCast: proto.cancelNpcCast,

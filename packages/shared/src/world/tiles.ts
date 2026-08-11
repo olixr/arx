@@ -472,6 +472,13 @@ export enum Tile {
    * Builds ON a garden plot and hands the plot back when torn down.
    */
   GrowingFrame = 279,
+  /**
+   * THE ANIMALS OF THE YARD (Phase 3): the feed trough — the yard's
+   * one anchor. Livestock released here graze its ring, feed loaded
+   * here grades their produce, and the trough refuses demolition
+   * while a herd still answers to it. Solid.
+   */
+  FeedTrough = 280,
 }
 
 export enum Detail {
@@ -858,6 +865,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.PalegillMid]: { name: 'budding palegill', solid: true, color: '#5f4426', raised: true, topColor: '#c9c2b4' },
   [Tile.PalegillRipe]: { name: 'ripe palegill', solid: true, color: '#5f4426', raised: true, topColor: '#d8d2c4' },
   [Tile.GrowingFrame]: { name: 'growing frame', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.FeedTrough]: { name: 'feed trough', solid: true, color: '#6e5433', raised: true, topColor: '#96703f' },
   [Tile.PikeHole]: { name: 'pike hole', solid: true, color: '#39679c', variants: ['#366293'] },
   [Tile.EelRun]: { name: 'eel run', solid: true, color: '#31578c', variants: ['#2e5284'] },
   [Tile.SalmonRun]: { name: 'salmon run', solid: true, color: '#457bbd', variants: ['#4174b3'] },

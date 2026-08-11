@@ -863,6 +863,35 @@ const MIGRATIONS: string[] = [
   ALTER TABLE crops ADD COLUMN framed SMALLINT NOT NULL DEFAULT 0;
   ALTER TABLE crops ADD COLUMN cycles INTEGER NOT NULL DEFAULT 0;
   `,
+  // v27: THE ANIMALS OF THE YARD (farming v2 Phase 3) — kept
+  // livestock and their mangers. Slot-addressed like the companions
+  // (the (character, slot) pair IS the animal; tick-path writes are
+  // pure upserts), but anchored to a TROUGH TILE, not a keeper's
+  // heel: the animal lives in the world whether its keeper is online
+  // or not. next_produce_at persists so a logout never resets an
+  // udder; bond and brushed_at are the care ledger. farm_troughs is
+  // deviations-shaped like the bins — a row holds feed or leaves.
+  `
+  CREATE TABLE livestock (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    slot SMALLINT NOT NULL,
+    species TEXT NOT NULL,
+    name TEXT NOT NULL,
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    bond INTEGER NOT NULL DEFAULT 0,
+    brushed_at BIGINT NOT NULL DEFAULT 0,
+    next_produce_at BIGINT NOT NULL DEFAULT 0,
+    born_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, slot)
+  );
+  CREATE TABLE farm_troughs (
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    feed INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (tx, ty)
+  );
+  `,
 ];
 
 /**

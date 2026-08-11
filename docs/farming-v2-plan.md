@@ -317,6 +317,74 @@ The demand side: everything the farm makes, somebody wants.
 
 ## 8. The epic ledger (filled as phases ship)
 
+### Phase 3 — THE ANIMALS OF THE YARD (shipped 2026-08-11, prove:farm = 30 receipts)
+
+As-built laws and dials:
+
+- **THE YARD IS NOT THE HEEL.** Livestock = a parallel lane beside the
+  TAMES whitelist (untouched): `LivestockComp {row}` on its own store,
+  the ROW the truth (db v27 `livestock`, slot-addressed per character,
+  anchored to a TROUGH TILE, next_produce_at persisted so a logout
+  never resets an udder). Entities spawn at boot and on release, live
+  whether the keeper is online or not, scatter on the trough's south
+  apron dealt by slot. Roster rides EXISTING bodies only (the rig-lab
+  law): chicken 1 / cow 1 / **ram 10** (wool — the fleece-loaf body
+  shears honestly) / **boar 35** (truffle — the yard boar, as every
+  medieval sty kept). **The goat defers to Phase 4's churn**, where a
+  bespoke body can be done right (ledger deviation).
+- **THE YARD REGISTRY IS THE ONLY PAYER** (content/livestock.ts):
+  produce verbs read LIVESTOCK, never NpcDef.produce — a wild boar
+  offers no Snuffle, a town cow keeps its old milking law. Collection
+  rides the PROVEN MILK RAIL whole (one action, one rhythm); the
+  registry only swaps the produce source and adds the yard's arm.
+- **THE DROVER'S PEACE**, three doors: perception skip (a kept boar
+  grazes where a wild one charges), npcAggro refusal beside the pet
+  guard, damageNpc quiet backstop. `meta.stock` (additive) is the
+  durable marker — the drover's tan halter renders off it, and
+  ownerEid rides only while the keeper is online (aiming their own
+  prompts). Kept hens never ground-lay (`nextLayAt = 0` at spawn).
+- **THE YARD'S CARE FOLD** = the field's own fold at the byre:
+  fed (one manger measure spent per collect) = 2 points, bond tier
+  (3 warms / 7 shines) beside it — fed reaches fine, fed-and-loved
+  reaches prime. Fed also runs the NEXT wait at 0.75. The brush
+  moment: 240s cadence, +1 bond (cap 10), +4 beastcraft, positive
+  only. Unfed animals produce plain at the wild pace and suffer
+  nothing (CARE IS ALWAYS A GIFT).
+- **The trough** (feed_trough, beastcraft 1): anchor + manger. Feed
+  door: barley 2 (+grade), produce 1 (+grade), all else refused;
+  cap 12; anyone may feed (the watering generosity), each collect
+  eats one measure. Trough refuses demolition while a herd anchors
+  or feed remains. Mirror rides S2CFarm.troughs (additive).
+- **The buy and the farewell**: crated young at Maren's drover_yard
+  (shop on the EXISTING actor: chick 60 / calf 350 / lamb 280 /
+  boarlet 700), released via useItem at your OWN trough (caps: 4 per
+  trough, 8 per keeper; every refusal spoken, crate kept); the
+  naming ceremony reuses the pet card whole (C2SStockName under the
+  same sanitize law). **THE LEAD WAITS ITS TURN** (harness-caught
+  design fix): the drover's lead fires only when produce and brush
+  both sleep — a farewell must never outrank the living work; half
+  the crate's worth returns.
+- **Consumers (law 6)**: wool → weave_wool_cloth (tailoring 10, the
+  ram is a standing cotton field); truffle → cook_truffle_roast 55;
+  egg/milk already fed the kitchen. Graded egg/milk/wool/truffle
+  generate beside the crops (LIVESTOCK_GRADED pinned against the
+  registry by test).
+- **THE PROVING GROUND lever** (`/clearfarm <r>`, dev-only): levels a
+  radius to bare grass — crops, bins, troughs, built rows cleared.
+  Minted after 10-minute suite timeouts: the terrain lottery was the
+  whole cost. With it + chapter flags (`prove:yard` 48s,
+  `prove:field`, full book ~3min) + `stockAct` retry-sidles for
+  wandering bodies, the 30-receipt book runs deterministically.
+  HARNESS LAWS: a persistent rig keeps every previous run's yard
+  alive — finders must demand `ownerEid === own eid` (yesterday's
+  Henrietta answered a receipt once); slate law reached the yard
+  (livestock: new Map() in enforce/procDoors/xpEconomy slates).
+- **Deferred**: goat + cheese line (Ph4); coop/byre dressing
+  furnishings (Ph6 decor wave); pig walk-to-truffle roaming (the
+  snuffle pays in the yard — a wandering-pig brain is pets
+  territory); livestock re-anchor to another trough (lead away and
+  re-release is the road).
+
 ### Phase 2 — THE FULL FIELD (shipped 2026-08-11, prove:farm = 20 receipts)
 
 As-built laws and dials:

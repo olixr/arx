@@ -337,6 +337,18 @@ const defs: ItemDef[] = [
   { id: 'flour', name: 'Flour', stackable: true, value: 10, desc: 'Ground wheat. The quiet half of every bakery.', color: '#f2efe6', code: 'Fl' },
   { id: 'milk', name: 'Milk', stackable: false, value: 8, desc: 'A pail of fresh milk, still warm from the cow.', color: '#f4f2ec', code: 'Mk' },
   { id: 'egg', name: 'Egg', stackable: true, value: 4, desc: 'Laid this morning, judging by the smugness of the hen.', color: '#e8d9b0', code: 'Eg' },
+  // THE ANIMALS OF THE YARD (farming v2 Phase 3): what the kept
+  // herd pays, and the crated young the drover sells. A crate is
+  // used at your OWN feed trough to release its animal into the
+  // yard; the lead walks one away again at half the crate's worth.
+  { id: 'wool', name: 'Wool', stackable: false, value: 12, desc: 'A whole fleece, oily and warm and enormous.', color: '#e8e2d4', code: 'Wl' },
+  { id: 'truffle', name: 'Truffle', stackable: false, value: 60, desc: 'Ugly as sin. Chefs will duel over it.', color: '#4a3a30', code: 'Tf' },
+  { id: 'chick_crate', name: 'Cheeping crate', stackable: false, value: 30, desc: 'A slat crate, very much alive. Release at your feed trough.', color: '#e8d9b0', code: 'Ck' },
+  { id: 'calf_crate', name: 'Calf on a lead', stackable: false, value: 175, desc: 'All legs and appetite. Release at your feed trough.', color: '#e7ddca', code: 'Cf' },
+  { id: 'lamb_crate', name: 'Lamb on a lead', stackable: false, value: 140, desc: 'A cloud with opinions. Release at your feed trough.', color: '#e8e2d4', code: 'Lb' },
+  { id: 'boarlet_crate', name: 'Boarlet in a barrow', stackable: false, value: 350, desc: 'Striped, furious, and priceless in a few seasons. Release at your feed trough.', color: '#8a6a45', code: 'Bo' },
+  { id: 'drovers_lead', name: "Drover's lead", stackable: false, value: 20, desc: 'A soft rope halter. Walks one yard animal back to the drover trade.', color: '#b0a068', code: 'Dl' },
+  { id: 'truffle_roast', name: 'Truffle roast', stackable: false, value: 130, heals: 16, desc: 'The boar found it. The pan made it famous.', color: '#6e4a38', code: 'Tr' },
 
   // Homestead cooking
   { id: 'bread', name: 'Bread', stackable: false, value: 14, heals: 6, desc: 'A warm loaf with a crust worth fighting over.', color: '#c49a5c', code: 'Bd' },

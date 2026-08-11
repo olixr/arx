@@ -16,6 +16,10 @@ import { ByteReader, BinaryMsgType, decodeSnapshot, PROTOCOL_VERSION } from '@ar
 
 const URL = process.env.ARX_PROVE_URL ?? 'ws://localhost:8790/ws';
 const STAMP = process.argv[2] ?? String(Math.floor(Math.random() * 1e6));
+/** Chapter select: all | field (Ph2+3) | yard (Ph3 only) — the
+ * prove:tongue fast-lane law: iterate on one chapter, run the whole
+ * book before any commit. */
+const FROM = process.env.ARX_PROVE_FROM ?? 'all';
 const USER = `farmer_${STAMP}`;
 const CHAR = `Farmer ${STAMP}`;
 
@@ -28,6 +32,8 @@ class Client {
   seq = 1;
   eid = -1;
   pos: Sample | null = null;
+  /** Latest sampled position per visible entity (the herd wanders). */
+  ents = new Map<number, Sample>();
   open(): Promise<void> {
     this.ws = new WebSocket(URL);
     this.ws.on('message', (d: Buffer, isBinary: boolean) => {
@@ -38,6 +44,7 @@ class Client {
         const snap = decodeSnapshot(r);
         for (const e of snap.entities) {
           if (e.eid === this.eid) this.pos = { x: e.x, y: e.y, at: Date.now() };
+          this.ents.set(e.eid, { x: e.x, y: e.y, at: Date.now() });
         }
         return;
       }
@@ -120,12 +127,24 @@ async function tp(c: Client, x: number, y: number): Promise<void> {
 
 /** Wait for a system line matching the needle. */
 async function line(c: Client, needle: string, from: number, label = needle): Promise<void> {
-  await c.waitFor(
-    (m) => m.t === 'chat' && m.channel === 'system' && String(m.text).includes(needle),
-    label,
-    8000,
-    from,
-  );
+  try {
+    await c.waitFor(
+      (m) => m.t === 'chat' && m.channel === 'system' && String(m.text).includes(needle),
+      label,
+      8000,
+      from,
+    );
+  } catch (err) {
+    // The refusal that DID speak is the diagnosis — print it before
+    // the timeout walks up the stack.
+    const spoken = c.msgs
+      .slice(from)
+      .filter((m) => m.t === 'chat' && m.channel === 'system')
+      .map((m) => m.text)
+      .slice(-4);
+    console.log(`  [line] waiting '${needle}', heard: ${spoken.join(' | ') || '(silence)'}`);
+    throw err;
+  }
 }
 
 async function build(c: Client, buildable: string, tx: number, ty: number): Promise<void> {
@@ -176,7 +195,50 @@ async function stagePlanting(
   throw new Error(`no ground took ${seed}`);
 }
 
+
+/** Step hard beside a wandering body before asking anything of it. */
+async function sidle(c: Client, targetEid: number): Promise<void> {
+  for (let i = 0; i < 4; i++) {
+    const at = c.ents.get(targetEid);
+    if (!at) {
+      await sleep(400);
+      continue;
+    }
+    await say(c, `/tp ${Math.round(at.x)} ${Math.round(at.y) + 1}`);
+    await sleep(300);
+    const again = c.ents.get(targetEid);
+    if (c.pos && again && Math.hypot(c.pos.x - again.x, c.pos.y - again.y) < 1.9) return;
+  }
+}
+
+
+/**
+ * Ask a wandering animal for a spoken outcome: sidle, act, and if
+ * the wire stays silent (the body drifted out of the reach window
+ * between sample and press), sidle again and re-ask.
+ */
+async function stockAct(c: Client, targetEid: number, needle: string, label = needle): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await sidle(c, targetEid);
+    const mk0 = c.mark();
+    c.send({ t: 'interactnpc', eid: targetEid });
+    try {
+      await c.waitFor(
+        (m) => m.t === 'chat' && m.channel === 'system' && String(m.text).includes(needle),
+        label,
+        5000,
+        mk0,
+      );
+      return;
+    } catch {
+      // Drifted — step in again.
+    }
+  }
+  throw new Error(`stockAct never heard '${needle}'`);
+}
+
 async function main(): Promise<void> {
+  let hb2: ReturnType<typeof setInterval> | null = null;
   const c = new Client();
   await c.open();
   c.send({ t: 'hello', v: PROTOCOL_VERSION });
@@ -202,7 +264,9 @@ async function main(): Promise<void> {
   await say(c, '/give twine 3');
   await say(c, '/give copper_ore 2');
   await tp(c, bx, by);
+  await say(c, '/clearfarm 12');
 
+  if (FROM === 'all') {
   // ---- the tended plot -------------------------------------------
   // The random course can land on trees or water: hunt for a spot
   // where a plot builds AND a seed takes (the harness ground law).
@@ -421,6 +485,9 @@ async function main(): Promise<void> {
   }
   receipt('the fed channel waters the bed itself', fedBed !== null, `w=${fedBed?.w}`);
 
+  } // end Phase 1 chapter
+
+  if (FROM !== 'yard') {
   // ================= THE FULL FIELD (Phase 2) =====================
   // A fresh orchardist with a clean pack (the first farmer's slots
   // are full of honest harvest litter — a real lesson: non-stackable
@@ -431,7 +498,7 @@ async function main(): Promise<void> {
   oc.send({ t: 'register', user: `orchard_${STAMP}`, pass: 'proving123', name: `Orchard ${STAMP}` });
   const w2 = await oc.waitFor((m) => m.t === 'welcome', 'welcome (orchardist)');
   oc.eid = w2.eid;
-  const hb2 = setInterval(() => oc.send({ t: 'input', frame: { seq: oc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } }), 500);
+  hb2 = setInterval(() => oc.send({ t: 'input', frame: { seq: oc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } }), 500);
   await say(oc, '/xp farming 2000000');
   await say(oc, '/xp construction 100000');
   await say(oc, '/give apple_sapling 2');
@@ -440,29 +507,14 @@ async function main(): Promise<void> {
   await say(oc, '/give board 6');
   await say(oc, '/give cloth 2');
   await say(oc, '/give carrot_seed 3');
-  // The orchardist hunts a workable field too (the ground lottery is
-  // real for every course) — a cheap carrot proves the neighborhood.
-  let ofx = 0;
-  let ofy = 0;
-  let orchOk = false;
-  for (const [hx, hy] of [[6, 4], [-18, 9], [22, -8], [12, 16], [-28, -14], [34, 6]]) {
-    await tp(oc, bx + hx, by + hy);
-    const fx2 = Math.floor(oc.pos!.x) + 2;
-    const fy2 = Math.floor(oc.pos!.y);
-    await build(oc, 'garden_plot', fx2, fy2);
-    const mkh = oc.mark();
-    oc.send({ t: 'plant', tx: fx2, ty: fy2, seed: 'carrot_seed' });
-    try {
-      await line(oc, 'You plant carrot', mkh, 'orchard hunt');
-      ofx = fx2;
-      ofy = fy2;
-      orchOk = true;
-      break;
-    } catch {
-      // Refused ground — walk on.
-    }
-  }
-  if (!orchOk) throw new Error('no orchard ground found');
+  receipt('the orchardist packs true', oc.count('apple_sapling') === 2 && oc.count('palegill_spores') === 2, `sap=${oc.count('apple_sapling')} spores=${oc.count('palegill_spores')}`);
+  // The orchardist lands on a fresh course and FLATTENS it — the
+  // proving-ground lever retired the terrain lottery (and with it
+  // the ten-minute suite).
+  await tp(oc, bx + 26, by + 20);
+  await say(oc, '/clearfarm 10');
+  const ofx = Math.floor(oc.pos!.x) + 2;
+  const ofy = Math.floor(oc.pos!.y);
   await tp(oc, ofx - 1, ofy);
 
   // ---- the orchard shape -----------------------------------------
@@ -550,9 +602,129 @@ async function main(): Promise<void> {
   const fc = oc.plotCare(frame.x, frame.y);
   receipt('the frame marks its row and waters it', fc !== null && fc.w >= 1 && (fc as any).f === 1, `w=${fc?.w} f=${(fc as any)?.f}`);
 
+  } // end Phase 2 chapter
+
+  // ================= THE ANIMALS OF THE YARD (Phase 3) =============
+  // A fresh drover with a clean pack, on the orchardist's proven
+  // ground (the yard rises where the field already took).
+  const dc = new Client();
+  await dc.open();
+  dc.send({ t: 'hello', v: PROTOCOL_VERSION });
+  dc.send({ t: 'register', user: `drover_${STAMP}`, pass: 'proving123', name: `Drover ${STAMP}` });
+  const w3 = await dc.waitFor((m) => m.t === 'welcome', 'welcome (drover)');
+  dc.eid = w3.eid;
+  const hb3 = setInterval(() => dc.send({ t: 'input', frame: { seq: dc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } }), 500);
+  await say(dc, '/give board 3');
+  await say(dc, '/give twine 1');
+  await say(dc, '/give chick_crate');
+  await say(dc, '/give barley 2');
+  // The landing itself can hit water or rock — walk the courses.
+  {
+    let landed = false;
+    for (const [yx, yy] of [[52, 40], [58, 30], [44, 52], [66, 44], [38, 26]]) {
+      try {
+        await tp(dc, bx + yx!, by + yy!);
+        landed = true;
+        break;
+      } catch {
+        // Refused ground — the next course.
+      }
+    }
+    if (!landed) throw new Error('no yard course landed');
+  }
+  await say(dc, '/clearfarm 8');
+
+  // A crate opened in the open field speaks its refusal, crate kept.
+  let mkd = dc.mark();
+  {
+    const crateSlot = dc.inv().findIndex((s) => s && s.item === 'chick_crate');
+    dc.send({ t: 'use', slot: crateSlot });
+    await line(dc, 'Release it at your own feed trough', mkd);
+    receipt('the crate waits on a trough, spoken', dc.count('chick_crate') === 1);
+  }
+
+  // Raise the trough beside the feet, then the release ceremony.
+  const dfx = Math.floor(dc.pos!.x) + 1;
+  const dfy = Math.floor(dc.pos!.y);
+  await build(dc, 'feed_trough', dfx, dfy);
+  mkd = dc.mark();
+  {
+    const crateSlot = dc.inv().findIndex((s) => s && s.item === 'chick_crate');
+    dc.send({ t: 'use', slot: crateSlot });
+    await line(dc, 'steps into your yard', mkd);
+  }
+  const ceremony = await dc.waitFor((m) => m.t === 'stockname', 'naming ceremony', 4000, mkd);
+  receipt('the release ceremony asks a name', ceremony.species === 'chicken');
+  dc.send({ t: 'stockname', slot: ceremony.slot, name: 'Henrietta' });
+  await line(dc, 'Henrietta it is', mkd);
+  receipt('the name sticks through the sanitize law', true);
+
+  // Unfed first collect: plain egg (the fold is honest about zero).
+  await say(dc, '/grow');
+  await sleep(600);
+  const henEid = () => {
+    // MY hen only: a persistent rig keeps every previous run's yard
+    // alive (their Henriettas included) — ownerEid is the tell, and
+    // it rides the meta exactly while the keeper is online.
+    let found = -1;
+    for (const m of dc.msgs) {
+      if (m.t !== 'enter' && m.t !== 'update') continue;
+      for (const en of m.entities ?? []) {
+        if (en.defId === 'chicken' && en.name === 'Henrietta' && en.ownerEid === dc.eid) {
+          found = en.eid;
+        }
+      }
+    }
+    return found;
+  };
+  const hen = henEid();
+  receipt('Henrietta stands in the world wearing her name', hen >= 0, `eid=${hen}`);
+  await stockAct(dc, hen, 'gather Henrietta', 'unfed gather');
+  receipt('the unfed yard pays plain', dc.count('egg') >= 1, `egg=${dc.count('egg')}`);
+
+  // Feed the manger (mirror shows it), hurry the clock, collect FINE.
+  // Back to the trough first — the hen led us wherever she pleased.
+  for (let i = 0; i < 3; i++) {
+    await say(dc, `/tp ${dfx} ${dfy + 1}`);
+    await sleep(300);
+    if (dc.pos && Math.hypot(dc.pos.x - (dfx + 0.5), dc.pos.y - (dfy + 0.5)) < 2.0) break;
+  }
+  mkd = dc.mark();
+  {
+    const feedSlot = dc.inv().findIndex((s) => s && s.item === 'barley');
+    dc.send({ t: 'troughadd', tx: dfx, ty: dfy, slot: feedSlot });
+    await line(dc, 'You fill the manger', mkd);
+  }
+  await sleep(400);
+  const troughState = (() => {
+    let feed = 0;
+    for (const m of dc.msgs) {
+      if (m.t !== 'farm') continue;
+      for (const tr of m.troughs ?? []) if (tr.tx === dfx && tr.ty === dfy) feed = tr.feed;
+    }
+    return feed;
+  })();
+  receipt('the manger mirror counts its measures', troughState >= 2, `feed=${troughState}`);
+  await say(dc, '/grow');
+  await sleep(600);
+  await stockAct(dc, hen, 'gives well today', 'fed collect');
+  receipt("THE YARD'S CARE FOLD pays a fine egg when fed", dc.count('egg_fine') >= 1, `fine=${dc.count('egg_fine')}`);
+
+  // The brush moment (produce not ready — the cascade brushes).
+  await stockAct(dc, hen, 'You brush Henrietta', 'brush moment');
+  receipt('the brush pays the bond, positive-only', true);
+
+  // The lead walks her home: refund spoken, yard emptied. Bought
+  // only now — the cascade lets it fire only when nothing else
+  // offers, and the brush above just closed its own window.
+  await say(dc, '/give drovers_lead');
+  await stockAct(dc, hen, 'lead Henrietta back to the drover trade');
+  receipt('the lead walks one home at half worth', dc.count('drovers_lead') === 0 && dc.count('coins') >= 15, `coins=${dc.count('coins')}`);
+
   clearInterval(heartbeat);
-  clearInterval(hb2);
-  console.log(`\nTHE LIVING SOIL AND THE FULL FIELD: ${passed} receipts, all honest.`);
+  if (hb2) clearInterval(hb2);
+  clearInterval(hb3);
+  console.log(`\nTHE SOIL, THE FIELD, AND THE YARD: ${passed} receipts, all honest.`);
   process.exit(0);
 }
 

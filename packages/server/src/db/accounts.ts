@@ -1178,6 +1178,84 @@ export class AccountStore {
     this.db.fire('DELETE FROM farm_bins WHERE tx = ? AND ty = ?', [tx, ty]);
   }
 
+  /** THE ANIMALS OF THE YARD: every kept animal, world-wide, at boot. */
+  async loadLivestock(): Promise<
+    Array<{
+      characterId: number;
+      slot: number;
+      species: string;
+      name: string;
+      tx: number;
+      ty: number;
+      bond: number;
+      brushedAt: number;
+      nextProduceAt: number;
+      bornAt: number;
+    }>
+  > {
+    return this.db.query(
+      'SELECT character_id AS "characterId", slot, species, name, tx, ty, bond, ' +
+        'brushed_at AS "brushedAt", next_produce_at AS "nextProduceAt", born_at AS "bornAt" ' +
+        'FROM livestock',
+    ) as ReturnType<AccountStore['loadLivestock']>;
+  }
+
+  saveLivestock(row: {
+    characterId: number;
+    slot: number;
+    species: string;
+    name: string;
+    tx: number;
+    ty: number;
+    bond: number;
+    brushedAt: number;
+    nextProduceAt: number;
+    bornAt: number;
+  }): void {
+    this.db.fire(
+      'INSERT INTO livestock (character_id, slot, species, name, tx, ty, bond, brushed_at, next_produce_at, born_at) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (character_id, slot) DO UPDATE SET species = excluded.species, ' +
+        'name = excluded.name, tx = excluded.tx, ty = excluded.ty, bond = excluded.bond, ' +
+        'brushed_at = excluded.brushed_at, next_produce_at = excluded.next_produce_at, ' +
+        'born_at = excluded.born_at',
+      [
+        row.characterId,
+        row.slot,
+        row.species,
+        row.name,
+        row.tx,
+        row.ty,
+        row.bond,
+        row.brushedAt,
+        row.nextProduceAt,
+        row.bornAt,
+      ],
+    );
+  }
+
+  deleteLivestock(characterId: number, slot: number): void {
+    this.db.fire('DELETE FROM livestock WHERE character_id = ? AND slot = ?', [characterId, slot]);
+  }
+
+  async loadFarmTroughs(): Promise<Array<{ tx: number; ty: number; feed: number }>> {
+    return this.db.query('SELECT tx, ty, feed FROM farm_troughs') as ReturnType<
+      AccountStore['loadFarmTroughs']
+    >;
+  }
+
+  upsertFarmTrough(tx: number, ty: number, feed: number): void {
+    this.db.fire(
+      'INSERT INTO farm_troughs (tx, ty, feed) VALUES (?, ?, ?) ' +
+        'ON CONFLICT (tx, ty) DO UPDATE SET feed = excluded.feed',
+      [tx, ty, feed],
+    );
+  }
+
+  deleteFarmTrough(tx: number, ty: number): void {
+    this.db.fire('DELETE FROM farm_troughs WHERE tx = ? AND ty = ?', [tx, ty]);
+  }
+
   async loadBank(characterId: number): Promise<Record<string, number>> {
     const rows = await this.db.query<{ item_id: string; qty: number }>(
       'SELECT item_id, qty FROM bank_items WHERE character_id = ?',

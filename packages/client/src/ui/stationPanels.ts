@@ -17,8 +17,12 @@ import {
   COMPOST_BATCH_WORTH,
   COMPOST_PRIME_WORTH,
   CROP_BY_SEED,
+  GRADED_PRODUCE,
   GROWTH_SEEDS,
+  TROUGH_FEED_CAP,
   compostWorthOf,
+  feedWorthOf,
+  gradeOf,
   buildableGround,
   canUnmake,
   enchantDef,
@@ -37,7 +41,7 @@ import {
   type TrainerPost,
 } from '@arx/content';
 import { buildableIconUrl, itemIconUrl, queueItemIcon, uiIconUrl } from '../render/icons.js';
-import { farmBins, farmKey } from '../game/farmCare.js';
+import { farmBins, farmKey, farmTroughs } from '../game/farmCare.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
 import { petPortraitUrl } from '../render/petPortrait.js';
 import { createLedger } from './kit/ledger.js';
@@ -219,6 +223,7 @@ export class StationPanels {
     | { kind: 'craft'; station: StationType | null; skills: SkillXp; known: ReadonlySet<string>; sel: string | null }
     | { kind: 'plant'; tx: number; ty: number; skills: SkillXp; sel: string | null; bed: 'tilled' | 'frame' | 'log' }
     | { kind: 'compost'; tx: number; ty: number; sel: string | null }
+    | { kind: 'trough'; tx: number; ty: number; sel: string | null }
     | { kind: 'build'; skills: SkillXp; sel: string | null }
     | null = null;
 
@@ -497,6 +502,7 @@ export class StationPanels {
     if (this.showing.kind === 'craft') this.renderCraft();
     else if (this.showing.kind === 'plant') this.renderPlant();
     else if (this.showing.kind === 'compost') this.renderCompost();
+    else if (this.showing.kind === 'trough') this.renderTrough();
     else this.renderBuild();
   }
 
@@ -1083,6 +1089,131 @@ export class StationPanels {
               const s = slots[i];
               if (s && s.item === sel && !s.stolen) {
                 this.onCompost?.(tx, ty, i);
+                return;
+              }
+            }
+          }),
+        );
+        this.craftDetail.appendChild(actions);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------ trough
+
+  /** Set by main: loads one pack slot's feed into the manger. */
+  onTrough: ((tx: number, ty: number, slot: number) => void) | null = null;
+
+  /** THE ANIMALS OF THE YARD: the manger's feed screen. */
+  openTrough(tx: number, ty: number, at?: { tx: number; ty: number }): void {
+    this.closeAll();
+    this.anchor = at ? { x: at.tx + 0.5, y: at.ty + 0.5 } : { x: tx + 0.5, y: ty + 0.5 };
+    this.showing = { kind: 'trough', tx, ty, sel: null };
+    this.dressCraft('Feed trough', itemIconUrl('barley', 34), '#96703f',
+      'A full manger grades the yard. Barley is the herd\'s favorite.');
+    this.craftPanel.classList.remove('hidden');
+    this.renderTrough();
+  }
+
+  private renderTrough(): void {
+    if (this.showing?.kind !== 'trough') return;
+    const showing = this.showing;
+    const { tx, ty } = showing;
+    this.craftTools.innerHTML = '';
+    this.craftList.innerHTML = '';
+    this.craftDetail.innerHTML = '';
+    const feed = farmTroughs.get(farmKey(tx, ty))?.feed ?? 0;
+
+    const held = new Map<string, { qty: number; worth: number }>();
+    for (const slot of this.getInventory()) {
+      if (!slot || slot.stolen) continue;
+      const worth = feedWorthOf(slot.item, gradeOf, (base) => GRADED_PRODUCE.has(base));
+      if (worth === null) continue;
+      const row = held.get(slot.item) ?? { qty: 0, worth };
+      row.qty += slot.qty;
+      held.set(slot.item, row);
+    }
+
+    if (feed >= TROUGH_FEED_CAP) {
+      const note = document.createElement('div');
+      note.className = 'make-empty';
+      note.textContent = 'The manger is heaped full. The herd approves.';
+      this.craftList.appendChild(note);
+    } else if (held.size === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'make-empty';
+      empty.textContent = 'Nothing in your pack would feed the herd. Barley and spare produce serve.';
+      this.craftList.appendChild(empty);
+    } else {
+      const items = [...held.keys()];
+      if (!showing.sel || !held.has(showing.sel)) showing.sel = items[0]!;
+      this.dealIntoLedger(
+        this.craftList,
+        'trough',
+        items.map((item) => {
+          const row = held.get(item)!;
+          return this.ledgerRow({
+            key: `troughrow:${item}`,
+            iconUrl: itemIconUrl(item, 40),
+            name: itemDef(item)?.name ?? item,
+            note: `× ${row.qty.toLocaleString()}`,
+            noteTone: 'ok',
+            selected: showing.sel === item,
+            onPick: () => {
+              showing.sel = item;
+              this.renderTrough();
+            },
+          });
+        }),
+        8,
+      );
+    }
+
+    const head = document.createElement('div');
+    head.className = 'work-head';
+    head.appendChild(iconTile(itemIconUrl('barley', 64)));
+    const titles = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'work-name';
+    name.textContent = feed > 0 ? 'The herd eats well' : 'An empty manger';
+    const sub = document.createElement('div');
+    sub.className = 'work-sub';
+    sub.textContent = 'beastcraft · a fed animal gives its best';
+    titles.append(name, sub);
+    head.appendChild(titles);
+    this.craftDetail.appendChild(head);
+
+    const facts = document.createElement('div');
+    facts.className = 'work-facts';
+    const fact = (label: string, value: string): void => {
+      const f = document.createElement('div');
+      f.className = 'work-fact';
+      const v = document.createElement('strong');
+      v.textContent = value;
+      const l = document.createElement('span');
+      l.textContent = label;
+      f.append(v, l);
+      facts.appendChild(f);
+    };
+    fact('the manger', `${feed} of ${TROUGH_FEED_CAP}`);
+    fact('each collect', 'eats one measure');
+    this.craftDetail.appendChild(facts);
+
+    if (feed < TROUGH_FEED_CAP && showing.sel) {
+      const sel = showing.sel;
+      const worth = held.get(sel);
+      if (worth) {
+        this.craftDetail.appendChild(sectionHead('Into the manger'));
+        this.craftDetail.appendChild(this.materialRow(sel, 1));
+        const actions = document.createElement('div');
+        actions.className = 'work-actions';
+        actions.appendChild(
+          bigButton(worth.worth > 1 ? `Feed (+${worth.worth})` : 'Feed', `trough:${sel}`, () => {
+            const slots = this.getInventory();
+            for (let i = 0; i < slots.length; i++) {
+              const s = slots[i];
+              if (s && s.item === sel && !s.stolen) {
+                this.onTrough?.(tx, ty, i);
                 return;
               }
             }

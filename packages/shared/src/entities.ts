@@ -111,6 +111,14 @@ export interface EntityMeta {
    * the entity IS (somebody's, not the wild's; never a fight offer).
    */
   ownerEid?: EntityId;
+  /**
+   * THE ANIMALS OF THE YARD (farming v2 Phase 3): a kept yard animal.
+   * Owner is a CHARACTER (offline-safe) so this marker, not ownerEid,
+   * is what says "livestock" — ownerEid rides beside it only while
+   * the keeper is online (it aims the keeper's own prompts). Wears
+   * the drover's tag in the renderer; never a pet, never fightable.
+   */
+  stock?: boolean;
   /** Projectiles only: the input-frame seq whose press/release fired
    *  this shot — the tracer↔entity matching key. */
   seq?: number;

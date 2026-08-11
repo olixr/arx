@@ -134,6 +134,22 @@ export const SEED_STALL: readonly ShopEntry[] = [
   { item: 'mirefig_sapling', price: 340 },
 ];
 
+/**
+ * THE DROVER'S YARD (farming v2 Phase 3) — Maren's counter at the
+ * Dawnmead pen. Crated young for the keeping (released at your own
+ * feed trough), the lead that walks one back, and the barley the
+ * manger wants. The animal itself is never an item for long: the
+ * crate is a promise, the yard is the animal.
+ */
+export const DROVER_YARD: readonly ShopEntry[] = [
+  { item: 'chick_crate', price: 60 },
+  { item: 'calf_crate', price: 350 },
+  { item: 'lamb_crate', price: 280 },
+  { item: 'boarlet_crate', price: 700 },
+  { item: 'drovers_lead', price: 40 },
+  { item: 'barley_seed', price: 45 },
+];
+
 export const LAST_LAMP_STORES: readonly ShopEntry[] = [
   { item: 'bread', price: 30 },
   { item: 'hearty_stew', price: 55 },
@@ -148,6 +164,7 @@ export const LAST_LAMP_STORES: readonly ShopEntry[] = [
 const defs: ShopDef[] = [
   { id: 'general_store', name: 'General Store', stock: GENERAL_STORE },
   { id: 'seed_stall', name: "Jorel's Seed Stall", stock: SEED_STALL },
+  { id: 'drover_yard', name: "Maren's Drover Yard", stock: DROVER_YARD },
   { id: 'waystation_supplies', name: "The Wayfarer's Pack", stock: WAYSTATION_SUPPLIES },
   // THE ROAD'S FORTUNE (living frontier, phase 5): the peddler carts.
   // Each carries a thing or two town never sells — drop-unlock recipe

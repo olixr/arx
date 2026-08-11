@@ -317,11 +317,50 @@ export interface FarmBinInfo {
   readyAt: number;
 }
 
+export interface FarmTroughInfo {
+  tx: number;
+  ty: number;
+  /** Feed measures in the manger. */
+  feed: number;
+}
+
 export interface S2CFarm {
   t: 'farm';
   plots?: FarmPlotInfo[];
   bins?: FarmBinInfo[];
+  /** THE ANIMALS OF THE YARD (Phase 3, additive): trough feed. */
+  troughs?: FarmTroughInfo[];
   remove?: Array<{ tx: number; ty: number }>;
+}
+
+/**
+ * THE ANIMALS OF THE YARD: load one pack slot's feed into a trough.
+ * Slot-addressed; the trough tile, the feed worth, and the cap are
+ * re-proved at the door.
+ */
+export interface C2STroughAdd {
+  t: 'troughadd';
+  tx: number;
+  ty: number;
+  slot: number;
+}
+
+/**
+ * Name a just-released yard animal (the pet naming card, reused —
+ * the same sanitize law guards the wire). Slot is the livestock
+ * slot the release ceremony announced.
+ */
+export interface C2SStockName {
+  t: 'stockname';
+  slot: number;
+  name: string;
+}
+
+/** The release ceremony: the client opens the naming card for it. */
+export interface S2CStockCeremony {
+  t: 'stockname';
+  slot: number;
+  species: string;
 }
 
 /**
@@ -582,6 +621,8 @@ export type C2SMessage =
   | C2SMulch
   | C2SPrune
   | C2SCompostAdd
+  | C2STroughAdd
+  | C2SStockName
   | C2SInteractNpc
   | C2SPetName
   | C2SStable
@@ -1637,6 +1678,7 @@ export type S2CMessage =
   | S2CCallings
   | S2CBuffs
   | S2CFarm
+  | S2CStockCeremony
   | S2CCharges
   | S2CRide
   | S2CPet
@@ -1906,6 +1948,21 @@ export function parseC2S(raw: string): C2SMessage | null {
         return null;
       }
       return { t: 'compostadd', tx: msg.tx, ty: msg.ty, slot: msg.slot };
+    }
+    case 'troughadd': {
+      if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
+      if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
+      if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot) || msg.slot < 0 || msg.slot > 63) {
+        return null;
+      }
+      return { t: 'troughadd', tx: msg.tx, ty: msg.ty, slot: msg.slot };
+    }
+    case 'stockname': {
+      if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot) || msg.slot < 0 || msg.slot > 15) {
+        return null;
+      }
+      if (typeof msg.name !== 'string' || msg.name.length > 24) return null;
+      return { t: 'stockname', slot: msg.slot, name: msg.name };
     }
     case 'interactnpc': {
       if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;

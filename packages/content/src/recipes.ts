@@ -242,6 +242,23 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     burnResult: 'burnt_food',
   },
   {
+    id: 'cook_truffle_roast',
+    name: 'Truffle roast',
+    skill: 'cooking',
+    levelReq: 55,
+    xp: 320,
+    station: 'fire',
+    inputs: [
+      { item: 'truffle', qty: 1 },
+      { item: 'egg', qty: 1 },
+      { item: 'onion', qty: 1 },
+    ],
+    output: { item: 'truffle_roast', qty: 1 },
+    ticks: 72,
+    burnChance: 0.2,
+    burnResult: 'burnt_food',
+  },
+  {
     id: 'cook_kingsquash_bake',
     name: 'Kingsquash bake',
     skill: 'cooking',
@@ -730,6 +747,19 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     xp: 40,
     station: 'loom',
     inputs: [{ item: 'cotton', qty: 2 }],
+    output: { item: 'cloth', qty: 1 },
+    ticks: 35,
+  },
+  {
+    // THE ANIMALS OF THE YARD: the fleece joins the cloth line at
+    // cotton's own rung — the kept ram is a standing cotton field.
+    id: 'weave_wool_cloth',
+    name: 'Wool cloth',
+    skill: 'tailoring',
+    levelReq: 10,
+    xp: 45,
+    station: 'loom',
+    inputs: [{ item: 'wool', qty: 2 }],
     output: { item: 'cloth', qty: 1 },
     ticks: 35,
   },
@@ -1269,6 +1299,9 @@ const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
   cook_barley_porridge: 'trainer',
   cook_roast_redroot: 'drop',
   cook_kingsquash_bake: 'drop',
+  cook_truffle_roast: 'drop',
+  // The fleece line is taught at the loom like cotton's.
+  weave_wool_cloth: 'trainer',
 };
 
 const inlineRecipes: RecipeDef[] = defs.map((d) => {

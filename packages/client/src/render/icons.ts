@@ -3345,6 +3345,102 @@ const PAINTERS: Record<string, IconPainter> = {
     c.quadraticCurveTo(0.56, 0.28, 0.64, 0.3);
     c.stroke();
   },
+  troughbuild: (c, col) => {
+    // The manger: posts, box, straw-gold heap.
+    c.fillStyle = shade(col, -18);
+    c.fillRect(0.2, 0.5, 0.08, 0.36);
+    c.fillRect(0.72, 0.5, 0.08, 0.36);
+    c.fillStyle = col;
+    c.fillRect(0.12, 0.46, 0.76, 0.2);
+    c.fillStyle = shade(col, 24);
+    c.fillRect(0.16, 0.475, 0.68, 0.035);
+    c.fillStyle = '#c9a64b';
+    c.beginPath();
+    c.ellipse(0.5, 0.46, 0.26, 0.09, 0, Math.PI, 0);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = shade('#c9a64b', -14);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(0.36, 0.42);
+    c.lineTo(0.42, 0.36);
+    c.moveTo(0.6, 0.42);
+    c.lineTo(0.67, 0.37);
+    c.stroke();
+  },
+  crate_young: (c, col) => {
+    // A slat crate with bright eyes in the dark between boards.
+    c.fillStyle = shade(col, -30);
+    c.fillRect(0.18, 0.3, 0.64, 0.5);
+    c.fillStyle = col;
+    for (let i = 0; i < 3; i++) c.fillRect(0.18, 0.32 + i * 0.16, 0.64, 0.09);
+    c.fillStyle = shade(col, -40);
+    c.fillRect(0.16, 0.26, 0.68, 0.06);
+    c.fillRect(0.16, 0.78, 0.68, 0.06);
+    c.fillStyle = '#ffd76a';
+    c.fillRect(0.38, 0.44, 0.05, 0.05);
+    c.fillRect(0.56, 0.44, 0.05, 0.05);
+  },
+  woolfleece: (c, col) => {
+    // The whole fleece: a cloud of packed curls with one dark skirt.
+    c.fillStyle = shade(col, -22);
+    c.beginPath();
+    c.ellipse(0.5, 0.66, 0.3, 0.14, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = col;
+    for (const [bx, by, r] of [[0.36, 0.5, 0.15], [0.56, 0.44, 0.17], [0.66, 0.56, 0.13], [0.42, 0.62, 0.15]] as const) {
+      c.beginPath();
+      c.arc(bx, by, r, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.fillStyle = shade(col, 16);
+    c.beginPath();
+    c.arc(0.5, 0.44, 0.09, 0, Math.PI * 2);
+    c.fill();
+  },
+  trufflelump: (c, col) => {
+    // Ugly and priceless: a knobbled dark lump with pale marbling.
+    c.fillStyle = col;
+    c.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const r = 0.24 + ((i * 37) % 5) * 0.02;
+      const x = 0.5 + Math.cos(a) * r;
+      const y = 0.56 + Math.sin(a) * r * 0.85;
+      i === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+    }
+    c.closePath();
+    c.fill();
+    c.strokeStyle = shade(col, 30);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(0.36, 0.5);
+    c.lineTo(0.5, 0.62);
+    c.lineTo(0.62, 0.48);
+    c.moveTo(0.44, 0.68);
+    c.lineTo(0.56, 0.58);
+    c.stroke();
+    c.fillStyle = shade(col, 40);
+    c.fillRect(0.4, 0.42, 0.06, 0.045);
+  },
+  leadrope: (c, col) => {
+    // The soft halter, coiled with its loop hanging.
+    c.strokeStyle = col;
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.arc(0.5, 0.5, 0.2, 0.3, Math.PI * 2.15);
+    c.stroke();
+    c.beginPath();
+    c.arc(0.5, 0.52, 0.12, 0.5, Math.PI * 2.2);
+    c.stroke();
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.66, 0.6);
+    c.quadraticCurveTo(0.72, 0.74, 0.62, 0.84);
+    c.stroke();
+    c.fillStyle = shade(col, -24);
+    c.fillRect(0.62, 0.55, 0.09, 0.07);
+  },
   fruitround: (c, col) => {
     // One proud fruit: lit cheek, leaf flag, stem nub.
     c.fillStyle = col;
@@ -5439,6 +5535,14 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   apple: { icon: 'fruitround', color: '#c94a3d' },
   plum: { icon: 'fruitround', color: '#6e4a78' },
   mirefig: { icon: 'fruitround', color: '#8a6a45' },
+  wool: { icon: 'woolfleece', color: '#e8e2d4' },
+  truffle: { icon: 'trufflelump', color: '#4a3a30' },
+  chick_crate: { icon: 'crate_young', color: '#c9a86a' },
+  calf_crate: { icon: 'crate_young', color: '#b09a78' },
+  lamb_crate: { icon: 'crate_young', color: '#cfc7b8' },
+  boarlet_crate: { icon: 'crate_young', color: '#8a6a45' },
+  drovers_lead: { icon: 'leadrope', color: '#b0a068' },
+  truffle_roast: { icon: 'stew', color: '#6e4a38' },
   baked_potato: { icon: 'tuber', color: '#a8875c' },
   onion_soup: { icon: 'stew', color: '#c99c5c' },
   hearty_pottage: { icon: 'stew', color: '#a8905c' },
@@ -5919,6 +6023,7 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   irrigation_channel: { icon: 'channelbuild', color: '#8a6234' },
   mushroom_log: { icon: 'mushlog', color: '#5f4426' },
   growing_frame: { icon: 'framebuild', color: '#8a6234' },
+  feed_trough: { icon: 'troughbuild', color: '#6e5433' },
   enchanting_table: { icon: 'tome', color: '#7a6aa8' },
   barrel: { icon: 'barrel', color: '#94693a' },
   crate: { icon: 'crate', color: '#a5793f' },

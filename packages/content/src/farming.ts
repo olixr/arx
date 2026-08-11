@@ -30,13 +30,20 @@ export function gradedId(base: string, grade: Grade): string {
 }
 
 /**
- * Every base produce id that grows graded variants (the tilled-bed
- * crop yields). Log-bed crops are excluded by law — the dark bed
- * earns no care facts, so its reagents never wear a grade.
+ * Every base produce id that grows graded variants: the tilled-bed
+ * crop yields plus the yard's livestock produce (Phase 3 — the byre
+ * grades like the field). Log-bed crops are excluded by law — the
+ * dark bed earns no care facts, so its reagents never wear a grade.
+ * The livestock list is inlined here (not imported) so farming.ts
+ * stays at the bottom of the content import graph; livestock.test.ts
+ * pins the two lists against each other.
  */
-export const GRADED_PRODUCE: ReadonlySet<string> = new Set(
-  [...CROPS.values()].filter((d: CropDef) => d.bed !== 'log').map((d: CropDef) => d.yield.item),
-);
+export const LIVESTOCK_GRADED: readonly string[] = ['egg', 'milk', 'wool', 'truffle'];
+
+export const GRADED_PRODUCE: ReadonlySet<string> = new Set([
+  ...[...CROPS.values()].filter((d: CropDef) => d.bed !== 'log').map((d: CropDef) => d.yield.item),
+  ...LIVESTOCK_GRADED,
+]);
 
 /**
  * Read an item id back to its produce family. Non-produce ids come

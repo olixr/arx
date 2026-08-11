@@ -65,7 +65,8 @@ test('a targeted hurt working with no foe in hand skips BEFORE the roll: no icd 
   const player = { gear: { procs: [targetedProc] }, procs: new Map() };
   const s = {
     tickCount: 100,
-    pets: new Map(), npcs: new Map(),
+    pets: new Map(),
+    livestock: new Map(), npcs: new Map(),
     bodyMoment: proto.bodyMoment,
     offerProc: proto.offerProc,
     procState: proto.procState,
@@ -101,7 +102,8 @@ test('DoT pulses reach the hurt door with the burner in hand', () => {
     statuses: new Map([
       [5, [{ id: 'burn', power: 3, ticksLeft: BURN_TICK_EVERY * 4 + 1, sourceEid: 42 }]],
     ]),
-    pets: new Map(), npcs: new Map(),
+    pets: new Map(),
+    livestock: new Map(), npcs: new Map(),
     players: new Map([[5, { perks: { dotResistMult: 1 } }]]),
     damagePlayer: (eid: unknown, dmg: unknown, opts: { sourceEid?: number }) =>
       hits.push({ eid, dmg, opts: opts as { sourceEid?: number; pierceArmor?: boolean } }),
@@ -193,7 +195,8 @@ function damageNpcSlate(hp: number) {
   const health = { hp, maxHp: 20 };
   const s = {
     tickCount: 50,
-    pets: new Map(), npcs: new Map([[9, npc]]),
+    pets: new Map(),
+    livestock: new Map(), npcs: new Map([[9, npc]]),
     healths: new Map([[9, health]]),
     positions: new Map([
       [9, { x: 5, y: 5, dir: 0 }],
@@ -281,7 +284,8 @@ test('a live surge sharpens the basic shaft where it lands', () => {
       must: (id: number) => positions.get(id)!,
     }),
     players: new Map([[1, shooter]]),
-    pets: new Map(), npcs: new Map([[9, { def: { radius: 0.4 } }]]),
+    pets: new Map(),
+    livestock: new Map(), npcs: new Map([[9, { def: { radius: 0.4 } }]]),
     summons: new Map(),
     world: { isSolid: () => false, groundAt: () => undefined },
     executeAdjust: proto.executeAdjust,
@@ -316,7 +320,8 @@ test('chain per-jump fx carry the `<action>:<procId>` id, same as the closing br
   ]);
   const s = {
     positions,
-    pets: new Map(), npcs: new Map([
+    pets: new Map(),
+    livestock: new Map(), npcs: new Map([
       [9, { def: { radius: 0.4 } }],
       [10, { def: { radius: 0.4 } }],
     ]),

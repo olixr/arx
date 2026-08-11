@@ -37,6 +37,8 @@ export interface BinCare {
 
 export const farmPlots = new Map<string, PlotCare>();
 export const farmBins = new Map<string, BinCare>();
+/** THE ANIMALS OF THE YARD: trough feed by "tx,ty". */
+export const farmTroughs = new Map<string, { feed: number }>();
 
 export function farmKey(tx: number, ty: number): string {
   return `${tx},${ty}`;

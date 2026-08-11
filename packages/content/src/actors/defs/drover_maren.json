@@ -4,14 +4,33 @@
   "title": "Drover",
   "examine": "Boots older than most fences, and a voice she saves for animals. The stalls behind her are swept twice a day, and not for your sake.",
   "disposition": "friendly",
-  "model": { "kind": "humanoid", "look": { "skin": 1, "hair": 3, "hairColor": 2, "eyes": 0, "ears": 0, "feature": 1, "shirt": 6, "pants": 2 } },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 3,
+      "hairColor": 2,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 6,
+      "pants": 2
+    }
+  },
   "inventory": [
-    { "item": "berries", "qty": 3 },
-    { "item": "egg", "qty": 2 }
+    {
+      "item": "berries",
+      "qty": 3
+    },
+    {
+      "item": "egg",
+      "qty": 2
+    }
   ],
   "lines": [
     "Steady now. That one is only looking.",
     "Water first, then hay. You know the order better than I do.",
     "Mind the rail. It was mended on a cold day and it holds a grudge."
-  ]
+  ],
+  "shop": "drover_yard"
 }

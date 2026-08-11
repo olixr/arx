@@ -527,6 +527,7 @@ const PROMPT_LABELS: Record<string, string> = {
   alembic: 'Brew',
   sawhorse: 'Saw',
   plot: 'Plant',
+  trough: 'Fill Trough',
   seat: 'Sit',
   bed: 'Rest',
   sign: 'Read Sign',
@@ -591,6 +592,10 @@ stationPanels.onPlant = (tx, ty, seed) => {
 stationPanels.onCompost = (tx, ty, slot) => {
   sfx.uiTap();
   game.compostAdd(tx, ty, slot);
+};
+stationPanels.onTrough = (tx, ty, slot) => {
+  sfx.uiTap();
+  game.troughAdd(tx, ty, slot);
 };
 
 // Dev audit lever: `?room=bank|shop|stable` stands a maker room on
@@ -1456,6 +1461,12 @@ game.onPetCeremony = (slot, currentName) => {
   sfx.petBond();
   petNaming.open(slot, currentName, (name) => game.petRename(slot, name));
 };
+// THE ANIMALS OF THE YARD: a fresh release asks its name through the
+// same one card — the yard and the heel share a naming law.
+game.onStockCeremony = (slot, species) => {
+  sfx.petBond();
+  petNaming.open(slot, npcDef(species)?.name ?? species, (name) => game.stockRename(slot, name));
+};
 // THE THREE STALLS: the stable door's acts ride the wire; the rename
 // re-uses the naming card whole. The mirror re-renders the open panel.
 stationPanels.setStableHooks(
@@ -2182,6 +2193,11 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
         stationPanels.openCompost(target.tx, target.ty, target);
         panels.showInventory();
       }
+      break;
+    case 'trough':
+      closeAllUi();
+      stationPanels.openTrough(target.tx, target.ty, target);
+      panels.showInventory();
       break;
     case 'chest':
       // The server decides: locked, or a lid swings and loot spills.

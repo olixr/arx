@@ -145,6 +145,21 @@ import {
   bedTileFor,
   harvestXp,
   PRUNED_BIT,
+  LIVESTOCK,
+  LIVESTOCK_BY_CRATE,
+  LIVESTOCK_CAP,
+  TROUGH_STOCK_CAP,
+  TROUGH_FEED_CAP,
+  FED_COOLDOWN_MULT,
+  BRUSH_COOLDOWN_MS,
+  BRUSH_XP,
+  BOND_CAP,
+  BOND_PRIME,
+  feedWorthOf,
+  gradeOf,
+  livestockGrade,
+  npcDef,
+  GRADED_PRODUCE,
   compostWorthOf,
   COMPOST_BATCH_WORTH,
   COMPOST_MINUTES,
@@ -689,6 +704,27 @@ interface FarmBinState {
   fill: number;
   graded: number;
   startedAt: number;
+}
+
+/**
+ * THE ANIMALS OF THE YARD: one kept animal's durable truth —
+ * slot-addressed per character, anchored to a trough tile.
+ */
+interface LivestockRow {
+  characterId: number;
+  slot: number;
+  species: string;
+  name: string;
+  tx: number;
+  ty: number;
+  bond: number;
+  brushedAt: number;
+  nextProduceAt: number;
+  bornAt: number;
+}
+
+interface LivestockComp {
+  row: LivestockRow;
 }
 
 /** A cached A* lane toward a nav goal — see NavState.nav. */
@@ -4626,8 +4662,13 @@ export class GameServer {
       graded: b.graded,
       readyAt: b.startedAt === 0 ? 0 : b.startedAt + COMPOST_MINUTES * 60_000,
     }));
-    if (plots.length > 0 || bins.length > 0) {
-      session.sendJson({ t: 'farm', plots, bins });
+    const troughs = [...this.farmTroughs.values()].map((t) => ({
+      tx: t.tx,
+      ty: t.ty,
+      feed: t.feed,
+    }));
+    if (plots.length > 0 || bins.length > 0 || troughs.length > 0) {
+      session.sendJson({ t: 'farm', plots, bins, troughs });
     }
   }
 
@@ -4831,6 +4872,248 @@ export class GameServer {
     sys('You cut the deadwood away. The tree breathes.');
   }
 
+  // ------------------------------------------ the animals of the yard
+
+  /**
+   * THE ANIMALS OF THE YARD (farming v2 Phase 3): kept livestock by
+   * entity id. The ROW is the truth (slot-addressed per character,
+   * pets' own law); the entity is its standing body, spawned at boot
+   * and on release, anchored to a feed trough, alive whether the
+   * keeper is or not. Never a pet: no combat, no follow, no heel.
+   */
+  private readonly livestock = new Map<EntityId, LivestockComp>();
+
+  /** Trough feed by "tx,ty" — the yard's mangers. */
+  private readonly farmTroughs = new Map<string, { tx: number; ty: number; feed: number }>();
+
+  loadFarmTroughs(rows: Array<{ tx: number; ty: number; feed: number }>): void {
+    for (const row of rows) this.farmTroughs.set(`${row.tx},${row.ty}`, { ...row });
+  }
+
+  loadLivestockRows(rows: LivestockRow[]): void {
+    for (const row of rows) this.spawnLivestockEntity(row);
+  }
+
+  /** Stand a kept animal in the world beside its trough. */
+  private spawnLivestockEntity(row: LivestockRow): EntityId | null {
+    const def = npcDef(row.species);
+    if (!def || !LIVESTOCK.has(row.species)) return null;
+    this.world.ensure(Math.floor(row.tx / CHUNK_SIZE), Math.floor(row.ty / CHUNK_SIZE));
+    // Scatter the herd on the trough's south apron, dealt by slot so
+    // a yard reloads into the same loose arrangement.
+    const x = row.tx + 0.5 + ((row.slot % 3) - 1) * 1.2 + ((row.slot * 7) % 5) * 0.1;
+    const y = row.ty + 1.6 + Math.floor(row.slot / 3) * 1.1;
+    const eid = this.spawnNpc(def, x, y, -1);
+    this.livestock.set(eid, { row });
+    const npc = this.npcs.get(eid);
+    if (npc) {
+      npc.nextProduceAt = row.nextProduceAt;
+      // A kept hen lays for the hand, never the ground: the registry
+      // pays at the Gather, so the wild lay clock stays dark.
+      npc.nextLayAt = 0;
+    }
+    return eid;
+  }
+
+  private livestockEidFor(characterId: number, slot: number): EntityId | null {
+    for (const [eid, comp] of this.livestock) {
+      if (comp.row.characterId === characterId && comp.row.slot === slot) return eid;
+    }
+    return null;
+  }
+
+  /** Rows anchored to one trough (the stock cap's counter). */
+  private livestockAtTrough(tx: number, ty: number): number {
+    let n = 0;
+    for (const comp of this.livestock.values()) {
+      if (comp.row.tx === tx && comp.row.ty === ty) n++;
+    }
+    return n;
+  }
+
+  private livestockCountFor(characterId: number): number {
+    let n = 0;
+    for (const comp of this.livestock.values()) {
+      if (comp.row.characterId === characterId) n++;
+    }
+    return n;
+  }
+
+  private mirrorTrough(trough: { tx: number; ty: number; feed: number }): void {
+    for (const s of this.sessions) {
+      s.sendJson({ t: 'farm', troughs: [{ tx: trough.tx, ty: trough.ty, feed: trough.feed }] });
+    }
+  }
+
+  /**
+   * Release a crated young at the keeper's own trough — the buy's
+   * second half (useItem routes crates here, slot-addressed).
+   */
+  private releaseLivestock(
+    eid: EntityId,
+    player: PlayerComp,
+    slotIndex: number,
+    crateId: string,
+  ): void {
+    const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
+    const ldef = LIVESTOCK_BY_CRATE.get(crateId)!;
+    if (player.characterId < 0) {
+      sys('Guests cannot keep animals. Make an account!');
+      return;
+    }
+    const pos = this.positions.get(eid);
+    if (!pos) return;
+    // The trough within arm's reach that YOU raised is the yard.
+    let trough: { tx: number; ty: number } | null = null;
+    for (let dy = -2; dy <= 2 && !trough; dy++) {
+      for (let dx = -2; dx <= 2 && !trough; dx++) {
+        const tx = Math.floor(pos.x) + dx;
+        const ty = Math.floor(pos.y) + dy;
+        if (this.world.groundAt(tx, ty) !== Tile.FeedTrough) continue;
+        const built = this.world.builtAt(tx, ty);
+        if (built && built.owner === player.characterId) trough = { tx, ty };
+      }
+    }
+    if (!trough) {
+      sys('Release it at your own feed trough. The yard is the animal\'s home.');
+      return;
+    }
+    const level = this.effectiveLevel(player, 'beastcraft');
+    if (level < ldef.levelReq) {
+      sys(`You need beastcraft level ${ldef.levelReq} to keep a ${ldef.name.toLowerCase()}.`);
+      return;
+    }
+    if (this.livestockCountFor(player.characterId) >= LIVESTOCK_CAP) {
+      sys('Your yards are full. Lead one away first.');
+      return;
+    }
+    if (this.livestockAtTrough(trough.tx, trough.ty) >= TROUGH_STOCK_CAP) {
+      sys('This trough feeds all it can. Raise another.');
+      return;
+    }
+    // First free slot is the animal's identity forever.
+    const used = new Set<number>();
+    for (const comp of this.livestock.values()) {
+      if (comp.row.characterId === player.characterId) used.add(comp.row.slot);
+    }
+    let slot = -1;
+    for (let i = 0; i < LIVESTOCK_CAP; i++) {
+      if (!used.has(i)) {
+        slot = i;
+        break;
+      }
+    }
+    if (slot === -1) return;
+    if (!takeSlot(player.inventory, slotIndex, 1)) return;
+    const row: LivestockRow = {
+      characterId: player.characterId,
+      slot,
+      species: ldef.species,
+      name: ldef.name,
+      tx: trough.tx,
+      ty: trough.ty,
+      bond: 0,
+      brushedAt: 0,
+      nextProduceAt: Date.now() + ldef.produce.cooldownSec * 1000,
+      bornAt: Date.now(),
+    };
+    this.accounts.saveLivestock(row);
+    this.spawnLivestockEntity(row);
+    player.session?.sendJson({ t: 'inv', slots: player.inventory });
+    // The naming card opens on the ceremony — the pet card, reused.
+    player.session?.sendJson({ t: 'stockname', slot, species: ldef.species });
+    sys(`The ${ldef.name.toLowerCase()} steps into your yard and looks around, deciding things.`);
+  }
+
+  /** Name (or re-name) a kept animal — the pet-sanitize law guards it. */
+  stockName(eid: EntityId, slot: number, name: string): void {
+    const player = this.players.get(eid);
+    if (!player || player.characterId < 0) return;
+    const clean = sanitizePetName(name);
+    if (!clean) {
+      player.session?.sendJson({ t: 'chat', channel: 'system', text: 'That name will not stick.' });
+      return;
+    }
+    const stockEid = this.livestockEidFor(player.characterId, slot);
+    if (stockEid === null) return;
+    const comp = this.livestock.get(stockEid)!;
+    comp.row.name = clean;
+    this.accounts.saveLivestock(comp.row);
+    this.broadcastMetaUpdate(stockEid);
+    player.session?.sendJson({ t: 'chat', channel: 'system', text: `${clean} it is.` });
+  }
+
+  /**
+   * The whole yard conversation, in one cascade: another keeper's
+   * animal offers a word of refusal; the lead walks yours away; a
+   * ready udder or fleece opens the collect action (the milking
+   * rail, reused whole); an open brush window pays the bond; else
+   * the animal tells you how it is doing.
+   */
+  private interactLivestock(
+    eid: EntityId,
+    player: PlayerComp,
+    targetEid: EntityId,
+    npc: NpcComp,
+    comp: LivestockComp,
+    sys: (text: string) => void,
+  ): void {
+    const row = comp.row;
+    const ldef = LIVESTOCK.get(row.species)!;
+    if (row.characterId !== player.characterId) {
+      sys(`${row.name} belongs to another yard.`);
+      return;
+    }
+    const now = Date.now();
+    if (now >= npc.nextProduceAt) {
+      if (!hasSpaceFor(player.inventory, ldef.produce.item)) {
+        sys('Your pack is full.');
+        return;
+      }
+      const pos = this.positions.get(eid);
+      const npos = this.positions.get(targetEid);
+      if (!pos || !npos) return;
+      if (player.action) this.cancelAction(eid, player);
+      const ticks = Math.max(
+        GameServer.MIN_GATHER_TICKS,
+        Math.round(GameServer.MILK_TICKS / this.gatherSpeedOf(player)),
+      );
+      player.action = { kind: 'milk', targetEid, ticksLeft: ticks };
+      pos.dir = Math.atan2(npos.y - pos.y, npos.x - pos.x);
+      npc.holdUntilTick = this.tickCount + ticks + 20;
+      this.poses.set(eid, PoseState.Milk);
+      player.session?.sendJson({ t: 'action', state: 'start', ticks });
+      return;
+    }
+    if (now - row.brushedAt >= BRUSH_COOLDOWN_MS) {
+      row.brushedAt = now;
+      if (row.bond < BOND_CAP) row.bond += 1;
+      this.accounts.saveLivestock(row);
+      this.grantXp(eid, player, 'beastcraft', BRUSH_XP);
+      sys(`You brush ${row.name} down. ${row.bond >= BOND_PRIME ? 'It would follow you anywhere it could.' : 'It leans into the strokes.'}`);
+      return;
+    }
+    // THE LEAD WAITS ITS TURN: it fires only when the animal has
+    // nothing else to offer — a keeper carrying one can still milk,
+    // shear, and brush their own yard (the harness caught the lead
+    // eating the first-ever interact; a farewell must never outrank
+    // the living work). Half the crate's worth comes back.
+    if (countItem(player.inventory, 'drovers_lead') > 0) {
+      removeItem(player.inventory, 'drovers_lead', 1);
+      const refund = Math.floor((itemDef(ldef.crateItem)?.value ?? 0) / 2);
+      if (refund > 0) addItem(player.inventory, 'coins', refund);
+      this.accounts.deleteLivestock(row.characterId, row.slot);
+      this.livestock.delete(targetEid);
+      this.removeFromChunks(targetEid);
+      this.ecs.destroy(targetEid);
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      sys(`You lead ${row.name} back to the drover trade. The yard is quieter for it.`);
+      return;
+    }
+    const mins = Math.max(1, Math.ceil((npc.nextProduceAt - now) / 60_000));
+    sys(`${row.name} is content. Nothing to ${ldef.produce.verb.toLowerCase()} yet (about ${mins} min).`);
+  }
+
   /**
    * Feed one pack slot's item into a compost bin. Slot-addressed; the
    * bin, the worth, and the idle state are all re-proved here.
@@ -4880,6 +5163,50 @@ export class GameServer {
     this.accounts.upsertFarmBin(tx, ty, bin.fill, bin.graded, bin.startedAt);
     this.mirrorBin(bin);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
+  }
+
+  /**
+   * Load one pack slot's feed into a trough. Anyone may feed a
+   * neighbor's manger (the watering law's generosity); the door
+   * proves the tile, the worth, and the cap.
+   */
+  troughAdd(eid: EntityId, tx: number, ty: number, slot: number): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    if (player.characterId < 0) {
+      sys('Guests cannot tend the yard. Make an account!');
+      return;
+    }
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 2.2 * 2.2) return;
+    if (this.world.groundAt(tx, ty) !== Tile.FeedTrough) return;
+    const key = `${tx},${ty}`;
+    const trough = this.farmTroughs.get(key) ?? { tx, ty, feed: 0 };
+    if (trough.feed >= TROUGH_FEED_CAP) {
+      sys('The manger is heaped full.');
+      return;
+    }
+    const held = player.inventory[slot];
+    if (!held) return;
+    if (held.stolen) {
+      sys('Not with goods that would sour an honest manger.');
+      return;
+    }
+    const worth = feedWorthOf(held.item, gradeOf, (base) => GRADED_PRODUCE.has(base));
+    if (worth === null) {
+      sys('The herd has no use for that.');
+      return;
+    }
+    takeSlot(player.inventory, slot, 1);
+    trough.feed = Math.min(TROUGH_FEED_CAP, trough.feed + worth);
+    this.farmTroughs.set(key, trough);
+    this.accounts.upsertFarmTrough(tx, ty, trough.feed);
+    this.mirrorTrough(trough);
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    sys('You fill the manger. Somebody noticed immediately.');
   }
 
   /**
@@ -6243,6 +6570,19 @@ export class GameServer {
       const bin = this.farmBins.get(`${tx},${ty}`);
       if (!ownHanging && bin && (bin.fill > 0 || bin.startedAt !== 0)) {
         player.session.sendJson({ t: 'chat', channel: 'system', text: 'Empty the bin first.' });
+        return;
+      }
+    }
+    // THE ANIMALS OF THE YARD: a trough with a herd anchored (or a
+    // heaped manger) will not come down — lead the animals away and
+    // let them eat it empty first.
+    if (!ownHanging && this.world.groundAt(tx, ty) === Tile.FeedTrough) {
+      if (this.livestockAtTrough(tx, ty) > 0) {
+        player.session.sendJson({ t: 'chat', channel: 'system', text: 'The herd still answers to this trough.' });
+        return;
+      }
+      if ((this.farmTroughs.get(`${tx},${ty}`)?.feed ?? 0) > 0) {
+        player.session.sendJson({ t: 'chat', channel: 'system', text: 'The manger still holds feed.' });
         return;
       }
     }
@@ -9851,6 +10191,13 @@ export class GameServer {
     const def = itemDef(slot.item);
     if (!def) return;
 
+    // THE ANIMALS OF THE YARD: a crated young releases at your own
+    // feed trough — every refusal is spoken and the crate survives.
+    if (LIVESTOCK_BY_CRATE.has(slot.item)) {
+      this.releaseLivestock(eid, player, slotIndex, slot.item);
+      return;
+    }
+
     // Recipe scrolls: studying one teaches the recipe PERMANENTLY
     // (character_recipes, written immediately). Already-known refuses
     // without consuming — the scroll survives to trade on. The skill
@@ -10541,6 +10888,14 @@ export class GameServer {
       return;
     }
 
+    // THE ANIMALS OF THE YARD: a kept animal answers its keeper's
+    // whole cascade — and answers everyone else with a polite no.
+    const stockComp = this.livestock.get(targetEid);
+    if (stockComp) {
+      this.interactLivestock(eid, player, targetEid, npc, stockComp, sys);
+      return;
+    }
+
     // A wild beast offers the interact hand nothing since THE WILD
     // ANSWERS THE CALL: taming is Gentle the Wild, cast from a
     // technique seat. (Maren teaches it; the codex names the rung.)
@@ -10577,8 +10932,12 @@ export class GameServer {
     const pos = this.positions.get(eid);
     const npc = this.npcs.get(action.targetEid);
     const npos = this.positions.get(action.targetEid);
+    // THE YARD REGISTRY IS THE ONLY PAYER for kept animals; the wild
+    // def pays the town pens exactly as it always has.
+    const stock = this.livestock.get(action.targetEid);
+    const yardDef = stock ? LIVESTOCK.get(stock.row.species) : undefined;
     // The animal died, despawned, or was spooked out of hand reach.
-    if (!pos || !npc || !npos || !npc.def.produce) {
+    if (!pos || !npc || !npos || (!npc.def.produce && !yardDef)) {
       this.cancelAction(eid, player, 'gone');
       return;
     }
@@ -10593,7 +10952,7 @@ export class GameServer {
     npc.holdUntilTick = this.tickCount + 10;
     if (--action.ticksLeft > 0) return;
 
-    const produce = npc.def.produce;
+    const produce = yardDef ? yardDef.produce : npc.def.produce!;
     const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
     // Raced by another milker mid-squeeze: the udder ran dry first.
     if (Date.now() < npc.nextProduceAt) {
@@ -10605,15 +10964,51 @@ export class GameServer {
       this.cancelAction(eid, player, 'full');
       return;
     }
+    // THE YARD'S CARE FOLD: a kept animal's yield grades by its care
+    // — a fed manger (one measure spent per collect) and the brush
+    // bond. Fed also hurries the NEXT wait. Deterministic; the town
+    // pen's animals stay plain forever (no care facts, no finery).
+    let itemId = produce.item;
+    let restMult = player.perks.produceRestMult;
+    if (stock && yardDef) {
+      const row = stock.row;
+      const troughKey = `${row.tx},${row.ty}`;
+      const trough = this.farmTroughs.get(troughKey);
+      const fed = !!trough && trough.feed > 0;
+      if (fed) {
+        trough.feed -= 1;
+        if (trough.feed <= 0) {
+          this.farmTroughs.delete(troughKey);
+          this.accounts.deleteFarmTrough(row.tx, row.ty);
+          this.mirrorTrough({ tx: row.tx, ty: row.ty, feed: 0 });
+        } else {
+          this.accounts.upsertFarmTrough(row.tx, row.ty, trough.feed);
+          this.mirrorTrough(trough);
+        }
+        restMult *= FED_COOLDOWN_MULT;
+      }
+      const grade = livestockGrade(fed, row.bond);
+      if (grade > 0) itemId = gradedId(produce.item, grade);
+      if (grade > 0) {
+        sys(grade === 2 ? `${row.name} gives its very best. The care shows.` : `${row.name} gives well today.`);
+      }
+    }
     // Drover's Bond shortens the animal's rest; Gentle Hand sometimes
     // coaxes a second measure.
-    npc.nextProduceAt =
-      Date.now() + Math.round(produce.cooldownSec * 1000 * player.perks.produceRestMult);
+    npc.nextProduceAt = Date.now() + Math.round(produce.cooldownSec * 1000 * restMult);
+    if (stock) {
+      stock.row.nextProduceAt = npc.nextProduceAt;
+      this.accounts.saveLivestock(stock.row);
+    }
     const produceQty = 1 + (Math.random() < player.perks.doubleProduceChance ? 1 : 0);
-    addItem(player.inventory, produce.item, produceQty);
+    addItem(player.inventory, itemId, produceQty);
     this.grantXp(eid, player, 'beastcraft', produce.xp);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    sys(`You collect ${itemDef(produce.item)?.name.toLowerCase() ?? produce.item} from the ${npc.def.name.toLowerCase()}.`);
+    sys(
+      stock
+        ? `You ${LIVESTOCK.get(stock.row.species)!.produce.verb.toLowerCase()} ${stock.row.name}: ${itemDef(itemId)?.name.toLowerCase() ?? itemId}${produceQty > 1 ? ' twice over' : ''}.`
+        : `You collect ${itemDef(produce.item)?.name.toLowerCase() ?? produce.item} from the ${npc.def.name.toLowerCase()}.`,
+    );
     this.cancelAction(eid, player, 'done');
   }
 
@@ -16856,6 +17251,10 @@ export class GameServer {
     const npc = this.npcs.get(npcEid);
     const health = this.healths.get(npcEid);
     if (!npc || !health) return;
+    // THE DROVER'S PEACE: no wound ever lands on a kept yard animal.
+    // Clients never offer the fight (meta.friendly), so this door is
+    // the honesty backstop, quiet by design.
+    if (this.livestock.has(npcEid)) return;
 
     // THE FANG KNOWS ITS FRIENDS, mirrored: this door is the players'
     // (and pets') door, and neither may wound a companion — friendly
@@ -19010,6 +19409,8 @@ export class GameServer {
     // for help, no taunt ever aims a tamed body. This is the ONE door
     // into 'chase', so the law holds everywhere by construction.
     if (this.pets.has(eid)) return;
+    // THE DROVER'S PEACE: a kept yard animal opens no fight — ever.
+    if (this.livestock.has(eid)) return;
     // THE PEACE HOLDS AT THE DOOR (docs/factions-plan.md Phase 2):
     // a faction body never opens a fight with a player its ledger
     // calls a friend — and an enforcer only ever opens one with an
@@ -19806,6 +20207,9 @@ export class GameServer {
       // through damageNpc.
       if (
         this.npcAtPeace(npc) &&
+        // THE DROVER'S PEACE: a kept animal has no eyes for anyone —
+        // a yard boar grazes where a wild one would charge.
+        !this.livestock.has(eid) &&
         (npc.def.aggroRange > 0 || this.npcEnforcerFid(eid) !== null) &&
         this.tickCount >= npc.noAggroUntilTick &&
         (this.tickCount + eid) % GameServer.PERCEPTION_PERIOD === 0
@@ -20754,11 +21158,71 @@ export class GameServer {
         this.mirrorBin(bin);
         turned++;
       }
+      // THE ANIMALS OF THE YARD: and hurries every nearby udder,
+      // fleece, and snout to ready (same dev-world mercy).
+      for (const [stockEid, comp] of this.livestock) {
+        const spos = this.positions.get(stockEid);
+        if (!spos || (pos && Math.hypot(spos.x - pos.x, spos.y - pos.y) > 20)) continue;
+        const npc2 = this.npcs.get(stockEid);
+        if (!npc2 || now >= npc2.nextProduceAt) continue;
+        npc2.nextProduceAt = now;
+        comp.row.nextProduceAt = now;
+        this.accounts.saveLivestock(comp.row);
+      }
       this.tickCrops(now);
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
         text: `Ripened ${grown} crops${turned > 0 ? `, hurried ${turned} bins` : ''}.`,
+      });
+      return;
+    }
+    if (config.devCommands && (text === '/clearfarm' || text.startsWith('/clearfarm '))) {
+      // THE PROVING GROUND: level a radius to bare grass — crops,
+      // bins, troughs, and built tiles all cleared. Dev worlds only;
+      // the harness stages on virgin ground instead of playing the
+      // terrain lottery (10-minute suites died of that lottery).
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const r = Math.min(16, Math.max(2, Number(text.split(/\s+/)[1]) || 8));
+      const cx = Math.floor(pos.x);
+      const cy = Math.floor(pos.y);
+      let cleared = 0;
+      for (let ty = cy - r; ty <= cy + r; ty++) {
+        for (let tx = cx - r; tx <= cx + r; tx++) {
+          const key = `${tx},${ty}`;
+          if (this.crops.has(key)) {
+            this.crops.delete(key);
+            this.accounts.deleteCrop(tx, ty);
+            this.world.unregisterCropTile(tx, ty);
+            for (const s of this.sessions) s.sendJson({ t: 'farm', remove: [{ tx, ty }] });
+          }
+          if (this.farmBins.has(key)) {
+            this.farmBins.delete(key);
+            this.accounts.deleteFarmBin(tx, ty);
+            this.mirrorBin({ tx, ty, fill: 0, graded: 0, startedAt: 0 });
+          }
+          if (this.farmTroughs.has(key)) {
+            this.farmTroughs.delete(key);
+            this.accounts.deleteFarmTrough(tx, ty);
+            this.mirrorTrough({ tx, ty, feed: 0 });
+          }
+          if (this.world.builtAt(tx, ty)) {
+            this.world.unregisterBuilt(tx, ty);
+            this.accounts.deleteBuiltTile(tx, ty);
+            this.ringCache = null;
+          }
+          const g = this.world.groundAt(tx, ty);
+          if (g !== undefined && g !== Tile.Grass) {
+            this.setWorldTile(tx, ty, Tile.Grass);
+            cleared++;
+          }
+        }
+      }
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Cleared ${cleared} tiles to grass (r=${r}).`,
       });
       return;
     }
@@ -22622,6 +23086,17 @@ export class GameServer {
       }
       meta.ownerEid = petComp.ownerEid;
       meta.friendly = true;
+    }
+    // THE ANIMALS OF THE YARD: a kept animal wears its given name and
+    // the stock marker (never fightable); ownerEid rides only while
+    // the keeper is online, aiming the keeper's own prompts.
+    const stockComp = this.livestock.get(eid);
+    if (stockComp && npc) {
+      meta.name = stockComp.row.name;
+      meta.stock = true;
+      meta.friendly = true;
+      const keeperEid = this.characterEids.get(stockComp.row.characterId);
+      if (keeperEid !== undefined) meta.ownerEid = keeperEid;
     }
     const actorComp = this.actors.get(eid);
     if (actorComp) {

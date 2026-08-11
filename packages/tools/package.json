@@ -12,7 +12,9 @@
     "prove:mounts": "tsx src/proving/mounts.ts",
     "prove:pets": "tsx src/proving/pets.ts",
     "prove:tongue": "ARX_PROVE_FROM=tongue tsx src/proving/pets.ts",
-    "prove:farm": "tsx src/proving/farm.ts"
+    "prove:farm": "tsx src/proving/farm.ts",
+    "prove:field": "ARX_PROVE_FROM=field tsx src/proving/farm.ts",
+    "prove:yard": "ARX_PROVE_FROM=yard tsx src/proving/farm.ts"
   },
   "dependencies": {
     "@arx/shared": "*",

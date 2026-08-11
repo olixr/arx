@@ -384,6 +384,18 @@ export class Session {
         this.game.compostAdd(this.playerEid, msg.tx, msg.ty, msg.slot);
         return;
       }
+      case 'troughadd': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.troughAdd(this.playerEid, msg.tx, msg.ty, msg.slot);
+        return;
+      }
+      case 'stockname': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.stockName(this.playerEid, msg.slot, msg.name);
+        return;
+      }
       case 'interactnpc': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

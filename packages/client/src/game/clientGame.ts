@@ -69,8 +69,8 @@ import {
   type DetailPatch,
   type Vec2,
 } from '@arx/shared';
-import { CROP_TILES, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
-import { farmBins, farmKey, farmPlots, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
+import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
+import { farmBins, farmKey, farmPlots, farmTroughs, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
 import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
@@ -116,6 +116,7 @@ export type InteractTarget =
   | { kind: 'plot'; tx: number; ty: number }
   | { kind: 'crop'; tx: number; ty: number; mature: boolean }
   | { kind: 'bin'; tx: number; ty: number }
+  | { kind: 'trough'; tx: number; ty: number }
   | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string }
   | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
   | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
@@ -476,6 +477,8 @@ export class ClientGame {
   onBuffs: (() => void) | null = null;
   /** THE LIVING SOIL: fires after any farm-care mirror change. */
   onFarm: (() => void) | null = null;
+  /** THE ANIMALS OF THE YARD: a fresh release asks for its name. */
+  onStockCeremony: ((slot: number, species: string) => void) | null = null;
   /**
    * THE METER SHOWS ITS HAND: the own body's stacking-working meters
    * (proc id, banked count, count asked). Name, school, and icon are
@@ -1456,12 +1459,22 @@ export class ClientGame {
           if (b.fill === 0 && b.readyAt === 0) farmBins.delete(farmKey(b.tx, b.ty));
           else farmBins.set(farmKey(b.tx, b.ty), { fill: b.fill, graded: b.graded, readyAt: b.readyAt });
         }
+        for (const tr of msg.troughs ?? []) {
+          if (tr.feed <= 0) farmTroughs.delete(farmKey(tr.tx, tr.ty));
+          else farmTroughs.set(farmKey(tr.tx, tr.ty), { feed: tr.feed });
+        }
         for (const r of msg.remove ?? []) {
           farmPlots.delete(farmKey(r.tx, r.ty));
           this.touchNeighbors(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
         }
         if ((msg.plots?.length ?? 0) > 0 || (msg.remove?.length ?? 0) > 0) this.worldVersion++;
         this.onFarm?.();
+        break;
+      }
+      case 'stockname': {
+        // THE ANIMALS OF THE YARD: the release ceremony — the naming
+        // card opens for the newest animal in the yard.
+        this.onStockCeremony?.(msg.slot, msg.species);
         break;
       }
       case 'charges': {
@@ -1882,6 +1895,14 @@ export class ClientGame {
     this.conn?.send({ t: 'compostadd', tx, ty, slot });
   }
 
+  troughAdd(tx: number, ty: number, slot: number): void {
+    this.conn?.send({ t: 'troughadd', tx, ty, slot });
+  }
+
+  stockRename(slot: number, name: string): void {
+    this.conn?.send({ t: 'stockname', slot, name });
+  }
+
   /** Fires with (tx, ty, previous, next) whenever a detail mutates. */
   onDetailChange: ((tx: number, ty: number, prev: number, next: number) => void) | null = null;
 
@@ -2077,6 +2098,8 @@ export class ClientGame {
     // lives client-side (S2CFarm), so the deposit panel opens with no
     // server reply — every deposit re-proves the tile on the way in.
     if (ground === Tile.CompostBin) return { kind: 'bin', tx, ty };
+    // THE ANIMALS OF THE YARD: the manger opens the feed panel.
+    if (ground === Tile.FeedTrough) return { kind: 'trough', tx, ty };
     const station = stationAtTile(ground);
     if (station) return { kind: 'station', tx, ty, station };
     // Loot chests: a closed chest offers itself; an open one has
@@ -2151,6 +2174,10 @@ export class ClientGame {
       // fallen friend, or the bond moment with its lure in the pack.
       // The everyday pat moved to a deliberate click on the body and
       // the companion chip. Another keeper's beast offers nothing.
+      // THE ANIMALS OF THE YARD: another keeper's animal (or one
+      // whose keeper is offline — no ownerEid rides then) offers
+      // nothing; your own offers its species' working verb.
+      if (remote.meta.stock && remote.meta.ownerEid !== this.ownEid) continue;
       const owned = remote.meta.ownerEid !== undefined;
       if (owned && remote.meta.ownerEid !== this.ownEid) continue;
       // Taming left this prompt with THE WILD ANSWERS THE CALL: the
@@ -2160,7 +2187,9 @@ export class ClientGame {
       // neutrals — the guard you COULD strike would rather chat. A
       // crouched hand asks a different question (factions Phase 5):
       // the same press is the pickpocket verb, and the prompt says so.
-      const verb = owned
+      const verb = remote.meta.stock
+        ? (LIVESTOCK.get(def?.id ?? '')?.produce.verb ?? 'Tend')
+        : owned
         ? latest != null && latest.hpPct === 0
           ? 'Tend'
           : this.petOfferReady()

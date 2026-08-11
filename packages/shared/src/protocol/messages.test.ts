@@ -167,3 +167,13 @@ test('THE ORCHARD KNIFE walks the whitelist whole', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'prune', tx: 0.5, ty: 0 })), null);
   assert.equal(parseC2S(JSON.stringify({ t: 'prune', tx: 0 })), null);
 });
+
+test('THE ANIMALS OF THE YARD verbs walk the whitelist whole', () => {
+  const feed = parseC2S(JSON.stringify({ t: 'troughadd', tx: -4, ty: 9, slot: 3 }));
+  assert.deepEqual(feed, { t: 'troughadd', tx: -4, ty: 9, slot: 3 });
+  assert.equal(parseC2S(JSON.stringify({ t: 'troughadd', tx: 0, ty: 0, slot: 64 })), null);
+  const name = parseC2S(JSON.stringify({ t: 'stockname', slot: 2, name: 'Butterworth' }));
+  assert.deepEqual(name, { t: 'stockname', slot: 2, name: 'Butterworth' });
+  assert.equal(parseC2S(JSON.stringify({ t: 'stockname', slot: -1, name: 'x' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'stockname', slot: 0, name: 'x'.repeat(25) })), null);
+});

@@ -51,7 +51,7 @@ import {
   isFishingTile,
 } from '@arx/shared';
 import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, isCropTile, itemDef, npcDef, npcHitHeight } from '@arx/content';
-import { farmBins, farmPlots, predictedGrade } from '../game/farmCare.js';
+import { farmBins, farmPlots, farmTroughs, predictedGrade } from '../game/farmCare.js';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
 import {
@@ -22639,6 +22639,88 @@ export class Renderer {
         };
       }
 
+      case Tile.FeedTrough: {
+        const syT = s * this.camera.yScale;
+        // THE ANIMALS OF THE YARD: a knee-high manger — two set posts
+        // carrying a long board box, feed heaped by the mirror's own
+        // count, loose straws escaping, a hoof-worn apron below. The
+        // herd's whole economy reads at a glance: heaped, low, bare.
+        const xL = p.x - s * 0.46;
+        const xR = p.x + s * 0.46;
+        const yB = p.y + syT * 0.4;
+        const boxTop = yB - s * 0.34;
+        const woodC = '#6e5433';
+        return {
+          sortY: ty + 0.8,
+          body: stationBody(0.9, 0.7, 0.5),
+          drawShadow: () => {
+            this.castEdgeQuad(xL, yB + syT * 0.05, xR, yB + syT * 0.05, 0.55);
+          },
+          draw: () => {
+            const ctx = this.ctx;
+            const feed = farmTroughs.get(`${tx},${ty}`)?.feed ?? 0;
+            // Hoof-worn apron: the herd stands here all day.
+            ctx.fillStyle = 'rgba(94, 70, 44, 0.38)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, yB + syT * 0.03, s * 0.52, syT * 0.18, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The two set posts, sun on the sawn tops.
+            for (const px2 of [xL + s * 0.08, xR - s * 0.08]) {
+              ctx.fillStyle = shade(woodC, -14);
+              ctx.fillRect(px2 - s * 0.05, boxTop - s * 0.02, s * 0.1, yB - boxTop + s * 0.02);
+              ctx.fillStyle = shade(woodC, 28);
+              ctx.fillRect(px2 - s * 0.05, boxTop - s * 0.02, s * 0.1, s * 0.035);
+            }
+            // The long box: front board with a lit top arris and a
+            // dark seam under the rim.
+            ctx.fillStyle = woodC;
+            ctx.fillRect(xL + s * 0.02, boxTop, xR - xL - s * 0.04, s * 0.2);
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+            ctx.lineWidth = Math.max(1.2, s * 0.024);
+            ctx.strokeRect(xL + s * 0.02, boxTop, xR - xL - s * 0.04, s * 0.2);
+            ctx.fillStyle = shade(woodC, 22);
+            ctx.fillRect(xL + s * 0.06, boxTop + s * 0.012, xR - xL - s * 0.12, s * 0.03);
+            // The feed: a straw-gold heap rising with the mirror's
+            // count; a bare manger shows its dark hollow instead.
+            const frac = Math.min(1, feed / 12);
+            if (frac > 0) {
+              const heapC = '#c9a64b';
+              ctx.fillStyle = heapC;
+              ctx.beginPath();
+              ctx.ellipse(
+                p.x,
+                boxTop + s * 0.02 - frac * s * 0.07,
+                (xR - xL) * 0.36,
+                syT * (0.05 + frac * 0.05),
+                0, Math.PI, 0,
+              );
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = shade(heapC, 20);
+              ctx.beginPath();
+              ctx.ellipse(p.x - s * 0.1, boxTop - frac * s * 0.06, s * 0.12, syT * 0.03, -0.2, 0, Math.PI * 2);
+              ctx.fill();
+              // Escaped straws at hash-dealt angles.
+              ctx.strokeStyle = shade(heapC, -12);
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              for (let k = 0; k < 3; k++) {
+                const hh = (h >> (k * 5)) & 0xff;
+                const sx2 = xL + s * 0.1 + ((hh % 80) / 100) * (xR - xL - s * 0.2);
+                ctx.beginPath();
+                ctx.moveTo(sx2, boxTop - s * 0.01);
+                ctx.lineTo(sx2 + s * 0.05, boxTop - s * 0.05 - ((hh >> 4) % 3) * s * 0.01);
+                ctx.stroke();
+              }
+            } else {
+              ctx.fillStyle = 'rgba(20, 14, 24, 0.6)';
+              ctx.beginPath();
+              ctx.ellipse(p.x, boxTop + s * 0.03, (xR - xL) * 0.34, syT * 0.045, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
       case Tile.Well: {
         const syT = s * this.camera.yScale;
         // The yard's water: a facetted stone ring at the chest (its
@@ -27377,7 +27459,7 @@ export class Renderer {
   private downedBeastItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number },
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number },
     nameInk?: string,
   ): DrawItem {
@@ -27481,7 +27563,7 @@ export class Renderer {
   private npcItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number },
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number },
     hurt: boolean,
     nameInk?: string,
@@ -27637,7 +27719,11 @@ export class Renderer {
           attackT,
           seed: eid,
           nowMs: performance.now(),
-          collar: meta.ownerEid !== undefined ? '#6e4a26' : undefined,
+          // A companion wears the keeper's collar; a yard animal wears
+          // the drover's tan halter — kept, never heeled, and the tag
+          // stays on whether the keeper is online or not (the stock
+          // marker is the durable fact; ownerEid comes and goes).
+          collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
         });
       },
       // Bounds from the SPECIES SPEC, not the collision radius: a
