@@ -1,0 +1,64 @@
+{
+  "id": "ansgar_stores",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "steward_ansgar"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "ansgar_stores__greet",
+      "text": "Mind the pass, the soup goes through at speed. You are welcome in my kitchens, traveler, provided you stand somewhere the work is not.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "ansgar_stores__hub",
+      "text": "Ask, while the bread proves.",
+      "choices": [
+        {
+          "text": "How do you feed a castle up a mountain?",
+          "next": "feed"
+        },
+        {
+          "text": "What are the King and Queen like to serve?",
+          "next": "crown"
+        },
+        {
+          "text": "Signy at the cookhouse says her kitchen feeds the real city.",
+          "next": "signy"
+        },
+        {
+          "text": "I'll leave you to the proving.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "feed",
+      "voice": "ansgar_stores__feed",
+      "text": "Grain up the High Road from Amberford, greens off the Greenstair, fish out of two waters, salt when Saltmere's carts feel brave. Four hundred meals a week from five hearths. A castle is not a fortress, traveler. It is a list, and I keep it. The fortress part is what happens if I stop.",
+      "next": "hub"
+    },
+    {
+      "id": "crown",
+      "voice": "ansgar_stores__crown",
+      "text": "The King eats what the garrison eats and notices if it is better. The Queen reads my ledger for sport and has found one error in six years. I leave her one small one a month now, seeded fair. She knows. She finds it anyway, and writes SEEN beside it in a hand like a knife.",
+      "next": "hub"
+    },
+    {
+      "id": "signy",
+      "voice": "ansgar_stores__signy",
+      "text": "She is entirely right and I will deny saying so. Signy feeds two districts on shift bells with no ceremony to hide behind. I feed one castle that would eat ceremony if I let it. When her stores run short mine walk down the stair after dark, and no ledger of mine records the walk.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "ansgar_stores__bye",
+      "text": "Safe roads. Eat before the climb down, it is longer than it looks."
+    }
+  ]
+}

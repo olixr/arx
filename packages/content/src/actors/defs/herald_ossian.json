@@ -1,0 +1,36 @@
+{
+  "id": "herald_ossian",
+  "name": "Herald Ossian",
+  "title": "The Crown's Word",
+  "examine": "Reads the Line's decrees in a voice that fills the hall, then spends the rest of the day saving his own. The tabard is madder crimson and immaculate.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 5,
+      "hairColor": 0,
+      "beard": 1,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 3,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "cape": "cape_banner"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 25
+    }
+  ],
+  "lines": [
+    "Hall at morning bell, Grand Court at midday. The word walks down the stair so the city need not walk up.",
+    "I read what the Crown writes. What I think is kept in a smaller voice, for after supper.",
+    "Hear the word and mind the edge. That second part is mine. The Crown lets me keep it."
+  ]
+}

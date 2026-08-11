@@ -48,6 +48,14 @@ import fallWeaver from './defs/fall_weaver.json';
 import fallKing from './defs/fall_king.json';
 import fallQueen from './defs/fall_queen.json';
 import fallCastleGuard from './defs/fall_castle_guard.json';
+import fallCastleGuardDrillDay from './defs/fall_castle_guard_drill_day.json';
+import fallCastleGuardDrillNight from './defs/fall_castle_guard_drill_night.json';
+import fallDrillmaster from './defs/fall_drillmaster.json';
+import fallSteward from './defs/fall_steward.json';
+import fallHerald from './defs/fall_herald.json';
+import fallServant from './defs/fall_servant.json';
+import fallWatchMarket from './defs/fall_watch_market.json';
+import fallWatchRow from './defs/fall_watch_row.json';
 import fallSmeltmaster from './defs/fall_smeltmaster.json';
 import fallAssayer from './defs/fall_assayer.json';
 import fallCarpenter from './defs/fall_carpenter.json';
@@ -187,6 +195,14 @@ const SOURCES: readonly unknown[] = [
   fallWatchGateNight,
   fallWatchRoundDay,
   fallWatchRoundNight,
+  fallCastleGuardDrillDay,
+  fallCastleGuardDrillNight,
+  fallDrillmaster,
+  fallSteward,
+  fallHerald,
+  fallServant,
+  fallWatchMarket,
+  fallWatchRow,
   fallWeaver,
   fallKing,
   fallQueen,

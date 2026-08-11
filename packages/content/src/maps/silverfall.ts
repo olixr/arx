@@ -310,6 +310,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(56, 26, Tile.Basin);
   b.set(52, 28, Tile.Counter).set(53, 28, Tile.Counter); // the pass
   b.set(52, 29, Tile.CrateGoods).set(53, 29, Tile.Barrel); // the larder row
+  b.set(52, 27, Tile.Bed); // the steward's cot, warm side of the hearth
   b.set(55, 28, Tile.Table).set(56, 28, Tile.Chair); // the steward's ledger
   b.setDetail(56, 27, Detail.Doormat);
   b.sign(58, 26, 'THE CASTLE KITCHENS', ['four hundred meals a week', 'the steward remembers every one']);
@@ -1161,13 +1162,31 @@ export function buildSilverfall(): ZoneDef {
   // THE PEOPLE — the capital's cast. Placements are each routine's
   // post (the post-is-the-origin law).
   // ---------------------------------------------------------------
-  // The Crown.
+  // The Crown, and THE CASTLE GARRISON — nine posts of the King's
+  // steel: the gate pair on the landing, the passage, the hall gate,
+  // the dais pair, the royal door, and the drill pair whose rota
+  // hot-bunks the garrison range (day body sleeps by night, night
+  // body walks the east-walk rounds by lantern).
   b.actor('king_aeriex', 77.5, 15.4, Math.PI / 2, 'fall_king');
   b.actor('queen_kayri', 78.5, 15.4, Math.PI / 2, 'fall_queen');
   b.actor('warden_maren', 57.5, 21.4, 0, 'fall_warden');
+  b.actor('herald_ossian', 82.5, 17.4, Math.PI / 2, 'fall_herald');
+  b.actor('steward_ansgar', 55.5, 29.4, -Math.PI / 2, 'fall_steward');
+  b.actor('drillmaster_jorunn', 65.5, 29.5, Math.PI / 2, 'fall_drillmaster');
   b.actor('castle_guard', 85.5, 33.5, Math.PI / 2, 'fall_castle_guard');
   b.actor('castle_guard', 91.5, 33.5, Math.PI / 2, 'fall_castle_guard');
+  b.actor('castle_guard', 88.5, 30.5, Math.PI / 2, 'fall_castle_guard');
   b.actor('castle_guard', 76.5, 25.5, Math.PI / 2, 'fall_castle_guard');
+  b.actor('castle_guard', 74.5, 15.5, Math.PI / 2, 'fall_castle_guard');
+  b.actor('castle_guard', 81.5, 15.5, Math.PI / 2, 'fall_castle_guard');
+  b.actor('castle_guard', 89.5, 25.5, Math.PI / 2, 'fall_castle_guard');
+  b.actor('castle_guard', 63.5, 28.5, Math.PI / 2, 'fall_castle_guard_drill_day');
+  b.actor('castle_guard', 66.5, 28.5, Math.PI / 2, 'fall_castle_guard_drill_night');
+  // THE HOUSEHOLD — the palace is staffed, not furnished.
+  b.actor('castle_servant', 53.5, 27.4, Math.PI / 2, 'fall_servant');
+  b.actor('castle_servant', 79.5, 21.5, Math.PI / 2, 'fall_servant');
+  b.actor('castle_servant', 92.5, 26.5, Math.PI / 2, 'fall_servant');
+  b.actor('castle_servant', 107.5, 25.5, Math.PI / 2, 'fall_servant');
   b.actor('shrinekeeper_sella', 126.5, 18.5, -Math.PI / 2, 'fall_shrinekeeper');
   // The Silver Court.
   b.actor('bursar_odele', 53.5, 43.5, 0, 'fall_bursar');
@@ -1179,7 +1198,11 @@ export function buildSilverfall(): ZoneDef {
   b.actor('silverfall_watch', 91.5, 115.5, Math.PI / 2, 'fall_watch');
   b.actor('silverfall_watch', 41.5, 105.5, 0, 'fall_watch');
   b.actor('silverfall_watch', 93.5, 40.5, Math.PI / 2, 'fall_watch');
+  b.actor('silverfall_watch', 66.5, 44.5, Math.PI / 2, 'fall_watch');
   b.actor('silverfall_watch', 82.5, 61.5, Math.PI / 2, 'fall_watch');
+  b.actor('silverfall_watch', 93.5, 61.5, Math.PI / 2, 'fall_watch');
+  b.actor('silverfall_watch', 127.5, 106.5, Math.PI / 2, 'fall_watch_market');
+  b.actor('silverfall_watch', 88.5, 55.5, Math.PI / 2, 'fall_watch_row');
   // THE CHANGING OF THE GUARD — the rota behind the standing posts.
   b.actor('silverfall_watch', 86.5, 110.5, Math.PI / 2, 'fall_watch_gate_day');
   b.actor('silverfall_watch', 90.5, 110.5, Math.PI / 2, 'fall_watch_gate_night');

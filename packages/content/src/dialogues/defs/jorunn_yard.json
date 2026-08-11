@@ -1,0 +1,64 @@
+{
+  "id": "jorunn_yard",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "drillmaster_jorunn"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "jorunn_yard__greet",
+      "text": "Off the sand unless you're drilling. Or on the sand, if you think you're quick. I've had kings on this dirt, I can spare a minute for you.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "jorunn_yard__hub",
+      "text": "Speak up. The yard hears everything anyway.",
+      "choices": [
+        {
+          "text": "How big is the garrison, really?",
+          "next": "count"
+        },
+        {
+          "text": "You served under Marshal Kestrel?",
+          "next": "kestrel"
+        },
+        {
+          "text": "What do you drill them for? The city seems safe.",
+          "next": "safe"
+        },
+        {
+          "text": "Carry on, Drillmaster.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "count",
+      "voice": "jorunn_yard__count",
+      "text": "Nine wear the castle's steel, sixteen wear the city's, and the Waykeepers muster past the postern besides. Sounds like plenty until you walk the wall and count what it watches. The Silver Gate, the Court Gate, this gate, the postern, the mine, the Row, the mere. A capital is a purse that advertises.",
+      "next": "hub"
+    },
+    {
+      "id": "kestrel",
+      "voice": "jorunn_yard__kestrel",
+      "text": "Other way round, half of it. I broke her in when she was a road recruit with opinions. Then she outranked me by twenty miles of road and never once gave me an order she hadn't drilled herself. We don't speak of it. She sends me her worst marchers and I send them back able.",
+      "next": "hub"
+    },
+    {
+      "id": "safe",
+      "voice": "jorunn_yard__safe",
+      "text": "Safe. Aye. The fells past the wall are tier five and the road here eats the unready. This city is safe the way a kept blade is safe. Somebody oils it every single day, in this yard, on this dirt. That somebody hates me by supper and thanks me by winter.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "jorunn_yard__bye",
+      "text": "Knees. Elbows. Eyes. Take those with you, traveler, they're free."
+    }
+  ]
+}

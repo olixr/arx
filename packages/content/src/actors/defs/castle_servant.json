@@ -1,0 +1,35 @@
+{
+  "id": "castle_servant",
+  "name": "Castle Servant",
+  "title": "Of the Household",
+  "examine": "Apron, quick hands, and the particular calm of somebody who has carried soup past a king without spilling either.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 2,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 6,
+      "pants": 8
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "bread",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Mind the floor, it was stone this morning and it will be stone again once I have finished with it.",
+    "The steward counts the candles. The Queen counts the steward. It all balances, that is the castle for you.",
+    "You want the hall for gawking and the kitchens for warmth. I would take the kitchens, myself."
+  ]
+}

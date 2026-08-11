@@ -28,6 +28,10 @@ import weaverOttilie from './defs/weaver_ottilie.json';
 import kingAeriex from './defs/king_aeriex.json';
 import queenKayri from './defs/queen_kayri.json';
 import castleGuard from './defs/castle_guard.json';
+import castleServant from './defs/castle_servant.json';
+import drillmasterJorunn from './defs/drillmaster_jorunn.json';
+import stewardAnsgar from './defs/steward_ansgar.json';
+import heraldOssian from './defs/herald_ossian.json';
 import smeltmasterKoll from './defs/smeltmaster_koll.json';
 import assayerRuna from './defs/assayer_runa.json';
 import carpenterStig from './defs/carpenter_stig.json';
@@ -207,6 +211,10 @@ const SOURCES: readonly unknown[] = [
   kingAeriex,
   queenKayri,
   castleGuard,
+  castleServant,
+  drillmasterJorunn,
+  stewardAnsgar,
+  heraldOssian,
   smeltmasterKoll,
   assayerRuna,
   carpenterStig,

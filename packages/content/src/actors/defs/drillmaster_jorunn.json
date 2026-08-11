@@ -1,0 +1,49 @@
+{
+  "id": "drillmaster_jorunn",
+  "name": "Drillmaster Jorunn",
+  "title": "The Yard's Voice",
+  "examine": "A parade-ground voice in a body built like the wall it drills beside. Kestrel's old sergeant, which both of them mention exactly never.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 34,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 170,
+      "damage": 11,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 4,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "steel_platebody",
+    "legs": "steel_greaves",
+    "boots": "steel_sabatons",
+    "weapon": "steel_greatblade"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 40
+    }
+  ],
+  "lines": [
+    "Knees. Elbows. Eyes. In that order, every time, and you keep all three.",
+    "Nine in the castle, sixteen on the walls, and every one of them hates my yard. Good. Hate is attendance.",
+    "The King watches drill on seventh-days. He counts the misses. Foreman's grandson, that one."
+  ]
+}

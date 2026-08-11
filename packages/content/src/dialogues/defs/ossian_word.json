@@ -1,0 +1,64 @@
+{
+  "id": "ossian_word",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "herald_ossian"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "ossian_word__greet",
+      "text": "If you heard a big voice on the stair at midday, that was me, but this is the small one. The big voice belongs to the Crown. This one is off duty.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "ossian_word__hub",
+      "text": "Quickly, then. The bell owns me at the hour.",
+      "choices": [
+        {
+          "text": "What did the Crown decree today?",
+          "next": "decree"
+        },
+        {
+          "text": "Why walk the word down the stair yourself?",
+          "next": "walk"
+        },
+        {
+          "text": "Do you ever change the words?",
+          "next": "words"
+        },
+        {
+          "text": "Keep your small voice, Herald.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "decree",
+      "voice": "ossian_word__decree",
+      "text": "Tithe day moved for the smelter's relining. Two names raised to the watch. A caution on the Hoargate road, which is the same caution as always, which is the pass. The Crown's decrees are mostly weather, traveler. That is what good rule sounds like. Dull, on schedule, signed.",
+      "next": "hub"
+    },
+    {
+      "id": "walk",
+      "voice": "ossian_word__walk",
+      "text": "Because the city should not have to climb for its own news. Hall at morning bell for the household, Grand Court at midday for everyone else. The King's grandfather had it cried at the castle gate only, and wondered why the Row heard everything a day late and backwards.",
+      "next": "hub"
+    },
+    {
+      "id": "words",
+      "voice": "ossian_word__words",
+      "text": "Never the words. Once, the order. I read the watch promotions before the tithe change, because Old Brandt's daughter was in the square and her name deserved the crowd. The Queen noticed. The Queen notices everything. She said the sums were unharmed and let it stand.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "ossian_word__bye",
+      "text": "Hear the word and mind the edge. The second part is mine."
+    }
+  ]
+}

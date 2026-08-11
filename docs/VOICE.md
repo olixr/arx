@@ -313,9 +313,22 @@ it dictates sentence shape. (Pooled actors share one card.)
   "previously appreciated".
 - **Pike** (lookout): wants to see everything, say nothing. Cadence: minimal,
   sardonic, roof-slang, rarely finishes a warning — expects you to catch up.
-- **Castle guard / Silverfall watch / galleria traders / gate mongers**
-  (pooled): steel courtesy / gate-watch weather talk / stall patter / pool-
-  market cries. Short, functional, alive.
+- **Drillmaster Jorunn** (the yard's voice; broke Kestrel in as a recruit,
+  never mentioned by either): wants nobody to die of something drillable.
+  Cadence: parade-count bark, numbers as verdicts, praise delivered as
+  "again, faster." Knees, elbows, eyes.
+- **Steward Ansgar** (the household's ledger): wants the castle to run so
+  smoothly nobody knows it runs. Cadence: soft arithmetic; meals, candles,
+  and cartloads as the units of history. Leaves the Queen one seeded error
+  a month; she writes SEEN beside it.
+- **Herald Ossian** (the Crown's word): reads the Line's decrees in a hall
+  voice and hoards his own small one. Cadence: formal at the lectern,
+  clipped off duty; the bell schedule is sacred. "Hear the word and mind
+  the edge" — the second part is his.
+- **Castle guard / Silverfall watch / castle servants / galleria traders /
+  gate mongers** (pooled): steel courtesy / gate-watch weather talk /
+  below-stairs practicality / stall patter / pool-market cries. Short,
+  functional, alive.
 
 ### The Undercroft
 - **Mine-Reeve Coppin**: wants the Deep Market to outlive its novelty.

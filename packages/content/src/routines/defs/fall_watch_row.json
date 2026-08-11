@@ -1,0 +1,44 @@
+{
+  "id": "fall_watch_row",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "speed": 1.6
+  },
+  "slots": [
+    {
+      "from": 11,
+      "to": 11.5,
+      "task": {
+        "kind": "wander",
+        "x": 0,
+        "y": 0,
+        "radius": 2,
+        "speed": 1.4
+      }
+    },
+    {
+      "from": 19,
+      "to": 23.5,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.2,
+        "waypoints": [
+          {
+            "x": 17.5,
+            "y": 5.5,
+            "waitSec": 20,
+            "dir": 1.5707963267948966
+          },
+          {
+            "x": 53.5,
+            "y": 5.5,
+            "waitSec": 25,
+            "dir": 1.5707963267948966
+          }
+        ]
+      }
+    }
+  ]
+}

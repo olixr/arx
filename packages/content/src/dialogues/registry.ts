@@ -47,6 +47,9 @@ import vigdisSetting from './defs/vigdis_setting.json';
 import toveCharts from './defs/tove_charts.json';
 import ragnaFlagon from './defs/ragna_flagon.json';
 import mabRookery from './defs/mab_rookery.json';
+import jorunnYard from './defs/jorunn_yard.json';
+import ansgarStores from './defs/ansgar_stores.json';
+import ossianWord from './defs/ossian_word.json';
 import calderCounter from './defs/calder_counter.json';
 import aldisGate from './defs/aldis_gate.json';
 import aldisWatchHeeded from './defs/aldis_watch_heeded.json';
@@ -309,6 +312,9 @@ const SOURCES: readonly unknown[] = [
   ragnaFlagon,
   mabRookery,
   calderCounter,
+  jorunnYard,
+  ansgarStores,
+  ossianWord,
   aldisGate,
   aldisWatchHeeded,
   aldisWatchWry,

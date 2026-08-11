@@ -1,0 +1,39 @@
+{
+  "id": "steward_ansgar",
+  "name": "Steward Ansgar",
+  "title": "Of the Household",
+  "examine": "Soft-spoken, chalk-dusted, and carrying the whole castle in a ledger under one arm. The quiet is professional.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 3,
+      "hairColor": 6,
+      "beard": 3,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 6,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 60
+    },
+    {
+      "item": "bread",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Four hundred meals a week out of five hearths, and the Crown notices exactly the one that runs late.",
+    "Amberford grain, Greenstair greens, Saltmere salt when the road is kind. A castle is a list, properly kept.",
+    "The Queen checks my sums. I have started leaving one small error in, so she has something to find."
+  ]
+}
