@@ -1,0 +1,74 @@
+{
+ "id": "the_opened_barrow",
+ "name": "The Opened Barrow",
+ "giver": "speaker_ashild",
+ "requires": {
+  "quests": [
+   "the_unanswered_tithe"
+  ]
+ },
+ "stages": [
+  {
+   "id": "the_moot_speaks",
+   "journal": "The moot sat for one hour, which is the shortest moot anyone remembers. Dig no barrow is the fell's first law, older than the tithe, older than the town, and outland spades have opened a mound on the Barrowfell and let out what kept its hours. The wolves knew before anyone. That is why the runs stand empty: no pack will share a fell with the walking dead. Break the diggers' camp.",
+   "objectives": [
+    {
+     "kind": "kill",
+     "npc": "brigand",
+     "count": 4
+    },
+    {
+     "kind": "kill",
+     "npc": "brigand_archer",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "the_grave_band",
+   "journal": "The crew dug for wages. The foreman dug for the thing he is still carrying, the way foremen do. An arm ring of old gold, counted into the mound with its owner by people who meant the count to hold. What was counted in must be counted back, or the household will not lie down. Take it off him, and before the moot pays its thanks, find *Orvar*. He has asked to carry it up the fell himself, and asked that you walk with him as far as the stones.",
+   "objectives": [
+    {
+     "kind": "collect",
+     "item": "grave_band",
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "questDrops": [
+  {
+   "npc": "brigand_reaver",
+   "item": "grave_band",
+   "chance": 1
+  }
+ ],
+ "rewards": {
+  "coins": 1400,
+  "xp": [
+   {
+    "skill": "combat",
+    "amount": 2600
+   }
+  ],
+  "items": [
+   {
+    "item": "hardened_leather",
+    "qty": 2
+   }
+  ],
+  "flags": [
+   "barrow_counted_back"
+  ],
+  "standing": [
+   {
+    "faction": "reavers",
+    "delta": -8
+   },
+   {
+    "faction": "waykeepers",
+    "delta": 6
+   }
+  ]
+ }
+}

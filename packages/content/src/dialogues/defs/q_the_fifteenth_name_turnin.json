@@ -1,0 +1,36 @@
+{
+ "id": "q_the_fifteenth_name_turnin",
+ "start": "paid",
+ "requires": [
+  "quest:the_fifteenth_name:ready"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "elder_gunvor",
+   "priority": 21
+  }
+ ],
+ "nodes": [
+  {
+   "id": "paid",
+   "text": "I know it is delivered. I knew when you came up the lane. You walk like a person whose pockets are empty.\n\nStones are for the taken. That is her exactly, she was always the sharpest of that family. Here, courier's pay, and do not argue, letters cost. Forty year old letters cost the most of all.",
+   "choices": [
+    {
+     "text": "What will you do now?",
+     "next": "now"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_turnin",
+     "quest": "the_fifteenth_name"
+    }
+   ]
+  },
+  {
+   "id": "now",
+   "text": "Sit on my bench. Watch my water.\n\nIt is a different water this evening. That is all the difference there ever needed to be."
+  }
+ ]
+}

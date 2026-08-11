@@ -60,6 +60,12 @@ import theHerdStands from './defs/the_herd_stands.json';
  * doesn't exist — quests.test.ts walks the defs/ directory and fails
  * if a file is missing from this roster.
  */
+import theEmptyFold from './defs/the_empty_fold.json';
+import theUnansweredTithe from './defs/the_unanswered_tithe.json';
+import theOpenedBarrow from './defs/the_opened_barrow.json';
+import tallowForTheLamps from './defs/tallow_for_the_lamps.json';
+import theFifteenthName from './defs/the_fifteenth_name.json';
+
 const SOURCES: readonly unknown[] = [
   theWetCount,
   pastTheWardline,
@@ -121,6 +127,11 @@ const SOURCES: readonly unknown[] = [
   theSilverSetting,
   // Item-borne: a dead Waykeeper's letter, still promising the thaw.
   theLastPatrol,
+  theEmptyFold,
+  theUnansweredTithe,
+  theOpenedBarrow,
+  tallowForTheLamps,
+  theFifteenthName,
 ];
 
 function buildRegistry(): ReadonlyMap<string, QuestDef> {

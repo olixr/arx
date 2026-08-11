@@ -1,0 +1,50 @@
+{
+ "id": "the_empty_fold",
+ "name": "The Empty Fold",
+ "giver": "herdmaster_swein",
+ "stages": [
+  {
+   "id": "the_count",
+   "journal": "Beasts are gone from inside the fold. No wolf sign, no broken fence, nothing eaten, just gone, and Swein will not say the number aloud because named misfortune returns. *Sunn* reads ground better than anyone alive. Find her at the butts at dawn, or on the fell, moving.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "guide_sunn"
+    }
+   ]
+  },
+  {
+   "id": "the_wrong_tracks",
+   "journal": "Sunn read the fold in one pass and did not like the read. Nothing came in. Something called the beasts OUT, north, through snow nothing living crossed that night. She followed the line of it toward the dells and stopped where the tracks stopped being tracks. Whatever walks the near fell now, put it down. Start on the old sledge way north of the wicket.",
+   "objectives": [
+    {
+     "kind": "kill",
+     "npc": "skeleton",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "the_tithekeeper",
+   "journal": "Bones that walk. Beasts that leave a warm fold at night and do not run from what takes them. And the wolves gone from runs they have held for forty years, which Sunn says is the loudest part, and she is right. One man in Hartfell reads the fell's manners the way she reads its ground. Tell *Orvar* what stood up in the dells.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "tithekeeper_orvar"
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 500,
+  "xp": [
+   {
+    "skill": "combat",
+    "amount": 900
+   }
+  ],
+  "flags": [
+   "fold_counted"
+  ]
+ }
+}

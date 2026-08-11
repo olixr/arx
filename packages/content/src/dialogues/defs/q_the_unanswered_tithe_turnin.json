@@ -1,0 +1,26 @@
+{
+ "id": "q_the_unanswered_tithe_turnin",
+ "start": "paid",
+ "requires": [
+  "quest:the_unanswered_tithe:ready"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "tithekeeper_orvar",
+   "priority": 21
+  }
+ ],
+ "nodes": [
+  {
+   "id": "paid",
+   "text": "A pay tally. Struck with a spade. I have buried enough of the Company's manners on the road south to know their tin.\n\nSo. Living men opened something and the dead are the spilled part of it, and my neighbors left rather than watch. Take this to no one else, the moot must hear it from Ashild's mouth. And take this for the walk, which was not owed you and done anyway.",
+   "hooks": [
+    {
+     "kind": "quest_turnin",
+     "quest": "the_unanswered_tithe"
+    }
+   ]
+  }
+ ]
+}

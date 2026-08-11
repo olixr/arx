@@ -1,0 +1,38 @@
+{
+ "id": "the_fifteenth_name",
+ "name": "The Fifteenth Name",
+ "giver": "elder_gunvor",
+ "requires": {
+  "flags": [
+   "gunvor_fifteen"
+  ]
+ },
+ "stages": [
+  {
+   "id": "the_other_bench",
+   "journal": "Gunvor sat a long time after you named the stone, and then said more words in a row than Hartfell has heard from her in years. The man Pinewatch argues about was not taken by the ice. He crossed it. He was the first fire at the Kettle, and she grew old calling him by his name, and the name was Havel. There is a woman in Pinewatch who owns the bench by the muster yard fire. Sit with her. Wait until she has finished her tea. Then say that Havel died warm.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "old_torvi"
+    }
+   ]
+  },
+  {
+   "id": "the_true_count",
+   "journal": "Torvi did not argue and did not weep, which was somehow worse and better at once. Her father went onto the ice the night the water went hard, looking for a daughter he never learned had lived. The pack drove him north to warm water and he built a fire that grew a town, believing his whole reason was drowned behind him. Forty years. One lake. Two benches facing the same water. Tell Gunvor it is delivered.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "elder_gunvor"
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 240,
+  "flags": [
+   "fifteenth_named"
+  ]
+ }
+}

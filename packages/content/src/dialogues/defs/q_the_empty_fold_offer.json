@@ -1,0 +1,68 @@
+{
+ "id": "q_the_empty_fold_offer",
+ "start": "hub",
+ "requires": [
+  "quest:the_empty_fold:available"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "herdmaster_swein",
+   "priority": 6
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "text": "Beasts gone from a shut fold. No wolf sign. No fence down. Nothing eaten. I have herded forty years and I have no word for it, and I am not saying the number out loud.\n\nSunn can read the ground. I cannot leave the fold to fetch her.",
+   "choices": [
+    {
+     "text": "I will find Sunn.",
+     "next": "sworn"
+    },
+    {
+     "text": "What do you think it was?",
+     "next": "think"
+    },
+    {
+     "text": "Not my trouble.",
+     "next": "declined"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "the_empty_fold"
+    }
+   ]
+  },
+  {
+   "id": "think",
+   "text": "I think a herd that will stand in a fold while wolves sing needs a better reason to walk out of one at night. And I think I do not want to meet the reason. Go careful.",
+   "choices": [
+    {
+     "text": "I will find Sunn.",
+     "next": "sworn"
+    },
+    {
+     "text": "Even so. No.",
+     "next": "declined"
+    }
+   ]
+  },
+  {
+   "id": "sworn",
+   "text": "Dawn, at the butts, or already on the fell. Tell her the fold count is wrong and she will come before you finish the sentence.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "the_empty_fold"
+    }
+   ]
+  },
+  {
+   "id": "declined",
+   "text": "Then pray at whatever you pray at that it stays a herd problem."
+  }
+ ]
+}

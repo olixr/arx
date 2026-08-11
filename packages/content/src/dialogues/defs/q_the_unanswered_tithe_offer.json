@@ -1,0 +1,64 @@
+{
+ "id": "q_the_unanswered_tithe_offer",
+ "start": "hub",
+ "requires": [
+  "quest:the_unanswered_tithe:available"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "tithekeeper_orvar",
+   "priority": 6
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "text": "Forty years I have left the tithe on the flat stone, and forty years it has been taken by morning. It lies there now. Three sledges of it, frozen, untouched, and the stones cold as teeth.\n\nThe packs are not insulted. The packs are GONE, and wolves do not leave good runs. Something worse moved in above us, and the sledge way runs straight through where it walks.",
+   "choices": [
+    {
+     "text": "I will clear the way.",
+     "next": "sworn"
+    },
+    {
+     "text": "Why keep leaving the tithe at all?",
+     "next": "why"
+    },
+    {
+     "text": "Not for me.",
+     "next": "declined"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "the_unanswered_tithe"
+    }
+   ]
+  },
+  {
+   "id": "why",
+   "text": "Because the bargain does not end on our side first. When the packs come back, and they will, they need to find that we kept it while they could not. That is what a bargain is. That is the entire thing a bargain is.",
+   "choices": [
+    {
+     "text": "I will clear the way.",
+     "next": "sworn"
+    }
+   ]
+  },
+  {
+   "id": "sworn",
+   "text": "The dead walk the dells between here and the stones. Put them down with some respect if you can manage it. They were somebody's household once, and none of this is their doing.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "the_unanswered_tithe"
+    }
+   ]
+  },
+  {
+   "id": "declined",
+   "text": "Then walk soft near the wicket at night. The way is not clean."
+  }
+ ]
+}

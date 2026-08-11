@@ -1,0 +1,64 @@
+{
+ "id": "the_unanswered_tithe",
+ "name": "The Unanswered Tithe",
+ "giver": "tithekeeper_orvar",
+ "requires": {
+  "quests": [
+   "the_empty_fold"
+  ]
+ },
+ "stages": [
+  {
+   "id": "the_flat_stone",
+   "journal": "Orvar walked the sledge out and walked it back still loaded, and that has not happened in forty years. The tithe lies uneaten on the flat stone, the packs are gone from the near fell, and the old processional way past the stones carries prints that were never feet. Clear the sledge way through the dells so the tithe can at least be left where the bargain says it goes.",
+   "objectives": [
+    {
+     "kind": "kill",
+     "npc": "skeleton_guard",
+     "count": 2
+    },
+    {
+     "kind": "kill",
+     "npc": "skeleton_archer",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "the_strangers",
+   "journal": "Under the bone scatter beside the way, a boot heel. New leather, south made. The dead do not buy boots, so somebody living went up the Cairn Path ahead of them, and the Red Company pays its crews by the head with struck tin tallies. Their camp sits below the Barrowfell, west of the old way. Bring the moot a tally it can hold up at the benches.",
+   "objectives": [
+    {
+     "kind": "collect",
+     "item": "spade_mark",
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "questDrops": [
+  {
+   "npc": "brigand",
+   "item": "spade_mark",
+   "chance": 1
+  }
+ ],
+ "rewards": {
+  "coins": 700,
+  "xp": [
+   {
+    "skill": "combat",
+    "amount": 1300
+   }
+  ],
+  "flags": [
+   "tithe_walked"
+  ],
+  "standing": [
+   {
+    "faction": "waykeepers",
+    "delta": 4
+   }
+  ]
+ }
+}

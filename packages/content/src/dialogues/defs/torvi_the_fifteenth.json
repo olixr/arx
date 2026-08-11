@@ -1,0 +1,40 @@
+{
+ "id": "torvi_the_fifteenth",
+ "start": "sat",
+ "requires": [
+  "quest:the_fifteenth_name:stage:the_other_bench"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "old_torvi",
+   "priority": 8
+  }
+ ],
+ "nodes": [
+  {
+   "id": "sat",
+   "text": "You sat. You waited. Most do not wait.\n\nWell. Say what you came to say.",
+   "choices": [
+    {
+     "text": "Havel died warm.",
+     "next": "warm"
+    }
+   ]
+  },
+  {
+   "id": "warm",
+   "text": "Nobody has said his name to me in forty years. They say your father, like he was a weather that happened.\n\nWarm. He crossed it, then. He CROSSED it. And built a fire. And the fire grew a town, and the town keeps deer by warm water, and all of it because he went out on the ice after a girl who was already back inside the wall by midnight.",
+   "choices": [
+    {
+     "text": "He never knew you lived.",
+     "next": "knew"
+    }
+   ]
+  },
+  {
+   "id": "knew",
+   "text": "And I never knew he did. Two people wrong about each other for forty years across one lake. That is not a tragedy, child. A tragedy has somebody to blame in it. This is just winter. Winter, and two benches.\n\nGo and tell the woman who fed his last fire: whatever this stone of ours ends up saying, stones are for the taken. He was not taken. He walked."
+  }
+ ]
+}

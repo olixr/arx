@@ -1,0 +1,35 @@
+{
+ "id": "tallow_for_the_lamps",
+ "name": "Tallow for the Lamps",
+ "giver": "chandler_ulfa",
+ "repeat": {
+  "cooldownHours": 18
+ },
+ "stages": [
+  {
+   "id": "the_render_run",
+   "journal": "The road eats a barrel of lamp fill a week and a barrel of fill is rendered off fat the town will not spare from its own herds. Boar hold the pine hem south of the wall, fat as autumn lets them get. The Chandlery pays in coin and takes the thanks of every soul who walks the Hartway after dark on account.",
+   "objectives": [
+    {
+     "kind": "kill",
+     "npc": "boar",
+     "count": 5
+    },
+    {
+     "kind": "collect",
+     "item": "raw_beef",
+     "count": 4
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 220,
+  "xp": [
+   {
+    "skill": "cooking",
+    "amount": 300
+   }
+  ]
+ }
+}

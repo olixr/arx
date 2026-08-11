@@ -1,0 +1,44 @@
+{
+ "id": "orvar_counted_back",
+ "start": "walk",
+ "requires": [
+  "quest:the_opened_barrow:ready"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "tithekeeper_orvar",
+   "priority": 8
+  }
+ ],
+ "nodes": [
+  {
+   "id": "walk",
+   "text": "You have it. Good. Do not give it to me here, gold like that is handed over running water or standing stones, and the run is too warm for the purpose.\n\nWalk with me to the stones. I will carry it the last part alone.",
+   "choices": [
+    {
+     "text": "Why alone?",
+     "next": "alone"
+    },
+    {
+     "text": "Walk, then.",
+     "next": "stones"
+    }
+   ]
+  },
+  {
+   "id": "alone",
+   "text": "Because forty years of sledges have taught the fell my shape, and it has never once been afraid of me. If two of us climb past the stones carrying grave gold, one of us is a stranger with plunder. Alone, I am the man who brings things back. Manners, again. It is always manners.",
+   "choices": [
+    {
+     "text": "Walk, then.",
+     "next": "stones"
+    }
+   ]
+  },
+  {
+   "id": "stones",
+   "text": "So. It is done. I set it on the mound step and the door was shut when I looked back up, and I did not hear it shut, and I am glad of that.\n\nThe wind changed on the walk down. Ashild has the moot's purse waiting on you. Go and be thanked properly."
+  }
+ ]
+}

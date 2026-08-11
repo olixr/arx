@@ -1,0 +1,50 @@
+{
+ "id": "q_tallow_for_the_lamps_offer",
+ "start": "hub",
+ "requires": [
+  "quest:tallow_for_the_lamps:available"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "chandler_ulfa",
+   "priority": 6
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "text": "The road ate my last barrel and winter is not even trying yet. Lamp fill is rendered fat, and the fold beasts are not for rendering, and that leaves the boar in the pine hem, who have spent all autumn becoming exactly what I need.\n\nFive boar, and bring the good cuts. The Chandlery pays coin. The road pays you back every dark mile you ever walk it.",
+   "choices": [
+    {
+     "text": "Light the lamps. I am in.",
+     "next": "sworn"
+    },
+    {
+     "text": "Not today.",
+     "next": "declined"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "tallow_for_the_lamps"
+    }
+   ]
+  },
+  {
+   "id": "sworn",
+   "text": "South of the wall, in the pines, and mind the tusks, the fat ones have earned their opinions.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "tallow_for_the_lamps"
+    }
+   ]
+  },
+  {
+   "id": "declined",
+   "text": "Then walk fast between lamps, my love, and think of me at the dark spots."
+  }
+ ]
+}

@@ -236,6 +236,20 @@ import signeRoad from './defs/signe_road.json';
 import hallwardCharter from './defs/hallward_charter.json';
 import grimmWares from './defs/grimm_wares.json';
 
+import qTheEmptyFoldOffer from './defs/q_the_empty_fold_offer.json';
+import sunnTheCount from './defs/sunn_the_count.json';
+import qTheEmptyFoldTurnin from './defs/q_the_empty_fold_turnin.json';
+import qTheUnansweredTitheOffer from './defs/q_the_unanswered_tithe_offer.json';
+import qTheUnansweredTitheTurnin from './defs/q_the_unanswered_tithe_turnin.json';
+import qTheOpenedBarrowOffer from './defs/q_the_opened_barrow_offer.json';
+import orvarCountedBack from './defs/orvar_counted_back.json';
+import qTheOpenedBarrowTurnin from './defs/q_the_opened_barrow_turnin.json';
+import qTallowForTheLampsOffer from './defs/q_tallow_for_the_lamps_offer.json';
+import qTallowForTheLampsTurnin from './defs/q_tallow_for_the_lamps_turnin.json';
+import qTheFifteenthNameOffer from './defs/q_the_fifteenth_name_offer.json';
+import torviTheFifteenth from './defs/torvi_the_fifteenth.json';
+import qTheFifteenthNameTurnin from './defs/q_the_fifteenth_name_turnin.json';
+
 const SOURCES: readonly unknown[] = [
   qWetCountOffer,
   qWetCountTurnin,
@@ -466,6 +480,19 @@ const SOURCES: readonly unknown[] = [
   signeRoad,
   hallwardCharter,
   grimmWares,
+  qTheEmptyFoldOffer,
+  sunnTheCount,
+  qTheEmptyFoldTurnin,
+  qTheUnansweredTitheOffer,
+  qTheUnansweredTitheTurnin,
+  qTheOpenedBarrowOffer,
+  orvarCountedBack,
+  qTheOpenedBarrowTurnin,
+  qTallowForTheLampsOffer,
+  qTallowForTheLampsTurnin,
+  qTheFifteenthNameOffer,
+  torviTheFifteenth,
+  qTheFifteenthNameTurnin,
 ];
 
 function buildRegistry(): ReadonlyMap<string, DialogueDef> {
