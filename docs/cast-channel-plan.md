@@ -71,8 +71,31 @@ buried inside a kerb ring), and the reaver's coat (threshold, taken
 off a door that lost). The weapon census in equipment.test.ts was
 retiered deliberately: 214 weapons (swords 56, daggers 48, bows 41,
 staves 40, greatweapons 29).
-Remaining: the charge-up + held-note matter dialects (an FX-v5
-session, its laws read first) — then Phase 5 proving.
+THE BREATH SPEAKS SHIPPED same day: the charge + held-note matter
+dialects, composed on the FX v5 library per THE ONE-VOICE LAW. Two
+additive fx kinds: `charge` (matter gathering on a WINDING caster —
+broadcast at the begin and re-emitted at the LIVE position on the
+tame re-emit law, so a running caster trails the gather; the wire's
+contracting `radius` IS the intensity ramp, tightening exactly as
+the dodge window closes) and `note` (a held channel's sustained hum,
+re-emitted between beats so long notes never gutter). One rail
+serves caster and watchers alike (broadcastFx reaches the caster's
+own session). Client: `render/breathFx.ts` = THE BREATH DIALECTS,
+a curated voice per shipped breath art (daybreak gathers dawn,
+full_draw shivers grit off the planted stance, standing_stone stirs
+the old ground; maelstrom churns, storm_of_shafts gusts, whirling
+ruin scours its skirt, winters_fall pools true frost fog, red_thread
+drinks on the rim's inward flow, vigil blooms its candle, kept
+ground hums with standing static) + a face-derived fallback (debris
+family → material idle verb) so future breath arts are never
+voiceless; charge/note are PURE INSTRUMENT (fxPureInstrument) — they
+carry the dialect and never trigger the art's motif or signature
+set-pieces, and they fall silently through the sound chain (the
+looping channel voice stays a named FUTURE DOOR). The dialect
+contract (breathFx.test.ts): every shipped breath art carries a
+CURATED voice, no orphan entries, every voice speaks real matter
+when called, the fallback covers every debris family.
+Remaining: Phase 5 proving.
 Companion to docs/techniques-v2-plan.md (the ladder + THE PAYOFF BRACKET),
 docs/secret-arts-plan.md (the secret shelf), THE HELD SIGIL (ground aim),
 and THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching

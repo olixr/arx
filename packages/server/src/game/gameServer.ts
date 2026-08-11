@@ -14014,6 +14014,15 @@ export class GameServer {
         color: ab.color,
       });
     }
+    // THE BREATH SPEAKS (FX v5): matter gathers on the caster from
+    // the first tick — the charge dialect. Re-emitted on the
+    // overlapping window while the breath draws (tickCasting), so a
+    // running caster trails the gather and a watcher reads the
+    // wind-up on the BODY, not just the bar.
+    const cpos = this.positions.get(eid);
+    if (cpos) {
+      this.broadcastFx({ t: 'fx', kind: 'charge', x: cpos.x, y: cpos.y, radius: 1.5, id: ab.id, color: ab.color });
+    }
     player.session?.sendJson({ t: 'cast', state: 'start', slot, ticks: ab.castTicks });
   }
 
@@ -14043,7 +14052,29 @@ export class GameServer {
       return;
     }
     c.progress += moved ? 1 : CAST_STILL_FACTOR;
-    if (c.progress >= c.total) this.fireCasting(eid, player);
+    if (c.progress >= c.total) {
+      this.fireCasting(eid, player);
+      return;
+    }
+    // THE BREATH SPEAKS: the charge re-emits on the overlapping
+    // window (the tame re-emit law) at the LIVE position — full
+    // stride carries the gather with the body. The contracting reach
+    // IS the ramp: matter starts wide and pulls tight as the fire
+    // nears, so the read sharpens exactly when the dodge window ends.
+    if (this.tickCount % 10 === 0) {
+      const pos = this.positions.get(eid);
+      if (pos) {
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'charge',
+          x: pos.x,
+          y: pos.y,
+          radius: Math.max(0.5, 1.5 - c.progress / c.total),
+          id: c.ab.id,
+          color: c.ab.color,
+        });
+      }
+    }
   }
 
   /** The breath completes: re-verify the hand, then pay and fire. */
@@ -14138,6 +14169,13 @@ export class GameServer {
     this.channelPulse(eid, player, action, aim);
     const cp = this.positions.get(eid);
     this.bodyMoment(eid, player, 'cast', { x: cp?.x ?? 0, y: cp?.y ?? 0, style });
+    // THE BREATH SPEAKS (FX v5): the held note hums on the body from
+    // the first beat — re-emitted on the tame's overlapping window
+    // while the note holds (tickChannel), so the quiet stretches
+    // between pulses never read as a finished cast.
+    if (cp) {
+      this.broadcastFx({ t: 'fx', kind: 'note', x: cp.x, y: cp.y, radius: 0.9, id: ab.id, color: ab.color });
+    }
     this.sendCooldowns(player);
   }
 
@@ -14165,6 +14203,14 @@ export class GameServer {
     if ((a.total - a.ticksLeft) % a.every === 0) {
       const dir = this.positions.get(eid)?.dir ?? 0;
       this.channelPulse(eid, player, a, dir);
+    }
+    // THE BREATH SPEAKS: the note re-hums on the tame re-emit law so
+    // long notes never gutter between beats.
+    if (a.ticksLeft % 20 === 0) {
+      const pos = this.positions.get(eid);
+      if (pos) {
+        this.broadcastFx({ t: 'fx', kind: 'note', x: pos.x, y: pos.y, radius: 0.9, id: a.ab.id, color: a.ab.color });
+      }
     }
   }
 

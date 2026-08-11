@@ -821,6 +821,21 @@ export interface S2CFx {
     | 'howl'
     /** A lingering hazard zone living `ticks` at (x,y). */
     | 'field'
+    /**
+     * THE BREATH SPEAKS (THE DRAWN BREATH x FX v5): matter gathering
+     * on a WINDING caster at (x,y) — re-emitted on an overlapping
+     * window at the live position while the breath draws, so the
+     * gather follows a running body. `radius` is the gather reach and
+     * contracts as the breath completes (the contracting reach is the
+     * ramp); `id` keys the art's matter dialect.
+     */
+    | 'charge'
+    /**
+     * THE BREATH SPEAKS: a held channel's sustained voice at (x,y),
+     * re-emitted between pulse beats (the tame re-emit law) so long
+     * notes never gutter. `id` keys the art's matter dialect.
+     */
+    | 'note'
     /** A locked door refusing at (x,y) — the leaf shudders in its frame. */
     | 'rattle'
     /**

@@ -137,6 +137,8 @@ import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample 
 import { paintTree, saplingModel,
   treeModel, type TreeModel } from './trees.js';
 import { dust } from './matter/dust.js';
+import { asMatter } from './matter/index.js';
+import { speakBreath } from './breathFx.js';
 import {
   DITHER_CELL,
   FADE_BODY_BELOW,
@@ -29481,11 +29483,27 @@ export class Renderer {
   private static readonly FX_SQUASH = 0.62;
 
   /** Overlay lifetime per fx kind, ms (telegraph/field ride their fuse). */
+  /**
+   * THE BREATH SPEAKS: kinds that are pure instrument — they carry a
+   * matter dialect (or, for the telegraph, a ground sigil) and must
+   * never trigger the ability's motif or signature set-pieces.
+   */
+  private fxPureInstrument(kind: string): boolean {
+    return kind === 'telegraph' || kind === 'charge' || kind === 'note';
+  }
+
   private fxLife(fx: { kind: string; ticks?: number }): number {
     switch (fx.kind) {
       case 'telegraph':
       case 'field':
         return (fx.ticks ?? 12) * TICK_MS;
+      case 'charge':
+        // Re-emitted every half second while the breath draws — each
+        // window outlives the next re-emit, so the gather never blinks.
+        return 900;
+      case 'note':
+        // Re-emitted each second while the note holds (the tame law).
+        return 1400;
       case 'arc':
         return 300;
       case 'bolt':
@@ -31899,7 +31917,7 @@ export class Renderer {
 
       // The motif's ground half, anchored at the far end for
       // traveling shapes and at the heart for everything else.
-      if (st.motif && fx.kind !== 'telegraph') {
+      if (st.motif && !this.fxPureInstrument(fx.kind)) {
         let ax = fx.x;
         let ay = fx.y;
         if ((fx.kind === 'dash' || fx.kind === 'bolt' || fx.kind === 'beam') && fx.x2 !== undefined) {
@@ -31913,7 +31931,7 @@ export class Renderer {
 
       // THE SIGNATURE LAW: the ability's bespoke ground set-piece
       // crowns the grammar (telegraphs stay pure instrument).
-      if (fx.id && fx.kind !== 'telegraph') {
+      if (fx.id && !this.fxPureInstrument(fx.kind)) {
         const sig = this.sigFor(fx.id);
         if (sig?.ground) sig.ground(this.makeSigCtx(fx, st, t, age, now, seed));
       }
@@ -32278,7 +32296,7 @@ export class Renderer {
 
       // The motif's standing half, anchored at the far end for
       // traveling shapes and at the heart for everything else.
-      if (st.motif && fx.kind !== 'telegraph') {
+      if (st.motif && !this.fxPureInstrument(fx.kind)) {
         let ax = fx.x;
         let ay = fx.y;
         if ((fx.kind === 'dash' || fx.kind === 'bolt' || fx.kind === 'beam') && fx.x2 !== undefined) {
@@ -32726,6 +32744,28 @@ export class Renderer {
           break;
         }
 
+        case 'charge':
+        case 'note': {
+          // THE BREATH SPEAKS: one library deployment per emission
+          // window (the wire re-emits on the overlapping law); the
+          // emitter's own envelope carries the window, so the dialect
+          // never re-rolls matter per frame.
+          const bf = fx as typeof fx & { breathSpoken?: boolean };
+          if (!bf.breathSpoken) {
+            bf.breathSpoken = true;
+            speakBreath(
+              fx.kind,
+              fx.id,
+              st,
+              asMatter(this.makeSigCtx(fx, st, t, age, now, seed)),
+              fx.x,
+              fx.y,
+              fx.radius,
+            );
+          }
+          break;
+        }
+
         default:
           // telegraph lives in the ground pass; vanish is pure particles.
           break;
@@ -32733,7 +32773,7 @@ export class Renderer {
 
       // THE SIGNATURE LAW: the bespoke crown — one-shot spawn matter
       // the frame the cast arrives, then the per-frame air set-piece.
-      if (fx.id && fx.kind !== 'telegraph') {
+      if (fx.id && !this.fxPureInstrument(fx.kind)) {
         const sig = this.sigFor(fx.id);
         if (sig) {
           const sf = fx as typeof fx & { sigSpawned?: boolean };

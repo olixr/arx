@@ -185,3 +185,17 @@ et al. Doctrines written along the way:
 **Closing receipt (2026-08-02):** 64-cast worst-case barrage,
 2421-particle peak: p50 13.4ms / p90 17.8ms / p99 22.7ms headless
 Chromium. 369 client tests + typecheck green at every wave.
+
+**Post-epic addendum (2026-08-11) — THE BREATH SPEAKS.** THE DRAWN
+BREATH's commitment grammars gained their matter voices as a new
+library CONSUMER, not a library change: `render/breathFx.ts` maps
+each casted/channeled art to a curated deployment composition
+(charge = gather on the winding body, wire radius contracting as the
+ramp; note = the held hum between pulse beats, tame re-emit law).
+ONE-VOICE holds — dialects compose deployments, never raw matter;
+the fallback derives a material from the face's debris family. New
+doctrine: `charge`/`note` fx kinds are PURE INSTRUMENT — excluded
+from motif/signature set-pieces by `fxPureInstrument`, silent in the
+sound chain. Contract: breathFx.test.ts (curated coverage, no
+orphans, every voice audibly spawns, fallback total). Full record in
+docs/cast-channel-plan.md.

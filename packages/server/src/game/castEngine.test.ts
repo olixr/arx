@@ -113,7 +113,7 @@ const castMsgs = (sent: Array<Record<string, unknown>>) =>
 
 test('the press begins the breath and pays nothing', () => {
   const player = mkPlayer();
-  const { self, sent, casts } = slate(player);
+  const { self, sent, casts, fxOut } = slate(player);
   self.tryCastAbility.call(self, 1, player, 0, 0.5);
   assert.ok(player.casting, 'the wind-up stands');
   assert.equal(player.abilityCd[0], 0, 'no cooldown at the press — the pay waits for the fire');
@@ -121,6 +121,30 @@ test('the press begins the breath and pays nothing', () => {
   assert.equal(casts.length, 0, 'the one door has not opened');
   const start = sent.find((m) => m.t === 'cast');
   assert.ok(start && start.state === 'start' && start.ticks === 24, 'the start speaks its length');
+  // THE BREATH SPEAKS: watchers read the wind-up on the body from
+  // the first tick — the charge dialect opens with the breath.
+  const charge = fxOut.find((f) => f.kind === 'charge');
+  assert.ok(charge && charge.id === 'daybreak', 'the charge speaks the art’s dialect at the press');
+  assert.equal(charge!.radius, 1.5, 'the gather opens at its widest reach');
+});
+
+test('THE BREATH SPEAKS: the charge re-emits with the body and contracts toward the fire', () => {
+  const player = mkPlayer();
+  const { self, pos, fxOut } = slate(player);
+  self.tryCastAbility.call(self, 1, player, 0, 0);
+  pos.x = 3; // the caster runs mid-breath — the gather must follow
+  while (player.casting) self.tickCasting.call(self, 1, player, false);
+  const charges = fxOut.filter((f) => f.kind === 'charge');
+  assert.ok(charges.length > 3, 'the overlapping re-emit keeps the gather alive');
+  assert.ok(
+    charges.slice(1).some((f) => f.x === 3),
+    'the re-emit rides the LIVE position — full stride carries the gather',
+  );
+  const radii = charges.map((f) => f.radius as number);
+  for (let i = 2; i < radii.length; i++) {
+    assert.ok(radii[i]! <= radii[i - 1]!, 'the reach only ever tightens');
+  }
+  assert.ok(radii[radii.length - 1]! < 1.5, 'the noose is tighter at the fire than the press');
 });
 
 test('THE PLANTED FOOT: still ticks breathe 1.25, moving ticks breathe 1', () => {
@@ -216,12 +240,13 @@ test('THE HELD SIGIL composes: the staked point holds and the facing re-derives 
 
 test('the instants stand unchanged: pay-at-press, fire-at-press', () => {
   const player = mkPlayer({ techniques: ['heavy_slam', null] });
-  const { self, sent, casts } = slate(player);
+  const { self, sent, casts, fxOut } = slate(player);
   self.tryCastAbility.call(self, 1, player, 0, 0);
   assert.equal(player.casting, null, 'no wind-up on an instant');
   assert.equal(casts.length, 1, 'the door opens on the press edge');
   assert.ok(player.abilityCd[0] > 0, 'the cooldown pays at the press');
   assert.equal(castMsgs(sent).length, 0, 'the instants never speak on the cast wire');
+  assert.ok(!fxOut.some((f) => f.kind === 'charge'), 'no charge dialect on a press-edge instant');
 });
 
 test('a cancelled breath leaves the pose and a broken one is idempotent', () => {

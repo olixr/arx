@@ -72,9 +72,11 @@ function slate(player: FakePlayer) {
     [];
   player.session = { sendJson: (m) => sent.push(m as Record<string, unknown>) };
   const pos = { x: 0, y: 0, dir: 0 };
+  const fxOut: Array<Record<string, unknown>> = [];
   const self = {
     tickCount: 100,
     positions: { get: () => pos, must: () => pos },
+    broadcastFx: (fx: Record<string, unknown>) => fxOut.push(fx),
     setPose: () => undefined,
     revealPlayer: () => undefined,
     sendCooldowns: () => undefined,
@@ -102,7 +104,7 @@ function slate(player: FakePlayer) {
     seatAbility: proto.seatAbility,
     seatDormant: proto.seatDormant,
   };
-  return { self, sent, casts, pos };
+  return { self, sent, casts, pos, fxOut };
 }
 
 test('the press pays at the first note and strikes it at once', () => {
@@ -190,6 +192,20 @@ test('THE HELD SIGIL composes: a staked point rides every beat', () => {
   for (const c of casts) {
     assert.deepEqual(c.targetPos, { x: 5, y: 0 }, 'the promise holds beat after beat');
   }
+});
+
+test('THE BREATH SPEAKS: the note hums at the first beat and re-hums the quiet stretches', () => {
+  const player = mkPlayer();
+  const { self, fxOut } = slate(player);
+  self.tryCastAbility.call(self, 1, player, 0, 0);
+  const first = fxOut.filter((f) => f.kind === 'note');
+  assert.equal(first.length, 1, 'the note speaks the moment the price is paid');
+  assert.equal(first[0]!.id, 'maelstrom', 'the hum wears the art’s own dialect');
+  while (player.action) self.tickChannel.call(self, 1, player);
+  const notes = fxOut.filter((f) => f.kind === 'note');
+  // 48 ticks: re-hums land as ticksLeft crosses 40 and 20 (the tame
+  // re-emit law) — overlapping windows, never a guttered stretch.
+  assert.equal(notes.length, 3, 'the hum re-emits between beats, never gutters');
 });
 
 test('content pins the pilot: maelstrom holds the note', () => {
