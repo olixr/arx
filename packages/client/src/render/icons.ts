@@ -1,4 +1,4 @@
-import { ELEMENT_COLORS, ENCHANT_DEFS, ITEMS, RECIPES, itemDef } from '@arx/content';
+import { ELEMENT_COLORS, ENCHANT_DEFS, GRADED_PRODUCE, ITEMS, RECIPES, gradedId, itemDef } from '@arx/content';
 import { shade } from './rig.js';
 import { BOW_STYLES, DAGGER_STYLES, GREAT_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawGreatweapon, drawStaff, drawSword } from './weapons.js';
 import { TOOL_STYLES, drawTool } from './tools.js';
@@ -3175,6 +3175,95 @@ const PAINTERS: Record<string, IconPainter> = {
       c.fill();
     }
   },
+  // THE LIVING SOIL: the bin's harvest — a barrow-heap of worked
+  // loam in a slat cradle, crumbs escaping, one worm-pink curl.
+  compostheap: (c, col) => {
+    // The slat cradle: two side boards holding the heap.
+    poly(c, '#6e5433', [[0.12, 0.86], [0.16, 0.5], [0.24, 0.5], [0.22, 0.86]]);
+    poly(c, '#6e5433', [[0.88, 0.86], [0.84, 0.5], [0.76, 0.5], [0.78, 0.86]]);
+    // The heap: a mounded mass with a lit crown.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(0.14, 0.84);
+    c.quadraticCurveTo(0.2, 0.42, 0.5, 0.36);
+    c.quadraticCurveTo(0.8, 0.42, 0.86, 0.84);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, 22);
+    c.beginPath();
+    c.moveTo(0.3, 0.52);
+    c.quadraticCurveTo(0.5, 0.4, 0.68, 0.5);
+    c.quadraticCurveTo(0.55, 0.55, 0.3, 0.52);
+    c.closePath();
+    c.fill();
+    // Crumbs at the skirt and a curl of pink worm.
+    c.fillStyle = shade(col, -18);
+    c.fillRect(0.24, 0.86, 0.07, 0.045);
+    c.fillRect(0.62, 0.87, 0.06, 0.04);
+    c.strokeStyle = '#c98a8a';
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.arc(0.58, 0.64, 0.05, 0.4, 2.6);
+    c.stroke();
+  },
+  compostbin: (c, col) => {
+    // The bin itself for the build tray: slat box, open top, heap.
+    for (let i = 0; i < 3; i++) {
+      c.fillStyle = shade(col, i === 1 ? 0 : -8);
+      c.fillRect(0.16, 0.4 + i * 0.16, 0.68, 0.13);
+    }
+    c.fillStyle = shade(col, -22);
+    c.fillRect(0.13, 0.36, 0.09, 0.56);
+    c.fillRect(0.78, 0.36, 0.09, 0.56);
+    c.fillStyle = '#4a3a28';
+    c.beginPath();
+    c.ellipse(0.5, 0.37, 0.28, 0.09, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = shade('#4a3a28', 20);
+    c.beginPath();
+    c.ellipse(0.44, 0.35, 0.1, 0.035, 0, 0, Math.PI * 2);
+    c.fill();
+  },
+  wellbuild: (c, col) => {
+    // Stone ring, posts, gable, rope and bucket — the yard's water.
+    c.fillStyle = shade(col, -10);
+    c.fillRect(0.24, 0.6, 0.52, 0.26);
+    c.fillStyle = shade(col, 14);
+    c.beginPath();
+    c.ellipse(0.5, 0.6, 0.28, 0.08, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#2c3a54';
+    c.beginPath();
+    c.ellipse(0.5, 0.61, 0.19, 0.05, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#7d5a2e';
+    c.fillRect(0.27, 0.24, 0.05, 0.38);
+    c.fillRect(0.68, 0.24, 0.05, 0.38);
+    poly(c, '#8a6234', [[0.18, 0.26], [0.5, 0.1], [0.82, 0.26], [0.74, 0.3], [0.5, 0.18], [0.26, 0.3]]);
+    c.strokeStyle = '#c9b98a';
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0.5, 0.3);
+    c.lineTo(0.5, 0.52);
+    c.stroke();
+    c.fillStyle = '#8a6234';
+    c.fillRect(0.44, 0.5, 0.12, 0.1);
+  },
+  channelbuild: (c, col) => {
+    // A board-lined trench run with standing water.
+    c.fillStyle = shade(col, -30);
+    c.fillRect(0.1, 0.42, 0.8, 0.24);
+    c.fillStyle = '#35597e';
+    c.fillRect(0.13, 0.47, 0.74, 0.15);
+    c.fillStyle = 'rgba(160, 196, 232, 0.6)';
+    c.fillRect(0.22, 0.51, 0.16, 0.04);
+    c.fillRect(0.58, 0.54, 0.12, 0.035);
+    c.fillStyle = col;
+    c.fillRect(0.1, 0.36, 0.8, 0.06);
+    c.fillRect(0.1, 0.66, 0.8, 0.06);
+    c.fillStyle = shade(col, 24);
+    c.fillRect(0.1, 0.36, 0.8, 0.022);
+  },
   carrot: (c, col) => {
     c.save();
     c.translate(0.5, 0.55);
@@ -5173,6 +5262,11 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   wheat: { icon: 'wheat', color: '#d9b45c' },
   cotton: { icon: 'cottonpuff', color: '#f2efe6' },
   moonbell: { icon: 'bells', color: '#8f9ed6' },
+  // THE LIVING SOIL: graded produce wears the base glyph with the
+  // grade's star stamped low-east (entries generated below, one per
+  // <base>_fine / <base>_prime — see registerGradedIcons).
+  compost: { icon: 'compostheap', color: '#7a5c38' },
+  prime_compost: { icon: 'compostheap', color: '#4a3a28' },
   berries: { icon: 'berries', color: '#a04a6e' },
   plant_fibre: { icon: 'fibre', color: '#79a355' },
   twine: { icon: 'twine', color: '#b0a068' },
@@ -5561,6 +5655,51 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
  * item families; tints echo the placed tile's world colors so the icon
  * promises what the ghost delivers.
  */
+// THE LIVING SOIL: graded produce icons — the base glyph with the
+// grade's four-point star stamped low-east (fine silver, prime gold),
+// generated one wrapper painter + one ITEM_ICON row per graded id so
+// every pack slot, ledger row, and card reads the grade at a glance.
+{
+  const badge = (c: CanvasRenderingContext2D, tone: string): void => {
+    const cx = 0.78;
+    const cy = 0.8;
+    const r = 0.15;
+    c.fillStyle = 'rgba(26, 20, 36, 0.8)';
+    c.beginPath();
+    c.arc(cx, cy, r * 1.05, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = tone;
+    c.beginPath();
+    c.moveTo(cx, cy - r);
+    c.lineTo(cx + r * 0.24, cy - r * 0.24);
+    c.lineTo(cx + r, cy);
+    c.lineTo(cx + r * 0.24, cy + r * 0.24);
+    c.lineTo(cx, cy + r);
+    c.lineTo(cx - r * 0.24, cy + r * 0.24);
+    c.lineTo(cx - r, cy);
+    c.lineTo(cx - r * 0.24, cy - r * 0.24);
+    c.closePath();
+    c.fill();
+  };
+  for (const base of GRADED_PRODUCE) {
+    const spec = ITEM_ICON[base];
+    if (!spec) continue;
+    const inner = PAINTERS[spec.icon];
+    if (!inner) continue;
+    for (const [grade, tone] of [
+      [1, '#e8e2d0'],
+      [2, '#ffd76a'],
+    ] as const) {
+      const glyph = `${spec.icon}_g${grade}`;
+      PAINTERS[glyph] = (c, col) => {
+        inner(c, col);
+        badge(c, tone);
+      };
+      ITEM_ICON[gradedId(base, grade)] = { icon: glyph, color: spec.color };
+    }
+  }
+}
+
 const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   wood_floor: { icon: 'floortile', color: '#a87e46' },
   stone_floor: { icon: 'floortile', color: '#a09aa8' },
@@ -5590,6 +5729,9 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   carving_bench: { icon: 'bow', color: '#9b7440' },
   sawhorse: { icon: 'sawhorse', color: '#a8794a' },
   beast_pen: { icon: 'beast_pen', color: '#96703f' },
+  compost_bin: { icon: 'compostbin', color: '#6e5433' },
+  well: { icon: 'wellbuild', color: '#6e6a75' },
+  irrigation_channel: { icon: 'channelbuild', color: '#8a6234' },
   enchanting_table: { icon: 'tome', color: '#7a6aa8' },
   barrel: { icon: 'barrel', color: '#94693a' },
   crate: { icon: 'crate', color: '#a5793f' },

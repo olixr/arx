@@ -143,3 +143,20 @@ test('build message carries the dye dial through the whitelist', () => {
     assert.equal(m?.t === 'build' && m.dye, undefined, `dye ${String(bad)} dropped, build kept`);
   }
 });
+
+test('THE LIVING SOIL verbs walk the whitelist whole', () => {
+  // THE WHITELIST LESSON: every new C2S field joins parseC2S or dies
+  // silently — these pins keep the tending verbs alive.
+  const fert = parseC2S(JSON.stringify({ t: 'fertilize', tx: -12, ty: 44 }));
+  assert.deepEqual(fert, { t: 'fertilize', tx: -12, ty: 44 });
+  const mulch = parseC2S(JSON.stringify({ t: 'mulch', tx: 3, ty: -9 }));
+  assert.deepEqual(mulch, { t: 'mulch', tx: 3, ty: -9 });
+  const add = parseC2S(JSON.stringify({ t: 'compostadd', tx: 0, ty: 0, slot: 27 }));
+  assert.deepEqual(add, { t: 'compostadd', tx: 0, ty: 0, slot: 27 });
+  // Hostile shapes die at the door, quietly and completely.
+  assert.equal(parseC2S(JSON.stringify({ t: 'fertilize', tx: 1.5, ty: 0 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'mulch', tx: 'a', ty: 0 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'compostadd', tx: 0, ty: 0, slot: -1 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'compostadd', tx: 0, ty: 0, slot: 64 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'compostadd', tx: 0, ty: 0 })), null);
+});

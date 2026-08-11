@@ -7,10 +7,12 @@
     "bot": "tsx src/bot/bot.ts",
     "validate": "tsx src/validate/validate.ts",
     "prove:secret-arts": "tsx src/proving/secretArts.ts",
+    "prove:drawn-breath": "tsx src/proving/drawnBreath.ts",
     "prove:lesson-combat": "tsx src/proving/lessonCombat.ts",
     "prove:mounts": "tsx src/proving/mounts.ts",
     "prove:pets": "tsx src/proving/pets.ts",
-    "prove:tongue": "ARX_PROVE_FROM=tongue tsx src/proving/pets.ts"
+    "prove:tongue": "ARX_PROVE_FROM=tongue tsx src/proving/pets.ts",
+    "prove:farm": "tsx src/proving/farm.ts"
   },
   "dependencies": {
     "@arx/shared": "*",

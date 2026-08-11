@@ -14,8 +14,11 @@ import {
 import {
   BUILDABLES,
   BUILD_CATEGORIES,
+  COMPOST_BATCH_WORTH,
+  COMPOST_PRIME_WORTH,
   CROP_BY_SEED,
   GROWTH_SEEDS,
+  compostWorthOf,
   buildableGround,
   canUnmake,
   enchantDef,
@@ -34,6 +37,7 @@ import {
   type TrainerPost,
 } from '@arx/content';
 import { buildableIconUrl, itemIconUrl, queueItemIcon, uiIconUrl } from '../render/icons.js';
+import { farmBins, farmKey } from '../game/farmCare.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
 import { petPortraitUrl } from '../render/petPortrait.js';
 import { createLedger } from './kit/ledger.js';
@@ -214,6 +218,7 @@ export class StationPanels {
   private showing:
     | { kind: 'craft'; station: StationType | null; skills: SkillXp; known: ReadonlySet<string>; sel: string | null }
     | { kind: 'plant'; tx: number; ty: number; skills: SkillXp; sel: string | null }
+    | { kind: 'compost'; tx: number; ty: number; sel: string | null }
     | { kind: 'build'; skills: SkillXp; sel: string | null }
     | null = null;
 
@@ -491,6 +496,7 @@ export class StationPanels {
     if (!this.showing) return;
     if (this.showing.kind === 'craft') this.renderCraft();
     else if (this.showing.kind === 'plant') this.renderPlant();
+    else if (this.showing.kind === 'compost') this.renderCompost();
     else this.renderBuild();
   }
 
@@ -932,6 +938,144 @@ export class StationPanels {
       );
     }
     this.craftDetail.appendChild(actions);
+  }
+
+  // ------------------------------------------------------------ compost
+
+  /** Set by main: feeds one pack slot's item into the bin. */
+  onCompost: ((tx: number, ty: number, slot: number) => void) | null = null;
+
+  /**
+   * THE LIVING SOIL: the bin's deposit screen. Opens off the local
+   * care mirror (the vault law — no server reply needed); every
+   * deposit re-proves the tile server-side on its way in.
+   */
+  openCompost(tx: number, ty: number, at?: { tx: number; ty: number }): void {
+    this.closeAll();
+    this.anchor = at ? { x: at.tx + 0.5, y: at.ty + 0.5 } : { x: tx + 0.5, y: ty + 0.5 };
+    this.showing = { kind: 'compost', tx, ty, sel: null };
+    this.dressCraft('Compost bin', itemIconUrl('compost', 34), '#8a6a45',
+      'Scraps in, rich ground out. The heap works while you wander.');
+    this.craftPanel.classList.remove('hidden');
+    this.renderCompost();
+  }
+
+  private renderCompost(): void {
+    if (this.showing?.kind !== 'compost') return;
+    const showing = this.showing;
+    const { tx, ty } = showing;
+    this.craftTools.innerHTML = '';
+    this.craftList.innerHTML = '';
+    this.craftDetail.innerHTML = '';
+    const bin = farmBins.get(farmKey(tx, ty)) ?? { fill: 0, graded: 0, readyAt: 0 };
+    const working = bin.readyAt !== 0 && Date.now() < bin.readyAt;
+    const ready = bin.readyAt !== 0 && Date.now() >= bin.readyAt;
+
+    // Tally what the pack can feed the heap (honest goods only —
+    // stolen slots are refused at the server door and never listed).
+    const held = new Map<string, { qty: number; worth: number; graded: number }>();
+    for (const slot of this.getInventory()) {
+      if (!slot || slot.stolen) continue;
+      const worth = compostWorthOf(slot.item, itemDef(slot.item));
+      if (!worth) continue;
+      const row = held.get(slot.item) ?? { qty: 0, ...worth };
+      row.qty += slot.qty;
+      held.set(slot.item, row);
+    }
+
+    if (working || ready) {
+      const note = document.createElement('div');
+      note.className = 'make-empty';
+      note.textContent = ready
+        ? 'The batch is done. Close this and turn the bin out.'
+        : `The heap is working. About ${Math.max(1, Math.ceil((bin.readyAt - Date.now()) / 60_000))} min.`;
+      this.craftList.appendChild(note);
+    } else if (held.size === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'make-empty';
+      empty.textContent = 'Nothing in your pack would feed the heap. Spare produce, seeds, and spoiled cooking all serve.';
+      this.craftList.appendChild(empty);
+    } else {
+      const items = [...held.keys()];
+      if (!showing.sel || !held.has(showing.sel)) showing.sel = items[0]!;
+      this.dealIntoLedger(
+        this.craftList,
+        'compost',
+        items.map((item) => {
+          const row = held.get(item)!;
+          return this.ledgerRow({
+            key: `compostrow:${item}`,
+            iconUrl: itemIconUrl(item, 40),
+            name: itemDef(item)?.name ?? item,
+            note: `× ${row.qty.toLocaleString()}`,
+            noteTone: 'ok',
+            selected: showing.sel === item,
+            onPick: () => {
+              showing.sel = item;
+              this.renderCompost();
+            },
+          });
+        }),
+        8,
+      );
+    }
+
+    // The bin itself, laid out large: the fill meter is the story.
+    const head = document.createElement('div');
+    head.className = 'work-head';
+    head.appendChild(iconTile(itemIconUrl(bin.graded >= COMPOST_PRIME_WORTH ? 'prime_compost' : 'compost', 64)));
+    const titles = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'work-name';
+    name.textContent = working ? 'The heap works' : ready ? 'Ready to turn out' : 'Feeding the heap';
+    const sub = document.createElement('div');
+    sub.className = 'work-sub';
+    sub.textContent = 'farming · the station works while you wander';
+    titles.append(name, sub);
+    head.appendChild(titles);
+    this.craftDetail.appendChild(head);
+
+    const facts = document.createElement('div');
+    facts.className = 'work-facts';
+    const fact = (label: string, value: string): void => {
+      const f = document.createElement('div');
+      f.className = 'work-fact';
+      const v = document.createElement('strong');
+      v.textContent = value;
+      const l = document.createElement('span');
+      l.textContent = label;
+      f.append(v, l);
+      facts.appendChild(f);
+    };
+    fact('the heap', `${Math.min(bin.fill, COMPOST_BATCH_WORTH)} of ${COMPOST_BATCH_WORTH}`);
+    fact('good measures', `${bin.graded} of ${COMPOST_PRIME_WORTH} for prime`);
+    this.craftDetail.appendChild(facts);
+
+    if (!working && !ready && showing.sel) {
+      const sel = showing.sel;
+      const worth = held.get(sel);
+      if (worth) {
+        this.craftDetail.appendChild(sectionHead('Into the heap'));
+        this.craftDetail.appendChild(this.materialRow(sel, 1));
+        const actions = document.createElement('div');
+        actions.className = 'work-actions';
+        actions.appendChild(
+          bigButton(worth.worth > 1 ? `Add (+${worth.worth})` : 'Add', `compost:${sel}`, () => {
+            // Slot-addressed at send time: the first honest slot
+            // holding the chosen item speaks for it.
+            const slots = this.getInventory();
+            for (let i = 0; i < slots.length; i++) {
+              const s = slots[i];
+              if (s && s.item === sel && !s.stolen) {
+                this.onCompost?.(tx, ty, i);
+                return;
+              }
+            }
+          }),
+        );
+        this.craftDetail.appendChild(actions);
+      }
+    }
   }
 
   // ------------------------------------------------------------ craft

@@ -3,6 +3,7 @@ import { deckFillAt, fillContains } from './render/terrain.js';
 import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
+import { farmBins, farmKey } from './game/farmCare.js';
 import { InputManager } from './input/inputManager.js';
 import { GroundAimController } from './input/groundAim.js';
 import { bindings, type ActionId } from './input/bindings.js';
@@ -531,6 +532,12 @@ const PROMPT_LABELS: Record<string, string> = {
   sign: 'Read Sign',
 };
 
+/** THE LIVING SOIL: has this compost bin's batch finished working? */
+function binReady(tx: number, ty: number): boolean {
+  const bin = farmBins.get(farmKey(tx, ty));
+  return !!bin && bin.readyAt !== 0 && Date.now() >= bin.readyAt;
+}
+
 const buildTray = new BuildTray(
   (id) => pickBuildable(id),
   (d) => {
@@ -577,6 +584,13 @@ const stationPanels = new StationPanels(
 stationPanels.onPlant = (tx, ty, seed) => {
   sfx.plantSeed();
   game.plantSend(tx, ty, seed);
+};
+
+// THE LIVING SOIL: deposits go by their own door; the mirror's echo
+// (S2CFarm) re-renders the open bin screen so the meter fills live.
+stationPanels.onCompost = (tx, ty, slot) => {
+  sfx.uiTap();
+  game.compostAdd(tx, ty, slot);
 };
 
 // Dev audit lever: `?room=bank|shop|stable` stands a maker room on
@@ -1452,6 +1466,9 @@ stationPanels.setStableHooks(
 // when a friend goes down, the happy nip when it stands again. Event
 // wiring, never chat-text matching.
 const petStates = new Map<number, string>();
+// THE LIVING SOIL: the mirror's echo keeps an open bin screen honest.
+game.onFarm = () => stationPanels.refreshOpen();
+
 game.onPet = () => {
   for (const p of game.ownPets) {
     const prev = petStates.get(p.slot);
@@ -2140,9 +2157,26 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       closeAllUi();
       stationPanels.openPlant(target.tx, target.ty, game.inventory, game.skills, target);
       break;
-    case 'crop':
-      // The server decides: harvest if ripe, water if thirsty, else status.
-      game.interact(target.tx, target.ty);
+    case 'crop': {
+      // THE TENDING HAND: the client aims the verb the prompt showed
+      // (water and harvest still ride the plain interact — the server
+      // decides); feed and mulch go by their own doors.
+      const verb = game.cropVerb(target.tx, target.ty);
+      if (verb === 'Fertilize') game.fertilize(target.tx, target.ty);
+      else if (verb === 'Mulch') game.mulch(target.tx, target.ty);
+      else game.interact(target.tx, target.ty);
+      break;
+    }
+    case 'bin':
+      // A finished batch turns out on the interact door; otherwise the
+      // deposit panel opens off the local mirror (the vault law).
+      if (binReady(target.tx, target.ty)) {
+        game.interact(target.tx, target.ty);
+      } else {
+        closeAllUi();
+        stationPanels.openCompost(target.tx, target.ty, target);
+        panels.showInventory();
+      }
       break;
     case 'chest':
       // The server decides: locked, or a lid swings and loot spills.
@@ -2738,7 +2772,8 @@ function frame(now: number): void {
       const label =
         target.kind === 'station' ? PROMPT_LABELS[target.station]
         : target.kind === 'npc' ? target.verb
-        : target.kind === 'crop' ? (target.mature ? 'Harvest' : 'Tend')
+        : target.kind === 'crop' ? game.cropVerb(target.tx, target.ty)
+        : target.kind === 'bin' ? (binReady(target.tx, target.ty) ? 'Turn Out' : 'Compost')
         : target.kind === 'door' ? (target.open ? (target.gate ? 'Close Gate' : 'Close Door') : (target.gate ? 'Open Gate' : 'Open Door'))
         : target.kind === 'sign' ? (target.blank ? 'Write Sign' : target.mine ? 'Read / Write' : 'Read Sign')
         // On the furniture already: the same touch stands you up — or

@@ -39,6 +39,7 @@ export * from './pois/minorValidate.js';
 export * from './pois/minorDefs.js';
 export * from './territory.js';
 export * from './crops.js';
+export * from './farming.js';
 export * from './npcs.js';
 export * from './mounts.js';
 export * from './tames.js';

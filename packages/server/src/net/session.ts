@@ -360,6 +360,24 @@ export class Session {
         this.game.plant(this.playerEid, msg.tx, msg.ty, msg.seed);
         return;
       }
+      case 'fertilize': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.fertilize(this.playerEid, msg.tx, msg.ty);
+        return;
+      }
+      case 'mulch': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.mulch(this.playerEid, msg.tx, msg.ty);
+        return;
+      }
+      case 'compostadd': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.compostAdd(this.playerEid, msg.tx, msg.ty, msg.slot);
+        return;
+      }
       case 'interactnpc': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

@@ -833,6 +833,26 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (tx, ty)
   );
   `,
+  // v25: THE LIVING SOIL (farming v2 Phase 1) — the care facts a crop
+  // row carries (soil tier 0..2, mulched 0/1) and the compost bins.
+  // Both additive: absent care reads as an untended plot, which is
+  // what every crop in the world already is. farm_bins is
+  // deviations-shaped — a row exists only while a bin holds anything
+  // (started_at 0 = gathering scraps; nonzero = the batch's working
+  // clock, pure wall time read at collect, no tick owns it). The
+  // bin's owner is the built tile's owner — never duplicated here.
+  `
+  ALTER TABLE crops ADD COLUMN soil SMALLINT NOT NULL DEFAULT 0;
+  ALTER TABLE crops ADD COLUMN mulched SMALLINT NOT NULL DEFAULT 0;
+  CREATE TABLE farm_bins (
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    fill INTEGER NOT NULL DEFAULT 0,
+    graded INTEGER NOT NULL DEFAULT 0,
+    started_at BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (tx, ty)
+  );
+  `,
 ];
 
 /**

@@ -247,6 +247,71 @@ export interface C2SPlant {
 }
 
 /**
+ * THE LIVING SOIL (farming v2 Phase 1) — the tending verbs. Each acts
+ * on a PLANTED crop row (the one-ledger law: care facts live on the
+ * crop, never on bare ground) and consumes its material from the pack.
+ */
+export interface C2SFertilize {
+  t: 'fertilize';
+  tx: number;
+  ty: number;
+}
+
+/** Lay plant fibre around a growing crop's base. */
+export interface C2SMulch {
+  t: 'mulch';
+  tx: number;
+  ty: number;
+}
+
+/**
+ * Feed one pack slot's item into a compost bin. Slot-addressed (the
+ * instance-addressing law); the server re-proves the bin tile, the
+ * item's compostable worth, and the bin's idle state at the door.
+ */
+export interface C2SCompostAdd {
+  t: 'compostadd';
+  tx: number;
+  ty: number;
+  slot: number;
+}
+
+/**
+ * THE ONE CARE MIRROR: every fact a field shows lives here. Sent whole
+ * at login and as deltas on change; `remove` clears rows the world no
+ * longer holds (harvest, demolish, collect). Additive message — the
+ * protocol version does not move (the C2SStable judgment).
+ */
+export interface FarmPlotInfo {
+  tx: number;
+  ty: number;
+  /** Watered bitmask, bit per stage (1<<stage) — the crop row's own. */
+  w: number;
+  /** Soil tier 0 plain / 1 enriched / 2 rich. */
+  soil: number;
+  /** 1 when mulched. */
+  m: number;
+}
+
+export interface FarmBinInfo {
+  tx: number;
+  ty: number;
+  /** Compostable worth accumulated toward the batch. */
+  fill: number;
+  /** Worth that arrived as graded goods (decides prime output). */
+  graded: number;
+  /** Epoch ms the working batch completes; 0 = not working. */
+  readyAt: number;
+}
+
+export interface S2CFarm {
+  t: 'farm';
+  plots?: FarmPlotInfo[];
+  bins?: FarmBinInfo[];
+  remove?: Array<{ tx: number; ty: number }>;
+}
+
+/**
  * Turn a dungeon key at a Riftgate: the pack slot names WHICH key
  * (instance-addressing law — the roll in that slot is the dungeon).
  * Only valid while standing at a riftgate portal.
@@ -500,6 +565,9 @@ export type C2SMessage =
   | C2SDemolish
   | C2SOwnBuilt
   | C2SPlant
+  | C2SFertilize
+  | C2SMulch
+  | C2SCompostAdd
   | C2SInteractNpc
   | C2SPetName
   | C2SStable
@@ -1554,6 +1622,7 @@ export type S2CMessage =
   | S2CTechniques
   | S2CCallings
   | S2CBuffs
+  | S2CFarm
   | S2CCharges
   | S2CRide
   | S2CPet
@@ -1800,6 +1869,24 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
       if (typeof msg.seed !== 'string' || msg.seed.length > 64) return null;
       return { t: 'plant', tx: msg.tx, ty: msg.ty, seed: msg.seed };
+    }
+    case 'fertilize': {
+      if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
+      if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
+      return { t: 'fertilize', tx: msg.tx, ty: msg.ty };
+    }
+    case 'mulch': {
+      if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
+      if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
+      return { t: 'mulch', tx: msg.tx, ty: msg.ty };
+    }
+    case 'compostadd': {
+      if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
+      if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
+      if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot) || msg.slot < 0 || msg.slot > 63) {
+        return null;
+      }
+      return { t: 'compostadd', tx: msg.tx, ty: msg.ty, slot: msg.slot };
     }
     case 'interactnpc': {
       if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;

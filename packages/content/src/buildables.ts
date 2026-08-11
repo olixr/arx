@@ -242,6 +242,52 @@ const defs: BuildableDef[] = [
     skill: 'farming',
   },
   {
+    // THE LIVING SOIL: scraps in, compost out on the wall clock. A
+    // farmer's station in the beast-pen sense — never a craft bench.
+    id: 'compost_bin',
+    cat: 'station',
+    name: 'Compost bin',
+    tile: Tile.CompostBin,
+    skill: 'farming',
+    levelReq: 5,
+    xp: 40,
+    materials: [
+      { item: 'board', qty: 3 },
+      { item: 'twine', qty: 1 },
+    ],
+    ticks: 45,
+  },
+  {
+    // A well turns one hand-watering into a bed sweep (content
+    // farming.ts WELL_SWEEP_RANGE) and feeds irrigation channels.
+    id: 'well',
+    cat: 'station',
+    name: 'Well',
+    tile: Tile.Well,
+    levelReq: 12,
+    xp: 70,
+    materials: [
+      { item: 'copper_ore', qty: 2 },
+      { item: 'board', qty: 2 },
+      { item: 'twine', qty: 1 },
+    ],
+    ticks: 90,
+  },
+  {
+    // A board-lined trench; live when a well stands near, and then it
+    // waters the plots beside it on its own (no XP — the automation
+    // law). Walkable ground, the garden plot's kin.
+    id: 'irrigation_channel',
+    cat: 'foundation',
+    name: 'Irrigation channel',
+    tile: Tile.IrrigationChannel,
+    skill: 'farming',
+    levelReq: 15,
+    xp: 8,
+    materials: [{ item: 'board', qty: 1 }],
+    ticks: 30,
+  },
+  {
     id: 'barrel',
     cat: 'furnishing',
     name: 'Barrel',

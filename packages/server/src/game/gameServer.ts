@@ -4664,7 +4664,7 @@ export class GameServer {
     if (!player || !pos || player.session === null) return;
     const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
     if (player.characterId < 0) {
-      sys('Guests cannot tend crops — make an account!');
+      sys('Guests cannot tend crops. Make an account!');
       return;
     }
     const dx = tx + 0.5 - pos.x;
@@ -4717,7 +4717,7 @@ export class GameServer {
     if (!player || !pos || player.session === null) return;
     const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
     if (player.characterId < 0) {
-      sys('Guests cannot tend crops — make an account!');
+      sys('Guests cannot tend crops. Make an account!');
       return;
     }
     const dx = tx + 0.5 - pos.x;
@@ -4759,7 +4759,7 @@ export class GameServer {
     if (!player || !pos || player.session === null) return;
     const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
     if (player.characterId < 0) {
-      sys('Guests cannot use the bin — make an account!');
+      sys('Guests cannot use the bin. Make an account!');
       return;
     }
     const dx = tx + 0.5 - pos.x;

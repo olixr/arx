@@ -317,4 +317,67 @@ The demand side: everything the farm makes, somebody wants.
 
 ## 8. The epic ledger (filled as phases ship)
 
-(Empty at proposal time. Dials, deviations, and as-built laws land here.)
+### Phase 1 — THE LIVING SOIL (shipped 2026-08-11, prove:farm = 13 receipts)
+
+As-built laws and dials:
+
+- **THE GRADE RIDES THE ID, NEVER THE ROLL.** Graded produce = generated
+  item defs (`<base>_fine` / `<base>_prime`, the scroll pattern), because
+  `addItem` deliberately drops rolls when merging stackables — a grade on
+  `ItemRoll` was structurally unsafe. `GRADED_PRODUCE` derives from crop
+  yields; value x1.35/x1.8 rounded, heals ceil-scaled, generated in
+  items.ts beside the scrolls. `gradeOf` refuses foreign `_fine` suffixes.
+- **THE CARE FOLD** (content/farming.ts, shared by server truth and the
+  client's ripe-sparkle prediction): score = waterings(0..2) + soil(0..2)
+  + mulch(0..1); fine >= 2, prime >= 4, several roads to each.
+- **Fertilize needs a PLANTED crop** (deviation from §5's "Tilled or
+  sprout" phrasing: the one-ledger law won — bare Tilled has no row, and
+  a second soil store was refused). Plain compost lifts plain ground to
+  enriched; prime compost makes any unripe ground rich. Mulch =
+  2 plant_fibre, once per planting. Each pays ceil(def.xp/10), the
+  watering rate — a fully attended cycle now pays up to 1.65 x def.xp
+  (balance review R5 answered).
+- **THE COMPOST BATCH**: worth 8 closes the lid, 30 wall-clock minutes,
+  prime output at graded-worth >= 4. Worth: produce 1+grade, seeds /
+  raw_* larder goods / burnt_food / berries / plant_fibre 1; bottles
+  (the `_tincture|_tonic|_brew|_salve|_oil` naming contract IS the
+  door), gear, buffs, coatings, quest goods, and stolen slots refused.
+  Collect = interact, owner-only via the built tile's owner, +15
+  farming; a bin holding anything refuses demolition. `/grow` also
+  hurries working bins (dev worlds cannot wait on a heap).
+- **THE WELL'S REACH**: well within 6 (chebyshev) of the aimed plot
+  turns one hand-watering into the 3x3 bed sweep; every swept plot pays
+  its own xp — the well saves time, never changes the lesson's worth.
+- **THE FED CHANNEL**: channel live when a well stands within 6;
+  waters adjacent (chebyshev 1) crops at each stage on the crop beat,
+  full 35% credit, NO xp (the automation law). The watered-bit gate
+  runs before the channel scan so slaked stages never pay for it.
+- **Wire**: S2CFarm care mirror (plots {w,soil,m} + bins
+  {fill,graded,readyAt} + remove), whole-at-login for nonzero rows,
+  deltas on change — additive, protocol version unmoved (the C2SStable
+  judgment). C2S fertilize / mulch / compostadd (slot-addressed) all
+  in parseC2S with hostile-shape pins in messages.test.ts.
+- **Tiles 240..242** (CompostBin solid, Well solid, IrrigationChannel
+  walkable) — clear of the dye bands; tiles are Uint16 everywhere.
+  DB v25: crops +soil +mulched, farm_bins (owner lives on built_tiles).
+- **Client**: game/farmCare.ts = the mirror store (module-level, the
+  GrassSystem precedent) + wellTiles set (chunks remap stations to
+  floors, so wells register at stream time); wet/enriched/mulch soil
+  painting in the Tilled detail pass; channel trench with fed-water /
+  dry-cracked states; live-painted bin (heap fills, lid + steam while
+  working, gold turn-out twinkle) and well (top-plane ring, windlass,
+  bucket); predicted-grade sparkle over ripe crops (gold prime, quiet
+  silver fine); THE TENDING HAND verb cascade (Water > Fertilize >
+  Mulch > Tend) on the one prompt; compost deposit panel on the vault
+  discipline; graded icons = base glyph + star badge, generated.
+- **Proving**: `npm run prove:farm -w @arx/tools` against the isolated
+  rig — 13 receipts (mirror truth, spoken refusals, the fold paying
+  fine, batch lifecycle, sweep, self-watering channel). Harness
+  lessons: build/tend reach is 2.2 and /tp lands loose — stage builds
+  beside the FEET and probe with a scrap; the proving yard is real
+  ground, so the trench digs around the bin like a player would.
+- **Deferred, deliberately**: prime compost's live receipt (the fold
+  is unit-pinned; the batch in the receipt run closed on plain
+  scraps); rich soil reachable ONLY via prime compost until Ph4's
+  apiary nudge; no client visual for another farmer's bin readiness
+  beyond the shared mirror.

@@ -1112,11 +1112,13 @@ export class AccountStore {
       boostMs: number;
       watered: number;
       owner: number;
+      soil: number;
+      mulched: number;
     }>
   > {
     return this.db.query(
       'SELECT tx, ty, crop, planted_at AS "plantedAt", boost_ms AS "boostMs", watered, ' +
-        'owner_character_id AS owner FROM crops',
+        'owner_character_id AS owner, soil, mulched FROM crops',
     ) as ReturnType<AccountStore['loadCrops']>;
   }
 
@@ -1128,19 +1130,47 @@ export class AccountStore {
     boostMs: number,
     watered: number,
     owner: number,
+    soil: number,
+    mulched: number,
   ): void {
     this.db.fire(
-      'INSERT INTO crops (tx, ty, crop, planted_at, boost_ms, watered, owner_character_id) ' +
-        'VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+      'INSERT INTO crops (tx, ty, crop, planted_at, boost_ms, watered, owner_character_id, soil, mulched) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
         'ON CONFLICT (tx, ty) DO UPDATE SET crop = excluded.crop, ' +
         'planted_at = excluded.planted_at, boost_ms = excluded.boost_ms, ' +
-        'watered = excluded.watered, owner_character_id = excluded.owner_character_id',
-      [tx, ty, crop, plantedAt, boostMs, watered, owner],
+        'watered = excluded.watered, owner_character_id = excluded.owner_character_id, ' +
+        'soil = excluded.soil, mulched = excluded.mulched',
+      [tx, ty, crop, plantedAt, boostMs, watered, owner, soil, mulched],
     );
   }
 
   deleteCrop(tx: number, ty: number): void {
     this.db.fire('DELETE FROM crops WHERE tx = ? AND ty = ?', [tx, ty]);
+  }
+
+  /**
+   * THE LIVING SOIL: compost bins. Deviations-shaped — a row exists
+   * only while a bin holds anything; an emptied bin deletes its row.
+   */
+  async loadFarmBins(): Promise<
+    Array<{ tx: number; ty: number; fill: number; graded: number; startedAt: number }>
+  > {
+    return this.db.query(
+      'SELECT tx, ty, fill, graded, started_at AS "startedAt" FROM farm_bins',
+    ) as ReturnType<AccountStore['loadFarmBins']>;
+  }
+
+  upsertFarmBin(tx: number, ty: number, fill: number, graded: number, startedAt: number): void {
+    this.db.fire(
+      'INSERT INTO farm_bins (tx, ty, fill, graded, started_at) VALUES (?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (tx, ty) DO UPDATE SET fill = excluded.fill, graded = excluded.graded, ' +
+        'started_at = excluded.started_at',
+      [tx, ty, fill, graded, startedAt],
+    );
+  }
+
+  deleteFarmBin(tx: number, ty: number): void {
+    this.db.fire('DELETE FROM farm_bins WHERE tx = ? AND ty = ?', [tx, ty]);
   }
 
   async loadBank(characterId: number): Promise<Record<string, number>> {

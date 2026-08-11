@@ -69,7 +69,8 @@ import {
   type DetailPatch,
   type Vec2,
 } from '@arx/shared';
-import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
+import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
+import { farmBins, farmKey, farmPlots, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
 import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
@@ -114,6 +115,7 @@ export type InteractTarget =
   | { kind: 'portal'; tx: number; ty: number }
   | { kind: 'plot'; tx: number; ty: number }
   | { kind: 'crop'; tx: number; ty: number; mature: boolean }
+  | { kind: 'bin'; tx: number; ty: number }
   | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string }
   | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
   | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
@@ -472,6 +474,8 @@ export class ClientGame {
   buffsAt = 0;
   /** Fires when the buff list changes (HUD refresh). */
   onBuffs: (() => void) | null = null;
+  /** THE LIVING SOIL: fires after any farm-care mirror change. */
+  onFarm: (() => void) | null = null;
   /**
    * THE METER SHOWS ITS HAND: the own body's stacking-working meters
    * (proc id, banked count, count asked). Name, school, and icon are
@@ -1440,6 +1444,26 @@ export class ClientGame {
         this.onBuffs?.();
         break;
       }
+      case 'farm': {
+        // THE ONE CARE MIRROR: plots re-bake their chunk (the soil
+        // shows its state); bins live-paint and need no bake.
+        for (const p of msg.plots ?? []) {
+          farmPlots.set(farmKey(p.tx, p.ty), { w: p.w, soil: p.soil, m: p.m, wet: false });
+          refreshWet(p.tx, p.ty, this.world.groundAt(p.tx, p.ty));
+          this.touchNeighbors(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
+        }
+        for (const b of msg.bins ?? []) {
+          if (b.fill === 0 && b.readyAt === 0) farmBins.delete(farmKey(b.tx, b.ty));
+          else farmBins.set(farmKey(b.tx, b.ty), { fill: b.fill, graded: b.graded, readyAt: b.readyAt });
+        }
+        for (const r of msg.remove ?? []) {
+          farmPlots.delete(farmKey(r.tx, r.ty));
+          this.touchNeighbors(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
+        }
+        if ((msg.plots?.length ?? 0) > 0 || (msg.remove?.length ?? 0) > 0) this.worldVersion++;
+        this.onFarm?.();
+        break;
+      }
       case 'charges': {
         this.charges = msg.charges;
         break;
@@ -1727,6 +1751,18 @@ export class ClientGame {
     if (prev && sameChunkPayload(prev, chunk)) return;
     this.world.set(chunk);
     this.chunkWallFlags.set(chunkKey(chunk.cx, chunk.cy), chunkHasBoundary(chunk));
+    // THE LIVING SOIL: wells register as they stream so the terrain
+    // bake (which sees only effective ground) can answer "fed or dry".
+    for (let i = 0; i < chunk.ground.length; i++) {
+      if (chunk.ground[i] === Tile.Well) {
+        noteWellTile(
+          chunk.cx * CHUNK_SIZE + (i % CHUNK_SIZE),
+          chunk.cy * CHUNK_SIZE + Math.floor(i / CHUNK_SIZE),
+          undefined,
+          Tile.Well,
+        );
+      }
+    }
     this.touchNeighbors(chunk.cx, chunk.cy);
     this.worldVersion++;
     // Interiors re-derive only when this arrival can actually touch a
@@ -1787,7 +1823,53 @@ export class ClientGame {
       shutDoorTile(prev) !== null &&
       shutDoorTile(prev) === shutDoorTile(patch.ground);
     if (!doorSwap) this.interiorsVersion++;
+    // A crop stage transition changes which watered bit is current —
+    // the wet look must follow the tile, not the last delta.
+    refreshWet(patch.tx, patch.ty, patch.ground as Tile);
+    noteWellTile(patch.tx, patch.ty, prev, patch.ground);
     this.onTileChange?.(patch.tx, patch.ty, prev, patch.ground);
+  }
+
+  /**
+   * THE TENDING HAND: what one press on a growing crop will do, in
+   * priority order — water if the stage is thirsty and a can is
+   * carried, feed the soil if compost is carried and the ground can
+   * take it, mulch if fibre is carried and no blanket lies — else the
+   * plain status touch. The prompt shows this same word, so the hand
+   * always knows what it is about to do.
+   */
+  cropVerb(tx: number, ty: number): 'Harvest' | 'Water' | 'Fertilize' | 'Mulch' | 'Tend' {
+    const ground = this.world.groundAt(tx, ty) as Tile | undefined;
+    if (ground !== undefined && MATURE_TILES.has(ground)) return 'Harvest';
+    const stage = stageOfTile(ground);
+    if (stage === null) return 'Tend';
+    const care = farmPlots.get(farmKey(tx, ty)) ?? { w: 0, soil: 0, m: 0, wet: false };
+    const count = (id: string): number => {
+      let n = 0;
+      for (const s of this.inventory) if (s && s.item === id && !s.stolen) n += s.qty;
+      return n;
+    };
+    if (count('watering_can') > 0 && (care.w & (1 << stage)) === 0) return 'Water';
+    if (
+      care.soil < SOIL_RICH &&
+      ((care.soil === 0 && count('compost') > 0) || count('prime_compost') > 0)
+    ) {
+      return 'Fertilize';
+    }
+    if (!care.m && count('plant_fibre') >= 2) return 'Mulch';
+    return 'Tend';
+  }
+
+  fertilize(tx: number, ty: number): void {
+    this.conn?.send({ t: 'fertilize', tx, ty });
+  }
+
+  mulch(tx: number, ty: number): void {
+    this.conn?.send({ t: 'mulch', tx, ty });
+  }
+
+  compostAdd(tx: number, ty: number, slot: number): void {
+    this.conn?.send({ t: 'compostadd', tx, ty, slot });
   }
 
   /** Fires with (tx, ty, previous, next) whenever a detail mutates. */
@@ -1977,6 +2059,10 @@ export class ClientGame {
     if (isCropTile(ground)) {
       return { kind: 'crop', tx, ty, mature: MATURE_TILES.has(ground) };
     }
+    // THE LIVING SOIL: the bin offers its lid. The mirror already
+    // lives client-side (S2CFarm), so the deposit panel opens with no
+    // server reply — every deposit re-proves the tile on the way in.
+    if (ground === Tile.CompostBin) return { kind: 'bin', tx, ty };
     const station = stationAtTile(ground);
     if (station) return { kind: 'station', tx, ty, station };
     // Loot chests: a closed chest offers itself; an open one has

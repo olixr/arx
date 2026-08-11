@@ -398,6 +398,28 @@ export enum Tile {
    * the dye they chose (THE DYE LAW, one more banded family).
    */
   BannerPoleDyed = 224,
+  // THE LIVING SOIL (farming v2 Phase 1) — the tended yard's three new
+  // bodies. 240.. sits clear of the dye bands (224..239 reserved);
+  // tiles are Uint16 on the wire and in chunks, so the ceiling is far.
+  /**
+   * Slatted timber compost bin. A wall-clock station in spirit but
+   * never a craft bench (the beast-pen law): scraps go in, the heap
+   * works while you wander, compost comes out. Solid; the panel and
+   * every deposit re-prove this tile server-side.
+   */
+  CompostBin = 240,
+  /**
+   * A stone well with windlass and bucket. Standing near one, a hand
+   * watering sweeps the whole bed instead of a single plot. Solid.
+   */
+  Well = 241,
+  /**
+   * A board-lined irrigation trench. Walkable (you step over it);
+   * fed when a well stands near, and a fed channel waters the plots
+   * beside it at each stage on its own, paying no XP — automation
+   * trades the lesson for the convenience, by law.
+   */
+  IrrigationChannel = 242,
 }
 
 export enum Detail {
@@ -744,6 +766,9 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.CarvingBench]: { name: 'carving bench', solid: true, color: '#7d5a2e', raised: true, topColor: '#9b7440' },
   [Tile.Sawhorse]: { name: 'sawhorse', solid: true, color: '#7d5a2e', raised: true, topColor: '#a8794a' },
   [Tile.BeastPen]: { name: 'beast pen', solid: true, color: '#6e5433', raised: true, topColor: '#96703f' },
+  [Tile.CompostBin]: { name: 'compost bin', solid: true, color: '#6e5433', raised: true, topColor: '#4a3a28' },
+  [Tile.Well]: { name: 'well', solid: true, color: '#6e6a75', raised: true, topColor: '#827e8a' },
+  [Tile.IrrigationChannel]: { name: 'irrigation channel', solid: false, color: '#7a5c3c', variants: ['#735739'] },
   [Tile.PikeHole]: { name: 'pike hole', solid: true, color: '#39679c', variants: ['#366293'] },
   [Tile.EelRun]: { name: 'eel run', solid: true, color: '#31578c', variants: ['#2e5284'] },
   [Tile.SalmonRun]: { name: 'salmon run', solid: true, color: '#457bbd', variants: ['#4174b3'] },

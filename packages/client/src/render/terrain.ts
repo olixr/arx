@@ -16,6 +16,8 @@ import {
 } from '@arx/shared';
 import { chamferRect, facetCircle } from './shapes.js';
 import { shade } from './rig.js';
+import { CHANNEL_FEED_RANGE } from '@arx/content';
+import { farmPlots, wellNearClient } from '../game/farmCare.js';
 import { DYE_SWATCHES } from './icons.js';
 import type { WoodSkin } from './woodSkins.js';
 
@@ -323,6 +325,8 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       t === Tile.EnchantingTable ||
       t === Tile.Sawhorse ||
       t === Tile.BeastPen ||
+      t === Tile.CompostBin ||
+      t === Tile.Well ||
       CHEST_TILES.has(t)
     ) {
       return nearestFloor(ground, tx, ty);
@@ -1766,6 +1770,129 @@ function drawTileDetail(
         px * 0.055,
         px * 0.04,
       );
+    }
+    // THE LIVING SOIL: the plot wears its care on the ground. Facts
+    // come from the one care mirror; each is its own quiet layer so
+    // a fully tended bed reads rich without shouting.
+    const care = farmPlots.get(`${tx},${ty}`);
+    if (care) {
+      if (care.soil > 0) {
+        // Worked compost: dark loam mottles between the courses; rich
+        // ground adds the bin's warm crumbs.
+        for (let k = 0; k < 4; k++) {
+          const hh = hashCoords(241 + k, tx, ty);
+          ctx.fillStyle = `rgba(30, 22, 14, ${care.soil >= 2 ? 0.5 : 0.34})`;
+          ctx.beginPath();
+          ctx.ellipse(
+            gx + (0.1 + (hh % 74) / 100) * px,
+            gy + (0.1 + ((hh >> 6) % 74) / 100) * px,
+            px * (0.06 + ((hh >> 3) % 3) * 0.02),
+            px * 0.045,
+            0, 0, Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        if (care.soil >= 2) {
+          const hh = hashCoords(251, tx, ty);
+          ctx.fillStyle = 'rgba(214, 178, 108, 0.4)';
+          ctx.fillRect(gx + (0.2 + (hh % 50) / 100) * px, gy + (0.2 + ((hh >> 5) % 55) / 100) * px, px * 0.045, px * 0.03);
+          ctx.fillRect(gx + (0.55 - (hh % 30) / 100) * px, gy + (0.6 - ((hh >> 7) % 30) / 100) * px, px * 0.04, px * 0.028);
+        }
+      }
+      if (care.m) {
+        // The mulch blanket: pale straw dashes ringing the stems.
+        ctx.fillStyle = 'rgba(201, 174, 106, 0.62)';
+        for (let k = 0; k < 7; k++) {
+          const hh = hashCoords(263 + k, tx, ty);
+          const ang = (k / 7) * Math.PI * 2 + (hh % 10) * 0.05;
+          const rr = px * (0.3 + ((hh >> 4) % 5) * 0.014);
+          const sx = gx + px * 0.5 + Math.cos(ang) * rr;
+          const sy = gy + px * 0.5 + Math.sin(ang) * rr * 0.78;
+          ctx.save();
+          ctx.translate(sx, sy);
+          ctx.rotate(ang + Math.PI / 2 + ((hh >> 6) % 5) * 0.1);
+          ctx.fillRect(-px * 0.05, -px * 0.014, px * 0.1, px * 0.028);
+          ctx.restore();
+        }
+      }
+      if (care.wet) {
+        // Slaked earth: a dark wash over the whole worked square and
+        // two low sheen catches where the water stands.
+        ctx.fillStyle = 'rgba(34, 24, 16, 0.26)';
+        ctx.fillRect(gx, gy, px, px);
+        ctx.fillStyle = 'rgba(178, 200, 224, 0.14)';
+        const hh = hashCoords(271, tx, ty);
+        ctx.fillRect(gx + (0.14 + (hh % 40) / 100) * px, gy + (0.3 + ((hh >> 5) % 40) / 100) * px, px * 0.2, px * 0.035);
+        ctx.fillRect(gx + (0.5 + ((hh >> 3) % 30) / 100) * px, gy + (0.12 + ((hh >> 8) % 40) / 100) * px, px * 0.14, px * 0.03);
+      }
+    }
+  }
+  if (m === Tile.IrrigationChannel) {
+    d = Detail.None;
+    // THE FED CHANNEL: a board-lined trench. Runs join across
+    // adjacent channel tiles (the fence-connectivity idea spoken in
+    // earthworks); a well within feed range fills it with standing
+    // water, otherwise the bottom lies dry and cracked. Bake-time
+    // truth — the well set lives client-side and a well raised or
+    // razed re-bakes the neighborhood like any patch.
+    const chanN = gAt !== undefined && gAt(tx, ty - 1) === Tile.IrrigationChannel;
+    const chanS = gAt !== undefined && gAt(tx, ty + 1) === Tile.IrrigationChannel;
+    const chanW = gAt !== undefined && gAt(tx - 1, ty) === Tile.IrrigationChannel;
+    const chanE = gAt !== undefined && gAt(tx + 1, ty) === Tile.IrrigationChannel;
+    // Orientation: default east-west; a north-south neighbor with no
+    // east-west one turns the run.
+    const ns = (chanN || chanS) && !(chanW || chanE);
+    const fed = wellNearClient(tx, ty, CHANNEL_FEED_RANGE);
+    const inset = px * 0.26;
+    const bx0 = ns ? gx + inset : chanW ? gx : gx + px * 0.1;
+    const bx1 = ns ? gx + px - inset : chanE ? gx + px : gx + px * 0.9;
+    const by0 = ns ? (chanN ? gy : gy + px * 0.1) : gy + inset;
+    const by1 = ns ? (chanS ? gy + px : gy + px * 0.9) : gy + px - inset;
+    // The cut: dark trench bed.
+    ctx.fillStyle = 'rgba(26, 18, 11, 0.82)';
+    ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+    // Board lining along both banks, sun on the near edge.
+    ctx.fillStyle = '#8a6234';
+    if (ns) {
+      ctx.fillRect(bx0 - px * 0.055, by0, px * 0.055, by1 - by0);
+      ctx.fillRect(bx1, by0, px * 0.055, by1 - by0);
+      ctx.fillStyle = 'rgba(214, 175, 122, 0.5)';
+      ctx.fillRect(bx0 - px * 0.055, by0, px * 0.02, by1 - by0);
+    } else {
+      ctx.fillRect(bx0, by0 - px * 0.055, bx1 - bx0, px * 0.055);
+      ctx.fillRect(bx0, by1, bx1 - bx0, px * 0.055);
+      ctx.fillStyle = 'rgba(214, 175, 122, 0.5)';
+      ctx.fillRect(bx0, by0 - px * 0.055, bx1 - bx0, px * 0.02);
+    }
+    if (fed) {
+      // Standing water with two pale catches of sky.
+      ctx.fillStyle = '#35597e';
+      ctx.fillRect(bx0 + px * 0.02, by0 + px * 0.02, bx1 - bx0 - px * 0.04, by1 - by0 - px * 0.04);
+      ctx.fillStyle = 'rgba(160, 196, 232, 0.4)';
+      const hh = hashCoords(281, tx, ty);
+      if (ns) {
+        ctx.fillRect(bx0 + px * 0.06, gy + (0.15 + (hh % 50) / 100) * px, px * 0.05, px * 0.16);
+        ctx.fillRect(bx1 - px * 0.11, gy + (0.5 + ((hh >> 5) % 30) / 100) * px, px * 0.04, px * 0.12);
+      } else {
+        ctx.fillRect(gx + (0.15 + (hh % 50) / 100) * px, by0 + px * 0.06, px * 0.16, px * 0.05);
+        ctx.fillRect(gx + (0.5 + ((hh >> 5) % 30) / 100) * px, by1 - px * 0.11, px * 0.12, px * 0.04);
+      }
+    } else {
+      // Dry bed: cracked earth plates waiting on a well.
+      ctx.fillStyle = 'rgba(150, 116, 76, 0.55)';
+      const hh = hashCoords(283, tx, ty);
+      for (let k = 0; k < 3; k++) {
+        const cx = bx0 + (0.12 + ((hh >> (k * 4)) % 60) / 100) * (bx1 - bx0);
+        const cy = by0 + (0.1 + ((hh >> (k * 3 + 2)) % 62) / 100) * (by1 - by0);
+        ctx.fillRect(cx, cy, px * 0.07, px * 0.05);
+      }
+      ctx.strokeStyle = 'rgba(26, 18, 11, 0.6)';
+      ctx.lineWidth = Math.max(1, px * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(bx0 + (bx1 - bx0) * 0.3, by0 + (by1 - by0) * 0.2);
+      ctx.lineTo(bx0 + (bx1 - bx0) * 0.5, by0 + (by1 - by0) * 0.7);
+      ctx.lineTo(bx0 + (bx1 - bx0) * 0.75, by0 + (by1 - by0) * 0.45);
+      ctx.stroke();
     }
   }
       if (m === Tile.WaterShallow) {

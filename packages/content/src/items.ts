@@ -3,6 +3,7 @@ import { COMPILED_EQUIPMENT } from './equipment/defs.js';
 import { ELEMENT_COLORS, ENCHANT_DEFS, registerProc, type EnchantEffect, type EnchantTier } from './equipment/enchants.js';
 import type { ArmorClass, GearSlot } from './equipment/types.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
+import { GRADED_PRODUCE, GRADE_NAMES, GRADE_VALUE_MULT, gradedId } from './farming.js';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
 export type CombatStyle = 'onehand' | 'archery' | 'arx' | 'twohand';
@@ -285,6 +286,10 @@ const defs: ItemDef[] = [
   { id: 'moonbell', name: 'Moonbell', stackable: false, value: 25, desc: 'Pale blue bells that glow faintly after dusk.', color: '#8f9ed6', code: 'Mb' },
   { id: 'berries', name: 'Berries', stackable: true, value: 3, heals: 2, desc: 'Sweet, wild, and occasionally shared with birds.', color: '#a04a6e', code: 'Br' },
   { id: 'plant_fibre', name: 'Plant fibre', stackable: true, value: 3, desc: 'Tough green strands, good for twisting into twine.', color: '#79a355', code: 'Pf' },
+  // THE LIVING SOIL (farming v2 Phase 1): the bin's two harvests.
+  // Made, never sold — the shop carries no shortcut to rich ground.
+  { id: 'compost', name: 'Compost', stackable: true, value: 6, desc: 'Dark and crumbly. The field eats first.', color: '#4a3a28', code: 'Cp' },
+  { id: 'prime_compost', name: 'Prime compost', stackable: true, value: 14, desc: 'Black gold, worked warm in the bin.', color: '#352a1e', code: 'Pc' },
 
   // Farm-processed materials
   { id: 'twine', name: 'Twine', stackable: true, value: 8, desc: 'Fibre twisted until it agrees to hold things together.', color: '#b0a068', code: 'Tw' },
@@ -1232,7 +1237,29 @@ export const LEGACY_RECIPE_SCROLLS: readonly ItemDef[] = [
   },
 ];
 
-const allDefs: ItemDef[] = [...defs, ...scrollDefs, ...recipeScrollDefs, ...LEGACY_RECIPE_SCROLLS, ...COMPILED_EQUIPMENT.items];
+// THE LIVING SOIL: graded produce — pure generation from the crop
+// yields (the scroll pattern). A Fine carrot is its OWN item id, so
+// every stack, drop-merge, recipe, and shop path treats grades
+// correctly by construction; QUALITY IS EARNED, NEVER ROLLED means
+// the grade was decided by the care fold at harvest, and the id is
+// simply what it earned. Value and heals both grow with the grade.
+const GRADE_DESCS = ['', 'Grown with a careful hand.', 'The pride of a well-kept field.'] as const;
+const gradedProduceDefs: ItemDef[] = defs
+  .filter((d) => GRADED_PRODUCE.has(d.id))
+  .flatMap((base) =>
+    ([1, 2] as const).map((grade): ItemDef => ({
+      id: gradedId(base.id, grade),
+      name: `${GRADE_NAMES[grade]} ${base.name.toLowerCase()}`,
+      stackable: base.stackable,
+      value: Math.round(base.value * GRADE_VALUE_MULT[grade]),
+      ...(base.heals !== undefined ? { heals: Math.ceil(base.heals * GRADE_VALUE_MULT[grade]) } : {}),
+      desc: GRADE_DESCS[grade],
+      color: base.color,
+      code: base.code,
+    })),
+  );
+
+const allDefs: ItemDef[] = [...defs, ...scrollDefs, ...recipeScrollDefs, ...LEGACY_RECIPE_SCROLLS, ...gradedProduceDefs, ...COMPILED_EQUIPMENT.items];
 
 // NATIVE procs pass the same load guards a bonded working does. A proc
 // baked into a chase item's def.gear.effects fires through the same
