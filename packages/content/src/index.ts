@@ -79,4 +79,5 @@ export * from './maps/amberford.js';
 export * from './maps/silverfall.js';
 export * from './maps/saltmere.js';
 export * from './maps/pinewatch.js';
+export * from './maps/hartfell.js';
 export * from './maps/undercroft.js';

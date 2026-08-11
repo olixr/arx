@@ -19,6 +19,7 @@ import {
   ROUTINES,
   buildAmberford,
   buildPinewatch,
+  buildHartfell,
   buildSaltmere,
   buildDawnmead,
   buildSilverfall,
@@ -86,6 +87,7 @@ const builtinZones = new Map<string, ZoneDef>(
     buildSilverfall(),
     buildSaltmere(),
     buildPinewatch(),
+    buildHartfell(),
     buildUndercroft(),
   ].map((z) => [z.id, z]),
 );

@@ -23,8 +23,9 @@ import { buildAmberford } from './maps/amberford.js';
 import { buildSilverfall } from './maps/silverfall.js';
 import { buildSaltmere } from './maps/saltmere.js';
 import { buildPinewatch } from './maps/pinewatch.js';
+import { buildHartfell } from './maps/hartfell.js';
 import { buildUndercroft } from './maps/undercroft.js';
-import { AMBERFORD_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
+import { AMBERFORD_RECT, HARTFELL_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
@@ -2003,6 +2004,132 @@ test('pinewatch: every door, pier, kiln and bed walks from the muster yard', () 
     const lx = Math.floor(a.x - z.origin.x);
     const ly = Math.floor(a.y - z.origin.y);
     assert.equal(seen[ly * z.width + lx], 1, `${a.actor}'s post at (${lx},${ly}) is unreachable`);
+  }
+});
+
+// ----------------------------------------------------------- HARTFELL
+// The town past the treeline. The anchors pinned here are the ones the
+// people pass and the tithe arc will measure from: the Kettle, the
+// stones, the sledge, the gates, and every door.
+test('hartfell: the fell town holds its warm water, its stones, and four ways in', () => {
+  const z = buildHartfell();
+  assert.equal(z.id, 'hartfell');
+  assert.equal(z.width, HARTFELL_RECT.w);
+  assert.equal(z.height, HARTFELL_RECT.h);
+  assert.equal(z.origin.x, HARTFELL_RECT.x);
+  assert.equal(z.origin.y, HARTFELL_RECT.y);
+  assert.ok(z.elev, 'the crag shelves carry elevation');
+  const at = (x: number, y: number): Tile => z.ground[y * z.width + x] as Tile;
+  const n = (t: Tile): number => z.ground.reduce((c, g) => (g === t ? c + 1 : c), 0);
+  // Two waters and the warm one: the Graywater west, the Darkwater
+  // north-east, the Kettle at the heart — and snow owning everything
+  // except the melt ring. The one green circle is the town's image.
+  assert.ok(n(Tile.Water) > 800, 'the lakes shrank');
+  assert.ok(n(Tile.WaterShallow) >= 300, 'the shallows, the Warm Run, the bathing rim');
+  assert.ok(n(Tile.Snow) > 2000, 'the fell lost its snow');
+  assert.ok(n(Tile.Swamp) >= 30, 'the bay marsh and the wallow');
+  // The crag shelves: two flights up, one notch through.
+  assert.equal(n(Tile.Ramp), 6, 'the Lookout and the Beacon keep one flight each');
+  assert.ok(n(Tile.Cliff) >= 150, 'the shelf rims are the north wall');
+  // The trades that exist nowhere else at this scale.
+  assert.equal(n(Tile.Vault), 1, "the Hidehall strongroom");
+  assert.equal(n(Tile.BankChest), 2, 'two chests and a woman who counts');
+  assert.equal(n(Tile.Furnace), 1, 'a working smith, not a master');
+  assert.equal(n(Tile.Anvil), 1);
+  assert.equal(n(Tile.SalmonRun), 2, 'the cold quay fishes the ice shelf');
+  assert.equal(n(Tile.PillarStone), 9, 'the Quiet Stones and the old boundary row');
+  assert.equal(n(Tile.BeastPen), 1, 'the companion pen by the folds');
+  assert.ok(n(Tile.Fence) >= 80, 'the folds and the out-fold');
+  assert.ok(n(Tile.Dock) >= 10, 'the two piers');
+  // Four ways in: south gate, herdgate, shoregate, the Tithegate.
+  assert.equal(n(Tile.GateGarrison), 12);
+  assert.ok(n(Tile.WallGarrison) >= 200, 'the curtain came down');
+  // The gate mouths meet the carved routes tile-exact: the Hartway
+  // lands at local (54,95), the Cairn Path leaves at local (26,0).
+  for (const x of [53, 54, 55]) {
+    assert.equal(at(x, 95), Tile.Path, `the Hartway mouth must reach the south edge at ${x}`);
+    assert.equal(at(x, 88), Tile.GateGarrison, `the south gate stands at ${x}`);
+  }
+  for (const x of [25, 26]) {
+    assert.equal(at(x, 0), Tile.Dirt, `the Cairn Path must reach the north edge at ${x}`);
+  }
+  assert.equal(at(25, 12), Tile.GateGarrison, 'the Tithegate bars the notch');
+  assert.equal(at(20, 50), Tile.GateGarrison, 'the shoregate opens to the quay');
+  assert.equal(at(100, 63), Tile.GateGarrison, 'the herdgate opens to the drove');
+  // The spawn is the Kettle's north walk: the respawn hearth of the far north.
+  assert.deepEqual(z.spawn, { x: HARTFELL_RECT.x + 84.5, y: HARTFELL_RECT.y + 37.5 });
+  // No people yet BY DESIGN (the Amberford law: the people pass casts
+  // the town; the rooms already know their names) — but the herds
+  // winter in the folds from day one.
+  assert.equal((z.actorSpawns ?? []).length, 0, 'the people pass comes later');
+  const herds = z.spawns ?? [];
+  assert.ok(herds.some((s) => s.npc === 'stag'), 'the stag left the fold');
+  assert.equal(herds.filter((s) => s.npc === 'hind').length, 2, 'the hinds left the fold');
+  assert.ok((z.signs ?? []).length >= 16, 'the town lost its boards');
+  // The elevation layer round-trips (the Silverfall law, not the flat one).
+  const json = zoneToJson(z);
+  assert.ok(json.elev !== undefined, 'the shelves must serialize');
+  assert.deepEqual(zoneToJson(zoneFromJson(json)), json);
+});
+
+test('hartfell: every door, pier, fold and stone walks from the Kettle', () => {
+  const z = buildHartfell();
+  const lvl = (i: number): number => z.elev![i] ?? 0;
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const start = 37 * z.width + 84; // the spawn walk
+  const queue: number[] = [start];
+  seen[start] = 1;
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!walkable(nx, ny)) continue;
+      const ni = ny * z.width + nx;
+      if (seen[ni]) continue;
+      if (lvl(ni) !== lvl(i) && z.ground[i] !== Tile.Ramp && z.ground[ni] !== Tile.Ramp) continue;
+      seen[ni] = 1;
+      queue.push(ni);
+    }
+  }
+  const unreachable: string[] = [];
+  for (let i = 0; i < z.ground.length; i++) {
+    const t = z.ground[i];
+    if (
+      (t === Tile.DoorwayStone || t === Tile.DoorwayWood ||
+        t === Tile.DoorwayStoneWide || t === Tile.DoorwayWoodWide) && !seen[i]
+    ) {
+      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
+    }
+  }
+  assert.deepEqual(unreachable, [], `doorways cut off from the Kettle: ${unreachable.join(' ')}`);
+  for (const [what, x, y] of [
+    ['the Beacon platform', 38, 12], ['the Lookout', 14, 12],
+    ['the Quiet Stones', 26, 6], ['the Tithegate', 25, 12],
+    ["Orvar's hut", 26, 22], ['the cold store', 26, 30], ['the sledge', 33, 27],
+    ['Horn Hall', 44, 24], ['the butts', 64, 21],
+    ['the Springhall moot', 79, 28], ['the warm pool room', 92, 32],
+    ['the Kettle walk north', 84, 38], ['the Kettle walk south', 84, 50],
+    ["the Speaker's hall", 62, 42], ["the Speaker's chamber", 65, 47],
+    ['the Warm Row west', 73, 57], ["Tuli's bone shop", 93, 58],
+    ['the Hidehall floor', 68, 70], ['the strongroom', 60, 68],
+    ["Ranna's room", 61, 74], ["Inga's room", 71, 74],
+    ['the chandlery', 84, 68], ['the smoke hut', 81, 78], ['the tallow shed', 95, 80],
+    ['the smithy', 68, 83], ['the wardhut', 95, 68],
+    ['the inn common room', 39, 73], ["Hallward's good room", 47, 83],
+    ["the waykeeper's post", 59, 84], ['the bothy', 31, 52],
+    ['fold A', 26, 67], ['fold B', 26, 77],
+    ['the west pier', 2, 68], ["Eyvor's hut", 13, 77], ["Gunvor's cottage", 13, 55],
+    ['the out-fold', 113, 60], ['the Darkwater shore', 108, 42],
+    ['the Hartway mouth', 54, 95], ['the Cairn Path mouth', 26, 0],
+    ['the shore lane', 18, 50],
+  ] as const) {
+    assert.equal(seen[y * z.width + x], 1, `${what} is severed`);
   }
 });
 

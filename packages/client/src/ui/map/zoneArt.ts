@@ -3,6 +3,7 @@ import {
   buildAmberford,
   buildDawnmead,
   buildPinewatch,
+  buildHartfell,
   buildSaltmere,
   buildSilverfall,
   buildUndercroft,
@@ -69,6 +70,7 @@ export function authoredZoneArt(): ZoneArt[] {
       buildSilverfall(),
       buildSaltmere(),
       buildPinewatch(),
+      buildHartfell(),
       buildUndercroft(),
     ].map(bakeZone);
   }
