@@ -59,6 +59,16 @@ test('every route starts and ends at a planned zone (gates meet roads)', () => {
       assert.ok(onHigh, `${route.name} must end on a High Road waypoint (the fork)`);
       continue;
     }
+    // The Hartway forks off the Timber Road's last-league waypoint
+    // below Pinewatch — every wain north rolls past the town's walls
+    // first. The fork IS the start; the end is Hartfell's gate.
+    if (route.id === 'hartway') {
+      const timber = ROAD_ROUTES.find((r) => r.id === 'timber_road')!;
+      const onTimber = timber.pts.some((p) => p.x === a.x && p.y === a.y);
+      assert.ok(onTimber, `${route.name} must start on a Timber Road waypoint (the fork)`);
+      assert.ok(inAnyRect(b.x, b.y), `${route.name} end is loose`);
+      continue;
+    }
     assert.ok(inAnyRect(a.x, a.y), `${route.name} start is loose`);
     assert.ok(inAnyRect(b.x, b.y), `${route.name} end is loose`);
   }
@@ -297,4 +307,26 @@ test('both towns stay tier 0 at their own hearths despite the Blackpine', () => 
   const anchors = AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a }));
   assert.equal(dangerAt(1337, 352, 24, anchors), 0, 'Amberford');
   assert.equal(dangerAt(1337, 584, -136, anchors), 0, 'Pinewatch');
+});
+
+// ------------------------------------------------------------------
+// HARTFELL — the onion law. The base band that far north-east is 5
+// everywhere; the town is a warm ring in it, not a hole through it.
+// The haven's relief must grade the walk-out (3-ish at the walls,
+// 4-5 beyond) and the far fell must sit at the ceiling — that is the
+// entire level-25-35 promise, so it is pinned.
+// ------------------------------------------------------------------
+
+test("Hartfell's relief grades the walk-out and the far fell stays at the ceiling", () => {
+  const anchors = AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a }));
+  assert.equal(dangerAt(1337, 848, -392, anchors), 0, 'the Kettle is a hearth');
+  assert.equal(dangerAt(1337, 838, -350, anchors), 0, 'the south gate stands inside the lamp');
+  const walls = dangerAt(1337, 848, -318, anchors); // ~10 past the safe edge
+  assert.ok(walls >= 2 && walls <= 4, `just past the walls should read 2-4, got ${walls}`);
+  const fell = dangerAt(1337, 816, -500, anchors); // the Barrowfell approach
+  assert.ok(fell >= 4, `the barrow country must stay deep, got ${fell}`);
+  // The Hartway's middle league is honestly tier 5 country: the road
+  // is calm to SPAWNS (worldgen's ROAD_CALM), never to the field.
+  const midway = dangerAt(1337, 800, -240, anchors);
+  assert.ok(midway >= 4, `the drove's long middle must stay earned, got ${midway}`);
 });

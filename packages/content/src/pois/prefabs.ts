@@ -1144,6 +1144,82 @@ const wardlineCut = sketch(
   ],
 );
 
+/**
+ * THE FELL BARROW (the Hartfell epic) — a robbed mound of the old
+ * north. The kerb ring stands as it was set before any road was laid;
+ * the door does not: pillars levered aside, a trench cut straight
+ * through the south ring, and the household's goods gone or going.
+ * The dead walk their own grave-field day and night, because whatever
+ * kept their hours went out the door with the robbers.
+ */
+const fellBarrow = sketch(
+  'poi_fell_barrow',
+  'Opened barrow',
+  [
+    '___,,,.....,,,___',
+    '__,..rrrrrrr..,__',
+    '_,..rr,,,,,rr..,_',
+    '_,.rr,,,o,,,rr.,_',
+    ',..r,,rrrrr,,r..,',
+    ',.rr,,rSSSr,,rr.,',
+    ',.r,,,rSXSr,,,r.,',
+    ',.rr,,rSoSr,,rr.,',
+    ',..r,,PS:SP,,r..,',
+    '_,.rr,,:::,,rr.,_',
+    '_,..rrr:::rrr..,_',
+    '__,,.c.:::.a.,,__',
+    '____,,.:::.,,____',
+  ],
+);
+
+/**
+ * THE RING BARROW — the smaller, older make: a kerb of stones over a
+ * single cist, no chamber to speak of and no door to lever. The ones
+ * the diggers open anyway are the ones that answer.
+ */
+const barrowRing = sketch(
+  'poi_barrow_ring',
+  'Ring barrow',
+  [
+    '__,,...,,__',
+    '_,..rrr..,_',
+    ',..r,,,r..,',
+    ',.r,,o,,r.,',
+    ',.r,,X,,r.,',
+    ',..r,,,r..,',
+    '_,..r:r..,_',
+    '__,,.:.,,__',
+  ],
+);
+
+/**
+ * THE DIGGERS' CAMP (the Hartfell epic) — the Red Company's dig below
+ * the Barrowfell. Spoil down the mound's south face, the foreman's
+ * lean-to pitched with its door to the fire, grave-goods crated for
+ * the road south, and a locked box of the best of it. Everything
+ * about this camp is a crime with an address.
+ */
+const barrowDiggers = sketch(
+  'poi_barrow_diggers',
+  "The Diggers' Camp",
+  [
+    '____,,,:::,,,______',
+    '___,.rr:::rr.,_____',
+    '__,.rr,,:,,rr.,____',
+    '__,.r,,o:o,,r.,____',
+    '__,.rr,,:,,rr.,____',
+    '___,.rr:::rr.,,____',
+    '____,..:::..,,_____',
+    '__,....:::....,____',
+    '_,..c..:f:..a..,___',
+    '_,.G...:::..o..,___',
+    '_,.Gc.wwvww.::..,__',
+    '_,....wpEpw..W..,__',
+    '__,...wwwww...,____',
+    '____,,,......,,____',
+  ],
+);
+
 // ----------------------------------------------------- THE SMALL FINDS
 // (docs/lived-in-land-plan.md Phase 2.) Footprints stay tiny — the
 // texture layer must read as something the land grew, not a site the
@@ -1353,6 +1429,10 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     // The Pinereach (the north wall and the deep wood):
     hoargateFort,
     wardlineCut,
+    // Hartfell (the town past the treeline):
+    fellBarrow,
+    barrowRing,
+    barrowDiggers,
     // The War-Ground (the lived-in land, phase 4):
     warholdCourt,
     stockadeCourt,

@@ -1,0 +1,75 @@
+{
+  "id": "barrow_diggers",
+  "name": "The Diggers' Camp",
+  "description": "Red Company spades out of the south, camped below the Barrowfell with fresh spoil on their boots. Weight 0: authored only — there is one dig, it is a crime with an address, and when the camp is broken it stays broken. Breaking it sets poi_diggers_broken; Hartfell's whole quest spine leans on this ground.",
+  "tiers": [
+    4,
+    5
+  ],
+  "weight": 0,
+  "prefabs": [
+    "poi_barrow_diggers"
+  ],
+  "garrison": [
+    {
+      "npc": "brigand",
+      "count": [
+        2,
+        3
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "brigand_archer",
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    },
+    {
+      "npc": "brigand_reaver",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "levelOffset": 3,
+      "names": [
+        "Foreman Skell",
+        "The Sexton",
+        "Mattock Brey",
+        "Undermaster Vane",
+        "Coldhands Orrin"
+      ]
+    }
+  ],
+  "chestTierBonus": 1,
+  "chestWarded": true,
+  "clearedFlag": "poi_diggers_broken",
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      {
+        "tile": "Rock",
+        "count": 4
+      },
+      {
+        "tile": "BonePile",
+        "count": 2
+      }
+    ]
+  },
+  "signs": [
+    {
+      "title": "KEEP OFF",
+      "lines": [
+        "company ground by right of claim",
+        "the claim is not signed"
+      ]
+    }
+  ],
+  "family": "brigand"
+}

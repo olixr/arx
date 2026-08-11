@@ -186,6 +186,40 @@ export const SALT_FLATS = { x: 356, y: 400, r: 64 } as const;
 export const PINEWATCH_RECT: ZoneRect = { x: 520, y: -184, w: 128, h: 96 };
 
 /**
+ * Hartfell — the town past the treeline (the Hartfell epic). Centre
+ * (848,-400): ~322 tiles beyond Pinewatch's muster yard, deep in the
+ * tier-5 base band, which is the design — the fourth HAVEN's relief
+ * grades the walk-out to tier 3 at the walls (levels 15-24), tier 4 a
+ * stone's throw on (22-34), tier 5 past that (32-48): a 25-35 onion
+ * with no dial touched. The rect sits in the crook the noise already
+ * dug: the cold Graywater laps the west flank, the Darkwater's arm
+ * touches the north-east corner, and the little spring hollow at the
+ * centre-east is the Kettle — the one warm water in the north, and
+ * the whole reason a town can live past the trees.
+ */
+export const HARTFELL_RECT: ZoneRect = { x: 784, y: -440, w: 128, h: 96 };
+
+/**
+ * THE BARROWDEEP — ground RESERVED, not built (the Rimeward law: a
+ * road that ends nowhere is a road the plan is lying about). The
+ * Cairn Path climbs from Hartfell's north wicket through the dell
+ * country and ends here, at the foot of the great mound nobody has
+ * opened — the door a future delve epic gets to knock on. NOT
+ * aproned: the barrow fells keep their crags and their sunken ways
+ * right up to the last stone.
+ */
+export const BARROWDEEP_RECT: ZoneRect = { x: 776, y: -528, w: 80, h: 56 };
+
+/**
+ * THE CAIRNFELL — the north wall above the Barrowdeep. The base noise
+ * already stands crag country on both shoulders; this heart closes
+ * the saddle between them so the fell country ENDS somewhere the eye
+ * can read: south of it, dells and barrows and the town's lamps;
+ * north of it, stone and weather and no more map.
+ */
+export const CAIRNFELL = { x: 800, y: -580, r: 110 } as const;
+
+/**
  * THE RIMEWARD — ground RESERVED, not built. The Hoargate Road has to
  * end somewhere, and a road that ends nowhere is a road the plan is
  * lying about: this rect is the plan telling the truth. The scaffold
@@ -413,6 +447,56 @@ const AUTHORED_PLAN: GeographyDef = {
       ],
     },
     {
+      id: 'hartway',
+      name: 'The Hartway',
+      kind: 'road',
+      // The drovers' road: the Timber Road's last-league waypoint
+      // below Pinewatch to Hartfell's south gate. It forks BELOW the
+      // town on purpose — every wain north rolls past Pinewatch's
+      // walls first, so the two towns stay stapled together — then
+      // climbs the east country: through the pine belt, over the
+      // Sunken Mile (the one dell the grade cuts straight through),
+      // across the beck braids on plank spans, up the isthmus between
+      // the tarn chains, and out of the trees onto the open fell. One
+      // road in, no shortcut, lamped with Hartfell's own tallow: the
+      // north's whole lesson about safety is STAY ON THE ROAD.
+      pts: [
+        { x: 660, y: -78 },
+        { x: 682, y: -100 },
+        { x: 708, y: -122 },
+        { x: 734, y: -142 },
+        { x: 752, y: -166 },
+        { x: 768, y: -190 },
+        { x: 784, y: -214 },
+        { x: 800, y: -236 },
+        { x: 824, y: -256 },
+        { x: 830, y: -270 },
+        { x: 832, y: -284 },
+        { x: 843, y: -292 },
+        { x: 842, y: -306 },
+        { x: 838, y: -322 },
+        { x: 836, y: -336 },
+        { x: 838, y: -345 },
+      ],
+    },
+    {
+      id: 'cairn_path',
+      name: 'The Cairn Path',
+      kind: 'trail',
+      // The old processional way: Hartfell's north wicket, up through
+      // the dell country past the Quiet Stones, to the Barrowdeep's
+      // door. The tithe sledge uses the first half of it every
+      // slaughter-day; nothing living uses the rest. It grades
+      // through the dells as a hollow-way — a track worn below its
+      // own banks by feet older than any road the Crown ever cut.
+      pts: [
+        { x: 810, y: -440 },
+        { x: 812, y: -458 },
+        { x: 806, y: -476 },
+        { x: 804, y: -490 },
+      ],
+    },
+    {
       id: 'hunters_trail',
       name: "The Hunter's Trail",
       kind: 'trail',
@@ -483,6 +567,23 @@ const AUTHORED_PLAN: GeographyDef = {
     // Pinewatch, cutting the great spars nobody is allowed to cut.
     // The town's quest spine has a physical address.
     { id: 'wardline_cut', defId: 'timber_poachers', cell: [5, -2] },
+    // THE HARTWAY'S ONE ROOF — a walled fire at the halfway mark,
+    // exactly where the band runs deepest. Pinewatch's relief covers
+    // the fork; Hartfell's covers the last league; this covers the
+    // drove that has to sleep once in between.
+    { id: 'drovers_fire', defId: 'waystation', x: 794, y: -218 },
+    // THE DIGGERS' CAMP — the Red Company's spades below the
+    // Barrowfell, pitched beside the Cairn Path where the sledge road
+    // meets the dells. Hartfell's quest spine has a physical address;
+    // breaking it sets poi_diggers_broken and the fell breathes out.
+    { id: 'diggers_camp', defId: 'barrow_diggers', x: 798, y: -464 },
+    // THE HOLLOW BARROW — one opened mound guaranteed in the near
+    // fells (the archetype also rolls naturally across the high
+    // country; this one is the story's). Cell-forced: the honest scan
+    // finds it standable ground west of the beck chain, and a barrow
+    // is exactly the kind of place that is allowed to be far from a
+    // road.
+    { id: 'hollow_barrow', defId: 'fell_barrow', cell: [5, -4] },
     // THE HOARGATE — the garrison across the pass, and the last
     // authored thing before the Rimeward.
     { id: 'hoargate', defId: 'hoargate_watch', x: -334, y: -262 },
@@ -494,6 +595,7 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'silverspine', ...SILVERSPINE },
     { id: 'spinewall_east', ...SPINEWALL_EAST },
     { id: 'spinewall_south', ...SPINEWALL_SOUTH },
+    { id: 'cairnfell', ...CAIRNFELL },
   ],
   veils: [{ id: 'thornveil', ...THORNVEIL }],
   fens: [
@@ -516,6 +618,8 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'silverfall', name: 'Silverfall', ...SILVERFALL_RECT, apron: true },
     { id: 'saltmere', name: 'Saltmere', ...SALTMERE_RECT, apron: true },
     { id: 'pinewatch', name: 'Pinewatch', ...PINEWATCH_RECT, apron: true },
+    { id: 'hartfell', name: 'Hartfell', ...HARTFELL_RECT, apron: true },
+    { id: 'barrowdeep', name: 'The Barrowdeep', ...BARROWDEEP_RECT },
     { id: 'rimeward', name: 'The Rimeward', ...RIMEWARD_RECT },
   ],
 };

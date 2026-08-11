@@ -46,6 +46,14 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // across the Glasswater and east past the Wardline the field goes
   // to 5 and stays there — the old wood is watched, never held.
   { x: 584, y: -136, safeR: 64, haven: true },
+  // Hartfell — the town past the treeline, and the fourth HAVEN. Its
+  // lamp keeps the Kettle and the folds tier 0, and the relief grades
+  // the walk-out: tier 3 at the walls, 4 a stone's throw on, 5 past
+  // that — because the base band this far north-east is 5 everywhere,
+  // and the town is a warm ring in it, not a hole through it. No
+  // dread stands on the Barrowfell for the same reason a candle isn't
+  // lit at noon: the field is already at its ceiling up there.
+  { x: 848, y: -392, safeR: 64, haven: true },
   // THE BLACKPINE — the first DREAD in the Dawnlands, and the reason
   // the Sparway is the bad way. The trail between Amberford and
   // Pinewatch is barely half the Timber Road's length and passes far

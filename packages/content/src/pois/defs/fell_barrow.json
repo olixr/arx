@@ -1,0 +1,81 @@
+{
+  "id": "fell_barrow",
+  "name": "Barrow of the old north",
+  "description": "A turf mound over the dead of the country before the roads, kerbed in stone nobody living set. The high fells are sown with them, and the fell folk's oldest law is short: dig no barrow. Where the law has been kept the mound only watches you pass. Where it has not, the door stands levered open and the household walks its own grave-field, day and night, because whatever kept their hours in the dark went out the door with the robbers.",
+  "tiers": [
+    4,
+    5
+  ],
+  "weight": 3,
+  "prefabs": [
+    "poi_fell_barrow",
+    "poi_barrow_ring"
+  ],
+  "garrison": [
+    {
+      "npc": "skeleton_guard",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "skeleton_archer",
+      "count": [
+        1,
+        1
+      ],
+      "role": "sentry"
+    },
+    {
+      "npc": "skeleton",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "skeleton_champion",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 5,
+      "levelOffset": 2,
+      "names": [
+        "The Kerbed King",
+        "Old Under-the-Stone",
+        "The First Herdsman",
+        "The Torc-Bearer",
+        "She Who Was Counted"
+      ]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 3,
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 2
+      },
+      {
+        "tile": "Rock",
+        "count": 3
+      }
+    ]
+  },
+  "signs": [
+    {
+      "title": "OLD STONE",
+      "lines": [
+        "the letters are worn past reading",
+        "somebody still keeps the moss off"
+      ]
+    }
+  ],
+  "family": "dead"
+}
