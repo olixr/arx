@@ -152,4 +152,44 @@ The Rookery stays tolerated, never sanctioned. Livestock = the rams.
 
 ## AS-BUILT LEDGER
 
-*(filled as phases land)*
+- **Phase 1 THE PLAN** ff73fb6 — this document.
+- **Phase 2 THE CROWN RISES** edc4947 — silverfall.ts rebuilt whole.
+  As designed, with these build-truths:
+  - L3 raise(46,10,92,27); precinct curtain x50-96 y11-32; keep
+    x54-93 y12-24 (partitions x69/x86); bailey y25-31; thrones
+    (77,14)+(78,14); castle gate (86-90,32); Ramp count is STILL 39.
+  - The race narrows to x97-101: water y19-32, LANDING BRIDGE
+    y33-34, and ONE OPEN ROW of water at y35 so the rim still reads
+    a feed (a Bridge is not a feed — the foot-water scan only looks
+    LOOKBACK 4 north, so a bridge directly on the lip would kill the
+    falls; the open row is load-bearing).
+  - The crag fills x51-53 y12-24 SOLID inside the ward (a hollow
+    there is a sealed pocket; solid rock is scenery).
+  - Kitchen range ABUTS the curtain on purpose (lined bailey, not
+    littered); the SW drum overwrites its corner — sealed either way.
+  - Rookery seal moved to y33-34 (alley gap x42-43 unchanged);
+    everything x>=46 in the old quarter moved west of the new rim.
+  - Civic axis y43-44; court walks y50-51; arcanum shifted to y52;
+    Lantern Row and Court Gate untouched.
+- **Phase 3 THE STEEL AND THE HOUSEHOLD** aa55726 — 64 placements:
+  castle_guard 9, silverfall_watch 16, castle_servant 4, and
+  drillmaster_jorunn / steward_ansgar / herald_ossian with dialogues
+  and VOICE cards. Gate-line law kept STRICT for steel routines;
+  the royals and the herald DO cross the castle/court gates by
+  design (a player-shut gate holds them harmlessly at the leaf, and
+  that is story-true).
+- **Phase 4 THE WALK** — 33 screenshots at gameplay zoom (scratchpad
+  c*/d*.jpeg). Curation findings fixed: the Silver Shrine re-rung
+  BARE (the Quiet Stones lesson; 8 pillars, yews moved to the path
+  foot), the falls-side planter nook restored to the Grand Court,
+  the royal garden planted with flower details. Routines verified
+  live: the King seated at court, the Queen walking her garden at
+  midday, Jorunn and the drill pair on the sand, servants tending,
+  the watch on every gate.
+
+## DEBTS
+
+- Waterfall-curtain set-piece art at the terrace lips (standing debt
+  since Epic 4; the remaster kept the falls chain exactly for it).
+- Silverfall VO pass for the three new throats + servants.
+- The herald's midday cry could someday be a real zone-wide bark.

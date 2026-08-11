@@ -336,6 +336,10 @@ export function buildSilverfall(): ZoneDef {
   b.set(110, 25, Tile.Basin); // the garden font
   b.set(108, 27, Tile.Bench).set(113, 27, Tile.Bench);
   b.set(106, 27, Tile.FlowerBox).set(115, 27, Tile.FlowerBox);
+  // The beds between the boxes — the garden reads planted, not penned.
+  b.setDetail(107, 25, Detail.Flowers).setDetail(110, 24, Detail.Flowers);
+  b.setDetail(113, 25, Detail.Flowers).setDetail(108, 26, Detail.Flowers);
+  b.setDetail(112, 27, Detail.Flowers).setDetail(110, 27, Detail.Flowers);
   b.fillRect(111, 30, 1, 3, Tile.Path); // gate -> the east arm
   b.sign(112, 30, 'THE ROYAL GARDEN', ['the Queen walks at midday', 'pick nothing']);
   // THE SILVER SHRINE — the mother-flame on its pilgrim path; every
@@ -347,10 +351,13 @@ export function buildSilverfall(): ZoneDef {
   b.set(126, 17, Tile.Brazier); // the mother-flame
   b.set(124, 15, Tile.FlowerBox).set(128, 15, Tile.FlowerBox);
   b.set(125, 20, Tile.Bench).set(127, 20, Tile.Bench);
-  b.fillRect(125, 22, 2, 13, Tile.Path); // the pilgrim path, down to the arm
+  b.set(126, 12, Tile.PillarStone).set(126, 22, Tile.PillarStone); // the ring closes N and S
+  b.fillRect(125, 23, 2, 12, Tile.Path); // the pilgrim path, down to the arm
   b.set(123, 30, Tile.LampPost); // the one lamp the flame allows itself
   b.set(123, 28, Tile.Bench).set(128, 28, Tile.Bench); // the pilgrim rest
-  b.set(121, 24, Tile.TreeYew).set(131, 24, Tile.TreeYew);
+  // The circle stays BARE (the Quiet Stones lesson): the yews stand
+  // down at the path's foot, never against the ring.
+  b.set(122, 32, Tile.TreeYew).set(129, 32, Tile.TreeYew);
   // Alpine dressing on the public east strip.
   b.fillRect(121, 11, 2, 1, Tile.Snow);
   b.fillRect(133, 13, 2, 2, Tile.Snow);
@@ -449,6 +456,10 @@ export function buildSilverfall(): ZoneDef {
   b.set(77, 46, Tile.Bench).set(80, 46, Tile.Bench);
   b.set(73, 40, Tile.Lectern); // the crier reads the Crown's word here
   b.sign(71, 42, 'THE GRAND COURT', ['the Crown hears moot', 'first bell of the month']);
+  // The falls-side nook: benches and planters on the plunge bank —
+  // the court's one quiet corner, facing the water.
+  b.set(95, 39, Tile.FlowerBox).set(95, 48, Tile.FlowerBox);
+  b.set(95, 42, Tile.Bench).set(95, 45, Tile.Bench);
   b.set(72, 38, bannerPoleTile(1)).set(94, 38, bannerPoleTile(1));
   b.set(72, 48, Tile.LampPost).set(94, 48, Tile.LampPost);
   b.stamp(MARKET_STALL, 73, 45); // the licensed pitch
@@ -1137,7 +1148,7 @@ export function buildSilverfall(): ZoneDef {
     [50, 65], [59, 64], [51, 84], [50, 91], [96, 92],
     [146, 62], [147, 78], [120, 80],
     [47, 39], [36, 44], [42, 48], [132, 46],
-    [47, 15], [48, 25], [52, 34], [120, 11], [134, 20],
+    [47, 15], [48, 25], [52, 34],
     [139, 14], [143, 26], [140, 33],
     [24, 64], [10, 64], [28, 78], [147, 10], [166, 12], [166, 30], [166, 50],
   ] as const) {
