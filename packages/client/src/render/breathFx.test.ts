@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ABILITIES } from '@arx/content';
+import { ABILITIES, NPCS } from '@arx/content';
 import { fxStyleFor } from './abilityFx.js';
 import { BREATH_DIALECTS, speakBreath } from './breathFx.js';
 import type { MatterCtx } from './matter/index.js';
@@ -18,7 +18,16 @@ import type { MatterCtx } from './matter/index.js';
  */
 
 const breathArts = [...ABILITIES.values()].filter((ab) => ab.shape !== 'tame');
-const casted = breathArts.filter((ab) => ab.castTicks);
+// THE FOE'S BREATH (enemy arts): an NPC kit entry with a windup
+// winds its ability exactly like castTicks winds a player art — the
+// charge wire carries the same id, so the curation law reaches it.
+const kitWound = new Set<string>();
+for (const npc of NPCS.values()) {
+  for (const k of npc.kit ?? []) {
+    if ((k.windupTicks ?? 0) > 0) kitWound.add(k.ability);
+  }
+}
+const casted = breathArts.filter((ab) => ab.castTicks || kitWound.has(ab.id));
 const channeled = breathArts.filter((ab) => ab.channelTicks);
 
 /** A permissive particle host: counts every call, satisfies any verb. */
@@ -56,7 +65,12 @@ test('no orphan dialects: every entry names a live breath art with the matching 
   for (const [id, d] of Object.entries(BREATH_DIALECTS)) {
     const ab = ABILITIES.get(id);
     assert.ok(ab, `dialect '${id}' speaks for no ability`);
-    if (d.charge) assert.ok(ab!.castTicks, `'${id}' has a charge voice but no wind-up`);
+    if (d.charge) {
+      assert.ok(
+        ab!.castTicks || kitWound.has(id),
+        `'${id}' has a charge voice but no wind-up (neither castTicks nor a winding kit entry)`,
+      );
+    }
     if (d.note) assert.ok(ab!.channelTicks, `'${id}' has a note voice but no held note`);
   }
 });

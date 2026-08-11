@@ -50,6 +50,7 @@ import { COMBAT_SIGS } from './fxSigsCombat.js';
 import { VOICES_SIGS } from './fxSigsVoices.js';
 import { FLIGHTS_SIGS } from './fxSigsFlights.js';
 import { BEASTCRAFT_SIGS } from './fxSigsBeastcraft.js';
+import { FOES_SIGS } from './fxSigsFoes.js';
 
 // --------------------------------------------------------------- ctx
 
@@ -221,6 +222,14 @@ export const MATTER_MIGRATED: readonly string[] = [
   // Everything else is the wild's own — forcing fire or venom onto
   // CARE would make the library lie.
   'come_to_heel',
+  // Wave 3k — the foes' wave (enemy arts): seven kit voices on
+  // library matter — the mark that catches, the standing haze, the
+  // opened tomb, the ground that answers, the crypt's cold, the
+  // packlord's bite, the bat's nick. web_snare (silk), reaping_sweep
+  // (the reaver's own steel), and gnawed_mending (knitting growth)
+  // stay bespoke by GRAMMAR REFUSAL — see fxSigsFoes.ts header.
+  'cinder_ring', 'miasma_ring', 'grave_mist', 'raise_the_fallen',
+  'marrow_chill', 'rending_lunge', 'shrilling_dart',
 ];
 
 // ------------------------------------------------------- exemplars
@@ -824,4 +833,5 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...VOICES_SIGS,
   ...FLIGHTS_SIGS,
   ...BEASTCRAFT_SIGS,
+  ...FOES_SIGS,
 };

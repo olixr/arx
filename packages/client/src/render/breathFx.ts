@@ -138,6 +138,79 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
       storm.deployments.static!(c, x, y, { radius: o.radius, scale: 0.5, dur: 1.3 });
     },
   },
+
+  // ------------------- THE FOE'S BREATH (enemy arts): the bestiary's
+  // wind-ups. Same curation law as the player gathers — every kit
+  // entry that winds carries a hand-picked voice, and the voice tells
+  // the ELEMENT of what is coming while the pip counts it down.
+  // Firebolt: camp-fire climbs the caller's arm — a small true plume.
+  goblin_firebolt: {
+    charge: (c, x, y) => fire.deployments.plume!(c, x, y, { scale: 0.45, dur: 0.7 }),
+  },
+  // Cinder Ring: embers POOL at the writing hand before the mark.
+  cinder_ring: {
+    charge: (c, x, y) => fire.deployments.pool!(c, x, y, { radius: 0.55, scale: 0.5, dur: 0.7 }),
+  },
+  // Gloom Spittle: the bile rises — a sick green breath gathering.
+  gloom_spittle: {
+    charge: (c, x, y, o) =>
+      venom.deployments.cloud!(c, x, y, { radius: o.radius * 0.5, scale: 0.45, dur: 0.7 }),
+  },
+  // Miasma Ring: the gloomcaller already DRIPS while the seed forms.
+  miasma_ring: {
+    charge: (c, x, y) => venom.deployments.drip!(c, x, y, { scale: 0.55, dur: 0.8 }),
+  },
+  // Bone Volley: dry rattle — bone-dust shivers off the drawn fistful.
+  bone_volley: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.5, scale: 0.4, dur: 0.7 }),
+  },
+  // Rattling Volley: same dry family, a lighter shiver.
+  rattling_volley: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.45, scale: 0.35, dur: 0.7 }),
+  },
+  // Grave Mist: the tomb-cold leaks EARLY — fog before the field.
+  grave_mist: {
+    charge: (c, x, y, o) =>
+      frost.deployments.fog!(c, x, y, { radius: o.radius * 0.6, scale: 0.5, dur: 0.8 }),
+  },
+  // Marrow Chill: rime blooms up the planted blade.
+  marrow_chill: {
+    charge: (c, x, y) => frost.deployments.bloom!(c, x, y, { radius: 0.6, scale: 0.5, dur: 0.7 }),
+  },
+  // Raise the Fallen: the dark reaches up before the rift tears.
+  raise_the_fallen: {
+    charge: (c, x, y) => shadow.deployments.tendrils!(c, x, y, { scale: 0.55, dur: 0.9 }),
+  },
+  // Web Snare: the spinner braces — legs scuffing, silk drawn taut
+  // (dust is the honest gather; the silk itself is the signature's).
+  web_snare: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.45, scale: 0.35, dur: 0.7 }),
+  },
+  // Reaping Sweep: the set feet GRIND — grit shivers off the stance.
+  reaping_sweep: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.5, scale: 0.45, dur: 0.7 }),
+  },
+  // Gnawed Mending: the troll hunkers and the earth stirs around it.
+  gnawed_mending: {
+    charge: (c, x, y) => dust.deployments.billow!(c, x, y, { radius: 0.6, scale: 0.4, dur: 0.9 }),
+  },
+  // Rending Lunge: haunches dig in — dirt kicks before the launch.
+  rending_lunge: {
+    charge: (c, x, y) => dust.deployments.kick!(c, x, y, { scale: 0.45, dur: 0.6 }),
+  },
+  // Shrilling Dart: dusk gathers on the folded wings.
+  shrilling_dart: {
+    charge: (c, x, y) => shadow.deployments.bloom!(c, x, y, { scale: 0.35, dur: 0.6 }),
+  },
+  // Ground Slam (the digmaster's wound reissue): the pick goes UP and
+  // the ground already trembles.
+  ground_slam: {
+    charge: (c, x, y) => dust.deployments.billow!(c, x, y, { radius: 0.7, scale: 0.45, dur: 0.7 }),
+  },
 };
 
 /**

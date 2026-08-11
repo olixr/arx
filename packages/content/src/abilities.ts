@@ -3217,6 +3217,10 @@ const defs: AbilityDef[] = [
     projectiles: 1,
     projectileSpeed: 10,
     range: 9,
+    // THE FLIGHT VOICE: the gobbet flies as the mastered ember brand
+    // (arx elemental flight — fire tongues, wake, honest fizzle on
+    // impact), never a wooden shaft.
+    element: 'ember',
     status: { status: 'burn', power: 1, durationTicks: 60 },
   },
   {
@@ -3246,6 +3250,9 @@ const defs: AbilityDef[] = [
     spreadArc: 0.5,
     projectileSpeed: 9,
     range: 8,
+    // THE FLIGHT VOICE: bile ropes fly verdant-green (arx elemental
+    // flight), never as arrows.
+    element: 'verdant',
     status: { status: 'venom', power: 1, durationTicks: 80 },
   },
   {
