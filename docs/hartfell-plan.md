@@ -253,17 +253,31 @@ smells of them.
    way, by asking the right question. No coin reward worth naming. The
    payoff is the truth.
 
-## 7. Phases
+## 7. Phases — ALL SHIPPED (2026-08-11)
 
-1. **THE LAND PAST THE TREES** — mapscan the real ground; the cairnfell
-   massifs, HARTFELL_RECT + haven anchor, BARROWDEEP_RECT, the Hartway +
-   Cairn Path, the four authored sites, `fell_barrow` + `barrow_diggers`
-   archetypes + prefabs + `poi_quiet_stones`. Tests (geography pins,
-   warnings clean, cell ledger clean).
-2. **THE TOWN AT THE WARM WATER** — the bespoke zone build, registered
-   sixth; reachability walked; content tests.
-3. **THE PEOPLE OF THE FELL** — cast, routines (sleepers to real beds),
-   dialogue per voice card, shops, faction texture.
-4. **THE QUIET BARGAIN** — the quest arc + flags + rep payoffs.
-5. **THE WALK** — live tour at close zoom on the isolated rig, curation
-   audit per map-curation-standard, fix, re-shoot, done means walked.
+1. **THE LAND PAST THE TREES** (b4f934e) — mapscan rebuilt, every
+   coordinate authored against real ground. The Quiet Stones moved INTO
+   the zone (full curation control, a macro-cell freed); no dread anchor
+   (the base band up there is already 5 — a candle at noon).
+2. **THE TOWN AT THE WARM WATER** (1e1498e) — the bespoke build,
+   desk-audited by ASCII render before a single test ran.
+3. **THE PEOPLE OF THE FELL** (694f138) — 18 named + Fellwatch + herders,
+   routines, dialogue, 8 shops, the moot flies nobody's flag.
+4. **THE QUIET BARGAIN** (10aebdb) — five quests; the fifteenth name
+   turned out to already have its other half shipped in Pinewatch's
+   `a_name_for_the_stone` (Torvi's father = Havel = the first fire at
+   the Kettle). The canon dovetailed instead of colliding.
+5. **THE WALK** — live tour on the isolated rig (8793/5176 — the 8791
+   lane belonged to a concurrent session), 30+ shots, curation pass:
+   THE SEAM LAW (authored snow fades to zero at every border — worldgen
+   deals no flat snow, so any hem snow draws a ruler line), the grove
+   keeps two tiles of air off every built thing, the stones re-rung on
+   bare ground, madder banner poles, three interiors furnished up.
+
+As-built laws for the next epic: collect objectives may only close a
+quest's FINAL stage; every shop needs an actor whose def carries
+`shop:`; `quest:<id>:stage:<sid>` flags let an NPC speak mid-quest;
+awnings hang under SOUTH walls only; never post an actor on their own
+furniture. Standing debts: Hartfell VO (casting office), steam FX for
+the Kettle (needs a zone-ambient emitter seam), the Barrowdeep delve
+epic behind the reserved rect.

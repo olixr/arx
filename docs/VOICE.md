@@ -377,6 +377,73 @@ it dictates sentence shape. (Pooled actors share one card.)
 - **Saltmere fishers** (pooled): the crews. Catch-talk, plain, generous
   with advice about exactly one subject.
 
+### Hartfell — the town past the treeline
+
+- **Speaker Ashild**: wants the moot to outlive her; the wound is every
+  quarter the Crown's letter gets longer. Quirk: "the moot decided, I only
+  say it aloud." Cadence: measured, complete, no wasted words; answers
+  questions with the decision, never the argument.
+- **Maeva** (springkeeper): wants the water respected; something down in it
+  she has never explained. Quirk: speaks of the Kettle as "it", like a
+  patient elder relative. Cadence: unhurried short sentences, faintly
+  uncanny calm, zero wit.
+- **Kolgrim** (huntmaster): wants the fold fed before anyone brags; the
+  wound is the winters the count came short. Quirk: counts everything
+  aloud. Cadence: clipped field-orders. "Wind first. Ground second. Shot
+  last."
+- **Sunn** (fell guide): wants to be already outside; walls bore her in
+  minutes. Quirk: swallows half her sentences moving. Cadence: fast,
+  clipped, present tense, no pleasantries. Repeats the important word.
+- **Ranna** (furrier): wants first quality and knows on sight; grades
+  people the same way. The town's ONE spice-carrier with Brandulf.
+  Cadence: trade-brisk verdicts. "The grade is the grade."
+- **Inga** (tallywife): wants the book square; one error thirty years ago,
+  hers, never again. Cadence: shortest lines in the north. "Counted."
+- **Ulfa** (chandler): wants every dark mile lit; kind gossip, trims every
+  story a little brighter. Cadence: warm, running-on, endearments ("my
+  love"), practical economics of light.
+- **Geir** (smokemaster): wants the winter lost before it starts. Cadence:
+  slow single-direction sentences, long pauses written as short replies.
+  "Mm."
+- **Tuli** (bone carver): wants the work looked at, not him. Quirk: one
+  piece is never for sale, no explanation. Cadence: small quiet sentences,
+  apologizes for existing, precise about craft.
+- **Eirik** (smith): wants to be exactly as good as he is and no better on
+  paper; open admiration for Silverfall masterwork. Cadence: honest,
+  self-measuring, workmanlike.
+- **Brandulf** (the Horn and Hearth): wants no quiet nights, ever; a quiet
+  inn past the treeline is a cold thought. Cadence: LOUD warmth, house
+  laws, bad at secrets and knows it.
+- **Swein** (herdmaster): wants them counted out and counted in; will not
+  say the number of the lost aloud (named misfortune returns). Cadence:
+  worried arithmetic, superstitious ellipses of the number, never of words.
+- **Orvar** (tithekeeper): wants the bargain kept on the town's side first;
+  thirty years walking the sledge out alone. Quirk: wolves are "neighbors",
+  never beasts; fear "would be rude". Cadence: sparse, exact, ceremonial
+  plainness.
+- **Elder Gunvor**: wants the true count told once, properly; came north
+  over the ice and stays outside the wall on purpose. Cadence: dry,
+  unsentimental precision; long stories only when seated; "some stories
+  sit before they speak."
+- **Eyvor** (netkeeper): wants the shelf ice respected and the Darkwater
+  left alone. Quirk: her knee forecasts weather and is always right.
+  Cadence: practical shore-talk, one superstition held absolutely.
+- **Signe** (waykeeper): wants both lists square, who went up and who came
+  back. Cadence: road-formal ledger speech warmed underneath; "the lamp is
+  the safety, it always was."
+- **Hallward** (the Charter's buyer): wants the contract the moot declines
+  quarterly; a year north has started to charm him and he resents it
+  fondly. Cadence: polished southern courtesy, self-aware irony, never
+  mockery.
+- **Grimm** (pedlar): wants old things cheap and questions expensive.
+  Cadence: affable evasion; answers with offers; calls everyone "friend"
+  and means the coin.
+- **The Fellwatch** (pooled): a herder or a smoker taking a turn at the
+  gate. Cadence: plain fell speech with the horn-law recited flat. "The
+  horn means in. Not soon. In."
+- **Herders** (pooled): wind-cracked, count-stick practical. Beast-first
+  talk, short.
+
 ---
 
 ## 5. Surface rules

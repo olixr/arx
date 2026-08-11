@@ -2,6 +2,7 @@ import {
   Detail,
   Tile,
   awningTile,
+  bannerPoleTile,
   bracketSignDetail,
   pennantDetail,
   wallBannerDetail,
@@ -242,11 +243,12 @@ export function buildHartfell(): ZoneDef {
   // straight through the ring, because the ring was always a door.
   // The tithe is left on the flat stone. You do not wait to watch.
   // ---------------------------------------------------------------
-  b.set(23, 3, Tile.PillarStone).set(29, 2, Tile.PillarStone);
-  b.set(21, 6, Tile.PillarStone).set(31, 5, Tile.PillarStone).set(28, 7, Tile.PillarStone);
+  b.set(23, 2, Tile.PillarStone).set(28, 1, Tile.PillarStone).set(31, 3, Tile.PillarStone);
+  b.set(21, 5, Tile.PillarStone).set(31, 6, Tile.PillarStone);
+  b.set(23, 7, Tile.PillarStone).set(29, 7, Tile.PillarStone);
   b.set(25, 4, Tile.StoneFloor).set(26, 4, Tile.StoneFloor); // the flat stone
   b.set(25, 5, Tile.StoneFloor).set(26, 5, Tile.StoneFloor);
-  b.set(24, 6, Tile.BonePile).set(30, 3, Tile.BonePile);
+  b.set(24, 6, Tile.BonePile).set(30, 4, Tile.BonePile);
   b.set(34, 4, Tile.TreeYew); // the tithe yew, the one tree the fell kept
   b.sign(30, 7, 'THE QUIET STONES', [
     'leave the tithe on the flat stone',
@@ -267,7 +269,7 @@ export function buildHartfell(): ZoneDef {
   b.fillRect(33, 10, 11, 5, Tile.StoneFloor);
   b.set(35, 11, Tile.Brazier).set(38, 10, Tile.Brazier).set(41, 12, Tile.Brazier);
   b.set(34, 13, Tile.WeaponRack); // the horn
-  b.set(33, 9, Tile.BannerPole).set(43, 9, Tile.BannerPole);
+  b.set(33, 9, bannerPoleTile(1)).set(43, 9, bannerPoleTile(1)); // madder, the town's color
   // The watch hut: two bunks, a stove, and the driest wood in town.
   b.fillRect(46, 9, 6, 6, Tile.WoodFloor);
   b.outlineRect(46, 9, 6, 6, Tile.WallWood);
@@ -392,6 +394,7 @@ export function buildHartfell(): ZoneDef {
   b.set(78, 26, Tile.Lectern);
   b.set(76, 28, Tile.Bench).set(78, 29, Tile.Bench).set(80, 29, Tile.Bench);
   b.set(82, 28, Tile.Bench).set(80, 26, Tile.Bench).set(82, 25, Tile.Bench);
+  b.set(84, 26, Tile.Bench).set(84, 29, Tile.Bench);
   b.setDetail(79, 27, Detail.RugRound);
   b.setDetail(77, 23, Detail.Tapestry).setDetail(78, 23, Detail.Tapestry);
   // The bath wing, partitioned east: the warm pool, the basins, and
@@ -507,6 +510,8 @@ export function buildHartfell(): ZoneDef {
   b.set(70, 66, Tile.ToolRack).set(72, 66, Tile.ToolRack); // the hide racks
   b.set(70, 70, Tile.CrateGoods).set(71, 70, Tile.CrateGoods); // graded bales
   b.set(64, 71, Tile.Lectern); // the grade book
+  b.set(72, 71, Tile.Crate);
+  b.setDetail(68, 70, Detail.Rug).setDetail(69, 70, Detail.Rug);
   b.setDetail(65, 65, Detail.Doormat).setDetail(66, 65, Detail.Doormat);
   // The back rooms: Ranna west, Inga east, a wall of habit between.
   for (let x = 59; x <= 73; x++) if (x !== 63 && x !== 70) b.set(x, 73, Tile.WallStone);
@@ -571,6 +576,7 @@ export function buildHartfell(): ZoneDef {
   b.set(88, 84, Tile.Barrel).set(89, 84, Tile.Barrel).set(90, 84, Tile.Barrel).set(91, 84, Tile.Barrel);
   b.set(80, 83, Tile.RailWood).set(81, 83, Tile.RailWood).set(82, 83, Tile.RailWood).set(83, 83, Tile.RailWood);
   b.set(85, 84, Tile.CrateGoods);
+  b.set(80, 85, Tile.Stump).set(81, 85, Tile.Stump); // the smoke wood
   b.setDetail(84, 82, Detail.Pebbles);
   b.sign(79, 74, 'THE RENDERY', [
     'tallow and smoked meat',
@@ -635,6 +641,9 @@ export function buildHartfell(): ZoneDef {
   b.set(38, 74, Tile.Table).set(39, 74, Tile.Table).set(40, 74, Tile.Table);
   b.set(38, 73, Tile.Chair).set(40, 73, Tile.Chair).set(39, 75, Tile.Chair).set(41, 75, Tile.Chair);
   b.set(43, 72, Tile.Table).set(44, 72, Tile.Chair);
+  b.set(40, 77, Tile.Table).set(41, 77, Tile.Table);
+  b.set(40, 78, Tile.Chair).set(42, 77, Tile.Chair);
+  b.setDetail(36, 74, Detail.RugRound);
   b.setDetail(37, 71, Detail.Tapestry).setDetail(38, 71, Detail.Tapestry);
   b.setDetail(38, 76, Detail.Rug).setDetail(39, 76, Detail.Rug);
   // The bar, and Brandulf's cot behind it.
@@ -784,11 +793,27 @@ export function buildHartfell(): ZoneDef {
       if (t !== Tile.Grass) continue;
       const nearRun = RUN.some(([rx, ry]) => Math.abs(rx - x) + Math.abs(ry - y) <= 2);
       if (nearRun) continue; // the banks stay open and green
+      // A wood that leans on a wall reads as a wood painted onto it:
+      // the grove keeps two tiles of air off every built thing.
+      let crowds = false;
+      for (let dy = -2; dy <= 2 && !crowds; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const t2 = b.get(x + dx, y + dy);
+          if (
+            t2 === Tile.WallWood || t2 === Tile.WallStone || t2 === Tile.Path ||
+            t2 === Tile.Dirt || t2 === Tile.Fence || t2 === Tile.WallWoodWindow
+          ) {
+            crowds = true;
+            break;
+          }
+        }
+      }
+      if (crowds) continue;
       const roll = fellRng(x, y);
-      if (roll < 0.16) b.set(x, y, Tile.TreePine);
-      else if (roll < 0.18) b.set(x, y, Tile.SaplingPine);
-      else if (roll < 0.19) b.set(x, y, Tile.Rock);
-      else if (roll < 0.26) b.set(x, y, Tile.GrassTall);
+      if (roll < 0.11) b.set(x, y, Tile.TreePine);
+      else if (roll < 0.13) b.set(x, y, Tile.SaplingPine);
+      else if (roll < 0.14) b.set(x, y, Tile.Rock);
+      else if (roll < 0.22) b.set(x, y, Tile.GrassTall);
     }
   }
 
@@ -844,13 +869,20 @@ export function buildHartfell(): ZoneDef {
         }
       }
       if (rim) continue;
+      // The stones keep a bare circle. Nobody sweeps it. It is bare.
+      if (((x - 26) / 7) ** 2 + ((y - 4) / 6) ** 2 <= 1) continue;
       const roll = fellRng(x + 500, y);
       // Heavy in the north and on the shelves, banked by walls, thin south.
       const near =
         b.get(x - 1, y) === Tile.WallGarrison ||
         b.get(x + 1, y) === Tile.WallGarrison ||
         b.get(x, y - 1) === Tile.WallGarrison;
-      const density = lvl > 0 ? 0.5 : y < 18 ? 0.45 : near ? 0.55 : y < 60 ? 0.12 : 0.08;
+      let density = lvl > 0 ? 0.5 : y < 18 ? 0.45 : near ? 0.55 : y < 60 ? 0.12 : 0.08;
+      // THE SEAM LAW: worldgen deals no snow on flat ground, so the
+      // authored white fades to nothing before it can meet the wild
+      // meadow in a ruler line. Snow is the fell's lee, not its edge.
+      const hem = Math.min(x, y, R.w - 1 - x, R.h - 1 - y);
+      if (hem < 8) density *= hem / 8;
       if (roll < density) b.set(x, y, Tile.Snow);
     }
   }

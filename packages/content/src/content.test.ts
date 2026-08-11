@@ -2037,7 +2037,7 @@ test('hartfell: the fell town holds its warm water, its stones, and four ways in
   assert.equal(n(Tile.Furnace), 1, 'a working smith, not a master');
   assert.equal(n(Tile.Anvil), 1);
   assert.equal(n(Tile.SalmonRun), 2, 'the cold quay fishes the ice shelf');
-  assert.equal(n(Tile.PillarStone), 9, 'the Quiet Stones and the old boundary row');
+  assert.equal(n(Tile.PillarStone), 11, 'the Quiet Stones ring and the old boundary row');
   assert.equal(n(Tile.BeastPen), 1, 'the companion pen by the folds');
   assert.ok(n(Tile.Fence) >= 80, 'the folds and the out-fold');
   assert.ok(n(Tile.Dock) >= 10, 'the two piers');
