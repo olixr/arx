@@ -688,6 +688,12 @@ export interface S2CAction {
   made?: number;
   /** Craft only: batch size asked for (start only). */
   total?: number;
+  /**
+   * THE HELD NOTE only (start): the channeled art's id + slot, so the
+   * client tints the bar and breathes the singing well. Additive.
+   */
+  ability?: string;
+  slot?: number;
 }
 
 /** This player's worn equipment changed. */

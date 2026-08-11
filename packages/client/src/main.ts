@@ -2830,6 +2830,9 @@ function frame(now: number): void {
     }
     hotbar.setAiming(live?.slot ?? null);
     hotbar.setWinding(game.ownCast?.slot ?? null);
+    hotbar.setChanneling(
+      typeof game.action?.slot === 'number' ? (game.action.slot as 0 | 1 | 2 | 3) : null,
+    );
     // The arm moment travels through the hands — one soft tick, pad only.
     if (live !== null && !aimWasActive && input.padPrimary()) input.rumble(0.06, 0.22, 45);
     aimWasActive = live !== null;

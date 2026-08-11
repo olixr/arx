@@ -175,6 +175,17 @@ export class Hotbar {
     this.windingSlot = slot;
   }
 
+  /** THE HELD NOTE: the slot whose channel is singing right now. */
+  private channelingSlot: AbilitySlot | null = null;
+
+  setChanneling(slot: AbilitySlot | null): void {
+    if (slot === this.channelingSlot) return;
+    if (this.channelingSlot !== null)
+      this.slots[this.channelingSlot]?.classList.remove('channeling');
+    if (slot !== null) this.slots[slot]?.classList.add('channeling');
+    this.channelingSlot = slot;
+  }
+
   /** Called once per frame — cheap DOM writes only on change. */
   update(game: ClientGame): void {
     const now = performance.now();

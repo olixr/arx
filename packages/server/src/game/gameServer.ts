@@ -603,6 +603,29 @@ interface DemolishAction {
   hanging?: boolean;
 }
 
+/**
+ * THE HELD NOTE: a channeled art pouring out on the action rail — the
+ * rail's movement-cancel IS the one stand-still law, and its wire is
+ * the one progress bar. The def, school, level, and trinket power are
+ * the ones resolved at the press (the note sung is the note struck);
+ * the AIM stays live — each pulse re-reads the caster's facing, so
+ * beams and arcs steer while the feet stay planted. A staked HELD
+ * SIGIL point (`targetPos`) holds instead, like the breath's promise.
+ * The cooldown was paid at the first note; a break forfeits the rest.
+ */
+interface ChannelAction {
+  kind: 'channel';
+  slot: AbilitySlot;
+  ab: AbilityDef;
+  targetPos?: { x: number; y: number };
+  style: TechniqueStyleId;
+  level: number;
+  powerMult: number;
+  every: number;
+  ticksLeft: number;
+  total: number;
+}
+
 type PlayerAction =
   | GatherAction
   | CraftAction
@@ -611,7 +634,8 @@ type PlayerAction =
   | MilkAction
   | TameAction
   | TendAction
-  | DemolishAction;
+  | DemolishAction
+  | ChannelAction;
 
 /** A planted crop; stage derives from (now − plantedAt + boostMs). */
 interface CropState {
@@ -3923,6 +3947,7 @@ export class GameServer {
   private tickAction(eid: EntityId, player: PlayerComp): void {
     const kind = player.action!.kind;
     if (kind === 'gather') this.tickGather(eid, player);
+    else if (kind === 'channel') this.tickChannel(eid, player);
     else if (kind === 'craft') this.tickCraft(eid, player);
     else if (kind === 'harvest') this.tickHarvest(eid, player);
     else if (kind === 'milk') this.tickMilk(eid, player);
@@ -13813,6 +13838,14 @@ export class GameServer {
       if (player.casting.slot === slot) this.cancelCasting(eid, player);
       return;
     }
+    // THE HELD NOTE: pressing the singing slot again ends the note —
+    // the cooldown was paid at the first beat, so the remainder is
+    // simply forfeit. (Any OTHER slot's press falls through: its cast
+    // will take the hands and cancel the channel with reason 'cast'.)
+    if (player.action?.kind === 'channel' && (player.action as ChannelAction).slot === slot) {
+      this.cancelAction(eid, player, 'cancelled');
+      return;
+    }
     const ab = this.slotAbility(player, slot);
     if (!ab) return;
     if (player.abilityCd[slot] > 0) return;
@@ -13854,6 +13887,15 @@ export class GameServer {
       const k = dist > reach && dist > 0 ? reach / dist : 1;
       targetPos = { x: cpos.x + dx * k, y: cpos.y + dy * k };
       if (dist > 0.05) aim = Math.atan2(dy, dx);
+    }
+
+    // THE HELD NOTE: an art with a channel pours out on the action
+    // rail — pay at the first note, forfeit what breaks. (The tame,
+    // which also carries channelTicks, was intercepted by shape above
+    // and never reaches this door.)
+    if ((ab.channelTicks ?? 0) > 0) {
+      this.beginChannel(eid, player, slot, ab, aim, targetPos);
+      return;
     }
 
     // THE DRAWN BREATH: an art with a wind-up begins its breath here —
@@ -14006,6 +14048,96 @@ export class GameServer {
     // The def fired is the one resolved at the press — the promise
     // made is the promise kept, even if a rank climbed mid-breath.
     this.fireAbility(eid, player, c.slot, c.ab, aim, c.targetPos);
+  }
+
+  /**
+   * THE HELD NOTE: the press starts the channel and pays the whole
+   * price — cooldown, reveal, the working's moment — then strikes the
+   * first note at once. Everything after is the rail's law: movement
+   * intent breaks it, damage taken does not, and a break forfeits the
+   * remaining pulses (the self-punishing price of the held payload).
+   */
+  private beginChannel(
+    eid: EntityId,
+    player: PlayerComp,
+    slot: AbilitySlot,
+    ab: AbilityDef,
+    aim: number,
+    targetPos?: { x: number; y: number },
+  ): void {
+    if (player.action) this.cancelAction(eid, player, 'cast');
+    player.abilityCd[slot] = Math.max(1, Math.round(ab.cooldownTicks * player.gear.cooldownMult));
+    player.lastCombatAt = Date.now();
+    this.revealPlayer(eid, player);
+    player.drawTicks = 0; // the note lets the bowstring down
+    // School, level, and trinket power resolve exactly as the fire
+    // door does — then freeze with the note (the fireAbility twin).
+    let style: TechniqueStyleId = this.currentStyle(player);
+    {
+      const seat = this.techSeat(slot);
+      if (seat !== null) {
+        const tech = techniquePoolDef(player.techniques[seat] ?? '');
+        if (tech) style = tech.style;
+      }
+    }
+    const level = this.effectiveLevel(player, style);
+    const trinket =
+      slot === SLOT_RELIC
+        ? player.equipment.relic
+        : slot === SLOT_SIGIL
+          ? player.equipment.sigil
+          : undefined;
+    const powerMult = trinket?.roll ? trinketPowerMult(trinket.roll.rar, trinket.roll.pwr) : 1;
+    const total = ab.channelTicks ?? 0;
+    const action: ChannelAction = {
+      kind: 'channel',
+      slot,
+      ab,
+      targetPos,
+      style,
+      level,
+      powerMult,
+      every: ab.pulseEveryTicks ?? 16,
+      ticksLeft: total,
+      total,
+    };
+    player.action = action;
+    // Visible for the whole note (the tame's held-pose law), and the
+    // rail's own wire carries the bar — with the art named, so the
+    // client can tint the fill and breathe the singing well.
+    this.setPose(eid, PoseState.Art, total + 4);
+    player.session?.sendJson({ t: 'action', state: 'start', ticks: total, ability: ab.id, slot });
+    this.channelPulse(eid, player, action, aim);
+    const cp = this.positions.get(eid);
+    this.bodyMoment(eid, player, 'cast', { x: cp?.x ?? 0, y: cp?.y ?? 0, style });
+    this.sendCooldowns(player);
+  }
+
+  /** One beat of the note: the shape executes through the one door. */
+  private channelPulse(eid: EntityId, player: PlayerComp, a: ChannelAction, aim: number): void {
+    this.castAbility(eid, a.ab, aim, a.style, a.level, false, a.targetPos, a.powerMult);
+    void player;
+  }
+
+  /**
+   * The note holds its beat. WHIFF-0 rides every pulse through the
+   * shape executors untouched — a 0-roll beat writes nothing. The aim
+   * is live (pos.dir tracks the last frame's aim), so beams and arcs
+   * steer while the feet stay planted; a staked point holds instead.
+   */
+  private tickChannel(eid: EntityId, player: PlayerComp): void {
+    const a = player.action;
+    if (!a || a.kind !== 'channel') return;
+    a.ticksLeft--;
+    if (a.ticksLeft <= 0) {
+      player.action = null;
+      player.session?.sendJson({ t: 'action', state: 'stop', reason: 'done' });
+      return;
+    }
+    if ((a.total - a.ticksLeft) % a.every === 0) {
+      const dir = this.positions.get(eid)?.dir ?? 0;
+      this.channelPulse(eid, player, a, dir);
+    }
   }
 
   /** Execute law: a target low enough on HP eats the bonus multiplier. */
@@ -20932,6 +21064,8 @@ export class GameServer {
         if (player.sheathed) {
           player.drawTicks = 0;
           this.cancelCasting(eid, player); // stowed steel casts nothing
+          // ...and stowed steel sings nothing — the note breaks too.
+          if (player.action?.kind === 'channel') this.cancelAction(eid, player, 'cancelled');
         }
       }
       const abilityPressed =
@@ -20989,9 +21123,12 @@ export class GameServer {
 
       // A cast this frame (or one still resolving) holds the basic back.
       // Stowed weapons hold it too — the safety again, for the held path.
-      // THE DRAWN BREATH holds it likewise: winding hands swing nothing.
+      // THE DRAWN BREATH holds it likewise: winding hands swing nothing;
+      // THE HELD NOTE the same — singing hands swing nothing either.
       const stillCasting =
-        this.tickCount < player.castFreezeUntilTick || player.casting !== null;
+        this.tickCount < player.castFreezeUntilTick ||
+        player.casting !== null ||
+        player.action?.kind === 'channel';
       const attackHeld =
         hasButton(frame.buttons, InputButton.Attack) && !stillCasting && !weaponsAway;
       if (attackHeld) {

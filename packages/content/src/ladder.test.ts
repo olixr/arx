@@ -17,7 +17,7 @@ import {
   type AbilityDef,
 } from '@arx/shared';
 import { ABILITIES, TECHNIQUES, abilityDef, techniquesFor } from './abilities.js';
-import { HONABLE, cycleValue, isUtilityArt } from './ladderModel.js';
+import { HONABLE, channelBeats, cycleValue, isUtilityArt } from './ladderModel.js';
 import { NPCS, scaleNpcDef } from './npcs.js';
 
 test('every technique carries a full honing ladder of well-formed steps', () => {
@@ -184,16 +184,21 @@ test('THE PAYOFF BRACKET: one press never deletes an at-level line fighter', () 
   const skeleton = NPCS.get('skeleton')!;
   const powerMult = (l: number): number => 1 + l * 0.05;
   const oneTargetBeats = (ab: AbilityDef): number => {
-    switch (ab.shape) {
-      case 'pulse_nova':
-        return ab.pulses ?? 1;
-      case 'ground_field':
-        return Math.floor((ab.fieldTicks ?? 0) / (ab.pulseEveryTicks ?? 20));
-      case 'flurry':
-        return ab.hits ?? 1;
-      default:
-        return 1; // fans/dashes: one shaft connects with ONE target
-    }
+    const base = (() => {
+      switch (ab.shape) {
+        case 'pulse_nova':
+          return ab.pulses ?? 1;
+        case 'ground_field':
+          return Math.floor((ab.fieldTicks ?? 0) / (ab.pulseEveryTicks ?? 20));
+        case 'flurry':
+          return ab.hits ?? 1;
+        default:
+          return 1; // fans/dashes: one shaft connects with ONE target
+      }
+    })();
+    // THE HELD NOTE: a channel strikes its whole shape once per beat —
+    // never an "instant", always judged as the full note it can sing.
+    return base * channelBeats(ab);
   };
   for (const L of [10, 25, 50, 75, 95]) {
     const fighterHp = scaleNpcDef(skeleton, L).maxHp;

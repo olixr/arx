@@ -382,6 +382,9 @@ export class ClientGame {
     recipe?: string;
     made?: number;
     total?: number;
+    /** THE HELD NOTE: the channeled art (bar tint + singing well). */
+    ability?: string;
+    slot?: number;
   } | null = null;
   /** "tx,ty" keys of this character's own built tiles (THE OWN-WORK OVERLAY). */
   ownBuilt: ReadonlySet<string> = new Set();
@@ -1183,6 +1186,8 @@ export class ClientGame {
             recipe: msg.recipe,
             made: msg.made,
             total: msg.total,
+            ability: msg.ability,
+            slot: msg.slot,
           };
           this.events.onActionStart?.(
             msg.ticks ?? 0,

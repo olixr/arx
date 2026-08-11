@@ -53,6 +53,17 @@ function statusValue(s: StatusApply | undefined): number {
   }
 }
 
+/**
+ * THE HELD NOTE: a channeled art strikes its whole shape once per
+ * pulse — the model multiplies the shape's per-beat hits by the beat
+ * count (first note at the press, then every pulseEveryTicks). The
+ * tame's channel is survival, not damage; its shape carries no die.
+ */
+export function channelBeats(ab: AbilityDef): number {
+  if (!ab.channelTicks || ab.shape === 'tame') return 1;
+  return Math.ceil(ab.channelTicks / (ab.pulseEveryTicks ?? 16));
+}
+
 /** Expected hits against ONE target — AoE breadth is credited separately. */
 function singleTargetHits(ab: AbilityDef): number {
   switch (ab.shape) {
@@ -98,13 +109,15 @@ function utilityCredit(ab: AbilityDef): number {
 }
 
 export function cycleValue(ab: AbilityDef): number {
-  const direct = ab.damage * singleTargetHits(ab) * aoeCredit(ab);
+  const direct = ab.damage * singleTargetHits(ab) * aoeCredit(ab) * channelBeats(ab);
   return (direct + statusValue(ab.status) + utilityCredit(ab)) / (ab.cooldownTicks / TICK);
 }
 
 // Summons are worth their effect, not their stamp damage — band-exempt
-// beside the low-damage utility arts (blink, smoke, the shields).
-export const isUtilityArt = (ab: AbilityDef): boolean => ab.damage < 3 || ab.shape === 'summon';
+// beside the low-damage utility arts (blink, smoke, the shields). A
+// channel's worth is its WHOLE note, never one quiet beat.
+export const isUtilityArt = (ab: AbilityDef): boolean =>
+  ab.damage * channelBeats(ab) < 3 || ab.shape === 'summon';
 
 /** Fields a rank step may hone. Identity fields are excluded by type; this locks it at runtime too. */
 export const HONABLE: ReadonlySet<string> = new Set([

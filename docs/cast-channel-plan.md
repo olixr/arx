@@ -1,11 +1,22 @@
 # The Drawn Breath — casted & channeled arts
 
-Status: **GREEN-LIT 2026-08-11. Phase 1 THE DRAWN BREATH SHIPPED same
-day** (cast engine: shared `castTicks` + `CAST_STILL_FACTOR`,
+Status: **GREEN-LIT 2026-08-11. Phase 1 THE DRAWN BREATH + Phase 2 THE
+HELD NOTE SHIPPED same day.**
+Phase 1 (cast engine): shared `castTicks` + `CAST_STILL_FACTOR`,
 `player.casting` accrual + pay-at-fire + the full cancel roster,
 additive `S2CCast`, client bar/`.winding` well/predictor mirror,
-daybreak pilot at `castTicks: 24`, 8-pin slate `castEngine.test.ts`).
-Phases 2–5 open.
+daybreak pilot at `castTicks: 24`, 8-pin slate `castEngine.test.ts`.
+Phase 2 (channel engine): `ChannelAction` on the action rail (the one
+stand-still law + the one bar wire, `S2CAction.ability/slot` additive),
+`beginChannel` pays at the first note + strikes it at once,
+`tickChannel` pulses the shape with LIVE aim / staked point, re-press
+forfeit + sheathe/cast breaks, basics blocked while singing;
+`channelBeats` joins THE LADDER MODEL (cycle value, utility test, and
+the payoff bracket all read it — the early Phase-3 slice); pilot:
+maelstrom converted to the held vortex (3 beats × dmg 3, rank IV pulls
+the whole sea at ≈ its old cycle value so the arx envelope floor
+stands); 7-pin slate `channelEngine.test.ts`. Phases 3–5 open (Phase 3
+remainder: commitment denominator + ROOTED PREMIUM + conversions).
 Companion to docs/techniques-v2-plan.md (the ladder + THE PAYOFF BRACKET),
 docs/secret-arts-plan.md (the secret shelf), THE HELD SIGIL (ground aim),
 and THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching

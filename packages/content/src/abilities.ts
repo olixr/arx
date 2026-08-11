@@ -1681,16 +1681,20 @@ const defs: AbilityDef[] = [
   {
     id: 'maelstrom',
     name: 'Maelstrom',
-    desc: 'Spin the sea out of dry land — everything caught walks the drain.',
+    desc: 'Hold the sea open on dry land — everything caught walks the drain.',
     color: '#6aa0c8',
     code: 'Mm',
     cooldownTicks: 260, // 13 s
+    // THE HELD NOTE's pilot: the vortex is HELD open — 2.4s planted,
+    // one drag of the drain per beat, staked where the ring released.
+    channelTicks: 48,
+    pulseEveryTicks: 16,
     shape: 'ground_aoe',
-    damage: 10,
+    damage: 3,
     range: 12,
     radius: 2.6,
     fuseTicks: 16,
-    knockback: -2.2, // the drain: a hard drag into the eye
+    knockback: -2.2, // the drain: a hard drag into the eye, every beat
     status: { status: 'chill', power: 1, durationTicks: 80 },
   },
 
@@ -3584,12 +3588,11 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 45,
     ranks: [
-      { note: 'The drain pulls a deeper draught.', damage: 12 },
+      { note: 'The drain pulls a deeper draught.', damage: 4 },
       { note: 'The eye widens.', radius: 3.0 },
       {
-        note: 'The sea remembers longer, and nothing swims out.',
-        damage: 13,
-        cooldownTicks: 230,
+        note: 'The drain pulls the whole sea, and nothing swims out.',
+        damage: 5,
         knockback: -2.6,
         status: { status: 'chill', power: 1, durationTicks: 100 },
       },

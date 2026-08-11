@@ -50,7 +50,7 @@ import {
   type Vec2,
   isFishingTile,
 } from '@arx/shared';
-import { bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@arx/content';
+import { abilityDef, bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@arx/content';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
 import {
@@ -33068,6 +33068,8 @@ export class Renderer {
         1,
         (performance.now() - game.action.startedAt) / Math.max(1, game.action.durationMs),
       );
+      // THE HELD NOTE wears its art's color, like the breath does.
+      if (game.action.ability) fill = abilityDef(game.action.ability)?.color ?? fill;
     } else if (game.ownCast) {
       const c = game.ownCast;
       const alpha = Math.min(1, Math.max(0, game.predictor.renderAlpha));
