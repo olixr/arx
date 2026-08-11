@@ -83,4 +83,43 @@ door; content-boundaries; DASH BAN; VOICE.md.
 
 ## AS-BUILT LEDGER
 
-*(filled as phases land)*
+- **Phase 1 THE PLAN** 7e63280.
+- **Phases 2+3 THE FIVE DOORS OPEN** 3a9ac10 — zone, doors, cast,
+  jobs, shops, membership in one landing. Build-truths:
+  - lowhall (200,552) 88x56 CaveWall; spawn (217.5,583.5) = the ring
+    (the underground nearest-spawn law now has two hearths down
+    here: the Landing and the ring).
+  - Doors (world): Amberford hatch (389,38), Silverfall (-338,-181),
+    Saltmere (367,291), Pinewatch (534,-141), Hartfell (845,-384).
+    Every hatch is dirt + a crate + no name; every alcove signs its
+    road INSIDE the hall. Arrival dests always land BESIDE the
+    paired portal, never on it (the Undercroft pairing law).
+  - The alcove stubs must genuinely touch the ring ellipse — the
+    Hartfell stub shipped two rows short and sealed until extended
+    (the desk audit BFS caught it; alcove throats are 1-wide at the
+    ellipse tips and that is fine, they read as doorways).
+  - company_blade = member + ENFORCER: correct inside a hidden
+    sanctuary (hunts Company outlaws only), still wrong beside open
+    roads (the tollhouse rule stands).
+  - Brusk's company_counter is a fence by construction (faction of
+    shop keeper is reavers, theft.fences lists reavers) — the whole
+    theft loop closes in one room: fence, vault, bank chests, docket.
+  - Tests: lowhall content test pins the five-door web BOTH ways
+    (every up-portal lands in a town rect, every town keeps a hatch
+    landing in the hall). TS7022 gotcha: the BFS `const x = i %
+    z.width` pattern trips self-referential inference here — annotate
+    the locals.
+- **Phase 4 THE WALK** — toured the hall and all five doors live
+  (r*.jpeg): the ring's five glowing alcoves, Ravna's hall, blades
+  posted, runners running, every hatch sitting in honest forgotten
+  ground. No curation findings; shipped as built.
+
+## DEBTS
+
+- VO for Ravna/Brusk/Yeva/blades/runners (casting office pass).
+- A Company mount or dye cosmetic as a champion-band reward (flood
+  law: shop-sold, never dropped).
+- The old Redmask captain "somewhere north" is a hanging thread for
+  a future delve epic.
+- Rival-faction counterplay: a charter-side quest to shadow a door
+  (opposed-pair rail exists).
