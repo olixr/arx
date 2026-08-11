@@ -1,0 +1,33 @@
+{
+  "id": "innkeep_brandulf",
+  "name": "Brandulf",
+  "title": "Keeper of the Horn and Hearth",
+  "examine": "Loud on purpose. A quiet inn past the treeline is a cold thought, so there are no quiet nights under his roof, and no secrets either, try as you might.",
+  "disposition": "friendly",
+  "shop": "brandulf_board",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 3,
+      "hairColor": 2,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 9,
+      "pants": 6
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 90
+    }
+  ],
+  "lines": [
+    "Fire never dies here. House law.",
+    "Broth, bed, and the whole town's business by the second mug.",
+    "The buyer is in the good room. Being polite at him is the town sport."
+  ]
+}

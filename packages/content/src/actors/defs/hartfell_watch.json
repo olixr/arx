@@ -1,0 +1,48 @@
+{
+  "id": "hartfell_watch",
+  "name": "The Fellwatch",
+  "title": "On the Horn",
+  "examine": "A herder, or a smoker, or somebody's uncle, taking a turn at the gate. The moot keeps no soldiers. It pays the lamp, and the lamp keeps the peace.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 30,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 130,
+      "damage": 9,
+      "speed": 3.4,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 2,
+      "hairColor": 2,
+      "beard": 3,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 14
+    }
+  ],
+  "lines": [
+    "The horn means in. Not soon. In.",
+    "Wolves keep the bargain better than travelers do.",
+    "Gate is barred at dark. The dark is not a request."
+  ]
+}

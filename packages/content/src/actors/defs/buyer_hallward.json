@@ -1,0 +1,32 @@
+{
+  "id": "buyer_hallward",
+  "name": "Hallward",
+  "title": "The Charter's Buyer",
+  "examine": "Amberford tailoring, Amberford manners, and a standing offer the moot declines every quarter with tremendous courtesy. He has been here a year. He counts it in winters now.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 5,
+      "hairColor": 0,
+      "beard": 1,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 11,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 200
+    }
+  ],
+  "lines": [
+    "The Charter offers stability. The moot offers me tea.",
+    "Finest leather in the Dawnlands and no contract on any of it. It keeps me up at night.",
+    "I have started to like the cold. Do not tell Amberford."
+  ]
+}

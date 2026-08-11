@@ -1,0 +1,33 @@
+{
+  "id": "bonecarver_tuli",
+  "name": "Tuli",
+  "title": "Bone Carver",
+  "examine": "Small work, small voice. He can put a running hart on a button the size of your thumbnail, and he would rather you looked at the button than at him.",
+  "disposition": "friendly",
+  "shop": "tuli_horn",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 2,
+      "hairColor": 1,
+      "beard": 1,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 3,
+      "pants": 5
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 20
+    }
+  ],
+  "lines": [
+    "The work is small. Knock soft.",
+    "Antler wants to be something. You just take away the rest.",
+    "That one is not for sale. She knows which one."
+  ]
+}

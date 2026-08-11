@@ -1,0 +1,32 @@
+{
+  "id": "herdmaster_swein",
+  "name": "Swein",
+  "title": "Herdmaster",
+  "examine": "He counts the herd at dawn and dusk and twice more for luck, and he will not say the number of the lost aloud, because named misfortune returns.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 4,
+      "hairColor": 3,
+      "beard": 3,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 6,
+      "pants": 8
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 35
+    }
+  ],
+  "lines": [
+    "Count them out, count them in.",
+    "A hart knows the horn. Knows the folds. Knows me. Wolves they only know one way.",
+    "Do not say the number. Just help me look."
+  ]
+}

@@ -1,0 +1,61 @@
+{
+ "id": "gunvor_ice",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "elder_gunvor"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "The bench holds two. Sit or stand, the water does not care and neither do I.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Well. You are still here.",
+   "choices": [
+    {
+     "text": "Why live outside the wall?",
+     "next": "outside"
+    },
+    {
+     "text": "You came here in the Wolfwinter?",
+     "next": "winter"
+    },
+    {
+     "text": "Pinewatch has a stone with fourteen names.",
+     "next": "stone",
+     "set": [
+      "gunvor_fifteen"
+     ]
+    },
+    {
+     "text": "Enjoy the quiet.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "outside",
+   "text": "I spent one winter wanting walls more than breath. Got here and found I could not sleep behind one. The cottage suits. The ice minds its side of the shore and I mind mine.",
+   "next": "hub"
+  },
+  {
+   "id": "winter",
+   "text": "Over the frozen fell from the out camps, forty years back. Most of that walk I do not lend out. Ask the town, they will tell you a tidy version. Tidy is not what happened.",
+   "next": "hub"
+  },
+  {
+   "id": "stone",
+   "text": "Fourteen. Yes. I have heard it is a fine stone.\n\nFourteen is not the count, and the argument they keep having down there is the wrong argument. That is all you get standing up. Some stories sit before they speak.",
+   "next": "hub"
+  },
+  {
+   "id": "off",
+   "text": "Mind the shore path. The sand lies about the ice under it."
+  }
+ ]
+}

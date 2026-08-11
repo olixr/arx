@@ -1,0 +1,63 @@
+{
+ "id": "maeva_spring",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "springkeeper_maeva"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Wash at the basins first. The pool is for soaking, not for scrubbing. Everyone learns the order once.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "The water is patient. I am nearly as patient.",
+   "choices": [
+    {
+     "text": "What is this place?",
+     "next": "spring"
+    },
+    {
+     "text": "Why does the Kettle never freeze?",
+     "next": "kettle"
+    },
+    {
+     "text": "Have you anything for wounds?",
+     "next": "browse"
+    },
+    {
+     "text": "Be well.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "spring",
+   "text": "The bath, and the moot floor, and the room where aches come to be argued with. The water does most of the work. I take most of the credit.",
+   "next": "hub"
+  },
+  {
+   "id": "kettle",
+   "text": "Heat from very far down, rising very slowly. It was warm before the first fold and it will be warm after the last. We did not find the Kettle. It permitted us.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "text": "Salves, tinctures, and honesty about which you need. The water gets a share of the price. It has never once spent it.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "maeva_remedies"
+    }
+   ]
+  },
+  {
+   "id": "off",
+   "text": "Come back cold. It is the best way to arrive."
+  }
+ ]
+}

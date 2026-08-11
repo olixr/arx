@@ -1,0 +1,58 @@
+{
+ "id": "swein_fold",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "herdmaster_swein"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Shut the gate behind you. They bolt at strangers and I am not counting them again for your sake. I will count them again anyway.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "What is it? Mind the trough.",
+   "choices": [
+    {
+     "text": "Tell me about the herds.",
+     "next": "herd"
+    },
+    {
+     "text": "Why keep deer inside a town?",
+     "next": "inside"
+    },
+    {
+     "text": "You seem worried.",
+     "next": "worry"
+    },
+    {
+     "text": "I will leave you to it.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "herd",
+   "text": "Hart and hind, forty years of the same lines. They know the horn, the folds, the smell of the warm water. Out at thaw, home at horn. Everything Hartfell is walks on those legs.",
+   "next": "hub"
+  },
+  {
+   "id": "inside",
+   "text": "Winter kills the out folds. Wolves take the strays. Inside the wall by the warm pool they fatten while every other beast in the north starves thin. That pool is worth more than the vault.",
+   "next": "hub"
+  },
+  {
+   "id": "worry",
+   "text": "We lost beasts from the fold. From INSIDE. No wolf sign, no broken fence, nothing eaten, just gone. I do not say the number aloud. Talk to me again when the moot lets me post it properly.",
+   "next": "hub"
+  },
+  {
+   "id": "off",
+   "text": "Count them out, count them in. Go on."
+  }
+ ]
+}

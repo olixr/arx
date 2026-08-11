@@ -1,0 +1,33 @@
+{
+  "id": "smokemaster_geir",
+  "name": "Geir",
+  "title": "Smokemaster",
+  "examine": "He speaks the way smoke moves, slowly and in one direction. The winter eats what he does not smoke, so he smokes everything.",
+  "disposition": "friendly",
+  "shop": "geir_smokehouse",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 6,
+      "hairColor": 2,
+      "beard": 5,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 6,
+      "pants": 6
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 30
+    }
+  ],
+  "lines": [
+    "Green wood is a lie you tell the meat.",
+    "The smell washes off. Mostly. Eventually. No.",
+    "A winter is just a long argument with hunger. I win it in autumn."
+  ]
+}

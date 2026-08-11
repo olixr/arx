@@ -1,0 +1,37 @@
+{
+  "id": "waykeeper_signe",
+  "name": "Signe",
+  "title": "Keeper of the Road's End",
+  "examine": "The last lamp of the longest road in the Dawnlands, and the book of who went up it and who came back. She squares the two lists every night before she sleeps.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 1,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 30
+    }
+  ],
+  "lines": [
+    "Name, road, and reason. The book keeps you honest.",
+    "This is the road's end. Everything after this is weather.",
+    "The lamp is the safety. It always was."
+  ]
+}

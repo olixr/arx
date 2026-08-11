@@ -1,0 +1,63 @@
+{
+ "id": "ranna_grade",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "furrier_ranna"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Counter is for hides. Elbows off it unless you are made of leather.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Buying, selling, or wasting my light?",
+   "choices": [
+    {
+     "text": "What do you buy?",
+     "next": "buy"
+    },
+    {
+     "text": "What makes Hartfell leather so fine?",
+     "next": "fine"
+    },
+    {
+     "text": "Show me your stock.",
+     "next": "browse"
+    },
+    {
+     "text": "Wasting your light, apparently.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "buy",
+   "text": "Winter fur, whole hides, no arrow ruin through the best of it. Wolf, hart, boar, bear if your nerve held. I grade it in front of you. The grade is the grade.",
+   "next": "hub"
+  },
+  {
+   "id": "fine",
+   "text": "Cold makes the fur deep and the warm water keeps the beasts fat through it. Fat beast, supple hide. Nowhere else in the Dawnlands has both. That is the whole trade and half the town.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "text": "Cured leather, hardened leather, honest wearing gear, and pelts the south pays triple for. First quality is already sold. It is always already sold.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "ranna_furs"
+    }
+   ]
+  },
+  {
+   "id": "off",
+   "text": "The door grades a two for shutting badly. Prove it wrong."
+  }
+ ]
+}

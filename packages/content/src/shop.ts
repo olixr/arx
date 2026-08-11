@@ -503,6 +503,101 @@ const defs: ShopDef[] = [
       { item: 'trout', price: 22 },
     ],
   },
+  // -------------------------------------------------------- HARTFELL
+  // The town past the treeline sells what the fell is worth: the best
+  // leather in the Dawnlands, the tallow every road lamp burns, and
+  // the winter's meat out of Geir's smoke. It does NOT sell masterwork
+  // anything — the limits are the town.
+  //
+  // Kolgrim arms the hunt and nothing fancier. The traps hold what
+  // they promise, which is the entire point of a promise.
+  {
+    id: 'kolgrim_hunt',
+    name: 'Horn Hall',
+    stock: [
+      { item: 'hunting_bow', price: 320 },
+      { item: 'arrow', price: 4 },
+      { item: 'snare_kit', price: 260 },
+      { item: 'leather_boots', price: 66 },
+    ],
+  },
+  // Ranna grades in front of you. First quality is already sold.
+  {
+    id: 'ranna_furs',
+    name: 'The Hidehall',
+    stock: [
+      { item: 'leather', price: 20 },
+      { item: 'hardened_leather', price: 78 },
+      { item: 'leather_body', price: 74 },
+      { item: 'leather_chaps', price: 60 },
+      { item: 'wolf_fur', price: 36 },
+      { item: 'direwolf_pelt', price: 190 },
+    ],
+  },
+  // Ulfa lights the road. Dark is what costs.
+  {
+    id: 'ulfa_lights',
+    name: 'The Chandlery',
+    stock: [
+      { item: 'firepitch_oil', price: 85 },
+      { item: 'twine', price: 9 },
+    ],
+  },
+  // Geir's smoke: the winter, won in autumn.
+  {
+    id: 'geir_smokehouse',
+    name: 'The Rendery',
+    stock: [
+      { item: 'smoked_trout', price: 30 },
+      { item: 'salmon', price: 90 },
+      { item: 'cooked_beef', price: 18 },
+      { item: 'salt', price: 9 },
+    ],
+  },
+  // Tuli's tray: nothing dies for a comb.
+  {
+    id: 'tuli_horn',
+    name: 'The Bone Shop',
+    stock: [
+      { item: 'bones', price: 4 },
+      { item: 'worg_fang', price: 70 },
+      { item: 'silver_ring', price: 180 },
+    ],
+  },
+  // Eirik: small iron at working prices, and honesty at none.
+  {
+    id: 'eirik_iron',
+    name: 'The Smithy',
+    stock: [
+      { item: 'iron_bar', price: 48 },
+      { item: 'bronze_axe', price: 30 },
+      { item: 'bronze_pickaxe', price: 30 },
+      { item: 'iron_sword', price: 210 },
+    ],
+  },
+  // The Horn and Hearth: broth, bread, and the fire that never dies.
+  {
+    id: 'brandulf_board',
+    name: 'The Horn and Hearth',
+    stock: [
+      { item: 'bread', price: 20 },
+      { item: 'hearty_stew', price: 48 },
+      { item: 'cooked_beef', price: 18 },
+      { item: 'milk', price: 14 },
+      { item: 'healing_tincture', price: 62 },
+    ],
+  },
+  // Maeva: salves, tinctures, and honesty about which you need.
+  {
+    id: 'maeva_remedies',
+    name: 'The Springhall',
+    stock: [
+      { item: 'healing_tincture', price: 58 },
+      { item: 'mending_salve', price: 168 },
+      { item: 'ironbark_tonic', price: 130 },
+      { item: 'gatherers_brew', price: 70 },
+    ],
+  },
   // Voss sells tackle and yesterday's catch, in that order of pride.
   {
     id: 'voss_tackle',

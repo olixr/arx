@@ -1,0 +1,63 @@
+{
+ "id": "ulfa_wax",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "chandler_ulfa"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Mind the dips, they are still soft. You have the look of somebody off the road. Sit, the smell is friendlier than it seems.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Now then. What can I light for you?",
+   "choices": [
+    {
+     "text": "Where do all these candles go?",
+     "next": "go"
+    },
+    {
+     "text": "What news in town?",
+     "next": "news"
+    },
+    {
+     "text": "Let me see your wares.",
+     "next": "browse"
+    },
+    {
+     "text": "Stay warm.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "text": "Every road lamp from our gate to the Glasswater burns Hartfell tallow. A barrel a week just for the Hartway. The shrine flame lights them, mind. We only feed them. There is a difference and the Waykeepers will explain it at length.",
+   "next": "hub"
+  },
+  {
+   "id": "news",
+   "text": "The runs are empty and Swein triple counts the folds. Orvar came back from the stones with a face I did not like. And the buyer asked the moot again and got tea again. Poor man. Lovely manners.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "text": "Dips, tapers, lamp fill, and wicks that do not lie about their length. Light is cheap here. Dark is what costs.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "ulfa_lights"
+    }
+   ]
+  },
+  {
+   "id": "off",
+   "text": "Take a taper for the walk. Pay me next time, everyone does."
+  }
+ ]
+}

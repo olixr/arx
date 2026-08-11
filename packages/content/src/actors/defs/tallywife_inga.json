@@ -1,0 +1,32 @@
+{
+  "id": "tallywife_inga",
+  "name": "Inga",
+  "title": "Tallywife",
+  "examine": "Sixty years, two chests, one vault, zero mistakes. The ledgers behind her go back to the first fold, and she has read all of them twice.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 0,
+      "hairColor": 7,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 4,
+      "pants": 5
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 10
+    }
+  ],
+  "lines": [
+    "Counted.",
+    "The book says otherwise. The book is right.",
+    "Coin sleeps here. It does not visit."
+  ]
+}

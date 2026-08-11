@@ -1,0 +1,63 @@
+{
+ "id": "geir_smoke",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "smokemaster_geir"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Stand out of the draft or become part of the process.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Mm.",
+   "choices": [
+    {
+     "text": "What are you smoking?",
+     "next": "smoke"
+    },
+    {
+     "text": "How do you winter this far north?",
+     "next": "winter"
+    },
+    {
+     "text": "Sell me something.",
+     "next": "browse"
+    },
+    {
+     "text": "Carry on.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "smoke",
+   "text": "Hart, boar, salmon off the quay. Green pine for the color, old oak for the keeping. The huts run all autumn and sleep all spring. Like me.",
+   "next": "hub"
+  },
+  {
+   "id": "winter",
+   "text": "You smoke everything that stands still in autumn and you count it in spring. A winter is a long argument with hunger. You win it before it starts or you do not win it.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "text": "Smoked meat that keeps til thaw and salmon that does not last the walk home. Salt from Saltmere, tallow from next door. Eat.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "geir_smokehouse"
+    }
+   ]
+  },
+  {
+   "id": "off",
+   "text": "Mm."
+  }
+ ]
+}

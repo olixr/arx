@@ -1,0 +1,63 @@
+{
+ "id": "eirik_forge",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "smith_eirik"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "If it is bent I can unbend it. If it is broken I can mostly mend it. If it is a masterwork you are after, you are two towns early.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "What needs iron?",
+   "choices": [
+    {
+     "text": "What do you make?",
+     "next": "make"
+    },
+    {
+     "text": "Why not forge greater work?",
+     "next": "greater"
+    },
+    {
+     "text": "Show me the racks.",
+     "next": "browse"
+    },
+    {
+     "text": "Keep the fire in.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "make",
+   "text": "Spear points, trap jaws, shoe nails, hinges, and the sledge runners every autumn. A town this cold runs on small iron. Small iron is what I am for.",
+   "next": "hub"
+  },
+  {
+   "id": "greater",
+   "text": "One furnace and no great bellows, and no shame in it. Balla of Silverfall could forge me and my smithy into a better smithy. When her work comes through on a wain I shut up and look at it.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "text": "Working iron at working prices. The traps hold what they promise, which is the entire point of a promise.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "eirik_iron"
+    }
+   ]
+  },
+  {
+   "id": "off",
+   "text": "Mind the quench steam. It has opinions."
+  }
+ ]
+}

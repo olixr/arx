@@ -1,0 +1,63 @@
+{
+ "id": "brandulf_hearth",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "innkeep_brandulf"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "IN, in, shut the cold out. Fire never dies here, house law. What are you drinking and who are you, in that order.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Ha. Right then.",
+   "choices": [
+    {
+     "text": "What is the house like?",
+     "next": "house"
+    },
+    {
+     "text": "Who lodges here?",
+     "next": "guests"
+    },
+    {
+     "text": "Feed me.",
+     "next": "browse"
+    },
+    {
+     "text": "Just the fire, thanks.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "house",
+   "text": "Beds upstairs of nothing, broth all day, and the whole town through that door by second mug. Quiet inns are for towns that trust the weather. We do not have that kind of weather.",
+   "next": "hub"
+  },
+  {
+   "id": "guests",
+   "text": "Hallward, the Charter's buyer, a year in the good room and polite as a knife drawer. And Grimm out front, who pays his pitch fee in coin that has been somewhere I do not ask. Everyone else just drinks here.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "text": "Broth, bread, smoked hart on Geir's good days, and a stew that has ended arguments. Sit anywhere warm, which is everywhere.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "brandulf_board"
+    }
+   ]
+  },
+  {
+   "id": "off",
+   "text": "The bench nearest the fire is the town's. Sit anyway, they will only make you talk."
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "id": "hart_elder",
+ "base": {
+  "kind": "post",
+  "dir": 3.1415926,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 11,
+   "to": 12.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 6,
+      "y": 10,
+      "waitSec": 240,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 120,
+      "dir": 3.1415926
+     }
+    ]
+   }
+  },
+  {
+   "from": 20.5,
+   "to": 6.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 3,
+      "y": -3
+     },
+     {
+      "x": 3,
+      "y": -4,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

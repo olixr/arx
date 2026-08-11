@@ -1,0 +1,38 @@
+{
+  "id": "huntmaster_kolgrim",
+  "name": "Kolgrim",
+  "title": "Master of the Hunt",
+  "examine": "Forty winters of wind on one face. He counts everything: arrows, tracks, favors, and the exact number of times you have wasted his morning.",
+  "disposition": "friendly",
+  "shop": "kolgrim_hunt",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 2,
+      "hairColor": 2,
+      "beard": 4,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 7,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "weapon": "hunting_bow"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 55
+    }
+  ],
+  "lines": [
+    "Wind first. Ground second. Shot last.",
+    "The hunt owes the fold first. What is left over is yours to brag on.",
+    "Sunn reads snow better than I ever did. Tell her and I will deny it."
+  ]
+}

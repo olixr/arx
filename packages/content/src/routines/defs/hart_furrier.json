@@ -1,0 +1,52 @@
+{
+ "id": "hart_furrier",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 12,
+   "to": 13,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 4,
+      "y": -1,
+      "waitSec": 240,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 21.5,
+   "to": 7,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -5,
+      "y": 8
+     },
+     {
+      "x": -6,
+      "y": 8,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

@@ -1,0 +1,63 @@
+{
+ "id": "tuli_bone",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "bonecarver_tuli"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Oh. Hello. Mind the shavings.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Did you want something carved? Or bought. Either is fine.",
+   "choices": [
+    {
+     "text": "What do you carve?",
+     "next": "carve"
+    },
+    {
+     "text": "Where does the antler come from?",
+     "next": "antler"
+    },
+    {
+     "text": "Show me the small work.",
+     "next": "browse"
+    },
+    {
+     "text": "Sorry to disturb you.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "carve",
+   "text": "Combs. Buttons. Knife hafts. Charms for the drove, one hart each, so the herd stays a herd. Silverfall buys the good pieces for the Lantern Row. I have never seen where they end up. I think about it.",
+   "next": "hub"
+  },
+  {
+   "id": "antler",
+   "text": "The harts drop them every spring and the fell keeps them until we look. Nothing dies for a comb. I like that part best.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "text": "The tray is what is finished. The prices are what Ranna tells me they should be. She is right, apparently.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "tuli_horn"
+    }
+   ]
+  },
+  {
+   "id": "off",
+   "text": "It is no disturbance. Well. A small one."
+  }
+ ]
+}

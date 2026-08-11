@@ -1,0 +1,30 @@
+{
+ "id": "hart_innkeep",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 23.5,
+   "to": 5.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 1,
+      "y": -1
+     },
+     {
+      "x": 2,
+      "y": -1,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

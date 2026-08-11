@@ -2058,10 +2058,21 @@ test('hartfell: the fell town holds its warm water, its stones, and four ways in
   assert.equal(at(100, 63), Tile.GateGarrison, 'the herdgate opens to the drove');
   // The spawn is the Kettle's north walk: the respawn hearth of the far north.
   assert.deepEqual(z.spawn, { x: HARTFELL_RECT.x + 84.5, y: HARTFELL_RECT.y + 37.5 });
-  // No people yet BY DESIGN (the Amberford law: the people pass casts
-  // the town; the rooms already know their names) — but the herds
-  // winter in the folds from day one.
-  assert.equal((z.actorSpawns ?? []).length, 0, 'the people pass comes later');
+  // The cast: eighteen named, three on the horn, two at the folds.
+  const actors = z.actorSpawns ?? [];
+  assert.equal(actors.length, 23, 'Hartfell lost residents');
+  for (const slug of [
+    'speaker_ashild', 'springkeeper_maeva', 'huntmaster_kolgrim', 'guide_sunn',
+    'furrier_ranna', 'tallywife_inga', 'chandler_ulfa', 'smokemaster_geir',
+    'bonecarver_tuli', 'smith_eirik', 'innkeep_brandulf', 'herdmaster_swein',
+    'tithekeeper_orvar', 'elder_gunvor', 'netkeeper_eyvor', 'waykeeper_signe',
+    'buyer_hallward', 'pedlar_grimm',
+  ]) {
+    assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from Hartfell`);
+  }
+  assert.equal(actors.filter((a) => a.actor === 'hartfell_watch').length, 3);
+  assert.equal(actors.filter((a) => a.actor === 'hartfell_herder').length, 2);
+  assert.equal(actors.filter((a) => a.routine).length, 23, 'every keeper keeps hours');
   const herds = z.spawns ?? [];
   assert.ok(herds.some((s) => s.npc === 'stag'), 'the stag left the fold');
   assert.equal(herds.filter((s) => s.npc === 'hind').length, 2, 'the hinds left the fold');
@@ -2130,6 +2141,12 @@ test('hartfell: every door, pier, fold and stone walks from the Kettle', () => {
     ['the shore lane', 18, 50],
   ] as const) {
     assert.equal(seen[y * z.width + x], 1, `${what} is severed`);
+  }
+  // Every post a routine measures from stands on ground you can stand on.
+  for (const a of z.actorSpawns ?? []) {
+    const lx = Math.floor(a.x - z.origin.x);
+    const ly = Math.floor(a.y - z.origin.y);
+    assert.equal(seen[ly * z.width + lx], 1, `${a.actor}'s post at (${lx},${ly}) is unreachable`);
   }
 });
 

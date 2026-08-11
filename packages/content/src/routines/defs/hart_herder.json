@@ -1,0 +1,52 @@
+{
+ "id": "hart_herder",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 7,
+   "to": 9,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 1,
+      "y": -6,
+      "waitSec": 180
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 15,
+   "to": 17,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -3,
+      "y": 0,
+      "waitSec": 240
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  }
+ ]
+}

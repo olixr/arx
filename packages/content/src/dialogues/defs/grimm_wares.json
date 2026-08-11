@@ -1,0 +1,58 @@
+{
+ "id": "grimm_wares",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "pedlar_grimm"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Friend. Come, look, no obligation. Everything on the cloth has a price and a history, and the price is the honest one.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "See anything you like? Or carrying anything I might?",
+   "choices": [
+    {
+     "text": "What do you buy?",
+     "next": "buy"
+    },
+    {
+     "text": "Where do you come from?",
+     "next": "from"
+    },
+    {
+     "text": "What do you know of the fells?",
+     "next": "fells"
+    },
+    {
+     "text": "Not today.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "buy",
+   "text": "Old things. Ring work, stone work, bone work, anything the ground has been keeping better than its owner did. Found is found, friend. I pay in coin and I pay well and I write nothing down.",
+   "next": "hub"
+  },
+  {
+   "id": "from",
+   "text": "South, by way of everywhere. A pedlar is from his last good market. Before you ask, the pitch fee is paid and Brandulf will vouch for my coin if not my company.",
+   "next": "hub"
+  },
+  {
+   "id": "fells",
+   "text": "I know the dells hold barrows and the barrows hold the sort of stock I buy. I also know the town has a law about it, and I keep every law I am watched keeping. You look like somebody the watching misses.",
+   "next": "hub"
+  },
+  {
+   "id": "off",
+   "text": "The cloth is out every day, friend. Old things are patient."
+  }
+ ]
+}

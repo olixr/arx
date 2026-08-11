@@ -1,0 +1,37 @@
+{
+  "id": "smith_eirik",
+  "name": "Eirik",
+  "title": "Smith",
+  "examine": "Points, traps, nails, and the truth: he is a good smith and not a great one, and he will tell you so before you ask. Silverfall work makes him whistle.",
+  "disposition": "friendly",
+  "shop": "eirik_iron",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 2,
+      "hairColor": 4,
+      "beard": 3,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 7,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 60
+    }
+  ],
+  "lines": [
+    "I mend. I point. I do not master. Silverfall masters.",
+    "A trap is a promise you make the fold.",
+    "Bring me Balla's work to look at and the mending is half price."
+  ]
+}

@@ -49,6 +49,9 @@ export const FACTIONS: FactionsDef = {
         // Pinewatch: the Charter's own factor, eleven years north and
         // counting every stick that leaves.
         'factor_ebba',
+        // Hartfell: the buyer in the good room, refused quarterly with
+        // tremendous courtesy. The Charter thinks in years.
+        'buyer_hallward',
         // Dawnmead — one hearth-country with the ford (no politics of its own)
         'elder_rowan',
         'warden_bryn',
@@ -177,6 +180,12 @@ export const FACTIONS: FactionsDef = {
         'pilot_fane',
         'saltmere_watch',
         'saltmere_fisher',
+        // Hartfell — the moot keeps no soldiers; it pays the lamp.
+        // The town itself is NOBODY'S (the whole point of the moot),
+        // but the road's end post and the Fellwatch fly the lamp, so
+        // the peace at the last gate is the Waykeepers' peace.
+        'waykeeper_signe',
+        'hartfell_watch',
       ],
       enforcers: [
         'marshal_kestrel',
@@ -185,6 +194,7 @@ export const FACTIONS: FactionsDef = {
         'waykeeper_brant',
         'wayward_watch',
         'saltmere_watch',
+        'hartfell_watch',
       ],
       npcPrefixes: [],
       anchors: [],

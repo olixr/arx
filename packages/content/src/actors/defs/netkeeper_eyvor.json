@@ -1,0 +1,35 @@
+{
+  "id": "netkeeper_eyvor",
+  "name": "Eyvor",
+  "title": "Netkeeper of the Cold Quay",
+  "examine": "Salmon under the ice shelf, weather in her knee, and a strict personal treaty with the Darkwater: she does not go out on it, and it does not come in for her.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 1,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 2,
+      "pants": 3
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 25
+    }
+  ],
+  "lines": [
+    "The run is under the shelf. The fish do not know it is winter.",
+    "I fish the gray water. Nobody fishes the dark one.",
+    "My knee says three days of weather. My knee has never lied."
+  ]
+}

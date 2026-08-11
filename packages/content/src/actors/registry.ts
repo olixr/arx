@@ -127,6 +127,27 @@ import saltmereFisher from './defs/saltmere_fisher.json';
 // the Wild Between's people — the crofters holding the verges, the
 // Waykeeper sergeants holding the marches, and Edda holding the
 // Last Lamp against the Silverspine dark.
+import speakerAshild from './defs/speaker_ashild.json';
+import springkeeperMaeva from './defs/springkeeper_maeva.json';
+import huntmasterKolgrim from './defs/huntmaster_kolgrim.json';
+import guideSunn from './defs/guide_sunn.json';
+import furrierRanna from './defs/furrier_ranna.json';
+import tallywifeInga from './defs/tallywife_inga.json';
+import chandlerUlfa from './defs/chandler_ulfa.json';
+import smokemasterGeir from './defs/smokemaster_geir.json';
+import bonecarverTuli from './defs/bonecarver_tuli.json';
+import smithEirik from './defs/smith_eirik.json';
+import innkeepBrandulf from './defs/innkeep_brandulf.json';
+import herdmasterSwein from './defs/herdmaster_swein.json';
+import tithekeeperOrvar from './defs/tithekeeper_orvar.json';
+import elderGunvor from './defs/elder_gunvor.json';
+import netkeeperEyvor from './defs/netkeeper_eyvor.json';
+import waykeeperSigne from './defs/waykeeper_signe.json';
+import buyerHallward from './defs/buyer_hallward.json';
+import pedlarGrimm from './defs/pedlar_grimm.json';
+import hartfellWatch from './defs/hartfell_watch.json';
+import hartfellHerder from './defs/hartfell_herder.json';
+
 const SOURCES: readonly unknown[] = [
   reeveHalla,
   sawmistressGroa,
@@ -239,6 +260,26 @@ const SOURCES: readonly unknown[] = [
   peddlerNix,
   peddlerHetty,
   peddlerCoff,
+  speakerAshild,
+  springkeeperMaeva,
+  huntmasterKolgrim,
+  guideSunn,
+  furrierRanna,
+  tallywifeInga,
+  chandlerUlfa,
+  smokemasterGeir,
+  bonecarverTuli,
+  smithEirik,
+  innkeepBrandulf,
+  herdmasterSwein,
+  tithekeeperOrvar,
+  elderGunvor,
+  netkeeperEyvor,
+  waykeeperSigne,
+  buyerHallward,
+  pedlarGrimm,
+  hartfellWatch,
+  hartfellHerder,
 ];
 
 function buildRegistry(): ReadonlyMap<string, NpcActorDef> {

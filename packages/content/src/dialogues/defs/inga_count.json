@@ -1,0 +1,49 @@
+{
+ "id": "inga_count",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "tallywife_inga"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Chests are behind me. Rules are in front of you. State your business.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Well?",
+   "choices": [
+    {
+     "text": "How does the strongroom work?",
+     "next": "bank"
+    },
+    {
+     "text": "How long have you kept the count?",
+     "next": "years"
+    },
+    {
+     "text": "Just looking.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "bank",
+   "text": "Your coin goes in the chest, your name goes in the book, and both come out exactly as they went in. That is the entire cleverness. The vault is for the town's own and it is not a topic.",
+   "next": "hub"
+  },
+  {
+   "id": "years",
+   "text": "Thirty one years. The ledgers behind me go back before the wall. I have read them all twice and found one error. Mine. It has not happened again.",
+   "next": "hub"
+  },
+  {
+   "id": "off",
+   "text": "Looking is free. Standing there is nearly free."
+  }
+ ]
+}

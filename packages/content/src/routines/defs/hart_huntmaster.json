@@ -1,0 +1,74 @@
+{
+ "id": "hart_huntmaster",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 6,
+   "to": 7.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 19,
+      "y": -2,
+      "waitSec": 240,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 19,
+   "to": 21,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -8,
+      "y": 50,
+      "waitSec": 600,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 22.5,
+   "to": 6,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -1,
+      "y": 4
+     },
+     {
+      "x": -1,
+      "y": 5,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

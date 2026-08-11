@@ -1,0 +1,49 @@
+{
+ "id": "eyvor_nets",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "netkeeper_eyvor"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Mind the lines. The run is under the shelf and the shelf is under your next step if you keep walking like that.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "What, then?",
+   "choices": [
+    {
+     "text": "What do you catch?",
+     "next": "catch"
+    },
+    {
+     "text": "What is wrong with the Darkwater?",
+     "next": "dark"
+    },
+    {
+     "text": "Nothing. Fair catch to you.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "catch",
+   "text": "Salmon, all winter, fat as luck. The gray water never quite closes over the run, the Kettle keeps a vein of it warm the whole way out. Same reason the town is here. Everything here is the same reason.",
+   "next": "hub"
+  },
+  {
+   "id": "dark",
+   "text": "Nothing is wrong with it. That is the wrongness. No current, no birds, no ice even in the killing months. My mother said the far shore has a shore because something has to hold the water in. Nobody fishes it. Keep it that way.",
+   "next": "hub"
+  },
+  {
+   "id": "off",
+   "text": "Watch the plank on the second pier. It bites."
+  }
+ ]
+}

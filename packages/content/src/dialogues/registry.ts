@@ -217,6 +217,25 @@ import qPatrolTurnin from './defs/q_the_last_patrol_turnin.json';
  * listed doesn't exist — dialogues.test.ts walks the defs/ directory
  * and fails if a file is missing from this roster.
  */
+import ashildMoot from './defs/ashild_moot.json';
+import maevaSpring from './defs/maeva_spring.json';
+import kolgrimHorn from './defs/kolgrim_horn.json';
+import sunnFell from './defs/sunn_fell.json';
+import rannaGrade from './defs/ranna_grade.json';
+import ingaCount from './defs/inga_count.json';
+import ulfaWax from './defs/ulfa_wax.json';
+import geirSmoke from './defs/geir_smoke.json';
+import tuliBone from './defs/tuli_bone.json';
+import eirikForge from './defs/eirik_forge.json';
+import brandulfHearth from './defs/brandulf_hearth.json';
+import sweinFold from './defs/swein_fold.json';
+import orvarTithe from './defs/orvar_tithe.json';
+import gunvorIce from './defs/gunvor_ice.json';
+import eyvorNets from './defs/eyvor_nets.json';
+import signeRoad from './defs/signe_road.json';
+import hallwardCharter from './defs/hallward_charter.json';
+import grimmWares from './defs/grimm_wares.json';
+
 const SOURCES: readonly unknown[] = [
   qWetCountOffer,
   qWetCountTurnin,
@@ -429,6 +448,24 @@ const SOURCES: readonly unknown[] = [
   qSettingTurnin,
   qPatrolActive,
   qPatrolTurnin,
+  ashildMoot,
+  maevaSpring,
+  kolgrimHorn,
+  sunnFell,
+  rannaGrade,
+  ingaCount,
+  ulfaWax,
+  geirSmoke,
+  tuliBone,
+  eirikForge,
+  brandulfHearth,
+  sweinFold,
+  orvarTithe,
+  gunvorIce,
+  eyvorNets,
+  signeRoad,
+  hallwardCharter,
+  grimmWares,
 ];
 
 function buildRegistry(): ReadonlyMap<string, DialogueDef> {

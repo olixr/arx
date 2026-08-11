@@ -1,0 +1,32 @@
+{
+  "id": "elder_gunvor",
+  "name": "Gunvor",
+  "title": "Of the Wolfwinter",
+  "examine": "The cottage outside the wall is hers, and the bench that faces the ice. She came north over the frozen fell forty years ago and never once explains why she stays.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 0,
+      "hairColor": 7,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 4,
+      "pants": 5
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 8
+    }
+  ],
+  "lines": [
+    "I sit where I can see it coming. Old habit.",
+    "Pinewatch keeps a stone with fourteen names. Fourteen is not the count.",
+    "The ice gives back what it takes. It just keeps its own time."
+  ]
+}

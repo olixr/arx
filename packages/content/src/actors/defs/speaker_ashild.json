@@ -1,0 +1,36 @@
+{
+  "id": "speaker_ashild",
+  "name": "Ashild",
+  "title": "Speaker of the Fellmoot",
+  "examine": "Chosen, not crowned, and she will correct you on the difference. She says what the moot decided and not one word more.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 4,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 6,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 40
+    }
+  ],
+  "lines": [
+    "The moot decided. I only say it aloud.",
+    "We have no wall worth the name and no war in forty years. Sit with that a while.",
+    "The Crown sent a letter once. We sent back a very warm blanket."
+  ]
+}

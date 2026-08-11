@@ -1,0 +1,33 @@
+{
+  "id": "chandler_ulfa",
+  "name": "Ulfa",
+  "title": "Chandler",
+  "examine": "Warm as her own dips and twice as busy. Every story in town passes through the chandlery, gets trimmed, and burns a little brighter after.",
+  "disposition": "friendly",
+  "shop": "ulfa_lights",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 3,
+      "hairColor": 4,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 8,
+      "pants": 4
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 45
+    }
+  ],
+  "lines": [
+    "A barrel a week, just for the road lamps. Think on that when you walk it at night.",
+    "Candles for the living, lamps for the road, and no questions for either.",
+    "You smell of the fell. Everyone does. It is fine."
+  ]
+}

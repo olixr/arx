@@ -1,0 +1,33 @@
+{
+  "id": "springkeeper_maeva",
+  "name": "Maeva",
+  "title": "Keeper of the Kettle",
+  "examine": "She moves the way the steam does, without hurry and without stopping. People bring her their aches and, later, quieter things.",
+  "disposition": "friendly",
+  "shop": "maeva_remedies",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 5,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 3,
+      "pants": 4
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 25
+    }
+  ],
+  "lines": [
+    "Wash before the pool, not in it.",
+    "The water was warm before the first of us and it will be warm after the last.",
+    "It is not magic. It is patience, from very far down."
+  ]
+}

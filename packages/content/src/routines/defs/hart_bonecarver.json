@@ -1,0 +1,51 @@
+{
+ "id": "hart_bonecarver",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 6,
+   "to": 7.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -66,
+      "y": -51,
+      "waitSec": 180
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 21,
+   "to": 5.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 1,
+      "y": 2
+     },
+     {
+      "x": 2,
+      "y": 2,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

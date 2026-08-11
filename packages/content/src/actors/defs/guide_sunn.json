@@ -1,0 +1,35 @@
+{
+  "id": "guide_sunn",
+  "name": "Sunn",
+  "title": "Fell Guide",
+  "examine": "Nineteen, faster than the dogs Hartfell does not keep, and bored the moment a roof is over her. She was on the fell at dawn. She is always on the fell at dawn.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 1,
+      "hairColor": 0,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 2,
+      "pants": 3
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 12
+    }
+  ],
+  "lines": [
+    "Keep up or say now.",
+    "Snow tells you everything once. Then the wind takes it.",
+    "Walls are for sleeping. Barely."
+  ]
+}

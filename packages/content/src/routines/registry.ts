@@ -121,6 +121,28 @@ import waystationKeeper from './defs/waystation_keeper.json';
  * and fails if a file is missing from this roster, so forgetting the
  * import is a test failure, not a silent hole in someone's day.
  */
+import hartSpeaker from './defs/hart_speaker.json';
+import hartSpringkeeper from './defs/hart_springkeeper.json';
+import hartHuntmaster from './defs/hart_huntmaster.json';
+import hartGuide from './defs/hart_guide.json';
+import hartFurrier from './defs/hart_furrier.json';
+import hartTallywife from './defs/hart_tallywife.json';
+import hartChandler from './defs/hart_chandler.json';
+import hartSmokemaster from './defs/hart_smokemaster.json';
+import hartBonecarver from './defs/hart_bonecarver.json';
+import hartSmith from './defs/hart_smith.json';
+import hartInnkeep from './defs/hart_innkeep.json';
+import hartHerdmaster from './defs/hart_herdmaster.json';
+import hartTithekeeper from './defs/hart_tithekeeper.json';
+import hartElder from './defs/hart_elder.json';
+import hartNetkeeper from './defs/hart_netkeeper.json';
+import hartWaykeeper from './defs/hart_waykeeper.json';
+import hartBuyer from './defs/hart_buyer.json';
+import hartPedlar from './defs/hart_pedlar.json';
+import hartWatch from './defs/hart_watch.json';
+import hartWatchBeacon from './defs/hart_watch_beacon.json';
+import hartHerder from './defs/hart_herder.json';
+
 const SOURCES: readonly unknown[] = [
   croftReeve,
   croftTrader,
@@ -235,6 +257,27 @@ const SOURCES: readonly unknown[] = [
   tinkerHours,
   wardenRounds,
   waystationKeeper,
+  hartSpeaker,
+  hartSpringkeeper,
+  hartHuntmaster,
+  hartGuide,
+  hartFurrier,
+  hartTallywife,
+  hartChandler,
+  hartSmokemaster,
+  hartBonecarver,
+  hartSmith,
+  hartInnkeep,
+  hartHerdmaster,
+  hartTithekeeper,
+  hartElder,
+  hartNetkeeper,
+  hartWaykeeper,
+  hartBuyer,
+  hartPedlar,
+  hartWatch,
+  hartWatchBeacon,
+  hartHerder,
 ];
 
 function buildRegistry(): ReadonlyMap<string, RoutineDef> {

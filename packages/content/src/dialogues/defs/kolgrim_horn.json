@@ -1,0 +1,63 @@
+{
+ "id": "kolgrim_horn",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "huntmaster_kolgrim"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Wipe your boots. The hall is older than the town and cleaner than you.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Say it quick, the light is burning.",
+   "choices": [
+    {
+     "text": "What does the Horn Hall do?",
+     "next": "hall"
+    },
+    {
+     "text": "What is worth hunting here?",
+     "next": "game"
+    },
+    {
+     "text": "Show me your goods.",
+     "next": "browse"
+    },
+    {
+     "text": "Good hunting.",
+     "next": "off"
+    }
+   ]
+  },
+  {
+   "id": "hall",
+   "text": "The hunt feeds the fold first, the smokehouse second, the Hidehall third. What is left is glory, and there is never any left. The antlers on that wall are forty years of arithmetic.",
+   "next": "hub"
+  },
+  {
+   "id": "game",
+   "text": "Hart on the near fell, boar in the pine hem, wolf only if the moot posts it, and it will not. Past the stones you leave the game and the game starts hunting you. Take Sunn if you go far. Listen to her or come back shorter.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "text": "Bows, points, snares, and traps that hold what they promise. Arrows by the sheaf. If you want prettier, Silverfall is four hundred tiles that way.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "kolgrim_hunt"
+    }
+   ]
+  },
+  {
+   "id": "off",
+   "text": "Wind first. Ground second. Shot last. Go on."
+  }
+ ]
+}

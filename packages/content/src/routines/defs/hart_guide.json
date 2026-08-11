@@ -1,0 +1,82 @@
+{
+ "id": "hart_guide",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 5.5,
+   "to": 9,
+   "task": {
+    "kind": "path",
+    "speed": 1.9,
+    "waypoints": [
+     {
+      "x": 32,
+      "y": 42,
+      "waitSec": 120
+     },
+     {
+      "x": 44,
+      "y": 39,
+      "waitSec": 300
+     },
+     {
+      "x": 34,
+      "y": 41,
+      "waitSec": 120
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 30,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 13,
+   "to": 15,
+   "task": {
+    "kind": "path",
+    "speed": 1.9,
+    "waypoints": [
+     {
+      "x": -40,
+      "y": -16,
+      "waitSec": 240
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 30,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 23,
+   "to": 5.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -16,
+      "y": 7
+     },
+     {
+      "x": -15,
+      "y": 7,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

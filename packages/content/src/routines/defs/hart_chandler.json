@@ -1,0 +1,56 @@
+{
+ "id": "hart_chandler",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 15,
+   "to": 17,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -27,
+      "y": 19,
+      "waitSec": 180
+     },
+     {
+      "x": -28,
+      "y": 2,
+      "waitSec": 120
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 21.5,
+   "to": 6,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 0,
+      "y": 3
+     },
+     {
+      "x": 1,
+      "y": 4,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

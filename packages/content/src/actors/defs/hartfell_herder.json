@@ -1,0 +1,32 @@
+{
+  "id": "hartfell_herder",
+  "name": "Herder",
+  "title": "Of the Folds",
+  "examine": "Wind-cracked hands and a counting stick. The harts trust the smell of the folds and very little else.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 2,
+      "hairColor": 3,
+      "beard": 1,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 6,
+      "pants": 8
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 10
+    }
+  ],
+  "lines": [
+    "Ho. Mind the gate, they bolt at strangers.",
+    "Warm water all winter. Fat herds. That is the whole secret of the north.",
+    "The out fold is summer ground. Nobody winters past the wall."
+  ]
+}

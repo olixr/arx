@@ -1,0 +1,32 @@
+{
+  "id": "pedlar_grimm",
+  "name": "Grimm",
+  "title": "Pedlar",
+  "examine": "No sign over the pitch, no home behind it, and a purse that pays too well for things dug out of the fell. Friendly as a lid on a box.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 4,
+      "hairColor": 2,
+      "beard": 2,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 10,
+      "pants": 9
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 150
+    }
+  ],
+  "lines": [
+    "Buying and selling. Mostly buying.",
+    "Old things want new owners. I just help them along.",
+    "Where it came from is a kind of question I do not sell answers to."
+  ]
+}

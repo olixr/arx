@@ -71,8 +71,8 @@ import type { ZoneDef } from './types.js';
  * world (838,-345) = local (54,95); the Cairn Path leaves at world
  * (810,-440) = local (26,0).
  *
- * THE PEOPLE (placed by the people pass; the rooms already know their
- * names): Speaker Ashild (the stone house on the street), Maeva the
+ * THE PEOPLE (cast by the people pass; every room kept its promised
+ * name): Speaker Ashild (the stone house on the street), Maeva the
  * springkeeper (the Springhall's east room), Kolgrim the huntmaster +
  * Sunn the fell guide (Horn Hall), Ranna the furrier + Inga the
  * tallywife (the Hidehall's back rooms), Ulfa the chandler (the
@@ -880,6 +880,38 @@ export function buildHartfell(): ZoneDef {
   b.set(98, 93, Tile.TreePine).set(46, 90, Tile.Rock);
   b.scatterDetail(Detail.Tuft, 0.05);
   b.scatterDetail(Detail.Pebbles, 0.03, [Tile.Snow]);
+
+  // ---------------------------------------------------------------
+  // THE PEOPLE — eighteen named lives and the Fellwatch, on the
+  // horn's clock and the moot's. Placements are the POST each routine
+  // measures from; the sleepers walk to real beds by way of a
+  // walkable cardinal neighbour (the cardinal-stand law).
+  // ---------------------------------------------------------------
+  b.actor('speaker_ashild', 78.5, 27.5, Math.PI / 2, 'hart_speaker');
+  b.actor('springkeeper_maeva', 92.5, 30.5, Math.PI / 2, 'hart_springkeeper');
+  b.actor('huntmaster_kolgrim', 47.5, 23.5, Math.PI / 2, 'hart_huntmaster');
+  b.actor('guide_sunn', 66.5, 21.5, Math.PI, 'hart_guide');
+  b.actor('furrier_ranna', 66.5, 67.5, Math.PI / 2, 'hart_furrier');
+  b.actor('tallywife_inga', 60.5, 68.5, Math.PI / 2, 'hart_tallywife');
+  b.actor('chandler_ulfa', 82.5, 66.5, Math.PI / 2, 'hart_chandler');
+  b.actor('smokemaster_geir', 86.5, 82.5, Math.PI / 2, 'hart_smokemaster');
+  b.actor('bonecarver_tuli', 92.5, 57.5, Math.PI / 2, 'hart_bonecarver');
+  b.actor('smith_eirik', 68.5, 82.5, Math.PI / 2, 'hart_smith');
+  b.actor('innkeep_brandulf', 46.5, 74.5, Math.PI, 'hart_innkeep');
+  b.actor('herdmaster_swein', 31.5, 73.5, Math.PI / 2, 'hart_herdmaster');
+  b.actor('tithekeeper_orvar', 31.5, 28.5, Math.PI / 2, 'hart_tithekeeper');
+  b.actor('elder_gunvor', 9.5, 57.5, Math.PI, 'hart_elder');
+  b.actor('netkeeper_eyvor', 5.5, 68.5, Math.PI, 'hart_netkeeper');
+  b.actor('waykeeper_signe', 56.5, 85.5, Math.PI / 2, 'hart_waykeeper');
+  b.actor('buyer_hallward', 43.5, 73.5, Math.PI / 2, 'hart_buyer');
+  b.actor('pedlar_grimm', 38.5, 66.5, Math.PI / 2, 'hart_pedlar');
+  // The Fellwatch rota: the gate, the beacon, the drove.
+  b.actor('hartfell_watch', 54.5, 86.5, Math.PI / 2, 'hart_watch');
+  b.actor('hartfell_watch', 39.5, 12.5, Math.PI / 2, 'hart_watch_beacon');
+  b.actor('hartfell_watch', 98.5, 63.5, Math.PI / 2, 'hart_watch');
+  // The herders, one to each fold.
+  b.actor('hartfell_herder', 26.5, 65.5, Math.PI / 2, 'hart_herder');
+  b.actor('hartfell_herder', 27.5, 77.5, Math.PI / 2, 'hart_herder');
 
   // The spawn hearth of the far north: the Kettle's north walk,
   // between the Springhall's door and the warm water.

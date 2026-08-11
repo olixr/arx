@@ -1,0 +1,32 @@
+{
+  "id": "tithekeeper_orvar",
+  "name": "Orvar",
+  "title": "Tithekeeper",
+  "examine": "He walks the sledge out alone every slaughter day and has for thirty years. He is not brave, he says. He is polite, and so are they.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 6,
+      "hairColor": 7,
+      "beard": 4,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 4,
+      "pants": 6
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 15
+    }
+  ],
+  "lines": [
+    "I leave it on the flat stone. I do not wait to watch. That is all the job is.",
+    "Not beasts. Neighbors. Neighbors you do not visit.",
+    "The stones were here before the bargain. Think on who made it first."
+  ]
+}

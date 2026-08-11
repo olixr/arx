@@ -1,0 +1,33 @@
+{
+  "id": "furrier_ranna",
+  "name": "Ranna",
+  "title": "Furrier of the Hidehall",
+  "examine": "She can grade a pelt through a shut door. She grades people the same way, and most of us are second quality on a good day.",
+  "disposition": "friendly",
+  "shop": "ranna_furs",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 3,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 5,
+      "pants": 7
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 80
+    }
+  ],
+  "lines": [
+    "First quality goes south. Second quality goes on your back. There is no third quality, there is the midden.",
+    "Bring me winter fur, not summer scruff.",
+    "The grade is the grade. Shout if it helps you."
+  ]
+}

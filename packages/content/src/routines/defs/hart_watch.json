@@ -1,0 +1,52 @@
+{
+ "id": "hart_watch",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 9,
+   "to": 11,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 0,
+      "y": -8,
+      "waitSec": 180
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 120,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 14,
+   "to": 16,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 0,
+      "y": -8,
+      "waitSec": 180
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 120,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  }
+ ]
+}
