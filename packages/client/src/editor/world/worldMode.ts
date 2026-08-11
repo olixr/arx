@@ -1,5 +1,6 @@
 import { dangerAt } from '@arx/shared';
 import {
+  elevationAt,
   replaceGeography,
   replaceZoneEdgeProfiles,
   unpackZoneEdgeProfile,
@@ -228,7 +229,11 @@ export class WorldMode {
     if (!this.ws.geo) return { ok: false, text: 'no plan loaded' };
     const res = validateGeographyDef(this.ws.geo);
     if (!res.ok) return { ok: false, text: res.errors.join(' · ') };
-    const warnings = geographyWarnings(res.def);
+    // The span law needs terrain: the editor runs the same worldgen,
+    // so the Validate button judges drafts against the real water.
+    const warnings = geographyWarnings(res.def, this.ws.seed, (x, y) =>
+      elevationAt(this.ws.seed, x, y),
+    );
     return {
       ok: true,
       text:

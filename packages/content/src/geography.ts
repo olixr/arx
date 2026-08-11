@@ -306,25 +306,42 @@ const AUTHORED_PLAN: GeographyDef = {
       name: 'The First Road',
       kind: 'road',
       // Dawnmead's east lane mouth to Amberford's Fordgate: the first
-      // journey, laid THROUGH the Amberfen with intent. It swings
-      // SOUTH around the west heart's open water (the scenic shore
-      // miles), climbs back through the waist between the two hearts
-      // (the narrows — and the toll camp's hunting ground), runs the
-      // NORTH shore of the east heart, and descends to the ford.
-      // Serpentine on purpose: ~326 tiles of road where the crow
-      // flies 296 — the distance IS the design. Tier 1-2 throughout.
+      // journey, laid AROUND the Amberfen the way carts actually go.
+      // It drops south along Dawnmead's hem, crosses the reed flats
+      // on the one sand causeway the fen deals at its southern edge,
+      // climbs onto the dry south-shore belt (the scenic shore miles
+      // — and the toll camp's hunting ground, water on one hand and
+      // brigands on the other), touches the waist's foot below the
+      // Fenside Crofts, then walks the long sand shore under the
+      // south lobe and rises east to the ford. Serpentine on purpose:
+      // ~390 tiles of road where the crow flies 296 — the distance IS
+      // the design, and not one tile of it is causeway over open
+      // water (THE SHORT SPAN LAW: the fen's cores are moats; the
+      // road earns the far bank with shore miles, not impossible
+      // bridgework). Tier 1-2 throughout.
       pts: [
         { x: 0, y: 48 },
-        { x: 28, y: 56 },
-        { x: 56, y: 66 },
-        { x: 86, y: 74 },
-        { x: 118, y: 62 },
-        { x: 144, y: 48 },
-        { x: 166, y: 38 },
-        { x: 186, y: 20 },
-        { x: 208, y: 4 },
-        { x: 236, y: 8 },
-        { x: 264, y: 20 },
+        { x: 4, y: 58 },
+        { x: 10, y: 70 },
+        { x: 10, y: 80 },
+        { x: 12, y: 90 },
+        { x: 18, y: 94 },
+        { x: 34, y: 95 },
+        { x: 44, y: 92 },
+        { x: 52, y: 86 },
+        { x: 64, y: 82 },
+        { x: 80, y: 81 },
+        { x: 94, y: 80 },
+        { x: 106, y: 76 },
+        { x: 120, y: 73 },
+        { x: 130, y: 70 },
+        { x: 146, y: 60 },
+        { x: 152, y: 46 },
+        { x: 166, y: 53 },
+        { x: 190, y: 54 },
+        { x: 220, y: 50 },
+        { x: 240, y: 44 },
+        { x: 264, y: 38 },
         { x: 296, y: 36 },
       ],
     },
@@ -360,18 +377,37 @@ const AUTHORED_PLAN: GeographyDef = {
       name: 'The Salt Road',
       kind: 'road',
       // Amberford's South Gate to Saltmere's landward gate: the road
-      // the salt built. It leans west off the fen tail's damp ground,
-      // swings back east over the heath shelf, and runs the last dry
-      // league straight at the water. Tier 1 at the fields, tier 2
-      // past the halfway lamp, tier 3 to the gate — the first road
-      // that expects a made character (L15+), and says so at both
-      // ends.
+      // the salt built. The fen tail's lake laps the town's own south
+      // hem, so the road does what salt carts have always done: it
+      // works the EAST SHORE — out of the gate onto the sand hem,
+      // down the waterline league, then east over the heath shelf
+      // where the marsh widens, and back west across the dry sand fan
+      // below the wet country to pick up the straight run south. The
+      // whole north half is shore road with the water on the right
+      // hand and the heath on the left; not one tile of causeway
+      // (THE SHORT SPAN LAW: the fen's cores are moats, not fords).
+      // Tier 1 at the fields, tier 2 past the halfway lamp, tier 3 to
+      // the gate — the first road that expects a made character
+      // (L15+), and says so at both ends.
       pts: [
         { x: 348, y: 62 },
-        { x: 344, y: 84 },
-        { x: 338, y: 108 },
-        { x: 346, y: 132 },
-        { x: 360, y: 152 },
+        { x: 355, y: 63 },
+        { x: 358, y: 67 },
+        { x: 359, y: 74 },
+        { x: 360, y: 88 },
+        { x: 366, y: 100 },
+        { x: 369, y: 106 },
+        { x: 377, y: 110 },
+        { x: 392, y: 113 },
+        { x: 404, y: 118 },
+        { x: 410, y: 126 },
+        { x: 416, y: 134 },
+        { x: 418, y: 142 },
+        { x: 416, y: 148 },
+        { x: 410, y: 153 },
+        { x: 394, y: 154 },
+        { x: 378, y: 155 },
+        { x: 366, y: 158 },
         { x: 368, y: 176 },
         { x: 362, y: 200 },
         { x: 350, y: 222 },
@@ -385,18 +421,24 @@ const AUTHORED_PLAN: GeographyDef = {
       kind: 'road',
       // Amberford's EAST GATE to Pinewatch's south gate: the long way
       // round, and the only way a loaded timber wain can come. It runs
-      // the open lowland due east until the land tilts, turns north up
-      // the coast country under the Pinereach's southern arm, and
-      // comes at the town from below so the lake is the last thing you
-      // see, not the first. ~386 tiles against the Sparway's 211 — the
-      // distance IS the safety, because three havens sit on it and
-      // nothing sits on the trail.
+      // the open lowland due east until the braid-water country
+      // starts, then does what a wain must: turns NORTH up the dry
+      // shelf and rounds the whole mosaic on its top edge (the braids
+      // stay on the carter's right hand the entire league — scenery,
+      // never causeway; THE SHORT SPAN LAW), then east under the
+      // Pinereach's southern arm and at the town from below so the
+      // lake is the last thing you see, not the first. ~400 tiles
+      // against the Sparway's ~230 — the distance IS the safety,
+      // because three havens sit on it and nothing sits on the trail.
       pts: [
         { x: 408, y: 44 },
         { x: 456, y: 38 },
-        { x: 506, y: 28 },
-        { x: 556, y: 16 },
-        { x: 604, y: 2 },
+        { x: 500, y: 28 },
+        { x: 514, y: 10 },
+        { x: 514, y: -8 },
+        { x: 520, y: -22 },
+        { x: 560, y: -24 },
+        { x: 604, y: -21 },
         { x: 644, y: -20 },
         { x: 666, y: -50 },
         { x: 660, y: -78 },
@@ -408,18 +450,22 @@ const AUTHORED_PLAN: GeographyDef = {
       id: 'sparway',
       name: 'The Sparway',
       kind: 'trail',
-      // The mast-cutters' shortcut: Amberford's north gate to
-      // Pinewatch's west gate, straight through the Pinereach's heart.
-      // Half the distance, none of the lamps, and the tier-4 wood does
-      // not care that you are in a hurry. Forks off the High Road's
-      // first waypoint, so both ways out of Amberford leave by a gate
-      // that already exists.
+      // The mast-cutters' shortcut. It forks off the Timber Road at
+      // the exact bend where the wains give up and turn north around
+      // the braid country — and goes STRAIGHT instead: due north up
+      // the one dry seam east of the Blackpine's meres, through the
+      // heart of the dread ring, to Pinewatch's west gate. Half the
+      // distance, none of the lamps, and the tier the Blackpine deals
+      // does not care that you are in a hurry. Dry the whole way BY
+      // the land's own accident (the wet country ends at the seam) —
+      // a hunter's track wades nothing; it just walks where the
+      // ground lets it and pays in danger instead.
       pts: [
-        { x: 350, y: -15 },
-        { x: 382, y: -42 },
-        { x: 416, y: -70 },
-        { x: 450, y: -96 },
-        { x: 486, y: -118 },
+        { x: 514, y: -8 },
+        { x: 492, y: -32 },
+        { x: 482, y: -60 },
+        { x: 482, y: -90 },
+        { x: 494, y: -114 },
         { x: 520, y: -136 },
       ],
     },
@@ -503,11 +549,18 @@ const AUTHORED_PLAN: GeographyDef = {
       // Dawnmead's north hem to the Thornveil Fork: the unlit shortcut
       // that threads the wolf dens. Saves half the journey, costs the
       // safety — the map's lesson about roads, taught by counterexample.
+      // The last league hooks around the fork tarn's SOUTH shore on
+      // the sand (hunters know the dry line; nobody wades a tarn in
+      // wolf country) and comes up its west bank to the fork.
       pts: [
         { x: -64, y: 15 },
         { x: -52, y: -8 },
         { x: -72, y: -40 },
         { x: -104, y: -68 },
+        { x: -116, y: -76 },
+        { x: -130, y: -78 },
+        { x: -146, y: -78 },
+        { x: -146, y: -92 },
         { x: -140, y: -96 },
       ],
     },
@@ -562,7 +615,7 @@ const AUTHORED_PLAN: GeographyDef = {
     // shortcut is dangerous because it is unwatched, not because a
     // designer parked a den on it.
     { id: 'pinehollow_rest', defId: 'roadside_hamlet', x: 674, y: -56 },
-    { id: 'hollow_watch', defId: 'wardens_outpost', x: 612, y: -16 },
+    { id: 'hollow_watch', defId: 'wardens_outpost', x: 612, y: -13 },
     // PAST THE WARDLINE: the axe-thieves in the old wood east of
     // Pinewatch, cutting the great spars nobody is allowed to cut.
     // The town's quest spine has a physical address.
@@ -951,10 +1004,211 @@ export function validateGeographyDef(
 }
 
 /**
+ * THE SHORT SPAN LAW — the longest bridge deck a route may lay. A
+ * fantasy road bridges necks and river mouths, not lakes: anything
+ * longer than a dozen tiles of deck reads as an impossible causeway,
+ * so the route walks the shore instead. Trails throw plank spans and
+ * get even less. Deep water (the lakes' cores) is never bridged at
+ * all — those stay moats, the sandbar law's older promise.
+ */
+export const ROAD_SPAN_MAX = 12;
+export const TRAIL_SPAN_MAX = 8;
+
+/** One contiguous run of Bridge deck a route lays across water. */
+export interface BridgeDeck {
+  /** Route whose surface claimed the most deck tiles. */
+  routeId: string;
+  trail: boolean;
+  /** Longer side of the deck's bounding box — the span as the eye reads it. */
+  span: number;
+  /** Total deck tiles (a 3-wide crossing counts them all). */
+  tiles: number;
+  /** Deck tiles over deep water (elevation < 0.3) — the cores. */
+  deep: number;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/**
+ * Every bridge deck a DRAFT plan would lay, measured with the same
+ * wander the carve uses — the exact tiles generateChunk will turn
+ * into Tile.Bridge, flood-filled into contiguous decks. Judges
+ * `def.routes`, never the live registry, so the studio can counsel a
+ * work-in-progress plan (the draftDist law). Elevation is injected
+ * because worldgen imports this module: pass a sampler seeded like
+ * the world, e.g. `(x, y) => elevationAt(seed, x, y)`.
+ */
+export function routeBridgeDecks(
+  def: GeographyDef,
+  seed: number,
+  elevAt: (tx: number, ty: number) => number,
+): BridgeDeck[] {
+  // The gather reach: wander (2.2) + road half-width (1.6) + slack.
+  const GATHER = 6;
+  interface DraftBound {
+    route: RoadRoute;
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  }
+  const bounds: DraftBound[] = def.routes.map((route) => {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const p of route.pts) {
+      x0 = Math.min(x0, p.x);
+      y0 = Math.min(y0, p.y);
+      x1 = Math.max(x1, p.x);
+      y1 = Math.max(y1, p.y);
+    }
+    return { route, x0, y0, x1, y1 };
+  });
+  // The carve's own question, asked of the draft: nearest wandered
+  // route surface at a tile (ties to road over trail, like roadHitAt).
+  const draftHit = (tx: number, ty: number): { dist: number; route: RoadRoute } | null => {
+    let wx = 0;
+    let wy = 0;
+    let warped = false;
+    let best = Infinity;
+    let bestRoute: RoadRoute | null = null;
+    for (const b of bounds) {
+      if (tx < b.x0 - ROAD_PAD || tx > b.x1 + ROAD_PAD || ty < b.y0 - ROAD_PAD || ty > b.y1 + ROAD_PAD) {
+        continue;
+      }
+      if (!warped) {
+        wx = tx + (fbm(seed ^ 0x70ad1, tx * WANDER_FREQ, ty * WANDER_FREQ, 2) - 0.5) * 2 * WANDER_AMP;
+        wy = ty + (fbm(seed ^ 0x70ad2, tx * WANDER_FREQ, ty * WANDER_FREQ, 2) - 0.5) * 2 * WANDER_AMP;
+        warped = true;
+      }
+      const pts = b.route.pts;
+      const isTrail = b.route.kind === 'trail';
+      for (let i = 0; i < pts.length - 1; i++) {
+        const d = segDist(wx, wy, pts[i]!.x, pts[i]!.y, pts[i + 1]!.x, pts[i + 1]!.y);
+        if (d < best || (d === best && !isTrail && bestRoute?.kind === 'trail')) {
+          best = d;
+          bestRoute = b.route;
+        }
+      }
+    }
+    return bestRoute === null ? null : { dist: best, route: bestRoute };
+  };
+  // Candidate tiles near any polyline, then the actual deck tiles.
+  const deck = new Map<string, { deep: boolean; route: RoadRoute }>();
+  for (const b of bounds) {
+    const pts = b.route.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i]!;
+      const q = pts[i + 1]!;
+      const steps = Math.max(1, Math.ceil(Math.hypot(q.x - a.x, q.y - a.y)));
+      for (let s = 0; s <= steps; s++) {
+        const t = s / steps;
+        const cx = Math.round(a.x + (q.x - a.x) * t);
+        const cy = Math.round(a.y + (q.y - a.y) * t);
+        for (let dy = -GATHER; dy <= GATHER; dy++) {
+          for (let dx = -GATHER; dx <= GATHER; dx++) {
+            const x = cx + dx;
+            const y = cy + dy;
+            const key = `${x},${y}`;
+            if (deck.has(key)) continue;
+            // Inside a planned rect the zone's authored ground overlays
+            // the carve, and the few tiles of hem just outside a border
+            // belong to edge harmony (the border's authored intention
+            // reshapes the raw field there — a gate's worn edge dries
+            // its own mouth). Neither band is the raw field's to judge.
+            if (def.planned.some((r) => distToRect(x, y, r) <= 4)) {
+              continue;
+            }
+            const hit = draftHit(x, y);
+            if (!hit) continue;
+            if (hit.dist > (hit.route.kind === 'trail' ? TRAIL_HALF : ROAD_HALF)) continue;
+            const e = elevAt(x, y);
+            if (e < 0.37) deck.set(key, { deep: e < 0.3, route: hit.route });
+          }
+        }
+      }
+    }
+  }
+  // Flood-fill (8-adjacent) into contiguous decks.
+  const seen = new Set<string>();
+  const decks: BridgeDeck[] = [];
+  for (const start of deck.keys()) {
+    if (seen.has(start)) continue;
+    seen.add(start);
+    const stack = [start];
+    const claims = new Map<string, number>();
+    let tiles = 0;
+    let deep = 0;
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    let anyRoute: RoadRoute | null = null;
+    let bestClaim = 0;
+    let claimant: RoadRoute | null = null;
+    while (stack.length > 0) {
+      const key = stack.pop()!;
+      const cell = deck.get(key)!;
+      const comma = key.indexOf(',');
+      const x = Number(key.slice(0, comma));
+      const y = Number(key.slice(comma + 1));
+      tiles++;
+      if (cell.deep) deep++;
+      const n = (claims.get(cell.route.id) ?? 0) + 1;
+      claims.set(cell.route.id, n);
+      if (n > bestClaim) {
+        bestClaim = n;
+        claimant = cell.route;
+      }
+      anyRoute = cell.route;
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nk = `${x + dx},${y + dy}`;
+          if (!seen.has(nk) && deck.has(nk)) {
+            seen.add(nk);
+            stack.push(nk);
+          }
+        }
+      }
+    }
+    const route = claimant ?? anyRoute!;
+    decks.push({
+      routeId: route.id,
+      trail: route.kind === 'trail',
+      span: Math.max(x1 - x0, y1 - y0) + 1,
+      tiles,
+      deep,
+      x0,
+      y0,
+      x1,
+      y1,
+    });
+  }
+  return decks.sort((a, b) => b.span - a.span);
+}
+
+/**
  * Design advice over a VALID plan — the studio's counsel, never a
  * gate. Each warning names its subject so the World view can badge it.
+ *
+ * Pass `elevAt` (a seeded elevation sampler, `(x, y) =>
+ * elevationAt(seed, x, y)`) to also judge the SHORT SPAN LAW — the
+ * counsel that needs terrain. Callers without worldgen in reach get
+ * the structural counsel alone.
  */
-export function geographyWarnings(def: GeographyDef, seed = 1337): string[] {
+export function geographyWarnings(
+  def: GeographyDef,
+  seed = 1337,
+  elevAt?: (tx: number, ty: number) => number,
+): string[] {
   const warnings: string[] = [];
   const inAnyRect = (x: number, y: number): boolean =>
     def.planned.some((r) => x >= r.x - 1 && x <= r.x + r.w && y >= r.y - 1 && y <= r.y + r.h);
@@ -988,7 +1242,23 @@ export function geographyWarnings(def: GeographyDef, seed = 1337): string[] {
     }
     return best;
   };
-  void seed;
+  // THE SHORT SPAN LAW — terrain counsel, only when the caller can
+  // see the terrain.
+  if (elevAt) {
+    for (const deck of routeBridgeDecks(def, seed, elevAt)) {
+      const max = deck.trail ? TRAIL_SPAN_MAX : ROAD_SPAN_MAX;
+      if (deck.span > max) {
+        warnings.push(
+          `route '${deck.routeId}' lays a ${deck.span}-tile bridge deck at (${deck.x0},${deck.y0})..(${deck.x1},${deck.y1}) — the span law allows ${max}: cross at a neck or walk the shore`,
+        );
+      }
+      if (deck.deep > 0) {
+        warnings.push(
+          `route '${deck.routeId}' bridges ${deck.deep} tile(s) of deep water near (${deck.x0},${deck.y0}) — bridges cross necks, never cores`,
+        );
+      }
+    }
+  }
   for (const s of def.sites) {
     if (s.x === undefined || s.y === undefined) continue;
     const d = draftDist(s.x, s.y);

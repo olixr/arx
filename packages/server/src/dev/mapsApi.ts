@@ -26,6 +26,7 @@ import {
   GROWTH,
   POI_DEFS,
   ZONE_EDGE_PROFILES,
+  elevationAt,
   geographySnapshot,
   replaceFactions,
   replaceFrontier,
@@ -218,7 +219,7 @@ export function createMapsApi(
           ...snap,
           geography: def,
           geographyEdited: edited,
-          warnings: geographyWarnings(def),
+          warnings: geographyWarnings(def, config.worldSeed, (x, y) => elevationAt(config.worldSeed, x, y)),
           // The edge-harmony registry, packed — the editor mirrors it
           // so its client-side worldgen blends exactly like the server.
           edgeProfiles: ZONE_EDGE_PROFILES.map(packZoneEdgeProfile),
@@ -250,7 +251,7 @@ export function createMapsApi(
           sendJson(res, 200, {
             def,
             edited,
-            warnings: geographyWarnings(def),
+            warnings: geographyWarnings(def, config.worldSeed, (x, y) => elevationAt(config.worldSeed, x, y)),
           });
           return true;
         }
@@ -270,7 +271,7 @@ export function createMapsApi(
           await importContentDoc(db, 'geography', 'world', result.def);
           const swept = game.reloadGeography(result.def);
           console.log(`[content] geography saved + live (world regenerating)`);
-          sendJson(res, 200, { ok: true, swept, warnings: geographyWarnings(result.def) });
+          sendJson(res, 200, { ok: true, swept, warnings: geographyWarnings(result.def, config.worldSeed, (x, y) => elevationAt(config.worldSeed, x, y)) });
           return true;
         }
         if (req.method === 'DELETE') {

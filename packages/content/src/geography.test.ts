@@ -21,11 +21,15 @@ import {
   roadBearingAt,
   roadDistanceAt,
   roadHitAt,
+  routeBridgeDecks,
+  ROAD_SPAN_MAX,
+  TRAIL_SPAN_MAX,
   thornveilAt,
   validateGeographyDef,
 } from './geography.js';
 import { SETTLED_ANCHORS } from './danger.js';
 import { buildDawnmead } from './maps/dawnmead.js';
+import { elevationAt } from './worldgen.js';
 
 /**
  * THE GEOGRAPHY IS LOAD-BEARING: zone builds stamp into exactly these
@@ -57,6 +61,16 @@ test('every route starts and ends at a planned zone (gates meet roads)', () => {
       const high = ROAD_ROUTES.find((r) => r.id === 'high_road')!;
       const onHigh = high.pts.some((p) => p.x === b.x && p.y === b.y);
       assert.ok(onHigh, `${route.name} must end on a High Road waypoint (the fork)`);
+      continue;
+    }
+    // The Sparway forks off the Timber Road at the bend where the
+    // wains turn north around the braid country — the shortcut IS
+    // the refusal to go around. Fork start, Pinewatch west gate end.
+    if (route.id === 'sparway') {
+      const timber = ROAD_ROUTES.find((r) => r.id === 'timber_road')!;
+      const onTimber = timber.pts.some((p) => p.x === a.x && p.y === a.y);
+      assert.ok(onTimber, `${route.name} must start on a Timber Road waypoint (the fork)`);
+      assert.ok(inAnyRect(b.x, b.y), `${route.name} end is loose`);
       continue;
     }
     // The Hartway forks off the Timber Road's last-league waypoint
@@ -92,10 +106,10 @@ test('the fields fall off to honest zero in the far frontier', () => {
 });
 
 test('road queries agree with themselves (deterministic, kind-aware)', () => {
-  const a = roadHitAt(1337, 56, 64);
-  const b = roadHitAt(1337, 56, 64);
+  const a = roadHitAt(1337, 34, 95);
+  const b = roadHitAt(1337, 34, 95);
   assert.deepEqual(a, b);
-  assert.ok(a !== null && a.dist < 8, 'the First Road runs near (56,64)');
+  assert.ok(a !== null && a.dist < 8, 'the First Road runs the causeway near (34,95)');
   assert.equal(a!.trail, false);
   const t = roadHitAt(1337, -60, -10);
   assert.ok(t !== null && t.trail, "the Hunter's Trail near (-60,-10) reads as a trail");
@@ -144,12 +158,12 @@ test('pinned mileposts stand beside the road, never on it', () => {
 });
 
 test('roadBearingAt points at the road, and honestly refuses far ground', () => {
-  // A point south of the First Road: the bearing must lead back to it.
-  const b = roadBearingAt(56, 84, 40);
-  assert.ok(b !== null, 'the First Road is within 40 of (56,84)');
+  // A point north of the First Road's shore leg: the bearing must lead back to it.
+  const b = roadBearingAt(56, 64, 40);
+  assert.ok(b !== null, 'the First Road is within 40 of (56,64)');
   const step = 10;
-  const before = roadDistanceAt(1337, 56, 84);
-  const after = roadDistanceAt(1337, Math.round(56 + b!.x * step), Math.round(84 + b!.y * step));
+  const before = roadDistanceAt(1337, 56, 64);
+  const after = roadDistanceAt(1337, Math.round(56 + b!.x * step), Math.round(64 + b!.y * step));
   assert.ok(after < before, 'walking the bearing must close on the road');
   // The deep frontier has no bearing to give.
   assert.equal(roadBearingAt(2000, 2000, 40), null);
@@ -173,7 +187,36 @@ test('the authored plan passes its own validator, byte-honest', () => {
 });
 
 test('the authored plan earns no warnings from its own counsel', () => {
-  assert.deepEqual(geographyWarnings(AUTHORED_GEOGRAPHY), []);
+  assert.deepEqual(
+    geographyWarnings(AUTHORED_GEOGRAPHY, 1337, (x, y) => elevationAt(1337, x, y)),
+    [],
+  );
+});
+
+// ------------------------------------------------------------------
+// THE SHORT SPAN LAW — a road bridges necks, not lakes. Every deck
+// the carve would lay is measured against the real terrain and the
+// worst one is named, so a re-drawn waypoint that wades into a mere
+// fails with an address instead of a shrug.
+// ------------------------------------------------------------------
+
+test('every route crosses water only at short necks (the span law, route by route)', () => {
+  const decks = routeBridgeDecks(AUTHORED_GEOGRAPHY, 1337, (x, y) => elevationAt(1337, x, y));
+  for (const route of AUTHORED_GEOGRAPHY.routes) {
+    const own = decks.filter((d) => d.routeId === route.id);
+    const max = route.kind === 'trail' ? TRAIL_SPAN_MAX : ROAD_SPAN_MAX;
+    for (const d of own) {
+      assert.ok(
+        d.span <= max,
+        `${route.name} lays a ${d.span}-tile deck at (${d.x0},${d.y0})..(${d.x1},${d.y1}) — the law allows ${max}`,
+      );
+      assert.equal(
+        d.deep,
+        0,
+        `${route.name} bridges deep water at (${d.x0},${d.y0})..(${d.x1},${d.y1}) — bridges cross necks, never cores`,
+      );
+    }
+  }
 });
 
 test('the validator collects every error and names its subject', () => {
@@ -227,14 +270,14 @@ test('replaceGeography moves the roads, the anchors, and every query with them',
     assert.equal(AUTHORED_WILD_SITES[0]!.id, 'east_rest');
     // The road queries answer from the new plan (derived bounds moved).
     assert.ok(roadDistanceAt(1337, 1100, 100) < 8, 'the East Reach exists');
-    assert.equal(roadDistanceAt(1337, 56, 64), Infinity, 'the First Road is gone');
+    assert.equal(roadDistanceAt(1337, 34, 95), Infinity, 'the First Road is gone');
     assert.equal(nearRoads(0, 0, 200, 200), false);
     assert.ok(nearRoads(990, 90, 1010, 110));
   } finally {
     replaceGeography(before);
   }
   // The restoration is honest: shipped queries answer as ever.
-  assert.ok(roadDistanceAt(1337, 56, 64) < 8);
+  assert.ok(roadDistanceAt(1337, 34, 95) < 8);
   assert.equal(SETTLED_ANCHORS.length, AUTHORED_GEOGRAPHY.anchors.length);
 });
 
