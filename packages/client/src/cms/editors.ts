@@ -295,7 +295,15 @@ function derivedPills(d: NpcDef): HTMLElement[] {
   if (d.ranged) pills.push(pill(`ranged ${d.ranged.range}t`, 'shoots projectiles', 'ink'));
   if (d.pack) pills.push(pill(`pack: ${d.pack}`, 'shares aggro with its pack', 'ink'));
   if (d.craven) pills.push(pill('craven', 'badly hurt, may run to fetch a packmate', 'ink'));
-  if (d.special) pills.push(pill(d.special.ability, 'special ability', 'brass'));
+  for (const k of d.kit ?? []) {
+    pills.push(
+      pill(
+        k.ability,
+        `kit voice — every ${k.cooldownTicks}t${k.windupTicks ? `, winds ${k.windupTicks}t` : ''}`,
+        'brass',
+      ),
+    );
+  }
   pills.push(
     pill(
       d.speed >= 4.4 ? 'outruns you' : d.speed >= 3.4 ? 'keeps pace' : 'lumbering',
@@ -415,9 +423,9 @@ function npcDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       }),
     );
     chipRow.appendChild(
-      featureChip('special ability', !!draft.special, 'Casts a technique on a cadence', (on) => {
-        if (on) draft.special = { ability: abilityOptions()[0]?.id ?? '', everyTicks: 150 };
-        else delete draft.special;
+      featureChip('ability kit', !!draft.kit, 'Casts authored techniques on their own cooldowns', (on) => {
+        if (on) draft.kit = [{ ability: abilityOptions()[0]?.id ?? '', cooldownTicks: 150 }];
+        else delete draft.kit;
         markDirty();
         rebuild();
       }),
@@ -465,16 +473,49 @@ function npcDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       f.appendChild(numIn(draft.ranged.projectileSpeed, (v) => (draft.ranged!.projectileSpeed = v), 0.5));
       subForms.appendChild(f);
     }
-    if (draft.special) {
-      const f = el('div', 'sub-form');
-      f.appendChild(el('b', '', 'Special'));
-      f.appendChild(combobox(abilityOptions, draft.special.ability, (v) => {
-        draft.special!.ability = v;
-        markDirty();
-      }));
-      f.appendChild(el('span', 'note', 'every N ticks'));
-      f.appendChild(numIn(draft.special.everyTicks, (v) => (draft.special!.everyTicks = v)));
-      subForms.appendChild(f);
+    if (draft.kit) {
+      // THE KIT: one row per voice — ability, cadence, wind-up, band.
+      draft.kit.forEach((entry, i) => {
+        const f = el('div', 'sub-form');
+        f.appendChild(el('b', '', `Kit voice ${i + 1}`));
+        f.appendChild(combobox(abilityOptions, entry.ability, (v) => {
+          entry.ability = v;
+          markDirty();
+        }));
+        f.appendChild(el('span', 'note', 'cooldown ticks'));
+        f.appendChild(numIn(entry.cooldownTicks, (v) => (entry.cooldownTicks = v)));
+        f.appendChild(el('span', 'note', 'windup ticks (0 = instant)'));
+        f.appendChild(numIn(entry.windupTicks ?? 0, (v) => {
+          if (v > 0) entry.windupTicks = v;
+          else delete entry.windupTicks;
+          markDirty();
+        }));
+        f.appendChild(el('span', 'note', 'max range (0 = any)'));
+        f.appendChild(numIn(entry.maxRange ?? 0, (v) => {
+          if (v > 0) entry.maxRange = v;
+          else delete entry.maxRange;
+          markDirty();
+        }, 0.5));
+        if (draft.kit!.length > 1) {
+          const x = el('button', 'mini danger', '×') as HTMLButtonElement;
+          x.onclick = () => {
+            draft.kit!.splice(i, 1);
+            markDirty();
+            rebuild();
+          };
+          f.appendChild(x);
+        }
+        subForms.appendChild(f);
+      });
+      if (draft.kit.length < 6) {
+        const add = el('button', 'mini', '+ voice') as HTMLButtonElement;
+        add.onclick = () => {
+          draft.kit!.push({ ability: abilityOptions()[0]?.id ?? '', cooldownTicks: 150 });
+          markDirty();
+          rebuild();
+        };
+        subForms.appendChild(add);
+      }
     }
     if (draft.splitInto) {
       const f = el('div', 'sub-form');

@@ -42,7 +42,7 @@ test('the warren hunts as one pack and the boss slams', () => {
   const boss = NPCS.get('kobold_digmaster')!;
   assert.equal(digger.pack, 'kobold');
   assert.equal(boss.pack, 'kobold', 'pull the boss, raise the dig');
-  assert.ok(boss.special, 'the iron pick comes down — the telegraphed slam');
+  assert.ok(boss.kit?.length, 'the iron pick comes down — the telegraphed slam');
   assert.ok(digger.level < boss.level && digger.maxHp < boss.maxHp);
 });
 

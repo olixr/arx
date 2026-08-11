@@ -74,6 +74,7 @@ function slate(opts: {
     pets: new Map(),
     actors: new Map(opts.actorSlug ? [[21, { actor: { id: opts.actorSlug } }]] : []),
     npcAggro: proto.npcAggro,
+    cancelNpcCast: proto.cancelNpcCast,
     npcFactionOf: proto.npcFactionOf,
     npcEnforcerFid: proto.npcEnforcerFid,
     playerBandWith: proto.playerBandWith,

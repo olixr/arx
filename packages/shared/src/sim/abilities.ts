@@ -302,8 +302,39 @@ export interface PetGuard {
   durationTicks: number;
 }
 
+/**
+ * THE KIT (enemy arts, docs/enemy-arts-plan.md): the shapes an NPC
+ * caster may author — exactly the set with a true fromNpc lane in
+ * the one interpreter. The beast/keeper shapes never (they are
+ * player grammar intercepted before the door); anything added here
+ * must land its NPC branch in castAbility in the same commit.
+ */
+export const NPC_SAFE_SHAPES: ReadonlySet<AbilityShape> = new Set<AbilityShape>([
+  'melee_arc',
+  'dash_strike',
+  'projectile_fan',
+  'nova',
+  'ground_aoe',
+  'ground_field',
+  'beam',
+  'leap_slam',
+  'pulse_nova',
+  'flurry',
+  'chain_zap',
+  'self_buff',
+  'summon',
+]);
+
 export interface AbilitySelf {
   heal?: number;
+  /**
+   * THE KIT (enemy arts): heal as a FRACTION of max hp — the only
+   * honest mend for a def that ships at every tier (a flat number
+   * would be a rounding error on a level-68 reissue). Preferred over
+   * `heal` when both are authored. NPC self riders are a curated
+   * subset: healFrac/heal only; the stance rails stay player rails.
+   */
+  healFrac?: number;
   /** Movement multiplier while active. */
   speedMult?: number;
   /** Flat damage soaked before HP. */
@@ -423,6 +454,17 @@ export interface AbilityDef {
   /** ground_aoe: ticks between telegraph and detonation. */
   fuseTicks?: number;
   summon?: AbilitySummon;
+  /**
+   * THE KIT's raising lane (enemy arts, docs/enemy-arts-plan.md): an
+   * NPC caster's `summon` shape calls REAL bestiary bodies instead
+   * of a prop — ephemeral (no spawn point, no respawn, the slime
+   * split precedent), born into the caster's fight, and capped alive
+   * per caster (`capAlive`, default `count`) so a standing summoner
+   * never floods the yard. `levelDelta` offsets from the CASTER's
+   * live level, so scaled reissues raise scaled dead. Player casts
+   * ignore this field entirely.
+   */
+  summonNpc?: { npc: string; count: number; capAlive?: number; levelDelta?: number };
   /** beam: corridor half-width in tiles (default 0.55). */
   width?: number;
   /** ground_field: how long the hazard lives (pulses every pulseEveryTicks). */

@@ -4,6 +4,7 @@ import {
   AWNING_SHAPES,
   Detail,
   DYE_COUNT,
+  NPC_SAFE_SHAPES,
   PASSIVES,
   awningTile,
   SIGN_MAX_LINE,
@@ -115,16 +116,53 @@ test('THE THREE CITIZENSHIPS: rung, page, and secret seats never overlap', () =>
   }
 });
 
-test('npc loot, specials, and spawns all resolve', () => {
+test('npc loot, kits, and spawns all resolve — THE KIT contract', () => {
   for (const [id, npc] of NPCS) {
     assert.ok(npc.loot.length > 0, `${id} has no loot tables`);
     for (const tableId of npc.loot) {
       assert.ok(LOOT_TABLES.has(tableId), `${id} loot table '${tableId}' missing`);
     }
-    if (npc.special) {
-      const ab = abilityDef(npc.special.ability);
-      assert.ok(ab, `${id} special '${npc.special.ability}' missing`);
-      assert.ok(npc.special.everyTicks > 0);
+    for (const k of npc.kit ?? []) {
+      const ab = abilityDef(k.ability);
+      assert.ok(ab, `${id} kit '${k.ability}' missing`);
+      if (!ab) continue;
+      assert.ok(
+        NPC_SAFE_SHAPES.has(ab.shape),
+        `${id} kit '${k.ability}': shape '${ab.shape}' has no NPC lane`,
+      );
+      assert.equal(
+        ab.cooldownTicks,
+        0,
+        `${id} kit '${k.ability}': NPC pacing lives on the def, never the ability`,
+      );
+      assert.ok(k.cooldownTicks >= 50, `${id} kit '${k.ability}': cooldown floor 50`);
+      // THE TELEGRAPH PREMIUM (docs/enemy-arts-plan.md LAW 5): a die
+      // above the def's basic buys its premium with warning time —
+      // windup + fuse >= 24t (1.2s) earns 2.5x, >= 12t earns 1.5x,
+      // less earns nothing. Structural, not conventional.
+      if (ab.damage > npc.damage) {
+        const warning = (k.windupTicks ?? 0) + (ab.fuseTicks ?? 0);
+        const cap = warning >= 24 ? 2.5 : warning >= 12 ? 1.5 : 1;
+        assert.ok(
+          ab.damage <= npc.damage * cap,
+          `${id} kit '${k.ability}': die ${ab.damage} outbids its warning (basic ${npc.damage}, ${warning}t telegraphed)`,
+        );
+      }
+      // Ground shapes keep an honest reaction window at every band.
+      if (ab.shape === 'ground_aoe') {
+        assert.ok((ab.fuseTicks ?? 0) >= 15, `${id} kit '${k.ability}': ground fuse floor 15t`);
+      }
+      if (ab.summonNpc) {
+        assert.ok(
+          NPCS.has(ab.summonNpc.npc),
+          `${id} kit '${k.ability}': summonNpc '${ab.summonNpc.npc}' missing`,
+        );
+        assert.ok(
+          !NPCS.get(ab.summonNpc.npc)?.kit?.some((e) => abilityDef(e.ability)?.summonNpc),
+          `${id} kit '${k.ability}': a summoned add may never itself summon (recursion cap by data)`,
+        );
+      }
+      if (k.rally) assert.ok(npc.pack, `${id} kit '${k.ability}': rally without a pack tag`);
     }
   }
   for (const spawn of TOWN_SPAWNS) {

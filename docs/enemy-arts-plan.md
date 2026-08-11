@@ -179,9 +179,9 @@ Every enemy cast must be readable at a glance, in the shipped grammar:
   once and every tier reissue prices itself.
 - **THE TELEGRAPH PREMIUM** (the THREAT LAW's payoff bracket, mirrored):
   an ability die may exceed the def's basic die only as far as its warning —
-  up to 2.5× behind a total warning (windup + fuse) >= 30 ticks, up to 1.5×
-  behind >= 15 ticks, never above 1× with less. Enforced by a content
-  contract test, not convention.
+  up to 2.5× behind a total warning (windup + fuse) >= 24 ticks (1.2s, the
+  shipped ground_slam reaction window), up to 1.5× behind >= 12 ticks, never
+  above 1× with less. Enforced by a content contract test, not convention.
 - The TTK brackets in damage.test.ts stay green untouched: kits add SPIKE
   texture on a telegraph, they do not raise sustained pressure — basics and
   their cadence are unchanged on every retuned def.

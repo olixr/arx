@@ -139,6 +139,20 @@ import {
   slotContains,
   growMs,
   isCropTile,
+  gradeFor,
+  gradedId,
+  wateringsOf,
+  compostWorthOf,
+  COMPOST_BATCH_WORTH,
+  COMPOST_MINUTES,
+  COMPOST_PRIME_WORTH,
+  COMPOST_COLLECT_XP,
+  MULCH_FIBRE_COST,
+  WELL_SWEEP_RANGE,
+  WELL_SWEEP_RADIUS,
+  CHANNEL_FEED_RANGE,
+  SOIL_ENRICHED,
+  SOIL_RICH,
   aggregateGearStats,
   craftRarityWeights,
   effectiveReq,
@@ -651,6 +665,23 @@ interface CropState {
   owner: number;
   /** Last stage broadcast, so the grower only patches transitions. */
   lastStage: 0 | 1 | 2;
+  /** THE LIVING SOIL: soil tier 0 plain / 1 enriched / 2 rich. */
+  soil: number;
+  /** 1 once mulched (a single blanket per planting). */
+  mulched: number;
+}
+
+/**
+ * THE LIVING SOIL: one compost bin's ledger. `startedAt` 0 while the
+ * bin gathers scraps; nonzero = the batch's working clock (pure wall
+ * time — collect reads the clock, no tick owns the heap).
+ */
+interface FarmBinState {
+  tx: number;
+  ty: number;
+  fill: number;
+  graded: number;
+  startedAt: number;
 }
 
 /** A cached A* lane toward a nav goal — see NavState.nav. */
@@ -744,8 +775,28 @@ interface NpcComp {
   /** Index into spawnPoints to free on death. */
   spawnIndex: number;
   poseUntilTick: number;
-  /** Ticks until the special attack may fire again. */
-  specialCooldown: number;
+  /**
+   * THE KIT (docs/enemy-arts-plan.md): per-entry cooldown ticks,
+   * parallel to def.kit. Lazily seeded on the first combat tick
+   * (initialCooldownTicks, default min(cd, 60) — never open with the
+   * special). Optional so neither NpcComp literal grows a field.
+   */
+  kitCds?: number[];
+  /**
+   * THE FOE'S BREATH: a wound-up kit cast in flight. The body is
+   * planted, faces the quarry live, and fires when the breath
+   * completes; shock, leash breaks, and a vanished quarry cancel
+   * (retry cooldown, never the full price — the full price is paid
+   * at fire). Optional-bank idiom, same as kitCds.
+   */
+  casting?: { idx: number; ticksLeft: number; total: number } | null;
+  /**
+   * THE KIT's raising lane: adds this body has called and still
+   * stand (pruned against the live map at each raise). Optional-bank
+   * idiom — the ledger dies with the body, and orphaned adds simply
+   * live out their ephemeral lives.
+   */
+  summonedEids?: EntityId[];
   /** Livestock: earliest wall-clock ms this animal may be milked again. */
   nextProduceAt: number;
   /** Hands on the flank: the idle wander stands still until this tick. */
@@ -2223,6 +2274,8 @@ export class GameServer {
       boostMs: number;
       watered: number;
       owner: number;
+      soil: number;
+      mulched: number;
     }>,
   ): void {
     const now = Date.now();
@@ -2239,8 +2292,22 @@ export class GameServer {
         watered: row.watered,
         owner: row.owner,
         lastStage: stage,
+        soil: row.soil,
+        mulched: row.mulched,
       });
       this.world.registerCropTile(row.tx, row.ty, tileForStage(def, stage));
+    }
+  }
+
+  /** THE LIVING SOIL: compost bins by "tx,ty". */
+  private readonly farmBins = new Map<string, FarmBinState>();
+
+  /** Load persisted compost bins at boot. */
+  loadFarmBins(
+    rows: Array<{ tx: number; ty: number; fill: number; graded: number; startedAt: number }>,
+  ): void {
+    for (const row of rows) {
+      this.farmBins.set(`${row.tx},${row.ty}`, { ...row });
     }
   }
 
@@ -3066,6 +3133,8 @@ export class GameServer {
     session.sendJson({ t: 'callings', answered: [...player.callings] });
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
+    // THE ONE CARE MIRROR: the field's facts, whole, once per session.
+    this.sendFarm(session);
     // The walk-back beacon survives a relogin while the spill still
     // holds the ground; a stale entry is swept here instead of sent.
     {
@@ -3578,6 +3647,13 @@ export class GameServer {
       return;
     }
 
+    // THE LIVING SOIL: the compost bin answers the hand directly —
+    // turn out a finished batch, or hear how the heap is doing (the
+    // deposit panel is the client's; every deposit re-proves here).
+    if (ground === Tile.CompostBin) {
+      this.interactCompostBin(eid, player, tx, ty, sys);
+      return;
+    }
     // Garden plots: planting runs through the seed-picker → C2SPlant.
     if (ground === Tile.Tilled) return;
     // A planted crop: water it, harvest it, or hear how it's doing.
@@ -4432,25 +4508,349 @@ export class GameServer {
     const hasCan = countItem(player.inventory, 'watering_can') > 0;
     const bit = 1 << stage;
     if (hasCan && !(state.watered & bit)) {
-      const stageEnd = stageEndMs(state.def, stage as 0 | 1);
-      const credit = Math.max(0, Math.round((stageEnd - effective) * 0.35));
-      state.watered |= bit;
-      state.boostMs += credit;
-      this.accounts.upsertCrop(
-        tx, ty, state.def.id, state.plantedAt, state.boostMs, state.watered, state.owner,
-      );
-      // THE PLOT PAYS FOR ITS TIME: tending is farming too — a tenth
-      // of the crop's worth per stage, gated by the once-per-stage
-      // watered bit above (never a repeatable faucet).
-      this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
-      sys(`You water the ${state.def.name.toLowerCase()}. It perks up.`);
-      return;
+      // THE WELL'S REACH: a well near the plot turns one hand-watering
+      // into a 3x3 bed sweep. Each plot watered pays its own tending
+      // XP (THE PLOT PAYS FOR ITS TIME, once per stage behind the
+      // watered bit) — the well saves time, never changes the
+      // lesson's worth.
+      const swept: CropState[] = [];
+      if (this.wellNear(tx, ty)) {
+        for (let dy = -WELL_SWEEP_RADIUS; dy <= WELL_SWEEP_RADIUS; dy++) {
+          for (let dx = -WELL_SWEEP_RADIUS; dx <= WELL_SWEEP_RADIUS; dx++) {
+            const near = this.crops.get(`${tx + dx},${ty + dy}`);
+            if (near && this.waterCrop(near, now)) swept.push(near);
+          }
+        }
+      } else if (this.waterCrop(state, now)) {
+        swept.push(state);
+      }
+      if (swept.length > 0) {
+        for (const c of swept) this.grantXp(eid, player, 'farming', Math.ceil(c.def.xp / 10));
+        sys(
+          swept.length > 1
+            ? `You draw from the well and water ${swept.length} beds.`
+            : `You water the ${state.def.name.toLowerCase()}. It perks up.`,
+        );
+        return;
+      }
     }
     const minsLeft = Math.max(1, Math.ceil((growMs(state.def) - effective) / 60_000));
     sys(
       state.watered & bit
         ? `The ${state.def.name.toLowerCase()} is well watered — about ${minsLeft} min to go.`
         : `The ${state.def.name.toLowerCase()} is still growing — about ${minsLeft} min to go.`,
+    );
+  }
+
+  // ---------------------------------------------- the living soil
+
+  /** Persist one crop row whole (every care fact rides every write). */
+  private saveCrop(state: CropState): void {
+    this.accounts.upsertCrop(
+      state.tx,
+      state.ty,
+      state.def.id,
+      state.plantedAt,
+      state.boostMs,
+      state.watered,
+      state.owner,
+      state.soil,
+      state.mulched,
+    );
+  }
+
+  /** THE ONE CARE MIRROR: every session hears a field's facts change. */
+  private mirrorPlot(state: CropState): void {
+    const info = {
+      tx: state.tx,
+      ty: state.ty,
+      w: state.watered,
+      soil: state.soil,
+      m: state.mulched,
+    };
+    for (const s of this.sessions) s.sendJson({ t: 'farm', plots: [info] });
+  }
+
+  private mirrorBin(bin: FarmBinState): void {
+    const info = {
+      tx: bin.tx,
+      ty: bin.ty,
+      fill: bin.fill,
+      graded: bin.graded,
+      readyAt: bin.startedAt === 0 ? 0 : bin.startedAt + COMPOST_MINUTES * 60_000,
+    };
+    for (const s of this.sessions) s.sendJson({ t: 'farm', bins: [info] });
+  }
+
+  /** The whole farm's care facts, for a fresh session. */
+  private sendFarm(session: Session): void {
+    const plots = [...this.crops.values()]
+      .filter((c) => c.watered !== 0 || c.soil !== 0 || c.mulched !== 0)
+      .map((c) => ({ tx: c.tx, ty: c.ty, w: c.watered, soil: c.soil, m: c.mulched }));
+    const bins = [...this.farmBins.values()].map((b) => ({
+      tx: b.tx,
+      ty: b.ty,
+      fill: b.fill,
+      graded: b.graded,
+      readyAt: b.startedAt === 0 ? 0 : b.startedAt + COMPOST_MINUTES * 60_000,
+    }));
+    if (plots.length > 0 || bins.length > 0) {
+      session.sendJson({ t: 'farm', plots, bins });
+    }
+  }
+
+  /**
+   * Apply one watering to a growing crop's CURRENT stage: sets the
+   * stage's watered bit and credits 35% of the stage's remainder.
+   * Pays no XP itself — hand-watering pays at its call site, the fed
+   * channel deliberately never does (the automation law).
+   */
+  private waterCrop(state: CropState, now: number): boolean {
+    const effective = now - state.plantedAt + state.boostMs;
+    const stage = stageForElapsed(state.def, effective);
+    if (stage === 2) return false;
+    const bit = 1 << stage;
+    if (state.watered & bit) return false;
+    const stageEnd = stageEndMs(state.def, stage as 0 | 1);
+    state.watered |= bit;
+    state.boostMs += Math.max(0, Math.round((stageEnd - effective) * 0.35));
+    this.saveCrop(state);
+    this.mirrorPlot(state);
+    return true;
+  }
+
+  /** Is a well standing within range (chebyshev) of this tile? */
+  private wellNear(tx: number, ty: number, range: number = WELL_SWEEP_RANGE): boolean {
+    // Warm the corner chunks so a well across a seam still answers.
+    for (const [cx, cy] of [
+      [tx - range, ty - range],
+      [tx + range, ty - range],
+      [tx - range, ty + range],
+      [tx + range, ty + range],
+    ]) {
+      this.world.ensure(Math.floor(cx! / CHUNK_SIZE), Math.floor(cy! / CHUNK_SIZE));
+    }
+    for (let dy = -range; dy <= range; dy++) {
+      for (let dx = -range; dx <= range; dx++) {
+        if (this.world.groundAt(tx + dx, ty + dy) === Tile.Well) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * THE FED CHANNEL: is this plot beside a live irrigation channel
+   * (adjacent channel tile with a well within its feed range)?
+   */
+  private irrigatedAt(tx: number, ty: number): boolean {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        if (this.world.groundAt(tx + dx, ty + dy) !== Tile.IrrigationChannel) continue;
+        if (this.wellNear(tx + dx, ty + dy, CHANNEL_FEED_RANGE)) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Work compost into a planted crop's soil. One tier per act: plain
+   * compost enriches plain ground; prime compost makes any ground
+   * rich. Deterministic, once each — never a repeatable faucet.
+   */
+  fertilize(eid: EntityId, tx: number, ty: number): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    if (player.characterId < 0) {
+      sys('Guests cannot tend crops — make an account!');
+      return;
+    }
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 2.2 * 2.2) return;
+    const state = this.crops.get(`${tx},${ty}`);
+    if (!state) {
+      if (this.world.groundAt(tx, ty) === Tile.Tilled) {
+        sys('Plant first. The soil takes its meal through roots.');
+      }
+      return;
+    }
+    const stage = stageForElapsed(state.def, Date.now() - state.plantedAt + state.boostMs);
+    if (stage === 2) {
+      sys('It has grown all it will. Harvest it.');
+      return;
+    }
+    if (state.soil >= SOIL_RICH) {
+      sys('The soil is as rich as it gets.');
+      return;
+    }
+    // Plain compost lifts plain ground; prime compost makes any
+    // ground rich outright. The cheaper meal is spent first so a
+    // carried prime barrow is never wasted on a half step.
+    if (state.soil < SOIL_ENRICHED && removeItem(player.inventory, 'compost', 1) === 1) {
+      state.soil = SOIL_ENRICHED;
+      sys('You work compost into the soil.');
+    } else if (removeItem(player.inventory, 'prime_compost', 1) === 1) {
+      state.soil = SOIL_RICH;
+      sys('You work prime compost in. The ground turns dark and willing.');
+    } else {
+      sys(
+        state.soil >= SOIL_ENRICHED
+          ? 'Only prime compost can better this ground.'
+          : 'You need compost in your pack.',
+      );
+      return;
+    }
+    // THE PLOT PAYS FOR ITS TIME: tending pays a tenth, same as water.
+    this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
+    this.saveCrop(state);
+    this.mirrorPlot(state);
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+  }
+
+  /** Lay a fibre blanket around a growing crop. Once per planting. */
+  mulch(eid: EntityId, tx: number, ty: number): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    if (player.characterId < 0) {
+      sys('Guests cannot tend crops — make an account!');
+      return;
+    }
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 2.2 * 2.2) return;
+    const state = this.crops.get(`${tx},${ty}`);
+    if (!state) return;
+    const stage = stageForElapsed(state.def, Date.now() - state.plantedAt + state.boostMs);
+    if (stage === 2) {
+      sys('It has grown all it will. Harvest it.');
+      return;
+    }
+    if (state.mulched) {
+      sys('A mulch blanket already lies here.');
+      return;
+    }
+    // Count BEFORE removing: removeItem takes what it can, and a
+    // short pack must not lose its last strand to a refusal.
+    if (countItem(player.inventory, 'plant_fibre') < MULCH_FIBRE_COST) {
+      sys('Mulch wants plant fibre. Two strands to a blanket.');
+      return;
+    }
+    removeItem(player.inventory, 'plant_fibre', MULCH_FIBRE_COST);
+    state.mulched = 1;
+    this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
+    this.saveCrop(state);
+    this.mirrorPlot(state);
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    sys('You lay a fibre blanket around the stems.');
+  }
+
+  /**
+   * Feed one pack slot's item into a compost bin. Slot-addressed; the
+   * bin, the worth, and the idle state are all re-proved here.
+   */
+  compostAdd(eid: EntityId, tx: number, ty: number, slot: number): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    if (player.characterId < 0) {
+      sys('Guests cannot use the bin — make an account!');
+      return;
+    }
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 2.2 * 2.2) return;
+    if (this.world.groundAt(tx, ty) !== Tile.CompostBin) return;
+    const key = `${tx},${ty}`;
+    const bin = this.farmBins.get(key) ?? { tx, ty, fill: 0, graded: 0, startedAt: 0 };
+    if (bin.startedAt !== 0) {
+      sys(
+        Date.now() >= bin.startedAt + COMPOST_MINUTES * 60_000
+          ? 'The batch is done. Turn the bin out first.'
+          : 'The bin is working. Let it be.',
+      );
+      return;
+    }
+    const held = player.inventory[slot];
+    if (!held) return;
+    if (held.stolen) {
+      sys('Not with goods that would burn an honest heap.');
+      return;
+    }
+    const worth = compostWorthOf(held.item, itemDef(held.item));
+    if (!worth) {
+      sys('That has no place in the bin.');
+      return;
+    }
+    takeSlot(player.inventory, slot, 1);
+    bin.fill += worth.worth;
+    bin.graded += worth.graded;
+    if (bin.fill >= COMPOST_BATCH_WORTH) {
+      bin.startedAt = Date.now();
+      sys('The lid closes. The heap sets to work.');
+    }
+    this.farmBins.set(key, bin);
+    this.accounts.upsertFarmBin(tx, ty, bin.fill, bin.graded, bin.startedAt);
+    this.mirrorBin(bin);
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+  }
+
+  /**
+   * Interacting with the bin: turn out a finished batch, or hear how
+   * the heap is doing. The batch is a pure wall-clock read — the
+   * station worked the whole time you wandered.
+   */
+  private interactCompostBin(
+    eid: EntityId,
+    player: PlayerComp,
+    tx: number,
+    ty: number,
+    sys: (text: string) => void,
+  ): void {
+    const key = `${tx},${ty}`;
+    const bin = this.farmBins.get(key);
+    if (!bin || (bin.fill === 0 && bin.startedAt === 0)) {
+      sys('The bin stands empty. Scraps and spoils feed it.');
+      return;
+    }
+    if (bin.startedAt === 0) {
+      sys('The heap wants more before it works.');
+      return;
+    }
+    const readyAt = bin.startedAt + COMPOST_MINUTES * 60_000;
+    const now = Date.now();
+    if (now < readyAt) {
+      const mins = Math.max(1, Math.ceil((readyAt - now) / 60_000));
+      sys(`The heap is working. About ${mins} min.`);
+      return;
+    }
+    // Collect: the bin answers its builder (the built tile's owner).
+    const built = this.world.builtAt(tx, ty);
+    if (built && built.owner !== player.characterId) {
+      sys('This bin is not yours to empty.');
+      return;
+    }
+    // GOOD HARVESTS FEED RICHER GROUND: enough graded worth in the
+    // batch turns out prime compost — deterministically, never rolled.
+    const item = bin.graded >= COMPOST_PRIME_WORTH ? 'prime_compost' : 'compost';
+    if (addItem(player.inventory, item, 1) === 0) {
+      this.spawnDrop(item, 1, tx + 0.5, ty + 0.5, eid);
+    }
+    this.grantXp(eid, player, 'farming', COMPOST_COLLECT_XP);
+    this.farmBins.delete(key);
+    this.accounts.deleteFarmBin(tx, ty);
+    const emptied: FarmBinState = { tx, ty, fill: 0, graded: 0, startedAt: 0 };
+    this.mirrorBin(emptied);
+    player.session?.sendJson({ t: 'inv', slots: player.inventory });
+    sys(
+      item === 'prime_compost'
+        ? 'You turn out prime compost, black and warm.'
+        : 'You turn out a barrow of good compost.',
     );
   }
 
@@ -4501,10 +4901,12 @@ export class GameServer {
       watered: 0,
       owner: player.characterId,
       lastStage: 0,
+      soil: 0,
+      mulched: 0,
     };
     this.crops.set(key, state);
     this.world.registerCropTile(tx, ty, Tile.CropSprout);
-    this.accounts.upsertCrop(tx, ty, def.id, state.plantedAt, 0, 0, state.owner);
+    this.saveCrop(state);
     this.setWorldTile(tx, ty, Tile.CropSprout);
     this.grantXp(eid, player, 'farming', Math.max(1, Math.ceil(def.xp / 4)));
     player.session.sendJson({ t: 'inv', slots: player.inventory });
@@ -4598,7 +5000,18 @@ export class GameServer {
       y: action.ty + 0.5,
       style: 'farming',
     });
-    giveOrDrop(def.yield.item, yieldQty);
+    // THE CARE FOLD: the grade was earned across the planting's whole
+    // life — waterings, soil, mulch — and is decided here, once,
+    // deterministically. A graded harvest is its own item id.
+    const grade = gradeFor(wateringsOf(state.watered), state.soil, state.mulched);
+    giveOrDrop(grade > 0 ? gradedId(def.yield.item, grade) : def.yield.item, yieldQty);
+    if (grade > 0) {
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: grade === 2 ? 'A prime harvest. The care shows.' : 'A fine harvest.',
+      });
+    }
     let seeds = roll(def.seedReturn.min, def.seedReturn.max);
     if (Math.random() < player.perks.seedRefundChance) seeds += 1;
     if (seeds > 0) giveOrDrop(def.seedItem, seeds);
@@ -4608,6 +5021,10 @@ export class GameServer {
     this.accounts.deleteCrop(action.tx, action.ty);
     this.world.unregisterCropTile(action.tx, action.ty);
     this.setWorldTile(action.tx, action.ty, Tile.Tilled);
+    // The care mirror lets go of the harvested row.
+    for (const s of this.sessions) {
+      s.sendJson({ t: 'farm', remove: [{ tx: action.tx, ty: action.ty }] });
+    }
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     this.cancelAction(eid, player, 'done');
   }
@@ -4615,6 +5032,17 @@ export class GameServer {
   /** Advance planted crops; the slow tick calls this every 2s. */
   private tickCrops(now: number): void {
     for (const state of this.crops.values()) {
+      // THE FED CHANNEL: a live irrigation line waters the stage on
+      // its own, before the stage math so the credit lands the moment
+      // the channel can give it. Pays NO XP — the automation law.
+      // The watered-bit gate comes first: a slaked stage never pays
+      // for the channel scan again.
+      {
+        const st = stageForElapsed(state.def, now - state.plantedAt + state.boostMs);
+        if (st < 2 && !(state.watered & (1 << st)) && this.irrigatedAt(state.tx, state.ty)) {
+          this.waterCrop(state, now);
+        }
+      }
       const stage = stageForElapsed(state.def, now - state.plantedAt + state.boostMs);
       if (stage > state.lastStage) {
         state.lastStage = stage;
@@ -5654,6 +6082,15 @@ export class GameServer {
     if (!ownHanging && this.crops.has(`${tx},${ty}`)) {
       player.session.sendJson({ t: 'chat', channel: 'system', text: 'Harvest the crop first.' });
       return;
+    }
+    // THE LIVING SOIL: a bin holding scraps or a working batch will
+    // not come down — empty it first (nothing composts into the void).
+    {
+      const bin = this.farmBins.get(`${tx},${ty}`);
+      if (!ownHanging && bin && (bin.fill > 0 || bin.startedAt !== 0)) {
+        player.session.sendJson({ t: 'chat', channel: 'system', text: 'Empty the bin first.' });
+        return;
+      }
     }
     // THE SALVAGE LAW: teardown is a short action, not a packet — the
     // swing time is the confirmation dialog, and the wire can't strobe
@@ -14360,6 +14797,16 @@ export class GameServer {
           id: ab.id,
           color: ab.color,
         });
+        // THE KIT: an NPC's sweep cuts the OTHER side of the fight —
+        // same crescent, same whiff-0 roll, THREAT LAW mitigation.
+        if (fromNpc) {
+          this.blastPlayers(pos.x, pos.y, range, maxHit, ab.status, level, {
+            sourceEid: casterEid,
+            arcAim: aim,
+            arcHalf: arc,
+          });
+          break;
+        }
         for (const [npcEid, npc] of this.npcs) {
           const npos = this.positions.get(npcEid);
           if (!npos) continue;
@@ -14394,7 +14841,9 @@ export class GameServer {
           color: ab.color,
         });
         if (fromNpc) {
-          this.blastPlayers(pos.x, pos.y, radius, maxHit, ab.status, level);
+          this.blastPlayers(pos.x, pos.y, radius, maxHit, ab.status, level, {
+            sourceEid: casterEid,
+          });
         } else {
           for (const [npcEid, npc] of this.npcs) {
             const npos = this.positions.get(npcEid);
@@ -14432,6 +14881,36 @@ export class GameServer {
           pos.x = next.x;
           pos.y = next.y;
           if (maxHit <= 0) continue;
+          if (fromNpc) {
+            // THE KIT: an NPC's lunge carves through the player's
+            // side of the yard — whiff-0 uniform roll, THREAT LAW
+            // mitigation, the blow attributed to the lunger.
+            for (const [pEid, p] of this.players) {
+              if (struck.has(pEid)) continue;
+              if (p.session === null && p.disconnectedAt !== null) continue;
+              const ppos = this.positions.get(pEid);
+              if (!ppos) continue;
+              if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > 0.8) continue;
+              struck.add(pEid);
+              this.damagePlayer(pEid, Math.floor(Math.random() * (maxHit + 1)), {
+                status: ab.status,
+                sourceEid: casterEid,
+                attackerLevel: level,
+              });
+            }
+            for (const [petEid] of this.pets) {
+              if (struck.has(petEid)) continue;
+              const ppos = this.positions.get(petEid);
+              if (!ppos) continue;
+              if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > 0.8) continue;
+              struck.add(petEid);
+              this.damagePet(petEid, Math.floor(Math.random() * (maxHit + 1)), {
+                status: ab.status,
+                attackerLevel: level,
+              });
+            }
+            continue;
+          }
           for (const [npcEid, npc] of this.npcs) {
             if (struck.has(npcEid)) continue;
             const npos = this.positions.get(npcEid);
@@ -14499,6 +14978,70 @@ export class GameServer {
         const range = ab.range ?? 6;
         const chainRadius = ab.radius ?? 3;
         const maxTargets = ab.chainTargets ?? 3;
+        // THE KIT: an NPC's chain hops the player's side — players
+        // and companions, nearest first, same cone-then-radius law.
+        if (fromNpc) {
+          let zfrom = { x: pos.x, y: pos.y };
+          const zdone = new Set<EntityId>();
+          for (let hop = 0; hop < maxTargets; hop++) {
+            const cands: Array<{ eid: EntityId; x: number; y: number; pet: boolean }> = [];
+            for (const [pEid, p] of this.players) {
+              if (zdone.has(pEid)) continue;
+              if (p.session === null && p.disconnectedAt !== null) continue;
+              const ppos = this.positions.get(pEid);
+              if (ppos) cands.push({ eid: pEid, x: ppos.x, y: ppos.y, pet: false });
+            }
+            for (const [petEid] of this.pets) {
+              if (zdone.has(petEid)) continue;
+              const ppos = this.positions.get(petEid);
+              if (ppos) cands.push({ eid: petEid, x: ppos.x, y: ppos.y, pet: true });
+            }
+            let best: { eid: EntityId; x: number; y: number; pet: boolean } | null = null;
+            let bestDist = Infinity;
+            for (const c of cands) {
+              const dx = c.x - zfrom.x;
+              const dy = c.y - zfrom.y;
+              const d = Math.hypot(dx, dy);
+              if (hop === 0) {
+                if (d > range) continue;
+                let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+                if (diff > Math.PI) diff = Math.PI * 2 - diff;
+                if (diff > 0.8 && d > 1) continue;
+              } else if (d > chainRadius) {
+                continue;
+              }
+              if (d < bestDist) {
+                bestDist = d;
+                best = c;
+              }
+            }
+            if (!best) break;
+            zdone.add(best.eid);
+            this.broadcastFx({
+              t: 'fx',
+              kind: 'bolt',
+              x: zfrom.x,
+              y: zfrom.y,
+              x2: best.x,
+              y2: best.y,
+              radius: 0,
+              id: ab.id,
+              color: ab.color,
+            });
+            zfrom = { x: best.x, y: best.y };
+            const raw = Math.floor(Math.random() * (maxHit + 1));
+            if (best.pet) {
+              this.damagePet(best.eid, raw, { status: ab.status, attackerLevel: level });
+            } else {
+              this.damagePlayer(best.eid, raw, {
+                status: ab.status,
+                sourceEid: casterEid,
+                attackerLevel: level,
+              });
+            }
+          }
+          break;
+        }
         let from = { x: pos.x, y: pos.y };
         const zapped = new Set<EntityId>();
         for (let hop = 0; hop < maxTargets; hop++) {
@@ -14798,7 +15341,7 @@ export class GameServer {
         const cx = pos.x;
         const cy = pos.y;
         if (fromNpc) {
-          this.blastPlayers(cx, cy, radius, maxHit, ab.status, level);
+          this.blastPlayers(cx, cy, radius, maxHit, ab.status, level, { sourceEid: casterEid });
         } else {
           for (const [npcEid, npc] of this.npcs) {
             const npos = this.positions.get(npcEid);
@@ -14854,6 +15397,12 @@ export class GameServer {
       }
 
       case 'summon': {
+        // THE KIT's raising lane: an NPC summoner calls real bestiary
+        // bodies, capped alive per caster — never a prop.
+        if (fromNpc && ab.summonNpc) {
+          this.npcSummonAdds(casterEid, ab, level, pos);
+          break;
+        }
         const spec = ab.summon;
         if (!spec) break;
         // A ranged summon plants at the aimed point (Snare Shot rides
@@ -14935,7 +15484,31 @@ export class GameServer {
   ): void {
     const player = this.players.get(casterEid);
     const self = ab.self;
-    if (!player || !self) return;
+    if (!self) return;
+    if (!player) {
+      // THE KIT: an NPC's self rider is a curated subset — the mend
+      // (healFrac scales with the body, so a level-68 reissue mends a
+      // level-68 wound; flat heal stays honest for pinned bodies).
+      // Stance rails (shields, lifesteal, oils) stay player rails.
+      const health = this.healths.get(casterEid);
+      if (!health) return;
+      const mend = self.healFrac
+        ? Math.round(health.maxHp * self.healFrac)
+        : Math.round((self.heal ?? 0) * powerMult);
+      if (mend <= 0) return;
+      health.hp = Math.min(health.maxHp, health.hp + mend);
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'buff',
+        x: pos.x,
+        y: pos.y,
+        radius: 0.9,
+        ticks: self.durationTicks,
+        id: ab.id,
+        color: ab.color,
+      });
+      return;
+    }
     this.broadcastFx({
       t: 'fx',
       kind: 'buff',
@@ -14982,7 +15555,15 @@ export class GameServer {
     }
   }
 
-  /** NPC-owned blast: hits players and straw decoys. */
+  /**
+   * NPC-owned blast: hits players, straw decoys, and companions.
+   * `sourceEid` attributes the blow (pet defend, reflect, kill
+   * source — AoE deaths finally name their killer); `arcAim`/
+   * `arcHalf` cut the blast to a crescent (NPC melee_arc sweeps and
+   * flurries keep their authored arc instead of reading as full
+   * circles). Point-blank (< 0.9) hits regardless of facing, the
+   * melee_arc law.
+   */
   private blastPlayers(
     x: number,
     y: number,
@@ -14990,15 +15571,26 @@ export class GameServer {
     maxHit: number,
     status?: StatusApply,
     attackerLevel?: number,
+    opts?: { sourceEid?: EntityId; arcAim?: number; arcHalf?: number },
   ): void {
+    const inArc = (tx: number, ty: number): boolean => {
+      if (opts?.arcAim === undefined || opts?.arcHalf === undefined) return true;
+      const d = Math.hypot(tx - x, ty - y);
+      if (d < 0.9) return true;
+      let diff = Math.abs(Math.atan2(ty - y, tx - x) - opts.arcAim) % (Math.PI * 2);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      return diff <= opts.arcHalf;
+    };
     for (const [playerEid, player] of this.players) {
       if (player.session === null && player.disconnectedAt !== null) continue;
       const ppos = this.positions.get(playerEid);
       if (!ppos) continue;
       if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
+      if (!inArc(ppos.x, ppos.y)) continue;
       this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), {
         status,
         attackerLevel,
+        sourceEid: opts?.sourceEid,
       });
     }
     for (const [sumEid, sum] of this.summons) {
@@ -15006,6 +15598,7 @@ export class GameServer {
       const spos = this.positions.get(sumEid);
       if (!spos) continue;
       if (Math.hypot(spos.x - x, spos.y - y) > radius) continue;
+      if (!inArc(spos.x, spos.y)) continue;
       this.damageSummon(sumEid, Math.floor(Math.random() * (maxHit + 1)));
     }
     // A companion standing in the blast eats it like anyone standing
@@ -15014,6 +15607,7 @@ export class GameServer {
       const ppos = this.positions.get(petEid);
       if (!ppos) continue;
       if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
+      if (!inArc(ppos.x, ppos.y)) continue;
       this.damagePet(petEid, Math.floor(Math.random() * (maxHit + 1)), {
         status,
         attackerLevel,
@@ -15372,8 +15966,13 @@ export class GameServer {
         color: blast.color,
       });
       if (blast.fromNpc) {
-        // NPC flurries read as full circles — a fair trade for one code path.
-        this.blastPlayers(blast.x, blast.y, blast.radius, blast.damage, blast.status, blast.attackerLevel);
+        // NPC flurries keep their authored crescent now that the
+        // blast resolver speaks arc — full circles were the old debt.
+        this.blastPlayers(blast.x, blast.y, blast.radius, blast.damage, blast.status, blast.attackerLevel, {
+          sourceEid: blast.ownerEid,
+          arcAim: blast.arcAim,
+          arcHalf: blast.arcHalf,
+        });
       } else {
         for (const [npcEid, npc] of this.npcs) {
           const npos = this.positions.get(npcEid);
@@ -15414,7 +16013,9 @@ export class GameServer {
       }
       if (field.ticksLeft % field.everyTicks !== 0) continue;
       if (field.fromNpc) {
-        this.blastPlayers(field.x, field.y, field.radius, field.damage, field.status, field.attackerLevel);
+        this.blastPlayers(field.x, field.y, field.radius, field.damage, field.status, field.attackerLevel, {
+          sourceEid: field.ownerEid,
+        });
         continue;
       }
       for (const [npcEid, npc] of this.npcs) {
@@ -17287,7 +17888,6 @@ export class GameServer {
       windupTicks: 0,
       spawnIndex,
       poseUntilTick: 0,
-      specialCooldown: 60, // never open with the special
       nextProduceAt: 0,
       holdUntilTick: 0,
       nextLayAt: def.lays
@@ -17417,7 +18017,6 @@ export class GameServer {
         windupTicks: 0,
         spawnIndex: -1,
         poseUntilTick: 0,
-        specialCooldown: 60,
         nextProduceAt: 0,
         holdUntilTick: 0,
         nextLayAt: 0,
@@ -18278,6 +18877,9 @@ export class GameServer {
       }
     }
     npc.state = 'chase';
+    // A retarget mid-breath drops the old working (new quarry, new
+    // choices — the stale cast would fire at the wrong feet).
+    if (npc.targetEid !== targetEid) this.cancelNpcCast(eid, npc);
     npc.targetEid = targetEid;
     npc.navBest = Infinity;
     npc.navStuck = 0;
@@ -18409,6 +19011,7 @@ export class GameServer {
     npc.helpEid = bestEid;
     npc.helpUntilTick = this.tickCount + 160; // ~8s of running, then shout anyway
     npc.windupTicks = 0;
+    this.cancelNpcCast(eid, npc);
     npc.navBest = Infinity;
     npc.navStuck = 0;
     npc.steer.side = 0;
@@ -18603,6 +19206,7 @@ export class GameServer {
     npc.state = 'search';
     npc.targetEid = null;
     npc.windupTicks = 0;
+    this.cancelNpcCast(eid, npc);
     npc.helpEid = null;
     npc.huntUntilTick = this.tickCount + GameServer.SEARCH_TICKS;
     npc.huntWps = null;
@@ -18758,12 +19362,216 @@ export class GameServer {
     }
   }
 
+  /** THE KIT: retry cost when a drawn breath is broken (never the full price). */
+  private static readonly NPC_CAST_RETRY_TICKS = 50;
+  /** 'lead' aim projects the quarry's last-seen stride this many ticks ahead. */
+  private static readonly NPC_LEAD_TICKS = 16;
+  /** ...and never further than this (tiles) — a sprint doesn't earn a snipe. */
+  private static readonly NPC_LEAD_CAP = 3;
+
+  /**
+   * THE KIT (docs/enemy-arts-plan.md): pick an eligible voice for
+   * this body at this range — cooldown spent, range band holds, hp
+   * gates hold, minLevel awake. Weighted random among the eligible,
+   * so a champion with three voices never sings a fixed order.
+   * Returns the kit index, or -1 when nothing is ready.
+   */
+  private pickKitEntry(eid: EntityId, npc: NpcComp, dist: number): number {
+    const kit = npc.def.kit;
+    const cds = npc.kitCds;
+    if (!kit || !cds) return -1;
+    const hp = this.healths.get(eid);
+    const frac = hp && hp.maxHp > 0 ? hp.hp / hp.maxHp : 1;
+    const eligible: number[] = [];
+    const weights: number[] = [];
+    let total = 0;
+    for (let i = 0; i < kit.length; i++) {
+      const k = kit[i];
+      if (!k) continue;
+      if ((cds[i] ?? 1) > 0) continue;
+      if (k.minLevel !== undefined && npc.def.level < k.minLevel) continue;
+      if (k.minRange !== undefined && dist < k.minRange) continue;
+      if (k.maxRange !== undefined && dist > k.maxRange) continue;
+      if (k.hpBelow !== undefined && frac > k.hpBelow) continue;
+      if (k.hpAbove !== undefined && frac < k.hpAbove) continue;
+      if (!abilityDef(k.ability)) continue;
+      const w = k.weight ?? 1;
+      eligible.push(i);
+      weights.push(w);
+      total += w;
+    }
+    if (eligible.length === 0 || total <= 0) return -1;
+    let roll = Math.random() * total;
+    for (let i = 0; i < eligible.length; i++) {
+      roll -= weights[i] ?? 0;
+      if (roll <= 0) return eligible[i] ?? -1;
+    }
+    return eligible[eligible.length - 1] ?? -1;
+  }
+
+  /**
+   * THE FOE'S BREATH: start a kit cast — or fire it on the spot when
+   * the entry winds nothing (the old special behavior, kept for
+   * howls and slams whose shape fuse is the whole telegraph). A true
+   * wind-up plants the body, holds the Cast stance, and speaks the
+   * SAME charge dialect the player engine speaks (ONE VOICE): matter
+   * gathers on the caster, re-emitted on the overlapping window with
+   * a contracting reach while the breath draws.
+   */
+  private beginNpcCast(eid: EntityId, npc: NpcComp, idx: number, tpos: { x: number; y: number }): void {
+    const entry = npc.def.kit?.[idx];
+    if (!entry) return;
+    const windup = entry.windupTicks ?? 0;
+    if (windup <= 0) {
+      npc.casting = { idx, ticksLeft: 0, total: 0 };
+      this.fireNpcCast(eid, npc, tpos);
+      return;
+    }
+    const ab = abilityDef(entry.ability);
+    if (!ab) return;
+    npc.casting = { idx, ticksLeft: windup, total: windup };
+    this.setNpcPose(eid, npc, PoseState.Cast, windup + 2);
+    const pos = this.positions.get(eid);
+    if (pos) {
+      this.broadcastFx({ t: 'fx', kind: 'charge', x: pos.x, y: pos.y, radius: 1.5, id: ab.id, color: ab.color });
+    }
+  }
+
+  /**
+   * The breath completes: pay the entry's full cooldown and run the
+   * shape through the one interpreter. Ground shapes stake their
+   * point NOW — 'target' at the quarry's feet, 'self' under the
+   * caster, 'lead' along the quarry's last-seen stride (capped,
+   * walkability-checked; a lead that lands in a wall falls back to
+   * the feet). The shape's own fuse is the dodge window that
+   * follows; the windup was the interrupt window that just closed.
+   */
+  private fireNpcCast(eid: EntityId, npc: NpcComp, tpos: { x: number; y: number }): void {
+    const idx = npc.casting ? npc.casting.idx : -1;
+    npc.casting = null;
+    const entry = npc.def.kit?.[idx];
+    if (!entry || !npc.kitCds) return;
+    const ab = abilityDef(entry.ability);
+    if (!ab) return;
+    npc.kitCds[idx] = entry.cooldownTicks;
+    const pos = this.positions.must(eid);
+    const aim = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
+    pos.dir = aim;
+    let pt = { x: tpos.x, y: tpos.y };
+    if (entry.aim === 'self') {
+      pt = { x: pos.x, y: pos.y };
+    } else if (entry.aim === 'lead') {
+      const lx = npc.alertVelX * GameServer.NPC_LEAD_TICKS;
+      const ly = npc.alertVelY * GameServer.NPC_LEAD_TICKS;
+      const len = Math.hypot(lx, ly);
+      const k = len > GameServer.NPC_LEAD_CAP ? GameServer.NPC_LEAD_CAP / len : 1;
+      const px = tpos.x + lx * k;
+      const py = tpos.y + ly * k;
+      if (!circleHitsSolid(this.world, px, py, 0.3)) pt = { x: px, y: py };
+    }
+    this.setNpcPose(eid, npc, PoseState.Art, 10);
+    this.castAbility(eid, ab, aim, 'onehand', npc.def.level, true, pt);
+    // The howl carries further than sight: an AUTHORED rally
+    // re-gathers a few more mid-fight — bounded like every cry, so
+    // the camp never empties at once.
+    if (entry.rally && npc.def.pack && npc.targetEid !== null) {
+      this.rallyPack(eid, npc, npc.targetEid, PACK_RALLY_RANGE + 4, 3);
+    }
+  }
+
+  /**
+   * THE KIT's raising lane: spawn ephemeral bestiary adds around an
+   * NPC summoner (the slime-split recipe — spawnIndex -1, no respawn,
+   * born into the caster's fight). Capped ALIVE per caster; the dead
+   * are pruned from the ledger before the count, so a slain add
+   * frees its seat and the next raising answers.
+   */
+  private npcSummonAdds(
+    casterEid: EntityId,
+    ab: AbilityDef,
+    level: number,
+    pos: { x: number; y: number },
+  ): void {
+    const spec = ab.summonNpc;
+    const caster = this.npcs.get(casterEid);
+    if (!spec || !caster) return;
+    const base = NPCS.get(spec.npc);
+    if (!base) return;
+    const alive = (caster.summonedEids ?? []).filter((e) => this.npcs.has(e));
+    caster.summonedEids = alive;
+    const cap = spec.capAlive ?? spec.count;
+    const room = cap - alive.length;
+    if (room <= 0) return;
+    const lvl = Math.max(1, level + (spec.levelDelta ?? 0));
+    const def = lvl === base.level ? base : scaleNpcDef(base, lvl);
+    this.broadcastFx({
+      t: 'fx',
+      kind: 'summon',
+      x: pos.x,
+      y: pos.y,
+      radius: 1.4,
+      ticks: 30,
+      id: ab.id,
+      color: ab.color,
+    });
+    const n = Math.min(spec.count, room);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      let cx = pos.x;
+      let cy = pos.y;
+      for (let tries = 0; tries < 6; tries++) {
+        const tx = pos.x + Math.cos(a + tries) * (0.8 + Math.random() * 0.6);
+        const ty = pos.y + Math.sin(a + tries) * (0.8 + Math.random() * 0.6);
+        if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+          cx = tx;
+          cy = ty;
+          break;
+        }
+      }
+      const childEid = this.spawnNpc(def, cx, cy, -1);
+      caster.summonedEids.push(childEid);
+      const child = this.npcs.get(childEid)!;
+      // Raised INTO the fight the raiser is in.
+      if (caster.targetEid !== null) {
+        this.npcAggro(childEid, child, caster.targetEid, { force: true });
+      }
+    }
+  }
+
+  /**
+   * A broken breath (shock, leash, vanished quarry): the wind-up
+   * refunds — only a RETRY cooldown lands, never the full price (a
+   * champion whose every cast is broken is punished, not disabled).
+   * The stance lets go at once; the charge simply stops re-emitting
+   * and gutters on its own clock (the watcher's fizzle read).
+   */
+  private cancelNpcCast(eid: EntityId, npc: NpcComp): void {
+    if (!npc.casting) return;
+    const idx = npc.casting.idx;
+    npc.casting = null;
+    if (npc.kitCds && idx >= 0 && idx < npc.kitCds.length) {
+      npc.kitCds[idx] = Math.max(npc.kitCds[idx] ?? 0, GameServer.NPC_CAST_RETRY_TICKS);
+    }
+    npc.poseUntilTick = this.tickCount;
+    void eid;
+  }
+
   private tickNpcs(now: number): void {
     this.pathfindsLeft = GameServer.MAX_PATHFINDS_PER_TICK;
     for (const [eid, npc] of this.npcs) {
       const pos = this.positions.must(eid);
       if (npc.attackCooldown > 0) npc.attackCooldown--;
-      if (npc.specialCooldown > 0) npc.specialCooldown--;
+      if (npc.def.kit) {
+        // Lazy seed (and re-seed after a CMS def swap changes the kit
+        // shape) — the optional-bank idiom: no spawn literal grows.
+        if (!npc.kitCds || npc.kitCds.length !== npc.def.kit.length) {
+          npc.kitCds = npc.def.kit.map((k) => k.initialCooldownTicks ?? Math.min(k.cooldownTicks, 60));
+        }
+        for (let i = 0; i < npc.kitCds.length; i++) {
+          const cd = npc.kitCds[i] ?? 0;
+          if (cd > 0) npc.kitCds[i] = cd - 1;
+        }
+      }
 
       // Hens lay while someone is around to hear the cluck. A skipped
       // lay (nobody near / egg pile) just re-rolls — no backlog.
@@ -18794,6 +19602,8 @@ export class GameServer {
       // below on purpose — a shocked pet stands staggered too).
       if (this.isShocked(eid)) {
         npc.windupTicks = 0;
+        // Shock is the interrupt school: a drawn breath gutters.
+        this.cancelNpcCast(eid, npc);
         continue;
       }
 
@@ -18869,6 +19679,7 @@ export class GameServer {
           npc.state = 'return';
           npc.targetEid = null;
           npc.windupTicks = 0;
+          this.cancelNpcCast(eid, npc);
           npc.navBest = Infinity;
           npc.navStuck = 0;
         } else if (!tpos || sightBroke) {
@@ -18881,31 +19692,48 @@ export class GameServer {
           const dy = tpos.y - pos.y;
           const dist = Math.hypot(dx, dy);
 
-          // Boss move: a telegraphed special the moment it is in reach.
+          // THE KIT: when the hands are free and the quarry stands in
+          // view (no casting at ghosts — the basic-swing law), pick an
+          // eligible voice. Wind-up entries plant the body below;
+          // windup-0 entries fire on the spot (the old special).
           if (
-            npc.def.special &&
-            npc.specialCooldown === 0 &&
+            !npc.casting &&
             npc.windupTicks === 0 &&
-            dist < 4.5
+            npc.def.kit &&
+            this.tickCount - npc.alertSeenTick <= GameServer.PERCEPTION_PERIOD
           ) {
-            const ab = abilityDef(npc.def.special.ability);
-            if (ab) {
-              npc.specialCooldown = npc.def.special.everyTicks;
-              this.setNpcPose(eid, npc, PoseState.Art, 10);
-              this.castAbility(eid, ab, Math.atan2(dy, dx), 'onehand', npc.def.level, true, {
-                x: tpos.x,
-                y: tpos.y,
-              });
-              // The howl carries further than sight: a pack leader's
-              // special re-gathers a few more mid-fight — bounded
-              // like every cry, so the camp never empties at once.
-              if (npc.def.pack && npc.targetEid !== null) {
-                this.rallyPack(eid, npc, npc.targetEid, PACK_RALLY_RANGE + 4, 3);
-              }
-            }
+            const pick = this.pickKitEntry(eid, npc, dist);
+            if (pick >= 0) this.beginNpcCast(eid, npc, pick, tpos);
           }
 
-          if (npc.windupTicks > 0) {
+          if (npc.casting) {
+            // THE FOE'S BREATH: planted, eyes tracking the quarry,
+            // counting the wind down. The plant IS the counterplay
+            // window — wail on it, shock it, or leave the ring it is
+            // about to stake. The charge re-emits on the overlapping
+            // window with a contracting reach (ONE VOICE with the
+            // player engine): the read sharpens exactly as the dodge
+            // window closes.
+            pos.dir = Math.atan2(dy, dx);
+            npc.casting.ticksLeft--;
+            if (npc.casting.ticksLeft <= 0) {
+              this.fireNpcCast(eid, npc, tpos);
+            } else if (this.tickCount % 10 === 0) {
+              const centry = npc.def.kit?.[npc.casting.idx];
+              const cab = centry ? abilityDef(centry.ability) : undefined;
+              if (cab) {
+                this.broadcastFx({
+                  t: 'fx',
+                  kind: 'charge',
+                  x: pos.x,
+                  y: pos.y,
+                  radius: Math.max(0.5, 1.5 * (npc.casting.ticksLeft / npc.casting.total)),
+                  id: cab.id,
+                  color: cab.color,
+                });
+              }
+            }
+          } else if (npc.windupTicks > 0) {
             // Mid-telegraph: planted, tracking the target with its eyes.
             pos.dir = Math.atan2(dy, dx);
             npc.windupTicks--;
@@ -19708,13 +20536,26 @@ export class GameServer {
         const remaining = growMs(state.def) - (now - state.plantedAt + state.boostMs);
         if (remaining <= 0) continue;
         state.boostMs += remaining;
-        this.accounts.upsertCrop(
-          state.tx, state.ty, state.def.id, state.plantedAt, state.boostMs, state.watered, state.owner,
-        );
+        this.saveCrop(state);
         grown++;
       }
+      // THE LIVING SOIL: the same lever hurries a working compost
+      // batch to done (dev worlds cannot wait half an hour on a heap).
+      let turned = 0;
+      for (const bin of this.farmBins.values()) {
+        if (pos && Math.hypot(bin.tx + 0.5 - pos.x, bin.ty + 0.5 - pos.y) > 20) continue;
+        if (bin.startedAt === 0 || now >= bin.startedAt + COMPOST_MINUTES * 60_000) continue;
+        bin.startedAt = now - COMPOST_MINUTES * 60_000;
+        this.accounts.upsertFarmBin(bin.tx, bin.ty, bin.fill, bin.graded, bin.startedAt);
+        this.mirrorBin(bin);
+        turned++;
+      }
       this.tickCrops(now);
-      player.session?.sendJson({ t: 'chat', channel: 'system', text: `Ripened ${grown} crops.` });
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Ripened ${grown} crops${turned > 0 ? `, hurried ${turned} bins` : ''}.`,
+      });
       return;
     }
     if (config.devCommands && text.startsWith('/proc')) {

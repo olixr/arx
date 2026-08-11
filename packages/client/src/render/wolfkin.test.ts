@@ -31,7 +31,7 @@ test('the bestiary fields both wolfkin, packed and armed', () => {
   // She runs with her pack and calls it mid-fight.
   assert.equal(dire.pack, 'wolfkin');
   assert.equal(wolf.pack, 'wolfkin');
-  assert.equal(dire.special?.ability, 'rallying_howl');
+  assert.equal(dire.kit?.[0]?.ability, 'rallying_howl');
   assert.ok(PACK_RALLY_RANGE > 0);
   // The worg is its own line: bonded pairs, hamstring bite, pounce.
   assert.equal(worg.pack, 'worg');

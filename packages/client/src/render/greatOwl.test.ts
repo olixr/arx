@@ -39,7 +39,7 @@ test('the bestiary fields the parliament, packed, taloned, and led', () => {
   // Both hunt as one parliament, and the elder screams it awake.
   assert.equal(owl.pack, 'parliament');
   assert.equal(elder.pack, 'parliament');
-  assert.equal(elder.special?.ability, 'hushing_screech');
+  assert.equal(elder.kit?.[0]?.ability, 'hushing_screech');
   assert.ok(ABILITIES.has('hushing_screech'), 'the screech must be a real ability');
   // Talons hook: both swoop (pounce) and both leave you bleeding.
   assert.ok(owl.pounce && elder.pounce);

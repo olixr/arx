@@ -1,12 +1,44 @@
 import type { StatusApply, StatusId } from '@arx/shared';
 
 
-/** A telegraphed special attack, run through the ability interpreter. */
-export interface NpcSpecial {
-  /** AbilityDef id (content/abilities.ts). */
+/**
+ * THE KIT (docs/enemy-arts-plan.md) — one authored voice in a foe's
+ * repertoire, run through the one ability interpreter with fromNpc.
+ * Pacing lives HERE, never on the AbilityDef (standing law: NPC
+ * abilities author cooldownTicks 0). A windup makes it a true cast:
+ * the body plants, the conjure shows, and the fire waits — the
+ * interrupt window and the shape's own fuse are two honest clocks
+ * in series. Damage above the def's basic die must buy its premium
+ * with warning time (THE TELEGRAPH PREMIUM, contract-tested).
+ */
+export interface NpcKitEntry {
+  /** AbilityDef id (content/abilities.ts); shape must be NPC-safe. */
   ability: string;
-  /** Minimum ticks between uses (the NPC also needs a target in range). */
-  everyTicks: number;
+  /** Ticks between uses, paid when the cast FIRES. */
+  cooldownTicks: number;
+  /** The drawn breath: planted wind-up ticks before the fire. 0/absent = instant. */
+  windupTicks?: number;
+  /** Eligibility band vs target distance (absent = any). */
+  minRange?: number;
+  maxRange?: number;
+  /** HP-fraction gates (0..1): enrages and desperation casts. */
+  hpBelow?: number;
+  hpAbove?: number;
+  /** Selection weight among eligible entries (default 1). */
+  weight?: number;
+  /** Cooldown seeded at spawn; default min(cooldownTicks, 60) — never open with the special. */
+  initialCooldownTicks?: number;
+  /**
+   * Where a ground shape stakes its point at fire: the quarry's feet
+   * ('target', default), the caster itself ('self'), or the quarry's
+   * projected stride ('lead') — the orbit-breaker, capped and
+   * walkability-checked server-side.
+   */
+  aim?: 'target' | 'self' | 'lead';
+  /** Entry wakes only at def level >= this — scaled reissues learn new voices at depth. */
+  minLevel?: number;
+  /** Fire also rallies the pack (bounded), the old howl behavior — authored, not implied. */
+  rally?: boolean;
 }
 
 /** Thrown/shot basic attack instead of a melee lunge. */
@@ -46,8 +78,8 @@ export interface NpcDef {
    * crosses the chest or head must connect. See npcHitHeight().
    */
   hitHeight?: number;
-  /** Telegraphed special attack for higher-tier threats. */
-  special?: NpcSpecial;
+  /** THE KIT: authored abilities on their own cooldowns (docs/enemy-arts-plan.md). */
+  kit?: NpcKitEntry[];
   /** Basic attacks are projectiles with this flight profile. */
   ranged?: NpcRanged;
   /** Status carried by this NPC's basic attacks (wolves make you bleed). */
@@ -365,7 +397,7 @@ const defs: NpcDef[] = [
     pack: 'kobold',
     // The iron pick comes down on the quarry floor — the same slam
     // school as the troll, telegraphed and sidesteppable.
-    special: { ability: 'ground_slam', everyTicks: 150 },
+    kit: [{ ability: 'ground_slam', cooldownTicks: 150, maxRange: 4.5 }],
   },
   {
     id: 'skeleton',
@@ -434,7 +466,7 @@ const defs: NpcDef[] = [
     resist: ['bleed'],
     weak: ['burn'],
     // The boss move: a telegraphed floor slam you dodge on reaction.
-    special: { ability: 'ground_slam', everyTicks: 160 },
+    kit: [{ ability: 'ground_slam', cooldownTicks: 160, maxRange: 4.5 }],
   },
   {
     id: 'mudcrab',
@@ -707,7 +739,7 @@ const defs: NpcDef[] = [
     hitHeight: 2.4,
     weak: ['burn'],
     // The boss habit writ small: a slam you sidestep on reaction.
-    special: { ability: 'ground_slam', everyTicks: 140 },
+    kit: [{ ability: 'ground_slam', cooldownTicks: 140, maxRange: 4.5 }],
   },
   {
     id: 'gnoll',
@@ -764,7 +796,7 @@ const defs: NpcDef[] = [
     pack: 'gnoll',
     // The laugh that runs the warband: dread in your legs, and every
     // gnoll in earshot answering it. The champion fight is the PACK.
-    special: { ability: 'ravening_cackle', everyTicks: 150 },
+    kit: [{ ability: 'ravening_cackle', cooldownTicks: 150, maxRange: 4.5, rally: true }],
   },
   {
     id: 'bear',
@@ -863,7 +895,7 @@ const defs: NpcDef[] = [
     pack: 'wolfkin',
     // The howl: dread shoves you off her, and every wolf in earshot
     // answers — the champion fight is the PACK, not the duel.
-    special: { ability: 'rallying_howl', everyTicks: 150 },
+    kit: [{ ability: 'rallying_howl', cooldownTicks: 150, maxRange: 4.5, rally: true }],
   },
   {
     id: 'great_owl',
@@ -921,7 +953,7 @@ const defs: NpcDef[] = [
     // The screech: the wood goes quiet, your legs go cold, and every
     // owl in earshot drops off its bough — the champion fight is the
     // PARLIAMENT, not the duel.
-    special: { ability: 'hushing_screech', everyTicks: 150 },
+    kit: [{ ability: 'hushing_screech', cooldownTicks: 150, maxRange: 4.5, rally: true }],
   },
 ];
 
@@ -988,9 +1020,45 @@ export function validateNpcDef(
     errors.push('hitHeight must be a number');
   }
   if (d.special !== undefined) {
-    const s = d.special as Record<string, unknown>;
-    if (typeof s?.ability !== 'string' || typeof s?.everyTicks !== 'number') {
-      errors.push('special needs {ability: string, everyTicks: number}');
+    errors.push("special is retired — author kit: [{ability, cooldownTicks, ...}] (docs/enemy-arts-plan.md)");
+  }
+  if (d.kit !== undefined) {
+    if (!Array.isArray(d.kit) || d.kit.length === 0 || d.kit.length > 6) {
+      errors.push('kit must be an array of 1..6 entries');
+    } else {
+      d.kit.forEach((raw, i) => {
+        const k = raw as Record<string, unknown>;
+        const at = `kit[${i}]`;
+        if (typeof k?.ability !== 'string') errors.push(`${at}.ability must be a string`);
+        if (typeof k?.cooldownTicks !== 'number' || (k.cooldownTicks as number) < 50) {
+          errors.push(`${at}.cooldownTicks must be a number >= 50 (no spam voices)`);
+        }
+        for (const f of ['windupTicks', 'minRange', 'maxRange', 'weight', 'initialCooldownTicks', 'minLevel'] as const) {
+          if (k?.[f] !== undefined && (typeof k[f] !== 'number' || !Number.isFinite(k[f] as number) || (k[f] as number) < 0)) {
+            errors.push(`${at}.${f} must be a non-negative number`);
+          }
+        }
+        for (const f of ['hpBelow', 'hpAbove'] as const) {
+          if (k?.[f] !== undefined && (typeof k[f] !== 'number' || (k[f] as number) <= 0 || (k[f] as number) > 1)) {
+            errors.push(`${at}.${f} must be a fraction in (0, 1]`);
+          }
+        }
+        if (k?.windupTicks !== undefined && (k.windupTicks as number) > 100) {
+          errors.push(`${at}.windupTicks must be <= 100 (a breath, not a siege)`);
+        }
+        if (k?.aim !== undefined && k.aim !== 'target' && k.aim !== 'self' && k.aim !== 'lead') {
+          errors.push(`${at}.aim must be 'target' | 'self' | 'lead'`);
+        }
+        if (k?.rally !== undefined && typeof k.rally !== 'boolean') {
+          errors.push(`${at}.rally must be a boolean`);
+        }
+        if (
+          typeof k?.minRange === 'number' && typeof k?.maxRange === 'number' &&
+          (k.minRange as number) > (k.maxRange as number)
+        ) {
+          errors.push(`${at}: minRange must not exceed maxRange`);
+        }
+      });
     }
   }
   if (d.ranged !== undefined) {

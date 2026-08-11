@@ -63,7 +63,7 @@ test('the warband hunts as one pack and the packlord laughs', () => {
   assert.equal(skulker.pack, 'gnoll');
   assert.equal(boss.pack, 'gnoll', 'pull the packlord, raise the warband');
   assert.ok(skulker.craven, 'a bloodied skulker runs for its fellows');
-  assert.equal(boss.special?.ability, 'ravening_cackle', 'the laugh that runs the warband');
+  assert.equal(boss.kit?.[0]?.ability, 'ravening_cackle', 'the laugh that runs the warband');
   assert.ok(skulker.level < boss.level && skulker.maxHp < boss.maxHp);
 });
 

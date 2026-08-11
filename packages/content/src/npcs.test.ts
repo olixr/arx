@@ -78,3 +78,64 @@ test('validator: sightArc must sit in [30, 360]', () => {
     validateNpcDef({ ...base, sightArc: 'wide' }, refs).some((e) => e.includes('sightArc')),
   );
 });
+
+test('validator: special is retired — the kit is the only rail', () => {
+  const base = npcDef('goblin')!;
+  const refs = { lootTables: new Set(base.loot), npcIds: new Set(['goblin']) };
+  assert.ok(
+    validateNpcDef({ ...base, special: { ability: 'ground_slam', everyTicks: 150 } }, refs).some(
+      (e) => e.includes('retired'),
+    ),
+  );
+});
+
+test('validator: THE KIT — floors, bands, fractions, and the aim words', () => {
+  const base = npcDef('goblin')!;
+  const refs = { lootTables: new Set(base.loot), npcIds: new Set(['goblin']) };
+  const ok = (kit: unknown): string[] => validateNpcDef({ ...base, kit }, refs);
+  assert.deepEqual(ok([{ ability: 'ground_slam', cooldownTicks: 150 }]), []);
+  assert.deepEqual(
+    ok([
+      {
+        ability: 'ground_slam',
+        cooldownTicks: 150,
+        windupTicks: 14,
+        minRange: 2,
+        maxRange: 6,
+        hpBelow: 0.5,
+        weight: 2,
+        aim: 'lead',
+        minLevel: 30,
+        rally: true,
+      },
+    ]),
+    [],
+  );
+  // No spam voices: the cooldown floor.
+  assert.ok(ok([{ ability: 'x', cooldownTicks: 20 }]).some((e) => e.includes('cooldownTicks')));
+  // A breath, not a siege.
+  assert.ok(
+    ok([{ ability: 'x', cooldownTicks: 150, windupTicks: 200 }]).some((e) =>
+      e.includes('windupTicks'),
+    ),
+  );
+  // hp gates are fractions.
+  assert.ok(
+    ok([{ ability: 'x', cooldownTicks: 150, hpBelow: 40 }]).some((e) => e.includes('hpBelow')),
+  );
+  // The aim vocabulary is closed.
+  assert.ok(ok([{ ability: 'x', cooldownTicks: 150, aim: 'behind' }]).some((e) => e.includes('aim')));
+  // A band must be a band.
+  assert.ok(
+    ok([{ ability: 'x', cooldownTicks: 150, minRange: 6, maxRange: 2 }]).some((e) =>
+      e.includes('minRange'),
+    ),
+  );
+  // An empty kit is an authoring mistake, and seven voices is a choir.
+  assert.ok(ok([]).some((e) => e.includes('kit')));
+  assert.ok(
+    ok(Array.from({ length: 7 }, () => ({ ability: 'x', cooldownTicks: 150 }))).some((e) =>
+      e.includes('kit'),
+    ),
+  );
+});
