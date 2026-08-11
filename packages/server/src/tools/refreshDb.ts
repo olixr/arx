@@ -220,5 +220,16 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   console.error('[refresh] failed:', err);
+  const msg = String((err as Error)?.message ?? '');
+  if (/SASL|password|SCRAM|authentication/i.test(msg)) {
+    console.error('');
+    console.error('[refresh] Postgres wants a password and none reached this process.');
+    console.error('[refresh] Either run with it inline:');
+    console.error("[refresh]   DB_PASSWORD='...' npm run db:refresh -w @arx/server -- <flags>");
+    console.error('[refresh] or find where the daemon keeps its env and mirror it:');
+    console.error('[refresh]   ls -la ./.env ../.env            (release root / site root)');
+    console.error("[refresh]   sudo grep -ril DB_PASSWORD /etc/supervisor/conf.d/   (daemon env)");
+    console.error('[refresh] The tool auto-loads the first .env found walking up from cwd.');
+  }
   process.exit(1);
 });
