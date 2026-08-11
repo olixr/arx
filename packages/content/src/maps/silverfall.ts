@@ -439,6 +439,13 @@ export function buildSilverfall(): ZoneDef {
   // Rookery and the bank — no street, no lamps, on purpose.
   b.set(36, 40, Tile.Rock).set(40, 44, Tile.Rock).set(33, 47, Tile.Rock);
   b.set(34, 38, Tile.GrassTall).set(41, 48, Tile.GrassTall).set(37, 44, Tile.GrassTall);
+  // THE CROWN DOOR (the Red Company epic): the Company's hatch in
+  // the Rookery's back lot — Mab tolerates the door and the Company
+  // pays her rent in news. No lamp, no sign, no name.
+  b.fillRect(37, 42, 3, 3, Tile.Dirt);
+  b.portal(38, 43, Tile.PortalDown, { x: 207.5, y: 573.5 }); // the Silverfall alcove
+  b.set(39, 42, Tile.Crate);
+  b.setDetail(37, 43, Detail.Pebbles);
 
   // ---------------------------------------------------------------
   // L2 — THE SILVER COURT: the civic terrace, recut on the y38-49

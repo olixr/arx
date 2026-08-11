@@ -1,0 +1,49 @@
+{
+  "id": "the_red_hand",
+  "name": "The Red Hand",
+  "giver": "captain_ravna",
+  "requires": {
+    "flags": [
+      "faction:reavers:atleast:known"
+    ]
+  },
+  "stages": [
+    {
+      "id": "vouch",
+      "journal": "Ravna does not take a stranger's word, even a friendly stranger's. Ferrick keeps the Company's first ledger at the Tollhouse on the High Road; if the road knows you, he will say so. Get his voucher and the Captain will hear it.",
+      "objectives": [
+        {
+          "kind": "talk",
+          "actor": "company_broker"
+        }
+      ]
+    },
+    {
+      "id": "seal",
+      "journal": "Ferrick's word travels faster than boots. Back down to the Low Hall: Ravna seals the hand herself, and the charter towns will not love you better for wearing it.",
+      "objectives": [
+        {
+          "kind": "talk",
+          "actor": "captain_ravna"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 100,
+    "standing": [
+      {
+        "faction": "reavers",
+        "delta": 12
+      },
+      {
+        "faction": "fordgate",
+        "delta": -6
+      },
+      {
+        "faction": "crown",
+        "delta": -6
+      }
+    ]
+  }
+}

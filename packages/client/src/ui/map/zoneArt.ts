@@ -7,6 +7,7 @@ import {
   buildSaltmere,
   buildSilverfall,
   buildUndercroft,
+  buildLowhall,
   type ZoneDef,
 } from '@arx/content';
 
@@ -72,6 +73,7 @@ export function authoredZoneArt(): ZoneArt[] {
       buildPinewatch(),
       buildHartfell(),
       buildUndercroft(),
+      buildLowhall(),
     ].map(bakeZone);
   }
   return cache;

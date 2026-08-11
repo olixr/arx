@@ -344,6 +344,30 @@ const defs: ShopDef[] = [
   // The Tollhouse ledger's other column (factions Phase 5): Ferrick
   // buys what honest counters won't — a fence by roster law, since
   // his faction sits in the doc's theft.fences list.
+  // THE LOW HALL — the Red Company's sanctuary counters.
+  {
+    id: 'company_counter',
+    name: "The Tallyman's Counter",
+    stock: [
+      { item: 'swiftness_tonic', price: 65 },
+      { item: 'leadfoot_oil', price: 90 },
+      { item: 'silver_ring', price: 140 },
+      { item: 'iron_bar', price: 58 },
+      { item: 'bread', price: 10 },
+    ],
+  },
+  {
+    id: 'company_kit',
+    name: 'The Kit Cage',
+    stock: [
+      { item: 'leather_body', price: 120 },
+      { item: 'leather_chaps', price: 95 },
+      { item: 'leather_boots', price: 60 },
+      { item: 'leather_gloves', price: 55 },
+      { item: 'iron_sword', price: 180 },
+      { item: 'steel_dagger', price: 260 },
+    ],
+  },
   {
     id: 'company_post',
     name: "The Company's Cut",

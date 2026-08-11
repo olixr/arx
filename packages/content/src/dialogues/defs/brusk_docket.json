@@ -1,0 +1,69 @@
+{
+  "id": "brusk_docket",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "tallyman_brusk"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "brusk_docket__greet",
+      "text": "Counter or docket? The counter buys, the docket pays. Everything else in this room is decorative, including me.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "brusk_docket__hub",
+      "text": "Quick, while the ink dries.",
+      "choices": [
+        {
+          "text": "Show me the counter.",
+          "next": "browse"
+        },
+        {
+          "text": "How does the docket work?",
+          "next": "docket"
+        },
+        {
+          "text": "You keep books for outlaws?",
+          "next": "books"
+        },
+        {
+          "text": "Tallyman.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "docket",
+      "voice": "brusk_docket__docket",
+      "text": "Work goes up, work comes down, coin moves in one direction only. Wolves off the low roads, kobolds out of the low vaults, leather for Yeva's cage. The rate is posted, the rate is paid, and nobody haggles with the wall. If your name stands well with the Company, the wall has work for you every day of your life.",
+      "next": "hub"
+    },
+    {
+      "id": "books",
+      "voice": "brusk_docket__books",
+      "text": "I keep books for a business. The bank keeps books for a business. The difference is the bank's books have a column for what the Crown may see, and mine have a column for what it may not, and mine BALANCE. Bring me goods of flexible history and I will pay their weight without a single question I do not already know the answer to.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "voice": "brusk_docket__browse",
+      "text": "The counter, then. Weighed fair, paid flat, remembered never.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "company_counter"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "voice": "brusk_docket__bye",
+      "text": "Mind the step going up. Whichever city it is."
+    }
+  ]
+}

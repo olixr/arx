@@ -784,6 +784,16 @@ export function buildPinewatch(): ZoneDef {
   }
 
   // ---------------------------------------------------------------
+  // ---------------------------------------------------------------
+  // THE TIMBER DOOR (the Red Company epic): the reed bank at the
+  // millrace mouth, where nobody works and boats beach quiet on the
+  // sand. A hatch, a crate, no lamp, no sign, no name.
+  // ---------------------------------------------------------------
+  b.fillRect(13, 42, 4, 4, Tile.Dirt);
+  b.portal(14, 43, Tile.PortalDown, { x: 217.5, y: 594.5 }); // the Pinewatch alcove
+  b.set(16, 42, Tile.Crate).set(13, 45, Tile.Rock);
+  b.setDetail(15, 44, Detail.Pebbles).setDetail(13, 43, Detail.Tuft);
+
   // THE PEOPLE — twenty-one lives on the saw's clock and the rota's.
   // Placements are the POST each routine measures from; the sleepers
   // walk to real beds by way of a walkable cardinal neighbour (the

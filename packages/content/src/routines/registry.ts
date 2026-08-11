@@ -56,6 +56,11 @@ import fallHerald from './defs/fall_herald.json';
 import fallServant from './defs/fall_servant.json';
 import fallWatchMarket from './defs/fall_watch_market.json';
 import fallWatchRow from './defs/fall_watch_row.json';
+import lowCaptain from './defs/low_captain.json';
+import lowTallyman from './defs/low_tallyman.json';
+import lowQuartermaster from './defs/low_quartermaster.json';
+import lowBlade from './defs/low_blade.json';
+import lowRunner from './defs/low_runner.json';
 import fallSmeltmaster from './defs/fall_smeltmaster.json';
 import fallAssayer from './defs/fall_assayer.json';
 import fallCarpenter from './defs/fall_carpenter.json';
@@ -203,6 +208,11 @@ const SOURCES: readonly unknown[] = [
   fallServant,
   fallWatchMarket,
   fallWatchRow,
+  lowCaptain,
+  lowTallyman,
+  lowQuartermaster,
+  lowBlade,
+  lowRunner,
   fallWeaver,
   fallKing,
   fallQueen,

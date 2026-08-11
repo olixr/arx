@@ -1,0 +1,68 @@
+{
+  "id": "ravna_trusted",
+  "start": "greet",
+  "requires": [
+    "faction:reavers:atleast:trusted"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "captain_ravna",
+      "priority": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "ravna_trusted__greet",
+      "text": "The hall knows your boots by now. Sit anywhere but my chair.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "ravna_trusted__hub",
+      "text": "Ask. You have earned the longer answers.",
+      "choices": [
+        {
+          "text": "How did you come to the chair?",
+          "next": "chair"
+        },
+        {
+          "text": "What does the Company want, in the end?",
+          "next": "want"
+        },
+        {
+          "text": "The Rookery. Friends of yours?",
+          "next": "rookery"
+        },
+        {
+          "text": "Carry on, Captain.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "chair",
+      "voice": "ravna_trusted__chair",
+      "text": "I was a toll clerk at a chained ford, back when the Redmasks thought terror was a business model. It is not. Terror invites armies. I audited the old captain's books, found where the blood was costing us silver, and put it to the crews. The vote was not close. He took his mask and his opinions somewhere north, and the Company started paying on time.",
+      "next": "hub"
+    },
+    {
+      "id": "want",
+      "voice": "ravna_trusted__want",
+      "text": "To be too useful to hang and too quiet to hunt. The charters need things moved that their own laws will not let them move. The Crown knows every lamp on the high road and none of the cellars under it, and that suits the Crown more than it admits. We are the arrangement nobody signs.",
+      "next": "hub"
+    },
+    {
+      "id": "rookery",
+      "voice": "ravna_trusted__rookery",
+      "text": "Mab's people watch and we carry. Different trades. She rents us the crown door and takes her rent in news, which she then does not sell, which is what makes her the only person in that city I entirely trust. If the Company and the Rookery ever quarrel, bet on the Rookery. I would.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "ravna_trusted__bye",
+      "text": "Wear the colors where the road is dark. That is what they are for."
+    }
+  ]
+}

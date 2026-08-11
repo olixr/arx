@@ -1,0 +1,59 @@
+{
+  "id": "yeva_kit",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "quartermaster_yeva"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "yeva_kit__greet",
+      "text": "Hands where I can see them, and I mean that kindly, I want to check your gloves for wear. Hm. Road gloves. You will want better.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "yeva_kit__hub",
+      "text": "The cage is open. What do you need?",
+      "choices": [
+        {
+          "text": "Show me the kit.",
+          "next": "browse"
+        },
+        {
+          "text": "Why does a hideout need a quartermaster?",
+          "next": "why"
+        },
+        {
+          "text": "Take care, Yeva.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "why",
+      "voice": "yeva_kit__why",
+      "text": "Because heroics die of wet boots. The watch has an armory, the Waykeepers have a chapter house, and the Company has me, and of the three of us I am the only one whose people come home dry. Steel is a tool. Leather is a tool. The docket pays for hides because I MAKE it pay for hides.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "voice": "yeva_kit__browse",
+      "text": "Second pick is yours. The blades already ate.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "company_kit"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "voice": "yeva_kit__bye",
+      "text": "Dry boots, sharp steel, shut mouth. You have two of those. Work on the third."
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "boots_for_blades",
+  "name": "Boots for Blades",
+  "giver": "quartermaster_yeva",
+  "requires": {
+    "flags": [
+      "faction:reavers:atleast:neutral"
+    ]
+  },
+  "repeat": {
+    "cooldownHours": 24
+  },
+  "stages": [
+    {
+      "id": "leather",
+      "journal": "Yeva buys leather in quantity and asks one question, which is whether it is dry. Six cured hides for the kit cage and the Company remembers its outfitters.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "leather",
+          "count": 6
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 80,
+    "standing": [
+      {
+        "faction": "reavers",
+        "delta": 6
+      }
+    ]
+  }
+}

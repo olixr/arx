@@ -50,6 +50,18 @@ import mabRookery from './defs/mab_rookery.json';
 import jorunnYard from './defs/jorunn_yard.json';
 import ansgarStores from './defs/ansgar_stores.json';
 import ossianWord from './defs/ossian_word.json';
+import ravnaCourt from './defs/ravna_court.json';
+import ravnaTrusted from './defs/ravna_trusted.json';
+import bruskDocket from './defs/brusk_docket.json';
+import yevaKit from './defs/yeva_kit.json';
+import qRedHandOffer from './defs/q_red_hand_offer.json';
+import qRedHandTurnin from './defs/q_red_hand_turnin.json';
+import qLowRoadRunsOffer from './defs/q_low_road_runs_offer.json';
+import qLowRoadRunsTurnin from './defs/q_low_road_runs_turnin.json';
+import qUndercutOffer from './defs/q_undercut_offer.json';
+import qUndercutTurnin from './defs/q_undercut_turnin.json';
+import qBootsForBladesOffer from './defs/q_boots_for_blades_offer.json';
+import qBootsForBladesTurnin from './defs/q_boots_for_blades_turnin.json';
 import calderCounter from './defs/calder_counter.json';
 import aldisGate from './defs/aldis_gate.json';
 import aldisWatchHeeded from './defs/aldis_watch_heeded.json';
@@ -315,6 +327,18 @@ const SOURCES: readonly unknown[] = [
   jorunnYard,
   ansgarStores,
   ossianWord,
+  ravnaCourt,
+  ravnaTrusted,
+  bruskDocket,
+  yevaKit,
+  qRedHandOffer,
+  qRedHandTurnin,
+  qLowRoadRunsOffer,
+  qLowRoadRunsTurnin,
+  qUndercutOffer,
+  qUndercutTurnin,
+  qBootsForBladesOffer,
+  qBootsForBladesTurnin,
   aldisGate,
   aldisWatchHeeded,
   aldisWatchWry,

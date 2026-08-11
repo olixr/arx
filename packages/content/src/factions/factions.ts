@@ -221,9 +221,18 @@ export const FACTIONS: FactionsDef = {
       name: 'The Red Company',
       sigil: 'mask',
       blurb: 'The Redmask line — camps in the wild, tolls on the road, steel for hire.',
-      // The Tollhouse crew (Phase 4): the Company's one open door.
-      members: ['company_broker', 'company_toll_guard'],
-      enforcers: [],
+      // The Tollhouse crew (Phase 4) and the Low Hall's household
+      // (the Red Company epic): the sanctuary hunts its own outlaws.
+      members: [
+        'company_broker',
+        'company_toll_guard',
+        'captain_ravna',
+        'tallyman_brusk',
+        'quartermaster_yeva',
+        'company_blade',
+        'company_runner',
+      ],
+      enforcers: ['company_blade'],
       npcPrefixes: ['brigand'],
       anchors: [],
       refusals: ["You've spilled Company blood. Run.", 'Steel first. Talk never.'],

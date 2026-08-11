@@ -1,0 +1,53 @@
+{
+  "id": "q_undercut_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_undercut:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "tallyman_brusk",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_undercut_offer__hub",
+      "text": "Docket line two: kobolds. They dig blind, they dig close, and a cellar with a second door in the floor is worth exactly nothing. Six of them, wherever they dig, posted rate.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_undercut"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Six diggers. On it.",
+          "next": "sworn"
+        },
+        {
+          "text": "Let them dig.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_undercut_offer__sworn",
+      "text": "Good. If you hear picks through a wall down here, do mention which wall.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_undercut"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "voice": "q_undercut_offer__declined",
+      "text": "Let them dig, the tallyman repeats, quietly, into his balanced books."
+    }
+  ]
+}

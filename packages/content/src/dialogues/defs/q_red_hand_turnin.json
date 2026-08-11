@@ -1,0 +1,27 @@
+{
+  "id": "q_red_hand_turnin",
+  "start": "sealed",
+  "requires": [
+    "quest:the_red_hand:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "captain_ravna",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sealed",
+      "voice": "q_red_hand_turnin__sealed",
+      "text": "Ferrick's word came down before you did. Runners. So: the hand is yours. No oath, no candle wax, the Company is a business, not a wedding. You carry our colors, we carry your name. Spend both carefully.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_red_hand"
+        }
+      ]
+    }
+  ]
+}

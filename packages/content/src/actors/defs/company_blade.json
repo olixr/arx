@@ -1,0 +1,49 @@
+{
+  "id": "company_blade",
+  "name": "Company Blade",
+  "title": "The Red Steel",
+  "examine": "Boiled leather, a red sash, and the stillness of somebody paid by the hour to be exactly here. The mask is pushed up, off duty until it is not.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 30,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 150,
+      "damage": 10,
+      "speed": 3.6,
+      "leashRange": 12
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 2,
+      "hairColor": 0,
+      "beard": 1,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 1,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 15
+    }
+  ],
+  "lines": [
+    "Walk where the braziers are. The dark parts are dark for Company reasons.",
+    "The Captain pays on time. You would be amazed what that buys in loyalty.",
+    "No blades drawn in the hall. House rule. The house has never needed a second rule."
+  ]
+}

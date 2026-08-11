@@ -1,0 +1,53 @@
+{
+  "id": "q_boots_for_blades_offer",
+  "start": "hub",
+  "requires": [
+    "quest:boots_for_blades:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "quartermaster_yeva",
+      "priority": 6
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_boots_for_blades_offer__hub",
+      "text": "Standing order: six cured hides, dry, no holes I did not ask for. The blades go through boots like the boots owe them money. Docket rate, paid at my counter.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "boots_for_blades"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Six hides. You'll have them.",
+          "next": "sworn"
+        },
+        {
+          "text": "Tan them yourself.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_boots_for_blades_offer__sworn",
+      "text": "Dry ones. I will know.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "boots_for_blades"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "voice": "q_boots_for_blades_offer__declined",
+      "text": "The order stands. The boots, tragically, will not."
+    }
+  ]
+}

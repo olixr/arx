@@ -29,6 +29,11 @@ import kingAeriex from './defs/king_aeriex.json';
 import queenKayri from './defs/queen_kayri.json';
 import castleGuard from './defs/castle_guard.json';
 import castleServant from './defs/castle_servant.json';
+import captainRavna from './defs/captain_ravna.json';
+import tallymanBrusk from './defs/tallyman_brusk.json';
+import quartermasterYeva from './defs/quartermaster_yeva.json';
+import companyBlade from './defs/company_blade.json';
+import companyRunner from './defs/company_runner.json';
 import drillmasterJorunn from './defs/drillmaster_jorunn.json';
 import stewardAnsgar from './defs/steward_ansgar.json';
 import heraldOssian from './defs/herald_ossian.json';
@@ -212,6 +217,11 @@ const SOURCES: readonly unknown[] = [
   queenKayri,
   castleGuard,
   castleServant,
+  captainRavna,
+  tallymanBrusk,
+  quartermasterYeva,
+  companyBlade,
+  companyRunner,
   drillmasterJorunn,
   stewardAnsgar,
   heraldOssian,

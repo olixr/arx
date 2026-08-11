@@ -61,6 +61,10 @@ export const GAZETTEER: Readonly<Record<string, GazetteerEntry>> = {
     line: 'Old mason halls under the mountain, dug deep and left to the dark.',
     country: 5,
   },
+  lowhall: {
+    epithet: 'The hall under the roads',
+    line: 'The Red Company keeps its hearth where five cities keep their cellars.',
+  },
 };
 
 /**

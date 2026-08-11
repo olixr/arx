@@ -1,0 +1,56 @@
+{
+  "id": "low_runner",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "speed": 1.5
+  },
+  "slots": [
+    {
+      "from": 9,
+      "to": 13,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.4,
+        "waypoints": [
+          {
+            "x": -20,
+            "y": 0,
+            "waitSec": 20,
+            "dir": 1.5707963267948966
+          },
+          {
+            "x": 15,
+            "y": 0,
+            "waitSec": 25,
+            "dir": 1.5707963267948966
+          }
+        ]
+      }
+    },
+    {
+      "from": 15,
+      "to": 20,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.4,
+        "waypoints": [
+          {
+            "x": -20,
+            "y": 0,
+            "waitSec": 20,
+            "dir": 1.5707963267948966
+          },
+          {
+            "x": 15,
+            "y": 0,
+            "waitSec": 25,
+            "dir": 1.5707963267948966
+          }
+        ]
+      }
+    }
+  ]
+}

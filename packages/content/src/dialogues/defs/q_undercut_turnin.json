@@ -1,0 +1,27 @@
+{
+  "id": "q_undercut_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_undercut:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "tallyman_brusk",
+      "priority": 22
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "voice": "q_undercut_turnin__paid",
+      "text": "Six picks gone quiet. The floor is a floor again. Rate paid, line cleared, line will be back by market day.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_undercut"
+        }
+      ]
+    }
+  ]
+}

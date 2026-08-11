@@ -1,0 +1,53 @@
+{
+  "id": "q_low_road_runs_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_low_road_runs:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "tallyman_brusk",
+      "priority": 6
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_low_road_runs_offer__hub",
+      "text": "Docket line one, never comes down: dire wolves on the low roads. Five of them, the posted rate, paid on count. They cost us a tallyman once. I keep the line up in his memory and because the wolves keep coming back.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_low_road_runs"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Five wolves. Done.",
+          "next": "sworn"
+        },
+        {
+          "text": "Find another blade.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_low_road_runs_offer__sworn",
+      "text": "Counted when they fall. The ledger has good ears.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_low_road_runs"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "voice": "q_low_road_runs_offer__declined",
+      "text": "The line stays posted. The wolves certainly are not going anywhere."
+    }
+  ]
+}

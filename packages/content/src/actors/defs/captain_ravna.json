@@ -1,0 +1,50 @@
+{
+  "id": "captain_ravna",
+  "name": "Captain Ravna",
+  "title": "The Red Company",
+  "examine": "The mask hangs off her belt like a clerk's seal, which is what it is. She runs the Company the way other people run shipping concerns, and the concern is doing well.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 36,
+    "respawnSec": 120,
+    "stats": {
+      "maxHp": 200,
+      "damage": 12,
+      "speed": 3.6,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 7,
+      "hair": 4,
+      "hairColor": 2,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 1,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "steel_dagger",
+    "cape": "cape_midnight"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 200
+    }
+  ],
+  "lines": [
+    "Five doors, one hall, no landlord. The Crown taxes what it can see. Note what it can see down here.",
+    "The Company is a business. The mask is the uniform. The knife is the contract law.",
+    "We do not work the nursery, we do not burn what pays twice, and we do not forget. Those are all three of the rules."
+  ]
+}

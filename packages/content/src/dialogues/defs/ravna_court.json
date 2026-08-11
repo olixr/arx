@@ -1,0 +1,64 @@
+{
+  "id": "ravna_court",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "captain_ravna"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "ravna_court__greet",
+      "text": "You found a door. That happens more than people think and matters less than they hope. I am Ravna. I run the Company. Say what you came to say.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "ravna_court__hub",
+      "text": "Briefly. The candles are on the books too.",
+      "choices": [
+        {
+          "text": "What is the Red Company?",
+          "next": "company"
+        },
+        {
+          "text": "Five doors. Why five cities?",
+          "next": "doors"
+        },
+        {
+          "text": "What are the rules down here?",
+          "next": "rules"
+        },
+        {
+          "text": "Captain.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "company",
+      "voice": "ravna_court__company",
+      "text": "A business older than two of the towns it works in. The charters call us reavers. The roads call us the toll. I call us the only honest ledger in the Dawnlands, because ours is the only one that admits what it is. We move what the cities pretend they do not want and we charge what the road is actually worth.",
+      "next": "hub"
+    },
+    {
+      "id": "doors",
+      "voice": "ravna_court__doors",
+      "text": "Because five cities have cellars and cellars have doors. Amberford by the reeds, the crown city by the Magpie's lot, the salt town by a cot whose keeper does not look, the timber town by the race, the fell town behind the fur hall. The Crown taxes what it can see. Note what it can see down here.",
+      "next": "hub"
+    },
+    {
+      "id": "rules",
+      "voice": "ravna_court__rules",
+      "text": "Three. We do not work the nursery, so the vale sleeps easy and sends us no hunters. We do not burn what pays twice, so the towns stay rich enough to rob. And we do not forget, in either direction. Spill Company blood and every blade in this hall knows your face. Carry our colors and they know it the other way.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "ravna_court__bye",
+      "text": "Mind the braziers going out. The dark parts are dark for Company reasons."
+    }
+  ]
+}

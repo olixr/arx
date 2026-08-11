@@ -595,6 +595,17 @@ export function buildSaltmere(): ZoneDef {
   }
 
   // ---------------------------------------------------------------
+  // ---------------------------------------------------------------
+  // THE SALT DOOR (the Red Company epic): the dead pocket between
+  // the chandlery's back wall and the Pilot's Cot — Old Fane knew
+  // the mere before it had a bell, and is famously not curious.
+  // A hatch, a crate, no lamp, no sign, no name.
+  // ---------------------------------------------------------------
+  b.fillRect(66, 38, 4, 4, Tile.Dirt);
+  b.portal(67, 39, Tile.PortalDown, { x: 207.5, y: 589.5 }); // the Saltmere alcove
+  b.set(69, 38, Tile.Crate).set(66, 41, Tile.Barrel);
+  b.setDetail(68, 40, Detail.Pebbles).setDetail(66, 39, Detail.Tuft);
+
   // THE PEOPLE — eighteen lives on the mere's clock. Placements are
   // the POST each routine measures from.
   // ---------------------------------------------------------------

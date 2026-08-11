@@ -1,0 +1,35 @@
+{
+  "id": "the_low_road_runs",
+  "name": "The Low Road Runs",
+  "giver": "tallyman_brusk",
+  "requires": {
+    "flags": [
+      "faction:reavers:atleast:neutral"
+    ]
+  },
+  "repeat": {
+    "cooldownHours": 20
+  },
+  "stages": [
+    {
+      "id": "wolves",
+      "journal": "The docket's standing line: wolves on the low roads cost the Company carts, legs, and once, memorably, a tallyman. Five dire wolves off the ledger and Brusk pays the rate.",
+      "objectives": [
+        {
+          "kind": "kill",
+          "npc": "dire_wolf",
+          "count": 5
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 90,
+    "standing": [
+      {
+        "faction": "reavers",
+        "delta": 6
+      }
+    ]
+  }
+}

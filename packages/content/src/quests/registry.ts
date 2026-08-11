@@ -53,6 +53,10 @@ import shortHanded from './defs/short_handed.json';
 import theRedMark from './defs/the_red_mark.json';
 import theLeanWinter from './defs/the_lean_winter.json';
 import tollOwed from './defs/toll_owed.json';
+import theRedHand from './defs/the_red_hand.json';
+import theLowRoadRuns from './defs/the_low_road_runs.json';
+import theUndercut from './defs/the_undercut.json';
+import bootsForBlades from './defs/boots_for_blades.json';
 import theHerdStands from './defs/the_herd_stands.json';
 
 /**
@@ -97,6 +101,10 @@ const SOURCES: readonly unknown[] = [
   theRedMark,
   theLeanWinter,
   tollOwed,
+  theRedHand,
+  theLowRoadRuns,
+  theUndercut,
+  bootsForBlades,
   theHerdStands,
   // Item-borne: the torn page starts it; nobody offers it.
   theStolenLedger,

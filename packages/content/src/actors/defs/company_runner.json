@@ -1,0 +1,35 @@
+{
+  "id": "company_runner",
+  "name": "Company Runner",
+  "title": "The Errand Legs",
+  "examine": "Mud to the knee from three cities' worth of cellars, and a satchel that is nobody's business.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 5,
+      "hairColor": 4,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 8,
+      "pants": 8
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "bread",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Five doors and I know every step between them. Ask me nothing about any of it.",
+    "Amberford by the reeds, Hartfell by the fur hall. That is not a secret, that is a delivery route.",
+    "The Tollhouse crew think they work hard. They stand next to a road all day. I AM the road."
+  ]
+}

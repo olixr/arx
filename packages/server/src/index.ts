@@ -24,6 +24,7 @@ import {
   buildDawnmead,
   buildSilverfall,
   buildUndercroft,
+  buildLowhall,
   lootTableErrors,
   replaceFactions,
   replaceFrontier,
@@ -89,6 +90,7 @@ const builtinZones = new Map<string, ZoneDef>(
     buildPinewatch(),
     buildHartfell(),
     buildUndercroft(),
+  buildLowhall(),
   ].map((z) => [z.id, z]),
 );
 const zones: ZoneDef[] = [...builtinZones.values()];

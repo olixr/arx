@@ -199,6 +199,22 @@ it dictates sentence shape. (Pooled actors share one card.)
   reach. Cadence: counted words — three-to-six per line, arithmetic diction
   ("Ferrick talks. I count."). Never explain; the bar explains.
 
+### The Low Hall — the Red Company's sanctuary
+- **Captain Ravna** (the chair): wants the Company too useful to hang and
+  too quiet to hunt. Deposed the old Redmask captain by AUDIT, not blade —
+  terror invites armies, ledgers don't. Cadence: board-meeting calm about
+  criminal logistics; the mask is a clerk's seal; three rules, recited
+  exactly ("the nursery, what pays twice, and we do not forget").
+- **Tallyman Brusk** (the counting room): wants books that BALANCE, whatever
+  the goods weighed. Cadence: fence-warm, double-entry metaphors, proud of
+  the docket's posted rate; "provenance is a story, I pay by weight."
+- **Quartermaster Yeva** (the kit cage): wants nobody dying of wet boots.
+  Cadence: kit-inspection clipped; rust is a moral failing; affection shown
+  by checking your gloves. "Dry boots, sharp steel, shut mouth."
+- **Company blades / runners** (pooled): paid-on-time steel and mud-to-the-
+  knee errand legs. Blades: house-rule brevity, brazier warnings. Runners:
+  route pride, cheerful non-answers.
+
 ### Amberford — the ford town
 - **Bretta Ironhewn** (Master Smith, came down-mountain after the seal):
   wants the forge honest and the past unmentioned. Cadence: terse, metalwork

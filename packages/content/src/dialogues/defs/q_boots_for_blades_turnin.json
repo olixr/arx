@@ -1,0 +1,27 @@
+{
+  "id": "q_boots_for_blades_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:boots_for_blades:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "quartermaster_yeva",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "voice": "q_boots_for_blades_turnin__paid",
+      "text": "Dry, supple, honest. Somebody raised you right. Rate paid, and the blades march another month.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "boots_for_blades"
+        }
+      ]
+    }
+  ]
+}

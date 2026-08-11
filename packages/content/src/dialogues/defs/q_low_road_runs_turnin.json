@@ -1,0 +1,27 @@
+{
+  "id": "q_low_road_runs_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_low_road_runs:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "tallyman_brusk",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "voice": "q_low_road_runs_turnin__paid",
+      "text": "Five, counted true. The carts roll easier and the rate is paid. The docket thanks you in the only language it has.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_low_road_runs"
+        }
+      ]
+    }
+  ]
+}

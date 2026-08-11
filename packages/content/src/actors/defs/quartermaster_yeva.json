@@ -1,0 +1,37 @@
+{
+  "id": "quartermaster_yeva",
+  "name": "Quartermaster Yeva",
+  "title": "The Kit Cage",
+  "examine": "Every buckle on her is oiled and every blade on the rack is hers until you pay. Rust, in her cage, is a moral failing.",
+  "disposition": "neutral",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 8,
+      "hair": 3,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 4,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 80
+    }
+  ],
+  "lines": [
+    "Dry boots, sharp steel, shut mouth. Two of those are sold here.",
+    "Bring the kit back clean or bring coin for the next one. The Company forgives blood, not rust.",
+    "The blades get first pick. Friends of the Company get second. Everyone else gets the road."
+  ],
+  "shop": "company_kit"
+}

@@ -25,6 +25,7 @@ import { buildSaltmere } from './maps/saltmere.js';
 import { buildPinewatch } from './maps/pinewatch.js';
 import { buildHartfell } from './maps/hartfell.js';
 import { buildUndercroft } from './maps/undercroft.js';
+import { buildLowhall } from './maps/lowhall.js';
 import { AMBERFORD_RECT, HARTFELL_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
@@ -2169,6 +2170,100 @@ test('hartfell: every door, pier, fold and stone walks from the Kettle', () => {
     const ly = Math.floor(a.y - z.origin.y);
     assert.equal(seen[ly * z.width + lx], 1, `${a.actor}'s post at (${lx},${ly}) is unreachable`);
   }
+});
+
+test('lowhall: the Red Company keeps five doors, a hearth, and clean books', () => {
+  const z = buildLowhall();
+  assert.equal(z.id, 'lowhall');
+  assert.ok(z.origin.y >= 512, 'the Low Hall must sit below DARK_BAND_Y');
+  assert.equal(z.width, 88);
+  assert.equal(z.height, 56);
+  // Dying on the low roads wakes you at the ring (nearest-spawn law).
+  assert.deepEqual(z.spawn, { x: 217.5, y: 583.5 });
+  const counts = new Map<number, number>();
+  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
+  const n = (t: Tile): number => counts.get(t) ?? 0;
+  // THE FIVE DOORS: one up-portal per city, each landing inside its
+  // own town's rect — and each town's hatch drops back inside the
+  // hall. The web is the whole point.
+  const ups = (z.portals ?? []).filter((p) => p.dest);
+  assert.equal(ups.length, 5, 'the ring keeps five doors');
+  const towns = [buildAmberford(), buildSilverfall(), buildSaltmere(), buildPinewatch(), buildHartfell()];
+  for (const town of towns) {
+    const landed = ups.some(
+      (p) =>
+        p.dest!.x >= town.origin.x && p.dest!.x < town.origin.x + town.width &&
+        p.dest!.y >= town.origin.y && p.dest!.y < town.origin.y + town.height,
+    );
+    assert.ok(landed, `no Low Hall door lands in ${town.id}`);
+    const hatch = (town.portals ?? []).find(
+      (p) =>
+        p.dest &&
+        p.dest.x >= z.origin.x && p.dest.x < z.origin.x + z.width &&
+        p.dest.y >= z.origin.y && p.dest.y < z.origin.y + z.height,
+    );
+    assert.ok(hatch, `${town.id} keeps no hatch down to the Low Hall`);
+  }
+  // The hall is furnished: the counting room, the kit cage, the
+  // bunks, the pool, and the braziers the Company keeps fed.
+  assert.equal(n(Tile.Vault), 1, "the Company's deep box");
+  assert.equal(n(Tile.BankChest), 2, 'the counting room banks');
+  assert.ok(n(Tile.ChestMossy) >= 1, 'the box nobody asks about');
+  assert.equal(n(Tile.Bed), 6, 'three hot bunks');
+  assert.ok(n(Tile.Brazier) >= 10, 'the Company burns braziers, not lamps');
+  assert.equal(n(Tile.LampPost), 0, 'no town lamps below the towns');
+  assert.ok(n(Tile.FishingSpot) >= 2, 'the still pool fishes');
+  assert.ok(n(Tile.GlowShroom) >= 3 && n(Tile.Hearth) >= 3);
+  assert.ok((z.signs ?? []).length >= 6, 'the doors are named inside the hall');
+  // The household: three named keepers, five blades, two runners.
+  const crew = z.actorSpawns ?? [];
+  assert.equal(crew.length, 10, 'the Low Hall lost its household');
+  for (const slug of ['captain_ravna', 'tallyman_brusk', 'quartermaster_yeva']) {
+    assert.ok(crew.some((a) => a.actor === slug), `${slug} missing from the Low Hall`);
+  }
+  assert.equal(crew.filter((a) => a.actor === 'company_blade').length, 5);
+  assert.equal(crew.filter((a) => a.actor === 'company_runner').length, 2);
+  assert.equal(crew.filter((a) => a.routine).length, 10, 'every keeper keeps hours');
+  // Every chamber walks from the ring.
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const queue: number[] = [31 * z.width + 17];
+  seen[queue[0]!] = 1;
+  while (queue.length > 0) {
+    const i: number = queue.pop()!;
+    const cx: number = i % z.width;
+    const cy: number = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      if (!walkable(cx + dx, cy + dy)) continue;
+      const ni = (cy + dy) * z.width + cx + dx;
+      if (!seen[ni]) {
+        seen[ni] = 1;
+        queue.push(ni);
+      }
+    }
+  }
+  for (const [x, y, name] of [
+    [17, 15, 'the Amberford door'],
+    [25, 16, 'the Hartfell door'],
+    [7, 20, 'the Silverfall door'],
+    [7, 36, 'the Saltmere door'],
+    [17, 41, 'the Pinewatch door'],
+    [45, 13, 'the fence counter approach'],
+    [68, 24, 'the kit cage floor'],
+    [44, 45, 'the bunk room'],
+    [52, 32, 'the feast hall floor'],
+    [25, 43, 'the still pool bank'],
+  ] as const) {
+    assert.equal(seen[y * z.width + x], 1, `${name} is severed from the ring`);
+  }
+  // The editor round trip holds (flat zones compare without elev).
+  const json = zoneToJson(z);
+  assert.equal(json.portals?.length, 5, 'the five doors must serialize');
+  const { elev: _rt, ...back } = zoneToJson(zoneFromJson(json));
+  const { elev: _src, ...src } = json;
+  assert.deepEqual(back, src);
 });
 
 test('the dyed banner pole folds home, dye-blind', () => {

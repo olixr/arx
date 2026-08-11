@@ -914,6 +914,17 @@ export function buildHartfell(): ZoneDef {
   b.scatterDetail(Detail.Pebbles, 0.03, [Tile.Snow]);
 
   // ---------------------------------------------------------------
+  // THE FELL DOOR (the Red Company epic): the back-lot between the
+  // Speaker's south wall and the Hidehall's north face — a yard both
+  // buildings turn their backs on. A hatch, a crate, no lamp, no
+  // sign, no name. You find it or you're told.
+  // ---------------------------------------------------------------
+  b.fillRect(60, 55, 4, 4, Tile.Dirt);
+  b.portal(61, 56, Tile.PortalDown, { x: 225.5, y: 569.5 }); // the Hartfell alcove
+  b.set(63, 55, Tile.Crate).set(60, 58, Tile.Rock);
+  b.setDetail(62, 57, Detail.Pebbles).setDetail(60, 56, Detail.Tuft);
+
+  // ---------------------------------------------------------------
   // THE PEOPLE — eighteen named lives and the Fellwatch, on the
   // horn's clock and the moot's. Placements are the POST each routine
   // measures from; the sleepers walk to real beds by way of a

@@ -997,6 +997,16 @@ export function buildAmberford(): ZoneDef {
   b.sign(102, 62, 'THE WARDROOM', ['the watch sleeps in shifts'], Tile.HangingSign);
 
   // ---------------------------------------------------------------
+  // THE FORD DOOR (the Red Company epic): the slack side of the
+  // reed neck, where the flax rots and nobody comes but Peld and the
+  // smell. A hatch, a barrel, no lamp, no sign, no name.
+  // ---------------------------------------------------------------
+  b.fillRect(92, 53, 4, 4, Tile.Dirt);
+  b.portal(93, 54, Tile.PortalDown, { x: 217.5, y: 568.5 }); // the Amberford alcove
+  b.set(95, 53, Tile.Barrel).set(92, 56, Tile.Crate);
+  b.setDetail(94, 55, Detail.Pebbles).setDetail(92, 54, Detail.Tuft);
+
+  // ---------------------------------------------------------------
   // THE PEOPLE (Epic 6): fifteen lives on the town's own clock.
   // Placements are the POST each routine measures from — the smith's
   // anvil, the teller's counter, the lectern, the mid-field furrow.

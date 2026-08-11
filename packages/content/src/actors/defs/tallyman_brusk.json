@@ -1,0 +1,37 @@
+{
+  "id": "tallyman_brusk",
+  "name": "Tallyman Brusk",
+  "title": "Clean Books",
+  "examine": "Ink on his fingers and a fence's patience in his eyes. The books balance every night, which is more than the bank can say about its conscience.",
+  "disposition": "neutral",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 1,
+      "hairColor": 5,
+      "beard": 4,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 8
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 300
+    }
+  ],
+  "lines": [
+    "Provenance is a story, and I pay by weight, not by story.",
+    "The docket pays honest coin for honest work. The counter pays honest coin for the other kind.",
+    "Every ledger in the Dawnlands lies except mine. Mine just changes some names."
+  ],
+  "shop": "company_counter"
+}

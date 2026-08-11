@@ -1,0 +1,35 @@
+{
+  "id": "the_undercut",
+  "name": "The Undercut",
+  "giver": "tallyman_brusk",
+  "requires": {
+    "flags": [
+      "faction:reavers:atleast:neutral"
+    ]
+  },
+  "repeat": {
+    "cooldownHours": 20
+  },
+  "stages": [
+    {
+      "id": "kobolds",
+      "journal": "Kobolds dig blind and they dig CLOSE, and the Company's cellars are worth nothing with a second door in the floor. Six of them, anywhere they dig, and the docket clears.",
+      "objectives": [
+        {
+          "kind": "kill",
+          "npc": "kobold",
+          "count": 6
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 90,
+    "standing": [
+      {
+        "faction": "reavers",
+        "delta": 6
+      }
+    ]
+  }
+}

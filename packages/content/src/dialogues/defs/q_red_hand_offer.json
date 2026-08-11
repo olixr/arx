@@ -1,0 +1,53 @@
+{
+  "id": "q_red_hand_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_red_hand:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "captain_ravna",
+      "priority": 6
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_red_hand_offer__hub",
+      "text": "The road speaks well of you, which is rarer than you would think, the road mostly complains. So: the hand. Ferrick vouches, I seal, and you wear Company red where it counts. Fair warning in ink: the charter towns and the Crown will think less of your name for it. They keep ledgers too.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_red_hand"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Get me the voucher. I want the colors.",
+          "next": "sworn"
+        },
+        {
+          "text": "Not yet, Captain.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_red_hand_offer__sworn",
+      "text": "The Tollhouse, first climb on the High Road. Tell Ferrick the chair sent you and watch him pretend not to be pleased.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_red_hand"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "voice": "q_red_hand_offer__declined",
+      "text": "Sensible. The offer keeps. The Company is patient the way winter is patient."
+    }
+  ]
+}
