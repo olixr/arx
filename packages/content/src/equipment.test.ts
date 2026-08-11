@@ -581,9 +581,9 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 209, 'swords 55 + daggers 48 + bows 40 + staves 38 + greatweapons 28');
+  assert.equal(weapons.length, 214, 'swords 56 + daggers 48 + bows 41 + staves 40 + greatweapons 29');
   const swords = weapons.filter((d) => d.weapon?.style === 'onehand');
-  assert.equal(swords.length, 103, 'swords 55 + daggers 48');
+  assert.equal(swords.length, 104, 'swords 56 + daggers 48');
   for (const s of swords) {
     assert.equal(s.weapon?.style, 'onehand');
     assert.ok(s.weapon!.art && ABILITIES.has(s.weapon!.art), `${s.id} art ${s.weapon!.art} exists`);
@@ -626,12 +626,12 @@ test('colossus roster: 28 greatweapons, both hands, ladders climb, heirlooms leg
     // Axes: the double-headed line, the owned finds, the heirloom.
     'bronze_greataxe', 'iron_greataxe', 'steel_greataxe', 'adamant_greataxe',
     'gobmangler', 'barrowmaw', 'forgewrath', 'stormhewer', 'moonhewn', 'mountains_end',
-    // The chase maul.
-    'stonebreaker_maul',
+    // The chase mauls: the mountain-breaker and the barrow kerb.
+    'stonebreaker_maul', 'kerbstone',
     // THE VAULT OF NAMES: the chase finds, drop-only, story-seated.
     'tollbreaker', 'fens_lantern', 'riftglass', 'bearspine', 'seamsplitter', 'last_bell',
   ];
-  assert.equal(greats.length, 28, 'the 22-piece armory + the vault’s 6 chase finds');
+  assert.equal(greats.length, 29, 'the 23-piece armory + the vault’s 6 chase finds');
   for (const id of greats) {
     const d = byId.get(id);
     assert.ok(d, `${id} exists`);
@@ -869,9 +869,9 @@ test('archer roster: 20 bow designs, wood ladders climb, arts resolve, chase ste
     'sparrowhawk', 'heartwood', 'windsinger',
     'stickbow', 'knucklebow', 'poachers_friend', 'bramblethorn', 'driftwood',
     'fishspine', 'wolfsong', 'rimewood', 'marrowpoint', 'whisperwind',
-    'emberglow', 'kingswood', 'starcall', 'skyrender',
+    'emberglow', 'oxbow', 'kingswood', 'starcall', 'skyrender',
   ];
-  assert.equal(bows.length, 29, '3 ladders x4 + 3 crafts + 14 finds');
+  assert.equal(bows.length, 30, '3 ladders x4 + 3 crafts + 15 finds');
   for (const id of bows) {
     const d = byId.get(id);
     assert.ok(d, `${id} exists`);
@@ -918,11 +918,11 @@ test('archmage roster: 22 staff designs, elements ride every bolt, gem swaps cra
     'ember_battlestaff', 'frost_battlestaff', 'storm_battlestaff', 'verdant_battlestaff',
     'apprentice_staff', 'ember_staff',
     'hearthwarden', 'tidebinder', 'stormcaller',
-    'hazel_switch', 'shepherds_crook', 'wisplight', 'gravewood', 'gloomthorn',
+    'hazel_switch', 'shepherds_crook', 'wisplight', 'gravewood', 'candlewake', 'gloomthorn',
     'serpentcoil', 'glacierbite', 'pyreheart', 'runegnarl', 'sunwrought',
-    'boneharrow', 'bloodmoon', 'nightwell', 'tempest_crown', 'worldsplinter',
+    'heartspindle', 'boneharrow', 'bloodmoon', 'nightwell', 'tempest_crown', 'worldsplinter',
   ];
-  assert.equal(staves.length, 28, '1 ladder x4 + 4 gem battlestaffs + 2 classics + 3 crafts + 15 finds');
+  assert.equal(staves.length, 30, '1 ladder x4 + 4 gem battlestaffs + 2 classics + 3 crafts + 17 finds');
   for (const id of staves) {
     const d = byId.get(id);
     assert.ok(d, `${id} exists`);

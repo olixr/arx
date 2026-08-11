@@ -433,6 +433,14 @@ export const FX_STYLES: Record<string, FxStyle> = {
   no_quarter: BLOOD({ mid: '#a83c32', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'swarm', punch: 0.55, wash: 0.3 }),
   the_long_fight: GOLD({ mid: '#c9a44a', ring: 'teeth', debris: 'spark', decal: 'cracks', motif: 'echo', punch: 0.75, wash: 0.45 }),
 
+  // ----------------- THE DRAWN BREATH Phase 4c — the loot voices
+  // The taught breaths: each face belongs to a teacher weapon's art.
+  kept_ground: STEEL({ mid: '#b8c4cc', ring: 'teeth', debris: 'spark', decal: 'runes', motif: 'cage', punch: 0.45, wash: 0.35 }),
+  standing_stone: STEEL({ mid: '#8a8a7a', ring: 'runes', debris: 'rock', decal: 'runes', motif: 'pillar', punch: 0.6, wash: 0.3 }),
+  full_draw: STEEL({ mid: '#8a6a42', ring: 'shards', debris: 'rock', decal: 'cracks', motif: undefined, punch: 0.75, wash: 0.4 }),
+  red_thread: BLOOD({ mid: '#c83a4a', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'vortex', punch: 0.35, wash: 0.3 }),
+  vigil: EMBER({ mid: '#e8d8a0', ring: 'halo', debris: 'star', decal: 'glow', motif: 'wisps', punch: 0.15, wash: 0.4 }),
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   // THE NEW VOICES: the channeled pages (THE DRAWN BREATH Phase 4).
   whirling_ruin: STEEL({ mid: '#c8b494', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'vortex', punch: 0.7, wash: 0.4 }),

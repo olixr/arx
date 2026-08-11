@@ -294,6 +294,22 @@ const defs: AbilityDef[] = [
     damage: 0,
     self: { meleeLifesteal: 0.35, durationTicks: 120 },
   },
+  {
+    // THE DRAWN BREATH's blade voice, taught by threshold: a channeled
+    // nova — the doorwarden's stand, holding one ring of ground.
+    id: 'kept_ground',
+    name: 'Kept Ground',
+    desc: 'Plant your point and hold. Kept ground bites whatever steps in, every held beat.',
+    color: '#b8c4cc',
+    code: 'Kg',
+    cooldownTicks: 200, // 10 s
+    shape: 'nova',
+    damage: 3,
+    radius: 2.6,
+    knockback: 0.4, // the line holds; what steps in is put back out
+    channelTicks: 48, // 2.4 s held, three beats
+    pulseEveryTicks: 16,
+  },
 
   // ------------------------------------- the ten crowns, sword arts
   // Each chase blade names its own Art (the own-art law). Cadence
@@ -736,6 +752,23 @@ const defs: AbilityDef[] = [
     range: 18,
     width: 0.5,
     status: { status: 'shock', power: 1, durationTicks: 60 },
+  },
+  {
+    // THE DRAWN BREATH's bow voice, taught by oxbow: the casted great
+    // shot — a wind-up the whole field can read, then one answer.
+    id: 'full_draw',
+    name: 'The Full Draw',
+    desc: 'Draw past the ear and hold it. Planted feet loose sooner. Nothing walks away.',
+    color: '#6a4f30',
+    code: 'Fd',
+    cooldownTicks: 240, // 12 s
+    castTicks: 30, // 1.5 s drawn, 1.2 s planted
+    shape: 'projectile_fan',
+    damage: 16,
+    range: 17,
+    projectiles: 1,
+    projectileSpeed: 22,
+    pierce: true, // the shot does not stop for the first opinion
   },
 
   // -------------------------------------- archmage's-roster weapon arts
@@ -1189,6 +1222,39 @@ const defs: AbilityDef[] = [
     radius: 3.2,
     chainTargets: 5,
     status: { status: 'shock', power: 1, durationTicks: 70 },
+  },
+  {
+    // THE DRAWN BREATH's blood voice, taught by heartspindle: a
+    // channeled beam — the leech link, wound one beat at a time.
+    id: 'red_thread',
+    name: 'Red Thread',
+    desc: 'Spool their blood onto the spindle. The thread only winds while you hold still.',
+    color: '#c4372a',
+    code: 'Rd',
+    cooldownTicks: 220, // 11 s
+    shape: 'beam',
+    damage: 4,
+    range: 9,
+    width: 0.5,
+    element: 'blood',
+    channelTicks: 48, // 2.4 s held, three beats
+    pulseEveryTicks: 16,
+    drainFrac: 0.5, // the blood school's law: the thread feeds the spinner
+  },
+  {
+    // THE DRAWN BREATH's mending voice, taught by candlewake: the held
+    // mend — a vigil kept still, wounds closing beat by beat.
+    id: 'vigil',
+    name: 'Vigil',
+    desc: 'Keep the candle. Each held beat the flame closes a wound on your watch.',
+    color: '#e8d8a0',
+    code: 'Vi',
+    cooldownTicks: 400, // 20 s
+    shape: 'self_buff',
+    damage: 0,
+    channelTicks: 64, // 3.2 s held, four beats
+    pulseEveryTicks: 16,
+    self: { heal: 3, durationTicks: 20 },
   },
 
   // ------------------------------------- the ten flights, bow arts
@@ -2608,6 +2674,21 @@ const defs: AbilityDef[] = [
     pulseEveryTicks: 12,
     knockback: 1.5,
     status: { status: 'shock', power: 1, durationTicks: 45 },
+  },
+  {
+    // THE DRAWN BREATH's stone voice, taught by kerbstone: a casted
+    // summon — raise old kerb stone, and let it take the argument.
+    id: 'standing_stone',
+    name: 'The Standing Stone',
+    desc: 'Raise a kerb stone where you point. Everything angry argues with the stone first.',
+    color: '#8a8a7a',
+    code: 'Ss',
+    cooldownTicks: 380, // 19 s
+    castTicks: 24, // 1.2 s raised, 0.96 s planted
+    shape: 'summon',
+    damage: 0,
+    range: 4, // point-aimed: the stone stands where the ring promised
+    summon: { kind: 'decoy', durationTicks: 180, radius: 6, power: 0 },
   },
 
   // --------------------------- THE TWIN SCHOOL — the paired ladder

@@ -100,6 +100,8 @@ const SEATS: readonly TechniqueDef[] = [
   { ability: 'storm_brand', style: 'onehand', unlockLevel: 0, secret: { anchorLevel: 18 } },
   // taught by frostbrand
   { ability: 'winters_edge', style: 'onehand', unlockLevel: 0, secret: { anchorLevel: 18 } },
+  // taught by threshold (THE DRAWN BREATH: the blade school's channel)
+  { ability: 'kept_ground', style: 'onehand', unlockLevel: 0, secret: { anchorLevel: 18 } },
   // taught by emberbrand
   { ability: 'cinder_arc', style: 'onehand', unlockLevel: 0, secret: { anchorLevel: 28 } },
   // taught by kingsbane
@@ -138,6 +140,8 @@ const SEATS: readonly TechniqueDef[] = [
   { ability: 'quakefall', style: 'twohand', unlockLevel: 0, secret: { anchorLevel: 24 } },
   // taught by tollbreaker
   { ability: 'road_opens', style: 'twohand', unlockLevel: 0, secret: { anchorLevel: 24 } },
+  // taught by kerbstone (THE DRAWN BREATH: the great school's casted summon)
+  { ability: 'standing_stone', style: 'twohand', unlockLevel: 0, secret: { anchorLevel: 24 } },
   // taught by crowns_argument
   { ability: 'crowns_word', style: 'twohand', unlockLevel: 0, secret: { anchorLevel: 32 } },
   // taught by frostfell
@@ -208,6 +212,8 @@ const SEATS: readonly TechniqueDef[] = [
   { ability: 'starfall_arrows', style: 'archery', unlockLevel: 0, secret: { anchorLevel: 40 } },
   // taught by thunderhead
   { ability: 'the_anvil', style: 'archery', unlockLevel: 0, secret: { anchorLevel: 40 } },
+  // taught by oxbow (THE DRAWN BREATH: the bow school's casted read)
+  { ability: 'full_draw', style: 'archery', unlockLevel: 0, secret: { anchorLevel: 40 } },
   // taught by skyrender
   { ability: 'skyrend', style: 'archery', unlockLevel: 0, secret: { anchorLevel: 46 } },
   // taught by windsinger
@@ -242,6 +248,8 @@ const SEATS: readonly TechniqueDef[] = [
   { ability: 'the_molt', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 18 } },
   // taught by serpentcoil
   { ability: 'venom_lash', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 18 } },
+  // taught by candlewake (THE DRAWN BREATH: the held mend)
+  { ability: 'vigil', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 18 } },
   // taught by runekey
   { ability: 'axiom', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 26 } },
   // taught by ember_battlestaff
@@ -272,6 +280,8 @@ const SEATS: readonly TechniqueDef[] = [
   { ability: 'perihelion', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 34 } },
   // taught by sunwrought
   { ability: 'solar_lance', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 34 } },
+  // taught by heartspindle (THE DRAWN BREATH: the leech link)
+  { ability: 'red_thread', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 34 } },
   // taught by bloodmoon
   { ability: 'red_eclipse', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 42 } },
   // taught by stormcaller

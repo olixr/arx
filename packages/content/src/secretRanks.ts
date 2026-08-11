@@ -156,6 +156,11 @@ export const SECRET_RANKS: Record<string, Steps> = {
     { note: 'The cut sweeps a hand wider.', arc: 1.2 },
     { note: 'Winter keeps whatever the edge touches.', status: { status: 'chill', power: 1, durationTicks: 130 } },
   ],
+  kept_ground: [
+    { note: 'The kept ring bites deeper.', damage: 4 },
+    { note: 'The ground you keep grows a stride wider.', radius: 3.0 },
+    { note: 'The watch strikes on a faster bell.', pulseEveryTicks: 12 },
+  ],
   cinder_arc: [
     { note: 'The cinders cut deeper.', damage: 9 },
     { note: 'The arc sweeps wider.', arc: 1.3 },
@@ -247,6 +252,11 @@ export const SECRET_RANKS: Record<string, Steps> = {
     { note: 'The toll is taken heavier.', damage: 12 },
     { note: 'The road claims a wider verge.', arc: 2.6 },
     { note: 'Whatever stood in the way is a milestone now.', knockback: 3.8, cooldownTicks: 175 },
+  ],
+  standing_stone: [
+    { note: 'The stone stands longer.', summon: { kind: 'decoy', durationTicks: 220, radius: 6, power: 0 } },
+    { note: 'The stone speaks over a wider field.', summon: { kind: 'decoy', durationTicks: 220, radius: 7, power: 0 } },
+    { note: 'The ground knows the stone now, and raises it sooner.', cooldownTicks: 320 },
   ],
   crowns_word: [
     { note: 'Each word lands heavier.', damage: 9 },
@@ -420,6 +430,11 @@ export const SECRET_RANKS: Record<string, Steps> = {
     { note: 'The strike plate spreads wider.', radius: 2.7 },
     { note: 'The hammer needs no backswing.', fuseTicks: 12 },
   ],
+  full_draw: [
+    { note: 'The shaft arrives heavier.', damage: 18 },
+    { note: 'The next shaft is nocked before the dust settles.', cooldownTicks: 210 },
+    { note: 'The full draw comes to the ear like a habit.', castTicks: 22 },
+  ],
   skyrend: [
     { note: 'The rend cuts deeper.', damage: 15 },
     { note: 'The tear opens wider.', width: 0.65 },
@@ -502,6 +517,11 @@ export const SECRET_RANKS: Record<string, Steps> = {
     { note: 'The twin fangs strike as one.', spreadArc: 0.18 },
     { note: 'The venom settles in for the night.', status: { status: 'venom', power: 1, durationTicks: 120 } },
   ],
+  vigil: [
+    { note: 'The flame closes more with every beat.', self: { heal: 4, durationTicks: 20 } },
+    { note: 'The candle is relit sooner.', cooldownTicks: 340 },
+    { note: 'The watch holds a fifth beat.', channelTicks: 80 },
+  ],
   axiom: [
     { note: 'The proof lands heavier.', damage: 7 },
     { note: 'The theorem holds wider.', radius: 2.4 },
@@ -576,6 +596,11 @@ export const SECRET_RANKS: Record<string, Steps> = {
     { note: 'The lance burns brighter.', damage: 13 },
     { note: 'The beam cuts a wider line.', width: 0.72 },
     { note: 'The sunlight does not stop burning.', status: { status: 'burn', power: 2, durationTicks: 60 } },
+  ],
+  red_thread: [
+    { note: 'The thread winds thicker.', damage: 5 },
+    { note: 'More of what leaves them arrives with you.', drainFrac: 0.65 },
+    { note: 'The spool takes a fourth turn.', channelTicks: 64 },
   ],
   red_eclipse: [
     { note: 'The eclipse cuts deeper.', damage: 13 },

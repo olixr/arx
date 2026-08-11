@@ -2865,6 +2865,56 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// ----------------- THE DRAWN BREATH Phase 4c — the loot voices
+Object.assign(PLATES, {
+  // Kept Ground — the doorwarden's stand: point planted, ring held.
+  kept_ground: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    ringDot(c, st.mid, 0, 0.08, 0.3, 0.045);
+    dot(c, st.spark, -0.3, 0.08, 0.04);
+    dot(c, st.spark, 0.3, 0.08, 0.04);
+    dot(c, st.spark, 0, 0.38, 0.04);
+    blade(c, 0, -0.08, 0.5, Math.PI / 2, st);
+  },
+  // The Standing Stone — the kerb slab raised, the names kept on.
+  standing_stone: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.34, st);
+    fill(c, st.deep, [[-0.16, 0.3], [-0.13, -0.3], [0.0, -0.38], [0.13, -0.3], [0.16, 0.3]]);
+    fill(c, st.mid, [[-0.11, 0.28], [-0.09, -0.26], [0.0, -0.33], [0.09, -0.26], [0.11, 0.28]]);
+    poly(c, st.deep, [[-0.03, -0.2], [0.03, -0.12]], 0.03);
+    poly(c, st.deep, [[0.03, -0.04], [-0.03, 0.04]], 0.03);
+    poly(c, st.deep, [[-0.03, 0.12], [0.03, 0.2]], 0.03);
+    star4(c, 0.26, -0.24, 0.07, st.spark);
+  },
+  // The Full Draw — the warbow bent all the way to the promise.
+  full_draw: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, -0.06, 0, 0.3, 0.38, -1.35, 1.35, st.mid, 0.04);
+    poly(c, st.spark, [[-0.02, -0.34], [-0.3, 0], [-0.02, 0.34]], 0.026);
+    arrow(c, 0.02, 0, 0, 0.62, st, 1.2);
+  },
+  // Red Thread — the spool takes what the heart lets go.
+  red_thread: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    droplet(c, -0.22, -0.3, 0.5, st);
+    crescent(c, 0, 0, 0.2, 0.26, -2.6, 0.4, st.mid, 0.032);
+    crescent(c, 0, 0, 0.1, 0.15, 0.6, 3.4, st.mid, 0.032);
+    poly(c, st.spark, [[-0.2, -0.24], [-0.14, -0.1], [0.16, -0.14]], 0.024);
+    dot(c, st.core, 0, 0, 0.06);
+    poly(c, st.deep, [[0, 0.16], [0, 0.36]], 0.05);
+  },
+  // Vigil — the candle that keeps the watch that keeps you.
+  vigil: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    haloArcs(c, 0, -0.2, st);
+    fill(c, st.mid, [[-0.09, 0.36], [-0.07, -0.06], [0.07, -0.06], [0.09, 0.36]]);
+    poly(c, st.deep, [[-0.09, 0.1], [-0.02, 0.16]], 0.026);
+    poly(c, st.deep, [[0.09, 0.22], [0.02, 0.28]], 0.026);
+    flame(c, 0, -0.18, 0.5, st, 0.06);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
 Object.assign(PLATES, {
   // Riftwalker Step — through the tear, out the far side of them.

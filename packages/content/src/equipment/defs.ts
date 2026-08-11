@@ -2975,6 +2975,18 @@ function greatweaponDefs(): EquipmentDef[] {
       desc: 'Rust-black heads filed into tooth rows, hafted in old bone. It bites like it remembers being hungry.',
     },
     {
+      // THE DRAWN BREATH's stone teacher: a kerb slab off a fell
+      // barrow, hafted by somebody the old law could not reach.
+      id: 'kerbstone', name: 'Kerbstone', slot: 'weapon',
+      levelReq: { skill: 'twohand', level: 24 },
+      weapon: { style: 'twohand', damage: 6, cooldownTicks: 14, range: 2.3, art: 'standing_stone' },
+      affixPool: COLOSSUS_POOL,
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 850, color: '#8a8a7a', code: 'Ks',
+      desc: 'A kerb slab off a fell barrow, hafted against every old law of the north. The moss stays on. So do the names.',
+    },
+    {
       id: 'forgewrath', name: 'Forgewrath', slot: 'weapon',
       levelReq: { skill: 'twohand', level: 35 },
       weapon: { style: 'twohand', damage: 7, cooldownTicks: 14, range: 2.4, art: 'white_heat' },
@@ -3424,6 +3436,18 @@ function swordDefs(): EquipmentDef[] {
       acquisition: { drop: true },
       value: 560, color: '#a8c8dc', code: 'Fb',
       desc: 'Pale steel that fogs the air around it. Wounds close cold and slow.',
+    },
+    {
+      // THE DRAWN BREATH's blade teacher: the doorwarden's sword,
+      // squared at the tip because it was never meant to chase anyone.
+      id: 'threshold', name: 'Threshold', slot: 'weapon',
+      levelReq: { skill: 'onehand', level: 26 },
+      weapon: { style: 'onehand', damage: 3, cooldownTicks: 7, range: 1.9, art: 'kept_ground' },
+      affixPool: [{ stat: 'onehand', w: 2 }, { stat: 'defence', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 520, color: '#b8c4cc', code: 'Th',
+      desc: 'A doorwarden\'s blade, squared at the tip, bright along one line only. It knows exactly where it stands.',
     },
     {
       id: 'bloodletter', name: 'Bloodletter', slot: 'weapon',
@@ -4266,6 +4290,18 @@ function bowDefs(): EquipmentDef[] {
       desc: 'Fire-hardened heartwood with live coals under the grain. It keeps your hands warm and its own counsel.',
     },
     {
+      // THE DRAWN BREATH's bow teacher: the great warbow. Nobody
+      // strings it in a hurry, and nothing walks away from it.
+      id: 'oxbow', name: 'Oxbow', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 34 },
+      weapon: { style: 'archery', damage: 8, cooldownTicks: 10, range: 16, ammo: 'arrow', projectileSpeed: 19, art: 'full_draw' },
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'vitality' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 900, color: '#6a4f30', code: 'Xb',
+      desc: 'Oxhorn and heartwood, drawn past the ear. Stringing it takes two people and loosing it settles arguments.',
+    },
+    {
       id: 'kingswood', name: 'Kingswood', slot: 'weapon',
       levelReq: { skill: 'archery', level: 36 },
       weapon: { style: 'archery', damage: 8, cooldownTicks: 9, range: 17, ammo: 'arrow', projectileSpeed: 19, art: 'kings_arrow' },
@@ -4647,6 +4683,18 @@ function staffDefs(): EquipmentDef[] {
       desc: 'Briar wound so tight it knotted into a grudge. Every thorn points at somebody.',
     },
     {
+      // THE DRAWN BREATH's mending teacher: the watchman's candle
+      // staff. The flame has kept every vigil it was ever asked to.
+      id: 'candlewake', name: 'Candlewake', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 16 },
+      weapon: { style: 'arx', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'vigil', element: 'ember' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 360, color: '#e8d8a0', code: 'Ck',
+      desc: 'A watchman\'s staff crowned in a century of run wax. The flame has kept every vigil asked of it. It is not stopping for yours.',
+    },
+    {
       id: 'serpentcoil', name: 'Serpentcoil', slot: 'weapon',
       levelReq: { skill: 'arx', level: 18 },
       weapon: { style: 'arx', damage: 4, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'venom_lash', element: 'verdant' },
@@ -4695,6 +4743,18 @@ function staffDefs(): EquipmentDef[] {
       acquisition: { drop: true },
       value: 800, color: '#e8b84a', code: 'Sx',
       desc: 'A gold sun-disc on a white ash stave, taken from a temple that outlived its god. Dawn, whenever you want it.',
+    },
+    {
+      // THE DRAWN BREATH's blood teacher: the iron distaff. It is
+      // always slightly fuller than it was yesterday.
+      id: 'heartspindle', name: 'Heartspindle', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 31 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'red_thread', element: 'blood' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'vitality', w: 2 }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 950, color: '#8a2f3e', code: 'Hh',
+      desc: 'An iron distaff wound with something that is not wool. It is warm, and it is always a little fuller than yesterday.',
     },
     {
       id: 'boneharrow', name: 'Boneharrow', slot: 'weapon',

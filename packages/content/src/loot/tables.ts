@@ -315,6 +315,9 @@ const defs: LootTableDef[] = [
       // The crew's tracker bragged his bow found the mark by smell.
       // The crew stopped asking what it fed on.
       { item: 'redquarry', chance: 0.01 },
+      // A doorwarden stood in the crew's way once. The reaver kept
+      // the blade and has been standing a little straighter since.
+      { item: 'threshold', chance: 0.01 },
     ],
   },
   {
@@ -464,6 +467,12 @@ const defs: LootTableDef[] = [
     { item: 'gravewood', chance: 0.03 },
     { item: 'gloomthorn', chance: 0.012 },
     { item: 'boneharrow', chance: 0.004 },
+    // THE DRAWN BREATH's grave-goods: the spindle that was buried
+    // full, the candle that outlasted its watchman, and a kerb slab
+    // some robber hafted and did not live to keep.
+    { item: 'heartspindle', chance: 0.008 },
+    { item: 'candlewake', chance: 0.012 },
+    { item: 'kerbstone', chance: 0.01 },
   ]),
 
   // ----------------------------------------------------- the Champion
@@ -476,6 +485,9 @@ const defs: LootTableDef[] = [
       { item: 'iron_sword', chance: 0.12 },
       // The Champion was buried with a greatsword. It kept that too.
       { item: 'gravewrought', chance: 0.03 },
+      // It was buried inside a kerb ring. One slab is missing, and
+      // the Champion swings the grudge.
+      { item: 'kerbstone', chance: 0.025 },
       { item: 'iron_bar', qty: [1, 2], chance: 0.4 },
       { item: 'gloomsilk_thread', qty: [2, 5], chance: 0.5 },
       // The dark he has stood in for a few centuries has gone thick.
@@ -576,6 +588,12 @@ const defs: LootTableDef[] = [
       { item: 'runegnarl', chance: 0.04 },
       { item: 'sunwrought', chance: 0.04 },
       { item: 'boneharrow', chance: 0.03 },
+      // THE DRAWN BREATH's trophies: the warbow nobody strung twice,
+      // the doorwarden's blade off a door that lost, and the spindle
+      // a champion carried point down like a torch.
+      { item: 'oxbow', chance: 0.03 },
+      { item: 'threshold', chance: 0.04 },
+      { item: 'heartspindle', chance: 0.02 },
       { item: 'bloodmoon', chance: 0.025 },
       { item: 'nightwell', chance: 0.02 },
       { item: 'tempest_crown', chance: 0.02 },

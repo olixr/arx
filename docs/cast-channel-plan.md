@@ -45,11 +45,34 @@ staked casted arts now telegraph their landing to WATCHERS for the
 wind-up's best-case (planted) clock, so the blast can never arrive
 before its mark (a broken breath's mark gutters out as the fizzle it
 is); the hotbar tooltip speaks `winds Ns` / `held Ns`.
-Remaining: Phase 4c — the loot-side voices (leech link, held mend,
-casted great shot, summoned bulwark, sanctified ground, each with
-its teacher weapon per the amended LAW 5) and the charge-up +
-held-note matter dialects (an FX-v5 session, its laws read first) —
-then Phase 5 proving.
+Phase 4c THE TEACHER'S STEEL SHIPPED same day: the five loot-side
+voices land as secret arts, each on a brand-new teacher weapon (the
+amended LAW 5 kept whole — one weapon, one art, reciprocity pinned):
+`red_thread` (arx channeled blood beam, 3 beats of drainFrac, taught
+by **Heartspindle**, the iron distaff, anchor 34), `vigil` (arx
+channeled self-mend, four held beats of healing, taught by
+**Candlewake**, the watchman's candle staff, anchor 18 — the game's
+first sustained heal, band-exempt utility), `full_draw` (archery
+casted heavy pierce shot, the committed read distinct from the basic
+draw, taught by **Oxbow**, the two-man warbow, anchor 40; its rank IV
+quickens the draw itself), `standing_stone` (twohand casted summon —
+a kerb-slab decoy raised at a staked point, so it telegraphs on the
+planted clock like every staked cast, taught by **Kerbstone**, a maul
+hafted from a fell-barrow kerb, anchor 24 — the Hartfell tie), and
+`kept_ground` (onehand channeled nova, the doorwarden's held ring,
+taught by **Threshold**, the squared-tip blade, anchor 18). All five
+ship WITH their three rank steps (RANK_DEBT = 0), unique FX faces,
+bespoke icon plates, and VOICE'd words; grammar spread = three
+channels (beam, self_buff, nova — all new channel shapes) + two casts
+(projectile, summon). Loot placement is story-first and flood-law
+flat: crypt_arms (spindle, candle, kerb), champion_armory (oxbow,
+threshold, spindle), the skeleton champion's own purse (kerbstone,
+buried inside a kerb ring), and the reaver's coat (threshold, taken
+off a door that lost). The weapon census in equipment.test.ts was
+retiered deliberately: 214 weapons (swords 56, daggers 48, bows 41,
+staves 40, greatweapons 29).
+Remaining: the charge-up + held-note matter dialects (an FX-v5
+session, its laws read first) — then Phase 5 proving.
 Companion to docs/techniques-v2-plan.md (the ladder + THE PAYOFF BRACKET),
 docs/secret-arts-plan.md (the secret shelf), THE HELD SIGIL (ground aim),
 and THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching
