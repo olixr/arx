@@ -160,3 +160,10 @@ test('THE LIVING SOIL verbs walk the whitelist whole', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'compostadd', tx: 0, ty: 0, slot: 64 })), null);
   assert.equal(parseC2S(JSON.stringify({ t: 'compostadd', tx: 0, ty: 0 })), null);
 });
+
+test('THE ORCHARD KNIFE walks the whitelist whole', () => {
+  const prune = parseC2S(JSON.stringify({ t: 'prune', tx: 7, ty: -3 }));
+  assert.deepEqual(prune, { t: 'prune', tx: 7, ty: -3 });
+  assert.equal(parseC2S(JSON.stringify({ t: 'prune', tx: 0.5, ty: 0 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'prune', tx: 0 })), null);
+});

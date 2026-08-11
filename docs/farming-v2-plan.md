@@ -317,6 +317,87 @@ The demand side: everything the farm makes, somebody wants.
 
 ## 8. The epic ledger (filled as phases ship)
 
+### Phase 2 — THE FULL FIELD (shipped 2026-08-11, prove:farm = 20 receipts)
+
+As-built laws and dials:
+
+- **The roster**: 6 crops became 23. Staples potato 3 / onion 8 /
+  cabbage 14 / pumpkin 25 / barley 35 / redroot 48 / kingsquash 65;
+  high herbs bittercress 40 / silverleaf 55 / duskthorn 70 / dawnveil
+  85; dark bed adderstongue 45 (venom_sac) + palegill 60 (spore_dust,
+  log bed); orchard appletree 10 / bramblevine 20 (yields the wild
+  `berries` id — one berry, one economy) / plumtree 30 / mirefig 55.
+  Every xp = growMinutes x 10 (the contract held without exception).
+- **THE ORCHARD SHAPE** (`CropDef.recurring {cooldownMinutes}`): the
+  plant STANDS after harvest — re-aim is stateless math (plantedAt =
+  now, boostMs = growMs - cooldownMs), so the pure-projection law
+  survives. First pick pays def.xp, later picks pay cooldown x 10
+  (`harvestXp`); cooldown <= 0.75 x grow is contract-pinned (the
+  re-aim must land in the mid stage). Water/prune bits reset each
+  cycle; soil and mulch feed the STANDING plant and persist. Picks
+  roll seedReturn as cuttings (0..1 — the pruned wood strikes).
+  Orchard tiles are SOLID (the walkable-crops test learned the
+  may-stand exception); the owner may demolish-uproot a standing
+  recurring crop (tree gone, plot kept, spoken); annuals stay
+  harvest-only.
+- **THE PRUNE** (C2SPrune, `PRUNED_BIT` = bit 2 of the watered mask):
+  recurring crops only, once per cycle, costs nothing, pays the
+  cycle's tending tenth, +1 care point — the orchard's road to prime
+  (one waterable stage means water alone can't carry it).
+- **THE BED LAW** (`CropDef.bed`): 'log' crops plant ONLY on a
+  mushroom_log buildable (whole timber, joined the WHOLE_TIMBER
+  allowlist); no water, no soil, no mulch, no grade — all refused
+  aloud; sprout tile = MushroomLogSeeded. GRADED_PRODUCE excludes
+  log yields (no care facts, no finery).
+- **THE GROWING FRAME** (deviation: the plan's walk-in glasshouse
+  became a single-plot oiled-cloth frame — no glass supply chain
+  exists and inventing one mid-phase was refused; ledger judgment):
+  buildable ON a garden plot only (`ground: [Tile.Tilled]`), farming
+  50, board 4 + cloth 2. A framed row runs its wall clock x1.15
+  (`cropElapsed`, the one clock helper — every elapsed site now
+  routes through it) and auto-waters each stage beside the channel
+  check (no xp). Trees refuse the frame ('open sky'). `framed` rides
+  the crop row (db v26 + FarmPlotInfo.f additive) and the client
+  draws hoops + cloth live over the cached plant sprite.
+- **The consumers (law 6 held)**: 8 cooking recipes (baked potato 3
+  → kingsquash bake 65 — the crop kitchen's dead road above L15 is
+  open); herbalism's bridge past 40: greater tincture 42, silverleaf
+  salve 55 (trainer) + render_venom_sacs 45 (1 sac → 2 glands, the
+  grown line into EVERY venom oil), palegill_oil 60 (venom p4/130t/
+  600s — the potency ladder demanded a strict climb past wyrmtongue),
+  duskthorn draught 70, dawnveil elixir 85 (dark = drop, found never
+  taught). All buff dials are EXISTING vocabulary — the new dials
+  wait for THE LADEN TABLE as planned.
+- **The seed economy**: staples + apple/bramble/plum joined the
+  general store bands; **Jorel Furrowfield keeps the seed stall**
+  (shop `seed_stall` on the existing actor — no new placement) with
+  the far roots, high herbs, dark bed, and mirefig at steep prices;
+  sagewort/moonbell stay off every counter (the kinship law). NOTE
+  the deviation: the plan said high-herb seeds "never sold" — the
+  stall sells them because no foraging lane exists for the new herbs
+  yet; Ph5/6 may add found sources and re-price.
+- **Tiles 243..279** (crossed 255 — tiles are Uint16 everywhere, but
+  the crop-art model cache packed tiles into 8 bits and was widened;
+  the renderer's hardcoded 41..53 crop range became content-driven
+  `isCropTile`). Art: 8 new painter families in the crop dialect
+  (root rows, cabbage head, gourd vines, bearded barley, herb beds
+  with per-herb accents incl. dawnveil's glow, orchard trees with
+  hung fruit, bramble arches, the shelf-capped log); plant panel
+  filters seeds by BED; icons for ~45 new items via family glyphs +
+  5 new payload glyphs.
+- **Proving**: prove:farm = 20 receipts (Ph1's 13 + orchard pick /
+  prune once-only / second season / dark-bed refusals / log reagents
+  / frame auto-water). HARNESS LAWS minted: **the ground lottery is
+  per-tile — every stage gets candidate spots and a tight tp beside
+  the spot** (`stagePlanting`), a trench is never dug under the
+  builder's own boots, and **a stale rig on the port answers with
+  yesterday's content** — `kill %1` in a fresh shell kills nothing;
+  lsof the port before believing a "listening" line.
+- **Deferred**: buff-food wave and herbalism's full 41-99 ladder
+  (Ph5); mushroom-log art on the editor palette is the world painter
+  (no bespoke ghost); orchard fruit has no per-species tree bark
+  dialect yet (one cultivated-tree voice, three crowns).
+
 ### Phase 1 — THE LIVING SOIL (shipped 2026-08-11, prove:farm = 13 receipts)
 
 As-built laws and dials:

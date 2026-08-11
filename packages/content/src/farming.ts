@@ -29,9 +29,13 @@ export function gradedId(base: string, grade: Grade): string {
   return `${base}${GRADE_SUFFIX[grade]}`;
 }
 
-/** Every base produce id that grows graded variants (the crop yields). */
+/**
+ * Every base produce id that grows graded variants (the tilled-bed
+ * crop yields). Log-bed crops are excluded by law — the dark bed
+ * earns no care facts, so its reagents never wear a grade.
+ */
 export const GRADED_PRODUCE: ReadonlySet<string> = new Set(
-  [...CROPS.values()].map((d: CropDef) => d.yield.item),
+  [...CROPS.values()].filter((d: CropDef) => d.bed !== 'log').map((d: CropDef) => d.yield.item),
 );
 
 /**
@@ -62,18 +66,23 @@ export function wateringsOf(wateredMask: number): number {
 /**
  * THE CARE FOLD — the one place a harvest's grade is decided.
  *
- * Care score = waterings (0..2) + soil tier (0..2) + mulch (0..1).
- * Prime wants 4, fine wants 2, and there is deliberately more than
- * one road to each: rich soil and a watered life; enriched soil,
- * water, and a mulch blanket; a well-run irrigation line over rich
- * ground. Missing one care never locks the top out.
+ * Care score = waterings (0..2) + soil tier (0..2) + mulch (0..1)
+ * + prune (0..1, recurring crops only — Phase 2). Prime wants 4,
+ * fine wants 2, and there is deliberately more than one road to
+ * each: rich soil and a watered life; enriched soil, water, and a
+ * mulch blanket; a pruned orchard over fed ground. An orchard cycle
+ * can only earn ONE watering (the mid stage is its whole life), so
+ * the prune point is what keeps prime reachable there.
  */
-export function gradeFor(waterings: number, soil: number, mulched: number): Grade {
-  const score = waterings + soil + (mulched ? 1 : 0);
+export function gradeFor(waterings: number, soil: number, mulched: number, pruned = 0): Grade {
+  const score = waterings + soil + (mulched ? 1 : 0) + (pruned ? 1 : 0);
   if (score >= 4) return 2;
   if (score >= 2) return 1;
   return 0;
 }
+
+/** The watered-mask bit that records a cycle's prune (bits 0/1 = water). */
+export const PRUNED_BIT = 4;
 
 /** Plant fibre laid per mulching. */
 export const MULCH_FIBRE_COST = 2;

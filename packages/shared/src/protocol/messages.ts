@@ -265,6 +265,17 @@ export interface C2SMulch {
 }
 
 /**
+ * THE FULL FIELD: cut a recurring crop's deadwood mid-cycle. Costs
+ * nothing, pays tending XP, and counts one care point toward the
+ * cycle's grade — once per cycle behind its own bit.
+ */
+export interface C2SPrune {
+  t: 'prune';
+  tx: number;
+  ty: number;
+}
+
+/**
  * Feed one pack slot's item into a compost bin. Slot-addressed (the
  * instance-addressing law); the server re-proves the bin tile, the
  * item's compostable worth, and the bin's idle state at the door.
@@ -291,6 +302,8 @@ export interface FarmPlotInfo {
   soil: number;
   /** 1 when mulched. */
   m: number;
+  /** 1 when the row grows under a growing frame (Phase 2, additive). */
+  f?: number;
 }
 
 export interface FarmBinInfo {
@@ -567,6 +580,7 @@ export type C2SMessage =
   | C2SPlant
   | C2SFertilize
   | C2SMulch
+  | C2SPrune
   | C2SCompostAdd
   | C2SInteractNpc
   | C2SPetName
@@ -1879,6 +1893,11 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
       if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
       return { t: 'mulch', tx: msg.tx, ty: msg.ty };
+    }
+    case 'prune': {
+      if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
+      if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
+      return { t: 'prune', tx: msg.tx, ty: msg.ty };
     }
     case 'compostadd': {
       if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;

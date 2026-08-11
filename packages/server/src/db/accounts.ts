@@ -1114,11 +1114,13 @@ export class AccountStore {
       owner: number;
       soil: number;
       mulched: number;
+      framed: number;
+      cycles: number;
     }>
   > {
     return this.db.query(
       'SELECT tx, ty, crop, planted_at AS "plantedAt", boost_ms AS "boostMs", watered, ' +
-        'owner_character_id AS owner, soil, mulched FROM crops',
+        'owner_character_id AS owner, soil, mulched, framed, cycles FROM crops',
     ) as ReturnType<AccountStore['loadCrops']>;
   }
 
@@ -1132,15 +1134,18 @@ export class AccountStore {
     owner: number,
     soil: number,
     mulched: number,
+    framed: number,
+    cycles: number,
   ): void {
     this.db.fire(
-      'INSERT INTO crops (tx, ty, crop, planted_at, boost_ms, watered, owner_character_id, soil, mulched) ' +
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
+      'INSERT INTO crops (tx, ty, crop, planted_at, boost_ms, watered, owner_character_id, soil, mulched, framed, cycles) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
         'ON CONFLICT (tx, ty) DO UPDATE SET crop = excluded.crop, ' +
         'planted_at = excluded.planted_at, boost_ms = excluded.boost_ms, ' +
         'watered = excluded.watered, owner_character_id = excluded.owner_character_id, ' +
-        'soil = excluded.soil, mulched = excluded.mulched',
-      [tx, ty, crop, plantedAt, boostMs, watered, owner, soil, mulched],
+        'soil = excluded.soil, mulched = excluded.mulched, ' +
+        'framed = excluded.framed, cycles = excluded.cycles',
+      [tx, ty, crop, plantedAt, boostMs, watered, owner, soil, mulched, framed, cycles],
     );
   }
 

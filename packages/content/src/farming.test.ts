@@ -48,6 +48,8 @@ test('wateringsOf counts exactly the two waterable stage bits', () => {
 
 test('every crop yield generates fine and prime defs with grown value', () => {
   for (const crop of CROPS.values()) {
+    // The dark bed earns no care facts — its reagents never grade.
+    if (crop.bed === 'log') continue;
     const base = itemDef(crop.yield.item);
     assert.ok(base, `${crop.yield.item} has a def`);
     for (const grade of [1, 2] as const) {
@@ -120,6 +122,20 @@ test('THE LIVING SOIL buildables stand in the registry with their skills', () =>
   assert.ok(channel);
   assert.equal(channel.skill, 'farming');
   assert.equal(channel.cat, 'foundation');
+});
+
+test('THE ORCHARD SHAPE: recurring cooldowns fit inside the mid stage', () => {
+  // The re-aim lands at growMs - cooldownMs, which must sit at or
+  // past the mid boundary (0.25 x grow) or the standing tree would
+  // wrongly fall back to a bare sprout. cooldown <= 0.75 x grow.
+  for (const crop of CROPS.values()) {
+    if (!crop.recurring) continue;
+    assert.ok(
+      crop.recurring.cooldownMinutes <= crop.growMinutes * 0.75,
+      `${crop.id} cooldown ${crop.recurring.cooldownMinutes} exceeds mid-stage window`,
+    );
+    assert.ok(crop.recurring.cooldownMinutes >= 1, `${crop.id} cooldown must be whole minutes`);
+  }
 });
 
 test('graded produce never leaks into GRADED_PRODUCE as its own base', () => {

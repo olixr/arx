@@ -217,7 +217,7 @@ export class StationPanels {
   /** What the open maker screen is showing — refreshOpen re-renders it. */
   private showing:
     | { kind: 'craft'; station: StationType | null; skills: SkillXp; known: ReadonlySet<string>; sel: string | null }
-    | { kind: 'plant'; tx: number; ty: number; skills: SkillXp; sel: string | null }
+    | { kind: 'plant'; tx: number; ty: number; skills: SkillXp; sel: string | null; bed: 'tilled' | 'frame' | 'log' }
     | { kind: 'compost'; tx: number; ty: number; sel: string | null }
     | { kind: 'build'; skills: SkillXp; sel: string | null }
     | null = null;
@@ -723,13 +723,16 @@ export class StationPanels {
     inventory: InvSlot[],
     skills: SkillXp,
     at?: { tx: number; ty: number },
+    bed: 'tilled' | 'frame' | 'log' = 'tilled',
   ): void {
     void inventory; // counts come live from getInventory now
     this.closeAll();
     this.anchor = at ? { x: at.tx + 0.5, y: at.ty + 0.5 } : { x: tx + 0.5, y: ty + 0.5 };
-    this.showing = { kind: 'plant', tx, ty, skills, sel: null };
-    this.dressCraft('Planting', itemIconUrl('carrot', 34), '#7ac46a',
-      'The furrow is cut. Choose what grows in it.');
+    this.showing = { kind: 'plant', tx, ty, skills, sel: null, bed };
+    this.dressCraft('Planting', itemIconUrl(bed === 'log' ? 'palegill_spores' : 'carrot', 34), '#7ac46a',
+      bed === 'log'
+        ? 'The log lies in shade. Choose what haunts it.'
+        : 'The furrow is cut. Choose what grows in it.');
     // Unhide before the render — the seed ledger's first measure must
     // see an honest height (same law as openCraft).
     this.craftPanel.classList.remove('hidden');
@@ -842,17 +845,29 @@ export class StationPanels {
     this.craftDetail.innerHTML = '';
     const level = levelForXp(skills.farming ?? 0);
 
-    // Tally the seed pouches in the pack.
+    // Tally the seed pouches in the pack — the BED decides which
+    // pouches answer: spores for a log, annuals for a frame (a tree
+    // wants open sky), everything tilled for the open plot.
+    const bedTakes = (seed: string): boolean => {
+      const crop = CROP_BY_SEED.get(seed);
+      if (showing.bed === 'log') return crop?.bed === 'log';
+      if (crop?.bed === 'log') return false;
+      if (showing.bed === 'frame') return crop !== undefined && crop.recurring === undefined;
+      return crop !== undefined || GROWTH_SEEDS.has(seed);
+    };
     const held = new Map<string, number>();
     for (const slot of this.getInventory()) {
-      if (slot && (CROP_BY_SEED.has(slot.item) || GROWTH_SEEDS.has(slot.item))) {
+      if (slot && bedTakes(slot.item)) {
         held.set(slot.item, (held.get(slot.item) ?? 0) + slot.qty);
       }
     }
     if (held.size === 0) {
       const empty = document.createElement('div');
       empty.className = 'make-empty';
-      empty.textContent = 'No seeds in your pack. Buy some at the shop, or forage wild herbs.';
+      empty.textContent =
+        showing.bed === 'log'
+          ? 'No spores in your pack. Jorel keeps them, out in the fields.'
+          : 'No seeds in your pack. Buy some at the shop, or forage wild herbs.';
       this.craftList.appendChild(empty);
       return;
     }

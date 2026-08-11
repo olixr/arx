@@ -420,6 +420,58 @@ export enum Tile {
    * trades the lesson for the convenience, by law.
    */
   IrrigationChannel = 242,
+  // THE FULL FIELD (farming v2 Phase 2) — the crop wave. Mid/Ripe
+  // pairs like the founding six; the shared CropSprout still opens
+  // every tilled-bed planting. Walkable field crops, SOLID orchard
+  // trees (a trunk is a body), and the log/frame beds at the end.
+  PotatoMid = 243,
+  PotatoRipe = 244,
+  OnionMid = 245,
+  OnionRipe = 246,
+  CabbageMid = 247,
+  CabbageRipe = 248,
+  PumpkinMid = 249,
+  PumpkinRipe = 250,
+  BarleyMid = 251,
+  BarleyRipe = 252,
+  RedrootMid = 253,
+  RedrootRipe = 254,
+  KingsquashMid = 255,
+  KingsquashRipe = 256,
+  BittercressMid = 257,
+  BittercressRipe = 258,
+  SilverleafMid = 259,
+  SilverleafRipe = 260,
+  DuskthornMid = 261,
+  DuskthornRipe = 262,
+  DawnveilMid = 263,
+  DawnveilRipe = 264,
+  AdderstongueMid = 265,
+  AdderstongueRipe = 266,
+  AppleTreeMid = 267,
+  AppleTreeRipe = 268,
+  BrambleMid = 269,
+  BrambleRipe = 270,
+  PlumTreeMid = 271,
+  PlumTreeRipe = 272,
+  MirefigMid = 273,
+  MirefigRipe = 274,
+  /**
+   * A felled hardwood log laid for shade culture. Spores go in where
+   * seeds would; no water, no soil, no grade — the dark bed keeps
+   * its own counsel. Solid (knee-high timber).
+   */
+  MushroomLog = 275,
+  /** A spored log, mycelium veining the bark — the log's sprout. */
+  MushroomLogSeeded = 276,
+  PalegillMid = 277,
+  PalegillRipe = 278,
+  /**
+   * THE GROWING FRAME: a tilled bed under an oiled-cloth frame —
+   * always watered, a touch faster, the cottager's glasshouse.
+   * Builds ON a garden plot and hands the plot back when torn down.
+   */
+  GrowingFrame = 279,
 }
 
 export enum Detail {
@@ -769,6 +821,43 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.CompostBin]: { name: 'compost bin', solid: true, color: '#6e5433', raised: true, topColor: '#4a3a28' },
   [Tile.Well]: { name: 'well', solid: true, color: '#6e6a75', raised: true, topColor: '#827e8a' },
   [Tile.IrrigationChannel]: { name: 'irrigation channel', solid: false, color: '#7a5c3c', variants: ['#735739'] },
+  [Tile.PotatoMid]: { name: 'potato plants', solid: false, color: '#654a30' },
+  [Tile.PotatoRipe]: { name: 'ripe potatoes', solid: false, color: '#654a30' },
+  [Tile.OnionMid]: { name: 'onion shoots', solid: false, color: '#654a30' },
+  [Tile.OnionRipe]: { name: 'ripe onions', solid: false, color: '#654a30' },
+  [Tile.CabbageMid]: { name: 'young cabbage', solid: false, color: '#654a30' },
+  [Tile.CabbageRipe]: { name: 'ripe cabbage', solid: false, color: '#654a30' },
+  [Tile.PumpkinMid]: { name: 'pumpkin vine', solid: false, color: '#654a30' },
+  [Tile.PumpkinRipe]: { name: 'ripe pumpkin', solid: false, color: '#654a30' },
+  [Tile.BarleyMid]: { name: 'green barley', solid: false, color: '#654a30' },
+  [Tile.BarleyRipe]: { name: 'ripe barley', solid: false, color: '#654a30' },
+  [Tile.RedrootMid]: { name: 'redroot plants', solid: false, color: '#654a30' },
+  [Tile.RedrootRipe]: { name: 'ripe redroot', solid: false, color: '#654a30' },
+  [Tile.KingsquashMid]: { name: 'kingsquash vine', solid: false, color: '#654a30' },
+  [Tile.KingsquashRipe]: { name: 'ripe kingsquash', solid: false, color: '#654a30' },
+  [Tile.BittercressMid]: { name: 'young bittercress', solid: false, color: '#654a30' },
+  [Tile.BittercressRipe]: { name: 'ripe bittercress', solid: false, color: '#654a30' },
+  [Tile.SilverleafMid]: { name: 'young silverleaf', solid: false, color: '#654a30' },
+  [Tile.SilverleafRipe]: { name: 'ripe silverleaf', solid: false, color: '#654a30' },
+  [Tile.DuskthornMid]: { name: 'young duskthorn', solid: false, color: '#654a30' },
+  [Tile.DuskthornRipe]: { name: 'ripe duskthorn', solid: false, color: '#654a30' },
+  [Tile.DawnveilMid]: { name: 'young dawnveil', solid: false, color: '#654a30' },
+  [Tile.DawnveilRipe]: { name: 'ripe dawnveil', solid: false, color: '#654a30' },
+  [Tile.AdderstongueMid]: { name: 'young adderstongue', solid: false, color: '#654a30' },
+  [Tile.AdderstongueRipe]: { name: 'ripe adderstongue', solid: false, color: '#654a30' },
+  [Tile.AppleTreeMid]: { name: 'young apple tree', solid: true, color: '#654a30', raised: true, topColor: '#4f7c35' },
+  [Tile.AppleTreeRipe]: { name: 'apple tree', solid: true, color: '#654a30', raised: true, topColor: '#4f7c35' },
+  [Tile.BrambleMid]: { name: 'bramble canes', solid: false, color: '#654a30' },
+  [Tile.BrambleRipe]: { name: 'ripe bramblevine', solid: false, color: '#654a30' },
+  [Tile.PlumTreeMid]: { name: 'young plum tree', solid: true, color: '#654a30', raised: true, topColor: '#4f7c35' },
+  [Tile.PlumTreeRipe]: { name: 'plum tree', solid: true, color: '#654a30', raised: true, topColor: '#446a3a' },
+  [Tile.MirefigMid]: { name: 'young mirefig', solid: true, color: '#654a30', raised: true, topColor: '#5a6b3a' },
+  [Tile.MirefigRipe]: { name: 'mirefig tree', solid: true, color: '#654a30', raised: true, topColor: '#5a6b3a' },
+  [Tile.MushroomLog]: { name: 'mushroom log', solid: true, color: '#5f4426', raised: true, topColor: '#7d5a2e' },
+  [Tile.MushroomLogSeeded]: { name: 'spored log', solid: true, color: '#5f4426', raised: true, topColor: '#8d867c' },
+  [Tile.PalegillMid]: { name: 'budding palegill', solid: true, color: '#5f4426', raised: true, topColor: '#c9c2b4' },
+  [Tile.PalegillRipe]: { name: 'ripe palegill', solid: true, color: '#5f4426', raised: true, topColor: '#d8d2c4' },
+  [Tile.GrowingFrame]: { name: 'growing frame', solid: false, color: '#6b4f33', variants: ['#654a30'] },
   [Tile.PikeHole]: { name: 'pike hole', solid: true, color: '#39679c', variants: ['#366293'] },
   [Tile.EelRun]: { name: 'eel run', solid: true, color: '#31578c', variants: ['#2e5284'] },
   [Tile.SalmonRun]: { name: 'salmon run', solid: true, color: '#457bbd', variants: ['#4174b3'] },

@@ -50,8 +50,8 @@ import {
   type Vec2,
   isFishingTile,
 } from '@arx/shared';
-import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@arx/content';
-import { farmBins, predictedGrade } from '../game/farmCare.js';
+import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, isCropTile, itemDef, npcDef, npcHitHeight } from '@arx/content';
+import { farmBins, farmPlots, predictedGrade } from '../game/farmCare.js';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
 import {
@@ -5642,8 +5642,9 @@ export class Renderer {
         }
         const def = tileDef(ground);
         // Crops are walkable flat ground, but the PLANT standing on it
-        // is a y-sorted object you pass behind.
-        const isCrop = ground >= Tile.CropSprout && ground <= Tile.MoonbellRipe;
+        // is a y-sorted object you pass behind. (Content decides what
+        // a crop IS — Phase 2 grew the roster far past the old range.)
+        const isCrop = isCropTile(ground as Tile);
         if (!def.raised && ground !== Tile.Stump && !isCrop) continue;
         // Run-merging furniture rings as one whole-component unit.
         if (
@@ -14058,6 +14059,69 @@ export class Renderer {
     ctx.restore();
   }
 
+  /**
+   * THE GROWING FRAME's body: three bent withy hoops over the bed, a
+   * ridge lath, and the oiled cloth — rolled to one side on a bare
+   * frame, drawn as a low translucent skirt over a planted one (the
+   * plant shows through; the cloth is the promise of warmth, never a
+   * curtain over the art).
+   */
+  private drawGrowingFrame(bx: number, gy: number, h: number, planted: boolean): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const half = s * 0.42;
+    const top = s * 0.52;
+    ctx.strokeStyle = '#8a6234';
+    ctx.lineWidth = Math.max(1.4, s * 0.035);
+    for (const u of [-0.85, 0, 0.85]) {
+      ctx.beginPath();
+      ctx.arc(bx + u * half * 0.8, gy, half * 0.55, Math.PI, 0);
+      ctx.stroke();
+    }
+    // Ridge lath along the hoop crowns, sun on its top edge.
+    ctx.beginPath();
+    ctx.moveTo(bx - half * 0.85, gy - half * 0.55);
+    ctx.lineTo(bx + half * 0.85, gy - half * 0.55);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(214, 175, 122, 0.55)';
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    ctx.beginPath();
+    ctx.moveTo(bx - half * 0.8, gy - half * 0.56 - s * 0.01);
+    ctx.lineTo(bx + half * 0.8, gy - half * 0.56 - s * 0.01);
+    ctx.stroke();
+    if (planted) {
+      // The cloth skirt: a low translucent band on the near flank.
+      ctx.fillStyle = 'rgba(238, 232, 216, 0.28)';
+      ctx.beginPath();
+      ctx.moveTo(bx - half * 0.95, gy);
+      ctx.quadraticCurveTo(bx, gy - top * 0.34, bx + half * 0.95, gy);
+      ctx.lineTo(bx + half * 0.9, gy + s * 0.06);
+      ctx.lineTo(bx - half * 0.9, gy + s * 0.06);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Rolled cloth resting along the west foot, tie cords dark.
+      ctx.fillStyle = '#e6dfcc';
+      ctx.beginPath();
+      ctx.roundRect(bx - half * 0.95, gy - s * 0.07, half * 0.7, s * 0.09, s * 0.04);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+      ctx.lineWidth = Math.max(1, s * 0.015);
+      ctx.stroke();
+      ctx.strokeStyle = '#6e5433';
+      for (const u of [0.25, 0.6]) {
+        ctx.beginPath();
+        ctx.moveTo(bx - half * 0.95 + u * half * 0.7, gy - s * 0.07);
+        ctx.lineTo(bx - half * 0.95 + u * half * 0.7, gy + s * 0.02);
+        ctx.stroke();
+      }
+    }
+    // Stake feet pin the hoops (h deals which side gets the wobble).
+    ctx.fillStyle = '#5f4426';
+    ctx.fillRect(bx - half * 0.85 - s * 0.02, gy - s * 0.02, s * 0.04, s * 0.06);
+    ctx.fillRect(bx + half * 0.85 - s * 0.02 + ((h & 1) ? s * 0.01 : 0), gy - s * 0.02, s * 0.04, s * 0.06);
+  }
+
   /** A four-point star twinkle - the "this is mineable" beacon. */
   private sparkle(x: number, y: number, r: number, alpha: number, color: string): void {
     if (this.bakingMask) return;
@@ -15799,6 +15863,11 @@ export class Renderer {
       sp.cw * k,
       sp.ch * k,
     );
+    // THE GROWING FRAME: a framed row wears its hoops over the plant
+    // (the cloth is over the crop — that is the point of it). Live
+    // over the blit; the sprite cache never learns about frames.
+    const care = farmPlots.get(`${tx},${ty}`);
+    if (care?.f) this.drawGrowingFrame(bx, by + syT * 0.3, h, true);
     // THE CARE FOLD's beacon: a ripe crop that has EARNED a grade
     // wears an extra twinkle over the cached sprite — gold and eager
     // for prime, a single quiet silver wink for fine. Live math over
@@ -21415,12 +21484,61 @@ export class Renderer {
       case Tile.CottonMid:
       case Tile.CottonRipe:
       case Tile.MoonbellMid:
-      case Tile.MoonbellRipe: {
+      case Tile.MoonbellRipe:
+      // THE FULL FIELD (Phase 2): the crop wave rides the same cached
+      // flora path — staples and herbs walk-through, orchard trees and
+      // the log beds stand solid (TILE_DEFS carries the collision).
+      case Tile.PotatoMid:
+      case Tile.PotatoRipe:
+      case Tile.OnionMid:
+      case Tile.OnionRipe:
+      case Tile.CabbageMid:
+      case Tile.CabbageRipe:
+      case Tile.PumpkinMid:
+      case Tile.PumpkinRipe:
+      case Tile.BarleyMid:
+      case Tile.BarleyRipe:
+      case Tile.RedrootMid:
+      case Tile.RedrootRipe:
+      case Tile.KingsquashMid:
+      case Tile.KingsquashRipe:
+      case Tile.BittercressMid:
+      case Tile.BittercressRipe:
+      case Tile.SilverleafMid:
+      case Tile.SilverleafRipe:
+      case Tile.DuskthornMid:
+      case Tile.DuskthornRipe:
+      case Tile.DawnveilMid:
+      case Tile.DawnveilRipe:
+      case Tile.AdderstongueMid:
+      case Tile.AdderstongueRipe:
+      case Tile.AppleTreeMid:
+      case Tile.AppleTreeRipe:
+      case Tile.BrambleMid:
+      case Tile.BrambleRipe:
+      case Tile.PlumTreeMid:
+      case Tile.PlumTreeRipe:
+      case Tile.MirefigMid:
+      case Tile.MirefigRipe:
+      case Tile.MushroomLogSeeded:
+      case Tile.PalegillMid:
+      case Tile.PalegillRipe:
+      case Tile.GrowingFrame: {
         // Farm crops: walk-through rows, y-sorted so you wade behind
         // the tall ripe ones. Same cached-sprite path as wild flora —
         // outline ring baked in, real silhouette shadows (sprouts are
         // too low to bother casting one).
         const syT = s * this.camera.yScale;
+        if (tile === Tile.GrowingFrame) {
+          // The bare frame: hoops and rolled cloth waiting on a
+          // planting (a planted frame draws its hoops over the crop
+          // in drawFlora, off the care mirror's framed fact).
+          return {
+            sortY: ty + 0.7,
+            drawShadow: undefined,
+            draw: () => this.drawGrowingFrame(p.x, p.y + syT * 0.3, h, false),
+          };
+        }
         return {
           sortY: ty + 0.75,
           drawShadow:

@@ -462,7 +462,13 @@ test('crops: seeds, yields, and stage tiles all resolve', () => {
     for (const stage of [1, 2] as const) {
       const tile = tileForStage(crop, stage);
       assert.ok(TILE_DEFS[tile], `${id} stage ${stage} tile has no def`);
-      assert.equal(TILE_DEFS[tile].solid, false, `${id} crop tiles must be walkable`);
+      // Walk through your field — EXCEPT where a body honestly
+      // stands: a recurring crop is a tree or standing cane, and a
+      // log bed is knee-high timber (THE FULL FIELD's amendment).
+      const mayStand = crop.recurring !== undefined || crop.bed === 'log';
+      if (!mayStand) {
+        assert.equal(TILE_DEFS[tile].solid, false, `${id} crop tiles must be walkable`);
+      }
       assert.deepEqual(CROP_TILES.get(tile), { crop, stage }, `${id} tile lookup broken`);
     }
   }
@@ -713,6 +719,9 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
     'signpost',
     // THE PORCH: posts are driven whole, never sawn.
     'timber_post',
+    // THE FULL FIELD: the shade bed IS a whole log — sawing it would
+    // saw away the point.
+    'mushroom_log',
   ]);
   for (const b of BUILDABLES.values()) {
     if (b.materials.some((m) => m.item === 'log' || m.item === 'oak_log')) {

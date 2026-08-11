@@ -2153,10 +2153,14 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       stationPanels.openShop('general_store', target);
       panels.showInventory();
       break;
-    case 'plot':
+    case 'plot': {
       closeAllUi();
-      stationPanels.openPlant(target.tx, target.ty, game.inventory, game.skills, target);
+      const plotGround = game.world.groundAt(target.tx, target.ty);
+      const bed =
+        plotGround === Tile.MushroomLog ? 'log' : plotGround === Tile.GrowingFrame ? 'frame' : 'tilled';
+      stationPanels.openPlant(target.tx, target.ty, game.inventory, game.skills, target, bed);
       break;
+    }
     case 'crop': {
       // THE TENDING HAND: the client aims the verb the prompt showed
       // (water and harvest still ride the plain interact — the server
@@ -2164,6 +2168,7 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       const verb = game.cropVerb(target.tx, target.ty);
       if (verb === 'Fertilize') game.fertilize(target.tx, target.ty);
       else if (verb === 'Mulch') game.mulch(target.tx, target.ty);
+      else if (verb === 'Prune') game.prune(target.tx, target.ty);
       else game.interact(target.tx, target.ty);
       break;
     }

@@ -142,6 +142,9 @@ import {
   gradeFor,
   gradedId,
   wateringsOf,
+  bedTileFor,
+  harvestXp,
+  PRUNED_BIT,
   compostWorthOf,
   COMPOST_BATCH_WORTH,
   COMPOST_MINUTES,
@@ -669,6 +672,10 @@ interface CropState {
   soil: number;
   /** 1 once mulched (a single blanket per planting). */
   mulched: number;
+  /** THE FULL FIELD: 1 when grown under a growing frame. */
+  framed: number;
+  /** Recurring crops: harvests taken (0 = still on first growth). */
+  cycles: number;
 }
 
 /**
@@ -2276,14 +2283,15 @@ export class GameServer {
       owner: number;
       soil: number;
       mulched: number;
+      framed: number;
+      cycles: number;
     }>,
   ): void {
     const now = Date.now();
     for (const row of rows) {
       const def = CROPS.get(row.crop);
       if (!def) continue; // a removed crop id — let the row rot
-      const stage = stageForElapsed(def, now - row.plantedAt + row.boostMs);
-      this.crops.set(`${row.tx},${row.ty}`, {
+      const state: CropState = {
         def,
         tx: row.tx,
         ty: row.ty,
@@ -2291,12 +2299,26 @@ export class GameServer {
         boostMs: row.boostMs,
         watered: row.watered,
         owner: row.owner,
-        lastStage: stage,
+        lastStage: 0,
         soil: row.soil,
         mulched: row.mulched,
-      });
+        framed: row.framed,
+        cycles: row.cycles,
+      };
+      const stage = stageForElapsed(def, this.cropElapsed(state, now));
+      state.lastStage = stage;
+      this.crops.set(`${row.tx},${row.ty}`, state);
       this.world.registerCropTile(row.tx, row.ty, tileForStage(def, stage));
     }
+  }
+
+  /**
+   * THE ONE CLOCK for a crop row: wall time (a framed row's runs 15%
+   * fast — the frame's warmth) plus every banked watering credit.
+   */
+  private cropElapsed(state: CropState, now: number): number {
+    const wall = now - state.plantedAt;
+    return (state.framed ? Math.round(wall * 1.15) : wall) + state.boostMs;
   }
 
   /** THE LIVING SOIL: compost bins by "tx,ty". */
@@ -3197,6 +3219,13 @@ export class GameServer {
     // THE DRAWN BREATH breaks clean on disconnect — no unpiloted
     // wind-up fires into the reconnect grace window.
     this.cancelCasting(eid, player);
+    // THE HELD NOTE breaks clean too (Phase 5's proving caught this):
+    // the grace window freezes all ticking, so a held channel would
+    // otherwise RESUME barless into the reconnected client and pulse
+    // on with no bar to read. The note forfeits with its singer;
+    // workaday actions (gather, craft) keep their place as they
+    // always have.
+    if (player.action?.kind === 'channel') this.cancelAction(eid, player, 'cancelled');
     // No unpiloted invisible bodies during the reconnect grace window.
     player.sneaking = false;
     if (player.hidden) this.setHidden(eid, player, false);
@@ -4485,7 +4514,7 @@ export class GameServer {
       return;
     }
     const now = Date.now();
-    const effective = now - state.plantedAt + state.boostMs;
+    const effective = this.cropElapsed(state, now);
     const stage = stageForElapsed(state.def, effective);
 
     if (stage === 2) {
@@ -4556,6 +4585,8 @@ export class GameServer {
       state.owner,
       state.soil,
       state.mulched,
+      state.framed,
+      state.cycles,
     );
   }
 
@@ -4567,6 +4598,7 @@ export class GameServer {
       w: state.watered,
       soil: state.soil,
       m: state.mulched,
+      f: state.framed,
     };
     for (const s of this.sessions) s.sendJson({ t: 'farm', plots: [info] });
   }
@@ -4585,8 +4617,8 @@ export class GameServer {
   /** The whole farm's care facts, for a fresh session. */
   private sendFarm(session: Session): void {
     const plots = [...this.crops.values()]
-      .filter((c) => c.watered !== 0 || c.soil !== 0 || c.mulched !== 0)
-      .map((c) => ({ tx: c.tx, ty: c.ty, w: c.watered, soil: c.soil, m: c.mulched }));
+      .filter((c) => c.watered !== 0 || c.soil !== 0 || c.mulched !== 0 || c.framed !== 0)
+      .map((c) => ({ tx: c.tx, ty: c.ty, w: c.watered, soil: c.soil, m: c.mulched, f: c.framed }));
     const bins = [...this.farmBins.values()].map((b) => ({
       tx: b.tx,
       ty: b.ty,
@@ -4606,7 +4638,9 @@ export class GameServer {
    * channel deliberately never does (the automation law).
    */
   private waterCrop(state: CropState, now: number): boolean {
-    const effective = now - state.plantedAt + state.boostMs;
+    // The dark bed drinks nothing (shade culture keeps its own law).
+    if (state.def.bed === 'log') return false;
+    const effective = this.cropElapsed(state, now);
     const stage = stageForElapsed(state.def, effective);
     if (stage === 2) return false;
     const bit = 1 << stage;
@@ -4677,7 +4711,11 @@ export class GameServer {
       }
       return;
     }
-    const stage = stageForElapsed(state.def, Date.now() - state.plantedAt + state.boostMs);
+    if (state.def.bed === 'log') {
+      sys('The log asks for shade, nothing more.');
+      return;
+    }
+    const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
     if (stage === 2) {
       sys('It has grown all it will. Harvest it.');
       return;
@@ -4725,7 +4763,11 @@ export class GameServer {
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
     const state = this.crops.get(`${tx},${ty}`);
     if (!state) return;
-    const stage = stageForElapsed(state.def, Date.now() - state.plantedAt + state.boostMs);
+    if (state.def.bed === 'log') {
+      sys('The log asks for shade, nothing more.');
+      return;
+    }
+    const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
     if (stage === 2) {
       sys('It has grown all it will. Harvest it.');
       return;
@@ -4747,6 +4789,46 @@ export class GameServer {
     this.mirrorPlot(state);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
     sys('You lay a fibre blanket around the stems.');
+  }
+
+  /**
+   * THE ORCHARD'S KNIFE: cut a recurring crop's deadwood mid-cycle.
+   * Costs nothing, pays tending XP, and banks one care point toward
+   * the cycle's grade — once per cycle behind its own mask bit.
+   */
+  prune(eid: EntityId, tx: number, ty: number): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    if (player.characterId < 0) {
+      sys('Guests cannot tend crops. Make an account!');
+      return;
+    }
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 2.2 * 2.2) return;
+    const state = this.crops.get(`${tx},${ty}`);
+    if (!state || !state.def.recurring) return;
+    const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
+    if (stage === 2) {
+      sys('Pick the fruit first. Then the knife.');
+      return;
+    }
+    if (state.watered & PRUNED_BIT) {
+      sys('The wood is already clean this season.');
+      return;
+    }
+    state.watered |= PRUNED_BIT;
+    this.grantXp(
+      eid,
+      player,
+      'farming',
+      Math.ceil(harvestXp(state.def, state.cycles) / 10),
+    );
+    this.saveCrop(state);
+    this.mirrorPlot(state);
+    sys('You cut the deadwood away. The tree breathes.');
   }
 
   /**
@@ -4870,21 +4952,37 @@ export class GameServer {
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
 
     this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-    if (this.world.groundAt(tx, ty) !== Tile.Tilled) {
-      sys('Seeds need a tilled garden plot.');
-      return;
-    }
+    const ground = this.world.groundAt(tx, ty);
     const key = `${tx},${ty}`;
     if (this.crops.has(key)) return; // someone beat you to the plot
     // THE SOWN LINE (second-growth Phase 4): tree and bush seeds skip
     // the crop rows and join the wild's own growth ledger instead.
     const species = GROWTH_SEEDS.get(seed);
     if (species !== undefined) {
+      if (ground !== Tile.Tilled) {
+        sys('Wild seeds want open tilled earth.');
+        return;
+      }
       this.plantWild(eid, player, tx, ty, seed, species, sys);
       return;
     }
     const def = CROP_BY_SEED.get(seed);
     if (!def) return;
+    // THE BED LAW (Phase 2): tilled-bed crops take a garden plot or a
+    // growing frame; the dark bed's spores take only a laid log.
+    if (def.bed === 'log') {
+      if (ground !== Tile.MushroomLog) {
+        sys('Spores want a laid mushroom log.');
+        return;
+      }
+    } else if (ground !== Tile.Tilled && ground !== Tile.GrowingFrame) {
+      sys('Seeds need a tilled garden plot.');
+      return;
+    }
+    if (def.recurring && ground === Tile.GrowingFrame) {
+      sys('A tree wants open sky, not a frame.');
+      return;
+    }
     const level = this.effectiveLevel(player, 'farming');
     if (level < def.levelReq) {
       sys(`You need farming level ${def.levelReq} to plant ${def.name.toLowerCase()}.`);
@@ -4903,11 +5001,15 @@ export class GameServer {
       lastStage: 0,
       soil: 0,
       mulched: 0,
+      framed: ground === Tile.GrowingFrame ? 1 : 0,
+      cycles: 0,
     };
+    const sproutTile = tileForStage(def, 0);
     this.crops.set(key, state);
-    this.world.registerCropTile(tx, ty, Tile.CropSprout);
+    this.world.registerCropTile(tx, ty, sproutTile);
     this.saveCrop(state);
-    this.setWorldTile(tx, ty, Tile.CropSprout);
+    this.setWorldTile(tx, ty, sproutTile);
+    if (state.framed) this.mirrorPlot(state);
     this.grantXp(eid, player, 'farming', Math.max(1, Math.ceil(def.xp / 4)));
     player.session.sendJson({ t: 'inv', slots: player.inventory });
     sys(`You plant ${def.name.toLowerCase()}. Ready in about ${def.growMinutes} min.`);
@@ -5001,9 +5103,18 @@ export class GameServer {
       style: 'farming',
     });
     // THE CARE FOLD: the grade was earned across the planting's whole
-    // life — waterings, soil, mulch — and is decided here, once,
-    // deterministically. A graded harvest is its own item id.
-    const grade = gradeFor(wateringsOf(state.watered), state.soil, state.mulched);
+    // life — waterings, soil, mulch, and (orchards) the prune — and
+    // is decided here, once, deterministically. A graded harvest is
+    // its own item id. The dark bed never grades (no care facts).
+    const grade =
+      def.bed === 'log'
+        ? 0
+        : gradeFor(
+            wateringsOf(state.watered),
+            state.soil,
+            state.mulched,
+            state.watered & PRUNED_BIT ? 1 : 0,
+          );
     giveOrDrop(grade > 0 ? gradedId(def.yield.item, grade) : def.yield.item, yieldQty);
     if (grade > 0) {
       player.session?.sendJson({
@@ -5011,6 +5122,30 @@ export class GameServer {
         channel: 'system',
         text: grade === 2 ? 'A prime harvest. The care shows.' : 'A fine harvest.',
       });
+    }
+    // THE ORCHARD SHAPE: a recurring crop stands after the pick. Pay
+    // the cycle (first pick pays the whole growth), re-aim the clock
+    // into the mid stage, reset the cycle's own care bits (water and
+    // prune re-earn; soil and mulch feed the STANDING plant), and let
+    // the world see the tree again, fruitless and patient.
+    if (def.recurring) {
+      // The pruned wood sometimes strikes as a new cutting.
+      const cuttings = roll(def.seedReturn.min, def.seedReturn.max);
+      if (cuttings > 0) giveOrDrop(def.seedItem, cuttings);
+      this.grantXp(eid, player, 'farming', harvestXp(def, state.cycles));
+      state.cycles += 1;
+      state.plantedAt = Date.now();
+      state.boostMs = growMs(def) - def.recurring.cooldownMinutes * 60_000;
+      state.watered = 0;
+      state.lastStage = 1;
+      this.crops.set(key, state);
+      this.saveCrop(state);
+      this.world.registerCropTile(action.tx, action.ty, def.midTile);
+      this.setWorldTile(action.tx, action.ty, def.midTile);
+      this.mirrorPlot(state);
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      this.cancelAction(eid, player, 'done');
+      return;
     }
     let seeds = roll(def.seedReturn.min, def.seedReturn.max);
     if (Math.random() < player.perks.seedRefundChance) seeds += 1;
@@ -5020,7 +5155,7 @@ export class GameServer {
     this.crops.delete(key);
     this.accounts.deleteCrop(action.tx, action.ty);
     this.world.unregisterCropTile(action.tx, action.ty);
-    this.setWorldTile(action.tx, action.ty, Tile.Tilled);
+    this.setWorldTile(action.tx, action.ty, bedTileFor(def, state.framed === 1));
     // The care mirror lets go of the harvested row.
     for (const s of this.sessions) {
       s.sendJson({ t: 'farm', remove: [{ tx: action.tx, ty: action.ty }] });
@@ -5036,14 +5171,19 @@ export class GameServer {
       // its own, before the stage math so the credit lands the moment
       // the channel can give it. Pays NO XP — the automation law.
       // The watered-bit gate comes first: a slaked stage never pays
-      // for the channel scan again.
+      // for the channel scan again. A framed row is ALWAYS watered
+      // (the frame's cloth holds the damp in) — same law, no scan.
       {
-        const st = stageForElapsed(state.def, now - state.plantedAt + state.boostMs);
-        if (st < 2 && !(state.watered & (1 << st)) && this.irrigatedAt(state.tx, state.ty)) {
+        const st = stageForElapsed(state.def, this.cropElapsed(state, now));
+        if (
+          st < 2 &&
+          !(state.watered & (1 << st)) &&
+          (state.framed === 1 || this.irrigatedAt(state.tx, state.ty))
+        ) {
           this.waterCrop(state, now);
         }
       }
-      const stage = stageForElapsed(state.def, now - state.plantedAt + state.boostMs);
+      const stage = stageForElapsed(state.def, this.cropElapsed(state, now));
       if (stage > state.lastStage) {
         state.lastStage = stage;
         const tile = tileForStage(state.def, stage);
@@ -6080,6 +6220,20 @@ export class GameServer {
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 3 * 3) return;
     if (!ownHanging && this.crops.has(`${tx},${ty}`)) {
+      const crop = this.crops.get(`${tx},${ty}`)!;
+      // THE ORCHARD'S END: a standing recurring crop is the one crop
+      // its owner may clear by hand — the uproot takes the tree and
+      // keeps the plot (a second swing takes the plot as ever).
+      // Annuals stay refused: harvest is their only honest exit.
+      if (crop.def.recurring && crop.owner === player.characterId) {
+        this.crops.delete(`${tx},${ty}`);
+        this.accounts.deleteCrop(tx, ty);
+        this.world.unregisterCropTile(tx, ty);
+        this.setWorldTile(tx, ty, bedTileFor(crop.def, crop.framed === 1));
+        for (const s of this.sessions) s.sendJson({ t: 'farm', remove: [{ tx, ty }] });
+        player.session.sendJson({ t: 'chat', channel: 'system', text: 'You grub the old wood out. The plot stands ready.' });
+        return;
+      }
       player.session.sendJson({ t: 'chat', channel: 'system', text: 'Harvest the crop first.' });
       return;
     }
@@ -20583,7 +20737,7 @@ export class GameServer {
       let grown = 0;
       for (const state of this.crops.values()) {
         if (pos && Math.hypot(state.tx + 0.5 - pos.x, state.ty + 0.5 - pos.y) > 20) continue;
-        const remaining = growMs(state.def) - (now - state.plantedAt + state.boostMs);
+        const remaining = growMs(state.def) - this.cropElapsed(state, now);
         if (remaining <= 0) continue;
         state.boostMs += remaining;
         this.saveCrop(state);

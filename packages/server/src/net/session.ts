@@ -372,6 +372,12 @@ export class Session {
         this.game.mulch(this.playerEid, msg.tx, msg.ty);
         return;
       }
+      case 'prune': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.prune(this.playerEid, msg.tx, msg.ty);
+        return;
+      }
       case 'compostadd': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

@@ -134,6 +134,48 @@ async function build(c: Client, buildable: string, tx: number, ty: number): Prom
   await sleep(6000);
 }
 
+/**
+ * THE GROUND LOTTERY, tamed once: raise a bed and plant into it at
+ * the first candidate spot that takes (the plant line is the proof —
+ * a refused build or bad ground never speaks it). Returns the spot.
+ */
+async function stagePlanting(
+  c: Client,
+  bed: string,
+  seed: string,
+  needle: string,
+  spots: Array<[number, number]>,
+): Promise<{ x: number; y: number }> {
+  for (const [sx, sy] of spots) {
+    // Stand hard beside the spot first: /tp lands loose (within 6),
+    // and both the build door and the plant door measure true reach.
+    let near = false;
+    for (let i = 0; i < 3 && !near; i++) {
+      await say(c, `/tp ${sx} ${sy + 1}`);
+      await sleep(300);
+      near = !!c.pos && Math.hypot(c.pos.x - (sx + 0.5), c.pos.y - (sy + 0.5)) < 2.0;
+    }
+    if (!near) continue;
+    await build(c, bed, sx, sy);
+    const mk0 = c.mark();
+    c.send({ t: 'plant', tx: sx, ty: sy, seed });
+    try {
+      await line(c, needle, mk0, `${seed} at ${sx},${sy}`);
+      return { x: sx, y: sy };
+    } catch {
+      // Refused ground — the next candidate. Say why (the spoken
+      // refusal is the diagnosis; silence means a silent door).
+      const spoken = c.msgs
+        .slice(mk0)
+        .filter((m) => m.t === 'chat' && m.channel === 'system')
+        .map((m) => m.text)
+        .slice(-2);
+      console.log(`  [stage] ${seed} at ${sx},${sy} refused: ${spoken.join(' | ') || '(silence)'}`);
+    }
+  }
+  throw new Error(`no ground took ${seed}`);
+}
+
 async function main(): Promise<void> {
   const c = new Client();
   await c.open();
@@ -284,19 +326,43 @@ async function main(): Promise<void> {
   );
 
   // ---- the well's sweep ------------------------------------------
-  // Everything beside the feet again: the well one east, the two
-  // sweep beds adjacent west so both sit inside one 3x3.
-  const fx = Math.floor(c.pos!.x);
-  const fy = Math.floor(c.pos!.y);
-  const s1 = { x: fx - 1, y: fy };
-  const s2 = { x: fx - 1, y: fy + 1 };
-  await build(c, 'well', fx + 1, fy - 1);
-  await build(c, 'garden_plot', s1.x, s1.y);
-  await build(c, 'garden_plot', s2.x, s2.y);
-  c.send({ t: 'plant', tx: s1.x, ty: s1.y, seed: 'carrot_seed' });
-  await sleep(400);
-  c.send({ t: 'plant', tx: s2.x, ty: s2.y, seed: 'carrot_seed' });
-  await sleep(400);
+  // Two proven beds inside one 3x3, then wells hammered at every
+  // candidate around them — ANY standing well within reach arms the
+  // sweep, so redundancy beats verification the wire cannot do.
+  const fx0 = Math.floor(c.pos!.x);
+  const fy0 = Math.floor(c.pos!.y);
+  const s1 = await stagePlanting(c, 'garden_plot', 'carrot_seed', 'You plant carrot', [
+    [fx0 - 1, fy0],
+    [fx0 + 3, fy0],
+    [fx0, fy0 - 3],
+    [fx0 - 3, fy0 + 2],
+  ]);
+  let s2: { x: number; y: number } | null = null;
+  for (const [dx2, dy2] of [[1, 0], [0, 1], [1, 1], [-1, 0], [0, -1]]) {
+    try {
+      s2 = await stagePlanting(c, 'garden_plot', 'carrot_seed', 'You plant carrot', [
+        [s1.x + dx2!, s1.y + dy2!],
+      ]);
+      break;
+    } catch {
+      // That neighbor refused — try the next.
+    }
+  }
+  if (!s2) throw new Error('no second sweep bed took');
+  for (const [wx2, wy2] of [
+    [s1.x + 2, s1.y - 2],
+    [s1.x - 2, s1.y - 2],
+    [s1.x + 3, s1.y + 1],
+  ]) {
+    let near = false;
+    for (let i = 0; i < 2 && !near; i++) {
+      await say(c, `/tp ${wx2} ${wy2! + 1}`);
+      await sleep(300);
+      near = !!c.pos && Math.hypot(c.pos.x - (wx2! + 0.5), c.pos.y - (wy2! + 0.5)) < 2.5;
+    }
+    if (near) await build(c, 'well', wx2!, wy2!);
+  }
+  await tp(c, s1.x, s1.y + 1);
   mk = c.mark();
   c.send({ t: 'interact', tx: s1.x, ty: s1.y });
   await line(c, 'You draw from the well', mk);
@@ -313,28 +379,180 @@ async function main(): Promise<void> {
   // A channel beside the well, a bed beside the channel, and NOBODY
   // watering: the crop beat must slake the sprout on its own (and
   // pay no one — the automation law's other half is the xp ledger,
-  // pinned by the unit tests).
-  // South lane: (fx+1, fy) is the bin's own tile — the yard is real
-  // and the trench digs around it, exactly like a player would.
-  await build(c, 'irrigation_channel', fx, fy + 1);
-  const a1 = { x: fx, y: fy + 2 };
-  await build(c, 'garden_plot', a1.x, a1.y);
-  // Stand ON the channel to plant the bed below it — walkable by
-  // law (you step over a trench), and standing there proves it.
-  for (let i = 0; i < 4; i++) {
-    await say(c, `/tp ${fx} ${fy + 1}`);
-    await sleep(300);
-    if (c.pos && Math.hypot(c.pos.x - (a1.x + 0.5), c.pos.y - (a1.y + 0.5)) < 2.0) break;
+  // pinned by the unit tests). Anchored off the proven sweep bed —
+  // the wells above serve every trench candidate. The probe is
+  // END-TO-END per cluster: a trench the wire cannot verify is
+  // proved by the bed it waters, or the next cluster tries.
+  await say(c, '/give carrot_seed 4');
+  const fx = s1.x;
+  const fy = s1.y + 1;
+  let fedBed: { x: number; y: number; w: number } | null = null;
+  clusters: for (const [cdx, cdy] of [[0, 1], [1, 1], [-1, 1], [2, 0]]) {
+    const chx = fx + cdx!;
+    const chy = fy + cdy!;
+    // Stand BESIDE the trench line, never on it — a builder digs no
+    // trench under his own boots.
+    let near = false;
+    for (let i = 0; i < 2 && !near; i++) {
+      await say(c, `/tp ${chx - 1} ${chy}`);
+      await sleep(300);
+      near = !!c.pos && Math.hypot(c.pos.x - (chx + 0.5), c.pos.y - (chy + 0.5)) < 2.0;
+    }
+    if (!near) continue;
+    await build(c, 'irrigation_channel', chx, chy);
+    for (const [bdx, bdy] of [[0, 1], [1, 0], [1, 1]]) {
+      let bed: { x: number; y: number };
+      try {
+        bed = await stagePlanting(c, 'garden_plot', 'carrot_seed', 'You plant carrot', [
+          [chx + bdx!, chy + bdy!],
+        ]);
+      } catch {
+        continue;
+      }
+      await sleep(3600); // one crop beat (2s) plus margin
+      const care = c.plotCare(bed.x, bed.y);
+      if (care && (care.w & 1) === 1) {
+        fedBed = { x: bed.x, y: bed.y, w: care.w };
+        break clusters;
+      }
+      // A planted-but-dry bed means THIS trench never stood — walk
+      // on to the next cluster (the dry bed stays, harmless).
+    }
   }
-  const mkA = c.mark();
-  c.send({ t: 'plant', tx: a1.x, ty: a1.y, seed: 'carrot_seed' });
-  await line(c, 'You plant carrot', mkA, 'channel bed plant');
-  await sleep(3600); // one crop beat (2s) plus margin
-  const ac = c.plotCare(a1.x, a1.y);
-  receipt('the fed channel waters the bed itself', (ac!.w & 1) === 1, `w=${ac?.w}`);
+  receipt('the fed channel waters the bed itself', fedBed !== null, `w=${fedBed?.w}`);
+
+  // ================= THE FULL FIELD (Phase 2) =====================
+  // A fresh orchardist with a clean pack (the first farmer's slots
+  // are full of honest harvest litter — a real lesson: non-stackable
+  // produce fills 28 slots fast).
+  const oc = new Client();
+  await oc.open();
+  oc.send({ t: 'hello', v: PROTOCOL_VERSION });
+  oc.send({ t: 'register', user: `orchard_${STAMP}`, pass: 'proving123', name: `Orchard ${STAMP}` });
+  const w2 = await oc.waitFor((m) => m.t === 'welcome', 'welcome (orchardist)');
+  oc.eid = w2.eid;
+  const hb2 = setInterval(() => oc.send({ t: 'input', frame: { seq: oc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } }), 500);
+  await say(oc, '/xp farming 2000000');
+  await say(oc, '/xp construction 100000');
+  await say(oc, '/give apple_sapling 2');
+  await say(oc, '/give palegill_spores 2');
+  await say(oc, '/give log 2');
+  await say(oc, '/give board 6');
+  await say(oc, '/give cloth 2');
+  await say(oc, '/give carrot_seed 3');
+  // The orchardist hunts a workable field too (the ground lottery is
+  // real for every course) — a cheap carrot proves the neighborhood.
+  let ofx = 0;
+  let ofy = 0;
+  let orchOk = false;
+  for (const [hx, hy] of [[6, 4], [-18, 9], [22, -8], [12, 16], [-28, -14], [34, 6]]) {
+    await tp(oc, bx + hx, by + hy);
+    const fx2 = Math.floor(oc.pos!.x) + 2;
+    const fy2 = Math.floor(oc.pos!.y);
+    await build(oc, 'garden_plot', fx2, fy2);
+    const mkh = oc.mark();
+    oc.send({ t: 'plant', tx: fx2, ty: fy2, seed: 'carrot_seed' });
+    try {
+      await line(oc, 'You plant carrot', mkh, 'orchard hunt');
+      ofx = fx2;
+      ofy = fy2;
+      orchOk = true;
+      break;
+    } catch {
+      // Refused ground — walk on.
+    }
+  }
+  if (!orchOk) throw new Error('no orchard ground found');
+  await tp(oc, ofx - 1, ofy);
+
+  // ---- the orchard shape -----------------------------------------
+  const orchard = await stagePlanting(oc, 'garden_plot', 'apple_sapling', 'You plant apple tree', [
+    [ofx, ofy + 1],
+    [ofx - 1, ofy - 1],
+    [ofx - 2, ofy],
+    [ofx, ofy - 1],
+  ]);
+  const ox = orchard.x;
+  const oy = orchard.y;
+  let mko = oc.mark();
+  await say(oc, '/grow');
+  await sleep(2600);
+  const applesBefore = oc.count('apple');
+  oc.send({ t: 'interact', tx: ox, ty: oy });
+  await sleep(2500);
+  receipt('the orchard pays its first pick', oc.count('apple') > applesBefore, `apples=${oc.count('apple')}`);
+
+  // The tree STANDS: prune it mid-cycle, then pick again.
+  mko = oc.mark();
+  oc.send({ t: 'prune', tx: ox, ty: oy });
+  await line(oc, 'You cut the deadwood away', mko);
+  receipt('the knife finds standing wood (the tree survived the pick)', true);
+  mko = oc.mark();
+  oc.send({ t: 'prune', tx: ox, ty: oy });
+  await line(oc, 'The wood is already clean', mko);
+  receipt('the knife refuses a second cut aloud', true);
+  await say(oc, '/grow');
+  await sleep(2600);
+  const applesMid = oc.count('apple');
+  oc.send({ t: 'interact', tx: ox, ty: oy });
+  await sleep(2500);
+  receipt('the second season pays again', oc.count('apple') > applesMid, `apples=${oc.count('apple')}`);
+
+  // ---- the dark bed ----------------------------------------------
+  const logBed = await stagePlanting(oc, 'mushroom_log', 'palegill_spores', 'You plant palegill', [
+    [ofx - 2, ofy],
+    [ofx - 1, ofy - 1],
+    [ofx - 2, ofy - 1],
+    [ofx - 2, ofy + 1],
+  ]);
+  const lx = logBed.x;
+  const ly = logBed.y;
+  mko = oc.mark();
+  oc.send({ t: 'fertilize', tx: lx, ty: ly });
+  await line(oc, 'The log asks for shade', mko);
+  receipt('the dark bed refuses the barrow aloud', true);
+  await say(oc, '/grow');
+  await sleep(2600);
+  oc.send({ t: 'interact', tx: lx, ty: ly });
+  await sleep(2500);
+  receipt('the log pays in reagents', oc.count('spore_dust') >= 2, `dust=${oc.count('spore_dust')}`);
+
+  // ---- the growing frame -----------------------------------------
+  // The frame builds ON a plot (its one legal ground), so the stage
+  // is: plot, frame over it, then the seed into the frame.
+  let frame: { x: number; y: number } | null = null;
+  for (const [gx2, gy2] of [
+    [ofx - 1, ofy + 1],
+    [ofx - 2, ofy + 1] as [number, number],
+    [ofx, ofy + 2] as [number, number],
+  ] as Array<[number, number]>) {
+    let near = false;
+    for (let i = 0; i < 3 && !near; i++) {
+      await say(oc, `/tp ${gx2} ${gy2 + 1}`);
+      await sleep(300);
+      near = !!oc.pos && Math.hypot(oc.pos.x - (gx2 + 0.5), oc.pos.y - (gy2 + 0.5)) < 2.0;
+    }
+    if (!near) continue;
+    await build(oc, 'garden_plot', gx2, gy2);
+    await build(oc, 'growing_frame', gx2, gy2);
+    const mkF = oc.mark();
+    oc.send({ t: 'plant', tx: gx2, ty: gy2, seed: 'carrot_seed' });
+    try {
+      await line(oc, 'You plant carrot', mkF, 'frame plant');
+      frame = { x: gx2, y: gy2 };
+      break;
+    } catch {
+      // Refused ground — the next candidate.
+    }
+  }
+  if (!frame) throw new Error('no frame ground found');
+  await sleep(3600); // one crop beat: the frame waters its own
+  const fc = oc.plotCare(frame.x, frame.y);
+  receipt('the frame marks its row and waters it', fc !== null && fc.w >= 1 && (fc as any).f === 1, `w=${fc?.w} f=${(fc as any)?.f}`);
 
   clearInterval(heartbeat);
-  console.log(`\nTHE LIVING SOIL: ${passed} receipts, all honest.`);
+  clearInterval(hb2);
+  console.log(`\nTHE LIVING SOIL AND THE FULL FIELD: ${passed} receipts, all honest.`);
   process.exit(0);
 }
 

@@ -69,7 +69,7 @@ import {
   type DetailPatch,
   type Vec2,
 } from '@arx/shared';
-import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
+import { CROP_TILES, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
 import { farmBins, farmKey, farmPlots, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
 import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
@@ -1448,7 +1448,7 @@ export class ClientGame {
         // THE ONE CARE MIRROR: plots re-bake their chunk (the soil
         // shows its state); bins live-paint and need no bake.
         for (const p of msg.plots ?? []) {
-          farmPlots.set(farmKey(p.tx, p.ty), { w: p.w, soil: p.soil, m: p.m, wet: false });
+          farmPlots.set(farmKey(p.tx, p.ty), { w: p.w, soil: p.soil, m: p.m, f: p.f ?? 0, wet: false });
           refreshWet(p.tx, p.ty, this.world.groundAt(p.tx, p.ty));
           this.touchNeighbors(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
         }
@@ -1840,18 +1840,22 @@ export class ClientGame {
    * plain status touch. The prompt shows this same word, so the hand
    * always knows what it is about to do.
    */
-  cropVerb(tx: number, ty: number): 'Harvest' | 'Water' | 'Fertilize' | 'Mulch' | 'Tend' {
+  cropVerb(tx: number, ty: number): 'Harvest' | 'Water' | 'Prune' | 'Fertilize' | 'Mulch' | 'Tend' {
     const ground = this.world.groundAt(tx, ty) as Tile | undefined;
     if (ground !== undefined && MATURE_TILES.has(ground)) return 'Harvest';
     const stage = stageOfTile(ground);
     if (stage === null) return 'Tend';
-    const care = farmPlots.get(farmKey(tx, ty)) ?? { w: 0, soil: 0, m: 0, wet: false };
+    // The dark bed takes no care — the hand can only wait on it.
+    const info = ground !== undefined ? CROP_TILES.get(ground) : undefined;
+    if (info?.crop.bed === 'log' || ground === Tile.MushroomLogSeeded) return 'Tend';
+    const care = farmPlots.get(farmKey(tx, ty)) ?? { w: 0, soil: 0, m: 0, f: 0, wet: false };
     const count = (id: string): number => {
       let n = 0;
       for (const s of this.inventory) if (s && s.item === id && !s.stolen) n += s.qty;
       return n;
     };
-    if (count('watering_can') > 0 && (care.w & (1 << stage)) === 0) return 'Water';
+    if (count('watering_can') > 0 && (care.w & (1 << stage)) === 0 && !care.f) return 'Water';
+    if (info?.crop.recurring && (care.w & 4) === 0) return 'Prune';
     if (
       care.soil < SOIL_RICH &&
       ((care.soil === 0 && count('compost') > 0) || count('prime_compost') > 0)
@@ -1860,6 +1864,10 @@ export class ClientGame {
     }
     if (!care.m && count('plant_fibre') >= 2) return 'Mulch';
     return 'Tend';
+  }
+
+  prune(tx: number, ty: number): void {
+    this.conn?.send({ t: 'prune', tx, ty });
   }
 
   fertilize(tx: number, ty: number): void {
@@ -2057,7 +2065,11 @@ export class ClientGame {
     const ground = this.world.groundAt(tx, ty);
     if (ground === undefined) return null;
     if (NODES_BY_TILE.has(ground)) return { kind: 'node', tx, ty };
-    if (ground === Tile.Tilled) return { kind: 'plot', tx, ty };
+    // THE BED LAW: a garden plot, a growing frame, or a laid log all
+    // open the seed picker — the picker filters to the bed's own kind.
+    if (ground === Tile.Tilled || ground === Tile.GrowingFrame || ground === Tile.MushroomLog) {
+      return { kind: 'plot', tx, ty };
+    }
     if (isCropTile(ground)) {
       return { kind: 'crop', tx, ty, mature: MATURE_TILES.has(ground) };
     }

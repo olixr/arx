@@ -853,6 +853,16 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (tx, ty)
   );
   `,
+  // v26: THE FULL FIELD (farming v2 Phase 2) — the orchard shape and
+  // the growing frame. `framed` marks a row grown under an oiled-cloth
+  // frame (faster clock, always watered); `cycles` counts a recurring
+  // crop's harvests so the first pick pays the full growth and every
+  // later one pays its cycle. Both additive; absent reads as an
+  // ordinary open-bed annual, which is what every crop already is.
+  `
+  ALTER TABLE crops ADD COLUMN framed SMALLINT NOT NULL DEFAULT 0;
+  ALTER TABLE crops ADD COLUMN cycles INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 /**

@@ -3264,6 +3264,142 @@ const PAINTERS: Record<string, IconPainter> = {
     c.fillStyle = shade(col, 24);
     c.fillRect(0.1, 0.36, 0.8, 0.022);
   },
+  // THE FULL FIELD's payload glyphs.
+  tuber: (c, col) => {
+    // A fat lumpy potato with two eyes and a soil smudge.
+    c.fillStyle = col;
+    c.beginPath();
+    c.ellipse(0.5, 0.55, 0.3, 0.22, 0.3, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.ellipse(0.4, 0.46, 0.12, 0.07, 0.3, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = shade(col, -30);
+    c.fillRect(0.6, 0.5, 0.05, 0.04);
+    c.fillRect(0.42, 0.64, 0.045, 0.04);
+    c.fillStyle = 'rgba(87, 66, 42, 0.6)';
+    c.fillRect(0.28, 0.68, 0.1, 0.045);
+  },
+  onionbulb: (c, col) => {
+    // Round shouldered bulb, folded papery neck, one root whisker.
+    c.fillStyle = col;
+    c.beginPath();
+    c.ellipse(0.5, 0.6, 0.24, 0.26, 0, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = shade(col, -24);
+    c.lineWidth = 0.02;
+    for (const u of [-0.1, 0, 0.1]) {
+      c.beginPath();
+      c.moveTo(0.5 + u, 0.36);
+      c.quadraticCurveTo(0.5 + u * 2.2, 0.6, 0.5 + u, 0.85);
+      c.stroke();
+    }
+    poly(c, '#7a9c5e', [[0.46, 0.36], [0.5, 0.14], [0.56, 0.35]]);
+    c.fillStyle = shade(col, 26);
+    c.beginPath();
+    c.ellipse(0.42, 0.5, 0.08, 0.1, 0.2, 0, Math.PI * 2);
+    c.fill();
+  },
+  cabbagehead: (c, col) => {
+    // The layered sphere: heart bright, two wrapping leaf arcs.
+    c.fillStyle = shade(col, 30);
+    c.beginPath();
+    c.arc(0.5, 0.55, 0.28, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = col;
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.arc(0.44, 0.55, 0.24, Math.PI * 0.5, Math.PI * 1.4);
+    c.stroke();
+    c.beginPath();
+    c.arc(0.58, 0.58, 0.21, -Math.PI * 0.4, Math.PI * 0.55);
+    c.stroke();
+    c.fillStyle = shade(col, 48);
+    c.beginPath();
+    c.ellipse(0.42, 0.44, 0.09, 0.055, -0.5, 0, Math.PI * 2);
+    c.fill();
+  },
+  gourd: (c, col) => {
+    // The ribbed heavyweight with a curled stem.
+    c.fillStyle = col;
+    c.beginPath();
+    c.ellipse(0.5, 0.6, 0.3, 0.24, 0, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = shade(col, -22);
+    c.lineWidth = 0.024;
+    for (const u of [-0.16, 0, 0.16]) {
+      c.beginPath();
+      c.moveTo(0.5 + u, 0.38);
+      c.quadraticCurveTo(0.5 + u * 1.8, 0.6, 0.5 + u, 0.83);
+      c.stroke();
+    }
+    c.fillStyle = shade(col, 30);
+    c.beginPath();
+    c.ellipse(0.4, 0.5, 0.1, 0.06, -0.4, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#5f7a3d';
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(0.5, 0.37);
+    c.quadraticCurveTo(0.56, 0.28, 0.64, 0.3);
+    c.stroke();
+  },
+  fruitround: (c, col) => {
+    // One proud fruit: lit cheek, leaf flag, stem nub.
+    c.fillStyle = col;
+    c.beginPath();
+    c.arc(0.5, 0.58, 0.26, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = shade(col, 34);
+    c.beginPath();
+    c.ellipse(0.42, 0.48, 0.09, 0.06, -0.5, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#5f4426';
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.5, 0.33);
+    c.lineTo(0.52, 0.24);
+    c.stroke();
+    poly(c, '#568f47', [[0.52, 0.28], [0.66, 0.2], [0.6, 0.32]]);
+  },
+  mushlog: (c, col) => {
+    // The laid log wearing two pale caps — the build tray's promise.
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(0.12, 0.52, 0.76, 0.24, 0.08);
+    c.fill();
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.ellipse(0.88, 0.64, 0.05, 0.12, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#d8d2c4';
+    for (const [mx, r] of [[0.34, 0.09], [0.58, 0.07]] as const) {
+      c.beginPath();
+      c.ellipse(mx, 0.5, r, r * 0.6, 0, Math.PI, 0);
+      c.closePath();
+      c.fill();
+      c.fillStyle = '#c4baa8';
+    }
+  },
+  framebuild: (c, col) => {
+    // Hoops and cloth over a dug bed.
+    c.fillStyle = '#654a30';
+    c.fillRect(0.14, 0.72, 0.72, 0.12);
+    c.strokeStyle = col;
+    c.lineWidth = 0.045;
+    for (const u of [0.26, 0.5, 0.74]) {
+      c.beginPath();
+      c.arc(u, 0.72, 0.2, Math.PI, 0);
+      c.stroke();
+    }
+    c.fillStyle = 'rgba(238, 232, 216, 0.55)';
+    c.beginPath();
+    c.moveTo(0.1, 0.72);
+    c.quadraticCurveTo(0.5, 0.4, 0.9, 0.72);
+    c.closePath();
+    c.fill();
+  },
   carrot: (c, col) => {
     c.save();
     c.translate(0.5, 0.55);
@@ -5267,6 +5403,55 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   // <base>_fine / <base>_prime — see registerGradedIcons).
   compost: { icon: 'compostheap', color: '#7a5c38' },
   prime_compost: { icon: 'compostheap', color: '#4a3a28' },
+  // THE FULL FIELD: the wave's pouches, produce, bottles, and plates.
+  // Families speak family glyphs (seed pouch, herb sprig, the
+  // apothecary silhouettes); the payload crops carry their own.
+  potato_seed: { icon: 'seeds', color: '#c9a26e' },
+  onion_seed: { icon: 'seeds', color: '#d8c4a8' },
+  cabbage_seed: { icon: 'seeds', color: '#8fb083' },
+  pumpkin_seed: { icon: 'seeds', color: '#e08a3d' },
+  barley_seed: { icon: 'seeds', color: '#c9b45c' },
+  redroot_seed: { icon: 'seeds', color: '#a8383d' },
+  kingsquash_seed: { icon: 'seeds', color: '#e2d8b8' },
+  bittercress_seed: { icon: 'seeds', color: '#7a9c6e' },
+  silverleaf_seed: { icon: 'seeds', color: '#b8c4c9' },
+  duskthorn_seed: { icon: 'seeds', color: '#5e4a78' },
+  dawnveil_seed: { icon: 'seeds', color: '#e8d8a8' },
+  adderstongue_seed: { icon: 'seeds', color: '#7aa83d' },
+  palegill_spores: { icon: 'seeds', color: '#c9c2b4' },
+  apple_sapling: { icon: 'herb', color: '#c94a3d' },
+  bramble_cutting: { icon: 'herb', color: '#a04a6e' },
+  plum_sapling: { icon: 'herb', color: '#6e4a78' },
+  mirefig_sapling: { icon: 'herb', color: '#8a6a45' },
+  potato: { icon: 'tuber', color: '#c9a26e' },
+  onion: { icon: 'onionbulb', color: '#d8c4a8' },
+  cabbage: { icon: 'cabbagehead', color: '#8fb083' },
+  pumpkin: { icon: 'gourd', color: '#e08a3d' },
+  barley: { icon: 'wheat', color: '#c9b45c' },
+  redroot: { icon: 'carrot', color: '#a8383d' },
+  kingsquash: { icon: 'gourd', color: '#e2d8b8' },
+  bittercress: { icon: 'herb', color: '#7a9c6e' },
+  silverleaf: { icon: 'herb', color: '#b8c4c9' },
+  duskthorn: { icon: 'herb', color: '#5e4a78' },
+  dawnveil: { icon: 'bells', color: '#e8d8a8' },
+  venom_sac: { icon: 'gland', color: '#7aa83d' },
+  spore_dust: { icon: 'floursack', color: '#c9c2b4' },
+  apple: { icon: 'fruitround', color: '#c94a3d' },
+  plum: { icon: 'fruitround', color: '#6e4a78' },
+  mirefig: { icon: 'fruitround', color: '#8a6a45' },
+  baked_potato: { icon: 'tuber', color: '#a8875c' },
+  onion_soup: { icon: 'stew', color: '#c99c5c' },
+  hearty_pottage: { icon: 'stew', color: '#a8905c' },
+  roast_pumpkin: { icon: 'gourd', color: '#c9782e' },
+  barley_porridge: { icon: 'stew', color: '#d8c9a0' },
+  orchard_crumble: { icon: 'cakeicon', color: '#c98a5c' },
+  roast_redroot: { icon: 'stew', color: '#a8383d' },
+  kingsquash_bake: { icon: 'cakeicon', color: '#e2d8b8' },
+  greater_healing_tincture: { icon: 'bottle', color: '#c94a3d' },
+  silverleaf_salve: { icon: 'jar', color: '#b8c4c9' },
+  duskthorn_draught: { icon: 'vial', color: '#5e4a78' },
+  dawnveil_elixir: { icon: 'bottle', color: '#e8d8a8' },
+  palegill_oil: { icon: 'oilvial', color: '#c9c2b4' },
   berries: { icon: 'berries', color: '#a04a6e' },
   plant_fibre: { icon: 'fibre', color: '#79a355' },
   twine: { icon: 'twine', color: '#b0a068' },
@@ -5732,6 +5917,8 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   compost_bin: { icon: 'compostbin', color: '#6e5433' },
   well: { icon: 'wellbuild', color: '#6e6a75' },
   irrigation_channel: { icon: 'channelbuild', color: '#8a6234' },
+  mushroom_log: { icon: 'mushlog', color: '#5f4426' },
+  growing_frame: { icon: 'framebuild', color: '#8a6234' },
   enchanting_table: { icon: 'tome', color: '#7a6aa8' },
   barrel: { icon: 'barrel', color: '#94693a' },
   crate: { icon: 'crate', color: '#a5793f' },

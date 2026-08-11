@@ -237,6 +237,41 @@ export const SOIL_TILES = new Set<number>([
   Tile.CottonRipe,
   Tile.MoonbellMid,
   Tile.MoonbellRipe,
+  // THE FULL FIELD (Phase 2): the wave's tilled-bed tiles — one
+  // worked-earth contour under the whole field, frame included.
+  Tile.GrowingFrame,
+  Tile.PotatoMid,
+  Tile.PotatoRipe,
+  Tile.OnionMid,
+  Tile.OnionRipe,
+  Tile.CabbageMid,
+  Tile.CabbageRipe,
+  Tile.PumpkinMid,
+  Tile.PumpkinRipe,
+  Tile.BarleyMid,
+  Tile.BarleyRipe,
+  Tile.RedrootMid,
+  Tile.RedrootRipe,
+  Tile.KingsquashMid,
+  Tile.KingsquashRipe,
+  Tile.BittercressMid,
+  Tile.BittercressRipe,
+  Tile.SilverleafMid,
+  Tile.SilverleafRipe,
+  Tile.DuskthornMid,
+  Tile.DuskthornRipe,
+  Tile.DawnveilMid,
+  Tile.DawnveilRipe,
+  Tile.AdderstongueMid,
+  Tile.AdderstongueRipe,
+  Tile.AppleTreeMid,
+  Tile.AppleTreeRipe,
+  Tile.BrambleMid,
+  Tile.BrambleRipe,
+  Tile.PlumTreeMid,
+  Tile.PlumTreeRipe,
+  Tile.MirefigMid,
+  Tile.MirefigRipe,
 ]);
 
 const ROCKY = new Set<number>([
@@ -327,6 +362,10 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       t === Tile.BeastPen ||
       t === Tile.CompostBin ||
       t === Tile.Well ||
+      t === Tile.MushroomLog ||
+      t === Tile.MushroomLogSeeded ||
+      t === Tile.PalegillMid ||
+      t === Tile.PalegillRipe ||
       CHEST_TILES.has(t)
     ) {
       return nearestFloor(ground, tx, ty);

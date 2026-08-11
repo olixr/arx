@@ -13,12 +13,14 @@ import { CROP_TILES, MATURE_TILES, gradeFor, type Grade } from '@arx/content';
  */
 
 export interface PlotCare {
-  /** Watered bitmask (bit per stage), the crop row's own. */
+  /** Watered bitmask (bit per stage + the prune bit), the row's own. */
   w: number;
   /** Soil tier 0 plain / 1 enriched / 2 rich. */
   soil: number;
   /** 1 when mulched. */
   m: number;
+  /** 1 when grown under a growing frame (Phase 2). */
+  f: number;
   /**
    * Derived: is the CURRENT stage watered? Kept resolved here (from
    * tile + mask) so the bake never does stage math per tile.
@@ -43,7 +45,7 @@ export function farmKey(tx: number, ty: number): string {
 /** A crop tile's stage, or null for anything that is not a crop. */
 export function stageOfTile(tile: Tile | undefined): 0 | 1 | 2 | null {
   if (tile === undefined) return null;
-  if (tile === Tile.CropSprout) return 0;
+  if (tile === Tile.CropSprout || tile === Tile.MushroomLogSeeded) return 0;
   const info = CROP_TILES.get(tile);
   return info ? info.stage : null;
 }
@@ -90,5 +92,5 @@ export function predictedGrade(tile: Tile | undefined, tx: number, ty: number): 
   if (tile === undefined || !MATURE_TILES.has(tile)) return 0;
   const care = farmPlots.get(farmKey(tx, ty));
   if (!care) return 0;
-  return gradeFor((care.w & 1) + ((care.w >> 1) & 1), care.soil, care.m);
+  return gradeFor((care.w & 1) + ((care.w >> 1) & 1), care.soil, care.m, (care.w >> 2) & 1);
 }

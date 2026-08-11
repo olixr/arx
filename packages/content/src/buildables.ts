@@ -288,6 +288,38 @@ const defs: BuildableDef[] = [
     ticks: 30,
   },
   {
+    // THE FULL FIELD: shade culture's bed — a whole log laid for
+    // spores (the milled-and-whole law: sawing it would saw away
+    // the point). No water, no soil, no grade; reagents, not finery.
+    id: 'mushroom_log',
+    cat: 'foundation',
+    name: 'Mushroom log',
+    tile: Tile.MushroomLog,
+    skill: 'farming',
+    levelReq: 55,
+    xp: 20,
+    materials: [{ item: 'log', qty: 2 }],
+    ticks: 40,
+  },
+  {
+    // THE GROWING FRAME: an oiled-cloth frame raised OVER a garden
+    // plot (its one legal ground) — always watered, a touch faster,
+    // the cottager's glasshouse. Tearing it down hands the plot back.
+    id: 'growing_frame',
+    cat: 'foundation',
+    name: 'Growing frame',
+    tile: Tile.GrowingFrame,
+    skill: 'farming',
+    levelReq: 50,
+    xp: 60,
+    materials: [
+      { item: 'board', qty: 4 },
+      { item: 'cloth', qty: 2 },
+    ],
+    ticks: 60,
+    ground: [Tile.Tilled],
+  },
+  {
     id: 'barrel',
     cat: 'furnishing',
     name: 'Barrel',

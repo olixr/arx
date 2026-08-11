@@ -276,6 +276,27 @@ const defs: ItemDef[] = [
   { id: 'wheat_seed', name: 'Wheat seeds', stackable: true, value: 8, desc: 'A handful of gold-to-be.', color: '#d9b45c', code: 'Ws' },
   { id: 'cotton_seed', name: 'Cotton seeds', stackable: true, value: 12, desc: 'Fluff futures, sold by the pinch.', color: '#e8e4da', code: 'Ct' },
   { id: 'moonbell_seed', name: 'Moonbell seeds', stackable: true, value: 20, desc: 'They only sprout for patient hands.', color: '#8f9ed6', code: 'Ms' },
+  // THE FULL FIELD (Phase 2): the wave's seed pouches. Staples and
+  // orchard starts sell in shops; the high herbs, the dark bed, and
+  // the far-band roots come only from Jorel's seed stall, harvest
+  // returns, and trade.
+  { id: 'potato_seed', name: 'Seed potatoes', stackable: true, value: 3, desc: 'Eyes already open, looking for soil.', color: '#c9a26e', code: 'Ps' },
+  { id: 'onion_seed', name: 'Onion sets', stackable: true, value: 5, desc: 'Small bulbs with big intentions.', color: '#d8c4a8', code: 'Os' },
+  { id: 'cabbage_seed', name: 'Cabbage seeds', stackable: true, value: 7, desc: 'A whole patch folded very small.', color: '#8fb083', code: 'Cg' },
+  { id: 'pumpkin_seed', name: 'Pumpkin seeds', stackable: true, value: 14, desc: 'Flat white promises of great weight.', color: '#e08a3d', code: 'Pu' },
+  { id: 'barley_seed', name: 'Barley seed', stackable: true, value: 18, desc: 'The keg\'s first quiet word.', color: '#c9b45c', code: 'Bs' },
+  { id: 'redroot_seed', name: 'Redroot seeds', stackable: true, value: 36, desc: 'Stain the pouch. Stain the hands. Worth it.', color: '#a8383d', code: 'Rs' },
+  { id: 'kingsquash_seed', name: 'Kingsquash seeds', stackable: true, value: 64, desc: 'Each one the size of a thumbnail, and prouder.', color: '#e2d8b8', code: 'Ks' },
+  { id: 'bittercress_seed', name: 'Bittercress seeds', stackable: true, value: 48, desc: 'The brewer\'s garden starts sour.', color: '#7a9c6e', code: 'Bt' },
+  { id: 'silverleaf_seed', name: 'Silverleaf seeds', stackable: true, value: 80, desc: 'Sown under a bright moon, they say. They say a lot.', color: '#b8c4c9', code: 'Sv' },
+  { id: 'duskthorn_seed', name: 'Duskthorn seeds', stackable: true, value: 130, desc: 'Handle with gloves and respect.', color: '#5e4a78', code: 'Du' },
+  { id: 'dawnveil_seed', name: 'Dawnveil seeds', stackable: true, value: 200, desc: 'Rare as a quiet morning.', color: '#e8d8a8', code: 'Dw' },
+  { id: 'adderstongue_seed', name: 'Adderstongue seeds', stackable: true, value: 100, desc: 'Sown by the careful. Harvested by the careful. Everything by the careful.', color: '#7aa83d', code: 'At' },
+  { id: 'palegill_spores', name: 'Palegill spores', stackable: true, value: 120, desc: 'A twist of paper, a breath of pale dust, a log\'s new tenant.', color: '#c9c2b4', code: 'Pg' },
+  { id: 'apple_sapling', name: 'Apple sapling', stackable: true, value: 10, desc: 'A whip of appletree, roots wrapped in damp cloth.', color: '#c94a3d', code: 'As' },
+  { id: 'bramble_cutting', name: 'Bramble cutting', stackable: true, value: 12, desc: 'It will grab the whole fence if you let it.', color: '#a04a6e', code: 'Bm' },
+  { id: 'plum_sapling', name: 'Plum sapling', stackable: true, value: 16, desc: 'Patience with a dusk-colored reward.', color: '#6e4a78', code: 'Pm' },
+  { id: 'mirefig_sapling', name: 'Mirefig sapling', stackable: true, value: 28, desc: 'It remembers the mire. Water it like one.', color: '#8a6a45', code: 'Mg' },
 
   // Produce & foraged goods
   { id: 'carrot', name: 'Carrot', stackable: false, value: 4, heals: 2, desc: 'Crunchy straight from the soil.', color: '#e8873d', code: 'Ca' },
@@ -290,6 +311,25 @@ const defs: ItemDef[] = [
   // Made, never sold — the shop carries no shortcut to rich ground.
   { id: 'compost', name: 'Compost', stackable: true, value: 6, desc: 'Dark and crumbly. The field eats first.', color: '#4a3a28', code: 'Cp' },
   { id: 'prime_compost', name: 'Prime compost', stackable: true, value: 14, desc: 'Black gold, worked warm in the bin.', color: '#352a1e', code: 'Pc' },
+  // THE FULL FIELD (Phase 2): the crop wave's harvests. Staples for
+  // the pot, high herbs for the alembic, the dark bed's reagents,
+  // and the orchard's fruit. Every one has a consumer (the law).
+  { id: 'potato', name: 'Potato', stackable: false, value: 3, heals: 2, desc: 'Honest weight. A field you can hold.', color: '#c9a26e', code: 'Po' },
+  { id: 'onion', name: 'Onion', stackable: false, value: 4, heals: 2, desc: 'Paper skin, sharp heart.', color: '#d8c4a8', code: 'On' },
+  { id: 'cabbage', name: 'Cabbage', stackable: false, value: 5, heals: 3, desc: 'A hundred leaves keeping one secret.', color: '#8fb083', code: 'Cb' },
+  { id: 'pumpkin', name: 'Pumpkin', stackable: false, value: 12, heals: 4, desc: 'The field\'s proudest lantern.', color: '#e08a3d', code: 'Pk' },
+  { id: 'barley', name: 'Barley', stackable: false, value: 8, desc: 'Bearded grain, patient as winter.', color: '#c9b45c', code: 'Ba' },
+  { id: 'redroot', name: 'Redroot', stackable: false, value: 16, heals: 5, desc: 'Bleeds crimson when the knife goes in.', color: '#a8383d', code: 'Rr' },
+  { id: 'kingsquash', name: 'Kingsquash', stackable: false, value: 25, heals: 6, desc: 'Pale as the moon and twice as heavy.', color: '#e2d8b8', code: 'Kq' },
+  { id: 'bittercress', name: 'Bittercress', stackable: false, value: 18, desc: 'Bitter on the tongue, kind in the kettle.', color: '#7a9c6e', code: 'Bc' },
+  { id: 'silverleaf', name: 'Silverleaf', stackable: false, value: 26, desc: 'Catches lamplight like still water.', color: '#b8c4c9', code: 'Sl' },
+  { id: 'duskthorn', name: 'Duskthorn', stackable: false, value: 36, desc: 'Picked at dusk, and it pricks back.', color: '#5e4a78', code: 'Dt' },
+  { id: 'dawnveil', name: 'Dawnveil', stackable: false, value: 50, desc: 'Petals that hold the first light a while.', color: '#e8d8a8', code: 'Dv' },
+  { id: 'venom_sac', name: 'Venom sac', stackable: false, value: 30, desc: 'The adder\'s tongue grows what the adder guards.', color: '#7aa83d', code: 'Vs' },
+  { id: 'spore_dust', name: 'Spore dust', stackable: true, value: 22, desc: 'Pale motes off the palegill. Do not breathe in.', color: '#c9c2b4', code: 'Sd' },
+  { id: 'apple', name: 'Apple', stackable: false, value: 5, heals: 3, desc: 'Sweet, crisp, and worth the wait.', color: '#c94a3d', code: 'Ap' },
+  { id: 'plum', name: 'Plum', stackable: false, value: 7, heals: 4, desc: 'Dusk-dark skin over honey.', color: '#6e4a78', code: 'Pl' },
+  { id: 'mirefig', name: 'Mirefig', stackable: false, value: 14, heals: 6, desc: 'The mire\'s one sweetness.', color: '#8a6a45', code: 'Mf' },
 
   // Farm-processed materials
   { id: 'twine', name: 'Twine', stackable: true, value: 8, desc: 'Fibre twisted until it agrees to hold things together.', color: '#b0a068', code: 'Tw' },
@@ -301,6 +341,17 @@ const defs: ItemDef[] = [
   // Homestead cooking
   { id: 'bread', name: 'Bread', stackable: false, value: 14, heals: 6, desc: 'A warm loaf with a crust worth fighting over.', color: '#c49a5c', code: 'Bd' },
   { id: 'fried_egg', name: 'Fried egg', stackable: false, value: 6, heals: 3, desc: 'Sunny side up, like all good mornings.', color: '#f2d98a', code: 'Fe' },
+  // THE FULL FIELD (Phase 2): the crop kitchen returns — plain
+  // hearth food from the new staples (the buff-feast wave is THE
+  // LADEN TABLE's; these carry heals and the farm's good name).
+  { id: 'baked_potato', name: 'Baked potato', stackable: false, value: 8, heals: 4, desc: 'Ash on the skin, cloud in the middle.', color: '#c9a26e', code: 'Bp' },
+  { id: 'onion_soup', name: 'Onion soup', stackable: false, value: 16, heals: 6, desc: 'Slow-browned and honest.', color: '#c99c5c', code: 'Ou' },
+  { id: 'hearty_pottage', name: 'Hearty pottage', stackable: false, value: 26, heals: 9, desc: 'Potato, onion, and cabbage holding council.', color: '#a8905c', code: 'Hp' },
+  { id: 'roast_pumpkin', name: 'Roast pumpkin', stackable: false, value: 34, heals: 11, desc: 'Sweet enough to argue with dessert.', color: '#e08a3d', code: 'Rp' },
+  { id: 'barley_porridge', name: 'Barley porridge', stackable: false, value: 30, heals: 10, desc: 'Milk and grain. The wall a cold morning breaks against.', color: '#d8c9a0', code: 'Bl' },
+  { id: 'orchard_crumble', name: 'Orchard crumble', stackable: false, value: 44, heals: 12, desc: 'Apple and plum under a flour lid.', color: '#c98a5c', code: 'Oc' },
+  { id: 'roast_redroot', name: 'Roast redroot', stackable: false, value: 52, heals: 14, desc: 'Crimson to the plate\'s edge.', color: '#a8383d', code: 'Rt' },
+  { id: 'kingsquash_bake', name: 'Kingsquash bake', stackable: false, value: 72, heals: 18, desc: 'A slice feeds a shift. The whole one feeds a crew.', color: '#e2d8b8', code: 'Kb' },
   {
     id: 'hearty_stew',
     name: 'Hearty stew',
@@ -409,6 +460,50 @@ const defs: ItemDef[] = [
     color: '#9c7440',
     code: 'It',
   },
+  // THE FULL FIELD (Phase 2): the high herbs find their bottles —
+  // the bridge brews that carry herbalism past 40 (the full ladder
+  // and its new buff dials land with THE LADEN TABLE).
+  {
+    id: 'greater_healing_tincture',
+    name: 'Greater healing tincture',
+    stackable: false,
+    value: 130,
+    heals: 16,
+    desc: 'Bittercress does the work. The honey makes it bearable.',
+    color: '#c94a3d',
+    code: 'Gt',
+  },
+  {
+    id: 'silverleaf_salve',
+    name: 'Silverleaf salve',
+    stackable: false,
+    value: 160,
+    buff: { name: 'Silverleaf', channel: 'tonic', durationSec: 60, regenPer4s: 3 },
+    desc: 'Cool as the leaf it came from.',
+    color: '#b8c4c9',
+    code: 'Sx',
+  },
+  {
+    id: 'duskthorn_draught',
+    name: 'Duskthorn draught',
+    stackable: false,
+    value: 210,
+    buff: { name: 'Duskthorn', channel: 'tonic', durationSec: 180, shieldHp: 14 },
+    desc: 'The thorn\'s stubbornness, decanted.',
+    color: '#5e4a78',
+    code: 'Dd',
+  },
+  {
+    id: 'dawnveil_elixir',
+    name: 'Dawnveil elixir',
+    stackable: false,
+    value: 320,
+    heals: 20,
+    buff: { name: 'Dawnveil', channel: 'tonic', durationSec: 120, regenPer4s: 2 },
+    desc: 'First light, kept. Drink it slowly.',
+    color: '#e8d8a8',
+    code: 'De',
+  },
   {
     id: 'mending_salve',
     name: 'Mending salve',
@@ -491,6 +586,18 @@ const defs: ItemDef[] = [
     desc: 'The master\'s reserve — green-black, slow to pour, quick to collect debts.',
     color: '#4a6a2a',
     code: 'Wy',
+  },
+  {
+    // THE FULL FIELD: the dark bed's own masterwork — grown venom,
+    // ground spores, and a longer bite than anything looted.
+    id: 'palegill_oil',
+    name: 'Palegill oil',
+    stackable: false,
+    value: 320,
+    coating: { name: 'Palegill oil', durationSec: 600, status: { status: 'venom', power: 4, durationTicks: 130 } },
+    desc: 'Pale going on, invisible dried. The gardener\'s quiet argument.',
+    color: '#c9c2b4',
+    code: 'Pv',
   },
 
   // Homestead sundries — flower_crown now lives in equipment/defs.ts.

@@ -50,11 +50,22 @@ export const GENERAL_STORE: readonly ShopEntry[] = [
   // One starter relic on the shelf so the E slot is discoverable
   // without a lucky drop; the rest are monster-hunted.
   { item: 'snare_kit', price: 300 },
-  // Starter farming: herb seeds are foraging-only finds.
+  // Starter farming: herb seeds are foraging-only finds. THE FULL
+  // FIELD widened the racks with the staple and orchard bands; the
+  // high herbs, the far roots, and the dark bed sell nowhere but
+  // Jorel's stall (seed_stall) out in the Dawnmead fields.
   { item: 'carrot_seed', price: 5 },
+  { item: 'potato_seed', price: 8 },
+  { item: 'onion_seed', price: 12 },
   { item: 'sunflower_seed', price: 15 },
+  { item: 'cabbage_seed', price: 18 },
   { item: 'wheat_seed', price: 20 },
+  { item: 'apple_sapling', price: 25 },
   { item: 'cotton_seed', price: 30 },
+  { item: 'bramble_cutting', price: 30 },
+  { item: 'pumpkin_seed', price: 35 },
+  { item: 'plum_sapling', price: 40 },
+  { item: 'barley_seed', price: 45 },
   { item: 'watering_can', price: 30 },
   // Basic outfitting — always the fixed common baseline; better rolls
   // come from the anvil, the workbench, or the wilds.
@@ -102,6 +113,27 @@ export const HAMLET_LARDER: readonly ShopEntry[] = [
  * Silverspine climb. Everything the dark ahead will ask of you,
  * priced like the last chance it is.
  */
+/**
+ * THE SEED STALL (farming v2 Phase 2) — Jorel's board table out in
+ * the Dawnmead fields. The ONLY counter for the high-band seeds: the
+ * far roots, the brewer's herbs, and the dark bed. Prices are steep
+ * on purpose — past the general racks, the seed is the investment —
+ * and the plant-door's farming gate does the real gatekeeping.
+ * Sagewort and moonbell stay off every counter forever (the
+ * forager's kinship law).
+ */
+export const SEED_STALL: readonly ShopEntry[] = [
+  { item: 'redroot_seed', price: 90 },
+  { item: 'kingsquash_seed', price: 160 },
+  { item: 'bittercress_seed', price: 120 },
+  { item: 'silverleaf_seed', price: 200 },
+  { item: 'duskthorn_seed', price: 320 },
+  { item: 'dawnveil_seed', price: 500 },
+  { item: 'adderstongue_seed', price: 260 },
+  { item: 'palegill_spores', price: 300 },
+  { item: 'mirefig_sapling', price: 340 },
+];
+
 export const LAST_LAMP_STORES: readonly ShopEntry[] = [
   { item: 'bread', price: 30 },
   { item: 'hearty_stew', price: 55 },
@@ -115,6 +147,7 @@ export const LAST_LAMP_STORES: readonly ShopEntry[] = [
 
 const defs: ShopDef[] = [
   { id: 'general_store', name: 'General Store', stock: GENERAL_STORE },
+  { id: 'seed_stall', name: "Jorel's Seed Stall", stock: SEED_STALL },
   { id: 'waystation_supplies', name: "The Wayfarer's Pack", stock: WAYSTATION_SUPPLIES },
   // THE ROAD'S FORTUNE (living frontier, phase 5): the peddler carts.
   // Each carries a thing or two town never sells — drop-unlock recipe
