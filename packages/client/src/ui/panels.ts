@@ -1,4 +1,5 @@
 import {
+  CAST_STILL_FACTOR,
   QUALITY_BASE,
   DUNGEON_TIER_LAWS,
   PASSIVES,
@@ -2799,8 +2800,15 @@ export class Panels {
         const s = ticks / 20;
         return `${s % 1 === 0 ? s : s.toFixed(1)}s`;
       };
-      if (ab.damage > 0) add(String(ab.damage), 'Damage', '#d95763');
+      const channeled = (ab.channelTicks ?? 0) > 0 && ab.shape !== 'tame';
+      if (ab.damage > 0) add(String(ab.damage), channeled ? 'Per Beat' : 'Damage', '#d95763');
       if (ab.cooldownTicks > 0) add(secs(ab.cooldownTicks), 'Cooldown', '#b49af0');
+      // THE DRAWN BREATH / THE HELD NOTE wear words: the planted
+      // figure reads the same ONE ruler the accrual does.
+      if (ab.castTicks) {
+        add(`${secs(ab.castTicks)} (${secs(ab.castTicks / CAST_STILL_FACTOR)} planted)`, 'Cast', '#d2e0f6');
+      }
+      if (ab.channelTicks) add(secs(ab.channelTicks), 'Channel', '#f6e2b2');
       if (ab.range) add(`${ab.range}`, 'Range', '#7dc46a');
       if (ab.radius) add(`${ab.radius}`, 'Radius', '#8ac4e8');
       if ((ab.projectiles ?? 0) > 1) add(`×${ab.projectiles}`, 'Shots', '#e8b64c');
