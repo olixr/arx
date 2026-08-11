@@ -95,7 +95,44 @@ looping channel voice stays a named FUTURE DOOR). The dialect
 contract (breathFx.test.ts): every shipped breath art carries a
 CURATED voice, no orphan entries, every voice speaks real matter
 when called, the fallback covers every debris family.
-Remaining: Phase 5 proving.
+
+**Phase 5 — THE PROVING (3cc0662, 2026-08-11): EPIC COMPLETE.**
+`prove:drawn-breath` — 40 live receipts over the real wire against a
+dev server (throwaway accounts, raw WebSocket + binary snapshots, the
+mounts-lane pattern). What it pins: the two clocks measured on the
+wall (planted ~950 ms vs full-stride ~1150 ms for daybreak, jittered
+0/2-frame input inside the band); pay-at-fire with bails (re-press,
+dodge) spending nothing; the staked telegraph on the planted best
+case, never early, guttering unfired on a break; the held note's
+whole rail life (named bar, pay-at-start, beats, watcher hums + held
+Art pose, break-on-move forfeit, damage-never-breaks, re-press
+price-kept); both unwritten pages earned by their TRUE deeds live
+(triple-fell greatsweep; chilled-champion by the arx hand); and the
+five taught voices speaking over the wire. Laws the proving TAUGHT:
+
+- **THE RECONNECT CATCH (the phase's find):** the grace window
+  freezes all player ticking, so a dropped channel used to RESUME
+  barless into the reconnected client and pulse on with no bar to
+  read. Fixed in `onSessionClosed` — a channel action now forfeits
+  with its singer (cast already broke clean; gather/craft keep their
+  place on purpose). Receipts pin no-unpiloted-beats AND
+  no-barless-resume.
+- **THE LOAN SPEAKS RANK I:** `seatAbility` hands a loaned
+  (unmastered) secret its base def — the five taught voices cast at
+  their authored clocks while pool arts (rungs and deed pages) speak
+  Rank IV at level ~96. The lane pins both truths (full_draw 30 not
+  22; whirling_ruin 70 not 60).
+- **Proving-rig craft** (for the next lane): pace dev chat under the
+  1/s chat bucket; verify every /tp landing AFTER the command
+  executes (an early check reads a nearby pre-teleport body as
+  arrived and the late teleport breaks whatever breath it hits); vet
+  the course (runway clear AND nothing alive within 12 tiles — wild
+  packs kill 10-HP starter bodies, so /xp vitality is the proving
+  armor); a chilled-kill deed wants a rotation that keeps the status
+  ON the body (frost_lance every cycle + maelstrom beats), never a
+  kill-order gamble.
+
+Remaining: nothing. THE DRAWN BREATH is proven end to end.
 Companion to docs/techniques-v2-plan.md (the ladder + THE PAYOFF BRACKET),
 docs/secret-arts-plan.md (the secret shelf), THE HELD SIGIL (ground aim),
 and THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching
