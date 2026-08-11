@@ -150,8 +150,21 @@ test('THE UNWRITTEN PAGE: hidden arts are well-formed, one per style at launch',
     assert.ok(t.ranks?.length === TECHNIQUE_MAX_RANK - 1, `${t.ability} climbs to Rank IV too`);
     assert.ok(abilityDef(t.ability), `${t.ability} resolves`);
   }
-  for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
-    assert.equal(byStyle.get(style), 1, `${style} carries exactly one unwritten page at launch`);
+  // THE NEW VOICES (THE DRAWN BREATH Phase 4): the channeled pages
+  // joined twohand and arx — the pin grows deliberately, one deed at
+  // a time, never by accident.
+  const PAGES: Record<string, number> = {
+    combat: 1,
+    onehand: 1,
+    archery: 1,
+    arx: 2,
+    sneak: 1,
+    twohand: 2,
+    shield: 1,
+    dualwield: 1,
+  };
+  for (const [style, count] of Object.entries(PAGES)) {
+    assert.equal(byStyle.get(style), count, `${style} carries its authored unwritten pages`);
   }
 });
 

@@ -434,6 +434,9 @@ export const FX_STYLES: Record<string, FxStyle> = {
   the_long_fight: GOLD({ mid: '#c9a44a', ring: 'teeth', debris: 'spark', decal: 'cracks', motif: 'echo', punch: 0.75, wash: 0.45 }),
 
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
+  // THE NEW VOICES: the channeled pages (THE DRAWN BREATH Phase 4).
+  whirling_ruin: STEEL({ mid: '#c8b494', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'vortex', punch: 0.7, wash: 0.4 }),
+  winters_fall: FROST({ mid: '#a8d8e8', motif: 'rain', punch: 0.65, wash: 0.5 }),
   riftwalker_step: VOID({ ring: 'runes', debris: 'star', motif: 'tear', punch: 0.5, wash: 0.35 }),
   oathbound_edge: GOLD({ ring: 'halo', debris: 'star', motif: 'crown', punch: 0.7, wash: 0.55 }),
   warden_volley: VERDANT({ mid: '#8a9a78', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'rain', punch: 0.55 }),

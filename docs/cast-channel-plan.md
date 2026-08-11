@@ -28,7 +28,19 @@ the storm_of_shafts conversion is DEFERRED to Phase 4 — it is a
 stacks overlapping fields; converting it means reshaping it to a
 staked channeled volley with a walk-out connect factor the model
 must first learn. Never author `channelTicks` on a `ground_field`.
-Phases 4–5 open.
+Phase 4a THE NEW VOICES (first wave) SHIPPED same day: the two
+flagships land as UNWRITTEN PAGES (LAW 5 amended — brand-new secret
+arts require brand-new weapons, since `weapon.art` is one field and
+reciprocity is test-pinned; the remaining voices ship WITH their
+teacher steel in a loot-side session). `whirling_ruin` (twohand
+channel, six full-circle cuts, deed: three felled by ONE greatsweep —
+meleeSwing now returns its felled count) and `winters_fall` (arx
+frost channel staked from the ring, deed: fell a champion with the
+arx hand while it is chilled). Full FLOURISH: bespoke faces, plates,
+rank steps, page-count pin reshaped to an authored table. Remaining:
+Phase 4b (leech link, held mend, great shot casted, summoned bulwark,
+sanctified ground, storm_of_shafts reshape, charge-up + held-note fx
+dialects) + Phase 5 proving.
 Companion to docs/techniques-v2-plan.md (the ladder + THE PAYOFF BRACKET),
 docs/secret-arts-plan.md (the secret shelf), THE HELD SIGIL (ground aim),
 and THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching

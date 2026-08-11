@@ -2889,6 +2889,42 @@ const defs: AbilityDef[] = [
   // These never sit on a rung: an `art:<id>` flag opens each, set by
   // a deed (never drop-luck). Invisible everywhere until earned.
   {
+    id: 'whirling_ruin',
+    name: 'Whirling Ruin',
+    desc: 'Plant your feet, set the great steel turning, and be the calm at the middle of it.',
+    color: '#c8b494',
+    code: 'Wu',
+    cooldownTicks: 260, // 13 s
+    // THE HELD NOTE: the whirlwind is HELD — six turns of the wheel,
+    // the whole circle each beat, for as long as the feet stay planted.
+    channelTicks: 60,
+    pulseEveryTicks: 10,
+    shape: 'melee_arc',
+    damage: 3, // six quick cuts, each light — the payoff bracket holds at every level
+    range: 2.2,
+    arc: 3.15, // the full turn: everything around the hub is in the cone
+    knockback: 0.5,
+  },
+  {
+    id: 'winters_fall',
+    name: "Winter's Fall",
+    desc: 'Choose a patch of sky and ask it for winter, then hold it to the bargain.',
+    color: '#a8d8e8',
+    code: 'Wf',
+    cooldownTicks: 260, // 13 s
+    // THE HELD NOTE: the icicle fall is HELD over its staked patch —
+    // one volley of ice per beat while the caller stands the note.
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'ground_aoe',
+    damage: 4,
+    range: 11,
+    radius: 2.2,
+    fuseTicks: 12,
+    element: 'frost',
+    status: { status: 'chill', power: 1, durationTicks: 60 },
+  },
+  {
     id: 'riftwalker_step',
     name: 'Riftwalker Step',
     desc: 'Step the way the rift taught you — through, and out the far side of them.',
@@ -4300,6 +4336,34 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
         damage: 14,
         radius: 2.5,
         self: { speedMult: 1.14, armor: 2, durationTicks: 100 },
+      },
+    ],
+  },
+  // THE NEW VOICES (THE DRAWN BREATH Phase 4): the first channeled
+  // pages — deed-earned, like every page before them.
+  {
+    ability: 'whirling_ruin',
+    style: 'twohand',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 38 },
+    ranks: [
+      { note: 'Each turn of the steel asks for more.', damage: 4 },
+      { note: 'The wheel spins up sooner between rests.', cooldownTicks: 240 },
+      { note: 'The storm refuses to sit down.', channelTicks: 70 },
+    ],
+  },
+  {
+    ability: 'winters_fall',
+    style: 'arx',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 38 },
+    ranks: [
+      { note: 'Heavier ice, asked for by name.', damage: 5 },
+      { note: 'A wider patch of sky agrees.', radius: 2.6 },
+      {
+        note: 'The fall quickens, and the cold outstays it.',
+        pulseEveryTicks: 13,
+        status: { status: 'chill', power: 1, durationTicks: 80 },
       },
     ],
   },

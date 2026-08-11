@@ -13272,7 +13272,7 @@ export class GameServer {
         stage === 0 ? PoseState.Attack : stage === 1 ? PoseState.Attack2 : PoseState.Attack3,
         finisher ? 14 : 10,
       );
-      this.meleeSwing(
+      const felled = this.meleeSwing(
         eid,
         player,
         aim,
@@ -13290,6 +13290,9 @@ export class GameServer {
         'twohand',
         TWOHAND_ARC_HALF,
       );
+      // THE UNWRITTEN PAGE: three felled by ONE turn of the great
+      // steel is the whirlwind's deed — the crowd taught the turning.
+      if (felled >= 3) this.grantArt(player, 'whirling_ruin');
     } else {
       // Wand rhythm: bolt → bolt → HEAVY. The third cast is a fat slow
       // orb that splashes and shoves — the punch beat wands were missing.
@@ -13391,7 +13394,8 @@ export class GameServer {
     xpStyle: SkillId = 'onehand',
     /** Sweep half-angle — swords cut a ±60° cone, greatweapons wider. */
     arcHalf = Math.PI / 3,
-  ): void {
+    /** @returns bodies FELLED by this one swing (the whirlwind's deed). */
+  ): number {
     const pos = this.positions.must(eid);
     // Every swing sweeps the scenery too: destructible clutter in the
     // arc bursts regardless of what the blade finds to bleed.
@@ -13442,6 +13446,7 @@ export class GameServer {
     }
     if (sweepAll) {
       // The finisher clears the crowd — everyone in the arc eats it.
+      let felled = 0;
       for (const npcEid of inArc) {
         const backstab = backstabs(this.npcPosAt(npcEid, rewind) ?? this.positions.must(npcEid));
         let { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit, critPct);
@@ -13457,8 +13462,10 @@ export class GameServer {
           backstab,
           offhand: xpStyle === 'dualwield',
         });
+        const after = this.healths.get(npcEid);
+        if (!after || after.hp <= 0) felled++;
       }
-      return;
+      return felled;
     }
     if (process.env.COMBAT_DEBUG) {
       let nearest = Infinity;
@@ -13481,7 +13488,10 @@ export class GameServer {
         backstab,
         offhand: xpStyle === 'dualwield',
       });
+      const after = this.healths.get(bestTarget);
+      if (!after || after.hp <= 0) return 1;
     }
+    return 0;
   }
 
   // ---------------------------------------------------- smashable props
@@ -16440,6 +16450,13 @@ export class GameServer {
         this.grantArt(killer, 'giantsfall');
       }
       if (killer && this.offhandWeapon(killer)) this.grantArt(killer, 'two_answers');
+      // THE UNWRITTEN PAGE: a champion felled by the arx hand while
+      // winter is already on it is the winter-caller's deed — winter
+      // takes what winter marked. (The dying body's statuses stand
+      // until the death's clean slate, so the chill is still readable.)
+      if (killer && style === 'arx' && this.isChilled(npcEid)) {
+        this.grantArt(killer, 'winters_fall');
+      }
       // THE FOUR ROADS: the veteran's deed — a champion felled by a
       // struck killing blow from each of the four weapon schools.
       // Progress rides road: flags (deeds, never dice) and is keyed by

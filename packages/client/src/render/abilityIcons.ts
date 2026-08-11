@@ -2877,6 +2877,31 @@ Object.assign(PLATES, {
     star4(c, 0.3, -0.16, 0.1, st.spark, Math.PI / 4);
     star4(c, 0.34, 0.14, 0.06, st.core);
   },
+  // Whirling Ruin — the wheel that will not stop: two chasing arcs
+  // and the calm bright hub of the held storm.
+  whirling_ruin: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0, 0.32, 0.42, -2.7, -0.5, st.spark, 0.03);
+    crescent(c, 0, 0, 0.32, 0.42, 0.45, 2.65, st.mid, 0.03);
+    fill(c, st.mid, [[-0.04, -0.3], [0.04, -0.3], [0.05, 0.18], [-0.05, 0.18]]);
+    fill(c, st.core, [[-0.02, -0.3], [0.02, -0.3], [0.02, 0.14], [-0.02, 0.14]]);
+    dot(c, st.deep, 0, 0.24, 0.06);
+    dot(c, st.spark, 0, 0.23, 0.04);
+  },
+  // Winter's Fall — the bargain kept: the flake overhead and the ice
+  // already arriving where you pointed.
+  winters_fall: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    snowflake(c, 0, -0.28, 0.13, st.core, 0.04);
+    for (let k = -1; k <= 1; k++) {
+      fill(c, k === 0 ? st.core : st.mid, [
+        [k * 0.21 - 0.035, -0.08 + Math.abs(k) * 0.07],
+        [k * 0.21 + 0.035, -0.1 + Math.abs(k) * 0.07],
+        [k * 0.21 + 0.015, 0.26 + Math.abs(k) * 0.04],
+      ]);
+    }
+    ground(c, 0, 0.34, st);
+  },
   // Oathbound Edge — the crown remembers the sworn blade.
   oathbound_edge: (st) => (c) => {
     c.translate(0.5, 0.52);
