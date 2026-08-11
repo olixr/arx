@@ -24435,6 +24435,24 @@ export class Renderer {
             alertItem.strat = eStrat;
             items.push(alertItem);
           }
+          // THE FOE'S BREATH: the overhead cast pip — the universal
+          // "act now" read on a winding enemy (interrupt it, leave
+          // the ring it is about to stake, or eat what follows).
+          const castRead = game.npcCasts.get(eid);
+          if (castRead) {
+            const pipItem = this.castPipItem(
+              eid,
+              game,
+              castRead,
+              s,
+              remote.meta.appearance !== undefined,
+              npcDef(remote.meta.defId ?? '')?.radius ?? 0.45,
+            );
+            if (pipItem) {
+              pipItem.strat = eStrat;
+              items.push(pipItem);
+            }
+          }
           // The quest mark — resolved from THIS client's own ledger
           // against the actor slug; combat truth outranks errand truth
           // (a live alert glyph owns the spot).
@@ -26214,6 +26232,69 @@ export class Renderer {
         ctx.fillText(glyph, p.x + 1.5, topY + 1.5);
         ctx.fillStyle = engaged ? '#f0655a' : '#e8b64c';
         ctx.fillText(glyph, p.x, topY);
+        ctx.restore();
+      },
+    };
+  }
+
+  /**
+   * THE FOE'S BREATH: the overhead cast pip over a winding enemy — a
+   * thin ability-tinted bar filling left to right on the wind's
+   * clock, guttering dark when the breath breaks. Reads from
+   * game.npcCasts (fed by eid-carrying `charge` fx) and prunes what
+   * has ended, so the ledger never outlives the working.
+   */
+  private castPipItem(
+    eid: number,
+    game: ClientGame,
+    cast: { startAt: number; endsAt: number; color?: string; brokeAt?: number },
+    s: { x: number; y: number },
+    humanoid: boolean,
+    radius: number,
+  ): DrawItem | null {
+    const now = performance.now();
+    if (cast.brokeAt) {
+      if (now - cast.brokeAt > 350) {
+        game.npcCasts.delete(eid);
+        return null;
+      }
+    } else if (now > cast.endsAt + 160) {
+      // The breath completed — the fire's own fx speaks now.
+      game.npcCasts.delete(eid);
+      return null;
+    }
+    return {
+      sortY: s.y,
+      draw: () => {},
+      drawLabel: () => {
+        const ctx = this.ctx;
+        const sc = this.camera.scale;
+        const p = this.liftedWTS(s.x, s.y);
+        // A step under the alert glyph, clear of the nameplate.
+        const topY = humanoid ? p.y - 1.46 * sc : p.y - (radius * 2.6 + 0.4) * sc;
+        const w = Math.max(26, sc * 0.92);
+        const h = Math.max(3, sc * 0.075);
+        const x0 = p.x - w / 2;
+        const frac = Math.max(0, Math.min(1, (now - cast.startAt) / (cast.endsAt - cast.startAt)));
+        ctx.save();
+        if (cast.brokeAt) {
+          // The gutter: the bar snaps dark and sinks away.
+          const k = (now - cast.brokeAt) / 350;
+          ctx.globalAlpha = 0.85 * (1 - k);
+          ctx.fillStyle = 'rgba(24, 16, 30, 0.9)';
+          ctx.fillRect(x0, topY + k * 3, w, h);
+          ctx.restore();
+          return;
+        }
+        // Tray, fill, and a hard leading tick — the read is the edge.
+        ctx.globalAlpha = 0.92;
+        ctx.fillStyle = 'rgba(20, 14, 26, 0.85)';
+        ctx.fillRect(x0 - 1, topY - 1, w + 2, h + 2);
+        const color = cast.color ?? '#e8b64c';
+        ctx.fillStyle = color;
+        ctx.fillRect(x0, topY, w * frac, h);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fillRect(x0 + w * frac - 1, topY, 2, h);
         ctx.restore();
       },
     };

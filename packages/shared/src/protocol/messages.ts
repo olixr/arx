@@ -903,6 +903,15 @@ export interface S2CFx {
   /** dash/bolt/beam: segment endpoint. */
   x2?: number;
   y2?: number;
+  /**
+   * THE FOE'S BREATH (enemy arts, additive): the casting body's
+   * entity id on a `charge` — the client anchors the overhead cast
+   * pip to the interpolated body and reads `ticks` as the wind
+   * remaining (re-emits refresh it; ticks 0 = the breath BROKE, the
+   * pip gutters). Absent on player charges — their read is the
+   * gather and their own bar.
+   */
+  eid?: number;
 }
 
 /**

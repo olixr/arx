@@ -443,6 +443,16 @@ export class ClientGame {
   }> = [];
   /** Combat effects in flight; pruned by the renderer. */
   readonly fx: ActiveFx[] = [];
+  /**
+   * THE FOE'S BREATH: live enemy wind-ups by entity id, fed by
+   * `charge` fx carrying an eid. The renderer draws the overhead
+   * cast pip from this ledger and prunes what has ended; brokeAt
+   * marks a fizzled breath (the pip gutters dark instead of filling).
+   */
+  readonly npcCasts = new Map<
+    number,
+    { startAt: number; endsAt: number; color?: string; id?: string; brokeAt?: number }
+  >();
 
   /** Hotbar state: performance.now() when each slot comes off cooldown. */
   readonly abilityReadyAt: [number, number, number, number] = [0, 0, 0, 0];
@@ -1638,6 +1648,25 @@ export class ClientGame {
             bornAt: performance.now(),
           });
           break;
+        }
+        // THE FOE'S BREATH: a charge carrying an eid is an enemy
+        // wind-up — the overhead pip ledger anchors to the body.
+        // ticks > 0 opens/refreshes the read; ticks 0 is the fizzle
+        // (brokeAt lets the pip gutter instead of vanishing).
+        if (msg.kind === 'charge' && msg.eid !== undefined) {
+          const now = performance.now();
+          if ((msg.ticks ?? 0) > 0) {
+            const endsAt = now + (msg.ticks ?? 0) * TICK_MS;
+            const prev = this.npcCasts.get(msg.eid);
+            if (prev && !prev.brokeAt) {
+              prev.endsAt = endsAt; // re-emit: trust the newest clock
+            } else {
+              this.npcCasts.set(msg.eid, { startAt: now, endsAt, color: msg.color, id: msg.id });
+            }
+          } else {
+            const cast = this.npcCasts.get(msg.eid);
+            if (cast) cast.brokeAt = now;
+          }
         }
         const fx: ActiveFx = {
           kind: msg.kind,

@@ -80,6 +80,15 @@ export interface NpcDef {
   hitHeight?: number;
   /** THE KIT: authored abilities on their own cooldowns (docs/enemy-arts-plan.md). */
   kit?: NpcKitEntry[];
+  /**
+   * THE STANDOFF CASTER: preferred fighting distance in tiles — in a
+   * chase the body backs away inside it and plants at it, letting the
+   * ranged basic and the kit speak (the thrower's kiting, generalized
+   * and authored). Melee-caster hybrids simply omit it. A standoff
+   * body should always carry a ranged basic or a short-cooldown kit
+   * voice, or its cooldown gaps leave it inert at range.
+   */
+  standoff?: number;
   /** Basic attacks are projectiles with this flight profile. */
   ranged?: NpcRanged;
   /** Status carried by this NPC's basic attacks (wolves make you bleed). */
@@ -1097,6 +1106,12 @@ export function validateNpcDef(
     (typeof d.sightArc !== 'number' || d.sightArc < 30 || d.sightArc > 360)
   ) {
     errors.push('sightArc must be a number in [30, 360] degrees');
+  }
+  if (
+    d.standoff !== undefined &&
+    (typeof d.standoff !== 'number' || d.standoff < 1 || d.standoff > 12)
+  ) {
+    errors.push('standoff must be a number in [1, 12] tiles');
   }
   return errors;
 }

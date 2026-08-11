@@ -19433,7 +19433,19 @@ export class GameServer {
     this.setNpcPose(eid, npc, PoseState.Cast, windup + 2);
     const pos = this.positions.get(eid);
     if (pos) {
-      this.broadcastFx({ t: 'fx', kind: 'charge', x: pos.x, y: pos.y, radius: 1.5, id: ab.id, color: ab.color });
+      // eid + ticks ride the charge: the watcher's overhead pip
+      // anchors to the body and counts the wind down (S2CFx.eid).
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'charge',
+        x: pos.x,
+        y: pos.y,
+        radius: 1.5,
+        eid,
+        ticks: windup,
+        id: ab.id,
+        color: ab.color,
+      });
     }
   }
 
@@ -19553,7 +19565,24 @@ export class GameServer {
       npc.kitCds[idx] = Math.max(npc.kitCds[idx] ?? 0, GameServer.NPC_CAST_RETRY_TICKS);
     }
     npc.poseUntilTick = this.tickCount;
-    void eid;
+    // The fizzle signal: charge with ticks 0 — the pip gutters, the
+    // gather stops re-emitting and dies on its own clock.
+    const entry = npc.def.kit?.[idx];
+    const ab = entry ? abilityDef(entry.ability) : undefined;
+    const pos = this.positions.get(eid);
+    if (ab && pos) {
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'charge',
+        x: pos.x,
+        y: pos.y,
+        radius: 0,
+        eid,
+        ticks: 0,
+        id: ab.id,
+        color: ab.color,
+      });
+    }
   }
 
   private tickNpcs(now: number): void {
@@ -19728,6 +19757,8 @@ export class GameServer {
                   x: pos.x,
                   y: pos.y,
                   radius: Math.max(0.5, 1.5 * (npc.casting.ticksLeft / npc.casting.total)),
+                  eid,
+                  ticks: npc.casting.ticksLeft,
                   id: cab.id,
                   color: cab.color,
                 });
@@ -19787,6 +19818,25 @@ export class GameServer {
                   this.npcStrike(eid, npc, npc.targetEid, Math.floor(Math.random() * (hit + 1)));
                 }
               }
+            }
+          } else if (
+            npc.def.standoff !== undefined &&
+            dist < npc.def.standoff + 1.2 &&
+            this.tickCount - npc.alertSeenTick <= GameServer.PERCEPTION_PERIOD
+          ) {
+            // THE STANDOFF CASTER: hold the preferred distance — back
+            // away inside it, plant at it, and let the ranged basic
+            // and the kit speak. The counterplay is the corner: a
+            // backpedaling caster runs out of ground.
+            pos.dir = Math.atan2(dy, dx);
+            if (dist < npc.def.standoff - 0.5) {
+              moveX = -dx / dist;
+              moveY = -dy / dist;
+            }
+            if (npc.def.ranged && npc.attackCooldown === 0 && dist <= npc.def.attackRange + 0.3) {
+              npc.attackCooldown = npc.def.attackCooldownTicks;
+              npc.windupTicks = 8;
+              this.setNpcPose(eid, npc, PoseState.Attack, 10);
             }
           } else if (
             npc.def.ranged &&
