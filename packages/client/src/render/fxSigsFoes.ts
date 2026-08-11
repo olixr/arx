@@ -672,7 +672,10 @@ const gnawed_mending: AbilitySig = {
  * out, and bone chips LEVITATE off the floor on real height before
  * raining back down. Two grave-lights drift up and gutter. When the
  * dead arrive they arrive out of THIS — the rift is the door they
- * used.
+ * used. NOTE the clock: summon fx live 500ms flat (the arrival ring
+ * is a moment, fxLife law) — the painted tear is quick and violent,
+ * and the AFTERMATH persists through matter on its own clocks (the
+ * door, the tendrils, the raining bone).
  */
 const raise_the_fallen: AbilitySig = {
   spawn(c) {
@@ -688,8 +691,8 @@ const raise_the_fallen: AbilitySig = {
   ground(c) {
     const { ctx, st, t, sc, squash, px, py } = c;
     const rand = srand(c.seed ^ 0xd01);
-    const openK = cl(t / 0.18);
-    const out = 1 - cl((t - 0.82) / 0.18);
+    const openK = cl(t / 0.3);
+    const out = 1 - cl((t - 0.7) / 0.3);
     ctx.save();
     // The rift: a jagged fissure stepping open in hard increments —
     // 3 width stages, never a tween. Two dark bands + a violet rim.
@@ -738,11 +741,11 @@ const raise_the_fallen: AbilitySig = {
   },
   air(c) {
     const { ctx, st, t, sc, px, py } = c;
-    const out = 1 - cl((t - 0.82) / 0.18);
+    const out = 1 - cl((t - 0.7) / 0.3);
     ctx.save();
     // Two grave-lights drift up and gutter — slow, still, cold.
     for (let k = 0; k < 2; k++) {
-      const u = (t * 1.4 + k * 0.5) % 1;
+      const u = (t * 1.1 + k * 0.5) % 1;
       const x = px + (k === 0 ? -1 : 1) * sc * 0.3 + Math.sin(u * 5 + k * 3) * sc * 0.08;
       const y = py - sc * (0.2 + u * 1.1);
       const a = Math.sin(u * Math.PI);
