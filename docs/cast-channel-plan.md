@@ -37,10 +37,19 @@ channel, six full-circle cuts, deed: three felled by ONE greatsweep —
 meleeSwing now returns its felled count) and `winters_fall` (arx
 frost channel staked from the ring, deed: fell a champion with the
 arx hand while it is chilled). Full FLOURISH: bespoke faces, plates,
-rank steps, page-count pin reshaped to an authored table. Remaining:
-Phase 4b (leech link, held mend, great shot casted, summoned bulwark,
-sanctified ground, storm_of_shafts reshape, charge-up + held-note fx
-dialects) + Phase 5 proving.
+rank steps, page-count pin reshaped to an authored table. Phase 4b (partial) SHIPPED same day: storm_of_shafts RESHAPED into
+the staked channeled volley it always claimed to be (the
+fire-and-forget field retires; the sky stays black only while the
+archer holds the note — tuned back onto its old cycle values);
+staked casted arts now telegraph their landing to WATCHERS for the
+wind-up's best-case (planted) clock, so the blast can never arrive
+before its mark (a broken breath's mark gutters out as the fizzle it
+is); the hotbar tooltip speaks `winds Ns` / `held Ns`.
+Remaining: Phase 4c — the loot-side voices (leech link, held mend,
+casted great shot, summoned bulwark, sanctified ground, each with
+its teacher weapon per the amended LAW 5) and the charge-up +
+held-note matter dialects (an FX-v5 session, its laws read first) —
+then Phase 5 proving.
 Companion to docs/techniques-v2-plan.md (the ladder + THE PAYOFF BRACKET),
 docs/secret-arts-plan.md (the secret shelf), THE HELD SIGIL (ground aim),
 and THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching

@@ -74,9 +74,11 @@ function slate(player: FakePlayer) {
   const cancels: string[] = [];
   player.session = { sendJson: (m) => sent.push(m as Record<string, unknown>) };
   const pos = { x: 0, y: 0, dir: 0 };
+  const fxOut: Array<Record<string, unknown>> = [];
   const self = {
     tickCount: 100,
     positions: { get: () => pos, must: () => pos },
+    broadcastFx: (fx: Record<string, unknown>) => fxOut.push(fx),
     setPose: () => undefined,
     revealPlayer: () => undefined,
     sendCooldowns: () => undefined,
@@ -103,7 +105,7 @@ function slate(player: FakePlayer) {
     seatAbility: proto.seatAbility,
     seatDormant: proto.seatDormant,
   };
-  return { self, sent, casts, cancels, pos };
+  return { self, sent, casts, cancels, pos, fxOut };
 }
 
 const castMsgs = (sent: Array<Record<string, unknown>>) =>
@@ -191,9 +193,14 @@ test('the fire re-verifies the hand: a reseat mid-breath breaks, never fires a s
 
 test('THE HELD SIGIL composes: the staked point holds and the facing re-derives at the fire', () => {
   const player = mkPlayer();
-  const { self, casts, pos } = slate(player);
+  const { self, casts, pos, fxOut } = slate(player);
   self.tryCastAbility.call(self, 1, player, 0, 0, { x: 6, y: 0 });
   assert.ok(player.casting, 'the point-aimed breath stands');
+  // THE VISIBLE WORKING: the staked breath telegraphs its landing to
+  // watchers on the planted (best-case) clock — never early.
+  const tele = fxOut.find((f) => f.kind === 'telegraph');
+  assert.ok(tele && tele.x === 6 && tele.y === 0, 'the mark stands where the promise was staked');
+  assert.equal(tele!.ticks, Math.ceil(24 / CAST_STILL_FACTOR), 'the mark runs the planted clock');
   // The body wanders mid-breath; the promise holds.
   pos.x = 0;
   pos.y = 5;

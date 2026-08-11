@@ -215,9 +215,15 @@ export class Hotbar {
         this.wasDormant[slot] = dormant;
         el.classList.remove('empty');
         el.classList.toggle('dormant', dormant);
+        // THE SPOKEN TIMING: a breath or a note names its length.
+        const timing = ab.castTicks
+          ? ` · winds ${ab.castTicks / 20}s`
+          : ab.channelTicks && ab.shape !== 'tame'
+            ? ` · held ${ab.channelTicks / 20}s`
+            : '';
         el.title = dormant
           ? `${ab.name} sleeps. Hold a weapon that teaches it.`
-          : `${ab.name} — ${ab.desc}`;
+          : `${ab.name} — ${ab.desc}${timing}`;
         // The spell-plate: a bespoke painted icon, not a lettered chip.
         const img = document.createElement('img');
         img.src = abilityIconUrl(ab.id, 60);

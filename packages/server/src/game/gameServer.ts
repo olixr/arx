@@ -13996,6 +13996,24 @@ export class GameServer {
     player.drawTicks = 0; // the breath lets the bowstring down
     player.casting = { slot, ab, aim, targetPos, progress: 0, total: ab.castTicks ?? 0 };
     this.setPose(eid, PoseState.Art, (ab.castTicks ?? 0) + 6);
+    // THE VISIBLE WORKING: a staked breath telegraphs its landing to
+    // every watcher for the wind-up's BEST case (the planted clock —
+    // the blast may only ever arrive at or after the mark, never
+    // early). A broken breath leaves the mark to gutter out unfired,
+    // which reads as the fizzle it is; the fuse telegraph at the fire
+    // still speaks with its own exact clock.
+    if (targetPos) {
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'telegraph',
+        x: targetPos.x,
+        y: targetPos.y,
+        radius: ab.radius ?? 1.5,
+        ticks: Math.ceil((ab.castTicks ?? 0) / CAST_STILL_FACTOR),
+        id: ab.id,
+        color: ab.color,
+      });
+    }
     player.session?.sendJson({ t: 'cast', state: 'start', slot, ticks: ab.castTicks });
   }
 

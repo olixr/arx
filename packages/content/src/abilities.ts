@@ -1616,12 +1616,16 @@ const defs: AbilityDef[] = [
     color: '#8ab4c8',
     code: 'Zh',
     cooldownTicks: 260, // 13 s
-    shape: 'ground_field',
-    damage: 4,
+    // THE HELD NOTE (Phase 4b): the stand-in barrage finally STANDS —
+    // the sky stays black only while the archer holds the note. The
+    // fire-and-forget field retires; the volley is a staked channel.
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'ground_aoe',
+    damage: 3,
     range: 12,
     radius: 2.2,
-    fieldTicks: 120,
-    pulseEveryTicks: 14,
+    fuseTicks: 12,
   },
   // The rogue's ladder: unlocked by the sneak skill — the payoff of
   // the shadow grind, slottable from any hand (THE FREE HAND).
@@ -3501,11 +3505,11 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     style: 'archery',
     unlockLevel: 45,
     ranks: [
-      { note: 'Every falling shaft bites harder.', damage: 5 },
-      { note: 'The schedule tightens; the patch grows.', pulseEveryTicks: 12, radius: 2.6 },
+      { note: 'Every falling shaft bites harder.', damage: 4 },
+      { note: 'The patch grows.', radius: 2.6 },
       {
-        note: 'The storm outstays its welcome, and the caught walk slow.',
-        fieldTicks: 144,
+        note: 'The schedule tightens, and the caught walk slow.',
+        pulseEveryTicks: 13,
         status: { status: 'chill', power: 1, durationTicks: 40 },
       },
     ],
