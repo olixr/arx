@@ -1,4 +1,4 @@
-import { Detail, Tile, awningTile, bracketSignDetail, pennantDetail, trellisDetail } from '@arx/shared';
+import { Detail, Tile, awningTile, bannerPoleTile, bracketSignDetail, pennantDetail } from '@arx/shared';
 import { SILVERFALL_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';
@@ -6,71 +6,58 @@ import type { ZoneDef } from './types.js';
 
 /**
  * SILVERFALL — the royal capital of the Dawnlands, cut terrace by
- * terrace into the living rock of the Silverspine. The High Road
- * climbs five hundred tiles of frontier to reach a gate in the
- * massif's mouth, and behind that gate the city rises in FOUR
- * TERRACES — and the climb is the social ladder:
+ * terrace into the living rock of the Silverspine. THE CROWN
+ * REMASTER (docs/silverfall-crown-plan.md): the city rebuilt whole,
+ * with the palace it always claimed to have.
  *
- *   L0  THE GATEFRONT — the garrison curtain (tiles 139-145: a true
- *       siege rampart, drum towers, chamfered gate bastions, and the
- *       Silver Gate's carved arch), the caravanserai, the gate
- *       market, and the Roaring Pool where the falls land.
- *       Travelers, wagons, and the watch's first questions.
- *   L1  THE TRADES TERRACE — split by the falls channel into two
- *       districts: THE EMBERWAY west (mine yard, smelter, assay
- *       house, the Great Forge, the masons) where the city earns its
- *       name in silver, and THE TIMBERWAY east (saw yard, carpenters'
- *       hall, cooperage, fletcher) where the mountain's pine becomes
- *       everything else — with the cookhouse, mess terrace,
- *       dispensary, and Greenstair gardens feeding both shifts.
- *   L2  THE SILVER COURT & LANTERN ROW — the civic heart (Grand
- *       Court, Bank, Guildhall, Arcanum, Waykeepers' chapter house)
- *       and the shopping street: the Silver Setting, the Cloth Hall,
- *       Inks & Charts, and the Silver Flagon inn behind two rows of
- *       lamps. And tucked into the crag shadow behind the bank, where
- *       no lamp burns and no sign points: THE ROOKERY — the rogues'
- *       quarter, older than the castle, holding the Undercroft mouth.
- *   L3  THE CROWN — Castle Silverfall, seat of the Silver Line
- *       (King Halvard III and Queen Eira), the Mirrormere whose
- *       overflow IS the falls, and the Silver Shrine.
+ *   L0  THE GATEFRONT — the siege curtain and the Silver Gate, the
+ *       wardhouse where the city watch actually lives, the
+ *       caravanserai, the gate market, the Roaring Pool.
+ *   L1  THE TRADES — the Emberway west (mine, smelter, assay, Great
+ *       Forge, masons), the Timberway east (saw yard, carpenters,
+ *       fletcher, cooperage), the cookhouse and Greenstair feeding
+ *       both shifts.
+ *   L2  THE SILVER COURT — the civic terrace: Grand Court and
+ *       fountain, the Bank, the Guildhall across the falls, the
+ *       Arcanum, the chapter house, Lantern Row under its lamps,
+ *       the King's Arch over the avenue. And in the crag shadow
+ *       where no lamp burns: THE ROOKERY, holding the Undercroft
+ *       mouth. The Crown tolerates what it can watch.
+ *   L3  THE CROWN — CASTLE SILVERFALL, a true walled precinct now:
+ *       garrison curtain with corner drums, the gate bastions
+ *       echoing the Silver Gate below, the keep in three ranges
+ *       (the Hall of the Silver Line, the garrison range, the royal
+ *       range), the bailey with its drill yard and kitchens. East
+ *       of the curtain, public ground: the Mirrormere, the royal
+ *       garden, and the Silver Shrine on its pilgrim path.
  *
- * TERRACE LAW: the terraces are NESTED raises (L2 inside L1, L3
- * inside L2), so every rim is exactly ONE level and the auto-fence
- * reads clean everywhere; the north edges step down band by band,
- * leaving high LEDGE WALKS behind the upper terraces — the y7-9
- * ledge behind the castle is the Rookery's back way. Water NEVER
- * touches a rim — each channel stops at the lip and resumes in a
- * plunge basin below (the waterfall curtains hang themselves; the
- * foot-water law is asserted by silverfall.test.ts). Stairs face
- * south; the Silver Stair — three grand nine-wide flights on one
- * axis — carries the High Road from the gate to the Crown.
+ * THE FORTIFICATION LADDER: every gate on the climb outranks the
+ * last — the Silver Gate (y112), the Court Gate (y62), and now the
+ * CASTLE GATE (y32), where the avenue finally lands on the thing it
+ * was aimed at. The castle gate wears the Silver Gate's own
+ * architecture — five-square chamfered bastions, garrison arch —
+ * because the same masons built both, a century apart.
  *
- * THE FORTIFICATION LADDER (the garrison epic in a capital): the
- * outer curtain closes the massif's mouth at L0; every terrace above
- * is walled by the mountain itself (nested cliffs, three stairs);
- * the COURT GATE arches the avenue stair where it crowns L2 — wings
- * dying into the rim, side stairs left open so no shut leaf can ever
- * strand a resident's errand (garrison gates share the fence-gate
- * debt: NPCs do not open them). Gates are authored OPEN and never
- * auto-close untouched — shutting them is the players' war-measure.
+ * TERRACE LAW: nested raises, every rim exactly one level, water
+ * never on a rim, stairs face south, foot-water asserted by
+ * silverfall.test.ts. The race now runs INSIDE the curtain line and
+ * out the water gate — walls die into the banks (the mole law) —
+ * and the landing crosses it on a bridge, with one open row of
+ * water restored above the lip so the fall still reads (the feed
+ * law: a bridge is not a feed).
  *
- * TOWN-PLAN LAWS (Amberford's laws, kept):
- * - STREETS FIRST. Every working door fronts a street: the avenue,
- *   the Emberway lane, the Timberway spine and east lane, the court
- *   walks, Lantern Row. Buildings do not float on grass islands.
- * - NOTHING OVERLAPS. Three clear tiles between structures; snow
- *   never eats a wall; the city wall dies into solid scree.
- * - ROOMS HAVE JOBS. One purpose per room and the furniture proves
- *   it: the throne hall feasts, the armory racks steel, the assay
- *   house weighs the Crown's tithe, the fence's counter faces the
- *   den door.
- * - THE ROOKERY IS HIDDEN. No lamp, no sign, no paved approach: one
- *   narrow alley beside the bank's west wall and the high ledge
- *   behind the castle. The Crown tolerates what it can watch.
+ * TOWN-PLAN LAWS (kept from Amberford, hardened here):
+ * - STREETS FIRST; every working door fronts pavement.
+ * - NOTHING OVERLAPS; three clear tiles between free-standing
+ *   structures (castle ranges abut the curtain ON PURPOSE — real
+ *   baileys are lined, not littered).
+ * - ROOMS HAVE JOBS and the furniture proves it.
+ * - THE ROOKERY IS HIDDEN: no lamp, no sign, one alley, one ledge.
+ * - SEALED-POCKET LAW: the landing rows y33-35 and the bailey walk
+ *   y25 are through-ways; nothing solid stands mid-row.
  *
- * The city is a HAVEN, not a settled hearth (the haven law): its
- * lamp pushes danger back inside the walls while the approach stays
- * tier 4-5 — the walk here is the game, arriving is the reward.
+ * The city is a HAVEN (the haven law): tier 0 inside the walls, the
+ * approach stays 4-5 — the climb is the game, arriving the reward.
  */
 export function buildSilverfall(): ZoneDef {
   const R = SILVERFALL_RECT;
@@ -78,16 +65,17 @@ export function buildSilverfall(): ZoneDef {
 
   // ---------------------------------------------------------------
   // THE TERRACES — nested plateaus; every rim one clean level.
-  // Back ledges (y5; y7-9) are real walks behind the upper terraces.
+  // L3 grew with the remaster: five rows deeper, wider both flanks,
+  // so the Crown terrace can hold a palace instead of a house.
   // ---------------------------------------------------------------
   b.raise(8, 4, 160, 92, 1); // L1: x8-167, y4-95
   b.raise(30, 6, 116, 58, 2); // L2: x30-145, y6-63
-  b.raise(48, 10, 81, 22, 3); // L3: x48-128, y10-31
+  b.raise(46, 10, 92, 27, 3); // L3: x46-137, y10-36
 
   // The Silver Stair — three grand flights on the avenue axis.
   for (let x = 84; x <= 92; x++) b.stairs(x, 95); // L0 -> L1
   for (let x = 84; x <= 92; x++) b.stairs(x, 63); // L1 -> L2
-  for (let x = 84; x <= 92; x++) b.stairs(x, 31); // L2 -> L3
+  for (let x = 84; x <= 92; x++) b.stairs(x, 36); // L2 -> L3
   // Working stairs: the mine climb and the Greenstair (L0 -> L1).
   for (let x = 18; x <= 20; x++) b.stairs(x, 95);
   for (let x = 152; x <= 154; x++) b.stairs(x, 95);
@@ -96,57 +84,68 @@ export function buildSilverfall(): ZoneDef {
   for (let x = 136; x <= 138; x++) b.stairs(x, 63);
 
   // ---------------------------------------------------------------
-  // THE AVENUE — the High Road continued: stone from gate to Crown,
-  // lamped at a marching rhythm so the climb reads as one street.
+  // THE AVENUE — the High Road continued: stone from gate to Crown.
   // ---------------------------------------------------------------
   b.fillRect(84, 96, 9, 16, Tile.StoneFloor); // gatefront stretch
   b.fillRect(84, 64, 9, 31, Tile.StoneFloor); // trades stretch
-  b.fillRect(84, 32, 9, 31, Tile.StoneFloor); // court stretch
-  b.fillRect(84, 26, 9, 5, Tile.StoneFloor); // crown landing
-  // Brazier pairs light each landing — the stair burns, not lamps.
+  b.fillRect(84, 37, 9, 26, Tile.StoneFloor); // court stretch
+  // THE KING'S TERRACE — the crown landing: a paved esplanade under
+  // the castle's south face, from the west ward to the garden arm.
+  // A through-way (sealed-pocket law): nothing solid mid-row.
+  b.fillRect(58, 33, 54, 3, Tile.StoneFloor);
+  b.fillRect(112, 34, 20, 1, Tile.Path); // the east arm: garden + shrine
+  // Braziers pace the climb — the stair burns, not lamps.
   b.set(83, 94, Tile.Brazier).set(93, 94, Tile.Brazier);
-  // (The middle landing's pair stands at y61 — the Court Gate owns
-  // the y62 line there; see the L2 section.)
   b.set(83, 61, Tile.Brazier).set(98, 61, Tile.Brazier);
-  b.set(83, 30, Tile.Brazier).set(93, 30, Tile.Brazier);
+  b.set(84, 33, Tile.Brazier).set(92, 33, Tile.Brazier); // flanking the castle gate
+  b.set(80, 35, Tile.Brazier).set(96, 35, Tile.Brazier); // the stair crown
   // Lamp pairs between the landings pace out the long stretches.
   b.set(83, 40, Tile.LampPost).set(93, 40, Tile.LampPost);
   b.set(83, 52, Tile.LampPost).set(93, 52, Tile.LampPost);
   b.set(83, 70, Tile.LampPost).set(93, 70, Tile.LampPost);
   b.set(83, 80, Tile.LampPost).set(93, 80, Tile.LampPost);
+  // The Crown's crimson marches the avenue: madder poles at the
+  // first flight's foot and the second crown.
+  b.set(83, 97, bannerPoleTile(1)).set(93, 97, bannerPoleTile(1));
+  b.set(83, 65, bannerPoleTile(1)).set(93, 65, bannerPoleTile(1));
 
   // ---------------------------------------------------------------
-  // THE WATER — Mirrormere overflows south, terrace by terrace, and
-  // every lip is a falls. Channels stop shy of every rim.
+  // THE WATER — the Mirrormere overflows south, terrace by terrace,
+  // and every lip is a falls. Channels stop shy of every rim.
   // ---------------------------------------------------------------
-  // L3: the Mirrormere — still, deep, and the city's whole reason.
-  b.fillEllipse(98, 18, 13, 5.5, Tile.WaterShallow);
-  b.fillEllipse(98, 18, 11, 4.5, Tile.Water);
-  b.fillEllipse(98, 18, 7, 3, Tile.WaterDeep);
-  b.fillRect(99, 23, 4, 7, Tile.Water); // the overflow race, to the lip at y30
-  b.set(98, 24, Tile.WaterShallow).set(103, 24, Tile.WaterShallow);
-  // L2: plunge basin under the Crown lip, then the court channel.
-  b.fillEllipse(100, 34, 4, 2, Tile.WaterShallow);
-  b.fillRect(99, 33, 4, 30, Tile.Water); // to the lip at y62
-  b.set(98, 33, Tile.WaterShallow).set(103, 33, Tile.WaterShallow);
-  b.fillRect(99, 32, 4, 1, Tile.WaterShallow); // basin tucks to the wall (foot-water law)
+  // L3: the MIRRORMERE — moved to the terrace's northeast so the
+  // castle could stand west of its own water. Still, deep, public.
+  b.fillEllipse(108, 16, 10, 5, Tile.WaterShallow);
+  b.fillEllipse(108, 16, 8.5, 4, Tile.Water);
+  b.fillEllipse(108, 16, 5.5, 2.5, Tile.WaterDeep);
+  // The outflow neck: the mere leans into the race's throat.
+  b.fillRect(98, 17, 4, 2, Tile.WaterShallow);
+  // THE RACE — the mere's overflow, running south along the castle's
+  // east curtain (the wall dies into the banks: the mole law), under
+  // the landing bridge, and over the lip.
+  b.fillRect(97, 19, 5, 14, Tile.Water); // y19-32
+  b.fillRect(97, 33, 5, 2, Tile.Bridge); // the landing crosses the race
+  b.fillRect(97, 35, 5, 1, Tile.Water); // the open row above the lip — the feed
+  // L2: the plunge basin under the Crown lip, then the court channel.
+  b.fillRect(97, 37, 5, 1, Tile.WaterShallow); // foot-water: the curtain lands IN water
+  b.fillEllipse(99, 39, 3.5, 2, Tile.WaterShallow);
+  b.fillRect(99, 40, 4, 23, Tile.Water); // to the lip at y62
+  b.set(98, 40, Tile.WaterShallow).set(103, 40, Tile.WaterShallow);
   // L1: plunge basin, then the working channel.
   b.fillEllipse(100, 66, 4, 2, Tile.WaterShallow);
   b.fillRect(99, 65, 4, 30, Tile.Water); // to the lip at y94
   b.set(98, 65, Tile.WaterShallow).set(103, 65, Tile.WaterShallow);
-  b.fillRect(99, 64, 4, 1, Tile.WaterShallow); // basin tucks to the wall (foot-water law)
+  b.fillRect(99, 64, 4, 1, Tile.WaterShallow); // basin tucks to the wall
   // L0: the ROARING POOL — the whole mountain's water lands here.
   b.fillEllipse(104, 102, 12, 6.5, Tile.WaterShallow);
   b.fillEllipse(104, 102, 10, 5.5, Tile.Water);
   b.fillEllipse(104, 101, 6, 3.5, Tile.WaterDeep);
-  // THE FOOT-WATER LAW: the plunge pocket tucks to the wall — a
-  // waterfall lands IN water; every south-facing spill is asserted
-  // drop-0 by silverfall.test.ts.
-  b.fillRect(98, 96, 6, 2, Tile.WaterShallow);
-  // Bridges: the channel is crossed, never forded — and every bridge
-  // lands on pavement, not lawn (the street law).
+  b.fillRect(98, 96, 6, 2, Tile.WaterShallow); // foot-water at the wall
+  // Bridges: the channel is crossed, never forded. The court bridge
+  // sits on the CIVIC AXIS — bank door, plaza, bridge, guildhall
+  // door all on one line (y43-44).
   for (let x = 98; x <= 103; x++) {
-    b.set(x, 44, Tile.Bridge).set(x, 45, Tile.Bridge); // court -> guildhall
+    b.set(x, 43, Tile.Bridge).set(x, 44, Tile.Bridge); // the civic axis
     b.set(x, 60, Tile.Bridge).set(x, 61, Tile.Bridge); // Lantern Row crossing
     b.set(x, 74, Tile.Bridge).set(x, 75, Tile.Bridge); // forge -> carpenters
     b.set(x, 86, Tile.Bridge).set(x, 87, Tile.Bridge); // yard -> mess terrace
@@ -155,138 +154,210 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(93, 86, 5, 2, Tile.Path); // avenue -> mess bridge
 
   // ---------------------------------------------------------------
-  // L3 — THE CROWN. Castle Silverfall westward, the Silver Shrine
-  // east, the mere between them.
+  // L3 — CASTLE SILVERFALL: the walled precinct. Floors first, then
+  // the curtain, then the drums and bastions over both.
   // ---------------------------------------------------------------
-  // CASTLE SILVERFALL — seat of the Silver Line. Curtain walls with
-  // chamfered south shoulders (the diagonal budget's crown), a wide
-  // south gate onto the forecourt, and three rooms with three jobs:
-  // the throne hall, the armory & guard wing, the royal wing.
-  b.fillRect(49, 11, 34, 18, Tile.StoneFloor);
-  b.outlineRect(49, 11, 34, 18, Tile.WallStone);
-  b.set(49, 28, Tile.WallStoneDiagNE); // the south shoulders
-  b.set(82, 28, Tile.WallStoneDiagNW);
-  b.set(65, 28, Tile.DoorwayStoneWide).set(66, 28, Tile.DoorwayStoneWide);
-  b.set(55, 28, Tile.WallStoneWindow).set(60, 28, Tile.WallStoneWindow);
-  b.set(71, 28, Tile.WallStoneWindow).set(76, 28, Tile.WallStoneWindow);
-  b.set(49, 15, Tile.WallStoneWindow).set(49, 22, Tile.WallStoneWindow);
-  b.set(82, 15, Tile.WallStoneWindow).set(82, 22, Tile.WallStoneWindow);
-  b.set(55, 11, Tile.WallStoneWindow).set(65, 11, Tile.WallStoneWindow);
-  b.set(76, 11, Tile.WallStoneWindow);
-  // Two partition walls carve the three wings.
-  for (let y = 12; y <= 27; y++) b.set(57, y, Tile.WallStone);
-  b.set(57, 15, Tile.DoorwayStone).set(57, 24, Tile.DoorwayStone);
-  for (let y = 12; y <= 27; y++) b.set(74, y, Tile.WallStone);
-  b.set(74, 15, Tile.DoorwayStone).set(74, 24, Tile.DoorwayStone);
-  // THE HALL OF THE SILVER LINE (x58-73): the twin thrones on the
-  // dais, twin hearths, the herald's lectern, and two feast tables
-  // running the floor to the gate — the hall feasts, and the Crown
-  // watches it feast.
-  b.set(59, 12, Tile.Hearth).set(72, 12, Tile.Hearth);
-  b.set(61, 13, Tile.BannerPole).set(70, 13, Tile.BannerPole);
-  // The thrones stand TOGETHER — a hand's reach apart, at the King's
-  // own order. Two seats, one dais, no space for protocol between.
-  // TRUE thrones now: the west seat gilded for the King, the east
-  // silvered moonpale for the Queen (Tile.Throne's paired-seat law).
-  b.set(65, 13, Tile.Throne).set(66, 13, Tile.Throne);
-  // THE PROCESSIONAL: crimson velvet from the gate to the dais — a
-  // 4-wide spread under the thrones narrowing to the 2-wide runner
-  // every petitioner walks. Fitted carpet (Detail.CarpetRoyal) knits
-  // seamlessly; braid and outline survive only on its free hem.
-  b.setDetail(64, 14, Detail.CarpetRoyal).setDetail(67, 14, Detail.CarpetRoyal);
-  for (let y = 14; y <= 27; y++) {
-    b.setDetail(65, y, Detail.CarpetRoyal).setDetail(66, y, Detail.CarpetRoyal);
+  // The bailey pavement and the keep's slab.
+  b.fillRect(51, 25, 45, 7, Tile.StoneFloor); // the bailey, x51-95
+  b.fillRect(54, 12, 40, 13, Tile.StoneFloor); // the keep slab
+  b.fillRect(94, 12, 2, 13, Tile.StoneFloor); // the east walk (patrol lane)
+  // The crag the keep backs into — the mountain shows through the
+  // ward between the west curtain and the keep's blind wall.
+  b.fillRect(51, 12, 3, 13, Tile.Rock);
+  // THE CURTAIN — garrison masonry on all four sides.
+  b.fillRect(50, 11, 47, 1, Tile.WallGarrison); // north run y11
+  b.fillRect(50, 12, 1, 20, Tile.WallGarrison); // west run x50
+  b.fillRect(96, 12, 1, 20, Tile.WallGarrison); // east run x96 (dies into the race)
+  b.fillRect(50, 32, 47, 1, Tile.WallGarrison); // south run y32
+  // Corner drums, proud of the line, chamfered.
+  b.fillRect(50, 11, 3, 3, Tile.WallGarrison);
+  b.set(50, 11, Tile.WallGarrisonDiagSE).set(52, 11, Tile.WallGarrisonDiagSW);
+  b.set(52, 13, Tile.WallGarrisonDiagNW);
+  b.fillRect(94, 11, 3, 3, Tile.WallGarrison);
+  b.set(94, 11, Tile.WallGarrisonDiagSE).set(96, 11, Tile.WallGarrisonDiagSW);
+  b.set(94, 13, Tile.WallGarrisonDiagNE);
+  b.fillRect(50, 30, 3, 3, Tile.WallGarrison);
+  b.set(50, 30, Tile.WallGarrisonDiagSE).set(52, 30, Tile.WallGarrisonDiagSW);
+  b.set(52, 32, Tile.WallGarrisonDiagNW);
+  // THE GATE BASTIONS — the Silver Gate's five-square drums, reborn
+  // at the Crown: the same masons, a century apart.
+  for (const bx of [81, 91] as const) {
+    b.fillRect(bx, 30, 5, 3, Tile.WallGarrison);
+    b.set(bx, 30, Tile.WallGarrisonDiagSE);
+    b.set(bx + 4, 30, Tile.WallGarrisonDiagSW);
+    b.set(bx, 32, Tile.WallGarrisonDiagNE);
+    b.set(bx + 4, 32, Tile.WallGarrisonDiagNW);
   }
-  // THE SIGILS OVER THE DAIS: the King's peaks west of the window,
-  // the Queen's arch east — the wall itself wears the house.
-  b.setDetail(63, 11, Detail.BannerCrown).setDetail(64, 11, Detail.BannerCrown);
-  b.setDetail(67, 11, Detail.BannerMoon).setDetail(68, 11, Detail.BannerMoon);
-  b.set(69, 15, Tile.Lectern); // the herald reads the day's decrees
-  for (let y = 18; y <= 23; y++) b.set(61, y, Tile.Table).set(70, y, Tile.Table);
-  b.set(61, 17, Tile.Chair).set(61, 24, Tile.Chair);
-  b.set(70, 17, Tile.Chair).set(70, 24, Tile.Chair);
-  b.set(60, 19, Tile.Chair).set(60, 22, Tile.Chair);
-  b.set(62, 18, Tile.Chair).set(62, 21, Tile.Chair);
-  b.set(69, 18, Tile.Chair).set(69, 21, Tile.Chair);
-  b.set(71, 19, Tile.Chair).set(71, 22, Tile.Chair);
-  b.set(63, 27, Tile.BannerPole).set(68, 27, Tile.BannerPole);
-  // The Crown greets the forecourt: sigils flank the great gate.
-  b.setDetail(62, 28, Detail.BannerCrown).setDetail(69, 28, Detail.BannerMoon);
-  // THE WEST WING (x50-56): armory north, guard hall south — the
-  // castle guard eats and sleeps beside the steel it carries.
-  for (let x = 50; x <= 56; x++) b.set(x, 20, Tile.WallStone);
-  b.set(53, 20, Tile.DoorwayStone);
-  b.set(50, 13, Tile.WeaponRack).set(50, 15, Tile.WeaponRack).set(50, 17, Tile.WeaponRack);
-  b.set(52, 12, Tile.ToolRack);
-  b.set(56, 13, Tile.Cabinet).set(56, 17, Tile.CrateGoods);
-  b.set(52, 17, Tile.Table).set(53, 17, Tile.Chair); // the castellan's desk
-  b.set(56, 12, Tile.Bookshelf); // the muster rolls
-  // The armory wears the crown over its steel, and the castellan's
-  // floor gets the one soft thing Maren allows herself.
-  b.setDetail(51, 11, Detail.BannerCrown);
-  b.setDetail(53, 14, Detail.Rug).setDetail(54, 14, Detail.Rug);
-  b.setDetail(53, 15, Detail.Rug).setDetail(54, 15, Detail.Rug);
-  b.set(51, 25, Tile.Bed).set(51, 26, Tile.Bed);
-  b.set(55, 25, Tile.Bed).set(55, 26, Tile.Bed);
-  b.set(53, 23, Tile.Table).set(52, 23, Tile.Chair).set(54, 23, Tile.Chair);
-  b.set(56, 27, Tile.Brazier).set(50, 22, Tile.WeaponRack);
-  // The guard hall's one soft thing: a great rug between the bunks
-  // (the one-loom law weaves the 3x2 block into a single cloth), and
-  // the crown's banner over the mess — the steel serves the sigil.
-  for (let x = 52; x <= 54; x++) {
-    b.setDetail(x, 24, Detail.Rug).setDetail(x, 25, Detail.Rug);
+  b.fillRect(96, 30, 1, 3, Tile.WallGarrison); // the SE corner column
+  // THE CASTLE GATE — the avenue finally lands on the thing it was
+  // aimed at. Garrison arch, leaves standing open (the war-measure
+  // law: shutting gates is the players' business, never the town's).
+  for (let x = 86; x <= 90; x++) b.set(x, 32, Tile.GateGarrison);
+  b.fillRect(86, 30, 5, 2, Tile.StoneFloor); // the gate passage
+  b.setDetail(84, 32, Detail.BannerCrown).setDetail(92, 32, Detail.BannerMoon);
+  b.sign(80, 33, 'CASTLE SILVERFALL', ['seat of the Silver Line', 'the gate stands open. the watch stands closer']);
+
+  // THE KEEP — one building, three ranges, x54-93.
+  b.outlineRect(54, 12, 40, 13, Tile.WallStone);
+  // Partitions: garrison range | Hall of the Silver Line | royal range.
+  for (let y = 13; y <= 23; y++) b.set(69, y, Tile.WallStone);
+  b.set(69, 16, Tile.DoorwayStone).set(69, 21, Tile.DoorwayStone);
+  for (let y = 13; y <= 23; y++) b.set(86, y, Tile.WallStone);
+  b.set(86, 16, Tile.DoorwayStone).set(86, 21, Tile.DoorwayStone);
+  // Doors and windows on the shell.
+  b.set(77, 24, Tile.DoorwayStoneWide).set(78, 24, Tile.DoorwayStoneWide); // the hall gate
+  b.set(60, 24, Tile.DoorwayStone); // the garrison's own door
+  b.set(89, 24, Tile.DoorwayStone); // the royal range door
+  b.set(72, 12, Tile.WallStoneWindow).set(83, 12, Tile.WallStoneWindow);
+  b.set(60, 12, Tile.WallStoneWindow).set(66, 12, Tile.WallStoneWindow);
+  b.set(89, 12, Tile.WallStoneWindow);
+  b.set(54, 16, Tile.WallStoneWindow).set(54, 21, Tile.WallStoneWindow);
+  b.set(93, 14, Tile.WallStoneWindow).set(93, 21, Tile.WallStoneWindow);
+  b.set(64, 24, Tile.WallStoneWindow).set(72, 24, Tile.WallStoneWindow);
+  b.set(83, 24, Tile.WallStoneWindow).set(92, 24, Tile.WallStoneWindow);
+
+  // THE HALL OF THE SILVER LINE (x70-85): thrones on the dais, twin
+  // hearths, the processional, two feast tables — the hall feasts,
+  // and the Crown watches it feast.
+  b.set(71, 13, Tile.Hearth).set(84, 13, Tile.Hearth);
+  b.set(77, 14, Tile.Throne).set(78, 14, Tile.Throne);
+  b.setDetail(75, 12, Detail.BannerCrown).setDetail(80, 12, Detail.BannerMoon);
+  b.set(73, 14, Tile.BannerPole).set(82, 14, Tile.BannerPole);
+  // The processional: crimson from the hall gate to the dais.
+  b.setDetail(76, 15, Detail.CarpetRoyal).setDetail(79, 15, Detail.CarpetRoyal);
+  for (let y = 15; y <= 23; y++) {
+    b.setDetail(77, y, Detail.CarpetRoyal).setDetail(78, y, Detail.CarpetRoyal);
   }
-  b.setDetail(55, 20, Detail.BannerCrown);
-  // THE ROYAL WING (x75-81): the chamber north, the solar south —
-  // where the Crown is only a household.
-  for (let x = 75; x <= 81; x++) b.set(x, 20, Tile.WallStone);
-  b.set(78, 20, Tile.DoorwayStone);
-  b.set(76, 13, Tile.Bed).set(76, 14, Tile.Bed);
-  b.set(80, 13, Tile.Bed).set(80, 14, Tile.Bed);
-  // The Queen's floor: moonpale velvet laid between the royal beds.
-  for (let x = 77; x <= 79; x++) {
+  b.set(82, 16, Tile.Lectern); // the herald reads the day's decrees
+  // Two feast tables run the floor, chairs down both sides.
+  for (let y = 18; y <= 22; y++) b.set(72, y, Tile.Table).set(83, y, Tile.Table);
+  b.set(72, 17, Tile.Chair).set(83, 17, Tile.Chair);
+  b.set(71, 19, Tile.Chair).set(71, 21, Tile.Chair);
+  b.set(73, 18, Tile.Chair).set(73, 20, Tile.Chair).set(73, 22, Tile.Chair);
+  b.set(82, 18, Tile.Chair).set(82, 20, Tile.Chair).set(82, 22, Tile.Chair);
+  b.set(84, 19, Tile.Chair).set(84, 21, Tile.Chair);
+  b.set(71, 23, Tile.BannerPole).set(84, 23, Tile.BannerPole);
+  b.setDetail(77, 25, Detail.Doormat).setDetail(78, 25, Detail.Doormat);
+
+  // THE GARRISON RANGE (x55-68): armory and barracks north, the
+  // castellan and the mess south — the castle guard eats and sleeps
+  // beside the steel it carries. Hot bunks (the rota law).
+  for (let x = 55; x <= 68; x++) b.set(x, 18, Tile.WallStone);
+  b.set(61, 18, Tile.DoorwayStone);
+  b.set(55, 13, Tile.WeaponRack).set(55, 15, Tile.WeaponRack).set(55, 17, Tile.WeaponRack);
+  b.set(57, 13, Tile.ToolRack);
+  b.set(63, 13, Tile.Bed).set(63, 14, Tile.Bed);
+  b.set(65, 13, Tile.Bed).set(65, 14, Tile.Bed);
+  b.set(67, 13, Tile.Bed).set(67, 14, Tile.Bed);
+  b.set(68, 17, Tile.Cabinet);
+  b.setDetail(59, 12, Detail.BannerCrown);
+  for (let x = 63; x <= 66; x++) b.setDetail(x, 16, Detail.Rug);
+  // The castellan's floor: Maren's desk faces the muster wall, the
+  // castle strongbox sleeps beside her, the mess table feeds the
+  // watch change. The one soft thing is under her own chair.
+  b.set(55, 19, Tile.Bookshelf).set(56, 19, Tile.Bookshelf); // the muster rolls
+  b.set(57, 20, Tile.Table).set(58, 20, Tile.Chair);
+  b.setDetail(57, 21, Detail.Rug).setDetail(58, 21, Detail.Rug);
+  b.set(55, 21, Tile.Vault); // the household strongbox — Maren's key
+  b.set(55, 23, Tile.Brazier);
+  b.set(63, 21, Tile.Table).set(64, 21, Tile.Table);
+  b.set(62, 21, Tile.Chair).set(65, 21, Tile.Chair).set(63, 22, Tile.Chair);
+  b.set(68, 19, Tile.WeaponRack);
+  b.set(67, 22, Tile.Bed).set(67, 23, Tile.Bed); // the castellan sleeps by the rolls
+  b.setDetail(60, 25, Detail.Doormat);
+
+  // THE ROYAL RANGE (x87-92): the chamber north, the solar south —
+  // where the Crown is only a household. East windows on the walk,
+  // the race, and the mere beyond.
+  for (let x = 87; x <= 92; x++) b.set(x, 18, Tile.WallStone);
+  b.set(89, 18, Tile.DoorwayStone);
+  b.set(87, 13, Tile.Bed).set(87, 14, Tile.Bed);
+  b.set(91, 13, Tile.Bed).set(91, 14, Tile.Bed);
+  for (let x = 88; x <= 90; x++) {
     b.setDetail(x, 13, Detail.CarpetMoon).setDetail(x, 14, Detail.CarpetMoon);
   }
-  b.setDetail(78, 15, Detail.RugRound);
-  b.set(81, 12, Tile.Cabinet).set(75, 17, Tile.Bookshelf);
-  b.set(78, 12, Tile.FlowerBox); // the queen's window box
-  b.set(78, 23, Tile.Table).set(77, 23, Tile.Chair).set(79, 23, Tile.Chair);
-  b.set(75, 22, Tile.Bookshelf).set(75, 25, Tile.Bookshelf);
-  b.set(81, 25, Tile.Hearth).set(81, 21, Tile.Cabinet);
-  // The solar: the Silverfall weave hangs three tiles wide over a
-  // grand 5x3 medallion rug — the one room where the Crown sits soft.
-  b.setDetail(75, 20, Detail.Tapestry).setDetail(76, 20, Detail.Tapestry);
-  b.setDetail(77, 20, Detail.Tapestry);
-  for (let x = 76; x <= 80; x++) {
-    for (let y = 24; y <= 26; y++) b.setDetail(x, y, Detail.Rug);
-  }
-  // The forecourt: the Crown's parade strip — the y29-30 rows are the
-  // Crown terrace's only east-west walk, so NOTHING solid stands on
-  // them (the sealed-pocket law; the banners live inside the hall).
-  b.fillRect(49, 29, 49, 2, Tile.StoneFloor);
-  b.setDetail(65, 29, Detail.Doormat).setDetail(66, 29, Detail.Doormat);
-  // THE SILVER SHRINE: a tight pillar ring on the mere's east shore,
-  // reached by its own pilgrim path off the crown landing. The
-  // mother-flame here lights every road lamp in the Dawnlands.
-  b.fillRect(94, 25, 24, 1, Tile.Path);
-  for (let x = 99; x <= 102; x++) b.set(x, 25, Tile.Bridge); // over the race
-  b.fillRect(117, 22, 2, 3, Tile.Path);
-  b.fillRect(116, 17, 5, 5, Tile.StoneFloor);
-  b.set(115, 14, Tile.PillarStone).set(121, 14, Tile.PillarStone);
-  b.set(113, 18, Tile.PillarStone).set(123, 18, Tile.PillarStone);
-  b.set(115, 22, Tile.PillarStone).set(121, 22, Tile.PillarStone);
-  b.set(118, 19, Tile.Brazier);
-  b.set(116, 21, Tile.Bench).set(120, 21, Tile.Bench);
-  b.set(116, 17, Tile.FlowerBox).set(120, 17, Tile.FlowerBox);
-  // Mirrormere dressing: willows, still-water fishing, and the
-  // queen's rest — a bench on the south shore where Eira takes the
-  // mountain air at midday.
-  b.set(86, 12, Tile.TreeWillow).set(110, 13, Tile.TreeWillow).set(85, 26, Tile.TreeWillow);
-  b.set(90, 23, Tile.FishingSpot).set(106, 15, Tile.FishingSpot);
-  b.set(88, 27, Tile.Bench).set(87, 27, Tile.FlowerBox);
-  // Snow holds the high ground all year — clear of every wall.
-  b.fillRect(124, 12, 3, 2, Tile.Snow);
-  b.fillRect(108, 27, 4, 2, Tile.Snow).fillRect(113, 26, 3, 1, Tile.Snow);
+  b.set(89, 15, Tile.FlowerBox); // the queen's window box
+  b.set(92, 16, Tile.Cabinet);
+  b.setDetail(89, 16, Detail.RugRound);
+  // The solar: the Silverfall weave over the grand rug — the one
+  // room where the Crown sits soft.
+  b.setDetail(87, 18, Detail.Tapestry).setDetail(88, 18, Detail.Tapestry);
+  b.set(87, 19, Tile.Bookshelf).set(87, 20, Tile.Bookshelf);
+  b.set(92, 19, Tile.Hearth);
+  b.set(89, 21, Tile.Table).set(88, 21, Tile.Chair).set(90, 21, Tile.Chair);
+  for (let x = 88; x <= 91; x++) b.setDetail(x, 22, Detail.Rug);
+  b.setDetail(89, 25, Detail.Doormat);
+
+  // THE BAILEY — parade stone between the keep and the curtain.
+  // The walk row y25 is a through-way (sealed-pocket law).
+  b.set(75, 25, bannerPoleTile(1)).set(80, 25, bannerPoleTile(1)); // hall gate colors
+  b.set(74, 28, Tile.Basin); // the well
+  b.setDetail(75, 29, Detail.Pebbles);
+  // THE DRILL YARD — the garrison trains in public view: butts west,
+  // racks at the rail, the drillmaster's ground worn to dirt.
+  b.fillRect(61, 26, 12, 6, Tile.Dirt);
+  b.set(61, 27, Tile.Fence).set(61, 30, Tile.Fence);
+  b.setDetail(62, 27, Detail.Straw).setDetail(62, 30, Detail.Straw);
+  b.set(71, 26, Tile.WeaponRack).set(71, 31, Tile.ToolRack);
+  b.setDetail(66, 29, Detail.Pebbles);
+  b.sign(73, 30, 'THE DRILL YARD', ['loose only west', 'the King watches on seventh-days']);
+  // THE CASTLE KITCHENS — the service range on the west curtain:
+  // hearth pair, the pass, the larder, the steward's ledger table.
+  b.outlineRect(51, 25, 7, 6, Tile.WallStone);
+  b.set(57, 27, Tile.DoorwayStone);
+  b.set(54, 25, Tile.WallStoneWindow).set(51, 27, Tile.WallStoneWindow);
+  b.set(52, 26, Tile.Hearth).set(54, 26, Tile.Hearth);
+  b.set(56, 26, Tile.Basin);
+  b.set(52, 28, Tile.Counter).set(53, 28, Tile.Counter); // the pass
+  b.set(52, 29, Tile.CrateGoods).set(53, 29, Tile.Barrel); // the larder row
+  b.set(55, 28, Tile.Table).set(56, 28, Tile.Chair); // the steward's ledger
+  b.setDetail(56, 27, Detail.Doormat);
+  b.sign(58, 26, 'THE CASTLE KITCHENS', ['four hundred meals a week', 'the steward remembers every one']);
+  // The wood store in the bailey's east nook, under the royal windows.
+  b.set(93, 26, Tile.Crate).set(94, 27, Tile.Crate).set(92, 28, Tile.Barrel);
+  b.setDetail(93, 28, Detail.Straw);
+  // The east walk: the patrol lane between keep and curtain.
+  b.set(94, 14, Tile.Brazier);
+  b.fillRect(95, 22, 1, 1, Tile.Snow);
+
+  // ---------------------------------------------------------------
+  // L3 EAST — PUBLIC GROUND: the mere, the garden, the shrine.
+  // ---------------------------------------------------------------
+  // Mere dressing: willows at the water, still-water fishing.
+  b.set(119, 21, Tile.TreeWillow).set(102, 22, Tile.TreeWillow);
+  b.set(103, 19, Tile.FishingSpot).set(114, 20, Tile.FishingSpot);
+  // THE ROYAL GARDEN — the mere's south shore behind a low fence,
+  // gate open (public, and the sign says so): the Queen's ground.
+  b.outlineRect(104, 23, 15, 7, Tile.Fence);
+  b.set(111, 29, Tile.Grass); // the gate
+  b.set(106, 24, Tile.FlowerBox).set(109, 24, Tile.FlowerBox);
+  b.set(112, 24, Tile.FlowerBox).set(115, 24, Tile.FlowerBox);
+  b.set(110, 25, Tile.Basin); // the garden font
+  b.set(108, 27, Tile.Bench).set(113, 27, Tile.Bench);
+  b.set(106, 27, Tile.FlowerBox).set(115, 27, Tile.FlowerBox);
+  b.fillRect(111, 30, 1, 3, Tile.Path); // gate -> the east arm
+  b.sign(112, 30, 'THE ROYAL GARDEN', ['the Queen walks at midday', 'pick nothing']);
+  // THE SILVER SHRINE — the mother-flame on its pilgrim path; every
+  // road lamp in the Dawnlands is lit from this fire.
+  b.fillRect(124, 15, 5, 5, Tile.StoneFloor);
+  b.set(123, 13, Tile.PillarStone).set(129, 13, Tile.PillarStone);
+  b.set(121, 17, Tile.PillarStone).set(131, 17, Tile.PillarStone);
+  b.set(123, 21, Tile.PillarStone).set(129, 21, Tile.PillarStone);
+  b.set(126, 17, Tile.Brazier); // the mother-flame
+  b.set(124, 15, Tile.FlowerBox).set(128, 15, Tile.FlowerBox);
+  b.set(125, 20, Tile.Bench).set(127, 20, Tile.Bench);
+  b.fillRect(125, 22, 2, 13, Tile.Path); // the pilgrim path, down to the arm
+  b.set(123, 30, Tile.LampPost); // the one lamp the flame allows itself
+  b.set(123, 28, Tile.Bench).set(128, 28, Tile.Bench); // the pilgrim rest
+  b.set(121, 24, Tile.TreeYew).set(131, 24, Tile.TreeYew);
+  // Alpine dressing on the public east strip.
+  b.fillRect(121, 11, 2, 1, Tile.Snow);
+  b.fillRect(133, 13, 2, 2, Tile.Snow);
+  b.fillRect(119, 29, 2, 1, Tile.Snow).fillRect(132, 26, 3, 1, Tile.Snow);
+  b.set(134, 23, Tile.Rock).set(120, 32, Tile.Rock);
+  // The west ward strip, under the crag.
+  b.fillRect(47, 11, 2, 1, Tile.Snow);
+  b.set(49, 18, Tile.Rock).set(48, 33, Tile.Rock);
 
   // ---------------------------------------------------------------
   // THE HIGH LEDGES — the walks behind the terraces, snow-bitten.
@@ -301,12 +372,11 @@ export function buildSilverfall(): ZoneDef {
   b.set(24, 5, Tile.Rock).set(112, 5, Tile.Rock);
 
   // ---------------------------------------------------------------
-  // L2 NW — THE ROOKERY: the rogues' quarter in the crag shadow
-  // behind the bank. Older than the castle — the first quarrymen's
-  // camp — and never on any map the Guildhall sells. Scree seals it
-  // south except one narrow alley beside the bank's west wall; the
-  // high ledge behind the castle is the back way. No lamps. No signs
-  // pointing in. The Crown tolerates what the Magpie lets it see.
+  // L2 NW — THE ROOKERY: the rogues' quarter in the crag shadow.
+  // Older than the castle, never on any map the Guildhall sells.
+  // Scree seals it south except one narrow alley toward the bank's
+  // west wall; the high ledge behind the castle is the back way.
+  // No lamps. No signs pointing in.
   // ---------------------------------------------------------------
   // The Undercroft mouth: cave mass in its own rock knoll, the arch,
   // the portal down to the Landing — and the braziers the Rookery
@@ -323,16 +393,13 @@ export function buildSilverfall(): ZoneDef {
   b.set(34, 20, Tile.CaveRubble).set(42, 20, Tile.CaveRubble);
   b.setDetail(35, 21, Detail.Pebbles).setDetail(41, 22, Detail.Pebbles);
   // THE BROKEN LANTERN — the den. One door, east, watching the alley.
-  // The Magpie's chair by the hearth, the game table, and Calder's
-  // counter where things without histories find new ones.
   b.fillRect(31, 22, 11, 7, Tile.WoodFloor);
   b.outlineRect(31, 22, 11, 7, Tile.WallWood);
   b.set(41, 25, Tile.DoorwayWood);
   b.set(35, 22, Tile.WallWoodWindow).set(31, 25, Tile.WallWoodWindow);
   b.set(32, 23, Tile.Hearth);
-  // The Magpie holds court on somebody else's rug — woven whole,
-  // provenance unavailable — under a Silverfall weave that the
-  // castle's inventory insists is "in restoration."
+  // The Magpie holds court on somebody else's rug under a Silverfall
+  // weave the castle's inventory insists is "in restoration."
   b.set(33, 25, Tile.Chair);
   b.setDetail(34, 24, Detail.Rug).setDetail(35, 24, Detail.Rug);
   b.setDetail(34, 25, Detail.Rug).setDetail(35, 25, Detail.Rug);
@@ -346,143 +413,144 @@ export function buildSilverfall(): ZoneDef {
   // The lookout's corner at the alley mouth, and the camp scatter.
   b.set(44, 27, Tile.Crate).set(45, 28, Tile.Barrel);
   b.set(43, 28, Tile.Bench);
-  b.set(46, 24, Tile.Campfire).set(47, 25, Tile.Bench);
-  b.set(46, 10, Tile.Rock).set(45, 11, Tile.Rock).set(47, 12, Tile.Rock);
+  b.set(43, 24, Tile.Campfire).set(44, 25, Tile.Bench);
+  b.set(44, 10, Tile.Rock).set(45, 11, Tile.Rock).set(45, 12, Tile.Rock);
   b.set(33, 9, Tile.CaveRubble).set(44, 22, Tile.CaveRubble);
-  b.setDetail(34, 10, Detail.Pebbles).setDetail(46, 27, Detail.Pebbles);
-  b.set(32, 7, Tile.Stump).set(43, 8, Tile.Stump).set(47, 22, Tile.Stump);
+  b.setDetail(34, 10, Detail.Pebbles).setDetail(44, 26, Detail.Pebbles);
+  b.set(32, 7, Tile.Stump).set(43, 8, Tile.Stump).set(43, 20, Tile.Stump);
   b.set(31, 11, Tile.GrassTall).set(45, 24, Tile.GrassTall).set(34, 29, Tile.GrassTall);
-  b.setDetail(44, 25, Detail.Tuft).setDetail(32, 12, Detail.Tuft).setDetail(46, 21, Detail.Tuft);
-  // The scree seal: solid rock across the quarter's south face, with
-  // the one alley gap at x42-43 hugging the bank's west wall.
+  b.setDetail(44, 21, Detail.Tuft).setDetail(32, 12, Detail.Tuft);
+  // The scree seal: rock across the quarter's south face, the one
+  // alley gap at x42-43 dropping toward the bank's back lot.
   for (let x = 31; x <= 41; x++) {
-    b.set(x, 30, Tile.Rock);
-    if (x % 3 === 0) b.set(x, 31, Tile.Rock);
+    b.set(x, 33, Tile.Rock);
+    if (x % 3 === 0) b.set(x, 34, Tile.Rock);
   }
-  for (let x = 44; x <= 47; x++) b.set(x, 30, Tile.Rock).set(x, 31, Tile.Rock);
+  b.set(44, 33, Tile.Rock).set(45, 33, Tile.Rock).set(44, 34, Tile.Rock).set(45, 34, Tile.Rock);
+  // The back lot below the seal: forgotten ground between the
+  // Rookery and the bank — no street, no lamps, on purpose.
+  b.set(36, 40, Tile.Rock).set(40, 44, Tile.Rock).set(33, 47, Tile.Rock);
+  b.set(34, 38, Tile.GrassTall).set(41, 48, Tile.GrassTall).set(37, 44, Tile.GrassTall);
 
   // ---------------------------------------------------------------
-  // L2 — THE SILVER COURT.
+  // L2 — THE SILVER COURT: the civic terrace, recut on the y38-49
+  // band with the CIVIC AXIS (y43-44) running bank door -> plaza ->
+  // falls bridge -> guildhall door.
   // ---------------------------------------------------------------
-  // The GRAND COURT: the plaza at the stair crown. The silver
-  // fountain in a stone square, the crier's lectern, the moot board.
-  b.fillRect(70, 32, 28, 17, Tile.StoneFloor);
-  b.set(78, 39, Tile.WaterShallow).set(79, 39, Tile.WaterShallow);
-  b.set(78, 40, Tile.WaterShallow).set(79, 40, Tile.WaterShallow);
-  b.set(76, 37, Tile.FlowerBox).set(81, 37, Tile.FlowerBox);
-  b.set(76, 42, Tile.FlowerBox).set(81, 42, Tile.FlowerBox);
-  b.set(77, 36, Tile.Bench).set(80, 36, Tile.Bench);
-  b.set(77, 43, Tile.Bench).set(80, 43, Tile.Bench);
-  b.set(74, 34, Tile.Lectern); // the crier reads the Crown's word here
-  b.sign(72, 37, 'THE GRAND COURT', ['the Crown hears moot', 'first bell of the month']);
-  b.set(72, 33, Tile.BannerPole).set(95, 33, Tile.BannerPole);
-  b.set(72, 47, Tile.LampPost).set(95, 47, Tile.LampPost);
-  // The court stall: one licensed pitch on the plaza flags.
-  b.stamp(MARKET_STALL, 73, 44);
-  // The east court: a quiet planter nook off the guildhall bridge.
-  b.set(95, 37, Tile.FlowerBox);
-  b.set(94, 40, Tile.Bench).set(96, 40, Tile.Bench);
+  // The GRAND COURT: the plaza at the stair's foot — fountain
+  // square, the crier's lectern, the moot board, the licensed pitch.
+  b.fillRect(70, 38, 25, 12, Tile.StoneFloor);
+  b.set(78, 42, Tile.WaterShallow).set(79, 42, Tile.WaterShallow);
+  b.set(78, 43, Tile.WaterShallow).set(79, 43, Tile.WaterShallow);
+  b.set(76, 40, Tile.FlowerBox).set(81, 40, Tile.FlowerBox);
+  b.set(76, 45, Tile.FlowerBox).set(81, 45, Tile.FlowerBox);
+  b.set(77, 39, Tile.Bench).set(80, 39, Tile.Bench);
+  b.set(77, 46, Tile.Bench).set(80, 46, Tile.Bench);
+  b.set(73, 40, Tile.Lectern); // the crier reads the Crown's word here
+  b.sign(71, 42, 'THE GRAND COURT', ['the Crown hears moot', 'first bell of the month']);
+  b.set(72, 38, bannerPoleTile(1)).set(94, 38, bannerPoleTile(1));
+  b.set(72, 48, Tile.LampPost).set(94, 48, Tile.LampPost);
+  b.stamp(MARKET_STALL, 73, 45); // the licensed pitch
+  // THE KING'S ARCH — the Silver Line's centenary, arched over the
+  // avenue where the court meets the Row.
+  for (let x = 86; x <= 90; x++) b.set(x, 54, Tile.ArchStone);
+  b.setDetail(87, 54, Detail.BannerCrown).setDetail(89, 54, Detail.BannerMoon);
+  b.set(84, 54, Tile.LampPost).set(92, 54, Tile.LampPost);
   // THE BANK OF SILVERFALL fronts the court from the west — the
   // mountain's coin sleeps here, under the Crown's countersign.
-  b.fillRect(44, 33, 21, 16, Tile.StoneFloor);
-  b.outlineRect(44, 33, 21, 16, Tile.WallStone);
-  b.set(64, 33, Tile.WallStoneDiagSW); // court-facing shoulders
-  b.set(64, 48, Tile.WallStoneDiagNW);
-  b.set(64, 40, Tile.DoorwayStone).set(64, 41, Tile.DoorwayStone);
-  b.set(64, 36, Tile.WallStoneWindow).set(64, 45, Tile.WallStoneWindow);
-  b.set(50, 33, Tile.WallStoneWindow).set(57, 33, Tile.WallStoneWindow);
-  b.set(50, 48, Tile.WallStoneWindow).set(57, 48, Tile.WallStoneWindow);
+  b.fillRect(44, 38, 21, 12, Tile.StoneFloor);
+  b.outlineRect(44, 38, 21, 12, Tile.WallStone);
+  b.set(64, 38, Tile.WallStoneDiagSW); // court-facing shoulders
+  b.set(64, 49, Tile.WallStoneDiagNW);
+  b.set(64, 43, Tile.DoorwayStone).set(64, 44, Tile.DoorwayStone);
+  b.set(64, 40, Tile.WallStoneWindow).set(64, 47, Tile.WallStoneWindow);
+  b.set(50, 38, Tile.WallStoneWindow).set(57, 38, Tile.WallStoneWindow);
+  b.set(50, 49, Tile.WallStoneWindow).set(57, 49, Tile.WallStoneWindow);
   // The vault: windowless, double-walled from the working floor.
-  for (let y = 34; y <= 47; y++) b.set(49, y, Tile.WallStone);
-  b.set(49, 40, Tile.DoorwayStone);
-  b.set(45, 35, Tile.Vault).set(45, 38, Tile.Vault).set(45, 41, Tile.Vault).set(45, 44, Tile.Vault);
-  b.set(47, 34, Tile.CrateGoods).set(47, 46, Tile.CrateGoods).set(45, 47, Tile.Cabinet);
+  for (let y = 39; y <= 48; y++) b.set(49, y, Tile.WallStone);
+  b.set(49, 43, Tile.DoorwayStone);
+  b.set(45, 39, Tile.Vault).set(45, 41, Tile.Vault).set(45, 44, Tile.Vault).set(45, 46, Tile.Vault);
+  b.set(47, 39, Tile.CrateGoods).set(47, 48, Tile.CrateGoods).set(45, 48, Tile.Cabinet);
   // The counting box: the vault's working coin, behind the authored
   // lock (factions Phase 5 — the pick's payoff, if nobody sees).
-  b.set(47, 40, Tile.ChestMossy);
-  // The working floor: teller desks and the ledger wall. The counter
-  // BREAKS at y40 — teller gate, vault door, and front door align.
-  for (const y of [37, 38, 39, 41, 42, 43]) b.set(54, y, Tile.Counter);
-  b.set(50, 34, Tile.Bookshelf).set(51, 34, Tile.Bookshelf).set(52, 34, Tile.Bookshelf);
-  b.set(51, 37, Tile.Table).set(52, 37, Tile.Chair);
-  b.set(51, 43, Tile.Table).set(52, 43, Tile.Chair);
-  b.set(50, 47, Tile.Cabinet).set(51, 47, Tile.Cabinet);
-  // The lobby: public ledgers, the waiting bench, the bank chests —
-  // and THE CROWN'S AISLE: crimson fitted velvet from the doors to
-  // the teller gate (the mountain's coin sleeps under the Crown's
-  // countersign, and the floor swears it), with the two sigils over
-  // the public ledgers and a woven square at the waiting bench.
-  b.set(57, 36, Tile.BankChest).set(57, 44, Tile.BankChest).set(62, 34, Tile.BankChest);
-  b.set(58, 34, Tile.Bookshelf).set(59, 34, Tile.Bookshelf);
-  b.set(60, 46, Tile.Bench).set(61, 46, Tile.Bench);
+  b.set(47, 44, Tile.ChestMossy);
+  // The working floor: teller counter breaking at the gate (y43) so
+  // gate, vault door, and front door share one line.
+  for (const y of [40, 41, 42, 44, 45, 46]) b.set(54, y, Tile.Counter);
+  b.set(50, 39, Tile.Bookshelf).set(51, 39, Tile.Bookshelf).set(52, 39, Tile.Bookshelf);
+  b.set(51, 41, Tile.Table).set(52, 41, Tile.Chair);
+  b.set(51, 46, Tile.Table).set(52, 46, Tile.Chair);
+  b.set(50, 48, Tile.Cabinet).set(51, 48, Tile.Cabinet);
+  // The lobby: the Crown's aisle in crimson to the teller gate, the
+  // public ledgers, the waiting bench, the bank chests.
+  b.set(57, 39, Tile.BankChest).set(57, 47, Tile.BankChest).set(62, 39, Tile.BankChest);
+  b.set(59, 39, Tile.Bookshelf).set(60, 39, Tile.Bookshelf);
+  b.set(60, 47, Tile.Bench).set(61, 47, Tile.Bench);
   for (let x = 55; x <= 62; x++) {
-    b.setDetail(x, 40, Detail.CarpetRoyal).setDetail(x, 41, Detail.CarpetRoyal);
+    b.setDetail(x, 43, Detail.CarpetRoyal).setDetail(x, 44, Detail.CarpetRoyal);
   }
-  b.setDetail(58, 33, Detail.BannerCrown).setDetail(62, 33, Detail.BannerMoon);
-  b.setDetail(60, 44, Detail.Rug).setDetail(61, 44, Detail.Rug);
+  b.setDetail(58, 38, Detail.BannerCrown).setDetail(62, 38, Detail.BannerMoon);
   b.setDetail(60, 45, Detail.Rug).setDetail(61, 45, Detail.Rug);
-  b.setDetail(63, 40, Detail.Doormat).setDetail(63, 41, Detail.Doormat);
-  b.set(66, 38, Tile.LampPost).set(66, 43, Tile.LampPost); // the bank's own lamps
-  b.fillRect(65, 40, 5, 2, Tile.StoneFloor); // the door apron — coin walks on stone
+  b.setDetail(63, 43, Detail.Doormat).setDetail(63, 44, Detail.Doormat);
+  b.set(66, 41, Tile.LampPost).set(66, 46, Tile.LampPost);
+  b.fillRect(65, 43, 5, 2, Tile.StoneFloor); // the door apron — coin walks on stone
   // THE GUILDHALL fronts the court from the east, across the falls
   // bridge — every trade's charter under one roof.
-  b.fillRect(106, 34, 22, 16, Tile.StoneFloor);
-  b.outlineRect(106, 34, 22, 16, Tile.WallStone);
-  b.set(106, 41, Tile.DoorwayStone).set(106, 42, Tile.DoorwayStone);
-  b.set(106, 37, Tile.WallStoneWindow).set(106, 46, Tile.WallStoneWindow);
-  b.set(112, 34, Tile.WallStoneWindow).set(121, 34, Tile.WallStoneWindow);
+  b.fillRect(106, 38, 23, 12, Tile.StoneFloor);
+  b.outlineRect(106, 38, 23, 12, Tile.WallStone);
+  b.set(106, 43, Tile.DoorwayStone).set(106, 44, Tile.DoorwayStone);
+  b.set(106, 40, Tile.WallStoneWindow).set(106, 47, Tile.WallStoneWindow);
+  b.set(112, 38, Tile.WallStoneWindow).set(121, 38, Tile.WallStoneWindow);
   b.set(112, 49, Tile.WallStoneWindow).set(121, 49, Tile.WallStoneWindow);
-  b.set(127, 38, Tile.WallStoneWindow).set(127, 45, Tile.WallStoneWindow);
-  b.fillRect(104, 41, 2, 5, Tile.StoneFloor); // door walk to the bridge
+  b.set(128, 41, Tile.WallStoneWindow).set(128, 46, Tile.WallStoneWindow);
+  b.fillRect(104, 43, 2, 2, Tile.StoneFloor); // door walk to the bridge
   // The charter floor: the great table, the trades' library, the
   // seal counter; the records room keeps the deeds and the dust.
-  for (let yy = 35; yy <= 48; yy++) b.set(122, yy, Tile.WallStone);
-  b.set(122, 41, Tile.DoorwayStone);
-  for (let x = 112; x <= 118; x++) b.set(x, 35, Tile.Bookshelf);
-  b.set(108, 35, Tile.BannerPole);
-  b.set(112, 40, Tile.Table).set(113, 40, Tile.Table).set(114, 40, Tile.Table).set(115, 40, Tile.Table);
-  b.set(112, 41, Tile.Table).set(113, 41, Tile.Table).set(114, 41, Tile.Table).set(115, 41, Tile.Table);
-  b.set(111, 40, Tile.Chair).set(111, 41, Tile.Chair);
-  b.set(116, 40, Tile.Chair).set(116, 41, Tile.Chair);
-  b.set(113, 39, Tile.Chair).set(114, 39, Tile.Chair);
+  for (let yy = 39; yy <= 48; yy++) b.set(123, yy, Tile.WallStone);
+  b.set(123, 43, Tile.DoorwayStone);
+  for (let x = 112; x <= 118; x++) b.set(x, 39, Tile.Bookshelf);
+  b.set(108, 39, Tile.BannerPole);
+  for (let x = 112; x <= 115; x++) b.set(x, 43, Tile.Table).set(x, 44, Tile.Table);
+  b.set(111, 43, Tile.Chair).set(111, 44, Tile.Chair);
+  b.set(116, 43, Tile.Chair).set(116, 44, Tile.Chair);
   b.set(113, 42, Tile.Chair).set(114, 42, Tile.Chair);
-  b.set(108, 45, Tile.Counter).set(109, 45, Tile.Counter).set(110, 45, Tile.Counter);
-  b.set(108, 47, Tile.Table).set(109, 47, Tile.Chair);
-  b.setDetail(107, 41, Detail.Doormat).setDetail(107, 42, Detail.Doormat);
-  // The petitioners' rug: a grand 3x3 woven whole between the door
-  // and the charter table — every trade that ever asked for its
-  // charter stood on this cloth. The sigils flank the library above:
-  // the charters answer to the Crown.
+  b.set(113, 45, Tile.Chair).set(114, 45, Tile.Chair);
+  b.set(108, 47, Tile.Counter).set(109, 47, Tile.Counter).set(110, 47, Tile.Counter);
+  b.set(119, 47, Tile.Table).set(120, 47, Tile.Chair);
+  b.setDetail(107, 43, Detail.Doormat).setDetail(107, 44, Detail.Doormat);
+  // The petitioners' rug between door and charter table.
   for (let x = 108; x <= 110; x++) {
-    for (let y = 40; y <= 42; y++) b.setDetail(x, y, Detail.Rug);
+    for (let y = 42; y <= 44; y++) b.setDetail(x, y, Detail.Rug);
   }
-  b.setDetail(110, 34, Detail.BannerCrown).setDetail(119, 34, Detail.BannerMoon);
-  b.set(126, 38, Tile.Cabinet).set(126, 43, Tile.Cabinet).set(123, 47, Tile.Cabinet);
-  b.set(124, 35, Tile.Bookshelf).set(125, 35, Tile.Bookshelf);
-  b.set(124, 44, Tile.Table).set(125, 44, Tile.Chair);
-  b.set(126, 47, Tile.CrateGoods);
+  b.setDetail(110, 38, Detail.BannerCrown).setDetail(119, 38, Detail.BannerMoon);
+  b.set(127, 39, Tile.Cabinet).set(127, 44, Tile.Cabinet).set(124, 48, Tile.Cabinet);
+  b.set(125, 39, Tile.Bookshelf).set(126, 39, Tile.Bookshelf);
+  b.set(125, 46, Tile.Table).set(126, 46, Tile.Chair);
+  b.set(127, 48, Tile.CrateGoods);
+  // The court walks: bank front -> Silver Setting -> Arcanum, and
+  // the court -> chapter house link. Streets first.
+  b.fillRect(48, 50, 22, 2, Tile.StoneFloor);
+  b.fillRect(46, 51, 2, 6, Tile.StoneFloor);
+  b.fillRect(71, 50, 3, 2, Tile.StoneFloor);
   // THE ARCANUM: the enchanters' house on the southwest walk — runes
   // burn brighter this high. Solvei teaches, for a price.
-  b.fillRect(34, 51, 13, 10, Tile.StoneFloor);
-  b.outlineRect(34, 51, 13, 10, Tile.WallStone);
-  b.set(46, 55, Tile.DoorwayStone);
-  b.set(39, 51, Tile.WallStoneWindow).set(34, 56, Tile.WallStoneWindow);
-  b.set(39, 60, Tile.WallStoneWindow);
-  b.set(37, 54, Tile.EnchantingTable);
-  b.set(35, 52, Tile.Bookshelf).set(36, 52, Tile.Bookshelf);
-  b.set(43, 52, Tile.Bookshelf).set(44, 52, Tile.Bookshelf);
-  b.setDetail(39, 56, Detail.RugRound); // the casting circle
-  // Moonpale velvet from the door to the table — silver under
-  // silver-workers' feet; the runes prefer the Queen's color.
-  for (let x = 38; x <= 44; x++) b.setDetail(x, 55, Detail.CarpetMoon);
-  b.set(41, 57, Tile.Table).set(42, 57, Tile.Chair);
-  b.set(44, 58, Tile.Cabinet);
-  b.set(35, 59, Tile.Brazier).set(44, 59, Tile.Brazier);
-  b.setDetail(45, 55, Detail.Doormat);
-  b.set(48, 55, Tile.LampPost);
+  b.fillRect(34, 52, 13, 10, Tile.StoneFloor);
+  b.outlineRect(34, 52, 13, 10, Tile.WallStone);
+  b.set(46, 56, Tile.DoorwayStone);
+  b.set(39, 52, Tile.WallStoneWindow).set(34, 57, Tile.WallStoneWindow);
+  b.set(39, 61, Tile.WallStoneWindow);
+  b.set(37, 55, Tile.EnchantingTable);
+  b.set(35, 53, Tile.Bookshelf).set(36, 53, Tile.Bookshelf);
+  b.set(43, 53, Tile.Bookshelf).set(44, 53, Tile.Bookshelf);
+  b.setDetail(39, 57, Detail.RugRound); // the casting circle
+  for (let x = 38; x <= 44; x++) b.setDetail(x, 56, Detail.CarpetMoon);
+  b.set(41, 58, Tile.Table).set(42, 58, Tile.Chair);
+  b.set(44, 59, Tile.Cabinet);
+  b.set(35, 60, Tile.Brazier).set(44, 60, Tile.Brazier);
+  b.setDetail(45, 56, Detail.Doormat);
+  b.set(48, 56, Tile.LampPost);
   // THE WAYKEEPERS' CHAPTER HOUSE: the order that walks every mile
-  // of the roads answers to this room, and the Crown's charter on
-  // the wall says so.
+  // of the roads answers to this room.
   b.fillRect(66, 52, 15, 10, Tile.StoneFloor);
   b.outlineRect(66, 52, 15, 10, Tile.WallStone);
   b.set(72, 52, Tile.DoorwayStone).set(73, 52, Tile.DoorwayStone);
@@ -495,29 +563,19 @@ export function buildSilverfall(): ZoneDef {
   b.set(76, 60, Tile.Bed).set(79, 60, Tile.Bed);
   b.set(69, 60, Tile.Brazier);
   b.setDetail(72, 53, Detail.Doormat).setDetail(73, 53, Detail.Doormat);
-  // The Crown's charter hangs where the comment always said it did,
-  // a map-table rug under the order's one long argument, and a strip
-  // of wool between the duty beds.
   b.setDetail(75, 52, Detail.BannerCrown);
   b.setDetail(71, 54, Detail.Rug).setDetail(72, 54, Detail.Rug);
   b.setDetail(71, 55, Detail.Rug).setDetail(72, 55, Detail.Rug);
   b.setDetail(77, 59, Detail.Rug).setDetail(78, 59, Detail.Rug);
   b.set(70, 51, Tile.BannerPole).set(75, 51, Tile.BannerPole);
-  // The L2 court walks: bank front -> Silver Setting -> arcanum, and
-  // the court -> chapter house link. Streets first.
-  b.fillRect(48, 49, 22, 2, Tile.StoneFloor);
-  b.fillRect(47, 51, 2, 5, Tile.StoneFloor);
-  b.fillRect(71, 49, 3, 3, Tile.StoneFloor);
 
   // ---------------------------------------------------------------
   // L2 — LANTERN ROW: the shopping street. Two rows of lamps, four
-  // shopfronts, the bridgehead stalls, and the falls running under
-  // the middle of it. The capital buys here.
+  // shopfronts, the bridgehead stalls, the falls under the middle.
   // ---------------------------------------------------------------
   b.fillRect(93, 60, 5, 2, Tile.StoneFloor); // avenue -> bridge
   b.fillRect(104, 60, 41, 2, Tile.StoneFloor); // the Row proper
-  // THE SILVER SETTING — the jeweler on the court walk, the city's
-  // signature counter: rings, settings, and the Crown's commissions.
+  // THE SILVER SETTING — the jeweler on the court walk.
   b.fillRect(50, 52, 13, 9, Tile.StoneFloor);
   b.outlineRect(50, 52, 13, 9, Tile.WallStone);
   b.set(56, 52, Tile.DoorwayStone);
@@ -530,8 +588,6 @@ export function buildSilverfall(): ZoneDef {
   b.set(51, 59, Tile.CrateGoods).set(61, 59, Tile.Cabinet);
   b.set(58, 58, Tile.Table).set(57, 58, Tile.Chair);
   b.setDetail(56, 53, Detail.Doormat);
-  // Moonpale velvet under the display cases (silver shown on silver)
-  // and a woven square where the customers stand and covet.
   b.setDetail(51, 54, Detail.CarpetMoon).setDetail(52, 54, Detail.CarpetMoon);
   b.setDetail(53, 56, Detail.Rug).setDetail(54, 56, Detail.Rug);
   b.setDetail(53, 57, Detail.Rug).setDetail(54, 57, Detail.Rug);
@@ -542,25 +598,18 @@ export function buildSilverfall(): ZoneDef {
   b.outlineRect(105, 51, 11, 9, Tile.WallWood);
   b.set(110, 59, Tile.DoorwayWood);
   b.set(107, 59, Tile.WallWoodWindow).set(113, 59, Tile.WallWoodWindow);
-  // The Cloth Hall shows its trade: bowed weld canvas over both
-  // windows, a weld pennant string between them — Lantern Row is the
-  // one street in the realm that dresses like a capital.
   b.set(107, 60, awningTile('bowed', 3)).set(113, 60, awningTile('bowed', 3));
-  b.setDetail(110 - 1, 59, pennantDetail(3));
+  b.setDetail(109, 59, pennantDetail(3));
   b.set(105, 55, Tile.WallWoodWindow).set(115, 55, Tile.WallWoodWindow);
   b.set(107, 53, Tile.Loom).set(107, 56, Tile.Loom);
   b.set(109, 52, Tile.Crate); // raw wool off the High Road
   b.set(109, 57, Tile.Counter).set(110, 57, Tile.Counter).set(111, 57, Tile.Counter);
-  b.set(113, 52, Tile.Cabinet).set(114, 52, Tile.Bookshelf); // patterns and orders
-  // OTTILIE'S MASTERWORK: the original Silverfall weave — the one
-  // every copy in the province is a copy OF — hangs over a grand
-  // 3x2 show rug off her own looms. The Cloth Hall sells cloth;
-  // the Cloth Hall wears its proof.
+  b.set(113, 52, Tile.Cabinet).set(114, 52, Tile.Bookshelf);
   b.setDetail(111, 51, Detail.Tapestry).setDetail(112, 51, Detail.Tapestry);
   for (let x = 109; x <= 111; x++) {
     b.setDetail(x, 54, Detail.Rug).setDetail(x, 55, Detail.Rug);
   }
-  b.setDetail(113, 56, Detail.RugRound); // the finished-bolt corner
+  b.setDetail(113, 56, Detail.RugRound);
   b.setDetail(110, 58, Detail.Doormat);
   b.sign(113, 61, 'THE CLOTH HALL', ['bolts up the Silver Stair']);
   // INKS & CHARTS — the scrivener: folios, deeds, and honest maps.
@@ -568,8 +617,6 @@ export function buildSilverfall(): ZoneDef {
   b.outlineRect(118, 51, 9, 9, Tile.WallWood);
   b.set(122, 59, Tile.DoorwayWood);
   b.set(119, 59, Tile.WallWoodWindow).set(125, 59, Tile.WallWoodWindow);
-  // The second shopfront answers in mulberry — no two neighbours on
-  // the Row fly the same bolt.
   b.set(119, 60, awningTile('bowed', 5)).set(125, 60, awningTile('bowed', 5));
   b.set(118, 55, Tile.WallWoodWindow).set(126, 55, Tile.WallWoodWindow);
   b.set(119, 52, Tile.Bookshelf).set(120, 52, Tile.Bookshelf);
@@ -579,8 +626,6 @@ export function buildSilverfall(): ZoneDef {
   b.set(123, 56, Tile.Counter).set(124, 56, Tile.Counter);
   b.set(125, 57, Tile.CrateGoods);
   b.setDetail(122, 58, Detail.Doormat);
-  // The reading square under the chart desk — ink dries slower on a
-  // warm floor, or so Tove claims when the invoice questions it.
   b.setDetail(121, 55, Detail.Rug).setDetail(122, 55, Detail.Rug);
   b.setDetail(121, 56, Detail.Rug).setDetail(122, 56, Detail.Rug);
   b.sign(125, 61, 'INKS & CHARTS', ['deeds drawn, maps true']);
@@ -596,14 +641,10 @@ export function buildSilverfall(): ZoneDef {
   b.set(130, 52, Tile.Barrel).set(130, 58, Tile.Barrel); // the cellar row
   b.set(133, 52, Tile.Table).set(132, 52, Tile.Chair).set(134, 52, Tile.Chair);
   b.set(136, 54, Tile.Table).set(135, 54, Tile.Chair).set(137, 54, Tile.Chair);
-  // The capital's inn dresses like it: a hearth square, a proper
-  // common-room runner, and the Silverfall weave over the tables —
-  // the Flagon hangs the city it pours for.
   b.setDetail(131, 53, Detail.Rug).setDetail(132, 53, Detail.Rug);
   b.setDetail(131, 54, Detail.Rug).setDetail(132, 54, Detail.Rug);
   b.setDetail(134, 57, Detail.Rug).setDetail(135, 57, Detail.Rug);
   b.setDetail(136, 50, Detail.Tapestry).setDetail(137, 50, Detail.Tapestry);
-  // The guest wing, partitioned east — whole cloth for paying beds.
   for (let y = 51; y <= 58; y++) b.set(139, y, Tile.WallWood);
   b.set(139, 54, Tile.DoorwayWood);
   b.set(141, 51, Tile.Bed).set(141, 52, Tile.Bed);
@@ -621,60 +662,47 @@ export function buildSilverfall(): ZoneDef {
   b.set(105, 62, Tile.LampPost).set(117, 62, Tile.LampPost);
   b.set(128, 62, Tile.LampPost).set(144, 62, Tile.LampPost);
   b.sign(104, 62, 'LANTERN ROW', ['shopfronts to the falls'], Tile.Signpost);
-  // The east promenade: lamps and yews along the hall-terrace walk.
-  b.set(141, 40, Tile.TreeYew).set(143, 45, Tile.TreeYew);
-  b.set(134, 36, Tile.LampPost).set(141, 48, Tile.Bench);
+  // The east promenade: pines and lamps along the hall-terrace walk.
+  b.set(141, 42, Tile.TreePine).set(143, 47, Tile.TreePine);
+  b.set(134, 40, Tile.LampPost).set(141, 49, Tile.Bench);
   b.set(64, 51, Tile.TreeYew);
 
   // ---------------------------------------------------------------
-  // THE COURT GATE — the inner ward's word. The civic terrace is a
-  // fortress the mountain built (a cliff on every side, three stairs
-  // for doors), so the Crown armors only its one grand tooth: nine
-  // tiles of garrison arch across the avenue where the Silver Stair
-  // tops out, short battlement wings dying into the rim — west a cut
-  // stub, east into the falls channel. The side stairs stay open
-  // working stairs on purpose: this arch is the law reading itself
-  // aloud to everyone who climbs, not a lock on the city's own feet.
+  // THE COURT GATE — the civic terrace's one grand tooth: nine tiles
+  // of garrison arch where the Silver Stair crowns L2, wings dying
+  // into the rim and the falls channel. The side stairs stay open
+  // working stairs on purpose.
   // ---------------------------------------------------------------
   b.fillRect(81, 62, 3, 1, Tile.WallGarrison); // west wing
   b.fillRect(93, 62, 6, 1, Tile.WallGarrison); // east wing, to the water
   for (let x = 84; x <= 92; x++) b.set(x, 62, Tile.GateGarrison);
-  // The Court Gate flies the pair: King's peaks west, Queen's arch
-  // east — the same order the thrones keep above.
   b.setDetail(83, 62, Detail.BannerCrown).setDetail(93, 62, Detail.BannerMoon);
   b.sign(81, 60, 'THE COURT GATE', ['the Crown hears who climbs'], Tile.Signpost);
 
   // ---------------------------------------------------------------
   // L1 WEST — THE EMBERWAY: the smelting district. Silver first,
-  // everything else after. The working lane strings the whole
-  // district onto one street: mine yard -> smelter -> assay house ->
-  // Great Forge -> the avenue.
+  // everything else after.
   // ---------------------------------------------------------------
   b.fillRect(12, 82, 72, 2, Tile.Path); // the Emberway lane
   b.sign(80, 81, 'THE EMBERWAY', ['ore to ingot to edge'], Tile.Signpost);
-  // THE MINE YARD: the open workings under the west cliffs. Ore
-  // stands in WORKING FACES with shoring, spoil heaps, and a loading
-  // corner by the smelter — not a sprinkle.
+  // THE MINE YARD: the open workings under the west cliffs.
   b.fillRect(10, 66, 36, 27, Tile.Dirt);
-  // The northwest face.
   b.set(12, 69, Tile.RockSilver).set(14, 72, Tile.RockSilver);
   b.set(11, 76, Tile.RockIron).set(12, 79, Tile.RockCoal);
   b.set(17, 71, Tile.PillarStone); // shoring
   b.set(15, 75, Tile.CaveRubble).set(16, 76, Tile.CaveRubble); // spoil
   b.setDetail(14, 74, Detail.Pebbles).setDetail(16, 70, Detail.Pebbles);
-  // The south face.
   b.set(14, 87, Tile.RockSilver).set(22, 89, Tile.RockSilver);
   b.set(16, 90, Tile.RockGold).set(24, 86, Tile.RockIron).set(20, 85, Tile.RockCoal);
   b.set(24, 84, Tile.PillarStone);
   b.set(23, 87, Tile.CaveRubble).set(18, 89, Tile.CaveRubble);
   b.setDetail(19, 87, Detail.Pebbles).setDetail(21, 91, Detail.Pebbles);
-  // The northeast seam and the loading corner by the smelter door.
   b.set(27, 70, Tile.RockSilver);
   b.set(29, 80, Tile.Crate).set(30, 81, Tile.Crate).set(31, 79, Tile.Crate);
   b.set(30, 78, Tile.ToolRack).set(28, 79, Tile.Barrel);
   b.set(19, 78, Tile.Brazier).set(15, 88, Tile.Brazier);
-  // THE SMELTER HALL: three furnaces on the north wall, charge bins
-  // between them, the slag trough east, the tally desk south.
+  // THE SMELTER HALL: three furnaces, charge bins, slag trough,
+  // tally desk.
   b.fillRect(32, 66, 17, 13, Tile.StoneFloor);
   b.outlineRect(32, 66, 17, 13, Tile.WallStone);
   b.set(39, 78, Tile.DoorwayStoneWide).set(40, 78, Tile.DoorwayStoneWide);
@@ -688,17 +716,10 @@ export function buildSilverfall(): ZoneDef {
   b.set(35, 74, Tile.Chair).set(33, 76, Tile.Cabinet); // the tally desk
   b.setDetail(39, 79, Detail.Doormat).setDetail(40, 79, Detail.Doormat);
   b.setDetail(40, 71, Detail.Pebbles).setDetail(43, 73, Detail.Pebbles);
-  b.set(47, 72, Tile.Barrel).setDetail(43, 70, Detail.Pebbles); // the pour-side clutter
+  b.set(47, 72, Tile.Barrel).setDetail(43, 70, Detail.Pebbles);
   b.fillRect(39, 79, 2, 3, Tile.Path); // doorstep to the lane
   b.sign(37, 80, 'THE SMELTER', ['pour days: all of them']);
   // THE ASSAY HOUSE: where the Crown weighs what the mountain gives.
-  // Every ingot over the counter, every tenth one into the tithe
-  // vault — Runa's scales have never been wrong, and never kind.
-  // MOVED ACROSS THE LANE (the spacing pass): it stood one tile off
-  // the smelter's gable in a canyon nobody could see it in. Now it
-  // faces the smelter from the lane's south side — the Emberway
-  // finally has two sides of street, and the Crown's scales sit
-  // where every ore barrow must pass them. Door north, on the lane.
   b.fillRect(52, 85, 8, 7, Tile.StoneFloor);
   b.outlineRect(52, 85, 8, 7, Tile.WallStone);
   b.set(56, 85, Tile.DoorwayStone);
@@ -709,25 +730,20 @@ export function buildSilverfall(): ZoneDef {
   b.set(57, 90, Tile.Table).set(57, 89, Tile.Chair); // the scales table
   b.set(58, 86, Tile.Cabinet);
   b.setDetail(56, 86, Detail.Doormat);
-  // The Crown hangs over the counter, and crimson velvet lies where
-  // the petitioners queue — the tithe is a royal ceremony, every day.
   b.setDetail(58, 85, Detail.BannerCrown);
   b.setDetail(54, 87, Detail.CarpetRoyal).setDetail(55, 87, Detail.CarpetRoyal);
-  b.setDetail(56, 87, Detail.CarpetRoyal); // ... to the door's own axis
+  b.setDetail(56, 87, Detail.CarpetRoyal);
   b.set(56, 84, Tile.Path); // the doorstep to the lane
   b.sign(54, 84, 'THE ASSAY HOUSE', ['weighed true, taxed truer']);
-  // The tally yard the assay left behind: staged ore, staged ingots,
-  // and the barrows that move them — the smelter breathes east now.
+  // The tally yard: staged ore, staged ingots, the barrow queue.
   b.set(52, 68, Tile.Crate).set(53, 70, Tile.Crate).set(51, 71, Tile.CrateGoods);
   b.setDetail(52, 71, Detail.Pebbles).setDetail(54, 69, Detail.Pebbles);
-  b.set(53, 75, Tile.Crate).set(52, 77, Tile.Barrel); // the barrow queue
-  // THE GREAT FORGE: the mountain's anvils, working in a line —
-  // furnace to anvil to quench. Balla teaches the trials here.
+  b.set(53, 75, Tile.Crate).set(52, 77, Tile.Barrel);
+  // THE GREAT FORGE: the mountain's anvils, working in a line.
   b.fillRect(61, 66, 21, 15, Tile.StoneFloor);
   b.outlineRect(61, 66, 21, 15, Tile.WallStone);
   b.set(70, 80, Tile.DoorwayStoneWide).set(71, 80, Tile.DoorwayStoneWide);
   b.set(65, 80, Tile.WallStoneWindow).set(77, 80, Tile.WallStoneWindow);
-  // The Great Forge hangs the blade — a smith marks a smithy.
   b.setDetail(73, 80, bracketSignDetail(2));
   b.set(61, 71, Tile.WallStoneWindow).set(61, 76, Tile.WallStoneWindow);
   b.set(81, 71, Tile.WallStoneWindow).set(66, 66, Tile.WallStoneWindow).set(76, 66, Tile.WallStoneWindow);
@@ -745,8 +761,7 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(74, 70, Detail.Pebbles).setDetail(78, 74, Detail.Pebbles);
   b.fillRect(70, 81, 2, 1, Tile.Path); // doorstep to the lane
   b.sign(67, 81, 'THE GREAT FORGE', ['silver worked, steel earned']);
-  // The forge yard: the shift's rest — a true fire circle, racks by
-  // the door, the stock stacked in one corner instead of everywhere.
+  // The forge yard: the shift's rest.
   b.fillRect(76, 84, 18, 9, Tile.Dirt);
   b.set(82, 88, Tile.Campfire);
   b.set(80, 87, Tile.Bench).set(80, 89, Tile.Bench);
@@ -754,8 +769,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(77, 85, Tile.WeaponRack).set(79, 85, Tile.ToolRack);
   b.set(91, 85, Tile.Crate).set(92, 90, Tile.Barrel).set(91, 91, Tile.CrateGoods);
   b.setDetail(83, 90, Detail.Pebbles).setDetail(86, 86, Detail.Pebbles);
-  // THE MASONS' YARD: stone stock on the west row, benches facing,
-  // finished work crated, the rubble heap where it belongs.
+  // THE MASONS' YARD: stock, benches, finished work, rubble heap.
   b.fillRect(32, 84, 15, 9, Tile.Dirt);
   b.set(34, 86, Tile.PillarStone).set(34, 90, Tile.PillarStone); // stock
   b.set(36, 86, Tile.Crate).set(36, 90, Tile.Crate); // rough blocks
@@ -763,22 +777,16 @@ export function buildSilverfall(): ZoneDef {
   b.set(43, 86, Tile.CrateGoods); // finished ashlar
   b.set(44, 90, Tile.CaveRubble).set(45, 91, Tile.CaveRubble);
   b.setDetail(37, 88, Detail.Pebbles).setDetail(42, 91, Detail.Pebbles);
-  // THE DEEP GALLERIES: the west arm's old workings climb into the
-  // dark in three worked faces, with shoring pairs marching the
-  // path and the braziers the miners keep fed out of respect.
+  // THE DEEP GALLERIES: the west arm's old workings.
   b.fillRect(10, 8, 18, 54, Tile.Dirt);
-  // The north face — the vein the foreman won't discuss.
   b.set(14, 10, Tile.RockMithril);
   b.set(12, 12, Tile.RockSilver).set(17, 13, Tile.RockSilver);
   b.set(11, 16, Tile.RockCoal);
   b.set(24, 12, Tile.CaveRubble).set(25, 13, Tile.CaveRubble);
-  // The mid face.
   b.set(12, 34, Tile.RockSilver).set(15, 32, Tile.RockIron).set(13, 38, Tile.RockCoal);
   b.set(11, 44, Tile.CaveRubble).set(12, 45, Tile.CaveRubble);
-  // The south face, adamant at the very bottom of the climb.
   b.set(20, 46, Tile.RockSilver).set(22, 52, Tile.RockIron);
   b.set(10, 55, Tile.RockAdamant);
-  // Shoring pairs and the lit path.
   b.set(13, 20, Tile.PillarStone).set(17, 20, Tile.PillarStone);
   b.set(12, 36, Tile.PillarStone).set(16, 36, Tile.PillarStone);
   b.set(16, 48, Tile.PillarStone).set(20, 48, Tile.PillarStone);
@@ -790,17 +798,12 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(10, 8, 3, 2, Tile.Snow);
 
   // ---------------------------------------------------------------
-  // L1 EAST — THE TIMBERWAY: the woodworking district. The spine
-  // runs bridge -> carpenters -> lane; the saw yard feeds the hall,
-  // the hall feeds the cooper and the fletcher, and the cookhouse
-  // feeds everyone.
+  // L1 EAST — THE TIMBERWAY: the woodworking district.
   // ---------------------------------------------------------------
   b.fillRect(104, 64, 2, 18, Tile.Path); // the crafts spine (bridge -> lane)
   b.fillRect(104, 80, 49, 2, Tile.Path); // the east working lane
   b.sign(107, 64, 'THE TIMBERWAY', ['sawn true, joined tight'], Tile.Signpost);
-  // THE CARPENTERS' HALL: the work line north — carving benches to
-  // workbenches, seasoned stock crated — and the commission counter
-  // south, where the city orders its doors, carts, and cradles.
+  // THE CARPENTERS' HALL: work line north, commission counter south.
   b.fillRect(107, 66, 13, 13, Tile.WoodFloor);
   b.outlineRect(107, 66, 13, 13, Tile.WallWood);
   b.set(107, 71, Tile.DoorwayWood).set(107, 72, Tile.DoorwayWood);
@@ -816,31 +819,20 @@ export function buildSilverfall(): ZoneDef {
   b.set(108, 77, Tile.CrateGoods);
   b.set(115, 76, Tile.Table).set(116, 76, Tile.Chair);
   b.setDetail(108, 71, Detail.Doormat).setDetail(108, 72, Detail.Doormat);
-  // The commission side keeps one clean runner — sawdust stays north
-  // of the counter, the customers' boots stay south of it.
   for (let x = 110; x <= 112; x++) b.setDetail(x, 74, Detail.Rug);
   b.sign(110, 80, 'THE CARPENTERS\' HALL', ['doors, carts, cradles']);
-  // THE SAW YARD: the mountain's pine comes down to planks here —
-  // log stacks, the sawpit, and sawdust over everything. Trimmed a
-  // row on each flank (the spacing pass) so the yard reads as a
-  // yard, not a flood lapping every neighbor's wall.
+  // THE SAW YARD: log stacks, the trestles, sawdust over everything.
   b.fillRect(124, 64, 11, 7, Tile.Dirt);
-  b.set(124, 65, Tile.Stump).set(125, 65, Tile.Stump).set(126, 65, Tile.Stump); // the log stack
+  b.set(124, 65, Tile.Stump).set(125, 65, Tile.Stump).set(126, 65, Tile.Stump);
   b.set(124, 67, Tile.Stump).set(125, 67, Tile.Stump);
   b.set(132, 65, Tile.Crate).set(133, 66, Tile.Crate); // planks, strapped
-  // The sawpit made real: the yard's trestles ARE the board station
-  // now — Stig's "nothing yours wouldn't do in the field".
   b.set(127, 70, Tile.Sawhorse).set(128, 70, Tile.Sawhorse);
   b.setDetail(127, 69, Detail.Sawdust).setDetail(128, 69, Detail.Sawdust);
   b.setDetail(126, 68, Detail.Sawdust);
   b.set(124, 69, Tile.ToolRack).set(133, 70, Tile.Barrel);
   b.set(130, 67, Tile.Brazier);
   b.setDetail(131, 68, Detail.Pebbles);
-  // THE FLETCHER'S PERCH: bows and shafts off the saw yard's best
-  // straight grain. Haki fletches for the watch and the road. Moved
-  // one east and given three clear tiles on every side (the spacing
-  // pass) — the perch used to sit in the district's one crossroads
-  // with a wall an arm's length in every direction.
+  // THE FLETCHER'S PERCH: bows and shafts off the best straight grain.
   b.fillRect(123, 74, 8, 6, Tile.WoodFloor);
   b.outlineRect(123, 74, 8, 6, Tile.WallWood);
   b.set(126, 79, Tile.DoorwayWood);
@@ -852,22 +844,20 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(126, 76, Detail.RugRound); // fletching is floor work
   b.setDetail(126, 78, Detail.Doormat);
   b.sign(129, 81, 'THE FLETCHER\'S PERCH', ['straight grain, true flight']);
-  // THE COOPERAGE: staves to barrels for the whole province — the
-  // smelter's quench tubs, the Flagon's cellar, the road's casks.
+  // THE COOPERAGE: staves to barrels for the whole province.
   b.fillRect(137, 66, 9, 8, Tile.WoodFloor);
   b.outlineRect(137, 66, 9, 8, Tile.WallWood);
   b.set(141, 73, Tile.DoorwayWood);
   b.set(139, 73, Tile.WallWoodWindow).set(143, 73, Tile.WallWoodWindow);
   b.set(137, 69, Tile.WallWoodWindow);
   b.set(139, 68, Tile.Workbench); // the stave bench
-  b.set(143, 67, Tile.Barrel).set(143, 69, Tile.Barrel).set(143, 71, Tile.Barrel); // the product
+  b.set(143, 67, Tile.Barrel).set(143, 69, Tile.Barrel).set(143, 71, Tile.Barrel);
   b.set(138, 67, Tile.Crate); // split staves
   b.set(138, 71, Tile.ToolRack);
   b.setDetail(141, 72, Detail.Doormat).setDetail(140, 69, Detail.Sawdust);
   b.fillRect(140, 74, 2, 6, Tile.Path); // spur to the lane
   b.sign(143, 75, 'THE COOPERAGE', ['staves bent, hoops rung']);
-  // THE MESS TERRACE: stone flags between the falls channel and the
-  // cookhouse — long tables, bench rows, braziers against the cold.
+  // THE MESS TERRACE: stone flags between the falls and the cookhouse.
   b.fillRect(108, 83, 14, 10, Tile.StoneFloor);
   b.set(111, 85, Tile.Table).set(112, 85, Tile.Table).set(113, 85, Tile.Table);
   b.set(111, 84, Tile.Bench).set(112, 84, Tile.Bench).set(113, 84, Tile.Bench);
@@ -878,10 +868,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(109, 84, Tile.Brazier).set(120, 92, Tile.Brazier);
   b.set(109, 88, Tile.Bench); // the channel overlook
   b.set(120, 83, Tile.Barrel);
-  // THE COOKHOUSE feeds both districts from the middle. Hearth pair
-  // north, prep line beside them, pantry south-east, serving pass
-  // just inside the door. Signy lodges at the Flagon — the kitchen
-  // never sleeps long enough to need a bed.
+  // THE COOKHOUSE feeds both districts from the middle.
   b.fillRect(124, 82, 13, 11, Tile.WoodFloor);
   b.outlineRect(124, 82, 13, 11, Tile.WallWood);
   b.set(124, 87, Tile.DoorwayWood);
@@ -897,8 +884,7 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(125, 87, Detail.Doormat);
   b.fillRect(122, 87, 2, 1, Tile.Path); // doorstep to the terrace
   b.sign(127, 81, 'THE COOKHOUSE', ['both shifts fed, no favorites']);
-  // THE DISPENSARY: Wyn's counter fronts the lane; she sleeps over
-  // the shop, and the Greenstair grows half her stock.
+  // THE DISPENSARY: Wyn's counter fronts the lane.
   b.fillRect(140, 82, 10, 10, Tile.WoodFloor);
   b.outlineRect(140, 82, 10, 10, Tile.WallWood);
   b.set(144, 82, Tile.DoorwayWood);
@@ -910,7 +896,6 @@ export function buildSilverfall(): ZoneDef {
   b.set(143, 86, Tile.Counter).set(144, 86, Tile.Counter);
   b.set(146, 86, Tile.Table).set(146, 87, Tile.Chair);
   b.setDetail(144, 83, Detail.Doormat);
-  // A whole 2x2 where the patients stand, and wool by Wyn's own bed.
   b.setDetail(142, 87, Detail.Rug).setDetail(143, 87, Detail.Rug);
   b.setDetail(142, 88, Detail.Rug).setDetail(143, 88, Detail.Rug);
   b.setDetail(147, 89, Detail.RugRound);
@@ -919,8 +904,7 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(152, 84, 4, 4, Tile.Dirt);
   b.set(153, 85, Tile.TanningRack).set(155, 86, Tile.Barrel);
   b.setDetail(154, 87, Detail.Pebbles);
-  // THE GREENSTAIR: the east arm's terraced gardens — the mountain
-  // feeds itself. Herb fence, field pads, and the crag pasture.
+  // THE GREENSTAIR: the east arm's terraced gardens.
   b.outlineRect(151, 66, 13, 11, Tile.Fence);
   b.set(151, 71, Tile.Grass); // gate, west, on its own lane spur
   b.fillRect(150, 71, 1, 10, Tile.Path); // Greenstair gate spur
@@ -955,13 +939,14 @@ export function buildSilverfall(): ZoneDef {
   // ---------------------------------------------------------------
   // L0 — THE GATEFRONT: the wall, the towers, the pool, the yards.
   // ---------------------------------------------------------------
-  // The flanking crags first: the backdrop scatter, then the SCREE
-  // RIDGES the wall dies into — the flanks are CLOSED, not lawn.
+  // The flanking crags first: backdrop scatter, skipping the ground
+  // the wardhouse claims.
   for (const [rx, ry, rw, rh] of [
     [10, 98, 22, 24], [140, 98, 24, 24],
   ] as const) {
     for (let y = ry; y < ry + rh; y += 3) {
       for (let x = rx; x < rx + rw; x += 4) {
+        if (x >= 12 && x <= 36 && y >= 97 && y <= 110) continue; // the wardhouse ground
         const j = (x * 7 + y * 13) % 5;
         if (j === 0) b.set(x, y, Tile.Rock);
         else if (j === 1) b.set(x + 1, y + 1, Tile.Tree);
@@ -969,15 +954,35 @@ export function buildSilverfall(): ZoneDef {
       }
     }
   }
-  // THE CITY CURTAIN — garrison masonry across the massif's mouth:
-  // the capital's outer word, laid AFTER the scree so both runs die
-  // into the ridges the mountain already built. A single honest
-  // rampart three bodies tall (the separate-masonry law made civic),
-  // battered talus to crenellated wall-walk, with drum towers proud
-  // of the line and the Silver Gate carved through the middle.
-  // (Laid below, after the scree ridges it must die into.)
-  // The scree ridges: solid double-row rock where the wall ends,
-  // scattering out toward the border. Nobody strolls around this.
+  // THE WARDHOUSE — the city watch's barracks: the capital's steel
+  // lives at the gate it answers for. Bunks in hot rotation (the
+  // rota law), the mess, the racks, and the drill ground east.
+  b.fillRect(14, 99, 15, 9, Tile.StoneFloor);
+  b.outlineRect(14, 99, 15, 9, Tile.WallStone);
+  b.set(28, 103, Tile.DoorwayStone);
+  b.set(18, 99, Tile.WallStoneWindow).set(24, 99, Tile.WallStoneWindow);
+  b.set(14, 103, Tile.WallStoneWindow);
+  b.set(18, 107, Tile.WallStoneWindow).set(24, 107, Tile.WallStoneWindow);
+  b.set(16, 100, Tile.Bed).set(16, 101, Tile.Bed);
+  b.set(18, 100, Tile.Bed).set(18, 101, Tile.Bed);
+  b.set(20, 100, Tile.Bed).set(20, 101, Tile.Bed);
+  b.set(22, 100, Tile.Bed).set(22, 101, Tile.Bed);
+  b.set(15, 103, Tile.Cabinet);
+  b.set(15, 106, Tile.WeaponRack).set(17, 106, Tile.WeaponRack).set(19, 106, Tile.ToolRack);
+  b.set(26, 100, Tile.Bookshelf); // the duty board
+  b.set(23, 104, Tile.Table).set(24, 104, Tile.Table);
+  b.set(23, 103, Tile.Chair).set(24, 105, Tile.Chair);
+  b.set(26, 106, Tile.Brazier);
+  b.setDetail(21, 99, Detail.BannerCrown);
+  for (let x = 16; x <= 22; x++) b.setDetail(x, 102, Detail.Rug);
+  b.setDetail(27, 103, Detail.Doormat);
+  b.sign(29, 98, 'THE WARDHOUSE', ['the watch sleeps here', 'in shifts, like everything']);
+  // The wardhouse drill ground, and the path to the gate.
+  b.fillRect(29, 100, 6, 8, Tile.Dirt);
+  b.set(33, 101, Tile.Fence).set(33, 104, Tile.Fence);
+  b.setDetail(32, 101, Detail.Straw).setDetail(32, 104, Detail.Straw);
+  b.set(29, 100, Tile.WeaponRack).set(30, 107, Tile.Crate);
+  // THE SCREE RIDGES the wall dies into — the flanks are CLOSED.
   for (let x = 16; x <= 35; x++) {
     b.set(x, 112, Tile.Rock).set(x, 113, Tile.Rock);
     if (x % 4 === 0) b.set(x, 111, Tile.Rock);
@@ -997,22 +1002,17 @@ export function buildSilverfall(): ZoneDef {
     else b.set(x, 113, Tile.Rock);
   }
   b.fillRect(20, 110, 3, 1, Tile.Snow).fillRect(155, 110, 3, 1, Tile.Snow);
-  // The curtain runs: one course of garrison masonry, overwriting the
-  // scree's own y112 rocks at both ends so the wall visibly sinks
-  // into the ridges — nobody built a neat terminus up a mountain.
+  // The curtain runs: garrison masonry sinking into the ridges.
   b.fillRect(84, 113, 9, 2, Tile.StoneFloor); // the gate threshold first
   b.fillRect(26, 112, 55, 1, Tile.WallGarrison); // west run, into the scree
   b.fillRect(96, 112, 55, 1, Tile.WallGarrison); // east run, into the scree
-  // The flanking towers: solid drums proud of the line to the south,
-  // shoulders cut at 45 — the curtain watches its own foot.
+  // The flanking towers: solid drums proud of the line.
   for (const tx of [40, 60, 110, 132] as const) {
     b.fillRect(tx, 113, 3, 2, Tile.WallGarrison);
     b.set(tx, 114, Tile.WallGarrisonDiagNE);
     b.set(tx + 2, 114, Tile.WallGarrisonDiagNW);
   }
-  // THE GATE BASTIONS: two five-square drums flanking the passage,
-  // all four corners chamfered — the old octagon towers reborn at
-  // siege scale, solid to the crown (a bailey has no ceiling to owe).
+  // THE GATE BASTIONS: two five-square drums flanking the passage.
   for (const bx of [81, 91] as const) {
     b.fillRect(bx, 110, 5, 5, Tile.WallGarrison);
     b.set(bx, 110, Tile.WallGarrisonDiagSE);
@@ -1020,61 +1020,35 @@ export function buildSilverfall(): ZoneDef {
     b.set(bx, 114, Tile.WallGarrisonDiagNE);
     b.set(bx + 4, 114, Tile.WallGarrisonDiagNW);
   }
-  // THE SILVER GATE — the grand gatehouse: voussoir arch carved
-  // through the masonry, portcullis raised in the lunette, iron-bound
-  // leaves standing open. The High Road marches straight through.
+  // THE SILVER GATE — the grand gatehouse: the High Road marches
+  // straight through.
   for (let x = 86; x <= 90; x++) b.set(x, 112, Tile.GateGarrison);
   b.set(83, 109, Tile.BannerPole).set(93, 109, Tile.BannerPole);
-  // The bastions wear the crown: sigil drops on both drum faces —
-  // the first thing the road sees is whose city this is.
   b.setDetail(83, 114, Detail.BannerCrown).setDetail(93, 114, Detail.BannerCrown);
 
   // ---------------------------------------------------------------
-  // THE POSTERN LANE (the Pinereach epic) — the city's back road, and
-  // the only way a body walks to the Hoargate.
-  //
-  // The stair law forbids a gate in the north wall: flights descend
-  // SOUTH and nothing else reads at this camera, so no stair can ever
-  // carry a body from the Crown down to the north border. Real
-  // mountain holds answer that the same way this one does — the back
-  // road does not climb the hold at all. It runs the level-0 shelf
-  // between the terrace cliff (x167, already fenced) and the
-  // mountain, from the gatefront to the north hem, where the Hoargate
-  // Road's first milepost stands at local (172,0).
-  //
-  // It also closes an honest hole: the curtain's scree died out at
-  // x172 and left the last three columns walkable. Now the ridge runs
-  // to the border and the lane is the only way past it, with the
-  // Crown's own gate across its throat.
+  // THE POSTERN LANE (the Pinereach epic) — the city's back road,
+  // and the only way a body walks to the Hoargate. Unchanged by the
+  // remaster: the pass answers to its own epic.
   // ---------------------------------------------------------------
   for (let x = 169; x <= 175; x++) {
     b.set(x, 112, Tile.WallGarrison).set(x, 113, Tile.Rock);
     if (x % 3 === 0) b.set(x, 114, Tile.Rock);
   }
   b.path({ x: 171, y: 110 }, { x: 171, y: 1 }, 3);
-  // The postern proper: a gate across the lane's throat, tied into
-  // the terrace cliff on one hand and the border scree on the other.
   b.set(168, 88, Tile.WallGarrison).set(169, 88, Tile.WallGarrison);
   b.set(173, 88, Tile.WallGarrison).set(174, 88, Tile.WallGarrison);
   b.set(175, 88, Tile.WallGarrison);
   for (let x = 170; x <= 172; x++) b.set(x, 88, Tile.GateGarrison);
   b.set(168, 87, Tile.Brazier).set(174, 87, Tile.Brazier);
   b.sign(174, 90, 'THE POSTERN', ['the Hoargate road', 'give your name at the wall'], Tile.Signpost);
-  // Lamps up the lane at a marching rhythm: the Crown keeps its own
-  // road lit even where nobody but the watch uses it.
   for (let y = 16; y <= 104; y += 12) b.set(174, y, Tile.LampPost);
-  // The muster yard at the head of the lane: the post the Hoargate's
-  // reliefs form up in before they walk out, and the last roof on
-  // this side of the mountain.
   b.fillRect(168, 4, 8, 10, Tile.StoneFloor);
   b.fillRect(169, 5, 5, 6, Tile.WoodFloor);
   b.outlineRect(169, 5, 5, 6, Tile.WallWood);
   b.set(171, 10, Tile.DoorwayWood);
   b.set(169, 7, Tile.WallWoodWindow).set(173, 7, Tile.WallWoodWindow);
   b.set(170, 6, Tile.Bed).set(170, 7, Tile.Bed);
-  // The second bunk: the muster keeps a night body now, and the two
-  // sleep in shifts — day guard by night in the north bed, night
-  // guard by day in this one. Foot on (170,9).
   b.set(170, 8, Tile.Bed).set(170, 9, Tile.Bed);
   b.set(172, 6, Tile.WeaponRack);
   b.set(172, 8, Tile.Table).set(172, 9, Tile.Chair);
@@ -1088,9 +1062,7 @@ export function buildSilverfall(): ZoneDef {
   b.actor('silverfall_watch', 171.5, 90.5, -Math.PI / 2, 'fall_watch_postern');
   b.actor('silverfall_watch', 171.5, 12.5, -Math.PI / 2, 'fall_watch_muster');
 
-  // THE CARAVANSERAI: the road's last yard, laid out like it works —
-  // three rail bays with straw and troughs, the cargo corner, the
-  // travellers' fire circle, the farrier's bench.
+  // THE CARAVANSERAI: the road's last yard, laid out like it works.
   b.fillRect(50, 98, 23, 12, Tile.Dirt);
   for (let x = 52; x <= 56; x++) b.set(x, 100, Tile.RailWood);
   for (let x = 58; x <= 62; x++) b.set(x, 100, Tile.RailWood);
@@ -1105,13 +1077,9 @@ export function buildSilverfall(): ZoneDef {
   b.set(54, 106, Tile.Bench).set(58, 106, Tile.Bench).set(56, 108, Tile.Bench);
   b.set(69, 107, Tile.Workbench).set(70, 108, Tile.ToolRack); // the farrier
   b.sign(51, 105, 'THE CARAVANSERAI', ['beasts watered,', 'wheels mended']);
-  // The stalls' west bay: Osa boards companions beside the coursers
-  // (beastcraft v2 — the stable door works in every town that keeps
-  // animals, and this yard has kept them longest).
   b.set(52, 103, Tile.BeastPen);
   b.fillRect(73, 103, 11, 2, Tile.Path); // the yard apron to the avenue
-  // THE GATEHOUSE: the watch's desk at the door of the city —
-  // duty desk facing the door, bunk for the night watch, mess table.
+  // THE GATEHOUSE: the watch's desk at the door of the city.
   b.fillRect(36, 100, 11, 10, Tile.StoneFloor);
   b.outlineRect(36, 100, 11, 10, Tile.WallStone);
   b.set(46, 104, Tile.DoorwayStone).set(46, 105, Tile.DoorwayStone);
@@ -1122,21 +1090,15 @@ export function buildSilverfall(): ZoneDef {
   b.set(37, 101, Tile.WeaponRack).set(37, 103, Tile.WeaponRack);
   b.set(44, 101, Tile.Cabinet);
   b.set(44, 107, Tile.Bed).set(44, 108, Tile.Bed); // the night-watch bunk
-  // The bunkroom grows with the rota: the inner gate pair hot-bunk
-  // the east beds (day sentry by night, night sentry by day) and the
-  // patrol pair share the west-wall bed the same way. Feet south.
   b.set(42, 107, Tile.Bed).set(42, 108, Tile.Bed);
   b.set(37, 105, Tile.Bed).set(37, 106, Tile.Bed);
   b.set(40, 107, Tile.Table).set(39, 107, Tile.Chair); // the mess corner
   b.set(37, 107, Tile.Brazier);
   b.setDetail(45, 104, Detail.Doormat).setDetail(45, 105, Detail.Doormat);
-  // The watch's colors over the racks, wool under the duty desk —
-  // the first room of the city should look like somebody's proud of it.
   b.setDetail(38, 100, Detail.BannerCrown);
   b.setDetail(41, 105, Detail.Rug).setDetail(42, 105, Detail.Rug);
   b.setDetail(41, 106, Detail.Rug).setDetail(42, 106, Detail.Rug);
-  // THE GATE MARKET: two facing stall rows on the pool walk — fish,
-  // ore, arrivals — with the lamps at the row ends.
+  // THE GATE MARKET: two facing stall rows on the pool walk.
   b.fillRect(118, 102, 20, 9, Tile.StoneFloor);
   b.stamp(MARKET_STALL, 119, 103);
   b.stamp(MARKET_STALL, 126, 103);
@@ -1144,20 +1106,17 @@ export function buildSilverfall(): ZoneDef {
   b.stamp(MARKET_STALL, 122, 107);
   b.stamp(MARKET_STALL, 129, 107);
   b.set(118, 106, Tile.LampPost).set(137, 106, Tile.LampPost);
+  b.set(118, 102, bannerPoleTile(6)).set(137, 102, bannerPoleTile(6)); // ochre — the market's color
   b.set(117, 104, Tile.Bench); // the pool overlook
-  // The quay: planks to the Roaring Pool's deep water — a jetty
-  // (Tile.Dock) on piles, not a crossing.
+  b.sign(136, 101, 'THE GATE MARKET', ['fish, ore, arrivals']);
+  // The quay: planks to the Roaring Pool's deep water.
   b.set(96, 108, Tile.Dock).set(97, 108, Tile.Dock);
   b.set(96, 109, Tile.Dock).set(97, 109, Tile.Dock);
   b.set(99, 107, Tile.FishingSpot).set(111, 104, Tile.FishingSpot);
   b.set(94, 110, Tile.Crate).set(116, 108, Tile.LampPost);
-  // The wall's inside lamp and the pool-walk bench.
   b.set(78, 104, Tile.LampPost).set(98, 111, Tile.Bench);
   b.set(118, 96, Tile.TreeWillow);
-  // THE APPROACH — outside the wall the city still owns the road:
-  // matched brazier pairs to the border and the sign that has meant
-  // "made it" to every traveler who read it. Nothing else — the
-  // clutter is inside the walls where it belongs.
+  // THE APPROACH — outside the wall the city still owns the road.
   b.fillRect(86, 115, 5, 13, Tile.Path);
   b.set(84, 117, Tile.Brazier).set(92, 117, Tile.Brazier);
   b.set(84, 122, Tile.Brazier).set(92, 122, Tile.Brazier);
@@ -1169,22 +1128,21 @@ export function buildSilverfall(): ZoneDef {
   b.scatter(Tile.GrassTall, 0.05);
   b.scatterDetail(Detail.Tuft, 0.05);
   b.scatterDetail(Detail.Pebbles, 0.02);
-  // Pines take the terraces where nobody built.
+  // Pines take the terraces where nobody built (grove apron law).
   const pineAt = (x: number, y: number): void => {
-    if (b.get(x, y) === Tile.Grass) b.set(x, y, Tile.Tree);
+    if (b.get(x, y) === Tile.Grass) b.set(x, y, Tile.TreePine);
   };
   for (const [px, py] of [
     [50, 65], [59, 64], [51, 84], [50, 91], [96, 92],
     [146, 62], [147, 78], [120, 80],
-    [68, 34], [68, 46], [131, 46], [42, 48],
-    [46, 24], [82, 11], [112, 11], [126, 28],
+    [47, 39], [36, 44], [42, 48], [132, 46],
+    [47, 15], [48, 25], [52, 34], [120, 11], [134, 20],
+    [139, 14], [143, 26], [140, 33],
     [24, 64], [10, 64], [28, 78], [147, 10], [166, 12], [166, 30], [166, 50],
   ] as const) {
     pineAt(px, py);
   }
-  // The border fringe: the wild's last word before the walls. Only
-  // the FLAT ring scatters — terrace ground (and its rims, which the
-  // auto-fence owns) stays authored.
+  // The border fringe: the wild's last word before the walls.
   for (let y = 0; y < R.h; y++) {
     for (let x = 0; x < R.w; x++) {
       if (b.levelAt(x, y) !== 0) continue;
@@ -1204,33 +1162,25 @@ export function buildSilverfall(): ZoneDef {
   // post (the post-is-the-origin law).
   // ---------------------------------------------------------------
   // The Crown.
-  b.actor('king_aeriex', 65.5, 14.4, Math.PI / 2, 'fall_king');
-  b.actor('queen_kayri', 66.5, 14.4, Math.PI / 2, 'fall_queen');
-  b.actor('warden_maren', 52.5, 18.4, 0, 'fall_warden');
-  b.actor('castle_guard', 62.5, 29.5, Math.PI / 2, 'fall_castle_guard');
-  b.actor('castle_guard', 69.5, 29.5, Math.PI / 2, 'fall_castle_guard');
-  b.actor('castle_guard', 53.5, 24.5, Math.PI / 2, 'fall_castle_guard');
-  b.actor('shrinekeeper_sella', 118.5, 20.5, -Math.PI / 2, 'fall_shrinekeeper');
+  b.actor('king_aeriex', 77.5, 15.4, Math.PI / 2, 'fall_king');
+  b.actor('queen_kayri', 78.5, 15.4, Math.PI / 2, 'fall_queen');
+  b.actor('warden_maren', 57.5, 21.4, 0, 'fall_warden');
+  b.actor('castle_guard', 85.5, 33.5, Math.PI / 2, 'fall_castle_guard');
+  b.actor('castle_guard', 91.5, 33.5, Math.PI / 2, 'fall_castle_guard');
+  b.actor('castle_guard', 76.5, 25.5, Math.PI / 2, 'fall_castle_guard');
+  b.actor('shrinekeeper_sella', 126.5, 18.5, -Math.PI / 2, 'fall_shrinekeeper');
   // The Silver Court.
-  b.actor('bursar_odele', 53.5, 40.5, 0, 'fall_bursar');
-  b.actor('enchantress_solvei', 37.5, 55.3, -Math.PI / 2, 'fall_enchantress');
+  b.actor('bursar_odele', 53.5, 43.5, 0, 'fall_bursar');
+  b.actor('enchantress_solvei', 37.5, 56.3, -Math.PI / 2, 'fall_enchantress');
   b.actor('marshal_kestrel', 71.5, 55.3, Math.PI / 2, 'fall_marshal');
-  // The gate watch stands OUTSIDE the Silver Gate, flanking the road
-  // mouth under the bastions — the first questions come before the
-  // arch, not after. A third keeps the gatehouse desk, a fourth the
-  // court, and a fifth holds the Court Gate at the stair crown.
+  // The gate watch stands OUTSIDE the Silver Gate; the desk, the
+  // plaza, and the Court Gate hold the climb's checkpoints.
   b.actor('silverfall_watch', 85.5, 115.5, Math.PI / 2, 'fall_watch');
   b.actor('silverfall_watch', 91.5, 115.5, Math.PI / 2, 'fall_watch');
   b.actor('silverfall_watch', 41.5, 105.5, 0, 'fall_watch');
-  b.actor('silverfall_watch', 92.5, 33.5, Math.PI / 2, 'fall_watch');
+  b.actor('silverfall_watch', 93.5, 40.5, Math.PI / 2, 'fall_watch');
   b.actor('silverfall_watch', 82.5, 61.5, Math.PI / 2, 'fall_watch');
-  // THE CHANGING OF THE GUARD — the rota behind the standing posts:
-  // an inner gate pair splits the clock at the gatefront (day west,
-  // night east, reliefs overlapping so the arch never stands bare),
-  // a patrol pair walks opposite rounds (trades and working lanes by
-  // day, the low city by lantern), and the muster yard keeps a night
-  // body so the postern head is never empty while the day guard
-  // sleeps. Sleepers walk to the gatehouse bunkroom and muster hut.
+  // THE CHANGING OF THE GUARD — the rota behind the standing posts.
   b.actor('silverfall_watch', 86.5, 110.5, Math.PI / 2, 'fall_watch_gate_day');
   b.actor('silverfall_watch', 90.5, 110.5, Math.PI / 2, 'fall_watch_gate_night');
   b.actor('silverfall_watch', 88.5, 101.5, Math.PI / 2, 'fall_watch_round_day');
@@ -1243,7 +1193,7 @@ export function buildSilverfall(): ZoneDef {
   b.actor('innkeep_ragna', 132.5, 55.4, Math.PI / 2, 'fall_innkeep');
   b.actor('galleria_trader', 95.5, 52.4, Math.PI / 2, 'fall_trader');
   b.actor('galleria_trader', 95.5, 56.4, Math.PI / 2, 'fall_trader');
-  b.actor('galleria_trader', 74.5, 43.4, Math.PI / 2, 'fall_trader');
+  b.actor('galleria_trader', 74.5, 44.4, Math.PI / 2, 'fall_trader');
   // The Emberway.
   b.actor('foreman_grettir', 20.5, 79.5, 0, 'fall_foreman');
   b.actor('smeltmaster_koll', 38.5, 69.4, Math.PI, 'fall_smeltmaster');
@@ -1259,10 +1209,6 @@ export function buildSilverfall(): ZoneDef {
   b.actor('gardener_ivo', 157.5, 71.5, Math.PI / 2, 'fall_gardener');
   // The Gatefront.
   b.actor('hostler_osa', 60.5, 101.5, -Math.PI / 2, 'fall_hostler');
-  // THE SADDLE IN THE SCHEDULE: the Waykeeper outrider waters the
-  // grey at the caravanserai, swings up, and rides the gate loop out
-  // through the Silver Gate to the SILVERFALL sign and back — the
-  // road service made visible at the city's mouth.
   b.actor('outrider_joss', 60.5, 103.5, -Math.PI / 2, 'fall_outrider');
   b.actor('gate_monger', 120.5, 102.4, Math.PI / 2, 'fall_trader');
   b.actor('gate_monger', 130.5, 106.4, Math.PI / 2, 'fall_trader');

@@ -1334,20 +1334,24 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.ok(n(Tile.MarketStall) >= 8, 'the stalls thinned');
   assert.ok(n(Tile.FishingSpot) >= 4, 'the mere and the pool must fish');
   assert.ok(n(Tile.ArchStone) >= 1, 'the Undercroft mouth lost its arch');
-  // THE GARRISON PASS: the city curtain is true siege masonry now —
-  // the Silver Gate (5 wide) in the outer wall, the Court Gate
-  // (9 wide) at the avenue stair's crown, bastions and drum towers
-  // carrying the corner cuts.
-  // 14 + the Postern's 3: the Silver Gate (5), the Court Gate (9),
-  // and the back road's throat on the east shelf (the Pinereach epic).
-  assert.equal(n(Tile.GateGarrison), 17, 'the city gates changed');
-  assert.ok(n(Tile.WallGarrison) >= 140, 'the city curtain came down');
+  // THE FORTIFICATION LADDER (the Crown remaster): the Silver Gate
+  // (5) in the outer curtain, the Court Gate (9) at the stair crown,
+  // the CASTLE GATE (5) in the precinct's south curtain, and the
+  // Postern's 3 on the east shelf (the Pinereach epic).
+  assert.equal(n(Tile.GateGarrison), 22, 'the city gates changed');
+  assert.ok(n(Tile.WallGarrison) >= 240, 'the city curtain came down');
   const fallDiags =
     n(Tile.WallGarrisonDiagNE) + n(Tile.WallGarrisonDiagNW) +
     n(Tile.WallGarrisonDiagSE) + n(Tile.WallGarrisonDiagSW);
-  assert.ok(fallDiags >= 16, 'the bastions lost their chamfers');
+  assert.ok(fallDiags >= 24, 'the bastions lost their chamfers');
   for (let x = 86; x <= 90; x++) assert.equal(at(x, 112), Tile.GateGarrison);
   for (let x = 84; x <= 92; x++) assert.equal(at(x, 62), Tile.GateGarrison);
+  for (let x = 86; x <= 90; x++) assert.equal(at(x, 32), Tile.GateGarrison);
+  // The Crown sits its hall: two thrones, adjacent, and nothing else
+  // in the realm wears the tile.
+  assert.equal(n(Tile.Throne), 2, 'the thrones moved');
+  assert.equal(at(77, 14), Tile.Throne);
+  assert.equal(at(78, 14), Tile.Throne);
   assert.ok(n(Tile.Snow) > 0, 'the high ground lost its snow');
   assert.ok(n(Tile.Brazier) >= 10, 'the stair burns by brazier');
   // The Rookery: hidden, unofficial, and holding the Undercroft mouth.
@@ -1454,7 +1458,16 @@ test('silverfall: the Silver Stair connects every terrace and every doorway walk
   assert.equal(seen[127 * z.width + 88], 1, 'the High Road mouth is severed');
   assert.equal(seen[95 * z.width + 88], 1, 'the first flight is severed');
   assert.equal(seen[63 * z.width + 88], 1, 'the second flight is severed');
-  assert.equal(seen[31 * z.width + 88], 1, 'the third flight is severed');
+  assert.equal(seen[36 * z.width + 88], 1, 'the third flight is severed');
+  // The castle opens: the gate passage, the hall gate, the throne
+  // dais approach, the bailey, and the drill yard all walk.
+  assert.equal(seen[31 * z.width + 88], 1, 'the castle gate passage is severed');
+  assert.equal(seen[25 * z.width + 77], 1, 'the hall gate apron is severed');
+  assert.equal(seen[15 * z.width + 77], 1, 'the processional is severed');
+  assert.equal(seen[28 * z.width + 65], 1, 'the drill yard is severed');
+  assert.equal(seen[18 * z.width + 126], 1, 'the shrine pad is severed');
+  assert.equal(seen[26 * z.width + 110], 1, 'the royal garden is severed');
+  assert.equal(seen[14 * z.width + 95], 1, 'the east walk is severed');
   assert.equal(seen[11 * z.width + 14], 1, 'the deep gallery is severed');
   // THE POSTERN LANE walks end to end: the gatefront shelf, through
   // the gate in its throat, up the cliff foot to the muster yard, and
