@@ -1,5 +1,6 @@
-import { openDb, type Db } from '../db/db.js';
-import { config } from '../config.js';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import type { Db } from '../db/db.js';
 
 /**
  * THE FRESH START — a production refresh for the world database.
@@ -43,6 +44,44 @@ import { config } from '../config.js';
  *              crops, signs, farm_bins, farm_troughs.
  *              invite_codes are KEPT (admin-issued).
  */
+
+/**
+ * Load the same .env the daemon's arx-run.sh sources — the supervised
+ * server gets DB credentials from it, and an interactive SSH shell
+ * does not. Walk up from cwd (packages/server → repo root → the Forge
+ * site dir above `current/`) and take the first .env found; variables
+ * already in the environment always win. This MUST run before the
+ * config module is imported, which is why openDb/config load
+ * dynamically inside main().
+ */
+function loadEnvFile(): string | null {
+  let dir = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const file = resolve(dir, '.env');
+    if (existsSync(file)) {
+      for (const rawLine of readFileSync(file, 'utf8').split('\n')) {
+        const line = rawLine.trim();
+        if (line === '' || line.startsWith('#')) continue;
+        const eq = line.indexOf('=');
+        if (eq <= 0) continue;
+        const key = line.slice(0, eq).replace(/^export\s+/, '').trim();
+        let value = line.slice(eq + 1).trim();
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1);
+        }
+        if (!(key in process.env)) process.env[key] = value;
+      }
+      return file;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
 
 interface Group {
   name: string;
@@ -97,6 +136,17 @@ async function main(): Promise<void> {
       process.exit(1);
     }
   }
+
+  const envFile = loadEnvFile();
+  console.log(
+    envFile
+      ? `[refresh] env loaded from ${envFile}`
+      : '[refresh] no .env found walking up from cwd — using process env / defaults',
+  );
+  // Imported only now, AFTER the env file landed — config reads
+  // process.env at module load.
+  const { openDb } = await import('../db/db.js');
+  const { config } = await import('../config.js');
 
   const db = await openDb();
   try {

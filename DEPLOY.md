@@ -317,7 +317,10 @@ deploy at quiet hours once there's a population.
 ## Refreshing the world before launch
 
 `npm run db:refresh -w @arx/server` is the pre-launch reset lane. It
-reads the same `DB_*` env the server does, and with no flags it only
+loads the same `.env` the daemon's `arx-run.sh` sources (found by
+walking up from the working directory — release root, `releases/`,
+then the site dir, so running it from `current/` just works; explicit
+environment variables always win), and with no flags it only
 REPORTS — row counts per group, plus any TOOL-EDITED content rows
 (the two-hash law: an edited row outvotes the shipped code forever,
 which is exactly how a stale geography or NPC def survives a deploy;
