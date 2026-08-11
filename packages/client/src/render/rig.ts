@@ -1009,6 +1009,15 @@ export const SKELETON_LOOKS: Record<string, SkeletonLook> = {
   // The guard: iron-stained heavy bone, cracked from old sieges — the
   // door that still stands its post.
   skeleton_guard: { bone: '#c6bda4', cavity: '#292031', heavy: 1.14, cracked: true },
+  // The chanter: violet-washed bone, a pale arcane light standing in
+  // the sockets — the crypt's one throat that still remembers words.
+  skeleton_chanter: {
+    bone: '#d6cfdf',
+    cavity: '#2a2138',
+    glow: '#b49af0',
+    heavy: 1.0,
+    cracked: false,
+  },
   // The champion: aged ivory mass, ember-lit sockets, a gold crown —
   // whoever he was, the grave promoted him.
   skeleton_champion: {

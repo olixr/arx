@@ -50,7 +50,8 @@ import {
   type Vec2,
   isFishingTile,
 } from '@arx/shared';
-import { abilityDef, bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@arx/content';
+import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@arx/content';
+import { farmBins, predictedGrade } from '../game/farmCare.js';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
 import {
@@ -15798,6 +15799,24 @@ export class Renderer {
       sp.cw * k,
       sp.ch * k,
     );
+    // THE CARE FOLD's beacon: a ripe crop that has EARNED a grade
+    // wears an extra twinkle over the cached sprite — gold and eager
+    // for prime, a single quiet silver wink for fine. Live math over
+    // the blit, so the cache stays whole.
+    const grade = predictedGrade(tile, tx, ty);
+    if (grade > 0) {
+      const a = Renderer.twinkle(tSec, h ^ 0x5c1d, grade === 2 ? 2.6 : 4.2);
+      if (a > 0) {
+        const gy = by + syT * 0.3 - fm.height * s * 0.72;
+        this.sparkle(
+          bx + (((h >> 5) % 40) - 20) / 100 * s,
+          gy,
+          s * (grade === 2 ? 0.13 : 0.09),
+          a,
+          grade === 2 ? '#ffd76a' : '#e8e2d0',
+        );
+      }
+    }
   }
 
   /**
@@ -22373,6 +22392,268 @@ export class Renderer {
           },
         };
       }
+      case Tile.CompostBin: {
+        const syT = s * this.camera.yScale;
+        // THE LIVING SOIL: a slatted timber box, hip-high on the body
+        // ruler, open top showing the heap (the top-plane law). The
+        // heap is live state from the care mirror: rising as it fills,
+        // lidded and steaming while the batch works, dark and glinting
+        // when it is ready to turn out. Live-painted on purpose (never
+        // in STATION_CACHE_TILES) so the state always reads true.
+        const xL = p.x - s * 0.38;
+        const xR = p.x + s * 0.38;
+        const yB = p.y + syT * 0.4;
+        const yT = yB - s * 0.52;
+        const slatC = '#6e5433';
+        const loamC = '#4a3a28';
+        return {
+          sortY: ty + 0.8,
+          body: stationBody(0.75, 0.95, 0.5),
+          drawShadow: () => {
+            this.castEdgeQuad(xL, yB + syT * 0.05, xR, yB + syT * 0.05, 0.55);
+          },
+          draw: () => {
+            // Draw-time ctx capture (the outline-pass scratch law).
+            const ctx = this.ctx;
+            const bin = farmBins.get(`${tx},${ty}`);
+            const now = Date.now();
+            const working = !!bin && bin.readyAt !== 0 && now < bin.readyAt;
+            const ready = !!bin && bin.readyAt !== 0 && now >= bin.readyAt;
+            const fillFrac = ready || working ? 1 : bin ? Math.min(1, bin.fill / COMPOST_BATCH_WORTH) : 0;
+            // Worn earth underfoot: the barrow path to the lid.
+            ctx.fillStyle = 'rgba(94, 70, 44, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, yB + syT * 0.02, s * 0.42, syT * 0.16, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The box: front face in three slat bands, dark gaps
+            // between, corner posts proud of the slats.
+            for (let i = 0; i < 3; i++) {
+              const sy0 = yT + s * 0.09 + i * s * 0.15;
+              ctx.fillStyle = shade(slatC, i === 0 ? 8 : i === 1 ? 0 : -8);
+              ctx.fillRect(xL + s * 0.03, sy0, xR - xL - s * 0.06, s * 0.115);
+              ctx.fillStyle = 'rgba(20, 14, 26, 0.5)';
+              ctx.fillRect(xL + s * 0.03, sy0 + s * 0.115, xR - xL - s * 0.06, s * 0.028);
+            }
+            for (const cx of [xL + s * 0.05, xR - s * 0.05]) {
+              ctx.fillStyle = shade(slatC, -14);
+              ctx.fillRect(cx - s * 0.045, yT - s * 0.03, s * 0.09, yB - yT + s * 0.03);
+              ctx.fillStyle = shade(slatC, 26);
+              ctx.fillRect(cx - s * 0.045, yT - s * 0.03, s * 0.09, s * 0.035);
+            }
+            // The open top plane: rim band, then the heap inside —
+            // a tilted bird's eye, never pure elevation.
+            ctx.fillStyle = shade(slatC, 18);
+            ctx.beginPath();
+            ctx.ellipse(p.x, yT + syT * 0.02, s * 0.36, syT * 0.13, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(16, 12, 22, 0.75)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, yT + syT * 0.03, s * 0.29, syT * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (working) {
+              // The lid closes over the batch: two planks and a stone
+              // weight, sun on the near arris.
+              ctx.fillStyle = shade(slatC, 12);
+              ctx.beginPath();
+              ctx.ellipse(p.x, yT + syT * 0.02, s * 0.33, syT * 0.12, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.3, yT + syT * 0.02);
+              ctx.lineTo(p.x + s * 0.3, yT + syT * 0.02);
+              ctx.stroke();
+              ctx.fillStyle = '#827e8a';
+              ctx.beginPath();
+              facetCircle(ctx, p.x + s * 0.08, yT - s * 0.015, s * 0.09, 6, h, 0.5);
+              ctx.fill();
+              // Steam wisps rise on the beat: the heap is alive.
+              for (let i = 0; i < 3; i++) {
+                const ph = (t * 0.45 + i * 0.37 + ((h >> (i * 3)) % 5) * 0.13) % 1;
+                ctx.fillStyle = `rgba(226, 222, 210, ${0.34 * (1 - ph)})`;
+                ctx.beginPath();
+                ctx.ellipse(
+                  p.x - s * 0.14 + i * s * 0.14 + Math.sin(ph * 6 + i) * s * 0.05,
+                  yT - s * 0.1 - ph * s * 0.42,
+                  s * (0.045 + ph * 0.05),
+                  s * (0.035 + ph * 0.04),
+                  0, 0, Math.PI * 2,
+                );
+                ctx.fill();
+              }
+            } else if (fillFrac > 0) {
+              // The heap: loam mounding toward the rim as it fills;
+              // a turned-out-ready batch reads darker and richer.
+              const heapC = ready ? '#352a1e' : loamC;
+              ctx.fillStyle = heapC;
+              ctx.beginPath();
+              ctx.ellipse(
+                p.x,
+                yT + syT * 0.03 - fillFrac * s * 0.05,
+                s * (0.16 + fillFrac * 0.12),
+                syT * (0.055 + fillFrac * 0.04),
+                0, 0, Math.PI * 2,
+              );
+              ctx.fill();
+              ctx.fillStyle = shade(heapC, 14);
+              ctx.beginPath();
+              ctx.ellipse(
+                p.x - s * 0.05,
+                yT + syT * 0.01 - fillFrac * s * 0.05,
+                s * (0.07 + fillFrac * 0.05),
+                syT * 0.03,
+                0, 0, Math.PI * 2,
+              );
+              ctx.fill();
+              if (ready) {
+                // The turn-out beacon: a warm glint on the finished
+                // batch, the ripe-payload law spoken in loam.
+                const a = Renderer.twinkle(t, h, 2.8);
+                if (a > 0) this.sparkle(p.x + s * 0.06, yT - s * 0.06, s * 0.1, a, '#e8c04c');
+              }
+            }
+            // Scrap litter at the foot: peel curls and a dropped leaf.
+            ctx.fillStyle = 'rgba(122, 140, 84, 0.8)';
+            ctx.fillRect(xL - s * 0.1, yB - s * 0.04, s * 0.07, s * 0.028);
+            ctx.fillStyle = 'rgba(158, 120, 66, 0.8)';
+            ctx.fillRect(xR + s * 0.03, yB - s * 0.02, s * 0.06, s * 0.026);
+          },
+        };
+      }
+
+      case Tile.Well: {
+        const syT = s * this.camera.yScale;
+        // The yard's water: a facetted stone ring at the chest (its
+        // top plane a true tilted ellipse holding a dark water disc),
+        // two posts carrying a small shake gable, the windlass beam
+        // between them with rope run down to a bucket parked on the
+        // rim. Still art head to toe — the water alone glints.
+        const yB = p.y + syT * 0.42;
+        const ringR = s * 0.4;
+        const ringTop = yB - s * 0.5;
+        const stoneC = '#6e6a75';
+        const timberC = '#7d5a2e';
+        return {
+          sortY: ty + 0.85,
+          body: stationBody(0.85, 1.85, 0.55),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - ringR, yB + syT * 0.05, p.x + ringR, yB + syT * 0.05, 0.6);
+          },
+          draw: () => {
+            const ctx = this.ctx;
+            // Damp ground ring: the spill line around every well.
+            ctx.fillStyle = 'rgba(64, 82, 108, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, yB + syT * 0.02, ringR * 1.3, syT * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The ring wall: coursed stone blocks around the drum,
+            // hash-dealt widths, mortar shadows, sunlit cap course.
+            ctx.fillStyle = stoneC;
+            ctx.fillRect(p.x - ringR, ringTop, ringR * 2, yB - ringTop);
+            ctx.fillStyle = shade(stoneC, -14);
+            ctx.fillRect(p.x + ringR * 0.35, ringTop, ringR * 0.65, yB - ringTop);
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (let i = 0; i < 4; i++) {
+              const bx = p.x - ringR + (0.15 + i * 0.24 + ((h >> (i * 4)) % 7) * 0.01) * ringR * 2;
+              ctx.beginPath();
+              ctx.moveTo(bx, ringTop + s * 0.1 + ((h >> (i * 3)) % 3) * s * 0.02);
+              ctx.lineTo(bx, yB - s * 0.05);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
+            ctx.beginPath();
+            ctx.moveTo(p.x - ringR + s * 0.03, ringTop + s * 0.24);
+            ctx.lineTo(p.x + ringR - s * 0.03, ringTop + s * 0.26);
+            ctx.stroke();
+            // The top plane: cap ring ellipse, then the water disc
+            // sunk inside with one moving glint.
+            ctx.fillStyle = shade(stoneC, 22);
+            ctx.beginPath();
+            ctx.ellipse(p.x, ringTop, ringR * 1.04, syT * 0.15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2c3a54';
+            ctx.beginPath();
+            ctx.ellipse(p.x, ringTop + syT * 0.012, ringR * 0.72, syT * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(160, 196, 232, 0.5)';
+            ctx.beginPath();
+            ctx.ellipse(
+              p.x + Math.sin(t * 0.7 + h) * ringR * 0.2,
+              ringTop + syT * 0.02,
+              ringR * 0.16,
+              syT * 0.022,
+              0, 0, Math.PI * 2,
+            );
+            ctx.fill();
+            // Posts and the shake gable above; the roof shows its
+            // south slope (foreshortened, lit on the west lane).
+            const postT = ringTop - s * 0.78;
+            for (const px2 of [p.x - ringR * 0.8, p.x + ringR * 0.8]) {
+              ctx.fillStyle = shade(timberC, -10);
+              ctx.fillRect(px2 - s * 0.045, postT, s * 0.09, ringTop - postT + s * 0.06);
+              ctx.fillStyle = shade(timberC, 22);
+              ctx.fillRect(px2 - s * 0.045, postT, s * 0.035, ringTop - postT + s * 0.06);
+            }
+            const roofY = postT - s * 0.06;
+            ctx.fillStyle = shade(timberC, -18);
+            ctx.beginPath();
+            ctx.moveTo(p.x - ringR * 1.08, roofY + s * 0.16);
+            ctx.lineTo(p.x, roofY - s * 0.18);
+            ctx.lineTo(p.x + ringR * 1.08, roofY + s * 0.16);
+            ctx.lineTo(p.x + ringR * 0.96, roofY + s * 0.24);
+            ctx.lineTo(p.x, roofY - s * 0.07);
+            ctx.lineTo(p.x - ringR * 0.96, roofY + s * 0.24);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(timberC, 16);
+            ctx.beginPath();
+            ctx.moveTo(p.x - ringR * 1.08, roofY + s * 0.16);
+            ctx.lineTo(p.x, roofY - s * 0.18);
+            ctx.lineTo(p.x, roofY - s * 0.07);
+            ctx.lineTo(p.x - ringR * 0.96, roofY + s * 0.24);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(p.x - ringR * 1.08, roofY + s * 0.16);
+            ctx.lineTo(p.x, roofY - s * 0.18);
+            ctx.lineTo(p.x + ringR * 1.08, roofY + s * 0.16);
+            ctx.stroke();
+            // The windlass: beam between the posts, a crank arm east,
+            // rope falling to a bucket parked on the rim.
+            ctx.fillStyle = shade(timberC, 6);
+            ctx.fillRect(p.x - ringR * 0.8, postT + s * 0.16, ringR * 1.6, s * 0.07);
+            ctx.fillStyle = shade(timberC, -20);
+            ctx.fillRect(p.x + ringR * 0.8, postT + s * 0.13, s * 0.05, s * 0.14);
+            ctx.strokeStyle = '#c9b98a';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.03, postT + s * 0.22);
+            ctx.lineTo(p.x + s * 0.05, ringTop - s * 0.1);
+            ctx.stroke();
+            const bkX = p.x + s * 0.06;
+            const bkY = ringTop - s * 0.08;
+            ctx.fillStyle = shade(timberC, -6);
+            ctx.beginPath();
+            ctx.moveTo(bkX - s * 0.07, bkY - s * 0.09);
+            ctx.lineTo(bkX + s * 0.07, bkY - s * 0.09);
+            ctx.lineTo(bkX + s * 0.055, bkY + s * 0.03);
+            ctx.lineTo(bkX - s * 0.055, bkY + s * 0.03);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.stroke();
+            // Moss at the shaded footing: the damp tells its story.
+            ctx.fillStyle = 'rgba(96, 122, 74, 0.7)';
+            ctx.fillRect(p.x - ringR + s * 0.04, yB - s * 0.07, s * 0.09, s * 0.035);
+            ctx.fillRect(p.x - ringR * 0.3, yB - s * 0.04, s * 0.07, s * 0.03);
+          },
+        };
+      }
+
       case Tile.Sawhorse: {
         const syT = s * this.camera.yScale;
         // The sawyer's stand: two X-trestles at the hip, a whole log
@@ -26948,6 +27229,9 @@ export class Renderer {
     skeleton_archer: 0.92,
     skeleton_guard: 1.05,
     skeleton_champion: 1.25,
+    // The chanter: the robed dead — rank-and-file bones drawn a
+    // little too tall and a little too still.
+    skeleton_chanter: 1.08,
   };
 
   /**

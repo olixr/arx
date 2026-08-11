@@ -3938,6 +3938,310 @@ Object.assign(PLATES, {
     c.lineTo(0, 0.005);
     c.stroke();
   },
+  // --------------------- THE VOICES (enemy arts): every kit ability
+  // wears a bespoke plate — bestiary, staging tools, and the CMS all
+  // read the foe's repertoire at a glance.
+  // Firebolt — a hurled gobbet of camp-fire, streak behind it.
+  goblin_firebolt: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(-0.36, 0.3);
+    c.quadraticCurveTo(-0.16, 0.16, 0.06, -0.02);
+    c.stroke();
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.3, 0.14);
+    c.quadraticCurveTo(-0.14, 0.04, -0.02, -0.06);
+    c.stroke();
+    flame(c, 0.1, -0.06, 0.46, st, 0.2);
+    dot(c, st.spark, -0.22, 0.24, 0.026);
+    dot(c, st.spark, -0.1, 0.1, 0.02);
+  },
+  // Cinder Ring — the staked mark catching: a ring of low flames.
+  cinder_ring: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    ground(c, 0, 0.4, st);
+    for (const [x, y, s] of [
+      [-0.3, 0.02, 0.24],
+      [0.3, 0.02, 0.24],
+      [-0.16, -0.1, 0.2],
+      [0.16, -0.1, 0.2],
+      [0, 0.1, 0.22],
+    ] as const) {
+      flame(c, x, y, s, st, 0.08);
+    }
+    ringDot(c, st.mid, 0, -0.02, 0.36, 0.026);
+  },
+  // Gloom Spittle — three ropes of bile, spat wide.
+  gloom_spittle: (st) => (c) => {
+    c.translate(0.5, 0.42);
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    for (const [ang, len] of [
+      [-0.5, 0.4],
+      [0, 0.46],
+      [0.5, 0.4],
+    ] as const) {
+      c.lineWidth = 0.036;
+      c.beginPath();
+      c.moveTo(0, -0.18);
+      c.quadraticCurveTo(Math.sin(ang) * 0.2, 0.05, Math.sin(ang) * len, 0.1 + Math.cos(ang) * 0.24);
+      c.stroke();
+    }
+    droplet(c, -0.32, 0.36, 0.3, st);
+    droplet(c, 0, 0.46, 0.36, st);
+    droplet(c, 0.32, 0.36, 0.3, st);
+    dot(c, st.core, 0, -0.2, 0.05);
+  },
+  // Miasma Ring — the haze standing up out of seeded ground.
+  miasma_ring: (st) => (c) => {
+    c.translate(0.5, 0.58);
+    ground(c, 0, 0.4, st);
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.042;
+    for (const [x, k] of [
+      [-0.24, 1],
+      [0, -1],
+      [0.24, 1],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x, 0.06);
+      c.quadraticCurveTo(x + 0.1 * k, -0.16, x - 0.06 * k, -0.3);
+      c.quadraticCurveTo(x - 0.16 * k, -0.42, x + 0.04 * k, -0.5);
+      c.stroke();
+    }
+    dot(c, st.spark, -0.12, -0.38, 0.024);
+    dot(c, st.spark, 0.18, -0.26, 0.02);
+  },
+  // Bone Volley — a fan of sharpened splinters, loosed.
+  bone_volley: (st) => (c) => {
+    c.translate(0.5, 0.62);
+    for (const [ang, len] of [
+      [-0.55, 0.62],
+      [-0.18, 0.7],
+      [0.18, 0.7],
+      [0.55, 0.62],
+    ] as const) {
+      const dx = Math.sin(ang);
+      const dy = -Math.cos(ang);
+      poly(
+        c,
+        st.core,
+        [
+          [dx * 0.1 - dy * 0.03, dy * 0.1 + dx * 0.03],
+          [dx * len, dy * len],
+          [dx * 0.1 + dy * 0.03, dy * 0.1 - dx * 0.03],
+        ],
+        0.024,
+      );
+    }
+    dot(c, st.deep, 0, 0.02, 0.06);
+  },
+  // Grave Mist — tomb-cold standing on the ground, a skull in it.
+  grave_mist: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    ground(c, 0, 0.4, st);
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.04;
+    for (const [x, w] of [
+      [-0.26, 0.14],
+      [0.08, 0.18],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x, 0.04);
+      c.quadraticCurveTo(x + w, -0.12, x, -0.24);
+      c.quadraticCurveTo(x - w, -0.36, x + w * 0.6, -0.46);
+      c.stroke();
+    }
+    skull(c, 0.02, -0.14, 0.3, st.core, st.deep);
+    star4(c, -0.28, -0.34, 0.06, st.spark);
+    star4(c, 0.3, -0.24, 0.05, st.spark);
+  },
+  // Raise the Fallen — the ground answering: a skull coming UP.
+  raise_the_fallen: (st) => (c) => {
+    c.translate(0.5, 0.58);
+    ground(c, 0, 0.42, st);
+    // The rift the dead climb out of.
+    poly(c, st.deep, [[-0.3, 0.02], [-0.06, -0.04], [0.2, 0.0], [0.3, 0.06], [-0.1, 0.1]], 0.024);
+    skull(c, 0, -0.2, 0.44, st.core, st.deep);
+    // Rising motes: the word doing its work.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.03;
+    for (const x of [-0.3, 0.32] as const) {
+      c.beginPath();
+      c.moveTo(x, 0.02);
+      c.lineTo(x * 1.1, -0.32);
+      c.stroke();
+    }
+    dot(c, st.spark, -0.34, -0.4, 0.026);
+    dot(c, st.spark, 0.36, -0.38, 0.026);
+  },
+  // Web Snare — the wheel across your line of retreat.
+  web_snare: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.core;
+    c.lineCap = 'round';
+    c.lineWidth = 0.026;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.42, Math.sin(a) * 0.42);
+      c.lineTo(-Math.cos(a) * 0.42, -Math.sin(a) * 0.42);
+      c.stroke();
+    }
+    c.strokeStyle = st.mid;
+    for (const r of [0.16, 0.3] as const) {
+      c.beginPath();
+      for (let i = 0; i <= 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        // Sagging chords, not circles — silk hangs.
+        const rr = r * (1 - 0.08 * Math.sin(i * 2.6));
+        const x = Math.cos(a) * rr;
+        const y = Math.sin(a) * rr;
+        if (i === 0) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      }
+      c.closePath();
+      c.stroke();
+    }
+    dot(c, st.deep, 0, 0, 0.05);
+  },
+  // Reaping Sweep — the set feet and the wide crescent.
+  reaping_sweep: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    // The crescent of the swing, edge-lit.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.arc(0, 0.06, 0.38, Math.PI * 1.15, Math.PI * 1.85);
+    c.stroke();
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.arc(0, 0.06, 0.44, Math.PI * 1.2, Math.PI * 1.8);
+    c.stroke();
+    blade(c, 0.02, 0.1, 0.56, -Math.PI / 5, st);
+    // The set feet: two planted ticks under the swing.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.05;
+    for (const x of [-0.1, 0.12] as const) {
+      c.beginPath();
+      c.moveTo(x, 0.3);
+      c.lineTo(x + 0.05, 0.4);
+      c.stroke();
+    }
+  },
+  // Rattling Volley — a fistful of shafts, none true, all flying.
+  rattling_volley: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    for (const [ang, len] of [
+      [-0.7, 0.5],
+      [-0.35, 0.56],
+      [0, 0.6],
+      [0.35, 0.56],
+      [0.7, 0.5],
+    ] as const) {
+      arrow(c, Math.sin(ang) * 0.08, 0.1 - Math.cos(ang) * 0.02, -Math.PI / 2 + ang, len, st, 0.8);
+    }
+  },
+  // Gnawed Mending — flesh knitting: the bloom over the wound.
+  gnawed_mending: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    orb(c, 0, 0, 0.26, st);
+    // The stitches: crossing ticks over the orb.
+    c.strokeStyle = st.core;
+    c.lineCap = 'round';
+    c.lineWidth = 0.034;
+    for (const [x, y] of [
+      [-0.08, -0.06],
+      [0.06, 0.02],
+      [-0.02, 0.1],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x - 0.06, y + 0.06);
+      c.lineTo(x + 0.06, y - 0.06);
+      c.stroke();
+    }
+    // New growth leaving the wound: curling shoots.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.04;
+    for (const k of [-1, 1] as const) {
+      c.beginPath();
+      c.moveTo(k * 0.16, -0.14);
+      c.quadraticCurveTo(k * 0.3, -0.32, k * 0.16, -0.42);
+      c.stroke();
+    }
+    dot(c, st.spark, 0, -0.36, 0.028);
+  },
+  // Marrow Chill — the crypt's cold walking out in a ring.
+  marrow_chill: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ringDot(c, st.mid, 0, 0.02, 0.34, 0.05);
+    ringDot(c, st.deep, 0, 0.02, 0.44, 0.026);
+    skull(c, 0, -0.04, 0.36, st.core, st.deep);
+    star4(c, -0.3, -0.22, 0.07, st.spark);
+    star4(c, 0.32, -0.16, 0.06, st.spark);
+    star4(c, 0.02, 0.32, 0.055, st.spark);
+  },
+  // Rending Lunge — through you, jaws first.
+  rending_lunge: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The lunge line: a hard streak with a ragged wake.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.06;
+    c.beginPath();
+    c.moveTo(-0.4, 0.22);
+    c.lineTo(0.24, -0.1);
+    c.stroke();
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(-0.42, 0.06);
+    c.lineTo(0.0, -0.14);
+    c.stroke();
+    // The jaws at the head of it: two fang wedges, open.
+    poly(c, st.core, [[0.18, -0.06], [0.44, -0.3], [0.3, -0.02]], 0.024);
+    poly(c, st.core, [[0.16, 0.02], [0.46, 0.1], [0.26, 0.12]], 0.024);
+    // Blood off the wake.
+    droplet(c, -0.12, 0.32, 0.24, st);
+    dot(c, st.deep, 0.08, 0.24, 0.03);
+  },
+  // Shrilling Dart — the bat folded into its scream-dive.
+  shrilling_dart: (st) => (c) => {
+    c.translate(0.5, 0.46);
+    // The scream: nested chevrons ahead of the dive.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.032;
+    for (const r of [0.2, 0.3, 0.4] as const) {
+      c.beginPath();
+      c.arc(0.26, 0.3, r, Math.PI * 1.15, Math.PI * 1.6);
+      c.stroke();
+    }
+    // The folded bat, head down-right into the dive.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(0.1, 0.12); // nose, leading the dive
+    c.lineTo(-0.08, -0.02); // throat
+    c.lineTo(-0.38, -0.3); // long wing swept back
+    c.lineTo(-0.16, -0.16); // wing notch
+    c.lineTo(-0.3, -0.02); // second finger
+    c.lineTo(-0.12, 0.0); // wing root
+    c.lineTo(-0.2, 0.18); // lower wing kick
+    c.closePath();
+    c.fill();
+    c.stroke();
+    dot(c, st.spark, 0.02, 0.04, 0.022);
+  },
 
   // ---------------------------- beastcraft arts (THE WILD ANSWERS THE
   // CALL). Gentle the Wild — the asking: a beast's neck bowing to an

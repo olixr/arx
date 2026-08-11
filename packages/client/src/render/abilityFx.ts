@@ -464,6 +464,26 @@ export const FX_STYLES: Record<string, FxStyle> = {
   // Moon-pale over shadow: the scream is a spike, the answer is eyes.
   hushing_screech: SHADOW({ mid: '#b8c4d8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.32 }),
 
+  // --------------------- THE VOICES (enemy arts, docs/enemy-arts-plan.md)
+  // Every kit ability wears an AUTHORED face — the fallback grammar is
+  // a safety net, never a costume. Goblinkind burns dirty (camp-fire
+  // orange, greasy green), the dead speak bone and crypt-cold, the
+  // beasts stay bodily.
+  goblin_firebolt: EMBER({ ring: 'teeth', debris: 'ember', decal: 'scorch', punch: 0.45, wash: 0.4 }),
+  cinder_ring: EMBER({ mid: '#e06a30', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'pillar', punch: 0.7, wash: 0.5 }),
+  gloom_spittle: VERDANT({ mid: '#a0c050', ring: 'shards', debris: 'spark', decal: 'stain', punch: 0.35 }),
+  miasma_ring: VERDANT({ mid: '#7ac46a', ring: 'halo', debris: 'leaf', decal: 'stain', motif: 'swarm', punch: 0.4, wash: 0.4 }),
+  bone_volley: BONE({ ring: 'shards', debris: 'bone', decal: undefined, punch: 0.4, wash: 0.3 }),
+  grave_mist: FROST({ mid: '#8ac4e8', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'wisps', punch: 0.45, wash: 0.45 }),
+  raise_the_fallen: BONE({ mid: '#9a94b8', ring: 'runes', debris: 'bone', decal: 'runes', motif: 'wisps', punch: 0.6, wash: 0.4 }),
+  web_snare: BONE({ mid: '#e8e8e0', ring: 'runes', debris: 'spark', decal: 'glow', motif: 'cage', punch: 0.35, wash: 0.3 }),
+  reaping_sweep: STEEL({ mid: '#c9a44a', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.55, wash: 0.3 }),
+  rattling_volley: BONE({ ring: 'shards', debris: 'bone', decal: undefined, punch: 0.35, wash: 0.25 }),
+  gnawed_mending: VERDANT({ mid: '#7ac46a', ring: 'halo', debris: 'leaf', decal: undefined, motif: 'bloom', punch: 0.4, wash: 0.3 }),
+  marrow_chill: FROST({ mid: '#b8c4d8', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'echo', punch: 0.6, wash: 0.4 }),
+  rending_lunge: BLOOD({ mid: '#c9a44a', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.55, wash: 0.3 }),
+  shrilling_dart: SHADOW({ mid: '#8a7458', ring: 'halo', debris: 'spark', decal: undefined, punch: 0.35, wash: 0.2 }),
+
   // ---------------------------------------------------- beastcraft arts
   // THE KEEPER'S TONGUE — the school speaks LIVING GREEN AND HIDE:
   // bond-greens, herb and grain, one russet howl and one horn-gold

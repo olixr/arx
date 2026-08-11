@@ -12,6 +12,7 @@ import { GameServer } from './gameServer.js';
 type AnyFn = (...args: never[]) => unknown;
 const proto = GameServer.prototype as unknown as {
   npcAggro: AnyFn;
+  cancelNpcCast: AnyFn;
   npcFactionOf: AnyFn;
   npcEnforcerFid: AnyFn;
   playerBandWith: AnyFn;

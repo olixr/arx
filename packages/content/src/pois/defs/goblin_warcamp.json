@@ -63,6 +63,15 @@
       "minTier": 3,
       "levelOffset": 5,
       "name": "Goblin War-chief"
+    },
+    {
+      "npc": "goblin_firecaller",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 2
     }
   ],
   "chestTierBonus": 0,

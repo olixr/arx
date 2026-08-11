@@ -3200,6 +3200,202 @@ const defs: AbilityDef[] = [
     status: { status: 'chill', power: 1, durationTicks: 50 },
   },
 
+  // -------------------- THE VOICES (enemy arts, docs/enemy-arts-plan.md
+  // Phase 3): the bestiary's kit abilities. Every entry keeps
+  // cooldownTicks 0 (pacing lives on the NpcDef) and buys any die
+  // above its wielder's basic with warning time — THE TELEGRAPH
+  // PREMIUM is contract-tested in content.test.ts.
+  {
+    id: 'goblin_firebolt',
+    name: 'Firebolt',
+    desc: 'The firecaller draws breath and spits a gobbet of camp-fire that clings where it lands.',
+    color: '#ff9a44',
+    code: 'Fb',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 3,
+    projectiles: 1,
+    projectileSpeed: 10,
+    range: 9,
+    status: { status: 'burn', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'cinder_ring',
+    name: 'Cinder Ring',
+    desc: 'The firecaller marks the ground under your running feet, and the mark catches.',
+    color: '#c43a18',
+    code: 'Cr',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    damage: 4,
+    range: 0, // staked where the caster's aim law puts it
+    radius: 1.8,
+    fuseTicks: 20, // a full second to leave the mark
+    status: { status: 'burn', power: 1, durationTicks: 80 },
+  },
+  {
+    id: 'gloom_spittle',
+    name: 'Gloom Spittle',
+    desc: 'Three ropes of green bile, spat wide — the spread is the point.',
+    color: '#a0c050',
+    code: 'Gt',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 2,
+    projectiles: 3,
+    spreadArc: 0.5,
+    projectileSpeed: 9,
+    range: 8,
+    status: { status: 'venom', power: 1, durationTicks: 80 },
+  },
+  {
+    id: 'miasma_ring',
+    name: 'Miasma Ring',
+    desc: 'The gloomcaller seeds the ground and a green haze stands up out of it. Standing in it is the mistake.',
+    color: '#7ac46a',
+    code: 'Mr',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_field',
+    damage: 2,
+    range: 0,
+    radius: 2.0,
+    fieldTicks: 90,
+    pulseEveryTicks: 15,
+    status: { status: 'venom', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'bone_volley',
+    name: 'Bone Volley',
+    desc: 'A fan of sharpened splinters, rattled loose and loosed.',
+    color: '#d8d4c8',
+    code: 'Bv',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 3,
+    projectiles: 4,
+    spreadArc: 0.7,
+    projectileSpeed: 10,
+    range: 9,
+  },
+  {
+    id: 'grave_mist',
+    name: 'Grave Mist',
+    desc: 'Cold rises off the ground like the door of a tomb swinging open. Legs slow in it.',
+    color: '#8ac4e8',
+    code: 'Gm',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_field',
+    damage: 2,
+    range: 0,
+    radius: 2.2,
+    fieldTicks: 80,
+    pulseEveryTicks: 20,
+    status: { status: 'chill', power: 2, durationTicks: 40 },
+  },
+  {
+    id: 'raise_the_fallen',
+    name: 'Raise the Fallen',
+    desc: 'The chanter speaks a name the ground remembers, and the ground answers.',
+    color: '#b8c4d8',
+    code: 'Rf',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'summon',
+    damage: 0,
+    // THE RAISING LANE: real bestiary bodies, capped alive, born into
+    // the chanter's fight (docs/enemy-arts-plan.md LAW 1).
+    summonNpc: { npc: 'skeleton', count: 2, capAlive: 2, levelDelta: -6 },
+  },
+  {
+    id: 'web_snare',
+    name: 'Web Snare',
+    desc: 'Silk across your line of retreat. It costs nothing but your speed — which is everything.',
+    color: '#e8e8e0',
+    code: 'Ws',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_field',
+    damage: 0, // the snare never bites — the SLOW is the payload
+    range: 0,
+    radius: 1.6,
+    fieldTicks: 70,
+    pulseEveryTicks: 10,
+    status: { status: 'chill', power: 2, durationTicks: 45 },
+  },
+  {
+    id: 'reaping_sweep',
+    name: 'Reaping Sweep',
+    desc: 'The reaver sets its feet and swings through everything in front of it. The set feet are your warning.',
+    color: '#c9a44a',
+    code: 'Rs',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'melee_arc',
+    damage: 5,
+    range: 2.3,
+    arc: 1.3, // a wide crescent — behind the reaver is the safe ground
+    status: { status: 'bleed', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'rattling_volley',
+    name: 'Rattling Volley',
+    desc: 'The archer nocks a fistful at once. None fly true. All fly.',
+    color: '#d8d4c8',
+    code: 'Rv',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 2,
+    projectiles: 5,
+    spreadArc: 0.9,
+    projectileSpeed: 10,
+    range: 8,
+  },
+  {
+    id: 'gnawed_mending',
+    name: 'Gnawed Mending',
+    desc: 'The troll stops fighting and starts knitting. Every heartbeat you allow it undoes one of yours.',
+    color: '#7ac46a',
+    code: 'Gn',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'self_buff',
+    damage: 0,
+    // A quarter of the body back — interrupt the breath or fight it twice.
+    self: { healFrac: 0.28, durationTicks: 1 },
+  },
+  {
+    id: 'marrow_chill',
+    name: 'Marrow Chill',
+    desc: 'The champion plants its blade and the cold of the crypt walks out of it in a ring.',
+    color: '#b8c4d8',
+    code: 'Mc',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'nova',
+    damage: 4,
+    radius: 2.4,
+    status: { status: 'chill', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'rending_lunge',
+    name: 'Rending Lunge',
+    desc: 'The packlord drops low and comes through you, jaws first.',
+    color: '#c9a44a',
+    code: 'Rl',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'dash_strike',
+    damage: 5,
+    dashTiles: 3,
+    status: { status: 'bleed', power: 2, durationTicks: 70 },
+  },
+  {
+    id: 'shrilling_dart',
+    name: 'Shrilling Dart',
+    desc: 'The bat folds and comes through you on a scream.',
+    color: '#8a7458',
+    code: 'Sd',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'dash_strike',
+    damage: 1, // the wound is small — the WOUND KEEPS PAYING
+    dashTiles: 2.2,
+    status: { status: 'bleed', power: 1, durationTicks: 50 },
+  },
+
   // -------------------------------- beastcraft arts (THE WILD ANSWERS
   // THE CALL, docs/beastcraft-arts-plan.md): the keeper's school joins
   // the technique pool. The tame is a survival channel, not a strike —

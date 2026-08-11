@@ -283,6 +283,71 @@ const defs: NpcDef[] = [
     pack: 'goblin',
   },
   {
+    // THE FIRST TRUE CASTER (enemy arts): the first wound-up spell a
+    // new waker ever eats — deliberately near the roads, deliberately
+    // small. Teaches all three reads at once: the pip, the gather,
+    // and the staked ring under your running feet.
+    id: 'goblin_firecaller',
+    name: 'Goblin firecaller',
+    level: 7,
+    maxHp: 18,
+    damage: 2,
+    attackRange: 7,
+    attackCooldownTicks: 54,
+    aggroRange: 6,
+    sightArc: 150,
+    leashRange: 24,
+    speed: 3.2,
+    xpReward: 70,
+    loot: ['goblin', 'heirlooms'],
+    respawnSec: 40,
+    color: '#c96a2e',
+    radius: 0.28,
+    hitHeight: 2.0,
+    // Ember spit: the weak ranged basic that fills the cooldown gaps.
+    ranged: { range: 7, projectileSpeed: 10 },
+    // Camp-fire in its hands, camp loyalty in its legs.
+    pack: 'goblin',
+    // THE STANDOFF CASTER: holds its distance and lets the kit speak.
+    standoff: 5.5,
+    kit: [
+      { ability: 'goblin_firebolt', cooldownTicks: 110, windupTicks: 14, minRange: 1.5, maxRange: 8 },
+      // 'lead': the ring lands where you are GOING — the orbit-breaker.
+      { ability: 'cinder_ring', cooldownTicks: 200, windupTicks: 12, maxRange: 7, aim: 'lead' },
+    ],
+  },
+  {
+    // The firecaller's uglier cousin, in the warcamp bands: green
+    // bile in ropes and a haze you learn not to stand in.
+    id: 'goblin_gloomcaller',
+    name: 'Goblin gloomcaller',
+    level: 14,
+    maxHp: 40,
+    damage: 3,
+    attackRange: 7,
+    attackCooldownTicks: 52,
+    aggroRange: 6,
+    sightArc: 150,
+    leashRange: 26,
+    speed: 3.2,
+    xpReward: 160,
+    loot: ['goblin', 'heirlooms'],
+    respawnSec: 60,
+    color: '#5f7d3a',
+    radius: 0.3,
+    hitHeight: 2.0,
+    ranged: { range: 7, projectileSpeed: 10 },
+    // Its own bile never troubles it; fire finds the oils fast.
+    resist: ['venom'],
+    weak: ['burn'],
+    pack: 'goblin',
+    standoff: 5.5,
+    kit: [
+      { ability: 'gloom_spittle', cooldownTicks: 120, windupTicks: 12, minRange: 1.5, maxRange: 8 },
+      { ability: 'miasma_ring', cooldownTicks: 260, windupTicks: 16, maxRange: 7, aim: 'lead' },
+    ],
+  },
+  {
     // The wilds' first HUMAN enemies — deserters and toll-thieves who
     // haunt the roads between the hearths. They ride the player rig
     // with real gear (the loot-story law: every piece they wear
@@ -352,6 +417,9 @@ const defs: NpcDef[] = [
     radius: 0.32,
     hitHeight: 2.1,
     pack: 'brigand',
+    // The set feet are the warning: a wound-up crescent that punishes
+    // standing in front of the reaver when the pip fills.
+    kit: [{ ability: 'reaping_sweep', cooldownTicks: 160, windupTicks: 12, maxRange: 2.2 }],
   },
   {
     id: 'kobold',
@@ -405,8 +473,8 @@ const defs: NpcDef[] = [
     // Shares the warren's pack tag — pull the boss, raise the dig.
     pack: 'kobold',
     // The iron pick comes down on the quarry floor — the same slam
-    // school as the troll, telegraphed and sidesteppable.
-    kit: [{ ability: 'ground_slam', cooldownTicks: 150, maxRange: 4.5 }],
+    // school as the troll, now with the pick raised visibly first.
+    kit: [{ ability: 'ground_slam', cooldownTicks: 150, windupTicks: 8, maxRange: 4.5 }],
   },
   {
     id: 'skeleton',
@@ -474,8 +542,15 @@ const defs: NpcDef[] = [
     hitHeight: 2.6,
     resist: ['bleed'],
     weak: ['burn'],
-    // The boss move: a telegraphed floor slam you dodge on reaction.
-    kit: [{ ability: 'ground_slam', cooldownTicks: 160, maxRange: 4.5 }],
+    // THE FIRST TRUE CHAMPION KIT (enemy arts): the slam you dodge,
+    // the cold you walk out of, and the volley that punishes walking
+    // away — three voices, weighted, never a fixed order. Soloing the
+    // champion is a dance now, not a jog.
+    kit: [
+      { ability: 'ground_slam', cooldownTicks: 160, maxRange: 4.5, weight: 2 },
+      { ability: 'marrow_chill', cooldownTicks: 220, windupTicks: 10, maxRange: 2.8 },
+      { ability: 'bone_volley', cooldownTicks: 240, windupTicks: 14, minRange: 2.5, maxRange: 9 },
+    ],
   },
   {
     id: 'mudcrab',
@@ -661,6 +736,12 @@ const defs: NpcDef[] = [
     radius: 0.2,
     // Flies chest-high: shots that cross the air where it hangs connect.
     hitHeight: 1.2,
+    // THE FIRST LESSON (enemy arts): the bite that bleeds — a new
+    // waker's introduction to the wound that keeps paying.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 40 },
+    // The dart: it folds, screams, and comes THROUGH you — the first
+    // wound-up enemy cast on the road, small enough to learn from.
+    kit: [{ ability: 'shrilling_dart', cooldownTicks: 180, windupTicks: 8, maxRange: 4 }],
   },
   {
     id: 'adder',
@@ -705,6 +786,11 @@ const defs: NpcDef[] = [
     resist: ['venom'],
     weak: ['burn'],
     pounce: true,
+    // THE ORBIT-BREAKER: silk staked along your stride ('lead') — the
+    // circling runner finds the web already across the line.
+    kit: [
+      { ability: 'web_snare', cooldownTicks: 240, windupTicks: 10, maxRange: 6, aim: 'lead' },
+    ],
   },
   {
     id: 'skeleton_archer',
@@ -727,6 +813,45 @@ const defs: NpcDef[] = [
     ranged: { range: 6.5, projectileSpeed: 11 },
     resist: ['bleed'],
     weak: ['burn'],
+    // The fistful: five loosed at once across a spread — walking a
+    // straight line INTO the archer threads it; standing still eats it.
+    kit: [
+      { ability: 'rattling_volley', cooldownTicks: 200, windupTicks: 14, minRange: 2, maxRange: 8 },
+    ],
+  },
+  {
+    // THE CRYPT'S VOICE (enemy arts): the robed dead. Volley, mist,
+    // and — at depth, minLevel 30 — the raising: dungeon reissues of
+    // this body call real skeletons up out of the floor. The base
+    // barrow chanter hasn't the strength for it yet; the deep one
+    // has. Packless like all the mindless dead: nobody answers a
+    // chanter's fall, only its call.
+    id: 'skeleton_chanter',
+    name: 'Bone chanter',
+    level: 22,
+    maxHp: 70,
+    damage: 3,
+    attackRange: 7.5,
+    attackCooldownTicks: 50,
+    aggroRange: 6,
+    sightArc: 120,
+    leashRange: 28,
+    speed: 3.0,
+    xpReward: 320,
+    loot: ['skeleton', 'crypt_wardrobe'],
+    respawnSec: 90,
+    color: '#9a94b8',
+    radius: 0.32,
+    hitHeight: 2.1,
+    ranged: { range: 7.5, projectileSpeed: 10 },
+    resist: ['bleed'],
+    weak: ['burn'],
+    standoff: 6,
+    kit: [
+      { ability: 'bone_volley', cooldownTicks: 160, windupTicks: 14, minRange: 2, maxRange: 8 },
+      { ability: 'grave_mist', cooldownTicks: 260, windupTicks: 16, maxRange: 7, aim: 'lead' },
+      { ability: 'raise_the_fallen', cooldownTicks: 500, windupTicks: 24, aim: 'self', minLevel: 30 },
+    ],
   },
   {
     id: 'troll',
@@ -747,8 +872,13 @@ const defs: NpcDef[] = [
     radius: 0.4,
     hitHeight: 2.4,
     weak: ['burn'],
-    // The boss habit writ small: a slam you sidestep on reaction.
-    kit: [{ ability: 'ground_slam', cooldownTicks: 140, maxRange: 4.5 }],
+    // The boss habit writ small: a slam you sidestep on reaction —
+    // and below the half, the mend: twenty ticks of knitting flesh
+    // that an interrupt (or a shock) buys back whole.
+    kit: [
+      { ability: 'ground_slam', cooldownTicks: 140, maxRange: 4.5 },
+      { ability: 'gnawed_mending', cooldownTicks: 600, windupTicks: 20, hpBelow: 0.4, aim: 'self' },
+    ],
   },
   {
     id: 'gnoll',
@@ -805,7 +935,11 @@ const defs: NpcDef[] = [
     pack: 'gnoll',
     // The laugh that runs the warband: dread in your legs, and every
     // gnoll in earshot answering it. The champion fight is the PACK.
-    kit: [{ ability: 'ravening_cackle', cooldownTicks: 150, maxRange: 4.5, rally: true }],
+    kit: [
+      { ability: 'ravening_cackle', cooldownTicks: 150, maxRange: 4.5, rally: true },
+      // The lunge: jaws-first THROUGH you when you try to open the gap.
+      { ability: 'rending_lunge', cooldownTicks: 180, windupTicks: 10, minRange: 1.5, maxRange: 4 },
+    ],
   },
   {
     id: 'bear',

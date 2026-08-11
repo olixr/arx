@@ -918,7 +918,8 @@ test('livestock produce/lays and consumable buffs resolve', () => {
 
 test('summon abilities define their summon; damage shapes define reach', () => {
   for (const [id, ab] of ABILITIES) {
-    if (ab.shape === 'summon') assert.ok(ab.summon, `${id} summons nothing`);
+    // A summon raises a helper prop OR (enemy arts) real bestiary adds.
+    if (ab.shape === 'summon') assert.ok(ab.summon || ab.summonNpc, `${id} summons nothing`);
     if (ab.shape === 'projectile_fan') {
       assert.ok((ab.projectiles ?? 0) >= 1 && (ab.range ?? 0) > 0, `${id} fan malformed`);
     }

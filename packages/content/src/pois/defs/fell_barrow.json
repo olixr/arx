@@ -52,6 +52,15 @@
         "The Torc-Bearer",
         "She Who Was Counted"
       ]
+    },
+    {
+      "npc": "skeleton_chanter",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 5
     }
   ],
   "chestTierBonus": 1,

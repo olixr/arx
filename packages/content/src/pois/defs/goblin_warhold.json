@@ -44,6 +44,23 @@
       ],
       "role": "sentry",
       "patrol": true
+    },
+    {
+      "npc": "goblin_firecaller",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "goblin_gloomcaller",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 4
     }
   ],
   "chestTierBonus": 1,

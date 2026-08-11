@@ -95,6 +95,9 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'skeleton', w: 3 },
       { npc: 'skeleton_archer', w: 2 },
       { npc: 'skeleton_guard', w: 2 },
+      // The crypt's voice: dungeon reissues run 30+, where the
+      // raising wakes (minLevel 30 on raise_the_fallen).
+      { npc: 'skeleton_chanter', w: 1 },
       { npc: 'cave_bat', w: 1 },
     ],
     elite: 'skeleton_guard',
@@ -106,6 +109,7 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'goblin', w: 3 },
       { npc: 'goblin_thrower', w: 2 },
       { npc: 'giant_beetle', w: 2 },
+      { npc: 'goblin_firecaller', w: 1 },
       { npc: 'rat', w: 1 },
       { npc: 'cave_bat', w: 1 },
     ],
@@ -118,6 +122,7 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'goblin', w: 3 },
       { npc: 'goblin_thrower', w: 2 },
       { npc: 'wolf', w: 2 },
+      { npc: 'goblin_gloomcaller', w: 1 },
       { npc: 'troll', w: 1 },
     ],
     elite: 'troll',
