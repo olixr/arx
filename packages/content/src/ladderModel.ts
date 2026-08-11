@@ -11,7 +11,13 @@
  *
  * Model laws:
  * - Value = (direct damage x expected single-target hits x aoe credit
- *   + status value + utility credit) / cooldown seconds.
+ *   + status value + utility credit) / cycle seconds.
+ * - THE PRICED BREATH: cycle seconds = cooldown + the wind-up at its
+ *   BEST case (castTicks / CAST_STILL_FACTOR — the planted cast; the
+ *   moving cast is strictly worse and needs no extra tax). A channel's
+ *   pulses land inside its cooldown, so its denominator stays the
+ *   cooldown; its rooted seconds buy band headroom instead (THE
+ *   ROOTED PREMIUM, priced in the relevance contract).
  * - DoTs are real damage: power x duration / tick-cadence (the shared
  *   BURN/BLEED/VENOM constants — not guesses) — discounted past the
  *   4-second horizon, because fights end and long tails go unpaid.
@@ -26,6 +32,7 @@
 import {
   BLEED_TICK_EVERY,
   BURN_TICK_EVERY,
+  CAST_STILL_FACTOR,
   VENOM_TICK_EVERY,
   type AbilityDef,
   type StatusApply,
@@ -110,7 +117,19 @@ function utilityCredit(ab: AbilityDef): number {
 
 export function cycleValue(ab: AbilityDef): number {
   const direct = ab.damage * singleTargetHits(ab) * aoeCredit(ab) * channelBeats(ab);
-  return (direct + statusValue(ab.status) + utilityCredit(ab)) / (ab.cooldownTicks / TICK);
+  const cycleSecs = ab.cooldownTicks / TICK + (ab.castTicks ?? 0) / TICK / CAST_STILL_FACTOR;
+  return (direct + statusValue(ab.status) + utilityCredit(ab)) / cycleSecs;
+}
+
+/**
+ * THE ROOTED PREMIUM: seconds of required stillness widen an art's
+ * allowed band CEILING (+6%/s, capped at +30%) — commitment may buy
+ * payload above the style mean, never excuse payload below it (the
+ * floor never moves; an underperforming channel is simply bad).
+ */
+export function rootedPremium(ab: AbilityDef): number {
+  if (!ab.channelTicks || ab.shape === 'tame') return 0;
+  return Math.min(0.3, 0.06 * (ab.channelTicks / TICK));
 }
 
 // Summons are worth their effect, not their stamp damage — band-exempt

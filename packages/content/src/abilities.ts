@@ -1943,10 +1943,11 @@ const defs: AbilityDef[] = [
     code: 'Db',
     cooldownTicks: 280, // 14 s
     // THE DRAWN BREATH's pilot: 1.2 s wound on the move, ~0.96 s
-    // planted. The post-fire root retires — the wind-up IS the commit.
+    // planted. The post-fire root retires — the wind-up IS the commit,
+    // and THE PRICED BREATH pays it back in payload (14 → 15).
     castTicks: 24,
     shape: 'ground_aoe',
-    damage: 14,
+    damage: 15,
     range: 12,
     radius: 2.4,
     fuseTicks: 22,
@@ -3603,11 +3604,11 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 50,
     ranks: [
-      { note: 'Noon weighs more.', damage: 16 },
+      { note: 'Noon weighs more.', damage: 17 },
       { note: 'A wider noon, delivered oftener.', radius: 2.8, cooldownTicks: 260 },
       {
         note: 'Noon arrives where you point, and stays to burn.',
-        damage: 18,
+        damage: 20,
         status: { status: 'burn', power: 1, durationTicks: 80 },
       },
     ],

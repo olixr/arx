@@ -17,7 +17,7 @@ import {
   type AbilityDef,
 } from '@arx/shared';
 import { ABILITIES, TECHNIQUES, abilityDef, techniquesFor } from './abilities.js';
-import { HONABLE, channelBeats, cycleValue, isUtilityArt } from './ladderModel.js';
+import { HONABLE, channelBeats, cycleValue, isUtilityArt, rootedPremium } from './ladderModel.js';
 import { NPCS, scaleNpcDef } from './npcs.js';
 
 test('every technique carries a full honing ladder of well-formed steps', () => {
@@ -63,21 +63,23 @@ test('rank steps never degrade a damage art (monotonic cycle value)', () => {
 });
 
 test('THE RELEVANCE LAW: every fully-honed art sits within ±20% of its style mean', () => {
-  const styles = new Map<string, Array<{ id: string; v: number }>>();
+  const styles = new Map<string, Array<{ id: string; v: number; hi: number }>>();
   for (const tech of TECHNIQUES) {
     const ab = abilityDef(tech.ability)!;
     if (isUtilityArt(ab)) continue;
     const honed = honedAbility(ab, tech.ranks, TECHNIQUE_MAX_RANK);
     const list = styles.get(tech.style) ?? [];
-    list.push({ id: tech.ability, v: cycleValue(honed) });
+    // THE ROOTED PREMIUM: rooted seconds widen the CEILING only —
+    // commitment may buy payload above the mean, never excuse less.
+    list.push({ id: tech.ability, v: cycleValue(honed), hi: 1.2 + rootedPremium(honed) });
     styles.set(tech.style, list);
   }
   for (const [style, arts] of styles) {
     const mean = arts.reduce((s, a) => s + a.v, 0) / arts.length;
-    for (const { id, v } of arts) {
+    for (const { id, v, hi } of arts) {
       assert.ok(
-        v >= mean * 0.8 && v <= mean * 1.2,
-        `${style}/${id} Rank IV cycle ${v.toFixed(2)} outside band [${(mean * 0.8).toFixed(2)}, ${(mean * 1.2).toFixed(2)}]`,
+        v >= mean * 0.8 && v <= mean * hi,
+        `${style}/${id} Rank IV cycle ${v.toFixed(2)} outside band [${(mean * 0.8).toFixed(2)}, ${(mean * hi).toFixed(2)}]`,
       );
     }
   }
@@ -211,7 +213,10 @@ test('THE PAYOFF BRACKET: one press never deletes an at-level line fighter', () 
         if (ab.damage < 3) continue;
         const perBeat = Math.round(ab.damage * powerMult(L));
         const beats = oneTargetBeats(ab);
-        const instant = beats === 1 ? perBeat : 0;
+        // THE PRICED BREATH: a casted art is never an "instant" — its
+        // wind-up is a visible telegraph, so its one press is judged
+        // under the full-payload cap, not the no-warning cap.
+        const instant = beats === 1 && !ab.castTicks ? perBeat : 0;
         instantBest = Math.max(instantBest, instant);
         channelBest = Math.max(channelBest, perBeat * beats);
         assert.ok(

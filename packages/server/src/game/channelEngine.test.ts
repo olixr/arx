@@ -22,6 +22,7 @@ type Fn = (...a: unknown[]) => unknown;
 const proto = GameServer.prototype as unknown as {
   tryCastAbility: Fn;
   beginChannel: Fn;
+  channelPulse: Fn;
   tickChannel: Fn;
   cancelCasting: Fn;
   fireAbility: Fn;

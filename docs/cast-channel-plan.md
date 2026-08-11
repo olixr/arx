@@ -15,8 +15,20 @@ forfeit + sheathe/cast breaks, basics blocked while singing;
 the payoff bracket all read it — the early Phase-3 slice); pilot:
 maelstrom converted to the held vortex (3 beats × dmg 3, rank IV pulls
 the whole sea at ≈ its old cycle value so the arx envelope floor
-stands); 7-pin slate `channelEngine.test.ts`. Phases 3–5 open (Phase 3
-remainder: commitment denominator + ROOTED PREMIUM + conversions).
+stands); 7-pin slate `channelEngine.test.ts`.
+Phase 3 THE PRICED BREATH SHIPPED same day: cycle seconds =
+cooldown + castTicks/CAST_STILL_FACTOR (the planted best case);
+`rootedPremium()` widens the band CEILING only (+6%/s rooted, cap
++30%, the floor never moves); casted arts escape the no-warning
+0.75× instant cap (the wind-up IS the telegraph) and are judged under
+the 1.1× payload cap; daybreak's wind-up paid back in payload
+(15/17/20 by rank, cycle values ≈ its instant self). CURATION NOTE:
+the storm_of_shafts conversion is DEFERRED to Phase 4 — it is a
+`ground_field` (fire-and-forget), and a channel pulsing that shape
+stacks overlapping fields; converting it means reshaping it to a
+staked channeled volley with a walk-out connect factor the model
+must first learn. Never author `channelTicks` on a `ground_field`.
+Phases 4–5 open.
 Companion to docs/techniques-v2-plan.md (the ladder + THE PAYOFF BRACKET),
 docs/secret-arts-plan.md (the secret shelf), THE HELD SIGIL (ground aim),
 and THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching
