@@ -10,7 +10,8 @@
     "dialogues": "tsx src/tools/dialoguesCli.ts",
     "quests": "tsx src/tools/questsCli.ts",
     "routines": "tsx src/tools/routinesCli.ts",
-    "migrate:sqlite": "tsx src/tools/migrateSqliteToPg.ts"
+    "migrate:sqlite": "tsx src/tools/migrateSqliteToPg.ts",
+    "db:refresh": "tsx src/tools/refreshDb.ts"
   },
   "dependencies": {
     "@arx/content": "*",

@@ -313,3 +313,39 @@ deploy at quiet hours once there's a population.
   from `current/` once, before opening the doors.
 - **Scaling:** one process = one world. Keep it on one box; move the
   client to a CDN later if asset bandwidth ever matters.
+
+## Refreshing the world before launch
+
+`npm run db:refresh -w @arx/server` is the pre-launch reset lane. It
+reads the same `DB_*` env the server does, and with no flags it only
+REPORTS — row counts per group, plus any TOOL-EDITED content rows
+(the two-hash law: an edited row outvotes the shipped code forever,
+which is exactly how a stale geography or NPC def survives a deploy;
+the report names them per kind).
+
+To actually refresh, stop the game server first, choose groups, and
+pass `--yes`:
+
+```bash
+scripts/arxctl.sh stop            # or supervisor: stop the arx worker
+npm run db:refresh -w @arx/server -- --all --yes
+scripts/arxctl.sh start
+```
+
+- `--content` — content_docs + npc_actors + dialogues + routines +
+  quests. All re-seed at boot from the shipped code, so this
+  guarantees the DB matches the repo (voice clips/banks are imported
+  recordings and are NEVER touched).
+- `--world` — the frontier's ledgers (world_pois, world_minors,
+  world_growth, frontier_state, frontier_calm). Boot re-rolls a fresh
+  frontier against the current geography.
+- `--players` — accounts and everything cascading off them, plus the
+  player-made world (built tiles/details, crops, signs, farm bins,
+  troughs). invite_codes are kept.
+- `--all` — all three: the full "fresh world, doors not yet open"
+  reset.
+
+The next boot IS the refresh — it re-seeds every content table,
+re-surveys the POI ledger, and regenerates terrain from `WORLD_SEED`.
+Take a `pg_dump` first if there is anything on the box you are not
+ready to lose.
