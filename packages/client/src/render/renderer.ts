@@ -598,10 +598,6 @@ interface AnimState {
   /** THE PARLIAMENT FLIES — the owl's smoothed 0..1 altitude blend
    *  (0 = roosting on the ground, 1 = cruise height). */
   owlAir?: number;
-  /** The roost ledger's current intent (0 = settle, 1 = fly) and the
-   *  clock its next decision unlocks on. */
-  owlWant?: number;
-  owlUntil?: number;
   /** Smoothed banking roll (radians) + last facing for the turn rate. */
   owlBank?: number;
   owlDir?: number;
@@ -29737,53 +29733,12 @@ export class Renderer {
     const look = owlLook(defId, eid);
     const dt = Math.max(this.frameDt, 1e-3);
 
-    // ---- the roost ledger.
+    // AN OWL NEVER SITS: the parliament lives on the wing, always.
+    // The roost ledger is gone — an idle owl holds a hunting hover
+    // (the flier's own dialect), never the glade floor.
     const moveK = anim.moveK ?? 0;
-    const engaged = s.pose !== PoseState.Idle || hurt || moveK > 0.1;
-    if (anim.owlAir === undefined) {
-      // First sight: on the wing — nobody watches an owl materialize
-      // mid-landing.
-      anim.owlAir = 1;
-      anim.owlWant = 1;
-      anim.owlUntil = now + 2000;
-    }
-    if (engaged) {
-      anim.owlWant = 1;
-      // Stay aloft a beat past the last action — combat gaps between
-      // strikes never read as nap opportunities.
-      anim.owlUntil = now + 2500;
-    } else if (now > (anim.owlUntil ?? 0)) {
-      if ((anim.owlWant ?? 1) === 1) {
-        // Airborne and idle: the owl MAY want to rest — a chance, not
-        // a certainty, so a hovering parliament stays mostly on the
-        // wing with one or two settled on the glade floor.
-        if (Math.random() < 0.45) {
-          anim.owlWant = 0;
-          anim.owlUntil = now + 6000 + Math.random() * 8000;
-        } else {
-          anim.owlUntil = now + 3000 + Math.random() * 3000;
-        }
-      } else {
-        // The rest is over: back to the wing.
-        anim.owlWant = 1;
-        anim.owlUntil = now + 4000 + Math.random() * 6000;
-      }
-    }
-    const want = anim.owlWant ?? 1;
-    const prevAir = anim.owlAir;
-    const rate = want > prevAir ? 3.0 : 1.6;
-    anim.owlAir = prevAir + (want - prevAir) * (1 - Math.exp(-rate * dt));
-    const air = anim.owlAir;
-    // Touchdown: the moment the talons take the ground, dust blooms.
-    if (prevAir > 0.06 && air <= 0.06) {
-      this.particles.burst(s.x, s.y + 0.05, 5, ['#a89880', '#bcae94'], {
-        speed: 1.1,
-        life: 0.35,
-        size: 0.06,
-        up: true,
-        drag: 3.5,
-      });
-    }
+    anim.owlAir = 1;
+    const air = 1;
 
     // ---- banking: the body rolls into the turn rate, smoothed.
     const dPrev = anim.owlDir ?? s.dir;

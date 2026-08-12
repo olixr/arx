@@ -50,16 +50,17 @@ const figs: Fig[] = [];
 for (const [lbl, dir] of DIRS) figs.push({ label: `cruise ${lbl}`, dir, mode: 'cruise', owl: 'great_owl', seed: 11 });
 // Row 2: the swoop loop, all eight bands — windup mantle into the dive.
 for (const [lbl, dir] of DIRS) figs.push({ label: `swoop ${lbl}`, dir, mode: 'strike', owl: 'great_owl', seed: 11 });
-// Row 3: the roost, all eight bands — squat, breath, sweep, blink.
-for (const [lbl, dir] of DIRS) figs.push({ label: `roost ${lbl}`, dir, mode: 'perch', owl: 'great_owl', seed: 11 });
-// Row 4: the landing/takeoff blend loop at the four cardinals + hover.
+// Row 3: THE HOVER, all eight bands — the pitched-up watch: deep
+// slow beats, the breath of the column, the drift. Owls never sit.
+for (const [lbl, dir] of DIRS) figs.push({ label: `hover ${lbl}`, dir, mode: 'perch', owl: 'great_owl', seed: 11 });
+// Row 4: the altitude blend loop (air 0..1 — low hold to cruise).
 for (const [lbl, dir] of [DIRS[0], DIRS[2], DIRS[4], DIRS[6]] as const) {
-  figs.push({ label: `land/rise ${lbl}`, dir, mode: 'land', owl: 'great_owl', seed: 11 });
+  figs.push({ label: `altitude ${lbl}`, dir, mode: 'land', owl: 'great_owl', seed: 11 });
 }
 figs.push({ label: 'hover S', dir: Math.PI / 2, mode: 'hover', owl: 'great_owl', seed: 11 });
 figs.push({ label: 'bank weave', dir: Math.PI / 2, mode: 'cruise', owl: 'great_owl', seed: 11, weave: true });
 figs.push({ label: 'elder swoop', dir: Math.PI / 2, mode: 'strike', owl: 'elder_great_owl', seed: 3 });
-figs.push({ label: 'elder roost', dir: Math.PI / 2, mode: 'perch', owl: 'elder_great_owl', seed: 3 });
+figs.push({ label: 'elder hover', dir: Math.PI / 2, mode: 'perch', owl: 'elder_great_owl', seed: 3 });
 // Row 5: elder cruise cardinals + the body ruler + plumage spread.
 for (const [lbl, dir] of [DIRS[0], DIRS[2], DIRS[4], DIRS[6]] as const) {
   figs.push({ label: `elder ${lbl}`, dir, mode: 'cruise', owl: 'elder_great_owl', seed: 3 });
@@ -69,12 +70,12 @@ for (const seed of [4, 9, 19]) {
   figs.push({ label: `plumage ${seed}`, dir: Math.PI / 2, mode: 'cruise', owl: 'great_owl', seed });
 }
 // Row 6: PORTRAITS — the head at 2.4x for eye/proportion judging.
-figs.push({ label: 'portrait roost S', dir: Math.PI / 2, mode: 'perch', owl: 'great_owl', seed: 11, zoom: 2.05 });
-figs.push({ label: 'portrait roost SE', dir: Math.PI / 4, mode: 'perch', owl: 'great_owl', seed: 11, zoom: 2.05 });
-figs.push({ label: 'portrait roost E', dir: 0, mode: 'perch', owl: 'great_owl', seed: 11, zoom: 2.05 });
+figs.push({ label: 'portrait hover S', dir: Math.PI / 2, mode: 'perch', owl: 'great_owl', seed: 11, zoom: 2.05 });
+figs.push({ label: 'portrait hover SE', dir: Math.PI / 4, mode: 'perch', owl: 'great_owl', seed: 11, zoom: 2.05 });
+figs.push({ label: 'portrait hover E', dir: 0, mode: 'perch', owl: 'great_owl', seed: 11, zoom: 2.05 });
 figs.push({ label: 'portrait cruise S', dir: Math.PI / 2, mode: 'cruise', owl: 'great_owl', seed: 11, zoom: 2 });
 figs.push({ label: 'portrait swoop S', dir: Math.PI / 2, mode: 'strike', owl: 'great_owl', seed: 11, zoom: 1.7 });
-figs.push({ label: 'portrait elder S', dir: Math.PI / 2, mode: 'perch', owl: 'elder_great_owl', seed: 3, zoom: 1.75 });
+figs.push({ label: 'portrait elder hover', dir: Math.PI / 2, mode: 'perch', owl: 'elder_great_owl', seed: 3, zoom: 1.75 });
 
 const COLS = 8;
 const CW = 240;

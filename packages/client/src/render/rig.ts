@@ -9422,48 +9422,42 @@ function lerpAngle(a: number, b: number, t: number): number {
   return a + d * t;
 }
 
-/** Below this air fraction the owl is ON the roost: folded wings,
- *  squat keg, talons planted. Above it, the flier composition. */
-const OWL_FOLD = 0.3;
-
 /**
- * THE WINGBEAT — a shaped, asymmetric cycle, never a sine. The
- * downstroke is the POWER stroke: ~38% of the period, accelerating
- * hard through its middle (the whoosh); the upstroke is the RECOVERY:
- * slow, wings part-folded, decelerating into the top. The HAND trails
- * the arm by a hair of phase (the tip whip), LOAD tracks stroke
- * velocity (primaries bend under it, the body surges on it), and the
- * GUST window opens just past the bottom of the power stroke — where
- * the downwash actually lives.
+ * THE WINGBEAT — one smooth analytic curve, asymmetric by
+ * construction and continuous to every derivative (the last version's
+ * piecewise shape carried a velocity kink at the stroke bottom that
+ * read as a frame skip). A phase-locked two-harmonic carriage gives
+ * the bird stroke for free: a breath of overswing at the top, a
+ * short accelerating POWER stroke down (~36% of the period), and a
+ * long decelerating recovery. Everything else derives smoothly from
+ * the same curve: HAND trails the arm by phase, POWER and RECOVER are
+ * smoothstepped velocity windows (tip flex, wrist row, spread fold,
+ * body surge all ride them), and the GUST window follows the lagged
+ * velocity peak — the downwash lands just past the bottom.
  */
 function owlBeat(u: number): {
   arm: number;
   hand: number;
-  load: number;
-  rec: number;
+  power: number;
+  recover: number;
   gust: number;
 } {
-  const DOWN = 0.38;
-  const shape = (p: number): number => {
-    const v = ((p % 1) + 1) % 1;
-    if (v < DOWN) {
-      const d = v / DOWN;
-      const e = d * d * (3 - 2 * d);
-      // Bias the ease toward the back half: the stroke ARRIVES fast.
-      return 1 - 2 * Math.pow(e, 1.25);
-    }
-    const r = (v - DOWN) / (1 - DOWN);
-    return -1 + 2 * (1 - Math.pow(1 - r, 2.2));
+  const TAU = Math.PI * 2;
+  const f = (p: number): number => Math.cos(TAU * p) + 0.26 * Math.sin(2 * TAU * p);
+  const fp = (p: number): number =>
+    -TAU * Math.sin(TAU * p) + 0.52 * TAU * Math.cos(2 * TAU * p);
+  const sm = (x: number): number => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+  const NORM = 1.11;
+  const VN = TAU * 1.3;
+  const vel = -fp(u) / VN; // + = the wing sweeping DOWN
+  const velLag = -fp(u - 0.055) / VN;
+  return {
+    arm: f(u) / NORM,
+    hand: f(u - 0.07) / NORM,
+    power: sm((vel - 0.15) / 0.85),
+    recover: sm((-vel - 0.15) / 0.85),
+    gust: sm((velLag - 0.5) / 0.5),
   };
-  const arm = shape(u);
-  const hand = shape(u - 0.075);
-  const load = Math.max(-1.5, Math.min(1.5, (shape(u - 0.02) - shape(u + 0.02)) * 8));
-  const v = ((u % 1) + 1) % 1;
-  const rec = v >= DOWN ? Math.sin(((v - DOWN) / (1 - DOWN)) * Math.PI) : 0;
-  const g0 = DOWN * 0.85;
-  const g1 = DOWN + 0.2;
-  const gust = v > g0 && v < g1 ? Math.sin(((v - g0) / (g1 - g0)) * Math.PI) : 0;
-  return { arm, hand, load, rec, gust };
 }
 
 /**
@@ -9523,141 +9517,6 @@ export function drawGreatOwl(
   const hl = spec.bodyLen * s;
   const C = (c: string): string => (o.hurt ? '#ffffff' : c);
 
-  // ------------------------------------------------------- the roost
-  if (air <= OWL_FOLD) {
-    // The settled squat: belly clearance nearly gone — a roosting owl
-    // sits ON its feet, nothing left of the strider stance.
-    const roost: OwlLook = {
-      ...look,
-      backH: look.backH * 0.92,
-      bellyH: look.bellyH * 0.4,
-    };
-    // Idle life: a slow breath, and a rare half-second feather ruffle.
-    const breath = now > 0 ? Math.max(0, Math.sin(now * 0.0015 + seed * 0.9)) * 0.012 * s : 0;
-    const ruffPh = now > 0 ? (((now * 0.00011 + seed * 0.37) % 1) + 1) % 1 : 0.5;
-    const ruffle =
-      ruffPh < 0.055
-        ? Math.sin(now * 0.05 + seed) * 0.05 * Math.sin((ruffPh / 0.055) * Math.PI)
-        : 0;
-    // The folded tail fan: barred blades tucked behind the rump —
-    // drawn first, so the settled keg overlaps its own tail root.
-    {
-      const tbx = o.x - fx * hl * 0.8;
-      // Root high on the rump (the squat drops the belly, not the
-      // tail carriage) with the blades sloping toward the ground —
-      // a perched tail POINTS DOWN, it never sticks out level.
-      const tby = o.y - breath - fy * hl * 0.8 * ys - look.bellyH * 1.15 * s;
-      const backA = Math.atan2(-fy * ys, -fx);
-      ctx.lineCap = 'round';
-      for (let k = 0; k < 4; k++) {
-        const a = backA + (k / 3 - 0.5) * 0.62;
-        const blade = look.tailLen * s * 0.85 * (1 - 0.28 * Math.abs(k / 3 - 0.5) * 2);
-        const tex = tbx + Math.cos(a) * blade;
-        const tey = tby + Math.sin(a) * blade * ys + blade * 0.4 + s * 0.03;
-        ctx.strokeStyle = C(shade(look.mantle, k % 2 === 0 ? -4 : -12));
-        ctx.lineWidth = Math.max(2.5, s * 0.062);
-        ctx.beginPath();
-        ctx.moveTo(tbx, tby);
-        ctx.lineTo(tex, tey);
-        ctx.stroke();
-        // The bar band riding each blade tip.
-        if (!o.hurt) {
-          ctx.strokeStyle = look.bar;
-          ctx.lineWidth = Math.max(1.4, s * 0.024);
-          ctx.beginPath();
-          ctx.moveTo(tbx + (tex - tbx) * 0.78, tby + (tey - tby) * 0.78);
-          ctx.lineTo(tbx + (tex - tbx) * 0.92, tby + (tey - tby) * 0.92);
-          ctx.stroke();
-        }
-      }
-      ctx.lineCap = 'butt';
-    }
-    paintOwlBody(
-      ctx,
-      spec,
-      roost,
-      {
-        bx: o.x,
-        gy: o.y - breath,
-        s,
-        fx,
-        fy,
-        ys,
-        seed,
-        hurt: o.hurt === true,
-        bob: 0,
-        roll: ruffle,
-      },
-      at,
-    );
-    // Wings folding out of (or into) the flare — gone at full rest.
-    // The mantle telegraph owns the wings whenever a strike winds, so
-    // the fold pair only paints on a peaceful body.
-    if (air > 0.02 && at === 0) {
-      const k = air / OWL_FOLD;
-      const MP = (F: number, L: number, Z: number): [number, number] => [
-        o.x + (fx * F + px * L) * s,
-        o.y - breath + (fy * F + py * L) * ys * s - (Z + roost.backH * 0.5) * s,
-      ];
-      for (const es of [-1, 1]) {
-        owlWingBroad(ctx, look, {
-          P: MP,
-          es,
-          s,
-          raise: 0.5 + 0.35 * k,
-          spread: 0.25 + 0.6 * k,
-          sweepK: 0.35,
-          span: look.wingSpan * (0.55 + 0.45 * k),
-          under: true,
-          hurt: o.hurt,
-          seed,
-        });
-      }
-    }
-    // Talons peeking from under the settled breast — camera side only.
-    if (fy > -0.2) {
-      const hipS = Math.abs(spec.rig.legs[0]?.side ?? 0.11);
-      ctx.strokeStyle = C(shade(spec.legColor ?? look.mantle, -45));
-      ctx.lineWidth = Math.max(1.4, spec.legW * s * 0.6);
-      ctx.lineCap = 'round';
-      for (const es of [-1, 1]) {
-        const ex0 = o.x + px * es * hipS * s + fx * 0.14 * s;
-        const ey0 = o.y + (py * es * hipS * s + fy * 0.14 * s) * ys;
-        for (const ta of [-0.45, 0, 0.45]) {
-          const a = o.dir + ta;
-          ctx.beginPath();
-          ctx.moveTo(ex0, ey0);
-          ctx.lineTo(ex0 + Math.cos(a) * 0.075 * s, ey0 + Math.sin(a) * 0.075 * s * ys);
-          ctx.stroke();
-        }
-      }
-      ctx.lineCap = 'butt';
-    }
-    // The roost's head: the parliament's wide slow sweep — the swivel
-    // IS the resting owl's life — snapping dead ahead when a strike
-    // telegraphs, with the two-beat blink on its own clock.
-    const sweep = now > 0 ? Math.sin(now * 0.00037 + seed * 0.83) : 0;
-    const hdir = o.dir + (at > 0 ? 0 : sweep * 1.3);
-    const stoop = at > 0 ? Math.min(1, at / 0.7) * 0.09 * s : 0;
-    const chx = o.x + fx * hl * 0.42;
-    const chy = o.y - breath + fy * hl * 0.42 * ys - (roost.backH + look.headH * 0.52) * s + stoop;
-    const blink =
-      now > 0 && at === 0 ? Math.max(0, Math.sin(now * 0.0009 + seed * 1.7) - 0.965) / 0.035 : 0;
-    drawOwlHead(ctx, look, {
-      x: chx,
-      y: chy,
-      s: s * 1.12,
-      fx: Math.cos(hdir),
-      fy: Math.sin(hdir),
-      ys,
-      hurt: o.hurt,
-      screech: at > 0.55 ? Math.min(1, (at - 0.55) / 0.3) : 0,
-      blink,
-      seed,
-    });
-    return;
-  }
-
   // ---------------------------------------------------------- flight
   // THE BODY-SPACE FLIER: every part lives in owl-local coordinates —
   // F forward along the facing, L lateral to starboard, Z up — and
@@ -9666,48 +9525,60 @@ export function drawGreatOwl(
   // near wing crossing its body, a bird flying away is compact under
   // two wings seen from above, and the tail always trails the LINE
   // OF FLIGHT (never the bottom of the screen).
-  const t = (air - OWL_FOLD) / (1 - OWL_FOLD);
-  // Pitch: 0 = upright landing flare, 1 = leveled-out cruise.
-  const pitchK = Math.min(1, t * 1.4);
-  // The elder beats a slower, heavier wing — mass you can hear.
-  const flapF = look.elder ? 0.0066 : 0.0082;
+  // AN OWL NEVER SITS: every value of `air` is airborne — it scales
+  // altitude only (0 = a low hold just over the grass, 1 = cruise
+  // height), and the composition is always the flier.
+  // THE HOVER: an idle owl doesn't land — it stands on the air.
+  // hoverK pitches the body up into the watch, slows and deepens the
+  // beat, fans the tail for balance, and lets the whole bird breathe
+  // on the column and drift a feather's width side to side.
+  const hoverK = (1 - Math.min(1, o.moveK * 1.35)) * (at > 0 ? 0 : 1);
+  // Pitch: 1 = leveled-out cruise; the hover carries the body ~40%
+  // toward upright — a watcher treading air, not a landing flare.
+  const pitchK = 1 - 0.4 * hoverK;
+  // The elder beats a slower, heavier wing — mass you can hear; the
+  // hover slows either bird's tempo further still.
+  const flapF = (look.elder ? 0.0066 : 0.0082) * (1 - 0.24 * hoverK);
   // Seeded glide gate: only a leveled, traveling, peaceful bird locks
   // its wings out — the beat-beat-glide rhythm real owls cruise on.
   const gwave = Math.sin(now * 0.00042 + seed * 1.13);
   const glideK =
-    pitchK >= 1 && at === 0
+    hoverK < 0.05 && at === 0
       ? Math.min(1, Math.max(0, (gwave - 0.15) / 0.35)) * Math.min(1, o.moveK * 1.6)
       : 0;
   const beatK = 1 - glideK;
   const B = owlBeat((now * flapF) / (Math.PI * 2) + seed * 0.7);
-  // Wing carriage: the beat swings around a working height — deeper
-  // and higher-carried through the flare; a glide holds the blades
-  // level with only a feather flutter.
+  // Wing carriage: the beat swings around a working height — the
+  // hover works higher and deeper; a glide holds the blades level
+  // with only a feather flutter.
   const carriage =
-    (0.14 + 0.42 * (1 - pitchK)) * beatK +
-    (0.05 + Math.sin(now * 0.0036 + seed) * 0.04) * glideK;
-  const beatAmp = (0.5 + 0.34 * (1 - pitchK)) * beatK;
+    (0.14 + 0.3 * hoverK) * beatK + (0.05 + Math.sin(now * 0.0036 + seed) * 0.04) * glideK;
+  const beatAmp = (0.5 + 0.3 * hoverK) * beatK;
   let raise = carriage + B.arm * beatAmp;
   // The hand trails the arm and overswings — the tip whip that turns
   // two levers into one living wing.
   let raiseHand = carriage + B.hand * beatAmp * 1.18;
-  // Primaries bend UNDER LOAD on the power stroke, droop on recovery.
-  let flex = B.load * 0.42 * beatK;
+  // Primaries bend up under the POWER stroke, droop through recovery.
+  let flex = (B.power * 0.5 - B.recover * 0.32) * beatK;
   // The whole wing rows: forward through the power, back on recovery.
-  let swing = B.load * 0.07 * beatK;
-  let spread = Math.min(1, 0.96 - 0.2 * B.rec * beatK + 0.04 * glideK);
+  let swing = (B.power - B.recover) * 0.06 * beatK;
+  let spread = Math.min(1, 0.96 - 0.2 * B.recover * beatK + 0.04 * glideK);
   let sweepK = 0.5 + 0.25 * glideK + 0.3 * (1 - spread);
-  let gustK = B.gust * beatK * Math.min(1, o.moveK * 0.7 + 0.45);
+  let gustK = B.gust * beatK * Math.min(1, o.moveK * 0.55 + 0.55);
   // The body hangs off the wingbeat: it SURGES on the power stroke
-  // and settles through the recovery — thrust you can see.
+  // and settles through the recovery — thrust you can see. The hover
+  // adds the long breath of the column and a feather-width drift.
   let lift =
-    owlHoverHeight(look) * s * t +
-    (Math.max(0, B.load) * 0.05 - B.rec * 0.025) * s * beatK +
-    Math.sin(now * 0.0036 + seed) * 0.012 * s * glideK;
+    owlHoverHeight(look) * s * (0.55 + 0.45 * air) +
+    (B.power * 0.055 - B.recover * 0.022) * s * beatK +
+    Math.sin(now * 0.0036 + seed) * 0.012 * s * glideK +
+    Math.sin(now * 0.00105 + seed * 2.1) * 0.055 * s * hoverK;
+  const driftA = Math.sin(now * 0.00068 + seed * 1.4) * 0.055 * hoverK;
   let lungeX = 0;
   let lungeY = 0;
-  // The flare drops the landing gear; cruise tucks it flat.
-  let talonK = Math.max(0, 1 - pitchK);
+  // Gear stays TUCKED in every peaceful state — cruise, glide, and
+  // hover alike; only the strike drops and opens the talons.
+  let talonK = 0;
   let under = raise > 0.4;
   if (at > 0) {
     const quiet = Math.min(1, at * 3);
@@ -9741,8 +9612,8 @@ export function drawGreatOwl(
       under = false;
     }
   }
-  const bcx = o.x + lungeX;
-  const bcy = o.y + lungeY - lift;
+  const bcx = o.x + lungeX + px * driftA * s;
+  const bcy = o.y + lungeY + py * driftA * s * ys - lift;
   // THE GIMBAL: the bank rolls the whole projected bird around its
   // center — wings, body, tail — while the head, painted last and
   // level, holds the horizon. The owl's famous trick.
