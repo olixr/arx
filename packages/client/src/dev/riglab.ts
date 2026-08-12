@@ -30,6 +30,8 @@ interface Fig {
   seed: number;
   /** Live banking demo: a slow weaving turn. */
   weave?: boolean;
+  /** Portrait cells: scale multiplier for head-close judging. */
+  zoom?: number;
 }
 
 const DIRS = [
@@ -66,6 +68,13 @@ figs.push({ label: 'player', dir: Math.PI / 2, mode: 'cruise', owl: null, seed: 
 for (const seed of [4, 9, 19]) {
   figs.push({ label: `plumage ${seed}`, dir: Math.PI / 2, mode: 'cruise', owl: 'great_owl', seed });
 }
+// Row 6: PORTRAITS — the head at 2.4x for eye/proportion judging.
+figs.push({ label: 'portrait roost S', dir: Math.PI / 2, mode: 'perch', owl: 'great_owl', seed: 11, zoom: 2.05 });
+figs.push({ label: 'portrait roost SE', dir: Math.PI / 4, mode: 'perch', owl: 'great_owl', seed: 11, zoom: 2.05 });
+figs.push({ label: 'portrait roost E', dir: 0, mode: 'perch', owl: 'great_owl', seed: 11, zoom: 2.05 });
+figs.push({ label: 'portrait cruise S', dir: Math.PI / 2, mode: 'cruise', owl: 'great_owl', seed: 11, zoom: 2 });
+figs.push({ label: 'portrait swoop S', dir: Math.PI / 2, mode: 'strike', owl: 'great_owl', seed: 11, zoom: 1.7 });
+figs.push({ label: 'portrait elder S', dir: Math.PI / 2, mode: 'perch', owl: 'elder_great_owl', seed: 3, zoom: 1.75 });
 
 const COLS = 8;
 const CW = 240;
@@ -120,6 +129,7 @@ function frame(now: number): void {
       const defSp = f.owl === 'elder_great_owl' ? 4.6 : 4.4;
       const spec = beastSpec(f.owl, defR, defSp);
       const look = owlLook(f.owl, f.seed);
+      const FS = S * (f.zoom ?? 1);
       const t = now * 0.001;
       // Per-mode drivers: looping poseT for the swoop, a slow
       // triangle for the landing blend, a weaving dir for banking.
@@ -145,7 +155,7 @@ function frame(now: number): void {
       drawGreatOwl(ctx, spec, look, {
         x: homeX,
         y: homeY + 0.55 * S,
-        s: S,
+        s: FS,
         dir,
         ys: YS,
         air,

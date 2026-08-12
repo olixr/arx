@@ -8603,8 +8603,8 @@ export const GREAT_OWL_LOOK: OwlLook = {
   backH: 0.72,
   bellyH: 0.3,
   headW: 0.4,
-  headH: 0.33,
-  tuftLen: 0.12,
+  headH: 0.27,
+  tuftLen: 0.16,
   tailLen: 0.38,
   wingSpan: 1.35,
 };
@@ -8628,8 +8628,8 @@ export const ELDER_GREAT_OWL_LOOK: OwlLook = {
   backH: 0.94,
   bellyH: 0.38,
   headW: 0.53,
-  headH: 0.43,
-  tuftLen: 0.28,
+  headH: 0.35,
+  tuftLen: 0.34,
   tailLen: 0.55,
   wingSpan: 1.85,
   elder: true,
@@ -9235,15 +9235,15 @@ export function drawOwlHead(
   // top-plane law).
   ctx.fillStyle = C(look.mantle);
   ctx.beginPath();
-  facetCircle(ctx, cx, cy, w * 0.52, 7, fx * 0.4 - Math.PI / 2, (h * 0.95) / (w * 0.52));
+  facetCircle(ctx, cx, cy, w * 0.56, 7, fx * 0.4 - Math.PI / 2, (h * 0.82) / (w * 0.56));
   ctx.fill();
   if (!o.hurt) {
     ctx.save();
     ctx.beginPath();
-    facetCircle(ctx, cx, cy, w * 0.52, 7, fx * 0.4 - Math.PI / 2, (h * 0.95) / (w * 0.52));
+    facetCircle(ctx, cx, cy, w * 0.56, 7, fx * 0.4 - Math.PI / 2, (h * 0.82) / (w * 0.56));
     ctx.clip();
     ctx.fillStyle = 'rgba(255, 244, 220, 0.16)';
-    ctx.fillRect(cx - w * 0.55, cy - h * 0.58, w * 1.1, h * 0.26);
+    ctx.fillRect(cx - w * 0.58, cy - h * 0.52, w * 1.16, h * 0.24);
     ctx.restore();
   }
 
@@ -9283,9 +9283,9 @@ export function drawOwlHead(
         // center of the disc — dead-center lobes read as goggles) and
         // set a touch along the facing so the pair aims where the head
         // points. The strike narrows the pupil to a hunting pin.
-        const er = lobeR * 0.42;
-        const ex = lx - px * es * lobeR * 0.18 + fx * lobeR * 0.1;
-        const ey = ly + fy * lobeR * 0.08 * ys;
+        const er = lobeR * 0.37;
+        const ex = lx - px * es * lobeR * 0.24 + fx * lobeR * 0.08;
+        const ey = ly + fy * lobeR * 0.06 * ys;
         ctx.fillStyle = C(look.eye);
         ctx.beginPath();
         facetCircle(ctx, ex, ey, er, 6, fx * 0.5);
@@ -9293,17 +9293,20 @@ export function drawOwlHead(
         if (!o.hurt) {
           // Round pupil, offset along the gaze — a directed stare,
           // never the flat cartoon square.
-          const pr = er * 0.5 * (1 - 0.45 * screech);
-          const ppx = ex + fx * er * 0.18;
-          const ppy = ey + fy * er * 0.14 * ys;
+          // The pupil OWNS the lamp: a thin amber ring around a deep
+          // black center reads raptor; a wide iris reads plush toy.
+          const pr = er * 0.62 * (1 - 0.35 * screech);
+          const ppx = ex + fx * er * 0.1;
+          const ppy = ey + fy * er * 0.08 * ys;
           ctx.fillStyle = OUTLINE;
           ctx.beginPath();
           facetCircle(ctx, ppx, ppy, pr, 6, fx * 0.3);
           ctx.fill();
-          // One small high glint, up-inner — the lamp's live point.
+          // One small glint, up-INNER on each lobe (mirrored — a
+          // same-side pair reads walleyed) — the lamp's live point.
           ctx.fillStyle = '#fff7e0';
           ctx.beginPath();
-          facetCircle(ctx, ex - er * 0.32, ey - er * 0.38, er * 0.16, 5, 0.4);
+          facetCircle(ctx, ex - px * es * er * 0.3, ey - er * 0.34, er * 0.13, 5, 0.4);
           ctx.fill();
           // The slow blink: a disc-toned lid dropping over the lamp.
           const blink = o.blink ?? 0;
@@ -9316,11 +9319,11 @@ export function drawOwlHead(
           // one stroke that turns a staring toy into a raptor. The
           // elder's ledge is heavier: the court's scowl.
           ctx.strokeStyle = C(shade(look.discRim, -8));
-          ctx.lineWidth = Math.max(1.4, s * (look.elder ? 0.034 : 0.026));
+          ctx.lineWidth = Math.max(1.6, s * (look.elder ? 0.04 : 0.031));
           ctx.lineCap = 'round';
           ctx.beginPath();
-          ctx.moveTo(ex - px * es * er * 0.85, ey - er * (0.98 + 0.14 * screech));
-          ctx.lineTo(ex + px * es * er * 1.05, ey - er * (0.34 - 0.1 * screech));
+          ctx.moveTo(ex - px * es * er * 0.8, ey - er * (1.3 + 0.12 * screech));
+          ctx.lineTo(ex + px * es * er * 0.95, ey - er * (0.85 - 0.12 * screech));
           ctx.stroke();
           ctx.lineCap = 'butt';
         }
@@ -9337,13 +9340,20 @@ export function drawOwlHead(
     // The beak: a small dark hook seated between the lobes, pulled
     // back so it overlaps the disc instead of floating at profile.
     if (fy > -0.2) {
-      const bkx = dcx + fx * w * 0.16;
-      const bky = dcy + fy * w * 0.1 * ys + h * 0.16;
+      // An owl's beak TUCKS UNDER the disc: full presence only on the
+      // frontal face, shrinking to a small leading-edge hook as the
+      // head turns — the disc owns the profile silhouette.
+      const bkx = dcx + fx * w * (0.18 - 0.05 * profileK);
+      const bky = dcy + fy * w * 0.1 * ys + h * (0.2 - 0.02 * profileK);
+      const bw = w * 0.08 * (1 - 0.55 * profileK);
       ctx.fillStyle = C(look.horn);
       ctx.beginPath();
-      ctx.moveTo(bkx - px * w * 0.07, bky - h * 0.05);
-      ctx.lineTo(bkx + px * w * 0.07, bky - h * 0.05);
-      ctx.lineTo(bkx + fx * w * 0.05, bky + h * (0.14 + 0.05 * screech));
+      ctx.moveTo(bkx - px * bw - fx * w * 0.03 * profileK, bky - h * 0.05);
+      ctx.lineTo(bkx + px * bw + fx * w * 0.01 * profileK, bky - h * (0.05 - 0.02 * profileK));
+      ctx.lineTo(
+        bkx + fx * w * (0.04 + 0.05 * profileK),
+        bky + h * (0.22 - 0.1 * profileK + 0.06 * screech),
+      );
       ctx.closePath();
       ctx.fill();
       if (screech > 0.15 && !o.hurt && !o.dead) {
@@ -9559,7 +9569,7 @@ export function drawGreatOwl(
     drawOwlHead(ctx, look, {
       x: chx,
       y: chy,
-      s,
+      s: s * 1.12,
       fx: Math.cos(hdir),
       fy: Math.sin(hdir),
       ys,
@@ -9862,7 +9872,7 @@ export function drawGreatOwl(
       const r0 = P(noseF * 0.72, 0, noseZ * 0.8 + 0.05);
       ctx.fillStyle = shade(look.mantle, -4);
       ctx.beginPath();
-      facetCircle(ctx, r0[0], r0[1], look.headW * s * 0.5, 7, seed * 0.3, 0.85);
+      facetCircle(ctx, r0[0], r0[1], look.headW * s * 0.42, 7, seed * 0.3, 0.8);
       ctx.fill();
     }
     drawOwlHead(ctx, look, {
