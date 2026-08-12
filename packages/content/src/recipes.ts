@@ -1615,7 +1615,17 @@ if (RECIPES.size !== allRecipes.length) {
 }
 
 export function recipesForStation(station: StationType | null): RecipeDef[] {
-  return [...RECIPES.values()].filter((r) => r.station === station);
+  const all = [...RECIPES.values()];
+  if (station === null) return all.filter((r) => r.station === null);
+  // THE OPEN DOOR STANDS AT THE BENCH: a trade's craft-anywhere work
+  // (fletching arrows, twisting twine) rides along at any station that
+  // serves the same trade, so the first rung is visible where a fresh
+  // crafter looks first — the carving bench must not greet a level-1
+  // woodworker with an empty ledger when arrows are theirs to make.
+  const served = new Set(all.filter((r) => r.station === station).map((r) => r.skill));
+  return all.filter(
+    (r) => r.station === station || (r.station === null && served.has(r.skill)),
+  );
 }
 
 /** The scroll item that teaches a non-core recipe. */

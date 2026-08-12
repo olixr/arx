@@ -17,6 +17,7 @@ import {
   bannerPoleTile,
   wallHungInfo,
 } from '@arx/shared';
+import type { StationType } from '@arx/shared';
 import type { ZoneSign } from './maps/types.js';
 import { ZoneBuilder } from './maps/builder.js';
 import { buildDawnmead } from './maps/dawnmead.js';
@@ -44,7 +45,7 @@ import { SECRET_ARTS, secretArtDef } from './secretArts.js';
 import { ITEMS, LEGACY_RECIPE_SCROLLS } from './items.js';
 import { NPCS, TOWN_SPAWNS } from './npcs.js';
 import { LOOT_TABLES } from './loot/tables.js';
-import { RECIPES } from './recipes.js';
+import { RECIPES, recipesForStation } from './recipes.js';
 import { NODES } from './nodes.js';
 import { BUILDABLES, BUILD_CATEGORIES, DYES, DYE_PIGMENTS, buildableForDetail, buildableForTile, buildableGround } from './buildables.js';
 import { GENERAL_STORE, SHOPS, TRAINER_DIRECTORY } from './shop.js';
@@ -846,6 +847,34 @@ test('THE FIRST TRADE: every craft opens at the first level', () => {
   }
   for (const [skill, min] of bySkill) {
     assert.ok(min <= 2, `${skill}: first core recipe waits until level ${min}`);
+  }
+});
+
+test('THE FIRST TRADE: the open door stands at the bench', () => {
+  // Having a level-1 recipe in the abstract is not enough — it must be
+  // LISTED where a fresh crafter looks, which is their trade's station.
+  // For every craft skill with a bench, at least one of its benches'
+  // ledgers (recipesForStation) must show a core recipe at level <= 2.
+  // The craft-anywhere pieces (arrows, twine) ride along via the
+  // open-door clause in recipesForStation; this pins that they do.
+  const stationsBySkill = new Map<string, Set<StationType>>();
+  for (const r of RECIPES.values()) {
+    if (r.station === null) continue;
+    if (!stationsBySkill.has(r.skill)) stationsBySkill.set(r.skill, new Set());
+    stationsBySkill.get(r.skill)!.add(r.station);
+  }
+  for (const [skill, stations] of stationsBySkill) {
+    const min = Math.min(
+      ...[...stations].flatMap((st) =>
+        recipesForStation(st)
+          .filter((r) => r.skill === skill && r.unlock === 'core')
+          .map((r) => r.levelReq),
+      ),
+    );
+    assert.ok(
+      min <= 2,
+      `${skill}: no bench ledger opens before level ${min} — the door is closed`,
+    );
   }
 });
 
