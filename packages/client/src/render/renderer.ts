@@ -51,7 +51,7 @@ import {
   isFishingTile,
 } from '@arx/shared';
 import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, isCropTile, itemDef, npcDef, npcHitHeight } from '@arx/content';
-import { farmBins, farmPlots, farmTroughs, predictedGrade } from '../game/farmCare.js';
+import { farmApiaries, farmBins, farmJobs, farmPlots, farmTroughs, predictedGrade } from '../game/farmCare.js';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
 import {
@@ -22716,6 +22716,314 @@ export class Renderer {
               ctx.beginPath();
               ctx.ellipse(p.x, boxTop + s * 0.03, (xR - xL) * 0.34, syT * 0.045, 0, 0, Math.PI * 2);
               ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.Windmill: {
+        const syT = s * this.camera.yScale;
+        // THE WORKING YARD's marquee: a stone-footed tower two and a
+        // half bodies tall, gallery cap, and four cloth sails that
+        // actually TURN while a batch works (live paint; the mirror
+        // is the drive shaft). Foreshortened cap plane, grounding
+        // outline, strata on the tower — the ore-mass laws in timber.
+        const yB = p.y + syT * 0.42;
+        const towerW = s * 0.62;
+        const towerH = s * 2.1;
+        const capY = yB - towerH;
+        return {
+          sortY: ty + 0.85,
+          body: stationBody(0.9, 2.6, 0.6),
+          drawShadow: () => this.castEdgeQuad(p.x - towerW * 0.6, yB + syT * 0.05, p.x + towerW * 0.6, yB + syT * 0.05, 0.65),
+          draw: () => {
+            const ctx = this.ctx;
+            const job = farmJobs.get(`${tx},${ty}`);
+            const working = !!job && job.qty > 0;
+            // The tapered tower: lit west lane, mortar courses.
+            ctx.fillStyle = '#8d8798';
+            ctx.beginPath();
+            ctx.moveTo(p.x - towerW * 0.5, yB);
+            ctx.lineTo(p.x - towerW * 0.34, capY);
+            ctx.lineTo(p.x + towerW * 0.34, capY);
+            ctx.lineTo(p.x + towerW * 0.5, yB);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+            ctx.lineWidth = Math.max(1.4, s * 0.03);
+            ctx.stroke();
+            ctx.fillStyle = shade('#8d8798', 16);
+            ctx.beginPath();
+            ctx.moveTo(p.x - towerW * 0.5, yB);
+            ctx.lineTo(p.x - towerW * 0.34, capY);
+            ctx.lineTo(p.x - towerW * 0.12, capY);
+            ctx.lineTo(p.x - towerW * 0.2, yB);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.25)';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (let k = 1; k < 4; k++) {
+              const cy2 = yB - (towerH * k) / 4;
+              const w2 = towerW * (0.5 - 0.16 * (k / 4)) * 2;
+              ctx.beginPath();
+              ctx.moveTo(p.x - w2 / 2, cy2);
+              ctx.lineTo(p.x + w2 / 2, cy2 + s * 0.02);
+              ctx.stroke();
+            }
+            // The door at the foot, warm inside when working.
+            ctx.fillStyle = working ? '#c98a3c' : '#3a2c18';
+            ctx.beginPath();
+            ctx.roundRect(p.x - s * 0.1, yB - s * 0.34, s * 0.2, s * 0.34, s * 0.06);
+            ctx.fill();
+            // The gallery cap: a foreshortened timber dome.
+            ctx.fillStyle = '#a8794a';
+            ctx.beginPath();
+            ctx.ellipse(p.x, capY, towerW * 0.44, syT * 0.16, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.stroke();
+            // The sails: four cloth arms off the cap hub, turning on
+            // the clock while the batch runs, still when it rests.
+            const hubX = p.x;
+            const hubY = capY - s * 0.06;
+            const ang = working ? (t * 0.9) % (Math.PI * 2) : 0.4;
+            for (let k = 0; k < 4; k++) {
+              const a = ang + (k * Math.PI) / 2;
+              const ex = hubX + Math.cos(a) * s * 0.78;
+              const ey = hubY + Math.sin(a) * s * 0.62;
+              ctx.strokeStyle = '#5f4426';
+              ctx.lineWidth = Math.max(1.4, s * 0.035);
+              ctx.beginPath();
+              ctx.moveTo(hubX, hubY);
+              ctx.lineTo(ex, ey);
+              ctx.stroke();
+              ctx.fillStyle = 'rgba(238, 232, 216, 0.85)';
+              ctx.save();
+              ctx.translate((hubX + ex) / 2, (hubY + ey) / 2);
+              ctx.rotate(Math.atan2(ey - hubY, ex - hubX));
+              ctx.fillRect(-s * 0.26, s * 0.015, s * 0.52, s * 0.11);
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+              ctx.lineWidth = Math.max(1, s * 0.015);
+              ctx.strokeRect(-s * 0.26, s * 0.015, s * 0.52, s * 0.11);
+              ctx.restore();
+            }
+            ctx.fillStyle = '#3a2c18';
+            ctx.beginPath();
+            ctx.arc(hubX, hubY, s * 0.05, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ButterChurn:
+      case Tile.FruitPress:
+      case Tile.BrewKeg:
+      case Tile.Smoker:
+      case Tile.DryingRack:
+      case Tile.Apiary: {
+        const syT = s * this.camera.yScale;
+        const yB = p.y + syT * 0.4;
+        return {
+          sortY: ty + 0.8,
+          body: stationBody(0.7, tile === Tile.DryingRack ? 1.5 : 1.0, 0.5),
+          drawShadow: () => this.castEdgeQuad(p.x - s * 0.36, yB + syT * 0.05, p.x + s * 0.36, yB + syT * 0.05, 0.55),
+          draw: () => {
+            const ctx = this.ctx;
+            const job = farmJobs.get(`${tx},${ty}`);
+            const working = !!job && job.qty > 0;
+            if (tile === Tile.ButterChurn) {
+              // A staved barrel churn, brass bands, plunger through
+              // the lid — the handle pumps while the batch works.
+              const bw = s * 0.34;
+              const bh = s * 0.48;
+              ctx.fillStyle = '#7d5a2e';
+              ctx.beginPath();
+              ctx.moveTo(p.x - bw / 2, yB);
+              ctx.quadraticCurveTo(p.x - bw * 0.62, yB - bh / 2, p.x - bw / 2, yB - bh);
+              ctx.lineTo(p.x + bw / 2, yB - bh);
+              ctx.quadraticCurveTo(p.x + bw * 0.62, yB - bh / 2, p.x + bw / 2, yB);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
+              ctx.lineWidth = Math.max(1.2, s * 0.024);
+              ctx.stroke();
+              ctx.fillStyle = shade('#7d5a2e', 18);
+              ctx.fillRect(p.x - bw * 0.4, yB - bh, bw * 0.24, bh);
+              ctx.fillStyle = '#c9a86a';
+              ctx.fillRect(p.x - bw * 0.56, yB - bh * 0.28, bw * 1.12, s * 0.035);
+              ctx.fillRect(p.x - bw * 0.58, yB - bh * 0.75, bw * 1.16, s * 0.035);
+              ctx.fillStyle = shade('#7d5a2e', 26);
+              ctx.beginPath();
+              ctx.ellipse(p.x, yB - bh, bw * 0.52, syT * 0.09, 0, 0, Math.PI * 2);
+              ctx.fill();
+              const pump = working ? Math.sin(t * 5 + h) * s * 0.05 : 0;
+              ctx.fillStyle = '#5f4426';
+              ctx.fillRect(p.x - s * 0.02, yB - bh - s * 0.3 + pump, s * 0.04, s * 0.3);
+              ctx.fillRect(p.x - s * 0.09, yB - bh - s * 0.32 + pump, s * 0.18, s * 0.05);
+            } else if (tile === Tile.FruitPress) {
+              // The screw press: post frame, basket, drip tray — the
+              // spindle sinks and juice beads while a batch runs.
+              ctx.fillStyle = '#6e5433';
+              ctx.fillRect(p.x - s * 0.3, yB - s * 0.72, s * 0.08, s * 0.72);
+              ctx.fillRect(p.x + s * 0.22, yB - s * 0.72, s * 0.08, s * 0.72);
+              ctx.fillRect(p.x - s * 0.34, yB - s * 0.74, s * 0.68, s * 0.07);
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.strokeRect(p.x - s * 0.34, yB - s * 0.74, s * 0.68, s * 0.07);
+              ctx.fillStyle = '#5f4426';
+              ctx.fillRect(p.x - s * 0.025, yB - s * 0.67, s * 0.05, s * (working ? 0.3 : 0.2));
+              ctx.fillStyle = '#96703f';
+              ctx.beginPath();
+              ctx.roundRect(p.x - s * 0.18, yB - s * 0.34, s * 0.36, s * 0.26, s * 0.05);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.stroke();
+              ctx.fillStyle = shade('#96703f', -18);
+              for (const u of [-0.08, 0.03]) ctx.fillRect(p.x + u * s, yB - s * 0.32, s * 0.025, s * 0.22);
+              ctx.fillStyle = '#8a6234';
+              ctx.beginPath();
+              ctx.ellipse(p.x, yB - s * 0.04, s * 0.26, syT * 0.08, 0, 0, Math.PI * 2);
+              ctx.fill();
+              if (working) {
+                const dr = (t * 1.4 + h * 0.3) % 1;
+                ctx.fillStyle = `rgba(216, 150, 60, ${0.8 * (1 - dr)})`;
+                ctx.fillRect(p.x + s * 0.12, yB - s * 0.1 + dr * s * 0.08, s * 0.025, s * 0.05);
+              }
+            } else if (tile === Tile.BrewKeg) {
+              // The great keg on its cradle: banded belly, spigot,
+              // and a slow blip of foam at the bung while it brews.
+              ctx.fillStyle = '#5f4426';
+              ctx.fillRect(p.x - s * 0.34, yB - s * 0.1, s * 0.12, s * 0.1);
+              ctx.fillRect(p.x + s * 0.22, yB - s * 0.1, s * 0.12, s * 0.1);
+              ctx.fillStyle = '#94693a';
+              ctx.beginPath();
+              ctx.ellipse(p.x, yB - s * 0.34, s * 0.36, s * 0.28, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
+              ctx.lineWidth = Math.max(1.2, s * 0.024);
+              ctx.stroke();
+              ctx.fillStyle = shade('#94693a', 20);
+              ctx.beginPath();
+              ctx.ellipse(p.x - s * 0.12, yB - s * 0.42, s * 0.12, s * 0.08, -0.4, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#c9a86a';
+              ctx.lineWidth = Math.max(1.2, s * 0.03);
+              for (const u of [-0.16, 0.16]) {
+                ctx.beginPath();
+                ctx.ellipse(p.x + u * s, yB - s * 0.34, s * 0.3, s * 0.26, 0, -0.6, 0.6);
+                ctx.stroke();
+              }
+              ctx.fillStyle = '#3a2c18';
+              ctx.fillRect(p.x - s * 0.035, yB - s * 0.16, s * 0.07, s * 0.09);
+              if (working) {
+                const fz = (t * 0.8 + h * 0.2) % 1;
+                ctx.fillStyle = `rgba(238, 226, 190, ${0.7 * (1 - fz)})`;
+                ctx.beginPath();
+                ctx.arc(p.x + s * 0.05, yB - s * 0.62 - fz * s * 0.1, s * (0.03 + fz * 0.02), 0, Math.PI * 2);
+                ctx.fill();
+              }
+            } else if (tile === Tile.Smoker) {
+              // A stone smoke box: firebox mouth aglow and wisps off
+              // the flue while the cure runs.
+              ctx.fillStyle = '#55505e';
+              ctx.beginPath();
+              ctx.roundRect(p.x - s * 0.28, yB - s * 0.62, s * 0.56, s * 0.62, s * 0.05);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
+              ctx.lineWidth = Math.max(1.2, s * 0.024);
+              ctx.stroke();
+              ctx.fillStyle = shade('#55505e', 16);
+              ctx.fillRect(p.x - s * 0.24, yB - s * 0.6, s * 0.14, s * 0.56);
+              ctx.fillStyle = shade('#55505e', 24);
+              ctx.beginPath();
+              ctx.ellipse(p.x, yB - s * 0.62, s * 0.29, syT * 0.09, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#3a2c18';
+              ctx.fillRect(p.x + s * 0.08, yB - s * 0.7, s * 0.09, s * 0.1);
+              ctx.fillStyle = working ? '#e0813c' : '#241a2e';
+              ctx.beginPath();
+              ctx.roundRect(p.x - s * 0.12, yB - s * 0.2, s * 0.24, s * 0.14, s * 0.04);
+              ctx.fill();
+              if (working) {
+                for (let i = 0; i < 2; i++) {
+                  const ph = (t * 0.5 + i * 0.5 + h * 0.1) % 1;
+                  ctx.fillStyle = `rgba(180, 176, 188, ${0.4 * (1 - ph)})`;
+                  ctx.beginPath();
+                  ctx.ellipse(p.x + s * 0.12 + Math.sin(ph * 5) * s * 0.04, yB - s * 0.74 - ph * s * 0.35, s * 0.05, s * 0.04, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+              }
+            } else if (tile === Tile.DryingRack) {
+              // An a-frame rack strung with lines; bundles hang while
+              // the batch dries, bare cords when idle.
+              ctx.strokeStyle = '#7d5a2e';
+              ctx.lineWidth = Math.max(1.6, s * 0.05);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.32, yB);
+              ctx.lineTo(p.x - s * 0.18, yB - s * 0.72);
+              ctx.moveTo(p.x + s * 0.32, yB);
+              ctx.lineTo(p.x + s * 0.18, yB - s * 0.72);
+              ctx.moveTo(p.x - s * 0.2, yB - s * 0.72);
+              ctx.lineTo(p.x + s * 0.2, yB - s * 0.72);
+              ctx.stroke();
+              ctx.strokeStyle = '#c9b98a';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              for (const ly of [0.52, 0.34]) {
+                ctx.beginPath();
+                ctx.moveTo(p.x - s * 0.24, yB - s * ly);
+                ctx.quadraticCurveTo(p.x, yB - s * (ly - 0.04), p.x + s * 0.24, yB - s * ly);
+                ctx.stroke();
+              }
+              if (working) {
+                for (let k = 0; k < 4; k++) {
+                  const u = (k / 3) * 2 - 1;
+                  const sway = Math.sin(t * 1.2 + k) * s * 0.012;
+                  ctx.fillStyle = k % 2 ? '#7a9c6e' : '#8f9ed6';
+                  ctx.save();
+                  ctx.translate(p.x + u * s * 0.2 + sway, yB - s * (k % 2 ? 0.5 : 0.32));
+                  ctx.rotate(sway * 3);
+                  ctx.fillRect(-s * 0.03, 0, s * 0.06, s * 0.14);
+                  ctx.restore();
+                }
+              }
+            } else {
+              // The apiary: a slat hive box on a stand, alighting
+              // board, and a drift of bees once the comb has weight.
+              const hive = farmApiaries.get(`${tx},${ty}`);
+              const heavy = !!hive && Date.now() - hive.since > 25 * 60_000;
+              ctx.fillStyle = '#5f4426';
+              ctx.fillRect(p.x - s * 0.2, yB - s * 0.1, s * 0.06, s * 0.1);
+              ctx.fillRect(p.x + s * 0.14, yB - s * 0.1, s * 0.06, s * 0.1);
+              ctx.fillStyle = '#c9a86a';
+              for (let k = 0; k < 3; k++) {
+                ctx.beginPath();
+                ctx.roundRect(p.x - s * 0.24, yB - s * (0.26 + k * 0.15), s * 0.48, s * 0.13, s * 0.03);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+                ctx.lineWidth = Math.max(1, s * 0.018);
+                ctx.stroke();
+              }
+              ctx.fillStyle = shade('#c9a86a', 24);
+              ctx.beginPath();
+              ctx.ellipse(p.x, yB - s * 0.56, s * 0.26, syT * 0.08, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#3a2c18';
+              ctx.fillRect(p.x - s * 0.06, yB - s * 0.17, s * 0.12, s * 0.035);
+              if (heavy) {
+                ctx.fillStyle = 'rgba(224, 168, 60, 0.9)';
+                for (let i = 0; i < 3; i++) {
+                  const a = t * 2.2 + i * 2.1 + h;
+                  ctx.fillRect(
+                    p.x + Math.cos(a) * s * (0.2 + 0.06 * i),
+                    yB - s * 0.35 + Math.sin(a * 1.3) * s * 0.12,
+                    s * 0.022,
+                    s * 0.022,
+                  );
+                }
+                const tw = Renderer.twinkle(t, h, 3.0);
+                if (tw > 0) this.sparkle(p.x + s * 0.1, yB - s * 0.6, s * 0.09, tw, '#ffd76a');
+              }
             }
           },
         };

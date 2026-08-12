@@ -317,6 +317,56 @@ The demand side: everything the farm makes, somebody wants.
 
 ## 8. The epic ledger (filled as phases ship)
 
+### Phase 4 — THE WORKING YARD (shipped 2026-08-11, prove:farm = 35 receipts)
+
+As-built laws and dials:
+
+- **ONE JOB PER STATION TILE** (db v28 station_jobs): a work batch is
+  loaded whole (inputs leave at the door), walks a PURE wall clock
+  (`workDone` — no tick owns a batch, restart-safe by the crop law),
+  and collects INCREMENTALLY: you tap the keg for what matured and
+  the rest keeps working. Owner-only collect; a station mid-batch
+  refuses demolition; batch cap 10.
+- **THE BATCH IS AS GOOD AS ITS WEAKEST MEASURE**: the loader counts
+  by FAMILY (any grade satisfies its base), consumes highest grades
+  first, and the job records the minimum consumed grade — decided at
+  load, worn by every output at collect. Smoked goods deliberately
+  stay plain (meat and fish never grade; the fold is honest about
+  zero). PROCESSED_GRADED lives in farming.ts (the one graded list).
+- **THE JOB PAYS IN TIME AND VALUE, NEVER A FASTER LADDER**: xp per
+  measure is contract-capped at minutes x 12 and paid AT COLLECT —
+  active crafting always wins the xp race; the yard wins the errand.
+- **The seven stations**: windmill (construction 28, the marquee —
+  turning cloth sails while a batch runs; the workbench hand-quern
+  STAYS forever so bread never gates on construction, and the mill's
+  argument is DOUBLE flour), churn 12 (butter → soft cheese → aged
+  hard cheese), press 18 (oil, cider), keg 24 (ale, honeybrew,
+  vinegar, pickles — the set-it-before-the-dungeon station), smoker
+  15 (cured meats), drying rack (herbalism 15 — concentrates 2:1,
+  the big-garden herb sink), apiary (farming 30).
+- **THE HIVE KEEPS ITS OWN CLOCK** (farm_apiaries): no recipe, no
+  inputs — honey + beeswax per 25 min (store cap 3), graded by the
+  REAL FLOWERS within 5 at collect (flower boxes and blooming crops:
+  sunflower, moonbell, dawnveil — world-state, never player-state;
+  plant a garden and the honey remembers it). First touch settles
+  the bees and starts the clock.
+- **The table it lands on**: buttered potatoes 16, panfried trout
+  24, ploughman's board 38 (buff food), truffle roast's kin; the
+  rack's concentrates open traveler's draught 48, moonlit salve 58
+  (beeswax consumer), ironroot draught 62. Every station output
+  eats, buffs, or feeds another recipe (pinned).
+- **THE GOAT STAYS DEFERRED** (second deliberate pass): the churn
+  opened on cow milk honestly (butter and both cheeses are real cow
+  work); the goat's bespoke body remains a rig-lab commission, not a
+  phase rider.
+- **Wire**: S2CFarm grew jobs + apiaries (additive); C2SWorkStart in
+  parseC2S with pins. Prompt verbs: Mill/Churn/Press/Tap/Smoke/Dry,
+  'Collect' the moment measures wait. prove:work chapter (~110s);
+  the full book = 35 receipts ~3:45.
+- **Deferred**: job cancel/refund (demolish-refusal is the guard;
+  collect-through is the road); barley meal line; goat + goat
+  cheese; smoker wood-chip flavoring; keg vintages.
+
 ### Phase 3 — THE ANIMALS OF THE YARD (shipped 2026-08-11, prove:farm = 30 receipts)
 
 As-built laws and dials:

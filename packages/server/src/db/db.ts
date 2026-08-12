@@ -892,6 +892,29 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (tx, ty)
   );
   `,
+  // v28: THE WORKING YARD (farming v2 Phase 4) — the station jobs
+  // and the hives. One job per station tile, pure wall clock (no
+  // tick owns a batch); `grade` is the batch's minimum consumed
+  // grade, decided at load. Apiaries keep only their clock — honey
+  // grades by the flowers standing near at collect.
+  `
+  CREATE TABLE station_jobs (
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    recipe TEXT NOT NULL,
+    qty INTEGER NOT NULL,
+    started_at BIGINT NOT NULL,
+    grade SMALLINT NOT NULL DEFAULT 0,
+    owner_character_id INTEGER NOT NULL,
+    PRIMARY KEY (tx, ty)
+  );
+  CREATE TABLE farm_apiaries (
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    since BIGINT NOT NULL,
+    PRIMARY KEY (tx, ty)
+  );
+  `,
 ];
 
 /**

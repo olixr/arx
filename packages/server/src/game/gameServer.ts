@@ -160,6 +160,15 @@ import {
   livestockGrade,
   npcDef,
   GRADED_PRODUCE,
+  WORK_RECIPES,
+  WORK_STATION_TILES,
+  WORK_BATCH_CAP,
+  workDone,
+  workOutputId,
+  APIARY_MINUTES,
+  APIARY_STORE_CAP,
+  APIARY_FLOWER_RANGE,
+  apiaryGrade,
   compostWorthOf,
   COMPOST_BATCH_WORTH,
   COMPOST_MINUTES,
@@ -3719,6 +3728,16 @@ export class GameServer {
       this.interactCompostBin(eid, player, tx, ty, sys);
       return;
     }
+    // THE WORKING YARD: a station's interact collects what matured;
+    // the hive keeps its own door.
+    if (ground !== undefined && WORK_STATION_TILES.has(ground as Tile)) {
+      this.interactWorkStation(eid, player, tx, ty, sys);
+      return;
+    }
+    if (ground === Tile.Apiary) {
+      this.interactApiary(eid, player, tx, ty, sys);
+      return;
+    }
     // Garden plots: planting runs through the seed-picker → C2SPlant.
     if (ground === Tile.Tilled) return;
     // A planted crop: water it, harvest it, or hear how it's doing.
@@ -4667,8 +4686,12 @@ export class GameServer {
       ty: t.ty,
       feed: t.feed,
     }));
-    if (plots.length > 0 || bins.length > 0 || troughs.length > 0) {
-      session.sendJson({ t: 'farm', plots, bins, troughs });
+    const jobs = [...this.farmJobs.values()]
+      .filter((j) => j.qty > 0)
+      .map((j) => ({ tx: j.tx, ty: j.ty, recipe: j.recipe, qty: j.qty, startedAt: j.startedAt, grade: j.grade }));
+    const apiaries = [...this.farmApiaries.values()].map((a) => ({ tx: a.tx, ty: a.ty, since: a.since }));
+    if (plots.length > 0 || bins.length > 0 || troughs.length > 0 || jobs.length > 0 || apiaries.length > 0) {
+      session.sendJson({ t: 'farm', plots, bins, troughs, jobs, apiaries });
     }
   }
 
@@ -4870,6 +4893,255 @@ export class GameServer {
     this.saveCrop(state);
     this.mirrorPlot(state);
     sys('You cut the deadwood away. The tree breathes.');
+  }
+
+  // ---------------------------------------------- the working yard
+
+  /**
+   * THE WORKING YARD (farming v2 Phase 4): one wall-clock batch per
+   * station tile. No tick owns a job — matured units are a pure
+   * function of the clock (workDone), collected incrementally at the
+   * interact door. THE BATCH IS AS GOOD AS ITS WEAKEST MEASURE: the
+   * loader consumes the highest grades first and records the minimum.
+   */
+  private readonly farmJobs = new Map<
+    string,
+    { tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number; owner: number }
+  >();
+
+  /** The hives, by "tx,ty" — only a clock; flowers do the grading. */
+  private readonly farmApiaries = new Map<string, { tx: number; ty: number; since: number }>();
+
+  loadStationJobs(
+    rows: Array<{ tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number; owner: number }>,
+  ): void {
+    for (const row of rows) this.farmJobs.set(`${row.tx},${row.ty}`, { ...row });
+  }
+
+  loadFarmApiaries(rows: Array<{ tx: number; ty: number; since: number }>): void {
+    for (const row of rows) this.farmApiaries.set(`${row.tx},${row.ty}`, { ...row });
+  }
+
+  private mirrorJob(job: { tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number }): void {
+    for (const s of this.sessions) {
+      s.sendJson({
+        t: 'farm',
+        jobs: [{ tx: job.tx, ty: job.ty, recipe: job.recipe, qty: job.qty, startedAt: job.startedAt, grade: job.grade }],
+      });
+    }
+  }
+
+  private mirrorApiary(tx: number, ty: number, since: number): void {
+    for (const s of this.sessions) s.sendJson({ t: 'farm', apiaries: [{ tx, ty, since }] });
+  }
+
+  /**
+   * Load a batch: prove the tile and recipe, gate the level, consume
+   * inputs highest-grade-first, and set the clock. Every refusal is
+   * spoken; nothing is consumed before the last gate passes.
+   */
+  workStart(eid: EntityId, tx: number, ty: number, recipeId: string, qty: number): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    if (player.characterId < 0) {
+      sys('Guests cannot work the yard. Make an account!');
+      return;
+    }
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 2.6 * 2.6) return;
+    const ground = this.world.groundAt(tx, ty);
+    const station = ground === undefined ? undefined : WORK_STATION_TILES.get(ground as Tile);
+    const recipe = WORK_RECIPES.get(recipeId);
+    if (!station || !recipe || recipe.station !== station) return;
+    const key = `${tx},${ty}`;
+    const existing = this.farmJobs.get(key);
+    if (existing && existing.qty > 0) {
+      sys('The station is already working. Collect first.');
+      return;
+    }
+    const level = this.effectiveLevel(player, recipe.skill);
+    if (level < recipe.levelReq) {
+      sys(`You need ${recipe.skill} level ${recipe.levelReq} for ${recipe.name.toLowerCase()}.`);
+      return;
+    }
+    const batch = Math.min(qty, WORK_BATCH_CAP);
+    // Count first (nothing spent on a refusal): each input unit may
+    // be satisfied by any grade of its family.
+    const familyCount = (base: string): number => {
+      let n = 0;
+      for (const s of player.inventory) {
+        if (!s || s.stolen) continue;
+        if (gradeOf(s.item).base === base) n += s.qty;
+      }
+      return n;
+    };
+    for (const input of recipe.inputs) {
+      if (familyCount(input.item) < input.qty * batch) {
+        sys(`Short of ${itemDef(input.item)?.name.toLowerCase() ?? input.item} for ${batch}.`);
+        return;
+      }
+    }
+    // Consume highest grades first; the batch records its weakest.
+    let batchGrade: number | null = null;
+    for (const input of recipe.inputs) {
+      const gradable = GRADED_PRODUCE.has(input.item);
+      for (let u = 0; u < input.qty * batch; u++) {
+        let taken = -1;
+        for (const g of [2, 1, 0] as const) {
+          const id = g === 0 ? input.item : gradedId(input.item, g);
+          if (removeItem(player.inventory, id, 1) === 1) {
+            taken = g;
+            break;
+          }
+        }
+        if (taken === -1) return; // raced; counts said otherwise
+        if (gradable) batchGrade = batchGrade === null ? taken : Math.min(batchGrade, taken);
+      }
+    }
+    const job = {
+      tx,
+      ty,
+      recipe: recipeId,
+      qty: batch,
+      startedAt: Date.now(),
+      grade: batchGrade ?? 0,
+      owner: player.characterId,
+    };
+    this.farmJobs.set(key, job);
+    this.accounts.upsertStationJob(tx, ty, recipeId, batch, job.startedAt, job.grade, job.owner);
+    this.mirrorJob(job);
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    sys(`The ${itemDef(recipe.output.item)?.name.toLowerCase() ?? recipe.output.item} work begins. It runs while you wander.`);
+  }
+
+  /**
+   * The interact door for a working station: hand over whatever has
+   * matured (owner only), and let the rest keep working.
+   */
+  private interactWorkStation(
+    eid: EntityId,
+    player: PlayerComp,
+    tx: number,
+    ty: number,
+    sys: (text: string) => void,
+  ): void {
+    const key = `${tx},${ty}`;
+    const job = this.farmJobs.get(key);
+    if (!job || job.qty <= 0) {
+      sys('The station stands idle. Load it and let it work.');
+      return;
+    }
+    const recipe = WORK_RECIPES.get(job.recipe);
+    if (!recipe) return;
+    if (job.owner !== player.characterId) {
+      sys('This batch is another hand\'s work.');
+      return;
+    }
+    const now = Date.now();
+    const done = workDone(recipe, job.startedAt, job.qty, now);
+    if (done <= 0) {
+      const mins = Math.max(1, Math.ceil((job.startedAt + recipe.minutes * 60_000 - now) / 60_000));
+      sys(`The work goes on. About ${mins} min to the next measure.`);
+      return;
+    }
+    const itemId = workOutputId(recipe, job.grade as 0 | 1 | 2);
+    for (let i = 0; i < done * recipe.output.qty; i++) {
+      if (addItem(player.inventory, itemId, 1) === 0) {
+        this.spawnDrop(itemId, 1, tx + 0.5, ty + 0.5, eid);
+      }
+    }
+    this.grantXp(eid, player, recipe.skill, recipe.xp * done);
+    job.qty -= done;
+    job.startedAt += done * recipe.minutes * 60_000;
+    if (job.qty <= 0) {
+      this.farmJobs.delete(key);
+      this.accounts.deleteStationJob(tx, ty);
+      this.mirrorJob({ tx, ty, recipe: job.recipe, qty: 0, startedAt: 0, grade: 0 });
+    } else {
+      this.accounts.upsertStationJob(tx, ty, job.recipe, job.qty, job.startedAt, job.grade, job.owner);
+      this.mirrorJob(job);
+    }
+    player.session?.sendJson({ t: 'inv', slots: player.inventory });
+    sys(
+      `You collect ${done * recipe.output.qty} ${itemDef(itemId)?.name.toLowerCase() ?? itemId}${job.qty > 0 ? `. ${job.qty} still working.` : '. The station rests.'}`,
+    );
+  }
+
+  /**
+   * THE HIVE: honey and wax on the bees' own clock, graded by the
+   * real flowers standing near when you lift the lid.
+   */
+  private interactApiary(
+    eid: EntityId,
+    player: PlayerComp,
+    tx: number,
+    ty: number,
+    sys: (text: string) => void,
+  ): void {
+    if (player.characterId < 0) return;
+    const built = this.world.builtAt(tx, ty);
+    if (built && built.owner !== player.characterId) {
+      sys('These bees answer another keeper.');
+      return;
+    }
+    const key = `${tx},${ty}`;
+    const now = Date.now();
+    const hive = this.farmApiaries.get(key) ?? { tx, ty, since: now };
+    if (!this.farmApiaries.has(key)) {
+      // First touch starts the clock (a fresh hive settles in).
+      this.farmApiaries.set(key, hive);
+      this.accounts.upsertFarmApiary(tx, ty, hive.since);
+      this.mirrorApiary(tx, ty, hive.since);
+      sys('The bees settle into the new box. Give them time.');
+      return;
+    }
+    const units = Math.min(APIARY_STORE_CAP, Math.floor((now - hive.since) / (APIARY_MINUTES * 60_000)));
+    if (units <= 0) {
+      const mins = Math.max(1, Math.ceil((hive.since + APIARY_MINUTES * 60_000 - now) / 60_000));
+      sys(`The comb is thin yet. About ${mins} min.`);
+      return;
+    }
+    // Count the flowers the bees actually work: flower boxes and the
+    // blooming crops (sunflower, moonbell, dawnveil) in the hive's
+    // range. World-state only — plant a garden, sweeten the honey.
+    let flowers = 0;
+    for (let fy = ty - APIARY_FLOWER_RANGE; fy <= ty + APIARY_FLOWER_RANGE; fy++) {
+      for (let fx = tx - APIARY_FLOWER_RANGE; fx <= tx + APIARY_FLOWER_RANGE; fx++) {
+        const g = this.world.groundAt(fx, fy);
+        if (
+          g === Tile.FlowerBox ||
+          g === Tile.SunflowerMid ||
+          g === Tile.SunflowerRipe ||
+          g === Tile.MoonbellMid ||
+          g === Tile.MoonbellRipe ||
+          g === Tile.DawnveilMid ||
+          g === Tile.DawnveilRipe
+        ) {
+          flowers++;
+        }
+      }
+    }
+    const grade = apiaryGrade(flowers);
+    const honeyId = grade > 0 ? gradedId('honey', grade) : 'honey';
+    for (let i = 0; i < units; i++) {
+      if (addItem(player.inventory, honeyId, 1) === 0) this.spawnDrop(honeyId, 1, tx + 0.5, ty + 0.5, eid);
+      if (addItem(player.inventory, 'beeswax', 1) === 0) this.spawnDrop('beeswax', 1, tx + 0.5, ty + 0.5, eid);
+    }
+    this.grantXp(eid, player, 'farming', 12 * units);
+    hive.since = now;
+    this.accounts.upsertFarmApiary(tx, ty, hive.since);
+    this.mirrorApiary(tx, ty, hive.since);
+    player.session?.sendJson({ t: 'inv', slots: player.inventory });
+    sys(
+      grade === 2
+        ? 'The comb runs heavy and bright. The garden did this.'
+        : grade === 1
+          ? 'Good comb, sweetened by the flowers near.'
+          : 'You take fair comb. Bees do better beside a garden.',
+    );
   }
 
   // ------------------------------------------ the animals of the yard
@@ -6571,6 +6843,21 @@ export class GameServer {
       if (!ownHanging && bin && (bin.fill > 0 || bin.startedAt !== 0)) {
         player.session.sendJson({ t: 'chat', channel: 'system', text: 'Empty the bin first.' });
         return;
+      }
+    }
+    // THE WORKING YARD: a station mid-batch will not come down (the
+    // work would fall into the void); an emptied one demolishes fine.
+    {
+      const job = this.farmJobs.get(`${tx},${ty}`);
+      if (!ownHanging && job && job.qty > 0) {
+        player.session.sendJson({ t: 'chat', channel: 'system', text: 'The batch still works. Collect it first.' });
+        return;
+      }
+      if (!ownHanging && this.world.groundAt(tx, ty) === Tile.Apiary && this.farmApiaries.has(`${tx},${ty}`)) {
+        // The hive leaves with its box — the clock simply ends.
+        this.farmApiaries.delete(`${tx},${ty}`);
+        this.accounts.deleteFarmApiary(tx, ty);
+        this.mirrorApiary(tx, ty, 0);
       }
     }
     // THE ANIMALS OF THE YARD: a trough with a herd anchored (or a
@@ -21168,6 +21455,21 @@ export class GameServer {
         npc2.nextProduceAt = now;
         comp.row.nextProduceAt = now;
         this.accounts.saveLivestock(comp.row);
+      }
+      // THE WORKING YARD: and matures every nearby batch and hive.
+      for (const job of this.farmJobs.values()) {
+        if (pos && Math.hypot(job.tx + 0.5 - pos.x, job.ty + 0.5 - pos.y) > 20) continue;
+        const recipe = WORK_RECIPES.get(job.recipe);
+        if (!recipe || job.qty <= 0) continue;
+        job.startedAt = now - recipe.minutes * 60_000 * job.qty;
+        this.accounts.upsertStationJob(job.tx, job.ty, job.recipe, job.qty, job.startedAt, job.grade, job.owner);
+        this.mirrorJob(job);
+      }
+      for (const hive of this.farmApiaries.values()) {
+        if (pos && Math.hypot(hive.tx + 0.5 - pos.x, hive.ty + 0.5 - pos.y) > 20) continue;
+        hive.since = now - APIARY_MINUTES * 60_000 * APIARY_STORE_CAP;
+        this.accounts.upsertFarmApiary(hive.tx, hive.ty, hive.since);
+        this.mirrorApiary(hive.tx, hive.ty, hive.since);
       }
       this.tickCrops(now);
       player.session?.sendJson({

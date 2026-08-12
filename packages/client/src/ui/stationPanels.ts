@@ -20,9 +20,16 @@ import {
   GRADED_PRODUCE,
   GROWTH_SEEDS,
   TROUGH_FEED_CAP,
+  WORK_BATCH_CAP,
+  WORK_RECIPES,
+  WORK_VERBS,
   compostWorthOf,
   feedWorthOf,
   gradeOf,
+  workDone,
+  workRecipesFor,
+  type WorkRecipeDef,
+  type WorkStation,
   buildableGround,
   canUnmake,
   enchantDef,
@@ -41,7 +48,7 @@ import {
   type TrainerPost,
 } from '@arx/content';
 import { buildableIconUrl, itemIconUrl, queueItemIcon, uiIconUrl } from '../render/icons.js';
-import { farmBins, farmKey, farmTroughs } from '../game/farmCare.js';
+import { farmBins, farmJobs, farmKey, farmTroughs } from '../game/farmCare.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
 import { petPortraitUrl } from '../render/petPortrait.js';
 import { createLedger } from './kit/ledger.js';
@@ -224,6 +231,7 @@ export class StationPanels {
     | { kind: 'plant'; tx: number; ty: number; skills: SkillXp; sel: string | null; bed: 'tilled' | 'frame' | 'log' }
     | { kind: 'compost'; tx: number; ty: number; sel: string | null }
     | { kind: 'trough'; tx: number; ty: number; sel: string | null }
+    | { kind: 'work'; tx: number; ty: number; work: WorkStation; sel: string | null }
     | { kind: 'build'; skills: SkillXp; sel: string | null }
     | null = null;
 
@@ -503,6 +511,7 @@ export class StationPanels {
     else if (this.showing.kind === 'plant') this.renderPlant();
     else if (this.showing.kind === 'compost') this.renderCompost();
     else if (this.showing.kind === 'trough') this.renderTrough();
+    else if (this.showing.kind === 'work') this.renderWork();
     else this.renderBuild();
   }
 
@@ -1221,6 +1230,134 @@ export class StationPanels {
         );
         this.craftDetail.appendChild(actions);
       }
+    }
+  }
+
+  // ------------------------------------------------------------ work
+
+  /** Set by main: loads a wall-clock batch into a yard station. */
+  onWork: ((tx: number, ty: number, recipe: string, qty: number) => void) | null = null;
+
+  /** THE WORKING YARD: a station's load screen (the vault law). */
+  openWork(tx: number, ty: number, work: WorkStation, at?: { tx: number; ty: number }): void {
+    this.closeAll();
+    this.anchor = at ? { x: at.tx + 0.5, y: at.ty + 0.5 } : { x: tx + 0.5, y: ty + 0.5 };
+    this.showing = { kind: 'work', tx, ty, work, sel: null };
+    this.dressCraft(
+      WORK_VERBS[work] + 'ing',
+      itemIconUrl(workRecipesFor(work)[0]?.output.item ?? 'flour', 34),
+      '#96703f',
+      'Load it and walk away. The station works while you wander.',
+    );
+    this.craftPanel.classList.remove('hidden');
+    this.renderWork();
+  }
+
+  private renderWork(): void {
+    if (this.showing?.kind !== 'work') return;
+    const showing = this.showing;
+    const { tx, ty, work } = showing;
+    this.craftTools.innerHTML = '';
+    this.craftList.innerHTML = '';
+    this.craftDetail.innerHTML = '';
+    const job = farmJobs.get(farmKey(tx, ty));
+    const running = job && job.qty > 0 ? WORK_RECIPES.get(job.recipe) : undefined;
+
+    // How many units of a recipe the pack covers (any grade serves).
+    const familyCount = (base: string): number => {
+      let n = 0;
+      for (const s of this.getInventory()) {
+        if (s && !s.stolen && gradeOf(s.item).base === base) n += s.qty;
+      }
+      return n;
+    };
+    const canLoad = (r: WorkRecipeDef): number => {
+      let n = WORK_BATCH_CAP;
+      for (const i of r.inputs) n = Math.min(n, Math.floor(familyCount(i.item) / i.qty));
+      return n;
+    };
+
+    if (running && job) {
+      const done = workDone(running, job.startedAt, job.qty, Date.now());
+      const note = document.createElement('div');
+      note.className = 'make-empty';
+      note.textContent =
+        done > 0
+          ? `${done} measure${done > 1 ? 's' : ''} ready. Close this and collect.`
+          : `${running.name} runs: ${job.qty} queued, about ${Math.max(1, Math.ceil((job.startedAt + running.minutes * 60_000 - Date.now()) / 60_000))} min to the next.`;
+      this.craftList.appendChild(note);
+    } else {
+      const recipes = workRecipesFor(work);
+      if (!showing.sel || !WORK_RECIPES.has(showing.sel)) showing.sel = recipes[0]?.id ?? null;
+      this.dealIntoLedger(
+        this.craftList,
+        'work',
+        recipes.map((r) =>
+          this.ledgerRow({
+            key: `workrow:${r.id}`,
+            iconUrl: itemIconUrl(r.output.item, 40),
+            name: r.name,
+            note: canLoad(r) > 0 ? `× ${canLoad(r)}` : `lvl ${r.levelReq}`,
+            noteTone: canLoad(r) > 0 ? 'ok' : 'lock',
+            selected: showing.sel === r.id,
+            onPick: () => {
+              showing.sel = r.id;
+              this.renderWork();
+            },
+          }),
+        ),
+        8,
+      );
+    }
+
+    const sel = !running && showing.sel ? WORK_RECIPES.get(showing.sel) : running;
+    if (!sel) return;
+    const head = document.createElement('div');
+    head.className = 'work-head';
+    head.appendChild(iconTile(itemIconUrl(sel.output.item, 64)));
+    const titles = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'work-name';
+    name.textContent = sel.name;
+    const sub = document.createElement('div');
+    sub.className = 'work-sub';
+    sub.textContent = `${sel.skill} · level ${sel.levelReq} · ${sel.minutes} min a measure`;
+    titles.append(name, sub);
+    head.appendChild(titles);
+    this.craftDetail.appendChild(head);
+
+    const facts = document.createElement('div');
+    facts.className = 'work-facts';
+    const fact = (label: string, value: string): void => {
+      const f = document.createElement('div');
+      f.className = 'work-fact';
+      const v = document.createElement('strong');
+      v.textContent = value;
+      const l = document.createElement('span');
+      l.textContent = label;
+      f.append(v, l);
+      facts.appendChild(f);
+    };
+    fact('the batch', 'as good as its weakest measure');
+    fact('xp at collect', `${sel.xp} a measure`);
+    this.craftDetail.appendChild(facts);
+
+    if (!running) {
+      this.craftDetail.appendChild(sectionHead('Into the station'));
+      for (const input of sel.inputs) this.craftDetail.appendChild(this.materialRow(input.item, input.qty));
+      const n = canLoad(sel);
+      const actions = document.createElement('div');
+      actions.className = 'work-actions';
+      for (const qty of [1, 5, WORK_BATCH_CAP]) {
+        if (qty > 1 && n < qty) continue;
+        const btn = bigButton(qty === 1 ? 'Load 1' : `Load ${qty}`, `work:${sel.id}:${qty}`, () => {
+          this.onWork?.(tx, ty, sel.id, qty);
+          this.closeAll();
+        });
+        if (n < 1) btn.disabled = true;
+        actions.appendChild(btn);
+      }
+      this.craftDetail.appendChild(actions);
     }
   }
 

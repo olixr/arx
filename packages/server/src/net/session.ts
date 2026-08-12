@@ -396,6 +396,12 @@ export class Session {
         this.game.stockName(this.playerEid, msg.slot, msg.name);
         return;
       }
+      case 'workstart': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.workStart(this.playerEid, msg.tx, msg.ty, msg.recipe, msg.qty);
+        return;
+      }
       case 'interactnpc': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

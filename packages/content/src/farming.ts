@@ -40,9 +40,32 @@ export function gradedId(base: string, grade: Grade): string {
  */
 export const LIVESTOCK_GRADED: readonly string[] = ['egg', 'milk', 'wool', 'truffle'];
 
+/**
+ * THE WORKING YARD (Phase 4): processed goods that carry the batch's
+ * grade out of a station job. THE TRUTH LIVES HERE (farmwork.ts
+ * imports it) so the graded-def generation and the id reader stay
+ * one list. Bulk reagents (flour, vinegar) deliberately stay plain.
+ */
+export const PROCESSED_GRADED: readonly string[] = [
+  'butter',
+  'soft_cheese',
+  'hard_cheese',
+  'cooking_oil',
+  'cider',
+  'farmhouse_ale',
+  'honeybrew',
+  // (Smoked goods stay plain: meat and fish never grade, so their
+  // cures have no grade to inherit — the fold is honest about zero.)
+  'dried_sagewort',
+  'dried_moonbell',
+  'dried_bittercress',
+  'honey',
+];
+
 export const GRADED_PRODUCE: ReadonlySet<string> = new Set([
   ...[...CROPS.values()].filter((d: CropDef) => d.bed !== 'log').map((d: CropDef) => d.yield.item),
   ...LIVESTOCK_GRADED,
+  ...PROCESSED_GRADED,
 ]);
 
 /**

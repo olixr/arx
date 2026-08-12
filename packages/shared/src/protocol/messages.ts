@@ -324,13 +324,48 @@ export interface FarmTroughInfo {
   feed: number;
 }
 
+/** THE WORKING YARD (Phase 4): one station's running batch. */
+export interface FarmJobInfo {
+  tx: number;
+  ty: number;
+  recipe: string;
+  /** Units still queued (0 clears the mirror row). */
+  qty: number;
+  startedAt: number;
+  /** The batch's minimum consumed grade, decided at load. */
+  grade: number;
+}
+
+export interface FarmApiaryInfo {
+  tx: number;
+  ty: number;
+  /** Epoch ms the hive last emptied (0 clears the row). */
+  since: number;
+}
+
 export interface S2CFarm {
   t: 'farm';
   plots?: FarmPlotInfo[];
   bins?: FarmBinInfo[];
   /** THE ANIMALS OF THE YARD (Phase 3, additive): trough feed. */
   troughs?: FarmTroughInfo[];
+  /** THE WORKING YARD (Phase 4, additive): jobs and hives. */
+  jobs?: FarmJobInfo[];
+  apiaries?: FarmApiaryInfo[];
   remove?: Array<{ tx: number; ty: number }>;
+}
+
+/**
+ * Load a work batch into a yard station. Inputs leave the pack at
+ * this door (highest grades first); the server re-proves the tile,
+ * the recipe, the level, and the cap.
+ */
+export interface C2SWorkStart {
+  t: 'workstart';
+  tx: number;
+  ty: number;
+  recipe: string;
+  qty: number;
 }
 
 /**
@@ -623,6 +658,7 @@ export type C2SMessage =
   | C2SCompostAdd
   | C2STroughAdd
   | C2SStockName
+  | C2SWorkStart
   | C2SInteractNpc
   | C2SPetName
   | C2SStable
@@ -1963,6 +1999,15 @@ export function parseC2S(raw: string): C2SMessage | null {
       }
       if (typeof msg.name !== 'string' || msg.name.length > 24) return null;
       return { t: 'stockname', slot: msg.slot, name: msg.name };
+    }
+    case 'workstart': {
+      if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
+      if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
+      if (typeof msg.recipe !== 'string' || msg.recipe.length > 64) return null;
+      if (!isFiniteNum(msg.qty) || !Number.isInteger(msg.qty) || msg.qty < 1 || msg.qty > 50) {
+        return null;
+      }
+      return { t: 'workstart', tx: msg.tx, ty: msg.ty, recipe: msg.recipe, qty: msg.qty };
     }
     case 'interactnpc': {
       if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;

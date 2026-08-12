@@ -366,6 +366,14 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       t === Tile.MushroomLogSeeded ||
       t === Tile.PalegillMid ||
       t === Tile.PalegillRipe ||
+      t === Tile.Windmill ||
+      t === Tile.ButterChurn ||
+      t === Tile.FruitPress ||
+      t === Tile.BrewKeg ||
+      t === Tile.Smoker ||
+      t === Tile.DryingRack ||
+      t === Tile.Apiary ||
+      t === Tile.FeedTrough ||
       CHEST_TILES.has(t)
     ) {
       return nearestFloor(ground, tx, ty);

@@ -241,6 +241,56 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     burnChance: 0.22,
     burnResult: 'burnt_food',
   },
+  // THE WORKING YARD: the stations' goods reach the table (butter,
+  // oil, and cheese all cook; the boards and draughts below are the
+  // yard's own buff shelf).
+  {
+    id: 'cook_buttered_potatoes',
+    name: 'Buttered potatoes',
+    skill: 'cooking',
+    levelReq: 16,
+    xp: 90,
+    station: 'fire',
+    inputs: [
+      { item: 'potato', qty: 2 },
+      { item: 'butter', qty: 1 },
+    ],
+    output: { item: 'buttered_potatoes', qty: 1 },
+    ticks: 50,
+    burnChance: 0.2,
+    burnResult: 'burnt_food',
+  },
+  {
+    id: 'cook_panfried_trout',
+    name: 'Panfried trout',
+    skill: 'cooking',
+    levelReq: 24,
+    xp: 150,
+    station: 'fire',
+    inputs: [
+      { item: 'raw_trout', qty: 1 },
+      { item: 'cooking_oil', qty: 1 },
+    ],
+    output: { item: 'panfried_trout', qty: 1 },
+    ticks: 55,
+    burnChance: 0.18,
+    burnResult: 'burnt_food',
+  },
+  {
+    id: 'cook_ploughmans_board',
+    name: "Ploughman's board",
+    skill: 'cooking',
+    levelReq: 38,
+    xp: 230,
+    station: 'workbench',
+    inputs: [
+      { item: 'bread', qty: 1 },
+      { item: 'hard_cheese', qty: 1 },
+      { item: 'apple', qty: 1 },
+    ],
+    output: { item: 'ploughmans_board', qty: 1 },
+    ticks: 45,
+  },
   {
     id: 'cook_truffle_roast',
     name: 'Truffle roast',
@@ -997,6 +1047,49 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     output: { item: 'palegill_oil', qty: 1 },
     ticks: 80,
   },
+  // THE WORKING YARD: the drying rack's concentrates find bottles.
+  {
+    id: 'brew_travelers_draught',
+    name: "Traveler's draught",
+    skill: 'herbalism',
+    levelReq: 48,
+    xp: 260,
+    station: 'alembic',
+    inputs: [
+      { item: 'dried_sagewort', qty: 1 },
+      { item: 'berries', qty: 1 },
+    ],
+    output: { item: 'travelers_draught', qty: 1 },
+    ticks: 72,
+  },
+  {
+    id: 'brew_moonlit_salve',
+    name: 'Moonlit salve',
+    skill: 'herbalism',
+    levelReq: 58,
+    xp: 320,
+    station: 'alembic',
+    inputs: [
+      { item: 'dried_moonbell', qty: 1 },
+      { item: 'beeswax', qty: 1 },
+    ],
+    output: { item: 'moonlit_salve', qty: 1 },
+    ticks: 78,
+  },
+  {
+    id: 'brew_ironroot_draught',
+    name: 'Ironroot draught',
+    skill: 'herbalism',
+    levelReq: 62,
+    xp: 350,
+    station: 'alembic',
+    inputs: [
+      { item: 'dried_bittercress', qty: 1 },
+      { item: 'redroot', qty: 1 },
+    ],
+    output: { item: 'ironroot_draught', qty: 1 },
+    ticks: 82,
+  },
   {
     id: 'brew_duskthorn_draught',
     name: 'Duskthorn draught',
@@ -1302,6 +1395,13 @@ const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
   cook_truffle_roast: 'drop',
   // The fleece line is taught at the loom like cotton's.
   weave_wool_cloth: 'trainer',
+  // THE WORKING YARD's table and bottles.
+  cook_buttered_potatoes: 'trainer',
+  cook_panfried_trout: 'trainer',
+  cook_ploughmans_board: 'trainer',
+  brew_travelers_draught: 'trainer',
+  brew_moonlit_salve: 'trainer',
+  brew_ironroot_draught: 'drop',
 };
 
 const inlineRecipes: RecipeDef[] = defs.map((d) => {

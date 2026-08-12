@@ -69,8 +69,8 @@ import {
   type DetailPatch,
   type Vec2,
 } from '@arx/shared';
-import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef } from '@arx/content';
-import { farmBins, farmKey, farmPlots, farmTroughs, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
+import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
+import { farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
 import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
@@ -117,6 +117,8 @@ export type InteractTarget =
   | { kind: 'crop'; tx: number; ty: number; mature: boolean }
   | { kind: 'bin'; tx: number; ty: number }
   | { kind: 'trough'; tx: number; ty: number }
+  | { kind: 'work'; tx: number; ty: number; work: WorkStation }
+  | { kind: 'apiary'; tx: number; ty: number }
   | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string }
   | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
   | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
@@ -1463,6 +1465,14 @@ export class ClientGame {
           if (tr.feed <= 0) farmTroughs.delete(farmKey(tr.tx, tr.ty));
           else farmTroughs.set(farmKey(tr.tx, tr.ty), { feed: tr.feed });
         }
+        for (const j of msg.jobs ?? []) {
+          if (j.qty <= 0) farmJobs.delete(farmKey(j.tx, j.ty));
+          else farmJobs.set(farmKey(j.tx, j.ty), { recipe: j.recipe, qty: j.qty, startedAt: j.startedAt, grade: j.grade });
+        }
+        for (const a of msg.apiaries ?? []) {
+          if (a.since <= 0) farmApiaries.delete(farmKey(a.tx, a.ty));
+          else farmApiaries.set(farmKey(a.tx, a.ty), { since: a.since });
+        }
         for (const r of msg.remove ?? []) {
           farmPlots.delete(farmKey(r.tx, r.ty));
           this.touchNeighbors(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
@@ -1903,6 +1913,10 @@ export class ClientGame {
     this.conn?.send({ t: 'stockname', slot, name });
   }
 
+  workStart(tx: number, ty: number, recipe: string, qty: number): void {
+    this.conn?.send({ t: 'workstart', tx, ty, recipe, qty });
+  }
+
   /** Fires with (tx, ty, previous, next) whenever a detail mutates. */
   onDetailChange: ((tx: number, ty: number, prev: number, next: number) => void) | null = null;
 
@@ -2100,6 +2114,13 @@ export class ClientGame {
     if (ground === Tile.CompostBin) return { kind: 'bin', tx, ty };
     // THE ANIMALS OF THE YARD: the manger opens the feed panel.
     if (ground === Tile.FeedTrough) return { kind: 'trough', tx, ty };
+    // THE WORKING YARD: a job station opens its work screen (or
+    // collects, when measures wait); the hive collects directly.
+    {
+      const work = WORK_STATION_TILES.get(ground);
+      if (work) return { kind: 'work', tx, ty, work };
+    }
+    if (ground === Tile.Apiary) return { kind: 'apiary', tx, ty };
     const station = stationAtTile(ground);
     if (station) return { kind: 'station', tx, ty, station };
     // Loot chests: a closed chest offers itself; an open one has

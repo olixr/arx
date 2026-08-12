@@ -39,6 +39,13 @@ export const farmPlots = new Map<string, PlotCare>();
 export const farmBins = new Map<string, BinCare>();
 /** THE ANIMALS OF THE YARD: trough feed by "tx,ty". */
 export const farmTroughs = new Map<string, { feed: number }>();
+/** THE WORKING YARD: running station batches by "tx,ty". */
+export const farmJobs = new Map<
+  string,
+  { recipe: string; qty: number; startedAt: number; grade: number }
+>();
+/** The hives' clocks by "tx,ty". */
+export const farmApiaries = new Map<string, { since: number }>();
 
 export function farmKey(tx: number, ty: number): string {
   return `${tx},${ty}`;

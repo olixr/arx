@@ -3,7 +3,8 @@ import { deckFillAt, fillContains } from './render/terrain.js';
 import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
-import { farmBins, farmKey } from './game/farmCare.js';
+import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
+import { WORK_RECIPES, WORK_VERBS, workDone, type WorkStation } from '@arx/content';
 import { InputManager } from './input/inputManager.js';
 import { GroundAimController } from './input/groundAim.js';
 import { bindings, type ActionId } from './input/bindings.js';
@@ -528,6 +529,7 @@ const PROMPT_LABELS: Record<string, string> = {
   sawhorse: 'Saw',
   plot: 'Plant',
   trough: 'Fill Trough',
+  apiary: 'Tend Hive',
   seat: 'Sit',
   bed: 'Rest',
   sign: 'Read Sign',
@@ -537,6 +539,14 @@ const PROMPT_LABELS: Record<string, string> = {
 function binReady(tx: number, ty: number): boolean {
   const bin = farmBins.get(farmKey(tx, ty));
   return !!bin && bin.readyAt !== 0 && Date.now() >= bin.readyAt;
+}
+
+/** THE WORKING YARD: 'Collect' when measures wait, else the craft verb. */
+function workVerb(tx: number, ty: number, work: WorkStation): string {
+  const job = farmJobs.get(farmKey(tx, ty));
+  const wr = job ? WORK_RECIPES.get(job.recipe) : undefined;
+  if (job && wr && workDone(wr, job.startedAt, job.qty, Date.now()) > 0) return 'Collect';
+  return WORK_VERBS[work];
 }
 
 const buildTray = new BuildTray(
@@ -596,6 +606,10 @@ stationPanels.onCompost = (tx, ty, slot) => {
 stationPanels.onTrough = (tx, ty, slot) => {
   sfx.uiTap();
   game.troughAdd(tx, ty, slot);
+};
+stationPanels.onWork = (tx, ty, recipe, qty) => {
+  sfx.uiTap();
+  game.workStart(tx, ty, recipe, qty);
 };
 
 // Dev audit lever: `?room=bank|shop|stable` stands a maker room on
@@ -2199,6 +2213,23 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       stationPanels.openTrough(target.tx, target.ty, target);
       panels.showInventory();
       break;
+    case 'work': {
+      // Matured measures collect on the interact door; an idle (or
+      // still-working) station opens its work screen off the mirror.
+      const job = farmJobs.get(farmKey(target.tx, target.ty));
+      const wr = job ? WORK_RECIPES.get(job.recipe) : undefined;
+      if (job && wr && workDone(wr, job.startedAt, job.qty, Date.now()) > 0) {
+        game.interact(target.tx, target.ty);
+      } else {
+        closeAllUi();
+        stationPanels.openWork(target.tx, target.ty, target.work, target);
+        panels.showInventory();
+      }
+      break;
+    }
+    case 'apiary':
+      game.interact(target.tx, target.ty);
+      break;
     case 'chest':
       // The server decides: locked, or a lid swings and loot spills.
       game.interact(target.tx, target.ty);
@@ -2795,6 +2826,7 @@ function frame(now: number): void {
         : target.kind === 'npc' ? target.verb
         : target.kind === 'crop' ? game.cropVerb(target.tx, target.ty)
         : target.kind === 'bin' ? (binReady(target.tx, target.ty) ? 'Turn Out' : 'Compost')
+        : target.kind === 'work' ? workVerb(target.tx, target.ty, target.work)
         : target.kind === 'door' ? (target.open ? (target.gate ? 'Close Gate' : 'Close Door') : (target.gate ? 'Open Gate' : 'Open Door'))
         : target.kind === 'sign' ? (target.blank ? 'Write Sign' : target.mine ? 'Read / Write' : 'Read Sign')
         // On the furniture already: the same touch stands you up — or

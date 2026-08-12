@@ -1256,6 +1256,46 @@ export class AccountStore {
     this.db.fire('DELETE FROM farm_troughs WHERE tx = ? AND ty = ?', [tx, ty]);
   }
 
+  /** THE WORKING YARD: station jobs and apiaries, whole at boot. */
+  async loadStationJobs(): Promise<
+    Array<{ tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number; owner: number }>
+  > {
+    return this.db.query(
+      'SELECT tx, ty, recipe, qty, started_at AS "startedAt", grade, owner_character_id AS owner FROM station_jobs',
+    ) as ReturnType<AccountStore['loadStationJobs']>;
+  }
+
+  upsertStationJob(tx: number, ty: number, recipe: string, qty: number, startedAt: number, grade: number, owner: number): void {
+    this.db.fire(
+      'INSERT INTO station_jobs (tx, ty, recipe, qty, started_at, grade, owner_character_id) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (tx, ty) DO UPDATE SET recipe = excluded.recipe, qty = excluded.qty, ' +
+        'started_at = excluded.started_at, grade = excluded.grade, owner_character_id = excluded.owner_character_id',
+      [tx, ty, recipe, qty, startedAt, grade, owner],
+    );
+  }
+
+  deleteStationJob(tx: number, ty: number): void {
+    this.db.fire('DELETE FROM station_jobs WHERE tx = ? AND ty = ?', [tx, ty]);
+  }
+
+  async loadFarmApiaries(): Promise<Array<{ tx: number; ty: number; since: number }>> {
+    return this.db.query('SELECT tx, ty, since FROM farm_apiaries') as ReturnType<
+      AccountStore['loadFarmApiaries']
+    >;
+  }
+
+  upsertFarmApiary(tx: number, ty: number, since: number): void {
+    this.db.fire(
+      'INSERT INTO farm_apiaries (tx, ty, since) VALUES (?, ?, ?) ' +
+        'ON CONFLICT (tx, ty) DO UPDATE SET since = excluded.since',
+      [tx, ty, since],
+    );
+  }
+
+  deleteFarmApiary(tx: number, ty: number): void {
+    this.db.fire('DELETE FROM farm_apiaries WHERE tx = ? AND ty = ?', [tx, ty]);
+  }
+
   async loadBank(characterId: number): Promise<Record<string, number>> {
     const rows = await this.db.query<{ item_id: string; qty: number }>(
       'SELECT item_id, qty FROM bank_items WHERE character_id = ?',

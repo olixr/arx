@@ -318,6 +318,106 @@ const defs: BuildableDef[] = [
     ],
     ticks: 40,
   },
+  // THE WORKING YARD (farming v2 Phase 4): the processing stations.
+  // Every one holds a single wall-clock job; the windmill is the
+  // marquee build and the apiary keeps bees, not batches.
+  {
+    id: 'windmill',
+    cat: 'station',
+    name: 'Windmill',
+    tile: Tile.Windmill,
+    levelReq: 28,
+    xp: 200,
+    materials: [
+      { item: 'board', qty: 8 },
+      { item: 'copper_ore', qty: 4 },
+      { item: 'cloth', qty: 3 },
+    ],
+    ticks: 120,
+  },
+  {
+    id: 'churn',
+    cat: 'station',
+    name: 'Butter churn',
+    tile: Tile.ButterChurn,
+    levelReq: 12,
+    xp: 60,
+    materials: [
+      { item: 'board', qty: 3 },
+      { item: 'bronze_bar', qty: 1 },
+    ],
+    ticks: 50,
+  },
+  {
+    id: 'press',
+    cat: 'station',
+    name: 'Fruit press',
+    tile: Tile.FruitPress,
+    levelReq: 18,
+    xp: 80,
+    materials: [
+      { item: 'board', qty: 4 },
+      { item: 'bronze_bar', qty: 1 },
+    ],
+    ticks: 60,
+  },
+  {
+    id: 'keg',
+    cat: 'station',
+    name: 'Brew keg',
+    tile: Tile.BrewKeg,
+    levelReq: 24,
+    xp: 110,
+    materials: [
+      { item: 'board', qty: 5 },
+      { item: 'copper_ore', qty: 2 },
+      { item: 'twine', qty: 2 },
+    ],
+    ticks: 80,
+  },
+  {
+    id: 'smoker',
+    cat: 'station',
+    name: 'Smoker',
+    tile: Tile.Smoker,
+    levelReq: 15,
+    xp: 70,
+    materials: [
+      { item: 'board', qty: 3 },
+      { item: 'copper_ore', qty: 2 },
+    ],
+    ticks: 55,
+  },
+  {
+    id: 'drying_rack',
+    cat: 'station',
+    name: 'Drying rack',
+    tile: Tile.DryingRack,
+    skill: 'herbalism',
+    levelReq: 15,
+    xp: 50,
+    materials: [
+      { item: 'board', qty: 2 },
+      { item: 'twine', qty: 2 },
+    ],
+    ticks: 40,
+  },
+  {
+    // Bees answer flowers, not recipes: the hive keeps its own slow
+    // clock and grades by the garden around it (world-state).
+    id: 'apiary',
+    cat: 'station',
+    name: 'Apiary',
+    tile: Tile.Apiary,
+    skill: 'farming',
+    levelReq: 30,
+    xp: 90,
+    materials: [
+      { item: 'board', qty: 4 },
+      { item: 'cloth', qty: 1 },
+    ],
+    ticks: 70,
+  },
   {
     // THE GROWING FRAME: an oiled-cloth frame raised OVER a garden
     // plot (its one legal ground) — always watered, a touch faster,

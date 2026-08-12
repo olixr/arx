@@ -394,6 +394,8 @@ game.loadCrops(await accounts.loadCrops());
 game.loadFarmBins(await accounts.loadFarmBins());
 game.loadFarmTroughs(await accounts.loadFarmTroughs());
 game.loadLivestockRows(await accounts.loadLivestock());
+game.loadStationJobs(await accounts.loadStationJobs());
+game.loadFarmApiaries(await accounts.loadFarmApiaries());
 game.loadSigns(await accounts.loadSigns());
 // THE HEARTH WATCH: claim rings derive from EVERY claimed bed, offline
 // settlers included — before the first POI decision reads the context.

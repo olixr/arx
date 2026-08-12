@@ -3441,6 +3441,174 @@ const PAINTERS: Record<string, IconPainter> = {
     c.fillStyle = shade(col, -24);
     c.fillRect(0.62, 0.55, 0.09, 0.07);
   },
+  // THE WORKING YARD's pantry glyphs.
+  butterpat: (c, col) => {
+    c.fillStyle = shade(col, -18);
+    c.beginPath();
+    c.ellipse(0.5, 0.72, 0.32, 0.1, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(0.28, 0.42, 0.44, 0.28, 0.07);
+    c.fill();
+    c.fillStyle = shade(col, 26);
+    c.fillRect(0.32, 0.44, 0.36, 0.07);
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.02;
+    c.strokeRect(0.28, 0.42, 0.44, 0.28);
+  },
+  cheesewedge: (c, col) => {
+    poly(c, col, [[0.18, 0.72], [0.82, 0.72], [0.82, 0.5], [0.5, 0.3], [0.18, 0.5]]);
+    c.fillStyle = shade(col, 24);
+    poly(c, shade(col, 24), [[0.18, 0.5], [0.5, 0.3], [0.82, 0.5], [0.78, 0.53], [0.5, 0.35], [0.22, 0.53]]);
+    c.fillStyle = shade(col, -22);
+    for (const [hx, hy, r] of [[0.36, 0.6, 0.045], [0.58, 0.64, 0.035], [0.68, 0.56, 0.03]] as const) {
+      c.beginPath();
+      c.arc(hx, hy, r, 0, Math.PI * 2);
+      c.fill();
+    }
+  },
+  herbbundle: (c, col) => {
+    // A hung bundle: stems bound at the top, leaves fanning down.
+    c.strokeStyle = '#c9b98a';
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(0.5, 0.2);
+    c.lineTo(0.5, 0.32);
+    c.stroke();
+    for (const [dx, len] of [[-0.14, 0.34], [0, 0.42], [0.14, 0.34]] as const) {
+      poly(c, shade(col, dx === 0 ? 8 : -8), [
+        [0.5, 0.32],
+        [0.5 + dx - 0.06, 0.32 + len * 0.6],
+        [0.5 + dx, 0.32 + len],
+        [0.5 + dx + 0.06, 0.32 + len * 0.6],
+      ]);
+    }
+    c.fillStyle = '#b0a068';
+    c.fillRect(0.44, 0.3, 0.12, 0.05);
+  },
+  honeypot: (c, col) => {
+    c.fillStyle = '#a08258';
+    c.beginPath();
+    c.moveTo(0.34, 0.36);
+    c.quadraticCurveTo(0.2, 0.6, 0.36, 0.8);
+    c.lineTo(0.64, 0.8);
+    c.quadraticCurveTo(0.8, 0.6, 0.66, 0.36);
+    c.closePath();
+    c.fill();
+    c.fillStyle = col;
+    c.beginPath();
+    c.ellipse(0.5, 0.37, 0.17, 0.07, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = shade(col, -14);
+    c.beginPath();
+    c.moveTo(0.42, 0.4);
+    c.quadraticCurveTo(0.44, 0.52, 0.38, 0.56);
+    c.lineTo(0.46, 0.56);
+    c.quadraticCurveTo(0.48, 0.46, 0.48, 0.4);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade('#a08258', 26);
+    c.fillRect(0.38, 0.48, 0.08, 0.05);
+  },
+  millbuild: (c, col) => {
+    poly(c, col, [[0.36, 0.86], [0.42, 0.4], [0.58, 0.4], [0.64, 0.86]]);
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.02;
+    c.stroke();
+    c.strokeStyle = '#5f4426';
+    c.lineWidth = 0.045;
+    for (const a of [0.6, 2.17, 3.74, 5.31]) {
+      c.beginPath();
+      c.moveTo(0.5, 0.36);
+      c.lineTo(0.5 + Math.cos(a) * 0.26, 0.36 + Math.sin(a) * 0.26);
+      c.stroke();
+    }
+    c.fillStyle = '#3a2c18';
+    c.beginPath();
+    c.arc(0.5, 0.36, 0.045, 0, Math.PI * 2);
+    c.fill();
+  },
+  churnbuild: (c, col) => {
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(0.34, 0.84);
+    c.quadraticCurveTo(0.28, 0.6, 0.34, 0.4);
+    c.lineTo(0.66, 0.4);
+    c.quadraticCurveTo(0.72, 0.6, 0.66, 0.84);
+    c.closePath();
+    c.fill();
+    c.fillStyle = '#c9a86a';
+    c.fillRect(0.3, 0.5, 0.4, 0.045);
+    c.fillRect(0.3, 0.7, 0.4, 0.045);
+    c.fillStyle = '#5f4426';
+    c.fillRect(0.47, 0.18, 0.06, 0.24);
+    c.fillRect(0.4, 0.16, 0.2, 0.05);
+  },
+  pressbuild: (c, col) => {
+    c.fillStyle = col;
+    c.fillRect(0.24, 0.24, 0.07, 0.6);
+    c.fillRect(0.69, 0.24, 0.07, 0.6);
+    c.fillRect(0.2, 0.2, 0.6, 0.07);
+    c.fillStyle = '#5f4426';
+    c.fillRect(0.47, 0.27, 0.06, 0.2);
+    c.fillStyle = '#96703f';
+    c.beginPath();
+    c.roundRect(0.34, 0.5, 0.32, 0.22, 0.05);
+    c.fill();
+    c.fillStyle = '#d8963c';
+    c.fillRect(0.6, 0.74, 0.035, 0.07);
+  },
+  smokerbuild: (c, col) => {
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(0.28, 0.34, 0.44, 0.5, 0.05);
+    c.fill();
+    c.fillStyle = '#e0813c';
+    c.beginPath();
+    c.roundRect(0.4, 0.66, 0.2, 0.12, 0.04);
+    c.fill();
+    c.fillStyle = 'rgba(180, 176, 188, 0.7)';
+    c.beginPath();
+    c.ellipse(0.62, 0.24, 0.06, 0.045, 0, 0, Math.PI * 2);
+    c.ellipse(0.56, 0.14, 0.045, 0.035, 0, 0, Math.PI * 2);
+    c.fill();
+  },
+  rackbuild: (c, col) => {
+    c.strokeStyle = col;
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.24, 0.84);
+    c.lineTo(0.36, 0.28);
+    c.moveTo(0.76, 0.84);
+    c.lineTo(0.64, 0.28);
+    c.moveTo(0.36, 0.3);
+    c.lineTo(0.64, 0.3);
+    c.stroke();
+    c.strokeStyle = '#c9b98a';
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(0.3, 0.56);
+    c.quadraticCurveTo(0.5, 0.62, 0.7, 0.56);
+    c.stroke();
+    c.fillStyle = '#7a9c6e';
+    c.fillRect(0.4, 0.56, 0.06, 0.14);
+    c.fillStyle = '#8f9ed6';
+    c.fillRect(0.56, 0.57, 0.06, 0.13);
+  },
+  hivebuild: (c, col) => {
+    c.fillStyle = col;
+    for (let k = 0; k < 3; k++) {
+      c.beginPath();
+      c.roundRect(0.28, 0.36 + k * 0.16, 0.44, 0.13, 0.04);
+      c.fill();
+    }
+    c.fillStyle = shade(col, -30);
+    c.fillRect(0.44, 0.68, 0.12, 0.035);
+    c.fillStyle = '#e0a83c';
+    c.fillRect(0.62, 0.3, 0.035, 0.035);
+    c.fillRect(0.7, 0.38, 0.03, 0.03);
+  },
   fruitround: (c, col) => {
     // One proud fruit: lit cheek, leaf flag, stem nub.
     c.fillStyle = col;
@@ -5535,6 +5703,28 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   apple: { icon: 'fruitround', color: '#c94a3d' },
   plum: { icon: 'fruitround', color: '#6e4a78' },
   mirefig: { icon: 'fruitround', color: '#8a6a45' },
+  butter: { icon: 'butterpat', color: '#e8c04c' },
+  soft_cheese: { icon: 'cheesewedge', color: '#efe9d4' },
+  hard_cheese: { icon: 'cheesewedge', color: '#d8b45c' },
+  cooking_oil: { icon: 'jug', color: '#e0c46a' },
+  cider: { icon: 'jug', color: '#d8963c' },
+  vinegar: { icon: 'vial', color: '#c9a86a' },
+  pickled_cabbage: { icon: 'jar', color: '#a3b877' },
+  farmhouse_ale: { icon: 'jug', color: '#b8862e' },
+  honeybrew: { icon: 'jug', color: '#e0a83c' },
+  smoked_beef: { icon: 'stew', color: '#8a4a38' },
+  smoked_eel: { icon: 'stew', color: '#6e5a4a' },
+  dried_sagewort: { icon: 'herbbundle', color: '#7a9c6e' },
+  dried_moonbell: { icon: 'herbbundle', color: '#8f9ed6' },
+  dried_bittercress: { icon: 'herbbundle', color: '#5e7a52' },
+  honey: { icon: 'honeypot', color: '#e0a83c' },
+  beeswax: { icon: 'butterpat', color: '#d8c98e' },
+  buttered_potatoes: { icon: 'stew', color: '#d8b45c' },
+  panfried_trout: { icon: 'stew', color: '#c9915c' },
+  ploughmans_board: { icon: 'cakeicon', color: '#c9a86a' },
+  travelers_draught: { icon: 'bottle', color: '#7a9c6e' },
+  moonlit_salve: { icon: 'jar', color: '#8f9ed6' },
+  ironroot_draught: { icon: 'bottle', color: '#a8383d' },
   wool: { icon: 'woolfleece', color: '#e8e2d4' },
   truffle: { icon: 'trufflelump', color: '#4a3a30' },
   chick_crate: { icon: 'crate_young', color: '#c9a86a' },
@@ -6024,6 +6214,13 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   mushroom_log: { icon: 'mushlog', color: '#5f4426' },
   growing_frame: { icon: 'framebuild', color: '#8a6234' },
   feed_trough: { icon: 'troughbuild', color: '#6e5433' },
+  windmill: { icon: 'millbuild', color: '#8d8798' },
+  churn: { icon: 'churnbuild', color: '#7d5a2e' },
+  press: { icon: 'pressbuild', color: '#6e5433' },
+  keg: { icon: 'barrel', color: '#94693a' },
+  smoker: { icon: 'smokerbuild', color: '#55505e' },
+  drying_rack: { icon: 'rackbuild', color: '#7d5a2e' },
+  apiary: { icon: 'hivebuild', color: '#c9a86a' },
   enchanting_table: { icon: 'tome', color: '#7a6aa8' },
   barrel: { icon: 'barrel', color: '#94693a' },
   crate: { icon: 'crate', color: '#a5793f' },

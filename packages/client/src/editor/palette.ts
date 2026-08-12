@@ -86,6 +86,8 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.TanningRack, Tile.Loom, Tile.CarvingBench, Tile.EnchantingTable,
       Tile.Sawhorse, Tile.BeastPen, Tile.CompostBin, Tile.Well, Tile.IrrigationChannel,
       Tile.MushroomLog, Tile.GrowingFrame, Tile.FeedTrough,
+      Tile.Windmill, Tile.ButterChurn, Tile.FruitPress, Tile.BrewKeg,
+      Tile.Smoker, Tile.DryingRack, Tile.Apiary,
       Tile.BankChest, Tile.ShopCounter,
     ],
   },

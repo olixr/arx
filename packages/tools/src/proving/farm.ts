@@ -239,6 +239,7 @@ async function stockAct(c: Client, targetEid: number, needle: string, label = ne
 
 async function main(): Promise<void> {
   let hb2: ReturnType<typeof setInterval> | null = null;
+  let hb3: ReturnType<typeof setInterval> | null = null;
   const c = new Client();
   await c.open();
   c.send({ t: 'hello', v: PROTOCOL_VERSION });
@@ -487,7 +488,7 @@ async function main(): Promise<void> {
 
   } // end Phase 1 chapter
 
-  if (FROM !== 'yard') {
+  if (FROM === 'all' || FROM === 'field') {
   // ================= THE FULL FIELD (Phase 2) =====================
   // A fresh orchardist with a clean pack (the first farmer's slots
   // are full of honest harvest litter — a real lesson: non-stackable
@@ -604,6 +605,7 @@ async function main(): Promise<void> {
 
   } // end Phase 2 chapter
 
+  if (FROM !== 'work') {
   // ================= THE ANIMALS OF THE YARD (Phase 3) =============
   // A fresh drover with a clean pack, on the orchardist's proven
   // ground (the yard rises where the field already took).
@@ -613,7 +615,7 @@ async function main(): Promise<void> {
   dc.send({ t: 'register', user: `drover_${STAMP}`, pass: 'proving123', name: `Drover ${STAMP}` });
   const w3 = await dc.waitFor((m) => m.t === 'welcome', 'welcome (drover)');
   dc.eid = w3.eid;
-  const hb3 = setInterval(() => dc.send({ t: 'input', frame: { seq: dc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } }), 500);
+  hb3 = setInterval(() => dc.send({ t: 'input', frame: { seq: dc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } }), 500);
   await say(dc, '/give board 3');
   await say(dc, '/give twine 1');
   await say(dc, '/give chick_crate');
@@ -721,9 +723,89 @@ async function main(): Promise<void> {
   await stockAct(dc, hen, 'lead Henrietta back to the drover trade');
   receipt('the lead walks one home at half worth', dc.count('drovers_lead') === 0 && dc.count('coins') >= 15, `coins=${dc.count('coins')}`);
 
+  } // end Phase 3 chapter
+
+  if (FROM === 'all' || FROM === 'work') {
+  // ================= THE WORKING YARD (Phase 4) ====================
+  // A fresh miller on flat ground: the batch clock, the weakest
+  // measure, and the hive.
+  const wc = new Client();
+  await wc.open();
+  wc.send({ t: 'hello', v: PROTOCOL_VERSION });
+  wc.send({ t: 'register', user: `miller_${STAMP}`, pass: 'proving123', name: `Miller ${STAMP}` });
+  const w4 = await wc.waitFor((m) => m.t === 'welcome', 'welcome (miller)');
+  wc.eid = w4.eid;
+  const hb4 = setInterval(() => wc.send({ t: 'input', frame: { seq: wc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } }), 500);
+  await say(wc, '/xp cooking 2000000');
+  await say(wc, '/xp construction 2000000');
+  await say(wc, '/xp farming 2000000');
+  await say(wc, '/give board 20');
+  await say(wc, '/give copper_ore 6');
+  await say(wc, '/give cloth 4');
+  await say(wc, '/give bronze_bar 2');
+  await say(wc, '/give wheat 4');
+  await say(wc, '/give milk_fine 2');
+  {
+    let landed = false;
+    for (const [mx2, my2] of [[70, 12], [80, 24], [60, 34], [90, 8]]) {
+      try {
+        await tp(wc, bx + mx2!, by + my2!);
+        landed = true;
+        break;
+      } catch {
+        // Next course.
+      }
+    }
+    if (!landed) throw new Error('no mill course landed');
+  }
+  await say(wc, '/clearfarm 8');
+  const wfx = Math.floor(wc.pos!.x);
+  const wfy = Math.floor(wc.pos!.y);
+
+  // The windmill: load a batch, refuse the early hand, hurry, collect.
+  await build(wc, 'windmill', wfx + 1, wfy);
+  let mkw = wc.mark();
+  wc.send({ t: 'workstart', tx: wfx + 1, ty: wfy, recipe: 'work_mill_flour', qty: 2 });
+  await line(wc, 'work begins', mkw);
+  receipt('the mill takes its batch and starts the clock', true);
+  mkw = wc.mark();
+  wc.send({ t: 'interact', tx: wfx + 1, ty: wfy });
+  await line(wc, 'The work goes on', mkw);
+  receipt('an early hand is told to wait, spoken', true);
+  await say(wc, '/grow');
+  mkw = wc.mark();
+  wc.send({ t: 'interact', tx: wfx + 1, ty: wfy });
+  await line(wc, 'You collect', mkw, 'mill collect');
+  receipt('the hurried batch pays double flour', wc.count('flour') >= 4, `flour=${wc.count('flour')}`);
+
+  // The churn: fine milk in, fine butter out (the weakest measure).
+  await build(wc, 'churn', wfx - 1, wfy);
+  mkw = wc.mark();
+  wc.send({ t: 'workstart', tx: wfx - 1, ty: wfy, recipe: 'work_churn_butter', qty: 2 });
+  await line(wc, 'work begins', mkw);
+  await say(wc, '/grow');
+  mkw = wc.mark();
+  wc.send({ t: 'interact', tx: wfx - 1, ty: wfy });
+  await line(wc, 'You collect', mkw, 'churn collect');
+  receipt('THE WEAKEST MEASURE: fine milk churns fine butter', wc.count('butter_fine') >= 2, `fine=${wc.count('butter_fine')}`);
+
+  // The hive: settle, hurry, and take fair comb on bare ground.
+  await build(wc, 'apiary', wfx, wfy + 1);
+  mkw = wc.mark();
+  wc.send({ t: 'interact', tx: wfx, ty: wfy + 1 });
+  await line(wc, 'The bees settle', mkw);
+  await say(wc, '/grow');
+  mkw = wc.mark();
+  wc.send({ t: 'interact', tx: wfx, ty: wfy + 1 });
+  await line(wc, 'comb', mkw, 'hive collect');
+  receipt('the hive pays honey and wax on its own clock', wc.count('honey') >= 1 && wc.count('beeswax') >= 1, `honey=${wc.count('honey')} wax=${wc.count('beeswax')}`);
+
+  clearInterval(hb4);
+  } // end Phase 4 chapter
+
   clearInterval(heartbeat);
   if (hb2) clearInterval(hb2);
-  clearInterval(hb3);
+  if (hb3) clearInterval(hb3);
   console.log(`\nTHE SOIL, THE FIELD, AND THE YARD: ${passed} receipts, all honest.`);
   process.exit(0);
 }

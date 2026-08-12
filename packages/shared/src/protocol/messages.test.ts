@@ -177,3 +177,11 @@ test('THE ANIMALS OF THE YARD verbs walk the whitelist whole', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'stockname', slot: -1, name: 'x' })), null);
   assert.equal(parseC2S(JSON.stringify({ t: 'stockname', slot: 0, name: 'x'.repeat(25) })), null);
 });
+
+test('THE WORKING YARD verbs walk the whitelist whole', () => {
+  const w = parseC2S(JSON.stringify({ t: 'workstart', tx: 2, ty: -7, recipe: 'work_mill_flour', qty: 5 }));
+  assert.deepEqual(w, { t: 'workstart', tx: 2, ty: -7, recipe: 'work_mill_flour', qty: 5 });
+  assert.equal(parseC2S(JSON.stringify({ t: 'workstart', tx: 0, ty: 0, recipe: 'x', qty: 0 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'workstart', tx: 0, ty: 0, recipe: 'x', qty: 51 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'workstart', tx: 0.5, ty: 0, recipe: 'x', qty: 1 })), null);
+});

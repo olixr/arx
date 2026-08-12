@@ -479,6 +479,16 @@ export enum Tile {
    * while a herd still answers to it. Solid.
    */
   FeedTrough = 280,
+  // THE WORKING YARD (farming v2 Phase 4): the processing stations.
+  // Every one holds ONE wall-clock job (station_jobs) that runs while
+  // you wander; the apiary keeps its own bee-clock. All solid.
+  Windmill = 281,
+  ButterChurn = 282,
+  FruitPress = 283,
+  BrewKeg = 284,
+  Smoker = 285,
+  DryingRack = 286,
+  Apiary = 287,
 }
 
 export enum Detail {
@@ -866,6 +876,13 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.PalegillRipe]: { name: 'ripe palegill', solid: true, color: '#5f4426', raised: true, topColor: '#d8d2c4' },
   [Tile.GrowingFrame]: { name: 'growing frame', solid: false, color: '#6b4f33', variants: ['#654a30'] },
   [Tile.FeedTrough]: { name: 'feed trough', solid: true, color: '#6e5433', raised: true, topColor: '#96703f' },
+  [Tile.Windmill]: { name: 'windmill', solid: true, color: '#8d8798', raised: true, topColor: '#a8794a' },
+  [Tile.ButterChurn]: { name: 'butter churn', solid: true, color: '#7d5a2e', raised: true, topColor: '#a8794a' },
+  [Tile.FruitPress]: { name: 'fruit press', solid: true, color: '#6e5433', raised: true, topColor: '#96703f' },
+  [Tile.BrewKeg]: { name: 'brew keg', solid: true, color: '#94693a', raised: true, topColor: '#7d5a2e' },
+  [Tile.Smoker]: { name: 'smoker', solid: true, color: '#55505e', raised: true, topColor: '#6e6a75' },
+  [Tile.DryingRack]: { name: 'drying rack', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6234' },
+  [Tile.Apiary]: { name: 'apiary', solid: true, color: '#c9a86a', raised: true, topColor: '#e0c48e' },
   [Tile.PikeHole]: { name: 'pike hole', solid: true, color: '#39679c', variants: ['#366293'] },
   [Tile.EelRun]: { name: 'eel run', solid: true, color: '#31578c', variants: ['#2e5284'] },
   [Tile.SalmonRun]: { name: 'salmon run', solid: true, color: '#457bbd', variants: ['#4174b3'] },
