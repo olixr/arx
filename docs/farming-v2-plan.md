@@ -317,6 +317,47 @@ The demand side: everything the farm makes, somebody wants.
 
 ## 8. The epic ledger (filled as phases ship)
 
+### THE CURATED PASS — the full-art audit after the close (2026-08-11)
+
+The whole wave was audited visually after Phase 6: every crop at mid
+and ripe on the FARM SHEET (`farmlab.html`, riglab's sibling — checked
+in as the standing farm-art audit page), then every station, prop, and
+care state walked in the live game on a lane-3 rig with screenshots.
+Strong on both scales and left alone: the founding five crops, roots,
+cabbage, gourds, barley, herbs, windmill, well, compost bin, trough,
+channels, dovecote, drying rack, hay bale, churn, animals. Seven
+pieces failed the bespoke bar and were reworked:
+
+- **Orchard trees**: full repaint — trunk became a tapered SLAB with a
+  lit lane (mass, never a stroked line), and each species got its own
+  silhouette: apple a broad dome, plum a tall oval with bloom-dusted
+  fruit, mirefig a marsh-leaning umbrella with hanging fig pairs and a
+  forked prop root. Heights rose (1.95/2.1/1.8) — they read TREE.
+- **Kingsquash ripe**: no more pale orb beside onion/cabbage — a
+  two-story TURBAN (orange banded base tier, ribbed cream crown dome)
+  under a gold star CORONET calyx; mid wears prince stripes.
+- **Duskthorn ripe**: left bittercress's floret path; now black-violet
+  thorn whips tipped with gloom-berry trios under a dusk haze.
+- **Bramble**: canes doubled to woody arches (shadow+lit pass), TWO
+  five-drupe clusters per cane — LADEN reads across a field.
+- **Scarecrow**: scaled to LOOM (1.3t pole, past the body ruler) with
+  straw skirt, patch coat, stitched sack face, broad brim — crow kept.
+- **Keg / press / smoker / apiary**: keg went deep oak on chocked
+  bolsters with iron hoops + brass spigot + catch pail (was a pink
+  blob); press got frame slabs, screw block, hooped basket, juice
+  beads (was crate-with-a-stick); smoker became warm coursed masonry
+  with a capped iron flue, arched ember mouth breathing while curing
+  (was a black monolith); apiary became a whitewashed stacked-super
+  hive with gabled rain board, entrance slot, landing lip, honey stain
+  (was a bench). Windmill sails got laced warm canvas + a dark tip.
+- **Silo**: timber staves + iron hoops + grain hatch column on a stone
+  footing — no longer the windmill's grey twin.
+
+Audit lessons (rig-lab workflow): `use` and `troughadd` are
+SLOT-addressed (the whitelist lesson bites harnesses too); `/grow` is
+radius-bound to the speaker; trees fade translucent when the player
+stands behind them — do not misread the fade as missing crown art.
+
 ### THE EPIC IS COMPLETE — all six phases shipped 2026-08-11
 
 prove:farm = 41 receipts across six chapters (soil / field / yard /

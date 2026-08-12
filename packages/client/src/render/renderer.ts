@@ -22798,14 +22798,26 @@ export class Renderer {
               ctx.moveTo(hubX, hubY);
               ctx.lineTo(ex, ey);
               ctx.stroke();
-              ctx.fillStyle = 'rgba(238, 232, 216, 0.85)';
               ctx.save();
               ctx.translate((hubX + ex) / 2, (hubY + ey) / 2);
               ctx.rotate(Math.atan2(ey - hubY, ex - hubX));
-              ctx.fillRect(-s * 0.26, s * 0.015, s * 0.52, s * 0.11);
-              ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
-              ctx.lineWidth = Math.max(1, s * 0.015);
-              ctx.strokeRect(-s * 0.26, s * 0.015, s * 0.52, s * 0.11);
+              // The cloth: warm laced canvas with a dark tip band so
+              // the turning cross reads against sky and field alike.
+              ctx.fillStyle = 'rgba(236, 224, 194, 0.95)';
+              ctx.fillRect(-s * 0.26, s * 0.015, s * 0.52, s * 0.13);
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.strokeRect(-s * 0.26, s * 0.015, s * 0.52, s * 0.13);
+              ctx.strokeStyle = 'rgba(150, 128, 90, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              for (const u of [-0.12, 0.02, 0.16]) {
+                ctx.beginPath();
+                ctx.moveTo(u * s, s * 0.015);
+                ctx.lineTo(u * s, s * 0.145);
+                ctx.stroke();
+              }
+              ctx.fillStyle = '#8a4a32';
+              ctx.fillRect(s * 0.2, s * 0.015, s * 0.06, s * 0.13);
               ctx.restore();
             }
             ctx.fillStyle = '#3a2c18';
@@ -22837,41 +22849,102 @@ export class Renderer {
             const job = farmJobs.get(`${tx},${ty}`);
             const working = !!job && job.qty > 0;
             if (tile === Tile.Scarecrow) {
-              // THE DRESSED FARM: cross-pole, stuffed coat, straw
-              // hands, a sack head under a brim — and one crow who
+              // THE DRESSED FARM: a keeper that LOOMS — the pole
+              // stands taller than the body ruler, wide cross-arms, a
+              // stuffed patch coat over a straw skirt, sack head with
+              // stitched eyes under a broad brim — and one crow who
               // was never fooled, riding the arm.
               ctx.strokeStyle = '#5f4426';
-              ctx.lineWidth = Math.max(1.6, s * 0.05);
+              ctx.lineWidth = Math.max(2, s * 0.065);
               ctx.beginPath();
               ctx.moveTo(p.x, yB);
-              ctx.lineTo(p.x, yB - s * 0.85);
-              ctx.moveTo(p.x - s * 0.3, yB - s * 0.6);
-              ctx.lineTo(p.x + s * 0.3, yB - s * 0.6);
+              ctx.lineTo(p.x, yB - s * 1.3);
+              ctx.moveTo(p.x - s * 0.42, yB - s * 0.98);
+              ctx.lineTo(p.x + s * 0.42, yB - s * 0.98);
               ctx.stroke();
+              // Straw skirt spilling below the coat hem.
+              ctx.strokeStyle = '#c9a64b';
+              ctx.lineWidth = Math.max(1, s * 0.024);
+              for (let i = 0; i < 5; i++) {
+                const sx2 = p.x - s * 0.12 + i * s * 0.06;
+                const swy = ((h >> i) % 3) * s * 0.02;
+                ctx.beginPath();
+                ctx.moveTo(sx2, yB - s * 0.62);
+                ctx.lineTo(sx2 + (i - 2) * s * 0.02, yB - s * 0.42 + swy);
+                ctx.stroke();
+              }
+              // The coat: a stuffed body with a lit shoulder band and
+              // one stitched patch (hash picks the side).
               ctx.fillStyle = '#8a6a45';
               ctx.beginPath();
-              ctx.roundRect(p.x - s * 0.16, yB - s * 0.66, s * 0.32, s * 0.34, s * 0.05);
+              ctx.roundRect(p.x - s * 0.22, yB - s * 1.06, s * 0.44, s * 0.46, s * 0.07);
               ctx.fill();
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
-              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.lineWidth = Math.max(1.2, s * 0.024);
               ctx.stroke();
-              ctx.fillStyle = '#c9a64b';
+              ctx.fillStyle = shade('#8a6a45', 20);
+              ctx.fillRect(p.x - s * 0.18, yB - s * 1.03, s * 0.36, s * 0.06);
+              const patchX = p.x + ((h & 1) ? -1 : 1) * s * 0.09;
+              ctx.fillStyle = '#6e5433';
+              ctx.fillRect(patchX - s * 0.05, yB - s * 0.82, s * 0.1, s * 0.09);
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.strokeRect(patchX - s * 0.05, yB - s * 0.82, s * 0.1, s * 0.09);
+              // Straw hands bursting off both sleeve ends.
+              ctx.strokeStyle = '#c9a64b';
+              ctx.lineWidth = Math.max(1, s * 0.022);
               for (const u of [-1, 1]) {
-                ctx.fillRect(p.x + u * s * 0.28, yB - s * 0.64, s * 0.06 * u, s * 0.07);
+                for (let k = 0; k < 3; k++) {
+                  ctx.beginPath();
+                  ctx.moveTo(p.x + u * s * 0.4, yB - s * 0.98);
+                  ctx.lineTo(p.x + u * (s * 0.48 + k * s * 0.02), yB - s * (0.94 + k * 0.05));
+                  ctx.stroke();
+                }
               }
+              // The sack head: stitched eyes and a seam mouth under a
+              // broad shading brim.
               ctx.fillStyle = '#d8c9a0';
               ctx.beginPath();
-              facetCircle(ctx, p.x, yB - s * 0.78, s * 0.11, 6, h, 0.8);
+              facetCircle(ctx, p.x, yB - s * 1.22, s * 0.14, 6, h, 0.8);
               ctx.fill();
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1.2, s * 0.022);
+              ctx.stroke();
+              ctx.strokeStyle = '#6e5433';
+              ctx.lineWidth = Math.max(1, s * 0.018);
+              for (const u of [-1, 1]) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + u * s * 0.07 - s * 0.02, yB - s * 1.25);
+                ctx.lineTo(p.x + u * s * 0.07 + s * 0.02, yB - s * 1.21);
+                ctx.moveTo(p.x + u * s * 0.07 - s * 0.02, yB - s * 1.21);
+                ctx.lineTo(p.x + u * s * 0.07 + s * 0.02, yB - s * 1.25);
+                ctx.stroke();
+              }
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.05, yB - s * 1.14);
+              ctx.lineTo(p.x + s * 0.05, yB - s * 1.13);
               ctx.stroke();
               ctx.fillStyle = '#6e5433';
-              ctx.fillRect(p.x - s * 0.15, yB - s * 0.88, s * 0.3, s * 0.045);
+              ctx.beginPath();
+              ctx.roundRect(p.x - s * 0.2, yB - s * 1.36, s * 0.4, s * 0.055, s * 0.02);
+              ctx.fill();
+              ctx.fillStyle = shade('#6e5433', 16);
+              ctx.fillRect(p.x - s * 0.09, yB - s * 1.44, s * 0.18, s * 0.09);
+              // The unfooled crow, glossy black with a bone beak.
               ctx.fillStyle = '#241a2e';
               ctx.beginPath();
-              ctx.ellipse(p.x + s * 0.24, yB - s * 0.68, s * 0.055, s * 0.045, 0, 0, Math.PI * 2);
+              ctx.ellipse(p.x + s * 0.34, yB - s * 1.08, s * 0.07, s * 0.055, 0, 0, Math.PI * 2);
               ctx.fill();
-              ctx.fillRect(p.x + s * 0.27, yB - s * 0.7, s * 0.05, s * 0.02);
+              ctx.beginPath();
+              ctx.arc(p.x + s * 0.39, yB - s * 1.13, s * 0.035, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#c9b98a';
+              ctx.beginPath();
+              ctx.moveTo(p.x + s * 0.42, yB - s * 1.14);
+              ctx.lineTo(p.x + s * 0.47, yB - s * 1.12);
+              ctx.lineTo(p.x + s * 0.42, yB - s * 1.1);
+              ctx.closePath();
+              ctx.fill();
             } else if (tile === Tile.HayBale) {
               // A rolled bale: spiral end grain, strap twine, loose
               // straws at the skirt.
@@ -22901,42 +22974,72 @@ export class Renderer {
               ctx.fillRect(p.x - s * 0.4, yB - s * 0.03, s * 0.08, s * 0.025);
               ctx.fillRect(p.x + s * 0.34, yB - s * 0.04, s * 0.07, s * 0.025);
             } else if (tile === Tile.Silo) {
-              // The tall keep of the harvest: staved tower, iron
-              // bands, conical cap with its sunlit face.
+              // The tall keep of the harvest: a TIMBER-staved drum on
+              // a stone footing, iron hoops, conical shake cap with a
+              // sunlit west face and a grain hatch column — warm
+              // casework, never the windmill's grey twin.
               const sh = s * 1.7;
-              ctx.fillStyle = '#8d8798';
-              ctx.fillRect(p.x - s * 0.26, yB - sh, s * 0.52, sh);
+              const staveC = '#96703f';
+              ctx.fillStyle = '#6e6a75';
+              ctx.fillRect(p.x - s * 0.29, yB - s * 0.16, s * 0.58, s * 0.16);
+              ctx.fillStyle = shade('#6e6a75', 18);
+              ctx.fillRect(p.x - s * 0.29, yB - s * 0.16, s * 0.58, s * 0.04);
+              ctx.fillStyle = staveC;
+              ctx.fillRect(p.x - s * 0.26, yB - sh, s * 0.52, sh - s * 0.14);
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
               ctx.lineWidth = Math.max(1.4, s * 0.026);
-              ctx.strokeRect(p.x - s * 0.26, yB - sh, s * 0.52, sh);
-              ctx.fillStyle = shade('#8d8798', 16);
-              ctx.fillRect(p.x - s * 0.22, yB - sh, s * 0.14, sh);
-              ctx.strokeStyle = 'rgba(26, 20, 36, 0.3)';
-              ctx.lineWidth = Math.max(1, s * 0.016);
-              for (const fy2 of [0.3, 0.6, 0.9, 1.25]) {
+              ctx.strokeRect(p.x - s * 0.26, yB - sh, s * 0.52, sh - s * 0.14);
+              // Stave seams, then the lit west lane over them.
+              ctx.strokeStyle = 'rgba(26, 16, 8, 0.3)';
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              for (const u of [-0.12, 0.02, 0.15]) {
                 ctx.beginPath();
-                ctx.moveTo(p.x - s * 0.26, yB - s * fy2);
-                ctx.lineTo(p.x + s * 0.26, yB - s * fy2);
+                ctx.moveTo(p.x + u * s * 2 * 0.26, yB - sh + s * 0.04);
+                ctx.lineTo(p.x + u * s * 2 * 0.26, yB - s * 0.18);
                 ctx.stroke();
               }
-              ctx.fillStyle = '#a8794a';
+              ctx.fillStyle = shade(staveC, 22);
+              ctx.fillRect(p.x - s * 0.22, yB - sh, s * 0.12, sh - s * 0.14);
+              // Iron hoops binding the drum.
+              ctx.fillStyle = '#55505e';
+              for (const fy2 of [0.34, 0.78, 1.22]) {
+                ctx.fillRect(p.x - s * 0.27, yB - s * fy2, s * 0.54, s * 0.045);
+                ctx.fillStyle = '#6e6a78';
+                ctx.fillRect(p.x - s * 0.27, yB - s * fy2, s * 0.54, s * 0.016);
+                ctx.fillStyle = '#55505e';
+              }
+              // The grain hatch column: stacked doors up the face,
+              // the low one open on the dark hoard.
+              ctx.fillStyle = shade(staveC, -22);
+              for (const fy2 of [0.62, 1.05]) {
+                ctx.fillRect(p.x - s * 0.07, yB - s * fy2, s * 0.14, s * 0.14);
+                ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+                ctx.lineWidth = Math.max(1, s * 0.016);
+                ctx.strokeRect(p.x - s * 0.07, yB - s * fy2, s * 0.14, s * 0.14);
+              }
+              ctx.fillStyle = '#241a2e';
+              ctx.fillRect(p.x - s * 0.07, yB - s * 0.3, s * 0.14, s * 0.16);
+              ctx.fillStyle = '#c9a64b';
+              ctx.fillRect(p.x - s * 0.05, yB - s * 0.18, s * 0.1, s * 0.03);
+              // The conical shake cap, lit west, finial peg on top.
+              ctx.fillStyle = '#7d5a2e';
               ctx.beginPath();
-              ctx.moveTo(p.x - s * 0.32, yB - sh);
-              ctx.lineTo(p.x, yB - sh - s * 0.34);
-              ctx.lineTo(p.x + s * 0.32, yB - sh);
+              ctx.moveTo(p.x - s * 0.34, yB - sh);
+              ctx.lineTo(p.x, yB - sh - s * 0.38);
+              ctx.lineTo(p.x + s * 0.34, yB - sh);
               ctx.closePath();
               ctx.fill();
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
               ctx.stroke();
-              ctx.fillStyle = shade('#a8794a', 20);
+              ctx.fillStyle = shade('#7d5a2e', 22);
               ctx.beginPath();
-              ctx.moveTo(p.x - s * 0.32, yB - sh);
-              ctx.lineTo(p.x, yB - sh - s * 0.34);
+              ctx.moveTo(p.x - s * 0.34, yB - sh);
+              ctx.lineTo(p.x, yB - sh - s * 0.38);
               ctx.lineTo(p.x - s * 0.02, yB - sh);
               ctx.closePath();
               ctx.fill();
-              ctx.fillStyle = '#3a2c18';
-              ctx.fillRect(p.x - s * 0.08, yB - s * 0.3, s * 0.16, s * 0.3);
+              ctx.fillStyle = '#5f4426';
+              ctx.fillRect(p.x - s * 0.025, yB - sh - s * 0.46, s * 0.05, s * 0.1);
             } else if (tile === Tile.Dovecote) {
               // A whitewashed house on a post, arched doors, and the
               // tenants circling home.
@@ -23012,95 +23115,234 @@ export class Renderer {
               ctx.fillRect(p.x - s * 0.02, yB - bh - s * 0.3 + pump, s * 0.04, s * 0.3);
               ctx.fillRect(p.x - s * 0.09, yB - bh - s * 0.32 + pump, s * 0.18, s * 0.05);
             } else if (tile === Tile.FruitPress) {
-              // The screw press: post frame, basket, drip tray — the
-              // spindle sinks and juice beads while a batch runs.
-              ctx.fillStyle = '#6e5433';
-              ctx.fillRect(p.x - s * 0.3, yB - s * 0.72, s * 0.08, s * 0.72);
-              ctx.fillRect(p.x + s * 0.22, yB - s * 0.72, s * 0.08, s * 0.72);
-              ctx.fillRect(p.x - s * 0.34, yB - s * 0.74, s * 0.68, s * 0.07);
+              // The screw press: heavy post slabs with lit arrises, a
+              // crossbeam carrying the great screw block, a staved
+              // basket over a dark drip tray — the spindle sinks and
+              // juice beads while a batch runs. Frame with MASS: the
+              // press must never read as a crate with a stick.
+              const frameC = '#6e5433';
+              for (const u of [-1, 1]) {
+                const fx2 = p.x + u * s * 0.28;
+                ctx.fillStyle = shade(frameC, u < 0 ? 4 : -10);
+                ctx.fillRect(fx2 - s * 0.06, yB - s * 0.78, s * 0.12, s * 0.78);
+                ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+                ctx.lineWidth = Math.max(1, s * 0.02);
+                ctx.strokeRect(fx2 - s * 0.06, yB - s * 0.78, s * 0.12, s * 0.78);
+                ctx.fillStyle = shade(frameC, 22);
+                ctx.fillRect(fx2 - s * 0.06, yB - s * 0.78, s * 0.035, s * 0.78);
+                // Foot chock.
+                ctx.fillStyle = shade(frameC, -18);
+                ctx.fillRect(fx2 - s * 0.09, yB - s * 0.05, s * 0.18, s * 0.05);
+              }
+              ctx.fillStyle = frameC;
+              ctx.fillRect(p.x - s * 0.38, yB - s * 0.82, s * 0.76, s * 0.09);
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
               ctx.lineWidth = Math.max(1, s * 0.02);
-              ctx.strokeRect(p.x - s * 0.34, yB - s * 0.74, s * 0.68, s * 0.07);
+              ctx.strokeRect(p.x - s * 0.38, yB - s * 0.82, s * 0.76, s * 0.09);
+              ctx.fillStyle = shade(frameC, 20);
+              ctx.fillRect(p.x - s * 0.34, yB - s * 0.81, s * 0.68, s * 0.028);
+              // The screw block and spindle, sunk deeper mid-batch.
+              const sink = working ? s * 0.1 : 0;
+              ctx.fillStyle = '#55505e';
+              ctx.fillRect(p.x - s * 0.07, yB - s * 0.73, s * 0.14, s * 0.09);
               ctx.fillStyle = '#5f4426';
-              ctx.fillRect(p.x - s * 0.025, yB - s * 0.67, s * 0.05, s * (working ? 0.3 : 0.2));
+              ctx.fillRect(p.x - s * 0.03, yB - s * 0.66, s * 0.06, s * 0.24 + sink);
+              ctx.fillStyle = shade('#5f4426', 18);
+              ctx.fillRect(p.x - s * 0.03, yB - s * 0.66, s * 0.02, s * 0.24 + sink);
+              // The pressing plate riding the spindle's foot.
+              ctx.fillStyle = shade(frameC, -8);
+              ctx.fillRect(p.x - s * 0.14, yB - s * 0.42 + sink, s * 0.28, s * 0.045);
+              // The staved basket, hooped, over its dark tray.
               ctx.fillStyle = '#96703f';
               ctx.beginPath();
-              ctx.roundRect(p.x - s * 0.18, yB - s * 0.34, s * 0.36, s * 0.26, s * 0.05);
+              ctx.roundRect(p.x - s * 0.18, yB - s * 0.36, s * 0.36, s * 0.28, s * 0.05);
               ctx.fill();
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
               ctx.stroke();
               ctx.fillStyle = shade('#96703f', -18);
-              for (const u of [-0.08, 0.03]) ctx.fillRect(p.x + u * s, yB - s * 0.32, s * 0.025, s * 0.22);
-              ctx.fillStyle = '#8a6234';
+              for (const u of [-0.1, 0.01, 0.11]) ctx.fillRect(p.x + u * s, yB - s * 0.34, s * 0.022, s * 0.24);
+              ctx.fillStyle = '#c9a86a';
+              ctx.fillRect(p.x - s * 0.18, yB - s * 0.26, s * 0.36, s * 0.028);
+              ctx.fillStyle = '#3a2c18';
               ctx.beginPath();
-              ctx.ellipse(p.x, yB - s * 0.04, s * 0.26, syT * 0.08, 0, 0, Math.PI * 2);
+              ctx.ellipse(p.x, yB - s * 0.04, s * 0.27, syT * 0.08, 0, 0, Math.PI * 2);
               ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.stroke();
               if (working) {
+                // Juice beads off the basket lip into the tray.
                 const dr = (t * 1.4 + h * 0.3) % 1;
-                ctx.fillStyle = `rgba(216, 150, 60, ${0.8 * (1 - dr)})`;
-                ctx.fillRect(p.x + s * 0.12, yB - s * 0.1 + dr * s * 0.08, s * 0.025, s * 0.05);
+                ctx.fillStyle = `rgba(216, 150, 60, ${0.85 * (1 - dr)})`;
+                ctx.fillRect(p.x + s * 0.13, yB - s * 0.12 + dr * s * 0.09, s * 0.028, s * 0.055);
+                ctx.fillStyle = 'rgba(216, 150, 60, 0.5)';
+                ctx.beginPath();
+                ctx.ellipse(p.x + s * 0.1, yB - s * 0.045, s * 0.07, syT * 0.02, 0, 0, Math.PI * 2);
+                ctx.fill();
               }
             } else if (tile === Tile.BrewKeg) {
-              // The great keg on its cradle: banded belly, spigot,
-              // and a slow blip of foam at the bung while it brews.
-              ctx.fillStyle = '#5f4426';
-              ctx.fillRect(p.x - s * 0.34, yB - s * 0.1, s * 0.12, s * 0.1);
-              ctx.fillRect(p.x + s * 0.22, yB - s * 0.1, s * 0.12, s * 0.1);
-              ctx.fillStyle = '#94693a';
+              // The great keg on its cradle: deep-oak belly laid on
+              // chocked bolsters, TWO iron hoops and a stave seam, a
+              // proud brass spigot with its catch pail, foam blipping
+              // at the bung while it brews. Oak reads OAK — never the
+              // pink of a scrubbed pig.
+              const oakC = '#6b4a26';
+              ctx.fillStyle = '#4a3520';
+              for (const u of [-1, 1]) {
+                ctx.fillRect(p.x + u * s * 0.24 - s * 0.07, yB - s * 0.12, s * 0.14, s * 0.12);
+                ctx.fillStyle = shade('#4a3520', 14);
+                ctx.fillRect(p.x + u * s * 0.24 - s * 0.07, yB - s * 0.12, s * 0.14, s * 0.03);
+                ctx.fillStyle = '#4a3520';
+              }
+              ctx.fillStyle = oakC;
               ctx.beginPath();
-              ctx.ellipse(p.x, yB - s * 0.34, s * 0.36, s * 0.28, 0, 0, Math.PI * 2);
+              ctx.ellipse(p.x, yB - s * 0.36, s * 0.37, s * 0.29, 0, 0, Math.PI * 2);
               ctx.fill();
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
-              ctx.lineWidth = Math.max(1.2, s * 0.024);
+              ctx.lineWidth = Math.max(1.4, s * 0.028);
               ctx.stroke();
-              ctx.fillStyle = shade('#94693a', 20);
-              ctx.beginPath();
-              ctx.ellipse(p.x - s * 0.12, yB - s * 0.42, s * 0.12, s * 0.08, -0.4, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.strokeStyle = '#c9a86a';
-              ctx.lineWidth = Math.max(1.2, s * 0.03);
-              for (const u of [-0.16, 0.16]) {
+              // Stave seams following the barrel's run.
+              ctx.strokeStyle = 'rgba(26, 16, 8, 0.35)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              for (const vy of [-0.14, 0.02, 0.16]) {
                 ctx.beginPath();
-                ctx.ellipse(p.x + u * s, yB - s * 0.34, s * 0.3, s * 0.26, 0, -0.6, 0.6);
+                ctx.moveTo(p.x - s * 0.33, yB - s * 0.36 + vy * s);
+                ctx.quadraticCurveTo(p.x, yB - s * 0.36 + vy * s * 1.35, p.x + s * 0.33, yB - s * 0.36 + vy * s);
                 ctx.stroke();
               }
+              // Sun crescent on the upper west quarter.
+              ctx.fillStyle = shade(oakC, 24);
+              ctx.beginPath();
+              ctx.ellipse(p.x - s * 0.13, yB - s * 0.46, s * 0.13, s * 0.075, -0.4, 0, Math.PI * 2);
+              ctx.fill();
+              // Iron hoops, dark with a lit top edge.
+              for (const u of [-0.17, 0.17]) {
+                ctx.strokeStyle = '#3f3a48';
+                ctx.lineWidth = Math.max(1.8, s * 0.045);
+                ctx.beginPath();
+                ctx.ellipse(p.x + u * s, yB - s * 0.36, s * 0.31, s * 0.27, 0, -0.75, 0.75);
+                ctx.stroke();
+                ctx.strokeStyle = '#6e6a78';
+                ctx.lineWidth = Math.max(1, s * 0.014);
+                ctx.beginPath();
+                ctx.ellipse(p.x + u * s - s * 0.012, yB - s * 0.36, s * 0.31, s * 0.27, 0, -0.7, -0.2);
+                ctx.stroke();
+              }
+              // The head disc facing camera-east, ringed.
+              ctx.fillStyle = shade(oakC, -14);
+              ctx.beginPath();
+              ctx.ellipse(p.x + s * 0.3, yB - s * 0.36, s * 0.075, s * 0.24, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.stroke();
+              // The brass spigot low on the head, pail beneath.
+              ctx.fillStyle = '#c9a86a';
+              ctx.fillRect(p.x + s * 0.3, yB - s * 0.24, s * 0.09, s * 0.035);
+              ctx.fillRect(p.x + s * 0.36, yB - s * 0.27, s * 0.03, s * 0.05);
+              ctx.fillStyle = '#5b4028';
+              ctx.beginPath();
+              ctx.moveTo(p.x + s * 0.31, yB - s * 0.12);
+              ctx.lineTo(p.x + s * 0.43, yB - s * 0.12);
+              ctx.lineTo(p.x + s * 0.41, yB);
+              ctx.lineTo(p.x + s * 0.33, yB);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.stroke();
+              // The bung on top; foam blips while the brew talks.
               ctx.fillStyle = '#3a2c18';
-              ctx.fillRect(p.x - s * 0.035, yB - s * 0.16, s * 0.07, s * 0.09);
+              ctx.fillRect(p.x - s * 0.035, yB - s * 0.68, s * 0.07, s * 0.06);
               if (working) {
                 const fz = (t * 0.8 + h * 0.2) % 1;
-                ctx.fillStyle = `rgba(238, 226, 190, ${0.7 * (1 - fz)})`;
+                ctx.fillStyle = `rgba(238, 226, 190, ${0.75 * (1 - fz)})`;
                 ctx.beginPath();
-                ctx.arc(p.x + s * 0.05, yB - s * 0.62 - fz * s * 0.1, s * (0.03 + fz * 0.02), 0, Math.PI * 2);
+                ctx.arc(p.x + s * 0.02, yB - s * 0.72 - fz * s * 0.12, s * (0.032 + fz * 0.022), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(p.x - s * 0.05, yB - s * 0.7 - fz * s * 0.08, s * 0.02, 0, Math.PI * 2);
                 ctx.fill();
               }
             } else if (tile === Tile.Smoker) {
-              // A stone smoke box: firebox mouth aglow and wisps off
-              // the flue while the cure runs.
-              ctx.fillStyle = '#55505e';
+              // The smoke house: warm coursed masonry with a
+              // foreshortened cap, an arched firebox mouth under a
+              // stone lintel, and a capped iron flue — mouth aglow
+              // and wisps off the pipe while the cure runs. A kiln
+              // with a face, never a black monolith.
+              const stoneC = '#7a7284';
+              ctx.fillStyle = stoneC;
               ctx.beginPath();
-              ctx.roundRect(p.x - s * 0.28, yB - s * 0.62, s * 0.56, s * 0.62, s * 0.05);
+              ctx.roundRect(p.x - s * 0.28, yB - s * 0.64, s * 0.56, s * 0.64, s * 0.05);
               ctx.fill();
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
               ctx.lineWidth = Math.max(1.2, s * 0.024);
               ctx.stroke();
-              ctx.fillStyle = shade('#55505e', 16);
-              ctx.fillRect(p.x - s * 0.24, yB - s * 0.6, s * 0.14, s * 0.56);
-              ctx.fillStyle = shade('#55505e', 24);
+              // Coursed stone: staggered joint ticks, hash-jittered.
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.28)';
+              ctx.lineWidth = Math.max(1, s * 0.015);
+              for (let row = 0; row < 3; row++) {
+                const jy = yB - s * (0.5 - row * 0.16);
+                ctx.beginPath();
+                ctx.moveTo(p.x - s * 0.26, jy);
+                ctx.lineTo(p.x + s * 0.26, jy + s * 0.01);
+                ctx.stroke();
+                for (let k = 0; k < 2; k++) {
+                  const jx = p.x - s * 0.16 + ((row + k) % 2) * s * 0.14 + k * s * 0.18 + ((h >> (row + k)) % 3) * s * 0.012;
+                  ctx.beginPath();
+                  ctx.moveTo(jx, jy);
+                  ctx.lineTo(jx, jy - s * 0.14);
+                  ctx.stroke();
+                }
+              }
+              // Lit west lane, then the foreshortened cap slab.
+              ctx.fillStyle = shade(stoneC, 18);
+              ctx.fillRect(p.x - s * 0.24, yB - s * 0.62, s * 0.13, s * 0.58);
+              ctx.fillStyle = shade(stoneC, 26);
               ctx.beginPath();
-              ctx.ellipse(p.x, yB - s * 0.62, s * 0.29, syT * 0.09, 0, 0, Math.PI * 2);
+              ctx.ellipse(p.x, yB - s * 0.64, s * 0.29, syT * 0.09, 0, 0, Math.PI * 2);
               ctx.fill();
-              ctx.fillStyle = '#3a2c18';
-              ctx.fillRect(p.x + s * 0.08, yB - s * 0.7, s * 0.09, s * 0.1);
-              ctx.fillStyle = working ? '#e0813c' : '#241a2e';
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.stroke();
+              // The capped iron flue with its collar.
+              ctx.fillStyle = '#3f3a48';
+              ctx.fillRect(p.x + s * 0.09, yB - s * 0.82, s * 0.09, s * 0.2);
+              ctx.fillStyle = '#55505e';
+              ctx.fillRect(p.x + s * 0.09, yB - s * 0.82, s * 0.03, s * 0.2);
+              ctx.fillStyle = '#3f3a48';
+              ctx.fillRect(p.x + s * 0.06, yB - s * 0.86, s * 0.15, s * 0.045);
+              ctx.fillStyle = '#55505e';
+              ctx.fillRect(p.x + s * 0.065, yB - s * 0.66, s * 0.14, s * 0.035);
+              // The firebox: a stone lintel over an arched mouth that
+              // holds its ember glow while the cure runs.
+              ctx.fillStyle = shade(stoneC, -14);
+              ctx.fillRect(p.x - s * 0.16, yB - s * 0.26, s * 0.32, s * 0.05);
+              ctx.fillStyle = working ? '#3a2214' : '#241a2e';
               ctx.beginPath();
-              ctx.roundRect(p.x - s * 0.12, yB - s * 0.2, s * 0.24, s * 0.14, s * 0.04);
+              ctx.moveTo(p.x - s * 0.11, yB - s * 0.03);
+              ctx.lineTo(p.x - s * 0.11, yB - s * 0.16);
+              ctx.arc(p.x, yB - s * 0.16, s * 0.11, Math.PI, 0);
+              ctx.lineTo(p.x + s * 0.11, yB - s * 0.03);
+              ctx.closePath();
               ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.018);
+              ctx.stroke();
               if (working) {
+                // The ember bed breathes on the beat.
+                const br = 0.6 + Math.sin(t * 2.4 + h) * 0.25;
+                ctx.fillStyle = `rgba(224, 129, 60, ${br})`;
+                ctx.beginPath();
+                ctx.ellipse(p.x, yB - s * 0.07, s * 0.08, s * 0.045, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = `rgba(255, 200, 110, ${br * 0.7})`;
+                ctx.fillRect(p.x - s * 0.025, yB - s * 0.1, s * 0.05, s * 0.03);
                 for (let i = 0; i < 2; i++) {
                   const ph = (t * 0.5 + i * 0.5 + h * 0.1) % 1;
-                  ctx.fillStyle = `rgba(180, 176, 188, ${0.4 * (1 - ph)})`;
+                  ctx.fillStyle = `rgba(180, 176, 188, ${0.45 * (1 - ph)})`;
                   ctx.beginPath();
-                  ctx.ellipse(p.x + s * 0.12 + Math.sin(ph * 5) * s * 0.04, yB - s * 0.74 - ph * s * 0.35, s * 0.05, s * 0.04, 0, 0, Math.PI * 2);
+                  ctx.ellipse(p.x + s * 0.14 + Math.sin(ph * 5) * s * 0.05, yB - s * 0.9 - ph * s * 0.38, s * (0.045 + ph * 0.03), s * 0.04, 0, 0, Math.PI * 2);
                   ctx.fill();
                 }
               }
@@ -23138,41 +23380,85 @@ export class Renderer {
                 }
               }
             } else {
-              // The apiary: a slat hive box on a stand, alighting
-              // board, and a drift of bees once the comb has weight.
+              // The apiary: a whitewashed hive — stacked painted
+              // supers stepping inward on a timber stand, a gabled
+              // rain board on top, dark entrance slot over a landing
+              // lip with a honey stain — and a drift of bees once the
+              // comb has weight. It must say BEEHIVE across the yard,
+              // never garden bench.
               const hive = farmApiaries.get(`${tx},${ty}`);
               const heavy = !!hive && Date.now() - hive.since > 25 * 60_000;
+              const paintC = '#e8e2d0';
+              // The stand: chocked feet under a deck plank.
               ctx.fillStyle = '#5f4426';
-              ctx.fillRect(p.x - s * 0.2, yB - s * 0.1, s * 0.06, s * 0.1);
-              ctx.fillRect(p.x + s * 0.14, yB - s * 0.1, s * 0.06, s * 0.1);
-              ctx.fillStyle = '#c9a86a';
-              for (let k = 0; k < 3; k++) {
+              ctx.fillRect(p.x - s * 0.22, yB - s * 0.1, s * 0.07, s * 0.1);
+              ctx.fillRect(p.x + s * 0.15, yB - s * 0.1, s * 0.07, s * 0.1);
+              ctx.fillStyle = '#6e5433';
+              ctx.fillRect(p.x - s * 0.26, yB - s * 0.14, s * 0.52, s * 0.05);
+              // Three painted supers, wider at the base, weathered
+              // shadow under each course.
+              const tiers: Array<[number, number]> = [
+                [0.42, 0.19],
+                [0.38, 0.17],
+                [0.34, 0.15],
+              ];
+              let ty2 = yB - s * 0.14;
+              for (let k = 0; k < tiers.length; k++) {
+                const [tw2, th2] = tiers[k]!;
+                ty2 -= s * th2;
+                ctx.fillStyle = k === 1 ? shade(paintC, -10) : paintC;
                 ctx.beginPath();
-                ctx.roundRect(p.x - s * 0.24, yB - s * (0.26 + k * 0.15), s * 0.48, s * 0.13, s * 0.03);
+                ctx.roundRect(p.x - s * tw2 * 0.5, ty2, s * tw2, s * th2, s * 0.02);
                 ctx.fill();
                 ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
                 ctx.lineWidth = Math.max(1, s * 0.018);
                 ctx.stroke();
+                ctx.fillStyle = 'rgba(26, 16, 8, 0.22)';
+                ctx.fillRect(p.x - s * tw2 * 0.5 + s * 0.02, ty2 + s * th2 - s * 0.028, s * tw2 - s * 0.04, s * 0.028);
               }
-              ctx.fillStyle = shade('#c9a86a', 24);
+              // Lit west lane up the stack.
+              ctx.fillStyle = '#f6f2e4';
+              ctx.fillRect(p.x - s * 0.18, yB - s * 0.6, s * 0.07, s * 0.44);
+              // The gabled rain board, sun on its west slope.
+              const capY = ty2;
+              ctx.fillStyle = '#8a6234';
               ctx.beginPath();
-              ctx.ellipse(p.x, yB - s * 0.56, s * 0.26, syT * 0.08, 0, 0, Math.PI * 2);
+              ctx.moveTo(p.x - s * 0.24, capY);
+              ctx.lineTo(p.x, capY - s * 0.14);
+              ctx.lineTo(p.x + s * 0.24, capY);
+              ctx.closePath();
               ctx.fill();
-              ctx.fillStyle = '#3a2c18';
-              ctx.fillRect(p.x - s * 0.06, yB - s * 0.17, s * 0.12, s * 0.035);
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.018);
+              ctx.stroke();
+              ctx.fillStyle = shade('#8a6234', 20);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.24, capY);
+              ctx.lineTo(p.x, capY - s * 0.14);
+              ctx.lineTo(p.x - s * 0.02, capY);
+              ctx.closePath();
+              ctx.fill();
+              // The entrance: dark slot over a landing lip, a honey
+              // stain dripped below the door.
+              ctx.fillStyle = '#241a2e';
+              ctx.fillRect(p.x - s * 0.08, yB - s * 0.24, s * 0.16, s * 0.04);
+              ctx.fillStyle = '#8a6234';
+              ctx.fillRect(p.x - s * 0.1, yB - s * 0.19, s * 0.2, s * 0.03);
+              ctx.fillStyle = 'rgba(224, 168, 60, 0.65)';
+              ctx.fillRect(p.x + s * 0.02, yB - s * 0.19, s * 0.035, s * 0.05);
               if (heavy) {
                 ctx.fillStyle = 'rgba(224, 168, 60, 0.9)';
-                for (let i = 0; i < 3; i++) {
-                  const a = t * 2.2 + i * 2.1 + h;
+                for (let i = 0; i < 4; i++) {
+                  const a = t * 2.2 + i * 1.7 + h;
                   ctx.fillRect(
-                    p.x + Math.cos(a) * s * (0.2 + 0.06 * i),
-                    yB - s * 0.35 + Math.sin(a * 1.3) * s * 0.12,
+                    p.x + Math.cos(a) * s * (0.22 + 0.06 * i),
+                    yB - s * 0.4 + Math.sin(a * 1.3) * s * 0.14,
                     s * 0.022,
                     s * 0.022,
                   );
                 }
                 const tw = Renderer.twinkle(t, h, 3.0);
-                if (tw > 0) this.sparkle(p.x + s * 0.1, yB - s * 0.6, s * 0.09, tw, '#ffd76a');
+                if (tw > 0) this.sparkle(p.x + s * 0.12, yB - s * 0.68, s * 0.09, tw, '#ffd76a');
               }
             }
           },

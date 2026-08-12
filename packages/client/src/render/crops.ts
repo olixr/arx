@@ -1189,9 +1189,10 @@ const HERB_SPECS = {
 } as const;
 const ORCHARD_SPECS = {
   18: { crown: ['#3f7233', '#549447', '#68a856'] as const, fruit: '#c94a3d', lit: '#e87a5c', lean: 0 },
-  19: { crown: ['#39663a', '#4c7f4b', '#5f975a'] as const, fruit: '#6e4a78', lit: '#9a72a8', lean: 0.06 },
-  20: { crown: ['#4d5a2e', '#66763d', '#7f914c'] as const, fruit: '#8a6a45', lit: '#b39064', lean: 0.16 },
+  19: { crown: ['#39663a', '#4c7f4b', '#5f975a'] as const, fruit: '#8a5aa0', lit: '#b48cc4', lean: 0.05 },
+  20: { crown: ['#4d5a2e', '#66763d', '#7f914c'] as const, fruit: '#8a6a45', lit: '#b39064', lean: 0.22 },
 } as const;
+const ORCHARD_BARK = { deep: '#4a3520', body: '#5f4426', lit: '#7d5a2e' } as const;
 const BRAMBLE_CANE = { cane: '#5c4238', thornpale: '#8a7060', leaf: ['#3f6b33', '#568f47'] as const, berry: '#a04a6e', lit: '#d17a96' } as const;
 const LOG_BARK = { body: '#5f4426', end: '#8a6a45', crack: '#3a2c18', myc: '#c9c2b4' } as const;
 const PALEGILL = { cap: '#d8d2c4', capLit: '#efe9dc', gill: '#8a7f6e', stem: '#c4baa8' } as const;
@@ -1200,18 +1201,21 @@ function growPhase2(crop: number, stage: 0 | 1 | 2, h: number): CropModel {
   const m = blank(crop, stage, (h >>> 5) % 3, h);
   // Silhouette bounds by family — the sprite baker sizes off these.
   const tall =
-    crop === 10 || crop === 11 ? 0.6
+    crop === 10 ? 0.6
+    : crop === 11 ? 0.72
     : crop === 12 ? 0.95
     : crop >= 13 && crop <= 17 ? (HERB_SPECS[crop as 13].tall + 0.25)
-    : crop >= 18 && crop <= 20 ? 1.75
-    : crop === 21 ? 0.85
+    : crop === 18 ? 1.95
+    : crop === 19 ? 2.1
+    : crop === 20 ? 1.8
+    : crop === 21 ? 0.9
     : crop >= 22 ? 0.62
     : 0.6;
   m.height = stage === 1 ? tall * 0.62 : tall;
   m.spread =
     crop === 10 || crop === 11 ? 0.62
-    : crop >= 18 && crop <= 20 ? 0.85
-    : crop === 21 ? 0.6
+    : crop >= 18 && crop <= 20 ? 1.0
+    : crop === 21 ? 0.62
     : crop >= 22 ? 0.58
     : 0.45;
   return m;
@@ -1364,19 +1368,42 @@ function paintGourd(ctx: CanvasRenderingContext2D, m: CropModel, f: FloraFrame, 
   ctx.beginPath();
   ctx.arc(f.bx + s * 0.4, f.groundY - s * 0.14, s * 0.045, 0.5, 4.6);
   ctx.stroke();
-  // The gourd(s): mid = one green fist; ripe = the great ribbed thing.
+  // The gourd(s): mid = one green fist (kingsquash wears pale prince
+  // stripes even young); ripe = pumpkin's great ribbed drum, or the
+  // kingsquash TURBAN — a broad flattened base tier crowned by a
+  // second dome and a gold coronet calyx. No pale orb: the king must
+  // never be mistaken for an onion two rows over.
   const big = m.stage === 2;
+  const king = m.crop === 11;
   const r = s * (big ? 0.26 : 0.11);
   const gx = f.bx + s * 0.08;
   const gy = f.groundY - r * 0.62;
-  ctx.fillStyle = big ? g.face : '#6b8f4a';
-  ctx.beginPath();
-  ctx.ellipse(gx, gy, r * 1.15, r * 0.95, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = Math.max(1.2, s * 0.022);
-  ctx.stroke();
-  if (big) {
+  if (!big) {
+    ctx.fillStyle = '#6b8f4a';
+    ctx.beginPath();
+    ctx.ellipse(gx, gy, r * 1.15, r * 0.95, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.2, s * 0.022);
+    ctx.stroke();
+    if (king) {
+      ctx.strokeStyle = '#c9d8a8';
+      ctx.lineWidth = Math.max(1, s * 0.018);
+      for (const rx of [-0.5, 0.1, 0.65]) {
+        ctx.beginPath();
+        ctx.moveTo(gx + rx * r, gy - r * 0.8);
+        ctx.quadraticCurveTo(gx + rx * r * 1.3, gy, gx + rx * r, gy + r * 0.8);
+        ctx.stroke();
+      }
+    }
+  } else if (!king) {
+    ctx.fillStyle = g.face;
+    ctx.beginPath();
+    ctx.ellipse(gx, gy, r * 1.15, r * 0.95, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.2, s * 0.022);
+    ctx.stroke();
     ctx.strokeStyle = g.rib;
     ctx.lineWidth = Math.max(1, s * 0.02);
     for (const rx of [-0.55, 0, 0.55]) {
@@ -1393,6 +1420,64 @@ function paintGourd(ctx: CanvasRenderingContext2D, m: CropModel, f: FloraFrame, 
     ctx.fillRect(gx - s * 0.03, gy - r - s * 0.09, s * 0.06, s * 0.1);
     const tw = twinkle(f.tSec, m.seed, 3.0);
     if (tw > 0) sparkle(ctx, gx - r * 0.3, gy - r * 0.7, s * 0.11, tw, g.lit);
+  } else {
+    const baseY = f.groundY - r * 0.5;
+    // The base tier: broad and flattened, deep-orange banded under a
+    // cream face — regal warmth, not onion white.
+    ctx.fillStyle = '#d8863a';
+    ctx.beginPath();
+    ctx.ellipse(gx, baseY, r * 1.35, r * 0.72, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.2, s * 0.022);
+    ctx.stroke();
+    ctx.strokeStyle = '#a85f24';
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    for (const rx of [-0.85, -0.3, 0.3, 0.85]) {
+      ctx.beginPath();
+      ctx.moveTo(gx + rx * r, baseY - r * 0.6);
+      ctx.quadraticCurveTo(gx + rx * r * 1.3, baseY, gx + rx * r, baseY + r * 0.6);
+      ctx.stroke();
+    }
+    // The crown dome: the pale second story, ribbed cream.
+    const domeY = baseY - r * 0.78;
+    ctx.fillStyle = g.face;
+    ctx.beginPath();
+    ctx.ellipse(gx, domeY, r * 0.78, r * 0.62, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.1, s * 0.02);
+    ctx.stroke();
+    ctx.strokeStyle = g.rib;
+    ctx.lineWidth = Math.max(1, s * 0.018);
+    for (const rx of [-0.45, 0.1, 0.6]) {
+      ctx.beginPath();
+      ctx.moveTo(gx + rx * r * 0.7, domeY - r * 0.5);
+      ctx.quadraticCurveTo(gx + rx * r * 0.95, domeY, gx + rx * r * 0.7, domeY + r * 0.5);
+      ctx.stroke();
+    }
+    // Lit crescents on both stories, sun-law top-left.
+    ctx.fillStyle = g.lit;
+    ctx.beginPath();
+    ctx.ellipse(gx - r * 0.55, baseY - r * 0.32, r * 0.34, r * 0.16, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(gx - r * 0.28, domeY - r * 0.3, r * 0.22, r * 0.12, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    // THE CORONET: a gold star calyx where a stem would be — the
+    // king's whole name, readable across a field.
+    const cy2 = domeY - r * 0.68;
+    ctx.fillStyle = '#e0b04c';
+    ctx.beginPath();
+    facetCircle(ctx, gx, cy2, r * 0.3, 5, m.seed, 0.55);
+    ctx.fill();
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    ctx.stroke();
+    ctx.fillStyle = '#f4d88a';
+    ctx.fillRect(gx - r * 0.1, cy2 - r * 0.12, r * 0.18, r * 0.12);
+    const tw = twinkle(f.tSec, m.seed, 3.0);
+    if (tw > 0) sparkle(ctx, gx + r * 0.2, cy2 - r * 0.25, s * 0.12, tw, '#f4d88a');
   }
   litter(ctx, f.bx, f.groundY, s, m.seed, SOIL_CHIPS);
 }
@@ -1483,7 +1568,60 @@ function paintHerbRow(ctx: CanvasRenderingContext2D, m: CropModel, f: FloraFrame
     // silverleaf's lit paddle faces, duskthorn berry whips, dawnveil
     // glow bells (moonbell's dawn-lit kin), adderstongue venom sacs.
     const lag = windScalarAt(f.wx, f.wy, f.tSec - 0.22);
-    if (m.crop === 13 || m.crop === 15) {
+    if (m.crop === 15) {
+      // Duskthorn: black-violet whips arch out of the rosette, each
+      // tipped with a trio of gloom berries under a faint dusk haze —
+      // the poison garden's crop wears the poison garden's light.
+      const haze = ctx.createRadialGradient(f.bx, f.groundY - s * 0.3, 0, f.bx, f.groundY - s * 0.3, s * 0.42);
+      haze.addColorStop(0, 'rgba(94, 74, 120, 0.22)');
+      haze.addColorStop(1, 'rgba(94, 74, 120, 0)');
+      ctx.fillStyle = haze;
+      ctx.beginPath();
+      ctx.arc(f.bx, f.groundY - s * 0.3, s * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+      for (const [dir, reach, rise] of [
+        [-1, 0.26, 0.52],
+        [0.2, 0.1, 0.62],
+        [1, 0.3, 0.46],
+      ] as const) {
+        const tipX = f.bx + dir * reach * s + lag * s * 0.05;
+        const tipY = f.groundY - rise * s;
+        ctx.strokeStyle = '#43395c';
+        ctx.lineWidth = Math.max(1.2, s * 0.028);
+        ctx.beginPath();
+        ctx.moveTo(f.bx + dir * s * 0.05, f.groundY - s * 0.08);
+        ctx.quadraticCurveTo(f.bx + dir * reach * s * 0.4, f.groundY - rise * s * 0.85, tipX, tipY);
+        ctx.stroke();
+        // Thorn ticks up the whip.
+        ctx.strokeStyle = '#786397';
+        ctx.lineWidth = Math.max(1, s * 0.015);
+        for (const u of [0.45, 0.72]) {
+          const wx2 = f.bx + dir * s * 0.05 + (tipX - f.bx - dir * s * 0.05) * u;
+          const wy2 = f.groundY - s * 0.08 + (tipY - f.groundY + s * 0.08) * u * (2 - u);
+          ctx.beginPath();
+          ctx.moveTo(wx2, wy2);
+          ctx.lineTo(wx2 + s * 0.028 * (dir < 0 ? -1 : 1), wy2 - s * 0.028);
+          ctx.stroke();
+        }
+        // The berry trio at the tip: deep gloom, one violet-lit each.
+        for (let d = 0; d < 3; d++) {
+          const a = (d / 3) * Math.PI * 2 + dir;
+          const bx3 = tipX + Math.cos(a) * s * 0.032;
+          const by3 = tipY + Math.sin(a) * s * 0.03 + s * 0.02;
+          ctx.fillStyle = '#3a2452';
+          ctx.beginPath();
+          ctx.arc(bx3, by3, s * 0.032, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.strokeStyle = OUTLINE;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.arc(tipX, tipY + s * 0.02, s * 0.055, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = spec.accent;
+        ctx.fillRect(tipX - s * 0.015, tipY - s * 0.02, s * 0.024, s * 0.024);
+      }
+    } else if (m.crop === 13) {
       for (let k = 0; k < 3; k++) {
         const u = (k / 2) * 2 - 1;
         const hx = f.bx + u * s * 0.14 + lag * s * 0.04;
@@ -1551,40 +1689,117 @@ function paintHerbRow(ctx: CanvasRenderingContext2D, m: CropModel, f: FloraFrame
   litter(ctx, f.bx, f.groundY, s, m.seed, SOIL_CHIPS);
 }
 
-/** Orchard wood (18..20): a cultivated tree, fruit at the twinkle. */
+/**
+ * Orchard wood (18..20): standing trees a body can walk under, each
+ * species its own silhouette — apple a broad dome on a stout bole,
+ * plum a tall upright oval, mirefig a marsh-leaning umbrella with a
+ * forked prop root. The trunk is a tapered SLAB with a lit west lane
+ * (mass, never a stroked line) wearing one graft knuckle: cultivated
+ * wood, not wildwood. Fruit only at ripe, fat and lit, twinkling.
+ */
 function paintOrchard(ctx: CanvasRenderingContext2D, m: CropModel, f: FloraFrame, wind: number): void {
   const s = f.s;
   const spec = ORCHARD_SPECS[m.crop as 18];
   const rnd = mulberry(m.seed ^ 0x6f11);
   const young = m.stage === 1;
-  const trunkH = s * (young ? 0.55 : 0.8);
-  const lean = spec.lean * s;
-  partingShadow(ctx, f.bx, f.groundY, s * (young ? 0.4 : 0.55));
-  // The trunk: a hand-width bole with one graft knuckle — cultivated
-  // wood, not wildwood.
-  ctx.strokeStyle = '#5f4426';
-  ctx.lineWidth = Math.max(2, s * (young ? 0.07 : 0.1));
+  const grow = young ? 0.62 : 1;
+  partingShadow(ctx, f.bx, f.groundY, s * (young ? 0.42 : 0.6));
+  // Species frame: trunk height, crown centre, and the mass layout.
+  const trunkH = s * grow * (m.crop === 19 ? 1.05 : m.crop === 20 ? 0.85 : 0.9);
+  const lean = spec.lean * s * grow * (m.crop === 20 ? 1.5 : 1);
+  const topX = f.bx + lean;
+  const topY = f.groundY - trunkH;
+  // The bole: tapered slab bowing along the lean, lit west lane.
+  const w0 = s * grow * (m.crop === 19 ? 0.1 : 0.13);
+  const w1 = w0 * 0.55;
+  const midX = f.bx + lean * 0.4;
+  const midY = f.groundY - trunkH * 0.55;
+  ctx.fillStyle = ORCHARD_BARK.body;
   ctx.beginPath();
-  ctx.moveTo(f.bx, f.groundY);
-  ctx.quadraticCurveTo(f.bx + lean * 0.4, f.groundY - trunkH * 0.55, f.bx + lean, f.groundY - trunkH);
+  ctx.moveTo(f.bx - w0, f.groundY);
+  ctx.lineTo(midX - w0 * 0.8, midY);
+  ctx.lineTo(topX - w1, topY);
+  ctx.lineTo(topX + w1, topY);
+  ctx.lineTo(midX + w0 * 0.8, midY);
+  ctx.lineTo(f.bx + w0, f.groundY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = Math.max(1.2, s * 0.02);
   ctx.stroke();
-  ctx.fillStyle = '#7d5a2e';
-  ctx.fillRect(f.bx - s * 0.035 + lean * 0.3, f.groundY - trunkH * 0.5, s * 0.05, s * 0.05);
-  // The crown: three tone-banded masses, wind-drifted, outlined.
-  const crownY = f.groundY - trunkH - s * (young ? 0.14 : 0.24);
-  const drift = wind * s * 0.06;
-  for (let i = 0; i < 3; i++) {
-    const off = [[-0.2, 0.1], [0.22, 0.06], [0, -0.16]][i]!;
-    ctx.fillStyle = spec.crown[i]!;
+  ctx.fillStyle = ORCHARD_BARK.lit;
+  ctx.beginPath();
+  ctx.moveTo(f.bx - w0 * 0.6, f.groundY);
+  ctx.lineTo(midX - w0 * 0.5, midY);
+  ctx.lineTo(topX - w1 * 0.25, topY);
+  ctx.lineTo(topX - w1 * 0.85, topY);
+  ctx.lineTo(midX - w0 * 0.75, midY);
+  ctx.lineTo(f.bx - w0 * 0.95, f.groundY);
+  ctx.closePath();
+  ctx.fill();
+  // Root flare — and mirefig's marsh signature, a forked prop root
+  // planted against the lean.
+  ctx.fillStyle = ORCHARD_BARK.deep;
+  ctx.beginPath();
+  ctx.moveTo(f.bx - w0 * 1.5, f.groundY + s * 0.01);
+  ctx.lineTo(f.bx - w0 * 0.5, f.groundY - s * 0.07 * grow);
+  ctx.lineTo(f.bx + w0 * 0.5, f.groundY - s * 0.07 * grow);
+  ctx.lineTo(f.bx + w0 * 1.5, f.groundY + s * 0.01);
+  ctx.closePath();
+  ctx.fill();
+  if (m.crop === 20) {
+    ctx.strokeStyle = ORCHARD_BARK.body;
+    ctx.lineWidth = Math.max(1.4, s * 0.045 * grow);
+    ctx.beginPath();
+    ctx.moveTo(midX - w0 * 0.4, midY + trunkH * 0.18);
+    ctx.lineTo(f.bx - s * 0.22 * grow - lean * 0.4, f.groundY);
+    ctx.stroke();
+  }
+  // The graft knuckle: one swollen band low on the bole.
+  ctx.fillStyle = ORCHARD_BARK.lit;
+  ctx.fillRect(midX - w0 * 0.95, f.groundY - trunkH * 0.38, w0 * 1.9, s * 0.05 * grow);
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = Math.max(1, s * 0.013);
+  ctx.strokeRect(midX - w0 * 0.95, f.groundY - trunkH * 0.38, w0 * 1.9, s * 0.05 * grow);
+  // The crown: tone-banded masses in the species' own arrangement,
+  // dark undersides first, lit caps last, all riding the wind drift.
+  const drift = wind * s * 0.07;
+  const R = s * grow;
+  type MassSpec = [number, number, number, number]; // x, y, r, tone
+  const masses: MassSpec[] =
+    m.crop === 18
+      ? [
+          // Apple: a broad dome, wider than tall.
+          [-0.38, 0.02, 0.26, 0], [0.4, 0.04, 0.25, 0],
+          [-0.14, -0.18, 0.28, 1], [0.2, -0.16, 0.26, 1],
+          [0.02, -0.36, 0.26, 2],
+        ]
+      : m.crop === 19
+        ? [
+            // Plum: an upright oval — a full flame of crown, still
+            // clearly narrower than the apple's dome.
+            [-0.2, 0.1, 0.26, 0], [0.22, 0.06, 0.25, 0],
+            [-0.08, -0.2, 0.28, 1], [0.16, -0.34, 0.24, 1],
+            [-0.02, -0.52, 0.22, 2],
+          ]
+        : [
+            // Mirefig: an umbrella swept along the lean, one low
+            // bough hanging against it.
+            [-0.5, 0.16, 0.19, 0], [0.5, -0.06, 0.24, 0],
+            [0.12, -0.14, 0.27, 1], [-0.2, -0.04, 0.24, 1],
+            [0.24, -0.32, 0.22, 2],
+          ];
+  for (const [mx, my, mr, tone] of masses) {
+    ctx.fillStyle = spec.crown[tone]!;
     ctx.beginPath();
     facetBlob(
       ctx,
-      f.bx + lean + off[0]! * s * (young ? 0.8 : 1.2) + drift * (0.6 + i * 0.2),
-      crownY + off[1]! * s * (young ? 0.8 : 1.2),
-      s * (young ? 0.16 : 0.24) * (0.9 + rnd() * 0.2),
-      m.seed + i * 47,
+      topX + mx * R + drift * (0.5 + tone * 0.25),
+      topY - R * 0.22 + my * R,
+      mr * R * (0.92 + rnd() * 0.16),
+      m.seed + mx * 89 + my * 53,
       7,
-      0.7,
+      0.68,
     );
     ctx.fill();
     ctx.strokeStyle = OUTLINE;
@@ -1592,30 +1807,58 @@ function paintOrchard(ctx: CanvasRenderingContext2D, m: CropModel, f: FloraFrame
     ctx.stroke();
   }
   if (m.stage === 2) {
-    // The fruit: fat accent dots hung through the crown, lit chip
-    // each, twinkling ripe (the payload law, hung in a tree).
-    const k = 4 + ((m.seed >>> 6) % 2);
-    for (let i = 0; i < k; i++) {
-      const a = (i / k) * Math.PI * 2 + rnd();
-      const fx2 = f.bx + lean + Math.cos(a) * s * 0.2 + drift * 0.8;
-      const fy2 = crownY + Math.sin(a) * s * 0.15 + s * 0.05;
-      const r = s * (m.crop === 20 ? 0.05 : 0.04);
+    // The fruit, hung where the species hangs it: apples through the
+    // dome's face, plums down the tall axis wearing their dusty
+    // bloom, figs in PAIRS dropped below the umbrella's edge.
+    const hangs: Array<[number, number]> =
+      m.crop === 18
+        ? [[-0.34, -0.02], [0.05, 0.1], [0.38, -0.04], [-0.1, -0.3], [0.24, -0.26]]
+        : m.crop === 19
+          ? [[-0.22, 0.2], [0.24, 0.08], [-0.1, -0.14], [0.14, -0.34], [-0.02, -0.5]]
+          : [[-0.44, 0.32], [-0.36, 0.34], [0.3, 0.1], [0.38, 0.12], [0.02, 0.06]]
+    ;
+    for (const [hx, hy] of hangs) {
+      const fx2 = topX + hx * R + drift * 0.8;
+      const fy2 = topY - R * 0.22 + hy * R;
+      const r = s * grow * (m.crop === 20 ? 0.055 : m.crop === 19 ? 0.05 : 0.058);
       ctx.fillStyle = spec.fruit;
       ctx.beginPath();
       if (m.crop === 20) {
-        ctx.ellipse(fx2, fy2, r * 0.85, r * 1.1, 0, 0, Math.PI * 2);
+        // The fig: a teardrop, neck up.
+        ctx.moveTo(fx2, fy2 - r * 1.15);
+        ctx.quadraticCurveTo(fx2 + r, fy2 - r * 0.3, fx2 + r * 0.8, fy2 + r * 0.4);
+        ctx.quadraticCurveTo(fx2 + r * 0.4, fy2 + r, fx2, fy2 + r);
+        ctx.quadraticCurveTo(fx2 - r * 0.4, fy2 + r, fx2 - r * 0.8, fy2 + r * 0.4);
+        ctx.quadraticCurveTo(fx2 - r, fy2 - r * 0.3, fx2, fy2 - r * 1.15);
+      } else if (m.crop === 19) {
+        ctx.ellipse(fx2, fy2, r * 0.85, r * 1.05, 0.2, 0, Math.PI * 2);
       } else {
         ctx.arc(fx2, fy2, r, 0, Math.PI * 2);
       }
       ctx.fill();
       ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.lineWidth = Math.max(1, s * 0.014);
       ctx.stroke();
-      ctx.fillStyle = spec.lit;
-      ctx.fillRect(fx2 - r * 0.4, fy2 - r * 0.55, r * 0.5, r * 0.35);
+      if (m.crop === 19) {
+        // The plum's bloom: a pale dust streak, not a hard glint.
+        ctx.fillStyle = 'rgba(216, 200, 228, 0.55)';
+        ctx.beginPath();
+        ctx.ellipse(fx2 - r * 0.3, fy2 - r * 0.35, r * 0.4, r * 0.22, -0.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = spec.lit;
+        ctx.fillRect(fx2 - r * 0.45, fy2 - r * 0.55, r * 0.55, r * 0.35);
+      }
+      // The hanging stem tick.
+      ctx.strokeStyle = ORCHARD_BARK.body;
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      ctx.beginPath();
+      ctx.moveTo(fx2, fy2 - r * (m.crop === 20 ? 1.15 : 1.0));
+      ctx.lineTo(fx2 + r * 0.15, fy2 - r * 1.45);
+      ctx.stroke();
     }
     const tw = twinkle(f.tSec, m.seed, 2.9);
-    if (tw > 0) sparkle(ctx, f.bx + lean + s * 0.08, crownY - s * 0.08, s * 0.11, tw, spec.lit);
+    if (tw > 0) sparkle(ctx, topX + R * 0.14, topY - R * 0.62, s * 0.11, tw, spec.lit);
   }
   // Grass tuft at the bole, not soil chips — the orchard floor heals.
   litter(ctx, f.bx, f.groundY, s, m.seed, SOIL_CHIPS);
@@ -1629,52 +1872,69 @@ function paintBramble(ctx: CanvasRenderingContext2D, m: CropModel, f: FloraFrame
   for (let i = 0; i < 3; i++) {
     const u = (i / 2) * 2 - 1;
     const x0 = f.bx + u * s * 0.2;
-    const peak = s * (0.5 + rnd() * 0.2) * (m.stage === 1 ? 0.75 : 1);
+    const peak = s * (0.55 + rnd() * 0.2) * (m.stage === 1 ? 0.75 : 1);
     const drift = wind * s * 0.05;
-    ctx.strokeStyle = BRAMBLE_CANE.cane;
-    ctx.lineWidth = Math.max(1.4, s * 0.035);
+    // The cane: a woody arch with real width — shadow pass under a
+    // lit pass, so it reads as a briar, never a wire.
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = shade(BRAMBLE_CANE.cane, -16);
+    ctx.lineWidth = Math.max(2, s * 0.06);
     ctx.beginPath();
-    ctx.moveTo(x0 - s * 0.16, f.groundY);
-    ctx.quadraticCurveTo(x0 + drift, f.groundY - peak, x0 + s * 0.2, f.groundY - s * 0.04);
+    ctx.moveTo(x0 - s * 0.18, f.groundY);
+    ctx.quadraticCurveTo(x0 + drift, f.groundY - peak, x0 + s * 0.22, f.groundY - s * 0.04);
     ctx.stroke();
-    // Thorn ticks along the arch.
+    ctx.strokeStyle = BRAMBLE_CANE.cane;
+    ctx.lineWidth = Math.max(1.4, s * 0.038);
+    ctx.beginPath();
+    ctx.moveTo(x0 - s * 0.18, f.groundY);
+    ctx.quadraticCurveTo(x0 + drift - s * 0.01, f.groundY - peak - s * 0.008, x0 + s * 0.22, f.groundY - s * 0.04);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    // Thorn ticks along the arch, alternating sides.
     ctx.strokeStyle = BRAMBLE_CANE.thornpale;
-    ctx.lineWidth = Math.max(1, s * 0.016);
-    for (let k = 1; k < 4; k++) {
-      const tq = k / 4;
-      const txp = x0 - s * 0.16 + (s * 0.36) * tq + drift * tq;
+    ctx.lineWidth = Math.max(1, s * 0.018);
+    for (let k = 1; k < 5; k++) {
+      const tq = k / 5;
+      const txp = x0 - s * 0.18 + (s * 0.4) * tq + drift * tq;
       const typ = f.groundY - peak * (1 - (2 * tq - 1) ** 2);
+      const side = k % 2 ? 1 : -1;
       ctx.beginPath();
       ctx.moveTo(txp, typ);
-      ctx.lineTo(txp + s * 0.028, typ - s * 0.028);
+      ctx.lineTo(txp + s * 0.032 * side, typ - s * 0.03);
       ctx.stroke();
     }
     // Leaf pairs riding the cane.
     for (const tq of [0.3, 0.65]) {
       ctx.fillStyle = BRAMBLE_CANE.leaf[(i + (tq > 0.5 ? 1 : 0)) % 2]!;
       ctx.beginPath();
-      facetCircle(ctx, x0 - s * 0.16 + s * 0.36 * tq + drift * tq, f.groundY - peak * (1 - (2 * tq - 1) ** 2) + s * 0.05, s * 0.05, 5, m.seed + i * 13 + (tq * 10) | 0, 0.7);
+      facetCircle(ctx, x0 - s * 0.18 + s * 0.4 * tq + drift * tq, f.groundY - peak * (1 - (2 * tq - 1) ** 2) + s * 0.05, s * 0.055, 5, m.seed + i * 13 + (tq * 10) | 0, 0.7);
       ctx.fill();
     }
     if (m.stage === 2) {
-      // Berry clusters hang low off the arch: three-lobe drupes with
-      // one lit chip each.
-      const bx2 = x0 + drift * 0.6;
-      const by2 = f.groundY - peak * 0.72 + s * 0.1;
-      for (let d = 0; d < 3; d++) {
-        const a = (d / 3) * Math.PI * 2;
-        ctx.fillStyle = BRAMBLE_CANE.berry;
+      // TWO heavy clusters per cane, hung under the arch: five-drupe
+      // knots of deep wine berries, each cluster wearing a lit chip —
+      // a briar you can read as LADEN across the field.
+      for (const [cq, drop] of [
+        [0.34, 0.12],
+        [0.66, 0.1],
+      ] as const) {
+        const bx2 = x0 - s * 0.18 + s * 0.4 * cq + drift * cq * 0.8;
+        const by2 = f.groundY - peak * (1 - (2 * cq - 1) ** 2) + s * drop;
+        for (let d = 0; d < 5; d++) {
+          const a = (d / 5) * Math.PI * 2 + i;
+          ctx.fillStyle = d % 2 ? BRAMBLE_CANE.berry : shade(BRAMBLE_CANE.berry, -22);
+          ctx.beginPath();
+          ctx.arc(bx2 + Math.cos(a) * s * 0.032, by2 + Math.sin(a) * s * 0.03, s * 0.034, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.strokeStyle = OUTLINE;
+        ctx.lineWidth = Math.max(1, s * 0.014);
         ctx.beginPath();
-        ctx.arc(bx2 + Math.cos(a) * s * 0.026, by2 + Math.sin(a) * s * 0.024, s * 0.028, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(bx2, by2, s * 0.065, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = BRAMBLE_CANE.lit;
+        ctx.fillRect(bx2 - s * 0.018, by2 - s * 0.04, s * 0.026, s * 0.026);
       }
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = Math.max(1, s * 0.012);
-      ctx.beginPath();
-      ctx.arc(bx2, by2, s * 0.05, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = BRAMBLE_CANE.lit;
-      ctx.fillRect(bx2 - s * 0.014, by2 - s * 0.03, s * 0.02, s * 0.02);
     }
   }
   if (m.stage === 2) {
