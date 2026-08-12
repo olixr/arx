@@ -985,6 +985,13 @@ function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
 function cycleScreen(dir: -1 | 1): void {
   if (cinema.open) return;
   const cur = currentScreen();
+  // An anchored room that is NOT on the shelf (store counter, the
+  // stalls) never yields to a bumper walk — a stray press must not
+  // slam the counter shut mid-trade. The vault answers its bumpers
+  // with its own section rail before this is ever asked.
+  if (cur === null && (stationPanels.shopOpen || stationPanels.stableOpen || stationPanels.bankOpen)) {
+    return;
+  }
   const idx = cur === null ? (dir === 1 ? -1 : 0) : SCREEN_ORDER.indexOf(cur);
   const next = SCREEN_ORDER[(idx + dir + SCREEN_ORDER.length) % SCREEN_ORDER.length]!;
   if (next === cur) return;
@@ -1610,7 +1617,7 @@ dressPanel(el('build-panel'), {
 });
 dressPanel(el('bank-panel'), {
   icon: itemIconUrl('coins', 34),
-  hint: 'Tap pack items to deposit — choose a socket here to take back.',
+  hint: 'Tap pack items to deposit. Choose a socket here to take back.',
   onClose: () => stationPanels.closeAll(),
 });
 dressPanel(el('stable-panel'), {

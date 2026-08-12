@@ -27,6 +27,15 @@
   gap: 0.5rem;
 }
 
+/* The ledger line: the whole holding, said once above the wall. */
+.bank-sum {
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  letter-spacing: 0.02em;
+  margin-top: 0.375rem;
+}
+
 #bank-list {
   flex: 1;
   min-height: 0;

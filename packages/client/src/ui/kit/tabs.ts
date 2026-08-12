@@ -25,6 +25,10 @@ export function tabRail(tabs: TabDef[], onPick: (id: string) => void, navPrefix 
   const root = document.createElement('div');
   root.className = 'tab-rail';
   root.dataset.pager = '';
+  // THE BUMPER SERVES THE ROOM: a rail is the room's SECTIONS, so
+  // LB/RB step it while the room stands (padUI reads this marker).
+  // `data-pager` stays — in a rail-only room the triggers still work.
+  root.dataset.tabs = '';
 
   let active = tabs[0]?.id ?? '';
   const chips = new Map<string, HTMLButtonElement>();

@@ -56,6 +56,7 @@ import { bigButton, iconTile, sectionHead } from './panel.js';
 import { petPortraitUrl } from '../render/petPortrait.js';
 import { createLedger } from './kit/ledger.js';
 import { tabRail } from './kit/tabs.js';
+import { orderVault, pileWorth, VAULT_SORTS, type VaultSort } from './vaultOrder.js';
 import { registerSheetProvider, type SheetVerb } from './kit/contextSheet.js';
 
 /**
@@ -204,8 +205,11 @@ export class StationPanels {
   private bankTab: 'armory' | 'all' | 'gear' | 'food' | 'mats' = 'all';
   /** The reader's place in each paged ledger, kept across re-renders. */
   private leafAt: Record<string, number> = {};
-  /** How the vault wall is ordered. */
-  private bankSort: 'az' | 'qty' = 'az';
+  /** How the vault wall is ordered — remembered across visits. */
+  private bankSort: VaultSort = ((): VaultSort => {
+    const kept = localStorage.getItem('arx.vaultsort');
+    return kept === 'kind' || kept === 'worth' || kept === 'az' || kept === 'qty' ? kept : 'kind';
+  })();
   /** How the Workshop ledger is ordered. */
   private craftSort: 'reach' | 'level' | 'az' = 'reach';
   /**
@@ -2077,11 +2081,7 @@ export class StationPanels {
     if (this.bankSel && !this.lastBank[this.bankSel]) this.bankSel = null;
     if (this.bankTab === 'armory' && this.lastBankGear.length === 0) this.bankTab = 'all';
 
-    const entries = Object.entries(this.lastBank).sort(([a, an], [b, bn]) =>
-      this.bankSort === 'qty'
-        ? bn - an || a.localeCompare(b)
-        : (itemDef(a)?.name ?? a).localeCompare(itemDef(b)?.name ?? b),
-    );
+    const entries = orderVault(Object.entries(this.lastBank), this.bankSort);
 
     if (entries.length === 0 && this.lastBankGear.length === 0) {
       const empty = document.createElement('div');
@@ -2115,18 +2115,39 @@ export class StationPanels {
       this.sortBar(
         this.bankTools,
         'bank',
-        [
-          ['az', 'A-Z'],
-          ['qty', 'Most stored'],
-        ],
+        [...VAULT_SORTS],
         this.bankSort,
         (k) => {
           this.bankSort = k;
+          localStorage.setItem('arx.vaultsort', k);
           this.renderBank();
         },
         // The family tabs already stand in this strip — keep them.
         { keep: true },
       );
+    }
+
+    // THE LEDGER LINE: the whole holding said once, plainly — what the
+    // vault keeps and what it would fetch, before any tab narrows it.
+    {
+      const goods = entries.reduce((n, [, q]) => n + q, 0);
+      const worth =
+        entries.reduce((n, [item, q]) => n + pileWorth(item, q), 0) +
+        this.lastBankGear.reduce((n, g) => n + pileWorth(g.item, 1), 0);
+      const parts = [
+        `${entries.length.toLocaleString()} kinds`,
+        `${goods.toLocaleString()} goods`,
+      ];
+      if (this.lastBankGear.length > 0) {
+        parts.push(
+          `${this.lastBankGear.length} armory piece${this.lastBankGear.length === 1 ? '' : 's'}`,
+        );
+      }
+      parts.push(`worth ${worth.toLocaleString()} coins`);
+      const sum = document.createElement('div');
+      sum.className = 'bank-sum';
+      sum.textContent = parts.join(' · ');
+      this.bankTools.appendChild(sum);
     }
 
     // ---- the wall, dealt onto leaves: rows of eight sockets.
@@ -2190,7 +2211,13 @@ export class StationPanels {
       name.textContent = def?.name ?? item;
       const sub = document.createElement('div');
       sub.className = 'counter-sub';
-      sub.textContent = `${qty.toLocaleString()} stored`;
+      // The counter tells the pile's worth beside its count — the same
+      // honesty as the ledger line above the wall.
+      const worth = pileWorth(item, qty);
+      sub.textContent =
+        worth > 0
+          ? `${qty.toLocaleString()} stored · worth ${worth.toLocaleString()} coins`
+          : `${qty.toLocaleString()} stored`;
       names.append(name, sub);
       face.append(img, names);
       this.bankDetail.appendChild(face);
