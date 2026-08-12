@@ -113,6 +113,18 @@ const WRAP_STOPS: ReadonlyArray<readonly [number, number]> = [
 /** rgb triple → "r, g, b", memoized by array identity — one string
  *  per palette color instead of one per light per frame. */
 const rgbCsvMemo = new WeakMap<readonly number[], string>();
+
+/** Alpha strings quantized to 1/255 (below 8-bit output precision) —
+ *  paintFaceRuns ran toFixed(4) + a template per gradient stop per
+ *  run per light per frame. */
+const ALPHA_STR: readonly string[] = Array.from({ length: 256 }, (_, i) =>
+  (i / 255).toFixed(4),
+);
+
+function alphaStr(k: number): string {
+  const i = Math.round(k * 255);
+  return ALPHA_STR[i < 0 ? 0 : i > 255 ? 255 : i]!;
+}
 function rgbCsv(rgb: readonly number[]): string {
   let s = rgbCsvMemo.get(rgb);
   if (s === undefined) {
@@ -369,6 +381,7 @@ export class LightingSystem {
   ): void {
     if (this.runs.length === 0) return;
     const [lr, lg, lb] = light.rgb;
+    const stopPrefix = `rgba(${lr}, ${lg}, ${lb}, `;
     const fc = this.fctx;
     for (const run of this.runs) {
       // Device-px bbox of the run on the destination, padded a pixel.
@@ -385,7 +398,7 @@ export class LightingSystem {
       const hg = fc.createLinearGradient(run.x0, 0, run.x1, 0);
       const n = run.ks.length - 1;
       for (let i = 0; i <= n; i++) {
-        hg.addColorStop(i / n, `rgba(${lr}, ${lg}, ${lb}, ${run.ks[i]!.toFixed(4)})`);
+        hg.addColorStop(i / n, stopPrefix + alphaStr(run.ks[i]!) + ')');
       }
       fc.fillStyle = hg;
       fc.fillRect(run.x0, run.ye - run.h, run.x1 - run.x0, run.h);

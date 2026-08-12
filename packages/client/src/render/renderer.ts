@@ -2107,6 +2107,28 @@ export class Renderer {
     [-1, 0],
   ];
 
+  /** Window indoor-side probe directions (collectStaticLights) —
+   *  allocated five arrays per window tile per frame as a literal. */
+  private static readonly WINDOW_DIRS: ReadonlyArray<readonly [number, number]> = [
+    [0, 1],
+    [0, -1],
+    [1, 0],
+    [-1, 0],
+  ];
+
+  /** relightBody's erode kernel: unit taps, scaled by erodePx (axis)
+   *  or its 0.71 diagonal at use — was 9 arrays per lit body/frame. */
+  private static readonly ERODE_TAPS: ReadonlyArray<readonly [number, number, number]> = [
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
+    [1, 1, 1],
+    [1, -1, 1],
+    [-1, 1, 1],
+    [-1, -1, 1],
+  ];
+
   /**
    * THE LIFT LEDGER: renderLift runs for every body, particle, glow
    * and debris chunk every frame, and the full walk below pays up to
@@ -2398,12 +2420,23 @@ export class Renderer {
    * fixture shadowing itself (props) while letting a body stand right
    * up against a fire (entities).
    */
+  /** lightThrows' pooled result: at most two records, rewritten per
+   *  call — the old fresh array + literals ran per shadow caster per
+   *  frame (~240 casts at night = ~86k allocations/sec). Callers
+   *  consume immediately and never hold the array across calls. */
+  private readonly throwRecs = [
+    { ux: 0, uy: 0, len: 0, alpha: 0 },
+    { ux: 0, uy: 0, len: 0, alpha: 0 },
+  ];
+  private readonly throwsOut: Array<{ ux: number; uy: number; len: number; alpha: number }> = [];
+
   private lightThrows(
     px: number,
     py: number,
     minD: number,
-  ): Array<{ ux: number; uy: number; len: number; alpha: number }> {
-    const out: Array<{ ux: number; uy: number; len: number; alpha: number }> = [];
+  ): ReadonlyArray<{ ux: number; uy: number; len: number; alpha: number }> {
+    const out = this.throwsOut;
+    out.length = 0;
     if (this.frameLights.length === 0) return out;
     const s = this.camera.scale;
     const ys = this.camera.yScale;
@@ -2415,7 +2448,12 @@ export class Renderer {
       const t = d / L.r;
       const alpha = L.a * (1 - t) ** 1.5;
       if (alpha < 0.03) continue;
-      out.push({ ux: wx / d, uy: wy / d, len: 1.9 - t, alpha });
+      const rec = this.throwRecs[out.length]!;
+      rec.ux = wx / d;
+      rec.uy = wy / d;
+      rec.len = 1.9 - t;
+      rec.alpha = alpha;
+      out.push(rec);
       if (out.length === 2) break; // two strongest reads; more is mud
     }
     return out;
@@ -4175,7 +4213,7 @@ export class Renderer {
           // Which side is indoors? The enclosed region claims it.
           let inside: readonly [number, number] | null = null;
           let region: InteriorRegion | null = null;
-          for (const d of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+          for (const d of Renderer.WINDOW_DIRS) {
             const nt = game.world.groundAt(tx + d[0], ty + d[1]);
             if (nt === undefined || Renderer.WALL_TILES.has(nt)) continue;
             const r = this.interiors.regionAt(game, tx + d[0], ty + d[1]);
@@ -4275,11 +4313,26 @@ export class Renderer {
    * After dark the same source also lights the ground around it — a
    * bolt streaking across a night field carries its own pool of light.
    */
+  /** Memoized "r, g, b" → triple — the palette is a fixed set of
+   *  literals, and splitting per glow per frame after dark minted
+   *  thousands of strings a second in glow-heavy combat. */
+  private static readonly RGB_MEMO = new Map<string, readonly [number, number, number]>();
+
+  private static parseRgb(rgb: string): readonly [number, number, number] {
+    let t = Renderer.RGB_MEMO.get(rgb);
+    if (!t) {
+      const [rr = 255, gg = 255, bb = 255] = rgb.split(',').map((v) => Number.parseInt(v, 10));
+      t = [rr, gg, bb];
+      Renderer.RGB_MEMO.set(rgb, t);
+    }
+    return t;
+  }
+
   queueGlow(x: number, y: number, r: number, rgb: string, a: number): void {
     if (this.bakingMask) return;
     this.glows.push({ x, y, r, rgb, a });
     if (this.sky.darkness > 0.04) {
-      const [rr = 255, gg = 255, bb = 255] = rgb.split(',').map((v) => Number.parseInt(v, 10));
+      const [rr, gg, bb] = Renderer.parseRgb(rgb);
       const intensity = Math.min(0.55, a * 1.6);
       this.lights.push({ x, y, r: r * 1.6, rgb: [rr, gg, bb], intensity });
       this.nextDynamic.push({ x, y, r: r * 2.2, a: intensity });
@@ -5019,6 +5072,14 @@ export class Renderer {
     // corner does. An unstarted stale entry keeps its old blit.
     this.replaceQueue.length = 0;
 
+    // Brand-new chunk starts are PACED too: each live start pays a
+    // synchronous prologue (coarse placeholder + fill mask + canvas
+    // alloc, ~0.3-0.8ms), and a mass teleport used to start a 5x4
+    // window of them in ONE frame — a 6-16ms spike right when the
+    // scene is busiest. A capped start lands 1-3 frames later into
+    // the same background fill it would have placeholder-painted.
+    let newStarts = 0;
+
     for (let cy = minCy; cy <= maxCy; cy++) {
       for (let cx = minCx; cx <= maxCx; cx++) {
         const data = game.world.get(cx, cy);
@@ -5027,7 +5088,9 @@ export class Renderer {
         let baked = this.baked.get(key);
         if (!baked) {
           // Brand-new chunk: start a live job — the placeholder blits
-          // this same frame, so streaming never leaves a hole.
+          // this same frame, so streaming rarely leaves a hole.
+          if (newStarts >= 4) continue;
+          newStarts++;
           baked = this.startChunkEntry(game, cx, cy, data, bakePx, true);
         } else if (baked.pending) {
           // Mid-bake: if the world moved on underneath, restart the
@@ -15303,6 +15366,11 @@ export class Renderer {
     { path: Path2D; scale: number; frame: number; used: number }
   >();
   private treeBakeBudget = 0;
+  /** Running average sprite-bake cost (ms) — the admission estimate
+   *  for the cost-aware budget gates. Admitting at "budget > 0" let a
+   *  0.01ms remainder start a full 0.15-0.6ms bake; every gate now
+   *  asks for ~half the average cost up front. */
+  private bakeCostEma = 0.3;
   private treeShadowBudget = 0;
   /** Per-frame time budget for non-visible sprite bakes (pad bands,
    *  cadence re-bakes) — see SPRITE_BAKE_MS. */
@@ -15845,16 +15913,17 @@ export class Renderer {
       // re-bakes go through the per-frame time budget instead, so a
       // dense field streaming in bakes across frames, not in one.
       const visNow = b.x < this.w && b.x + b.w > 0 && b.y < this.h && b.y + b.h > 0;
-      const emergency = !sp && visNow && this.visSpriteMsLeft > 0;
+      const emergency = !sp && visNow && this.visSpriteMsLeft > this.bakeCostEma * 0.5;
       const allow = !sp
-        ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
-        : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0 && !this.zoomGliding;
+        ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5)
+        : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5 && !this.zoomGliding;
       if (allow) {
         this.treeBakeBudget--;
         const t0 = performance.now();
         sp = this.bakePropSprite(sp, b, paint);
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
+        this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
         if (emergency) this.visSpriteMsLeft -= took;
         this.treeSprites.set(key, sp);
       }
@@ -16014,16 +16083,17 @@ export class Renderer {
       const top = (fm.height * 1.25 + 0.2) * s;
       const gy = by + syT * 0.3;
       const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
-      const emergency = !sp && visNow && this.visSpriteMsLeft > 0;
+      const emergency = !sp && visNow && this.visSpriteMsLeft > this.bakeCostEma * 0.5;
       const allow = !sp
-        ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
-        : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0 && !this.zoomGliding;
+        ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5)
+        : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5 && !this.zoomGliding;
       if (allow) {
         this.treeBakeBudget--;
         const t0 = performance.now();
         sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec);
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
+        this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
         if (emergency) this.visSpriteMsLeft -= took;
         this.treeSprites.set(key, sp);
       }
@@ -16332,10 +16402,10 @@ export class Renderer {
         const top = (m.height * 1.18 + 0.45) * s;
         const gy = by + syT * 0.3;
         const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
-        const emergency = !sp && visNow && this.visSpriteMsLeft > 0;
+        const emergency = !sp && visNow && this.visSpriteMsLeft > this.bakeCostEma * 0.5;
         const allow = !sp
-          ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
-          : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0 && !this.zoomGliding;
+          ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5)
+          : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5 && !this.zoomGliding;
         if (allow) {
           this.treeBakeBudget--;
           const t0 = performance.now();
@@ -16344,6 +16414,7 @@ export class Renderer {
           sp = this.bakeTreeSprite(sp, m, wx, wy, tSec, rigid ? 0 : undefined);
           const took = performance.now() - t0;
           this.spriteBakeMsLeft -= took;
+          this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
           if (emergency) this.visSpriteMsLeft -= took;
           this.treeSprites.set(key, sp);
         }
@@ -25732,6 +25803,18 @@ export class Renderer {
       }
     }
 
+    // Screen cull bounds: network interest reaches well past the
+    // viewport, and an off-screen body used to pay the full rig build
+    // (leg solver, cloth sims, a 25-field options literal, closures)
+    // to produce an item that draws nothing. The 6-tile margin keeps
+    // tall bodies south of the view, sideways shadow throws, worn
+    // light bleed and cloth-sim settle all comfortably covered.
+    const cb = this.visibleTileBounds();
+    const cullMinX = cb.minTx - 6;
+    const cullMaxX = cb.maxTx + 6;
+    const cullMinY = cb.minTy - 6;
+    const cullMaxY = cb.maxTy + 6;
+
     for (const [eid, remote] of game.entities) {
       const timeline = remote.meta.kind === EntityKind.Projectile ? tProj : t;
       const s =
@@ -25748,6 +25831,14 @@ export class Renderer {
         status: 0,
         alert: 0,
       };
+      // Projectiles are exempt: the v9 tracer handoff must measure on
+      // the entity's FIRST sample, wherever that lands.
+      if (
+        remote.meta.kind !== EntityKind.Projectile &&
+        (s.x < cullMinX || s.x > cullMaxX || s.y < cullMinY || s.y > cullMaxY)
+      ) {
+        continue;
+      }
       const hurt = (remote.hurtUntil ?? 0) > now;
       if (s.status) this.statusAmbience(s.x, s.y, s.status);
       const remoteEnch = remote.meta.appearance?.ench;
@@ -27937,17 +28028,9 @@ export class Renderer {
     if (erodePx > 0) {
       const rd = Math.max(1, Math.round(erodePx * 0.71));
       mc.globalCompositeOperation = 'destination-in';
-      for (const [ox, oy] of [
-        [erodePx, 0],
-        [-erodePx, 0],
-        [0, erodePx],
-        [0, -erodePx],
-        [rd, rd],
-        [rd, -rd],
-        [-rd, rd],
-        [-rd, -rd],
-      ] as const) {
-        mc.drawImage(maskSrc, 0, 0, sw, sh, ox, oy, sw, sh);
+      for (const [ux, uy, diag] of Renderer.ERODE_TAPS) {
+        const m = diag ? rd : erodePx;
+        mc.drawImage(maskSrc, 0, 0, sw, sh, ux * m, uy * m, sw, sh);
       }
       mc.globalCompositeOperation = 'source-over';
     }
