@@ -712,10 +712,16 @@ export class UiNav {
         const el = this.focused();
         if (el?.dataset.filled === '1') {
           this.hooks.onItemMenu?.(el);
+          // The item's verbs ride the shared sheet in pad mode (the
+          // legacy list only serves the pointer) — whichever surface
+          // rose, the ring steps inside: an opened menu owns the cursor.
           const menu = document.getElementById('item-menu');
           if (menu && !menu.classList.contains('hidden')) {
             this.menuReturnKey = this.focusKey;
             this.focusKey = 'menu:0';
+          } else if (sheetOpen()) {
+            this.menuReturnKey = this.focusKey;
+            this.focusKey = 'ctx:0';
           }
         } else if (el && openSheetFor(el)) {
           this.menuReturnKey = this.focusKey;
