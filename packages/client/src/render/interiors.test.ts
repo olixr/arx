@@ -139,3 +139,70 @@ test('BUILDING LAW: union is transitive across a middle room', () => {
   assert.ok(a && b);
   assert.ok(m.sameBuilding(a!, b!), 'A and B never touch, but the hall chains them');
 });
+
+test('PASSAGE IS ONE DOOR: a hole through a two-row-thick wall unions the rooms', () => {
+  const m = new InteriorMap();
+  m.beginFrame(1);
+  // Two rooms separated by a DOUBLE wall (x=6 and x=7); the hole
+  // pierces both rows at y=2. Each hole tile is a breach claimed by a
+  // DIFFERENT room's flood — per-tile claims never met, and the
+  // building fragmented (the hard cut/full wall seam bug).
+  const t = new Map<number, Tile>();
+  for (let x = 0; x <= 13; x++) {
+    for (let y = 0; y <= 5; y++) {
+      const ring = x === 0 || x === 6 || x === 7 || x === 13 || y === 0 || y === 5;
+      t.set(packTile(x, y), ring ? Tile.WallStone : Tile.StoneFloor);
+    }
+  }
+  t.set(packTile(6, 2), Tile.StoneFloor);
+  t.set(packTile(7, 2), Tile.StoneFloor);
+  const game = gameOf(t);
+  const a = m.regionAt(game, 3, 2);
+  const b = m.regionAt(game, 10, 2);
+  assert.ok(a && b, 'both rooms resolve — the holes seal as breaches');
+  assert.notEqual(a, b, 'still two regions');
+  assert.ok(m.sameBuilding(a!, b!), 'the two-deep hole chains to one connector key');
+});
+
+test('PASSAGE IS ONE DOOR: a one-wide corridor unions its two rooms', () => {
+  const m = new InteriorMap();
+  m.beginFrame(1);
+  // A | 5-tile corridor (breach cells, walls north and south) | B.
+  const t = new Map<number, Tile>();
+  for (let x = 0; x <= 16; x++) {
+    for (let y = 0; y <= 5; y++) {
+      const mid = x >= 6 && x <= 10;
+      const ring = x === 0 || x === 16 || y === 0 || y === 5 || (mid && y !== 2);
+      t.set(packTile(x, y), ring ? Tile.WallWood : Tile.WoodFloor);
+    }
+  }
+  const game = gameOf(t);
+  const a = m.regionAt(game, 3, 2);
+  const b = m.regionAt(game, 13, 2);
+  assert.ok(a && b, 'both ends resolve');
+  assert.ok(m.sameBuilding(a!, b!), 'the corridor chains A and B into one building');
+  // Standing IN the corridor is wall-line (no region) but a passage —
+  // the shelter gate holds the veil there instead of draining it.
+  assert.equal(m.regionAt(game, 8, 2), null);
+  assert.ok(m.isPassageAt(game, 8, 2), 'corridor cells read as passage');
+  assert.equal(m.isPassageAt(game, 3, 2), false, 'room floor is not a passage');
+});
+
+test('PASSAGE IS ONE DOOR: a doorway at a corridor mouth joins the chain', () => {
+  const m = new InteriorMap();
+  m.beginFrame(1);
+  const t = new Map<number, Tile>();
+  for (let x = 0; x <= 16; x++) {
+    for (let y = 0; y <= 5; y++) {
+      const mid = x >= 6 && x <= 10;
+      const ring = x === 0 || x === 16 || y === 0 || y === 5 || (mid && y !== 2);
+      t.set(packTile(x, y), ring ? Tile.WallWood : Tile.WoodFloor);
+    }
+  }
+  t.set(packTile(6, 2), Tile.DoorwayWood); // a real door on A's mouth
+  const game = gameOf(t);
+  const a = m.regionAt(game, 3, 2);
+  const b = m.regionAt(game, 13, 2);
+  assert.ok(a && b);
+  assert.ok(m.sameBuilding(a!, b!), 'door + breach cells chain as one passage');
+});

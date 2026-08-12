@@ -3565,9 +3565,20 @@ export class Renderer {
       // building bows its walls down and leaving raises them, instead
       // of the old binary region snap.
       const ownT = game.world.groundAt(Math.floor(own.x), Math.floor(own.y));
+      // A breach/corridor tile is wall-line by THE BREACH LAW —
+      // standing in it is standing in a doorway, so it shelters and
+      // holds the threshold exactly like a door tile. (Without this,
+      // crossing a one-wide hallway drained buildingK and flapped
+      // every cut wall up and back down over 0.35s each way.)
+      const onPassage = this.interiors.isPassageAt(
+        game,
+        Math.floor(own.x),
+        Math.floor(own.y),
+      );
       const sheltered =
         this.ugCutOn ||
         this.localRegion !== null ||
+        onPassage ||
         (ownT !== undefined &&
           (Renderer.REVEAL_FLOORS.has(ownT) || Renderer.DOOR_TILES.has(ownT)));
       const step = frameDt / 0.35;
@@ -3598,11 +3609,18 @@ export class Renderer {
           ? this.interiors.regionAt(game, this.veilAnchorX, this.veilAnchorY)
           : null);
       const onThreshold =
-        this.localRegion === null && ownT !== undefined && Renderer.DOOR_TILES.has(ownT);
+        this.localRegion === null &&
+        (onPassage || (ownT !== undefined && Renderer.DOOR_TILES.has(ownT)));
       const bTarget = this.localRegion !== null ? 1 : onThreshold ? this.buildingK : 0;
       this.buildingK += Math.max(-step, Math.min(step, bTarget - this.buildingK));
       this.bldCut = this.buildingK * this.buildingK * (3 - 2 * this.buildingK);
-    } else {
+    } else if (game.connStatus !== 'reconnecting') {
+      // THE VEIL SURVIVES THE BLIP — the walls too: a reconnect drops
+      // ownEid for a beat, and zeroing here snapped every sunken wall
+      // to full height in ONE frame (then the eases bowed them back
+      // down after welcome). Hold the whole veil state while the
+      // session resolves, exactly like revealArmed below; a real
+      // logout still clears.
       this.localRegion = null;
       this.ugCutOn = false;
       this.shelterK = 0;
@@ -5730,7 +5748,11 @@ export class Renderer {
           h = mixSig(h, m.ty);
           h = mixSig(h, m.len);
           h = mixSig(h, this.regGame!.world.elevAt(m.tx, m.ty));
-          if (this.bandNonce.size > 0) h = mixSig(h, this.bandNonce.get(packTile(m.tx, m.ty)) ?? 0);
+          // Mixed UNCONDITIONALLY: gating on bandNonce.size flipped
+          // the whole world's sig scheme the moment the first sign
+          // was written anywhere — a one-time mass re-bake storm.
+          h = mixSig(h, this.bandNonce.get(packTile(m.tx, m.ty)) ?? 0);
+          h = mixSig(h, this.memberContextSig(this.regGame!, m));
           ms[i] = si;
         }
         sigs[si] = h;
@@ -5740,6 +5762,79 @@ export class Renderer {
     }
     const entry = { data, rev: data.rev ?? 0, rows, stretches, stretchSigs, memberStretch };
     this.registers.set(key, entry);
+    return this.finishRegister(key, entry);
+  }
+
+  /**
+   * THE NEIGHBOR'S FACE IS OUR CONTENT: everything a bandable painter
+   * reads OUTSIDE its own member tuple, folded into the stretch sig
+   * as DERIVED booleans, never raw tile ids — a door swinging
+   * open/shut must keep every neighbor's sig still (the zero-bake
+   * door-toggle receipt). Covers the shared-edge joins, crown
+   * chamfers, south faces, exposed-end flanks and outlines (wallish/
+   * garrisonish at the four neighbors), the north-doorway square-
+   * corner rule, the porch-deck lift on rails and props, and the
+   * building wood skin (the region anchor deals the palette). Every
+   * edit that can change one of these lands within touchNeighbors'
+   * 3x3 rev bump (buildings cap at 400 tiles, well inside a chunk
+   * ring; chunk arrivals bump neighbors too), so a register rebuild —
+   * and with it this digest — is guaranteed wherever it can change.
+   * Without this digest, a demolished south row or a run end cut in
+   * the NEXT chunk left cold bakes blitting pre-edit art (crowns with
+   * no face, unfinished ends) hard-edged against live neighbors.
+   */
+  private memberContextSig(game: ClientGame, m: RaisedMember): number {
+    switch (m.kind) {
+      case RaisedKind.Wall:
+      case RaisedKind.DiagWall: {
+        const { tx, ty } = m;
+        let h =
+          (this.wallish(game, tx, ty - 1) ? 1 : 0) |
+          (this.wallish(game, tx + 1, ty) ? 2 : 0) |
+          (this.wallish(game, tx, ty + 1) ? 4 : 0) |
+          (this.wallish(game, tx - 1, ty) ? 8 : 0);
+        const nT = game.world.groundAt(tx, ty - 1);
+        if (nT !== undefined && Renderer.DOOR_TILES.has(nT)) h |= 16;
+        const r = this.wallRegion(game, tx, ty);
+        if (r) {
+          h = mixSig(h, r.seed);
+          h = mixSig(h, r.wallMaterial);
+          h = mixSig(h, r.hasHearth ? 1 : 0);
+        }
+        return h;
+      }
+      case RaisedKind.GarrisonWall: {
+        const { tx, ty } = m;
+        return (
+          (this.garrisonish(game, tx, ty - 1) ? 1 : 0) |
+          (this.garrisonish(game, tx + 1, ty) ? 2 : 0) |
+          (this.garrisonish(game, tx, ty + 1) ? 4 : 0) |
+          (this.garrisonish(game, tx - 1, ty) ? 8 : 0)
+        );
+      }
+      case RaisedKind.Rail: {
+        const g = game.world;
+        const { tx, ty } = m;
+        return (
+          (g.groundAt(tx, ty - 1) === Tile.RailWood ? 1 : 0) |
+          (g.groundAt(tx + 1, ty) === Tile.RailWood ? 2 : 0) |
+          (g.groundAt(tx, ty + 1) === Tile.RailWood ? 4 : 0) |
+          (g.groundAt(tx - 1, ty) === Tile.RailWood ? 8 : 0) |
+          (this.porchAt(game, tx, ty) ? 16 : 0)
+        );
+      }
+      case RaisedKind.Generic:
+        // The carried-deck rule: objectItem lifts deck-adjacent props.
+        return this.porchAt(game, m.tx, m.ty) ? 16 : 0;
+      default:
+        return 0;
+    }
+  }
+
+  private finishRegister(
+    key: string,
+    entry: ChunkRegister<ChunkData>,
+  ): ChunkRegister<ChunkData> {
     // Stale bakes for stretches that no longer exist die here; kept
     // sigs revalidate lazily at emission.
     const pfx = key + '|';
@@ -6215,9 +6310,12 @@ export class Renderer {
   }
 
   /** The layer stands down where its premises fail: the editor pins
-   *  the camera and patches tiles at brush rate. */
+   *  the camera and patches tiles at brush rate, and leanX bends
+   *  verticals about the LIVE screen center — a bake would freeze the
+   *  lean about the stretch's own canvas center (THE STRAIGHT-WORLD
+   *  PREREQUISITE; the fuse blows if the lean is ever revived). */
   private staticLayerOn(): boolean {
-    return this.cameraOverride === null;
+    return this.cameraOverride === null && PERSP_LEAN === 0;
   }
 
   /** Device pixels per tile for band bakes (THE CRISP GRID LAW):
@@ -6336,29 +6434,45 @@ export class Renderer {
         this.bandStats.blit++;
         bake.used = this.frameNo;
         const buckets = bake.buckets;
+        // SHADOWS NEVER BAKE — the members' items re-mint fresh
+        // INSIDE the shadow passes and only their drawShadow closures
+        // run. (The origin-delta replay of bake-time closures
+        // desynced the moment the camera panned — stale captures on
+        // the shared shadow layer are banned.) Shadows are split by
+        // PASS exactly like live items: ground-level casts run in the
+        // shadow-layer prepass, elevated casts run inline in the
+        // sorted world pass — so the re-mint hangs off the FIRST
+        // bucket of EACH elevation class and filters to its own
+        // class. Routing every member through bucket 0's pass moved a
+        // terrace-straddling stretch's shadows between passes on
+        // every hot<->cold flip.
+        let sd0 = -1; // first ground-level bucket
+        let sd1 = -1; // first elevated bucket
+        if (bake.casts) {
+          for (let bi = 0; bi < buckets.length; bi++) {
+            if (buckets[bi]!.elevated) {
+              if (sd1 < 0) sd1 = bi;
+            } else if (sd0 < 0) sd0 = bi;
+          }
+        }
         for (let bi = 0; bi < buckets.length; bi++) {
           const bk = buckets[bi]!;
           const sb = bake;
+          const wantElevated = bk.elevated;
           items.push({
             sortY: bk.sortY,
             strat: bk.strat,
             elevated: bk.elevated ? true : undefined,
-            // SHADOWS NEVER BAKE — the members' items re-mint fresh
-            // INSIDE the shadow prepass and only their drawShadow
-            // closures run. (The origin-delta replay of bake-time
-            // closures desynced the moment the camera panned — stale
-            // captures on the shared shadow layer are banned. The
-            // construction happens at most once per stretch per
-            // frame, and only for stretches that actually cast.)
             drawShadow:
-              bi === 0 && sb.shadowDraws.length > 0
+              bi === sd0 || bi === sd1
                 ? () => {
                     const scratch: DrawItem[] = [];
                     const seen2 = this.bandScratchSeen;
                     seen2.clear();
                     for (let i = s.i0; i <= s.i1; i++)
                       this.emitRaisedMember(game, scratch, list[i]!, seen2);
-                    for (const it of scratch) it.drawShadow?.();
+                    for (const it of scratch)
+                      if (!!it.elevated === wantElevated) it.drawShadow?.();
                   }
                 : undefined,
             draw: () => this.blitBand(sb, bk),
@@ -6372,25 +6486,40 @@ export class Renderer {
     for (let i = s.i0; i <= s.i1; i++) this.emitRaisedMember(game, items, list[i]!, runSeen);
   }
 
-  /** Blit one band bucket exactly like the elevated-ground rows do:
-   *  dest corners from snapPx'd projections shared with every other
-   *  layer (SHARED-CORNER), so bands, ground, and live neighbours
-   *  translate in lockstep and abutting bands meet pixel-true. */
+  /** Blit one band bucket at its snapped anchor projection.
+   *
+   *  THE EXACT LATTICE PATH: at settled zoom on the bake's own dpr,
+   *  the bake is an integer-device-pixel TRANSLATION of the live
+   *  paint — the in-bake camera origin is snapped on the bake
+   *  lattice, so every in-bake snapPx shares the live path's rounding
+   *  phase. kx = ky = 1/dpr therefore lands every baked edge on the
+   *  very device pixel the live painter would use: no resample, byte
+   *  parity at EVERY settled framing, not just integer gridPx.
+   *  (Deriving the scale from two snapped endpoint projections — the
+   *  old way — quantized a ±1 device-px error into the mapping, and
+   *  the one-row vertical baseline amplified it over the full canvas
+   *  height: 1-3.5px crown misalignment and hairline background seams
+   *  at any non-default zoom, popping at every hot<->cold flip.)
+   *
+   *  Genuinely stale bakes (mid-glide, dpr step, awaiting the paced
+   *  re-bake queue) map by the pure scale ratio instead — transient
+   *  softness by design, free of endpoint quantization noise. */
   private blitBand(sb: StretchBake, bk: BandBucket): void {
     const ctx = this.ctx;
     const cam = this.camera;
     const pA = cam.worldToScreen(sb.wx0, sb.rowY, this.w, this.h);
-    const pB = cam.worldToScreen(sb.wx1, sb.rowY + 1, this.w, this.h);
     const x0 = cam.snapPx(pA.x);
     const y0 = cam.snapPx(pA.y);
-    const kx = (cam.snapPx(pB.x) - x0) / ((sb.wx1 - sb.wx0) * sb.gridPx);
-    const ky = (cam.snapPx(pB.y) - y0) / sb.rowDepthPx;
+    const k =
+      !this.zoomGliding && sb.gridPx === this.bandGridPx()
+        ? 1 / cam.snapDpr
+        : cam.scale / sb.gridPx;
     ctx.drawImage(
       bk.canvas,
-      x0 - bk.padL * kx,
-      y0 - bk.padT * ky,
-      bk.canvas.width * kx,
-      bk.canvas.height * ky,
+      x0 - bk.padL * k,
+      y0 - bk.padT * k,
+      bk.canvas.width * k,
+      bk.canvas.height * k,
     );
   }
 
@@ -6481,10 +6610,7 @@ export class Renderer {
     this.bakingMask = true;
     const keyOf = (it: DrawItem): string => `${it.sortY}|${it.strat ?? 'u'}|${it.elevated ? 1 : 0}`;
     const buckets: BandBucket[] = [];
-    // Live-camera origin at capture time — the shadow replay's
-    // translation reference (probe items carry live screen coords).
-    const org = cam.worldToScreen(0, 0, this.w, this.h);
-    const shadowDraws: Array<() => void> = [];
+    let casts = false;
     try {
       // Probe pass (live camera): discover the sort buckets in first-
       // occurrence order. Only keys are read; the items are discarded.
@@ -6496,7 +6622,7 @@ export class Renderer {
       for (const it of probe) {
         const k = keyOf(it);
         if (!bucketKeys.includes(k)) bucketKeys.push(k);
-        if (it.drawShadow) shadowDraws.push(it.drawShadow);
+        if (it.drawShadow) casts = true;
       }
       for (const bkKey of bucketKeys) {
         const canvas = this.acquireBandCanvas(W, H);
@@ -6513,7 +6639,15 @@ export class Renderer {
         cam.x = (cssW / 2 - (targetX - wx0 * cssScale)) / cssScale;
         cam.y = (cssH / 2 - (targetY - rowY * cssScale * cam.yScale)) / (cssScale * cam.yScale);
         const anchorCss = cam.worldToScreen(wx0, rowY, cssW, cssH);
-        const anchor = { x: anchorCss.x * dprB, y: anchorCss.y * dprB };
+        // THE ANCHOR SITS ON THE LATTICE: pad offsets must be whole
+        // bake pixels — a fractional pad (any fractional gridPx)
+        // shifted the entire band by frac(wx0*gridPx) device px
+        // against every live neighbor at blit time: the grass-colored
+        // hairline at stretch joins.
+        const anchor = {
+          x: Math.round(anchorCss.x * dprB),
+          y: Math.round(anchorCss.y * dprB),
+        };
         this.ctx = bctx;
         const s2: DrawItem[] = [];
         seen.clear();
@@ -6553,11 +6687,8 @@ export class Renderer {
       wx0,
       wx1,
       rowY,
-      rowDepthPx: this.camera.yScale * gridPx,
       buckets,
-      shadowDraws,
-      originX: org.x,
-      originY: org.y,
+      casts,
       used: this.frameNo,
     };
   }

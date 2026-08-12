@@ -118,6 +118,60 @@ export class InteriorMap {
     return e !== undefined && w !== undefined && BOUNDARY.has(e) && BOUNDARY.has(w);
   }
 
+  /** True when this walkable tile is sealed wall-line by THE BREACH
+   *  LAW — standing here is standing in a doorway, not in a room.
+   *  The shelter gate holds the veil open across these tiles. */
+  isPassageAt(game: ClientGame, tx: number, ty: number): boolean {
+    const t = game.world.groundAt(tx, ty);
+    if (t === undefined || BOUNDARY.has(t)) return false;
+    return this.isBreach(game, tx, ty);
+  }
+
+  /** A doorway or breach tile continues a walkable passage. */
+  private isPassageTile(game: ClientGame, tx: number, ty: number): boolean {
+    const t = game.world.groundAt(tx, ty);
+    if (t === undefined) return false;
+    if (BOUNDARY.has(t)) return doorInfo(t) !== null;
+    return this.isBreach(game, tx, ty);
+  }
+
+  /** THE PASSAGE IS ONE DOOR: a connector's claim key is canonical
+   *  over its whole chain — consecutive doorway/breach tiles along
+   *  the passage axis. The two rooms at the mouths of a one-wide
+   *  corridor (or of a hole through a two-row-thick wall) never touch
+   *  the same TILE, so per-tile claims left them un-unioned and the
+   *  building fragmented — the room-truth veil then cut its walls per
+   *  column with a hard seam. Walking the chain from either mouth
+   *  yields the same minimum key, so both rooms claim it and THE
+   *  BUILDING LAW unions them. A plain doorway with rooms on both
+   *  sides has no passage neighbors and keys to itself — the old
+   *  behavior, untouched. */
+  private passageKey(game: ClientGame, tx: number, ty: number): number {
+    let dirX = 0;
+    let dirY = 0;
+    if (this.isPassageTile(game, tx, ty - 1) || this.isPassageTile(game, tx, ty + 1)) {
+      dirY = 1;
+    } else if (this.isPassageTile(game, tx - 1, ty) || this.isPassageTile(game, tx + 1, ty)) {
+      dirX = 1;
+    } else {
+      return packTile(tx, ty);
+    }
+    let min = packTile(tx, ty);
+    for (const sign of [1, -1]) {
+      let x = tx + dirX * sign;
+      let y = ty + dirY * sign;
+      // Bounded walk: a "corridor" past 64 tiles is architecture, not
+      // a connector — fail closed to the per-mouth claim.
+      for (let steps = 0; steps < 64 && this.isPassageTile(game, x, y); steps++) {
+        const k = packTile(x, y);
+        if (k < min) min = k;
+        x += dirX * sign;
+        y += dirY * sign;
+      }
+    }
+    return min;
+  }
+
   private flood(game: ClientGame, sx: number, sy: number): InteriorRegion | null {
     const world = game.world;
     const start = world.groundAt(sx, sy);
@@ -235,7 +289,7 @@ export class InteriorMap {
     // rooms share a doorway — union them into one building.
     this.buildingParent.set(region.id, region.id);
     for (const [cx, cy] of connectors) {
-      const k = packTile(cx, cy);
+      const k = this.passageKey(game, cx, cy);
       const owner = this.connectorOwner.get(k);
       if (owner === undefined) {
         this.connectorOwner.set(k, region.id);

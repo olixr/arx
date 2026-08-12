@@ -324,7 +324,7 @@ export interface BandBucket {
 
 /** A stretch's bake: identity (content sig + outline + grid) and the
  *  sort-bucket canvases. gridPx mismatch alone leaves the bake usable
- *  (the blit scale-compensates through snapped corners) while a paced
+ *  (the blit scale-compensates by the pure grid ratio) while a paced
  *  re-bake replaces it. */
 export interface StretchBake {
   sig: number;
@@ -333,19 +333,12 @@ export interface StretchBake {
   wx0: number;
   wx1: number;
   rowY: number;
-  /** Foreshortened row depth in bake px (yScale * gridPx). */
-  rowDepthPx: number;
   buckets: BandBucket[];
-  /** The probe items' live drawShadow closures, captured at bake.
-   *  Their painters are translation-invariant screen-space casts that
-   *  read the sun (and this.ctx) at call time, so the per-frame
-   *  replay just translates by the camera's origin delta — SHADOWS
-   *  NEVER BAKE, and neither does per-frame item construction. */
-  shadowDraws: Array<() => void>;
-  /** Camera origin (worldToScreen of 0,0) when the shadows were
-   *  captured — the replay's translation reference. */
-  originX: number;
-  originY: number;
+  /** Any probe item carried a drawShadow at bake time. SHADOWS NEVER
+   *  BAKE — and never REPLAY (a938b7c): the blit re-mints member
+   *  items fresh inside the shadow passes and runs only their live
+   *  closures. This flag just spares castless stretches the mint. */
+  casts: boolean;
   used: number;
 }
 
