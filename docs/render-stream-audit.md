@@ -180,6 +180,66 @@ Unthrottled 25s walk into fresh forest at 120Hz: p99 9.3ms.
 - Client never drops chunk DATA (only baked canvases) — unbounded but
   ~5KB/chunk; a cap is cheap insurance someday.
 
+## Round 4 — THE MATTER COSTS NO GARBAGE (2026-08-12)
+
+Triggered by "stutter when a discovered POI lights its particle FX +
+prop-heavy scenes". Three parallel deep-reads (particles/debris/birds/
+matter, discovery ceremony path, main frame loop) + live lane-3 rig
+measurements (chromium headless, CDP 4x throttle, independent rAF
+sampler — scratchpad perf-driver pattern, same protocol as round 1).
+
+Shipped (062b557, 6884923, 4e2a79e, 45bb803):
+
+- **THE CEREMONY COSTS NO FRAME**: chat.addLine's scrollHeight read
+  (a forced whole-document reflow per chat line, inside the WS task)
+  → write-only scroll pin; discovery sigil toDataURL memoized per
+  kind; chat line lands before the herald insert.
+- **THE LIFT LEDGER**: renderLift classifies each tile once per world
+  version (constant/apron/ramp/deck-fill-slow) — hot path is one map
+  get. It runs per particle/body/glow/debris per frame.
+- **liftedWTSScratch**: bulk lanes project through one reused Vec2;
+  drawOne contracts updated (copy before second projection).
+- **Pooled bulk DrawItems** + indexed pool walks (generators minted an
+  iterator + result object per particle per frame) + world-pass
+  fillStyle dedupe runs + hoisted overlay comparator + no per-particle
+  globalAlpha reads.
+- **Emitter backlog clamp**: one frame spawns ≤50ms of a pop's own
+  rate; the post-hitch burst can't amplify the hitch.
+- **Cost-aware bake gates**: tree/flora/prop budgets admit at
+  ~half bakeCostEma instead of "> 0" (a 0.01ms remainder used to start
+  a 0.6ms bake); brand-new chunk starts paced at 4/frame (a mass /tp
+  started a 5x4 window of prologues in ONE frame).
+- **Entity screen cull**: bodies past viewport+6 tiles skip the whole
+  rig build (projectiles exempt — v9 tracer handoff).
+- **lightThrows pooled** (was ~86k allocs/s at night), queueGlow rgb
+  memo, window-probe + erode-kernel literal hoists, lighting gradient
+  stops from a 1/255-quantized alpha table, growthOf size gate.
+
+Measured (lane-3 rig arx_rig_perf :8795/:5178, 1600x900, Hoargate
+/tp -333 -261 + mid-window re-tp, 24s):
+
+| | before | after |
+|---|---|---|
+| 4x throttle p50 / p95 / p99 / max | 58.2 / 75.4 / 90.8 / 108.3 | 50.0 / 58.9 / 67.2 / 79.2 |
+| 4x world-phase EMA | 48.6ms | 33.7ms |
+| unthrottled p50 / >16.7ms frames | — | 8.3ms (vsync tick) / ~3% |
+
+Particle-cap storm A/B (identical scripted scenario, ~2400 live world
+grains — 4-6x any real POI FX): p50 91.2 → 67.2ms, world 66.1 → 49.1.
+
+Deliberately NOT done (candidates for round 5):
+- Grass under-cache rebakes every frame during a zoom glide
+  (`c.scale !== s` exact compare) and wholesale every 66ms — a gate
+  needs scale-compensated blitting or slicing to stay visually exact.
+- Tree light-throw shadow Path2D rebuilt per tree per light per frame
+  at night (the sun path is cached; the throw path is not).
+- applyTiltShift's full-canvas self-read every frame (~15 full-screen
+  passes/frame total) — skipping under load is a visible change.
+- collectStaticLights record pooling; the tile-class Uint8Array table
+  to collapse per-tile Set.has chains.
+- **The static-layer epic remains the one big lever**: the world pass
+  (immediate-mode props/bodies/walls) still dominates every profile.
+
 ## Verification harness (reusable)
 
 Isolated rig: `createdb-17 arx_rig_perf`; server
