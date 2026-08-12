@@ -23,14 +23,17 @@ export type ZoneId = keyof ZoneWeights;
 
 /**
  * The settled places the music treats as town: full weight inside
- * `full`, trailing off to wild by `fade`. Dawnmead is the world's one
- * hearth for now — future settlements add rows here as they're built.
+ * `full`, trailing off to wild by `fade`. Every hearth and haven the
+ * danger field knows (content danger.ts) needs a row here, or its
+ * streets play the wild's music — new settlements add rows as built.
  */
 const TOWNS = [
   { x: -64, y: 48, full: 22, fade: 36 }, // Dawnmead
   { x: 352, y: 24, full: 30, fade: 48 }, // Amberford — the bigger hearth
   { x: -288, y: -160, full: 44, fade: 72 }, // Silverfall — the mountain capital
   { x: 356, y: 292, full: 34, fade: 52 }, // Saltmere — the town at the water's end
+  { x: 584, y: -136, full: 30, fade: 48 }, // Pinewatch — the wood's muster town
+  { x: 848, y: -392, full: 30, fade: 48 }, // Hartfell — the town past the treeline
 ] as const;
 /** The dark band: worldgen's underground begins here. */
 export const UNDERGROUND_Y = 512;

@@ -9,17 +9,32 @@
  * dry — the files arrive already mastered; the shared room would only
  * smear them).
  *
+ * The whole player leans Breath-of-the-Wild: music is scenery that
+ * EMERGES from the world's own sound and recedes back into it. Slow
+ * blooms, long quiets, and no two sittings walking the same path.
+ *
  * Laws:
  *  - MOOD PICKS THE SHELF: town zone → town tracks; night hours or
  *    underground → night tracks; otherwise the day adventure shelf.
  *    Mood commits on a 2.5s-sustained change (no doorway stutter),
  *    then the sounding track bows out with a fade and the new mood
  *    opens after a short breath.
- *  - SHUFFLE, NEVER REPEAT: the next track from a shelf is random but
- *    never the one just played from that shelf.
- *  - EVERY EDGE IS A FADE: ~2s in, ~2.6s out. A track that ends
- *    naturally is followed by a real gap (silence is still a section)
- *    before the next one fades in.
+ *  - THE FULL DECK: each shelf is dealt as a shuffled deck — every
+ *    track plays once before any repeats, and a reshuffle never leads
+ *    with the track just heard. Decks persist across sessions
+ *    (localStorage), so even short sittings walk the library's full
+ *    swath instead of re-rolling the same openers.
+ *  - THE SONG REMEMBERED: a track cut mid-flight by a mood change is
+ *    bookmarked; return to that mood within a few minutes and it takes
+ *    up where it left off (a breath rewound) instead of restarting.
+ *    Stepping into town and back out never replays the same opening.
+ *  - EVERY EDGE IS A LONG BREATH: slow eased fades — ~5s bloom in,
+ *    ~3.5s bow out — on a PER-TRACK gain node. Fades never touch the
+ *    bus and no two tracks ever fight over one fader, so an interrupted
+ *    fade can simply become a gentle crossfade.
+ *  - SILENCE IS A SECTION: the rest after a track ends is tuned per
+ *    mood — towns sing again sooner; the wild and the night hold long
+ *    scenic quiets where the world's own ambience carries the scene.
  */
 
 import type { AudioEngine } from './engine.js';
@@ -38,8 +53,28 @@ export const TRACK_LIBRARY: Record<TrackMood, string[]> = {
   danger: ['boss_fight_1', 'boss_fight_2'],
 };
 
-const FADE_IN_SEC = 2.0;
-const FADE_OUT_SEC = 2.6;
+const FADE_IN_SEC = 5.0;
+const FADE_OUT_SEC = 3.5;
+/** How long a cut track's bookmark stays warm. */
+const RESUME_WINDOW_SEC = 180;
+/** Rewind a breath so the resumed phrase re-establishes itself. */
+const RESUME_REWIND_SEC = 4;
+/** Don't bookmark a track that was nearly over anyway. */
+const RESUME_MIN_REMAIN_SEC = 25;
+
+/**
+ * SILENCE IS A SECTION — the rest [min, max] seconds after a track
+ * ends naturally, per mood. Towns feel lived-in and sing again sooner;
+ * the wild holds long scenic quiets; the night longer still (its shelf
+ * is small — the quiet keeps two tracks from wearing a groove); the
+ * deep frontier keeps its dread close.
+ */
+const REST: Record<TrackMood, readonly [number, number]> = {
+  town: [12, 26],
+  adventure: [24, 55],
+  night: [35, 80],
+  danger: [8, 18],
+};
 
 /**
  * Per-track loudness trims — the library is normalized to its own
@@ -86,6 +121,54 @@ export function moodFor(w: ZoneWeights, hours: number, dangerTier = 0): TrackMoo
   return night ? 'night' : 'adventure';
 }
 
+/**
+ * THE FULL DECK, pure and testable: take the next track from a
+ * shelf's deck, reshuffling the whole shelf when the deck runs dry.
+ * A fresh shuffle never leads with the track just played, and names
+ * a stale persisted deck no longer carries are dropped on the way in.
+ */
+export function drawTrack(
+  shelf: readonly string[],
+  deck: readonly string[],
+  last: string | null,
+  rand: () => number,
+): { name: string; deck: string[] } {
+  let d = deck.filter((n) => shelf.includes(n));
+  if (d.length === 0) {
+    d = [...shelf];
+    for (let i = d.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [d[i], d[j]] = [d[j]!, d[i]!];
+    }
+    if (d.length > 1 && d[0] === last) {
+      const j = 1 + Math.floor(rand() * (d.length - 1));
+      [d[0], d[j]] = [d[j]!, d[0]!];
+    }
+  }
+  return { name: d[0]!, deck: d.slice(1) };
+}
+
+/** Decks + last-played survive reloads so variety spans sessions. */
+const DECK_STORE_KEY = 'arx.musicDecks.v1';
+
+interface DeckStore {
+  decks: Partial<Record<TrackMood, string[]>>;
+  last: Partial<Record<TrackMood, string>>;
+}
+
+function loadDeckStore(): DeckStore {
+  try {
+    const raw = localStorage.getItem(DECK_STORE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw) as Partial<DeckStore>;
+      return { decks: p.decks ?? {}, last: p.last ?? {} };
+    }
+  } catch {
+    // Private browsing or a mangled entry: start a fresh deal.
+  }
+  return { decks: {}, last: {} };
+}
+
 export class TrackPlayer {
   /** Committed mood (readable for debugging). */
   mood: TrackMood = 'adventure';
@@ -93,27 +176,29 @@ export class TrackPlayer {
   /** Name of the sounding track, if any. */
   current: string | null = null;
 
-  private out: GainNode | null = null;
   private nextAt = 0;
   private candidate: TrackMood | null = null;
   private candidateSince = 0;
-  private lastPlayed: Partial<Record<TrackMood, string>> = {};
-  private media = new Map<string, { el: HTMLAudioElement; node: MediaElementAudioSourceNode }>();
+  private decks: Partial<Record<TrackMood, string[]>>;
+  private lastPlayed: Partial<Record<TrackMood, string>>;
+  /** THE SONG REMEMBERED — where each mood's cut track stood. */
+  private bookmark: Partial<Record<TrackMood, { name: string; pos: number; at: number }>> = {};
+  private media = new Map<string, { el: HTMLAudioElement; gain: GainNode }>();
+  /** Pending stop per fading track, cancelled if the track resumes. */
+  private pauseTimer = new Map<string, number>();
   private activeEl: HTMLAudioElement | null = null;
   private booted = false;
 
-  constructor(private engine: AudioEngine) {}
+  constructor(private engine: AudioEngine) {
+    const stored = loadDeckStore();
+    this.decks = stored.decks;
+    this.lastPlayed = stored.last;
+  }
 
   update(w: ZoneWeights, hours: number, dangerTier = 0): void {
     const ctx = this.engine.ctx;
-    const bus = this.engine.tracks;
-    if (!ctx || !bus) return;
+    if (!ctx || !this.engine.tracks) return;
     const t = ctx.currentTime;
-    if (!this.out) {
-      this.out = ctx.createGain();
-      this.out.gain.value = 0;
-      this.out.connect(bus);
-    }
     if (!this.booted) {
       // Let the world's own sounds greet the player first.
       this.booted = true;
@@ -138,82 +223,175 @@ export class TrackPlayer {
   }
 
   private switchTo(mood: TrackMood, t: number): void {
+    const from = this.mood;
     this.mood = mood;
     this.candidate = null;
     if (this.state === 'playing') {
-      this.fadeOut(t);
-      // Arrival deserves music — a breath, not a full rest.
-      this.nextAt = t + FADE_OUT_SEC + 2 + Math.random() * 3;
+      this.fadeOut(from, t);
+      // Arrival deserves music — a breath, not a full rest. The old
+      // track's tail may still be sounding when the new one blooms;
+      // per-track gains make that overlap a gentle crossfade.
+      this.nextAt = t + FADE_OUT_SEC + 1 + Math.random() * 3;
     } else {
       this.nextAt = Math.min(this.nextAt, t + 2 + Math.random() * 3);
     }
   }
 
-  /** Fade the sounding track down and stop it once it is inaudible. */
-  private fadeOut(t: number): void {
-    const out = this.out;
-    if (!out) return;
-    const g = out.gain;
-    g.cancelScheduledValues(t);
-    g.setValueAtTime(g.value, t);
-    g.linearRampToValueAtTime(0, t + FADE_OUT_SEC);
-    const el = this.activeEl;
-    if (el) window.setTimeout(() => el.pause(), FADE_OUT_SEC * 1000 + 150);
+  /**
+   * Bow the sounding track out on ITS OWN gain and bookmark where it
+   * stood, so `from`'s song can be taken up again on return.
+   */
+  private fadeOut(from: TrackMood, t: number): void {
+    const name = this.current;
+    const m = name ? this.media.get(name) : null;
+    if (name && m) {
+      const remain = (m.el.duration || 0) - m.el.currentTime;
+      if (Number.isFinite(remain) && remain > RESUME_MIN_REMAIN_SEC) {
+        this.bookmark[from] = { name, pos: m.el.currentTime, at: t };
+      } else {
+        delete this.bookmark[from];
+      }
+      const g = m.gain.gain;
+      g.cancelScheduledValues(t);
+      g.setValueAtTime(g.value, t);
+      // A convex bow-out: most of the drop early, then a long soft tail.
+      g.linearRampToValueAtTime(g.value * 0.3, t + FADE_OUT_SEC * 0.45);
+      g.setTargetAtTime(0, t + FADE_OUT_SEC * 0.45, FADE_OUT_SEC * 0.16);
+      this.schedulePause(name, m.el, FADE_OUT_SEC + 0.5);
+    }
     this.activeEl = null;
     this.current = null;
     this.state = 'silent';
   }
 
+  private schedulePause(name: string, el: HTMLAudioElement, delaySec: number): void {
+    const old = this.pauseTimer.get(name);
+    if (old !== undefined) window.clearTimeout(old);
+    this.pauseTimer.set(
+      name,
+      window.setTimeout(() => {
+        this.pauseTimer.delete(name);
+        if (el !== this.activeEl) el.pause();
+      }, delaySec * 1000),
+    );
+  }
+
+  /** THE SLOW BLOOM — a concave rise: long quiet approach, late swell. */
+  private easeUp(g: AudioParam, t: number, target: number, dur: number): void {
+    g.cancelScheduledValues(t);
+    const v = g.value;
+    g.setValueAtTime(v, t);
+    const knee = target * 0.3;
+    if (v < knee) {
+      g.linearRampToValueAtTime(knee, t + dur * 0.6);
+      g.linearRampToValueAtTime(target, t + dur);
+    } else {
+      // Resuming over its own fade tail: just carry it back up.
+      g.linearRampToValueAtTime(target, t + dur * 0.5);
+    }
+  }
+
   private play(t: number): void {
     const ctx = this.engine.ctx;
-    const out = this.out;
-    if (!ctx || !out) return;
-    // Shuffle without repeats: any track from the shelf but the last.
-    const shelf = TRACK_LIBRARY[this.mood];
-    const pool = shelf.length > 1 ? shelf.filter((n) => n !== this.lastPlayed[this.mood]) : shelf;
-    const name = pool[Math.floor(Math.random() * pool.length)]!;
+    const bus = this.engine.tracks;
+    if (!ctx || !bus) return;
+
+    // THE SONG REMEMBERED: a warm bookmark for this mood resumes the
+    // cut track a breath before where it stood; otherwise deal the deck.
+    const bm = this.bookmark[this.mood];
+    let name: string;
+    let resumeAt: number | null = null;
+    if (bm && t - bm.at < RESUME_WINDOW_SEC && TRACK_LIBRARY[this.mood].includes(bm.name)) {
+      name = bm.name;
+      resumeAt = Math.max(0, bm.pos - RESUME_REWIND_SEC);
+    } else {
+      const drawn = drawTrack(
+        TRACK_LIBRARY[this.mood],
+        this.decks[this.mood] ?? [],
+        this.lastPlayed[this.mood] ?? null,
+        Math.random,
+      );
+      name = drawn.name;
+      this.decks[this.mood] = drawn.deck;
+      this.lastPlayed[this.mood] = name;
+      this.saveDeckStore();
+    }
+    delete this.bookmark[this.mood];
 
     let m = this.media.get(name);
     if (!m) {
       const el = new Audio(`/music/${name}.mp3`);
       el.preload = 'auto';
       // A MediaElementSource is forever — one per element, cached.
+      // Each track owns its gain, so fades never share a fader.
       const node = ctx.createMediaElementSource(el);
-      node.connect(out);
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      node.connect(gain);
+      gain.connect(bus);
       el.addEventListener('ended', () => this.onEnded(el));
-      m = { el, node };
+      m = { el, gain };
       this.media.set(name, m);
     }
-    m.el.currentTime = 0;
+    const pending = this.pauseTimer.get(name);
+    if (pending !== undefined) {
+      window.clearTimeout(pending);
+      this.pauseTimer.delete(name);
+    }
+    // A resumed track that is still sounding out its fade tail keeps
+    // its place (seeking a live element would be an audible skip);
+    // a parked one seeks back to the bookmarked breath.
+    if (resumeAt === null) m.el.currentTime = 0;
+    else if (m.el.paused || m.el.ended) m.el.currentTime = resumeAt;
+    const gain = m.gain;
     const started = m.el.play();
     if (started) {
       started.catch(() => {
         // Autoplay refusal or a load hiccup: stay silent, try later.
-        this.state = 'silent';
-        this.current = null;
-        this.activeEl = null;
-        this.nextAt = this.engine.now() + 6;
+        // The track's own gain drops to 0 so a later start still fades in.
+        const now = this.engine.now();
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(0, now);
+        if (this.current === name) {
+          this.state = 'silent';
+          this.current = null;
+          this.activeEl = null;
+          this.nextAt = now + 6;
+        }
       });
     }
-    const g = out.gain;
-    g.cancelScheduledValues(t);
-    g.setValueAtTime(g.value, t);
-    g.linearRampToValueAtTime(TRACK_TRIM[name] ?? 1, t + FADE_IN_SEC);
+    this.easeUp(gain.gain, t, TRACK_TRIM[name] ?? 1, FADE_IN_SEC);
     this.activeEl = m.el;
     this.current = name;
-    this.lastPlayed[this.mood] = name;
     this.state = 'playing';
   }
 
-  /** A track ran to its own mastered ending — rest, then another. */
+  /** A track ran to its own mastered ending — a real rest, then on. */
   private onEnded(el: HTMLAudioElement): void {
     if (el !== this.activeEl) return;
-    const t = this.engine.now();
-    this.out?.gain.cancelScheduledValues(t);
-    this.out?.gain.setValueAtTime(0, t);
+    const name = this.current;
+    const m = name ? this.media.get(name) : null;
+    if (m) {
+      // Park its fader at 0 silently so a future replay blooms from quiet.
+      const now = this.engine.now();
+      m.gain.gain.cancelScheduledValues(now);
+      m.gain.gain.setValueAtTime(0, now);
+    }
     this.activeEl = null;
     this.current = null;
     this.state = 'silent';
-    this.nextAt = t + 10 + Math.random() * 18;
+    const [lo, hi] = REST[this.mood];
+    this.nextAt = this.engine.now() + lo + Math.random() * (hi - lo);
+  }
+
+  private saveDeckStore(): void {
+    try {
+      localStorage.setItem(
+        DECK_STORE_KEY,
+        JSON.stringify({ decks: this.decks, last: this.lastPlayed } satisfies DeckStore),
+      );
+    } catch {
+      // Storage refused (private browsing, quota): variety stays per-session.
+    }
   }
 }
