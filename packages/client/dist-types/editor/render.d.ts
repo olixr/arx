@@ -16,6 +16,13 @@ export interface PreviewOverlay {
     /** Local tile indices to highlight. */
     indices: Set<number>;
     color: string;
+    /** v2: the live measurement chip for shape drags (LOCAL tiles). */
+    dims?: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+    };
 }
 export declare class EditorView {
     private readonly canvas;
@@ -40,6 +47,10 @@ export declare class EditorView {
         h: number;
         ground: Uint16Array;
         detail?: Uint16Array;
+        /** v2 true-render ghosts: elevation rides the bake when present. */
+        elev?: Int8Array;
+        /** v2: stable identity for the baked-ghost cache (tpl:/pf: ids). */
+        key?: string;
         at: {
             x: number;
             y: number;

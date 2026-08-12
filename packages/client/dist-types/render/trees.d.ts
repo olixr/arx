@@ -222,6 +222,15 @@ export interface TreeFrame {
     windOverride?: number;
     /** 0..1 growth: saplings ~0.45, grow-in eases to 1. Default 1. */
     grow?: number;
+    /**
+     * Foliage presence 0..1 (default 1). THE TIMBER LAW: at the felling
+     * strike the crown bursts into debris and the model keeps painting
+     * as a bare snag — 0 skips every leaf voice (canopy mass, willow
+     * cascade, pine tiers) while the wood (trunk, boughs, root flares,
+     * bark seams) stands untouched. Fractions paint the foliage at that
+     * alpha for handoff frames.
+     */
+    foliage?: number;
 }
 /**
  * Paint a grown tree. Returns the sampled wind value so the caller

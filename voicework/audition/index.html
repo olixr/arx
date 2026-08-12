@@ -1,0 +1,119 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Arx voice audition</title>
+<style>
+  :root { color-scheme: dark; --bg:#14120f; --card:#1e1b16; --line:#2f2a22;
+          --ink:#e8e2d6; --dim:#9c9384; --hot:#d9a441; --bad:#c8563c; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:32px; background:var(--bg); color:var(--ink);
+         font:15px/1.5 ui-sans-serif,system-ui,sans-serif; }
+  h1 { font-size:20px; margin:0 0 4px; letter-spacing:.02em; }
+  .sub { color:var(--dim); margin:0 0 20px; }
+  .line { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--hot);
+          border-radius:6px; padding:12px 16px; margin:0 0 20px; font-style:italic; }
+  .bad { background:#2a1713; border:1px solid var(--bad); border-radius:6px;
+         padding:12px 16px; margin:0 0 20px; }
+  .bad h2 { font-size:14px; margin:0 0 8px; color:var(--bad); letter-spacing:.06em;
+            text-transform:uppercase; }
+  .bad li { margin:2px 0; color:var(--ink); }
+  .bad code { color:var(--bad); }
+  .bar { display:flex; gap:10px; align-items:center; margin:0 0 18px; flex-wrap:wrap; }
+  input[type=search] { flex:1; min-width:220px; background:var(--card); color:var(--ink);
+         border:1px solid var(--line); border-radius:6px; padding:9px 12px; font:inherit; }
+  button { background:var(--card); color:var(--ink); border:1px solid var(--line);
+           border-radius:6px; padding:9px 14px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--hot); color:var(--hot); }
+  h2.group { font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);
+             margin:26px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px; }
+  .card.playing { border-color:var(--hot); }
+  .name { font-weight:600; }
+  .meta { color:var(--dim); font-size:13px; margin:2px 0 10px; }
+  .meta b { color:var(--hot); font-weight:600; }
+  audio { width:100%; height:34px; }
+  .cast { margin-top:9px; font-size:12px; color:var(--dim); }
+  .cast span { display:inline-block; background:#282218; border-radius:4px;
+               padding:1px 6px; margin:2px 3px 0 0; }
+  .free { color:var(--hot); font-size:12px; margin-top:9px; }
+  .hidden { display:none; }
+</style>
+<h1>Arx voice audition</h1>
+<p class="sub">59 voices &middot; each at its own tuning from voices.json &middot; tempo 1.09 &middot; temp 0.8 &middot;
+   the same chain <code>generate.mts</code> speaks the wave through</p>
+<p class="line">&ldquo;Well met, traveler. The road north is shut past the ford, and the watch will not say why.&rdquo;</p>
+<div class="bad">
+  <h2>Cast on voices the service does not serve</h2>
+  <ul><li><code>rpg_fantasy/male/court_thomas2</code> &mdash; 5 character(s): gardener_ivo, keeper_ansel, master_tilo, tinker_fen, wayfarer_petch</li><li><code>rpg_fantasy/male/hale_andy</code> &mdash; 4 character(s): banker_cormund, curio_ninebrass, fence_calder, gate_monger</li><li><code>rpg_fantasy/male/dread_john</code> &mdash; 3 character(s): outfitter_hask, warden_bryn, wayward_watch</li><li><code>rpg_fantasy/female/sage_julie</code> &mdash; 3 character(s): cook_signy, hearthkeeper_iona, wayfarer_senna</li><li><code>rpg_fantasy/male/folksy_phil</code> &mdash; 3 character(s): peddler_coff, reeve_coppin, wayfarer_dray</li><li><code>rpg_fantasy/female/steel_cori</code> &mdash; 3 character(s): forgemistress_balla, smith_bretta, waykeeper_odessa</li><li><code>rpg_fantasy/female/clear_liz</code> &mdash; 3 character(s): assayer_runa, captain_aldis, sage_elowen</li><li><code>rpg_fantasy/female/court_joy</code> &mdash; 3 character(s): innkeep_dunna, innkeep_ragna, orchardist_perl</li></ul>
+</div>
+<div class="bar">
+  <input type="search" id="q" placeholder="filter by voice, group or cast character">
+  <button id="all">Play all in order</button>
+  <button id="stop">Stop</button>
+  <button id="uncast">Only uncast</button>
+</div>
+<div id="sheet"></div>
+<script>
+const CARDS = [{"voice":"narrator/wry_peter","slug":"narrator__wry_peter","file":"narrator__wry_peter.ogg","group":"narrator","f0":83,"durMs":4755,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"narrator/stanley","slug":"narrator__stanley","file":"narrator__stanley.ogg","group":"narrator","f0":102,"durMs":6244,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"narrator/dread_ben","slug":"narrator__dread_ben","file":"narrator__dread_ben.ogg","group":"narrator","f0":115,"durMs":4497,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"narrator/dread_mark","slug":"narrator__dread_mark","file":"narrator__dread_mark.ogg","group":"narrator","f0":123,"durMs":5602,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"narrator/crypt_kirksvoice","slug":"narrator__crypt_kirksvoice","file":"narrator__crypt_kirksvoice.ogg","group":"narrator","f0":134,"durMs":4977,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"narrator/veil_anne","slug":"narrator__veil_anne","file":"narrator__veil_anne.ogg","group":"narrator","f0":160,"durMs":4811,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"narrator/david","slug":"narrator__david","file":"narrator__david.ogg","group":"narrator","f0":174,"durMs":13602,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"news/slow_john","slug":"news__slow_john","file":"news__slow_john.ogg","group":"news","f0":93,"durMs":4795,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"news/sly_adrian","slug":"news__sly_adrian","file":"news__sly_adrian.ogg","group":"news","f0":103,"durMs":4978,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"news/plain_mark","slug":"news__plain_mark","file":"news__plain_mark.ogg","group":"news","f0":143,"durMs":5931,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"news/stage_mil","slug":"news__stage_mil","file":"news__stage_mil.ogg","group":"news","f0":160,"durMs":5633,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"news/matron_michele","slug":"news__matron_michele","file":"news__matron_michele.ogg","group":"news","f0":163,"durMs":4826,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"news/iron_sue","slug":"news__iron_sue","file":"news__iron_sue.ogg","group":"news","f0":178,"durMs":5706,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/highmountain_f","slug":"rpg_fantasy__female__highmountain_f","file":"rpg_fantasy__female__highmountain_f.ogg","group":"rpg_fantasy/female","f0":118,"durMs":5332,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/xalath_f","slug":"rpg_fantasy__female__xalath_f","file":"rpg_fantasy__female__xalath_f.ogg","group":"rpg_fantasy/female","f0":152,"durMs":6114,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/hush_morrow","slug":"rpg_fantasy__female__hush_morrow","file":"rpg_fantasy__female__hush_morrow.ogg","group":"rpg_fantasy/female","f0":162,"durMs":5252,"cast":["enchantress_solvei","magpie_mab","warden_maren"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/dour_mabel","slug":"rpg_fantasy__female__dour_mabel","file":"rpg_fantasy__female__dour_mabel.ogg","group":"rpg_fantasy/female","f0":170,"durMs":5448,"cast":["bursar_odele","crofter_maida","lampkeeper_edda"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/orc_f","slug":"rpg_fantasy__female__orc_f","file":"rpg_fantasy__female__orc_f.ogg","group":"rpg_fantasy/female","f0":176,"durMs":6128,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/flint_greta","slug":"rpg_fantasy__female__flint_greta","file":"rpg_fantasy__female__flint_greta.ogg","group":"rpg_fantasy/female","f0":178,"durMs":4459,"cast":["broker_varga","hostler_osa","marshal_kestrel"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/elf_sentinel_f","slug":"rpg_fantasy__female__elf_sentinel_f","file":"rpg_fantasy__female__elf_sentinel_f.ogg","group":"rpg_fantasy/female","f0":182,"durMs":6767,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/witherbard_f","slug":"rpg_fantasy__female__witherbard_f","file":"rpg_fantasy__female__witherbard_f.ogg","group":"rpg_fantasy/female","f0":193,"durMs":5007,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/trade_nell","slug":"rpg_fantasy__female__trade_nell","file":"rpg_fantasy__female__trade_nell.ogg","group":"rpg_fantasy/female","f0":200,"durMs":6184,"cast":["peddler_hetty","peddler_nix","shrinekeeper_sella"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/spite_vex","slug":"rpg_fantasy__female__spite_vex","file":"rpg_fantasy__female__spite_vex.ogg","group":"rpg_fantasy/female","f0":219,"durMs":6439,"cast":["herbalist_wyn","queen_kayri","silversmith_vigdis"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/garrif_f","slug":"rpg_fantasy__female__garrif_f","file":"rpg_fantasy__female__garrif_f.ogg","group":"rpg_fantasy/female","f0":225,"durMs":5062,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/sunny_posy","slug":"rpg_fantasy__female__sunny_posy","file":"rpg_fantasy__female__sunny_posy.ogg","group":"rpg_fantasy/female","f0":242,"durMs":6773,"cast":["grocer_merra","scrivener_tove","weaver_ottilie"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/spark_wren","slug":"rpg_fantasy__female__spark_wren","file":"rpg_fantasy__female__spark_wren.ogg","group":"rpg_fantasy/female","f0":254,"durMs":7979,"cast":["cooper_dagny","farmer_tamsin","mason_petra"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/perky_tilly","slug":"rpg_fantasy__female__perky_tilly","file":"rpg_fantasy__female__perky_tilly.ogg","group":"rpg_fantasy/female","f0":258,"durMs":6078,"cast":["courier_nib"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/faerin_f","slug":"rpg_fantasy__female__faerin_f","file":"rpg_fantasy__female__faerin_f.ogg","group":"rpg_fantasy/female","f0":262,"durMs":5881,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/female/nightborne_f","slug":"rpg_fantasy__female__nightborne_f","file":"rpg_fantasy__female__nightborne_f.ogg","group":"rpg_fantasy/female","f0":281,"durMs":5768,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/draven_m","slug":"rpg_fantasy__male__draven_m","file":"rpg_fantasy__male__draven_m.ogg","group":"rpg_fantasy/male","f0":82,"durMs":4960,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/guldan_m","slug":"rpg_fantasy__male__guldan_m","file":"rpg_fantasy__male__guldan_m.ogg","group":"rpg_fantasy/male","f0":83,"durMs":5655,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/veil_ethan","slug":"rpg_fantasy__male__veil_ethan","file":"rpg_fantasy__male__veil_ethan.ogg","group":"rpg_fantasy/male","f0":89,"durMs":4245,"cast":["company_broker","ferryman_peld","foreman_grettir","king_aeriex"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/narrator_m","slug":"rpg_fantasy__male__narrator_m","file":"rpg_fantasy__male__narrator_m.ogg","group":"rpg_fantasy/male","f0":98,"durMs":5480,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/solder_m","slug":"rpg_fantasy__male__solder_m","file":"rpg_fantasy__male__solder_m.ogg","group":"rpg_fantasy/male","f0":108,"durMs":4869,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/arathi_m","slug":"rpg_fantasy__male__arathi_m","file":"rpg_fantasy__male__arathi_m.ogg","group":"rpg_fantasy/male","f0":109,"durMs":4533,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/frank","slug":"rpg_fantasy__male__frank","file":"rpg_fantasy__male__frank.ogg","group":"rpg_fantasy/male","f0":109,"durMs":5260,"cast":["company_toll_guard","crofter_beck","veteran_skarn"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/ember_tadhg","slug":"rpg_fantasy__male__ember_tadhg","file":"rpg_fantasy__male__ember_tadhg.ogg","group":"rpg_fantasy/male","f0":110,"durMs":4058,"cast":["crofter_tam","smeltmaster_koll","waykeeper_brant"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/larry","slug":"rpg_fantasy__male__larry","file":"rpg_fantasy__male__larry.ogg","group":"rpg_fantasy/male","f0":113,"durMs":5713,"cast":["galleria_trader","round_trader"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/lorewake_m","slug":"rpg_fantasy__male__lorewake_m","file":"rpg_fantasy__male__lorewake_m.ogg","group":"rpg_fantasy/male","f0":113,"durMs":6177,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/grand_mag_m","slug":"rpg_fantasy__male__grand_mag_m","file":"rpg_fantasy__male__grand_mag_m.ogg","group":"rpg_fantasy/male","f0":114,"durMs":5492,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/hald_m","slug":"rpg_fantasy__male__hald_m","file":"rpg_fantasy__male__hald_m.ogg","group":"rpg_fantasy/male","f0":117,"durMs":4961,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/belf_m","slug":"rpg_fantasy__male__belf_m","file":"rpg_fantasy__male__belf_m.ogg","group":"rpg_fantasy/male","f0":118,"durMs":5660,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/edder","slug":"rpg_fantasy__male__edder","file":"rpg_fantasy__male__edder.ogg","group":"rpg_fantasy/male","f0":118,"durMs":4047,"cast":["amberford_watch","waykeeper_hale"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/garrosh_m","slug":"rpg_fantasy__male__garrosh_m","file":"rpg_fantasy__male__garrosh_m.ogg","group":"rpg_fantasy/male","f0":119,"durMs":6730,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/george","slug":"rpg_fantasy__male__george","file":"rpg_fantasy__male__george.ogg","group":"rpg_fantasy/male","f0":119,"durMs":5235,"cast":["fletcher_haki","silverfall_watch"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/jeff","slug":"rpg_fantasy__male__jeff","file":"rpg_fantasy__male__jeff.ogg","group":"rpg_fantasy/male","f0":119,"durMs":5788,"cast":["castle_guard","lookout_pike"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/ilidan_m","slug":"rpg_fantasy__male__ilidan_m","file":"rpg_fantasy__male__ilidan_m.ogg","group":"rpg_fantasy/male","f0":129,"durMs":5823,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/court_phil","slug":"rpg_fantasy__male__court_phil","file":"rpg_fantasy__male__court_phil.ogg","group":"rpg_fantasy/male","f0":134,"durMs":5566,"cast":["carpenter_stig","crofter_holt","farmer_hobb","farmer_jorel"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/dwarf_g_m","slug":"rpg_fantasy__male__dwarf_g_m","file":"rpg_fantasy__male__dwarf_g_m.ogg","group":"rpg_fantasy/male","f0":134,"durMs":6582,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/king_bob","slug":"rpg_fantasy__male__king_bob","file":"rpg_fantasy__male__king_bob.ogg","group":"rpg_fantasy/male","f0":170,"durMs":5937,"cast":["elder_rowan","miller_garton"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/murozond_m","slug":"rpg_fantasy__male__murozond_m","file":"rpg_fantasy__male__murozond_m.ogg","group":"rpg_fantasy/male","f0":176,"durMs":6813,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/flynn_m","slug":"rpg_fantasy__male__flynn_m","file":"rpg_fantasy__male__flynn_m.ogg","group":"rpg_fantasy/male","f0":180,"durMs":5666,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/gazlow_m","slug":"rpg_fantasy__male__gazlow_m","file":"rpg_fantasy__male__gazlow_m.ogg","group":"rpg_fantasy/male","f0":190,"durMs":6080,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/telemancer_m","slug":"rpg_fantasy__male__telemancer_m","file":"rpg_fantasy__male__telemancer_m.ogg","group":"rpg_fantasy/male","f0":203,"durMs":6216,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/bran_m","slug":"rpg_fantasy__male__bran_m","file":"rpg_fantasy__male__bran_m.ogg","group":"rpg_fantasy/male","f0":222,"durMs":5669,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/rune_phineas","slug":"rpg_fantasy__male__rune_phineas","file":"rpg_fantasy__male__rune_phineas.ogg","group":"rpg_fantasy/male","f0":222,"durMs":5744,"cast":["young_pip"],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/klaaxxi_m","slug":"rpg_fantasy__male__klaaxxi_m","file":"rpg_fantasy__male__klaaxxi_m.ogg","group":"rpg_fantasy/male","f0":242,"durMs":5258,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/grif_m","slug":"rpg_fantasy__male__grif_m","file":"rpg_fantasy__male__grif_m.ogg","group":"rpg_fantasy/male","f0":246,"durMs":5231,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false},{"voice":"rpg_fantasy/male/volf_m","slug":"rpg_fantasy__male__volf_m","file":"rpg_fantasy__male__volf_m.ogg","group":"rpg_fantasy/male","f0":250,"durMs":7180,"cast":[],"exaggeration":0.7,"cfgWeight":0.55,"tuned":false}];
+const sheet = document.getElementById('sheet');
+let groups = [...new Set(CARDS.map(c => c.group))];
+for (const g of groups) {
+  const h = document.createElement('h2'); h.className = 'group'; h.textContent = g;
+  h.dataset.group = g; sheet.appendChild(h);
+  const grid = document.createElement('div'); grid.className = 'grid'; grid.dataset.group = g;
+  for (const c of CARDS.filter(x => x.group === g)) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.dataset.hay = (c.voice + ' ' + c.group + ' ' + c.cast.join(' ')).toLowerCase();
+    el.dataset.cast = c.cast.length ? '1' : '0';
+    el.innerHTML =
+      '<div class="name">' + c.voice.split('/').pop() + '</div>' +
+      '<div class="meta">' + (c.f0 ? '<b>' + c.f0 + ' Hz</b>' : 'F0 unknown') +
+        (c.durMs ? ' &middot; ' + (c.durMs / 1000).toFixed(1) + 's' : '') +
+        ' &middot; ex ' + c.exaggeration + ' / cfg ' + c.cfgWeight +
+        (c.tuned ? ' <b>tuned</b>' : '') + '</div>' +
+      '<audio controls preload="none" src="' + c.file + '"></audio>' +
+      (c.cast.length
+        ? '<div class="cast">' + c.cast.map(x => '<span>' + x + '</span>').join('') + '</div>'
+        : '<div class="free">uncast</div>');
+    grid.appendChild(el);
+  }
+  sheet.appendChild(grid);
+}
+const audios = () => [...document.querySelectorAll('audio')];
+// One voice at a time: overlapping takes tell you nothing about either.
+sheet.addEventListener('play', e => {
+  for (const a of audios()) if (a !== e.target) a.pause();
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('playing'));
+  e.target.closest('.card').classList.add('playing');
+}, true);
+let chain = null;
+document.getElementById('all').onclick = () => {
+  const q = audios().filter(a => !a.closest('.card').classList.contains('hidden'));
+  let i = 0;
+  const next = () => { if (i < q.length) { chain = q[i++]; chain.play(); } };
+  for (const a of q) a.onended = next;
+  next();
+};
+document.getElementById('stop').onclick = () => { for (const a of audios()) a.pause(); };
+let uncastOnly = false;
+const apply = () => {
+  const q = document.getElementById('q').value.toLowerCase();
+  for (const c of document.querySelectorAll('.card')) {
+    const hit = c.dataset.hay.includes(q) && (!uncastOnly || c.dataset.cast === '0');
+    c.classList.toggle('hidden', !hit);
+  }
+  for (const g of groups) {
+    const grid = document.querySelector('.grid[data-group="' + g + '"]');
+    const any = [...grid.children].some(c => !c.classList.contains('hidden'));
+    grid.classList.toggle('hidden', !any);
+    document.querySelector('h2[data-group="' + g + '"]').classList.toggle('hidden', !any);
+  }
+};
+document.getElementById('q').oninput = apply;
+document.getElementById('uncast').onclick = e => {
+  uncastOnly = !uncastOnly;
+  e.target.textContent = uncastOnly ? 'Show all' : 'Only uncast';
+  apply();
+};
+</script>

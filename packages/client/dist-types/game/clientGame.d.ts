@@ -1,4 +1,5 @@
 import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type ChargeInfo, type PetInfo, type InputFrame, type BuildOrient, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type RepStandingWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import { type WorkStation } from '@arx/content';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -65,6 +66,23 @@ export type InteractTarget = {
     tx: number;
     ty: number;
     mature: boolean;
+} | {
+    kind: 'bin';
+    tx: number;
+    ty: number;
+} | {
+    kind: 'trough';
+    tx: number;
+    ty: number;
+} | {
+    kind: 'work';
+    tx: number;
+    ty: number;
+    work: WorkStation;
+} | {
+    kind: 'apiary';
+    tx: number;
+    ty: number;
 } | {
     kind: 'npc';
     tx: number;
@@ -457,6 +475,9 @@ export declare class ClientGame {
         recipe?: string;
         made?: number;
         total?: number;
+        /** THE HELD NOTE: the channeled art (bar tint + singing well). */
+        ability?: string;
+        slot?: number;
     } | null;
     /** "tx,ty" keys of this character's own built tiles (THE OWN-WORK OVERLAY). */
     ownBuilt: ReadonlySet<string>;
@@ -523,6 +544,19 @@ export declare class ClientGame {
     }>;
     /** Combat effects in flight; pruned by the renderer. */
     readonly fx: ActiveFx[];
+    /**
+     * THE FOE'S BREATH: live enemy wind-ups by entity id, fed by
+     * `charge` fx carrying an eid. The renderer draws the overhead
+     * cast pip from this ledger and prunes what has ended; brokeAt
+     * marks a fizzled breath (the pip gutters dark instead of filling).
+     */
+    readonly npcCasts: Map<number, {
+        startAt: number;
+        endsAt: number;
+        color?: string;
+        id?: string;
+        brokeAt?: number;
+    }>;
     /** Hotbar state: performance.now() when each slot comes off cooldown. */
     readonly abilityReadyAt: [number, number, number, number];
     /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
@@ -541,6 +575,10 @@ export declare class ClientGame {
     buffsAt: number;
     /** Fires when the buff list changes (HUD refresh). */
     onBuffs: (() => void) | null;
+    /** THE LIVING SOIL: fires after any farm-care mirror change. */
+    onFarm: (() => void) | null;
+    /** THE ANIMALS OF THE YARD: a fresh release asks for its name. */
+    onStockCeremony: ((slot: number, species: string) => void) | null;
     /**
      * THE METER SHOWS ITS HAND: the own body's stacking-working meters
      * (proc id, banked count, count asked). Name, school, and icon are
@@ -563,6 +601,23 @@ export declare class ClientGame {
     onPetCeremony: ((slot: number, currentName: string) => void) | null;
     /** Fires when the local player commits a cast (FX + audio hooks). */
     onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null;
+    /**
+     * THE DRAWN BREATH: the local wind-up, for the cast bar and the
+     * winding well. Predicted on the press edge from the same content
+     * def the server reads; the server's own S2CCast start/fire/break
+     * keeps it honest within a round trip. `rate` is the last frame's
+     * accrual (1 or CAST_STILL_FACTOR) so the bar renders smooth
+     * between 20 Hz ticks.
+     */
+    ownCast: {
+        slot: AbilitySlot;
+        ab: AbilityDef;
+        progress: number;
+        total: number;
+        rate: number;
+    } | null;
+    /** Fires when the local player begins a wind-up (cue hooks). */
+    onCastStart: ((slot: AbilitySlot, ab: AbilityDef) => void) | null;
     /** Fires when the technique loadout changes (UI refresh). */
     onTechniques: (() => void) | null;
     onCallings: (() => void) | null;
@@ -709,6 +764,22 @@ export declare class ClientGame {
     /** Fires with (tx, ty, previous, next) whenever a tile mutates. */
     onTileChange: ((tx: number, ty: number, prev: number | undefined, next: number) => void) | null;
     private handleTilePatch;
+    /**
+     * THE TENDING HAND: what one press on a growing crop will do, in
+     * priority order — water if the stage is thirsty and a can is
+     * carried, feed the soil if compost is carried and the ground can
+     * take it, mulch if fibre is carried and no blanket lies — else the
+     * plain status touch. The prompt shows this same word, so the hand
+     * always knows what it is about to do.
+     */
+    cropVerb(tx: number, ty: number): 'Harvest' | 'Water' | 'Prune' | 'Fertilize' | 'Mulch' | 'Tend';
+    prune(tx: number, ty: number): void;
+    fertilize(tx: number, ty: number): void;
+    mulch(tx: number, ty: number): void;
+    compostAdd(tx: number, ty: number, slot: number): void;
+    troughAdd(tx: number, ty: number, slot: number): void;
+    stockRename(slot: number, name: string): void;
+    workStart(tx: number, ty: number, recipe: string, qty: number): void;
     /** Fires with (tx, ty, previous, next) whenever a detail mutates. */
     onDetailChange: ((tx: number, ty: number, prev: number, next: number) => void) | null;
     /**

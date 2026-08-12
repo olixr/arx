@@ -1,4 +1,4 @@
-import { type ZoneDef } from '@arx/content';
+import { type NpcActorDef, type ZoneDef } from '@arx/content';
 import type { PrefabListEntry, RegistrySnapshot } from './api.js';
 import type { EditorState, PlacementRef } from './state.js';
 /**
@@ -18,6 +18,9 @@ export interface PanelActions {
     removePlacement(ref: PlacementRef): void;
     /** Mutate the selected placement inside one undoable operation. */
     editPlacement(ref: PlacementRef, label: string, mutate: (zone: ZoneDef) => void): void;
+    /** Phase 3: arm patrol-waypoint editing for a cluster. */
+    beginPatrolEdit(index: number): void;
+    clearPatrol(index: number): void;
 }
 export interface PanelDeps {
     state: EditorState;
@@ -26,6 +29,8 @@ export interface PanelDeps {
     prefabsOnline: boolean;
     /** Real-art preview for a prefab, or null while it loads. */
     prefabPreview: (id: string) => HTMLCanvasElement | null;
+    /** Full actor defs (DB truth when online) — portraits + dressing. */
+    actorDefs: ReadonlyMap<string, NpcActorDef>;
     actions: PanelActions;
 }
 export declare function buildStructuresPanel(root: HTMLElement, deps: PanelDeps): void;

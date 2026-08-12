@@ -34,6 +34,12 @@ export declare class Hotbar {
     /** THE HELD SIGIL: the slot whose ring is being aimed right now. */
     private aimingSlot;
     setAiming(slot: AbilitySlot | null): void;
+    /** THE DRAWN BREATH: the slot whose wind-up is running right now. */
+    private windingSlot;
+    setWinding(slot: AbilitySlot | null): void;
+    /** THE HELD NOTE: the slot whose channel is singing right now. */
+    private channelingSlot;
+    setChanneling(slot: AbilitySlot | null): void;
     /** Called once per frame — cheap DOM writes only on change. */
     update(game: ClientGame): void;
 }

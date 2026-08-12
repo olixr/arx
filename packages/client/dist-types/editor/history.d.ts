@@ -40,6 +40,16 @@ export declare class History {
     push(op: HistoryOp): void;
     get canUndo(): boolean;
     get canRedo(): boolean;
+    /**
+     * THE VISIBLE PAST (v2 History panel): every op oldest-first with
+     * the cursor sitting after the last applied op. entries[cursor-1]
+     * is the newest applied change; entries[cursor..] await redo.
+     */
+    entries(): Array<{
+        label: string;
+        cells: number;
+    }>;
+    get cursor(): number;
     /** Pop + apply; returns the new zone (structural ops swap the object). */
     undo(zone: ZoneDef): {
         zone: ZoneDef;

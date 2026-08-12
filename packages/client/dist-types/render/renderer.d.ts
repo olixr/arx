@@ -207,6 +207,35 @@ export declare class Renderer {
      */
     outlineOn: boolean;
     /**
+     * EDITOR SEAMS (Map Studio v2, ADDITIVE SEAMS ONLY law — the studio
+     * grows these two fields and the overlay call, nothing else
+     * editor-shaped; every scene pass stays private).
+     *
+     * cameraOverride: when set, the frame uses this camera verbatim —
+     * the player-follow ease, view-shift, cine pull, and shake all
+     * yield, and zoom escapes the player clamp (the studio frames the
+     * world, no body required).
+     */
+    cameraOverride: {
+        x: number;
+        y: number;
+        zoom: number;
+    } | null;
+    /**
+     * The editor's one drawing seam: called at the very end of the
+     * frame (over the vignette) with the settled camera's transforms.
+     * The renderer never learns editor concepts; the editor never
+     * reaches into scene passes.
+     */
+    overlayHook: ((ctx: CanvasRenderingContext2D, view: {
+        w: number;
+        h: number;
+        scale: number;
+        yScale: number;
+        toScreen: (wx: number, wy: number) => Vec2;
+        pickWorld: (sx: number, sy: number) => Vec2;
+    }) => void) | null;
+    /**
      * Water enhancement toggles (settings menu, persisted). Both are
      * ADDITIVE layers over the base water — turning them off costs
      * nothing visually except the enhancement itself: reflections mirror
@@ -1744,6 +1773,14 @@ export declare class Renderer {
      * across the screen, planted proud of the host stone.
      */
     private oreNode;
+    /**
+     * THE GROWING FRAME's body: three bent withy hoops over the bed, a
+     * ridge lath, and the oiled cloth — rolled to one side on a bare
+     * frame, drawn as a low translucent skirt over a planted one (the
+     * plant shows through; the cloth is the promise of warmth, never a
+     * curtain over the art).
+     */
+    private drawGrowingFrame;
     /** A four-point star twinkle - the "this is mineable" beacon. */
     private sparkle;
     /** Staggered twinkle window: brief flash once per period. */
@@ -2055,11 +2092,30 @@ export declare class Renderer {
     private treeShadowPath;
     private drawTreeShadow;
     /**
-     * A felled tree: shudder → topple (varied azimuth) → impact with a
-     * rolling wall of dust → it lies on the ground for a beat → it breaks
-     * apart into log chunks and a last billow of dust. Timeline in ms.
+     * THE TREE COMES DOWN IN ACTS — the felling ceremony (timeline ms):
+     *
+     * I   THE BITE (0-260): the cut takes. The tree shudders harder and
+     *     harder, the kerf spits bark chips back at the cutter, one
+     *     breath of dust kicks off the roots. The outline ring HOLDS —
+     *     the body rect now sweeps with the rotation, so the brand ink
+     *     rides the whole fall instead of letting go at the first lean.
+     * II  THE TOPPLE (260-860): the trunk hinges over the stump under a
+     *     gravity ease-in while the crown DRAGS behind the wood (the
+     *     windOverride bend opposes the angular velocity — secondary
+     *     motion), shedding a stream of leaves along the swept arc.
+     * III THE STRIKE (860): the crown slams down. The foliage stops
+     *     being a canopy IN THIS FRAME — it bursts off as spinning leaf
+     *     mats (Debris) under a settling leaf-rain, dust gouges out
+     *     along the lie, and what's left is a bare log that BOUNCES
+     *     twice, whips, and butt-kicks off the stump.
+     * IV  THE BUCK (1450): the snag cracks into rounds and billets
+     *     strewn exactly along the lie — real bodies that tumble, thud,
+     *     skid, lie for seconds, then politely fade. The model never
+     *     fades out: it BECOMES the lumber.
      */
     private readonly fallingTrees;
+    /** Ground reach of a lying trunk, butt → crown, in tiles. */
+    private static fellReach;
     addFallingTree(tx: number, ty: number, tile: Tile, dir: number): void;
     private readonly breakingRocks;
     /**
@@ -2287,6 +2343,14 @@ export declare class Renderer {
      * in the label pass (no outline ring), never emoji.
      */
     private alertIconItem;
+    /**
+     * THE FOE'S BREATH: the overhead cast pip over a winding enemy — a
+     * thin ability-tinted bar filling left to right on the wind's
+     * clock, guttering dark when the breath breaks. Reads from
+     * game.npcCasts (fed by eid-carrying `charge` fx) and prunes what
+     * has ended, so the ledger never outlives the working.
+     */
+    private castPipItem;
     private readonly questAnim;
     /**
      * THE QUEST MARK: the gold "!" over a giver with work to offer, the
@@ -2564,6 +2628,12 @@ export declare class Renderer {
     /** Ground perspective squash for combat-fx circles. */
     private static readonly FX_SQUASH;
     /** Overlay lifetime per fx kind, ms (telegraph/field ride their fuse). */
+    /**
+     * THE BREATH SPEAKS: kinds that are pure instrument — they carry a
+     * matter dialect (or, for the telegraph, a ground sigil) and must
+     * never trigger the ability's motif or signature set-pieces.
+     */
+    private fxPureInstrument;
     private fxLife;
     /**
      * Jagged energy forks biting outward from a strike point — the

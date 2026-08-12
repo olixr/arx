@@ -415,14 +415,20 @@ export declare function paintKoboldTail(ctx: CanvasRenderingContext2D, kb: Kobol
 export interface GnollLook {
     /** Coat base — the speckled gray-brown fur that carries the body. */
     fur: string;
-    /** Pale underfur: throat, jaw underside, the tail's low edge. */
+    /** Pale underfur: throat, belly panel, jaw underside, tail's low edge. */
     underfur: string;
-    /** The dull green-gray hide where the fur thins: muzzle and paws. */
+    /** Bare umber hide where the fur thins: paw pads and the ear dish. */
     skin: string;
     /** Speckle ink — the hyena's broken spot field over the coat. */
     spot: string;
     /** The bristled crest: crown, nape, and down the hunched back. */
     mane: string;
+    /**
+     * The dark face mask — brow ledge, muzzle bridge, eye sockets, claw
+     * ink, the dorsal saddle. The menace tone: everything that scowls
+     * wears it.
+     */
+    mask: string;
     /** The lit eye bead — small, close-set, watching the weakest. */
     eye: string;
     /** The bare nose pad at the muzzle tip. */
@@ -462,15 +468,30 @@ export declare function paintGnollHead(ctx: CanvasRenderingContext2D, gn: GnollL
  * the whole species carries.
  */
 export declare function paintGnollCrest(ctx: CanvasRenderingContext2D, gn: GnollLook, f: KoboldHumpFrame): void;
+/** Torso-local frame for the gnoll body coat overpaint. */
+export interface GnollBodyFrame {
+    s: number;
+    tw: number;
+    ww: number;
+    th: number;
+    fx: number;
+    fy: number;
+    profileK: number;
+    backK: number;
+    lead: number;
+    hurt: boolean;
+}
 /**
- * The bushy tail — short and heavy, carried LOW (a hyena's flag only
- * rises for a fight; ours stays sunk, which keeps the silhouette
- * hunched even from behind). A stub spine with a fat fur ribbon and a
- * dark tip cap, wagging a little harder with the gait. Drawn in the
- * torso's squashed frame BEFORE the garment so the root tucks behind
- * the body.
+ * THE BODY COAT — the gnoll's torso overpaint, drawn in the torso's
+ * local frame AFTER the garment quad (which paints in plain fur) and
+ * BEFORE the crest hump. It turns the flat tunic block into an
+ * animal: pale belly panel face-on, the dark dorsal saddle from
+ * behind, seeded rosettes on the flanks, a ragged pelt fringe over
+ * the hip seam, and the scavenger's crude hide harness with its bone
+ * fetishes — species dressing painted on, never equipment (nothing
+ * here drops, so nothing here lies).
  */
-export declare function paintGnollTail(ctx: CanvasRenderingContext2D, gn: GnollLook, f: KoboldTailFrame): void;
+export declare function paintGnollBody(ctx: CanvasRenderingContext2D, gn: GnollLook, f: GnollBodyFrame): void;
 export declare function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void;
 /**
  * Back-mounted gear layered relative to the CAPE — called by the
@@ -1045,6 +1066,47 @@ export declare function drawRamHead(ctx: CanvasRenderingContext2D, look: RamLook
     charge?: number;
 }): void;
 /**
+ * The kept ewe — THE FLEECE TELLS THE TIME. Two bodies in one
+ * painter: a full cloud of scalloped cream fleece while the wool
+ * stands ready for the shears, and a clipped, slimmer trim while it
+ * regrows — the produce clock worn as silhouette, readable across a
+ * whole yard. Dark bare face, drooping ears, no horns: kin to the
+ * crag ram, but nobody's charger.
+ */
+export interface SheepLook {
+    /** Standing fleece — and the duller clipped tone beneath it. */
+    wool: string;
+    woolShorn: string;
+    /** Bare face, ears, and legs — dark against the cream. */
+    face: string;
+    bodyW: number;
+    /** Fleece height standing full — and trimmed after the shears. */
+    backH: number;
+    backHShorn: number;
+    chestH: number;
+    headW: number;
+    headH: number;
+}
+export declare const SHEEP_LOOK: SheepLook;
+export declare function paintSheepBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: SheepLook, f: BeastBlockFrame, shorn: boolean): void;
+/**
+ * The ewe head: drooping dark ears off the poll, a bare slab face
+ * under a puffed wool cap, a short straight muzzle — everything the
+ * ram's skull is not (no horns, no Roman nose, no menace).
+ */
+export declare function drawSheepHead(ctx: CanvasRenderingContext2D, look: SheepLook, o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** Body tone behind the poll cap — the shorn trim dulls it. */
+    capTone?: string;
+}): void;
+/**
  * The stag: elegance by proportion — a slim barrel held HIGH on long
  * legs, a proud rising neck column, pale rump patch, and branched
  * antlers swept back off the crown. The alarm-charge levels the
@@ -1386,5 +1448,10 @@ export declare function drawBeast(ctx: CanvasRenderingContext2D, opts: {
      * palette swap. Absent on every wild thing.
      */
     collar?: string;
+    /**
+     * THE FLEECE TELLS THE TIME (sheep only): true while the wool
+     * regrows — the painter trades the cloud for the clipped trim.
+     */
+    shorn?: boolean;
 }): void;
 //# sourceMappingURL=rig.d.ts.map

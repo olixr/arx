@@ -1,4 +1,5 @@
 import { type EquippedItem, type EquipSlot, type InvSlot, type ItemRoll, type PetInfo, type SkillXp, type StationType } from '@arx/shared';
+import { type WorkStation } from '@arx/content';
 /** The station's face (label, icon, accent, verb) — the work card wears it too. */
 export declare function craftStationFace(station: StationType | null): {
     label: string;
@@ -171,7 +172,7 @@ export declare class StationPanels {
     openPlant(tx: number, ty: number, inventory: InvSlot[], skills: SkillXp, at?: {
         tx: number;
         ty: number;
-    }): void;
+    }, bed?: 'tilled' | 'frame' | 'log'): void;
     /** Dress the Workshop head for whoever owns it right now. */
     private dressCraft;
     /**
@@ -186,6 +187,34 @@ export declare class StationPanels {
     /** One material row in the Workshop detail: the full story of a need. */
     private materialRow;
     private renderPlant;
+    /** Set by main: feeds one pack slot's item into the bin. */
+    onCompost: ((tx: number, ty: number, slot: number) => void) | null;
+    /**
+     * THE LIVING SOIL: the bin's deposit screen. Opens off the local
+     * care mirror (the vault law — no server reply needed); every
+     * deposit re-proves the tile server-side on its way in.
+     */
+    openCompost(tx: number, ty: number, at?: {
+        tx: number;
+        ty: number;
+    }): void;
+    private renderCompost;
+    /** Set by main: loads one pack slot's feed into the manger. */
+    onTrough: ((tx: number, ty: number, slot: number) => void) | null;
+    /** THE ANIMALS OF THE YARD: the manger's feed screen. */
+    openTrough(tx: number, ty: number, at?: {
+        tx: number;
+        ty: number;
+    }): void;
+    private renderTrough;
+    /** Set by main: loads a wall-clock batch into a yard station. */
+    onWork: ((tx: number, ty: number, recipe: string, qty: number) => void) | null;
+    /** THE WORKING YARD: a station's load screen (the vault law). */
+    openWork(tx: number, ty: number, work: WorkStation, at?: {
+        tx: number;
+        ty: number;
+    }): void;
+    private renderWork;
     /** Set by main: stops the running craft batch (the busy strip's Stop). */
     onCraftStop: (() => void) | null;
     /** Set by main: the live running action — feeds the busy strip. */

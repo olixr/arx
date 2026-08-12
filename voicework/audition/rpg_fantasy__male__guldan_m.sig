@@ -1,0 +1,1 @@
+Well met, traveler. The road north is shut past the ford, and the watch will not say why. :: ex=0.7 cfg=0.55 tempo=1.09 temp=0.8

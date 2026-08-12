@@ -1,5 +1,6 @@
 import { InputButton, SNEAK_FACTOR, WALK_FACTOR } from '@arx/shared';
 import { bindings } from './bindings.js';
+import { PadTranslator, padIsActive, type PadView } from './padProfiles.js';
 
 const STICK_DEADZONE = 0.22;
 
@@ -85,7 +86,33 @@ export class InputManager {
   private mountQueued = false;
   private padMountWasDown = false;
 
+  /**
+   * The dialect translator — turns a pad the browser never mapped
+   * (8BitDo in Switch / D-input / macOS mode, and friends) into the
+   * standard layout everything above this class reads.
+   */
+  private translator = new PadTranslator();
+  /** Slot of the pad the player last actually touched. */
+  private activePadIndex: number | null = null;
+
   constructor(target: HTMLElement) {
+    // A pad that leaves takes its cached layout with it — the next
+    // device in that slot must be sniffed fresh, never inherit a
+    // stranger's hat axis.
+    window.addEventListener('gamepaddisconnected', (e) => {
+      const gp = (e as GamepadEvent).gamepad;
+      if (gp) {
+        this.translator.forget(gp);
+        if (this.activePadIndex === gp.index) this.activePadIndex = null;
+      }
+    });
+    // Chrome only reveals a pad after it sends input while the page has
+    // focus; the connect event is the earliest honest moment to drop a
+    // stale guess and re-sniff.
+    window.addEventListener('gamepadconnected', (e) => {
+      const gp = (e as GamepadEvent).gamepad;
+      if (gp) this.translator.forget(gp);
+    });
     window.addEventListener('keydown', (e) => {
       if (this.typingCheck()) return;
       // The stance latches (walk / sneak) and the one-frame queues
@@ -132,12 +159,52 @@ export class InputManager {
     return this.keys.has(code);
   }
 
-  private pad(): Gamepad | null {
+  /**
+   * THE LIVE PAD. Two things go wrong with taking slot 0 blindly:
+   * a pad can announce itself in a later slot (an 8BitDo that leaves a
+   * ghost behind after a mode switch, a second receiver, a phantom the
+   * OS never reaps), and a silent pad in slot 0 then swallows every
+   * frame. So: whichever pad is ACTUALLY being touched wins, that
+   * choice sticks until another pad speaks, and slot order is only the
+   * tie-break of last resort.
+   */
+  private pickPad(): Gamepad | null {
     if (typeof navigator.getGamepads !== 'function') return null;
+    let first: Gamepad | null = null;
+    let held: Gamepad | null = null;
+    let active: Gamepad | null = null;
     for (const pad of navigator.getGamepads()) {
-      if (pad && pad.connected) return pad;
+      if (!pad || !pad.connected) continue;
+      if (!first) first = pad;
+      if (pad.index === this.activePadIndex) held = pad;
+      if (!active && padIsActive(pad)) active = pad;
     }
-    return null;
+    if (active) {
+      this.activePadIndex = active.index;
+      return active;
+    }
+    return held ?? first;
+  }
+
+  /** The live pad, translated into the standard layout. */
+  private pad(): PadView | null {
+    const raw = this.pickPad();
+    return raw ? this.translator.view(raw) : null;
+  }
+
+  /**
+   * Every connected pad, translated — the Controls screen's readout
+   * shows all of them so a player can see which one the game hears.
+   */
+  padDiagnostics(): { views: PadView[]; activeIndex: number | null } {
+    const views: PadView[] = [];
+    if (typeof navigator.getGamepads === 'function') {
+      for (const pad of navigator.getGamepads()) {
+        if (pad && pad.connected) views.push(this.translator.view(pad));
+      }
+    }
+    const live = this.pad();
+    return { views, activeIndex: live ? live.index : null };
   }
 
   /** Poll gamepad sticks; call once per frame before sampling. */
@@ -332,7 +399,7 @@ export class InputManager {
    * hands on gamepads. Silently a no-op without actuator support.
    */
   rumble(strong: number, weak: number, durationMs: number): void {
-    const pad = this.pad();
+    const pad = this.pad()?.raw ?? null;
     const actuator = (
       pad as unknown as {
         vibrationActuator?: {

@@ -1,1 +1,1 @@
-{"version":3,"file":"discoveryBanner.d.ts","sourceRoot":"","sources":["../../src/ui/discoveryBanner.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;GAWG;AACH,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,aAAa,CAAC;AAmCjD,wBAAgB,aAAa,CAAC,CAAC,EAAE,aAAa,GAAG,IAAI,CAwDpD;AAED,wBAAgB,gBAAgB,IAAI,IAAI,CAWvC"}
+{"version":3,"file":"discoveryBanner.d.ts","sourceRoot":"","sources":["../../src/ui/discoveryBanner.ts"],"names":[],"mappings":"AAgBA,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,aAAa,CAAC;AA4CjD,wBAAgB,aAAa,CAAC,CAAC,EAAE,aAAa,GAAG,IAAI,CAwCpD;AAED,wBAAgB,gBAAgB,IAAI,IAAI,CAEvC"}

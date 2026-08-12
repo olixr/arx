@@ -157,8 +157,80 @@ export function installControlsMenu(deps: ControlsDeps): void {
     return btn;
   }
 
+  /**
+   * THE PAD SAYS ITS NAME. A controller the browser refuses to map is
+   * the single hardest input problem to diagnose from a chair: nothing
+   * happens, and nothing says why. This block names every connected
+   * pad, the dialect the translator chose for it, and lights the
+   * standard-layout slots live as they are pressed — so a player can
+   * see at a glance whether the game hears the pad at all, and which
+   * slot each button reaches before rebinding it.
+   */
+  function padReadout(): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'pad-readout';
+    const body = document.createElement('div');
+    body.className = 'pad-readout-body';
+    wrap.appendChild(body);
+
+    let raf = 0;
+    const draw = (): void => {
+      // Only burn frames while the Controls wing is actually on screen.
+      if (!wrap.isConnected) {
+        cancelAnimationFrame(raf);
+        return;
+      }
+      // Hidden wing: keep the loop alive, do no work.
+      if (wrap.offsetParent === null) {
+        raf = requestAnimationFrame(draw);
+        return;
+      }
+      const { views, activeIndex } = deps.input.padDiagnostics();
+      if (views.length === 0) {
+        body.textContent =
+          'No controller seen yet. Press a button on the pad with this window in front — browsers stay deaf to a pad until it speaks first.';
+      } else {
+        body.innerHTML = '';
+        for (const v of views) {
+          const card = document.createElement('div');
+          card.className = 'pad-card';
+          if (v.index === activeIndex) card.classList.add('live');
+          const name = document.createElement('div');
+          name.className = 'pad-card-name';
+          name.textContent = `${v.index === activeIndex ? '▸ ' : ''}${v.id}`;
+          const how = document.createElement('div');
+          how.className = 'pad-card-how';
+          how.textContent = v.native
+            ? 'Mapped by the browser (standard layout).'
+            : `Not mapped by the browser — read as "${v.profile}".`;
+          const lights = document.createElement('div');
+          lights.className = 'pad-lights';
+          for (let i = 0; i < 16; i++) {
+            const g = padGlyph(i);
+            const dot = document.createElement('span');
+            dot.className = 'pad-light';
+            if (v.buttons[i]?.pressed) dot.classList.add('on');
+            dot.textContent = g.text;
+            lights.appendChild(dot);
+          }
+          const sticks = document.createElement('div');
+          sticks.className = 'pad-card-how';
+          const f = (n: number): string => (Math.abs(n) < 0.08 ? '0' : n.toFixed(2));
+          sticks.textContent = `Left ${f(v.axes[0] ?? 0)}, ${f(v.axes[1] ?? 0)}   Right ${f(v.axes[2] ?? 0)}, ${f(v.axes[3] ?? 0)}`;
+          card.append(name, how, lights, sticks);
+          body.appendChild(card);
+        }
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return wrap;
+  }
+
   function render(): void {
     rows!.innerHTML = '';
+    rows!.appendChild(sectionHead('Controller'));
+    rows!.appendChild(padReadout());
     let group = '';
     for (const a of ACTIONS) {
       if (a.group !== group) {

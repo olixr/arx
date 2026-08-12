@@ -1,3 +1,4 @@
+import { type PadView } from './padProfiles.js';
 /**
  * Action-mapping input layer: keyboard/mouse, Gamepad API, and touch
  * (virtual joystick) all write into one shared action state that the
@@ -72,10 +73,37 @@ export declare class InputManager {
      */
     private mountQueued;
     private padMountWasDown;
+    /**
+     * The dialect translator — turns a pad the browser never mapped
+     * (8BitDo in Switch / D-input / macOS mode, and friends) into the
+     * standard layout everything above this class reads.
+     */
+    private translator;
+    /** Slot of the pad the player last actually touched. */
+    private activePadIndex;
     constructor(target: HTMLElement);
     setTypingCheck(fn: () => boolean): void;
     isDown(code: string): boolean;
+    /**
+     * THE LIVE PAD. Two things go wrong with taking slot 0 blindly:
+     * a pad can announce itself in a later slot (an 8BitDo that leaves a
+     * ghost behind after a mode switch, a second receiver, a phantom the
+     * OS never reaps), and a silent pad in slot 0 then swallows every
+     * frame. So: whichever pad is ACTUALLY being touched wins, that
+     * choice sticks until another pad speaks, and slot order is only the
+     * tie-break of last resort.
+     */
+    private pickPad;
+    /** The live pad, translated into the standard layout. */
     private pad;
+    /**
+     * Every connected pad, translated — the Controls screen's readout
+     * shows all of them so a player can see which one the game hears.
+     */
+    padDiagnostics(): {
+        views: PadView[];
+        activeIndex: number | null;
+    };
     /** Poll gamepad sticks; call once per frame before sampling. */
     pollGamepad(): void;
     /** Raw pad state for the UI navigation layer (edge-detects itself). */

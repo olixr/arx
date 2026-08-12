@@ -57,6 +57,11 @@ export interface RegistrySnapshot {
     routines: string[];
 }
 export declare function fetchRegistry(): Promise<RegistrySnapshot>;
+/**
+ * Full actor definitions — DB truth (CMS edits included), so the
+ * stage dresses every posted body exactly as the running game does.
+ */
+export declare function fetchActorDefs(): Promise<Map<string, import('@arx/content').NpcActorDef>>;
 export interface PrefabListEntry {
     id: string;
     name: string;

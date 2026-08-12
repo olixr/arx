@@ -76,6 +76,30 @@ export declare class Debris {
      */
     chip(x: number, y: number, dir: number, kind: SmashKind, rand?: () => number): void;
     /**
+     * THE TIMBER LAW's crown beat: the instant a felled tree strikes
+     * the ground its foliage stops being a canopy and becomes a burst
+     * of leaf mats — round tufts in the species' own light bands,
+     * popped up and out from the crown's landing point, spinning
+     * lively and lying only briefly (litter leaves before lumber).
+     * `spread` is the crown half-width in tiles: a broad oak sheds a
+     * bigger storm than a wiry pine.
+     */
+    canopyBurst(x: number, y: number, leaves: readonly [string, string, string], spread: number, rand?: () => number): void;
+    /**
+     * THE TIMBER LAW's last word: the lying trunk bucks into lumber.
+     * Chunks spawn ALONG the lie — butt to crown down the ground
+     * direction the caller measured (dx/dy already foreshortened, so
+     * the lumber line lands exactly where the trunk art lay) — and the
+     * break is heavy: billets and rounds pop UP off the break line,
+     * scatter barely, thud, and lie in a log-strewn row. Rounds carry
+     * a lit end-grain disc; billets carry the bark's own stripe.
+     */
+    timber(x: number, y: number, dx: number, dy: number, reach: number, bark: {
+        base: string;
+        lit: string;
+        dark: string;
+    }, rand?: () => number): void;
+    /**
      * Step every chunk: gravity, bounce, and axis-separated wall tests
      * against the live collision field (the corpse-skid law) — debris
      * never crosses a wall, it thuds and drops.
