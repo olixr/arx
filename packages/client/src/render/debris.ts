@@ -371,6 +371,12 @@ export class Debris {
     yield* this.pool;
   }
 
+  /** The raw pool for indexed iteration — the generator above minted
+   *  an iterator + result object per chunk per frame. */
+  chunkPool(): readonly DebrisChunk[] {
+    return this.pool;
+  }
+
   drawOne(
     ctx: CanvasRenderingContext2D,
     c: DebrisChunk,

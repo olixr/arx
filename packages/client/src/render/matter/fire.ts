@@ -140,11 +140,11 @@ const ring: Deployment = (c, x, y, o = {}) => {
   const r = o.radius ?? 0.9;
   const ps = c.particles;
   // Ignition: the hoop lights all at once, then the emitter feeds it.
-  for (let i = 0; i < nOf(10, k); i++) {
-    const a = (i / nOf(10, k)) * Math.PI * 2;
-    ps.burst(x + Math.cos(a) * r, y + Math.sin(a) * r, 1, [BRIGHT, FLAME], {
-      ...RING_LICK, size: sOf(0.085, k),
-    });
+  const ign = nOf(10, k);
+  const ignOpts = { ...RING_LICK, size: sOf(0.085, k) };
+  for (let i = 0; i < ign; i++) {
+    const a = (i / ign) * Math.PI * 2;
+    ps.burst(x + Math.cos(a) * r, y + Math.sin(a) * r, 1, [BRIGHT, FLAME], ignOpts);
   }
   c.glow?.(x, y, r + 0.6, GLOW_RGB, 0.22);
   return ps.emit({

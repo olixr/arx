@@ -101,7 +101,7 @@ import {
   type RagImpact,
 } from './ragdoll.js';
 import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
-import { Particles, type Particle } from './particles.js';
+import { LAYER_GROUND, LAYER_WORLD, Particles, type Particle } from './particles.js';
 import {
   FALL_LOOKAHEAD,
   FALL_LOOKBACK,
@@ -667,6 +667,13 @@ export class Camera {
       x: wx * this.scale + this.originX(w),
       y: wy * this.scale * this.yScale + this.originY(h),
     };
+  }
+
+  /** Allocation-free worldToScreen for per-particle hot paths. */
+  worldToScreenInto(wx: number, wy: number, w: number, h: number, out: Vec2): Vec2 {
+    out.x = wx * this.scale + this.originX(w);
+    out.y = wy * this.scale * this.yScale + this.originY(h);
+    return out;
   }
 
   screenToWorld(sx: number, sy: number, w: number, h: number): Vec2 {
@@ -2091,9 +2098,105 @@ export class Renderer {
     );
   }
 
+  /** Ramp mouth probe directions, hoisted — this literal used to be
+   *  allocated fresh on every renderLift call over a ramp tile. */
+  private static readonly RAMP_DIRS: ReadonlyArray<readonly [number, number]> = [
+    [0, 1],
+    [1, 0],
+    [0, -1],
+    [-1, 0],
+  ];
+
+  /**
+   * THE LIFT LEDGER: renderLift runs for every body, particle, glow
+   * and debris chunk every frame, and the full walk below pays up to
+   * eight map lookups per call. The lift is classifiable PER TILE —
+   * constant value, bridge apron, ramp flight, or the rare deck-fill
+   * tile whose per-point triangle test keeps the slow path — so a
+   * world-version-keyed memo collapses the hot path to one map get
+   * plus arithmetic. Kinds: 0 = constant (v), 1 = bridge apron
+   * (base v, dir code in a: 0=W 1=E 2=N 3=S), 2 = ramp
+   * (v = (lvl-1)*ELEV_H, mouth dir in a/b), 3 = slow path.
+   */
+  private readonly liftMemo = new Map<number, { k: number; v: number; a: number; b: number }>();
+  private liftMemoVersion = -1;
+
   renderLift(x: number, y: number): number {
     const game = this.game;
     if (!game) return 0;
+    if (game.worldVersion !== this.liftMemoVersion) {
+      this.liftMemo.clear();
+      this.liftMemoVersion = game.worldVersion;
+    }
+    const tx = Math.floor(x);
+    const ty = Math.floor(y);
+    const key = packTile(tx, ty);
+    let info = this.liftMemo.get(key);
+    if (info === undefined) {
+      info = this.classifyLift(game, tx, ty);
+      this.liftMemo.set(key, info);
+    }
+    switch (info.k) {
+      case 0:
+        return info.v;
+      case 1: {
+        const u =
+          info.a === 0
+            ? x - tx
+            : info.a === 1
+              ? 1 - (x - tx)
+              : info.a === 2
+                ? y - ty
+                : 1 - (y - ty);
+        return info.v + DOCK_LIFT * Math.min(1, Math.max(0, u));
+      }
+      case 2: {
+        const u =
+          info.a !== 0
+            ? info.a > 0
+              ? 1 - (x - tx)
+              : x - tx
+            : info.b > 0
+              ? 1 - (y - ty)
+              : y - ty;
+        return info.v + Math.min(1, Math.max(0, u)) * ELEV_H;
+      }
+      default:
+        return this.renderLiftSlow(game, x, y);
+    }
+  }
+
+  private classifyLift(
+    game: ClientGame,
+    tx: number,
+    ty: number,
+  ): { k: number; v: number; a: number; b: number } {
+    const lvl = game.world.elevAt(tx, ty);
+    const t = game.world.groundAt(tx, ty);
+    if ((t === Tile.Bridge || t === Tile.Dock) && this.isDockAt(game, tx, ty)) {
+      if (t === Tile.Bridge) {
+        const ap = this.bridgeApron(game, tx, ty);
+        if (ap !== 'none') {
+          const code = ap === 'W' ? 0 : ap === 'E' ? 1 : ap === 'N' ? 2 : 3;
+          return { k: 1, v: lvl * ELEV_H, a: code, b: 0 };
+        }
+      }
+      return { k: 0, v: lvl * ELEV_H + DOCK_LIFT, a: 0, b: 0 };
+    }
+    if (this.deckFill(game, tx, ty) !== null) return { k: 3, v: 0, a: 0, b: 0 };
+    if (this.porchAt(game, tx, ty)) return { k: 0, v: lvl * ELEV_H + DOCK_LIFT, a: 0, b: 0 };
+    if (t === Tile.Ramp) {
+      for (const [dx, dy] of Renderer.RAMP_DIRS) {
+        if (game.world.elevAt(tx + dx, ty + dy) < lvl) {
+          return { k: 2, v: (lvl - 1) * ELEV_H, a: dx, b: dy };
+        }
+      }
+    }
+    return { k: 0, v: lvl * ELEV_H, a: 0, b: 0 };
+  }
+
+  /** The pre-ledger walk, verbatim — deck-fill tiles still need it. */
+  private renderLiftSlow(game: ClientGame, x: number, y: number): number {
     const tx = Math.floor(x);
     const ty = Math.floor(y);
     const lvl = game.world.elevAt(tx, ty);
@@ -2134,7 +2237,7 @@ export class Renderer {
     }
     if (t === Tile.Ramp) {
       // Ascend toward the cardinal neighbor a level down — the mouth.
-      for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
+      for (const [dx, dy] of Renderer.RAMP_DIRS) {
         if (game.world.elevAt(tx + dx, ty + dy) < lvl) {
           // Fraction across the tile away from the low edge.
           const u =
@@ -2219,6 +2322,20 @@ export class Renderer {
   /** worldToScreen that also rides the terrain lift under the point. */
   private liftedWTS = (wx: number, wy: number): Vec2 => {
     const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+    p.y -= this.renderLift(wx, wy) * this.camera.scale;
+    return p;
+  };
+
+  /**
+   * liftedWTS for the bulk lanes (particles, debris, birds): returns
+   * ONE reused scratch, so thousands of projections a frame allocate
+   * nothing. Consumers copy fields out before projecting again — the
+   * drawOne contracts say so explicitly. Never hand this to code that
+   * stores the result.
+   */
+  private readonly wtsScratch: Vec2 = { x: 0, y: 0 };
+  private liftedWTSScratch = (wx: number, wy: number): Vec2 => {
+    const p = this.camera.worldToScreenInto(wx, wy, this.w, this.h, this.wtsScratch);
     p.y -= this.renderLift(wx, wy) * this.camera.scale;
     return p;
   };
@@ -3606,6 +3723,7 @@ export class Renderer {
     // anything — e.g. the reflection registry — holds them.)
     const items = this.drawItems;
     items.length = 0;
+    this.bulkItemUsed = 0;
     // Tall thickets y-sort with the world: you walk THROUGH them.
     this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
     this.collectElevatedGround(game, items);
@@ -3694,41 +3812,38 @@ export class Renderer {
     // south of a body must paint over it. Airborne effects (sparks,
     // leaves, Arx) stay in the overlay pass below.
     this.particles.update(this.frameDt);
-    for (const p of this.particles.groundParticles()) {
-      items.push({
-        sortY: p.y,
-        strat: this.stratAt(p.x, p.y),
-        bulk: BulkKind.Particle,
-        bulkArg: p,
-      });
-    }
-    // THE WORLD LAYER: airborne matter that lives WITH the bodies —
-    // a fire ring's north arc passes behind the caster, a venom cloud
-    // swallows its victim. Sorted on the ground anchor; altitude is a
-    // full-scale screen lift inside drawOne (contact shadow included,
-    // debris-style). THE SHELF LAW: matter rides the shelf of the
-    // ground under its anchor, exactly like the body it wraps.
-    for (const p of this.particles.worldParticles()) {
-      items.push({
-        sortY: p.y,
-        strat: this.stratAt(p.x, p.y),
-        bulk: BulkKind.Particle,
-        bulkArg: p,
-      });
+    // Indexed passes over the raw pool (the old per-layer generators
+    // minted an iterator + result object per particle per frame), and
+    // pooled DrawItems — a POI effect at several hundred live grains
+    // used to feed the GC that many fresh literals every frame. Two
+    // passes keep the old ground-before-world push order exactly.
+    {
+      const pool = this.particles.livePool();
+      for (let i = 0; i < pool.length; i++) {
+        const p = pool[i]!;
+        if (p.layer !== LAYER_GROUND) continue;
+        items.push(this.takeBulkItem(p.y, this.stratAt(p.x, p.y), BulkKind.Particle, p));
+      }
+      // THE WORLD LAYER: airborne matter that lives WITH the bodies —
+      // a fire ring's north arc passes behind the caster, a venom cloud
+      // swallows its victim. Sorted on the ground anchor; altitude is a
+      // full-scale screen lift inside drawOne (contact shadow included,
+      // debris-style). THE SHELF LAW: matter rides the shelf of the
+      // ground under its anchor, exactly like the body it wraps.
+      for (let i = 0; i < pool.length; i++) {
+        const p = pool[i]!;
+        if (p.layer !== LAYER_WORLD) continue;
+        items.push(this.takeBulkItem(p.y, this.stratAt(p.x, p.y), BulkKind.Particle, p));
+      }
     }
     // Smashed-prop chunks are world matter: they y-sort with the scene
     // (a stave that lands north of a table paints under it) and test
     // the live collision field so flying wood thuds off walls.
-    this.debris.update(this.frameDt, (x, y) => pointHitsSolid(game.world, x, y));
-    for (const c of this.debris.chunks()) {
-      items.push({
-        sortY: c.y + 0.02,
-        strat: this.stratAt(c.x, c.y),
-        // Each chunk wears its own brand ring (drawn inside drawOne),
-        // gated on the same /outline switch as everything standing.
-        bulk: BulkKind.Debris,
-        bulkArg: c,
-      });
+    this.debris.update(this.frameDt, this.debrisProbe);
+    for (const c of this.debris.chunkPool()) {
+      // Each chunk wears its own brand ring (drawn inside drawOne),
+      // gated on the same /outline switch as everything standing.
+      items.push(this.takeBulkItem(c.y + 0.02, this.stratAt(c.x, c.y), BulkKind.Debris, c));
     }
     // THE THROWN COVER: dismount cloth flips — tiny one-shot spring
     // sims owned by their beds, advanced here and self-deleting once
@@ -3773,19 +3888,24 @@ export class Renderer {
       env.threatCount = tc;
       this.birds.update(this.frameDt, env);
       for (const bd of this.birds.grounded()) {
-        items.push({
-          sortY: bd.y + 0.01,
-          strat: this.stratAt(bd.x, bd.y),
-          bulk: BulkKind.GroundedBird,
-          bulkArg: bd,
-        });
+        items.push(this.takeBulkItem(bd.y + 0.01, this.stratAt(bd.x, bd.y), BulkKind.GroundedBird, bd));
       }
     }
     this.perfMark('collect');
     // THE SHELF LAW (see DrawItem.strat): shelf first, raw row within.
     items.sort(DRAW_ORDER);
     this.perfMark('sort');
+    // Consecutive particle items form a RUN: nothing else touches
+    // fillStyle inside one, so setFill dedupes across the run exactly
+    // like the overlay batch (a storm's grains sort adjacent).
+    let inParticleRun = false;
     for (const item of items) {
+      const isParticle = item.bulk === BulkKind.Particle;
+      if (isParticle !== inParticleRun) {
+        if (isParticle) this.particles.beginRun();
+        else this.particles.endRun();
+        inParticleRun = isParticle;
+      }
       // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
       // silhouette ring fades with the body (alpha inside draw() would
       // leave the ring solid). The nameplate stays opaque.
@@ -3797,6 +3917,7 @@ export class Renderer {
       if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
       item.drawLabel?.();
     }
+    if (inParticleRun) this.particles.endRun();
     this.perfMark('world');
     // THE GHOST EMBER rides over the world pass, under the overlay FX.
     this.drawGhostEmber();
@@ -3804,10 +3925,10 @@ export class Renderer {
     // Birds on the wing cross OVER the world, under the overlay FX —
     // altitude is a screen lift; the turf shadow stays at the ground point.
     for (const bd of this.birds.airborne()) {
-      this.birds.drawOne(this.ctx, bd, this.liftedWTS, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
+      this.birds.drawOne(this.ctx, bd, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
     }
 
-    this.particles.draw(this.ctx, this.liftedWTS, this.camera.scale);
+    this.particles.draw(this.ctx, this.liftedWTSScratch, this.camera.scale);
     // The aim guide rides OVER the world pass: elevated ground repaints
     // the whole plateau as y-sorted items, so drawing it early buried
     // the guide anywhere above level 0 (the drawAimGuide-under-items
@@ -15228,16 +15349,49 @@ export class Renderer {
   private drawBulkItem(item: DrawItem): void {
     switch (item.bulk) {
       case BulkKind.Particle:
-        this.particles.drawOne(this.ctx, item.bulkArg as Particle, this.liftedWTS, this.camera.scale);
+        this.particles.drawOne(this.ctx, item.bulkArg as Particle, this.liftedWTSScratch, this.camera.scale);
         break;
       case BulkKind.Debris:
-        this.debris.drawOne(this.ctx, item.bulkArg as DebrisChunk, this.liftedWTS, this.camera.scale, this.outlineOn);
+        this.debris.drawOne(this.ctx, item.bulkArg as DebrisChunk, this.liftedWTSScratch, this.camera.scale, this.outlineOn);
         break;
       case BulkKind.GroundedBird:
-        this.birds.drawOne(this.ctx, item.bulkArg as Bird, this.liftedWTS, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
+        this.birds.drawOne(this.ctx, item.bulkArg as Bird, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
         break;
     }
   }
+
+  /**
+   * Pooled bulk-lane DrawItems, reused every frame. ONLY the bulk lane
+   * may pool: entity items can outlive the frame (the reflection
+   * registry replays them), bulk items never do — and a pooled record
+   * only ever carries the four bulk fields, so nothing stales.
+   */
+  private readonly bulkItemPool: DrawItem[] = [];
+  private bulkItemUsed = 0;
+
+  private takeBulkItem(
+    sortY: number,
+    strat: number | undefined,
+    bulk: BulkKind,
+    bulkArg: unknown,
+  ): DrawItem {
+    let it = this.bulkItemPool[this.bulkItemUsed];
+    if (!it) {
+      it = { sortY: 0 };
+      this.bulkItemPool.push(it);
+    }
+    this.bulkItemUsed++;
+    it.sortY = sortY;
+    it.strat = strat;
+    it.bulk = bulk;
+    it.bulkArg = bulkArg;
+    return it;
+  }
+
+  /** Debris collision probe, hoisted — a closure per frame through a
+   *  megamorphic call site was measurable at 2-4 probes per chunk. */
+  private readonly debrisProbe = (x: number, y: number): boolean =>
+    this.game !== null && pointHitsSolid(this.game.world, x, y);
   /** Per-frame shadow-mask bake allowance — see shadowMask. */
   private maskBakeBudget = 0;
   private frameNo = 0;

@@ -129,9 +129,12 @@ export const LAND_SETTLE = 2;
 export const LAND_BOUNCE = 3;
 export const LAND_SPLAT = 4;
 
-const LAYER_OVERLAY = 0;
-const LAYER_WORLD = 1;
-const LAYER_GROUND = 2;
+export const LAYER_OVERLAY = 0;
+export const LAYER_WORLD = 1;
+export const LAYER_GROUND = 2;
+
+/** Hoisted numeric comparator — a per-frame closure de-opts the sort. */
+const NUM_ASC = (a: number, b: number): number => a - b;
 
 export type ParticleLayer = 'overlay' | 'world' | 'ground';
 export type LandKind = 'none' | 'die' | 'settle' | 'bounce' | 'splat';
@@ -572,10 +575,19 @@ export class Particles {
         const pop = pops[pi]!;
         const share = (e.rate * (pop.weight ?? 1)) / totalW;
         let acc = (pi === 0 ? e.acc0 : pi === 1 ? e.acc1 : e.acc2) + share * env * dt;
-        while (acc >= 1) {
+        // Backlog clamp: dt is clamped upstream to 250ms, so a hitch
+        // used to hand a 130/s pop a 32-particle burst on the very
+        // next frame — a self-amplifying stutter. One frame spawns at
+        // most 50ms worth of the pop's own rate; the excess is DROPPED
+        // (never carried). Steady frames sit far under the cap.
+        const maxSpawns = Math.max(1, Math.ceil(share * env * 0.05));
+        let spawns = 0;
+        while (acc >= 1 && spawns < maxSpawns) {
           acc -= 1;
+          spawns++;
           this.emitOne(e, pop);
         }
+        if (acc >= 1) acc %= 1;
         if (pi === 0) e.acc0 = acc;
         else if (pi === 1) e.acc1 = acc;
         else e.acc2 = acc;
@@ -925,12 +937,26 @@ export class Particles {
       // (shape, color) leads the key; the low 12 bits carry the index.
       if (p.layer === LAYER_OVERLAY) order.push((((p.shape << 10) | p.colorId) << 12) | i);
     }
-    order.sort((a, b) => a - b);
+    order.sort(NUM_ASC);
     this.batching = true;
     this.lastFill = '';
     for (let k = 0; k < order.length; k++) {
       this.drawOne(ctx, pool[order[k]! & 4095]!, worldToScreen, scale);
     }
+    this.batching = false;
+  }
+
+  /**
+   * The renderer's world pass marks a RUN of consecutive particle
+   * items (nothing else touches fillStyle inside a run), so setFill
+   * can dedupe across bulk-lane draws exactly like the overlay batch.
+   */
+  beginRun(): void {
+    this.batching = true;
+    this.lastFill = '';
+  }
+
+  endRun(): void {
     this.batching = false;
   }
 
@@ -948,10 +974,15 @@ export class Particles {
     scale: number,
   ): void {
     const t = p.life / p.maxLife;
+    // The worldToScreen callback may return a REUSED scratch (the
+    // renderer's zero-alloc projection) — copy the fields out before
+    // any second projection call (streak tails, bolt endpoints).
     const s = worldToScreen(p.x, p.y);
+    const sx = s.x;
+    const sy0 = s.y;
     // HEIGHT IS REAL: altitude lifts in FULL screen pixels — heights
     // are never squashed by the camera pitch.
-    const sy = s.y - p.z * scale;
+    const sy = sy0 - p.z * scale;
     let size: number;
     let alpha = 1;
     if (p.grow > 0) {
@@ -974,7 +1005,7 @@ export class Particles {
       ctx.globalAlpha = sa;
       ctx.fillStyle = SHADOW_INK;
       ctx.beginPath();
-      ctx.ellipse(s.x, s.y, sr, sr * 0.42, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx, sy0, sr, sr * 0.42, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
       this.lastFill = SHADOW_INK;
@@ -987,19 +1018,19 @@ export class Particles {
       // through the camera so diagonals lie on the true screen path.
       const tail = worldToScreen(p.x - p.vx * 0.045, p.y - p.vy * 0.045);
       const taily = tail.y - (p.z - p.vz * 0.045) * scale;
-      const dx = s.x - tail.x;
+      const dx = sx - tail.x;
       const dy = sy - taily;
       const len = Math.max(size * 1.6, Math.hypot(dx, dy));
       const ang = Math.atan2(dy, dx);
       ctx.save();
-      ctx.translate(s.x, sy);
+      ctx.translate(sx, sy);
       ctx.rotate(ang);
       ctx.fillRect(-len, -size * 0.28, len, size * 0.56);
       ctx.restore();
     } else if (p.shape === 2) {
       // Shard: a tumbling slab.
       ctx.save();
-      ctx.translate(s.x, sy);
+      ctx.translate(sx, sy);
       ctx.rotate(p.rot);
       ctx.fillRect(-size * 0.7, -size * 0.4, size * 1.4, size * 0.8);
       ctx.restore();
@@ -1014,7 +1045,7 @@ export class Particles {
       const len = size * 2.1;
       const w = size * 0.85 * breath;
       ctx.save();
-      ctx.translate(s.x, sy);
+      ctx.translate(sx, sy);
       ctx.rotate(ang);
       ctx.beginPath();
       ctx.moveTo(len * 0.62, 0); // the tip
@@ -1030,7 +1061,7 @@ export class Particles {
       // Puff: a three-lobe billow cluster — smoke with VOLUME. The
       // lobes tumble together on rot so the cloud rolls, not slides.
       ctx.save();
-      ctx.translate(s.x, sy);
+      ctx.translate(sx, sy);
       ctx.rotate(p.rot + Math.sin(p.life * 2.2 + p.phase) * 0.2);
       const s0 = size;
       ctx.fillRect(-s0 * 0.5, -s0 * 0.5, s0, s0 * 0.85);
@@ -1041,14 +1072,14 @@ export class Particles {
       // Glint: a crossed-sliver twinkle that pulses on its own phase.
       const tw = 0.45 + 0.55 * Math.abs(Math.sin(p.life * 14 + p.phase));
       const g = size * 0.38 * tw;
-      ctx.fillRect(s.x - g * 0.5, sy - g * 2.1, g, g * 4.2);
-      ctx.fillRect(s.x - g * 2.1, sy - g * 0.5, g * 4.2, g);
+      ctx.fillRect(sx - g * 0.5, sy - g * 2.1, g, g * 4.2);
+      ctx.fillRect(sx - g * 2.1, sy - g * 0.5, g * 4.2, g);
     } else if (p.shape === 6) {
       // Mote: the puff idiom with ROUND lobes — water mist. A rect
       // lobe at mist scale reads as a pasted square chit; vapour has
       // no corners.
       ctx.save();
-      ctx.translate(s.x, sy);
+      ctx.translate(sx, sy);
       ctx.rotate(p.rot + Math.sin(p.life * 2.2 + p.phase) * 0.2);
       const m = size * 0.5;
       ctx.beginPath();
@@ -1069,7 +1100,7 @@ export class Particles {
       const r = size * 0.5 * fat;
       const len = Math.min(r * 4, r * (1.6 + sp * 0.5));
       ctx.save();
-      ctx.translate(s.x, sy);
+      ctx.translate(sx, sy);
       ctx.rotate(ang);
       ctx.beginPath();
       ctx.moveTo(r, 0); // the nose
@@ -1084,9 +1115,11 @@ export class Particles {
     } else if (p.shape === 8) {
       this.drawBolt(ctx, p, worldToScreen, scale, size, alpha);
     } else {
-      ctx.fillRect(s.x - size / 2, sy - size / 2, size, size);
+      ctx.fillRect(sx - size / 2, sy - size / 2, size, size);
     }
-    if (ctx.globalAlpha !== 1) ctx.globalAlpha = 1;
+    // Tracked reset — reading ctx.globalAlpha here was a per-particle
+    // cross-boundary getter (the shadow path above resets itself).
+    if (alpha < 1) ctx.globalAlpha = 1;
   }
 
   /**
@@ -1103,10 +1136,12 @@ export class Particles {
     size: number,
     alpha: number,
   ): void {
+    // Copy each projection out before the next call — the callback
+    // may hand back one reused scratch object.
     const a = worldToScreen(p.x, p.y);
-    const b = worldToScreen(p.x2, p.y2);
     const ax = a.x;
     const ay = a.y - p.z * scale;
+    const b = worldToScreen(p.x2, p.y2);
     const bx = b.x;
     const by = b.y - p.z2 * scale;
     const dx = bx - ax;
@@ -1182,6 +1217,15 @@ export class Particles {
   /** Live particle count (tests + budget audits). */
   count(): number {
     return this.pool.length;
+  }
+
+  /**
+   * The raw pool for the renderer's collect pass — indexed loops over
+   * this replaced the ground/world generators, which minted an
+   * iterator plus a result object per particle per frame.
+   */
+  livePool(): readonly Particle[] {
+    return this.pool;
   }
 
   /** Every live particle, all layers (tests + budget audits). */
