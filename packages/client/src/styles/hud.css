@@ -48,6 +48,12 @@
   font-style: italic;
 }
 
+/* The private earnings ledger — spoken to the earner alone, in the
+   reward family's gold so it never reads as the narrator's blue. */
+.chat-line.xp {
+  color: var(--gold);
+}
+
 #chat-input {
   width: 100%;
   font-size: 0.9375rem;

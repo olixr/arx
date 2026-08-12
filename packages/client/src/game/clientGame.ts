@@ -151,7 +151,7 @@ export interface Floaty {
 }
 
 export interface ChatLine {
-  channel: 'local' | 'system';
+  channel: 'local' | 'system' | 'xp';
   from?: string;
   text: string;
 }

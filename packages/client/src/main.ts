@@ -1049,6 +1049,24 @@ const cinema = new DialogueCinema(sfx, {
   onVoiceSkip: () => voice.stopLine(),
 });
 
+// THE PRIVATE LEDGER: every xp grant earns a log line, but a single
+// combat hit pays several schools at once (style + vitality + the
+// combat echo) and a swing lands every couple of seconds — raw grants
+// would drown the log. Gains pool here and flush as ONE gold line per
+// quiet window, spoken to the earner alone (the server already sends
+// 'xp' only to the owning session, so privacy is by construction).
+const xpPool = new Map<string, number>();
+let xpFlushTimer: number | undefined;
+function flushXpPool(): void {
+  xpFlushTimer = undefined;
+  if (xpPool.size === 0) return;
+  const parts = [...xpPool.entries()].map(
+    ([skill, gained]) => `+${Math.round(gained)} ${skillName(skill)}`,
+  );
+  xpPool.clear();
+  chat.addLine({ channel: 'xp', text: `${parts.join(', ')} xp` });
+}
+
 const game = new ClientGame(input, {
   onChat: (line) => chat.addLine(line),
   onNeedLook: () => looks.show(),
@@ -1434,9 +1452,18 @@ const game = new ClientGame(input, {
     // NO xp floaty: combat kills feed several skills at once and the
     // drips stacked into unreadable mush over the damage numbers (user
     // verdict). The float channel is COMBAT ONLY — damage in and out,
-    // statuses, buffs. Skill progress speaks through the skills hall,
-    // and a level-up still gets the full ceremony below.
+    // statuses, buffs. Skill progress speaks through the private
+    // ledger line in the log (pooled above), and a level-up still
+    // gets the full ceremony below.
+    xpPool.set(msg.skill, (xpPool.get(msg.skill) ?? 0) + msg.gained);
+    if (xpFlushTimer === undefined) {
+      xpFlushTimer = window.setTimeout(flushXpPool, 1500);
+    }
     if (msg.levelledUp) {
+      // The ledger settles before the ceremony speaks — a pooled
+      // "+xp" line trailing the star would read as afterthought.
+      if (xpFlushTimer !== undefined) window.clearTimeout(xpFlushTimer);
+      flushXpPool();
       const own = game.predictor.renderPos();
       const face = SKILL_FACE[msg.skill] ?? { icon: 'bread', color: '#e8b64c' };
       const name = skillName(msg.skill);
