@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "ulfa_wax__greet",
    "text": "Mind the dips, they are still soft. You have the look of somebody off the road. Sit, the smell is friendlier than it seems.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "ulfa_wax__hub",
    "text": "Now then. What can I light for you?",
    "choices": [
     {
@@ -37,16 +39,19 @@
   },
   {
    "id": "go",
+   "voice": "ulfa_wax__go",
    "text": "Every road lamp from our gate to the Glasswater burns Hartfell tallow. A barrel a week just for the Hartway. The shrine flame lights them, mind. We only feed them. There is a difference and the Waykeepers will explain it at length.",
    "next": "hub"
   },
   {
    "id": "news",
+   "voice": "ulfa_wax__news",
    "text": "The runs are empty and Swein triple counts the folds. Orvar came back from the stones with a face I did not like. And the buyer asked the moot again and got tea again. Poor man. Lovely manners.",
    "next": "hub"
   },
   {
    "id": "browse",
+   "voice": "ulfa_wax__browse",
    "text": "Dips, tapers, lamp fill, and wicks that do not lie about their length. Light is cheap here. Dark is what costs.",
    "hooks": [
     {
@@ -57,6 +62,7 @@
   },
   {
    "id": "off",
+   "voice": "ulfa_wax__off",
    "text": "Take a taper for the walk. Pay me next time, everyone does."
   }
  ]

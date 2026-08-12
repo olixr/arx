@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "eirik_forge__greet",
    "text": "If it is bent I can unbend it. If it is broken I can mostly mend it. If it is a masterwork you are after, you are two towns early.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "eirik_forge__hub",
    "text": "What needs iron?",
    "choices": [
     {
@@ -37,16 +39,19 @@
   },
   {
    "id": "make",
+   "voice": "eirik_forge__make",
    "text": "Spear points, trap jaws, shoe nails, hinges, and the sledge runners every autumn. A town this cold runs on small iron. Small iron is what I am for.",
    "next": "hub"
   },
   {
    "id": "greater",
+   "voice": "eirik_forge__greater",
    "text": "One furnace and no great bellows, and no shame in it. Balla of Silverfall could forge me and my smithy into a better smithy. When her work comes through on a wain I shut up and look at it.",
    "next": "hub"
   },
   {
    "id": "browse",
+   "voice": "eirik_forge__browse",
    "text": "Working iron at working prices. The traps hold what they promise, which is the entire point of a promise.",
    "hooks": [
     {
@@ -57,6 +62,7 @@
   },
   {
    "id": "off",
+   "voice": "eirik_forge__off",
    "text": "Mind the quench steam. It has opinions."
   }
  ]

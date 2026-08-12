@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "ondra_pans__greet",
       "text": "Ondra. Mind where you stand. The white ground is the harvest and the wet ground is next year's.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "ondra_pans__hub",
       "text": "Ask, then.",
       "choices": [
         {
@@ -37,16 +39,19 @@
     },
     {
       "id": "crop",
+      "voice": "ondra_pans__crop",
       "text": "Flood the pan. Shut the gate. Let the sun work and the wind carry. Rake what stays. A pan is a field that grows weather. Farmers understand me straight off. Everyone else asks twice.",
       "next": "hub"
     },
     {
       "id": "sun",
+      "voice": "ondra_pans__sun",
       "text": "The sun does not take feast days. Neither do I. In the grey months we cut the harvest to one pan and mend the lips. The mere always gives it back come summer. So far.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "ondra_pans__browse",
       "text": "Pans' price. Alba gets the same rate, and she trades in secrets.",
       "hooks": [
         {
@@ -57,6 +62,7 @@
     },
     {
       "id": "bye",
+      "voice": "ondra_pans__bye",
       "text": "Walk the lips."
     }
   ]

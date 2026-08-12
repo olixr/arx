@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "tuli_bone__greet",
    "text": "Oh. Hello. Mind the shavings.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "tuli_bone__hub",
    "text": "Did you want something carved? Or bought. Either is fine.",
    "choices": [
     {
@@ -37,16 +39,19 @@
   },
   {
    "id": "carve",
+   "voice": "tuli_bone__carve",
    "text": "Combs. Buttons. Knife hafts. Charms for the drove, one hart each, so the herd stays a herd. Silverfall buys the good pieces for the Lantern Row. I have never seen where they end up. I think about it.",
    "next": "hub"
   },
   {
    "id": "antler",
+   "voice": "tuli_bone__antler",
    "text": "The harts drop them every spring and the fell keeps them until we look. Nothing dies for a comb. I like that part best.",
    "next": "hub"
   },
   {
    "id": "browse",
+   "voice": "tuli_bone__browse",
    "text": "The tray is what is finished. The prices are what Ranna tells me they should be. She is right, apparently.",
    "hooks": [
     {
@@ -57,6 +62,7 @@
   },
   {
    "id": "off",
+   "voice": "tuli_bone__off",
    "text": "It is no disturbance. Well. A small one."
   }
  ]

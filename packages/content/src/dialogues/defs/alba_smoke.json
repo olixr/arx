@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "alba_smoke__greet",
       "text": "Alba. Don't open that door, there's fish in the smoke. Talk here.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "alba_smoke__hub",
       "text": "Quick, then. The fire wants tending.",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "teach",
+      "voice": "alba_smoke__teach",
       "text": "Good. Cooking is a trade, same as smithing, and I'm the only one fool enough to teach it properly. My receipts are written fair. Buy what your hands are ready for.",
       "next": "browse"
     },
     {
       "id": "smoke",
+      "voice": "alba_smoke__smoke",
       "text": "Low fire, long patience, salt done honest. Fast fire feeds you tonight. Slow fire feeds you in the hills three days out, and that's the difference between a meal and a trade.",
       "next": "hub"
     },
     {
       "id": "winter",
+      "voice": "alba_smoke__winter",
       "text": "A bad winter taught me. That's all the name it gets.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "alba_smoke__browse",
       "text": "Receipts on the left, salt and smoke on the right.",
       "hooks": [
         {
@@ -62,6 +68,7 @@
     },
     {
       "id": "bye",
+      "voice": "alba_smoke__bye",
       "text": "Eat before the road. The road can tell."
     }
   ]

@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "jessa_walk__greet",
       "text": "Jessa. Walk with me if you're talking, the strand won't lay itself.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "jessa_walk__hub",
       "text": "Keep up.",
       "choices": [
         {
@@ -37,16 +39,19 @@
     },
     {
       "id": "walk",
+      "voice": "jessa_walk__walk",
       "text": "Line for the boats, net cord for the crews, bell rope for the quay, and bowstring for anyone the road is about to disappoint. A rope is a hundred small holds agreeing to be one long one.",
       "next": "hub"
     },
     {
       "id": "fathoms",
+      "voice": "jessa_walk__fathoms",
       "text": "Twenty fathoms under one roof, and I walk every one of them, both ways, all day. Twelve miles by dusk without leaving the room. The floor and I have an understanding.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "jessa_walk__browse",
       "text": "Off the walk, all of it. Nothing here snaps.",
       "hooks": [
         {
@@ -57,6 +62,7 @@
     },
     {
       "id": "bye",
+      "voice": "jessa_walk__bye",
       "text": "Mind the strand as you go. Step over, never on."
     }
   ]

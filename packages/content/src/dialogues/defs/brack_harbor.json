@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "brack_harbor__greet",
       "text": "Brack. Portreeve. Wind's backing south, so make it quick or make it useful.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "brack_harbor__hub",
       "text": "Well?",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "town",
+      "voice": "brack_harbor__town",
       "text": "Last town before the water. Salt goes north, coin comes south, and every road in the Dawnlands ends on my quay. The pans pay the wall, the fish pay the rest.",
       "next": "hub"
     },
     {
       "id": "south",
+      "voice": "brack_harbor__south",
       "text": "The far shore. Nobody nets it, nobody walks it, and I sign no papers for people who try. The mere is wide and the things on the other side are not fishermen.",
       "next": "hub"
     },
     {
       "id": "watch",
+      "voice": "brack_harbor__watch",
       "text": "The Waykeepers. This is their port; the road south is their road. Quay trouble comes to me, road trouble goes to the Watch House by the gate. Keep both empty and we'll get on.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "brack_harbor__bye",
       "text": "Mind the tide line. It minds you."
     }
   ]

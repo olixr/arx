@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "hub",
+   "voice": "q_the_empty_fold_offer__hub",
    "text": "Beasts gone from a shut fold. No wolf sign. No fence down. Nothing eaten. I have herded forty years and I have no word for it, and I am not saying the number out loud.\n\nSunn can read the ground. I cannot leave the fold to fetch her.",
    "choices": [
     {
@@ -38,6 +39,7 @@
   },
   {
    "id": "think",
+   "voice": "q_the_empty_fold_offer__think",
    "text": "I think a herd that will stand in a fold while wolves sing needs a better reason to walk out of one at night. And I think I do not want to meet the reason. Go careful.",
    "choices": [
     {
@@ -52,6 +54,7 @@
   },
   {
    "id": "sworn",
+   "voice": "q_the_empty_fold_offer__sworn",
    "text": "Dawn, at the butts, or already on the fell. Tell her the fold count is wrong and she will come before you finish the sentence.",
    "hooks": [
     {
@@ -62,6 +65,7 @@
   },
   {
    "id": "declined",
+   "voice": "q_the_empty_fold_offer__declined",
    "text": "Then pray at whatever you pray at that it stays a herd problem."
   }
  ]

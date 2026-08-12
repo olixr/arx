@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "geir_smoke__greet",
    "text": "Stand out of the draft or become part of the process.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "geir_smoke__hub",
    "text": "Mm.",
    "choices": [
     {
@@ -37,16 +39,19 @@
   },
   {
    "id": "smoke",
+   "voice": "geir_smoke__smoke",
    "text": "Hart, boar, salmon off the quay. Green pine for the color, old oak for the keeping. The huts run all autumn and sleep all spring. Like me.",
    "next": "hub"
   },
   {
    "id": "winter",
+   "voice": "geir_smoke__winter",
    "text": "You smoke everything that stands still in autumn and you count it in spring. A winter is a long argument with hunger. You win it before it starts or you do not win it.",
    "next": "hub"
   },
   {
    "id": "browse",
+   "voice": "geir_smoke__browse",
    "text": "Smoked meat that keeps til thaw and salmon that does not last the walk home. Salt from Saltmere, tallow from next door. Eat.",
    "hooks": [
     {
@@ -57,6 +62,7 @@
   },
   {
    "id": "off",
+   "voice": "geir_smoke__off",
    "text": "Mm."
   }
  ]

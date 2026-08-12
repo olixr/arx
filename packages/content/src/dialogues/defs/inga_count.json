@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "inga_count__greet",
    "text": "Chests are behind me. Rules are in front of you. State your business.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "inga_count__hub",
    "text": "Well?",
    "choices": [
     {
@@ -33,16 +35,19 @@
   },
   {
    "id": "bank",
+   "voice": "inga_count__bank",
    "text": "Your coin goes in the chest, your name goes in the book, and both come out exactly as they went in. That is the entire cleverness. The vault is for the town's own and it is not a topic.",
    "next": "hub"
   },
   {
    "id": "years",
+   "voice": "inga_count__years",
    "text": "Thirty one years. The ledgers behind me go back before the wall. I have read them all twice and found one error. Mine. It has not happened again.",
    "next": "hub"
   },
   {
    "id": "off",
+   "voice": "inga_count__off",
    "text": "Looking is free. Standing there is nearly free."
   }
  ]

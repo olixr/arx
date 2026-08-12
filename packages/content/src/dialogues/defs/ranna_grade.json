@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "ranna_grade__greet",
    "text": "Counter is for hides. Elbows off it unless you are made of leather.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "ranna_grade__hub",
    "text": "Buying, selling, or wasting my light?",
    "choices": [
     {
@@ -37,16 +39,19 @@
   },
   {
    "id": "buy",
+   "voice": "ranna_grade__buy",
    "text": "Winter fur, whole hides, no arrow ruin through the best of it. Wolf, hart, boar, bear if your nerve held. I grade it in front of you. The grade is the grade.",
    "next": "hub"
   },
   {
    "id": "fine",
+   "voice": "ranna_grade__fine",
    "text": "Cold makes the fur deep and the warm water keeps the beasts fat through it. Fat beast, supple hide. Nowhere else in the Dawnlands has both. That is the whole trade and half the town.",
    "next": "hub"
   },
   {
    "id": "browse",
+   "voice": "ranna_grade__browse",
    "text": "Cured leather, hardened leather, honest wearing gear, and pelts the south pays triple for. First quality is already sold. It is always already sold.",
    "hooks": [
     {
@@ -57,6 +62,7 @@
   },
   {
    "id": "off",
+   "voice": "ranna_grade__off",
    "text": "The door grades a two for shutting badly. Prove it wrong."
   }
  ]

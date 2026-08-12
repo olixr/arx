@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "paid",
+   "voice": "q_the_opened_barrow_turnin__paid",
    "text": "Orvar came to the benches last night. He said the tithe was taken off the flat stone before he reached the wicket, and Sunn says the runs have voices in them again. The fell put itself back the moment we put back what was ours to return.\n\nThe moot decided its thanks. I get to say this part aloud too, and I have looked forward to it.",
    "choices": [
     {
@@ -30,6 +31,7 @@
   },
   {
    "id": "company",
+   "voice": "q_the_opened_barrow_turnin__company",
    "text": "Signe wrote it in the book and the book went south with the Waykeepers' rider. The Company keeps ledgers too, and somewhere in one of them a crew has stopped drawing pay, and questions get asked about that. Let their ledgers do our haunting."
   }
  ]

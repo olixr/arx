@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "signe_road__greet",
    "text": "Road's end. Name and business go in the book if you came up the Hartway, and you did, because there is no other way to come.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "signe_road__hub",
    "text": "The book is patient. I am on duty.",
    "choices": [
     {
@@ -33,16 +35,19 @@
   },
   {
    "id": "book",
+   "voice": "signe_road__book",
    "text": "Who went up, who came back. When the lists do not square, the Waykeepers walk the road until they do. Nobody is lost on my page. One man took three winters to cross off. We crossed him off alive.",
    "next": "hub"
   },
   {
    "id": "road",
+   "voice": "signe_road__road",
    "text": "Lamped the whole way and the drovers keep a fire at the halfway. Stay on it and the worst you meet is weather. Step off it and you are in tier five country wearing a lost expression. The lamp is the safety. It always was.",
    "next": "hub"
   },
   {
    "id": "off",
+   "voice": "signe_road__off",
    "text": "Bar drops at dark. Be a name I do not have to chase."
   }
  ]

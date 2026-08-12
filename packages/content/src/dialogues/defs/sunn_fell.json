@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "sunn_fell__greet",
    "text": "You walk loud. Everything on the fell already knows your name.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "sunn_fell__hub",
    "text": "What.",
    "choices": [
     {
@@ -37,21 +39,25 @@
   },
   {
    "id": "guide",
+   "voice": "sunn_fell__guide",
    "text": "I guide the hunt, not sightseers. Prove you can keep up and keep quiet, in that order, and ask again. The order matters more than the asking.",
    "next": "hub"
   },
   {
    "id": "fell",
+   "voice": "sunn_fell__fell",
    "text": "Dells, becks, the old stones. Barrows past the dells, and you leave those shut. North of the crags nobody goes and nothing worth naming comes back.",
    "next": "hub"
   },
   {
    "id": "wrong",
+   "voice": "sunn_fell__wrong",
    "text": "The runs are empty. A month now. Wolves do not leave good runs, not in winter, not ever. Kolgrim says watch. Orvar says worse than watch. I say the fell moved something and we are all standing where it lands.",
    "next": "hub"
   },
   {
    "id": "off",
+   "voice": "sunn_fell__off",
    "text": "Downwind next time. Basic courtesy."
   }
  ]

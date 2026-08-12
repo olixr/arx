@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "hub",
+   "voice": "q_the_opened_barrow_offer__hub",
    "text": "The moot sat one hour. It has never sat one hour. Dig no barrow is the first law of this fell, older than the tithe, older than every roof in the town, and Red Company spades have opened a mound and let the household out of it.\n\nThe moot decided. I say it aloud: break that camp.",
    "choices": [
     {
@@ -38,6 +39,7 @@
   },
   {
    "id": "watch",
+   "voice": "q_the_opened_barrow_offer__watch",
    "text": "Three of them, and the gate and the beacon and the drove do not watch themselves. The moot keeps no soldiers, and the one time that costs us, it costs us like this. You are what the fell sent instead. Use it.",
    "choices": [
     {
@@ -48,6 +50,7 @@
   },
   {
    "id": "sworn",
+   "voice": "q_the_opened_barrow_offer__sworn",
    "text": "Their camp stands below the Barrowfell, beside the old way. Mind the foreman. Men who dig for the Company dig for wages, but a foreman always keeps something back, and what he kept is the part the mound wants returned.",
    "hooks": [
     {
@@ -58,6 +61,7 @@
   },
   {
    "id": "declined",
+   "voice": "q_the_opened_barrow_offer__declined",
    "text": "Then it stands. And every night it stands, the dead walk further down my fell."
   }
  ]

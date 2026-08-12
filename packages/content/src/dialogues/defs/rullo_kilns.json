@@ -3,15 +3,21 @@
  "start": "greet",
  "bindings": [{ "kind": "actor", "target": "pitchmaster_rullo" }],
  "nodes": [
-  { "id": "greet", "text": "Do not come past the barrels with anything lit. There is a sign. It has my name on it. I am aware.", "next": "hub" },
-  { "id": "hub", "text": "So?", "choices": [
+  { "id": "greet",
+ "voice": "rullo_kilns__greet", "text": "Do not come past the barrels with anything lit. There is a sign. It has my name on it. I am aware.", "next": "hub" },
+  { "id": "hub",
+ "voice": "rullo_kilns__hub", "text": "So?", "choices": [
     { "text": "What do you sell?", "next": "browse" },
     { "text": "What is firepitch for?", "next": "pitch" },
     { "text": "About that sign.", "next": "sign" },
     { "text": "Nothing.", "next": "off" } ] },
-  { "id": "pitch", "text": "Boats, roofs, torches, and one very bad week in a rift if you carry it. Resin in, heat, patience, pitch out. The patience is the part people skip.", "next": "hub" },
-  { "id": "sign", "text": "Halla had it cut after the third fire. The third one was not my fault. The first two were, and I have made my peace with the arithmetic.", "next": "hub" },
-  { "id": "browse", "text": "Resin by the pot and firepitch by the flask. Carry the flask upright or carry it once.", "hooks": [{ "kind": "shop", "shop": "rullo_pitch" }] },
-  { "id": "off", "text": "Upwind. Always upwind." }
+  { "id": "pitch",
+ "voice": "rullo_kilns__pitch", "text": "Boats, roofs, torches, and one very bad week in a rift if you carry it. Resin in, heat, patience, pitch out. The patience is the part people skip.", "next": "hub" },
+  { "id": "sign",
+ "voice": "rullo_kilns__sign", "text": "Halla had it cut after the third fire. The third one was not my fault. The first two were, and I have made my peace with the arithmetic.", "next": "hub" },
+  { "id": "browse",
+ "voice": "rullo_kilns__browse", "text": "Resin by the pot and firepitch by the flask. Carry the flask upright or carry it once.", "hooks": [{ "kind": "shop", "shop": "rullo_pitch" }] },
+  { "id": "off",
+ "voice": "rullo_kilns__off", "text": "Upwind. Always upwind." }
  ]
 }

@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "gunvor_ice__greet",
    "text": "The bench holds two. Sit or stand, the water does not care and neither do I.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "gunvor_ice__hub",
    "text": "Well. You are still here.",
    "choices": [
     {
@@ -40,21 +42,25 @@
   },
   {
    "id": "outside",
+   "voice": "gunvor_ice__outside",
    "text": "I spent one winter wanting walls more than breath. Got here and found I could not sleep behind one. The cottage suits. The ice minds its side of the shore and I mind mine.",
    "next": "hub"
   },
   {
    "id": "winter",
+   "voice": "gunvor_ice__winter",
    "text": "Over the frozen fell from the out camps, forty years back. Most of that walk I do not lend out. Ask the town, they will tell you a tidy version. Tidy is not what happened.",
    "next": "hub"
   },
   {
    "id": "stone",
+   "voice": "gunvor_ice__stone",
    "text": "Fourteen. Yes. I have heard it is a fine stone.\n\nFourteen is not the count, and the argument they keep having down there is the wrong argument. That is all you get standing up. Some stories sit before they speak.",
    "next": "hub"
   },
   {
    "id": "off",
+   "voice": "gunvor_ice__off",
    "text": "Mind the shore path. The sand lies about the ice under it."
   }
  ]

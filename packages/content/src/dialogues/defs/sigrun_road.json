@@ -3,18 +3,25 @@
  "start": "greet",
  "bindings": [{ "kind": "actor", "target": "warden_sigrun" }],
  "nodes": [
-  { "id": "greet", "text": "Waykeeper Sigrun. Came up the Sparway, did you. I can always tell.", "next": "hub" },
-  { "id": "hub", "text": "Speak up, then.", "choices": [
+  { "id": "greet",
+ "voice": "sigrun_road__greet", "text": "Waykeeper Sigrun. Came up the Sparway, did you. I can always tell.", "next": "hub" },
+  { "id": "hub",
+ "voice": "sigrun_road__hub", "text": "Speak up, then.", "choices": [
     { "text": "How can you tell?", "next": "tell" },
     { "text": "Which road should I take back?", "next": "which" },
     { "text": "What is on the Timber Road?", "next": "lamps" },
     { "text": "Nothing. Thank you.", "next": "off" } ] },
-  { "id": "tell", "text": "You have the face for it. Everyone who comes through that west gate has the same face and none of them will admit what put it there.", "next": "hub" },
-  { "id": "which", "text": "The long one. It is longer. That is the entire point of the long one.", "choices": [
+  { "id": "tell",
+ "voice": "sigrun_road__tell", "text": "You have the face for it. Everyone who comes through that west gate has the same face and none of them will admit what put it there.", "next": "hub" },
+  { "id": "which",
+ "voice": "sigrun_road__which", "text": "The long one. It is longer. That is the entire point of the long one.", "choices": [
     { "text": "The Sparway is half the walk.", "next": "half" },
     { "text": "Understood.", "next": "hub" } ] },
-  { "id": "half", "text": "It is. And it runs through the Blackpine, which is old and unwatched and has never once cared how much of a hurry anybody was in. Take it in daylight or take the road.", "next": "hub" },
-  { "id": "lamps", "text": "Two lamps and a hamlet at the turn north. It took the Waykeepers nine years of arguing with the Charter to get them lit, and they are lit, and the lamp is the only reason that road is safe.", "next": "hub" },
-  { "id": "off", "text": "Travel in daylight. Travel loud." }
+  { "id": "half",
+ "voice": "sigrun_road__half", "text": "It is. And it runs through the Blackpine, which is old and unwatched and has never once cared how much of a hurry anybody was in. Take it in daylight or take the road.", "next": "hub" },
+  { "id": "lamps",
+ "voice": "sigrun_road__lamps", "text": "Two lamps and a hamlet at the turn north. It took the Waykeepers nine years of arguing with the Charter to get them lit, and they are lit, and the lamp is the only reason that road is safe.", "next": "hub" },
+  { "id": "off",
+ "voice": "sigrun_road__off", "text": "Travel in daylight. Travel loud." }
  ]
 }

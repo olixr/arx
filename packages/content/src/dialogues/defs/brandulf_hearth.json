@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "brandulf_hearth__greet",
    "text": "IN, in, shut the cold out. Fire never dies here, house law. What are you drinking and who are you, in that order.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "brandulf_hearth__hub",
    "text": "Ha. Right then.",
    "choices": [
     {
@@ -37,16 +39,19 @@
   },
   {
    "id": "house",
+   "voice": "brandulf_hearth__house",
    "text": "Beds upstairs of nothing, broth all day, and the whole town through that door by second mug. Quiet inns are for towns that trust the weather. We do not have that kind of weather.",
    "next": "hub"
   },
   {
    "id": "guests",
+   "voice": "brandulf_hearth__guests",
    "text": "Hallward, the Charter's buyer, a year in the good room and polite as a knife drawer. And Grimm out front, who pays his pitch fee in coin that has been somewhere I do not ask. Everyone else just drinks here.",
    "next": "hub"
   },
   {
    "id": "browse",
+   "voice": "brandulf_hearth__browse",
    "text": "Broth, bread, smoked hart on Geir's good days, and a stew that has ended arguments. Sit anywhere warm, which is everywhere.",
    "hooks": [
     {
@@ -57,6 +62,7 @@
   },
   {
    "id": "off",
+   "voice": "brandulf_hearth__off",
    "text": "The bench nearest the fire is the town's. Sit anyway, they will only make you talk."
   }
  ]

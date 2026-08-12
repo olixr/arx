@@ -3,19 +3,27 @@
  "start": "greet",
  "bindings": [{ "kind": "actor", "target": "tallyman_bram" }],
  "nodes": [
-  { "id": "greet", "text": "Bram. I count the logs in and I count the logs out. Nineteen years.", "next": "hub" },
-  { "id": "hub", "text": "Yes?", "choices": [
+  { "id": "greet",
+ "voice": "bram_tally__greet", "text": "Bram. I count the logs in and I count the logs out. Nineteen years.", "next": "hub" },
+  { "id": "hub",
+ "voice": "bram_tally__hub", "text": "Yes?", "choices": [
     { "text": "Why count them twice?", "next": "twice" },
     { "text": "I heard your counts have not matched.", "next": "off_count" },
     { "text": "Nineteen years of this?", "next": "years" },
     { "text": "Right. Carry on.", "next": "off" } ] },
-  { "id": "twice", "text": "Wet count at the boom, dry count at the deck. They should match. A log does not stop being a log between the water and the saw.", "next": "hub" },
-  { "id": "years", "text": "Some people find it dull. I find it restful. I could tell you about the winter of the short rafts but you would have to sit down for it.", "next": "hub" },
-  { "id": "off_count", "text": "Twice. Spring, eleven sticks. Midsummer, nineteen. Great ones both times, the long straight kind, and gone between the water and the deck.", "choices": [
+  { "id": "twice",
+ "voice": "bram_tally__twice", "text": "Wet count at the boom, dry count at the deck. They should match. A log does not stop being a log between the water and the saw.", "next": "hub" },
+  { "id": "years",
+ "voice": "bram_tally__years", "text": "Some people find it dull. I find it restful. I could tell you about the winter of the short rafts but you would have to sit down for it.", "next": "hub" },
+  { "id": "off_count",
+ "voice": "bram_tally__off_count", "text": "Twice. Spring, eleven sticks. Midsummer, nineteen. Great ones both times, the long straight kind, and gone between the water and the deck.", "choices": [
     { "text": "Stolen?", "next": "stolen" },
     { "text": "Miscounted?", "next": "miscount" } ] },
-  { "id": "miscount", "text": "No. I do not miscount. I have been asked that by everyone in this town including the reeve and the answer has not changed in nineteen years.", "next": "off_count" },
-  { "id": "stolen", "text": "That is not my word. My word is missing. Halla can have the other word if she wants it, and she can have my books, and she has not asked for either.", "next": "hub", "set": ["bram_gap"] },
-  { "id": "off", "text": "Mind the chain." }
+  { "id": "miscount",
+ "voice": "bram_tally__miscount", "text": "No. I do not miscount. I have been asked that by everyone in this town including the reeve and the answer has not changed in nineteen years.", "next": "off_count" },
+  { "id": "stolen",
+ "voice": "bram_tally__stolen", "text": "That is not my word. My word is missing. Halla can have the other word if she wants it, and she can have my books, and she has not asked for either.", "next": "hub", "set": ["bram_gap"] },
+  { "id": "off",
+ "voice": "bram_tally__off", "text": "Mind the chain." }
  ]
 }

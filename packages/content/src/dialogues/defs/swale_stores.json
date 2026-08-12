@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "swale_stores__greet",
       "text": "Swale. Stores. Say what you need and watch me have it.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "swale_stores__hub",
       "text": "Go on.",
       "choices": [
         {
@@ -37,16 +39,19 @@
     },
     {
       "id": "threes",
+      "voice": "swale_stores__threes",
       "text": "Rope, tar, biscuit. Line, hook, lamp oil. Boots, salt, nerve. Everything the water asks for, it asks for in threes.",
       "next": "hub"
     },
     {
       "id": "road",
+      "voice": "swale_stores__road",
       "text": "Carters say the Gullmoor lamp still burns and the moor past it has teeth. Wolves, and worse than wolves. Buy arrows. Buy the tincture. Buy twice.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "swale_stores__browse",
       "text": "Shelf's yours. Mind the tar.",
       "hooks": [
         {
@@ -57,6 +62,7 @@
     },
     {
       "id": "bye",
+      "voice": "swale_stores__bye",
       "text": "Come back caught short. They always do."
     }
   ]

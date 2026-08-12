@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "paid",
+   "voice": "q_the_empty_fold_turnin__paid",
    "text": "Orvar sent word ahead of you. Bones, walking, on my fell, calling my beasts out of a shut fold like a drover whistles.\n\nHere. The moot's coin and mine on top of it. And do not tell me the number we lost. I will count what is left and live with the difference.",
    "hooks": [
     {

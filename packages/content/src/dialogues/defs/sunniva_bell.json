@@ -3,20 +3,28 @@
  "start": "greet",
  "bindings": [{ "kind": "actor", "target": "innkeep_sunniva" }],
  "nodes": [
-  { "id": "greet", "text": "The Pine and Bell. Sit anywhere except the corner by the fire, and Torvi will tell you why herself.", "next": "hub" },
-  { "id": "hub", "text": "What will you have?", "choices": [
+  { "id": "greet",
+ "voice": "sunniva_bell__greet", "text": "The Pine and Bell. Sit anywhere except the corner by the fire, and Torvi will tell you why herself.", "next": "hub" },
+  { "id": "hub",
+ "voice": "sunniva_bell__hub", "text": "What will you have?", "choices": [
     { "text": "What is on tonight?", "next": "browse" },
     { "text": "Why is the fire lit at this hour?", "next": "four" },
     { "text": "What is the news?", "next": "news" },
     { "text": "Just warming up.", "next": "off" } ] },
-  { "id": "four", "text": "The watch comes off the tower at four. They have been out in it all night and they have to go somewhere. So the fire is up at half three, every day of my life.", "next": "hub" },
-  { "id": "news", "text": "Pick one.", "choices": [
+  { "id": "four",
+ "voice": "sunniva_bell__four", "text": "The watch comes off the tower at four. They have been out in it all night and they have to go somewhere. So the fire is up at half three, every day of my life.", "next": "hub" },
+  { "id": "news",
+ "voice": "sunniva_bell__news", "text": "Pick one.", "choices": [
     { "text": "How are the roads?", "next": "roads" },
     { "text": "Anything odd lately?", "next": "odd" },
     { "text": "Never mind.", "next": "hub" } ] },
-  { "id": "roads", "text": "Timber Road is long and lit and Sigrun keeps it. The Sparway is short and is not either of those. Guess which one the young ones take and guess who patches them up after.", "next": "news" },
-  { "id": "odd", "text": "Bram's counts have not matched twice this year. Wet count and dry count, off by more sticks than a man loses. He tells me about it. He tells everyone about it. Nobody else seems to think it means anything.", "next": "news", "set": ["sunniva_counts"] },
-  { "id": "browse", "text": "Stew, bread, beef, and milk from the crofts down the road. It is all hot and none of it is clever.", "hooks": [{ "kind": "shop", "shop": "bell_board" }] },
-  { "id": "off", "text": "Fire is free. Sit as long as you like." }
+  { "id": "roads",
+ "voice": "sunniva_bell__roads", "text": "Timber Road is long and lit and Sigrun keeps it. The Sparway is short and is not either of those. Guess which one the young ones take and guess who patches them up after.", "next": "news" },
+  { "id": "odd",
+ "voice": "sunniva_bell__odd", "text": "Bram's counts have not matched twice this year. Wet count and dry count, off by more sticks than a man loses. He tells me about it. He tells everyone about it. Nobody else seems to think it means anything.", "next": "news", "set": ["sunniva_counts"] },
+  { "id": "browse",
+ "voice": "sunniva_bell__browse", "text": "Stew, bread, beef, and milk from the crofts down the road. It is all hot and none of it is clever.", "hooks": [{ "kind": "shop", "shop": "bell_board" }] },
+  { "id": "off",
+ "voice": "sunniva_bell__off", "text": "Fire is free. Sit as long as you like." }
  ]
 }

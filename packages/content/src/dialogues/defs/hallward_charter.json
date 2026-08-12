@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "hallward_charter__greet",
    "text": "Ah. A face from south of the trees. Sit, please. The broth is excellent and the company is, at last, negotiable.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "hallward_charter__hub",
    "text": "What shall we discuss?",
    "choices": [
     {
@@ -37,21 +39,25 @@
   },
   {
    "id": "charter",
+   "voice": "hallward_charter__charter",
    "text": "The finest leather in the Dawnlands, sold by the wain load with no contract on any of it. Amberford finds this state of affairs unbearable. I am the bearer. The moot pours tea and declines quarterly, in that order.",
    "next": "hub"
   },
   {
    "id": "stay",
+   "voice": "hallward_charter__stay",
    "text": "Because the answer is no but the tea keeps improving. And because the day this town wants a charter, the man already at the inn writes it. The Charter thinks in years. So, it turns out, does the moot.",
    "next": "hub"
   },
   {
    "id": "town",
+   "voice": "hallward_charter__town",
    "text": "Honestly? The books balance, the walls stand, nobody rules and nothing falls over. It should not work. I have a year of notes on why it should not work. The notes are wrong and I am starting to enjoy that.",
    "next": "hub"
   },
   {
    "id": "off",
+   "voice": "hallward_charter__off",
    "text": "Do try the broth. I have had four hundred bowls and regret none of them."
   }
  ]

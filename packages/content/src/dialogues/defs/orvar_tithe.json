@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "orvar_tithe__greet",
    "text": "You can stand in the yard. Most do not. The smell bothers them, or the job does.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "orvar_tithe__hub",
    "text": "Ask what you are going to ask.",
    "choices": [
     {
@@ -37,21 +39,25 @@
   },
   {
    "id": "tithe",
+   "voice": "orvar_tithe__tithe",
    "text": "Slaughter day leavings and the old beasts, out on the sledge to the flat stone. The packs take it and leave the folds alone. Forty years kept on both sides. It is not tribute. It is a fence made of manners.",
    "next": "hub"
   },
   {
    "id": "afraid",
+   "voice": "orvar_tithe__afraid",
    "text": "No. They are not beasts, they are neighbors, and neighbors keep bargains that feed them. I leave the tithe, I do not wait to watch, I walk back without hurrying. Fear would be rude.",
    "next": "hub"
   },
   {
    "id": "stones",
+   "voice": "orvar_tithe__stones",
    "text": "Older than the bargain, older than every name I know. Whoever set them ate the same problem we do and answered it the same way. Lately the answer lies uneaten on the stone. I do not care for that at all.",
    "next": "hub"
   },
   {
    "id": "off",
+   "voice": "orvar_tithe__off",
    "text": "Mind the sledge runners. Fresh waxed."
   }
  ]

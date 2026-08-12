@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "eyvor_nets__greet",
    "text": "Mind the lines. The run is under the shelf and the shelf is under your next step if you keep walking like that.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "eyvor_nets__hub",
    "text": "What, then?",
    "choices": [
     {
@@ -33,16 +35,19 @@
   },
   {
    "id": "catch",
+   "voice": "eyvor_nets__catch",
    "text": "Salmon, all winter, fat as luck. The gray water never quite closes over the run, the Kettle keeps a vein of it warm the whole way out. Same reason the town is here. Everything here is the same reason.",
    "next": "hub"
   },
   {
    "id": "dark",
+   "voice": "eyvor_nets__dark",
    "text": "Nothing is wrong with it. That is the wrongness. No current, no birds, no ice even in the killing months. My mother said the far shore has a shore because something has to hold the water in. Nobody fishes it. Keep it that way.",
    "next": "hub"
   },
   {
    "id": "off",
+   "voice": "eyvor_nets__off",
    "text": "Watch the plank on the second pier. It bites."
   }
  ]

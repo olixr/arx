@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "seff_slipway__greet",
       "text": "Seff. Don't lean on her, she's drying. What?",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "seff_slipway__hub",
       "text": "Say it while I work.",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "eyes",
+      "voice": "seff_slipway__eyes",
       "text": "A boat launched blind stays lost. Every hull off this slip gets her eyes painted last, when the rest of her is true. Old custom. Older than the town. I didn't start it and I won't be the one who stops it.",
       "next": "hub"
     },
     {
       "id": "no",
+      "voice": "seff_slipway__no",
       "text": "No. A hull takes a season and I build for crews I'll answer to. Come back with a crew, a season, and a name for her. Then we'll talk.",
       "next": "hub"
     },
     {
       "id": "wood",
+      "voice": "seff_slipway__wood",
       "text": "Oak keel, willow ribs. The mere argues with both. The keel wins the argument and the ribs survive it. That's boats.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "seff_slipway__bye",
       "text": "Walk wide of the sawdust. It travels."
     }
   ]

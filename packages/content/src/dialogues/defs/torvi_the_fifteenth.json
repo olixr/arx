@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "sat",
+   "voice": "torvi_the_fifteenth__sat",
    "text": "You sat. You waited. Most do not wait.\n\nWell. Say what you came to say.",
    "choices": [
     {
@@ -24,6 +25,7 @@
   },
   {
    "id": "warm",
+   "voice": "torvi_the_fifteenth__warm",
    "text": "Nobody has said his name to me in forty years. They say your father, like he was a weather that happened.\n\nWarm. He crossed it, then. He CROSSED it. And built a fire. And the fire grew a town, and the town keeps deer by warm water, and all of it because he went out on the ice after a girl who was already back inside the wall by midnight.",
    "choices": [
     {
@@ -34,6 +36,7 @@
   },
   {
    "id": "knew",
+   "voice": "torvi_the_fifteenth__knew",
    "text": "And I never knew he did. Two people wrong about each other for forty years across one lake. That is not a tragedy, child. A tragedy has somebody to blame in it. This is just winter. Winter, and two benches.\n\nGo and tell the woman who fed his last fire: whatever this stone of ours ends up saying, stones are for the taken. He was not taken. He walked."
   }
  ]

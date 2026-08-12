@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "hub",
+   "voice": "q_tallow_for_the_lamps_offer__hub",
    "text": "The road ate my last barrel and winter is not even trying yet. Lamp fill is rendered fat, and the fold beasts are not for rendering, and that leaves the boar in the pine hem, who have spent all autumn becoming exactly what I need.\n\nFive boar, and bring the good cuts. The Chandlery pays coin. The road pays you back every dark mile you ever walk it.",
    "choices": [
     {
@@ -34,6 +35,7 @@
   },
   {
    "id": "sworn",
+   "voice": "q_tallow_for_the_lamps_offer__sworn",
    "text": "South of the wall, in the pines, and mind the tusks, the fat ones have earned their opinions.",
    "hooks": [
     {
@@ -44,6 +46,7 @@
   },
   {
    "id": "declined",
+   "voice": "q_tallow_for_the_lamps_offer__declined",
    "text": "Then walk fast between lamps, my love, and think of me at the dark spots."
   }
  ]

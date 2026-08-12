@@ -10,11 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "ashild_moot__greet",
    "text": "You found the Springhall. Good. Everything in Hartfell that matters is decided in this room, on those benches, out loud.",
    "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "ashild_moot__hub",
    "text": "Ask, then.",
    "choices": [
     {
@@ -37,16 +39,19 @@
   },
   {
    "id": "rule",
+   "voice": "ashild_moot__rule",
    "text": "Nobody rules it. The moot decides and I say the decision aloud. When they tire of my voice they will choose another one. That is the whole constitution and it fits on a knife handle.",
    "next": "hub"
   },
   {
    "id": "moot",
+   "voice": "ashild_moot__moot",
    "text": "Every roof sends somebody, first frost and every quarter. We argue until we agree or until Maeva opens the pool and boils the stubbornness out of us. Both work.",
    "next": "hub"
   },
   {
    "id": "why",
+   "voice": "ashild_moot__why",
    "text": "The Kettle. Warm water in a land that has none means fat herds, and fat herds mean everything else. The Crown asks the same question in longer letters.",
    "choices": [
     {
@@ -61,11 +66,13 @@
   },
   {
    "id": "crown",
+   "voice": "ashild_moot__crown",
    "text": "That Hartfell is grateful for the road and content with its benches. Hallward at the inn can recite the polite version. He has heard it every quarter for a year.",
    "next": "hub"
   },
   {
    "id": "off",
+   "voice": "ashild_moot__off",
    "text": "The benches are free even when the moot is out. Warm yourself before you go up the fell."
   }
  ]

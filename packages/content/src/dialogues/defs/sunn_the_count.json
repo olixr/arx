@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "read",
+   "voice": "sunn_the_count__read",
    "text": "Swein sent you. Good, he listens to somebody.\n\nI read the fold this morning. Nothing came in. You understand what I am saying? Nothing came IN. They walked out on their own legs, north, calm as a drove, through snow nothing living crossed that night. I followed it to the dells and the tracks stopped being tracks.",
    "choices": [
     {
@@ -28,6 +29,7 @@
   },
   {
    "id": "how",
+   "voice": "sunn_the_count__how",
    "text": "Hart prints, then dragging, then marks like sticks walking. I am not saying it wrong, that is what the snow says. Sticks, walking. I went back for arrows and better sense and found neither, so now there is you.",
    "choices": [
     {
@@ -38,6 +40,7 @@
   },
   {
    "id": "do",
+   "voice": "sunn_the_count__do",
    "text": "The old sledge way, north of the wicket, through the dells. Whatever is up there making beasts walk to it, kill it. Then talk to Orvar, because this is past ground craft and into his side of the fell."
   }
  ]

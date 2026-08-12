@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "lund_light__greet",
       "text": "She's fed. Lund. Ask your question.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "lund_light__hub",
       "text": "Go on.",
       "choices": [
         {
@@ -37,21 +39,25 @@
     },
     {
       "id": "flame",
+      "voice": "lund_light__flame",
       "text": "The Mere Light. Boats aim at her in the dark. That's the whole job. Her flame walked here from the Silver Shrine in the mountains, hand to hand, lamp to lamp. She remembers the trip. So do I.",
       "next": "hub"
     },
     {
       "id": "sisters",
+      "voice": "lund_light__sisters",
       "text": "Every road lamp in the Dawnlands is her kin, and the mother flame burns at the Silver Shrine under Keeper Sella. Old Edda holds the Last Lamp on the mountain road. Edda and I have never met. We'd have nothing to say. Same job.",
       "next": "hub"
     },
     {
       "id": "thirty",
+      "voice": "lund_light__thirty",
       "text": "Thirty years. She has not gone out. People call that my doing. It's hers. I just carry coal.",
       "next": "hub"
     },
     {
       "id": "bye",
+      "voice": "lund_light__bye",
       "text": "Watch the causeway stones. The mere licks them."
     }
   ]

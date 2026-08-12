@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "dorrit_gull__greet",
       "text": "In you come, the wind stays out. Dorrit. Sit anywhere that isn't the hearth.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "dorrit_gull__hub",
       "text": "What'll it be?",
       "choices": [
         {
@@ -37,16 +39,19 @@
     },
     {
       "id": "sign",
+      "voice": "dorrit_gull__sign",
       "text": "Seff painted the sign the way he paints his boats: one eye open. He says the other one watches the water. I say he ran out of yellow. We're both right, which is the secret of a long friendship.",
       "next": "hub"
     },
     {
       "id": "trade",
+      "voice": "dorrit_gull__trade",
       "text": "Crews at dawn, salters at noon, the whole town when the weather argues. Factor Neave keeps the corner room; she says the bank is too near the water. The bank she built to be near the water.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "dorrit_gull__browse",
       "text": "The pot's the thing. Trout, milk, pan salt. Eat it slow, thank me after.",
       "hooks": [
         {
@@ -57,6 +62,7 @@
     },
     {
       "id": "bye",
+      "voice": "dorrit_gull__bye",
       "text": "Door pulls, love. Everything here pulls."
     }
   ]

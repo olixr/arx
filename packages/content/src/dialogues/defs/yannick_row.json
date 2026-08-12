@@ -3,20 +3,28 @@
  "start": "greet",
  "bindings": [{ "kind": "actor", "target": "sparmaster_yannick" }],
  "nodes": [
-  { "id": "greet", "text": "Stand off the beds, please. Not because you would break one. Because I will lose my place.", "next": "hub" },
-  { "id": "hub", "text": "Go on.", "choices": [
+  { "id": "greet",
+ "voice": "yannick_row__greet", "text": "Stand off the beds, please. Not because you would break one. Because I will lose my place.", "next": "hub" },
+  { "id": "hub",
+ "voice": "yannick_row__hub", "text": "Go on.", "choices": [
     { "text": "What are you making?", "next": "mast" },
     { "text": "Anything for sale?", "next": "browse" },
     { "text": "You turned down the Crown?", "next": "crown" },
     { "text": "I will leave you to it.", "next": "off" } ] },
-  { "id": "mast", "text": "A mast. One tree, whole, from the deep stands. Thirty paces of it and every one has to be honest or a ship goes over in the dark and it is my fault and nobody ever knows.", "choices": [
+  { "id": "mast",
+ "voice": "yannick_row__mast", "text": "A mast. One tree, whole, from the deep stands. Thirty paces of it and every one has to be honest or a ship goes over in the dark and it is my fault and nobody ever knows.", "choices": [
     { "text": "One tree? Not joined?", "next": "one" },
     { "text": "I see.", "next": "hub" } ] },
-  { "id": "one", "text": "One tree or it is firewood. There is no third thing. That is not craft pride, it is the sea, and the sea does not care what I am proud of.", "next": "hub" },
-  { "id": "crown", "text": "Last spring. The grain ran off at the shoulder, a hand's width, nothing you would see. Ospren was very calm about it, which was worse.", "choices": [
+  { "id": "one",
+ "voice": "yannick_row__one", "text": "One tree or it is firewood. There is no third thing. That is not craft pride, it is the sea, and the sea does not care what I am proud of.", "next": "hub" },
+  { "id": "crown",
+ "voice": "yannick_row__crown", "text": "Last spring. The grain ran off at the shoulder, a hand's width, nothing you would see. Ospren was very calm about it, which was worse.", "choices": [
     { "text": "What did he say?", "next": "ospren" } ] },
-  { "id": "ospren", "text": "That he would wait. He is not a bad man. He is a man with a list, and a list has never once looked at a tree.", "next": "hub" },
-  { "id": "browse", "text": "Sticks and resin. The mast is not for sale to anyone who has to ask what it costs.", "hooks": [{ "kind": "shop", "shop": "yannick_spars" }] },
-  { "id": "off", "text": "Mind the beds." }
+  { "id": "ospren",
+ "voice": "yannick_row__ospren", "text": "That he would wait. He is not a bad man. He is a man with a list, and a list has never once looked at a tree.", "next": "hub" },
+  { "id": "browse",
+ "voice": "yannick_row__browse", "text": "Sticks and resin. The mast is not for sale to anyone who has to ask what it costs.", "hooks": [{ "kind": "shop", "shop": "yannick_spars" }] },
+  { "id": "off",
+ "voice": "yannick_row__off", "text": "Mind the beds." }
  ]
 }

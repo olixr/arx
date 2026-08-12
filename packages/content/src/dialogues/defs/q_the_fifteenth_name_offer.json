@@ -14,6 +14,7 @@
  "nodes": [
   {
    "id": "hub",
+   "voice": "q_the_fifteenth_name_offer__hub",
    "text": "Sit down. This is a sitting story.\n\nThe man Pinewatch argues about went onto the ice the night the water went hard, after his girl, and did not drown. The pack drove him north, to the warm water. He built the first fire at the Kettle. He fed a starving out camp child he found on the shore, and that child grew old on this bench, and his name was Havel, and I have carried the end of his story for forty years because I did not know his beginning had anyone left in it.",
    "choices": [
     {
@@ -38,6 +39,7 @@
   },
   {
    "id": "why",
+   "voice": "q_the_fifteenth_name_offer__why",
    "text": "I stood on the far shore of that lake twice and turned around twice. Some water you do not cross again, even frozen, even old.\n\nYou have crossed it already and it means nothing to you. That is exactly the courier this needs.",
    "choices": [
     {
@@ -48,6 +50,7 @@
   },
   {
    "id": "sworn",
+   "voice": "q_the_fifteenth_name_offer__sworn",
    "text": "Sit with her. Let her finish her tea, she thinks while she drinks. Then say that Havel died warm. Warm, mind. That word is the whole letter.",
    "hooks": [
     {
@@ -58,6 +61,7 @@
   },
   {
    "id": "declined",
+   "voice": "q_the_fifteenth_name_offer__declined",
    "text": "Then it keeps another year. It is patient. So am I. Less so."
   }
  ]

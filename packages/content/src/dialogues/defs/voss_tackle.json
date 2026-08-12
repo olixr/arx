@@ -10,11 +10,13 @@
   "nodes": [
     {
       "id": "greet",
+      "voice": "voss_tackle__greet",
       "text": "Quiet on the planks. Voss. The water listens, and it gossips.",
       "next": "hub"
     },
     {
       "id": "hub",
+      "voice": "voss_tackle__hub",
       "text": "Mm?",
       "choices": [
         {
@@ -37,16 +39,19 @@
     },
     {
       "id": "count",
+      "voice": "voss_tackle__count",
       "text": "Eleven thousand fish, give or take, since I first held a rod. I remember nine of them. That ratio is correct and I'll thank you not to improve it.",
       "next": "hub"
     },
     {
       "id": "deep",
+      "voice": "voss_tackle__deep",
       "text": "Something past the last post takes hooks and leaves the line. Clean bite, no fight, gone. Twenty years now. A short wait is an hour out here. That one has been a long wait.",
       "next": "hub"
     },
     {
       "id": "browse",
+      "voice": "voss_tackle__browse",
       "text": "Rods that work. Fish that did.",
       "hooks": [
         {
@@ -57,6 +62,7 @@
     },
     {
       "id": "bye",
+      "voice": "voss_tackle__bye",
       "text": "Mind the planks. Wet wood keeps score."
     }
   ]

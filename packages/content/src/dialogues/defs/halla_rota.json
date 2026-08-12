@@ -3,30 +3,42 @@
  "start": "greet",
  "bindings": [{ "kind": "actor", "target": "reeve_halla" }],
  "nodes": [
-  { "id": "greet", "text": "Reeve Halla. You are new, so I will say it once: while you sleep under our roofs you are on the board like everyone else.", "next": "hub" },
-  { "id": "hub", "text": "Ask, then. I have a rota to fill.", "choices": [
+  { "id": "greet",
+ "voice": "halla_rota__greet", "text": "Reeve Halla. You are new, so I will say it once: while you sleep under our roofs you are on the board like everyone else.", "next": "hub" },
+  { "id": "hub",
+ "voice": "halla_rota__hub", "text": "Ask, then. I have a rota to fill.", "choices": [
     { "text": "What board? What is the rota?", "next": "rota" },
     { "text": "What is the Wardline?", "next": "ward" },
     { "text": "What happened here forty years ago?", "next": "winter" },
     { "text": "Nothing. Good day.", "next": "off" } ] },
-  { "id": "rota", "text": "Every roof in Pinewatch takes a night on the tower. Sawyers, carters, the factor, me. Nobody is excused and nobody has asked to be since before I was reeve.", "choices": [
+  { "id": "rota",
+ "voice": "halla_rota__rota", "text": "Every roof in Pinewatch takes a night on the tower. Sawyers, carters, the factor, me. Nobody is excused and nobody has asked to be since before I was reeve.", "choices": [
     { "text": "A whole town watching a lake?", "next": "why" },
     { "text": "Understood.", "next": "hub" } ] },
-  { "id": "why", "text": "The water is the wall. Three sides are timber and men, and the fourth side is the Glasswater, and the Glasswater has never let anything across.", "choices": [
+  { "id": "why",
+ "voice": "halla_rota__why", "text": "The water is the wall. Three sides are timber and men, and the fourth side is the Glasswater, and the Glasswater has never let anything across.", "choices": [
     { "text": "Never?", "next": "once" },
     { "text": "Fair enough.", "next": "hub" } ] },
-  { "id": "once", "text": "Once. Ask Torvi. She is on the bench by the fire and she has been waiting forty years for somebody to ask properly.", "next": "hub" },
-  { "id": "ward", "text": "A ring of blazed pine and boundary stone around what we are allowed to cut. Inside it, fell what you like and plant what you fell. Outside it, nothing. Not a branch.", "choices": [
+  { "id": "once",
+ "voice": "halla_rota__once", "text": "Once. Ask Torvi. She is on the bench by the fire and she has been waiting forty years for somebody to ask properly.", "next": "hub" },
+  { "id": "ward",
+ "voice": "halla_rota__ward", "text": "A ring of blazed pine and boundary stone around what we are allowed to cut. Inside it, fell what you like and plant what you fell. Outside it, nothing. Not a branch.", "choices": [
     { "text": "Who decided that?", "next": "who" },
     { "text": "What is out there?", "next": "beyond" },
     { "text": "Understood.", "next": "hub" } ] },
-  { "id": "who", "text": "We did. Four hundred years ago and again after the ice. No crown wrote it and no charter bought it. It is ours, which is why breaking it is worse than a crime here.", "next": "ward" },
-  { "id": "beyond", "text": "Old wood. Trees a wain could not turn in. And whatever lives in wood that old, which is a great deal, and none of it small.", "next": "ward" },
-  { "id": "winter", "text": "The Wolfwinter. The water went hard end to end and the packs walked over it and took the outlying camps, one, then the next, then the next.", "choices": [
+  { "id": "who",
+ "voice": "halla_rota__who", "text": "We did. Four hundred years ago and again after the ice. No crown wrote it and no charter bought it. It is ours, which is why breaking it is worse than a crime here.", "next": "ward" },
+  { "id": "beyond",
+ "voice": "halla_rota__beyond", "text": "Old wood. Trees a wain could not turn in. And whatever lives in wood that old, which is a great deal, and none of it small.", "next": "ward" },
+  { "id": "winter",
+ "voice": "halla_rota__winter", "text": "The Wolfwinter. The water went hard end to end and the packs walked over it and took the outlying camps, one, then the next, then the next.", "choices": [
     { "text": "How many were lost?", "next": "count" },
     { "text": "You were here?", "next": "child" } ] },
-  { "id": "count", "text": "Fourteen names on the stone. Torvi will tell you there should be fifteen. She is not wrong, exactly. Go and let her tell you.", "next": "hub" },
-  { "id": "child", "text": "Nine years old. What I remember is not the wolves. It is that the water stopped making noise, and everyone in this town knew what that meant before anybody said it.", "next": "hub" },
-  { "id": "off", "text": "Mind the boom and stay off the chain." }
+  { "id": "count",
+ "voice": "halla_rota__count", "text": "Fourteen names on the stone. Torvi will tell you there should be fifteen. She is not wrong, exactly. Go and let her tell you.", "next": "hub" },
+  { "id": "child",
+ "voice": "halla_rota__child", "text": "Nine years old. What I remember is not the wolves. It is that the water stopped making noise, and everyone in this town knew what that meant before anybody said it.", "next": "hub" },
+  { "id": "off",
+ "voice": "halla_rota__off", "text": "Mind the boom and stay off the chain." }
  ]
 }
