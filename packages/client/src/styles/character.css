@@ -135,7 +135,10 @@
 
 .worn-kit {
   flex: none;
-  width: 20.875rem; /* the stand's span + the tray's own padding */
+  /* Two columns: the anatomy's true span (3 sockets + straps' gaps =
+     17.875rem) beside the kit manifest's reading column — the stand
+     shows WHERE things hang and says WHAT they give, side by side. */
+  width: 38.5rem;
 }
 
 .ident-name {
@@ -189,12 +192,79 @@
   text-shadow: 0 0.0625rem 0 rgba(255, 235, 180, 0.4);
 }
 
-/* The stand centers in the tray's leftover height — balanced, not
-   clinging to the head band. */
+/* THE STAND TELLS ITS STORY IN TWO VOICES: the anatomy on the left
+   says WHERE things hang; the manifest beside it names WHAT each
+   piece is and what it gives. The old centered void is dead — the
+   leftover width belongs to the kit's words. */
 .stand-body {
   display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.stand-body #equip-anatomy {
+  flex: none;
+}
+
+/* ---- THE KIT MANIFEST: one quiet row per worn piece ---- */
+
+#worn-manifest {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  padding-left: 0.875rem;
+  border-left: var(--rule) solid var(--line);
+  /* Eleven pieces on a snug window may run past the tray — the thin
+     rail is the emergency exit, never the plan. */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+#worn-manifest .screen-section {
+  margin: 0.375rem 0 0.375rem;
+}
+
+.worn-row {
+  flex: none;
+  display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.625rem;
+  min-height: 2.125rem;
+  padding: 0.125rem 0.375rem;
+}
+
+.worn-row:hover {
+  background: var(--raise-hi);
+}
+
+.worn-row img {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.worn-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--t-body);
+  font-weight: 700;
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.worn-row-note {
+  flex: none;
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
 }
 
 /* The stand: sockets hung where they sit on the body — head over
@@ -283,14 +353,15 @@
 #gear-strip {
   flex: none;
   display: grid;
-  /* Two plaques per row in the wing's 12.3125rem inner span. */
-  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  /* Two plaques per row across the stand's span — wide enough that
+     "One-hand dmg" reads whole, never a cramped whisper. */
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: 0.5rem;
   align-content: start;
 }
 
 #gear-strip .stat-plaque {
-  padding: 0.375rem 0.5625rem 0.3125rem;
+  padding: 0.4375rem 0.625rem 0.375rem;
 }
 
 #gear-strip .stat-plaque-value {
@@ -298,7 +369,7 @@
 }
 
 #gear-strip .stat-plaque-label {
-  font-size: 0.65625rem;
+  font-size: var(--t-label);
 }
 
 /* Bare kit: the ghost setting and one quiet line — the foot band is
@@ -365,7 +436,7 @@
 
 .char-bench {
   flex: 0 1 28rem;
-  min-width: 19rem;
+  min-width: 21.5rem;
 }
 
 .bench-body {
@@ -375,8 +446,11 @@
 }
 
 .bench-card {
-  flex: 1;
+  /* The card takes its natural height and floats balanced in the
+     tray's leftover space — no dead column pinned under the head. */
+  flex: 0 1 auto;
   min-height: 0;
+  margin-block: auto;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
@@ -386,6 +460,34 @@
 .bench-card .card-head img {
   width: 6.5rem;
   height: 6.5rem;
+}
+
+/* THE SEAL YIELDS ON THE BENCH: the bench column is narrow by law
+   (the pack and the stand outrank it), so the head stacks — portrait
+   and tier seal on the first row, the name owning the full width
+   beneath. No absolute corner stamp, no word-by-word wrap, ever. */
+.bench-card .card-head {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding-right: 0;
+  row-gap: 0.5rem;
+}
+
+.bench-card .card-tier {
+  position: static;
+  flex: none;
+  order: 1;
+  margin-left: auto;
+}
+
+.bench-card .card-head > div {
+  order: 2;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.bench-card .card-name {
+  padding-right: 0;
 }
 
 .bench-empty {
@@ -438,6 +540,9 @@
 
 .char-pack-col {
   flex: 1 1 0;
+  /* THE WHOLE-PACK LAW's width: six 5rem sockets plus gaps — the pack
+     never pays for the stand's width; the bench yields first. */
+  min-width: 35.5rem;
 }
 
 /* The filter lens rides the head band's right end. */
@@ -454,14 +559,18 @@
 .pack-foot {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   min-height: 3.25rem;
+  /* Everything stays in the band: fixtures compress, never wrap out. */
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 /* The capacity gauge: a real meter in the painted channel, the exact
    count beside it. `--fill` is set by the renderer. */
 .pack-fill {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
@@ -482,8 +591,11 @@
 /* The channel is a HOLE, so it wears the eased corner, one ink ring,
    one shade band — and the fill rides inside with one hard stop. */
 .fill-meter {
-  flex: none;
+  /* The gauge is the one fixture that yields: it thins on a snug
+     tray so the purse never leaves the band. */
+  flex: 0 1 9rem;
   width: 9rem;
+  min-width: 3.5rem;
   height: 1.125rem;
   position: relative;
   overflow: hidden;
@@ -775,6 +887,13 @@ body.shop-open #inventory-panel .tray-title,
 body.bank-open #inventory-panel .panel-hint,
 body.shop-open #inventory-panel .panel-hint {
   display: none;
+}
+
+/* The paired column is narrower than the full-room pack floor — the
+   pack yields its min-width here (the whole panel is the pack). */
+body.bank-open #inventory-panel .char-pack-col,
+body.shop-open #inventory-panel .char-pack-col {
+  min-width: 0;
 }
 
 /* With the title away, the filter keys hold the head band's center. */

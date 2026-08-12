@@ -267,6 +267,7 @@ export class Panels {
     })(),
   );
   private readonly gearStrip = document.getElementById('gear-strip')!;
+  private readonly wornManifest = document.getElementById('worn-manifest')!;
   /** THE BENCH: the open case's standing inspector tray. */
   private readonly benchCard = document.getElementById('bench-card')!;
   private readonly benchEmpty = document.getElementById('bench-empty')!;
@@ -1523,6 +1524,7 @@ export class Panels {
     }
 
     this.renderGearStrip(equipment);
+    this.renderWornManifest(equipment);
 
     if (this.cardSource?.kind === 'equip') {
       const worn = this.lastEquipment[this.cardSource.slot];
@@ -1538,6 +1540,62 @@ export class Panels {
     // A weapon swap can re-aim the R key at another school's ladder —
     // the open codex follows the hand.
     if (this.artsOpen) this.renderArts();
+  }
+
+  /**
+   * THE KIT SPEAKS: the stand's manifest — every worn piece named in
+   * its rarity ink with its headline figure beside it. The anatomy
+   * shows WHERE things hang; this tells WHAT they are and WHAT they
+   * give, with no hover required. Rows carry the loot-card dataset,
+   * so resting the eye on one lays the full story out on the bench.
+   */
+  private renderWornManifest(equipment: Partial<Record<string, EquippedItem>>): void {
+    this.wornManifest.innerHTML = '';
+    const rows: HTMLElement[] = [];
+    for (const slot of EQUIP_SLOTS) {
+      const worn = equipment[slot];
+      if (!worn) continue;
+      const def = itemDef(worn.id);
+      if (!def) continue;
+      const stats = rolledStats(worn.id, worn.roll);
+      const row = document.createElement('div');
+      row.className = 'worn-row';
+      row.dataset.nav = '';
+      row.dataset.navkey = `wornrow:${slot}`;
+      row.dataset.acta = 'Inspect';
+      // The loot-card dataset: hover and pad focus raise the full
+      // item story on the bench — the same wire the vault speaks.
+      row.dataset.lootitem = worn.id;
+      row.dataset.lootqty = '1';
+      if (worn.roll) row.dataset.lootroll = JSON.stringify(worn.roll);
+      const img = document.createElement('img');
+      img.src = itemIconUrl(worn.id, 36);
+      img.draggable = false;
+      const name = document.createElement('span');
+      name.className = 'worn-row-name';
+      name.textContent = instanceName(worn.id, worn.roll);
+      // Common wears no treatment — parchment, like every plain word.
+      const ink = RARITY_COLORS[rarityOfInstance(worn.id, worn.roll)];
+      if (ink) name.style.color = ink;
+      // The headline: the piece's one most honest figure.
+      const note = document.createElement('span');
+      note.className = 'worn-row-note';
+      const relicArt = def.relic ? abilityDef(def.relic)?.name : undefined;
+      const sigilArt = def.sigil ? abilityDef(def.sigil)?.name : undefined;
+      const passive = def.passive ? PASSIVES[def.passive]?.name : undefined;
+      note.textContent =
+        stats?.damage !== undefined && stats.damage > 0
+          ? `${Math.floor(stats.damage)} dmg${stats.affixes.length > 0 ? ` · ${stats.affixes.length}✦` : ''}`
+          : stats && stats.armor > 0
+            ? `${stats.armor} armor${stats.affixes.length > 0 ? ` · ${stats.affixes.length}✦` : ''}`
+            : (relicArt ?? sigilArt ?? passive ?? (def.armor ? `${def.armor} armor` : slot));
+      row.append(img, name, note);
+      rows.push(row);
+    }
+    this.wornManifest.classList.toggle('hidden', rows.length === 0);
+    if (rows.length === 0) return;
+    this.wornManifest.appendChild(sectionHead('The kit'));
+    for (const row of rows) this.wornManifest.appendChild(row);
   }
 
   /**

@@ -78,6 +78,7 @@ export declare class Panels {
     /** Unlocked Callings the player has inspected — the NEW-pip ledger. */
     private readonly seenCallings;
     private readonly gearStrip;
+    private readonly wornManifest;
     /** THE BENCH: the open case's standing inspector tray. */
     private readonly benchCard;
     private readonly benchEmpty;
@@ -195,6 +196,14 @@ export declare class Panels {
     /** Build one equipment socket, hung at its grid-area on the stand. */
     private equipCell;
     renderEquipment(equipment: Partial<Record<string, EquippedItem>>): void;
+    /**
+     * THE KIT SPEAKS: the stand's manifest — every worn piece named in
+     * its rarity ink with its headline figure beside it. The anatomy
+     * shows WHERE things hang; this tells WHAT they are and WHAT they
+     * give, with no hover required. Rows carry the loot-card dataset,
+     * so resting the eye on one lays the full story out on the bench.
+     */
+    private renderWornManifest;
     /**
      * The gear ledger: everything the worn kit adds up to, told as stat
      * plaques under the stage — a big honest number over a plain label.
