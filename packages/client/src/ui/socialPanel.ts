@@ -87,6 +87,9 @@ export class SocialPanel {
     const wrap = (id: string, ...els: HTMLElement[]): void => {
       const box = document.createElement('div');
       box.className = 'social-sec' + (id === this.socialTab ? '' : ' hidden');
+      // Each tab's list is its own region — the rail above it keeps the
+      // ring only when the list has nothing further that way.
+      box.dataset.region = '';
       box.append(...els);
       this.tabWraps.set(id, box);
       this.ledger.appendChild(box);

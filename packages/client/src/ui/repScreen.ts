@@ -47,6 +47,7 @@ export class RepScreen {
     });
     this.body = document.createElement('div');
     this.body.className = 'rep-body';
+    this.body.dataset.region = '';
     this.panel.appendChild(this.body);
   }
 

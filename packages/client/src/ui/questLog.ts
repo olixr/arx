@@ -42,8 +42,12 @@ export class QuestLog {
     main.className = 'quest-main';
     this.list = document.createElement('div');
     this.list.className = 'quest-list';
+    // THE ROOM IS MADE OF ROOMS: the ledger and the open page each hold
+    // the pad's ring, so walking the errands never steps onto the page.
+    this.list.dataset.region = '';
     this.bench = document.createElement('div');
     this.bench.className = 'quest-bench';
+    this.bench.dataset.region = '';
     main.append(this.list, this.bench);
     this.panel.appendChild(main);
   }
