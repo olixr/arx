@@ -1467,6 +1467,11 @@ export class ClientGame {
         for (const p of msg.plots ?? []) {
           farmPlots.set(farmKey(p.tx, p.ty), { w: p.w, soil: p.soil, m: p.m, f: p.f ?? 0, wet: false });
           refreshWet(p.tx, p.ty, this.world.groundAt(p.tx, p.ty));
+          // THE REGISTER IS THE SCAN, COMPILED: the plot's OWN chunk
+          // rev must bump too — care state is a side table, so no
+          // setGround covers the center, and the soil paint lives in
+          // that chunk's bake.
+          this.touchChunk(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
           this.touchNeighbors(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
         }
         for (const b of msg.bins ?? []) {
@@ -1487,6 +1492,7 @@ export class ClientGame {
         }
         for (const r of msg.remove ?? []) {
           farmPlots.delete(farmKey(r.tx, r.ty));
+          this.touchChunk(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
           this.touchNeighbors(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
         }
         if ((msg.plots?.length ?? 0) > 0 || (msg.remove?.length ?? 0) > 0) this.worldVersion++;
@@ -1948,6 +1954,14 @@ export class ClientGame {
     this.touchNeighbors(Math.floor(patch.tx / CHUNK_SIZE), Math.floor(patch.ty / CHUNK_SIZE));
     this.worldVersion++;
     this.onDetailChange?.(patch.tx, patch.ty, prev, patch.detail);
+  }
+
+  /** Bump ONE chunk's rev — for mutations that never route through
+   *  setGround/setDetail (farm care state lives in a side table) but
+   *  still change that chunk's own paint. */
+  private touchChunk(cx: number, cy: number): void {
+    const chunk = this.world.get(cx, cy);
+    if (chunk) chunk.rev = (chunk.rev ?? 0) + 1;
   }
 
   /** Bump neighboring chunks' revs so organic borders re-bake. */

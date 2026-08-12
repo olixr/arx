@@ -1,0 +1,247 @@
+/**
+ * THE STATIC REGISTER — the collectRaisedTiles classification,
+ * compiled per chunk (THE STANDING WORLD epic, phase 1).
+ *
+ * The world pass used to re-decide every visible tile's route (wall?
+ * ramp run? garrison gate? crop?) every frame — ~3,000 tile
+ * classifications and a dozen probe reads each, 120 times a second,
+ * for answers that only change on a chunk rev bump. The register runs
+ * the SAME per-tile decision once per (chunk data identity, rev) and
+ * stores world-space member descriptors; the renderer replays them in
+ * exact scan order each frame and mints the DrawItems fresh (item
+ * builders capture camera projections, reveal heights and the frame
+ * clock at build time — descriptors never cache any of that).
+ *
+ * THE REGISTER IS THE SCAN, COMPILED: one classifier serves both the
+ * per-frame legacy scan (the always-correct fallback) and the register
+ * build, so the two paths cannot drift. Every input that changes a
+ * classification must flow through a chunk rev bump (tile patches and
+ * detail patches do; touchNeighbors covers cross-border probes, which
+ * all reach at most one chunk over).
+ */
+
+export const enum RaisedKind {
+  /** N/S stair flight merged across its E-W run (STAIR-RUN LAW). */
+  RampRun = 0,
+  /** E/W flight — stays per-tile (each row its own y-sort slice). */
+  RampSingle = 1,
+  /** Gate in a N-S curtain, merged vertically, north anchor. */
+  GarrisonSideGate = 2,
+  /** E-W gatehouse run, merged, west anchor. */
+  GarrisonGate = 3,
+  /** Curtain wall / 45° turn (diag resolved at emission). */
+  GarrisonWall = 4,
+  /** Doorway edge-on in a N-S wall run (may merge vertically). */
+  SideDoorway = 5,
+  /** South-facing doorway (wide runs merge E-W, west anchor). */
+  Doorway = 6,
+  Arch = 7,
+  Portal = 8,
+  Pillar = 9,
+  Rail = 10,
+  /** Bridge deck tile that grows parapet rails (multi-item). */
+  BridgeRails = 11,
+  /** 45° notch fill on a bridge span — diagonal parapet rail. */
+  DeckFillRail = 12,
+  DiagWall = 13,
+  Wall = 14,
+  /** Everything through objectItem: props, trees, crops, stumps. */
+  Generic = 15,
+}
+
+export interface RaisedMember {
+  kind: RaisedKind;
+  /** Ground tile id at the anchor. */
+  tile: number;
+  /** Anchor tile (run anchor for merged runs; north anchor for
+   *  vertical runs, west anchor for horizontal ones). */
+  tx: number;
+  ty: number;
+  /** Run length in tiles (1 for singles). Vertical for
+   *  GarrisonSideGate/SideDoorway, horizontal for the rest. */
+  len: number;
+  /** Easternmost tile the member covers (== tx for verticals). */
+  endX: number;
+  /** Admitted by the deep-south / side-band pads (trees, garrison,
+   *  portals — tall silhouettes that poke into view from far off). */
+  treeLike: boolean;
+}
+
+/** Everything the classifier needs to ask the world / the renderer.
+ *  Injected so the classifier stays pure and testable — the renderer
+ *  wires these to its own private probes and shared tile sets. */
+export interface RegisterHost {
+  groundAt(tx: number, ty: number): number | undefined;
+  elevAt(tx: number, ty: number): number;
+  isTree(t: number): boolean;
+  isGarrison(t: number): boolean;
+  /** doorInfo(t) !== null (garrison gate vs curtain mass). */
+  hasDoorInfo(t: number): boolean;
+  /** The renderer's building-doorway set (fence + garrison excluded). */
+  isDoor(t: number): boolean;
+  doorIsWide(t: number): boolean;
+  isDiagWall(t: number): boolean;
+  isWall(t: number): boolean;
+  isCliff(t: number): boolean;
+  isRamp(t: number): boolean;
+  isArch(t: number): boolean;
+  isPortal(t: number): boolean;
+  isPillar(t: number): boolean;
+  isRail(t: number): boolean;
+  isBridge(t: number): boolean;
+  isWater(t: number): boolean;
+  /** def.raised || Stump || crop — the generic-object admission. */
+  isRaisedLike(t: number): boolean;
+  /** rampDir(tx,ty)[1] — 0 for E/W flights. */
+  rampDirY(tx: number, ty: number): number;
+  isSideDoorway(tx: number, ty: number): boolean;
+  isGarrisonSideGate(tx: number, ty: number): boolean;
+  isDockAt(tx: number, ty: number): boolean;
+  /** deckFill(tx,ty)?.family === 'bridge'. */
+  deckFillIsBridge(tx: number, ty: number): boolean;
+}
+
+/**
+ * Classify one tile exactly the way collectRaisedTiles decides its
+ * routes — same order, same probes. Returns null for tiles that emit
+ * nothing (empty ground, cliffs, plain water, flat detail). Run tiles
+ * all return the same anchored member; callers dedupe by anchor.
+ */
+export function classifyRaised(
+  host: RegisterHost,
+  tx: number,
+  ty: number,
+): RaisedMember | null {
+  const ground = host.groundAt(tx, ty);
+  if (ground === undefined) return null;
+  if (host.isCliff(ground)) return null; // faces come from collectCliffFaces
+  if (host.isRamp(ground)) {
+    const rdirY = host.rampDirY(tx, ty);
+    if (rdirY !== 0) {
+      // STAIR-RUN LAW: same-level, same-descent neighbours are ONE
+      // flight — walk to the west anchor.
+      const rlvl = host.elevAt(tx, ty);
+      const inRun = (x: number): boolean =>
+        host.groundAt(x, ty) !== undefined &&
+        host.isRamp(host.groundAt(x, ty)!) &&
+        host.elevAt(x, ty) === rlvl &&
+        host.rampDirY(x, ty) === rdirY;
+      let ax = tx;
+      while (inRun(ax - 1)) ax--;
+      let len = 1;
+      while (inRun(ax + len)) len++;
+      return { kind: RaisedKind.RampRun, tile: ground, tx: ax, ty, len, endX: ax + len - 1, treeLike: false };
+    }
+    return { kind: RaisedKind.RampSingle, tile: ground, tx, ty, len: 1, endX: tx, treeLike: false };
+  }
+  if (host.isGarrison(ground)) {
+    if (host.hasDoorInfo(ground)) {
+      if (host.isGarrisonSideGate(tx, ty)) {
+        // Vertical passage: merge the N-S run to its north anchor.
+        let ay = ty;
+        let vLen = 1;
+        while (host.groundAt(tx, ay - 1) === ground) ay--;
+        while (host.groundAt(tx, ay + vLen) === ground) vLen++;
+        return { kind: RaisedKind.GarrisonSideGate, tile: ground, tx, ty: ay, len: vLen, endX: tx, treeLike: true };
+      }
+      // E-W gatehouse: merge to the west anchor.
+      let ax = tx;
+      let len = 1;
+      while (host.groundAt(ax - 1, ty) === ground) ax--;
+      while (host.groundAt(ax + len, ty) === ground) len++;
+      return { kind: RaisedKind.GarrisonGate, tile: ground, tx: ax, ty, len, endX: ax + len - 1, treeLike: true };
+    }
+    return { kind: RaisedKind.GarrisonWall, tile: ground, tx, ty, len: 1, endX: tx, treeLike: true };
+  }
+  if (host.isDoor(ground)) {
+    if (host.isSideDoorway(tx, ty)) {
+      let ay = ty;
+      let vLen = 1;
+      if (host.doorIsWide(ground)) {
+        while (host.groundAt(tx, ay - 1) === ground) ay--;
+        while (host.groundAt(tx, ay + vLen) === ground) vLen++;
+      }
+      return { kind: RaisedKind.SideDoorway, tile: ground, tx, ty: ay, len: vLen, endX: tx, treeLike: false };
+    }
+    let ax = tx;
+    let len = 1;
+    if (host.doorIsWide(ground)) {
+      while (host.groundAt(ax - 1, ty) === ground) ax--;
+      while (host.groundAt(ax + len, ty) === ground) len++;
+    }
+    return { kind: RaisedKind.Doorway, tile: ground, tx: ax, ty, len, endX: ax + len - 1, treeLike: false };
+  }
+  if (host.isArch(ground))
+    return { kind: RaisedKind.Arch, tile: ground, tx, ty, len: 1, endX: tx, treeLike: false };
+  if (host.isPortal(ground))
+    return { kind: RaisedKind.Portal, tile: ground, tx, ty, len: 1, endX: tx, treeLike: true };
+  if (host.isPillar(ground))
+    return { kind: RaisedKind.Pillar, tile: ground, tx, ty, len: 1, endX: tx, treeLike: false };
+  if (host.isRail(ground))
+    return { kind: RaisedKind.Rail, tile: ground, tx, ty, len: 1, endX: tx, treeLike: false };
+  if (host.isBridge(ground)) {
+    if (host.isDockAt(tx, ty))
+      return { kind: RaisedKind.BridgeRails, tile: ground, tx, ty, len: 1, endX: tx, treeLike: false };
+    return null;
+  }
+  if (host.isWater(ground)) {
+    if (host.deckFillIsBridge(tx, ty))
+      return { kind: RaisedKind.DeckFillRail, tile: ground, tx, ty, len: 1, endX: tx, treeLike: false };
+    return null;
+  }
+  if (host.isDiagWall(ground))
+    return { kind: RaisedKind.DiagWall, tile: ground, tx, ty, len: 1, endX: tx, treeLike: false };
+  if (host.isWall(ground))
+    return { kind: RaisedKind.Wall, tile: ground, tx, ty, len: 1, endX: tx, treeLike: false };
+  if (host.isRaisedLike(ground))
+    return { kind: RaisedKind.Generic, tile: ground, tx, ty, len: 1, endX: tx, treeLike: host.isTree(ground) };
+  return null;
+}
+
+/** Per-chunk register rows: rows[localTy] lists the members whose
+ *  first in-chunk tile sits on that world row, in west-to-east
+ *  encounter order (the scan's own order — stable-sort tie order is
+ *  load-bearing). Vertical runs appear once per spanned in-chunk row
+ *  so any first-visible row can encounter them; the frame-local
+ *  runSeen dedupe keeps emission single, exactly like the scan. */
+export type RegisterRows = Array<RaisedMember[] | undefined>;
+
+/**
+ * Compile one chunk. chunkSize tiles square at (cx*chunkSize,
+ * cy*chunkSize). Pure: everything flows through the host.
+ */
+export function buildRegisterRows(
+  host: RegisterHost,
+  cx: number,
+  cy: number,
+  chunkSize: number,
+): RegisterRows {
+  const x0 = cx * chunkSize;
+  const y0 = cy * chunkSize;
+  const rows: RegisterRows = new Array(chunkSize);
+  // Horizontal runs classify identically from every member tile in the
+  // row — dedupe by anchor as the row scans east.
+  const rowSeen = new Set<number>();
+  for (let ly = 0; ly < chunkSize; ly++) {
+    const ty = y0 + ly;
+    rowSeen.clear();
+    let list: RaisedMember[] | undefined;
+    for (let lx = 0; lx < chunkSize; lx++) {
+      const m = classifyRaised(host, x0 + lx, ty);
+      if (m === null) continue;
+      // Anchor key: runs met again later in the row are the same member.
+      const ak = (m.tx + 32768) * 65536 + (m.ty + 32768);
+      if (rowSeen.has(ak)) continue;
+      rowSeen.add(ak);
+      // Vertical runs (side gates / side doorways) land a copy on
+      // EVERY spanned in-chunk row automatically: each spanned row's
+      // own tile classifies to the same anchored member, and the
+      // dedupe above is per row. The scan can then first meet the run
+      // on any visible row (the anchor may sit north of the viewport)
+      // and the frame-local runSeen keeps emission single.
+      (list ??= []).push(m);
+    }
+    if (list) rows[ly] = list;
+  }
+  return rows;
+}

@@ -165,6 +165,14 @@ import { TailSim, drawTail } from './tail.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
+import {
+  RaisedKind,
+  buildRegisterRows,
+  classifyRaised,
+  type RaisedMember,
+  type RegisterHost,
+  type RegisterRows,
+} from './staticRegister.js';
 import { UNDERGROUND_Y } from '../audio/zones.js';
 import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
 import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from './portal.js';
@@ -3369,6 +3377,10 @@ export class Renderer {
     // Base-exposure body relights per frame: covers every body a busy
     // market frame can show; past it, the plain multiply map stands.
     this.relitLeft = 48;
+    // Static-register compiles per frame (THE STANDING WORLD): a
+    // fresh viewport warms in 3-4 frames; the per-tile scan covers
+    // the gap, so a capped start never leaves a hole.
+    this.registerBuildsLeft = 4;
     // Zoomed out, the same world-space sway spans FEWER screen pixels —
     // stretch the sampling floor so wide framings stop paying the full
     // re-bake rate for sub-pixel motion. Cadence 10 at ≤0.85× steps
@@ -5337,6 +5349,17 @@ export class Renderer {
   }
 
   private evictBaked(): void {
+    // Static registers are tiny (descriptors, no pixels) but ride the
+    // same distance rule so a long walk doesn't accrete stale chunks.
+    if (this.registers.size > 96) {
+      const rcx = this.camera.x / CHUNK_SIZE;
+      const rcy = this.camera.y / CHUNK_SIZE;
+      for (const [key] of this.registers) {
+        const [cx, cy] = key.split(',').map(Number);
+        if (Math.abs(cx! - rcx) > 4 || Math.abs(cy! - rcy) > 4) this.registers.delete(key);
+        if (this.registers.size <= 72) break;
+      }
+    }
     // Hi-res bakes are 4× the pixels — keep far fewer of them around.
     const hiRes = this.bakePx() > TILE_PX;
     const cap = hiRes ? 28 : 80;
@@ -5534,327 +5557,436 @@ export class Renderer {
     return dealWoodSkin(region);
   }
 
+  /**
+   * THE STANDING WORLD, phase 1 — collectRaisedTiles rides THE STATIC
+   * REGISTER: each chunk's per-tile route decisions (wall? ramp run?
+   * garrison gate? crop?) are compiled once per (data identity, rev)
+   * and replayed here in exact scan order; the DrawItems themselves
+   * are still minted fresh every frame (reveal heights, wraps, and the
+   * frame clock stay live — the register stores world-space
+   * descriptors, never closures). Chunks without a fresh register fall
+   * back to the per-tile scan for the same row segment — the fallback
+   * IS the correctness contract, and mixing register and scan chunks
+   * preserves the global west-to-east, row-major emission order that
+   * stable-sort ties depend on.
+   */
   private collectRaisedTiles(game: ClientGame, items: DrawItem[]): void {
     const b = this.visibleTileBounds();
-    // Run-merged furniture components already emitted this frame,
-    // keyed by anchor tile.
+    // Run-merged components already emitted this frame, by anchor.
     const runSeen = new Set<number>();
+    this.regGame = game;
     // Tall-content pads (see TREE_PAD_S/TREE_PAD_X/PROP_PAD_S): rows
-    // up to PROP_PAD_S past the shared bounds scan everything (walls
+    // up to PROP_PAD_S past the shared bounds admit everything (walls
     // and stations are ~2.2 tiles tall — their crowns reach 3.7 rows
-    // up-screen); rows beyond that, and the side columns past ±1, scan
-    // for tree/portal tiles only — a 7-tile tree pokes its crown into
-    // view from ~12 rows south, and a ~4-tile-wide canopy reaches in
-    // from 4 columns past the side edges.
+    // up-screen); rows beyond that, and the side columns past ±1,
+    // admit tree/portal/garrison silhouettes only.
+    const x0 = b.minTx - 1 - TREE_PAD_X;
+    const x1 = b.maxTx + 1 + TREE_PAD_X;
+    const minCx = Math.floor(x0 / CHUNK_SIZE);
+    const maxCx = Math.floor(x1 / CHUNK_SIZE);
     for (let ty = b.minTy; ty <= b.maxTy + TREE_PAD_S; ty++) {
-      const deepSouth = ty > b.maxTy + PROP_PAD_S;
-      for (let tx = b.minTx - 1 - TREE_PAD_X; tx <= b.maxTx + 1 + TREE_PAD_X; tx++) {
-        const ground = this.fgGroundAt(tx, ty);
-        if (ground === undefined) continue;
-        // Deep-south rows and side columns admit trees + portals only:
-        // the Riftgate stands ~2 tiles tall, so its crown pokes into
-        // view like a low tree. Garrison masonry joins them — a 3.4
-        // curtain plus its parapet spans ~6.5 rows at yScale 0.6, past
-        // the PROP_PAD_S walls-and-stations band.
-        const sideBand = tx < b.minTx - 1 || tx > b.maxTx + 1;
-        if (
-          (deepSouth || sideBand) &&
-          !TREE_TILES.has(ground as Tile) &&
-          !Renderer.GARRISON.has(ground) &&
-          ground !== Tile.PortalDown &&
-          ground !== Tile.PortalUp
-        )
-          continue;
-        if (ground === Tile.Cliff) continue; // faces come from collectCliffFaces
-        if (ground === Tile.Ramp) {
-          // STAIR-RUN LAW: adjacent Ramp tiles at the same level
-          // descending the same way are ONE flight. N/S flights run
-          // E-W — walk to the west anchor and emit a single item
-          // spanning the whole width (runSeen dedupes; walking west
-          // catches runs whose anchor sits outside the viewport pad).
-          // Per-tile emission framed every tile in its own cheek pair:
-          // nine narrow slots where one grand staircase should stand.
-          // E/W flights stay per-row (each row is its own y-sort
-          // slice); rampItem itself drops the faces hidden rows would
-          // repaint.
-          const rdir = this.rampDir(game, tx, ty);
-          if (rdir[1] !== 0) {
-            const rlvl = game.world.elevAt(tx, ty);
-            const inRun = (x: number): boolean =>
-              game.world.groundAt(x, ty) === Tile.Ramp &&
-              game.world.elevAt(x, ty) === rlvl &&
-              this.rampDir(game, x, ty)[1] === rdir[1];
-            let ax = tx;
-            while (inRun(ax - 1)) ax--;
-            let runLen = 1;
-            while (inRun(ax + runLen)) runLen++;
-            const runKey = packTile(ax, ty);
-            if (runSeen.has(runKey)) continue;
-            runSeen.add(runKey);
-            // THE SHELF LAW: the flight and its apron stand on the LOW
-            // level — a body at the mouth paints over the treads, and
-            // both still beat the flanking curtain faces' base shelf by
-            // raw row. The landing opens onto the crown and rides the
-            // high shelf with everything standing there.
-            const lowShelf = rlvl - 1 !== 0 ? rlvl - 1 : undefined;
-            const flight = this.rampItem(ax, ty, game, runLen);
-            flight.strat = lowShelf;
-            // A hair past the flanking faces/side strips (+0.001) so
-            // the flight still owns the shared cheek seam.
-            flight.sortY += 0.002;
-            items.push(flight);
-            const landing = this.rampLandingItem(ax, ty, game, runLen);
-            if (landing) {
-              landing.strat = rlvl !== 0 ? rlvl : undefined;
-              items.push(landing);
-            }
-            const apron = this.rampApronItem(ax, ty, game, runLen);
-            if (apron) {
-              apron.strat = lowShelf;
-              items.push(apron);
-            }
-          } else {
-            const flight = this.rampItem(tx, ty, game, 1);
-            const flvl = game.world.elevAt(tx, ty);
-            flight.strat = flvl - 1 !== 0 ? flvl - 1 : undefined;
-            flight.sortY += 0.002;
-            items.push(flight);
-          }
-          continue;
+      const cy = Math.floor(ty / CHUNK_SIZE);
+      const ly = ty - cy * CHUNK_SIZE;
+      for (let cx = minCx; cx <= maxCx; cx++) {
+        const data = game.world.get(cx, cy);
+        if (!data) continue; // unloaded: every ground read is undefined
+        const segX0 = Math.max(x0, cx * CHUNK_SIZE);
+        const segX1 = Math.min(x1, cx * CHUNK_SIZE + CHUNK_SIZE - 1);
+        const rows = this.registerRowsFor(cx, cy, data);
+        if (rows) this.emitRegisterRow(game, items, rows[ly], ty, segX0, segX1, b, runSeen);
+        else this.scanRaisedRange(game, items, ty, segX0, segX1, b, runSeen);
+      }
+    }
+  }
+
+  /** Per-chunk compiled scan results (THE REGISTER IS THE SCAN,
+   *  COMPILED) — keyed like the ground bake: object identity + rev.
+   *  touchNeighbors bumps neighbours on every patch, so cross-border
+   *  probes (run walks, deck fills, side-gate tests — all ≤1 chunk of
+   *  reach) can never go stale silently. */
+  private readonly registers = new Map<
+    string,
+    { data: ChunkData; rev: number; rows: RegisterRows }
+  >();
+  /** Register compiles per frame — a fresh viewport (~12-16 chunks)
+   *  warms over 3-4 frames while the per-tile scan covers the gap. */
+  private registerBuildsLeft = 0;
+  private regGame: ClientGame | null = null;
+  /** The classifier's window into the world + the renderer's own
+   *  probes and tile sets — one long-lived object, no per-frame
+   *  alloc. Everything reads live state through regGame. */
+  private readonly regHost: RegisterHost = {
+    groundAt: (tx, ty) => this.regGame!.world.groundAt(tx, ty),
+    elevAt: (tx, ty) => this.regGame!.world.elevAt(tx, ty),
+    isTree: (t) => TREE_TILES.has(t as Tile),
+    isGarrison: (t) => Renderer.GARRISON.has(t),
+    hasDoorInfo: (t) => doorInfo(t) !== null,
+    isDoor: (t) => Renderer.DOOR_TILES.has(t),
+    doorIsWide: (t) => doorInfo(t)?.wide ?? false,
+    isDiagWall: (t) => DIAG_WALL_TILES.has(t as Tile),
+    isWall: (t) => Renderer.WALL_TILES.has(t),
+    isCliff: (t) => t === Tile.Cliff,
+    isRamp: (t) => t === Tile.Ramp,
+    isArch: (t) => t === Tile.ArchStone,
+    isPortal: (t) => t === Tile.PortalDown || t === Tile.PortalUp,
+    isPillar: (t) => t === Tile.PillarStone,
+    isRail: (t) => t === Tile.RailWood,
+    isBridge: (t) => t === Tile.Bridge,
+    isWater: (t) => t === Tile.Water || t === Tile.WaterDeep || t === Tile.WaterShallow,
+    isRaisedLike: (t) => tileDef(t).raised || t === Tile.Stump || isCropTile(t as Tile),
+    rampDirY: (tx, ty) => this.rampDir(this.regGame!, tx, ty)[1],
+    isSideDoorway: (tx, ty) => this.isSideDoorway(this.regGame!, tx, ty),
+    isGarrisonSideGate: (tx, ty) => this.isGarrisonSideGate(this.regGame!, tx, ty),
+    isDockAt: (tx, ty) => this.isDockAt(this.regGame!, tx, ty),
+    deckFillIsBridge: (tx, ty) => {
+      const f = this.deckFill(this.regGame!, tx, ty);
+      return f !== null && f.family === 'bridge';
+    },
+  };
+  // Pooled emission-order scratch (a row holds 0-10 members).
+  private readonly regEmitM: RaisedMember[] = [];
+  private readonly regEmitX: number[] = [];
+
+  private registerRowsFor(cx: number, cy: number, data: ChunkData): RegisterRows | null {
+    const key = `${cx},${cy}`;
+    const reg = this.registers.get(key);
+    if (reg && reg.data === data && reg.rev === (data.rev ?? 0)) return reg.rows;
+    if (this.registerBuildsLeft <= 0) return null;
+    this.registerBuildsLeft--;
+    const rows = buildRegisterRows(this.regHost, cx, cy, CHUNK_SIZE);
+    this.registers.set(key, { data, rev: data.rev ?? 0, rows });
+    return rows;
+  }
+
+  /**
+   * Replay one register row for one chunk segment, in the scan's own
+   * encounter order. Admission mirrors the per-tile pads exactly:
+   * deep-south rows and side-band columns admit tall silhouettes only
+   * (trees, garrison, portals — member.treeLike), and a member's
+   * effective encounter column is its first admissible tile, so a run
+   * reaching in from a pad lands at the same array position the scan
+   * gave it (stable-sort tie order is load-bearing).
+   */
+  private emitRegisterRow(
+    game: ClientGame,
+    items: DrawItem[],
+    list: readonly RaisedMember[] | undefined,
+    ty: number,
+    segX0: number,
+    segX1: number,
+    b: { minTx: number; maxTx: number; minTy: number; maxTy: number },
+    runSeen: Set<number>,
+  ): void {
+    if (!list || list.length === 0) return;
+    const deepSouth = ty > b.maxTy + PROP_PAD_S;
+    const coreX0 = b.minTx - 1;
+    const coreX1 = b.maxTx + 1;
+    const ms = this.regEmitM;
+    const xs = this.regEmitX;
+    ms.length = 0;
+    xs.length = 0;
+    for (const m of list) {
+      if (deepSouth && !m.treeLike) continue;
+      let eX = m.tx < segX0 ? segX0 : m.tx;
+      let endX = m.endX;
+      if (!m.treeLike) {
+        // Side-band columns skip non-silhouette tiles, so a run
+        // reaching in from the pad is first met at the core edge.
+        if (eX < coreX0) eX = coreX0;
+        if (endX > coreX1) endX = coreX1;
+      }
+      if (eX > endX || eX > segX1 || m.endX < segX0) continue;
+      // Insertion by effective encounter column: the stored anchor
+      // order only flips when a pad-admitted silhouette stands between
+      // a clamped run's anchor and the core edge.
+      let i = ms.length;
+      while (i > 0 && xs[i - 1]! > eX) {
+        ms[i] = ms[i - 1]!;
+        xs[i] = xs[i - 1]!;
+        i--;
+      }
+      ms[i] = m;
+      xs[i] = eX;
+    }
+    for (const m of ms) this.emitRaisedMember(game, items, m, runSeen);
+    ms.length = 0;
+    xs.length = 0;
+  }
+
+  /** The per-tile fallback: classify-and-emit across a row segment —
+   *  runs whenever a chunk's register isn't fresh yet. Same pads,
+   *  same classifier, same emitter as the register path, so the two
+   *  can never drift. */
+  private scanRaisedRange(
+    game: ClientGame,
+    items: DrawItem[],
+    ty: number,
+    segX0: number,
+    segX1: number,
+    b: { minTx: number; maxTx: number; minTy: number; maxTy: number },
+    runSeen: Set<number>,
+  ): void {
+    const deepSouth = ty > b.maxTy + PROP_PAD_S;
+    for (let tx = segX0; tx <= segX1; tx++) {
+      const ground = this.fgGroundAt(tx, ty);
+      if (ground === undefined) continue;
+      // Deep-south rows and side columns admit trees + portals +
+      // garrison only: tall silhouettes that poke into view from far
+      // off-screen (a 7-tile tree from ~12 rows south, a 3.4 curtain
+      // plus parapet from ~6.5).
+      const sideBand = tx < b.minTx - 1 || tx > b.maxTx + 1;
+      if (
+        (deepSouth || sideBand) &&
+        !TREE_TILES.has(ground as Tile) &&
+        !Renderer.GARRISON.has(ground) &&
+        ground !== Tile.PortalDown &&
+        ground !== Tile.PortalUp
+      )
+        continue;
+      const m = classifyRaised(this.regHost, tx, ty);
+      if (m !== null) this.emitRaisedMember(game, items, m, runSeen);
+    }
+  }
+
+  /**
+   * Emit one classified member — the scan's per-route emission,
+   * verbatim: strat stamps, seam offsets, veil heights, ring-cache
+   * and shake wraps all live exactly as before. Everything read here
+   * (reveal fields, eases, outline toggle, interiors) is read PER
+   * FRAME — the register never caches any of it.
+   */
+  private emitRaisedMember(
+    game: ClientGame,
+    items: DrawItem[],
+    m: RaisedMember,
+    runSeen: Set<number>,
+  ): void {
+    const tile = m.tile as Tile;
+    const tx = m.tx;
+    const ty = m.ty;
+    switch (m.kind) {
+      case RaisedKind.RampRun: {
+        // STAIR-RUN LAW: one flight per merged run (runSeen dedupes —
+        // the anchor may sit outside the viewport pad).
+        const runKey = packTile(tx, ty);
+        if (runSeen.has(runKey)) return;
+        runSeen.add(runKey);
+        // THE SHELF LAW: the flight and its apron stand on the LOW
+        // level — a body at the mouth paints over the treads, and
+        // both still beat the flanking curtain faces' base shelf by
+        // raw row. The landing opens onto the crown and rides the
+        // high shelf with everything standing there.
+        const rlvl = game.world.elevAt(tx, ty);
+        const lowShelf = rlvl - 1 !== 0 ? rlvl - 1 : undefined;
+        const flight = this.rampItem(tx, ty, game, m.len);
+        flight.strat = lowShelf;
+        // A hair past the flanking faces/side strips (+0.001) so
+        // the flight still owns the shared cheek seam.
+        flight.sortY += 0.002;
+        items.push(flight);
+        const landing = this.rampLandingItem(tx, ty, game, m.len);
+        if (landing) {
+          landing.strat = rlvl !== 0 ? rlvl : undefined;
+          items.push(landing);
         }
-        // THE GARRISON FAMILY routes first — fortification is its own
-        // run pipeline (the separate-masonry law): curtain runs merge
-        // only with garrison tiles, gates merge into one gatehouse
-        // opening (E-W south-facing or N-S side passage), and the 45°
-        // turns ride the diagonal-sort law with rampart art.
-        if (Renderer.GARRISON.has(ground)) {
-          const ginfo = doorInfo(ground);
-          if (ginfo) {
-            if (this.isGarrisonSideGate(game, tx, ty)) {
-              // A gate in a N-S curtain: merge the vertical run and
-              // emit the edge-on passage once, at its north anchor.
-              let ay = ty;
-              let vLen = 1;
-              while (game.world.groundAt(tx, ay - 1) === ground) ay--;
-              while (game.world.groundAt(tx, ay + vLen) === ground) vLen++;
-              const vKey = packTile(tx, ay);
-              if (runSeen.has(vKey)) continue;
-              runSeen.add(vKey);
-              const n0 = items.length;
-              this.garrisonSideGateItems(ground as Tile, tx, ay, game, vLen, items);
-              this.stampStrat(items, n0, this.stratAt(tx, ay));
-              continue;
-            }
-            // E-W gatehouse: adjacent gate tiles merge into ONE arched
-            // opening — walk to the west anchor and emit once.
-            let ax = tx;
-            let runLen = 1;
-            while (game.world.groundAt(ax - 1, ty) === ground) ax--;
-            while (game.world.groundAt(ax + runLen, ty) === ground) runLen++;
-            const runKey = packTile(ax, ty);
-            if (runSeen.has(runKey)) continue;
-            runSeen.add(runKey);
-            // The merged gate is ONE item — key its veil to the
-            // passage's center column so a wide gate opens
-            // symmetrically as you near the road, not its west end.
-            const gwhT = this.garrisonHeightAt(game, ax + ((runLen - 1) >> 1), ty);
-            const gitem = this.garrisonGateItem(ground as Tile, ax, ty, game, gwhT, runLen);
-            if (game.world.elevAt(ax, ty) !== 0) gitem.elevated = true;
-            gitem.strat = this.stratAt(ax, ty);
-            items.push(gitem);
-            continue;
-          }
-          const whT = this.garrisonHeightAt(game, tx, ty);
-          const item = diagWallInfo(ground)
-            ? this.garrisonDiagItem(ground as Tile, tx, ty, game, whT)
-            : this.garrisonWallItem(ground as Tile, tx, ty, game, whT);
-          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
-          item.strat = this.stratAt(tx, ty);
-          items.push(item);
-          continue;
+        const apron = this.rampApronItem(tx, ty, game, m.len);
+        if (apron) {
+          apron.strat = lowShelf;
+          items.push(apron);
         }
-        // Structural vocabulary routes before the generic wall/object
-        // paths: doorways are IN the wall-run set (so neighbours merge
-        // with them) but draw their own framed opening, and pillars/
-        // rails/arches are raised or walkable tiles with bespoke items.
-        if (Renderer.DOOR_TILES.has(ground)) {
-          const dinfo = doorInfo(ground)!;
-          // SIDE-DOORWAY LAW: a doorway in a N-S wall run is edge-on
-          // to this camera — it gets the notch/lintel/porch-step
-          // treatment instead of the (invisible) south-facing frame.
-          // Wide side doorways merge along the wall: N-S runs.
-          if (this.isSideDoorway(game, tx, ty)) {
-            let ay = ty;
-            let vLen = 1;
-            if (dinfo.wide) {
-              while (game.world.groundAt(tx, ay - 1) === ground) ay--;
-              while (game.world.groundAt(tx, ay + vLen) === ground) vLen++;
-              const vKey = packTile(tx, ay);
-              if (runSeen.has(vKey)) continue;
-              runSeen.add(vKey);
-            }
-            const n0 = items.length;
-            this.sideDoorwayItems(ground, tx, ay, game, vLen, items);
-            this.stampStrat(items, n0, this.stratAt(tx, ay));
-            continue;
-          }
-          // WIDE-DOORWAY RUN LAW: adjacent wide tiles in an E-W run
-          // merge into ONE full-width opening — walk to the run's west
-          // anchor and emit once (runSeen dedupes, and walking west
-          // catches runs whose anchor sits outside the viewport pad).
-          // Plain doorways never merge: two singles side by side stay
-          // two framed doors on purpose. Open and shut wide tiles never
-          // mix mid-run — the server flips a unit atomically — so the
-          // same-tile equality walk still finds the whole opening.
-          let ax = tx;
-          let runLen = 1;
-          if (dinfo.wide) {
-            while (game.world.groundAt(ax - 1, ty) === ground) ax--;
-            while (game.world.groundAt(ax + runLen, ty) === ground) runLen++;
-            const runKey = packTile(ax, ty);
-            if (runSeen.has(runKey)) continue;
-            runSeen.add(runKey);
-          }
-          const dregion = this.wallRegion(game, ax, ty);
-          // ONE VEIL LAW: the frame rides the same reveal height field
-          // as the wall run it pierces — never its own rule.
-          const dwhT = this.wallHeightAt(game, ax, ty);
-          const item = this.doorwayItem(ground, ax, ty, game, dwhT, runLen, dregion);
-          if (game.world.elevAt(ax, ty) !== 0) item.elevated = true;
-          item.strat = this.stratAt(ax, ty);
-          items.push(item);
-          continue;
+        return;
+      }
+      case RaisedKind.RampSingle: {
+        // E/W flights stay per-row (each row its own y-sort slice).
+        const flight = this.rampItem(tx, ty, game, 1);
+        const flvl = game.world.elevAt(tx, ty);
+        flight.strat = flvl - 1 !== 0 ? flvl - 1 : undefined;
+        flight.sortY += 0.002;
+        items.push(flight);
+        return;
+      }
+      case RaisedKind.GarrisonSideGate: {
+        // A gate in a N-S curtain: the merged vertical run emits the
+        // edge-on passage once, at its north anchor.
+        const vKey = packTile(tx, ty);
+        if (runSeen.has(vKey)) return;
+        runSeen.add(vKey);
+        const n0 = items.length;
+        this.garrisonSideGateItems(tile, tx, ty, game, m.len, items);
+        this.stampStrat(items, n0, this.stratAt(tx, ty));
+        return;
+      }
+      case RaisedKind.GarrisonGate: {
+        const runKey = packTile(tx, ty);
+        if (runSeen.has(runKey)) return;
+        runSeen.add(runKey);
+        // The merged gate is ONE item — key its veil to the
+        // passage's center column so a wide gate opens symmetrically
+        // as you near the road, not its west end.
+        const gwhT = this.garrisonHeightAt(game, tx + ((m.len - 1) >> 1), ty);
+        const gitem = this.garrisonGateItem(tile, tx, ty, game, gwhT, m.len);
+        if (game.world.elevAt(tx, ty) !== 0) gitem.elevated = true;
+        gitem.strat = this.stratAt(tx, ty);
+        items.push(gitem);
+        return;
+      }
+      case RaisedKind.GarrisonWall: {
+        const whT = this.garrisonHeightAt(game, tx, ty);
+        const item = diagWallInfo(tile)
+          ? this.garrisonDiagItem(tile, tx, ty, game, whT)
+          : this.garrisonWallItem(tile, tx, ty, game, whT);
+        if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+        item.strat = this.stratAt(tx, ty);
+        items.push(item);
+        return;
+      }
+      case RaisedKind.SideDoorway: {
+        // SIDE-DOORWAY LAW: edge-on notch/lintel/porch-step treatment;
+        // wide side doorways merge along the wall (N-S runs).
+        if (doorInfo(tile)!.wide) {
+          const vKey = packTile(tx, ty);
+          if (runSeen.has(vKey)) return;
+          runSeen.add(vKey);
         }
-        if (ground === Tile.ArchStone) {
-          const item = this.archItem(tx, ty, game);
-          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
-          item.strat = this.stratAt(tx, ty);
-          items.push(item);
-          continue;
+        const n0 = items.length;
+        this.sideDoorwayItems(tile, tx, ty, game, m.len, items);
+        this.stampStrat(items, n0, this.stratAt(tx, ty));
+        return;
+      }
+      case RaisedKind.Doorway: {
+        // WIDE-DOORWAY RUN LAW: adjacent wide tiles merge into ONE
+        // full-width opening; plain doorways never merge.
+        if (doorInfo(tile)!.wide) {
+          const runKey = packTile(tx, ty);
+          if (runSeen.has(runKey)) return;
+          runSeen.add(runKey);
         }
-        if (ground === Tile.PortalDown || ground === Tile.PortalUp) {
-          const item = this.portalItem(tx, ty, ground === Tile.PortalUp, game);
-          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
-          item.strat = this.stratAt(tx, ty);
-          items.push(item);
-          continue;
+        const dregion = this.wallRegion(game, tx, ty);
+        // ONE VEIL LAW: the frame rides the same reveal height field
+        // as the wall run it pierces — never its own rule.
+        const dwhT = this.wallHeightAt(game, tx, ty);
+        const item = this.doorwayItem(tile, tx, ty, game, dwhT, m.len, dregion);
+        if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+        item.strat = this.stratAt(tx, ty);
+        items.push(item);
+        return;
+      }
+      case RaisedKind.Arch: {
+        const item = this.archItem(tx, ty, game);
+        if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+        item.strat = this.stratAt(tx, ty);
+        items.push(item);
+        return;
+      }
+      case RaisedKind.Portal: {
+        const item = this.portalItem(tx, ty, tile === Tile.PortalUp, game);
+        if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+        item.strat = this.stratAt(tx, ty);
+        items.push(item);
+        return;
+      }
+      case RaisedKind.Pillar: {
+        const item = this.pillarItem(tx, ty, game);
+        // Bake the outline ring into a cached sprite, exactly like a
+        // discrete prop — a column is static, so it rides the slow
+        // cadence and costs one blit a frame.
+        if (this.outlineOn && item.body) {
+          const pb = item.body;
+          const inner = item.draw!; // prop items always paint
+          item.draw = () => this.drawPropOutlined(tile, tx, ty, pb, inner);
+          item.body = undefined;
         }
-        if (ground === Tile.PillarStone) {
-          const item = this.pillarItem(tx, ty, game);
-          // Bake the outline ring into a cached sprite, exactly like a
-          // discrete prop — a column is static, so it rides the slow
-          // cadence and costs one blit a frame.
-          if (this.outlineOn && item.body) {
-            const b = item.body;
-            const inner = item.draw!; // prop items always paint
-            item.draw = () => this.drawPropOutlined(ground as Tile, tx, ty, b, inner);
-            item.body = undefined;
-          }
-          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
-          item.strat = this.stratAt(tx, ty);
-          items.push(item);
-          continue;
-        }
-        if (ground === Tile.RailWood) {
-          const item = this.railItem(tx, ty, game);
-          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
-          item.strat = this.stratAt(tx, ty);
-          items.push(item);
-          continue;
-        }
-        if (ground === Tile.Bridge && this.isDockAt(game, tx, ty)) {
-          // A bridge grows its own parapet: live rail items on every
-          // deck edge that faces water, so bodies sort against them.
+        if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+        item.strat = this.stratAt(tx, ty);
+        items.push(item);
+        return;
+      }
+      case RaisedKind.Rail: {
+        const item = this.railItem(tx, ty, game);
+        if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+        item.strat = this.stratAt(tx, ty);
+        items.push(item);
+        return;
+      }
+      case RaisedKind.BridgeRails: {
+        // A bridge grows its own parapet: live rail items on every
+        // deck edge that faces water, so bodies sort against them.
+        const n0 = items.length;
+        this.bridgeRailItems(tx, ty, game, items);
+        this.stampStrat(items, n0, this.stratAt(tx, ty));
+        return;
+      }
+      case RaisedKind.DeckFillRail: {
+        // A 45° notch fill on a bridge span carries the parapet
+        // across its hypotenuse — the diagonal rail is a live item
+        // like every straight one, so bodies sort against it.
+        const f = this.deckFill(game, tx, ty);
+        if (f !== null && f.family === 'bridge') {
           const n0 = items.length;
-          this.bridgeRailItems(tx, ty, game, items);
+          this.deckFillRailItem(tx, ty, f.legs, game, items);
           this.stampStrat(items, n0, this.stratAt(tx, ty));
-          continue;
         }
-        if (
-          ground === Tile.Water ||
-          ground === Tile.WaterDeep ||
-          ground === Tile.WaterShallow
-        ) {
-          // A 45° notch fill on a bridge span carries the parapet
-          // across its hypotenuse — the diagonal rail is a live item
-          // like every straight one, so bodies sort against it.
-          const f = this.deckFill(game, tx, ty);
-          if (f !== null && f.family === 'bridge') {
-            const n0 = items.length;
-            this.deckFillRailItem(tx, ty, f.legs, game, items);
-            this.stampStrat(items, n0, this.stratAt(tx, ty));
+        return;
+      }
+      case RaisedKind.DiagWall: {
+        // 45° corners: their own painter (triangular crown + sloped
+        // facade). They ride the SAME reveal height field as the
+        // straight runs — the whole corner bows with its walls, so
+        // a cut run never ends at a full-height stump.
+        const item = this.diagWallItem(
+          tile,
+          tx,
+          ty,
+          game,
+          this.wallHeightAt(game, tx, ty),
+          this.wallRegion(game, tx, ty),
+        );
+        if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+        item.strat = this.stratAt(tx, ty);
+        items.push(item);
+        return;
+      }
+      case RaisedKind.Wall: {
+        const wregion = this.wallRegion(game, tx, ty);
+        // ONE VEIL LAW: every wall tile between the player and the
+        // camera reads its height off the one reveal field —
+        // surface buildings, ruins, and dungeon corridors alike.
+        const whT = this.wallHeightAt(game, tx, ty);
+        const item = this.wallItem(tile, tx, ty, game, whT, wregion?.hasHearth ?? false, wregion);
+        // A destructible wall (the cracked cave seam) absorbing a
+        // blow shudders like any durable prop — the knock translates
+        // the whole drawn prism at draw time.
+        if (this.propShakes.size > 0 && destructibleInfo(tile)) {
+          const shakeX = this.propShakeX(tx, ty);
+          if (shakeX !== 0) {
+            const inner = item.draw!; // prop items always paint
+            item.draw = () => {
+              const wctx = this.ctx;
+              wctx.save();
+              wctx.translate(shakeX, 0);
+              inner();
+              wctx.restore();
+            };
           }
-          continue;
         }
-        if (DIAG_WALL_TILES.has(ground as Tile)) {
-          // 45° corners: their own painter (triangular crown + sloped
-          // facade). They ride the SAME reveal height field as the
-          // straight runs — the whole corner bows with its walls, so
-          // a cut run never ends at a full-height stump.
-          const item = this.diagWallItem(ground as Tile, tx, ty, game, this.wallHeightAt(game, tx, ty), this.wallRegion(game, tx, ty));
-          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
-          item.strat = this.stratAt(tx, ty);
-          items.push(item);
-          continue;
-        }
-        if (Renderer.WALL_TILES.has(ground)) {
-          const wregion = this.wallRegion(game, tx, ty);
-          // ONE VEIL LAW: every wall tile between the player and the
-          // camera reads its height off the one reveal field —
-          // surface buildings, ruins, and dungeon corridors alike.
-          const whT = this.wallHeightAt(game, tx, ty);
-          const item = this.wallItem(
-            ground as Tile,
-            tx,
-            ty,
-            game,
-            whT,
-            wregion?.hasHearth ?? false,
-            wregion,
-          );
-          // A destructible wall (the cracked cave seam) absorbing a
-          // blow shudders like any durable prop — the knock translates
-          // the whole drawn prism at draw time.
-          if (this.propShakes.size > 0 && destructibleInfo(ground)) {
-            const shakeX = this.propShakeX(tx, ty);
-            if (shakeX !== 0) {
-              const inner = item.draw!; // prop items always paint
-              item.draw = () => {
-                const wctx = this.ctx;
-                wctx.save();
-                wctx.translate(shakeX, 0);
-                inner();
-                wctx.restore();
-              };
-            }
-          }
-          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
-          item.strat = this.stratAt(tx, ty);
-          items.push(item);
-          continue;
-        }
-        const def = tileDef(ground);
-        // Crops are walkable flat ground, but the PLANT standing on it
-        // is a y-sorted object you pass behind. (Content decides what
-        // a crop IS — Phase 2 grew the roster far past the old range.)
-        const isCrop = isCropTile(ground as Tile);
-        if (!def.raised && ground !== Tile.Stump && !isCrop) continue;
+        if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+        item.strat = this.stratAt(tx, ty);
+        items.push(item);
+        return;
+      }
+      case RaisedKind.Generic: {
         // Run-merging furniture rings as one whole-component unit.
         if (
           this.outlineOn &&
-          Renderer.RUN_RING_TILES.has(ground as Tile) &&
-          this.tryRunRingItem(ground as Tile, tx, ty, game, items, runSeen)
-        ) {
-          continue;
-        }
-        const item = this.objectItem(ground as Tile, tx, ty, game);
+          Renderer.RUN_RING_TILES.has(tile) &&
+          this.tryRunRingItem(tile, tx, ty, game, items, runSeen)
+        )
+          return;
+        const item = this.objectItem(tile, tx, ty, game);
         // THE SHELF LAW: a standing object sorts on the shelf of its
         // own tile, at its raw row. Awnings need no exemption — their
         // host wall shares the tile's shelf, so the Lantern Row order
-        // (canopy after wall, raw rows) holds on every terrace. The
-        // retired lifted-space shift made every plateau's own ground
-        // rows draw over the trees and ore standing on it (the cut
-        // trunks and rim-sliced nodes this law replaces).
+        // (canopy after wall, raw rows) holds on every terrace.
         item.strat = this.stratAt(tx, ty);
         // Discrete props ride the ring-baked sprite cache instead of
         // the per-frame outline pass — 76 live-outlined props in town
@@ -5863,21 +5995,21 @@ export class Renderer {
         // wind. Cold stations joined them (see STATION_CACHE_TILES);
         // a worked station drops back to the live pass for the show.
         const ringCached =
-          (Renderer.CACHED_RING_TILES.has(ground) &&
+          (Renderer.CACHED_RING_TILES.has(tile) &&
             // A chest mid-lid-ease animates at frame rate, not cadence
             // (size gate first: no string builds on the common frame).
             (this.chestEases.size === 0 || !this.chestEases.has(`${tx},${ty}`))) ||
-          (Renderer.STATION_CACHE_TILES.has(ground) &&
+          (Renderer.STATION_CACHE_TILES.has(tile) &&
             (this.stationHeat.get(packTile(tx, ty)) ?? 0) < 0.01);
         if (this.outlineOn && item.body && ringCached) {
-          const b = item.body;
+          const pb = item.body;
           const inner = item.draw!; // prop items always paint
-          item.draw = () => this.drawPropOutlined(ground as Tile, tx, ty, b, inner);
+          item.draw = () => this.drawPropOutlined(tile, tx, ty, pb, inner);
           item.body = undefined;
         }
         // A durable prop mid-shudder: translate the whole drawn piece
         // (live paint or cached blit alike) by the decaying knock.
-        if (this.propShakes.size > 0 && destructibleInfo(ground)) {
+        if (this.propShakes.size > 0 && destructibleInfo(tile)) {
           const shakeX = this.propShakeX(tx, ty);
           if (shakeX !== 0) {
             const inner = item.draw!; // prop items always paint
@@ -5892,6 +6024,7 @@ export class Renderer {
         }
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         items.push(item);
+        return;
       }
     }
   }
