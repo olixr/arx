@@ -100,9 +100,18 @@ export declare class InputManager {
      * OS never reaps), and a silent pad in slot 0 then swallows every
      * frame. So: whichever pad is ACTUALLY being touched wins, that
      * choice sticks until another pad speaks, and slot order is only the
-     * tie-break of last resort.
+     * tie-break of last resort. The choice itself (including THE CORPSE
+     * HOLDS NO SWAY — a frozen entry can never claim to be touched)
+     * lives in pickLivePad.
      */
     private pickPad;
+    /**
+     * Wall ms since a pad entry's state last changed (0 the first time it
+     * is seen). Gamepad timestamps only advance on state change, so this
+     * is "how long has this entry been telling the same story" — the
+     * liveness signal for both pickPad and the Controls readout.
+     */
+    private quietFor;
     /** The live pad, translated into the standard layout. */
     private pad;
     /**

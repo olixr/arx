@@ -7,6 +7,7 @@ import {
   normalizePad,
   padIsActive,
   padVendorProduct,
+  pickLivePad,
   resolveLayout,
 } from './padProfiles.js';
 
@@ -203,4 +204,59 @@ test('two pads in different slots keep separate layouts', () => {
   const plain = t.layoutFor(fakePad({ id: 'plain pad', index: 1, axes: [0, 0, 0, 0] }));
   assert.equal(plain.hatAxis, undefined);
   assert.equal(t.layoutFor(fakePad({ id: 'hat pad', index: 0, axes: [0, 0, 0, 0, 0] })).hatAxis, 4);
+});
+
+// —— THE CORPSE HOLDS NO SWAY ——————————————————————————————————————
+
+test('a frozen entry stuck mid-press never swallows the live pad', () => {
+  // Chrome's Switch handshake killed slot 0 while its stick was
+  // deflected; the player is holding the (previously chosen) pad in
+  // slot 1, currently idle. The corpse must not steal the active slot.
+  const corpse = fakePad({ id: 'corpse', index: 0, axes: [0.9, 0, 0, 0] });
+  const live = fakePad({ id: 'live', index: 1 });
+  const { pad, touched } = pickLivePad(
+    [
+      { pad: corpse, quietMs: 5000 },
+      { pad: live, quietMs: 0 },
+    ],
+    1,
+  );
+  assert.equal(pad?.id, 'live');
+  assert.equal(touched, false);
+});
+
+test('a fresh touched pad beats a frozen-touched earlier slot', () => {
+  const corpse = fakePad({ id: 'corpse', index: 0, pressed: [0] });
+  const live = fakePad({ id: 'live', index: 1, axes: [0, 0.8, 0, 0] });
+  const { pad, touched } = pickLivePad(
+    [
+      { pad: corpse, quietMs: 9000 },
+      { pad: live, quietMs: 0 },
+    ],
+    null,
+  );
+  assert.equal(pad?.id, 'live');
+  assert.equal(touched, true);
+});
+
+test('nobody touched: the held pad wins, then slot order', () => {
+  const a = fakePad({ id: 'a', index: 0 });
+  const b = fakePad({ id: 'b', index: 1 });
+  const cands = [
+    { pad: a, quietMs: 100 },
+    { pad: b, quietMs: 100 },
+  ];
+  assert.equal(pickLivePad(cands, 1).pad?.id, 'b');
+  assert.equal(pickLivePad(cands, null).pad?.id, 'a');
+});
+
+test('a button held steady past the freshness window keeps its pad chosen', () => {
+  // Holding a button advances no timestamps, so the only pad goes
+  // "quiet" while genuinely pressed — it must still be returned (as
+  // held / first, just no longer claiming the touched slot).
+  const only = fakePad({ id: 'only', index: 0, pressed: [0] });
+  const held = pickLivePad([{ pad: only, quietMs: 4000 }], 0);
+  assert.equal(held.pad?.id, 'only');
+  const fallback = pickLivePad([{ pad: only, quietMs: 4000 }], null);
+  assert.equal(fallback.pad?.id, 'only');
 });

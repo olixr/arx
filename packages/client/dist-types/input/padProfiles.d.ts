@@ -108,6 +108,34 @@ export declare class PadTranslator {
     private memoKey;
     private memo;
 }
+/**
+ * THE CORPSE HOLDS NO SWAY. Chrome ships its own Switch-Pro driver and
+ * runs a Nintendo handshake a couple of seconds after a Bluetooth
+ * connect; a pad that emulates the protocol imperfectly (8BitDo in
+ * Switch mode) goes silent right there — the OS keeps the device, but
+ * the browser's gamepad entry freezes at its last state, sometimes
+ * while a second entry re-registers. An entry frozen MID-PRESS (stick
+ * deflected the instant it died) would read as "being touched" forever
+ * and swallow the live pad. So a pad may claim the active slot only
+ * while its state has changed recently; a quiet entry can still be
+ * held or be the slot-order fallback — an untouched healthy pad is
+ * also quiet, and must stay reachable.
+ */
+export declare const PAD_FROZEN_MS = 1500;
+export interface PadCandidate {
+    pad: Gamepad;
+    /** Wall ms since the entry's timestamp last advanced. */
+    quietMs: number;
+}
+/**
+ * THE LIVE PAD, decided in one place: whichever pad is actually being
+ * touched (and not a frozen corpse) wins and sticks; the previously
+ * chosen pad is next; slot order is the tie-break of last resort.
+ */
+export declare function pickLivePad(pads: readonly PadCandidate[], heldIndex: number | null): {
+    pad: Gamepad | null;
+    touched: boolean;
+};
 /** Any button pressed or stick deflected — "this pad is the live one". */
 export declare function padIsActive(pad: Gamepad): boolean;
 //# sourceMappingURL=padProfiles.d.ts.map

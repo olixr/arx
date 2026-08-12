@@ -355,6 +355,48 @@ export class PadTranslator {
   private memo: PadView | null = null;
 }
 
+/**
+ * THE CORPSE HOLDS NO SWAY. Chrome ships its own Switch-Pro driver and
+ * runs a Nintendo handshake a couple of seconds after a Bluetooth
+ * connect; a pad that emulates the protocol imperfectly (8BitDo in
+ * Switch mode) goes silent right there — the OS keeps the device, but
+ * the browser's gamepad entry freezes at its last state, sometimes
+ * while a second entry re-registers. An entry frozen MID-PRESS (stick
+ * deflected the instant it died) would read as "being touched" forever
+ * and swallow the live pad. So a pad may claim the active slot only
+ * while its state has changed recently; a quiet entry can still be
+ * held or be the slot-order fallback — an untouched healthy pad is
+ * also quiet, and must stay reachable.
+ */
+export const PAD_FROZEN_MS = 1500;
+
+export interface PadCandidate {
+  pad: Gamepad;
+  /** Wall ms since the entry's timestamp last advanced. */
+  quietMs: number;
+}
+
+/**
+ * THE LIVE PAD, decided in one place: whichever pad is actually being
+ * touched (and not a frozen corpse) wins and sticks; the previously
+ * chosen pad is next; slot order is the tie-break of last resort.
+ */
+export function pickLivePad(
+  pads: readonly PadCandidate[],
+  heldIndex: number | null,
+): { pad: Gamepad | null; touched: boolean } {
+  let first: Gamepad | null = null;
+  let held: Gamepad | null = null;
+  let touched: Gamepad | null = null;
+  for (const { pad, quietMs } of pads) {
+    if (!first) first = pad;
+    if (pad.index === heldIndex) held = pad;
+    if (!touched && quietMs < PAD_FROZEN_MS && padIsActive(pad)) touched = pad;
+  }
+  if (touched) return { pad: touched, touched: true };
+  return { pad: held ?? first, touched: false };
+}
+
 /** Any button pressed or stick deflected — "this pad is the live one". */
 export function padIsActive(pad: Gamepad): boolean {
   for (const b of pad.buttons) {

@@ -1,6 +1,6 @@
 import { InputButton, SNEAK_FACTOR, WALK_FACTOR } from '@arx/shared';
 import { bindings } from './bindings.js';
-import { PadTranslator, padIsActive, type PadView } from './padProfiles.js';
+import { PadTranslator, pickLivePad, type PadCandidate, type PadView } from './padProfiles.js';
 
 const STICK_DEADZONE = 0.22;
 
@@ -127,6 +127,7 @@ export class InputManager {
       const gp = (e as GamepadEvent).gamepad;
       if (gp) {
         this.translator.forget(gp);
+        this.padStamps.delete(gp.index);
         if (this.activePadIndex === gp.index) this.activePadIndex = null;
       }
     });
@@ -211,24 +212,36 @@ export class InputManager {
    * OS never reaps), and a silent pad in slot 0 then swallows every
    * frame. So: whichever pad is ACTUALLY being touched wins, that
    * choice sticks until another pad speaks, and slot order is only the
-   * tie-break of last resort.
+   * tie-break of last resort. The choice itself (including THE CORPSE
+   * HOLDS NO SWAY — a frozen entry can never claim to be touched)
+   * lives in pickLivePad.
    */
   private pickPad(): Gamepad | null {
     if (typeof navigator.getGamepads !== 'function') return null;
-    let first: Gamepad | null = null;
-    let held: Gamepad | null = null;
-    let active: Gamepad | null = null;
+    const candidates: PadCandidate[] = [];
     for (const pad of navigator.getGamepads()) {
       if (!pad || !pad.connected) continue;
-      if (!first) first = pad;
-      if (pad.index === this.activePadIndex) held = pad;
-      if (!active && padIsActive(pad)) active = pad;
+      candidates.push({ pad, quietMs: this.quietFor(pad) });
     }
-    if (active) {
-      this.activePadIndex = active.index;
-      return active;
+    const { pad, touched } = pickLivePad(candidates, this.activePadIndex);
+    if (pad && touched) this.activePadIndex = pad.index;
+    return pad;
+  }
+
+  /**
+   * Wall ms since a pad entry's state last changed (0 the first time it
+   * is seen). Gamepad timestamps only advance on state change, so this
+   * is "how long has this entry been telling the same story" — the
+   * liveness signal for both pickPad and the Controls readout.
+   */
+  private quietFor(pad: Gamepad): number {
+    const now = performance.now();
+    const prev = this.padStamps.get(pad.index);
+    if (!prev || prev.stamp !== pad.timestamp) {
+      this.padStamps.set(pad.index, { stamp: pad.timestamp, at: now });
+      return 0;
     }
-    return held ?? first;
+    return now - prev.at;
   }
 
   /** The live pad, translated into the standard layout. */
@@ -255,16 +268,9 @@ export class InputManager {
         if (pad && pad.connected) views.push(this.translator.view(pad));
       }
     }
-    const now = performance.now();
     const quietMs: Record<number, number> = {};
     for (const v of views) {
-      const prev = this.padStamps.get(v.index);
-      if (!prev || prev.stamp !== v.raw.timestamp) {
-        this.padStamps.set(v.index, { stamp: v.raw.timestamp, at: now });
-        quietMs[v.index] = 0;
-      } else {
-        quietMs[v.index] = now - prev.at;
-      }
+      quietMs[v.index] = this.quietFor(v.raw);
     }
     const live = this.pad();
     return {
