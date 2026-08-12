@@ -4,6 +4,8 @@ import {
   RaisedKind,
   buildRegisterRows,
   classifyRaised,
+  mixSig,
+  planStretches,
   type RegisterHost,
 } from './staticRegister.js';
 
@@ -302,4 +304,66 @@ test('the classifier and the register agree tile for tile', () => {
       );
     }
   }
+});
+
+// ── Phase 2: band stretch planning ──────────────────────────────
+
+test('stretches split at non-bandable members, never at empty gaps', () => {
+  const member = (kind: RaisedKind, tx: number, len = 1) =>
+    ({ kind, tile: 1, tx, ty: 0, len, endX: tx + len - 1, treeLike: false });
+  const rows = [
+    [
+      member(RaisedKind.Wall, 1),
+      member(RaisedKind.Wall, 2),
+      member(RaisedKind.Doorway, 3), // live — splits the run
+      member(RaisedKind.Wall, 4),
+      member(RaisedKind.Wall, 9), // gap 5-8 empty — same stretch
+    ],
+  ];
+  const ss = planStretches(rows, (m) => m.kind !== RaisedKind.Doorway)[0]!;
+  assert.deepEqual(
+    ss.map((s) => [s.i0, s.i1]),
+    [
+      [0, 1],
+      [3, 4],
+    ],
+  );
+});
+
+test('ramp runs stay singleton stretches beside other bandables', () => {
+  const member = (kind: RaisedKind, tx: number, len = 1) =>
+    ({ kind, tile: 1, tx, ty: 0, len, endX: tx + len - 1, treeLike: false });
+  const rows = [
+    [member(RaisedKind.Wall, 0), member(RaisedKind.RampRun, 1, 3), member(RaisedKind.Wall, 5)],
+  ];
+  const ss = planStretches(rows, () => true)[0]!;
+  assert.deepEqual(
+    ss.map((s) => [s.i0, s.i1]),
+    [
+      [0, 0],
+      [1, 1],
+      [2, 2],
+    ],
+  );
+});
+
+test('stretch keys are stable across rebuilds and distinct across rows', () => {
+  const member = (tx: number, ty: number) =>
+    ({ kind: RaisedKind.Wall, tile: 1, tx, ty, len: 1, endX: tx, treeLike: false });
+  const mk = () => [[member(7, 0), member(8, 0)], undefined, [member(7, 2)]];
+  const a = planStretches(mk(), () => true);
+  const b = planStretches(mk(), () => true);
+  assert.equal(a[0]![0]!.key, b[0]![0]!.key);
+  assert.notEqual(a[0]![0]!.key, a[2]![0]!.key);
+});
+
+test('mixSig is order- and value-sensitive', () => {
+  let h1 = 0x811c9dc5 | 0;
+  let h2 = 0x811c9dc5 | 0;
+  for (const v of [3, 7, 11]) h1 = mixSig(h1, v);
+  for (const v of [7, 3, 11]) h2 = mixSig(h2, v);
+  assert.notEqual(h1, h2);
+  let h3 = 0x811c9dc5 | 0;
+  for (const v of [3, 7, 12]) h3 = mixSig(h3, v);
+  assert.notEqual(h1, h3);
 });

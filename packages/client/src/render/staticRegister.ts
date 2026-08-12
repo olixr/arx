@@ -245,3 +245,109 @@ export function buildRegisterRows(
   }
   return rows;
 }
+
+/**
+ * THE STANDING WORLD phase 2 — band stretch planning. A stretch is a
+ * maximal run of consecutive BANDABLE members within one register row:
+ * it splits at every non-bandable member (a doorway inside a wall run
+ * must keep its exact stable-sort tie position between its neighbours)
+ * but rides over empty ground (nothing paints there, so merging across
+ * gaps costs nothing and keeps bands big). Ramp runs stay SINGLETON
+ * stretches: the same run registers in every chunk it touches, and the
+ * frame's runSeen dedupe must be able to skip a whole band.
+ */
+export interface StretchRef {
+  /** Member index range [i0, i1] inclusive, into the row's list. */
+  i0: number;
+  i1: number;
+  /** Stable identity across register rebuilds: local row + anchor x. */
+  key: number;
+}
+
+export function planStretches(
+  rows: RegisterRows,
+  bandable: (m: RaisedMember) => boolean,
+): Array<StretchRef[] | undefined> {
+  const out: Array<StretchRef[] | undefined> = new Array(rows.length);
+  for (let ly = 0; ly < rows.length; ly++) {
+    const list = rows[ly];
+    if (!list) continue;
+    let cur: StretchRef | null = null;
+    let acc: StretchRef[] | undefined;
+    for (let i = 0; i < list.length; i++) {
+      const m = list[i]!;
+      const solo = m.kind === RaisedKind.RampRun || m.kind === RaisedKind.RampSingle;
+      if (bandable(m)) {
+        if (solo) {
+          (acc ??= []).push({ i0: i, i1: i, key: packStretchKey(ly, m.tx) });
+          cur = null;
+        } else if (cur) {
+          cur.i1 = i;
+        } else {
+          cur = { i0: i, i1: i, key: packStretchKey(ly, m.tx) };
+          (acc ??= []).push(cur);
+        }
+      } else {
+        cur = null;
+      }
+    }
+    if (acc) out[ly] = acc;
+  }
+  return out;
+}
+
+function packStretchKey(ly: number, tx: number): number {
+  // Local row in the high bits, anchor x folded into 2048 — collisions
+  // are broken by the content signature, which always rides along.
+  return ly * 2048 + (((tx % 2048) + 2048) % 2048);
+}
+
+/** FNV-1a step for band content signatures. */
+export function mixSig(h: number, v: number): number {
+  h ^= v | 0;
+  h = Math.imul(h, 16777619);
+  return h | 0;
+}
+
+/** One baked sort-bucket of a stretch: all members whose emitted items
+ *  share an exact (sortY, strat, elevated) key, painted in emission
+ *  order into one pooled canvas (THE BAND KEEPS THE SHELF). */
+export interface BandBucket {
+  canvas: HTMLCanvasElement;
+  sortY: number;
+  strat: number | undefined;
+  elevated: boolean;
+  /** Canvas-space coords where world (wx0, rowY) landed at bake. */
+  padL: number;
+  padT: number;
+}
+
+/** A stretch's bake: identity (content sig + outline + grid) and the
+ *  sort-bucket canvases. gridPx mismatch alone leaves the bake usable
+ *  (the blit scale-compensates through snapped corners) while a paced
+ *  re-bake replaces it. */
+export interface StretchBake {
+  sig: number;
+  gridPx: number;
+  outlined: boolean;
+  wx0: number;
+  wx1: number;
+  rowY: number;
+  /** Foreshortened row depth in bake px (yScale * gridPx). */
+  rowDepthPx: number;
+  buckets: BandBucket[];
+  hasShadows: boolean;
+  used: number;
+}
+
+/** The renderer's per-chunk register entry: compiled rows + planned
+ *  band stretches + the member→stretch index, all rebuilt together on
+ *  a rev bump. Data identity + rev ARE the cache key. */
+export interface ChunkRegister<TData> {
+  data: TData;
+  rev: number;
+  rows: RegisterRows;
+  stretches: Array<StretchRef[] | undefined>;
+  stretchSigs: Array<Int32Array | undefined>;
+  memberStretch: Array<Int16Array | undefined>;
+}

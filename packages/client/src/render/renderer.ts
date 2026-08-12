@@ -169,9 +169,15 @@ import {
   RaisedKind,
   buildRegisterRows,
   classifyRaised,
+  mixSig,
+  planStretches,
+  type BandBucket,
+  type ChunkRegister,
   type RaisedMember,
   type RegisterHost,
   type RegisterRows,
+  type StretchBake,
+  type StretchRef,
 } from './staticRegister.js';
 import { UNDERGROUND_Y } from '../audio/zones.js';
 import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
@@ -3381,6 +3387,9 @@ export class Renderer {
     // fresh viewport warms in 3-4 frames; the per-tile scan covers
     // the gap, so a capped start never leaves a hole.
     this.registerBuildsLeft = 4;
+    // Architecture-band bakes per frame (ms): a cold band draws live
+    // until the budget reaches it — THE STILL-WORLD BARGAIN.
+    this.staticBakeMsLeft = 1.5;
     // Zoomed out, the same world-space sway spans FEWER screen pixels —
     // stretch the sampling floor so wide framings stop paying the full
     // re-bake rate for sub-pixel motion. Cadence 10 at ≤0.85× steps
@@ -5360,6 +5369,21 @@ export class Renderer {
         if (this.registers.size <= 72) break;
       }
     }
+    // Band bakes carry real pixels — same distance rule, canvases
+    // back to the pool; a re-entered street re-bakes on the budget.
+    if (this.bandCache.size > 240) {
+      const rcx = this.camera.x / CHUNK_SIZE;
+      const rcy = this.camera.y / CHUNK_SIZE;
+      for (const [key, sb] of this.bandCache) {
+        // Keys read "cx,cy|stretchKey".
+        const [cx, cy] = key.slice(0, key.indexOf('|')).split(',').map(Number);
+        if (Math.abs(cx! - rcx) > 4 || Math.abs(cy! - rcy) > 4) {
+          this.releaseStretchBake(sb);
+          this.bandCache.delete(key);
+        }
+        if (this.bandCache.size <= 200) break;
+      }
+    }
     // Hi-res bakes are 4× the pixels — keep far fewer of them around.
     const hiRes = this.bakePx() > TILE_PX;
     const cap = hiRes ? 28 : 80;
@@ -5575,6 +5599,11 @@ export class Renderer {
     // Run-merged components already emitted this frame, by anchor.
     const runSeen = new Set<number>();
     this.regGame = game;
+    this.bandEmitted.clear();
+    this.bandStats.blit = 0;
+    this.bandStats.live = 0;
+    this.bandStats.hot = 0;
+    this.bandStats.bakes = 0;
     // Tall-content pads (see TREE_PAD_S/TREE_PAD_X/PROP_PAD_S): rows
     // up to PROP_PAD_S past the shared bounds admit everything (walls
     // and stations are ~2.2 tiles tall — their crowns reach 3.7 rows
@@ -5592,8 +5621,9 @@ export class Renderer {
         if (!data) continue; // unloaded: every ground read is undefined
         const segX0 = Math.max(x0, cx * CHUNK_SIZE);
         const segX1 = Math.min(x1, cx * CHUNK_SIZE + CHUNK_SIZE - 1);
-        const rows = this.registerRowsFor(cx, cy, data);
-        if (rows) this.emitRegisterRow(game, items, rows[ly], ty, segX0, segX1, b, runSeen);
+        const key = `${cx},${cy}`;
+        const reg = this.registerFor(key, cx, cy, data);
+        if (reg) this.emitRegisterRow(game, items, reg, key, ly, ty, segX0, segX1, b, runSeen);
         else this.scanRaisedRange(game, items, ty, segX0, segX1, b, runSeen);
       }
     }
@@ -5604,10 +5634,7 @@ export class Renderer {
    *  touchNeighbors bumps neighbours on every patch, so cross-border
    *  probes (run walks, deck fills, side-gate tests — all ≤1 chunk of
    *  reach) can never go stale silently. */
-  private readonly registers = new Map<
-    string,
-    { data: ChunkData; rev: number; rows: RegisterRows }
-  >();
+  private readonly registers = new Map<string, ChunkRegister<ChunkData>>();
   /** Register compiles per frame — a fresh viewport (~12-16 chunks)
    *  warms over 3-4 frames while the per-tile scan covers the gap. */
   private registerBuildsLeft = 0;
@@ -5646,16 +5673,66 @@ export class Renderer {
   // Pooled emission-order scratch (a row holds 0-10 members).
   private readonly regEmitM: RaisedMember[] = [];
   private readonly regEmitX: number[] = [];
+  private readonly regEmitI: number[] = [];
 
-  private registerRowsFor(cx: number, cy: number, data: ChunkData): RegisterRows | null {
-    const key = `${cx},${cy}`;
+  private registerFor(
+    key: string,
+    cx: number,
+    cy: number,
+    data: ChunkData,
+  ): ChunkRegister<ChunkData> | null {
     const reg = this.registers.get(key);
-    if (reg && reg.data === data && reg.rev === (data.rev ?? 0)) return reg.rows;
+    if (reg && reg.data === data && reg.rev === (data.rev ?? 0)) return reg;
     if (this.registerBuildsLeft <= 0) return null;
     this.registerBuildsLeft--;
     const rows = buildRegisterRows(this.regHost, cx, cy, CHUNK_SIZE);
-    this.registers.set(key, { data, rev: data.rev ?? 0, rows });
-    return rows;
+    // Plan the band stretches beside the rows: maximal bandable runs
+    // per row, content-signed so a rebuilt register keeps any bake
+    // whose members truly didn't change (a door toggle two chunks
+    // over bumps our rev via touchNeighbors; our walls' sigs match
+    // and their canvases live on).
+    const stretches = planStretches(rows, this.memberBandableFn);
+    const stretchSigs: Array<Int32Array | undefined> = new Array(rows.length);
+    const memberStretch: Array<Int16Array | undefined> = new Array(rows.length);
+    for (let ly = 0; ly < rows.length; ly++) {
+      const ss = stretches[ly];
+      const list = rows[ly];
+      if (!ss || !list) continue;
+      const sigs = new Int32Array(ss.length);
+      const ms = new Int16Array(list.length).fill(-1);
+      for (let si = 0; si < ss.length; si++) {
+        const st = ss[si]!;
+        let h = 0x811c9dc5 | 0;
+        for (let i = st.i0; i <= st.i1; i++) {
+          const m = list[i]!;
+          h = mixSig(h, m.kind);
+          h = mixSig(h, m.tile);
+          h = mixSig(h, m.tx);
+          h = mixSig(h, m.ty);
+          h = mixSig(h, m.len);
+          h = mixSig(h, this.regGame!.world.elevAt(m.tx, m.ty));
+          ms[i] = si;
+        }
+        sigs[si] = h;
+      }
+      stretchSigs[ly] = sigs;
+      memberStretch[ly] = ms;
+    }
+    const entry = { data, rev: data.rev ?? 0, rows, stretches, stretchSigs, memberStretch };
+    this.registers.set(key, entry);
+    // Stale bakes for stretches that no longer exist die here; kept
+    // sigs revalidate lazily at emission.
+    const pfx = key + '|';
+    for (const bk of this.bandCache.keys()) {
+      if (bk.startsWith(pfx)) {
+        const live = entry.stretches.some((ss) => ss?.some((st) => key + '|' + st.key === bk));
+        if (!live) {
+          this.releaseStretchBake(this.bandCache.get(bk)!);
+          this.bandCache.delete(bk);
+        }
+      }
+    }
+    return entry;
   }
 
   /**
@@ -5670,22 +5747,28 @@ export class Renderer {
   private emitRegisterRow(
     game: ClientGame,
     items: DrawItem[],
-    list: readonly RaisedMember[] | undefined,
+    reg: ChunkRegister<ChunkData>,
+    chunkKey: string,
+    ly: number,
     ty: number,
     segX0: number,
     segX1: number,
     b: { minTx: number; maxTx: number; minTy: number; maxTy: number },
     runSeen: Set<number>,
   ): void {
+    const list = reg.rows[ly];
     if (!list || list.length === 0) return;
     const deepSouth = ty > b.maxTy + PROP_PAD_S;
     const coreX0 = b.minTx - 1;
     const coreX1 = b.maxTx + 1;
     const ms = this.regEmitM;
     const xs = this.regEmitX;
+    const is = this.regEmitI;
     ms.length = 0;
     xs.length = 0;
-    for (const m of list) {
+    is.length = 0;
+    for (let mi = 0; mi < list.length; mi++) {
+      const m = list[mi]!;
       if (deepSouth && !m.treeLike) continue;
       let eX = m.tx < segX0 ? segX0 : m.tx;
       let endX = m.endX;
@@ -5703,14 +5786,32 @@ export class Renderer {
       while (i > 0 && xs[i - 1]! > eX) {
         ms[i] = ms[i - 1]!;
         xs[i] = xs[i - 1]!;
+        is[i] = is[i - 1]!;
         i--;
       }
       ms[i] = m;
       xs[i] = eX;
+      is[i] = mi;
     }
-    for (const m of ms) this.emitRaisedMember(game, items, m, runSeen);
+    const mstretch = reg.memberStretch[ly];
+    for (let k = 0; k < ms.length; k++) {
+      const si = mstretch ? mstretch[is[k]!]! : -1;
+      if (si >= 0) {
+        // A band member: the whole stretch emits at its first admitted
+        // member's array position (members of one stretch are always
+        // consecutive here — nothing non-bandable stands inside one).
+        const st = reg.stretches[ly]![si]!;
+        const ck = chunkKey + '|' + st.key;
+        if (this.bandEmitted.get(ck) === this.frameNo) continue;
+        this.bandEmitted.set(ck, this.frameNo);
+        this.emitStretch(game, items, reg, ck, ly, si, runSeen);
+      } else {
+        this.emitRaisedMember(game, items, ms[k]!, runSeen);
+      }
+    }
     ms.length = 0;
     xs.length = 0;
+    is.length = 0;
   }
 
   /** The per-tile fallback: classify-and-emit across a row segment —
@@ -6029,6 +6130,364 @@ export class Renderer {
     }
   }
 
+  // ── THE STANDING WORLD phase 2: ARCHITECTURE BANDS ──────────────
+  // Cold walls, doorless garrison, ramps, and rails — the raw-path
+  // fillRect storm — bake into pooled per-stretch canvases painted by
+  // the very item painters the live path runs (THE SAME-BRUSH LAW:
+  // constructed under a swapped ctx + bake camera + unit snap lattice,
+  // with the reveal veil forced full). Each bake bucket blits as ONE
+  // DrawItem at its members' exact (strat, sortY), so THE SHELF LAW
+  // interleave is preserved by construction. Anything animating this
+  // frame — a reveal cut, a shake — flips its whole stretch back to
+  // per-member live draw (THE HOT MEMBER RULE); a missing or stale
+  // bake declines the same way (THE STILL-WORLD BARGAIN: a bake is a
+  // cache, never a mode). Shadows are never baked — the sun moves and
+  // the reveal shortens casts, so band items carry their members' own
+  // live drawShadow closures into the prepass.
+  private readonly bandCache = new Map<string, StretchBake>();
+  /** Per-frame band accounting (the ?perf confession, phase 5). */
+  private readonly bandStats = { blit: 0, live: 0, hot: 0, bakes: 0 };
+  /** Per-frame "this stretch already emitted" marker (blit or live). */
+  private readonly bandEmitted = new Map<string, number>();
+  private readonly bandScratchSeen = new Set<number>();
+  private staticBakeMsLeft = 0;
+  /** True while a band bake paints: the veil fields read full height
+   *  and collect-side glow effects stay quiet (bakingMask). */
+  private bakeVeilFull = false;
+  /** Bound once — planStretches calls it per member. */
+  private readonly memberBandableFn = (m: RaisedMember): boolean => this.memberBandable(m);
+
+  /**
+   * v1 band membership: kinds whose painters are pure functions of
+   * world state (verified: no clock, no sky) at full veil height.
+   * Windowed walls read sky.flame through their glass and hung walls
+   * breathe with the breeze — both stay live (SKY NEVER KEYS A BAKE).
+   * Doors, gates, and their side variants ride openness clocks; the
+   * fire/glow families and everything through objectItem keep their
+   * own caches. Phase 4 widens this set.
+   */
+  private memberBandable(m: RaisedMember): boolean {
+    switch (m.kind) {
+      case RaisedKind.Wall: {
+        const t = m.tile as Tile;
+        if (t === Tile.WallWoodWindow || t === Tile.WallStoneWindow) return false;
+        return !wallHungInfo(this.regGame!.world.detailAt(m.tx, m.ty));
+      }
+      case RaisedKind.GarrisonWall:
+        return !wallHungInfo(this.regGame!.world.detailAt(m.tx, m.ty));
+      case RaisedKind.DiagWall:
+      case RaisedKind.Rail:
+      case RaisedKind.RampRun:
+      case RaisedKind.RampSingle:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /** The layer stands down where its premises fail: the editor pins
+   *  the camera and patches tiles at brush rate. */
+  private staticLayerOn(): boolean {
+    return this.cameraOverride === null;
+  }
+
+  /** Integer device pixels per tile for band bakes (THE CRISP GRID
+   *  LAW): targetZoom (one flip per zoom, never mid-glide) × the
+   *  adaptive dpr — the treeSprites resolution model, never the
+   *  ground tier (walls are 1-3px-stroke art; softening is banned). */
+  private bandGridPx(): number {
+    return Math.max(8, Math.round(this.camera.baseScale * this.camera.targetZoom * this.dpr()));
+  }
+
+  /**
+   * THE HOT MEMBER RULE's predicate, reusing the live path's own gates
+   * verbatim: a stretch is hot if any wall member's reveal height is
+   * off full (checked only inside the cut's known support window — the
+   * same early-outs wallHeightAt itself takes), if its north neighbor
+   * is (the REAR RISER repaints on the neighbor's ease), or if a
+   * destructible member is mid-shake.
+   */
+  private stretchHot(game: ClientGame, list: readonly RaisedMember[], s: StretchRef): boolean {
+    for (let i = s.i0; i <= s.i1; i++) {
+      const m = list[i]!;
+      switch (m.kind) {
+        case RaisedKind.Wall:
+        case RaisedKind.DiagWall: {
+          if (this.cutCtx > 0.001) {
+            const dy = m.ty - this.ownPY;
+            if (dy >= -2.5 && dy <= 12.5 && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
+              if (this.wallHeightAt(game, m.tx, m.ty) !== WALL_H) return true;
+              if (this.wallHeightAt(game, m.tx, m.ty - 1) !== WALL_H) return true;
+            }
+          }
+          break;
+        }
+        case RaisedKind.GarrisonWall: {
+          const dy = m.ty - this.ownPY;
+          if (dy >= -2.5 && dy <= 16.5 && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
+            if (this.garrisonHeightAt(game, m.tx, m.ty) !== GARRISON_H) return true;
+            if (this.garrisonHeightAt(game, m.tx, m.ty - 1) !== GARRISON_H) return true;
+          }
+          break;
+        }
+        default:
+          break; // ramps and rails never animate
+      }
+      if (this.propShakes.size > 0 && destructibleInfo(m.tile) && this.propShakeX(m.tx, m.ty) !== 0)
+        return true;
+    }
+    return false;
+  }
+
+  /**
+   * Emit one stretch: blit its bake when standing and cold, bake it
+   * when the budget allows, and fall back to per-member live emission
+   * otherwise. Members of a stretch are consecutive in the row walk,
+   * so emitting the whole stretch at its first admitted member keeps
+   * every stable-sort tie exactly where the scan put it.
+   */
+  private emitStretch(
+    game: ClientGame,
+    items: DrawItem[],
+    reg: ChunkRegister<ChunkData>,
+    ck: string,
+    ly: number,
+    si: number,
+    runSeen: Set<number>,
+  ): void {
+    const list = reg.rows[ly]!;
+    const s = reg.stretches[ly]![si]!;
+    const sig = reg.stretchSigs[ly]![si]!;
+    const m0 = list[s.i0]!;
+    // A ramp run registers in every chunk it touches — whoever emits
+    // first (band or live) owns the frame; the twin copy stands down.
+    const isRun = m0.kind === RaisedKind.RampRun;
+    if (isRun && runSeen.has(packTile(m0.tx, m0.ty))) return;
+    const hot = this.staticLayerOn() && this.stretchHot(game, list, s);
+    if (hot) this.bandStats.hot++;
+    if (this.staticLayerOn() && !hot) {
+      const gridPx = this.bandGridPx();
+      let bake = this.bandCache.get(ck);
+      const contentFresh =
+        bake !== undefined && bake.sig === sig && bake.outlined === this.outlineOn;
+      if (
+        (!contentFresh || bake!.gridPx !== gridPx) &&
+        !this.zoomGliding &&
+        this.staticBakeMsLeft > 0.2
+      ) {
+        const fresh = this.bakeStretch(game, list, s, sig, gridPx);
+        if (fresh) {
+          this.bandStats.bakes++;
+          if (bake) this.releaseStretchBake(bake);
+          this.bandCache.set(ck, fresh);
+          bake = fresh;
+        }
+      }
+      if (bake && bake.sig === sig && bake.outlined === this.outlineOn) {
+        // Content matches — blit. A gridPx-stale bake still serves
+        // (the snapped-corner blit scale-compensates) while the paced
+        // re-bake above replaces it.
+        if (isRun) runSeen.add(packTile(m0.tx, m0.ty));
+        this.bandStats.blit++;
+        bake.used = this.frameNo;
+        let shadowItems: DrawItem[] | null = null;
+        if (bake.hasShadows) {
+          // SHADOWS NEVER BAKE: mint the members' items fresh for
+          // their live drawShadow closures (sun angle + veil height
+          // stay continuous); their draws are never called.
+          shadowItems = [];
+          const seen2 = this.bandScratchSeen;
+          seen2.clear();
+          for (let i = s.i0; i <= s.i1; i++)
+            this.emitRaisedMember(game, shadowItems, list[i]!, seen2);
+        }
+        const buckets = bake.buckets;
+        for (let bi = 0; bi < buckets.length; bi++) {
+          const bk = buckets[bi]!;
+          const sh = bi === 0 ? shadowItems : null;
+          const sb = bake;
+          items.push({
+            sortY: bk.sortY,
+            strat: bk.strat,
+            elevated: bk.elevated ? true : undefined,
+            drawShadow: sh
+              ? () => {
+                  for (const it of sh) it.drawShadow?.();
+                }
+              : undefined,
+            draw: () => this.blitBand(sb, bk),
+          });
+        }
+        return;
+      }
+    }
+    // THE STILL-WORLD BARGAIN: the live path, verbatim.
+    this.bandStats.live++;
+    for (let i = s.i0; i <= s.i1; i++) this.emitRaisedMember(game, items, list[i]!, runSeen);
+  }
+
+  /** Blit one band bucket exactly like the elevated-ground rows do:
+   *  dest corners from snapPx'd projections shared with every other
+   *  layer (SHARED-CORNER), so bands, ground, and live neighbours
+   *  translate in lockstep and abutting bands meet pixel-true. */
+  private blitBand(sb: StretchBake, bk: BandBucket): void {
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const pA = cam.worldToScreen(sb.wx0, sb.rowY, this.w, this.h);
+    const pB = cam.worldToScreen(sb.wx1, sb.rowY + 1, this.w, this.h);
+    const x0 = cam.snapPx(pA.x);
+    const y0 = cam.snapPx(pA.y);
+    const kx = (cam.snapPx(pB.x) - x0) / ((sb.wx1 - sb.wx0) * sb.gridPx);
+    const ky = (cam.snapPx(pB.y) - y0) / sb.rowDepthPx;
+    ctx.drawImage(
+      bk.canvas,
+      x0 - bk.padL * kx,
+      y0 - bk.padT * ky,
+      bk.canvas.width * kx,
+      bk.canvas.height * ky,
+    );
+  }
+
+  /**
+   * Bake one stretch (THE SAME-BRUSH LAW). One probe construction
+   * discovers the sort buckets; then per bucket the ctx, camera,
+   * snap lattice, and viewport swap to the band canvas (scale =
+   * gridPx, snapDpr = 1 — every snapped tile edge lands on a bake
+   * integer) and the members' items are constructed AGAIN under the
+   * swap (builders capture projections at construction) and drawn.
+   * bakeVeilFull holds the reveal at rest; bakingMask keeps glow
+   * side effects out of the pixels.
+   */
+  private bakeStretch(
+    game: ClientGame,
+    list: readonly RaisedMember[],
+    s: StretchRef,
+    sig: number,
+    gridPx: number,
+  ): StretchBake | null {
+    const t0 = performance.now();
+    let wx0 = Infinity;
+    let wx1 = -Infinity;
+    let maxElev = 0;
+    let garrison = false;
+    let rampish = false;
+    let hasShadows = false;
+    for (let i = s.i0; i <= s.i1; i++) {
+      const m = list[i]!;
+      if (m.tx < wx0) wx0 = m.tx;
+      if (m.endX + 1 > wx1) wx1 = m.endX + 1;
+      const e = game.world.elevAt(m.tx, m.ty);
+      if (e > maxElev) maxElev = e;
+      if (m.kind === RaisedKind.GarrisonWall) garrison = true;
+      if (m.kind === RaisedKind.RampRun || m.kind === RaisedKind.RampSingle) rampish = true;
+      else hasShadows = true;
+    }
+    const rowY = list[s.i0]!.ty;
+    // Head-room in tiles: the tallest member's crown plus its terrace
+    // lift; generous by design — pad pixels are transparent and cost
+    // only bytes, while a clipped crown is a visible bug.
+    const northT = (garrison ? 4.6 : 2.8) + maxElev * ELEV_H + (rampish ? 1.5 : 0);
+    const southT = rampish ? 1.7 : 0.7;
+    const padXT = 1;
+    const W = Math.ceil((wx1 - wx0 + padXT * 2) * gridPx);
+    const H = Math.ceil((northT + southT + this.camera.yScale) * gridPx);
+    if (W <= 0 || W > 8192 || H > 4096) return null;
+    const cam = this.camera;
+    const savedX = cam.x;
+    const savedY = cam.y;
+    const savedScale = cam.scale;
+    const savedSnap = cam.snapDpr;
+    const savedW = this.w;
+    const savedH = this.h;
+    const savedCtx = this.ctx;
+    this.bakeVeilFull = true;
+    this.bakingMask = true;
+    const keyOf = (it: DrawItem): string => `${it.sortY}|${it.strat ?? 'u'}|${it.elevated ? 1 : 0}`;
+    const buckets: BandBucket[] = [];
+    try {
+      // Probe pass (live camera): discover the sort buckets in first-
+      // occurrence order. Only keys are read; the items are discarded.
+      const probe: DrawItem[] = [];
+      const seen = this.bandScratchSeen;
+      seen.clear();
+      for (let i = s.i0; i <= s.i1; i++) this.emitRaisedMember(game, probe, list[i]!, seen);
+      const bucketKeys: string[] = [];
+      for (const it of probe) {
+        const k = keyOf(it);
+        if (!bucketKeys.includes(k)) bucketKeys.push(k);
+      }
+      for (const bkKey of bucketKeys) {
+        const canvas = this.acquireBandCanvas(W, H);
+        const bctx = canvas.getContext('2d')!;
+        bctx.setTransform(1, 0, 0, 1, 0, 0);
+        bctx.clearRect(0, 0, W, H);
+        cam.scale = gridPx;
+        cam.snapDpr = 1;
+        this.w = W;
+        this.h = H;
+        const targetX = padXT * gridPx;
+        const targetY = northT * gridPx;
+        cam.x = (W / 2 - (targetX - wx0 * gridPx)) / gridPx;
+        cam.y = (H / 2 - (targetY - rowY * gridPx * cam.yScale)) / (gridPx * cam.yScale);
+        const anchor = cam.worldToScreen(wx0, rowY, W, H);
+        this.ctx = bctx;
+        const s2: DrawItem[] = [];
+        seen.clear();
+        for (let i = s.i0; i <= s.i1; i++) this.emitRaisedMember(game, s2, list[i]!, seen);
+        let sortY = 0;
+        let strat: number | undefined;
+        let elevated = false;
+        let first = true;
+        for (const it of s2) {
+          if (keyOf(it) !== bkKey) continue;
+          if (first) {
+            sortY = it.sortY;
+            strat = it.strat;
+            elevated = !!it.elevated;
+            first = false;
+          }
+          it.draw?.();
+        }
+        buckets.push({ canvas, sortY, strat, elevated, padL: anchor.x, padT: anchor.y });
+      }
+    } finally {
+      cam.x = savedX;
+      cam.y = savedY;
+      cam.scale = savedScale;
+      cam.snapDpr = savedSnap;
+      this.w = savedW;
+      this.h = savedH;
+      this.ctx = savedCtx;
+      this.bakeVeilFull = false;
+      this.bakingMask = false;
+    }
+    this.staticBakeMsLeft -= performance.now() - t0;
+    return {
+      sig,
+      gridPx,
+      outlined: this.outlineOn,
+      wx0,
+      wx1,
+      rowY,
+      rowDepthPx: this.camera.yScale * gridPx,
+      buckets,
+      hasShadows,
+      used: this.frameNo,
+    };
+  }
+
+  private acquireBandCanvas(w: number, h: number): HTMLCanvasElement {
+    const canvas = this.spriteCanvasPool.pop() ?? document.createElement('canvas');
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    return canvas;
+  }
+
+  private releaseStretchBake(sb: StretchBake): void {
+    for (const bk of sb.buckets) {
+      if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(bk.canvas);
+    }
+  }
   /**
    * Walls: continuous top mass with rounded exposed corners, a darker
    * front face where the wall meets open ground, and a hard shadow.
@@ -6092,6 +6551,9 @@ export class Renderer {
    * step between the sunken slab and the full mass behind it.
    */
   private wallHeightAt(game: ClientGame, tx: number, ty: number): number {
+    // Band bakes paint the standing world at rest: the veil reads full
+    // regardless of where the player happens to be standing mid-bake.
+    if (this.bakeVeilFull) return WALL_H;
     if (this.cutCtx <= 0.001) return WALL_H;
     const dy = ty - this.ownPY;
     // Front-row dy can be up to 2 rows north of ours — the window is
@@ -8155,6 +8617,7 @@ export class Renderer {
    * crown line.
    */
   private garrisonHeightAt(game: ClientGame, tx: number, ty: number): number {
+    if (this.bakeVeilFull) return GARRISON_H;
     const dy = ty - this.ownPY;
     if (dy < -2 || dy > 15) return GARRISON_H;
     const adx = Math.abs(tx + 0.5 - this.ownPX);

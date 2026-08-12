@@ -204,3 +204,46 @@ commit (never -A beside a live neighbor session).
   4x throttle (36-53% cut across scenes — the classification cost;
   the remaining cost is live item construction, which later phases
   retire for static content). 416 client tests green.
+
+### Phase 2 — ARCHITECTURE BANDS (2026-08-12)
+
+- Bandable v1 (every painter verified clock- and sky-free): plain
+  walls (not windowed, not hanging-bearing — those stay live per SKY
+  NEVER KEYS A BAKE), diag walls, garrison curtains + diagonals,
+  ramp flights/landings/aprons, rails. Doors/gates/side variants ride
+  openness clocks and stay live.
+- `planStretches` (staticRegister.ts): maximal bandable runs per
+  register row, split at every non-bandable member (a doorway inside a
+  wall run keeps its exact tie position), riding over empty gaps; ramp
+  runs stay singletons (the same run registers in every chunk it
+  touches — first emitter wins via runSeen). Content sig (FNV over
+  member tuples + elev) computed at register build; bakes keyed
+  (chunkKey|stretchKey) survive register rebuilds when sigs match — a
+  door toggle two chunks over re-bakes nothing.
+- THE SAME-BRUSH bake (`bakeStretch`): a probe construction discovers
+  the exact (sortY, strat, elevated) sort buckets from the items
+  themselves (no replicated sortY logic anywhere); then per bucket the
+  ctx + camera + snap lattice + viewport swap to a pooled canvas
+  (scale = gridPx = round(baseScale × targetZoom × dpr), snapDpr = 1 —
+  THE CRISP GRID LAW) and the members' items are constructed again
+  under the swap and drawn. `bakeVeilFull` pins wallHeightAt/
+  garrisonHeightAt at rest; bakingMask guards side effects.
+- Emission (`emitStretch`): cold + content-fresh → one DrawItem per
+  bucket blitting via snapped-corner dest rects (the elevated-ground-
+  row template — bands, ground, and live neighbours translate in
+  lockstep); gridPx-stale bakes keep serving scale-compensated while
+  the 1.5ms/frame budget re-bakes; hot (reveal box with the live
+  gates verbatim + rear-riser row, shakes) or missing → per-member
+  live path, order-exact (stretch members are consecutive in the row
+  walk). SHADOWS NEVER BAKE: members' items are minted fresh for
+  their live drawShadow closures.
+- Receipts: bands activate (81-178 stretches across Hoargate/
+  Silverfall castle/mesa; steady state 24-70 blits/frame, 0 rebakes,
+  hot counts only where the reveal stands). Pixel parity: on/off
+  screenshot diff heatmap at Hoargate — every differing pixel traces
+  canopy sway/NPCs/fire; wall and gatehouse regions black. Perf:
+  world EMA in authored towns moves only ~1.5ms (Chrome 4x) — these
+  scenes are tree/cliff-dominated; the wall-dense payoff is measured
+  at Phase 4's player-base fixture, and Hoargate/mesa's remaining
+  cost is Phase 3's cliff scan. 420 client tests green.
+
