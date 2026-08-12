@@ -240,6 +240,54 @@ Deliberately NOT done (candidates for round 5):
 - **The static-layer epic remains the one big lever**: the world pass
   (immediate-mode props/bodies/walls) still dominates every profile.
 
+## Round 5 — THE STANDING WORLD (2026-08-12)
+
+The static-layer epic itself — the "one big lever" every prior round
+deferred — shipped in five phases (docs/static-layer-plan.md is the
+epic's own plan + as-built ledger + laws; b25ea52, 643e514, 10de0d1,
+ec5387d + polish). One paragraph of what changed:
+
+collectRaisedTiles' ~3,080-tile re-classification compiles to THE
+STATIC REGISTER (per-chunk descriptors keyed on data identity + rev,
+replayed in exact scan order; the per-tile scan remains the always-
+correct fallback). Cold architecture (plain walls, diag corners,
+garrison, ramps, rails) and the inert prop set (STATIC_RING minus
+run-merged furniture) bake per contiguous stretch into pooled
+canvases painted by the live item painters under a swapped ctx +
+bake camera (THE SAME-BRUSH LAW), blitted as one DrawItem per exact
+(strat, sortY) bucket — SHELF LAW interleave by construction.
+Anything animating (reveal cuts, shakes, near-body fades) flips its
+whole stretch live (THE HOT MEMBER RULE); shadows never bake (bakes
+capture the members' live drawShadow closures and replay them under
+the camera's origin delta — zero per-frame construction). The cliff
+marching-squares scan memoizes per (bounds, rev-sum) with falls
+fully live. Sign text re-bakes via per-tile nonces; the farm
+handler's missing own-chunk rev bump is fixed; /settile joins the
+dev kit as the fixture brush.
+
+Measured (protocol hardened this round: verified teleports, town-ward
+fixtures, interleaved A/B cycles, canvas-only pixel diffs):
+
+| dense base (~1,540 props) | layer off | layer on |
+|---|---|---|
+| Chrome world EMA / p50 | 3.33ms / miss | 1.67ms / 8.3ms vsync tick |
+| Chrome 4x world / p50 | 19.1 / 60.5 | 13.5 / 57 |
+| Firefox world | 8.97 | 5.96 |
+
+Parity: zero mismatches in the register (1,183 frames, 4 scenes) and
+cliff (249 frames) same-frame probes; band on/off canvas deltas
+15-20x below one frame of ambient animation; wall/prop regions black
+in diff heatmaps. Authored towns are tree/cliff-bound (walls were
+never their Chrome cost), so their world EMA moves modestly — the
+epic's payoff is exactly the player-built-base scale it was asked
+for, plus the collect/scan cuts everywhere (register 36-53%, cliffs
+64-67%).
+
+Still open after round 5: tree sprites stay individual by design
+(living sway); the world pass in forest scenes is now tree-blit-bound
+— a shared-atlas tree cache is the next lever if forests ever miss
+frame. Band canvases could pack tighter (per-tile height table).
+
 ## Verification harness (reusable)
 
 Isolated rig: `createdb-17 arx_rig_perf`; server

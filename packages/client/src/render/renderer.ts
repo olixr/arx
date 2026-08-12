@@ -5381,9 +5381,11 @@ export class Renderer {
         if (this.registers.size <= 72) break;
       }
     }
-    // Band bakes carry real pixels — same distance rule, canvases
-    // back to the pool; a re-entered street re-bakes on the budget.
-    if (this.bandCache.size > 240) {
+    // Band bakes carry real pixels — a hard byte budget with the
+    // ground cache's distance rule first, then coldest-first. The
+    // live path is the overflow pressure valve: an evicted street
+    // draws live and re-bakes on the budget when re-entered.
+    if (this.bandCache.size > 240 || this.bandBytes > 64 * 1048576) {
       const rcx = this.camera.x / CHUNK_SIZE;
       const rcy = this.camera.y / CHUNK_SIZE;
       for (const [key, sb] of this.bandCache) {
@@ -5393,7 +5395,16 @@ export class Renderer {
           this.releaseStretchBake(sb);
           this.bandCache.delete(key);
         }
-        if (this.bandCache.size <= 200) break;
+        if (this.bandCache.size <= 200 && this.bandBytes <= 48 * 1048576) break;
+      }
+      if (this.bandBytes > 48 * 1048576) {
+        // Still over after the distance sweep: drop coldest first.
+        const cold = [...this.bandCache.entries()].sort((a, b) => a[1].used - b[1].used);
+        for (const [key, sb] of cold) {
+          this.releaseStretchBake(sb);
+          this.bandCache.delete(key);
+          if (this.bandBytes <= 48 * 1048576) break;
+        }
       }
     }
     // Hi-res bakes are 4× the pixels — keep far fewer of them around.
@@ -6161,6 +6172,8 @@ export class Renderer {
   /** Per-tile invalidation nonces (sign text and friends) — mixed
    *  into stretch content sigs so state-keyed art re-bakes its band. */
   private readonly bandNonce = new Map<number, number>();
+  /** Live band canvas bytes — the byte budget's running total. */
+  private bandBytes = 0;
   /** Per-frame band accounting (the ?perf confession, phase 5). */
   private readonly bandStats = { blit: 0, live: 0, hot: 0, bakes: 0 };
   /** Per-frame "this stretch already emitted" marker (blit or live). */
@@ -6436,7 +6449,17 @@ export class Renderer {
     // Head-room in tiles: the tallest member's crown plus its terrace
     // lift; generous by design — pad pixels are transparent and cost
     // only bytes, while a clipped crown is a visible bug.
-    const northT = (garrison ? 4.6 : 2.8) + maxElev * ELEV_H + (rampish ? 1.5 : 0);
+    let wallish = false;
+    for (let i = s.i0; i <= s.i1; i++) {
+      const k = list[i]!.kind;
+      if (k === RaisedKind.Wall || k === RaisedKind.DiagWall) wallish = true;
+    }
+    // Head-room by the tallest family present: garrison crowns reach
+    // ~4.2 tiles, house walls ~2.7, the banded prop set tops out near
+    // a bookshelf (~2.2) — tighter canvases mean less transparent
+    // overdraw at composite time.
+    const northT =
+      (garrison ? 4.6 : wallish ? 2.8 : 2.4) + maxElev * ELEV_H + (rampish ? 1.5 : 0);
     const southT = rampish ? 1.7 : 0.7;
     const padXT = 1;
     // The bake replicates the LIVE environment: a CSS-coordinate ctx
@@ -6547,11 +6570,13 @@ export class Renderer {
     const canvas = this.spriteCanvasPool.pop() ?? document.createElement('canvas');
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
+    this.bandBytes += w * h * 4;
     return canvas;
   }
 
   private releaseStretchBake(sb: StretchBake): void {
     for (const bk of sb.buckets) {
+      this.bandBytes -= bk.canvas.width * bk.canvas.height * 4;
       if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(bk.canvas);
     }
   }
@@ -16169,6 +16194,11 @@ export class Renderer {
     if (this.phaseMs.size === 0) return '';
     const parts: string[] = [];
     for (const [name, ms] of this.phaseMs) parts.push(`${name} ${ms.toFixed(2)}`);
+    // THE STANDING WORLD's confession: how much of the frame blits.
+    const bs = this.bandStats;
+    parts.push(
+      `bands ${bs.blit}/${bs.live + bs.blit} hot ${bs.hot} ${(this.bandBytes / 1048576).toFixed(0)}MB`,
+    );
     return parts.join('\n');
   }
 

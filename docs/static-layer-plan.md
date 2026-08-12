@@ -1,5 +1,7 @@
 # THE STANDING WORLD — the static-layer epic
 
+**ALL FIVE PHASES SHIPPED 2026-08-12 — EPIC COMPLETE** (b25ea52 register, 643e514 architecture bands, 10de0d1 cliff memo, ec5387d prop bands, + phase-5 polish).
+
 The last big lever in the render roadmap: stop repainting static world
 content immediate-mode every frame. The world pass (collect → sort →
 draw in renderer.ts) pays ~350 drawImage + 1400+ fillRect per frame —
@@ -205,6 +207,18 @@ measured on the rig, committed and pushed before the next begins.
   crates and kill idle probes), interleave A/B cycles (single-window
   EMAs swing 2x with scene noise), and diff CANVAS pixels, never
   page screenshots (DOM chat shifts pollute).
+
+### Phase 5 — MEMORY, POLISH, LEDGER (2026-08-12) — EPIC COMPLETE
+
+- Byte budget: bandBytes tracked through acquire/release; eviction =
+  distance sweep first (the ground cache's rule), then coldest-first
+  to 48MiB under a 64MiB soft cap. The live path is the overflow
+  pressure valve.
+- ?perf gains the band confession: `bands <blit>/<total> hot <n> <MB>`.
+- Prop-only stretches bake tighter canvases (northT 2.4 vs walls'
+  2.8, garrison 4.6) — less transparent overdraw at composite.
+- docs/render-stream-audit.md round 5 records the epic in the perf
+  ledger; the memory topic carries the laws.
 
 ## Verification protocol
 
