@@ -1323,6 +1323,13 @@ export interface S2CDialogueNode {
    * reads the same plates unbadged.
    */
   questChoices?: Array<{ idx: number; kind: 'accept' | 'turnin' }>;
+  /**
+   * Choices that open a shop, by index into `choices`: the press arms
+   * the trader's shelf (directly or through beats the player only
+   * pages past), so the plate wears the coin chip. Same contract as
+   * questChoices — additive + cosmetic, unbadged plates read the same.
+   */
+  shopChoices?: number[];
   /** The beat's spoken audio, when the node has a voiced line. */
   voice?: VoiceWire;
 }

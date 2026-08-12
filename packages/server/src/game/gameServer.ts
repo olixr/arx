@@ -13117,6 +13117,27 @@ export class GameServer {
         }
       }
     });
+    // A trade-weighted plate wears the counter's coin: a choice whose
+    // press arms the shop hook — directly or through linear beats the
+    // player only pages past — gets the coin chip. The walk stops at
+    // the next question: another decision in between means the shelf
+    // is that press's consequence, not this one's.
+    const shopChoices: number[] = [];
+    eligible.forEach((c, idx) => {
+      const seen = new Set<string>();
+      let cur = c.next;
+      while (cur !== undefined && !seen.has(cur)) {
+        seen.add(cur);
+        const dest = this.dialogueNodes.get(dlg.def.id)?.get(cur);
+        if (!dest) break;
+        if (dest.hooks?.some((h) => h.kind === 'shop')) {
+          shopChoices.push(idx);
+          break;
+        }
+        if (dest.choices && dest.choices.length > 0) break;
+        cur = dest.next;
+      }
+    });
     player.session.sendJson({
       t: 'dlgnode',
       speaker: node.speaker ?? 'npc',
@@ -13128,6 +13149,7 @@ export class GameServer {
         ? { id: offerDef.id, name: offerDef.name, rewards: this.questRewardsWire(offerDef) }
         : undefined,
       questChoices: questChoices.length > 0 ? questChoices : undefined,
+      shopChoices: shopChoices.length > 0 ? shopChoices : undefined,
       // THE ONE RESOLVER's answer for this beat: the node's full line,
       // else the speaker's bank slot for the moment, else silence.
       voice: this.resolveBeatVoice(dlg.targetEid, node, first, last),

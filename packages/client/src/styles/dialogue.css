@@ -540,8 +540,11 @@
 
 /* A quest-weighted answer wears the overhead mark's grammar: a gold
    ! (swears the work) or ? (hands it in) on an iron chip beside the
-   words — consequence reads before the press, small talk stays bare. */
-.dlg-choice-quest {
+   words — consequence reads before the press, small talk stays bare.
+   A trade-weighted answer wears the purse's own coin on the same
+   chip, so the counter reads apart from conversation. */
+.dlg-choice-quest,
+.dlg-choice-shop {
   flex: none;
   width: 1.375rem;
   height: 1.625rem;
@@ -560,6 +563,12 @@
 
 .dlg-choice.sel .dlg-choice-quest {
   color: var(--gold-hot);
+}
+
+.dlg-choice-shop img {
+  width: 1.125rem;
+  height: 1.125rem;
+  image-rendering: pixelated;
 }
 
 /* The armed question's gentle refusal: a press that cannot answer

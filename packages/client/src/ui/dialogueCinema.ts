@@ -62,6 +62,12 @@ interface CinemaNode {
    * consequential answer never dresses like small talk.
    */
   questChoices?: Array<{ idx: number; kind: 'accept' | 'turnin' }>;
+  /**
+   * Choices that open a shop, by index: the plate wears the coin
+   * chip so the counter reads apart from small talk, exactly as
+   * quest weight does.
+   */
+  shopChoices?: number[];
 }
 
 /** One reveal beat: an element to light, how long to rest after it. */
@@ -395,7 +401,7 @@ export class DialogueCinema {
     if (node.gifts && node.gifts.length > 0) this.stageGifts(node.gifts);
     if (node.quest) this.stageQuestOffer(node.quest);
     if (node.choices && node.choices.length > 0) {
-      this.buildChoices(node.choices, node.questChoices);
+      this.buildChoices(node.choices, node.questChoices, node.shopChoices);
       this.setHints('question');
     } else {
       this.moreEl.classList.add('show');
@@ -541,7 +547,11 @@ export class DialogueCinema {
     this.hooks.onGift?.();
   }
 
-  private buildChoices(choices: string[], marks?: CinemaNode['questChoices']): void {
+  private buildChoices(
+    choices: string[],
+    marks?: CinemaNode['questChoices'],
+    shopMarks?: number[],
+  ): void {
     this.choicesShown = true;
     this.choicesAt = performance.now();
     this.choicesEl.textContent = '';
@@ -566,6 +576,20 @@ export class DialogueCinema {
         const badge = document.createElement('span');
         badge.className = 'dlg-choice-quest';
         badge.textContent = mark.kind === 'turnin' ? '?' : '!';
+        btn.appendChild(badge);
+      }
+      // A trade-weighted answer wears the counter's coin — the purse
+      // readout's own icon on the same iron chip, so "this opens the
+      // shop" reads before the press.
+      if (shopMarks?.includes(i)) {
+        btn.classList.add('shop');
+        const badge = document.createElement('span');
+        badge.className = 'dlg-choice-shop';
+        const coin = document.createElement('img');
+        coin.src = itemIconUrl('coins', 20);
+        coin.alt = '';
+        coin.draggable = false;
+        badge.appendChild(coin);
         btn.appendChild(badge);
       }
       btn.addEventListener('mouseenter', () => this.select(i));

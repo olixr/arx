@@ -233,6 +233,7 @@ export interface GameEvents {
     gifts?: Array<{ item: string; qty: number }>;
     quest?: { id: string; name: string; rewards?: QuestRewardsWire };
     questChoices?: Array<{ idx: number; kind: 'accept' | 'turnin' }>;
+    shopChoices?: number[];
     voice?: { url: string; durMs: number; kind: 'line' | 'quip' };
   }): void;
   /** The conversation is over — tear the frame down. */
@@ -1374,6 +1375,7 @@ export class ClientGame {
           gifts: msg.gifts,
           quest: msg.quest,
           questChoices: msg.questChoices,
+          shopChoices: msg.shopChoices,
           voice: msg.voice,
         });
         break;
