@@ -157,6 +157,11 @@ export class Session {
           .catch((err: Error) => console.error('[auth]', err.message));
         return;
       }
+      case 'logout': {
+        if (this.playerEid === null) return;
+        void this.game.logout(this).catch((err: Error) => console.error('[auth]', err.message));
+        return;
+      }
       case 'input': {
         if (this.playerEid === null) return;
         if (!this.inputBucket.consume()) return; // drop silently; TCP bursts happen

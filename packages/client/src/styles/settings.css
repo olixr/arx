@@ -18,6 +18,17 @@
   padding-right: 0.5rem;
 }
 
+/* The sign-out stands OUTSIDE the scroll: whichever bench is up, the
+   door is on screen. */
+.settings-foot {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.625rem;
+  padding-top: 0.625rem;
+  border-top: 0.125rem solid var(--line);
+}
+
 /* ---- the Controls table: one row per action, two chips per row ---- */
 
 .bind-row {

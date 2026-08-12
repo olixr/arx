@@ -913,6 +913,18 @@ export class ClientGame {
     this.conn?.send({ t: 'register', user, pass, name, invite: invite || undefined });
   }
 
+  /**
+   * Sign out: tell the server to burn the session, then hang up for
+   * good. `stopped` first, so the socket's close does NOT wake the
+   * reconnect backoff and walk straight back into the world.
+   */
+  logout(): void {
+    this.conn?.send({ t: 'logout' });
+    this.stopped = true;
+    this.token = null;
+    this.conn?.close();
+  }
+
   private openConnection(): void {
     this.conn = new Connection({
       onOpen: () => {

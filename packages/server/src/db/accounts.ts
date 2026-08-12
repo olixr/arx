@@ -240,6 +240,11 @@ export class AccountStore {
     return token;
   }
 
+  /** Burn one session row: the sign-out door, so the token is dead. */
+  endSession(token: string): void {
+    this.db.fire('DELETE FROM sessions WHERE token = ?', [token]);
+  }
+
   async resumeSession(token: string): Promise<AuthResult> {
     const row = await this.db.get<{ account_id: number }>(
       'SELECT account_id FROM sessions WHERE token = ? AND expires_at > ?',

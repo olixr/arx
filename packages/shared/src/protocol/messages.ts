@@ -59,6 +59,14 @@ export interface C2SRegister {
   invite?: string;
 }
 
+/**
+ * THE DOOR SWINGS BOTH WAYS: a deliberate sign-out. The server burns
+ * the session row so the token can never resume, then hangs up.
+ */
+export interface C2SLogout {
+  t: 'logout';
+}
+
 export interface C2SInput {
   t: 'input';
   frame: InputFrame;
@@ -644,6 +652,7 @@ export type C2SMessage =
   | C2SHello
   | C2SLogin
   | C2SRegister
+  | C2SLogout
   | C2SInput
   | C2SChat
   | C2SPing
@@ -1806,6 +1815,8 @@ export function parseC2S(raw: string): C2SMessage | null {
       }
       return { t: 'register', user: msg.user, pass: msg.pass, name: msg.name, invite: msg.invite };
     }
+    case 'logout':
+      return { t: 'logout' };
     case 'input': {
       const f = msg.frame;
       if (

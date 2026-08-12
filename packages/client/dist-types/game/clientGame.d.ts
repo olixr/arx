@@ -747,6 +747,12 @@ export declare class ClientGame {
     connect(token: string | null): void;
     sendLogin(user: string, pass: string): void;
     sendRegister(user: string, pass: string, name: string, invite?: string): void;
+    /**
+     * Sign out: tell the server to burn the session, then hang up for
+     * good. `stopped` first, so the socket's close does NOT wake the
+     * reconnect backoff and walk straight back into the world.
+     */
+    logout(): void;
     private openConnection;
     get sessionToken(): string | null;
     /**
