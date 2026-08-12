@@ -95,7 +95,31 @@ export class InputManager {
   /** Slot of the pad the player last actually touched. */
   private activePadIndex: number | null = null;
 
+  /** The game surface — the thing that must hold focus for pads to live. */
+  private target: HTMLElement;
+
   constructor(target: HTMLElement) {
+    this.target = target;
+    // THE PAD DIES WITHOUT FOCUS. Browsers freeze gamepad state the
+    // moment the document loses focus, and a fullscreen transition on
+    // macOS hands focus to the browser's own chrome often enough that
+    // the pad appears to "stop working in fullscreen". The canvas is
+    // made focusable so we can take it back.
+    if (!target.hasAttribute('tabindex')) target.tabIndex = -1;
+    // The fullscreen toggle arrives as a resize; so does every window
+    // change that can cost us focus. Take it back on the far side of
+    // the transition, once the browser has settled.
+    window.addEventListener('resize', () => {
+      this.reclaimFocus();
+      setTimeout(() => this.reclaimFocus(), 250);
+    });
+    // A pad only re-announces itself after the page is focused AND the
+    // player presses something; re-sniff rather than trust a layout
+    // cached from before the blur.
+    window.addEventListener('focus', () => this.translator.forgetAll());
+    // Any click on the world reclaims focus too — the manual cure for
+    // a browser that parked focus somewhere else.
+    target.addEventListener('pointerdown', () => this.reclaimFocus());
     // A pad that leaves takes its cached layout with it — the next
     // device in that slot must be sniffed fresh, never inherit a
     // stranger's hat axis.
@@ -143,12 +167,33 @@ export class InputManager {
     // Window-level so moving the mouse over UI panels also reclaims
     // the device (glyphs flip back to keyboard immediately).
     window.addEventListener('mousemove', (e) => {
+      // THE MOUSE MUST ACTUALLY MOVE. A resize (the fullscreen toggle
+      // above all) slides the page under a perfectly still cursor and
+      // the browser reports it as a mousemove. Taking that as "the
+      // player reached for the mouse" would kick the HUD out of pad
+      // mode every time the window changed shape.
+      const moved = e.clientX !== this.mouseX || e.clientY !== this.mouseY;
       this.mouseX = e.clientX;
       this.mouseY = e.clientY;
-      this.padUsed = false; // the mouse reclaims aiming
+      if (moved && (e.movementX !== 0 || e.movementY !== 0)) {
+        this.padUsed = false; // the mouse reclaims aiming
+      }
     });
     target.addEventListener('mousedown', () => (this.mouseDown = true));
     window.addEventListener('mouseup', () => (this.mouseDown = false));
+  }
+
+  /**
+   * Put focus back on the game surface — but never steal it from a
+   * field the player is typing in, and never from a menu button the
+   * pad is standing on. Both of those are legitimate owners; only the
+   * body (or nothing at all) means focus is loose.
+   */
+  private reclaimFocus(): void {
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== this.target) return;
+    if (this.typingCheck()) return;
+    this.target.focus({ preventScroll: true });
   }
 
   setTypingCheck(fn: () => boolean): void {
@@ -196,16 +241,42 @@ export class InputManager {
    * Every connected pad, translated — the Controls screen's readout
    * shows all of them so a player can see which one the game hears.
    */
-  padDiagnostics(): { views: PadView[]; activeIndex: number | null } {
+  padDiagnostics(): {
+    views: PadView[];
+    activeIndex: number | null;
+    /** False means the browser has FROZEN every pad — the fullscreen trap. */
+    pageFocused: boolean;
+    /** Wall ms since each pad's state last changed, by pad index. */
+    quietMs: Record<number, number>;
+  } {
     const views: PadView[] = [];
     if (typeof navigator.getGamepads === 'function') {
       for (const pad of navigator.getGamepads()) {
         if (pad && pad.connected) views.push(this.translator.view(pad));
       }
     }
+    const now = performance.now();
+    const quietMs: Record<number, number> = {};
+    for (const v of views) {
+      const prev = this.padStamps.get(v.index);
+      if (!prev || prev.stamp !== v.raw.timestamp) {
+        this.padStamps.set(v.index, { stamp: v.raw.timestamp, at: now });
+        quietMs[v.index] = 0;
+      } else {
+        quietMs[v.index] = now - prev.at;
+      }
+    }
     const live = this.pad();
-    return { views, activeIndex: live ? live.index : null };
+    return {
+      views,
+      activeIndex: live ? live.index : null,
+      pageFocused: document.hasFocus(),
+      quietMs,
+    };
   }
+
+  /** Last seen device timestamp per pad, for the liveness readout. */
+  private padStamps = new Map<number, { stamp: number; at: number }>();
 
   /** Poll gamepad sticks; call once per frame before sampling. */
   pollGamepad(): void {

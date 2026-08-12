@@ -169,9 +169,13 @@ export function installControlsMenu(deps: ControlsDeps): void {
   function padReadout(): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'pad-readout';
+    const warn = document.createElement('div');
+    warn.className = 'pad-warn hidden';
+    warn.textContent =
+      'This window does not hold focus, so the browser has frozen every controller. Click once on the game to wake it.';
     const body = document.createElement('div');
     body.className = 'pad-readout-body';
-    wrap.appendChild(body);
+    wrap.append(warn, body);
 
     let raf = 0;
     const draw = (): void => {
@@ -185,7 +189,12 @@ export function installControlsMenu(deps: ControlsDeps): void {
         raf = requestAnimationFrame(draw);
         return;
       }
-      const { views, activeIndex } = deps.input.padDiagnostics();
+      const { views, activeIndex, pageFocused, quietMs } = deps.input.padDiagnostics();
+      // THE FULLSCREEN TRAP, said out loud. Browsers freeze every pad
+      // the instant the page loses focus, and a fullscreen toggle is
+      // the commonest way to lose it without noticing — the window
+      // still looks live, the controller simply goes dead.
+      warn.classList.toggle('hidden', pageFocused);
       if (views.length === 0) {
         body.textContent =
           'No controller seen yet. Press a button on the pad with this window in front — browsers stay deaf to a pad until it speaks first.';
@@ -217,7 +226,17 @@ export function installControlsMenu(deps: ControlsDeps): void {
           sticks.className = 'pad-card-how';
           const f = (n: number): string => (Math.abs(n) < 0.08 ? '0' : n.toFixed(2));
           sticks.textContent = `Left ${f(v.axes[0] ?? 0)}, ${f(v.axes[1] ?? 0)}   Right ${f(v.axes[2] ?? 0)}, ${f(v.axes[3] ?? 0)}`;
-          card.append(name, how, lights, sticks);
+          // Liveness: a pad the browser has stopped reading looks
+          // exactly like a pad nobody is touching, so say which.
+          const quiet = quietMs[v.index] ?? 0;
+          const live = document.createElement('div');
+          live.className = 'pad-card-how';
+          live.textContent = pageFocused
+            ? quiet < 1500
+              ? 'Reading live.'
+              : `Nothing new for ${(quiet / 1000).toFixed(0)}s — press a button to check.`
+            : 'Frozen: the page does not hold focus.';
+          card.append(name, how, lights, sticks, live);
           body.appendChild(card);
         }
       }

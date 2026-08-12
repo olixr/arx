@@ -81,7 +81,16 @@ export declare class InputManager {
     private translator;
     /** Slot of the pad the player last actually touched. */
     private activePadIndex;
+    /** The game surface — the thing that must hold focus for pads to live. */
+    private target;
     constructor(target: HTMLElement);
+    /**
+     * Put focus back on the game surface — but never steal it from a
+     * field the player is typing in, and never from a menu button the
+     * pad is standing on. Both of those are legitimate owners; only the
+     * body (or nothing at all) means focus is loose.
+     */
+    private reclaimFocus;
     setTypingCheck(fn: () => boolean): void;
     isDown(code: string): boolean;
     /**
@@ -103,7 +112,13 @@ export declare class InputManager {
     padDiagnostics(): {
         views: PadView[];
         activeIndex: number | null;
+        /** False means the browser has FROZEN every pad — the fullscreen trap. */
+        pageFocused: boolean;
+        /** Wall ms since each pad's state last changed, by pad index. */
+        quietMs: Record<number, number>;
     };
+    /** Last seen device timestamp per pad, for the liveness readout. */
+    private padStamps;
     /** Poll gamepad sticks; call once per frame before sampling. */
     pollGamepad(): void;
     /** Raw pad state for the UI navigation layer (edge-detects itself). */

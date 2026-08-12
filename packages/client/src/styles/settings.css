@@ -291,3 +291,13 @@ body.pad-mode .bind-chip .kb-glyph,
   border-color: var(--gold-bright);
   color: var(--brass-ink);
 }
+
+.pad-warn {
+  margin-bottom: 0.5rem;
+  padding: 0.4375rem 0.625rem;
+  border-radius: 0.375rem;
+  background: var(--ember-deep);
+  color: var(--parchment);
+  font-size: var(--t-small);
+  font-weight: 700;
+}

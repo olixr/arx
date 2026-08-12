@@ -53,6 +53,14 @@ body {
   display: block;
 }
 
+/* The canvas is made focusable (tabindex -1) so the input layer can
+   take focus back after a fullscreen toggle — browsers freeze every
+   gamepad while the page is unfocused. It must never wear a ring. */
+#game:focus,
+#game:focus-visible {
+  outline: none;
+}
+
 .hidden {
   display: none !important;
 }
