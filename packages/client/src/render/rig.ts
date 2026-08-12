@@ -6839,6 +6839,27 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     foot: 'hoof',
     legColor: '#6b5a48',
   },
+  // The ewe: shorter-legged and rounder than her crag cousin — a
+  // placid amble, never a charger's stance. Dark slim legs vanish
+  // under the fleece cloud.
+  sheep: {
+    rig: {
+      legs: quadLegs(0.2, 0.12),
+      legLen: 0.26,
+      rise: 0.22,
+      liftAmp: 0.05,
+      runSpeed: 3.0,
+      turnRate: 6,
+    },
+    bodyLen: 0.34,
+    bodyRise: 0.27,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.05,
+    foot: 'hoof',
+    legColor: '#4f4234',
+  },
   stag: {
     rig: {
       legs: quadLegs(0.26, 0.13),
@@ -9973,6 +9994,286 @@ export function drawRamHead(
 }
 
 /**
+ * The kept ewe — THE FLEECE TELLS THE TIME. Two bodies in one
+ * painter: a full cloud of scalloped cream fleece while the wool
+ * stands ready for the shears, and a clipped, slimmer trim while it
+ * regrows — the produce clock worn as silhouette, readable across a
+ * whole yard. Dark bare face, drooping ears, no horns: kin to the
+ * crag ram, but nobody's charger.
+ */
+export interface SheepLook {
+  /** Standing fleece — and the duller clipped tone beneath it. */
+  wool: string;
+  woolShorn: string;
+  /** Bare face, ears, and legs — dark against the cream. */
+  face: string;
+  bodyW: number;
+  /** Fleece height standing full — and trimmed after the shears. */
+  backH: number;
+  backHShorn: number;
+  chestH: number;
+  headW: number;
+  headH: number;
+}
+
+export const SHEEP_LOOK: SheepLook = {
+  wool: '#e6dfcd',
+  woolShorn: '#d6cab0',
+  face: '#4f4234',
+  bodyW: 0.23,
+  backH: 0.48,
+  backHShorn: 0.35,
+  chestH: 0.16,
+  headW: 0.21,
+  headH: 0.19,
+};
+
+export function paintSheepBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: SheepLook,
+  f: BeastBlockFrame,
+  shorn: boolean,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW * (shorn ? 0.84 : 1);
+  // Full fleece: a rounded cloud, widest amidships, scalloped at the
+  // waist. Shorn: the trimmer animal underneath, straighter-sided.
+  const foot: Array<[number, number]> = shorn
+    ? [
+        [hl * 0.92, -hw * 0.7],
+        [hl * 0.92, hw * 0.7],
+        [hl * 0.5, hw],
+        [-hl * 0.5, hw],
+        [-hl * 0.92, hw * 0.7],
+        [-hl * 0.92, -hw * 0.7],
+        [-hl * 0.5, -hw],
+        [hl * 0.5, -hw],
+      ]
+    : [
+        [hl, -hw * 0.6],
+        [hl, hw * 0.6],
+        [hl * 0.62, hw * 0.96],
+        [0, hw],
+        [-hl * 0.62, hw * 0.96],
+        [-hl, hw * 0.6],
+        [-hl, -hw * 0.6],
+        [-hl * 0.62, -hw * 0.96],
+        [0, -hw],
+        [hl * 0.62, -hw * 0.96],
+      ];
+  const base = shade(shorn ? look.woolShorn : look.wool, (((f.seed >>> 5) & 7) - 3) * 2);
+  const backH = shorn ? look.backHShorn : look.backH;
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    (X) => backH * (1 - (shorn ? 0.12 : 0.18) * Math.pow(X / hl, 2)),
+    () => look.chestH,
+    base,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      ctx.save();
+      ctx.translate(gx(0, 0), gyy(0, 0) - backH * tk * s * 0.88 - lift);
+      ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+      if (shorn) {
+        // Shear tracks — the rows the blades left across the back —
+        // and one spared tuft at the rump: regrowth's first word.
+        ctx.strokeStyle = shade(base, -12);
+        ctx.lineWidth = Math.max(1, s * 0.018);
+        for (let k = -1; k <= 1; k++) {
+          ctx.beginPath();
+          ctx.moveTo(-hl * s * 0.72, k * hw * s * 0.42);
+          ctx.quadraticCurveTo(0, k * hw * s * 0.58, hl * s * 0.7, k * hw * s * 0.4);
+          ctx.stroke();
+        }
+        ctx.fillStyle = shade(look.wool, 6);
+        ctx.beginPath();
+        facetBlob(ctx, -hl * s * 0.74, 0, hl * s * 0.2, f.seed | 0, 6, 0.8, 1.3);
+        ctx.fill();
+      } else {
+        // The cloud: five scalloped clumps in two drifted rows, each
+        // a shadowed base under a lit crown, seeded per animal — the
+        // cauliflower read that says WOOL, not hide.
+        const CLUMPS: Array<[number, number, number]> = [
+          [-0.62, -0.3, 0.34],
+          [-0.6, 0.32, 0.36],
+          [0.02, -0.02, 0.42],
+          [0.6, -0.3, 0.34],
+          [0.58, 0.3, 0.33],
+        ];
+        for (let k = 0; k < CLUMPS.length; k++) {
+          const [ckx, cky, ckr] = CLUMPS[k]!;
+          const jx = (((f.seed >>> (k * 3 + 2)) & 3) - 1.5) * 0.04;
+          const jy = (((f.seed >>> (k * 3 + 5)) & 3) - 1.5) * 0.04;
+          const mx = (ckx + jx) * hl * s;
+          const my = (cky + jy) * hw * s * 0.9;
+          const mr = ckr * hl * s;
+          const asp = (hw * 0.8) / hl;
+          ctx.fillStyle = shade(base, -14);
+          ctx.beginPath();
+          facetBlob(ctx, mx + s * 0.016, my + s * 0.02, mr, (f.seed ^ (k * 0x9e)) | 0, 7, asp, k * 1.7);
+          ctx.fill();
+          ctx.fillStyle = shade(base, 16);
+          ctx.beginPath();
+          facetBlob(ctx, mx, my - s * 0.012, mr * 0.94, (f.seed ^ (k * 0x9e)) | 0, 7, asp, k * 1.7);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    },
+  );
+  // The crown scallops: the block hull is convex, so the cloud's
+  // bumpy top can't come from the footprint — clumps ride OVER the
+  // back line instead, breaking the straight roof into wool. Full
+  // fleece only; the clipped trim keeps its flat top.
+  if (!shorn && !f.hurt) {
+    const { bx, gy, s, fx, fy, ys } = f;
+    const px = -fy;
+    const py = fx;
+    const lift = f.bob * 0.35 * s;
+    const tk = f.topScale ?? 1;
+    const CROWN: Array<[number, number, number]> = [
+      [-0.6, -0.12, 0.24],
+      [-0.16, 0.14, 0.26],
+      [0.28, -0.14, 0.25],
+      [0.64, 0.1, 0.21],
+    ];
+    for (let k = 0; k < CROWN.length; k++) {
+      const [ckx, cky, ckr] = CROWN[k]!;
+      const jx = (((f.seed >>> (k * 4 + 1)) & 3) - 1.5) * 0.05;
+      const X = (ckx + jx) * hl;
+      const Y = cky * hw;
+      const topY = backH * (1 - 0.18 * Math.pow(X / hl, 2)) * tk * s;
+      const gxp = bx + (fx * X + px * Y) * s;
+      const gyp = gy + (fy * X + py * Y) * ys * s - topY - lift + Y * s * f.roll * 0.4;
+      const mr = ckr * hl * s;
+      // Soft wool: a shadow crescent tucked under a lit clump — no
+      // ink (a stroked ring on the lit top face reads as a hoop).
+      ctx.fillStyle = shade(base, -7);
+      ctx.beginPath();
+      facetBlob(ctx, gxp + s * 0.018, gyp + s * 0.028, mr, (f.seed ^ (k * 0x77)) | 0, 7, 0.68, k * 2.3);
+      ctx.fill();
+      ctx.fillStyle = shade(base, 22);
+      ctx.beginPath();
+      facetBlob(ctx, gxp, gyp - s * 0.006, mr * 0.96, (f.seed ^ (k * 0x77)) | 0, 7, 0.68, k * 2.3);
+      ctx.fill();
+    }
+  }
+}
+
+/**
+ * The ewe head: drooping dark ears off the poll, a bare slab face
+ * under a puffed wool cap, a short straight muzzle — everything the
+ * ram's skull is not (no horns, no Roman nose, no menace).
+ */
+export function drawSheepHead(
+  ctx: CanvasRenderingContext2D,
+  look: SheepLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** Body tone behind the poll cap — the shorn trim dulls it. */
+    capTone?: string;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const cap = o.capTone ?? look.wool;
+
+  // Drooping ears first, behind the face: soft dark lobes angled
+  // down and out from the poll, the far one hiding into profile.
+  ctx.lineCap = 'round';
+  for (const es of [-1, 1]) {
+    if (Math.abs(fx) > 0.8 && es * py < 0) continue;
+    const bx0 = cx + px * es * w * 0.48 + fx * w * 0.02;
+    const by0 = cy + (py * es * w * 0.48 + fy * w * 0.02) * ys - h * 0.26;
+    const tx = bx0 + px * es * w * 0.3;
+    const ty = by0 + py * es * w * 0.3 * ys + h * 0.44;
+    ctx.strokeStyle = C(look.face);
+    ctx.lineWidth = Math.max(2, w * 0.26);
+    ctx.beginPath();
+    ctx.moveTo(bx0, by0);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    // A warm inner line when the lobe faces the camera.
+    if (!o.hurt && fy > 0) {
+      ctx.strokeStyle = shade(look.face, 18);
+      ctx.lineWidth = Math.max(1, w * 0.09);
+      ctx.beginPath();
+      ctx.moveTo(bx0 + fx * w * 0.04, by0 + fy * w * 0.04 * ys + h * 0.05);
+      ctx.lineTo(tx + fx * w * 0.03, ty + fy * w * 0.03 * ys - h * 0.06);
+      ctx.stroke();
+    }
+  }
+  ctx.lineCap = 'butt';
+
+  // Bare dark face slab.
+  ctx.fillStyle = C(look.face);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.18, w * 0.18, w * 0.3, w * 0.3]);
+  ctx.fill();
+
+  // The poll cap: a puffed wool crown overhanging the brow — drawn
+  // OVER the face, the fleece spilling forward, never a painted band.
+  ctx.fillStyle = C(cap);
+  ctx.beginPath();
+  facetBlob(ctx, cx, cy - h * 0.46, w * 0.46, 0x5eeb ^ (w | 0), 7, 0.62, 2.1);
+  ctx.fill();
+
+  // Short straight muzzle with the ink nose chip.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.2;
+    const by0 = cy + fy * w * 0.2 * ys + h * 0.18;
+    const sl = w * (0.12 + 0.14 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.05;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.19 * (1 - profileK * 0.2);
+    const ht = hb * 0.72;
+    ctx.fillStyle = C(shade(look.face, 8));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = C(OUTLINE);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.02, ty - (ayv / al) * w * 0.02, w * 0.06, 5, fx);
+    ctx.fill();
+  }
+
+  // Gentle wide-set eyes below the cap's shadow.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.08 + px * es * w * 0.3;
+      const ey = cy + (fy * w * 0.08 + py * es * w * 0.3) * ys - h * 0.02;
+      ctx.fillStyle = C(OUTLINE);
+      ctx.fillRect(ex - w * 0.05, ey - h * 0.06, w * 0.1, h * 0.12);
+    }
+  }
+}
+
+/**
  * The stag: elegance by proportion — a slim barrel held HIGH on long
  * legs, a proud rising neck column, pale rump patch, and branched
  * antlers swept back off the crown. The alarm-charge levels the
@@ -11960,6 +12261,11 @@ export function drawBeast(
      * palette swap. Absent on every wild thing.
      */
     collar?: string;
+    /**
+     * THE FLEECE TELLS THE TIME (sheep only): true while the wool
+     * regrows — the painter trades the cloud for the clipped trim.
+     */
+    shorn?: boolean;
   },
 ): void {
   const s = opts.scale;
@@ -12149,6 +12455,7 @@ export function drawBeast(
   const boarL = opts.defId === 'boar' ? BOAR_LOOK : undefined;
   const spiderL = opts.defId === 'giant_spider' ? SPIDER_LOOK : undefined;
   const ramL = opts.defId === 'ram' ? RAM_LOOK : undefined;
+  const sheepL = opts.defId === 'sheep' ? SHEEP_LOOK : undefined;
   const stagL =
     opts.defId === 'stag' ? STAG_LOOK : opts.defId === 'hind' ? HIND_LOOK : undefined;
   const courserL =
@@ -12212,6 +12519,10 @@ export function drawBeast(
     }
     if (ramL) {
       paintRamBody(ctx, spec, ramL, blockFrame());
+      return;
+    }
+    if (sheepL) {
+      paintSheepBody(ctx, spec, sheepL, blockFrame(), opts.shorn === true);
       return;
     }
     if (stagL) {
@@ -12347,6 +12658,43 @@ export function drawBeast(
         ys,
         hurt: opts.hurt,
         charge: at > 0 ? Math.min(1, at * 1.6) : 0,
+      });
+      return;
+    }
+    if (sheepL) {
+      const shorn = opts.shorn === true;
+      const backH = shorn ? sheepL.backHShorn : sheepL.backH;
+      const tone = shorn ? sheepL.woolShorn : sheepL.wool;
+      const hl = spec.bodyLen * s;
+      const hw2 = sheepL.headW * s;
+      const nod = opts.pose.bob * 0.5 * s;
+      // The graze: at rest the head sinks toward the grass on its own
+      // slow clock — the yard's idle life, and it lifts on the move.
+      const graze =
+        now > 0 ? Math.max(0, Math.sin(now * 0.00042 + seed * 1.3)) * idle * 0.16 * s : 0;
+      const chx = bx + fx * (hl + hw2 * 0.42);
+      const chy = by + fy * (hl + hw2 * 0.42) * ys - backH * 0.92 * s - nod + graze;
+      // Wool ruff into the skull — the clipped body keeps a thinner one.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(tone, -7);
+      ctx.beginPath();
+      const nb = backH * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * sheepL.bodyW * (shorn ? 0.45 : 0.58) * s;
+      const nwy = py * sheepL.bodyW * (shorn ? 0.45 : 0.58) * s;
+      ctx.moveTo(bx + fx * hl * 0.7 + nwx, by + (fy * hl * 0.7 + nwy) * ys - nb * 0.88);
+      ctx.lineTo(bx + fx * hl * 0.7 - nwx, by + (fy * hl * 0.7 - nwy) * ys - nb * 0.88);
+      ctx.lineTo(chx - px * hw2 * 0.38, chy - py * hw2 * 0.38 * ys + sheepL.headH * s * 0.24);
+      ctx.lineTo(chx + px * hw2 * 0.38, chy + py * hw2 * 0.38 * ys + sheepL.headH * s * 0.24);
+      ctx.closePath();
+      ctx.fill();
+      drawSheepHead(ctx, sheepL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        capTone: tone,
       });
       return;
     }
@@ -12857,6 +13205,26 @@ export function drawBeast(
       ctx.fill();
       return;
     }
+    if (sheepL) {
+      // The ewe's tail HANGS — a wool drop off the stern, low, where
+      // the ram's nub perches high.
+      const shorn = opts.shorn === true;
+      const backH = shorn ? sheepL.backHShorn : sheepL.backH;
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(shorn ? sheepL.woolShorn : sheepL.wool, -6);
+      ctx.beginPath();
+      facetCircle(
+        ctx,
+        bx - fx * hl * 1.0,
+        by - fy * hl * 1.0 * ys - backH * 0.48 * s - lift,
+        s * 0.05,
+        5,
+        seed * 0.4,
+      );
+      ctx.fill();
+      return;
+    }
     if (sabercatL) {
       // The feline tail: one long low sweep off the haunch, curling UP
       // at the tip — swaying at rest, streaming flat at speed, dark
@@ -13195,18 +13563,22 @@ export function drawBeast(
   const paintCollar = (): void => {
     if (!opts.collar) return;
     const shellBody = !!(crabL || beetleL || spiderL);
-    const cx = bx + fx * len * (shellBody ? 0.5 : 0.72);
-    const cy = bodyY + fy * len * (shellBody ? 0.34 : 0.5) * ys;
-    const bw = Math.max(2, r * (shellBody ? 0.4 : 0.58));
+    // The sheep has no neck to see — the fleece swallows it — so her
+    // strap rides the wool line right behind the skull, short and
+    // thin, or it reads as a plank across the cloud.
+    const cx = bx + fx * len * (shellBody ? 0.5 : sheepL ? 0.95 : 0.72);
+    const cy = bodyY + fy * len * (shellBody ? 0.34 : sheepL ? 0.6 : 0.5) * ys;
+    const bw = Math.max(2, r * (shellBody ? 0.4 : sheepL ? 0.34 : 0.58));
     ctx.save();
     ctx.translate(cx, cy);
     if (!shellBody) {
       ctx.rotate(Math.atan2(fy * ys, fx) + Math.PI / 2);
       ctx.fillStyle = opts.collar;
-      ctx.fillRect(-r * 0.17, -bw, r * 0.34, bw * 2);
+      const hw3 = r * (sheepL ? 0.1 : 0.17);
+      ctx.fillRect(-hw3, -bw, hw3 * 2, bw * 2);
       ctx.strokeStyle = 'rgba(26, 20, 36, 0.6)';
       ctx.lineWidth = Math.max(1, s * 0.02);
-      ctx.strokeRect(-r * 0.17, -bw, r * 0.34, bw * 2);
+      ctx.strokeRect(-hw3, -bw, hw3 * 2, bw * 2);
     }
     // The tag: one brass drop — the thing a keeper's eye finds first.
     ctx.fillStyle = '#d8a83d';

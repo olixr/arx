@@ -447,6 +447,9 @@ export function buildDawnmead(): ZoneDef {
   // ---------------------------------------------------------------
   b.npcSpawn('chicken', 29.5, 15.5, 1.7, 4);
   b.npcSpawn('cow', 50.5, 18.5, 2.4, 2);
+  // The drover's shop window: a pair of ewes at Maren's pens, so the
+  // lamb on her counter has a mother the buyer can meet.
+  b.npcSpawn('sheep', 49.5, 23.5, 2.0, 2);
   b.npcSpawn('rat', 67, 48.5, 2, 3);
 
   // ---------------------------------------------------------------

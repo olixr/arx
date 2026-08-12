@@ -927,6 +927,13 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (shop, epoch)
   );
   `,
+  // v30: THE FLEECE FINDS ITS BODY — the sheep's bespoke body
+  // arrives and takes the yard wool seat the ram was keeping warm
+  // (farming v2 Phase 3 shipped the wool lane on the ram as an
+  // honest stand-in). Every kept ram row becomes the sheep it was
+  // always meant to be — name, bond, and clock untouched; the wild
+  // ram keeps its crag.
+  `UPDATE livestock SET species = 'sheep' WHERE species = 'ram';`,
 ];
 
 /**

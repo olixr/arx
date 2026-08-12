@@ -1014,6 +1014,13 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    // No wool here on purpose: the fleece answers only the shears
+    // of a keeper — the yard registry is the only wool payer.
+    id: 'sheep',
+    desc: 'A hide and an apology.',
+    entries: [{ item: 'bones' }, { item: 'scrap_hide', chance: 0.6 }],
+  },
+  {
     id: 'ram',
     desc: 'Horn, hide, and stubbornness.',
     entries: [

@@ -1,35 +1,36 @@
-// TEMPORARY rig verification harness (untracked): THE GNOLL SHEET —
-// the fur dialect at all eight facing bands, idle and on the move,
-// skulker and packlord, with the player rig standing beside them for
-// the body-ruler audit. This round: THE SIMULATED TAIL — run cells
-// SHUTTLE along their facing so the world-space TailSim visibly
-// trails, whips on the turn-around, and settles; paint side follows
-// the cape facing law (behind facing camera, in front facing away).
+// TEMPORARY rig verification harness (checked-in tooling): THE SHEEP
+// SHEET — the ewe at all eight facing bands in BOTH fleece states
+// (THE FLEECE TELLS THE TIME: full cloud vs clipped trim must read
+// at a glance), running cells shuttling along their facing, and a
+// ruler row: player rig, ram and cow kin beside her, and a seed
+// spread so no two ewes stamp the same cloud.
+import { beastSpec, drawBeast, drawHumanoid, type RigPose } from '../render/rig.js';
+import { LegRig } from '../render/legs.js';
 import { PoseState } from '@arx/shared';
-import { drawHumanoid, gnollLook, type RigPose } from '../render/rig.js';
-import { TailSim, drawTail } from '../render/tail.js';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
 const S = 150; // scale px per tile
-const YS = S * 0.52; // screen px per world-y tile (the rig's own squash)
-const HIP_HALF = 0.1;
+const YS = 0.52; // camera y foreshorten (world-y tile → screen)
 
-type Gait = 'idle' | 'walk' | 'run' | 'attack';
+type Gait = 'idle' | 'run';
 
 interface Fig {
   label: string;
   dir: number;
   gait: Gait;
-  /** gnoll def id, or null for the bare player-rig reference body. */
-  gnoll: string | null;
+  /** beast def id, or null for the bare player-rig reference body. */
+  beast: string | null;
+  color: string;
+  radius: number;
+  speed: number;
+  shorn?: boolean;
   seed: number;
-  size: number;
-  weapon?: string;
+  legs?: LegRig;
   kneeMemory: number[];
-  depthMemory: NonNullable<RigPose['depthMemory']>;
-  tail?: TailSim;
+  wx: number;
+  wy: number;
 }
 
 const DIRS = [
@@ -43,136 +44,128 @@ const DIRS = [
   ['SW', (3 * Math.PI) / 4],
 ] as const;
 
-// Live-game size multipliers (renderer GNOLL_SIZE).
-const SKULKER_SIZE = 1.18;
-const LORD_SIZE = 1.42;
+const SHEEP = { color: '#e6dfcd', radius: 0.26, speed: 2.4 };
 
-const defs: Array<Omit<Fig, 'kneeMemory' | 'depthMemory' | 'tail'>> = [];
-// Row 1: skulker idle, all eight bands.
+const defs: Array<Omit<Fig, 'kneeMemory' | 'wx' | 'wy'>> = [];
+// Row 1: full fleece idle, all eight bands.
 for (const [lbl, dir] of DIRS) {
-  defs.push({ label: `skulker ${lbl}`, dir, gait: 'idle', gnoll: 'gnoll', seed: 5, size: SKULKER_SIZE, weapon: 'rustbite' });
+  defs.push({ label: `fleece ${lbl}`, dir, gait: 'idle', beast: 'sheep', ...SHEEP, seed: 11 });
 }
-// Row 2: skulker running, all eight bands — SHUTTLING along the facing.
+// Row 2: shorn idle, all eight bands — the clipped trim.
 for (const [lbl, dir] of DIRS) {
-  defs.push({ label: `skulker run ${lbl}`, dir, gait: 'run', gnoll: 'gnoll', seed: 5, size: SKULKER_SIZE, weapon: 'rustbite' });
+  defs.push({ label: `shorn ${lbl}`, dir, gait: 'idle', beast: 'sheep', ...SHEEP, shorn: true, seed: 11 });
 }
-// Row 3: packlord idle, all eight bands.
+// Row 3: full fleece on the move, shuttling along the facing.
 for (const [lbl, dir] of DIRS) {
-  defs.push({ label: `lord ${lbl}`, dir, gait: 'idle', gnoll: 'gnoll_champion', seed: 9, size: LORD_SIZE, weapon: 'iron_greatblade' });
+  defs.push({ label: `run ${lbl}`, dir, gait: 'run', beast: 'sheep', ...SHEEP, seed: 11 });
 }
-// Row 4: the body-ruler audit + strike beats + coat clusters.
-defs.push({ label: 'player', dir: Math.PI / 2, gait: 'idle', gnoll: null, seed: 0, size: 1 });
-defs.push({ label: 'skulker', dir: Math.PI / 2, gait: 'idle', gnoll: 'gnoll', seed: 5, size: SKULKER_SIZE, weapon: 'rustbite' });
-defs.push({ label: 'lord', dir: Math.PI / 2, gait: 'idle', gnoll: 'gnoll_champion', seed: 9, size: LORD_SIZE, weapon: 'iron_greatblade' });
-defs.push({ label: 'skulker strike S', dir: Math.PI / 2, gait: 'attack', gnoll: 'gnoll', seed: 5, size: SKULKER_SIZE, weapon: 'rustbite' });
-defs.push({ label: 'lord strike E', dir: 0, gait: 'attack', gnoll: 'gnoll_champion', seed: 9, size: LORD_SIZE, weapon: 'iron_greatblade' });
-// Coat clusters: four seeds that land in the four families.
-for (const seed of [0, 8, 3, 22]) {
-  defs.push({ label: `coat seed ${seed}`, dir: Math.PI / 2, gait: 'idle', gnoll: 'gnoll', seed, size: SKULKER_SIZE, weapon: 'rustbite' });
+// Row 4: the body-ruler audit + the kin + the seed spread.
+defs.push({ label: 'player', dir: Math.PI / 2, gait: 'idle', beast: null, color: '#3f5d8e', radius: 0.3, speed: 2, seed: 0 });
+defs.push({ label: 'ewe', dir: Math.PI / 2, gait: 'idle', beast: 'sheep', ...SHEEP, seed: 11 });
+defs.push({ label: 'ewe shorn', dir: Math.PI / 2, gait: 'idle', beast: 'sheep', ...SHEEP, shorn: true, seed: 11 });
+defs.push({ label: 'ram kin', dir: Math.PI / 2, gait: 'idle', beast: 'ram', color: '#cfc6b4', radius: 0.28, speed: 3.4, seed: 5 });
+defs.push({ label: 'cow kin', dir: Math.PI / 2, gait: 'idle', beast: 'cow', color: '#e7ddca', radius: 0.34, speed: 1.8, seed: 3 });
+for (const seed of [4, 19, 87]) {
+  defs.push({ label: `ewe seed ${seed}`, dir: Math.PI / 2, gait: 'idle', beast: 'sheep', ...SHEEP, seed });
 }
 
-const figs: Fig[] = defs.map((f) => ({
+const figs: Fig[] = defs.map((f, i) => ({
   ...f,
-  kneeMemory: [0, 0],
-  depthMemory: { mainBehind: false },
+  kneeMemory: [],
+  wx: (i % 8) * 40,
+  wy: Math.floor(i / 8) * 40,
 }));
 
-const COLS = 9;
-const CW = 230;
-const CH = 340;
+const COLS = 8;
+const CW = 220;
+const CH = 260;
 
+let last = performance.now();
 function frame(now: number): void {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
   canvas.width = COLS * CW;
   canvas.height = Math.ceil(figs.length / COLS) * CH;
   ctx.fillStyle = '#2a3b2f';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   figs.forEach((f, i) => {
     const homeX = CW / 2 + (i % COLS) * CW;
-    const homeY = 170 + Math.floor(i / COLS) * CH;
+    const homeY = 165 + Math.floor(i / COLS) * CH;
     const t = now * 0.001;
-    const dir = f.dir;
-    const moving = f.gait === 'walk' || f.gait === 'run';
-    const runF = f.gait === 'run' ? 1 : 0;
-    const speed = f.gait === 'run' ? 8 : 5;
-    const stride = Math.sin(t * speed);
-    const s = S * f.size;
-    // The shuttle: moving cells travel along their facing — the whole
-    // point of a SIMULATED tail is what it does under real motion.
-    const shuttle = moving ? Math.sin(t * 1.4) * 0.7 : 0;
-    const dx = Math.cos(dir) * shuttle;
-    const dy = Math.sin(dir) * shuttle;
-    const cx = homeX + dx * S;
-    const cy = homeY + dy * YS;
-    const travelX = Math.cos(dir);
-    const travelY = Math.sin(dir) * 0.52;
-    const feet: Array<{ x: number; y: number; lift: number }> = [0, 1].map((leg) => {
-      const sgn = leg === 0 ? -1 : 1;
-      const ph = leg === 0 ? stride : -stride;
-      const along = moving ? ph * (f.gait === 'run' ? 0.18 : 0.1) : 0;
-      return {
-        x: cx + sgn * HIP_HALF * s + travelX * along * s,
-        y: cy + 0.44 * s + travelY * along * s,
-        lift: moving
-          ? Math.max(0, (leg === 0 ? 1 : -1) * Math.sin(t * speed)) *
-            (f.gait === 'run' ? 0.12 : 0.07)
-          : 0,
+    // The shuttle: running cells travel along their facing, so the
+    // leg rig plants real steps and the gait reads under motion.
+    const shuttle = f.gait === 'run' ? Math.sin(t * 1.1) * 0.85 : 0;
+    const wx = f.wx + Math.cos(f.dir) * shuttle;
+    const wy = f.wy + Math.sin(f.dir) * shuttle;
+    const toSx = (x: number): number => homeX + (x - f.wx) * S;
+    const toSy = (y: number): number => homeY + (y - f.wy) * S * YS;
+
+    if (!f.beast) {
+      // The bare player rig — the unit of measure.
+      const stride = 0;
+      const feet = [0, 1].map((leg) => ({
+        x: toSx(wx) + (leg === 0 ? -1 : 1) * 0.1 * S,
+        y: toSy(wy) + 0.44 * S,
+        lift: stride,
+      }));
+      const rig: RigPose = {
+        x: toSx(wx),
+        y: toSy(wy),
+        scale: S,
+        size: 1,
+        dir: f.dir,
+        pose: PoseState.Idle,
+        poseT: 0,
+        drawT: 0,
+        restT: 1,
+        nowMs: now,
+        feet,
+        bob: 0,
+        rise: 0,
+        wScale: 1 - 0.12 * Math.abs(Math.sin(f.dir)),
+        poleX: 0,
+        poleY: 0,
+        poleStrength: 0,
+        runF: 0,
+        align: 1,
+        kneeMemory: f.kneeMemory,
+        depthMemory: { mainBehind: false },
+        bodyColor: f.color,
+        hurt: false,
+        isOwn: false,
+        gatherPhase: 0,
       };
-    });
-    // The strike beat loops: poseT sweeps 0→1 about 1.4x a second.
-    const poseT = f.gait === 'attack' ? (t * 1.4) % 1 : 0;
-    const look = f.gnoll ? gnollLook(f.gnoll, f.seed) : undefined;
-    const rig: RigPose = {
-      x: cx,
-      y: cy,
-      scale: S,
-      size: f.size,
-      dir,
-      pose: f.gait === 'attack' ? PoseState.Attack : moving ? PoseState.Walk : PoseState.Idle,
-      poseT,
-      drawT: 0,
-      restT: 1,
-      nowMs: now,
-      feet,
-      bob: moving ? Math.abs(Math.cos(t * speed)) * (f.gait === 'run' ? 0.03 : 0.015) : 0,
-      rise: 0,
-      wScale: 1 - 0.12 * Math.abs(Math.sin(dir)),
-      poleX: moving ? Math.cos(dir) : 0,
-      poleY: moving ? Math.sin(dir) : 0,
-      poleStrength: moving ? 1 : 0,
-      runF,
-      align: 1,
-      kneeMemory: f.kneeMemory,
-      depthMemory: f.depthMemory,
-      bodyColor: look?.fur ?? '#3f5d8e',
-      hurt: false,
-      isOwn: false,
-      weaponItem: f.weapon,
-      gatherPhase: 0,
-      skinColor: look?.fur,
-      gnoll: look,
-    };
-    // THE SIMULATED TAIL: world coords in tiles (screen/S, ground row
-    // through YS), hip-height anchor, the renderer's own projection.
-    let paintTail: (() => void) | null = null;
-    let tailFront = false;
-    if (look) {
-      f.tail ??= new TailSim(look.heavy, f.seed);
-      const groundWy = (homeY + 0.44 * s) / YS;
-      f.tail.update(homeX / S + dx, groundWy + dy, 0.36 * f.size, dir, 1 / 60, t, f.size);
-      tailFront = f.tail.front(Math.sin(dir));
-      const sim = f.tail;
-      paintTail = () => {
-        const pts = sim.nodes.map((nd) => ({ x: nd.x * S, y: nd.y * YS - nd.z * S }));
-        drawTail(ctx, pts, look, s, { hurt: false });
-      };
+      drawHumanoid(ctx, rig);
+    } else {
+      const spec = beastSpec(f.beast, f.radius, f.speed);
+      if (!f.legs) f.legs = new LegRig(spec.rig);
+      const legPose = f.legs.update(wx, wy, f.dir, dt);
+      const feet = legPose.feet.map((ft) => ({ x: toSx(ft.x), y: toSy(ft.y), lift: ft.lift }));
+      drawBeast(ctx, {
+        x: toSx(wx),
+        y: toSy(wy),
+        scale: S,
+        dir: legPose.dir,
+        radius: f.radius,
+        color: f.color,
+        defId: f.beast,
+        spec,
+        pose: legPose,
+        feet,
+        yScale: YS,
+        walkPhase: 0,
+        hurt: false,
+        kneeMemory: f.kneeMemory,
+        seed: f.seed,
+        nowMs: now,
+        shorn: f.shorn === true,
+        collar: '#8a6234',
+      });
     }
-    if (paintTail && !tailFront) paintTail();
-    drawHumanoid(ctx, rig);
-    if (paintTail && tailFront) paintTail();
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '13px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(f.label, homeX, homeY + 0.62 * S + 60);
+    ctx.fillText(f.label, homeX, homeY + 0.62 * S + 30);
   });
   requestAnimationFrame(frame);
 }

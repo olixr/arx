@@ -275,7 +275,8 @@ async function main(): Promise<void> {
   let p1x = 0;
   let p1y = 0;
   let planted = false;
-  for (const [ox, oy] of [[0, 0], [-24, 15], [31, -12], [18, 22], [-35, -20], [44, 8]]) {
+  const FIELD_HUNT: Array<[number, number]> = [[0, 0], [-24, 15], [31, -12], [18, 22], [-35, -20], [44, 8]];
+  for (const [ox, oy] of FIELD_HUNT) {
     await tp(c, bx + ox, by + oy);
     const fx = Math.floor(bx + ox) + 2;
     const fy = Math.floor(by + oy);
@@ -341,7 +342,8 @@ async function main(): Promise<void> {
   let binX = 0;
   let binY = 0;
   let binUp = false;
-  for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]]) {
+  const BIN_HUNT: Array<[number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]];
+  for (const [ox, oy] of BIN_HUNT) {
     const fx = Math.floor(c.pos!.x) + ox;
     const fy = Math.floor(c.pos!.y) + oy;
     await build(c, 'compost_bin', fx, fy);

@@ -802,7 +802,8 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
   },
   {
     // THE ANIMALS OF THE YARD: the fleece joins the cloth line at
-    // cotton's own rung — the kept ram is a standing cotton field.
+    // cotton's own rung — the kept sheep is a standing cotton field,
+    // the farm's own fabric source for keepers who never hunt.
     id: 'weave_wool_cloth',
     name: 'Wool cloth',
     skill: 'tailoring',

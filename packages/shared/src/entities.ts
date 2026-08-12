@@ -119,6 +119,13 @@ export interface EntityMeta {
    * the drover's tag in the renderer; never a pet, never fightable.
    */
   stock?: boolean;
+  /**
+   * THE FLEECE TELLS THE TIME: a kept sheep mid-regrow — clipped
+   * tight from the shear until its next fleece readies, when the
+   * server flips this off with a meta update. Absent = full fleece,
+   * shearable at a glance. Sheep-only, additive.
+   */
+  shorn?: boolean;
   /** Projectiles only: the input-frame seq whose press/release fired
    *  this shot — the tracer↔entity matching key. */
   seq?: number;

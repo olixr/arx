@@ -737,6 +737,13 @@ interface LivestockRow {
 
 interface LivestockComp {
   row: LivestockRow;
+  /**
+   * THE FLEECE TELLS THE TIME: the shorn state last spoken on the
+   * meta channel — the slow sweep compares it against the produce
+   * clock and broadcasts only the flips. Sheep wear it; everyone
+   * else leaves it undefined.
+   */
+  shornShown?: boolean;
 }
 
 /** A cached A* lane toward a nav goal — see NavState.nav. */
@@ -5218,7 +5225,10 @@ export class GameServer {
     const x = row.tx + 0.5 + ((row.slot % 3) - 1) * 1.2 + ((row.slot * 7) % 5) * 0.1;
     const y = row.ty + 1.6 + Math.floor(row.slot / 3) * 1.1;
     const eid = this.spawnNpc(def, x, y, -1);
-    this.livestock.set(eid, { row });
+    this.livestock.set(eid, {
+      row,
+      shornShown: row.species === 'sheep' ? row.nextProduceAt > Date.now() : undefined,
+    });
     const npc = this.npcs.get(eid);
     if (npc) {
       npc.nextProduceAt = row.nextProduceAt;
@@ -5227,6 +5237,27 @@ export class GameServer {
       npc.nextLayAt = 0;
     }
     return eid;
+  }
+
+  /**
+   * THE FLEECE TELLS THE TIME — the slow wool clock (~1s beat). A
+   * kept sheep's body shows its produce state to every watcher:
+   * clipped after the shear, a full cloud once the wool regrows.
+   * The shear itself broadcasts at the payout; this sweep carries
+   * the regrow (and any dev lever that hurries the clock), speaking
+   * on the meta channel only when the state actually flips.
+   */
+  private tickFleece(now: number): void {
+    for (const [stockEid, comp] of this.livestock) {
+      if (comp.row.species !== 'sheep') continue;
+      const npc = this.npcs.get(stockEid);
+      if (!npc) continue;
+      const shorn = npc.nextProduceAt > now;
+      if (shorn !== (comp.shornShown ?? false)) {
+        comp.shornShown = shorn;
+        this.broadcastMetaUpdate(stockEid);
+      }
+    }
   }
 
   private livestockEidFor(characterId: number, slot: number): EntityId | null {
@@ -11367,6 +11398,13 @@ export class GameServer {
     if (stock) {
       stock.row.nextProduceAt = npc.nextProduceAt;
       this.accounts.saveLivestock(stock.row);
+      // THE FLEECE TELLS THE TIME: the shear is a world moment — the
+      // clipped body goes out the instant the wool comes off (the
+      // slow sweep only has to carry the regrow).
+      if (stock.row.species === 'sheep' && stock.shornShown !== true) {
+        stock.shornShown = true;
+        this.broadcastMetaUpdate(action.targetEid);
+      }
     }
     const produceQty = 1 + (Math.random() < player.perks.doubleProduceChance ? 1 : 0);
     addItem(player.inventory, itemId, produceQty);
@@ -22874,6 +22912,9 @@ export class GameServer {
     this.tickDrops(now);
     this.tickRegen(now);
     if (this.tickCount % 40 === 0) this.tickCrops(now);
+    // THE FLEECE TELLS THE TIME: offset 11 keeps the wool clock off
+    // the other slow beats.
+    if (this.tickCount % 20 === 11) this.tickFleece(now);
     if (this.tickCount % 20 === 0) this.tickPois();
     // The frontier clock: offset 7 so it never shares a beat with the
     // %20/%40 passes (300 ≡ 0 mod 20 — a zero offset would stack it
@@ -23518,6 +23559,11 @@ export class GameServer {
       meta.friendly = true;
       const keeperEid = this.characterEids.get(stockComp.row.characterId);
       if (keeperEid !== undefined) meta.ownerEid = keeperEid;
+      // THE FLEECE TELLS THE TIME: a sheep wears its produce clock —
+      // clipped while the wool regrows, a full cloud when shearable.
+      if (stockComp.row.species === 'sheep' && npc.nextProduceAt > Date.now()) {
+        meta.shorn = true;
+      }
     }
     const actorComp = this.actors.get(eid);
     if (actorComp) {

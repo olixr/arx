@@ -81,9 +81,20 @@ test('the yard and the heel stay separate lanes forever', () => {
   // carry no tame contract and the caps stay sane.
   assert.ok(LIVESTOCK_CAP >= TROUGH_STOCK_CAP);
   assert.ok(TROUGH_FEED_CAP > 0);
-  // Chicken and cow must NEVER become tames (they are the yard's).
+  // Chicken, cow, and sheep must NEVER become tames (the yard's own).
   assert.ok(!TAMES.has('chicken'), 'chicken must never join the TAMES whitelist');
   assert.ok(!TAMES.has('cow'), 'cow must never join the TAMES whitelist');
+  assert.ok(!TAMES.has('sheep'), 'sheep must never join the TAMES whitelist');
+});
+
+test('the fleece finds its body: the sheep holds the wool seat', () => {
+  const sheep = LIVESTOCK.get('sheep');
+  assert.ok(sheep, 'the yard keeps a sheep');
+  assert.equal(sheep!.produce.item, 'wool');
+  assert.equal(sheep!.produce.verb, 'Shear');
+  assert.equal(sheep!.crateItem, 'lamb_crate');
+  // The ram went back to its crag: a wild body only, never a row.
+  assert.ok(!LIVESTOCK.has('ram'), 'the ram stand-in is retired from the yard');
 });
 
 test('every yard product feeds someone (the consumer law)', () => {

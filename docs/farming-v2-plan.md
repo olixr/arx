@@ -358,6 +358,63 @@ SLOT-addressed (the whitelist lesson bites harnesses too); `/grow` is
 radius-bound to the speaker; trees fade translucent when the player
 stands behind them — do not misread the fade as missing crown art.
 
+### THE FLEECE FINDS ITS BODY — the sheep arrives (2026-08-11)
+
+Phase 3 shipped the wool lane on the RAM as an honest stand-in (the
+rig-lab law: a new species is a bespoke commission, not a phase
+rider). The commission is paid: the **sheep** now holds the yard wool
+seat, exactly as §5's original roster intended.
+
+- **The species**: `sheep` replaces `ram` in the LIVESTOCK registry
+  (same seat: L10, `lamb_crate`, wool, 300s, **Shear**). Db v30
+  renames every kept ram's row to sheep — name, bond, and clock
+  untouched (proven live: "Fleece", a kept ram from the proving
+  yard, answered "You shear Fleece: fine wool" after migration).
+  The wild ram keeps its crag, its horns, and its loot; it was never
+  the yard's animal. New passive `sheep` NpcDef (damage 0, aggro 0,
+  no NpcDef produce — THE YARD REGISTRY IS THE ONLY PAYER, so wool
+  is farm-exclusive, never a hunting drop; loot = hide + bones only).
+  `NEVER_TAMED` names the sheep (no produce on the def means the
+  structural livestock refusal misses it). Two shop-window ewes graze
+  Maren's pens in Dawnmead (spawn pin in the zone test).
+- **THE FLEECE TELLS THE TIME** (the bespoke centerpiece): a kept
+  sheep wears its produce clock as silhouette. `EntityMeta.shorn`
+  (additive) rides the meta channel — the shear payout broadcasts
+  the clipped body the instant the wool comes off, and `tickFleece`
+  (a ~1s sweep, offset 11) broadcasts the regrow (and any dev lever
+  that hurries the clock). Full cloud = shearable at a glance across
+  a whole yard; clipped trim = wait. Client puffs six drifting wool
+  tufts on the false→true edge (bucketed into the sprite cache sig
+  so the drift animates through the cache).
+- **The body** (`rig.ts`): own `BEAST_SPECS` seat (shorter-legged,
+  slower, rounder than the ram) and `SheepLook` — TWO bodies in one
+  painter: full fleece is a 10-point scalloped cloud footprint with
+  five shadow-under-lit interior clumps plus CROWN SCALLOPS (clumps
+  riding OVER the back line — the block hull is convex, so the bumpy
+  top can never come from the footprint; no ink on them, a stroked
+  ring on the lit top face reads as a hoop). Shorn is a straighter,
+  14% narrower trim in a duller tone with shear-track rows and one
+  spared rump tuft. Hornless dark slab face under a puffed wool poll
+  cap, drooping ears with warm inner lines, short straight muzzle
+  (everything the ram's skull is not), hanging wool-drop tail where
+  the ram's nub perches. Idle GRAZE: the head sinks to the grass on
+  its own slow clock, lifting on the move. The drover's halter got a
+  sheep case (short, thin, at the wool line behind the skull — the
+  hull-anchored strap read as a plank across the cloud).
+- **Fixes while in there**: `findMilkTarget` read only NpcDef.produce,
+  so the milk/shear pose never squared up to ANY kept yard animal —
+  it now accepts the stock marker (fixes cow/boar/chicken too).
+- **Verified**: riglab rewritten as THE SHEEP SHEET (8 facings × both
+  fleece states, run shuttle, ruler row with ram/cow kin + seed
+  spread); live lane-3 walk — migration receipt, Shear prompt + fine
+  wool + care fold, shorn/regrown silhouettes both ways, Dawnmead pen
+  ewes under the town herald. Suites: content 430, client 383, shared
+  195, server 382, typecheck clean.
+- **Audit lesson**: yard animals WANDER — a scripted tp+keypress
+  harness rolls a prompt lottery against whichever animal stands
+  nearest; dress an isolated animal (or accept the roll) when a
+  specific verb must fire.
+
 ### THE EPIC IS COMPLETE — all six phases shipped 2026-08-11
 
 prove:farm = 41 receipts across six chapters (soil / field / yard /

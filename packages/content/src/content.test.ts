@@ -1090,6 +1090,7 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
   const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
   assert.equal(spawnKinds.get('chicken'), 4);
   assert.equal(spawnKinds.get('cow'), 2);
+  assert.equal(spawnKinds.get('sheep'), 2, "Maren's shop-window ewes");
   assert.equal(spawnKinds.get('rat'), 3);
   // Seven villagers plus Bryn's two vale wards; all but Maren keep
   // routine hours — she stands the stalls all day by choice

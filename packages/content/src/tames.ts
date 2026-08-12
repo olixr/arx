@@ -149,7 +149,16 @@ const HUMANOID_PREFIXES = ['goblin', 'brigand', 'kobold', 'skeleton', 'gnoll', '
  * terrors stay wild by decree, and the prey crowns keep their feet —
  * the wild keeps what makes it the wild.
  */
-const NEVER_TAMED = new Set(['dire_wolf', 'elder_great_owl', 'stag', 'hind']);
+const NEVER_TAMED = new Set([
+  'dire_wolf',
+  'elder_great_owl',
+  'stag',
+  'hind',
+  // Livestock by nature even before it is livestock by row: a sheep
+  // carries no produce on its NpcDef (the yard registry pays), so
+  // the structural refusal misses it — named here instead.
+  'sheep',
+]);
 
 /**
  * THE WILD'S OWN WORDS (THE KEEPER'S TONGUE): which bodies the wild-

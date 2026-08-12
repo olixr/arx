@@ -568,6 +568,11 @@ interface AnimState {
   capeKey?: string;
   /** The fur dialect's tail sim — present only on tailed species. */
   tail?: TailSim;
+  /** THE FLEECE TELLS THE TIME: last seen shorn state on a sheep —
+   *  the false→true edge is the shear moment and puffs the tufts. */
+  shornSeen?: boolean;
+  /** When the shear moment fired (ms clock); tufts drift ~900ms. */
+  shearBurstAt?: number;
   /** Body-sprite cache motion tracker (see bodyMotion): last observed
    *  world pos/facing, and the frame the dynamic cool window ends. */
   olX?: number;
@@ -1735,7 +1740,11 @@ export class Renderer {
     let bestD = 2.8 * 2.8;
     for (const [, remote] of game.entities) {
       if (remote.meta.kind !== EntityKind.Npc) continue;
-      if (!npcDef(remote.meta.defId ?? '')?.produce) continue;
+      // A town animal offers its NpcDef produce; a kept yard animal's
+      // produce lives in the LIVESTOCK registry, so the stock marker
+      // is the milkable fact there (fixes the shear/milk pose never
+      // squaring up to a kept animal).
+      if (!npcDef(remote.meta.defId ?? '')?.produce && remote.meta.stock !== true) continue;
       const latest = remote.buffer.latest();
       const ex = latest?.x ?? remote.meta.x;
       const ey = latest?.y ?? remote.meta.y;
@@ -28307,7 +28316,7 @@ export class Renderer {
   private npcItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean },
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; shorn?: boolean },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number },
     hurt: boolean,
     nameInk?: string,
@@ -28422,6 +28431,16 @@ export class Renderer {
       s.pose === PoseState.Attack
         ? Math.min(1, (performance.now() - anim.poseStartedAt) / 420)
         : 0;
+    // THE FLEECE TELLS THE TIME: the false→true edge on the meta's
+    // shorn flag IS the shear landing — puff the fleece off the body.
+    const shorn = meta.shorn === true;
+    if (defId === 'sheep') {
+      if (anim.shornSeen === false && shorn) anim.shearBurstAt = performance.now();
+      anim.shornSeen = shorn;
+    }
+    const shearT = anim.shearBurstAt
+      ? (performance.now() - anim.shearBurstAt) / 900
+      : 2;
     // Body-sprite cache identity (see paintOutlined): grazing herds
     // are the town-crowd of the wilds — idle cud-chew/tail-swish life
     // re-samples on the cadence, plain locomotion at half rate, and
@@ -28437,7 +28456,11 @@ export class Renderer {
       sortY: s.y,
       elevated: terrainLift !== 0,
       olKey: eid,
-      olSig: `${Math.round(s.dir * 1000)}|${s.pose}|${hurt ? 1 : 0}|${defId}`,
+      olSig: `${Math.round(s.dir * 1000)}|${s.pose}|${hurt ? 1 : 0}|${defId}${shorn ? '|sh' : ''}${
+        // The tuft burst animates through the cache: bucket the clock
+        // into the signature so the drift re-samples while it plays.
+        shearT < 1 ? `|b${Math.floor(shearT * 18)}` : ''
+      }`,
       olDyn,
       baseX: s.x,
       baseY: s.y,
@@ -28468,7 +28491,29 @@ export class Renderer {
           // stays on whether the keeper is online or not (the stock
           // marker is the durable fact; ownerEid comes and goes).
           collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
+          shorn,
         });
+        // The shear moment: loosed tufts drift up and away off the
+        // clipped back, cream over lit cream, gone inside a second.
+        if (shearT < 1) {
+          const ctx = this.ctx;
+          const ease = 1 - Math.pow(1 - shearT, 2);
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, 1 - shearT) * 0.9;
+          for (let k = 0; k < 6; k++) {
+            const hh = ((eid * 31 + k * 0x9e37) ^ (k << 7)) >>> 0;
+            const a = -Math.PI / 2 + (((hh & 63) / 63) - 0.5) * 1.7;
+            const reach = (0.28 + ((hh >>> 6) & 31) / 31 * 0.3) * scale;
+            const tx = p.x + Math.cos(a) * reach * ease;
+            const ty =
+              p.y - scale * 0.42 + Math.sin(a) * reach * ease - ease * scale * 0.18;
+            ctx.fillStyle = k % 2 === 0 ? '#efe9d8' : '#ddd3bc';
+            ctx.beginPath();
+            facetCircle(ctx, tx, ty, scale * (0.045 - 0.02 * shearT), 5, hh * 0.01);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
       },
       // Bounds from the SPECIES SPEC, not the collision radius: a
       // chicken's head and a wolf's tail reach far beyond `radius`,

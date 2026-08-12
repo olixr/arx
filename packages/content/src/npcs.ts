@@ -619,6 +619,29 @@ const defs: NpcDef[] = [
     weak: ['chill'],
   },
   {
+    // THE FLEECE FINDS ITS BODY: the yard's wool-bearer, a placid
+    // dark-faced ewe under a cloud of cream fleece. No produce here
+    // on purpose — THE YARD REGISTRY IS THE ONLY PAYER, so wool
+    // comes off a KEPT sheep's shears and nowhere else (the farm's
+    // own fabric source, never a hunting drop).
+    id: 'sheep',
+    name: 'Sheep',
+    level: 2,
+    maxHp: 8,
+    damage: 0,
+    attackRange: 0.8,
+    attackCooldownTicks: 50,
+    aggroRange: 0,
+    leashRange: 8,
+    speed: 2.4,
+    xpReward: 16,
+    loot: ['sheep'],
+    respawnSec: 20,
+    color: '#e6dfcd',
+    radius: 0.26,
+    hitHeight: 1.0,
+  },
+  {
     id: 'ram',
     name: 'Wild ram',
     level: 5,

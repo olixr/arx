@@ -35,12 +35,14 @@ export interface LivestockDef {
 }
 
 /**
- * The Phase 3 roster rides EXISTING bodies only (the rig-lab law: a
- * new species is a bespoke fur-dialect work, not a phase rider):
- * the RAM is the wool-bearer — a boxy fleece loaf that shears
- * honestly — and the yard BOAR is the truffle pig, as every
- * medieval sty would recognize. The goat waits for THE WORKING
- * YARD's churn, where a bespoke body can be done right.
+ * The Phase 3 roster rode EXISTING bodies only (the rig-lab law: a
+ * new species is a bespoke fur-dialect work, not a phase rider) —
+ * the RAM stood in as the wool-bearer until the SHEEP's own body
+ * was commissioned. That commission is paid: the sheep holds the
+ * wool seat now (db v30 renamed every kept ram's row), and the
+ * wild ram went back to its crag. The yard BOAR is the truffle
+ * pig, as every medieval sty would recognize. The goat still
+ * waits for its own bespoke body.
  */
 const defs: LivestockDef[] = [
   {
@@ -60,8 +62,8 @@ const defs: LivestockDef[] = [
     flavor: 'The yard\'s quiet fortune, one pail at a time.',
   },
   {
-    species: 'ram',
-    name: 'Ram',
+    species: 'sheep',
+    name: 'Sheep',
     levelReq: 10,
     crateItem: 'lamb_crate',
     produce: { item: 'wool', cooldownSec: 300, xp: 10, verb: 'Shear' },
