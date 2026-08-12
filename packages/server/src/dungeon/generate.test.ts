@@ -197,9 +197,12 @@ test('corridors are wide enough to read: 1-wide pinches stay rare', () => {
           }
         }
       }
+      // The absolute cap scales with map area (45 was tuned at the old
+      // 136 max — same per-area strictness, bigger canvases).
+      const pinchCap = Math.round((s * s) / 400);
       assert.ok(
-        pinches <= 45 && pinches / floors < 0.03,
-        `${tier}/${seed}: ${pinches} wall-pinch cells of ${floors} floor`,
+        pinches <= pinchCap && pinches / floors < 0.03,
+        `${tier}/${seed}: ${pinches} wall-pinch cells of ${floors} floor (cap ${pinchCap})`,
       );
     }
   }
@@ -208,5 +211,5 @@ test('corridors are wide enough to read: 1-wide pinches stay rare', () => {
 test('dungeon origin slots never overlap', () => {
   const a = dungeonOrigin(0);
   const b = dungeonOrigin(1);
-  assert.ok(b.x - a.x >= 136 + 32, 'slot spacing clears the largest tier');
+  assert.ok(b.x - a.x >= 184 + 32, 'slot spacing clears the largest tier');
 });

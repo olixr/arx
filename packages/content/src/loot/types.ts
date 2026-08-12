@@ -105,4 +105,14 @@ export interface LootCtx {
    * tier's bonus without the table knowing where it stood).
    */
   rarityBonus?: number;
+  /**
+   * Scales every drop chance in the resolve (each-mode chances, and
+   * pick-mode draw weights against nothingW) — a SOURCE dial, never a
+   * player-state one. Dungeon garrisons pay at a fraction: the halls
+   * hold far more bodies than the open field and none of them come
+   * back, so the purse thins per kill to stay honest per run. Note a
+   * pick table with no nothingW keeps paying every pick — the damp
+   * only bites where a roll can miss.
+   */
+  chanceMult?: number;
 }

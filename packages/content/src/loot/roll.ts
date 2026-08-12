@@ -19,7 +19,7 @@ export function rollLoot(
   const table = tables.get(tableId);
   if (!table) return [];
   const drops: LootDrop[] = [];
-  rollInto(table, ctx, tables, 1, 0, drops);
+  rollInto(table, ctx, tables, ctx.chanceMult ?? 1, 0, drops);
   return drops;
 }
 

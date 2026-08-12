@@ -60,11 +60,11 @@ export interface TierLaw {
 }
 
 export const DUNGEON_TIER_LAWS: Record<RarityTier, TierLaw> = {
-  common: { size: 72, chambers: 7, power: 6, value: 120 },
-  uncommon: { size: 88, chambers: 9, power: 16, value: 340 },
-  rare: { size: 104, chambers: 12, power: 30, value: 900 },
-  epic: { size: 120, chambers: 15, power: 48, value: 2200 },
-  legendary: { size: 136, chambers: 18, power: 68, value: 5600 },
+  common: { size: 100, chambers: 10, power: 6, value: 120 },
+  uncommon: { size: 120, chambers: 13, power: 16, value: 340 },
+  rare: { size: 140, chambers: 17, power: 30, value: 900 },
+  epic: { size: 160, chambers: 21, power: 48, value: 2200 },
+  legendary: { size: 184, chambers: 26, power: 68, value: 5600 },
 };
 
 /** Everything the generator (and the key card) needs, derived pure. */

@@ -172,6 +172,35 @@ test('nested refs honor mult; depth cannot run away', () => {
   assert.ok(Math.abs(hits / N - 0.5) < 0.03, `mult rate ${hits / N} off 0.5`);
 });
 
+test('ctx.chanceMult damps a whole resolve — the delve trash dial', () => {
+  const tables = registry(
+    {
+      id: 'trash',
+      entries: [
+        { item: 'bones' }, // guaranteed line thins too
+        { item: 'feather', chance: 0.4 },
+      ],
+    },
+    { id: 'rack', mode: 'pick', nothingW: 90, entries: [{ item: 'arrow', w: 10 }] },
+  );
+  const rand = srand(29);
+  const N = 6000;
+  let bones = 0;
+  let feathers = 0;
+  let rackHits = 0;
+  for (let i = 0; i < N; i++) {
+    for (const d of rollLoot('trash', { level: 1, rand, chanceMult: 0.5 }, tables)) {
+      if (d.item === 'bones') bones++;
+      if (d.item === 'feather') feathers++;
+    }
+    if (rollLoot('rack', { level: 1, rand, chanceMult: 0.5 }, tables).length) rackHits++;
+  }
+  assert.ok(Math.abs(bones / N - 0.5) < 0.03, `guaranteed line ${bones / N} off 0.5`);
+  assert.ok(Math.abs(feathers / N - 0.2) < 0.02, `chance line ${feathers / N} off 0.2`);
+  // pick-mode: 0.5·10 / (0.5·10 + 90) ≈ 0.0526 — weights damp against nothingW.
+  assert.ok(Math.abs(rackHits / N - 0.0526) < 0.015, `pick rate ${rackHits / N} off 0.053`);
+});
+
 test('rarity floor and rarityBonus calibrate a table upward', () => {
   const tables = registry(
     { id: 'fancy', minRarity: 'rare', entries: [{ item: 'wolfhide_hood' }] },

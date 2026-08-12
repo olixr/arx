@@ -60,7 +60,7 @@ export interface DungeonResult {
 }
 
 /** Largest tier size — instance slots are spaced by it. */
-const MAX_SIZE = 136;
+const MAX_SIZE = 184;
 
 /** Dungeon instances live on their own row of the dark band. */
 export function dungeonOrigin(slot: number): Vec2 {
@@ -155,11 +155,11 @@ const CHEST_TILE_SET: ReadonlySet<Tile> = new Set([
 
 /** Path-chest ladders per tier (boss/vault/hidden chests come extra). */
 const PATH_CHESTS: Record<string, Tile[]> = {
-  common: [Tile.ChestWood, Tile.ChestMossy],
-  uncommon: [Tile.ChestWood, Tile.ChestMossy, Tile.ChestMossy],
-  rare: [Tile.ChestMossy, Tile.ChestMossy, Tile.ChestIron],
-  epic: [Tile.ChestMossy, Tile.ChestIron, Tile.ChestIron, Tile.ChestGilded],
-  legendary: [Tile.ChestIron, Tile.ChestGilded, Tile.ChestGilded],
+  common: [Tile.ChestWood, Tile.ChestWood, Tile.ChestMossy],
+  uncommon: [Tile.ChestWood, Tile.ChestMossy, Tile.ChestMossy, Tile.ChestMossy],
+  rare: [Tile.ChestMossy, Tile.ChestMossy, Tile.ChestMossy, Tile.ChestIron],
+  epic: [Tile.ChestMossy, Tile.ChestIron, Tile.ChestIron, Tile.ChestIron, Tile.ChestGilded],
+  legendary: [Tile.ChestIron, Tile.ChestIron, Tile.ChestGilded, Tile.ChestGilded],
 };
 
 // ------------------------------------------------------------ plumbing
@@ -282,8 +282,8 @@ function carveBlob(c: Carver, cx: number, cy: number, r: number, rng: Rng, floor
 }
 
 function carveHall(c: Carver, cx: number, cy: number, rng: Rng): { w: number; h: number } {
-  const w = rng.int(8, 13);
-  const h = rng.int(7, 11);
+  const w = rng.int(10, 16);
+  const h = rng.int(9, 13);
   const x0 = cx - (w >> 1);
   const y0 = cy - (h >> 1);
   for (let y = y0; y < y0 + h; y++) {
@@ -318,7 +318,7 @@ function tunnelCave(c: Carver, a: Vec2, b: Vec2, rng: Rng, path?: Array<{ x: num
     const ang = Math.atan2(b.y - y, b.x - x) + rng.range(-0.9, 0.9);
     x += Math.cos(ang);
     y += Math.sin(ang);
-    const r = rng.chance(0.3) ? 2.3 : 1.7;
+    const r = rng.chance(0.3) ? 2.6 : 1.9;
     const ri = Math.ceil(r);
     for (let dy = -ri; dy <= ri; dy++) {
       for (let dx = -ri; dx <= ri; dx++) {
@@ -331,9 +331,9 @@ function tunnelCave(c: Carver, a: Vec2, b: Vec2, rng: Rng, path?: Array<{ x: num
   }
 }
 
-/** A worked corridor: straight L, even width 3 (sometimes 4). */
+/** A worked corridor: straight L, even width 3 (half the time 4). */
 function tunnelBuilt(c: Carver, a: Vec2, b: Vec2, rng: Rng, path?: Array<{ x: number; y: number }>): void {
-  const width = rng.chance(0.35) ? 4 : 3;
+  const width = rng.chance(0.5) ? 4 : 3;
   const lo = -((width - 1) >> 1);
   const hi = width >> 1;
   const horizFirst = rng.chance(0.5);
@@ -508,9 +508,12 @@ export function generateDungeon(
   }
   const hasEdge = (i: number, j: number) =>
     edges.some(([a, b]) => (a === i && b === j) || (a === j && b === i));
+  // Loop budget scales with the chamber count: the bigger halls need
+  // more cross-links or a long run turns into pure out-and-back.
+  const maxLoops = Math.max(3, Math.round(spec.chambers / 5));
   let loops = 0;
-  for (let i = 0; i < n && loops < 3; i++) {
-    for (let j = i + 1; j < n && loops < 3; j++) {
+  for (let i = 0; i < n && loops < maxLoops; i++) {
+    for (let j = i + 1; j < n && loops < maxLoops; j++) {
       if (hasEdge(i, j)) continue;
       const d = dist(anchors[i]!.x, anchors[i]!.y, anchors[j]!.x, anchors[j]!.y);
       if (d < S * 0.34 && rLayout.chance(0.28)) {
@@ -571,6 +574,11 @@ export function generateDungeon(
     .sort((p, q) => q.a.depth - p.a.depth);
   if (rarityIndex(spec.tier) >= 1 && leaves.length > 0) leaves[0]!.a.kind = 'vault';
   if (leaves.length > 1 && rLayout.chance(0.85)) leaves[1]!.a.kind = themePoi;
+  // The big tiers earn a second set-piece leaf — more to understand
+  // per run, spread across more ground.
+  if (rarityIndex(spec.tier) >= 3 && leaves.length > 2) {
+    leaves[2]!.a.kind = rLayout.chance(0.5) ? themePoi : 'camp';
+  }
   const midRooms = anchors.filter((a) => a.kind === 'room');
   if (themePoi !== 'camp' && midRooms.length > 2 && rLayout.chance(0.55)) {
     midRooms[rLayout.int(0, midRooms.length - 1)]!.kind = 'camp';
@@ -585,10 +593,10 @@ export function generateDungeon(
     a.style = rCarve.chance(theme.caveness) ? 'cave' : 'hall';
     if (a.kind === 'entry') {
       // The landing breathes: a generous chamber, always.
-      carveBlob(c, a.x, a.y, 7, rCarve, a.style === 'hall' ? Tile.DungeonFloor : Tile.CaveFloor);
-      a.r = 7;
+      carveBlob(c, a.x, a.y, 8, rCarve, a.style === 'hall' ? Tile.DungeonFloor : Tile.CaveFloor);
+      a.r = 8;
     } else if (a.style === 'cave') {
-      a.r = rCarve.int(6, 9) + (rarityIndex(spec.tier) >= 2 ? 1 : 0);
+      a.r = rCarve.int(7, 11) + (rarityIndex(spec.tier) >= 2 ? 1 : 0);
       carveBlob(c, a.x, a.y, a.r, rCarve, Tile.CaveFloor);
     } else {
       const { w, h } = carveHall(c, a.x, a.y, rCarve);
@@ -665,7 +673,11 @@ export function generateDungeon(
   }
 
   // ---- 3. SECRETS: hidden rooms behind cracked walls -----------------
-  const hiddenCount = 1 + (rarityIndex(spec.tier) >= 2 ? 1 : 0) + (spec.tier === 'legendary' ? 1 : 0);
+  const hiddenCount =
+    1 +
+    (rarityIndex(spec.tier) >= 1 ? 1 : 0) +
+    (rarityIndex(spec.tier) >= 3 ? 1 : 0) +
+    (spec.tier === 'legendary' ? 1 : 0);
   const hiddenRooms: Array<{ x: number; y: number }> = [];
   for (let hi = 0; hi < hiddenCount; hi++) {
     let placed = false;
@@ -1047,7 +1059,7 @@ export function generateDungeon(
       continue;
     }
     const area = Math.PI * a.r * a.r;
-    const packs = Math.max(1, Math.min(3, Math.round(area / 90)));
+    const packs = Math.max(1, Math.min(4, Math.round(area / 90)));
     for (let p = 0; p < packs; p++) {
       spawns.push({
         npc: pickPack(),

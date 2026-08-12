@@ -3927,12 +3927,17 @@ export class GameServer {
       );
     }
     this.setWorldTile(tx, ty, openChestTile(chest.kind));
-    this.respawnQueue.push({
-      at: now + law.recloseSec * 1000,
-      tx,
-      ty,
-      tile: closedChestTile(chest.kind),
-    });
+    // THE CLEARED HALL STAYS CLEARED: a delve chest never re-arms
+    // while the instance lives — the re-cut on the next key turn is
+    // the reset. Surface chests keep the reclose clock.
+    if (ty < DUNGEON_MIN_Y) {
+      this.respawnQueue.push({
+        at: now + law.recloseSec * 1000,
+        tx,
+        ty,
+        tile: closedChestTile(chest.kind),
+      });
+    }
     // THE LIGHT FINGERS (Phase 5): a town's stash is somebody's
     // stash — the lid lifting on town ground, seen by a faction body,
     // is a theft charged to the town's own ledger. Wilds and dungeon
@@ -4229,25 +4234,31 @@ export class GameServer {
       } else {
         // felled ⇒ depletedTile is non-null (the roll requires it).
         this.setWorldTile(action.tx, action.ty, node.depletedTile!);
-        // Trees regrow in stages: the stump sprouts a sapling partway
-        // through the wait, then the sapling stands up into the tree.
-        // Both entries share the tile, so a build/demolish cancel that
-        // sweeps the queue clears the whole staging.
-        const sapling = saplingOf(node.tile);
-        if (sapling !== null) {
+        // THE CLEARED HALL STAYS CLEARED: a delve vein never regrows
+        // while the instance lives — the ore a key holds is finite
+        // per run, and the re-cut restocks it. Surface nodes keep
+        // their regrowth clocks.
+        if (action.ty < DUNGEON_MIN_Y) {
+          // Trees regrow in stages: the stump sprouts a sapling partway
+          // through the wait, then the sapling stands up into the tree.
+          // Both entries share the tile, so a build/demolish cancel that
+          // sweeps the queue clears the whole staging.
+          const sapling = saplingOf(node.tile);
+          if (sapling !== null) {
+            this.respawnQueue.push({
+              at: Date.now() + node.respawnSec * 1000 * 0.45,
+              tx: action.tx,
+              ty: action.ty,
+              tile: sapling,
+            });
+          }
           this.respawnQueue.push({
-            at: Date.now() + node.respawnSec * 1000 * 0.45,
+            at: Date.now() + node.respawnSec * 1000,
             tx: action.tx,
             ty: action.ty,
-            tile: sapling,
+            tile: node.tile,
           });
         }
-        this.respawnQueue.push({
-          at: Date.now() + node.respawnSec * 1000,
-          tx: action.tx,
-          ty: action.ty,
-          tile: node.tile,
-        });
       }
       this.cancelAction(eid, player, 'done');
     } else {
@@ -8278,6 +8289,15 @@ export class GameServer {
    * and loot the warded chest before the camp restaffs.
    */
   private static readonly POI_RESPAWN_MIN_SEC = 180;
+
+  /**
+   * THE THINNER PURSE: what fraction of its open-world drop chances a
+   * delve's unnamed garrison pays per kill. The halls hold roughly
+   * twice the bodies the old tight cuts did and none of them restaff
+   * mid-run, so the per-kill purse thins to keep the per-run take
+   * where it was. Named keepers and every chest pay in full.
+   */
+  private static readonly DUNGEON_TRASH_LOOT_MULT = 0.5;
 
   /**
    * Turn every cell whose last full wipe predates the cutoff: bump
@@ -15025,13 +15045,19 @@ export class GameServer {
         ? (built.prevTile as Tile)
         : nearestFloorTile((x, y) => this.world.groundAt(x, y), tx, ty);
     this.setWorldTile(tx, ty, floor);
-    this.respawnQueue.push({
-      at: Date.now() + info.respawnSec * 1000,
-      tx,
-      ty,
-      tile,
-      over: floor,
-    });
+    // THE CLEARED HALL STAYS CLEARED: inside a live delve nothing
+    // stands back up — a smashed cracked wall stays open (never
+    // resealing a hidden room mid-run), a scattered bone pile stays
+    // scattered. The re-cut on the next key turn is the reset.
+    if (ty < DUNGEON_MIN_Y) {
+      this.respawnQueue.push({
+        at: Date.now() + info.respawnSec * 1000,
+        tx,
+        ty,
+        tile,
+        over: floor,
+      });
+    }
   }
 
   // --------------------------------------------------------- abilities
@@ -18081,8 +18107,22 @@ export class GameServer {
     // The foe's assigned tables pay out through the one resolver, which
     // owns the rarity and item-power laws (heirlooms included — they're
     // a table entry now, assigned like any other).
+    // THE THINNER PURSE: a delve's rank-and-file pay at a fraction —
+    // the halls hold far more bodies than the open field and none of
+    // them restaff mid-run, so the per-kill purse thins to keep the
+    // per-run take honest. Named keepers (the boss, the wardens) and
+    // the chest ladder pay in full; this is a source dial, never a
+    // player-state one (the flood law).
+    const trashDamp =
+      pos.y >= DUNGEON_MIN_Y && this.spawnPoints[npc.spawnIndex]?.name === undefined
+        ? GameServer.DUNGEON_TRASH_LOOT_MULT
+        : 1;
     for (const tableId of npc.def.loot) {
-      for (const drop of rollLoot(tableId, { level: npc.def.level, rand: Math.random })) {
+      for (const drop of rollLoot(tableId, {
+        level: npc.def.level,
+        rand: Math.random,
+        chanceMult: trashDamp,
+      })) {
         dropLoot(drop.item, drop.qty, drop.roll);
       }
     }
@@ -18110,17 +18150,26 @@ export class GameServer {
     const spawn = this.spawnPoints[npc.spawnIndex];
     if (spawn) {
       spawn.eid = null;
-      // POI garrisons refill on a slow clock: the bestiary's 15–40s
-      // beats suit open-field hunting, but a camp that restaffs while
-      // you fight it can never be wiped — the floor buys the clear.
-      const baseSec = NPCS.get(spawn.npc)!.respawnSec;
-      // Find whispers share the floor: a two-body find whose first
-      // body restaffs mid-fight could never be wiped either.
-      const sec =
-        this.poiSpawnCells.has(npc.spawnIndex) || this.minorSpawnSlots.has(npc.spawnIndex)
-          ? Math.max(baseSec, GameServer.POI_RESPAWN_MIN_SEC)
-          : baseSec;
-      spawn.respawnAt = Date.now() + sec * 1000;
+      if (spawn.y >= DUNGEON_MIN_Y) {
+        // THE CLEARED HALL STAYS CLEARED: a delve garrison never
+        // restaffs while the instance lives. Ground you win stays won —
+        // the run is a clear, not a race against the clock. Leaving
+        // tears the instance down, and turning the key again cuts it
+        // fresh; that re-cut is the one reset.
+        spawn.respawnAt = Number.POSITIVE_INFINITY;
+      } else {
+        // POI garrisons refill on a slow clock: the bestiary's 15–40s
+        // beats suit open-field hunting, but a camp that restaffs while
+        // you fight it can never be wiped — the floor buys the clear.
+        const baseSec = NPCS.get(spawn.npc)!.respawnSec;
+        // Find whispers share the floor: a two-body find whose first
+        // body restaffs mid-fight could never be wiped either.
+        const sec =
+          this.poiSpawnCells.has(npc.spawnIndex) || this.minorSpawnSlots.has(npc.spawnIndex)
+            ? Math.max(baseSec, GameServer.POI_RESPAWN_MIN_SEC)
+            : baseSec;
+        spawn.respawnAt = Date.now() + sec * 1000;
+      }
       this.noteHoldWing(npc.spawnIndex, killerEid);
       this.notePoiKill(npc.spawnIndex, killerEid);
       this.noteMinorKill(npc.spawnIndex);
