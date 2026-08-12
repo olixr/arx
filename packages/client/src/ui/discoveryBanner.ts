@@ -35,14 +35,26 @@ const KIND_ACCENT: Record<DiscoveryWire['kind'], string> = {
   landmark: '#a8c8a0',
 };
 
+/**
+ * The sigil is a pure function of the discovery's kind (faded is
+ * forced off), and toDataURL is a synchronous canvas readback + PNG
+ * encode paid at the exact moment the ceremony fires — memoized so
+ * each kind pays it once per session.
+ */
+const sigilCache = new Map<DiscoveryWire['kind'], string>();
+
 function sigilUrl(d: DiscoveryWire): string {
+  const hit = sigilCache.get(d.kind);
+  if (hit) return hit;
   const S = 128;
   const cnv = document.createElement('canvas');
   cnv.width = S;
   cnv.height = S;
   const ctx = cnv.getContext('2d')!;
   drawDiscoveryMarker(ctx, { ...d, faded: undefined }, S / 2, S / 2, S * 0.34);
-  return cnv.toDataURL();
+  const url = cnv.toDataURL();
+  sigilCache.set(d.kind, url);
+  return url;
 }
 
 /** The story line stays one breath: the description's first sentence. */

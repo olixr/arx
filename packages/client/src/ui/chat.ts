@@ -45,6 +45,11 @@ export class ChatUI {
     el.appendChild(document.createTextNode(line.text));
     this.log.appendChild(el);
     while (this.log.children.length > MAX_LINES) this.log.firstChild!.remove();
-    this.log.scrollTop = this.log.scrollHeight;
+    // Write-only scroll pin: reading scrollHeight here forced a full
+    // synchronous reflow on every chat line (chat lines arrive inside
+    // the WebSocket task, often right after heavier DOM inserts — the
+    // herald ceremony made this a measurable discovery hitch). The
+    // browser clamps an over-large scrollTop to the true bottom.
+    this.log.scrollTop = 1e9;
   }
 }

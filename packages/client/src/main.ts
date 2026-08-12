@@ -1336,12 +1336,15 @@ const game = new ClientGame(input, {
     // The riftgate's threshold banner is the dungeon kind's ceremony —
     // the gate still pins itself on the chart silently.
     if (d.kind === 'dungeon') return;
+    // Chat line BEFORE the herald: addLine pins the log's scroll, and
+    // doing that against layout the herald insert just dirtied would
+    // hand the whole document a second style/layout pass this task.
+    chat.addLine({ channel: 'system', text: `Discovered: ${d.name} — marked on your chart (M).` });
     showDiscovery(d);
     sfx.discovery();
     const pos = game.predictor.pos;
     renderer.addRing(pos.x, pos.y, '#f2c94c', 1.3);
     renderer.zoomPulse(0.035);
-    chat.addLine({ channel: 'system', text: `Discovered: ${d.name} — marked on your chart (M).` });
   },
   onQuestEvent: (e) => {
     // The five beats: banner + call + a ring at your feet (completion
