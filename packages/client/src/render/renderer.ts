@@ -15170,6 +15170,7 @@ export class Renderer {
       ax: number; // trunk-base anchor within the sprite (css px)
       ay: number;
       scale: number; // camera scale at bake
+      dpr: number; // effective dpr at bake — sizes the blit's source rect
       frame: number; // last bake frame
       used: number; // last frame drawn (eviction)
       outlined: boolean; // ring baked in — must match outlineOn
@@ -15265,6 +15266,7 @@ export class Renderer {
     ax: number;
     ay: number;
     scale: number;
+    dpr: number;
     frame: number;
     used: number;
     outlined: boolean;
@@ -15294,6 +15296,7 @@ export class Renderer {
       ax: half,
       ay: top,
       scale: s,
+      dpr,
       frame: this.frameNo,
       used: this.frameNo,
       outlined: this.outlineOn,
@@ -15577,6 +15580,7 @@ export class Renderer {
     ax: number;
     ay: number;
     scale: number;
+    dpr: number;
     frame: number;
     used: number;
     outlined: boolean;
@@ -15610,6 +15614,7 @@ export class Renderer {
       ax: m,
       ay: m,
       scale: this.camera.scale,
+      dpr,
       frame: this.frameNo,
       used: this.frameNo,
       outlined: true,
@@ -15670,7 +15675,14 @@ export class Renderer {
     const cadence = Renderer.STATIC_RING_TILES.has(tile) ? 240 : this.treeCadence;
     const due = (this.frameNo + key) % cadence === 0;
     const stale =
-      !sp || (due && sp.frame !== this.frameNo) || Math.abs(sp.scale - s) > s * 0.2 || !sp.outlined;
+      !sp ||
+      (due && sp.frame !== this.frameNo) ||
+      Math.abs(sp.scale - s) > s * 0.2 ||
+      // Adaptive resolution moved the effective dpr: re-bake to the
+      // new grid (paced by the budget — the blit stays correct
+      // meanwhile because the source rect reads the BAKE's dpr).
+      sp.dpr !== this.dpr() ||
+      !sp.outlined;
     if (stale) {
       // THE STORM LAW (shared by drawTree/drawFlora): a missing sprite
       // bakes UNBUDGETED only when its extent is on screen RIGHT NOW —
@@ -15697,10 +15709,12 @@ export class Renderer {
     // a budgeted frame bakes it before it scrolls in.
     if (!sp) return;
     sp.used = this.frameNo;
-    const dpr = this.dpr();
+    // Source rect on the sprite's OWN bake dpr — the live dpr can
+    // drift under adaptive resolution, and sizing the source by it
+    // crops (or letterboxes) every cached prop until its re-bake.
     const k = s / sp.scale;
-    const sw = Math.ceil(sp.cw * dpr);
-    const sh = Math.ceil(sp.ch * dpr);
+    const sw = Math.ceil(sp.cw * sp.dpr);
+    const sh = Math.ceil(sp.ch * sp.dpr);
     const dx0 = b.x - sp.ax * k;
     const dy0 = b.y - sp.ay * k;
     const dw = sp.cw * k;
@@ -15779,6 +15793,7 @@ export class Renderer {
     ax: number;
     ay: number;
     scale: number;
+    dpr: number;
     frame: number;
     used: number;
     outlined: boolean;
@@ -15814,6 +15829,7 @@ export class Renderer {
       ax: half,
       ay: top,
       scale: s,
+      dpr,
       frame: this.frameNo,
       used: this.frameNo,
       outlined: this.outlineOn,
@@ -15835,6 +15851,7 @@ export class Renderer {
       !sp ||
       (due && sp.frame !== this.frameNo) ||
       Math.abs(sp.scale - s) > s * 0.2 ||
+      sp.dpr !== this.dpr() ||
       sp.outlined !== this.outlineOn;
     if (stale) {
       // The storm law (see drawPropOutlined): visible-now misses bake
@@ -15859,14 +15876,13 @@ export class Renderer {
     }
     if (!sp) return;
     sp.used = this.frameNo;
-    const dpr = this.dpr();
     const k = s / sp.scale;
     this.ctx.drawImage(
       sp.canvas,
       0,
       0,
-      Math.ceil(sp.cw * dpr),
-      Math.ceil(sp.ch * dpr),
+      Math.ceil(sp.cw * sp.dpr),
+      Math.ceil(sp.ch * sp.dpr),
       bx - sp.ax * k,
       by + syT * 0.3 - sp.ay * k,
       sp.cw * k,
@@ -16149,6 +16165,9 @@ export class Renderer {
         !sp ||
         (due && sp.frame !== this.frameNo) ||
         Math.abs(sp.scale - s) > s * 0.2 ||
+        // Adaptive resolution moved the effective dpr — even rigid
+        // trees (no cadence) must re-bake to the new grid.
+        sp.dpr !== this.dpr() ||
         sp.outlined !== this.outlineOn;
       if (stale) {
         // The storm law (see drawPropOutlined): visible-now misses
@@ -16177,10 +16196,9 @@ export class Renderer {
       }
       if (!sp) return;
       sp.used = this.frameNo;
-      const dpr = this.dpr();
       const k = s / sp.scale;
-      const sw = Math.ceil(sp.cw * dpr);
-      const sh = Math.ceil(sp.ch * dpr);
+      const sw = Math.ceil(sp.cw * sp.dpr);
+      const sh = Math.ceil(sp.ch * sp.dpr);
       const dx0 = bx - sp.ax * k;
       const dy0 = by + syT * 0.3 - sp.ay * k;
       const dw = sp.cw * k;
