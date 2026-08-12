@@ -317,6 +317,58 @@ The demand side: everything the farm makes, somebody wants.
 
 ## 8. The epic ledger (filled as phases ship)
 
+### Phase 5 — THE LADEN TABLE (shipped 2026-08-11, prove:farm = 38 receipts)
+
+As-built laws and dials:
+
+- **The combat dials entered ConsumableBuff** — `armor`, `dmgMult`,
+  `critPct` — through the one mkBuff door, riding the folds the
+  ability buffs already use (armor sums; dmg/crit fold in the surge
+  readers). Held DELIBERATELY scarce: armor on three foods and one
+  draught, crit on the tart and the hunter's eye, dmgMult on exactly
+  two feasts at 1.05/1.06. The channel law (one food + one tonic)
+  does the real balancing. maxHp was refused — shieldHp already
+  carries that fantasy without cap-math risk.
+- **The buff kitchen to 88**: honeyed carrots 28 (armor 2), pumpkin
+  pie 42 (armor 3 + regen), shepherd's pie 55 (armor 4), orchard
+  tart 60 (crit 3), harvest feast 75 (dmg x1.05 — the raid food),
+  royal banquet 88 (x1.06 + regen, and it asks for PRIME kingsquash,
+  truffle, and butter by name). Cooking's ceiling moved 58 → 88.
+- **Herbalism's ladder runs 1..90 with no gap wider than 5**:
+  ironhide 50, hunter's eye 65, prime tincture 75, dawnfire 80,
+  master's draught 90. **GRADE SCALES MAGNITUDE THROUGH THE RECIPE
+  TIER**: the master brews consume graded ids by name
+  (bittercress_prime, honey_fine, dawnveil_prime) — the first
+  graded-input recipes; the alembic reads labels, never luck. (A
+  same-recipe dynamic grade-read was refused: crafts consume by id;
+  the tier IS the mechanism, ledger judgment.)
+- **THE LARDER BOARD** (db v29, the ONLY premium counter in the
+  game): six hosting counters (Dawnmead general store, waystation,
+  hamlet larder, the Last Lamp, Pinewatch, and Maren's pens — added
+  so the yard feeds the yard and the proving can find her). The
+  ORDER is a pure function of (shop, world epoch of 2h): item from
+  the town's taste pool, qty 10-30, mult 2.5-3.5 x VALUE — hashed
+  world-state, flood-law clean; clients derive it with no wire and
+  only the FILLED count travels (S2CLarder, whole at login, delta on
+  sale). The sell door pays the premium for the item's FAMILY
+  (grades count, and a graded unit's higher value rides the mult),
+  honest goods only, first come first paid, spoken countdown; the
+  half-value law holds untouched everywhere else. Old-epoch rows are
+  dead weight the epoch-keyed reads never touch.
+- **Produce base values: UNCHANGED** (deviation from the plan's
+  "honest rebalance pass") — the larder board carries the parity
+  target instead: an on-order sale pays 5-7x the ordinary counter,
+  which is the fighter's-wage lever without touching every contract
+  band. Revisit on live data.
+- **prove:table chapter (~22s)**: the feast dial lands on the buff
+  mirror, Maren trades, the premium pays with the countdown spoken.
+  The full book = 38 receipts ~3:50. Harness law reaffirmed: sell
+  non-stackable produce SLOT-ADDRESSED (the instance law bars
+  id-addressed sales for it — the silent door found live, again).
+- **Deferred**: live shop-banner refresh mid-open (the sell line
+  speaks the countdown; the banner reads fresh at open); larder
+  delivery quests (bulk orders as errands); produce value rebalance.
+
 ### Phase 4 — THE WORKING YARD (shipped 2026-08-11, prove:farm = 35 receipts)
 
 As-built laws and dials:

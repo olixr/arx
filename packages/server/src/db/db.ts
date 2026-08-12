@@ -915,6 +915,18 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (tx, ty)
   );
   `,
+  // v29: THE LARDER BOARD (farming v2 Phase 5) — the only premium
+  // counter in the game. The ORDER is a pure function of (shop,
+  // epoch) in content; only the filled count is state. Old epochs'
+  // rows are dead weight the epoch-keyed reads simply never touch.
+  `
+  CREATE TABLE larder_orders (
+    shop TEXT NOT NULL,
+    epoch BIGINT NOT NULL,
+    filled INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (shop, epoch)
+  );
+  `,
 ];
 
 /**

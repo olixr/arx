@@ -46,6 +46,8 @@ export const farmJobs = new Map<
 >();
 /** The hives' clocks by "tx,ty". */
 export const farmApiaries = new Map<string, { since: number }>();
+/** THE LARDER BOARD: filled counts by shop id (orders derive). */
+export const larderFills = new Map<string, { epoch: number; filled: number }>();
 
 export function farmKey(tx: number, ty: number): string {
   return `${tx},${ty}`;

@@ -13,6 +13,7 @@
  */
 import WebSocket from 'ws';
 import { ByteReader, BinaryMsgType, decodeSnapshot, PROTOCOL_VERSION } from '@arx/shared';
+import { larderEpoch, larderHost, larderOrder } from '@arx/content';
 
 const URL = process.env.ARX_PROVE_URL ?? 'ws://localhost:8790/ws';
 const STAMP = process.argv[2] ?? String(Math.floor(Math.random() * 1e6));
@@ -605,7 +606,7 @@ async function main(): Promise<void> {
 
   } // end Phase 2 chapter
 
-  if (FROM !== 'work') {
+  if (FROM === 'all' || FROM === 'yard') {
   // ================= THE ANIMALS OF THE YARD (Phase 3) =============
   // A fresh drover with a clean pack, on the orchardist's proven
   // ground (the yard rises where the field already took).
@@ -802,6 +803,74 @@ async function main(): Promise<void> {
 
   clearInterval(hb4);
   } // end Phase 4 chapter
+
+  if (FROM === 'all' || FROM === 'table') {
+  // ================= THE LADEN TABLE (Phase 5) =====================
+  // The feast that feeds the raid, and the board that pays the farm.
+  const tc = new Client();
+  await tc.open();
+  tc.send({ t: 'hello', v: PROTOCOL_VERSION });
+  tc.send({ t: 'register', user: `cook_${STAMP}`, pass: 'proving123', name: `Cook ${STAMP}` });
+  const w5 = await tc.waitFor((m) => m.t === 'welcome', 'welcome (cook)');
+  tc.eid = w5.eid;
+  const hb5 = setInterval(() => tc.send({ t: 'input', frame: { seq: tc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } }), 500);
+
+  // The feast: eat it, and the raid dial shows on the buff mirror.
+  await say(tc, '/give harvest_feast');
+  {
+    const slot = tc.inv().findIndex((s2) => s2 && s2.item === 'harvest_feast');
+    const mkt = tc.mark();
+    tc.send({ t: 'use', slot });
+    const buffs = await tc.waitFor(
+      (m) => m.t === 'buffs' && (m.buffs ?? []).some((b2: any) => b2.name === 'Harvest Feast'),
+      'feast buff',
+      5000,
+      mkt,
+    );
+    receipt('the harvest feast feeds the raid (dmg dial on the mirror)', !!buffs);
+  }
+
+  // THE LARDER BOARD: Maren's pens post today's order — compute it
+  // from the same pure function the server reads, stock up, and
+  // sell into it beside her.
+  const host = larderHost('drover_yard')!;
+  const order = larderOrder(host, larderEpoch(Date.now()));
+  await say(tc, `/give ${order.item} 3`);
+  // Find Maren by her name on the wire and stand beside her.
+  let marenEid = -1;
+  for (let i = 0; i < 10 && marenEid < 0; i++) {
+    for (const m of tc.msgs) {
+      if (m.t !== 'enter' && m.t !== 'update') continue;
+      for (const en of m.entities ?? []) {
+        if (typeof en.name === 'string' && en.name.startsWith('Maren')) marenEid = en.eid;
+      }
+    }
+    if (marenEid < 0) {
+      // She stands at the Dawnmead pen — walk the haven until she
+      // streams in.
+      const haven = (w5.havens ?? []).find((h2: any) => /dawn/i.test(h2.name ?? ''));
+      if (haven) await tp(tc, Math.round(haven.x), Math.round(haven.y));
+      await sleep(900);
+    }
+  }
+  receipt('Maren stands where the drover yard trades', marenEid >= 0, `eid=${marenEid}`);
+  await sidle(tc, marenEid);
+  // Slot-addressed sale per unit: the instance law bars id-addressed
+  // sells for non-stackable produce, and today's order may be milk.
+  const mkl = tc.mark();
+  for (let u = 0; u < 3; u++) {
+    const idx = tc.inv().findIndex((s2) => s2 && s2.item === order.item);
+    if (idx === -1) break;
+    tc.send({ t: 'shop', op: 'sell', item: order.item, qty: 1, slot: idx, shop: 'drover_yard' });
+    await sleep(350);
+  }
+  await line(tc, 'The larder takes', mkl, 'larder premium');
+  const value = 3; // spoken line is the receipt; coins checked loosely
+  receipt('the board pays the premium and speaks the countdown', tc.count('coins') >= value, `coins=${tc.count('coins')}`);
+
+  clearInterval(hb5);
+  } // end Phase 5 chapter
+
 
   clearInterval(heartbeat);
   if (hb2) clearInterval(hb2);

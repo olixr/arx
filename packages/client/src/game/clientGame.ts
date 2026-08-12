@@ -70,7 +70,7 @@ import {
   type Vec2,
 } from '@arx/shared';
 import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
-import { farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
+import { farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
 import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
@@ -1485,6 +1485,10 @@ export class ClientGame {
         // THE ANIMALS OF THE YARD: the release ceremony — the naming
         // card opens for the newest animal in the yard.
         this.onStockCeremony?.(msg.slot, msg.species);
+        break;
+      }
+      case 'larder': {
+        for (const f of msg.fills) larderFills.set(f.shop, { epoch: f.epoch, filled: f.filled });
         break;
       }
       case 'charges': {

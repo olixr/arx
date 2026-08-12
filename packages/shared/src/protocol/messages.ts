@@ -356,6 +356,16 @@ export interface S2CFarm {
 }
 
 /**
+ * THE LARDER BOARD (Phase 5): filled counts per hosting counter.
+ * The ORDER itself derives client-side from (shop, world epoch) —
+ * only the fill travels. Whole at login, deltas on every sale.
+ */
+export interface S2CLarder {
+  t: 'larder';
+  fills: Array<{ shop: string; epoch: number; filled: number }>;
+}
+
+/**
  * Load a work batch into a yard station. Inputs leave the pack at
  * this door (highest grades first); the server re-proves the tile,
  * the recipe, the level, and the cap.
@@ -1715,6 +1725,7 @@ export type S2CMessage =
   | S2CBuffs
   | S2CFarm
   | S2CStockCeremony
+  | S2CLarder
   | S2CCharges
   | S2CRide
   | S2CPet

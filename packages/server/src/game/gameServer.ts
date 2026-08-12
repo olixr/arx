@@ -169,6 +169,9 @@ import {
   APIARY_STORE_CAP,
   APIARY_FLOWER_RANGE,
   apiaryGrade,
+  larderEpoch,
+  larderHost,
+  larderOrder,
   compostWorthOf,
   COMPOST_BATCH_WORTH,
   COMPOST_MINUTES,
@@ -3202,6 +3205,8 @@ export class GameServer {
     this.sendCooldowns(player);
     // THE ONE CARE MIRROR: the field's facts, whole, once per session.
     this.sendFarm(session);
+    // THE LARDER BOARD's fills (the orders derive client-side).
+    this.sendLarder(session);
     // The walk-back beacon survives a relogin while the spill still
     // holds the ground; a stale entry is swept here instead of sent.
     {
@@ -4893,6 +4898,34 @@ export class GameServer {
     this.saveCrop(state);
     this.mirrorPlot(state);
     sys('You cut the deadwood away. The tree breathes.');
+  }
+
+  // ------------------------------------------------ the larder board
+
+  /**
+   * THE LARDER BOARD: the only premium counter. The order is pure
+   * content (larderOrder of shop x epoch); the fill is the one fact
+   * the server keeps, mirrored so every open shop screen counts down
+   * live and the epoch turn wipes the slate by construction.
+   */
+  private readonly larderFills = new Map<string, { epoch: number; filled: number }>();
+
+  loadLarderFills(rows: Array<{ shop: string; epoch: number; filled: number }>): void {
+    for (const row of rows) {
+      const cur = this.larderFills.get(row.shop);
+      if (!cur || cur.epoch < row.epoch) {
+        this.larderFills.set(row.shop, { epoch: row.epoch, filled: row.filled });
+      }
+    }
+  }
+
+  private sendLarder(session: Session): void {
+    const fills = [...this.larderFills.entries()].map(([shop, f]) => ({
+      shop,
+      epoch: f.epoch,
+      filled: f.filled,
+    }));
+    if (fills.length > 0) session.sendJson({ t: 'larder', fills });
   }
 
   // ---------------------------------------------- the working yard
@@ -7336,6 +7369,37 @@ export class GameServer {
       // around parity — a keeper who discounts you also pays better.
       const sellMult = standingSellMult(band);
       const payFor = (each: number): number => Math.max(1, Math.floor((each / 2) * sellMult));
+      // THE LARDER BOARD: an open order pays its premium for the
+      // item's FAMILY (grades count, and a graded unit's own higher
+      // value rides the multiplier). First come, first paid; honest
+      // goods only; the half-value law holds for everything else.
+      const larderPay = (soldItem: string, soldQty: number, each: number, stolen: boolean): number | null => {
+        const host = larderHost(shopId);
+        if (!host || stolen) return null;
+        const epoch = larderEpoch(Date.now());
+        const order = larderOrder(host, epoch);
+        if (gradeOf(soldItem).base !== order.item) return null;
+        const rec = this.larderFills.get(host.shop);
+        const filled = rec && rec.epoch === epoch ? rec.filled : 0;
+        const remaining = order.qty - filled;
+        if (remaining <= 0) return null;
+        const premiumUnits = Math.min(soldQty, remaining);
+        const pay =
+          premiumUnits * Math.max(1, Math.floor(each * order.mult)) +
+          (soldQty - premiumUnits) * payFor(each);
+        const nf = filled + premiumUnits;
+        this.larderFills.set(host.shop, { epoch, filled: nf });
+        this.accounts.upsertLarderFill(host.shop, epoch, nf);
+        for (const s of this.sessions) {
+          s.sendJson({ t: 'larder', fills: [{ shop: host.shop, epoch, filled: nf }] });
+        }
+        sys(
+          remaining - premiumUnits <= 0
+            ? `That fills the ${host.town} order. Good trading.`
+            : `The larder takes ${premiumUnits} at a keen price. ${remaining - premiumUnits} still wanted.`,
+        );
+        return pay;
+      };
       // Slot-addressed sale: the exact instance clicked leaves, and a
       // rolled instance is priced by its DERIVED value, not the base.
       const src = slot !== undefined ? player.inventory[slot] : undefined;
@@ -7353,10 +7417,11 @@ export class GameServer {
         const taken = takeSlot(player.inventory, slot!, qty);
         if (!taken) return;
         const each = rolledStats(taken.item, taken.roll)?.value ?? def.value;
+        const larder = larderPay(taken.item, taken.qty, each, !!taken.stolen);
         addItem(
           player.inventory,
           'coins',
-          Math.max(1, Math.floor(taken.qty * payFor(each) * stolenMult)),
+          larder ?? Math.max(1, Math.floor(taken.qty * payFor(each) * stolenMult)),
         );
       } else {
         // Id-addressed sales are for stackable materials ONLY (the
@@ -7366,7 +7431,8 @@ export class GameServer {
         if (!def.stackable) return;
         const sold = removeItem(player.inventory, item, qty);
         if (sold === 0) return;
-        addItem(player.inventory, 'coins', sold * payFor(def.value));
+        const larder = larderPay(item, sold, def.value, false);
+        addItem(player.inventory, 'coins', larder ?? sold * payFor(def.value));
       }
     }
     player.session.sendJson({ t: 'inv', slots: player.inventory });
@@ -10829,6 +10895,12 @@ export class GameServer {
           shieldHp: Math.round((b.shieldHp ?? 0) * player.perks.shieldMult),
           gatherSpeed: b.gatherSpeed ?? 1,
           regenPer4s: b.regenPer4s ?? 0,
+          // THE LADEN TABLE: the feast dials ride the same folds the
+          // ability buffs already use — armor sums, dmgMult and
+          // critPct fold additively in the surge readers.
+          armor: b.armor ?? 0,
+          dmgMult: b.dmgMult ?? 1,
+          critPct: b.critPct ?? 0,
           untilTick: this.tickCount + Math.round(b.durationSec * 20 * durMult),
           channel: b.channel,
           itemId: def.id,

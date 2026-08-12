@@ -84,6 +84,15 @@ export interface ConsumableBuff {
   gatherSpeed?: number;
   /** HP restored every 4 seconds. */
   regenPer4s?: number;
+  // THE LADEN TABLE (farming v2 Phase 5): the combat dials — held
+  // DELIBERATELY scarce (top-end feasts and two named draughts).
+  // The farmer feeds the raid; the raid still swings its own arms.
+  /** Flat armor while the buff holds (folds beside gear armor). */
+  armor?: number;
+  /** Outgoing damage multiplier (1.05 = a feast, never a doubling). */
+  dmgMult?: number;
+  /** Additive crit chance in percent points. */
+  critPct?: number;
 }
 
 /**
@@ -430,6 +439,129 @@ const defs: ItemDef[] = [
     desc: 'Bittercress and redroot holding the line together.',
     color: '#a8383d',
     code: 'Ir',
+  },
+  // THE LADEN TABLE (farming v2 Phase 5): the buff kitchen — the
+  // farmer feeds the raid. Combat dials stay scarce and modest.
+  {
+    id: 'honeyed_carrots',
+    name: 'Honeyed carrots',
+    stackable: false,
+    value: 60,
+    heals: 8,
+    buff: { name: 'Honeyed', channel: 'food', durationSec: 240, armor: 2 },
+    desc: 'The hive glazes the field. Everyone wins.',
+    color: '#e8873d',
+    code: 'Hy',
+  },
+  {
+    id: 'pumpkin_pie',
+    name: 'Pumpkin pie',
+    stackable: false,
+    value: 150,
+    heals: 14,
+    buff: { name: 'Harvest Warmth', channel: 'food', durationSec: 300, armor: 3, regenPer4s: 1 },
+    desc: 'The showpiece gourd, crowned in crust.',
+    color: '#e08a3d',
+    code: 'Pp',
+  },
+  {
+    id: 'shepherds_pie',
+    name: "Shepherd's pie",
+    stackable: false,
+    value: 240,
+    heals: 16,
+    buff: { name: "Shepherd's Rest", channel: 'food', durationSec: 300, armor: 4 },
+    desc: 'Potato roof, smoked-beef heart. A wall you can eat.',
+    color: '#a8875c',
+    code: 'Sp',
+  },
+  {
+    id: 'orchard_tart',
+    name: 'Orchard tart',
+    stackable: false,
+    value: 280,
+    heals: 15,
+    buff: { name: 'Orchard Bright', channel: 'food', durationSec: 240, critPct: 3 },
+    desc: 'Sharp fruit, sweet honey, steady hands.',
+    color: '#c94a3d',
+    code: 'Ot',
+  },
+  {
+    id: 'harvest_feast',
+    name: 'Harvest feast',
+    stackable: false,
+    value: 520,
+    heals: 20,
+    buff: { name: 'Harvest Feast', channel: 'food', durationSec: 300, dmgMult: 1.05 },
+    desc: 'The whole farm on one board. Armies have marched on less.',
+    color: '#c9a86a',
+    code: 'Hf',
+  },
+  {
+    id: 'royal_banquet',
+    name: 'Royal banquet',
+    stackable: false,
+    value: 950,
+    heals: 24,
+    buff: { name: 'Royal Banquet', channel: 'food', durationSec: 360, dmgMult: 1.06, regenPer4s: 1 },
+    desc: 'Prime everything. The crown would approve, if invited.',
+    color: '#e8c04c',
+    code: 'Rb',
+  },
+  // Herbalism's high shelf: the ladder runs to 90, and the master
+  // brews ASK for prime herbs by name (grade scales magnitude
+  // through the recipe tier — the alembic reads labels, not luck).
+  {
+    id: 'ironhide_draught',
+    name: 'Ironhide draught',
+    stackable: false,
+    value: 240,
+    buff: { name: 'Ironhide', channel: 'tonic', durationSec: 240, armor: 4 },
+    desc: 'Redroot\'s stubbornness boiled to a standstill.',
+    color: '#8a4a38',
+    code: 'Ih',
+  },
+  {
+    id: 'hunters_eye_brew',
+    name: "Hunter's eye brew",
+    stackable: false,
+    value: 340,
+    buff: { name: "Hunter's Eye", channel: 'tonic', durationSec: 180, critPct: 4 },
+    desc: 'Silverleaf sharpens what the dusk hides.',
+    color: '#b8c4c9',
+    code: 'He',
+  },
+  {
+    id: 'prime_tincture',
+    name: 'Prime tincture',
+    stackable: false,
+    value: 420,
+    heals: 26,
+    desc: 'Prime bittercress, and nothing less would do.',
+    color: '#c94a3d',
+    code: 'Pi',
+  },
+  {
+    id: 'dawnfire_elixir',
+    name: 'Dawnfire elixir',
+    stackable: false,
+    value: 560,
+    heals: 24,
+    buff: { name: 'Dawnfire', channel: 'tonic', durationSec: 120, regenPer4s: 3 },
+    desc: 'Dawnveil steeped until it glows twice.',
+    color: '#e8a83c',
+    code: 'Df',
+  },
+  {
+    id: 'master_draught',
+    name: "Master's draught",
+    stackable: false,
+    value: 900,
+    heals: 30,
+    buff: { name: "Master's Draught", channel: 'tonic', durationSec: 300, shieldHp: 20 },
+    desc: 'The high shelf\'s whole argument in one bottle.',
+    color: '#e8d8a8',
+    code: 'Md',
   },
 
   // Homestead cooking

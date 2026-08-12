@@ -915,7 +915,14 @@ test('livestock produce/lays and consumable buffs resolve', () => {
     if (!item.buff) continue;
     assert.ok(item.buff.durationSec > 0, `${id} buff has no duration`);
     assert.ok(
-      item.buff.speedMult || item.buff.shieldHp || item.buff.gatherSpeed || item.buff.regenPer4s,
+      item.buff.speedMult ||
+        item.buff.shieldHp ||
+        item.buff.gatherSpeed ||
+        item.buff.regenPer4s ||
+        // THE LADEN TABLE's scarce combat dials count as doing.
+        item.buff.armor ||
+        item.buff.dmgMult ||
+        item.buff.critPct,
       `${id} buff does nothing`,
     );
     if (item.buff.channel === 'tonic') tonics++;

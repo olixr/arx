@@ -47,6 +47,7 @@ import {
   validateVoice,
   zoneFromJson,
   type GrowthRow,
+  larderEpoch,
   type LootTableDef,
   type MinorDef,
   type NodeDef,
@@ -396,6 +397,7 @@ game.loadFarmTroughs(await accounts.loadFarmTroughs());
 game.loadLivestockRows(await accounts.loadLivestock());
 game.loadStationJobs(await accounts.loadStationJobs());
 game.loadFarmApiaries(await accounts.loadFarmApiaries());
+game.loadLarderFills(await accounts.loadLarderFills(larderEpoch(Date.now()) - 1));
 game.loadSigns(await accounts.loadSigns());
 // THE HEARTH WATCH: claim rings derive from EVERY claimed bed, offline
 // settlers included — before the first POI decision reads the context.

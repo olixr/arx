@@ -28,6 +28,9 @@ import {
   gradeOf,
   workDone,
   workRecipesFor,
+  larderEpoch,
+  larderHost,
+  larderOrder,
   type WorkRecipeDef,
   type WorkStation,
   buildableGround,
@@ -48,7 +51,7 @@ import {
   type TrainerPost,
 } from '@arx/content';
 import { buildableIconUrl, itemIconUrl, queueItemIcon, uiIconUrl } from '../render/icons.js';
-import { farmBins, farmJobs, farmKey, farmTroughs } from '../game/farmCare.js';
+import { farmBins, farmJobs, farmKey, farmTroughs, larderFills } from '../game/farmCare.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
 import { petPortraitUrl } from '../render/petPortrait.js';
 import { createLedger } from './kit/ledger.js';
@@ -2184,6 +2187,28 @@ export class StationPanels {
     // actually be charged (same pure function, never a disagreement).
     const priceOf = (base: number): number => Math.max(1, Math.round(base * priceMult));
     this.shopList.innerHTML = '';
+    // THE LARDER BOARD: the town's standing order, said at the top.
+    // The order derives from the world clock (pure content); only the
+    // filled count came over the wire. The sell door pays the premium
+    // and speaks the countdown — this banner is the invitation.
+    {
+      const host = larderHost(shopId);
+      if (host) {
+        const epoch = larderEpoch(Date.now());
+        const order = larderOrder(host, epoch);
+        const fill = larderFills.get(shopId);
+        const filled = fill && fill.epoch === epoch ? fill.filled : 0;
+        const left = order.qty - filled;
+        const board = document.createElement('div');
+        board.className = 'shop-standing' + (left > 0 ? ' fair' : '');
+        const orderDef = itemDef(order.item);
+        board.textContent =
+          left > 0
+            ? `The larder asks: ${order.qty} ${orderDef?.name.toLowerCase() ?? order.item} at ${Math.max(1, Math.floor((orderDef?.value ?? 1) * order.mult))} coins each. ${left} still wanted.`
+            : 'The larder order is filled. A new one posts with the next bell.';
+        this.shopList.appendChild(board);
+      }
+    }
     // The standing's word, said once at the top, quartermaster-plain.
     if (priceMult !== 1) {
       const word = document.createElement('div');

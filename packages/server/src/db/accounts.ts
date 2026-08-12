@@ -1296,6 +1296,21 @@ export class AccountStore {
     this.db.fire('DELETE FROM farm_apiaries WHERE tx = ? AND ty = ?', [tx, ty]);
   }
 
+  /** THE LARDER BOARD: filled counts for the living epoch(s). */
+  async loadLarderFills(sinceEpoch: number): Promise<Array<{ shop: string; epoch: number; filled: number }>> {
+    return this.db.query('SELECT shop, epoch, filled FROM larder_orders WHERE epoch >= ?', [
+      sinceEpoch,
+    ]) as ReturnType<AccountStore['loadLarderFills']>;
+  }
+
+  upsertLarderFill(shop: string, epoch: number, filled: number): void {
+    this.db.fire(
+      'INSERT INTO larder_orders (shop, epoch, filled) VALUES (?, ?, ?) ' +
+        'ON CONFLICT (shop, epoch) DO UPDATE SET filled = excluded.filled',
+      [shop, epoch, filled],
+    );
+  }
+
   async loadBank(characterId: number): Promise<Record<string, number>> {
     const rows = await this.db.query<{ item_id: string; qty: number }>(
       'SELECT item_id, qty FROM bank_items WHERE character_id = ?',
