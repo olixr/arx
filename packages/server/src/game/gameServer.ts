@@ -21585,6 +21585,42 @@ export class GameServer {
       }
       return;
     }
+    if (config.devCommands && text.startsWith('/settile ')) {
+      // Rig fixture brush: /settile <tileId> <w> <h> [gapX gapY] fills
+      // a rectangle of tiles south-east of the player through the one
+      // setWorldTile door (patches stream like any build). Gaps carve
+      // walkable lanes so dense prop fields stay traversable.
+      const [, idRaw, wRaw, hRaw, gxRaw, gyRaw] = text.split(/\s+/);
+      const tile = Number.parseInt(idRaw ?? '', 10);
+      const w = Math.min(64, Number.parseInt(wRaw ?? '1', 10) || 1);
+      const h = Math.min(64, Number.parseInt(hRaw ?? '1', 10) || 1);
+      const gapX = Number.parseInt(gxRaw ?? '0', 10) || 0;
+      const gapY = Number.parseInt(gyRaw ?? '0', 10) || 0;
+      const pos = this.positions.get(eid);
+      if (pos && Number.isFinite(tile)) {
+        const tx0 = Math.floor(pos.x) + 2;
+        const ty0 = Math.floor(pos.y) + 2;
+        let n = 0;
+        for (let dy = 0; dy < h; dy++) {
+          if (gapY > 0 && dy % (gapY + 1) === gapY) continue;
+          for (let dx = 0; dx < w; dx++) {
+            if (gapX > 0 && dx % (gapX + 1) === gapX) continue;
+            this.world.ensure(
+              Math.floor((tx0 + dx) / CHUNK_SIZE),
+              Math.floor((ty0 + dy) / CHUNK_SIZE),
+            );
+            this.setWorldTile(tx0 + dx, ty0 + dy, tile as Tile);
+            n++;
+          }
+        }
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Set ${n} tiles of ${tile} at ${tx0},${ty0}.`,
+        });
+      }
+      return;
+    }
     if (config.devCommands && text.startsWith('/time')) {
       const arg = text.split(/\s+/)[1] ?? '';
       const target = TIME_NAMES[arg] ?? Number.parseFloat(arg);

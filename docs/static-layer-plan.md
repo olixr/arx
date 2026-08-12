@@ -160,6 +160,52 @@ Three pieces, per chunk:
 Each phase ships independently: tests green (npm test, tsx --test),
 measured on the rig, committed and pushed before the next begins.
 
+### Phase 4 — STATIC PROP BANDS AT SCALE (2026-08-12)
+
+- Membership: `BAND_STATIC_PROPS` = STATIC_RING_TILES minus the
+  run-merged furniture (already one bake per component) minus
+  PillarStone (own route) — crates, chairs, thrones, bookshelves,
+  cabinets, racks, lecterns, signposts, timber posts, stumps,
+  stalagmites, bone piles, glow shrooms. Verified flame-free: Table's
+  candles, LampPost, Brazier, and Hearth all live outside the set.
+- The bake now replicates the LIVE environment exactly (ctx scaled by
+  the adaptive dpr, camera at the settled target scale, snapPx on the
+  device lattice) — so `drawPropOutlined` composites the ring-baked
+  prop sprites natively during bakes (the sprite IS the brush), and
+  wall bakes behave byte-for-byte as on screen. A stretch declines
+  if any member sprite is missing or off-grid (a budget-skipped
+  nested bake would leave an invisible prop); the live path heals the
+  sprite first and the band follows.
+- THE SHADOW REPLAY: bakes capture the probe items' live drawShadow
+  closures (translation-invariant screen-space casts that read the
+  sun and this.ctx at call time); per frame the band translates them
+  by the camera's origin delta since capture. Zero per-frame item
+  construction for banded stretches — SHADOWS NEVER BAKE, and
+  neither does collect.
+- The step-aside fade never bakes (occluderFade gated off during
+  bakes — its box lives in live viewport coords) and its support box
+  keeps near-body props live. `invalidateProp` (sign text) bumps a
+  per-tile nonce mixed into stretch sigs and drops the register, so
+  state-keyed art re-bakes its band.
+- `/settile <tile> <w> <h> [gapX gapY]` (server, DEV_COMMANDS) fills
+  fixture rectangles through the one setWorldTile door — the standing
+  rig brush for dense-base fixtures.
+- Receipts (the ~1,540-prop dense-base fixture beside Dawnmead, lane
+  rows for walkability, position-verified teleports, interleaved
+  off/on cycles): canvas-only pixel parity — on/off delta ~31k px vs
+  400-750k px frame-to-frame animation control (the toggle changes
+  15-20x LESS than one frame of lawn wind). Chrome unthrottled:
+  world 3.33 -> 1.67ms, p50 at the 8.3ms vsync tick in clean
+  sessions. Chrome 4x throttle (interleaved medians): world
+  19.1 -> 13.5ms, p50 60.5 -> 57. Firefox: world 8.97 -> 5.96ms.
+  Steady state ~58 blits + ~6 by-design hot stretches per frame,
+  zero rebakes. MEASUREMENT LESSONS (pinned for the rig): verify
+  every teleport against renderer.ownPX/ownPY (throttled chat drops
+  keystrokes), keep fixtures inside town wards (wilds mobs shake
+  crates and kill idle probes), interleave A/B cycles (single-window
+  EMAs swing 2x with scene noise), and diff CANVAS pixels, never
+  page screenshots (DOM chat shifts pollute).
+
 ## Verification protocol
 
 Isolated lane-3 rig (arx_rig_perf; server :8795 DEV_COMMANDS=1

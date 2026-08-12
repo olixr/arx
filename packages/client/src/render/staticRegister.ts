@@ -336,7 +336,16 @@ export interface StretchBake {
   /** Foreshortened row depth in bake px (yScale * gridPx). */
   rowDepthPx: number;
   buckets: BandBucket[];
-  hasShadows: boolean;
+  /** The probe items' live drawShadow closures, captured at bake.
+   *  Their painters are translation-invariant screen-space casts that
+   *  read the sun (and this.ctx) at call time, so the per-frame
+   *  replay just translates by the camera's origin delta — SHADOWS
+   *  NEVER BAKE, and neither does per-frame item construction. */
+  shadowDraws: Array<() => void>;
+  /** Camera origin (worldToScreen of 0,0) when the shadows were
+   *  captured — the replay's translation reference. */
+  originX: number;
+  originY: number;
   used: number;
 }
 

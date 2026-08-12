@@ -69,12 +69,14 @@ import {
   drawBackGear,
   drawBat,
   drawBeast,
+  drawGreatOwl,
   drawHumanoid,
   drawSlime,
   drawSnake,
   shade,
   koboldLook,
   gnollLook,
+  owlHoverHeight,
   owlLook,
   skeletonLook,
   type RigPose,
@@ -593,6 +595,16 @@ interface AnimState {
   olY?: number;
   olDir?: number;
   olCoolUntil?: number;
+  /** THE PARLIAMENT FLIES — the owl's smoothed 0..1 altitude blend
+   *  (0 = roosting on the ground, 1 = cruise height). */
+  owlAir?: number;
+  /** The roost ledger's current intent (0 = settle, 1 = fly) and the
+   *  clock its next decision unlocks on. */
+  owlWant?: number;
+  owlUntil?: number;
+  /** Smoothed banking roll (radians) + last facing for the turn rate. */
+  owlBank?: number;
+  owlDir?: number;
 }
 
 /** Player zoom bounds: 1 = the classic framing (also the default). */
@@ -5711,6 +5723,7 @@ export class Renderer {
           h = mixSig(h, m.ty);
           h = mixSig(h, m.len);
           h = mixSig(h, this.regGame!.world.elevAt(m.tx, m.ty));
+          if (this.bandNonce.size > 0) h = mixSig(h, this.bandNonce.get(packTile(m.tx, m.ty)) ?? 0);
           ms[i] = si;
         }
         sigs[si] = h;
@@ -6145,6 +6158,9 @@ export class Renderer {
   // the reveal shortens casts, so band items carry their members' own
   // live drawShadow closures into the prepass.
   private readonly bandCache = new Map<string, StretchBake>();
+  /** Per-tile invalidation nonces (sign text and friends) — mixed
+   *  into stretch content sigs so state-keyed art re-bakes its band. */
+  private readonly bandNonce = new Map<number, number>();
   /** Per-frame band accounting (the ?perf confession, phase 5). */
   private readonly bandStats = { blit: 0, live: 0, hot: 0, bakes: 0 };
   /** Per-frame "this stretch already emitted" marker (blit or live). */
@@ -6180,6 +6196,10 @@ export class Renderer {
       case RaisedKind.RampRun:
       case RaisedKind.RampSingle:
         return true;
+      case RaisedKind.Generic:
+        // Phase 4: inert single-tile props ride the bands; everything
+        // animated, run-merged, or glowing keeps its existing cache.
+        return Renderer.BAND_STATIC_PROPS.has(m.tile);
       default:
         return false;
     }
@@ -6191,12 +6211,15 @@ export class Renderer {
     return this.cameraOverride === null;
   }
 
-  /** Integer device pixels per tile for band bakes (THE CRISP GRID
-   *  LAW): targetZoom (one flip per zoom, never mid-glide) × the
-   *  adaptive dpr — the treeSprites resolution model, never the
-   *  ground tier (walls are 1-3px-stroke art; softening is banned). */
+  /** Device pixels per tile for band bakes (THE CRISP GRID LAW):
+   *  targetZoom (one flip per zoom, never mid-glide) × the adaptive
+   *  dpr — the treeSprites resolution model, never the ground tier
+   *  (walls are 1-3px-stroke art; softening is banned). Bakes run in
+   *  a replica of the LIVE environment (CSS-scaled ctx at dpr, snap
+   *  on the device lattice), so painters and sprite blits behave
+   *  byte-for-byte as on screen. */
   private bandGridPx(): number {
-    return Math.max(8, Math.round(this.camera.baseScale * this.camera.targetZoom * this.dpr()));
+    return this.camera.baseScale * this.camera.targetZoom * this.dpr();
   }
 
   /**
@@ -6228,6 +6251,19 @@ export class Renderer {
             if (this.garrisonHeightAt(game, m.tx, m.ty) !== GARRISON_H) return true;
             if (this.garrisonHeightAt(game, m.tx, m.ty - 1) !== GARRISON_H) return true;
           }
+          break;
+        }
+        case RaisedKind.Generic: {
+          // THE STEP-ASIDE FADE's support box: a tall prop near the
+          // own body fades per frame, so it draws live there. The box
+          // is conservative — a few live props beside the player is
+          // exactly today's cost.
+          if (
+            Math.abs(m.tx + 0.5 - this.ownPX) <= 4.5 &&
+            m.ty - this.ownPY >= -2.5 &&
+            m.ty - this.ownPY <= 6.5
+          )
+            return true;
           break;
         }
         default:
@@ -6290,31 +6326,32 @@ export class Renderer {
         if (isRun) runSeen.add(packTile(m0.tx, m0.ty));
         this.bandStats.blit++;
         bake.used = this.frameNo;
-        let shadowItems: DrawItem[] | null = null;
-        if (bake.hasShadows) {
-          // SHADOWS NEVER BAKE: mint the members' items fresh for
-          // their live drawShadow closures (sun angle + veil height
-          // stay continuous); their draws are never called.
-          shadowItems = [];
-          const seen2 = this.bandScratchSeen;
-          seen2.clear();
-          for (let i = s.i0; i <= s.i1; i++)
-            this.emitRaisedMember(game, shadowItems, list[i]!, seen2);
-        }
         const buckets = bake.buckets;
         for (let bi = 0; bi < buckets.length; bi++) {
           const bk = buckets[bi]!;
-          const sh = bi === 0 ? shadowItems : null;
           const sb = bake;
           items.push({
             sortY: bk.sortY,
             strat: bk.strat,
             elevated: bk.elevated ? true : undefined,
-            drawShadow: sh
-              ? () => {
-                  for (const it of sh) it.drawShadow?.();
-                }
-              : undefined,
+            // SHADOWS NEVER BAKE — and neither does per-frame item
+            // construction: the bake captured the members' live
+            // drawShadow closures (translation-invariant casts that
+            // read the sun and this.ctx at call time); the replay
+            // translates by the camera's origin delta since capture.
+            drawShadow:
+              bi === 0 && sb.shadowDraws.length > 0
+                ? () => {
+                    const o = this.camera.worldToScreen(0, 0, this.w, this.h);
+                    const dx = o.x - sb.originX;
+                    const dy = o.y - sb.originY;
+                    const sctx = this.ctx;
+                    sctx.save();
+                    sctx.translate(dx, dy);
+                    for (const f of sb.shadowDraws) f();
+                    sctx.restore();
+                  }
+                : undefined,
             draw: () => this.blitBand(sb, bk),
           });
         }
@@ -6371,7 +6408,6 @@ export class Renderer {
     let maxElev = 0;
     let garrison = false;
     let rampish = false;
-    let hasShadows = false;
     for (let i = s.i0; i <= s.i1; i++) {
       const m = list[i]!;
       if (m.tx < wx0) wx0 = m.tx;
@@ -6380,7 +6416,21 @@ export class Renderer {
       if (e > maxElev) maxElev = e;
       if (m.kind === RaisedKind.GarrisonWall) garrison = true;
       if (m.kind === RaisedKind.RampRun || m.kind === RaisedKind.RampSingle) rampish = true;
-      else hasShadows = true;
+      if (m.kind === RaisedKind.Generic && this.outlineOn) {
+        // Prop bands composite the ring-baked sprites (the sprite IS
+        // the brush). A missing or off-grid sprite could be skipped
+        // by the budget mid-bake and leave an invisible prop — the
+        // stretch declines instead and the live path heals it first.
+        const sp = this.treeSprites.get(Renderer.treeKey(m.tx + 0.5, m.ty + 0.5, m.tile as Tile));
+        const sLive = this.camera.baseScale * this.camera.targetZoom;
+        if (
+          !sp ||
+          Math.abs(sp.scale - sLive) > sLive * 0.2 ||
+          sp.dpr !== this.dpr() ||
+          !sp.outlined
+        )
+          return null;
+      }
     }
     const rowY = list[s.i0]!.ty;
     // Head-room in tiles: the tallest member's crown plus its terrace
@@ -6389,8 +6439,16 @@ export class Renderer {
     const northT = (garrison ? 4.6 : 2.8) + maxElev * ELEV_H + (rampish ? 1.5 : 0);
     const southT = rampish ? 1.7 : 0.7;
     const padXT = 1;
-    const W = Math.ceil((wx1 - wx0 + padXT * 2) * gridPx);
-    const H = Math.ceil((northT + southT + this.camera.yScale) * gridPx);
+    // The bake replicates the LIVE environment: a CSS-coordinate ctx
+    // scaled by the adaptive dpr, the camera at the settled target
+    // scale, snapping on the device lattice — painters, sprite blits,
+    // and every snapPx behave byte-for-byte as on screen.
+    const dprB = this.dpr();
+    const cssScale = gridPx / dprB;
+    const cssW = (wx1 - wx0 + padXT * 2) * cssScale;
+    const cssH = (northT + southT + this.camera.yScale) * cssScale;
+    const W = Math.ceil(cssW * dprB);
+    const H = Math.ceil(cssH * dprB);
     if (W <= 0 || W > 8192 || H > 4096) return null;
     const cam = this.camera;
     const savedX = cam.x;
@@ -6404,6 +6462,10 @@ export class Renderer {
     this.bakingMask = true;
     const keyOf = (it: DrawItem): string => `${it.sortY}|${it.strat ?? 'u'}|${it.elevated ? 1 : 0}`;
     const buckets: BandBucket[] = [];
+    // Live-camera origin at capture time — the shadow replay's
+    // translation reference (probe items carry live screen coords).
+    const org = cam.worldToScreen(0, 0, this.w, this.h);
+    const shadowDraws: Array<() => void> = [];
     try {
       // Probe pass (live camera): discover the sort buckets in first-
       // occurrence order. Only keys are read; the items are discarded.
@@ -6415,21 +6477,24 @@ export class Renderer {
       for (const it of probe) {
         const k = keyOf(it);
         if (!bucketKeys.includes(k)) bucketKeys.push(k);
+        if (it.drawShadow) shadowDraws.push(it.drawShadow);
       }
       for (const bkKey of bucketKeys) {
         const canvas = this.acquireBandCanvas(W, H);
         const bctx = canvas.getContext('2d')!;
         bctx.setTransform(1, 0, 0, 1, 0, 0);
         bctx.clearRect(0, 0, W, H);
-        cam.scale = gridPx;
-        cam.snapDpr = 1;
-        this.w = W;
-        this.h = H;
-        const targetX = padXT * gridPx;
-        const targetY = northT * gridPx;
-        cam.x = (W / 2 - (targetX - wx0 * gridPx)) / gridPx;
-        cam.y = (H / 2 - (targetY - rowY * gridPx * cam.yScale)) / (gridPx * cam.yScale);
-        const anchor = cam.worldToScreen(wx0, rowY, W, H);
+        bctx.setTransform(dprB, 0, 0, dprB, 0, 0);
+        cam.scale = cssScale;
+        cam.snapDpr = dprB;
+        this.w = cssW;
+        this.h = cssH;
+        const targetX = padXT * cssScale;
+        const targetY = northT * cssScale;
+        cam.x = (cssW / 2 - (targetX - wx0 * cssScale)) / cssScale;
+        cam.y = (cssH / 2 - (targetY - rowY * cssScale * cam.yScale)) / (cssScale * cam.yScale);
+        const anchorCss = cam.worldToScreen(wx0, rowY, cssW, cssH);
+        const anchor = { x: anchorCss.x * dprB, y: anchorCss.y * dprB };
         this.ctx = bctx;
         const s2: DrawItem[] = [];
         seen.clear();
@@ -6471,7 +6536,9 @@ export class Renderer {
       rowY,
       rowDepthPx: this.camera.yScale * gridPx,
       buckets,
-      hasShadows,
+      shadowDraws,
+      originX: org.x,
+      originY: org.y,
       used: this.frameNo,
     };
   }
@@ -16366,6 +16433,18 @@ export class Renderer {
     // estate-length runs ring seamlessly with no bake cap at all.
   ]);
 
+  /** THE STANDING WORLD phase 4 — single-tile props whose painters
+   *  are provably inert (STATIC_RING minus the run-merged furniture,
+   *  which already bakes per component, minus PillarStone, which has
+   *  its own route). None of these read the clock or the sky —
+   *  Table's candles, LampPost, Brazier, and Hearth all live outside
+   *  this set. */
+  private static readonly BAND_STATIC_PROPS = new Set<number>(
+    [...Renderer.STATIC_RING_TILES].filter(
+      (t) => !Renderer.RUN_RING_TILES.has(t) && t !== Tile.PillarStone,
+    ),
+  );
+
   /**
    * Group a run-merging tile's connected component and emit ONE ringed
    * item for the whole piece. Members are discovered by world data
@@ -16560,6 +16639,15 @@ export class Renderer {
    */
   invalidateProp(tx: number, ty: number, tile: Tile): void {
     this.treeSprites.delete(Renderer.treeKey(tx + 0.5, ty + 0.5, tile));
+    // THE STANDING WORLD: a banded prop's pixels live in its stretch
+    // bake too. Bump the tile's nonce (mixed into stretch sigs) and
+    // drop the chunk's register so the rebuild re-signs — the stale
+    // band declines, the sprite re-bakes live, the band follows.
+    const key = packTile(tx, ty);
+    this.bandNonce.set(key, (this.bandNonce.get(key) ?? 0) + 1);
+    this.registers.delete(
+      `${Math.floor(tx / CHUNK_SIZE)},${Math.floor(ty / CHUNK_SIZE)}`,
+    );
   }
 
   /** The interaction furniture that never joins the step-aside fade:
@@ -16645,6 +16733,11 @@ export class Renderer {
     // pillars, canopies, walls' own veil). The seat the own body is
     // MOUNTED on stands its ground by the same law.
     const fade =
+      // A band bake paints the world at rest: the step-aside fade is
+      // a per-frame, screen-space affair (its box lives in live
+      // viewport coords) and banded stretches near the body draw
+      // live anyway — never bake a ghost.
+      !this.bakeVeilFull &&
       dh >= FADE_TALL_TILES * s &&
       !Renderer.NEVER_FADE_TILES.has(tile) &&
       this.ownSeatTiles?.has((tx + 0x8000) * 0x10000 + (ty + 0x8000)) !== true
@@ -29344,6 +29437,13 @@ export class Renderer {
       return this.leglessItem(eid, defId, meta, s, hurt, nameInk);
     }
 
+    // THE PARLIAMENT FLIES: great owls never walk — they cruise like
+    // the bats do, and a still owl may settle onto a roost. Their own
+    // dedicated flier item owns the altitude ledger.
+    if (defId === 'great_owl' || defId === 'elder_great_owl') {
+      return this.owlItem(eid, defId, meta, s, hurt, nameInk);
+    }
+
     const def = npcDef(defId);
     const scale = this.camera.scale;
     const r = (def?.radius ?? 0.3) * scale;
@@ -29472,7 +29572,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : defId === 'great_owl' ? 0.4 : defId === 'elder_great_owl' ? 0.65 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
@@ -29559,6 +29659,144 @@ export class Renderer {
         else drawSlime(this.ctx, common);
       },
       body: { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom },
+      drawLabel: () => {
+        const ctx = this.ctx;
+        if (meta.name) {
+          ctx.font = `600 ${Math.max(10, scale * 0.24)}px 'Trebuchet MS', sans-serif`;
+          ctx.textAlign = 'center';
+          const label = meta.level ? `${meta.name} (${meta.level})` : meta.name;
+          ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
+          ctx.fillText(label, p.x + 1.5, labelTop + 1.5);
+          ctx.fillStyle = nameInk ?? '#f0cf8a';
+          ctx.fillText(label, p.x, labelTop);
+        }
+        if (s.hpPct < 255) {
+          this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct);
+        }
+      },
+    };
+  }
+
+  /**
+   * THE PARLIAMENT FLIES: the great owl's dedicated flier item. Owls
+   * cruise on the wing like the bats do — the walk rig never touches
+   * them. The ROOST LEDGER lives here: a still, peaceful owl rolls a
+   * chance to settle; a settled owl rests a while and lifts off again;
+   * any movement, strike, or wound throws it back on the wing at
+   * takeoff speed. The blend eases both ways (landing drifts down
+   * slower than takeoff snaps up) and the touchdown edge kicks dust.
+   */
+  private owlItem(
+    eid: number,
+    defId: string,
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean },
+    s: { x: number; y: number; dir: number; hpPct: number; pose: number },
+    hurt: boolean,
+    nameInk?: string,
+  ): DrawItem {
+    const def = npcDef(defId);
+    const scale = this.camera.scale;
+    const radius = def?.radius ?? 0.3;
+    const r = radius * scale;
+    const terrainLift = this.renderLift(s.x, s.y) * scale;
+    const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
+    p.y -= terrainLift;
+    const now = performance.now();
+    const anim = this.animFor(eid, s.x, s.y, s.pose, now);
+    const spec = beastSpec(defId, radius, def?.speed ?? 2);
+    const look = owlLook(defId, eid);
+    const dt = Math.max(this.frameDt, 1e-3);
+
+    // ---- the roost ledger.
+    const moveK = anim.moveK ?? 0;
+    const engaged = s.pose !== PoseState.Idle || hurt || moveK > 0.1;
+    if (anim.owlAir === undefined) {
+      // First sight: on the wing — nobody watches an owl materialize
+      // mid-landing.
+      anim.owlAir = 1;
+      anim.owlWant = 1;
+      anim.owlUntil = now + 2000;
+    }
+    if (engaged) {
+      anim.owlWant = 1;
+      // Stay aloft a beat past the last action — combat gaps between
+      // strikes never read as nap opportunities.
+      anim.owlUntil = now + 2500;
+    } else if (now > (anim.owlUntil ?? 0)) {
+      if ((anim.owlWant ?? 1) === 1) {
+        // Airborne and idle: the owl MAY want to rest — a chance, not
+        // a certainty, so a hovering parliament stays mostly on the
+        // wing with one or two settled on the glade floor.
+        if (Math.random() < 0.45) {
+          anim.owlWant = 0;
+          anim.owlUntil = now + 6000 + Math.random() * 8000;
+        } else {
+          anim.owlUntil = now + 3000 + Math.random() * 3000;
+        }
+      } else {
+        // The rest is over: back to the wing.
+        anim.owlWant = 1;
+        anim.owlUntil = now + 4000 + Math.random() * 6000;
+      }
+    }
+    const want = anim.owlWant ?? 1;
+    const prevAir = anim.owlAir;
+    const rate = want > prevAir ? 3.0 : 1.6;
+    anim.owlAir = prevAir + (want - prevAir) * (1 - Math.exp(-rate * dt));
+    const air = anim.owlAir;
+    // Touchdown: the moment the talons take the ground, dust blooms.
+    if (prevAir > 0.06 && air <= 0.06) {
+      this.particles.burst(s.x, s.y + 0.05, 5, ['#a89880', '#bcae94'], {
+        speed: 1.1,
+        life: 0.35,
+        size: 0.06,
+        up: true,
+        drag: 3.5,
+      });
+    }
+
+    // ---- banking: the body rolls into the turn rate, smoothed.
+    const dPrev = anim.owlDir ?? s.dir;
+    let dd = s.dir - dPrev;
+    while (dd > Math.PI) dd -= Math.PI * 2;
+    while (dd < -Math.PI) dd += Math.PI * 2;
+    anim.owlDir = s.dir;
+    const bankTarget = Math.max(-0.38, Math.min(0.38, (dd / dt) * 0.09));
+    anim.owlBank = (anim.owlBank ?? 0) + (bankTarget - (anim.owlBank ?? 0)) * Math.min(1, dt * 5);
+
+    const attackT =
+      s.pose === PoseState.Attack ? Math.min(1, (now - anim.poseStartedAt) / 420) : 0;
+    const hover = owlHoverHeight(look);
+    const halfW = (look.wingSpan + spec.bodyLen + 0.3) * scale;
+    const top = (hover + look.backH + look.tuftLen + 0.5) * scale;
+    const labelTop = p.y - (hover * air + look.backH + look.tuftLen + 0.42) * scale;
+    return {
+      sortY: s.y,
+      elevated: terrainLift !== 0,
+      drawShadow: () => {
+        // The shadow keeps the ground the flier crosses — smaller and
+        // tighter the higher the body rides.
+        this.castBody(p.x, p.y + r * 0.25, r * (1.15 - 0.35 * air));
+      },
+      draw: () => {
+        drawGreatOwl(this.ctx, spec, look, {
+          x: p.x,
+          y: p.y,
+          s: scale,
+          dir: s.dir,
+          ys: this.camera.yScale,
+          air,
+          moveK,
+          bank: anim.owlBank ?? 0,
+          attackT,
+          hurt,
+          nowMs: now,
+          seed: eid,
+          // A companion wears the keeper's strap (the collar law).
+          collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
+        });
+      },
+      body: { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + 0.6 * scale },
       drawLabel: () => {
         const ctx = this.ctx;
         if (meta.name) {
