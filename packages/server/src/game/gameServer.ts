@@ -2826,6 +2826,29 @@ export class GameServer {
     session.sendJson({ t: 'authRequired' });
   }
 
+  /**
+   * THE DOOR SWINGS BOTH WAYS: a deliberate sign-out. The token dies
+   * (no resume, on this browser or any other), the body leaves the
+   * world at once instead of standing through the reconnect grace,
+   * and only then does the socket hang up.
+   */
+  async logout(session: Session): Promise<void> {
+    const eid = session.playerEid;
+    if (eid === null) return;
+    const player = this.players.get(eid);
+    if (!player || player.session !== session) return;
+    const token = player.token;
+    if (player.accountId !== null) this.accounts.endSession(token);
+    else this.guestTokens.delete(token);
+    console.log(`[game] ${player.name} signed out`);
+    // The ordinary disconnect path first (save, clean break of any
+    // cast/channel/seat), then the despawn the grace window would
+    // have waited for. A late ws 'close' finds nothing left to do.
+    this.onSessionClosed(session);
+    this.despawnPlayer(eid);
+    session.close();
+  }
+
   async login(session: Session, user: string, pass: string): Promise<void> {
     const res = await this.accounts.login(user, pass);
     if (!res.ok) {
@@ -7351,11 +7374,15 @@ export class GameServer {
     if (!shopDef) return;
     // The general store answers to its counter tile; a trainer's shop
     // answers to the trainer standing near.
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
     const near =
       (shopId === 'general_store' && this.nearTile(eid, Tile.ShopCounter)) ||
       this.nearShopkeeper(eid, shopId);
-    if (!near) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    // Say the refusal. A silent door reads as a broken button.
+    if (!near) {
+      sys('Step up to the counter first.');
+      return;
+    }
     const def = itemDef(item);
     if (!def) return;
 
@@ -7468,9 +7495,15 @@ export class GameServer {
         // instance-addressing law): aimed at a rolled def, removeItem
         // would null the first honest same-id slot and erase its
         // workings for a base-value coin. Gear must name its slot.
-        if (!def.stackable) return;
+        if (!def.stackable) {
+          sys("The keeper wants that one in hand. Try it from your pack again.");
+          return;
+        }
         const sold = removeItem(player.inventory, item, qty);
-        if (sold === 0) return;
+        if (sold === 0) {
+          sys("You've none of that to sell.");
+          return;
+        }
         const larder = larderPay(item, sold, def.value, false);
         addItem(player.inventory, 'coins', larder ?? sold * payFor(def.value));
       }

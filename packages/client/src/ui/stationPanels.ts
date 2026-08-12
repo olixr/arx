@@ -291,6 +291,17 @@ export class StationPanels {
     return !this.shopPanel.classList.contains('hidden');
   }
 
+  /**
+   * THE COUNTER YOU STAND AT: which shelf is open, for the pack side of
+   * the trade. Sales MUST name it — the server's reach gate looks for
+   * that keeper, and an unnamed sale falls back to the general store's
+   * counter tile, which no trainer or stallholder stands on. Null when
+   * no shelf is up.
+   */
+  get openShopId(): string | null {
+    return this.shopOpen ? this.shopId : null;
+  }
+
   get craftOpen(): boolean {
     return !this.craftPanel.classList.contains('hidden');
   }

@@ -50,7 +50,7 @@ import { PORTAL_BURST_COLORS } from './render/portal.js';
 import { installChrome } from './ui/chrome.js';
 import { installTokens } from './ui/kit/tokens.js';
 import { installScale, setUiSize, uiSize, UI_SIZES } from './ui/kit/scale.js';
-import { dressPanel } from './ui/panel.js';
+import { bigButton, dressPanel } from './ui/panel.js';
 import { SignHud } from './ui/signs.js';
 import { PetNamingCard } from './ui/petNaming.js';
 import { LookCreator } from './ui/lookCreator.js';
@@ -273,6 +273,40 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
     'settingstab',
   );
   document.getElementById('settings-tabs')!.appendChild(tabs.root);
+}
+
+// THE DOOR SWINGS BOTH WAYS: the sign-out, under every settings bench
+// and reachable with a pad alone. It asks twice, because one stray Ⓐ
+// should never end someone's evening; the ask forgets itself after a
+// few seconds so the button never sits armed.
+{
+  const foot = document.getElementById('settings-foot')!;
+  let armed = 0;
+  const label = 'Sign out';
+  const btn = bigButton(label, 'settings:signout', () => {
+    sfx.uiTap();
+    if (performance.now() < armed) {
+      btn.textContent = 'Signing out';
+      btn.disabled = true;
+      localStorage.removeItem('arx.token');
+      game.logout();
+      // A beat for the goodbye to leave the socket, then a clean slate:
+      // reloading drops every scrap of world state and lands on the
+      // login door with nothing remembered.
+      setTimeout(() => location.reload(), 150);
+      return;
+    }
+    armed = performance.now() + 5000;
+    btn.textContent = 'Sign out? Press again';
+    setTimeout(() => {
+      if (btn.disabled) return;
+      armed = 0;
+      btn.textContent = label;
+    }, 5000);
+  }, { minor: true });
+  btn.dataset.tipname = 'Sign out';
+  btn.dataset.tipsub = 'Leave the world and return to the login door.';
+  foot.appendChild(btn);
 }
 
 {
@@ -722,7 +756,7 @@ const panels = new Panels(
       game.bankSend('deposit', item.item, item.qty, slot);
     } else if (stationPanels.shopOpen) {
       sfx.coins();
-      game.shopSend('sell', item.item, 1, slot);
+      game.shopSend('sell', item.item, 1, slot, stationPanels.openShopId ?? undefined);
     } else {
       useSlotGuarded(slot);
     }
@@ -747,7 +781,7 @@ const panels = new Panels(
       game.bankSend('deposit', item.item, item.qty, slot);
     } else if (action === 'sell') {
       sfx.coins();
-      game.shopSend('sell', item.item, 1, slot);
+      game.shopSend('sell', item.item, 1, slot, stationPanels.openShopId ?? undefined);
     } else {
       useSlotGuarded(slot);
     }
