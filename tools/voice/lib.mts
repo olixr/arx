@@ -58,18 +58,114 @@ export interface ActorDef {
 }
 
 export interface CharacterNote {
-  /** Region grouping for the sheet: dawnmead | roads | amberford | silverfall | undercroft. */
+  /** Region grouping for the sheet; must be one of REGION_ORDER. */
   where: string;
   /** Backstory + delivery direction, read before recording. */
   direction: string;
   /** Chatterbox voice sample id (voicelab voices/<id>.wav); null = casting unassigned, generator skips. */
   ttsVoice: string | null;
-  /** Chatterbox base-model emotion intensity 0..1. */
-  exaggeration: number;
-  /** Chatterbox style-adherence weight 0..1 (lower = looser, more natural drift). */
-  cfgWeight: number;
+  /**
+   * Chatterbox base-model emotion intensity 0..1. OPTIONAL: omit to inherit
+   * the voice's own tuning from voices.json, and set it only when this
+   * character wants a performance the voice does not give by default.
+   */
+  exaggeration?: number;
+  /** Chatterbox style-adherence weight 0..1 (lower = looser, more natural drift). Optional, as above. */
+  cfgWeight?: number;
   /** First-wave cast: appears at the top of the sheet, quips authored. */
   firstWave?: boolean;
+}
+
+/** Per-voice delivery tuning — one row per sample in the pool. See voices.json. */
+export interface VoiceTuning {
+  /** Median fundamental frequency, measured by audition.mts. Reference only. */
+  f0?: number | null;
+  /** Chatterbox base-model emotion intensity 0..1; omit to inherit the global default. */
+  exaggeration?: number;
+  /** Chatterbox style-adherence weight 0..1; omit to inherit the global default. */
+  cfgWeight?: number;
+  /** Why this voice is tuned the way it is. */
+  note?: string;
+}
+
+export interface GlobalTuning {
+  tempo: number;
+  temperature: number;
+  defaultExaggeration: number;
+  defaultCfgWeight: number;
+}
+
+export interface Delivery {
+  exaggeration: number;
+  cfgWeight: number;
+  /** Which layer supplied each knob, for honest reporting. */
+  from: { exaggeration: 'character' | 'voice' | 'global'; cfgWeight: 'character' | 'voice' | 'global' };
+}
+
+export function loadTuning(): GlobalTuning {
+  return JSON.parse(readFileSync(join(HERE, 'tuning.json'), 'utf8')) as GlobalTuning;
+}
+export function loadVoiceTuning(): Record<string, VoiceTuning> {
+  const raw = JSON.parse(readFileSync(join(HERE, 'voices.json'), 'utf8')) as Record<string, unknown>;
+  // The file carries a _comment block the way tuning.json does; it is prose,
+  // not a voice, and must never be mistaken for one.
+  const out: Record<string, VoiceTuning> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (k.startsWith('_')) continue;
+    out[k] = v as VoiceTuning;
+  }
+  return out;
+}
+
+/**
+ * THE ONE DELIVERY DOOR. Three layers, most specific first:
+ *
+ *   character (characters.json)  a performance this character wants
+ *   voice     (voices.json)      how this sample reads by default
+ *   global    (tuning.json)      the pool-wide fallback
+ *
+ * Exaggeration is the pace AND expression knob on this pool and it does not
+ * behave identically across samples — the same setting measured +11% words per
+ * second on one voice and +3% on another. That variance is a property of the
+ * SAMPLE, which is why the voice layer exists: it is the right place to fix a
+ * voice that reads slow or flat, and fixing it there moves every character cast
+ * on it at once.
+ *
+ * Every caller must resolve through here rather than reading the knobs
+ * directly, because the resumption stamps are built from the RESOLVED values.
+ * A tuning change that the stamp cannot see leaves finished takes marked done
+ * in the old delivery, which is the exact failure the stamps exist to prevent.
+ */
+export function resolveDelivery(
+  voiceId: string | null,
+  note: Pick<CharacterNote, 'exaggeration' | 'cfgWeight'> | undefined,
+  globals: GlobalTuning,
+  voices: Record<string, VoiceTuning>,
+): Delivery {
+  const v = voiceId !== null ? voices[voiceId] : undefined;
+  const exaggeration = note?.exaggeration ?? v?.exaggeration ?? globals.defaultExaggeration;
+  const cfgWeight = note?.cfgWeight ?? v?.cfgWeight ?? globals.defaultCfgWeight;
+  return {
+    exaggeration,
+    cfgWeight,
+    from: {
+      exaggeration:
+        note?.exaggeration !== undefined ? 'character' : v?.exaggeration !== undefined ? 'voice' : 'global',
+      cfgWeight:
+        note?.cfgWeight !== undefined ? 'character' : v?.cfgWeight !== undefined ? 'voice' : 'global',
+    },
+  };
+}
+
+/**
+ * The resumption stamp: speaker AND performance. Written to
+ * voicework/generated/<actor>/.voice, and compared on every pass — anything
+ * that changes what a take sounds like has to appear in this string or the
+ * take will be kept when it should be re-spoken.
+ */
+export function deliverySignature(voiceId: string, d: Delivery, globals: GlobalTuning): string {
+  return `${voiceId} ex=${d.exaggeration} cfg=${d.cfgWeight}`
+    + ` tempo=${globals.tempo} temp=${globals.temperature}`;
 }
 
 export type QuipSlot = 'greet' | 'ack' | 'yes' | 'no' | 'hm' | 'farewell' | 'bark';
@@ -216,8 +312,28 @@ export function buildManifest(): Manifest {
   return { actors, dialogues, notes, quips, byActor, lines };
 }
 
-/** Sheet + pipeline ordering: first wave first, then by region, then name. */
-export const REGION_ORDER = ['dawnmead', 'roads', 'amberford', 'silverfall', 'undercroft'];
+/**
+ * Sheet + pipeline ordering: first wave first, then by region, then name.
+ *
+ * ONE ROW PER PLACE THE PLAYER GOES. This list was written when the world
+ * ended at Silverfall, and four towns have opened since (Pinewatch, Saltmere,
+ * Hartfell, the Low Hall). A region missing from here does not warn: indexOf
+ * returns -1, which sorts ABOVE every named region, so the newest town
+ * silently jumps the queue in the recording sheet. Any zone in
+ * packages/content/src/maps that places actors belongs here, in roughly the
+ * order a player meets it; 'roads' holds everyone the map files do not place.
+ */
+export const REGION_ORDER = [
+  'dawnmead',
+  'roads',
+  'amberford',
+  'silverfall',
+  'undercroft',
+  'pinewatch',
+  'saltmere',
+  'hartfell',
+  'lowhall',
+];
 export function orderedActors(m: Manifest): string[] {
   const ids = [...m.byActor.keys()].filter((id) => m.actors.has(id));
   return ids.sort((a, b) => {

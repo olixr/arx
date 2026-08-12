@@ -1,188 +1,271 @@
-# The Arx voice pool — 26 clone-source voices
+# The Arx voice pool — 59 clone-source voices
 
-Chatterbox generates every line from a ~20s conditioning sample. The pool lives
-in `~/code/voicelab/voices/rpg_fantasy/{male,female}/`; full provenance and
-license notes are in `voices/rpg_fantasy/SOURCES.md` there. Thirteen samples are
-cut from **public-domain LibriVox solo recordings**, eight from **royalty-free
-RPG voice-pack demos**, and five are **self-recorded**. Three licences, all
-usable — keep the distinction if this ever ships.
+Chatterbox generates every line from a conditioning sample. The pool lives in
+`~/code/voicelab/voices/`, split across four shelves: `rpg_fantasy/{male,female}`
+(46), `narrator/` (7) and `news/` (6). Provenance and licence notes live in
+`voices/rpg_fantasy/SOURCES.md` there.
 
-## Voice ids are paths now
+**SOURCES.md is stale.** It still describes the original 26 and has no rows for
+the 28 samples added since, nor for the narrator and news shelves. Those were
+confirmed cleared for use by the project owner on 2026-08-11, but the record of
+*where they came from* has not been written down. Write it before this ships:
+public-domain, royalty-free, or self-recorded/consented only, never a ripped
+commercial performance and never a real person without consent.
 
-The TTS service resolves a voice as `voices/<ttsVoice>.wav`. Samples live in
-subfolders, so `ttsVoice` must be the **path** under `voices/` without the
-extension — `rpg_fantasy/male/veil_ethan`, not `veil_ethan`. A bare id no longer
-resolves. `GET /voices` lists the valid ids (it recurses, excluding
-`voices/test/`, which holds game SFX rather than conditioning samples).
+## Voice ids are paths
 
-A voice that cannot be resolved is now a **hard 400**. It used to fall back to
-the default voice with only a log line, which meant an entire batch could be
-generated in the wrong voice and still look successful.
+The TTS service resolves a voice as `voices/<ttsVoice>.wav`, so `ttsVoice` is the
+**path** under `voices/` without the extension — `rpg_fantasy/male/veil_ethan`,
+not `veil_ethan`. `GET /voices` lists the valid ids, recursing and excluding
+`voices/test/`, which holds game SFX rather than conditioning samples.
+
+An unresolvable voice is a **hard 400**, and `generate.mts` turns that into
+`exit 1` — a wave pass dies at the first character cast on a missing sample
+rather than quietly substituting a default. That is the desired behaviour, and
+it is why the pool and the casting have to be checked together:
+
+```
+npx tsx tools/voice/audit.mts        # exits non-zero if any cast voice is gone
+```
+
+**Samples do go missing.** Eight cast voices (`court_thomas2`, `hale_andy`,
+`dread_john`, `sage_julie`, `court_joy`, `clear_liz`, `steel_cori`,
+`folksy_phil`) were culled from the pool and stranded 27 shipped characters
+until the 2026-08-11 pass recast them. Run the audit after any pool change.
+
+## The three tuning layers
+
+Two knobs, both 0..1, resolved most-specific-first through `resolveDelivery` in
+`lib.mts`. Every lane goes through that one door, and the resumption stamps are
+built from the **resolved** values, so a change at any layer re-speaks exactly
+the takes it affects.
+
+| layer | file | means |
+|---|---|---|
+| character | `characters.json` | a performance *this character* wants |
+| voice | `voices.json` | how *this sample* reads by default |
+| global | `tuning.json` | the pool-wide fallback |
+
+`exaggeration` is the pace AND expression knob: 0.45 -> 0.75 measured +11%
+words per second and +44% pitch range. It peaks near 0.75; past ~0.8 the model
+destabilises and reads slower and flatter. `cfgWeight` is **not** a speed
+control despite the folk wisdom — dropping it 0.55 -> 0.30 measured 12%
+*slower*. Keep it 0.50 to 0.62.
+
+Pace varies by sample: the same setting gave +11% on one voice and +3% on
+another. That is what `voices.json` is for. Find a number by ear first:
+
+```
+npx tsx tools/voice/audition.mts guldan_m --tune 0.78,0.55
+```
+
+The 74 characters cast before 2026-08-11 pin both knobs on their own cards, so
+voice tuning does not reach them; the audit names that shadowing. Cards written
+since omit the knobs and inherit the voice.
+
+## Auditioning before a pass
+
+`audition.mts` speaks ONE line per voice — the whole pool in about seven
+minutes — and writes a playable contact sheet at
+`voicework/audition/index.html`, sorted by measured F0, filterable, with the
+characters cast on each voice on its card.
+
+```
+npx tsx tools/voice/audition.mts                 the whole pool
+npx tsx tools/voice/audition.mts female/ king_bob  substring match
+npx tsx tools/voice/audition.mts --as reeve_halla  her tuning, her longest line
+```
+
+It reads the roster **live** from `GET /voices`, so a sample dropped into
+voicelab appears with no edit here. Every other lane carries a hardcoded list,
+which is how the eight culled voices went unnoticed.
+
+`F0` below is the measured median fundamental frequency, computed by
+autocorrelation over the conditioning sample and cached in
+`voicework/audition/.f0.json`. It lands within ~5% of the hand-recorded values
+it replaced. It is a sort key, not a measurement.
 
 ## Casting
 
-The pool is sorted into `male/` and `female/` on disk and that split is
-authoritative — characters are cast on a voice matching their own gender.
-(An earlier pass put nearly everyone on a male voice; that was forced by there
-being only five female samples, and no longer applies.) `F0` is the median
-fundamental frequency of the sample; lower is deeper.
+`rpg_fantasy/` is split male/female on disk and that split drives casting.
+Check it by ear when a sample is added: `garrosh_f` sat in `female/` at 119 Hz
+until 2026-08-11 and is now `male/garrosh_m`. `highmountain_f` (118 Hz) is
+genuinely deep, and `klaaxxi_m`/`grif_m`/`volf_m` (242-250 Hz) genuinely high;
+those are creature voices, not shelving errors.
 
-| voice | F0 | sound | cast on |
-|---|---:|---|---|
-| `rpg_fantasy/male/veil_ethan` | 85 Hz | bass; grave, ominous, authority | Broker, Peld, Grettir, Aeriex |
-| `rpg_fantasy/male/frank` | 103 Hz | self-recorded; deepest of the five | Toll_guard, Beck, Skarn |
-| `rpg_fantasy/male/ember_tadhg` | 107 Hz | quick ember energy, young | Tam, Koll, Brant |
-| `rpg_fantasy/male/jeff` | 107 Hz | self-recorded | Guard, Pike |
-| `rpg_fantasy/male/edder` | 109 Hz | self-recorded | Watch, Hale |
-| `rpg_fantasy/male/george` | 109 Hz | self-recorded | Haki, Watch |
-| `rpg_fantasy/male/larry` | 111 Hz | self-recorded; fastest delivery | Trader, Trader |
-| `rpg_fantasy/male/dread_john` | 127 Hz | terse, watchful, soldier-dark | Hask, Bryn, Watch |
-| `rpg_fantasy/male/folksy_phil` | 133 Hz | folksy cheer, selling patter | Coff, Coppin, Dray |
-| `rpg_fantasy/male/court_phil` | 135 Hz | courtly, measured, flat-precise | Stig, Holt, Hobb, Jorel |
-| `rpg_fantasy/male/court_thomas2` | 138 Hz | storyteller / pedant, reverent | Ivo, Ansel, Tilo, Fen, Petch |
-| `rpg_fantasy/male/king_bob` | 178 Hz | warm elder, grandfatherly | Rowan, Garton |
-| `rpg_fantasy/male/hale_andy` | 201 Hz | wry, bright, money & showmanship | Cormund, Ninebrass, Calder, Monger |
-| `rpg_fantasy/male/rune_phineas` | 224 Hz | bright, young | Pip |
-| `rpg_fantasy/female/hush_morrow` | 163 Hz | low, conspiratorial narrator | Solvei, Mab, Maren |
-| `rpg_fantasy/female/sage_julie` | 165 Hz | warm, homely, unhurried | Signy, Iona, Senna |
-| `rpg_fantasy/female/dour_mabel` | 172 Hz | flat, unbothered | Odele, Maida, Edda |
-| `rpg_fantasy/female/flint_greta` | 182 Hz | hard-nosed, transactional | Varga, Osa, Kestrel |
-| `rpg_fantasy/female/court_joy` | 183 Hz | bright, publican warmth | Dunna, Ragna, Perl |
-| `rpg_fantasy/female/trade_nell` | 199 Hz | plain shopkeep | Hetty, Nix, Sella |
-| `rpg_fantasy/female/clear_liz` | 214 Hz | precise, calm, cool-headed | Runa, Aldis, Elowen |
-| `rpg_fantasy/female/spite_vex` | 219 Hz | gleeful little menace | Wyn, Kayri, Vigdis |
-| `rpg_fantasy/female/steel_cori` | 221 Hz | rich, firm, command | Balla, Bretta, Odessa |
-| `rpg_fantasy/female/sunny_posy` | 248 Hz | bright, sing-song trader | Merra, Tove, Ottilie |
-| `rpg_fantasy/female/spark_wren` | 266 Hz | fast, energetic | Dagny, Tamsin, Petra |
-| `rpg_fantasy/female/perky_tilly` | 269 Hz | chirpy, eager | Nib |
+### rpg_fantasy/male
 
-## Delivery tuning
+| voice | F0 | cast on |
+|---|---:|---|
+| `draven_m` | 82 | smokemaster_geir |
+| `guldan_m` | 83 | tithekeeper_orvar |
+| `veil_ethan` | 89 | company_broker, ferryman_peld, foreman_grettir, king_aeriex |
+| `narrator_m` | 98 | angler_voss |
+| `solder_m` | 108 | company_blade, saltmere_watch, wayward_watch |
+| `arathi_m` | 109 | hartfell_herder, outfitter_hask |
+| `frank` | 109 | company_toll_guard, crofter_beck, pinewatch_sawyer, veteran_skarn |
+| `ember_tadhg` | 110 | crofter_tam, smeltmaster_koll, waykeeper_brant |
+| `larry` | 113 | galleria_trader, hartfell_watch, round_trader, saltmere_fisher |
+| `lorewake_m` | 113 | tinker_fen |
+| `grand_mag_m` | 114 | buyer_ospren, master_tilo |
+| `hald_m` | 117 | herdmaster_swein, wayfarer_petch |
+| `belf_m` | 118 | gardener_ivo |
+| `edder` | 118 | amberford_watch, tallyman_bram, waykeeper_hale |
+| `garrosh_m` | 119 | portreeve_brack |
+| `george` | 119 | dawnmead_ward, fletcher_haki, silverfall_watch, storekeep_nial |
+| `jeff` | 119 | castle_guard, lookout_pike, smith_eirik |
+| `ilidan_m` | 129 | huntmaster_kolgrim, warden_bryn |
+| `court_phil` | 134 | buyer_hallward, carpenter_stig, crofter_holt, farmer_hobb, farmer_jorel |
+| `dwarf_g_m` | 134 | peddler_coff, pitchmaster_rullo |
+| `king_bob` | 170 | elder_rowan, miller_garton, nurseryman_odd |
+| `murozond_m` | 176 | herald_ossian |
+| `flynn_m` | 180 | gate_monger, innkeep_brandulf |
+| `gazlow_m` | 190 | fence_calder, pedlar_grimm |
+| `telemancer_m` | 203 | banker_cormund |
+| `bran_m` | 222 | bonecarver_tuli, wayfarer_dray |
+| `rune_phineas` | 222 | boomsman_kettil, company_runner, young_pip |
+| `klaaxxi_m` | 242 | *reserve* |
+| `grif_m` | 246 | curio_ninebrass |
+| `volf_m` | 250 | *reserve* |
 
-Global knobs live in `tools/voice/tuning.json`, per-character `exaggeration` /
-`cfgWeight` in `characters.json`. Both feed the stamp signature, so editing
-either re-speaks exactly the takes it affects — no `--fresh` needed.
+### rpg_fantasy/female
 
-Measured on this pool (3 takes per setting, `king_bob` + `veil_ethan`):
+| voice | F0 | cast on |
+|---|---:|---|
+| `highmountain_f` | 118 | smith_bretta, smith_vigga |
+| `xalath_f` | 152 | assayer_runa, captain_ravna, smokemistress_alba |
+| `hush_morrow` | 162 | enchantress_solvei, innkeep_ragna, magpie_mab, netkeeper_eyvor, warden_maren |
+| `dour_mabel` | 170 | bursar_odele, crofter_maida, factor_ebba, factor_neave, lampkeeper_edda, tallywife_inga |
+| `orc_f` | 176 | drillmaster_jorunn, waykeeper_odessa |
+| `flint_greta` | 178 | broker_varga, furrier_ranna, hostler_osa, marshal_kestrel, salter_ondra |
+| `elf_sentinel_f` | 182 | captain_aldis, outrider_haldis |
+| `witherbard_f` | 193 | elder_gunvor, old_torvi, orchardist_perl |
+| `trade_nell` | 200 | fisher_ylva, peddler_hetty, peddler_nix, pinewatch_watch, shrinekeeper_sella |
+| `spite_vex` | 219 | herbalist_wyn, queen_kayri, silversmith_vigdis |
+| `garrif_f` | 225 | cook_signy, quartermaster_yeva, sawmistress_groa |
+| `sunny_posy` | 242 | chandler_ulfa, grocer_merra, innkeep_dorrit, scrivener_tove, weaver_ottilie |
+| `spark_wren` | 254 | cooper_dagny, farmer_tamsin, guide_sunn, mason_petra, roper_jessa |
+| `perky_tilly` | 258 | castle_servant, courier_nib, innkeep_sunniva |
+| `faerin_f` | 262 | sage_elowen |
+| `nightborne_f` | 281 | springkeeper_maeva |
 
-| change | pace | pitch range |
-|---|---:|---:|
-| exaggeration 0.45 → 0.75 | **+11%** | **+44%** |
-| cfg_weight 0.55 → 0.30 | −12% | +8% |
-| exaggeration 0.75 → 0.85 | −3% | −32% |
+### narrator
 
-Two things worth knowing, both counter to the usual advice:
+Deep, measured reading voices. Earn their keep on registrars, elders and the
+one herald.
 
-**Exaggeration is the pace knob, not just the emotion knob** — it buys speed and
-expression together, and peaks around 0.75. Push it to 0.85 and the model
-destabilises: slower *and* flatter.
+| voice | F0 | cast on |
+|---|---:|---|
+| `wry_peter` | 83 | serjeant_ottar |
+| `stanley` | 102 | reeve_coppin, steward_ansgar |
+| `dread_ben` | 115 | sparmaster_yannick |
+| `dread_mark` | 123 | hoargate_watch |
+| `crypt_kirksvoice` | 134 | keeper_ansel |
+| `veil_anne` | 160 | drover_maren, lightkeeper_lund, wayfarer_senna |
+| `david` | 174 | pilot_fane |
 
-**Lowering `cfg_weight` does not speed delivery on these samples — it slows it.**
-The widely-repeated "drop cfg_weight to 0.3 for faster speech" measured 12%
-*slower* here and fights the gain exaggeration gives. Keep it mid (0.5–0.62).
+### news
 
-The model's own pacing is stochastic — identical settings gave +11% on one voice
-and +3% on another — so `tempo` applies a pitch-preserving ffmpeg `atempo` stage
-after generation to make the speed-up deterministic. Keep it under ~1.15; past
-that it reads clipped rather than brisk. Combined, the current settings measured
-**+30% pace and +20% pitch range** against the pre-tuning takes.
+Broadcast-plain voices; the most naturally *conversational* shelf in the pool,
+which suits publicans, clerks and factors.
 
-## Re-running the wave
+| voice | F0 | cast on |
+|---|---:|---|
+| `slow_john` | 93 | *reserve* |
+| `sly_adrian` | 103 | chandler_swale, tallyman_brusk |
+| `plain_mark` | 143 | boatwright_seff, outrider_joss |
+| `stage_mil` | 160 | innkeep_dunna, speaker_ashild |
+| `matron_michele` | 163 | hearthkeeper_iona, warden_sigrun, waykeeper_signe |
+| `iron_sue` | 178 | forgemistress_balla, reeve_halla |
+
+## Running a pass
 
 ```
-tools/voice/wave_driver.sh              # the 12 firstWave actors
-tools/voice/wave_driver.sh all          # every cast character (74)
-tools/voice/wave_driver.sh warden_bryn  # just these
-tools/voice/wave_driver.sh --fresh      # ignore stamps, re-speak everything
+tools/voice/run_all.sh --dry      preflight only, speaks nothing
+tools/voice/run_all.sh            the whole cast, resumable
+tools/voice/run_all.sh --generic  also the per-voice fallback bank
+tools/voice/run_all.sh --fresh    ignore stamps, re-speak everything
 ```
 
-It starts voicelab once and leaves it warm for the whole batch.
+`run_all.sh` gates on the audit, restarts voicelab once, checks the game
+server's dev API *before* speaking anything, regenerates the sheet, runs the
+character lane, and audits again at the end.
 
-## Why the HTTP service, not the CLI
+It restarts voicelab up front because a long-resident service has been observed
+to **wedge**: zero CPU, no answer, every request hanging until the curl ceiling.
+It deliberately does not restart between actors — measured across 68 consecutive
+clips, generation held flat at ~5.5s with no drift, and a restart costs 18s and
+dumps the voice conditioning cache.
 
-The service is not overhead — it is the optimisation. Same line, same voice,
-measured:
+### Resumption
 
-| path | per clip |
-|---|---:|
-| `tts_cli.py` (cold each call) | **18.75s** |
-| warm service over HTTP | **~5.5s** |
-
-**3.1× faster.** The CLI reloads the model (7.0s) and pays Python/Torch import
-(~3.5s) on *every* invocation; the service pays both once at startup and then
-keeps the model resident and the voice conditionals cached. HTTP framing itself
-is well under a millisecond against a ~5.5s generation — unmeasurable. Going
-"direct to the CLI" would triple the cost of a full pass.
-
-The one thing that genuinely was overhead — restarting the service between
-actors — is gone. Sustained-load measurements over 68 consecutive clips on one
-process: generation time flat at ~5.5s with no upward drift, RSS plateauing near
-8 GB on a 128 GB machine. Nothing degrades, so nothing needs recycling.
-
-**It is resumable — just re-run it after a crash.** A full pass is an hour or
-more, so it will get interrupted. Two dotfiles per actor track state:
+A full pass is hours and will be interrupted; just re-run it. Two dotfiles per
+actor track state:
 
 | file | meaning |
 |---|---|
 | `voicework/generated/<actor>/.voice` | finished, at the signature named inside |
 | `voicework/generated/<actor>/.inprogress` | stale takes cleared, generation partial |
 
-The signature is `<voice> ex=<..> cfg=<..> tempo=<..>` — speaker *and*
-performance, since retuning the knobs changes the takes as much as recasting
-does. Per actor: `.voice` matching → skip; `.inprogress` matching → resume and
-speak only the missing clips; neither, or anything in the signature changed →
-delete that actor's old takes, mark `.inprogress`, generate.
+The signature is `<voice> ex=<..> cfg=<..> tempo=<..> temp=<..>` — speaker *and*
+performance, because retuning changes the takes as much as recasting does.
+Matching `.voice` skips; matching `.inprogress` resumes; anything else clears
+that actor's takes and starts over. Recasting leaves correct-*looking* files on
+disk holding the **wrong voice**, and clearing them once up front is what makes
+an unforced re-run safe.
 
-That last branch is the point. Recasting leaves correct-*looking* files on disk
-holding the **wrong voice**, and an unforced run keeps them because they exist —
-which is why this used to pass `--force` unconditionally. Deleting them once, up
-front, states the same intent without destroying resumption, and the stamp
-records which voice the surviving files are actually in.
+`.voice` is written only after generate **and** import both succeed. If you
+hand-copy takes in, drop the stamps for those actors.
 
-`.voice` is written only after generate **and** import both succeed, so a crash
-mid-actor redoes that actor's remaining clips rather than recording a
-half-finished pass as done.
+## Why the HTTP service, not the CLI
 
-If you ever hand-copy takes in, drop the stamps for those actors so the driver
-re-evaluates them.
+| path | per clip |
+|---|---:|
+| `tts_cli.py` (cold each call) | **18.75s** |
+| warm service over HTTP | **~5.5s** |
+
+**3.1x faster.** The CLI reloads the model (7.0s) and pays Python/Torch import
+(~3.5s) on *every* invocation; the service pays both once and keeps the model
+resident and the voice conditionals cached.
 
 ## The generic fallback bank
 
-Short, character-neutral quips indexed by **voice** rather than by actor, so an
-NPC with no authored dialogue can still answer in the voice it was cast in.
+Short character-neutral quips indexed by **voice** rather than by actor, so an
+NPC with no authored dialogue can answer in the voice it was cast in. 56 slots
+x 11 clips = 616.
 
 ```
-tools/voice/generic.mts                     all 26 slots
-tools/voice/generic.mts female_5 female_6   just these
-tools/voice/generic.mts --force             re-speak clips that already exist
+npx tsx tools/voice/generic.mts             all slots
+npx tsx tools/voice/generic.mts male_1 ...  just these
 ```
 
-Output is `voicework/generic/<slot>/<kind>_<n>.ogg` (mono Ogg/Opus 48k, same as
-the character lane) plus `voicework/generic/manifest.json`, which carries the
-slot → voice map and every transcript.
+**Nothing imports it.** `generic.mts` writes to `voicework/generic/` and no
+importer in the repo pushes those clips to the ledger — `voice_banks` are keyed
+by (owner_kind, owner_id) where owner is an actor, poi or zone, and a voice slot
+is none of those. The bank is real audio that currently reaches nothing in the
+game, which is why `run_all.sh` skips it unless asked. It also matters less than
+it did: all 139 speaking characters are now cast and generate real lines.
 
-Slots are `male_1`…`male_14` and `female_1`…`female_12`. The mapping is an
-explicit literal in `generic.mts`: **append new slots, never reorder**, or every
-already-generated clip silently changes voice.
+The slot map is an explicit literal in `generic.mts`: **append new slots, never
+reorder**, or every already-generated clip silently changes voice. Each slot
+carries a `.voice` stamp so a repointed slot clears and re-speaks.
 
-Each slot also carries a `.voice` stamp. If a slot's declared voice changes (the
-pool gets re-sorted, a sample is replaced), the stamp no longer matches and that
-slot's clips are cleared and re-spoken — without it the clips would look
-complete and the slot would quietly hold the wrong voice.
-
-Eleven clips per slot (286 total): `greet` ×2, `ack` ×2, `yes` ×2, `no` ×2,
-`farewell` ×2, `hm` ×1 — one or two words each.
-
-This lane deliberately does **not** ride `buildManifest()`. `quips.json` may
-only speak for actors defined in `packages/content/src/actors/defs/`, and those
-are full game entities (combat stats, equipment, spawn data) — a voice slot is
-not an NPC, so inventing 26 of them would put 21 spawnable strangers in the
-world.
+This lane deliberately does not ride `buildManifest()`: `quips.json` may only
+speak for actors defined in `packages/content/src/actors/defs/`, and those are
+full game entities. A voice slot is not an NPC.
 
 ## Adding a voice
 
-Drop a clean 10–20s mono WAV under `~/code/voicelab/voices/rpg_fantasy/<male|
-female>/<id>.wav` (speech only, no music, level room tone) and cast it by its
-path. First generation with a new voice pays a few seconds of conditioning;
-it caches after that. Keep SOURCES.md honest: public-domain, royalty-free, or
-self-recorded/consented voices only — never rip a commercial performance or
-clone a real person without consent.
+Drop a clean 10-20s mono WAV under
+`~/code/voicelab/voices/rpg_fantasy/<male|female>/<id>.wav` (speech only, no
+music, level room tone) and cast it by its path. First generation pays a few
+seconds of conditioning, then caches. Then:
+
+```
+npx tsx tools/voice/audition.mts <id>   hear it, and add it to the sheet
+npx tsx tools/voice/audit.mts           confirm nothing else broke
+```
+
+Keep SOURCES.md honest. The 28 samples added in 2026-08 average ~8.5s against
+the pool standard of ~20s; short sources condition a thinner voice, so prefer
+20s when you can get it.

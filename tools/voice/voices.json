@@ -1,0 +1,212 @@
+{
+  "_comment": [
+    "PER-VOICE DELIVERY TUNING — one row per conditioning sample in the pool.",
+    "",
+    "Two knobs, both 0..1, both optional. Omit either one and it falls through to",
+    "the pool-wide default in tuning.json:",
+    "",
+    "  exaggeration  base-model emotion intensity. On this pool it is the PACE and",
+    "                expression knob together: 0.45 -> 0.75 measured +11% words per",
+    "                second and +44% pitch range. It peaks near 0.75; past ~0.8 the",
+    "                model destabilises and reads SLOWER and flatter, not faster.",
+    "  cfgWeight     style-adherence weight. NOT a speed control despite the folk",
+    "                wisdom: dropping it 0.55 -> 0.30 measured 12% SLOWER here.",
+    "                Keep it mid, 0.50 to 0.62.",
+    "",
+    "Set these when a particular sample reads badly at the default — too slow, too",
+    "flat, too hot. The setting moves every character cast on that voice at once,",
+    "which is the point: pace is a property of the SAMPLE, and the same numbers do",
+    "not land the same way on two different speakers.",
+    "",
+    "PRECEDENCE, most specific first:",
+    "  characters.json  a performance one character wants (overrides this file)",
+    "  voices.json      this file: how the sample reads by default",
+    "  tuning.json      the pool-wide fallback",
+    "",
+    "Both layers feed the resumption stamp, so editing a row here re-speaks exactly",
+    "the takes it affects on the next pass. No --fresh needed.",
+    "",
+    "f0 is the measured median fundamental frequency, written by audition.mts. It",
+    "is reference only and nothing reads it; lower is deeper.",
+    "",
+    "Audition a change before committing to it:",
+    "  npx tsx tools/voice/audition.mts <voice> --tune 0.78,0.55"
+  ],
+  "narrator/wry_peter": {
+    "f0": 83
+  },
+  "narrator/stanley": {
+    "f0": 102
+  },
+  "narrator/dread_ben": {
+    "f0": 115
+  },
+  "narrator/dread_mark": {
+    "f0": 123
+  },
+  "narrator/crypt_kirksvoice": {
+    "f0": 134
+  },
+  "narrator/veil_anne": {
+    "f0": 160
+  },
+  "narrator/david": {
+    "f0": 174
+  },
+  "news/slow_john": {
+    "f0": 93
+  },
+  "news/sly_adrian": {
+    "f0": 103
+  },
+  "news/plain_mark": {
+    "f0": 143
+  },
+  "news/stage_mil": {
+    "f0": 160
+  },
+  "news/matron_michele": {
+    "f0": 163
+  },
+  "news/iron_sue": {
+    "f0": 178
+  },
+  "rpg_fantasy/female/highmountain_f": {
+    "f0": 118
+  },
+  "rpg_fantasy/female/xalath_f": {
+    "f0": 152
+  },
+  "rpg_fantasy/female/hush_morrow": {
+    "f0": 162
+  },
+  "rpg_fantasy/female/dour_mabel": {
+    "f0": 170
+  },
+  "rpg_fantasy/female/orc_f": {
+    "f0": 176
+  },
+  "rpg_fantasy/female/flint_greta": {
+    "f0": 178
+  },
+  "rpg_fantasy/female/elf_sentinel_f": {
+    "f0": 182
+  },
+  "rpg_fantasy/female/witherbard_f": {
+    "f0": 193
+  },
+  "rpg_fantasy/female/trade_nell": {
+    "f0": 200
+  },
+  "rpg_fantasy/female/spite_vex": {
+    "f0": 219
+  },
+  "rpg_fantasy/female/garrif_f": {
+    "f0": 225
+  },
+  "rpg_fantasy/female/sunny_posy": {
+    "f0": 242
+  },
+  "rpg_fantasy/female/spark_wren": {
+    "f0": 254
+  },
+  "rpg_fantasy/female/perky_tilly": {
+    "f0": 258
+  },
+  "rpg_fantasy/female/faerin_f": {
+    "f0": 262
+  },
+  "rpg_fantasy/female/nightborne_f": {
+    "f0": 281
+  },
+  "rpg_fantasy/male/draven_m": {
+    "f0": 82
+  },
+  "rpg_fantasy/male/guldan_m": {
+    "f0": 83
+  },
+  "rpg_fantasy/male/veil_ethan": {
+    "f0": 89
+  },
+  "rpg_fantasy/male/narrator_m": {
+    "f0": 98
+  },
+  "rpg_fantasy/male/solder_m": {
+    "f0": 108
+  },
+  "rpg_fantasy/male/arathi_m": {
+    "f0": 109
+  },
+  "rpg_fantasy/male/frank": {
+    "f0": 109
+  },
+  "rpg_fantasy/male/ember_tadhg": {
+    "f0": 110
+  },
+  "rpg_fantasy/male/larry": {
+    "f0": 113
+  },
+  "rpg_fantasy/male/lorewake_m": {
+    "f0": 113
+  },
+  "rpg_fantasy/male/grand_mag_m": {
+    "f0": 114
+  },
+  "rpg_fantasy/male/hald_m": {
+    "f0": 117
+  },
+  "rpg_fantasy/male/belf_m": {
+    "f0": 118
+  },
+  "rpg_fantasy/male/edder": {
+    "f0": 118
+  },
+  "rpg_fantasy/male/garrosh_m": {
+    "f0": 119
+  },
+  "rpg_fantasy/male/george": {
+    "f0": 119
+  },
+  "rpg_fantasy/male/jeff": {
+    "f0": 119
+  },
+  "rpg_fantasy/male/ilidan_m": {
+    "f0": 129
+  },
+  "rpg_fantasy/male/court_phil": {
+    "f0": 134
+  },
+  "rpg_fantasy/male/dwarf_g_m": {
+    "f0": 134
+  },
+  "rpg_fantasy/male/king_bob": {
+    "f0": 170
+  },
+  "rpg_fantasy/male/murozond_m": {
+    "f0": 176
+  },
+  "rpg_fantasy/male/flynn_m": {
+    "f0": 180
+  },
+  "rpg_fantasy/male/gazlow_m": {
+    "f0": 190
+  },
+  "rpg_fantasy/male/telemancer_m": {
+    "f0": 203
+  },
+  "rpg_fantasy/male/bran_m": {
+    "f0": 222
+  },
+  "rpg_fantasy/male/rune_phineas": {
+    "f0": 222
+  },
+  "rpg_fantasy/male/klaaxxi_m": {
+    "f0": 242
+  },
+  "rpg_fantasy/male/grif_m": {
+    "f0": 246
+  },
+  "rpg_fantasy/male/volf_m": {
+    "f0": 250
+  }
+}

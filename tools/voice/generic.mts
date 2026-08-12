@@ -29,6 +29,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadTuning, loadVoiceTuning, resolveDelivery } from './lib.mts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..');
@@ -52,33 +53,66 @@ const service = flag('--service') ?? 'http://localhost:5002';
  * Append new slots, never reorder. Ordered deepest-first within each gender.
  */
 const SLOTS: Record<string, string> = {
-  male_1: 'rpg_fantasy/male/veil_ethan',       //  85 Hz  bass, grave
-  male_2: 'rpg_fantasy/male/ember_tadhg',      // 107 Hz  quick, Irish
-  male_3: 'rpg_fantasy/male/dread_john',       // 127 Hz  terse, soldier-dark
-  male_4: 'rpg_fantasy/male/folksy_phil',      // 133 Hz  folksy cheer
-  male_5: 'rpg_fantasy/male/court_phil',       // 135 Hz  courtly, measured
-  male_6: 'rpg_fantasy/male/court_thomas2',    // 138 Hz  storyteller
-  male_7: 'rpg_fantasy/male/king_bob',         // 178 Hz  warm elder
-  male_8: 'rpg_fantasy/male/hale_andy',        // 201 Hz  wry, bright
-  male_9: 'rpg_fantasy/male/rune_phineas',     // 224 Hz  bright, young
+  male_1: 'rpg_fantasy/male/veil_ethan',        //  89 Hz  bass, grave
+  male_2: 'rpg_fantasy/male/ember_tadhg',       // 110 Hz  quick, Irish
+  male_3: 'rpg_fantasy/male/ilidan_m',          // 129 Hz  terse, soldier-dark
+  male_4: 'rpg_fantasy/male/dwarf_g_m',         // 134 Hz  gruff folksy cheer
+  male_5: 'rpg_fantasy/male/court_phil',        // 134 Hz  courtly, measured
+  male_6: 'rpg_fantasy/male/grand_mag_m',       // 114 Hz  measured storyteller
+  male_7: 'rpg_fantasy/male/king_bob',          // 170 Hz  warm elder
+  male_8: 'rpg_fantasy/male/telemancer_m',      // 203 Hz  wry, bright, precise
+  male_9: 'rpg_fantasy/male/rune_phineas',      // 222 Hz  bright, young
   // self-recorded; all sit ~103-111 Hz but are timbrally distinct
-  male_10: 'rpg_fantasy/male/frank',           // 103 Hz  deepest of the five
-  male_11: 'rpg_fantasy/male/jeff',            // 107 Hz
-  male_12: 'rpg_fantasy/male/george',          // 109 Hz
-  male_13: 'rpg_fantasy/male/edder',           // 109 Hz
-  male_14: 'rpg_fantasy/male/larry',           // 111 Hz  fastest delivery
-  female_1: 'rpg_fantasy/female/sage_julie',   // 165 Hz  warm, homely
-  female_2: 'rpg_fantasy/female/court_joy',    // 183 Hz  bright, publican
-  female_3: 'rpg_fantasy/female/clear_liz',    // 214 Hz  precise, cool
-  female_4: 'rpg_fantasy/female/steel_cori',   // 221 Hz  firm, command
-  female_5: 'rpg_fantasy/female/hush_morrow',  // 163 Hz  low, conspiratorial
-  female_6: 'rpg_fantasy/female/dour_mabel',   // 172 Hz  flat, unbothered
-  female_7: 'rpg_fantasy/female/flint_greta',  // 182 Hz  hard, transactional
-  female_8: 'rpg_fantasy/female/trade_nell',   // 199 Hz  plain shopkeep
-  female_9: 'rpg_fantasy/female/spite_vex',    // 219 Hz  gleeful menace
-  female_10: 'rpg_fantasy/female/sunny_posy',  // 248 Hz  bright, sing-song
-  female_11: 'rpg_fantasy/female/spark_wren',  // 266 Hz  fast, energetic
-  female_12: 'rpg_fantasy/female/perky_tilly', // 269 Hz  chirpy, eager
+  male_10: 'rpg_fantasy/male/frank',            // 109 Hz  deepest of the five
+  male_11: 'rpg_fantasy/male/jeff',             // 119 Hz
+  male_12: 'rpg_fantasy/male/george',           // 119 Hz
+  male_13: 'rpg_fantasy/male/edder',            // 118 Hz
+  male_14: 'rpg_fantasy/male/larry',            // 113 Hz  fastest delivery
+  female_1: 'news/matron_michele',              // 163 Hz  warm, homely
+  female_2: 'news/stage_mil',                   // 160 Hz  bright, publican
+  female_3: 'rpg_fantasy/female/garrif_f',      // 225 Hz  bright, busy
+  female_4: 'news/iron_sue',                    // 178 Hz  firm, command
+  female_5: 'rpg_fantasy/female/hush_morrow',   // 162 Hz  low, conspiratorial
+  female_6: 'rpg_fantasy/female/dour_mabel',    // 170 Hz  flat, unbothered
+  female_7: 'rpg_fantasy/female/flint_greta',   // 178 Hz  hard, transactional
+  female_8: 'rpg_fantasy/female/trade_nell',    // 200 Hz  plain shopkeep
+  female_9: 'rpg_fantasy/female/spite_vex',     // 219 Hz  gleeful menace
+  female_10: 'rpg_fantasy/female/sunny_posy',   // 242 Hz  bright, sing-song
+  female_11: 'rpg_fantasy/female/spark_wren',   // 254 Hz  fast, energetic
+  female_12: 'rpg_fantasy/female/perky_tilly',  // 258 Hz  chirpy, eager
+  // Appended for the 2026-08-11 casting pass: every voice the cast now
+  // uses gets a fallback bank. APPEND ONLY — renumbering these would
+  // silently change the voice of every clip already on disk.
+  male_15: 'rpg_fantasy/male/draven_m',         //  82 Hz  deep, slow, unhurried
+  male_16: 'narrator/wry_peter',                //  83 Hz  deep, dry, wry
+  male_17: 'rpg_fantasy/male/guldan_m',         //  83 Hz  grave, ominous weight
+  male_18: 'rpg_fantasy/male/narrator_m',       //  98 Hz  low, calm, still
+  male_19: 'narrator/stanley',                  // 102 Hz  plain, soft, administrative
+  male_20: 'news/sly_adrian',                   // 103 Hz  smooth, sly, precise
+  male_21: 'rpg_fantasy/male/solder_m',         // 108 Hz  flat soldier, dutiful
+  male_22: 'rpg_fantasy/male/arathi_m',         // 109 Hz  plain outdoor working
+  male_23: 'rpg_fantasy/male/lorewake_m',       // 113 Hz  storyteller, wandering
+  male_24: 'narrator/dread_ben',                // 115 Hz  deliberate, absolute
+  male_25: 'rpg_fantasy/male/hald_m',           // 117 Hz  plain, careful
+  female_13: 'rpg_fantasy/female/highmountain_f', // 118 Hz  deep, flat, low
+  male_26: 'rpg_fantasy/male/belf_m',           // 118 Hz  lighter, gentler
+  male_27: 'rpg_fantasy/male/garrosh_m',        // 119 Hz  gruff authority
+  male_28: 'narrator/dread_mark',               // 123 Hz  cold, terse
+  male_29: 'narrator/crypt_kirksvoice',         // 134 Hz  reverent, dusty
+  male_30: 'news/plain_mark',                   // 143 Hz  plain working man
+  female_14: 'rpg_fantasy/female/xalath_f',     // 152 Hz  low, controlled, final
+  female_15: 'narrator/veil_anne',              // 160 Hz  calm, even, spare
+  male_31: 'narrator/david',                    // 174 Hz  gravelled elder
+  female_16: 'rpg_fantasy/female/orc_f',        // 176 Hz  firm, commanding
+  male_32: 'rpg_fantasy/male/murozond_m',       // 176 Hz  resonant, declamatory
+  male_33: 'rpg_fantasy/male/flynn_m',          // 180 Hz  bright, carrying
+  female_17: 'rpg_fantasy/female/elf_sentinel_f', // 182 Hz  clear, command
+  male_34: 'rpg_fantasy/male/gazlow_m',         // 190 Hz  smooth trader patter
+  female_18: 'rpg_fantasy/female/witherbard_f', // 193 Hz  weathered elder
+  male_35: 'rpg_fantasy/male/bran_m',           // 222 Hz  light, soft, hesitant
+  male_36: 'rpg_fantasy/male/grif_m',           // 246 Hz  high, gleeful showman
+  female_19: 'rpg_fantasy/female/faerin_f',     // 262 Hz  precise, light, amused
+  female_20: 'rpg_fantasy/female/nightborne_f', // 281 Hz  soft, floating, unhurried
 };
 
 /**
@@ -105,18 +139,29 @@ const QUIPS: Record<string, string[]> = {
  * brisk and alive without out-acting the authored line it stands in for.
  * Shared tuning (tempo, temperature) comes from tools/voice/tuning.json.
  */
-interface Tuning {
-  tempo: number; temperature: number;
-  defaultExaggeration: number; defaultCfgWeight: number;
-}
-const TUNING = JSON.parse(
-  readFileSync(join(REPO, 'tools', 'voice', 'tuning.json'), 'utf8'),
-) as Tuning;
-// Rounded: binary float leaves 0.7 - 0.02 as 0.6799999999999999, which lands
-// in the stamp verbatim and would churn on any re-derivation.
-const EXAGGERATION = Math.round((TUNING.defaultExaggeration - 0.02) * 1000) / 1000;
-const CFG_WEIGHT = TUNING.defaultCfgWeight;
+const TUNING = loadTuning();
+const VOICE_TUNING = loadVoiceTuning();
 const TEMPERATURE = TUNING.temperature;
+
+/**
+ * Generic quips sit a touch under the character lane so a fallback never
+ * out-acts the authored line it stands in for. That nudge now applies to the
+ * VOICE'S OWN resolved exaggeration rather than to the global default, so a
+ * sample tuned in voices.json carries its correction into this bank too — the
+ * fallback and the character lane should never disagree about how a voice
+ * paces.
+ *
+ * Rounded: binary float leaves 0.7 - 0.02 as 0.6799999999999999, which would
+ * land in the stamp verbatim and churn on any re-derivation.
+ */
+const GENERIC_NUDGE = 0.02;
+function deliveryFor(voice: string): { exaggeration: number; cfgWeight: number } {
+  const base = resolveDelivery(voice, undefined, TUNING, VOICE_TUNING);
+  return {
+    exaggeration: Math.round((base.exaggeration - GENERIC_NUDGE) * 1000) / 1000,
+    cfgWeight: base.cfgWeight,
+  };
+}
 
 /** Ceiling at -1 dBFS so Opus intersample overshoot stays under full scale. */
 export const PEAK_LIMIT = 'alimiter=level_in=1:level_out=1:limit=0.891:attack=5:release=50:level=disabled';
@@ -172,7 +217,8 @@ for (const slot of wanted) {
   // complete, so an unforced run would keep them and the slot would quietly
   // hold the wrong voice or the old delivery. The stamp records the full
   // signature of what the clips are actually in; on mismatch, clear them.
-  const sig = `${voice} ex=${EXAGGERATION} cfg=${CFG_WEIGHT} `
+  const { exaggeration, cfgWeight } = deliveryFor(voice);
+  const sig = `${voice} ex=${exaggeration} cfg=${cfgWeight} `
     + `tempo=${TUNING.tempo} temp=${TEMPERATURE}`;
   const stampFile = join(dir, '.voice');
   const stamp = existsSync(stampFile) ? readFileSync(stampFile, 'utf8').trim() : null;
@@ -196,7 +242,7 @@ for (const slot of wanted) {
         '-H', 'Content-Type: application/json',
         '--data-binary', JSON.stringify({
           model: 'tts-1', input: text, voice,
-          exaggeration: EXAGGERATION, cfg_weight: CFG_WEIGHT, temperature: TEMPERATURE,
+          exaggeration, cfg_weight: cfgWeight, temperature: TEMPERATURE,
         }),
         '-o', tmp,
       ]);

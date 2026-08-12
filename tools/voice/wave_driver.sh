@@ -16,8 +16,9 @@
 #
 # The signature is "<voice> ex=<..> cfg=<..> tempo=<..>" — the speaker AND the
 # performance, because retuning the knobs changes the takes just as much as
-# recasting does. Per-character values come from characters.json, global ones
-# from tuning.json.
+# recasting does. The knobs resolve through three layers: characters.json for a
+# performance one character wants, then voices.json for how that sample reads by
+# default, then tuning.json for the pool-wide fallback.
 #
 # On each actor:
 #   .voice matches the signature       -> skip entirely
@@ -49,33 +50,39 @@ done
 set -- "${ARGS[@]}"
 
 actors_where() {          # "first" | "all"
-  node -e '
+  ARX_SCOPE="$1" node -e '
     const c = require("./tools/voice/characters.json");
-    const first = process.argv[1] === "first";
+    const first = process.env.ARX_SCOPE === "first";
     console.log(Object.entries(c)
       .filter(([, v]) => v.ttsVoice && (!first || v.firstWave))
       .map(([k]) => k).join("\n"));
-  ' "$1"
+  '
 }
 # The stamp is a SIGNATURE, not just the voice. Retuning exaggeration/cfgWeight
 # changes the performance as surely as recasting changes the speaker, and a
 # voice-only stamp would mark every already-generated actor as done and silently
 # keep takes in the old delivery. Including the knobs makes a retune invalidate
 # exactly the actors it affects, with no --fresh sledgehammer.
+#
+# This MUST go through resolveDelivery in lib.mts rather than reading the knobs
+# itself. The knobs now come from three layers (character, then voice, then
+# global), and a driver that only knew about two of them would compute a stamp
+# that disagreed with what generate.mts actually spoke — so a voices.json edit
+# would look done and the old takes would survive it. One resolver, one stamp.
+#
+# The actor arrives via the environment, not argv: `tsx -e` and `node -e`
+# disagree about where a trailing argument lands, and a silently-undefined id
+# here would stamp every actor with the same wrong signature.
 voice_of() {
-  node -e '
-    const c = require("./tools/voice/characters.json");
-    const t = require("./tools/voice/tuning.json");
-    const v = c[process.argv[1]];
-    if (!v || !v.ttsVoice) { console.error("no ttsVoice for " + process.argv[1]); process.exit(1); }
-    console.log([
-      v.ttsVoice,
-      "ex=" + (v.exaggeration ?? t.defaultExaggeration),
-      "cfg=" + (v.cfgWeight ?? t.defaultCfgWeight),
-      "tempo=" + t.tempo,
-      "temp=" + t.temperature,
-    ].join(" "));
-  ' "$1"
+  ARX_ACTOR="$1" npx tsx -e '
+    import { loadNotes, loadTuning, loadVoiceTuning, resolveDelivery, deliverySignature } from "./tools/voice/lib.mts";
+    const id = process.env.ARX_ACTOR;
+    const note = loadNotes()[id];
+    if (!note || !note.ttsVoice) { console.error("no ttsVoice for " + id); process.exit(1); }
+    const globals = loadTuning();
+    const d = resolveDelivery(note.ttsVoice, note, globals, loadVoiceTuning());
+    console.log(deliverySignature(note.ttsVoice, d, globals));
+  '
 }
 
 # macOS ships bash 3.2, which has no `mapfile` — read into the array by hand.

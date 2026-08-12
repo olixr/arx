@@ -1,34 +1,20 @@
 {
+  "dawnmead_ward": {
+    "where": "dawnmead",
+    "direction": "Pooled Vale Ward voices. Bryn's drill still on them, walking lanes that never need walking. Plain, a little proud of the uniform, quietly bored. Short lines, no drama.",
+    "ttsVoice": "rpg_fantasy/male/george"
+  },
+  "drover_maren": {
+    "where": "dawnmead",
+    "direction": "Keeps the stalls behind the green. Boots older than most fences, and a voice she saves for animals. Speaks to you the way she speaks to a nervous horse: low, unhurried, no sudden words. Orders disguised as observations.",
+    "ttsVoice": "narrator/veil_anne"
+  },
   "elder_rowan": {
     "where": "dawnmead",
     "direction": "Keeper of the Waking Ring, the first voice every new arrival hears. Grandfatherly and unhurried; he has welcomed hundreds of wakers and carries the ones who didn't come back. Full warm sentences, old-fashioned turns, calls you 'child' or 'waker'. Practical wisdom, never cosmic. Warm, low, steady pace.",
     "ttsVoice": "rpg_fantasy/male/king_bob",
     "exaggeration": 0.689,
     "cfgWeight": 0.569,
-    "firstWave": true
-  },
-  "warden_bryn": {
-    "where": "dawnmead",
-    "direction": "Dawnmead's drill-yard warden. Ex-soldier who misses real soldiering and hides fondness under bark. Imperatives, short. Counts things. 'Again.' 'Good.' Clipped delivery, never flowery, a smile buried deep in the throat.",
-    "ttsVoice": "rpg_fantasy/male/dread_john",
-    "exaggeration": 0.711,
-    "cfgWeight": 0.569,
-    "firstWave": true
-  },
-  "hearthkeeper_iona": {
-    "where": "dawnmead",
-    "direction": "Hearthkeeper; feeds everyone and lost someone to the road she never names. Plain, kind, food-first. Homely comparisons only: bread, weather, the pot. No cleverness at all; warmth is the whole instrument.",
-    "ttsVoice": "rpg_fantasy/female/sage_julie",
-    "exaggeration": 0.689,
-    "cfgWeight": 0.551,
-    "firstWave": true
-  },
-  "tinker_fen": {
-    "where": "dawnmead",
-    "direction": "Village tinker, a little lonely, happiest mid-repair. Talks to tools and objects mid-sentence ('hold still, you...'). Distracted, parenthetical, trails off and restarts. Let the pauses land where the '...' sits; he is not slow, his attention just wandered to the vice.",
-    "ttsVoice": "rpg_fantasy/male/court_thomas2",
-    "exaggeration": 0.733,
-    "cfgWeight": 0.517,
     "firstWave": true
   },
   "farmer_hobb": {
@@ -39,6 +25,30 @@
     "cfgWeight": 0.586,
     "firstWave": true
   },
+  "hearthkeeper_iona": {
+    "where": "dawnmead",
+    "direction": "Hearthkeeper; feeds everyone and lost someone to the road she never names. Plain, kind, food-first. Homely comparisons only: bread, weather, the pot. No cleverness at all; warmth is the whole instrument.",
+    "ttsVoice": "news/matron_michele",
+    "exaggeration": 0.689,
+    "cfgWeight": 0.551,
+    "firstWave": true
+  },
+  "tinker_fen": {
+    "where": "dawnmead",
+    "direction": "Village tinker, a little lonely, happiest mid-repair. Talks to tools and objects mid-sentence ('hold still, you...'). Distracted, parenthetical, trails off and restarts. Let the pauses land where the '...' sits; he is not slow, his attention just wandered to the vice.",
+    "ttsVoice": "rpg_fantasy/male/lorewake_m",
+    "exaggeration": 0.733,
+    "cfgWeight": 0.517,
+    "firstWave": true
+  },
+  "warden_bryn": {
+    "where": "dawnmead",
+    "direction": "Dawnmead's drill-yard warden. Ex-soldier who misses real soldiering and hides fondness under bark. Imperatives, short. Counts things. 'Again.' 'Good.' Clipped delivery, never flowery, a smile buried deep in the throat.",
+    "ttsVoice": "rpg_fantasy/male/ilidan_m",
+    "exaggeration": 0.711,
+    "cfgWeight": 0.569,
+    "firstWave": true
+  },
   "young_pip": {
     "where": "dawnmead",
     "direction": "A kid who wants to be sent on errands like the big couriers. Fast, literal, too honest, asks questions back. Bright and quick; no adult irony anywhere.",
@@ -46,62 +56,6 @@
     "exaggeration": 0.778,
     "cfgWeight": 0.517,
     "firstWave": true
-  },
-  "wayfarer_senna": {
-    "where": "roads",
-    "direction": "Waystation keeper; steady, motherly to travelers, weather-wise. Calm and even; she has seen every kind of road trouble arrive at her fire.",
-    "ttsVoice": "rpg_fantasy/female/sage_julie",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.569
-  },
-  "wayfarer_dray": {
-    "where": "roads",
-    "direction": "Waystation keeper with peddler blood; prices everything, including opinions. Quick patter, friendly, always half-selling.",
-    "ttsVoice": "rpg_fantasy/male/folksy_phil",
-    "exaggeration": 0.733,
-    "cfgWeight": 0.534
-  },
-  "wayfarer_petch": {
-    "where": "roads",
-    "direction": "Ex-quartermaster running a waystation; inventory brain, lists things in pairs. Practical, brisk, faintly proud of a well-kept store.",
-    "ttsVoice": "rpg_fantasy/male/court_thomas2",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.586
-  },
-  "waykeeper_hale": {
-    "where": "roads",
-    "direction": "Waykeeper sergeant far from relief. Report-speak, understatement, dark road humor kept short. 'The lamp stays lit' said like a password, not a poem. Tired but unbroken.",
-    "ttsVoice": "rpg_fantasy/male/edder",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.586
-  },
-  "waykeeper_odessa": {
-    "where": "roads",
-    "direction": "Waykeeper sergeant. Same school as Hale: report-speak, understatement, humor dry as hardtack. A shade sharper-edged than Hale.",
-    "ttsVoice": "rpg_fantasy/female/steel_cori",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.586
-  },
-  "waykeeper_brant": {
-    "where": "roads",
-    "direction": "Waykeeper sergeant. Report clip, dark humor rationed tighter than lamp oil. The youngest of the three sergeants and covering for it.",
-    "ttsVoice": "rpg_fantasy/male/ember_tadhg",
-    "exaggeration": 0.689,
-    "cfgWeight": 0.569
-  },
-  "wayward_watch": {
-    "where": "roads",
-    "direction": "Pooled Waykeeper watch voices on the wayward road. Soldier-plain, weather talk, short warnings. Deliver like someone glancing past your shoulder at the treeline.",
-    "ttsVoice": "rpg_fantasy/male/dread_john",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.569
-  },
-  "lampkeeper_edda": {
-    "where": "roads",
-    "direction": "Keeper of the Last Lamp on the worst mile of road; Sella's elder sister. BLUNT. Shortest sentences in the game. Kindness lives in deeds, never words. No warmth in the voice; all the warmth is in what she does.",
-    "ttsVoice": "rpg_fantasy/female/dour_mabel",
-    "exaggeration": 0.622,
-    "cfgWeight": 0.603
   },
   "company_broker": {
     "where": "roads",
@@ -116,27 +70,6 @@
     "ttsVoice": "rpg_fantasy/male/frank",
     "exaggeration": 0.6,
     "cfgWeight": 0.603
-  },
-  "peddler_coff": {
-    "where": "roads",
-    "direction": "Road peddler. Wagon-worn patter, cheerful about bad roads because bad roads are good business.",
-    "ttsVoice": "rpg_fantasy/male/folksy_phil",
-    "exaggeration": 0.733,
-    "cfgWeight": 0.534
-  },
-  "peddler_hetty": {
-    "where": "roads",
-    "direction": "Road peddler. Quick, warm, gossip travels in her wagon alongside the pans.",
-    "ttsVoice": "rpg_fantasy/female/trade_nell",
-    "exaggeration": 0.733,
-    "cfgWeight": 0.534
-  },
-  "peddler_nix": {
-    "where": "roads",
-    "direction": "Road peddler and mender. The quiet one of the three; short lines, sharp eyes, a tool in every pocket and a name for each. Speaks plainly and stops when the sentence is done.",
-    "ttsVoice": "rpg_fantasy/female/trade_nell",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.569
   },
   "crofter_beck": {
     "where": "roads",
@@ -166,88 +99,122 @@
     "exaggeration": 0.733,
     "cfgWeight": 0.534
   },
-  "smith_bretta": {
+  "hoargate_watch": {
+    "where": "roads",
+    "direction": "Pooled watch on the Hoargate pass. Steel under three layers of wool. Cold-clipped, economical, every sentence shortened by the wind. Nobody is posted here twice by accident and it is audible.",
+    "ttsVoice": "narrator/dread_mark"
+  },
+  "lampkeeper_edda": {
+    "where": "roads",
+    "direction": "Keeper of the Last Lamp on the worst mile of road; Sella's elder sister. BLUNT. Shortest sentences in the game. Kindness lives in deeds, never words. No warmth in the voice; all the warmth is in what she does.",
+    "ttsVoice": "rpg_fantasy/female/dour_mabel",
+    "exaggeration": 0.622,
+    "cfgWeight": 0.603
+  },
+  "peddler_coff": {
+    "where": "roads",
+    "direction": "Road peddler. Wagon-worn patter, cheerful about bad roads because bad roads are good business.",
+    "ttsVoice": "rpg_fantasy/male/dwarf_g_m",
+    "exaggeration": 0.733,
+    "cfgWeight": 0.534
+  },
+  "peddler_hetty": {
+    "where": "roads",
+    "direction": "Road peddler. Quick, warm, gossip travels in her wagon alongside the pans.",
+    "ttsVoice": "rpg_fantasy/female/trade_nell",
+    "exaggeration": 0.733,
+    "cfgWeight": 0.534
+  },
+  "peddler_nix": {
+    "where": "roads",
+    "direction": "Road peddler and mender. The quiet one of the three; short lines, sharp eyes, a tool in every pocket and a name for each. Speaks plainly and stops when the sentence is done.",
+    "ttsVoice": "rpg_fantasy/female/trade_nell",
+    "exaggeration": 0.667,
+    "cfgWeight": 0.569
+  },
+  "serjeant_ottar": {
+    "where": "roads",
+    "direction": "Twenty-one winters on the pass wall, counting every party through and every party back, and the second column is shorter. Dry, weathered, generous with the fire and stingy with reassurance. Deep and slow; he has said all of this before.",
+    "ttsVoice": "narrator/wry_peter"
+  },
+  "wayfarer_dray": {
+    "where": "roads",
+    "direction": "Waystation keeper with peddler blood; prices everything, including opinions. Quick patter, friendly, always half-selling.",
+    "ttsVoice": "rpg_fantasy/male/bran_m",
+    "exaggeration": 0.733,
+    "cfgWeight": 0.534
+  },
+  "wayfarer_petch": {
+    "where": "roads",
+    "direction": "Ex-quartermaster running a waystation; inventory brain, lists things in pairs. Practical, brisk, faintly proud of a well-kept store.",
+    "ttsVoice": "rpg_fantasy/male/hald_m",
+    "exaggeration": 0.667,
+    "cfgWeight": 0.586
+  },
+  "wayfarer_senna": {
+    "where": "roads",
+    "direction": "Waystation keeper; steady, motherly to travelers, weather-wise. Calm and even; she has seen every kind of road trouble arrive at her fire.",
+    "ttsVoice": "narrator/veil_anne",
+    "exaggeration": 0.667,
+    "cfgWeight": 0.569
+  },
+  "waykeeper_brant": {
+    "where": "roads",
+    "direction": "Waykeeper sergeant. Report clip, dark humor rationed tighter than lamp oil. The youngest of the three sergeants and covering for it.",
+    "ttsVoice": "rpg_fantasy/male/ember_tadhg",
+    "exaggeration": 0.689,
+    "cfgWeight": 0.569
+  },
+  "waykeeper_hale": {
+    "where": "roads",
+    "direction": "Waykeeper sergeant far from relief. Report-speak, understatement, dark road humor kept short. 'The lamp stays lit' said like a password, not a poem. Tired but unbroken.",
+    "ttsVoice": "rpg_fantasy/male/edder",
+    "exaggeration": 0.667,
+    "cfgWeight": 0.586
+  },
+  "waykeeper_odessa": {
+    "where": "roads",
+    "direction": "Waykeeper sergeant. Same school as Hale: report-speak, understatement, humor dry as hardtack. A shade sharper-edged than Hale.",
+    "ttsVoice": "rpg_fantasy/female/orc_f",
+    "exaggeration": 0.667,
+    "cfgWeight": 0.586
+  },
+  "wayward_watch": {
+    "where": "roads",
+    "direction": "Pooled Waykeeper watch voices on the wayward road. Soldier-plain, weather talk, short warnings. Deliver like someone glancing past your shoulder at the treeline.",
+    "ttsVoice": "rpg_fantasy/male/solder_m",
+    "exaggeration": 0.667,
+    "cfgWeight": 0.569
+  },
+  "amberford_watch": {
     "where": "amberford",
-    "direction": "Bretta Ironhewn, Master Smith; came down-mountain after the Undercroft seal and does not discuss it. Terse metalwork imperatives, drops sentence subjects: 'Forge's hot. Speak.' Goes quiet when the mountain comes up; the silence IS the story. Low, level, zero performance.",
-    "ttsVoice": "rpg_fantasy/female/steel_cori",
+    "direction": "Pooled Amberford watch. Gate-shift talk: short, civil, professionally unimpressed.",
+    "ttsVoice": "rpg_fantasy/male/edder",
     "exaggeration": 0.644,
-    "cfgWeight": 0.586,
+    "cfgWeight": 0.569
+  },
+  "banker_cormund": {
+    "where": "amberford",
+    "direction": "Banker; built the bank out of the Toll War so the town would never be caught poor again. Measured, ledger-metaphors, real dry wit but one good line per talk. Comfortable, unhurried; money has made him patient, memory keeps him careful.",
+    "ttsVoice": "rpg_fantasy/male/telemancer_m",
+    "exaggeration": 0.667,
+    "cfgWeight": 0.569,
     "firstWave": true
   },
   "captain_aldis": {
     "where": "amberford",
     "direction": "Captain of the North Gate, made by the Toll War. Watch-report clip; names the dead plainly; no glory talk. She remembers whether you listened to her. Steady command voice with the weight of a bad year behind it.",
-    "ttsVoice": "rpg_fantasy/female/clear_liz",
+    "ttsVoice": "rpg_fantasy/female/elf_sentinel_f",
     "exaggeration": 0.667,
     "cfgWeight": 0.586,
     "firstWave": true
   },
-  "keeper_ansel": {
+  "courier_nib": {
     "where": "amberford",
-    "direction": "Keeper of the Waykeepers' Hall registry. Reverent, precise, a little dusty. Speaks in entries and dates; softens only at the memorial wall.",
-    "ttsVoice": "rpg_fantasy/male/court_thomas2",
-    "exaggeration": 0.644,
-    "cfgWeight": 0.586
-  },
-  "banker_cormund": {
-    "where": "amberford",
-    "direction": "Banker; built the bank out of the Toll War so the town would never be caught poor again. Measured, ledger-metaphors, real dry wit but one good line per talk. Comfortable, unhurried; money has made him patient, memory keeps him careful.",
-    "ttsVoice": "rpg_fantasy/male/hale_andy",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.569,
-    "firstWave": true
-  },
-  "innkeep_dunna": {
-    "where": "amberford",
-    "direction": "Keeper of the Wanderer's Rest; Osa's daughter, working in her mam's shadow. Publican's timing: quick, hospitable, gossip in threes, mothers the roadworn. Bright and warm with a smart mouth.",
-    "ttsVoice": "rpg_fantasy/female/court_joy",
-    "exaggeration": 0.756,
-    "cfgWeight": 0.534,
-    "firstWave": true
-  },
-  "grocer_merra": {
-    "where": "amberford",
-    "direction": "Grocer; wants everyone fed and everyone's news. Warm, nosy, kind. Runs sentences together, asks after people by name. Fast and friendly, barely a full stop in her.",
-    "ttsVoice": "rpg_fantasy/female/sunny_posy",
-    "exaggeration": 0.756,
-    "cfgWeight": 0.517,
-    "firstWave": true
-  },
-  "miller_garton": {
-    "where": "amberford",
-    "direction": "Old miller; wants quiet, contradicts everyone on principle, especially Peld. Grumbles, short, 'in my day', secretly generous. Gravel and complaint with no real malice.",
-    "ttsVoice": "rpg_fantasy/male/king_bob",
-    "exaggeration": 0.689,
-    "cfgWeight": 0.551
-  },
-  "ferryman_peld": {
-    "where": "amberford",
-    "direction": "Ferryman; wants the river respected. Three-to-six-word answers, long pauses. When he says a full sentence it matters. Speak slow, low, and let the silence do the ferrying.",
-    "ttsVoice": "rpg_fantasy/male/veil_ethan",
-    "exaggeration": 0.6,
-    "cfgWeight": 0.603
-  },
-  "outfitter_hask": {
-    "where": "amberford",
-    "direction": "Outfitter, ex-roads himself; nobody dies of a cheap strap on his watch. Practical, checks your gear with his eyes mid-sentence, blunt about danger, no drama. Even, seen-it-all delivery.",
-    "ttsVoice": "rpg_fantasy/male/dread_john",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.569,
-    "firstWave": true
-  },
-  "master_tilo": {
-    "where": "amberford",
-    "direction": "Master artisan chasing one perfect chair before he dies. Soft-spoken, hands-first, apologizes for talking too long, then does. Gentle, thoughtful, slightly embarrassed by his own enthusiasm.",
-    "ttsVoice": "rpg_fantasy/male/court_thomas2",
-    "exaggeration": 0.689,
-    "cfgWeight": 0.534
-  },
-  "sage_elowen": {
-    "where": "amberford",
-    "direction": "Sage of the Dispensary; wants ailments boring and books exciting. Precise, faintly amused, corrects herself for accuracy: 'well, three days. Two and a half.'",
-    "ttsVoice": "rpg_fantasy/female/clear_liz",
-    "exaggeration": 0.689,
-    "cfgWeight": 0.569
+    "direction": "Courier who wants to be everywhere already. All elbows, freckles and forward motion. Breathless, arrives mid-thought, leaves before finishing, knows everyone's business a day early. Fast; clip the ends of lines like she's already turning away.",
+    "ttsVoice": "rpg_fantasy/female/perky_tilly",
+    "exaggeration": 0.778,
+    "cfgWeight": 0.5
   },
   "farmer_jorel": {
     "where": "amberford",
@@ -263,19 +230,64 @@
     "exaggeration": 0.756,
     "cfgWeight": 0.534
   },
+  "ferryman_peld": {
+    "where": "amberford",
+    "direction": "Ferryman; wants the river respected. Three-to-six-word answers, long pauses. When he says a full sentence it matters. Speak slow, low, and let the silence do the ferrying.",
+    "ttsVoice": "rpg_fantasy/male/veil_ethan",
+    "exaggeration": 0.6,
+    "cfgWeight": 0.603
+  },
+  "grocer_merra": {
+    "where": "amberford",
+    "direction": "Grocer; wants everyone fed and everyone's news. Warm, nosy, kind. Runs sentences together, asks after people by name. Fast and friendly, barely a full stop in her.",
+    "ttsVoice": "rpg_fantasy/female/sunny_posy",
+    "exaggeration": 0.756,
+    "cfgWeight": 0.517,
+    "firstWave": true
+  },
+  "innkeep_dunna": {
+    "where": "amberford",
+    "direction": "Keeper of the Wanderer's Rest; Osa's daughter, working in her mam's shadow. Publican's timing: quick, hospitable, gossip in threes, mothers the roadworn. Bright and warm with a smart mouth.",
+    "ttsVoice": "news/stage_mil",
+    "exaggeration": 0.756,
+    "cfgWeight": 0.534,
+    "firstWave": true
+  },
+  "keeper_ansel": {
+    "where": "amberford",
+    "direction": "Keeper of the Waykeepers' Hall registry. Reverent, precise, a little dusty. Speaks in entries and dates; softens only at the memorial wall.",
+    "ttsVoice": "narrator/crypt_kirksvoice",
+    "exaggeration": 0.644,
+    "cfgWeight": 0.586
+  },
+  "master_tilo": {
+    "where": "amberford",
+    "direction": "Master artisan chasing one perfect chair before he dies. Soft-spoken, hands-first, apologizes for talking too long, then does. Gentle, thoughtful, slightly embarrassed by his own enthusiasm.",
+    "ttsVoice": "rpg_fantasy/male/grand_mag_m",
+    "exaggeration": 0.689,
+    "cfgWeight": 0.534
+  },
+  "miller_garton": {
+    "where": "amberford",
+    "direction": "Old miller; wants quiet, contradicts everyone on principle, especially Peld. Grumbles, short, 'in my day', secretly generous. Gravel and complaint with no real malice.",
+    "ttsVoice": "rpg_fantasy/male/king_bob",
+    "exaggeration": 0.689,
+    "cfgWeight": 0.551
+  },
   "orchardist_perl": {
     "where": "amberford",
     "direction": "Goodwife Perl, orchardist; chatty gran who feeds everyone and suspects the cows of genius. Rambling, affectionate, digressions that circle back. Cozy and unhurried.",
-    "ttsVoice": "rpg_fantasy/female/court_joy",
+    "ttsVoice": "rpg_fantasy/female/witherbard_f",
     "exaggeration": 0.733,
     "cfgWeight": 0.517
   },
-  "courier_nib": {
+  "outfitter_hask": {
     "where": "amberford",
-    "direction": "Courier who wants to be everywhere already. All elbows, freckles and forward motion. Breathless, arrives mid-thought, leaves before finishing, knows everyone's business a day early. Fast; clip the ends of lines like she's already turning away.",
-    "ttsVoice": "rpg_fantasy/female/perky_tilly",
-    "exaggeration": 0.778,
-    "cfgWeight": 0.5
+    "direction": "Outfitter, ex-roads himself; nobody dies of a cheap strap on his watch. Practical, checks your gear with his eyes mid-sentence, blunt about danger, no drama. Even, seen-it-all delivery.",
+    "ttsVoice": "rpg_fantasy/male/arathi_m",
+    "exaggeration": 0.667,
+    "cfgWeight": 0.569,
+    "firstWave": true
   },
   "round_trader": {
     "where": "amberford",
@@ -284,159 +296,27 @@
     "exaggeration": 0.733,
     "cfgWeight": 0.534
   },
-  "amberford_watch": {
+  "sage_elowen": {
     "where": "amberford",
-    "direction": "Pooled Amberford watch. Gate-shift talk: short, civil, professionally unimpressed.",
-    "ttsVoice": "rpg_fantasy/male/edder",
-    "exaggeration": 0.644,
+    "direction": "Sage of the Dispensary; wants ailments boring and books exciting. Precise, faintly amused, corrects herself for accuracy: 'well, three days. Two and a half.'",
+    "ttsVoice": "rpg_fantasy/female/faerin_f",
+    "exaggeration": 0.689,
     "cfgWeight": 0.569
   },
-  "king_aeriex": {
-    "where": "silverfall",
-    "direction": "Fifth king of the Silver Line, a quarry foreman's grandson who knows it. PLAIN. Shorter and simpler than visitors expect from a king; that plainness is the character. No royal ornament, no boom. A working man's gravity.",
-    "ttsVoice": "rpg_fantasy/male/veil_ethan",
+  "smith_bretta": {
+    "where": "amberford",
+    "direction": "Bretta Ironhewn, Master Smith; came down-mountain after the Undercroft seal and does not discuss it. Terse metalwork imperatives, drops sentence subjects: 'Forge's hot. Speak.' Goes quiet when the mountain comes up; the silence IS the story. Low, level, zero performance.",
+    "ttsVoice": "rpg_fantasy/female/highmountain_f",
     "exaggeration": 0.644,
-    "cfgWeight": 0.586
-  },
-  "queen_kayri": {
-    "where": "silverfall",
-    "direction": "Ford-born queen who audited the king's own arithmetic. The sharpest wit in the game. Quick, precise, auditor's eye; affection expressed as correction. Every line lands exactly where she aimed it.",
-    "ttsVoice": "rpg_fantasy/female/spite_vex",
-    "exaggeration": 0.711,
-    "cfgWeight": 0.569
-  },
-  "warden_maren": {
-    "where": "silverfall",
-    "direction": "High Warden, Castellan; ordered the Undercroft seal broken and lives with it. Measured, weighed words, never defends herself twice. Carries the cost visibly but silently. Slow, deliberate, controlled.",
-    "ttsVoice": "rpg_fantasy/female/hush_morrow",
-    "exaggeration": 0.622,
-    "cfgWeight": 0.603
-  },
-  "marshal_kestrel": {
-    "where": "silverfall",
-    "direction": "Marshal of the Waykeepers, holding the roads with too few people. Muster-roll clip, tired, dry. Quotes her grandmother once, reluctantly. The exhaustion is real but never asks for sympathy.",
-    "ttsVoice": "rpg_fantasy/female/flint_greta",
-    "exaggeration": 0.644,
-    "cfgWeight": 0.586
-  },
-  "forgemistress_balla": {
-    "where": "silverfall",
-    "direction": "Forgemistress; wants steel with no lies in it. LOUD, certain, generous with praise for work, never for people directly. The thirty-year feud with Koll is theatre both maintain. Big voice, big room.",
-    "ttsVoice": "rpg_fantasy/female/steel_cori",
-    "exaggeration": 0.778,
-    "cfgWeight": 0.534
-  },
-  "smeltmaster_koll": {
-    "where": "silverfall",
-    "direction": "Smeltmaster; wants the pour clean. Numbers everything: minutes, bars, grudges. Workmanlike; furnace superstitions delivered completely deadpan.",
-    "ttsVoice": "rpg_fantasy/male/ember_tadhg",
-    "exaggeration": 0.644,
-    "cfgWeight": 0.586
+    "cfgWeight": 0.586,
+    "firstWave": true
   },
   "assayer_runa": {
     "where": "silverfall",
     "direction": "Assayer; the scales beyond question. Few words, exact ones. States weights and facts; declines adjectives. Flat, final, unbothered.",
-    "ttsVoice": "rpg_fantasy/female/clear_liz",
+    "ttsVoice": "rpg_fantasy/female/xalath_f",
     "exaggeration": 0.6,
     "cfgWeight": 0.62
-  },
-  "foreman_grettir": {
-    "where": "silverfall",
-    "direction": "Yard foreman; his brother's crew was the count that never came back from the Undercroft. NEAR-SILENT. Two-line answers. Approaches the brother only sideways, and the '...' in his lines is him stepping around it. Low, guarded, closed.",
-    "ttsVoice": "rpg_fantasy/male/veil_ethan",
-    "exaggeration": 0.6,
-    "cfgWeight": 0.603
-  },
-  "mason_petra": {
-    "where": "silverfall",
-    "direction": "Mason who swung the pick through her own grandfather's sealwork on Maren's order. Technical, defensive-precise; over-explains joints and loads when the real subject gets close. The engineering talk is armor.",
-    "ttsVoice": "rpg_fantasy/female/spark_wren",
-    "exaggeration": 0.689,
-    "cfgWeight": 0.569
-  },
-  "weaver_ottilie": {
-    "where": "silverfall",
-    "direction": "Master Weaver; beauty taken seriously as labor. Grand manner, earned. Declarative, slightly imperious, kind underneath. Project to the back of the gallery.",
-    "ttsVoice": "rpg_fantasy/female/sunny_posy",
-    "exaggeration": 0.733,
-    "cfgWeight": 0.569
-  },
-  "herbalist_wyn": {
-    "where": "silverfall",
-    "direction": "Herbalist; wants people to stop being stupid about mushrooms. Brisk, clinical, unexpectedly funny about symptoms. The humor is dry and entirely accidental-sounding.",
-    "ttsVoice": "rpg_fantasy/female/spite_vex",
-    "exaggeration": 0.689,
-    "cfgWeight": 0.569
-  },
-  "cook_signy": {
-    "where": "silverfall",
-    "direction": "Castle cook feeding the working terrace on time. Kitchen clatter: short, warm, orders disguised as offers. Always mid-task; lines said over a shoulder.",
-    "ttsVoice": "rpg_fantasy/female/sage_julie",
-    "exaggeration": 0.733,
-    "cfgWeight": 0.534
-  },
-  "hostler_osa": {
-    "where": "silverfall",
-    "direction": "Hostler; Dunna's mam, wants word from the ford more than she'll admit. Horse-first, people-second; gruff; melts at Dunna's name and pretends she didn't. Rough warmth badly hidden.",
-    "ttsVoice": "rpg_fantasy/female/flint_greta",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.569
-  },
-  "gardener_ivo": {
-    "where": "silverfall",
-    "direction": "Gardener of the Greenstair; talks to plants more easily than people. Quiet, halting with strangers, suddenly fluent about green things. Let the fluency switch on when the subject turns to growing.",
-    "ttsVoice": "rpg_fantasy/male/court_thomas2",
-    "exaggeration": 0.644,
-    "cfgWeight": 0.551
-  },
-  "shrinekeeper_sella": {
-    "where": "silverfall",
-    "direction": "Keeper of the Silver Shrine's mother-flame; Edda's younger sister. Gentle, few words, no sermons. Her one line of faith, 'the dark is large, and we pass the light along', is said like housekeeping, not scripture.",
-    "ttsVoice": "rpg_fantasy/female/trade_nell",
-    "exaggeration": 0.622,
-    "cfgWeight": 0.586
-  },
-  "carpenter_stig": {
-    "where": "silverfall",
-    "direction": "Timberway carpenter; patient teacher, grain-metaphors, measured. Every line paced like a saw cut: no hurry, no waste.",
-    "ttsVoice": "rpg_fantasy/male/court_phil",
-    "exaggeration": 0.644,
-    "cfgWeight": 0.586
-  },
-  "cooper_dagny": {
-    "where": "silverfall",
-    "direction": "Timberway cooper; fast, practical, loudly competitive about the Timberway's pecking order. Energy up, elbows out, grin audible.",
-    "ttsVoice": "rpg_fantasy/female/spark_wren",
-    "exaggeration": 0.756,
-    "cfgWeight": 0.534
-  },
-  "fletcher_haki": {
-    "where": "silverfall",
-    "direction": "Fletcher; Waykeeper veteran invalided off the road with a bad knee. Careful, oath-driven: every arrow is somebody's life. Understates his ten years on the road. Quiet pride, no bitterness aloud.",
-    "ttsVoice": "rpg_fantasy/male/george",
-    "exaggeration": 0.644,
-    "cfgWeight": 0.586
-  },
-  "silversmith_vigdis": {
-    "where": "silverfall",
-    "direction": "Silversmith; wants her mark to mean something in three hundred years. Exacting, aesthetic; one commandment: Runa's stamp settles everything. Cool precision with heat underneath.",
-    "ttsVoice": "rpg_fantasy/female/spite_vex",
-    "exaggeration": 0.667,
-    "cfgWeight": 0.586
-  },
-  "scrivener_tove": {
-    "where": "silverfall",
-    "direction": "Scrivener of Inks and Charts; wants the world written down before it changes. Enthusiastic pedant; measures distance in days-walked; corrects maps mid-conversation. Delight is the engine.",
-    "ttsVoice": "rpg_fantasy/female/sunny_posy",
-    "exaggeration": 0.756,
-    "cfgWeight": 0.534
-  },
-  "innkeep_ragna": {
-    "where": "silverfall",
-    "direction": "Keeper of the Silver Flagon; wants a quieter room than Dunna's and pretends not to compete. Composed, discreet, hears everything, repeats little. Smooth, level, professionally pleasant.",
-    "ttsVoice": "rpg_fantasy/female/court_joy",
-    "exaggeration": 0.644,
-    "cfgWeight": 0.586
   },
   "bursar_odele": {
     "where": "silverfall",
@@ -445,6 +325,44 @@
     "exaggeration": 0.622,
     "cfgWeight": 0.603
   },
+  "carpenter_stig": {
+    "where": "silverfall",
+    "direction": "Timberway carpenter; patient teacher, grain-metaphors, measured. Every line paced like a saw cut: no hurry, no waste.",
+    "ttsVoice": "rpg_fantasy/male/court_phil",
+    "exaggeration": 0.644,
+    "cfgWeight": 0.586
+  },
+  "castle_guard": {
+    "where": "silverfall",
+    "direction": "Pooled castle guards. Steel courtesy: formal, brief, correct. The armor does the talking.",
+    "ttsVoice": "rpg_fantasy/male/jeff",
+    "exaggeration": 0.622,
+    "cfgWeight": 0.586
+  },
+  "castle_servant": {
+    "where": "silverfall",
+    "direction": "Pooled castle staff. Apron, quick hands, and the particular calm of somebody who has carried soup past a king without spilling either. Brisk, deferential, faintly amused. Always on the way somewhere else.",
+    "ttsVoice": "rpg_fantasy/female/perky_tilly"
+  },
+  "cook_signy": {
+    "where": "silverfall",
+    "direction": "Castle cook feeding the working terrace on time. Kitchen clatter: short, warm, orders disguised as offers. Always mid-task; lines said over a shoulder.",
+    "ttsVoice": "rpg_fantasy/female/garrif_f",
+    "exaggeration": 0.733,
+    "cfgWeight": 0.534
+  },
+  "cooper_dagny": {
+    "where": "silverfall",
+    "direction": "Timberway cooper; fast, practical, loudly competitive about the Timberway's pecking order. Energy up, elbows out, grin audible.",
+    "ttsVoice": "rpg_fantasy/female/spark_wren",
+    "exaggeration": 0.756,
+    "cfgWeight": 0.534
+  },
+  "drillmaster_jorunn": {
+    "where": "silverfall",
+    "direction": "Parade-ground voice in a body built like the wall it drills beside. Kestrel's old sergeant, which neither of them mentions. Barks in threes: knees, elbows, eyes. Big room, bigger voice, real warmth buried two layers down.",
+    "ttsVoice": "rpg_fantasy/female/orc_f"
+  },
   "enchantress_solvei": {
     "where": "silverfall",
     "direction": "Enchantress of the Arcanum; wants to know what the rift already knows. Drifts mid-sentence when a thought catches her, returns without apology; the '...' is a thought pulling her sideways. Abstracted, precise about the imprecise.",
@@ -452,19 +370,87 @@
     "exaggeration": 0.689,
     "cfgWeight": 0.517
   },
-  "magpie_mab": {
+  "fence_calder": {
     "where": "silverfall",
-    "direction": "The Magpie, mistress of the Rookery; the city's shadows kept orderly. Never answers a question first; asks one back. Soft, unhurried, everything a trade. Quiet enough that people lean in; that's the point.",
+    "direction": "Fence, 'Purveyor of Provenance'. Euphemism as art form: everything 'found', 'orphaned', 'previously appreciated'. Silk-smooth, faintly delighted with his own vocabulary.",
+    "ttsVoice": "rpg_fantasy/male/gazlow_m",
+    "exaggeration": 0.689,
+    "cfgWeight": 0.569
+  },
+  "fletcher_haki": {
+    "where": "silverfall",
+    "direction": "Fletcher; Waykeeper veteran invalided off the road with a bad knee. Careful, oath-driven: every arrow is somebody's life. Understates his ten years on the road. Quiet pride, no bitterness aloud.",
+    "ttsVoice": "rpg_fantasy/male/george",
+    "exaggeration": 0.644,
+    "cfgWeight": 0.586
+  },
+  "foreman_grettir": {
+    "where": "silverfall",
+    "direction": "Yard foreman; his brother's crew was the count that never came back from the Undercroft. NEAR-SILENT. Two-line answers. Approaches the brother only sideways, and the '...' in his lines is him stepping around it. Low, guarded, closed.",
+    "ttsVoice": "rpg_fantasy/male/veil_ethan",
+    "exaggeration": 0.6,
+    "cfgWeight": 0.603
+  },
+  "forgemistress_balla": {
+    "where": "silverfall",
+    "direction": "Forgemistress; wants steel with no lies in it. LOUD, certain, generous with praise for work, never for people directly. The thirty-year feud with Koll is theatre both maintain. Big voice, big room.",
+    "ttsVoice": "news/iron_sue",
+    "exaggeration": 0.778,
+    "cfgWeight": 0.534
+  },
+  "galleria_trader": {
+    "where": "silverfall",
+    "direction": "Pooled galleria stall traders. Polished patter for a polished arcade; brighter and smoother than a road market.",
+    "ttsVoice": "rpg_fantasy/male/larry",
+    "exaggeration": 0.733,
+    "cfgWeight": 0.534
+  },
+  "gardener_ivo": {
+    "where": "silverfall",
+    "direction": "Gardener of the Greenstair; talks to plants more easily than people. Quiet, halting with strangers, suddenly fluent about green things. Let the fluency switch on when the subject turns to growing.",
+    "ttsVoice": "rpg_fantasy/male/belf_m",
+    "exaggeration": 0.644,
+    "cfgWeight": 0.551
+  },
+  "gate_monger": {
+    "where": "silverfall",
+    "direction": "Pooled pool-market criers at the gates. Market cries: loud, short, rhythmic.",
+    "ttsVoice": "rpg_fantasy/male/flynn_m",
+    "exaggeration": 0.778,
+    "cfgWeight": 0.517
+  },
+  "herald_ossian": {
+    "where": "silverfall",
+    "direction": "Reads the Line's decrees in a voice that fills the hall, then spends the rest of the day saving it. Two registers: the declamation, and the smaller private one he actually talks in. Play the small one unless the line is a proclamation.",
+    "ttsVoice": "rpg_fantasy/male/murozond_m"
+  },
+  "herbalist_wyn": {
+    "where": "silverfall",
+    "direction": "Herbalist; wants people to stop being stupid about mushrooms. Brisk, clinical, unexpectedly funny about symptoms. The humor is dry and entirely accidental-sounding.",
+    "ttsVoice": "rpg_fantasy/female/spite_vex",
+    "exaggeration": 0.689,
+    "cfgWeight": 0.569
+  },
+  "hostler_osa": {
+    "where": "silverfall",
+    "direction": "Hostler; Dunna's mam, wants word from the ford more than she'll admit. Horse-first, people-second; gruff; melts at Dunna's name and pretends she didn't. Rough warmth badly hidden.",
+    "ttsVoice": "rpg_fantasy/female/flint_greta",
+    "exaggeration": 0.667,
+    "cfgWeight": 0.569
+  },
+  "innkeep_ragna": {
+    "where": "silverfall",
+    "direction": "Keeper of the Silver Flagon; wants a quieter room than Dunna's and pretends not to compete. Composed, discreet, hears everything, repeats little. Smooth, level, professionally pleasant.",
     "ttsVoice": "rpg_fantasy/female/hush_morrow",
     "exaggeration": 0.644,
     "cfgWeight": 0.586
   },
-  "fence_calder": {
+  "king_aeriex": {
     "where": "silverfall",
-    "direction": "Fence, 'Purveyor of Provenance'. Euphemism as art form: everything 'found', 'orphaned', 'previously appreciated'. Silk-smooth, faintly delighted with his own vocabulary.",
-    "ttsVoice": "rpg_fantasy/male/hale_andy",
-    "exaggeration": 0.689,
-    "cfgWeight": 0.569
+    "direction": "Fifth king of the Silver Line, a quarry foreman's grandson who knows it. PLAIN. Shorter and simpler than visitors expect from a king; that plainness is the character. No royal ornament, no boom. A working man's gravity.",
+    "ttsVoice": "rpg_fantasy/male/veil_ethan",
+    "exaggeration": 0.644,
+    "cfgWeight": 0.586
   },
   "lookout_pike": {
     "where": "silverfall",
@@ -473,10 +459,50 @@
     "exaggeration": 0.644,
     "cfgWeight": 0.569
   },
-  "castle_guard": {
+  "magpie_mab": {
     "where": "silverfall",
-    "direction": "Pooled castle guards. Steel courtesy: formal, brief, correct. The armor does the talking.",
-    "ttsVoice": "rpg_fantasy/male/jeff",
+    "direction": "The Magpie, mistress of the Rookery; the city's shadows kept orderly. Never answers a question first; asks one back. Soft, unhurried, everything a trade. Quiet enough that people lean in; that's the point.",
+    "ttsVoice": "rpg_fantasy/female/hush_morrow",
+    "exaggeration": 0.644,
+    "cfgWeight": 0.586
+  },
+  "marshal_kestrel": {
+    "where": "silverfall",
+    "direction": "Marshal of the Waykeepers, holding the roads with too few people. Muster-roll clip, tired, dry. Quotes her grandmother once, reluctantly. The exhaustion is real but never asks for sympathy.",
+    "ttsVoice": "rpg_fantasy/female/flint_greta",
+    "exaggeration": 0.644,
+    "cfgWeight": 0.586
+  },
+  "mason_petra": {
+    "where": "silverfall",
+    "direction": "Mason who swung the pick through her own grandfather's sealwork on Maren's order. Technical, defensive-precise; over-explains joints and loads when the real subject gets close. The engineering talk is armor.",
+    "ttsVoice": "rpg_fantasy/female/spark_wren",
+    "exaggeration": 0.689,
+    "cfgWeight": 0.569
+  },
+  "outrider_joss": {
+    "where": "silverfall",
+    "direction": "A Waykeeper of the road service; the grey mare does the thinking on bad ground and Joss lets her. Road-report plain: distances, bridges, the one bad shoulder. Unhurried, unbothered, longer post than the wall watch and quietly proud of it.",
+    "ttsVoice": "news/plain_mark"
+  },
+  "queen_kayri": {
+    "where": "silverfall",
+    "direction": "Ford-born queen who audited the king's own arithmetic. The sharpest wit in the game. Quick, precise, auditor's eye; affection expressed as correction. Every line lands exactly where she aimed it.",
+    "ttsVoice": "rpg_fantasy/female/spite_vex",
+    "exaggeration": 0.711,
+    "cfgWeight": 0.569
+  },
+  "scrivener_tove": {
+    "where": "silverfall",
+    "direction": "Scrivener of Inks and Charts; wants the world written down before it changes. Enthusiastic pedant; measures distance in days-walked; corrects maps mid-conversation. Delight is the engine.",
+    "ttsVoice": "rpg_fantasy/female/sunny_posy",
+    "exaggeration": 0.756,
+    "cfgWeight": 0.534
+  },
+  "shrinekeeper_sella": {
+    "where": "silverfall",
+    "direction": "Keeper of the Silver Shrine's mother-flame; Edda's younger sister. Gentle, few words, no sermons. Her one line of faith, 'the dark is large, and we pass the light along', is said like housekeeping, not scripture.",
+    "ttsVoice": "rpg_fantasy/female/trade_nell",
     "exaggeration": 0.622,
     "cfgWeight": 0.586
   },
@@ -487,33 +513,38 @@
     "exaggeration": 0.644,
     "cfgWeight": 0.569
   },
-  "galleria_trader": {
+  "silversmith_vigdis": {
     "where": "silverfall",
-    "direction": "Pooled galleria stall traders. Polished patter for a polished arcade; brighter and smoother than a road market.",
-    "ttsVoice": "rpg_fantasy/male/larry",
-    "exaggeration": 0.733,
-    "cfgWeight": 0.534
-  },
-  "gate_monger": {
-    "where": "silverfall",
-    "direction": "Pooled pool-market criers at the gates. Market cries: loud, short, rhythmic.",
-    "ttsVoice": "rpg_fantasy/male/hale_andy",
-    "exaggeration": 0.778,
-    "cfgWeight": 0.517
-  },
-  "reeve_coppin": {
-    "where": "undercroft",
-    "direction": "Mine-Reeve of the Deep Market; brisk administrator underground. Tallies, permits, lamp-oil; refuses to find the dark romantic. Efficient, faintly harried, proud of the ledgers.",
-    "ttsVoice": "rpg_fantasy/male/folksy_phil",
-    "exaggeration": 0.689,
-    "cfgWeight": 0.569
-  },
-  "veteran_skarn": {
-    "where": "undercroft",
-    "direction": "Last man out of the galleries when the kobolds broke through, on a bad leg. Slow, long pauses (the '...' is a pause, hold it), plain words. Never dramatizes the fall; understates it, which is worse. Low, worn, steady.",
-    "ttsVoice": "rpg_fantasy/male/frank",
-    "exaggeration": 0.6,
+    "direction": "Silversmith; wants her mark to mean something in three hundred years. Exacting, aesthetic; one commandment: Runa's stamp settles everything. Cool precision with heat underneath.",
+    "ttsVoice": "rpg_fantasy/female/spite_vex",
+    "exaggeration": 0.667,
     "cfgWeight": 0.586
+  },
+  "smeltmaster_koll": {
+    "where": "silverfall",
+    "direction": "Smeltmaster; wants the pour clean. Numbers everything: minutes, bars, grudges. Workmanlike; furnace superstitions delivered completely deadpan.",
+    "ttsVoice": "rpg_fantasy/male/ember_tadhg",
+    "exaggeration": 0.644,
+    "cfgWeight": 0.586
+  },
+  "steward_ansgar": {
+    "where": "silverfall",
+    "direction": "Carries the whole castle in a ledger under one arm. Soft-spoken, chalk-dusted, professionally calm. Four hundred meals a week out of five hearths and never once raises his voice about it. Understated, precise, mid-task.",
+    "ttsVoice": "narrator/stanley"
+  },
+  "warden_maren": {
+    "where": "silverfall",
+    "direction": "High Warden, Castellan; ordered the Undercroft seal broken and lives with it. Measured, weighed words, never defends herself twice. Carries the cost visibly but silently. Slow, deliberate, controlled.",
+    "ttsVoice": "rpg_fantasy/female/hush_morrow",
+    "exaggeration": 0.622,
+    "cfgWeight": 0.603
+  },
+  "weaver_ottilie": {
+    "where": "silverfall",
+    "direction": "Master Weaver; beauty taken seriously as labor. Grand manner, earned. Declarative, slightly imperious, kind underneath. Project to the back of the gallery.",
+    "ttsVoice": "rpg_fantasy/female/sunny_posy",
+    "exaggeration": 0.733,
+    "cfgWeight": 0.569
   },
   "broker_varga": {
     "where": "undercroft",
@@ -525,8 +556,302 @@
   "curio_ninebrass": {
     "where": "undercroft",
     "direction": "Curio barker, the one licensed showman below ground. Patter, invented provenance, self-mythology he may not believe either. Exclamatory, list-happy, every line a small performance for a crowd of one.",
-    "ttsVoice": "rpg_fantasy/male/hale_andy",
+    "ttsVoice": "rpg_fantasy/male/grif_m",
     "exaggeration": 0.8,
     "cfgWeight": 0.517
+  },
+  "reeve_coppin": {
+    "where": "undercroft",
+    "direction": "Mine-Reeve of the Deep Market; brisk administrator underground. Tallies, permits, lamp-oil; refuses to find the dark romantic. Efficient, faintly harried, proud of the ledgers.",
+    "ttsVoice": "narrator/stanley",
+    "exaggeration": 0.689,
+    "cfgWeight": 0.569
+  },
+  "veteran_skarn": {
+    "where": "undercroft",
+    "direction": "Last man out of the galleries when the kobolds broke through, on a bad leg. Slow, long pauses (the '...' is a pause, hold it), plain words. Never dramatizes the fall; understates it, which is worse. Low, worn, steady.",
+    "ttsVoice": "rpg_fantasy/male/frank",
+    "exaggeration": 0.6,
+    "cfgWeight": 0.586
+  },
+  "boomsman_kettil": {
+    "where": "pinewatch",
+    "direction": "Twenty-one, quick on a rolling log, and entirely convinced nothing bad is coming for him specifically. Bright, fast, boastful in a way that begs to be caught. Do not tell Halla and do not tell Vigga.",
+    "ttsVoice": "rpg_fantasy/male/rune_phineas"
+  },
+  "buyer_ospren": {
+    "where": "pinewatch",
+    "direction": "Silverfall's man in Silverfall's good coat, on his fourth winter of promising himself it is his last. Measured, courteous, tired. Buys one tree in a hundred and is hated for the ninety-nine, and says so without self-pity.",
+    "ttsVoice": "rpg_fantasy/male/grand_mag_m"
+  },
+  "factor_ebba": {
+    "where": "pinewatch",
+    "direction": "Amberford sent her north for a season eleven years ago and she has counted every stick that left since. Flat, precise, done explaining. The Charter buys volume, the Crown buys the one tree in a hundred, and both of them pay her.",
+    "ttsVoice": "rpg_fantasy/female/dour_mabel"
+  },
+  "fisher_ylva": {
+    "where": "pinewatch",
+    "direction": "Fishes the one water nobody else wants, and she is fed, so the argument is settled. Plain, dry, faintly smug about the cold. Cold water, slow fish, big fish.",
+    "ttsVoice": "rpg_fantasy/female/trade_nell"
+  },
+  "innkeep_sunniva": {
+    "where": "pinewatch",
+    "direction": "Banks the fire at midnight and builds it again at half three, because the watch comes off the tower at four and has to go somewhere. Warm, quick, unbothered by strange hours. Four in the morning is her busiest hour.",
+    "ttsVoice": "rpg_fantasy/female/perky_tilly"
+  },
+  "nurseryman_odd": {
+    "where": "pinewatch",
+    "direction": "Has set more trees than the town has felled, which is the only boast he has ever made, and he made it to a seedling. Quiet, patient, entirely at peace with not living to see the saw log. Warm elder, no hurry in him at all.",
+    "ttsVoice": "rpg_fantasy/male/king_bob"
+  },
+  "old_torvi": {
+    "where": "pinewatch",
+    "direction": "The bench by the yard fire is hers. Eleven the winter the water went hard, and the last one left who was outside that night. Slow, weathered, unsentimental about the worst thing that ever happened here. Let the silences sit; she has waited forty years to ask for anything.",
+    "ttsVoice": "rpg_fantasy/female/witherbard_f"
+  },
+  "outrider_haldis": {
+    "where": "pinewatch",
+    "direction": "A Waykeeper of the mountain roads; rider and garron wear the same weather. Clear, carrying, road-report brisk. Clear to the first milepost, and past that ask the wolves.",
+    "ttsVoice": "rpg_fantasy/female/elf_sentinel_f"
+  },
+  "pinewatch_sawyer": {
+    "where": "pinewatch",
+    "direction": "Pooled sawyers. Sawdust in the cuffs, the collar, the beard and the bread; it stops being a nuisance in about a year. Plain, working, matter-of-fact. Boards to Amberford, and they never see any of it.",
+    "ttsVoice": "rpg_fantasy/male/frank"
+  },
+  "pinewatch_watch": {
+    "where": "pinewatch",
+    "direction": "Pooled tower watch. Not soldiers: a sawyer, or a carter, or somebody's aunt, taking their night on the board like everyone else. Tired, plain, a little put-upon. We watch the water. That is what the tower is for.",
+    "ttsVoice": "rpg_fantasy/female/trade_nell"
+  },
+  "pitchmaster_rullo": {
+    "where": "pinewatch",
+    "direction": "Singed in a different place every week and cheerful about all of them. Fast, gruff, laughing at his own trade. There is a sign in his own yard with his name on it and it is not a compliment.",
+    "ttsVoice": "rpg_fantasy/male/dwarf_g_m"
+  },
+  "reeve_halla": {
+    "where": "pinewatch",
+    "direction": "Keeps the rota, the boundary, and her temper, in that order of difficulty. Nine years old the winter the ice came. Says a thing once and expects it to have landed. Firm, level, no warmth spent on strangers until they have earned the roof.",
+    "ttsVoice": "news/iron_sue"
+  },
+  "sawmistress_groa": {
+    "where": "pinewatch",
+    "direction": "Forearms like the beams she cuts, thirty years of squinting down grain, deaf on the left and unembarrassed about it. LOUD by default because she has to be. Blunt, certain, warm underneath. A board is a promise.",
+    "ttsVoice": "rpg_fantasy/female/garrif_f"
+  },
+  "smith_vigga": {
+    "where": "pinewatch",
+    "direction": "Every axe tooth in this town comes off her stone, and she can name the owner by the wear. Low, flat, economical. Talks about steel, not people. Bring it before it chips, not after.",
+    "ttsVoice": "rpg_fantasy/female/highmountain_f"
+  },
+  "sparmaster_yannick": {
+    "where": "pinewatch",
+    "direction": "Walks the length of a mast three times before he touches it. Nobody has seen him hurry and nobody has seen one of his spars fail. Deliberate, quiet, absolute. A mast is one tree or it is firewood; there is no third thing.",
+    "ttsVoice": "narrator/dread_ben"
+  },
+  "storekeep_nial": {
+    "where": "pinewatch",
+    "direction": "Iron, rope, resin and salve, arranged so the salve is nearest the door, because he knows which one you came in for. Dry, practical, mildly amused at newcomers. Second week is when the hands go.",
+    "ttsVoice": "rpg_fantasy/male/george"
+  },
+  "tallyman_bram": {
+    "where": "pinewatch",
+    "direction": "Counts the logs in and counts the logs out, nineteen years, and can describe all of them. Even, unhurried, faintly proud of the books. Wet count and dry count should match, and twice this year they have not, which worries him more than he says.",
+    "ttsVoice": "rpg_fantasy/male/edder"
+  },
+  "warden_sigrun": {
+    "where": "pinewatch",
+    "direction": "Waykeeper lamp on her shoulder, Timber Road mud on her boots, and opinions about which way you came. Wry, road-worn, welcoming in a brisk official way. Reads you before she greets you.",
+    "ttsVoice": "news/matron_michele"
+  },
+  "angler_voss": {
+    "where": "saltmere",
+    "direction": "Stillness with a rod in it. Eleven thousand fish caught and perhaps nine of them remembered. Very low, very quiet, long gaps between sentences. The water listens, and it gossips.",
+    "ttsVoice": "rpg_fantasy/male/narrator_m"
+  },
+  "boatwright_seff": {
+    "where": "saltmere",
+    "direction": "Sawdust in the seams of him. His hulls come home, and he would rather the crews said so than say it himself. Plain, absorbed, talks while working and stops when it matters. Eyes go on last; a boat launched blind stays lost.",
+    "ttsVoice": "news/plain_mark"
+  },
+  "chandler_swale": {
+    "where": "saltmere",
+    "direction": "A man shelved as neatly as his stock, never once caught without. Smooth, clipped, quietly pleased with himself. Say what you need and watch him have it. Everything here earns its shelf, and the shelf is the interview.",
+    "ttsVoice": "news/sly_adrian"
+  },
+  "factor_neave": {
+    "where": "saltmere",
+    "direction": "Ink on the fingers, salt nowhere near the paper. Her columns balance to the grain and she resents that the town is proud of it. Flat, dry, unimpressed. Wipe your boots.",
+    "ttsVoice": "rpg_fantasy/female/dour_mabel"
+  },
+  "innkeep_dorrit": {
+    "where": "saltmere",
+    "direction": "Flour to one elbow, brine to the other, and she has never once let a story end badly inside her walls. Bright, warm, quick to seat you. Sit, eat, the weather can wait because it always does.",
+    "ttsVoice": "rpg_fantasy/female/sunny_posy"
+  },
+  "lightkeeper_lund": {
+    "where": "saltmere",
+    "direction": "Wind-cured and unhurried, with fire-tender hands. The light has not gone out on her watch and the watch is thirty years old. Calm, spare, faintly reverent about the flame that walked here hand to hand from the Silver Shrine.",
+    "ttsVoice": "narrator/veil_anne"
+  },
+  "pilot_fane": {
+    "where": "saltmere",
+    "direction": "The oldest eyes on the water, outlived three boats, two portreeves and every argument about the weather. Slow, gravelled, unbothered. Piloted grain boats when this quay was six planks and an opinion, and will tell you so.",
+    "ttsVoice": "narrator/david"
+  },
+  "portreeve_brack": {
+    "where": "saltmere",
+    "direction": "A back built by oars and a face built by weather. Reads the mere the way clerks read ledgers and trusts it less. Gruff, fast, always half-watching the wind. Make it quick or make it useful.",
+    "ttsVoice": "rpg_fantasy/male/garrosh_m"
+  },
+  "roper_jessa": {
+    "where": "saltmere",
+    "direction": "Walks twelve miles a day without leaving one room. Fast, rhythmic, breath-paced to the walk; talk to her and you keep up. A rope is a hundred small holds agreeing to be one long one, and so is a town.",
+    "ttsVoice": "rpg_fantasy/female/spark_wren"
+  },
+  "salter_ondra": {
+    "where": "saltmere",
+    "direction": "Hands cured hard as oak, eyes pale from twenty years of white glare. She harvests weather. Hard, level, transactional. A pan is a field: flood it, dry it, rake it, rest it. Farmers understand her and nobody else does.",
+    "ttsVoice": "rpg_fantasy/female/flint_greta"
+  },
+  "saltmere_fisher": {
+    "where": "saltmere",
+    "direction": "Pooled quay fishers. Oilskin, rope burn, and an opinion about the weather that has never once been humble. Fast, certain, cheerfully wrong half the time. Nobody nets the far shore.",
+    "ttsVoice": "rpg_fantasy/male/larry"
+  },
+  "saltmere_watch": {
+    "where": "saltmere",
+    "direction": "Pooled harbour watch: road soldiers a long way from the road, lamp badge polished, boots salt-white. Flat, dutiful, a little homesick. The lamp stays lit, even at the end of the road.",
+    "ttsVoice": "rpg_fantasy/male/solder_m"
+  },
+  "smokemistress_alba": {
+    "where": "saltmere",
+    "direction": "Smoke has cured her voice down to the useful words. Low, slow, no wasted breath. Every cook in the south learned the slow fire from her or from someone who did. Low fire, long patience, and do not open the door to check.",
+    "ttsVoice": "rpg_fantasy/female/xalath_f"
+  },
+  "bonecarver_tuli": {
+    "where": "hartfell",
+    "direction": "Small work, small voice. Can put a running hart on a button the size of your thumbnail and would rather you looked at the button than at him. Soft, hesitant, apologetic; opens up only about the material. Antler wants to be something.",
+    "ttsVoice": "rpg_fantasy/male/bran_m"
+  },
+  "buyer_hallward": {
+    "where": "hartfell",
+    "direction": "Amberford tailoring, Amberford manners, and a standing offer the moot declines every quarter with tremendous courtesy. A year here, and he counts it in winters now. Smooth, courtly, faintly weary under the charm.",
+    "ttsVoice": "rpg_fantasy/male/court_phil"
+  },
+  "chandler_ulfa": {
+    "where": "hartfell",
+    "direction": "Warm as her own dips and twice as busy. Every story in town passes through the chandlery, gets trimmed, and burns a little brighter after. Quick, bright, generous with gossip. Candles for the living, lamps for the road, no questions for either.",
+    "ttsVoice": "rpg_fantasy/female/sunny_posy"
+  },
+  "elder_gunvor": {
+    "where": "hartfell",
+    "direction": "The cottage outside the wall is hers, and the bench that faces the ice. Came north over the frozen fell forty years ago and never once explains why she stays. Dry, unhurried, faintly amused at being outlasted. Sits where she can see it coming.",
+    "ttsVoice": "rpg_fantasy/female/witherbard_f"
+  },
+  "furrier_ranna": {
+    "where": "hartfell",
+    "direction": "Can grade a pelt through a shut door, and grades people the same way. Hard, clipped, transactional. First quality goes south, second quality goes on your back, and there is no third quality.",
+    "ttsVoice": "rpg_fantasy/female/flint_greta"
+  },
+  "guide_sunn": {
+    "where": "hartfell",
+    "direction": "Nineteen, faster than the dogs Hartfell does not keep, and bored the moment a roof is over her. Fast, flat, impatient. You walk loud and everything on the fell already knows your name. Keep up or say it now.",
+    "ttsVoice": "rpg_fantasy/female/spark_wren"
+  },
+  "hartfell_herder": {
+    "where": "hartfell",
+    "direction": "Pooled herders. Wind-cracked hands and a counting stick; the harts trust the smell of the folds and very little else. Plain, outdoor, unhurried. Warm water all winter and fat herds, and that is the whole secret of the north.",
+    "ttsVoice": "rpg_fantasy/male/arathi_m"
+  },
+  "hartfell_watch": {
+    "where": "hartfell",
+    "direction": "Pooled Fellwatch: a herder, or a smoker, or somebody's uncle, taking a turn at the gate. The moot keeps no soldiers, it pays the lamp. Casual, blunt, unmilitary. The horn means in. Not soon. In.",
+    "ttsVoice": "rpg_fantasy/male/larry"
+  },
+  "herdmaster_swein": {
+    "where": "hartfell",
+    "direction": "Counts the herd at dawn and dusk and twice more for luck, and will not say the number of the lost aloud, because named misfortune returns. Plain, careful, troubled. Forty years of herding and he has never seen this.",
+    "ttsVoice": "rpg_fantasy/male/hald_m"
+  },
+  "huntmaster_kolgrim": {
+    "where": "hartfell",
+    "direction": "Forty winters of wind on one face. Counts everything: arrows, tracks, favors, and the exact number of times you have wasted his morning. Terse, dark, impatient. Wind first, ground second, shot last.",
+    "ttsVoice": "rpg_fantasy/male/ilidan_m"
+  },
+  "innkeep_brandulf": {
+    "where": "hartfell",
+    "direction": "Loud on purpose, because a quiet inn past the treeline is a cold thought. No quiet nights under his roof and no secrets either, try as you might. Big, fast, welcoming at volume. IN, in, shut the cold out.",
+    "ttsVoice": "rpg_fantasy/male/flynn_m"
+  },
+  "netkeeper_eyvor": {
+    "where": "hartfell",
+    "direction": "Salmon under the ice shelf, weather in her knee, and a strict personal treaty with the Darkwater: she does not go out on it and it does not come in for her. Low, careful, superstitious without ever admitting the word.",
+    "ttsVoice": "rpg_fantasy/female/hush_morrow"
+  },
+  "pedlar_grimm": {
+    "where": "hartfell",
+    "direction": "No sign over the pitch, no home behind it, and a purse that pays too well for things dug out of the fell. Friendly as a lid on a box. Smooth, warm, and never once answering the question asked.",
+    "ttsVoice": "rpg_fantasy/male/gazlow_m"
+  },
+  "smith_eirik": {
+    "where": "hartfell",
+    "direction": "Points, traps, nails, and the truth: a good smith and not a great one, and he will tell you so before you ask. Plain, honest, unbothered by the limit. Silverfall masters; he mends.",
+    "ttsVoice": "rpg_fantasy/male/jeff"
+  },
+  "smokemaster_geir": {
+    "where": "hartfell",
+    "direction": "Speaks the way smoke moves, slowly and in one direction. The winter eats what he does not smoke, so he smokes everything. Very deep, very slow, almost no inflection. Green wood is a lie you tell the meat.",
+    "ttsVoice": "rpg_fantasy/male/draven_m"
+  },
+  "speaker_ashild": {
+    "where": "hartfell",
+    "direction": "Chosen, not crowned, and she will correct you on the difference. Says what the moot decided and not one word more. Measured, civic, deliberately unremarkable; the authority is in the restraint. No wall worth the name and no war in forty years.",
+    "ttsVoice": "news/stage_mil"
+  },
+  "springkeeper_maeva": {
+    "where": "hartfell",
+    "direction": "Moves the way the steam does, without hurry and without stopping. People bring her their aches and, later, quieter things. Soft, unhurried, almost floating. The water was warm before the first of us and will be warm after the last.",
+    "ttsVoice": "rpg_fantasy/female/nightborne_f"
+  },
+  "tallywife_inga": {
+    "where": "hartfell",
+    "direction": "Sixty years, two chests, one vault, zero mistakes. The ledgers behind her go back to the first fold and she has read all of them twice. Flat, final, unarguable. The book says otherwise, and the book is right.",
+    "ttsVoice": "rpg_fantasy/female/dour_mabel"
+  },
+  "tithekeeper_orvar": {
+    "where": "hartfell",
+    "direction": "Walks the sledge out alone every slaughter day and has for thirty years. Not brave, he says. Polite, and so are they. Deep, grave, matter-of-fact about a thing that should not be matter-of-fact. Leaves it on the flat stone and does not wait to watch.",
+    "ttsVoice": "rpg_fantasy/male/guldan_m"
+  },
+  "waykeeper_signe": {
+    "where": "hartfell",
+    "direction": "The last lamp of the longest road in the Dawnlands, and the book of who went up and who came back; she squares the two lists every night before she sleeps. Warm but procedural. Name, road and reason, because the book keeps you honest.",
+    "ttsVoice": "news/matron_michele"
+  },
+  "captain_ravna": {
+    "where": "lowhall",
+    "direction": "The mask hangs off her belt like a clerk's seal, which is what it is. Runs the Company the way other people run shipping concerns, and the concern is doing well. Low, controlled, entirely reasonable, which is the frightening part.",
+    "ttsVoice": "rpg_fantasy/female/xalath_f"
+  },
+  "company_blade": {
+    "where": "lowhall",
+    "direction": "Pooled Company enforcers. Boiled leather, a red sash, and the stillness of somebody paid by the hour to be exactly here. Flat, bored, entirely willing. Walk where the braziers are.",
+    "ttsVoice": "rpg_fantasy/male/solder_m"
+  },
+  "company_runner": {
+    "where": "lowhall",
+    "direction": "Pooled runners. Mud to the knee from three cities' worth of cellars and a satchel that is nobody's business. Quick, young, deflecting. Knows every step between the five doors and will tell you nothing about any of it.",
+    "ttsVoice": "rpg_fantasy/male/rune_phineas"
+  },
+  "quartermaster_yeva": {
+    "where": "lowhall",
+    "direction": "Every buckle on her is oiled and every blade on the rack is hers until you pay. Rust, in her cage, is a moral failing. Clipped, exacting, zero patience. Dry boots, sharp steel, shut mouth; two of those are sold here.",
+    "ttsVoice": "rpg_fantasy/female/garrif_f"
+  },
+  "tallyman_brusk": {
+    "where": "lowhall",
+    "direction": "Ink on his fingers and a fence's patience in his eyes. The books balance every night, which is more than the bank can say about its conscience. Smooth, unhurried, faintly amused. Provenance is a story, and he pays by weight, not by story.",
+    "ttsVoice": "news/sly_adrian"
   }
 }

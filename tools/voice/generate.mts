@@ -17,7 +17,16 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildManifest, orderedActors, REPO, type ManifestLine } from './lib.mts';
+import {
+  buildManifest,
+  deliverySignature,
+  loadTuning,
+  loadVoiceTuning,
+  orderedActors,
+  REPO,
+  resolveDelivery,
+  type ManifestLine,
+} from './lib.mts';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -35,13 +44,9 @@ const service = flag('--service') ?? 'http://localhost:5002';
 const VOICEWORK = join(REPO, 'voicework');
 
 /** Global delivery tuning — see tools/voice/tuning.json for the measurements. */
-interface Tuning {
-  tempo: number; temperature: number;
-  defaultExaggeration: number; defaultCfgWeight: number;
-}
-const TUNING = JSON.parse(
-  readFileSync(join(REPO, 'tools', 'voice', 'tuning.json'), 'utf8'),
-) as Tuning;
+const TUNING = loadTuning();
+/** Per-voice tuning — see tools/voice/voices.json. */
+const VOICE_TUNING = loadVoiceTuning();
 const m = buildManifest();
 const wanted = args.length > 0 ? args : orderedActors(m);
 for (const id of wanted) {
@@ -84,6 +89,12 @@ for (const actor of wanted) {
     console.error(`voice '${voice}' is not in the voicelab roster (${[...voices].join(', ')})`);
     process.exit(1);
   }
+  // Character knob, else the voice's own tuning, else the pool default.
+  const delivery = resolveDelivery(voice, note, TUNING, VOICE_TUNING);
+  console.log(
+    `--- ${actor}: ${deliverySignature(voice, delivery, TUNING)}`
+    + `  (ex from ${delivery.from.exaggeration}, cfg from ${delivery.from.cfgWeight})`,
+  );
   const dir = join(VOICEWORK, 'generated', actor);
   mkdirSync(dir, { recursive: true });
   for (const line of m.byActor.get(actor)!) {
@@ -110,9 +121,10 @@ for (const actor of wanted) {
       // NOT a speed control here despite the folk wisdom: dropping it to 0.30
       // made delivery 12% *slower*. Keep it mid. Above ~0.8 exaggeration
       // destabilises (0.85 measured slower and flatter than 0.75).
-      // See tools/voice/tuning.json.
-      exaggeration: note?.exaggeration ?? TUNING.defaultExaggeration,
-      cfg_weight: note?.cfgWeight ?? TUNING.defaultCfgWeight,
+      // Resolved through the one delivery door: character, then voice, then
+      // global. See tools/voice/voices.json and tools/voice/tuning.json.
+      exaggeration: delivery.exaggeration,
+      cfg_weight: delivery.cfgWeight,
       temperature: TUNING.temperature,
     });
     execFileSync('curl', [

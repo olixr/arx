@@ -20,12 +20,17 @@ import {
   type ManifestLine,
 } from './lib.mts';
 
+/** One title per REGION_ORDER row. A region with no title falls back to its id. */
 const REGION_TITLES: Record<string, string> = {
   dawnmead: 'Dawnmead — the waking village',
   roads: 'The roads — waystations, watch and the Tollhouse',
   amberford: 'Amberford — the ford town',
   silverfall: 'Silverfall — the capital',
   undercroft: 'The Undercroft — below the mountain',
+  pinewatch: 'Pinewatch — the mountain cradle past Hoargate',
+  saltmere: 'Saltmere — the harbour and the salt pans',
+  hartfell: 'Hartfell — the town past the treeline',
+  lowhall: 'The Low Hall — the Red Company below',
 };
 
 const SLOT_NOTES: Record<string, string> = {
