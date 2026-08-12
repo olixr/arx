@@ -80,6 +80,17 @@
 
 /* The bare page: a furnished center, never a whisper in a corner —
    ghost mark first, the invitation under it (The Ink Pass). */
+/* AN EMPTY ROOM OWNS ITS FLOOR: with no errands sworn there is no
+   ledger and no open page — the ghost mark centers in the whole room
+   instead of haunting the left column beside a blank bench. */
+.quest-main:has(.quest-empty) {
+  grid-template-columns: 1fr;
+}
+
+.quest-main:has(.quest-empty) .quest-bench {
+  display: none;
+}
+
 .quest-empty {
   flex: 1;
   min-height: 12rem;
