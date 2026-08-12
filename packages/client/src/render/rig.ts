@@ -8718,6 +8718,12 @@ export function owlWingFan(
     under?: boolean;
     /** Vertical squash for corpse splays flat on the ground. */
     squash?: number;
+    /**
+     * Fan-opening scale: 1 = the full mantling droop (the standing
+     * threat bloom). Level flight carries the blade flatter — cruise
+     * ~0.6, a locked-out glide flatter still.
+     */
+    openK?: number;
     hurt?: boolean;
     seed?: number;
   },
@@ -8730,7 +8736,7 @@ export function owlWingFan(
   // The fan droops from the leading edge toward the ground, whichever
   // side of the screen the wing points.
   const droop = Math.cos(o.ang) >= 0 ? 1 : -1;
-  const open = droop * (0.28 + 0.62 * Math.max(0.3, o.spread));
+  const open = droop * (0.28 + 0.62 * Math.max(0.3, o.spread)) * (o.openK ?? 1);
   // ONE solid fan silhouette with a stepped trailing edge — a wing is
   // a MASS, never a rake of ribs. Five primary tips, notched between.
   const N = 5;
@@ -9079,25 +9085,50 @@ export function drawOwlHead(
         }
       }
       if (!o.dead) {
-        // The eye: a lamp dead-center of its lobe. The strike narrows
-        // the pupil to a hunting pin.
-        const er = lobeR * 0.44;
+        // The eye: pulled INWARD toward the beak (owl eyes crowd the
+        // center of the disc — dead-center lobes read as goggles) and
+        // set a touch along the facing so the pair aims where the head
+        // points. The strike narrows the pupil to a hunting pin.
+        const er = lobeR * 0.42;
+        const ex = lx - px * es * lobeR * 0.18 + fx * lobeR * 0.1;
+        const ey = ly + fy * lobeR * 0.08 * ys;
         ctx.fillStyle = C(look.eye);
         ctx.beginPath();
-        facetCircle(ctx, lx, ly, er, 6, fx * 0.5);
+        facetCircle(ctx, ex, ey, er, 6, fx * 0.5);
         ctx.fill();
         if (!o.hurt) {
-          const pr = er * 0.52 * (1 - 0.45 * screech);
+          // Round pupil, offset along the gaze — a directed stare,
+          // never the flat cartoon square.
+          const pr = er * 0.5 * (1 - 0.45 * screech);
+          const ppx = ex + fx * er * 0.18;
+          const ppy = ey + fy * er * 0.14 * ys;
           ctx.fillStyle = OUTLINE;
-          ctx.fillRect(lx - pr, ly - pr, pr * 2, pr * 2);
+          ctx.beginPath();
+          facetCircle(ctx, ppx, ppy, pr, 6, fx * 0.3);
+          ctx.fill();
+          // One small high glint, up-inner — the lamp's live point.
           ctx.fillStyle = '#fff7e0';
-          ctx.fillRect(lx - er * 0.55, ly - er * 0.6, er * 0.28, er * 0.28);
+          ctx.beginPath();
+          facetCircle(ctx, ex - er * 0.32, ey - er * 0.38, er * 0.16, 5, 0.4);
+          ctx.fill();
           // The slow blink: a disc-toned lid dropping over the lamp.
           const blink = o.blink ?? 0;
           if (blink > 0.05) {
             ctx.fillStyle = look.disc;
-            ctx.fillRect(lx - er * 1.05, ly - er * 1.05, er * 2.1, er * 2.1 * Math.min(1, blink));
+            ctx.fillRect(ex - er * 1.05, ey - er * 1.05, er * 2.1, er * 2.1 * Math.min(1, blink));
           }
+          // THE BROW RIDGE: a hard slanted ledge over each eye, high
+          // at the center of the face and cutting down-outward — the
+          // one stroke that turns a staring toy into a raptor. The
+          // elder's ledge is heavier: the court's scowl.
+          ctx.strokeStyle = C(shade(look.discRim, -8));
+          ctx.lineWidth = Math.max(1.4, s * (look.elder ? 0.034 : 0.026));
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(ex - px * es * er * 0.85, ey - er * (0.98 + 0.14 * screech));
+          ctx.lineTo(ex + px * es * er * 1.05, ey - er * (0.34 - 0.1 * screech));
+          ctx.stroke();
+          ctx.lineCap = 'butt';
         }
       } else {
         // Dead: the lamps are out — a shut-line across each lobe.
@@ -9133,6 +9164,489 @@ export function drawOwlHead(
       }
     }
   }
+}
+
+/** Flight ceiling per rank (tiles over the ground anchor): the elder
+ *  rides higher — rank you can read from across the glade. */
+export function owlHoverHeight(look: OwlLook): number {
+  return look.elder ? 1.18 : 0.98;
+}
+
+/** Shortest-arc angle blend — the flare-to-cruise pitch never takes
+ *  the long way around the circle. */
+function lerpAngle(a: number, b: number, t: number): number {
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return a + d * t;
+}
+
+/** Below this air fraction the owl is ON the roost: folded wings,
+ *  squat keg, talons planted. Above it, the flier composition. */
+const OWL_FOLD = 0.3;
+
+/**
+ * THE PARLIAMENT FLIES: the great owl's one body painter, air-blended.
+ *
+ * `air` = 0 is the ROOST — the standing keg settled into a low squat
+ * over its own talons, breathing, ruffling on a long clock, head
+ * sweeping the glade. `air` = 1 is CRUISE — a leveled-out flier at
+ * hover height: slow deep wingbeats broken by seeded glides, a
+ * wingbeat-coupled bob, a fanned steering tail, talons tucked. The
+ * band between is the LANDING FLARE birds actually fly: body swinging
+ * upright, wings wide and braking, talons reaching for the ground —
+ * which is exactly the silhouette the roost opens from, so the
+ * composition swap hides inside the flare.
+ *
+ * Banking rolls the body, wings and tail into the turn while the head
+ * holds level — the owl's famous gimbal, and the detail that sells
+ * the whole bird. The pounce telegraph is a true SWOOP: the windup
+ * brakes and mantles high (pale undersides flashing), the strike is a
+ * silent dive with both talons thrown forward.
+ */
+export function drawGreatOwl(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: OwlLook,
+  o: {
+    /** Ground anchor on screen (terrain-lifted) — where the shadow lives. */
+    x: number;
+    y: number;
+    s: number;
+    dir: number;
+    ys: number;
+    /** 0 = perched on the roost, 1 = full cruise height. */
+    air: number;
+    /** Smoothed 0..1 travel activity — glides only open mid-travel. */
+    moveK: number;
+    /** Signed body roll from turning — the banking lean (radians). */
+    bank?: number;
+    attackT?: number;
+    hurt?: boolean;
+    nowMs: number;
+    seed: number;
+    /** Keeper's strap for a tamed companion — worn gear, never a dye. */
+    collar?: string;
+  },
+): void {
+  const s = o.s;
+  const ys = o.ys;
+  const fx = Math.cos(o.dir);
+  const fy = Math.sin(o.dir);
+  const px = -fy;
+  const py = fx;
+  const at = o.attackT ?? 0;
+  const now = o.nowMs;
+  const seed = o.seed;
+  const air = Math.min(1, Math.max(0, o.air));
+  const hl = spec.bodyLen * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+
+  // ------------------------------------------------------- the roost
+  if (air <= OWL_FOLD) {
+    // The settled squat: belly clearance nearly gone — a roosting owl
+    // sits ON its feet, nothing left of the strider stance.
+    const roost: OwlLook = {
+      ...look,
+      backH: look.backH * 0.92,
+      bellyH: look.bellyH * 0.4,
+    };
+    // Idle life: a slow breath, and a rare half-second feather ruffle.
+    const breath = now > 0 ? Math.max(0, Math.sin(now * 0.0015 + seed * 0.9)) * 0.012 * s : 0;
+    const ruffPh = now > 0 ? (((now * 0.00011 + seed * 0.37) % 1) + 1) % 1 : 0.5;
+    const ruffle =
+      ruffPh < 0.055
+        ? Math.sin(now * 0.05 + seed) * 0.05 * Math.sin((ruffPh / 0.055) * Math.PI)
+        : 0;
+    // The folded tail fan: barred blades tucked behind the rump —
+    // drawn first, so the settled keg overlaps its own tail root.
+    {
+      const tbx = o.x - fx * hl * 0.8;
+      // Root high on the rump (the squat drops the belly, not the
+      // tail carriage) with the blades sloping toward the ground —
+      // a perched tail POINTS DOWN, it never sticks out level.
+      const tby = o.y - breath - fy * hl * 0.8 * ys - look.bellyH * 1.15 * s;
+      const backA = Math.atan2(-fy * ys, -fx);
+      ctx.lineCap = 'round';
+      for (let k = 0; k < 4; k++) {
+        const a = backA + (k / 3 - 0.5) * 0.62;
+        const blade = look.tailLen * s * 0.85 * (1 - 0.28 * Math.abs(k / 3 - 0.5) * 2);
+        const tex = tbx + Math.cos(a) * blade;
+        const tey = tby + Math.sin(a) * blade * ys + blade * 0.4 + s * 0.03;
+        ctx.strokeStyle = C(shade(look.mantle, k % 2 === 0 ? -4 : -12));
+        ctx.lineWidth = Math.max(2.5, s * 0.062);
+        ctx.beginPath();
+        ctx.moveTo(tbx, tby);
+        ctx.lineTo(tex, tey);
+        ctx.stroke();
+        // The bar band riding each blade tip.
+        if (!o.hurt) {
+          ctx.strokeStyle = look.bar;
+          ctx.lineWidth = Math.max(1.4, s * 0.024);
+          ctx.beginPath();
+          ctx.moveTo(tbx + (tex - tbx) * 0.78, tby + (tey - tby) * 0.78);
+          ctx.lineTo(tbx + (tex - tbx) * 0.92, tby + (tey - tby) * 0.92);
+          ctx.stroke();
+        }
+      }
+      ctx.lineCap = 'butt';
+    }
+    paintOwlBody(
+      ctx,
+      spec,
+      roost,
+      {
+        bx: o.x,
+        gy: o.y - breath,
+        s,
+        fx,
+        fy,
+        ys,
+        seed,
+        hurt: o.hurt === true,
+        bob: 0,
+        roll: ruffle,
+      },
+      at,
+    );
+    // Wings folding out of (or into) the flare — gone at full rest.
+    // The mantle telegraph owns the wings whenever a strike winds, so
+    // the fold pair only paints on a peaceful body.
+    if (air > 0.02 && at === 0) {
+      const k = air / OWL_FOLD;
+      for (const es of [-1, 1]) {
+        owlWingFan(ctx, look, {
+          x: o.x + es * look.bodyW * 0.55 * s,
+          y: o.y - roost.backH * s * 0.85,
+          s,
+          ang: es > 0 ? -(0.55 + 0.3 * k) : Math.PI + (0.55 + 0.3 * k),
+          spread: k,
+          span: look.wingSpan * (0.5 + 0.5 * k),
+          under: true,
+          hurt: o.hurt,
+          seed,
+        });
+      }
+    }
+    // Talons peeking from under the settled breast — camera side only.
+    if (fy > -0.2) {
+      const hipS = Math.abs(spec.rig.legs[0]?.side ?? 0.11);
+      ctx.strokeStyle = C(shade(spec.legColor ?? look.mantle, -45));
+      ctx.lineWidth = Math.max(1.4, spec.legW * s * 0.6);
+      ctx.lineCap = 'round';
+      for (const es of [-1, 1]) {
+        const ex0 = o.x + px * es * hipS * s + fx * 0.14 * s;
+        const ey0 = o.y + (py * es * hipS * s + fy * 0.14 * s) * ys;
+        for (const ta of [-0.45, 0, 0.45]) {
+          const a = o.dir + ta;
+          ctx.beginPath();
+          ctx.moveTo(ex0, ey0);
+          ctx.lineTo(ex0 + Math.cos(a) * 0.075 * s, ey0 + Math.sin(a) * 0.075 * s * ys);
+          ctx.stroke();
+        }
+      }
+      ctx.lineCap = 'butt';
+    }
+    // The roost's head: the parliament's wide slow sweep — the swivel
+    // IS the resting owl's life — snapping dead ahead when a strike
+    // telegraphs, with the two-beat blink on its own clock.
+    const sweep = now > 0 ? Math.sin(now * 0.00037 + seed * 0.83) : 0;
+    const hdir = o.dir + (at > 0 ? 0 : sweep * 1.3);
+    const stoop = at > 0 ? Math.min(1, at / 0.7) * 0.09 * s : 0;
+    const chx = o.x + fx * hl * 0.42;
+    const chy = o.y - breath + fy * hl * 0.42 * ys - (roost.backH + look.headH * 0.52) * s + stoop;
+    const blink =
+      now > 0 && at === 0 ? Math.max(0, Math.sin(now * 0.0009 + seed * 1.7) - 0.965) / 0.035 : 0;
+    drawOwlHead(ctx, look, {
+      x: chx,
+      y: chy,
+      s,
+      fx: Math.cos(hdir),
+      fy: Math.sin(hdir),
+      ys,
+      hurt: o.hurt,
+      screech: at > 0.55 ? Math.min(1, (at - 0.55) / 0.3) : 0,
+      blink,
+      seed,
+    });
+    return;
+  }
+
+  // ------------------------------------------------------- the wing
+  const t = (air - OWL_FOLD) / (1 - OWL_FOLD);
+  // Pitch: 0 = upright landing flare, 1 = leveled-out cruise.
+  const pitchK = Math.min(1, t * 1.4);
+  // The elder beats a slower, heavier wing — mass you can hear.
+  const flapF = look.elder ? 0.0066 : 0.0082;
+  const basePhase = now * flapF + seed * 0.7;
+  // Seeded glide gate: only a leveled, traveling, peaceful bird locks
+  // its wings out — the beat-beat-glide rhythm real owls cruise on.
+  const gwave = Math.sin(now * 0.00042 + seed * 1.13);
+  const glideK =
+    pitchK >= 1 && at === 0
+      ? Math.min(1, Math.max(0, (gwave - 0.15) / 0.35)) * Math.min(1, o.moveK * 1.6)
+      : 0;
+  const flap = Math.sin(basePhase) * (1 - glideK);
+  // Wing carriage: deep slow beats, deeper still through the flare;
+  // a glide holds them level with only a feather-tip flutter.
+  let raise =
+    (0.16 + 0.4 * (1 - pitchK)) * (1 - glideK) +
+    (0.06 + Math.sin(now * 0.0036 + seed) * 0.045) * glideK +
+    flap * (0.42 + 0.3 * (1 - pitchK));
+  let spread = Math.min(1, 0.9 - 0.18 * Math.max(0, flap) + 0.1 * glideK);
+  // The body hangs off the wingbeat: it settles on the upstroke and
+  // rides the downstroke — the coupling that makes flight read ALIVE.
+  let lift =
+    owlHoverHeight(look) * s * t +
+    Math.sin(basePhase - 1.1) * (0.045 + 0.02 * (1 - glideK)) * s;
+  let lungeX = 0;
+  let lungeY = 0;
+  // The flare drops the landing gear; cruise tucks it flat.
+  let talonK = Math.max(0, 1 - pitchK);
+  let under = raise > 0.35;
+  if (at > 0) {
+    if (at < 0.7) {
+      // The windup: brake, climb a hand's width, mantle HIGH — the
+      // pale underwing flash every prey animal understands.
+      const w = at / 0.7;
+      lift += 0.1 * s * w;
+      raise += (0.95 - raise) * w;
+      spread = Math.min(1, spread + w * 0.3);
+      talonK = Math.max(talonK, w);
+      under = true;
+    } else {
+      // The strike: the silent dive — wings swept back past level,
+      // both talons thrown forward, the whole mass falling along the
+      // facing.
+      const k = Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3));
+      lungeX = fx * 0.45 * k * s;
+      lungeY = fy * 0.45 * k * s * ys;
+      lift -= 0.32 * s * k;
+      raise += (-0.5 - raise) * k;
+      spread += (0.68 - spread) * k;
+      talonK = 1;
+      under = false;
+    }
+  }
+  const bcx = o.x + lungeX;
+  const bcy = o.y + lungeY - lift;
+  // THE GIMBAL: the body, wings and tail roll into the turn; the head
+  // — computed here, painted last, UNROTATED — holds dead level.
+  const roll = (o.bank ?? 0) * pitchK;
+  const co = Math.cos(roll);
+  const si = Math.sin(roll);
+  const headFwd = hl * (0.55 + 0.45 * pitchK);
+  const headOx = fx * headFwd;
+  const headOy = fy * headFwd * ys - (0.28 + (1 - pitchK) * look.backH * 0.55) * s;
+  const headX = bcx + headOx * co - headOy * si;
+  const headY = bcy + headOx * si + headOy * co;
+
+  ctx.save();
+  ctx.translate(bcx, bcy);
+  ctx.rotate(roll);
+
+  // Tail fan — the steering surface, behind everything. It spreads
+  // wide to brake through the flare, tips into the bank, and flares
+  // again through the strike.
+  const backA = Math.atan2(-fy * ys, -fx);
+  const tSpread =
+    0.55 + 0.5 * (1 - pitchK) + Math.min(0.5, Math.abs(o.bank ?? 0)) * 0.6 + (at >= 0.7 ? 0.25 : 0);
+  const tLen = look.tailLen * s * (1.25 + 0.2 * (1 - pitchK));
+  const TN = 5;
+  const rootX = -fx * hl * 0.72;
+  const rootY = -fy * hl * 0.72 * ys + 0.04 * s;
+  const tailTip = (k: number): { x: number; y: number } => {
+    const u = k / (TN - 1);
+    const a = backA + (u - 0.5) * tSpread;
+    const ln = tLen * (1 - 0.3 * Math.abs(u - 0.5) * 2);
+    return { x: rootX + Math.cos(a) * ln, y: rootY + Math.sin(a) * ln * 0.9 };
+  };
+  ctx.fillStyle = C(shade(look.mantle, -6));
+  ctx.beginPath();
+  ctx.moveTo(rootX, rootY);
+  for (let k = 0; k < TN; k++) {
+    const p2 = tailTip(k);
+    ctx.lineTo(p2.x, p2.y);
+    if (k < TN - 1) {
+      // The notch between tail feathers — the stepped silhouette law.
+      const a = backA + ((k + 0.5) / (TN - 1) - 0.5) * tSpread;
+      const ln = tLen * (1 - 0.3 * Math.abs((k + 0.5) / (TN - 1) - 0.5) * 2) * 0.82;
+      ctx.lineTo(rootX + Math.cos(a) * ln, rootY + Math.sin(a) * ln * 0.9);
+    }
+  }
+  ctx.closePath();
+  ctx.fill();
+  if (!o.hurt) {
+    // Bar bands ticking the tail tips — one broken arc of bar ink.
+    ctx.strokeStyle = look.bar;
+    ctx.lineWidth = Math.max(1.2, s * 0.02);
+    ctx.lineCap = 'round';
+    for (let k = 0; k < TN; k++) {
+      const p2 = tailTip(k);
+      ctx.beginPath();
+      ctx.moveTo(rootX + (p2.x - rootX) * 0.78, rootY + (p2.y - rootY) * 0.78);
+      ctx.lineTo(rootX + (p2.x - rootX) * 0.9, rootY + (p2.y - rootY) * 0.9);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+
+  // Wings — billboard fans off the shoulders, the bat law: readable
+  // at every one of the eight facings. The blade carries FLAT in
+  // level flight (flatter still through a locked glide) and only
+  // opens into the full mantling droop for the flare and the windup.
+  const openK =
+    at > 0 && at < 0.7
+      ? 1
+      : at >= 0.7
+        ? 0.5
+        : 0.62 - 0.17 * glideK + 0.28 * (1 - pitchK);
+  for (const es of [-1, 1]) {
+    owlWingFan(ctx, look, {
+      x: es * look.bodyW * 1.05 * s,
+      y: -0.09 * s,
+      s,
+      ang: es > 0 ? -raise : Math.PI + raise,
+      spread,
+      span: look.wingSpan,
+      under,
+      openK,
+      hurt: o.hurt,
+      seed,
+    });
+  }
+
+  // The body: one streamlined mass along the facing, pitching from
+  // the upright flare down into level cruise — then two-toned INSIDE
+  // its own silhouette: dark mantle saddle above, pale breast keel
+  // below, a sunlit rim on the very top (the top-plane law). Nothing
+  // pokes past the hull.
+  const coat = C(shade(look.mantle, (((seed >>> 5) & 7) - 3) * 2));
+  const bodyA = lerpAngle(-Math.PI / 2, Math.atan2(fy * ys, fx), pitchK);
+  const bl = hl * (0.95 + 0.4 * pitchK);
+  ctx.save();
+  ctx.rotate(bodyA);
+  ctx.fillStyle = coat;
+  ctx.beginPath();
+  facetBlob(ctx, 0, 0, bl, seed | 1, 9, (look.bodyW * 0.85 * s) / bl, 0.35);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.beginPath();
+    facetBlob(ctx, 0, 0, bl, seed | 1, 9, (look.bodyW * 0.85 * s) / bl, 0.35);
+    ctx.clip();
+    ctx.rotate(-bodyA);
+    // The pale keel: the lower half of the hull in breast tone.
+    ctx.fillStyle = shade(look.breast, -4);
+    ctx.fillRect(-bl * 1.2, look.bodyW * 0.16 * s, bl * 2.4, bl * 2);
+    // Barred keel rows when the bird comes at the camera.
+    if (fy > 0.1) {
+      ctx.strokeStyle = look.bar;
+      ctx.lineWidth = Math.max(1.1, s * 0.016);
+      ctx.lineCap = 'round';
+      for (let rIdx = 0; rIdx < 2; rIdx++) {
+        const ph = (((seed >>> (rIdx * 2)) & 3) - 1.5) * s * 0.02;
+        const rw = look.bodyW * s * (0.55 - rIdx * 0.14);
+        const ry = look.bodyW * s * (0.32 + rIdx * 0.24);
+        ctx.beginPath();
+        ctx.moveTo(fx * bl * 0.2 - rw + ph, ry - s * 0.03);
+        ctx.lineTo(fx * bl * 0.2 + ph, ry + s * 0.03);
+        ctx.lineTo(fx * bl * 0.2 + rw + ph, ry - s * 0.03);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+    // The sunlit top rim — the camera always reads the back plane.
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.14)';
+    ctx.fillRect(-bl * 1.2, -look.bodyW * 0.85 * s, bl * 2.4, look.bodyW * 0.3 * s);
+  }
+  ctx.restore();
+  if (!o.hurt && fy < 0.3) {
+    // Covert ticks over the rear back — folded-feather rows converging
+    // on the tail root, the top plane's own detail.
+    ctx.strokeStyle = shade(look.mantle, -16);
+    ctx.lineWidth = Math.max(1.1, s * 0.016);
+    ctx.lineCap = 'round';
+    for (const es of [-1, 1]) {
+      for (let k = 0; k < 2; k++) {
+        const X0 = -bl * (0.15 + 0.3 * k);
+        ctx.beginPath();
+        ctx.moveTo(fx * X0 + px * es * look.bodyW * 0.4 * s, fy * X0 * ys - s * 0.05 + k * s * 0.03);
+        ctx.lineTo(
+          fx * (X0 - bl * 0.28) + px * es * look.bodyW * 0.24 * s,
+          fy * (X0 - bl * 0.28) * ys - s * 0.02 + k * s * 0.03,
+        );
+        ctx.stroke();
+      }
+    }
+    ctx.lineCap = 'butt';
+  }
+  // The keeper's strap on a tamed companion — a band at the neck base.
+  if (o.collar && !o.hurt && fy > -0.3) {
+    ctx.strokeStyle = o.collar;
+    ctx.lineWidth = Math.max(2, s * 0.045);
+    ctx.lineCap = 'round';
+    const nx = fx * hl * 0.48;
+    const ny = fy * hl * 0.48 * ys - s * 0.02;
+    ctx.beginPath();
+    ctx.moveTo(nx - px * 0.13 * s, ny - py * 0.13 * s * ys);
+    ctx.lineTo(nx + px * 0.13 * s, ny + py * 0.13 * s * ys);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  // Talons: tucked flat under the tail root in cruise; the flare and
+  // the strike swing them down and OPEN — the landing gear and the
+  // weapon are the same instrument.
+  const shankInk = C(shade(spec.legColor ?? look.mantle, -20));
+  const clawInk = C(shade(spec.legColor ?? look.mantle, -50));
+  for (const es of [-1, 1]) {
+    const sx0 = es * 0.1 * s - fx * hl * 0.18;
+    const sy0 = look.bodyW * 0.5 * s;
+    const ex1 = sx0 + fx * s * (talonK * (at >= 0.7 ? 0.22 : 0.02) - (1 - talonK) * 0.1);
+    const ey1 = sy0 + (0.05 + 0.2 * talonK) * s;
+    ctx.strokeStyle = shankInk;
+    ctx.lineWidth = Math.max(1.6, spec.legW * s * 0.7);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sx0, sy0);
+    ctx.lineTo(ex1, ey1);
+    ctx.stroke();
+    if (talonK > 0.25) {
+      // Open claws: three hooks splaying off the extended foot.
+      ctx.strokeStyle = clawInk;
+      ctx.lineWidth = Math.max(1.3, spec.legW * s * 0.5);
+      for (const ta of [-0.55, 0, 0.55]) {
+        const a = Math.PI / 2 + ta * 0.9 - (at >= 0.7 ? fx * 0.7 : 0);
+        ctx.beginPath();
+        ctx.moveTo(ex1, ey1);
+        ctx.lineTo(ex1 + Math.cos(a) * 0.07 * s * talonK + fx * 0.02 * s, ey1 + Math.sin(a) * 0.07 * s * talonK);
+        ctx.stroke();
+      }
+    }
+    ctx.lineCap = 'butt';
+  }
+  ctx.restore();
+
+  // The head — LAST and LEVEL: the gimbal. In cruise the gaze locks
+  // near the line of flight; a hanging hover frees the slow sweep;
+  // a telegraph snaps it dead ahead and screams through the strike.
+  const gazeAmp = 0.25 + 0.55 * (1 - Math.min(1, o.moveK * 1.3));
+  const hdir =
+    o.dir + (at > 0 ? 0 : (now > 0 ? Math.sin(now * 0.00037 + seed * 0.83) : 0) * gazeAmp);
+  const blink =
+    now > 0 && at === 0 ? Math.max(0, Math.sin(now * 0.0009 + seed * 1.7) - 0.975) / 0.025 : 0;
+  drawOwlHead(ctx, look, {
+    x: headX,
+    y: headY,
+    s,
+    fx: Math.cos(hdir),
+    fy: Math.sin(hdir),
+    ys,
+    hurt: o.hurt,
+    screech: at > 0.55 ? Math.min(1, (at - 0.55) / 0.3) : 0,
+    blink,
+    seed,
+  });
 }
 
 /**
@@ -12468,12 +12982,6 @@ export function drawBeast(
   const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
   const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
   const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;
-  // The parliament rolls its plumage cluster from the spawn eid — a
-  // wing of owls sorts into kin groups instead of stamping one coat.
-  const owlL =
-    opts.defId === 'great_owl' || opts.defId === 'elder_great_owl'
-      ? owlLook(opts.defId, opts.seed ?? 0)
-      : undefined;
   const idle = 1 - opts.pose.poleStrength;
   const now = opts.nowMs ?? 0;
   const blockFrame = (): BeastBlockFrame => ({
@@ -12489,10 +12997,6 @@ export function drawBeast(
     roll,
   });
   const paintBody = (): void => {
-    if (owlL) {
-      paintOwlBody(ctx, spec, owlL, blockFrame(), at);
-      return;
-    }
     if (wolfL) {
       paintWolfBody(ctx, spec, wolfL, blockFrame());
       return;
@@ -12591,44 +13095,6 @@ export function drawBeast(
   const paintHead = (): void => {
     if (spiderL) return; // the spider's face lives in its body painter
     if (crabL || beetleL) return; // whole animal drawn by the body painter
-    if (owlL) {
-      const hl = spec.bodyLen * s;
-      // No neck: the skull sits straight on the shoulder dome. What
-      // moves is the HEAD ITSELF — the parliament's swivel. At rest
-      // it sweeps the glade on a slow clock, wide when standing,
-      // narrowed while walking (eyes on the line), and it snaps dead
-      // ahead the instant a strike telegraphs.
-      const sweep = now > 0 ? Math.sin(now * 0.00037 + seed * 0.83) : 0;
-      const gaze = at > 0 ? 0 : sweep * 1.3 * (0.25 + 0.75 * idle);
-      const hdir = opts.dir + gaze;
-      const hfx = Math.cos(hdir);
-      const hfy = Math.sin(hdir);
-      const nod = opts.pose.bob * 0.3 * s;
-      // The stoop: through the windup the head sinks toward the kill
-      // line while the mantle rises behind it.
-      const stoop = at > 0 ? Math.min(1, at / 0.7) * 0.09 * s : 0;
-      const chx = bx + fx * hl * 0.42;
-      const chy =
-        by + fy * hl * 0.42 * ys - (owlL.backH + owlL.headH * 0.52) * s - nod + stoop;
-      // A slow two-beat blink on its own clock — never mid-fight.
-      const blink =
-        now > 0 && at === 0
-          ? Math.max(0, Math.sin(now * 0.0009 + seed * 1.7) - 0.965) / 0.035
-          : 0;
-      drawOwlHead(ctx, owlL, {
-        x: chx,
-        y: chy,
-        s,
-        fx: hfx,
-        fy: hfy,
-        ys,
-        hurt: opts.hurt,
-        screech: at > 0.55 ? Math.min(1, (at - 0.55) / 0.3) : 0,
-        blink,
-        seed,
-      });
-      return;
-    }
     if (ramL) {
       const hl = spec.bodyLen * s;
       const hw2 = ramL.headW * s;
@@ -13155,39 +13621,6 @@ export function drawBeast(
 
   const paintTail = (): void => {
     if (spiderL || crabL || beetleL) return;
-    if (owlL) {
-      // The tail fan: barred blades folded behind the rump. Short —
-      // the wings are the silhouette; the fan just finishes it.
-      const hl = spec.bodyLen * s;
-      const lift = opts.pose.bob * 0.35 * s;
-      const tbx = bx - fx * hl * 0.8;
-      const tby = by - fy * hl * 0.8 * ys - owlL.bellyH * 1.35 * s - lift * 0.7;
-      const backA = Math.atan2(-fy * ys, -fx);
-      ctx.lineCap = 'round';
-      for (let k = 0; k < 4; k++) {
-        const a = backA + (k / 3 - 0.5) * 0.62;
-        const blade = owlL.tailLen * s * (1 - 0.28 * Math.abs(k / 3 - 0.5) * 2);
-        const tex = tbx + Math.cos(a) * blade;
-        const tey = tby + Math.sin(a) * blade * ys + s * 0.05;
-        ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(owlL.mantle, k % 2 === 0 ? -4 : -12);
-        ctx.lineWidth = Math.max(2.5, s * 0.062);
-        ctx.beginPath();
-        ctx.moveTo(tbx, tby);
-        ctx.lineTo(tex, tey);
-        ctx.stroke();
-        // The bar band riding each blade tip.
-        if (!opts.hurt) {
-          ctx.strokeStyle = owlL.bar;
-          ctx.lineWidth = Math.max(1.4, s * 0.024);
-          ctx.beginPath();
-          ctx.moveTo(tbx + (tex - tbx) * 0.78, tby + (tey - tby) * 0.78);
-          ctx.lineTo(tbx + (tex - tbx) * 0.92, tby + (tey - tby) * 0.92);
-          ctx.stroke();
-        }
-      }
-      ctx.lineCap = 'butt';
-      return;
-    }
     if (ramL) {
       // A wool nub dropped off the fleece stern.
       const hl = spec.bodyLen * s;

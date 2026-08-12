@@ -893,6 +893,12 @@ export declare function owlWingFan(ctx: CanvasRenderingContext2D, look: OwlLook,
     under?: boolean;
     /** Vertical squash for corpse splays flat on the ground. */
     squash?: number;
+    /**
+     * Fan-opening scale: 1 = the full mantling droop (the standing
+     * threat bloom). Level flight carries the blade flatter — cruise
+     * ~0.6, a locked-out glide flatter still.
+     */
+    openK?: number;
     hurt?: boolean;
     seed?: number;
 }): void;
@@ -930,6 +936,48 @@ export declare function drawOwlHead(ctx: CanvasRenderingContext2D, look: OwlLook
     /** 0..1 slow two-beat blink. */
     blink?: number;
     seed?: number;
+}): void;
+/** Flight ceiling per rank (tiles over the ground anchor): the elder
+ *  rides higher — rank you can read from across the glade. */
+export declare function owlHoverHeight(look: OwlLook): number;
+/**
+ * THE PARLIAMENT FLIES: the great owl's one body painter, air-blended.
+ *
+ * `air` = 0 is the ROOST — the standing keg settled into a low squat
+ * over its own talons, breathing, ruffling on a long clock, head
+ * sweeping the glade. `air` = 1 is CRUISE — a leveled-out flier at
+ * hover height: slow deep wingbeats broken by seeded glides, a
+ * wingbeat-coupled bob, a fanned steering tail, talons tucked. The
+ * band between is the LANDING FLARE birds actually fly: body swinging
+ * upright, wings wide and braking, talons reaching for the ground —
+ * which is exactly the silhouette the roost opens from, so the
+ * composition swap hides inside the flare.
+ *
+ * Banking rolls the body, wings and tail into the turn while the head
+ * holds level — the owl's famous gimbal, and the detail that sells
+ * the whole bird. The pounce telegraph is a true SWOOP: the windup
+ * brakes and mantles high (pale undersides flashing), the strike is a
+ * silent dive with both talons thrown forward.
+ */
+export declare function drawGreatOwl(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: OwlLook, o: {
+    /** Ground anchor on screen (terrain-lifted) — where the shadow lives. */
+    x: number;
+    y: number;
+    s: number;
+    dir: number;
+    ys: number;
+    /** 0 = perched on the roost, 1 = full cruise height. */
+    air: number;
+    /** Smoothed 0..1 travel activity — glides only open mid-travel. */
+    moveK: number;
+    /** Signed body roll from turning — the banking lean (radians). */
+    bank?: number;
+    attackT?: number;
+    hurt?: boolean;
+    nowMs: number;
+    seed: number;
+    /** Keeper's strap for a tamed companion — worn gear, never a dye. */
+    collar?: string;
 }): void;
 /**
  * The giant rat: a low hunched wedge — rump high and round, body

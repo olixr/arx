@@ -4,11 +4,14 @@ import {
   beastSpec,
   drawBat,
   drawBeast,
+  drawGreatOwl,
   drawHumanoid,
   drawSlime,
   drawSnake,
   koboldLook,
   gnollLook,
+  owlHoverHeight,
+  owlLook,
   skeletonLook,
 } from '../render/rig.js';
 import { TailSim, drawTail } from '../render/tail.js';
@@ -231,6 +234,27 @@ function paintBeast(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): voi
   // Three-quarter stand: face toward the camera with the flank shown —
   // a long body dead-on south collapses into a narrow front view.
   const dir = Math.PI * 0.31;
+
+  // THE PARLIAMENT FLIES: the studio card shows the owl the way the
+  // world meets it — on the wing, mid-cruise, wings caught mid-beat.
+  if (def.id === 'great_owl' || def.id === 'elder_great_owl') {
+    const look = owlLook(def.id, 7);
+    const spanT = look.wingSpan + spec.bodyLen + 0.3;
+    const topT = owlHoverHeight(look) + look.backH + look.tuftLen + 0.4;
+    const scale = Math.min((px * 0.94) / (spanT * 2 * 0.8), (px * 0.86) / (topT + 0.4));
+    drawGreatOwl(ctx, spec, look, {
+      x: px / 2,
+      y: px / 2 + (topT * scale) / 2,
+      s: scale,
+      dir,
+      ys: Y_SCALE,
+      air: 1,
+      moveK: 1,
+      nowMs: PINNED_MS,
+      seed: 7,
+    });
+    return;
+  }
 
   // Fit the species envelope (the npcItem bounds law) into the stage;
   // at 3/4 the east-west span foreshortens, so weight height first.

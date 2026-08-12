@@ -23,7 +23,9 @@ import {
   ELDER_GREAT_OWL_LOOK,
   GREAT_OWL_LOOK,
   beastSpec,
+  drawGreatOwl,
   drawOwlHead,
+  owlHoverHeight,
   owlLook,
   owlWingFan,
   paintOwlBody,
@@ -129,6 +131,14 @@ test('the plumage clusters: seeded, deterministic, and kin-diverse', () => {
   assert.ok(owlLook('elder_great_owl', 1).elder, 'the elder keeps its ledger');
 });
 
+test('THE PARLIAMENT FLIES: rank reads in the air, and the flier outflies the cave', () => {
+  // The elder cruises higher than the hunter — rank you can read from
+  // across the glade — and both ride above the cave bat's chest-high
+  // hang (0.85 tiles): a great owl is a FLIER, never a hoverer.
+  assert.ok(owlHoverHeight(ELDER_GREAT_OWL_LOOK) > owlHoverHeight(GREAT_OWL_LOOK));
+  assert.ok(owlHoverHeight(GREAT_OWL_LOOK) > 0.85);
+});
+
 /** Minimal Path2D stand-in: records numbers, rejects NaN geometry. */
 class FakePath2D {
   constructor(other?: FakePath2D) {
@@ -171,6 +181,69 @@ function mockCtx(): CanvasRenderingContext2D {
     },
   }) as unknown as CanvasRenderingContext2D;
 }
+
+test('the flier runs clean: eight facings, every altitude, banking, swooping, hurt', () => {
+  const g = globalThis as { Path2D?: unknown };
+  const hadPath = g.Path2D;
+  g.Path2D = FakePath2D;
+  try {
+    const owlSpec = beastSpec('great_owl', 0.36, 4.4);
+    const elderSpec = beastSpec('elder_great_owl', 0.46, 4.6);
+    for (let band = 0; band < 8; band++) {
+      const dir = (band / 8) * Math.PI * 2;
+      // The full altitude ledger: roost, fold edge, flare, climb, cruise.
+      for (const air of [0, 0.15, 0.3, 0.31, 0.5, 0.8, 1]) {
+        for (const at of [0, 0.5, 0.85]) {
+          for (const hurt of [false, true]) {
+            drawGreatOwl(mockCtx(), owlSpec, owlLook('great_owl', band * 5), {
+              x: 100,
+              y: 100,
+              s: 48,
+              dir,
+              ys: 0.82,
+              air,
+              moveK: air > 0.5 ? 1 : 0,
+              bank: band % 2 === 0 ? 0.3 : -0.25,
+              attackT: at,
+              hurt,
+              nowMs: 5234 + band * 331,
+              seed: band,
+              collar: band === 3 ? '#8a6234' : undefined,
+            });
+            drawGreatOwl(mockCtx(), elderSpec, ELDER_GREAT_OWL_LOOK, {
+              x: 100,
+              y: 100,
+              s: 48,
+              dir,
+              ys: 0.82,
+              air,
+              moveK: 0.5,
+              attackT: at,
+              hurt,
+              nowMs: 917 + band * 77,
+              seed: band * 13,
+            });
+          }
+        }
+      }
+      // The pinned-clock guard: a zero clock (test rigs, first frame)
+      // must never divide the idle-life drivers into NaN.
+      drawGreatOwl(mockCtx(), owlSpec, owlLook('great_owl', 1), {
+        x: 100,
+        y: 100,
+        s: 48,
+        dir,
+        ys: 0.82,
+        air: 0,
+        moveK: 0,
+        nowMs: 0,
+        seed: 0,
+      });
+    }
+  } finally {
+    g.Path2D = hadPath as typeof Path2D;
+  }
+});
 
 test('every owl painter runs clean: eight facings, mantling, screaming, dead', () => {
   const g = globalThis as { Path2D?: unknown };

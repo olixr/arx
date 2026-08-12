@@ -1,11 +1,16 @@
-// TEMPORARY rig verification harness (checked-in tooling): THE SHEEP
-// SHEET — the ewe at all eight facing bands in BOTH fleece states
-// (THE FLEECE TELLS THE TIME: full cloud vs clipped trim must read
-// at a glance), running cells shuttling along their facing, and a
-// ruler row: player rig, ram and cow kin beside her, and a seed
-// spread so no two ewes stamp the same cloud.
-import { beastSpec, drawBeast, drawHumanoid, type RigPose } from '../render/rig.js';
-import { LegRig } from '../render/legs.js';
+// TEMPORARY rig verification harness (checked-in tooling): THE OWL
+// SHEET — the parliament on the wing. Cruise cells at all eight
+// facing bands (live wingbeats + seeded glides), the swoop strike
+// loop, the landing/takeoff blend loop, the roost squat, the elder's
+// heavier wing beside the hunter, a ruler row (player rig beside the
+// bird), and a plumage-cluster spread so no two hunters stamp one coat.
+import {
+  beastSpec,
+  drawGreatOwl,
+  drawHumanoid,
+  owlLook,
+  type RigPose,
+} from '../render/rig.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
@@ -14,23 +19,17 @@ const ctx = canvas.getContext('2d')!;
 const S = 150; // scale px per tile
 const YS = 0.52; // camera y foreshorten (world-y tile → screen)
 
-type Gait = 'idle' | 'run';
+type Mode = 'cruise' | 'hover' | 'strike' | 'land' | 'perch';
 
 interface Fig {
   label: string;
   dir: number;
-  gait: Gait;
-  /** beast def id, or null for the bare player-rig reference body. */
-  beast: string | null;
-  color: string;
-  radius: number;
-  speed: number;
-  shorn?: boolean;
+  mode: Mode;
+  /** owl def id, or null for the bare player-rig reference body. */
+  owl: string | null;
   seed: number;
-  legs?: LegRig;
-  kneeMemory: number[];
-  wx: number;
-  wy: number;
+  /** Live banking demo: a slow weaving turn. */
+  weave?: boolean;
 }
 
 const DIRS = [
@@ -44,73 +43,53 @@ const DIRS = [
   ['SW', (3 * Math.PI) / 4],
 ] as const;
 
-const SHEEP = { color: '#e6dfcd', radius: 0.26, speed: 2.4 };
-
-const defs: Array<Omit<Fig, 'kneeMemory' | 'wx' | 'wy'>> = [];
-// Row 1: full fleece idle, all eight bands.
-for (const [lbl, dir] of DIRS) {
-  defs.push({ label: `fleece ${lbl}`, dir, gait: 'idle', beast: 'sheep', ...SHEEP, seed: 11 });
+const figs: Fig[] = [];
+// Row 1: the hunter cruising, all eight bands — live beats and glides.
+for (const [lbl, dir] of DIRS) figs.push({ label: `cruise ${lbl}`, dir, mode: 'cruise', owl: 'great_owl', seed: 11 });
+// Row 2: the swoop loop, all eight bands — windup mantle into the dive.
+for (const [lbl, dir] of DIRS) figs.push({ label: `swoop ${lbl}`, dir, mode: 'strike', owl: 'great_owl', seed: 11 });
+// Row 3: the roost, all eight bands — squat, breath, sweep, blink.
+for (const [lbl, dir] of DIRS) figs.push({ label: `roost ${lbl}`, dir, mode: 'perch', owl: 'great_owl', seed: 11 });
+// Row 4: the landing/takeoff blend loop at the four cardinals + hover.
+for (const [lbl, dir] of [DIRS[0], DIRS[2], DIRS[4], DIRS[6]] as const) {
+  figs.push({ label: `land/rise ${lbl}`, dir, mode: 'land', owl: 'great_owl', seed: 11 });
 }
-// Row 2: shorn idle, all eight bands — the clipped trim.
-for (const [lbl, dir] of DIRS) {
-  defs.push({ label: `shorn ${lbl}`, dir, gait: 'idle', beast: 'sheep', ...SHEEP, shorn: true, seed: 11 });
+figs.push({ label: 'hover S', dir: Math.PI / 2, mode: 'hover', owl: 'great_owl', seed: 11 });
+figs.push({ label: 'bank weave', dir: Math.PI / 2, mode: 'cruise', owl: 'great_owl', seed: 11, weave: true });
+figs.push({ label: 'elder swoop', dir: Math.PI / 2, mode: 'strike', owl: 'elder_great_owl', seed: 3 });
+figs.push({ label: 'elder roost', dir: Math.PI / 2, mode: 'perch', owl: 'elder_great_owl', seed: 3 });
+// Row 5: elder cruise cardinals + the body ruler + plumage spread.
+for (const [lbl, dir] of [DIRS[0], DIRS[2], DIRS[4], DIRS[6]] as const) {
+  figs.push({ label: `elder ${lbl}`, dir, mode: 'cruise', owl: 'elder_great_owl', seed: 3 });
 }
-// Row 3: full fleece on the move, shuttling along the facing.
-for (const [lbl, dir] of DIRS) {
-  defs.push({ label: `run ${lbl}`, dir, gait: 'run', beast: 'sheep', ...SHEEP, seed: 11 });
+figs.push({ label: 'player', dir: Math.PI / 2, mode: 'cruise', owl: null, seed: 0 });
+for (const seed of [4, 9, 19]) {
+  figs.push({ label: `plumage ${seed}`, dir: Math.PI / 2, mode: 'cruise', owl: 'great_owl', seed });
 }
-// Row 4: the body-ruler audit + the kin + the seed spread.
-defs.push({ label: 'player', dir: Math.PI / 2, gait: 'idle', beast: null, color: '#3f5d8e', radius: 0.3, speed: 2, seed: 0 });
-defs.push({ label: 'ewe', dir: Math.PI / 2, gait: 'idle', beast: 'sheep', ...SHEEP, seed: 11 });
-defs.push({ label: 'ewe shorn', dir: Math.PI / 2, gait: 'idle', beast: 'sheep', ...SHEEP, shorn: true, seed: 11 });
-defs.push({ label: 'ram kin', dir: Math.PI / 2, gait: 'idle', beast: 'ram', color: '#cfc6b4', radius: 0.28, speed: 3.4, seed: 5 });
-defs.push({ label: 'cow kin', dir: Math.PI / 2, gait: 'idle', beast: 'cow', color: '#e7ddca', radius: 0.34, speed: 1.8, seed: 3 });
-for (const seed of [4, 19, 87]) {
-  defs.push({ label: `ewe seed ${seed}`, dir: Math.PI / 2, gait: 'idle', beast: 'sheep', ...SHEEP, seed });
-}
-
-const figs: Fig[] = defs.map((f, i) => ({
-  ...f,
-  kneeMemory: [],
-  wx: (i % 8) * 40,
-  wy: Math.floor(i / 8) * 40,
-}));
 
 const COLS = 8;
-const CW = 220;
-const CH = 260;
+const CW = 240;
+const CH = 300;
 
-let last = performance.now();
 function frame(now: number): void {
-  const dt = Math.min(0.05, (now - last) / 1000);
-  last = now;
   canvas.width = COLS * CW;
   canvas.height = Math.ceil(figs.length / COLS) * CH;
   ctx.fillStyle = '#2a3b2f';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   figs.forEach((f, i) => {
     const homeX = CW / 2 + (i % COLS) * CW;
-    const homeY = 165 + Math.floor(i / COLS) * CH;
-    const t = now * 0.001;
-    // The shuttle: running cells travel along their facing, so the
-    // leg rig plants real steps and the gait reads under motion.
-    const shuttle = f.gait === 'run' ? Math.sin(t * 1.1) * 0.85 : 0;
-    const wx = f.wx + Math.cos(f.dir) * shuttle;
-    const wy = f.wy + Math.sin(f.dir) * shuttle;
-    const toSx = (x: number): number => homeX + (x - f.wx) * S;
-    const toSy = (y: number): number => homeY + (y - f.wy) * S * YS;
+    const homeY = 205 + Math.floor(i / COLS) * CH;
 
-    if (!f.beast) {
+    if (!f.owl) {
       // The bare player rig — the unit of measure.
-      const stride = 0;
       const feet = [0, 1].map((leg) => ({
-        x: toSx(wx) + (leg === 0 ? -1 : 1) * 0.1 * S,
-        y: toSy(wy) + 0.44 * S,
-        lift: stride,
+        x: homeX + (leg === 0 ? -1 : 1) * 0.1 * S,
+        y: homeY + 0.44 * S,
+        lift: 0,
       }));
       const rig: RigPose = {
-        x: toSx(wx),
-        y: toSy(wy),
+        x: homeX,
+        y: homeY,
         scale: S,
         size: 1,
         dir: f.dir,
@@ -128,38 +107,53 @@ function frame(now: number): void {
         poleStrength: 0,
         runF: 0,
         align: 1,
-        kneeMemory: f.kneeMemory,
+        kneeMemory: [0, 0],
         depthMemory: { mainBehind: false },
-        bodyColor: f.color,
+        bodyColor: '#3f5d8e',
         hurt: false,
         isOwn: false,
         gatherPhase: 0,
       };
       drawHumanoid(ctx, rig);
     } else {
-      const spec = beastSpec(f.beast, f.radius, f.speed);
-      if (!f.legs) f.legs = new LegRig(spec.rig);
-      const legPose = f.legs.update(wx, wy, f.dir, dt);
-      const feet = legPose.feet.map((ft) => ({ x: toSx(ft.x), y: toSy(ft.y), lift: ft.lift }));
-      drawBeast(ctx, {
-        x: toSx(wx),
-        y: toSy(wy),
-        scale: S,
-        dir: legPose.dir,
-        radius: f.radius,
-        color: f.color,
-        defId: f.beast,
-        spec,
-        pose: legPose,
-        feet,
-        yScale: YS,
-        walkPhase: 0,
-        hurt: false,
-        kneeMemory: f.kneeMemory,
-        seed: f.seed,
+      const defR = f.owl === 'elder_great_owl' ? 0.46 : 0.36;
+      const defSp = f.owl === 'elder_great_owl' ? 4.6 : 4.4;
+      const spec = beastSpec(f.owl, defR, defSp);
+      const look = owlLook(f.owl, f.seed);
+      const t = now * 0.001;
+      // Per-mode drivers: looping poseT for the swoop, a slow
+      // triangle for the landing blend, a weaving dir for banking.
+      const at = f.mode === 'strike' ? (t * 1.1) % 1 : 0;
+      const cyc = (t * 0.22) % 1;
+      const air =
+        f.mode === 'perch'
+          ? 0
+          : f.mode === 'land'
+            ? cyc < 0.5
+              ? 1 - cyc * 2
+              : (cyc - 0.5) * 2
+            : 1;
+      const dir = f.weave ? f.dir + Math.sin(t * 0.9) * 0.8 : f.dir;
+      const bank = f.weave ? Math.cos(t * 0.9) * 0.3 : 0;
+      // The ground line the shadow would own — the altitude ruler,
+      // drawn UNDER the bird.
+      ctx.strokeStyle = 'rgba(232, 228, 216, 0.25)';
+      ctx.beginPath();
+      ctx.moveTo(homeX - 0.7 * S, homeY + 0.55 * S);
+      ctx.lineTo(homeX + 0.7 * S, homeY + 0.55 * S);
+      ctx.stroke();
+      drawGreatOwl(ctx, spec, look, {
+        x: homeX,
+        y: homeY + 0.55 * S,
+        s: S,
+        dir,
+        ys: YS,
+        air,
+        moveK: f.mode === 'hover' || f.mode === 'perch' ? 0 : 1,
+        bank,
+        attackT: at,
         nowMs: now,
-        shorn: f.shorn === true,
-        collar: '#8a6234',
+        seed: f.seed,
       });
     }
     ctx.fillStyle = '#e8e4d8';
