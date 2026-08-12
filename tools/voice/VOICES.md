@@ -1,4 +1,4 @@
-# The Arx voice pool — 59 clone-source voices
+# The Arx voice pool — 59 samples, 46 cast on
 
 Chatterbox generates every line from a conditioning sample. The pool lives in
 `~/code/voicelab/voices/`, split across four shelves: `rpg_fantasy/{male,female}`
@@ -97,86 +97,85 @@ those are creature voices, not shelving errors.
 
 | voice | F0 | cast on |
 |---|---:|---|
-| `draven_m` | 82 | smokemaster_geir |
+| `draven_m` | 82 | serjeant_ottar, smokemaster_geir |
 | `guldan_m` | 83 | tithekeeper_orvar |
 | `veil_ethan` | 89 | company_broker, ferryman_peld, foreman_grettir, king_aeriex |
-| `narrator_m` | 98 | angler_voss |
+| `narrator_m` | 98 | angler_voss, sparmaster_yannick |
 | `solder_m` | 108 | company_blade, saltmere_watch, wayward_watch |
-| `arathi_m` | 109 | hartfell_herder, outfitter_hask |
+| `arathi_m` | 109 | hartfell_herder, outfitter_hask, reeve_coppin |
 | `frank` | 109 | company_toll_guard, crofter_beck, pinewatch_sawyer, veteran_skarn |
 | `ember_tadhg` | 110 | crofter_tam, smeltmaster_koll, waykeeper_brant |
 | `larry` | 113 | galleria_trader, hartfell_watch, round_trader, saltmere_fisher |
-| `lorewake_m` | 113 | tinker_fen |
-| `grand_mag_m` | 114 | buyer_ospren, master_tilo |
+| `lorewake_m` | 113 | keeper_ansel, tinker_fen |
+| `grand_mag_m` | 114 | buyer_ospren, master_tilo, steward_ansgar |
 | `hald_m` | 117 | herdmaster_swein, wayfarer_petch |
 | `belf_m` | 118 | gardener_ivo |
-| `edder` | 118 | amberford_watch, tallyman_bram, waykeeper_hale |
+| `edder` | 118 | amberford_watch, boatwright_seff, tallyman_bram, waykeeper_hale |
 | `garrosh_m` | 119 | portreeve_brack |
 | `george` | 119 | dawnmead_ward, fletcher_haki, silverfall_watch, storekeep_nial |
 | `jeff` | 119 | castle_guard, lookout_pike, smith_eirik |
-| `ilidan_m` | 129 | huntmaster_kolgrim, warden_bryn |
+| `ilidan_m` | 129 | hoargate_watch, huntmaster_kolgrim, warden_bryn |
 | `court_phil` | 134 | buyer_hallward, carpenter_stig, crofter_holt, farmer_hobb, farmer_jorel |
-| `dwarf_g_m` | 134 | peddler_coff, pitchmaster_rullo |
-| `king_bob` | 170 | elder_rowan, miller_garton, nurseryman_odd |
-| `murozond_m` | 176 | herald_ossian |
+| `dwarf_g_m` | 134 | outrider_joss, peddler_coff, pitchmaster_rullo |
+| `king_bob` | 170 | elder_rowan, miller_garton, nurseryman_odd, pilot_fane |
+| `murozond_m` | 176 | herald_ossian, tallyman_brusk |
 | `flynn_m` | 180 | gate_monger, innkeep_brandulf |
 | `gazlow_m` | 190 | fence_calder, pedlar_grimm |
-| `telemancer_m` | 203 | banker_cormund |
+| `telemancer_m` | 203 | banker_cormund, chandler_swale |
 | `bran_m` | 222 | bonecarver_tuli, wayfarer_dray |
 | `rune_phineas` | 222 | boomsman_kettil, company_runner, young_pip |
-| `klaaxxi_m` | 242 | *reserve* |
+| `klaaxxi_m` | 242 | *unused* |
 | `grif_m` | 246 | curio_ninebrass |
-| `volf_m` | 250 | *reserve* |
+| `volf_m` | 250 | *unused* |
 
 ### rpg_fantasy/female
 
 | voice | F0 | cast on |
 |---|---:|---|
-| `highmountain_f` | 118 | smith_bretta, smith_vigga |
-| `xalath_f` | 152 | assayer_runa, captain_ravna, smokemistress_alba |
-| `hush_morrow` | 162 | enchantress_solvei, innkeep_ragna, magpie_mab, netkeeper_eyvor, warden_maren |
+| `highmountain_f` | 118 | drillmaster_jorunn, drover_maren, smith_bretta, smith_vigga |
+| `xalath_f` | 152 | assayer_runa, captain_ravna, smokemistress_alba, speaker_ashild |
+| `hush_morrow` | 162 | enchantress_solvei, fisher_ylva, innkeep_ragna, magpie_mab, netkeeper_eyvor, warden_maren |
 | `dour_mabel` | 170 | bursar_odele, crofter_maida, factor_ebba, factor_neave, lampkeeper_edda, tallywife_inga |
-| `orc_f` | 176 | drillmaster_jorunn, waykeeper_odessa |
-| `flint_greta` | 178 | broker_varga, furrier_ranna, hostler_osa, marshal_kestrel, salter_ondra |
-| `elf_sentinel_f` | 182 | captain_aldis, outrider_haldis |
-| `witherbard_f` | 193 | elder_gunvor, old_torvi, orchardist_perl |
-| `trade_nell` | 200 | fisher_ylva, peddler_hetty, peddler_nix, pinewatch_watch, shrinekeeper_sella |
+| `orc_f` | 176 | forgemistress_balla, reeve_halla, waykeeper_odessa |
+| `flint_greta` | 178 | broker_varga, furrier_ranna, hostler_osa, marshal_kestrel, salter_ondra, warden_sigrun |
+| `elf_sentinel_f` | 182 | captain_aldis, lightkeeper_lund, outrider_haldis |
+| `witherbard_f` | 193 | elder_gunvor, old_torvi, orchardist_perl, wayfarer_senna |
+| `trade_nell` | 200 | peddler_hetty, peddler_nix, pinewatch_watch, shrinekeeper_sella, waykeeper_signe |
 | `spite_vex` | 219 | herbalist_wyn, queen_kayri, silversmith_vigdis |
-| `garrif_f` | 225 | cook_signy, quartermaster_yeva, sawmistress_groa |
+| `garrif_f` | 225 | cook_signy, hearthkeeper_iona, innkeep_dunna, quartermaster_yeva, sawmistress_groa |
 | `sunny_posy` | 242 | chandler_ulfa, grocer_merra, innkeep_dorrit, scrivener_tove, weaver_ottilie |
 | `spark_wren` | 254 | cooper_dagny, farmer_tamsin, guide_sunn, mason_petra, roper_jessa |
 | `perky_tilly` | 258 | castle_servant, courier_nib, innkeep_sunniva |
 | `faerin_f` | 262 | sage_elowen |
 | `nightborne_f` | 281 | springkeeper_maeva |
 
-### narrator
+### narrator and news — NOT CAST ON
 
-Deep, measured reading voices. Earn their keep on registrars, elders and the
-one herald.
+Thirteen further samples sit under `narrator/` (7) and `news/` (6). They are
+deliberately **not cast on**. Casting stays inside `rpg_fantasy/`, for three
+reasons: SOURCES.md documents provenance only for that shelf; `rpg_fantasy/` is
+the only shelf split `male/`/`female/` on disk, and that split is what casting
+follows; and the other two read as broadcast and reading-room voices, a
+different texture from the RPG pack.
 
-| voice | F0 | cast on |
+They still appear in `voices.json` and in the audition sheet, so they can be
+heard and reconsidered. Casting on them is a deliberate decision, not a default.
+
+| voice | F0 | shelf |
 |---|---:|---|
-| `wry_peter` | 83 | serjeant_ottar |
-| `stanley` | 102 | reeve_coppin, steward_ansgar |
-| `dread_ben` | 115 | sparmaster_yannick |
-| `dread_mark` | 123 | hoargate_watch |
-| `crypt_kirksvoice` | 134 | keeper_ansel |
-| `veil_anne` | 160 | drover_maren, lightkeeper_lund, wayfarer_senna |
-| `david` | 174 | pilot_fane |
-
-### news
-
-Broadcast-plain voices; the most naturally *conversational* shelf in the pool,
-which suits publicans, clerks and factors.
-
-| voice | F0 | cast on |
-|---|---:|---|
-| `slow_john` | 93 | *reserve* |
-| `sly_adrian` | 103 | chandler_swale, tallyman_brusk |
-| `plain_mark` | 143 | boatwright_seff, outrider_joss |
-| `stage_mil` | 160 | innkeep_dunna, speaker_ashild |
-| `matron_michele` | 163 | hearthkeeper_iona, warden_sigrun, waykeeper_signe |
-| `iron_sue` | 178 | forgemistress_balla, reeve_halla |
+| `wry_peter` | 83 | narrator |
+| `slow_john` | 93 | news |
+| `stanley` | 102 | narrator |
+| `sly_adrian` | 103 | news |
+| `dread_ben` | 115 | narrator |
+| `dread_mark` | 123 | narrator |
+| `crypt_kirksvoice` | 134 | narrator |
+| `plain_mark` | 143 | news |
+| `veil_anne` | 160 | narrator |
+| `stage_mil` | 160 | news |
+| `matron_michele` | 163 | news |
+| `david` | 174 | narrator |
+| `iron_sue` | 178 | news |
 
 ## Running a pass
 
@@ -231,8 +230,8 @@ resident and the voice conditionals cached.
 ## The generic fallback bank
 
 Short character-neutral quips indexed by **voice** rather than by actor, so an
-NPC with no authored dialogue can answer in the voice it was cast in. 56 slots
-x 11 clips = 616.
+NPC with no authored dialogue can answer in the voice it was cast in. 44 slots
+x 11 clips = 484.
 
 ```
 npx tsx tools/voice/generic.mts             all slots
