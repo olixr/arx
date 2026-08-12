@@ -489,6 +489,11 @@ export enum Tile {
   Smoker = 285,
   DryingRack = 286,
   Apiary = 287,
+  // THE DRESSED FARM (Phase 6): the yard's standing character.
+  Scarecrow = 288,
+  HayBale = 289,
+  Silo = 290,
+  Dovecote = 291,
 }
 
 export enum Detail {
@@ -883,6 +888,10 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.Smoker]: { name: 'smoker', solid: true, color: '#55505e', raised: true, topColor: '#6e6a75' },
   [Tile.DryingRack]: { name: 'drying rack', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6234' },
   [Tile.Apiary]: { name: 'apiary', solid: true, color: '#c9a86a', raised: true, topColor: '#e0c48e' },
+  [Tile.Scarecrow]: { name: 'scarecrow', solid: true, color: '#8a6a45', raised: true, topColor: '#c9a86a' },
+  [Tile.HayBale]: { name: 'hay bale', solid: true, color: '#c9a64b', raised: true, topColor: '#e0c48e' },
+  [Tile.Silo]: { name: 'silo', solid: true, color: '#8d8798', raised: true, topColor: '#a8794a' },
+  [Tile.Dovecote]: { name: 'dovecote', solid: true, color: '#e8e2d4', raised: true, topColor: '#7d5a2e' },
   [Tile.PikeHole]: { name: 'pike hole', solid: true, color: '#39679c', variants: ['#366293'] },
   [Tile.EelRun]: { name: 'eel run', solid: true, color: '#31578c', variants: ['#2e5284'] },
   [Tile.SalmonRun]: { name: 'salmon run', solid: true, color: '#457bbd', variants: ['#4174b3'] },

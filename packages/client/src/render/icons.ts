@@ -3627,6 +3627,86 @@ const PAINTERS: Record<string, IconPainter> = {
     c.stroke();
     poly(c, '#568f47', [[0.52, 0.28], [0.66, 0.2], [0.6, 0.32]]);
   },
+  scarecrowbuild: (c, col) => {
+    c.strokeStyle = '#5f4426';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.5, 0.86);
+    c.lineTo(0.5, 0.3);
+    c.moveTo(0.28, 0.46);
+    c.lineTo(0.72, 0.46);
+    c.stroke();
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(0.38, 0.44, 0.24, 0.24, 0.04);
+    c.fill();
+    c.fillStyle = '#d8c9a0';
+    c.beginPath();
+    c.arc(0.5, 0.32, 0.09, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#6e5433';
+    c.fillRect(0.36, 0.22, 0.28, 0.045);
+    c.fillStyle = '#241a2e';
+    c.beginPath();
+    c.ellipse(0.68, 0.42, 0.05, 0.035, 0, 0, Math.PI * 2);
+    c.fill();
+  },
+  haybuild: (c, col) => {
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(0.18, 0.4, 0.64, 0.42, 0.1);
+    c.fill();
+    c.strokeStyle = shade(col, -24);
+    c.lineWidth = 0.025;
+    for (const r of [0.14, 0.08]) {
+      c.beginPath();
+      c.arc(0.66, 0.61, r, 0.4, 5.6);
+      c.stroke();
+    }
+    c.strokeStyle = '#b0a068';
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0.36, 0.4);
+    c.lineTo(0.36, 0.82);
+    c.stroke();
+  },
+  silobuild: (c, col) => {
+    c.fillStyle = col;
+    c.fillRect(0.36, 0.3, 0.28, 0.55);
+    c.fillStyle = shade(col, 16);
+    c.fillRect(0.38, 0.3, 0.09, 0.55);
+    poly(c, '#a8794a', [[0.3, 0.3], [0.5, 0.14], [0.7, 0.3]]);
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.02;
+    for (const y of [0.45, 0.6, 0.75]) {
+      c.beginPath();
+      c.moveTo(0.36, y);
+      c.lineTo(0.64, y);
+      c.stroke();
+    }
+  },
+  dovecotebuild: (c, col) => {
+    c.strokeStyle = '#5f4426';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.5, 0.86);
+    c.lineTo(0.5, 0.6);
+    c.stroke();
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(0.3, 0.32, 0.4, 0.3, 0.05);
+    c.fill();
+    poly(c, '#7d5a2e', [[0.24, 0.32], [0.5, 0.18], [0.76, 0.32]]);
+    c.fillStyle = '#4a3a28';
+    c.beginPath();
+    c.arc(0.44, 0.48, 0.045, Math.PI, 0);
+    c.rect(0.395, 0.48, 0.09, 0.07);
+    c.fill();
+    c.fillStyle = 'rgba(240, 238, 230, 0.95)';
+    c.beginPath();
+    c.ellipse(0.72, 0.2, 0.05, 0.03, 0.3, 0, Math.PI * 2);
+    c.fill();
+  },
   mushlog: (c, col) => {
     // The laid log wearing two pale caps — the build tray's promise.
     c.fillStyle = col;
@@ -6226,6 +6306,10 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   growing_frame: { icon: 'framebuild', color: '#8a6234' },
   feed_trough: { icon: 'troughbuild', color: '#6e5433' },
   windmill: { icon: 'millbuild', color: '#8d8798' },
+  scarecrow: { icon: 'scarecrowbuild', color: '#8a6a45' },
+  hay_bale: { icon: 'haybuild', color: '#c9a64b' },
+  silo: { icon: 'silobuild', color: '#8d8798' },
+  dovecote: { icon: 'dovecotebuild', color: '#e8e2d4' },
   churn: { icon: 'churnbuild', color: '#7d5a2e' },
   press: { icon: 'pressbuild', color: '#6e5433' },
   keg: { icon: 'barrel', color: '#94693a' },

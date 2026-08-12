@@ -317,6 +317,56 @@ The demand side: everything the farm makes, somebody wants.
 
 ## 8. The epic ledger (filled as phases ship)
 
+### THE EPIC IS COMPLETE — all six phases shipped 2026-08-11
+
+prove:farm = 41 receipts across six chapters (soil / field / yard /
+work / table / arts), full book ~4 min, every chapter runnable alone.
+The farmer's parity promise (plan §6) is carried by: graded produce
+(x1.35/x1.8 value), the stations' processed goods, and the larder
+board's 2.5-3.5x premiums — measured against combat-hour earnings on
+live data as the standing follow-up.
+
+### Phase 6 — THE GREEN ARTS AND THE DRESSED FARM (shipped 2026-08-11)
+
+As-built laws and dials:
+
+- **FARMING IS THE SECOND NON-COMBAT TECHNIQUE SCHOOL** (the
+  beastcraft precedent, TechniqueStyleId + TECHNIQUE_STYLES grew
+  'farming' — codex shelf and climb criers followed automatically).
+  Five arts, rungs 5..50, ALL DAMAGE 0 FOREVER (roster + rank ladder
+  contract-pinned like the keeper's): Sower's Step 5 (stride),
+  Gardener's Mend 15 (THE HEALING THE MANDATE ASKED FOR — self heal
+  to 22 at rank IV), Earthen Brace 25 (shield), Hearthkeeper's Calm
+  35 (armor), and **Quickening Touch 50** — the capstone: a
+  ground-aim art (the HELD SIGIL rail) that lends a growing crop a
+  quarter of its whole season at once, refusing bare ground and ripe
+  crops aloud. Every art rides EXISTING vocabulary (self_buff /
+  ground_aoe); the touch is the one farm branch in the cast engine.
+  All five carry bespoke spell-plates and FX identities (the plate
+  and face laws held — VERDANT family, low punch, the school grows).
+- **The callings wave amended two laws deliberately**: the
+  exactly-two-per-skill law became a FLOOR (the 20/60 founding pair
+  owed by every skill; deep-ladder extras allowed, one per rung),
+  and the focus law re-read as minors <40 = 1, majors 40+ = 2.
+  Three one-site dials: The Composter (farming 35 — heaps close 2
+  worth sooner), Marketeer (farming 45 — larder premiums x1.1),
+  Shepherd's Eye (beastcraft 35 — brush window x0.75).
+- **The dressed farm**: scarecrow (with the crow who was never
+  fooled), hay bale, silo, dovecote (doves circling home) — decor
+  pieces on the standing art laws, farm-skill-gated where the craft
+  is the keeping.
+- **prove:arts chapter (~25s)**; harness laws reaffirmed the
+  beastcraft proving lessons verbatim: seat swaps WAIT THE ECHO, and
+  a slot's cooldown belongs to the SLOT (the touch casts from seat 2
+  while the mend's 40s runs on seat 0).
+- **DEFERRED, closing the epic honestly**: the CMS Resources-bench
+  integration for crops/livestock (the cms editors file is under a
+  concurrent session's active work — colliding was refused; farm
+  defs stay code-authored until a dedicated pass); the goat (a
+  rig-lab commission, twice deferred by law); coop/byre dressing
+  furnishings; live shop-banner refresh; produce value rebalance
+  (the larder carries parity pending live data).
+
 ### Phase 5 — THE LADEN TABLE (shipped 2026-08-11, prove:farm = 38 receipts)
 
 As-built laws and dials:

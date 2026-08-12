@@ -493,6 +493,14 @@ export const FX_STYLES: Record<string, FxStyle> = {
   gentle_the_wild: VERDANT({ mid: '#9fd39a', deep: '#4a6e46', spark: '#e8ffe0', ring: 'petals', debris: 'leaf', decal: undefined, motif: 'wisps', punch: 0.1, wash: 0.3 }),
   // Soothe the Wild — the breath let out: pale sage, a soft halo, no
   // motif of its own (the signature's closing ring IS the word).
+  // THE GREEN ARTS (farming): the land's own quiet palette — furrow
+  // greens, fencepost browns, one gold season. Punch stays low; the
+  // school grows, it never strikes.
+  sowers_step: VERDANT({ mid: '#79a355', deep: '#4a6a34', spark: '#e8f5d8', ring: 'halo', debris: 'leaf', decal: undefined, punch: 0, wash: 0.18 }),
+  gardeners_mend: VERDANT({ mid: '#7ac46a', deep: '#3e6a3a', spark: '#f0ffe8', ring: 'petals', debris: 'leaf', decal: undefined, punch: 0, wash: 0.24 }),
+  earthen_brace: VERDANT({ mid: '#8a6a45', deep: '#54432c', spark: '#d8c9a0', ring: 'halo', debris: 'spark', decal: undefined, punch: 0.08, wash: 0.2 }),
+  hearthkeepers_calm: VERDANT({ mid: '#c9a86a', deep: '#6e5433', spark: '#f4ead0', ring: 'halo', debris: 'spark', decal: undefined, punch: 0, wash: 0.22 }),
+  quickening_touch: VERDANT({ mid: '#e8c04c', deep: '#79a355', spark: '#fff4c8', ring: 'petals', debris: 'leaf', decal: undefined, motif: 'echo', punch: 0.1, wash: 0.26 }),
   soothe_the_wild: VERDANT({ mid: '#b8dcc0', deep: '#4a6a54', spark: '#f0fff0', ring: 'halo', debris: 'leaf', decal: undefined, punch: 0, wash: 0.2 }),
   // Come to Heel — the road folded shut: heel-green echo rings.
   come_to_heel: VERDANT({ mid: '#8fc7a4', deep: '#3e6450', spark: '#e0f8ea', ring: 'petals', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.1, wash: 0.2 }),

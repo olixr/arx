@@ -318,6 +318,62 @@ const defs: BuildableDef[] = [
     ],
     ticks: 40,
   },
+  // THE DRESSED FARM (Phase 6): character for the yard, no dials.
+  {
+    id: 'scarecrow',
+    cat: 'decor',
+    name: 'Scarecrow',
+    tile: Tile.Scarecrow,
+    skill: 'farming',
+    levelReq: 8,
+    xp: 20,
+    materials: [
+      { item: 'board', qty: 2 },
+      { item: 'plant_fibre', qty: 4 },
+      { item: 'cloth', qty: 1 },
+    ],
+    ticks: 40,
+  },
+  {
+    id: 'hay_bale',
+    cat: 'decor',
+    name: 'Hay bale',
+    tile: Tile.HayBale,
+    skill: 'farming',
+    levelReq: 3,
+    xp: 10,
+    materials: [
+      { item: 'barley', qty: 2 },
+      { item: 'twine', qty: 1 },
+    ],
+    ticks: 25,
+  },
+  {
+    id: 'silo',
+    cat: 'decor',
+    name: 'Silo',
+    tile: Tile.Silo,
+    levelReq: 22,
+    xp: 120,
+    materials: [
+      { item: 'board', qty: 6 },
+      { item: 'copper_ore', qty: 3 },
+    ],
+    ticks: 90,
+  },
+  {
+    id: 'dovecote',
+    cat: 'decor',
+    name: 'Dovecote',
+    tile: Tile.Dovecote,
+    levelReq: 16,
+    xp: 70,
+    materials: [
+      { item: 'board', qty: 4 },
+      { item: 'cloth', qty: 1 },
+    ],
+    ticks: 60,
+  },
   // THE WORKING YARD (farming v2 Phase 4): the processing stations.
   // Every one holds a single wall-clock job; the windmill is the
   // marquee build and the apiary keeps bees, not batches.

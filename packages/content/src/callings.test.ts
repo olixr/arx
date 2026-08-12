@@ -9,17 +9,19 @@ import { SKILL_IDS } from '@arx/shared';
 import { CALLINGS, callingsFor, isAggregateCallingEffect } from './callings.js';
 import { ITEMS } from './items.js';
 
-test('every skill carries exactly two Callings, at 20 and at 60', () => {
+test('every skill carries its founding pair at 20 and 60 (the wave may add more)', () => {
+  // THE GREEN ARTS wave amended the exactly-two law: the 20/60 pair
+  // is the FLOOR every skill owes; deep-ladder extras (35/45) are
+  // allowed and cost by the focus law below.
   for (const skill of SKILL_IDS) {
     const list = callingsFor(skill);
-    assert.equal(list.length, 2, `${skill} needs exactly two Callings`);
-    assert.deepEqual(
-      list.map((c) => c.unlockLevel).sort((a, b) => a - b),
-      [20, 60],
-      `${skill} Callings sit at 20 and 60`,
-    );
+    assert.ok(list.length >= 2, `${skill} needs its founding pair`);
+    const levels = list.map((c) => c.unlockLevel).sort((a, b) => a - b);
+    assert.ok(levels.includes(20) && levels.includes(60), `${skill} pair sits at 20 and 60`);
+    assert.equal(new Set(levels).size, levels.length, `${skill} stacks two Callings on one rung`);
   }
-  assert.equal(CALLINGS.size, SKILL_IDS.length * 2);
+  // The founding pairs plus THE GREEN ARTS wave's three extras.
+  assert.equal(CALLINGS.size, SKILL_IDS.length * 2 + 3);
 });
 
 test('Calling ids are unique, named, and honestly described', () => {
@@ -51,7 +53,8 @@ test('every Calling speaks under the dash ban', () => {
 
 test('THE FOCUS LAW costs: minors hold 1, majors hold 2', () => {
   for (const [id, def] of CALLINGS) {
-    const expected = def.unlockLevel === 20 ? 1 : 2;
+    // Minors (below 40) hold 1 focus; majors (40+) hold 2.
+    const expected = def.unlockLevel < 40 ? 1 : 2;
     assert.equal(def.focusCost, expected, `${id} focus cost matches its rung`);
   }
 });

@@ -22816,6 +22816,10 @@ export class Renderer {
         };
       }
 
+      case Tile.Scarecrow:
+      case Tile.HayBale:
+      case Tile.Silo:
+      case Tile.Dovecote:
       case Tile.ButterChurn:
       case Tile.FruitPress:
       case Tile.BrewKeg:
@@ -22832,7 +22836,153 @@ export class Renderer {
             const ctx = this.ctx;
             const job = farmJobs.get(`${tx},${ty}`);
             const working = !!job && job.qty > 0;
-            if (tile === Tile.ButterChurn) {
+            if (tile === Tile.Scarecrow) {
+              // THE DRESSED FARM: cross-pole, stuffed coat, straw
+              // hands, a sack head under a brim — and one crow who
+              // was never fooled, riding the arm.
+              ctx.strokeStyle = '#5f4426';
+              ctx.lineWidth = Math.max(1.6, s * 0.05);
+              ctx.beginPath();
+              ctx.moveTo(p.x, yB);
+              ctx.lineTo(p.x, yB - s * 0.85);
+              ctx.moveTo(p.x - s * 0.3, yB - s * 0.6);
+              ctx.lineTo(p.x + s * 0.3, yB - s * 0.6);
+              ctx.stroke();
+              ctx.fillStyle = '#8a6a45';
+              ctx.beginPath();
+              ctx.roundRect(p.x - s * 0.16, yB - s * 0.66, s * 0.32, s * 0.34, s * 0.05);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.stroke();
+              ctx.fillStyle = '#c9a64b';
+              for (const u of [-1, 1]) {
+                ctx.fillRect(p.x + u * s * 0.28, yB - s * 0.64, s * 0.06 * u, s * 0.07);
+              }
+              ctx.fillStyle = '#d8c9a0';
+              ctx.beginPath();
+              facetCircle(ctx, p.x, yB - s * 0.78, s * 0.11, 6, h, 0.8);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.stroke();
+              ctx.fillStyle = '#6e5433';
+              ctx.fillRect(p.x - s * 0.15, yB - s * 0.88, s * 0.3, s * 0.045);
+              ctx.fillStyle = '#241a2e';
+              ctx.beginPath();
+              ctx.ellipse(p.x + s * 0.24, yB - s * 0.68, s * 0.055, s * 0.045, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillRect(p.x + s * 0.27, yB - s * 0.7, s * 0.05, s * 0.02);
+            } else if (tile === Tile.HayBale) {
+              // A rolled bale: spiral end grain, strap twine, loose
+              // straws at the skirt.
+              ctx.fillStyle = '#c9a64b';
+              ctx.beginPath();
+              ctx.roundRect(p.x - s * 0.32, yB - s * 0.44, s * 0.64, s * 0.44, s * 0.09);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1.2, s * 0.022);
+              ctx.stroke();
+              ctx.fillStyle = shade('#c9a64b', 18);
+              ctx.fillRect(p.x - s * 0.28, yB - s * 0.42, s * 0.56, s * 0.06);
+              ctx.strokeStyle = shade('#c9a64b', -20);
+              ctx.lineWidth = Math.max(1, s * 0.018);
+              for (const r of [0.14, 0.08, 0.03]) {
+                ctx.beginPath();
+                ctx.arc(p.x + s * 0.18, yB - s * 0.22, s * r, 0.4, 5.6);
+                ctx.stroke();
+              }
+              ctx.strokeStyle = '#b0a068';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.1, yB - s * 0.44);
+              ctx.lineTo(p.x - s * 0.1, yB);
+              ctx.stroke();
+              ctx.fillStyle = shade('#c9a64b', -12);
+              ctx.fillRect(p.x - s * 0.4, yB - s * 0.03, s * 0.08, s * 0.025);
+              ctx.fillRect(p.x + s * 0.34, yB - s * 0.04, s * 0.07, s * 0.025);
+            } else if (tile === Tile.Silo) {
+              // The tall keep of the harvest: staved tower, iron
+              // bands, conical cap with its sunlit face.
+              const sh = s * 1.7;
+              ctx.fillStyle = '#8d8798';
+              ctx.fillRect(p.x - s * 0.26, yB - sh, s * 0.52, sh);
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1.4, s * 0.026);
+              ctx.strokeRect(p.x - s * 0.26, yB - sh, s * 0.52, sh);
+              ctx.fillStyle = shade('#8d8798', 16);
+              ctx.fillRect(p.x - s * 0.22, yB - sh, s * 0.14, sh);
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.3)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              for (const fy2 of [0.3, 0.6, 0.9, 1.25]) {
+                ctx.beginPath();
+                ctx.moveTo(p.x - s * 0.26, yB - s * fy2);
+                ctx.lineTo(p.x + s * 0.26, yB - s * fy2);
+                ctx.stroke();
+              }
+              ctx.fillStyle = '#a8794a';
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.32, yB - sh);
+              ctx.lineTo(p.x, yB - sh - s * 0.34);
+              ctx.lineTo(p.x + s * 0.32, yB - sh);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.stroke();
+              ctx.fillStyle = shade('#a8794a', 20);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.32, yB - sh);
+              ctx.lineTo(p.x, yB - sh - s * 0.34);
+              ctx.lineTo(p.x - s * 0.02, yB - sh);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#3a2c18';
+              ctx.fillRect(p.x - s * 0.08, yB - s * 0.3, s * 0.16, s * 0.3);
+            } else if (tile === Tile.Dovecote) {
+              // A whitewashed house on a post, arched doors, and the
+              // tenants circling home.
+              ctx.strokeStyle = '#5f4426';
+              ctx.lineWidth = Math.max(1.6, s * 0.05);
+              ctx.beginPath();
+              ctx.moveTo(p.x, yB);
+              ctx.lineTo(p.x, yB - s * 0.55);
+              ctx.stroke();
+              ctx.fillStyle = '#e8e2d4';
+              ctx.beginPath();
+              ctx.roundRect(p.x - s * 0.22, yB - s * 0.95, s * 0.44, s * 0.42, s * 0.05);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.stroke();
+              ctx.fillStyle = '#7d5a2e';
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.28, yB - s * 0.95);
+              ctx.lineTo(p.x, yB - s * 1.12);
+              ctx.lineTo(p.x + s * 0.28, yB - s * 0.95);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#4a3a28';
+              for (const u of [-0.1, 0.08]) {
+                ctx.beginPath();
+                ctx.arc(p.x + u * s + s * 0.02, yB - s * 0.72, s * 0.045, Math.PI, 0);
+                ctx.rect(p.x + u * s - s * 0.025, yB - s * 0.72, s * 0.09, s * 0.06);
+                ctx.fill();
+              }
+              // The doves: two white flecks on slow home arcs.
+              ctx.fillStyle = 'rgba(240, 238, 230, 0.9)';
+              for (let i = 0; i < 2; i++) {
+                const a = t * 0.9 + i * Math.PI;
+                ctx.beginPath();
+                ctx.ellipse(
+                  p.x + Math.cos(a) * s * 0.4,
+                  yB - s * 1.0 + Math.sin(a * 1.4) * s * 0.14,
+                  s * 0.035,
+                  s * 0.02,
+                  Math.cos(a) * 0.4,
+                  0, Math.PI * 2,
+                );
+                ctx.fill();
+              }
+            } else if (tile === Tile.ButterChurn) {
               // A staved barrel churn, brass bands, plunger through
               // the lid — the handle pumps while the batch works.
               const bw = s * 0.34;

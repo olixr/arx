@@ -4261,6 +4261,52 @@ Object.assign(PLATES, {
   },
 
   // ------------------- THE KEEPER'S TONGUE — the nine words' plates.
+  // THE GREEN ARTS plates — the farm's own heraldry.
+  // Sower's Step — a bootprint mid-stride with seed dots trailing.
+  sowers_step: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.mid, [[-0.16, -0.2], [0.06, -0.26], [0.12, 0.02], [-0.1, 0.08]], 0.04);
+    poly(c, st.core, [[-0.06, 0.14], [0.1, 0.1], [0.14, 0.24], [-0.02, 0.28]], 0.035);
+    dot(c, st.spark, -0.26, 0.18, 0.028);
+    dot(c, st.spark, -0.32, 0.02, 0.022);
+    dot(c, st.spark, -0.2, 0.32, 0.022);
+  },
+  // Gardener's Mend — an open palm with a sprout rising from it.
+  gardeners_mend: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    crescent(c, 0, 0.08, 0.3, 0.16, Math.PI * 0.05, Math.PI * 0.95, st.mid, 0.045);
+    poly(c, st.core, [[0, 0.04], [0, -0.22]], 0.035);
+    crescent(c, -0.1, -0.22, 0.12, 0.1, Math.PI * 0.9, Math.PI * 1.9, st.spark, 0.032);
+    crescent(c, 0.1, -0.22, 0.12, 0.1, -Math.PI * 0.9, Math.PI * 0.1, st.spark, 0.032);
+    dot(c, st.spark, 0, -0.32, 0.03);
+  },
+  // Earthen Brace — the driven fencepost between two ground lines.
+  earthen_brace: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.core, [[-0.05, -0.3], [0.05, -0.3], [0.05, 0.22], [-0.05, 0.22]], 0.04);
+    poly(c, st.mid, [[-0.3, 0.22], [0.3, 0.22]], 0.05);
+    poly(c, st.mid, [[-0.22, 0.32], [0.22, 0.32]], 0.04);
+    dot(c, st.spark, 0, -0.3, 0.035);
+  },
+  // Hearthkeeper's Calm — the low roofline over a settled ember.
+  hearthkeepers_calm: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    poly(c, st.mid, [[-0.3, 0.02], [0, -0.24], [0.3, 0.02]], 0.05);
+    poly(c, st.core, [[-0.2, 0.06], [-0.2, 0.26], [0.2, 0.26], [0.2, 0.06]], 0.04);
+    dot(c, st.spark, 0, 0.18, 0.05);
+    dot(c, st.mid, 0, 0.18, 0.025);
+  },
+  // Quickening Touch — a hand's finger meeting a bursting sprout.
+  quickening_touch: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.core, [[-0.26, -0.18], [-0.04, -0.04]], 0.045);
+    poly(c, st.mid, [[0.04, 0.3], [0.04, 0.02]], 0.04);
+    crescent(c, -0.06, 0.02, 0.14, 0.1, Math.PI * 0.85, Math.PI * 1.85, st.mid, 0.032);
+    crescent(c, 0.14, 0.02, 0.14, 0.1, -Math.PI * 0.85, Math.PI * 0.15, st.mid, 0.032);
+    for (const [dx, dy] of [[0.16, -0.2], [0.02, -0.28], [0.28, -0.08]] as const) {
+      dot(c, st.spark, dx, dy, 0.026);
+    }
+  },
   // Soothe the Wild — the closed eye: a lid at rest, lashes down, one
   // feather settling beneath the quiet.
   soothe_the_wild: (st) => (c) => {

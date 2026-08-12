@@ -58,7 +58,11 @@ export type PerkId =
   | 'greatExecute' //        meleeSwing (twohand): +damage fraction vs targets under 25% hp
   | 'marchArmor' //          damagePlayer mitigate: +armor while moving
   | 'warSchooling' //        effectiveLevel: +levels to the four weapon schools
-  | 'inscribeQuality'; //    tickCraft: +quality points on every inscription
+  | 'inscribeQuality' //    tickCraft: +quality points on every inscription
+  // THE GREEN ARTS wave (farming v2 Phase 6): three more one-site dials.
+  | 'compostDiscount' //     compostAdd: batch closes this many worth sooner
+  | 'brushRestMult' //       interactLivestock: brush window cooldown × mult
+  | 'larderSellMult'; //     larderPay: premium price × mult
 
 export type CallingEffect =
   | { kind: 'gear'; effect: EnchantEffect }
@@ -379,6 +383,36 @@ const defs: CallingDef[] = [
     effect: { kind: 'gatherSpeed', skill: 'foraging', mult: 1.12 },
   },
   // ------------------------------------------------------------- farming
+  {
+    id: 'the_composter',
+    skill: 'farming',
+    unlockLevel: 35,
+    focusCost: 1,
+    name: 'The Composter',
+    desc: 'Your heaps close early. Rot respects experience.',
+    color: '#6e5433',
+    effect: { kind: 'perk', perk: 'compostDiscount', magnitude: 2 },
+  },
+  {
+    id: 'marketeer',
+    skill: 'farming',
+    unlockLevel: 45,
+    focusCost: 2,
+    name: 'Marketeer',
+    desc: 'The larder boards know your name. Orders pay a tenth more to you.',
+    color: '#e8c04c',
+    effect: { kind: 'perk', perk: 'larderSellMult', magnitude: 1.1 },
+  },
+  {
+    id: 'shepherds_eye',
+    skill: 'beastcraft',
+    unlockLevel: 35,
+    focusCost: 1,
+    name: "Shepherd's Eye",
+    desc: 'You see what each animal needs sooner. The brush window opens faster.',
+    color: '#96703f',
+    effect: { kind: 'perk', perk: 'brushRestMult', magnitude: 0.75 },
+  },
   {
     id: 'green_thumb',
     skill: 'farming',

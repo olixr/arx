@@ -1765,6 +1765,12 @@ interface Perks {
   craftSpeed: Partial<Record<SkillId, number>>;
   /** THE ENCHANTER'S HAND: quality points added to every inscription. */
   inscribeQuality: number;
+  /** THE GREEN ARTS wave: compost batches close this many worth sooner. */
+  compostDiscount: number;
+  /** The brush window's cooldown multiplier (Shepherd's Eye). */
+  brushRestMult: number;
+  /** The larder premium's multiplier (Marketeer). */
+  larderSellMult: number;
 }
 
 function defaultPerks(): Perks {
@@ -1801,6 +1807,9 @@ function defaultPerks(): Perks {
     materialSave: {},
     craftSpeed: {},
     inscribeQuality: 0,
+    compostDiscount: 0,
+    brushRestMult: 1,
+    larderSellMult: 1,
   };
 }
 
@@ -5390,7 +5399,7 @@ export class GameServer {
       player.session?.sendJson({ t: 'action', state: 'start', ticks });
       return;
     }
-    if (now - row.brushedAt >= BRUSH_COOLDOWN_MS) {
+    if (now - row.brushedAt >= BRUSH_COOLDOWN_MS * player.perks.brushRestMult) {
       row.brushedAt = now;
       if (row.bond < BOND_CAP) row.bond += 1;
       this.accounts.saveLivestock(row);
@@ -5460,7 +5469,7 @@ export class GameServer {
     takeSlot(player.inventory, slot, 1);
     bin.fill += worth.worth;
     bin.graded += worth.graded;
-    if (bin.fill >= COMPOST_BATCH_WORTH) {
+    if (bin.fill >= COMPOST_BATCH_WORTH - player.perks.compostDiscount) {
       bin.startedAt = Date.now();
       sys('The lid closes. The heap sets to work.');
     }
@@ -7385,7 +7394,7 @@ export class GameServer {
         if (remaining <= 0) return null;
         const premiumUnits = Math.min(soldQty, remaining);
         const pay =
-          premiumUnits * Math.max(1, Math.floor(each * order.mult)) +
+          premiumUnits * Math.max(1, Math.floor(each * order.mult * player.perks.larderSellMult)) +
           (soldQty - premiumUnits) * payFor(each);
         const nf = filled + premiumUnits;
         this.larderFills.set(host.shop, { epoch, filled: nf });
@@ -16073,6 +16082,44 @@ export class GameServer {
 
       case 'ground_aoe': {
         const target = targetPos ?? this.resolveGroundTarget(pos, aim, ab.range ?? 4);
+        // THE QUICKENING TOUCH (the green arts' capstone): the one
+        // ground art that GROWS instead of bursting — a quarter of
+        // the aimed crop's whole season lent at once. Damage 0 by
+        // school law; a bare aim refunds the cast (spoken, no cd
+        // burn happens upstream of the cooldown stamp? — no: the cd
+        // was stamped at fire, so the refusal is honest advice).
+        if (ab.id === 'quickening_touch' && !fromNpc) {
+          const ctx2 = Math.floor(target.x);
+          const cty2 = Math.floor(target.y);
+          const crop = this.crops.get(`${ctx2},${cty2}`);
+          const caster = this.players.get(casterEid);
+          const say2 = (text: string) =>
+            caster?.session?.sendJson({ t: 'chat', channel: 'system', text });
+          if (!crop) {
+            say2('The touch wants a growing crop under it.');
+            break;
+          }
+          const stage = stageForElapsed(crop.def, this.cropElapsed(crop, Date.now()));
+          if (stage === 2) {
+            say2('It has grown all it will. Harvest it.');
+            break;
+          }
+          crop.boostMs += Math.round(growMs(crop.def) * 0.25);
+          this.saveCrop(crop);
+          this.tickCrops(Date.now());
+          this.broadcastFx({
+            t: 'fx',
+            kind: 'telegraph',
+            x: ctx2 + 0.5,
+            y: cty2 + 0.5,
+            radius: 0.8,
+            ticks: 16,
+            id: ab.id,
+            color: ab.color,
+          });
+          say2(`The ${crop.def.name.toLowerCase()} drinks a season in a breath.`);
+          break;
+        }
         const fuse = ab.fuseTicks ?? 12;
         const radius = ab.radius ?? 1.5;
         this.pendingBlasts.push({

@@ -139,6 +139,29 @@ test('THE KEEPER LADDER: beastcraft holds exactly its authored rungs', () => {
   }
 });
 
+
+test('THE GREEN ARTS: farming = exactly its authored roster, every art damage 0', () => {
+  const arts = TECHNIQUES.filter((t) => t.style === 'farming' && !t.hidden).sort(
+    (a, b) => a.unlockLevel - b.unlockLevel,
+  );
+  assert.deepEqual(
+    arts.map((t) => [t.ability, t.unlockLevel]),
+    [
+      ['sowers_step', 5],
+      ['gardeners_mend', 15],
+      ['earthen_brace', 25],
+      ['hearthkeepers_calm', 35],
+      ['quickening_touch', 50],
+    ],
+    'the farming ladder is exactly its authored roster',
+  );
+  for (const t of arts) {
+    const ab = abilityDef(t.ability)!;
+    assert.equal(ab.damage, 0, `${t.ability}: a green art grows, it never strikes`);
+    assert.equal(t.ranks?.length, 3, `${t.ability}: a green art carries its full rank ladder`);
+  }
+});
+
 test('THE UNWRITTEN PAGE: hidden arts are well-formed, one per style at launch', () => {
   const hidden = TECHNIQUES.filter((t) => t.hidden);
   const byStyle = new Map<string, number>();

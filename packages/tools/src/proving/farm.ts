@@ -871,6 +871,79 @@ async function main(): Promise<void> {
   clearInterval(hb5);
   } // end Phase 5 chapter
 
+  if (FROM === 'all' || FROM === 'arts') {
+  // ================= THE GREEN ARTS (Phase 6) ======================
+  // The school casts: the mend on the self rail, the touch on the
+  // aimed ground rail (THE HELD SIGIL's tx/ty frame).
+  const gc = new Client();
+  await gc.open();
+  gc.send({ t: 'hello', v: PROTOCOL_VERSION });
+  gc.send({ t: 'register', user: `green_${STAMP}`, pass: 'proving123', name: `Green ${STAMP}` });
+  const w6 = await gc.waitFor((m) => m.t === 'welcome', 'welcome (greenhand)');
+  gc.eid = w6.eid;
+  const hb6 = setInterval(() => gc.send({ t: 'input', frame: { seq: gc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } }), 500);
+  await say(gc, '/xp farming 2000000');
+  await say(gc, '/give carrot_seed 2');
+
+  // Seat the mend and cast it: the cooldown echo is the receipt.
+  gc.send({ t: 'technique', ability: 'gardeners_mend', slot: 0 });
+  await gc.waitFor((m) => m.t === 'techniques', 'technique seat');
+  receipt('the green school seats its art (farming = a technique school)', true);
+  {
+    const mkg = gc.mark();
+    gc.send({ t: 'input', frame: { seq: gc.seq++, mx: 0, my: 0, aim: 0, buttons: 1 << 3 } });
+    await sleep(120);
+    gc.send({ t: 'input', frame: { seq: gc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } });
+    await gc.waitFor(
+      (m) => m.t === 'cooldowns' && Array.isArray(m.cd) && m.cd[0] > 0,
+      'mend cooldown echo (seat 0 stamped)',
+      5000,
+      mkg,
+    );
+    receipt("the gardener's mend casts (the healing the mandate asked for)", true);
+  }
+
+  // The capstone: a growing crop drinks a season from the touch.
+  {
+    let landed = false;
+    for (const [ax2, ay2] of [[96, 16], [84, 30], [104, 40]]) {
+      try {
+        await tp(gc, bx + ax2!, by + ay2!);
+        landed = true;
+        break;
+      } catch {
+        // Next course.
+      }
+    }
+    if (!landed) throw new Error('no arts course landed');
+  }
+  await say(gc, '/clearfarm 6');
+  const gfx2 = Math.floor(gc.pos!.x);
+  const gfy2 = Math.floor(gc.pos!.y);
+  const bed6 = await stagePlanting(gc, 'garden_plot', 'carrot_seed', 'You plant carrot', [
+    [gfx2 + 1, gfy2],
+    [gfx2 - 1, gfy2],
+  ]);
+  // Seat swaps WAIT THE ECHO (the beastcraft proving law), and the
+  // mend's 40s slot-0 cooldown still runs — the touch takes seat 2.
+  {
+    const mkSeat = gc.mark();
+    gc.send({ t: 'technique', ability: 'quickening_touch', slot: 2 });
+    await gc.waitFor((m) => m.t === 'techniques', 'touch seat echo', 5000, mkSeat);
+  }
+  {
+    const mkq = gc.mark();
+    gc.send({ t: 'input', frame: { seq: gc.seq++, mx: 0, my: 0, aim: 0, buttons: 1 << 5, tx: bed6.x + 0.5, ty: bed6.y + 0.5 } });
+    await sleep(120);
+    gc.send({ t: 'input', frame: { seq: gc.seq++, mx: 0, my: 0, aim: 0, buttons: 0 } });
+    await line(gc, 'drinks a season', mkq, 'quickening touch');
+    receipt('THE QUICKENING TOUCH lends a season in a breath', true);
+  }
+
+  clearInterval(hb6);
+  } // end Phase 6 chapter
+
+
 
   clearInterval(heartbeat);
   if (hb2) clearInterval(hb2);

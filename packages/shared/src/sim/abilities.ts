@@ -614,10 +614,10 @@ export const COMBAT_STYLES: readonly CombatStyleId[] = [
  * only gates learning and powers the cast through its own skill,
  * exactly as THE FREE HAND already allows.
  */
-export type TechniqueStyleId = CombatStyleId | 'beastcraft';
+export type TechniqueStyleId = CombatStyleId | 'beastcraft' | 'farming';
 
 /** Every school that owns a technique ladder — codex + climb criers. */
-export const TECHNIQUE_STYLES: readonly TechniqueStyleId[] = [...COMBAT_STYLES, 'beastcraft'];
+export const TECHNIQUE_STYLES: readonly TechniqueStyleId[] = [...COMBAT_STYLES, 'beastcraft', 'farming'];
 
 /**
  * A learnable active: unlocked by raising the style's skill, then

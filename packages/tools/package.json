@@ -16,7 +16,8 @@
     "prove:field": "ARX_PROVE_FROM=field tsx src/proving/farm.ts",
     "prove:yard": "ARX_PROVE_FROM=yard tsx src/proving/farm.ts",
     "prove:work": "ARX_PROVE_FROM=work tsx src/proving/farm.ts",
-    "prove:table": "ARX_PROVE_FROM=table tsx src/proving/farm.ts"
+    "prove:table": "ARX_PROVE_FROM=table tsx src/proving/farm.ts",
+    "prove:arts": "ARX_PROVE_FROM=arts tsx src/proving/farm.ts"
   },
   "dependencies": {
     "@arx/shared": "*",
