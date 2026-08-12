@@ -8828,6 +8828,18 @@ function owlWingBroad(
     s: number;
     /** Wing carriage: 0 = level, + = raised (mantling), − = swept low. */
     raise: number;
+    /** The HAND's carriage, trailing the arm through the beat — the
+     *  tip whip. Defaults to `raise` (a held pose). */
+    raiseHand?: number;
+    /** Load flex: + bends the primaries UP under the power stroke,
+     *  − droops them through the recovery. */
+    flex?: number;
+    /** Rowing swing: forward wrist offset (tiles) through the power
+     *  stroke, backward on recovery. */
+    swing?: number;
+    /** 0..1 downwash window — pale gust streaks fall away under the
+     *  wingtips right after the stroke bottoms out. */
+    gust?: number;
     /** 0..1 how far the wing is unfolded from the body. */
     spread: number;
     /** Back-sweep of the primary fingers: 0.25 mantling → 1 diving. */
@@ -8851,12 +8863,14 @@ function owlWingBroad(
   // forward; the hand carries the reach and the fingers sweep back.
   const armL = o.span * 0.42 * spread;
   const handL = o.span * 0.58 * spread;
+  const handA = o.raiseHand ?? raiseA;
+  const flex = o.flex ?? 0;
   const shF = 0.14;
   const shL = es * look.bodyW * 0.72;
   const shZ = 0.1 + look.bodyW * 0.35;
   const cosR = Math.cos(raiseA);
   const sinR = Math.sin(raiseA);
-  const wrF = shF + 0.1 * spread;
+  const wrF = shF + 0.1 * spread + (o.swing ?? 0);
   const wrL = shL + es * cosR * armL;
   const wrZ = shZ + sinR * armL;
   // Five primary fingers: tip k reaches shorter and sweeps further
@@ -8867,12 +8881,15 @@ function owlWingBroad(
   for (let k = 0; k < N; k++) {
     const u = k / (N - 1);
     const len = handL * (1 - 0.36 * u);
-    const tipRaise = raiseA - (0.28 + 0.5 * u) * spread * 0.55;
+    // The hand carries its own (trailing) angle, and the primaries
+    // BEND under load — outer fingers most, the tip-flex that turns
+    // a hinged plank into a wing pushing against real air.
+    const tipRaise = handA - (0.28 + 0.5 * u) * spread * 0.55;
     const backF = (0.1 + 0.85 * u) * len * o.sweepK;
     tips.push([
       wrF + 0.06 * spread - backF,
       wrL + es * Math.cos(tipRaise) * len,
-      wrZ + Math.sin(tipRaise) * len * 0.85 - 0.04 * u,
+      wrZ + Math.sin(tipRaise) * len * 0.85 - 0.04 * u + flex * u * u * o.span * 0.3,
     ]);
   }
   // The trailing edge closes into the flank at the tail root.
@@ -8985,6 +9002,26 @@ function owlWingBroad(
   ctx.lineTo(pl[0], pl[1]);
   ctx.stroke();
   ctx.lineCap = 'butt';
+  // THE DOWNWASH: right after the power stroke bottoms out, pale air
+  // falls away beneath the outer primaries — brief slanting streaks
+  // that sink and fade as the window closes. The whoosh, drawn.
+  const gust = o.gust ?? 0;
+  if (gust > 0.03 && !o.hurt) {
+    const fall = (1 - gust) * 0.3;
+    ctx.strokeStyle = `rgba(238, 234, 218, ${(0.3 * gust).toFixed(3)})`;
+    ctx.lineWidth = Math.max(1.4, s * 0.032);
+    ctx.lineCap = 'round';
+    for (const k of [0, 2]) {
+      const t = tips[k]!;
+      const a = P(t[0] - 0.03, t[1] * 1.01, t[2] - 0.08 - fall);
+      const b = P(t[0] - 0.16, t[1] * 1.07, t[2] - 0.22 - fall * 1.3);
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
 }
 
 /**
@@ -9390,6 +9427,46 @@ function lerpAngle(a: number, b: number, t: number): number {
 const OWL_FOLD = 0.3;
 
 /**
+ * THE WINGBEAT — a shaped, asymmetric cycle, never a sine. The
+ * downstroke is the POWER stroke: ~38% of the period, accelerating
+ * hard through its middle (the whoosh); the upstroke is the RECOVERY:
+ * slow, wings part-folded, decelerating into the top. The HAND trails
+ * the arm by a hair of phase (the tip whip), LOAD tracks stroke
+ * velocity (primaries bend under it, the body surges on it), and the
+ * GUST window opens just past the bottom of the power stroke — where
+ * the downwash actually lives.
+ */
+function owlBeat(u: number): {
+  arm: number;
+  hand: number;
+  load: number;
+  rec: number;
+  gust: number;
+} {
+  const DOWN = 0.38;
+  const shape = (p: number): number => {
+    const v = ((p % 1) + 1) % 1;
+    if (v < DOWN) {
+      const d = v / DOWN;
+      const e = d * d * (3 - 2 * d);
+      // Bias the ease toward the back half: the stroke ARRIVES fast.
+      return 1 - 2 * Math.pow(e, 1.25);
+    }
+    const r = (v - DOWN) / (1 - DOWN);
+    return -1 + 2 * (1 - Math.pow(1 - r, 2.2));
+  };
+  const arm = shape(u);
+  const hand = shape(u - 0.075);
+  const load = Math.max(-1.5, Math.min(1.5, (shape(u - 0.02) - shape(u + 0.02)) * 8));
+  const v = ((u % 1) + 1) % 1;
+  const rec = v >= DOWN ? Math.sin(((v - DOWN) / (1 - DOWN)) * Math.PI) : 0;
+  const g0 = DOWN * 0.85;
+  const g1 = DOWN + 0.2;
+  const gust = v > g0 && v < g1 ? Math.sin(((v - g0) / (g1 - g0)) * Math.PI) : 0;
+  return { arm, hand, load, rec, gust };
+}
+
+/**
  * THE PARLIAMENT FLIES: the great owl's one body painter, air-blended.
  *
  * `air` = 0 is the ROOST — the standing keg settled into a low squat
@@ -9594,7 +9671,6 @@ export function drawGreatOwl(
   const pitchK = Math.min(1, t * 1.4);
   // The elder beats a slower, heavier wing — mass you can hear.
   const flapF = look.elder ? 0.0066 : 0.0082;
-  const basePhase = now * flapF + seed * 0.7;
   // Seeded glide gate: only a leveled, traveling, peaceful bird locks
   // its wings out — the beat-beat-glide rhythm real owls cruise on.
   const gwave = Math.sin(now * 0.00042 + seed * 1.13);
@@ -9602,32 +9678,49 @@ export function drawGreatOwl(
     pitchK >= 1 && at === 0
       ? Math.min(1, Math.max(0, (gwave - 0.15) / 0.35)) * Math.min(1, o.moveK * 1.6)
       : 0;
-  const flap = Math.sin(basePhase) * (1 - glideK);
-  // Wing carriage: deep slow beats, higher carriage through the
-  // flare; a glide holds the blades level with a feather flutter.
-  let raise =
-    (0.1 + 0.5 * (1 - pitchK)) * (1 - glideK) +
-    (0.05 + Math.sin(now * 0.0036 + seed) * 0.04) * glideK +
-    flap * (0.5 + 0.3 * (1 - pitchK));
-  let spread = Math.min(1, 0.94 - 0.14 * Math.max(0, flap) + 0.06 * glideK);
+  const beatK = 1 - glideK;
+  const B = owlBeat((now * flapF) / (Math.PI * 2) + seed * 0.7);
+  // Wing carriage: the beat swings around a working height — deeper
+  // and higher-carried through the flare; a glide holds the blades
+  // level with only a feather flutter.
+  const carriage =
+    (0.14 + 0.42 * (1 - pitchK)) * beatK +
+    (0.05 + Math.sin(now * 0.0036 + seed) * 0.04) * glideK;
+  const beatAmp = (0.5 + 0.34 * (1 - pitchK)) * beatK;
+  let raise = carriage + B.arm * beatAmp;
+  // The hand trails the arm and overswings — the tip whip that turns
+  // two levers into one living wing.
+  let raiseHand = carriage + B.hand * beatAmp * 1.18;
+  // Primaries bend UNDER LOAD on the power stroke, droop on recovery.
+  let flex = B.load * 0.42 * beatK;
+  // The whole wing rows: forward through the power, back on recovery.
+  let swing = B.load * 0.07 * beatK;
+  let spread = Math.min(1, 0.96 - 0.2 * B.rec * beatK + 0.04 * glideK);
   let sweepK = 0.5 + 0.25 * glideK + 0.3 * (1 - spread);
-  // The body hangs off the wingbeat: it settles on the upstroke and
-  // rides the downstroke — the coupling that makes flight read ALIVE.
+  let gustK = B.gust * beatK * Math.min(1, o.moveK * 0.7 + 0.45);
+  // The body hangs off the wingbeat: it SURGES on the power stroke
+  // and settles through the recovery — thrust you can see.
   let lift =
     owlHoverHeight(look) * s * t +
-    Math.sin(basePhase - 1.1) * (0.045 + 0.02 * (1 - glideK)) * s;
+    (Math.max(0, B.load) * 0.05 - B.rec * 0.025) * s * beatK +
+    Math.sin(now * 0.0036 + seed) * 0.012 * s * glideK;
   let lungeX = 0;
   let lungeY = 0;
   // The flare drops the landing gear; cruise tucks it flat.
   let talonK = Math.max(0, 1 - pitchK);
   let under = raise > 0.4;
   if (at > 0) {
+    const quiet = Math.min(1, at * 3);
+    flex *= 1 - quiet;
+    swing *= 1 - quiet;
+    gustK *= 1 - quiet;
     if (at < 0.7) {
       // The windup: brake, climb a hand's width, mantle HIGH — the
       // pale underwing flash every prey animal understands.
       const w = at / 0.7;
       lift += 0.12 * s * w;
       raise += (1.05 - raise) * w;
+      raiseHand += (1.1 - raiseHand) * w;
       spread = Math.min(1, spread + w * 0.3);
       sweepK = sweepK + (0.22 - sweepK) * w;
       talonK = Math.max(talonK, w);
@@ -9641,6 +9734,7 @@ export function drawGreatOwl(
       lungeY = fy * 0.45 * k * s * ys;
       lift -= 0.32 * s * k;
       raise += (-0.42 - raise) * k;
+      raiseHand += (-0.5 - raiseHand) * k;
       spread += (0.8 - spread) * k;
       sweepK = sweepK + (1 - sweepK) * k;
       talonK = 1;
@@ -9742,6 +9836,10 @@ export function drawGreatOwl(
       es,
       s,
       raise,
+      raiseHand,
+      flex,
+      swing,
+      gust: gustK,
       spread,
       sweepK,
       span: look.wingSpan,
