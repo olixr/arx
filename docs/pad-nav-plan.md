@@ -78,10 +78,24 @@ the screens:
   rows — Make 1 / × 5 / Make all straight off the recipe, so the
   detail pane is a *reading*, never a toll booth.
 
-## 3. Proving
+## 3. Proving (as run, 2026-08-12, lane-3 rig 5178/8795)
 
-`padProfiles.test.ts` covers the translator; the nav engine is DOM
-work, proved live: a fake pad (`navigator.getGamepads` override, the
-groundAim harness precedent) driving the real client, counting presses
-from "open the Workshop" to "iron dagger made". Target: 3 presses
-(Ⓐ row → Ⓐ Make 1 lands on the Make button by law), against 11 today.
+`scratchpad/prove-pad-nav.mjs`: a fake pad (`navigator.getGamepads`
+override) drives the real client headless. All proofs passed live:
+
+- ADVANCE: Ⓐ on `recipe:fletch_arrows` landed the cursor on
+  `craft:fletch_arrows:1` inside `#craft-detail` — two presses from
+  ledger row to craft, against eleven before.
+- RETRACE: Ⓑ walked back to the row; the room stayed open.
+- WHEEL: Ⓨ on the row fanned 3 verbs radially (below `RADIAL_MIN` 3
+  the sheet stays a list — a one-verb wheel floats orphaned plates).
+- STEER: stick east put the focus on the east spoke; Ⓐ took it and
+  the craft handed off to the world.
+
+Harness gotchas, hard-won:
+- The pad translator memoizes per `id|timestamp` — a fake pad MUST
+  advance `timestamp` (a getter on `performance.now()`), or the idle
+  memo serves forever and no press is ever seen.
+- `window.__arx` now carries `nav` and `input` (the proving levers);
+  read `nav.focusKey` for the ring's truth, never `elementsFromPoint`.
+- Item id is `log`, not `logs`, for the /give stock.

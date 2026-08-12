@@ -735,7 +735,7 @@ body:not(.no-ui-motion) .kit-plate:hover {
   border: 0.5625rem solid transparent;
   border-image: var(--ui-plate) 45 fill / 0.5625rem;
   /* Out to the rim by angle, then stand the words upright again. */
-  transform: translate(-50%, -50%) rotate(var(--ring-angle)) translateY(-7.25rem)
+  transform: translate(-50%, -50%) rotate(var(--ring-angle)) translateY(-8.5rem)
     rotate(calc(-1 * var(--ring-angle)));
 }
 

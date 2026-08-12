@@ -22,8 +22,11 @@
 
 /** Most verbs a wheel can hold before the sheet falls back to a list. */
 const RADIAL_MAX = 8;
+/** Fewer than this and the wheel is sillier than the column — one or
+ * two verbs fan into orphaned plates floating far off their anchor. */
+const RADIAL_MIN = 3;
 /** How far the wheel's verbs stand from the hub, in rem. */
-const RADIAL_RADIUS_REM = 7.25;
+const RADIAL_RADIUS_REM = 8.5;
 
 export interface SheetVerb {
   /** Text, or a node (a glyphLine with seat chips set into it). */
@@ -124,7 +127,10 @@ export function openSheet(
   const ordered = [...verbs.filter((v) => !v.danger), ...verbs.filter((v) => v.danger)];
   // A pad gets the wheel whenever the verbs fit one; every other
   // device, and any long list, keeps the column.
-  const radial = document.body.classList.contains('pad-mode') && ordered.length <= RADIAL_MAX;
+  const radial =
+    document.body.classList.contains('pad-mode') &&
+    ordered.length >= RADIAL_MIN &&
+    ordered.length <= RADIAL_MAX;
   radialCount = radial ? ordered.length : 0;
   el.classList.toggle('radial', radial);
   ordered.forEach((verb, i) => {

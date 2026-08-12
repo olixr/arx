@@ -2127,6 +2127,10 @@ game.onLoose = (charge, aim) => {
   game,
   renderer,
   audio: { engine: audioEngine, music, ambience, sfx, voice },
+  // The proving levers: live-rig harnesses drive the pad grammar and
+  // read the input truth through these (rig-lab workflow).
+  nav,
+  input,
 };
 
 loginToggle.addEventListener('click', () => {
