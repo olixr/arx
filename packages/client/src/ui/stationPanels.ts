@@ -56,7 +56,7 @@ import { bigButton, iconTile, sectionHead } from './panel.js';
 import { petPortraitUrl } from '../render/petPortrait.js';
 import { createLedger } from './kit/ledger.js';
 import { tabRail } from './kit/tabs.js';
-import { registerSheetProvider } from './kit/contextSheet.js';
+import { registerSheetProvider, type SheetVerb } from './kit/contextSheet.js';
 
 /**
  * The station screens: Workshop (craft), Vault (bank), Store (shop)
@@ -269,6 +269,30 @@ export class StationPanels {
         { label: 'Buy one', act: () => this.onShop('buy', item, 1, this.shopId) },
         { label: 'Buy five', act: () => this.onShop('buy', item, 5, this.shopId) },
       ];
+    });
+    // THE WORK ANSWERS FROM THE ROW: Ⓨ on a recipe fans its whole
+    // quantity question around the row itself — the detail pane is a
+    // READING, never a toll booth on the way to the Make button. The
+    // verbs are the same clicks the buttons over there make.
+    registerSheetProvider('recipe', (el) => {
+      const id = (el.dataset.navkey ?? '').slice('recipe:'.length);
+      const recipe = RECIPES.get(id);
+      if (!recipe) return [];
+      const verb =
+        this.showing?.kind === 'craft' ? craftStationFace(this.showing.station).verb : 'Make';
+      const most = Math.min(this.makeable(recipe), 1000);
+      const make = (qty: number): SheetVerb => ({
+        label: qty === 1 ? `${verb} 1` : qty === most ? `${verb} all (${most})` : `× ${qty}`,
+        disabled: most === 0,
+        act: () => {
+          this.onCraft(recipe.id, qty);
+          this.closeAll();
+        },
+      });
+      const verbs: SheetVerb[] = [make(1)];
+      if (most > 5) verbs.push(make(5));
+      if (most > 1) verbs.push(make(most));
+      return verbs;
     });
   }
   // Close chips + header dressing come from ui/panel.ts (dressPanel),
@@ -639,6 +663,7 @@ export class StationPanels {
         dealtPlans.push(
           this.ledgerRow({
             key: `plan:${def.id}`,
+            next: '#build-detail',
             iconUrl: buildableIconUrl(def.id, 40) ?? itemIconUrl('log', 40),
             name: def.name,
             note: locked ? `lvl ${def.levelReq}` : count > 0 ? `× ${count}` : 'short',
@@ -825,12 +850,19 @@ export class StationPanels {
     noteTone?: 'ok' | 'short' | 'lock';
     selected: boolean;
     onPick: () => void;
+    /**
+     * THE HAND LANDS ON THE WORK: where the pad cursor goes once this
+     * row is chosen — the detail pane's own verbs, so a ledger is never
+     * a toll booth on the way to the Make button.
+     */
+    next?: string;
   }): HTMLElement {
     const row = document.createElement('div');
     row.className = 'ledger-row' + (opts.selected ? ' selected' : '');
     row.dataset.nav = '';
     row.dataset.navkey = opts.key;
     row.dataset.acta = 'View';
+    if (opts.next !== undefined) row.dataset.navnext = opts.next;
     const img = document.createElement('img');
     if (typeof opts.iconUrl === 'string') img.src = opts.iconUrl;
     else opts.iconUrl(img);
@@ -913,6 +945,7 @@ export class StationPanels {
         const locked = crop !== undefined && level < crop.levelReq;
         return this.ledgerRow({
           key: `plantrow:${seed}`,
+          next: '#craft-detail',
           iconUrl: itemIconUrl(seed, 40),
           name: crop?.name ?? itemDef(seed)?.name ?? seed,
           note: locked ? `lvl ${crop!.levelReq}` : `× ${held.get(seed)!.toLocaleString()}`,
@@ -1049,6 +1082,7 @@ export class StationPanels {
           const row = held.get(item)!;
           return this.ledgerRow({
             key: `compostrow:${item}`,
+            next: '#craft-detail',
             iconUrl: itemIconUrl(item, 40),
             name: itemDef(item)?.name ?? item,
             note: `× ${row.qty.toLocaleString()}`,
@@ -1177,6 +1211,7 @@ export class StationPanels {
           const row = held.get(item)!;
           return this.ledgerRow({
             key: `troughrow:${item}`,
+            next: '#craft-detail',
             iconUrl: itemIconUrl(item, 40),
             name: itemDef(item)?.name ?? item,
             note: `× ${row.qty.toLocaleString()}`,
@@ -1309,6 +1344,7 @@ export class StationPanels {
         recipes.map((r) =>
           this.ledgerRow({
             key: `workrow:${r.id}`,
+            next: '#craft-detail',
             iconUrl: itemIconUrl(r.output.item, 40),
             name: r.name,
             note: canLoad(r) > 0 ? `× ${canLoad(r)}` : `lvl ${r.levelReq}`,
@@ -1495,6 +1531,7 @@ export class StationPanels {
         const dust = result?.yields.find((y) => y.item === 'arcane_dust')?.qty ?? 0;
         return this.ledgerRow({
           key: `unmake:${row.worn ?? row.slot}`,
+          next: '#craft-detail',
           iconUrl: itemIconUrl(row.item, 40),
           name: instanceName(row.item, row.roll),
           note: row.worn
@@ -1761,6 +1798,7 @@ export class StationPanels {
       const count = this.makeable(recipe);
       return this.ledgerRow({
         key: `recipe:${recipe.id}`,
+        next: '#craft-detail',
         iconUrl: (img) => queueItemIcon(img, recipe.output.item, 40),
         name: recipe.name,
         note: locked ? `lvl ${recipe.levelReq}` : count > 0 ? `× ${count}` : 'short',
@@ -1989,6 +2027,8 @@ export class StationPanels {
     roll?: ItemRoll;
     selected?: boolean;
     onPick: () => void;
+    /** Where the pad cursor goes once this socket is chosen. */
+    next?: string;
   }): HTMLElement {
     const cell = document.createElement('div');
     cell.className =
@@ -1997,6 +2037,7 @@ export class StationPanels {
     cell.dataset.nav = '';
     cell.dataset.navkey = opts.navkey;
     cell.dataset.acta = opts.acta;
+    if (opts.next !== undefined) cell.dataset.navnext = opts.next;
     cell.dataset.tipname = opts.roll
       ? instanceName(opts.item, opts.roll)
       : (itemDef(opts.item)?.name ?? opts.item);
@@ -2107,6 +2148,7 @@ export class StationPanels {
               this.vaultCell({
                 navkey: `bank:${item}`,
                 acta: 'Choose',
+                next: '#bank-detail',
                 item,
                 qty,
                 selected: this.bankSel === item,

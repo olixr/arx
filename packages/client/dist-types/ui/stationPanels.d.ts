@@ -95,6 +95,14 @@ export declare class StationPanels {
     get bankOpen(): boolean;
     get stableOpen(): boolean;
     get shopOpen(): boolean;
+    /**
+     * THE COUNTER YOU STAND AT: which shelf is open, for the pack side of
+     * the trade. Sales MUST name it — the server's reach gate looks for
+     * that keeper, and an unnamed sale falls back to the general store's
+     * counter tile, which no trainer or stallholder stands on. Null when
+     * no shelf is up.
+     */
+    get openShopId(): string | null;
     get craftOpen(): boolean;
     get buildOpen(): boolean;
     get anyOpen(): boolean;

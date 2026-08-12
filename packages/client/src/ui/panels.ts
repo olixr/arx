@@ -54,7 +54,12 @@ import { bigButton, sectionHead, statPlaque } from './panel.js';
 import { bindings, type ActionId } from '../input/bindings.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 import { seatChip, glyphLine } from './kit/glyphs.js';
-import { openSheet, registerSheetProvider, type SheetVerb } from './kit/contextSheet.js';
+import {
+  closeSheet,
+  openSheet,
+  registerSheetProvider,
+  type SheetVerb,
+} from './kit/contextSheet.js';
 import { ringGauge } from './kit/ring.js';
 import { socket } from './kit/plates.js';
 import { attachAmbient } from './kit/ambient.js';
@@ -1287,6 +1292,21 @@ export class Panels {
       return false;
     }
 
+    // ON A PAD THE VERBS FAN OUT: the same entries, handed to the one
+    // context sheet, which wheels them around the cell. The mouse keeps
+    // the column at the cursor — a list is the right shape for a
+    // pointer, and both press the very same buttons.
+    if (this.deviceMode() === 'pad' && at === undefined) {
+      this.closeMenu();
+      this.itemSheet = true;
+      openSheet(
+        el,
+        entries.map((entry) => ({ label: entry.label, act: entry.act, danger: entry.danger })),
+        { onClose: () => { this.itemSheet = false; } },
+      );
+      return true;
+    }
+
     this.menu.innerHTML = '';
     entries.forEach((entry, i) => {
       const btn = document.createElement('button');
@@ -1312,8 +1332,17 @@ export class Panels {
     return true;
   }
 
+  /** True while the pad's item verbs are riding the shared sheet. */
+  private itemSheet = false;
+
   /** Close the verb menu. Returns true if one was open (Ⓑ backstop). */
   closeMenu(): boolean {
+    // The pad's item verbs live on the shared sheet — the same backstop
+    // has to reach them, or Ⓑ would fall through to closing the room.
+    if (this.itemSheet && closeSheet()) {
+      this.itemSheet = false;
+      return true;
+    }
     if (this.menu.classList.contains('hidden')) return false;
     this.menu.classList.add('hidden');
     return true;
@@ -1653,6 +1682,7 @@ export class Panels {
     btn.dataset.nav = '';
     btn.dataset.navkey = `skill:${skill}`;
     btn.dataset.acta = 'Read';
+    btn.dataset.navnext = '#skills-hero';
 
     const ring = ringGauge(frac, { tone: face.color });
     ring.root.classList.add('emblem-ring');
@@ -2000,6 +2030,7 @@ export class Panels {
       btn.dataset.nav = '';
       btn.dataset.navkey = `rail:${stop}`;
       btn.dataset.acta = 'Open';
+      btn.dataset.navnext = '#arts-schools';
       // The crest: the school's mark ringed by its climb.
       let frac: number;
       let sub: string;
@@ -2531,6 +2562,7 @@ export class Panels {
     btn.dataset.nav = '';
     btn.dataset.navkey = `art:${tech.ability}`;
     btn.dataset.acta = 'Inspect';
+    btn.dataset.navnext = '#arts-detail';
     const wellEl = document.createElement('span');
     wellEl.className = 'tech-plate-well';
     if (st === 'veiled') {

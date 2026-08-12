@@ -686,6 +686,66 @@ body:not(.no-ui-motion) .kit-plate:hover {
   color: var(--red-soft);
 }
 
+/* VERBS FAN OUT: on a pad the sheet is a WHEEL hubbed on the thing you
+   chose — one flick of the stick reaches any verb. The tray plate steps
+   aside; each verb wears its own painted plate, like the screen ring's
+   crests. Mouse and keyboard keep the column above. */
+#ctx-sheet.radial {
+  width: 0;
+  height: 0;
+  min-width: 0;
+  max-width: none;
+  padding: 0;
+  background: none;
+  border: none;
+  border-image-source: none;
+  box-shadow: none;
+  z-index: 96;
+}
+
+/* The stage dims behind the wheel so the verbs own the eye. */
+#ctx-sheet.radial::before {
+  content: '';
+  position: fixed;
+  inset: -100vmax;
+  background: rgba(10, 7, 4, 0.42);
+}
+
+#ctx-sheet.radial .ctx-verbs {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  max-height: none;
+  overflow: visible;
+}
+
+#ctx-sheet.radial .ctx-verb {
+  --ring-angle: 0deg;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 9.5rem;
+  min-height: 2.375rem;
+  padding: 0.4375rem 0.625rem;
+  text-align: center;
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border-radius: 0;
+  border: 0.5625rem solid transparent;
+  border-image: var(--ui-plate) 45 fill / 0.5625rem;
+  /* Out to the rim by angle, then stand the words upright again. */
+  transform: translate(-50%, -50%) rotate(var(--ring-angle)) translateY(-7.25rem)
+    rotate(calc(-1 * var(--ring-angle)));
+}
+
+/* The focused spoke is the chosen one — the same gold the ring speaks. */
+#ctx-sheet.radial .ctx-verb:hover:not(:disabled),
+body.pad-mode #ctx-sheet.radial .ctx-verb:focus-visible {
+  background-color: var(--raise-hi);
+  color: var(--gold-hot);
+}
+
 /* ---- the ledger: dealt leaves, page dots, no hidden rows ---- */
 .kit-ledger {
   display: flex;

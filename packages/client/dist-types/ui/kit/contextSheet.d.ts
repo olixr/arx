@@ -14,6 +14,10 @@
  * - ONE SHEET. A singleton: opening it anywhere closes it everywhere.
  * - IT HAS A FLOOR. Max height and a scroll region are defined —
  *   the one thing the old menu never had.
+ * - VERBS FAN OUT. On a pad, a short list of verbs is a WHEEL around
+ *   the anchor: flick the stick at one, release Ⓐ. A list is the
+ *   slowest shape a stick can read; a wheel is one motion, and the
+ *   DOM, the buttons and the clicks are identical either way.
  */
 export interface SheetVerb {
     /** Text, or a node (a glyphLine with seat chips set into it). */
@@ -35,6 +39,11 @@ export declare function hasSheetVerbs(el: HTMLElement): boolean;
 /** Open the sheet for a focusable via its provider. True if it did. */
 export declare function openSheetFor(el: HTMLElement): boolean;
 export declare function sheetOpen(): boolean;
+/**
+ * How many verbs the open sheet fans around its hub, or 0 when it is a
+ * plain list. The pad grammar reads this to steer by stick angle.
+ */
+export declare function sheetRadialCount(): number;
 /** Open the sheet beside `anchor`. Verbs in order; dangers sink. */
 export declare function openSheet(anchor: HTMLElement, verbs: SheetVerb[], opts?: {
     onClose?: () => void;

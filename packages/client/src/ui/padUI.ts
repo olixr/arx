@@ -1,6 +1,13 @@
 import type { InputManager } from '../input/inputManager.js';
 import { ACTIONS, bindings, type ActionId } from '../input/bindings.js';
-import { closeSheet, openSheetFor, sheetOpen, sheetPadVerb, hasSheetVerbs } from './kit/contextSheet.js';
+import {
+  closeSheet,
+  openSheetFor,
+  sheetOpen,
+  sheetPadVerb,
+  sheetRadialCount,
+  hasSheetVerbs,
+} from './kit/contextSheet.js';
 
 /**
  * Gamepad-first UI navigation — the console layer over the DOM UI.
@@ -43,10 +50,31 @@ const BTN = {
 const RING_HOLD_MS = 220;
 /** Stick throw that counts as pointing at a ring sector. */
 const RING_PICK_THRESHOLD = 0.45;
+/** The same read for the verb wheel — a hair firmer, it sits denser. */
+const SHEET_PICK_THRESHOLD = 0.55;
 
-const REPEAT_DELAY_MS = 300;
-const REPEAT_RATE_MS = 125;
-const STICK_NAV_THRESHOLD = 0.55;
+/**
+ * THE STICK HAS A THROTTLE. The first repeat waits out the delay; after
+ * that the rate reads how hard the stick is thrown (a d-pad counts as a
+ * full throw) and keeps shortening while the direction is held, down to
+ * the floor. A tap still lands exactly one step.
+ */
+const REPEAT_DELAY_MS = 260;
+const REPEAT_RATE_MS = 132;
+const REPEAT_RATE_FLOOR_MS = 52;
+/** How long a direction must be held to reach the floor rate. */
+const REPEAT_RAMP_MS = 900;
+const STICK_NAV_THRESHOLD = 0.5;
+/** Deflection at which the stick is asking for the fastest walk. */
+const STICK_FULL_THROW = 0.92;
+
+/**
+ * How long a pending `data-navnext` keeps looking for its target. A
+ * panel usually rebuilds inside the same frame, but anything waiting on
+ * the wire lands later — the advance must survive that without ever
+ * pouncing on a frame the player has already taken over.
+ */
+const ADVANCE_WINDOW_MS = 700;
 
 /**
  * Buttons the MENU grammar owns while navigating: faces, bumpers,
@@ -131,6 +159,22 @@ export class UiNav {
   private wasUiActive = false;
   /** Where focus returns when the item verb menu closes. */
   private menuReturnKey: string | null = null;
+  /**
+   * THE HAND LANDS ON THE WORK: a `data-navnext` target still looking
+   * for its element. `from` is where the cursor stood, so Ⓑ can walk
+   * back; `until` bounds the search so a target that never renders
+   * cannot ambush a later frame.
+   */
+  private advance: { sel: string; from: string | null; until: number } | null = null;
+  /** Where Ⓑ retraces to — set the moment an advance actually lands. */
+  private retraceKey: string | null = null;
+  /**
+   * Where the cursor physically was, so a wholesale re-render recovers
+   * to the nearest surviving control instead of the panel's first row.
+   */
+  private lastRect: { x: number; y: number } | null = null;
+  /** Each screen's last stop, so LB/RB come back to where you were. */
+  private readonly placeByScreen = new Map<string, string>();
   /** Direction held when UI capture began — inert until released. */
   private swallowDir: 'up' | 'down' | 'left' | 'right' | null = null;
   private navHeldSince = 0;
@@ -268,6 +312,8 @@ export class UiNav {
 
   private setFocus(el: HTMLElement): void {
     this.focusKey = el.dataset.navkey ?? null;
+    const box = el.getBoundingClientRect();
+    this.lastRect = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     // THE LIST FOLLOWS THE RING: every scrolling ledger (pack, bank,
     // shop, skills, look options…) keeps the focused row in view, so
     // spatial nav can never wander onto an invisible element.
@@ -294,6 +340,114 @@ export class UiNav {
       }
     }
     this.moveFocus(dir);
+  }
+
+  /**
+   * THE HAND LANDS ON THE WORK. `data-navnext` names where the cursor
+   * goes once this control has been used. Three dialects:
+   *   `key:<navkey>`   an exact control
+   *   `pfx:<prefix>`   the first control whose key starts with prefix
+   *   a CSS selector   the first usable control inside that container
+   * An enabled control always wins over a disabled one — a Make button
+   * greyed for want of ore must not swallow the cursor.
+   */
+  private advanceTarget(sel: string): HTMLElement | null {
+    const items = this.navigables();
+    if (sel.startsWith('key:')) {
+      const key = sel.slice(4);
+      return items.find((el) => el.dataset.navkey === key) ?? null;
+    }
+    if (sel.startsWith('pfx:')) {
+      const pfx = sel.slice(4);
+      return items.find((el) => (el.dataset.navkey ?? '').startsWith(pfx)) ?? null;
+    }
+    const host = document.querySelector<HTMLElement>(sel);
+    if (!host || host.closest('.hidden')) return null;
+    const inside = items.filter((el) => host.contains(el));
+    return inside.find((el) => !(el as HTMLButtonElement).disabled) ?? inside[0] ?? null;
+  }
+
+  /** Arm the advance declared on the control just activated. */
+  private armAdvance(el: HTMLElement, nowMs: number): void {
+    const sel = el.dataset.navnext;
+    if (!sel) return;
+    this.advance = { sel, from: this.focusKey, until: nowMs + ADVANCE_WINDOW_MS };
+  }
+
+  /**
+   * Try to land a pending advance. The target usually appears in the
+   * same frame the panel re-rendered; a wire round-trip can take a few
+   * more, and the window expires quietly rather than landing late.
+   */
+  private resolveAdvance(nowMs: number): void {
+    if (!this.advance) return;
+    if (nowMs > this.advance.until) {
+      this.advance = null;
+      return;
+    }
+    const target = this.advanceTarget(this.advance.sel);
+    if (!target || target.dataset.navkey === this.focusKey) return;
+    this.retraceKey = this.advance.from;
+    this.advance = null;
+    this.setFocus(target);
+    this.hooks.onFocusMove?.();
+  }
+
+  /**
+   * One step back up the trail an advance made. True when the cursor
+   * moved, so Ⓑ eats the press instead of shutting the room.
+   */
+  private retraceStep(): boolean {
+    const key = this.retraceKey;
+    if (key === null || key === this.focusKey) return false;
+    this.retraceKey = null;
+    const el = this.navigables().find((e) => e.dataset.navkey === key);
+    if (!el) return false;
+    this.setFocus(el);
+    this.hooks.onFocusMove?.();
+    return true;
+  }
+
+  /**
+   * THE RING HOLDS ITS GROUND. Focus went missing — a wholesale
+   * re-render dropped the element under our key. Land on whatever now
+   * stands nearest to where the cursor physically was; only a fresh
+   * room (no remembered place, no last position) starts at the top.
+   */
+  private landFocus(remembered: string | null): void {
+    const items = this.navigables();
+    if (items.length === 0) {
+      this.focusKey = null;
+      return;
+    }
+    if (remembered !== null) {
+      const kept = items.find((el) => el.dataset.navkey === remembered);
+      if (kept) {
+        this.setFocus(kept);
+        return;
+      }
+    }
+    const inPanel = items.filter((el) => el.closest('.ui-screen, .ui-tray'));
+    const pool = inPanel.length > 0 ? inPanel : items;
+    const at = this.lastRect;
+    if (at) {
+      let best: HTMLElement | null = null;
+      let bestDist = Infinity;
+      for (const el of pool) {
+        const r = el.getBoundingClientRect();
+        const d = Math.hypot(r.x + r.width / 2 - at.x, r.y + r.height / 2 - at.y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = el;
+        }
+      }
+      if (best) {
+        this.setFocus(best);
+        return;
+      }
+    }
+    const first = pool.find((el) => !el.classList.contains('panel-close')) ?? pool[0]!;
+    this.setFocus(first);
   }
 
   /** Pick up / place the focused pack slot (Ⓧ). */
@@ -412,27 +566,53 @@ export class UiNav {
       this.navHeldDir = dir;
       this.navHeldSince = nowMs;
       this.navLastStep = nowMs;
+      // The player took the wheel — a pending advance stands down
+      // rather than yanking the cursor out from under them.
+      this.advance = null;
       this.navStep(dir);
-    } else if (
-      nowMs - this.navHeldSince > REPEAT_DELAY_MS &&
-      nowMs - this.navLastStep > REPEAT_RATE_MS
-    ) {
-      this.navLastStep = nowMs;
-      this.navStep(dir);
+    } else if (nowMs - this.navHeldSince > REPEAT_DELAY_MS) {
+      // Throw and hold-time both shorten the step; a d-pad reads as a
+      // full throw, so it ramps on hold-time alone.
+      const onDpad =
+        pressed.has(BTN.up) ||
+        pressed.has(BTN.down) ||
+        pressed.has(BTN.left) ||
+        pressed.has(BTN.right);
+      const thrown = Math.min(1, Math.max(Math.abs(ax), Math.abs(ay), onDpad ? 1 : 0));
+      const eager = Math.min(1, thrown / STICK_FULL_THROW);
+      const ramp = Math.min(1, (nowMs - this.navHeldSince - REPEAT_DELAY_MS) / REPEAT_RAMP_MS);
+      const rate =
+        REPEAT_RATE_MS - (REPEAT_RATE_MS - REPEAT_RATE_FLOOR_MS) * (0.45 * eager + 0.55 * ramp);
+      if (nowMs - this.navLastStep > rate) {
+        this.navLastStep = nowMs;
+        this.navStep(dir);
+      }
     }
 
-    // A freshly opened panel owns the cursor: whenever the set of open
-    // panels changes (or nothing is focused), land on the new panel's
-    // first ROW — never the dock, never the ✕ chip.
+    // A declared advance lands as soon as its target exists — the
+    // cursor follows the work instead of walking to it.
+    this.resolveAdvance(nowMs);
+
+    // A freshly opened panel owns the cursor. A NEW room lands on its
+    // remembered stop, else its first ROW — never the dock, never the
+    // ✕ chip. A re-render INSIDE a room recovers to whatever now
+    // stands where the cursor physically was.
     const sig = Array.from(document.querySelectorAll('.ui-screen:not(.hidden), .ui-tray:not(.hidden)'))
       .map((p) => p.id)
       .join('|');
-    if (sig !== this.panelSig || !this.focused()) {
+    const roomChanged = sig !== this.panelSig;
+    if (roomChanged) {
+      // Leaving: remember the place, so LB/RB come back to it.
+      if (this.panelSig !== '' && this.focusKey !== null) {
+        this.placeByScreen.set(this.panelSig, this.focusKey);
+      }
       this.panelSig = sig;
-      const items = this.navigables();
-      const inPanel = items.filter((el) => el.closest('.ui-screen, .ui-tray'));
-      const first = inPanel.find((el) => !el.classList.contains('panel-close')) ?? inPanel[0] ?? items[0];
-      if (first) this.setFocus(first);
+      this.retraceKey = null;
+      this.advance = null;
+      this.lastRect = null;
+    }
+    if (!this.focused()) {
+      this.landFocus(roomChanged ? (this.placeByScreen.get(sig) ?? null) : null);
     }
 
     // ---- typing: a text field the pad focused owns the stage until
@@ -461,6 +641,26 @@ export class UiNav {
           this.focusKey = this.menuReturnKey ?? this.focusKey;
         }
       }
+      // VERBS FAN OUT: on the wheel, the stick's angle IS the choice —
+      // one flick reaches any verb, and the d-pad still steps.
+      const spokes = sheetRadialCount();
+      if (spokes > 0 && !stickClaimed) {
+        const sx = snap!.axes[0] ?? 0;
+        const sy = snap!.axes[1] ?? 0;
+        if (Math.hypot(sx, sy) > SHEET_PICK_THRESHOLD) {
+          const step = 360 / spokes;
+          const deg = (Math.atan2(sy, sx) * 180) / Math.PI; // 0° = east
+          const idx = Math.round(((deg + 90 + 360) % 360) / step) % spokes;
+          const key = `ctx:${idx}`;
+          if (key !== this.focusKey) {
+            const spoke = this.navigables().find((el) => el.dataset.navkey === key);
+            if (spoke) {
+              this.setFocus(spoke);
+              this.hooks.onFocusMove?.();
+            }
+          }
+        }
+      }
       if (edge(BTN.a)) this.focused()?.click();
       if (edge(BTN.b)) closeSheet();
       if (!sheetOpen() && this.focusKey?.startsWith('ctx:')) {
@@ -484,13 +684,19 @@ export class UiNav {
         // Ⓐ on a writing line: take the pen (a hardware keyboard types;
         // Ⓑ puts it down).
         el.focus();
-      } else {
-        el?.click();
+      } else if (el) {
+        // Read the advance BEFORE the click: activating a row usually
+        // rebuilds the panel, and this element is about to be garbage.
+        const advancing = el.dataset.navnext ? el : null;
+        el.click();
         // The click may have raised a verb sheet at the element (the
         // codex's seat sheet) — the ring steps inside it.
         if (sheetOpen()) {
           this.menuReturnKey = this.focusKey;
           this.focusKey = 'ctx:0';
+        } else if (advancing) {
+          this.armAdvance(advancing, nowMs);
+          this.resolveAdvance(nowMs); // a same-frame re-render lands now
         }
       }
     }
@@ -523,6 +729,9 @@ export class UiNav {
         this.focusKey = this.menuReturnKey ?? this.focusKey;
       } else if (this.carrying !== null) {
         this.carrying = null;
+      } else if (this.retraceStep()) {
+        // Ⓑ WALKS BACK BEFORE IT SHUTS THE DOOR: an advanced cursor
+        // retreats to the row it came from, and the door waits.
       } else {
         this.hooks.onCloseAll();
       }
@@ -725,6 +934,9 @@ export class UiNav {
   private updateStrip(): void {
     const el = this.focused();
     const actions: Array<[string, string]> = [];
+    // Ⓑ says what it will actually do: retreat up the trail an advance
+    // made, or shut the room when there is no trail left.
+    const back = this.retraceKey !== null && this.retraceKey !== this.focusKey ? 'Back' : 'Close';
     if (this.carrying !== null) {
       actions.push(['a', 'Place'], ['x', 'Place'], ['y', 'Drop'], ['b', 'Cancel']);
     } else if (el?.dataset.invslot !== undefined) {
@@ -734,9 +946,9 @@ export class UiNav {
         actions.push(['x', 'Move']);
         actions.push(['y', 'Options']);
       }
-      actions.push(['b', 'Close']);
+      actions.push(['b', back]);
     } else if (el?.dataset.equipslot !== undefined && el.dataset.filled === '1') {
-      actions.push(['a', 'Remove'], ['y', 'Options'], ['b', 'Close']);
+      actions.push(['a', 'Remove'], ['y', 'Options'], ['b', back]);
     } else {
       if (el) {
         actions.push(['a', el.dataset.acta ?? 'Select']);
@@ -744,7 +956,7 @@ export class UiNav {
         // says so.
         if (hasSheetVerbs(el)) actions.push(['y', 'Options']);
       }
-      actions.push(['b', 'Close']);
+      actions.push(['b', back]);
     }
     const items: Array<[string, string, string]> = actions.map(([btn, label]) => [
       `pad-glyph ${btn}`,

@@ -102,7 +102,7 @@
       <div id="inventory-panel" class="ui-screen screen-character hidden">
         <h3>Character</h3>
         <div class="char-body">
-          <section class="char-tray worn-kit">
+          <section class="char-tray worn-kit" data-region>
             <header class="tray-head">
               <span id="char-name" class="ident-name"></span>
               <span id="char-deed" class="level-seal"></span>
@@ -119,7 +119,7 @@
                rest your eye on any item (hover or pad focus) and it
                lays out here at full size with its verbs under it. No
                floating card, no travel: see, compare, act. -->
-          <section class="char-tray char-bench">
+          <section class="char-tray char-bench" data-region>
             <header class="tray-head">
               <span class="tray-title">The bench</span>
             </header>
@@ -129,7 +129,7 @@
               <div id="bench-acts" class="bench-acts"></div>
             </div>
           </section>
-          <section class="char-tray char-pack-col">
+          <section class="char-tray char-pack-col" data-region>
             <header class="tray-head">
               <span class="tray-title">Backpack</span>
               <div id="pack-filters"></div>
@@ -152,8 +152,8 @@
            Sound, Display (with the ruler's hand), Controls. -->
       <div id="audio-panel" class="ui-screen screen-settings hidden">
         <h3>Settings</h3>
-        <div id="settings-tabs"></div>
-        <div class="settings-scroll">
+        <div id="settings-tabs" data-region></div>
+        <div class="settings-scroll" data-region>
           <div id="settings-sec-sound">
             <div id="audio-rows"></div>
             <p id="audio-nowplaying" class="audio-now"></p>
@@ -167,7 +167,7 @@
         </div>
         <!-- THE DOOR SWINGS BOTH WAYS: the sign-out stands under every
              bench, above the fold, one pad stop from anywhere. -->
-        <div id="settings-foot" class="settings-foot"></div>
+        <div id="settings-foot" class="settings-foot" data-region></div>
       </div>
 
       <!-- SKILLS — the hall of deeds: disciplines grouped into wings.
@@ -189,7 +189,7 @@
            the stage, and the chosen art on the bench to the right. -->
       <div id="arts-panel" class="ui-screen screen-arts hidden">
         <h3>Techniques</h3>
-        <div id="arts-loadout"></div>
+        <div id="arts-loadout" data-region></div>
         <div class="arts-main">
           <div id="arts-rail" data-region></div>
           <div id="arts-schools" data-region></div>
@@ -202,11 +202,11 @@
       <div id="craft-panel" class="ui-screen screen-craft hidden">
         <h3 id="craft-title">Crafting</h3>
         <div class="craft-body">
-          <div class="craft-left">
+          <div class="craft-left" data-region>
             <div id="craft-tools"></div>
             <div id="craft-list" class="craft-ledger"></div>
           </div>
-          <div id="craft-detail"></div>
+          <div id="craft-detail" data-region></div>
         </div>
       </div>
 
@@ -215,10 +215,10 @@
       <div id="bank-panel" class="ui-screen screen-bank hidden">
         <h3>Vault</h3>
         <div class="bank-body">
-          <div id="bank-armory" class="hidden"></div>
-          <div id="bank-tools"></div>
-          <div id="bank-list"></div>
-          <div id="bank-detail" class="hidden"></div>
+          <div id="bank-armory" class="hidden" data-region></div>
+          <div id="bank-tools" data-region></div>
+          <div id="bank-list" data-region></div>
+          <div id="bank-detail" class="hidden" data-region></div>
         </div>
       </div>
 
@@ -226,13 +226,13 @@
            rotation decided here and nowhere else (beastcraft v2). -->
       <div id="stable-panel" class="ui-screen screen-stable hidden">
         <h3>The Stalls</h3>
-        <div id="stable-list"></div>
+        <div id="stable-list" data-region></div>
       </div>
 
       <!-- STORE — the counter: goods shelved with honest price tags. -->
       <div id="shop-panel" class="ui-screen screen-shop hidden">
         <h3>General Store</h3>
-        <div id="shop-list"></div>
+        <div id="shop-list" data-region></div>
       </div>
 
       <!-- BUILDER'S TABLE — the Workshop anatomy: ledger left (the
@@ -241,11 +241,11 @@
       <div id="build-panel" class="ui-screen screen-build hidden">
         <h3>Build</h3>
         <div class="craft-body">
-          <div class="craft-left">
+          <div class="craft-left" data-region>
             <div id="build-tools"></div>
             <div id="build-list" class="craft-ledger"></div>
           </div>
-          <div id="build-detail"></div>
+          <div id="build-detail" data-region></div>
         </div>
       </div>
 
@@ -281,7 +281,7 @@
            row is one dungeon, read pure from a key's roll. -->
       <div id="riftgate-panel" class="ui-screen screen-riftgate hidden">
         <h3>The Riftgate</h3>
-        <div id="riftgate-list"></div>
+        <div id="riftgate-list" data-region></div>
       </div>
 
       <!-- THE BOARD — the deliberate read of a sign, and the pen for
@@ -296,7 +296,7 @@
            screen: grab and get back to the fight. -->
       <div id="loot-panel" class="ui-tray hidden">
         <h3>On the Ground</h3>
-        <div id="loot-list" class="row-list"></div>
+        <div id="loot-list" class="row-list" data-region></div>
       </div>
     </div>
 

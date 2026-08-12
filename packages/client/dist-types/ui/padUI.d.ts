@@ -68,6 +68,22 @@ export declare class UiNav {
     private wasUiActive;
     /** Where focus returns when the item verb menu closes. */
     private menuReturnKey;
+    /**
+     * THE HAND LANDS ON THE WORK: a `data-navnext` target still looking
+     * for its element. `from` is where the cursor stood, so Ⓑ can walk
+     * back; `until` bounds the search so a target that never renders
+     * cannot ambush a later frame.
+     */
+    private advance;
+    /** Where Ⓑ retraces to — set the moment an advance actually lands. */
+    private retraceKey;
+    /**
+     * Where the cursor physically was, so a wholesale re-render recovers
+     * to the nearest surviving control instead of the panel's first row.
+     */
+    private lastRect;
+    /** Each screen's last stop, so LB/RB come back to where you were. */
+    private readonly placeByScreen;
     /** Direction held when UI capture began — inert until released. */
     private swallowDir;
     private navHeldSince;
@@ -106,6 +122,36 @@ export declare class UiNav {
      * else moves the focus ring spatially.
      */
     private navStep;
+    /**
+     * THE HAND LANDS ON THE WORK. `data-navnext` names where the cursor
+     * goes once this control has been used. Three dialects:
+     *   `key:<navkey>`   an exact control
+     *   `pfx:<prefix>`   the first control whose key starts with prefix
+     *   a CSS selector   the first usable control inside that container
+     * An enabled control always wins over a disabled one — a Make button
+     * greyed for want of ore must not swallow the cursor.
+     */
+    private advanceTarget;
+    /** Arm the advance declared on the control just activated. */
+    private armAdvance;
+    /**
+     * Try to land a pending advance. The target usually appears in the
+     * same frame the panel re-rendered; a wire round-trip can take a few
+     * more, and the window expires quietly rather than landing late.
+     */
+    private resolveAdvance;
+    /**
+     * One step back up the trail an advance made. True when the cursor
+     * moved, so Ⓑ eats the press instead of shutting the room.
+     */
+    private retraceStep;
+    /**
+     * THE RING HOLDS ITS GROUND. Focus went missing — a wholesale
+     * re-render dropped the element under our key. Land on whatever now
+     * stands nearest to where the cursor physically was; only a fresh
+     * room (no remembered place, no last position) starts at the top.
+     */
+    private landFocus;
     /** Pick up / place the focused pack slot (Ⓧ). */
     private handleCarry;
     /** Per-frame drive. Call after input.pollGamepad(). */

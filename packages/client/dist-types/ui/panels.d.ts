@@ -182,6 +182,8 @@ export declare class Panels {
         x: number;
         y: number;
     }): boolean;
+    /** True while the pad's item verbs are riding the shared sheet. */
+    private itemSheet;
     /** Close the verb menu. Returns true if one was open (Ⓑ backstop). */
     closeMenu(): boolean;
     get menuOpen(): boolean;
