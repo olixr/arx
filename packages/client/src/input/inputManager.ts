@@ -1,6 +1,12 @@
 import { InputButton, SNEAK_FACTOR, WALK_FACTOR } from '@arx/shared';
 import { bindings } from './bindings.js';
-import { PadTranslator, pickLivePad, type PadCandidate, type PadView } from './padProfiles.js';
+import {
+  PadTranslator,
+  padFamily,
+  pickLivePad,
+  type PadCandidate,
+  type PadView,
+} from './padProfiles.js';
 
 const STICK_DEADZONE = 0.22;
 
@@ -247,8 +253,22 @@ export class InputManager {
   /** The live pad, translated into the standard layout. */
   private pad(): PadView | null {
     const raw = this.pickPad();
-    return raw ? this.translator.view(raw) : null;
+    if (!raw) return null;
+    const view = this.translator.view(raw);
+    // THE BUTTON WEARS ITS OWN NAME: the moment a different device
+    // becomes the live pad, the HUD's glyphs adopt its markings —
+    // bindings re-letters the chips, the body attribute recolors them.
+    if (view.id !== this.glyphPadId) {
+      this.glyphPadId = view.id;
+      const family = padFamily(view.id);
+      bindings.setPadFamily(family, view.profile);
+      document.body.dataset.padFamily = family;
+    }
+    return view;
   }
+
+  /** Id of the pad whose marking family the HUD currently wears. */
+  private glyphPadId = '';
 
   /**
    * Every connected pad, translated — the Controls screen's readout

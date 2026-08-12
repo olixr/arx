@@ -8,6 +8,7 @@
  */
 
 import { ACTIONS, bindings, kbLabel, padGlyph, type ActionId } from '../input/bindings.js';
+import { padFaces, padFamily } from '../input/padProfiles.js';
 import type { InputManager } from '../input/inputManager.js';
 import type { UiNav } from './padUI.js';
 import { bigButton, sectionHead } from './panel.js';
@@ -207,15 +208,26 @@ export function installControlsMenu(deps: ControlsDeps): void {
           const name = document.createElement('div');
           name.className = 'pad-card-name';
           name.textContent = `${v.index === activeIndex ? '▸ ' : ''}${v.id}`;
+          // Each card letters its lights in ITS pad's own markings —
+          // a DualSense and an Xbox pad side by side each read true.
+          const fam = padFamily(v.id);
+          const faces = padFaces(fam, v.profile);
+          const FAMILY_WORD: Record<typeof fam, string> = {
+            xbox: 'Xbox',
+            ps: 'PlayStation',
+            ns: 'Nintendo',
+          };
           const how = document.createElement('div');
           how.className = 'pad-card-how';
-          how.textContent = v.native
-            ? 'Mapped by the browser (standard layout).'
-            : `Not mapped by the browser. Read as "${v.profile}".`;
+          how.textContent =
+            (v.native
+              ? 'Mapped by the browser (standard layout). '
+              : `Not mapped by the browser. Read as "${v.profile}". `) +
+            `Shown with ${FAMILY_WORD[fam]} markings.`;
           const lights = document.createElement('div');
           lights.className = 'pad-lights';
           for (let i = 0; i < 16; i++) {
-            const g = padGlyph(i);
+            const g = padGlyph(i, faces, fam);
             const dot = document.createElement('span');
             dot.className = 'pad-light';
             if (v.buttons[i]?.pressed) dot.classList.add('on');

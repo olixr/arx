@@ -16,6 +16,8 @@
  *   load before the first frame; resetting restores this file exactly.
  */
 
+import { padFaces, type PadFamily } from './padProfiles.js';
+
 export type ActionId =
   | 'moveUp'
   | 'moveDown'
@@ -164,19 +166,55 @@ export function kbLabel(code: string): string {
   return code;
 }
 
-/** Standard-gamepad button index → glyph chip class + text. */
-export function padGlyph(btn: number): { cls: string; text: string } {
+/**
+ * THE BUTTON WEARS ITS OWN NAME — the glyphs speak whatever family of
+ * markings the live pad carries: Xbox letters, Nintendo's swapped
+ * letters, or PlayStation shapes, with each family's own shoulder
+ * names. Slot CLASSES stay positional (`.a` is always the bottom
+ * button) so the CSS and nav grammar never move; only the words on
+ * the chips change. InputManager owns detection and calls
+ * `bindings.setPadFamily`, which fires onChange so every chip
+ * rebuilds (THE CHIP FOLLOWS THE KEYMAP).
+ */
+let glyphFamily: PadFamily = 'xbox';
+let glyphFaces: readonly [string, string, string, string] = padFaces('xbox', 'standard');
+
+/** Shoulder / trigger / menu names per family; slots 10-15 are universal. */
+const FAMILY_CHROME: Record<PadFamily, readonly [string, string, string, string, string, string]> = {
+  //        4 (LB)  5 (RB)  6 (LT)  7 (RT)  8 (sel) 9 (start)
+  xbox: ['LB', 'RB', 'LT', 'RT', '⧉', '☰'],
+  ps: ['L1', 'R1', 'L2', 'R2', '⧉', '☰'],
+  ns: ['L', 'R', 'ZL', 'ZR', '−', '+'],
+};
+
+/** The face family currently on the chips (for diagnostics rows). */
+export function currentPadFamily(): PadFamily {
+  return glyphFamily;
+}
+
+/**
+ * Standard-gamepad button index → glyph chip class + text. Defaults
+ * to the live pad's family; pass `faces`/`family` to letter a chip
+ * for a SPECIFIC pad (the Controls readout lists every pad, each in
+ * its own markings).
+ */
+export function padGlyph(
+  btn: number,
+  faces: readonly [string, string, string, string] = glyphFaces,
+  family: PadFamily = glyphFamily,
+): { cls: string; text: string } {
+  const chrome = FAMILY_CHROME[family];
   const MAP: Record<number, { cls: string; text: string }> = {
-    0: { cls: 'a', text: 'A' },
-    1: { cls: 'b', text: 'B' },
-    2: { cls: 'x', text: 'X' },
-    3: { cls: 'y', text: 'Y' },
-    4: { cls: 'lb', text: 'LB' },
-    5: { cls: 'rb', text: 'RB' },
-    6: { cls: 'lt', text: 'LT' },
-    7: { cls: 'rt', text: 'RT' },
-    8: { cls: 'select', text: '⧉' },
-    9: { cls: 'start', text: '☰' },
+    0: { cls: 'a', text: faces[0] },
+    1: { cls: 'b', text: faces[1] },
+    2: { cls: 'x', text: faces[2] },
+    3: { cls: 'y', text: faces[3] },
+    4: { cls: 'lb', text: chrome[0] },
+    5: { cls: 'rb', text: chrome[1] },
+    6: { cls: 'lt', text: chrome[2] },
+    7: { cls: 'rt', text: chrome[3] },
+    8: { cls: 'select', text: chrome[4] },
+    9: { cls: 'start', text: chrome[5] },
     10: { cls: 'l3', text: 'L3' },
     11: { cls: 'r3', text: 'R3' },
     12: { cls: 'dup', text: '▲' },
@@ -185,6 +223,17 @@ export function padGlyph(btn: number): { cls: string; text: string } {
     15: { cls: 'dright', text: '▶' },
   };
   return MAP[btn] ?? { cls: '', text: `B${btn}` };
+}
+
+const CIRCLED: Record<string, string> = { A: 'Ⓐ', B: 'Ⓑ', X: 'Ⓧ', Y: 'Ⓨ' };
+
+/**
+ * The inline form for prose hints ("Ⓐ place, Ⓑ done"): letters wear
+ * their circle, PlayStation shapes stand as themselves.
+ */
+export function padGlyphInline(btn: number): string {
+  const t = padGlyph(btn).text;
+  return CIRCLED[t] ?? t;
 }
 
 type Table = Record<ActionId, { kb: string[]; pad: number[] }>;
@@ -267,6 +316,19 @@ export class Bindings {
   /** Redraw hook for badges/hotbar/menu — fired after any change. */
   onChange(fn: () => void): void {
     this.listeners.add(fn);
+  }
+
+  /**
+   * THE BUTTON WEARS ITS OWN NAME: adopt the live pad's marking
+   * family. InputManager calls this the moment the active pad's id
+   * changes; a real change re-letters every chip via onChange.
+   */
+  setPadFamily(family: PadFamily, profile: string): void {
+    const faces = padFaces(family, profile);
+    if (family === glyphFamily && faces.join('|') === glyphFaces.join('|')) return;
+    glyphFamily = family;
+    glyphFaces = faces;
+    this.emit();
   }
 
   private emit(): void {

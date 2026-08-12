@@ -51,7 +51,7 @@ import {
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
 import { abilityIconUrl, passiveIconUrl, queueAbilityIcon } from '../render/abilityIcons.js';
 import { bigButton, sectionHead, statPlaque } from './panel.js';
-import { bindings, type ActionId } from '../input/bindings.js';
+import { bindings, padGlyph, type ActionId } from '../input/bindings.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 import { seatChip, glyphLine } from './kit/glyphs.js';
 import {
@@ -414,10 +414,13 @@ export class Panels {
 
   /**
    * The device changed hands (or the keymap changed): any open screen
-   * that writes glyphs into sentences redraws for the new truth.
+   * that writes glyphs into sentences redraws for the new truth —
+   * including the bench card's verb hints (a controller swap mid-
+   * inspection must re-letter Equip/Options/Move).
    */
   refreshDevice(): void {
     if (this.artsOpen) this.renderArts();
+    this.refreshBench();
   }
 
   /**
@@ -1195,9 +1198,9 @@ export class Panels {
     };
     const primary = wornSlot ? 'Remove' : def.equipSlot ? 'Equip' : def.heals ? 'Eat' : null;
     if (pad) {
-      if (primary) hint('A', 'pad-glyph a', primary);
-      hint('Y', 'pad-glyph y', 'Options');
-      if (!wornSlot) hint('X', 'pad-glyph x', 'Move');
+      if (primary) hint(padGlyph(0).text, 'pad-glyph a', primary);
+      hint(padGlyph(3).text, 'pad-glyph y', 'Options');
+      if (!wornSlot) hint(padGlyph(2).text, 'pad-glyph x', 'Move');
     } else {
       if (primary) hint('Click', 'kb-glyph', primary);
       hint('R-Click', 'kb-glyph', 'Options');
@@ -2063,6 +2066,9 @@ export class Panels {
   private renderArtsRail(schools: SkillId[]): void {
     this.artsRail.innerHTML = '';
     this.artsRail.dataset.pager = '';
+    // The rail is the codex's SECTIONS — the bumpers step it now
+    // (THE BUMPER SERVES THE ROOM); LT/RT still reach it as pager.
+    this.artsRail.dataset.tabs = '';
     const stops: Array<SkillId | 'callings'> = [...schools, 'callings'];
     if (!this.artsRail.dataset.pagerWired) {
       this.artsRail.dataset.pagerWired = '1';

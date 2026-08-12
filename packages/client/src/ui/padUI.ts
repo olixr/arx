@@ -1,5 +1,5 @@
 import type { InputManager } from '../input/inputManager.js';
-import { ACTIONS, bindings, type ActionId } from '../input/bindings.js';
+import { ACTIONS, bindings, padGlyph, type ActionId } from '../input/bindings.js';
 import {
   closeSheet,
   openSheetFor,
@@ -750,15 +750,19 @@ export class UiNav {
         this.focusKey = this.menuReturnKey ?? null;
       }
     }
-    // LB / RB: walk the shelf of screens — every screen is one bumper
-    // away, so the pad reaches Social, the Chart, and Settings without
-    // a dock click.
-    if (edge(BTN.lb)) this.hooks.onCycleScreen(-1);
-    if (edge(BTN.rb)) this.hooks.onCycleScreen(1);
+    // LB / RB: THE BUMPER SERVES THE ROOM. A room with its own section
+    // rail (the vault's family tabs, the codex's schools) takes the
+    // bumpers for stepping sections — the grammar every pad player
+    // already knows — and only a rail-less room lets them walk the
+    // shelf of screens. Never both: a bumper press inside the vault
+    // must not slam the vault shut mid-errand.
+    if (edge(BTN.lb)) this.bumperStep(-1);
+    if (edge(BTN.rb)) this.bumperStep(1);
 
-    // LT / RT: the room's own pager — tab rails step, ledgers turn
-    // leaves. Only rooms that declare a pager listen; the Chart keeps
-    // its trigger zoom because it declares none.
+    // LT / RT: the room's own pager — ledgers turn leaves. When a
+    // section rail owns the bumpers, the triggers reach past it to the
+    // ledger; a rail-only room keeps trigger stepping too. The Chart
+    // keeps its trigger zoom because it declares none.
     if (edge(BTN.lt)) this.dispatchPage(-1);
     if (edge(BTN.rt)) this.dispatchPage(1);
 
@@ -802,11 +806,36 @@ export class UiNav {
     }
   }
 
-  /** LT/RT: hand the press to the open room's declared pager. */
-  private dispatchPage(dir: -1 | 1): void {
-    const pager = document.querySelector<HTMLElement>(
-      '.ui-screen:not(.hidden) [data-pager], .ui-tray:not(.hidden) [data-pager]',
+  /** The open room's section rail, when it declares one. */
+  private roomTabs(): HTMLElement | null {
+    return document.querySelector<HTMLElement>(
+      '.ui-screen:not(.hidden) [data-tabs], .ui-tray:not(.hidden) [data-tabs]',
     );
+  }
+
+  /**
+   * A bumper press: step the room's section rail when one stands,
+   * otherwise walk the shelf of screens. An open verb menu owns the
+   * frame — sections must not slide under a raised sheet of verbs.
+   */
+  private bumperStep(dir: -1 | 1): void {
+    const menu = document.getElementById('item-menu');
+    if (menu && !menu.classList.contains('hidden')) return;
+    const rail = this.roomTabs();
+    if (rail) rail.dispatchEvent(new CustomEvent('kit-page', { detail: dir }));
+    else this.hooks.onCycleScreen(dir);
+  }
+
+  /** LT/RT: hand the press to the open room's declared pager — the
+   * ledger first (the rail already answers the bumpers), the rail
+   * itself when it is the only pager the room owns. */
+  private dispatchPage(dir: -1 | 1): void {
+    const pagers = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '.ui-screen:not(.hidden) [data-pager], .ui-tray:not(.hidden) [data-pager]',
+      ),
+    );
+    const pager = pagers.find((p) => p.dataset.tabs === undefined) ?? pagers[0];
     pager?.dispatchEvent(new CustomEvent('kit-page', { detail: dir }));
   }
 
@@ -964,14 +993,26 @@ export class UiNav {
       }
       actions.push(['b', back]);
     }
+    // Slot classes are positional; the letters on them follow the live
+    // pad's marking family (THE BUTTON WEARS ITS OWN NAME).
+    const FACE_SLOT: Record<string, number> = { a: 0, b: 1, x: 2, y: 3 };
     const items: Array<[string, string, string]> = actions.map(([btn, label]) => [
       `pad-glyph ${btn}`,
-      btn.toUpperCase(),
+      padGlyph(FACE_SLOT[btn] ?? 0).text,
       label,
     ]);
-    // The standing bumper affordance: every screen is one LB/RB away.
-    items.push(['pad-glyph lb', 'LB', ''], ['pad-glyph rb', 'RB', 'Screens']);
-    this.renderStrip(actions.map((a) => a.join(':')).join('|') + '|cycle', items);
+    // The standing bumper affordance — and it tells the truth: in a
+    // room with a section rail the bumpers step sections; everywhere
+    // else every screen is one LB/RB away.
+    const tabbed = this.roomTabs() !== null;
+    items.push(
+      ['pad-glyph lb', padGlyph(4).text, ''],
+      ['pad-glyph rb', padGlyph(5).text, tabbed ? 'Section' : 'Screens'],
+    );
+    this.renderStrip(
+      actions.map((a) => a.join(':')).join('|') + (tabbed ? '|tabs' : '|cycle'),
+      items,
+    );
   }
 
   /**
@@ -1081,7 +1122,7 @@ export class UiNav {
       this.prompt.innerHTML = '';
       const glyph = document.createElement('span');
       if (this.mode === 'pad') {
-        const g = bindings.padBadge('interact') ?? { cls: 'a', text: 'A' };
+        const g = bindings.padBadge('interact') ?? padGlyph(0);
         glyph.className = `pad-glyph ${g.cls}`;
         glyph.textContent = g.text;
       } else {

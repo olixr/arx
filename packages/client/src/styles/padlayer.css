@@ -28,11 +28,32 @@
   user-select: none;
 }
 
-/* Face buttons carry their console color as a rim accent. */
+/* Face buttons carry their console color as a rim accent. The slot
+   classes are POSITIONAL (.a = bottom, .b = east, .x = west,
+   .y = north); the default rims are the Xbox palette, and
+   body[data-pad-family] — stamped by InputManager off the live pad's
+   id — reskins them to the hardware actually in hand (THE BUTTON
+   WEARS ITS OWN NAME). */
 .pad-glyph.a { border-color: #5da865; color: #a8e0b0; }
 .pad-glyph.b { border-color: #c4553d; color: #f0b0a0; }
 .pad-glyph.x { border-color: #4d7fc4; color: #a8c8f0; }
 .pad-glyph.y { border-color: var(--gold); color: #f2d894; }
+
+/* Nintendo faces are unpainted hardware — one quiet iron rim. */
+body[data-pad-family='ns'] .pad-glyph.a,
+body[data-pad-family='ns'] .pad-glyph.b,
+body[data-pad-family='ns'] .pad-glyph.x,
+body[data-pad-family='ns'] .pad-glyph.y {
+  border-color: var(--iron-lit);
+  color: #e2d9c6;
+}
+
+/* PlayStation shapes keep their classic colors, by position:
+   ✕ bottom, ○ east, □ west, △ north. */
+body[data-pad-family='ps'] .pad-glyph.a { border-color: #4d7fc4; color: #a8c8f0; }
+body[data-pad-family='ps'] .pad-glyph.b { border-color: #c4553d; color: #f0b0a0; }
+body[data-pad-family='ps'] .pad-glyph.x { border-color: #b877ad; color: #ecc3e4; }
+body[data-pad-family='ps'] .pad-glyph.y { border-color: #4da88a; color: #a8e0cc; }
 
 /* Bumpers, triggers, start/select: wide angular chips, not circles. */
 .pad-glyph.lb,

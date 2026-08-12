@@ -1,4 +1,5 @@
 import type { ClientGame } from '../../game/clientGame.js';
+import { padGlyph, padGlyphInline } from '../../input/bindings.js';
 import { dressPanel } from '../panel.js';
 import { dockGlyphUrl } from '../../render/icons.js';
 import { MapView } from './mapView.js';
@@ -30,7 +31,10 @@ export class MapScreen {
   private hintMode: 'kb' | 'pad' | '' = '';
   private padPrev = new Set<number>();
   private readonly hintDefault = 'Click to plant your waypoint · click the flag to lift it · drag to pan · wheel to zoom';
-  private readonly hintPad = 'Stick pans · LT / RT zoom · Ⓨ plants or lifts the waypoint · Ⓧ centers on you';
+  /** Built fresh each show — the letters follow the live pad's markings. */
+  private get hintPad(): string {
+    return `Stick pans · ${padGlyph(6).text} / ${padGlyph(7).text} zoom · ${padGlyphInline(3)} plants or lifts the waypoint · ${padGlyphInline(2)} centers on you`;
+  }
 
   constructor(
     private readonly game: ClientGame,

@@ -7,7 +7,7 @@ import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
 import { WORK_RECIPES, WORK_VERBS, workDone, type WorkStation } from '@arx/content';
 import { InputManager } from './input/inputManager.js';
 import { GroundAimController } from './input/groundAim.js';
-import { bindings, type ActionId } from './input/bindings.js';
+import { bindings, padGlyph, padGlyphInline, type ActionId } from './input/bindings.js';
 import { installControlsMenu } from './ui/controlsMenu.js';
 import { Renderer } from './render/renderer.js';
 import type { SmashKind } from './render/debris.js';
@@ -448,7 +448,7 @@ function pickBuildable(id: string): void {
     channel: 'system',
     text:
       nav.mode === 'pad'
-        ? `Steer the ghost with the right stick — Ⓐ place, ${turnable ? 'Ⓧ turn, ' : ''}Ⓨ demolish, Ⓑ done.`
+        ? `Steer the ghost with the right stick — ${padGlyphInline(0)} place, ${turnable ? `${padGlyphInline(2)} turn, ` : ''}${padGlyphInline(3)} demolish, ${padGlyphInline(1)} done.`
         : `Click places — hold and drag to lay a run. ${bindings.kbBadge('sit') || 'X'}+click tears down${turnable ? `, the wheel (or ${bindings.kbBadge('buildRotate') || 'Y'}) turns the corner` : ''}. Esc to stop.`,
   });
 }
@@ -2803,9 +2803,12 @@ function frame(now: number): void {
   if (buildMode) {
     const turnable = orientRing() !== null;
     if (nav.mode === 'pad') {
-      const rows: Array<[string, string, string]> = [['pad-glyph a', 'A', 'Place']];
-      if (turnable) rows.push(['pad-glyph x', 'X', 'Turn']);
-      rows.push(['pad-glyph y', 'Y', 'Demolish'], ['pad-glyph b', 'B', 'Done']);
+      const rows: Array<[string, string, string]> = [['pad-glyph a', padGlyph(0).text, 'Place']];
+      if (turnable) rows.push(['pad-glyph x', padGlyph(2).text, 'Turn']);
+      rows.push(
+        ['pad-glyph y', padGlyph(3).text, 'Demolish'],
+        ['pad-glyph b', padGlyph(1).text, 'Done'],
+      );
       nav.showModeStrip(`build:pad:${turnable ? 't' : 'p'}`, rows);
     } else {
       const sitKey = bindings.kbBadge('sit') || 'X';

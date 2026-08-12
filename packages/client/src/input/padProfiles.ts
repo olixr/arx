@@ -159,6 +159,39 @@ export function genericLayout(
 }
 
 /**
+ * THE BUTTON WEARS ITS OWN NAME — which family of face-button markings
+ * the physical pad carries, so the HUD can show the letters (or
+ * shapes) actually printed on the player's hardware. Read from the id
+ * alone; 'xbox' is the safe default because the standard layout's
+ * slot names ARE the Xbox names.
+ */
+export type PadFamily = 'xbox' | 'ps' | 'ns';
+
+export function padFamily(id: string): PadFamily {
+  const lower = id.toLowerCase();
+  const vp = padVendorProduct(lower);
+  if (vp?.vendor === '054c' || /dualshock|dualsense|playstation/.test(lower)) return 'ps';
+  if (vp?.vendor === '057e' || /pro controller|joy-?con|nintendo|switch/.test(lower)) return 'ns';
+  return 'xbox';
+}
+
+/**
+ * What standard slots 0-3 are labeled on that family's hardware.
+ * Position-mapped pads (browser 'standard' or the generic guess) put
+ * a Nintendo pad's bottom button — its B — in slot 0; the switch-pro
+ * profile instead swaps 0/1 by LABEL (Nintendo A confirms, the
+ * console's own grammar), so its slot 0 really is the A button.
+ */
+export function padFaces(
+  family: PadFamily,
+  profile: string,
+): readonly [string, string, string, string] {
+  if (family === 'ps') return ['✕', '○', '□', '△'];
+  if (family === 'ns') return profile === 'switch-pro' ? ['A', 'B', 'Y', 'X'] : ['B', 'A', 'Y', 'X'];
+  return ['A', 'B', 'X', 'Y'];
+}
+
+/**
  * Which dialect a pad speaks. Standard-mapped pads short-circuit; a
  * pad the browser did not map gets its profile, or the heuristic.
  */

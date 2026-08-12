@@ -5,6 +5,8 @@ import {
   genericLayout,
   hatToDpad,
   normalizePad,
+  padFaces,
+  padFamily,
   padIsActive,
   padVendorProduct,
   pickLivePad,
@@ -259,4 +261,41 @@ test('a button held steady past the freshness window keeps its pad chosen', () =
   assert.equal(held.pad?.id, 'only');
   const fallback = pickLivePad([{ pad: only, quietMs: 4000 }], null);
   assert.equal(fallback.pad?.id, 'only');
+});
+
+// ---- THE BUTTON WEARS ITS OWN NAME: marking-family detection ----
+
+test('Sony pads read as PlayStation markings, by vendor and by name', () => {
+  assert.equal(padFamily('DualSense Wireless Controller (Vendor: 054c Product: 0ce6)'), 'ps');
+  assert.equal(padFamily('054c-09cc-Wireless Controller'), 'ps');
+  assert.equal(padFamily('Some DUALSHOCK 4 thing'), 'ps');
+});
+
+test('Nintendo pads read as Nintendo markings, by vendor and by name', () => {
+  assert.equal(padFamily('Pro Controller (Vendor: 057e Product: 2009)'), 'ns');
+  assert.equal(padFamily('057e-2009-Pro Controller'), 'ns');
+  assert.equal(padFamily('Nintendo Switch Pro Controller'), 'ns');
+  assert.equal(padFamily('Joy-Con (L/R)'), 'ns');
+});
+
+test('everything else defaults to Xbox markings — the standard names', () => {
+  assert.equal(padFamily('Xbox Wireless Controller (Vendor: 045e Product: 02fd)'), 'xbox');
+  assert.equal(padFamily('8BitDo Ultimate Wireless Controller (Vendor: 2dc8 Product: 3106)'), 'xbox');
+  assert.equal(padFamily('Mystery HID Pad'), 'xbox');
+});
+
+test('face rows: position-mapped Nintendo pads show B in slot 0', () => {
+  // Browser 'standard' mapping is positional — the bottom button on
+  // Nintendo hardware is its B.
+  assert.deepEqual(padFaces('ns', 'standard'), ['B', 'A', 'Y', 'X']);
+  assert.deepEqual(padFaces('ns', 'generic'), ['B', 'A', 'Y', 'X']);
+});
+
+test('face rows: the switch-pro profile swaps 0/1 by label, so slot 0 is A', () => {
+  assert.deepEqual(padFaces('ns', 'switch-pro'), ['A', 'B', 'Y', 'X']);
+});
+
+test('face rows: PlayStation shapes and Xbox letters', () => {
+  assert.deepEqual(padFaces('ps', 'standard'), ['✕', '○', '□', '△']);
+  assert.deepEqual(padFaces('xbox', 'standard'), ['A', 'B', 'X', 'Y']);
 });

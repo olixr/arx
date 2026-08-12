@@ -1,7 +1,7 @@
 import { itemDef, parseDialogueMarkup } from '@arx/content';
 import type { Sfx } from '../audio/sfx.js';
 import { voicePaceScale } from '../audio/voice.js';
-import { bindings } from '../input/bindings.js';
+import { bindings, padGlyph } from '../input/bindings.js';
 import { dockGlyphUrl, itemIconUrl } from '../render/icons.js';
 
 /**
@@ -641,7 +641,7 @@ export class DialogueCinema {
     if (state === 'question') {
       if (pad) {
         chip('dlg-key', '↑↓', 'Select');
-        chip('pad-glyph a', 'A', 'Choose');
+        chip('pad-glyph a', padGlyph(0).text, 'Choose');
       } else {
         // The plates carry their own numbers — the legend teaches the
         // deliberate path: walk, then answer on its own key.
@@ -650,10 +650,10 @@ export class DialogueCinema {
       }
     } else {
       const verb = state === 'farewell' ? 'Farewell' : 'Continue';
-      if (pad) chip('pad-glyph a', 'A', verb);
+      if (pad) chip('pad-glyph a', padGlyph(0).text, verb);
       else chip('dlg-key', 'Space', verb);
     }
-    if (pad) chip('pad-glyph b', 'B', 'Leave');
+    if (pad) chip('pad-glyph b', padGlyph(1).text, 'Leave');
     else chip('dlg-key', 'Esc', 'Leave');
   }
 

@@ -4,9 +4,12 @@ import {
   ACTIONS,
   Bindings,
   assertNoConflicts,
+  currentPadFamily,
   kbLabel,
   padGlyph,
+  padGlyphInline,
 } from './bindings.js';
+import { padFaces } from './padProfiles.js';
 
 // THE NO-CONFLICT CONTRACT: the shipped layout may never bind one key
 // or one pad button to two actions. This is the regression wall for
@@ -106,4 +109,50 @@ test('labels render for every shipped binding', () => {
       assert.ok(g.cls.length > 0, `pad ${btn} needs a glyph class`);
     }
   }
+});
+
+// ---- THE BUTTON WEARS ITS OWN NAME: family-aware glyphs ----
+
+test('padGlyph letters the faces for a given family, classes staying positional', () => {
+  const ns = padFaces('ns', 'standard');
+  assert.deepEqual(padGlyph(0, ns, 'ns'), { cls: 'a', text: 'B' });
+  assert.deepEqual(padGlyph(1, ns, 'ns'), { cls: 'b', text: 'A' });
+  assert.equal(padGlyph(4, ns, 'ns').text, 'L');
+  assert.equal(padGlyph(7, ns, 'ns').text, 'ZR');
+  assert.equal(padGlyph(9, ns, 'ns').text, '+');
+  const ps = padFaces('ps', 'standard');
+  assert.deepEqual(padGlyph(0, ps, 'ps'), { cls: 'a', text: '✕' });
+  assert.deepEqual(padGlyph(3, ps, 'ps'), { cls: 'y', text: '△' });
+  assert.equal(padGlyph(6, ps, 'ps').text, 'L2');
+});
+
+test('the default family is Xbox — exactly the old table', () => {
+  assert.deepEqual(padGlyph(0), { cls: 'a', text: 'A' });
+  assert.deepEqual(padGlyph(3), { cls: 'y', text: 'Y' });
+  assert.equal(padGlyph(4).text, 'LB');
+  assert.equal(padGlyph(8).text, '⧉');
+});
+
+test('setPadFamily re-letters the live glyphs and tells the chips', () => {
+  const b = new Bindings();
+  let fired = 0;
+  b.onChange(() => fired++);
+  b.setPadFamily('ns', 'switch-pro');
+  assert.equal(fired, 1);
+  assert.equal(currentPadFamily(), 'ns');
+  // switch-pro maps by label: slot 0 IS the Nintendo A.
+  assert.equal(padGlyph(0).text, 'A');
+  assert.equal(padGlyph(1).text, 'B');
+  assert.equal(padGlyphInline(0), 'Ⓐ');
+  // Same family again, same faces: no redraw storm.
+  b.setPadFamily('ns', 'switch-pro');
+  assert.equal(fired, 1);
+  // ...but a profile change within the family re-letters.
+  b.setPadFamily('ns', 'standard');
+  assert.equal(fired, 2);
+  assert.equal(padGlyph(0).text, 'B');
+  b.setPadFamily('ps', 'standard');
+  assert.equal(padGlyphInline(0), '✕'); // shapes stand as themselves
+  b.setPadFamily('xbox', 'standard'); // leave the module as found
+  assert.equal(padGlyph(0).text, 'A');
 });
