@@ -15074,6 +15074,9 @@ export class Renderer {
 
   /** Growth scale for a tree/sapling item, advancing its animation. */
   private growthOf(tx: number, ty: number, from: number, to: number, ms: number): number {
+    // Size gate BEFORE the template key: this runs per tree tile per
+    // frame, and the map is empty except moments after a regrowth.
+    if (this.growingTrees.size === 0) return to;
     const key = `${tx},${ty}`;
     const born = this.growingTrees.get(key);
     if (born === undefined) return to;
