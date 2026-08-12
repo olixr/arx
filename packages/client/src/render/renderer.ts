@@ -6347,22 +6347,22 @@ export class Renderer {
             sortY: bk.sortY,
             strat: bk.strat,
             elevated: bk.elevated ? true : undefined,
-            // SHADOWS NEVER BAKE — and neither does per-frame item
-            // construction: the bake captured the members' live
-            // drawShadow closures (translation-invariant casts that
-            // read the sun and this.ctx at call time); the replay
-            // translates by the camera's origin delta since capture.
+            // SHADOWS NEVER BAKE — the members' items re-mint fresh
+            // INSIDE the shadow prepass and only their drawShadow
+            // closures run. (The origin-delta replay of bake-time
+            // closures desynced the moment the camera panned — stale
+            // captures on the shared shadow layer are banned. The
+            // construction happens at most once per stretch per
+            // frame, and only for stretches that actually cast.)
             drawShadow:
               bi === 0 && sb.shadowDraws.length > 0
                 ? () => {
-                    const o = this.camera.worldToScreen(0, 0, this.w, this.h);
-                    const dx = o.x - sb.originX;
-                    const dy = o.y - sb.originY;
-                    const sctx = this.ctx;
-                    sctx.save();
-                    sctx.translate(dx, dy);
-                    for (const f of sb.shadowDraws) f();
-                    sctx.restore();
+                    const scratch: DrawItem[] = [];
+                    const seen2 = this.bandScratchSeen;
+                    seen2.clear();
+                    for (let i = s.i0; i <= s.i1; i++)
+                      this.emitRaisedMember(game, scratch, list[i]!, seen2);
+                    for (const it of scratch) it.drawShadow?.();
                   }
                 : undefined,
             draw: () => this.blitBand(sb, bk),
