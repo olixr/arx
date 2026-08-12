@@ -205,6 +205,24 @@ commit (never -A beside a live neighbor session).
   the remaining cost is live item construction, which later phases
   retire for static content). 416 client tests green.
 
+### Phase 3 — THE CLIFF CONTOUR MEMO (2026-08-12)
+
+- `collectCliffFaces` split into `buildCliffMemo` (the marching-squares
+  scan, verbatim, recording world-space ops: south faces + north fall
+  crests in cell order, side spans merged to runs) and a per-frame
+  replay that mints DrawItems fresh through the untouched builders.
+  Memo keyed on (viewport tile bounds, chunk-rev sum over the padded
+  scan window) — rebuilds ~4-8x/s walking instead of 120x/s. The side
+  runs' water-fall probing (`emitCliffSideRun`, the old emitRun
+  closure verbatim) stays fully live: clips and race read the world
+  every frame.
+- Receipts: same-frame parity probe (fresh build+replay vs cached
+  replay), 249 frames across Hoargate/mesa/Silverfall falls — zero
+  mismatches. Same-frame timing at 4x throttle: 1.48 → 0.49ms/frame
+  at the mesa, 0.74 → 0.26 at Hoargate (64-67% off the scan). Face
+  PIXELS stay live (round-5 candidate if the dense-base measurement
+  demands promotion).
+
 ### Phase 2 — ARCHITECTURE BANDS (2026-08-12)
 
 - Bandable v1 (every painter verified clock- and sky-free): plain

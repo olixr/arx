@@ -11167,10 +11167,84 @@ export class Renderer {
     return t;
   })();
 
+  /**
+   * THE STANDING WORLD phase 3 — the cliff contour memo. The
+   * marching-squares scan (mask + stair ownership per dual cell, per
+   * visible level) re-derived identical geometry 120 times a second;
+   * its output only moves when the viewport crosses a tile line or a
+   * chunk rev bumps. The memo records the scan's emissions as
+   * WORLD-SPACE ops (south faces, north fall crests, merged side
+   * runs) and replays them each frame through the very same item
+   * builders — items are still minted fresh (the ctx-swap law; screen
+   * coords come from the live camera), water falls still probe
+   * per-frame, and the paint is byte-identical because nothing
+   * downstream of the scan changed.
+   */
+  private cliffMemo: {
+    key: string;
+    levels: Array<{
+      level: number;
+      /** Flat records: ax, ay, bx, by, nx, ny, ci, cj per south face. */
+      faces: number[];
+      /** Flat records: ax, ay, bx, by, nx, ny per north fall. */
+      norths: number[];
+      /** Flat records: nx, x, a, b per merged side run. */
+      runs: number[];
+    }>;
+  } | null = null;
+
+  /** Chunk revs over the padded scan window — the memo's world key. */
+  private cliffRevKey(game: ClientGame, b: { minTx: number; maxTx: number; minTy: number; maxTy: number }): string {
+    const minCx = Math.floor((b.minTx - 2) / CHUNK_SIZE);
+    const maxCx = Math.floor((b.maxTx + 2) / CHUNK_SIZE);
+    const minCy = Math.floor((b.minTy - 3) / CHUNK_SIZE);
+    const maxCy = Math.floor((b.maxTy + 3) / CHUNK_SIZE);
+    let sum = 0;
+    let count = 0;
+    for (let cy = minCy; cy <= maxCy; cy++) {
+      for (let cx = minCx; cx <= maxCx; cx++) {
+        const data = game.world.get(cx, cy);
+        if (!data) continue;
+        count++;
+        sum += data.rev ?? 0;
+      }
+    }
+    return `${count}:${sum}`;
+  }
+
   private collectCliffFaces(game: ClientGame, items: DrawItem[]): void {
-    const ctx = this.ctx;
-    const s = this.camera.scale;
     const b = this.visibleTileBounds();
+    const key = `${b.minTx},${b.maxTx},${b.minTy},${b.maxTy}|${this.cliffRevKey(game, b)}`;
+    if (!this.cliffMemo || this.cliffMemo.key !== key)
+      this.cliffMemo = this.buildCliffMemo(game, b, key);
+    // Replay in the scan's own order: faces and fall crests in cell
+    // order, then the merged side runs — exactly where the live scan
+    // emitted them, so every stable-sort tie stays put.
+    for (const lv of this.cliffMemo.levels) {
+      const f = lv.faces;
+      for (let i = 0; i < f.length; i += 8) {
+        items.push(
+          this.cliffFaceItem(game, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, lv.level, f[i + 6]!, f[i + 7]!),
+        );
+        this.pushSouthFallItems(game, items, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, f[i + 5]!, lv.level);
+      }
+      const n = lv.norths;
+      for (let i = 0; i < n.length; i += 6) {
+        this.pushNorthFallItems(game, items, n[i]!, n[i + 1]!, n[i + 2]!, n[i + 3]!, n[i + 4]!, n[i + 5]!, lv.level);
+      }
+      const r = lv.runs;
+      for (let i = 0; i < r.length; i += 4) {
+        this.emitCliffSideRun(game, items, lv.level, r[i]!, r[i + 1]!, r[i + 2]!, r[i + 3]!);
+      }
+    }
+  }
+
+  private buildCliffMemo(
+    game: ClientGame,
+    b: { minTx: number; maxTx: number; minTy: number; maxTy: number },
+    key: string,
+  ): NonNullable<Renderer['cliffMemo']> {
+    const levels: NonNullable<Renderer['cliffMemo']>['levels'] = [];
     // Boundaries are RELATIVE: every seam between L−1 and L gets faces
     // owned by the ≥L side, whatever the sign — a pit's rim is the same
     // law as a plateau's edge. Scan the visible levels once.
@@ -11184,6 +11258,9 @@ export class Renderer {
       }
     }
     for (let level = visMin + 1; level <= visMax; level++) {
+      const faces: number[] = [];
+      const norths: number[] = [];
+      const runsOut: number[] = [];
       // Ramps COUNT as mass here (unlike the crown bake): the contour
       // must not wrap around a stair notch, or mouth-corner cells hang
       // little curtains over the flight.
@@ -11252,118 +11329,134 @@ export class Renderer {
                   : [[ax, ay, mx, my]];
             for (const [pax, pay, pbx, pby] of parts) {
               if (sg.n[1] > 0.01) {
-                items.push(this.cliffFaceItem(game, pax, pay, pbx, pby, sg.n[0], level, i, j));
-                this.pushSouthFallItems(game, items, pax, pay, pbx, pby, sg.n[0], sg.n[1], level);
+                faces.push(pax, pay, pbx, pby, sg.n[0], sg.n[1], i, j);
               } else if (Math.abs(sg.n[1]) <= 0.01) {
-                const key = `${sg.n[0] >= 0 ? 1 : 0}|${pax}`;
-                let runs = sideRuns.get(key);
-                if (!runs) sideRuns.set(key, (runs = []));
+                const skey = `${sg.n[0] >= 0 ? 1 : 0}|${pax}`;
+                let runs = sideRuns.get(skey);
+                if (!runs) sideRuns.set(skey, (runs = []));
                 runs.push([Math.min(pay, pby), Math.max(pay, pby)]);
               } else {
                 // Back faces are invisible — but a NORTH fall still
                 // shows its crest, its plume and its far basin.
-                this.pushNorthFallItems(game, items, pax, pay, pbx, pby, sg.n[0], sg.n[1], level);
+                norths.push(pax, pay, pbx, pby, sg.n[0], sg.n[1]);
               }
             }
           }
         }
       }
-      for (const [key, spans] of sideRuns) {
-        const [sideStr, xStr] = key.split('|');
+      for (const [skey, spans] of sideRuns) {
+        const [sideStr, xStr] = skey.split('|');
         const nx = sideStr === '1' ? 1 : -1;
         const x = Number(xStr);
         spans.sort((p, q) => p[0] - q[0]);
         let [y0, y1] = spans[0]!;
-        const emitRun = (a: number, b: number): void => {
-          // One slice per world row: caps land on the run's true ends,
-          // while each slice y-sorts independently so props and
-          // entities along the wall line draw over their own stretch.
-          // Water streaks along the run merge into ONE ribbon + dress
-          // pair per streak — the falling sheet's motion needs the
-          // whole height, not row-sliced phases.
-          let fallR0 = 0;
-          let fallInfo: SpillInfo | null = null;
-          const flushFall = (rEnd: number): void => {
-            if (!fallInfo) return;
-            const step = nx >= 0 ? -1 : 1;
-            const mouth = this.mouthClipFor(
-              game,
-              level,
-              'y',
-              fallR0,
-              rEnd - 1,
-              nx >= 0 ? x - 1 : x,
-              step,
-            );
-            const lc0 = nx >= 0 ? x - 1 : x - FALL_LOOKAHEAD - 4;
-            const lc1 = nx >= 0 ? x + FALL_LOOKAHEAD + 4 : x + 1;
-            const land = this.landClipFor(
-              game,
-              fallInfo.landElev,
-              lc0,
-              lc1,
-              fallR0 - 3,
-              rEnd + 3,
-            );
-            const apron = this.mouthClipFor(
-              game,
-              fallInfo.landElev,
-              'y',
-              fallR0,
-              rEnd - 1,
-              nx >= 0 ? x : x - 1,
-              nx >= 0 ? 1 : -1,
-            );
-            items.push(this.fallRibbonItem(x, fallR0, rEnd, nx, level, fallInfo, land));
-            items.push(
-              this.fallSideDressItem(
-                game,
-                x,
-                fallR0,
-                rEnd,
-                nx,
-                level,
-                fallInfo,
-                mouth,
-                land,
-                apron,
-              ),
-            );
-            fallInfo = null;
-          };
-          for (let r = Math.floor(a); r < b; r++) {
-            const s0 = Math.max(a, r);
-            const s1 = Math.min(b, r + 1);
-            items.push(this.cliffSideItem(x, s0, s1, nx, level, a, s0 === a, s1 === b));
-            const fi = this.fallAt(game, x, r + 0.5, nx, 0, level);
-            if (fi) {
-              if (!fallInfo) {
-                fallR0 = r;
-                fallInfo = fi;
-              } else {
-                fallInfo = {
-                  race: Math.min(fallInfo.race, fi.race),
-                  drop: Math.min(fallInfo.drop, fi.drop),
-                  landElev: Math.min(fallInfo.landElev, fi.landElev),
-                };
-              }
-            } else {
-              flushFall(r);
-            }
-          }
-          flushFall(Math.ceil(b));
-        };
         for (let k = 1; k <= spans.length; k++) {
           const next = spans[k];
           if (next && next[0] <= y1 + 0.001) {
-            y1 = Math.max(y1, next[1]);
+            y1 = Math.max(y1!, next[1]);
           } else {
-            emitRun(y0, y1);
+            runsOut.push(nx, x, y0!, y1!);
             if (next) [y0, y1] = next;
           }
         }
       }
+      if (faces.length > 0 || norths.length > 0 || runsOut.length > 0)
+        levels.push({ level, faces, norths, runs: runsOut });
     }
+    return { key, levels };
+  }
+
+  /**
+   * One merged side run, emitted per world row with live water-fall
+   * probing — the scan's old emitRun closure, verbatim. Falls stay
+   * fully live: their clips and race read the world each frame.
+   */
+  private emitCliffSideRun(
+    game: ClientGame,
+    items: DrawItem[],
+    level: number,
+    nx: number,
+    x: number,
+    a: number,
+    b: number,
+  ): void {
+    // One slice per world row: caps land on the run's true ends,
+    // while each slice y-sorts independently so props and
+    // entities along the wall line draw over their own stretch.
+    // Water streaks along the run merge into ONE ribbon + dress
+    // pair per streak — the falling sheet's motion needs the
+    // whole height, not row-sliced phases.
+    let fallR0 = 0;
+    let fallInfo: SpillInfo | null = null;
+    const flushFall = (rEnd: number): void => {
+      if (!fallInfo) return;
+      const step = nx >= 0 ? -1 : 1;
+      const mouth = this.mouthClipFor(
+        game,
+        level,
+        'y',
+        fallR0,
+        rEnd - 1,
+        nx >= 0 ? x - 1 : x,
+        step,
+      );
+      const lc0 = nx >= 0 ? x - 1 : x - FALL_LOOKAHEAD - 4;
+      const lc1 = nx >= 0 ? x + FALL_LOOKAHEAD + 4 : x + 1;
+      const land = this.landClipFor(
+        game,
+        fallInfo.landElev,
+        lc0,
+        lc1,
+        fallR0 - 3,
+        rEnd + 3,
+      );
+      const apron = this.mouthClipFor(
+        game,
+        fallInfo.landElev,
+        'y',
+        fallR0,
+        rEnd - 1,
+        nx >= 0 ? x : x - 1,
+        nx >= 0 ? 1 : -1,
+      );
+      items.push(this.fallRibbonItem(x, fallR0, rEnd, nx, level, fallInfo, land));
+      items.push(
+        this.fallSideDressItem(
+          game,
+          x,
+          fallR0,
+          rEnd,
+          nx,
+          level,
+          fallInfo,
+          mouth,
+          land,
+          apron,
+        ),
+      );
+      fallInfo = null;
+    };
+    for (let r = Math.floor(a); r < b; r++) {
+      const s0 = Math.max(a, r);
+      const s1 = Math.min(b, r + 1);
+      items.push(this.cliffSideItem(x, s0, s1, nx, level, a, s0 === a, s1 === b));
+      const fi = this.fallAt(game, x, r + 0.5, nx, 0, level);
+      if (fi) {
+        if (!fallInfo) {
+          fallR0 = r;
+          fallInfo = fi;
+        } else {
+          fallInfo = {
+            race: Math.min(fallInfo.race, fi.race),
+            drop: Math.min(fallInfo.drop, fi.drop),
+            landElev: Math.min(fallInfo.landElev, fi.landElev),
+          };
+        }
+      } else {
+        flushFall(r);
+      }
+    }
+    flushFall(Math.ceil(b));
   }
 
   /** One contour segment extruded into a face curtain (level -> level-1). */
