@@ -1428,10 +1428,12 @@ export class StationPanels {
     skills: SkillXp,
     known: ReadonlySet<string>,
     at?: { tx: number; ty: number },
+    /** Re-seat a remembered recipe (THE BENCH CALLS YOU BACK). */
+    sel: string | null = null,
   ): void {
     this.closeAll();
     if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
-    this.showing = { kind: 'craft', station, skills, known, sel: null };
+    this.showing = { kind: 'craft', station, skills, known, sel };
     const face = (station && STATION_FACE[station]) || HANDIWORK_FACE;
     this.dressCraft(
       face.label,
@@ -1444,6 +1446,21 @@ export class StationPanels {
     // re-deal from the ResizeObserver a frame later).
     this.craftPanel.classList.remove('hidden');
     this.renderCraft();
+  }
+
+  /**
+   * The bench the open craft screen speaks for — station, chosen
+   * recipe, anchor tile. THE BENCH CALLS YOU BACK reads this the
+   * moment a batch starts (before closeAll wipes it), so a finished
+   * batch can reopen the same bench on the same recipe.
+   */
+  get craftBench(): {
+    station: StationType | null;
+    sel: string | null;
+    at: { tx: number; ty: number } | null;
+  } | null {
+    if (this.showing?.kind !== 'craft') return null;
+    return { station: this.showing.station, sel: this.showing.sel, at: this.anchorTile };
   }
 
   /** How many of a recipe the pack can cover right now. */
@@ -1802,7 +1819,15 @@ export class StationPanels {
       const count = this.makeable(recipe);
       return this.ledgerRow({
         key: `recipe:${recipe.id}`,
-        next: '#craft-detail',
+        // THE HAND LANDS ON THE BATCH: choosing a makeable recipe puts
+        // the cursor straight on its biggest make button, so the whole
+        // craft is two presses — pick, confirm. Locked or short rows
+        // (and a bench already at work, which shows Stop instead) still
+        // land on the detail pane's first stop.
+        next:
+          locked || count === 0 || this.getAction()?.recipe
+            ? '#craft-detail'
+            : `key:craft:${recipe.id}:${count > 1 ? 'all' : 1}`,
         iconUrl: (img) => queueItemIcon(img, recipe.output.item, 40),
         name: recipe.name,
         note: locked ? `lvl ${recipe.levelReq}` : count > 0 ? `× ${count}` : 'short',

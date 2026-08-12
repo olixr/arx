@@ -600,7 +600,12 @@ const buildTray = new BuildTray(
 );
 
 const stationPanels = new StationPanels(
-  (recipe, qty) => game.craft(recipe, qty),
+  (recipe, qty) => {
+    // The bench remembers itself the moment work begins — captured
+    // BEFORE the panel closes over it (THE BENCH CALLS YOU BACK).
+    benchReturn = stationPanels.craftBench;
+    game.craft(recipe, qty);
+  },
   (op, item, qty, gearId) => {
     // Withdrawals thunk out of the chest; deposits cue at their senders.
     if (op === 'withdraw') sfx.stow();
@@ -879,7 +884,19 @@ document.addEventListener('pointerover', (e) => {
 // deliberate bank/shop + pack pairing, composed in activateTarget and
 // onBank. (Function declarations — hoisted, safe to hand to UiNav.)
 
+/**
+ * THE BENCH CALLS YOU BACK: a batch begun at the bench remembers its
+ * bench, and when the work ends well the bench reopens on the same
+ * recipe — the menu got out of the way for the WATCHING, not to make
+ * you re-walk the ledger. Any deliberate move on the player's part
+ * (opening a room, closing UI, walking off, starting other work)
+ * lets the memory go: the bench never ambushes.
+ */
+let benchReturn: (typeof stationPanels)['craftBench'] = null;
+const BENCH_RETURN_DELAY_MS = 1250;
+
 function closeAllUi(): void {
+  benchReturn = null;
   stationPanels.closeAll();
   panels.closeAll();
   lootPanel.close();
@@ -1106,6 +1123,9 @@ const game = new ClientGame(input, {
         });
       }
       stationPanels.refreshOpen();
+    } else {
+      // Other work claimed the hands — the bench lets its memory go.
+      benchReturn = null;
     }
   },
   // Work the world refused mid-swing says why instead of going mute.
@@ -1119,6 +1139,29 @@ const game = new ClientGame(input, {
     craftHud.end(reason, made);
     if (reason === 'done' && made !== undefined && made > 0) sfx.workDone();
     if (made !== undefined) stationPanels.refreshOpen();
+    // THE BENCH CALLS YOU BACK: a batch that ended WELL reopens its
+    // bench on the same recipe after a breath for the work card's
+    // ceremony — unless the player has moved on by then (walked off,
+    // opened a room, started other work). Any other end lets go.
+    if (made !== undefined && reason !== 'done') benchReturn = null;
+    if (reason === 'done' && made !== undefined && made > 0 && benchReturn) {
+      const bench = benchReturn;
+      const stood = { ...game.predictor.pos };
+      window.setTimeout(() => {
+        if (benchReturn !== bench) return; // superseded or let go
+        benchReturn = null;
+        const pos = game.predictor.pos;
+        if (Math.hypot(pos.x - stood.x, pos.y - stood.y) > 0.75) return;
+        if (cinema.open || game.action || stationPanels.anyOpen || currentScreen() !== null) return;
+        stationPanels.openCraft(
+          bench.station,
+          game.skills,
+          game.knownRecipes,
+          bench.at ?? undefined,
+          bench.sel,
+        );
+      }, BENCH_RETURN_DELAY_MS);
+    }
     if (!activeSite) return;
     activeSite = null;
     if (reason === 'moved') {
