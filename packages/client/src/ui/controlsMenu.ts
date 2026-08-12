@@ -197,7 +197,7 @@ export function installControlsMenu(deps: ControlsDeps): void {
       warn.classList.toggle('hidden', pageFocused);
       if (views.length === 0) {
         body.textContent =
-          'No controller seen yet. Press a button on the pad with this window in front — browsers stay deaf to a pad until it speaks first.';
+          'No controller seen yet. Press a button on the pad with this window in front. Browsers stay deaf to a pad until it speaks first.';
       } else {
         body.innerHTML = '';
         for (const v of views) {
@@ -211,7 +211,7 @@ export function installControlsMenu(deps: ControlsDeps): void {
           how.className = 'pad-card-how';
           how.textContent = v.native
             ? 'Mapped by the browser (standard layout).'
-            : `Not mapped by the browser — read as "${v.profile}".`;
+            : `Not mapped by the browser. Read as "${v.profile}".`;
           const lights = document.createElement('div');
           lights.className = 'pad-lights';
           for (let i = 0; i < 16; i++) {
@@ -234,7 +234,7 @@ export function installControlsMenu(deps: ControlsDeps): void {
           live.textContent = pageFocused
             ? quiet < 1500
               ? 'Reading live.'
-              : `Nothing new for ${(quiet / 1000).toFixed(0)}s — press a button to check.`
+              : `Quiet for ${(quiet / 1000).toFixed(0)}s. Press a button to check.`
             : 'Frozen: the page does not hold focus.';
           card.append(name, how, lights, sticks, live);
           body.appendChild(card);
