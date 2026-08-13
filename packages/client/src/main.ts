@@ -13,6 +13,7 @@ import { Renderer } from './render/renderer.js';
 import type { SmashKind } from './render/debris.js';
 import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
+import { BeltSlot, resolveBelt, beltPin } from './ui/beltSlot.js';
 import { CompanionPlaque } from './ui/companionPlaque.js';
 import { Panels, SKILL_FACE, SKILL_STORY } from './ui/panels.js';
 import { showLevelUp } from './ui/levelToast.js';
@@ -748,6 +749,26 @@ function useSlotGuarded(slot: number): void {
   }
   useSlotSound(item.item);
   game.useSlot(slot);
+}
+
+/**
+ * THE BELT PRESS: resolve the belt against the live pack and swallow
+ * its pick. One door for the key, the pad edge, and the well itself —
+ * character creation and a running cinematic own the hands, so the
+ * press stands down there.
+ */
+function quickUseBelt(): void {
+  if (looks.open || cinema.open || game.ownEid === null) return;
+  const pick = resolveBelt(game.inventory, beltPin());
+  if (!pick) {
+    sfx.uiTap();
+    chat.addLine({
+      channel: 'system',
+      text: 'Nothing on your belt. Set a meal on it from your pack.',
+    });
+    return;
+  }
+  useSlotGuarded(pick.slot);
 }
 
 const panels = new Panels(
@@ -1716,6 +1737,9 @@ dressPanel(el('social-panel'), {
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);
 hotbar.onReady = () => sfx.abilityReady();
+// THE BELT: the fifth well — one press eats the belt's consumable
+// (1 on keys, d-pad ▼ on a pad, or pressing the well itself).
+const belt = new BeltSlot(() => quickUseBelt());
 // THE COMPANION PLAQUE: the friend at your heel as a standing HUD
 // piece. THE QUIET HEEL holds — pressing it pats the friend at your
 // side; the server range-gates the press, so a far body just no-ops.
@@ -2461,6 +2485,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (buildMode && bindings.kbMatches('buildRotate', e.code)) cycleBuildOrient(1);
   if (bindings.kbMatches('interact', e.code)) activateTarget(game.findNearbyTarget());
+  if (bindings.kbMatches('quickUse', e.code) && !e.repeat) quickUseBelt();
   if (bindings.kbMatches('zoomIn', e.code)) {
     renderer.camera.stepZoom(1.15);
     saveZoom();
@@ -3353,6 +3378,10 @@ function frame(now: number): void {
     for (const btn of bindings.pad('zoomCycle')) {
       if (padEdge(btn)) cycleZoom();
     }
+    // THE BELT on the pad: one edge, one meal — d-pad ▼ by default.
+    for (const btn of bindings.pad('quickUse')) {
+      if (padEdge(btn)) quickUseBelt();
+    }
   }
   padPrevBtns = padBtns;
 
@@ -3381,6 +3410,7 @@ function frame(now: number): void {
   game.update(now);
   renderer.render(game, frameDt);
   hotbar.update(game);
+  belt.update(game);
   companionPlaque.update(game);
 
   // The world's voice: zone-weighted music and ambience follow the

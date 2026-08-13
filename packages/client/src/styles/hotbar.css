@@ -44,6 +44,25 @@
   cursor: default;
 }
 
+/* THE BELT: the consumable well stands a breath past the sigil, the
+   same distance the trinket pair keeps from the art pair. */
+.belt-slot {
+  margin-left: 0.75rem;
+}
+
+/* The count hangs off the top-left corner, mirroring the key token's
+   bottom-right perch — plate stays uncovered between them. */
+.belt-qty {
+  position: absolute;
+  left: -0.4375rem;
+  top: -0.4375rem;
+  font-size: 0.71875rem;
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  pointer-events: none;
+}
+
 .hotbar-icon {
   position: absolute;
   inset: 0.125rem;

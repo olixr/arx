@@ -40,7 +40,9 @@ test('core actions are reachable on the pad', () => {
     'ability4',
     'dodge',
     'interact',
-    'sit',
+    // THE BELT outranks the pose: d-pad ▼ swallows the belt consumable
+    // now. Sit ships keyboard-only (X) and stays rebindable on pad.
+    'quickUse',
     'sheathe',
     'sneakToggle',
     'screenPack',

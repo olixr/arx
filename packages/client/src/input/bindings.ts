@@ -29,6 +29,7 @@ export type ActionId =
   | 'ability3'
   | 'ability4'
   | 'dodge'
+  | 'quickUse'
   | 'interact'
   | 'lootReveal'
   | 'buildRotate'
@@ -66,11 +67,11 @@ export interface ActionDef {
 
 /**
  * The shipped layout. Keyboard: WASD moves, Space attacks, QERT casts,
- * F uses, Shift dodges; the stance row is Z walk / X sit / C sneak;
- * screens live on I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses,
- * Ⓑ dodges, LB/LT/RB/▲ cast, Ⓨ names the loot; d-pad ▼ sits,
- * ◀ sheathes, ▶ raises the glass; L3 sneaks, R3 steps the camera;
- * Start is the pack, Select the chart.
+ * F uses, Shift dodges, 1 swallows the belt's meal; the stance row is
+ * Z walk / X sit / C sneak; screens live on I K V N B U M O G. Pad:
+ * RT (or Ⓧ) attacks, Ⓐ uses, Ⓑ dodges, LB/LT/RB/▲ cast, Ⓨ names the
+ * loot; d-pad ▼ eats off the belt, ◀ sheathes, ▶ raises the glass;
+ * L3 sneaks, R3 steps the camera; Start is the pack, Select the chart.
  *
  * THE PAIRED HAND: the two technique seats ride TOGETHER — Q and E on
  * keys, LB and LT under the left hand — because arts are the first
@@ -84,7 +85,10 @@ export const ACTIONS: readonly ActionDef[] = [
   { id: 'moveRight', label: 'Move east', group: 'Movement', kb: ['KeyD', 'ArrowRight'], pad: [] },
   { id: 'walkToggle', label: 'Walk / run', group: 'Movement', kb: ['KeyZ'], pad: [] },
   { id: 'sneakToggle', label: 'Sneak', group: 'Movement', kb: ['KeyC'], pad: [10] },
-  { id: 'sit', label: 'Sit / stand', group: 'Movement', kb: ['KeyX'], pad: [13] },
+  // Pad ships unbound: d-pad ▼ went to the belt (a dying player needs
+  // the meal more than the pose). X still sits, and the pad edge path
+  // stays wired so a rebind Just Works.
+  { id: 'sit', label: 'Sit / stand', group: 'Movement', kb: ['KeyX'], pad: [] },
   // Pad ships unbound — all sixteen buttons answer elsewhere (ONE
   // KEYMAP: overloading a taken button was the founding bug). Pads
   // call the beast from the character screen's stable row instead.
@@ -96,6 +100,9 @@ export const ACTIONS: readonly ActionDef[] = [
   { id: 'ability2', label: 'Relic', group: 'Combat', kb: ['KeyR'], pad: [5] },
   { id: 'ability4', label: 'Sigil', group: 'Combat', kb: ['KeyT'], pad: [12] },
   { id: 'dodge', label: 'Dodge', group: 'Combat', kb: ['ShiftLeft'], pad: [1] },
+  // THE BELT: one press swallows the belt's consumable, no pack visit.
+  // d-pad ▼ is the genre's item button and the panic hand finds it.
+  { id: 'quickUse', label: 'Belt consumable', group: 'Combat', kb: ['Digit1'], pad: [13] },
   { id: 'sheathe', label: 'Sheathe weapons', group: 'Combat', kb: ['KeyH'], pad: [14] },
 
   { id: 'interact', label: 'Use / talk', group: 'World', kb: ['KeyF'], pad: [0] },

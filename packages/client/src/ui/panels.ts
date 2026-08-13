@@ -54,6 +54,7 @@ import { bigButton, sectionHead, statPlaque } from './panel.js';
 import { bindings, padGlyph, type ActionId } from '../input/bindings.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 import { seatChip, glyphLine } from './kit/glyphs.js';
+import { beltEligible, beltPin, setBeltPin } from './beltSlot.js';
 import {
   closeSheet,
   openSheet,
@@ -1269,6 +1270,15 @@ export class Panels {
       const station = this.stationContext();
       if (def?.equipSlot) entries.push({ label: 'Equip', act: () => this.onSlotAction(idx, 'use') });
       else if (def?.heals) entries.push({ label: 'Eat', act: () => this.onSlotAction(idx, 'use') });
+      else if (def?.buff) entries.push({ label: 'Drink', act: () => this.onSlotAction(idx, 'use') });
+      // THE BELT: any consumable can be pinned as the quick-use pick.
+      if (beltEligible(slot.item)) {
+        const pinned = beltPin() === slot.item;
+        entries.push({
+          label: pinned ? 'Take off belt' : 'Set on belt',
+          act: () => setBeltPin(pinned ? null : slot.item),
+        });
+      }
       if (station === 'bank') {
         entries.push({ label: `Deposit ${slot.qty > 1 ? 'all' : ''}`.trim(), act: () => this.onSlotAction(idx, 'deposit') });
       } else if (station === 'shop') {
