@@ -5686,6 +5686,24 @@ function namedChaseDefs(): EquipmentDef[] {
     color: '#e8e4da',
     rarities: ['legendary'] as RarityTier[],
   };
+  // GATEFALL — the door that fell, worn as war plate. When the first
+  // riftgate shattered, a doorwarden smith forged its night glass
+  // over the gate's own granite so the way down would never again
+  // open unanswered. The warden wore it down the way and did not
+  // come back. Owner: the Champion's trophy racks keep the suit with
+  // everyone who tried; the gate keeps what it considers its own.
+  const gatefall = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 2 },
+      { stat: 'vitality', w: 2 },
+      { stat: 'twohand' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#37304f',
+    rarities: ['legendary'] as RarityTier[],
+  };
   // ------------------------------------------- the grand arcanum
   // The cloth high road: six chase vestments climbing the same rungs
   // the plate high road took, 30 to 52. The caster's answer to the
@@ -5971,7 +5989,7 @@ function namedChaseDefs(): EquipmentDef[] {
       'Talons over knuckles. The grip does not negotiate.'),
 
     chasePiece(oathgold, 'oathgold_helm', 'Oathgold helm', 'head', 24, 6, 1150, 'Om',
-      'A crown of spears over eyes that keep fire. It has never once looked away.'),
+      'A crown of spears on a face of forged gold. It has never once looked away.'),
     chasePiece(oathgold, 'oathgold_platebody', 'Oathgold platebody', 'body', 27, 9, 1400, 'On',
       'Banners at both shoulders, the oath written in crimson. The procession never ended.'),
     chasePiece(oathgold, 'oathgold_greaves', 'Oathgold greaves', 'legs', 26, 8, 1250, 'Oo',
@@ -6046,6 +6064,17 @@ function namedChaseDefs(): EquipmentDef[] {
       'Gold to the toe. Parade step and war step are the same step.'),
     chasePiece(kingsmane, 'kingsmane_gauntlets', 'Kingsmane gauntlets', 'gloves', 50, 10, 2450, 'Kp',
       'A sapphire at the fist and lions at the shoulders. Doors open before the knock.'),
+
+    chasePiece(gatefall, 'gatefall_helm', 'Gatefall helm', 'head', 49, 9, 2400, 'Gr',
+      'The door wears a face and the face is a door. The crack at eye height is the only window it ever allowed.'),
+    chasePiece(gatefall, 'gatefall_platebody', 'Gatefall platebody', 'body', 52, 13, 2900, 'Gt',
+      'Night glass forged over the gate’s own granite. The seam down the chest is a door, and something still tries the latch.'),
+    chasePiece(gatefall, 'gatefall_greaves', 'Gatefall greaves', 'legs', 51, 11, 2600, 'Gv',
+      'Quarried violet under one white edge. They have held a doorway the world would rather forget.'),
+    chasePiece(gatefall, 'gatefall_sabatons', 'Gatefall sabatons', 'boots', 50, 10, 2450, 'Vq',
+      'Glass to the toe caps. Every step lands like a knock from the wrong side.'),
+    chasePiece(gatefall, 'gatefall_gauntlets', 'Gatefall gauntlets', 'gloves', 50, 10, 2450, 'Vt',
+      'A splinter of the gate set past the knuckles. The fist knocks with the door’s own glass.'),
 
     chasePiece(sunhallow, 'sunhallow_hood', 'Sunhallow hood', 'head', 27, 5, 1300, 'Ua',
       'Gilt rays stand behind the brow and breathe. Dawn, worn indoors.'),

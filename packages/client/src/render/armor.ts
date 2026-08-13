@@ -46,13 +46,15 @@ export interface BodyStyle {
    *  plates, `stormspire` the stormsinger storm-glass crystals,
    *  `charbrand` the flamewrought ember-seamed char slabs,
    *  `wardcrest` the duskwarden brass crescent with its watch stone,
-   *  `aethercrest` the aetherion floating silver arcs. */
+   *  `aethercrest` the aetherion floating silver arcs, `gateshard`
+   *  the gatefall broken arch of night glass that never meets. */
   pauldron:
     | 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur'
     | 'feathered' | 'orbs' | 'shards' | 'wyrmwing'
     | 'bonemaw' | 'boneridge' | 'thorncrest' | 'lionhead'
     | 'gonfalon' | 'rampart' | 'sunfan' | 'veilwing'
-    | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest';
+    | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest'
+    | 'gateshard';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
@@ -332,6 +334,18 @@ export interface BodyStyle {
    * oathgold word.
    */
   vigil?: { color: string };
+  /**
+   * THE BREACH: the door remembers opening. A hairline seam of
+   * otherlight cracks open down the breastplate's forge crease,
+   * blooms, and seals again, and the shoulder arches and the helm
+   * keystone take their turns on the same slow rotation — left
+   * arch, chest, right arch, then the crown gap — the way a locked
+   * door is tried, hinge by hinge. While a station holds, glass
+   * motes drift UP out of the light and fade: the far side's
+   * gravity, leaking. Consumed by drawPauldron so the shoulder
+   * stations burn IN the shard fractures. The gatefall word.
+   */
+  breach?: { color: string };
 }
 
 export interface HelmStyle {
@@ -357,6 +371,7 @@ export interface HelmStyle {
     | 'greathelm' | 'bascinet' | 'barbute' | 'armet' | 'sallet'
     | 'radiant' | 'ramfort' | 'warmask' | 'dread' | 'briar' | 'drake'
     | 'aurochs' | 'barrow' | 'tempest' | 'furnace' | 'wyrm' | 'warcrown'
+    | 'gatehelm'
     | 'hood' | 'circlet' | 'wizard' | 'veil' | 'magus';
   visor?: 'slit' | 'cross';
   plume?: { color: string };
@@ -473,6 +488,14 @@ export interface HelmStyle {
    *  procession's rotation reaches the helm (the third station after
    *  the two shoulder banners). The oathgold word. */
   vigil?: { color: string };
+  /** THE KEYSTONE: the gatehelm's missing capstone — the broken arch
+   *  over the crown never meets, and the stone that should close it
+   *  hangs in the gap, point down, riding its own slow bob. The gap
+   *  beneath it bleeds otherlight, surging when the breach rotation
+   *  reaches the helm (the fourth station, after both shoulders and
+   *  the chest). `glass` is the stone's night-glass body; `color` is
+   *  the light that will not let it fall. The gatefall word. */
+  keystone?: { color: string; glass: string };
 }
 
 export interface LegStyle {
@@ -1106,6 +1129,26 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     tabard: { color: '#2c3a5e', trim: '#c9a23c' },
     crownring: { color: '#e8c05c' },
   },
+  gatefall_platebody: {
+    // THE GATEFALL — the door that fell, worn as war plate. When the
+    // first riftgate shattered, a doorwarden smith forged its night
+    // glass over the gate's own granite so the way down would never
+    // again open unanswered. Three values by law: night-glass violet
+    // as the ground, the riftgate's quarried stone as the working
+    // metal, gate-glass white as the ONE BRIGHT EDGE — and the
+    // otherlight as the living word. Shoulders wear the GATESHARD:
+    // a broken arch springing off the seat dome, two glass voussoirs
+    // reaching for a crown that is not there. No rivet seams on the
+    // chest: glass is fused, not hammered — the granite fittings
+    // carry the smith's rivets instead. The breastplate's forge
+    // crease is the door's meeting line, and THE BREACH tries it on
+    // every rotation.
+    color: '#37304f', trim: '#f1e9ff', metal: '#494259', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'gateshard', pauldronColor: '#3e3560',
+    pauldronTrim: '#f1e9ff', pauldronScale: 1.2, chest: 'plate',
+    skirt: 0, collar: 'gorget', midline: true, tassets: true,
+    breach: { color: '#a985ff' },
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -1418,6 +1461,18 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#e8e4da', trim: '#c9a23c', kind: 'greathelm', visor: 'slit',
     standard: { pole: '#c9a23c', banner: '#2c3a5e', trim: '#e8e4da' },
   },
+  gatefall_helm: {
+    // THE GATEHELM: the door itself, worn as a face. A gate-arched
+    // shell with the riftgate's granite for its jambs, a sculpted
+    // double door where a visor would be — hinge straps, a leaking
+    // meeting seam, and a jagged sight crack at eye height where the
+    // glass broke exactly where the warden needed to see. Over the
+    // crown the broken arch rises and never meets; the missing
+    // KEYSTONE floats in the gap, point down, held by the light
+    // that comes through from the other side.
+    color: '#37304f', trim: '#f1e9ff', kind: 'gatehelm', jaw: '#494259',
+    keystone: { color: '#a985ff', glass: '#4c4176' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -1492,6 +1547,7 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   rimethorn_greaves: { kind: 'greaves', thigh: '#232838', shin: '#2a3040', knee: 'plate', kneeColor: '#a8d8ff' },
   palethorn_greaves: { kind: 'greaves', thigh: '#8d9299', shin: '#b8bec8', knee: 'plate', kneeColor: '#b0703c' },
   kingsmane_greaves: { kind: 'greaves', thigh: '#8a8478', shin: '#e8e4da', knee: 'plate', kneeColor: '#c9a23c' },
+  gatefall_greaves: { kind: 'greaves', thigh: '#2c2542', shin: '#494259', knee: 'plate', kneeColor: '#8b81ab' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -1571,6 +1627,7 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   rimethorn_sabatons: { color: '#2a3040', height: 0.14, toe: '#1f2430', spike: true, cuff: { color: '#a8d8ff' } },
   palethorn_sabatons: { color: '#b8bec8', height: 0.14, toe: '#8d9299', spike: true, cuff: { color: '#b0703c' } },
   kingsmane_sabatons: { color: '#e8e4da', height: 0.15, toe: '#c9a23c', cuff: { color: '#2c3a5e' } },
+  gatefall_sabatons: { color: '#3e3560', height: 0.16, toe: '#8b81ab', cuff: { color: '#494259' } },
 };
 
 /**
@@ -1912,6 +1969,13 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     color: '#e8e4da', hand: 'gauntlet', bracer: '#d4cfc2',
     cuff: { color: '#c9a23c', kind: 'flare' },
     knuckle: { color: '#4a6ad8', kind: 'gem' },
+  },
+  gatefall_gauntlets: {
+    // A splinter of the gate bezel-set past the knuckles: the fist
+    // knocks with the door's own glass.
+    color: '#3e3560', hand: 'gauntlet', bracer: '#37304f',
+    cuff: { color: '#494259', kind: 'flare' },
+    knuckle: { color: '#a985ff', kind: 'gem' },
   },
 };
 
@@ -4877,6 +4941,91 @@ export function drawTorsoGarment(
       }
     }
 
+    // ---- THE BREACH: the door remembers opening. The breastplate's
+    // forge crease is the meeting line of two doors, and on the
+    // chest's station in the slow rotation (left arch, CHEST, right
+    // arch, crown) a seam of otherlight cracks open down it, blooms,
+    // branches, and seals — while it holds, glass motes drift UP out
+    // of the light and fade. The far side's gravity, leaking. A
+    // pilot thread stays lit between turns; the back keeps only the
+    // sealed scar.
+    if (st.breach) {
+      const bc = st.breach.color;
+      const y0 = -th * 0.98;
+      const y1 = -th * 0.12;
+      if (back) {
+        ctx.globalAlpha = 0.14;
+        ctx.strokeStyle = bc;
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(0, y0 + th * 0.1);
+        ctx.lineTo(0, y1);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else {
+        const wake = Math.max(0, Math.sin(nowMs * 0.0009 + 1 * 1.5708) - 0.45) / 0.55;
+        // The pilot thread: the seam never goes fully dark.
+        ctx.globalAlpha = 0.3 + wake * 0.7;
+        ctx.strokeStyle = bc;
+        ctx.lineWidth = Math.max(1, s * (0.01 + wake * 0.016));
+        ctx.beginPath();
+        ctx.moveTo(0, y0);
+        ctx.lineTo(0, y1);
+        ctx.stroke();
+        if (wake > 0.04) {
+          // The bloom: a soft light standing off the seam, a hot
+          // white core, and the crack BRANCHING — a door forced a
+          // finger's width, light finding every flaw in the glass.
+          ctx.globalAlpha = wake * 0.3;
+          ctx.fillStyle = bc;
+          ctx.beginPath();
+          ctx.ellipse(0, (y0 + y1) / 2, tw * 0.34, th * 0.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = Math.min(1, wake * 1.1);
+          ctx.strokeStyle = shade(bc, 34);
+          ctx.lineWidth = Math.max(1, s * 0.01);
+          ctx.beginPath();
+          ctx.moveTo(0, y0 + th * 0.08);
+          ctx.lineTo(0, y1 - th * 0.06);
+          ctx.stroke();
+          ctx.globalAlpha = wake * 0.85;
+          ctx.strokeStyle = shade(bc, 12);
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.moveTo(0, y0 + th * 0.26);
+          ctx.lineTo(tw * 0.3, y0 + th * 0.14);
+          ctx.lineTo(tw * 0.44, y0 + th * 0.2);
+          ctx.moveTo(0, y0 + th * 0.52);
+          ctx.lineTo(-tw * 0.26, y0 + th * 0.62);
+          ctx.lineTo(-tw * 0.42, y0 + th * 0.56);
+          ctx.moveTo(0, y1 - th * 0.28);
+          ctx.lineTo(tw * 0.2, y1 - th * 0.18);
+          ctx.stroke();
+          // The motes: glass dust falling out of the world, upward.
+          for (let mi = 0; mi < 3; mi++) {
+            const ph = nowMs * 0.00062 + mi * 0.41;
+            const cyc = ph - Math.floor(ph);
+            const ma = Math.sin(cyc * Math.PI) * wake;
+            if (ma <= 0.06) continue;
+            const mx = Math.sin(mi * 2.6 + Math.floor(ph) * 1.7) * tw * 0.3
+              + Math.sin(cyc * 4.4 + mi) * 0.014 * s;
+            const my = (y0 + y1) / 2 + th * 0.2 - cyc * th * 1.15;
+            const mr = (0.012 - cyc * 0.005) * s;
+            ctx.globalAlpha = ma * 0.9;
+            ctx.fillStyle = shade(bc, 28);
+            ctx.beginPath();
+            ctx.moveTo(mx, my - mr);
+            ctx.lineTo(mx + mr * 0.7, my);
+            ctx.lineTo(mx, my + mr);
+            ctx.lineTo(mx - mr * 0.7, my);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+
     // ---- THE CROWN RING: a broad gilt ring floating about the
     // torso, turning slowly on its own axis. From the front two arcs
     // stand off the flanks (the body hides the rest); from behind the
@@ -6142,6 +6291,200 @@ export function drawPauldron(
         ctx.beginPath();
         ctx.arc(chx, chy, 0.0058 * s, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'gateshard') {
+    // THE GATESHARD — the gatefall shoulder: a broken arch worn as a
+    // war cap. The riftgate came down and somebody forged the fall.
+    // Reading order, inside out: the WORN SEAT in the gate's own
+    // quarried granite (glass is luminous; the socket it grows from
+    // stays stone); two night-glass VOUSSOIR slabs springing off the
+    // dome, inboard and outboard, each leaning toward a crown that is
+    // not there — beveled top planes (2.5D law), fracture seams down
+    // the faces, and THE ONE BRIGHT EDGE up every leading curve, or
+    // dark glass on dark plate reads as shadow; a snapped SPLINTER
+    // stub low on the outer slope where the third stone sheared; and
+    // THE BREACH in the gap: this shoulder's station on the slow
+    // rotation — otherlight blooming between the broken tips, glass
+    // motes drifting UP out of the light. The arch never closes. It
+    // remembers trying.
+    const glass = hurt ? '#ffffff' : col;
+    const stone = hurt ? '#ffffff' : (st.metal ?? shade(base, -30));
+    // 1) THE SEAT: granite, riveted — the masonry the glass bites.
+    seat(0.118 * s, 0.092 * s, hurt ? '#ffffff' : shade(stone, near ? 4 : -8), trim);
+    if (!hurt) {
+      // Quarry rivets on the dome hem: the smith's hand on the stone.
+      ctx.fillStyle = shade(stone, 26);
+      for (const u of [-0.55, 0, 0.55]) {
+        ctx.beginPath();
+        ctx.arc(u * 0.085 * s, 0.062 * s, 0.0075 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // 2) THE SPRINGING: two broad glass voussoirs off the dome, the
+    // outboard stone taller (the silhouette peeks OUTBOARD, never up
+    // into the face), both curving in over the crown of the dome and
+    // stopping short. Each is a slab, not a spike: main face, lit
+    // top-plane bevel where the break runs, a fracture seam, and the
+    // bright leading edge.
+    interface Slab {
+      rx: number; ry: number; tx: number; ty: number;
+      w: number; lean: number;
+    }
+    const slabs: Slab[] = [
+      // outboard voussoir: roots at the dome's outer slope and leans
+      // OUTBOARD — the silhouette peeks past the back edge, never up
+      // into the face. The head keeps the highest gold.
+      { rx: 0.075, ry: 0.012, tx: 0.108, ty: -0.182, w: 0.06, lean: 0.28 },
+      // inboard stump: the arch's other springing, snapped LOW — a
+      // broken tooth leaning away from the neck. The two break faces
+      // frame THE GAP over the dome's crown.
+      { rx: -0.052, ry: 0.008, tx: -0.072, ty: -0.108, w: 0.046, lean: -0.22 },
+    ];
+    for (let i = slabs.length - 1; i >= 0; i--) {
+      const sl = slabs[i]!;
+      const rx = side * sl.rx * s;
+      const ry = sl.ry * s;
+      const tx = side * sl.tx * s;
+      const ty = sl.ty * s;
+      const w = sl.w * s;
+      const lean = side * sl.lean;
+      // The slab's long axis, and its width normal.
+      const ax = tx - rx;
+      const ay = ty - ry;
+      const al = Math.hypot(ax, ay);
+      const nx = (-ay / al) * w * 0.5;
+      const ny = (ax / al) * w * 0.5;
+      // The BROKEN top: the tip is not a point but a sheared step —
+      // a short angled break face with a bitten notch.
+      const bx = tx + nx * 0.55 - ax * 0.06;
+      const by = ty + ny * 0.55 - ay * 0.06;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(glass, (near ? 6 : -6) - i * 10);
+      ctx.beginPath();
+      ctx.moveTo(rx - nx, ry - ny);
+      // Leading (outer) edge bows with the lean — an arch springing.
+      ctx.quadraticCurveTo(
+        rx - nx + ax * 0.5 + lean * w, ry - ny + ay * 0.5,
+        tx - nx * 0.72, ty - ny * 0.72,
+      );
+      // The shear: down-step, notch, up to the inner break corner.
+      ctx.lineTo(tx - nx * 0.1 - ax * 0.03, ty - ny * 0.1 - ay * 0.03);
+      ctx.lineTo(bx, by);
+      // Trailing edge falls straighter back to the root.
+      ctx.quadraticCurveTo(
+        rx + nx + ax * 0.45 - lean * w * 0.4, ry + ny + ay * 0.45,
+        rx + nx, ry + ny,
+      );
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The break's top plane catches the sun — snapped stone shows
+        // its section (the 2.5D top-plane law at shoulder scale).
+        ctx.fillStyle = shade(glass, 18 - i * 6);
+        ctx.beginPath();
+        ctx.moveTo(tx - nx * 0.72, ty - ny * 0.72);
+        ctx.lineTo(tx - nx * 0.1 - ax * 0.03, ty - ny * 0.1 - ay * 0.03);
+        ctx.lineTo(bx, by);
+        ctx.lineTo(tx - nx * 0.35 - ax * 0.1, ty - ny * 0.35 - ay * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        // The fracture seam: one dark crack wandering down the face.
+        ctx.strokeStyle = shade(glass, -26);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(tx - nx * 0.2, ty - ny * 0.2);
+        ctx.lineTo(rx + ax * 0.55 + nx * 0.15, ry + ay * 0.55 + ny * 0.15);
+        ctx.lineTo(rx + ax * 0.3 - nx * 0.2, ry + ay * 0.3 - ny * 0.2);
+        ctx.stroke();
+        // THE ONE BRIGHT EDGE up the leading curve.
+        ctx.strokeStyle = trim;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(rx - nx, ry - ny);
+        ctx.quadraticCurveTo(
+          rx - nx + ax * 0.5 + lean * w, ry - ny + ay * 0.5,
+          tx - nx * 0.72, ty - ny * 0.72,
+        );
+        ctx.stroke();
+      }
+    }
+    // 3) THE SPLINTER: the third stone sheared at the root — a short
+    // stub on the outer slope, break face up, all that held on.
+    const spx = side * 0.118 * s;
+    const spy = 0.005 * s;
+    ctx.fillStyle = hurt ? '#ffffff' : shade(glass, -14);
+    ctx.beginPath();
+    ctx.moveTo(spx - side * 0.02 * s, spy);
+    ctx.lineTo(spx - side * 0.004 * s, spy - 0.05 * s);
+    ctx.lineTo(spx + side * 0.016 * s, spy - 0.036 * s);
+    ctx.lineTo(spx + side * 0.026 * s, spy + 0.012 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(glass, 12);
+      ctx.beginPath();
+      ctx.moveTo(spx - side * 0.004 * s, spy - 0.05 * s);
+      ctx.lineTo(spx + side * 0.016 * s, spy - 0.036 * s);
+      ctx.lineTo(spx + side * 0.006 * s, spy - 0.028 * s);
+      ctx.closePath();
+      ctx.fill();
+      // 4) THE BREACH, this shoulder's station: otherlight blooming
+      // in the gap between the broken tips — left arch first, then
+      // the chest, then this side, then the crown. A pilot ember
+      // holds even between turns: the door never quite gives up.
+      if (st.breach) {
+        const bc = st.breach.color;
+        const station = side < 0 ? 0 : 2;
+        const wake = Math.max(0, Math.sin(nowMs * 0.0009 + station * 1.5708) - 0.45) / 0.55;
+        const gx = side * 0.02 * s;
+        const gy = -0.138 * s;
+        // The pilot: a faint seam of light hanging in the gap.
+        ctx.globalAlpha = 0.22 + wake * 0.5;
+        ctx.fillStyle = bc;
+        ctx.beginPath();
+        ctx.ellipse(gx, gy, 0.03 * s + wake * 0.018 * s, 0.042 * s + wake * 0.022 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (wake > 0.04) {
+          // The bloom: hot core, and the broken tips catch the light.
+          ctx.globalAlpha = wake * 0.9;
+          ctx.fillStyle = shade(bc, 34);
+          ctx.beginPath();
+          ctx.ellipse(gx, gy, 0.012 * s, 0.022 * s, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = wake * 0.8;
+          ctx.strokeStyle = shade(bc, 26);
+          ctx.lineWidth = Math.max(1, s * 0.011);
+          ctx.beginPath();
+          ctx.moveTo(side * 0.082 * s, -0.164 * s);
+          ctx.lineTo(side * 0.06 * s, -0.14 * s);
+          ctx.moveTo(side * -0.062 * s, -0.1 * s);
+          ctx.lineTo(side * -0.04 * s, -0.118 * s);
+          ctx.stroke();
+          // Glass motes drifting UP out of the light and fading —
+          // the far side's gravity, leaking through the gap.
+          for (let mi = 0; mi < 2; mi++) {
+            const ph = nowMs * 0.00062 + mi * 0.53 + station;
+            const cyc = ph - Math.floor(ph);
+            const ma = Math.sin(cyc * Math.PI) * wake;
+            if (ma <= 0.06) continue;
+            const mx = gx + Math.sin(cyc * 4.2 + mi * 2.1) * 0.016 * s;
+            const my = gy - 0.02 * s - cyc * 0.085 * s;
+            const mr = (0.011 - cyc * 0.004) * s;
+            ctx.globalAlpha = ma * 0.9;
+            ctx.fillStyle = shade(bc, 30);
+            ctx.beginPath();
+            ctx.moveTo(mx, my - mr);
+            ctx.lineTo(mx + mr * 0.7, my);
+            ctx.lineTo(mx, my + mr);
+            ctx.lineTo(mx - mr * 0.7, my);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
       }
     }
     ctx.restore();
@@ -9714,17 +10057,21 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.closePath();
       ctx.fill();
     }
-    // THE SHELL: angular and flared — wide at the jaw, a hard cheek
-    // line, concave taper to the crown plateau. A war helm's mass,
-    // not a parade dome.
+    // THE SHELL: angular and flared — wide at the jaw with hard
+    // cheek-flange cusps hooking down off the corners, concave taper
+    // to the crown plateau. A war helm's mass with a fortress's edge.
     const shell = () => {
       ctx.moveTo(headX - hw * 0.86, botY);
-      ctx.lineTo(headX - hw * 1.08, headY + hh * 0.4);
+      ctx.lineTo(headX - hw * 0.98, headY + hh * 0.52);
+      ctx.lineTo(headX - hw * 1.28, headY + hh * 0.42);
+      ctx.lineTo(headX - hw * 1.06, headY + hh * 0.12);
       ctx.lineTo(headX - hw * 1.0, headY - hh * 0.45);
       ctx.quadraticCurveTo(headX - hw * 1.02, topY + hh * 0.16, headX - hw * 0.66, topY + hh * 0.06);
       ctx.quadraticCurveTo(headX, topY - hh * 0.06, headX + hw * 0.66, topY + hh * 0.06);
       ctx.quadraticCurveTo(headX + hw * 1.02, topY + hh * 0.16, headX + hw * 1.0, headY - hh * 0.45);
-      ctx.lineTo(headX + hw * 1.08, headY + hh * 0.4);
+      ctx.lineTo(headX + hw * 1.06, headY + hh * 0.12);
+      ctx.lineTo(headX + hw * 1.28, headY + hh * 0.42);
+      ctx.lineTo(headX + hw * 0.98, headY + hh * 0.52);
       ctx.lineTo(headX + hw * 0.86, botY);
       ctx.closePath();
     };
@@ -9733,6 +10080,44 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     shell();
     ctx.fill();
     shellLight(shell, topY, botY);
+    if (!hurt) {
+      // THE FLUTES: gothic ribbing forged over the whole dome — the
+      // second forging left this zone bare, and bare gold reads as
+      // negative space. Each channel is a dark groove with a lit west
+      // ridge, converging on the crown plateau; clipped to the shell
+      // so the ribbing lives at every facing.
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      ctx.clip();
+      const gy0 = topY + hh * 0.3;
+      const gy1 = headY + hh * 0.02;
+      for (const u of [-0.85, -0.57, -0.29, 0, 0.29, 0.57, 0.85]) {
+        ctx.strokeStyle = shade(st.color, -30);
+        ctx.lineWidth = Math.max(1.5, s * 0.017);
+        ctx.beginPath();
+        ctx.moveTo(headX + u * hw * 0.74, gy0);
+        ctx.quadraticCurveTo(headX + u * hw * 0.94, (gy0 + gy1) / 2, headX + u * hw * 1.0, gy1);
+        ctx.stroke();
+        ctx.strokeStyle = shade(st.color, 22);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(headX + u * hw * 0.74 - hw * 0.06, gy0 + hh * 0.02);
+        ctx.quadraticCurveTo(headX + u * hw * 0.94 - hw * 0.06, (gy0 + gy1) / 2, headX + u * hw * 1.0 - hw * 0.06, gy1 + hh * 0.02);
+        ctx.stroke();
+      }
+      ctx.restore();
+      // THE GILT CUSPS: the jaw flanges wear their one bright edge —
+      // a hooked flange with no lit line reads as a dent, not a wing.
+      ctx.strokeStyle = shade(st.trim, -8);
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      for (const es of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(headX + es * hw * 1.06, headY + hh * 0.12);
+        ctx.lineTo(headX + es * hw * 1.28, headY + hh * 0.42);
+        ctx.stroke();
+      }
+    }
     if (!hurt) {
       // THE CROWN BAND: a full-width electrum band seated where shell
       // meets crown — engraved, beaded, the thing the points GROW
@@ -9757,11 +10142,284 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       }
     }
     if (!hurt && front) {
+      // THE VISAGE: the second forging cut features into a bare
+      // shell — the third forges a whole sculpted mask in the old
+      // king-helm manner: brow arches, keeled nasal, chased wings
+      // and a mouth that has given orders it will not repeat, all
+      // ONE golden face. You do not wear this helm; you put on the
+      // face of the kingdom.
+      const wake = Math.max(0, Math.sin(f.nowMs * 0.0009 + 2 * 2.094) - 0.45) / 0.55;
+      const jc = st.jaw ?? shade(st.color, 10);
+      const tr = st.trim;
+      const eyeY = headY - hh * 0.08;
+      const mw = headR * 0.74 * sw;
+      const mTop = eyeY - headR * 0.42;
+      const mBot = headY + hh * 0.66;
+      // THE CHEEK GUARDS first, so the mask laps them: two lapped
+      // lames a side sweeping temple-hinge to jaw, hinge rivets in
+      // electrum — the outer face carries no bare metal anywhere.
+      for (const es of [-1, 1]) {
+        for (const [li, inK, outK, yT, yB] of [
+          [0, 0.48, 0.98, -0.04, 0.58], [1, 0.42, 0.86, 0.3, 0.88],
+        ] as const) {
+          const x0 = vx + es * headR * inK * sw;
+          const x1 = vx + es * headR * outK * sw;
+          const yTop = headY + hh * yT;
+          const yBot = headY + hh * yB;
+          ctx.fillStyle = li === 0 ? shade(jc, -6) : shade(jc, -16);
+          ctx.beginPath();
+          ctx.moveTo(x0, yTop + hh * 0.1);
+          ctx.lineTo(x1, yTop);
+          ctx.lineTo(x1 - es * headR * 0.09, yBot);
+          ctx.lineTo(x0, yBot - hh * 0.06);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = shade(jc, 16);
+          ctx.lineWidth = Math.max(1, s * 0.01);
+          ctx.beginPath();
+          ctx.moveTo(x0, yTop + hh * 0.1);
+          ctx.lineTo(x1, yTop);
+          ctx.stroke();
+          ctx.fillStyle = shade(tr, 14);
+          ctx.beginPath();
+          ctx.arc(x1 - es * headR * 0.06, yTop + hh * 0.08, headR * 0.034, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // THE GORGET: three lapped throat lames under the chin, each
+      // with its lit upper edge — the mask's point laps the stack.
+      for (const [oy, wk] of [[0.62, 1.0], [0.79, 0.86], [0.95, 0.72]] as const) {
+        ctx.fillStyle = shade(jc, -12);
+        ctx.fillRect(vx - headR * 0.52 * sw * wk, headY + hh * oy, headR * 1.04 * sw * wk, hh * 0.18);
+        ctx.fillStyle = shade(jc, 6);
+        ctx.fillRect(vx - headR * 0.52 * sw * wk, headY + hh * oy, headR * 1.04 * sw * wk, hh * 0.05);
+      }
+      // THE MASK PLATE: an angular faceted war-visor — squared
+      // temples, hard jaw angles, chin drawn to the vow's point. Gold
+      // on gold: the mask is METAL wearing dark engraving, never a
+      // pale face (the porcelain sin dies here for good). One
+      // recessed band across the eye line so the fires burn from
+      // INSIDE the face.
+      const mask = () => {
+        ctx.moveTo(vx - mw, mTop + headR * 0.06);
+        ctx.lineTo(vx - mw * 1.02, eyeY + headR * 0.26);
+        ctx.lineTo(vx - mw * 0.64, headY + hh * 0.5);
+        ctx.lineTo(vx - mw * 0.3, mBot);
+        ctx.lineTo(vx, mBot + hh * 0.1);
+        ctx.lineTo(vx + mw * 0.3, mBot);
+        ctx.lineTo(vx + mw * 0.64, headY + hh * 0.5);
+        ctx.lineTo(vx + mw * 1.02, eyeY + headR * 0.26);
+        ctx.lineTo(vx + mw, mTop + headR * 0.06);
+        ctx.quadraticCurveTo(vx, mTop - headR * 0.1, vx - mw, mTop + headR * 0.06);
+        ctx.closePath();
+      };
+      ctx.fillStyle = jc;
+      ctx.beginPath();
+      mask();
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      mask();
+      ctx.clip();
+      ctx.fillStyle = shade(jc, -9);
+      ctx.fillRect(vx, mTop - headR * 0.2, mw * 1.4, hh * 3);
+      ctx.fillStyle = shade(jc, -26);
+      ctx.beginPath();
+      ctx.ellipse(vx, eyeY + headR * 0.02, mw * 0.98, headR * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // The jaw facet turn: the lower mask breaks to its own plane
+      // at the wing line — sculpture, not a sticker.
+      ctx.fillStyle = shade(jc, -13);
+      ctx.beginPath();
+      ctx.moveTo(vx - mw * 1.02, headY + hh * 0.24);
+      ctx.lineTo(vx + mw * 1.02, headY + hh * 0.24);
+      ctx.lineTo(vx + mw * 0.3, mBot + hh * 0.2);
+      ctx.lineTo(vx - mw * 0.3, mBot + hh * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      // The mask's edge: bright-cut gold, then a dark parting line so
+      // the plate visibly stands OFF the helm.
+      ctx.strokeStyle = shade(jc, -32);
+      ctx.lineWidth = Math.max(1.5, s * 0.018);
+      ctx.beginPath();
+      mask();
+      ctx.stroke();
+      ctx.strokeStyle = shade(jc, 24);
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      mask();
+      ctx.stroke();
+      // THE BROW ARCHES: heavy electrum brows forged over each
+      // socket, meeting at the nasal root, temple ends carrying orb
+      // terminals — the same furniture the crown points and shoulder
+      // spars fly. Beads ride each arch like the crown band's own.
+      for (const es of [-1, 1]) {
+        const bFarK = es === ld ? 1 : 1 - profileK * 0.5;
+        const bx0 = vx + es * headR * 0.06 * sw;
+        const bx1 = vx + es * headR * 0.68 * sw * bFarK;
+        ctx.strokeStyle = es === -1 ? shade(tr, 6) : shade(tr, -10);
+        ctx.lineWidth = Math.max(2, s * 0.028);
+        ctx.beginPath();
+        ctx.moveTo(bx0, eyeY - headR * 0.1);
+        ctx.quadraticCurveTo(vx + es * headR * 0.34 * sw * bFarK, eyeY - headR * 0.36, bx1, eyeY - headR * 0.12);
+        ctx.stroke();
+        ctx.fillStyle = shade(tr, 10);
+        ctx.beginPath();
+        ctx.arc(bx1, eyeY - headR * 0.08, headR * 0.05 * Math.max(0.6, bFarK), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(tr, 28);
+        for (const t of [0.3, 0.55, 0.8] as const) {
+          const bxx = bx0 + (bx1 - bx0) * t;
+          const byy = eyeY - headR * (0.11 + Math.sin(t * Math.PI) * 0.16);
+          ctx.beginPath();
+          ctx.arc(bxx, byy, headR * 0.022, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // THE EYES: deep almond sockets under the brows, inner ends
+      // dropped in the scowl, the vigil burning inside each with a
+      // white-hot core at the inner corner — boss eyes, big enough
+      // to read across a battlefield.
+      const cutT = headR * 0.24;
+      for (const es of [-1, 1]) {
+        // The far-eye law the bare head keeps: the trailing socket
+        // narrows as the face turns, or the profile reads bug-eyed.
+        const farK = es === ld ? 1 : 1 - profileK * 0.55;
+        const ct = cutT * (es === ld ? 1 : 1 - profileK * 0.35);
+        const ix = vx + es * headR * 0.1 * sw;
+        const iy = eyeY + headR * 0.09;
+        const ox = vx + es * headR * 0.6 * sw * farK;
+        const oy = eyeY - headR * 0.08;
+        ctx.fillStyle = '#170f1c';
+        ctx.beginPath();
+        ctx.moveTo(ix, iy - ct * 0.4);
+        ctx.quadraticCurveTo((ix + ox) / 2, (iy + oy) / 2 - ct * 0.9, ox, oy - ct * 0.5);
+        ctx.lineTo(ox, oy + ct * 0.4);
+        ctx.quadraticCurveTo((ix + ox) / 2, (iy + oy) / 2 + ct * 0.75, ix, iy + ct * 0.6);
+        ctx.closePath();
+        ctx.fill();
+        const pulse = 0.55 + 0.28 * Math.sin(f.nowMs * 0.0021 + es * 0.5) + 0.45 * wake;
+        ctx.globalAlpha = Math.min(1, pulse);
+        ctx.fillStyle = vc;
+        ctx.beginPath();
+        ctx.moveTo(ix + es * headR * 0.02 * sw, iy);
+        ctx.quadraticCurveTo((ix + ox) / 2, (iy + oy) / 2 - ct * 0.5, ox - es * headR * 0.06 * sw, oy - ct * 0.2);
+        ctx.lineTo(ox - es * headR * 0.06 * sw, oy + ct * 0.22);
+        ctx.quadraticCurveTo((ix + ox) / 2, (iy + oy) / 2 + ct * 0.45, ix + es * headR * 0.02 * sw, iy + ct * 0.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        if (farK > 0.6) {
+          ctx.fillStyle = shade(vc, 40);
+          ctx.beginPath();
+          ctx.arc(ix + es * headR * 0.1 * sw, iy - ct * 0.02, headR * 0.045 * farK, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // THE NASAL KEEL: a two-facet forged ridge from the brow-meet
+      // down to the wing root — lit west facet, turned east.
+      const nw2 = headR * 0.09 * sw;
+      const nTop = eyeY - headR * 0.14;
+      const nBot = headY + hh * 0.3;
+      ctx.fillStyle = shade(jc, -18);
+      ctx.beginPath();
+      ctx.moveTo(vx, nTop);
+      ctx.lineTo(vx + nw2, nTop + headR * 0.12);
+      ctx.lineTo(vx + nw2 * 1.5, nBot);
+      ctx.lineTo(vx - nw2 * 1.5, nBot);
+      ctx.lineTo(vx - nw2, nTop + headR * 0.12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(jc, 18);
+      ctx.beginPath();
+      ctx.moveTo(vx, nTop);
+      ctx.lineTo(vx - nw2, nTop + headR * 0.12);
+      ctx.lineTo(vx - nw2 * 1.5, nBot);
+      ctx.lineTo(vx, nBot);
+      ctx.closePath();
+      ctx.fill();
+      // The keel's one bright line — electrum down the ridge.
+      ctx.strokeStyle = shade(tr, -4);
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      ctx.moveTo(vx, nTop + headR * 0.02);
+      ctx.lineTo(vx, nBot - headR * 0.02);
+      ctx.stroke();
+      // THE WINGS: chased electrum pinions spreading from the nasal
+      // foot across each cheek — the old kings laid a bird across
+      // the face of the helm; this one flies a stooping raptor.
+      // Feather lines engraved down each pinion.
+      for (const es of [-1, 1]) {
+        const wx0 = vx + es * nw2 * 1.2;
+        const wy0 = nBot - headR * 0.02;
+        const wx1 = vx + es * headR * 0.56 * sw;
+        const wy1 = headY + hh * 0.14;
+        ctx.fillStyle = es === -1 ? shade(jc, 8) : shade(jc, -10);
+        ctx.beginPath();
+        ctx.moveTo(wx0, wy0);
+        ctx.quadraticCurveTo((wx0 + wx1) / 2, wy1 - headR * 0.1, wx1, wy1);
+        ctx.lineTo(wx1 - es * headR * 0.02, wy1 + headR * 0.16);
+        ctx.quadraticCurveTo((wx0 + wx1) / 2, wy0 + headR * 0.13, wx0, wy0 + headR * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        // The pinion's electrum leading edge — one bright line.
+        ctx.strokeStyle = shade(tr, -10);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(wx0, wy0);
+        ctx.quadraticCurveTo((wx0 + wx1) / 2, wy1 - headR * 0.1, wx1, wy1);
+        ctx.stroke();
+        // Feather lines engraved dark down the pinion.
+        ctx.strokeStyle = shade(jc, -30);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        for (const t of [0.3, 0.55, 0.8] as const) {
+          ctx.moveTo(wx0 + (wx1 - wx0) * t, wy0 + headR * 0.02);
+          ctx.lineTo(wx0 + (wx1 - wx0) * t + es * headR * 0.035, wy1 + headR * 0.13);
+        }
+        ctx.stroke();
+      }
+      // THE MOUTH: a scowling breath grille — four dark slits fanned
+      // down an arc under the electrum lip bar. A greathelm's mouth
+      // wearing a king's frown: war, never mime.
+      ctx.strokeStyle = shade(tr, -8);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(vx - headR * 0.24 * sw, headY + hh * 0.42);
+      ctx.quadraticCurveTo(vx, headY + hh * 0.34, vx + headR * 0.24 * sw, headY + hh * 0.42);
+      ctx.stroke();
+      ctx.fillStyle = '#170f1c';
+      for (const [gu, gdy] of [[-0.19, 0.06], [-0.065, 0], [0.065, 0], [0.19, 0.06]] as const) {
+        const gxx = vx + gu * headR * 2 * sw * 0.62;
+        const gyy = headY + hh * (0.46 + gdy);
+        ctx.save();
+        ctx.translate(gxx, gyy);
+        ctx.rotate(gu * 0.9);
+        ctx.fillRect(-headR * 0.02, -hh * 0.085, headR * 0.04, hh * 0.17);
+        ctx.restore();
+      }
+      // THE CHIN DROP: one crimson teardrop set in electrum at the
+      // mask's point — the vow's third drop (banner, knuckle, chin).
+      ctx.fillStyle = shade(tr, -8);
+      ctx.beginPath();
+      ctx.arc(vx, mBot - hh * 0.01, headR * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#b23138';
+      ctx.beginPath();
+      ctx.moveTo(vx, mBot - hh * 0.1);
+      ctx.quadraticCurveTo(vx + headR * 0.06, mBot - hh * 0.01, vx, mBot + hh * 0.06);
+      ctx.quadraticCurveTo(vx - headR * 0.06, mBot - hh * 0.01, vx, mBot - hh * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade('#b23138', 44);
+      ctx.beginPath();
+      ctx.arc(vx - headR * 0.02, mBot - hh * 0.045, headR * 0.02, 0, Math.PI * 2);
+      ctx.fill();
       // THE BROW JEWEL: the oath's crimson stone in an electrum
-      // bezel at the crown's center — and the vigil's third station:
+      // bezel at the crown's center — the vigil's third station:
       // when the procession's light reaches the helm, the stone and
       // the eye fires surge together.
-      const wake = Math.max(0, Math.sin(f.nowMs * 0.0009 + 2 * 2.094) - 0.45) / 0.55;
       const gx = headX + (vx - headX) * 0.5;
       const gy = topY + hh * 0.13;
       if (wake > 0.04) {
@@ -9784,108 +10442,6 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.beginPath();
       ctx.arc(gx - hw * 0.03, gy - hh * 0.025, hw * 0.032, 0, Math.PI * 2);
       ctx.fill();
-      // THE SCOWL: the eye cuts angle DOWN toward the nasal — the
-      // brow of a fight already decided. Each cut is a deep dark
-      // wedge under a forged electrum brow bar, with the vigil's
-      // ember burning inside; the whole face keeps a pilot fire and
-      // surges on the helm's station.
-      const eyeY = headY - hh * 0.05;
-      const cutT = headR * 0.15;
-      for (const es of [-1, 1]) {
-        const ix = vx + es * headR * 0.09 * sw;
-        const iy = eyeY + headR * 0.06;
-        const ox = vx + es * headR * 0.54 * sw;
-        const oy = eyeY - headR * 0.1;
-        ctx.fillStyle = '#170f1c';
-        ctx.beginPath();
-        ctx.moveTo(ix, iy - cutT * 0.55);
-        ctx.lineTo(ox, oy - cutT * 0.75);
-        ctx.lineTo(ox, oy + cutT * 0.5);
-        ctx.lineTo(ix, iy + cutT * 0.75);
-        ctx.closePath();
-        ctx.fill();
-        // The vigil fire in the cut: a hot wedge that leans inward —
-        // eyes with intent, not lamps in slots.
-        const pulse = 0.55 + 0.28 * Math.sin(f.nowMs * 0.0021 + es * 0.5) + 0.45 * wake;
-        ctx.globalAlpha = Math.min(1, pulse);
-        ctx.fillStyle = vc;
-        ctx.beginPath();
-        ctx.moveTo(ix + es * headR * 0.02 * sw, iy + cutT * 0.05);
-        ctx.lineTo(ox - es * headR * 0.08 * sw, oy - cutT * 0.15);
-        ctx.lineTo(ox - es * headR * 0.08 * sw, oy + cutT * 0.28);
-        ctx.lineTo(ix + es * headR * 0.02 * sw, iy + cutT * 0.5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        // The forged brow bar riding the cut's upper edge.
-        ctx.strokeStyle = shade(st.trim, -4);
-        ctx.lineWidth = Math.max(1.5, s * 0.016);
-        ctx.beginPath();
-        ctx.moveTo(ix - es * headR * 0.01, iy - cutT * 0.62);
-        ctx.lineTo(ox + es * headR * 0.04, oy - cutT * 0.85);
-        ctx.stroke();
-      }
-      // THE NASAL KEEL: a bright forged bar splitting the scowl,
-      // riveted at its foot — the blow the face is built to shed.
-      ctx.fillStyle = shade(st.trim, -12);
-      ctx.fillRect(vx - headR * 0.055 * sw, eyeY - headR * 0.16, headR * 0.11 * sw, hh * 0.52);
-      ctx.fillStyle = shade(st.trim, 14);
-      ctx.fillRect(vx - headR * 0.055 * sw, eyeY - headR * 0.16, headR * 0.045 * sw, hh * 0.52);
-      ctx.fillStyle = shade(st.trim, 30);
-      ctx.beginPath();
-      ctx.arc(vx, eyeY + hh * 0.32, headR * 0.045, 0, Math.PI * 2);
-      ctx.fill();
-      // THE CHEEK PLATES: engraved trapezoids either side of the
-      // jaw, each chased with a rising sunburst — three engraved
-      // rays, one caught lit — and riveted at the corners. The
-      // goldsmith and the armorer shook hands here.
-      const jc = st.jaw ?? shade(st.color, -8);
-      for (const es of [-1, 1]) {
-        const x0 = vx + es * headR * 0.2 * sw;
-        const x1 = vx + es * headR * 0.68 * sw;
-        const yT = headY + hh * 0.08;
-        const yB = headY + hh * 0.52;
-        ctx.fillStyle = jc;
-        ctx.beginPath();
-        ctx.moveTo(x0, yT + hh * 0.06);
-        ctx.lineTo(x1, yT);
-        ctx.lineTo(x1 - es * headR * 0.04, yB);
-        ctx.lineTo(x0, yB - hh * 0.04);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = shade(jc, 18);
-        ctx.lineWidth = Math.max(1, s * 0.01);
-        ctx.beginPath();
-        ctx.moveTo(x0, yT + hh * 0.06);
-        ctx.lineTo(x1, yT);
-        ctx.stroke();
-        for (const [ra, lit] of [[0.28, false], [0.5, true], [0.72, false]] as const) {
-          ctx.strokeStyle = lit ? shade(jc, 26) : shade(jc, -22);
-          ctx.beginPath();
-          ctx.moveTo(x0 + es * headR * 0.03, yB - hh * 0.05);
-          ctx.lineTo(x0 + es * headR * 0.42 * ra * sw, yT + hh * (0.4 - ra * 0.3));
-          ctx.stroke();
-        }
-        ctx.fillStyle = shade(st.trim, 20);
-        for (const [rx2, ry2] of [[x1 - es * headR * 0.06, yT + hh * 0.07], [x1 - es * headR * 0.07, yB - hh * 0.07]] as const) {
-          ctx.beginPath();
-          ctx.arc(rx2, ry2, headR * 0.032, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      // THE BEVOR: three lapped jaw lames closing the throat, each
-      // with its lit upper edge — and a breath row punched in the
-      // top lame, because a king still has to breathe.
-      for (const [oy, wk] of [[0.6, 1.0], [0.78, 0.88], [0.95, 0.75]] as const) {
-        ctx.fillStyle = jc;
-        ctx.fillRect(vx - headR * 0.5 * sw * wk, headY + hh * oy, headR * 1.0 * sw * wk, hh * 0.19);
-        ctx.fillStyle = shade(jc, 16);
-        ctx.fillRect(vx - headR * 0.5 * sw * wk, headY + hh * oy, headR * 1.0 * sw * wk, hh * 0.05);
-      }
-      ctx.fillStyle = shade(jc, -26);
-      for (const bx of [-0.26, -0.09, 0.09, 0.26]) {
-        ctx.fillRect(vx + bx * headR * sw - headR * 0.018, headY + hh * 0.66, headR * 0.036, headR * 0.036);
-      }
     } else if (!hurt) {
       // From behind: THE CASCADE — the mantling in full. An outer
       // fall of deep crimson framing an inner bright panel, fold
@@ -9947,6 +10503,356 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.arc(headX + u * hw, topY + hh * (0.28 - Math.abs(u) * 0.06), hw * 0.035, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+  } else if (st.kind === 'gatehelm') {
+    // THE GATEHELM — the gatefall head: the door itself, worn as a
+    // face. A gate-arched shell in night glass on the riftgate's own
+    // granite jambs; a sculpted DOUBLE DOOR where a visor would be,
+    // hinge-strapped, its meeting seam leaking otherlight; a jagged
+    // SIGHT CRACK across both panels at eye height, glowing — the
+    // glass broke exactly where the warden needed to see, and the
+    // warden kept it. Over the crown THE BROKEN ARCH rises and never
+    // meets; the missing KEYSTONE floats in the gap, point down,
+    // held by whatever looks through from the other side. It bobs on
+    // its own slow clock and surges when the breach rotation reaches
+    // the helm — the fourth station, tried last, like the lock it is.
+    const topY = headY - hh * 1.22;
+    const botY = headY + hh * 0.98;
+    const kc = st.keystone?.color ?? '#a985ff';
+    const kg = hurt ? '#ffffff' : (st.keystone?.glass ?? shade(st.color, 10));
+    const jc = hurt ? '#ffffff' : (st.jaw ?? shade(st.color, -8));
+    const wake = Math.max(0, Math.sin(f.nowMs * 0.0009 + 3 * 1.5708) - 0.45) / 0.55;
+    const bob = Math.sin(f.nowMs * 0.0017) * hh * 0.06;
+    // 1) THE BROKEN ARCH, painted before the shell so the springing
+    // roots tuck under the crown: two granite voussoir horns curving
+    // toward a center they will never reach. Centered on the skull
+    // axis (the halo law: an arch has no face to lose).
+    const springY = topY + hh * 0.28;
+    for (const es of [-1, 1]) {
+      const rootX = headX + es * hw * 0.62;
+      const tipX = headX + es * hw * 0.2;
+      const tipY = topY - hh * 0.62;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(jc, es === lead ? 4 : -8);
+      ctx.beginPath();
+      ctx.moveTo(rootX + es * hw * 0.22, springY);
+      ctx.quadraticCurveTo(
+        headX + es * hw * 0.92, topY - hh * 0.34,
+        tipX + es * hw * 0.1, tipY,
+      );
+      // The squared tip: a voussoir waiting on its keystone, not a
+      // horn's point — the break face reads flat.
+      ctx.lineTo(tipX, tipY + hh * 0.16);
+      ctx.quadraticCurveTo(
+        headX + es * hw * 0.56, topY - hh * 0.1,
+        rootX - es * hw * 0.1, springY,
+      );
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // Voussoir joints: the mason's count survives the fall.
+        ctx.strokeStyle = shade(jc, -22);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        for (const t of [0.4, 0.72]) {
+          const jx = rootX + (tipX - rootX) * t;
+          const jy = springY + (tipY - springY) * t;
+          ctx.moveTo(jx - es * hw * 0.02, jy + hh * 0.03);
+          ctx.lineTo(jx + es * hw * 0.13, jy + hh * 0.14);
+        }
+        ctx.stroke();
+        // The break face: the squared tip catches the sun where the
+        // keystone tore away — snapped stone shows its section.
+        ctx.fillStyle = shade(jc, 26);
+        ctx.beginPath();
+        ctx.moveTo(tipX + es * hw * 0.1, tipY);
+        ctx.lineTo(tipX, tipY + hh * 0.16);
+        ctx.lineTo(tipX + es * hw * 0.06, tipY + hh * 0.18);
+        ctx.lineTo(tipX + es * hw * 0.14, tipY + hh * 0.05);
+        ctx.closePath();
+        ctx.fill();
+        // The lit inner curve: one bright edge facing the gap.
+        ctx.strokeStyle = st.trim;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(rootX - es * hw * 0.06, springY - hh * 0.02);
+        ctx.quadraticCurveTo(
+          headX + es * hw * 0.54, topY - hh * 0.12,
+          tipX, tipY + hh * 0.14,
+        );
+        ctx.stroke();
+      }
+    }
+    // 2) THE GAP LIGHT: otherlight bleeding up between the broken
+    // tips — a pilot that never dies, a surge when the rotation
+    // arrives. Painted under the keystone so the stone rides it.
+    if (!hurt) {
+      // The shaft of light standing in the gap — the keystone rides
+      // its head. Bright enough to read at cell scale: this is the
+      // rig's summit statement and it earns its light.
+      ctx.globalAlpha = 0.34 + wake * 0.55;
+      ctx.fillStyle = kc;
+      ctx.beginPath();
+      ctx.ellipse(headX, topY - hh * 0.52, hw * (0.22 + wake * 0.08), hh * (0.38 + wake * 0.14), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.5 + wake * 0.5;
+      ctx.fillStyle = shade(kc, 26);
+      ctx.beginPath();
+      ctx.ellipse(headX, topY - hh * 0.5, hw * 0.08, hh * (0.26 + wake * 0.1), 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (wake > 0.04) {
+        // One glass mote climbing out of the gap and fading.
+        const ph = f.nowMs * 0.00062;
+        const cyc = ph - Math.floor(ph);
+        const ma = Math.sin(cyc * Math.PI) * wake;
+        if (ma > 0.06) {
+          const mx = headX + Math.sin(cyc * 4.6) * hw * 0.12;
+          const my = topY - hh * (0.95 + cyc * 0.9);
+          const mr = headR * (0.055 - cyc * 0.02);
+          ctx.globalAlpha = ma * 0.9;
+          ctx.fillStyle = shade(kc, 30);
+          ctx.beginPath();
+          ctx.moveTo(mx, my - mr);
+          ctx.lineTo(mx + mr * 0.7, my);
+          ctx.lineTo(mx, my + mr);
+          ctx.lineTo(mx - mr * 0.7, my);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+    // 3) THE KEYSTONE: the missing stone, floating point-down in the
+    // gap it should be closing. A faceted night-glass wedge with a
+    // lit top plane (2.5D law), a bright west arris, and no visible
+    // means of support — the light holds what the mason lost.
+    const ky = topY - hh * 0.74 + bob;
+    const kw = hw * 0.28;
+    ctx.fillStyle = kg;
+    ctx.beginPath();
+    ctx.moveTo(headX - kw, ky - hh * 0.26);
+    ctx.lineTo(headX + kw, ky - hh * 0.26);
+    ctx.lineTo(headX + kw * 0.55, ky + hh * 0.02);
+    ctx.lineTo(headX, ky + hh * 0.3);
+    ctx.lineTo(headX - kw * 0.55, ky + hh * 0.02);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The top plane catches the sun — a stone, not a sticker.
+      ctx.fillStyle = shade(st.keystone?.glass ?? st.color, 26);
+      ctx.beginPath();
+      ctx.moveTo(headX - kw, ky - hh * 0.26);
+      ctx.lineTo(headX + kw, ky - hh * 0.26);
+      ctx.lineTo(headX + kw * 0.8, ky - hh * 0.18);
+      ctx.lineTo(headX - kw * 0.8, ky - hh * 0.18);
+      ctx.closePath();
+      ctx.fill();
+      // The lit west facet, and the glow catching the point.
+      ctx.fillStyle = shade(st.keystone?.glass ?? st.color, 12);
+      ctx.beginPath();
+      ctx.moveTo(headX - kw, ky - hh * 0.26);
+      ctx.lineTo(headX - kw * 0.55, ky + hh * 0.02);
+      ctx.lineTo(headX, ky + hh * 0.3);
+      ctx.lineTo(headX - kw * 0.3, ky - hh * 0.18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(kc, 20 + wake * 20);
+      ctx.beginPath();
+      ctx.moveTo(headX, ky + hh * 0.3);
+      ctx.lineTo(headX + kw * 0.16, ky + hh * 0.14);
+      ctx.lineTo(headX - kw * 0.16, ky + hh * 0.14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = st.trim;
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(headX - kw, ky - hh * 0.26);
+      ctx.lineTo(headX - kw * 0.55, ky + hh * 0.02);
+      ctx.lineTo(headX, ky + hh * 0.3);
+      ctx.stroke();
+    }
+    // 4) THE SHELL: a gate arch with a keel peak — flat-based jambs
+    // flaring at the jaw so the helm SEATS on the gorget, straight
+    // rise, then the crown gathers to a low point under the arch.
+    const shell = () => {
+      ctx.moveTo(headX - hw * 0.86, botY);
+      ctx.lineTo(headX - hw * 1.07, headY + hh * 0.4);
+      ctx.lineTo(headX - hw * 1.03, headY - hh * 0.52);
+      ctx.quadraticCurveTo(headX - hw * 0.98, topY + hh * 0.16, headX - hw * 0.52, topY + hh * 0.04);
+      ctx.quadraticCurveTo(headX - hw * 0.18, topY - hh * 0.04, headX, topY - hh * 0.14);
+      ctx.quadraticCurveTo(headX + hw * 0.18, topY - hh * 0.04, headX + hw * 0.52, topY + hh * 0.04);
+      ctx.quadraticCurveTo(headX + hw * 0.98, topY + hh * 0.16, headX + hw * 1.03, headY - hh * 0.52);
+      ctx.lineTo(headX + hw * 1.07, headY + hh * 0.4);
+      ctx.lineTo(headX + hw * 0.86, botY);
+      ctx.closePath();
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    ctx.fill();
+    shellLight(shell, topY - hh * 0.14, botY);
+    if (!hurt) {
+      // THE JAMBS: granite piers edging the shell — the door's frame
+      // worn at the temples, each with its own quarry rivets.
+      for (const es of [-1, 1]) {
+        ctx.fillStyle = shade(jc, es === lead ? 6 : -6);
+        ctx.beginPath();
+        ctx.moveTo(headX + es * hw * 1.03, headY - hh * 0.52);
+        ctx.lineTo(headX + es * hw * 0.78, headY - hh * 0.56);
+        ctx.lineTo(headX + es * hw * 0.74, headY + hh * 0.62);
+        ctx.lineTo(headX + es * hw * 1.06, headY + hh * 0.52);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(jc, 24);
+        for (const ty of [-0.32, 0.06, 0.42]) {
+          ctx.beginPath();
+          ctx.arc(headX + es * hw * 0.9, headY + hh * ty, headR * 0.035, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // THE LINTEL: the brow bar the doors hang from — two-value
+      // granite with a small carved keystone boss at its center,
+      // the crown's loss said again in miniature.
+      ctx.strokeStyle = shade(jc, -18);
+      ctx.lineWidth = hh * 0.2;
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.92, headY - hh * 0.6);
+      ctx.quadraticCurveTo(headX, headY - hh * 0.74, headX + hw * 0.92, headY - hh * 0.6);
+      ctx.stroke();
+      ctx.strokeStyle = shade(jc, 14);
+      ctx.lineWidth = hh * 0.1;
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.9, headY - hh * 0.63);
+      ctx.quadraticCurveTo(headX, headY - hh * 0.77, headX + hw * 0.9, headY - hh * 0.63);
+      ctx.stroke();
+      ctx.fillStyle = shade(st.trim, -14);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.1, headY - hh * 0.82);
+      ctx.lineTo(headX + hw * 0.1, headY - hh * 0.82);
+      ctx.lineTo(headX + hw * 0.06, headY - hh * 0.62);
+      ctx.lineTo(headX - hw * 0.06, headY - hh * 0.62);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (!hurt && front) {
+      // 5) THE DOOR FACE. The reveal first: the opening's recessed
+      // dark, so the panels read as set INTO the helm, not printed on.
+      const dw = headR * 0.62 * sw;
+      const doorTop = headY - hh * 0.5;
+      const doorBot = botY - hh * 0.12;
+      ctx.fillStyle = '#170f1c';
+      ctx.beginPath();
+      ctx.moveTo(vx - dw, doorBot);
+      ctx.lineTo(vx - dw, doorTop + hh * 0.2);
+      ctx.quadraticCurveTo(vx, doorTop - hh * 0.14, vx + dw, doorTop + hh * 0.2);
+      ctx.lineTo(vx + dw, doorBot);
+      ctx.closePath();
+      ctx.fill();
+      // The two panels: west lit, east turned — glass doors hung a
+      // hair inside the reveal, each with a recessed panel line.
+      for (const es of [-1, 1]) {
+        const x0 = vx + (es < 0 ? -dw * 0.88 : dw * 0.08);
+        const x1 = vx + (es < 0 ? -dw * 0.08 : dw * 0.88);
+        ctx.fillStyle = shade(st.color, es < 0 ? 14 : -4);
+        ctx.beginPath();
+        ctx.moveTo(x0, doorBot - hh * 0.05);
+        ctx.lineTo(x0, doorTop + hh * (es < 0 ? 0.3 : 0.3));
+        ctx.quadraticCurveTo((x0 + x1) / 2, doorTop + hh * 0.02, x1, doorTop + hh * 0.24);
+        ctx.lineTo(x1, doorBot - hh * 0.05);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, es < 0 ? -12 : -22);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.strokeRect(
+          Math.min(x0, x1) + headR * 0.05, headY + hh * 0.06,
+          Math.abs(x1 - x0) - headR * 0.1, hh * 0.56,
+        );
+        // Hinge straps reaching in from the jambs, riveted.
+        ctx.fillStyle = shade(jc, 18);
+        for (const hy2 of [-0.28, 0.5] as const) {
+          const hx0 = es < 0 ? x0 : x1;
+          ctx.beginPath();
+          ctx.moveTo(hx0, headY + hh * hy2);
+          ctx.lineTo(hx0 - es * headR * 0.3 * sw, headY + hh * (hy2 + 0.03));
+          ctx.lineTo(hx0 - es * headR * 0.34 * sw, headY + hh * (hy2 + 0.1));
+          ctx.lineTo(hx0, headY + hh * (hy2 + 0.13));
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(st.trim, 8);
+          ctx.beginPath();
+          ctx.arc(hx0 - es * headR * 0.26 * sw, headY + hh * (hy2 + 0.065), headR * 0.028, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(jc, 18);
+        }
+      }
+      // THE MEETING SEAM: where the doors touch, the otherlight
+      // leaks — a pilot line always, a blooming one on the helm's
+      // station, hot at the core while the door tries the latch.
+      const seamA = 0.4 + wake * 0.6;
+      ctx.globalAlpha = seamA * 0.5;
+      ctx.strokeStyle = kc;
+      ctx.lineWidth = Math.max(1.5, s * (0.02 + wake * 0.02));
+      ctx.beginPath();
+      ctx.moveTo(vx, doorTop + hh * 0.08);
+      ctx.lineTo(vx, doorBot - hh * 0.06);
+      ctx.stroke();
+      ctx.globalAlpha = seamA;
+      ctx.strokeStyle = shade(kc, 30);
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      ctx.moveTo(vx, doorTop + hh * 0.12);
+      ctx.lineTo(vx, doorBot - hh * 0.1);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // 6) THE SIGHT CRACK: a jagged fracture across both panels at
+      // eye height — the break the warden sees by. Dark glass split
+      // first, then the light inside it, pulsing like a held breath.
+      const cy2 = headY - hh * 0.08;
+      const crack = (o: number): void => {
+        ctx.moveTo(vx - dw * 0.86, cy2 + hh * 0.06 + o);
+        ctx.lineTo(vx - dw * 0.5, cy2 - hh * 0.05 + o);
+        ctx.lineTo(vx - dw * 0.22, cy2 + hh * 0.04 + o);
+        ctx.lineTo(vx + dw * 0.12, cy2 - hh * 0.07 + o);
+        ctx.lineTo(vx + dw * 0.46, cy2 + hh * 0.02 + o);
+        ctx.lineTo(vx + dw * 0.84, cy2 - hh * 0.06 + o);
+      };
+      ctx.strokeStyle = '#170f1c';
+      ctx.lineWidth = Math.max(1.5, s * 0.022);
+      ctx.beginPath();
+      crack(0);
+      ctx.stroke();
+      const pulse = 0.6 + 0.25 * Math.sin(f.nowMs * 0.0021) + 0.4 * wake;
+      ctx.globalAlpha = Math.min(1, pulse);
+      ctx.strokeStyle = kc;
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      crack(0);
+      ctx.stroke();
+      // The hot heart of the look: the center span burns whitest.
+      ctx.globalAlpha = Math.min(1, pulse * 0.9);
+      ctx.strokeStyle = shade(kc, 34);
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(vx - dw * 0.22, cy2 + hh * 0.04);
+      ctx.lineTo(vx + dw * 0.12, cy2 - hh * 0.07);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (!hurt) {
+      // From behind: the door's back — two batten straps, the sealed
+      // seam with its faint scar of light, and the hinge backs.
+      ctx.fillStyle = shade(st.color, -12);
+      for (const by2 of [-0.24, 0.34]) {
+        ctx.fillRect(headX - hw * 0.78, headY + hh * by2, hw * 1.56, hh * 0.16);
+      }
+      ctx.fillStyle = shade(st.color, -20);
+      ctx.fillRect(headX - 0.011 * s, headY - hh * 0.52, 0.022 * s, hh * 1.44);
+      ctx.globalAlpha = 0.16;
+      ctx.strokeStyle = kc;
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(headX, headY - hh * 0.48);
+      ctx.lineTo(headX, headY + hh * 0.86);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
   if (st.fins && !hurt) {
