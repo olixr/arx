@@ -5297,71 +5297,65 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gno,
     );
   };
-  // ---- THE SHOULDER GLOBE: the caps live on the body's own shoulder
-  // bar, projected through the tilted camera — so the PAIR trades
-  // depth as the body turns, the way real shoulders do. The bar runs
-  // perpendicular to the facing: per unit, a cap sits at
-  // (ox, oy) = (∓fy, ±fx · squash) — at a camera facing both caps
-  // ride level at the flanks; at a profile facing the bar swings
-  // onto the depth axis and one cap becomes the NEAR one (lower on
-  // screen, bigger, painted over its arm) while its twin becomes the
-  // FAR one (higher, smaller, tucked BEHIND the torso before the
-  // garment opens, peeking over the shoulder line — never crossing
-  // the chest or the face). Each cap also TILTS toward its own
-  // outward direction, so the art leans with the turn instead of
-  // standing bolt upright at every heading. X still rides the solved
-  // arm anchors so the caps travel with the swings; near/far runs on
-  // banded flags (the arms-v3 hysteresis law) so a slow arc across a
-  // cardinal never flickers the layering; lighting follows the ONE
-  // SUN, screen-left, like every other form split.
+  // ---- THE SHOULDER FRAME: pauldrons are TORSO-FRAME CITIZENS. Both
+  // caps are computed from the garment's own shoulder corners and run
+  // through the exact transform the torso paints with — translate to
+  // the hip, combat lean, fake-3D squash — so a cap can no more drift
+  // off the body than the garment's own seam can. The shoulder bar is
+  // yawed INSIDE that local frame: the corners slide along the bar as
+  // the body turns (∓fy per unit) and the depth axis lives as a local
+  // y shift (±fx), so at a camera facing the caps flank level, at a
+  // diagonal one drops near while its twin rises far, and at a
+  // profile both stand at the garment's own leading edge — the near
+  // cap in front of the cloth, the far cap BEHIND it with its crown
+  // peeking over the shoulder line. BOTH always paint: depth decides
+  // layer, size and lean, never existence. The stride rolls each cap
+  // on its own end of the bar, so a runner's shoulders live; the
+  // combat lean carries them through every swing because the frame
+  // itself leans. History: the caps once rode the solved ARM anchors
+  // and followed the HANDS — an akimbo idle dragged a cap up to the
+  // cheek and left the actual shoulder bare. The arm never owns the
+  // pauldron again.
   const paintPauldrons = (layer: 'behind' | 'front'): void => {
     if (!bodySt || bodySt.pauldron === 'none') return;
-    const YSH = 0.5; // the tilted camera's squash on the shoulder bar
-    // Which geometric shoulder the MAIN anchor owns: the one on the
-    // settled hand's side of the bar. Banded so the profile tie
-    // (fy ≈ 0) resolves once, not per-frame.
-    const mainS1 = bandFlag(mem, 'capMainS1', -fy * sideS, 0.05, -0.05);
-    for (const [sx, fallback, isMain] of [
-      [offShX, -lead, 0],
-      [mainShX, lead, 1],
-    ] as Array<[number, number, number]>) {
-      const s1 = isMain === 1 ? mainS1 : !mainS1;
-      const oxK = s1 ? -fy : fy;
-      const oyK = (s1 ? fx : -fx) * YSH;
-      const depthK = oyK / YSH; // -1 far .. +1 near
-      // At a TRUE profile the far shoulder belongs entirely to the
-      // other side of the body — the narrow profile torso cannot
-      // hide it geometrically, so the globe hides it honestly (the
-      // peek is for the diagonal band, where depth reads as depth
-      // instead of clutter beside the face). Banded, so a heading
-      // wobble never blinks the cap.
-      const hidden = bandFlag(
-        mem,
-        isMain === 1 ? 'capMainHidden' : 'capOffHidden',
-        -depthK,
-        0.8,
-        0.66,
-      );
-      if (hidden) continue;
+    const cosL = Math.cos(lean);
+    const sinL = Math.sin(lean);
+    // The garment's shoulder line, in torso-local units — the same
+    // height shoulderY resolves to, expressed inside the frame.
+    const lyBar = -th + (SHOULDER_Y_DROP_S * s) / hScale;
+    const strideSwP = ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP;
+    for (const e of [1, -1] as const) {
+      // The bar end, yawed in the local frame: along ∓fy across the
+      // body, deep along ±fx — the camera's tilt is hScale's job.
+      const lx = e * -fy * tw * 0.98;
+      const ly = lyBar + e * fx * tw * 0.52;
+      const px = lx * wS;
+      const py = ly * hScale;
+      const wx = rig.x + cosL * px - sinL * py;
+      const wy = hipY + sinL * px + cosL * py;
+      const depthK = e * fx; // -1 far .. +1 near
       const behind = bandFlag(
         mem,
-        isMain === 1 ? 'capMainBehind' : 'capOffBehind',
+        e === 1 ? 'capBehindA' : 'capBehindB',
         -depthK,
-        0.3,
-        0.2,
+        0.18,
+        0.08,
       );
       if ((layer === 'behind') !== behind) continue;
-      const side = Math.sign(sx - rig.x) || Math.sign(oxK) || fallback || 1;
-      const capY = shoulderY + oyK * tw * 0.6;
-      // The outward lean: rotate the cap so its outward axis follows
-      // the bar's screen direction — softened and clamped; a cap is
-      // worn on a deltoid, not gimbaled on it.
-      const tilt = Math.max(
-        -0.34,
-        Math.min(0.34, Math.atan2(side * oyK, Math.abs(oxK) + 0.45)),
-      );
+      const side =
+        Math.sign(wx - rig.x) || Math.sign(-e * fy) || e * (lead || 1) || 1;
+      // Orientation: the outward geometric lean along the turned bar,
+      // the combat lean the frame itself carries, and the stride's
+      // roll — opposite ends of the bar counter-rotate on the run.
+      const tilt =
+        Math.max(
+          -0.34,
+          Math.min(0.34, Math.atan2(side * e * fx * 0.5, Math.abs(fy) + 0.45)),
+        ) +
+        lean * 0.6 +
+        strideSwP * 0.055 * rig.runF * e;
       drawPauldron(
-        ctx, bodySt, sx, capY, side, s, wS, rig.hurt, side < 0, rig.nowMs,
+        ctx, bodySt, wx, wy, side, s, wS, rig.hurt, side < 0, rig.nowMs,
         depthK, tilt,
       );
     }
