@@ -1966,14 +1966,14 @@ function dawnswornSet(): EquipmentDef[] {
       levelReq: { skill: 'arx', level: 10 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(12, 85, 55, 2),
       value: 170, color, code: 'Ah',
-      desc: 'A sunstone at the brow. It warms a minute before sunrise.',
+      desc: 'A small sun climbs the brow and never tires of it. Dawn, on repeat.',
     },
     {
       id: 'dawnsworn_robe', name: 'Dawnsworn robe', slot: 'body', armorClass: 'cloth',
       levelReq: { skill: 'arx', level: 12 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(16, 140, 70, 3),
       value: 240, color, code: 'Ar',
-      desc: 'Ivory cloth behind a blazing sun. First light, sworn in.',
+      desc: 'A collar of rays and a horizon at the hem. First light, sworn in.',
     },
     {
       id: 'dawnsworn_skirts', name: 'Dawnsworn skirts', slot: 'legs', armorClass: 'cloth',

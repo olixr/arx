@@ -4,6 +4,28 @@ import { chamferRect } from './shapes.js';
 import { shade } from './rig.js';
 
 /**
+ * THE DAYBREAK clock — dawnsworn's one sky, shared by the hood disc,
+ * the hem bands and the shoulder crests so the whole set keeps the
+ * same sunrise. A 7.4s cycle: the light climbs, holds its gold, and
+ * eases back to first light. `noon` stands at full day forever;
+ * `setting` runs the same sky backward — sworn to the other horizon.
+ * (`eclipse` reads the raw curve as its ring-flare intensity.)
+ */
+function daybreakK(
+  nowMs: number,
+  phase?: 'rising' | 'setting' | 'noon' | 'eclipse',
+): number {
+  if (phase === 'noon') return 1;
+  const u = (nowMs % 7400) / 7400;
+  const sm = (k: number): number => {
+    const c = Math.min(1, Math.max(0, k));
+    return c * c * (3 - 2 * c);
+  };
+  const rise = u < 0.42 ? sm(u / 0.42) : u < 0.62 ? 1 : sm((1 - u) / 0.38);
+  return phase === 'setting' ? 1 - rise : rise;
+}
+
+/**
  * Visual equipment styles — the CAPE_STYLES pattern extended to every
  * armor slot. Each record is pure JSON-shaped data a painter interprets;
  * the content pass authors records + palettes here, never new painters.
@@ -54,7 +76,12 @@ export interface BodyStyle {
     | 'bonemaw' | 'boneridge' | 'thorncrest' | 'lionhead'
     | 'gonfalon' | 'rampart' | 'sunfan' | 'veilwing'
     | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest'
-    | 'gateshard' | 'mothpile';
+    | 'gateshard' | 'mothpile' | 'dawncrest'
+    // The hunter's shoulders — one owner each: `halcyon` the
+    // kingfisher folded wing, `guardhair` the wolfstalker winter
+    // pelt, `drakewing` the drakescale ribbed wing-fin, `oakspaul`
+    // the stagheart oak-leaf lappets.
+    | 'halcyon' | 'guardhair' | 'drakewing' | 'oakspaul';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
@@ -94,7 +121,7 @@ export interface BodyStyle {
   /** A diagonal shoulder-to-hip cord with bone toggles — the trapper. */
   bandolier?: string;
   /** A brush tail swinging off the trailing hip — the fox trophy read. */
-  tail?: { color: string; tip: string };
+  tail?: { color: string; tip: string; ember?: string };
   /** Hem/trim accent that breathes with a slow ember pulse. */
   glowTrim?: string;
   /** Full sleeves: the forearm wears cloth with a belled cuff (robes). */
@@ -366,8 +393,20 @@ export interface BodyStyle {
     tails?: string; emberEdge?: string; crescent?: string;
   };
   /** Dawnsworn: the horizon at the hem — three flat bands climbing
-   *  from night up into gold, painted above the trim. */
-  dawnbands?: { colors: [string, string, string] };
+   *  from night up into gold, painted above the trim. They ride THE
+   *  DAYBREAK clock: as the brow sun climbs, light walks the bands
+   *  gold-first; `phase` matches the hood's sky. */
+  dawnbands?: {
+    colors: [string, string, string];
+    phase?: 'rising' | 'setting' | 'noon' | 'eclipse';
+  };
+  /** Dawnsworn: the sun collar — gilt ray tabs ringing the shoulder
+   *  line front and back, long over the shoulders, short at the
+   *  throat: the sunrise worn as a yoke. */
+  raycollar?: { color: string };
+  /** Dawnsworn: two small sun medallions hung on cords off the sash,
+   *  each a disc with ray nubs, swinging with the stride. */
+  sunmedals?: { color: string };
   /** Fenwalker: two lapped ragged sedge tiers hanging over the skirt
    *  — the bog's own layering. */
   sedgetiers?: { color: string };
@@ -399,6 +438,59 @@ export interface BodyStyle {
   /** Starweaver: a linked constellation low on the skirt — five stars
    *  joined by faint lines, flaring one at a time in sequence. */
   constellation?: { color: string };
+
+  // ======================== THE HUNTER'S WARDROBE (the leather lane's
+  // own one-owner words — each named by exactly one family, per the
+  // TEN COSTUMES law; colorway lots MUST restate every color here).
+
+  /** Hareswift: the courier's cross-body satchel — strap over the
+   *  chest (front-plane), flap bag riding the trailing hip. */
+  satchel?: { color: string; strap: string };
+  /** Hareswift: two waybill ribbons off the belt knot, streaming and
+   *  kicking with the stride — speed made visible at a standstill's
+   *  first step. */
+  streamers?: { color: string };
+  /** Kingfisher: the dive bib — the flame breast worn as one bold
+   *  pointed wedge from throat to sternum, edged pale like the bird's
+   *  own collar. Front-plane. */
+  divebib?: { color: string; edge: string };
+  /** Cutpurse: the guild tether — a cord slung shoulder-to-hip strung
+   *  with lifted coins; one glint WALKS the strand, coin to coin. The
+   *  trophies are the heraldry. */
+  cointether?: { cord: string; coin: string; glint?: string };
+  /** Trapline: the working bandolier — strap, bone toggles, a coiled
+   *  snare wire, and a hanging lure that swings on the stride. Every
+   *  loop has caught something. */
+  snareline?: { strap: string; bone: string; wire: string };
+  /** Emberfox: the cream throat bib, rounded and fur-ticked at its
+   *  edge — the fox's own front. Front-plane. */
+  foxbib?: { color: string };
+  /** Wayfarer: the bedroll slung diagonal across the back — a fat
+   *  wool roll with strapped end caps; from the front only the strap
+   *  and the roll's shoulder peek admit to it. */
+  bedroll?: { color: string; strap: string };
+  /** Wolfstalker: the trophy strap — a chest cord hung with four
+   *  wolf claws, points down. Front-plane. */
+  clawstrap?: { strap: string; claw: string };
+  /** Nightveil: the knife baldric — three sheathed throwing blades on
+   *  a diagonal strap; a violet glint wakes one blade at long, uneven
+   *  intervals. Front-plane. */
+  knifebaldric?: { strap: string; steel: string; glint?: string };
+  /** Nightveil: twin dusk scarf tails off the shoulders, drifting on
+   *  the cowl's own slow clock — the dark that follows you out. */
+  shadowtails?: { color: string };
+  /** Drakescale: full lapped scale rows over the whole torso — big
+   *  scallops, tempered edges, wrap-around (a skin has no front). */
+  drakerows?: { color: string; edge: string };
+  /** Drakescale: the banked forge under the scales — a molten glow
+   *  breathing in the row gaps at the waist seam. */
+  heatseam?: { color: string };
+  /** Stagheart: the forest mantle — lapped bark-leather tiers over
+   *  the shoulders with moss spilling at every edge. */
+  mossmantle?: { bark: string; moss: string };
+  /** Stagheart: gold leaves shed from nowhere, falling slow and
+   *  fluttering — the wilds acknowledging their own. */
+  leaffall?: { color: string };
 }
 
 export interface HelmStyle {
@@ -439,7 +531,19 @@ export interface HelmStyle {
     // band under its turning ring of stars.
     | 'fieldhood' | 'mothcowl' | 'dawnhood' | 'fenhood' | 'stormhood'
     | 'hedgehat' | 'tidehood' | 'whispercowl' | 'cinderhood'
-    | 'stardiadem';
+    | 'stardiadem'
+    // THE HUNTER'S HEADS — the leather lane's own, one owner each:
+    // `courierhood` the hareswift wind-flattened runner's hood,
+    // `halcyonhood` the kingfisher crested diver, `thiefhood` the
+    // cutpurse slouched cap-and-kerchief, `trapperhood` the trapline
+    // deep winter fur tunnel, `foxmantle` the emberfox pelt worn
+    // whole, `roadhood` the wayfarer patched traveler, `wolfmantle`
+    // the wolfstalker headdress with its cascading mane, `shadowcowl`
+    // the nightveil assassin's blade-point dark, `stagcrown` the
+    // stagheart antlered forest crown.
+    | 'courierhood' | 'halcyonhood' | 'thiefhood' | 'trapperhood'
+    | 'foxmantle' | 'roadhood' | 'wolfmantle' | 'shadowcowl'
+    | 'stagcrown';
   visor?: 'slit' | 'cross';
   plume?: { color: string };
   /** `curl` bends the sweep into a ram's spiral beside the temples;
@@ -566,9 +670,19 @@ export interface HelmStyle {
   /** Fieldhood: a thistle-seed tuft nodding off the peak tip — the
    *  first robe's one soft jewel. */
   tuft?: { color: string };
-  /** Dawnhood: the gilt half-disc rising over the brow band with its
-   *  flat ray tabs fanning up the crown — dawn worn low. */
-  sundisc?: { color: string };
+  /** Dawnhood: THE DAYBREAK — the sun at the brow, and it MOVES. On
+   *  a slow shared clock the disc climbs out of the brow-band
+   *  horizon, its rays reach, and first light washes the wearer's
+   *  face from below. Each lot is its own sky: `rising` (default)
+   *  runs the dawn, `setting` runs it backward for the vow to the
+   *  other horizon, `noon` stands the full disc high and white-hot
+   *  with a heat shimmer, `eclipse` hangs the dark disc in its gold
+   *  `ring` with corona spikes and a rare ring flare. */
+  sundisc?: {
+    color: string;
+    phase?: 'rising' | 'setting' | 'noon' | 'eclipse';
+    ring?: string;
+  };
   /** Fenhood: a wisp-light bead hung off the peak tip, breathing on
    *  the fen's own slow clock. */
   wispbead?: { color: string };
@@ -592,6 +706,30 @@ export interface HelmStyle {
   starring?: { color: string };
   /** Hedgehat: the herb sprig tucked in the woven cord band. */
   sprig?: { color: string };
+  /** Courierhood: the waybill — a parchment ribbon pinned at the
+   *  temple by a wax seal, streaming off the trailing edge. */
+  waybill?: { color: string; seal: string };
+  /** Halcyonhood: the diver's crest — lapped feather planes running
+   *  the keel line, plus ONE flame primary slanted at the temple. */
+  divecrest?: { color: string; flash: string };
+  /** Thiefhood: the guild's one vanity — a brass coin pinned at the
+   *  brow, glinting rarely. */
+  coinpin?: { color: string };
+  /** Foxmantle / wolfmantle: the worn pelt's own colors — the beast's
+   *  coat, its dark points (nose, sockets, ear backs), its pale
+   *  flashes (cheeks, fangs, frost tips); `ember` wakes the fox's
+   *  bead eyes on a slow clock. Each kind reads the fields its own
+   *  way — the emberEyes precedent. */
+  pelt?: { color: string; dark: string; pale: string; ember?: string };
+  /** Shadowcowl: the ONE BRIGHT EDGE — a dusk-violet arris light down
+   *  the cowl's leading fold; everything else stays night. */
+  edgelight?: { color: string };
+  /** Wolfmantle: a slow pale breath curling from under the muzzle
+   *  every few seconds — the winter worn honestly. */
+  frostbreath?: { color: string };
+  /** Stagcrown: the moss band ringing the hood below the antler
+   *  roots, tufts spilling where it ties. */
+  mossband?: { color: string };
   /** Mothcowl: THE MOTH'S OWN EYES — two large luminous compound
    *  discs set on the cowl above the face opening, faceted, glowing
    *  on a breath slower than anything human. The wearer's face keeps
@@ -612,6 +750,37 @@ export interface LegStyle {
   shin?: string;
   knee?: 'none' | 'plate' | 'wrap';
   kneeColor?: string;
+
+  // THE HUNTER'S LEGS — the leather lane's one-owner leg words. Ten
+  // families stood on four flat colors for too long; each of these is
+  // named by exactly one family and painted in rig.ts's leg pass.
+
+  /** Hareswift: hare-fur hocks — a pale fur tuft off the back of each
+   *  ankle, the spring made visible. */
+  hock?: { color: string };
+  /** Kingfisher: waxed waders — a hard waterline break high on the
+   *  shin with one lit rim where the wax catches. */
+  wader?: { color: string; rim: string };
+  /** Cutpurse: the tool roll strapped flat to the lead thigh, pick
+   *  ends ticking out of it. */
+  pickroll?: { color: string; glint?: string };
+  /** Trapline: snare-cord X-lacing climbing the shin. */
+  shinlace?: { color: string };
+  /** Emberfox: the fox's own socks — a hard dark break at mid-shin,
+   *  tied off with an ember knot. */
+  sock?: { color: string; tie?: string };
+  /** Wayfarer: a stitched road patch on the lead thigh. */
+  roadpatch?: { color: string };
+  /** Wolfstalker: winter fur bursting over the knee. */
+  furknee?: { color: string };
+  /** Nightveil: the thigh garter with its sheathed throwing blade. */
+  garter?: { color: string; blade?: string };
+  /** Drakescale: lapped scale scallops down the thigh, tempered
+   *  edges. */
+  scalerows?: { color: string; edge: string };
+  /** Stagheart: moss-bound wrap bands with tufts spilling at the
+   *  knee. */
+  mossbind?: { color: string; tuft: string };
 }
 
 export interface BootStyle {
@@ -861,10 +1030,13 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   dawnsworn_robe: {
     color: '#d9c9a0', trim: '#c9922f', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'sun',
+    silhouette: 'robe', pauldron: 'dawncrest', pauldronColor: '#cbbb92',
+    pauldronTrim: '#e8b54a', pauldronScale: 1.12,
+    chest: 'emblem', emblem: 'sun',
     skirt: 0.32, sash: '#b0703c', sleeves: 'full', underskirt: '#b8a87e',
     folds: true, stole: { color: '#c9922f', trim: '#d9c9a0' },
     dawnbands: { colors: ['#e8b54a', '#c9764a', '#8a5a6e'] },
+    raycollar: { color: '#e8b54a' }, sunmedals: { color: '#e8b54a' },
     emblemScale: 1.1,
   },
   fenwalker_robe: {
@@ -1359,7 +1531,7 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
   },
   dawnsworn_hood: {
     color: '#d9c9a0', trim: '#c9922f', kind: 'dawnhood',
-    sundisc: { color: '#e8b54a' },
+    sundisc: { color: '#e8b54a', phase: 'rising' },
   },
   fenwalker_hood: {
     color: '#4a6b5c', trim: '#a8c8a0', kind: 'fenhood',
@@ -1685,7 +1857,7 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   stagheart_boots: { color: '#5a4430', height: 0.14, wrap: { color: '#3e5a30' }, cuff: { color: '#d4a43c' } },
   thistledown_slippers: { color: '#a89a80', height: 0.07 },
   mothwing_slippers: { color: '#6e6e5a', height: 0.09, fur: { color: '#a8a88c' } },
-  dawnsworn_slippers: { color: '#b8a87e', height: 0.08, cuff: { color: '#c9922f' } },
+  dawnsworn_slippers: { color: '#b8a87e', height: 0.08, cuff: { color: '#c9922f' }, toe: '#e8b54a' },
   fenwalker_slippers: { color: '#3a564a', height: 0.1, wrap: { color: '#a8c8a0' } },
   stormwoven_slippers: { color: '#3c4660', height: 0.09, cuff: { color: '#e8d878' } },
   hedgemage_slippers: { color: '#8a7a3c', height: 0.07, curl: true },
@@ -2207,27 +2379,46 @@ registerColorways(BOOT_STYLES, 'mothwing_slippers', {
 
 // Dawnsworn dye lots: the sun device keeps its gold except at noon,
 // when it burns red on bleached white; eclipse rings gold on charcoal.
+// Dawnsworn dye lots: each lot is its own SKY, not a tint — duskvow
+// runs the daybreak BACKWARD (sworn to the other horizon), highnoon
+// stands the full disc high and white-hot, eclipse hangs the dark
+// stone in its gold ring. Collar, medals, crests and bands follow.
 registerColorways(BODY_STYLES, 'dawnsworn_robe', {
   duskvow: {
     color: '#9a6a86', trim: '#e0b0c0', sash: '#6e4860', underskirt: '#7e5670',
     stole: { color: '#6e4860', trim: '#e0b0c0' },
-    dawnbands: { colors: ['#e0b0c0', '#b87a96', '#6e4860'] },
+    dawnbands: { colors: ['#e0b0c0', '#b87a96', '#6e4860'], phase: 'setting' },
+    raycollar: { color: '#d97a9a' }, sunmedals: { color: '#d97a9a' },
+    pauldronColor: '#8d607a', pauldronTrim: '#d97a9a',
   },
   highnoon: {
     color: '#eae4d2', trim: '#c04a3a', sash: '#b0703c', underskirt: '#c8c2b0',
     stole: { color: '#c04a3a', trim: '#eae4d2' },
-    dawnbands: { colors: ['#e05438', '#d98a4a', '#c8b890'] },
+    dawnbands: { colors: ['#e05438', '#d98a4a', '#c8b890'], phase: 'noon' },
+    raycollar: { color: '#c04a3a' }, sunmedals: { color: '#e05438' },
+    pauldronColor: '#c8b890', pauldronTrim: '#e05438',
   },
   eclipse: {
     color: '#4a4550', trim: '#d4a43c', sash: '#38343e', underskirt: '#3a3642',
     stole: { color: '#38343e', trim: '#d4a43c' },
-    dawnbands: { colors: ['#d4a43c', '#8a6a34', '#5a5060'] },
+    dawnbands: { colors: ['#d4a43c', '#8a6a34', '#5a5060'], phase: 'eclipse' },
+    raycollar: { color: '#d4a43c' }, sunmedals: { color: '#d4a43c' },
+    pauldronColor: '#3a3642', pauldronTrim: '#d4a43c',
   },
 });
 registerColorways(HELM_STYLES, 'dawnsworn_hood', {
-  duskvow: { color: '#9a6a86', trim: '#e0b0c0', sundisc: { color: '#d97a9a' } },
-  highnoon: { color: '#eae4d2', trim: '#c04a3a', sundisc: { color: '#e05438' } },
-  eclipse: { color: '#4a4550', trim: '#d4a43c', sundisc: { color: '#d4a43c' } },
+  duskvow: {
+    color: '#9a6a86', trim: '#e0b0c0',
+    sundisc: { color: '#d97a9a', phase: 'setting' },
+  },
+  highnoon: {
+    color: '#eae4d2', trim: '#c04a3a',
+    sundisc: { color: '#e05438', phase: 'noon' },
+  },
+  eclipse: {
+    color: '#4a4550', trim: '#d4a43c',
+    sundisc: { color: '#38343e', phase: 'eclipse', ring: '#e8c04c' },
+  },
 });
 registerColorways(LEG_STYLES, 'dawnsworn_skirts', {
   duskvow: { thigh: '#7e5670' },
@@ -2235,9 +2426,9 @@ registerColorways(LEG_STYLES, 'dawnsworn_skirts', {
   eclipse: { thigh: '#3a3642' },
 });
 registerColorways(BOOT_STYLES, 'dawnsworn_slippers', {
-  duskvow: { color: '#7e5670', cuff: { color: '#e0b0c0' } },
-  highnoon: { color: '#c8c2b0', cuff: { color: '#c04a3a' } },
-  eclipse: { color: '#3a3642', cuff: { color: '#d4a43c' } },
+  duskvow: { color: '#7e5670', cuff: { color: '#e0b0c0' }, toe: '#d97a9a' },
+  highnoon: { color: '#c8c2b0', cuff: { color: '#c04a3a' }, toe: '#e05438' },
+  eclipse: { color: '#3a3642', cuff: { color: '#d4a43c' }, toe: '#d4a43c' },
 });
 
 // Fenwalker dye lots: sedge, wisps and reed feathers follow the water.
@@ -2977,10 +3168,15 @@ export function drawTorsoGarment(
       if (st.dawnbands) {
         // THE HORIZON HEM: dawnsworn's own skirt — three flat bands
         // climbing off the hem trim, gold nearest the light, each
-        // following the living hem's own contour. Dawn is layers.
+        // following the living hem's own contour. Dawn is layers,
+        // and the layers keep the daybreak clock: as the brow sun
+        // climbs, light walks the bands gold-first, the way a real
+        // sunrise takes the horizon before it takes the sky.
+        const dayK = daybreakK(nowMs, st.dawnbands.phase);
         for (const [bi, bandCol] of st.dawnbands.colors.entries()) {
+          const lit = Math.min(1, Math.max(0, (dayK - (0.12 + bi * 0.3)) / 0.22));
           const lift = 0.032 * s + bi * 0.034 * s;
-          ctx.strokeStyle = bandCol;
+          ctx.strokeStyle = shade(bandCol, lit * 22);
           ctx.lineWidth = Math.max(2, s * (0.034 - bi * 0.007));
           ctx.beginPath();
           ctx.moveTo(hem[0]!.x * (1 - bi * 0.015), hem[0]!.y - lift);
@@ -4207,6 +4403,74 @@ export function drawTorsoGarment(
         ctx.fillStyle = ember;
         ctx.fillRect(px - w * 0.8 + sway2, y1 - 0.006 * s, w * 1.6, 0.012 * s);
         ctx.globalAlpha = 1;
+      }
+    }
+
+    // ---- THE SUN COLLAR: dawnsworn's yoke — gilt ray tabs ringing
+    // the shoulder line, front AND back (a collar wraps), longest
+    // over the shoulders where the sunrise spreads its arms. Two
+    // lapped rows: a deeper under-row, then the bright rays over it.
+    if (st.raycollar && !hurt) {
+      const rc = st.raycollar.color;
+      const collarDay = daybreakK(nowMs, st.dawnbands?.phase);
+      for (const [row, dvR, lenM] of [[0, -18, 1.18], [1, 4, 1]] as const) {
+        ctx.fillStyle = shade(rc, dvR + (row === 1 ? collarDay * 12 : 0));
+        for (const u of [-1, -0.62, -0.24, 0.24, 0.62, 1] as const) {
+          const bx = u * tw * 0.76;
+          const by = -th + Math.abs(u) * th * 0.05;
+          const ang = u * 0.85;
+          const len = th * (0.16 + 0.13 * Math.abs(u)) * lenM;
+          const dx = Math.sin(ang);
+          const dy = -Math.cos(ang);
+          const w = tw * 0.085;
+          const off = row === 0 ? tw * 0.07 * Math.sign(u || 1) : 0;
+          ctx.beginPath();
+          ctx.moveTo(bx + off - dy * w, by + dx * w);
+          ctx.lineTo(bx + off + dx * len, by + dy * len);
+          ctx.lineTo(bx + off + dy * w, by - dx * w);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
+    // ---- THE SUN MEDALS: two small suns on cords off the sash —
+    // discs with ray nubs, swinging with the stride, glinting when
+    // the daybreak crests. Front only; the back keeps its tailoring.
+    if (st.sunmedals && !hurt && !back) {
+      const smc = st.sunmedals.color;
+      const dayK = daybreakK(nowMs, st.dawnbands?.phase);
+      const sway3 = f.strideSw * 0.013 * s;
+      for (const [i, u, len] of [[0, -0.48, 0.08], [1, 0.56, 0.06]] as const) {
+        const bx0 = u * ww;
+        const dx = sway3 + Math.sin(nowMs * 0.0034 + i * 2.4) * 0.004 * s;
+        const by = -0.02 * s + len * s;
+        ctx.strokeStyle = shade(smc, -30);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(bx0, -0.036 * s);
+        ctx.lineTo(bx0 + dx, by - 0.014 * s);
+        ctx.stroke();
+        const R = 0.02 * s;
+        // Ray nubs first, disc over their roots.
+        ctx.fillStyle = shade(smc, -12);
+        for (let k = 0; k < 4; k++) {
+          const a = -Math.PI / 2 + (k / 4) * Math.PI * 2 + Math.PI / 4;
+          ctx.beginPath();
+          ctx.moveTo(bx0 + dx + Math.cos(a - 0.5) * R * 0.8, by + Math.sin(a - 0.5) * R * 0.8);
+          ctx.lineTo(bx0 + dx + Math.cos(a) * R * 1.55, by + Math.sin(a) * R * 1.55);
+          ctx.lineTo(bx0 + dx + Math.cos(a + 0.5) * R * 0.8, by + Math.sin(a + 0.5) * R * 0.8);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.fillStyle = smc;
+        ctx.beginPath();
+        ctx.arc(bx0 + dx, by, R, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(smc, 24 + dayK * 22);
+        ctx.beginPath();
+        ctx.arc(bx0 + dx - R * 0.25, by - R * 0.25, R * 0.4, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -6392,6 +6656,62 @@ export function drawPauldron(
       ctx.fill();
       ctx.globalAlpha = 1;
     }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'dawncrest') {
+    // THE DAWNCREST — the dawnsworn shoulder: a sunrise over each
+    // arm. The worn seat's hem is the horizon; a small gilt disc
+    // climbs out of it on THE DAYBREAK clock with three ray tabs
+    // reaching, so the whole set — brow, hem and shoulders — keeps
+    // one sky. Ivory cap under gold: the dawn stays the statement.
+    const phase = st.dawnbands?.phase;
+    const dayK = daybreakK(nowMs, phase);
+    const crest = trim;
+    const horizonY = -0.078 * s;
+    const dr = 0.062 * s;
+    // A sliver of sun always shows — a blank shoulder is no shrine.
+    const lift = phase === 'noon' ? dr * 0.9 : dr * (0.16 + 0.55 * dayK);
+    const dyC = horizonY - lift;
+    // Rays first — they reach with the light.
+    for (let i = 0; i < 3; i++) {
+      const a = -Math.PI * 0.82 + (i / 2) * Math.PI * 0.64;
+      const reach = 0.4 + 0.7 * dayK;
+      const len = dr * (i === 1 ? 1.05 : 0.7) * reach;
+      if (len < dr * 0.12) continue;
+      const rx0 = Math.cos(a) * dr * 0.9;
+      const ry0 = dyC + Math.sin(a) * dr * 0.9;
+      const rx1 = Math.cos(a) * (dr * 0.9 + len);
+      const ry1 = dyC + Math.sin(a) * (dr * 0.9 + len);
+      const w = dr * 0.17;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(crest, i === 1 ? 6 : -8);
+      ctx.beginPath();
+      ctx.moveTo(rx0 - Math.sin(a) * w, ry0 + Math.cos(a) * w);
+      ctx.lineTo(rx1 - Math.sin(a) * w * 0.3, ry1 + Math.cos(a) * w * 0.3);
+      ctx.lineTo(rx1 + Math.sin(a) * w * 0.3, ry1 - Math.cos(a) * w * 0.3);
+      ctx.lineTo(rx0 + Math.sin(a) * w, ry0 - Math.cos(a) * w);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The disc, clipped at the shoulder horizon.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-dr * 2.2, horizonY - s * 0.3, dr * 4.4, s * 0.3);
+    ctx.clip();
+    ctx.fillStyle = hurt ? '#ffffff' : crest;
+    ctx.beginPath();
+    ctx.arc(0, dyC, dr, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(crest, 22);
+      ctx.beginPath();
+      ctx.arc(0, dyC, dr * 0.72, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    // The seat carries the sky — the horizon the little sun owns.
+    seat(0.115 * s, 0.092 * s, hurt ? '#ffffff' : col, trim);
     ctx.restore();
     return;
   }
@@ -9864,15 +10184,36 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.clip('evenodd');
       ctx.fillStyle = shade(st.color, -13);
       ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // FIRST LIGHT ON THE CLOTH: the crown above the ray line lifts a
-      // full value step — a flat dawn band, not a drawn ridge.
-      ctx.fillStyle = shade(st.color, 12);
-      ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 1.1, headY - hh * 0.66);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * 1.02, apexX, apexY + hh * 0.02);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.32, headY - hh * 1.5, headX + lead * hw * 0.9, headY - hh * 1.1);
-      ctx.closePath();
-      ctx.fill();
+      // THE SKY ON THE CLOTH: the hood wears the dawn itself — three
+      // flat bands climbing the crown, brightest at the peak where
+      // the light arrives first, each following the pitch. As the
+      // daybreak clock climbs, a warm wash breathes over the crown.
+      const skyK = daybreakK(f.nowMs, st.sundisc?.phase);
+      for (const [bi, y0b, y1b, dv] of [
+        [0, -1.6, -1.18, 18], [1, -1.18, -0.88, 8], [2, -0.88, -0.62, 2],
+      ] as const) {
+        ctx.fillStyle = shade(st.color, dv);
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 1.3, headY + hh * y1b);
+        ctx.lineTo(headX - lead * hw * 1.6, headY + hh * (y1b - 0.14));
+        ctx.lineTo(headX - lead * hw * 1.6, headY + hh * (y0b - 0.14));
+        ctx.lineTo(headX + lead * hw * 1.3, headY + hh * y0b);
+        ctx.closePath();
+        ctx.fill();
+        if (bi === 0 && skyK > 0.04 && st.sundisc) {
+          ctx.globalAlpha = skyK * 0.22;
+          ctx.fillStyle = st.sundisc.phase === 'eclipse'
+            ? (st.sundisc.ring ?? st.trim) : st.sundisc.color;
+          ctx.beginPath();
+          ctx.moveTo(headX + lead * hw * 1.3, headY + hh * y1b);
+          ctx.lineTo(headX - lead * hw * 1.6, headY + hh * (y1b - 0.14));
+          ctx.lineTo(headX - lead * hw * 1.6, headY + hh * (y0b - 0.14));
+          ctx.lineTo(headX + lead * hw * 1.3, headY + hh * y0b);
+          ctx.closePath();
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
       // One gravity crease down the trailing drape.
       ctx.fillStyle = shade(st.color, -24);
       ctx.beginPath();
@@ -9884,15 +10225,36 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.fill();
       ctx.restore();
       if (front) {
+        // FIRST LIGHT ON THE FACE: every other hood buries its face
+        // in shadow; the dawn hood LIGHTS its own. A quiet brow
+        // shadow stays, but a warm underlight climbs from the chin
+        // with the daybreak — the wearer's face is the first thing
+        // the sun finds.
+        const dayK = daybreakK(f.nowMs, st.sundisc?.phase);
+        const lightCol = st.sundisc
+          ? (st.sundisc.phase === 'eclipse'
+            ? (st.sundisc.ring ?? st.trim) : st.sundisc.color)
+          : st.trim;
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.04);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.46)');
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY - hh * 0.1);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.34)');
         shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
         ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.64);
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.52);
+        if (st.sundisc) {
+          // The wash over the lower face, then the chin band where
+          // the light pools — footlights from the sun's own gold.
+          const warm = shade(lightCol, 20);
+          ctx.globalAlpha = 0.08 + 0.12 * dayK;
+          ctx.fillStyle = warm;
+          ctx.fillRect(cx - ohw, headY - hh * 0.05, ohw * 2, oBot - headY + hh * 0.05);
+          ctx.globalAlpha = 0.08 + 0.14 * dayK;
+          ctx.fillRect(cx - ohw, headY + hh * 0.44, ohw * 2, oBot - headY - hh * 0.44);
+          ctx.globalAlpha = 1;
+        }
         ctx.restore();
         ctx.strokeStyle = shade(st.color, 20);
         ctx.lineWidth = Math.max(1, s * 0.014);
@@ -9918,45 +10280,100 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.stroke();
       }
       if (st.sundisc && front) {
-        // THE SUNRISE: the half-disc standing out of the brow band,
-        // ray tabs fanned above it — flat gold planes, dawn's own
-        // geometry. The glint crosses the disc on a slow clock.
+        // THE DAYBREAK: the sun at the brow, doing what suns do. The
+        // brow band is the horizon; the disc climbs out of it as the
+        // clock rises, rays reaching with it. Noon holds the full
+        // disc high under a heat shimmer; the eclipse hangs its dark
+        // stone in a gold ring and flares the corona at the peak.
         const dc = st.sundisc.color;
+        const phase = st.sundisc.phase;
+        const dayK = daybreakK(f.nowMs, phase);
         const dx0 = cx;
-        const dy0 = oTop - headR * 0.02;
+        const horizonY = oTop - headR * 0.02;
         const dr = headR * 0.38 * (1 - t * 0.3);
-        for (let i = 0; i < 5; i++) {
-          const a = -Math.PI * 0.86 + (i / 4) * Math.PI * 0.72;
-          const len = dr * (i === 2 ? 1.15 : 0.8);
-          const rx0 = dx0 + Math.cos(a) * dr * 0.9;
-          const ry0 = dy0 + Math.sin(a) * dr * 0.9;
-          const rx1 = dx0 + Math.cos(a) * (dr * 0.9 + len);
-          const ry1 = dy0 + Math.sin(a) * (dr * 0.9 + len);
-          const w = dr * 0.16;
-          ctx.fillStyle = shade(dc, i === 2 ? 8 : -6);
+        const shimmer = phase === 'noon' ? 1 + 0.045 * Math.sin(f.nowMs * 0.0052) : 1;
+        // The disc's climb: half out of the band at first light, near
+        // clear of it at full day. Noon floats fully clear.
+        const lift = phase === 'noon'
+          ? dr * 0.95
+          : phase === 'eclipse'
+            ? dr * 0.62
+            : dr * 0.62 * dayK;
+        const dyC = horizonY - lift;
+        // Rays first, so the disc caps their roots. They reach with
+        // the light. The eclipse wears corona spikes instead.
+        const rayCol = phase === 'eclipse' ? (st.sundisc.ring ?? st.trim) : dc;
+        const rayCount = phase === 'eclipse' ? 7 : 5;
+        for (let i = 0; i < rayCount; i++) {
+          const spread = phase === 'eclipse' ? 1.1 : 0.72;
+          const a = -Math.PI * (0.5 + spread / 2) + (i / (rayCount - 1)) * Math.PI * spread;
+          const reach = phase === 'eclipse'
+            ? 0.5 + 0.5 * dayK
+            : 0.45 + 0.7 * dayK;
+          const len = dr * (i === Math.floor(rayCount / 2) ? 1.15 : 0.8) * reach * shimmer;
+          if (len < dr * 0.12) continue;
+          const rx0 = dx0 + Math.cos(a) * dr * 0.92;
+          const ry0 = dyC + Math.sin(a) * dr * 0.92;
+          const rx1 = dx0 + Math.cos(a) * (dr * 0.92 + len);
+          const ry1 = dyC + Math.sin(a) * (dr * 0.92 + len);
+          const w = dr * (phase === 'eclipse' ? 0.1 : 0.16);
+          ctx.fillStyle = shade(rayCol, i === Math.floor(rayCount / 2) ? 8 : -6);
           ctx.beginPath();
           ctx.moveTo(rx0 - Math.sin(a) * w, ry0 + Math.cos(a) * w);
-          ctx.lineTo(rx1 - Math.sin(a) * w * 0.3, ry1 + Math.cos(a) * w * 0.3);
-          ctx.lineTo(rx1 + Math.sin(a) * w * 0.3, ry1 - Math.cos(a) * w * 0.3);
+          ctx.lineTo(rx1 - Math.sin(a) * w * 0.25, ry1 + Math.cos(a) * w * 0.25);
+          ctx.lineTo(rx1 + Math.sin(a) * w * 0.25, ry1 - Math.cos(a) * w * 0.25);
           ctx.lineTo(rx0 + Math.sin(a) * w, ry0 - Math.cos(a) * w);
           ctx.closePath();
           ctx.fill();
         }
-        ctx.fillStyle = dc;
+        // The disc, clipped at the horizon: nothing shows below the
+        // band — the sun is IN the sky, not pasted on the hood.
+        ctx.save();
         ctx.beginPath();
-        ctx.arc(dx0, dy0, dr, Math.PI, 0);
-        ctx.closePath();
-        ctx.fill();
-        // The horizon shadow under the disc's rise, and the walking
-        // glint — a pale facet sweeping the dome on the dawn clock.
-        ctx.fillStyle = shade(dc, -18);
-        ctx.fillRect(dx0 - dr, dy0 - headR * 0.015, dr * 2, headR * 0.045);
-        const gk = (Math.sin(f.nowMs * 0.0009) + 1) / 2;
-        const ga = Math.PI + gk * Math.PI;
-        ctx.fillStyle = shade(dc, 34);
-        ctx.beginPath();
-        ctx.arc(dx0 + Math.cos(ga) * dr * 0.62, dy0 + Math.sin(ga) * dr * 0.62, dr * 0.16, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.rect(dx0 - dr * 2.4, horizonY - headR * 1.6, dr * 4.8, headR * 1.6);
+        ctx.clip();
+        if (phase === 'eclipse') {
+          const ring = st.sundisc.ring ?? st.trim;
+          ctx.fillStyle = ring;
+          ctx.beginPath();
+          ctx.arc(dx0, dyC, dr * shimmer, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = dc;
+          ctx.beginPath();
+          ctx.arc(dx0, dyC, dr * 0.82 * shimmer, 0, Math.PI * 2);
+          ctx.fill();
+          // The corona flare at the cycle's peak.
+          if (dayK > 0.7) {
+            ctx.globalAlpha = (dayK - 0.7) / 0.3 * 0.4;
+            ctx.fillStyle = ring;
+            ctx.beginPath();
+            ctx.arc(dx0, dyC, dr * 1.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        } else {
+          ctx.fillStyle = dc;
+          ctx.beginPath();
+          ctx.arc(dx0, dyC, dr * shimmer, 0, Math.PI * 2);
+          ctx.fill();
+          // The disc's own lit crown — a flat pale cap, high side.
+          ctx.fillStyle = shade(dc, 16);
+          ctx.beginPath();
+          ctx.arc(dx0, dyC, dr * 0.78 * shimmer, Math.PI * 1.08, Math.PI * 1.92);
+          ctx.closePath();
+          ctx.fill();
+          // The walking glint — first light always moves.
+          const gk = (Math.sin(f.nowMs * 0.0009) + 1) / 2;
+          const ga = Math.PI + gk * Math.PI;
+          ctx.fillStyle = shade(dc, 36);
+          ctx.beginPath();
+          ctx.arc(dx0 + Math.cos(ga) * dr * 0.58, dyC + Math.sin(ga) * dr * 0.5, dr * 0.15, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+        // The horizon band re-asserts itself over the disc's foot.
+        ctx.fillStyle = shade(st.trim, -14);
+        ctx.fillRect(dx0 - ohw * 0.98, horizonY - headR * 0.03, ohw * 1.96, headR * 0.06);
       }
     }
     return;
