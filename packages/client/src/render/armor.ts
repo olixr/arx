@@ -5256,6 +5256,46 @@ export function drawPauldron(
   // of a turned body swells, the far cap steps back.
   const bold = (st.pauldronScale ?? 1) * (1 + depthK * 0.15);
   ctx.scale(Math.max(0.55, squashK) * bold, bold);
+  /**
+   * THE WORN SEAT — the shell every bespoke statement stands on: a
+   * domed cap that CUPS the arm root, wide enough that the arm reads
+   * as hanging FROM the pauldron instead of the pauldron floating on
+   * a stub (the fan-on-a-stick read the user caught). Top plane lit,
+   * under-hem curled up around the arm, one bright rim line to say
+   * WORN — then each kind's device rides the dome.
+   */
+  const seat = (hw2: number, drop: number, capCol: string, rimCol: string): void => {
+    ctx.fillStyle = hurt ? '#ffffff' : capCol;
+    ctx.beginPath();
+    ctx.moveTo(-hw2, drop * 0.55);
+    ctx.quadraticCurveTo(-hw2 * 1.08, -drop * 0.5, -hw2 * 0.46, -drop * 0.84);
+    ctx.quadraticCurveTo(0, -drop * 1.08, hw2 * 0.46, -drop * 0.84);
+    ctx.quadraticCurveTo(hw2 * 1.08, -drop * 0.5, hw2, drop * 0.55);
+    // The under-hem curves up around the arm — a shell, not a slab.
+    ctx.quadraticCurveTo(0, drop * 0.95, -hw2, drop * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The 2.5D dome read: lit crown plane, shaded under-hem.
+      ctx.fillStyle = shade(capCol, 14);
+      ctx.beginPath();
+      ctx.ellipse(0, -drop * 0.5, hw2 * 0.6, drop * 0.34, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = shade(capCol, -24);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(-hw2 * 0.9, drop * 0.5);
+      ctx.quadraticCurveTo(0, drop * 0.86, hw2 * 0.9, drop * 0.5);
+      ctx.stroke();
+      // The rim hem: the one bright line that says WORN.
+      ctx.strokeStyle = rimCol;
+      ctx.lineWidth = Math.max(1, s * 0.015);
+      ctx.beginPath();
+      ctx.moveTo(-hw2, drop * 0.55);
+      ctx.quadraticCurveTo(0, drop * 0.95, hw2, drop * 0.55);
+      ctx.stroke();
+    }
+  };
   if (st.pauldron === 'orbs') {
     // A conjured orb in patient orbit over each shoulder — floating,
     // never mounted; the gap between orb and shoulder IS the trick.
@@ -5351,25 +5391,10 @@ export function drawPauldron(
         ctx.stroke();
       }
     }
-    // The seat: a domed gold cap the fan grows from — worn, not taped
-    // on, with the 2.5D top plane the tilted camera demands: a lit
-    // crown arc above the rim shadow.
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.ellipse(0, 0.008 * s, 0.105 * s, 0.062 * s, 0, Math.PI, Math.PI * 2);
-    ctx.fill();
-    if (!hurt) {
-      // The top plane catches the sun; the under-rim holds the shade.
-      ctx.fillStyle = shade(base, 16);
-      ctx.beginPath();
-      ctx.ellipse(0, -0.008 * s, 0.082 * s, 0.036 * s, 0, Math.PI, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = trim;
-      ctx.lineWidth = Math.max(1, s * 0.014);
-      ctx.beginPath();
-      ctx.ellipse(0, 0.008 * s, 0.105 * s, 0.062 * s, 0, Math.PI * 1.04, Math.PI * 1.96);
-      ctx.stroke();
-    }
+    // The fan grows out of the WORN SEAT: the dome cups the arm root
+    // in a QUIETER antique gold, so the rays stay the bright
+    // statement — dome as ground, fan as figure.
+    seat(0.112 * s, 0.092 * s, hurt ? '#ffffff' : shade(base, -18), trim);
     ctx.restore();
     return;
   }
@@ -5380,13 +5405,15 @@ export function drawPauldron(
     // under THE ONE BRIGHT EDGE: a lit stroke down each leading
     // curve, or the sweep reads as shadow instead of wing.
     const u = 1; // outward: the wings clear the silhouette, never the chest
+    // Trimmed to sit BELOW the veil's own temple crest — the head
+    // keeps the highest gold; the shoulders answer, never compete.
     for (let i = 2; i >= 0; i--) {
-      const lift = i * 0.045;
-      const len = (0.32 - i * 0.055) * s;
+      const lift = i * 0.04;
+      const len = (0.27 - i * 0.048) * s;
       const px = side * -0.01 * s;
-      const py = (-0.03 + lift * 0.35) * s;
+      const py = (-0.025 + lift * 0.35) * s;
       const tx = px + side * u * len;
-      const ty = py - (0.2 - lift) * s;
+      const ty = py - (0.165 - lift) * s;
       ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 8 : -6) - i * 12);
       ctx.beginPath();
       ctx.moveTo(px, py - 0.045 * s);
@@ -5406,23 +5433,9 @@ export function drawPauldron(
         ctx.stroke();
       }
     }
-    // The root cap seats the wings on the arm — domed, with the lit
-    // top plane the tilted camera expects of every standing volume.
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 0.1 * s, 0.068 * s, 0, Math.PI * 0.9, Math.PI * 2.1);
-    ctx.fill();
-    if (!hurt) {
-      ctx.fillStyle = shade(base, 12);
-      ctx.beginPath();
-      ctx.ellipse(0, -0.014 * s, 0.076 * s, 0.038 * s, 0, Math.PI, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = trim;
-      ctx.lineWidth = Math.max(1, s * 0.012);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 0.1 * s, 0.068 * s, 0, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.stroke();
-    }
+    // The wings grow off the WORN SEAT — the bronze dome cups the arm
+    // root and the sweep starts from a shoulder that exists.
+    seat(0.115 * s, 0.09 * s, col, trim);
     ctx.restore();
     return;
   }
@@ -5433,19 +5446,10 @@ export function drawPauldron(
     // BRIGHT EDGE down its windward face, and on its own beat an arc
     // snaps between the two tallest tips — the charge the orbs
     // circle for, grounded at the shoulder.
-    const seatY = 0.02 * s;
-    // The seat first: a DARK forged dome with its lit top plane —
-    // the glass is luminous, so the socket it grows from stays iron.
-    ctx.fillStyle = hurt ? '#ffffff' : shade(base, -38);
-    ctx.beginPath();
-    ctx.ellipse(0, seatY, 0.1 * s, 0.06 * s, 0, Math.PI, Math.PI * 2);
-    ctx.fill();
-    if (!hurt) {
-      ctx.fillStyle = shade(base, -24);
-      ctx.beginPath();
-      ctx.ellipse(0, seatY - 0.014 * s, 0.075 * s, 0.032 * s, 0, Math.PI, Math.PI * 2);
-      ctx.fill();
-    }
+    const seatY = -0.015 * s;
+    // The WORN SEAT first: a dark forged dome cupping the arm — the
+    // glass is luminous, so the socket it grows from stays iron.
+    seat(0.115 * s, 0.09 * s, shade(base, -38), shade(base, -10));
     const spires: Array<[number, number, number, number]> = [
       // [base x (×side), height, half-width, outward lean] — SHORT
       // and FAT: a crystal is mass with facets; a tall thin one is a
@@ -5543,6 +5547,9 @@ export function drawPauldron(
         ctx.stroke();
       }
     };
+    // The WORN SEAT under the ironwork: the char dome cups the arm so
+    // the slabs lap a shoulder, not a gap.
+    seat(0.115 * s, 0.09 * s, shade(base, -4), shade(base, 18));
     // Upper slab rides the shoulder crown; lower laps the arm.
     slab(side * -0.01 * s, -0.045 * s, 0.19 * s, 0.085 * s, side * 0.012 * s, 6);
     slab(side * 0.02 * s, 0.05 * s, 0.21 * s, 0.09 * s, side * 0.02 * s, -8);
@@ -5582,6 +5589,9 @@ export function drawPauldron(
     // collector's plate.
     const brass = st.pauldronTrim ?? shade(base, 30);
     const R = 0.13 * s;
+    // The WORN SEAT under the crescent: the midnight dome cups the
+    // arm and fills the ring — a crescent over a gap is a handle.
+    seat(0.12 * s, 0.095 * s, col, shade(brass, -8));
     // The crescent is a PLATE, not a wire: a filled band between two
     // arcs, thick enough to carry rivets and its own lit crown.
     const bandW = 0.055 * s;
@@ -5648,7 +5658,10 @@ export function drawPauldron(
     // the shoulder is where the flagship's geometry begins.
     // Seated LOW and pushed OUTWARD: the arcs cup the shoulder's own
     // curve, clear of the skull — regalia at the shoulder, never ears
-    // beside the head (the first-cut lesson).
+    // beside the head (the first-cut lesson). The arcs FLOAT, but the
+    // shoulder under them is dressed: a violet cloth pad cups the arm
+    // so the regalia hovers over a shoulder, not a stick.
+    seat(0.105 * s, 0.085 * s, hurt ? '#ffffff' : shade(st.color, -4), base);
     const arcCol = hurt ? '#ffffff' : base;
     const ox2 = side * 0.055 * s;
     for (const [i, rr] of [0.115, 0.08].entries()) {
