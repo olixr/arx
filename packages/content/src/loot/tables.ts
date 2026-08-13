@@ -124,6 +124,9 @@ const defs: LootTableDef[] = [
     { item: 'stickbow', chance: 0.03 },
     { item: 'poachers_friend', chance: 0.015 },
     { item: 'hazel_switch', chance: 0.025 },
+    // A tinker went after a nest with the wrong knife and the right
+    // nerve. The knife stayed.
+    { item: 'cindersnip', chance: 0.015 },
   ]),
 
   // ---------------------------------------------------- kobold warren
@@ -192,6 +195,9 @@ const defs: LootTableDef[] = [
       // The study's music stand held no music, only a bow strung
       // four ways. The digmaster cannot make it stop humming.
       { item: 'runespan', chance: 0.012 },
+      // One vein came up already knife shaped and pulling at the
+      // picks. The digmaster hafted it and stopped losing nails.
+      { item: 'lodestone', chance: 0.008 },
     ],
   },
 
@@ -237,6 +243,10 @@ const defs: LootTableDef[] = [
     { item: 'bramblethorn', chance: 0.015 },
     { item: 'hazel_switch', chance: 0.03 },
     { item: 'wisplight', chance: 0.012 },
+    // Farm iron the camp stole with the rest of the barn.
+    { item: 'weathervane', chance: 0.015 },
+    // Chain is money to a goblin. The blade that ends chains, more so.
+    { item: 'chainbreaker', chance: 0.012 },
   ]),
   {
     // The road-thieves' pockets: heavier coin than any beast carries
@@ -283,6 +293,11 @@ const defs: LootTableDef[] = [
     { item: 'iron_helm', chance: 0.03 },
     // The crew's toll-blade — the reaver keeps it; the crew dreams.
     { item: 'reavers_toll', chance: 0.012 },
+    // A Waykeeper sergeant is short one sword, and the road is short
+    // one lamp. The crews think it's funny. The road does not.
+    { item: 'lamplight', chance: 0.012 },
+    // Every second crew hand carries a key knife and swears by it.
+    { item: 'latchkey', chance: 0.012 },
   ]),
   {
     // The reaver kept the crew's shares. Killing the name is the
@@ -361,6 +376,9 @@ const defs: LootTableDef[] = [
     { item: 'bogsting', chance: 0.018 },
     { item: 'scaler', chance: 0.015 },
     { item: 'redhand', chance: 0.012 },
+    // Coast plunder off a wreck the raiders won't row back over.
+    { item: 'reefwrack', chance: 0.012 },
+    { item: 'undertow', chance: 0.008 },
     { item: 'knucklebow', chance: 0.03 },
     { item: 'driftwood', chance: 0.02 },
     { item: 'fishspine', chance: 0.015 },
@@ -473,6 +491,10 @@ const defs: LootTableDef[] = [
     { item: 'heartspindle', chance: 0.008 },
     { item: 'candlewake', chance: 0.012 },
     { item: 'kerbstone', chance: 0.01 },
+    // The dead keep their own calendar: a blade with a moon in it,
+    // and the shrine knife that walked its light down here once.
+    { item: 'hollowmoon', chance: 0.007 },
+    { item: 'vesper', chance: 0.01 },
   ]),
 
   // ----------------------------------------------------- the Champion
@@ -613,6 +635,16 @@ const defs: LootTableDef[] = [
       // the cracked bell, both legendary or not at all.
       { item: 'riftglass', chance: 0.004 },
       { item: 'last_bell', chance: 0.005 },
+      // THE MASTERWORKS' high shelf: the duelist's lace, the carried
+      // blade, the Line's trust, the needle, the black crescent, the
+      // turned glass, and the sword the sky came down for.
+      { item: 'silverlace', chance: 0.03 },
+      { item: 'riven', chance: 0.012 },
+      { item: 'silver_line', chance: 0.012 },
+      { item: 'silverthread', chance: 0.03 },
+      { item: 'eclipse', chance: 0.012 },
+      { item: 'borrowed_time', chance: 0.004 },
+      { item: 'northlight', chance: 0.008 },
     ],
   ),
 
@@ -717,6 +749,10 @@ const defs: LootTableDef[] = [
       { item: 'kingsbane', w: 2 },
       { item: 'starfall', w: 1 },
       { item: 'skyrender', w: 1 },
+      // The vault holds the Line's own blade in trust, and one box
+      // the clerks keep upside down and will not say why.
+      { item: 'silver_line', w: 2 },
+      { item: 'borrowed_time', w: 1 },
     ],
   },
   {
@@ -812,6 +848,9 @@ const defs: LootTableDef[] = [
       // The charting took a loom. The loom took to the night. The
       // shuttle has not stopped for anyone since.
       { item: 'starloom', chance: 0.006 },
+      // A sword broke against the seal down here and came back
+      // carried. The gatekeeper never asked what did the carrying.
+      { item: 'riven', chance: 0.008 },
     ],
   },
 
@@ -946,6 +985,11 @@ const defs: LootTableDef[] = [
     { item: 'rimewood', chance: 0.008 },
     { item: 'shepherds_crook', chance: 0.03 },
     { item: 'glacierbite', chance: 0.006 },
+    // What the herders dropped running: the flower knife they carry
+    // against the wolves' own hills.
+    { item: 'larkspur', chance: 0.012 },
+    // Dusk hunts with the pack. So does what follows dusk around.
+    { item: 'mothlight', chance: 0.007 },
   ]),
 
   // ------------------------------------------------------- gnoll warband
@@ -1194,6 +1238,10 @@ const defs: LootTableDef[] = [
       // The troll also keeps a frame of silver threads it cannot
       // untangle. It calls the frame "harp". The frame declines.
       { item: 'starloom', chance: 0.006 },
+      // A hafted seal-slab the troll respects as a fellow stone, and
+      // the green-night sword it will not sleep near.
+      { item: 'quarryheart', chance: 0.01 },
+      { item: 'northlight', chance: 0.006 },
     ],
   },
   {
