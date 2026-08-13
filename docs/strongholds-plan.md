@@ -279,6 +279,51 @@ terraces.
 - Live verify: climb the ramp under the honor guard's eyes; confirm the
   terrace renders with the shelf-law sort and the cliff faces paint.
 
+### Phase 2 as-built (2026-08-13, commit 0bebcb2 — THE GROUND RISES)
+
+Shipped as designed; deviations and laws learned:
+
+- **The generator raises its own terraces directly** (no ZoneBuilder
+  dependency — the builder's laws were re-stated as validator laws
+  instead): terrace = boss rect + pad 2→1 fallback, elev 1, Cliff
+  ring, Ramp on the south edge (2-wide citadel / 1-wide hold), opaque
+  `Grass` fill so the hill has no transparent holes, `Dirt` landing
+  and summit path. Citadels always terrace; holds roll 60% — the
+  gnoll cackle-fort shipped honestly flat, which is the variety
+  working.
+- **Height is render-only end to end** (the shelf law held): the
+  Phase-1 reachability flood and the live pathfinder both route by
+  tiles alone — Cliff solid, Ramp walkable — so no Phase-2 change
+  touched movement code, and the summit walk worked on the first
+  composed probe. Cliffs are also `SIGHT_WALL_TILES`: a terraced
+  court is hidden ground until the stair is won.
+- **The validator states the fence laws by name**: FENCED HEIGHT
+  (any drop to a 4-neighbor puts Cliff/Ramp on the high cell, with
+  transparent neighbors read as level 0), THE SOUTH STAIR (landing
+  below, level flanks — twin ramps legal because a ramp flank is at
+  level), border-flat (≥2 from the rect edge), no elevation on
+  transparent cells, range 0..3.
+- **composePoi allocates elevation lazily** (`elev ??= new Int8Array`)
+  on both court and wing blits — the ordinary flat frontier still
+  composes `elev: undefined`, test-pinned, so Phase 2 costs standing
+  content nothing.
+- **Live-proven on the running world**: a 17×13 terraced probe PUT
+  through the bench doors, forced via `/poi here`, rendered with
+  true cliff faces and stair art at 567,180, and a prover pathed up
+  the ramp to stand on the summit beside the skull crown. Probe
+  dissolved and deleted after (`/dev/pois/cell` wants `cellX/cellY`,
+  not `cx/cy`).
+- **Minor debt**: the bench war-map renders the raised court dark at
+  small scale (the preview's cliff bake) — legible as "raised", not
+  yet pretty; revisit when the Phase-6 bench pass lands. The sketch
+  legend deliberately gained no Cliff/Ramp characters — hand-authored
+  terraces belong in Map Studio, which captures elevation already.
+- **Stream discipline held**: the terrace rides its own stream
+  (`rTerrace`, n=6), so Phase-1 hulls, gates, wards, and musters at
+  the same seeds were preserved; only the hills are new. Reseeding
+  `data/prefabs/stronghold_*.json` (write-in-place, tracked) is the
+  FILE-WINS refresh dance from the war-camp epic.
+
 ## Phase 3 — The Capital Law (placement, masking, and the price of scale)
 
 Goal: one stronghold per country, seated deterministically, materialized
