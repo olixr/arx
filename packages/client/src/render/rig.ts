@@ -45,14 +45,18 @@ import {
 } from './carriage.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
 import {
+  BOW_PLANE_SOFT,
   GREAT_FINISHER_PHASES,
   GREAT_POMMEL_CHOKE_S,
   STAFF_GUARD_CHOKE_S,
+  WIELD_GROUND_K,
   armPump,
   bowWield,
   easeRestSide,
   facingFrame,
   gaitK,
+  lifelineYaw,
+  projectAim,
   greatFinisherLean,
   greatFinisherPath,
   greatStrikeFrame,
@@ -4090,15 +4094,24 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       offAngle += angleDelta(offAngle, rig.dir + echoF.arm) * echoW;
     }
   }
+  // THE AIM IS A GROUND VECTOR (arms-v3 Phase 3): every radial reach
+  // down the aim rides the projected unit direction — its depth
+  // component carries the ground K, so a north thrust punches short
+  // and high, a south thrust short and low, and the fist finally
+  // travels the same ellipse its slash trail draws. The strike-stage
+  // ORBITS (mainAngle sweeps) deliberately stay screen circles: the
+  // schools' cut planes are authored facing-dependent art (Part 4 —
+  // the choreography is law).
+  const aim = projectAim(rig.dir);
   let mainX: number;
   let mainY: number;
   if (thrustR !== null) {
-    mainX = rig.x + fx * thrustR * s * wS;
-    mainY = armY + fy * thrustR * s + strikeLiftS * s;
+    mainX = rig.x + aim.px * thrustR * s * wS;
+    mainY = armY + aim.py * thrustR * s + strikeLiftS * s;
   } else if (ice) {
     // Icepick: the fist rides its coil-high/drive-down path.
-    mainX = rig.x + fx * ice.r * s * wS;
-    mainY = armY + fy * ice.r * s + ice.lift * s;
+    mainX = rig.x + aim.px * ice.r * s * wS;
+    mainY = armY + aim.py * ice.r * s + ice.lift * s;
   } else {
     // Strike channels ride here: the reach breathes with the cut
     // (collapsing through a rogue pull, extending through a cleave)
@@ -4215,13 +4228,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (ice) {
       // The reversed blade stays pointed at the strike mark all the
       // way through the coil and the drive — menace through the whole
-      // beat. The mark is a SCREEN target, so the angle stays
-      // target-true; the depth read comes from the length alone.
-      const markX = rig.x + fx * 0.6 * s * wS;
-      const markY = armY + fy * 0.6 * s + 0.26 * s;
+      // beat. The mark lives on the projected ground plane now (the
+      // fist's own ellipse), so blade, fist, and streak agree.
+      const markX = rig.x + aim.px * 0.6 * s * wS;
+      const markY = armY + aim.py * 0.6 * s + 0.26 * s;
       return {
         angle: Math.atan2(markY - mainY, markX - mainX),
-        fore: projectStrike(rig.dir).fore,
+        fore: aim.fore,
       };
     }
     if (greatFinPitch !== null) {
@@ -4231,9 +4244,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       return projectCarry(rig.dir, greatFinPitch);
     }
     if (thrustR !== null) {
-      // The lunge rams straight down the aim — angle target-true, the
-      // blade honestly shorter when the aim runs into the screen.
-      return { angle: rig.dir, fore: projectStrike(rig.dir).fore };
+      // The lunge rams straight down the PROJECTED aim — the blade
+      // rides the same ellipse the fist travels, honestly shorter
+      // when the aim runs into the screen.
+      return { angle: aim.angle, fore: aim.fore };
     }
     return { angle: mainAngle, fore: 1 };
   })();
@@ -4354,7 +4368,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // being relaxed toward vertical by a screen-side floor.
       const c = bladeCarriage(mainGrip, sideW, runK, mainCompact);
       const canon = bladeCarriage(mainGrip, 1, runK, mainCompact);
-      const proj = projectCarry(rig.dir, Math.PI / 2 - canon.angle);
+      // THE LIFELINE: the blade's projection yaw biases toward the
+      // eased side at the camera lines — a leveled run carry keeps a
+      // readable diagonal instead of collapsing to a plumb line (the
+      // "sword run S = a stick" verdict cell). Profile stays exact.
+      const proj = projectCarry(lifelineYaw(face), Math.PI / 2 - canon.angle);
       hAngle = proj.angle;
       hFore = proj.fore;
       hx += c.dx * s * wS;
@@ -4466,10 +4484,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // while the blade angles stay true to forward/backward.
       const oc = bladeCarriage(offGrip, sideW, runK, offCompact);
       // The off blade rides the same projection law as the main: its
-      // profile rake becomes a world pitch, and N/S carries draw
-      // honestly short instead of relaxing to a screen vertical.
+      // profile rake becomes a world pitch, N/S carries draw honestly
+      // short — and the same LIFELINE keeps its diagonal readable.
       const oCanon = bladeCarriage(offGrip, 1, runK, offCompact);
-      const oProj = projectCarry(rig.dir, Math.PI / 2 - oCanon.angle);
+      const oProj = projectCarry(lifelineYaw(face), Math.PI / 2 - oCanon.angle);
       let oAngle = oProj.angle;
       offFore += (oProj.fore - offFore) * restSettle;
       // The off fist is the NEAR arm — visible at the side from every
@@ -4676,44 +4694,59 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (rig.pose === PoseState.Cast && rig.poseT < 0.5) {
     const u = Math.sin((rig.poseT / 0.5) * Math.PI);
     castPunch = u;
-    offX = rig.x + fx * (0.14 + 0.18 * u) * s * wS;
-    offY = armY + fy * (0.14 + 0.18 * u) * s;
+    // The punch is a radial reach down the aim — it rides the ground
+    // ellipse like every other reach (a north cast no longer punches
+    // at the sky, a south cast no longer at the boots).
+    offX = rig.x + aim.px * (0.14 + 0.18 * u) * s * wS;
+    offY = armY + aim.py * (0.14 + 0.18 * u) * s;
     // THE PRESENT: a staff LEVELS onto the aim line for the beat of
     // the spell — crown at the mark, flaring — instead of hanging on
-    // the guard angle while the free hand does all the talking.
+    // the guard angle while the free hand does all the talking. The
+    // aim line is the PROJECTED one, and the crown honestly shortens
+    // as it points into the scene (the fore blend rides the same u).
     if (isStaff) {
-      heldAngle += angleDelta(heldAngle, rig.dir) * u;
-      mainX += fx * 0.08 * s * wS * u;
-      mainY += fy * 0.08 * s * u;
+      heldAngle += angleDelta(heldAngle, aim.angle) * u;
+      mainFore += (aim.fore - mainFore) * u;
+      mainX += aim.px * 0.08 * s * wS * u;
+      mainY += aim.py * 0.08 * s * u;
     }
   }
 
   // Archery: the FRONT hand holds the bow at arm's length toward the
   // aim; the string hand physically hauls the string back to the cheek.
+  // THE DRAW RIDES THE ELLIPSE (arms-v3 Phase 3): the bow anchor is a
+  // radial reach down the aim, so it projects — a south draw holds the
+  // bow low-forward at the belt line instead of down at the boots, a
+  // north draw high-forward instead of at the zenith. The string haul
+  // runs along the aim's UNIT screen direction, and the elevation read
+  // comes from the arrow's fore + the anchor, the way the trail
+  // already tells depth. (The true fire direction is the server's —
+  // this is the drawn POSE.)
   let bowX: number | null = null;
   let bowY = 0;
   let bowPull = 0;
   if (drawing || loosing) {
     const bd = reach * 1.2;
-    bowX = rig.x + fx * bd * wS;
-    bowY = armY + fy * bd;
+    bowX = rig.x + aim.px * bd * wS;
+    bowY = armY + aim.py * bd;
     if (loosing) {
       const t = rig.poseT;
-      bowX -= fx * 0.05 * s * (1 - t); // recoil kick back into the grip
+      bowX -= aim.ux * 0.05 * s * (1 - t); // recoil kick back into the grip
       bowPull = 0.03 * s;
-      mainX = bowX - fx * 0.07 * s; // string hand snapped forward
+      mainX = bowX - aim.ux * 0.07 * s; // string hand snapped forward
       mainY = bowY + 0.02 * s;
     } else {
       bowPull = (0.08 + 0.3 * drawT) * s;
-      mainX = bowX - fx * bowPull;
+      mainX = bowX - aim.ux * bowPull;
       mainY = bowY + (shoulderY + 0.06 * s - bowY) * (0.35 * drawT);
       if (drawT >= 0.97) {
-        // Full-draw tension tremble — the whole aim quivers with effort.
+        // Full-draw tension tremble — the whole aim quivers with
+        // effort, perpendicular to the PROJECTED aim line.
         const tr = Math.sin(rig.nowMs * 0.05) * 0.008 * s;
-        mainX += -fy * tr;
-        mainY += fx * tr;
-        bowX += -fy * tr * 0.5;
-        bowY += fx * tr * 0.5;
+        mainX += -aim.uy * tr;
+        mainY += aim.ux * tr;
+        bowX += -aim.uy * tr * 0.5;
+        bowY += aim.ux * tr * 0.5;
       }
     }
     offX = bowX;
@@ -4885,7 +4918,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // foreshortened along the depth axis — not a screen circle. A
   // circular trail was the one element still telling the eye the
   // fight happened on a flat card.
-  const TRAIL_K = 0.62;
+  // THE ONE GROUND: the trail sweeps the same ellipse the fist travels.
+  const TRAIL_K = WIELD_GROUND_K;
   const drawCrescent = (tr: StrikeTrail, r0: number, k: number): void => {
     const a = Math.max(0, Math.min(1, tr.alpha)) * k;
     if (a <= 0) return;
@@ -4926,8 +4960,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (t >= P.hold + 0.02 && t < P.buried + 0.06) {
       const fade = 1 - Math.max(0, (t - P.drive) / (P.buried + 0.06 - P.drive));
       const reach = Math.min(weapon?.weapon?.range ?? 2.4, 2.8) * 0.3 * s;
-      const tx = rig.x + fx * reach * wS;
-      const ty = armY + fy * reach + 0.24 * s;
+      const tx = rig.x + aim.px * reach * wS;
+      const ty = armY + aim.py * reach + 0.24 * s;
       ctx.lineCap = 'round';
       ctx.strokeStyle = `rgba(244, 239, 228, ${0.3 * fade})`;
       ctx.lineWidth = 0.24 * s;
@@ -4954,10 +4988,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (t >= P.hold + 0.02 && t < P.buried + 0.06) {
       const fade = 1 - Math.max(0, (t - P.drive) / (P.buried + 0.06 - P.drive));
       const r1 = (weapon.weapon.range ?? 1.7) * 0.33 * s;
-      const tx = ice ? rig.x + fx * 0.6 * s * wS : rig.x + fx * r1;
-      const ty = ice ? armY + fy * 0.6 * s + 0.26 * s : armY + fy * r1;
-      const sx = ice ? rig.x + fx * 0.08 * s : rig.x + fx * 0.15 * s;
-      const sy = ice ? armY + fy * 0.08 * s - 0.2 * s : armY + fy * 0.15 * s;
+      const tx = ice ? rig.x + aim.px * 0.6 * s * wS : rig.x + aim.px * r1;
+      const ty = ice ? armY + aim.py * 0.6 * s + 0.26 * s : armY + aim.py * r1;
+      const sx = ice ? rig.x + aim.px * 0.08 * s : rig.x + aim.px * 0.15 * s;
+      const sy = ice ? armY + aim.py * 0.08 * s - 0.2 * s : armY + aim.py * 0.15 * s;
       ctx.lineCap = 'round';
       ctx.strokeStyle = `rgba(244, 239, 228, ${0.3 * fade})`;
       ctx.lineWidth = 0.2 * s;
@@ -5313,10 +5347,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     }
     if (!weapon) return;
     if (bowX !== null) {
-      drawHeldItem(ctx, weapon.id, weapon.color, bowX, bowY, rig.dir, s, rig, {
+      // The drawn bow points down the PROJECTED aim and compresses at
+      // the plane's half-measure — the arrow's angle and length are
+      // the elevation read (a south draw reads low-forward, never
+      // "aimed at the boots"; a north draw high-forward, never
+      // straight up a flat card).
+      drawHeldItem(ctx, weapon.id, weapon.color, bowX, bowY, aim.angle, s, rig, {
         pull: bowPull,
         loose: loosing ? rig.poseT : undefined,
         ench: rig.weaponEnch,
+        fore: 1 - BOW_PLANE_SOFT * (1 - aim.fore),
       });
     } else {
       drawHeldItem(ctx, weapon.id, weapon.color, mainX, mainY, heldAngle, s, rig, {

@@ -5,6 +5,8 @@ import {
   WIELD_GROUND_K,
   facingFrame,
   gaitK,
+  lifelineYaw,
+  projectAim,
   gaitLift,
   armPump,
   runnerLift,
@@ -179,10 +181,52 @@ test('staff ladder: planted upright at idle, one-hand level trail at a run', () 
   assert.ok(idle.grip > 0.6 && run.grip <= 0.5, 'grip slides to the balance point');
 });
 
-test('staff run: north foreshortens the trail carry — the depth read', () => {
+test('staff run: north foreshortens the trail carry AND keeps the lifeline diagonal', () => {
   const n = staffWield(facingFrame(-Math.PI / 2, 1), 1, 1, 0, 0);
   assert.ok(n.fore > 0.8 && n.fore < 0.93, `a north sprint shortens the staff a restrained shade (${n.fore.toFixed(3)})`);
-  assert.ok(Math.abs(Math.abs(n.angle) - Math.PI / 2) < 0.2, 'and along the camera line');
+  // THE LIFELINE (Phase 3): the old pin held this to the camera line —
+  // a vertical stick, the lab's own verdict cell. The carry now keeps
+  // a readable lateral component at every camera-line heading.
+  assert.ok(Math.abs(Math.cos(n.angle)) > 0.3, `a diagonal, never a plumb line (${n.angle.toFixed(2)})`);
+});
+
+test('THE LIFELINE: zero at profile (approved angles exact), mirrored by the eased side, continuous', () => {
+  assert.equal(lifelineYaw(facingFrame(0, 1)), 0, 'east carries project un-biased');
+  assert.equal(lifelineYaw(facingFrame(Math.PI, -1)), Math.PI, 'west too');
+  const s = lifelineYaw(facingFrame(Math.PI / 2, 1)) - Math.PI / 2;
+  const sm = lifelineYaw(facingFrame(Math.PI / 2, -1)) - Math.PI / 2;
+  assert.ok(s > 0.3, 'full bias at the camera line');
+  assert.ok(Math.abs(s + sm) < 1e-9, 'the bias mirrors with the side');
+  let prev = lifelineYaw(facingFrame(0, 1));
+  for (let i = 1; i <= 64; i++) {
+    const d = (i / 64) * Math.PI * 2;
+    const y = lifelineYaw(facingFrame(d, 1));
+    assert.ok(Math.abs(y - prev - (d - ((i - 1) / 64) * Math.PI * 2)) < 0.12, `yaw step ${i}`);
+    prev = y;
+  }
+});
+
+test('THE CROWN NEVER DIGS: the south sprint carry keeps its crown out of the dirt', () => {
+  // Toward-camera run: the projected crown direction must not point
+  // meaningfully down-screen (the orb-in-the-ground verdict cell).
+  const south = staffWield(facingFrame(Math.PI / 2, 1), 1, 1, 0, 0);
+  assert.ok(Math.sin(south.angle) < 0.18, `crown near or above screen level (sin ${Math.sin(south.angle).toFixed(2)})`);
+  // Away keeps its identity: the north carry's crown rides up-screen.
+  const north = staffWield(facingFrame(-Math.PI / 2, 1), 1, 1, 0, 0);
+  assert.ok(Math.sin(north.angle) < 0, 'the away carry points up-screen');
+});
+
+test('THE AIM IS A GROUND VECTOR: reaches ride the ellipse, directions stay unit', () => {
+  const e = projectAim(0);
+  const st = projectAim(Math.PI / 2);
+  assert.ok(Math.abs(e.px - 1) < 1e-9 && Math.abs(e.py) < 1e-9, 'east reach is full');
+  assert.ok(Math.abs(st.px) < 1e-9 && Math.abs(st.py - WIELD_GROUND_K) < 1e-9, 'south reach compresses by the ONE ground K');
+  assert.ok(Math.abs(Math.hypot(st.ux, st.uy) - 1) < 1e-9, 'unit direction is unit');
+  assert.ok(Math.abs(st.angle - Math.PI / 2) < 1e-9, 'a pure south aim still points down-screen');
+  // The strike plane and the aim agree — one projection, one world.
+  for (const d of [0.3, 1.1, 2.4, -2.0]) {
+    assert.ok(Math.abs(projectAim(d).angle - projectStrike(d).angle) < 1e-9, `aim/strike angle agree at ${d}`);
+  }
 });
 
 test('staff rock is alive at every facing while walking', () => {

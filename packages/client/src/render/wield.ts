@@ -133,10 +133,20 @@ export interface CarryProjection {
  * factor collapsed to a twig ("not even the same item any more", the
  * user's verdict). The eye needs a CUE, not the full compression: the
  * length shrinks a restrained fraction of what the geometry says,
- * floored so every weapon keeps its identity at every facing.
+ * floored so every weapon keeps its identity at every facing. ONE
+ * SOFT LAW (arms-v3 Phase 3): every projection shares this shape;
+ * only the FLOOR is a per-context perceptual verdict — carries keep
+ * identity at 0.8, strikes keep their steel at 0.85.
  */
 const FORE_SOFT = 0.35;
 const FORE_FLOOR = 0.8;
+/** The strike floor: a killing blow keeps its steel — a cue, never a
+ *  stub (~10% shorter at the full camera line). */
+const FORE_FLOOR_STRIKE = 0.85;
+
+function softFore(len: number, floor: number): number {
+  return Math.max(floor, 1 - (1 - Math.min(1.06, len)) * FORE_SOFT);
+}
 
 /**
  * Project a held rod: `pitch` is the tilt off straight-down, positive
@@ -148,33 +158,82 @@ export function projectCarry(yaw: number, pitch: number): CarryProjection {
   const v = Math.cos(pitch);
   const sx = Math.cos(yaw) * h;
   const sy = Math.sin(yaw) * h * WIELD_GROUND_K + v;
-  const len = Math.hypot(sx, sy);
-  const soft = 1 - (1 - Math.min(1.06, len)) * FORE_SOFT;
   return {
     angle: Math.atan2(sy, sx),
-    fore: Math.max(FORE_FLOOR, soft),
+    fore: softFore(Math.hypot(sx, sy), FORE_FLOOR),
   };
 }
 
 /**
  * The strike-plane projection: a cut sweeps the GROUND plane around
  * the body, so a blade mid-sweep foreshortens as it points into (or
- * out of) the screen. Softened against the pure ground factor — the
- * held extension of a killing blow keeps enough length to read as a
- * blow — with the same law shape: full length across the screen,
- * honestly shorter along the depth axis.
+ * out of) the screen. ONE GROUND (arms-v3 Phase 3): this used to run
+ * its own K = 0.7 — a second, flatter world living inside the first;
+ * the audit's "three depth laws" finding. It now projects through
+ * WIELD_GROUND_K like everything else; its FLOOR stays the strike
+ * verdict.
  */
 export function projectStrike(yaw: number): CarryProjection {
-  const K = 0.7;
   const sx = Math.cos(yaw);
-  const sy = Math.sin(yaw) * K;
-  const len = Math.hypot(sx, sy);
+  const sy = Math.sin(yaw) * WIELD_GROUND_K;
   return {
     angle: Math.atan2(sy, sx),
-    // The soft-depth law, held a shade higher: a killing blow keeps
-    // its steel. ~10% at the full camera line — a cue, never a stub.
-    fore: Math.max(0.85, 1 - (1 - len) * FORE_SOFT),
+    fore: softFore(Math.hypot(sx, sy), FORE_FLOOR_STRIKE),
   };
+}
+
+/**
+ * THE AIM IS A GROUND VECTOR (arms-v3 Phase 3): a radial reach down
+ * the aim — a thrust, an icepick mark, a cast punch, a drawn arrow —
+ * lives on the ground plane, so its screen direction is the
+ * PROJECTED heading and its unit vector carries the ground K on the
+ * depth axis. `ax, ay` are the unit screen direction of the aim; a
+ * reach of r lands at (ax·r, ay·r) — an ellipse, not the flat card's
+ * circle. The old un-projected reaches were why a south-facing archer
+ * aimed the arrow at their own feet and a north thrust punched at
+ * the sky.
+ */
+export interface AimProjection extends CarryProjection {
+  /** RAW projected components: a world reach r lands at (px·r, py·r)
+   *  — the ellipse itself. |(px,py)| shrinks toward the camera lines;
+   *  normalizing them would silently rebuild the flat card's circle. */
+  px: number;
+  py: number;
+  /** UNIT screen direction of the aim — for directions (a string
+   *  haul, a recoil), never for reach distances. */
+  ux: number;
+  uy: number;
+}
+
+export function projectAim(yaw: number): AimProjection {
+  const sx = Math.cos(yaw);
+  const sy = Math.sin(yaw) * WIELD_GROUND_K;
+  const len = Math.hypot(sx, sy) || 1;
+  return {
+    angle: Math.atan2(sy, sx),
+    fore: softFore(len, FORE_FLOOR_STRIKE),
+    px: sx,
+    py: sy,
+    ux: sx / len,
+    uy: sy / len,
+  };
+}
+
+/**
+ * THE LIFELINE (arms-v3 Phase 3): at the camera-line facings a long
+ * carry's projection collapses toward a screen vertical — the lab's
+ * verdict rows: a staff sprint south read as a stick with the crown
+ * in the dirt, a leveled sword as a plumb line. The perceptual floor:
+ * the authored yaw biases toward the EASED side exactly where the
+ * heading runs down the camera line, so the projected carry keeps a
+ * readable diagonal. Riding sideS keeps it continuous through every
+ * turn and mirror-true; smooth(1 − profileK) keeps profile facings
+ * EXACT (zero bias where the user-approved angles reproduce).
+ */
+export const LIFELINE_BIAS = 0.48;
+
+export function lifelineYaw(f: FacingFrame): number {
+  return f.dir + f.sideS * LIFELINE_BIAS * smooth(1 - f.profileK);
 }
 
 // --------------------------------------------------- the honest pump
@@ -360,6 +419,9 @@ export interface StaffWield {
 export const STAFF_FWD_LEAN_S = 0.05;
 /** The great shoulder carry's forward lean, units of s. */
 export const GREAT_FWD_LEAN_S = 0.04;
+/** THE CROWN NEVER DIGS: extra above-level pitch the staff's run
+ *  carry takes as the heading turns toward the camera (radians). */
+export const STAFF_CROWN_GUARD = 0.34;
 
 /**
  * THE STAFF LADDER, second edition — one hand on the move.
@@ -391,13 +453,26 @@ export function staffWield(
   // travel plane. Slightly stronger across the screen (the lateral
   // rock the eye expects) than along the depth, but alive everywhere.
   const rock = sw * (0.2 * Math.abs(px) + 0.11 * (1 - Math.abs(px))) * (1 - carry) * m;
+  // THE CROWN NEVER DIGS (arms-v3 Phase 3): a leveled carry pointing
+  // TOWARD the camera projects down-screen — at a south sprint the
+  // crown orb read as scraping the ground (the lab's verdict cell).
+  // The run carry's pitch rides a toward-camera guard: a barely-above-
+  // level trail at the profile facings, lifting toward the camera half
+  // so the projected crown never drops below its readable band.
+  // Continuous in the facing (smooth of fy's positive half).
+  const digK = smooth(Math.max(0, f.fy));
   // The crown points UP at rest — pitch π in the projection's from-
   // vertical-down convention. Idle/walk: near-vertical, tip planted.
   // Run: the crown levels toward the heading and stops a touch HIGH
-  // (π/2 + 0.15), butt trailing down-back — the balance carry of
-  // someone who means to plant the stick again when they stop.
-  const pitch = Math.PI - rock - carry * (Math.PI / 2 - 0.15);
-  const p = projectCarry(dir, pitch);
+  // (π/2 + 0.15 at profile, + the crown guard toward the camera),
+  // butt trailing down-back — the balance carry of someone who means
+  // to plant the stick again when they stop.
+  const pitch = Math.PI - rock - carry * (Math.PI / 2 - 0.15 - STAFF_CROWN_GUARD * digK);
+  // THE LIFELINE: the projection yaw biases toward the eased side at
+  // the camera lines, so the carry keeps a readable diagonal instead
+  // of collapsing to a screen vertical (profile facings are exact —
+  // the bias is zero there).
+  const p = projectCarry(lifelineYaw(f), pitch);
   return {
     dx: sideS * (0.27 - 0.06 * carry),
     dy: -0.04 + 0.17 * carry,
@@ -890,6 +965,11 @@ export function greatFinisherLean(t: number): number {
  * north-south run the limbs compress toward the camera line, half
  * the depth read of the blades, because a bow is a plane, not a rod.
  */
+/** THE PLANE'S HALF-MEASURE: a bow is a plane, not a rod — its limbs
+ *  compress at half a rod's depth read (a full rod compression turned
+ *  the silhouette into a stick; the half keeps the triangle). */
+export const BOW_PLANE_SOFT = 0.5;
+
 export function bowWield(
   f: FacingFrame,
   moveK: number,
@@ -903,6 +983,6 @@ export function bowWield(
     dx: sideW * (0.12 + 0.02 * lift),
     dy: 0.18 - 0.02 * lift,
     angle: Math.PI / 2 - sideW * (Math.PI / 2 - 0.85 + 0.1 * lift),
-    fore: 0.5 + 0.5 * p.fore,
+    fore: 1 - BOW_PLANE_SOFT * (1 - p.fore),
   };
 }

@@ -31,7 +31,7 @@ const CENSUS: Record<string, number> = {
   offY: 22,
   offAngle: 3, // counter-swing init · echo brace · echo blend
   offBladeAngle: 5, // guard init · echo · rest · flourish path · sheathe
-  mainFore: 2, // strike resolve · rest lerp
+  mainFore: 3, // strike resolve · rest lerp · cast present (Phase 3)
   offFore: 3, // init · echo · rest lerp
   staffGrip: 5, // combat default · strike override · great rest · staff rest · sheathe
   armSwingK: 3, // default · great pumpK · staff pumpK
