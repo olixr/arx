@@ -5971,7 +5971,7 @@ function namedChaseDefs(): EquipmentDef[] {
       'Talons over knuckles. The grip does not negotiate.'),
 
     chasePiece(oathgold, 'oathgold_helm', 'Oathgold helm', 'head', 24, 6, 1150, 'Om',
-      'A gold face that never blinks, a lamp lit in the crown. The vow keeps its own vigil.'),
+      'A crown of spears over eyes that keep fire. It has never once looked away.'),
     chasePiece(oathgold, 'oathgold_platebody', 'Oathgold platebody', 'body', 27, 9, 1400, 'On',
       'Banners at both shoulders, the oath written in crimson. The procession never ended.'),
     chasePiece(oathgold, 'oathgold_greaves', 'Oathgold greaves', 'legs', 26, 8, 1250, 'Oo',
