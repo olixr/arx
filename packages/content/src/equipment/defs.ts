@@ -5017,6 +5017,164 @@ function staffDefs(): EquipmentDef[] {
     },
   ];
 
+  // ========================================= THE MASTERWORKS
+  // Fifteen bespoke finds laddered through the gaps the voices left —
+  // each owns a waist word AND a crown word in the wardrobe
+  // (weapons.ts holds the four-statement law: shaft, waist, crown,
+  // focus). Honest wild finds: rolled rarities, drop-only, arts
+  // borrowed from the working shelf and never from a voice.
+  const masterworks: EquipmentDef[] = [
+    {
+      id: 'dowser', name: 'Dowser', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 3 },
+      weapon: { style: 'arx', damage: 2, cooldownTicks: 8, range: 13, projectileSpeed: 13, art: 'frost_nova', element: 'frost' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'fishing' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 42, color: '#b0987a', code: 'Dz',
+      desc: 'A hazel fork that finds water and always has. The bead in the fork hangs toward the nearest spring, wet in any weather.',
+    },
+    {
+      id: 'swarmsong', name: 'Swarmsong', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 6 },
+      weapon: { style: 'arx', damage: 2, cooldownTicks: 8, range: 13, projectileSpeed: 13, art: 'overgrowth', element: 'verdant' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'herbalism' }, { stat: 'farming' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 115, color: '#a8823f', code: 'Hb',
+      desc: 'A hive rode this stick home from the heather and stayed. The keeper never asks the swarm for anything; the swarm insists.',
+    },
+    {
+      id: 'merelight', name: 'Merelight', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 9 },
+      weapon: { style: 'arx', damage: 3, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'grave_chill', element: 'frost' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'fishing', w: 2 }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 190, color: '#3d5a58', code: 'Mg',
+      desc: 'An angler\'s lure grown staff sized, cut loose off the mere\'s black shelf. Whatever it was built to catch, the light still works.',
+    },
+    {
+      id: 'knellwood', name: 'Knellwood', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 12 },
+      weapon: { style: 'arx', damage: 3, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'wisp_flare', element: 'void' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      acquisition: { drop: true },
+      value: 260, color: '#4a4048', code: 'Kl',
+      desc: 'A toll bell off a road shrine, hafted the day the road stopped needing it. It rings for what the eye cannot see coming.',
+    },
+    {
+      id: 'glassgather', name: 'Glassgather', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 15 },
+      weapon: { style: 'arx', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'hearth_flare', element: 'ember' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      acquisition: { drop: true },
+      value: 350, color: '#ff9a4c', code: 'Gl',
+      desc: 'A glassblower\'s pipe with the last gather still molten on the end. It never cooled, and the maker never came back for it.',
+    },
+    {
+      id: 'duskcap', name: 'Duskcap', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 19 },
+      weapon: { style: 'arx', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'venom_lash', element: 'verdant' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'herbalism', w: 2 }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 480, color: '#7a5f94', code: 'Dk',
+      desc: 'Dusk grows on the north side of old trees, and this is what it grows. The caps light up when the spores go walking.',
+    },
+    {
+      id: 'meridian', name: 'Meridian', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 21 },
+      weapon: { style: 'arx', damage: 5, cooldownTicks: 8, range: 15, projectileSpeed: 14, art: 'undertow', element: 'frost' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 580, color: '#a8874a', code: 'Md',
+      desc: 'A navigator\'s rings on a brass stave, off a ship that never once got lost. The needle still swears by a star nobody else sees.',
+    },
+    {
+      id: 'stormjar', name: 'Stormjar', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 25 },
+      weapon: { style: 'arx', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 14, art: 'galvanic_arc', element: 'storm' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 680, color: '#8a9aa8', code: 'Sq',
+      desc: 'A storm bottled whole and corked with wax. The jar holds. The storm has not stopped arguing.',
+    },
+    {
+      id: 'escapement', name: 'Escapement', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 29 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 8, range: 15, projectileSpeed: 14, art: 'rune_echo', element: 'arcane' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'smithing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 800, color: '#c9a23c', code: 'Ep',
+      desc: 'Clockmaker\'s work: a wheel that lets time through one tooth at a time. Hold it still and you can feel the second happen.',
+    },
+    {
+      id: 'lastsheaf', name: 'Lastsheaf', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 33 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'overgrowth', element: 'verdant' },
+      affixPool: [{ stat: 'arx', w: 2 }, { stat: 'farming', w: 2 }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1150, color: '#b09050', code: 'Ls',
+      desc: 'The last sheaf off a field nobody remembers, bound and never threshed. The grain spills and spills and the sheaf stays full.',
+    },
+    {
+      id: 'mirrormere', name: 'Mirrormere', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 37 },
+      weapon: { style: 'arx', damage: 6, cooldownTicks: 8, range: 15, projectileSpeed: 14, art: 'solar_lance', element: 'radiant' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'vitality' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1350, color: '#9aa2b4', code: 'Mx',
+      desc: 'A looking glass that shows the sky over some other water. The star in it is not behind you. Do not turn around.',
+    },
+    {
+      id: 'ashgarden', name: 'Ashgarden', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 40 },
+      weapon: { style: 'arx', damage: 7, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'cinderstorm', element: 'ember' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'herbalism' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1500, color: '#3a3234', code: 'Ag',
+      desc: 'One bough saved from an orchard fire, still blossoming in coal. Spring never heard about the fire, and the bough never told it.',
+    },
+    {
+      id: 'hollowchoir', name: 'Hollowchoir', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 44 },
+      weapon: { style: 'arx', damage: 7, cooldownTicks: 9, range: 15, projectileSpeed: 14, art: 'gloom_burst', element: 'void' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1650, color: '#565064', code: 'Hc',
+      desc: 'Choir pipes off a gallery the masons sealed. Whatever kept singing down there has gotten very good.',
+    },
+    {
+      id: 'spindrift', name: 'Spindrift', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 47 },
+      weapon: { style: 'arx', damage: 7, cooldownTicks: 8, range: 15, projectileSpeed: 15, art: 'stormlash', element: 'storm' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1800, color: '#7a7468', code: 'Dt',
+      desc: 'A stave of wrack off the mere\'s worst night, glass gauge and all. The needle drops, the wave stands up, and then the sky answers.',
+    },
+    {
+      id: 'wakestone', name: 'Wakestone', slot: 'weapon',
+      levelReq: { skill: 'arx', level: 52 },
+      weapon: { style: 'arx', damage: 8, cooldownTicks: 9, range: 15, projectileSpeed: 15, art: 'void_rift', element: 'astral' },
+      affixPool: [{ stat: 'arx', w: 3 }, { stat: 'vitality' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      effects: [{ kind: 'elementDmg', element: 'astral', pct: 8 }, { kind: 'cooldown', pct: 3 }],
+      value: 2400, color: '#3e4452', code: 'Wk',
+      desc: 'Chipped from beside the Waking Ring, or so the seller swore. Five small stones circle a shimmer that is not quite a door, and once in a while something arrives.',
+    },
+  ];
+
   // ============================================= THE TEN VOICES
   // The legendary chase staffs, spread down the road a mage actually
   // walks — legendary or nothing, found or nothing, and every one
@@ -5139,7 +5297,7 @@ function staffDefs(): EquipmentDef[] {
     },
   ];
 
-  return [...carved, ...battlestaffs, ...classics, ...crafts, ...finds, ...voices];
+  return [...carved, ...battlestaffs, ...classics, ...crafts, ...finds, ...masterworks, ...voices];
 }
 
 /** Compiled once at module load — throws loudly on any malformed def. */

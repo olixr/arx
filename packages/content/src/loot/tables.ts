@@ -162,6 +162,9 @@ const defs: LootTableDef[] = [
       // The warren's cook-fires burned a whole bough-stack one year.
       // One bough burned back.
       { item: 'charbough', chance: 0.005 },
+      // The glassworks above the warren lost a pipe down a shaft,
+      // gather and all. The diggers treat it as a lamp that drips.
+      { item: 'glassgather', chance: 0.006 },
     ],
   },
   {
@@ -198,6 +201,9 @@ const defs: LootTableDef[] = [
       // One vein came up already knife shaped and pulling at the
       // picks. The digmaster hafted it and stopped losing nails.
       { item: 'lodestone', chance: 0.008 },
+      // The magister's clock survived the diggers by being too
+      // interesting to smash. The digmaster winds it and listens.
+      { item: 'escapement', chance: 0.008 },
     ],
   },
 
@@ -247,6 +253,9 @@ const defs: LootTableDef[] = [
     { item: 'weathervane', chance: 0.015 },
     // Chain is money to a goblin. The blade that ends chains, more so.
     { item: 'chainbreaker', chance: 0.012 },
+    // The camp stole a well-finder and dug where it pointed. They
+    // found water. They remain furious about it.
+    { item: 'dowser', chance: 0.012 },
   ]),
   {
     // The road-thieves' pockets: heavier coin than any beast carries
@@ -333,6 +342,9 @@ const defs: LootTableDef[] = [
       // A doorwarden stood in the crew's way once. The reaver kept
       // the blade and has been standing a little straighter since.
       { item: 'threshold', chance: 0.01 },
+      // Off a shipmaster's cabin wall, rings and all. The reaver
+      // cannot read it and will not admit it points somewhere.
+      { item: 'meridian', chance: 0.008 },
     ],
   },
   {
@@ -359,6 +371,9 @@ const defs: LootTableDef[] = [
       // A thrower's dream kit: a stick that throws the WEATHER. None
       // of them can make it work. They keep it anyway.
       { item: 'galecall', chance: 0.005 },
+      // Second prize in the same dream: the weather, pre-bottled.
+      // Nobody in camp will pull the cork. Nobody will bury it.
+      { item: 'stormjar', chance: 0.006 },
       // The one bow in camp nobody dares string. The spark between
       // the talons has opinions about goblins.
       { item: 'galespur', chance: 0.005 },
@@ -379,6 +394,8 @@ const defs: LootTableDef[] = [
     // Coast plunder off a wreck the raiders won't row back over.
     { item: 'reefwrack', chance: 0.012 },
     { item: 'undertow', chance: 0.008 },
+    // The lure stave came up in a net. The netter traded it fast.
+    { item: 'merelight', chance: 0.01 },
     { item: 'knucklebow', chance: 0.03 },
     { item: 'driftwood', chance: 0.02 },
     { item: 'fishspine', chance: 0.015 },
@@ -424,6 +441,9 @@ const defs: LootTableDef[] = [
       // The priest's warden was an archer. Her bow still faces the
       // east wall, waiting for a window.
       { item: 'suncrest', chance: 0.004 },
+      // The shrine bell came down here with its keeper. It still
+      // rings ahead of what the dark sends.
+      { item: 'knellwood', chance: 0.004 },
     ],
   },
   {
@@ -495,6 +515,9 @@ const defs: LootTableDef[] = [
     // and the shrine knife that walked its light down here once.
     { item: 'hollowmoon', chance: 0.007 },
     { item: 'vesper', chance: 0.01 },
+    // The bell stick tolls ahead of the dark's errands. The dark
+    // keeps trying to bury it deeper.
+    { item: 'knellwood', chance: 0.008 },
   ]),
 
   // ----------------------------------------------------- the Champion
@@ -547,6 +570,9 @@ const defs: LootTableDef[] = [
       // The Champion's own field surgeon went into the dark with the
       // rest. Its needle still makes rounds.
       { item: 'marrowlight', chance: 0.006 },
+      // The sealed gallery is two doors from the Champion's vault.
+      // On still nights the drill keeps time with the singing.
+      { item: 'hollowchoir', chance: 0.005 },
     ],
   },
   {
@@ -645,6 +671,13 @@ const defs: LootTableDef[] = [
       { item: 'eclipse', chance: 0.012 },
       { item: 'borrowed_time', chance: 0.004 },
       { item: 'northlight', chance: 0.008 },
+      // The staff masterworks' shelf beside them: the coal orchard,
+      // the sealed gallery's pipes, the storm gauge, and the stave
+      // that keeps the Ring's count.
+      { item: 'ashgarden', chance: 0.03 },
+      { item: 'hollowchoir', chance: 0.025 },
+      { item: 'spindrift', chance: 0.03 },
+      { item: 'wakestone', chance: 0.004 },
     ],
   ),
 
@@ -665,6 +698,9 @@ const defs: LootTableDef[] = [
       // Racks are pick-mode: mult scales the hit odds against nothingW,
       // so a chest pays gear far oftener than the camp that guards it.
       { table: 'goblin_arms', mult: 8 },
+      // A traveller's water-finder, packed and never missed until
+      // the third dry camp.
+      { item: 'dowser', chance: 0.01 },
     ],
   },
   {
@@ -693,6 +729,14 @@ const defs: LootTableDef[] = [
       // Glass poured on the same cold night, boxed so the glint
       // inside would stop unsettling the guards. It has not.
       { item: 'moonglass', chance: 0.005 },
+      // The glassworks' pipe went into the strongbox still warm.
+      // The inventory clerk wrote "warm" and declined to elaborate.
+      { item: 'glassgather', chance: 0.005 },
+      // A navigator's stave, impounded over an unpaid berth. The
+      // needle has been pointing at the harbormaster's house since.
+      { item: 'meridian', chance: 0.005 },
+      // Bottled weather, wax seal intact. Do not shake.
+      { item: 'stormjar', chance: 0.004 },
     ],
   },
   {
@@ -724,6 +768,10 @@ const defs: LootTableDef[] = [
       // Banked with the lights facing the wall. The clerk who took
       // the deposit still checks over his shoulder.
       { item: 'hushwing', chance: 0.005 },
+      // A clockmaker's estate, settled: the wheel that lets time
+      // through, and a lady's glass the appraisers refused to face.
+      { item: 'escapement', chance: 0.005 },
+      { item: 'mirrormere', chance: 0.005 },
       // The magister's own key to doors without hinges, banked with
       // everything else he trusted no apprentice to hold.
       { item: 'runekey', chance: 0.005 },
@@ -784,6 +832,11 @@ const defs: LootTableDef[] = [
       // A shed crown went into the box as antler and came out
       // strung. The briar takes credit.
       { item: 'thornwake', chance: 0.005 },
+      // The forest banked three trades in one box: the hive that
+      // stayed, the caps that glow, and the harvest that never ends.
+      { item: 'swarmsong', chance: 0.006 },
+      { item: 'duskcap', chance: 0.005 },
+      { item: 'lastsheaf', chance: 0.005 },
     ],
   },
   {
@@ -820,6 +873,10 @@ const defs: LootTableDef[] = [
       // the rarest ordinary thing in the game, flat rate FOREVER (the
       // flood-law: no pity, no dials; rare for everyone, every time).
       { item: 'night_sabercat', chance: 0.006 },
+      // The hoard's weather corner: the gauge stave off the mere's
+      // worst night, and the bough that argued with a fire and won.
+      { item: 'spindrift', chance: 0.005 },
+      { item: 'ashgarden', chance: 0.006 },
     ],
   },
   {
@@ -851,6 +908,10 @@ const defs: LootTableDef[] = [
       // A sword broke against the seal down here and came back
       // carried. The gatekeeper never asked what did the carrying.
       { item: 'riven', chance: 0.008 },
+      // The gate's cousins: pipes that learned their song behind a
+      // seal, and a stave chipped from beside the Ring itself.
+      { item: 'hollowchoir', chance: 0.005 },
+      { item: 'wakestone', chance: 0.006 },
     ],
   },
 
@@ -971,6 +1032,9 @@ const defs: LootTableDef[] = [
       { item: 'gold_ring', chance: 0.03 },
       { item: 'brass_key', chance: 0.08 },
       { item: 'dungeon_key', chance: 0.04 },
+      // The elder watched a lady carry a glass through the glade
+      // once, and has been trying to catch the other sky since.
+      { item: 'mirrormere', chance: 0.006 },
     ],
   },
 
@@ -1021,6 +1085,9 @@ const defs: LootTableDef[] = [
       { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
       { item: 'brass_key', chance: 0.08 },
       { item: 'dungeon_key', chance: 0.04 },
+      // The pack raided a harvest that would not stop being one.
+      // The packlord slept on the sheaf and dreamed of bread.
+      { item: 'lastsheaf', chance: 0.008 },
     ],
   },
 
@@ -1035,6 +1102,9 @@ const defs: LootTableDef[] = [
       // The tide buried a duelist and kept the saber. The crabs have
       // been passing it around ever since.
       { item: 'saltfang', chance: 0.008 },
+      // An angler's lure the size of a boathook. The crabs cannot
+      // decide whether they worship it or resent it.
+      { item: 'merelight', chance: 0.01 },
     ],
   },
   {
@@ -1139,6 +1209,9 @@ const defs: LootTableDef[] = [
       // Chitin does not burn. One beetle carried the coal-blade home
       // through the deep runs and never noticed the weight.
       { item: 'cindermaw', chance: 0.012 },
+      // A hive stick went down a burrow after a swarm that had
+      // better plans. The beetles have been babysitting since.
+      { item: 'swarmsong', chance: 0.01 },
       // The same shell hauled the scribe's staff out of the burn.
       // Five brass feathers, not one of them singed.
       { item: 'firequill', chance: 0.01 },
@@ -1189,6 +1262,9 @@ const defs: LootTableDef[] = [
       // The petal-knife came into the web on a gardener who never
       // left. The web keeps the pruning shear it was pruned with.
       { item: 'nightbloom', chance: 0.006 },
+      // Dusk grows in the web's shade too. The spiders farm it and
+      // do not discuss with whom.
+      { item: 'duskcap', chance: 0.008 },
       // The web's darkest corner holds a star that stopped shining
       // on purpose. Even the spider walks around it.
       { item: 'hollowstar', chance: 0.005 },
@@ -1242,6 +1318,9 @@ const defs: LootTableDef[] = [
       // the green-night sword it will not sleep near.
       { item: 'quarryheart', chance: 0.01 },
       { item: 'northlight', chance: 0.006 },
+      // The troll planted the burning bough to see what would grow.
+      // It grew exactly what it was: the troll is very proud.
+      { item: 'ashgarden', chance: 0.006 },
     ],
   },
   {

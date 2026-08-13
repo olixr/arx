@@ -4944,7 +4944,24 @@ export type StaffCrown =
   | 'chalice'   // a garnet cup, a heart above it beating, tithe rising in
   | 'gyre'      // counter-rotating rings around a keystone, glyphs orbiting
   | 'comet'     // the focus RIDES a visible orbit track, tail streaming
-  | 'crownring';// a floating gold crown, tethered to the tip by a live arc
+  | 'crownring' // a floating gold crown, tethered to the tip by a live arc
+  // ---- THE MASTERWORK CROWNS (the wild-finds pass): one owner each,
+  // same law as the voices' crowns — a trade, a place, a story.
+  | 'wishbone'  // the dowser's hazel fork, a water bead hanging in the V
+  | 'skep'      // a woven hive dome, the doorway aglow, the swarm out working
+  | 'lure'      // a bent rod tip dangling a deep-water light on a line
+  | 'bell'      // a bronze toll bell that swings small and rings the cast
+  | 'gather'    // a molten glass gob still turning on the pipe's end
+  | 'toadstool' // a cluster of dusk-lit caps, gills bright underneath
+  | 'armillary' // nested navigator's rings, a needle sworn to one star
+  | 'jar'       // a corked jar with a whole storm arguing inside
+  | 'escapewheel' // a balance wheel letting time through tooth by tooth
+  | 'sheaf'     // bound wheat heads that nod and never thresh out
+  | 'mirror'    // an oval glass showing a star that is not behind you
+  | 'emberbloom'  // a charred bough blossoming in live coal
+  | 'choirpipes'  // five graded pipes, the song walking them in order
+  | 'breaker'   // a wave curl frozen mid-break over a pearl
+  | 'ringstones'; // five small standing stones circling a shimmer
 
 export type StaffFx =
   | 'embers'  // rising fire motes off the crown
@@ -4967,7 +4984,46 @@ export type StaffFx =
   | 'tithe'     // beads rise up the shaft and are taken at the cup
   | 'glyphs'    // script lights orbiting the crown in walking sequence
   | 'stardust'  // twinkles strewn along the comet's path
-  | 'crownarcs';// hard arcs between the crown's points, mostly waiting
+  | 'crownarcs' // hard arcs between the crown's points, mostly waiting
+  // ---- THE MASTERWORK WORDS: one owner each, like the voices'.
+  | 'dewfall'    // beads gather at the fork and let go, one at a time
+  | 'bees'       // the swarm out working, always coming or going
+  | 'plankton'   // deep-water glow motes sinking slow around the lure
+  | 'toll'       // sound made visible: rings spreading off the bell
+  | 'spores'     // a drift of spore motes going walking on the dusk
+  | 'bearings'   // degree ticks orbiting; the course being rechecked
+  | 'tickspark'  // one glint that JUMPS position on the second, never glides
+  | 'chaff'      // grain spilling off the sheaf that never empties
+  | 'reflections'// ghost glints that appear beside the glass, then think better
+  | 'hymn'       // note lights rising off the pipes in walking order
+  | 'spray'      // foam flecks whipped flat off the breaking crest
+  | 'arrival';   // once in a while a spark simply ARRIVES, from nowhere
+
+/**
+ * THE WAIST — the masterworks' fourth statement, between what the
+ * world gave and what the maker crowned it with: a mid-shaft station
+ * that carries the SECONDARY story (the trade's tool, the binding,
+ * the gauge). One owner each, exactly like the crowns. It sits at
+ * 66% of the stick (grip-relative, so every carriage keeps it on the
+ * wood and out of the fist), seats OVER the shaft, and stays inside
+ * the shaft's ±0.09 s furniture band so the crown keeps the skyline.
+ */
+export type StaffMid =
+  | 'springknot' // a weeping burl, one bead seeping and falling
+  | 'honeyband'  // waxy comb cells banding the shaft, amber overrun
+  | 'floatline'  // cork floats and net twine off a working line
+  | 'tollbeads'  // counting beads on a cord, swaying with the walk
+  | 'gatherrings'// pontil rings still heat-hazed from the furnace
+  | 'mycelia'    // pale root-lace climbing, faintly lit
+  | 'graticule'  // an engraved degree band with a sliding brass nut
+  | 'coilwrap'   // copper windings; a charge gleam runs them
+  | 'gearworks'  // two meshed gears stepping tooth by tooth
+  | 'strawbind'  // a braided straw band, a sickle charm swinging
+  | 'ribbonfall' // two silk ribbons trailing off a tied station
+  | 'charline'   // a charred crackle band breathing ember light
+  | 'soundholes' // carved flute holes that light as the song passes
+  | 'barometer'  // a glass gauge whose needle dips before the sky moves
+  | 'wakeveins'; // five notch-runes, lit in the arrival's rhythm
 
 export interface StaffStyle {
   shaft: StaffShaft;
@@ -4976,6 +5032,10 @@ export interface StaffStyle {
   edge?: string;
   /** Fittings: wire wraps, collars, crown metal. */
   metal?: string;
+  /** The waist station — the masterworks' secondary story. */
+  mid?: StaffMid;
+  /** Waist structure color (defaults to metal). */
+  midColor?: string;
   crown: StaffCrown;
   /** Crown structure color (defaults to metal). */
   crownColor?: string;
@@ -5192,6 +5252,132 @@ export const STAFF_STYLES: Record<string, StaffStyle> = {
     shaft: 'fluted', color: '#7a828e', edge: '#a0a8b4', metal: '#d9a441',
     crown: 'crownring', crownColor: '#e8b84a', gem: '#e8f0f4', gemCore: '#fffdf0',
     ferrule: true, fx: 'crownarcs', fxColor: '#fff0a0', len: 1.12,
+  },
+
+  // ---- THE MASTERWORKS, archmage's side: fifteen bespoke finds
+  // laddered through the brackets between the voices. Each owns a
+  // waist word AND a crown word (and its signature fx where it has
+  // one) — the one-story law, now four statements tall: shaft,
+  // waist, crown, focus.
+  dowser: {
+    // The hazel fork that finds water and always has; the bead in
+    // the V hangs toward the nearest spring, wet in any weather.
+    shaft: 'straight', color: '#b0987a', edge: '#d4c0a0', metal: '#8d9299',
+    mid: 'springknot', midColor: '#8a7458',
+    crown: 'wishbone', crownColor: '#b0987a', gem: '#a8d8e8', gemCore: '#e8f8ff',
+    ferrule: false, fx: 'dewfall', fxColor: '#c8ecf4', len: 0.92,
+  },
+  swarmsong: {
+    // A hive rode this stick home from the heather and stayed. The
+    // keeper never asks the swarm for anything; the swarm insists.
+    shaft: 'straight', color: '#a8823f', edge: '#d0a858', metal: '#e8c04c',
+    mid: 'honeyband', midColor: '#e8a83c',
+    crown: 'skep', crownColor: '#c9a25a', gem: '#ffd977', gemCore: '#fff4d0',
+    ferrule: true, fx: 'bees', fxColor: '#f0c84a', len: 0.98,
+  },
+  merelight: {
+    // An angler's lure grown staff sized, cut loose off the mere's
+    // black shelf. Whatever it was built to catch, the light works.
+    shaft: 'gnarled', color: '#6a6458', edge: '#928a7a', metal: '#4a5a58',
+    mid: 'floatline', midColor: '#b0a068',
+    crown: 'lure', crownColor: '#3d5a58', gem: '#9ae8d8', gemCore: '#e8fff8',
+    ferrule: false, fx: 'plankton', fxColor: '#7fd4c8', len: 1.0,
+  },
+  knellwood: {
+    // A toll bell off a road shrine, hafted the day the road stopped
+    // needing it. It rings for what the eye cannot see coming.
+    shaft: 'straight', color: '#4a4048', edge: '#6a5f68', metal: '#8a7a4a',
+    mid: 'tollbeads', midColor: '#8a7a4a',
+    crown: 'bell', crownColor: '#a8925a', gem: '#b8a8d8', gemCore: '#e8dcf8',
+    ferrule: true, fx: 'toll', fxColor: '#cbb8e8', len: 1.02,
+  },
+  glassgather: {
+    // A glassblower's pipe with the last gather still molten on the
+    // end. It never cooled, and the maker never came back for it.
+    shaft: 'iron', color: '#6a6470', edge: '#948e9a', metal: '#8a4a30',
+    mid: 'gatherrings', midColor: '#c9623c',
+    crown: 'gather', crownColor: '#ff9a4c', gem: '#ffb44a', gemCore: '#fff0c0',
+    ferrule: true, fx: 'drip', fxColor: '#ffb060', len: 1.0,
+  },
+  duskcap: {
+    // Dusk grows on the north side of old trees, and this is what it
+    // grows. The caps light up when the spores go walking.
+    shaft: 'gnarled', color: '#5a4a3e', edge: '#7e6a58', metal: '#7a6a9c',
+    mid: 'mycelia', midColor: '#cbb8f0',
+    crown: 'toadstool', crownColor: '#7a5f94', gem: '#b49af0', gemCore: '#e8dcff',
+    ferrule: false, fx: 'spores', fxColor: '#c8b0e8', len: 0.96,
+  },
+  meridian: {
+    // A navigator's rings on a brass stave, off a ship that never
+    // once got lost. The needle swears by a star nobody else sees.
+    shaft: 'fluted', color: '#a8874a', edge: '#d0aa64', metal: '#d9a441',
+    mid: 'graticule', midColor: '#d9a441',
+    crown: 'armillary', crownColor: '#c9a23c', gem: '#a8d8e8', gemCore: '#f0fbff',
+    ferrule: true, fx: 'bearings', fxColor: '#e8f4fa', len: 1.05,
+  },
+  stormjar: {
+    // A storm bottled whole and corked with wax. The jar holds. The
+    // storm has not stopped arguing.
+    shaft: 'iron', color: '#5a616e', edge: '#848c9a', metal: '#7a6a45',
+    mid: 'coilwrap', midColor: '#c9764a',
+    crown: 'jar', crownColor: '#8a9aa8', gem: '#e8e06a', gemCore: '#fffbd0',
+    ferrule: true, fx: 'sparks', fxColor: '#fff2a0', len: 1.0,
+  },
+  escapement: {
+    // Clockmaker's work: a wheel that lets time through one tooth at
+    // a time. Hold it still and you can feel the second happen.
+    shaft: 'fluted', color: '#7a6a58', edge: '#a08a70', metal: '#c9a23c',
+    mid: 'gearworks', midColor: '#c9a23c',
+    crown: 'escapewheel', crownColor: '#d9a441', gem: '#c8e0f0', gemCore: '#ffffff',
+    ferrule: true, fx: 'tickspark', fxColor: '#fff6dc', len: 1.05,
+  },
+  lastsheaf: {
+    // The last sheaf off a field nobody remembers, bound and never
+    // threshed. The grain spills and spills and the sheaf stays full.
+    shaft: 'straight', color: '#b09050', edge: '#d8b870', metal: '#8a6a45',
+    mid: 'strawbind', midColor: '#d8b870',
+    crown: 'sheaf', crownColor: '#d9b45a', gem: '#ffe08a', gemCore: '#fff8dc',
+    ferrule: false, fx: 'chaff', fxColor: '#ecd9a0', len: 1.02,
+  },
+  mirrormere: {
+    // A looking glass that shows the sky over some other water. The
+    // star in it is not behind you. Do not turn around.
+    shaft: 'fluted', color: '#9aa2b4', edge: '#c4ccd8', metal: '#c8d0dc',
+    mid: 'ribbonfall', midColor: '#8f9ed6',
+    crown: 'mirror', crownColor: '#c9ccd8', gem: '#dfe8f4', gemCore: '#ffffff',
+    ferrule: true, fx: 'reflections', fxColor: '#eef4ff', len: 1.05,
+  },
+  ashgarden: {
+    // One bough saved from an orchard fire, still blossoming in coal.
+    // Spring never heard about the fire, and the bough never told it.
+    shaft: 'gnarled', color: '#3a3234', edge: '#5c5258', metal: '#ff8a3c',
+    mid: 'charline', midColor: '#ff8a3c',
+    crown: 'emberbloom', crownColor: '#4a3e40', gem: '#ffa040', gemCore: '#ffe8b0',
+    ferrule: false, fx: 'embers', fxColor: '#ff9a5a', len: 1.04,
+  },
+  hollowchoir: {
+    // Choir pipes off a gallery the masons sealed. Whatever kept
+    // singing down there has gotten very good.
+    shaft: 'fluted', color: '#565064', edge: '#7e788e', metal: '#8a8298',
+    mid: 'soundholes', midColor: '#a898d0',
+    crown: 'choirpipes', crownColor: '#6a6478', gem: '#a89ad0', gemCore: '#e8e0f8',
+    ferrule: true, fx: 'hymn', fxColor: '#c0b0e8', len: 1.08,
+  },
+  spindrift: {
+    // A stave of wrack off the mere's worst night, glass gauge and
+    // all. The needle drops, the wave stands up, the sky answers.
+    shaft: 'gnarled', color: '#7a7468', edge: '#a29a8a', metal: '#5a616e',
+    mid: 'barometer', midColor: '#8a9aa8',
+    crown: 'breaker', crownColor: '#5f8a8a', gem: '#f4f0e2', gemCore: '#ffffff',
+    ferrule: true, fx: 'spray', fxColor: '#d8f0ee', len: 1.06,
+  },
+  wakestone: {
+    // Chipped from beside the Waking Ring, or so the seller swore.
+    // Five small stones circle a shimmer that is not quite a door.
+    shaft: 'obsidian', color: '#3e4452', edge: '#5e6474', metal: '#9ae8de',
+    mid: 'wakeveins', midColor: '#9ae8de',
+    crown: 'ringstones', crownColor: '#6a7284', gem: '#b8f0e8', gemCore: '#ffffff',
+    ferrule: false, fx: 'arrival', fxColor: '#c8fff4', len: 1.1,
   },
 };
 
@@ -5441,6 +5627,399 @@ export function drawStaff(
     ctx.moveTo(0.05 * s, -0.032 * s);
     ctx.lineTo(0.05 * s, 0.032 * s);
     ctx.stroke();
+  }
+
+  // ------------------------------------------------------------ waist
+  // The masterworks' fourth statement: a mid-shaft station at 66% of
+  // the stick (grip-relative, clear of the fist at every carriage),
+  // seated OVER the shaft, held inside ±0.09 s so the crown keeps the
+  // skyline. Structure paints hurt-white; only the glow gates out.
+  if (st.mid) {
+    const mx = butt + LEN * 0.66;
+    const midC = hurt ? '#ffffff' : (st.midColor ?? metal);
+    switch (st.mid) {
+      case 'springknot': {
+        // A weeping burl: the wood swells, and one bead gathers at
+        // the underside, lets go, and starts again. Water finds it.
+        ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, -12);
+        ctx.beginPath();
+        ctx.ellipse(mx, 0, 0.05 * s, 0.036 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (!hurt) {
+          ctx.fillStyle = shade(st.color, -30);
+          ctx.beginPath();
+          ctx.arc(mx + 0.012 * s, 0.004 * s, 0.011 * s, 0, Math.PI * 2);
+          ctx.fill();
+          const ph = ((nowMs * 0.0005) % 1 + 1) % 1;
+          ctx.fillStyle = st.gem ?? '#a8d8e8';
+          if (ph < 0.55) {
+            // The bead swells on the burl's underside.
+            const g = ph / 0.55;
+            ctx.globalAlpha = 0.5 + 0.5 * g;
+            ctx.beginPath();
+            ctx.arc(mx, 0.036 * s + 0.006 * s * g, Math.max(0.8, 0.011 * s * g), 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            // The letting go.
+            const f = (ph - 0.55) / 0.45;
+            ctx.globalAlpha = 1 - f;
+            ctx.beginPath();
+            ctx.arc(mx, 0.045 * s + 0.09 * s * f * f, Math.max(0.8, 0.01 * s), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+        break;
+      }
+      case 'honeyband': {
+        // Comb cells banding the shaft, wax bright, one slow amber
+        // overrun creeping down the sunward side.
+        ctx.fillStyle = midC;
+        ctx.fillRect(mx - 0.05 * s, -0.042 * s, 0.1 * s, 0.084 * s);
+        if (!hurt) {
+          ctx.fillStyle = shade(st.midColor ?? '#e8a83c', -26);
+          for (const [cx2, cy] of [
+            [-0.03, -0.018], [0, -0.018], [0.03, -0.018],
+            [-0.015, 0.014], [0.015, 0.014],
+          ] as const) {
+            const hx = mx + cx2 * s;
+            const hy = cy * s;
+            ctx.beginPath();
+            for (let k = 0; k < 6; k++) {
+              const a = (k / 6) * Math.PI * 2 + Math.PI / 6;
+              const px2 = hx + Math.cos(a) * 0.011 * s;
+              const py = hy + Math.sin(a) * 0.011 * s;
+              if (k === 0) ctx.moveTo(px2, py);
+              else ctx.lineTo(px2, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+          }
+          // One cell brims: the sweetness breathes on the world clock.
+          ctx.globalAlpha = 0.55 + 0.35 * Math.sin(nowMs * 0.0016);
+          ctx.fillStyle = '#ffd977';
+          ctx.beginPath();
+          ctx.arc(mx, -0.018 * s, 0.009 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          // The overrun, creeping off the band's lower lip.
+          ctx.fillStyle = '#e8a83c';
+          ctx.beginPath();
+          ctx.moveTo(mx + 0.022 * s, 0.042 * s);
+          ctx.quadraticCurveTo(mx + 0.028 * s, 0.062 * s, mx + 0.018 * s, 0.07 * s);
+          ctx.quadraticCurveTo(mx + 0.014 * s, 0.056 * s, mx + 0.01 * s, 0.042 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+        break;
+      }
+      case 'floatline': {
+        // Working tackle: twine wraps and two cork floats riding the
+        // shaft — the lure above earns them.
+        ctx.strokeStyle = midC;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        for (const t of [-0.035, -0.01, 0.015, 0.04]) {
+          ctx.beginPath();
+          ctx.moveTo(mx + t * s, -0.034 * s);
+          ctx.lineTo(mx + t * s + 0.008 * s, 0.034 * s);
+          ctx.stroke();
+        }
+        ctx.fillStyle = hurt ? '#ffffff' : '#c9764a';
+        for (const [dx, dy] of [[-0.022, -0.05], [0.03, 0.048]] as const) {
+          ctx.beginPath();
+          ctx.ellipse(mx + dx * s, dy * s, 0.018 * s, 0.012 * s, 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (!hurt) {
+          ctx.fillStyle = '#e8d9b0';
+          for (const [dx, dy] of [[-0.022, -0.05], [0.03, 0.048]] as const) {
+            ctx.beginPath();
+            ctx.arc(mx + dx * s - 0.005 * s, dy * s - 0.004 * s, 0.005 * s, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        break;
+      }
+      case 'tollbeads': {
+        // Counting beads on a cord, hung off a collar — they sway a
+        // few degrees, and the count is always the same.
+        ctx.fillStyle = midC;
+        ctx.fillRect(mx - 0.014 * s, -0.036 * s, 0.028 * s, 0.072 * s);
+        if (!hurt) {
+          const sway = 0.14 * Math.sin(nowMs * 0.0017);
+          ctx.strokeStyle = shade(st.midColor ?? '#8a7a4a', -22);
+          ctx.lineWidth = Math.max(0.8, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(mx, 0.036 * s);
+          ctx.quadraticCurveTo(mx + sway * 0.04 * s, 0.07 * s, mx + sway * 0.08 * s, 0.1 * s);
+          ctx.stroke();
+          ctx.fillStyle = st.midColor ?? '#8a7a4a';
+          for (const t of [0.55, 0.75, 0.95] as const) {
+            ctx.beginPath();
+            ctx.arc(mx + sway * 0.08 * s * t, 0.036 * s + 0.066 * s * t, Math.max(1, 0.011 * s), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        break;
+      }
+      case 'gatherrings': {
+        // Pontil rings, and the heat haze that never left them.
+        ctx.fillStyle = midC;
+        for (const t of [-0.03, 0, 0.03]) {
+          ctx.fillRect(mx + t * s - 0.008 * s, -0.036 * s, 0.016 * s, 0.072 * s);
+        }
+        if (!hurt) {
+          ctx.globalAlpha = 0.3 + 0.18 * Math.sin(nowMs * 0.0023);
+          ctx.fillStyle = st.gem ?? '#ffb44a';
+          ctx.beginPath();
+          ctx.ellipse(mx, 0, 0.055 * s, 0.045 * s, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        break;
+      }
+      case 'mycelia': {
+        // Root-lace climbing a span of the shaft, faintly lit — the
+        // caps above are only the part that shows.
+        ctx.strokeStyle = midC;
+        ctx.lineWidth = Math.max(0.8, s * 0.009);
+        if (!hurt) ctx.globalAlpha = 0.5 + 0.25 * Math.sin(nowMs * 0.0014);
+        for (const ph of [0, 1.4, 2.6]) {
+          ctx.beginPath();
+          const x0 = mx - 0.055 * s;
+          for (let k = 0; k <= 6; k++) {
+            const t = k / 6;
+            const x = x0 + t * 0.11 * s;
+            const y = Math.sin(t * Math.PI * 2.5 + ph) * 0.028 * s * (1 - 0.3 * t);
+            if (k === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case 'graticule': {
+        // The engraved degree band and its sliding brass nut.
+        ctx.fillStyle = midC;
+        ctx.fillRect(mx - 0.05 * s, -0.03 * s, 0.1 * s, 0.06 * s);
+        if (!hurt) {
+          ctx.strokeStyle = shade(st.midColor ?? '#d9a441', -30);
+          ctx.lineWidth = Math.max(0.8, s * 0.007);
+          for (let k = 0; k < 5; k++) {
+            const x = mx - 0.04 * s + k * 0.02 * s;
+            ctx.beginPath();
+            ctx.moveTo(x, -0.026 * s);
+            ctx.lineTo(x, k % 2 === 0 ? 0.004 * s : -0.01 * s);
+            ctx.stroke();
+          }
+          // The nut works its way along, rechecking the course.
+          const nt = (Math.sin(nowMs * 0.0006) + 1) / 2;
+          ctx.fillStyle = shade(st.midColor ?? '#d9a441', 26);
+          ctx.fillRect(mx - 0.045 * s + nt * 0.07 * s, -0.038 * s, 0.02 * s, 0.076 * s);
+        }
+        break;
+      }
+      case 'coilwrap': {
+        // Copper windings; when the jar above argues, a charge gleam
+        // runs the coil to feed it.
+        ctx.strokeStyle = midC;
+        ctx.lineWidth = Math.max(1.2, s * 0.016);
+        for (let k = 0; k < 4; k++) {
+          const x = mx - 0.036 * s + k * 0.024 * s;
+          ctx.beginPath();
+          ctx.moveTo(x, 0.036 * s);
+          ctx.quadraticCurveTo(x + 0.012 * s, 0, x, -0.036 * s);
+          ctx.stroke();
+        }
+        if (!hurt && Math.sin(nowMs * 0.011) > 0.45) {
+          const gt = ((nowMs * 0.004) % 1 + 1) % 1;
+          ctx.fillStyle = st.fxColor ?? '#fff2a0';
+          ctx.globalAlpha = 0.9;
+          ctx.beginPath();
+          ctx.arc(mx - 0.036 * s + gt * 0.08 * s, -0.02 * s, Math.max(0.8, 0.009 * s), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        break;
+      }
+      case 'gearworks': {
+        // Two meshed gears stepping tooth by tooth on the second —
+        // never gliding. The escapement above permits exactly this.
+        const step = Math.floor(nowMs / 1000) + Math.min(1, ((nowMs % 1000) / 1000) * 8);
+        for (const [dx, r, dir] of [[-0.02, 0.034, 1], [0.026, 0.024, -1]] as const) {
+          const gx = mx + dx * s;
+          const gr = r * s;
+          const a0 = hurt ? 0 : dir * step * (Math.PI / 5);
+          ctx.fillStyle = midC;
+          ctx.beginPath();
+          ctx.arc(gx, 0, gr, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = hurt ? '#ffffff' : shade(st.midColor ?? '#c9a23c', 18);
+          for (let k = 0; k < 5; k++) {
+            const a = a0 + (k / 5) * Math.PI * 2;
+            ctx.fillRect(
+              gx + Math.cos(a) * gr - 0.006 * s,
+              Math.sin(a) * gr - 0.006 * s,
+              0.012 * s, 0.012 * s,
+            );
+          }
+          if (!hurt) {
+            ctx.fillStyle = shade(st.midColor ?? '#c9a23c', -28);
+            ctx.beginPath();
+            ctx.arc(gx, 0, gr * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        break;
+      }
+      case 'strawbind': {
+        // The braided band, and a sickle charm that keeps the swing
+        // of the last cut.
+        ctx.fillStyle = midC;
+        ctx.fillRect(mx - 0.04 * s, -0.036 * s, 0.08 * s, 0.072 * s);
+        if (!hurt) {
+          ctx.strokeStyle = shade(st.midColor ?? '#d8b870', -24);
+          ctx.lineWidth = Math.max(0.8, s * 0.009);
+          for (const t of [-0.024, 0, 0.024]) {
+            ctx.beginPath();
+            ctx.moveTo(mx + t * s - 0.01 * s, -0.032 * s);
+            ctx.lineTo(mx + t * s + 0.01 * s, 0.032 * s);
+            ctx.stroke();
+          }
+          const sway = 0.2 * Math.sin(nowMs * 0.0015 + 1);
+          const chx = mx + sway * 0.05 * s;
+          ctx.strokeStyle = '#8d9299';
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.arc(chx, 0.078 * s, 0.024 * s, Math.PI * 0.9 + sway, Math.PI * 1.9 + sway);
+          ctx.stroke();
+        }
+        break;
+      }
+      case 'ribbonfall': {
+        // Two silk ribbons off a tied station, trailing on their own
+        // slow airs — the glass above is a lady's, or was.
+        ctx.fillStyle = midC;
+        ctx.fillRect(mx - 0.016 * s, -0.036 * s, 0.032 * s, 0.072 * s);
+        if (!hurt) {
+          ctx.lineCap = 'round';
+          for (const [col, ph, ln] of [
+            [st.midColor ?? '#8f9ed6', 0, 0.12],
+            ['#c9ccd8', 1.7, 0.09],
+          ] as const) {
+            ctx.strokeStyle = col;
+            ctx.lineWidth = Math.max(1.2, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(mx, 0.03 * s);
+            for (let k = 1; k <= 5; k++) {
+              const t = k / 5;
+              ctx.lineTo(
+                mx - t * 0.05 * s + Math.sin(nowMs * 0.0013 + ph + t * 3) * 0.016 * s * t,
+                0.03 * s + t * ln * s,
+              );
+            }
+            ctx.stroke();
+          }
+          ctx.lineCap = 'butt';
+        }
+        break;
+      }
+      case 'charline': {
+        // The charred crackle band: burnt bark, and the orchard fire
+        // still breathing in the cracks.
+        ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, -14);
+        ctx.fillRect(mx - 0.05 * s, -0.04 * s, 0.1 * s, 0.08 * s);
+        if (!hurt) {
+          const glow = 0.5 + 0.3 * Math.sin(nowMs * 0.0019);
+          ctx.strokeStyle = st.midColor ?? '#ff8a3c';
+          ctx.globalAlpha = glow;
+          ctx.lineWidth = Math.max(0.8, s * 0.011);
+          for (const [x0, y0, x1, y1] of [
+            [-0.036, 0.02, -0.014, -0.018], [0.002, -0.03, 0.02, 0.012],
+            [0.026, 0.028, 0.042, -0.006],
+          ] as const) {
+            ctx.beginPath();
+            ctx.moveTo(mx + x0 * s, y0 * s);
+            ctx.lineTo(mx + x1 * s, y1 * s);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+        break;
+      }
+      case 'soundholes': {
+        // Carved flute holes down a span; they light in walking order
+        // as the song passes on its way to the pipes.
+        ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, -22);
+        for (let k = 0; k < 4; k++) {
+          ctx.beginPath();
+          ctx.arc(mx - 0.036 * s + k * 0.026 * s, 0, 0.009 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (!hurt) {
+          for (let k = 0; k < 4; k++) {
+            const on = Math.max(0, Math.sin(nowMs * 0.0026 - k * 0.9));
+            ctx.globalAlpha = 0.8 * on * on;
+            ctx.fillStyle = st.midColor ?? '#a898d0';
+            ctx.beginPath();
+            ctx.arc(mx - 0.036 * s + k * 0.026 * s, 0, 0.011 * s, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+        break;
+      }
+      case 'barometer': {
+        // The glass gauge: a needle that dips BEFORE the crown's sky
+        // moves — same clock as the breaker's flash, led by half a
+        // breath. Sailors trust the dip, never the sky.
+        ctx.fillStyle = midC;
+        ctx.fillRect(mx - 0.032 * s, -0.044 * s, 0.064 * s, 0.088 * s);
+        if (!hurt) {
+          ctx.fillStyle = '#e8f0f4';
+          ctx.beginPath();
+          ctx.arc(mx, 0, 0.026 * s, 0, Math.PI * 2);
+          ctx.fill();
+          const dip = Math.sin(nowMs * 0.011 + 0.6); // leads the sky
+          const na = -Math.PI / 2 + 0.5 * Math.max(0, dip) + 0.9 * Math.max(0, -dip);
+          ctx.strokeStyle = '#3a3234';
+          ctx.lineWidth = Math.max(0.8, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(mx, 0);
+          ctx.lineTo(mx + Math.cos(na) * 0.02 * s, Math.sin(na) * 0.02 * s);
+          ctx.stroke();
+        }
+        break;
+      }
+      case 'wakeveins': {
+        // Five notch-runes, one to a stone above, lit in the same
+        // rhythm as the arrivals — the stick keeps the Ring's count.
+        ctx.strokeStyle = hurt ? '#ffffff' : shade(st.color, -18);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        for (let k = 0; k < 5; k++) {
+          const x = mx - 0.048 * s + k * 0.024 * s;
+          ctx.beginPath();
+          ctx.moveTo(x - 0.008 * s, 0.02 * s);
+          ctx.lineTo(x + 0.008 * s, -0.02 * s);
+          ctx.stroke();
+        }
+        if (!hurt) {
+          for (let k = 0; k < 5; k++) {
+            const on = Math.max(0, Math.sin(nowMs * 0.0021 - k * 1.15));
+            ctx.globalAlpha = 0.75 * on * on;
+            ctx.strokeStyle = midC;
+            const x = mx - 0.048 * s + k * 0.024 * s;
+            ctx.beginPath();
+            ctx.moveTo(x - 0.008 * s, 0.02 * s);
+            ctx.lineTo(x + 0.008 * s, -0.02 * s);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+        break;
+      }
+    }
   }
 
   // ------------------------------------------------------------ crown
@@ -6370,6 +6949,557 @@ export function drawStaff(
       }
       break;
     }
+
+    // -------------------------------------- the masterwork crowns
+    case 'wishbone': {
+      // The dowser's fork: the shaft splits into a hazel V, and a
+      // water bead hangs in the gap on an unseen thread, swaying
+      // toward the spring only it knows about.
+      ctx.strokeStyle = hurt ? '#ffffff' : crownC;
+      ctx.lineWidth = lw * 0.62;
+      ctx.lineCap = 'round';
+      for (const fs of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(neck - 0.02 * s, 0);
+        ctx.quadraticCurveTo(top - 0.02 * s, fs * 0.05 * s, top + 0.1 * s, fs * 0.1 * s);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      if (!hurt) {
+        // Bark light on the sunward tine.
+        ctx.strokeStyle = edge;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(neck + 0.02 * s, -0.02 * s);
+        ctx.quadraticCurveTo(top, -0.05 * s, top + 0.08 * s, -0.084 * s);
+        ctx.stroke();
+      }
+      // The bead hangs in the V, leaning to its own north.
+      const lean = hurt ? 0 : Math.sin(nowMs * 0.0011) * 0.02 * s;
+      drawFocus(top + 0.045 * s + lean * 0.4, lean, gemR * 0.5);
+      break;
+    }
+    case 'skep': {
+      // The woven hive: coiled straw dome, a dark doorway low on the
+      // sunward face, and the doorway GLOWS — the swarm keeps a lamp.
+      const hx = top + 0.06 * s;
+      ctx.fillStyle = hurt ? '#ffffff' : crownC;
+      ctx.beginPath();
+      ctx.ellipse(hx, 0, 0.085 * s, 0.095 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt) {
+        // The coils: three stitch-arcs telling the weave.
+        ctx.strokeStyle = shade(crownC, -20);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        for (const dy of [-0.05, -0.005, 0.045]) {
+          ctx.beginPath();
+          ctx.ellipse(hx, dy * s, 0.078 * s * (1 - Math.abs(dy) * 3.2), 0.02 * s, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        // The lit top of the dome.
+        ctx.fillStyle = shade(crownC, 22);
+        ctx.beginPath();
+        ctx.ellipse(hx - 0.015 * s, -0.055 * s, 0.045 * s, 0.026 * s, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        // The doorway, and the lamp the swarm keeps in it.
+        ctx.fillStyle = shade(crownC, -38);
+        ctx.beginPath();
+        ctx.ellipse(hx + 0.02 * s, 0.055 * s, 0.02 * s, 0.026 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.65 + 0.25 * Math.sin(nowMs * 0.0019) + castT * 0.3;
+        ctx.fillStyle = gem;
+        ctx.beginPath();
+        ctx.arc(hx + 0.02 * s, 0.055 * s, 0.012 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      } else {
+        drawFocus(hx, 0.05 * s, gemR * 0.4);
+      }
+      break;
+    }
+    case 'lure': {
+      // The rod tip bends past the crown and hangs a deep-water
+      // light on a line. The bulb swings with the walk, and the walk
+      // never quite stops.
+      ctx.strokeStyle = hurt ? '#ffffff' : crownC;
+      ctx.lineWidth = lw * 0.55;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(neck, 0);
+      ctx.quadraticCurveTo(top + 0.08 * s, -0.02 * s, top + 0.13 * s, -0.08 * s);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      const sway = hurt ? 0 : Math.sin(nowMs * 0.0016) * 0.16;
+      const bx2 = top + 0.13 * s + Math.sin(sway) * 0.09 * s;
+      const by = -0.08 * s + Math.cos(sway) * 0.11 * s;
+      if (!hurt) {
+        ctx.strokeStyle = shade(crownC, 26);
+        ctx.lineWidth = Math.max(0.8, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(top + 0.13 * s, -0.08 * s);
+        ctx.lineTo(bx2, by);
+        ctx.stroke();
+      }
+      drawFocus(bx2, by, gemR * 0.62);
+      break;
+    }
+    case 'bell': {
+      // The toll bell: a bronze dome hung off a yoke, swinging a
+      // small arc on the world clock — and swinging WIDE while the
+      // cast leaves, clapper glint and all.
+      ctx.fillStyle = hurt ? '#ffffff' : metal;
+      ctx.fillRect(neck - 0.005 * s, -0.026 * s, 0.05 * s, 0.052 * s); // the yoke
+      const swing = hurt ? 0 : Math.sin(nowMs * 0.0021) * 0.12 + castT * 0.5 * Math.sin(nowMs * 0.02);
+      const bcx = top + 0.07 * s;
+      ctx.save();
+      ctx.translate(bcx, 0);
+      ctx.rotate(swing);
+      ctx.fillStyle = hurt ? '#ffffff' : crownC;
+      ctx.beginPath();
+      ctx.moveTo(-0.012 * s, -0.05 * s);
+      ctx.quadraticCurveTo(0.07 * s, -0.055 * s, 0.075 * s, -0.075 * s);
+      ctx.lineTo(0.09 * s, 0.075 * s);
+      ctx.quadraticCurveTo(0.07 * s, 0.055 * s, -0.012 * s, 0.05 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The sound bow's lit lip, and the clapper hanging past it.
+        ctx.strokeStyle = shade(crownC, 28);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(0.078 * s, -0.07 * s);
+        ctx.lineTo(0.088 * s, 0.068 * s);
+        ctx.stroke();
+        ctx.fillStyle = shade(crownC, -26);
+        ctx.beginPath();
+        ctx.arc(0.098 * s, 0.01 * s, 0.014 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      break;
+    }
+    case 'gather': {
+      // The molten gob on the pipe's end: two soft lobes slowly
+      // trading place (glass never stops moving while it's hot),
+      // and a sag that never quite lets go.
+      ctx.fillStyle = hurt ? '#ffffff' : metal;
+      ctx.fillRect(neck - 0.01 * s, -0.02 * s, 0.06 * s, 0.04 * s); // pipe collar
+      const roll = hurt ? 0 : nowMs * 0.0009;
+      const gx = top + 0.05 * s;
+      ctx.fillStyle = gem;
+      ctx.beginPath();
+      ctx.ellipse(
+        gx + Math.cos(roll) * 0.012 * s, Math.sin(roll) * 0.01 * s,
+        0.075 * s, 0.062 * s, Math.sin(roll * 0.7) * 0.4, 0, Math.PI * 2,
+      );
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(
+        gx - Math.cos(roll) * 0.02 * s, -Math.sin(roll) * 0.016 * s,
+        0.05 * s, 0.058 * s, -Math.sin(roll * 0.7) * 0.5, 0, Math.PI * 2,
+      );
+      ctx.fill();
+      if (!hurt) {
+        // The heat heart, and the sag on the underside.
+        ctx.fillStyle = gemCore;
+        ctx.beginPath();
+        ctx.arc(gx - 0.015 * s, -0.015 * s, 0.026 * s, 0, Math.PI * 2);
+        ctx.fill();
+        const sag = 0.5 + 0.5 * Math.sin(nowMs * 0.0007);
+        ctx.fillStyle = gem;
+        ctx.beginPath();
+        ctx.ellipse(gx + 0.01 * s, (0.062 + sag * 0.02) * s, 0.018 * s, (0.014 + sag * 0.012) * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (castT > 0) drawFocus(gx, 0, gemR * 0.3);
+      break;
+    }
+    case 'toadstool': {
+      // Three dusk-caps clustered off the tip, gills lit underneath
+      // — the light lives where the shade is, which is the point.
+      ctx.strokeStyle = hurt ? '#ffffff' : shade(crownC, -14);
+      ctx.lineWidth = Math.max(1.5, s * 0.02);
+      const stems: Array<[number, number, number]> = [
+        [0.02, -0.055, 0.058], [0.09, 0.045, 0.07], [0.13, -0.02, 0.048],
+      ];
+      for (const [dx, dy] of stems) {
+        ctx.beginPath();
+        ctx.moveTo(neck + 0.02 * s, 0);
+        ctx.lineTo(top + dx * s, dy * s);
+        ctx.stroke();
+      }
+      for (const [dx, dy, r] of stems) {
+        const cx2 = top + dx * s;
+        const cy = dy * s;
+        ctx.fillStyle = hurt ? '#ffffff' : crownC;
+        ctx.beginPath();
+        ctx.ellipse(cx2, cy, r * s, r * 0.62 * s, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+        if (!hurt) {
+          // The lit gills beneath the cap.
+          ctx.globalAlpha = 0.7 + 0.25 * Math.sin(nowMs * 0.0017 + dx * 20) + castT * 0.3;
+          ctx.fillStyle = gem;
+          ctx.beginPath();
+          ctx.ellipse(cx2, cy + 0.004 * s, r * 0.8 * s, r * 0.2 * s, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          // Cap freckles — a toadstool wears its warnings.
+          ctx.fillStyle = shade(crownC, 30);
+          ctx.beginPath();
+          ctx.arc(cx2 - r * 0.4 * s, cy - r * 0.3 * s, 0.007 * s, 0, Math.PI * 2);
+          ctx.arc(cx2 + r * 0.3 * s, cy - r * 0.42 * s, 0.006 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+    }
+    case 'armillary': {
+      // The navigator's rings: two nested hoops standing still, a
+      // needle inside that seeks, overshoots, and settles — sworn to
+      // a star it never explains. The north star sits off-ring.
+      const ax = top + 0.06 * s;
+      ctx.strokeStyle = hurt ? '#ffffff' : crownC;
+      ctx.lineWidth = Math.max(1.5, s * 0.016);
+      ctx.beginPath();
+      ctx.arc(ax, 0, 0.095 * s, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(ax, 0, 0.095 * s, 0.036 * s, 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+      drawFocus(ax, 0, gemR * 0.42);
+      if (!hurt) {
+        // The seeking needle: eases toward north, overshoots, returns.
+        const seek = Math.sin(nowMs * 0.0008) * 0.35 + Math.sin(nowMs * 0.0027) * 0.1;
+        const na = -Math.PI / 2 + seek;
+        ctx.strokeStyle = gemCore;
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(ax - Math.cos(na) * 0.045 * s, -Math.sin(na) * 0.045 * s);
+        ctx.lineTo(ax + Math.cos(na) * 0.07 * s, Math.sin(na) * 0.07 * s);
+        ctx.stroke();
+        // The star it swears by, high off the ring.
+        const tw = 0.6 + 0.4 * Math.sin(nowMs * 0.0031);
+        ctx.globalAlpha = tw;
+        ctx.fillStyle = '#ffffff';
+        const sr = Math.max(0.8, 0.009 * s);
+        ctx.fillRect(ax - sr / 2, -0.135 * s - sr / 2, sr, sr);
+        ctx.globalAlpha = 1;
+      }
+      break;
+    }
+    case 'jar': {
+      // The corked jar: glass shoulders, a wax seal, and a whole
+      // storm inside re-jagging on the 90ms law. The glass fogs
+      // where the storm last shouted.
+      const jx = top + 0.06 * s;
+      ctx.fillStyle = hurt ? '#ffffff' : crownC;
+      ctx.globalAlpha = hurt ? 1 : 0.5;
+      ctx.beginPath();
+      ctx.moveTo(jx - 0.055 * s, -0.055 * s);
+      ctx.quadraticCurveTo(jx - 0.07 * s, 0, jx - 0.055 * s, 0.06 * s);
+      ctx.lineTo(jx + 0.055 * s, 0.06 * s);
+      ctx.quadraticCurveTo(jx + 0.07 * s, 0, jx + 0.055 * s, -0.055 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // The cork and the wax.
+      ctx.fillStyle = hurt ? '#ffffff' : '#8a6a45';
+      ctx.fillRect(jx - 0.03 * s, -0.085 * s, 0.06 * s, 0.034 * s);
+      if (!hurt) {
+        ctx.fillStyle = st.metal ?? '#7a6a45';
+        ctx.fillRect(jx - 0.036 * s, -0.06 * s, 0.072 * s, 0.012 * s);
+        // The bolt inside: never the same path twice, gated so the
+        // storm mostly sulks — and always shouting during a cast.
+        if (Math.sin(nowMs * 0.011) > 0.3 || castT > 0) {
+          const seed = Math.floor(nowMs / 90);
+          const jag = (k: number): number =>
+            Math.sin(seed * 12.9898 + k * 78.233) * 0.026 * s;
+          ctx.strokeStyle = gem;
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.globalAlpha = 0.95;
+          ctx.beginPath();
+          ctx.moveTo(jx + jag(1) * 0.4, -0.045 * s);
+          ctx.lineTo(jx + jag(2), -0.01 * s);
+          ctx.lineTo(jx + jag(3), 0.025 * s);
+          ctx.lineTo(jx + jag(4) * 0.5, 0.052 * s);
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(jx + jag(4) * 0.5, 0.052 * s, Math.max(0.8, 0.008 * s), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        // The glass glint — the jar holds, and shines about it.
+        ctx.strokeStyle = '#ffffff';
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = Math.max(0.8, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(jx - 0.045 * s, -0.04 * s);
+        ctx.quadraticCurveTo(jx - 0.055 * s, 0, jx - 0.045 * s, 0.045 * s);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      break;
+    }
+    case 'escapewheel': {
+      // The balance wheel: it TICKS — five spokes stepping one tooth
+      // a second, an anchor pallet rocking above to let each tooth
+      // by. Nothing here glides; that is the whole doctrine.
+      const wx = top + 0.06 * s;
+      const wr = 0.085 * s;
+      ctx.strokeStyle = hurt ? '#ffffff' : crownC;
+      ctx.lineWidth = Math.max(1.5, s * 0.018);
+      ctx.beginPath();
+      ctx.arc(wx, 0, wr, 0, Math.PI * 2);
+      ctx.stroke();
+      const step = hurt ? 0 : Math.floor(nowMs / 1000) + Math.min(1, ((nowMs % 1000) / 1000) * 10);
+      const a0 = step * (Math.PI / 6);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      for (let k = 0; k < 5; k++) {
+        const a = a0 + (k / 5) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(wx, 0);
+        ctx.lineTo(wx + Math.cos(a) * wr * 0.85, Math.sin(a) * wr * 0.85);
+        ctx.stroke();
+      }
+      drawFocus(wx, 0, gemR * 0.36);
+      if (!hurt) {
+        // Teeth on the rim, and the pallet rocking to let one pass.
+        ctx.fillStyle = shade(crownC, 18);
+        for (let k = 0; k < 12; k++) {
+          const a = a0 + (k / 12) * Math.PI * 2;
+          ctx.fillRect(
+            wx + Math.cos(a) * wr - 0.005 * s,
+            Math.sin(a) * wr - 0.005 * s,
+            0.01 * s, 0.01 * s,
+          );
+        }
+        const rock = Math.sin(((nowMs % 1000) / 1000) * Math.PI * 2) * 0.2;
+        ctx.strokeStyle = shade(crownC, 30);
+        ctx.lineWidth = Math.max(1.2, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(wx - 0.05 * s, -wr - 0.03 * s + rock * 0.02 * s);
+        ctx.quadraticCurveTo(wx, -wr - 0.05 * s - rock * 0.02 * s, wx + 0.05 * s, -wr - 0.03 * s + rock * 0.02 * s);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'sheaf': {
+      // The bound sheaf: stalks fanning off the binding, each head a
+      // grain-drop that NODS on its own breeze. Harvest that never
+      // ends and never spoils.
+      ctx.fillStyle = hurt ? '#ffffff' : metal;
+      ctx.fillRect(neck - 0.005 * s, -0.03 * s, 0.036 * s, 0.06 * s); // the binding
+      ctx.strokeStyle = hurt ? '#ffffff' : crownC;
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      const heads: Array<[number, number]> = [
+        [0.16, -0.11], [0.2, -0.04], [0.21, 0.04], [0.17, 0.11], [0.13, 0],
+      ];
+      for (let k = 0; k < heads.length; k++) {
+        const [dx, dy] = heads[k]!;
+        const nod = hurt ? 0 : Math.sin(nowMs * 0.0014 + k * 1.3) * 0.012 * s;
+        ctx.beginPath();
+        ctx.moveTo(neck + 0.025 * s, 0);
+        ctx.quadraticCurveTo(neck + dx * 0.55 * s, dy * 0.6 * s, neck + dx * s, dy * s + nod);
+        ctx.stroke();
+        // The head: a fat grain ellipse with awn whiskers.
+        ctx.fillStyle = hurt ? '#ffffff' : shade(crownC, 16);
+        ctx.beginPath();
+        ctx.ellipse(neck + dx * s, dy * s + nod, 0.03 * s, 0.016 * s, Math.atan2(dy, dx) * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        if (!hurt) {
+          ctx.strokeStyle = shade(crownC, 26);
+          ctx.lineWidth = Math.max(0.6, s * 0.006);
+          ctx.beginPath();
+          ctx.moveTo(neck + dx * s + 0.02 * s, dy * s + nod - 0.008 * s);
+          ctx.lineTo(neck + dx * s + 0.05 * s, dy * s + nod - 0.02 * s);
+          ctx.stroke();
+          ctx.strokeStyle = crownC;
+          ctx.lineWidth = Math.max(1, s * 0.013);
+        }
+      }
+      break;
+    }
+    case 'mirror': {
+      // The looking glass: a gold oval on a short stem, and IN the
+      // glass a star that drifts against the world's turn. Now and
+      // then the glass catches a light that is not in the room.
+      const mx2 = top + 0.07 * s;
+      ctx.strokeStyle = hurt ? '#ffffff' : crownC;
+      ctx.lineWidth = Math.max(1.5, s * 0.018);
+      ctx.beginPath();
+      ctx.ellipse(mx2, 0, 0.062 * s, 0.085 * s, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = hurt ? '#ffffff' : shade(st.gem ?? '#dfe8f4', -30);
+      ctx.beginPath();
+      ctx.ellipse(mx2, 0, 0.052 * s, 0.075 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt) {
+        // The other sky's star, drifting its own way.
+        const dx = Math.sin(nowMs * 0.0004) * 0.024 * s;
+        const dy = Math.cos(nowMs * 0.00031) * 0.035 * s;
+        const tw = 0.65 + 0.35 * Math.sin(nowMs * 0.0026);
+        ctx.fillStyle = gemCore;
+        ctx.globalAlpha = tw;
+        const sr = Math.max(0.9, 0.011 * s);
+        ctx.fillRect(mx2 + dx - sr / 2, dy - sr / 2, sr, sr);
+        ctx.fillRect(mx2 + dx - sr * 1.4, dy - sr * 0.2, sr * 2.8, sr * 0.4);
+        ctx.globalAlpha = 1;
+        // The glass's own long glint.
+        ctx.strokeStyle = '#ffffff';
+        ctx.globalAlpha = 0.4;
+        ctx.lineWidth = Math.max(0.8, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(mx2 - 0.03 * s, -0.05 * s);
+        ctx.lineTo(mx2 - 0.012 * s, 0.05 * s);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (castT > 0) drawFocus(mx2, 0, gemR * 0.3);
+      break;
+    }
+    case 'emberbloom': {
+      // The saved bough: a charred fork off the tip, and at its
+      // crotch a blossom whose petals are live coals — they flare in
+      // turn, and spring pretends not to notice what they're made of.
+      ctx.strokeStyle = hurt ? '#ffffff' : crownC;
+      ctx.lineWidth = Math.max(2, s * 0.028);
+      ctx.lineCap = 'round';
+      for (const [dx, dy] of [[0.12, -0.09], [0.14, 0.06]] as const) {
+        ctx.beginPath();
+        ctx.moveTo(neck, 0);
+        ctx.quadraticCurveTo(neck + dx * 0.5 * s, dy * 0.7 * s, neck + dx * s, dy * s);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      const bx3 = top + 0.06 * s;
+      // Five coal petals around a white-hot eye.
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2 - Math.PI / 2;
+        const flare = hurt ? 0 : Math.max(0, Math.sin(nowMs * 0.0018 - k * 1.26));
+        ctx.fillStyle = hurt ? '#ffffff' : shade(st.gem ?? '#ffa040', -20 + Math.round(flare * 55));
+        ctx.beginPath();
+        ctx.ellipse(
+          bx3 + Math.cos(a) * 0.045 * s, Math.sin(a) * 0.045 * s,
+          0.03 * s, 0.018 * s, a, 0, Math.PI * 2,
+        );
+        ctx.fill();
+      }
+      if (!hurt) {
+        ctx.fillStyle = gemCore;
+        ctx.beginPath();
+        ctx.arc(bx3, 0, (0.02 + castT * 0.015) * s, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        drawFocus(bx3, 0, gemR * 0.4);
+      }
+      break;
+    }
+    case 'choirpipes': {
+      // Five graded pipes off a windchest collar. One pipe lights as
+      // the song reaches it — the same walking order the soundholes
+      // keep below. During a cast the whole rank sings at once.
+      ctx.fillStyle = hurt ? '#ffffff' : metal;
+      ctx.fillRect(neck - 0.01 * s, -0.075 * s, 0.045 * s, 0.15 * s); // windchest
+      for (let k = 0; k < 5; k++) {
+        const py = (-0.06 + k * 0.03) * s;
+        const plen = (0.09 + 0.035 * (2 - Math.abs(k - 2))) * s;
+        const on = hurt ? 0 : Math.max(castT, Math.max(0, Math.sin(nowMs * 0.0026 - k * 0.9)));
+        ctx.fillStyle = hurt ? '#ffffff' : crownC;
+        ctx.fillRect(neck + 0.035 * s, py - 0.011 * s, plen, 0.022 * s);
+        if (!hurt) {
+          ctx.fillStyle = shade(crownC, 24);
+          ctx.fillRect(neck + 0.035 * s, py - 0.011 * s, plen, 0.006 * s);
+          // The mouth lights when the song passes.
+          ctx.globalAlpha = 0.85 * on * on;
+          ctx.fillStyle = gem;
+          ctx.beginPath();
+          ctx.arc(neck + 0.035 * s + plen, py, 0.012 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+      break;
+    }
+    case 'breaker': {
+      // The wave curl frozen mid-break: it stands over a pearl the
+      // sea never got back, foam ticks flying off the crest. The
+      // curl leans harder while a cast leaves — the sea remembers.
+      const wx2 = top + 0.05 * s;
+      const lean2 = castT * 0.15;
+      ctx.fillStyle = hurt ? '#ffffff' : crownC;
+      ctx.beginPath();
+      ctx.moveTo(neck, 0.05 * s);
+      ctx.quadraticCurveTo(wx2 - 0.02 * s, -0.02 * s, wx2 + 0.01 * s, -0.1 * s - lean2 * s);
+      ctx.quadraticCurveTo(wx2 + 0.1 * s, -0.13 * s - lean2 * s, wx2 + 0.11 * s, -0.05 * s);
+      ctx.quadraticCurveTo(wx2 + 0.08 * s, -0.075 * s, wx2 + 0.05 * s, -0.055 * s);
+      ctx.quadraticCurveTo(wx2 + 0.02 * s, -0.03 * s, wx2 + 0.03 * s, 0.02 * s);
+      ctx.quadraticCurveTo(wx2, 0.05 * s, neck, 0.05 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The lit face of the wave, where the light gets through.
+        ctx.strokeStyle = shade(crownC, 30);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(neck + 0.02 * s, 0.03 * s);
+        ctx.quadraticCurveTo(wx2 - 0.01 * s, -0.03 * s, wx2 + 0.015 * s, -0.09 * s - lean2 * s);
+        ctx.stroke();
+        // Foam ticks off the crest.
+        ctx.fillStyle = '#ffffff';
+        for (let k = 0; k < 3; k++) {
+          const fp = ((nowMs * 0.0011 + k * 0.33) % 1 + 1) % 1;
+          ctx.globalAlpha = 0.8 * (1 - fp);
+          ctx.beginPath();
+          ctx.arc(
+            wx2 + 0.06 * s + fp * 0.06 * s + k * 0.012 * s,
+            -0.115 * s - lean2 * s + fp * 0.03 * s,
+            Math.max(0.7, 0.007 * s), 0, Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      // The pearl in the hollow, patient.
+      drawFocus(wx2 + 0.055 * s, 0.005 * s, gemR * 0.45);
+      break;
+    }
+    case 'ringstones': {
+      // Five small standing stones circling a shimmer, the whole
+      // henge turning slower than anything else in the game — near
+      // stones big and lit, far stones small and dim (the fake-3D
+      // law). What stands in the middle is not quite a door.
+      const hx2 = top + 0.1 * s;
+      // The shimmer first, behind the stones: a soft veil breathing.
+      if (!hurt) {
+        ctx.globalAlpha = 0.26 + 0.1 * Math.sin(nowMs * 0.0013) + castT * 0.3;
+        ctx.fillStyle = gem;
+        ctx.beginPath();
+        ctx.ellipse(hx2, 0, 0.06 * s, 0.08 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      drawFocus(hx2, 0, gemR * 0.32);
+      const turn = hurt ? 0 : nowMs * 0.00025;
+      for (let k = 0; k < 5; k++) {
+        const a = turn + (k / 5) * Math.PI * 2;
+        const depth = Math.sin(a); // -1 far … +1 near
+        const sx = hx2 + Math.cos(a) * 0.13 * s;
+        const sy = depth * 0.055 * s;
+        const sw = (0.026 + 0.011 * depth) * s;
+        const sh = (0.07 + 0.024 * depth) * s;
+        ctx.globalAlpha = hurt ? 1 : 0.55 + 0.45 * Math.max(0, depth);
+        ctx.fillStyle = hurt ? '#ffffff' : shade(crownC, Math.round(depth * 14));
+        ctx.fillRect(sx - sw / 2, sy - sh / 2, sw, sh);
+        if (!hurt && depth > 0.2) {
+          // The near stones catch the shimmer on their inner face.
+          ctx.fillStyle = shade(crownC, 30);
+          ctx.fillRect(sx - sw / 2, sy - sh / 2, sw * 0.3, sh);
+        }
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
   }
 
   // --------------------------------------------------------------- fx
@@ -6472,6 +7602,219 @@ export function drawStaff(
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
+    } else if (st.fx === 'dewfall') {
+      // The dowser's word: dew gathers on the fork's tines and lets
+      // go — small water, honestly found, one bead at a time.
+      for (let i = 0; i < 2; i++) {
+        const ph = ((nowMs * 0.00045 + i * 0.5) % 1 + 1) % 1;
+        const x = fxX + (0.06 + i * 0.05) * s;
+        if (ph < 0.5) {
+          const g = ph / 0.5;
+          ctx.globalAlpha = 0.4 + 0.5 * g;
+          ctx.beginPath();
+          ctx.arc(x, (i === 0 ? -0.075 : 0.085) * s, Math.max(0.7, 0.009 * s * g), 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          const f = (ph - 0.5) / 0.5;
+          ctx.globalAlpha = 0.9 * (1 - f);
+          ctx.beginPath();
+          ctx.arc(x, (i === 0 ? -0.075 : 0.085) * s + 0.1 * s * f * f, Math.max(0.7, 0.008 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'bees') {
+      // Swarmsong's word: the swarm out working — three fat dots on
+      // busy wandering rounds, always coming or going from the door,
+      // never straying past the garden's edge.
+      for (let i = 0; i < 3; i++) {
+        const t = nowMs * (0.0012 + i * 0.0003) + i * 2.4;
+        const bx2 = fxX + 0.05 * s + Math.cos(t) * 0.09 * s + Math.cos(t * 2.7) * 0.03 * s;
+        const by = Math.sin(t * 1.4) * 0.08 * s + Math.sin(t * 3.1) * 0.02 * s;
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.arc(bx2, by, Math.max(0.9, 0.011 * s), 0, Math.PI * 2);
+        ctx.fill();
+        // The wing blur: a paler tick beating above the body.
+        ctx.globalAlpha = 0.4 * (0.5 + 0.5 * Math.sin(nowMs * 0.04 + i));
+        ctx.beginPath();
+        ctx.arc(bx2, by - 0.011 * s, Math.max(0.6, 0.007 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'plankton') {
+      // Merelight's word: deep-water glow going down — motes SINK
+      // around the lure, swaying as they settle, the way snow falls
+      // in water that has never once been in a hurry.
+      for (let i = 0; i < 4; i++) {
+        const ph = ((nowMs * 0.00028 + i * 0.27) % 1 + 1) % 1;
+        const x = fxX + (0.02 + i * 0.045) * s + Math.sin(ph * 5 + i * 2) * 0.02 * s;
+        const y = -0.06 * s + ph * 0.17 * s;
+        ctx.globalAlpha = 0.6 * Math.sin(Math.PI * ph);
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0.7, 0.009 * s * (1 - ph * 0.3)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'toll') {
+      // Knellwood's word: the sound made visible — a ring spreads
+      // off the bell, thins, and is gone before the next. On a cast
+      // the bell gives three, close together.
+      const rate = castT > 0 ? 0.0012 : 0.0004;
+      for (let i = 0; i < 2; i++) {
+        const ph = ((nowMs * rate + i * 0.5) % 1 + 1) % 1;
+        ctx.strokeStyle = c;
+        ctx.globalAlpha = 0.6 * (1 - ph);
+        ctx.lineWidth = Math.max(0.8, 0.012 * s * (1 - ph * 0.5));
+        ctx.beginPath();
+        ctx.arc(fxX + 0.07 * s, 0, (0.03 + ph * 0.17) * s, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'spores') {
+      // Duskcap's word: the spores go walking — a drift of motes
+      // leaves the gills and rides its own weather sideways and
+      // down, pulsing as they catch what light there is.
+      for (let i = 0; i < 4; i++) {
+        const ph = ((nowMs * 0.00024 + i * 0.26) % 1 + 1) % 1;
+        const x = fxX + (0.01 + i * 0.04) * s + ph * 0.09 * s;
+        const y = 0.02 * s + Math.sin(ph * 7 + i * 1.8) * 0.03 * s + ph * 0.07 * s;
+        ctx.globalAlpha = (0.5 + 0.3 * Math.sin(nowMs * 0.005 + i * 2)) * (1 - ph);
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0.6, 0.007 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'bearings') {
+      // Meridian's word: the course being rechecked — degree ticks
+      // orbit the rings, each flaring as the needle's line sweeps
+      // past it. Navigation is a liturgy; this is the responsory.
+      ctx.strokeStyle = c;
+      ctx.lineWidth = Math.max(0.8, s * 0.01);
+      const sweep = nowMs * 0.0008;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const d = Math.cos(a - (sweep % (Math.PI * 2)));
+        ctx.globalAlpha = 0.25 + 0.65 * Math.max(0, d) ** 3;
+        const r1 = 0.13 * s;
+        const r2 = 0.155 * s;
+        ctx.beginPath();
+        ctx.moveTo(fxX + 0.04 * s + Math.cos(a) * r1, Math.sin(a) * r1 * 0.8);
+        ctx.lineTo(fxX + 0.04 * s + Math.cos(a) * r2, Math.sin(a) * r2 * 0.8);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'tickspark') {
+      // Escapement's word: one glint that JUMPS on the second — five
+      // stations around the wheel, never a glide between them, a
+      // brief bright settle at each. Time, permitted.
+      const sec = Math.floor(nowMs / 1000);
+      const settle = Math.min(1, ((nowMs % 1000) / 1000) * 6);
+      const a = (sec % 5) * ((Math.PI * 2) / 5) - Math.PI / 2;
+      const x = fxX + 0.04 * s + Math.cos(a) * 0.12 * s;
+      const y = Math.sin(a) * 0.12 * s;
+      ctx.globalAlpha = 0.4 + 0.6 * settle;
+      ctx.fillStyle = c;
+      const r = Math.max(0.9, 0.012 * s * (1.4 - settle * 0.4));
+      ctx.fillRect(x - r / 2, y - r / 2, r, r);
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'chaff') {
+      // Lastsheaf's word: grain spilling off the heads and falling
+      // with the little sideways rock of light things — and the
+      // sheaf never once comes up short.
+      for (let i = 0; i < 4; i++) {
+        const ph = ((nowMs * 0.00034 + i * 0.24) % 1 + 1) % 1;
+        const x = fxX + (0.03 + i * 0.045) * s + Math.sin(ph * 6 + i) * 0.018 * s;
+        const y = -0.04 * s + ph * 0.16 * s;
+        ctx.globalAlpha = 0.7 * (1 - ph * 0.7);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(Math.sin(ph * 8 + i * 2) * 0.8);
+        ctx.fillRect(-0.008 * s, -0.003 * s, 0.016 * s, 0.006 * s);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'reflections') {
+      // Mirrormere's word: a ghost glint appears BESIDE the glass,
+      // holds a breath, and thinks better of it. Never two at once;
+      // the glass is careful about what it lets out.
+      const cyc = ((nowMs * 0.0003) % 1 + 1) % 1;
+      if (cyc < 0.4) {
+        const g = Math.sin((cyc / 0.4) * Math.PI);
+        const seed = Math.floor(nowMs * 0.0003);
+        const gx = fxX + 0.07 * s + (Math.sin(seed * 91.7) * 0.5 + 0.5) * 0.1 * s;
+        const gy = (Math.sin(seed * 45.3) * 0.9) * 0.09 * s;
+        ctx.globalAlpha = 0.7 * g;
+        ctx.fillStyle = c;
+        const r = Math.max(0.8, 0.01 * s);
+        ctx.fillRect(gx - r / 3, gy - r * 1.4, r * 0.66, r * 2.8);
+        ctx.fillRect(gx - r * 1.4, gy - r / 3, r * 2.8, r * 0.66);
+        ctx.globalAlpha = 1;
+      }
+    } else if (st.fx === 'hymn') {
+      // Hollowchoir's word: note lights rise off the pipe mouths in
+      // the walking order the soundholes keep, drifting up and
+      // dimming like held breath let go.
+      for (let i = 0; i < 3; i++) {
+        const ph = ((nowMs * 0.00042 + i * 0.333) % 1 + 1) % 1;
+        const lane = (i - 1) * 0.045 * s;
+        const x = fxX + 0.1 * s + lane * 0.4;
+        const y = lane - ph * 0.12 * s;
+        ctx.globalAlpha = 0.7 * (1 - ph);
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0.8, 0.01 * s * (1 - ph * 0.4)), 0, Math.PI * 2);
+        ctx.fill();
+        // The note's tail: a short falling serif under the head.
+        ctx.fillRect(x - 0.003 * s, y, 0.006 * s, 0.02 * s);
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'spray') {
+      // Spindrift's word: foam whipped FLAT off the crest — flecks
+      // travel sideways, fast and low, gone in half a breath. The
+      // gauge below dips first; the sky answers here.
+      const blowing = Math.sin(nowMs * 0.011) > 0.1 || castT > 0;
+      if (blowing) {
+        for (let i = 0; i < 4; i++) {
+          const ph = ((nowMs * 0.0012 + i * 0.25) % 1 + 1) % 1;
+          const x = fxX + 0.08 * s + ph * 0.16 * s;
+          const y = -0.1 * s + i * 0.024 * s + ph * 0.02 * s;
+          ctx.globalAlpha = 0.75 * (1 - ph);
+          ctx.fillRect(x, y, Math.max(1.2, 0.018 * s * (1 - ph * 0.5)), Math.max(0.6, 0.005 * s));
+        }
+        ctx.globalAlpha = 1;
+      }
+    } else if (st.fx === 'arrival') {
+      // Wakestone's word: once in a while a spark simply ARRIVES in
+      // the shimmer — from nowhere, like everyone did — hangs a
+      // moment, and walks out past the stones. Nobody explains it
+      // here either.
+      const cyc = ((nowMs * 0.00012) % 1 + 1) % 1;
+      const hx3 = fxX + 0.08 * s; // the henge's center
+      if (cyc < 0.18) {
+        // The arriving: a point growing out of nothing, dead center.
+        const g = cyc / 0.18;
+        ctx.globalAlpha = g;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(hx3, 0, Math.max(0.8, 0.014 * s * g), 0, Math.PI * 2);
+        ctx.fill();
+        // The shimmer acknowledges: one thin ring at the threshold.
+        ctx.strokeStyle = c;
+        ctx.globalAlpha = 0.5 * g;
+        ctx.lineWidth = Math.max(0.7, s * 0.008);
+        ctx.beginPath();
+        ctx.ellipse(hx3, 0, 0.06 * s, 0.08 * s, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (cyc < 0.7) {
+        // The walking out: past the stones, unhurried, fading.
+        const f = (cyc - 0.18) / 0.52;
+        ctx.globalAlpha = 0.9 * (1 - f);
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(hx3 + f * 0.17 * s, Math.sin(f * 4) * 0.02 * s, Math.max(0.8, 0.01 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     } else if (st.fx === 'petals') {
       // Wealdheart's word: shed petals rocking down off the canopy,
       // and one firefly that blinks — alive, where motes only drift.

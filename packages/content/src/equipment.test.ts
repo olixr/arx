@@ -581,7 +581,7 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 234, 'swords 66 + daggers 58 + bows 41 + staves 40 + greatweapons 29');
+  assert.equal(weapons.length, 249, 'swords 66 + daggers 58 + bows 41 + staves 55 + greatweapons 29');
   const swords = weapons.filter((d) => d.weapon?.style === 'onehand');
   assert.equal(swords.length, 124, 'swords 66 + daggers 58');
   for (const s of swords) {
@@ -921,8 +921,12 @@ test('archmage roster: 22 staff designs, elements ride every bolt, gem swaps cra
     'hazel_switch', 'shepherds_crook', 'wisplight', 'gravewood', 'candlewake', 'gloomthorn',
     'serpentcoil', 'glacierbite', 'pyreheart', 'runegnarl', 'sunwrought',
     'heartspindle', 'boneharrow', 'bloodmoon', 'nightwell', 'tempest_crown', 'worldsplinter',
+    // THE MASTERWORKS: the fifteen waist-and-crown finds.
+    'dowser', 'swarmsong', 'merelight', 'knellwood', 'glassgather',
+    'duskcap', 'meridian', 'stormjar', 'escapement', 'lastsheaf',
+    'mirrormere', 'ashgarden', 'hollowchoir', 'spindrift', 'wakestone',
   ];
-  assert.equal(staves.length, 30, '1 ladder x4 + 4 gem battlestaffs + 2 classics + 3 crafts + 17 finds');
+  assert.equal(staves.length, 45, '1 ladder x4 + 4 gem battlestaffs + 2 classics + 3 crafts + 17 finds + 15 masterworks');
   for (const id of staves) {
     const d = byId.get(id);
     assert.ok(d, `${id} exists`);
