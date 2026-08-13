@@ -521,15 +521,15 @@ export interface HelmStyle {
     // THE LOW WARDROBE'S OWN HEADS — one owner each, per the
     // one-owner law. A leveling set is not a recolor: `fieldhood` the
     // thistledown rolled-brim working hood, `mothcowl` the mothwing
-    // tufted moth's head, `dawnhood` the dawnsworn sunrise diadem
-    // hood, `fenhood` the fenwalker lapped rush thatch, `stormhood`
-    // the stormwoven billow-collared front, `hedgehat` the hedgemage
-    // patched twice-bent cone, `tidehood` the tidecaller breaking
-    // wave crest, `whispercowl` the voidwhisper tippet cowl with the
-    // embroidered eye, `cinderhood` the cindersworn char-lapped hood
-    // on a banked-coal band, `stardiadem` the starweaver woven silver
-    // band under its turning ring of stars.
-    | 'fieldhood' | 'mothcowl' | 'dawnhood' | 'fenhood' | 'stormhood'
+    // tufted moth's head, `fenhood` the fenwalker lapped rush thatch,
+    // `stormhood` the stormwoven billow-collared front, `hedgehat`
+    // the hedgemage patched twice-bent cone, `tidehood` the
+    // tidecaller breaking wave crest, `whispercowl` the voidwhisper
+    // tippet cowl with the embroidered eye, `cinderhood` the
+    // cindersworn char-lapped hood on a banked-coal band,
+    // `stardiadem` the starweaver woven silver band under its turning
+    // ring of stars.
+    | 'fieldhood' | 'mothcowl' | 'fenhood' | 'stormhood'
     | 'hedgehat' | 'tidehood' | 'whispercowl' | 'cinderhood'
     | 'stardiadem'
     // THE HUNTER'S HEADS — the leather lane's own, one owner each:
@@ -543,7 +543,13 @@ export interface HelmStyle {
     // stagheart antlered forest crown.
     | 'courierhood' | 'halcyonhood' | 'thiefhood' | 'trapperhood'
     | 'foxmantle' | 'roadhood' | 'wolfmantle' | 'shadowcowl'
-    | 'stagcrown';
+    | 'stagcrown'
+    // THE FOUR VIGILS OF THE DAWN — dawnsworn's skies each wear
+    // their OWN head now (dawnhood is dead): `orisoncowl` the rising
+    // sun's shrine-framed triangle, `vespercowl` the setting sun's
+    // hard-folded beak, `zenithhat` noon's brow-burying wide brim,
+    // `umbrahood` the eclipse's void with its crowned corona.
+    | 'orisoncowl' | 'vespercowl' | 'zenithhat' | 'umbrahood';
   visor?: 'slit' | 'cross';
   plume?: { color: string };
   /** `curl` bends the sweep into a ram's spiral beside the temples;
@@ -1569,7 +1575,7 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     motheyes: { color: '#e0d89a' },
   },
   dawnsworn_hood: {
-    color: '#d9c9a0', trim: '#c9922f', kind: 'dawnhood',
+    color: '#d9c9a0', trim: '#c9922f', kind: 'orisoncowl',
     sundisc: { color: '#e8b54a', phase: 'rising' },
   },
   fenwalker_hood: {
@@ -2479,18 +2485,22 @@ registerColorways(BODY_STYLES, 'dawnsworn_robe', {
     pauldronColor: '#3a3642', pauldronTrim: '#d4a43c',
   },
 });
+// The dawnsworn lots each wear their OWN head kind — the colorway
+// law bends here by design: same five-piece record, but the sky
+// changes the garment itself. Four vigils, one family.
 registerColorways(HELM_STYLES, 'dawnsworn_hood', {
   duskvow: {
-    color: '#9a6a86', trim: '#e0b0c0',
+    color: '#82566e', trim: '#e0b0c0', kind: 'vespercowl',
     sundisc: { color: '#d97a9a', phase: 'setting' },
   },
   highnoon: {
-    color: '#eae4d2', trim: '#c04a3a',
+    color: '#eae4d2', trim: '#c04a3a', kind: 'zenithhat',
     sundisc: { color: '#e05438', phase: 'noon' },
   },
   eclipse: {
-    color: '#4a4550', trim: '#d4a43c',
+    color: '#332e3c', trim: '#d4a43c', kind: 'umbrahood',
     sundisc: { color: '#38343e', phase: 'eclipse', ring: '#e8c04c' },
+    emberEyes: { color: '#e8c04c' },
   },
 });
 registerColorways(LEG_STYLES, 'dawnsworn_skirts', {
@@ -11019,246 +11029,6 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'dawnhood') {
-    // THE DAWNHOOD — dawnsworn's own head: the acolyte's hood carrying
-    // the sunrise. A gilt HALF-DISC rises out of the brow band — the
-    // sun over the horizon of the face — with flat ray tabs fanning up
-    // the crown, and the crown cloth itself splits light-over-dark at
-    // the ray line: dawn touching the cloth first. A slow glint walks
-    // the disc; first light always moves.
-    const t = profileK;
-    const front = backK <= 0.55;
-    const cx = headX + fx * headR * (0.34 + 0.24 * t);
-    const ohw = hw * 0.74 * (1 - 0.5 * t);
-    const oTop = headY - hh * 0.6;
-    const oBot = headY + hh * 0.84;
-    const sway = Math.sin(f.nowMs * 0.0016) * hw * 0.05;
-    const apexX = headX - lead * hw * (0.28 + t * 0.16);
-    const apexY = headY - hh * 1.5;
-    const tipX = headX - lead * (hw * (1.3 + t * 0.5) + sway);
-    const tipY = headY - hh * 0.98;
-    const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.26, headY + hh * 1.2);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.34, headY + hh * 0.22, headX + lead * hw * 1.18, headY - hh * 0.48);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.26, headY - hh * 0.84, headX + lead * hw * 0.84, headY - hh * 1.14);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * 1.42, apexX, apexY);
-      ctx.quadraticCurveTo(headX - lead * hw * (0.92 + t * 0.3), apexY + hh * 0.04, tipX, tipY);
-      ctx.quadraticCurveTo(headX - lead * hw * (0.98 + t * 0.26), headY - hh * 0.58, headX - lead * hw * (1.24 + t * 0.36), headY - hh * 0.2);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.38 + t * 0.32), headY + hh * 0.34, headX - lead * hw * 1.32, headY + hh * 1.2);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.48, headX + lead * hw * 1.26, headY + hh * 1.2);
-      ctx.closePath();
-    };
-    const opening = () => {
-      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
-    };
-    ctx.fillStyle = mc;
-    ctx.beginPath();
-    shell();
-    if (front) opening();
-    ctx.fill('evenodd');
-    if (!hurt) {
-      ctx.save();
-      ctx.beginPath();
-      shell();
-      if (front) opening();
-      ctx.clip('evenodd');
-      ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // THE SKY ON THE CLOTH: the hood wears the dawn itself — three
-      // flat bands climbing the crown, brightest at the peak where
-      // the light arrives first, each following the pitch. As the
-      // daybreak clock climbs, a warm wash breathes over the crown.
-      const skyK = daybreakK(f.nowMs, st.sundisc?.phase);
-      for (const [bi, y0b, y1b, dv] of [
-        [0, -1.6, -1.18, 18], [1, -1.18, -0.88, 8], [2, -0.88, -0.62, 2],
-      ] as const) {
-        ctx.fillStyle = shade(st.color, dv);
-        ctx.beginPath();
-        ctx.moveTo(headX + lead * hw * 1.3, headY + hh * y1b);
-        ctx.lineTo(headX - lead * hw * 1.6, headY + hh * (y1b - 0.14));
-        ctx.lineTo(headX - lead * hw * 1.6, headY + hh * (y0b - 0.14));
-        ctx.lineTo(headX + lead * hw * 1.3, headY + hh * y0b);
-        ctx.closePath();
-        ctx.fill();
-        if (bi === 0 && skyK > 0.04 && st.sundisc) {
-          ctx.globalAlpha = skyK * 0.22;
-          ctx.fillStyle = st.sundisc.phase === 'eclipse'
-            ? (st.sundisc.ring ?? st.trim) : st.sundisc.color;
-          ctx.beginPath();
-          ctx.moveTo(headX + lead * hw * 1.3, headY + hh * y1b);
-          ctx.lineTo(headX - lead * hw * 1.6, headY + hh * (y1b - 0.14));
-          ctx.lineTo(headX - lead * hw * 1.6, headY + hh * (y0b - 0.14));
-          ctx.lineTo(headX + lead * hw * 1.3, headY + hh * y0b);
-          ctx.closePath();
-          ctx.fill();
-          ctx.globalAlpha = 1;
-        }
-      }
-      // One gravity crease down the trailing drape.
-      ctx.fillStyle = shade(st.color, -24);
-      ctx.beginPath();
-      ctx.moveTo(headX - lead * hw * 0.58, headY - hh * 0.68);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.96, headY - hh * 0.06, headX - lead * hw * 0.86, headY + hh * 0.9);
-      ctx.lineTo(headX - lead * hw * 0.96, headY + hh * 0.92);
-      ctx.quadraticCurveTo(headX - lead * hw * 1.08, headY - hh * 0.04, headX - lead * hw * 0.7, headY - hh * 0.66);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-      if (front) {
-        // FIRST LIGHT ON THE FACE: every other hood buries its face
-        // in shadow; the dawn hood LIGHTS its own. A quiet brow
-        // shadow stays, but a warm underlight climbs from the chin
-        // with the daybreak — the wearer's face is the first thing
-        // the sun finds.
-        const dayK = daybreakK(f.nowMs, st.sundisc?.phase);
-        const lightCol = st.sundisc
-          ? (st.sundisc.phase === 'eclipse'
-            ? (st.sundisc.ring ?? st.trim) : st.sundisc.color)
-          : st.trim;
-        ctx.save();
-        ctx.beginPath();
-        opening();
-        ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY - hh * 0.1);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.34)');
-        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.52);
-        if (st.sundisc) {
-          // The wash over the lower face, then the chin band where
-          // the light pools — footlights from the sun's own gold.
-          const warm = shade(lightCol, 20);
-          ctx.globalAlpha = 0.08 + 0.12 * dayK;
-          ctx.fillStyle = warm;
-          ctx.fillRect(cx - ohw, headY - hh * 0.05, ohw * 2, oBot - headY + hh * 0.05);
-          ctx.globalAlpha = 0.08 + 0.14 * dayK;
-          ctx.fillRect(cx - ohw, headY + hh * 0.44, ohw * 2, oBot - headY - hh * 0.44);
-          ctx.globalAlpha = 1;
-        }
-        ctx.restore();
-        ctx.strokeStyle = shade(st.color, 20);
-        ctx.lineWidth = Math.max(1, s * 0.014);
-        ctx.beginPath();
-        opening();
-        ctx.stroke();
-        ctx.fillStyle = st.trim;
-        ctx.fillRect(cx - ohw * 0.98, oTop - headR * 0.05, ohw * 1.96, headR * 0.1);
-      } else {
-        // From behind: the drape tail and center seam.
-        ctx.fillStyle = shade(st.color, -10);
-        ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.9);
-        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.9);
-        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.95);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = shade(st.color, -22);
-        ctx.lineWidth = Math.max(1, s * 0.012);
-        ctx.beginPath();
-        ctx.moveTo(headX, headY - hh * 1.05);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
-        ctx.stroke();
-      }
-      if (st.sundisc && front) {
-        // THE DAYBREAK: the sun at the brow, doing what suns do. The
-        // brow band is the horizon; the disc climbs out of it as the
-        // clock rises, rays reaching with it. Noon holds the full
-        // disc high under a heat shimmer; the eclipse hangs its dark
-        // stone in a gold ring and flares the corona at the peak.
-        const dc = st.sundisc.color;
-        const phase = st.sundisc.phase;
-        const dayK = daybreakK(f.nowMs, phase);
-        const dx0 = cx;
-        const horizonY = oTop - headR * 0.02;
-        const dr = headR * 0.38 * (1 - t * 0.3);
-        const shimmer = phase === 'noon' ? 1 + 0.045 * Math.sin(f.nowMs * 0.0052) : 1;
-        // The disc's climb: half out of the band at first light, near
-        // clear of it at full day. Noon floats fully clear.
-        const lift = phase === 'noon'
-          ? dr * 0.95
-          : phase === 'eclipse'
-            ? dr * 0.62
-            : dr * 0.62 * dayK;
-        const dyC = horizonY - lift;
-        // Rays first, so the disc caps their roots. They reach with
-        // the light. The eclipse wears corona spikes instead.
-        const rayCol = phase === 'eclipse' ? (st.sundisc.ring ?? st.trim) : dc;
-        const rayCount = phase === 'eclipse' ? 7 : 5;
-        for (let i = 0; i < rayCount; i++) {
-          const spread = phase === 'eclipse' ? 1.1 : 0.72;
-          const a = -Math.PI * (0.5 + spread / 2) + (i / (rayCount - 1)) * Math.PI * spread;
-          const reach = phase === 'eclipse'
-            ? 0.5 + 0.5 * dayK
-            : 0.45 + 0.7 * dayK;
-          const len = dr * (i === Math.floor(rayCount / 2) ? 1.15 : 0.8) * reach * shimmer;
-          if (len < dr * 0.12) continue;
-          const rx0 = dx0 + Math.cos(a) * dr * 0.92;
-          const ry0 = dyC + Math.sin(a) * dr * 0.92;
-          const rx1 = dx0 + Math.cos(a) * (dr * 0.92 + len);
-          const ry1 = dyC + Math.sin(a) * (dr * 0.92 + len);
-          const w = dr * (phase === 'eclipse' ? 0.1 : 0.16);
-          ctx.fillStyle = shade(rayCol, i === Math.floor(rayCount / 2) ? 8 : -6);
-          ctx.beginPath();
-          ctx.moveTo(rx0 - Math.sin(a) * w, ry0 + Math.cos(a) * w);
-          ctx.lineTo(rx1 - Math.sin(a) * w * 0.25, ry1 + Math.cos(a) * w * 0.25);
-          ctx.lineTo(rx1 + Math.sin(a) * w * 0.25, ry1 - Math.cos(a) * w * 0.25);
-          ctx.lineTo(rx0 + Math.sin(a) * w, ry0 - Math.cos(a) * w);
-          ctx.closePath();
-          ctx.fill();
-        }
-        // The disc, clipped at the horizon: nothing shows below the
-        // band — the sun is IN the sky, not pasted on the hood.
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(dx0 - dr * 2.4, horizonY - headR * 1.6, dr * 4.8, headR * 1.6);
-        ctx.clip();
-        if (phase === 'eclipse') {
-          const ring = st.sundisc.ring ?? st.trim;
-          ctx.fillStyle = ring;
-          ctx.beginPath();
-          ctx.arc(dx0, dyC, dr * shimmer, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = dc;
-          ctx.beginPath();
-          ctx.arc(dx0, dyC, dr * 0.82 * shimmer, 0, Math.PI * 2);
-          ctx.fill();
-          // The corona flare at the cycle's peak.
-          if (dayK > 0.7) {
-            ctx.globalAlpha = (dayK - 0.7) / 0.3 * 0.4;
-            ctx.fillStyle = ring;
-            ctx.beginPath();
-            ctx.arc(dx0, dyC, dr * 1.4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-          }
-        } else {
-          ctx.fillStyle = dc;
-          ctx.beginPath();
-          ctx.arc(dx0, dyC, dr * shimmer, 0, Math.PI * 2);
-          ctx.fill();
-          // The disc's own lit crown — a flat pale cap, high side.
-          ctx.fillStyle = shade(dc, 16);
-          ctx.beginPath();
-          ctx.arc(dx0, dyC, dr * 0.78 * shimmer, Math.PI * 1.08, Math.PI * 1.92);
-          ctx.closePath();
-          ctx.fill();
-          // The walking glint — first light always moves.
-          const gk = (Math.sin(f.nowMs * 0.0009) + 1) / 2;
-          const ga = Math.PI + gk * Math.PI;
-          ctx.fillStyle = shade(dc, 36);
-          ctx.beginPath();
-          ctx.arc(dx0 + Math.cos(ga) * dr * 0.58, dyC + Math.sin(ga) * dr * 0.5, dr * 0.15, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-        // The horizon band re-asserts itself over the disc's foot.
-        ctx.fillStyle = shade(st.trim, -14);
-        ctx.fillRect(dx0 - ohw * 0.98, horizonY - headR * 0.03, ohw * 1.96, headR * 0.06);
-      }
-    }
-    return;
-  }
-
   if (st.kind === 'fenhood') {
     // THE FENHOOD — fenwalker's own head: rush thatch worn as a hood.
     // Two lapped tiers of ragged reed bundles shingle the crown, a
@@ -13675,6 +13445,548 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.moveTo(headX, headY - hh * 1.02);
         ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
         ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  // ============================ THE FOUR VIGILS OF THE DAWN =========
+  // Each dawnsworn sky wears its OWN head now — four one-owner kinds,
+  // no shared shell. The daybreak clock still runs through all four;
+  // the garment around it is what changed. The reference laws:
+  // TRIANGLE over dome, the face KEPT in mystery, the brow line
+  // covering the eyes, the opening FRAMED like a shrine door.
+
+  if (st.kind === 'orisoncowl') {
+    // THE ORISON COWL — the rising sun's cowl: a tall TRIANGULAR
+    // cowl cut like a candle flame, planar sides climbing straight
+    // to a single back-hooked point. The face opening runs deep and
+    // narrow, FRAMED in a gold border with collar bosses — a shrine
+    // door — and the sun rises INSIDE it: a small disc climbing the
+    // inner brow on the daybreak clock, waxing the dark warm from
+    // within. Mystery first; the light earns its way out.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.68 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.56;
+    const oBot = headY + hh * 0.9;
+    const sway = Math.sin(f.nowMs * 0.0014) * hw * 0.03;
+    const apexX = headX - lead * hw * (0.22 + t * 0.12) + sway;
+    const apexY = headY - hh * 1.94;
+    const shell = () => {
+      // Planar triangle: long straight-ish flanks, a hooked tip.
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.1, headX + lead * hw * 1.02, headY - hh * 0.62);
+      // The leading flank: one long committed line to the apex.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.62, headY - hh * 1.3, apexX + lead * hw * 0.12, apexY + hh * 0.1);
+      // The hook: the tip licks back like a flame caught leaning.
+      ctx.quadraticCurveTo(apexX - lead * hw * 0.02, apexY - hh * 0.1, apexX - lead * hw * 0.3, apexY + hh * 0.06);
+      // The trailing flank: straight fall into the drape.
+      ctx.quadraticCurveTo(headX - lead * hw * (0.9 + t * 0.24), headY - hh * 0.9, headX - lead * hw * (1.18 + t * 0.34), headY - hh * 0.1);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.32 + t * 0.3), headY + hh * 0.42, headX - lead * hw * 1.28, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.7);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      const dayK = daybreakK(f.nowMs, st.sundisc?.phase);
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      // Two planar facets — the triangle is FOLDED, not blown up.
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 2.1, hw * 2.4, hh * 3.8);
+      ctx.fillStyle = shade(st.color, 9);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.98, headY - hh * 0.6);
+      ctx.lineTo(apexX + lead * hw * 0.1, apexY + hh * 0.14);
+      ctx.lineTo(apexX - lead * hw * 0.06, apexY + hh * 0.3);
+      ctx.lineTo(headX + lead * hw * 0.5, headY - hh * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      // The crease where the two planes meet, falling from the apex.
+      ctx.fillStyle = shade(st.color, -26);
+      ctx.beginPath();
+      ctx.moveTo(apexX - lead * hw * 0.04, apexY + hh * 0.24);
+      ctx.lineTo(apexX + lead * hw * 0.04, apexY + hh * 0.24);
+      ctx.lineTo(headX + lead * hw * 0.14, headY + hh * 1.1);
+      ctx.lineTo(headX - lead * hw * 0.02, headY + hh * 1.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      if (front) {
+        // THE DEEP DOOR: shadow past the eye line — the mystery the
+        // reference keeps. The rising sun inside is the only lamp.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.34);
+        shGrad.addColorStop(0, 'rgba(20, 12, 22, 0.78)');
+        shGrad.addColorStop(1, 'rgba(20, 12, 22, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 1.0);
+        if (st.sundisc) {
+          // The sun WITHIN: a small disc climbing the inner brow,
+          // and its warmth pooling on the lower face.
+          const dc = st.sundisc.color;
+          const dr2 = ohw * 0.34;
+          const dy2 = oTop + headR * 0.1 + dr2 * (1.1 - dayK * 1.3);
+          ctx.globalAlpha = 0.25 + 0.45 * dayK;
+          ctx.fillStyle = dc;
+          ctx.beginPath();
+          ctx.arc(cx, dy2, dr2 * 1.7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.75 + 0.25 * dayK;
+          ctx.fillStyle = shade(dc, 18);
+          ctx.beginPath();
+          ctx.arc(cx, dy2, dr2 * 0.62, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.06 + 0.12 * dayK;
+          ctx.fillStyle = shade(dc, 20);
+          ctx.fillRect(cx - ohw, headY + hh * 0.3, ohw * 2, oBot - headY - hh * 0.3);
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+        // THE SHRINE FRAME: the gold border the reference mantles
+        // wear — a full bright rim, a dark inner line, and three
+        // collar bosses under the chin.
+        ctx.strokeStyle = shade(st.trim, -22);
+        ctx.lineWidth = Math.max(2, s * 0.03);
+        ctx.beginPath();
+        chamferRect(ctx, cx - ohw - s * 0.008, oTop - s * 0.008, (ohw + s * 0.008) * 2, oBot - oTop + s * 0.016, cut * 0.7);
+        ctx.stroke();
+        ctx.strokeStyle = st.trim;
+        ctx.lineWidth = Math.max(1.5, s * 0.018);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+        for (const u of [-0.6, 0, 0.6] as const) {
+          const bx = cx + u * ohw * 0.8;
+          const by = oBot + headR * 0.07 - Math.abs(u) * headR * 0.03;
+          ctx.fillStyle = shade(st.trim, -18);
+          ctx.beginPath();
+          ctx.arc(bx, by, headR * 0.055, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(st.trim, 22);
+          ctx.beginPath();
+          ctx.arc(bx - headR * 0.015, by - headR * 0.015, headR * 0.022, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // From behind: the crease keeps falling; the tail hangs.
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.9);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'vespercowl') {
+    // THE VESPER COWL — the setting sun's cowl: cloth folded like
+    // paper into hard planes. A BEAK of a brow juts far out over the
+    // face and casts a hard-edged planar shadow to below the eyes;
+    // the crown runs low and angled to a short blunt point; the hem
+    // breaks into two sharp jaw tabs. Under the beak, the last of
+    // the light: a rose sliver sinking on the daybreak run backward.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.7 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.52;
+    const oBot = headY + hh * 0.86;
+    const beakX = cx + lead * ohw * (1.0 - t * 0.2);
+    const beakTip = headY - hh * 0.78;
+    const shell = () => {
+      // Hard lines only — the fold is the ornament.
+      ctx.moveTo(headX + lead * hw * 1.2, headY + hh * 1.12);
+      ctx.lineTo(headX + lead * hw * 1.26, headY + hh * 0.06);
+      // Up to the beak: the brow juts OUT past the face line.
+      ctx.lineTo(headX + lead * hw * 1.46, beakTip);
+      // The beak's top plane runs back to the low crown point.
+      ctx.lineTo(headX + lead * hw * 0.3, headY - hh * 1.5);
+      ctx.lineTo(headX - lead * hw * (0.56 + t * 0.14), headY - hh * 1.58);
+      // The short blunt back point and the straight trailing fall.
+      ctx.lineTo(headX - lead * hw * (1.18 + t * 0.3), headY - hh * 0.78);
+      ctx.lineTo(headX - lead * hw * (1.3 + t * 0.32), headY + hh * 0.3);
+      ctx.lineTo(headX - lead * hw * 1.24, headY + hh * 1.12);
+      // THE JAW TABS: two sharp triangles broken out of the hem.
+      ctx.lineTo(headX - lead * hw * 0.52, headY + hh * 1.22);
+      ctx.lineTo(headX - lead * hw * 0.3, headY + hh * 1.52);
+      ctx.lineTo(headX - lead * hw * 0.08, headY + hh * 1.24);
+      ctx.lineTo(headX + lead * hw * 0.22, headY + hh * 1.5);
+      ctx.lineTo(headX + lead * hw * 0.46, headY + hh * 1.2);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.6);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      const dayK = daybreakK(f.nowMs, st.sundisc?.phase);
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      // Planar values: lit top plane, mid flank, dark under-beak —
+      // folded paper, every edge a value break and never a stroke.
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.8, hw * 2.4, hh * 3.6);
+      ctx.fillStyle = shade(st.color, 12);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.44, beakTip);
+      ctx.lineTo(headX + lead * hw * 0.3, headY - hh * 1.48);
+      ctx.lineTo(headX - lead * hw * 0.54, headY - hh * 1.56);
+      ctx.lineTo(headX - lead * hw * 0.32, headY - hh * 1.28);
+      ctx.lineTo(headX + lead * hw * 0.5, headY - hh * 1.14);
+      ctx.closePath();
+      ctx.fill();
+      // The under-beak plane in deep shade.
+      ctx.fillStyle = shade(st.color, -30);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.44, beakTip);
+      ctx.lineTo(headX + lead * hw * 0.5, headY - hh * 1.12);
+      ctx.lineTo(headX + lead * hw * 0.66, headY - hh * 0.6);
+      ctx.lineTo(headX + lead * hw * 1.3, headY - hh * 0.36);
+      ctx.closePath();
+      ctx.fill();
+      // The jaw tabs keep their own facet shade.
+      ctx.fillStyle = shade(st.color, -22);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.3, headY + hh * 1.5);
+      ctx.lineTo(headX - lead * hw * 0.08, headY + hh * 1.22);
+      ctx.lineTo(headX - lead * hw * 0.3, headY + hh * 1.26);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      if (front) {
+        // THE PLANAR SHADOW: the beak's shadow is a hard polygon,
+        // not a gradient — folded cloth throws folded dark. It
+        // covers past the eye line; the vesper light lives below.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(22, 13, 24, 0.66)';
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw, oTop);
+        ctx.lineTo(cx + ohw, oTop);
+        ctx.lineTo(cx + ohw, headY + hh * 0.1);
+        ctx.lineTo(cx - ohw, headY + hh * 0.24);
+        ctx.closePath();
+        ctx.fill();
+        if (st.sundisc) {
+          // The last light: a rose sliver low in the dark, sinking
+          // as the vow keeps its backward clock.
+          const dc = st.sundisc.color;
+          const gv = 0.15 + 0.5 * dayK;
+          ctx.globalAlpha = gv;
+          ctx.fillStyle = dc;
+          ctx.beginPath();
+          ctx.ellipse(cx, headY + hh * (0.34 - dayK * 0.2), ohw * 0.55, hh * 0.1 + hh * 0.08 * dayK, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = gv * 0.4;
+          ctx.fillRect(cx - ohw, headY + hh * 0.2, ohw * 2, oBot - headY - hh * 0.2);
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+        // One bright edge along the beak's underside — the fold the
+        // light still finds.
+        ctx.strokeStyle = st.trim;
+        ctx.lineWidth = Math.max(1.5, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.96, oTop + headR * 0.01);
+        ctx.lineTo(cx + ohw * 1.04, oTop - headR * 0.03);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = shade(st.color, -12);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.32, headY + hh * 0.92);
+        ctx.lineTo(headX + hw * 0.32, headY + hh * 0.92);
+        ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 1.8);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'zenithhat') {
+    // THE ZENITH HAT — noon's hat: the wide brim rides LOW and tips
+    // DOWN across the brow, burying the eye line in its shadow the
+    // way the old wizards kept their counsel. Above it a tall cone
+    // with one hard crook carries the full noon blazon. The sun
+    // stands at the top of the sky and never moves; the mystery is
+    // the face it leaves in the dark.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const u = -lead;
+    const bandY = headY - hh * 0.34;
+    const sway = Math.sin(f.nowMs * 0.0017) * hw * 0.05;
+    const shimmer = 1 + 0.03 * Math.sin(f.nowMs * 0.0052);
+    const kneeX = headX + u * hw * 0.4;
+    const kneeY = bandY - hh * 1.66;
+    const tipX = headX + u * (hw * 1.1 + sway);
+    const tipY = bandY - hh * 1.34;
+    // The cone first; the brim laps its base.
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    ctx.moveTo(headX - u * hw * 0.82, bandY - hh * 0.1);
+    ctx.quadraticCurveTo(headX - u * hw * 0.4, bandY - hh * 1.1, headX - u * hw * 0.08, bandY - hh * 1.6);
+    ctx.quadraticCurveTo(headX + u * hw * 0.18, bandY - hh * 1.86, kneeX, kneeY);
+    // The crook: one hard bend, the tip dropping past it.
+    ctx.quadraticCurveTo(kneeX + u * hw * 0.4, kneeY + hh * 0.02, tipX, tipY - hh * 0.1);
+    ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY + hh * 0.04, tipX - u * hw * 0.02, tipY + hh * 0.12);
+    ctx.quadraticCurveTo(kneeX + u * hw * 0.34, kneeY + hh * 0.34, headX + u * hw * 0.56, bandY - hh * 0.9);
+    ctx.quadraticCurveTo(headX + u * hw * 0.74, bandY - hh * 0.42, headX + u * hw * 0.82, bandY - hh * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The cone's shaded fold side — flat plane.
+      ctx.fillStyle = shade(st.color, -15);
+      ctx.beginPath();
+      ctx.moveTo(headX + u * hw * 0.06, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + u * hw * 0.1, bandY - hh * 1.1, headX + u * hw * 0.02, bandY - hh * 1.56);
+      ctx.quadraticCurveTo(headX + u * hw * 0.2, bandY - hh * 1.8, kneeX, kneeY + hh * 0.04);
+      ctx.quadraticCurveTo(kneeX + u * hw * 0.36, kneeY + hh * 0.06, tipX - u * hw * 0.01, tipY);
+      ctx.quadraticCurveTo(kneeX + u * hw * 0.3, kneeY + hh * 0.34, headX + u * hw * 0.56, bandY - hh * 0.88);
+      ctx.quadraticCurveTo(headX + u * hw * 0.74, bandY - hh * 0.42, headX + u * hw * 0.82, bandY - hh * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      if (st.sundisc && front) {
+        // THE NOON BLAZON on the cone's front: the full disc high,
+        // ringed by short rays, shimmering with the heat.
+        const dc = st.sundisc.color;
+        const bx = headX + fx * headR * 0.2;
+        const by = bandY - hh * 0.88;
+        const br = headR * 0.2 * shimmer * (1 - t * 0.3);
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+          ctx.fillStyle = shade(dc, -6);
+          ctx.beginPath();
+          ctx.moveTo(bx + Math.cos(a - 0.24) * br * 1.02, by + Math.sin(a - 0.24) * br * 1.02);
+          ctx.lineTo(bx + Math.cos(a) * br * 1.55, by + Math.sin(a) * br * 1.55);
+          ctx.lineTo(bx + Math.cos(a + 0.24) * br * 1.02, by + Math.sin(a + 0.24) * br * 1.02);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.fillStyle = dc;
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(dc, 24);
+        ctx.beginPath();
+        ctx.arc(bx - br * 0.22, by - br * 0.22, br * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // THE LOW BRIM: wide, and TIPPED — the front edge sags across
+    // the brow to the eye line while the back edge rides high. The
+    // whole slab leans with the facing so the dip always guards the
+    // face side.
+    const dipX = headX + fx * headR * 0.4;
+    const brimFrontY = headY - hh * 0.06;
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 6);
+    ctx.beginPath();
+    ctx.moveTo(headX - hw * 2.1, bandY + hh * 0.06);
+    ctx.quadraticCurveTo(headX - hw * 1.2, bandY - hh * 0.34, headX - hw * 0.2, bandY - hh * 0.3);
+    ctx.quadraticCurveTo(headX + hw * 1.1, bandY - hh * 0.34, headX + hw * 2.1, bandY + hh * 0.06);
+    // The front hem: it SAGS to the eye line over the face.
+    ctx.quadraticCurveTo(headX + hw * 1.1, brimFrontY + hh * 0.06, dipX, brimFrontY + hh * 0.16);
+    ctx.quadraticCurveTo(headX - hw * 1.1, brimFrontY + hh * 0.06, headX - hw * 2.1, bandY + hh * 0.06);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The brim's underside — all shadow, and it faces the viewer.
+      ctx.fillStyle = shade(st.color, -28);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 1.9, bandY + hh * 0.08);
+      ctx.quadraticCurveTo(dipX - hw * 0.4, brimFrontY + hh * 0.02, dipX, brimFrontY + hh * 0.14);
+      ctx.quadraticCurveTo(dipX + hw * 0.4, brimFrontY + hh * 0.02, headX + hw * 1.9, bandY + hh * 0.08);
+      ctx.quadraticCurveTo(headX + hw * 1.0, brimFrontY - hh * 0.02, dipX, brimFrontY + hh * 0.08);
+      ctx.quadraticCurveTo(headX - hw * 1.0, brimFrontY - hh * 0.02, headX - hw * 1.9, bandY + hh * 0.08);
+      ctx.closePath();
+      ctx.fill();
+      if (front) {
+        // THE BROW SHADOW: the dipped brim buries the eye line — a
+        // flat shadow band across the upper face, and the noon light
+        // pooling warm on the chin below it.
+        const fw = hw * 0.72 * (1 - 0.4 * t);
+        ctx.fillStyle = 'rgba(22, 13, 24, 0.5)';
+        ctx.beginPath();
+        ctx.moveTo(dipX - fw, brimFrontY + hh * 0.1);
+        ctx.lineTo(dipX + fw, brimFrontY + hh * 0.1);
+        ctx.lineTo(dipX + fw * 0.94, headY + hh * 0.22);
+        ctx.lineTo(dipX - fw * 0.94, headY + hh * 0.22);
+        ctx.closePath();
+        ctx.fill();
+        if (st.sundisc) {
+          ctx.globalAlpha = 0.14;
+          ctx.fillStyle = shade(st.sundisc.color, 20);
+          ctx.fillRect(dipX - fw * 0.9, headY + hh * 0.3, fw * 1.8, hh * 0.5);
+          ctx.globalAlpha = 1;
+        }
+      }
+      // The band: a dark ribbon above the brim seats the cone.
+      ctx.fillStyle = shade(st.color, -24);
+      ctx.fillRect(headX - hw * 0.74, bandY - hh * 0.34, hw * 1.48, hh * 0.2);
+    }
+    return;
+  }
+
+  if (st.kind === 'umbrahood') {
+    // THE UMBRA HOOD — the eclipse's cowl: the deepest dark in the
+    // wardrobe. A smooth towering cowl hooked at the tip, its face a
+    // VOID — nothing offered but two pale gold points where eyes
+    // should be, steady as held breath. Above the crown floats the
+    // eclipsed sun itself: the dark disc in its gold corona ring,
+    // spiked, flaring once a cycle. The dawn's other face.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.7 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.54;
+    const oBot = headY + hh * 0.88;
+    const sway = Math.sin(f.nowMs * 0.0012) * hw * 0.03;
+    const apexX = headX - lead * hw * (0.3 + t * 0.14) + sway;
+    const apexY = headY - hh * 1.78;
+    const dayK = daybreakK(f.nowMs, st.sundisc?.phase);
+    if (st.sundisc && !hurt) {
+      // THE CROWNED ECLIPSE floats above the peak — painted first so
+      // the hood's tip laps its lower rim: it hangs BEHIND the
+      // crown, a black sun over a black hood.
+      const ring = st.sundisc.ring ?? st.trim;
+      const ex = headX - lead * hw * 0.1;
+      const ey = apexY - hh * 0.44 + Math.sin(f.nowMs * 0.0015) * hh * 0.04;
+      const er = headR * 0.26;
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        ctx.fillStyle = shade(ring, -8);
+        ctx.beginPath();
+        ctx.moveTo(ex + Math.cos(a - 0.2) * er * 1.02, ey + Math.sin(a - 0.2) * er * 1.02);
+        ctx.lineTo(ex + Math.cos(a) * er * (1.4 + 0.25 * dayK), ey + Math.sin(a) * er * (1.4 + 0.25 * dayK));
+        ctx.lineTo(ex + Math.cos(a + 0.2) * er * 1.02, ey + Math.sin(a + 0.2) * er * 1.02);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = ring;
+      ctx.beginPath();
+      ctx.arc(ex, ey, er, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = st.sundisc.color;
+      ctx.beginPath();
+      ctx.arc(ex, ey, er * 0.76, 0, Math.PI * 2);
+      ctx.fill();
+      if (dayK > 0.7) {
+        ctx.globalAlpha = ((dayK - 0.7) / 0.3) * 0.35;
+        ctx.fillStyle = ring;
+        ctx.beginPath();
+        ctx.arc(ex, ey, er * 1.9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.2, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.28, headY + hh * 0.12, headX + lead * hw * 1.06, headY - hh * 0.56);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.9, headY - hh * 1.18, apexX + lead * hw * 0.2, apexY + hh * 0.12);
+      // The hook at the tip.
+      ctx.quadraticCurveTo(apexX - lead * hw * 0.06, apexY - hh * 0.08, apexX - lead * hw * 0.34, apexY + hh * 0.14);
+      ctx.quadraticCurveTo(headX - lead * hw * (0.98 + t * 0.26), headY - hh * 0.8, headX - lead * hw * (1.22 + t * 0.34), headY - hh * 0.04);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.34 + t * 0.3), headY + hh * 0.46, headX - lead * hw * 1.28, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.2, headY + hh * 1.18);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.7);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -12);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 2.0, hw * 2.4, hh * 3.8);
+      // One quiet lit facet up the leading flank — the least light
+      // that still says CLOTH.
+      ctx.fillStyle = shade(st.color, 7);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.0, headY - hh * 0.54);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.86, headY - hh * 1.14, apexX + lead * hw * 0.18, apexY + hh * 0.16);
+      ctx.lineTo(apexX + lead * hw * 0.02, apexY + hh * 0.34);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.6, headY - hh * 1.0, headX + lead * hw * 0.74, headY - hh * 0.46);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      if (front) {
+        // THE VOID: the opening gives nothing back — full dark to
+        // the chin, and the two pale points that watch from it.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(16, 10, 20, 0.88)';
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, oBot - oTop);
+        if (st.emberEyes) {
+          const glow = 0.55 + 0.45 * dayK;
+          const ey2 = headY - hh * 0.02;
+          for (const es of [-1, 1]) {
+            const wK = es !== lead ? Math.max(0, 1 - t * 1.4) : 1;
+            if (wK <= 0.05) continue;
+            const px = cx + es * ohw * 0.4 * (1 - t * 0.3);
+            ctx.globalAlpha = 0.3 * glow * wK;
+            ctx.fillStyle = st.emberEyes.color;
+            ctx.beginPath();
+            ctx.arc(px, ey2, hw * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = (0.7 + 0.3 * glow) * wK;
+            ctx.fillStyle = shade(st.emberEyes.color, 30);
+            ctx.fillRect(px - hw * 0.075, ey2 - hw * 0.028, hw * 0.15, hw * 0.056);
+          }
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+        // ONE BRIGHT EDGE on the rim — the law every dark device
+        // keeps, in the eclipse's own gold.
+        ctx.strokeStyle = shade(st.sundisc?.ring ?? st.trim, -8);
+        ctx.lineWidth = Math.max(1.5, s * 0.016);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = shade(st.color, -9);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.92);
+        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.92);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.9);
+        ctx.closePath();
+        ctx.fill();
       }
     }
     return;
