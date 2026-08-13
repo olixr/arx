@@ -21,7 +21,7 @@
 //   ?s=<px>     body scale per cell (default 150)
 //   ?sets=a,b   audit ANY families (one idle row each) instead of
 //               the standing sheet — the lower-wardrobe sweep
-import { LegSolver, drawHumanoid, type RigPose } from '../render/rig.js';
+import { LegSolver, RIG_DEBUG, drawHumanoid, type RigPose } from '../render/rig.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
@@ -29,6 +29,15 @@ const ctx = canvas.getContext('2d')!;
 
 const q = new URLSearchParams(location.search);
 const HURT = q.get('hurt') === '1';
+// THE PERSPECTIVE SHEET: ?dbg=1 overlays the solved shoulder geometry
+// on every cell — GREEN the solved bar and roots, RED the settle
+// anchors (the billboard home), YELLOW the pauldron sockets, CYAN the
+// honest 3D projection of the shoulder bar (reference only — the
+// billboard never adopts it; see THE PROJECTION NEVER OWNS THE
+// BILLBOARD). Calibrate the turned-bar laws against the cyan line:
+// the green bar should collapse TOWARD it side-on without ever
+// reaching its degenerate profile pinch.
+const DBG = q.get('dbg') === '1';
 const S = Number(q.get('s') ?? 150);
 const YS = 0.6;
 const GAIT_SPEED = q.get('gait') === 'walk' ? 1.5 : 4.6;
@@ -55,7 +64,22 @@ const CLOTH_HEADS: Record<string, string> = {
   flamewrought: 'crown',
   duskwarden: 'hat',
   aetherion: 'cowl',
+  // The lower wardrobe: early five wear `wraps`, themed five `gloves`.
+  thistledown: 'hood',
+  mothwing: 'cowl',
+  dawnsworn: 'hood',
+  fenwalker: 'hood',
+  stormwoven: 'hood',
+  hedgemage: 'hat',
+  tidecaller: 'hood',
+  voidwhisper: 'cowl',
+  cindersworn: 'hood',
+  starweaver: 'circlet',
 };
+/** Cloth families whose hand piece says `gloves` instead of `wraps`. */
+const CLOTH_GLOVES = new Set([
+  'hedgemage', 'tidecaller', 'voidwhisper', 'cindersworn', 'starweaver',
+]);
 /** Lower-wardrobe families whose helm carries its own noun — the
  *  `_helm` default finds nothing and audits them bareheaded. */
 const HELM_NOUNS: Record<string, string> = {
@@ -70,7 +94,7 @@ const worn = (family: string) => {
       bodyItem: `${family}_robe`,
       legsItem: `${family}_skirts`,
       bootsItem: `${family}_slippers`,
-      glovesItem: `${family}_wraps`,
+      glovesItem: `${family}_${CLOTH_GLOVES.has(family) ? 'gloves' : 'wraps'}`,
     };
   }
   return {
@@ -253,7 +277,9 @@ function frame(now: number): void {
 
     sctx.setTransform(1, 0, 0, 1, 0, 0);
     sctx.clearRect(0, 0, CW, CH);
+    RIG_DEBUG.on = DBG;
     drawHumanoid(sctx, rig);
+    RIG_DEBUG.on = false;
     tctx.setTransform(1, 0, 0, 1, 0, 0);
     tctx.clearRect(0, 0, CW, CH);
     tctx.drawImage(scratch, 0, 0);
@@ -274,6 +300,61 @@ function frame(now: number): void {
     ctx.moveTo(cellX + CW / 2 - 0.72 * S, cellY + HOME_Y);
     ctx.lineTo(cellX + CW / 2 + 0.72 * S, cellY + HOME_Y);
     ctx.stroke();
+
+    if (DBG) {
+      // Scratch-local coords ARE cell-local — offset by the cell only.
+      const d = RIG_DEBUG;
+      const gx = (x: number): number => cellX + x;
+      const gy = (y: number): number => cellY + y;
+      ctx.lineWidth = 1.5;
+      // CYAN: the honest 3D projection of a shoulder bar of the same
+      // half-width, at the world's bird-eye tilt — the reference the
+      // billboard leans toward but never fully adopts.
+      const bx = Math.cos(d.dir) * d.tw * 0.98;
+      const by = Math.sin(d.dir) * d.tw * 0.98 * 0.5;
+      ctx.strokeStyle = 'rgba(80, 220, 235, 0.85)';
+      ctx.beginPath();
+      ctx.moveTo(gx(d.x - bx), gy(d.shoulderY - by));
+      ctx.lineTo(gx(d.x + bx), gy(d.shoulderY + by));
+      ctx.stroke();
+      // RED: the settle anchors — the billboard's home for each root.
+      ctx.strokeStyle = 'rgba(235, 80, 80, 0.9)';
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(gx(d.anchorMainX), gy(d.shoulderY));
+      ctx.lineTo(gx(d.anchorOffX), gy(d.shoulderY));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      for (const ax of [d.anchorMainX, d.anchorOffX]) {
+        ctx.beginPath();
+        ctx.arc(gx(ax), gy(d.shoulderY), 2.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      // GREEN: the solved bar the arms actually hang from this frame.
+      ctx.strokeStyle = 'rgba(90, 230, 110, 0.95)';
+      ctx.beginPath();
+      ctx.moveTo(gx(d.mainShX), gy(d.mainShY));
+      ctx.lineTo(gx(d.offShX), gy(d.offShY));
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(90, 230, 110, 0.95)';
+      ctx.beginPath();
+      ctx.arc(gx(d.mainShX), gy(d.mainShY), 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(gx(d.offShX), gy(d.offShY), 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      // YELLOW: the pauldron sockets, tied down to the solved bar.
+      ctx.fillStyle = 'rgba(240, 210, 60, 0.95)';
+      for (const so of d.sockets) {
+        ctx.beginPath();
+        ctx.arc(gx(so.x), gy(so.y), 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The yaw readout: signed fx, the angle the laws key on.
+      ctx.fillStyle = '#9fdcff';
+      ctx.font = '10px monospace';
+      ctx.fillText(`fx ${Math.cos(d.dir).toFixed(2)}`, cellX + CW / 2, cellY + CH - 6);
+    }
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '12px monospace';
     ctx.textAlign = 'center';

@@ -47,6 +47,20 @@
  *   the feet through the normal step logic: a real shuffle for free.
  */
 
+/**
+ * THE TURNED SILHOUETTE's first channel: the billboard's fake-3D width
+ * squash as a function of how side-on the heading is (`horiz` = |cos|
+ * of the travel/facing). ONE SOURCE — the leg solver eases toward it
+ * every frame and the look-creator preview samples it directly. A
+ * profile must COMMIT to its foreshortening: the old 0.91 floor left
+ * the torso 87% of its frontal width side-on, which is why an E/W
+ * stance read as a front-facing card with a turned head. A real chest
+ * is ~3/4 as deep as it is wide, so the profile floor now lands there.
+ */
+export function yawSquash(horiz: number): number {
+  return 1 + 0.05 * (1 - horiz) - 0.22 * horiz;
+}
+
 export interface LegSpec {
   /** Rest home in the body frame: forward along the facing (tiles). */
   fwd: number;
@@ -213,8 +227,11 @@ export class LegRig {
     // while moving and from the aim/facing while standing.
     if (cfg.billboard) {
       const horiz = moving ? Math.abs(this.vx) / speed : Math.abs(Math.cos(dir));
-      const wTarget = 1 + 0.05 * (1 - horiz) - 0.09 * horiz;
-      this.wScale += (wTarget - this.wScale) * Math.min(1, dt * 9);
+      // Ease rate 7 (was 9): the deeper profile squash sweeps a wider
+      // range, and the smoothness law (squash.test.ts: <0.03/frame at
+      // 60Hz) outranks the settle speed — 143ms vs 111ms time
+      // constant, imperceptible on a turn.
+      this.wScale += (yawSquash(horiz) - this.wScale) * Math.min(1, dt * 7);
     }
 
     // Run crouch: hips dip with speed, freeing horizontal reach.

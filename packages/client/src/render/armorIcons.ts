@@ -157,6 +157,7 @@ export function bodyIconPainter(st: BodyStyle): Painter {
       lead: 0,
       profileK: 0,
       backK: 0,
+      yaw: 0,
       hurt: false,
       strideSw: 0,
       nowMs: 5234,

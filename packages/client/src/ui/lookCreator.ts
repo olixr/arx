@@ -16,6 +16,7 @@ import {
   type Look,
 } from '@arx/shared';
 import { drawHumanoid, type RigPose } from '../render/rig.js';
+import { yawSquash } from '../render/legs.js';
 
 /**
  * Character creation: the hero's mirror. A live turntable of the
@@ -557,7 +558,7 @@ export class LookCreator {
       ],
       bob: 0,
       rise: 0.414,
-      wScale: Math.abs(Math.cos(dir)) > 0.7 ? 0.91 : 1.05,
+      wScale: yawSquash(Math.abs(Math.cos(dir))),
       poleX: 0,
       poleY: 0,
       poleStrength: 0,

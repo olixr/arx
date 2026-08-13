@@ -415,6 +415,58 @@ export const SHOULDER_HALF_S = 0.185;
 export const WAIST_HALF_S = 0.125;
 /** A settled shoulder's anatomical anchor along the shoulder bar. */
 export const SHOULDER_SETTLE_K = 0.85;
+/**
+ * THE TURNED BAR (the turned silhouette's second channel): how much of
+ * the settle spread survives the heading. Face-on the bar is a full
+ * billboard bar; side-on the two shoulders stand nearly in line with
+ * the camera axis, so their SCREEN spread must collapse toward the
+ * body's centerline — the legs already narrow their stance 30% side-on
+ * (legs.ts homes), and an upper body that keeps full spread over a
+ * turned stance is exactly the "front-facing card with a turned head"
+ * read. fx² keeps the falloff smooth through the diagonals. The floor
+ * is 0.5, NEVER 0: the historic 3D-bar projection collapsed caps onto
+ * the spine while the arms kept their spread (THE PROJECTION NEVER
+ * OWNS THE BILLBOARD) — arms and sockets BOTH consume this one
+ * function, so they collapse together or not at all (ONE SPREAD LAW).
+ */
+export function shoulderTuckK(fx: number): number {
+  return 1 - 0.5 * fx * fx;
+}
+/**
+ * THE TURNED BAR's fore-aft stagger (units of tw, signed along the
+ * facing): side-on, the leading arm hangs a half-step ahead of the
+ * chest line and the trailing arm behind it — the same stagger the
+ * feet already take (legs.ts `stag`). Zero face-on; grows with the
+ * profile so the diagonals inherit a taste of it.
+ */
+export function shoulderStagK(fx: number): number {
+  return fx * Math.abs(fx);
+}
+/**
+ * THE PERSPECTIVE SHEET (dev-only): when `on`, drawHumanoid records
+ * the solved shoulder geometry of the last figure drawn so a lab can
+ * overlay red/green calibration lines — the solved bar, the settle
+ * anchors, the pauldron sockets and the honest 3D projection of the
+ * shoulder bar — over the art. The labs flip it on (`?dbg=1`); the
+ * game never does. Zero cost off: one boolean check per draw.
+ */
+export const RIG_DEBUG = {
+  on: false,
+  x: 0,
+  hipY: 0,
+  shoulderY: 0,
+  s: 0,
+  tw: 0,
+  wS: 0,
+  dir: 0,
+  mainShX: 0,
+  mainShY: 0,
+  offShX: 0,
+  offShY: 0,
+  anchorMainX: 0,
+  anchorOffX: 0,
+  sockets: [] as Array<{ x: number; y: number; depthK: number }>,
+};
 /** The hang-width lane's flare off the waist line (hangW's ww term). */
 export const HANG_WAIST_K = 1.08;
 /** shoulderY sits this far below the shoulder line's top (units of s). */
@@ -4357,9 +4409,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // hang lanes widen so held gear clears the torso silhouette — a
     // loadout stays readable from behind instead of vanishing into
     // the body (zero on the camera half and at profile, by the band).
+    // THE TURNED BAR reaches the hands: the old profile lane WIDENED
+    // to the shoulder corner (tw·1.02) side-on — hands splayed at both
+    // silhouette edges, the frontal-card read. A profile hand hangs
+    // along the body's side plane, near the centerline: the lane now
+    // TUCKS toward tw·0.62 as the heading turns side-on, and each fist
+    // inherits its own shoulder's fore-aft stagger below.
     const hangW =
-      (ww * HANG_WAIST_K + (tw * 1.02 - ww * HANG_WAIST_K) * profileK) *
+      (ww * HANG_WAIST_K + (tw * 0.62 - ww * HANG_WAIST_K) * profileK) *
       (1 + PEEK_HANG_K * awayPeekK(fy));
+    const hangStag = shoulderStagK(fx) * tw;
     // THE RUNNER'S ELBOW: an empty fist rises toward the ribs as the
     // gait becomes a sprint — bent arms pumping with the legs, the
     // shape every running reference draws. Armed fists keep their
@@ -4373,7 +4432,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // pump already owns the read. Rides the SMOOTHED swing, so it
     // sweeps instead of hinging.
     const liftAlt = LIFT_ALT_K * swS * (1 - Math.abs(rig.poleX));
-    let hx = rig.x + wSide * hangW * wS;
+    let hx = rig.x + wSide * hangW * wS + hangStag * 0.06;
     let hy = armY + REST_HANG_DROP_S * s - elbowLift * (1 + liftAlt);
     let hAngle = Math.PI / 2 + sideW * (0.3 + 0.35 * runK); // tip down, trailing
     let hFore = 1; // rest-carry foreshortening, blended in on the settle
@@ -4498,7 +4557,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // grip, its own flourish phase (the two never twirl in sync). The
     // hand rides a touch higher and tighter than the main: the trailing
     // blade of a paired stance, not a mirror image.
-    let ox = rig.x - wSide * hangW * wS;
+    let ox = rig.x - wSide * hangW * wS - hangStag * 0.12;
     let oy = armY + REST_HANG_DROP_S * s - elbowLift * (1 - liftAlt);
     if (offBlade) {
       // The carriage mirrors on FACING, not on the hanging side — the
@@ -5088,8 +5147,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const awayShoulder = bandFlag(mem, 'awayShoulder', -fy, 0.14, 0.02);
   const runTrail = bandFlag(mem, 'runTrail', rig.runF, 0.42, 0.28);
   const elbowEaseHold = settleHalf && Math.abs(sideS) < 0.98;
-  mainShX += (rig.x + sideS * tw * SHOULDER_SETTLE_K * wS - mainShX) * settleK;
-  offShX += (rig.x - sideS * tw * SHOULDER_SETTLE_K * wS - offShX) * settleK;
+  // THE TURNED BAR: side-on the settle anchors tuck toward the body's
+  // centerline (shoulderTuckK) and stagger along the facing — leading
+  // arm a half-step ahead, trailing arm behind — the upper body's
+  // answer to the profile stance the feet already take. The sockets
+  // read the SAME tuck (ONE SPREAD LAW), so cap and root collapse as
+  // one girdle.
+  const barTuck = shoulderTuckK(fx);
+  const barStag = shoulderStagK(fx) * tw;
+  mainShX +=
+    (rig.x + sideS * tw * SHOULDER_SETTLE_K * barTuck * wS + barStag * 0.06 - mainShX) * settleK;
+  offShX +=
+    (rig.x - sideS * tw * SHOULDER_SETTLE_K * barTuck * wS - barStag * 0.12 - offShX) * settleK;
   // ---- THE LIVING SHOULDER: the roots are not pins. The girdle
   // breathes on THE SAME CLOCK the hands ride (arms-v3 Phase 5's
   // standing breath, phases matched, quieter amplitude — the hand's
@@ -5107,6 +5176,24 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const rootRoll = 0.012 * s * rig.runF * Math.min(1, rig.poleStrength);
   const mainShY = shoulderY + rootB * 0.008 * s + rootSw * rootRoll * mainSideSign;
   const offShY = shoulderY + rootB2 * 0.009 * s - rootSw * rootRoll * mainSideSign;
+  if (RIG_DEBUG.on) {
+    RIG_DEBUG.x = rig.x;
+    RIG_DEBUG.hipY = hipY;
+    RIG_DEBUG.shoulderY = shoulderY;
+    RIG_DEBUG.s = s;
+    RIG_DEBUG.tw = tw;
+    RIG_DEBUG.wS = wS;
+    RIG_DEBUG.dir = rig.dir;
+    RIG_DEBUG.mainShX = mainShX;
+    RIG_DEBUG.mainShY = mainShY;
+    RIG_DEBUG.offShX = offShX;
+    RIG_DEBUG.offShY = offShY;
+    RIG_DEBUG.anchorMainX =
+      rig.x + sideS * tw * SHOULDER_SETTLE_K * barTuck * wS + barStag * 0.06;
+    RIG_DEBUG.anchorOffX =
+      rig.x - sideS * tw * SHOULDER_SETTLE_K * barTuck * wS - barStag * 0.12;
+    RIG_DEBUG.sockets.length = 0;
+  }
   // Aiming up-and-away puts the gear behind the body. And a LONG
   // carry crossing the body goes behind it too: the staff's leveled
   // run trail at a camera-facing heading swept its butt half up
@@ -5369,7 +5456,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // profile (cap ON the root), easing out to the garment's own
     // corner (0.98·tw) as the shoulder bar squares to the camera —
     // there the cap wraps the OUTSIDE of the root, as a worn cap does.
-    const spread = tw * (SHOULDER_SETTLE_K + (0.98 - SHOULDER_SETTLE_K) * Math.abs(fy));
+    // THE TURNED BAR: the settle spread itself now tucks side-on
+    // (shoulderTuckK — the same function the arm anchors ride), so at
+    // a profile the near cap stands over the body's centerline where
+    // its arm actually roots, not parked at a frontal corner.
+    const settleSpread = SHOULDER_SETTLE_K * shoulderTuckK(fx);
+    const spread = tw * (settleSpread + (0.98 - settleSpread) * Math.abs(fy));
     for (const e of [1, -1] as const) {
       // Screen side, remembered: ±fy decides while the bar reads,
       // the band holds through the profile crossing so each cap
@@ -5405,8 +5497,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // both laws: tall devices clear the jaw, compact caps still
       // read seated ON the root — with the living socket carrying
       // the attachment the drop was over-asked to fake.)
-      const lx = sideScr * (spread + farK * tw * 0.34);
-      const ly = lyBar + nearK * tw * 0.26 - farK * tw * 0.08;
+      // The near cap wraps the OUTSIDE of its shoulder: with the
+      // turned bar tucking the roots toward the centerline, a cap
+      // centered ON the root lands inside the head column at a
+      // profile and fuses with the jaw. It biases outboard toward
+      // the leading silhouette edge instead — worn over the arm,
+      // clear of the chin — and seats a touch DEEPER as the bias
+      // engages, so tall devices ride the deltoid, not the cheek.
+      // Zero face-on (nearK is |fx|-driven).
+      // The far peek is anchored to the torso's BACK EDGE, not to the
+      // spread: a fixed offset from the tucked bar parked tall far
+      // devices against the trailing cheek (the stormsinger crystal
+      // lesson, round two). Whatever the spread does, the far cap
+      // lands just past the garment's own edge (1.1·tw) — the classic
+      // side-view sliver — and never nearer.
+      const farOut = Math.max(0.34 * tw, 1.1 * tw - spread);
+      const lx = sideScr * (spread + farK * farOut + nearK * tw * 0.14);
+      const ly = lyBar + nearK * tw * 0.3 - farK * tw * 0.08;
       const px = lx * wS;
       const py = ly * hScale;
       // THE LIVING SOCKET: this cap's own arm root, solved above —
@@ -5419,7 +5526,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       const devLim = 0.2 * tw * wS;
       const devX = Math.max(
         -devLim,
-        Math.min(devLim, rootX - (rig.x + sideScr * tw * SHOULDER_SETTLE_K * wS)),
+        Math.min(devLim, rootX - (rig.x + sideScr * tw * settleSpread * wS)),
       );
       const devY = rootY - shoulderY;
       const wx = rig.x + cosL * px - sinL * py + devX;
@@ -5432,6 +5539,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         0.08,
       );
       if ((layer === 'behind') !== behind) continue;
+      if (RIG_DEBUG.on) RIG_DEBUG.sockets.push({ x: wx, y: wy, depthK });
       // Orientation: the outward perspective lean (strongest when the
       // bar points at the camera and we see the cap from its side),
       // the combat lean the frame itself carries, the stride's roll —
@@ -5774,6 +5882,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         lead,
         profileK,
         backK,
+        yaw: fx,
         hurt: rig.hurt,
         strideSw: ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP,
         nowMs: rig.nowMs,
