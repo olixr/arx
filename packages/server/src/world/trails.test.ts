@@ -21,7 +21,7 @@ import {
 import { composeFinds, findsForCell } from './finds.js';
 
 const SEED = 1337;
-const CTX = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
+const CTX = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
 
 /**
  * THE WORN PATH's laws, pinned (lived-in-land Phase 3): the walk is

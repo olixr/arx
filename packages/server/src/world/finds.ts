@@ -105,6 +105,20 @@ export function findsForCell(
   ctx: PoiContext,
   siteAnchor: { x: number; y: number } | null,
 ): MinorFind[] {
+  // THE CAPITAL LAW: ground a capital claims deals no finds either —
+  // the mask covers every cell layer (the ONE-CELL DEBT).
+  {
+    const x0 = cellX * POI_CELL;
+    const y0 = cellY * POI_CELL;
+    for (const c of ctx.capitals) {
+      if (
+        x0 < c.x + c.w + 24 && c.x - 24 < x0 + POI_CELL &&
+        y0 < c.y + c.h + 24 && c.y - 24 < y0 + POI_CELL
+      ) {
+        return [];
+      }
+    }
+  }
   const base = findStream(seed, cellX, cellY, epoch);
   const x0 = cellX * POI_CELL;
   const y0 = cellY * POI_CELL;

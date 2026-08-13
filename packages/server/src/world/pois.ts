@@ -112,6 +112,14 @@ export interface PoiContext {
    */
   minors: readonly MinorDef[];
   prefabs: ReadonlyMap<string, PrefabDef>;
+  /**
+   * THE CAPITAL LAW's mask (strongholds Phase 3) — rects of every
+   * seated capital in reach. REQUIRED, not defaulted (the claimRings
+   * precedent): a cell whose ground a capital claims deals no site
+   * and no finds, ever, so capitals never collide with the cell
+   * layers by construction. The compiler holds every builder to it.
+   */
+  capitals: readonly PoiZoneRect[];
 }
 
 /** A decided cell — exactly what the world_pois ledger stores. */
@@ -172,6 +180,16 @@ export function poiForCell(
 ): PoiSite | null {
   const x0 = cellX * POI_CELL;
   const y0 = cellY * POI_CELL;
+  // THE CAPITAL LAW: ground a capital claims deals nothing — masked
+  // cells are silent before any stream rolls (the ONE-CELL DEBT).
+  for (const c of ctx.capitals) {
+    if (
+      x0 < c.x + c.w + 24 && c.x - 24 < x0 + POI_CELL &&
+      y0 < c.y + c.h + 24 && c.y - 24 < y0 + POI_CELL
+    ) {
+      return null;
+    }
+  }
   const centerTier = dangerAt(seed, x0 + POI_CELL / 2, y0 + POI_CELL / 2, ctx.anchors);
   if (centerTier === 0) return null; // settled land is authored land
 
@@ -1451,12 +1469,15 @@ export function poiContext(
   zones: readonly ZoneDef[],
   prefabs: ReadonlyMap<string, PrefabDef>,
   claimRings: readonly ClaimRing[],
+  capitals: readonly PoiZoneRect[],
 ): PoiContext {
   return {
     anchors,
     zoneRects: [
       ...zones
-        .filter((z) => !z.id.startsWith('poi:'))
+        // Capitals' own zones stay out of the clearance list the same
+        // way poi zones do — the capitals MASK handles their ground.
+        .filter((z) => !z.id.startsWith('poi:') && !z.id.startsWith('stronghold:'))
         .map((z) => ({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height })),
       ...PLANNED_ZONE_RECTS,
     ],
@@ -1464,6 +1485,7 @@ export function poiContext(
     defs: [...POI_DEFS.values()],
     minors: [...MINOR_DEFS.values()],
     prefabs,
+    capitals,
   };
 }
 

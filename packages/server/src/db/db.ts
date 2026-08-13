@@ -934,6 +934,25 @@ const MIGRATIONS: string[] = [
   // always meant to be — name, bond, and clock untouched; the wild
   // ram keeps its crag.
   `UPDATE livestock SET species = 'sheep' WHERE species = 'ram';`,
+  // v31: THE CAPITAL LAW (strongholds Phase 3) — one ledger row per
+  // seated capital, deviations only: a virgin country has no row;
+  // first materialization writes one; the later lifecycle (stage,
+  // ward bits, ember/fallow) amends it in place.
+  `CREATE TABLE IF NOT EXISTS world_strongholds (
+    lattice_x INTEGER NOT NULL,
+    lattice_y INTEGER NOT NULL,
+    layout_id TEXT NOT NULL,
+    anchor_x INTEGER NOT NULL,
+    anchor_y INTEGER NOT NULL,
+    epoch INTEGER NOT NULL DEFAULT 0,
+    stage INTEGER NOT NULL DEFAULT 0,
+    wards_cleared INTEGER NOT NULL DEFAULT 0,
+    cleared_at BIGINT,
+    ember_until BIGINT,
+    fallow_until BIGINT,
+    first_seen_at BIGINT NOT NULL,
+    PRIMARY KEY (lattice_x, lattice_y)
+  );`,
 ];
 
 /**

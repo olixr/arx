@@ -144,6 +144,7 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     playerWithin: proto.playerWithin,
     authoredCells: proto.authoredCells,
     poiCtx: proto.poiCtx,
+    capitalRects: () => [],
     claimRings: proto.claimRings,
     inClaimRing: proto.inClaimRing,
     standOnePeddler: proto.standOnePeddler,
@@ -248,7 +249,7 @@ test('a rested fallow cell wakes to the SAME roll poiForCell decides', () => {
     CELL_X,
     CELL_Y,
     epoch,
-    poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []),
+    poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []),
   );
   assert.deepEqual(r.site, expected);
   const s2 = slate([[KEY, row({ epoch, fallowUntil: now + 60_000 })]]);
@@ -381,7 +382,7 @@ test('orphan satellites scatter when their core is gone', () => {
 
 test('composePoi stage: rungs add muster, the base camp never reshuffles', () => {
   const st = site({ tier: 3 });
-  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
   const base = composePoi(config.worldSeed, st, ctx, 0);
   const staged2 = composePoi(config.worldSeed, st, ctx, 2);
   assert.ok(base && staged2);
@@ -585,15 +586,15 @@ test('the hearth tie round-trips and rejects strangers', () => {
 });
 
 test('THE EXCLUSION LAW: a claimed yard refuses every materialization candidate', () => {
-  const ctxFree = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
+  const ctxFree = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
   const stood = poiForCell(config.worldSeed, CELL_X, CELL_Y, 0, ctxFree);
   assert.ok(stood, 'the control cell must host a site');
   // A yard over the whole cell: the same roll now stands nothing.
   const ring = { x: CELL_X * POI_CELL + 64, y: CELL_Y * POI_CELL + 64, r: 200 };
-  const ctxClaimed = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [ring]);
+  const ctxClaimed = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [ring], []);
   assert.equal(poiForCell(config.worldSeed, CELL_X, CELL_Y, 0, ctxClaimed), null);
   // A small ring far away changes nothing.
-  const ctxFar = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [{ x: 0, y: 0, r: 24 }]);
+  const ctxFar = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [{ x: 0, y: 0, r: 24 }], []);
   assert.deepEqual(poiForCell(config.worldSeed, CELL_X, CELL_Y, 0, ctxFar), stood);
 });
 
@@ -735,7 +736,7 @@ test('an unclaimed hearth orphans its squat — the covetous camp loses interest
 
 test('composePoi face: the squat orients on the claim, deterministically', () => {
   const st = site({ tier: 2, defId: 'raider_squat', prefabId: 'poi_raider_squat' });
-  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
   const toward = { x: st.anchorX + 100, y: st.anchorY };
   const faced = composePoi(config.worldSeed, st, ctx, 0, toward);
   const unfaced = composePoi(config.worldSeed, st, ctx, 0);

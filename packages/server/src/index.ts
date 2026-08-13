@@ -440,6 +440,7 @@ game.initPois(await accounts.loadPoiCells(), await accounts.loadFrontierCredits(
   discovered: await accounts.loadDiscoveredPoiCells(),
   calm: await accounts.loadFrontierCalm(),
   minors: await accounts.loadMinorCells(),
+  strongholds: await accounts.loadStrongholds(),
 });
 for (const zone of zones) {
   if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns, zone.id);

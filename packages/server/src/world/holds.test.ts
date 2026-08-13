@@ -34,6 +34,7 @@ const CTX: PoiContext = {
   ],
   minors: [],
   prefabs: POI_PREFABS,
+  capitals: [],
 };
 
 function scan(allowHold: boolean, max = 120): PoiSite[] {

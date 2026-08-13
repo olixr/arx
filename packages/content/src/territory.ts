@@ -26,6 +26,34 @@ import { hashCoords } from '@arx/shared';
 /** Country size in tiles (~three POI cells across). */
 export const TERRITORY_SPAN = 384;
 
+/**
+ * One country's lattice point — its voronoi site, the heart the
+ * borders wander around. THE CAPITAL LAW (strongholds Phase 3) seats
+ * each country's stronghold here: the deepest interior a country is
+ * guaranteed to have, by the field's own construction. Exported so
+ * the seat and the field can never drift apart.
+ */
+export function territoryLatticePoint(
+  seed: number,
+  cx: number,
+  cy: number,
+): { px: number; py: number; hash: number } {
+  const base = (seed ^ ST_TERRITORY) >>> 0;
+  const h = hashCoords(base, cx, cy);
+  // Jittered lattice point: anywhere in the middle ~80% of its
+  // span cell, so borders wander instead of running grid-true.
+  const px = (cx + 0.1 + ((h >>> 8) % 1000) / 1250) * TERRITORY_SPAN;
+  const py = (cy + 0.1 + ((h >>> 18) % 1000) / 1250) * TERRITORY_SPAN;
+  return { px, py, hash: h };
+}
+
+/** The family a lattice point deals, from the SORTED roster (the stability law). */
+export function territoryLatticeFamily(hash: number, families: readonly string[]): string | null {
+  if (families.length === 0) return null;
+  const sorted = [...families].sort();
+  return sorted[hash % sorted.length]!;
+}
+
 /** The field's named stream — the ST_* family's kin. */
 const ST_TERRITORY = 0x7e2217;
 
@@ -42,7 +70,6 @@ export function territoryAt(
 ): string | null {
   if (families.length === 0) return null;
   const sorted = [...families].sort();
-  const base = (seed ^ ST_TERRITORY) >>> 0;
   const gx = Math.floor(tx / TERRITORY_SPAN);
   const gy = Math.floor(ty / TERRITORY_SPAN);
   let bestD = Infinity;
@@ -51,11 +78,7 @@ export function territoryAt(
     for (let ox = -1; ox <= 1; ox++) {
       const cx = gx + ox;
       const cy = gy + oy;
-      const h = hashCoords(base, cx, cy);
-      // Jittered lattice point: anywhere in the middle ~80% of its
-      // span cell, so borders wander instead of running grid-true.
-      const px = (cx + 0.1 + ((h >>> 8) % 1000) / 1250) * TERRITORY_SPAN;
-      const py = (cy + 0.1 + ((h >>> 18) % 1000) / 1250) * TERRITORY_SPAN;
+      const { px, py, hash: h } = territoryLatticePoint(seed, cx, cy);
       const d = (tx - px) * (tx - px) + (ty - py) * (ty - py);
       if (d < bestD) {
         bestD = d;

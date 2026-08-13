@@ -329,6 +329,8 @@ import {
   isDaggerStats,
   movesetFor,
   strikePose,
+  STRONGHOLD_DEFS,
+  PLANNED_ZONE_RECTS,
 } from '@arx/content';
 import {
   collectVoicePrefetch,
@@ -354,6 +356,15 @@ import {
   type PoiContext,
   type PoiSite,
 } from '../world/pois.js';
+import {
+  CAPITAL_PAD_TILES,
+  capitalKey,
+  capitalLatticeRange,
+  capitalMasked,
+  composeStronghold,
+  strongholdSeat,
+  type CapitalSeat,
+} from '../world/strongholds.js';
 import {
   composeFinds,
   findsForCell,
@@ -2169,6 +2180,23 @@ export class GameServer {
    * fallowUntil on an empty row = the rest a dissolved cell takes
    * before it may host again (the ember law).
    */
+  /**
+   * THE CAPITAL LAW (strongholds Phase 3): the seat cache — pure per
+   * seed, so cached forever until the one live input (claim rings)
+   * changes and clears it (the ring-cache discipline).
+   */
+  private readonly capitalCache = new Map<string, CapitalSeat | null>();
+  /** Standing capitals, lattice key → live record. */
+  private readonly strongholdLive = new Map<
+    string,
+    { zoneId: string; seat: CapitalSeat; layoutId: string; spawnIdx: number[] }
+  >();
+  /** The world_strongholds ledger, loaded at boot (deviations only). */
+  private readonly strongholdLedger = new Map<
+    string,
+    { layoutId: string; anchorX: number; anchorY: number; epoch: number }
+  >();
+
   private readonly poiLedger = new Map<
     string,
     {
@@ -3920,7 +3948,12 @@ export class GameServer {
     // garrison body of its site stands — the champion's cache cannot
     // be sneaked out from under him.
     const over = this.poiChests.get(`${tx},${ty}`);
-    if (over?.warded && this.poiGarrisonStands(over.cell)) {
+    const wardStands = over?.warded
+      ? over.cell.startsWith('sh:')
+        ? this.strongholdGarrisonStands(over.cell.slice(3))
+        : this.poiGarrisonStands(over.cell)
+      : false;
+    if (wardStands) {
       sys('The lid will not lift — the ward holds while its keeper stands.');
       return;
     }
@@ -5811,6 +5844,7 @@ export class GameServer {
       this.world.unregisterBuilt(tx, ty);
       this.accounts.deleteBuiltTile(tx, ty);
       this.ringCache = null;
+    this.capitalCache?.clear();
     }
     const now = Date.now();
     const row: GrowthRow = {
@@ -6911,6 +6945,7 @@ export class GameServer {
     this.setWorldTile(action.tx, action.ty, placed);
     // A homestead grew — its claim ring re-derives on the next read.
     if (this.homesByCharacter.has(player.characterId)) this.ringCache = null;
+    this.capitalCache?.clear();
     this.grantXp(eid, player, def.skill ?? 'construction', def.xp);
     // A raised board starts BLANK and owned: the row exists from the
     // first moment so the builder sees an edit affordance the instant
@@ -7217,6 +7252,7 @@ export class GameServer {
     }
     this.setWorldTile(tx, ty, built.prevTile);
     if (this.homesByCharacter.has(player.characterId)) this.ringCache = null;
+    this.capitalCache?.clear();
     // Tearing down your own claimed bed dissolves the claim NOW —
     // eagerly, not on the next bedside read — so the hearth watch
     // never guards a yard whose hearth is gone.
@@ -8013,6 +8049,7 @@ export class GameServer {
   initHomes(homes: ReadonlyArray<{ characterId: number; x: number; y: number }>): void {
     for (const h of homes) this.homesByCharacter.set(h.characterId, { x: h.x, y: h.y });
     this.ringCache = null;
+    this.capitalCache?.clear();
   }
 
   /** A home claimed, moved, or dissolved — rings re-derive lazily. */
@@ -8020,6 +8057,7 @@ export class GameServer {
     if (home) this.homesByCharacter.set(characterId, home);
     else this.homesByCharacter.delete(characterId);
     this.ringCache = null;
+    this.capitalCache?.clear();
   }
 
   /**
@@ -8065,7 +8103,210 @@ export class GameServer {
    * the exclusion law cannot be forgotten at any call site.
    */
   private poiCtx(): PoiContext {
-    return poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs!, this.claimRings());
+    return poiContext(
+      this.dangerAnchors(),
+      this.world.zoneDefs,
+      this.poiPrefabs!,
+      this.claimRings(),
+      this.capitalRects(),
+    );
+  }
+
+  // ------------------------------------------- THE CAPITAL LAW
+
+  /** The seat context: STATIC anchors (the seat is geologic), the
+   * authored/planned rects, live rings, the live shelves. */
+  private seatCtx() {
+    return {
+      anchors: SETTLED_ANCHORS,
+      zoneRects: [
+        ...this.world.zoneDefs
+          .filter((z) => !z.id.startsWith('poi:') && !z.id.startsWith('stronghold:'))
+          .map((z) => ({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height })),
+        ...PLANNED_ZONE_RECTS,
+      ],
+      claimRings: this.claimRings(),
+      layouts: [...STRONGHOLD_DEFS.values()],
+      prefabs: this.poiPrefabs ?? new Map(),
+      families: familiesOf([...POI_DEFS.values()]),
+    };
+  }
+
+  /** The (cached) capital seat of a territory lattice cell. */
+  private cachedSeat(gx: number, gy: number): CapitalSeat | null {
+    const key = capitalKey(gx, gy);
+    const hit = this.capitalCache.get(key);
+    if (hit !== undefined) return hit;
+    const seat = strongholdSeat(config.worldSeed, gx, gy, this.seatCtx());
+    this.capitalCache.set(key, seat);
+    return seat;
+  }
+
+  /**
+   * Every seated capital rect near an online player — THE MASK's
+   * source. Computed lazily inside poiCtx() so a cell can never be
+   * decided before its ground's capital is known (no beat ordering
+   * to race). Warm-cache cost is map lookups.
+   */
+  private capitalRects(): Array<{ x: number; y: number; w: number; h: number }> {
+    const out: Array<{ x: number; y: number; w: number; h: number }> = [];
+    // Hand-built test slates borrow these methods without the capital
+    // fields — an absent cache reads as an empty frontier, never a
+    // throw (the standDownGarrison slate convention).
+    if (!this.capitalCache || !this.sessions) return out;
+    const seen = new Set<string>();
+    for (const session of this.sessions) {
+      if (session.playerEid === null) continue;
+      const pos = this.positions.get(session.playerEid);
+      if (!pos) continue;
+      const py = pos.y;
+      if (py >= DARK_BAND_Y) continue;
+      const px = pos.x;
+      const reach = CAPITAL_PAD_TILES + 168;
+      const r = capitalLatticeRange(px - reach, py - reach, reach * 2, reach * 2);
+      for (let gy = r.gy0; gy <= r.gy1; gy++) {
+        for (let gx = r.gx0; gx <= r.gx1; gx++) {
+          const key = capitalKey(gx, gy);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const seat = this.cachedSeat(gx, gy);
+          if (seat) out.push(seat.rect);
+        }
+      }
+    }
+    return out;
+  }
+
+  /** Compound holds keep out of a capital's whole neighborhood. */
+  private capitalNearCell(cellX: number, cellY: number): boolean {
+    const pad = FRONTIER.regionCells * POI_CELL;
+    const x0 = cellX * POI_CELL - pad;
+    const y0 = cellY * POI_CELL - pad;
+    return capitalMasked(x0, y0, POI_CELL + pad * 2, POI_CELL + pad * 2, this.capitalRects());
+  }
+
+  /** Does any fighting body of this capital still stand? */
+  private strongholdGarrisonStands(key: string): boolean {
+    const live = this.strongholdLive.get(key);
+    if (!live) return false;
+    for (const i of live.spawnIdx) {
+      const sp = this.spawnPoints[i];
+      if (sp?.active && sp.eid !== null && this.poiSpawnFights(sp)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * THE PRICE OF SCALE, paid before it is seen: capitals decide and
+   * stand at interest + 4 chunks (192 tiles) so the addZone chunk
+   * halo and the client re-bake land beyond the fog. One capital per
+   * pass (the sliced-job law), on its own beat.
+   */
+  private tickStrongholds(): void {
+    if (!this.poiPrefabs) return;
+    for (const session of this.sessions) {
+      if (session.playerEid === null) continue;
+      const pos = this.positions.get(session.playerEid);
+      if (!pos) continue;
+      const py = pos.y;
+      if (py >= DARK_BAND_Y) continue;
+      const px = pos.x;
+      const r = capitalLatticeRange(
+        px - CAPITAL_PAD_TILES,
+        py - CAPITAL_PAD_TILES,
+        CAPITAL_PAD_TILES * 2,
+        CAPITAL_PAD_TILES * 2,
+      );
+      for (let gy = r.gy0; gy <= r.gy1; gy++) {
+        for (let gx = r.gx0; gx <= r.gx1; gx++) {
+          const key = capitalKey(gx, gy);
+          if (this.strongholdLive.has(key)) continue;
+          const seat = this.cachedSeat(gx, gy);
+          if (!seat) continue;
+          const near =
+            px > seat.rect.x - CAPITAL_PAD_TILES &&
+            px < seat.rect.x + seat.rect.w + CAPITAL_PAD_TILES &&
+            py > seat.rect.y - CAPITAL_PAD_TILES &&
+            py < seat.rect.y + seat.rect.h + CAPITAL_PAD_TILES;
+          if (!near) continue;
+          this.materializeCapital(seat);
+          return; // one per pass — the sliced-job law
+        }
+      }
+    }
+  }
+
+  private materializeCapital(seat: CapitalSeat): void {
+    const key = capitalKey(seat.gx, seat.gy);
+    const layout = STRONGHOLD_DEFS.get(seat.layoutId);
+    const prefab = layout ? this.poiPrefabs?.get(layout.prefab) : undefined;
+    if (!layout || !prefab) {
+      console.warn(`[stronghold] ${key}: cannot compose '${seat.layoutId}' — content missing`);
+      return;
+    }
+    // Ground the capital claims answers to it alone: any PRE-LAW poi
+    // rows standing inside the walls retire to decided-empty (the
+    // mask keeps every future roll out; existing worlds converge).
+    const cx0 = Math.floor((seat.rect.x - 24) / POI_CELL);
+    const cy0 = Math.floor((seat.rect.y - 24) / POI_CELL);
+    const cx1 = Math.floor((seat.rect.x + seat.rect.w + 24) / POI_CELL);
+    const cy1 = Math.floor((seat.rect.y + seat.rect.h + 24) / POI_CELL);
+    for (let cy = cy0; cy <= cy1; cy++) {
+      for (let cx = cx0; cx <= cx1; cx++) {
+        const cellKey = poiCellKey(cx, cy);
+        const row = this.poiLedger.get(cellKey);
+        if (!row?.site) continue;
+        this.retirePoiCell(cellKey);
+        this.poiLedger.set(cellKey, { ...row, site: null, clearedAt: null, emberUntil: null });
+        this.accounts.recordPoiCell(cx, cy, row.epoch, null);
+        console.log(`[stronghold] ${key}: cell ${cellKey} yields its ground to the capital`);
+      }
+    }
+    const zone = composeStronghold(config.worldSeed, seat, layout, prefab);
+    this.world.addZone(zone);
+    this.dropClientChunks(zone);
+    const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
+    // The cache: warded while any fighter stands (the capital dialect
+    // of the chest-ward law — Phase 4 narrows it to the last stand).
+    for (let i = 0; i < zone.ground.length; i++) {
+      const info = chestInfo(zone.ground[i]!);
+      if (!info || info.open) continue;
+      const wx = zone.origin.x + (i % zone.width);
+      const wy = zone.origin.y + Math.floor(i / zone.width);
+      this.poiChests.set(`${wx},${wy}`, { cell: `sh:${key}`, warded: true });
+    }
+    this.strongholdLive.set(key, { zoneId: zone.id, seat, layoutId: seat.layoutId, spawnIdx });
+    if (!this.strongholdLedger.has(key)) {
+      this.strongholdLedger.set(key, {
+        layoutId: seat.layoutId,
+        anchorX: seat.x,
+        anchorY: seat.y,
+        epoch: 0,
+      });
+      this.accounts.recordStronghold(seat.gx, seat.gy, seat.layoutId, seat.x, seat.y, 0);
+    }
+    console.log(
+      `[stronghold] ${key}: '${seat.layoutId}' stands at ${seat.x},${seat.y} tier ${seat.tier} (${zone.spawns?.length ?? 0} musters)`,
+    );
+  }
+
+  /** Retire a standing capital (content edits; future lifecycle). */
+  private retireCapital(key: string): void {
+    const live = this.strongholdLive.get(key);
+    if (!live) return;
+    this.unloadZone(live.zoneId);
+    for (const [tileKey, over] of this.poiChests) {
+      if (over.cell === `sh:${key}`) this.poiChests.delete(tileKey);
+    }
+    this.strongholdLive.delete(key);
+  }
+
+  /** A layout edit re-stands its capitals under the new truth. */
+  reloadStrongholdLayout(layoutId: string): void {
+    this.capitalCache?.clear();
+    for (const [key, live] of [...this.strongholdLive]) {
+      if (live.layoutId === layoutId) this.retireCapital(key);
+    }
   }
 
   /** The haven list as wire triples for welcome + change broadcasts. */
@@ -8111,6 +8352,14 @@ export class GameServer {
       discovered?: readonly string[];
       calm?: ReadonlyArray<{ cellX: number; cellY: number; calmUntil: number }>;
       minors?: ReadonlyArray<{ cellX: number; cellY: number; epoch: number; cleared: number }>;
+      strongholds?: ReadonlyArray<{
+        latticeX: number;
+        latticeY: number;
+        layoutId: string;
+        anchorX: number;
+        anchorY: number;
+        epoch: number;
+      }>;
     } = {},
   ): void {
     this.poiPrefabs = loadPoiPrefabs(config.dataDir);
@@ -8121,6 +8370,14 @@ export class GameServer {
     }
     for (const m of extras.minors ?? []) {
       this.minorLedger.set(poiCellKey(m.cellX, m.cellY), { epoch: m.epoch, cleared: m.cleared });
+    }
+    for (const h of extras.strongholds ?? []) {
+      this.strongholdLedger.set(capitalKey(h.latticeX, h.latticeY), {
+        layoutId: h.layoutId,
+        anchorX: h.anchorX,
+        anchorY: h.anchorY,
+        epoch: h.epoch,
+      });
     }
     let sites = 0;
     for (const row of rows) {
@@ -9618,7 +9875,12 @@ export class GameServer {
       // THE REGION LAW (Phase 4): a fresh organic decision may promote
       // to a war-ground only when the neighborhood holds none. Forced
       // rolls (dev levers, authored seeding) answer for themselves.
-      const allowHold = opts.force === undefined && !this.holdsNear(cellX, cellY);
+      const allowHold =
+        opts.force === undefined &&
+        !this.holdsNear(cellX, cellY) &&
+        // The hold is the country's fist; the capital is its seat —
+        // they never share a neighborhood.
+        !this.capitalNearCell(cellX, cellY);
       const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, opts.force, allowHold);
       row = { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null };
       // Deviations only: a settled cell writes no row (it is 0 by law).
@@ -19162,6 +19424,8 @@ export class GameServer {
     const spotTier = this.liveDangerTier(tx, ty);
     if (spotTier === 0) return null;
     if (roadDistanceAt(config.worldSeed, tx, ty) <= ROAD_CALM) return null;
+    // THE CAPITAL LAW: no ambient knot grazes a capital's yard.
+    if (capitalMasked(tx, ty, 1, 1, this.capitalRects())) return null;
     if (this.inClaimRing(tx, ty)) return null;
     const biome = groundProbeAt(config.worldSeed, tx, ty);
     if (biome !== 'grass' && biome !== 'forest') return null;
@@ -22102,6 +22366,7 @@ export class GameServer {
             this.world.unregisterBuilt(tx, ty);
             this.accounts.deleteBuiltTile(tx, ty);
             this.ringCache = null;
+    this.capitalCache?.clear();
           }
           const g = this.world.groundAt(tx, ty);
           if (g !== undefined && g !== Tile.Grass) {
@@ -22805,6 +23070,86 @@ export class GameServer {
       });
       return;
     }
+    if (config.devCommands && text.startsWith('/stronghold')) {
+      // /stronghold — the nearest seats and their states.
+      // /stronghold here <layout> — force-stand a layout at your feet.
+      const [, sub, arg] = text.split(/\s+/);
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const px = Math.floor(pos.x);
+      const py = Math.floor(pos.y);
+      const say = (t: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      if (sub === 'here' && arg) {
+        const layout = STRONGHOLD_DEFS.get(arg);
+        const prefab = layout ? this.poiPrefabs?.get(layout.prefab) : undefined;
+        if (!layout || !prefab) {
+          say(`No layout '${arg}' on the shelf.`);
+          return;
+        }
+        const gx = Math.floor(px / 384);
+        const gy = Math.floor(py / 384);
+        const key = capitalKey(gx, gy);
+        if (this.strongholdLive.has(key)) {
+          say(`Lattice cell ${key} already hosts a capital.`);
+          return;
+        }
+        const tier = Math.max(3, this.liveDangerTier(px, py));
+        const forced: CapitalSeat = {
+          gx,
+          gy,
+          x: px,
+          y: py,
+          rect: {
+            x: px - Math.floor(prefab.width / 2),
+            y: py - Math.floor(prefab.height / 2),
+            w: prefab.width,
+            h: prefab.height,
+          },
+          family: layout.family,
+          tier,
+          layoutId: layout.id,
+        };
+        this.materializeCapital(forced);
+        say(`'${layout.id}' stands at ${px},${py} (tier ${tier}) — dev-forced.`);
+        return;
+      }
+      if (sub === 'clear') {
+        const gx = Math.floor(px / 384);
+        const gy = Math.floor(py / 384);
+        this.retireCapital(capitalKey(gx, gy));
+        say(`Capital at lattice ${gx},${gy} retired (ledger row kept).`);
+        return;
+      }
+      // Info: this lattice neighborhood's seats.
+      const gx = Math.floor(px / 384);
+      const gy = Math.floor(py / 384);
+      const lines: string[] = [];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const seat = this.cachedSeat(gx + dx, gy + dy);
+          if (!seat) continue;
+          const key = capitalKey(seat.gx, seat.gy);
+          const state = this.strongholdLive.has(key)
+            ? this.strongholdGarrisonStands(key)
+              ? 'standing'
+              : 'broken'
+            : this.strongholdLedger.has(key)
+              ? 'known, beyond the fog'
+              : 'unfound';
+          const d = Math.round(Math.hypot(seat.x - px, seat.y - py));
+          lines.push(
+            `${key}: ${seat.layoutId} t${seat.tier} at ${seat.x},${seat.y} (${d} tiles) · ${state}`,
+          );
+        }
+      }
+      say(
+        lines.length > 0
+          ? `Capitals in the marches: ${lines.join(' · ')}`
+          : 'No country in this neighborhood keeps a capital.',
+      );
+      return;
+    }
     if (config.devCommands && text.startsWith('/poi')) {
       // /poi info — this cell's state.
       // /poi here [archetype] — force-materialize the current cell.
@@ -23348,6 +23693,9 @@ export class GameServer {
     // the other slow beats.
     if (this.tickCount % 20 === 11) this.tickFleece(now);
     if (this.tickCount % 20 === 0) this.tickPois();
+    // THE CAPITAL LAW's own beat (offset 13): decide + stand capitals
+    // beyond the fog, one per pass.
+    if (this.tickCount % 20 === 13) this.tickStrongholds();
     // The frontier clock: offset 7 so it never shares a beat with the
     // %20/%40 passes (300 ≡ 0 mod 20 — a zero offset would stack it
     // on tickPois every time).

@@ -908,6 +908,40 @@ export class AccountStore {
    * dissolve records emptiness WITH fallow_until — the rest the cell
    * takes before it may host again (the ember law).
    */
+  /** THE CAPITAL LAW's ledger (strongholds Phase 3). */
+  async loadStrongholds(): Promise<
+    Array<{
+      latticeX: number;
+      latticeY: number;
+      layoutId: string;
+      anchorX: number;
+      anchorY: number;
+      epoch: number;
+    }>
+  > {
+    return this.db.query(
+      'SELECT lattice_x AS "latticeX", lattice_y AS "latticeY", layout_id AS "layoutId", ' +
+        'anchor_x AS "anchorX", anchor_y AS "anchorY", epoch FROM world_strongholds',
+    ) as ReturnType<AccountStore['loadStrongholds']>;
+  }
+
+  recordStronghold(
+    latticeX: number,
+    latticeY: number,
+    layoutId: string,
+    anchorX: number,
+    anchorY: number,
+    epoch: number,
+  ): void {
+    this.db.fire(
+      'INSERT INTO world_strongholds (lattice_x, lattice_y, layout_id, anchor_x, anchor_y, epoch, first_seen_at) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (lattice_x, lattice_y) DO UPDATE SET layout_id = excluded.layout_id, ' +
+        'anchor_x = excluded.anchor_x, anchor_y = excluded.anchor_y, epoch = excluded.epoch',
+      [latticeX, latticeY, layoutId, anchorX, anchorY, epoch, Date.now()],
+    );
+  }
+
   recordPoiCell(
     cellX: number,
     cellY: number,

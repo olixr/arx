@@ -1136,7 +1136,8 @@ export function createMapsApi(
           const next = new Map(STRONGHOLD_DEFS);
           next.set(id, result.def);
           replaceStrongholds(next.values());
-          console.log(`[content] stronghold '${id}' saved + live`);
+          game.reloadStrongholdLayout(id);
+          console.log(`[content] stronghold '${id}' saved + live (standing capitals re-stand)`);
           sendJson(res, 200, { ok: true, gates: result.gates });
           return true;
         }
@@ -1147,6 +1148,7 @@ export function createMapsApi(
           if (authored) next.set(id, authored);
           else next.delete(id);
           replaceStrongholds(next.values());
+          game.reloadStrongholdLayout(id);
           console.log(`[content] stronghold '${id}' ${outcome}`);
           sendJson(res, 200, { ok: true, outcome });
           return true;

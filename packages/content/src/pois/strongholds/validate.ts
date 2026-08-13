@@ -81,7 +81,7 @@ function isGateTile(t: number): boolean {
  * on both lateral sides. A free-standing shrine arch in a courtyard
  * is scenery, not an entrance.
  */
-function piercesWall(ground: Uint16Array, pw: number, ph: number, x: number, y: number): boolean {
+export function piercesWall(ground: Uint16Array, pw: number, ph: number, x: number, y: number): boolean {
   const solidAt = (sx: number, sy: number): boolean => {
     if (sx < 0 || sy < 0 || sx >= pw || sy >= ph) return false;
     const t = ground[sy * pw + sx]!;
@@ -93,6 +93,22 @@ function piercesWall(ground: Uint16Array, pw: number, ph: number, x: number, y: 
     (solidAt(x - 1, y) && solidAt(x + 1, y)) ||
     (solidAt(x, y - 1) && solidAt(x, y + 1))
   );
+}
+
+/**
+ * Every true entrance of a layout prefab — open door-law leaves and
+ * arches that pierce the wall. The validator, the Foundry bench, and
+ * THE CAPITAL LAW's gate-apron siting all read this one scan.
+ */
+export function strongholdGates(p: PrefabDef): Array<{ x: number; y: number }> {
+  const out: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < p.ground.length; i++) {
+    const t = p.ground[i]!;
+    if (isGateTile(t) && piercesWall(p.ground, p.width, p.height, i % p.width, Math.floor(i / p.width))) {
+      out.push({ x: i % p.width, y: Math.floor(i / p.width) });
+    }
+  }
+  return out;
 }
 
 export function validateStronghold(

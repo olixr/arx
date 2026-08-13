@@ -23,6 +23,7 @@ const CTX: PoiContext = {
   defs: [...POI_DEFS.values()],
   minors: [],
   prefabs: POI_PREFABS,
+  capitals: [],
 };
 
 function withBias<T>(bias: number, fn: () => T): T {

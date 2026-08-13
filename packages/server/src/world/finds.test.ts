@@ -6,7 +6,7 @@ import { poiContext, poiForCell, poiScanOrder, POI_CELL } from './pois.js';
 import { FIND_SPACING, composeFinds, findsForCell, findsZoneId } from './finds.js';
 
 const SEED = 1337;
-const CTX = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
+const CTX = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
 
 /** Hostile-tier scan cells with their (possibly null) site anchors. */
 function scanCells(
