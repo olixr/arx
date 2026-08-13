@@ -625,17 +625,18 @@ interface MilkAction {
 
 /**
  * The tame channel (THE WILD ANSWERS THE CALL, beastcraft arts): a
- * survival cast replacing the old gentling kneel. `startHp` is the
- * beast's hp when the asking began — any wound to it since breaks
- * the working (a whiff writes nothing and breaks nothing); the
- * keeper's own blood does NOT break it, standing through the teeth
- * is the test.
+ * survival cast replacing the old gentling kneel. THE UNBROKEN
+ * ASKING (user mandate 2026-08-13): the working is patience, not
+ * luck — the keeper's own blood never breaks it, and neither does
+ * any wound the mark takes mid-asking (a stray cleave, a ticking
+ * venom, the companion's quarrel with somebody else). Standing in
+ * the teeth to the end IS the test. Only the keeper's own step
+ * breaks it — that, the mark dying, or the mark truly leaving.
  */
 interface TameAction {
   kind: 'tame';
   targetEid: EntityId;
   ticksLeft: number;
-  startHp: number;
 }
 
 /**
@@ -11651,7 +11652,7 @@ export class GameServer {
     const channel = ab.channelTicks ?? 200;
     const craven = health.hp <= Math.floor(health.maxHp * GENTLE_HP_FRAC);
     const ticks = craven ? Math.floor(channel / 2) : channel;
-    player.action = { kind: 'tame', targetEid, ticksLeft: ticks, startHp: health.hp };
+    player.action = { kind: 'tame', targetEid, ticksLeft: ticks };
     pos.dir = Math.atan2(best.y - pos.y, best.x - pos.x);
     this.setPose(eid, PoseState.Art, ticks + 4);
     player.session?.sendJson({ t: 'action', state: 'start', ticks });
@@ -11688,13 +11689,15 @@ export class GameServer {
       this.cancelAction(eid, player, 'gone');
       return;
     }
-    // A wound TO the beast since the asking began breaks the working —
-    // its hp DROPPING is the whole test (a whiff writes nothing and
-    // breaks nothing; the keeper's own blood deliberately never
-    // cancels a tame — see damagePlayer's cancel list).
+    // THE UNBROKEN ASKING: no wound interrupts the working — not the
+    // keeper's blood (see damagePlayer's cancel list) and not the
+    // mark's (a stray cleave, a ticking venom, reflect off the
+    // keeper's shield — none of it re-litigates the asking). Only
+    // the keeper's own step cancels; the one wound that still ends
+    // it is the mortal one — a dead mark leaves nothing to court.
     const health = this.healths.get(action.targetEid);
-    if (!health || health.hp <= 0 || health.hp < action.startHp) {
-      this.cancelAction(eid, player, 'hurt');
+    if (!health || health.hp <= 0) {
+      this.cancelAction(eid, player, 'gone');
       return;
     }
     // THE VISIBLE WORKING: the calm drifts hand-to-beast while the

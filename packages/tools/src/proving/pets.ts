@@ -1062,9 +1062,13 @@ const main = async () => {
   }
   await killTarget(chewer, 'the chewer');
 
-  // --- THE WOUND BREAKS THE ASKING: a third beetle, a channel opened,
-  // then the keeper's own steel touches the mark — the working dies
-  // and the lure survives.
+  // --- THE UNBROKEN ASKING (user mandate 2026-08-13): a third
+  // beetle, a channel opened, then the keeper's own steel WOUNDS the
+  // mark — and the working HOLDS. No wound breaks the asking any
+  // more, the keeper's or anyone's; the only break left is the
+  // keeper's own step, which this receipt then takes — proving both
+  // halves of the new law and that a broken asking still spends
+  // nothing.
   {
     mark = c.mark();
     await say(c, '/spawnmob giant_beetle 1');
@@ -1089,12 +1093,13 @@ const main = async () => {
     await castAt(beetle3);
     await c.waitFor((m) => m.t === 'action' && m.state === 'start', 'the third asking opens', 5000, mark);
     await sleep(900);
-    // Swing until steel writes (whiff-0: a whiff breaks nothing, so
-    // keep swinging until the stop proves a wound landed).
+    // Swing until steel WRITES (whiff-0: keep swinging until the
+    // mark's hp visibly drops — a whiff proves nothing either way).
     const stopMark = mark;
+    const hpMark = c.ents.get(beetle3)?.hpPct ?? 255;
     const swingT0 = Date.now();
-    let stopped: Msg | null = null;
-    while (!stopped && Date.now() - swingT0 < 20000) {
+    let woundedAt = 0;
+    while (woundedAt === 0 && Date.now() - swingT0 < 20000) {
       const b = c.ents.get(beetle3);
       const me = c.pos;
       if (b && me) {
@@ -1103,14 +1108,34 @@ const main = async () => {
         await sleep(80);
         c.frame(0, 0, 0, aim);
       }
-      stopped = c.msgs.slice(stopMark).find((m) => m.t === 'action' && m.state === 'stop') ?? null;
+      if ((c.ents.get(beetle3)?.hpPct ?? 255) < hpMark) woundedAt = Date.now();
       await sleep(300);
     }
+    // The wound landed — now hold still one full breath and prove
+    // the channel never stopped over it.
+    await sleep(1200);
+    const stoppedByWound = c.msgs.slice(stopMark).find((m) => m.t === 'action' && m.state === 'stop') ?? null;
+    receipt(
+      'THE UNBROKEN ASKING: the keeper\'s own steel wounds the mark and the working holds',
+      woundedAt > 0 && stoppedByWound === null,
+      woundedAt > 0 ? 'wounded, channel stood' : 'no wound landed in 20s',
+    );
+    // The one break left: the keeper's own step.
+    const stepMark = c.mark();
+    c.frame(0, 1, 0);
+    await sleep(120);
+    c.frame(0);
+    const stopped = await c.waitFor(
+      (m) => m.t === 'action' && m.state === 'stop',
+      'the step breaks the asking',
+      5000,
+      stepMark,
+    );
     const lureAfter = c.latest('inv')?.slots.find((s: any) => s && s.item === 'berries')?.qty ?? 0;
     receipt(
-      'a wound to the beast breaks the asking, and the lure survives',
-      stopped !== null && stopped.reason === 'hurt' && lureAfter === lureBefore,
-      `reason ${stopped?.reason}, berries ${lureBefore} -> ${lureAfter}`,
+      'only the step breaks it, and the broken asking spends nothing',
+      stopped.reason === 'moved' && lureAfter === lureBefore,
+      `reason ${stopped.reason}, berries ${lureBefore} -> ${lureAfter}`,
     );
     await killTarget(beetle3, 'the third beetle');
     // The fight's dev lifts may have trailed the companion — stand
