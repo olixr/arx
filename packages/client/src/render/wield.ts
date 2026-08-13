@@ -16,13 +16,19 @@
  * offsets in units of the rig scale `s` with x pre-squash.
  */
 
+import { STRIKE_REST_ARM } from './carriage.js';
+
 /**
- * THE GROUND LAW's foreshortening factor (the shield plane's own
- * GROUND_K): one unit of world-forward travel shows as ~0.52 units of
- * screen-vertical. Everything in this file that turns world direction
- * into screen direction runs through it, so a north-south carry reads
- * with the same honesty as an east-west one — smaller on screen
- * because it is foreshortened, never because it was suppressed.
+ * THE GROUND LAW's foreshortening factor: one unit of world-forward
+ * travel shows as ~0.52 units of screen-vertical. Everything in this
+ * file that turns world direction into screen direction runs through
+ * it, so a north-south carry reads with the same honesty as an
+ * east-west one — smaller on screen because it is foreshortened, never
+ * because it was suppressed. THE ONE GROUND (arms-v3 Phase 1): this is
+ * the single definition — shields.ts imports it for the plane
+ * projection, so the shield and the carries can never drift apart.
+ * (projectStrike below still runs its own softer K = 0.7; unifying the
+ * strike plane onto this constant is Phase 3's HONEST DEPTH work.)
  */
 export const WIELD_GROUND_K = 0.52;
 
@@ -412,8 +418,10 @@ const STAFF_SPECS: [StaffSpec, StaffSpec] = [
   },
 ];
 
-/** The rest arm offset staff strikes leave from and land on. */
-const STAFF_REST_ARM = 0.5;
+// The rest arm offset every school's strikes leave from and land on is
+// carriage.ts's STRIKE_REST_ARM — one constant, one meaning. (This file
+// used to keep two private duplicates of the same 0.5; the arms-v3
+// audit retired them.)
 
 export function staffStrikeFrame(stage: 0 | 1, t: number): StaffStrikeFrame {
   const K = STAFF_SPECS[stage];
@@ -429,7 +437,7 @@ export function staffStrikeFrame(stage: 0 | 1, t: number): StaffStrikeFrame {
   if (t < P.coil) {
     const e = smooth(t / P.coil);
     return {
-      arm: STAFF_REST_ARM + (K.coilArm - STAFF_REST_ARM) * e,
+      arm: STRIKE_REST_ARM + (K.coilArm - STRIKE_REST_ARM) * e,
       spin: (tanHold + cock) * e,
       reach: 1 + (K.coilReach - 1) * e,
       lift: K.coilLift * e,
@@ -471,7 +479,7 @@ export function staffStrikeFrame(stage: 0 | 1, t: number): StaffStrikeFrame {
   }
   const e = smooth((t - P.ext) / (1 - P.ext));
   return {
-    arm: K.impactArm + (STAFF_REST_ARM - K.impactArm) * e,
+    arm: K.impactArm + (STRIKE_REST_ARM - K.impactArm) * e,
     spin: (tanHold - K.tan * sgn * 0.28) * (1 - e),
     reach: K.impactReach + (1 - K.impactReach) * e,
     lift: K.impactLift * (1 - e),
@@ -611,7 +619,10 @@ export function greatWield(
  * up-forward at the ready diagonal; the main hand rides at the cross,
  * the off hand takes the pommel end BEHIND it (the true two-hand
  * hold — opposite the staff, which chokes the off hand up FRONT).
- * Returned as the guard's world pitch for the rig to project.
+ * The guard's world pitch: THE MOUNTAIN FALLS hauls the blade up FROM
+ * this pitch and returns it here at the recover (greatFinisherPath
+ * consumes it — the three re-literalled copies the arms-v3 audit
+ * caught are gone).
  */
 export const GREAT_GUARD_PITCH = Math.PI - 0.55;
 /** Off-fist seat: this far BEHIND the main fist along the grip. */
@@ -680,8 +691,6 @@ const GREAT_SPECS: [GreatSpec, GreatSpec] = [
   },
 ];
 
-const GREAT_REST_ARM = 0.5;
-
 export function greatStrikeFrame(stage: 0 | 1, t: number): GreatStrikeFrame {
   const K = GREAT_SPECS[stage];
   const P = GREAT_PHASES;
@@ -690,7 +699,7 @@ export function greatStrikeFrame(stage: 0 | 1, t: number): GreatStrikeFrame {
   if (t < P.coil) {
     const e = smooth(t / P.coil);
     return {
-      arm: GREAT_REST_ARM + (K.coilArm - GREAT_REST_ARM) * e,
+      arm: STRIKE_REST_ARM + (K.coilArm - STRIKE_REST_ARM) * e,
       spin: -sgn * K.cock * e,
       reach: 1 + (K.coilReach - 1) * e,
       lift: K.coilLift * e,
@@ -734,7 +743,7 @@ export function greatStrikeFrame(stage: 0 | 1, t: number): GreatStrikeFrame {
   }
   const e = smooth((t - P.ext) / (1 - P.ext));
   return {
-    arm: K.impactArm + (GREAT_REST_ARM - K.impactArm) * e,
+    arm: K.impactArm + (STRIKE_REST_ARM - K.impactArm) * e,
     spin: sgn * K.lead * 0.7 * (1 - e),
     reach: K.impactReach + (1 - K.impactReach) * e,
     lift: K.impactLift * (1 - e),
@@ -775,7 +784,7 @@ export function greatFinisherPath(t: number): { r: number; lift: number; pitch: 
   if (t < P.coil) {
     // The haul: fist to the chest, blade climbing to vertical.
     const e = smooth(t / P.coil);
-    return { r: 0.22 - 0.1 * e, lift: -0.1 - 0.24 * e, pitch: Math.PI - 0.55 + (UP - (Math.PI - 0.55)) * e };
+    return { r: 0.22 - 0.1 * e, lift: -0.1 - 0.24 * e, pitch: GREAT_GUARD_PITCH + (UP - GREAT_GUARD_PITCH) * e };
   }
   if (t < P.hold) {
     // The poise: the mountain considers. Longest telegraph there is.
@@ -793,7 +802,7 @@ export function greatFinisherPath(t: number): { r: number; lift: number; pitch: 
     return { r: 0.52 - 0.02 * e, lift: 0.18, pitch: DOWN - 0.04 * e };
   }
   const e = smooth((t - P.buried) / (1 - P.buried));
-  return { r: 0.5 - 0.28 * e, lift: 0.18 - 0.18 * e, pitch: DOWN - 0.04 + (Math.PI - 0.55 - DOWN + 0.04) * e };
+  return { r: 0.5 - 0.28 * e, lift: 0.18 - 0.18 * e, pitch: DOWN - 0.04 + (GREAT_GUARD_PITCH - DOWN + 0.04) * e };
 }
 
 /** The finisher's torso: gather back, poise, tip HARD, press, ease. */

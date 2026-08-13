@@ -68,6 +68,13 @@ for (const [name, tile] of [
   for (const seed of [7, 40, 77]) cells.push({ label: `${name} v${seed}`, tile, seed });
 }
 
+// THE RULER'S PERSISTENT MEMORY (arms-v3 Phase 1): fresh per-frame
+// memory objects silently disabled every stateful arm law in the dev
+// labs — the sheets were judging a rig the game never runs. One
+// module-level memory keeps the ruler honest.
+const RULER_KNEES: number[] = [0, 0];
+const RULER_DEPTH: NonNullable<RigPose['depthMemory']> = { mainBehind: false };
+
 function drawRuler(cx: number, gy: number, now: number): void {
   const rig: RigPose = {
     x: cx,
@@ -93,8 +100,8 @@ function drawRuler(cx: number, gy: number, now: number): void {
     poleStrength: 0,
     runF: 0,
     align: 1,
-    kneeMemory: [0, 0],
-    depthMemory: { mainBehind: false },
+    kneeMemory: RULER_KNEES,
+    depthMemory: RULER_DEPTH,
     bodyColor: '#3f5d8e',
     hurt: false,
     isOwn: false,

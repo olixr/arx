@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { solveArm } from './rig.js';
+import {
+  ARM_RING_DROP_S,
+  HANG_WAIST_K,
+  REST_HANG_DROP_S,
+  SHOULDER_HALF_S,
+  SHOULDER_SETTLE_K,
+  SHOULDER_Y_DROP_S,
+  WAIST_HALF_S,
+  solveArm,
+} from './rig.js';
 import { armPump, easeRestSide, settleElbowPole, type RestSideMemory } from './wield.js';
 import { chooseLimbSign } from './legs.js';
 
@@ -12,13 +21,18 @@ const L = 0.17;
  * shoulder sits at the anatomical anchor; the fist hangs at hip-line
  * width, lifted by the runner's elbow, riding the honest pump and the
  * shared torso sway. Returns the shoulder→hand chord for phase `t`.
+ * The anatomy comes from rig.ts's OWN exported constants (arms-v3
+ * Phase 1 — this file used to hand-copy them and could silently
+ * desync); the 0.4 torso rise is this test's deliberate approximation
+ * of th·hScale at the camera line.
  */
 function nsStrideChord(sideS: number, t: number): { dx: number; dy: number } {
   const sw = Math.sin(t);
   const p = armPump(0, 1, sw, 0.125, 0); // N/S travel: dx 0, sway full
-  const shoulderX = sideS * 0.185 * 0.85; // rig.x + sideS·tw·0.85
-  const handX = sideS * 0.125 * 1.08 + p.sway; // hip-line hang + sway
-  const handY = 0.4 - 0.26 + 0.17 - 0.06 - p.dy - sw * sw * 0.03; // below shoulder
+  const shoulderX = sideS * SHOULDER_HALF_S * SHOULDER_SETTLE_K; // anatomical anchor
+  const handX = sideS * WAIST_HALF_S * HANG_WAIST_K + p.sway; // hip-line hang + sway
+  const handY =
+    0.4 - ARM_RING_DROP_S + REST_HANG_DROP_S - SHOULDER_Y_DROP_S - p.dy - sw * sw * 0.03;
   return { dx: handX - shoulderX, dy: handY };
 }
 

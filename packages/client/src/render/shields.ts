@@ -1,5 +1,6 @@
 import { markPulse, SLOT_GLINT_PHASE, type ArxMark } from './wornLight.js';
 import { shade } from './rig.js';
+import { WIELD_GROUND_K } from './wield.js';
 
 /* ======================= THE SHIELD IS A PLANE =======================
  *
@@ -67,8 +68,11 @@ import { shade } from './rig.js';
  *    seams) is painted as real bands in the house's dark tone.
  */
 
-/** Ground foreshortening: a step of DEPTH reads as this much screen drop. */
-const GROUND_K = 0.52;
+/** Ground foreshortening: a step of DEPTH reads as this much screen
+ *  drop. THE ONE GROUND (arms-v3 Phase 1): the constant lives in
+ *  wield.ts — the plane and the carries project through the same K by
+ *  construction, never by coincidence of two literals. */
+const GROUND_K = WIELD_GROUND_K;
 
 /**
  * THE CARRY-HEIGHT LAW. Held out toward the camera, a shield's forward

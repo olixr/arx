@@ -1,7 +1,9 @@
 import type { NpcDef } from '@arx/content';
+import { PoseState } from '@arx/shared';
 import { LegRig } from '../render/legs.js';
 import {
   beastSpec,
+  drawBackGear,
   drawBat,
   drawBeast,
   drawGreatOwl,
@@ -13,6 +15,7 @@ import {
   owlHoverHeight,
   owlLook,
   skeletonLook,
+  type RigPose,
 } from '../render/rig.js';
 import { TailSim, drawTail } from '../render/tail.js';
 
@@ -103,7 +106,15 @@ function ringComposite(
  * piece really drops). Kept tiny and in sync by hand; the renderer
  * remains the source of truth.
  */
-const MOB_EQUIP: Record<string, Partial<Record<string, string>>> = {
+interface MobEquip {
+  weapon?: string;
+  offhand?: string;
+  head?: string;
+  body?: string;
+  legs?: string;
+  cape?: string;
+}
+const MOB_EQUIP: Record<string, MobEquip> = {
   goblin: { weapon: 'bronze_sword' },
   gnoll: { weapon: 'rustbite' },
   gnoll_champion: { weapon: 'iron_greatblade' },
@@ -184,12 +195,18 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     }));
     drawTail(ctx, pts, gno, S * sizeK, { hurt: false });
   }
-  drawHumanoid(ctx, {
+  // THE POSTER WEARS THE LOADOUT (arms-v3 Phase 1): this call used to
+  // pass a dead `equip:` key through an `as unknown as` cast — RigPose
+  // has no such field, so every bestiary card silently painted bare
+  // hands. The wardrobe now reaches the rig through its real fields,
+  // and the object is TYPED so the next dead key fails to compile.
+  const eq = MOB_EQUIP[def.id] ?? {};
+  const rig: RigPose = {
     x: cx,
     y: yFeet,
     scale: S,
     dir: Math.PI / 2,
-    pose: 0,
+    pose: PoseState.Idle,
     poseT: 1,
     drawT: 0,
     restT: 1,
@@ -206,11 +223,18 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     poleStrength: 0,
     runF: 0,
     align: 1,
+    // A pinned poster is deliberately STATELESS: no depthMemory, so
+    // the rig runs its single-frame fallbacks — fine for a still.
     kneeMemory: [0, 0],
     bodyColor: def.color,
     hurt: false,
     isOwn: false,
-    equip: MOB_EQUIP[def.id] ?? {},
+    weaponItem: eq.weapon,
+    offhandItem: eq.offhand,
+    headItem: eq.head,
+    bodyItem: eq.body,
+    legsItem: eq.legs,
+    hasCape: eq.cape !== undefined,
     skinColor:
       def.id === 'troll'
         ? '#6a7d5c'
@@ -223,7 +247,13 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     gnoll: gno,
     gatherPhase: 0,
     craftKind: null,
-  } as unknown as Parameters<typeof drawHumanoid>[1]);
+  };
+  drawHumanoid(ctx, rig);
+  // THE RENDERER'S OWN CONTRACT: with a cape worn the rig skips its
+  // internal back gear and the caller re-lays it over the cloth — and
+  // ONLY then (uncapped bodies already painted their own quiver; an
+  // unconditional call here would stamp it twice).
+  if (rig.hasCape) drawBackGear(ctx, rig);
 }
 
 // --------------------------------------------------------- the beasts

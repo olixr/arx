@@ -7,6 +7,10 @@
 // and every depth/side hysteresis runs exactly as in game. Levers:
 //   ?rows=a-b   draw only sheet rows a..b (screenshot banding)
 //   ?gait=walk  run rows amble at walk speed instead of sprinting
+//   ?det=1      DETERMINISTIC mode: fixed 60Hz timestep on a frame-
+//               counted clock, halting after 240 frames — refactor
+//               passes byte-compare before/after screenshots with it
+//               (the "zero pixels changed" proof).
 import { LegSolver, drawHumanoid, type RigPose } from '../render/rig.js';
 import { PoseState } from '@arx/shared';
 
@@ -116,10 +120,14 @@ if (rowsQ) {
   }
 }
 
+const DET = q.get('det') === '1';
+const DET_FRAMES = 240;
+let frameIdx = 0;
 let lastNow = 0;
 
 function frame(now: number): void {
-  const dt = lastNow ? Math.min(0.05, (now - lastNow) / 1000) : 0.016;
+  if (DET) now = frameIdx * (1000 / 60);
+  const dt = DET ? 1 / 60 : lastNow ? Math.min(0.05, (now - lastNow) / 1000) : 0.016;
   lastNow = now;
   const nRows = rowTo - rowFrom + 1;
   canvas.width = COLS * CW;
@@ -201,6 +209,7 @@ function frame(now: number): void {
     ctx.textAlign = 'center';
     ctx.fillText(f.label, homeX, homeY - 1.62 * S);
   });
-  requestAnimationFrame(frame);
+  frameIdx++;
+  if (!DET || frameIdx < DET_FRAMES) requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

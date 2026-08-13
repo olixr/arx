@@ -532,8 +532,14 @@ interface AnimState {
   rigKey?: string;
   /** Per-leg joint-side hysteresis (2 for humanoids, N for beasts). */
   kneeMemory: number[];
-  /** Dual-wield profile-flip hysteresis (main arm behind the torso). */
-  armDepth?: { mainBehind: boolean };
+  /**
+   * The rig's arm-carriage memory — THE WHOLE CONTRACT (arms-v3 Phase
+   * 1): typed as the rig's own depthMemory so the nine fields the rig
+   * actually reads and writes (layer hysteresis pair, smoothed rest
+   * side + dwell clocks, low-passed swing, both remembered elbows) are
+   * visible here instead of being mutated onto a `{mainBehind}` lie.
+   */
+  armDepth?: NonNullable<RigPose['depthMemory']>;
   /** Last chop cycle that spawned impact chips (gathering). */
   lastChopHit?: number;
   /** Leg-rig plant counter at the last frame — footstep event diffing. */

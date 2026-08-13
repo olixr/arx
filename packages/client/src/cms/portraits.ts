@@ -1,5 +1,5 @@
-import { drawHumanoid } from '../render/rig.js';
-import type { Look } from '@arx/shared';
+import { drawBackGear, drawHumanoid, type RigPose } from '../render/rig.js';
+import { PoseState, type Look } from '@arx/shared';
 import type { NpcActorDef } from '@arx/content';
 import { ringComposite } from './gameRender.js';
 
@@ -16,7 +16,13 @@ import { ringComposite } from './gameRender.js';
  *     stage render, "how they actually look in the world".
  */
 
-const SLOT_TO_RIG: Record<string, string> = {
+// The equipment→rig field map, TYPED against RigPose (arms-v3 Phase 1)
+// so a slot can only name a field the rig actually has. The old map's
+// `cape: 'capeItem'` row pointed at a field that does not exist — the
+// cape slot was silently dropped from every portrait; capes are the
+// renderer's cloth sim, so a portrait carries them as `hasCape` (the
+// back-gear layering contract) rather than a painter of its own.
+const SLOT_TO_RIG = {
   weapon: 'weaponItem',
   offhand: 'offhandItem',
   head: 'headItem',
@@ -24,8 +30,10 @@ const SLOT_TO_RIG: Record<string, string> = {
   legs: 'legsItem',
   gloves: 'glovesItem',
   boots: 'bootsItem',
-  cape: 'capeItem',
-};
+} as const satisfies Record<
+  string,
+  { [K in keyof RigPose]: RigPose[K] extends string | undefined ? K : never }[keyof RigPose]
+>;
 
 type Equipment = Partial<Record<string, string>>;
 
@@ -48,12 +56,14 @@ function paintRig(
   const hip = 0.1 * S;
   const dir = framing === 'bust' ? (40 * Math.PI) / 180 : Math.PI / 2;
 
-  const rig: Record<string, unknown> = {
+  // A pinned portrait is deliberately STATELESS (no depthMemory): the
+  // rig's single-frame fallbacks are exactly right for a still.
+  const rig: RigPose = {
     x: cx,
     y: yFeet,
     scale: S,
     dir,
-    pose: 0,
+    pose: PoseState.Idle,
     poseT: 1,
     drawT: 0,
     restT: 1,
@@ -79,10 +89,14 @@ function paintRig(
     craftKind: null,
   };
   for (const [slot, item] of Object.entries(equipment)) {
-    const field = SLOT_TO_RIG[slot];
+    const field = SLOT_TO_RIG[slot as keyof typeof SLOT_TO_RIG];
     if (field && item) rig[field] = item;
   }
-  drawHumanoid(ctx, rig as unknown as Parameters<typeof drawHumanoid>[1]);
+  if (equipment.cape) rig.hasCape = true;
+  drawHumanoid(ctx, rig);
+  // The renderer's back-gear contract: with a cape worn the rig skips
+  // its internal quiver/sling and the caller re-lays it over the cloth.
+  if (rig.hasCape) drawBackGear(ctx, rig);
 }
 
 /**

@@ -9,10 +9,14 @@
  * share one law source.
  *
  * Frame conventions: screen radians with +y DOWN; `angle` points
- * fist→tip (π/2 = straight down). `side` is the screen side the hand
- * hangs on (+1 right of the body, −1 left) — mirror symmetry is a law,
- * not a convention, and the tests pin it. Offsets are in units of the
- * rig scale `s`; dx is pre-squash (the caller multiplies by wScale like
+ * fist→tip (π/2 = straight down). `side` is the signed FACING WEIGHT —
+ * sign = which way the body faces, magnitude = how profile the facing
+ * is — NEVER the side the fist hangs on (see bladeCarriage's docblock;
+ * this header used to say the opposite, and that stale line was the
+ * seed of the three-meanings-of-`side` drift the arms-v3 audit mapped
+ * across carriage/wield/sheath). Mirror symmetry is a law, not a
+ * convention, and the tests pin it. Offsets are in units of the rig
+ * scale `s`; dx is pre-squash (the caller multiplies by wScale like
  * every other x offset).
  *
  * The standard-grip idle numbers are the user-tuned rest carriage

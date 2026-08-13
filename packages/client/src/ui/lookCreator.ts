@@ -15,7 +15,7 @@ import {
   randomLook,
   type Look,
 } from '@arx/shared';
-import { drawHumanoid } from '../render/rig.js';
+import { drawHumanoid, type RigPose } from '../render/rig.js';
 
 /**
  * Character creation: the hero's mirror. A live turntable of the
@@ -519,6 +519,16 @@ export class LookCreator {
     c.style.height = `${h}px`;
   }
 
+  /**
+   * The SPINNING STAGE's persistent anim memory (arms-v3 Phase 1): the
+   * preview turns continuously, and the rig's stateful laws (the 240ms
+   * rest-side ease, elbow memory, layer hysteresis) only run when the
+   * SAME memory object survives across frames. Static busts stay
+   * deliberately stateless — a still wants the single-frame fallbacks.
+   */
+  private stageKnees: number[] = [0, 0];
+  private stageDepth: NonNullable<RigPose['depthMemory']> = { mainBehind: false };
+
   /** One rig pose, shared by the stage, busts, and the crest. */
   private paintFigure(
     ctx: CanvasRenderingContext2D,
@@ -527,6 +537,8 @@ export class LookCreator {
     yFeet: number,
     S: number,
     dir: number,
+    /** Pass the stage's memory for the LIVE preview; omit for stills. */
+    mem?: { knees: number[]; depth: NonNullable<RigPose['depthMemory']> },
   ): void {
     const hip = 0.1 * S;
     drawHumanoid(ctx, {
@@ -551,7 +563,8 @@ export class LookCreator {
       poleStrength: 0,
       runF: 0,
       align: 1,
-      kneeMemory: [0, 0],
+      kneeMemory: mem?.knees ?? [0, 0],
+      depthMemory: mem?.depth,
       bodyColor: CLOTH_COLORS[look.shirt]!,
       hurt: false,
       isOwn: true,
@@ -586,7 +599,10 @@ export class LookCreator {
       // Leaned in: the mirror fills with the face — every ear point,
       // strand notch, and tusk glint at inspection scale.
       const S = 470;
-      this.paintFigure(ctx, this.look, w / 2, h * 0.42 + 0.98 * S, S, this.dir);
+      this.paintFigure(ctx, this.look, w / 2, h * 0.42 + 0.98 * S, S, this.dir, {
+        knees: this.stageKnees,
+        depth: this.stageDepth,
+      });
     } else {
       // The socle: a stone turntable disc the hero stands on.
       const yFeet = h * 0.88;
@@ -607,7 +623,10 @@ export class LookCreator {
       ctx.ellipse(w / 2, yFeet + 2, w * 0.25, h * 0.034, 0, 0, Math.PI * 2);
       ctx.fill();
       const S = 225;
-      this.paintFigure(ctx, this.look, w / 2, yFeet, S, this.dir);
+      this.paintFigure(ctx, this.look, w / 2, yFeet, S, this.dir, {
+        knees: this.stageKnees,
+        depth: this.stageDepth,
+      });
     }
 
     // The crest medallion wears the current face, front-on.

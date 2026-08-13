@@ -3,6 +3,7 @@ import { ELEMENT_COLORS, enchantDef, itemDef } from '@arx/content';
 import { arxMark, markPulse, resolveWornLight, SLOT_GLINT_PHASE, type ArxMark, type SlotLight } from './wornLight.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import {
+  BOW_GRIP_X,
   bladeStyle,
   bowStyle,
   drawBow,
@@ -11,6 +12,7 @@ import {
   drawStaff,
   greatStyle,
   staffStyle,
+  wieldClass,
   type BladeFx,
   type StaffFx,
 } from './weapons.js';
@@ -378,6 +380,46 @@ export const FURNACE_CYCLE_MS = 1700;
 
 /** Arm segment length (upper = fore), in tile units. */
 const ARM_LEN = 0.17;
+
+// ---- THE NAMED ANATOMY (arms-v3 Phase 1): the rest-carriage frame's
+// load-bearing offsets, named and exported so the simulation tests can
+// import the rig's OWN numbers instead of hand-copying them (the
+// silent-desync copy the audit caught in armSolver.test.ts). All in
+// units of s. NOTE: REST_HANG_DROP_S coincidentally equals ARM_LEN —
+// they are different quantities; do not merge them.
+/** The arm ring's height below the hip line (armY = hipY − this·s). */
+export const ARM_RING_DROP_S = 0.26;
+/** A relaxed fist's hang below the arm ring (main hand + bare hands). */
+export const REST_HANG_DROP_S = 0.17;
+/** The off blade's hang below the arm ring — a touch higher than the
+ *  main: the trailing blade of a paired stance, never a mirror image. */
+export const OFF_BLADE_HANG_DROP_S = 0.15;
+/** Shoulder half-width (the torso trapezoid's top, before dialects). */
+export const SHOULDER_HALF_S = 0.185;
+/** Waist half-width (the trapezoid's bottom — the hang-width lane). */
+export const WAIST_HALF_S = 0.125;
+/** A settled shoulder's anatomical anchor along the shoulder bar. */
+export const SHOULDER_SETTLE_K = 0.85;
+/** The hang-width lane's flare off the waist line (hangW's ww term). */
+export const HANG_WAIST_K = 1.08;
+/** shoulderY sits this far below the shoulder line's top (units of s). */
+export const SHOULDER_Y_DROP_S = 0.06;
+/** Hip line → shoulder line rise before the crouch/squash factors. */
+export const TORSO_RISE_S = 0.46;
+
+/**
+ * THE TWO PROFILE READS (arms-v3 Phase 1: named, single-sourced).
+ * The RIG's facing weight is the honest cosine — `profileK = |fx|` —
+ * and every arm/carry/depth law rides that. The FACE painters use this
+ * snugger read instead: |fx| boosted 15% and clamped, so the head
+ * commits to its profile band a beat before the body does (eyes and
+ * muzzles read wrong mid-turn if the face lags the turn). Thirteen
+ * mob-head painters each re-derived this inline before it was named —
+ * one drifted constant away from thirteen different face laws.
+ */
+export function faceProfileK(fx: number): number {
+  return Math.min(1, Math.abs(fx) * 1.15);
+}
 
 /** Shared per-frame IK scratches (see solveLimbInto's contract). */
 const ARM_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
@@ -3617,17 +3659,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const stowed = sheath >= STOW_HANDOFF;
   const wornDef = itemDef(rig.weaponItem ?? '');
   const weapon = stowed ? undefined : wornDef;
-  const isBow = weapon !== undefined && bowStyle(weapon.id) !== null;
-  // THE GREAT SCHOOL asks first — the check-great-first law: a
-  // 'greatsword'-shaped id also satisfies bladeStyle's '*sword'
-  // fallback, so the one-hand registry must never see it.
-  const isGreat = weapon !== undefined && greatStyle(weapon.id) !== null;
+  // ONE CLASS, ONE DETECTION (arms-v3 Phase 1): the held thing's kind
+  // comes from wieldClass — the check-great-first law and the registry
+  // probe order live THERE, once, instead of being re-derived at every
+  // consumer. Identity still comes from the style registries; roster
+  // ids (falchion, hush, stormcaller, ...) don't all say 'sword'.
+  const heldKind = weapon !== undefined ? wieldClass(weapon.id) : 'none';
+  const isBow = heldKind === 'bow';
+  const isGreat = heldKind === 'great';
   // Blades — swords and daggers both — share the low carriage AND the
-  // grip-aware strike vocabulary (incl. the reverse grip). Identity
-  // comes from the style registries; roster ids (falchion, hush,
-  // stormcaller, ...) don't all say 'sword'/'dagger'/'staff'.
-  const isSword = !isGreat && weapon !== undefined && bladeStyle(weapon.id) !== null;
-  const isStaff = weapon !== undefined && staffStyle(weapon.id) !== null;
+  // grip-aware strike vocabulary (incl. the reverse grip).
+  const isSword = heldKind === 'blade';
+  const isStaff = heldKind === 'staff';
   // A reversed main fist changes the ATTACK choreography, not just the
   // carriage — tighter rakes, locked wrist, icepick finisher.
   const rogueMelee = isSword && rig.carryStyle === 'rogue';
@@ -3662,9 +3705,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // THE FRONT-HEAVY FRAME: the fur dialect widens the shoulder line
   // and barely the waist — the gnoll's mass lives in its upper torso
   // (arms anchor off tw, so the wider carriage propagates for free).
-  const tw = 0.185 * s * (gno ? 1.28 : 1); // shoulder half-width
-  const ww = 0.125 * s * (gno ? 1.06 : 1); // waist half-width
-  const th = 0.46 * s * (1 - 0.12 * crouch); // hip line → shoulders
+  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : 1); // shoulder half-width
+  const ww = WAIST_HALF_S * s * (gno ? 1.06 : 1); // waist half-width
+  const th = TORSO_RISE_S * s * (1 - 0.12 * crouch); // hip line → shoulders
 
   // Melee combo stages — THE TWO SCHOOLS (carriage.ts strike
   // vocabulary): every strike is coil → cocked hold → snap →
@@ -4016,8 +4059,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     reach = (0.27 + 0.035 * Math.sin(u * Math.PI * 4)) * s;
     lean = 0.03 * Math.sin(u * Math.PI * 2 + 0.8) * Math.sign(fx || 1);
   }
-  const armY = hipY - 0.26 * s;
-  const shoulderY = hipY - th * hScale + 0.06 * s;
+  const armY = hipY - ARM_RING_DROP_S * s;
+  const shoulderY = hipY - th * hScale + SHOULDER_Y_DROP_S * s;
   const mainAngle = rig.dir + swingOffset;
   // The free arm counter-swings a melee strike instead of floating on
   // a fixed circle — two arms in the fight, not one. An off BLADE
@@ -4253,7 +4296,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // off the body, both fists splayed wide of the silhouette (the
     // "hands come outward" read). Linear in profileK, so the stance
     // breathes continuously through every diagonal.
-    const hangW = ww * 1.08 + (tw * 1.02 - ww * 1.08) * profileK;
+    const hangW = ww * HANG_WAIST_K + (tw * 1.02 - ww * HANG_WAIST_K) * profileK;
     // THE RUNNER'S ELBOW: an empty fist rises toward the ribs as the
     // gait becomes a sprint — bent arms pumping with the legs, the
     // shape every running reference draws. Armed fists keep their
@@ -4262,7 +4305,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // lines, where the full lift tucked both fists into the armpits.
     const elbowLift = runnerLift(Math.min(1, rig.poleStrength), rig.runF, profileK) * s;
     let hx = rig.x + wSide * hangW * wS;
-    let hy = armY + 0.17 * s - elbowLift;
+    let hy = armY + REST_HANG_DROP_S * s - elbowLift;
     let hAngle = Math.PI / 2 + sideW * (0.3 + 0.35 * runK); // tip down, trailing
     let hFore = 1; // rest-carry foreshortening, blended in on the settle
     // How "at rest" the rest really is: flourishes and wrist life only
@@ -4282,7 +4325,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hAngle = proj.angle;
       hFore = proj.fore;
       hx += c.dx * s * wS;
-      hy = armY + (0.17 + c.dy) * s;
+      hy = armY + (REST_HANG_DROP_S + c.dy) * s;
       // DUAL-WIELD PROFILE FLIP (position half): side-on you cannot see
       // both hilts, and it is the MAIN fist that reads as the body's
       // far hand — it slides in toward the body center as the facing
@@ -4390,7 +4433,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // hand rides a touch higher and tighter than the main: the trailing
     // blade of a paired stance, not a mirror image.
     let ox = rig.x - wSide * hangW * wS;
-    let oy = armY + 0.17 * s - elbowLift;
+    let oy = armY + REST_HANG_DROP_S * s - elbowLift;
     if (offBlade) {
       // The carriage mirrors on FACING, not on the hanging side — the
       // off fist trails the facing, so its outward push (dx) mirrors
@@ -4408,7 +4451,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // arm actually hangs in profile) and the depth flip below paints
       // it FOREMOST, over the torso.
       ox -= oc.dx * s * wS;
-      oy = armY + (0.15 + oc.dy) * s;
+      oy = armY + (OFF_BLADE_HANG_DROP_S + oc.dy) * s;
       const tn = Math.max(0, Math.min(1, (profileK - 0.55) / 0.4));
       const nearK = tn * tn * (3 - 2 * tn);
       ox = rig.x + (ox - rig.x) * (1 - 0.45 * nearK);
@@ -4650,9 +4693,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Blades stow to the belt, bows and staffs sling across the back; the
   // spots live in sheath.ts (pure, test-pinned) and ride hipY/shoulderY,
   // so they duck with a crouch and settle with a sit for free.
-  const wornGreat = wornDef !== undefined && greatStyle(wornDef.id) !== null;
-  const wornBow = wornDef !== undefined && bowStyle(wornDef.id) !== null;
-  const wornStaff = wornDef !== undefined && staffStyle(wornDef.id) !== null;
+  // The worn kind reads through the same one detection as the held —
+  // the stow solve and the hand solve can never disagree about class.
+  const wornKind = wornDef !== undefined ? wieldClass(wornDef.id) : 'none';
+  const wornGreat = wornKind === 'great';
+  const wornBow = wornKind === 'bow';
+  const wornStaff = wornKind === 'staff';
   const wornBack = wornBow || wornStaff || wornGreat;
   let mainStow: { x: number; y: number; angle: number } | null = null;
   if (wornDef) {
@@ -4941,8 +4987,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // and the flip lands once, after the hands arrive. Rest carries
   // only: strikes and draws own their elbows dynamically.
   const elbowEaseHold = restSettle > 0.5 && Math.abs(sideS) < 0.98;
-  mainShX += (rig.x + sideS * tw * 0.85 * wS - mainShX) * settleK;
-  offShX += (rig.x - sideS * tw * 0.85 * wS - offShX) * settleK;
+  mainShX += (rig.x + sideS * tw * SHOULDER_SETTLE_K * wS - mainShX) * settleK;
+  offShX += (rig.x - sideS * tw * SHOULDER_SETTLE_K * wS - offShX) * settleK;
   // Aiming up-and-away puts the gear behind the body. And a LONG
   // carry crossing the body goes behind it too: the staff's leveled
   // run trail at a camera-facing heading swept its butt half up
@@ -6185,9 +6231,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
 export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void {
   const st = rig.offhandItem ? offhandStyle(rig.offhandItem) : null;
   const worn = itemDef(rig.weaponItem ?? '');
-  const stowedGreat = worn !== undefined && greatStyle(worn.id) !== null;
-  const stowedBow = worn !== undefined && bowStyle(worn.id) !== null;
-  const stowedStaff = worn !== undefined && staffStyle(worn.id) !== null;
+  // ONE CLASS, ONE DETECTION — the cape-layer stow reads the same
+  // wieldClass the main solve does; the two stow sites can't drift.
+  const stowedKind = worn !== undefined ? wieldClass(worn.id) : 'none';
+  const stowedGreat = stowedKind === 'great';
+  const stowedBow = stowedKind === 'bow';
+  const stowedStaff = stowedKind === 'staff';
   const sling = (rig.sheathT ?? 0) >= STOW_HANDOFF && (stowedBow || stowedStaff || stowedGreat);
   if (st?.kind !== 'quiver' && !sling) return;
   const k = rig.size ?? 1;
@@ -6202,8 +6251,8 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const hipY = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
   const wS = rig.wScale;
   const hScale = 1 + (1 - wS) * 0.55;
-  const th = 0.46 * s * (1 - 0.12 * crouch);
-  const shoulderY = hipY - th * hScale + 0.06 * s;
+  const th = TORSO_RISE_S * s * (1 - 0.12 * crouch);
+  const shoulderY = hipY - th * hScale + SHOULDER_Y_DROP_S * s;
   const lead = fx >= 0 ? 1 : -1;
   if (st?.kind === 'quiver') {
     drawQuiver(ctx, st, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt, rig.nowMs);
@@ -6386,10 +6435,11 @@ function drawHeldItem(
     if (bowStyle(itemId) !== null) ctx.scale(1, fore);
     else ctx.scale(fore, 1);
   }
-  // Mid-arc wood point: the bow's quadratic (tips 0.06s, belly control
-  // 0.3s) passes through x = 0.18s at grip height — align THAT to the
-  // fist, or the bow reads as resting on the wrist.
-  if (extra?.carry) ctx.translate(-0.18 * s * extra.carry, 0);
+  // Mid-arc wood point: the bow's belly passes through x = BOW_GRIP_X·s
+  // at grip height BY CONSTRUCTION (weapons.ts owns the constant and
+  // the quadratic that guarantees it) — align THAT to the fist, or the
+  // bow reads as resting on the wrist.
+  if (extra?.carry) ctx.translate(-BOW_GRIP_X * s * extra.carry, 0);
 
   // The item-space envelope each roster's art can reach — the outline
   // scratch is sized from this, so keep it tight per class (a bow is
@@ -7421,7 +7471,7 @@ export function drawCattleHead(
   // profile wedge side-on (a frontal muzzle pasted over a profile head
   // was the classic bug), gone entirely from behind.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const d = w * (0.42 + profileK * 0.14);
     const mx = cx + fx * d + (o.chew ?? 0) * (1 - profileK);
     const my = cy + fy * d * ys + h * 0.16;
@@ -7763,7 +7813,7 @@ export function drawWolfHead(
   // TURN with the head — longer and narrower as the profile deepens,
   // gone from behind (the cattle muzzle law).
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.26;
     const by0 = cy + fy * w * 0.26 * ys + h * 0.12;
     const sl = w * (0.32 + 0.3 * profileK);
@@ -8120,7 +8170,7 @@ export function drawDireWolfHead(
 
   // Muzzle: longer and deeper than the wolf's — the bone-crusher jaw.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.28;
     const by0 = cy + fy * w * 0.28 * ys + h * 0.12;
     const sl = w * (0.36 + 0.32 * profileK);
@@ -8445,7 +8495,7 @@ export function drawWorgHead(
   // Muzzle: SHORT and thick — a stub next to the wolves' spike, the
   // trap's front plate. Gone from behind.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.24;
     const by0 = cy + fy * w * 0.24 * ys + h * 0.14;
     const sl = w * (0.22 + 0.18 * profileK);
@@ -9237,7 +9287,7 @@ export function drawOwlHead(
   const h = look.headH * s;
   const C = (c: string): string => (o.hurt ? '#ffffff' : c);
   const screech = o.dead ? 0 : (o.screech ?? 0);
-  const profileK = Math.min(1, Math.abs(fx) * 1.15);
+  const profileK = faceProfileK(fx);
 
   // Ear tufts on the crown — the horned silhouette. A fore/aft
   // stagger keeps the pair from collapsing to one sliver at profile
@@ -10021,7 +10071,7 @@ export function drawRatHead(
 
   // Pointed snout — longer and narrower in profile, pink nose tip.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.24;
     const by0 = cy + fy * w * 0.24 * ys + h * 0.1;
     const sl = w * (0.3 + 0.3 * profileK);
@@ -10268,7 +10318,7 @@ export function drawBoarHead(
 
   // Stubby muzzle → snout disc, foreshortening with the facing.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.24;
     const by0 = cy + fy * w * 0.24 * ys + h * 0.14;
     const sl = w * (0.26 + 0.24 * profileK);
@@ -10698,7 +10748,7 @@ export function drawRamHead(
 
   // Roman-nose muzzle wedge, foreshortening with the facing.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.22;
     const by0 = cy + fy * w * 0.22 * ys + h * 0.16;
     const sl = w * (0.18 + 0.18 * profileK);
@@ -10978,7 +11028,7 @@ export function drawSheepHead(
 
   // Short straight muzzle with the ink nose chip.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.2;
     const by0 = cy + fy * w * 0.2 * ys + h * 0.18;
     const sl = w * (0.12 + 0.14 * profileK);
@@ -11250,7 +11300,7 @@ export function drawStagHead(
 
   // Tapered muzzle dipping to a dark nose.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.24;
     const by0 = cy + fy * w * 0.24 * ys + h * 0.14;
     const sl = w * (0.24 + 0.22 * profileK);
@@ -11434,7 +11484,7 @@ export function drawBearHead(
 
   // Short broad muzzle in the pale tan — the bear face read.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.2;
     const by0 = cy + fy * w * 0.2 * ys + h * 0.14;
     const sl = w * (0.16 + 0.16 * profileK);
@@ -12630,7 +12680,7 @@ export function drawCourserHead(
   // The long muzzle: the horse's whole argument. Runs a full head
   // farther than the deer's taper, square-ended, nose soft and dark.
   if (fy > -0.35) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.22;
     const by0 = cy + fy * w * 0.22 * ys + h * 0.1;
     const sl = w * (0.34 + 0.3 * profileK);
@@ -12903,7 +12953,7 @@ export function drawSabercatHead(
   // skull (the feline read); the fangs drop from its leading corners,
   // splayed a whisker outward, ivory over everything.
   if (fy > -0.3) {
-    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const profileK = faceProfileK(fx);
     const bx0 = cx + fx * w * 0.2;
     const by0 = cy + fy * w * 0.2 * ys + h * 0.12;
     const sl = w * (0.14 + 0.12 * profileK);
