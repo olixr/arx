@@ -69,6 +69,105 @@ function stormboltK(nowMs: number, off = 0): number {
 }
 
 /**
+ * THE LIVING ARC — one jagged rope of electricity between two
+ * points: a colored casing under a hot pale core, with one short
+ * branch. Deterministic per seed; callers derive the seed from a
+ * ~90ms flicker frame during the strike so the lightning DANCES
+ * across the cloth instead of glowing like a sign. Strokes only —
+ * strokes survive every paint path (gremlin #2's one safe lane).
+ */
+function stormArc(
+  ctx: CanvasRenderingContext2D,
+  x0: number, y0: number, x1: number, y1: number,
+  seed: number, amp: number, col: string, alpha: number, lw: number,
+  branch = true,
+): void {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.0001) return;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const segs = 5;
+  const pts: Array<[number, number]> = [[x0, y0]];
+  for (let i = 1; i < segs; i++) {
+    const v = i / segs;
+    const h = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+    const off = ((h - Math.floor(h)) * 2 - 1) * amp * (1 - Math.abs(v - 0.5));
+    pts.push([x0 + dx * v + nx * off, y0 + dy * v + ny * off]);
+  }
+  pts.push([x1, y1]);
+  const trace = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0]![0], pts[0]![1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]![0], pts[i]![1]);
+    ctx.stroke();
+  };
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // The casing: the storm's own color, wide and soft.
+  ctx.globalAlpha = alpha * 0.5;
+  ctx.strokeStyle = col;
+  ctx.lineWidth = lw * 2.3;
+  trace();
+  // The core: near-white, hot, thin.
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#f4f8ff';
+  ctx.lineWidth = lw;
+  trace();
+  if (branch) {
+    const h2 = Math.sin(seed * 37.719 + 11.7) * 43758.5453;
+    const ba = (h2 - Math.floor(h2)) * Math.PI * 2;
+    const bl = len * 0.22;
+    ctx.globalAlpha = alpha * 0.75;
+    ctx.lineWidth = lw * 0.7;
+    ctx.beginPath();
+    ctx.moveTo(pts[2]![0], pts[2]![1]);
+    ctx.lineTo(pts[2]![0] + Math.cos(ba) * bl, pts[2]![1] + Math.sin(ba) * bl);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * THE CAST VEIL — the face's mystery as a true falloff: stacked
+ * wide translucent STROKES (fills gutter inside clipped paint
+ * paths; strokes do not), near-solid from the brow to the eye
+ * line, then fading down the chin like shade actually cast by the
+ * hood. Callers clip to the opening FIRST so the veil lives IN the
+ * hole and conforms to its chamfer — never a black sticker over it.
+ */
+function stormVeil(
+  ctx: CanvasRenderingContext2D,
+  cx: number, ohw: number,
+  yTop: number, yEye: number, yEnd: number,
+  rgb: string,
+): void {
+  ctx.save();
+  ctx.lineCap = 'butt';
+  ctx.strokeStyle = rgb;
+  const bands = 10;
+  const step = (yEnd - yTop) / (bands - 1);
+  const hold = (yEye - yTop) / (yEnd - yTop);
+  for (let i = 0; i < bands; i++) {
+    const v = i / (bands - 1);
+    // The hold zone is fully OPAQUE (translucent strokes attenuate
+    // inside clips); only the falloff below the eye line is a wash.
+    const fall = v <= hold ? 1 : Math.pow(1 - (v - hold) / (1 - hold), 1.35);
+    ctx.globalAlpha = v <= hold ? 1 : 0.92 * fall;
+    ctx.lineWidth = step * 1.04;
+    ctx.beginPath();
+    ctx.moveTo(cx - ohw, yTop + step * i);
+    ctx.lineTo(cx + ohw, yTop + step * i);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+
+/**
  * Visual equipment styles — the CAPE_STYLES pattern extended to every
  * armor slot. Each record is pure JSON-shaped data a painter interprets;
  * the content pass authors records + palettes here, never new painters.
@@ -3916,11 +4015,10 @@ export function drawTorsoGarment(
         bolt(1.3);
         ctx.fill();
         if (strike) {
-          ctx.globalAlpha = 0.3;
-          ctx.fillStyle = '#ffffff';
-          bolt(1.8);
-          ctx.fill();
-          ctx.globalAlpha = 1;
+          const fr = Math.floor(nowMs / 90);
+          // The brand does not glow — it DISCHARGES into the cloth.
+          stormArc(ctx, bbx + pr * 0.1, bby - pr * 0.85, bbx + pr * 0.95, bby - pr * 1.5, fr * 17 + 1, pr * 0.4, bCol, 0.85, Math.max(1, s * 0.008));
+          stormArc(ctx, bbx - pr * 0.16, bby + pr * 0.8, bbx - pr * 1.05, bby + pr * 1.4, fr * 17 + 2, pr * 0.35, bCol, 0.75, Math.max(1, s * 0.007), false);
         }
         ctx.fillStyle = strike ? '#ffffff' : shade(bCol, Math.round(-22 + 40 * k));
         bolt(1);
@@ -4003,16 +4101,21 @@ export function drawTorsoGarment(
           const rise = ((nowMs * 0.00032) + i * 0.37) % 1;
           const px = u * ww + Math.sin(nowMs * 0.0019 + i * 2.2) * 0.014 * s;
           const py = hemY - rise * 0.34 * s;
-          const rr = (strike ? 0.02 : 0.011 + 0.005 * k) * s;
-          ctx.globalAlpha = (strike ? 0.95 : 0.3 + 0.45 * k) * Math.sin(Math.PI * rise);
-          ctx.fillStyle = strike ? '#ffffff' : scC;
-          ctx.beginPath();
-          ctx.moveTo(px, py - rr);
-          ctx.lineTo(px + rr * 0.6, py);
-          ctx.lineTo(px, py + rr);
-          ctx.lineTo(px - rr * 0.6, py);
-          ctx.closePath();
-          ctx.fill();
+          const rr = (0.011 + 0.005 * k) * s;
+          const vis = Math.sin(Math.PI * rise);
+          if (strike) {
+            stormArc(ctx, px - rr * 2.2, py + rr * 1.6, px + rr * 2.2, py - rr * 1.8, Math.floor(nowMs / 90) * 23 + i, rr * 1.6, scC, 0.85 * vis, Math.max(1, s * 0.006), false);
+          } else {
+            ctx.globalAlpha = (0.3 + 0.45 * k) * vis;
+            ctx.fillStyle = scC;
+            ctx.beginPath();
+            ctx.moveTo(px, py - rr);
+            ctx.lineTo(px + rr * 0.6, py);
+            ctx.lineTo(px, py + rr);
+            ctx.lineTo(px - rr * 0.6, py);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
         ctx.globalAlpha = 1;
       }
@@ -4051,14 +4154,11 @@ export function drawTorsoGarment(
           ctx.beginPath();
           ctx.ellipse(0, hemY + 0.045 * s, ww * 1.35, 0.05 * s, 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.globalAlpha = 0.75;
-          ctx.strokeStyle = st.groundflash.color;
-          ctx.lineWidth = Math.max(1, s * 0.012);
-          ctx.beginPath();
-          ctx.moveTo(hem[0]!.x, hem[0]!.y);
-          for (let i = 1; i <= 4; i++) ctx.lineTo(hem[i]!.x, hem[i]!.y);
-          ctx.stroke();
           ctx.globalAlpha = 1;
+          const fr = Math.floor(nowMs / 90);
+          // The flash SKITTERS along the hem, never a rim light.
+          stormArc(ctx, hem[0]!.x, hem[0]!.y - 0.01 * s, hem[2]!.x, hem[2]!.y - 0.014 * s, fr * 21 + 1, 0.022 * s, st.groundflash.color, 0.8, Math.max(1, s * 0.008), false);
+          stormArc(ctx, hem[2]!.x, hem[2]!.y - 0.014 * s, hem[4]!.x, hem[4]!.y - 0.01 * s, fr * 21 + 2, 0.022 * s, st.groundflash.color, 0.8, Math.max(1, s * 0.008), false);
         }
       }
       if (st.foamtiers) {
@@ -4727,6 +4827,15 @@ export function drawTorsoGarment(
         ctx.arc(bx - 0.004 * s, by - 0.005 * s, 0.004 * s, 0, Math.PI * 2);
         ctx.fill();
       }
+      if (cstrike) {
+        const fr = Math.floor(nowMs / 90);
+        // The count completes its circuit: bead to bead.
+        for (let i = 0; i < 2; i++) {
+          const u0 = -0.42 + i * 0.42;
+          const u1 = u0 + 0.42;
+          stormArc(ctx, u0 * ww + gSway * (i - 1) * 0.5, 0.02 * s + 0.012 * s * Math.abs(u0), u1 * ww + gSway * i * 0.5, 0.02 * s + 0.012 * s * Math.abs(u1), fr * 25 + i, 0.016 * s, cb.bead, 0.8, Math.max(1, s * 0.006), false);
+        }
+      }
     }
 
     // ---- waist charms: small bells hung on cords off the belt line,
@@ -5350,13 +5459,18 @@ export function drawTorsoGarment(
         }
       }
       ctx.globalAlpha = 0.25 + 0.75 * bk;
-      ctx.strokeStyle = bstrike ? '#ffffff' : tb.glow;
-      ctx.lineWidth = Math.max(1, s * (bstrike ? 0.02 : 0.013));
+      ctx.strokeStyle = tb.glow;
+      ctx.lineWidth = Math.max(1, s * 0.013);
       ctx.beginPath();
       ctx.moveTo(-tw * 0.88, -th * 0.52);
       ctx.quadraticCurveTo(0, -th * 0.34, tw * 0.9, -th * 0.46);
       ctx.stroke();
       ctx.globalAlpha = 1;
+      if (bstrike) {
+        const fr = Math.floor(nowMs / 90);
+        // Lightning dances the bank's underside.
+        stormArc(ctx, -tw * 0.8, -th * 0.5, tw * 0.85, -th * 0.44, fr * 19 + 1, th * 0.08, tb.glow, 0.85, Math.max(1, s * 0.008));
+      }
       frontPlaneOff();
     }
 
@@ -9119,6 +9233,16 @@ export function drawPauldron(
     const strike = k > 0.92;
     seat(0.108 * s, 0.088 * s, hurt ? '#ffffff' : col, trim);
     const lit = strike ? 26 : 0;
+    if (!hurt && side > 0) {
+      // The back row: darker mass behind the rolling front — the
+      // bank has WEATHER behind it.
+      for (const [dxB, dyB, rrB] of [[-0.078, -0.078, 0.04], [0.088, -0.092, 0.035]] as const) {
+        ctx.fillStyle = shade(col, -24 + (strike ? 18 : 0));
+        ctx.beginPath();
+        ctx.arc(side * dxB * s, dyB * s, rrB * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
     if (side > 0) {
       // THE ROLLING BANK: each lobe on its own slow wind.
       const d0 = Math.sin(nowMs * 0.00042) * 0.011 * s;
@@ -9166,12 +9290,13 @@ export function drawPauldron(
         ctx.closePath();
         ctx.fill();
         if (strike) {
-          // Sheet lightning rims the bank for the beat.
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-          ctx.lineWidth = Math.max(1, s * 0.008);
-          ctx.beginPath();
-          ctx.arc(side * 0.012 * s + d2, -0.098 * s, 0.042 * s, Math.PI * 0.9, Math.PI * 2.1);
-          ctx.stroke();
+          const fr = Math.floor(nowMs / 90);
+          // Lightning CRAWLS the bank: lobe to lobe, then down to
+          // the seat rim.
+          stormArc(ctx, side * -0.045 * s + d0, -0.052 * s, side * 0.012 * s + d2, -0.098 * s, fr * 9 + side, s * 0.02, ember, 0.85, Math.max(1, s * 0.007));
+          stormArc(ctx, side * 0.052 * s + d1, -0.066 * s, side * 0.06 * s, 0.05 * s, fr * 9 + side + 1, s * 0.018, ember, 0.7, Math.max(1, s * 0.006), false);
+        } else if (k > 0.45 && (nowMs % 1300) < 120) {
+          stormArc(ctx, side * -0.02 * s + d0, -0.06 * s, side * 0.04 * s + d1, -0.075 * s, Math.floor(nowMs / 1300) + side, s * 0.012, ember, 0.5, Math.max(1, s * 0.005), false);
         }
       }
     } else if (!hurt) {
@@ -9208,6 +9333,10 @@ export function drawPauldron(
         ctx.lineTo(side * (0.075 + ln * 0.55) * s, dy * s + 0.018 * s);
         ctx.closePath();
         ctx.fill();
+      }
+      if (strike) {
+        const fr = Math.floor(nowMs / 90);
+        stormArc(ctx, side * -0.06 * s + s0, -0.05 * s, side * 0.07 * s + s1, -0.03 * s, fr * 11 + 3, s * 0.014, ember, 0.7, Math.max(1, s * 0.006), false);
       }
     }
     ctx.restore();
@@ -9271,12 +9400,8 @@ export function drawPauldron(
         ctx.lineTo(jx, jy - pr * 0.8);
         ctx.stroke();
         if (strike) {
-          ctx.globalAlpha = 0.22;
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(jx, jy, pr * 1.4, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.globalAlpha = 1;
+          const fr = Math.floor(nowMs / 90);
+          stormArc(ctx, jx, jy, jx - side * 0.05 * s, jy + 0.042 * s, fr * 15 + 1, s * 0.01, seamC, 0.7, Math.max(1, s * 0.005), false);
         }
         ctx.fillStyle = strike ? '#ffffff' : shade(seamC, Math.round(-16 + 30 * k));
         ctx.beginPath();
@@ -9309,13 +9434,15 @@ export function drawPauldron(
       ctx.arc(side * 0.014 * s, -0.03 * s, 0.012 * s, 0, Math.PI * 2);
       ctx.fill();
       if (strike) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-        ctx.lineWidth = Math.max(1, s * 0.006);
-        for (const a of [0.5, 2.2, 4.1]) {
-          ctx.beginPath();
-          ctx.moveTo(side * 0.014 * s + Math.cos(a) * 0.018 * s, -0.03 * s + Math.sin(a) * 0.018 * s);
-          ctx.lineTo(side * 0.014 * s + Math.cos(a) * 0.034 * s, -0.03 * s + Math.sin(a) * 0.034 * s);
-          ctx.stroke();
+        const fr = Math.floor(nowMs / 90);
+        // The coil DISCHARGES: arcs jump ring to ring.
+        for (const [a, si] of [[0.6, 1], [2.4, 2], [4.3, 3]] as const) {
+          stormArc(
+            ctx,
+            side * 0.014 * s + Math.cos(a) * 0.016 * s, -0.03 * s + Math.sin(a) * 0.016 * s,
+            side * 0.014 * s + Math.cos(a + 0.5) * 0.052 * s, -0.03 * s + Math.sin(a + 0.5) * 0.052 * s,
+            fr * 13 + si, s * 0.012, seamC, 0.8, Math.max(1, s * 0.005), false,
+          );
         }
       }
     }
@@ -13864,14 +13991,14 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       }
       ctx.restore();
       if (front) {
-        // The mystery is an OPAQUE plane held past the eye line —
-        // translucent pours gutter in this paint path.
-        ctx.fillStyle = '#1c1826';
-        ctx.fillRect(cx - ohw * 0.96, oTop + cut * 0.3, ohw * 1.92, (headY + hh * 0.18) - (oTop + cut * 0.3));
+        // THE CAST VEIL: the mystery as a true falloff, clipped
+        // INSIDE the opening — shade the hood actually casts, never
+        // a plane floating over the hole.
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
+        stormVeil(ctx, cx, ohw, oTop + cut * 0.2, headY + hh * 0.14, headY + hh * 0.68, '#141220');
         if (strike) {
           // The fork crosses the dark — in front of the mystery,
           // never lighting it.
@@ -13947,6 +14074,28 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     puff(0, true);
     puff(1, true);
     puff(2, true);
+    if (!hurt) {
+      const ember = st.cloudwreath?.ember ?? st.trim;
+      if (strike) {
+        const fr = Math.floor(f.nowMs / 90);
+        // THE CRAWL: lightning walks the crown, lobe to lobe, and
+        // leaps for the shroud — electricity that DANCES, never a
+        // sign that glows.
+        stormArc(ctx, headX + lead * hw * 0.72, headY - hh * 1.18, headX - lead * hw * 0.5, headY - hh * 1.26, fr * 3 + 1, hh * 0.16, ember, 0.85, Math.max(1, s * 0.008));
+        stormArc(ctx, headX + lead * hw * 0.2, headY - hh * 1.38, headX + lead * hw * 1.04, headY - hh * 0.88, fr * 3 + 2, hh * 0.13, ember, 0.7, Math.max(1, s * 0.007));
+        const pa = f.nowMs * 0.00019;
+        const pox = Math.cos(pa) * hw * 1.62;
+        if (Math.sin(pa) >= 0) {
+          stormArc(ctx, headX + lead * hw * 0.4, headY - hh * 1.08, headX + pox, headY - hh * 0.62, fr * 3 + 3, hh * 0.12, ember, 0.6, Math.max(1, s * 0.006), false);
+        }
+      } else if (k > 0.45 && (f.nowMs % 1300) < 120) {
+        // The charge CRACKLES: one short filament snapping across a
+        // different lobe each beat.
+        const which = Math.floor(f.nowMs / 1300) % 3;
+        const wx = [0.55, -0.15, -0.6][which]! * hw;
+        stormArc(ctx, headX + wx, headY - hh * 1.3, headX + wx + hw * 0.34, headY - hh * 1.12, Math.floor(f.nowMs / 1300), hh * 0.08, ember, 0.5, Math.max(1, s * 0.006), false);
+      }
+    }
     return;
   }
 
@@ -14111,6 +14260,18 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.quadraticCurveTo(headX - bLead * hw * 1.72, bandY + hh * 0.26, headX - bLead * hw * 2.32, bandY - hh * 0.02);
       ctx.stroke();
       ctx.globalAlpha = 1;
+      if (strike) {
+        const fr = Math.floor(f.nowMs / 90);
+        // Lightning RIDES the brim and CLIMBS the spire — arcs that
+        // dance, never a rim that glows.
+        stormArc(ctx, headX + bLead * hw * 2.4, bandY - hh * 0.14, headX + bLead * hw * 0.6, bandY - hh * 0.16, fr * 7 + 1, hh * 0.1, seamC, 0.8, Math.max(1, s * 0.008));
+        stormArc(ctx, headX + u * hw * 0.34, bandY - hh * 0.3, tipX - u * hw * 0.04, tipY + hh * 0.1, fr * 7 + 2, hh * 0.14, seamC, 0.75, Math.max(1, s * 0.007));
+      } else if (k > 0.45 && (f.nowMs % 1300) < 120 && front) {
+        // Rivet sparks on the charge.
+        const which = Math.floor(f.nowMs / 1300) % 3;
+        const rx = cx + [-0.4, 0, 0.4][which]! * headR;
+        stormArc(ctx, rx, bandY - hh * 0.3, rx + headR * 0.22, bandY - hh * 0.46, Math.floor(f.nowMs / 1300) + 7, hh * 0.05, seamC, 0.5, Math.max(1, s * 0.005), false);
+      }
       // THE IRON BAND: dark, riveted in gold — the forge's word on
       // all that cloth.
       ctx.fillStyle = shade(st.color, -30);
@@ -14122,9 +14283,14 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           ctx.arc(cx + du * headR, bandY - hh * 0.3, headR * 0.045, 0, Math.PI * 2);
           ctx.fill();
         }
-        // The under-brim mystery: an opaque plane past the eye line.
-        ctx.fillStyle = '#16141f';
-        ctx.fillRect(cx - ohw * 0.96, oTop + cut * 0.3, ohw * 1.92, (headY + hh * 0.18) - (oTop + cut * 0.3));
+        // THE CAST VEIL under the brim — a true falloff clipped
+        // inside the window.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        stormVeil(ctx, cx, ohw, oTop + cut * 0.2, headY + hh * 0.16, headY + hh * 0.68, '#100e18');
+        ctx.restore();
       }
     }
     // THE BOLT JEWEL: hung from the trailing brim tip — outside the
@@ -14141,12 +14307,11 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.lineTo(jx, jy - pr * 0.9);
       ctx.stroke();
       if (strike) {
-        ctx.globalAlpha = 0.22;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(jx, jy, pr * 1.4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
+        const fr = Math.floor(f.nowMs / 90);
+        // The jewel does not glow — it ARCS: to the brim tip, and
+        // off its own points into the air.
+        stormArc(ctx, jx, jy, headX - bLead * hw * 2.3, bandY - hh * 0.06, fr * 5 + 1, hh * 0.1, seamC, 0.85, Math.max(1, s * 0.007));
+        stormArc(ctx, jx + pr * 0.3, jy + pr * 0.5, jx + pr * 1.4, jy + pr * 1.5, fr * 5 + 2, hh * 0.07, seamC, 0.6, Math.max(1, s * 0.006), false);
       }
     }
     ctx.save();
@@ -14206,10 +14371,14 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
       ctx.fill();
       // Mystery poured from the brim, past the eye line.
-      // The under-brim shadow is an OPAQUE flat plane held past
-      // the eye line — brim-dark, the lower face keeps the light.
-      ctx.fillStyle = '#231a10';
-      ctx.fillRect(cx - ohw * 0.96, oTop + cut * 0.3, ohw * 1.92, (headY + hh * 0.18) - (oTop + cut * 0.3));
+      // THE CAST VEIL under the brim — a true falloff clipped
+      // inside the window.
+      ctx.save();
+      ctx.beginPath();
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+      ctx.clip();
+      stormVeil(ctx, cx, ohw, oTop + cut * 0.2, headY + hh * 0.16, headY + hh * 0.66, '#1e1408');
+      ctx.restore();
       ctx.strokeStyle = shade(st.color, 18);
       ctx.lineWidth = Math.max(1, s * 0.012);
       ctx.beginPath();
@@ -14534,10 +14703,14 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.globalAlpha = 1;
       ctx.restore();
       if (front) {
-        // The deepest dark in the wardrobe — an OPAQUE flat plane;
-        // the night does not wash, it stands.
-        ctx.fillStyle = '#0c1210';
-        ctx.fillRect(cx - ohw * 0.96, oTop + cut * 0.3, ohw * 1.92, (headY + hh * 0.2) - (oTop + cut * 0.3));
+        // THE CAST VEIL — the night's own falloff, deepest of the
+        // four, clipped inside the opening.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        stormVeil(ctx, cx, ohw, oTop + cut * 0.2, headY + hh * 0.2, headY + hh * 0.72, '#070c0c');
+        ctx.restore();
         ctx.strokeStyle = shade(st.color, 20);
         ctx.lineWidth = Math.max(1, s * 0.013);
         ctx.beginPath();
