@@ -1326,7 +1326,14 @@ const game = new ClientGame(input, {
         { speed: hit.crit ? 4.5 : 3, life: 0.4, dir: hit.isOwn ? undefined : game.aim, spread: 1.3 },
       );
       renderer.addRing(hit.x, hit.y - 0.3, hit.crit ? '#ffd24a' : '#f4efe4', hit.crit ? 0.6 : 0.4);
-      if (!hit.isOwn) renderer.hitstop(hit.crit ? 0.09 : 0.045);
+      // The payoff beat carries the weight: a blow landing while our
+      // own string sits on its finisher stage freezes a touch longer
+      // (crits keep the crown).
+      const finisherWeight =
+        game.ownCombo !== null &&
+        game.ownCombo.stage === game.ownCombo.len - 1 &&
+        performance.now() < game.ownCombo.graceUntilMs;
+      if (!hit.isOwn) renderer.hitstop(hit.crit ? 0.09 : finisherWeight ? 0.07 : 0.045);
     }
     if (hit.isOwn && hit.dmg > 0) {
       // Taking a hit is body feedback, not world audio — always flat.
@@ -2936,30 +2943,34 @@ function frame(now: number): void {
   renderer.stationFocus = stationPanels.anchorTile;
 
   // Swing/cast sounds on pose transitions (combo swings pitch up the
-  // chain; the finisher also thumps the pad).
-  if (game.ownPose !== lastOwnPose) {
-    if (game.ownPose === PoseState.Gather) autoEquipTool();
-    if (game.ownPose === PoseState.Attack) sfx.swingCombo(0);
-    else if (game.ownPose === PoseState.Attack2) sfx.swingCombo(1);
-    else if (game.ownPose === PoseState.Attack3) {
+  // chain; the finisher also thumps the pad). THE PREDICTED BLOW: the
+  // pose here is the EFFECTIVE own pose, so the swing's own sound now
+  // lands on the press edge — the confirming server byte carries the
+  // same value and never re-fires this edge.
+  const effOwnPose = game.effectiveOwnPose(now);
+  if (effOwnPose !== lastOwnPose) {
+    if (effOwnPose === PoseState.Gather) autoEquipTool();
+    if (effOwnPose === PoseState.Attack) sfx.swingCombo(0);
+    else if (effOwnPose === PoseState.Attack2) sfx.swingCombo(1);
+    else if (effOwnPose === PoseState.Attack3) {
       // The finisher beat — a heavy orb for wands, the big swing for steel.
       if (game.currentStyle() === 'arx') sfx.heavyBolt();
       else sfx.swingCombo(2);
       input.rumble(0.55, 0.3, 130);
-    } else if (game.ownPose === PoseState.Cast) sfx.zap();
-    else if (game.ownPose === PoseState.Sneak) sfx.dash(); // soft cloth rustle into the crouch
+    } else if (effOwnPose === PoseState.Cast) sfx.zap();
+    else if (effOwnPose === PoseState.Sneak) sfx.dash(); // soft cloth rustle into the crouch
     // Dual wield: the off blade's echo cut whooshes on its own beat —
     // a lighter second voice ~0.6 of the swing beat later, matching
     // the rig's one-two choreography.
     const isMeleeSwing =
-      game.ownPose === PoseState.Attack ||
-      game.ownPose === PoseState.Attack2 ||
-      game.ownPose === PoseState.Attack3;
+      effOwnPose === PoseState.Attack ||
+      effOwnPose === PoseState.Attack2 ||
+      effOwnPose === PoseState.Attack3;
     if (isMeleeSwing && itemDef(game.equipment.offhand?.id ?? '')?.weapon?.style === 'onehand') {
-      const beatMs = game.ownPose === PoseState.Attack3 ? 400 : 280;
+      const beatMs = effOwnPose === PoseState.Attack3 ? 400 : 280;
       window.setTimeout(() => sfx.swingCombo(0), Math.round(beatMs * 0.55));
     }
-    lastOwnPose = game.ownPose;
+    lastOwnPose = effOwnPose;
   }
 
   // The sheathe: steel sings leaving the scabbard, slides home with a

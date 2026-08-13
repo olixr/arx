@@ -28,8 +28,14 @@ import {
   findPath,
   isSignTile,
   advanceCombo,
+  armBuffer,
   freshCombo,
   resetCombo,
+  comboGraceTicksFor,
+  finisherRecoveryMult,
+  DODGE_CANCEL_FLOOR_TICKS,
+  PoseState,
+  STRIKE_CLOCKS,
   sanitizeSignText,
   signKey,
   snapShot,
@@ -437,7 +443,22 @@ export class ClientGame {
    * (local clock, ms). Phase 2's beat UI reads this; until then it is
    * the honest record.
    */
-  ownCombo: { stage: number; len: number; graceUntilMs: number } | null = null;
+  ownCombo: { stage: number; len: number; run: number; bornMs: number; graceUntilMs: number } | null =
+    null;
+  /**
+   * THE PREDICTED BLOW: the melee swing mirror. On the press edge the
+   * mirror advances the SAME ComboTrack the staff mirror rides and
+   * feeds the predicted pose value to the renderer early — the anim
+   * clock keys on pose CHANGE, and the server's confirming byte
+   * carries the same value, so the choreography starts at the press
+   * and never double-plays. A mispredicted swing simply expires
+   * (cosmetic only — damage was never client-side).
+   */
+  private ownSwing: { pose: PoseState; startedAt: number; expiresAt: number } | null = null;
+  private meleeReadySeq = 0;
+  private meleeBufferedUntilSeq = 0;
+  private staffBufferedUntilSeq = 0;
+  private prevLocalButtons = 0;
   /** Local mirror of the cast commitment window (holds basics back). */
   private castFreezeUntilSeq = 0;
   /** NPC deaths this frame — drives the ragdoll + stuck-arrow scatter. */
@@ -609,6 +630,16 @@ export class ClientGame {
       // THE DRAWN BREATH's bail-out, mirrored off the same seq-gated
       // dodge law the server fires with — the bar and the truth agree.
       this.ownCast = null;
+      // THE DODGE-WEAVE, mirrored: the fired dodge cuts the rest of
+      // every basic recovery to the shared floor (the server clamps
+      // attackCooldown, which gates all three lanes).
+      const dodgeSeq = this.inputSeq - 1;
+      this.meleeReadySeq = Math.min(this.meleeReadySeq, dodgeSeq + DODGE_CANCEL_FLOOR_TICKS);
+      this.staffReadySeq = Math.min(this.staffReadySeq, dodgeSeq + DODGE_CANCEL_FLOOR_TICKS);
+      this.drawReadyAt = Math.min(
+        this.drawReadyAt,
+        performance.now() + DODGE_CANCEL_FLOOR_TICKS * TICK_MS,
+      );
       this.onDodgeFx?.(x, y, mx, my);
     };
   }
@@ -845,8 +876,15 @@ export class ClientGame {
     const worn = this.equipment.weapon;
     const weapon = this.equippedWeaponDef();
     if (!worn || !weapon || weapon.style !== 'arx') return;
-    if (!hasButton(frame.buttons, InputButton.Attack)) return;
+    // THE HELD INTENT, mirrored for the wand lane too.
+    if ((frame.buttons & ~this.prevLocalButtons) & InputButton.Attack) {
+      const armed = armBuffer(this.staffReadySeq - frame.seq, frame.seq);
+      if (armed) this.staffBufferedUntilSeq = armed;
+    }
     if (frame.seq < this.staffReadySeq || frame.seq < this.castFreezeUntilSeq) return;
+    const buffered = frame.seq <= this.staffBufferedUntilSeq;
+    if (!hasButton(frame.buttons, InputButton.Attack) && !buffered) return;
+    this.staffBufferedUntilSeq = 0;
     // The worn ITEM id keys the string — the mirror resets on a staff
     // swap exactly when the server's track does.
     const stage = advanceCombo(this.comboLocal, worn.id, frame.seq);
@@ -865,6 +903,67 @@ export class ClientGame {
       (weapon.projectileSpeed ?? 12) * (heavy ? 0.8 : 1),
       weapon.range,
     );
+  }
+
+  /**
+   * THE PREDICTED BLOW: mirror the server's melee door on the press
+   * edge — same ComboTrack, same buffer law, same recovery clocks, in
+   * seq units. The mirror only gates on what it can see (sheathed
+   * status, own cast, the channel rail); a rare misprediction plays a
+   * cosmetic swing that expires, exactly the staff-tracer philosophy.
+   */
+  private trackOwnMelee(frame: InputFrame, now: number): void {
+    const worn = this.equipment.weapon;
+    const weapon = this.equippedWeaponDef();
+    if (!worn || !weapon || (weapon.style !== 'onehand' && weapon.style !== 'twohand')) return;
+    if (this.isSheathed) return; // the stowed hand swings nothing
+    if (this.ownCast !== null || frame.seq < this.castFreezeUntilSeq) return;
+    // An action carrying an ability is THE HELD NOTE — singing hands
+    // swing nothing (crafting/gathering actions carry a recipe instead
+    // and the server lets the swing cancel them, so they don't gate).
+    if (this.action?.ability) return;
+    const pressed = frame.buttons & ~this.prevLocalButtons;
+    // THE HELD INTENT, mirrored: a tap in the tail of recovery buffers.
+    if (pressed & InputButton.Attack) {
+      const armed = armBuffer(this.meleeReadySeq - frame.seq, frame.seq);
+      if (armed) this.meleeBufferedUntilSeq = armed;
+    }
+    if (frame.seq < this.meleeReadySeq) return;
+    const held = hasButton(frame.buttons, InputButton.Attack);
+    const buffered = frame.seq <= this.meleeBufferedUntilSeq;
+    if (!held && !buffered) return;
+    this.meleeBufferedUntilSeq = 0;
+    const stage = advanceCombo(this.comboLocal, worn.id, frame.seq);
+    const finisher = stage === COMBO_STAGES - 1;
+    const cd = finisher
+      ? Math.round(weapon.cooldownTicks * finisherRecoveryMult(weapon.style))
+      : weapon.cooldownTicks;
+    this.meleeReadySeq = frame.seq + cd;
+    this.comboLocal.graceUntilTick = this.meleeReadySeq + comboGraceTicksFor(weapon.style);
+    const clocks = weapon.style === 'twohand' ? STRIKE_CLOCKS.twohand : STRIKE_CLOCKS.onehand;
+    const ms = finisher ? clocks.finisher.ms : clocks.swing.ms;
+    this.ownSwing = {
+      pose: stage === 0 ? PoseState.Attack : stage === 1 ? PoseState.Attack2 : PoseState.Attack3,
+      startedAt: now,
+      // The server's confirming byte normally lands well inside the
+      // choreography and adopts the swing (same pose value = no clock
+      // restart). Past this, it was a misprediction — let it go.
+      expiresAt: now + ms + 200,
+    };
+  }
+
+  /**
+   * The own body's pose as the renderer and the sound chain should see
+   * it: the predicted swing wins while it lives, the server's byte
+   * otherwise. Pose-change clocks downstream never double-fire because
+   * the confirmed value equals the predicted one.
+   */
+  effectiveOwnPose(now: number): number {
+    if (this.ownSwing) {
+      if (now < this.ownSwing.expiresAt) return this.ownSwing.pose;
+      this.ownSwing = null;
+    }
+    return this.ownPose;
   }
 
   /** Spawn a predicted tracer at the body, capped to a small roster. */
@@ -1039,6 +1138,11 @@ export class ClientGame {
         this.staffReadySeq = 0;
         resetCombo(this.comboLocal);
         this.ownCombo = null;
+        this.ownSwing = null;
+        this.meleeReadySeq = 0;
+        this.meleeBufferedUntilSeq = 0;
+        this.staffBufferedUntilSeq = 0;
+        this.prevLocalButtons = 0;
         this.castFreezeUntilSeq = 0;
         this.ownCast = null;
         this.clockOffset = null;
@@ -1467,12 +1571,15 @@ export class ClientGame {
         break;
       }
       case 'combo': {
-        // THE SPOKEN BEAT: the stage the server just swung and how long
-        // the string stays alive, kept on the local clock.
+        // THE SPOKEN BEAT: the stage the server just swung, the run,
+        // and how long the string stays alive, on the local clock.
+        const bornMs = performance.now();
         this.ownCombo = {
           stage: msg.stage,
           len: msg.len,
-          graceUntilMs: performance.now() + msg.grace * TICK_MS,
+          run: msg.run,
+          bornMs,
+          graceUntilMs: bornMs + msg.grace * TICK_MS,
         };
         break;
       }
@@ -2743,6 +2850,10 @@ export class ClientGame {
     for (const e of snap.entities) {
       if (e.eid === this.ownEid) {
         this.ownHpPct = e.hpPct;
+        // THE PREDICTED BLOW's handover: the moment the server's byte
+        // matches the predicted pose, the prediction retires — same
+        // value, so no downstream pose-change clock restarts.
+        if (this.ownSwing && e.pose === this.ownSwing.pose) this.ownSwing = null;
         this.ownPose = e.pose;
         this.ownStatus = e.status;
         // The server-confirmed facing: normally the aim echoes back,
@@ -2865,6 +2976,8 @@ export class ClientGame {
       this.predictor.applyInput(frame);
       this.trackOwnDraw(frame, now);
       this.trackOwnStaff(frame);
+      this.trackOwnMelee(frame, now);
+      this.prevLocalButtons = frame.buttons;
       // THE DRAWN BREATH accrues per sent frame: a planted frame
       // breathes CAST_STILL_FACTOR. (The server judges by RESOLVED
       // motion; intent is the closest the bar can know — a wall-push

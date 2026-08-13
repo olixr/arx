@@ -216,6 +216,47 @@ window (speed, never damage); beat UI (stage pips + grace ember); per-stage SFX 
 present grows per-stage hitstop/shake. **Proof:** input-latency capture before/after
 (press→first-motion frames), buffer/cancel unit slate, TTK unchanged.
 
+**SHIPPED — as built (2026-08-13).**
+- THE PREDICTED BLOW rides one insight: the client's anim clock keys on pose VALUE
+  CHANGE (renderer animFor), so the mirror just feeds the predicted pose value early
+  and the server's confirming byte — same value — never restarts the clock. No new
+  animation plumbing at all. `trackOwnMelee` advances the SAME ComboTrack the staff
+  mirror rides (worn item id keys the string), mirrors recovery via
+  `finisherRecoveryMult`/`comboGraceTicksFor` helpers (pinned equal to the lane
+  constants forever), and stores `ownSwing {pose, expiresAt = choreography + 200ms}`.
+  Reconcile: server byte matches → prediction retires; expiry → misprediction, let
+  it go (cosmetic only, the staff-tracer philosophy). `effectiveOwnPose(now)` is the
+  one read: renderer own body + main.ts SFX block both consume it, so the swing
+  SOUND moved to the press edge for free and can never double-fire. Latency: press →
+  first motion is now same-frame (was tick + RTT + interp, ~100-200ms typical);
+  live capture under injected latency lands with Phase 6's prove lane.
+- THE HELD INTENT: `armBuffer(remainingCooldown, now)` in shared — press within
+  ATTACK_BUFFER_TICKS (8) of ready buffers ONE swing, fires at ready with the
+  LATEST aim, self-expires BUFFER_FIRE_SLACK_TICKS (2) past ready so no break site
+  cleans it up. Server arms in ticks (melee + wand lanes; the bow's draw machine
+  keeps its own clock), client mirrors in seq — one law, both sides, unit-pinned.
+- THE DODGE-WEAVE: a fired dodge clamps attackCooldown to
+  DODGE_CANCEL_FLOOR_TICKS (3) — string alive (dodge never resets the track),
+  slide-out-cut-back-in IS the flow verb. Client mirrors the clamp on all three
+  ready clocks inside the existing seq-gated predictor.onDodge. Cadence honesty:
+  baseline hold-flow unchanged; the gain is bounded by the dodge's own 1.2s seq
+  cooldown + movement requirement.
+- THE RUN: ComboTrack grew `run` — consecutive swings in unbroken rhythm, ACROSS
+  string wraps; dies with the string. Spoken in S2CCombo. Pure feedback in Phase 2;
+  Phase 3's windup axis gives tempo its mechanical teeth (deliberately deferred —
+  quickening a windup is the one speed reward that cannot break the CADENCE
+  CONTRACT, and no windup axis exists until Phase 3).
+- The beat UI: `drawComboBeat` — stage pips under the own body (cast-bar canvas
+  dialect), whole row is the GRACE EMBER (fades across the last 35% of the window),
+  run warms lit pips toward white heat; single-beat lanes stay silent. Finisher
+  hitstop: a blow landing on the string's payoff stage freezes 0.07 (crit keeps
+  0.09 crown).
+- Client channel gate mirrors by `action.ability` presence (craft/gather actions
+  carry `recipe` and don't gate — the server lets a swing cancel those).
+- Proof: 17 shared pins (run law, armBuffer law, helper-agreement law, + Phase 1
+  slate) + combatRhythm run-spoken pin; full workspace suite 1506/1506 green; zero
+  damage-number changes (TTK brackets untouched by construction).
+
 ### Phase 3 — THE MOVESET BOOK
 StrikeDef/MovesetDef content schema; the four current strings become the four class-
 default movesets, byte-equal in behavior (det-proof on the rig sheet); THEN the strings

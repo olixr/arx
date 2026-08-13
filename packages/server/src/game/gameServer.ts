@@ -481,8 +481,10 @@ import {
   isDrawSlowed,
   isBehind,
   advanceCombo,
+  armBuffer,
   freshCombo,
   resetCombo,
+  DODGE_CANCEL_FLOOR_TICKS,
   STRIKE_CLOCKS,
   SNAP_CHAIN,
   reactionDamage,
@@ -1390,6 +1392,13 @@ interface PlayerComp {
    * construction) and drops on sheathe, death, and mounting up.
    */
   combo: ComboTrack;
+  /**
+   * THE HELD INTENT: a press in the tail of recovery buffers one swing
+   * that fires at ready (0 = nothing buffered). Self-expiring —
+   * BUFFER_FIRE_SLACK_TICKS past ready it dies unspent, so no break
+   * site ever needs to clean it up.
+   */
+  attackBufferedUntilTick: number;
   /** Remaining cooldown ticks: [first art (Q), relic, second art (R), sigil]. */
   abilityCd: [number, number, number, number];
   /** Buttons of the last processed frame — abilities fire on press edge. */
@@ -3062,6 +3071,7 @@ export class GameServer {
       lastDodgeSeq: -999,
       drawTicks: 0,
       combo: freshCombo(),
+      attackBufferedUntilTick: 0,
       abilityCd: [0, 0, 0, 0],
       prevButtons: 0,
       castFreezeUntilTick: 0,
@@ -14756,6 +14766,7 @@ export class GameServer {
       stage,
       len,
       grace: Math.max(0, player.combo.graceUntilTick - this.tickCount),
+      run: player.combo.run,
     });
   }
 
@@ -23456,6 +23467,13 @@ export class GameServer {
         pos.y = dashed.y;
         moved = true;
         player.drawTicks = 0; // dodging lets the string down
+        // THE DODGE-WEAVE (combat v2): the fired dodge cuts the rest
+        // of the swing recovery to a floor — the combo track never
+        // resets on a dodge, so slide-out, cut back in IS the string.
+        // Mirrored client-side off the same seq-gated dodge law.
+        if (player.attackCooldown > DODGE_CANCEL_FLOOR_TICKS) {
+          player.attackCooldown = DODGE_CANCEL_FLOOR_TICKS;
+        }
         // THE DRAWN BREATH's bail-out: the dodge that FIRES breaks the
         // breath (mirrored client-side off the same seq-gated law, so
         // a dodge press on cooldown never lies to the bar).
@@ -23478,13 +23496,31 @@ export class GameServer {
         player.action?.kind === 'channel';
       const attackHeld =
         hasButton(frame.buttons, InputButton.Attack) && !stillCasting && !weaponsAway;
-      if (attackHeld) {
+      // THE HELD INTENT: a tap landing in the tail of recovery buffers
+      // ONE swing that fires at ready — rhythm taps stop being eaten.
+      // Self-expiring (armBuffer), so no break site cleans it up; the
+      // bow's draw machine keeps its own charge clock instead.
+      if (
+        pressed & InputButton.Attack &&
+        !stillCasting &&
+        !weaponsAway &&
+        style !== 'archery'
+      ) {
+        const armed = armBuffer(player.attackCooldown, this.tickCount);
+        if (armed) player.attackBufferedUntilTick = armed;
+      }
+      const attackBuffered =
+        this.tickCount <= player.attackBufferedUntilTick && !stillCasting && !weaponsAway;
+      if (attackHeld || attackBuffered) {
         this.standUp(eid, player, pos);
         this.dismount(eid, player); // no mounted combat, ever
       }
       if (style === 'archery') {
         this.tickBowDraw(eid, player, equipped!, attackHeld, frame.aim, frame.seq);
-      } else if (attackHeld) {
+      } else if (attackHeld || attackBuffered) {
+        // The buffered press spends itself the moment the hand is free
+        // (fires with the LATEST aim — the newest intent wins).
+        if (player.attackCooldown === 0) player.attackBufferedUntilTick = 0;
         this.tryPlayerAttack(eid, player, frame.aim, frame.seq);
       }
       frames++;

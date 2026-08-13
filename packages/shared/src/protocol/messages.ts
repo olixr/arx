@@ -980,6 +980,8 @@ export interface S2CCombo {
   len: number;
   /** Ticks from now that the string stays alive. */
   grace: number;
+  /** THE RUN: consecutive swings in unbroken rhythm, across wraps. */
+  run: number;
 }
 
 /**

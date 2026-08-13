@@ -4076,6 +4076,7 @@ export class Renderer {
 
     this.drawBuildGhost();
     this.drawActionProgress(game);
+    this.drawComboBeat(game);
     this.drawFloaties(game);
     this.drawLootLabels(game);
     this.drawHpBar(game);
@@ -27075,7 +27076,11 @@ export class Renderer {
         x: own.x,
         y: own.y,
         dir: game.aim,
-        pose: game.ownPose,
+        // THE PREDICTED BLOW: the own body swings on the press edge —
+        // the predicted pose value arrives early, the server's byte
+        // confirms with the same value, and the pose-change anim clock
+        // therefore starts exactly once, at the press.
+        pose: game.effectiveOwnPose(now),
         hpPct: 255,
         name: game.ownName,
         isOwn: true,
@@ -35812,6 +35817,45 @@ export class Renderer {
     ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
     ctx.fillStyle = fill;
     ctx.fillRect(bx, by, Math.max(2, bw * frac), bh);
+  }
+
+  /**
+   * THE SPOKEN BEAT's face: stage pips under the own body while a
+   * string is alive. Filled pips = beats already swung, the next pip
+   * ghosted; the whole row is the GRACE EMBER — it burns down with the
+   * window and fades out as the string dies. THE RUN warms the pips
+   * once the rhythm holds past one full string. Same canvas dialect as
+   * the cast bar above it; single-beat lanes (len 1) stay silent.
+   */
+  private drawComboBeat(game: ClientGame): void {
+    const combo = game.ownCombo;
+    if (!combo || combo.len < 2 || game.ownEid === null) return;
+    const now = performance.now();
+    const left = combo.graceUntilMs - now;
+    if (left <= 0) return;
+    const total = Math.max(1, combo.graceUntilMs - combo.bornMs);
+    // The ember: full presence while the string is hot, a fade across
+    // the last 35% of the window so the die-off reads as cooling.
+    const frac = left / total;
+    const alpha = Math.min(1, frac / 0.35);
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const own = game.predictor.renderPos();
+    const p = this.liftedWTS(own.x, own.y);
+    const gap = s * 0.16;
+    const r = Math.max(2, s * 0.045);
+    const cy = p.y + s * 0.62; // under the feet, clear of the body
+    const cx0 = p.x - ((combo.len - 1) * gap) / 2;
+    // The run warms the lit pips from ember-gold toward white heat.
+    const warm = Math.min(1, Math.max(0, combo.run - combo.len) / (combo.len * 2));
+    const lit = `rgba(${232 + Math.round(warm * 23)}, ${182 + Math.round(warm * 60)}, ${76 + Math.round(warm * 140)}, ${0.9 * alpha})`;
+    const dim = `rgba(232, 182, 76, ${0.28 * alpha})`;
+    for (let i = 0; i < combo.len; i++) {
+      ctx.beginPath();
+      ctx.arc(cx0 + i * gap, cy, i <= combo.stage ? r : r * 0.72, 0, Math.PI * 2);
+      ctx.fillStyle = i <= combo.stage ? lit : dim;
+      ctx.fill();
+    }
   }
 
   private drawFloaties(game: ClientGame): void {

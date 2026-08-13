@@ -121,6 +121,11 @@ test('onehand string: stages, clocks, finisher sweep, and the spoken beat', () =
     [0, 1, 2],
     'the whole string spoken, in order',
   );
+  assert.deepEqual(
+    sent.map((m) => m.run),
+    [1, 2, 3],
+    'THE RUN spoken with every beat',
+  );
   assert.ok(
     sent.every((m) => m.t === 'combo' && m.len === COMBO_STAGES),
     'every beat names the string length',

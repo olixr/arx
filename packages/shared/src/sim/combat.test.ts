@@ -131,7 +131,7 @@ test('ONE RHYTHM: agrees with the legacy stage law under the same inputs', async
   const { advanceCombo, nextComboStage, COMBO_STAGES } = await import('./combat.js');
   for (let prev = 0; prev < COMBO_STAGES; prev++) {
     for (const within of [true, false]) {
-      const track = { stage: prev, graceUntilTick: within ? 10 : 0, weaponId: 'falchion' };
+      const track = { stage: prev, graceUntilTick: within ? 10 : 0, weaponId: 'falchion', run: 1 };
       assert.equal(
         advanceCombo(track, 'falchion', 5),
         nextComboStage(prev, within),
@@ -139,6 +139,62 @@ test('ONE RHYTHM: agrees with the legacy stage law under the same inputs', async
       );
     }
   }
+});
+
+test('THE RUN: counts unbroken rhythm across wraps, dies with the string', async () => {
+  const { advanceCombo, freshCombo, resetCombo } = await import('./combat.js');
+  const track = freshCombo();
+  const swing = (now: number) => {
+    advanceCombo(track, 'falchion', now);
+    track.graceUntilTick = now + 20;
+  };
+  swing(0);
+  swing(10);
+  swing(20); // finisher
+  swing(30); // wraps into the next opener — the run flows through
+  assert.equal(track.run, 4, 'the wrap keeps the run alive');
+  swing(100); // rest past grace
+  assert.equal(track.run, 1, 'a dropped string starts the run over');
+  resetCombo(track);
+  assert.equal(track.run, 0, 'a reset kills the run outright');
+});
+
+test('THE HELD INTENT: the buffer arms only in the tail of recovery', async () => {
+  const { armBuffer, ATTACK_BUFFER_TICKS, BUFFER_FIRE_SLACK_TICKS } = await import('./combat.js');
+  assert.equal(armBuffer(0, 100), 0, 'a free hand needs no buffer — the swing just goes');
+  assert.equal(armBuffer(-3, 100), 0, 'past-ready is a free hand too');
+  assert.equal(
+    armBuffer(ATTACK_BUFFER_TICKS + 1, 100),
+    0,
+    'a press too early to buffer dies unarmed',
+  );
+  const armed = armBuffer(5, 100);
+  assert.equal(armed, 100 + 5 + BUFFER_FIRE_SLACK_TICKS, 'fires at ready, expires on the slack');
+  assert.ok(
+    armBuffer(ATTACK_BUFFER_TICKS, 100) > 0,
+    'the whole authored window arms',
+  );
+});
+
+test('the mirror helpers agree with the lane constants forever', async () => {
+  const {
+    finisherRecoveryMult,
+    comboGraceTicksFor,
+    FINISHER_RECOVERY_MULT,
+    TWOHAND_FINISHER_RECOVERY_MULT,
+    HEAVY_BOLT_RECOVERY_MULT,
+    COMBO_GRACE_TICKS,
+    TWOHAND_COMBO_GRACE_TICKS,
+  } = await import('./combat.js');
+  // The client swing mirror predicts with these helpers while the
+  // server lanes read the constants directly — pinned equal so the
+  // two can never drift apart.
+  assert.equal(finisherRecoveryMult('onehand'), FINISHER_RECOVERY_MULT);
+  assert.equal(finisherRecoveryMult('twohand'), TWOHAND_FINISHER_RECOVERY_MULT);
+  assert.equal(finisherRecoveryMult('arx'), HEAVY_BOLT_RECOVERY_MULT);
+  assert.equal(comboGraceTicksFor('onehand'), COMBO_GRACE_TICKS);
+  assert.equal(comboGraceTicksFor('twohand'), TWOHAND_COMBO_GRACE_TICKS);
+  assert.equal(comboGraceTicksFor('arx'), COMBO_GRACE_TICKS);
 });
 
 test('THE STRIKE CLOCK: every pose hold outlives its choreography', async () => {

@@ -140,10 +140,17 @@ export interface ComboTrack {
   graceUntilTick: number;
   /** The weapon id that owns the live string; null = no string. */
   weaponId: string | null;
+  /**
+   * THE RUN: consecutive swings in unbroken rhythm, across string
+   * wraps (a finisher that flows into the next opener keeps the run).
+   * Pure feedback in Phase 2 (the beat UI's streak); Phase 3's windup
+   * axis gives it teeth.
+   */
+  run: number;
 }
 
 export function freshCombo(): ComboTrack {
-  return { stage: 0, graceUntilTick: 0, weaponId: null };
+  return { stage: 0, graceUntilTick: 0, weaponId: null, run: 0 };
 }
 
 /**
@@ -164,6 +171,7 @@ export function advanceCombo(
   const stage = withinGrace ? (track.stage + 1) % stages : 0;
   track.stage = stage;
   track.weaponId = weaponId;
+  track.run = withinGrace ? track.run + 1 : 1;
   return stage;
 }
 
@@ -177,6 +185,55 @@ export function resetCombo(track: ComboTrack): void {
   track.stage = 0;
   track.graceUntilTick = 0;
   track.weaponId = null;
+  track.run = 0;
+}
+
+// ------------------------------------------------------- the spoken beat
+
+/**
+ * THE HELD INTENT (combat v2, Phase 2): a press that lands in the tail
+ * of a recovery buffers ONE swing that fires the moment the hand is
+ * ready — taps in rhythm stop being eaten by the cooldown gate. One
+ * law, both sides: the server arms in ticks, the client mirror in
+ * input seq (same units by construction).
+ */
+/** A press this close to ready arms the buffer (ticks). */
+export const ATTACK_BUFFER_TICKS = 8;
+/** A buffered press fires within this of ready, or dies unspent. */
+export const BUFFER_FIRE_SLACK_TICKS = 2;
+
+/**
+ * Arm the one-deep buffer: returns the instant the buffered press
+ * expires (fire-by), or 0 when the press is too early to buffer (or
+ * the hand is already free — no buffer needed, the swing just goes).
+ */
+export function armBuffer(remainingCooldown: number, now: number): number {
+  if (remainingCooldown <= 0 || remainingCooldown > ATTACK_BUFFER_TICKS) return 0;
+  return now + remainingCooldown + BUFFER_FIRE_SLACK_TICKS;
+}
+
+/**
+ * THE DODGE-WEAVE: a dodge that FIRES cuts the rest of the swing
+ * recovery to this floor — the string stays alive (grace untouched,
+ * the track never resets on a dodge) and the next cut follows the
+ * slide. The floor keeps one honest beat of commitment; the dodge's
+ * own seq cooldown (1.2s) and its movement requirement bound the
+ * cadence gain, and the baseline hold-flow cadence is unchanged.
+ */
+export const DODGE_CANCEL_FLOOR_TICKS = 3;
+
+/** The finisher's recovery multiplier for a basic-attack lane. */
+export function finisherRecoveryMult(style: 'onehand' | 'twohand' | 'arx'): number {
+  return style === 'twohand'
+    ? TWOHAND_FINISHER_RECOVERY_MULT
+    : style === 'arx'
+      ? HEAVY_BOLT_RECOVERY_MULT
+      : FINISHER_RECOVERY_MULT;
+}
+
+/** The grace window a basic-attack lane stamps after each swing. */
+export function comboGraceTicksFor(style: 'onehand' | 'twohand' | 'arx'): number {
+  return style === 'twohand' ? TWOHAND_COMBO_GRACE_TICKS : COMBO_GRACE_TICKS;
 }
 
 // ------------------------------------------------------ the strike clock
