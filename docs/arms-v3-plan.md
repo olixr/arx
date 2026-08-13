@@ -266,11 +266,25 @@ an equipment swap is inherently instantaneous; a WieldFrame OBJECT
 (vs the fenced pipeline) was judged not worth the churn once the
 fence + census gave the same guarantee.
 
-**Phase 3 — THE HONEST DEPTH.** One projection function; elliptical
-hand orbits, aim anchor, and finisher paths; the trail's K becomes the
-same K; bow draw pose rides the ellipse. THE LIFELINE + THE CROWN
-NEVER DIGS land here — this is the phase that fixes staff-run-S,
-sword-run-S, and both broken draws.
+**Phase 3 — THE HONEST DEPTH.** **SHIPPED 2026-08-12 (f3b65e2).**
+One ground K everywhere (projectStrike's private 0.7 retired; shared
+softFore with named per-context floors 0.8/0.85); projectAim carries
+the ellipse (raw px/py for reaches, unit ux/uy for directions) and
+feeds thrust/ice fists + marks, cast punch, finisher streaks, the
+great smash, and the whole bow-draw rig (anchor, haul, recoil,
+tremble, painter angle + BOW_PLANE_SOFT fore); trails ride the same
+K. THE LIFELINE (lifelineYaw: eased-side yaw bias, zero at profile,
+mirror-true, continuity-pinned) keeps sword/staff carries diagonal at
+the camera lines; THE CROWN NEVER DIGS (STAFF_CROWN_GUARD) lifts the
+south sprint's crown to the waist. As-built decisions: the
+strike-stage ORBITS stay screen circles — the schools' cut planes
+are facing-dependent authored art and Part 4 makes the choreography
+law; K stays 0.52 (the shield's user-approved ground; the camera's
+true yScale is 0.6 — a deliberate stylization gap, documented);
+greatWield untouched (its plane law is Phase 4's mirror rebuild);
+work cycles untouched (Part 4). Verified by an exact per-row change
+map (unchanged rows at literal 0.0%) + all-facings cell judgment +
+re-pinned law tests.
 
 **Phase 4 — THE READABLE EIGHT.** The banded flip resolver with
 hysteresis for every layer decision; THE SILHOUETTE PEEK lanes per
