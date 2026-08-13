@@ -7,10 +7,15 @@
 // and every depth/side hysteresis runs exactly as in game. Levers:
 //   ?rows=a-b   draw only sheet rows a..b (screenshot banding)
 //   ?gait=walk  run rows amble at walk speed instead of sprinting
-//   ?det=1      DETERMINISTIC mode: fixed 60Hz timestep on a frame-
-//               counted clock, halting after 240 frames — refactor
-//               passes byte-compare before/after screenshots with it
-//               (the "zero pixels changed" proof).
+//   ?det=1      DETERMINISTIC mode: all 240 fixed 60Hz steps run
+//               SYNCHRONOUSLY on the first frame (every step drawn, so
+//               the caller-owned memories evolve exactly as live) and
+//               the settled 4s state stays on canvas — headless
+//               capture fires at "page idle", which is only ~4 rAF
+//               frames in (measured), so an async det loop would hand
+//               it an unsettled gait. Refactor passes byte-compare
+//               before/after screenshots with this (the "zero pixels
+//               changed" proof); the frame stamp says what you got.
 import { LegSolver, drawHumanoid, type RigPose } from '../render/rig.js';
 import { PoseState } from '@arx/shared';
 
@@ -126,9 +131,13 @@ let frameIdx = 0;
 let lastNow = 0;
 
 function frame(now: number): void {
-  if (DET) now = frameIdx * (1000 / 60);
-  const dt = DET ? 1 / 60 : lastNow ? Math.min(0.05, (now - lastNow) / 1000) : 0.016;
+  const dt = lastNow ? Math.min(0.05, (now - lastNow) / 1000) : 0.016;
   lastNow = now;
+  drawSheet(now, dt);
+  requestAnimationFrame(frame);
+}
+
+function drawSheet(now: number, dt: number): void {
   const nRows = rowTo - rowFrom + 1;
   canvas.width = COLS * CW;
   canvas.height = nRows * CH;
@@ -209,7 +218,28 @@ function frame(now: number): void {
     ctx.textAlign = 'center';
     ctx.fillText(f.label, homeX, homeY - 1.62 * S);
   });
+  // The stamp PROVES which sim state a screenshot captured (headless
+  // capture timing is not obvious — measured at ~4 rAF frames in).
+  if (DET) {
+    ctx.fillStyle = '#e8e4d8';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`det frame ${frameIdx}`, 8, 20);
+  }
   frameIdx++;
-  if (!DET || frameIdx < DET_FRAMES) requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+
+if (DET) {
+  // All 240 steps synchronously, every step drawn — the caller-owned
+  // memories (side ease, elbows, layer hysteresis) evolve exactly as
+  // they would live, and the settled 4s state waits on the canvas for
+  // however late (or early) the capture fires. Deferred into the first
+  // rAF: running it at module init blocked the LOAD event and headless
+  // capture fired on a blank page; inside a frame callback the busy
+  // main thread instead makes the capture wait for completion.
+  requestAnimationFrame(() => {
+    for (let i = 0; i < DET_FRAMES; i++) drawSheet(i * (1000 / 60), 1 / 60);
+  });
+} else {
+  requestAnimationFrame(frame);
+}

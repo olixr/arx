@@ -4059,7 +4059,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     reach = (0.27 + 0.035 * Math.sin(u * Math.PI * 4)) * s;
     lean = 0.03 * Math.sin(u * Math.PI * 2 + 0.8) * Math.sign(fx || 1);
   }
-  const armY = hipY - ARM_RING_DROP_S * s;
+  // THE ARM RING RIDES THE SQUASH (arms-v3 Phase 1, the one flagged
+  // pixel change): shoulderY has always compensated the fake-3D width
+  // squash with hScale — the torso reads TALLER when it narrows at the
+  // camera-line facings — but the hand-orbit line hung at a fixed drop,
+  // so the shoulder→hand span quietly stretched ~6% on every N/S
+  // facing. Both ends of the arm frame now agree about the squash.
+  const armY = hipY - ARM_RING_DROP_S * s * hScale;
   const shoulderY = hipY - th * hScale + SHOULDER_Y_DROP_S * s;
   const mainAngle = rig.dir + swingOffset;
   // The free arm counter-swings a melee strike instead of floating on
