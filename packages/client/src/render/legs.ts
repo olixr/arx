@@ -54,11 +54,13 @@
  * every frame and the look-creator preview samples it directly. A
  * profile must COMMIT to its foreshortening: the old 0.91 floor left
  * the torso 87% of its frontal width side-on, which is why an E/W
- * stance read as a front-facing card with a turned head. A real chest
- * is ~3/4 as deep as it is wide, so the profile floor now lands there.
+ * stance read as a front-facing card with a turned head. The user's
+ * calibration: at MOST a 15-20% squish against the frontal width —
+ * the first cut (0.83, ~21%) turned the head profile too dramatic.
+ * 0.88 lands at ~16% and keeps the side read.
  */
 export function yawSquash(horiz: number): number {
-  return 1 + 0.05 * (1 - horiz) - 0.22 * horiz;
+  return 1 + 0.05 * (1 - horiz) - 0.17 * horiz;
 }
 
 export interface LegSpec {

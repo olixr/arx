@@ -5683,6 +5683,22 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // back-carry keeps its front verdict, and the profile flip
   // (mainBehind) keeps its own torso-relative lanes.
   const gearBehindLegs = awayDeep && !greatRestFront;
+  // THE HEAD SITS UPON THE SHOULDERS: at a settled rest with EMPTY
+  // hands, the hanging arms belong UNDER the helm — a mantled hood
+  // drapes over the arm root, a sleeve never juts over the head's own
+  // cloth. Armed, striking, or aiming, the weapon pair keeps the old
+  // front layer (the boldest thing on screen; an overhead swing must
+  // cross in front of the face), so the flip rides the settle band
+  // and the empty fist — it can never land mid-swing. The shoulder
+  // caps still paint LAST either way: head upon shoulders, caps upon
+  // the mantle.
+  const headOverArms =
+    settleHalf &&
+    weapon === undefined &&
+    !offBlade &&
+    !weaponBehind &&
+    !mainBehind &&
+    !gearBehindLegs;
   if (gearBehindLegs && !mainBehind) {
     if (weaponBehind) {
       paintWeapon();
@@ -5936,6 +5952,22 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       backK,
       hurt: rig.hurt,
     });
+  }
+
+  // ---- THE HEAD SITS UPON THE SHOULDERS: at a settled, empty-handed
+  // rest the torso frame closes here so the hanging arms can paint in
+  // world space UNDER everything that follows — the head stack and
+  // the helm whose mantle drapes onto the shoulders — then the frame
+  // re-opens with the exact same matrix for the head. The caps still
+  // paint last at the tail (head upon shoulders, caps upon mantle).
+  if (headOverArms) {
+    ctx.restore();
+    if (offFront) paintOffArm();
+    paintMainArm();
+    ctx.save();
+    ctx.translate(rig.x, hipY);
+    if (lean !== 0) ctx.rotate(lean);
+    ctx.scale(wS, hScale);
   }
 
   // ---- head (inside the squash frame so turning carries it too).
@@ -6555,8 +6587,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // in which case the NEAR (off) arm is the foremost thing instead.
   // Facing the camera the off arm joins the front layer too — under
   // the main pair, so the weapon stays the boldest thing on screen.
-  if (offFront) paintOffArm();
-  if (!weaponBehind && !mainBehind) {
+  if (offFront && !headOverArms) paintOffArm();
+  if (!weaponBehind && !mainBehind && !headOverArms) {
     paintWeapon();
     paintMainArm();
   }
