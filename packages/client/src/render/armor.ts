@@ -16409,54 +16409,51 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   }
 
   if (st.kind === 'guildcowl') {
-    // THE MASTER'S PEAK — cutpurse's head, the guild's own cut. Every
-    // hood in the wardrobe sweeps BACK; the guildmaster's breaks
-    // FORWARD: a hard beaked peak jutting past the brow like a bird
-    // of prey considering a purse. The peak's underside throws the
-    // folded dark — the deepest shadow in the opening lives at the
-    // LEADING corner, cast by the beak itself. Below the eye line the
-    // kerchief claims everything and hangs to a point past the hem,
-    // stamped once with the guild's coin. The one vanity: a brass
-    // bead at the very tip of the beak, catching light it has no
-    // business catching.
+    // THE MASTER'S DROOP — cutpurse's head, the guild's own cut: a
+    // hard planar hood whose crown falls into a DROOPED POINT off
+    // the trailing crown — a liripipe with the weight of good cloth,
+    // trailing the facing the way courierhood's peak streams and
+    // shadowcowl's blade sweeps (a point that LEADS the face reads
+    // as a horn; the caught bug). Below the eye line the kerchief
+    // claims everything and hangs to a point past the hem, stamped
+    // once with the guild's coin. The one vanity: a brass bead at
+    // the droop's very tip, catching light it has no business
+    // catching.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.72 * (1 - 0.5 * t);
     const oTop = headY - hh * 0.62;
     const oBot = headY + hh * 0.84;
-    // The beak: forward of the brow and HOOKED — the tip drops below
-    // its own root line like a raptor considering the ground. THE
-    // BEAK LIVES ON THE TURN: seen frontal it is FORESHORTENED (a
-    // modest peak past the hood edge); the turn draws it out to the
-    // full blade at profile — a device locked to one length reads
-    // as a sticker at every other facing.
-    const bkLen = 1.0 + t * 1.3;
-    const peakX = headX + lead * hw * (1.02 + bkLen);
-    const peakY = headY - hh * (0.52 + t * 0.04);
-    // The beak's own spine: points at fraction k between the brow
-    // root and the tip, so every facet stretches WITH the facing.
-    const bkX = (k: number): number => headX + lead * hw * 1.02 + (peakX - (headX + lead * hw * 1.02)) * k;
-    const apexX = headX - lead * hw * 0.12;
+    // THE DROOPED POINT LIVES ON THE TURN: foreshortened frontal (a
+    // short peek past the trailing crown), drawn out to the full
+    // droop at profile; the tip falls well BELOW its own root —
+    // drooped, never wind-drawn.
+    const bkLen = 0.55 + t * 1.15;
+    const rootX = headX - lead * hw * 0.6;
+    const rootY = headY - hh * 1.16;
+    const peakX = headX - lead * hw * (0.6 + bkLen);
+    const peakY = headY - hh * (0.34 - t * 0.08);
+    // The droop's own spine: fractions root→tip so the facets
+    // stretch WITH the facing.
+    const bkXd = (k: number): number => rootX + (peakX - rootX) * k;
+    const bkYd = (k: number): number => rootY + (peakY - rootY) * k;
+    const apexX = headX + lead * hw * 0.1;
     const apexY = headY - hh * 1.38;
     const shell = () => {
       ctx.moveTo(headX + lead * hw * 1.18, headY + hh * 1.14);
       ctx.lineTo(headX + lead * hw * 1.26, headY + hh * 0.14);
-      // The jaw line steps IN under the beak — the underbite of the
-      // silhouette that makes the peak read as an overhang.
-      ctx.lineTo(headX + lead * hw * 1.02, headY - hh * 0.4);
-      // THE BEAK: the under-edge runs out level, then the tip HOOKS
-      // down past it; the top facet rakes back up to the brow root —
-      // three hard lines, a bird of prey's profile.
-      ctx.lineTo(bkX(0.72), headY - hh * 0.38);
+      // A clean leading edge up to the jutting brow ledge — the
+      // face side carries the arch, the crown carries the droop.
+      ctx.lineTo(headX + lead * hw * 1.06, headY - hh * 0.5);
+      ctx.lineTo(headX + lead * hw * 1.12, headY - hh * 0.88);
+      // Crown: one clean rake to the apex, then the trailing crown
+      // breaks into THE DROOPED POINT — out, DOWN, and back under
+      // itself into the drape.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.52, headY - hh * 1.3, apexX, apexY);
+      ctx.lineTo(rootX, rootY);
       ctx.lineTo(peakX, peakY);
-      ctx.lineTo(headX + lead * hw * 0.86, headY - hh * 1.06);
-      // Crown: one clean rake to a low apex, then the trailing drape.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.4, headY - hh * 1.34, apexX, apexY);
-      // The trailing crown line stays HIGH past the skull's shoulder
-      // — sagging straight to the drape lets a skin sliver through.
-      ctx.lineTo(headX - lead * hw * 0.72, headY - hh * 1.12);
-      ctx.lineTo(headX - lead * hw * (1.14 + t * 0.28), headY - hh * 0.56);
+      ctx.quadraticCurveTo(headX - lead * hw * (0.98 + t * 0.2), headY - hh * 0.66, headX - lead * hw * (1.14 + t * 0.28), headY - hh * 0.5);
       ctx.quadraticCurveTo(headX - lead * hw * (1.28 + t * 0.3), headY + hh * 0.28, headX - lead * hw * 1.24, headY + hh * 1.14);
       // The mantle hem breaks in two swept points.
       ctx.lineTo(headX - lead * hw * 0.5, headY + hh * 1.32);
@@ -16465,7 +16462,8 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.lineTo(headX + lead * hw * 0.64, headY + hh * 1.18);
       ctx.closePath();
     };
-    // The shrine arch under the beak — pointed, leaning with the face.
+    // The shrine arch under the brow ledge — pointed, leaning with
+    // the face.
     const opening = () => {
       ctx.moveTo(cx - ohw, oBot);
       ctx.lineTo(cx - ohw, headY - hh * 0.1);
@@ -16490,25 +16488,24 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       // Trailing-half shade, then FOLDED planes on crease lines.
       ctx.fillStyle = shade(st.color, -13);
       ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.7, hw * 2.4, hh * 3.4);
-      // The beak's TOP facet is the lit plane — the light lands on
-      // the overhang first, the whole length of the blade. Facets
-      // ride the beak's own spine so they stretch WITH the facing.
-      ctx.fillStyle = shade(st.color, 14);
+      // The droop's LIT top plane, root to tip — the light lands on
+      // the point's upper edge the whole way out; facets ride the
+      // droop's own spine so they stretch WITH the facing.
+      ctx.fillStyle = shade(st.color, 12);
       ctx.beginPath();
-      ctx.moveTo(peakX, peakY);
-      ctx.lineTo(headX + lead * hw * 0.86, headY - hh * 1.04);
-      ctx.lineTo(headX + lead * hw * 0.68, headY - hh * 0.84);
-      ctx.lineTo(bkX(0.52), headY - hh * 0.52);
+      ctx.moveTo(rootX, rootY);
+      ctx.lineTo(peakX, peakY);
+      ctx.lineTo(bkXd(0.72), bkYd(0.72) + hh * 0.16);
+      ctx.lineTo(rootX - lead * hw * 0.02, rootY + hh * 0.22);
       ctx.closePath();
       ctx.fill();
-      // The beak's UNDER facet: the deepest plane on the head — the
-      // hook's belly, brow root to tip.
-      ctx.fillStyle = shade(st.color, -28);
+      // The under-belly: the deepest plane on the head — the droop's
+      // shadowed fold, tip back into the drape.
+      ctx.fillStyle = shade(st.color, -26);
       ctx.beginPath();
       ctx.moveTo(peakX, peakY);
-      ctx.lineTo(bkX(0.52), headY - hh * 0.5);
-      ctx.lineTo(bkX(0.06), headY - hh * 0.44);
-      ctx.lineTo(bkX(0.72), headY - hh * 0.38);
+      ctx.lineTo(headX - lead * hw * (1.1 + t * 0.24), headY - hh * 0.5);
+      ctx.lineTo(bkXd(0.45), bkYd(0.45) + hh * 0.2);
       ctx.closePath();
       ctx.fill();
       // One crease down the crown rake.
@@ -16538,12 +16535,14 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.lineTo(cx - ohw, headY + hh * 0.1);
         ctx.closePath();
         ctx.fill();
-        // The deeper leading wedge under the beak's own corner.
+        // The deeper wedge lives in the TRAILING corner — the
+        // turned-away side of the void (the leading corner takes
+        // what light the arch lets in).
         ctx.fillStyle = '#181117';
         ctx.beginPath();
-        ctx.moveTo(cx + lead * ohw * 0.15, oTop);
-        ctx.lineTo(cx + lead * ohw, oTop);
-        ctx.lineTo(cx + lead * ohw, headY - hh * 0.1);
+        ctx.moveTo(cx - lead * ohw * 0.15, oTop);
+        ctx.lineTo(cx - lead * ohw, oTop);
+        ctx.lineTo(cx - lead * ohw, headY - hh * 0.1);
         ctx.closePath();
         ctx.fill();
         // The void's inner rim: one lighter step just inside the
@@ -16620,28 +16619,58 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.lineTo(cx + ohw * 0.86, oBot - hh * 0.04);
         ctx.stroke();
       } else {
-        // Back read: crown seam, folded panels, and the guild tail —
-        // a short pointed drop with a brass tag at the tip.
-        ctx.fillStyle = shade(st.color, -10);
-        ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.88);
-        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.88);
-        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.88);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = st.trim;
-        ctx.fillRect(headX + lead * hw * 0.1 - headR * 0.05, headY + hh * 1.78, headR * 0.1, headR * 0.12);
+        // Back read: THE DROOP OWNS THE BACK — from behind, the
+        // liripipe is the whole story: it falls from the trailing
+        // crown, sweeps to the center seam and hangs past the hem,
+        // the guild's bead at its tip. Crown seam first.
         ctx.strokeStyle = shade(st.color, -24);
         ctx.lineWidth = Math.max(1, s * 0.012);
         ctx.beginPath();
         ctx.moveTo(headX, headY - hh * 1.22);
         ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.84);
         ctx.stroke();
+        // The fall: the point hangs OVER the hood's shaded back, so
+        // it catches the light the back cannot — base value on the
+        // body, a deep folded tail, one dark seam line to cut it
+        // free of the cloth beneath.
+        ctx.fillStyle = st.color;
+        ctx.beginPath();
+        ctx.moveTo(rootX, rootY + hh * 0.08);
+        ctx.quadraticCurveTo(headX - lead * hw * 0.58, headY - hh * 0.16, headX - lead * hw * 0.22, headY + hh * 1.0);
+        ctx.lineTo(headX - lead * hw * 0.02, headY + hh * 1.7);
+        ctx.lineTo(headX + lead * hw * 0.18, headY + hh * 0.98);
+        ctx.quadraticCurveTo(headX - lead * hw * 0.12, headY - hh * 0.28, rootX + lead * hw * 0.28, rootY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -28);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(rootX, rootY + hh * 0.08);
+        ctx.quadraticCurveTo(headX - lead * hw * 0.58, headY - hh * 0.16, headX - lead * hw * 0.22, headY + hh * 1.0);
+        ctx.lineTo(headX - lead * hw * 0.02, headY + hh * 1.7);
+        ctx.stroke();
+        ctx.fillStyle = shade(st.color, -18);
+        ctx.beginPath();
+        ctx.moveTo(headX - lead * hw * 0.22, headY + hh * 1.0);
+        ctx.lineTo(headX - lead * hw * 0.02, headY + hh * 1.7);
+        ctx.lineTo(headX + lead * hw * 0.18, headY + hh * 0.98);
+        ctx.closePath();
+        ctx.fill();
+        // The bead hangs at the fall's tip.
+        if (st.coinpin) {
+          const flare2 = f.nowMs % 3400 < 240;
+          ctx.fillStyle = flare2 ? shade(st.coinpin.color, 34) : st.coinpin.color;
+          ctx.beginPath();
+          ctx.arc(headX - lead * hw * 0.02, headY + hh * 1.78, headR * 0.062, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
-      // THE BEAD ON THE BEAK: brass at the very tip, flaring on the
-      // rare clock — the master announces nothing, and yet.
+      // THE BEAD ON THE DROOP: brass at the very tip, flaring on the
+      // rare clock — the master announces nothing, and yet. Front
+      // and side facings only: the back read hangs its own bead at
+      // the fall's tip.
       if (st.coinpin && front) {
-        const gx = peakX - lead * hw * 0.09;
+        const gx = peakX + lead * hw * 0.08;
         const gy = peakY - hh * 0.04;
         const flare = f.nowMs % 3400 < 240;
         ctx.fillStyle = flare ? shade(st.coinpin.color, 34) : st.coinpin.color;
