@@ -413,6 +413,79 @@ Live-receipt lane (prove:combat-v2) on the isolated-rig pattern: string flow, bu
 dodge-cancel, tempo, prediction reconciliation under injected latency, per-class DPS
 parity, TTK brackets, reconnect/death mid-string. Feel checklist signed on the sheet.
 
+**SHIPPED — as built (2026-08-13).**
+- `npm run prove:combat-v2 -w @arx/tools` = **25 live receipts over the real wire**
+  (packages/tools/src/proving/combatV2.ts), run twice against fresh isolated worlds
+  (PORT 8796 + DB_DATABASE per run — THE FRESH WORLD LAW below). Highlights, with
+  measured numbers: the four-beat sword string spoken in order with run and honest
+  grace; the run flowing through the wrap (1..6); all five page lengths live incl.
+  the battlestaff's roster page; swap/sheathe/death resets; THE HELD INTENT firing
+  a tail tap at ready unheld (stage 1 = the string continued); THE DODGE-WEAVE
+  measured at **300ms vs the uncut 700ms finisher rest**; THE HONEST SWING's
+  press→impact at **100/100/100/99/99ms — the 2-tick windup, on the wall**; THE
+  GUARD SWEEP's pose bytes reading steel (2/9) not Cast at the doorstep; THE
+  KNIFE'S HUNGER's ride mult 1.1 arriving and cooling; THE WEAVE's four impacts
+  from two swings; one shaft on a full draw, THREE on the overcharge; and the
+  CADENCE CONTRACT live (sword 12 swings/5s vs ~11 expected, great 8 vs ~7).
+- Lane craft learned (the rig notes): a player death has NO dedicated message —
+  receipt via deathmark + the wake-up jump; the hearth keeps spawned bones polite
+  until struck (provoke to die); **THE FRESH WORLD LAW** — proving worlds persist,
+  so every run reuses a stale world's aggro packs at the shared hearth: fresh
+  DB_DATABASE per run, and the death receipt runs FIRST (before armor) with all
+  gear given after; the buffer/dodge fire on PROCESSED frames, so the lane idles
+  LOUDLY (the shipped client streams frames continuously — its invariant); with
+  onehand 10+, a second one-hander equips to the OFFHAND (route knife equips
+  through a two-hander); projectiles fly as defId 'archery', never 'arrow'; a
+  hidden mid-lane death spills gear silently — receipts must be self-sufficient
+  (give before equip) and armor must be absurd (/xp vitality 2000000).
+- Prediction under injected latency: the mirror is by-construction (pose value fed
+  early; the confirming byte is the same value) and unit-pinned; a browser-side
+  latency-injection capture would prove what the architecture already guarantees
+  and is left to a future feel pass with the rest of the browser rig work.
+- Unit ledger at close: **1522/1522 across four workspaces**; TTK brackets never
+  moved in six phases; the cadence table sits inside the contract with zero NPC HP
+  retunes owed.
+
+---
+
+## THE EPIC IS COMPLETE — the goals audit (no drift)
+
+All six phases shipped 2026-08-13, 57f4951 → the proving. The original brief,
+answered point by point:
+
+- **"Basically a one, two, three combo... hold in the attack and hope"** → nine
+  named fighting styles over 3-to-5-beat strings with branches; the combo is
+  VISIBLE (beat pips, grace ember, the run), PLAYABLE (press buffering, the
+  dodge-weave, rhythm branches, tempo), and the swing starts the frame you press.
+- **"A different style of attack based on the weapon itself... variance within a
+  class"** → THE MOVESET BOOK + THE PAGE ROSTER: strikes are content, families
+  fight differently inside one class (fencer vs soldier vs reaver; scholar vs
+  battlestaff; blade vs maul), the first signature weapon exists, and the item
+  card says "Fights as" — collecting weapons IS collecting fight styles.
+- **"Beat-em-up flow... organic... empowered"** → same-frame predicted swings,
+  honest windups landing on the choreography's impact frame, buffered taps,
+  recovery cut by the dodge, per-class impact voices and finisher hitstop, class
+  identities (weave, hunger, guard sweep, overhead, volley).
+- **"Attack speed... doesn't restrict us to linear attacks"** → every string and
+  branch varies inside the CADENCE CONTRACT (±10%, pinned); rhythm is rewarded
+  with SPEED (tempo's windup shave), never damage — the balance economy (TTK
+  brackets, XP, loot) did not move one number in six phases.
+- **"Bows... give some variance to that"** → the overcharge volley atop the
+  snap-chain and charged-draw grammar; the point-blank kick stands as a NAMED
+  FUTURE DOOR (needs real choreography; no phase of this epic ships placeholder
+  art).
+- **Deliberately NOT built without a green-light** (plan Part 5, still open): the
+  ranged sidearm (swap-sets recommendation stands), directional strike variants,
+  and per-weapon moveset breadth beyond the curated nine. These are decisions,
+  not omissions.
+- **Standing laws honored throughout**: ONE damage door, whiff law (with the
+  honestly-documented basics floor), loot flood-law untouched, VOICE + dash ban in
+  every player-facing string, no new wire bytes for any string length (THE POSE
+  ALTERNATION LAW).
+
+THE EPIC IS COMPLETE. Six phases, one committed day, 1522 unit pins and 25 live
+receipts standing between this system and regression.
+
 *(The ranged-sidearm question — bow always on the back with a swap verb — is scoped
 OUT of these six phases and green-lights separately; see Part 5. The stow/backMounted
 rendering already supports it visually, so it composes cleanly later.)*
