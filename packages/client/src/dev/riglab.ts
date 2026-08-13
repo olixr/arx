@@ -58,9 +58,11 @@ const LOADOUTS: Record<string, Loadout> = {
   staff: { key: 'staff', weapon: 'apprentice_staff' },
   bow: { key: 'bow', weapon: 'stickbow' },
   tome: { key: 'tome', weapon: 'bronze_sword', off: 'tome_of_embers' },
+  axe: { key: 'axe', weapon: 'bronze_axe' },
+  pick: { key: 'pick', weapon: 'bronze_pickaxe' },
 };
 
-type Mode = 'idle' | 'move' | 'walk' | 'strafe' | 'draw' | 'stowed';
+type Mode = 'idle' | 'move' | 'walk' | 'strafe' | 'draw' | 'stowed' | 'pose';
 
 interface Fig {
   label: string;
@@ -68,6 +70,15 @@ interface Fig {
   travel?: number; // travel heading when it differs (strafe row)
   mode: Mode;
   load: Loadout;
+  /** mode 'pose': explicit pose/blend overrides — frozen strike
+   *  samples, casts, seats, mid-sheathe states. All det-stable. */
+  pose?: PoseState;
+  poseT?: number;
+  sitT?: number;
+  sitStyle?: RigPose['sitStyle'];
+  seatH?: number;
+  sitVariant?: 0 | 1;
+  sheathT?: number;
   // live sim state
   legs?: LegSolver;
   wx?: number;
@@ -108,6 +119,28 @@ for (const [lbl, trav] of DIRS) {
 }
 row('stowed idle', LOADOUTS.dual!, 'stowed'); // 19
 row('tome idle', LOADOUTS.tome!, 'idle'); // 20
+
+// ---- THE ASSEMBLY ROWS (arms-v3 Phase 2): every non-gait state the
+// one-mouth assembly owns, frozen at its most readable beat so the
+// det harness can byte-compare the whole cascade, not just carries.
+const poseRow = (label: string, load: Loadout, o: Partial<Fig>): void => {
+  for (const [lbl, dir] of DIRS) {
+    figs.push({ label: `${label} ${lbl}`, dir, mode: 'pose', load, ...o });
+  }
+};
+poseRow('sword cut', LOADOUTS.sword!, { pose: PoseState.Attack, poseT: 0.48 }); // 21
+poseRow('rogue rake', LOADOUTS.rogue!, { pose: PoseState.Attack, poseT: 0.42 }); // 22
+poseRow('dual cut', LOADOUTS.dual!, { pose: PoseState.Attack, poseT: 0.55 }); // 23
+poseRow('great fell', LOADOUTS.great!, { pose: PoseState.Attack, poseT: 0.55 }); // 24
+poseRow('staff sweep', LOADOUTS.staff!, { pose: PoseState.Attack, poseT: 0.45 }); // 25
+poseRow('sword ram', LOADOUTS.sword!, { pose: PoseState.Attack3, poseT: 0.55 }); // 26
+poseRow('staff cast', LOADOUTS.staff!, { pose: PoseState.Cast, poseT: 0.25 }); // 27
+poseRow('sit floor', LOADOUTS.sword!, { pose: PoseState.Sit, sitT: 1, sitVariant: 1 }); // 28
+poseRow('sit chair', LOADOUTS.sword!, { pose: PoseState.Sit, sitT: 1, sitStyle: 'chair', seatH: 0.34 }); // 29
+poseRow('sheathe 30%', LOADOUTS.dual!, { sheathT: 0.3 }); // 30
+poseRow('sheathe 70%', LOADOUTS.dual!, { sheathT: 0.7 }); // 31
+poseRow('chop', LOADOUTS.axe!, { pose: PoseState.Gather }); // 32
+poseRow('mine', LOADOUTS.pick!, { pose: PoseState.Gather }); // 33
 
 const COLS = 8;
 const CW = 240;
@@ -180,16 +213,20 @@ function drawSheet(now: number, dt: number): void {
       lift: ft.lift,
     }));
     const drawing = f.mode === 'draw';
+    // Pose rows are NON-restful states (Attack/Cast/Sit/Gather):
+    // restT 0, exactly as the renderer's restful-set law feeds them.
+    // The mid-sheathe rows keep Idle + restT 1 (the real stow case).
+    const posed = f.pose !== undefined;
     const rig: RigPose = {
       x: homeX,
       y: homeY,
       scale: S,
       size: 1,
       dir: f.dir,
-      pose: drawing ? PoseState.Draw : moving ? PoseState.Walk : PoseState.Idle,
-      poseT: 1,
+      pose: f.pose ?? (drawing ? PoseState.Draw : moving ? PoseState.Walk : PoseState.Idle),
+      poseT: f.poseT ?? 1,
       drawT: drawing ? 0.95 : 0,
-      restT: drawing ? 0 : 1,
+      restT: drawing || posed ? 0 : 1,
       nowMs: now,
       feet,
       bob: lp.bob,
@@ -210,7 +247,11 @@ function drawSheet(now: number, dt: number): void {
       offhandItem: f.load.off,
       carryStyle: f.load.carry,
       carryOff: f.load.carryOff,
-      sheathT: f.mode === 'stowed' ? 1 : 0,
+      sheathT: f.mode === 'stowed' ? 1 : (f.sheathT ?? 0),
+      sitT: f.sitT,
+      sitStyle: f.sitStyle,
+      seatH: f.seatH,
+      sitVariant: f.sitVariant,
     };
     drawHumanoid(ctx, rig);
     ctx.fillStyle = '#e8e4d8';
