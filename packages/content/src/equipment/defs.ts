@@ -2119,17 +2119,19 @@ function earlyLeatherDefs(): EquipmentDef[] {
       { key: 'sundart', dye: 'Sundart', color: '#b0802e', dyeInput: { item: 'sunflower', qty: 2 },
         desc: 'The marlin\'s bill and sail. It lets you see it coming.' },
     ]),
-    // -------- Cutpurse: umber leather under a brass coin device and a
-    // half-mask. Drop-only — the guild does not sell its colors, you
-    // take them off somebody who stopped needing them.
+    // -------- Cutpurse: THE FOUR SHADOWS — the guild's four offices,
+    // one per lot: the Purse, the Latch, the Unseen, the Knife. Each
+    // wears its own head and its own uneven shoulders. Drop-only —
+    // the guild does not sell its colors, you take them off somebody
+    // who stopped needing them.
     ...cutpurse,
     ...colorways(cutpurse, [
       { key: 'alleyrat', dye: 'Alleyrat', color: '#5c5c56',
-        desc: 'Gutter-grey. The lamplight owes you nothing and pays it.' },
+        desc: 'The Latch. Gutter grey, an iron keyhole, borrowed keys. No door argues long.' },
       { key: 'moonless', dye: 'Moonless', color: '#33303c',
-        desc: 'Ink on ink. Worn on the nights the job is real.' },
+        desc: 'The Unseen. Wound ink and one lit slit. On the real nights there is no face at all.' },
       { key: 'redhand', dye: 'Redhand', color: '#6e3a34',
-        desc: 'Oxblood leather. Caught once, never twice.' },
+        desc: 'The Knife. Oxblood lacquer, a knot for every job. Caught once, never twice.' },
     ]),
     // -------- Trapline: rawhide and fir hung with a toggled bandolier,
     // snare-cord wraps and a fur-ruffed hood. The trapper's craft line —
@@ -2286,7 +2288,7 @@ function cutpurseSet(): EquipmentDef[] {
   });
   return [
     piece('cutpurse_cowl', 'Cutpurse cowl', 'head', 10, 2, 170, 'Ph',
-      'Cowl and kerchief. The face is nobody; the hands are famous.'),
+      'The guild peak over a kerchief. The face is nobody; the hands are famous.'),
     piece('cutpurse_jerkin', 'Cutpurse jerkin', 'body', 12, 4, 240, 'Pj',
       'A tether of lifted coins across the chest. The ledger, worn openly.'),
     piece('cutpurse_leggings', 'Cutpurse leggings', 'legs', 11, 3, 205, 'Pc',

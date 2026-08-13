@@ -133,6 +133,13 @@ export interface BodyStyle {
     // `showerpaul` the sunbreak and the drip veil, `aurorapaul` the
     // curtain and the nightfield. All on THE STORMBOLT clock.
     | 'stormyoke' | 'anvilpaul' | 'showerpaul' | 'aurorapaul'
+    // THE FOUR SHADOWS' SHOULDERS — cutpurse's guild offices, one
+    // owner per LOT and every pair ASYMMETRIC (one shoulder for the
+    // guild, one for the work): `shadowdrape` the notched half-mantle
+    // and the bare crossed straps, `grapnel` the climb and the pry,
+    // `duskmantle` the dusk tabs and the silver cord, `knifespaul`
+    // the counted knives and the crimson-bound mark.
+    | 'shadowdrape' | 'grapnel' | 'duskmantle' | 'knifespaul'
     // The hunter's shoulders — one owner each: `halcyon` the
     // kingfisher folded wing, `guardhair` the wolfstalker winter
     // pelt, `drakewing` the drakescale ribbed wing-fin, `oakspaul`
@@ -584,6 +591,19 @@ export interface BodyStyle {
    *  with lifted coins; one glint WALKS the strand, coin to coin. The
    *  trophies are the heraldry. */
   cointether?: { cord: string; coin: string; glint?: string };
+  /** Cutpurse: THE CUT KIT — the lifted purse at the trailing hip,
+   *  its slit showing a coin on the rare clock, the curved snip
+   *  that made the slit hanging beside. The trade, worn as gear. */
+  cutkit?: { pouch: string; blade: string; coin: string; glint?: string };
+  /** Alleyrat: three skeleton keys off one iron ring at the leading
+   *  hip — borrowed doors, rare uneven glint. */
+  keyring?: { ring: string; keys: string; glint?: string };
+  /** Moonless: two bulbs of bottled dark on the belt; one leaks a
+   *  slow wisp. The exit, worn ready. */
+  smokeflasks?: { glass: string; cork: string; wisp: string };
+  /** Redhand: the crimson cord above the belt, one knot per job
+   *  that ended the only way the Knife's jobs end. */
+  tallycord?: { cord: string; knot: string };
   /** Trapline: the working bandolier — strap, bone toggles, a coiled
    *  snare wire, and a hanging lure that swings on the stride. Every
    *  loop has caught something. */
@@ -674,15 +694,20 @@ export interface HelmStyle {
     // out of the shark's mouth; `anglerhood` the deep hood under its
     // glowing rod-and-lure; `krakencowl` the mantle with eyes and
     // sucker-armed tentacles; `marlincrest` the bill-and-sail
-    // strike; `thiefhood` the
-    // cutpurse slouched cap-and-kerchief, `trapperhood` the trapline
+    // strike. Cutpurse's FOUR SHADOWS (each dye lot is a guild
+    // OFFICE with its own head): `guildcowl` the master's forward-
+    // broken beak peak, `latchhood` the housebreaker's iron-banded
+    // coif with the punched keyhole, `veilwrap` the Unseen's wound
+    // bands with one lit slit, `redmask` the Knife's lacquered
+    // blade-point mask. `trapperhood` the trapline
     // deep winter fur tunnel, `foxmantle` the emberfox pelt worn
     // whole, `roadhood` the wayfarer patched traveler, `wolfmantle`
     // the wolfstalker headdress with its cascading mane, `shadowcowl`
     // the nightveil assassin's blade-point dark, `stagcrown` the
     // stagheart antlered forest crown.
     | 'courierhood' | 'sharkmaw' | 'anglerhood' | 'krakencowl'
-    | 'marlincrest' | 'thiefhood' | 'trapperhood'
+    | 'marlincrest' | 'guildcowl' | 'latchhood' | 'veilwrap'
+    | 'redmask' | 'trapperhood'
     | 'foxmantle' | 'roadhood' | 'wolfmantle' | 'shadowcowl'
     | 'stagcrown'
     // THE FOUR VIGILS OF THE DAWN — dawnsworn's skies each wear
@@ -900,9 +925,18 @@ export interface HelmStyle {
    *  on a slow clock; the face below stays void. THE LURE IS
    *  ALWAYS WARM — bait must contrast the water. */
   lure?: { color: string };
-  /** Thiefhood: the guild's one vanity — a brass coin pinned at the
-   *  brow, glinting rarely. */
+  /** Guildcowl: the guild's one vanity — a brass bead at the very
+   *  tip of the master's beak peak, glinting rarely. */
   coinpin?: { color: string };
+  /** Latchhood: THE LATCH — iron brow band with a punched keyhole,
+   *  jaw wrap, and three skeleton keys at the trailing jaw. */
+  latch?: { band: string; keys: string; wrap: string };
+  /** Veilwrap: the cold light breathing inside the veil's one slit.
+   *  Not eyes — a place where eyes refuse to be. */
+  slitglow?: { color: string };
+  /** Redmask: the lacquered mask — two facets on a bright ridge,
+   *  and the old groove the lacquer never fills. */
+  lacquer?: { color: string; lit: string; scar?: string };
   /** Foxmantle / wolfmantle: the worn pelt's own colors — the beast's
    *  coat, its dark points (nose, sockets, ear backs), its pale
    *  flashes (cheeks, fangs, frost tips); `ember` wakes the fox's
@@ -955,6 +989,12 @@ export interface LegStyle {
   /** Cutpurse: the tool roll strapped flat to the lead thigh, pick
    *  ends ticking out of it. */
   pickroll?: { color: string; glint?: string };
+  /** Moonless: wound shin bands — the veil's language carried to
+   *  the ground; the loose tie dresses leg 0 only. */
+  shadewrap?: { color: string; tie?: string };
+  /** Redhand: the Knife's spare, flat to the outer thigh. Muted
+   *  register — no glint lives at the leg. */
+  thighsheath?: { sheath: string; pommel: string };
   /** Trapline: snare-cord X-lacing climbing the shin. */
   shinlace?: { color: string };
   /** Emberfox: the fox's own socks — a hard dark break at mid-shin,
@@ -1315,10 +1355,12 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   // a tether of lifted coins with one traveling glint.
   cutpurse_jerkin: {
     color: '#4e4438', trim: '#c9a23c', metal: '#8a7a5c', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'none', chest: 'none', skirt: 0,
-    pouch: true, yoke: { color: '#3e362c' }, lace: '#2e2820',
+    silhouette: 'jerkin', pauldron: 'shadowdrape', pauldronColor: '#3e362c',
+    pauldronTrim: '#c9a23c', pauldronScale: 1.08, chest: 'none', skirt: 0,
+    yoke: { color: '#3e362c' }, lace: '#2e2820',
     belt: { color: '#2e2820', buckle: '#c9a23c' },
     cointether: { cord: '#2e2820', coin: '#c9a23c', glint: '#ffe9a8' },
+    cutkit: { pouch: '#3a332c', blade: '#b8ae9a', coin: '#c9a23c', glint: '#ffe9a8' },
   },
   // The trapper: rawhide and quilt under the snareline — toggles,
   // wire coil, a swinging lure. Every loop earned.
@@ -1806,7 +1848,7 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     divecrest: { color: '#a8c2c2', flash: '#e8ecec' },
   },
   cutpurse_cowl: {
-    color: '#4e4438', trim: '#c9a23c', kind: 'thiefhood', mask: '#26221c',
+    color: '#4e4438', trim: '#c9a23c', kind: 'guildcowl', mask: '#332b23',
     coinpin: { color: '#c9a23c' },
   },
   trapline_hood: {
@@ -2977,35 +3019,62 @@ registerColorways(BOOT_STYLES, 'kingfisher_boots', {
 
 // Cutpurse dye lots: the coin is the tell — brass on umber and
 // oxblood, silver in the gutter, pale moon-metal after dark.
+// Cutpurse lots: THE FOUR SHADOWS — each dye lot is a guild OFFICE.
+// Lots override `kind` AND `pauldron` (the leviathan law), and every
+// shoulder pair is asymmetric: one shoulder for the guild, one for
+// the work.
 registerColorways(BODY_STYLES, 'cutpurse_jerkin', {
   alleyrat: {
     color: '#5c5c56', trim: '#b0b6be', metal: '#8a8e96',
+    pauldron: 'grapnel', pauldronColor: '#4a4a44', pauldronTrim: '#b0b6be',
+    pauldronScale: 1.06,
     yoke: { color: '#4a4a44' }, lace: '#3e3e38',
     belt: { color: '#3e3e38', buckle: '#b0b6be' },
     cointether: { cord: '#3e3e38', coin: '#b0b6be', glint: '#ffffff' },
+    cutkit: { pouch: '#45453e', blade: '#c0c6ce', coin: '#b0b6be', glint: '#ffffff' },
+    keyring: { ring: '#6a6e76', keys: '#c0c6ce', glint: '#ffffff' },
   },
   moonless: {
     color: '#33303c', trim: '#a8b0cc', metal: '#5c5a6e',
+    pauldron: 'duskmantle', pauldronColor: '#2a2733', pauldronTrim: '#a8b0cc',
+    pauldronScale: 1.08,
     yoke: { color: '#28252f' }, lace: '#201d28',
     belt: { color: '#201d28', buckle: '#a8b0cc' },
     cointether: { cord: '#201d28', coin: '#a8b0cc', glint: '#e8ecff' },
+    cutkit: { pouch: '#262330', blade: '#8890ac', coin: '#a8b0cc', glint: '#e8ecff' },
+    smokeflasks: { glass: '#1e1b26', cork: '#6e6050', wisp: '#a8b0cc' },
   },
   redhand: {
     color: '#6e3a34', trim: '#c9a23c', metal: '#8a6a4a',
+    pauldron: 'knifespaul', pauldronColor: '#582e28', pauldronTrim: '#c9a23c',
+    pauldronScale: 1.1,
     yoke: { color: '#582e28' }, lace: '#442420',
     belt: { color: '#442420', buckle: '#c9a23c' },
     cointether: { cord: '#442420', coin: '#c9a23c', glint: '#ffe9a8' },
+    cutkit: { pouch: '#4e2a26', blade: '#b8ae9a', coin: '#c9a23c', glint: '#ffe9a8' },
+    tallycord: { cord: '#a83228', knot: '#6e1f1a' },
   },
 });
 registerColorways(HELM_STYLES, 'cutpurse_cowl', {
-  alleyrat: { color: '#5c5c56', trim: '#b0b6be', mask: '#45453e', coinpin: { color: '#b0b6be' } },
-  moonless: { color: '#33303c', trim: '#a8b0cc', mask: '#262330', coinpin: { color: '#a8b0cc' } },
-  redhand: { color: '#6e3a34', trim: '#c9a23c', mask: '#4e2a26', coinpin: { color: '#c9a23c' } },
+  alleyrat: {
+    color: '#5c5c56', trim: '#b0b6be', kind: 'latchhood',
+    latch: { band: '#4c5058', keys: '#c0c6ce', wrap: '#45453e' },
+  },
+  moonless: {
+    color: '#33303c', trim: '#a8b0cc', kind: 'veilwrap',
+    slitglow: { color: '#cfd8ff' },
+  },
+  redhand: {
+    color: '#6e3a34', trim: '#c9a23c', kind: 'redmask',
+    lacquer: { color: '#9e3a30', lit: '#c05040', scar: '#3c1512' },
+  },
 });
 registerColorways(LEG_STYLES, 'cutpurse_leggings', {
   alleyrat: { thigh: '#5c5c56', shin: '#4a4a44', kneeColor: '#767670', pickroll: { color: '#45453e', glint: '#b0b6be' } },
-  moonless: { thigh: '#33303c', shin: '#28252f', kneeColor: '#4e4a5c', pickroll: { color: '#262330', glint: '#a8b0cc' } },
-  redhand: { thigh: '#6e3a34', shin: '#582e28', kneeColor: '#8a5a4a', pickroll: { color: '#4e2a26', glint: '#c9a23c' } },
+  // The Unseen carries no picks and the Knife carries no picks — an
+  // explicit undefined KILLS the inherited roll (spread law).
+  moonless: { thigh: '#33303c', shin: '#28252f', kneeColor: '#4e4a5c', pickroll: undefined, shadewrap: { color: '#201d28', tie: '#a8b0cc' } },
+  redhand: { thigh: '#6e3a34', shin: '#582e28', kneeColor: '#8a5a4a', pickroll: undefined, thighsheath: { sheath: '#442420', pommel: '#c9a23c' } },
 });
 registerColorways(BOOT_STYLES, 'cutpurse_boots', {
   alleyrat: { color: '#4a4a44', cuff: { color: '#767670' } },
@@ -6526,6 +6595,192 @@ export function drawTorsoGarment(
           ctx.arc(bxx, byy + 0.014 * s, 0.007 * s, 0, Math.PI * 2);
           ctx.fill();
         }
+      }
+    }
+    // ---- THE CUT KIT: the trade worn at the trailing hip — a lifted
+    // purse, drawstring cinched, its slit showing a coin on the rare
+    // clock; the curved snip that made the slit hangs beside it. The
+    // set's own name, carried as gear.
+    if (st.cutkit && !back) {
+      const ck = st.cutkit;
+      const pxx = -f.lead * ww * 0.66;
+      ctx.strokeStyle = hurt ? '#ffffff' : shade(ck.pouch, -20);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(pxx, -0.055 * s);
+      ctx.lineTo(pxx, -0.024 * s);
+      ctx.stroke();
+      ctx.fillStyle = hurt ? '#ffffff' : ck.pouch;
+      ctx.beginPath();
+      ctx.moveTo(pxx - 0.008 * s, -0.026 * s);
+      ctx.quadraticCurveTo(pxx - 0.036 * s, 0.006 * s, pxx - 0.024 * s, 0.046 * s);
+      ctx.quadraticCurveTo(pxx, 0.068 * s, pxx + 0.024 * s, 0.044 * s);
+      ctx.quadraticCurveTo(pxx + 0.034 * s, 0.004 * s, pxx + 0.008 * s, -0.026 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The cinch at the neck, cords ticking out.
+        ctx.strokeStyle = shade(ck.pouch, -26);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(pxx - 0.014 * s, -0.014 * s);
+        ctx.lineTo(pxx + 0.014 * s, -0.014 * s);
+        ctx.moveTo(pxx + 0.012 * s, -0.014 * s);
+        ctx.lineTo(pxx + 0.02 * s, -0.002 * s);
+        ctx.stroke();
+        // THE SLIT: one clean cut across the belly.
+        ctx.strokeStyle = shade(ck.pouch, -38);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(pxx - 0.016 * s, 0.024 * s);
+        ctx.lineTo(pxx + 0.013 * s, 0.018 * s);
+        ctx.stroke();
+        // The coin AT the slit, only on the rare clock — the purse
+        // admits what it is for one blink at a time.
+        if (nowMs % 3800 < 300) {
+          ctx.fillStyle = ck.glint ?? shade(ck.coin, 26);
+          ctx.beginPath();
+          ctx.arc(pxx - 0.002 * s, 0.021 * s, 0.011 * s, Math.PI, Math.PI * 2);
+          ctx.fill();
+        }
+        // THE SNIP: a crescent blade point-down off its own loop,
+        // handle bead at the top. Muted — the tool, not the show.
+        const sx2 = pxx + f.lead * 0.052 * s;
+        ctx.fillStyle = shade(ck.pouch, -18);
+        ctx.beginPath();
+        ctx.arc(sx2, -0.028 * s, 0.008 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = shade(ck.blade, -10);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.arc(sx2 - 0.012 * s, 0.0 * s, 0.026 * s, Math.PI * 1.7, Math.PI * 0.62);
+        ctx.stroke();
+      }
+    }
+
+    // ---- THE KEY RING: the housebreaker's borrowed doors — three
+    // skeleton keys off one iron ring at the leading hip, staggered
+    // hangs, and a glint that is RARE and uneven (a key that flashes
+    // on a metronome is jewelry).
+    if (st.keyring && !back) {
+      const kr = st.keyring;
+      const bx = f.lead * ww * 0.6;
+      ctx.strokeStyle = hurt ? '#ffffff' : kr.ring;
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      ctx.arc(bx, -0.032 * s, 0.015 * s, 0, Math.PI * 2);
+      ctx.stroke();
+      if (!hurt) {
+        const wake = nowMs % 3100 < 260 ? Math.floor(nowMs / 3100) % 3 : -1;
+        const kick = f.strideSw * 0.01 * s;
+        const keys: Array<[number, number, number]> = [
+          [-0.015, 0.052, -0.16], [0.001, 0.066, 0.03], [0.016, 0.046, 0.18],
+        ];
+        for (let i = 0; i < 3; i++) {
+          const [dx, len, tilt] = keys[i]!;
+          ctx.save();
+          ctx.translate(bx + dx * s, -0.02 * s);
+          ctx.rotate(tilt + kick / (0.2 * s));
+          ctx.strokeStyle = i === wake ? (kr.glint ?? shade(kr.keys, 30)) : kr.keys;
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.arc(0, 0.006 * s, 0.007 * s, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, 0.013 * s);
+          ctx.lineTo(0, len * s);
+          ctx.moveTo(0, len * s);
+          ctx.lineTo(0.008 * s, len * s);
+          ctx.moveTo(0, (len - 0.012) * s);
+          ctx.lineTo(0.006 * s, (len - 0.012) * s);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+
+    // ---- THE SMOKE FLASKS: two bulbs of bottled dark on the belt —
+    // and one of them leaks, a thin wisp climbing and dying on a slow
+    // cycle. The exit, worn ready.
+    if (st.smokeflasks && !back) {
+      const sf = st.smokeflasks;
+      const bulbs: Array<[number, number, number]> = [
+        [f.lead * ww * 0.36, 0.004, 0.023], [f.lead * ww * 0.13, 0.012, 0.019],
+      ];
+      for (const [bx, by, r] of bulbs) {
+        ctx.fillStyle = hurt ? '#ffffff' : sf.glass;
+        ctx.beginPath();
+        ctx.arc(bx, by * s, r * s, 0, Math.PI * 2);
+        ctx.fill();
+        if (!hurt) {
+          // Cork stub and one glass catch-light — a sphere, not a dot.
+          ctx.fillStyle = sf.cork;
+          ctx.fillRect(bx - 0.006 * s, by * s - r * s - 0.012 * s, 0.012 * s, 0.013 * s);
+          ctx.strokeStyle = shade(sf.glass, 46);
+          ctx.lineWidth = Math.max(1, s * 0.007);
+          ctx.beginPath();
+          ctx.arc(bx, by * s, r * s * 0.62, Math.PI * 1.15, Math.PI * 1.6);
+          ctx.stroke();
+        }
+      }
+      if (!hurt) {
+        // THE LEAK: off the smaller bulb, one wisp per cycle.
+        const cyc = (nowMs % 3600) / 3600;
+        if (cyc < 0.55) {
+          const u = cyc / 0.55;
+          const [wx, wy] = bulbs[1]!;
+          const wTop = wy * s - 0.03 * s;
+          ctx.strokeStyle = sf.wisp;
+          ctx.globalAlpha = 0.26 * (1 - u);
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(wx, wTop);
+          ctx.quadraticCurveTo(
+            wx + Math.sin(u * 5) * 0.012 * s, wTop - u * 0.04 * s,
+            wx + Math.sin(u * 5 + 1.2) * 0.014 * s, wTop - u * 0.07 * s,
+          );
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
+    // ---- THE TALLY CORD: a crimson cord riding above the belt, one
+    // knot per job that ended the only way the Knife's jobs end. The
+    // tail hangs at the leading hip, frayed, kicking on the stride.
+    if (st.tallycord && !back) {
+      const tc = st.tallycord;
+      ctx.strokeStyle = hurt ? '#ffffff' : tc.cord;
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(-ww * 0.6, -0.078 * s);
+      ctx.quadraticCurveTo(0, -0.062 * s, ww * 0.6, -0.078 * s);
+      ctx.stroke();
+      if (!hurt) {
+        // Knots at uneven stations — a count, not a pattern.
+        ctx.fillStyle = tc.knot;
+        for (const u of [0.14, 0.33, 0.62, 0.85]) {
+          const kx = -ww * 0.6 + ww * 1.2 * u;
+          const ky = -0.078 * s + (0.016 * s) * (4 * u * (1 - u));
+          ctx.beginPath();
+          ctx.arc(kx, ky, 0.0085 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // The tail.
+        const kick = f.strideSw * 0.012 * s;
+        ctx.strokeStyle = tc.cord;
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(f.lead * ww * 0.58, -0.076 * s);
+        ctx.quadraticCurveTo(f.lead * ww * 0.62 + kick * 0.5, -0.03 * s, f.lead * ww * 0.6 + kick, 0.012 * s);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(1, s * 0.007);
+        ctx.beginPath();
+        ctx.moveTo(f.lead * ww * 0.6 + kick, 0.012 * s);
+        ctx.lineTo(f.lead * ww * 0.585 + kick, 0.03 * s);
+        ctx.moveTo(f.lead * ww * 0.6 + kick, 0.012 * s);
+        ctx.lineTo(f.lead * ww * 0.62 + kick, 0.028 * s);
+        ctx.stroke();
       }
     }
 
@@ -10422,6 +10677,367 @@ export function drawPauldron(
         ctx.beginPath();
         ctx.moveTo(side * -0.025 * s, -0.045 * s);
         ctx.lineTo(side * txx * s, tyy * s);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'shadowdrape') {
+    // THE SHADOWDRAPE — the guildmaster's shoulders, ASYMMETRIC: the
+    // off shoulder carries a layered half-mantle falling in notched
+    // points under a brass clasp; the blade arm wears nothing but
+    // crossed straps — the asymmetry IS the statement. A master
+    // keeps one shoulder for the guild and one for the work.
+    if (side > 0) {
+      seat(0.115 * s, 0.085 * s, shade(base, -8), shade(base, 6));
+      if (!hurt) {
+        // Under-panel first: deeper, longer, two points.
+        ctx.fillStyle = shade(base, -24);
+        ctx.beginPath();
+        ctx.moveTo(-0.095 * s, 0.015 * s);
+        ctx.lineTo(0.1 * s, 0.005 * s);
+        ctx.lineTo(0.075 * s, 0.16 * s);
+        ctx.lineTo(0.035 * s, 0.105 * s);
+        ctx.lineTo(-0.02 * s, 0.175 * s);
+        ctx.lineTo(-0.06 * s, 0.1 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Upper panel: the mantle proper, three raked points — cloth
+      // with WEIGHT (the windmantle lesson: bold points, never trim),
+      // lifted a full step off the under-panel so the layers READ.
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, 12);
+      ctx.beginPath();
+      ctx.moveTo(-0.1 * s, -0.02 * s);
+      ctx.lineTo(0.105 * s, -0.032 * s);
+      ctx.lineTo(0.115 * s, 0.05 * s);
+      ctx.lineTo(0.068 * s, 0.122 * s);
+      ctx.lineTo(0.048 * s, 0.075 * s);
+      ctx.lineTo(-0.004 * s, 0.132 * s);
+      ctx.lineTo(-0.032 * s, 0.072 * s);
+      ctx.lineTo(-0.088 * s, 0.112 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // One fold plane on the panel — a crease, not a gradient.
+        ctx.fillStyle = shade(base, -6);
+        ctx.beginPath();
+        ctx.moveTo(0.02 * s, -0.028 * s);
+        ctx.lineTo(0.105 * s, -0.032 * s);
+        ctx.lineTo(0.115 * s, 0.05 * s);
+        ctx.lineTo(0.048 * s, 0.075 * s);
+        ctx.closePath();
+        ctx.fill();
+        // THE CLASP: a brass disc with a pressed square punch, and
+        // the rare flare — the master's one glint per shoulder.
+        const trim2 = st.pauldronTrim ?? shade(base, 30);
+        const flare = nowMs % 3400 < 240;
+        ctx.fillStyle = flare ? shade(trim2, 30) : trim2;
+        ctx.beginPath();
+        ctx.arc(0.07 * s, -0.048 * s, 0.023 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(trim2, -26);
+        ctx.fillRect(0.07 * s - 0.007 * s, -0.048 * s - 0.007 * s, 0.014 * s, 0.014 * s);
+      }
+    } else {
+      // The blade arm: no dome — two crossed straps and a buckle,
+      // the shoulder kept FREE. Bare on purpose reads as intent only
+      // if the straps say somebody chose it.
+      ctx.strokeStyle = hurt ? '#ffffff' : shade(base, -4);
+      ctx.lineWidth = Math.max(2, s * 0.027);
+      ctx.beginPath();
+      ctx.moveTo(-0.095 * s, 0.004 * s);
+      ctx.lineTo(0.095 * s, -0.052 * s);
+      ctx.moveTo(-0.095 * s, -0.052 * s);
+      ctx.lineTo(0.095 * s, 0.012 * s);
+      ctx.stroke();
+      if (!hurt) {
+        const trim2 = st.pauldronTrim ?? shade(base, 30);
+        ctx.fillStyle = shade(trim2, -10);
+        ctx.fillRect(-0.012 * s, -0.036 * s, 0.024 * s, 0.02 * s);
+        ctx.strokeStyle = shade(base, -22);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(-0.05 * s, -0.014 * s);
+        ctx.lineTo(-0.036 * s, -0.026 * s);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'grapnel') {
+    // THE GRAPNEL — the housebreaker's shoulders: one carries the
+    // climb (a coiled line under an iron hook, tail hanging frayed),
+    // the other the pry (a riveted iron plate that has met some
+    // doors). Tools, worn where they deploy.
+    if (side > 0) {
+      seat(0.112 * s, 0.085 * s, shade(base, -10), shade(base, 4));
+      const rope = shade(base, 38);
+      const iron = st.pauldronTrim ? shade(st.pauldronTrim, -26) : shade(base, -18);
+      if (!hurt) {
+        // THE COIL: three stacked turns lying over the dome — each a
+        // stroked arc with its own catch of light, spaced to READ as
+        // three (a coil that blurs into one turn is a collar).
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          const cy = (-0.038 + i * 0.027) * s;
+          ctx.strokeStyle = i === 1 ? shade(rope, 12) : rope;
+          ctx.lineWidth = Math.max(2, s * 0.02);
+          ctx.beginPath();
+          ctx.ellipse(0, cy, (0.09 - i * 0.008) * s, 0.032 * s, 0, Math.PI * 1.05, Math.PI * 1.95);
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+        // THE HOOK: shaft rising from the coil's heart, two flukes
+        // curling out — the leading fluke takes the light.
+        ctx.strokeStyle = iron;
+        ctx.lineWidth = Math.max(1.5, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(-0.006 * s, -0.03 * s);
+        ctx.lineTo(-0.002 * s, -0.135 * s);
+        ctx.stroke();
+        for (const [dir, lit] of [[1, 1], [-1, 0]] as const) {
+          ctx.fillStyle = lit ? shade(iron, 18) : iron;
+          ctx.beginPath();
+          ctx.moveTo(-0.002 * s, -0.132 * s);
+          ctx.quadraticCurveTo(dir * 0.046 * s, -0.128 * s, dir * 0.052 * s, -0.082 * s);
+          ctx.lineTo(dir * 0.036 * s, -0.094 * s);
+          ctx.quadraticCurveTo(dir * 0.028 * s, -0.118 * s, -0.002 * s, -0.116 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // The eye ring at the shaft foot, and the tail: hanging off
+        // the trailing side, frayed at the tip.
+        ctx.strokeStyle = iron;
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.arc(-0.004 * s, -0.026 * s, 0.012 * s, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = shade(rope, -12);
+        ctx.lineWidth = Math.max(1.5, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(-0.082 * s, 0.012 * s);
+        ctx.quadraticCurveTo(-0.096 * s, 0.06 * s, -0.07 * s, 0.115 * s);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(-0.07 * s, 0.115 * s);
+        ctx.lineTo(-0.082 * s, 0.14 * s);
+        ctx.moveTo(-0.07 * s, 0.115 * s);
+        ctx.lineTo(-0.058 * s, 0.138 * s);
+        ctx.stroke();
+      }
+    } else {
+      // THE PRY PLATE: flat iron over the seat, three rivets, one
+      // long scratch — the door that argued.
+      seat(0.105 * s, 0.08 * s, shade(base, -12), shade(base, 2));
+      const iron = st.pauldronTrim ? shade(st.pauldronTrim, -30) : shade(base, -20);
+      if (!hurt) {
+        ctx.fillStyle = iron;
+        ctx.beginPath();
+        ctx.moveTo(-0.072 * s, -0.042 * s);
+        ctx.lineTo(0.052 * s, -0.058 * s);
+        ctx.lineTo(0.078 * s, 0.012 * s);
+        ctx.lineTo(-0.048 * s, 0.028 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(iron, 20);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(-0.072 * s, -0.042 * s);
+        ctx.lineTo(0.052 * s, -0.058 * s);
+        ctx.stroke();
+        ctx.fillStyle = shade(iron, -20);
+        for (const [rx, ry] of [[-0.052, -0.026], [0.036, -0.04], [0.056, 0.002]] as const) {
+          ctx.beginPath();
+          ctx.arc(rx * s, ry * s, 0.008 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.strokeStyle = shade(iron, 12);
+        ctx.lineWidth = Math.max(1, s * 0.007);
+        ctx.beginPath();
+        ctx.moveTo(-0.03 * s, -0.008 * s);
+        ctx.lineTo(0.04 * s, -0.03 * s);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'duskmantle') {
+    // THE DUSKMANTLE — the Unseen's shoulders: on one, three tabs of
+    // dusk hang and sway on slow staggered clocks, and a single mote
+    // rises off them and fades — the night, leaking upward. On the
+    // other, nothing but two turns of silver cord: the Unseen does
+    // not carry weight it does not need.
+    if (side > 0) {
+      seat(0.11 * s, 0.082 * s, shade(base, -12), shade(base, 2));
+      if (!hurt) {
+        // Tabs painted back-to-front, deepest first, each swaying on
+        // its own phase — never in unison (the tentacle law).
+        const tabs: Array<[number, number, number, number]> = [
+          [-0.055, 0.15, 2.1, -22], [0.05, 0.16, 4.0, -13], [-0.002, 0.2, 0.0, -4],
+        ];
+        for (const [rx, len, ph, tone] of tabs) {
+          const swx = Math.sin(nowMs * 0.0013 + ph) * 0.009 * s;
+          ctx.fillStyle = shade(base, tone);
+          ctx.beginPath();
+          ctx.moveTo((rx - 0.028) * s, 0.01 * s);
+          ctx.lineTo((rx + 0.028) * s, 0.005 * s);
+          ctx.lineTo(rx * s + swx + 0.008 * s, len * s);
+          ctx.lineTo(rx * s + swx - 0.01 * s, (len - 0.018) * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // THE MOTE: born at a tab tip, rising, gone — one at a time,
+        // low alpha; the empowered read is the restraint.
+        const trim2 = st.pauldronTrim ?? shade(base, 30);
+        const cyc = (nowMs % 2600) / 2600;
+        ctx.globalAlpha = 0.32 * (1 - cyc);
+        ctx.fillStyle = trim2;
+        ctx.beginPath();
+        ctx.arc(
+          0.01 * s + Math.sin(cyc * 5.2) * 0.012 * s,
+          (0.16 - cyc * 0.24) * s,
+          0.0075 * s, 0, Math.PI * 2,
+        );
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    } else {
+      seat(0.1 * s, 0.075 * s, shade(base, -14), shade(base, 0));
+      if (!hurt) {
+        // Two turns of cord, and the tuck — quiet silver, not a
+        // beacon: the bare shoulder whispers.
+        const trim2 = st.pauldronTrim ?? shade(base, 30);
+        ctx.strokeStyle = shade(trim2, -32);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(-0.092 * s, -0.012 * s);
+        ctx.quadraticCurveTo(0, 0.014 * s, 0.092 * s, -0.018 * s);
+        ctx.moveTo(-0.088 * s, 0.008 * s);
+        ctx.quadraticCurveTo(0, 0.034 * s, 0.088 * s, 0.002 * s);
+        ctx.stroke();
+        ctx.fillStyle = shade(trim2, -32);
+        ctx.beginPath();
+        ctx.arc(0.07 * s, -0.008 * s, 0.009 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'knifespaul') {
+    // THE KNIFESPAUL — the Knife's shoulders: a hard spaulder plate
+    // with three sheathed throwing blades fanned behind it, pommels
+    // up — counted, not displayed; the middle one glints on the rare
+    // clock. The other shoulder is bound in crimson cord: the red
+    // hand's mark, worn where the sleeve can't hide it.
+    if (side > 0) {
+      seat(0.115 * s, 0.088 * s, shade(base, -10), shade(base, 4));
+      const trim2 = st.pauldronTrim ?? shade(base, 30);
+      if (!hurt) {
+        // THE FAN: three grips rising behind the plate line, angles
+        // staggered, sheath tips peeking under the plate's hem.
+        const wake = nowMs % 2600 < 280;
+        const grips: Array<[number, number, number]> = [
+          [-0.052, -0.105, -0.24], [0.004, -0.125, 0.0], [0.056, -0.098, 0.26],
+        ];
+        for (let i = 0; i < 3; i++) {
+          const [gx, gy, tl] = grips[i]!;
+          ctx.save();
+          ctx.translate(gx * s, -0.04 * s);
+          ctx.rotate(tl);
+          // The grip: leather-wrapped, WIDE enough to be a handle —
+          // a thin stick under a bead reads as an antenna. Two wrap
+          // ticks say somebody's hand knows this shape.
+          ctx.fillStyle = shade(base, -24);
+          ctx.fillRect(-0.013 * s, gy * s + 0.036 * s, 0.026 * s, 0.068 * s);
+          ctx.strokeStyle = shade(base, -36);
+          ctx.lineWidth = Math.max(1, s * 0.007);
+          for (const wy of [0.022, 0.042]) {
+            ctx.beginPath();
+            ctx.moveTo(-0.013 * s, gy * s + 0.036 * s + wy * s);
+            ctx.lineTo(0.013 * s, gy * s + 0.036 * s + wy * s);
+            ctx.stroke();
+          }
+          const lit = i === 1 && wake;
+          ctx.fillStyle = lit ? shade(trim2, 30) : trim2;
+          ctx.beginPath();
+          ctx.arc(0, gy * s + 0.028 * s, 0.017 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(trim2, -26);
+          ctx.beginPath();
+          ctx.arc(0, gy * s + 0.028 * s, 0.006 * s, 0, Math.PI * 2);
+          ctx.fill();
+          if (lit) {
+            ctx.globalAlpha = 0.35;
+            ctx.fillStyle = shade(trim2, 30);
+            ctx.beginPath();
+            ctx.arc(0, gy * s + 0.028 * s, 0.032 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+          ctx.restore();
+        }
+      }
+      // THE PLATE: angular top facet with a rolled rim — it reads
+      // over the grips, the knives live BEHIND the armor.
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, 6);
+      ctx.beginPath();
+      ctx.moveTo(-0.1 * s, -0.028 * s);
+      ctx.lineTo(-0.02 * s, -0.062 * s);
+      ctx.lineTo(0.085 * s, -0.048 * s);
+      ctx.lineTo(0.108 * s, 0.03 * s);
+      ctx.lineTo(0.02 * s, 0.062 * s);
+      ctx.lineTo(-0.09 * s, 0.042 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(base, 16);
+        ctx.beginPath();
+        ctx.moveTo(-0.1 * s, -0.028 * s);
+        ctx.lineTo(-0.02 * s, -0.062 * s);
+        ctx.lineTo(0.085 * s, -0.048 * s);
+        ctx.lineTo(0.07 * s, -0.02 * s);
+        ctx.lineTo(-0.03 * s, -0.034 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(base, -22);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(0.108 * s, 0.03 * s);
+        ctx.lineTo(0.02 * s, 0.062 * s);
+        ctx.lineTo(-0.09 * s, 0.042 * s);
+        ctx.stroke();
+      }
+    } else {
+      // THE BOUND SHOULDER: three wraps of crimson cord over bare
+      // leather, tail knotted and hanging — the mark itself.
+      seat(0.105 * s, 0.08 * s, shade(base, -12), shade(base, 2));
+      const cord = st.tallycord?.cord ?? '#a83228';
+      if (!hurt) {
+        ctx.strokeStyle = cord;
+        ctx.lineWidth = Math.max(1.5, s * 0.013);
+        ctx.beginPath();
+        ctx.moveTo(-0.096 * s, -0.02 * s);
+        ctx.quadraticCurveTo(0, 0.008 * s, 0.096 * s, -0.026 * s);
+        ctx.moveTo(-0.092 * s, 0.0 * s);
+        ctx.quadraticCurveTo(0, 0.028 * s, 0.092 * s, -0.006 * s);
+        ctx.moveTo(-0.086 * s, 0.02 * s);
+        ctx.quadraticCurveTo(0, 0.048 * s, 0.086 * s, 0.014 * s);
+        ctx.stroke();
+        ctx.fillStyle = shade(cord, -16);
+        ctx.beginPath();
+        ctx.arc(-0.062 * s, 0.03 * s, 0.011 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = shade(cord, -8);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(-0.062 * s, 0.038 * s);
+        ctx.quadraticCurveTo(-0.07 * s, 0.08 * s, -0.052 * s, 0.115 * s);
         ctx.stroke();
       }
     }
@@ -15312,35 +15928,265 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'thiefhood') {
-    // THE THIEFHOOD — cutpurse's head: a slouched hood whose crown
-    // volume falls to the trailing side in a lazy fold (nothing about
-    // a thief stands symmetric), the kerchief mask claiming the face
-    // below the eye line, knot tails at the jaw, and the guild's one
-    // vanity: a brass coin pinned at the brow that glints when it
-    // shouldn't. The face is nobody; the hands are famous.
+  if (st.kind === 'guildcowl') {
+    // THE MASTER'S PEAK — cutpurse's head, the guild's own cut. Every
+    // hood in the wardrobe sweeps BACK; the guildmaster's breaks
+    // FORWARD: a hard beaked peak jutting past the brow like a bird
+    // of prey considering a purse. The peak's underside throws the
+    // folded dark — the deepest shadow in the opening lives at the
+    // LEADING corner, cast by the beak itself. Below the eye line the
+    // kerchief claims everything and hangs to a point past the hem,
+    // stamped once with the guild's coin. The one vanity: a brass
+    // bead at the very tip of the beak, catching light it has no
+    // business catching.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.62;
+    const oBot = headY + hh * 0.84;
+    // The beak: forward of the brow and HOOKED — the tip drops below
+    // its own root line like a raptor considering the ground.
+    const peakX = headX + lead * hw * (2.05 + t * 0.4);
+    const peakY = headY - hh * 0.52;
+    const apexX = headX - lead * hw * 0.12;
+    const apexY = headY - hh * 1.38;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.18, headY + hh * 1.14);
+      ctx.lineTo(headX + lead * hw * 1.26, headY + hh * 0.14);
+      // The jaw line steps IN under the beak — the underbite of the
+      // silhouette that makes the peak read as an overhang.
+      ctx.lineTo(headX + lead * hw * 1.02, headY - hh * 0.4);
+      // THE BEAK: the under-edge runs out level, then the tip HOOKS
+      // down past it; the top facet rakes back up to the brow root —
+      // three hard lines, a bird of prey's profile.
+      ctx.lineTo(headX + lead * hw * 1.72, headY - hh * 0.38);
+      ctx.lineTo(peakX, peakY);
+      ctx.lineTo(headX + lead * hw * 0.86, headY - hh * 1.06);
+      // Crown: one clean rake to a low apex, then the trailing drape.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.4, headY - hh * 1.34, apexX, apexY);
+      // The trailing crown line stays HIGH past the skull's shoulder
+      // — sagging straight to the drape lets a skin sliver through.
+      ctx.lineTo(headX - lead * hw * 0.72, headY - hh * 1.12);
+      ctx.lineTo(headX - lead * hw * (1.14 + t * 0.28), headY - hh * 0.56);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.28 + t * 0.3), headY + hh * 0.28, headX - lead * hw * 1.24, headY + hh * 1.14);
+      // The mantle hem breaks in two swept points.
+      ctx.lineTo(headX - lead * hw * 0.5, headY + hh * 1.32);
+      ctx.lineTo(headX - lead * hw * 0.26, headY + hh * 1.2);
+      ctx.lineTo(headX + lead * hw * 0.4, headY + hh * 1.36);
+      ctx.lineTo(headX + lead * hw * 0.64, headY + hh * 1.18);
+      ctx.closePath();
+    };
+    // The shrine arch under the beak — pointed, leaning with the face.
+    const opening = () => {
+      ctx.moveTo(cx - ohw, oBot);
+      ctx.lineTo(cx - ohw, headY - hh * 0.1);
+      ctx.lineTo(cx - ohw * 0.5, oTop + hh * 0.16);
+      ctx.lineTo(cx + lead * ohw * 0.06, oTop);
+      ctx.lineTo(cx + ohw * 0.5, oTop + hh * 0.16);
+      ctx.lineTo(cx + ohw, headY - hh * 0.1);
+      ctx.lineTo(cx + ohw, oBot);
+      ctx.closePath();
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      // Trailing-half shade, then FOLDED planes on crease lines.
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.7, hw * 2.4, hh * 3.4);
+      // The beak's TOP facet is the lit plane — the light lands on
+      // the overhang first, the whole length of the blade.
+      ctx.fillStyle = shade(st.color, 14);
+      ctx.beginPath();
+      ctx.moveTo(peakX, peakY);
+      ctx.lineTo(headX + lead * hw * 0.86, headY - hh * 1.04);
+      ctx.lineTo(headX + lead * hw * 0.68, headY - hh * 0.84);
+      ctx.lineTo(headX + lead * hw * 1.56, headY - hh * 0.52);
+      ctx.closePath();
+      ctx.fill();
+      // The beak's UNDER facet: the deepest plane on the head — the
+      // hook's belly, brow root to tip.
+      ctx.fillStyle = shade(st.color, -28);
+      ctx.beginPath();
+      ctx.moveTo(peakX, peakY);
+      ctx.lineTo(headX + lead * hw * 1.56, headY - hh * 0.5);
+      ctx.lineTo(headX + lead * hw * 1.06, headY - hh * 0.44);
+      ctx.lineTo(headX + lead * hw * 1.72, headY - hh * 0.38);
+      ctx.closePath();
+      ctx.fill();
+      // One crease down the crown rake.
+      ctx.strokeStyle = shade(st.color, -22);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(apexX + lead * hw * 0.3, apexY + hh * 0.16);
+      ctx.lineTo(headX - lead * hw * 0.3, headY - hh * 0.2);
+      ctx.stroke();
+      ctx.restore();
+      if (front) {
+        // THE CAST OF THE BEAK: folded dark past the eye line — an
+        // OPAQUE plane (translucent fills silently no-op in this
+        // paint path; the storm court's probe, confirmed here), its
+        // deep corner leading: the shadow the peak throws. The face
+        // is nobody — the dark holds everything above the kerchief.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        ctx.fillStyle = '#241b21';
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw, oTop);
+        ctx.lineTo(cx + ohw, oTop);
+        ctx.lineTo(cx + ohw, headY + hh * 0.12);
+        ctx.lineTo(cx - lead * ohw * 0.2, headY + hh * 0.02);
+        ctx.lineTo(cx - ohw, headY + hh * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        // The deeper leading wedge under the beak's own corner.
+        ctx.fillStyle = '#181117';
+        ctx.beginPath();
+        ctx.moveTo(cx + lead * ohw * 0.15, oTop);
+        ctx.lineTo(cx + lead * ohw, oTop);
+        ctx.lineTo(cx + lead * ohw, headY - hh * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        // THE KERCHIEF below the eye line — flat panel, one nose
+        // ridge, and the hanging point drawn INSIDE the opening.
+        if (st.mask) {
+          ctx.fillStyle = st.mask;
+          ctx.fillRect(cx - ohw, headY - hh * 0.04, ohw * 2, oBot - (headY - hh * 0.04));
+          ctx.fillStyle = shade(st.mask, 18);
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 0.38, headY - hh * 0.04);
+          ctx.lineTo(cx + ohw * 0.38, headY - hh * 0.04);
+          ctx.lineTo(cx + ohw * 0.14, headY + hh * 0.24);
+          ctx.lineTo(cx - ohw * 0.14, headY + hh * 0.24);
+          ctx.closePath();
+          ctx.fill();
+          // The coin STAMP on the leading cheek: a pressed ring and
+          // a square punch — the guild seal, matte, never glinting
+          // (the glint budget belongs to the beak bead).
+          ctx.strokeStyle = shade(st.mask, 32);
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.arc(cx + lead * ohw * 0.52, headY + hh * 0.34, headR * 0.09, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = shade(st.mask, 32);
+          ctx.fillRect(cx + lead * ohw * 0.52 - headR * 0.028, headY + hh * 0.34 - headR * 0.028, headR * 0.056, headR * 0.056);
+        }
+        ctx.restore();
+        // The kerchief's hanging point drops past the hood hem.
+        if (st.mask) {
+          ctx.fillStyle = st.mask;
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 0.5, oBot - hh * 0.06);
+          ctx.lineTo(cx + ohw * 0.5, oBot - hh * 0.06);
+          ctx.lineTo(cx + lead * ohw * 0.14, headY + hh * 1.42);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(st.mask, -14);
+          ctx.beginPath();
+          ctx.moveTo(cx + lead * ohw * 0.02, oBot - hh * 0.02);
+          ctx.lineTo(cx + lead * ohw * 0.5, oBot - hh * 0.06);
+          ctx.lineTo(cx + lead * ohw * 0.14, headY + hh * 1.42);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // THE FRAME: double brass piping around the arch — the guild
+        // dresses even its shadows.
+        ctx.strokeStyle = shade(st.trim, 10);
+        ctx.lineWidth = Math.max(1.5, headR * 0.055);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+        ctx.strokeStyle = shade(st.color, -26);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.86, oBot - hh * 0.04);
+        ctx.lineTo(cx - ohw * 0.86, headY - hh * 0.06);
+        ctx.lineTo(cx - ohw * 0.42, oTop + hh * 0.22);
+        ctx.lineTo(cx + lead * ohw * 0.06, oTop + hh * 0.1);
+        ctx.lineTo(cx + ohw * 0.42, oTop + hh * 0.22);
+        ctx.lineTo(cx + ohw * 0.86, headY - hh * 0.06);
+        ctx.lineTo(cx + ohw * 0.86, oBot - hh * 0.04);
+        ctx.stroke();
+      } else {
+        // Back read: crown seam, folded panels, and the guild tail —
+        // a short pointed drop with a brass tag at the tip.
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.88);
+        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.88);
+        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.88);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = st.trim;
+        ctx.fillRect(headX + lead * hw * 0.1 - headR * 0.05, headY + hh * 1.78, headR * 0.1, headR * 0.12);
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 1.22);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.84);
+        ctx.stroke();
+      }
+      // THE BEAD ON THE BEAK: brass at the very tip, flaring on the
+      // rare clock — the master announces nothing, and yet.
+      if (st.coinpin && front) {
+        const gx = peakX - lead * hw * 0.09;
+        const gy = peakY - hh * 0.04;
+        const flare = f.nowMs % 3400 < 240;
+        ctx.fillStyle = flare ? shade(st.coinpin.color, 34) : st.coinpin.color;
+        ctx.beginPath();
+        ctx.arc(gx, gy, headR * (flare ? 0.075 : 0.062), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(st.coinpin.color, -24);
+        ctx.beginPath();
+        ctx.arc(gx, gy, headR * 0.024, 0, Math.PI * 2);
+        ctx.fill();
+        if (flare) {
+          ctx.globalAlpha = 0.35;
+          ctx.beginPath();
+          ctx.arc(gx, gy, headR * 0.14, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    return;
+  }
+  if (st.kind === 'latchhood') {
+    // THE LATCHHOOD — alleyrat's head: the housebreaker works CLOSE.
+    // The only close-cut head in the guild: a seamed leather coif
+    // hugging the skull, a jaw wrap sealing the lower face, and the
+    // office worn across the brow — an iron band with a keyhole
+    // punched clean through it. Three skeleton keys hang at the
+    // trailing jaw, none of them his. The opening is an eye band and
+    // nothing more; the quarter's doors know the rest.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.74 * (1 - 0.5 * t);
-    const oTop = headY - hh * 0.54;
-    const oBot = headY + hh * 0.84;
+    const oTop = headY - hh * 0.5;
+    const oBot = headY + hh * 0.08;
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.16);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.2, headX + lead * hw * 1.12, headY - hh * 0.44);
-      // A low brow — the eyes keep their own shade.
-      ctx.quadraticCurveTo(headX + lead * hw * 1.2, headY - hh * 0.8, headX + lead * hw * 0.7, headY - hh * 1.04);
-      // The slouch: the crown rises, breaks, and SAGS trailing —
-      // a soft cap fold, not a peak.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.2, headY - hh * 1.3, headX - lead * hw * 0.22, headY - hh * 1.22);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.72, headY - hh * 1.34, headX - lead * hw * (1.12 + t * 0.26), headY - hh * 0.92);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.3 + t * 0.3), headY - hh * 0.3, headX - lead * hw * (1.32 + t * 0.3), headY + hh * 0.2);
-      ctx.quadraticCurveTo(headX - lead * hw * 1.36, headY + hh * 0.6, headX - lead * hw * 1.28, headY + hh * 1.16);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.moveTo(headX + lead * hw * 1.06, headY + hh * 1.04);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.16, headY + hh * 0.16, headX + lead * hw * 1.02, headY - hh * 0.6);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.92, headY - hh * 1.1, headX + lead * hw * 0.28, headY - hh * 1.26);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.4, headY - hh * 1.3, headX - lead * hw * (0.96 + t * 0.16), headY - hh * 0.86);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.12 + t * 0.18), headY - hh * 0.2, headX - lead * hw * 1.06, headY + hh * 1.04);
+      // The chin wrap closes the hem — one piece, no drape.
+      ctx.quadraticCurveTo(headX, headY + hh * 1.3, headX + lead * hw * 1.06, headY + hh * 1.04);
       ctx.closePath();
     };
     const opening = () => {
-      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.6);
     };
     ctx.fillStyle = mc;
     ctx.beginPath();
@@ -15355,105 +16201,499 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.clip('evenodd');
       ctx.fillStyle = shade(st.color, -13);
       ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // The slouch fold: the sagged crown holds a deeper panel with
-      // one lit break above it — cloth remembering the fold.
-      ctx.fillStyle = shade(st.color, -20);
-      ctx.beginPath();
-      ctx.moveTo(headX - lead * hw * 0.18, headY - hh * 1.24);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.66, headY - hh * 1.32, headX - lead * hw * 1.06, headY - hh * 0.94);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.62, headY - hh * 1.06, headX - lead * hw * 0.2, headY - hh * 1.04);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = shade(st.color, 10);
-      ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.66, headY - hh * 0.98);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.18, headY - hh * 1.24, headX - lead * hw * 0.2, headY - hh * 1.16);
-      ctx.lineTo(headX - lead * hw * 0.14, headY - hh * 0.98);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.2, headY - hh * 1.04, headX + lead * hw * 0.54, headY - hh * 0.78);
-      ctx.closePath();
-      ctx.fill();
+      // The coif's seams: three saddle lines radiating over the
+      // crown — the craft IS the ornament on a working head.
+      ctx.strokeStyle = shade(st.color, -24);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      for (const u of [-0.5, 0.05, 0.6]) {
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * u, headY - hh * 1.28);
+        ctx.quadraticCurveTo(headX + lead * hw * (u * 0.7), headY - hh * 0.9, headX + lead * hw * (u * 0.9), headY - hh * 0.66);
+        ctx.stroke();
+      }
+      // THE JAW WRAP: the lower face sealed in its own darker cloth,
+      // one fold line where it tucks.
+      const lt = st.latch;
+      if (lt) {
+        ctx.fillStyle = lt.wrap;
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 1.1, headY + hh * 0.26);
+        ctx.lineTo(headX - lead * hw * 1.1, headY + hh * 0.2);
+        ctx.lineTo(headX - lead * hw * 1.04, headY + hh * 1.1);
+        ctx.quadraticCurveTo(headX, headY + hh * 1.34, headX + lead * hw * 1.04, headY + hh * 1.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(lt.wrap, -18);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 0.9, headY + hh * 0.52);
+        ctx.quadraticCurveTo(headX, headY + hh * 0.66, headX - lead * hw * 0.86, headY + hh * 0.48);
+        ctx.stroke();
+      }
       ctx.restore();
+      // THE BROW BAND: iron across the forehead, riveted at both
+      // temples, the keyhole punched at the leading third — the
+      // office, worn where the door can see it.
+      const lt2 = st.latch;
+      if (lt2) {
+        const bandT = headY - hh * 0.92;
+        const bandB = headY - hh * 0.6;
+        ctx.fillStyle = lt2.band;
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 1.0, bandB + hh * 0.06);
+        ctx.lineTo(headX + lead * hw * 0.94, bandT);
+        ctx.lineTo(headX - lead * hw * (0.88 + t * 0.14), bandT + hh * 0.08);
+        ctx.lineTo(headX - lead * hw * (0.96 + t * 0.16), bandB + hh * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        // The band's lit top edge — iron takes light on the arris.
+        ctx.strokeStyle = shade(lt2.band, 24);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 0.94, bandT + hh * 0.015);
+        ctx.lineTo(headX - lead * hw * (0.88 + t * 0.14), bandT + hh * 0.095);
+        ctx.stroke();
+        if (front) {
+          // THE KEYHOLE: circle and wedge, a void in the iron.
+          const kx2 = cx + lead * ohw * 0.34;
+          const ky2 = (bandT + bandB) / 2 + hh * 0.02;
+          ctx.fillStyle = '#14161a';
+          ctx.beginPath();
+          ctx.arc(kx2, ky2 - hh * 0.045, headR * 0.055, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(kx2 - headR * 0.03, ky2 - hh * 0.02);
+          ctx.lineTo(kx2 + headR * 0.03, ky2 - hh * 0.02);
+          ctx.lineTo(kx2 + headR * 0.05, ky2 + hh * 0.075);
+          ctx.lineTo(kx2 - headR * 0.05, ky2 + hh * 0.075);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Rivets at the temples.
+        ctx.fillStyle = shade(lt2.band, -22);
+        for (const u of [0.86, -0.78]) {
+          ctx.beginPath();
+          ctx.arc(headX + lead * hw * u, (bandT + bandB) / 2 + (u < 0 ? hh * 0.06 : 0), headR * 0.035, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       if (front) {
-        // The eye band keeps a hard shade under the low brow.
+        // The eye band holds a hard FOLDED dark — OPAQUE (translucent
+        // fills no-op in this paint path), the band's own brow shadow;
+        // the eyes emerge under its ragged lower edge. The one head in
+        // the guild that lets you meet its eyes, and only its eyes.
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.1);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.5)');
-        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.56);
-        // THE KERCHIEF: the mask claims everything below the eye
-        // line — a flat dark panel with one soft highlight ridge
-        // where the nose holds it off the face.
-        if (st.mask) {
-          ctx.fillStyle = st.mask;
-          ctx.fillRect(cx - ohw, headY - hh * 0.06, ohw * 2, oBot - (headY - hh * 0.06));
-          ctx.fillStyle = shade(st.mask, 12);
+        ctx.fillStyle = '#1d1b20';
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw, oTop);
+        ctx.lineTo(cx + ohw, oTop);
+        ctx.lineTo(cx + ohw, oTop + hh * 0.32);
+        ctx.lineTo(cx - lead * ohw * 0.1, oTop + hh * 0.44);
+        ctx.lineTo(cx - ohw, oTop + hh * 0.28);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        // Stitch frame on the eye band's lower lip.
+        ctx.strokeStyle = shade(st.color, -26);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.setLineDash([s * 0.012, s * 0.011]);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.9, oBot + hh * 0.07);
+        ctx.lineTo(cx + ohw * 0.9, oBot + hh * 0.07);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        // Back read: center seam, the wrap's tuck, and the band
+        // buckled at the nape.
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 1.24);
+        ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 1.0);
+        ctx.stroke();
+        if (st.latch) {
+          ctx.fillStyle = st.latch.band;
+          ctx.fillRect(headX - hw * 0.5, headY - hh * 0.88, hw, hh * 0.24);
+          ctx.fillStyle = shade(st.latch.band, -22);
+          ctx.fillRect(headX - headR * 0.05, headY - hh * 0.86, headR * 0.1, hh * 0.2);
+        }
+      }
+      // THE KEYS: three at the trailing jaw off one ring, staggered
+      // lengths, hung to gravity — and the glint is RARE and uneven,
+      // one key at a time remembering a door.
+      const lt3 = front ? st.latch : undefined;
+      if (lt3) {
+        // The keys hang from a collar ring INBOARD of the shoulder —
+        // over the sternum, where the near arm's pauldron (painted
+        // after the helmet) can never bury them. These are the
+        // office; the office stays visible.
+        const rx = headX - lead * hw * 0.5;
+        const ry = headY + hh * 1.0;
+        ctx.strokeStyle = shade(lt3.band, 16);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.arc(rx, ry, headR * 0.08, 0, Math.PI * 2);
+        ctx.stroke();
+        const wake = f.nowMs % 3100 < 260 ? Math.floor(f.nowMs / 3100) % 3 : -1;
+        const keys: Array<[number, number, number]> = [
+          [-0.13, 0.52, -0.16], [0.02, 0.68, 0.05], [0.15, 0.42, 0.2],
+        ];
+        for (let i = 0; i < 3; i++) {
+          const [dx, len, tilt] = keys[i]!;
+          const kc = i === wake ? (lt3.keys ? shade(lt3.keys, 30) : '#ffffff') : lt3.keys;
+          ctx.save();
+          ctx.translate(rx - lead * hw * 0.02 + dx * hw, ry + headR * 0.07);
+          ctx.rotate(tilt * (lead || 1));
+          ctx.strokeStyle = kc;
+          ctx.lineWidth = Math.max(1.5, s * 0.014);
+          // Bow at the ring, stem down, bit at the foot.
           ctx.beginPath();
-          ctx.moveTo(cx - ohw * 0.4, headY - hh * 0.06);
-          ctx.lineTo(cx + ohw * 0.4, headY - hh * 0.06);
-          ctx.lineTo(cx + ohw * 0.16, headY + hh * 0.22);
-          ctx.lineTo(cx - ohw * 0.16, headY + hh * 0.22);
+          ctx.arc(0, headR * 0.055, headR * 0.06, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, headR * 0.115);
+          ctx.lineTo(0, hh * len);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, hh * len);
+          ctx.lineTo(headR * 0.07, hh * len);
+          ctx.moveTo(0, hh * (len - 0.09));
+          ctx.lineTo(headR * 0.052, hh * (len - 0.09));
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+    return;
+  }
+  if (st.kind === 'veilwrap') {
+    // THE VEILWRAP — moonless's head: the night wound on in bands.
+    // No hood, no volume, NO opening — cloth wrapped turn over turn
+    // until there is no face to find, and where the eyes should be,
+    // one slit holding a cold light that breathes. The trailing end
+    // streams behind on a slow clock; the silhouette steps where the
+    // wraps cross it. On the real nights, nothing looks back.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const sway = Math.sin(f.nowMs * 0.0013) * hw * 0.05;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.08, headY + hh * 1.06);
+      ctx.lineTo(headX + lead * hw * 1.16, headY + hh * 0.24);
+      // The silhouette STEPS at each wrap edge — polygonal, banded.
+      ctx.lineTo(headX + lead * hw * 1.06, headY - hh * 0.08);
+      ctx.lineTo(headX + lead * hw * 1.12, headY - hh * 0.42);
+      ctx.lineTo(headX + lead * hw * 0.92, headY - hh * 0.72);
+      ctx.lineTo(headX + lead * hw * 0.66, headY - hh * 1.14);
+      ctx.lineTo(headX - lead * hw * 0.12, headY - hh * 1.28);
+      ctx.lineTo(headX - lead * hw * 0.76, headY - hh * 1.06);
+      // Steps stay ON the silhouette but never step INSIDE the skull
+      // — a wrap edge that dips under 1.04 head-widths lets the face
+      // chip peek through the cloth (the round-1 orange wedge).
+      ctx.lineTo(headX - lead * hw * (1.08 + t * 0.16), headY - hh * 0.64);
+      ctx.lineTo(headX - lead * hw * (1.04 + t * 0.14), headY - hh * 0.28);
+      ctx.lineTo(headX - lead * hw * (1.18 + t * 0.18), headY + hh * 0.1);
+      ctx.lineTo(headX - lead * hw * 1.06, headY + hh * 1.06);
+      // The throat wrap closes low — one piece to the collar.
+      ctx.quadraticCurveTo(headX, headY + hh * 1.32, headX + lead * hw * 1.08, headY + hh * 1.06);
+      ctx.closePath();
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      ctx.clip();
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      // THE WRAPS: three hard band planes crossing the skull on the
+      // diagonal, every value change on a wrap edge — never a
+      // gradient. Top band lit, jaw band deep.
+      ctx.fillStyle = shade(st.color, 8);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.94, headY - hh * 0.7);
+      ctx.lineTo(headX + lead * hw * 0.6, headY - hh * 1.18);
+      ctx.lineTo(headX - lead * hw * 0.2, headY - hh * 1.3);
+      ctx.lineTo(headX - lead * hw * 0.82, headY - hh * 1.0);
+      ctx.lineTo(headX - lead * hw * 0.4, headY - hh * 0.78);
+      ctx.lineTo(headX + lead * hw * 0.3, headY - hh * 0.82);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(st.color, -6);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.12, headY - hh * 0.4);
+      ctx.lineTo(headX + lead * hw * 0.94, headY - hh * 0.68);
+      ctx.lineTo(headX - lead * hw * 0.44, headY - hh * 0.76);
+      ctx.lineTo(headX - lead * hw * (1.0 + t * 0.16), headY - hh * 0.6);
+      ctx.lineTo(headX - lead * hw * (0.92 + t * 0.14), headY - hh * 0.3);
+      ctx.lineTo(headX + lead * hw * 0.2, headY - hh * 0.24);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(st.color, -20);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.14, headY + hh * 0.3);
+      ctx.lineTo(headX + lead * hw * 1.04, headY + hh * 0.62);
+      ctx.lineTo(headX - lead * hw * 1.02, headY + hh * 0.54);
+      ctx.lineTo(headX - lead * hw * 1.1, headY + hh * 0.16);
+      ctx.lineTo(headX - lead * hw * 0.3, headY + hh * 0.24);
+      ctx.closePath();
+      ctx.fill();
+      // Wrap edges: two hard separation lines along the band seams.
+      ctx.strokeStyle = shade(st.color, -26);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.06, headY - hh * 0.44);
+      ctx.lineTo(headX - lead * hw * (0.94 + t * 0.14), headY - hh * 0.34);
+      ctx.moveTo(headX + lead * hw * 1.1, headY + hh * 0.26);
+      ctx.lineTo(headX - lead * hw * 1.06, headY + hh * 0.12);
+      ctx.stroke();
+      // The tuck knot at the trailing temple.
+      ctx.fillStyle = shade(st.color, -10);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.84, headY - hh * 0.66);
+      ctx.lineTo(headX - lead * hw * 0.6, headY - hh * 0.78);
+      ctx.lineTo(headX - lead * hw * 0.58, headY - hh * 0.5);
+      ctx.lineTo(headX - lead * hw * 0.84, headY - hh * 0.44);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      // THE TRAILING END: one loose band streaming behind on the
+      // slow clock — the only thing about the Unseen that moves.
+      const endX = headX - lead * (hw * (1.7 + t * 0.4) + sway);
+      const endY = headY - hh * 0.34 + sway * 0.5;
+      ctx.fillStyle = shade(st.color, -4);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.8, headY - hh * 0.72);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.3, headY - hh * 0.72, endX, endY);
+      ctx.lineTo(endX + lead * hw * 0.14, endY + hh * 0.16);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.24, headY - hh * 0.42, headX - lead * hw * 0.82, headY - hh * 0.48);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(st.color, -18);
+      ctx.beginPath();
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(endX + lead * hw * 0.14, endY + hh * 0.16);
+      ctx.lineTo(endX + lead * hw * 0.42, endY + hh * 0.05);
+      ctx.closePath();
+      ctx.fill();
+      if (front) {
+        // THE SLIT: a lens of dark at the eye line, and inside it
+        // the cold light, breathing on its own slow clock. Not eyes.
+        // A place where eyes refuse to be.
+        const sy = headY - hh * 0.2;
+        const sw2 = hw * 0.78 * (1 - 0.5 * t);
+        ctx.fillStyle = '#100d16';
+        ctx.beginPath();
+        ctx.moveTo(cx - sw2, sy);
+        ctx.lineTo(cx - sw2 * 0.5, sy - hh * 0.11);
+        ctx.lineTo(cx + sw2 * 0.5, sy - hh * 0.11);
+        ctx.lineTo(cx + sw2, sy);
+        ctx.lineTo(cx + sw2 * 0.5, sy + hh * 0.11);
+        ctx.lineTo(cx - sw2 * 0.5, sy + hh * 0.11);
+        ctx.closePath();
+        ctx.fill();
+        if (st.slitglow) {
+          const k = 0.5 + 0.5 * Math.sin(f.nowMs * 0.0016);
+          ctx.strokeStyle = st.slitglow.color;
+          ctx.lineWidth = Math.max(1.5, s * 0.016);
+          ctx.globalAlpha = 0.45 + 0.5 * k;
+          ctx.beginPath();
+          ctx.moveTo(cx - sw2 * 0.78, sy);
+          ctx.lineTo(cx + sw2 * 0.78, sy);
+          ctx.stroke();
+          ctx.globalAlpha = 0.16 * k;
+          ctx.lineWidth = Math.max(3, s * 0.05);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      } else {
+        // Back read: the bands CROSS — an X of wrap edges and the
+        // tucked end flap under it.
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.7, headY - hh * 0.9);
+        ctx.lineTo(headX + hw * 0.74, headY + hh * 0.4);
+        ctx.moveTo(headX + hw * 0.7, headY - hh * 0.84);
+        ctx.lineTo(headX - hw * 0.7, headY + hh * 0.46);
+        ctx.stroke();
+        ctx.fillStyle = shade(st.color, -12);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.16, headY + hh * 0.5);
+        ctx.lineTo(headX + hw * 0.2, headY + hh * 0.5);
+        ctx.lineTo(headX + hw * 0.06, headY + hh * 1.06);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    return;
+  }
+  if (st.kind === 'redmask') {
+    // THE REDMASK — redhand's head: the wet work wears lacquer. A
+    // snug hood swept to a short nape point, and where a face would
+    // be, a full lacquered mask falling to a blade-point chin — two
+    // flat facets split on a center ridge, the leading facet lit,
+    // ONE bright arris down the split. Two eye notches of dark. One
+    // old groove through the leading notch, lacquered over, never
+    // filled. Caught once. Never twice.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.76 * (1 - 0.5 * t);
+    const tipX = headX - lead * (hw * (1.55 + t * 0.4));
+    const tipY = headY - hh * 0.34;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.14, headY + hh * 1.12);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.24, headY + hh * 0.2, headX + lead * hw * 1.08, headY - hh * 0.5);
+      // The brow ledge overhangs the mask — a hard rim of hood.
+      ctx.lineTo(headX + lead * hw * 1.12, headY - hh * 0.78);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.5, headY - hh * 1.26, headX - lead * hw * 0.24, headY - hh * 1.3);
+      // THE NAPE POINT: short, high-raked — a knife at rest, not
+      // nightveil's long blade.
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(headX - lead * hw * (1.12 + t * 0.24), headY + hh * 0.06);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.26 + t * 0.26), headY + hh * 0.5, headX - lead * hw * 1.2, headY + hh * 1.12);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.4, headX + lead * hw * 1.14, headY + hh * 1.12);
+      ctx.closePath();
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      ctx.clip();
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      // The nape point's under-fold — deeper plane, no curve.
+      ctx.fillStyle = shade(st.color, -22);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.3, headY - hh * 1.22);
+      ctx.lineTo(tipX + lead * hw * 0.1, tipY - hh * 0.02);
+      ctx.lineTo(headX - lead * hw * 1.04, headY + hh * 0.0);
+      ctx.closePath();
+      ctx.fill();
+      // The lit rake off the brow ledge.
+      ctx.fillStyle = shade(st.color, 10);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.06, headY - hh * 0.76);
+      ctx.lineTo(headX + lead * hw * 0.5, headY - hh * 1.2);
+      ctx.lineTo(headX + lead * hw * 0.68, headY - hh * 0.98);
+      ctx.lineTo(headX + lead * hw * 1.1, headY - hh * 0.62);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      if (front) {
+        const lac = st.lacquer;
+        if (lac) {
+          // THE MASK: brow to blade-point chin, two flat facets on a
+          // center ridge — lacquer, not skin; the ridge leans with
+          // the facing like the nose it replaces.
+          const mTop = headY - hh * 0.64;
+          const chinX = cx + lead * ohw * 0.08;
+          const chinY = headY + hh * 1.04;
+          const ridgeX = cx + lead * ohw * 0.14;
+          // Trailing facet first (deep), then leading (lit). The mask
+          // CLAIMS the face wall to wall — a sliver of hood past its
+          // cheek edge reads as bare skin at ten paces.
+          ctx.fillStyle = lac.color;
+          ctx.beginPath();
+          ctx.moveTo(ridgeX, mTop);
+          ctx.lineTo(cx - ohw * 1.02, mTop + hh * 0.06);
+          ctx.lineTo(cx - ohw * 1.08, headY + hh * 0.14);
+          ctx.lineTo(chinX, chinY);
+          ctx.lineTo(ridgeX, mTop);
           ctx.closePath();
           ctx.fill();
-        }
-        ctx.restore();
-        // The knot tails: two cloth ends off the trailing jaw.
-        if (st.mask) {
-          ctx.fillStyle = st.mask;
-          const kx2 = headX - lead * hw * 1.1;
-          const ky2 = headY + hh * 0.34;
-          for (const [dx, dy, len] of [[-0.12, 0.02, 0.5], [-0.02, 0.12, 0.36]] as const) {
+          ctx.fillStyle = lac.lit;
+          ctx.beginPath();
+          ctx.moveTo(ridgeX, mTop);
+          ctx.lineTo(cx + ohw * 1.02, mTop + hh * 0.06);
+          ctx.lineTo(cx + ohw * 1.08, headY + hh * 0.14);
+          ctx.lineTo(chinX, chinY);
+          ctx.closePath();
+          ctx.fill();
+          // THE ARRIS: the one bright edge, ridge to chin point.
+          ctx.strokeStyle = shade(lac.lit, 22);
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(ridgeX, mTop + hh * 0.02);
+          ctx.lineTo(chinX, chinY - hh * 0.02);
+          ctx.stroke();
+          // THE EYE NOTCHES: two narrow darks at the eye line — cut
+          // into the lacquer, holding nothing.
+          ctx.fillStyle = '#1c1214';
+          for (const [ux, w2] of [[0.48, 0.5], [-0.42, 0.42]] as const) {
+            const ex = cx + lead * ohw * ux;
             ctx.beginPath();
-            ctx.moveTo(kx2, ky2);
-            ctx.quadraticCurveTo(
-              kx2 - lead * hw * (0.3 + dx), ky2 + hh * (0.3 + dy),
-              kx2 - lead * hw * (0.24 + dx * 2), ky2 + hh * len,
-            );
-            ctx.lineTo(kx2 - lead * hw * (0.06 + dx), ky2 + hh * (len - 0.08));
+            ctx.moveTo(ex - ohw * w2 * 0.5, headY - hh * 0.3);
+            ctx.lineTo(ex + ohw * w2 * 0.5, headY - hh * 0.34);
+            ctx.lineTo(ex + ohw * w2 * 0.5, headY - hh * 0.22);
+            ctx.lineTo(ex - ohw * w2 * 0.5, headY - hh * 0.18);
             ctx.closePath();
             ctx.fill();
           }
-        }
-        // The coin pin: brass at the brow; every few seconds it
-        // catches a light it has no business catching.
-        if (st.coinpin) {
-          const gx = cx + lead * ohw * 0.5;
-          const gy = oTop - headR * 0.06;
-          const flare = f.nowMs % 3400 < 260;
-          ctx.fillStyle = flare ? shade(st.coinpin.color, 40) : st.coinpin.color;
+          // THE GROOVE: one old SLASH past the leading notch's outer
+          // corner, lacquered over — raked hard off the vertical (a
+          // plumb groove through a level notch reads as a crosshair,
+          // the round-1 verdict).
+          if (lac.scar) {
+            ctx.strokeStyle = lac.scar;
+            ctx.lineWidth = Math.max(1, s * 0.011);
+            ctx.beginPath();
+            ctx.moveTo(cx + lead * ohw * 0.78, headY - hh * 0.52);
+            ctx.lineTo(cx + lead * ohw * 0.34, headY + hh * 0.16);
+            ctx.stroke();
+          }
+          // THE HOOD'S CAST: folded dark along the mask's top edge —
+          // the lacquer sits IN the hood, not on a bare head. OPAQUE
+          // (translucent fills no-op in this paint path): a deep
+          // lacquer tone, not a tint.
+          ctx.fillStyle = shade(lac.color, -34);
           ctx.beginPath();
-          ctx.arc(gx, gy, headR * (flare ? 0.085 : 0.075), 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = shade(st.coinpin.color, -24);
-          ctx.beginPath();
-          ctx.arc(gx, gy, headR * 0.028, 0, Math.PI * 2);
+          ctx.moveTo(cx - ohw * 1.02, mTop + hh * 0.06);
+          ctx.lineTo(cx + ohw * 1.02, mTop + hh * 0.06);
+          ctx.lineTo(cx + ohw * 0.84, mTop + hh * 0.24);
+          ctx.lineTo(cx - lead * ohw * 0.1, mTop + hh * 0.18);
+          ctx.lineTo(cx - ohw * 0.82, mTop + hh * 0.3);
+          ctx.closePath();
           ctx.fill();
         }
       } else {
-        // Back: the slouch reads as a hung fold; tails peek at the
-        // jaw's trailing corner.
-        ctx.fillStyle = shade(st.color, -10);
-        ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.9);
-        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.9);
-        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.9);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = shade(st.color, -22);
+        // Back read: hood panels and the red cord knotted at the
+        // nape, two short tails drifting on the slow clock.
+        ctx.strokeStyle = shade(st.color, -24);
         ctx.lineWidth = Math.max(1, s * 0.012);
         ctx.beginPath();
-        ctx.moveTo(headX - lead * hw * 0.3, headY - hh * 1.1);
-        ctx.quadraticCurveTo(headX - lead * hw * 0.12, headY - hh * 0.2, headX + lead * hw * 0.06, headY + hh * 0.85);
+        ctx.moveTo(headX, headY - hh * 1.18);
+        ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 0.9);
         ctx.stroke();
-        if (st.mask) {
-          ctx.fillStyle = st.mask;
+        const cord = st.lacquer?.color ?? st.trim;
+        const drift = Math.sin(f.nowMs * 0.0012) * hw * 0.08;
+        ctx.strokeStyle = cord;
+        ctx.lineWidth = Math.max(1.5, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.3, headY + hh * 0.14);
+        ctx.lineTo(headX + hw * 0.3, headY + hh * 0.2);
+        ctx.stroke();
+        ctx.fillStyle = cord;
+        ctx.beginPath();
+        ctx.arc(headX + lead * hw * 0.04, headY + hh * 0.18, headR * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+        for (const [ph, len] of [[0, 0.5], [1.9, 0.36]] as const) {
+          const dr2 = Math.sin(f.nowMs * 0.0012 + ph) * hw * 0.07 + drift * 0.3;
           ctx.beginPath();
-          ctx.moveTo(headX - lead * hw * 1.02, headY + hh * 0.3);
-          ctx.quadraticCurveTo(headX - lead * hw * 1.3, headY + hh * 0.62, headX - lead * hw * 1.18, headY + hh * 0.88);
-          ctx.lineTo(headX - lead * hw * 0.98, headY + hh * 0.7);
+          ctx.moveTo(headX + lead * hw * 0.04, headY + hh * 0.2);
+          ctx.quadraticCurveTo(headX + lead * hw * 0.1 + dr2 * 0.5, headY + hh * (0.2 + len * 0.6), headX + dr2, headY + hh * (0.2 + len));
+          ctx.lineTo(headX + dr2 + lead * hw * 0.07, headY + hh * (0.14 + len));
           ctx.closePath();
           ctx.fill();
         }

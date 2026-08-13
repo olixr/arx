@@ -3617,9 +3617,66 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             ctx.stroke();
           }
         }
+        if (legSt.shadewrap) {
+          // The veil's language carried to the ground: three hard
+          // turns of dark cloth wound down the shin, edges on the
+          // diagonal — bands, never a gradient.
+          const swp = legSt.shadewrap;
+          ctx.strokeStyle = swp.color;
+          ctx.lineWidth = Math.max(1.5, s * 0.02);
+          for (const k of [0.28, 0.52, 0.76]) {
+            const px = kx + (ankX - kx) * k;
+            const py = ky + (ankY - ky) * k;
+            ctx.beginPath();
+            ctx.moveTo(px - 0.024 * s, py - 0.01 * s);
+            ctx.lineTo(px + 0.024 * s, py + 0.008 * s);
+            ctx.stroke();
+          }
+          // The tie: one loose end off the outward ankle — one leg
+          // only; on both it reads as uniform print.
+          if (i === 0 && swp.tie) {
+            ctx.strokeStyle = swp.tie;
+            ctx.lineWidth = Math.max(1, s * 0.009);
+            ctx.beginPath();
+            ctx.moveTo(ankX + outX * 0.014 * s, ankY - 0.024 * s);
+            ctx.lineTo(ankX + outX * 0.038 * s, ankY - 0.004 * s);
+            ctx.stroke();
+          }
+        }
         // One-sided words dress a single leg — a roll on both thighs
         // reads as uniform print, on one it reads as gear.
         if (i === 0) {
+          if (legSt.thighsheath) {
+            // The Knife's spare, flat to the outer thigh — muted
+            // register (bright edges on small leg devices float as
+            // teeth; the calffin verdict).
+            const ts2 = legSt.thighsheath;
+            const cxx = hipX + tux * tLen * 0.42 + outX * 0.024 * s;
+            const cyy = hipY + tuy * tLen * 0.42;
+            ctx.save();
+            ctx.translate(cxx, cyy);
+            ctx.rotate(Math.atan2(tuy, tux) - Math.PI / 2);
+            ctx.fillStyle = ts2.sheath;
+            chamferRect(ctx, -0.019 * s, -0.048 * s, 0.038 * s, 0.098 * s, 0.009 * s);
+            ctx.fill();
+            ctx.strokeStyle = shade(ts2.sheath, -22);
+            ctx.lineWidth = Math.max(1, s * 0.009);
+            for (const o of [-0.022, 0.02]) {
+              ctx.beginPath();
+              ctx.moveTo(-0.019 * s, o * s);
+              ctx.lineTo(0.019 * s, o * s);
+              ctx.stroke();
+            }
+            // Grip stub and pommel above the throat — dulled brass,
+            // no glint at the leg.
+            ctx.fillStyle = shade(ts2.sheath, -32);
+            ctx.fillRect(-0.006 * s, -0.06 * s, 0.012 * s, 0.013 * s);
+            ctx.fillStyle = shade(ts2.pommel, -14);
+            ctx.beginPath();
+            ctx.arc(0, -0.066 * s, 0.01 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
           if (legSt.pickroll) {
             // The thief's tool roll strapped flat to the thigh, pick
             // ends ticking out of the top.
@@ -6098,7 +6155,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ? 'free'
       : helmKind === 'wizard'
         ? 'brim'
-        : helmKind === 'hood'
+        : helmKind === 'hood' || helmKind === 'guildcowl' ||
+            helmKind === 'latchhood' || helmKind === 'veilwrap' ||
+            helmKind === 'redmask'
           ? 'cloth'
           : 'sealed';
   const hairCol = rig.hurt
