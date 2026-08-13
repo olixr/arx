@@ -93,7 +93,7 @@ const SCREEN_ACTIONS: readonly ActionId[] = ACTIONS.filter(
 
 export interface UiNavHooks {
   /** Swap two pack slots (pad carry mode). */
-  onInvMove: (from: number, to: number) => void;
+  onInvMove: (from: number, to: number, merge?: boolean) => void;
   /** Drop the carried pack slot onto the ground (Ⓨ while carrying). */
   onDropToWorld: (slot: number) => void;
   /**
@@ -460,7 +460,8 @@ export class UiNav {
       // Only a filled slot can be picked up.
       if (el?.dataset.filled === '1') this.carrying = idx;
     } else {
-      if (idx !== this.carrying) this.hooks.onInvMove(this.carrying, idx);
+      // Carry-place is deliberate: same-kind stacks pour together.
+      if (idx !== this.carrying) this.hooks.onInvMove(this.carrying, idx, true);
       this.carrying = null;
     }
   }

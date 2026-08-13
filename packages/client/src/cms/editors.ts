@@ -2102,7 +2102,11 @@ function itemDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       item.id,
       [
         pill(`${item.value} coins`, 'vendor value', 'brass'),
-        pill(item.stackable ? 'stacks' : 'one per slot', '', 'ink'),
+        pill(
+          item.stackable ? (item.maxStack ? `stacks to ${item.maxStack}` : 'stacks') : 'one per slot',
+          '',
+          'ink',
+        ),
         ...(item.slot ? [pill(item.slot, 'equips to', 'ink')] : []),
       ],
       false,

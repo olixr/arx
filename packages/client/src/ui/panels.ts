@@ -307,7 +307,7 @@ export class Panels {
     private readonly onUseSlot: (slot: number) => void,
     private readonly onUnequip: (slot: EquipSlot) => void,
     private readonly onTechnique: (ability: string, slot: 0 | 2) => void = () => {},
-    private readonly onInvMove: (from: number, to: number) => void = () => {},
+    private readonly onInvMove: (from: number, to: number, merge?: boolean) => void = () => {},
     private readonly onDropToWorld: (slot: number) => void = () => {},
     private readonly onSlotAction: (slot: number, action: SlotAction) => void = () => {},
     /** Which station conversation is open — labels the menu verbs. */
@@ -565,7 +565,9 @@ export class Panels {
     const target = this.slotUnder(e);
     if (target) {
       const to = Number(target.dataset.invslot);
-      if (to !== d.from) this.onInvMove(d.from, to);
+      // A drag onto a slot is deliberate — same-kind stacks pour
+      // together (THE MEASURED STACK's hand-merge) instead of swapping.
+      if (to !== d.from) this.onInvMove(d.from, to, true);
     } else if (this.overWorld(e)) {
       // Dragged out of the pack onto the world: let it go.
       this.onDropToWorld(d.from);

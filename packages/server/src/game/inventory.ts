@@ -27,16 +27,28 @@ export function addItem(
   const facet = stolen ? { stolen: true as const } : {};
 
   if (def.stackable) {
+    // THE MEASURED STACK: fill existing stacks to the cap, then spill
+    // into empty slots a cap at a time. No cap (coins, ammo, seeds)
+    // means the first matching stack takes everything, as ever. An
+    // oversized stack from before a cap landed is tolerated where it
+    // sits — it just never grows further.
+    const cap = def.maxStack ?? Infinity;
     for (const slot of slots) {
-      if (slot && slot.item === itemId && !slot.stolen === !stolen) {
-        slot.qty += remaining;
-        return qty;
+      if (remaining <= 0) break;
+      if (slot && slot.item === itemId && !slot.stolen === !stolen && slot.qty < cap) {
+        const take = Math.min(cap - slot.qty, remaining);
+        slot.qty += take;
+        remaining -= take;
       }
     }
-    const idx = slots.findIndex((s) => s === null);
-    if (idx === -1) return 0;
-    slots[idx] = { item: itemId, qty: remaining, ...facet };
-    return qty;
+    for (let i = 0; i < slots.length && remaining > 0; i++) {
+      if (slots[i] === null) {
+        const take = Math.min(cap, remaining);
+        slots[i] = { item: itemId, qty: take, ...facet };
+        remaining -= take;
+      }
+    }
+    return qty - remaining;
   }
 
   for (let i = 0; i < slots.length && remaining > 0; i++) {
@@ -113,7 +125,11 @@ export function countItem(slots: InvSlot[], itemId: string): number {
 export function hasSpaceFor(slots: InvSlot[], itemId: string, stolen?: boolean): boolean {
   const def = itemDef(itemId);
   if (!def) return false;
-  if (def.stackable && slots.some((s) => s?.item === itemId && !s.stolen === !stolen)) return true;
+  if (def.stackable) {
+    // A stack at its measured cap is a full shelf, not a promise.
+    const cap = def.maxStack ?? Infinity;
+    if (slots.some((s) => s?.item === itemId && !s.stolen === !stolen && s.qty < cap)) return true;
+  }
   return slots.some((s) => s === null);
 }
 

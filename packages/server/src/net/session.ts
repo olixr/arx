@@ -295,7 +295,7 @@ export class Session {
       case 'invmove': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.invMove(this.playerEid, msg.from, msg.to);
+        this.game.invMove(this.playerEid, msg.from, msg.to, msg.merge === true);
         return;
       }
       case 'dropitem': {

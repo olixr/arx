@@ -2608,14 +2608,34 @@ export class ClientGame {
     return out;
   }
 
-  invMove(from: number, to: number): void {
+  invMove(from: number, to: number, merge = false): void {
     if (from === to) return;
-    // Optimistic swap — the server echoes the authoritative pack.
+    // Optimistic move — the server echoes the authoritative pack. A
+    // deliberate drop onto the same kind (merge) pours up to THE
+    // MEASURED STACK's cap, mirroring the server's rule; anything
+    // else swaps. The echo corrects any stale-state divergence.
     const inv = this.inventory;
+    const src = inv[from];
+    const dst = inv[to];
+    const def = src ? itemDef(src.item) : undefined;
+    if (
+      merge && src && dst && src.item === dst.item &&
+      !src.stolen === !dst.stolen && def?.stackable
+    ) {
+      const cap = def.maxStack ?? Infinity;
+      const pour = Math.min(src.qty, Math.max(0, cap - dst.qty));
+      if (pour > 0) {
+        dst.qty += pour;
+        src.qty -= pour;
+        if (src.qty === 0) inv[from] = null;
+        this.conn?.send({ t: 'invmove', from, to, merge: true });
+        return;
+      }
+    }
     const tmp = inv[from] ?? null;
     inv[from] = inv[to] ?? null;
     inv[to] = tmp;
-    this.conn?.send({ t: 'invmove', from, to });
+    this.conn?.send({ t: 'invmove', from, to, ...(merge ? { merge: true } : {}) });
   }
 
   /** Drop a pack slot onto the ground where you stand. */

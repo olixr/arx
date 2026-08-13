@@ -91,9 +91,9 @@ test('the teller refuses a stolen instance the same way', async () => {
 
 test('id-addressed deposits refuse non-stackable defs', async () => {
   const { s, player } = slate();
-  addItem(player.inventory, 'log', 2);
-  await bankOp(s, 1, 'deposit', 'log', 2);
-  assert.equal(countItem(player.inventory, 'log'), 2, 'the logs never moved without a slot named');
+  addItem(player.inventory, 'bronze_axe', 2);
+  await bankOp(s, 1, 'deposit', 'bronze_axe', 2);
+  assert.equal(countItem(player.inventory, 'bronze_axe'), 2, 'the axes never moved without a slot named');
   assert.deepEqual(player.bank, {});
   // Stackable materials keep the old id-addressed convenience.
   addItem(player.inventory, 'twine', 5);
@@ -105,7 +105,7 @@ test('gear withdraw: a pack filled mid-flight refuses and the row survives', asy
   const { s, player, lines, deleted } = slate({
     gearRows: [{ id: 44, item: 'bronze_sword', roll: { rar: 'rare', seed: 3 } }],
   });
-  addItem(player.inventory, 'log', 28); // the 20Hz tick beat us to every slot
+  addItem(player.inventory, 'bronze_axe', 28); // the 20Hz tick beat us to every slot
   await bankOp(s, 1, 'withdraw', 'bronze_sword', 1, undefined, 44);
   assert.equal(deleted.length, 0, 'the row was never deleted for a piece with no home');
   assert.equal(countItem(player.inventory, 'bronze_sword'), 0);

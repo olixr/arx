@@ -10397,12 +10397,35 @@ export class GameServer {
 
   /** Equip or eat the item in an inventory slot. */
   /** Reorder the pack: swap two slots (drag-drop / pad carry mode). */
-  invMove(eid: EntityId, from: number, to: number): void {
+  invMove(eid: EntityId, from: number, to: number, merge = false): void {
     const player = this.players.get(eid);
     if (!player) return;
     const inv = player.inventory;
     if (from < 0 || to < 0 || from >= inv.length || to >= inv.length) return;
+    if (from === to) return;
     if (!inv[from] && !inv[to]) return;
+    // THE MEASURED STACK: a deliberate drop of a stack onto its own
+    // kind (merge=true — mouse drag, pad carry-place) pours it in up
+    // to the cap instead of swapping. The tidy sort's swap chains
+    // never set the flag: they must stay pure permutations. Facets
+    // stay honest: a stolen stack never pours into an honest one.
+    // Rolled gear is non-stackable by law, so no roll smears here.
+    const src = inv[from];
+    const dst = inv[to];
+    if (merge && src && dst && src.item === dst.item && !src.stolen === !dst.stolen) {
+      const def = itemDef(src.item);
+      if (def?.stackable) {
+        const cap = def.maxStack ?? Infinity;
+        const pour = Math.min(src.qty, Math.max(0, cap - dst.qty));
+        if (pour > 0) {
+          dst.qty += pour;
+          src.qty -= pour;
+          if (src.qty === 0) inv[from] = null;
+          player.session?.sendJson({ t: 'inv', slots: inv });
+          return;
+        }
+      }
+    }
     const tmp = inv[from] ?? null;
     inv[from] = inv[to] ?? null;
     inv[to] = tmp;

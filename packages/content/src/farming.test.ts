@@ -57,6 +57,7 @@ test('every crop yield generates fine and prime defs with grown value', () => {
       assert.ok(graded, `${crop.yield.item} grade ${grade} generated`);
       assert.equal(graded.value, Math.round(base.value * GRADE_VALUE_MULT[grade]));
       assert.equal(graded.stackable, base.stackable);
+      assert.equal(graded.maxStack, base.maxStack, 'the grade keeps its family stack cap');
       if (base.heals !== undefined) {
         assert.equal(graded.heals, Math.ceil(base.heals * GRADE_VALUE_MULT[grade]));
       }

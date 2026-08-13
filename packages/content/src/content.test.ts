@@ -649,6 +649,18 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
   for (const id of ['board', 'oak_board']) {
     assert.ok(ITEMS.get(id)?.stackable, `${id} must stack — hauling is not the gameplay`);
   }
+  // THE MEASURED STACK: a cap only ever rides a stackable, sits in the
+  // 5–20 materials band, and never touches rolled gear — a capped gear
+  // stack would smear instance rolls, which the law forbids outright.
+  for (const item of ITEMS.values()) {
+    if (item.maxStack === undefined) continue;
+    assert.ok(item.stackable, `${item.id} caps a stack it does not have`);
+    assert.ok(
+      item.maxStack >= 5 && item.maxStack <= 20,
+      `${item.id} stack cap ${item.maxStack} leaves the 5-20 band`,
+    );
+    assert.equal(item.gear, undefined, `${item.id} is rolled gear and must never stack`);
+  }
   // Every palette shelf holds at least one plan — an empty category
   // is a typo'd cat, not a design choice.
   for (const c of BUILD_CATEGORIES) {

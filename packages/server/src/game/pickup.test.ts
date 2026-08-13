@@ -63,12 +63,12 @@ function slate(inventory: InvSlot[], drop: Drop, opts: { sneaking?: boolean } = 
 
 function packWithFreeSlots(free: number): InvSlot[] {
   const inv = emptyInventory();
-  addItem(inv, 'log', inv.length - free);
+  addItem(inv, 'bronze_axe', inv.length - free);
   return inv;
 }
 
 const pile = (qty: number, extra: Partial<Drop> = {}): Drop => ({
-  item: 'log',
+  item: 'bronze_axe',
   qty,
   ownerEid: null,
   ownerUntil: 0,
@@ -80,7 +80,7 @@ const pile = (qty: number, extra: Partial<Drop> = {}): Drop => ({
 test('explicit pickup takes a partial fit and leaves the rest', () => {
   const s = slate(packWithFreeSlots(3), pile(10));
   proto.pickupDrop.call(s, 1, 9);
-  assert.equal(countItem(s.players.get(1)!.inventory, 'log'), 28, 'pack tops out');
+  assert.equal(countItem(s.players.get(1)!.inventory, 'bronze_axe'), 28, 'pack tops out');
   const drop = s.drops.get(9)!;
   assert.equal(drop.qty, 7, 'remainder stays on the ground');
   assert.equal(s.destroyed.length, 0, 'pile entity survives a partial take');
@@ -107,7 +107,7 @@ test('pickup XP grants once even across a split take', () => {
 test('walk-over vacuum takes a partial fit without destroying the pile', () => {
   const s = slate(packWithFreeSlots(3), pile(10));
   proto.tickDrops.call(s, Date.now());
-  assert.equal(countItem(s.players.get(1)!.inventory, 'log'), 28);
+  assert.equal(countItem(s.players.get(1)!.inventory, 'bronze_axe'), 28);
   assert.equal(s.drops.get(9)!.qty, 7);
   assert.equal(s.destroyed.length, 0);
 });

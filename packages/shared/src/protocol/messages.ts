@@ -113,6 +113,13 @@ export interface C2SInvMove {
   t: 'invmove';
   from: number;
   to: number;
+  /**
+   * THE MEASURED STACK's hand-merge: true only on a deliberate drop of
+   * one stack onto its own kind (mouse drag, pad carry-place) — the
+   * server pours up to the cap instead of swapping. Absent on the tidy
+   * sort's swap chains, which must stay pure permutations. Additive.
+   */
+  merge?: boolean;
 }
 
 /**
@@ -1930,7 +1937,7 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.to) || !Number.isInteger(msg.to)) return null;
       if (msg.from < 0 || msg.from >= 64 || msg.to < 0 || msg.to >= 64) return null;
       if (msg.from === msg.to) return null;
-      return { t: 'invmove', from: msg.from, to: msg.to };
+      return { t: 'invmove', from: msg.from, to: msg.to, ...(msg.merge === true ? { merge: true } : {}) };
     }
     case 'dropitem': {
       if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;

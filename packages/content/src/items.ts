@@ -132,6 +132,15 @@ export interface ItemDef {
   id: string;
   name: string;
   stackable: boolean;
+  /**
+   * THE MEASURED STACK: how many of a stackable fit in one pack slot.
+   * Absent = unlimited (coins, ammo, seeds — the featherweights).
+   * Present (5–20) = the materials band: ores, logs, bars, food, and
+   * brews stack for convenience, but a pack still fills — inventory
+   * management stays a mechanic, just an optional one. Meaningless on
+   * a non-stackable def; rolled gear NEVER stacks at any cap.
+   */
+  maxStack?: number;
   /** Vendor value in coins. */
   value: number;
   equipSlot?: EquipSlot;
@@ -212,56 +221,59 @@ const defs: ItemDef[] = [
   { id: 'coins', name: 'Coins', stackable: true, value: 1, desc: 'The realm\'s only universal language.', color: '#f2c94c', code: 'GP' },
 
   // Logs
-  { id: 'log', name: 'Logs', stackable: false, value: 4, desc: 'Fresh-cut timber, still smelling of the woods.', color: '#8a6a45', code: 'Lg' },
-  { id: 'oak_log', name: 'Oak logs', stackable: false, value: 12, desc: 'Dense oak heartwood — bowyers pay well for it.', color: '#6b4a26', code: 'Ok' },
-  // THE MILLED-AND-WHOLE LAW (building v2): milled wood STACKS — the
-  // builder hauls a wall in one slot, not a packful of trunks. One log
-  // rips into three at the sawhorse; whole timber stays whole (posts,
-  // fires, gate beams, hafts, bow staves keep costing logs).
+  { id: 'log', name: 'Logs', stackable: true, maxStack: 10, value: 4, desc: 'Fresh-cut timber, still smelling of the woods.', color: '#8a6a45', code: 'Lg' },
+  { id: 'oak_log', name: 'Oak logs', stackable: true, maxStack: 10, value: 12, desc: 'Dense oak heartwood — bowyers pay well for it.', color: '#6b4a26', code: 'Ok' },
+  // THE MILLED-AND-WHOLE LAW (building v2): milled wood stacks FREE —
+  // the builder hauls a wall in one slot, not a packful of trunks. One
+  // log rips into three at the sawhorse; whole timber stays whole in
+  // the RECIPES (posts, fires, gate beams, hafts, bow staves keep
+  // costing logs), and THE MEASURED STACK caps a slot of trunks at 10
+  // so milling still wins the hauling argument.
   { id: 'board', name: 'Boards', stackable: true, value: 2, desc: 'Sawn true and stacked flat; a wall is mostly patience.', color: '#a8794a', code: 'Bd' },
   { id: 'oak_board', name: 'Oak boards', stackable: true, value: 5, desc: 'Heavy heartwood planks, sawn slow so they stay honest.', color: '#6b4a26', code: 'Ob' },
-  { id: 'pine_log', name: 'Pine logs', stackable: false, value: 18, desc: 'Straight-grained northwood, sticky with resin. It splits true.', color: '#b08050', code: 'Pq' },
+  { id: 'pine_log', name: 'Pine logs', stackable: true, maxStack: 10, value: 18, desc: 'Straight-grained northwood, sticky with resin. It splits true.', color: '#b08050', code: 'Pq' },
   { id: 'pine_resin', name: 'Pine resin', stackable: true, value: 5, desc: 'Amber tears bled from cut northwood. They never quite dry.', color: '#d8963c', code: 'Rz' },
-  { id: 'willow_log', name: 'Willow logs', stackable: false, value: 24, desc: 'Supple riverside wood that bends without breaking.', color: '#8a9455', code: 'Wq' },
-  { id: 'yew_log', name: 'Yew logs', stackable: false, value: 52, desc: 'Slow-grown heartwood of the war bows. Kings taxed it.', color: '#7d4436', code: 'Yl' },
+  { id: 'willow_log', name: 'Willow logs', stackable: true, maxStack: 10, value: 24, desc: 'Supple riverside wood that bends without breaking.', color: '#8a9455', code: 'Wq' },
+  { id: 'yew_log', name: 'Yew logs', stackable: true, maxStack: 10, value: 52, desc: 'Slow-grown heartwood of the war bows. Kings taxed it.', color: '#7d4436', code: 'Yl' },
 
   // Ores
-  { id: 'copper_ore', name: 'Copper ore', stackable: false, value: 6, desc: 'Soft red-brown ore. Half of every bronze bar.', color: '#b87333', code: 'Cu' },
-  { id: 'tin_ore', name: 'Tin ore', stackable: false, value: 6, desc: 'Pale ore that hardens copper into bronze.', color: '#c9c4cf', code: 'Sn' },
-  { id: 'iron_ore', name: 'Iron ore', stackable: false, value: 18, desc: 'Rust-flecked stone with real metal in its bones.', color: '#8d9299', code: 'Fe' },
-  { id: 'coal', name: 'Coal', stackable: false, value: 22, desc: 'Black rock that burns hot enough for steelwork.', color: '#2e2b33', code: 'Co' },
-  { id: 'gold_ore', name: 'Gold ore', stackable: false, value: 45, desc: 'Glittering seams of the mountain\'s treasure.', color: '#e8b64c', code: 'Au' },
-  { id: 'silver_ore', name: 'Silver ore', stackable: false, value: 30, desc: 'Cold pale metal — moonlight the mountain kept.', color: '#dce4f0', code: 'Ag' },
-  { id: 'mithril_ore', name: 'Mithril ore', stackable: false, value: 90, desc: 'Sky-blue and feather-light. The smith-songs all start here.', color: '#7fa8d9', code: 'Mi' },
-  { id: 'adamant_ore', name: 'Adamant ore', stackable: false, value: 180, desc: 'Green-veined stone hard enough to chip the pick that wins it.', color: '#5fa06a', code: 'Ad' },
-  { id: 'obsidian_shard', name: 'Obsidian shard', stackable: false, value: 240, desc: 'Volcanic glass, sharper than any whetstone will ever make steel.', color: '#453a52', code: 'Ob' },
-  { id: 'starmetal_ore', name: 'Starmetal ore', stackable: false, value: 400, desc: 'It fell burning from the old sky. It remembers being a star.', color: '#cabdf2', code: 'St' },
+  { id: 'copper_ore', name: 'Copper ore', stackable: true, maxStack: 10, value: 6, desc: 'Soft red-brown ore. Half of every bronze bar.', color: '#b87333', code: 'Cu' },
+  { id: 'tin_ore', name: 'Tin ore', stackable: true, maxStack: 10, value: 6, desc: 'Pale ore that hardens copper into bronze.', color: '#c9c4cf', code: 'Sn' },
+  { id: 'iron_ore', name: 'Iron ore', stackable: true, maxStack: 10, value: 18, desc: 'Rust-flecked stone with real metal in its bones.', color: '#8d9299', code: 'Fe' },
+  { id: 'coal', name: 'Coal', stackable: true, maxStack: 10, value: 22, desc: 'Black rock that burns hot enough for steelwork.', color: '#2e2b33', code: 'Co' },
+  { id: 'gold_ore', name: 'Gold ore', stackable: true, maxStack: 10, value: 45, desc: 'Glittering seams of the mountain\'s treasure.', color: '#e8b64c', code: 'Au' },
+  { id: 'silver_ore', name: 'Silver ore', stackable: true, maxStack: 10, value: 30, desc: 'Cold pale metal — moonlight the mountain kept.', color: '#dce4f0', code: 'Ag' },
+  { id: 'mithril_ore', name: 'Mithril ore', stackable: true, maxStack: 10, value: 90, desc: 'Sky-blue and feather-light. The smith-songs all start here.', color: '#7fa8d9', code: 'Mi' },
+  { id: 'adamant_ore', name: 'Adamant ore', stackable: true, maxStack: 10, value: 180, desc: 'Green-veined stone hard enough to chip the pick that wins it.', color: '#5fa06a', code: 'Ad' },
+  { id: 'obsidian_shard', name: 'Obsidian shard', stackable: true, maxStack: 10, value: 240, desc: 'Volcanic glass, sharper than any whetstone will ever make steel.', color: '#453a52', code: 'Ob' },
+  { id: 'starmetal_ore', name: 'Starmetal ore', stackable: true, maxStack: 10, value: 400, desc: 'It fell burning from the old sky. It remembers being a star.', color: '#cabdf2', code: 'St' },
 
   // Fish & food
-  { id: 'raw_trout', name: 'Raw trout', stackable: false, value: 8, desc: 'A river trout, cold and slick. Cook it over a fire.', color: '#7fb2d9', code: 'Tr' },
-  { id: 'raw_pike', name: 'Raw pike', stackable: false, value: 16, desc: 'A fen pike, all teeth and temper. Cook it over a fire.', color: '#7fa8c9', code: 'Pk' },
-  { id: 'raw_eel', name: 'Raw eel', stackable: false, value: 26, desc: 'A channel eel, dark and strong. Cook it over a fire.', color: '#6b87a8', code: 'El' },
-  { id: 'raw_salmon', name: 'Raw salmon', stackable: false, value: 38, desc: 'A cold-water salmon, bright as struck silver. Cook it over a fire.', color: '#9fb8d9', code: 'Sa' },
-  { id: 'raw_glimmerfish', name: 'Raw glimmerfish', stackable: false, value: 60, desc: 'It shines faintly even out of the water. Cook it over a fire.', color: '#a8c4e8', code: 'Gl' },
-  { id: 'raw_chicken', name: 'Raw chicken', stackable: false, value: 4, desc: 'Best not eaten as-is. The fire fixes that.', color: '#e8c9b0', code: 'Ch' },
-  { id: 'raw_beef', name: 'Raw beef', stackable: false, value: 5, desc: 'A hearty cut from the pasture. Needs a fire.', color: '#c46a5a', code: 'Bf' },
+  { id: 'raw_trout', name: 'Raw trout', stackable: true, maxStack: 10, value: 8, desc: 'A river trout, cold and slick. Cook it over a fire.', color: '#7fb2d9', code: 'Tr' },
+  { id: 'raw_pike', name: 'Raw pike', stackable: true, maxStack: 10, value: 16, desc: 'A fen pike, all teeth and temper. Cook it over a fire.', color: '#7fa8c9', code: 'Pk' },
+  { id: 'raw_eel', name: 'Raw eel', stackable: true, maxStack: 10, value: 26, desc: 'A channel eel, dark and strong. Cook it over a fire.', color: '#6b87a8', code: 'El' },
+  { id: 'raw_salmon', name: 'Raw salmon', stackable: true, maxStack: 10, value: 38, desc: 'A cold-water salmon, bright as struck silver. Cook it over a fire.', color: '#9fb8d9', code: 'Sa' },
+  { id: 'raw_glimmerfish', name: 'Raw glimmerfish', stackable: true, maxStack: 10, value: 60, desc: 'It shines faintly even out of the water. Cook it over a fire.', color: '#a8c4e8', code: 'Gl' },
+  { id: 'raw_chicken', name: 'Raw chicken', stackable: true, maxStack: 10, value: 4, desc: 'Best not eaten as-is. The fire fixes that.', color: '#e8c9b0', code: 'Ch' },
+  { id: 'raw_beef', name: 'Raw beef', stackable: true, maxStack: 10, value: 5, desc: 'A hearty cut from the pasture. Needs a fire.', color: '#c46a5a', code: 'Bf' },
 
   // Cooked food (heals on click)
-  { id: 'trout', name: 'Trout', stackable: false, value: 12, heals: 4, desc: 'Flaky and hot off the fire.', color: '#d98a6a', code: 'Tr' },
-  { id: 'pike', name: 'Pike', stackable: false, value: 24, heals: 6, desc: 'White flakes under crisp skin. Worth the teeth.', color: '#d9925f', code: 'Pk' },
-  { id: 'eel', name: 'Eel', stackable: false, value: 38, heals: 9, desc: 'Rich and buttery. Best eaten hot.', color: '#d99a54', code: 'El' },
-  { id: 'salmon', name: 'Salmon', stackable: false, value: 55, heals: 13, desc: 'Deep pink and hot off the fire.', color: '#e08a72', code: 'Sa' },
-  { id: 'glimmerfish', name: 'Glimmerfish', stackable: false, value: 85, heals: 18, desc: 'The shine cooks into the flesh. It tastes like a clear night.', color: '#e8b072', code: 'Gl' },
-  { id: 'cooked_chicken', name: 'Cooked chicken', stackable: false, value: 7, heals: 3, desc: 'Simple food that keeps an adventurer standing.', color: '#d9a86a', code: 'Ch' },
-  { id: 'cooked_beef', name: 'Cooked beef', stackable: false, value: 8, heals: 4, desc: 'A proper meal after a proper fight.', color: '#b06a4a', code: 'Bf' },
-  { id: 'burnt_food', name: 'Burnt food', stackable: false, value: 1, desc: 'You looked away for one moment. It noticed.', color: '#3a363f', code: 'Bt' },
+  { id: 'trout', name: 'Trout', stackable: true, maxStack: 10, value: 12, heals: 4, desc: 'Flaky and hot off the fire.', color: '#d98a6a', code: 'Tr' },
+  { id: 'pike', name: 'Pike', stackable: true, maxStack: 10, value: 24, heals: 6, desc: 'White flakes under crisp skin. Worth the teeth.', color: '#d9925f', code: 'Pk' },
+  { id: 'eel', name: 'Eel', stackable: true, maxStack: 10, value: 38, heals: 9, desc: 'Rich and buttery. Best eaten hot.', color: '#d99a54', code: 'El' },
+  { id: 'salmon', name: 'Salmon', stackable: true, maxStack: 10, value: 55, heals: 13, desc: 'Deep pink and hot off the fire.', color: '#e08a72', code: 'Sa' },
+  { id: 'glimmerfish', name: 'Glimmerfish', stackable: true, maxStack: 10, value: 85, heals: 18, desc: 'The shine cooks into the flesh. It tastes like a clear night.', color: '#e8b072', code: 'Gl' },
+  { id: 'cooked_chicken', name: 'Cooked chicken', stackable: true, maxStack: 10, value: 7, heals: 3, desc: 'Simple food that keeps an adventurer standing.', color: '#d9a86a', code: 'Ch' },
+  { id: 'cooked_beef', name: 'Cooked beef', stackable: true, maxStack: 10, value: 8, heals: 4, desc: 'A proper meal after a proper fight.', color: '#b06a4a', code: 'Bf' },
+  { id: 'burnt_food', name: 'Burnt food', stackable: true, maxStack: 20, value: 1, desc: 'You looked away for one moment. It noticed.', color: '#3a363f', code: 'Bt' },
   // Saltmere: the pans' harvest and the smokehouse school's dishes.
   { id: 'salt', name: 'Salt', stackable: true, value: 6, desc: 'The white harvest of the Saltmere pans. Half of cooking is knowing when.', color: '#f0ede4', code: 'Sa' },
-  { id: 'smoked_trout', name: 'Smoked trout', stackable: false, value: 30, heals: 9, desc: 'Slow smoke, honest fish. Keeps for a long road.', color: '#c98a54', code: 'St' },
+  { id: 'smoked_trout', name: 'Smoked trout', stackable: true, maxStack: 10, value: 30, heals: 9, desc: 'Slow smoke, honest fish. Keeps for a long road.', color: '#c98a54', code: 'St' },
   {
     id: 'fishers_pot',
     name: "Fisher's pot",
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 48,
     heals: 13,
     buff: { name: 'Off the Mere', channel: 'food', durationSec: 300, regenPer4s: 1 },
@@ -308,12 +320,12 @@ const defs: ItemDef[] = [
   { id: 'mirefig_sapling', name: 'Mirefig sapling', stackable: true, value: 28, desc: 'It remembers the mire. Water it like one.', color: '#8a6a45', code: 'Mg' },
 
   // Produce & foraged goods
-  { id: 'carrot', name: 'Carrot', stackable: false, value: 4, heals: 2, desc: 'Crunchy straight from the soil.', color: '#e8873d', code: 'Ca' },
-  { id: 'sagewort', name: 'Sagewort', stackable: false, value: 10, desc: 'A healer\'s herb — bitter leaf, kind intentions.', color: '#8fb083', code: 'Sw' },
-  { id: 'sunflower', name: 'Sunflower', stackable: false, value: 8, desc: 'Follows the light. So do we all.', color: '#e8c04c', code: 'Sf' },
-  { id: 'wheat', name: 'Wheat', stackable: false, value: 6, desc: 'A sheaf of ripe grain, ready for the mill.', color: '#d9b45c', code: 'Wh' },
-  { id: 'cotton', name: 'Cotton', stackable: false, value: 10, desc: 'A cloud you can spin.', color: '#f2efe6', code: 'Cn' },
-  { id: 'moonbell', name: 'Moonbell', stackable: false, value: 25, desc: 'Pale blue bells that glow faintly after dusk.', color: '#8f9ed6', code: 'Mb' },
+  { id: 'carrot', name: 'Carrot', stackable: true, maxStack: 20, value: 4, heals: 2, desc: 'Crunchy straight from the soil.', color: '#e8873d', code: 'Ca' },
+  { id: 'sagewort', name: 'Sagewort', stackable: true, maxStack: 20, value: 10, desc: 'A healer\'s herb — bitter leaf, kind intentions.', color: '#8fb083', code: 'Sw' },
+  { id: 'sunflower', name: 'Sunflower', stackable: true, maxStack: 20, value: 8, desc: 'Follows the light. So do we all.', color: '#e8c04c', code: 'Sf' },
+  { id: 'wheat', name: 'Wheat', stackable: true, maxStack: 20, value: 6, desc: 'A sheaf of ripe grain, ready for the mill.', color: '#d9b45c', code: 'Wh' },
+  { id: 'cotton', name: 'Cotton', stackable: true, maxStack: 20, value: 10, desc: 'A cloud you can spin.', color: '#f2efe6', code: 'Cn' },
+  { id: 'moonbell', name: 'Moonbell', stackable: true, maxStack: 20, value: 25, desc: 'Pale blue bells that glow faintly after dusk.', color: '#8f9ed6', code: 'Mb' },
   { id: 'berries', name: 'Berries', stackable: true, value: 3, heals: 2, desc: 'Sweet, wild, and occasionally shared with birds.', color: '#a04a6e', code: 'Br' },
   { id: 'plant_fibre', name: 'Plant fibre', stackable: true, value: 3, desc: 'Tough green strands, good for twisting into twine.', color: '#79a355', code: 'Pf' },
   // THE LIVING SOIL (farming v2 Phase 1): the bin's two harvests.
@@ -323,54 +335,55 @@ const defs: ItemDef[] = [
   // THE FULL FIELD (Phase 2): the crop wave's harvests. Staples for
   // the pot, high herbs for the alembic, the dark bed's reagents,
   // and the orchard's fruit. Every one has a consumer (the law).
-  { id: 'potato', name: 'Potato', stackable: false, value: 3, heals: 2, desc: 'Honest weight. A field you can hold.', color: '#c9a26e', code: 'Po' },
-  { id: 'onion', name: 'Onion', stackable: false, value: 4, heals: 2, desc: 'Paper skin, sharp heart.', color: '#d8c4a8', code: 'On' },
-  { id: 'cabbage', name: 'Cabbage', stackable: false, value: 5, heals: 3, desc: 'A hundred leaves keeping one secret.', color: '#8fb083', code: 'Cb' },
-  { id: 'pumpkin', name: 'Pumpkin', stackable: false, value: 12, heals: 4, desc: 'The field\'s proudest lantern.', color: '#e08a3d', code: 'Pk' },
-  { id: 'barley', name: 'Barley', stackable: false, value: 8, desc: 'Bearded grain, patient as winter.', color: '#c9b45c', code: 'Ba' },
-  { id: 'redroot', name: 'Redroot', stackable: false, value: 16, heals: 5, desc: 'Bleeds crimson when the knife goes in.', color: '#a8383d', code: 'Rr' },
-  { id: 'kingsquash', name: 'Kingsquash', stackable: false, value: 25, heals: 6, desc: 'Pale as the moon and twice as heavy.', color: '#e2d8b8', code: 'Kq' },
-  { id: 'bittercress', name: 'Bittercress', stackable: false, value: 18, desc: 'Bitter on the tongue, kind in the kettle.', color: '#7a9c6e', code: 'Bc' },
-  { id: 'silverleaf', name: 'Silverleaf', stackable: false, value: 26, desc: 'Catches lamplight like still water.', color: '#b8c4c9', code: 'Sl' },
-  { id: 'duskthorn', name: 'Duskthorn', stackable: false, value: 36, desc: 'Picked at dusk, and it pricks back.', color: '#5e4a78', code: 'Dt' },
-  { id: 'dawnveil', name: 'Dawnveil', stackable: false, value: 50, desc: 'Petals that hold the first light a while.', color: '#e8d8a8', code: 'Dv' },
-  { id: 'venom_sac', name: 'Venom sac', stackable: false, value: 30, desc: 'The adder\'s tongue grows what the adder guards.', color: '#7aa83d', code: 'Vs' },
+  { id: 'potato', name: 'Potato', stackable: true, maxStack: 20, value: 3, heals: 2, desc: 'Honest weight. A field you can hold.', color: '#c9a26e', code: 'Po' },
+  { id: 'onion', name: 'Onion', stackable: true, maxStack: 20, value: 4, heals: 2, desc: 'Paper skin, sharp heart.', color: '#d8c4a8', code: 'On' },
+  { id: 'cabbage', name: 'Cabbage', stackable: true, maxStack: 20, value: 5, heals: 3, desc: 'A hundred leaves keeping one secret.', color: '#8fb083', code: 'Cb' },
+  { id: 'pumpkin', name: 'Pumpkin', stackable: true, maxStack: 20, value: 12, heals: 4, desc: 'The field\'s proudest lantern.', color: '#e08a3d', code: 'Pk' },
+  { id: 'barley', name: 'Barley', stackable: true, maxStack: 20, value: 8, desc: 'Bearded grain, patient as winter.', color: '#c9b45c', code: 'Ba' },
+  { id: 'redroot', name: 'Redroot', stackable: true, maxStack: 20, value: 16, heals: 5, desc: 'Bleeds crimson when the knife goes in.', color: '#a8383d', code: 'Rr' },
+  { id: 'kingsquash', name: 'Kingsquash', stackable: true, maxStack: 20, value: 25, heals: 6, desc: 'Pale as the moon and twice as heavy.', color: '#e2d8b8', code: 'Kq' },
+  { id: 'bittercress', name: 'Bittercress', stackable: true, maxStack: 20, value: 18, desc: 'Bitter on the tongue, kind in the kettle.', color: '#7a9c6e', code: 'Bc' },
+  { id: 'silverleaf', name: 'Silverleaf', stackable: true, maxStack: 20, value: 26, desc: 'Catches lamplight like still water.', color: '#b8c4c9', code: 'Sl' },
+  { id: 'duskthorn', name: 'Duskthorn', stackable: true, maxStack: 20, value: 36, desc: 'Picked at dusk, and it pricks back.', color: '#5e4a78', code: 'Dt' },
+  { id: 'dawnveil', name: 'Dawnveil', stackable: true, maxStack: 20, value: 50, desc: 'Petals that hold the first light a while.', color: '#e8d8a8', code: 'Dv' },
+  { id: 'venom_sac', name: 'Venom sac', stackable: true, maxStack: 10, value: 30, desc: 'The adder\'s tongue grows what the adder guards.', color: '#7aa83d', code: 'Vs' },
   { id: 'spore_dust', name: 'Spore dust', stackable: true, value: 22, desc: 'Pale motes off the palegill. Do not breathe in.', color: '#c9c2b4', code: 'Sd' },
-  { id: 'apple', name: 'Apple', stackable: false, value: 5, heals: 3, desc: 'Sweet, crisp, and worth the wait.', color: '#c94a3d', code: 'Ap' },
-  { id: 'plum', name: 'Plum', stackable: false, value: 7, heals: 4, desc: 'Dusk-dark skin over honey.', color: '#6e4a78', code: 'Pl' },
-  { id: 'mirefig', name: 'Mirefig', stackable: false, value: 14, heals: 6, desc: 'The mire\'s one sweetness.', color: '#8a6a45', code: 'Mf' },
+  { id: 'apple', name: 'Apple', stackable: true, maxStack: 20, value: 5, heals: 3, desc: 'Sweet, crisp, and worth the wait.', color: '#c94a3d', code: 'Ap' },
+  { id: 'plum', name: 'Plum', stackable: true, maxStack: 20, value: 7, heals: 4, desc: 'Dusk-dark skin over honey.', color: '#6e4a78', code: 'Pl' },
+  { id: 'mirefig', name: 'Mirefig', stackable: true, maxStack: 20, value: 14, heals: 6, desc: 'The mire\'s one sweetness.', color: '#8a6a45', code: 'Mf' },
 
   // Farm-processed materials
   { id: 'twine', name: 'Twine', stackable: true, value: 8, desc: 'Fibre twisted until it agrees to hold things together.', color: '#b0a068', code: 'Tw' },
-  { id: 'cloth', name: 'Cloth', stackable: false, value: 24, desc: 'A tidy bolt of woven cotton.', color: '#e8e4da', code: 'Cl' },
+  { id: 'cloth', name: 'Cloth', stackable: true, maxStack: 10, value: 24, desc: 'A tidy bolt of woven cotton.', color: '#e8e4da', code: 'Cl' },
   { id: 'flour', name: 'Flour', stackable: true, value: 10, desc: 'Ground wheat. The quiet half of every bakery.', color: '#f2efe6', code: 'Fl' },
-  { id: 'milk', name: 'Milk', stackable: false, value: 8, desc: 'A pail of fresh milk, still warm from the cow.', color: '#f4f2ec', code: 'Mk' },
+  { id: 'milk', name: 'Milk', stackable: true, maxStack: 5, value: 8, desc: 'A pail of fresh milk, still warm from the cow.', color: '#f4f2ec', code: 'Mk' },
   { id: 'egg', name: 'Egg', stackable: true, value: 4, desc: 'Laid this morning, judging by the smugness of the hen.', color: '#e8d9b0', code: 'Eg' },
   // THE ANIMALS OF THE YARD (farming v2 Phase 3): what the kept
   // herd pays, and the crated young the drover sells. A crate is
   // used at your OWN feed trough to release its animal into the
   // yard; the lead walks one away again at half the crate's worth.
-  { id: 'wool', name: 'Wool', stackable: false, value: 12, desc: 'A whole fleece, oily and warm and enormous.', color: '#e8e2d4', code: 'Wl' },
-  { id: 'truffle', name: 'Truffle', stackable: false, value: 60, desc: 'Ugly as sin. Chefs will duel over it.', color: '#4a3a30', code: 'Tf' },
+  { id: 'wool', name: 'Wool', stackable: true, maxStack: 10, value: 12, desc: 'A whole fleece, oily and warm and enormous.', color: '#e8e2d4', code: 'Wl' },
+  { id: 'truffle', name: 'Truffle', stackable: true, maxStack: 10, value: 60, desc: 'Ugly as sin. Chefs will duel over it.', color: '#4a3a30', code: 'Tf' },
   { id: 'chick_crate', name: 'Cheeping crate', stackable: false, value: 30, desc: 'A slat crate, very much alive. Release at your feed trough.', color: '#e8d9b0', code: 'Ck' },
   { id: 'calf_crate', name: 'Calf on a lead', stackable: false, value: 175, desc: 'All legs and appetite. Release at your feed trough.', color: '#e7ddca', code: 'Cf' },
   { id: 'lamb_crate', name: 'Lamb on a lead', stackable: false, value: 140, desc: 'A cloud with opinions. Release at your feed trough.', color: '#e8e2d4', code: 'Lb' },
   { id: 'boarlet_crate', name: 'Boarlet in a barrow', stackable: false, value: 350, desc: 'Striped, furious, and priceless in a few seasons. Release at your feed trough.', color: '#8a6a45', code: 'Bo' },
   { id: 'drovers_lead', name: "Drover's lead", stackable: false, value: 20, desc: 'A soft rope halter. Walks one yard animal back to the drover trade.', color: '#b0a068', code: 'Dl' },
-  { id: 'truffle_roast', name: 'Truffle roast', stackable: false, value: 130, heals: 16, desc: 'The boar found it. The pan made it famous.', color: '#6e4a38', code: 'Tr' },
+  { id: 'truffle_roast', name: 'Truffle roast', stackable: true, maxStack: 10, value: 130, heals: 16, desc: 'The boar found it. The pan made it famous.', color: '#6e4a38', code: 'Tr' },
   // THE WORKING YARD (farming v2 Phase 4): what the stations turn
   // out, and the table it all lands on. Every one has a consumer.
-  { id: 'butter', name: 'Butter', stackable: false, value: 24, heals: 2, desc: 'Churned gold. The pan\'s first friend.', color: '#e8c04c', code: 'Bu' },
-  { id: 'soft_cheese', name: 'Soft cheese', stackable: false, value: 55, heals: 8, desc: 'Young, mild, and gone by supper.', color: '#efe9d4', code: 'Sc' },
-  { id: 'hard_cheese', name: 'Hard cheese', stackable: false, value: 120, heals: 14, desc: 'Aged in the churn\'s long patience. Knock it; it answers.', color: '#d8b45c', code: 'Hc' },
-  { id: 'cooking_oil', name: 'Cooking oil', stackable: false, value: 40, desc: 'Pressed sunflower, bright as morning.', color: '#e0c46a', code: 'Co' },
-  { id: 'cider', name: 'Cider', stackable: false, value: 50, heals: 6, desc: 'Orchard sunshine with a low hum.', color: '#d8963c', code: 'Ci' },
-  { id: 'vinegar', name: 'Vinegar', stackable: false, value: 30, desc: 'Cider that chose a working life.', color: '#c9a86a', code: 'Vn' },
-  { id: 'pickled_cabbage', name: 'Pickled cabbage', stackable: false, value: 40, heals: 7, desc: 'Sour, loud, and it keeps all winter.', color: '#a3b877', code: 'Pj' },
+  { id: 'butter', name: 'Butter', stackable: true, maxStack: 10, value: 24, heals: 2, desc: 'Churned gold. The pan\'s first friend.', color: '#e8c04c', code: 'Bu' },
+  { id: 'soft_cheese', name: 'Soft cheese', stackable: true, maxStack: 10, value: 55, heals: 8, desc: 'Young, mild, and gone by supper.', color: '#efe9d4', code: 'Sc' },
+  { id: 'hard_cheese', name: 'Hard cheese', stackable: true, maxStack: 10, value: 120, heals: 14, desc: 'Aged in the churn\'s long patience. Knock it; it answers.', color: '#d8b45c', code: 'Hc' },
+  { id: 'cooking_oil', name: 'Cooking oil', stackable: true, maxStack: 10, value: 40, desc: 'Pressed sunflower, bright as morning.', color: '#e0c46a', code: 'Co' },
+  { id: 'cider', name: 'Cider', stackable: true, maxStack: 10, value: 50, heals: 6, desc: 'Orchard sunshine with a low hum.', color: '#d8963c', code: 'Ci' },
+  { id: 'vinegar', name: 'Vinegar', stackable: true, maxStack: 10, value: 30, desc: 'Cider that chose a working life.', color: '#c9a86a', code: 'Vn' },
+  { id: 'pickled_cabbage', name: 'Pickled cabbage', stackable: true, maxStack: 10, value: 40, heals: 7, desc: 'Sour, loud, and it keeps all winter.', color: '#a3b877', code: 'Pj' },
   {
     id: 'farmhouse_ale',
     name: 'Farmhouse ale',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 85,
     heals: 6,
     buff: { name: 'Hearty Ale', channel: 'tonic', durationSec: 120, shieldHp: 6 },
@@ -381,7 +394,8 @@ const defs: ItemDef[] = [
   {
     id: 'honeybrew',
     name: 'Honeybrew',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 160,
     heals: 8,
     buff: { name: 'Honeybrew', channel: 'tonic', durationSec: 100, regenPer4s: 2 },
@@ -389,19 +403,20 @@ const defs: ItemDef[] = [
     color: '#e0a83c',
     code: 'Hb',
   },
-  { id: 'smoked_beef', name: 'Smoked beef', stackable: false, value: 35, heals: 8, desc: 'Cured slow. Travels far.', color: '#8a4a38', code: 'Sb' },
-  { id: 'smoked_eel', name: 'Smoked eel', stackable: false, value: 70, heals: 12, desc: 'The mere\'s slipperiest, made honest by smoke.', color: '#6e5a4a', code: 'Se' },
-  { id: 'dried_sagewort', name: 'Dried sagewort', stackable: false, value: 30, desc: 'Two herbs\' strength in one papery twist.', color: '#7a9c6e', code: 'Ds' },
-  { id: 'dried_moonbell', name: 'Dried moonbell', stackable: false, value: 70, desc: 'The glow fades. The power keeps.', color: '#8f9ed6', code: 'Dm' },
-  { id: 'dried_bittercress', name: 'Dried bittercress', stackable: false, value: 55, desc: 'Concentrated argument, herbalist-grade.', color: '#5e7a52', code: 'Db' },
-  { id: 'honey', name: 'Honey', stackable: false, value: 35, heals: 3, desc: 'The apiary\'s rent, paid in gold.', color: '#e0a83c', code: 'Hn' },
+  { id: 'smoked_beef', name: 'Smoked beef', stackable: true, maxStack: 10, value: 35, heals: 8, desc: 'Cured slow. Travels far.', color: '#8a4a38', code: 'Sb' },
+  { id: 'smoked_eel', name: 'Smoked eel', stackable: true, maxStack: 10, value: 70, heals: 12, desc: 'The mere\'s slipperiest, made honest by smoke.', color: '#6e5a4a', code: 'Se' },
+  { id: 'dried_sagewort', name: 'Dried sagewort', stackable: true, maxStack: 10, value: 30, desc: 'Two herbs\' strength in one papery twist.', color: '#7a9c6e', code: 'Ds' },
+  { id: 'dried_moonbell', name: 'Dried moonbell', stackable: true, maxStack: 10, value: 70, desc: 'The glow fades. The power keeps.', color: '#8f9ed6', code: 'Dm' },
+  { id: 'dried_bittercress', name: 'Dried bittercress', stackable: true, maxStack: 10, value: 55, desc: 'Concentrated argument, herbalist-grade.', color: '#5e7a52', code: 'Db' },
+  { id: 'honey', name: 'Honey', stackable: true, maxStack: 10, value: 35, heals: 3, desc: 'The apiary\'s rent, paid in gold.', color: '#e0a83c', code: 'Hn' },
   { id: 'beeswax', name: 'Beeswax', stackable: true, value: 25, desc: 'The comb\'s quiet second gift.', color: '#d8c98e', code: 'Bw' },
-  { id: 'buttered_potatoes', name: 'Buttered potatoes', stackable: false, value: 34, heals: 9, desc: 'The field and the churn, agreeing.', color: '#d8b45c', code: 'Bp' },
-  { id: 'panfried_trout', name: 'Panfried trout', stackable: false, value: 60, heals: 11, desc: 'Crisp-skinned in bright oil.', color: '#c9915c', code: 'Pt' },
+  { id: 'buttered_potatoes', name: 'Buttered potatoes', stackable: true, maxStack: 10, value: 34, heals: 9, desc: 'The field and the churn, agreeing.', color: '#d8b45c', code: 'Bp' },
+  { id: 'panfried_trout', name: 'Panfried trout', stackable: true, maxStack: 10, value: 60, heals: 11, desc: 'Crisp-skinned in bright oil.', color: '#c9915c', code: 'Pt' },
   {
     id: 'ploughmans_board',
     name: "Ploughman's board",
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 130,
     heals: 15,
     buff: { name: "Ploughman's Rest", channel: 'food', durationSec: 300, regenPer4s: 1 },
@@ -412,7 +427,8 @@ const defs: ItemDef[] = [
   {
     id: 'travelers_draught',
     name: "Traveler's draught",
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 150,
     heals: 10,
     buff: { name: "Traveler's Draught", channel: 'tonic', durationSec: 240, gatherSpeed: 1.3 },
@@ -423,7 +439,8 @@ const defs: ItemDef[] = [
   {
     id: 'moonlit_salve',
     name: 'Moonlit salve',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 220,
     buff: { name: 'Moonlit', channel: 'tonic', durationSec: 90, regenPer4s: 3 },
     desc: 'Dried moonbell in beeswax. Cool as its namesake.',
@@ -433,7 +450,8 @@ const defs: ItemDef[] = [
   {
     id: 'ironroot_draught',
     name: 'Ironroot draught',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 280,
     buff: { name: 'Ironroot', channel: 'tonic', durationSec: 240, shieldHp: 18 },
     desc: 'Bittercress and redroot holding the line together.',
@@ -445,7 +463,8 @@ const defs: ItemDef[] = [
   {
     id: 'honeyed_carrots',
     name: 'Honeyed carrots',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 60,
     heals: 8,
     buff: { name: 'Honeyed', channel: 'food', durationSec: 240, armor: 2 },
@@ -456,7 +475,8 @@ const defs: ItemDef[] = [
   {
     id: 'pumpkin_pie',
     name: 'Pumpkin pie',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 150,
     heals: 14,
     buff: { name: 'Harvest Warmth', channel: 'food', durationSec: 300, armor: 3, regenPer4s: 1 },
@@ -467,7 +487,8 @@ const defs: ItemDef[] = [
   {
     id: 'shepherds_pie',
     name: "Shepherd's pie",
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 240,
     heals: 16,
     buff: { name: "Shepherd's Rest", channel: 'food', durationSec: 300, armor: 4 },
@@ -478,7 +499,8 @@ const defs: ItemDef[] = [
   {
     id: 'orchard_tart',
     name: 'Orchard tart',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 280,
     heals: 15,
     buff: { name: 'Orchard Bright', channel: 'food', durationSec: 240, critPct: 3 },
@@ -489,7 +511,8 @@ const defs: ItemDef[] = [
   {
     id: 'harvest_feast',
     name: 'Harvest feast',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 520,
     heals: 20,
     buff: { name: 'Harvest Feast', channel: 'food', durationSec: 300, dmgMult: 1.05 },
@@ -500,7 +523,8 @@ const defs: ItemDef[] = [
   {
     id: 'royal_banquet',
     name: 'Royal banquet',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 950,
     heals: 24,
     buff: { name: 'Royal Banquet', channel: 'food', durationSec: 360, dmgMult: 1.06, regenPer4s: 1 },
@@ -514,7 +538,8 @@ const defs: ItemDef[] = [
   {
     id: 'ironhide_draught',
     name: 'Ironhide draught',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 240,
     buff: { name: 'Ironhide', channel: 'tonic', durationSec: 240, armor: 4 },
     desc: 'Redroot\'s stubbornness boiled to a standstill.',
@@ -524,7 +549,8 @@ const defs: ItemDef[] = [
   {
     id: 'hunters_eye_brew',
     name: "Hunter's eye brew",
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 340,
     buff: { name: "Hunter's Eye", channel: 'tonic', durationSec: 180, critPct: 4 },
     desc: 'Silverleaf sharpens what the dusk hides.',
@@ -534,7 +560,8 @@ const defs: ItemDef[] = [
   {
     id: 'prime_tincture',
     name: 'Prime tincture',
-    stackable: false,
+    stackable: true,
+    maxStack: 10,
     value: 420,
     heals: 26,
     desc: 'Prime bittercress, and nothing less would do.',
@@ -544,7 +571,8 @@ const defs: ItemDef[] = [
   {
     id: 'dawnfire_elixir',
     name: 'Dawnfire elixir',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 560,
     heals: 24,
     buff: { name: 'Dawnfire', channel: 'tonic', durationSec: 120, regenPer4s: 3 },
@@ -555,7 +583,8 @@ const defs: ItemDef[] = [
   {
     id: 'master_draught',
     name: "Master's draught",
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 900,
     heals: 30,
     buff: { name: "Master's Draught", channel: 'tonic', durationSec: 300, shieldHp: 20 },
@@ -565,23 +594,24 @@ const defs: ItemDef[] = [
   },
 
   // Homestead cooking
-  { id: 'bread', name: 'Bread', stackable: false, value: 14, heals: 6, desc: 'A warm loaf with a crust worth fighting over.', color: '#c49a5c', code: 'Bd' },
-  { id: 'fried_egg', name: 'Fried egg', stackable: false, value: 6, heals: 3, desc: 'Sunny side up, like all good mornings.', color: '#f2d98a', code: 'Fe' },
+  { id: 'bread', name: 'Bread', stackable: true, maxStack: 10, value: 14, heals: 6, desc: 'A warm loaf with a crust worth fighting over.', color: '#c49a5c', code: 'Bd' },
+  { id: 'fried_egg', name: 'Fried egg', stackable: true, maxStack: 10, value: 6, heals: 3, desc: 'Sunny side up, like all good mornings.', color: '#f2d98a', code: 'Fe' },
   // THE FULL FIELD (Phase 2): the crop kitchen returns — plain
   // hearth food from the new staples (the buff-feast wave is THE
   // LADEN TABLE's; these carry heals and the farm's good name).
-  { id: 'baked_potato', name: 'Baked potato', stackable: false, value: 8, heals: 4, desc: 'Ash on the skin, cloud in the middle.', color: '#c9a26e', code: 'Bp' },
-  { id: 'onion_soup', name: 'Onion soup', stackable: false, value: 16, heals: 6, desc: 'Slow-browned and honest.', color: '#c99c5c', code: 'Ou' },
-  { id: 'hearty_pottage', name: 'Hearty pottage', stackable: false, value: 26, heals: 9, desc: 'Potato, onion, and cabbage holding council.', color: '#a8905c', code: 'Hp' },
-  { id: 'roast_pumpkin', name: 'Roast pumpkin', stackable: false, value: 34, heals: 11, desc: 'Sweet enough to argue with dessert.', color: '#e08a3d', code: 'Rp' },
-  { id: 'barley_porridge', name: 'Barley porridge', stackable: false, value: 30, heals: 10, desc: 'Milk and grain. The wall a cold morning breaks against.', color: '#d8c9a0', code: 'Bl' },
-  { id: 'orchard_crumble', name: 'Orchard crumble', stackable: false, value: 44, heals: 12, desc: 'Apple and plum under a flour lid.', color: '#c98a5c', code: 'Oc' },
-  { id: 'roast_redroot', name: 'Roast redroot', stackable: false, value: 52, heals: 14, desc: 'Crimson to the plate\'s edge.', color: '#a8383d', code: 'Rt' },
-  { id: 'kingsquash_bake', name: 'Kingsquash bake', stackable: false, value: 72, heals: 18, desc: 'A slice feeds a shift. The whole one feeds a crew.', color: '#e2d8b8', code: 'Kb' },
+  { id: 'baked_potato', name: 'Baked potato', stackable: true, maxStack: 10, value: 8, heals: 4, desc: 'Ash on the skin, cloud in the middle.', color: '#c9a26e', code: 'Bp' },
+  { id: 'onion_soup', name: 'Onion soup', stackable: true, maxStack: 10, value: 16, heals: 6, desc: 'Slow-browned and honest.', color: '#c99c5c', code: 'Ou' },
+  { id: 'hearty_pottage', name: 'Hearty pottage', stackable: true, maxStack: 10, value: 26, heals: 9, desc: 'Potato, onion, and cabbage holding council.', color: '#a8905c', code: 'Hp' },
+  { id: 'roast_pumpkin', name: 'Roast pumpkin', stackable: true, maxStack: 10, value: 34, heals: 11, desc: 'Sweet enough to argue with dessert.', color: '#e08a3d', code: 'Rp' },
+  { id: 'barley_porridge', name: 'Barley porridge', stackable: true, maxStack: 10, value: 30, heals: 10, desc: 'Milk and grain. The wall a cold morning breaks against.', color: '#d8c9a0', code: 'Bl' },
+  { id: 'orchard_crumble', name: 'Orchard crumble', stackable: true, maxStack: 10, value: 44, heals: 12, desc: 'Apple and plum under a flour lid.', color: '#c98a5c', code: 'Oc' },
+  { id: 'roast_redroot', name: 'Roast redroot', stackable: true, maxStack: 10, value: 52, heals: 14, desc: 'Crimson to the plate\'s edge.', color: '#a8383d', code: 'Rt' },
+  { id: 'kingsquash_bake', name: 'Kingsquash bake', stackable: true, maxStack: 10, value: 72, heals: 18, desc: 'A slice feeds a shift. The whole one feeds a crew.', color: '#e2d8b8', code: 'Kb' },
   {
     id: 'hearty_stew',
     name: 'Hearty stew',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 22,
     heals: 8,
     buff: { name: 'Hearty', channel: 'food', durationSec: 240, regenPer4s: 1 },
@@ -592,7 +622,8 @@ const defs: ItemDef[] = [
   {
     id: 'cake',
     name: 'Cake',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 40,
     heals: 10,
     buff: { name: 'Sugar Rush', channel: 'food', durationSec: 180, speedMult: 1.08 },
@@ -602,11 +633,12 @@ const defs: ItemDef[] = [
   },
 
   // Herbalism — tinctures and tonics from the alembic bench
-  { id: 'healing_tincture', name: 'Healing tincture', stackable: false, value: 30, heals: 8, desc: 'Sagewort distilled to its kindest form.', color: '#d65a5a', code: 'Ht' },
+  { id: 'healing_tincture', name: 'Healing tincture', stackable: true, maxStack: 10, value: 30, heals: 8, desc: 'Sagewort distilled to its kindest form.', color: '#d65a5a', code: 'Ht' },
   {
     id: 'gatherers_brew',
     name: 'Gatherer\'s brew',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 45,
     buff: { name: 'Gatherer\'s Eye', channel: 'tonic', durationSec: 180, gatherSpeed: 1.25 },
     desc: 'The world gives up its goods a little faster.',
@@ -616,7 +648,8 @@ const defs: ItemDef[] = [
   {
     id: 'swiftness_tonic',
     name: 'Swiftness tonic',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 60,
     buff: { name: 'Swiftness', channel: 'tonic', durationSec: 60, speedMult: 1.2 },
     desc: 'Tastes like wind. Works like it too.',
@@ -679,7 +712,8 @@ const defs: ItemDef[] = [
   {
     id: 'ironbark_tonic',
     name: 'Ironbark tonic',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 70,
     buff: { name: 'Ironbark', channel: 'tonic', durationSec: 120, shieldHp: 6 },
     desc: 'Your skin remembers being a tree.',
@@ -692,7 +726,8 @@ const defs: ItemDef[] = [
   {
     id: 'greater_healing_tincture',
     name: 'Greater healing tincture',
-    stackable: false,
+    stackable: true,
+    maxStack: 10,
     value: 130,
     heals: 16,
     desc: 'Bittercress does the work. The honey makes it bearable.',
@@ -702,7 +737,8 @@ const defs: ItemDef[] = [
   {
     id: 'silverleaf_salve',
     name: 'Silverleaf salve',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 160,
     buff: { name: 'Silverleaf', channel: 'tonic', durationSec: 60, regenPer4s: 3 },
     desc: 'Cool as the leaf it came from.',
@@ -712,7 +748,8 @@ const defs: ItemDef[] = [
   {
     id: 'duskthorn_draught',
     name: 'Duskthorn draught',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 210,
     buff: { name: 'Duskthorn', channel: 'tonic', durationSec: 180, shieldHp: 14 },
     desc: 'The thorn\'s stubbornness, decanted.',
@@ -722,7 +759,8 @@ const defs: ItemDef[] = [
   {
     id: 'dawnveil_elixir',
     name: 'Dawnveil elixir',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 320,
     heals: 20,
     buff: { name: 'Dawnveil', channel: 'tonic', durationSec: 120, regenPer4s: 2 },
@@ -733,7 +771,8 @@ const defs: ItemDef[] = [
   {
     id: 'mending_salve',
     name: 'Mending salve',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 90,
     buff: { name: 'Mending', channel: 'tonic', durationSec: 40, regenPer4s: 2 },
     desc: 'Moonbell and milk, whipped into quiet miracles.',
@@ -756,7 +795,8 @@ const defs: ItemDef[] = [
   {
     id: 'adderfang_oil',
     name: 'Adderfang oil',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 45,
     coating: { name: 'Adderfang oil', durationSec: 180, status: { status: 'venom', power: 1, durationTicks: 80 } },
     desc: 'The apprentice poisoner\'s first argument. Thin, green, and persuasive.',
@@ -766,7 +806,8 @@ const defs: ItemDef[] = [
   {
     id: 'hobble_brew',
     name: 'Hobblebrew',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 55,
     coating: { name: 'Hobblebrew', durationSec: 180, status: { status: 'chill', power: 1, durationTicks: 70 } },
     desc: 'Moonbell distilled to a numbing syrup. Whatever you cut walks home slowly.',
@@ -776,7 +817,8 @@ const defs: ItemDef[] = [
   {
     id: 'vipers_kiss',
     name: 'Viper\'s kiss',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 110,
     coating: { name: 'Viper\'s kiss', durationSec: 300, status: { status: 'venom', power: 2, durationTicks: 100 } },
     desc: 'Twice the gland, half the mercy. The journeyman\'s vial.',
@@ -786,7 +828,8 @@ const defs: ItemDef[] = [
   {
     id: 'firepitch_oil',
     name: 'Firepitch oil',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 60,
     coating: { name: 'Firepitch', durationSec: 180, status: { status: 'burn', power: 1, durationTicks: 80 } },
     desc: 'Resin cut with ground emberstone. It wants one excuse to light.',
@@ -796,7 +839,8 @@ const defs: ItemDef[] = [
   {
     id: 'leadfoot_oil',
     name: 'Leadfoot oil',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 130,
     coating: { name: 'Leadfoot oil', durationSec: 360, status: { status: 'chill', power: 2, durationTicks: 110 } },
     desc: 'The chase ends where this begins. Boots of lead, sold by the drop.',
@@ -806,7 +850,8 @@ const defs: ItemDef[] = [
   {
     id: 'wyrmtongue_oil',
     name: 'Wyrmtongue oil',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 240,
     coating: { name: 'Wyrmtongue oil', durationSec: 480, status: { status: 'venom', power: 3, durationTicks: 120 } },
     desc: 'The master\'s reserve — green-black, slow to pour, quick to collect debts.',
@@ -818,7 +863,8 @@ const defs: ItemDef[] = [
     // ground spores, and a longer bite than anything looted.
     id: 'palegill_oil',
     name: 'Palegill oil',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 320,
     coating: { name: 'Palegill oil', durationSec: 600, status: { status: 'venom', power: 4, durationTicks: 130 } },
     desc: 'Pale going on, invisible dried. The gardener\'s quiet argument.',
@@ -830,34 +876,34 @@ const defs: ItemDef[] = [
   { id: 'watering_can', name: 'Watering can', stackable: false, value: 30, desc: 'Carry a little rain wherever you garden.', color: '#7a8fa5', code: 'Wc' },
 
   // Metal bars
-  { id: 'bronze_bar', name: 'Bronze bar', stackable: false, value: 16, desc: 'The classic alloy — one part copper, one part tin.', color: '#a4744b', code: 'Bb' },
-  { id: 'iron_bar', name: 'Iron bar', stackable: false, value: 30, desc: 'Honest metal, ready for the anvil.', color: '#8d9299', code: 'Ib' },
-  { id: 'steel_bar', name: 'Steel bar', stackable: false, value: 80, desc: 'Iron improved by coal and patience.', color: '#b8bec8', code: 'Sb' },
-  { id: 'gold_bar', name: 'Gold bar', stackable: false, value: 95, desc: 'Soft, heavy, and worth its weight in itself.', color: '#f2c94c', code: 'Gb' },
-  { id: 'silver_bar', name: 'Silver bar', stackable: false, value: 60, desc: 'Takes a mirror polish and an enchanter\'s whisper equally well.', color: '#dce4f0', code: 'Vb' },
-  { id: 'mithril_bar', name: 'Mithril bar', stackable: false, value: 200, desc: 'Half the weight of steel, twice the spine.', color: '#7fa8d9', code: 'Mb' },
-  { id: 'adamant_bar', name: 'Adamant bar', stackable: false, value: 420, desc: 'The anvil complains the whole time. It\'s worth it.', color: '#5fa06a', code: 'Ab' },
-  { id: 'starsteel_bar', name: 'Starsteel bar', stackable: false, value: 950, desc: 'Sky-metal folded over coal-fire until it holds its own faint light.', color: '#cabdf2', code: 'Xb' },
+  { id: 'bronze_bar', name: 'Bronze bar', stackable: true, maxStack: 10, value: 16, desc: 'The classic alloy — one part copper, one part tin.', color: '#a4744b', code: 'Bb' },
+  { id: 'iron_bar', name: 'Iron bar', stackable: true, maxStack: 10, value: 30, desc: 'Honest metal, ready for the anvil.', color: '#8d9299', code: 'Ib' },
+  { id: 'steel_bar', name: 'Steel bar', stackable: true, maxStack: 10, value: 80, desc: 'Iron improved by coal and patience.', color: '#b8bec8', code: 'Sb' },
+  { id: 'gold_bar', name: 'Gold bar', stackable: true, maxStack: 10, value: 95, desc: 'Soft, heavy, and worth its weight in itself.', color: '#f2c94c', code: 'Gb' },
+  { id: 'silver_bar', name: 'Silver bar', stackable: true, maxStack: 10, value: 60, desc: 'Takes a mirror polish and an enchanter\'s whisper equally well.', color: '#dce4f0', code: 'Vb' },
+  { id: 'mithril_bar', name: 'Mithril bar', stackable: true, maxStack: 10, value: 200, desc: 'Half the weight of steel, twice the spine.', color: '#7fa8d9', code: 'Mb' },
+  { id: 'adamant_bar', name: 'Adamant bar', stackable: true, maxStack: 10, value: 420, desc: 'The anvil complains the whole time. It\'s worth it.', color: '#5fa06a', code: 'Ab' },
+  { id: 'starsteel_bar', name: 'Starsteel bar', stackable: true, maxStack: 10, value: 950, desc: 'Sky-metal folded over coal-fire until it holds its own faint light.', color: '#cabdf2', code: 'Xb' },
 
   // Crafting materials & gear — armor pieces live in equipment/defs.ts.
-  { id: 'leather', name: 'Leather', stackable: false, value: 12, desc: 'Cured hide, supple and strong.', color: '#b08a5c', code: 'Le' },
+  { id: 'leather', name: 'Leather', stackable: true, maxStack: 10, value: 12, desc: 'Cured hide, supple and strong.', color: '#b08a5c', code: 'Le' },
   // Swords live in equipment/defs.ts (the blade roster) — rolled gear.
   // Smithed valuables — the goldsmith's vendor line.
-  { id: 'gold_ring', name: 'Gold ring', stackable: false, value: 180, desc: 'A goldsmith\'s staple. Vendors adore them.', color: '#f2c94c', code: 'Gr' },
-  { id: 'silver_ring', name: 'Silver ring', stackable: false, value: 120, desc: 'Moon-pale and mirror-bright. The quiet fortune-maker.', color: '#dce4f0', code: 'Sr' },
+  { id: 'gold_ring', name: 'Gold ring', stackable: true, maxStack: 10, value: 180, desc: 'A goldsmith\'s staple. Vendors adore them.', color: '#f2c94c', code: 'Gr' },
+  { id: 'silver_ring', name: 'Silver ring', stackable: true, maxStack: 10, value: 120, desc: 'Moon-pale and mirror-bright. The quiet fortune-maker.', color: '#dce4f0', code: 'Sr' },
 
   // Monster drops
-  { id: 'bones', name: 'Bones', stackable: false, value: 2, desc: 'Every creature leaves some behind.', color: '#e6e0d0', code: 'Bn' },
+  { id: 'bones', name: 'Bones', stackable: true, maxStack: 20, value: 2, desc: 'Every creature leaves some behind.', color: '#e6e0d0', code: 'Bn' },
   { id: 'feather', name: 'Feather', stackable: true, value: 1, desc: 'Light as rumor. Fletchers want them by the fistful.', color: '#f4efe4', code: 'Ft' },
-  { id: 'cowhide', name: 'Cowhide', stackable: false, value: 8, desc: 'A whole hide, ready for the tanner\'s bench.', color: '#a08468', code: 'Hd' },
-  { id: 'wolf_fur', name: 'Wolf fur', stackable: false, value: 20, desc: 'Thick winter fur, smoke-grey and warm.', color: '#6a6f7d', code: 'Wf' },
-  { id: 'direwolf_pelt', name: 'Dire wolf pelt', stackable: false, value: 110, desc: 'Broad as a bedroll, storm-dark and frost-tipped — her winters written in the scars.', color: '#4b4854', code: 'Dp' },
-  { id: 'worg_fang', name: 'Worg fang', stackable: false, value: 38, desc: 'An up-hooked lower fang, long as a skinning knife. The goblins drill them for war-charms.', color: '#d8ccb0', code: 'Wg' },
-  { id: 'gnoll_hide', name: 'Gnoll hide', stackable: false, value: 26, desc: 'Speckled gray-brown fur over dull green skin. Smells of old camps and older kills.', color: '#8a7a58', code: 'Gh' },
-  { id: 'packlord_mane', name: 'Packlord mane', stackable: false, value: 120, desc: 'A bristled crest cut from the biggest back in the warband. The cackling stopped when it fell.', color: '#4e4034', code: 'Pm' },
+  { id: 'cowhide', name: 'Cowhide', stackable: true, maxStack: 10, value: 8, desc: 'A whole hide, ready for the tanner\'s bench.', color: '#a08468', code: 'Hd' },
+  { id: 'wolf_fur', name: 'Wolf fur', stackable: true, maxStack: 10, value: 20, desc: 'Thick winter fur, smoke-grey and warm.', color: '#6a6f7d', code: 'Wf' },
+  { id: 'direwolf_pelt', name: 'Dire wolf pelt', stackable: true, maxStack: 5, value: 110, desc: 'Broad as a bedroll, storm-dark and frost-tipped — her winters written in the scars.', color: '#4b4854', code: 'Dp' },
+  { id: 'worg_fang', name: 'Worg fang', stackable: true, maxStack: 10, value: 38, desc: 'An up-hooked lower fang, long as a skinning knife. The goblins drill them for war-charms.', color: '#d8ccb0', code: 'Wg' },
+  { id: 'gnoll_hide', name: 'Gnoll hide', stackable: true, maxStack: 10, value: 26, desc: 'Speckled gray-brown fur over dull green skin. Smells of old camps and older kills.', color: '#8a7a58', code: 'Gh' },
+  { id: 'packlord_mane', name: 'Packlord mane', stackable: true, maxStack: 5, value: 120, desc: 'A bristled crest cut from the biggest back in the warband. The cackling stopped when it fell.', color: '#4e4034', code: 'Pm' },
   { id: 'scrap_hide', name: 'Scrap hide', stackable: true, value: 3, desc: 'Small pelts and offcuts. Three make an honest leather.', color: '#8a6f52', code: 'Sh' },
   { id: 'owl_plume', name: 'Owl plume', stackable: true, value: 26, desc: 'A flight feather longer than your forearm. It fell without a sound.', color: '#d8ccae', code: 'Op' },
-  { id: 'elder_plume', name: 'Elder plume', stackable: false, value: 140, desc: 'Moon-pale at the edge, storm-dark at the root. The wood is louder now.', color: '#5a5e70', code: 'Ep' },
+  { id: 'elder_plume', name: 'Elder plume', stackable: true, maxStack: 5, value: 140, desc: 'Moon-pale at the edge, storm-dark at the root. The wood is louder now.', color: '#5a5e70', code: 'Ep' },
 
   // Quest items — worthless by law (the flood law's price for
   // quest-gated drops), stackable so an errand rides one slot.
@@ -875,9 +921,9 @@ const defs: ItemDef[] = [
   { id: 'gloomsilk_thread', name: 'Gloomsilk thread', stackable: true, value: 14, desc: 'Cold spun shadow from the crypt. It drinks the light.', color: '#5a4a78', code: 'Gt' },
 
   // Trade-prepared materials — the tanner's and weaver's stock in trade.
-  { id: 'linen', name: 'Linen', stackable: false, value: 20, desc: 'A bolt woven from salvaged scrap — humble, tough, everywhere.', color: '#e4dcc4', code: 'Ln' },
-  { id: 'gloomsilk', name: 'Gloomsilk', stackable: false, value: 90, desc: 'A bolt of woven midnight. Tailors whisper around it.', color: '#6a5690', code: 'Gs' },
-  { id: 'hardened_leather', name: 'Hardened leather', stackable: false, value: 45, desc: 'Leather boiled with oak tannin until it argues back.', color: '#7d5636', code: 'Hl' },
+  { id: 'linen', name: 'Linen', stackable: true, maxStack: 10, value: 20, desc: 'A bolt woven from salvaged scrap — humble, tough, everywhere.', color: '#e4dcc4', code: 'Ln' },
+  { id: 'gloomsilk', name: 'Gloomsilk', stackable: true, maxStack: 10, value: 90, desc: 'A bolt of woven midnight. Tailors whisper around it.', color: '#6a5690', code: 'Gs' },
+  { id: 'hardened_leather', name: 'Hardened leather', stackable: true, maxStack: 10, value: 45, desc: 'Leather boiled with oak tannin until it argues back.', color: '#7d5636', code: 'Hl' },
 
   // Daggers live in equipment/defs.ts (the rogue's roster) — rolled gear.
   // Bows live in equipment/defs.ts (the archer's roster) — rolled gear.
@@ -903,7 +949,8 @@ const defs: ItemDef[] = [
   {
     id: 'emberstone',
     name: 'Emberstone',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 120,
     desc: 'A red gem, warm as a held coal. Copper seams hide them.',
     color: '#e8683c',
@@ -912,7 +959,8 @@ const defs: ItemDef[] = [
   {
     id: 'frostshard',
     name: 'Frostshard',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 120,
     desc: 'Blue crystal, cold through the glove. Iron veins weep them.',
     color: '#9ad0ec',
@@ -921,7 +969,8 @@ const defs: ItemDef[] = [
   {
     id: 'stormpearl',
     name: 'Stormpearl',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 120,
     desc: 'It hums faintly and lifts the hair on your arm. Struck gold seams grow them.',
     color: '#e8e29a',
@@ -930,7 +979,8 @@ const defs: ItemDef[] = [
   {
     id: 'bloomstone',
     name: 'Bloomstone',
-    stackable: false,
+    stackable: true,
+    maxStack: 5,
     value: 120,
     desc: 'A green seed that chose stone over sprouting. Found among old roots.',
     color: '#7ac46a',
@@ -1584,6 +1634,7 @@ const gradedProduceDefs: ItemDef[] = defs
       id: gradedId(base.id, grade),
       name: `${GRADE_NAMES[grade]} ${base.name.toLowerCase()}`,
       stackable: base.stackable,
+      ...(base.maxStack !== undefined ? { maxStack: base.maxStack } : {}),
       value: Math.round(base.value * GRADE_VALUE_MULT[grade]),
       ...(base.heals !== undefined ? { heals: Math.ceil(base.heals * GRADE_VALUE_MULT[grade]) } : {}),
       desc: GRADE_DESCS[grade],

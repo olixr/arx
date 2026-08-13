@@ -1224,6 +1224,7 @@ export function createMapsApi(
             name: i.name,
             value: i.value,
             stackable: i.stackable,
+            maxStack: i.maxStack ?? null,
             slot: i.gear?.slot ?? i.equipSlot ?? null,
             desc: i.desc ?? null,
           })),

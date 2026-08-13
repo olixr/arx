@@ -771,9 +771,9 @@ const panels = new Panels(
     game.unequip(slot);
   },
   (ability, slot) => game.sendTechnique(ability, slot),
-  (from, to) => {
+  (from, to, merge) => {
     sfx.stow();
-    game.invMove(from, to);
+    game.invMove(from, to, merge);
   },
   (slot) => dropSlot(slot),
   // Explicit verbs from the item context menu — no station guessing.
@@ -811,7 +811,7 @@ function dropSlot(slot: number): void {
 // Gamepad-first UI navigation: focus ring, action strip, tooltips, and
 // the world interact prompt all live here.
 const nav = new UiNav(input, {
-  onInvMove: (from, to) => game.invMove(from, to),
+  onInvMove: (from, to, merge) => game.invMove(from, to, merge),
   onDropToWorld: (slot) => dropSlot(slot),
   onInspect: (el): boolean => {
     // The journal's page renders on focus like every inspector pane.
