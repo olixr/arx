@@ -86,15 +86,32 @@ const HELM_NOUNS: Record<string, string> = {
   bulwark: 'greathelm',
   sentinel: 'greathelm',
 };
+/** The leather lane speaks its own irregular nouns — head and legs
+ *  vary by family (cowl/coif, leggings/chaps) and drakescale's body
+ *  piece is `_body`. Membership here is what makes a family "leather"
+ *  to the lab, exactly as CLOTH_HEADS defines the cloth lane. */
+const LEATHER_NOUNS: Record<string, { head: string; body: string; legs: string }> = {
+  wayfarer: { head: 'hood', body: 'jerkin', legs: 'chaps' },
+  wolfstalker: { head: 'hood', body: 'jerkin', legs: 'chaps' },
+  nightveil: { head: 'cowl', body: 'jerkin', legs: 'leggings' },
+  drakescale: { head: 'coif', body: 'body', legs: 'chaps' },
+  stagheart: { head: 'hood', body: 'jerkin', legs: 'chaps' },
+  hareswift: { head: 'hood', body: 'jerkin', legs: 'chaps' },
+  kingfisher: { head: 'hood', body: 'jerkin', legs: 'chaps' },
+  cutpurse: { head: 'cowl', body: 'jerkin', legs: 'leggings' },
+  trapline: { head: 'hood', body: 'jerkin', legs: 'chaps' },
+  emberfox: { head: 'hood', body: 'jerkin', legs: 'leggings' },
+};
 const worn = (family: string) => {
   // Dye lots write the lot AFTER the noun (thistledown_hood_madder),
   // so `?sets=thistledown_madder` splits into base family + lot.
   let base = family;
   let lot = '';
-  if (!CLOTH_HEADS[family]) {
+  if (!CLOTH_HEADS[family] && !LEATHER_NOUNS[family]) {
     const us = family.lastIndexOf('_');
-    if (us > 0 && CLOTH_HEADS[family.slice(0, us)]) {
-      base = family.slice(0, us);
+    const prefix = us > 0 ? family.slice(0, us) : '';
+    if (prefix && (CLOTH_HEADS[prefix] || LEATHER_NOUNS[prefix])) {
+      base = prefix;
       lot = family.slice(us);
     }
   }
@@ -106,6 +123,16 @@ const worn = (family: string) => {
       legsItem: `${base}_skirts${lot}`,
       bootsItem: `${base}_slippers${lot}`,
       glovesItem: `${base}_${CLOTH_GLOVES.has(base) ? 'gloves' : 'wraps'}${lot}`,
+    };
+  }
+  const leather = LEATHER_NOUNS[base];
+  if (leather) {
+    return {
+      headItem: `${base}_${leather.head}${lot}`,
+      bodyItem: `${base}_${leather.body}${lot}`,
+      legsItem: `${base}_${leather.legs}${lot}`,
+      bootsItem: `${base}_boots${lot}`,
+      glovesItem: `${base}_gloves${lot}`,
     };
   }
   return {
@@ -177,13 +204,17 @@ row('aetherion', 'move'); // 28
 row('aetherion', 'strike'); // 29
 
 // ?sets=a,b,c — audit ANY families instead of the standing sheet:
-// one idle row each, plate nouns unless CLOTH_HEADS knows the family.
-// The lever that lets the lab sweep the LOWER wardrobe too.
+// one row each, plate nouns unless CLOTH_HEADS/LEATHER_NOUNS knows the
+// family. The lever that lets the lab sweep the LOWER wardrobe too.
+// ?mode=move|strike swaps the sweep's gait so living words that ride
+// the stride (streamers, snareline, tails) prove on a real walk.
 const setsQ = q.get('sets');
 if (setsQ) {
   figs.length = 0;
+  const modeQ = q.get('mode');
+  const sweepMode: Mode = modeQ === 'move' || modeQ === 'strike' ? modeQ : 'idle';
   for (const fam of setsQ.split(',').map((t) => t.trim()).filter(Boolean)) {
-    row(fam, 'idle');
+    row(fam, sweepMode);
   }
 }
 

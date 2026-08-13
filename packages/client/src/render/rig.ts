@@ -3440,6 +3440,249 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ctx.lineWidth = Math.max(2, s * 0.09);
       }
 
+      // THE HUNTER'S LEGS — the leather lane's one-owner leg words.
+      // Each paints ON the limb's own solved geometry (segments and
+      // normals), so it rides every gait for free. One-sided words
+      // pick the outward side the way the gnoll hock does.
+      if (legSt && !rig.hurt && !skel && !kob && !gno) {
+        const outX = Math.abs(fx) > 0.35 ? -Math.sign(fx) : i === 0 ? -1 : 1;
+        // Thigh segment frame (hip→knee) for thigh-mounted words.
+        const tLen = Math.hypot(kx - hipX, ky - hipY) || 1;
+        const tux = (kx - hipX) / tLen;
+        const tuy = (ky - hipY) / tLen;
+        if (legSt.hock) {
+          // Hare-fur hocks: a pale tuft off the back of the ankle —
+          // three round flicks and a seat wedge, the spring visible.
+          ctx.fillStyle = legSt.hock.color;
+          ctx.beginPath();
+          ctx.moveTo(ankX + outX * 0.012 * s, ankY - 0.052 * s);
+          ctx.lineTo(ankX + outX * 0.062 * s, ankY - 0.012 * s);
+          ctx.lineTo(ankX + outX * 0.014 * s, ankY + 0.014 * s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = legSt.hock.color;
+          ctx.lineCap = 'round';
+          ctx.lineWidth = Math.max(1, s * 0.014);
+          for (const [dx, dy] of [[0.07, -0.05], [0.085, -0.015], [0.075, 0.02]] as const) {
+            ctx.beginPath();
+            ctx.moveTo(ankX + outX * 0.02 * s, ankY - 0.02 * s);
+            ctx.lineTo(ankX + outX * dx * s, ankY + dy * s);
+            ctx.stroke();
+          }
+        }
+        if (legSt.wader) {
+          // Waxed waders: the lower shin recolored to a hard
+          // waterline break, one lit rim where the wax catches.
+          const bk = 0.42;
+          const bx = kx + (ankX - kx) * bk;
+          const by = ky + (ankY - ky) * bk;
+          ctx.strokeStyle = legSt.wader.color;
+          ctx.lineWidth = Math.max(2, s * 0.1);
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(ankX, ankY);
+          ctx.stroke();
+          ctx.strokeStyle = legSt.wader.rim;
+          ctx.lineWidth = Math.max(1, s * 0.016);
+          ctx.beginPath();
+          ctx.moveTo(bx - auy * 0.055 * s, by + aux * 0.055 * s);
+          ctx.lineTo(bx + auy * 0.055 * s, by - aux * 0.055 * s);
+          ctx.stroke();
+        }
+        if (legSt.sock) {
+          // The fox's socks: dark from mid-shin down, tied off with
+          // an ember knot and one loose end.
+          const bk = 0.5;
+          const bx = kx + (ankX - kx) * bk;
+          const by = ky + (ankY - ky) * bk;
+          ctx.strokeStyle = legSt.sock.color;
+          ctx.lineWidth = Math.max(2, s * 0.096);
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(ankX, ankY);
+          ctx.stroke();
+          if (legSt.sock.tie) {
+            ctx.fillStyle = legSt.sock.tie;
+            ctx.beginPath();
+            ctx.arc(bx + outX * 0.045 * s, by, Math.max(1.2, s * 0.018), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = legSt.sock.tie;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.beginPath();
+            ctx.moveTo(bx + outX * 0.045 * s, by);
+            ctx.lineTo(bx + outX * 0.06 * s, by + 0.045 * s);
+            ctx.stroke();
+          }
+        }
+        if (legSt.shinlace) {
+          // Snare-cord lacing: three X crossings climbing the shin.
+          ctx.strokeStyle = legSt.shinlace.color;
+          ctx.lineWidth = Math.max(1, s * 0.013);
+          for (const k of [0.2, 0.48, 0.76]) {
+            const cxx = kx + (ankX - kx) * k;
+            const cyy = ky + (ankY - ky) * k;
+            const w = 0.05 * s;
+            const h = 0.028 * s;
+            ctx.beginPath();
+            ctx.moveTo(cxx - w, cyy - h);
+            ctx.lineTo(cxx + w, cyy + h);
+            ctx.moveTo(cxx - w, cyy + h);
+            ctx.lineTo(cxx + w, cyy - h);
+            ctx.stroke();
+          }
+        }
+        if (legSt.mossbind) {
+          // Moss-bound bands: two green wraps on the shin, tufts
+          // spilling off each band's lower edge.
+          ctx.strokeStyle = legSt.mossbind.color;
+          ctx.lineWidth = Math.max(1.5, s * 0.03);
+          for (const k of [0.3, 0.62]) {
+            const cxx = kx + (ankX - kx) * k;
+            const cyy = ky + (ankY - ky) * k;
+            ctx.beginPath();
+            ctx.moveTo(cxx - 0.05 * s, cyy - 0.012 * s);
+            ctx.lineTo(cxx + 0.05 * s, cyy + 0.012 * s);
+            ctx.stroke();
+          }
+          ctx.strokeStyle = legSt.mossbind.tuft;
+          ctx.lineCap = 'round';
+          ctx.lineWidth = Math.max(1, s * 0.013);
+          for (const [k, dx] of [[0.34, 0.045], [0.66, -0.04], [0.64, 0.05]] as const) {
+            const cxx = kx + (ankX - kx) * k;
+            const cyy = ky + (ankY - ky) * k;
+            ctx.beginPath();
+            ctx.moveTo(cxx, cyy);
+            ctx.lineTo(cxx + dx * s, cyy + 0.035 * s);
+            ctx.stroke();
+          }
+        }
+        if (legSt.furknee) {
+          // Winter fur bursting over the knee: a lumpy pale cap with
+          // guard hairs flicking down and out.
+          ctx.fillStyle = legSt.furknee.color;
+          ctx.beginPath();
+          ctx.arc(kx, ky - 0.02 * s, 0.055 * s, Math.PI * 0.95, Math.PI * 2.05);
+          ctx.quadraticCurveTo(kx + 0.03 * s, ky + 0.03 * s, kx - 0.01 * s, ky + 0.025 * s);
+          ctx.quadraticCurveTo(kx - 0.045 * s, ky + 0.03 * s, kx - 0.055 * s, ky - 0.01 * s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = legSt.furknee.color;
+          ctx.lineCap = 'round';
+          ctx.lineWidth = Math.max(1, s * 0.014);
+          for (const [dx, dy] of [[-0.05, 0.05], [0.01, 0.06], [0.055, 0.045]] as const) {
+            ctx.beginPath();
+            ctx.moveTo(kx + dx * s * 0.4, ky + 0.01 * s);
+            ctx.lineTo(kx + dx * s, ky + dy * s);
+            ctx.stroke();
+          }
+        }
+        if (legSt.scalerows) {
+          // Lapped scale scallops down the thigh — the torso's rows
+          // continued, tempered edge riding each crown.
+          for (const k of [0.3, 0.55, 0.8]) {
+            const cxx = hipX + tux * tLen * k;
+            const cyy = hipY + tuy * tLen * k;
+            ctx.fillStyle = legSt.scalerows.color;
+            ctx.beginPath();
+            ctx.arc(cxx - 0.026 * s, cyy, 0.026 * s, 0, Math.PI);
+            ctx.arc(cxx + 0.026 * s, cyy, 0.026 * s, 0, Math.PI);
+            ctx.fill();
+            ctx.strokeStyle = legSt.scalerows.edge;
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            ctx.beginPath();
+            ctx.moveTo(cxx - 0.045 * s, cyy + 0.012 * s);
+            ctx.quadraticCurveTo(cxx - 0.026 * s, cyy + 0.03 * s, cxx - 0.007 * s, cyy + 0.012 * s);
+            ctx.moveTo(cxx + 0.007 * s, cyy + 0.012 * s);
+            ctx.quadraticCurveTo(cxx + 0.026 * s, cyy + 0.03 * s, cxx + 0.045 * s, cyy + 0.012 * s);
+            ctx.stroke();
+          }
+        }
+        // One-sided words dress a single leg — a roll on both thighs
+        // reads as uniform print, on one it reads as gear.
+        if (i === 0) {
+          if (legSt.pickroll) {
+            // The thief's tool roll strapped flat to the thigh, pick
+            // ends ticking out of the top.
+            const cxx = hipX + tux * tLen * 0.5 + outX * 0.02 * s;
+            const cyy = hipY + tuy * tLen * 0.5;
+            ctx.save();
+            ctx.translate(cxx, cyy);
+            ctx.rotate(Math.atan2(tuy, tux) - Math.PI / 2);
+            ctx.fillStyle = legSt.pickroll.color;
+            chamferRect(ctx, -0.032 * s, -0.055 * s, 0.064 * s, 0.11 * s, 0.012 * s);
+            ctx.fill();
+            ctx.strokeStyle = shade(legSt.pickroll.color, -24);
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            for (const o of [-0.028, 0.024]) {
+              ctx.beginPath();
+              ctx.moveTo(-0.032 * s, o * s);
+              ctx.lineTo(0.032 * s, o * s);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = legSt.pickroll.glint ?? shade(legSt.pickroll.color, 34);
+            ctx.lineWidth = Math.max(1, s * 0.011);
+            for (const o of [-0.016, 0, 0.016]) {
+              ctx.beginPath();
+              ctx.moveTo(o * s, -0.055 * s);
+              ctx.lineTo(o * s, -0.075 * s);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+          if (legSt.garter) {
+            // The assassin's garter: one strap high on the thigh, a
+            // sheathed blade hanging off its outward edge.
+            const cxx = hipX + tux * tLen * 0.34;
+            const cyy = hipY + tuy * tLen * 0.34;
+            ctx.strokeStyle = legSt.garter.color;
+            ctx.lineWidth = Math.max(1.5, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(cxx - 0.05 * s, cyy - 0.008 * s);
+            ctx.lineTo(cxx + 0.05 * s, cyy + 0.008 * s);
+            ctx.stroke();
+            if (legSt.garter.blade) {
+              const bx2 = cxx + outX * 0.038 * s;
+              ctx.fillStyle = shade(legSt.garter.color, -18);
+              ctx.fillRect(bx2 - 0.012 * s, cyy, 0.024 * s, 0.062 * s);
+              ctx.fillStyle = legSt.garter.blade;
+              ctx.beginPath();
+              ctx.moveTo(bx2 - 0.008 * s, cyy + 0.062 * s);
+              ctx.lineTo(bx2 + 0.008 * s, cyy + 0.062 * s);
+              ctx.lineTo(bx2, cyy + 0.095 * s);
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+          if (legSt.roadpatch) {
+            // The road's mending: a squared patch sewn slightly
+            // askew on the thigh, stitch ticks at its corners.
+            const cxx = hipX + tux * tLen * 0.55;
+            const cyy = hipY + tuy * tLen * 0.55;
+            ctx.save();
+            ctx.translate(cxx, cyy);
+            ctx.rotate(0.16 + Math.atan2(tuy, tux) - Math.PI / 2);
+            ctx.fillStyle = legSt.roadpatch.color;
+            ctx.fillRect(-0.03 * s, -0.03 * s, 0.06 * s, 0.06 * s);
+            ctx.strokeStyle = shade(legSt.roadpatch.color, -26);
+            ctx.lineWidth = Math.max(1, s * 0.008);
+            for (const [x0, y0, x1, y1] of [
+              [-0.03, -0.012, -0.02, -0.012],
+              [0.02, 0.008, 0.03, 0.008],
+              [-0.008, -0.03, -0.008, -0.02],
+              [0.006, 0.02, 0.006, 0.03],
+            ] as const) {
+              ctx.beginPath();
+              ctx.moveTo(x0 * s, y0 * s);
+              ctx.lineTo(x1 * s, y1 * s);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+        }
+        ctx.lineCap = 'round';
+        ctx.lineWidth = Math.max(2, s * 0.09);
+      }
+
       // THE GREAVES — the legs' channel. A thin light down the outside
       // of the thigh, brightest when the leg is EXTENDED.
       //

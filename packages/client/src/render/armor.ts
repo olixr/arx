@@ -942,34 +942,53 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   // The themed leather sets: fur, feathers, scales and antlers — the
   // skirmisher's wardrobe. Same colorway law as the plate sets.
+  // The road: patched buckskin under a slung bedroll — the scout's
+  // whole house on one strap.
   wayfarer_jerkin: {
     color: '#a8895a', trim: '#6b4a2e', metal: '#8a6a45', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#8a6a45',
     chest: 'straps', fringe: true, skirt: 0, pouch: true,
     yoke: { color: '#8a6a45', stitch: true }, belt: true,
+    bedroll: { color: '#6a7a54', strap: '#6b4a2e' },
   },
+  // The pack: winter guardhair shoulders, a claw tithe on the chest.
   wolfstalker_jerkin: {
     color: '#5f6470', trim: '#424652', metal: '#9aa0ae', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'fur', pauldronColor: '#9aa0ae',
-    pauldronScale: 1.1, chest: 'straps', skirt: 0, collar: 'fur',
-    pouch: true,
+    silhouette: 'jerkin', pauldron: 'guardhair', pauldronColor: '#8f96a6',
+    pauldronTrim: '#dde2ea', pauldronScale: 1.14, chest: 'none',
+    skirt: 0, collar: 'fur', collarColor: '#b8bec8', pouch: true,
+    clawstrap: { strap: '#424652', claw: '#d8d2c0' },
+    belt: { color: '#424652', buckle: '#9aa0ae' },
   },
+  // The dark: knife baldric, drifting shadow tails, ink on ink.
   nightveil_jerkin: {
     color: '#3a3648', trim: '#7e6ba8', metal: '#8c4a5a', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'none', chest: 'straps', skirt: 0,
+    silhouette: 'jerkin', pauldron: 'none', chest: 'none', skirt: 0,
     pouch: true, yoke: { color: '#2e2a3c' }, sash: '#584a78',
+    knifebaldric: { strap: '#262234', steel: '#7a7488', glint: '#b9a8e8' },
+    shadowtails: { color: '#302c40' },
   },
+  // The drake: full lapped rows, folded wing-fins, a banked heat
+  // seam breathing at the waist. Portal tones need not apply — this
+  // is FIRE dressed as patience.
   drakescale_body: {
     color: '#8c3a32', trim: '#c9713c', metal: '#d49a4a', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#a04a38',
-    pauldronTrim: '#d49a4a', pauldronScale: 1.06, chest: 'scales',
-    skirt: 0,
+    silhouette: 'jerkin', pauldron: 'drakewing', pauldronColor: '#a04a38',
+    pauldronTrim: '#e8b060', pauldronScale: 1.12, chest: 'none',
+    skirt: 0, drakerows: { color: '#8c3a32', edge: '#c9713c' },
+    heatseam: { color: '#ff8848' },
+    belt: { color: '#5e2620', buckle: '#d49a4a' },
   },
+  // The forest king: moss-spilled bark mantle, oak-leaf shoulders,
+  // gold leaves falling that no tree shed.
   stagheart_jerkin: {
     color: '#6b5138', trim: '#d4a43c', metal: '#3e5a30', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'feathered', pauldronColor: '#d8cfae',
-    pauldronScale: 1.1, chest: 'straps', fringe: true, skirt: 0.14,
-    pouch: true,
+    silhouette: 'jerkin', pauldron: 'oakspaul', pauldronColor: '#7a5c3e',
+    pauldronTrim: '#d4a43c', pauldronScale: 1.14, chest: 'none',
+    fringe: true, skirt: 0.14, pouch: true,
+    mossmantle: { bark: '#5a4430', moss: '#6e8a4a' },
+    leaffall: { color: '#d4a43c' },
+    belt: { color: '#4a3826', buckle: '#d4a43c' },
   },
   // The themed cloth sets: sashes, hem runes, orbs and halos — the
   // caster's wardrobe. Same colorway law as plate and leather.
@@ -1057,34 +1076,52 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   // The early-game leather sets: the skirmisher's leveling road. Each
   // ships in four dye lots via registerColorways below.
+  // The courier: quilted oat leather, satchel worn crossed, waybill
+  // ribbons that never stop moving. Fast feet, faster excuses.
   hareswift_jerkin: {
-    color: '#c2a878', trim: '#8a6f48', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'none', chest: 'straps', skirt: 0,
-    collar: 'fur', pouch: true, quilt: true, belt: true,
+    color: '#c2a878', trim: '#8a6f48', metal: '#6e5638', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'none', chest: 'none', skirt: 0,
+    collar: 'fur', collarColor: '#ece4d0', quilt: true,
+    belt: { color: '#6e5638', buckle: '#c9a23c' },
+    satchel: { color: '#8a6f48', strap: '#6e5638' },
+    streamers: { color: '#b84a32' },
   },
+  // The diver: teal back, the flame bib pointed at the water, folded
+  // halcyon wings at the shoulder. Dive dressed.
   kingfisher_jerkin: {
-    color: '#2f7a8a', trim: '#d87f3c', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'feathered', pauldronColor: '#57a8b8',
-    chest: 'emblem', emblem: 'chevron', skirt: 0, pouch: true,
+    color: '#2f7a8a', trim: '#d87f3c', metal: '#1f5866', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'halcyon', pauldronColor: '#2a6d7c',
+    pauldronTrim: '#57a8b8', pauldronScale: 1.08, chest: 'none',
+    skirt: 0, pouch: true, divebib: { color: '#e88a3c', edge: '#e8e0cc' },
     belt: { color: '#1f5866', buckle: '#d87f3c' },
   },
+  // The guild: umber under laced umber, and the ledger worn openly —
+  // a tether of lifted coins with one traveling glint.
   cutpurse_jerkin: {
     color: '#4e4438', trim: '#c9a23c', metal: '#8a7a5c', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'none', chest: 'emblem', emblem: 'coin',
-    skirt: 0, pouch: true, yoke: { color: '#3e362c' }, lace: '#2e2820',
-    belt: { color: '#2e2820', buckle: '#c9a23c' }, emblemScale: 1.15,
+    silhouette: 'jerkin', pauldron: 'none', chest: 'none', skirt: 0,
+    pouch: true, yoke: { color: '#3e362c' }, lace: '#2e2820',
+    belt: { color: '#2e2820', buckle: '#c9a23c' },
+    cointether: { cord: '#2e2820', coin: '#c9a23c', glint: '#ffe9a8' },
   },
+  // The trapper: rawhide and quilt under the snareline — toggles,
+  // wire coil, a swinging lure. Every loop earned.
   trapline_jerkin: {
     color: '#8a7248', trim: '#5a4a34', metal: '#d8cfae', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#6e5a3c',
-    chest: 'none', bandolier: '#5a4a34', skirt: 0, pouch: true,
+    silhouette: 'jerkin', pauldron: 'fur', pauldronColor: '#b8a888',
+    pauldronScale: 1.06, chest: 'none', skirt: 0, pouch: true,
     quilt: true, belt: { color: '#5a4a34', buckle: '#d8cfae' },
+    snareline: { strap: '#5a4a34', bone: '#d8cfae', wire: '#9a8f78' },
   },
+  // The showpiece: cream bib, fur collar, black socks — and the
+  // brush tail smoldering at the tip. It knows exactly what it is.
   emberfox_jerkin: {
-    color: '#b05a30', trim: '#e8dcc4', cls: 'leather',
+    color: '#b05a30', trim: '#e8dcc4', metal: '#3a3230', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'fur', pauldronColor: '#c9713c',
-    chest: 'none', collar: 'fur', tail: { color: '#b05a30', tip: '#e8dcc4' },
-    skirt: 0, pouch: true,
+    pauldronScale: 1.05, chest: 'none', skirt: 0,
+    collar: 'fur', collarColor: '#e8dcc4', foxbib: { color: '#e8dcc4' },
+    tail: { color: '#b05a30', tip: '#e8dcc4', ember: '#ff9a3c' },
+    belt: { color: '#7a3e20', buckle: '#3a3230' },
   },
   // The early-game plate sets: the knight's leveling road. Each ships
   // in four lots via registerColorways below — craft lots are the same
@@ -1481,15 +1518,17 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     wings: { color: '#e8e2d0' },
   },
   wayfarer_hood: {
-    color: '#a8895a', trim: '#6b4a2e', kind: 'hood',
+    color: '#a8895a', trim: '#6b4a2e', kind: 'roadhood',
     feather: { color: '#c94f38' },
   },
   wolfstalker_hood: {
-    color: '#5f6470', trim: '#424652', kind: 'hood',
-    ruff: { color: '#9aa0ae' }, ears: { color: '#4f5460' },
+    color: '#5f6470', trim: '#424652', kind: 'wolfmantle',
+    pelt: { color: '#8f96a6', dark: '#2e323c', pale: '#dde2ea' },
+    frostbreath: { color: '#cfe0ea' },
   },
   nightveil_cowl: {
-    color: '#3a3648', trim: '#6a5a8c', kind: 'hood', mask: '#4a4260',
+    color: '#3a3648', trim: '#6a5a8c', kind: 'shadowcowl', mask: '#4a4260',
+    edgelight: { color: '#b9a8e8' },
   },
   // The drake visage: lapped scale rows, a copper snout mask with an
   // up-curved tooth ridge, amber-glint eyes, a dorsal fin crest.
@@ -1497,8 +1536,8 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#8c3a32', trim: '#e8b060', kind: 'drake', jaw: '#c9713c',
   },
   stagheart_hood: {
-    color: '#6b5138', trim: '#3e5a30', kind: 'hood',
-    antlers: { color: '#e6e0d0' }, ruff: { color: '#8a7a52' },
+    color: '#6b5138', trim: '#d4a43c', kind: 'stagcrown',
+    antlers: { color: '#e6e0d0' }, mossband: { color: '#6e8a4a' },
   },
   hedgemage_hat: {
     color: '#5a6b3a', trim: '#c9a23c', kind: 'hedgehat',
@@ -1542,23 +1581,25 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     boltpin: { color: '#e8d878' },
   },
   hareswift_hood: {
-    color: '#c2a878', trim: '#8a6f48', kind: 'hood',
+    color: '#c2a878', trim: '#8a6f48', kind: 'courierhood',
     ears: { color: '#cfc0a0', tall: true, tip: '#4a4038' },
+    waybill: { color: '#e8dcc0', seal: '#b84a32' },
   },
   kingfisher_hood: {
-    color: '#2f7a8a', trim: '#d87f3c', kind: 'hood',
-    feather: { color: '#e8a03c' },
+    color: '#2f7a8a', trim: '#d87f3c', kind: 'halcyonhood',
+    divecrest: { color: '#57a8b8', flash: '#e88a3c' },
   },
   cutpurse_cowl: {
-    color: '#4e4438', trim: '#c9a23c', kind: 'hood', mask: '#3a332c',
+    color: '#4e4438', trim: '#c9a23c', kind: 'thiefhood', mask: '#26221c',
+    coinpin: { color: '#c9a23c' },
   },
   trapline_hood: {
-    color: '#8a7248', trim: '#5a4a34', kind: 'hood',
+    color: '#8a7248', trim: '#5a4a34', kind: 'trapperhood',
     ruff: { color: '#b8a888' },
   },
   emberfox_hood: {
-    color: '#b05a30', trim: '#e8dcc4', kind: 'hood',
-    ears: { color: '#b05a30', tip: '#3a3230' },
+    color: '#b05a30', trim: '#e8dcc4', kind: 'foxmantle',
+    pelt: { color: '#b05a30', dark: '#3a3230', pale: '#e8dcc4', ember: '#ff9a3c' },
   },
   // The early plate helms: every one a different silhouette — tusked
   // boar, crested-and-plumed hero, ram spiral, thorn crown, spiked
@@ -1774,11 +1815,26 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   bulwark_greaves: { kind: 'greaves', thigh: '#454b58', shin: '#5a6270', knee: 'plate', kneeColor: '#b08a3c' },
   dreadforge_greaves: { kind: 'greaves', thigh: '#322f3a', shin: '#4a4553', knee: 'plate', kneeColor: '#a83232' },
   sunforged_greaves: { kind: 'greaves', thigh: '#8a6a2c', shin: '#d4a43c', knee: 'plate', kneeColor: '#f4e0a0' },
-  wayfarer_chaps: { kind: 'wraps', thigh: '#a8895a', shin: '#8a6a45', knee: 'wrap', kneeColor: '#6b4a2e' },
-  wolfstalker_chaps: { kind: 'wraps', thigh: '#5f6470', shin: '#4f5460', knee: 'wrap', kneeColor: '#9aa0ae' },
-  nightveil_leggings: { kind: 'wraps', thigh: '#3a3648', shin: '#302c3c', knee: 'wrap', kneeColor: '#6a5a8c' },
-  drakescale_chaps: { kind: 'greaves', thigh: '#6e2f28', shin: '#8c3a32', knee: 'plate', kneeColor: '#d49a4a' },
-  stagheart_chaps: { kind: 'wraps', thigh: '#6b5138', shin: '#5a4430', knee: 'wrap', kneeColor: '#3e5a30' },
+  wayfarer_chaps: {
+    kind: 'wraps', thigh: '#a8895a', shin: '#8a6a45', knee: 'wrap',
+    kneeColor: '#6b4a2e', roadpatch: { color: '#8a6a45' },
+  },
+  wolfstalker_chaps: {
+    kind: 'wraps', thigh: '#5f6470', shin: '#4f5460', knee: 'none',
+    furknee: { color: '#b8bec8' },
+  },
+  nightveil_leggings: {
+    kind: 'wraps', thigh: '#3a3648', shin: '#302c3c', knee: 'none',
+    garter: { color: '#584a78', blade: '#9a94b0' },
+  },
+  drakescale_chaps: {
+    kind: 'greaves', thigh: '#6e2f28', shin: '#8c3a32', knee: 'plate',
+    kneeColor: '#d49a4a', scalerows: { color: '#7a332c', edge: '#c9713c' },
+  },
+  stagheart_chaps: {
+    kind: 'wraps', thigh: '#6b5138', shin: '#5a4430', knee: 'none',
+    mossbind: { color: '#3e5a30', tuft: '#6e8a4a' },
+  },
   thistledown_skirts: { kind: 'pants', thigh: '#a89a80' },
   mothwing_skirts: { kind: 'pants', thigh: '#6e6e5a' },
   dawnsworn_skirts: { kind: 'pants', thigh: '#b8a87e' },
@@ -1789,12 +1845,27 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   voidwhisper_skirts: { kind: 'pants', thigh: '#332b47' },
   cindersworn_skirts: { kind: 'pants', thigh: '#3a2d2b' },
   starweaver_skirts: { kind: 'pants', thigh: '#232850' },
-  hareswift_chaps: { kind: 'wraps', thigh: '#c2a878', shin: '#a88f60', knee: 'wrap', kneeColor: '#8a6f48' },
-  kingfisher_chaps: { kind: 'wraps', thigh: '#2f7a8a', shin: '#256575', knee: 'wrap', kneeColor: '#d87f3c' },
-  cutpurse_leggings: { kind: 'wraps', thigh: '#4e4438', shin: '#3e362c', knee: 'wrap', kneeColor: '#6e6050' },
-  trapline_chaps: { kind: 'wraps', thigh: '#8a7248', shin: '#6e5a3c', knee: 'wrap', kneeColor: '#5a4a34' },
+  hareswift_chaps: {
+    kind: 'wraps', thigh: '#c2a878', shin: '#a88f60', knee: 'wrap',
+    kneeColor: '#8a6f48', hock: { color: '#ece4d0' },
+  },
+  kingfisher_chaps: {
+    kind: 'wraps', thigh: '#2f7a8a', shin: '#256575', knee: 'none',
+    wader: { color: '#1c4a56', rim: '#57a8b8' },
+  },
+  cutpurse_leggings: {
+    kind: 'wraps', thigh: '#4e4438', shin: '#3e362c', knee: 'wrap',
+    kneeColor: '#6e6050', pickroll: { color: '#3a332c', glint: '#c9a23c' },
+  },
+  trapline_chaps: {
+    kind: 'wraps', thigh: '#8a7248', shin: '#6e5a3c', knee: 'wrap',
+    kneeColor: '#5a4a34', shinlace: { color: '#d8cfae' },
+  },
   // The fox's own socks: russet thigh into black shin.
-  emberfox_leggings: { kind: 'wraps', thigh: '#b05a30', shin: '#3a3230', knee: 'wrap', kneeColor: '#8a4526' },
+  emberfox_leggings: {
+    kind: 'wraps', thigh: '#b05a30', shin: '#7a3e20', knee: 'none',
+    sock: { color: '#2e2724', tie: '#ff9a3c' },
+  },
   tuskguard_greaves: { kind: 'greaves', thigh: '#6e5138', shin: '#a4744b', knee: 'plate', kneeColor: '#c9955c' },
   valiant_greaves: { kind: 'greaves', thigh: '#5c5460', shin: '#c9ccd4', knee: 'plate', kneeColor: '#e8c04c' },
   ramwall_greaves: { kind: 'greaves', thigh: '#454b58', shin: '#6a7080', knee: 'plate', kneeColor: '#8a92a4' },
@@ -1866,10 +1937,10 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   cindersworn_slippers: { color: '#332826', height: 0.08, cuff: { color: '#e05438' } },
   starweaver_slippers: { color: '#232850', height: 0.08, curl: true, cuff: { color: '#c8cee8' } },
   hareswift_boots: { color: '#a88f60', height: 0.1, fur: { color: '#e8e2d4' } },
-  kingfisher_boots: { color: '#256575', height: 0.1, cuff: { color: '#d87f3c' } },
+  kingfisher_boots: { color: '#1c4a56', height: 0.14, cuff: { color: '#57a8b8' } },
   cutpurse_boots: { color: '#3a332c', height: 0.09, cuff: { color: '#6e6050' } },
   trapline_boots: { color: '#6e5a3c', height: 0.13, wrap: { color: '#d8cfae' } },
-  emberfox_boots: { color: '#3a3230', height: 0.11, fur: { color: '#c9713c' } },
+  emberfox_boots: { color: '#2e2724', height: 0.11, fur: { color: '#c9713c' } },
   tuskguard_sabatons: { color: '#a4744b', height: 0.12, toe: '#c9955c' },
   valiant_sabatons: { color: '#c9ccd4', height: 0.13, toe: '#e8c04c' },
   ramwall_sabatons: { color: '#6a7080', height: 0.14, toe: '#8a92a4', cuff: { color: '#7a8294' } },
@@ -2061,6 +2132,7 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
   cutpurse_gloves: {
     color: '#4e4438', hand: 'glove', bracer: '#453c31',
     cuff: { color: '#6e6050', kind: 'band' }, fingerless: true,
+    knuckle: { color: '#c9a23c', kind: 'studs' },
   },
   trapline_gloves: {
     color: '#8a7248', hand: 'glove', bracer: '#6e5a3c',
@@ -2069,8 +2141,9 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
   // The fox's black socks: dark paw, russet forearm — the pelt runs
   // unbroken from the jerkin sleeve down into the hand.
   emberfox_gloves: {
-    color: '#3a3230', hand: 'paw', bracer: '#b05a30',
+    color: '#2e2724', hand: 'paw', bracer: '#b05a30',
     cuff: { color: '#c9713c', kind: 'fur' },
+    knuckle: { color: '#1e1a18', kind: 'claws' },
   },
   // Early plate: ivory tusk studs, tourney polish, fluted slate,
   // thorned knuckles and the vigil's gold.
@@ -2497,22 +2570,50 @@ registerColorways(BOOT_STYLES, 'stormwoven_slippers', {
   aurora: { color: '#326256', cuff: { color: '#b8e8d0' } },
 });
 
-// Hareswift dye lots: the fur stays a coat, the ear tips stay black —
-// a hare is a hare in any season.
+// Hareswift dye lots: the fur stays a coat, the ear tips stay black,
+// the waybill keeps its seal — a hare is a hare in any season, and a
+// courier is never off duty. Every color-bearing word restates.
 registerColorways(BODY_STYLES, 'hareswift_jerkin', {
-  clover: { color: '#7a9a58', trim: '#4e6a38' },
-  snowmelt: { color: '#cfd2ca', trim: '#9aa096' },
-  sorrel: { color: '#a86a48', trim: '#6e4530' },
+  clover: {
+    color: '#7a9a58', trim: '#4e6a38', metal: '#42562e', collarColor: '#e8f0d8',
+    belt: { color: '#42562e', buckle: '#c9a23c' },
+    satchel: { color: '#5c7a42', strap: '#42562e' },
+    streamers: { color: '#e0c860' },
+  },
+  snowmelt: {
+    color: '#cfd2ca', trim: '#9aa096', metal: '#82887e', collarColor: '#f4f4ee',
+    belt: { color: '#82887e', buckle: '#b0b6be' },
+    satchel: { color: '#b0b4aa', strap: '#82887e' },
+    streamers: { color: '#8fa8c8' },
+  },
+  sorrel: {
+    color: '#a86a48', trim: '#6e4530', metal: '#5a3826', collarColor: '#e8dcc4',
+    belt: { color: '#5a3826', buckle: '#c9a23c' },
+    satchel: { color: '#8a5638', strap: '#5a3826' },
+    streamers: { color: '#e8dcc0' },
+  },
 });
 registerColorways(HELM_STYLES, 'hareswift_hood', {
-  clover: { color: '#7a9a58', trim: '#4e6a38', ears: { color: '#8ab868', tall: true, tip: '#3a4a2c' } },
-  snowmelt: { color: '#cfd2ca', trim: '#9aa096', ears: { color: '#e0e2da', tall: true, tip: '#4a4038' } },
-  sorrel: { color: '#a86a48', trim: '#6e4530', ears: { color: '#b87e58', tall: true, tip: '#3a2c24' } },
+  clover: {
+    color: '#7a9a58', trim: '#4e6a38',
+    ears: { color: '#8ab868', tall: true, tip: '#3a4a2c' },
+    waybill: { color: '#e8e4d0', seal: '#b84a32' },
+  },
+  snowmelt: {
+    color: '#cfd2ca', trim: '#9aa096',
+    ears: { color: '#e0e2da', tall: true, tip: '#4a4038' },
+    waybill: { color: '#f4f4ee', seal: '#a84a44' },
+  },
+  sorrel: {
+    color: '#a86a48', trim: '#6e4530',
+    ears: { color: '#b87e58', tall: true, tip: '#3a2c24' },
+    waybill: { color: '#e8dcc0', seal: '#8a2e24' },
+  },
 });
 registerColorways(LEG_STYLES, 'hareswift_chaps', {
-  clover: { thigh: '#7a9a58', shin: '#62804a', kneeColor: '#4e6a38' },
-  snowmelt: { thigh: '#cfd2ca', shin: '#b0b4aa', kneeColor: '#9aa096' },
-  sorrel: { thigh: '#a86a48', shin: '#8a5638', kneeColor: '#6e4530' },
+  clover: { thigh: '#7a9a58', shin: '#62804a', kneeColor: '#4e6a38', hock: { color: '#e8f0d8' } },
+  snowmelt: { thigh: '#cfd2ca', shin: '#b0b4aa', kneeColor: '#9aa096', hock: { color: '#f4f4ee' } },
+  sorrel: { thigh: '#a86a48', shin: '#8a5638', kneeColor: '#6e4530', hock: { color: '#e8dcc4' } },
 });
 registerColorways(BOOT_STYLES, 'hareswift_boots', {
   clover: { color: '#62804a', fur: { color: '#e8f0d8' } },
@@ -2521,35 +2622,41 @@ registerColorways(BOOT_STYLES, 'hareswift_boots', {
 });
 
 // Kingfisher dye lots: plumage swaps whole — sundart flips the bird,
-// teal feather on gold.
+// teal bib on gold. Crest, bib and waders restate per lot.
 registerColorways(BODY_STYLES, 'kingfisher_jerkin', {
   reedmace: {
-    color: '#6a8a4a', trim: '#c9a23c', pauldronColor: '#82a862',
+    color: '#6a8a4a', trim: '#c9a23c', metal: '#54703a',
+    pauldronColor: '#5e7c42', pauldronTrim: '#82a862',
+    divebib: { color: '#c9a23c', edge: '#e8e0c0' },
     belt: { color: '#54703a', buckle: '#c9a23c' },
   },
   stormgull: {
-    color: '#9aa8b0', trim: '#4e5a64', pauldronColor: '#c0ccd2',
+    color: '#9aa8b0', trim: '#4e5a64', metal: '#7e8c94',
+    pauldronColor: '#8c9aa2', pauldronTrim: '#c0ccd2',
+    divebib: { color: '#e8ecee', edge: '#4e5a64' },
     belt: { color: '#7e8c94', buckle: '#4e5a64' },
   },
   sundart: {
-    color: '#d8a03c', trim: '#2f7a8a', pauldronColor: '#e8bc60',
+    color: '#d8a03c', trim: '#2f7a8a', metal: '#b58230',
+    pauldronColor: '#c8922f', pauldronTrim: '#e8bc60',
+    divebib: { color: '#2f7a8a', edge: '#e8e0cc' },
     belt: { color: '#b58230', buckle: '#2f7a8a' },
   },
 });
 registerColorways(HELM_STYLES, 'kingfisher_hood', {
-  reedmace: { color: '#6a8a4a', trim: '#c9a23c', feather: { color: '#d8b84c' } },
-  stormgull: { color: '#9aa8b0', trim: '#4e5a64', feather: { color: '#e8ecee' } },
-  sundart: { color: '#d8a03c', trim: '#2f7a8a', feather: { color: '#2f7a8a' } },
+  reedmace: { color: '#6a8a4a', trim: '#c9a23c', divecrest: { color: '#82a862', flash: '#c9a23c' } },
+  stormgull: { color: '#9aa8b0', trim: '#4e5a64', divecrest: { color: '#c0ccd2', flash: '#e8ecee' } },
+  sundart: { color: '#d8a03c', trim: '#2f7a8a', divecrest: { color: '#e8bc60', flash: '#2f7a8a' } },
 });
 registerColorways(LEG_STYLES, 'kingfisher_chaps', {
-  reedmace: { thigh: '#6a8a4a', shin: '#54703a', kneeColor: '#c9a23c' },
-  stormgull: { thigh: '#9aa8b0', shin: '#7e8c94', kneeColor: '#4e5a64' },
-  sundart: { thigh: '#d8a03c', shin: '#b58230', kneeColor: '#2f7a8a' },
+  reedmace: { thigh: '#6a8a4a', shin: '#54703a', wader: { color: '#3e5430', rim: '#82a862' } },
+  stormgull: { thigh: '#9aa8b0', shin: '#7e8c94', wader: { color: '#5e6a72', rim: '#c0ccd2' } },
+  sundart: { thigh: '#d8a03c', shin: '#b58230', wader: { color: '#8a6828', rim: '#e8bc60' } },
 });
 registerColorways(BOOT_STYLES, 'kingfisher_boots', {
-  reedmace: { color: '#54703a', cuff: { color: '#c9a23c' } },
-  stormgull: { color: '#7e8c94', cuff: { color: '#e8ecee' } },
-  sundart: { color: '#b58230', cuff: { color: '#2f7a8a' } },
+  reedmace: { color: '#3e5430', cuff: { color: '#82a862' } },
+  stormgull: { color: '#5e6a72', cuff: { color: '#c0ccd2' } },
+  sundart: { color: '#8a6828', cuff: { color: '#e8bc60' } },
 });
 
 // Cutpurse dye lots: the coin is the tell — brass on umber and
@@ -2559,27 +2666,30 @@ registerColorways(BODY_STYLES, 'cutpurse_jerkin', {
     color: '#5c5c56', trim: '#b0b6be', metal: '#8a8e96',
     yoke: { color: '#4a4a44' }, lace: '#3e3e38',
     belt: { color: '#3e3e38', buckle: '#b0b6be' },
+    cointether: { cord: '#3e3e38', coin: '#b0b6be', glint: '#ffffff' },
   },
   moonless: {
     color: '#33303c', trim: '#a8b0cc', metal: '#5c5a6e',
     yoke: { color: '#28252f' }, lace: '#201d28',
     belt: { color: '#201d28', buckle: '#a8b0cc' },
+    cointether: { cord: '#201d28', coin: '#a8b0cc', glint: '#e8ecff' },
   },
   redhand: {
     color: '#6e3a34', trim: '#c9a23c', metal: '#8a6a4a',
     yoke: { color: '#582e28' }, lace: '#442420',
     belt: { color: '#442420', buckle: '#c9a23c' },
+    cointether: { cord: '#442420', coin: '#c9a23c', glint: '#ffe9a8' },
   },
 });
 registerColorways(HELM_STYLES, 'cutpurse_cowl', {
-  alleyrat: { color: '#5c5c56', trim: '#b0b6be', mask: '#45453e' },
-  moonless: { color: '#33303c', trim: '#a8b0cc', mask: '#262330' },
-  redhand: { color: '#6e3a34', trim: '#c9a23c', mask: '#4e2a26' },
+  alleyrat: { color: '#5c5c56', trim: '#b0b6be', mask: '#45453e', coinpin: { color: '#b0b6be' } },
+  moonless: { color: '#33303c', trim: '#a8b0cc', mask: '#262330', coinpin: { color: '#a8b0cc' } },
+  redhand: { color: '#6e3a34', trim: '#c9a23c', mask: '#4e2a26', coinpin: { color: '#c9a23c' } },
 });
 registerColorways(LEG_STYLES, 'cutpurse_leggings', {
-  alleyrat: { thigh: '#5c5c56', shin: '#4a4a44', kneeColor: '#767670' },
-  moonless: { thigh: '#33303c', shin: '#28252f', kneeColor: '#4e4a5c' },
-  redhand: { thigh: '#6e3a34', shin: '#582e28', kneeColor: '#8a5a4a' },
+  alleyrat: { thigh: '#5c5c56', shin: '#4a4a44', kneeColor: '#767670', pickroll: { color: '#45453e', glint: '#b0b6be' } },
+  moonless: { thigh: '#33303c', shin: '#28252f', kneeColor: '#4e4a5c', pickroll: { color: '#262330', glint: '#a8b0cc' } },
+  redhand: { thigh: '#6e3a34', shin: '#582e28', kneeColor: '#8a5a4a', pickroll: { color: '#4e2a26', glint: '#c9a23c' } },
 });
 registerColorways(BOOT_STYLES, 'cutpurse_boots', {
   alleyrat: { color: '#4a4a44', cuff: { color: '#767670' } },
@@ -2591,16 +2701,19 @@ registerColorways(BOOT_STYLES, 'cutpurse_boots', {
 // only the country the line runs through changes.
 registerColorways(BODY_STYLES, 'trapline_jerkin', {
   juniper: {
-    color: '#4e6a52', trim: '#34483a', bandolier: '#34483a',
-    pauldronColor: '#3e5642', belt: { color: '#34483a', buckle: '#d8cfae' },
+    color: '#4e6a52', trim: '#34483a', pauldronColor: '#a8c0aa',
+    belt: { color: '#34483a', buckle: '#d8cfae' },
+    snareline: { strap: '#34483a', bone: '#d8cfae', wire: '#8a9a88' },
   },
   riverclay: {
-    color: '#96604c', trim: '#6a4034', bandolier: '#6a4034',
-    pauldronColor: '#7a4e3c', belt: { color: '#6a4034', buckle: '#d8cfae' },
+    color: '#96604c', trim: '#6a4034', pauldronColor: '#c9ab98',
+    belt: { color: '#6a4034', buckle: '#d8cfae' },
+    snareline: { strap: '#6a4034', bone: '#d8cfae', wire: '#9a8a78' },
   },
   nightsnare: {
-    color: '#3e4450', trim: '#2c303a', bandolier: '#2c303a',
-    pauldronColor: '#333844', belt: { color: '#2c303a', buckle: '#b8c0cc' },
+    color: '#3e4450', trim: '#2c303a', pauldronColor: '#9aa2b0',
+    belt: { color: '#2c303a', buckle: '#b8c0cc' },
+    snareline: { strap: '#2c303a', bone: '#b8c0cc', wire: '#7a828e' },
   },
 });
 registerColorways(HELM_STYLES, 'trapline_hood', {
@@ -2609,9 +2722,9 @@ registerColorways(HELM_STYLES, 'trapline_hood', {
   nightsnare: { color: '#3e4450', trim: '#2c303a', ruff: { color: '#9aa2b0' } },
 });
 registerColorways(LEG_STYLES, 'trapline_chaps', {
-  juniper: { thigh: '#4e6a52', shin: '#3e5642', kneeColor: '#34483a' },
-  riverclay: { thigh: '#96604c', shin: '#7a4e3c', kneeColor: '#6a4034' },
-  nightsnare: { thigh: '#3e4450', shin: '#333844', kneeColor: '#2c303a' },
+  juniper: { thigh: '#4e6a52', shin: '#3e5642', kneeColor: '#34483a', shinlace: { color: '#d8cfae' } },
+  riverclay: { thigh: '#96604c', shin: '#7a4e3c', kneeColor: '#6a4034', shinlace: { color: '#d8cfae' } },
+  nightsnare: { thigh: '#3e4450', shin: '#333844', kneeColor: '#2c303a', shinlace: { color: '#b8c0cc' } },
 });
 registerColorways(BOOT_STYLES, 'trapline_boots', {
   juniper: { color: '#3e5642', wrap: { color: '#d8cfae' } },
@@ -2621,20 +2734,46 @@ registerColorways(BOOT_STYLES, 'trapline_boots', {
 
 // Emberfox dye lots: whole pelts, not tints — silver, shadow and dawn
 // foxes each keep the dark socks and the pale-tipped tail.
+// Each lot keeps the fox WHOLE: pelt, bib, socks and the ember all
+// requench together — the silver fox burns cold, the dawn fox deep.
 registerColorways(BODY_STYLES, 'emberfox_jerkin', {
-  silverfox: { color: '#8a8e96', trim: '#ececf0', pauldronColor: '#a4a8b0', tail: { color: '#8a8e96', tip: '#ececf0' } },
-  shadowfox: { color: '#3a3640', trim: '#b8b4c0', pauldronColor: '#4c4856', tail: { color: '#3a3640', tip: '#b8b4c0' } },
-  dawnfox: { color: '#d8b878', trim: '#f4ecd8', pauldronColor: '#e0c890', tail: { color: '#d8b878', tip: '#f4ecd8' } },
+  silverfox: {
+    color: '#8a8e96', trim: '#ececf0', pauldronColor: '#a4a8b0',
+    collarColor: '#ececf0', foxbib: { color: '#ececf0' },
+    tail: { color: '#8a8e96', tip: '#ececf0', ember: '#a8d8ff' },
+    belt: { color: '#5e626c', buckle: '#26242c' },
+  },
+  shadowfox: {
+    color: '#3a3640', trim: '#b8b4c0', pauldronColor: '#4c4856',
+    collarColor: '#b8b4c0', foxbib: { color: '#b8b4c0' },
+    tail: { color: '#3a3640', tip: '#b8b4c0', ember: '#ff9a3c' },
+    belt: { color: '#232028', buckle: '#b8b4c0' },
+  },
+  dawnfox: {
+    color: '#d8b878', trim: '#f4ecd8', pauldronColor: '#e0c890',
+    collarColor: '#f4ecd8', foxbib: { color: '#f4ecd8' },
+    tail: { color: '#d8b878', tip: '#f4ecd8', ember: '#e06820' },
+    belt: { color: '#8a6f42', buckle: '#6e5838' },
+  },
 });
 registerColorways(HELM_STYLES, 'emberfox_hood', {
-  silverfox: { color: '#8a8e96', trim: '#ececf0', ears: { color: '#8a8e96', tip: '#26242c' } },
-  shadowfox: { color: '#3a3640', trim: '#b8b4c0', ears: { color: '#3a3640', tip: '#16141c' } },
-  dawnfox: { color: '#d8b878', trim: '#f4ecd8', ears: { color: '#d8b878', tip: '#6e5838' } },
+  silverfox: {
+    color: '#8a8e96', trim: '#ececf0',
+    pelt: { color: '#8a8e96', dark: '#26242c', pale: '#ececf0', ember: '#a8d8ff' },
+  },
+  shadowfox: {
+    color: '#3a3640', trim: '#b8b4c0',
+    pelt: { color: '#3a3640', dark: '#16141c', pale: '#b8b4c0', ember: '#ff9a3c' },
+  },
+  dawnfox: {
+    color: '#d8b878', trim: '#f4ecd8',
+    pelt: { color: '#d8b878', dark: '#6e5838', pale: '#f4ecd8', ember: '#e06820' },
+  },
 });
 registerColorways(LEG_STYLES, 'emberfox_leggings', {
-  silverfox: { thigh: '#8a8e96', shin: '#33303a', kneeColor: '#6a6e78' },
-  shadowfox: { thigh: '#3a3640', shin: '#232028', kneeColor: '#4c4856' },
-  dawnfox: { thigh: '#d8b878', shin: '#6e5838', kneeColor: '#b09258' },
+  silverfox: { thigh: '#8a8e96', shin: '#5e626c', sock: { color: '#26242c', tie: '#a8d8ff' } },
+  shadowfox: { thigh: '#3a3640', shin: '#2c2934', sock: { color: '#16141c', tie: '#ff9a3c' } },
+  dawnfox: { thigh: '#d8b878', shin: '#b09258', sock: { color: '#6e5838', tie: '#e06820' } },
 });
 registerColorways(BOOT_STYLES, 'emberfox_boots', {
   silverfox: { color: '#33303a', fur: { color: '#a4a8b0' } },
@@ -3940,6 +4079,46 @@ export function drawTorsoGarment(
     // ---- the mantle: a layered shoulder cope draping over the chest —
     // the garment-over-garment read that says HIGH wizardry. Its point
     // drapes lower in front; from behind it reads as a clean yoke.
+    // ---- THE MOSS MANTLE: stagheart's shoulders — two lapped bark-
+    // leather tiers with moss spilling over every hem, the forest
+    // floor worn as a cope. Flat value planes, moss as fat bumps.
+    if (st.mossmantle && !hurt) {
+      const mm = st.mossmantle;
+      // Outer tier: shoulder to shoulder, hem dipping mid-chest.
+      ctx.fillStyle = mm.bark;
+      ctx.beginPath();
+      ctx.moveTo(-tww * 1.02, -th * 0.98);
+      ctx.quadraticCurveTo(0, -th * 1.16, tww * 1.02, -th * 0.98);
+      ctx.quadraticCurveTo(tww * 0.9, -th * 0.66, 0, -th * 0.58);
+      ctx.quadraticCurveTo(-tww * 0.9, -th * 0.66, -tww * 1.02, -th * 0.98);
+      ctx.closePath();
+      ctx.fill();
+      // Inner tier: a shorter lap in a lighter cut.
+      ctx.fillStyle = shade(mm.bark, 10);
+      ctx.beginPath();
+      ctx.moveTo(-tww * 0.72, -th * 1.02);
+      ctx.quadraticCurveTo(0, -th * 1.14, tww * 0.72, -th * 1.02);
+      ctx.quadraticCurveTo(tww * 0.6, -th * 0.82, 0, -th * 0.76);
+      ctx.quadraticCurveTo(-tww * 0.6, -th * 0.82, -tww * 0.72, -th * 1.02);
+      ctx.closePath();
+      ctx.fill();
+      // The moss spill: fat rounded bumps walking each hem — growth,
+      // not trim. Ellipse-dot rims read as polka dots; these are
+      // half-domes seated ON the hem line.
+      ctx.fillStyle = mm.moss;
+      for (const [tier, yBase, n] of [[0.86, -th * 0.63, 6], [0.56, -th * 0.79, 4]] as const) {
+        for (let i = 0; i < n; i++) {
+          const u = -1 + (2 * (i + 0.5)) / n;
+          const mx = u * tww * tier;
+          const my = yBase + Math.abs(u) * th * -0.05 + th * 0.02 * Math.sin(i * 2.7);
+          ctx.beginPath();
+          ctx.arc(mx, my, tww * (0.07 + 0.02 * Math.sin(i * 1.9)), 0, Math.PI);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
     if (st.mantle) {
       const mCol = st.mantle;
       const drop = back ? th * 0.34 : th * 0.48;
@@ -4667,6 +4846,45 @@ export function drawTorsoGarment(
 
     // ---- buckskin fringe: leather strips swinging off the chest yoke,
     // kicked by the stride — motion the plainest jerkin can afford.
+    // ---- DRAKEROWS: the drake worn whole — full lapped scale rows
+    // covering the torso, wrap-around (a skin has no front or back).
+    // Bigger scallops than the chest patch ever was, each crowned by
+    // a tempered edge crescent; the trailing third of every row dips
+    // dark and the leading arris keeps the one bright column, so the
+    // turned-garment law reads through the armor of it.
+    if (st.drakerows && !hurt) {
+      const rc = st.drakerows.color;
+      const edge = st.drakerows.edge;
+      const rows = 5;
+      const topY = -th * 0.98;
+      const botY = -0.04 * s;
+      const sr = tww * 0.24;
+      for (let r = 0; r < rows; r++) {
+        const yy = topY + ((botY - topY) * (r + 1)) / rows;
+        const off = (r % 2) * sr;
+        const perRow = Math.ceil((tww * 2) / (sr * 2)) + 1;
+        for (let i = 0; i < perRow; i++) {
+          const sx = -tww + off + i * sr * 2;
+          if (sx - sr > tww || sx + sr < -tww) continue;
+          // Trailing scallops sink into shadow; the leading edge
+          // column stays a step brighter — flat planes, never lines.
+          const turnBias = (sx * leadSign) / tww;
+          const col2 = turnBias > 0.45 ? shade(rc, 8) : turnBias < -0.4 ? shade(rc, -14) : rc;
+          ctx.fillStyle = col2;
+          ctx.beginPath();
+          ctx.arc(sx, yy, sr, 0, Math.PI);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = turnBias > 0.45 ? shade(edge, 14) : edge;
+          ctx.lineWidth = Math.max(1, s * 0.013);
+          ctx.beginPath();
+          ctx.moveTo(sx - sr * 0.6, yy + sr * 0.26);
+          ctx.quadraticCurveTo(sx, yy + sr * 0.62, sx + sr * 0.6, yy + sr * 0.26);
+          ctx.stroke();
+        }
+      }
+    }
+
     if (st.fringe) {
       const yokeY = -th * 0.52;
       ctx.strokeStyle = shade(st.trim, -6);
@@ -4692,6 +4910,66 @@ export function drawTorsoGarment(
     // rides the turned-garment transform as one sheet.
     frontPlaneOn();
     if (!back) {
+      // ---- THE DIVE BIB: kingfisher's flame breast worn as one bold
+      // pointed wedge, throat to sternum, ringed by the bird's pale
+      // collar — two flat fills, no strokes, readable at any zoom.
+      if (st.divebib && !hurt) {
+        const bw = tww * 0.46;
+        const topY2 = -th * 1.0;
+        const tipY2 = -th * 0.3;
+        ctx.fillStyle = st.divebib.edge;
+        ctx.beginPath();
+        ctx.moveTo(-bw, topY2);
+        ctx.lineTo(bw, topY2);
+        ctx.lineTo(0, tipY2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = st.divebib.color;
+        ctx.beginPath();
+        ctx.moveTo(-bw * 0.78, topY2 + th * 0.05);
+        ctx.lineTo(bw * 0.78, topY2 + th * 0.05);
+        ctx.lineTo(0, tipY2 - th * 0.05);
+        ctx.closePath();
+        ctx.fill();
+        // Three barb ticks up the wedge's midline — feather, not enamel.
+        ctx.strokeStyle = shade(st.divebib.color, -16);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        for (const k of [0.3, 0.52, 0.74]) {
+          const yy = topY2 + (tipY2 - topY2) * k;
+          const w2 = bw * 0.6 * (1 - k);
+          ctx.moveTo(-w2, yy - th * 0.03);
+          ctx.lineTo(0, yy);
+          ctx.lineTo(w2, yy - th * 0.03);
+        }
+        ctx.stroke();
+      }
+      // ---- THE FOX BIB: emberfox's cream front — a soft rounded
+      // throat panel, fur-ticked along its edge so it reads as coat,
+      // never as a painted-on shape.
+      if (st.foxbib && !hurt) {
+        const bw = tww * 0.4;
+        ctx.fillStyle = st.foxbib.color;
+        ctx.beginPath();
+        ctx.moveTo(-bw, -th * 1.0);
+        ctx.quadraticCurveTo(-bw * 1.1, -th * 0.62, 0, -th * 0.44);
+        ctx.quadraticCurveTo(bw * 1.1, -th * 0.62, bw, -th * 1.0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = st.foxbib.color;
+        ctx.lineCap = 'round';
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        for (let i = 0; i < 7; i++) {
+          const u = -0.9 + (i / 6) * 1.8;
+          const ex = u * bw;
+          const ey = -th * (0.44 + 0.18 * u * u) - th * 0.02;
+          ctx.beginPath();
+          ctx.moveTo(ex, ey - th * 0.02);
+          ctx.lineTo(ex + u * tww * 0.02, ey + th * 0.07);
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
       if (st.chest === 'straps') {
         ctx.strokeStyle = st.trim;
         ctx.lineWidth = Math.max(1.5, s * 0.028);
@@ -5217,6 +5495,236 @@ export function drawTorsoGarment(
       }
     }
 
+    // ---- THE COURIER'S SATCHEL: strap over the shoulder, bag on the
+    // trailing hip — gear worn crossed, the way distance demands.
+    if (st.satchel) {
+      const e = -f.lead || 1;
+      ctx.strokeStyle = hurt ? '#ffffff' : st.satchel.strap;
+      ctx.lineWidth = Math.max(2.5, s * 0.044);
+      ctx.beginPath();
+      ctx.moveTo(-e * tw * 0.7, -th * 0.96);
+      ctx.lineTo(e * ww * 0.62, -0.055 * s);
+      ctx.stroke();
+      // The bag: flap over body, brass keeper — it LIVES at the hip.
+      const bx = e * ww * 0.78;
+      ctx.fillStyle = hurt ? '#ffffff' : st.satchel.color;
+      ctx.beginPath();
+      chamferRect(ctx, bx - 0.048 * s, -0.06 * s, 0.096 * s, 0.098 * s, 0.02 * s);
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(st.satchel.color, -16);
+        ctx.beginPath();
+        chamferRect(ctx, bx - 0.052 * s, -0.066 * s, 0.104 * s, 0.044 * s, 0.016 * s);
+        ctx.fill();
+        ctx.fillStyle = '#c9a23c';
+        ctx.fillRect(bx - 0.008 * s, -0.032 * s, 0.016 * s, 0.022 * s);
+      }
+    }
+
+    // ---- THE BEDROLL: the long road carried — a fat wool roll slung
+    // diagonal across the back. From the front it admits only the
+    // strap and one capped end over the shoulder; turn around and the
+    // whole roll is there, strapped twice.
+    if (st.bedroll) {
+      const rollCol = hurt ? '#ffffff' : st.bedroll.color;
+      if (back) {
+        ctx.save();
+        ctx.rotate(-0.52);
+        ctx.fillStyle = rollCol;
+        ctx.beginPath();
+        chamferRect(ctx, -tw * 1.05, -th * 0.6, tw * 2.1, 0.115 * s, 0.05 * s);
+        ctx.fill();
+        if (!hurt) {
+          // Lit top plane + two cinch straps + shadowed end caps.
+          ctx.fillStyle = shade(st.bedroll.color, 12);
+          ctx.beginPath();
+          chamferRect(ctx, -tw * 1.0, -th * 0.6, tw * 2.0, 0.038 * s, 0.02 * s);
+          ctx.fill();
+          ctx.fillStyle = shade(st.bedroll.color, -18);
+          ctx.fillRect(-tw * 1.05, -th * 0.6, 0.026 * s, 0.115 * s);
+          ctx.fillRect(tw * 1.05 - 0.026 * s, -th * 0.6, 0.026 * s, 0.115 * s);
+          ctx.strokeStyle = st.bedroll.strap;
+          ctx.lineWidth = Math.max(1.5, s * 0.02);
+          for (const u of [-0.45, 0.4]) {
+            ctx.beginPath();
+            ctx.moveTo(u * tw, -th * 0.61);
+            ctx.lineTo(u * tw, -th * 0.6 + 0.12 * s);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      } else {
+        ctx.strokeStyle = hurt ? '#ffffff' : st.bedroll.strap;
+        ctx.lineWidth = Math.max(2.5, s * 0.042);
+        ctx.beginPath();
+        ctx.moveTo(f.lead * tw * 0.72, -th * 0.98);
+        ctx.lineTo(-f.lead * ww * 0.56, -0.06 * s);
+        ctx.stroke();
+        if (!hurt) {
+          // The roll's end peeking over the lead shoulder: cap ring
+          // and a sliver of wool — the read that says CARRIED.
+          const px2 = f.lead * tw * 0.88;
+          const py2 = -th * 1.06;
+          ctx.fillStyle = rollCol;
+          ctx.beginPath();
+          ctx.ellipse(px2, py2, 0.052 * s, 0.036 * s, f.lead * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(st.bedroll.color, -18);
+          ctx.beginPath();
+          ctx.ellipse(px2 + f.lead * 0.014 * s, py2, 0.034 * s, 0.024 * s, f.lead * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // ---- THE CLAW STRAP: the pack's tithe — four wolf claws hung
+    // points-down off a chest cord, each seated in a dark root bead.
+    if (st.clawstrap) {
+      ctx.strokeStyle = hurt ? '#ffffff' : st.clawstrap.strap;
+      ctx.lineWidth = Math.max(2, s * 0.034);
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.7, -th * 0.9);
+      ctx.lineTo(ww * 0.58, -0.09 * s);
+      ctx.stroke();
+      if (!back && !hurt) {
+        for (let i = 0; i < 4; i++) {
+          const u = 0.2 + i * 0.2;
+          const bxx = -tw * 0.7 + (ww * 0.58 + tw * 0.7) * u;
+          const byy = -th * 0.9 + (th * 0.9 - 0.09 * s) * u;
+          ctx.fillStyle = shade(st.clawstrap.strap, -18);
+          ctx.beginPath();
+          ctx.arc(bxx, byy, 0.014 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = st.clawstrap.claw;
+          ctx.beginPath();
+          ctx.moveTo(bxx - 0.013 * s, byy + 0.008 * s);
+          ctx.lineTo(bxx + 0.013 * s, byy + 0.008 * s);
+          ctx.quadraticCurveTo(bxx + 0.01 * s, byy + 0.05 * s, bxx - 0.006 * s, byy + 0.062 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
+    // ---- THE COIN TETHER: the guild's ledger worn openly — lifted
+    // coins strung shoulder to hip, and one glint that WALKS the
+    // strand coin to coin, wave after wave (the pearlstrand law).
+    if (st.cointether) {
+      ctx.strokeStyle = hurt ? '#ffffff' : st.cointether.cord;
+      ctx.lineWidth = Math.max(1.5, s * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.68, -th * 0.92);
+      ctx.lineTo(ww * 0.56, -0.08 * s);
+      ctx.stroke();
+      if (!back && !hurt) {
+        const walk = Math.floor(nowMs / 700) % 5;
+        for (let i = 0; i < 5; i++) {
+          const u = 0.14 + i * 0.18;
+          const bxx = -tw * 0.68 + (ww * 0.56 + tw * 0.68) * u;
+          const byy = -th * 0.92 + (th * 0.92 - 0.08 * s) * u;
+          const lit = i === walk;
+          ctx.fillStyle = lit && st.cointether.glint ? st.cointether.glint : st.cointether.coin;
+          ctx.beginPath();
+          ctx.arc(bxx, byy + 0.014 * s, (lit ? 0.021 : 0.018) * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(st.cointether.coin, -22);
+          ctx.beginPath();
+          ctx.arc(bxx, byy + 0.014 * s, 0.007 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // ---- THE KNIFE BALDRIC: three sheathed throwing blades on a
+    // diagonal strap. The glint is RARE and uneven — a blade that
+    // flashes on a metronome is jewelry, not a threat.
+    if (st.knifebaldric) {
+      ctx.strokeStyle = hurt ? '#ffffff' : st.knifebaldric.strap;
+      ctx.lineWidth = Math.max(2, s * 0.036);
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.72, -th * 0.92);
+      ctx.lineTo(ww * 0.58, -0.07 * s);
+      ctx.stroke();
+      if (!back && !hurt) {
+        const wake = nowMs % 2600 < 300 ? Math.floor(nowMs / 2600) % 3 : -1;
+        for (let i = 0; i < 3; i++) {
+          const u = 0.24 + i * 0.24;
+          const bxx = -tw * 0.72 + (ww * 0.58 + tw * 0.72) * u;
+          const byy = -th * 0.92 + (th * 0.92 - 0.07 * s) * u;
+          ctx.save();
+          ctx.translate(bxx, byy);
+          ctx.rotate(-0.62);
+          ctx.fillStyle = shade(st.knifebaldric.strap, 10);
+          ctx.fillRect(-0.012 * s, -0.03 * s, 0.024 * s, 0.06 * s);
+          ctx.fillStyle = i === wake && st.knifebaldric.glint ? st.knifebaldric.glint : st.knifebaldric.steel;
+          ctx.beginPath();
+          ctx.moveTo(-0.008 * s, 0.03 * s);
+          ctx.lineTo(0.008 * s, 0.03 * s);
+          ctx.lineTo(0, 0.058 * s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
+
+    // ---- THE SNARELINE: the trapper's bandolier grown honest —
+    // bone toggles, a coiled snare wire, and a lure that swings on
+    // the stride. Every loop has caught something.
+    if (st.snareline) {
+      const sl = st.snareline;
+      ctx.strokeStyle = hurt ? '#ffffff' : sl.strap;
+      ctx.lineWidth = Math.max(2.5, s * 0.048);
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.74, -th * 0.94);
+      ctx.lineTo(ww * 0.56, -0.07 * s);
+      ctx.stroke();
+      if (!back && !hurt) {
+        // Two bone toggles high on the strap.
+        ctx.fillStyle = sl.bone;
+        for (let i = 0; i < 2; i++) {
+          const u = 0.18 + i * 0.2;
+          const bxx = -tw * 0.74 + (ww * 0.56 + tw * 0.74) * u;
+          const byy = -th * 0.94 + (th * 0.94 - 0.07 * s) * u;
+          ctx.save();
+          ctx.translate(bxx, byy);
+          ctx.rotate(-0.65);
+          ctx.fillRect(-0.011 * s, -0.036 * s, 0.022 * s, 0.072 * s);
+          ctx.restore();
+        }
+        // The wire coil at the strap's waist: three concentric turns.
+        const cu = 0.62;
+        const cxx = -tw * 0.74 + (ww * 0.56 + tw * 0.74) * cu;
+        const cyy = -th * 0.94 + (th * 0.94 - 0.07 * s) * cu;
+        ctx.strokeStyle = sl.wire;
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        for (const r of [0.016, 0.024, 0.032]) {
+          ctx.beginPath();
+          ctx.arc(cxx, cyy + 0.012 * s, r * s, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        // The lure: a fur tag hanging low, kicked by the stride.
+        const lu = 0.86;
+        const lx = -tw * 0.74 + (ww * 0.56 + tw * 0.74) * lu;
+        const ly = -th * 0.94 + (th * 0.94 - 0.07 * s) * lu;
+        const kick = f.strideSw * 0.018 * s + Math.sin(nowMs * 0.0032) * 0.006 * s * (0.3 + 0.7 * runF);
+        ctx.strokeStyle = shade(sl.strap, -14);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(lx + kick, ly + 0.05 * s);
+        ctx.stroke();
+        ctx.fillStyle = sl.bone;
+        ctx.beginPath();
+        ctx.moveTo(lx + kick - 0.011 * s, ly + 0.05 * s);
+        ctx.lineTo(lx + kick + 0.011 * s, ly + 0.05 * s);
+        ctx.lineTo(lx + kick + 0.004 * s, ly + 0.092 * s);
+        ctx.lineTo(lx + kick - 0.006 * s, ly + 0.088 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
     // ---- the brush tail: a fox trophy swinging off the trailing hip,
     // kicked by the stride like the fringe — the pelt still has an
     // opinion about being worn.
@@ -5246,6 +5754,62 @@ export function drawTorsoGarment(
         ctx.quadraticCurveTo(bx - 0.04 * s + kick * 0.86, 0.225 * s, tipX - 0.012 * s, tipY);
         ctx.lineTo(tipX + 0.012 * s, tipY);
         ctx.quadraticCurveTo(bx + 0.045 * s + kick * 0.86, 0.215 * s, bx + 0.045 * s + kick * 0.72, 0.155 * s);
+        ctx.closePath();
+        ctx.fill();
+        // THE EMBER TIP: the showpiece's living word — the brush
+        // smolders at its point and sheds slow motes that rise and
+        // die. Vanity, weaponized, on fire.
+        if (st.tail.ember) {
+          const pulse = 0.55 + 0.45 * Math.sin(nowMs * 0.0019);
+          ctx.globalAlpha = 0.4 * pulse;
+          ctx.fillStyle = st.tail.ember;
+          ctx.beginPath();
+          ctx.ellipse(tipX, tipY - 0.02 * s, 0.03 * s, 0.045 * s, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = shade(st.tail.ember, 24);
+          ctx.beginPath();
+          ctx.arc(tipX, tipY - 0.012 * s, 0.011 * s, 0, Math.PI * 2);
+          ctx.fill();
+          for (let i = 0; i < 3; i++) {
+            const p = (nowMs * 0.00045 + i * 0.333) % 1;
+            const mx = tipX + Math.sin(p * 6.28 + i * 2.1) * 0.018 * s;
+            const my = tipY - 0.03 * s - p * 0.13 * s;
+            ctx.globalAlpha = (1 - p) * 0.7;
+            ctx.fillStyle = i === 1 ? shade(st.tail.ember, 30) : st.tail.ember;
+            ctx.beginPath();
+            ctx.arc(mx, my, (0.009 - 0.004 * p) * s, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
+    // ---- THE STREAMERS: two waybill ribbons off the belt knot,
+    // streaming and kicking with the stride — the courier's speed
+    // visible even at a standstill's first step.
+    if (st.streamers && !hurt) {
+      const rc = st.streamers.color;
+      const knotX = -(f.lead || 1) * ww * 0.55;
+      for (const [ui, ph, len] of [[0, 0, 0.19], [1, 1.9, 0.15]] as const) {
+        const bx = knotX - (f.lead || 1) * ui * ww * 0.16;
+        const kick =
+          f.strideSw * 0.03 * s * (1 + 0.25 * ui) +
+          Math.sin(nowMs * 0.0042 + ph) * 0.012 * s * (0.35 + 0.65 * runF) +
+          f.dragX * 0.6 * s;
+        const midX = bx + kick * 0.5;
+        const endX = bx + kick;
+        const endY = len * s;
+        // A ribbon is a tapered plane, not a line: root width down
+        // to a swallow-cut end.
+        ctx.fillStyle = rc;
+        ctx.beginPath();
+        ctx.moveTo(bx - 0.016 * s, -0.045 * s);
+        ctx.quadraticCurveTo(midX - 0.014 * s, endY * 0.5, endX - 0.013 * s, endY);
+        ctx.lineTo(endX - 0.002 * s, endY - 0.024 * s);
+        ctx.lineTo(endX + 0.009 * s, endY - 0.004 * s);
+        ctx.quadraticCurveTo(midX + 0.012 * s, endY * 0.45, bx + 0.016 * s, -0.045 * s);
         ctx.closePath();
         ctx.fill();
       }
@@ -5684,6 +6248,40 @@ export function drawTorsoGarment(
     // ---- the scarf tail: a neck wrap knotted at the trailing
     // shoulder, its tail waving behind in a lazy S — the assassin's
     // flag. Cloth, not light: full weight, one shaded edge.
+    // ---- SHADOWTAILS: twin dusk scarf ends off the shoulders,
+    // drifting on the cowl's slow clock — never snapping, never
+    // symmetric. The dark that follows you out of the room.
+    if (st.shadowtails && !hurt) {
+      const sc = st.shadowtails.color;
+      for (const es of [-1, 1]) {
+        const drift =
+          Math.sin(nowMs * 0.0011 + es * 2.2) * 0.03 * s +
+          f.strideSw * 0.012 * s * es +
+          f.dragX * 0.45 * s;
+        const bx = es * tww * 0.72;
+        const by = -th * 0.94;
+        const endX = bx + es * 0.05 * s + drift;
+        const endY = by + th * (0.78 + 0.08 * Math.sin(nowMs * 0.0013 + es));
+        ctx.fillStyle = sc;
+        ctx.beginPath();
+        ctx.moveTo(bx - 0.02 * s, by);
+        ctx.quadraticCurveTo(bx + drift * 0.4 - 0.02 * s, by + th * 0.4, endX - 0.014 * s, endY);
+        ctx.lineTo(endX + 0.008 * s, endY - 0.02 * s);
+        ctx.quadraticCurveTo(bx + drift * 0.4 + 0.02 * s, by + th * 0.36, bx + 0.02 * s, by);
+        ctx.closePath();
+        ctx.fill();
+        // The deeper inner fold — depth as a flatter, darker plane.
+        ctx.fillStyle = shade(sc, -14);
+        ctx.beginPath();
+        ctx.moveTo(bx, by + th * 0.06);
+        ctx.quadraticCurveTo(bx + drift * 0.4, by + th * 0.42, endX - 0.006 * s, endY - 0.015 * s);
+        ctx.lineTo(endX - 0.012 * s, endY - 0.035 * s);
+        ctx.quadraticCurveTo(bx + drift * 0.36 - 0.008 * s, by + th * 0.34, bx - 0.008 * s, by + th * 0.05);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
     if (st.scarftail) {
       const sc = st.scarftail;
       const es = -(f.lead || 1);
@@ -5801,6 +6399,35 @@ export function drawTorsoGarment(
     // ---- feather fall: shed feathers rocking down past the hem and
     // fading — the molt that never runs out. Two at most; a flurry
     // would upstage the garment.
+    // ---- LEAFFALL: gold leaves shed from nowhere, falling slow with
+    // a side-to-side flutter — the wilds acknowledging their own.
+    // Three leaves on staggered clocks; each is a pointed oval that
+    // rocks as it falls, never a confetti dot.
+    if (st.leaffall && !hurt) {
+      const lc = st.leaffall.color;
+      for (let i = 0; i < 3; i++) {
+        const p = (nowMs * 0.00022 + i * 0.333) % 1;
+        const sx = Math.sin(i * 2.9) * tww * 0.85;
+        const lx = sx + Math.sin(p * 9.4 + i) * 0.045 * s;
+        const ly = -th * 1.05 + p * th * 1.6;
+        const rock = Math.sin(p * 9.4 + i + 1.2) * 0.9;
+        const a = p < 0.12 ? p / 0.12 : p > 0.82 ? (1 - p) / 0.18 : 1;
+        ctx.globalAlpha = a * 0.9;
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(rock);
+        ctx.fillStyle = i === 1 ? shade(lc, 14) : lc;
+        ctx.beginPath();
+        ctx.moveTo(0, -0.024 * s);
+        ctx.quadraticCurveTo(0.014 * s, -0.006 * s, 0, 0.022 * s);
+        ctx.quadraticCurveTo(-0.014 * s, -0.006 * s, 0, -0.024 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     if (st.featherfall) {
       const fCol = st.featherfall.color;
       for (let i = 0; i < 2; i++) {
@@ -5900,6 +6527,31 @@ export function drawTorsoGarment(
     // between the chest plates, each breathing on its own furnace
     // beat. Soft heat halo under a hot core; the metal never cooled.
     // From behind, one spine vein keeps the secret lit.
+    // ---- HEATSEAM: the banked drake-fire breathing in the scale
+    // gaps at the waist — a molten line that swells and dims on a
+    // slow furnace clock, hot cores where the rows part widest.
+    if (st.heatseam && !hurt) {
+      const hc = st.heatseam.color;
+      const breathe = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(nowMs * 0.0014));
+      const yy = -th * 0.24;
+      ctx.globalAlpha = 0.55 * breathe;
+      ctx.strokeStyle = hc;
+      ctx.lineWidth = Math.max(1.5, s * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(-tww * 0.86, yy);
+      ctx.quadraticCurveTo(-tww * 0.3, yy + th * 0.05, 0, yy);
+      ctx.quadraticCurveTo(tww * 0.3, yy - th * 0.05, tww * 0.86, yy);
+      ctx.stroke();
+      ctx.globalAlpha = 0.9 * breathe;
+      ctx.fillStyle = shade(hc, 26);
+      for (const u of [-0.55, 0.05, 0.6]) {
+        ctx.beginPath();
+        ctx.arc(u * tww, yy + Math.sin(u * 3.2) * th * 0.04, 0.012 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     if (st.moltenSeams) {
       const mCol = st.moltenSeams.color;
       const veins: Array<{ ph: number; pts: Array<[number, number]> }> = back
@@ -7894,6 +8546,234 @@ export function drawPauldron(
     };
     pane(ox, oy, 0.052 * s, 0.085 * s, 0.28);
     pane(ox + side * 0.055 * s, oy + 0.055 * s + bob * 0.4, 0.032 * s, 0.05 * s, -0.35);
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'halcyon') {
+    // THE HALCYON WING — kingfisher's own: the diver's wing FOLDED at
+    // rest along the arm, not fanned. Three lapped covert planes
+    // sweep back and down off the seat dome, each with its spine;
+    // the flame underwing shows one hot wedge at the trailing edge —
+    // the flash the fish sees last, kept half-hidden until the dive.
+    seat(0.115 * s, 0.09 * s, shade(base, -6), trim);
+    const flash = st.divebib?.color ?? shade(trim, 20);
+    if (!hurt) {
+      // The underwing wedge peeks BELOW the folded coverts.
+      ctx.fillStyle = flash;
+      ctx.beginPath();
+      ctx.moveTo(side * 0.015 * s, 0.02 * s);
+      ctx.lineTo(side * 0.11 * s, 0.075 * s);
+      ctx.lineTo(side * 0.035 * s, 0.085 * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Folded coverts: three planes stacking down the arm, longest on
+    // top — a wing at rest is a lapped slab hugging the shoulder,
+    // never a spread fan (spread reads as angel at ten paces).
+    const folds: Array<[number, number, number, number, number]> = [
+      // [baseY, tipX, tipY, width, tone]
+      [-0.07, 0.13, 0.045, 0.06, 14],
+      [-0.028, 0.115, 0.085, 0.054, 0],
+      [0.014, 0.095, 0.12, 0.048, -14],
+    ];
+    for (const [by, txx, tyy, w2, tone] of folds) {
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 8 : -4) + tone);
+      ctx.beginPath();
+      ctx.moveTo(side * -0.06 * s, by * s);
+      ctx.quadraticCurveTo(side * 0.09 * s, (by - 0.035) * s, side * txx * s, tyy * s);
+      ctx.quadraticCurveTo(side * (txx - 0.05) * s, (tyy + w2) * s, side * -0.045 * s, (by + w2) * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.strokeStyle = shade(st.pauldronTrim ?? base, 8);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(side * -0.03 * s, (by + w2 * 0.4) * s);
+        ctx.quadraticCurveTo(side * 0.08 * s, (by + w2 * 0.1 - 0.02) * s, side * (txx - 0.025) * s, (tyy + w2 * 0.35) * s);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'guardhair') {
+    // THE GUARDHAIR — wolfstalker's winter pelt, worn heavier than
+    // any tame fur word: dark under-row, mid coat, and a FROST ROW
+    // of pale tips riding the crown (three values, the pelt's own
+    // three-value law), guard hairs flicking long off the wind side,
+    // one claw toggle hung from the seat band. The pack made room.
+    seat(0.12 * s, 0.092 * s, shade(base, -26), shade(base, -4));
+    const frost = st.pauldronTrim ?? shade(base, 30);
+    for (let i = 0; i < 4; i++) {
+      const u = -0.9 + i * 0.6;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, -20);
+      ctx.beginPath();
+      ctx.arc(u * 0.1 * s, 0.008 * s + Math.sin(i * 2.1) * 0.012 * s, (0.062 + 0.014 * Math.sin(i * 3.3)) * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (let i = 0; i < 3; i++) {
+      const u = -0.62 + i * 0.62;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, near ? 10 : -4);
+      ctx.beginPath();
+      ctx.arc(u * 0.1 * s, -0.035 * s + Math.sin(i * 1.7) * 0.01 * s, (0.058 + 0.012 * Math.sin(i * 2.6)) * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (!hurt) {
+      // The frost row: pale caps on the crown lumps — winter sitting
+      // ON the coat, not mixed into it.
+      ctx.fillStyle = frost;
+      for (let i = 0; i < 3; i++) {
+        const u = -0.58 + i * 0.58;
+        ctx.beginPath();
+        ctx.arc(u * 0.095 * s, -0.055 * s + Math.sin(i * 1.9) * 0.008 * s, (0.032 + 0.007 * Math.sin(i * 2.2)) * s, Math.PI, Math.PI * 2);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Long guard hairs off the outer edge, wind-bent.
+      ctx.strokeStyle = frost;
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const bx = side * (0.05 + i * 0.026) * s;
+        const by = (-0.07 + i * 0.028) * s;
+        ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo(bx + side * 0.03 * s, by - 0.045 * s, bx + side * 0.058 * s, by - 0.052 * s);
+      }
+      ctx.stroke();
+      // The claw toggle: one trophy hung off the seat band.
+      const cx2 = side * 0.02 * s;
+      ctx.strokeStyle = shade(base, -30);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(cx2, 0.075 * s);
+      ctx.lineTo(cx2, 0.095 * s);
+      ctx.stroke();
+      ctx.fillStyle = '#d8d2c0';
+      ctx.beginPath();
+      ctx.moveTo(cx2 - 0.011 * s, 0.095 * s);
+      ctx.lineTo(cx2 + 0.011 * s, 0.095 * s);
+      ctx.quadraticCurveTo(cx2 + 0.008 * s, 0.13 * s, cx2 - 0.004 * s, 0.142 * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'drakewing') {
+    // THE DRAKEWING — drakescale's folded wing-fin: four copper spine
+    // ribs raking back off the seat dome with dark membrane planes
+    // between, the leading rib carrying THE ONE BRIGHT EDGE, a scale
+    // row lapping the base. Ask the drake how it went.
+    seat(0.115 * s, 0.088 * s, shade(base, -8), shade(base, 10));
+    const rib = st.metal ?? shade(base, 24);
+    const bright = st.pauldronTrim ?? shade(rib, 26);
+    // Membrane first: one dark webbed plane behind all ribs — FOLDED
+    // at rest, hugging the deltoid, raked back-and-down. A fin held
+    // out flat reads as a butterfly at ten paces; a drake at rest
+    // keeps its wings sheathed.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(base, -24);
+    ctx.beginPath();
+    ctx.moveTo(side * -0.02 * s, -0.055 * s);
+    ctx.quadraticCurveTo(side * 0.08 * s, -0.125 * s, side * 0.145 * s, -0.095 * s);
+    ctx.quadraticCurveTo(side * 0.165 * s, -0.02 * s, side * 0.135 * s, 0.065 * s);
+    ctx.quadraticCurveTo(side * 0.07 * s, 0.025 * s, side * 0.01 * s, 0.05 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // Scalloped membrane bay sagging behind the last rib.
+      ctx.fillStyle = shade(base, -32);
+      ctx.beginPath();
+      ctx.moveTo(side * 0.145 * s, -0.09 * s);
+      ctx.quadraticCurveTo(side * 0.135 * s, -0.03 * s, side * 0.155 * s, 0.01 * s);
+      ctx.quadraticCurveTo(side * 0.14 * s, 0.04 * s, side * 0.135 * s, 0.065 * s);
+      ctx.lineTo(side * 0.165 * s, -0.02 * s);
+      ctx.closePath();
+      ctx.fill();
+      // Four ribs raking back-down; the first is the lit edge.
+      const ribs: Array<[number, number, number]> = [
+        [0.055, -0.13, 1], [0.1, -0.11, 0], [0.135, -0.07, 0], [0.15, -0.01, 0],
+      ];
+      for (const [txx, tyy, lit] of ribs) {
+        ctx.strokeStyle = lit ? bright : rib;
+        ctx.lineWidth = Math.max(1, s * (lit ? 0.018 : 0.013));
+        ctx.beginPath();
+        ctx.moveTo(side * -0.01 * s, 0.0);
+        ctx.quadraticCurveTo(side * (txx * 0.5) * s, tyy * 0.75 * s, side * txx * s, tyy * s);
+        ctx.stroke();
+      }
+      // The base scale row lapping the dome.
+      ctx.fillStyle = shade(base, 4);
+      for (let i = 0; i < 3; i++) {
+        const u = -0.55 + i * 0.55;
+        ctx.beginPath();
+        ctx.arc(u * 0.075 * s, 0.035 * s, 0.036 * s, 0, Math.PI);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.strokeStyle = rib;
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const u = -0.55 + i * 0.55;
+        ctx.moveTo((u * 0.075 - 0.02) * s, 0.045 * s);
+        ctx.quadraticCurveTo(u * 0.075 * s, 0.058 * s, (u * 0.075 + 0.02) * s, 0.045 * s);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'oakspaul') {
+    // THE OAKSPAUL — stagheart's shoulders: oak-leaf lappets hung in
+    // two rows off the seat dome, moss above, worked gold below, an
+    // acorn stud at the crown. The forest, formal.
+    seat(0.118 * s, 0.09 * s, shade(base, -6), shade(base, 12));
+    const gold = st.pauldronTrim ?? shade(base, 28);
+    const moss = st.metal ?? shade(base, -10);
+    if (!hurt) {
+      const leaf = (lx: number, ly: number, ang: number, len: number, colr: string): void => {
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(ang);
+        ctx.fillStyle = colr;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        // A lobed oak leaf as three bumps a side — flat fill, one
+        // midrib, never an outline.
+        ctx.quadraticCurveTo(len * 0.32, -len * 0.3, len * 0.52, -len * 0.14);
+        ctx.quadraticCurveTo(len * 0.72, -len * 0.26, len * 0.86, -len * 0.1);
+        ctx.quadraticCurveTo(len * 1.04, -len * 0.12, len, 0);
+        ctx.quadraticCurveTo(len * 1.04, len * 0.12, len * 0.86, len * 0.1);
+        ctx.quadraticCurveTo(len * 0.72, len * 0.26, len * 0.52, len * 0.14);
+        ctx.quadraticCurveTo(len * 0.32, len * 0.3, 0, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(colr, -20);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(len * 0.1, 0);
+        ctx.lineTo(len * 0.85, 0);
+        ctx.stroke();
+        ctx.restore();
+      };
+      // Upper row: two moss leaves sweeping outward off the crown.
+      leaf(side * -0.02 * s, -0.055 * s, side > 0 ? 0.5 : Math.PI - 0.5, 0.135 * s, moss);
+      leaf(side * 0.035 * s, -0.02 * s, side > 0 ? 0.9 : Math.PI - 0.9, 0.12 * s, shade(moss, 12));
+      // Lower row: three gold leaves hanging down the arm.
+      leaf(side * -0.055 * s, 0.035 * s, 1.35, 0.115 * s, shade(gold, -8));
+      leaf(side * 0.005 * s, 0.05 * s, 1.55, 0.125 * s, gold);
+      leaf(side * 0.06 * s, 0.035 * s, 1.75, 0.11 * s, shade(gold, -14));
+      // The acorn stud: cap and nut, two flat tones at the crown.
+      ctx.fillStyle = shade(gold, 18);
+      ctx.beginPath();
+      ctx.arc(0, -0.075 * s, 0.02 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(base, -22);
+      ctx.beginPath();
+      ctx.arc(0, -0.082 * s, 0.021 * s, Math.PI, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.restore();
     return;
   }
@@ -11394,6 +12274,1407 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           ctx.fill();
           ctx.globalAlpha = 1;
         }
+      }
+    }
+    return;
+  }
+
+  // ======================= THE HUNTER'S HEADS =======================
+  // The leather lane's own nine, one owner each. Same commitments as
+  // every costume kind: a true shell with the opening cut through it,
+  // the overhang shadow ON the face, a BACK read (drape + seam at
+  // minimum), and STRUCTURE that survives the hurt flash white.
+
+  if (st.kind === 'courierhood') {
+    // THE COURIERHOOD — hareswift's head: the runner's hood cut LOW,
+    // crown swept back like a hare at full stretch, and the ears worn
+    // the way a running hare wears them: RAKED FLAT along the crown,
+    // black-tipped blades trailing past the nape. Nothing about this
+    // head stands up into the wind. A waybill ribbon streams off the
+    // temple seal — the letter always almost delivered.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.56;
+    const oBot = headY + hh * 0.82;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.2, headX + lead * hw * 1.12, headY - hh * 0.46);
+      // A modest brow kick — the courier ducks the wind.
+      ctx.quadraticCurveTo(headX + lead * hw * 1.18, headY - hh * 0.78, headX + lead * hw * 0.66, headY - hh * 1.06);
+      // The LOW swept crown: pitched shallow, streaming back.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.02, headY - hh * 1.3, headX - lead * hw * 0.72, headY - hh * 1.18);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.16 + t * 0.28), headY - hh * 0.86, headX - lead * hw * (1.28 + t * 0.34), headY - hh * 0.16);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.38 + t * 0.3), headY + hh * 0.38, headX - lead * hw * 1.3, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    // THE RUN EARS — structure: they hold the silhouette in hurt
+    // white. One ear each side, splayed in a shallow V at the front
+    // facings and raking flat back as the body turns — the same ear,
+    // seen honestly. Far ear paints first, darker.
+    const earsSt = st.ears;
+    const drawEars = (): void => {
+      if (!earsSt) return;
+      for (const es of [-1, 1]) {
+        const far = es !== (lead || 1);
+        const wK = far ? Math.max(0.35, 1 - t * 0.6) : 1;
+        const rootX = headX + es * hw * 0.34;
+        const rootY = headY - hh * 1.08;
+        // Outward splay + trailing rake: frontal = V, profile = flat.
+        const tipX = rootX + es * hw * 0.55 * wK - lead * hw * (0.55 + t * 0.5);
+        const tipY = rootY - hh * (0.72 - t * 0.24);
+        const col2 = hurt ? '#ffffff' : far ? shade(earsSt.color, -16) : earsSt.color;
+        ctx.fillStyle = col2;
+        ctx.beginPath();
+        ctx.moveTo(rootX - es * hw * 0.16, rootY + hh * 0.08);
+        ctx.quadraticCurveTo(rootX + es * hw * 0.1 - lead * hw * 0.2, (rootY + tipY) / 2 - hh * 0.1, tipX, tipY);
+        ctx.quadraticCurveTo(rootX + es * hw * 0.26 - lead * hw * 0.06, (rootY + tipY) / 2 + hh * 0.14, rootX + es * hw * 0.2, rootY + hh * 0.12);
+        ctx.closePath();
+        ctx.fill();
+        if (!hurt && earsSt.tip) {
+          // The black tip claims the top third — the mark that sells
+          // the hare at any distance.
+          ctx.fillStyle = earsSt.tip;
+          ctx.beginPath();
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(tipX - es * hw * 0.14 + lead * hw * 0.12, tipY + hh * 0.3);
+          ctx.lineTo(tipX + es * hw * 0.12 + lead * hw * 0.16, tipY + hh * 0.26);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (!hurt && !far && front) {
+          // Inner-ear shadow up the near blade.
+          ctx.strokeStyle = shade(earsSt.color, -24);
+          ctx.lineWidth = Math.max(1, s * 0.014);
+          ctx.beginPath();
+          ctx.moveTo(rootX + es * hw * 0.04, rootY + hh * 0.04);
+          ctx.quadraticCurveTo((rootX + tipX) / 2, (rootY + tipY) / 2 + hh * 0.04, tipX + es * hw * 0.02, tipY + hh * 0.16);
+          ctx.stroke();
+        }
+      }
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      // The lit slope panel — flat, low, fast.
+      ctx.fillStyle = shade(st.color, 10);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.8, headY - hh * 0.92);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.1, headY - hh * 1.22, headX - lead * hw * 0.66, headY - hh * 1.1);
+      ctx.lineTo(headX - lead * hw * 0.56, headY - hh * 0.9);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.14, headY - hh * 1.0, headX + lead * hw * 0.64, headY - hh * 0.72);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    drawEars();
+    if (!hurt) {
+      if (front) {
+        // The overhang shadow — shallower than a deep cowl: the
+        // courier needs to SEE.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY - hh * 0.06);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.38)');
+        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.52);
+        ctx.restore();
+        // Rolled brim band, one lit ribbon.
+        ctx.strokeStyle = shade(st.color, 14);
+        ctx.lineWidth = Math.max(1.5, headR * 0.09);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.85);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 1.02);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
+        ctx.stroke();
+      }
+      if (st.waybill) {
+        // The waybill: pinned at the leading temple by its wax seal,
+        // parchment ribbon streaming trailing — swallow-cut end.
+        const sx2 = headX + lead * hw * 0.92;
+        const sy2 = headY - hh * 0.52;
+        const sway = Math.sin(f.nowMs * 0.0036) * hw * 0.08;
+        const endX = sx2 - lead * hw * (1.5 + t * 0.3) - sway * lead;
+        const endY = sy2 + hh * 0.34 + sway * 0.5;
+        ctx.fillStyle = st.waybill.color;
+        ctx.beginPath();
+        ctx.moveTo(sx2, sy2 - hh * 0.07);
+        ctx.quadraticCurveTo((sx2 + endX) / 2, sy2 - hh * 0.24, endX, endY);
+        ctx.lineTo(endX + lead * hw * 0.14, endY - hh * 0.1);
+        ctx.lineTo(endX + lead * hw * 0.1, endY + hh * 0.06);
+        ctx.quadraticCurveTo((sx2 + endX) / 2, sy2 + hh * 0.06, sx2, sy2 + hh * 0.07);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = st.waybill.seal;
+        ctx.beginPath();
+        ctx.arc(sx2, sy2, headR * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'halcyonhood') {
+    // THE HALCYONHOOD — kingfisher's head: the diver in profile at
+    // every facing. A short BEAK PEAK juts off the brow (the visor
+    // the river never sees coming), a lapped feather crest runs the
+    // keel of the crown to a swept point, and the pale throat wraps
+    // the jaw hem. One flame primary slants off the temple.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.58;
+    const oBot = headY + hh * 0.84;
+    const beakX = headX + lead * hw * (1.52 + t * 0.3);
+    const beakY = headY - hh * 0.66;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.22, headX + lead * hw * 1.18, headY - hh * 0.4);
+      // THE BEAK PEAK: the brow runs OUT into a short hard point,
+      // then returns under itself — a visor with a bird's intent.
+      ctx.lineTo(beakX, beakY);
+      ctx.lineTo(headX + lead * hw * 1.02, headY - hh * 0.94);
+      // The crown climbs into the crest line.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * 1.36, headX - lead * hw * 0.5, headY - hh * 1.32);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.1 + t * 0.26), headY - hh * 1.0, headX - lead * hw * (1.26 + t * 0.34), headY - hh * 0.2);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.36 + t * 0.3), headY + hh * 0.36, headX - lead * hw * 1.3, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    // THE CREST — structure: three lapped feather planes riding the
+    // keel, tallest trailing, each a filled blade with its return
+    // edge. Hurt paints them white; the diver's outline survives.
+    const crest = st.divecrest;
+    const drawCrest = (): void => {
+      if (!crest) return;
+      const planes: Array<[number, number, number, number]> = [
+        // [rootU (lead→trail along crown), rise, sweep, tone] — each
+        // blade is a sharp raked point; together they read as ONE
+        // serrated crest ridge, not three lumps.
+        [0.52, 0.38, 0.42, -12],
+        [0.06, 0.5, 0.55, 0],
+        [-0.4, 0.6, 0.7, 12],
+      ];
+      for (const [ru, rise, sweep2, tone] of planes) {
+        const rx = headX + lead * hw * ru;
+        const ry = headY - hh * (1.22 + 0.08 * ru * ru);
+        const txx = rx - lead * hw * sweep2;
+        const tyy = ry - hh * rise;
+        ctx.fillStyle = hurt ? '#ffffff' : shade(crest.color, tone);
+        ctx.beginPath();
+        ctx.moveTo(rx + lead * hw * 0.1, ry + hh * 0.04);
+        ctx.lineTo(txx, tyy);
+        ctx.quadraticCurveTo(txx - lead * hw * 0.06, tyy + hh * 0.2, rx - lead * hw * 0.34, ry + hh * 0.06);
+        ctx.closePath();
+        ctx.fill();
+      }
+    };
+    drawCrest();
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      // The beak's own top plane stays lit — the strike line.
+      ctx.fillStyle = shade(st.color, 16);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.0, headY - hh * 0.9);
+      ctx.lineTo(beakX, beakY);
+      ctx.lineTo(headX + lead * hw * 1.12, headY - hh * 0.52);
+      ctx.closePath();
+      ctx.fill();
+      // THE THROAT WRAP: the pale collar closing the jaw hem.
+      ctx.fillStyle = shade(st.trim, 30);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 1.1, headY + hh * 0.86);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.2, headX + hw * 1.1, headY + hh * 0.86);
+      ctx.lineTo(headX + hw * 1.04, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX - hw * 1.04, headY + hh * 1.16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      if (front) {
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.02);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.46)');
+        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.6);
+        ctx.restore();
+        ctx.strokeStyle = shade(st.color, 18);
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+        // The flame primary: ONE hot feather slanted off the temple.
+        const fx2 = cx + lead * ohw * 0.98;
+        const fy2 = oTop - headR * 0.04;
+        ctx.fillStyle = crest?.flash ?? st.trim;
+        ctx.beginPath();
+        ctx.moveTo(fx2, fy2);
+        ctx.quadraticCurveTo(fx2 - lead * hw * 0.4, fy2 - hh * 0.52, fx2 - lead * hw * 0.72, fy2 - hh * 0.6);
+        ctx.quadraticCurveTo(fx2 - lead * hw * 0.5, fy2 - hh * 0.28, fx2 - lead * hw * 0.12, fy2 + hh * 0.06);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(crest?.flash ?? st.trim, -18);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(fx2 - lead * hw * 0.06, fy2 - hh * 0.02);
+        ctx.quadraticCurveTo(fx2 - lead * hw * 0.38, fy2 - hh * 0.36, fx2 - lead * hw * 0.66, fy2 - hh * 0.54);
+        ctx.stroke();
+      } else {
+        // Back read: the crest keel runs down into the drape.
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.9);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1.5, s * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 1.3);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'thiefhood') {
+    // THE THIEFHOOD — cutpurse's head: a slouched hood whose crown
+    // volume falls to the trailing side in a lazy fold (nothing about
+    // a thief stands symmetric), the kerchief mask claiming the face
+    // below the eye line, knot tails at the jaw, and the guild's one
+    // vanity: a brass coin pinned at the brow that glints when it
+    // shouldn't. The face is nobody; the hands are famous.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.54;
+    const oBot = headY + hh * 0.84;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.2, headX + lead * hw * 1.12, headY - hh * 0.44);
+      // A low brow — the eyes keep their own shade.
+      ctx.quadraticCurveTo(headX + lead * hw * 1.2, headY - hh * 0.8, headX + lead * hw * 0.7, headY - hh * 1.04);
+      // The slouch: the crown rises, breaks, and SAGS trailing —
+      // a soft cap fold, not a peak.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.2, headY - hh * 1.3, headX - lead * hw * 0.22, headY - hh * 1.22);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.72, headY - hh * 1.34, headX - lead * hw * (1.12 + t * 0.26), headY - hh * 0.92);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.3 + t * 0.3), headY - hh * 0.3, headX - lead * hw * (1.32 + t * 0.3), headY + hh * 0.2);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.36, headY + hh * 0.6, headX - lead * hw * 1.28, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      // The slouch fold: the sagged crown holds a deeper panel with
+      // one lit break above it — cloth remembering the fold.
+      ctx.fillStyle = shade(st.color, -20);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.18, headY - hh * 1.24);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.66, headY - hh * 1.32, headX - lead * hw * 1.06, headY - hh * 0.94);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.62, headY - hh * 1.06, headX - lead * hw * 0.2, headY - hh * 1.04);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(st.color, 10);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.66, headY - hh * 0.98);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.18, headY - hh * 1.24, headX - lead * hw * 0.2, headY - hh * 1.16);
+      ctx.lineTo(headX - lead * hw * 0.14, headY - hh * 0.98);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.2, headY - hh * 1.04, headX + lead * hw * 0.54, headY - hh * 0.78);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      if (front) {
+        // The eye band keeps a hard shade under the low brow.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.1);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.5)');
+        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.56);
+        // THE KERCHIEF: the mask claims everything below the eye
+        // line — a flat dark panel with one soft highlight ridge
+        // where the nose holds it off the face.
+        if (st.mask) {
+          ctx.fillStyle = st.mask;
+          ctx.fillRect(cx - ohw, headY - hh * 0.06, ohw * 2, oBot - (headY - hh * 0.06));
+          ctx.fillStyle = shade(st.mask, 12);
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 0.4, headY - hh * 0.06);
+          ctx.lineTo(cx + ohw * 0.4, headY - hh * 0.06);
+          ctx.lineTo(cx + ohw * 0.16, headY + hh * 0.22);
+          ctx.lineTo(cx - ohw * 0.16, headY + hh * 0.22);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+        // The knot tails: two cloth ends off the trailing jaw.
+        if (st.mask) {
+          ctx.fillStyle = st.mask;
+          const kx2 = headX - lead * hw * 1.1;
+          const ky2 = headY + hh * 0.34;
+          for (const [dx, dy, len] of [[-0.12, 0.02, 0.5], [-0.02, 0.12, 0.36]] as const) {
+            ctx.beginPath();
+            ctx.moveTo(kx2, ky2);
+            ctx.quadraticCurveTo(
+              kx2 - lead * hw * (0.3 + dx), ky2 + hh * (0.3 + dy),
+              kx2 - lead * hw * (0.24 + dx * 2), ky2 + hh * len,
+            );
+            ctx.lineTo(kx2 - lead * hw * (0.06 + dx), ky2 + hh * (len - 0.08));
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        // The coin pin: brass at the brow; every few seconds it
+        // catches a light it has no business catching.
+        if (st.coinpin) {
+          const gx = cx + lead * ohw * 0.5;
+          const gy = oTop - headR * 0.06;
+          const flare = f.nowMs % 3400 < 260;
+          ctx.fillStyle = flare ? shade(st.coinpin.color, 40) : st.coinpin.color;
+          ctx.beginPath();
+          ctx.arc(gx, gy, headR * (flare ? 0.085 : 0.075), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(st.coinpin.color, -24);
+          ctx.beginPath();
+          ctx.arc(gx, gy, headR * 0.028, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // Back: the slouch reads as a hung fold; tails peek at the
+        // jaw's trailing corner.
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.9);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX - lead * hw * 0.3, headY - hh * 1.1);
+        ctx.quadraticCurveTo(headX - lead * hw * 0.12, headY - hh * 0.2, headX + lead * hw * 0.06, headY + hh * 0.85);
+        ctx.stroke();
+        if (st.mask) {
+          ctx.fillStyle = st.mask;
+          ctx.beginPath();
+          ctx.moveTo(headX - lead * hw * 1.02, headY + hh * 0.3);
+          ctx.quadraticCurveTo(headX - lead * hw * 1.3, headY + hh * 0.62, headX - lead * hw * 1.18, headY + hh * 0.88);
+          ctx.lineTo(headX - lead * hw * 0.98, headY + hh * 0.7);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'trapperhood') {
+    // THE TRAPPERHOOD — trapline's head: the deep winter hood
+    // swallowed by a FULL FUR TUNNEL — a fat ruff ring framing the
+    // whole face opening in lumped clusters, three values deep (dark
+    // under-row, mid coat, lit crown), an antler-tine toggle closing
+    // the throat. The ridge wind loses this argument.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.32 + 0.22 * t);
+    const ohw = hw * 0.66 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.52;
+    const oBot = headY + hh * 0.78;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.2, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.28, headY + hh * 0.2, headX + lead * hw * 1.1, headY - hh * 0.48);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.16, headY - hh * 0.84, headX + lead * hw * 0.64, headY - hh * 1.12);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.04, headY - hh * 1.36, headX - lead * hw * 0.56, headY - hh * 1.22);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.08 + t * 0.26), headY - hh * 0.9, headX - lead * hw * (1.24 + t * 0.32), headY - hh * 0.14);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.34 + t * 0.28), headY + hh * 0.4, headX - lead * hw * 1.26, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.2, headY + hh * 1.16);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      ctx.restore();
+      if (front) {
+        // The tunnel's shadow: deeper than any brim — the face
+        // lives a hand back from the weather.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.14);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.56)');
+        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.72);
+        ctx.restore();
+      }
+    }
+    // THE RUFF TUNNEL — structure: the fur ring is the silhouette;
+    // hurt paints it white and the shape survives. Ring of lumped
+    // clusters around the opening (front) or crowning the shell's
+    // rim (back), dark under-row first, lit clumps on top.
+    const ruffCol = st.ruff?.color ?? shade(st.trim, 34);
+    const ringN = 9;
+    for (const pass of [0, 1] as const) {
+      for (let i = 0; i < ringN; i++) {
+        const a = -Math.PI * 0.92 + (i / (ringN - 1)) * Math.PI * 1.84;
+        const rx2 = front ? cx : headX;
+        const ry2 = front ? (oTop + oBot) / 2 : headY - hh * 0.1;
+        const rrx = (front ? ohw * 1.34 : hw * 1.06) * (1 - 0.12 * pass);
+        const rry = (front ? (oBot - oTop) * 0.68 : hh * 0.92) * (1 - 0.1 * pass);
+        const bx = rx2 + Math.cos(a) * rrx;
+        const by = ry2 + Math.sin(a) * rry;
+        // Skip only clusters whose CENTER lands inside the opening —
+        // the tunnel must ring the whole face (a side-lobes-only ring
+        // reads as earmuffs, the v1 verdict).
+        if (
+          front &&
+          bx > cx - ohw * 0.62 && bx < cx + ohw * 0.62 &&
+          by > oTop + (oBot - oTop) * 0.12 && by < oBot - (oBot - oTop) * 0.16
+        ) continue;
+        const rr = (0.085 + 0.02 * Math.sin(i * 2.7 + pass * 1.3)) * headR * (pass ? 0.82 : 1);
+        ctx.fillStyle = hurt
+          ? '#ffffff'
+          : pass === 0
+            ? shade(ruffCol, -20)
+            : shade(ruffCol, i % 3 === 1 ? 14 : 2);
+        ctx.beginPath();
+        ctx.arc(bx + (pass ? Math.sin(i * 1.9) * headR * 0.03 : 0), by - pass * headR * 0.04, rr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (!hurt && front) {
+      // The antler-tine toggle at the throat: one bone Y on a cord.
+      const ty2 = oBot + headR * 0.1;
+      ctx.strokeStyle = shade(st.color, -26);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(cx - ohw * 0.5, ty2 - headR * 0.05);
+      ctx.lineTo(cx + ohw * 0.5, ty2 + headR * 0.02);
+      ctx.stroke();
+      ctx.strokeStyle = '#d8cfae';
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1.5, s * 0.022);
+      ctx.beginPath();
+      ctx.moveTo(cx - headR * 0.06, ty2 + headR * 0.08);
+      ctx.lineTo(cx + headR * 0.05, ty2 - headR * 0.04);
+      ctx.moveTo(cx, ty2 + headR * 0.015);
+      ctx.lineTo(cx + headR * 0.08, ty2 + headR * 0.06);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+    return;
+  }
+
+  if (st.kind === 'foxmantle') {
+    // THE FOXMANTLE — emberfox's head: the fox worn WHOLE, a pelt
+    // hood whose crown is the beast's own flattened head. The muzzle
+    // juts over the brow as a foreshortened wedge ending in the nose
+    // pad; swept-back ears rake the crown at a predator's angle;
+    // cream cheek flashes frame the opening — and the pelt's bead
+    // eyes catch ember light on a clock that owes nothing to the
+    // wearer. Vanity, weaponized.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const pelt = st.pelt ?? { color: st.color, dark: shade(st.color, -40), pale: st.trim };
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.54;
+    const oBot = headY + hh * 0.82;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.2, headX + lead * hw * 1.14, headY - hh * 0.46);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.22, headY - hh * 0.82, headX + lead * hw * 0.72, headY - hh * 1.1);
+      // The crown carries the pelt head's mass — a fuller dome than
+      // a cloth hood, the animal's skull remembered.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.1, headY - hh * 1.4, headX - lead * hw * 0.62, headY - hh * 1.26);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.12 + t * 0.26), headY - hh * 0.92, headX - lead * hw * (1.26 + t * 0.34), headY - hh * 0.16);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.36 + t * 0.3), headY + hh * 0.4, headX - lead * hw * 1.28, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = hurt ? '#ffffff' : pelt.color;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(pelt.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      ctx.fillStyle = shade(pelt.color, 10);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.84, headY - hh * 0.96);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.16, headY - hh * 1.3, headX - lead * hw * 0.52, headY - hh * 1.18);
+      ctx.lineTo(headX - lead * hw * 0.42, headY - hh * 0.98);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.18, headY - hh * 1.06, headX + lead * hw * 0.68, headY - hh * 0.74);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    // THE EARS — structure: one each side, tall enough to own the
+    // silhouette, swept back at the hunting angle, black-backed with
+    // a pale inner blaze. A fox is its ears at forty tiles.
+    for (const es of [-1, 1]) {
+      const far = es !== (lead || 1);
+      const wK = far ? Math.max(0.35, 1 - t * 0.6) : 1;
+      const bx = headX + es * hw * 0.44;
+      const by = headY - hh * 1.1;
+      const ax = bx + es * hw * 0.3 * wK - lead * hw * 0.34;
+      const ay = by - hh * 0.78;
+      ctx.fillStyle = hurt ? '#ffffff' : far ? shade(pelt.dark, 10) : pelt.dark;
+      ctx.beginPath();
+      ctx.moveTo(bx - es * hw * 0.3 * wK, by + hh * 0.1);
+      ctx.lineTo(ax, ay);
+      ctx.lineTo(bx + es * hw * 0.34 * wK, by + hh * 0.16);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt && !far && front) {
+        ctx.fillStyle = pelt.pale;
+        ctx.beginPath();
+        ctx.moveTo(bx - es * hw * 0.12 * wK, by + hh * 0.08);
+        ctx.lineTo(ax - es * hw * 0.04, ay + hh * 0.22);
+        ctx.lineTo(bx + es * hw * 0.16 * wK, by + hh * 0.12);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // THE MUZZLE — structure: the foreshortened snout wedge over the
+    // brow, nose pad at its tip. The fox looks where you look.
+    const mzRootW = ohw * 0.66;
+    const mzTipX = cx + lead * ohw * 0.2;
+    const mzTipY = oTop + hh * 0.18;
+    if (front || backK <= 0.8) {
+      ctx.fillStyle = hurt ? '#ffffff' : shade(pelt.color, 6);
+      ctx.beginPath();
+      ctx.moveTo(cx - mzRootW, headY - hh * 1.06);
+      ctx.quadraticCurveTo(cx - mzRootW * 0.5, headY - hh * 1.2, cx + lead * hw * 0.08, headY - hh * 1.18);
+      ctx.quadraticCurveTo(cx + mzRootW * 0.6, headY - hh * 1.16, cx + mzRootW, headY - hh * 1.02);
+      ctx.lineTo(mzTipX + headR * 0.09, mzTipY);
+      ctx.quadraticCurveTo(mzTipX, mzTipY + headR * 0.07, mzTipX - headR * 0.09, mzTipY);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The muzzle's shaded side plane — a wedge, not a sticker.
+        ctx.fillStyle = shade(pelt.color, -12);
+        ctx.beginPath();
+        ctx.moveTo(cx - mzRootW, headY - hh * 1.06);
+        ctx.lineTo(mzTipX - headR * 0.09, mzTipY);
+        ctx.lineTo(mzTipX - headR * 0.02, mzTipY - hh * 0.1);
+        ctx.lineTo(cx - mzRootW * 0.55, headY - hh * 0.98);
+        ctx.closePath();
+        ctx.fill();
+        // Nose pad — big enough to anchor the muzzle at distance.
+        ctx.fillStyle = pelt.dark;
+        ctx.beginPath();
+        ctx.arc(mzTipX, mzTipY, headR * 0.085, 0, Math.PI * 2);
+        ctx.fill();
+        // THE PELT'S EYES: two ember beads on the muzzle sides,
+        // waking on a slow clock — the fox does the looking.
+        if (pelt.ember && front) {
+          const wake = 0.35 + 0.65 * Math.max(0, Math.sin(f.nowMs * 0.0009));
+          for (const es of [-1, 1]) {
+            ctx.globalAlpha = 0.4 * wake;
+            ctx.fillStyle = pelt.ember;
+            ctx.beginPath();
+            ctx.arc(cx + es * mzRootW * 0.52, headY - hh * 0.86, headR * 0.06, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 0.9 * wake;
+            ctx.fillStyle = shade(pelt.ember, 28);
+            ctx.beginPath();
+            ctx.arc(cx + es * mzRootW * 0.52, headY - hh * 0.86, headR * 0.028, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    if (!hurt) {
+      if (front) {
+        // The muzzle's own overhang shadow, then the cheek flashes.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.06);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.5)');
+        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.62);
+        ctx.restore();
+        // Cheek flashes: two narrow pale crescents hugging the jaw
+        // line — a marking, not a beard.
+        ctx.fillStyle = pelt.pale;
+        for (const es of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(cx + es * ohw * 1.0, headY - hh * 0.06);
+          ctx.quadraticCurveTo(cx + es * ohw * 1.16, headY + hh * 0.26, cx + es * ohw * 0.94, headY + hh * 0.48);
+          ctx.quadraticCurveTo(cx + es * ohw * 0.88, headY + hh * 0.22, cx + es * ohw * 0.9, headY);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else {
+        // Back: the pelt's spine stripe runs crown to drape — the
+        // animal's back worn down yours.
+        ctx.fillStyle = shade(pelt.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.92);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(pelt.dark, 16);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.09, headY - hh * 1.3);
+        ctx.lineTo(headX + hw * 0.09, headY - hh * 1.3);
+        ctx.lineTo(headX + lead * hw * 0.14 + hw * 0.06, headY + hh * 1.55);
+        ctx.lineTo(headX + lead * hw * 0.14 - hw * 0.06, headY + hh * 1.55);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'roadhood') {
+    // THE ROADHOOD — wayfarer's head: the traveler's hood grown
+    // honest with miles. A patched crown, stitch ticks down the
+    // brim, a throat cord with its wooden toggle — and the redtail
+    // feather worn BIG: a banded hawk primary slanted off the
+    // temple, cream bars and a dark tip. The long road, worn openly.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.58;
+    const oBot = headY + hh * 0.84;
+    const sway = Math.sin(f.nowMs * 0.0016) * hw * 0.05;
+    const apexX = headX - lead * hw * 0.34;
+    const apexY = headY - hh * 1.46;
+    const tipX = headX - lead * (hw * (1.3 + t * 0.5) + sway);
+    const tipY = headY - hh * 0.88 + sway * 0.4;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.2, headX + lead * hw * 1.16, headY - hh * 0.48);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.24, headY - hh * 0.84, headX + lead * hw * 0.8, headY - hh * 1.14);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * 1.4, apexX, apexY);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.94, apexY + hh * 0.04, tipX, tipY);
+      ctx.quadraticCurveTo(headX - lead * hw * (0.98 + t * 0.26), headY - hh * 0.52, headX - lead * hw * (1.24 + t * 0.36), headY - hh * 0.18);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.38 + t * 0.32), headY + hh * 0.36, headX - lead * hw * 1.32, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.48, headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      ctx.fillStyle = shade(st.color, 10);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.76, headY - hh * 1.02);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.22, headY - hh * 1.34, apexX + lead * hw * 0.12, apexY + hh * 0.12);
+      ctx.lineTo(apexX + lead * hw * 0.2, apexY + hh * 0.3);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.2, headY - hh * 1.1, headX + lead * hw * 0.6, headY - hh * 0.8);
+      ctx.closePath();
+      ctx.fill();
+      // THE PATCH: squared, askew, stitched — pride in the mending.
+      const pCol = shade(st.trim, 22);
+      ctx.save();
+      ctx.translate(headX - lead * hw * 0.3, headY - hh * 1.02);
+      ctx.rotate(-lead * 0.18);
+      ctx.fillStyle = pCol;
+      ctx.fillRect(-hw * 0.26, -hh * 0.2, hw * 0.52, hh * 0.4);
+      ctx.strokeStyle = shade(pCol, -26);
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      for (const [x0, y0, x1, y1] of [
+        [-hw * 0.26, -hh * 0.08, -hw * 0.18, -hh * 0.08],
+        [hw * 0.18, hh * 0.04, hw * 0.26, hh * 0.04],
+        [-hw * 0.06, -hh * 0.2, -hw * 0.06, -hh * 0.12],
+      ] as const) {
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.restore();
+      if (front) {
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.04);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.46)');
+        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.62);
+        ctx.restore();
+        // Stitch ticks down the brim's leading edge.
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.setLineDash([s * 0.014, s * 0.013]);
+        ctx.beginPath();
+        ctx.moveTo(cx + ohw + s * 0.012, oTop + hh * 0.1);
+        ctx.lineTo(cx + ohw + s * 0.012, oBot - hh * 0.1);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // The throat cord and its wooden toggle.
+        ctx.strokeStyle = shade(st.trim, -8);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.6, oBot + headR * 0.06);
+        ctx.quadraticCurveTo(cx, oBot + headR * 0.16, cx + ohw * 0.6, oBot + headR * 0.06);
+        ctx.stroke();
+        ctx.fillStyle = shade(st.trim, -18);
+        ctx.save();
+        ctx.translate(cx, oBot + headR * 0.14);
+        ctx.rotate(0.5);
+        ctx.fillRect(-headR * 0.02, -headR * 0.07, headR * 0.04, headR * 0.14);
+        ctx.restore();
+        // THE HAWK FEATHER: one big banded primary off the temple.
+        if (st.feather) {
+          // Worn BIG: the feather is the wayfarer's banner, not a
+          // pin — it clears the crown and reads at forty tiles.
+          const fx2 = cx + lead * ohw * 0.94;
+          const fy2 = oTop - headR * 0.02;
+          const fTipX = fx2 - lead * hw * 1.45;
+          const fTipY = fy2 - hh * 1.3;
+          const vane = (): void => {
+            ctx.moveTo(fx2, fy2);
+            ctx.quadraticCurveTo(fx2 - lead * hw * 0.75, fy2 - hh * 0.28, fTipX, fTipY);
+            ctx.quadraticCurveTo(fTipX + lead * hw * 0.55, fTipY + hh * 0.62, fx2 - lead * hw * 0.06, fy2 + hh * 0.26);
+            ctx.closePath();
+          };
+          ctx.fillStyle = st.feather.color;
+          ctx.beginPath();
+          vane();
+          ctx.fill();
+          // Cream bars — the redtail's ledger. Clipped to the vane.
+          ctx.save();
+          ctx.beginPath();
+          vane();
+          ctx.clip();
+          ctx.fillStyle = '#e8dcc0';
+          for (const k of [0.3, 0.55]) {
+            const bx2 = fx2 + (fTipX - fx2) * k;
+            const by2 = fy2 + (fTipY - fy2) * k;
+            ctx.save();
+            ctx.translate(bx2, by2);
+            ctx.rotate(lead * 0.65);
+            ctx.fillRect(-hw * 0.3, -hh * 0.05, hw * 0.6, hh * 0.1);
+            ctx.restore();
+          }
+          // Dark tip.
+          ctx.fillStyle = shade(st.feather.color, -34);
+          ctx.beginPath();
+          ctx.arc(fTipX, fTipY, headR * 0.16, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          // The spine.
+          ctx.strokeStyle = shade(st.feather.color, 26);
+          ctx.lineWidth = Math.max(1, s * 0.01);
+          ctx.beginPath();
+          ctx.moveTo(fx2 - lead * hw * 0.04, fy2);
+          ctx.quadraticCurveTo(fx2 - lead * hw * 0.5, fy2 - hh * 0.3, fTipX + lead * hw * 0.08, fTipY + hh * 0.08);
+          ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.95);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 1.05);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'wolfmantle') {
+    // THE WOLFMANTLE — wolfstalker's head: the headdress. The wolf's
+    // upper muzzle rides the brow as a visor — grey wedge, dark nose,
+    // hollow sockets, and a FANG ROW breaking white over the wearer's
+    // shadowed face. Ears lie back on the crown; the mane cascades
+    // down the trailing side in three depths of winter coat. Every
+    // few breaths, cold air curls out from under the jaw that isn't
+    // yours. The pack made room.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const pelt = st.pelt ?? { color: shade(st.color, 20), dark: shade(st.color, -30), pale: shade(st.color, 44) };
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.5;
+    const oBot = headY + hh * 0.82;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.2, headX + lead * hw * 1.14, headY - hh * 0.42);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.2, headY - hh * 0.78, headX + lead * hw * 0.74, headY - hh * 1.08);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.12, headY - hh * 1.38, headX - lead * hw * 0.6, headY - hh * 1.26);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.1 + t * 0.26), headY - hh * 0.94, headX - lead * hw * (1.26 + t * 0.34), headY - hh * 0.16);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.38 + t * 0.3), headY + hh * 0.4, headX - lead * hw * 1.3, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.22, headY + hh * 1.16);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      ctx.restore();
+    }
+    // THE MANE — structure: three depths of winter coat cascading
+    // off the trailing crown, shoulder-bound. Painted dark→pale.
+    const maneTones = hurt
+      ? ['#ffffff', '#ffffff', '#ffffff']
+      : [shade(pelt.color, -26), shade(pelt.color, -8), pelt.pale];
+    for (let layer = 0; layer < 3; layer++) {
+      const spread = 1 - layer * 0.22;
+      const drop = 0.5 + layer * 0.16;
+      ctx.fillStyle = maneTones[layer]!;
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.2, headY - hh * (1.3 - layer * 0.08));
+      ctx.quadraticCurveTo(
+        headX - lead * hw * (1.5 * spread), headY - hh * (0.9 - layer * 0.12),
+        headX - lead * hw * (1.62 * spread), headY + hh * (drop - 0.3),
+      );
+      // The hem breaks into fur points, not a smooth hem.
+      for (let k2 = 0; k2 < 3; k2++) {
+        const u2 = k2 / 2;
+        const px3 = headX - lead * hw * (1.58 * spread - u2 * 1.0 * spread);
+        const py3 = headY + hh * (drop - 0.1 + 0.12 * Math.sin(k2 * 2.4 + layer));
+        ctx.lineTo(px3, py3 + hh * 0.14);
+        ctx.lineTo(px3 + lead * hw * 0.16 * spread, py3 - hh * 0.04);
+      }
+      ctx.quadraticCurveTo(headX - lead * hw * 0.16, headY + hh * (drop * 0.5), headX - lead * hw * 0.1, headY - hh * 0.4);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // THE MUZZLE VISOR — structure: the wolf's upper jaw over the
+    // brow. Wedge, nose, sockets, fangs.
+    const mzTipX = cx + lead * ohw * 0.3;
+    const mzTipY = oTop + hh * 0.14;
+    ctx.fillStyle = hurt ? '#ffffff' : pelt.color;
+    ctx.beginPath();
+    ctx.moveTo(cx - ohw * 0.88, headY - hh * 1.02);
+    ctx.quadraticCurveTo(cx - ohw * 0.3, headY - hh * 1.24, cx + lead * hw * 0.14, headY - hh * 1.2);
+    ctx.quadraticCurveTo(cx + ohw * 0.7, headY - hh * 1.14, cx + ohw * 0.96, headY - hh * 0.96);
+    ctx.lineTo(mzTipX + headR * 0.12, mzTipY);
+    ctx.quadraticCurveTo(mzTipX, mzTipY + headR * 0.08, mzTipX - headR * 0.12, mzTipY);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The side plane in shadow — the skull's own depth.
+      ctx.fillStyle = shade(pelt.color, -14);
+      ctx.beginPath();
+      ctx.moveTo(cx - ohw * 0.88, headY - hh * 1.02);
+      ctx.lineTo(mzTipX - headR * 0.12, mzTipY);
+      ctx.lineTo(mzTipX - headR * 0.04, mzTipY - hh * 0.12);
+      ctx.lineTo(cx - ohw * 0.5, headY - hh * 0.94);
+      ctx.closePath();
+      ctx.fill();
+      // Hollow sockets: the wolf's eyes are GONE — two dark wedges.
+      ctx.fillStyle = pelt.dark;
+      for (const es of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + es * ohw * 0.52, headY - hh * 1.0);
+        ctx.lineTo(cx + es * ohw * 0.28, headY - hh * 0.88);
+        ctx.lineTo(cx + es * ohw * 0.56, headY - hh * 0.82);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Nose pad at the wedge tip.
+      ctx.fillStyle = pelt.dark;
+      ctx.beginPath();
+      ctx.arc(mzTipX, mzTipY - headR * 0.01, headR * 0.07, 0, Math.PI * 2);
+      ctx.fill();
+      // THE FANG ROW: white breaks along the visor's under-edge —
+      // the snarl the wearer stands behind.
+      if (front) {
+        ctx.fillStyle = pelt.pale;
+        for (let i = 0; i < 4; i++) {
+          const u2 = -0.62 + i * 0.42;
+          const fx3 = cx + u2 * ohw;
+          const fy3 = mzTipY + headR * 0.02 + Math.abs(u2) * headR * 0.05;
+          const big = i === 0 || i === 3;
+          ctx.beginPath();
+          ctx.moveTo(fx3 - headR * 0.045, fy3);
+          ctx.lineTo(fx3 + headR * 0.045, fy3);
+          ctx.lineTo(fx3, fy3 + headR * (big ? 0.16 : 0.1));
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+    // The ears: laid BACK on the crown — a wolf that has decided.
+    for (const far of [true, false]) {
+      const wK = far ? Math.max(0.3, 1 - t * 0.65) : 1;
+      const bx = headX - lead * hw * (far ? 0.66 : 0.34);
+      const by = headY - hh * (far ? 1.14 : 1.2);
+      ctx.fillStyle = hurt ? '#ffffff' : far ? shade(pelt.color, -18) : shade(pelt.color, -6);
+      ctx.beginPath();
+      ctx.moveTo(bx + lead * hw * 0.16 * wK, by + hh * 0.04);
+      ctx.lineTo(bx - lead * hw * 0.3 * wK, by - hh * 0.3);
+      ctx.lineTo(bx - lead * hw * 0.34 * wK, by + hh * 0.12);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (!hurt) {
+      if (front) {
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.12);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.54)');
+        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.7);
+        ctx.restore();
+        // FROSTBREATH: a slow pale curl from under the muzzle — the
+        // winter worn honestly. One breath every ~3.2s, drifting
+        // down-lead and dying.
+        if (st.frostbreath) {
+          const p = (f.nowMs % 3200) / 3200;
+          if (p < 0.55) {
+            const bp = p / 0.55;
+            const bx2 = mzTipX + lead * headR * (0.1 + bp * 0.5);
+            const by2 = mzTipY + headR * (0.16 + bp * 0.3);
+            ctx.globalAlpha = (1 - bp) * 0.45;
+            ctx.fillStyle = st.frostbreath.color;
+            ctx.beginPath();
+            ctx.ellipse(bx2, by2, headR * (0.06 + bp * 0.14), headR * (0.04 + bp * 0.08), lead * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        }
+      } else {
+        // Back: THE PELT FALL — the mane owns the back of the hood,
+        // fur rows breaking over the drape.
+        ctx.fillStyle = shade(pelt.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.6, headY - hh * 0.2);
+        for (let i = 0; i < 4; i++) {
+          const u2 = -0.6 + i * 0.4;
+          ctx.lineTo(headX + hw * u2 + hw * 0.2, headY + hh * (1.5 + 0.14 * Math.sin(i * 2.1)));
+          ctx.lineTo(headX + hw * (u2 + 0.3), headY + hh * 1.16);
+        }
+        ctx.lineTo(headX + hw * 0.6, headY - hh * 0.2);
+        ctx.quadraticCurveTo(headX, headY - hh * 0.5, headX - hw * 0.6, headY - hh * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = pelt.pale;
+        for (let i = 0; i < 3; i++) {
+          const u2 = -0.42 + i * 0.42;
+          ctx.beginPath();
+          ctx.arc(headX + hw * u2, headY + hh * (0.3 + 0.1 * Math.sin(i * 2.6)), hw * 0.16, Math.PI, Math.PI * 2);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'shadowcowl') {
+    // THE SHADOWCOWL — nightveil's head: the assassin's dark. The
+    // longest point in the wardrobe sweeps back past the nape like a
+    // blade at rest; the face opening holds NIGHT — deeper than any
+    // brim shadow, the half-mask's sheen the only admission anyone
+    // is home. ONE violet arris light runs the leading fold: the one
+    // bright edge the dark is allowed. What it keeps, it keeps.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.7 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.56;
+    const oBot = headY + hh * 0.82;
+    const sway = Math.sin(f.nowMs * 0.0011) * hw * 0.05;
+    const apexX = headX - lead * hw * 0.2;
+    const apexY = headY - hh * 1.5;
+    const tipX = headX - lead * (hw * (1.9 + t * 0.5) + sway);
+    const tipY = headY + hh * (0.05 + t * 0.05) + sway * 0.5;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.2, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.28, headY + hh * 0.2, headX + lead * hw * 1.12, headY - hh * 0.48);
+      // A knife-straight leading edge up to the brow.
+      ctx.lineTo(headX + lead * hw * 0.94, headY - hh * 1.08);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.4, headY - hh * 1.44, apexX, apexY);
+      // THE BLADE POINT: one long sweep past the nape, angular.
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(headX - lead * hw * (1.18 + t * 0.26), headY - hh * 0.1);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.3 + t * 0.28), headY + hh * 0.42, headX - lead * hw * 1.26, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.2, headY + hh * 1.16);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      // The blade point's under-fold: a deeper plane, no curve.
+      ctx.fillStyle = shade(st.color, -22);
+      ctx.beginPath();
+      ctx.moveTo(apexX, apexY + hh * 0.1);
+      ctx.lineTo(tipX + lead * hw * 0.12, tipY - hh * 0.03);
+      ctx.lineTo(headX - lead * hw * 1.1, headY - hh * 0.16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      // THE ONE BRIGHT EDGE: the violet arris down the leading fold.
+      if (st.edgelight) {
+        // The arris runs brow to apex AND down the blade point — one
+        // continuous lit fold, with a soft halo pass so the dark set
+        // still owns a presence at distance.
+        ctx.strokeStyle = st.edgelight.color;
+        ctx.lineWidth = Math.max(1.5, s * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 0.92, headY - hh * 1.06);
+        ctx.quadraticCurveTo(headX + lead * hw * 0.4, headY - hh * 1.4, apexX, apexY);
+        ctx.lineTo(tipX + lead * hw * 0.24, tipY - hh * 0.04);
+        ctx.stroke();
+        ctx.globalAlpha = 0.3;
+        ctx.lineWidth = Math.max(3, s * 0.044);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (front) {
+        // NIGHT IN THE OPENING: a flat dark that no face detail
+        // survives — then the mask's one sheen line below the eyes.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(16, 11, 22, 0.62)';
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, oBot - oTop);
+        if (st.mask) {
+          ctx.fillStyle = st.mask;
+          ctx.fillRect(cx - ohw, headY - hh * 0.02, ohw * 2, oBot - (headY - hh * 0.02));
+          ctx.strokeStyle = shade(st.mask, 20);
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 0.72, headY + hh * 0.12);
+          ctx.quadraticCurveTo(cx, headY + hh * 0.02, cx + ohw * 0.72, headY + hh * 0.12);
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else {
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.9);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 1.1);
+        ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 0.85);
+        ctx.stroke();
+      }
+      // Twin scarf ends off the point, drifting on the cowl's clock.
+      const scCol = shade(st.color, -6);
+      for (const [ph, len] of [[0, 0.5], [1.7, 0.34]] as const) {
+        const drift = Math.sin(f.nowMs * 0.0011 + ph) * hw * 0.14;
+        ctx.fillStyle = scCol;
+        ctx.beginPath();
+        ctx.moveTo(tipX + lead * hw * 0.1, tipY);
+        ctx.quadraticCurveTo(
+          tipX - lead * hw * 0.22 + drift * 0.5, tipY + hh * len * 0.6,
+          tipX - lead * hw * 0.12 + drift, tipY + hh * len,
+        );
+        ctx.lineTo(tipX + lead * hw * 0.02 + drift, tipY + hh * (len - 0.14));
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'stagcrown') {
+    // THE STAGCROWN — stagheart's head: the wilds crown their own.
+    // Bark leather hood under a moss band — and above it the CROWN:
+    // two great antler beams swept up and back, three tines each,
+    // built as FILLED two-plane bone (never strokes — the flat forge
+    // law), gold collars wrapping the roots. The far beam narrows at
+    // profile like every honest fin. Structure: hurt white keeps the
+    // whole crown's silhouette.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.56;
+    const oBot = headY + hh * 0.84;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.2, headX + lead * hw * 1.14, headY - hh * 0.5);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.22, headY - hh * 0.86, headX + lead * hw * 0.72, headY - hh * 1.14);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.08, headY - hh * 1.38, headX - lead * hw * 0.6, headY - hh * 1.24);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.1 + t * 0.26), headY - hh * 0.9, headX - lead * hw * (1.26 + t * 0.34), headY - hh * 0.14);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.36 + t * 0.3), headY + hh * 0.4, headX - lead * hw * 1.3, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    // THE ANTLERS first (behind the shell crown), far beam then near.
+    const bone = st.antlers?.color ?? '#e6e0d0';
+    for (const far of [true, false]) {
+      const es = far ? -1 : 1;
+      const eLead = es * (lead || 1);
+      const wK = far ? Math.max(0.32, 1 - t * 0.62) : 1;
+      const rootX = headX + eLead * hw * 0.56;
+      const rootY = headY - hh * 1.02;
+      // The beam: a filled tapered polygon sweeping up-out-back,
+      // with three tines forking forward off its outer curve.
+      const beam = (colr: string, inset: number): void => {
+        // ROYAL SCALE: the crown must out-silhouette the head itself
+        // — an endgame device is an assembly, never a token. Beams
+        // sweep past two head-heights; four tines climb each one.
+        const w0 = hw * (0.22 - inset * 0.07) * wK;
+        const w1 = hw * (0.08 - inset * 0.03) * wK;
+        const midX = rootX + eLead * hw * 0.95 * wK;
+        const midY = rootY - hh * 1.0;
+        const endX = rootX + eLead * hw * 1.95 * wK;
+        const endY = rootY - hh * 2.15;
+        ctx.fillStyle = colr;
+        ctx.beginPath();
+        ctx.moveTo(rootX - eLead * w0, rootY + inset * hh * 0.02);
+        ctx.quadraticCurveTo(midX - eLead * w0 * 1.15, midY, endX - eLead * w1, endY + hh * 0.07);
+        // The crown tine forks at the very tip.
+        ctx.lineTo(endX + eLead * w1 * 0.5, endY - hh * 0.1);
+        ctx.lineTo(endX - eLead * hw * 0.06 * wK, endY - hh * 0.02);
+        // Three brow/bay tines climbing the outer curve, each a bold
+        // forward hook with real width.
+        ctx.lineTo(midX + eLead * hw * 0.62 * wK, midY - hh * 0.94);
+        ctx.lineTo(midX + eLead * hw * 0.36 * wK, midY - hh * 0.34);
+        ctx.lineTo(midX + eLead * hw * 0.86 * wK, midY - hh * 0.5);
+        ctx.lineTo(midX + eLead * hw * 0.44 * wK, midY + hh * 0.02);
+        ctx.lineTo(rootX + eLead * hw * 0.56 * wK, rootY - hh * 0.62);
+        ctx.lineTo(rootX + eLead * hw * 0.32 * wK, rootY - hh * 0.12);
+        ctx.quadraticCurveTo(rootX + eLead * w0 * 1.1, rootY + hh * 0.02, rootX + eLead * w0, rootY + hh * 0.06);
+        ctx.closePath();
+        ctx.fill();
+      };
+      beam(hurt ? '#ffffff' : far ? shade(bone, -18) : bone, 0);
+      if (!hurt && !far) {
+        // The under-facet: one darker plane inside the beam — depth
+        // as a second fill, never a stroked ridge.
+        beam(shade(bone, -12), 1);
+        beam(bone, 2);
+      }
+      if (!hurt) {
+        // The gold collar at the root: two flat bands.
+        ctx.fillStyle = st.trim;
+        ctx.save();
+        ctx.translate(rootX, rootY - hh * 0.02);
+        ctx.rotate(eLead * -0.5);
+        ctx.fillRect(-hw * 0.14 * wK, -hh * 0.03, hw * 0.28 * wK, hh * 0.075);
+        ctx.fillRect(-hw * 0.12 * wK, hh * 0.09, hw * 0.24 * wK, hh * 0.06);
+        ctx.restore();
+      }
+    }
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      ctx.fillStyle = shade(st.color, 9);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.8, headY - hh * 1.0);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.14, headY - hh * 1.3, headX - lead * hw * 0.52, headY - hh * 1.16);
+      ctx.lineTo(headX - lead * hw * 0.44, headY - hh * 0.96);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.16, headY - hh * 1.04, headX + lead * hw * 0.64, headY - hh * 0.78);
+      ctx.closePath();
+      ctx.fill();
+      // THE MOSS BAND: the living ring below the antler roots —
+      // a flat band with growth bumps breaking its lower edge.
+      if (st.mossband) {
+        ctx.fillStyle = st.mossband.color;
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 1.04, headY - hh * 0.78);
+        ctx.quadraticCurveTo(headX, headY - hh * 1.02, headX + hw * 1.04, headY - hh * 0.78);
+        ctx.lineTo(headX + hw * 1.0, headY - hh * 0.6);
+        ctx.quadraticCurveTo(headX, headY - hh * 0.84, headX - hw * 1.0, headY - hh * 0.6);
+        ctx.closePath();
+        ctx.fill();
+        for (let i = 0; i < 5; i++) {
+          const u2 = -0.8 + i * 0.4;
+          ctx.beginPath();
+          ctx.arc(headX + hw * u2, headY - hh * (0.62 - 0.16 * Math.abs(u2)), hw * (0.08 + 0.02 * Math.sin(i * 2.2)), 0, Math.PI);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+      if (front) {
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.04);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.46)');
+        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.6);
+        ctx.restore();
+        ctx.strokeStyle = shade(st.color, 16);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.92);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 1.02);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
+        ctx.stroke();
       }
     }
     return;

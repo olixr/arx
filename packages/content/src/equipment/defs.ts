@@ -1314,7 +1314,7 @@ function wayfarerSet(): EquipmentDef[] {
       levelReq: { skill: 'archery', level: 14 }, armor: 5, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(18, 160, 70, 3, { item: 'twine', qty: 2 }),
       value: 280, color, code: 'Yj',
-      desc: 'Fringed buckskin, broken in by miles you have not walked yet.',
+      desc: 'Fringed buckskin under a slung bedroll. Home is the strap it hangs from.',
     },
     {
       id: 'wayfarer_chaps', name: 'Wayfarer chaps', slot: 'legs', armorClass: 'leather',
@@ -1358,7 +1358,7 @@ function wolfstalkerSet(): EquipmentDef[] {
   });
   return [
     piece('wolfstalker_hood', 'Wolfstalker hood', 'head', 22, 4, 420, 'Kh',
-      'Fur-ruffed, ears pricked. You hear the forest hear you.'),
+      'The wolf worn whole — muzzle over the brow, mane down the back.'),
     piece('wolfstalker_jerkin', 'Wolfstalker jerkin', 'body', 24, 6, 580, 'Kj',
       'Winter fur across the shoulders. The pack made room.'),
     piece('wolfstalker_chaps', 'Wolfstalker chaps', 'legs', 22, 5, 500, 'Kc',
@@ -2231,7 +2231,7 @@ function kingfisherSet(): EquipmentDef[] {
       levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(7, 55, 45, 1),
       value: 95, color, code: 'Oh',
-      desc: 'A flame feather at the temple. The river reads it as local.',
+      desc: 'A swept diver\'s crest, one flame feather in it. The river reads it as local.',
     },
     {
       id: 'kingfisher_jerkin', name: 'Kingfisher jerkin', slot: 'body', armorClass: 'leather',
@@ -2284,7 +2284,7 @@ function cutpurseSet(): EquipmentDef[] {
     piece('cutpurse_cowl', 'Cutpurse cowl', 'head', 10, 2, 170, 'Ph',
       'Cowl and kerchief. The face is nobody; the hands are famous.'),
     piece('cutpurse_jerkin', 'Cutpurse jerkin', 'body', 12, 4, 240, 'Pj',
-      'A brass coin over the heart — the only one it ever paid for.'),
+      'A tether of lifted coins across the chest. The ledger, worn openly.'),
     piece('cutpurse_leggings', 'Cutpurse leggings', 'legs', 11, 3, 205, 'Pc',
       'Bound at the seams for rooftops. Tiles keep the secret.'),
     piece('cutpurse_boots', 'Cutpurse boots', 'boots', 10, 2, 180, 'Pb',
@@ -2367,7 +2367,7 @@ function emberfoxSet(): EquipmentDef[] {
   });
   return [
     piece('emberfox_hood', 'Emberfox hood', 'head', 17, 3, 360, 'Uh',
-      'Russet ears, black-tipped, always turned the right way.'),
+      'The fox worn whole, ears back, ember-eyed. It still hunts.'),
     piece('emberfox_jerkin', 'Emberfox jerkin', 'body', 19, 6, 500, 'Uj',
       'Cream at the throat, a brush tail at the hip. Vanity, weaponized.'),
     piece('emberfox_leggings', 'Emberfox leggings', 'legs', 18, 4, 430, 'Uc',
