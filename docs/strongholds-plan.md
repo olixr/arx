@@ -459,6 +459,50 @@ acknowledge, a boss that must be earned.
   gate-flank sneak entry; wall breach entry; boss terrace last, ward lines in
   order, one bounty.
 
+### Phase 4 as-built (2026-08-13, commit d0595a7 — THE ASSAULT BECOMES A PLAN)
+
+Shipped as designed; deviations and laws learned:
+
+- **The chapter tag is the wing field**: ZoneSpawn.wing (a number) was
+  already the war-ground's chapter dialect — capitals reuse it with
+  ward INDEXES, so registerSpawns, SpawnState, and the respawn path
+  carried chapters with zero wire or schema change.
+- **The muster folds the epoch** (musterBase ^ epoch): optional wards
+  roll manned ~65% per epoch, knot counts and the watch re-deal —
+  pinned by the walls-vs-war test (ground deepEqual across epochs,
+  spawns notDeepEqual). The last stand never rolls empty.
+- **Patrols are compose-time loops on the shipped machinery**: 'wall'
+  wards ring their own yard (8 bearings, ≥3 paceable or degrade to
+  the post — the POI law), 'lane' wards pace toward the hearth. No
+  new AI, no new fields.
+- **The purse decision**: capitals pay bounties ONLY when marked —
+  the clear ceremony grants the line and the warden's deed, and
+  payBounty stays flag-gated exactly as POIs. Phase 5's town
+  integration posts capital marks; opening an unmarked purse here
+  would have been a new faucet (the flood law held).
+- **The cache lock is the court**: strongholdGarrisonStands(key,
+  ward) narrows the chest ward to the last-stand index — a thief who
+  breaks the chief's court loots the cache while outlying wards still
+  stand, by design.
+- **DOCTRINE REACHES DOWN mechanics**: knotSplitAt probes 4 rotations
+  of a 10-tile offset (zone-bounds −2, transparent cells re-probed as
+  ground, solid prefab tiles refused); the SECOND and later unnamed
+  holdfast entries re-anchor there with knot radius 2.5; named
+  champions and boldness-rung reinforcements keep the heart. Small
+  footprints that afford no split keep the old cluster honestly.
+- **Slate law again**: hand-built chapter slates need grantArt stubs
+  and the borrowed poiSpawnFights; the ceremony is slate-proven both
+  ways (chapter line once + bit; clear stamp + deed + open cache).
+- **Live evidence**: the standing moot decodes (via the new read-only
+  stronghold: studio door) with 13 ward-tagged spawns across 9
+  chapters, 2 patrol walkers, Mor the Unfed crowned at 39; an
+  under-armed prover was repelled at the gate five times — the
+  citadel defending itself IS the acceptance test. The full timed
+  solo assault needs a real input rig (the /xp lever is
+  `/xp <skill> <amount>`; headless mouse-hold combat did not land
+  blows) — queued for the Phase 6 proving pass alongside the pull
+  count audit.
+
 ## Phase 5 — The Long War (the capital lives on the frontier clock)
 
 Goal: the stronghold joins every living-world system and makes return visits
