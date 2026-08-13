@@ -5090,6 +5090,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const elbowEaseHold = settleHalf && Math.abs(sideS) < 0.98;
   mainShX += (rig.x + sideS * tw * SHOULDER_SETTLE_K * wS - mainShX) * settleK;
   offShX += (rig.x - sideS * tw * SHOULDER_SETTLE_K * wS - offShX) * settleK;
+  // ---- THE LIVING SHOULDER: the roots are not pins. The girdle
+  // breathes on THE SAME CLOCK the hands ride (arms-v3 Phase 5's
+  // standing breath, phases matched, quieter amplitude — the hand's
+  // drift now visibly ORIGINATES at its own shoulder), and on the
+  // move each root rolls with the stride, counter-phased across the
+  // bar the way a real shoulder line seesaws over the footfalls.
+  // Everything worn ON the root — the arm and the pauldron alike —
+  // consumes these solved Ys, so shoulder, sleeve and cap move as
+  // one body instead of a cap bolted over a living arm.
+  const mainSideSign = Math.sign(sideS) || 1;
+  const rootRest = (1 - Math.min(1, rig.poleStrength)) * restSettle * (1 - sit);
+  const rootB = Math.sin(rig.nowMs * 0.0019) * rootRest;
+  const rootB2 = Math.sin(rig.nowMs * 0.0019 + 1.1) * rootRest;
+  const rootSw = ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP;
+  const rootRoll = 0.012 * s * rig.runF * Math.min(1, rig.poleStrength);
+  const mainShY = shoulderY + rootB * 0.008 * s + rootSw * rootRoll * mainSideSign;
+  const offShY = shoulderY + rootB2 * 0.009 * s - rootSw * rootRoll * mainSideSign;
   // Aiming up-and-away puts the gear behind the body. And a LONG
   // carry crossing the body goes behind it too: the staff's leveled
   // run trail at a camera-facing heading swept its butt half up
@@ -5146,7 +5163,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const joints = drawArm(
       ctx,
       offShX,
-      shoulderY,
+      offShY,
       offX,
       offY,
       armPoleX,
@@ -5278,7 +5295,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     drawArm(
       ctx,
       mainShX,
-      shoulderY,
+      mainShY,
       mainX,
       mainY,
       (archer ? -fx : Math.cos(mainAngle) * 0.4) * (1 - settleK) +
@@ -5326,6 +5343,20 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // (akimbo dragged a cap to the cheek); then rode a projected 3D bar
   // and abandoned the billboard. The arm never owns the pauldron; the
   // projection never owns the billboard.
+  //
+  // ---- THE LIVING SOCKET (the third law, and the reconciliation):
+  // the billboard owns the cap's HOME; the arm owns its MOTION. Each
+  // cap now reads its own arm's SOLVED root and follows the root's
+  // DEVIATION from the settle anchor — the strike's slide along the
+  // bar, the archer's rotation into the draw, the girdle's standing
+  // breath and stride roll — position and a matching lean. The
+  // deviation is CLAMPED to a fifth of the torso, so the old akimbo
+  // failure (a cap dragged to the cheek by a hand) stays impossible
+  // BY CONSTRUCTION: at rest the deviation is zero and the billboard
+  // law holds bit-exact; in motion the cap is an extension of the
+  // arm, never its passenger. A pauldron that ignores its own arm
+  // reads as bolted to the torso — the user's palethorn/kingsmane
+  // catch that founded this law.
   const paintPauldrons = (layer: 'behind' | 'front'): void => {
     if (!bodySt || bodySt.pauldron === 'none') return;
     const cosL = Math.cos(lean);
@@ -5366,14 +5397,33 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       const farK = Math.max(0, -depthK);
       // The near drop deepens toward a full profile: the head slides
       // to the leading edge there and stands directly over the near
-      // socket, so the cap must seat BELOW the jaw — cupping the
-      // upper arm — for the face to stay sovereign.
+      // socket, so the cap seats at the jaw line — cupping the upper
+      // arm — for the face to stay sovereign. (0.32 was the first
+      // cut: it parked the cap over the CHEST, a floating device
+      // divorced from its own arm — the user's palethorn E catch.
+      // 0.2 lifted the stormspire crystals into the FACE. 0.26 holds
+      // both laws: tall devices clear the jaw, compact caps still
+      // read seated ON the root — with the living socket carrying
+      // the attachment the drop was over-asked to fake.)
       const lx = sideScr * (spread + farK * tw * 0.34);
-      const ly = lyBar + nearK * tw * 0.32 - farK * tw * 0.08;
+      const ly = lyBar + nearK * tw * 0.26 - farK * tw * 0.08;
       const px = lx * wS;
       const py = ly * hScale;
-      const wx = rig.x + cosL * px - sinL * py;
-      const wy = hipY + sinL * px + cosL * py;
+      // THE LIVING SOCKET: this cap's own arm root, solved above —
+      // main arm settles on sign(sideS)'s screen side, off arm
+      // opposite — and its deviation from the settle anchor, clamped
+      // to a fifth of the torso. Zero at rest by construction.
+      const capIsMain = sideScr === mainSideSign;
+      const rootX = capIsMain ? mainShX : offShX;
+      const rootY = capIsMain ? mainShY : offShY;
+      const devLim = 0.2 * tw * wS;
+      const devX = Math.max(
+        -devLim,
+        Math.min(devLim, rootX - (rig.x + sideScr * tw * SHOULDER_SETTLE_K * wS)),
+      );
+      const devY = rootY - shoulderY;
+      const wx = rig.x + cosL * px - sinL * py + devX;
+      const wy = hipY + sinL * px + cosL * py + devY;
       const behind = bandFlag(
         mem,
         e === 1 ? 'capBehindA' : 'capBehindB',
@@ -5384,15 +5434,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       if ((layer === 'behind') !== behind) continue;
       // Orientation: the outward perspective lean (strongest when the
       // bar points at the camera and we see the cap from its side),
-      // the combat lean the frame itself carries, and the stride's
-      // roll — opposite ends of the bar counter-rotate on the run.
+      // the combat lean the frame itself carries, the stride's roll —
+      // opposite ends of the bar counter-rotate on the run — and the
+      // root-follow lean: a cap riding its arm's slide along the bar
+      // TIPS with the travel, the way a shrugging shoulder carries
+      // its spaulder. An extension of the arm, not a hat on a peg.
       const tilt =
         Math.max(
           -0.34,
           Math.min(0.34, Math.atan2(sideScr * depthK * 0.5, Math.abs(fy) + 0.45)),
         ) +
         lean * 0.6 +
-        strideSwP * 0.055 * rig.runF * e;
+        strideSwP * 0.055 * rig.runF * e +
+        (devX / (tw * wS)) * 0.4;
       drawPauldron(
         ctx, bodySt, wx, wy, sideScr, s, wS, rig.hurt, sideScr < 0, rig.nowMs,
         depthK, tilt,
