@@ -5582,8 +5582,11 @@ function namedChaseDefs(): EquipmentDef[] {
     rarities: ['legendary'] as RarityTier[],
   };
   // OATHGOLD — the king's champion wore gold and crimson and kept the
-  // oath past the king. Owner: the crypt's Champion still drills in
-  // the dark, and the boss hoards bank the rest.
+  // oath past the king. THE PROCESSION rework: three values of gold,
+  // hung gonfalon banners at the shoulders, an idol's face for a
+  // helm, the vigil lamp walking its light between them. Owner: the
+  // crypt's Champion still drills in the dark, and the boss hoards
+  // bank the rest.
   const oathgold = {
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
@@ -5968,15 +5971,15 @@ function namedChaseDefs(): EquipmentDef[] {
       'Talons over knuckles. The grip does not negotiate.'),
 
     chasePiece(oathgold, 'oathgold_helm', 'Oathgold helm', 'head', 24, 6, 1150, 'Om',
-      'Fluted gold under a laurel band. The plume outlasted the parade.'),
+      'A gold face that never blinks, a lamp lit in the crown. The vow keeps its own vigil.'),
     chasePiece(oathgold, 'oathgold_platebody', 'Oathgold platebody', 'body', 27, 9, 1400, 'On',
-      'The champion’s gold, the vow pinned scarlet at each shoulder. The oath outlasted the king.'),
+      'Banners at both shoulders, the oath written in crimson. The procession never ended.'),
     chasePiece(oathgold, 'oathgold_greaves', 'Oathgold greaves', 'legs', 26, 8, 1250, 'Oo',
       'They kneel for coronations and nothing else.'),
     chasePiece(oathgold, 'oathgold_sabatons', 'Oathgold sabatons', 'boots', 25, 7, 1180, 'Op',
       'Gold to the toe. Parade ground or battlefield, same stride.'),
     chasePiece(oathgold, 'oathgold_gauntlets', 'Oathgold gauntlets', 'gloves', 25, 7, 1180, 'Oq',
-      'A jewel at the knuckle, a kingdom behind the fist.'),
+      'One drop of the banner set red at the knuckle. The fist remembers what it swore.'),
 
     chasePiece(jadeskull, 'jadeskull_helm', 'Jadeskull helm', 'head', 27, 7, 1250, 'Zd',
       'A dead face carved in bone over jade, teeth for a crown. The eyes light when something is worth looking at.'),

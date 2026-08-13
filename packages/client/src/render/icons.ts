@@ -5651,10 +5651,10 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   wyrmsteel_platebody: { icon: 'platebody', color: '#2e4438' },
   wyrmsteel_greaves: { icon: 'legs', color: '#2e4438' },
   wyrmsteel_sabatons: { icon: 'boots', color: '#2e4438' },
-  oathgold_helm: { icon: 'helm', color: '#c9a23c' },
-  oathgold_platebody: { icon: 'platebody', color: '#c9a23c' },
-  oathgold_greaves: { icon: 'legs', color: '#c9a23c' },
-  oathgold_sabatons: { icon: 'boots', color: '#c9a23c' },
+  oathgold_helm: { icon: 'helm', color: '#d4a83e' },
+  oathgold_platebody: { icon: 'platebody', color: '#d4a83e' },
+  oathgold_greaves: { icon: 'legs', color: '#d4a83e' },
+  oathgold_sabatons: { icon: 'boots', color: '#d4a83e' },
   // THE HIGH ROAD — the plate wardrobe's second reach.
   jadeskull_helm: { icon: 'helm', color: '#3e6644' },
   jadeskull_platebody: { icon: 'platebody', color: '#3e6644' },
@@ -6004,7 +6004,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   stormcrown_gauntlets: { icon: 'gauntlet', color: '#46506e' },
   forgeheart_gauntlets: { icon: 'gauntlet', color: '#33302e' },
   wyrmsteel_gauntlets: { icon: 'gauntlet', color: '#2e4438' },
-  oathgold_gauntlets: { icon: 'gauntlet', color: '#c9a23c' },
+  oathgold_gauntlets: { icon: 'gauntlet', color: '#d4a83e' },
   // THE HIGH ROAD.
   jadeskull_gauntlets: { icon: 'gauntlet', color: '#3e6644' },
   fellbone_gauntlets: { icon: 'gauntlet', color: '#d9d2bd' },

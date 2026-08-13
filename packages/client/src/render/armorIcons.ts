@@ -87,9 +87,8 @@ export function helmIconPainter(st: HelmStyle): Painter {
     // Plumed metal helms: pre-paint a SOLID crest fin in the plume
     // color. The world's hollow crescent band lands on its outer edge
     // and merges — on the icon stage a hollow band over a box crown
-    // reads as a luggage handle, and the champion's-fin law already
-    // ruled a solid fin is the fix.
-    if (st.plume && st.kind !== 'champion' && st.kind !== 'hood' && st.kind !== 'wizard' && st.kind !== 'circlet') {
+    // reads as a luggage handle, and a solid fin is the ruled fix.
+    if (st.plume && st.kind !== 'hood' && st.kind !== 'wizard' && st.kind !== 'circlet') {
       const pk = 0.78;
       const arcK = 0.35 + 0.65 * pk;
       const hw2 = headR * 1.04;
