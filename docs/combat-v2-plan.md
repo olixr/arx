@@ -1,0 +1,255 @@
+# COMBAT V2 — THE WEAPON LEARNS TO DANCE
+
+*Plan of record. Drafted 2026-08-12 from a three-lane audit (server pipeline, client
+presentation, weapon content). Status: **AWAITING GREEN-LIGHT.***
+
+The mandate: basic attacks are the verb players perform ten thousand times, and today
+they are a held button and a hidden metronome. Abilities carry all the interest; the
+base attack is monotone. This plan rebuilds the basic attack into a visible, flowing,
+weapon-taught combo system — beat-em-up flow, hack-and-slash weapon identity — without
+breaking the balance contracts (TTK brackets, cadence/HP coupling, XP economy) or the
+one-door laws that every other epic leans on.
+
+---
+
+## Part 0 — The audit (what the fight actually is today)
+
+All findings verified against HEAD with file:line receipts, 2026-08-12.
+
+### 0.1 The player has no swing — only a cooldown
+
+`tryPlayerAttack` (gameServer.ts:14749) is fully instantaneous: cooldown set, cone
+resolved, damage applied, all in the press tick. The entire "state machine" is
+`attackCooldown` plus three stage counters. **Windup, active window, and recovery do
+not exist for players — but they DO for NPCs** (`npc.windupTicks` 6 melee / 8 ranged,
+gameServer.ts:21085-21098, re-checking reach at the end so stepping out is a true
+dodge). The player's fight has no commitment, no weight, no read.
+
+### 0.2 The combo exists — four times, invisibly
+
+One three-beat law, four private copies, four grace constants, zero UI:
+
+| lane | stages | grace | finisher | site |
+|---|---|---|---|---|
+| onehand | cleave / return / FINISHER ×2.5 sweep | 14t | recovery ×2.0 | gameServer.ts:14780-14821 |
+| twohand | fell / reap ×1.15 / FINISHER ×3.0 | 20t | recovery ×1.6, always sweeps | :14822-14867 |
+| staff | bolt / bolt / HEAVY ×3.0 splash | 14t | recovery ×2.25 | :14868-14907 |
+| bow | snap / snap / TWIN ARROW | 10t | — | :23606-23624 |
+
+`comboStage` and the grace window are **server-only fields, never sent to the client**
+(gameServer.ts:1383). The player's only tell is the alternating animation and a rising
+SFX pitch (sfx.ts:502-510). The player literally cannot see the system they're using —
+which is why it reads as "hold and hope."
+
+### 0.3 Combo state never resets
+
+Not on weapon swap, sheathe, dodge, cast, or death — only grace expiry. Onehand and
+twohand share one `comboStage` field, so swapping sword→greatsword mid-string can land
+an instant ×3.0 finisher. `drawTicks` is cleared at nine sites; the combo counters at
+zero.
+
+### 0.4 Your own swing is a round-trip late
+
+Melee swings are **not predicted**. The client sends the held bit; the animation starts
+when the pose byte comes back in a snapshot (renderer.ts:3267-3272). Staff bolts have a
+seq-keyed client mirror (clientGame.ts:828-861) and the bow draw is fully predicted
+(clientGame.ts:783-820) — melee, the flagship feel, is the one lane that waits for the
+server. At 60-100ms RTT that is 2-3 missing frames of contact between press and motion:
+the single largest invisible contributor to "mushy."
+
+### 0.5 249 weapons, four dials, no behavior
+
+`WeaponStats` is nine fields; the mechanical surface is `damage / cooldownTicks / range
+/ backstabMult` (items.ts:49-67). No windup, no arc, no string, no behavior hook.
+55 staves collapse to 10 tuples — 13 share `{cd:9, r:14, ps:13}` exactly. Daggers and
+swords are the same style with different numbers. All identity beyond the dials rides
+the secret art and native `effects`. Meanwhile the CLIENT already has four full strike
+vocabularies (carriage.ts STRIKE_SPECS, wield.ts GREAT/STAFF specs) — but they're keyed
+by wieldClass only, so every sword in the game swings identically.
+
+### 0.6 Wire and FX poverty
+
+- No swing message: one pose u8 per entity (snapshot.ts:13). Attack/Attack2/Attack3 —
+  a repeated same-stage pose doesn't even restart the client clock (renderer.ts:3267).
+- Impact FX are identical for every class (main.ts:1318-1371) — same sparks, same
+  palette for dagger, maul, bolt, and arrow.
+- Basic projectiles are deliberately silent (no blast, gameServer.ts:17429).
+
+### 0.7 Standing defects (fix regardless of design)
+
+1. `smashPropsInArc` hardcodes `Math.PI/3`, ignoring `arcHalf` — twohand's ±75° cleave
+   doesn't widen prop destruction (gameServer.ts:15104).
+2. The staff branch is an `else` fallthrough, not `style === 'arx'` — a future fifth
+   style would silently fire projectiles (gameServer.ts:14868).
+3. `rollBasic` floors landed basics at 1 (gameServer.ts:1878-1885) — deliberate cadence
+   law (09b762b), but damage.ts:16 still preaches whiff-0 as universal and downstream
+   `dmg > 0` proc gates guard a case that can't occur for basics. Document the split
+   honestly in damage.ts; the floor itself stays.
+4. Server pose-hold ticks and client choreography phases are twinned by comment, not by
+   constant ("the pose must outlive its choreography", gameServer.ts:14839).
+
+### 0.8 What is genuinely good (protect it)
+
+The hidden skeleton is RIGHT: alternating cuts into a bigger finisher, a heavy staff
+orb, a snap-chain twin arrow — the beats exist. Hold-to-flow is comfortable for an MMO
+grind session and must survive. Haste-on-hit, coatings, enchant procs, lifesteal, the
+participation ledgers, XP — all ride the ONE `damageNpc` door with `basic: true`; any
+redesign must keep feeding that same door. Dual wield's offhand echo (delay 4t, no
+pose, pure client choreography) solved a real bug — don't regress it. The balance
+contract (damage.test.ts TTK brackets) and the cadence/HP coupling (09b762b: attack
+density changes retune NPC HP) are the rails this plan runs on.
+
+---
+
+## Part 1 — The laws
+
+**LAW 1 — ONE RHYTHM ENGINE.** One combo brain, `ComboTrack`, in shared/sim/combat.ts:
+`{stage, graceUntilTick, lane}` with one `advance()` law. The four private copies die.
+Combo state RESETS on weapon swap, sheathe, death, and mount — a string belongs to the
+weapon that started it. (Dodge does NOT reset — see LAW 4.)
+
+**LAW 2 — THE HONEST SWING.** Player basics gain the same envelope NPCs already have:
+`windup → impact → recovery`, authored per strike in ticks, resolved server-side at the
+impact tick (not the press tick). Windups are SHORT (melee openers 2-3t — feel, not
+lag) and scale with the weapon's cooldown so fast daggers stay fast. The client
+choreography phases and the server envelope come from ONE shared phase table —
+the twinned-by-comment constants (0.7.4) become one authored truth.
+
+**LAW 3 — THE PREDICTED BLOW.** The client starts swing choreography on the press edge,
+seq-keyed exactly like the staff bolt mirror (clientGame.ts:828 is the proven pattern),
+and reconciles on the server pose. Zero-latency contact for your own hands. The staff
+mirror generalizes; it does not fork.
+
+**LAW 4 — THE SPOKEN BEAT.** The combo becomes visible and playable:
+- Stage + string length ride the wire (additive snapshot field or S2C, no bump needed
+  beyond the additive precedent).
+- A quiet beat UI at the reticle: stage pips + the grace window as a fading ember.
+- Press edges BUFFER during recovery (one queued attack, the beat-em-up standard).
+- Dodge CANCELS recovery and keeps the string alive (dodge-weave is the flow verb —
+  this is why dodge never resets the track).
+- Holding still flows the whole string at natural rhythm (mash-tolerant); pressing ON
+  the beat (a small window at recovery end) grants TEMPO — the next windup quickens.
+  Rhythm is rewarded with speed, never damage (TTK brackets stay sovereign).
+
+**LAW 5 — THE MOVESET BOOK.** Strikes become content, not code:
+`StrikeDef {key, phases, dmgMult, arcHalf, rangeMult, kbMult, sweepAll, step, trail,
+sfx}` and `MovesetDef {id, string: StrikeDef[], holds?, finisher}` in
+packages/content. `WeaponStats.moveset?: MovesetId` with class-default fallback. The
+client keeps ONE choreography vocabulary keyed by `StrikeDef.key` (the existing
+carriage/wield specs become the first entries). Curated variance: a moveset per design
+FAMILY (the falchion line fights one way, the rapier line another), never a
+combinatorial per-weapon explosion. Masterworks may carry one signature strike.
+
+**LAW 6 — EIGHT HANDS, EIGHT GRAMMARS.** Each fighting identity gets its own grammar on
+the one engine: onehand 4-beat branching strings; daggers = longer flurry strings with
+landed-hit momentum; dual wield = the off blade joins the string as true beats (weave),
+not just an echo; twohand = deliberate arcs, hyper-armor through the active window,
+charged overhead; staff = bolt-weaving plus a close-range guard sweep (the pole finally
+bops at melee range), element-voiced FX; bow = draw core untouched, plus point-blank
+kick (space-maker) and overcharge volley (hold past full).
+
+**LAW 7 — THE ONE DOOR STANDS.** Every landed basic still resolves through `damageNpc`
+with `basic: true`. Haste-on-hit, coatings, procs, lifesteal, ledgers, XP: untouched
+call sites. `rollBasic`'s ≥1 floor stays (cadence law); damage.ts documents the
+basic/ability whiff split honestly.
+
+**LAW 8 — THE CADENCE CONTRACT.** Sustained DPS per class stays within ±10% of today's
+measured baseline (~2.8 landed melee hits/s) unless deliberately retuned WITH NPC HP in
+the same commit (the 09b762b coupling). damage.test.ts TTK brackets are the merge gate.
+
+**LAW 9 — IMPACT WEARS THE WEAPON.** Per-class impact voices: spark palette, ring
+shape, hitstop weight, and trail character keyed by wieldClass + StrikeDef, not one
+global effect. The finisher of every string must be unmistakable at a glance from
+across the screen.
+
+---
+
+## Part 2 — The phases
+
+### Phase 1 — THE ONE RHYTHM (foundations, zero feel change)
+One ComboTrack engine replaces the four copies; explicit style dispatch (the `else`
+fallthrough dies); reset laws (swap/sheathe/death/mount); `smashPropsInArc` honors
+`arcHalf`; shared phase table twinning server holds to client choreography; combo
+stage + grace on the wire (additive); whiff-doc honesty in damage.ts.
+**Proof:** behavior-identical replay — TTK brackets green, DPS parity harness within
+noise, riglab det unchanged. The only visible change is the bug-fix set.
+
+### Phase 2 — THE PREDICTED BLOW + THE SPOKEN BEAT
+Seq-keyed swing prediction on the staff-mirror pattern; press-edge input with a one-deep
+buffer; dodge-cancel of recovery; hold-to-flow walking the full string; TEMPO beat
+window (speed, never damage); beat UI (stage pips + grace ember); per-stage SFX already
+present grows per-stage hitstop/shake. **Proof:** input-latency capture before/after
+(press→first-motion frames), buffer/cancel unit slate, TTK unchanged.
+
+### Phase 3 — THE MOVESET BOOK
+StrikeDef/MovesetDef content schema; the four current strings become the four class-
+default movesets, byte-equal in behavior (det-proof on the rig sheet); THEN the strings
+grow: onehand 3→4 beats with a branch (hold at beat 3: thrust vs sweep), twohand
+charged opener, staff weave, dagger flurry string. Windups arrive here (LAW 2), tuned
+so per-class DPS parity holds; any cadence change retunes NPC HP in the same commit.
+**Proof:** moveset-equivalence tests, DPS parity table per class, TTK brackets.
+
+### Phase 4 — EIGHT HANDS (class identity pass)
+Dagger momentum; dual-wield weave beats; twohand hyper-armor + overhead; staff guard
+sweep + element voices; bow point-blank kick + overcharge volley. Impact identity
+(LAW 9) lands here. NPC windup/telegraph feel audit rides along (their machine already
+exists; players joining it makes both sides read).
+**Proof:** per-class live receipts, riglab strike rows extended per class.
+
+### Phase 5 — THE WEAPON'S OWN HAND (per-weapon variance)
+Curated moveset assignment across the 249 by design family (~12-16 movesets total);
+masterwork signature strikes (the fifteen regalia + twenty masterworks each get one
+distinguishing beat); bladelab/stafflab audit rows grow a moveset column; codex/item
+cards speak the fight style ("Fights as: the Fencer's Line").
+**Proof:** roster test (every weapon resolves a moveset), lab sheets, band audit.
+
+### Phase 6 — THE PROVING
+Live-receipt lane (prove:combat-v2) on the isolated-rig pattern: string flow, buffer,
+dodge-cancel, tempo, prediction reconciliation under injected latency, per-class DPS
+parity, TTK brackets, reconnect/death mid-string. Feel checklist signed on the sheet.
+
+*(The ranged-sidearm question — bow always on the back with a swap verb — is scoped
+OUT of these six phases and green-lights separately; see Part 5. The stow/backMounted
+rendering already supports it visually, so it composes cleanly later.)*
+
+---
+
+## Part 3 — Verification standards
+
+- damage.test.ts TTK brackets = the merge gate for every phase (LAW 8).
+- DPS parity harness: scripted 10s hold-flow per class, landed damage within ±10% of
+  the Phase-0 baseline unless the commit also retunes NPC HP.
+- Combo engine slate: advance/reset/grace/buffer/cancel/tempo unit pins in shared.
+- Prediction: injected-latency capture, press→motion ≤ 1 frame local, reconciliation
+  never double-plays a strike.
+- Riglab det: strike rows byte-stable through Phase 1-2; new movesets add rows, never
+  mutate existing ones silently.
+- Every phase ends with the full workspace suite green, zero waivers.
+
+## Part 4 — Do not change
+
+- carriage.ts blade grips + existing strike choreography numbers (user verdicts; new
+  strikes ADD entries, existing specs stay).
+- The ONE MOUTH fence + arms-v3 laws (new strike keys enter through the fence like
+  every writer).
+- `damageNpc`/`damagePlayer` signatures and the on-hit chain order.
+- rollBasic's ≥1 floor; ability whiff-0.
+- Dual-wield echo's no-pose law (the weave builds ON it, never re-poses mid-swing).
+- Bow draw constants (DRAW_FULL_TICKS 14 / MIN 3 / MOVE_FACTOR 0.55) — the draw is the
+  one basic that already feels right.
+- Loot/flood, XP economy, secret-arts seats, cast/channel engines.
+
+## Part 5 — Open questions for green-light
+
+1. **The ranged sidearm.** Recommended shape: TWO WEAPON SETS with one swap verb (a
+   bound key/pad chord swaps mainhand+offhand pairs; the stowed set rides the back —
+   rendering already exists). Alternative: a dedicated sling slot (new equipment slot,
+   heavier). Or: status quo. Swap-sets is the recommendation — smallest surface,
+   biggest freedom, and it serves "bow on the back" without making the bow free.
+2. **Directional strike variants** (forward+attack = lunge, etc.): recommended as a
+   Phase 4 stretch only if pad/touch ergonomics prove out — the core grammar
+   (tap/hold/dodge-cancel/tempo) must carry the game without them.
+3. **Tempo as speed-only** (recommended) vs tempo granting damage: speed keeps TTK
+   sovereign; damage would reopen every bracket.
+4. **Moveset breadth:** ~12-16 curated movesets by design family (recommended) vs
+   per-weapon uniqueness (unmaintainable at 249).
