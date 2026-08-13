@@ -54,7 +54,7 @@ export interface BodyStyle {
     | 'bonemaw' | 'boneridge' | 'thorncrest' | 'lionhead'
     | 'gonfalon' | 'rampart' | 'sunfan' | 'veilwing'
     | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest'
-    | 'gateshard';
+    | 'gateshard' | 'mothpile';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
@@ -353,10 +353,18 @@ export interface BodyStyle {
   /** Thistledown: the twisted rope belt — two-strand hemp with a
    *  looped knot and frayed ends. The rope is load-bearing. */
   rope?: { color: string };
-  /** Mothwing: two broad wing panels draped over the shoulders,
-   *  scalloped, veined, each carrying its pale-ringed eye-spot — the
-   *  moth worn whole, not stamped on. */
-  wingdrape?: { color: string; spot: string };
+  /** Mothwing: THE WING CLOAK — the moth worn whole. Two layered
+   *  folded wings (forewing lapped over hindwing) drape shoulder to
+   *  hip, scalloped, veined, each forewing carrying its pale-ringed
+   *  eye-spot. THE SHIVER is the living word: on a slow clock the
+   *  folded wings tremble and shed luminous dust. Species options
+   *  per dye lot: `tails` grows luna's long hindwing streamers,
+   *  `emberEdge` smolders along ember's scallops, `crescent` wakes
+   *  dusk's spots as moon crescents. */
+  wingdrape?: {
+    color: string; spot: string;
+    tails?: string; emberEdge?: string; crescent?: string;
+  };
   /** Dawnsworn: the horizon at the hem — three flat bands climbing
    *  from night up into gold, painted above the trim. */
   dawnbands?: { colors: [string, string, string] };
@@ -584,6 +592,11 @@ export interface HelmStyle {
   starring?: { color: string };
   /** Hedgehat: the herb sprig tucked in the woven cord band. */
   sprig?: { color: string };
+  /** Mothcowl: THE MOTH'S OWN EYES — two large luminous compound
+   *  discs set on the cowl above the face opening, faceted, glowing
+   *  on a breath slower than anything human. The wearer's face keeps
+   *  the dark below them; the moth does the looking. */
+  motheyes?: { color: string };
 }
 
 export interface LegStyle {
@@ -840,9 +853,11 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   mothwing_robe: {
     color: '#8a8a72', trim: '#d8d4b8', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'moth',
+    silhouette: 'robe', pauldron: 'mothpile', pauldronColor: '#8f8f76',
+    pauldronTrim: '#e2ddc2', pauldronScale: 1.15, chest: 'none',
     skirt: 0.32, sleeves: 'full', underskirt: '#6e6e5a', motes: '#d8d4b8',
-    folds: true, wingdrape: { color: '#6e6e58', spot: '#d8d4b8' },
+    folds: true, collar: 'fur', collarColor: '#c8c4a4',
+    wingdrape: { color: '#6e6e58', spot: '#d8d4b8' },
   },
   dawnsworn_robe: {
     color: '#d9c9a0', trim: '#c9922f', cls: 'cloth',
@@ -1340,6 +1355,7 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
   mothwing_cowl: {
     color: '#8a8a72', trim: '#d8d4b8', kind: 'mothcowl',
     antennae: { color: '#d8d4b8' }, ruff: { color: '#a8a88c' },
+    motheyes: { color: '#e0d89a' },
   },
   dawnsworn_hood: {
     color: '#d9c9a0', trim: '#c9922f', kind: 'dawnhood',
@@ -1668,7 +1684,7 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   drakescale_boots: { color: '#8c3a32', height: 0.13, toe: '#d49a4a', cuff: { color: '#c9713c' } },
   stagheart_boots: { color: '#5a4430', height: 0.14, wrap: { color: '#3e5a30' }, cuff: { color: '#d4a43c' } },
   thistledown_slippers: { color: '#a89a80', height: 0.07 },
-  mothwing_slippers: { color: '#6e6e5a', height: 0.08, cuff: { color: '#d8d4b8' } },
+  mothwing_slippers: { color: '#6e6e5a', height: 0.09, fur: { color: '#a8a88c' } },
   dawnsworn_slippers: { color: '#b8a87e', height: 0.08, cuff: { color: '#c9922f' } },
   fenwalker_slippers: { color: '#3a564a', height: 0.1, wrap: { color: '#a8c8a0' } },
   stormwoven_slippers: { color: '#3c4660', height: 0.09, cuff: { color: '#e8d878' } },
@@ -1842,7 +1858,7 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
   },
   mothwing_wraps: {
     color: '#8a8a72', hand: 'wrap', bracer: '#7e7e67',
-    cuff: { color: '#d8d4b8', kind: 'roll' },
+    cuff: { color: '#a8a88c', kind: 'fur' },
     knuckle: { color: '#c8c4a0', kind: 'studs' },
   },
   dawnsworn_wraps: {
@@ -2143,16 +2159,40 @@ registerColorways(BOOT_STYLES, 'thistledown_slippers', {
   bracken: { color: '#6e5738' },
 });
 
-// Mothwing dye lots: wings, dust, ruff and antennae follow the moth.
+// Mothwing dye lots: each lot is its own SPECIES, not a tint — the
+// luna grows its long hindwing streamers, the dusk's eye-spots wake
+// as crescent moons, the ember's scallops keep the fire. Pile, mane,
+// plumes and eyes all follow the moth.
 registerColorways(BODY_STYLES, 'mothwing_robe', {
-  luna: { color: '#9ab88e', trim: '#e2eecc', underskirt: '#7a9670', motes: '#d8eec0', wingdrape: { color: '#7a986e', spot: '#e2eecc' } },
-  dusk: { color: '#7a6280', trim: '#d0c0dc', underskirt: '#615068', motes: '#c8b4d8', wingdrape: { color: '#5a4660', spot: '#d0c0dc' } },
-  ember: { color: '#a8705c', trim: '#e8c8a0', underskirt: '#8a5a48', motes: '#e8b088', wingdrape: { color: '#865442', spot: '#e8c8a0' } },
+  luna: {
+    color: '#9ab88e', trim: '#e2eecc', underskirt: '#7a9670', motes: '#d8eec0',
+    pauldronColor: '#94b288', pauldronTrim: '#e8f2d4', collarColor: '#c8dcb4',
+    wingdrape: { color: '#7a986e', spot: '#e2eecc', tails: '#d8eec0' },
+  },
+  dusk: {
+    color: '#7a6280', trim: '#d0c0dc', underskirt: '#615068', motes: '#c8b4d8',
+    pauldronColor: '#746078', pauldronTrim: '#dcccec', collarColor: '#a892b0',
+    wingdrape: { color: '#5a4660', spot: '#d0c0dc', crescent: '#e6d8f4' },
+  },
+  ember: {
+    color: '#a8705c', trim: '#e8c8a0', underskirt: '#8a5a48', motes: '#e8b088',
+    pauldronColor: '#a06a54', pauldronTrim: '#f0d4ac', collarColor: '#cc9a78',
+    wingdrape: { color: '#865442', spot: '#e8c8a0', emberEdge: '#ff9a4a' },
+  },
 });
 registerColorways(HELM_STYLES, 'mothwing_cowl', {
-  luna: { color: '#9ab88e', trim: '#e2eecc', antennae: { color: '#e2eecc' }, ruff: { color: '#b8ccaa' } },
-  dusk: { color: '#7a6280', trim: '#d0c0dc', antennae: { color: '#d0c0dc' }, ruff: { color: '#94809c' } },
-  ember: { color: '#a8705c', trim: '#e8c8a0', antennae: { color: '#e8c8a0' }, ruff: { color: '#c09078' } },
+  luna: {
+    color: '#9ab88e', trim: '#e2eecc', antennae: { color: '#e2eecc' },
+    ruff: { color: '#b8ccaa' }, motheyes: { color: '#d4f4c4' },
+  },
+  dusk: {
+    color: '#7a6280', trim: '#d0c0dc', antennae: { color: '#d0c0dc' },
+    ruff: { color: '#94809c' }, motheyes: { color: '#c9a8f0' },
+  },
+  ember: {
+    color: '#a8705c', trim: '#e8c8a0', antennae: { color: '#e8c8a0' },
+    ruff: { color: '#c09078' }, motheyes: { color: '#ffb054' },
+  },
 });
 registerColorways(LEG_STYLES, 'mothwing_skirts', {
   luna: { thigh: '#7a9670' },
@@ -2160,9 +2200,9 @@ registerColorways(LEG_STYLES, 'mothwing_skirts', {
   ember: { thigh: '#8a5a48' },
 });
 registerColorways(BOOT_STYLES, 'mothwing_slippers', {
-  luna: { color: '#7a9670', cuff: { color: '#e2eecc' } },
-  dusk: { color: '#615068', cuff: { color: '#d0c0dc' } },
-  ember: { color: '#8a5a48', cuff: { color: '#e8c8a0' } },
+  luna: { color: '#7a9670', fur: { color: '#b8ccaa' } },
+  dusk: { color: '#615068', fur: { color: '#94809c' } },
+  ember: { color: '#8a5a48', fur: { color: '#c09078' } },
 });
 
 // Dawnsworn dye lots: the sun device keeps its gold except at noon,
@@ -2554,9 +2594,9 @@ registerColorways(GLOVE_STYLES, 'thistledown_wraps', {
   bracken: { color: '#8a6f4a', bracer: '#7e6543', cuff: { color: '#6e5738', kind: 'roll' } },
 });
 registerColorways(GLOVE_STYLES, 'mothwing_wraps', {
-  luna: { color: '#9ab88e', bracer: '#8dab82', cuff: { color: '#e2eecc', kind: 'roll' }, knuckle: { color: '#d8eec0', kind: 'studs' } },
-  dusk: { color: '#7a6280', bracer: '#6f5975', cuff: { color: '#d0c0dc', kind: 'roll' }, knuckle: { color: '#c8b4d8', kind: 'studs' } },
-  ember: { color: '#a8705c', bracer: '#9b6653', cuff: { color: '#e8c8a0', kind: 'roll' }, knuckle: { color: '#e8b088', kind: 'studs' } },
+  luna: { color: '#9ab88e', bracer: '#8dab82', cuff: { color: '#b8ccaa', kind: 'fur' }, knuckle: { color: '#d8eec0', kind: 'studs' } },
+  dusk: { color: '#7a6280', bracer: '#6f5975', cuff: { color: '#94809c', kind: 'fur' }, knuckle: { color: '#c8b4d8', kind: 'studs' } },
+  ember: { color: '#a8705c', bracer: '#9b6653', cuff: { color: '#c09078', kind: 'fur' }, knuckle: { color: '#e8b088', kind: 'studs' } },
 });
 registerColorways(GLOVE_STYLES, 'dawnsworn_wraps', {
   duskvow: { color: '#9a6a86', bracer: '#8d607a', cuff: { color: '#e0b0c0', kind: 'band' } },
@@ -3875,60 +3915,206 @@ export function drawTorsoGarment(
       }
     }
 
-    // ---- THE WINGDRAPE: mothwing's own layer — two broad wing
-    // panels draped over the shoulders, scalloped hems, flat vein
-    // wedges, and on each an eye-spot ringed pale: the moth worn
-    // whole, front and back (wings fold the same either way).
+    // ---- THE WING CLOAK: mothwing's own garment — the moth worn
+    // WHOLE. Two layered folded wings drape shoulder to hip: the
+    // hindwing beneath (longer, darker), the forewing lapped over it
+    // (broader, carrying the great eye-spot), both scalloped and
+    // veined, tips flaring past the torso silhouette. THE SHIVER is
+    // the living word: on a slow clock the folded wings tremble the
+    // way a resting moth does, and shed a breath of luminous dust.
+    // Species run in the lots: luna grows hindwing streamers, dusk's
+    // spots wake as crescents, ember's scallops keep the fire.
     if (st.wingdrape && !hurt) {
       const wCol = st.wingdrape.color;
       const spot = st.wingdrape.spot;
+      // The shiver clock: a 4.6s cycle, alive for its first 550ms.
+      const cyc = nowMs % 4600;
+      const shiverK = cyc < 550 ? Math.sin((cyc / 550) * Math.PI) : 0;
+      const tremble = shiverK * Math.sin(nowMs * 0.055) * 0.03;
       for (const es of [-1, 1]) {
-        const rootX = es * tw * 0.22;
-        const wingTip = es * tw * 1.18;
-        const hemY2 = -th * 0.18;
-        const wing = () => {
+        const rootX = es * tw * 0.18;
+        const rootY = -th * 1.02;
+        ctx.save();
+        ctx.translate(rootX, rootY);
+        ctx.rotate(es * tremble);
+        ctx.translate(-rootX, -rootY);
+        // THE HINDWING: beneath, longer, darker — it falls past the
+        // waist and tapers toward the hip, its hem cut in deep
+        // scallops. Painted first so the forewing laps it.
+        const hCol = shade(wCol, es === 1 ? -24 : -14);
+        ctx.beginPath();
+        ctx.moveTo(rootX, rootY);
+        ctx.quadraticCurveTo(es * tw * 1.05, -th * 1.02, es * tw * 1.3, -th * 0.6);
+        ctx.quadraticCurveTo(es * tw * 1.24, -th * 0.2, es * tw * 0.98, 0.045 * s);
+        // Scallops climbing back to the body.
+        ctx.quadraticCurveTo(es * tw * 0.86, 0.075 * s, es * tw * 0.72, 0.052 * s);
+        ctx.quadraticCurveTo(es * tw * 0.58, 0.08 * s, es * tw * 0.44, 0.056 * s);
+        ctx.quadraticCurveTo(es * tw * 0.3, 0.075 * s, es * tw * 0.2, 0.045 * s);
+        ctx.lineTo(es * tw * 0.12, -th * 0.5);
+        ctx.closePath();
+        ctx.fillStyle = hCol;
+        ctx.fill();
+        // Hindwing under-spots: a small twin pair low on the wing,
+        // in the band the forewing leaves uncovered.
+        ctx.fillStyle = shade(spot, -6);
+        ctx.beginPath();
+        ctx.arc(es * tw * 0.62, 0.018 * s, tw * 0.055, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(es * tw * 0.86, -th * 0.02, tw * 0.048, 0, Math.PI * 2);
+        ctx.fill();
+        // LUNA'S TAILS: two long hindwing streamers curling down off
+        // the inner hem, swaying on the cloth's own slow clock.
+        if (st.wingdrape.tails) {
+          const tCol = st.wingdrape.tails;
+          const tSway = Math.sin(nowMs * 0.0016 + es * 1.2) * tw * 0.08;
+          for (const [ti, u0, len] of [[0, 0.62, 0.32], [1, 0.38, 0.23]] as const) {
+            const bx = es * tw * u0;
+            const by = 0.055 * s;
+            const tipX2 = bx + es * tw * 0.18 + tSway * (1 - ti * 0.4);
+            const tipY2 = by + len * s;
+            ctx.fillStyle = ti === 0 ? tCol : shade(tCol, -10);
+            ctx.beginPath();
+            ctx.moveTo(bx - es * tw * 0.1, by - 0.01 * s);
+            ctx.quadraticCurveTo(bx - es * tw * 0.03, by + len * s * 0.55, tipX2, tipY2);
+            // The swallowtail curl: the tip flares back outward.
+            ctx.quadraticCurveTo(tipX2 + es * tw * 0.13, tipY2 + 0.016 * s, tipX2 + es * tw * 0.15, tipY2 - 0.014 * s);
+            ctx.quadraticCurveTo(tipX2 + es * tw * 0.1, tipY2 - 0.032 * s, bx + es * tw * 0.075, by - 0.01 * s);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        // THE FOREWING: lapped over, broader, the eye-spot's home.
+        // Its tip flares OUT past the shoulder line — the folded
+        // moth's tent silhouette, worn as a cloak.
+        const fCol = es === 1 ? shade(wCol, -8) : shade(wCol, 4);
+        const fore = () => {
           ctx.beginPath();
-          ctx.moveTo(rootX, -th * 1.0);
-          ctx.quadraticCurveTo(es * tw * 0.9, -th * 1.06, wingTip, -th * 0.72);
-          // The scalloped lower hem, tip back to root.
-          ctx.quadraticCurveTo(es * tw * 0.98, hemY2 + th * 0.06, es * tw * 0.72, hemY2);
-          ctx.quadraticCurveTo(es * tw * 0.52, hemY2 + th * 0.1, es * tw * 0.36, hemY2 + th * 0.02);
-          ctx.quadraticCurveTo(es * tw * 0.2, hemY2 + th * 0.1, es * tw * 0.1, -th * 0.42);
+          ctx.moveTo(rootX, rootY);
+          ctx.quadraticCurveTo(es * tw * 0.95, -th * 1.14, es * tw * 1.42, -th * 0.78);
+          ctx.quadraticCurveTo(es * tw * 1.3, -th * 0.42, es * tw * 1.05, -th * 0.14);
+          // The forewing hem scallops.
+          ctx.quadraticCurveTo(es * tw * 0.92, -th * 0.04, es * tw * 0.78, -th * 0.12);
+          ctx.quadraticCurveTo(es * tw * 0.62, -th * 0.0, es * tw * 0.46, -th * 0.1);
+          ctx.quadraticCurveTo(es * tw * 0.3, -th * 0.02, es * tw * 0.16, -th * 0.16);
           ctx.closePath();
         };
-        wing();
-        ctx.fillStyle = es === 1 ? shade(wCol, -10) : wCol;
+        fore();
+        ctx.fillStyle = fCol;
         ctx.fill();
         ctx.save();
-        wing();
+        fore();
         ctx.clip();
-        // Vein wedges: flat darker panels fanning from the root.
-        ctx.fillStyle = shade(wCol, es === 1 ? -22 : -12);
-        for (const vk of [0.3, 0.62] as const) {
+        // Vein wedges fanning from the root — flat darker panels.
+        ctx.fillStyle = shade(fCol, es === 1 ? -16 : -10);
+        for (const vk of [0.34, 0.6, 0.84] as const) {
+          const vx2 = rootX + (es * tw * 1.42 - rootX) * vk;
+          const vy2 = rootY + (-th * 0.78 - rootY) * vk + th * 0.3 * vk;
           ctx.beginPath();
-          ctx.moveTo(rootX, -th * 0.96);
-          ctx.lineTo(rootX + (wingTip - rootX) * vk, -th * (0.98 - vk * 0.3));
-          ctx.lineTo(rootX + (wingTip - rootX) * (vk + 0.1), -th * (0.94 - vk * 0.34));
+          ctx.moveTo(rootX, rootY + th * 0.06);
+          ctx.lineTo(vx2, vy2);
+          ctx.lineTo(vx2 - es * tw * 0.07, vy2 + th * 0.09);
           ctx.closePath();
           ctx.fill();
         }
-        // The eye-spot: dark heart, pale ring — flat rings, no
-        // stroke; the moth's oldest trick.
-        const sx2 = es * tw * 0.64;
-        const sy2 = -th * 0.56;
+        // THE EYE-SPOT: the moth's oldest trick, worn BIG — dark
+        // heart in a pale ring in a darker halo, all flat fills. At
+        // dusk the heart wakes as a crescent moon.
+        const sx2 = es * tw * 0.7;
+        const sy2 = -th * 0.54;
         ctx.fillStyle = shade(spot, 26);
         ctx.beginPath();
-        ctx.arc(sx2, sy2, tw * 0.22, 0, Math.PI * 2);
+        ctx.arc(sx2, sy2, tw * 0.3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = shade(wCol, -32);
+        ctx.fillStyle = shade(wCol, -34);
         ctx.beginPath();
-        ctx.arc(sx2, sy2, tw * 0.15, 0, Math.PI * 2);
+        ctx.arc(sx2, sy2, tw * 0.215, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = spot;
-        ctx.beginPath();
-        ctx.arc(sx2 - tw * 0.035, sy2 - tw * 0.035, tw * 0.06, 0, Math.PI * 2);
-        ctx.fill();
+        if (st.wingdrape.crescent) {
+          ctx.fillStyle = st.wingdrape.crescent;
+          ctx.beginPath();
+          ctx.arc(sx2, sy2, tw * 0.135, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(wCol, -34);
+          ctx.beginPath();
+          ctx.arc(sx2 + es * tw * 0.065, sy2 - tw * 0.035, tw * 0.115, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = spot;
+          ctx.beginPath();
+          ctx.arc(sx2 - tw * 0.05, sy2 - tw * 0.05, tw * 0.088, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.restore();
+        // EMBER'S EDGE: the scallops keep the fire — a glow riding
+        // both hems, breathing on the banked clock.
+        if (st.wingdrape.emberEdge) {
+          const ec = st.wingdrape.emberEdge;
+          ctx.globalAlpha = 0.55 + 0.35 * Math.sin(nowMs * 0.0021 + es);
+          ctx.strokeStyle = ec;
+          ctx.lineWidth = Math.max(2, s * 0.018);
+          ctx.beginPath();
+          ctx.moveTo(es * tw * 1.05, -th * 0.14);
+          ctx.quadraticCurveTo(es * tw * 0.92, -th * 0.04, es * tw * 0.78, -th * 0.12);
+          ctx.quadraticCurveTo(es * tw * 0.62, -th * 0.0, es * tw * 0.46, -th * 0.1);
+          ctx.quadraticCurveTo(es * tw * 0.3, -th * 0.02, es * tw * 0.16, -th * 0.16);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(es * tw * 0.98, 0.045 * s);
+          ctx.quadraticCurveTo(es * tw * 0.86, 0.075 * s, es * tw * 0.72, 0.052 * s);
+          ctx.quadraticCurveTo(es * tw * 0.58, 0.08 * s, es * tw * 0.44, 0.056 * s);
+          ctx.quadraticCurveTo(es * tw * 0.3, 0.075 * s, es * tw * 0.2, 0.045 * s);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+      }
+      // THE ABDOMEN: between the folded wings, the moth's own body —
+      // four lapped fur segments stepping down the center, each a
+      // flat band with a lit crest, tapering toward the hem. The
+      // costume commits: this is a moth's front, not a robe with
+      // wings pinned on.
+      if (!back) {
+        frontPlaneOn();
+        for (let seg = 0; seg < 4; seg++) {
+          const segY = -th * 0.34 + seg * th * 0.21;
+          const w = tw * (0.24 - seg * 0.032);
+          ctx.fillStyle = shade(wCol, seg % 2 === 0 ? -18 : -26);
+          ctx.beginPath();
+          ctx.moveTo(-w, segY);
+          ctx.quadraticCurveTo(0, segY - th * 0.05, w, segY);
+          ctx.lineTo(w * 0.92, segY + th * 0.17);
+          ctx.quadraticCurveTo(0, segY + th * 0.23, -w * 0.92, segY + th * 0.17);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(wCol, seg % 2 === 0 ? -4 : -12);
+          ctx.beginPath();
+          ctx.moveTo(-w * 0.9, segY + th * 0.015);
+          ctx.quadraticCurveTo(0, segY - th * 0.035, w * 0.9, segY + th * 0.015);
+          ctx.lineTo(w * 0.86, segY + th * 0.055);
+          ctx.quadraticCurveTo(0, segY + th * 0.005, -w * 0.86, segY + th * 0.055);
+          ctx.closePath();
+          ctx.fill();
+        }
+        frontPlaneOff();
+      }
+      // THE SHED DUST: while the shiver runs, luminous scales drift
+      // off the wing hems and fade — the moth pays for moving.
+      if (shiverK > 0.05) {
+        const prog = cyc / 550;
+        ctx.fillStyle = shade(spot, 20);
+        for (const [du, dv, ph] of [
+          [-0.9, -0.3, 0], [0.84, -0.5, 1], [-0.5, 0.1, 2],
+          [0.6, 0.06, 3], [1.1, -0.7, 4],
+        ] as const) {
+          const fall = prog * 0.06 * s;
+          const drift = Math.sin(nowMs * 0.01 + ph) * 0.008 * s;
+          ctx.globalAlpha = shiverK * 0.7 * (0.5 + 0.5 * Math.sin(ph * 2.1));
+          ctx.beginPath();
+          ctx.arc(tw * du + drift, -th * 0.5 + dv * th * 0.8 + fall, 0.009 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
       }
     }
 
@@ -6206,6 +6392,58 @@ export function drawPauldron(
       ctx.fill();
       ctx.globalAlpha = 1;
     }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'mothpile') {
+    // THE MOTHPILE — the mothwing shoulder: the moth's own furred
+    // thorax worn at the joint. A seated cap buried under two lapped
+    // rows of soft pile, every tuft round and deep, the crown row
+    // tipped pale like frost on fur — mass without metal, the boss
+    // silhouette grown instead of forged. The pile breathes on the
+    // hands' own slow clock, one part in thirty: alive, not boiling.
+    const breathe = 1 + 0.033 * Math.sin(nowMs * 0.0019 + side * 0.9);
+    ctx.save();
+    ctx.scale(breathe, breathe);
+    seat(0.118 * s, 0.094 * s, hurt ? '#ffffff' : shade(base, -20), trim);
+    if (!hurt) {
+      // The under-row: bigger, darker lumps ringing the cap's hem.
+      ctx.fillStyle = shade(base, -10);
+      for (let i = 0; i < 5; i++) {
+        const u = -1 + i * 0.5;
+        const r = (0.052 + 0.012 * Math.sin(i * 2.7 + side)) * s;
+        ctx.beginPath();
+        ctx.arc(u * 0.095 * s, 0.012 * s + Math.sin(i * 1.9) * 0.012 * s, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The crown row: smaller, lit lumps stacked above, each tipped
+      // pale — the pile catches the light on top, as pile does.
+      for (let i = 0; i < 4; i++) {
+        const u = -0.75 + i * 0.5;
+        const r = (0.042 + 0.01 * Math.sin(i * 2.2 + side * 1.3)) * s;
+        const px = u * 0.085 * s;
+        const py = -0.045 * s + Math.sin(i * 2.4) * 0.008 * s;
+        ctx.fillStyle = shade(base, 6);
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = trim;
+        ctx.beginPath();
+        ctx.arc(px - r * 0.2, py - r * 0.38, r * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      // Hurt flash keeps the pile's lumpy silhouette.
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 5; i++) {
+        const u = -1 + i * 0.5;
+        const r = (0.052 + 0.012 * Math.sin(i * 2.7 + side)) * s;
+        ctx.beginPath();
+        ctx.arc(u * 0.095 * s, 0.0 * s + Math.sin(i * 1.9) * 0.012 * s, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
     ctx.restore();
     return;
   }
@@ -9410,36 +9648,96 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       }
       ctx.restore();
       if (front) {
+        // THE MOTH'S DARK: the wearer's face sinks deeper than any
+        // road hood — the moth does the looking now, and the human
+        // eyes are only rumors in the shadow under the brow.
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.02);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.44)');
-        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = 'rgba(22, 14, 26, 0.24)';
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, oBot - oTop);
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.3);
+        shGrad.addColorStop(0, 'rgba(18, 11, 22, 0.72)');
+        shGrad.addColorStop(1, 'rgba(18, 11, 22, 0)');
         ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.6);
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.94);
         ctx.restore();
-        // THE DUST RUFF: soft pile ringing the opening — lumpy pale
-        // rounds hugging the rim, the moth's collar fur.
+        // THE MANE: the collar pile bursts around the opening in two
+        // rows — brow fringe above, a full mandible ruff below the
+        // chin, each lump round and deep. The moth is FURRED.
         const rCol = st.ruff?.color ?? shade(st.trim, -10);
         ctx.fillStyle = rCol;
         for (let i = 0; i < 5; i++) {
           const u = -1 + i * 0.5;
-          const r = (0.048 + 0.012 * Math.sin(i * 2.7)) * hw * 2;
+          const r = (0.052 + 0.013 * Math.sin(i * 2.7)) * hw * 2;
           ctx.beginPath();
           ctx.arc(cx + u * ohw * 1.0, oTop + Math.sin(i * 1.9) * hh * 0.04, r, 0, Math.PI * 2);
           ctx.fill();
         }
         for (const es of [-1, 1]) {
           ctx.beginPath();
-          ctx.arc(cx + es * ohw * 1.04, headY + hh * 0.08, hw * 0.14, 0, Math.PI * 2);
+          ctx.arc(cx + es * ohw * 1.05, headY + hh * 0.06, hw * 0.15, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = shade(rCol, -14);
+        }
+        // The mandible ruff: a lapped burst under the chin, darker
+        // beneath, pale crests on top — the moth's chest fur rising
+        // to meet its face.
+        for (const [u2, dy2, r2, dv2] of [
+          [-0.72, 0.66, 0.15, -14], [-0.3, 0.76, 0.17, -6],
+          [0.14, 0.78, 0.16, -10], [0.58, 0.7, 0.15, -16],
+          [-0.5, 0.6, 0.11, 8], [0.05, 0.64, 0.12, 6], [0.44, 0.6, 0.1, 4],
+        ] as const) {
+          ctx.fillStyle = shade(rCol, dv2);
           ctx.beginPath();
-          ctx.arc(cx + es * ohw * 1.0, headY + hh * 0.55, hw * 0.12, 0, Math.PI * 2);
+          ctx.arc(cx + u2 * ohw, headY + hh * dy2, hw * r2, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = rCol;
+        }
+        if (st.motheyes) {
+          // THE MOTH'S OWN EYES: two great luminous discs seated on
+          // the cowl at the brow corners, above the human dark —
+          // faceted, lidless, glowing on a breath far slower than a
+          // pulse. The far eye narrows with the facing, as all eyes
+          // here do.
+          const mec = st.motheyes.color;
+          const glow = 0.72 + 0.28 * Math.sin(f.nowMs * 0.0009);
+          for (const es of [-1, 1]) {
+            const wK = es !== lead ? Math.max(0.25, 1 - t * 0.8) : 1;
+            if (wK <= 0.05) continue;
+            const px = cx + es * ohw * 1.02;
+            const py = oTop - headR * 0.1;
+            const rx2 = headR * 0.24 * wK;
+            const ry2 = headR * 0.27;
+            // The halo breath.
+            ctx.globalAlpha = 0.22 * glow;
+            ctx.fillStyle = mec;
+            ctx.beginPath();
+            ctx.ellipse(px, py, rx2 * 1.7, ry2 * 1.55, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The eye: dark socket ring, then the lit dome.
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = shade(st.color, -30);
+            ctx.beginPath();
+            ctx.ellipse(px, py, rx2 * 1.18, ry2 * 1.14, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 0.85 + 0.15 * glow;
+            ctx.fillStyle = mec;
+            ctx.beginPath();
+            ctx.ellipse(px, py, rx2, ry2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The compound read: the lower half steps down a value —
+            // a facet plane, not an iris.
+            ctx.fillStyle = shade(mec, -22);
+            ctx.beginPath();
+            ctx.ellipse(px, py + ry2 * 0.34, rx2 * 0.92, ry2 * 0.58, 0, 0, Math.PI);
+            ctx.fill();
+            // One hard glint, high and windward.
+            ctx.fillStyle = shade(mec, 46);
+            ctx.beginPath();
+            ctx.arc(px - rx2 * 0.3, py - ry2 * 0.36, rx2 * 0.24, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
         }
       } else {
         // From behind: the folded-wing seam — two soft panels meeting
@@ -9460,31 +9758,60 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.stroke();
       }
       if (st.antennae) {
-        // The feelers: fat, round-capped, curling FORWARD over the
-        // brow — a moth reads the air ahead. Clubbed tips carry a
-        // paler face; the far one narrows with the facing.
+        // THE PLUMES: the great feathered combs of the silk moth —
+        // each antenna a shaft arcing up and FORWARD off its tuft
+        // peak, fringed both sides with comb teeth, longest at the
+        // middle of the sweep. They quiver on their own quick-slow
+        // clock: reading the air is work. The far comb narrows with
+        // the facing.
         ctx.lineCap = 'round';
-        const aSway = Math.sin(f.nowMs * 0.0026) * hw * 0.05;
+        const aCol = st.antennae.color;
+        const quiver = Math.sin(f.nowMs * 0.0026) * hw * 0.05
+          + Math.sin(f.nowMs * 0.013) * hw * 0.012;
         for (const [pi, px, py] of [[0, p1x, p1y], [1, p2x, p2y]] as const) {
           const es = pi === 0 ? 1 : -1;
           const far = (es === 1 ? lead : -lead) !== 1 && t > 0.05;
           const wK = far ? Math.max(0.35, 1 - t * 0.6) : 1;
-          const txx = px + lead * hw * (0.55 + pi * 0.15) * wK + aSway;
-          const tyy = py - hh * (0.55 - pi * 0.1);
-          ctx.strokeStyle = st.antennae.color;
-          ctx.lineWidth = Math.max(1.5, s * 0.026);
+          const bx = px;
+          const by = py + hh * 0.06;
+          const txx = px + lead * hw * (0.85 + pi * 0.12) * wK + quiver;
+          const tyy = py - hh * (0.88 - pi * 0.08);
+          const cpx = px + lead * hw * 0.08 * wK;
+          const cpy = py - hh * 0.66;
+          // Comb teeth first, so the shaft caps their roots: at each
+          // station along the shaft, two teeth flare perpendicular,
+          // longest mid-sweep — the feather read, drawn fat.
+          ctx.strokeStyle = shade(aCol, -10);
+          ctx.lineWidth = Math.max(1, s * 0.013);
+          for (let k = 1; k <= 5; k++) {
+            const u = k / 6;
+            const omu = 1 - u;
+            const sx3 = omu * omu * bx + 2 * omu * u * cpx + u * u * txx;
+            const sy3 = omu * omu * by + 2 * omu * u * cpy + u * u * tyy;
+            // The tangent, for the perpendicular flare.
+            const dx3 = 2 * omu * (cpx - bx) + 2 * u * (txx - cpx);
+            const dy3 = 2 * omu * (cpy - by) + 2 * u * (tyy - cpy);
+            const dl = Math.hypot(dx3, dy3) || 1;
+            const nx3 = -dy3 / dl;
+            const ny3 = dx3 / dl;
+            const len = hh * 0.19 * Math.sin(u * Math.PI) * wK + hh * 0.05;
+            ctx.beginPath();
+            ctx.moveTo(sx3 - nx3 * len, sy3 - ny3 * len);
+            ctx.lineTo(sx3 + nx3 * len * 0.7, sy3 + ny3 * len * 0.7);
+            ctx.stroke();
+          }
+          // The shaft over the teeth, tapering to a fine hook.
+          ctx.strokeStyle = aCol;
+          ctx.lineWidth = Math.max(1.5, s * 0.024);
           ctx.beginPath();
-          ctx.moveTo(px, py + hh * 0.1);
-          ctx.quadraticCurveTo(px + lead * hw * 0.05, py - hh * 0.5, txx, tyy);
+          ctx.moveTo(bx, by);
+          ctx.quadraticCurveTo(cpx, cpy, txx, tyy);
           ctx.stroke();
-          ctx.fillStyle = st.antennae.color;
+          ctx.lineWidth = Math.max(1, s * 0.012);
           ctx.beginPath();
-          ctx.arc(txx, tyy, hw * 0.13 * wK, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = shade(st.antennae.color, 26);
-          ctx.beginPath();
-          ctx.arc(txx - hw * 0.03, tyy - hh * 0.025, hw * 0.05 * wK, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.moveTo(txx, tyy);
+          ctx.quadraticCurveTo(txx + lead * hw * 0.1 * wK, tyy - hh * 0.1, txx + lead * hw * 0.06 * wK, tyy - hh * 0.2);
+          ctx.stroke();
         }
         ctx.lineCap = 'butt';
       }

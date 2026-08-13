@@ -1932,9 +1932,9 @@ function mothwingSet(): EquipmentDef[] {
   });
   return [
     piece('mothwing_cowl', 'Mothwing cowl', 'head', 6, 1, 95, 'Mh',
-      'Curled antennae over the brow. You hear the lamplight now.'),
+      'Feathered plumes and two lamp-bright eyes. The moth looks back first.'),
     piece('mothwing_robe', 'Mothwing robe', 'body', 8, 3, 140, 'Mr',
-      'Broad dust-pale wings across the chest. Drawn to bright things.'),
+      'Great folded wings for a cloak, eye spots wide awake. Drawn to bright things.'),
     piece('mothwing_skirts', 'Mothwing skirts', 'legs', 7, 2, 115, 'Mk',
       'They fold flat and silent, the way wings do at rest.'),
     piece('mothwing_slippers', 'Mothwing slippers', 'boots', 6, 1, 100, 'Mp',
