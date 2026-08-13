@@ -367,6 +367,55 @@ without a hitch a player can feel.
   trail and silhouette; second capital refuses in the same country; fps flat
   while the zone stands up beyond the fog.
 
+### Phase 3 as-built (2026-08-13, commit 7692377 — THE COUNTRY CROWNS ITS SEAT)
+
+Shipped as designed; deviations and laws learned:
+
+- **The seat sits AT the country's voronoi heart** — not merely inside
+  the country: `territoryLatticePoint` (exported; territoryAt
+  refactored onto it, zero behavior change) is the deepest interior a
+  country is guaranteed to have, so no interior-distance search was
+  needed. THE ONE ATLAS LAW bit here in design review: the seat's
+  family MUST come from the POI atlas roster (the sorted-modulo the
+  field indexes), never the layout shelf's — a shelf-derived roster
+  silently renames every country. Kobold countries lawfully keep no
+  capital (no kobold layout on the shelf).
+- **Phase 3 ships the basic muster too** (deviation, deliberate): an
+  empty walled city in the live world would read broken. Knots deal
+  bodies in bands at tier-band levels, the chief is crowned from the
+  name pool (stable forever), the cache re-keys one law UP
+  (`dangerLaw(min(tier+1,5)).chest`) and stays warded while ANY
+  fighter stands. Phase 4 narrows the ward to the last stand and adds
+  chapters, patrols, and optional-ward variance.
+- **The mask is lazy-computed inside poiCtx()** (capitalRects), so a
+  cell can never be decided before its ground's capital is known — no
+  beat-ordering race to reason about. Seats cache forever; the cache
+  clears wherever ringCache does (claim rings are the one live
+  input). Pre-law poi rows inside a materializing capital's walls
+  retire to decided-empty — existing worlds converge.
+- **The Place Herald banner came free**: the capital zone carries the
+  layout's name, and the settlement-discovery machinery ceremonied it
+  with zero new code ("A SETTLEMENT STANDS HERE — Goblin
+  moot-citadel"). Phase 5's named-capital work should build on this
+  door rather than minting another.
+- **Slate law (test fixtures)**: hand-built GameServer slates borrow
+  prototype methods onto bare objects — new fields must be
+  defensively read (`this.capitalCache?.clear()`, capitalRects
+  returns [] without cache/sessions) and the frontier slate grew
+  `capitalRects: () => []`. The alternative (fixing every slate) was
+  21 failures wide.
+- **Live-proven**: four organic capitals seated in one march (gnoll
+  t5, goblin moot t4, two wolfkin greatrings), the moot stood up
+  beyond the fog at 168 tiles on its own beat, and the walk-in found
+  gate sentries, cook-yard knots at level 34, and a pond inside the
+  walls — the relaxed-siting law reading as intended. Headless fps
+  matched the wilderness baseline (software renderer).
+- **Debt noted**: `/stronghold here` inherits the player's lattice
+  cell (one forced capital per country cell); the density survey and
+  World Studio lenses stay Phase 6; satellite/boldness/ember
+  lifecycle stays Phase 5 (a cleared capital currently stays a
+  carcass until reboot re-stands it — the Phase 5 clock owns better).
+
 ## Phase 4 — The Garrison Doctrine (the assault becomes a plan)
 
 Goal: 25-45 bodies that play as ten thoughtful pulls, chapters that
