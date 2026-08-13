@@ -15812,6 +15812,25 @@ export class GameServer {
   }
 
   /**
+   * THE ASSIST PICKS ITS FIGHTS: aim-assisted resolves and homing
+   * volleys only ever choose a body that would trade blows. Companions,
+   * kept animals, and the warded watch are refused at the damage doors
+   * anyway — steering a cast onto them is a wasted shot at best and an
+   * accidental assault deed at worst. Neutral named characters are
+   * people you'd sooner talk to, so the assist leaves them be too
+   * (deliberate aim still reaches every fightable body). The client's
+   * assistMark mirrors this from the wire facts.
+   */
+  private assistMark(npcEid: EntityId): boolean {
+    if (this.pets.has(npcEid) || this.livestock.has(npcEid)) return false;
+    const actor = this.actors.get(npcEid)?.actor;
+    if (actor && (actor.protection === 'invulnerable' || actor.disposition !== 'hostile')) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Targets for a homing volley: every foe in the aim cone, nearest
    * first. The fan hands these out round-robin so three seekers pick
    * three different throats instead of stacking on one.
@@ -15819,6 +15838,7 @@ export class GameServer {
   private homingMarks(pos: { x: number; y: number }, aim: number, range: number): EntityId[] {
     const found: Array<{ eid: EntityId; d: number }> = [];
     for (const [npcEid, npc] of this.npcs) {
+      if (!this.assistMark(npcEid)) continue;
       const npos = this.positions.get(npcEid);
       if (!npos) continue;
       const dx = npos.x - pos.x;
@@ -15847,6 +15867,7 @@ export class GameServer {
     let best: { x: number; y: number } | null = null;
     let bestDist = Infinity;
     for (const [npcEid] of this.npcs) {
+      if (!this.assistMark(npcEid)) continue;
       const npos = this.positions.get(npcEid);
       if (!npos) continue;
       const dx = npos.x - pos.x;

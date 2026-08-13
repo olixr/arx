@@ -1,7 +1,7 @@
 import { procShape } from './render/wornLight.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
-import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo } from '@arx/shared';
-import { BUILDABLES, DYE_PIGMENTS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, itemDef, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
+import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
+import { BUILDABLES, DYE_PIGMENTS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
 import { WORK_RECIPES, WORK_VERBS, workDone, type WorkStation } from '@arx/content';
@@ -2826,6 +2826,29 @@ let padBuildCur: { dx: number; dy: number } | null = null;
 let aimWasActive = false;
 
 /**
+ * THE ASSIST PICKS ITS FIGHTS: pad aim-assist and the held ring's
+ * resting mark only ever pull toward a body that would trade blows.
+ * Companions, kept animals, friendly souls, the warded watch, and
+ * neutral named characters you'd sooner talk to are all left alone —
+ * the stick should never drag your aim onto your own pet or a guard.
+ * Mirrors the server's assistMark from the same facts, so the ghost
+ * ring and the resolved cast keep telling the same story.
+ */
+function assistMark(remote: { meta: EntityMeta; buffer: { latest(): { hpPct: number } | null | undefined } }): boolean {
+  const meta = remote.meta;
+  if (meta.kind !== EntityKind.Npc) return false;
+  if (meta.friendly || meta.stock || meta.ownerEid !== undefined) return false;
+  if (meta.actor) {
+    const actor = npcActor(meta.actor);
+    if (actor && (actor.protection === 'invulnerable' || actor.disposition !== 'hostile')) {
+      return false;
+    }
+  }
+  const latest = remote.buffer.latest();
+  return !(latest != null && latest.hpPct === 0);
+}
+
+/**
  * The held ring's honest resting mark: the nearest live NPC inside the
  * art's reach within the server's own resolve cone. This mirrors
  * resolveGroundTarget exactly, so an un-steered ring shows where a
@@ -2839,7 +2862,7 @@ function nearestNpcPoint(
   let best: { x: number; y: number } | null = null;
   let bestD = Infinity;
   for (const remote of game.entities.values()) {
-    if (remote.meta.kind !== EntityKind.Npc) continue;
+    if (!assistMark(remote)) continue;
     const latest = remote.buffer.latest();
     const x = latest?.x ?? remote.meta.x;
     const y = latest?.y ?? remote.meta.y;
@@ -2871,7 +2894,7 @@ function nearestNpcAim(): number | null {
   let best: number | null = null;
   let bestD = 6 * 6;
   for (const remote of game.entities.values()) {
-    if (remote.meta.kind !== EntityKind.Npc) continue;
+    if (!assistMark(remote)) continue;
     const latest = remote.buffer.latest();
     const x = latest?.x ?? remote.meta.x;
     const y = latest?.y ?? remote.meta.y;
