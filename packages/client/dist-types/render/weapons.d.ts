@@ -12,10 +12,10 @@
  * - geometry lives in the held-item frame: +x runs hand → tip, the
  *   bright edge faces −y (the sun law), grip behind the fist at −x.
  */
-export type BladeKind = 'arming' | 'falchion' | 'gladius' | 'scimitar' | 'saber' | 'rapier' | 'cutlass' | 'cleaver' | 'runeblade' | 'cloven' | 'crystal' | 'flared' | 'dirk' | 'stiletto' | 'kris' | 'karambit' | 'tanto' | 'shivkind' | 'talon' | 'leafblade';
-export type GuardKind = 'cross' | 'swept' | 'shell' | 'disc' | 'fang' | 'thorn' | 'crown' | 'wing' | 'bolt' | 'coil' | 'stub' | 'none';
-export type PommelKind = 'round' | 'gem' | 'fang' | 'ring' | 'crescent' | 'star' | 'crown' | 'none';
-export type BladeFx = 'ember' | 'frost' | 'void' | 'storm' | 'blood' | 'sun' | 'star' | 'tendril' | 'drift' | 'gleam' | 'ripple' | 'drip' | 'arc' | 'slither' | 'sunflare' | 'frostbloom' | 'petalfall' | 'orbit' | 'gravemist';
+export type BladeKind = 'arming' | 'falchion' | 'gladius' | 'scimitar' | 'saber' | 'rapier' | 'cutlass' | 'cleaver' | 'runeblade' | 'cloven' | 'crystal' | 'flared' | 'pierced' | 'monolith' | 'flamberge' | 'riven' | 'dirk' | 'stiletto' | 'kris' | 'karambit' | 'tanto' | 'shivkind' | 'talon' | 'leafblade' | 'keyblade' | 'lunate';
+export type GuardKind = 'cross' | 'swept' | 'shell' | 'disc' | 'fang' | 'thorn' | 'crown' | 'wing' | 'bolt' | 'coil' | 'stub' | 'cage' | 'lace' | 'halo' | 'horseshoe' | 'hourglass' | 'none';
+export type PommelKind = 'round' | 'gem' | 'fang' | 'ring' | 'crescent' | 'star' | 'crown' | 'vane' | 'plumb' | 'spool' | 'none';
+export type BladeFx = 'ember' | 'frost' | 'void' | 'storm' | 'blood' | 'sun' | 'star' | 'tendril' | 'drift' | 'gleam' | 'ripple' | 'drip' | 'arc' | 'slither' | 'sunflare' | 'frostbloom' | 'petalfall' | 'orbit' | 'gravemist' | 'lantern' | 'bubbles' | 'phase' | 'weld' | 'borealis' | 'flutter' | 'undertow' | 'vesper' | 'lodestone' | 'thread' | 'eclipse' | 'sand';
 export interface SwordStyle {
     blade: BladeKind;
     /** Blade steel. Edge defaults to shade(+34), fuller to shade(−24). */
@@ -124,16 +124,36 @@ export declare const BOW_STYLES: Record<string, BowStyle>;
  */
 export declare function bowStyle(itemId: string | undefined, color?: string): BowStyle | null;
 /**
+ * THE BOW GRIP APEX (units of s): where the wooden belly crosses the
+ * midline — the point the fist holds. It is a CONSTRUCTED truth, not a
+ * tuning: the limb quadratic's control keeps the belly at exactly this
+ * x for every bow kind (ctrlX = 2·BOW_GRIP_X·s − tipX), the grip wrap
+ * paints here, and rig.ts's rest-carry translate slides the painter by
+ * the same constant so the fist always lands on wood. One name, three
+ * consumers — the duplicated-0.18 drift the arms-v3 audit closed.
+ */
+export declare const BOW_GRIP_X = 0.18;
+/**
  * Paint a bow in the held-item frame (origin at the fist, +x toward the
  * target). `pull` is the string haul-back in px; `loose` the release
- * progress. Limbs flex with the pull; the belly passes x ≈ 0.18 s at
- * midline by construction (ctrlX = 0.36 s − tipX), so the rest-carry
- * grip translate keeps holding wood for every kind.
+ * progress. Limbs flex with the pull; the belly passes x = BOW_GRIP_X·s
+ * at midline by construction, so the rest-carry grip translate keeps
+ * holding wood for every kind.
  */
 export declare function drawBow(ctx: CanvasRenderingContext2D, st: BowStyle, s: number, nowMs: number, hurt?: boolean, pull?: number, loose?: number): void;
 export type StaffShaft = 'straight' | 'gnarled' | 'twisted' | 'bone' | 'iron' | 'obsidian' | 'fluted';
-export type StaffCrown = 'fork' | 'orb' | 'crook' | 'crescent' | 'skull' | 'twinprong' | 'sundisc' | 'coil' | 'thorns' | 'lantern' | 'shard' | 'ring' | 'knot' | 'branch' | 'wisp' | 'canopy' | 'winghalo' | 'phases' | 'cyclone' | 'plume' | 'eclipse' | 'chalice' | 'gyre' | 'comet' | 'crownring';
-export type StaffFx = 'embers' | 'frost' | 'sparks' | 'motes' | 'leaves' | 'drip' | 'rays' | 'stars' | 'runes' | 'aurora' | 'petals' | 'glory' | 'moonveil' | 'gust' | 'flutter' | 'infall' | 'tithe' | 'glyphs' | 'stardust' | 'crownarcs';
+export type StaffCrown = 'fork' | 'orb' | 'crook' | 'crescent' | 'skull' | 'twinprong' | 'sundisc' | 'coil' | 'thorns' | 'lantern' | 'shard' | 'ring' | 'knot' | 'branch' | 'wisp' | 'canopy' | 'winghalo' | 'phases' | 'cyclone' | 'plume' | 'eclipse' | 'chalice' | 'gyre' | 'comet' | 'crownring' | 'wishbone' | 'skep' | 'lure' | 'bell' | 'gather' | 'toadstool' | 'armillary' | 'jar' | 'escapewheel' | 'sheaf' | 'mirror' | 'emberbloom' | 'choirpipes' | 'breaker' | 'ringstones';
+export type StaffFx = 'embers' | 'frost' | 'sparks' | 'motes' | 'leaves' | 'drip' | 'rays' | 'stars' | 'runes' | 'aurora' | 'petals' | 'glory' | 'moonveil' | 'gust' | 'flutter' | 'infall' | 'tithe' | 'glyphs' | 'stardust' | 'crownarcs' | 'dewfall' | 'bees' | 'plankton' | 'toll' | 'spores' | 'bearings' | 'tickspark' | 'chaff' | 'reflections' | 'hymn' | 'spray' | 'arrival';
+/**
+ * THE WAIST — the masterworks' fourth statement, between what the
+ * world gave and what the maker crowned it with: a mid-shaft station
+ * that carries the SECONDARY story (the trade's tool, the binding,
+ * the gauge). One owner each, exactly like the crowns. It sits at
+ * 66% of the stick (grip-relative, so every carriage keeps it on the
+ * wood and out of the fist), seats OVER the shaft, and stays inside
+ * the shaft's ±0.09 s furniture band so the crown keeps the skyline.
+ */
+export type StaffMid = 'springknot' | 'honeyband' | 'floatline' | 'tollbeads' | 'gatherrings' | 'mycelia' | 'graticule' | 'coilwrap' | 'gearworks' | 'strawbind' | 'ribbonfall' | 'charline' | 'soundholes' | 'barometer' | 'wakeveins';
 export interface StaffStyle {
     shaft: StaffShaft;
     /** Shaft body color. Edge light defaults to shade(+28). */
@@ -141,6 +161,10 @@ export interface StaffStyle {
     edge?: string;
     /** Fittings: wire wraps, collars, crown metal. */
     metal?: string;
+    /** The waist station — the masterworks' secondary story. */
+    mid?: StaffMid;
+    /** Waist structure color (defaults to metal). */
+    midColor?: string;
     crown: StaffCrown;
     /** Crown structure color (defaults to metal). */
     crownColor?: string;
@@ -251,4 +275,6 @@ export declare function greatStyle(itemId: string | undefined, color?: string): 
  * whole argument that this weapon owns both hands.
  */
 export declare function drawGreatweapon(ctx: CanvasRenderingContext2D, st: GreatStyle, s: number, nowMs: number, hurt?: boolean, grip?: number): void;
+export type WieldKind = 'great' | 'staff' | 'bow' | 'blade' | 'none';
+export declare function wieldClass(itemId: string | undefined): WieldKind;
 //# sourceMappingURL=weapons.d.ts.map

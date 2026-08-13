@@ -16,14 +16,39 @@
  * offsets in units of the rig scale `s` with x pre-squash.
  */
 /**
- * THE GROUND LAW's foreshortening factor (the shield plane's own
- * GROUND_K): one unit of world-forward travel shows as ~0.52 units of
- * screen-vertical. Everything in this file that turns world direction
- * into screen direction runs through it, so a north-south carry reads
- * with the same honesty as an east-west one — smaller on screen
- * because it is foreshortened, never because it was suppressed.
+ * THE GROUND LAW's foreshortening factor: one unit of world-forward
+ * travel shows as ~0.52 units of screen-vertical. Everything in this
+ * file that turns world direction into screen direction runs through
+ * it, so a north-south carry reads with the same honesty as an
+ * east-west one — smaller on screen because it is foreshortened, never
+ * because it was suppressed. THE ONE GROUND (arms-v3 Phase 1): this is
+ * the single definition — shields.ts imports it for the plane
+ * projection, so the shield and the carries can never drift apart.
+ * (projectStrike below still runs its own softer K = 0.7; unifying the
+ * strike plane onto this constant is Phase 3's HONEST DEPTH work.)
  */
 export declare const WIELD_GROUND_K = 0.52;
+/** THE FACING-WEIGHT LAW's floor: front-on there is no screen-forward
+ *  for a rake to point, so the weight never quite reaches zero — grip
+ *  identity is carried by the edge flip and the lean sign there. A
+ *  bigger floor splayed blades at the camera (the 0.35 verdict). */
+export declare const SIDE_FLOOR = 0.2;
+/** The weight's profile slope: full rake belongs to the silhouette. */
+export declare const SIDE_SLOPE = 0.8;
+export interface FacingFrame {
+    /** World heading, radians (the projection functions' yaw). */
+    dir: number;
+    fx: number;
+    fy: number;
+    /** The rig's honest facing weight: |fx| (NOT the face painters'
+     *  boosted read — that is faceProfileK in rig.ts). */
+    profileK: number;
+    /** THE SMOOTHED REST SIDE — eased, dwelled sign (easeRestSide). */
+    sideS: number;
+    /** THE FACING WEIGHT — sideS · (floor + slope·profileK). */
+    sideW: number;
+}
+export declare function facingFrame(dir: number, sideS: number): FacingFrame;
 /**
  * THE GAIT LADDER: idle → walk → run as one continuous clock.
  * `moveK` = is the body travelling at all (min(1, poleStrength));
@@ -53,12 +78,49 @@ export declare function projectCarry(yaw: number, pitch: number): CarryProjectio
 /**
  * The strike-plane projection: a cut sweeps the GROUND plane around
  * the body, so a blade mid-sweep foreshortens as it points into (or
- * out of) the screen. Softened against the pure ground factor — the
- * held extension of a killing blow keeps enough length to read as a
- * blow — with the same law shape: full length across the screen,
- * honestly shorter along the depth axis.
+ * out of) the screen. ONE GROUND (arms-v3 Phase 3): this used to run
+ * its own K = 0.7 — a second, flatter world living inside the first;
+ * the audit's "three depth laws" finding. It now projects through
+ * WIELD_GROUND_K like everything else; its FLOOR stays the strike
+ * verdict.
  */
 export declare function projectStrike(yaw: number): CarryProjection;
+/**
+ * THE AIM IS A GROUND VECTOR (arms-v3 Phase 3): a radial reach down
+ * the aim — a thrust, an icepick mark, a cast punch, a drawn arrow —
+ * lives on the ground plane, so its screen direction is the
+ * PROJECTED heading and its unit vector carries the ground K on the
+ * depth axis. `ax, ay` are the unit screen direction of the aim; a
+ * reach of r lands at (ax·r, ay·r) — an ellipse, not the flat card's
+ * circle. The old un-projected reaches were why a south-facing archer
+ * aimed the arrow at their own feet and a north thrust punched at
+ * the sky.
+ */
+export interface AimProjection extends CarryProjection {
+    /** RAW projected components: a world reach r lands at (px·r, py·r)
+     *  — the ellipse itself. |(px,py)| shrinks toward the camera lines;
+     *  normalizing them would silently rebuild the flat card's circle. */
+    px: number;
+    py: number;
+    /** UNIT screen direction of the aim — for directions (a string
+     *  haul, a recoil), never for reach distances. */
+    ux: number;
+    uy: number;
+}
+export declare function projectAim(yaw: number): AimProjection;
+/**
+ * THE LIFELINE (arms-v3 Phase 3): at the camera-line facings a long
+ * carry's projection collapses toward a screen vertical — the lab's
+ * verdict rows: a staff sprint south read as a stick with the crown
+ * in the dirt, a leveled sword as a plumb line. The perceptual floor:
+ * the authored yaw biases toward the EASED side exactly where the
+ * heading runs down the camera line, so the projected carry keeps a
+ * readable diagonal. Riding sideS keeps it continuous through every
+ * turn and mirror-true; smooth(1 − profileK) keeps profile facings
+ * EXACT (zero bias where the user-approved angles reproduce).
+ */
+export declare const LIFELINE_BIAS = 0.48;
+export declare function lifelineYaw(f: FacingFrame): number;
 export interface PumpFrame {
     /** Main-hand offset, units of s (off hand mirrors both channels). */
     dx: number;
@@ -82,6 +144,20 @@ export interface PumpFrame {
  * channel the rig owns: it rides |sw|, not sw, and mixing it in here
  * would let the shared bob cancel the alternating throw.
  */
+/**
+ * THE VISIBLE BREATH (arms-v3 Phase 5): on a camera-line gait the
+ * pump's fore/aft throw projects to almost nothing — the S-facing
+ * "statue run" verdict cells: both fists frozen at the hips while the
+ * legs sprint. The beat re-expresses through the one channel that
+ * SURVIVES the projection: the vertical remnant amplifies by this
+ * gain exactly as the lateral read dies — sized so the deepest
+ * throw of a bare sprint stays inside the arm's reach budget (0.85
+ * overstretched the stride bottom; the elbow regression test caught
+ * it) ((1 − |px|): zero at profile,
+ * full at the camera lines). Same energy, different axis — never a
+ * fake side-to-side arm swing.
+ */
+export declare const BREATH_K = 0.5;
 export declare function armPump(px: number, py: number, sw: number, amp: number, armedK: number): PumpFrame;
 /**
  * THE RUNNER'S ELBOW: a free hand does not dangle at a sprint — the
@@ -100,6 +176,14 @@ export declare function armPump(px: number, py: number, sw: number, amp: number,
  * go. Half the lift at the camera-line facings, full in profile,
  * linear so the height breathes through every diagonal.
  */
+/**
+ * THE VISIBLE BREATH's second voice (arms-v3 Phase 5): free fists on
+ * a camera-line gait ALTERNATE their runner's lift with the stride —
+ * one fist rides toward the ribs as the other drops — the pumping
+ * read every running reference draws, re-expressed on the axis the
+ * camera can see. Zero at profile (the fore/aft pump owns that read).
+ */
+export declare const LIFT_ALT_K = 0.55;
 export declare function runnerLift(moveK: number, runK: number, profileK: number): number;
 /**
  * THE TRAILING-ELBOW POLE: the screen-X of a settled arm's anatomical
@@ -131,6 +215,23 @@ export declare function runnerLift(moveK: number, runK: number, profileK: number
  * settled vote is committed every frame and a wrong side heals in one.
  */
 export declare function settleElbowPole(side: number, poleX: number, trailB: number): number;
+export interface BandMemory {
+    bands?: Record<string, boolean>;
+}
+export declare function bandFlag(mem: BandMemory | undefined, key: string, v: number, on: number, off: number): boolean;
+/**
+ * THE SILHOUETTE PEEK's away band (arms-v3 Phase 4): 0 on the whole
+ * camera-facing half and at the profile facings, rising smoothly
+ * through the away diagonals — the band where held gear used to
+ * vanish completely behind the torso (the invisible-kiteshield
+ * verdict). Peek lanes scale by this so a loadout stays readable at
+ * every one of the eight headings.
+ */
+export declare function awayPeekK(fy: number): number;
+/** How far the hang lanes widen at the away band (fraction of hangW). */
+export declare const PEEK_HANG_K = 0.16;
+/** The bow's own outboard peek at the away band (units of s). */
+export declare const BOW_PEEK_S = 0.1;
 /** Caller-owned smoothed rest-side state (lives on the rig's depth memory). */
 export interface RestSideMemory {
     side?: number;
@@ -163,6 +264,13 @@ export interface StaffWield {
     /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
     dx: number;
     dy: number;
+    /** UN-squashed forward lean of the fist along the facing, units of
+     *  s — the carry sits a breath ahead of the hang lane. This used to
+     *  be a bare `fx·0.05·s` nudge at the rig's assembly site (the
+     *  frame-is-the-only-writer violation the audit caught); the frame
+     *  owns it now. Kept separate from dx because dx rides wScale and
+     *  this deliberately does not. */
+    fwd: number;
     /** Staff angle, fist→crown, screen radians (projected). */
     angle: number;
     /** Foreshortened length for the painter. */
@@ -172,6 +280,13 @@ export interface StaffWield {
     /** How much the planted hand sits out the arm pump (0 planted…1 free). */
     pumpK: number;
 }
+/** The staff carry's forward lean (see StaffWield.fwd), units of s. */
+export declare const STAFF_FWD_LEAN_S = 0.05;
+/** The great shoulder carry's forward lean, units of s. */
+export declare const GREAT_FWD_LEAN_S = 0.04;
+/** THE CROWN NEVER DIGS: extra above-level pitch the staff's run
+ *  carry takes as the heading turns toward the camera (radians). */
+export declare const STAFF_CROWN_GUARD = 0.34;
 /**
  * THE STAFF LADDER, second edition — one hand on the move.
  *
@@ -188,7 +303,7 @@ export interface StaffWield {
  * The run carry rides the projection law: sprinting north the staff
  * points up-screen and draws SHORT — the length change is the depth.
  */
-export declare function staffWield(dir: number, sideS: number, moveK: number, runK: number, sw: number, px: number): StaffWield;
+export declare function staffWield(f: FacingFrame, moveK: number, runK: number, sw: number, px: number): StaffWield;
 /**
  * THE QUARTERSTAFF GUARD — combat's two hands. Out of rest the staff
  * is gripped low (grip 0.34, business end forward) and the off hand
@@ -225,6 +340,8 @@ export interface GreatWield {
     /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
     dx: number;
     dy: number;
+    /** UN-squashed forward lean along the facing (StaffWield.fwd's law). */
+    fwd: number;
     /** Weapon angle, fist→tip, screen radians (projected). */
     angle: number;
     /** Foreshortened length for the painter. */
@@ -262,13 +379,16 @@ export interface GreatWield {
  * points up at every facing (nothing to clip the ground) and the
  * screen's vertical component never crosses zero (nothing to whip).
  */
-export declare function greatWield(dir: number, sideS: number, moveK: number, runK: number, sw: number, px: number): GreatWield;
+export declare function greatWield(f: FacingFrame, moveK: number, runK: number, sw: number, px: number): GreatWield;
 /**
  * THE HIGH GUARD — combat's carry. Both fists on the long grip, blade
  * up-forward at the ready diagonal; the main hand rides at the cross,
  * the off hand takes the pommel end BEHIND it (the true two-hand
  * hold — opposite the staff, which chokes the off hand up FRONT).
- * Returned as the guard's world pitch for the rig to project.
+ * The guard's world pitch: THE MOUNTAIN FALLS hauls the blade up FROM
+ * this pitch and returns it here at the recover (greatFinisherPath
+ * consumes it — the three re-literalled copies the arms-v3 audit
+ * caught are gone).
  */
 export declare const GREAT_GUARD_PITCH: number;
 /** Off-fist seat: this far BEHIND the main fist along the grip. */
@@ -328,7 +448,11 @@ export declare function greatFinisherLean(t: number): number;
  * north-south run the limbs compress toward the camera line, half
  * the depth read of the blades, because a bow is a plane, not a rod.
  */
-export declare function bowWield(dir: number, sideW: number, moveK: number, runK: number): {
+/** THE PLANE'S HALF-MEASURE: a bow is a plane, not a rod — its limbs
+ *  compress at half a rod's depth read (a full rod compression turned
+ *  the silhouette into a stick; the half keeps the triangle). */
+export declare const BOW_PLANE_SOFT = 0.5;
+export declare function bowWield(f: FacingFrame, moveK: number, runK: number): {
     dx: number;
     dy: number;
     angle: number;

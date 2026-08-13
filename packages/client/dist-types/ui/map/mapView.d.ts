@@ -21,6 +21,19 @@ export declare class MapView {
     parchment: boolean;
     /** Overlay mode: quieter marks, no hover, town labels only. */
     overlay: boolean;
+    /**
+     * THE SEARCH RING — an errand's charted neighborhood: a soft
+     * generalized area in world tiles, or null. Pure presentation, set
+     * by the journal and the errand card; `quest` ties it to the ledger
+     * so a finished errand takes its ring with it.
+     */
+    searchRing: {
+        x: number;
+        y: number;
+        r: number;
+        label: string;
+        quest: string;
+    } | null;
     private blocks;
     private dangerBlocks;
     private dangerRev;

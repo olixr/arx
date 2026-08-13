@@ -92,6 +92,12 @@ export interface RigPose {
         offElbow?: {
             sign: number;
         };
+        /**
+         * THE FLIP EARNS ITS HYSTERESIS (arms-v3 Phase 4): per-flag layer
+         * band states — every paint-order decision holds its last verdict
+         * through the dead zone between its enter/exit thresholds.
+         */
+        bands?: Record<string, boolean>;
     };
     bodyColor: string;
     hurt: boolean;
@@ -218,6 +224,36 @@ export declare const FORAGE_CYCLE_MS = 1050;
 export declare const MILK_CYCLE_MS = 640;
 /** Duration of one furnace stoking push, ms. */
 export declare const FURNACE_CYCLE_MS = 1700;
+/** The arm ring's height below the hip line (armY = hipY − this·s). */
+export declare const ARM_RING_DROP_S = 0.26;
+/** A relaxed fist's hang below the arm ring (main hand + bare hands). */
+export declare const REST_HANG_DROP_S = 0.17;
+/** The off blade's hang below the arm ring — a touch higher than the
+ *  main: the trailing blade of a paired stance, never a mirror image. */
+export declare const OFF_BLADE_HANG_DROP_S = 0.15;
+/** Shoulder half-width (the torso trapezoid's top, before dialects). */
+export declare const SHOULDER_HALF_S = 0.185;
+/** Waist half-width (the trapezoid's bottom — the hang-width lane). */
+export declare const WAIST_HALF_S = 0.125;
+/** A settled shoulder's anatomical anchor along the shoulder bar. */
+export declare const SHOULDER_SETTLE_K = 0.85;
+/** The hang-width lane's flare off the waist line (hangW's ww term). */
+export declare const HANG_WAIST_K = 1.08;
+/** shoulderY sits this far below the shoulder line's top (units of s). */
+export declare const SHOULDER_Y_DROP_S = 0.06;
+/** Hip line → shoulder line rise before the crouch/squash factors. */
+export declare const TORSO_RISE_S = 0.46;
+/**
+ * THE TWO PROFILE READS (arms-v3 Phase 1: named, single-sourced).
+ * The RIG's facing weight is the honest cosine — `profileK = |fx|` —
+ * and every arm/carry/depth law rides that. The FACE painters use this
+ * snugger read instead: |fx| boosted 15% and clamped, so the head
+ * commits to its profile band a beat before the body does (eyes and
+ * muzzles read wrong mid-turn if the face lags the turn). Thirteen
+ * mob-head painters each re-derived this inline before it was named —
+ * one drifted constant away from thirteen different face laws.
+ */
+export declare function faceProfileK(fx: number): number;
 /**
  * One two-segment arm: shoulder → elbow (sleeve) → forearm (skin) →
  * hand, solved by the same two-bone IK as the legs. The preference

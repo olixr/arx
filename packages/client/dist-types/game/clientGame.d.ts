@@ -147,7 +147,7 @@ export interface Floaty {
     sizeMul?: number;
 }
 export interface ChatLine {
-    channel: 'local' | 'system';
+    channel: 'local' | 'system' | 'xp';
     from?: string;
     text: string;
 }
@@ -268,6 +268,7 @@ export interface GameEvents {
             idx: number;
             kind: 'accept' | 'turnin';
         }>;
+        shopChoices?: number[];
         voice?: {
             url: string;
             durMs: number;
@@ -517,8 +518,40 @@ export declare class ClientGame {
      * breaks and every bolt draws twice — tracer plus real entity.
      */
     private staffReadySeq;
-    private boltStageLocal;
-    private boltGraceUntilSeq;
+    /**
+     * THE ONE RHYTHM ENGINE's client mirror (seq units, not ticks): the
+     * predicted staff string advances through the same ComboTrack law the
+     * server swings by — including THE STRING BELONGS TO THE WEAPON (a
+     * staff swap resets the mirrored stage exactly as the server resets).
+     */
+    private readonly comboLocal;
+    /**
+     * THE SPOKEN BEAT, as last spoken by the server: the stage the last
+     * basic played at, the string's length, and when the string dies
+     * (local clock, ms). Phase 2's beat UI reads this; until then it is
+     * the honest record.
+     */
+    ownCombo: {
+        stage: number;
+        len: number;
+        run: number;
+        bornMs: number;
+        graceUntilMs: number;
+    } | null;
+    /**
+     * THE PREDICTED BLOW: the melee swing mirror. On the press edge the
+     * mirror advances the SAME ComboTrack the staff mirror rides and
+     * feeds the predicted pose value to the renderer early — the anim
+     * clock keys on pose CHANGE, and the server's confirming byte
+     * carries the same value, so the choreography starts at the press
+     * and never double-plays. A mispredicted swing simply expires
+     * (cosmetic only — damage was never client-side).
+     */
+    private ownSwing;
+    private meleeReadySeq;
+    private meleeBufferedUntilSeq;
+    private staffBufferedUntilSeq;
+    private prevLocalButtons;
     /** Local mirror of the cast commitment window (holds basics back). */
     private castFreezeUntilSeq;
     /** NPC deaths this frame — drives the ragdoll + stuck-arrow scatter. */
@@ -659,6 +692,13 @@ export declare class ClientGame {
     ownDirServer: number;
     /** Dodge FX hook (the predictor's onDodge is owned internally). */
     onDodgeFx: ((x: number, y: number, mx: number, my: number) => void) | null;
+    /**
+     * THE GUARD SWEEP's client eye: injected by main (which owns the
+     * entity scan) — true when a living foe stands within `range` tiles.
+     * The staff mirror uses it to hold its bolt tracer when the server
+     * will strike with the pole instead.
+     */
+    foeWithin: ((range: number) => boolean) | null;
     /** Fires the instant the local player releases a valid draw. */
     onLoose: ((charge: number, aim: number) => void) | null;
     /** performance.now() when the local bow draw began; 0 = not drawing. */
@@ -675,6 +715,11 @@ export declare class ClientGame {
     private reconnectDelay;
     private stopped;
     constructor(input: InputManager, events: GameEvents);
+    /**
+     * THE OVERCHARGE: true once the held draw has pulled past full into
+     * the volley band — the HUD's second click and the release's fan.
+     */
+    get ownOvercharged(): boolean;
     /** 0..1 charge of the local player's in-progress bow draw. */
     get ownDrawT(): number;
     private equippedWeaponDef;
@@ -734,6 +779,21 @@ export declare class ClientGame {
      * matches an entity and fades.
      */
     private trackOwnStaff;
+    /**
+     * THE PREDICTED BLOW: mirror the server's melee door on the press
+     * edge — same ComboTrack, same buffer law, same recovery clocks, in
+     * seq units. The mirror only gates on what it can see (sheathed
+     * status, own cast, the channel rail); a rare misprediction plays a
+     * cosmetic swing that expires, exactly the staff-tracer philosophy.
+     */
+    private trackOwnMelee;
+    /**
+     * The own body's pose as the renderer and the sound chain should see
+     * it: the predicted swing wins while it lives, the server's byte
+     * otherwise. Pose-change clocks downstream never double-fire because
+     * the confirmed value equals the predicted one.
+     */
+    effectiveOwnPose(now: number): number;
     /** Spawn a predicted tracer at the body, capped to a small roster. */
     private predictShot;
     /**
@@ -795,6 +855,10 @@ export declare class ClientGame {
      * (wall painters read the detail live; ground details are baked).
      */
     private handleDetailPatch;
+    /** Bump ONE chunk's rev — for mutations that never route through
+     *  setGround/setDetail (farm care state lives in a side table) but
+     *  still change that chunk's own paint. */
+    private touchChunk;
     /** Bump neighboring chunks' revs so organic borders re-bake. */
     private touchNeighbors;
     /**
@@ -962,7 +1026,7 @@ export declare class ClientGame {
         dist: number;
         meta: EntityMeta;
     }>;
-    invMove(from: number, to: number): void;
+    invMove(from: number, to: number, merge?: boolean): void;
     /** Drop a pack slot onto the ground where you stand. */
     dropSend(slot: number, qty: number): void;
     /** Turn the dungeon key in this pack slot — only heard at a riftgate. */

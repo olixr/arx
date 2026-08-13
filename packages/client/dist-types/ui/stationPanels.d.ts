@@ -52,7 +52,7 @@ export declare class StationPanels {
     private bankTab;
     /** The reader's place in each paged ledger, kept across re-renders. */
     private leafAt;
-    /** How the vault wall is ordered. */
+    /** How the vault wall is ordered — remembered across visits. */
     private bankSort;
     /** How the Workshop ledger is ordered. */
     private craftSort;
@@ -234,7 +234,23 @@ export declare class StationPanels {
     openCraft(station: StationType | null, skills: SkillXp, known: ReadonlySet<string>, at?: {
         tx: number;
         ty: number;
-    }): void;
+    }, 
+    /** Re-seat a remembered recipe (THE BENCH CALLS YOU BACK). */
+    sel?: string | null): void;
+    /**
+     * The bench the open craft screen speaks for — station, chosen
+     * recipe, anchor tile. THE BENCH CALLS YOU BACK reads this the
+     * moment a batch starts (before closeAll wipes it), so a finished
+     * batch can reopen the same bench on the same recipe.
+     */
+    get craftBench(): {
+        station: StationType | null;
+        sel: string | null;
+        at: {
+            tx: number;
+            ty: number;
+        } | null;
+    } | null;
     /** How many of a recipe the pack can cover right now. */
     private makeable;
     /**

@@ -28,7 +28,16 @@ export interface BodyStyle {
     metal?: string;
     cls: ArmorClassStyle;
     silhouette: 'tunic' | 'robe' | 'jerkin' | 'cuirass' | 'brigandine';
-    pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur' | 'feathered' | 'orbs' | 'shards' | 'wyrmwing';
+    /** The high-wardrobe kinds each have ONE owner set: `axeblade` the
+     *  jadeskull crescents, `boneridge` the fellbone slab fan,
+     *  `thorncrest` the rimethorn hooks (palethorn is its pale quench),
+     *  `lionhead` the kingsmane sculpted lions, `sunfan` the sunhallow
+     *  gilt ray petals, `veilwing` the gloamsight swept wing plates,
+     *  `stormspire` the stormsinger storm-glass crystals, `charbrand`
+     *  the flamewrought ember-seamed char slabs, `wardcrest` the
+     *  duskwarden brass crescent with its watch stone, `aethercrest`
+     *  the aetherion floating silver arcs. */
+    pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur' | 'feathered' | 'orbs' | 'shards' | 'wyrmwing' | 'axeblade' | 'boneridge' | 'thorncrest' | 'lionhead' | 'sunfan' | 'veilwing' | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest';
     pauldronColor?: string;
     /** Bright edge accent on the pauldron rim / blade edge. */
     pauldronTrim?: string;
@@ -42,7 +51,7 @@ export interface BodyStyle {
     fringe?: boolean;
     /** Big mismatched cloth patches with stitch ticks — the homespun read. */
     patches?: string;
-    emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye' | 'moth' | 'coin' | 'bullhead' | 'flame' | 'orrery' | 'crown';
+    emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye' | 'moth' | 'coin' | 'bullhead' | 'flame' | 'orrery' | 'crown' | 'lion';
     /** Glowing rune dashes riding the hem trim — the enchanted-cloth read. */
     runes?: string;
     /** A waist sash: band, hip knot, two swinging tails. */
@@ -58,6 +67,8 @@ export interface BodyStyle {
     sleeve?: string;
     /** Neck treatment: plate gorget ring or a fur ruff. */
     collar?: 'gorget' | 'fur';
+    /** Fur-ruff pelt color. Default shade(trim, 34) — the old law. */
+    collarColor?: string;
     /** A belt pouch on the hip — the adventurer's secondary read. */
     pouch?: boolean;
     /** A diagonal shoulder-to-hip cord with bone toggles — the trapper. */
@@ -283,6 +294,103 @@ export interface BodyStyle {
     gleam?: {
         color: string;
     };
+    /**
+     * The chest device wakes: two lights kindle in the emblem skull's
+     * eye sockets, hold their look, and gutter out on their own slow
+     * blink — the device is not entirely a decoration. Rides the skull
+     * emblem's own geometry; the jadeskull word.
+     */
+    skullgaze?: {
+        color: string;
+    };
+    /**
+     * Watch-fire rosettes: silver petal bosses set at the harness
+     * points, each with a gem heart. The hearts keep a rotation — one
+     * flares awake at a time, the way watch fires answer each other
+     * down a border wall. The redmarch word.
+     */
+    rosettes?: {
+        color: string;
+        metal: string;
+    };
+    /**
+     * Cold fire off the shoulder thorns: pale flame tongues that lick
+     * up from behind the pauldrons on their own gutter, re-shaping
+     * every beat, giving no heat. Consumed by drawPauldron so the fire
+     * rides ABOVE the caps. The thorn twins' word (rimethorn burns
+     * pale blue, palethorn burns bone gold).
+     */
+    coldfire?: {
+        color: string;
+    };
+    /**
+     * Marrow-light between the shoulder bones: two small cold flames
+     * guttering in the gaps of the boneridge fan, and one drifting
+     * mote that never strays far. Consumed by drawPauldron so the
+     * light sits IN the bone, not on the chest. The fellbone word.
+     */
+    hollowlight?: {
+        color: string;
+    };
+    /**
+     * THE CROWN RING: a broad gilt ring floating about the torso,
+     * turning slowly on its own axis — from the front two arcs stand
+     * off the flanks, from behind the whole circle shows. One glint
+     * walks the rim; nothing holds it up. The kingsmane word, and the
+     * wardrobe's one floating regalia.
+     */
+    crownring?: {
+        color: string;
+    };
+    /**
+     * Three charged orbs orbiting the WHOLE torso on the crown ring's
+     * depth law — near side big and lit, far side small and dim, and
+     * hidden where the body stands between it and you. Each orb snaps
+     * a static spark on its own beat. The stormsinger word.
+     */
+    stormorbs?: {
+        color: string;
+    };
+    /**
+     * Sigils surfacing through the skirt cloth — one rises, holds its
+     * look, and sinks back into the weave while the next wakes. The
+     * garment is reading; so is whoever faces it. The gloamsight word.
+     */
+    sigilweave?: {
+        color: string;
+    };
+    /**
+     * Hanging inscribed strips off the shoulders and hem, swaying on
+     * the stride, their runes kindling in a slow reading wave — top
+     * strip first, hem last. Cloth, not light: full weight. The
+     * flamewrought word.
+     */
+    runestrips?: {
+        color: string;
+        rune: string;
+    };
+    /**
+     * Gem clusters riding the capelet hem, winking awake in rotation
+     * the way watch fires answer each other (rides the capelet — the
+     * cape IS the setting; without one there is nothing to stud). The
+     * duskwarden word.
+     */
+    gemwake?: {
+        color: string;
+        metal: string;
+    };
+    /**
+     * THE GLYPH RING: a circle of living runes floating about the
+     * hips, turning slowly — from the front two arcs of runes stand
+     * off the flanks (the body hides the rest); from behind the whole
+     * circle shows. Every rune rides the rim on the fake-3D depth law,
+     * and one glint walks among them. Nothing holds it up. The
+     * aetherion word, and the wardrobe's second floating regalia after
+     * the kingsmane crown ring.
+     */
+    glyphring?: {
+        color: string;
+    };
 }
 export interface HelmStyle {
     /**
@@ -303,7 +411,7 @@ export interface HelmStyle {
      *  the raider's bronze face plate; `dread` the tooth-visored maw;
      *  `briar` the woven thorn-cage visor; `drake` the lapped-scale
      *  visage with a copper snout. */
-    kind: 'greathelm' | 'bascinet' | 'barbute' | 'armet' | 'sallet' | 'radiant' | 'ramfort' | 'warmask' | 'dread' | 'briar' | 'drake' | 'aurochs' | 'barrow' | 'tempest' | 'furnace' | 'wyrm' | 'champion' | 'hood' | 'circlet' | 'wizard';
+    kind: 'greathelm' | 'bascinet' | 'barbute' | 'armet' | 'sallet' | 'radiant' | 'ramfort' | 'warmask' | 'dread' | 'briar' | 'drake' | 'aurochs' | 'barrow' | 'tempest' | 'furnace' | 'wyrm' | 'champion' | 'hood' | 'circlet' | 'wizard' | 'veil' | 'magus';
     visor?: 'slit' | 'cross';
     plume?: {
         color: string;
@@ -437,6 +545,35 @@ export interface HelmStyle {
     /** A star glint winking off the crown on its own beat — the same
      *  polished-past-vanity law the body's gleam keeps. */
     gleam?: {
+        color: string;
+    };
+    /** THE STANDARD: a slim pole rising off the crown flying a small
+     *  square banner that ripples on the march wind's clock — the
+     *  king's colors carried on the helm itself. The kingsmane word. */
+    standard?: {
+        pole: string;
+        banner: string;
+        trim?: string;
+    };
+    /** THE AUREOLE: a fan of gilt rays standing behind the crown,
+     *  breathing on a slow clock, tallest at the peak — dawn worn as
+     *  a halo's older sister. Painted before the shell so the rays
+     *  stand BEHIND the cloth. The sunhallow word. */
+    aureole?: {
+        color: string;
+    };
+    /** Iron tines rising off the crown band, each guttering a hot
+     *  flame that re-shapes every beat — the coldfire idiom run hot,
+     *  worn as a crown. The flamewrought word. */
+    flamecrown?: {
+        tine: string;
+        flame: string;
+    };
+    /** Three angular rune glyphs orbiting the crown on the fake-3D
+     *  depth law — the far side painted before the shell so the hood
+     *  occludes it honestly, the near side riding above. None of them
+     *  repeats. The aetherion word. */
+    glyphs?: {
         color: string;
     };
 }
@@ -607,13 +744,16 @@ export interface TorsoFrame {
  * on the solved shoulder anchors (drawPauldron) so they ride the arms.
  */
 export declare function drawTorsoGarment(ctx: CanvasRenderingContext2D, st: BodyStyle, f: TorsoFrame): void;
-/**
- * A pauldron as a real shoulder JOINT: painted in screen space on the
- * solved shoulder anchor, after its arm, so it caps the arm root and
- * rides swings instead of staying glued to the torso corners. `side`
- * is the outward direction sign; `squashK` is the body's facing squash.
- */
-export declare function drawPauldron(ctx: CanvasRenderingContext2D, st: BodyStyle, x: number, y: number, side: number, s: number, squashK: number, hurt: boolean, near: boolean, nowMs?: number): void;
+export declare function drawPauldron(ctx: CanvasRenderingContext2D, st: BodyStyle, x: number, y: number, side: number, s: number, squashK: number, hurt: boolean, near: boolean, nowMs?: number, 
+/** THE SHOULDER GLOBE's depth channel, -1 (far) .. +1 (near): the
+ *  caller projects the shoulder bar through the tilted camera and
+ *  this cap's place on it sizes the whole assembly — perspective as
+ *  size, before the shading says a word. 0 = the level flank read. */
+depthK?: number, 
+/** Outward lean, radians: the cap rotates toward its own outward
+ *  screen direction as the body turns — worn on the deltoid, not
+ *  gimbaled upright at every heading. */
+tilt?: number): void;
 /** The head local frame (inside the torso squash) drawHelmet works in. */
 export interface HeadFrame {
     s: number;

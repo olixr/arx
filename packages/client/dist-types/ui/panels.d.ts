@@ -102,7 +102,7 @@ export declare class Panels {
     /** The cell the card is pinned beside (repositions on refresh). */
     private cardAnchor;
     private drag;
-    constructor(onUseSlot: (slot: number) => void, onUnequip: (slot: EquipSlot) => void, onTechnique?: (ability: string, slot: 0 | 2) => void, onInvMove?: (from: number, to: number) => void, onDropToWorld?: (slot: number) => void, onSlotAction?: (slot: number, action: SlotAction) => void, 
+    constructor(onUseSlot: (slot: number) => void, onUnequip: (slot: EquipSlot) => void, onTechnique?: (ability: string, slot: 0 | 2) => void, onInvMove?: (from: number, to: number, merge?: boolean) => void, onDropToWorld?: (slot: number) => void, onSlotAction?: (slot: number, action: SlotAction) => void, 
     /** Which station conversation is open — labels the menu verbs. */
     stationContext?: () => 'bank' | 'shop' | null, 
     /** Active input device — the card's action hints speak its glyphs. */
@@ -119,7 +119,9 @@ export declare class Panels {
     onCalling?: (calling: string, on: boolean) => void);
     /**
      * The device changed hands (or the keymap changed): any open screen
-     * that writes glyphs into sentences redraws for the new truth.
+     * that writes glyphs into sentences redraws for the new truth —
+     * including the bench card's verb hints (a controller swap mid-
+     * inspection must re-letter Equip/Options/Move).
      */
     refreshDevice(): void;
     /**

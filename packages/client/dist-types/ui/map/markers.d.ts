@@ -20,6 +20,13 @@ export declare function partyColor(name: string): string;
  * sigil dialect on parchment and glass alike.
  */
 export declare function drawPartyToken(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string): void;
+/**
+ * THE SEARCH RING — an errand's "somewhere hereabouts". A soft gold
+ * wash inside a slowly walking dashed rim, breathing one quiet beacon
+ * ring: deliberately loose, because the ring promises a neighborhood,
+ * never a spot. `quiet` mutes it for the traveler's glass.
+ */
+export declare function drawSearchRing(ctx: CanvasRenderingContext2D, x: number, y: number, rPx: number, pulse01: number, quiet?: boolean): void;
 /** A serif nameplate over dark backing — the cartographer's hand. */
 export declare function drawMapLabel(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, color?: string, size?: number): void;
 //# sourceMappingURL=markers.d.ts.map

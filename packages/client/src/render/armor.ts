@@ -39,7 +39,7 @@ export interface BodyStyle {
    *  fellbone slab fan,
    *  `thorncrest` the rimethorn hooks (palethorn is its pale quench),
    *  `lionhead` the kingsmane sculpted lions, `gonfalon` the oathgold
-   *  crossbar standard flying its hung crimson banner,
+   *  lame-stack, coronet and lance-spar flying its hung banner,
    *  `rampart` the redmarch crenellated parapet under its hung
    *  cross-banner, `sunfan` the
    *  sunhallow gilt ray petals, `veilwing` the gloamsight swept wing
@@ -356,7 +356,7 @@ export interface HelmStyle {
   kind:
     | 'greathelm' | 'bascinet' | 'barbute' | 'armet' | 'sallet'
     | 'radiant' | 'ramfort' | 'warmask' | 'dread' | 'briar' | 'drake'
-    | 'aurochs' | 'barrow' | 'tempest' | 'furnace' | 'wyrm' | 'idol'
+    | 'aurochs' | 'barrow' | 'tempest' | 'furnace' | 'wyrm' | 'warcrown'
     | 'hood' | 'circlet' | 'wizard' | 'veil' | 'magus';
   visor?: 'slit' | 'cross';
   plume?: { color: string };
@@ -468,8 +468,8 @@ export interface HelmStyle {
    *  occludes it honestly, the near side riding above. None of them
    *  repeats. The aetherion word. */
   glyphs?: { color: string };
-  /** THE VIGIL LAMP: the flame burning in the idol helm's shrine
-   *  niche — a pilot glow that never dies, flaring when the
+  /** THE VIGIL: the warcrown's own fire — the brow gem and the eye
+   *  cuts burn with a pilot glow that never dies, surging when the
    *  procession's rotation reaches the helm (the third station after
    *  the two shoulder banners). The oathgold word. */
   vigil?: { color: string };
@@ -1024,12 +1024,13 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     // trim and metal within a stone's throw of each other, and the
     // whole read as a molten ingot (the same flat-field sin the
     // redmarch overhaul burned out). Shoulders wear the GONFALON: a
-    // gilt crossbar standard rising off the seat dome, flying a hung
-    // crimson swallow-tailed banner down the outer slope — the vow
-    // carried the way processions carry it, not pinned like a scrap.
+    // full war assembly — quilted arming pad, three lapped fluted
+    // lames, a coronet of forged points, and a lance-spar flying the
+    // hung crimson banner with a chain swag riding the same wind —
+    // the vow carried in state, never pinned like a scrap.
     color: '#9c7a2c', trim: '#fff0c0', metal: '#d4a83e', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'gonfalon', pauldronColor: '#8a6a26',
-    pauldronTrim: '#fff0c0', pauldronScale: 1.2, chest: 'plate',
+    pauldronTrim: '#fff0c0', pauldronScale: 1.24, chest: 'plate',
     emblem: 'crown', emblemScale: 1.3, skirt: 0, collar: 'gorget',
     midline: true, rivetSeams: true, tassets: true,
     tabard: { color: '#7e222c', trim: '#d4a83e' },
@@ -1365,14 +1366,14 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     emberEyes: { color: '#6ee8a0' },
   },
   oathgold_helm: {
-    // THE GILDED IDOL: the champion's fluted armet is DEAD — the vow
-    // wears a face now. A serene electrum idol mask under a shrine
-    // arch, the vigil lamp burning in the niche, cast rays flanking
-    // the peak, a crimson votive ribbon down the nape. The mask metal
-    // rides `mask` (the warmask precedent: an existing word consumed
-    // by a new shell as ITS face plate).
-    color: '#9c7a2c', trim: '#fff0c0', kind: 'idol', jaw: '#d4a83e',
-    mask: '#f4e2b0', gleam: { color: '#fff6d8' },
+    // THE WARCROWN: the idol's serene mask is DEAD — the vow looks
+    // back with fire now. An angular flared war-helm wearing a true
+    // radiate crown of electrum points, angry ember cuts for eyes, a
+    // crimson brow jewel, engraved sunburst cheek plates, and the
+    // king's mantling cascading crimson down the nape. Regal AND
+    // dangerous: a coronation you do not interrupt.
+    color: '#9c7a2c', trim: '#fff0c0', kind: 'warcrown', jaw: '#d4a83e',
+    gleam: { color: '#fff6d8' },
     vigil: { color: '#ffd98a' },
   },
   // THE HIGH ROAD's heads: forged shells wearing their sets' own
@@ -5855,180 +5856,260 @@ export function drawPauldron(
     return;
   }
   if (st.pauldron === 'gonfalon') {
-    // THE GONFALON — the oathgold shoulder: a processional standard
-    // RAISED off the seat dome. Two gilt posts carry a crossbar with
-    // orb finials, and from the bar the oath's crimson gonfalon hangs
-    // FREE down the outer slope — sleeve tabs over the bar, electrum
-    // orphrey down both edges, gold fringe off the swallow tails, the
-    // crown device woven at the center. The old oathmantle pinned a
-    // scrap of cloth to a fluted dome; a vow this old is CARRIED, the
-    // way processions carry it. Distinct from the rampart on purpose:
-    // redmarch pins its banner under masonry, oathgold flies its own.
-    // CLOTH HANGS — the hoist is bar-fast, sway grows toward the hem.
+    // THE GONFALON, second forging — the oathgold shoulder as a full
+    // WAR ASSEMBLY, not a dome with a flag. Reading order, inside
+    // out: a quilted crimson arming pad the metal bites into; THREE
+    // lapped fluted lames stepping down the arm, every step edged in
+    // electrum with its own rivets (the gothic-plate stack the
+    // reference boards live on); a coronet of forged points rising
+    // off the top lame's crest — the crown worn a second time, at
+    // the shoulder; the lance-spar socketed at the crest angling up
+    // and OUT with an orb finial; the crimson gonfalon hanging FREE
+    // from the spar — orphrey, fringe, woven crown device, march-wind
+    // sway; and a jewelry chain swagged from spar tip back to the
+    // crest, riding the same wind. The vow is CARRIED, in state.
     const gold = hurt ? '#ffffff' : (st.metal ?? shade(base, 20));
     const crim = hurt ? '#ffffff' : (st.tabard?.color ?? '#7e222c');
-    // THE WORN SEAT: antique bronze-gold, electrum rim.
-    seat(0.124 * s, 0.098 * s, hurt ? '#ffffff' : col, trim);
+    // 1) THE ARMING PAD: quilted crimson peeking past every metal
+    // edge — the garment the harness is buckled over. Its rim shows
+    // under the bottom lame and behind the crest.
+    ctx.fillStyle = hurt ? '#ffffff' : shade('#7e222c', -10);
+    ctx.beginPath();
+    ctx.ellipse(side * 0.01 * s, 0.012 * s, 0.135 * s, 0.115 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
     if (!hurt) {
-      // Chased sunrays: engraved lines fanning from the outer post's
-      // root across the dome face — lapidary craft under the cloth,
-      // one ray caught lit. Quiet: the banner is the figure, the
-      // dome is the ground.
-      const rx0 = side * 0.086 * s;
-      const ry0 = -0.052 * s;
-      ctx.lineWidth = Math.max(1, s * 0.011);
-      for (const [ra, lit] of [[0.62, false], [0.86, true], [1.12, false], [1.38, false]] as const) {
-        ctx.strokeStyle = lit ? shade(base, 22) : shade(base, -18);
-        ctx.beginPath();
-        ctx.moveTo(rx0 - side * Math.cos(ra) * 0.03 * s, ry0 + Math.sin(ra) * 0.03 * s);
-        ctx.lineTo(rx0 - side * Math.cos(ra) * 0.102 * s, ry0 + Math.sin(ra) * 0.102 * s);
-        ctx.stroke();
-      }
-    }
-    // The standard frame: two posts rooted IN the dome (root collars
-    // seat them — nothing floats), a forged crossbar, orb finials.
-    const barY = -0.152 * s;
-    const postXs = [side * 0.03 * s, side * 0.096 * s];
-    ctx.fillStyle = hurt ? '#ffffff' : shade(gold, -14);
-    for (const px2 of postXs) {
-      ctx.fillRect(px2 - 0.008 * s, barY, 0.016 * s, -barY - 0.048 * s);
-    }
-    if (!hurt) {
-      // Lit west faces on the posts, and the root collars.
-      ctx.fillStyle = shade(gold, 12);
-      for (const px2 of postXs) {
-        ctx.fillRect(px2 - 0.008 * s, barY, 0.006 * s, -barY - 0.048 * s);
-      }
-      ctx.fillStyle = shade(base, -26);
-      for (const px2 of postXs) {
-        ctx.fillRect(px2 - 0.013 * s, -0.062 * s, 0.026 * s, 0.014 * s);
-      }
-    }
-    // The crossbar rides OVER the posts, lit along its top edge.
-    const bx0 = side * 0.004 * s;
-    const bx1 = side * 0.126 * s;
-    ctx.fillStyle = gold;
-    ctx.fillRect(Math.min(bx0, bx1), barY - 0.009 * s, Math.abs(bx1 - bx0), 0.018 * s);
-    if (!hurt) {
-      ctx.fillStyle = shade(gold, 24);
-      ctx.fillRect(Math.min(bx0, bx1), barY - 0.009 * s, Math.abs(bx1 - bx0), 0.006 * s);
-    }
-    // Orb finials capping both bar ends, each keeping a point of sun.
-    for (const fx2 of [bx0, bx1]) {
-      ctx.fillStyle = gold;
+      // Quilt ticks on the pad's visible under-rim.
+      ctx.strokeStyle = shade('#7e222c', -26);
+      ctx.lineWidth = Math.max(1, s * 0.009);
       ctx.beginPath();
-      ctx.arc(fx2, barY, 0.016 * s, 0, Math.PI * 2);
+      for (const u of [-0.55, -0.15, 0.3, 0.7]) {
+        ctx.moveTo(side * u * 0.1 * s, 0.078 * s);
+        ctx.lineTo(side * (u * 0.1 + 0.028) * s, 0.114 * s);
+      }
+      ctx.stroke();
+    }
+    // 2) THE LAME STACK: three lapped plates stepping down-outboard,
+    // each a curved band with a lit crown face, a shaded under-curl,
+    // an electrum edge line, and paired rivets — plate that OVERLAPS,
+    // the way real pauldrons articulate.
+    for (let li = 2; li >= 0; li--) {
+      const ly = (-0.062 + li * 0.05) * s;
+      const lw2 = (0.128 - li * 0.008) * s;
+      const lx = side * li * 0.016 * s;
+      const drop = 0.052 * s;
+      const capC = hurt ? '#ffffff' : shade(col, -li * 5);
+      ctx.fillStyle = capC;
+      ctx.beginPath();
+      ctx.moveTo(lx - lw2, ly + drop * 0.4);
+      ctx.quadraticCurveTo(lx - lw2 * 1.04, ly - drop * 0.5, lx - lw2 * 0.5, ly - drop * 0.9);
+      ctx.quadraticCurveTo(lx, ly - drop * 1.14, lx + lw2 * 0.5, ly - drop * 0.9);
+      ctx.quadraticCurveTo(lx + lw2 * 1.04, ly - drop * 0.5, lx + lw2, ly + drop * 0.4);
+      ctx.quadraticCurveTo(lx, ly + drop * 0.85, lx - lw2, ly + drop * 0.4);
+      ctx.closePath();
       ctx.fill();
       if (!hurt) {
-        ctx.fillStyle = shade(gold, -18);
+        // The lit crown plane of each lame (2.5D top-plane law).
+        ctx.fillStyle = shade(col, 15 - li * 5);
         ctx.beginPath();
-        ctx.arc(fx2, barY, 0.016 * s, Math.PI * 0.15, Math.PI * 0.85);
-        ctx.closePath();
+        ctx.ellipse(lx, ly - drop * 0.42, lw2 * 0.58, drop * 0.36, 0, Math.PI, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = shade(gold, 34);
+        // Flutes: two short lit/turned strips per lame.
+        for (const u of [-0.42, 0.18]) {
+          ctx.fillStyle = shade(col, 20 - li * 4);
+          ctx.fillRect(lx + u * lw2, ly - drop * 0.5, lw2 * 0.09, drop * 1.0);
+          ctx.fillStyle = shade(col, -16);
+          ctx.fillRect(lx + (u + 0.09) * lw2, ly - drop * 0.5, lw2 * 0.07, drop * 1.0);
+        }
+        // The electrum edge: each lame's one bright line.
+        ctx.strokeStyle = trim;
+        ctx.lineWidth = Math.max(1, s * 0.012);
         ctx.beginPath();
-        ctx.arc(fx2 - 0.005 * s, barY - 0.006 * s, 0.005 * s, 0, Math.PI * 2);
+        ctx.moveTo(lx - lw2, ly + drop * 0.4);
+        ctx.quadraticCurveTo(lx, ly + drop * 0.85, lx + lw2, ly + drop * 0.4);
+        ctx.stroke();
+        // Paired rivets seating the lap.
+        ctx.fillStyle = shade(gold, 26);
+        for (const es of [-1, 1]) {
+          ctx.beginPath();
+          ctx.arc(lx + es * lw2 * 0.82, ly + drop * 0.34, 0.0085 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    // 3) THE CORONET: four forged points rising off the top lame's
+    // crest, rank ascending toward the spar socket — the crown said
+    // again at the shoulder. Two-facet blades, seated in dark root
+    // collars so nothing floats.
+    const crestY = -0.108 * s;
+    for (const [u, ph] of [[-0.062, 0.052], [-0.014, 0.068], [0.034, 0.085], [0.082, 0.104]] as const) {
+      const px2 = side * u * s;
+      const pw2 = 0.017 * s;
+      const tipY = crestY - ph * s;
+      if (!hurt) {
+        ctx.fillStyle = shade(base, -26);
+        ctx.fillRect(px2 - pw2 * 1.1, crestY - 0.008 * s, pw2 * 2.2, 0.016 * s);
+      }
+      ctx.fillStyle = hurt ? '#ffffff' : trim;
+      ctx.beginPath();
+      ctx.moveTo(px2 - pw2, crestY);
+      ctx.lineTo(px2 - pw2 * 0.1, tipY);
+      ctx.lineTo(px2 + pw2, crestY);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(trim, -20);
+        ctx.beginPath();
+        ctx.moveTo(px2 - pw2 * 0.1, tipY);
+        ctx.lineTo(px2 + pw2, crestY);
+        ctx.lineTo(px2 + pw2 * 0.25, crestY);
+        ctx.closePath();
         ctx.fill();
       }
     }
-    // The gonfalon: hoist sewn in sleeve tabs over the bar, the field
-    // falling past the dome hem, cut into two swallow tails. The
-    // march wind owns only the hem — sway grows with the fall.
-    const sway = Math.sin(nowMs * 0.0016 + side * 1.9) * 0.012 * s;
-    const gx0 = side * 0.022 * s;
-    const gx1 = side * 0.112 * s;
-    const gTop = barY + 0.012 * s;
-    const gBot = 0.152 * s;
-    const gMid = (gx0 + gx1) / 2;
-    const tailW = (gx1 - gx0) * 0.36;
+    // 4) THE SPAR: the lance socketed at the crest's high end,
+    // angling up and OUT — a forged taper with a bright west edge
+    // and the orb finial the warcrown's outer points answer.
+    const sx0 = side * 0.096 * s;
+    const sy0 = -0.096 * s;
+    const sx1 = side * 0.186 * s;
+    const sy1 = -0.196 * s;
+    if (!hurt) {
+      ctx.fillStyle = shade(base, -26);
+      ctx.beginPath();
+      ctx.ellipse(sx0, sy0 + 0.01 * s, 0.02 * s, 0.014 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = hurt ? '#ffffff' : shade(gold, -10);
+    ctx.lineWidth = Math.max(1.5, s * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(sx0, sy0);
+    ctx.lineTo(sx1, sy1);
+    ctx.stroke();
+    if (!hurt) {
+      ctx.strokeStyle = shade(gold, 18);
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      ctx.moveTo(sx0 - side * 0.004 * s, sy0 - 0.006 * s);
+      ctx.lineTo(sx1 - side * 0.004 * s, sy1 - 0.005 * s);
+      ctx.stroke();
+    }
+    ctx.fillStyle = hurt ? '#ffffff' : gold;
+    ctx.beginPath();
+    ctx.arc(sx1, sy1, 0.017 * s, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(gold, -18);
+      ctx.beginPath();
+      ctx.arc(sx1, sy1, 0.017 * s, Math.PI * 0.15, Math.PI * 0.85);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(gold, 36);
+      ctx.beginPath();
+      ctx.arc(sx1 - 0.006 * s, sy1 - 0.006 * s, 0.0055 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 5) THE GONFALON: hung from the spar on two sewn sleeve loops,
+    // falling FREE down the outer slope past the lame stack — the
+    // hoist rides the spar's angle, gravity owns the fall, the march
+    // wind owns the hem. Swallow-tailed, orphreyed, fringed, and
+    // carrying the woven crown device that kindles on the vigil.
+    const sway = Math.sin(nowMs * 0.0016 + side * 1.9) * 0.013 * s;
+    const hx0 = side * 0.108 * s;
+    const hy0 = -0.108 * s;
+    const hx1 = side * 0.178 * s;
+    const hy1 = -0.186 * s;
+    const gBot = 0.16 * s;
+    const gInX = side * 0.062 * s;
+    const gMid = (hx0 + hx1) / 2 + sway * side * 0.3;
     ctx.fillStyle = crim;
     ctx.beginPath();
-    ctx.moveTo(gx0, gTop);
-    ctx.lineTo(gx1, gTop);
-    // Outer edge bellies gently with the wind on its way down.
-    ctx.quadraticCurveTo(gx1 + sway * side * 0.5, (gTop + gBot) / 2, gx1 + sway * side, gBot - 0.014 * s);
-    // The swallow cut: two tongues, the notch rising between them.
-    ctx.lineTo(gMid + tailW / 2 + sway * side * 0.8, gBot - 0.05 * s);
-    ctx.lineTo(gMid + sway * side * 0.7, gBot - 0.002 * s);
-    ctx.lineTo(gMid - tailW / 2 + sway * side * 0.6, gBot - 0.046 * s);
-    ctx.lineTo(gx0 + sway * side * 0.5, gBot);
-    ctx.quadraticCurveTo(gx0 + sway * side * 0.2, (gTop + gBot) / 2, gx0, gTop);
+    ctx.moveTo(hx0, hy0);
+    ctx.lineTo(hx1, hy1);
+    // The outer edge falls from the spar tip, bellying on the wind.
+    ctx.quadraticCurveTo(hx1 + sway * side * 0.6, -0.02 * s, hx1 + sway * side, gBot - 0.02 * s);
+    // Two swallow tails with the notch rising between.
+    ctx.lineTo(gMid + sway * side * 0.8, gBot - 0.058 * s);
+    ctx.lineTo(gMid + sway * side * 0.65, gBot + 0.004 * s);
+    ctx.lineTo(gInX + sway * side * 0.5, gBot - 0.05 * s);
+    ctx.lineTo(gInX + sway * side * 0.4, gBot + 0.01 * s);
+    // The inner edge climbs back to the hoist's low corner.
+    ctx.quadraticCurveTo(gInX, -0.02 * s, hx0, hy0);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
       // The field turns from the one sun: outer half a step deeper.
       ctx.fillStyle = shade(crim, -14);
       ctx.beginPath();
-      ctx.moveTo(gMid, gTop);
-      ctx.lineTo(gx1, gTop);
-      ctx.quadraticCurveTo(gx1 + sway * side * 0.5, (gTop + gBot) / 2, gx1 + sway * side, gBot - 0.014 * s);
-      ctx.lineTo(gMid + tailW / 2 + sway * side * 0.8, gBot - 0.05 * s);
-      ctx.lineTo(gMid + sway * side * 0.7, gBot - 0.002 * s);
-      ctx.quadraticCurveTo(gMid + sway * side * 0.3, (gTop + gBot) / 2, gMid, gTop);
+      ctx.moveTo((hx0 + hx1) / 2, (hy0 + hy1) / 2);
+      ctx.lineTo(hx1, hy1);
+      ctx.quadraticCurveTo(hx1 + sway * side * 0.6, -0.02 * s, hx1 + sway * side, gBot - 0.02 * s);
+      ctx.lineTo(gMid + sway * side * 0.8, gBot - 0.058 * s);
+      ctx.lineTo(gMid + sway * side * 0.65, gBot + 0.004 * s);
+      ctx.quadraticCurveTo(gMid, 0, (hx0 + hx1) / 2, (hy0 + hy1) / 2);
       ctx.closePath();
       ctx.fill();
-      // Sleeve tabs: the hoist sewn over the bar in three loops —
-      // how a gonfalon actually rides its crossbar.
+      // Sleeve loops sewn over the spar.
       ctx.fillStyle = shade(crim, -22);
-      for (const u of [0.14, 0.5, 0.86]) {
-        const tx = gx0 + (gx1 - gx0) * u;
-        ctx.fillRect(tx - 0.011 * s, barY - 0.014 * s, 0.022 * s, 0.026 * s);
+      for (const u of [0.22, 0.7]) {
+        const tx = hx0 + (hx1 - hx0) * u;
+        const ty = hy0 + (hy1 - hy0) * u;
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(side * -0.83);
+        ctx.fillRect(-0.011 * s, -0.016 * s, 0.022 * s, 0.032 * s);
+        ctx.restore();
       }
-      // The orphrey: electrum thread down both long edges, following
-      // the cloth's own bow — the border that says WOVEN, not cut.
+      // The orphrey: electrum thread down both long edges.
       ctx.strokeStyle = trim;
       ctx.lineWidth = Math.max(1, s * 0.01);
       ctx.beginPath();
-      ctx.moveTo(gx1, gTop + 0.008 * s);
-      ctx.quadraticCurveTo(gx1 + sway * side * 0.5, (gTop + gBot) / 2, gx1 + sway * side, gBot - 0.016 * s);
-      ctx.moveTo(gx0, gTop + 0.008 * s);
-      ctx.quadraticCurveTo(gx0 + sway * side * 0.2, (gTop + gBot) / 2, gx0 + sway * side * 0.5, gBot - 0.002 * s);
+      ctx.moveTo(hx1 - side * 0.006 * s, hy1 + 0.012 * s);
+      ctx.quadraticCurveTo(hx1 + sway * side * 0.6 - side * 0.006 * s, -0.02 * s, hx1 + sway * side - side * 0.006 * s, gBot - 0.024 * s);
+      ctx.moveTo(hx0 - side * 0.002 * s, hy0 + 0.012 * s);
+      ctx.quadraticCurveTo(gInX + side * 0.004 * s, -0.02 * s, gInX + sway * side * 0.4 + side * 0.004 * s, gBot + 0.004 * s);
       ctx.stroke();
-      // Gold fringe ticking off both swallow tails.
+      // Gold fringe ticking off both tails.
       ctx.strokeStyle = shade(gold, 14);
       ctx.lineWidth = Math.max(1, s * 0.011);
       ctx.beginPath();
       for (const [tx, ty] of [
-        [gx0 + sway * side * 0.5, gBot],
-        [gMid - tailW / 2 + sway * side * 0.6, gBot - 0.046 * s],
-        [gMid + tailW / 2 + sway * side * 0.8, gBot - 0.05 * s],
-        [gx1 + sway * side, gBot - 0.014 * s],
+        [gInX + sway * side * 0.4, gBot + 0.01 * s],
+        [gMid + sway * side * 0.65, gBot + 0.004 * s],
+        [hx1 + sway * side, gBot - 0.02 * s],
       ] as const) {
         ctx.moveTo(tx, ty);
-        ctx.lineTo(tx + sway * 0.6, ty + 0.017 * s);
+        ctx.lineTo(tx + sway * 0.6, ty + 0.018 * s);
       }
       ctx.stroke();
-      // The crown device, woven at the field's center: a gold band
-      // under three points — thread over cloth, two values so it
-      // reads stitched, never stamped.
-      const dx = gMid + sway * side * 0.3;
-      const dy = 0.014 * s;
-      const dw = 0.042 * s;
+      // The crown device, woven mid-field — thread, two values.
+      const dx = gMid;
+      const dy = 0.02 * s;
+      const dw = 0.044 * s;
       ctx.fillStyle = shade(gold, -10);
       ctx.fillRect(dx - dw / 2, dy, dw, 0.013 * s);
       ctx.beginPath();
       for (const u of [-0.34, 0, 0.34]) {
         const px3 = dx + u * dw;
         ctx.moveTo(px3 - dw * 0.14, dy);
-        ctx.lineTo(px3, dy - 0.022 * s * (u === 0 ? 1.25 : 1));
+        ctx.lineTo(px3, dy - 0.023 * s * (u === 0 ? 1.25 : 1));
         ctx.lineTo(px3 + dw * 0.14, dy);
       }
       ctx.closePath();
       ctx.fill();
       ctx.fillStyle = shade(gold, 16);
       ctx.fillRect(dx - dw / 2, dy, dw, 0.005 * s);
-      // THE VIGIL: the woven crown kindles when the procession's
-      // light reaches this station — left banner, right banner, then
-      // the helm's lamp answers. Watch-fires down a nave.
+      // THE VIGIL: this station's turn in the rotation — the woven
+      // crown kindles, holds, and hands the light on (left banner,
+      // right banner, then the helm's own fire).
       if (st.vigil) {
         const station = side < 0 ? 0 : 1;
         const wake = Math.max(0, Math.sin(nowMs * 0.0009 + station * 2.094) - 0.45) / 0.55;
         if (wake > 0.04) {
           const vc = st.vigil.color;
-          ctx.globalAlpha = wake * 0.34;
+          ctx.globalAlpha = wake * 0.36;
           ctx.fillStyle = vc;
           ctx.beginPath();
-          ctx.ellipse(dx, dy - 0.006 * s, dw * 0.85, 0.03 * s, 0, 0, Math.PI * 2);
+          ctx.ellipse(dx, dy - 0.006 * s, dw * 0.9, 0.032 * s, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.globalAlpha = wake * (0.75 + 0.2 * Math.sin(nowMs * 0.012 + station));
           ctx.fillStyle = shade(vc, 22);
@@ -6037,13 +6118,30 @@ export function drawPauldron(
           for (const u of [-0.34, 0, 0.34]) {
             const px3 = dx + u * dw;
             ctx.moveTo(px3 - dw * 0.12, dy);
-            ctx.lineTo(px3, dy - 0.02 * s * (u === 0 ? 1.25 : 1));
+            ctx.lineTo(px3, dy - 0.021 * s * (u === 0 ? 1.25 : 1));
             ctx.lineTo(px3 + dw * 0.12, dy);
           }
           ctx.closePath();
           ctx.fill();
           ctx.globalAlpha = 1;
         }
+      }
+      // 6) THE CHAIN SWAG: fine gold links draped from the spar's
+      // orb back to the coronet's low point, sagging on the same
+      // wind the banner rides — jewelry ON the war gear, the detail
+      // that says someone dresses this knight for the field.
+      const c0x = sx1;
+      const c0y = sy1 + 0.012 * s;
+      const c1x = side * -0.05 * s;
+      const c1y = crestY - 0.045 * s;
+      ctx.fillStyle = shade(gold, 22);
+      for (let ci = 1; ci <= 6; ci++) {
+        const t = ci / 7;
+        const chx = c0x + (c1x - c0x) * t;
+        const chy = c0y + (c1y - c0y) * t + Math.sin(Math.PI * t) * (0.03 * s + sway * 0.35);
+        ctx.beginPath();
+        ctx.arc(chx, chy, 0.0058 * s, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
     ctx.restore();
@@ -9523,294 +9621,332 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.fillRect(headX - hw * 0.7, headY + hh * 0.42, hw * 1.4, hh * 0.14);
       ctx.fillRect(headX - hw * 0.56, headY + hh * 0.64, hw * 1.12, hh * 0.14);
     }
-  } else if (st.kind === 'idol') {
-    // THE GILDED IDOL — the oathgold head: the vow given a face. An
-    // antique-gold shell rising into a pointed shrine arch, a serene
-    // electrum mask looking out from under it, and in the arch's
-    // niche the VIGIL LAMP that never goes out. Cast rays flank the
-    // peak; a crimson votive ribbon hangs down the nape. Serene where
-    // every other forged shell threatens: this helm does not glare,
-    // it WATCHES. The champion armet's flutes and laurel are DEAD.
-    const topY = headY - hh * 1.12;
+  } else if (st.kind === 'warcrown') {
+    // THE WARCROWN — the oathgold head, second forging: the idol's
+    // serene mask is DEAD (it read as porcelain, not power). This is
+    // the crown militant: an angular flared war-helm wearing a TRUE
+    // radiate crown of forged electrum points, a crimson jewel set at
+    // the brow, angry ember cuts for eyes, engraved sunburst cheek
+    // plates, and the king's mantling cascading crimson from under
+    // the crown band. Regal AND dangerous — a coronation with teeth.
+    const topY = headY - hh * 1.18;
     const botY = headY + hh * 0.98;
-    const apexY = topY - hh * 0.62;
-    // The cast rays first, so their roots tuck under the shell: two
-    // tapered points off each arch shoulder, angled up and out —
-    // fixed forged metal, never a breathing fan (the aureole is the
-    // sunhallow word; these are the idol's own cast light).
-    for (const es of [-1, 1]) {
-      for (const [ux, uy, ln, wd] of [
-        [0.3, 0.22, 0.4, 0.13],
-        [0.54, 0.04, 0.56, 0.15],
-        [0.8, 0.28, 0.4, 0.13],
-      ] as const) {
-        const rx = headX + es * hw * ux;
-        const ry = topY - hh * uy;
-        const tx = headX + es * hw * (ux + ln * 0.72);
-        const ty = ry - hh * ln;
-        ctx.fillStyle = hurt ? '#ffffff' : st.trim;
+    const vc = st.vigil?.color ?? '#ffd98a';
+    const mantC = '#7e222c';
+    const mkick = Math.sin(f.nowMs * 0.0016) * hw * 0.12;
+    if (!hurt) {
+      // THE MANTLING first, so the metal always rides OVER the cloth:
+      // crimson tongues spilling from under the crown band, swept
+      // down and out behind the temples — the king's colors framing
+      // the helm at every facing, tails alive on the march wind.
+      for (const es of [-1, 1]) {
+        const kk = mkick * es * 0.4;
+        ctx.fillStyle = es === lead ? mantC : shade(mantC, -14);
         ctx.beginPath();
-        ctx.moveTo(rx - es * hw * wd, ry + hh * wd * 0.5);
-        ctx.lineTo(tx, ty);
-        ctx.lineTo(rx + es * hw * wd, ry - hh * wd * 0.4);
+        ctx.moveTo(headX + es * hw * 0.66, headY - hh * 0.92);
+        ctx.quadraticCurveTo(
+          headX + es * hw * 1.34, headY - hh * 0.56,
+          headX + es * hw * 1.22 + kk, headY + hh * 0.18,
+        );
+        ctx.lineTo(headX + es * hw * 0.9 + kk * 0.6, headY + hh * 0.26);
+        ctx.quadraticCurveTo(headX + es * hw * 1.0, headY - hh * 0.2, headX + es * hw * 0.6, headY - hh * 0.55);
         ctx.closePath();
         ctx.fill();
-        if (!hurt) {
-          // The trailing facet turns from the one sun — cast metal
-          // with a thickness, never a wire.
-          ctx.fillStyle = shade(st.trim, -18);
+        // The cloth's own fold shadow — weight, not a wing.
+        ctx.strokeStyle = shade(mantC, -24);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(headX + es * hw * 0.84, headY - hh * 0.64);
+        ctx.quadraticCurveTo(headX + es * hw * 1.12, headY - hh * 0.24, headX + es * hw * 1.06 + kk, headY + hh * 0.12);
+        ctx.stroke();
+      }
+    }
+    // THE RADIATE CROWN: five forged points standing on the crown
+    // plateau, painted before the shell so their roots tuck under —
+    // center tallest, the rank descending outward, every point a
+    // two-facet blade (lit west, turned east) with the outermost
+    // pair carrying orb finials: the same finial the shoulder spars
+    // fly. One family of furniture, helm to shoulder.
+    const ptsBaseY = topY + hh * 0.14;
+    for (const [u, ph, orb] of [
+      [-0.66, 0.5, true], [-0.33, 0.74, false], [0, 1.0, false],
+      [0.33, 0.74, false], [0.66, 0.5, true],
+    ] as const) {
+      const px = headX + u * hw;
+      const pw = hw * (0.16 - Math.abs(u) * 0.05);
+      const tipY = ptsBaseY - hh * ph;
+      ctx.fillStyle = hurt ? '#ffffff' : st.trim;
+      ctx.beginPath();
+      ctx.moveTo(px - pw, ptsBaseY);
+      ctx.lineTo(px - pw * 0.1, tipY);
+      ctx.lineTo(px + pw, ptsBaseY);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(st.trim, -20);
+        ctx.beginPath();
+        ctx.moveTo(px - pw * 0.1, tipY);
+        ctx.lineTo(px + pw, ptsBaseY);
+        ctx.lineTo(px + pw * 0.2, ptsBaseY);
+        ctx.closePath();
+        ctx.fill();
+        if (orb) {
+          ctx.fillStyle = shade(st.trim, 12);
           ctx.beginPath();
-          ctx.moveTo(rx + es * hw * wd, ry - hh * wd * 0.4);
-          ctx.lineTo(tx, ty);
-          ctx.lineTo(rx + es * hw * wd * 0.3, ry - hh * wd * 0.1);
-          ctx.closePath();
+          ctx.arc(px - pw * 0.1, tipY - hh * 0.05, hw * 0.055, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(st.trim, 34);
+          ctx.beginPath();
+          ctx.arc(px - pw * 0.14, tipY - hh * 0.065, hw * 0.02, 0, Math.PI * 2);
           ctx.fill();
         }
       }
     }
+    if (!hurt) {
+      // The center point's diamond finial — the summit of the whole
+      // rig keeps the highest light.
+      ctx.fillStyle = shade(st.trim, 30);
+      ctx.beginPath();
+      ctx.moveTo(headX, ptsBaseY - hh * 1.0 - hh * 0.14);
+      ctx.lineTo(headX + hw * 0.05, ptsBaseY - hh * 1.0 - hh * 0.04);
+      ctx.lineTo(headX, ptsBaseY - hh * 1.0 + hh * 0.06);
+      ctx.lineTo(headX - hw * 0.05, ptsBaseY - hh * 1.0 - hh * 0.04);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // THE SHELL: angular and flared — wide at the jaw, a hard cheek
+    // line, concave taper to the crown plateau. A war helm's mass,
+    // not a parade dome.
     const shell = () => {
-      ctx.moveTo(headX - hw * 0.78, botY);
-      ctx.lineTo(headX - hw * 1.02, headY + hh * 0.34);
-      ctx.lineTo(headX - hw * 1.0, headY - hh * 0.52);
-      ctx.quadraticCurveTo(headX - hw * 0.94, topY, headX - hw * 0.52, topY - hh * 0.08);
-      // The ogee arch: both flanks sweep concave into the peak.
-      ctx.quadraticCurveTo(headX - hw * 0.16, topY - hh * 0.18, headX, apexY);
-      ctx.quadraticCurveTo(headX + hw * 0.16, topY - hh * 0.18, headX + hw * 0.52, topY - hh * 0.08);
-      ctx.quadraticCurveTo(headX + hw * 0.94, topY, headX + hw * 1.0, headY - hh * 0.52);
-      ctx.lineTo(headX + hw * 1.02, headY + hh * 0.34);
-      ctx.lineTo(headX + hw * 0.78, botY);
+      ctx.moveTo(headX - hw * 0.86, botY);
+      ctx.lineTo(headX - hw * 1.08, headY + hh * 0.4);
+      ctx.lineTo(headX - hw * 1.0, headY - hh * 0.45);
+      ctx.quadraticCurveTo(headX - hw * 1.02, topY + hh * 0.16, headX - hw * 0.66, topY + hh * 0.06);
+      ctx.quadraticCurveTo(headX, topY - hh * 0.06, headX + hw * 0.66, topY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + hw * 1.02, topY + hh * 0.16, headX + hw * 1.0, headY - hh * 0.45);
+      ctx.lineTo(headX + hw * 1.08, headY + hh * 0.4);
+      ctx.lineTo(headX + hw * 0.86, botY);
       ctx.closePath();
     };
     ctx.fillStyle = mc;
     ctx.beginPath();
     shell();
     ctx.fill();
-    shellLight(shell, apexY, botY);
+    shellLight(shell, topY, botY);
     if (!hurt) {
-      // The arch edge: an electrum fillet following the ogee — the
-      // one bright edge on the antique shell, so the peak reads as
-      // wrought, not grown.
-      ctx.strokeStyle = st.trim;
-      ctx.lineWidth = Math.max(1, s * 0.013);
+      // THE CROWN BAND: a full-width electrum band seated where shell
+      // meets crown — engraved, beaded, the thing the points GROW
+      // from. Two-value metal so it reads forged, then bead studs.
+      ctx.strokeStyle = shade(st.trim, -16);
+      ctx.lineWidth = hh * 0.2;
       ctx.beginPath();
-      ctx.moveTo(headX - hw * 0.5, topY - hh * 0.08);
-      ctx.quadraticCurveTo(headX - hw * 0.15, topY - hh * 0.18, headX, apexY + hh * 0.02);
-      ctx.quadraticCurveTo(headX + hw * 0.15, topY - hh * 0.18, headX + hw * 0.5, topY - hh * 0.08);
+      ctx.moveTo(headX - hw * 0.92, topY + hh * 0.22);
+      ctx.quadraticCurveTo(headX, topY + hh * 0.06, headX + hw * 0.92, topY + hh * 0.22);
       ctx.stroke();
+      ctx.strokeStyle = st.trim;
+      ctx.lineWidth = hh * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.9, topY + hh * 0.19);
+      ctx.quadraticCurveTo(headX, topY + hh * 0.03, headX + hw * 0.9, topY + hh * 0.19);
+      ctx.stroke();
+      ctx.fillStyle = shade(st.trim, 28);
+      for (const u of [-0.72, -0.44, -0.16, 0.16, 0.44, 0.72]) {
+        ctx.beginPath();
+        ctx.arc(headX + u * hw, topY + hh * (0.14 + Math.abs(u) * 0.1), hw * 0.035, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     if (!hurt && front) {
-      // THE SHRINE NICHE: a pointed dark niche cut in the arch, an
-      // electrum frame around it, a gold sill under it — and the
-      // vigil lamp burning inside.
-      const nw = hw * 0.34;
-      const nTop = apexY + hh * 0.22;
-      const nBot = topY + hh * 0.34;
-      const nx = headX;
-      ctx.fillStyle = '#1a120c';
-      ctx.beginPath();
-      ctx.moveTo(nx - nw, nBot);
-      ctx.lineTo(nx - nw, nTop + hh * 0.26);
-      ctx.quadraticCurveTo(nx - nw * 0.5, nTop, nx, nTop - hh * 0.04);
-      ctx.quadraticCurveTo(nx + nw * 0.5, nTop, nx + nw, nTop + hh * 0.26);
-      ctx.lineTo(nx + nw, nBot);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = shade(st.trim, -10);
-      ctx.lineWidth = Math.max(1, s * 0.011);
-      ctx.stroke();
-      // The sill the lamp stands on.
-      ctx.fillStyle = st.jaw ?? shade(st.color, 18);
-      ctx.fillRect(nx - nw * 1.2, nBot, nw * 2.4, hh * 0.09);
-      ctx.fillStyle = shade(st.jaw ?? st.color, 26);
-      ctx.fillRect(nx - nw * 1.2, nBot, nw * 2.4, hh * 0.035);
-      if (st.vigil) {
-        // THE VIGIL LAMP: a gold cup, a flame that keeps a pilot glow
-        // always and flares when the procession's rotation reaches
-        // the helm — the third station, after the two banners.
-        const vc = st.vigil.color;
-        const cupY = nBot - hh * 0.06;
-        ctx.fillStyle = shade(st.trim, -6);
-        ctx.fillRect(nx - nw * 0.34, cupY - hh * 0.05, nw * 0.68, hh * 0.06);
-        const wake = Math.max(0, Math.sin(f.nowMs * 0.0009 + 2 * 2.094) - 0.45) / 0.55;
-        const glow = 0.55 + 0.45 * wake;
-        const flick = Math.sin(f.nowMs * 0.013) * nw * 0.12;
-        const fh = hh * (0.22 + 0.18 * wake + 0.02 * Math.sin(f.nowMs * 0.017));
-        // The halo breathes past the frame — lamplight owns the arch.
-        ctx.globalAlpha = glow * 0.42;
+      // THE BROW JEWEL: the oath's crimson stone in an electrum
+      // bezel at the crown's center — and the vigil's third station:
+      // when the procession's light reaches the helm, the stone and
+      // the eye fires surge together.
+      const wake = Math.max(0, Math.sin(f.nowMs * 0.0009 + 2 * 2.094) - 0.45) / 0.55;
+      const gx = headX + (vx - headX) * 0.5;
+      const gy = topY + hh * 0.13;
+      if (wake > 0.04) {
+        ctx.globalAlpha = wake * 0.45;
         ctx.fillStyle = vc;
         ctx.beginPath();
-        ctx.ellipse(nx, cupY - hh * 0.13, nw * 1.05, hh * 0.22, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = glow;
-        ctx.beginPath();
-        ctx.moveTo(nx - nw * 0.2, cupY - hh * 0.05);
-        ctx.quadraticCurveTo(nx - nw * 0.24, cupY - fh * 0.55, nx + flick, cupY - fh - hh * 0.05);
-        ctx.quadraticCurveTo(nx + nw * 0.26, cupY - fh * 0.4, nx + nw * 0.2, cupY - hh * 0.05);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = shade(vc, 30);
-        ctx.beginPath();
-        ctx.moveTo(nx - nw * 0.09, cupY - hh * 0.05);
-        ctx.quadraticCurveTo(nx - nw * 0.1, cupY - fh * 0.4, nx + flick * 0.5, cupY - fh * 0.62 - hh * 0.05);
-        ctx.quadraticCurveTo(nx + nw * 0.12, cupY - fh * 0.3, nx + nw * 0.09, cupY - hh * 0.05);
-        ctx.closePath();
+        ctx.ellipse(gx, gy, hw * 0.3, hh * 0.2, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
       }
-      // THE MASK: the serene electrum face under the arch — brow
-      // shade, a quiet nose keel, calm almond eyes, a mouth that has
-      // finished arguing. The face is the statement; it earns the
-      // helm slot's whole quiet.
-      const mkc = st.mask ?? shade(st.trim, -8);
-      const mw = headR * 0.56 * sw;
-      const browY = headY - hh * 0.5;
-      const chinY = headY + hh * 0.5;
-      const face = () => {
-        ctx.moveTo(vx - mw, browY);
-        ctx.lineTo(vx - mw * 0.96, headY + hh * 0.12);
-        ctx.quadraticCurveTo(vx - mw * 0.8, chinY, vx, chinY + hh * 0.06);
-        ctx.quadraticCurveTo(vx + mw * 0.8, chinY, vx + mw * 0.96, headY + hh * 0.12);
-        ctx.lineTo(vx + mw, browY);
-        ctx.closePath();
-      };
-      ctx.fillStyle = mkc;
+      ctx.fillStyle = shade(st.trim, -8);
       ctx.beginPath();
-      face();
+      ctx.arc(gx, gy, hw * 0.14, 0, Math.PI * 2);
       ctx.fill();
-      // SCULPT, NOT STICKER: the mask's flanks turn away — shaded
-      // cheek planes down both sides give the face its round; the
-      // trailing side runs deeper (one sun).
-      ctx.save();
+      ctx.fillStyle = wake > 0.04 ? shade('#b23138', 10 + wake * 26) : '#b23138';
       ctx.beginPath();
-      face();
-      ctx.clip();
-      ctx.fillStyle = shade(mkc, -12);
-      ctx.beginPath();
-      ctx.moveTo(vx - mw, browY);
-      ctx.quadraticCurveTo(vx - mw * 0.55, headY, vx - mw * 0.6, chinY + hh * 0.1);
-      ctx.lineTo(vx - mw, chinY + hh * 0.1);
-      ctx.closePath();
+      ctx.arc(gx, gy, hw * 0.095, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = shade(mkc, -20);
+      ctx.fillStyle = shade('#b23138', 44);
       ctx.beginPath();
-      ctx.moveTo(vx + mw, browY);
-      ctx.quadraticCurveTo(vx + mw * 0.5, headY, vx + mw * 0.56, chinY + hh * 0.1);
-      ctx.lineTo(vx + mw, chinY + hh * 0.1);
-      ctx.closePath();
+      ctx.arc(gx - hw * 0.03, gy - hh * 0.025, hw * 0.032, 0, Math.PI * 2);
       ctx.fill();
-      // The chin keeps a soft under-shadow — a jaw, not a hem.
-      ctx.fillStyle = shade(mkc, -16);
-      ctx.beginPath();
-      ctx.ellipse(vx, chinY + hh * 0.04, mw * 0.5, hh * 0.09, 0, 0, Math.PI);
-      ctx.fill();
-      ctx.restore();
-      // The brow ridge shadow seats the mask under the shell.
-      ctx.fillStyle = shade(mkc, -18);
-      ctx.fillRect(vx - mw, browY, mw * 2, hh * 0.1);
-      ctx.fillStyle = shade(mkc, 16);
-      ctx.fillRect(vx - mw, browY + hh * 0.1, mw * 2, hh * 0.045);
-      // The eyes: deep-set calm almonds — a carved socket shadow
-      // above, the warm iris of the lamp's own light inside. These
-      // eyes are the face's whole argument: they must READ.
-      const eyeY = headY - hh * 0.04;
+      // THE SCOWL: the eye cuts angle DOWN toward the nasal — the
+      // brow of a fight already decided. Each cut is a deep dark
+      // wedge under a forged electrum brow bar, with the vigil's
+      // ember burning inside; the whole face keeps a pilot fire and
+      // surges on the helm's station.
+      const eyeY = headY - hh * 0.05;
+      const cutT = headR * 0.15;
       for (const es of [-1, 1]) {
-        const ex = vx + es * headR * 0.235 * sw;
-        const ew = headR * 0.175 * sw;
-        // The socket: a soft carved shadow the eye sits back in.
-        ctx.fillStyle = shade(mkc, -24);
+        const ix = vx + es * headR * 0.09 * sw;
+        const iy = eyeY + headR * 0.06;
+        const ox = vx + es * headR * 0.54 * sw;
+        const oy = eyeY - headR * 0.1;
+        ctx.fillStyle = '#170f1c';
         ctx.beginPath();
-        ctx.ellipse(ex, eyeY - headR * 0.035, ew * 1.2, headR * 0.1, 0, Math.PI, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#241812';
-        ctx.beginPath();
-        ctx.moveTo(ex - ew, eyeY);
-        ctx.quadraticCurveTo(ex, eyeY - headR * 0.1, ex + ew, eyeY);
-        ctx.quadraticCurveTo(ex, eyeY + headR * 0.1, ex - ew, eyeY);
+        ctx.moveTo(ix, iy - cutT * 0.55);
+        ctx.lineTo(ox, oy - cutT * 0.75);
+        ctx.lineTo(ox, oy + cutT * 0.5);
+        ctx.lineTo(ix, iy + cutT * 0.75);
         ctx.closePath();
         ctx.fill();
-        if (st.vigil) {
-          ctx.globalAlpha = 0.7 + 0.22 * Math.sin(f.nowMs * 0.0021);
-          ctx.fillStyle = st.vigil.color;
+        // The vigil fire in the cut: a hot wedge that leans inward —
+        // eyes with intent, not lamps in slots.
+        const pulse = 0.55 + 0.28 * Math.sin(f.nowMs * 0.0021 + es * 0.5) + 0.45 * wake;
+        ctx.globalAlpha = Math.min(1, pulse);
+        ctx.fillStyle = vc;
+        ctx.beginPath();
+        ctx.moveTo(ix + es * headR * 0.02 * sw, iy + cutT * 0.05);
+        ctx.lineTo(ox - es * headR * 0.08 * sw, oy - cutT * 0.15);
+        ctx.lineTo(ox - es * headR * 0.08 * sw, oy + cutT * 0.28);
+        ctx.lineTo(ix + es * headR * 0.02 * sw, iy + cutT * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        // The forged brow bar riding the cut's upper edge.
+        ctx.strokeStyle = shade(st.trim, -4);
+        ctx.lineWidth = Math.max(1.5, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(ix - es * headR * 0.01, iy - cutT * 0.62);
+        ctx.lineTo(ox + es * headR * 0.04, oy - cutT * 0.85);
+        ctx.stroke();
+      }
+      // THE NASAL KEEL: a bright forged bar splitting the scowl,
+      // riveted at its foot — the blow the face is built to shed.
+      ctx.fillStyle = shade(st.trim, -12);
+      ctx.fillRect(vx - headR * 0.055 * sw, eyeY - headR * 0.16, headR * 0.11 * sw, hh * 0.52);
+      ctx.fillStyle = shade(st.trim, 14);
+      ctx.fillRect(vx - headR * 0.055 * sw, eyeY - headR * 0.16, headR * 0.045 * sw, hh * 0.52);
+      ctx.fillStyle = shade(st.trim, 30);
+      ctx.beginPath();
+      ctx.arc(vx, eyeY + hh * 0.32, headR * 0.045, 0, Math.PI * 2);
+      ctx.fill();
+      // THE CHEEK PLATES: engraved trapezoids either side of the
+      // jaw, each chased with a rising sunburst — three engraved
+      // rays, one caught lit — and riveted at the corners. The
+      // goldsmith and the armorer shook hands here.
+      const jc = st.jaw ?? shade(st.color, -8);
+      for (const es of [-1, 1]) {
+        const x0 = vx + es * headR * 0.2 * sw;
+        const x1 = vx + es * headR * 0.68 * sw;
+        const yT = headY + hh * 0.08;
+        const yB = headY + hh * 0.52;
+        ctx.fillStyle = jc;
+        ctx.beginPath();
+        ctx.moveTo(x0, yT + hh * 0.06);
+        ctx.lineTo(x1, yT);
+        ctx.lineTo(x1 - es * headR * 0.04, yB);
+        ctx.lineTo(x0, yB - hh * 0.04);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(jc, 18);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(x0, yT + hh * 0.06);
+        ctx.lineTo(x1, yT);
+        ctx.stroke();
+        for (const [ra, lit] of [[0.28, false], [0.5, true], [0.72, false]] as const) {
+          ctx.strokeStyle = lit ? shade(jc, 26) : shade(jc, -22);
           ctx.beginPath();
-          ctx.ellipse(ex, eyeY + headR * 0.005, ew * 0.5, headR * 0.05, 0, 0, Math.PI * 2);
+          ctx.moveTo(x0 + es * headR * 0.03, yB - hh * 0.05);
+          ctx.lineTo(x0 + es * headR * 0.42 * ra * sw, yT + hh * (0.4 - ra * 0.3));
+          ctx.stroke();
+        }
+        ctx.fillStyle = shade(st.trim, 20);
+        for (const [rx2, ry2] of [[x1 - es * headR * 0.06, yT + hh * 0.07], [x1 - es * headR * 0.07, yB - hh * 0.07]] as const) {
+          ctx.beginPath();
+          ctx.arc(rx2, ry2, headR * 0.032, 0, Math.PI * 2);
           ctx.fill();
-          ctx.globalAlpha = 1;
         }
       }
-      // The nose keel and the finished mouth — full lines, carved.
-      ctx.strokeStyle = shade(mkc, 22);
-      ctx.lineWidth = Math.max(1, s * 0.013);
-      ctx.beginPath();
-      ctx.moveTo(vx, eyeY + headR * 0.07);
-      ctx.lineTo(vx, headY + hh * 0.2);
-      ctx.stroke();
-      ctx.strokeStyle = shade(mkc, -30);
-      ctx.lineWidth = Math.max(1, s * 0.014);
-      ctx.beginPath();
-      ctx.moveTo(vx - headR * 0.17 * sw, headY + hh * 0.35);
-      ctx.quadraticCurveTo(vx, headY + hh * 0.39, vx + headR * 0.17 * sw, headY + hh * 0.35);
-      ctx.stroke();
-      // The lower lip's catch-light — carved stone takes the sun.
-      ctx.strokeStyle = shade(mkc, 18);
-      ctx.lineWidth = Math.max(1, s * 0.01);
-      ctx.beginPath();
-      ctx.moveTo(vx - headR * 0.1 * sw, headY + hh * 0.42);
-      ctx.quadraticCurveTo(vx, headY + hh * 0.45, vx + headR * 0.1 * sw, headY + hh * 0.42);
-      ctx.stroke();
-      // Chased scrolls on the shell cheeks: one engraved C-curl per
-      // side, lit on its outer run — goldsmith work, not decoration
-      // stamped on (the quiet craft that survives a close look).
-      for (const es of [-1, 1]) {
-        const cx2 = vx + es * headR * 0.8 * sw;
-        const cy2 = headY + hh * 0.16;
-        ctx.strokeStyle = shade(st.color, -20);
-        ctx.lineWidth = Math.max(1, s * 0.011);
-        ctx.beginPath();
-        ctx.arc(cx2, cy2, headR * 0.11, Math.PI * 0.3, Math.PI * 1.5);
-        ctx.stroke();
-        ctx.strokeStyle = shade(st.color, 22);
-        ctx.beginPath();
-        ctx.arc(cx2, cy2, headR * 0.11, Math.PI * 1.5, Math.PI * 2.1);
-        ctx.stroke();
-      }
-      // The bevor: three lapped jaw lames, lit upper edges — the one
-      // piece of soldier under all the shrine.
-      const jc = st.jaw ?? shade(st.color, -8);
-      for (const [oy, wk] of [[0.58, 1.0], [0.78, 0.88], [0.96, 0.74]] as const) {
+      // THE BEVOR: three lapped jaw lames closing the throat, each
+      // with its lit upper edge — and a breath row punched in the
+      // top lame, because a king still has to breathe.
+      for (const [oy, wk] of [[0.6, 1.0], [0.78, 0.88], [0.95, 0.75]] as const) {
         ctx.fillStyle = jc;
-        ctx.fillRect(vx - headR * 0.5 * sw * wk, headY + hh * oy, headR * 1.0 * sw * wk, hh * 0.2);
+        ctx.fillRect(vx - headR * 0.5 * sw * wk, headY + hh * oy, headR * 1.0 * sw * wk, hh * 0.19);
         ctx.fillStyle = shade(jc, 16);
-        ctx.fillRect(vx - headR * 0.5 * sw * wk, headY + hh * oy, headR * 1.0 * sw * wk, hh * 0.055);
+        ctx.fillRect(vx - headR * 0.5 * sw * wk, headY + hh * oy, headR * 1.0 * sw * wk, hh * 0.05);
+      }
+      ctx.fillStyle = shade(jc, -26);
+      for (const bx of [-0.26, -0.09, 0.09, 0.26]) {
+        ctx.fillRect(vx + bx * headR * sw - headR * 0.018, headY + hh * 0.66, headR * 0.036, headR * 0.036);
       }
     } else if (!hurt) {
-      // From behind: the arch shows its raised spine keel, the nape
-      // its lames — and the votive ribbon hangs down the back of the
-      // shell, crimson with a gilt tip, swaying at the tail only.
-      ctx.fillStyle = shade(st.color, -16);
-      ctx.fillRect(headX - hw * 0.07, apexY + hh * 0.1, hw * 0.14, hh * 1.6);
-      ctx.fillStyle = shade(st.color, 12);
-      ctx.fillRect(headX - hw * 0.07, apexY + hh * 0.1, hw * 0.05, hh * 1.6);
-      ctx.fillStyle = shade(st.color, -22);
-      ctx.fillRect(headX - hw * 0.66, headY + hh * 0.46, hw * 1.32, hh * 0.13);
-      ctx.fillRect(headX - hw * 0.54, headY + hh * 0.66, hw * 1.08, hh * 0.13);
-      const rc = '#7e222c';
-      const rkick = Math.sin(f.nowMs * 0.0016) * hw * 0.1;
-      ctx.fillStyle = rc;
+      // From behind: THE CASCADE — the mantling in full. An outer
+      // fall of deep crimson framing an inner bright panel, fold
+      // lines carrying the cloth's weight, gilt fringe ticking off
+      // the tails as they sway. The crown band closes its circle
+      // over the top of it all.
+      ctx.fillStyle = shade(mantC, -14);
       ctx.beginPath();
-      ctx.moveTo(headX - hw * 0.09, topY + hh * 0.3);
-      ctx.lineTo(headX + hw * 0.09, topY + hh * 0.3);
-      ctx.lineTo(headX + hw * 0.1 + rkick, botY + hh * 0.5);
-      ctx.lineTo(headX - hw * 0.08 + rkick * 0.8, botY + hh * 0.54);
+      ctx.moveTo(headX - hw * 0.76, topY + hh * 0.34);
+      ctx.lineTo(headX + hw * 0.76, topY + hh * 0.34);
+      ctx.quadraticCurveTo(headX + hw * 0.88, headY + hh * 0.1, headX + hw * 0.6 + mkick, botY + hh * 0.28);
+      ctx.lineTo(headX + mkick * 0.6, botY + hh * 0.42);
+      ctx.lineTo(headX - hw * 0.6 + mkick * 0.8, botY + hh * 0.24);
+      ctx.quadraticCurveTo(headX - hw * 0.88, headY + hh * 0.1, headX - hw * 0.76, topY + hh * 0.34);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = shade(rc, -18);
-      ctx.fillRect(headX - hw * 0.02, topY + hh * 0.3, hw * 0.05, hh * 1.2);
-      ctx.strokeStyle = shade(st.trim, 8);
+      ctx.fillStyle = '#8e262d';
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.38, topY + hh * 0.4);
+      ctx.lineTo(headX + hw * 0.38, topY + hh * 0.4);
+      ctx.quadraticCurveTo(headX + hw * 0.44, headY + hh * 0.2, headX + hw * 0.26 + mkick * 0.7, botY + hh * 0.2);
+      ctx.lineTo(headX - hw * 0.26 + mkick * 0.8, botY + hh * 0.16);
+      ctx.quadraticCurveTo(headX - hw * 0.44, headY + hh * 0.2, headX - hw * 0.38, topY + hh * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      // The folds: the cloth's weight drawn down it.
+      ctx.strokeStyle = shade(mantC, -26);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      for (const u of [-0.5, 0, 0.5]) {
+        ctx.moveTo(headX + u * hw * 0.86, topY + hh * 0.5);
+        ctx.quadraticCurveTo(
+          headX + u * hw * 0.94, headY,
+          headX + u * hw * 0.6 + mkick * 0.7, botY + hh * 0.12,
+        );
+      }
+      ctx.stroke();
+      // Gilt fringe off the cascade's hem.
+      ctx.strokeStyle = shade(st.trim, 4);
       ctx.lineWidth = Math.max(1, s * 0.012);
       ctx.beginPath();
-      ctx.moveTo(headX - hw * 0.07 + rkick * 0.8, botY + hh * 0.5);
-      ctx.lineTo(headX + hw * 0.09 + rkick, botY + hh * 0.46);
+      for (const u of [-0.62, -0.32, 0, 0.32, 0.62]) {
+        const fx2 = headX + u * hw * 0.6 + mkick * 0.7;
+        const fy2 = botY + hh * (0.3 - Math.abs(u) * 0.1);
+        ctx.moveTo(fx2, fy2);
+        ctx.lineTo(fx2 + mkick * 0.4, fy2 + hh * 0.15);
+      }
       ctx.stroke();
+      // The band closes its circle — and the beads keep marching.
+      ctx.strokeStyle = st.trim;
+      ctx.lineWidth = hh * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.9, topY + hh * 0.19);
+      ctx.quadraticCurveTo(headX, topY + hh * 0.33, headX + hw * 0.9, topY + hh * 0.19);
+      ctx.stroke();
+      ctx.fillStyle = shade(st.trim, 28);
+      for (const u of [-0.6, -0.2, 0.2, 0.6]) {
+        ctx.beginPath();
+        ctx.arc(headX + u * hw, topY + hh * (0.28 - Math.abs(u) * 0.06), hw * 0.035, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
   if (st.fins && !hurt) {

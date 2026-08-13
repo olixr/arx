@@ -125,6 +125,9 @@ export declare const LAND_DIE = 1;
 export declare const LAND_SETTLE = 2;
 export declare const LAND_BOUNCE = 3;
 export declare const LAND_SPLAT = 4;
+export declare const LAYER_OVERLAY = 0;
+export declare const LAYER_WORLD = 1;
+export declare const LAYER_GROUND = 2;
 export type ParticleLayer = 'overlay' | 'world' | 'ground';
 export type LandKind = 'none' | 'die' | 'settle' | 'bounce' | 'splat';
 export interface BurstOpts {
@@ -333,6 +336,13 @@ export declare class Particles {
         x: number;
         y: number;
     }, scale: number): void;
+    /**
+     * The renderer's world pass marks a RUN of consecutive particle
+     * items (nothing else touches fillStyle inside a run), so setFill
+     * can dedupe across bulk-lane draws exactly like the overlay batch.
+     */
+    beginRun(): void;
+    endRun(): void;
     private setFill;
     drawOne(ctx: CanvasRenderingContext2D, p: Particle, worldToScreen: (wx: number, wy: number) => {
         x: number;
@@ -350,6 +360,12 @@ export declare class Particles {
     private readonly boltNy;
     /** Live particle count (tests + budget audits). */
     count(): number;
+    /**
+     * The raw pool for the renderer's collect pass — indexed loops over
+     * this replaced the ground/world generators, which minted an
+     * iterator plus a result object per particle per frame.
+     */
+    livePool(): readonly Particle[];
     /** Every live particle, all layers (tests + budget audits). */
     live(): IterableIterator<Particle>;
     /** Live particles on the ground layer, for the world y-sort. */

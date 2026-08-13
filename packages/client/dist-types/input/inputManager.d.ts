@@ -114,6 +114,8 @@ export declare class InputManager {
     private quietFor;
     /** The live pad, translated into the standard layout. */
     private pad;
+    /** Id of the pad whose marking family the HUD currently wears. */
+    private glyphPadId;
     /**
      * Every connected pad, translated — the Controls screen's readout
      * shows all of them so a player can see which one the game hears.

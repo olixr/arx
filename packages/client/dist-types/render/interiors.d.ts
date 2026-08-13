@@ -67,6 +67,24 @@ export declare class InteriorMap {
     /** THE BREACH LAW: a walkable one-tile gap flanked by boundary
      *  tiles across one axis is a hole in a wall run, not a way out. */
     private isBreach;
+    /** True when this walkable tile is sealed wall-line by THE BREACH
+     *  LAW — standing here is standing in a doorway, not in a room.
+     *  The shelter gate holds the veil open across these tiles. */
+    isPassageAt(game: ClientGame, tx: number, ty: number): boolean;
+    /** A doorway or breach tile continues a walkable passage. */
+    private isPassageTile;
+    /** THE PASSAGE IS ONE DOOR: a connector's claim key is canonical
+     *  over its whole chain — consecutive doorway/breach tiles along
+     *  the passage axis. The two rooms at the mouths of a one-wide
+     *  corridor (or of a hole through a two-row-thick wall) never touch
+     *  the same TILE, so per-tile claims left them un-unioned and the
+     *  building fragmented — the room-truth veil then cut its walls per
+     *  column with a hard seam. Walking the chain from either mouth
+     *  yields the same minimum key, so both rooms claim it and THE
+     *  BUILDING LAW unions them. A plain doorway with rooms on both
+     *  sides has no passage neighbors and keys to itself — the old
+     *  behavior, untouched. */
+    private passageKey;
     private flood;
 }
 //# sourceMappingURL=interiors.d.ts.map

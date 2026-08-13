@@ -28,7 +28,8 @@ export declare class MapScreen {
     private hintMode;
     private padPrev;
     private readonly hintDefault;
-    private readonly hintPad;
+    /** Built fresh each show — the letters follow the live pad's markings. */
+    private get hintPad();
     constructor(game: ClientGame, 
     /** The game renderer's adaptive dpr, threaded down to the view. */
     effectiveDpr?: () => number);
@@ -36,6 +37,14 @@ export declare class MapScreen {
     open(): void;
     close(): void;
     private centerOnPlayer;
+    /**
+     * THE ERRAND POINTS AT THE CHART: lay an errand's search ring on
+     * the table and frame the view around it (call open() first — the
+     * chart must be standing before it can be framed). The ring stays
+     * across folds until its errand leaves the ledger or another call
+     * re-points it.
+     */
+    frameSearchRing(ring: NonNullable<MapView['searchRing']>): void;
     /**
      * Per-frame pad drive while the chart is open in pad mode. UiNav
      * lends the left stick (claimStick); LT/RT zoom about the center;

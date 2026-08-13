@@ -55,6 +55,23 @@ export declare function padVendorProduct(id: string): {
  */
 export declare function genericLayout(pad: Gamepad, name?: string, hatAxis?: number | undefined): PadLayout;
 /**
+ * THE BUTTON WEARS ITS OWN NAME — which family of face-button markings
+ * the physical pad carries, so the HUD can show the letters (or
+ * shapes) actually printed on the player's hardware. Read from the id
+ * alone; 'xbox' is the safe default because the standard layout's
+ * slot names ARE the Xbox names.
+ */
+export type PadFamily = 'xbox' | 'ps' | 'ns';
+export declare function padFamily(id: string): PadFamily;
+/**
+ * What standard slots 0-3 are labeled on that family's hardware.
+ * Position-mapped pads (browser 'standard' or the generic guess) put
+ * a Nintendo pad's bottom button — its B — in slot 0; the switch-pro
+ * profile instead swaps 0/1 by LABEL (Nintendo A confirms, the
+ * console's own grammar), so its slot 0 really is the A button.
+ */
+export declare function padFaces(family: PadFamily, profile: string): readonly [string, string, string, string];
+/**
  * Which dialect a pad speaks. Standard-mapped pads short-circuit; a
  * pad the browser did not map gets its profile, or the heuristic.
  */

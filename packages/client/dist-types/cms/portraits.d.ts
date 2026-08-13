@@ -1,4 +1,4 @@
-import type { Look } from '@arx/shared';
+import { type Look } from '@arx/shared';
 import type { NpcActorDef } from '@arx/content';
 type Equipment = Partial<Record<string, string>>;
 /** A ringed three-quarter bust of a raw look (plus optional gear). */

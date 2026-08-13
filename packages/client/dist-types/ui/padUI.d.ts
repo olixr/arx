@@ -2,7 +2,7 @@ import type { InputManager } from '../input/inputManager.js';
 import { type ActionId } from '../input/bindings.js';
 export interface UiNavHooks {
     /** Swap two pack slots (pad carry mode). */
-    onInvMove: (from: number, to: number) => void;
+    onInvMove: (from: number, to: number, merge?: boolean) => void;
     /** Drop the carried pack slot onto the ground (Ⓨ while carrying). */
     onDropToWorld: (slot: number) => void;
     /**
@@ -163,7 +163,17 @@ export declare class UiNav {
      * guarantees no button serves both a screen and a swing.
      */
     private handleGlobalButtons;
-    /** LT/RT: hand the press to the open room's declared pager. */
+    /** The open room's section rail, when it declares one. */
+    private roomTabs;
+    /**
+     * A bumper press: step the room's section rail when one stands,
+     * otherwise walk the shelf of screens. An open verb menu owns the
+     * frame — sections must not slide under a raised sheet of verbs.
+     */
+    private bumperStep;
+    /** LT/RT: hand the press to the open room's declared pager — the
+     * ledger first (the rail already answers the bumpers), the rail
+     * itself when it is the only pager the room owns. */
     private dispatchPage;
     /**
      * Start's tap-or-hold machine. Hold past the threshold and the ten

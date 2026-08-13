@@ -66,6 +66,8 @@ export declare class Camera {
     private originX;
     private originY;
     worldToScreen(wx: number, wy: number, w: number, h: number): Vec2;
+    /** Allocation-free worldToScreen for per-particle hot paths. */
+    worldToScreenInto(wx: number, wy: number, w: number, h: number, out: Vec2): Vec2;
     screenToWorld(sx: number, sy: number, w: number, h: number): Vec2;
 }
 export declare class Renderer {
@@ -660,7 +662,32 @@ export declare class Renderer {
      * call sampler allocation is real garbage in a hot path.
      */
     private porchAt;
+    /** Ramp mouth probe directions, hoisted — this literal used to be
+     *  allocated fresh on every renderLift call over a ramp tile. */
+    private static readonly RAMP_DIRS;
+    /** Window indoor-side probe directions (collectStaticLights) —
+     *  allocated five arrays per window tile per frame as a literal. */
+    private static readonly WINDOW_DIRS;
+    /** relightBody's erode kernel: unit taps, scaled by erodePx (axis)
+     *  or its 0.71 diagonal at use — was 9 arrays per lit body/frame. */
+    private static readonly ERODE_TAPS;
+    /**
+     * THE LIFT LEDGER: renderLift runs for every body, particle, glow
+     * and debris chunk every frame, and the full walk below pays up to
+     * eight map lookups per call. The lift is classifiable PER TILE —
+     * constant value, bridge apron, ramp flight, or the rare deck-fill
+     * tile whose per-point triangle test keeps the slow path — so a
+     * world-version-keyed memo collapses the hot path to one map get
+     * plus arithmetic. Kinds: 0 = constant (v), 1 = bridge apron
+     * (base v, dir code in a: 0=W 1=E 2=N 3=S), 2 = ramp
+     * (v = (lvl-1)*ELEV_H, mouth dir in a/b), 3 = slow path.
+     */
+    private readonly liftMemo;
+    private liftMemoVersion;
     renderLift(x: number, y: number): number;
+    private classifyLift;
+    /** The pre-ledger walk, verbatim — deck-fill tiles still need it. */
+    private renderLiftSlow;
     /** Memoized deck test (water within Chebyshev 2 — callers gate on
      *  the Dock/Bridge tile themselves), keyed by
      *  tile and cleared on any world change — renderLift is hot and the
@@ -678,6 +705,15 @@ export declare class Renderer {
     private pushBirdThreat;
     /** worldToScreen that also rides the terrain lift under the point. */
     private liftedWTS;
+    /**
+     * liftedWTS for the bulk lanes (particles, debris, birds): returns
+     * ONE reused scratch, so thousands of projections a frame allocate
+     * nothing. Consumers copy fields out before projecting again — the
+     * drawOne contracts say so explicitly. Never hand this to code that
+     * stores the result.
+     */
+    private readonly wtsScratch;
+    private liftedWTSScratch;
     /**
      * World-y whose liftedWTS projection sits PROJ_AIR tiles of SCREEN
      * height above the ground point at `y`. World-y offsets render
@@ -704,6 +740,12 @@ export declare class Renderer {
      * fixture shadowing itself (props) while letting a body stand right
      * up against a fire (entities).
      */
+    /** lightThrows' pooled result: at most two records, rewritten per
+     *  call — the old fresh array + literals ran per shadow caster per
+     *  frame (~240 casts at night = ~86k allocations/sec). Callers
+     *  consume immediately and never hold the array across calls. */
+    private readonly throwRecs;
+    private readonly throwsOut;
     private lightThrows;
     /** Arm the shadow target for a cast fill; null while nothing casts. */
     private beginCastFill;
@@ -877,6 +919,11 @@ export declare class Renderer {
      * After dark the same source also lights the ground around it — a
      * bolt streaking across a night field carries its own pool of light.
      */
+    /** Memoized "r, g, b" → triple — the palette is a fixed set of
+     *  literals, and splitting per glow per frame after dark minted
+     *  thousands of strings a second in glow-heavy combat. */
+    private static readonly RGB_MEMO;
+    private static parseRgb;
     queueGlow(x: number, y: number, r: number, rgb: string, a: number): void;
     /** 1/3-res frame copy backing the tilt-shift (bilinear up IS the blur). */
     private readonly tiltScratch;
@@ -1090,7 +1137,171 @@ export declare class Renderer {
      * woodSkins.ts, shared with the floor-plank bake in terrain.ts).
      */
     private woodSkinFor;
+    /**
+     * THE STANDING WORLD, phase 1 — collectRaisedTiles rides THE STATIC
+     * REGISTER: each chunk's per-tile route decisions (wall? ramp run?
+     * garrison gate? crop?) are compiled once per (data identity, rev)
+     * and replayed here in exact scan order; the DrawItems themselves
+     * are still minted fresh every frame (reveal heights, wraps, and the
+     * frame clock stay live — the register stores world-space
+     * descriptors, never closures). Chunks without a fresh register fall
+     * back to the per-tile scan for the same row segment — the fallback
+     * IS the correctness contract, and mixing register and scan chunks
+     * preserves the global west-to-east, row-major emission order that
+     * stable-sort ties depend on.
+     */
     private collectRaisedTiles;
+    /** Per-chunk compiled scan results (THE REGISTER IS THE SCAN,
+     *  COMPILED) — keyed like the ground bake: object identity + rev.
+     *  touchNeighbors bumps neighbours on every patch, so cross-border
+     *  probes (run walks, deck fills, side-gate tests — all ≤1 chunk of
+     *  reach) can never go stale silently. */
+    private readonly registers;
+    /** Register compiles per frame — a fresh viewport (~12-16 chunks)
+     *  warms over 3-4 frames while the per-tile scan covers the gap. */
+    private registerBuildsLeft;
+    private regGame;
+    /** The classifier's window into the world + the renderer's own
+     *  probes and tile sets — one long-lived object, no per-frame
+     *  alloc. Everything reads live state through regGame. */
+    private readonly regHost;
+    private readonly regEmitM;
+    private readonly regEmitX;
+    private readonly regEmitI;
+    private registerFor;
+    /**
+     * THE NEIGHBOR'S FACE IS OUR CONTENT: everything a bandable painter
+     * reads OUTSIDE its own member tuple, folded into the stretch sig
+     * as DERIVED booleans, never raw tile ids — a door swinging
+     * open/shut must keep every neighbor's sig still (the zero-bake
+     * door-toggle receipt). Covers the shared-edge joins, crown
+     * chamfers, south faces, exposed-end flanks and outlines (wallish/
+     * garrisonish at the four neighbors), the north-doorway square-
+     * corner rule, the porch-deck lift on rails and props, and the
+     * building wood skin (the region anchor deals the palette). Every
+     * edit that can change one of these lands within touchNeighbors'
+     * 3x3 rev bump (buildings cap at 400 tiles, well inside a chunk
+     * ring; chunk arrivals bump neighbors too), so a register rebuild —
+     * and with it this digest — is guaranteed wherever it can change.
+     * Without this digest, a demolished south row or a run end cut in
+     * the NEXT chunk left cold bakes blitting pre-edit art (crowns with
+     * no face, unfinished ends) hard-edged against live neighbors.
+     */
+    private memberContextSig;
+    private finishRegister;
+    /**
+     * Replay one register row for one chunk segment, in the scan's own
+     * encounter order. Admission mirrors the per-tile pads exactly:
+     * deep-south rows and side-band columns admit tall silhouettes only
+     * (trees, garrison, portals — member.treeLike), and a member's
+     * effective encounter column is its first admissible tile, so a run
+     * reaching in from a pad lands at the same array position the scan
+     * gave it (stable-sort tie order is load-bearing).
+     */
+    private emitRegisterRow;
+    /** The per-tile fallback: classify-and-emit across a row segment —
+     *  runs whenever a chunk's register isn't fresh yet. Same pads,
+     *  same classifier, same emitter as the register path, so the two
+     *  can never drift. */
+    private scanRaisedRange;
+    /**
+     * Emit one classified member — the scan's per-route emission,
+     * verbatim: strat stamps, seam offsets, veil heights, ring-cache
+     * and shake wraps all live exactly as before. Everything read here
+     * (reveal fields, eases, outline toggle, interiors) is read PER
+     * FRAME — the register never caches any of it.
+     */
+    private emitRaisedMember;
+    private readonly bandCache;
+    /** Per-tile invalidation nonces (sign text and friends) — mixed
+     *  into stretch content sigs so state-keyed art re-bakes its band. */
+    private readonly bandNonce;
+    /** Live band canvas bytes — the byte budget's running total. */
+    private bandBytes;
+    /** Per-frame band accounting (the ?perf confession, phase 5). */
+    private readonly bandStats;
+    /** Per-frame "this stretch already emitted" marker (blit or live). */
+    private readonly bandEmitted;
+    private readonly bandScratchSeen;
+    private staticBakeMsLeft;
+    /** True while a band bake paints: the veil fields read full height
+     *  and collect-side glow effects stay quiet (bakingMask). */
+    private bakeVeilFull;
+    /** Bound once — planStretches calls it per member. */
+    private readonly memberBandableFn;
+    /**
+     * v1 band membership: kinds whose painters are pure functions of
+     * world state (verified: no clock, no sky) at full veil height.
+     * Windowed walls read sky.flame through their glass and hung walls
+     * breathe with the breeze — both stay live (SKY NEVER KEYS A BAKE).
+     * Doors, gates, and their side variants ride openness clocks; the
+     * fire/glow families and everything through objectItem keep their
+     * own caches. Phase 4 widens this set.
+     */
+    private memberBandable;
+    /** The layer stands down where its premises fail: the editor pins
+     *  the camera and patches tiles at brush rate, and leanX bends
+     *  verticals about the LIVE screen center — a bake would freeze the
+     *  lean about the stretch's own canvas center (THE STRAIGHT-WORLD
+     *  PREREQUISITE; the fuse blows if the lean is ever revived). */
+    private staticLayerOn;
+    /** Device pixels per tile for band bakes (THE CRISP GRID LAW):
+     *  targetZoom (one flip per zoom, never mid-glide) × the adaptive
+     *  dpr — the treeSprites resolution model, never the ground tier
+     *  (walls are 1-3px-stroke art; softening is banned). Bakes run in
+     *  a replica of the LIVE environment (CSS-scaled ctx at dpr, snap
+     *  on the device lattice), so painters and sprite blits behave
+     *  byte-for-byte as on screen. */
+    private bandGridPx;
+    /**
+     * THE HOT MEMBER RULE's predicate, reusing the live path's own gates
+     * verbatim: a stretch is hot if any wall member's reveal height is
+     * off full (checked only inside the cut's known support window — the
+     * same early-outs wallHeightAt itself takes), if its north neighbor
+     * is (the REAR RISER repaints on the neighbor's ease), or if a
+     * destructible member is mid-shake.
+     */
+    private stretchHot;
+    /**
+     * Emit one stretch: blit its bake when standing and cold, bake it
+     * when the budget allows, and fall back to per-member live emission
+     * otherwise. Members of a stretch are consecutive in the row walk,
+     * so emitting the whole stretch at its first admitted member keeps
+     * every stable-sort tie exactly where the scan put it.
+     */
+    private emitStretch;
+    /** Blit one band bucket at its snapped anchor projection.
+     *
+     *  THE EXACT LATTICE PATH: at settled zoom on the bake's own dpr,
+     *  the bake is an integer-device-pixel TRANSLATION of the live
+     *  paint — the in-bake camera origin is snapped on the bake
+     *  lattice, so every in-bake snapPx shares the live path's rounding
+     *  phase. kx = ky = 1/dpr therefore lands every baked edge on the
+     *  very device pixel the live painter would use: no resample, byte
+     *  parity at EVERY settled framing, not just integer gridPx.
+     *  (Deriving the scale from two snapped endpoint projections — the
+     *  old way — quantized a ±1 device-px error into the mapping, and
+     *  the one-row vertical baseline amplified it over the full canvas
+     *  height: 1-3.5px crown misalignment and hairline background seams
+     *  at any non-default zoom, popping at every hot<->cold flip.)
+     *
+     *  Genuinely stale bakes (mid-glide, dpr step, awaiting the paced
+     *  re-bake queue) map by the pure scale ratio instead — transient
+     *  softness by design, free of endpoint quantization noise. */
+    private blitBand;
+    /**
+     * Bake one stretch (THE SAME-BRUSH LAW). One probe construction
+     * discovers the sort buckets; then per bucket the ctx, camera,
+     * snap lattice, and viewport swap to the band canvas (scale =
+     * gridPx, snapDpr = 1 — every snapped tile edge lands on a bake
+     * integer) and the members' items are constructed AGAIN under the
+     * swap (builders capture projections at construction) and drawn.
+     * bakeVeilFull holds the reveal at rest; bakingMask keeps glow
+     * side effects out of the pixels.
+     */
+    private bakeStretch;
+    private acquireBandCanvas;
+    private releaseStretchBake;
     /**
      * Walls: continuous top mass with rounded exposed corners, a darker
      * front face where the wall meets open ground, and a hard shadow.
@@ -1541,7 +1752,30 @@ export declare class Renderer {
      * an edge-on side piece (M = cell center = the shared tile corner).
      */
     private static readonly SQUARE_SEGS;
+    /**
+     * THE STANDING WORLD phase 3 — the cliff contour memo. The
+     * marching-squares scan (mask + stair ownership per dual cell, per
+     * visible level) re-derived identical geometry 120 times a second;
+     * its output only moves when the viewport crosses a tile line or a
+     * chunk rev bumps. The memo records the scan's emissions as
+     * WORLD-SPACE ops (south faces, north fall crests, merged side
+     * runs) and replays them each frame through the very same item
+     * builders — items are still minted fresh (the ctx-swap law; screen
+     * coords come from the live camera), water falls still probe
+     * per-frame, and the paint is byte-identical because nothing
+     * downstream of the scan changed.
+     */
+    private cliffMemo;
+    /** Chunk revs over the padded scan window — the memo's world key. */
+    private cliffRevKey;
     private collectCliffFaces;
+    private buildCliffMemo;
+    /**
+     * One merged side run, emitted per world row with live water-fall
+     * probing — the scan's old emitRun closure, verbatim. Falls stay
+     * fully live: their clips and race read the world each frame.
+     */
+    private emitCliffSideRun;
     /** One contour segment extruded into a face curtain (level -> level-1). */
     private cliffFaceItem;
     /**
@@ -1908,6 +2142,11 @@ export declare class Renderer {
     /** Sun-shadow twin: the projected silhouette Path2D built at origin. */
     private readonly treeShadows;
     private treeBakeBudget;
+    /** Running average sprite-bake cost (ms) — the admission estimate
+     *  for the cost-aware budget gates. Admitting at "budget > 0" let a
+     *  0.01ms remainder start a full 0.15-0.6ms bake; every gate now
+     *  asks for ~half the average cost up front. */
+    private bakeCostEma;
     private treeShadowBudget;
     /** Per-frame time budget for non-visible sprite bakes (pad bands,
      *  cadence re-bakes) — see SPRITE_BAKE_MS. */
@@ -1930,6 +2169,18 @@ export declare class Renderer {
     perfSummary(): string;
     /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
     private drawBulkItem;
+    /**
+     * Pooled bulk-lane DrawItems, reused every frame. ONLY the bulk lane
+     * may pool: entity items can outlive the frame (the reflection
+     * registry replays them), bulk items never do — and a pooled record
+     * only ever carries the four bulk fields, so nothing stales.
+     */
+    private readonly bulkItemPool;
+    private bulkItemUsed;
+    private takeBulkItem;
+    /** Debris collision probe, hoisted — a closure per frame through a
+     *  megamorphic call site was measurable at 2-4 probes per chunk. */
+    private readonly debrisProbe;
     /** Per-frame shadow-mask bake allowance — see shadowMask. */
     private maskBakeBudget;
     private frameNo;
@@ -1983,6 +2234,13 @@ export declare class Renderer {
     private static readonly RUN_NEIGH_X;
     private static readonly RUN_NEIGH_Y;
     private static readonly RUN_RING_TILES;
+    /** THE STANDING WORLD phase 4 — single-tile props whose painters
+     *  are provably inert (STATIC_RING minus the run-merged furniture,
+     *  which already bakes per component, minus PillarStone, which has
+     *  its own route). None of these read the clock or the sky —
+     *  Table's candles, LampPost, Brazier, and Hearth all live outside
+     *  this set. */
+    private static readonly BAND_STATIC_PROPS;
     /**
      * Group a run-merging tile's connected component and emit ONE ringed
      * item for the whole piece. Members are discovered by world data
@@ -2484,6 +2742,16 @@ export declare class Renderer {
      */
     private leglessItem;
     /**
+     * THE PARLIAMENT FLIES: the great owl's dedicated flier item. Owls
+     * cruise on the wing like the bats do — the walk rig never touches
+     * them. The ROOST LEDGER lives here: a still, peaceful owl rolls a
+     * chance to settle; a settled owl rests a while and lifts off again;
+     * any movement, strike, or wound throws it back on the wing at
+     * takeoff speed. The blend eases both ways (landing drifts down
+     * slower than takeoff snaps up) and the touchdown edge kicks dust.
+     */
+    private owlItem;
+    /**
      * Ground loot. Coins pile up as actual gold; everything else is a
      * cinched leather loot bag whose topper tells you the cargo at a
      * glance — a blade for weapons and tools, arrow shafts for ammo, a
@@ -2774,6 +3042,15 @@ export declare class Renderer {
     private ghostDiagPath;
     private drawBuildGhost;
     private drawActionProgress;
+    /**
+     * THE SPOKEN BEAT's face: stage pips under the own body while a
+     * string is alive. Filled pips = beats already swung, the next pip
+     * ghosted; the whole row is the GRACE EMBER — it burns down with the
+     * window and fades out as the string dies. THE RUN warms the pips
+     * once the rhythm holds past one full string. Same canvas dialect as
+     * the cast bar above it; single-beat lanes (len 1) stay silent.
+     */
+    private drawComboBeat;
     private drawFloaties;
     private drawHpBar;
 }

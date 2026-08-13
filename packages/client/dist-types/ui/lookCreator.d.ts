@@ -32,6 +32,15 @@ export declare class LookCreator {
     private swatchRow;
     /** Retina-backed canvas: crisp vector art at any zoom. */
     private sizeCanvas;
+    /**
+     * The SPINNING STAGE's persistent anim memory (arms-v3 Phase 1): the
+     * preview turns continuously, and the rig's stateful laws (the 240ms
+     * rest-side ease, elbow memory, layer hysteresis) only run when the
+     * SAME memory object survives across frames. Static busts stay
+     * deliberately stateless — a still wants the single-frame fallbacks.
+     */
+    private stageKnees;
+    private stageDepth;
     /** One rig pose, shared by the stage, busts, and the crest. */
     private paintFigure;
     /** A head-and-shoulders portrait: the head centered high, cropped

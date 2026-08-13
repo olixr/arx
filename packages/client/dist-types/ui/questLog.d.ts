@@ -10,6 +10,11 @@ import type { ClientGame } from '../game/clientGame.js';
  * Offerable-but-untaken quests are DELIBERATELY absent: you find work
  * by talking to the folk who wear the mark, not by reading a menu.
  *
+ * THE GUIDANCE LAW, AMENDED: the written entry still leads, but every
+ * ask that the world can place carries a chart affordance — a soft
+ * SEARCH RING on the map naming a neighborhood, never a pin. The
+ * reader is pointed, not led by the nose.
+ *
  * Tracking is client-local (localStorage per character) — pure
  * presentation; the server never hears which page is dog-eared.
  */
@@ -20,6 +25,17 @@ export declare class QuestLog {
     private readonly bench;
     private selected;
     private confirmAbandon;
+    /**
+     * Set by main: lay an errand's search ring on the chart and open
+     * it. The journal never opens screens itself — the one gate does.
+     */
+    onShowArea: ((ring: {
+        x: number;
+        y: number;
+        r: number;
+        label: string;
+        quest: string;
+    }) => void) | null;
     private renderedVersion;
     /** When the list last painted — the resting shelf's clocks read
      *  Date.now() at render time, so a reopen must know if they moved. */
@@ -49,6 +65,10 @@ export declare class QuestLog {
      */
     inspectQuest(id: string): void;
     private renderBench;
+    /** Hand a ring to the chart, tagged with its errand. */
+    private showArea;
+    /** A small chart button — the "ring it on the map" affordance. */
+    private chartButton;
     private renderActiveBench;
     private renderDoneBench;
 }

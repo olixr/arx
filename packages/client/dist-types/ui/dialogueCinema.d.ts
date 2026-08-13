@@ -72,6 +72,12 @@ interface CinemaNode {
         idx: number;
         kind: 'accept' | 'turnin';
     }>;
+    /**
+     * Choices that open a shop, by index: the plate wears the coin
+     * chip so the counter reads apart from small talk, exactly as
+     * quest weight does.
+     */
+    shopChoices?: number[];
 }
 export declare class DialogueCinema {
     private readonly sfx;

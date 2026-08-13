@@ -15,7 +15,8 @@
  * - PLAYER'S TABLE WINS. Custom bindings persist in localStorage and
  *   load before the first frame; resetting restores this file exactly.
  */
-export type ActionId = 'moveUp' | 'moveDown' | 'moveLeft' | 'moveRight' | 'attack' | 'ability1' | 'ability2' | 'ability3' | 'ability4' | 'dodge' | 'interact' | 'lootReveal' | 'buildRotate' | 'sit' | 'sheathe' | 'mount' | 'walkToggle' | 'sneakToggle' | 'screenPack' | 'screenSkills' | 'screenArts' | 'screenCraft' | 'screenBuild' | 'screenSocial' | 'screenMap' | 'screenQuests' | 'screenRep' | 'screenSettings' | 'screenLoot' | 'mapGlass' | 'zoomIn' | 'zoomOut' | 'zoomCycle';
+import { type PadFamily } from './padProfiles.js';
+export type ActionId = 'moveUp' | 'moveDown' | 'moveLeft' | 'moveRight' | 'attack' | 'ability1' | 'ability2' | 'ability3' | 'ability4' | 'dodge' | 'quickUse' | 'interact' | 'lootReveal' | 'buildRotate' | 'sit' | 'sheathe' | 'mount' | 'walkToggle' | 'sneakToggle' | 'screenPack' | 'screenSkills' | 'screenArts' | 'screenCraft' | 'screenBuild' | 'screenSocial' | 'screenMap' | 'screenQuests' | 'screenRep' | 'screenSettings' | 'screenLoot' | 'mapGlass' | 'zoomIn' | 'zoomOut' | 'zoomCycle';
 export interface ActionDef {
     id: ActionId;
     /** Player-facing name — quiet quartermaster diction. */
@@ -28,11 +29,11 @@ export interface ActionDef {
 }
 /**
  * The shipped layout. Keyboard: WASD moves, Space attacks, QERT casts,
- * F uses, Shift dodges; the stance row is Z walk / X sit / C sneak;
- * screens live on I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses,
- * Ⓑ dodges, LB/LT/RB/▲ cast, Ⓨ names the loot; d-pad ▼ sits,
- * ◀ sheathes, ▶ raises the glass; L3 sneaks, R3 steps the camera;
- * Start is the pack, Select the chart.
+ * F uses, Shift dodges, 1 swallows the belt's meal; the stance row is
+ * Z walk / X sit / C sneak; screens live on I K V N B U M O G. Pad:
+ * RT (or Ⓧ) attacks, Ⓐ uses, Ⓑ dodges, LB/LT/RB/▲ cast, Ⓨ names the
+ * loot; d-pad ▼ eats off the belt, ◀ sheathes, ▶ raises the glass;
+ * L3 sneaks, R3 steps the camera; Start is the pack, Select the chart.
  *
  * THE PAIRED HAND: the two technique seats ride TOGETHER — Q and E on
  * keys, LB and LT under the left hand — because arts are the first
@@ -42,11 +43,23 @@ export interface ActionDef {
 export declare const ACTIONS: readonly ActionDef[];
 /** KeyboardEvent.code → short badge text. */
 export declare function kbLabel(code: string): string;
-/** Standard-gamepad button index → glyph chip class + text. */
-export declare function padGlyph(btn: number): {
+/** The face family currently on the chips (for diagnostics rows). */
+export declare function currentPadFamily(): PadFamily;
+/**
+ * Standard-gamepad button index → glyph chip class + text. Defaults
+ * to the live pad's family; pass `faces`/`family` to letter a chip
+ * for a SPECIFIC pad (the Controls readout lists every pad, each in
+ * its own markings).
+ */
+export declare function padGlyph(btn: number, faces?: readonly [string, string, string, string], family?: PadFamily): {
     cls: string;
     text: string;
 };
+/**
+ * The inline form for prose hints ("Ⓐ place, Ⓑ done"): letters wear
+ * their circle, PlayStation shapes stand as themselves.
+ */
+export declare function padGlyphInline(btn: number): string;
 type Table = Record<ActionId, {
     kb: string[];
     pad: number[];
@@ -65,6 +78,12 @@ export declare class Bindings {
     private save;
     /** Redraw hook for badges/hotbar/menu — fired after any change. */
     onChange(fn: () => void): void;
+    /**
+     * THE BUTTON WEARS ITS OWN NAME: adopt the live pad's marking
+     * family. InputManager calls this the moment the active pad's id
+     * changes; a real change re-letters every chip via onChange.
+     */
+    setPadFamily(family: PadFamily, profile: string): void;
     private emit;
     kb(id: ActionId): readonly string[];
     pad(id: ActionId): readonly number[];

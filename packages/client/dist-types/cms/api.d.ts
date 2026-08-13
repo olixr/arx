@@ -12,6 +12,8 @@ export interface ItemRow {
     name: string;
     value: number;
     stackable: boolean;
+    /** Per-slot stack cap; null = unlimited (or non-stackable). */
+    maxStack: number | null;
     slot: string | null;
     desc: string | null;
 }

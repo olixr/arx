@@ -1,1 +1,1 @@
-{"version":3,"file":"fxSigsArchery.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsArchery.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;GAmBG;AAGH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AAygC5D;;;GAGG;AACH,eAAO,MAAM,YAAY,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAanD,CAAC"}
+{"version":3,"file":"fxSigsArchery.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsArchery.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;GAmBG;AAIH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AAg2C5D;;;GAGG;AACH,eAAO,MAAM,YAAY,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAanD,CAAC"}

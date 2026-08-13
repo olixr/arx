@@ -107,6 +107,9 @@ export declare class Debris {
     update(dt: number, solid: (x: number, y: number) => boolean): void;
     /** Live chunks, for the renderer's world y-sort. */
     chunks(): IterableIterator<DebrisChunk>;
+    /** The raw pool for indexed iteration — the generator above minted
+     *  an iterator + result object per chunk per frame. */
+    chunkPool(): readonly DebrisChunk[];
     drawOne(ctx: CanvasRenderingContext2D, c: DebrisChunk, worldToScreen: (wx: number, wy: number) => {
         x: number;
         y: number;

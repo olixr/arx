@@ -9,17 +9,32 @@
  * dry — the files arrive already mastered; the shared room would only
  * smear them).
  *
+ * The whole player leans Breath-of-the-Wild: music is scenery that
+ * EMERGES from the world's own sound and recedes back into it. Slow
+ * blooms, long quiets, and no two sittings walking the same path.
+ *
  * Laws:
  *  - MOOD PICKS THE SHELF: town zone → town tracks; night hours or
  *    underground → night tracks; otherwise the day adventure shelf.
  *    Mood commits on a 2.5s-sustained change (no doorway stutter),
  *    then the sounding track bows out with a fade and the new mood
  *    opens after a short breath.
- *  - SHUFFLE, NEVER REPEAT: the next track from a shelf is random but
- *    never the one just played from that shelf.
- *  - EVERY EDGE IS A FADE: ~2s in, ~2.6s out. A track that ends
- *    naturally is followed by a real gap (silence is still a section)
- *    before the next one fades in.
+ *  - THE FULL DECK: each shelf is dealt as a shuffled deck — every
+ *    track plays once before any repeats, and a reshuffle never leads
+ *    with the track just heard. Decks persist across sessions
+ *    (localStorage), so even short sittings walk the library's full
+ *    swath instead of re-rolling the same openers.
+ *  - THE SONG REMEMBERED: a track cut mid-flight by a mood change is
+ *    bookmarked; return to that mood within a few minutes and it takes
+ *    up where it left off (a breath rewound) instead of restarting.
+ *    Stepping into town and back out never replays the same opening.
+ *  - EVERY EDGE IS A LONG BREATH: slow eased fades — ~5s bloom in,
+ *    ~3.5s bow out — on a PER-TRACK gain node. Fades never touch the
+ *    bus and no two tracks ever fight over one fader, so an interrupted
+ *    fade can simply become a gentle crossfade.
+ *  - SILENCE IS A SECTION: the rest after a track ends is tuned per
+ *    mood — towns sing again sooner; the wild and the night hold long
+ *    scenic quiets where the world's own ambience carries the scene.
  */
 import type { AudioEngine } from './engine.js';
 import { type ZoneWeights } from './zones.js';
@@ -34,6 +49,16 @@ export declare const TRACK_LIBRARY: Record<TrackMood, string[]>;
  * night — out there the land itself is the boss.
  */
 export declare function moodFor(w: ZoneWeights, hours: number, dangerTier?: number): TrackMood;
+/**
+ * THE FULL DECK, pure and testable: take the next track from a
+ * shelf's deck, reshuffling the whole shelf when the deck runs dry.
+ * A fresh shuffle never leads with the track just played, and names
+ * a stale persisted deck no longer carries are dropped on the way in.
+ */
+export declare function drawTrack(shelf: readonly string[], deck: readonly string[], last: string | null, rand: () => number): {
+    name: string;
+    deck: string[];
+};
 export declare class TrackPlayer {
     private engine;
     /** Committed mood (readable for debugging). */
@@ -41,21 +66,32 @@ export declare class TrackPlayer {
     state: 'silent' | 'playing';
     /** Name of the sounding track, if any. */
     current: string | null;
-    private out;
     private nextAt;
     private candidate;
     private candidateSince;
+    private decks;
     private lastPlayed;
+    /** THE SONG REMEMBERED — where each mood's cut track stood. */
+    private bookmark;
     private media;
+    /** Pending stop per fading track, cancelled if the track resumes. */
+    private pauseTimer;
     private activeEl;
     private booted;
     constructor(engine: AudioEngine);
     update(w: ZoneWeights, hours: number, dangerTier?: number): void;
     private switchTo;
-    /** Fade the sounding track down and stop it once it is inaudible. */
+    /**
+     * Bow the sounding track out on ITS OWN gain and bookmark where it
+     * stood, so `from`'s song can be taken up again on return.
+     */
     private fadeOut;
+    private schedulePause;
+    /** THE SLOW BLOOM — a concave rise: long quiet approach, late swell. */
+    private easeUp;
     private play;
-    /** A track ran to its own mastered ending — rest, then another. */
+    /** A track ran to its own mastered ending — a real rest, then on. */
     private onEnded;
+    private saveDeckStore;
 }
 //# sourceMappingURL=tracks.d.ts.map
