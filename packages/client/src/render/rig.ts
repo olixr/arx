@@ -51,11 +51,14 @@ import {
   STAFF_GUARD_CHOKE_S,
   WIELD_GROUND_K,
   armPump,
+  awayPeekK,
+  bandFlag,
   bowWield,
   easeRestSide,
   facingFrame,
   gaitK,
   lifelineYaw,
+  PEEK_HANG_K,
   projectAim,
   greatFinisherLean,
   greatFinisherPath,
@@ -250,6 +253,12 @@ export interface RigPose {
      */
     mainElbow?: { sign: number };
     offElbow?: { sign: number };
+    /**
+     * THE FLIP EARNS ITS HYSTERESIS (arms-v3 Phase 4): per-flag layer
+     * band states — every paint-order decision holds its last verdict
+     * through the dead zone between its enter/exit thresholds.
+     */
+    bands?: Record<string, boolean>;
   };
   bodyColor: string;
   hurt: boolean;
@@ -4343,7 +4352,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // off the body, both fists splayed wide of the silhouette (the
     // "hands come outward" read). Linear in profileK, so the stance
     // breathes continuously through every diagonal.
-    const hangW = ww * HANG_WAIST_K + (tw * 1.02 - ww * HANG_WAIST_K) * profileK;
+    // THE SILHOUETTE PEEK (arms-v3 Phase 4): at the away diagonals the
+    // hang lanes widen so held gear clears the torso silhouette — a
+    // loadout stays readable from behind instead of vanishing into
+    // the body (zero on the camera half and at profile, by the band).
+    const hangW =
+      (ww * HANG_WAIST_K + (tw * 1.02 - ww * HANG_WAIST_K) * profileK) *
+      (1 + PEEK_HANG_K * awayPeekK(fy));
     // THE RUNNER'S ELBOW: an empty fist rises toward the ribs as the
     // gait becomes a sprint — bent arms pumping with the legs, the
     // shape every running reference draws. Armed fists keep their
@@ -5053,7 +5068,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // that window is degenerate, so the remembered sides hold outright
   // and the flip lands once, after the hands arrive. Rest carries
   // only: strikes and draws own their elbows dynamically.
-  const elbowEaseHold = restSettle > 0.5 && Math.abs(sideS) < 0.98;
+  // THE FLIP EARNS ITS HYSTERESIS (arms-v3 Phase 4): every layer flag
+  // below rides the one banded resolver on the caller's depth memory.
+  // The bands straddle the old thresholds while leaving every CARDINAL
+  // facing outside the dead zone — a settled heading resolves exactly
+  // as the raw threshold did (det-pinned), but a slow arc across a
+  // boundary now flips each layer exactly ONCE instead of flickering
+  // with every heading wobble.
+  const settleHalf = bandFlag(mem, 'settleHalf', restSettle, 0.55, 0.45);
+  const awayDeep = bandFlag(mem, 'awayDeep', -fy, 0.42, 0.28);
+  const fwdShoulder = bandFlag(mem, 'fwdShoulder', fy, 0.14, 0.02);
+  const awayShoulder = bandFlag(mem, 'awayShoulder', -fy, 0.14, 0.02);
+  const runTrail = bandFlag(mem, 'runTrail', rig.runF, 0.42, 0.28);
+  const elbowEaseHold = settleHalf && Math.abs(sideS) < 0.98;
   mainShX += (rig.x + sideS * tw * SHOULDER_SETTLE_K * wS - mainShX) * settleK;
   offShX += (rig.x - sideS * tw * SHOULDER_SETTLE_K * wS - offShX) * settleK;
   // Aiming up-and-away puts the gear behind the body. And a LONG
@@ -5064,7 +5091,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // beside the hip, butt hidden behind the shoulder. Gated on the
   // run trail itself (a planted stick and the combat guard stay in
   // front, where the business end lives).
-  const staffTrailBehind = isStaff && restSettle > 0.5 && rig.runF > 0.35 && fy > 0.08;
+  const staffTrailBehind = isStaff && settleHalf && runTrail && fwdShoulder;
   // The shoulder carry lays the greatblade up-BACK over the trailing
   // shoulder at EVERY gait — facing the camera, the body stands in
   // front of it (the LONG CARRY GOES BEHIND law; strikes and the
@@ -5072,10 +5099,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // lies on the NEAR side of the body — the blade crosses the BACK,
   // which the camera sees — so the generic aim-away rule must not
   // hide it behind the torso.
-  const greatShoulderBehind = isGreat && restSettle > 0.5 && fy > 0.08;
-  const greatRestFront = isGreat && restSettle > 0.5 && fy < -0.08;
+  const greatShoulderBehind = isGreat && settleHalf && fwdShoulder;
+  const greatRestFront = isGreat && settleHalf && awayShoulder;
   const weaponBehind =
-    (fy < -0.35 && !greatRestFront) || staffTrailBehind || greatShoulderBehind;
+    (awayDeep && !greatRestFront) || staffTrailBehind || greatShoulderBehind;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
   const paintOffArm = (): void => {
     // DUAL WIELD: the off blade is the real weapon, carried by the off
@@ -5144,7 +5171,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // the torso when the player faces the camera, in front when they face
   // away. With a cape worn the RENDERER owns this call (drawBackGear),
   // layered over the cloth — gear straps OVER a cape, never under it.
-  const quiverFront = offSt?.kind === 'quiver' && fy < -0.16;
+  const quiverFront = offSt?.kind === 'quiver' && bandFlag(mem, 'slingFront', -fy, 0.22, 0.1);
   const paintQuiver = (): void => {
     if (!offSt || offSt.kind !== 'quiver' || rig.hasCape) return;
     drawQuiver(ctx, offSt, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt, rig.nowMs);
@@ -5237,7 +5264,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // TRAILING hip — the blade rakes back behind the body, so it tucks
   // behind the torso — while the off scabbard rides the leading hip in
   // front; face-on both hips sit outside the waist and paint in front.
-  const slingFront = fy < -0.16;
+  const slingFront = bandFlag(mem, 'slingFront', -fy, 0.22, 0.1);
   // (The leg layer, belt gear, and quiver paint down at the depth
   // ladder — after every paint closure exists, before the torso.)
   const paintMainArm = (): void => {
@@ -5410,7 +5437,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // layer swap shares that one boundary; the great rest's visible
   // back-carry keeps its front verdict, and the profile flip
   // (mainBehind) keeps its own torso-relative lanes.
-  const gearBehindLegs = fy < -0.35 && !greatRestFront;
+  const gearBehindLegs = awayDeep && !greatRestFront;
   if (gearBehindLegs && !mainBehind) {
     if (weaponBehind) {
       paintWeapon();
@@ -5421,7 +5448,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   paintLegs();
   // Belt scabbards + the back quiver lie over the legs, under the
   // torso — exactly the layer they held when the legs painted early.
-  const beltBehind = profileK > 0.62;
+  const beltBehind = bandFlag(mem, 'beltBehind', profileK, 0.68, 0.56);
   if (!quiverFront) paintQuiver();
   if (stowed && offWorn && !beltBehind) paintStowedOff();
   if (stowed && !wornBack && beltBehind) paintStowedMain();

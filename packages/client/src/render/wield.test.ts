@@ -7,6 +7,8 @@ import {
   gaitK,
   lifelineYaw,
   projectAim,
+  awayPeekK,
+  bandFlag,
   gaitLift,
   armPump,
   runnerLift,
@@ -518,5 +520,110 @@ test('THE RESTING SHOULDER: the side swap eases the blade across, never teleport
     if (d < -Math.PI) d += Math.PI * 2;
     assert.ok(Math.abs(d) < 0.3, `step ${i}: the swap eases (${d.toFixed(2)})`);
     prev = g;
+  }
+});
+
+// ---- THE READABLE EIGHT (arms-v3 Phase 4) ----
+
+test('THE MIRROR LAW: greatWield SE<->SW reflect exactly (the audit finding, corrected by proof)', () => {
+  // The audit flagged a SE/SW tip asymmetry from a lab capture; the
+  // math is mirror-true — the capture caught differing stride phases.
+  // Pinned here so any FUTURE real break fails loudly.
+  for (const sw of [0, 0.5, -0.5]) {
+    for (const [d, m] of [
+      [Math.PI / 4, (3 * Math.PI) / 4],
+      [Math.PI / 6, (5 * Math.PI) / 6],
+      [-Math.PI / 4, (-3 * Math.PI) / 4],
+    ] as const) {
+      const a = greatWield(facingFrame(d, 1), 1, 1, sw, Math.cos(d));
+      const b = greatWield(facingFrame(m, -1), 1, 1, sw, Math.cos(m));
+      const err = Math.atan2(
+        Math.sin(Math.PI - a.angle - b.angle),
+        Math.cos(Math.PI - a.angle - b.angle),
+      );
+      assert.ok(Math.abs(err) < 1e-9, `angle mirrors at ${d.toFixed(2)} (err ${err})`);
+      assert.ok(Math.abs(a.dx + b.dx) < 1e-9, 'lane mirrors');
+      assert.ok(Math.abs(a.fore - b.fore) < 1e-9, 'length mirrors');
+    }
+  }
+});
+
+test('THE JOINT CASE: greatWield continuous across every hemisphere crossing, sideS mid-ease included', () => {
+  for (const center of [0, Math.PI, Math.PI / 2, -Math.PI / 2]) {
+    for (const sideS of [1, -1, 0.4, 0.1]) {
+      let prev: number | null = null;
+      for (let i = 0; i <= 400; i++) {
+        const d = center - 0.3 + (0.6 * i) / 400;
+        const g = greatWield(facingFrame(d, sideS), 1, 1, 0.3, Math.cos(d));
+        if (prev !== null) {
+          const step = Math.abs(Math.atan2(Math.sin(g.angle - prev), Math.cos(g.angle - prev)));
+          assert.ok(step < 0.02, `step ${step.toFixed(4)} at ${d.toFixed(3)} sideS=${sideS}`);
+        }
+        prev = g.angle;
+      }
+    }
+  }
+});
+
+test('THE MIRROR LAW: staffWield reflects across vertical (the audit gap, closed)', () => {
+  for (const runK of [0, 1]) {
+    const e = staffWield(facingFrame(Math.PI / 4, 1), 1, runK, 0, Math.cos(Math.PI / 4));
+    const w = staffWield(facingFrame((3 * Math.PI) / 4, -1), 1, runK, 0, Math.cos((3 * Math.PI) / 4));
+    const err = Math.atan2(
+      Math.sin(Math.PI - e.angle - w.angle),
+      Math.cos(Math.PI - e.angle - w.angle),
+    );
+    assert.ok(Math.abs(err) < 1e-9, `staff angle mirrors at runK ${runK}`);
+    assert.ok(Math.abs(e.dx + w.dx) < 1e-9, 'plant lane mirrors');
+    assert.ok(Math.abs(e.fwd + w.fwd) < 1e-9, 'forward lean mirrors');
+  }
+});
+
+test('THE FLIP EARNS ITS HYSTERESIS: bandFlag holds through the dead zone, both directions', () => {
+  const mem = {};
+  assert.equal(bandFlag(mem, 'k', 0.5, 0.42, 0.28), true, 'above on: ON');
+  assert.equal(bandFlag(mem, 'k', 0.35, 0.42, 0.28), true, 'dead zone from above: HOLDS on');
+  assert.equal(bandFlag(mem, 'k', 0.2, 0.42, 0.28), false, 'below off: OFF');
+  assert.equal(bandFlag(mem, 'k', 0.35, 0.42, 0.28), false, 'dead zone from below: HOLDS off');
+  assert.equal(bandFlag(undefined, 'k', 0.36, 0.42, 0.28), true, 'stateless: the midpoint threshold');
+  assert.equal(bandFlag(undefined, 'k', 0.34, 0.42, 0.28), false, 'stateless below midpoint');
+});
+
+test('the layer bands leave every cardinal facing outside the dead zone', () => {
+  // Settled cardinal headings must resolve exactly as the old raw
+  // thresholds did — hysteresis changes rotation, never rest. The
+  // bands under test are the ones rig.ts feeds.
+  const CARDINAL_FY = [0, 0.7071067811865476, -0.7071067811865476, 1, -1];
+  const BANDS: Array<[number, number, (fy: number) => number, (fy: number) => boolean]> = [
+    [0.42, 0.28, (fy) => -fy, (fy) => fy < -0.35], // awayDeep
+    [0.14, 0.02, (fy) => fy, (fy) => fy > 0.08], // fwdShoulder
+    [0.14, 0.02, (fy) => -fy, (fy) => fy < -0.08], // awayShoulder
+    [0.22, 0.1, (fy) => -fy, (fy) => fy < -0.16], // slingFront
+  ];
+  for (const [on, off, v, legacy] of BANDS) {
+    for (const fy of CARDINAL_FY) {
+      assert.ok(v(fy) >= on || v(fy) <= off, `fy ${fy} sits outside (${off}, ${on})`);
+      assert.equal(bandFlag(undefined, 'x', v(fy), on, off), legacy(fy), `legacy agreement at fy ${fy}`);
+    }
+  }
+  for (const pk of [0, 0.7071067811865476, 1]) {
+    assert.ok(pk >= 0.68 || pk <= 0.56, `profileK ${pk} outside the belt band`);
+    assert.equal(bandFlag(undefined, 'x', pk, 0.68, 0.56), pk > 0.62, `belt legacy agreement at ${pk}`);
+  }
+});
+
+test('THE SILHOUETTE PEEK: zero on the camera half and at profile, alive through the away diagonals', () => {
+  assert.equal(awayPeekK(0.5), 0, 'camera half untouched');
+  assert.equal(awayPeekK(0), 0, 'profile untouched');
+  assert.ok(awayPeekK(-0.7071) > 0.9, 'full peek at the away diagonal');
+  assert.ok(awayPeekK(-1) === 1, 'and behind');
+  let prev = awayPeekK(0.2);
+  for (let i = 1; i <= 60; i++) {
+    const fy = 0.2 - (1.2 * i) / 60;
+    const k = awayPeekK(fy);
+    // Smoothstep over a 0.3-wide band peaks at slope 5/unit — a 0.02
+    // sweep step can honestly move 0.1; anything past that is a jump.
+    assert.ok(Math.abs(k - prev) < 0.12, `peek continuous at fy ${fy.toFixed(2)}`);
+    prev = k;
   }
 });

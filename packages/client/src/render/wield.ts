@@ -338,6 +338,55 @@ export function settleElbowPole(side: number, poleX: number, trailB: number): nu
   return side * 0.7 * (1 - claim) - poleX * 0.6 * trailB;
 }
 
+// ------------------------------------- THE FLIP EARNS ITS HYSTERESIS
+//
+// (arms-v3 Phase 4) Every LAYER decision — which side of the torso or
+// legs a weapon paints on — used to flip on a raw threshold: a slow
+// arc across fy = −0.35 popped the blade between layers every frame
+// the heading wobbled. One banded resolver now serves them all, on
+// the same caller-owned memory the mainBehind/offFront pair proved:
+// a flag turns ON at `on`, OFF at `off` (on > off), and HOLDS its
+// last state anywhere between. The bands are chosen to leave every
+// CARDINAL facing (fy, profileK ∈ {0, ±0.707, ±1}) outside the dead
+// zone, so a settled heading always resolves exactly as the old
+// threshold did — hysteresis changes rotation, never rest.
+
+export interface BandMemory {
+  bands?: Record<string, boolean>;
+}
+
+export function bandFlag(
+  mem: BandMemory | undefined,
+  key: string,
+  v: number,
+  on: number,
+  off: number,
+): boolean {
+  const mid = (on + off) / 2;
+  if (!mem) return v >= mid; // stateless callers: the old single threshold
+  const bands = (mem.bands ??= {});
+  const next = v >= on ? true : v <= off ? false : (bands[key] ?? v >= mid);
+  bands[key] = next;
+  return next;
+}
+
+/**
+ * THE SILHOUETTE PEEK's away band (arms-v3 Phase 4): 0 on the whole
+ * camera-facing half and at the profile facings, rising smoothly
+ * through the away diagonals — the band where held gear used to
+ * vanish completely behind the torso (the invisible-kiteshield
+ * verdict). Peek lanes scale by this so a loadout stays readable at
+ * every one of the eight headings.
+ */
+export function awayPeekK(fy: number): number {
+  return smooth(Math.max(0, Math.min(1, (-fy - 0.2) / 0.3)));
+}
+
+/** How far the hang lanes widen at the away band (fraction of hangW). */
+export const PEEK_HANG_K = 0.16;
+/** The bow's own outboard peek at the away band (units of s). */
+export const BOW_PEEK_S = 0.1;
+
 /** Caller-owned smoothed rest-side state (lives on the rig's depth memory). */
 export interface RestSideMemory {
   side?: number;
@@ -980,7 +1029,11 @@ export function bowWield(
   const beta = 0.72 + 0.1 * lift;
   const p = projectCarry(dir, beta);
   return {
-    dx: sideW * (0.12 + 0.02 * lift),
+    // THE SILHOUETTE PEEK: at the away diagonals the hang lane's
+    // facing weight decays exactly where the torso swallows the bow —
+    // an archer read as unarmed from behind. The peek rides the eased
+    // side so it mirrors and turns continuously.
+    dx: sideW * (0.12 + 0.02 * lift) + f.sideS * BOW_PEEK_S * awayPeekK(f.fy),
     dy: 0.18 - 0.02 * lift,
     angle: Math.PI / 2 - sideW * (Math.PI / 2 - 0.85 + 0.1 * lift),
     fore: 1 - BOW_PLANE_SOFT * (1 - p.fore),

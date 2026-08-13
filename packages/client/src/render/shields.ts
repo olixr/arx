@@ -896,10 +896,22 @@ export function solveShield(
   const clearBand =
     Math.max(0, Math.min(1, o.fy / 0.15)) * Math.max(0, Math.min(1, (0.7 - o.fy) / 0.25));
   const clearX = 0.14 * Math.abs(o.fx) * clearBand;
+  // THE SILHOUETTE PEEK (arms-v3 Phase 4): the away-DIAGONAL mirror of
+  // the clearance above. The |fy| across-term decays exactly at the
+  // three-quarter-away facings while the forward reach carries the
+  // plane onto the torso column — the kiteshield vanished COMPLETELY
+  // at NE and NW (the audit's invisible-loadout verdict: a sword-and-
+  // board knight read as unarmed from a quarter of the compass). A
+  // dedicated away clearance, peaking through the away diagonals and
+  // zero at pure north (already readable) and both profiles, keeps a
+  // rim's worth of boards outside the silhouette.
+  const awayBand =
+    Math.max(0, Math.min(1, -o.fy / 0.2)) * Math.max(0, Math.min(1, (0.95 + o.fy) / 0.2));
+  const awayClearX = 0.16 * Math.abs(o.fx) * awayBand;
   let cx =
     o.x +
     o.fx * fwd * s * o.wS +
-    oside * (Math.abs(o.fy) * lat + clearX) * s * o.wS;
+    oside * (Math.abs(o.fy) * lat + clearX + awayClearX) * s * o.wS;
   // The across-the-body offset keeps the FULL ground drop: side-on it
   // is what carries the shield onto the near side of the body, where
   // the rig already says the off arm lives — and that separation is
