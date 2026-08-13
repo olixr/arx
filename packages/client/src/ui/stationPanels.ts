@@ -35,6 +35,7 @@ import {
   type WorkStation,
   buildableGround,
   canUnmake,
+  effectiveReq,
   enchantDef,
   inscriptionQuality,
   qualityWord,
@@ -264,6 +265,8 @@ export class StationPanels {
     private readonly getInventory: () => InvSlot[] = () => [],
     /** The worn kit — the unmaking bench sunders straight off the body. */
     private readonly getEquipment: () => Partial<Record<EquipSlot, EquippedItem>> = () => ({}),
+    /** The character's skills — vault sockets judge equip gates live. */
+    private readonly getSkills: () => SkillXp = () => ({}),
   ) {
     // Ⓨ on a shelf plate offers the counting-house verbs.
     registerSheetProvider('shopcard', (el) => {
@@ -2085,6 +2088,19 @@ export class StationPanels {
       q.className = 'inv-qty';
       q.textContent = opts.qty > 9999 ? `${Math.floor(opts.qty / 1000)}k` : opts.qty.toLocaleString();
       cell.appendChild(q);
+    }
+    // THE GATE ON THE SLOT, vault edition: a stored piece the body
+    // cannot yet wear is barred in ember with its level seal — the
+    // armory reads honestly before a single withdrawal.
+    if (itemDef(opts.item)?.equipSlot) {
+      const req = effectiveReq(opts.item, opts.roll);
+      if (req && levelForXp(this.getSkills()[req.skill] ?? 0) < req.level) {
+        cell.classList.add('req-locked');
+        const seal = document.createElement('span');
+        seal.className = 'req-seal';
+        seal.textContent = String(req.level);
+        cell.appendChild(seal);
+      }
     }
     cell.addEventListener('click', opts.onPick);
     return cell;

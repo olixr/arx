@@ -536,6 +536,27 @@
   color: var(--red-soft);
 }
 
+/* THE VERB TELLS THE GATE: an Equip the server would refuse presses
+   an iron key in ember ink — it still answers (the server explains),
+   but the hand is never promised what the body cannot do. The gated
+   key takes the wider share so its longer word sits on one line. */
+.act-btn.gated {
+  border-image-source: var(--btn-iron);
+  color: var(--red-soft);
+  text-shadow: var(--punch-small);
+  font-size: var(--t-body);
+  white-space: nowrap;
+}
+
+.bench-acts .act-btn.gated {
+  flex: 1.75;
+}
+
+.act-btn.gated:hover {
+  color: var(--red-soft);
+  filter: brightness(1.12) drop-shadow(0.1875rem 0.25rem 0 var(--shadow));
+}
+
 /* ---- THE PACK TRAY: the screen's protagonist ---- */
 
 .char-pack-col {
@@ -792,6 +813,27 @@
     0 0 0.75rem rgba(255, 179, 71, 0.3);
 }
 
+/* ---- THE GATE ON THE SLOT: gear the body cannot yet wear ----
+   The bar claims the well's ring (declared after the rarity linings so
+   ember wins the cascade — rarity still speaks through the nameplate
+   and card), the icon's color drains, and the ember seal names the
+   waiting level. Barred reads at pack scale, one glance, no hovers. */
+.inv-slot.req-locked {
+  box-shadow:
+    inset 0 0 0 0.15625rem rgba(200, 72, 62, 0.85),
+    inset 0 0 0 12.5rem rgba(200, 72, 62, 0.13);
+}
+
+.inv-slot.req-locked .inv-item {
+  filter: grayscale(0.45) brightness(0.78);
+}
+
+/* Inspection stays generous: the hand on a barred well wakes the art
+   back to full color — the bar informs, it never punishes the look. */
+.inv-slot.req-locked.clickable:hover .inv-item {
+  filter: none;
+}
+
 /* The ghost: what belongs here, etched into the floor of the well —
    bold enough to read from the couch, quiet enough to yield. */
 .slot-ghost {
@@ -819,11 +861,34 @@
   padding: 0.0625rem 0.5rem;
   font-size: var(--t-body);
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   color: var(--gold-bright);
   text-shadow: var(--punch-small);
   background: var(--ink-wash);
   border-radius: 0.25rem;
   box-shadow: inset 0 0 0 var(--hairline) rgba(217, 164, 65, 0.35);
+}
+
+/* The level seal on a barred well: the count seal's own grammar —
+   inked pill, hairline ring — struck in ember at the opposite corner,
+   naming the level the piece waits on. Gear never stacks, so a well
+   never wears both a count and a seal. */
+.req-seal {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  min-width: 1.375rem;
+  text-align: center;
+  padding: 0.0625rem 0.375rem;
+  font-size: var(--t-whisper);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--red-soft);
+  text-shadow: var(--punch-small);
+  background: var(--ink-wash);
+  border-radius: 0.25rem;
+  box-shadow: inset 0 0 0 var(--hairline) rgba(200, 72, 62, 0.6);
+  pointer-events: none;
 }
 
 /* THE STOLEN TAG (factions Phase 5): a red corner tick on goods with
@@ -1014,6 +1079,8 @@ body.inventory-open #shop-panel {
   font-size: 2.125rem;
   font-weight: 700;
   line-height: 1;
+  /* Figures hold their ground as rolls and comparisons change. */
+  font-variant-numeric: tabular-nums;
   text-shadow: var(--punch);
 }
 
@@ -1036,12 +1103,98 @@ body.inventory-open #shop-panel {
   text-shadow: var(--punch-small);
 }
 
+/* ---- THE GATE BAND: the equip requirement leads the card ----
+   A met gate is one quiet brass line; a shortfall is an ember band —
+   the bar named, your level beside it, and the climb left told as a
+   true meter. A real border on eased corners: a semantic state ring,
+   the second legal dressing under THE CORNER TRUTH. */
+.card-gate {
+  margin: 0.125rem 0 0.625rem;
+  padding: 0.375rem 0.625rem 0.4375rem;
+  background: var(--sunk);
+  border-radius: 0.3125rem;
+  box-shadow: inset 0 0 0 var(--hairline) var(--line);
+}
+
+.card-gate.short {
+  background: rgba(200, 72, 62, 0.13);
+  box-shadow: inset 0 0 0 0.09375rem rgba(200, 72, 62, 0.55);
+}
+
+.gate-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-shadow: var(--punch-small);
+}
+
+.gate-need {
+  font-size: var(--t-body);
+  font-weight: 800;
+}
+
+.card-gate.met .gate-need {
+  color: var(--parchment-dim);
+}
+
+.card-gate.short .gate-need {
+  color: var(--red-soft);
+  text-transform: uppercase;
+  font-size: var(--t-label);
+  letter-spacing: 0.0625rem;
+}
+
+.gate-yours {
+  font-size: var(--t-label);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--parchment);
+  white-space: nowrap;
+}
+
+.card-gate.met .gate-yours {
+  color: var(--parchment-dim);
+}
+
+/* The climb: your level against the bar — a near-miss reads different
+   from a far-off trophy. The channel is a hole, so it eases. */
+.gate-meter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-top: 0.375rem;
+}
+
+.gate-meter {
+  flex: 1;
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(
+    90deg,
+    var(--red) calc(var(--gate, 0) * 100%),
+    rgba(10, 6, 16, 0.55) calc(var(--gate, 0) * 100%)
+  );
+  box-shadow: inset 0 0 0 var(--hairline) rgba(200, 72, 62, 0.45);
+}
+
+.gate-togo {
+  flex: none;
+  font-size: var(--t-whisper);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.0625rem;
+  color: var(--red-soft);
+  text-shadow: var(--punch-small);
+}
+
 .card-stat {
   display: flex;
   align-items: center;
   gap: 0.5625rem;
   font-size: var(--t-body);
   padding: 0.25rem 0;
+  font-variant-numeric: tabular-nums;
   text-shadow: var(--punch-small);
 }
 
@@ -1181,6 +1334,17 @@ body.inventory-open #shop-panel {
   color: #ffc4b8;
   background: rgba(196, 85, 61, 0.16);
   border-color: rgba(217, 87, 99, 0.6);
+}
+
+/* A gated verb reads in ember — the menu tells the bar up front. */
+.menu-item.gated {
+  color: var(--red-soft);
+}
+
+.menu-item.gated:hover {
+  color: #ffc4b8;
+  background: rgba(200, 72, 62, 0.14);
+  border-color: rgba(200, 72, 62, 0.55);
 }
 
 .make-empty {

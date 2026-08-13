@@ -717,15 +717,25 @@ export class Panels {
   /** The benched item's verbs, as standing buttons under the card. */
   private renderBenchActs(): void {
     this.benchActs.replaceChildren();
-    const verbs: Array<{ label: string; act: () => void; danger?: boolean }> = [];
+    const verbs: Array<{ label: string; act: () => void; danger?: boolean; gated?: boolean }> = [];
     const src = this.benchSource;
     if (src?.kind === 'inv') {
       const idx = src.slot;
       const slot = this.lastSlots[idx];
       if (slot) {
         const def = itemDef(slot.item);
-        if (def?.equipSlot) verbs.push({ label: 'Equip', act: () => this.onSlotAction(idx, 'use') });
-        else if (def?.heals) verbs.push({ label: 'Eat', act: () => this.onSlotAction(idx, 'use') });
+        if (def?.equipSlot) {
+          // THE VERB TELLS THE GATE: an Equip the server would refuse
+          // wears ember and names the bar — the button never promises
+          // what the body cannot do. Short words: the band above the
+          // verbs already tells the whole story.
+          const gate = this.slotGate(slot);
+          verbs.push({
+            label: gate ? `Needs ${affixName(gate.skill)} ${gate.level}` : 'Equip',
+            act: () => this.onSlotAction(idx, 'use'),
+            gated: gate !== null,
+          });
+        } else if (def?.heals) verbs.push({ label: 'Eat', act: () => this.onSlotAction(idx, 'use') });
         verbs.push({ label: 'Drop', act: () => this.onSlotAction(idx, 'drop'), danger: true });
       }
     } else if (src?.kind === 'equip') {
@@ -734,11 +744,21 @@ export class Panels {
     }
     for (const v of verbs) {
       const b = document.createElement('button');
-      b.className = v.danger ? 'act-btn minor bench-danger' : 'act-btn';
+      b.className = v.danger ? 'act-btn minor bench-danger' : v.gated ? 'act-btn gated' : 'act-btn';
       b.textContent = v.label;
       b.addEventListener('click', v.act);
       this.benchActs.appendChild(b);
     }
+  }
+
+  /**
+   * The unmet equip gate for a pack slot, or null when the piece goes
+   * on freely — the one judgment every gated surface shares.
+   */
+  private slotGate(slot: NonNullable<InvSlot>): { skill: SkillId; level: number } | null {
+    const req = effectiveReq(slot.item, slot.roll);
+    if (!req) return null;
+    return levelForXp(this.lastSkills[req.skill] ?? 0) < req.level ? req : null;
   }
 
   /**
@@ -923,6 +943,51 @@ export class Panels {
       this.card.appendChild(strip);
     }
 
+    // THE GATE BAND: whether this piece will go on the body at all,
+    // answered before any number is worth reading. A met gate is one
+    // quiet brass line; a shortfall is an ember band that names the
+    // bar, names where you stand, and shows the climb left — the one
+    // fact that decides the equip conversation never hides in fine
+    // print again.
+    const gateReq = effectiveReq(itemId, roll);
+    if (gateReq) {
+      const own = levelForXp(this.lastSkills[gateReq.skill] ?? 0);
+      const met = own >= gateReq.level;
+      const gate = document.createElement('div');
+      gate.className = `card-gate ${met ? 'met' : 'short'}`;
+      const line = document.createElement('div');
+      line.className = 'gate-line';
+      const need = document.createElement('span');
+      need.className = 'gate-need';
+      need.textContent = met
+        ? `◆ ${affixName(gateReq.skill)} ${gateReq.level} — met`
+        : `Requires ${affixName(gateReq.skill)} ${gateReq.level}`;
+      const yours = document.createElement('span');
+      yours.className = 'gate-yours';
+      yours.textContent = `yours ${own}`;
+      line.append(need, yours);
+      gate.appendChild(line);
+      if (!met) {
+        // The climb: a real meter of your level against the bar, so a
+        // near-miss reads different from a far-off trophy.
+        const row = document.createElement('div');
+        row.className = 'gate-meter-row';
+        const channel = document.createElement('span');
+        channel.className = 'gate-meter';
+        channel.style.setProperty(
+          '--gate',
+          String(Math.max(0.05, Math.min(1, own / gateReq.level))),
+        );
+        const togo = document.createElement('span');
+        togo.className = 'gate-togo';
+        const shortBy = gateReq.level - own;
+        togo.textContent = shortBy === 1 ? '1 level to go' : `${shortBy} levels to go`;
+        row.append(channel, togo);
+        gate.appendChild(row);
+      }
+      this.card.appendChild(gate);
+    }
+
     // THE COMPARISON: a pack piece measures itself against what is
     // worn in its slot — the whole equip-or-not read in one line.
     if (!wornSlot && def.equipSlot) {
@@ -1094,17 +1159,7 @@ export class Panels {
       if (roll?.pwr !== undefined && roll.pwr > native) {
         stat('Item power', `${roll.pwr}`, '#ffb347');
       }
-      // The gate is the INSTANCE's: a power-45 heirloom demands 45.
-      const req = effectiveReq(itemId, roll);
-      if (req) {
-        const own = levelForXp(this.lastSkills[req.skill] ?? 0);
-        const met = own >= req.level;
-        stat(
-          'Requires',
-          `${affixName(req.skill)} ${req.level}`,
-          met ? '#8a7a5f' : '#d95763',
-        );
-      }
+      // (The requirement itself leads the card as THE GATE BAND.)
       if (cls) {
         const blurb = document.createElement('div');
         blurb.className = 'card-passive-desc';
@@ -1265,7 +1320,7 @@ export class Panels {
   /** Open the verb menu for a pack slot or a worn equipment slot. */
   openMenuFor(el: HTMLElement, at?: { x: number; y: number }): boolean {
     if (el.dataset.filled !== '1') return false;
-    const entries: Array<{ label: string; act: () => void; danger?: boolean }> = [];
+    const entries: Array<{ label: string; act: () => void; danger?: boolean; gated?: boolean }> = [];
 
     if (el.dataset.invslot !== undefined) {
       const idx = Number(el.dataset.invslot);
@@ -1273,8 +1328,15 @@ export class Panels {
       if (!slot) return false;
       const def = itemDef(slot.item);
       const station = this.stationContext();
-      if (def?.equipSlot) entries.push({ label: 'Equip', act: () => this.onSlotAction(idx, 'use') });
-      else if (def?.heals) entries.push({ label: 'Eat', act: () => this.onSlotAction(idx, 'use') });
+      if (def?.equipSlot) {
+        // The menu tells the gate too — same words as the bench verb.
+        const gate = this.slotGate(slot);
+        entries.push({
+          label: gate ? `Equip · needs ${affixName(gate.skill)} ${gate.level}` : 'Equip',
+          act: () => this.onSlotAction(idx, 'use'),
+          gated: gate !== null,
+        });
+      } else if (def?.heals) entries.push({ label: 'Eat', act: () => this.onSlotAction(idx, 'use') });
       else if (def?.buff) entries.push({ label: 'Drink', act: () => this.onSlotAction(idx, 'use') });
       // THE BELT: any consumable can be pinned as the quick-use pick.
       if (beltEligible(slot.item)) {
@@ -1333,6 +1395,7 @@ export class Panels {
       const btn = document.createElement('button');
       btn.className = 'menu-item';
       if (entry.danger) btn.classList.add('danger');
+      if (entry.gated) btn.classList.add('gated');
       btn.textContent = entry.label;
       btn.dataset.nav = '';
       btn.dataset.navkey = `menu:${i}`;
@@ -1390,6 +1453,35 @@ export class Panels {
         'filtered-out',
         this.packFilter !== 'all' && fam !== undefined && fam !== this.packFilter,
       );
+    }
+  }
+
+  /**
+   * THE GATE ON THE SLOT: re-judge every pack well against the current
+   * skills. A piece the body cannot yet wear is barred in ember across
+   * the whole grid — the shortfall reads at pack scale, not one hover
+   * at a time — and its seal names the level it waits on. Idempotent
+   * class/seal toggles, so a level-up mid-session flips wells live
+   * without rebuilding the grid.
+   */
+  private applyReqGate(): void {
+    for (const cell of this.invGrid.querySelectorAll<HTMLElement>('[data-invslot]')) {
+      const slot = this.lastSlots[Number(cell.dataset.invslot)];
+      const def = slot ? itemDef(slot.item) : undefined;
+      const req = slot && def?.equipSlot ? this.slotGate(slot) : null;
+      const locked = req !== null;
+      cell.classList.toggle('req-locked', locked);
+      let seal = cell.querySelector<HTMLElement>('.req-seal');
+      if (req) {
+        if (!seal) {
+          seal = document.createElement('span');
+          seal.className = 'req-seal';
+          cell.appendChild(seal);
+        }
+        seal.textContent = String(req.level);
+      } else {
+        seal?.remove();
+      }
     }
   }
 
@@ -1473,6 +1565,7 @@ export class Panels {
     this.packFill.append(meter, fillCount);
     this.packFill.classList.toggle('full', filled >= count);
     this.applyPackFilter();
+    this.applyReqGate();
 
     // The card may be describing a slot that just changed — refresh it;
     // the bench re-lays or re-seeds the same way.
@@ -1967,6 +2060,14 @@ export class Panels {
    */
   renderSkills(xp: SkillXp): void {
     this.lastSkills = xp;
+    // A level gained re-judges every gate in view: the pack's barred
+    // wells and the open card's gate band both tell the new truth the
+    // moment the skill lands — no reopen required.
+    this.applyReqGate();
+    if (this.cardSource?.kind === 'inv') {
+      const src = this.lastSlots[this.cardSource.slot];
+      if (src) this.renderCard(src.item, src.qty, null, src.roll);
+    }
     this.renderIdentity();
     this.skillsWall.innerHTML = '';
 
