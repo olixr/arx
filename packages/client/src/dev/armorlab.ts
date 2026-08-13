@@ -55,6 +55,12 @@ const CLOTH_HEADS: Record<string, string> = {
   duskwarden: 'hat',
   aetherion: 'cowl',
 };
+/** Lower-wardrobe families whose helm carries its own noun — the
+ *  `_helm` default finds nothing and audits them bareheaded. */
+const HELM_NOUNS: Record<string, string> = {
+  bulwark: 'greathelm',
+  sentinel: 'greathelm',
+};
 const worn = (family: string) => {
   const clothHead = CLOTH_HEADS[family];
   if (clothHead) {
@@ -67,7 +73,7 @@ const worn = (family: string) => {
     };
   }
   return {
-    headItem: `${family}_helm`,
+    headItem: `${family}_${HELM_NOUNS[family] ?? 'helm'}`,
     bodyItem: `${family}_platebody`,
     legsItem: `${family}_greaves`,
     bootsItem: `${family}_sabatons`,

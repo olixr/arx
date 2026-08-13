@@ -40,7 +40,8 @@ export interface BodyStyle {
    *  `thorncrest` the rimethorn hooks (palethorn is its pale quench),
    *  `lionhead` the kingsmane sculpted lions, `oathmantle` the
    *  oathgold fluted dome under its pinned crimson oath-cloth,
-   *  `pavise` the redmarch shoulder-borne tower shield, `sunfan` the
+   *  `rampart` the redmarch crenellated parapet under its hung
+   *  cross-banner, `sunfan` the
    *  sunhallow gilt ray petals, `veilwing` the gloamsight swept wing
    *  plates, `stormspire` the stormsinger storm-glass crystals,
    *  `charbrand` the flamewrought ember-seamed char slabs,
@@ -50,7 +51,7 @@ export interface BodyStyle {
     | 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur'
     | 'feathered' | 'orbs' | 'shards' | 'wyrmwing'
     | 'bonemaw' | 'boneridge' | 'thorncrest' | 'lionhead'
-    | 'oathmantle' | 'pavise' | 'sunfan' | 'veilwing'
+    | 'oathmantle' | 'rampart' | 'sunfan' | 'veilwing'
     | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
@@ -1040,18 +1041,23 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     tassets: true, hollowlight: { color: '#a8d8e8' },
   },
   redmarch_platebody: {
-    color: '#8a2e34', trim: '#c9ccd4', metal: '#6e2329', cls: 'plate',
-    // THE PAVISE: the border legion's shoulder — a blackened-iron
-    // dome carrying an upright tower shield on its outer slope,
-    // silver-bordered, red-fielded, crossed in watch-fire white (the
-    // greathelm's own visor cross carried to the wall). An iron
-    // banner spike flies a short guidon behind it. The old red caps
-    // vanished into the red torso — iron and silver stand OFF it.
-    silhouette: 'cuirass', pauldron: 'pavise', pauldronColor: '#413a44',
-    pauldronTrim: '#c9ccd4', pauldronScale: 1.15, chest: 'plate',
-    skirt: 0, collar: 'fur', collarColor: '#3a3230', midline: true,
+    // THE WALL WALKS (the redmarch overhaul): the set is re-founded
+    // on a three-value structure — deep oxblood lacquer as the
+    // ground, blackened iron as the working metal, aged steel as the
+    // one bright edge — with EMBER as the living word. The old set
+    // was one flat crimson field: the iron vanished into it, the
+    // silver floated on it, and the whole read as a toy soldier.
+    // Shoulders wear the RAMPART: a crenellated parapet on the seat
+    // dome, watch-light breathing in the embrasures, the legion's
+    // cross-banner hung down the outer slope. The chest rosettes
+    // keep the same fires — steel petals, EMBER hearts — so the
+    // watch runs from the wall to the harness to the fists.
+    color: '#722830', trim: '#b9bec8', metal: '#413339', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'rampart', pauldronColor: '#453940',
+    pauldronTrim: '#b9bec8', pauldronScale: 1.18, chest: 'plate',
+    skirt: 0, collar: 'fur', collarColor: '#2c262c', midline: true,
     rivetSeams: true, tassets: true,
-    rosettes: { color: '#eef4ff', metal: '#c9ccd4' },
+    rosettes: { color: '#ffb060', metal: '#9aa0a8' },
   },
   rimethorn_platebody: {
     color: '#2a3040', trim: '#a8d8ff', metal: '#1f2430', cls: 'plate',
@@ -1360,12 +1366,14 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     emberEyes: { color: '#a8d8e8' },
   },
   redmarch_helm: {
-    // The border legion's greathelm: the officer's transverse crest
-    // worn ear to ear in the legion's stripes — the old solid ridge
-    // read as a snowcap and belonged to three other helms besides.
-    color: '#8a2e34', trim: '#c9ccd4', kind: 'greathelm', visor: 'cross',
-    transverse: { colors: ['#a8353c', '#eef4ff'] },
-    emberEyes: { color: '#eef4ff' },
+    // The border legion's greathelm, blackened: the officer's
+    // transverse crest worn ear to ear in two DEPTHS of legion
+    // crimson — the old red-and-white stripes read as a candy cap,
+    // not a brush. Steel cross visor; ember behind the eye slits,
+    // the same watch-fire the wall keeps.
+    color: '#4a3a40', trim: '#b9bec8', kind: 'greathelm', visor: 'cross',
+    transverse: { colors: ['#b23138', '#5e1c22'] },
+    emberEyes: { color: '#ffb060' },
   },
   rimethorn_helm: {
     color: '#2a3040', trim: '#a8d8ff', kind: 'armet', jaw: '#4a5468',
@@ -1451,7 +1459,7 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   // THE HIGH ROAD.
   jadeskull_greaves: { kind: 'greaves', thigh: '#2f4a36', shin: '#3e6644', knee: 'plate', kneeColor: '#c9a23c' },
   fellbone_greaves: { kind: 'greaves', thigh: '#3a332c', shin: '#d9d2bd', knee: 'plate', kneeColor: '#b8925c' },
-  redmarch_greaves: { kind: 'greaves', thigh: '#5c2026', shin: '#8a2e34', knee: 'plate', kneeColor: '#c9ccd4' },
+  redmarch_greaves: { kind: 'greaves', thigh: '#722830', shin: '#413339', knee: 'plate', kneeColor: '#9aa0a8' },
   rimethorn_greaves: { kind: 'greaves', thigh: '#232838', shin: '#2a3040', knee: 'plate', kneeColor: '#a8d8ff' },
   palethorn_greaves: { kind: 'greaves', thigh: '#8d9299', shin: '#b8bec8', knee: 'plate', kneeColor: '#b0703c' },
   kingsmane_greaves: { kind: 'greaves', thigh: '#8a8478', shin: '#e8e4da', knee: 'plate', kneeColor: '#c9a23c' },
@@ -1530,7 +1538,7 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   // THE HIGH ROAD.
   jadeskull_sabatons: { color: '#3e6644', height: 0.14, toe: '#c9ccd4', cuff: { color: '#c9a23c' } },
   fellbone_sabatons: { color: '#d9d2bd', height: 0.14, toe: '#b8a88a', fur: { color: '#6e7a88' } },
-  redmarch_sabatons: { color: '#8a2e34', height: 0.14, toe: '#c9ccd4', fur: { color: '#3a3230' } },
+  redmarch_sabatons: { color: '#413339', height: 0.14, toe: '#9aa0a8' },
   rimethorn_sabatons: { color: '#2a3040', height: 0.14, toe: '#1f2430', spike: true, cuff: { color: '#a8d8ff' } },
   palethorn_sabatons: { color: '#b8bec8', height: 0.14, toe: '#8d9299', spike: true, cuff: { color: '#b0703c' } },
   kingsmane_sabatons: { color: '#e8e4da', height: 0.15, toe: '#c9a23c', cuff: { color: '#2c3a5e' } },
@@ -1852,9 +1860,11 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     knuckle: { color: '#e8e2d0', kind: 'spikes' },
   },
   redmarch_gauntlets: {
-    color: '#8a2e34', hand: 'gauntlet', bracer: '#78272d',
-    cuff: { color: '#c9ccd4', kind: 'flare' },
-    knuckle: { color: '#eef4ff', kind: 'gem' },
+    // Blackened fists off oxblood bracers; the knuckle gems burn
+    // ember — the watch-fire carried to the hands.
+    color: '#413339', hand: 'gauntlet', bracer: '#722830',
+    cuff: { color: '#9aa0a8', kind: 'flare' },
+    knuckle: { color: '#ffb060', kind: 'gem' },
   },
   rimethorn_gauntlets: {
     color: '#2a3040', hand: 'gauntlet', bracer: '#232838',
@@ -5703,7 +5713,7 @@ export function drawPauldron(
     }
     // THE WORN SEAT: the polished jade dome, gold-hemmed — the stone
     // the trophy is mounted on.
-    seat(0.118 * s, 0.094 * s, hurt ? '#ffffff' : col, trim);
+    seat(0.126 * s, 0.098 * s, hurt ? '#ffffff' : col, trim);
     if (!hurt) {
       // Carved jade: one engraved arc following the dome's face —
       // quiet lapidary craft under the bone, never competing.
@@ -5925,121 +5935,119 @@ export function drawPauldron(
     ctx.restore();
     return;
   }
-  if (st.pauldron === 'pavise') {
-    // THE PAVISE — the redmarch shoulder: a tower shield stood upright
-    // on the dome's outer slope, silver-bordered, red-fielded, and
-    // crossed in watch-fire white — the greathelm's visor cross
-    // carried to the wall. Behind it an iron banner spike flies a
-    // short guidon that flicks on the march wind. Iron and silver
-    // stand OFF the red harness; red-on-red was no shoulder at all.
-    // The banner spike first, rooted behind the crown.
-    const spTipX = side * 0.088 * s;
-    const spTipY = -0.215 * s;
+  if (st.pauldron === 'rampart') {
+    // THE RAMPART — the redmarch shoulder: the wall itself, worn.
+    // A crenellated parapet crowns the blackened seat dome — three
+    // merlons cut square against the sky with ember watch-light
+    // breathing in the embrasures between them, the same rotation the
+    // chest rosettes keep — and the legion's crimson cross-banner
+    // hangs down the outer slope, pinned under the coping stone.
+    // CLOTH HANGS, IT NEVER PLANES; the parapet stands ON the dome.
+    // The old pavise slab floated beside the head like a framed
+    // heraldic card; a wall must be MASONRY over the shoulder.
+    // THE WORN SEAT first: blackened iron, steel-hemmed.
+    seat(0.126 * s, 0.098 * s, hurt ? '#ffffff' : col, trim);
+    // The banner: legion crimson hung from under the parapet's outer
+    // half, swaying only at the hem — the top is pinned stone-fast.
+    const bx0 = side * 0.022 * s;
+    const bx1 = side * 0.122 * s;
+    const bTop = -0.058 * s;
+    const bBot = 0.118 * s;
+    const sway = Math.sin(nowMs * 0.0017 + side * 2.1) * 0.011 * s;
     if (!hurt) {
-      ctx.strokeStyle = shade(base, -6);
-      ctx.lineWidth = Math.max(1.5, s * 0.016);
+      ctx.fillStyle = '#8e262d';
       ctx.beginPath();
-      ctx.moveTo(side * 0.03 * s, -0.045 * s);
-      ctx.lineTo(spTipX, spTipY);
-      ctx.stroke();
-      // The spearhead finial.
-      ctx.fillStyle = shade(base, 18);
-      ctx.beginPath();
-      ctx.moveTo(spTipX, spTipY - 0.024 * s);
-      ctx.lineTo(spTipX + side * 0.012 * s, spTipY);
-      ctx.lineTo(spTipX, spTipY + 0.008 * s);
-      ctx.lineTo(spTipX - side * 0.012 * s, spTipY);
+      ctx.moveTo(bx0, bTop);
+      ctx.lineTo(bx1, bTop);
+      ctx.lineTo(bx1 + sway * side * 0.4, bBot - 0.012 * s);
+      // The swallow-tail hem, drifting on the march wind.
+      ctx.lineTo((bx0 + bx1) / 2 + sway * side, bBot - 0.036 * s);
+      ctx.lineTo(bx0 + sway * side * 0.7, bBot);
       ctx.closePath();
       ctx.fill();
-      // The guidon: a short swallow-tailed tail streaming off the
-      // spike, flicking on the march clock — the only cloth the
-      // legion allows its steel.
-      const gk = Math.sin(nowMs * 0.0021 + side * 1.9) * 0.012 * s;
-      const gx0 = spTipX;
-      const gy0 = spTipY + 0.02 * s;
-      const gx1 = gx0 + side * 0.085 * s;
-      ctx.fillStyle = '#a8353c';
-      ctx.beginPath();
-      ctx.moveTo(gx0, gy0);
-      ctx.quadraticCurveTo(gx0 + side * 0.045 * s, gy0 - 0.012 * s + gk, gx1, gy0 - 0.004 * s + gk * 1.4);
-      ctx.lineTo(gx1 - side * 0.028 * s, gy0 + 0.017 * s + gk * 0.8);
-      ctx.lineTo(gx1, gy0 + 0.038 * s + gk * 1.2);
-      ctx.quadraticCurveTo(gx0 + side * 0.04 * s, gy0 + 0.038 * s + gk * 0.4, gx0, gy0 + 0.034 * s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#eef4ff';
-      ctx.fillRect(gx0 - side * 0.004 * s, gy0, side * 0.014 * s, 0.034 * s);
-    }
-    // THE WORN SEAT: blackened iron, silver-hemmed — the mount the
-    // wall stands on.
-    seat(0.115 * s, 0.092 * s, hurt ? '#ffffff' : col, trim);
-    // The shield throws its stand-off shadow onto the dome before it
-    // paints — the slab reads IN FRONT of the shoulder, not inked on.
-    if (!hurt) {
-      ctx.fillStyle = 'rgba(20, 12, 16, 0.3)';
-      ctx.beginPath();
-      ctx.ellipse(side * 0.082 * s, 0.03 * s, 0.06 * s, 0.026 * s, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // The pavise itself: an upright tapered slab, yawed outward with
-    // the shoulder's own lean.
-    ctx.save();
-    ctx.translate(side * 0.088 * s, -0.026 * s);
-    ctx.rotate(side * 0.15);
-    const pw = 0.06 * s;
-    const pt = -0.118 * s;
-    const pb = 0.092 * s;
-    const slab = (inset: number) => {
-      const w2 = pw - inset;
-      ctx.moveTo(-w2 * 0.86, pt + inset);
-      ctx.lineTo(w2 * 0.86, pt + inset);
-      ctx.quadraticCurveTo(w2 + inset * 0.4, pt + inset + 0.02 * s, w2, pt + 0.05 * s);
-      ctx.lineTo(w2 * 0.92, pb - inset);
-      ctx.lineTo(-w2 * 0.92, pb - inset);
-      ctx.lineTo(-w2, pt + 0.05 * s);
-      ctx.quadraticCurveTo(-w2 - inset * 0.4, pt + inset + 0.02 * s, -w2 * 0.86, pt + inset);
-      ctx.closePath();
-    };
-    // The silver border is a FILLED BAND — the outer slab in steel,
-    // the field inset within it; a stroked hairline is a wire.
-    ctx.fillStyle = hurt ? '#ffffff' : trim;
-    ctx.beginPath();
-    slab(0);
-    ctx.fill();
-    if (!hurt) {
-      ctx.fillStyle = '#8a2e34';
-      ctx.beginPath();
-      slab(0.014 * s);
-      ctx.fill();
-      // The cross: two fat white bars — the visor's word, wall-sized.
-      ctx.fillStyle = '#eef4ff';
-      ctx.fillRect(-0.0115 * s, pt + 0.032 * s, 0.023 * s, (pb - pt) - 0.062 * s);
-      ctx.fillRect(-pw * 0.62, -0.036 * s, pw * 1.24, 0.023 * s);
-      // The form split: the slab's screen-right half turns from the
-      // one sun — even a flat wall has two values.
+      // The field turns from the one sun: outer half a step deeper.
       ctx.save();
       ctx.beginPath();
-      slab(0);
+      ctx.moveTo(bx0, bTop);
+      ctx.lineTo(bx1, bTop);
+      ctx.lineTo(bx1 + sway * side * 0.4, bBot - 0.012 * s);
+      ctx.lineTo((bx0 + bx1) / 2 + sway * side, bBot - 0.036 * s);
+      ctx.lineTo(bx0 + sway * side * 0.7, bBot);
+      ctx.closePath();
       ctx.clip();
-      ctx.fillStyle = 'rgba(24, 15, 26, 0.14)';
-      ctx.fillRect(0, pt - 0.02 * s, pw * 1.4, pb - pt + 0.05 * s);
+      ctx.fillStyle = 'rgba(24, 12, 16, 0.22)';
+      const mid = (bx0 + bx1) / 2;
+      ctx.fillRect(side > 0 ? mid : bx0 - 0.02 * s, bTop, Math.abs(bx1 - bx0) * 0.62 + 0.02 * s, bBot - bTop);
+      // The weathered cross, small and true, on the upper field.
+      ctx.fillStyle = '#e6dccc';
+      const cxB = mid;
+      const cyB = -0.002 * s;
+      ctx.fillRect(cxB - 0.01 * s, cyB - 0.044 * s, 0.02 * s, 0.084 * s);
+      ctx.fillRect(cxB - 0.028 * s, cyB - 0.008 * s, 0.056 * s, 0.02 * s);
       ctx.restore();
-      // The lit top arris: the tilted bird's eye finds the shield's
-      // upper edge.
-      ctx.fillStyle = shade(trim, 24);
-      ctx.fillRect(-pw * 0.86, pt, pw * 1.72, 0.011 * s);
-      // Rivets pin the border at its stations: dark seat, lit dome.
-      for (const [rx, ry] of [
-        [-pw * 0.68, pt + 0.036 * s], [pw * 0.68, pt + 0.036 * s],
-        [-pw * 0.72, pb - 0.03 * s], [pw * 0.72, pb - 0.03 * s],
-      ] as const) {
-        ctx.fillStyle = shade(trim, -30);
-        ctx.fillRect(rx - 0.007 * s, ry - 0.007 * s, 0.014 * s, 0.014 * s);
-        ctx.fillStyle = shade(trim, 20);
-        ctx.fillRect(rx - 0.007 * s, ry - 0.007 * s, 0.007 * s, 0.007 * s);
+      // The hem's cast shadow keeps the cloth OFF the dome.
+      ctx.fillStyle = 'rgba(20, 12, 16, 0.24)';
+      ctx.beginPath();
+      ctx.ellipse((bx0 + bx1) / 2, bBot + 0.006 * s, 0.045 * s, 0.014 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The parapet: a coping band across the dome's crown carrying
+    // three square merlons — the silhouette that says WALL at any
+    // size. Ember light breathes in the two embrasures, offset per
+    // shoulder so the caps answer each other like the chest fires.
+    const bandW = 0.118 * s;
+    const bandY = -0.072 * s;
+    const bandH = 0.044 * s;
+    const iron = hurt ? '#ffffff' : col;
+    const ironDeep = hurt ? '#ffffff' : shade(col, -18);
+    // The embrasure glow first — fire BEHIND the teeth line.
+    if (!hurt) {
+      const beat = 0.5 + 0.5 * Math.sin(nowMs * 0.0037 + (side > 0 ? 0 : Math.PI * 0.85));
+      ctx.globalAlpha = 0.35 + 0.55 * beat;
+      ctx.fillStyle = '#ffb060';
+      for (const gx of [-bandW * 0.36, bandW * 0.36]) {
+        ctx.beginPath();
+        ctx.ellipse(gx, bandY - 0.016 * s, 0.026 * s, 0.022 * s + beat * 0.009 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    // The coping band, riveted at its stations.
+    ctx.fillStyle = iron;
+    ctx.fillRect(-bandW, bandY, bandW * 2, bandH);
+    ctx.fillStyle = ironDeep;
+    ctx.fillRect(-bandW, bandY + bandH * 0.62, bandW * 2, bandH * 0.38);
+    if (!hurt) {
+      for (const rx of [-bandW * 0.7, 0, bandW * 0.7]) {
+        ctx.fillStyle = shade(trim, -26);
+        ctx.fillRect(rx - 0.006 * s, bandY + bandH * 0.3, 0.012 * s, 0.012 * s);
+        ctx.fillStyle = shade(trim, 14);
+        ctx.fillRect(rx - 0.006 * s, bandY + bandH * 0.3, 0.006 * s, 0.006 * s);
       }
     }
-    ctx.restore();
+    // The merlons: three teeth, the center a whisper taller, each
+    // wearing its lit coping — the 2.5D top plane in one stroke.
+    const mw = 0.052 * s;
+    for (const [mx, mh] of [
+      [-bandW * 0.74, 0.056 * s],
+      [0, 0.068 * s],
+      [bandW * 0.74, 0.056 * s],
+    ] as const) {
+      ctx.fillStyle = iron;
+      ctx.fillRect(mx - mw / 2, bandY - mh, mw, mh);
+      // The screen-right face turns from the sun.
+      if (!hurt) {
+        ctx.fillStyle = 'rgba(24, 15, 26, 0.2)';
+        ctx.fillRect(mx + mw * 0.14, bandY - mh, mw * 0.36, mh);
+        // Steel coping caps every tooth — THE ONE BRIGHT EDGE: dark
+        // masonry against a dark helm is no battlement at all.
+        ctx.fillStyle = shade(trim, 4);
+        ctx.fillRect(mx - mw / 2, bandY - mh, mw, 0.012 * s);
+      }
+    }
+    // The steel hem under the band roots the parapet to the dome.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(trim, -8);
+    ctx.fillRect(-bandW, bandY + bandH, bandW * 2, 0.008 * s);
     ctx.restore();
     return;
   }
@@ -7975,6 +7983,13 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           ctx.fillRect(vx + bx * headR * sw - headR * 0.045, headY + hh * 0.24, headR * 0.09, headR * 0.09);
         }
       } else if (st.visor === 'cross') {
+        // The reinforced cross: a bright riveted strap edging the
+        // cut, the way the old great helms wore their faces — the
+        // cut itself stays darkness. A bare dark cut on a blackened
+        // shell was no face at all (the redmarch lesson).
+        ctx.fillStyle = shade(st.trim, -6);
+        ctx.fillRect(vx - headR * 0.14, headY - hh * 0.1, headR * 0.28, hh * 0.7);
+        ctx.fillRect(vx - headR * 0.5, headY + hh * 0.03, headR * 1.0, hh * 0.26);
         ctx.fillStyle = '#170f1c';
         ctx.fillRect(vx - headR * 0.07, headY - hh * 0.05, headR * 0.14, hh * 0.6);
         ctx.fillRect(vx - headR * 0.4, headY + hh * 0.08, headR * 0.8, hh * 0.16);
