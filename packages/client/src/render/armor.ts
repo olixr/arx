@@ -5234,6 +5234,15 @@ export function drawPauldron(
   hurt: boolean,
   near: boolean,
   nowMs = 0,
+  /** THE SHOULDER GLOBE's depth channel, -1 (far) .. +1 (near): the
+   *  caller projects the shoulder bar through the tilted camera and
+   *  this cap's place on it sizes the whole assembly — perspective as
+   *  size, before the shading says a word. 0 = the level flank read. */
+  depthK = 0,
+  /** Outward lean, radians: the cap rotates toward its own outward
+   *  screen direction as the body turns — worn on the deltoid, not
+   *  gimbaled upright at every heading. */
+  tilt = 0,
 ): void {
   if (st.pauldron === 'none') return;
   const base = st.pauldronColor ?? st.metal ?? shade(st.color, -14);
@@ -5241,10 +5250,11 @@ export function drawPauldron(
   const trim = hurt ? '#ffffff' : (st.pauldronTrim ?? shade(base, 26));
   ctx.save();
   ctx.translate(x, y - 0.035 * s);
-  // Perspective is size as well as light: the set's own boldness dial
-  // (champion plate earns a bigger shoulder), and the FAR cap steps
-  // down a notch so depth reads even before the shading does.
-  const bold = (st.pauldronScale ?? 1) * (near ? 1 : 0.93);
+  if (tilt) ctx.rotate(tilt);
+  // Perspective is size: the set's own boldness dial (champion plate
+  // earns a bigger shoulder), then the depth channel — the near cap
+  // of a turned body swells, the far cap steps back.
+  const bold = (st.pauldronScale ?? 1) * (1 + depthK * 0.15);
   ctx.scale(Math.max(0.55, squashK) * bold, bold);
   if (st.pauldron === 'orbs') {
     // A conjured orb in patient orbit over each shoulder — floating,

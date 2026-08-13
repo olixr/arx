@@ -5297,30 +5297,73 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gno,
     );
   };
-  // ---- THE SHOULDER DEPTH LAW: a pauldron is a cap on TOP of the
-  // shoulder, so under the tilted bird's eye it stays visible at
-  // nearly every facing — including from behind (riding the arms'
-  // layer used to sink BOTH caps whenever the arms dropped behind the
-  // torso: a knight seen from the back lost his pauldrons). Only in
-  // the PROFILE band does one shoulder genuinely hide: the LEADING
-  // one belongs to the far side of the turned body — it ducks BEHIND
-  // the torso and peeks over the shoulder line, never in front of the
-  // chest (the flipped-shoulder read the user caught). Position still
-  // rides the solved anchors so the caps travel with the swings;
-  // lighting follows the ONE SUN, screen-left, like every other form
-  // split — never the weapon hand.
+  // ---- THE SHOULDER GLOBE: the caps live on the body's own shoulder
+  // bar, projected through the tilted camera — so the PAIR trades
+  // depth as the body turns, the way real shoulders do. The bar runs
+  // perpendicular to the facing: per unit, a cap sits at
+  // (ox, oy) = (∓fy, ±fx · squash) — at a camera facing both caps
+  // ride level at the flanks; at a profile facing the bar swings
+  // onto the depth axis and one cap becomes the NEAR one (lower on
+  // screen, bigger, painted over its arm) while its twin becomes the
+  // FAR one (higher, smaller, tucked BEHIND the torso before the
+  // garment opens, peeking over the shoulder line — never crossing
+  // the chest or the face). Each cap also TILTS toward its own
+  // outward direction, so the art leans with the turn instead of
+  // standing bolt upright at every heading. X still rides the solved
+  // arm anchors so the caps travel with the swings; near/far runs on
+  // banded flags (the arms-v3 hysteresis law) so a slow arc across a
+  // cardinal never flickers the layering; lighting follows the ONE
+  // SUN, screen-left, like every other form split.
   const paintPauldrons = (layer: 'behind' | 'front'): void => {
     if (!bodySt || bodySt.pauldron === 'none') return;
-    const profileBand = Math.abs(fy) <= 0.35;
-    const leadSgn = Math.sign(fx) || 1;
-    for (const [sx, fallback] of [
-      [offShX, -lead],
-      [mainShX, lead],
-    ] as Array<[number, number]>) {
-      const side = Math.sign(sx - rig.x) || fallback || 1;
-      const behind = profileBand && side === leadSgn;
+    const YSH = 0.5; // the tilted camera's squash on the shoulder bar
+    // Which geometric shoulder the MAIN anchor owns: the one on the
+    // settled hand's side of the bar. Banded so the profile tie
+    // (fy ≈ 0) resolves once, not per-frame.
+    const mainS1 = bandFlag(mem, 'capMainS1', -fy * sideS, 0.05, -0.05);
+    for (const [sx, fallback, isMain] of [
+      [offShX, -lead, 0],
+      [mainShX, lead, 1],
+    ] as Array<[number, number, number]>) {
+      const s1 = isMain === 1 ? mainS1 : !mainS1;
+      const oxK = s1 ? -fy : fy;
+      const oyK = (s1 ? fx : -fx) * YSH;
+      const depthK = oyK / YSH; // -1 far .. +1 near
+      // At a TRUE profile the far shoulder belongs entirely to the
+      // other side of the body — the narrow profile torso cannot
+      // hide it geometrically, so the globe hides it honestly (the
+      // peek is for the diagonal band, where depth reads as depth
+      // instead of clutter beside the face). Banded, so a heading
+      // wobble never blinks the cap.
+      const hidden = bandFlag(
+        mem,
+        isMain === 1 ? 'capMainHidden' : 'capOffHidden',
+        -depthK,
+        0.8,
+        0.66,
+      );
+      if (hidden) continue;
+      const behind = bandFlag(
+        mem,
+        isMain === 1 ? 'capMainBehind' : 'capOffBehind',
+        -depthK,
+        0.3,
+        0.2,
+      );
       if ((layer === 'behind') !== behind) continue;
-      drawPauldron(ctx, bodySt, sx, shoulderY, side, s, wS, rig.hurt, side < 0, rig.nowMs);
+      const side = Math.sign(sx - rig.x) || Math.sign(oxK) || fallback || 1;
+      const capY = shoulderY + oyK * tw * 0.6;
+      // The outward lean: rotate the cap so its outward axis follows
+      // the bar's screen direction — softened and clamped; a cap is
+      // worn on a deltoid, not gimbaled on it.
+      const tilt = Math.max(
+        -0.34,
+        Math.min(0.34, Math.atan2(side * oyK, Math.abs(oxK) + 0.45)),
+      );
+      drawPauldron(
+        ctx, bodySt, sx, capY, side, s, wS, rig.hurt, side < 0, rig.nowMs,
+        depthK, tilt,
+      );
     }
   };
   const paintWeapon = (): void => {
