@@ -842,7 +842,7 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     color: '#8a8a72', trim: '#d8d4b8', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'moth',
     skirt: 0.32, sleeves: 'full', underskirt: '#6e6e5a', motes: '#d8d4b8',
-    folds: true, wingdrape: { color: '#7a7a64', spot: '#d8d4b8' },
+    folds: true, wingdrape: { color: '#6e6e58', spot: '#d8d4b8' },
   },
   dawnsworn_robe: {
     color: '#d9c9a0', trim: '#c9922f', cls: 'cloth',
@@ -2145,9 +2145,9 @@ registerColorways(BOOT_STYLES, 'thistledown_slippers', {
 
 // Mothwing dye lots: wings, dust, ruff and antennae follow the moth.
 registerColorways(BODY_STYLES, 'mothwing_robe', {
-  luna: { color: '#9ab88e', trim: '#e2eecc', underskirt: '#7a9670', motes: '#d8eec0', wingdrape: { color: '#8aa87e', spot: '#e2eecc' } },
-  dusk: { color: '#7a6280', trim: '#d0c0dc', underskirt: '#615068', motes: '#c8b4d8', wingdrape: { color: '#6a5470', spot: '#d0c0dc' } },
-  ember: { color: '#a8705c', trim: '#e8c8a0', underskirt: '#8a5a48', motes: '#e8b088', wingdrape: { color: '#966250', spot: '#e8c8a0' } },
+  luna: { color: '#9ab88e', trim: '#e2eecc', underskirt: '#7a9670', motes: '#d8eec0', wingdrape: { color: '#7a986e', spot: '#e2eecc' } },
+  dusk: { color: '#7a6280', trim: '#d0c0dc', underskirt: '#615068', motes: '#c8b4d8', wingdrape: { color: '#5a4660', spot: '#d0c0dc' } },
+  ember: { color: '#a8705c', trim: '#e8c8a0', underskirt: '#8a5a48', motes: '#e8b088', wingdrape: { color: '#865442', spot: '#e8c8a0' } },
 });
 registerColorways(HELM_STYLES, 'mothwing_cowl', {
   luna: { color: '#9ab88e', trim: '#e2eecc', antennae: { color: '#e2eecc' }, ruff: { color: '#b8ccaa' } },
@@ -2956,7 +2956,7 @@ export function drawTorsoGarment(
         // each a flat value step with its lap shadow. The bog dresses
         // in the bog.
         const sCol = st.sedgetiers.color;
-        for (const [ti, top, dv] of [[0, 0.3, 4], [1, 0.58, -6]] as const) {
+        for (const [ti, top, dv] of [[0, 0.3, 9], [1, 0.58, -8]] as const) {
           const tierTop = y0 + (hemY - y0) * top - 0.02 * s;
           const tierBot = y0 + (hemY - y0) * (top + 0.3);
           ctx.fillStyle = shade(sCol, dv);
@@ -2967,7 +2967,7 @@ export function drawTorsoGarment(
           for (let i = 5; i >= 0; i--) {
             const u = -1 + (i / 5) * 2;
             const px = u * ww * (1 + (top + 0.3) * 0.3);
-            const drop = 0.028 * s * (1 + 0.7 * Math.sin(i * 2.3 + ti * 1.7));
+            const drop = 0.038 * s * (1 + 0.7 * Math.sin(i * 2.3 + ti * 1.7));
             ctx.lineTo(px + ww * 0.09, tierBot - 0.014 * s);
             ctx.lineTo(px, tierBot + drop);
           }
@@ -3914,19 +3914,19 @@ export function drawTorsoGarment(
         }
         // The eye-spot: dark heart, pale ring — flat rings, no
         // stroke; the moth's oldest trick.
-        const sx2 = es * tw * 0.66;
+        const sx2 = es * tw * 0.64;
         const sy2 = -th * 0.56;
         ctx.fillStyle = shade(spot, 26);
         ctx.beginPath();
-        ctx.arc(sx2, sy2, tw * 0.17, 0, Math.PI * 2);
+        ctx.arc(sx2, sy2, tw * 0.22, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = shade(wCol, -30);
+        ctx.fillStyle = shade(wCol, -32);
         ctx.beginPath();
-        ctx.arc(sx2, sy2, tw * 0.115, 0, Math.PI * 2);
+        ctx.arc(sx2, sy2, tw * 0.15, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = spot;
         ctx.beginPath();
-        ctx.arc(sx2 - tw * 0.025, sy2 - tw * 0.025, tw * 0.045, 0, Math.PI * 2);
+        ctx.arc(sx2 - tw * 0.035, sy2 - tw * 0.035, tw * 0.06, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -3939,30 +3939,21 @@ export function drawTorsoGarment(
     if (st.stormfront && !hurt && !back) {
       frontPlaneOn();
       const fCol = st.stormfront.color;
-      for (const [ri, y0] of [[0, -0.86], [1, -0.64], [2, -0.42]] as const) {
-        const by = th * y0;
-        ctx.fillStyle = shade(fCol, -6 + ri * 7);
-        ctx.beginPath();
-        ctx.moveTo(-tw * 1.02, by - th * 0.05 * ri);
-        for (let i = 0; i <= 3; i++) {
-          const u = -1 + (i / 3) * 2;
-          const bump = th * (0.1 + 0.03 * Math.sin(i * 2.1 + ri * 1.6));
-          ctx.quadraticCurveTo(
-            tw * (u - 0.3), by - bump - th * 0.05 * ri,
-            tw * u, by + th * 0.02 - th * 0.05 * ri,
-          );
-        }
-        ctx.lineTo(tw * 1.02, by + th * 0.2);
-        ctx.lineTo(-tw * 1.02, by + th * 0.2);
-        ctx.closePath();
-        ctx.fill();
-        // The roll's flat lit rim.
-        ctx.fillStyle = shade(fCol, 12 + ri * 4);
+      // Rolls of cloud banked across the chest on a shallow diagonal
+      // — fat rounds with flat lit caps, darker as the bank climbs.
+      for (const [ri, y0, dv] of [[0, -0.88, -10], [1, -0.62, -2], [2, -0.38, 6]] as const) {
         for (let i = 0; i < 3; i++) {
-          const u = -0.66 + (i / 2) * 1.32;
-          const bump = th * (0.09 + 0.03 * Math.sin((i + 0.5) * 2.1 + ri * 1.6));
+          const u = -0.6 + (i / 2) * 1.2;
+          const r = tw * (0.3 + 0.04 * Math.sin(i * 2.3 + ri * 1.7));
+          const bx = tw * u + tw * 0.06 * ri;
+          const by = th * y0 + th * 0.04 * Math.sin(i * 1.9 + ri) + tw * 0.05 * u * ri;
+          ctx.fillStyle = shade(fCol, dv);
           ctx.beginPath();
-          ctx.ellipse(tw * u, by - bump * 0.5 - th * 0.05 * ri, tw * 0.2, th * 0.028, 0, 0, Math.PI * 2);
+          ctx.arc(bx, by, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(fCol, dv + 13);
+          ctx.beginPath();
+          ctx.arc(bx - r * 0.16, by - r * 0.3, r * 0.5, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -10217,6 +10208,22 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
             ctx.fill();
           }
         }
+      } else {
+        // From behind: the wave's back — the drape tail and one deep
+        // trough seam down the swell.
+        ctx.fillStyle = shade(st.color, -12);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.88);
+        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.88);
+        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.9);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 0.1, headY - hh * 1.1);
+        ctx.quadraticCurveTo(headX - lead * hw * 0.2, headY - hh * 0.1, headX + lead * hw * 0.04, headY + hh * 0.85);
+        ctx.stroke();
       }
     }
     return;
@@ -10345,8 +10352,8 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           const ic = st.broweye.iris;
           const ex = cx;
           const ey = oTop - headR * 0.02;
-          const ew = ohw * 0.5;
-          const eh = headR * 0.14;
+          const ew = ohw * 0.6;
+          const eh = headR * 0.17;
           ctx.strokeStyle = ec;
           ctx.lineWidth = Math.max(1, s * 0.012);
           ctx.beginPath();
@@ -10376,6 +10383,23 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
             ctx.globalAlpha = 1;
           }
         }
+      } else {
+        // From behind: a second ink panel and the drape tail — the
+        // crypt keeps its layers on every side.
+        ctx.fillStyle = shade(st.color, -16);
+        ctx.beginPath();
+        ctx.moveTo(headX + hw * 0.14, headY - hh * 0.8);
+        ctx.quadraticCurveTo(headX + hw * 0.5, headY - hh * 0.05, headX + hw * 0.42, headY + hh * 1.0);
+        ctx.lineTo(headX + hw * 0.12, headY + hh * 1.05);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.92);
+        ctx.closePath();
+        ctx.fill();
       }
     }
     return;
@@ -10521,6 +10545,15 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
             }
           }
         }
+      } else {
+        // From behind: the drape tail under the char laps.
+        ctx.fillStyle = shade(st.color, -12);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.9);
+        ctx.closePath();
+        ctx.fill();
       }
     }
     return;
@@ -10550,9 +10583,9 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         const px = headX + Math.cos(a) * rxR;
         const py = ry0 + Math.sin(a) * ryR;
         const depth = (Math.sin(a) + 1) / 2;
-        const r = headR * (0.05 + 0.05 * depth);
-        ctx.globalAlpha = 0.45 + 0.55 * depth;
-        ctx.fillStyle = shade(rc, depth * 24);
+        const r = headR * (0.065 + 0.06 * depth);
+        ctx.globalAlpha = 0.65 + 0.35 * depth;
+        ctx.fillStyle = shade(rc, 16 + depth * 34);
         ctx.beginPath();
         ctx.moveTo(px, py - r * 1.5);
         ctx.lineTo(px + r * 0.5, py - r * 0.5);
@@ -10588,9 +10621,10 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.fillStyle = i % 2 === 0 ? c2 : c1;
       ctx.fillRect(x0, bandY + bandH * 0.12 - bandH * 0.5, w + 0.5, bandH * 0.5);
     }
-    if (!hurt && st.starpoints && front) {
+    if (!hurt && st.starpoints) {
       // The star points rising off the weave — flat silver spires,
-      // center tallest, each with a tiny star head.
+      // center tallest, each with a tiny star head. They ring the
+      // whole band; the sky has no back side.
       const pc = st.starpoints.color;
       for (const [u, hK] of [[-0.7, 0.4], [-0.35, 0.62], [0, 1], [0.35, 0.62], [0.7, 0.4]] as const) {
         const px = headX + u * hw;

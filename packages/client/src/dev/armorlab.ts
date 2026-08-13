@@ -87,14 +87,25 @@ const HELM_NOUNS: Record<string, string> = {
   sentinel: 'greathelm',
 };
 const worn = (family: string) => {
-  const clothHead = CLOTH_HEADS[family];
+  // Dye lots write the lot AFTER the noun (thistledown_hood_madder),
+  // so `?sets=thistledown_madder` splits into base family + lot.
+  let base = family;
+  let lot = '';
+  if (!CLOTH_HEADS[family]) {
+    const us = family.lastIndexOf('_');
+    if (us > 0 && CLOTH_HEADS[family.slice(0, us)]) {
+      base = family.slice(0, us);
+      lot = family.slice(us);
+    }
+  }
+  const clothHead = CLOTH_HEADS[base];
   if (clothHead) {
     return {
-      headItem: `${family}_${clothHead}`,
-      bodyItem: `${family}_robe`,
-      legsItem: `${family}_skirts`,
-      bootsItem: `${family}_slippers`,
-      glovesItem: `${family}_${CLOTH_GLOVES.has(family) ? 'gloves' : 'wraps'}`,
+      headItem: `${base}_${clothHead}${lot}`,
+      bodyItem: `${base}_robe${lot}`,
+      legsItem: `${base}_skirts${lot}`,
+      bootsItem: `${base}_slippers${lot}`,
+      glovesItem: `${base}_${CLOTH_GLOVES.has(base) ? 'gloves' : 'wraps'}${lot}`,
     };
   }
   return {
