@@ -525,6 +525,9 @@ interface AnimState {
   poseStartedAt: number;
   /** When the pose last entered the restful set (Idle/Walk) from outside it. */
   restfulSince?: number;
+  /** THE REST LETS GO GENTLY: the smoothed rest clock — ramps on entry
+   *  exactly as ever, glides (never snaps) on exit. */
+  restK?: number;
   lastSeen: number;
   /** The entity's leg rig — LegSolver for humanoids, species rig for beasts. */
   legs?: LegRig;
@@ -27780,13 +27783,28 @@ export class Renderer {
     const poseT = Math.min(1, (now - anim.poseStartedAt) / poseMs);
     // Rest-carriage clock: survives Idle↔Walk flips, resets only when
     // returning from a non-restful pose (combat, gathering, drawing).
+    // THE REST LETS GO GENTLY (arms-v3 Phase 2): entry keeps the exact
+    // 280ms ramp it has always had, but the EXIT used to snap the
+    // clock to zero in one frame — every rest channel (hand lanes,
+    // carriage angles, grips) teleported to the combat baseline on the
+    // first frame of a strike or a gather. The exit now glides on a
+    // fast exponential (~80ms to a whisker) — still combat-snappy, and
+    // the coil of any strike is far slower than the glide, so the
+    // telegraph never reads soft. Re-entering rest mid-glide continues
+    // from the current value by construction (the ramp takes over the
+    // moment it crosses the gliding value).
     const restfulPose =
       e.pose === PoseState.Idle || e.pose === PoseState.Walk || e.pose === PoseState.Sneak;
     if (!restfulPose) anim.restfulSince = undefined;
     else if (anim.restfulSince === undefined) anim.restfulSince = now;
-    const restT = restfulPose
+    const restTarget = restfulPose
       ? Math.min(1, (now - (anim.restfulSince ?? now)) / 280)
       : 0;
+    let restT = anim.restK ?? restTarget;
+    if (restTarget >= restT) restT = restTarget;
+    else restT += (restTarget - restT) * (1 - Math.exp(-12 * this.frameDt));
+    if (restT < 0.004) restT = 0;
+    anim.restK = restT;
     // Bow draw charge: the local player reads its own live input; remotes
     // charge with time spent in the Draw pose (the server holds it while
     // the string is back).

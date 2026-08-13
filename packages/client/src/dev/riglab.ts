@@ -62,7 +62,10 @@ const LOADOUTS: Record<string, Loadout> = {
   pick: { key: 'pick', weapon: 'bronze_pickaxe' },
 };
 
-type Mode = 'idle' | 'move' | 'walk' | 'strafe' | 'draw' | 'stowed' | 'pose';
+type Mode = 'idle' | 'move' | 'walk' | 'strafe' | 'draw' | 'stowed' | 'pose' | 'flip';
+
+/** Transition probes: the det frame where 'flip' rows enter Attack. */
+const FLIP_AT = 120;
 
 interface Fig {
   label: string;
@@ -85,6 +88,9 @@ interface Fig {
   wy?: number;
   kneeMemory?: number[];
   depthMemory?: RigPose['depthMemory'];
+  /** flip rows: emulated renderer rest clock (entry ramp/exit glide). */
+  restfulSinceMs?: number;
+  restK?: number;
 }
 
 const figs: Fig[] = [];
@@ -141,6 +147,13 @@ poseRow('sheathe 30%', LOADOUTS.dual!, { sheathT: 0.3 }); // 30
 poseRow('sheathe 70%', LOADOUTS.dual!, { sheathT: 0.7 }); // 31
 poseRow('chop', LOADOUTS.axe!, { pose: PoseState.Gather }); // 32
 poseRow('mine', LOADOUTS.pick!, { pose: PoseState.Gather }); // 33
+// THE TRANSITION PROBES: rest→combat pose flips at det frame 120,
+// with the RENDERER'S rest clock emulated per figure (280ms entry
+// ramp, exponential exit glide) — capture frames around the flip via
+// ?detn=N and measure per-frame pixel deltas to PROVE the exit is a
+// glide, not a snap. Row 34 sword, row 35 staff (the grip channel).
+for (const [lbl, dir] of DIRS) figs.push({ label: `flip-sword ${lbl}`, dir, mode: 'flip', load: LOADOUTS.sword! }); // 34
+for (const [lbl, dir] of DIRS) figs.push({ label: `flip-staff ${lbl}`, dir, mode: 'flip', load: LOADOUTS.staff! }); // 35
 
 const COLS = 8;
 const CW = 240;
@@ -159,7 +172,7 @@ if (rowsQ) {
 }
 
 const DET = q.get('det') === '1';
-const DET_FRAMES = 240;
+const DET_FRAMES = Math.max(1, parseInt(q.get('detn') ?? '240', 10) || 240);
 let frameIdx = 0;
 let lastNow = 0;
 
@@ -217,16 +230,38 @@ function drawSheet(now: number, dt: number): void {
     // restT 0, exactly as the renderer's restful-set law feeds them.
     // The mid-sheathe rows keep Idle + restT 1 (the real stow case).
     const posed = f.pose !== undefined;
+    // Flip rows: Idle → Attack at FLIP_AT, with the renderer's own
+    // rest-clock law emulated (280ms entry ramp, exp exit glide) so
+    // the transition probe exercises exactly what the game feeds.
+    let flipPose: PoseState | undefined;
+    let flipPoseT = 1;
+    let flipRest = 1;
+    if (f.mode === 'flip') {
+      const frameNo = now / (1000 / 60);
+      const restful = frameNo < FLIP_AT;
+      flipPose = restful ? PoseState.Idle : PoseState.Attack;
+      flipPoseT = restful ? 1 : Math.min(1, ((frameNo - FLIP_AT) * (1000 / 60)) / 280);
+      if (restful) f.restfulSinceMs ??= now;
+      else f.restfulSinceMs = undefined;
+      const target = restful ? Math.min(1, (now - (f.restfulSinceMs ?? now)) / 280) : 0;
+      let rk = f.restK ?? target;
+      if (target >= rk) rk = target;
+      else rk += (target - rk) * (1 - Math.exp(-12 * dt));
+      if (rk < 0.004) rk = 0;
+      f.restK = rk;
+      flipRest = rk;
+    }
     const rig: RigPose = {
       x: homeX,
       y: homeY,
       scale: S,
       size: 1,
       dir: f.dir,
-      pose: f.pose ?? (drawing ? PoseState.Draw : moving ? PoseState.Walk : PoseState.Idle),
-      poseT: f.poseT ?? 1,
+      pose:
+        flipPose ?? f.pose ?? (drawing ? PoseState.Draw : moving ? PoseState.Walk : PoseState.Idle),
+      poseT: f.mode === 'flip' ? flipPoseT : (f.poseT ?? 1),
       drawT: drawing ? 0.95 : 0,
-      restT: drawing || posed ? 0 : 1,
+      restT: f.mode === 'flip' ? flipRest : drawing || posed ? 0 : 1,
       nowMs: now,
       feet,
       bob: lp.bob,

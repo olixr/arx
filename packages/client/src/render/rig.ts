@@ -4306,12 +4306,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     offBladeAngle += angleDelta(offBladeAngle, ep.angle) * echoW;
     offFore = 1 + (ep.fore - 1) * echoW;
   }
-  if (
-    (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle || rig.pose === PoseState.Sneak) &&
-    !drawing &&
-    !loosing
-  ) {
-    restSettle = rig.restT * rig.restT * (3 - 2 * rig.restT);
+  // THE SETTLE OUTLIVES THE POSE (arms-v3 Phase 2): the rest stage
+  // used to gate on the restful POSES, so the first frame of a strike
+  // dropped every rest channel to the combat baseline in one step —
+  // the renderer's rest clock now GLIDES on exit, and this stage runs
+  // wherever any settle remains, its lerps carrying the hands out of
+  // the carriage and into the fight continuously. At restSettle 0 the
+  // whole block is a no-op by construction (every write lerps by the
+  // settle), so the gate change alone moves no pixel.
+  restSettle = rig.restT * rig.restT * (3 - 2 * rig.restT);
+  if (restSettle > 0 && !drawing && !loosing) {
     const wSide = sideS;
     // THE GAIT LADDER (wield.ts): idle → walk → run are three stances.
     // A slow walk lifts every carry a fraction of the run delta the
@@ -4392,8 +4396,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hFore = gf.fore;
       hx = rig.x + gf.dx * s * wS + gf.fwd * s;
       hy = armY + gf.dy * s;
-      staffGrip = gf.grip;
-      armSwingK = gf.pumpK;
+      // THE GRIP JOINS THE LADDER (arms-v3 Phase 2): grip and pumpK
+      // ride the same settle blend every other rest channel rides —
+      // they used to be plain overwrites, and the fist SNAPPED along
+      // the haft at every combat entry and exit (the one channel the
+      // audit found excluded from the neutral-at-boundary contract).
+      staffGrip += (gf.grip - staffGrip) * restSettle;
+      armSwingK += (gf.pumpK - armSwingK) * restSettle;
       greatRunClaim = gf.offClaim;
     }
     if (isStaff) {
@@ -4409,8 +4418,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hFore = sf.fore;
       hx = rig.x + sf.dx * s * wS + sf.fwd * s;
       hy = armY + sf.dy * s;
-      staffGrip = sf.grip;
-      armSwingK = sf.pumpK;
+      // THE GRIP JOINS THE LADDER — the staff's fist slides to the
+      // walking-stick grip on the settle, never in one frame.
+      staffGrip += (sf.grip - staffGrip) * restSettle;
+      armSwingK += (sf.pumpK - armSwingK) * restSettle;
     } else if (isBow) {
       // The walking carry, reference-true (wield.ts): gripped by the
       // wood with the STRING facing the body (upper side) and the
@@ -4490,11 +4501,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Walking: arms swing counter to the legs along the travel direction.
   // Sneak walks the same law at a stalker's amplitude — the old gate
   // froze a sneaking figure's arms dead from the first crouched step.
-  if (
-    rig.pose === PoseState.Walk ||
-    rig.pose === PoseState.Idle ||
-    rig.pose === PoseState.Sneak
-  ) {
+  // THE PUMP RIDES THE SETTLE (arms-v3 Phase 2): this stage used to
+  // gate on the restful POSES — pump, sway, and breath vanished in one
+  // frame when a strike began, even though the rest carriage they
+  // decorate blends out over restSettle. The stage now runs wherever
+  // any rest carriage remains, and every contribution scales with the
+  // settle: in from nothing as the body settles out of a fight, out
+  // through the exit glide — no channel the settle owns ever snaps.
+  // (The draw guard mirrors the rest stage's: the archer's anchors
+  // own the hands outright, exactly as the old pose gate had it.)
+  if (restSettle > 0 && !drawing && !loosing) {
     // The pump rides the SMOOTHED swing (clamped ±1 at the source):
     // the raw footfall drive hinges, the low-passed one sweeps.
     const sw = swS;
@@ -4521,15 +4537,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // but a hard CORNER at every zero crossing: the hands visibly
     // flicked twice a stride, the jitter the user caught.)
     const bounce = sw * sw * rig.runF * 0.03 * s;
-    mainX += p.dx * armSwingK;
-    mainY += (p.dy - bounce) * armSwingK;
+    mainX += p.dx * armSwingK * restSettle;
+    mainY += (p.dy - bounce) * armSwingK * restSettle;
     const offSwingK = offBlade ? 0.85 : 1;
-    offX -= p.dx * offSwingK;
-    offY -= (p.dy - bounce) * offSwingK;
+    offX -= p.dx * offSwingK * restSettle;
+    offY -= (p.dy - bounce) * offSwingK * restSettle;
     // The torso counter-sway of a real gait, living wherever the
     // fore/aft component leaves the screen (travel-true, not a
     // facing patch) — shared by both hands, never mirrored.
-    const sway = p.sway * s * Math.min(1, rig.poleStrength);
+    const sway = p.sway * s * Math.min(1, rig.poleStrength) * restSettle;
     mainX += sway;
     offX += sway;
     // WRIST-FOLLOW: the blade angle rides the arm swing a few degrees
@@ -4550,7 +4566,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     }
     // Standing breath: the hands ride a slow offset sine so the figure
     // is never a freeze-frame — alive even when idle.
-    const rest = 1 - Math.min(1, rig.poleStrength);
+    const rest = (1 - Math.min(1, rig.poleStrength)) * restSettle;
     if (rest > 0) {
       const b = Math.sin(rig.nowMs * 0.0019) * rest;
       const b2 = Math.sin(rig.nowMs * 0.0019 + 1.1) * rest;
