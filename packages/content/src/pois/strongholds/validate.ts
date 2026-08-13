@@ -449,6 +449,77 @@ export function validateStronghold(
     if (gates.length === 0) {
       errors.push('no gate tile found (THE FOUND DOOR: players search for an entrance that exists)');
     }
+    // ---- THE RAISED GROUND (Phase 2) -------------------------------
+    // Height is render-only (the shelf law): collision comes from the
+    // Cliff/Ramp fence alone, so a raised layout MUST wear its fence.
+    {
+      const { elev } = p;
+      const elevAt = (x: number, y: number): number =>
+        x >= 0 && y >= 0 && x < pw && y < ph && ground[y * pw + x] !== TILE_SKIP
+          ? elev[y * pw + x]!
+          : 0; // transparent cells keep the meadow's level-0 ground
+      let onSkip = 0;
+      let nearBorder = 0;
+      let unfenced: string | null = null;
+      let badRange = 0;
+      for (let i = 0; i < elev.length; i++) {
+        const e = elev[i]!;
+        if (e === 0) continue;
+        const x = i % pw;
+        const y = Math.floor(i / pw);
+        if (e < 0 || e > 3) badRange++;
+        if (ground[i] === TILE_SKIP) {
+          onSkip++;
+          continue;
+        }
+        if (x < 2 || y < 2 || x >= pw - 2 || y >= ph - 2) nearBorder++;
+        // FENCED HEIGHT: any drop to a 4-neighbor puts Cliff or Ramp
+        // on the high side — this cell.
+        const t = ground[i]!;
+        const fenced = t === Tile.Cliff || t === Tile.Ramp;
+        if (!fenced) {
+          for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]] as const) {
+            if (elevAt(nx, ny) < e) {
+              if (!unfenced) unfenced = `${x},${y}`;
+              break;
+            }
+          }
+        }
+        // THE SOUTH STAIR: a ramp descends toward the camera, and
+        // only toward the camera — landing below, level flanks.
+        if (t === Tile.Ramp) {
+          const south = y + 1 < ph ? ground[(y + 1) * pw + x]! : TILE_SKIP;
+          const ok =
+            south !== TILE_SKIP &&
+            !TILE_DEFS[south as Tile]!.solid &&
+            elevAt(x, y + 1) === e - 1 &&
+            elevAt(x, y - 1) === e &&
+            elevAt(x - 1, y) === e &&
+            elevAt(x + 1, y) === e;
+          if (!ok) {
+            errors.push(
+              `ramp at ${x},${y} must descend SOUTH onto walkable ground with level flanks (the camera-facing stair law)`,
+            );
+          }
+        }
+      }
+      if (badRange > 0) errors.push(`${badRange} cells with elevation outside 0..3`);
+      if (onSkip > 0) {
+        errors.push(
+          `${onSkip} transparent cells carry elevation (skip cells keep the meadow — raise only opaque ground)`,
+        );
+      }
+      if (nearBorder > 0) {
+        errors.push(
+          `${nearBorder} raised cells within 2 of the prefab edge (the border-flat law: procgen outside is at an unknown level)`,
+        );
+      }
+      if (unfenced) {
+        errors.push(
+          `raised ground at ${unfenced} drops to a neighbor without a Cliff or Ramp on the high side (FENCED HEIGHT)`,
+        );
+      }
+    }
     // Ward rects and anchors sit inside the prefab.
     for (const w of wards) {
       const r = w.rect;

@@ -645,6 +645,14 @@ export function composePoi(
       : null;
   const ground = new Uint16Array(zw * zh).fill(TILE_SKIP);
   const detail = new Uint16Array(zw * zh);
+  // THE RAISED GROUND (strongholds Phase 2): a prefab that carries
+  // height stamps it — allocated lazily so the common flat site stays
+  // exactly as cheap as before (zone.elev undefined = the old truth).
+  // TILE_SKIP ground cells are skipped whole by overlayZone, so only
+  // opaque cells' elevation ever reaches the world; the content
+  // validator holds the fence laws (Cliff/Ramp ring, border-flat).
+  let elev: Int8Array | null = null;
+  const elevOf = (): Int8Array => (elev ??= new Int8Array(zw * zh));
   for (let dy = 0; dy < prefab.height; dy++) {
     for (let dx = 0; dx < prefab.width; dx++) {
       let g = prefab.ground[dy * prefab.width + dx]!;
@@ -655,6 +663,8 @@ export function composePoi(
       const zi = (dy + py0) * zw + (dx + px0);
       ground[zi] = g;
       detail[zi] = prefab.detail[dy * prefab.width + dx]!;
+      const e = prefab.elev[dy * prefab.width + dx]!;
+      if (e !== 0) elevOf()[zi] = e;
     }
   }
 
@@ -672,6 +682,8 @@ export function composePoi(
         const zi = (w.y0 + dy - originY) * zw + (w.x0 + dx - originX);
         ground[zi] = g;
         detail[zi] = w.prefab.detail[dy * w.prefab.width + dx]!;
+        const e = w.prefab.elev[dy * w.prefab.width + dx]!;
+        if (e !== 0) elevOf()[zi] = e;
       }
     }
   }
@@ -1228,7 +1240,9 @@ export function composePoi(
     height: zh,
     ground,
     detail,
-    elev: undefined, // flat: the site scan guaranteed level-0 ground
+    // Flat sites keep undefined (the site scan guaranteed level-0
+    // ground); a height-bearing prefab stamps its terraces verbatim.
+    elev: elev ?? undefined,
     spawns,
     ...(actorSpawns.length > 0 ? { actorSpawns } : {}),
     ...(portals.length > 0 ? { portals } : {}),

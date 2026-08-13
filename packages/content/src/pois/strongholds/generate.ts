@@ -238,6 +238,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
   const rWard = stream(seed, spec.id, 3);
   const rKnot = stream(seed, spec.id, 4);
   const rDress = stream(seed, spec.id, 5);
+  const rTerrace = stream(seed, spec.id, 6);
 
   // ---- 1. THE HULL ----------------------------------------------------
   const [dimMin, dimMax] = spec.sizeClass === 'citadel' ? [86, 108] : [58, 80];
@@ -427,6 +428,65 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     }
   }
 
+  // ---- 2b. THE RAISED GROUND (Phase 2) -------------------------------
+  // The boss court climbs a hill: the last stand raised one level
+  // behind a Cliff fence with one camera-facing stair. Height is
+  // render-only (the shelf law) — the fence ring IS the collision
+  // story, which also makes the terrace a sight wall: the chief's
+  // court is hidden until the ramp is won. Citadels always terrace;
+  // holds sometimes; a terrace the walls can't hold is skipped
+  // honestly (the land sizes the hill).
+  const elev = new Int8Array(pw * ph);
+  let terrace: Rect | null = null;
+  let rampX = 0;
+  let rampW = 0;
+  if (spec.sizeClass === 'citadel' || rTerrace.chance(0.6)) {
+    for (const pad of [2, 1]) {
+      const t: Rect = {
+        x: bossRect.x - pad,
+        y: bossRect.y - pad,
+        w: bossRect.w + pad * 2,
+        h: bossRect.h + pad * 2,
+      };
+      const corners: Array<[number, number]> = [
+        [t.x, t.y],
+        [t.x + t.w - 1, t.y],
+        [t.x, t.y + t.h - 1],
+        [t.x + t.w - 1, t.y + t.h - 1],
+      ];
+      if (!corners.every(([px, py]) => insideHull(px, py, 2))) continue;
+      if (placed.some((pl) => pl.rect !== bossRect && overlaps(t, pl.rect, 0))) continue;
+      terrace = t;
+      break;
+    }
+  }
+  if (terrace) {
+    const t = terrace;
+    rampW = spec.sizeClass === 'citadel' ? 2 : 1;
+    rampX = Math.min(
+      Math.max(bossRect.x + Math.floor(bossRect.w / 2) - (rampW >> 1), t.x + 2),
+      t.x + t.w - 2 - rampW,
+    );
+    for (let y = t.y; y < t.y + t.h; y++) {
+      for (let x = t.x; x < t.x + t.w; x++) {
+        elev[y * pw + x] = 1;
+        const onRing = x === t.x || y === t.y || x === t.x + t.w - 1 || y === t.y + t.h - 1;
+        const isRamp = y === t.y + t.h - 1 && x >= rampX && x < rampX + rampW;
+        if (isRamp) put(x, y, Tile.Ramp);
+        else if (onRing) put(x, y, Tile.Cliff);
+        else if (at(x, y) === TILE_SKIP) put(x, y, Tile.Grass); // opaque hill, no holes
+      }
+    }
+    for (let i = 0; i < rampW; i++) {
+      // The landing: honest walkable ground at the stair's foot.
+      if (at(rampX + i, t.y + t.h) === TILE_SKIP) put(rampX + i, t.y + t.h, Tile.Dirt);
+      // The summit path: from the stair head to the court's door.
+      for (let y = t.y + t.h - 2; y >= bossRect.y + bossRect.h; y--) {
+        if (at(rampX + i, y) === Tile.Grass) put(rampX + i, y, Tile.Dirt);
+      }
+    }
+  }
+
   // ---- 3. THE GROUND --------------------------------------------------
   // Hearth plaza.
   for (let dy = -3; dy <= 3; dy++) {
@@ -487,8 +547,11 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     return da - db;
   });
   for (const p of byPlazaDist) {
-    const wx = p.rect.x + Math.floor(p.rect.w / 2);
-    const wy = p.rect.y + Math.floor(p.rect.h / 2);
+    // A terraced last stand joins the network at its stair's foot —
+    // the lane walks to the ramp, the ramp walks to the chief.
+    const terraced = terrace !== null && p.rect === bossRect;
+    const wx = terraced ? rampX + (rampW >> 1) : p.rect.x + Math.floor(p.rect.w / 2);
+    const wy = terraced ? terrace!.y + terrace!.h : p.rect.y + Math.floor(p.rect.h / 2);
     let tx = cx;
     let ty = cy;
     let best = (wx - cx) * (wx - cx) + (wy - cy) * (wy - cy);
@@ -733,7 +796,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     height: ph,
     ground,
     detail: new Uint16Array(pw * ph),
-    elev: new Int8Array(pw * ph),
+    elev,
     portals: [],
     spawns: [],
     actorSpawns: [],

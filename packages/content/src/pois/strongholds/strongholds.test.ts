@@ -6,6 +6,7 @@ import { prefabFromJson, prefabToJson } from '../../maps/prefab.js';
 import { AUTHORED_STRONGHOLDS, STRONGHOLD_DEFS, STRONGHOLD_PREFABS, STRONGHOLD_ROSTER } from './defs.js';
 import { FAMILY_STYLES, genStronghold, type StrongholdSpec } from './generate.js';
 import { WARD_PIECES } from './pieces.js';
+import { sketch } from '../prefabs.js';
 import { KNOT_BAND_MAX, KNOT_SPACING, STRONGHOLD_MAX_DIM, STRONGHOLD_MIN_DIM } from './types.js';
 import { validateStronghold } from './validate.js';
 
@@ -202,6 +203,94 @@ test('validator refuses a second boss chest and a chest outside the boss ward', 
   const res = validateStronghold(p.def, { prefab: { ...p.prefab, ground } });
   assert.ok(!res.ok);
   assert.ok(res.errors.some((e) => /exactly one/.test(e) || /outside the boss ward/.test(e)));
+});
+
+// ---- The raised ground (Phase 2) ------------------------------------
+
+test('the sketch dialect parses a height plane and refuses a ragged one', () => {
+  const rows = ['_____', '_...._'.slice(0, 5), '_____'];
+  const good = sketch('elev_probe', 'Elev probe', rows, {}, ['_____', '_111_', '_____']);
+  assert.equal(good.elev[5 + 1], 1);
+  assert.equal(good.elev[0], 0);
+  assert.throws(() => sketch('elev_probe', 'p', rows, {}, ['_____', '_11_', '_____']), /ragged elev row/);
+  assert.throws(() => sketch('elev_probe', 'p', rows, {}, ['_____', '_1x1_', '_____']), /unknown elev char/);
+  assert.throws(() => sketch('elev_probe', 'p', rows, {}, ['_____', '_111_']), /elev plane has 2 rows/);
+});
+
+const terracedShipped = () => {
+  for (const def of STRONGHOLD_DEFS.values()) {
+    const prefab = STRONGHOLD_PREFABS.get(def.prefab)!;
+    if (prefab.elev.some((e) => e !== 0)) return { def, prefab };
+  }
+  throw new Error('no terraced layout on the shelf');
+};
+
+test('validator refuses raised ground whose fence is broken (FENCED HEIGHT)', () => {
+  const { def, prefab } = terracedShipped();
+  const ground = prefab.ground.slice();
+  let cut = false;
+  for (let i = 0; i < ground.length && !cut; i++) {
+    if (ground[i] === Tile.Cliff) {
+      ground[i] = Tile.Grass; // one cliff quarried away
+      cut = true;
+    }
+  }
+  assert.ok(cut);
+  const res = validateStronghold(def, { prefab: { ...prefab, ground } });
+  assert.ok(!res.ok && res.errors.some((e) => /FENCED HEIGHT/.test(e)), 'a quarried fence must refuse');
+});
+
+test('validator refuses a ramp that does not descend south (the camera-facing stair)', () => {
+  const { def, prefab } = terracedShipped();
+  const ground = prefab.ground.slice();
+  // Turn a NORTH-edge cliff into a ramp: it would descend away from
+  // the camera, which the shelf law forbids.
+  let planted = false;
+  for (let i = 0; i < ground.length && !planted; i++) {
+    const x = i % prefab.width;
+    const y = Math.floor(i / prefab.width);
+    if (ground[i] === Tile.Cliff && prefab.elev[i] === 1 && prefab.elev[Math.max(0, (y - 1) * prefab.width + x)] === 0) {
+      ground[i] = Tile.Ramp;
+      planted = true;
+    }
+  }
+  assert.ok(planted);
+  const res = validateStronghold(def, { prefab: { ...prefab, ground } });
+  assert.ok(!res.ok && res.errors.some((e) => /descend SOUTH/.test(e)));
+});
+
+test('validator refuses elevation on transparent cells and near the border', () => {
+  const { def, prefab } = terracedShipped();
+  const onSkip = prefab.elev.slice();
+  onSkip[0] = 1; // the corner fringe cell is TILE_SKIP by law
+  const r1 = validateStronghold(def, { prefab: { ...prefab, elev: onSkip } });
+  assert.ok(!r1.ok && r1.errors.some((e) => /transparent cells carry elevation/.test(e)));
+  const nearEdge = prefab.elev.slice();
+  const g2 = prefab.ground.slice();
+  g2[prefab.width + 1] = Tile.Cliff; // opaque cell at 1,1
+  nearEdge[prefab.width + 1] = 1;
+  const r2 = validateStronghold(def, { prefab: { ...prefab, ground: g2, elev: nearEdge } });
+  assert.ok(!r2.ok && r2.errors.some((e) => /border-flat/.test(e)));
+});
+
+test('every terraced shipped layout raises its chief behind a south stair', () => {
+  let terraced = 0;
+  for (const def of STRONGHOLD_DEFS.values()) {
+    const prefab = STRONGHOLD_PREFABS.get(def.prefab)!;
+    const raised = prefab.elev.some((e) => e !== 0);
+    if (!raised) continue;
+    terraced++;
+    const bi = def.boss.at[1] * prefab.width + def.boss.at[0];
+    assert.equal(prefab.elev[bi], 1, `${def.id}: the chief stands on the hill`);
+    let ramps = 0;
+    for (let i = 0; i < prefab.ground.length; i++) if (prefab.ground[i] === Tile.Ramp) ramps++;
+    assert.ok(ramps >= 1, `${def.id}: a hill needs its stair`);
+    // The reachability sweep already proved the stair is the way in;
+    // pin that the fence itself validates.
+    const res = validateStronghold(def, { prefab });
+    assert.ok(res.ok, `${def.id}: ${res.ok ? '' : res.errors.join('; ')}`);
+  }
+  assert.ok(terraced >= 6, `only ${terraced} terraced layouts on the shelf`);
 });
 
 // ---- The shipped shelf, swept ---------------------------------------

@@ -4,6 +4,7 @@ import { TILE_DEFS, TILE_SKIP, Tile, chestInfo, closedChestTile } from '@arx/sha
 import {
   AMBERFORD_RECT,
   MINOR_DEFS,
+  STRONGHOLD_PREFABS,
   PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
@@ -47,6 +48,55 @@ function scanSites(): PoiSite[] {
   }
   return sites;
 }
+
+test('a height-bearing prefab stamps its terraces through the composer', () => {
+  // THE RAISED GROUND (strongholds Phase 2): the wolfkin bone-ring
+  // ships a cliff-fenced boss terrace — ride it through the REAL
+  // scaffold via a probe archetype and prove the zone carries the
+  // height (and that ordinary flat sites still compose with
+  // elev undefined, the cheap old truth).
+  const terracedPrefab = STRONGHOLD_PREFABS.get('stronghold_wolfkin_bonering')!;
+  const probeDef = {
+    id: 'terrace_probe',
+    name: 'Terrace probe',
+    tiers: [1, 5] as const,
+    weight: 5,
+    prefabs: ['stronghold_wolfkin_bonering'],
+    garrison: [],
+  } as unknown as (typeof CTX.defs)[number];
+  const prefabs = new Map(POI_PREFABS);
+  prefabs.set(terracedPrefab.id, terracedPrefab);
+  const ctx: PoiContext = { ...CTX, defs: [probeDef], prefabs };
+  let zone = null;
+  for (let cy = -SCAN; cy <= SCAN && !zone; cy++) {
+    for (let cx = -SCAN; cx <= SCAN && !zone; cx++) {
+      const site = poiForCell(SEED, cx, cy, 0, ctx);
+      if (!site) continue;
+      zone = composePoi(SEED, site, ctx);
+    }
+  }
+  assert.ok(zone, 'the probe archetype never found ground in the scan window');
+  assert.ok(zone.elev, 'a terraced prefab must compose a zone WITH an elev layer');
+  // The stamped heights match the prefab, cell for cell, and the
+  // fence rode along with them.
+  let raisedInPrefab = 0;
+  for (const e of terracedPrefab.elev) if (e !== 0) raisedInPrefab++;
+  let raisedInZone = 0;
+  let cliffRaised = 0;
+  for (let i = 0; i < zone.elev.length; i++) {
+    if (zone.elev[i] !== 0) {
+      raisedInZone++;
+      if (zone.ground[i] === Tile.Cliff) cliffRaised++;
+    }
+  }
+  assert.equal(raisedInZone, raisedInPrefab, 'every raised prefab cell reaches the zone');
+  assert.ok(cliffRaised > 0, 'the cliff fence stands on the raised ground');
+  // And the ordinary frontier stays flat and cheap.
+  const flatSite = scanSites()[0]!;
+  const flatZone = composePoi(SEED, flatSite, CTX);
+  assert.ok(flatZone, 'the ordinary frontier must still compose');
+  assert.equal(flatZone.elev, undefined, 'flat sites keep elev undefined');
+});
 
 test('the scaffold is deterministic', () => {
   assert.deepEqual(scanSites(), scanSites());

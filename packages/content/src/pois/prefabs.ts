@@ -153,15 +153,37 @@ export interface Marker {
 
 // Exported for the stronghold Foundry's ward pieces (strongholds/
 // pieces.ts) — one sketch dialect, one legend, everywhere.
+//
+// THE RAISED GROUND (strongholds Phase 2): an optional parallel
+// elevation plane, same dimensions as the ground rows — '_' or '0'
+// is flat, digits 1-3 raise the cell. Height is RENDER-ONLY (the
+// shelf law: the Cliff/Ramp fence ring is the whole collision
+// story), so a sketch that raises ground must also draw its fence —
+// the stronghold validator holds that law for layouts.
 export function sketch(
   id: string,
   name: string,
   rows: string[],
   markers: Record<string, Marker> = {},
+  elevRows?: string[],
 ): PrefabDef {
   const width = rows[0]!.length;
   const height = rows.length;
   const ground = new Uint16Array(width * height);
+  const elev = new Int8Array(width * height);
+  if (elevRows) {
+    if (elevRows.length !== height) throw new Error(`${id}: elev plane has ${elevRows.length} rows, ground has ${height}`);
+    for (let y = 0; y < height; y++) {
+      const row = elevRows[y]!;
+      if (row.length !== width) throw new Error(`${id}: ragged elev row ${y}: "${row}"`);
+      for (let x = 0; x < width; x++) {
+        const ch = row[x]!;
+        if (ch === '_' || ch === '0') continue;
+        if (ch >= '1' && ch <= '3') elev[y * width + x] = ch.charCodeAt(0) - 48;
+        else throw new Error(`${id}: unknown elev char '${ch}' (use _ 0 1 2 3)`);
+      }
+    }
+  }
   const spawns: PrefabSpawn[] = [];
   for (let y = 0; y < height; y++) {
     const row = rows[y]!;
@@ -201,7 +223,7 @@ export function sketch(
     height,
     ground,
     detail: new Uint16Array(width * height),
-    elev: new Int8Array(width * height),
+    elev,
     portals,
     spawns,
     actorSpawns: [],
