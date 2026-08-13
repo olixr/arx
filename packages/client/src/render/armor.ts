@@ -13473,18 +13473,19 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const oBot = headY + hh * 0.9;
     const sway = Math.sin(f.nowMs * 0.0014) * hw * 0.03;
     const apexX = headX - lead * hw * (0.22 + t * 0.12) + sway;
-    const apexY = headY - hh * 1.94;
+    const apexY = headY - hh * 1.52;
     const shell = () => {
-      // Planar triangle: long straight-ish flanks, a hooked tip.
+      // The refined triangle: fitted to the skull, the peak toned
+      // back from a spire to a leaning crest — mystery over height.
       ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.16);
       ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.1, headX + lead * hw * 1.02, headY - hh * 0.62);
-      // The leading flank: one long committed line to the apex.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.62, headY - hh * 1.3, apexX + lead * hw * 0.12, apexY + hh * 0.1);
-      // The hook: the tip licks back like a flame caught leaning.
-      ctx.quadraticCurveTo(apexX - lead * hw * 0.02, apexY - hh * 0.1, apexX - lead * hw * 0.3, apexY + hh * 0.06);
-      // The trailing flank: straight fall into the drape.
-      ctx.quadraticCurveTo(headX - lead * hw * (0.9 + t * 0.24), headY - hh * 0.9, headX - lead * hw * (1.18 + t * 0.34), headY - hh * 0.1);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.32 + t * 0.3), headY + hh * 0.42, headX - lead * hw * 1.28, headY + hh * 1.16);
+      // The leading flank hugs the crown on its way up.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.66, headY - hh * 1.14, apexX + lead * hw * 0.12, apexY + hh * 0.08);
+      // The hook: a soft lean, no longer a lick of flame.
+      ctx.quadraticCurveTo(apexX - lead * hw * 0.03, apexY - hh * 0.06, apexX - lead * hw * 0.22, apexY + hh * 0.08);
+      // The trailing flank: a close fall into the drape.
+      ctx.quadraticCurveTo(headX - lead * hw * (0.86 + t * 0.22), headY - hh * 0.78, headX - lead * hw * (1.12 + t * 0.3), headY - hh * 0.08);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.26 + t * 0.28), headY + hh * 0.42, headX - lead * hw * 1.24, headY + hh * 1.16);
       ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.22, headY + hh * 1.16);
       ctx.closePath();
     };
@@ -13869,7 +13870,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const oBot = headY + hh * 0.88;
     const sway = Math.sin(f.nowMs * 0.0012) * hw * 0.03;
     const apexX = headX - lead * hw * (0.3 + t * 0.14) + sway;
-    const apexY = headY - hh * 1.78;
+    const apexY = headY - hh * 1.42;
     const dayK = daybreakK(f.nowMs, st.sundisc?.phase);
     if (st.sundisc && !hurt) {
       // THE CROWNED ECLIPSE floats above the peak — painted first so
@@ -13907,13 +13908,15 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       }
     }
     const shell = () => {
+      // Fitted close and toned back: a rounded dark crest, not a
+      // steeple — the void does the talking, not the height.
       ctx.moveTo(headX + lead * hw * 1.2, headY + hh * 1.18);
       ctx.quadraticCurveTo(headX + lead * hw * 1.28, headY + hh * 0.12, headX + lead * hw * 1.06, headY - hh * 0.56);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.9, headY - hh * 1.18, apexX + lead * hw * 0.2, apexY + hh * 0.12);
-      // The hook at the tip.
-      ctx.quadraticCurveTo(apexX - lead * hw * 0.06, apexY - hh * 0.08, apexX - lead * hw * 0.34, apexY + hh * 0.14);
-      ctx.quadraticCurveTo(headX - lead * hw * (0.98 + t * 0.26), headY - hh * 0.8, headX - lead * hw * (1.22 + t * 0.34), headY - hh * 0.04);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.34 + t * 0.3), headY + hh * 0.46, headX - lead * hw * 1.28, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.94, headY - hh * 1.06, apexX + lead * hw * 0.2, apexY + hh * 0.1);
+      // The hook: a soft nod over the crown.
+      ctx.quadraticCurveTo(apexX - lead * hw * 0.05, apexY - hh * 0.06, apexX - lead * hw * 0.26, apexY + hh * 0.12);
+      ctx.quadraticCurveTo(headX - lead * hw * (0.94 + t * 0.24), headY - hh * 0.72, headX - lead * hw * (1.16 + t * 0.3), headY - hh * 0.04);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.28 + t * 0.28), headY + hh * 0.46, headX - lead * hw * 1.24, headY + hh * 1.18);
       ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.2, headY + hh * 1.18);
       ctx.closePath();
     };
