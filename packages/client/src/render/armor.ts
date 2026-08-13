@@ -38,12 +38,17 @@ export interface BodyStyle {
    *  jadeskull crescents, `boneridge` the fellbone slab fan,
    *  `thorncrest` the rimethorn hooks (palethorn is its pale quench),
    *  `lionhead` the kingsmane sculpted lions, `sunfan` the sunhallow
-   *  gilt ray petals, `veilwing` the gloamsight swept wing plates. */
+   *  gilt ray petals, `veilwing` the gloamsight swept wing plates,
+   *  `stormspire` the stormsinger storm-glass crystals, `charbrand`
+   *  the flamewrought ember-seamed char slabs, `wardcrest` the
+   *  duskwarden brass crescent with its watch stone, `aethercrest`
+   *  the aetherion floating silver arcs. */
   pauldron:
     | 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur'
     | 'feathered' | 'orbs' | 'shards' | 'wyrmwing'
     | 'axeblade' | 'boneridge' | 'thorncrest' | 'lionhead'
-    | 'sunfan' | 'veilwing';
+    | 'sunfan' | 'veilwing'
+    | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
@@ -870,7 +875,7 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   sunhallow_robe: {
     color: '#ece6d8', trim: '#d4a843', cls: 'cloth',
     silhouette: 'robe', pauldron: 'sunfan', pauldronColor: '#f0b040',
-    pauldronTrim: '#ffe9b0', pauldronScale: 1.08,
+    pauldronTrim: '#ffe9b0', pauldronScale: 1.18,
     chest: 'emblem', emblem: 'sun', emblemScale: 1.2, skirt: 0.36,
     sleeves: 'full', folds: true, underskirt: '#8a3030',
     mantle: '#ded4bc', stole: { color: '#efe8d8', trim: '#d4a843' },
@@ -878,7 +883,8 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   stormsinger_robe: {
     color: '#2c3a6e', trim: '#ccd4e8', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'emblem',
+    silhouette: 'robe', pauldron: 'stormspire', pauldronColor: '#5578ac',
+    pauldronTrim: '#8ae8ff', pauldronScale: 1.18, chest: 'emblem',
     emblem: 'bolt', emblemScale: 1.2, skirt: 0.36, skirtSlit: true,
     sleeves: 'full', folds: true, underskirt: '#1c2547',
     mantle: '#232e58',
@@ -888,14 +894,15 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   gloamsight_robe: {
     color: '#4e5636', trim: '#b09346', cls: 'cloth',
     silhouette: 'robe', pauldron: 'veilwing', pauldronColor: '#8a7436',
-    pauldronTrim: '#e8cc7a', pauldronScale: 1.06, chest: 'none',
+    pauldronTrim: '#e8cc7a', pauldronScale: 1.16, chest: 'none',
     skirt: 0.36, sleeves: 'full', folds: true, underskirt: '#3d4429',
     mantle: '#434a2e', sash: '#3d4429',
     sigilweave: { color: '#ffb054' },
   },
   flamewrought_robe: {
     color: '#ddd2b8', trim: '#3a2e2a', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'none', skirt: 0.36,
+    silhouette: 'robe', pauldron: 'charbrand', pauldronColor: '#2e2422',
+    pauldronTrim: '#ff7a3c', pauldronScale: 1.14, chest: 'none', skirt: 0.36,
     sleeves: 'full', folds: true, underskirt: '#352a24',
     belt: { color: '#3a2e2a', buckle: '#8a6a4a' },
     runestrips: { color: '#cfc2a2', rune: '#ff7a3c' },
@@ -903,7 +910,8 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   duskwarden_robe: {
     color: '#232838', trim: '#9a7a44', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'none', skirt: 0.36,
+    silhouette: 'robe', pauldron: 'wardcrest', pauldronColor: '#1c2130',
+    pauldronTrim: '#b8945c', pauldronScale: 1.16, chest: 'none', skirt: 0.36,
     skirtSlit: true, sleeves: 'full', folds: true,
     underskirt: '#1a1e2c',
     capelet: { color: '#1c2130', hem: 'dag', trim: '#9a7a44' },
@@ -912,7 +920,8 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   aetherion_robe: {
     color: '#2e2452', trim: '#d8dce8', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'none', skirt: 0.38,
+    silhouette: 'robe', pauldron: 'aethercrest', pauldronColor: '#d8dce8',
+    pauldronTrim: '#8ce0e8', pauldronScale: 1.16, chest: 'none', skirt: 0.38,
     skirtSlit: true, sleeves: 'full', folds: true,
     underskirt: '#1f1838', mantle: '#261e44',
     capelet: { color: '#261e44', hem: 'point', trim: '#8ce0e8' },
@@ -5287,9 +5296,12 @@ export function drawPauldron(
     const breathe = 1 + 0.05 * Math.sin(nowMs * 0.0013 + side * 0.7);
     const rays: Array<[number, number, number]> = [
       // [angle from straight up (×side, outward positive), length, width]
-      [0.12, 0.185, 0.052],
-      [0.5, 0.16, 0.046],
-      [0.86, 0.13, 0.04],
+      // Four rays, sized to be SEEN: the dawn at the shoulder is a
+      // statement, not a garnish.
+      [0.06, 0.26, 0.062],
+      [0.4, 0.225, 0.056],
+      [0.72, 0.185, 0.05],
+      [1.0, 0.14, 0.042],
     ];
     for (let i = rays.length - 1; i >= 0; i--) {
       const [ang, len0, w] = rays[i]!;
@@ -5329,16 +5341,23 @@ export function drawPauldron(
         ctx.stroke();
       }
     }
-    // The seat: a low gold cap the fan grows from — worn, not taped on.
+    // The seat: a domed gold cap the fan grows from — worn, not taped
+    // on, with the 2.5D top plane the tilted camera demands: a lit
+    // crown arc above the rim shadow.
     ctx.fillStyle = col;
     ctx.beginPath();
-    ctx.ellipse(0, 0.012 * s, 0.088 * s, 0.052 * s, 0, Math.PI, Math.PI * 2);
+    ctx.ellipse(0, 0.008 * s, 0.105 * s, 0.062 * s, 0, Math.PI, Math.PI * 2);
     ctx.fill();
     if (!hurt) {
+      // The top plane catches the sun; the under-rim holds the shade.
+      ctx.fillStyle = shade(base, 16);
+      ctx.beginPath();
+      ctx.ellipse(0, -0.008 * s, 0.082 * s, 0.036 * s, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
       ctx.strokeStyle = trim;
       ctx.lineWidth = Math.max(1, s * 0.014);
       ctx.beginPath();
-      ctx.ellipse(0, 0.012 * s, 0.088 * s, 0.052 * s, 0, Math.PI * 1.06, Math.PI * 1.94);
+      ctx.ellipse(0, 0.008 * s, 0.105 * s, 0.062 * s, 0, Math.PI * 1.04, Math.PI * 1.96);
       ctx.stroke();
     }
     ctx.restore();
@@ -5351,13 +5370,13 @@ export function drawPauldron(
     // under THE ONE BRIGHT EDGE: a lit stroke down each leading
     // curve, or the sweep reads as shadow instead of wing.
     const u = 1; // outward: the wings clear the silhouette, never the chest
-    for (let i = 1; i >= 0; i--) {
-      const lift = i * 0.05;
-      const len = (0.24 - i * 0.06) * s;
+    for (let i = 2; i >= 0; i--) {
+      const lift = i * 0.045;
+      const len = (0.32 - i * 0.055) * s;
       const px = side * -0.01 * s;
-      const py = (-0.03 + lift * 0.3) * s;
+      const py = (-0.03 + lift * 0.35) * s;
       const tx = px + side * u * len;
-      const ty = py - (0.16 - lift) * s;
+      const ty = py - (0.2 - lift) * s;
       ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 8 : -6) - i * 12);
       ctx.beginPath();
       ctx.moveTo(px, py - 0.045 * s);
@@ -5377,17 +5396,277 @@ export function drawPauldron(
         ctx.stroke();
       }
     }
-    // The root cap seats the wings on the arm.
+    // The root cap seats the wings on the arm — domed, with the lit
+    // top plane the tilted camera expects of every standing volume.
     ctx.fillStyle = col;
     ctx.beginPath();
-    ctx.ellipse(0, 0, 0.085 * s, 0.06 * s, 0, Math.PI * 0.9, Math.PI * 2.1);
+    ctx.ellipse(0, 0, 0.1 * s, 0.068 * s, 0, Math.PI * 0.9, Math.PI * 2.1);
     ctx.fill();
     if (!hurt) {
+      ctx.fillStyle = shade(base, 12);
+      ctx.beginPath();
+      ctx.ellipse(0, -0.014 * s, 0.076 * s, 0.038 * s, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
       ctx.strokeStyle = trim;
       ctx.lineWidth = Math.max(1, s * 0.012);
       ctx.beginPath();
-      ctx.ellipse(0, 0, 0.085 * s, 0.06 * s, 0, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.ellipse(0, 0, 0.1 * s, 0.068 * s, 0, Math.PI * 1.1, Math.PI * 1.9);
       ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'stormspire') {
+    // THE STORMSPIRE — the stormsinger shoulder: three storm-glass
+    // crystal spires rising off a domed indigo seat, leaning outward
+    // like the weather is pulling them. Each pane keeps THE ONE
+    // BRIGHT EDGE down its windward face, and on its own beat an arc
+    // snaps between the two tallest tips — the charge the orbs
+    // circle for, grounded at the shoulder.
+    const seatY = 0.02 * s;
+    // The seat first: a DARK forged dome with its lit top plane —
+    // the glass is luminous, so the socket it grows from stays iron.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(base, -38);
+    ctx.beginPath();
+    ctx.ellipse(0, seatY, 0.1 * s, 0.06 * s, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(base, -24);
+      ctx.beginPath();
+      ctx.ellipse(0, seatY - 0.014 * s, 0.075 * s, 0.032 * s, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+    }
+    const spires: Array<[number, number, number, number]> = [
+      // [base x (×side), height, half-width, outward lean] — SHORT
+      // and FAT: a crystal is mass with facets; a tall thin one is a
+      // wire, and twelve wires are a cage (the first-cut lesson).
+      [0.02, 0.14, 0.052, 0.32],
+      [-0.05, 0.1, 0.04, 0.1],
+      [0.09, 0.078, 0.034, 0.55],
+    ];
+    const tips: Array<[number, number]> = [];
+    for (const [k, [bu, hgt, wid, leanK]] of spires.entries()) {
+      const bx = side * bu * s;
+      const tx = bx + side * leanK * hgt * s * 0.55;
+      const ty = seatY - hgt * s;
+      tips.push([tx, ty]);
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, 4);
+      ctx.beginPath();
+      ctx.moveTo(bx - wid * s, seatY);
+      ctx.lineTo(tx, ty);
+      ctx.lineTo(bx + wid * s, seatY);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The dark lee facet; the bright windward edge stays on the
+        // two tall panes only — restraint keeps them crystal.
+        ctx.fillStyle = shade(base, -18);
+        ctx.beginPath();
+        ctx.moveTo(bx + wid * s * 0.1, seatY);
+        ctx.lineTo(tx, ty);
+        ctx.lineTo(bx + wid * s, seatY);
+        ctx.closePath();
+        ctx.fill();
+        if (k < 2) {
+          ctx.strokeStyle = trim;
+          ctx.lineWidth = Math.max(1, s * 0.013);
+          ctx.beginPath();
+          ctx.moveTo(bx - wid * s * 0.8, seatY);
+          ctx.lineTo(tx - side * 0.004 * s, ty + 0.008 * s);
+          ctx.stroke();
+        }
+      }
+    }
+    if (!hurt) {
+      // The snap: an arc between the two tallest tips on its own
+      // beat; between snaps, a charge glint holds the tall point.
+      const beat = Math.sin(nowMs * 0.0033 + side * 1.2);
+      const [t0, t1] = [tips[0]!, tips[1]!];
+      if (beat > 0.9) {
+        const j = (beat - 0.9) / 0.1;
+        ctx.globalAlpha = j;
+        ctx.strokeStyle = shade(trim, 20);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(t0[0], t0[1]);
+        const mx = (t0[0] + t1[0]) / 2 + Math.sin(nowMs * 0.045) * 0.014 * s;
+        const my = (t0[1] + t1[1]) / 2 - 0.02 * s;
+        ctx.lineTo(mx, my);
+        ctx.lineTo(t1[0], t1[1]);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.globalAlpha = 0.35 + 0.4 * Math.max(0, beat);
+        ctx.fillStyle = shade(trim, 24);
+        ctx.beginPath();
+        ctx.arc(t0[0], t0[1], 0.012 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'charbrand') {
+    // THE CHARBRAND — the flamewrought shoulder: two lapped char-iron
+    // slabs with a molten seam breathing between them — the forge
+    // never cooled, and the shoulder admits it. The slabs are angular
+    // mass with lit top edges; the seam does the talking.
+    const slab = (
+      x0: number, y0: number, w: number, h: number, skew: number, tone: number,
+    ): void => {
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, tone);
+      ctx.beginPath();
+      ctx.moveTo(x0 - w * 0.5, y0 + h * 0.5);
+      ctx.lineTo(x0 - w * 0.42 + skew, y0 - h * 0.5);
+      ctx.lineTo(x0 + w * 0.46 + skew, y0 - h * 0.44);
+      ctx.lineTo(x0 + w * 0.54, y0 + h * 0.42);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The lit top edge — iron under one sun.
+        ctx.strokeStyle = shade(base, 26);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(x0 - w * 0.42 + skew, y0 - h * 0.5);
+        ctx.lineTo(x0 + w * 0.46 + skew, y0 - h * 0.44);
+        ctx.stroke();
+      }
+    };
+    // Upper slab rides the shoulder crown; lower laps the arm.
+    slab(side * -0.01 * s, -0.045 * s, 0.19 * s, 0.085 * s, side * 0.012 * s, 6);
+    slab(side * 0.02 * s, 0.05 * s, 0.21 * s, 0.09 * s, side * 0.02 * s, -8);
+    if (!hurt) {
+      // The molten seam between the slabs, breathing on the furnace
+      // beat, brightest mid-run — heat, not trim.
+      const emberCol = st.pauldronTrim ?? '#ff7a3c';
+      const pulse = 0.55 + 0.45 * Math.sin(nowMs * 0.0027 + side * 2.1);
+      ctx.globalAlpha = 0.45 + 0.5 * pulse;
+      ctx.strokeStyle = emberCol;
+      ctx.lineWidth = Math.max(1, s * (0.011 + 0.005 * pulse));
+      ctx.beginPath();
+      ctx.moveTo(side * -0.095 * s, 0.005 * s);
+      ctx.lineTo(side * -0.03 * s, -0.008 * s);
+      ctx.lineTo(side * 0.035 * s, 0.008 * s);
+      ctx.lineTo(side * 0.1 * s, -0.004 * s);
+      ctx.stroke();
+      // One spark leaves the seam and dies mid-air.
+      const cyc = (nowMs * 0.0011 + (side + 1) * 0.35) % 1;
+      if (cyc < 0.7) {
+        ctx.globalAlpha = (0.7 - cyc) * 0.9;
+        ctx.fillStyle = shade(emberCol, 22);
+        ctx.beginPath();
+        ctx.arc(side * 0.02 * s + Math.sin(cyc * 9) * 0.012 * s, -0.01 * s - cyc * 0.11 * s, 0.009 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'wardcrest') {
+    // THE WARDCREST — the duskwarden shoulder: a broad brass crescent
+    // arcing over the cape, horns down, riveted at the tips, with one
+    // oxblood watch stone at its crown that keeps the same slow pulse
+    // the hem stones answer. Jewelry at armor scale: the toll
+    // collector's plate.
+    const brass = st.pauldronTrim ?? shade(base, 30);
+    const R = 0.13 * s;
+    // The crescent is a PLATE, not a wire: a filled band between two
+    // arcs, thick enough to carry rivets and its own lit crown.
+    const bandW = 0.055 * s;
+    ctx.fillStyle = hurt ? '#ffffff' : brass;
+    ctx.beginPath();
+    ctx.arc(0, 0.03 * s, R, Math.PI * 1.04, Math.PI * 1.96);
+    ctx.arc(0, 0.03 * s, R - bandW, Math.PI * 1.96, Math.PI * 1.04, true);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The lit crown along the top plane, and the shaded under-rim.
+      ctx.strokeStyle = shade(brass, 26);
+      ctx.lineWidth = Math.max(1.5, s * 0.016);
+      ctx.beginPath();
+      ctx.arc(0, 0.026 * s, R - 0.006 * s, Math.PI * 1.18, Math.PI * 1.82);
+      ctx.stroke();
+      ctx.strokeStyle = shade(brass, -24);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.arc(0, 0.03 * s, R - bandW + 0.004 * s, Math.PI * 1.14, Math.PI * 1.86);
+      ctx.stroke();
+      // Rivets seat the horns on the cape.
+      ctx.fillStyle = shade(brass, -18);
+      for (const es of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(es * (R - bandW * 0.5) * 0.98, 0.03 * s + R * 0.2, 0.015 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The watch stone, pulsing on the gemwake clock — set INTO the
+      // band's crown, bezel and all.
+      if (st.gemwake) {
+        const pulse = 0.4 + 0.6 * Math.max(0, Math.sin(nowMs * 0.0013 + side * 2.4));
+        const gy = 0.03 * s - R + bandW * 0.5;
+        ctx.fillStyle = shade(brass, -26);
+        ctx.beginPath();
+        ctx.arc(0, gy, 0.034 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(st.gemwake.color, pulse * 30);
+        ctx.beginPath();
+        ctx.moveTo(0, gy - 0.027 * s);
+        ctx.lineTo(0.022 * s, gy);
+        ctx.lineTo(0, gy + 0.027 * s);
+        ctx.lineTo(-0.022 * s, gy);
+        ctx.closePath();
+        ctx.fill();
+        if (pulse > 0.5) {
+          ctx.globalAlpha = (pulse - 0.5) * 0.5;
+          ctx.fillStyle = st.gemwake.color;
+          ctx.beginPath();
+          ctx.arc(0, gy, 0.055 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'aethercrest') {
+    // THE AETHERCREST — the aetherion shoulder: two silver crescent
+    // arcs floating just off the shoulder, stacked, bobbing on
+    // counter-phased clocks with a glint walking the outer rim.
+    // Nothing holds them up — the same law as the glyph ring below;
+    // the shoulder is where the flagship's geometry begins.
+    // Seated LOW and pushed OUTWARD: the arcs cup the shoulder's own
+    // curve, clear of the skull — regalia at the shoulder, never ears
+    // beside the head (the first-cut lesson).
+    const arcCol = hurt ? '#ffffff' : base;
+    const ox2 = side * 0.055 * s;
+    for (const [i, rr] of [0.115, 0.08].entries()) {
+      const bob = Math.sin(nowMs * 0.0017 + i * 2.6 + side) * 0.009 * s;
+      const cy = 0.005 * s - i * 0.035 * s + bob;
+      const R = rr * s;
+      ctx.strokeStyle = arcCol;
+      ctx.lineWidth = Math.max(1.5, s * (0.021 - i * 0.005));
+      ctx.beginPath();
+      ctx.arc(ox2, cy, R, Math.PI * 1.02, Math.PI * 1.98);
+      ctx.stroke();
+      if (!hurt) {
+        // The aether edge rides the crescent's crown.
+        ctx.strokeStyle = st.pauldronTrim ?? shade(base, 30);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.arc(ox2, cy - 0.004 * s, R, Math.PI * 1.22, Math.PI * 1.78);
+        ctx.stroke();
+      }
+    }
+    if (!hurt) {
+      // The glint walks the outer arc, keeping the ring's own pace.
+      const ga = Math.PI * (1.02 + 0.96 * ((Math.sin(nowMs * 0.0009 + side * 1.5) + 1) / 2));
+      const bob0 = Math.sin(nowMs * 0.0017 + side) * 0.009 * s;
+      ctx.fillStyle = shade(st.pauldronTrim ?? base, 36);
+      ctx.beginPath();
+      ctx.arc(ox2 + Math.cos(ga) * 0.115 * s, 0.005 * s + bob0 + Math.sin(ga) * 0.115 * s, 0.011 * s, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
     return;
@@ -6756,38 +7035,53 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   }
 
   if (st.kind === 'hood') {
-    // A TRUE cowl: one continuous shell that owns the whole skull —
-    // crown, cheeks and jaw — with the face opening cut clean through
-    // it (even-odd), so from the front only the face shows. The shell
-    // is asymmetric with the facing: the leading edge hugs the brow
-    // while the trailing side swells into the swept-back volume every
-    // hood hangs from; at profile that swell becomes the classic peak
-    // and the opening narrows to a leading-edge window. The back band
-    // closes the opening entirely and hangs the drape tail. One shape
-    // grammar, three reads, no bolted-on side curtains.
+    // A TRUE cowl — the traveler's hood: one continuous shell that
+    // owns the whole skull, with the face opening cut clean through
+    // it (even-odd). Three commitments the old rounded dome never
+    // made:
+    //   THE POINT — the crown pitches up an angular slope and folds
+    //   over into a drooping swept peak off the trailing crown, alive
+    //   on a slow sway. A hood is cut from a triangle of cloth; the
+    //   point is the proof, at EVERY facing, not just profile.
+    //   THE BROW RIDGE — the leading edge juts past the face line
+    //   into an overhang, and that overhang casts a REAL shadow band
+    //   down onto the face. The hooded read IS the shadow.
+    //   THE MANTLE — the hem flares wide and sags onto the shoulders
+    //   as a true shoulder cape.
+    // The opening still tracks the face bands and commits to the
+    // profile: it presses into the leading edge and narrows, a tunnel
+    // seen from the side, never a pasted window.
     const t = profileK;
     const front = backK <= 0.55;
-    // The face opening tracks the face bands exactly like the eyes do
-    // — and COMMITS to the profile: as the head turns, the window
-    // presses into the shell's leading edge and narrows, so the side
-    // view reads as a tunnel seen from the side, never a front window
-    // pasted on a turned hood. (0.34 frontal, deepening with t; the
-    // leading rim stays just inside the skull's own edge.)
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.74 * (1 - 0.5 * t);
     const oTop = headY - hh * 0.6;
     const oBot = headY + hh * 0.84;
+    // The peak: apex over the trailing crown, tip drooping past the
+    // shell's own silhouette, swaying on the cloth's slow clock.
+    const sway = Math.sin(f.nowMs * 0.0016) * hw * 0.06;
+    const apexX = headX - lead * hw * (0.3 + t * 0.18);
+    const apexY = headY - hh * (1.54 + t * 0.06);
+    const tipX = headX - lead * (hw * (1.42 + t * 0.55) + sway);
+    const tipY = headY - hh * (0.92 - t * 0.04) + sway * 0.4;
     const shell = () => {
       ctx.moveTo(headX + lead * hw * 1.26, headY + hh * 1.2);
-      // Leading edge: hugs the brow line up and over.
-      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.2, headX + lead * hw * 1.14, headY - hh * 0.55);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.05, headY - hh * 1.28, headX + lead * hw * 0.3, headY - hh * 1.34);
-      // Crown into the trailing swell — the swept-back drape, deepening
-      // toward profile into the classic hood peak.
-      ctx.quadraticCurveTo(headX - lead * hw * (0.95 + t * 0.45), headY - hh * 1.38, headX - lead * hw * (1.18 + t * 0.55), headY - hh * 0.62);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.32 + t * 0.5), headY + hh * 0.15, headX - lead * hw * 1.3, headY + hh * 1.2);
-      // The hem sags onto the shoulders — the cowl becomes a mantle.
-      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.26, headY + hh * 1.2);
+      // Leading edge up the jaw, kicking OUT into the brow ridge —
+      // the visor line every road hood keeps.
+      ctx.quadraticCurveTo(headX + lead * hw * 1.34, headY + hh * 0.22, headX + lead * hw * 1.18, headY - hh * 0.48);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.26, headY - hh * 0.84, headX + lead * hw * 0.86, headY - hh * 1.14);
+      // The angular climb: brow ridge up the pitched slope to the
+      // apex — cloth over a skull, never a dome.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.34, headY - hh * 1.44, apexX, apexY);
+      // THE POINT: the crown folds over and droops into the tip.
+      ctx.quadraticCurveTo(headX - lead * hw * (0.98 + t * 0.35), apexY + hh * 0.02, tipX, tipY);
+      // The point's underside returns into the trailing drape — the
+      // fold that says the tip hangs, not sticks.
+      ctx.quadraticCurveTo(headX - lead * hw * (1.0 + t * 0.28), headY - hh * 0.56, headX - lead * hw * (1.26 + t * 0.38), headY - hh * 0.2);
+      // Trailing drape to the hem.
+      ctx.quadraticCurveTo(headX - lead * hw * (1.4 + t * 0.34), headY + hh * 0.34, headX - lead * hw * 1.34, headY + hh * 1.2);
+      // The mantle: the hem sags wide onto the shoulders.
+      ctx.quadraticCurveTo(headX, headY + hh * 1.5, headX + lead * hw * 1.26, headY + hh * 1.2);
       ctx.closePath();
     };
     const opening = () => {
@@ -6809,22 +7103,45 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       // Trailing-half shade — the same split the torso lives by.
       ctx.fillStyle = shade(st.color, -13);
       ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // The crown's lit fold.
+      // The pitched slope's lit ridge: brow ridge up toward the apex
+      // — the light lands on the slope, not on a dome that isn't
+      // there anymore.
       ctx.strokeStyle = shade(st.color, 16);
       ctx.lineWidth = Math.max(1.5, s * 0.024);
       ctx.beginPath();
-      ctx.moveTo(headX - hw * 0.72, headY - hh * 0.78);
-      ctx.quadraticCurveTo(headX, headY - hh * 1.52, headX + hw * 0.72, headY - hh * 0.78);
+      ctx.moveTo(headX + lead * hw * 0.78, headY - hh * 1.0);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.26, headY - hh * 1.36, apexX + lead * hw * 0.1, apexY + hh * 0.1);
       ctx.stroke();
-      // One crease down the trailing side — cloth remembers gravity.
+      // The fold under the point: where the crown breaks over and
+      // the tip starts to hang — the crease that sells the drape.
       ctx.strokeStyle = shade(st.color, -24);
-      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.lineWidth = Math.max(1, s * 0.013);
       ctx.beginPath();
-      ctx.moveTo(headX - lead * hw * 0.55, headY - hh * 1.1);
-      ctx.quadraticCurveTo(headX - lead * hw * (0.9 + t * 0.3), headY - hh * 0.2, headX - lead * hw * 0.85, headY + hh * 0.9);
+      ctx.moveTo(apexX - lead * hw * 0.06, apexY + hh * 0.16);
+      ctx.quadraticCurveTo(headX - lead * hw * (0.92 + t * 0.3), headY - hh * 0.92, tipX + lead * hw * 0.16, tipY - hh * 0.04);
+      ctx.stroke();
+      // One crease down the trailing drape — cloth remembers gravity.
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.6, headY - hh * 0.7);
+      ctx.quadraticCurveTo(headX - lead * hw * (0.95 + t * 0.25), headY - hh * 0.1, headX - lead * hw * 0.9, headY + hh * 0.9);
       ctx.stroke();
       ctx.restore();
       if (front) {
+        // THE OVERHANG SHADOW: the brow ridge juts past the face, and
+        // the face pays for it — a soft dark band under the rim,
+        // deepest at the top, thinning to nothing by the eye line.
+        // Painted INSIDE the opening, on the face itself: this is the
+        // hooded read, and no rim stroke can fake it.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.04);
+        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.5)');
+        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
+        ctx.fillStyle = shGrad;
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.66);
+        ctx.restore();
         // The opening reads as depth: shadow just inside the rim, the
         // rolled hem edge on it, and the trim bar across the brow.
         ctx.strokeStyle = 'rgba(24, 15, 26, 0.32)';
