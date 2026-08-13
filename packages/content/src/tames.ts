@@ -66,6 +66,15 @@ export const TAME_DEFS: readonly TameDef[] = [
     flavor: 'Quick in the dark, and loyal to whoever holds the egg.',
   },
   {
+    species: 'cave_bat',
+    level: 10,
+    lure: 'berries',
+    tameXp: 60,
+    // THE FIRST LESSON KEPT: no kit — the bleeding nip is the wild
+    // tooth as-is, the wolf-and-bear precedent at the entry rung.
+    flavor: 'A scrap of night that sleeps in your hood and wakes for berries.',
+  },
+  {
     species: 'mudcrab',
     level: 15,
     lure: 'raw_trout',
@@ -82,6 +91,15 @@ export const TAME_DEFS: readonly TameDef[] = [
     // GORE: the charge lands like a cart — the pounce is the species' own.
     kit: { knockback: 1.6 },
     flavor: 'A cart with opinions. Point it and stand aside.',
+  },
+  {
+    species: 'giant_spider',
+    level: 20,
+    lure: 'raw_beef',
+    tameXp: 130,
+    // THE PATIENT FANG: no kit — the wild venom and the born pounce
+    // are already its own, and the web stays on the wild cast rail.
+    flavor: 'Eight eyes, and every one of them minds your back.',
   },
   {
     species: 'wolf',
@@ -158,6 +176,11 @@ const NEVER_TAMED = new Set([
   // carries no produce on its NpcDef (the yard registry pays), so
   // the structural refusal misses it — named here instead.
   'sheep',
+  // The ram and the bull graze the same yards: livestock by nature
+  // with no produce row on the NpcDef either, so the structural
+  // refusal misses them the same way.
+  'ram',
+  'bull',
 ]);
 
 /**

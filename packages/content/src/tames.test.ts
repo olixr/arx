@@ -38,6 +38,9 @@ test('the whitelist has teeth: every banned class is refused by the real gate', 
   // Livestock already has a place in your life.
   assert.ok(bad('cow').length > 0);
   assert.ok(bad('chicken').length > 0);
+  assert.ok(bad('sheep').length > 0);
+  assert.ok(bad('ram').length > 0);
+  assert.ok(bad('bull').length > 0);
   // The prey crowns keep their feet.
   assert.ok(bad('stag').length > 0);
   assert.ok(bad('hind').length > 0);
@@ -141,7 +144,7 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
 });
 
 test('THE SPECIES SPEAK: the whole ladder stands, rungs ascending', () => {
-  assert.equal(TAME_DEFS.length, 9, 'entry pair through the worg capstone');
+  assert.equal(TAME_DEFS.length, 11, 'entry trio through the worg capstone');
   const rungs = TAME_DEFS.map((t) => t.level);
   for (let i = 1; i < rungs.length; i++) {
     assert.ok(rungs[i]! >= rungs[i - 1]!, 'the ladder never dips');
@@ -163,10 +166,14 @@ test('kits are the species\' own teeth re-aimed, never an invented spellbook', (
   assert.ok((tameDef('boar')?.kit?.knockback ?? 0) > 1, 'the gore shoves');
   assert.equal(tameDef('wolf')?.kit, undefined);
   assert.equal(tameDef('bear')?.kit, undefined);
+  assert.equal(tameDef('cave_bat')?.kit, undefined);
+  assert.equal(tameDef('giant_spider')?.kit, undefined);
   assert.ok(NPCS.get('wolf')?.attackStatus, 'the wolf bleeds on its own');
   assert.ok(NPCS.get('bear')?.attackStatus, 'the bear mauls on its own');
+  assert.ok(NPCS.get('cave_bat')?.attackStatus, 'the bat bleeds on its own');
+  assert.ok(NPCS.get('giant_spider')?.attackStatus, 'the spider envenoms on its own');
   // Pounce openers are anatomy, not kit: the chargers were born leaping.
-  for (const sp of ['boar', 'bear', 'great_owl', 'worg']) {
+  for (const sp of ['boar', 'bear', 'great_owl', 'worg', 'giant_spider']) {
     assert.ok(NPCS.get(sp)?.pounce, `${sp} pounces as it was born to`);
   }
 });

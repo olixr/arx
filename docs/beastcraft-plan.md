@@ -502,6 +502,17 @@ grip) and boar (gore knockback 1.6) · 20 wolf (wild bleed) · 25 bear
 no kit on purpose: their wild teeth already are the kit, and the test
 suite pins that as a design statement.
 
+**Amended 2026-08-13 (user ask: the bat and the spider were obvious
+candidates that refused the call):** the cave bat (rung 10, berries,
+60xp) and the giant spider (rung 20, raw beef, 130xp) join the ladder.
+Both are kitless on the wolf-and-bear precedent: the bat's bleeding
+nip and the spider's wild venom ride attackStatus as-is, the spider's
+pounce is anatomy, and its web snare stays on the wild cast rail (kits
+never ride the cast rail, decided above). Same amendment: the ram and
+the bull joined sheep on the NEVER_TAMED list — livestock by nature
+with no produce row on the NpcDef, so the structural refusal missed
+them the same way.
+
 ### Deviations from Part 5's first pass, decided in the field
 
 - The bear-at-15 instinct stayed at 25/30 (bear/owl); the rungs are
