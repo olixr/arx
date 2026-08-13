@@ -1078,7 +1078,12 @@ export class ClientGame {
                   y: meta.y,
                   dir: meta.dir ?? 0,
                   pose: 0,
-                  hpPct: 100,
+                  // Wire scale: 255 = full (u8), NOT a percent. Seeding
+                  // 100 painted every freshly entered body at ~39% until
+                  // its first real snapshot row landed — which the zone
+                  // -entry chunk flood (snapshot backpressure) can hold
+                  // off for seconds.
+                  hpPct: 255,
                   status: 0,
                   alert: 0,
                 });
