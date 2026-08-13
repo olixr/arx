@@ -328,6 +328,10 @@ const defs: LootTableDef[] = [
       // The crews burn what they rob. One of them walked out of a
       // burn wearing this, and the reaver took it off them.
       ...setDrops('cindershade', 0.01),
+      // The crews broke the old border watch and stripped the dead.
+      // The watch fire plate never stopped signaling; reavers who
+      // wear it sleep badly and will not say why.
+      ...setDrops('redmarch', 0.004),
       { item: 'emberstone', chance: 0.02 },
       { item: 'stormpearl', chance: 0.015 },
       // The royal escort lost exactly one thing on the low road, and
@@ -678,6 +682,9 @@ const defs: LootTableDef[] = [
       { item: 'hollowchoir', chance: 0.025 },
       { item: 'spindrift', chance: 0.03 },
       { item: 'wakestone', chance: 0.004 },
+      // The honor guard's lion plate, racked with everyone who tried
+      // — the guard never sold a suit; the trophy walls collect.
+      ...setDrops('kingsmane', 0.004),
     ],
   ),
 
@@ -775,6 +782,12 @@ const defs: LootTableDef[] = [
       // The magister's own key to doors without hinges, banked with
       // everything else he trusted no apprentice to hold.
       { item: 'runekey', chance: 0.005 },
+      // A collector paid a fortune for plate carved from fell bones,
+      // then paid another to keep it somewhere with guards.
+      ...setDrops('fellbone', 0.005),
+      // The pale quench of the thorn forge, banked by an heir who
+      // never liked how it watched the room.
+      ...setDrops('palethorn', 0.004),
       // Beside it, the harp he taught to shoot. The vault log lists
       // it as an instrument. The guards list it as a reason to knock.
       { item: 'runespan', chance: 0.005 },
@@ -837,6 +850,9 @@ const defs: LootTableDef[] = [
       { item: 'swarmsong', chance: 0.006 },
       { item: 'duskcap', chance: 0.005 },
       { item: 'lastsheaf', chance: 0.005 },
+      // A pack buried a champion under the moss with full honors.
+      // The moss kept the honors.
+      ...setDrops('jadeskull', 0.005),
     ],
   },
   {
@@ -877,6 +893,12 @@ const defs: LootTableDef[] = [
       // worst night, and the bough that argued with a fire and won.
       { item: 'spindrift', chance: 0.005 },
       { item: 'ashgarden', chance: 0.006 },
+      // The border watch's last muster was ransomed piece by piece
+      // into the deep hoards. The hearts still take their turns.
+      ...setDrops('redmarch', 0.006),
+      // The honor guard never sold a suit. The world only keeps what
+      // it took, and it took it down here.
+      ...setDrops('kingsmane', 0.004),
     ],
   },
   {
@@ -912,6 +934,12 @@ const defs: LootTableDef[] = [
       // seal, and a stave chipped from beside the Ring itself.
       { item: 'hollowchoir', chance: 0.005 },
       { item: 'wakestone', chance: 0.006 },
+      // A thorn company held the gate one whole winter. The winter
+      // held longer.
+      ...setDrops('rimethorn', 0.005),
+      // The king's own lion plate went through the gate on a bier.
+      // Nothing about that day is written anywhere official.
+      ...setDrops('kingsmane', 0.004),
     ],
   },
 
@@ -987,6 +1015,9 @@ const defs: LootTableDef[] = [
       // The matriarch walks with the winter court's wardrobe — the
       // cold kept a court once, and the packs inherited the estate.
       ...setDrops('wintercourt', 0.012),
+      // The court's soldiers wore thorns quenched in the same deep
+      // winter. The den floor keeps a muster of them under the frost.
+      ...setDrops('rimethorn', 0.006),
       // The court's sword outlived the court. The matriarch sleeps
       // curled around it, and the den never quite thaws.
       { item: 'winterspire', chance: 0.008 },
@@ -1035,6 +1066,9 @@ const defs: LootTableDef[] = [
       // The elder watched a lady carry a glass through the glade
       // once, and has been trying to catch the other sky since.
       { item: 'mirrormere', chance: 0.006 },
+      // The pale thorn lot went south over the high passes and never
+      // came down. The parliament nests above what is left of it.
+      ...setDrops('palethorn', 0.006),
     ],
   },
 
@@ -1088,6 +1122,9 @@ const defs: LootTableDef[] = [
       // The pack raided a harvest that would not stop being one.
       // The packlord slept on the sheaf and dreamed of bread.
       { item: 'lastsheaf', chance: 0.008 },
+      // The packs crown their best in jade and a skull that watches
+      // back. The packlord earned every piece twice.
+      ...setDrops('jadeskull', 0.008),
     ],
   },
 
@@ -1321,6 +1358,10 @@ const defs: LootTableDef[] = [
       // The troll planted the burning bough to see what would grow.
       // It grew exactly what it was: the troll is very proud.
       { item: 'ashgarden', chance: 0.006 },
+      // The hills kept bigger bones than the troll's, and somebody
+      // forged them. The troll wears what fits and hoards the rest.
+      // (Held to 0.003: the troll's per-kill ceiling is nearly full.)
+      ...setDrops('fellbone', 0.003),
     ],
   },
   {

@@ -5595,6 +5595,94 @@ function namedChaseDefs(): EquipmentDef[] {
     color: '#c9a23c',
     rarities: ['legendary'] as RarityTier[],
   };
+  // ---- THE HIGH ROAD: the plate wardrobe's second reach, five war
+  // harnesses (and one twin quench) above the old bands. Same laws:
+  // an owner in the world, a hard rarity floor, hunted never forged.
+  //
+  // JADESKULL — jade steel, gold seams, a skull device whose eyes
+  // wake. Owner: the gnoll war packs crown their champions in it.
+  const jadeskull = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 2 },
+      { stat: 'twohand', w: 2 },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#3e6644',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
+  // FELLBONE — plate carved from bones the fells kept, fur against
+  // the wind, a cold light in the gaps. Owner: the trolls hoard the
+  // old bones, and the deepest of them wear some.
+  const fellbone = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 2 },
+      { stat: 'vitality', w: 2 },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#d9d2bd',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
+  // REDMARCH — watch-fire red and silver, gem hearts that answer each
+  // other like fires down a border wall. Owner: the reaver bands that
+  // broke the old border watch still carry what they stripped.
+  const redmarch = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 2 },
+      { stat: 'onehand', w: 2 },
+      { stat: 'shield' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#8a2e34',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // RIMETHORN — thorned plate quenched in deep winter, pale fire on
+  // the shoulders that gives no heat. Owner: the far winter's own —
+  // the dire packs, and the riftgate banks the rest.
+  const rimethorn = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 3 },
+      { stat: 'twohand' },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#2a3040',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // PALETHORN — the same thorns from the same forge, quenched pale;
+  // its fire burns bone gold. Owner: the high passes — the elder
+  // owls nest over the lot that went south.
+  const palethorn = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 3 },
+      { stat: 'onehand' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#b8bec8',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // KINGSMANE — the honor guard's white and gold, lion shoulders, a
+  // floating crown of light. Owner: the deep hoards; the guard never
+  // sold a suit, and the world only keeps what it took.
+  const kingsmane = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 2 },
+      { stat: 'vitality', w: 2 },
+      { stat: 'onehand' },
+      { stat: 'shield' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#e8e4da',
+    rarities: ['legendary'] as RarityTier[],
+  };
   return [
     chasePiece(moonbell, 'moonbell_hood', 'Moonbell hood', 'head', 8, 2, 380, 'Ma',
       'Two pale blooms tucked at the brow. They open at dusk.'),
@@ -5793,5 +5881,71 @@ function namedChaseDefs(): EquipmentDef[] {
       'Gold to the toe. Parade ground or battlefield, same stride.'),
     chasePiece(oathgold, 'oathgold_gauntlets', 'Oathgold gauntlets', 'gloves', 25, 7, 1180, 'Oq',
       'A jewel at the knuckle, a kingdom behind the fist.'),
+
+    chasePiece(jadeskull, 'jadeskull_helm', 'Jadeskull helm', 'head', 27, 7, 1250, 'Zd',
+      'Green enamel under a silver crown of spikes. The eyes light when something is worth looking at.'),
+    chasePiece(jadeskull, 'jadeskull_platebody', 'Jadeskull platebody', 'body', 30, 10, 1550, 'Ze',
+      'Jade steel, gold seams, a skull that watches back. It has outlasted every pack that wore it.'),
+    chasePiece(jadeskull, 'jadeskull_greaves', 'Jadeskull greaves', 'legs', 29, 8, 1350, 'Zi',
+      'Green iron scarred to the knee. None of the scars go deep.'),
+    chasePiece(jadeskull, 'jadeskull_sabatons', 'Jadeskull sabatons', 'boots', 28, 7, 1280, 'Zj',
+      'Silver at the toe, war drums in the step.'),
+    chasePiece(jadeskull, 'jadeskull_gauntlets', 'Jadeskull gauntlets', 'gloves', 28, 7, 1280, 'Zm',
+      'Studded silver over jade. The grip learned its trade in a shield wall.'),
+
+    chasePiece(fellbone, 'fellbone_helm', 'Fellbone helm', 'head', 32, 7, 1450, 'Fd',
+      'A swept bone shell with tined horns. Something cold keeps the eye sockets lit.'),
+    chasePiece(fellbone, 'fellbone_platebody', 'Fellbone platebody', 'body', 35, 10, 1750, 'Fe',
+      'Carved from bones that walked the fells before the towns did. The marrow light never warms.'),
+    chasePiece(fellbone, 'fellbone_greaves', 'Fellbone greaves', 'legs', 34, 9, 1550, 'Fg',
+      'Bone over dark hide. Winter reads them as kin.'),
+    chasePiece(fellbone, 'fellbone_sabatons', 'Fellbone sabatons', 'boots', 33, 8, 1480, 'Fl',
+      'Fur topped and bone shod. The snow holds its tongue.'),
+    chasePiece(fellbone, 'fellbone_gauntlets', 'Fellbone gauntlets', 'gloves', 33, 8, 1480, 'Fm',
+      'Knuckles of carved bone. They do not feel the cold, and neither do you.'),
+
+    chasePiece(redmarch, 'redmarch_helm', 'Redmarch helm', 'head', 37, 8, 1700, 'Na',
+      'A silver crested helm from the border watch. The white light in the slit never sleeps.'),
+    chasePiece(redmarch, 'redmarch_platebody', 'Redmarch platebody', 'body', 40, 11, 2050, 'Nb',
+      'Watch fire red set with silver stars. One heart always burns while the others rest.'),
+    chasePiece(redmarch, 'redmarch_greaves', 'Redmarch greaves', 'legs', 39, 10, 1850, 'Nc',
+      'Red lacquer, silver knees. They held the border longer than the maps did.'),
+    chasePiece(redmarch, 'redmarch_sabatons', 'Redmarch sabatons', 'boots', 38, 8, 1750, 'Nd',
+      'Fur cuffed against the long night watch. The stride keeps its own drum.'),
+    chasePiece(redmarch, 'redmarch_gauntlets', 'Redmarch gauntlets', 'gloves', 38, 8, 1750, 'Ne',
+      'A white gem at the fist. Signals carry far past shouting.'),
+
+    chasePiece(rimethorn, 'rimethorn_helm', 'Rimethorn helm', 'head', 42, 8, 1950, 'Ia',
+      'Blued steel horned twice over. The cold looks out through it.'),
+    chasePiece(rimethorn, 'rimethorn_platebody', 'Rimethorn platebody', 'body', 45, 12, 2300, 'Ib',
+      'Thorned plate quenched in deep winter. Pale fire rides the shoulders and gives no heat.'),
+    chasePiece(rimethorn, 'rimethorn_greaves', 'Rimethorn greaves', 'legs', 44, 10, 2100, 'Ic',
+      'Ice bright at the knee. The chill climbs no further than you allow.'),
+    chasePiece(rimethorn, 'rimethorn_sabatons', 'Rimethorn sabatons', 'boots', 43, 9, 2000, 'Ie',
+      'Spiked for the black ice. Nothing that wears them slips.'),
+    chasePiece(rimethorn, 'rimethorn_gauntlets', 'Rimethorn gauntlets', 'gloves', 43, 9, 2000, 'If',
+      'Thorned knuckles rimed pale. The grip never numbs.'),
+
+    chasePiece(palethorn, 'palethorn_helm', 'Palethorn helm', 'head', 42, 8, 1950, 'Pb',
+      'The pale quench of the thorn helm. A bone gold light keeps the slit.'),
+    chasePiece(palethorn, 'palethorn_platebody', 'Palethorn platebody', 'body', 45, 12, 2300, 'Pc',
+      'The same thorns from the same forge, quenched pale. Its fire burns bone gold and quiet.'),
+    chasePiece(palethorn, 'palethorn_greaves', 'Palethorn greaves', 'legs', 44, 10, 2100, 'Pf',
+      'Pale steel with bronze knees. The second lot went south and kept walking.'),
+    chasePiece(palethorn, 'palethorn_sabatons', 'Palethorn sabatons', 'boots', 43, 9, 2000, 'Pg',
+      'Spiked pale steel. The high passes stop arguing.'),
+    chasePiece(palethorn, 'palethorn_gauntlets', 'Palethorn gauntlets', 'gloves', 43, 9, 2000, 'Ph',
+      'Bronze cuffed and pale thorned. Sister fists to the winter lot.'),
+
+    chasePiece(kingsmane, 'kingsmane_helm', 'Kingsmane helm', 'head', 49, 9, 2400, 'Kb',
+      'A white greathelm flying the king’s own colors. The banner has never once come down.'),
+    chasePiece(kingsmane, 'kingsmane_platebody', 'Kingsmane platebody', 'body', 52, 13, 2900, 'Kc',
+      'The honor guard’s white and gold under a lion that never blinks. A crown of light rings it and touches nothing.'),
+    chasePiece(kingsmane, 'kingsmane_greaves', 'Kingsmane greaves', 'legs', 51, 11, 2600, 'Kh',
+      'White enamel over gold. They kneel to one person in the world.'),
+    chasePiece(kingsmane, 'kingsmane_sabatons', 'Kingsmane sabatons', 'boots', 50, 10, 2450, 'Kj',
+      'Gold to the toe. Parade step and war step are the same step.'),
+    chasePiece(kingsmane, 'kingsmane_gauntlets', 'Kingsmane gauntlets', 'gloves', 50, 10, 2450, 'Kp',
+      'A sapphire at the fist and lions at the shoulders. Doors open before the knock.'),
   ];
 }

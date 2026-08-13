@@ -393,7 +393,7 @@ test('themed cloth sets: five pieces each, coherent class and reqs', () => {
   assert.ok(byId.get('scholars_tome'));
 });
 
-test('the named wardrobe: eighteen chase sets, owners keep them, rarity floors hold', () => {
+test('the named wardrobe: twenty-four chase sets, owners keep them, rarity floors hold', () => {
   // The vault-of-names law brought to armor: epic finds live at the
   // bands players level THROUGH (a low level never means a plain
   // reward), the legendary three never mint below their name, and
@@ -423,6 +423,16 @@ test('the named wardrobe: eighteen chase sets, owners keep them, rarity floors h
     forgeheart: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 16 },
     wyrmsteel: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 21 },
     oathgold: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 27 },
+    // THE HIGH ROAD: the plate wardrobe's second reach — five bespoke
+    // harnesses (and one twin quench) climbing past the old bands to
+    // the endgame shelf. The first two jackpot from epic; the upper
+    // four never mint below legendary.
+    jadeskull: { cls: 'plate', skill: 'defence', floor: ['epic', 'legendary'], maxLevel: 30 },
+    fellbone: { cls: 'plate', skill: 'defence', floor: ['epic', 'legendary'], maxLevel: 35 },
+    redmarch: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 40 },
+    rimethorn: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 45 },
+    palethorn: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 45 },
+    kingsmane: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 52 },
   };
   for (const [set, want] of Object.entries(SETS)) {
     const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));

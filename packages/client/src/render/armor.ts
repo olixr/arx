@@ -34,9 +34,14 @@ export interface BodyStyle {
   metal?: string;
   cls: ArmorClassStyle;
   silhouette: 'tunic' | 'robe' | 'jerkin' | 'cuirass' | 'brigandine';
+  /** The high-wardrobe kinds each have ONE owner set: `axeblade` the
+   *  jadeskull crescents, `boneridge` the fellbone slab fan,
+   *  `thorncrest` the rimethorn hooks (palethorn is its pale quench),
+   *  `lionhead` the kingsmane sculpted lions. */
   pauldron:
     | 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur'
-    | 'feathered' | 'orbs' | 'shards' | 'wyrmwing';
+    | 'feathered' | 'orbs' | 'shards' | 'wyrmwing'
+    | 'axeblade' | 'boneridge' | 'thorncrest' | 'lionhead';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
@@ -53,7 +58,7 @@ export interface BodyStyle {
   emblem?:
     | 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star'
     | 'moon' | 'eye' | 'moth' | 'coin' | 'bullhead' | 'flame' | 'orrery'
-    | 'crown';
+    | 'crown' | 'lion';
   /** Glowing rune dashes riding the hem trim — the enchanted-cloth read. */
   runes?: string;
   /** A waist sash: band, hip knot, two swinging tails. */
@@ -69,6 +74,8 @@ export interface BodyStyle {
   sleeve?: string;
   /** Neck treatment: plate gorget ring or a fur ruff. */
   collar?: 'gorget' | 'fur';
+  /** Fur-ruff pelt color. Default shade(trim, 34) — the old law. */
+  collarColor?: string;
   /** A belt pouch on the hip — the adventurer's secondary read. */
   pouch?: boolean;
   /** A diagonal shoulder-to-hip cord with bone toggles — the trapper. */
@@ -237,6 +244,43 @@ export interface BodyStyle {
    * beats — armor polished past vanity into legend.
    */
   gleam?: { color: string };
+  /**
+   * The chest device wakes: two lights kindle in the emblem skull's
+   * eye sockets, hold their look, and gutter out on their own slow
+   * blink — the device is not entirely a decoration. Rides the skull
+   * emblem's own geometry; the jadeskull word.
+   */
+  skullgaze?: { color: string };
+  /**
+   * Watch-fire rosettes: silver petal bosses set at the harness
+   * points, each with a gem heart. The hearts keep a rotation — one
+   * flares awake at a time, the way watch fires answer each other
+   * down a border wall. The redmarch word.
+   */
+  rosettes?: { color: string; metal: string };
+  /**
+   * Cold fire off the shoulder thorns: pale flame tongues that lick
+   * up from behind the pauldrons on their own gutter, re-shaping
+   * every beat, giving no heat. Consumed by drawPauldron so the fire
+   * rides ABOVE the caps. The thorn twins' word (rimethorn burns
+   * pale blue, palethorn burns bone gold).
+   */
+  coldfire?: { color: string };
+  /**
+   * Marrow-light between the shoulder bones: two small cold flames
+   * guttering in the gaps of the boneridge fan, and one drifting
+   * mote that never strays far. Consumed by drawPauldron so the
+   * light sits IN the bone, not on the chest. The fellbone word.
+   */
+  hollowlight?: { color: string };
+  /**
+   * THE CROWN RING: a broad gilt ring floating about the torso,
+   * turning slowly on its own axis — from the front two arcs stand
+   * off the flanks, from behind the whole circle shows. One glint
+   * walks the rim; nothing holds it up. The kingsmane word, and the
+   * wardrobe's one floating regalia.
+   */
+  crownring?: { color: string };
 }
 
 export interface HelmStyle {
@@ -342,6 +386,10 @@ export interface HelmStyle {
   /** A star glint winking off the crown on its own beat — the same
    *  polished-past-vanity law the body's gleam keeps. */
   gleam?: { color: string };
+  /** THE STANDARD: a slim pole rising off the crown flying a small
+   *  square banner that ripples on the march wind's clock — the
+   *  king's colors carried on the helm itself. The kingsmane word. */
+  standard?: { pole: string; banner: string; trim?: string };
 }
 
 export interface LegStyle {
@@ -835,6 +883,58 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     pennons: { colors: ['#8a2e2e', '#f4e0a0'] },
     gleam: { color: '#fff6d8' },
   },
+  // THE HIGH ROAD: the plate wardrobe's second reach — five bespoke
+  // war harnesses (and one twin quench) above the old bands, each
+  // with a signature that MOVES. Drop-only, one lot each, the same
+  // law the first road keeps.
+  jadeskull_platebody: {
+    color: '#3e6644', trim: '#c9a23c', metal: '#2f5238', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'axeblade', pauldronColor: '#c9ccd4',
+    pauldronTrim: '#eef2f8', pauldronScale: 1.16, chest: 'plate',
+    emblem: 'skull', emblemScale: 1.5, skirt: 0, collar: 'gorget',
+    midline: true, rivetSeams: true, tassets: true,
+    skullgaze: { color: '#7ab8ff' },
+  },
+  fellbone_platebody: {
+    color: '#d9d2bd', trim: '#b8925c', metal: '#b8a88a', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'boneridge', pauldronColor: '#e2dcc8',
+    pauldronTrim: '#f4f0e0', pauldronScale: 1.18, chest: 'plate',
+    skirt: 0, collar: 'fur', collarColor: '#6e7a88', midline: true,
+    tassets: true, hollowlight: { color: '#a8d8e8' },
+  },
+  redmarch_platebody: {
+    color: '#8a2e34', trim: '#c9ccd4', metal: '#6e2329', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#8a2e34',
+    pauldronTrim: '#c9ccd4', pauldronScale: 1.14, chest: 'plate',
+    skirt: 0, collar: 'fur', collarColor: '#3a3230', midline: true,
+    rivetSeams: true, tassets: true,
+    rosettes: { color: '#eef4ff', metal: '#c9ccd4' },
+  },
+  rimethorn_platebody: {
+    color: '#2a3040', trim: '#a8d8ff', metal: '#1f2430', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'thorncrest', pauldronColor: '#343b4e',
+    pauldronTrim: '#a8d8ff', pauldronScale: 1.16, chest: 'plate',
+    skirt: 0, collar: 'gorget', midline: true, tassets: true,
+    coldfire: { color: '#a8d8ff' },
+  },
+  palethorn_platebody: {
+    color: '#b8bec8', trim: '#b0703c', metal: '#8d9299', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'thorncrest', pauldronColor: '#9aa0ae',
+    pauldronTrim: '#e8c8a0', pauldronScale: 1.16, chest: 'plate',
+    skirt: 0, collar: 'gorget', midline: true, tassets: true,
+    // Deep flame on pale steel — the contrast law read the other way
+    // around from the winter lot.
+    coldfire: { color: '#ffb060' },
+  },
+  kingsmane_platebody: {
+    color: '#e8e4da', trim: '#c9a23c', metal: '#d4cfc2', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'lionhead', pauldronColor: '#e8e4da',
+    pauldronTrim: '#c9a23c', pauldronScale: 1.22, chest: 'plate',
+    emblem: 'lion', emblemScale: 1.45, skirt: 0, collar: 'gorget',
+    midline: true, rivetSeams: true, tassets: true,
+    tabard: { color: '#2c3a5e', trim: '#c9a23c' },
+    crownring: { color: '#e8c05c' },
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -1070,6 +1170,36 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#c9a23c', trim: '#f4e0a0', kind: 'champion', jaw: '#e0b054',
     plume: { color: '#8a2e2e' }, gleam: { color: '#fff6d8' },
   },
+  // THE HIGH ROAD's heads: forged shells wearing their sets' own
+  // weather — waking blue eyes, hollow marrow-light, watch-fire
+  // white, the cold that looks back twice, and the king's standard.
+  jadeskull_helm: {
+    color: '#3e6644', trim: '#c9a23c', kind: 'armet', jaw: '#c9ccd4',
+    spikesCrown: { color: '#c9ccd4' }, emberEyes: { color: '#7ab8ff' },
+  },
+  fellbone_helm: {
+    color: '#d9d2bd', trim: '#b8925c', kind: 'sallet', jaw: '#b8a88a',
+    horns: { color: '#e8e2d0', size: 1.3, tine: true },
+    emberEyes: { color: '#a8d8e8' },
+  },
+  redmarch_helm: {
+    color: '#8a2e34', trim: '#c9ccd4', kind: 'greathelm', visor: 'cross',
+    crest: { color: '#c9ccd4' }, emberEyes: { color: '#eef4ff' },
+  },
+  rimethorn_helm: {
+    color: '#2a3040', trim: '#a8d8ff', kind: 'armet', jaw: '#4a5468',
+    horns: { color: '#4a5268', size: 1.35, tine: true },
+    emberEyes: { color: '#a8d8ff' },
+  },
+  palethorn_helm: {
+    color: '#b8bec8', trim: '#b0703c', kind: 'armet', jaw: '#8d9299',
+    horns: { color: '#6e747e', size: 1.35, tine: true },
+    emberEyes: { color: '#ffd9a0' },
+  },
+  kingsmane_helm: {
+    color: '#e8e4da', trim: '#c9a23c', kind: 'greathelm', visor: 'slit',
+    standard: { pole: '#c9a23c', banner: '#2c3a5e', trim: '#e8e4da' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -1130,6 +1260,13 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   forgeheart_greaves: { kind: 'greaves', thigh: '#282523', shin: '#33302e', knee: 'plate', kneeColor: '#ff8a3c' },
   wyrmsteel_greaves: { kind: 'greaves', thigh: '#243a2e', shin: '#2e4438', knee: 'plate', kneeColor: '#4a7a5e' },
   oathgold_greaves: { kind: 'greaves', thigh: '#a8862e', shin: '#c9a23c', knee: 'plate', kneeColor: '#f4e0a0' },
+  // THE HIGH ROAD.
+  jadeskull_greaves: { kind: 'greaves', thigh: '#2f4a36', shin: '#3e6644', knee: 'plate', kneeColor: '#c9a23c' },
+  fellbone_greaves: { kind: 'greaves', thigh: '#3a332c', shin: '#d9d2bd', knee: 'plate', kneeColor: '#b8925c' },
+  redmarch_greaves: { kind: 'greaves', thigh: '#5c2026', shin: '#8a2e34', knee: 'plate', kneeColor: '#c9ccd4' },
+  rimethorn_greaves: { kind: 'greaves', thigh: '#232838', shin: '#2a3040', knee: 'plate', kneeColor: '#a8d8ff' },
+  palethorn_greaves: { kind: 'greaves', thigh: '#8d9299', shin: '#b8bec8', knee: 'plate', kneeColor: '#b0703c' },
+  kingsmane_greaves: { kind: 'greaves', thigh: '#8a8478', shin: '#e8e4da', knee: 'plate', kneeColor: '#c9a23c' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -1194,6 +1331,13 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   forgeheart_sabatons: { color: '#33302e', height: 0.14, toe: '#1f1d1b', cuff: { color: '#ff8a3c' } },
   wyrmsteel_sabatons: { color: '#2e4438', height: 0.14, toe: '#a8d8bc', cuff: { color: '#3e5848' }, spike: true },
   oathgold_sabatons: { color: '#c9a23c', height: 0.15, toe: '#e0b054', cuff: { color: '#8a2e2e' } },
+  // THE HIGH ROAD.
+  jadeskull_sabatons: { color: '#3e6644', height: 0.14, toe: '#c9ccd4', cuff: { color: '#c9a23c' } },
+  fellbone_sabatons: { color: '#d9d2bd', height: 0.14, toe: '#b8a88a', fur: { color: '#6e7a88' } },
+  redmarch_sabatons: { color: '#8a2e34', height: 0.14, toe: '#c9ccd4', fur: { color: '#3a3230' } },
+  rimethorn_sabatons: { color: '#2a3040', height: 0.14, toe: '#1f2430', spike: true, cuff: { color: '#a8d8ff' } },
+  palethorn_sabatons: { color: '#b8bec8', height: 0.14, toe: '#8d9299', spike: true, cuff: { color: '#b0703c' } },
+  kingsmane_sabatons: { color: '#e8e4da', height: 0.15, toe: '#c9a23c', cuff: { color: '#2c3a5e' } },
 };
 
 /**
@@ -1467,6 +1611,37 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     color: '#c9a23c', hand: 'gauntlet', bracer: '#a8862e',
     cuff: { color: '#e0b054', kind: 'flare' },
     knuckle: { color: '#f4e0a0', kind: 'gem' },
+  },
+  // THE HIGH ROAD: every gauntlet quotes its set's own devices.
+  jadeskull_gauntlets: {
+    color: '#3e6644', hand: 'gauntlet', bracer: '#35583b',
+    cuff: { color: '#c9a23c', kind: 'flare' },
+    knuckle: { color: '#c9ccd4', kind: 'studs' },
+  },
+  fellbone_gauntlets: {
+    color: '#d9d2bd', hand: 'gauntlet', bracer: '#c8c0a8',
+    cuff: { color: '#6e7a88', kind: 'fur' },
+    knuckle: { color: '#e8e2d0', kind: 'spikes' },
+  },
+  redmarch_gauntlets: {
+    color: '#8a2e34', hand: 'gauntlet', bracer: '#78272d',
+    cuff: { color: '#c9ccd4', kind: 'flare' },
+    knuckle: { color: '#eef4ff', kind: 'gem' },
+  },
+  rimethorn_gauntlets: {
+    color: '#2a3040', hand: 'gauntlet', bracer: '#232838',
+    cuff: { color: '#3a4256', kind: 'flare' },
+    knuckle: { color: '#a8d8ff', kind: 'spikes' },
+  },
+  palethorn_gauntlets: {
+    color: '#b8bec8', hand: 'gauntlet', bracer: '#a4aab6',
+    cuff: { color: '#b0703c', kind: 'flare' },
+    knuckle: { color: '#8d9299', kind: 'spikes' },
+  },
+  kingsmane_gauntlets: {
+    color: '#e8e4da', hand: 'gauntlet', bracer: '#d4cfc2',
+    cuff: { color: '#c9a23c', kind: 'flare' },
+    knuckle: { color: '#4a6ad8', kind: 'gem' },
   },
 };
 
@@ -2792,7 +2967,7 @@ export function drawTorsoGarment(
       ctx.fillRect(-tw * 0.42, -th + 0.012 * s, tw * 0.84, 0.012 * s);
     } else if (st.collar === 'fur') {
       // A lumpy fur ruff across the shoulder line — the huntsman read.
-      ctx.fillStyle = shade(st.trim, 34);
+      ctx.fillStyle = st.collarColor ?? shade(st.trim, 34);
       for (let i = 0; i < 5; i++) {
         const u = -1 + i * 0.5;
         const r = (0.045 + 0.012 * Math.sin(i * 2.7)) * s;
@@ -3375,6 +3550,58 @@ export function drawTorsoGarment(
             ctx.arc(ux * rc, by - rc * 0.04, rc * 0.09, 0, Math.PI * 2);
             ctx.fill();
           }
+        } else if (st.emblem === 'lion') {
+          // The kingsmane device: a guardian lion's face front-on —
+          // a wreath of mane wedges around a sculpted visage. Drawn
+          // LARGE and calm; a timid lion is a housecat.
+          const rl = r * 1.35;
+          ctx.fillStyle = st.trim;
+          ctx.beginPath();
+          for (let i = 0; i < 10; i++) {
+            const a = -Math.PI / 2 + (i / 10) * Math.PI * 2;
+            const len = rl * (1.06 + 0.16 * Math.max(0, -Math.sin(a)));
+            const r0 = rl * 0.68;
+            ctx.moveTo(Math.cos(a - 0.3) * r0, ey + Math.sin(a - 0.3) * r0);
+            ctx.lineTo(Math.cos(a) * len, ey + Math.sin(a) * len);
+            ctx.lineTo(Math.cos(a + 0.3) * r0, ey + Math.sin(a + 0.3) * r0);
+          }
+          ctx.closePath();
+          ctx.fill();
+          // The visage: a lighter face disc the mane grows from.
+          ctx.fillStyle = shade(st.trim, 28);
+          ctx.beginPath();
+          ctx.arc(0, ey, rl * 0.72, 0, Math.PI * 2);
+          ctx.fill();
+          // Brow shelf shading the eyes — sculpture, never cartoon.
+          ctx.fillStyle = shade(st.trim, -6);
+          for (const exx of [-1, 1] as const) {
+            ctx.beginPath();
+            ctx.moveTo(exx * rl * 0.08, ey - rl * 0.18);
+            ctx.lineTo(exx * rl * 0.52, ey - rl * 0.38);
+            ctx.lineTo(exx * rl * 0.52, ey - rl * 0.14);
+            ctx.lineTo(exx * rl * 0.12, ey - rl * 0.02);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // Eyes, nose wedge, and the mouth seam in near-black — the
+          // eyes slant in and down; the device glares, never blinks.
+          ctx.fillStyle = '#1c1722';
+          for (const exx of [-1, 1] as const) {
+            ctx.beginPath();
+            ctx.moveTo(exx * rl * 0.12, ey - rl * 0.02);
+            ctx.lineTo(exx * rl * 0.5, ey - rl * 0.24);
+            ctx.lineTo(exx * rl * 0.5, ey - rl * 0.08);
+            ctx.lineTo(exx * rl * 0.16, ey + rl * 0.1);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.beginPath();
+          ctx.moveTo(-rl * 0.16, ey + rl * 0.16);
+          ctx.lineTo(rl * 0.16, ey + rl * 0.16);
+          ctx.lineTo(0, ey + rl * 0.38);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillRect(-rl * 0.026, ey + rl * 0.32, rl * 0.052, rl * 0.24);
         } else {
         ctx.beginPath();
         if (st.emblem === 'chevron') {
@@ -4146,6 +4373,148 @@ export function drawTorsoGarment(
       }
       ctx.globalAlpha = 1;
     }
+
+    // ---- skullgaze: the chest device wakes — two lights kindle in
+    // the emblem skull's eye sockets, hold their look, and gutter out
+    // on a slow blink. Rides the skull's own geometry; front only,
+    // the back never saw it happen.
+    if (st.skullgaze && st.emblem === 'skull' && !back) {
+      const ey = -th * (st.mantle || st.capelet ? 0.3 : 0.58);
+      const rs = tw * 0.3 * (st.emblemScale ?? 1) * 1.45;
+      // Long waking holds with slow dips — a gaze, not a blinker.
+      const wake = Math.min(1, Math.max(0, (Math.sin(nowMs * 0.0007) + 0.55) * 1.6));
+      if (wake > 0.05) {
+        const flick = 0.86 + 0.14 * Math.sin(nowMs * 0.011);
+        const gc2 = st.skullgaze.color;
+        for (const exx of [-rs * 0.22, rs * 0.22]) {
+          ctx.globalAlpha = wake * 0.3;
+          ctx.fillStyle = gc2;
+          ctx.beginPath();
+          ctx.arc(exx, ey - rs * 0.11, rs * 0.21, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = wake * flick;
+          ctx.fillStyle = shade(gc2, 26);
+          ctx.fillRect(exx - rs * 0.09, ey - rs * 0.2, rs * 0.18, rs * 0.18);
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // ---- rosettes: watch-fire bosses at the harness points — silver
+    // eight-point stars with gem hearts, and the hearts keep a
+    // rotation: one flares awake at a time, the way watch fires
+    // answer each other down a border wall.
+    if (st.rosettes) {
+      const rm = st.rosettes.metal;
+      const rc2 = st.rosettes.color;
+      const sites = back
+        ? ([[0, -0.84, -1]] as const)
+        : ([[-0.68, -0.92, 0], [0.68, -0.92, 1], [0, -0.54, 2]] as const);
+      const turn = Math.floor(nowMs / 1700) % 3;
+      const ft = (nowMs % 1700) / 1700;
+      for (const [gu, gv, idx] of sites) {
+        const gx = gu * tw;
+        const gy = gv * th;
+        const R = 0.042 * s;
+        // The star boss: two squares crossed — forged, not stamped.
+        ctx.fillStyle = rm;
+        ctx.save();
+        ctx.translate(gx, gy);
+        ctx.fillRect(-R * 0.72, -R * 0.72, R * 1.44, R * 1.44);
+        ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = shade(rm, -14);
+        ctx.fillRect(-R * 0.72, -R * 0.72, R * 1.44, R * 1.44);
+        ctx.restore();
+        // The bezel and the gem heart.
+        ctx.fillStyle = shade(rm, -30);
+        ctx.beginPath();
+        ctx.arc(gx, gy, R * 0.52, 0, Math.PI * 2);
+        ctx.fill();
+        const lit = idx === turn ? Math.sin(ft * Math.PI) : 0;
+        ctx.globalAlpha = 0.55 + 0.45 * lit;
+        ctx.fillStyle = shade(rc2, lit * 30);
+        ctx.beginPath();
+        ctx.arc(gx, gy, R * 0.34, 0, Math.PI * 2);
+        ctx.fill();
+        if (lit > 0.25) {
+          // The watch answers: a soft halo while this fire holds.
+          ctx.globalAlpha = (lit - 0.25) * 0.5;
+          ctx.fillStyle = rc2;
+          ctx.beginPath();
+          ctx.arc(gx, gy, R * 0.95, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // ---- THE CROWN RING: a broad gilt ring floating about the
+    // torso, turning slowly on its own axis. From the front two arcs
+    // stand off the flanks (the body hides the rest); from behind the
+    // whole circle shows. Three regalia studs ride the rim on the
+    // fake-3D depth law — near big and lit, far small and dim — and
+    // one glint walks ahead of them. Nothing holds it up.
+    if (st.crownring) {
+      const cc = st.crownring.color;
+      const cyR = -th * 0.6;
+      const rxR = tww * 1.66;
+      const ryR = th * 0.34;
+      const spin = nowMs * 0.00042;
+      ctx.lineCap = 'round';
+      if (back) {
+        ctx.globalAlpha = 0.95;
+        ctx.strokeStyle = cc;
+        ctx.lineWidth = Math.max(1.5, s * 0.024);
+        ctx.beginPath();
+        ctx.ellipse(0, cyR, rxR, ryR, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        // The flank arcs: the ring passes behind the champion.
+        ctx.globalAlpha = 0.95;
+        ctx.strokeStyle = cc;
+        ctx.lineWidth = Math.max(1.5, s * 0.024);
+        for (const a0 of [-0.62, Math.PI - 0.62] as const) {
+          ctx.beginPath();
+          ctx.ellipse(0, cyR, rxR, ryR, 0, a0, a0 + 1.24);
+          ctx.stroke();
+        }
+      }
+      // The lit crown of the rim — the sun finds the hoop's top.
+      ctx.strokeStyle = shade(cc, 30);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.ellipse(0, cyR, rxR, ryR, 0, Math.PI + 0.5, Math.PI * 2 - 0.5);
+      ctx.stroke();
+      // The studs: three regalia points riding the rim in perfect
+      // step, each sized and lit by its depth on the turn.
+      for (let k = 0; k < 3; k++) {
+        const a = spin + (k * Math.PI * 2) / 3;
+        const px = Math.cos(a) * rxR;
+        const py = cyR + Math.sin(a) * ryR;
+        const depth = (Math.sin(a) + 1) / 2;
+        // Front-on, the ring lives behind the champion: any stud that
+        // would cross the chest is the body's to hide.
+        if (!back && Math.abs(px) < tww * 1.02) continue;
+        ctx.globalAlpha = 0.5 + 0.5 * depth;
+        ctx.fillStyle = shade(cc, 8 + depth * 22);
+        ctx.beginPath();
+        ctx.arc(px, py, (0.013 + 0.011 * depth) * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The glint that walks the rim ahead of the studs.
+      const ga = spin * 2.3;
+      const gpx = Math.cos(ga) * rxR;
+      const gpy = cyR + Math.sin(ga) * ryR;
+      if (back || Math.abs(gpx) >= tww * 1.02) {
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = shade(cc, 40);
+        ctx.beginPath();
+        ctx.arc(gpx, gpy, 0.014 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'butt';
+    }
   }
 
   // ---- seated knee tents: a raised knee lifts the robe's front into
@@ -4266,6 +4635,46 @@ function drawArxWeave(ctx: CanvasRenderingContext2D, st: BodyStyle, f: TorsoFram
  * rides swings instead of staying glued to the torso corners. `side`
  * is the outward direction sign; `squashK` is the body's facing squash.
  */
+/**
+ * One flame lick that gives no heat: soft halo, a swaying tongue, a
+ * hotter core — the cold-fire grammar the thorn twins and the fellbone
+ * bones share. Deterministic from the clock; `sway` re-shapes the
+ * tongue so no two beats burn alike.
+ */
+function coldLick(
+  ctx: CanvasRenderingContext2D,
+  fx: number,
+  fy: number,
+  h: number,
+  w: number,
+  a: number,
+  sway: number,
+  colr: string,
+): void {
+  if (a <= 0.05) return;
+  ctx.globalAlpha = a * 0.28;
+  ctx.fillStyle = colr;
+  ctx.beginPath();
+  ctx.ellipse(fx, fy - h * 0.4, w * 2.1, h * 0.62, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = a * 0.85;
+  ctx.beginPath();
+  ctx.moveTo(fx - w, fy);
+  ctx.quadraticCurveTo(fx - w * 1.15, fy - h * 0.42, fx + sway, fy - h);
+  ctx.quadraticCurveTo(fx + w * 1.2, fy - h * 0.34, fx + w, fy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = a;
+  ctx.fillStyle = shade(colr, 26);
+  ctx.beginPath();
+  ctx.moveTo(fx - w * 0.45, fy);
+  ctx.quadraticCurveTo(fx - w * 0.5, fy - h * 0.3, fx + sway * 0.55, fy - h * 0.6);
+  ctx.quadraticCurveTo(fx + w * 0.55, fy - h * 0.24, fx + w * 0.45, fy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
 export function drawPauldron(
   ctx: CanvasRenderingContext2D,
   st: BodyStyle,
@@ -4466,8 +4875,93 @@ export function drawPauldron(
     ctx.restore();
     return;
   }
+  if (st.pauldron === 'lionhead') {
+    // THE LION'S HEAD: a sculpted guardian face worn as the shoulder
+    // itself — a wreath of forged gold mane wedges around a white
+    // enamel visage. The lion IS the pauldron, so the whole head
+    // paints in the hurt flash; only the face's dark features gate
+    // behind !hurt like every device.
+    const fr = 0.092 * s;
+    const cy = -0.02 * s;
+    // The contact seat: the head is worn, never stickered on.
+    if (!hurt) {
+      ctx.fillStyle = 'rgba(24, 15, 26, 0.28)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0.078 * s, 0.128 * s, 0.03 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The mane wreath: twelve forged wedges radiating from the face,
+    // longest over the crown, shortest under the jaw — mass, never
+    // rays. Alternate wedges step darker so the wreath reads carved.
+    const r0 = fr * 0.84;
+    for (let i = 0; i < 12; i++) {
+      const a = -Math.PI / 2 + (i / 12) * Math.PI * 2;
+      const len = fr * (0.5 + 0.36 * Math.max(0, -Math.sin(a)));
+      ctx.fillStyle = hurt ? '#ffffff' : shade(trim, i % 2 === 0 ? 8 : -12);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a - 0.27) * r0, cy + Math.sin(a - 0.27) * r0);
+      ctx.lineTo(Math.cos(a) * (r0 + len), cy + Math.sin(a) * (r0 + len));
+      ctx.lineTo(Math.cos(a + 0.27) * r0, cy + Math.sin(a + 0.27) * r0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The visage.
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(0, cy, fr, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, cy, fr, 0, Math.PI * 2);
+      ctx.clip();
+      // One sun on the face: the screen-right cheek turns away.
+      ctx.fillStyle = shade(base, -9);
+      ctx.fillRect(fr * 0.2, cy - fr, fr, fr * 2);
+      // The brow shelf: two angled bars shading the eyes — sculpture.
+      ctx.fillStyle = shade(base, -20);
+      for (const es2 of [-1, 1] as const) {
+        ctx.beginPath();
+        ctx.moveTo(es2 * fr * 0.1, cy - fr * 0.26);
+        ctx.lineTo(es2 * fr * 0.72, cy - fr * 0.52);
+        ctx.lineTo(es2 * fr * 0.72, cy - fr * 0.2);
+        ctx.lineTo(es2 * fr * 0.14, cy - fr * 0.04);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Eyes: two angled cuts under the brow, slanting in and down —
+      // a guardian's glare, never a kitten's stare.
+      ctx.fillStyle = '#1c1722';
+      for (const es2 of [-1, 1] as const) {
+        ctx.beginPath();
+        ctx.moveTo(es2 * fr * 0.16, cy - fr * 0.08);
+        ctx.lineTo(es2 * fr * 0.62, cy - fr * 0.3);
+        ctx.lineTo(es2 * fr * 0.62, cy - fr * 0.12);
+        ctx.lineTo(es2 * fr * 0.2, cy + fr * 0.06);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The muzzle: a lighter plate dropping to the chin, a broad
+      // dark nose wedge, one mouth seam.
+      ctx.fillStyle = shade(base, 18);
+      ctx.beginPath();
+      chamferRect(ctx, -fr * 0.32, cy + fr * 0.06, fr * 0.64, fr * 0.62, fr * 0.16);
+      ctx.fill();
+      ctx.fillStyle = '#1c1722';
+      ctx.beginPath();
+      ctx.moveTo(-fr * 0.2, cy + fr * 0.18);
+      ctx.lineTo(fr * 0.2, cy + fr * 0.18);
+      ctx.lineTo(0, cy + fr * 0.42);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(-fr * 0.026, cy + fr * 0.36, fr * 0.052, fr * 0.26);
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
   // ---- THE MOUNTED FAMILY (round / spiked / bladed / layered /
-  // wyrmwing): every
+  // wyrmwing / axeblade / boneridge / thorncrest): every
   // plate pauldron starts from the same forged CAP — a domed shoulder
   // plate with a lit top plane, a one-sun form split, a bright rim
   // lip, and a crown rivet — seated on the arm by a contact shadow so
@@ -4645,6 +5139,188 @@ export function drawPauldron(
     ctx.quadraticCurveTo(side * 0.148 * s, -0.152 * s, side * 0.038 * s, capTop + 0.028 * s);
     ctx.closePath();
     ctx.fill();
+  }
+  if (!hurt && st.pauldron === 'axeblade') {
+    // The war crescent: a whole axe moon swept up off the shoulder,
+    // horns up, with a shorter fletch crescent behind it. The blade
+    // carries three statements — body, shaded inner face, and a
+    // FILLED edge bevel along the outer rim; a hairline on a
+    // same-value fill is a wire.
+    // The rear fletch first: smaller, darker, half a beat behind.
+    ctx.fillStyle = shade(base, -22);
+    ctx.beginPath();
+    ctx.moveTo(side * -0.012 * s, -0.255 * s);
+    ctx.quadraticCurveTo(side * 0.1 * s, -0.095 * s, side * 0.168 * s, -0.235 * s);
+    ctx.quadraticCurveTo(side * 0.095 * s, -0.155 * s, side * -0.012 * s, -0.255 * s);
+    ctx.closePath();
+    ctx.fill();
+    // The main crescent's body.
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(side * 0.055 * s, -0.3 * s);
+    ctx.quadraticCurveTo(side * 0.215 * s, -0.07 * s, side * 0.29 * s, -0.175 * s);
+    ctx.quadraticCurveTo(side * 0.165 * s, -0.155 * s, side * 0.055 * s, -0.3 * s);
+    ctx.closePath();
+    ctx.fill();
+    // The inner face turns from the sun — two planes or paper.
+    ctx.fillStyle = shade(base, -16);
+    ctx.beginPath();
+    ctx.moveTo(side * 0.07 * s, -0.275 * s);
+    ctx.quadraticCurveTo(side * 0.165 * s, -0.15 * s, side * 0.27 * s, -0.172 * s);
+    ctx.quadraticCurveTo(side * 0.17 * s, -0.185 * s, side * 0.07 * s, -0.275 * s);
+    ctx.closePath();
+    ctx.fill();
+    // The honed rim: the outer edge bevel, filled in the trim.
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.moveTo(side * 0.055 * s, -0.3 * s);
+    ctx.quadraticCurveTo(side * 0.215 * s, -0.07 * s, side * 0.29 * s, -0.175 * s);
+    ctx.quadraticCurveTo(side * 0.208 * s, -0.098 * s, side * 0.068 * s, -0.284 * s);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (!hurt && st.pauldron === 'boneridge') {
+    // The bone fan: three carved slabs rising off the shoulder, each
+    // ending in the double condyle knuckle only bone has. Leading
+    // facets catch the light; the marrow-light (hollowlight) gutters
+    // in the gaps between them.
+    const slabs: Array<[number, number, number, number, number]> = [
+      // [rootX, tipX, tipY, halfW, rootY] — outward = +x, ×side.
+      [-0.062, -0.118, -0.175, 0.03, -0.03],
+      [0.085, 0.2, -0.2, 0.035, -0.025],
+      [0.008, 0.048, -0.275, 0.04, -0.045],
+    ];
+    for (const [rx, tx2, ty2, hw, ry] of slabs) {
+      const dxN = tx2 - rx;
+      // The shaft: a tapering slab, root fat, waist slimmer.
+      ctx.fillStyle = shade(base, 2);
+      ctx.beginPath();
+      ctx.moveTo(side * (rx - hw) * s, ry * s);
+      ctx.lineTo(side * (tx2 - hw * 0.72) * s, ty2 * s);
+      ctx.lineTo(side * (tx2 + hw * 0.72) * s, ty2 * s);
+      ctx.lineTo(side * (rx + hw) * s, ry * s);
+      ctx.closePath();
+      ctx.fill();
+      // The leading facet — the sun finds one side of every bone.
+      ctx.fillStyle = shade(base, 16);
+      ctx.beginPath();
+      ctx.moveTo(side * (rx + hw * 0.1) * s, ry * s);
+      ctx.lineTo(side * (tx2 + hw * 0.05) * s, ty2 * s);
+      ctx.lineTo(side * (tx2 + hw * 0.72) * s, ty2 * s);
+      ctx.lineTo(side * (rx + hw) * s, ry * s);
+      ctx.closePath();
+      ctx.fill();
+      // The condyles: the double knuckle, with its notch shadow.
+      ctx.fillStyle = shade(base, 12);
+      ctx.beginPath();
+      ctx.arc(side * (tx2 - hw * 0.42 + dxN * 0.04) * s, (ty2 - hw * 0.3) * s, hw * 0.6 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(side * (tx2 + hw * 0.44 + dxN * 0.04) * s, (ty2 - hw * 0.42) * s, hw * 0.55 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(base, -20);
+      ctx.beginPath();
+      ctx.moveTo(side * tx2 * s, (ty2 - hw * 0.75) * s);
+      ctx.lineTo(side * (tx2 + hw * 0.14) * s, (ty2 - hw * 0.1) * s);
+      ctx.lineTo(side * (tx2 - hw * 0.14) * s, (ty2 - hw * 0.1) * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (st.hollowlight) {
+      // The marrow went cold, and something else moved in: two small
+      // flames guttering in the gaps of the fan, and one mote that
+      // never strays far.
+      const hc = st.hollowlight.color;
+      for (const [gx, gy, H, ph] of [
+        [-0.028, -0.1, 0.125, 0.6],
+        [0.145, -0.085, 0.105, 2.9],
+      ] as const) {
+        const gate = 0.45 + 0.55 * Math.max(0, Math.sin(nowMs * 0.0014 + ph + side));
+        const flick = 0.82 + 0.18 * Math.sin(nowMs * 0.017 + ph * 3.1);
+        const sway = Math.sin(nowMs * 0.0037 + ph * 2 + side) * 0.016 * s;
+        coldLick(ctx, side * gx * s, gy * s, H * s * gate * flick, 0.02 * s, gate, sway, hc);
+      }
+      const mph = nowMs * 0.00042 + side * 1.7;
+      const mcy = mph - Math.floor(mph);
+      const ma = Math.sin(mcy * Math.PI);
+      if (ma > 0.1) {
+        ctx.globalAlpha = ma * 0.8;
+        ctx.fillStyle = shade(hc, 18);
+        const mx = side * (0.06 + Math.sin(mcy * 4.2 + side) * 0.03) * s;
+        const my = (-0.2 - mcy * 0.17) * s;
+        ctx.beginPath();
+        ctx.moveTo(mx, my - 0.013 * s);
+        ctx.lineTo(mx + 0.01 * s, my);
+        ctx.lineTo(mx, my + 0.013 * s);
+        ctx.lineTo(mx - 0.01 * s, my);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+  if (!hurt && st.pauldron === 'thorncrest') {
+    // The thorn crest: three forged hooks curving up and out, each a
+    // fat-rooted claw that turns in at the tip — grown from the
+    // steel, never bolted on. The cold fire licks up from behind the
+    // row first, so the thorns stand against their own light.
+    if (st.coldfire) {
+      const cf = st.coldfire.color;
+      for (const [gx, gy, H, ph] of [
+        [0.02, -0.085, 0.165, 0],
+        [0.145, -0.055, 0.125, 2.1],
+        [-0.085, -0.065, 0.105, 4.4],
+      ] as const) {
+        const gate = 0.4 + 0.6 * Math.max(0, Math.sin(nowMs * 0.0015 + ph + side * 1.3));
+        const flick = 0.8 + 0.2 * Math.sin(nowMs * 0.019 + ph * 2.7);
+        const sway = Math.sin(nowMs * 0.0041 + ph + side * 2) * 0.02 * s;
+        coldLick(ctx, side * gx * s, gy * s, H * s * gate * flick, 0.024 * s, gate, sway, cf);
+      }
+    }
+    const thorns: Array<[number, number, number, number, number, number, number]> = [
+      // [rootX, rootY, halfW, tipX, tipY, ctrlX, ctrlY] — the ctrl
+      // sits past the tip's outward side, so the claw HOOKS.
+      [-0.068, -0.035, 0.038, -0.15, -0.19, -0.2, -0.06],
+      [0.075, -0.03, 0.05, 0.175, -0.26, 0.295, -0.145],
+      [-0.004, -0.048, 0.046, 0.028, -0.3, 0.145, -0.22],
+    ];
+    for (const [rx, ry, hw, tx2, ty2, cx2, cy2] of thorns) {
+      // Leading (outward) facet catches the light...
+      ctx.fillStyle = shade(base, 20);
+      ctx.beginPath();
+      ctx.moveTo(side * (rx + hw) * s, ry * s);
+      ctx.quadraticCurveTo(side * cx2 * s, cy2 * s, side * tx2 * s, ty2 * s);
+      ctx.lineTo(side * rx * s, ry * s);
+      ctx.closePath();
+      ctx.fill();
+      // ...the trailing facet turns from it.
+      ctx.fillStyle = shade(base, -24);
+      ctx.beginPath();
+      ctx.moveTo(side * rx * s, ry * s);
+      ctx.quadraticCurveTo(side * (cx2 - hw * 0.9) * s, (cy2 + hw * 0.4) * s, side * tx2 * s, ty2 * s);
+      ctx.lineTo(side * (rx - hw) * s, ry * s);
+      ctx.closePath();
+      ctx.fill();
+      // The ONE bright thing: a hard lit edge down the leading curve —
+      // the same law the night-glass shards keep. Dark thorns on dark
+      // plate stay a mass without it.
+      ctx.strokeStyle = trim;
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(side * (rx + hw * 0.85) * s, (ry - 0.006) * s);
+      ctx.quadraticCurveTo(side * cx2 * s, cy2 * s, side * tx2 * s, ty2 * s);
+      ctx.stroke();
+    }
+    // The under-nubs: a second thorn generation budding at the seam.
+    for (const [nx, lit] of [[-0.088, false], [0.002, true], [0.09, false]] as const) {
+      ctx.fillStyle = shade(base, lit ? 8 : -8);
+      ctx.beginPath();
+      ctx.moveTo(side * (nx - 0.02) * s, -0.055 * s);
+      ctx.lineTo(side * (nx + 0.006) * s, -0.105 * s);
+      ctx.lineTo(side * (nx + 0.026) * s, -0.055 * s);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
   // Lames step down the arm BELOW the cap — articulation with mass:
@@ -7265,6 +7941,88 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     if (backK > 0.55) {
       ctx.fillRect(headX - hw * 0.1, headY - hh * 1.0 - lift, hw * 0.2, hh * 1.1 + lift);
     }
+  }
+  if (st.emberEyes && !hurt && front && st.kind !== 'furnace' && st.kind !== 'wyrm') {
+    // The heat inside the helm, generalized to every forged shell:
+    // two lights burning at the eye line, pulsing on a slow breath —
+    // whoever looks out of this helm brought their own weather.
+    const gc = st.emberEyes.color;
+    const pulse = 0.62 + 0.38 * Math.sin(f.nowMs * 0.0021);
+    for (const es of [-1, 1]) {
+      const gx = vx + es * headR * 0.21 * sw;
+      const gy = headY - hh * 0.02;
+      ctx.globalAlpha = 0.32 * pulse;
+      ctx.fillStyle = gc;
+      ctx.beginPath();
+      ctx.arc(gx, gy, headR * 0.15 * sw, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = shade(gc, 26);
+      ctx.beginPath();
+      ctx.moveTo(gx, gy - headR * 0.085);
+      ctx.lineTo(gx + headR * 0.065 * sw, gy);
+      ctx.lineTo(gx, gy + headR * 0.085);
+      ctx.lineTo(gx - headR * 0.065 * sw, gy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (st.standard && !hurt) {
+    // THE STANDARD: the king's colors carried on the helm itself — a
+    // slim pole off the crown flying a small square banner that
+    // ripples on the march wind's clock. The banner flies trailing,
+    // so the champion is always walking INTO their own colors.
+    const u = -(lead || 1);
+    const poleC = st.standard.pole;
+    const bx0 = headX;
+    const by0 = headY - hh * 1.0;
+    const topY = headY - hh * 2.12 + Math.sin(f.nowMs * 0.0013) * hh * 0.02;
+    ctx.strokeStyle = poleC;
+    ctx.lineWidth = Math.max(1.5, s * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(bx0, by0);
+    ctx.lineTo(bx0, topY);
+    ctx.stroke();
+    // The finial: a small forged diamond crowning the pole.
+    ctx.fillStyle = shade(poleC, 24);
+    ctx.beginPath();
+    ctx.moveTo(bx0, topY - hh * 0.16);
+    ctx.lineTo(bx0 + hw * 0.09, topY - hh * 0.02);
+    ctx.lineTo(bx0, topY + hh * 0.1);
+    ctx.lineTo(bx0 - hw * 0.09, topY - hh * 0.02);
+    ctx.closePath();
+    ctx.fill();
+    // The banner: hoist on the pole, fly rippling behind the march.
+    const hoistT = topY + hh * 0.22;
+    const hoistB = topY + hh * 0.78;
+    const flyX = bx0 + u * hw * 1.05;
+    const r1 = Math.sin(f.nowMs * 0.0021) * hh * 0.07;
+    const r2 = Math.sin(f.nowMs * 0.0021 + 1.9) * hh * 0.09;
+    ctx.fillStyle = st.standard.banner;
+    ctx.beginPath();
+    ctx.moveTo(bx0, hoistT);
+    ctx.quadraticCurveTo((bx0 + flyX) / 2, hoistT - hh * 0.06 + r1, flyX, hoistT + r2 * 0.6);
+    ctx.lineTo(flyX, hoistB + r2 * 0.6);
+    ctx.quadraticCurveTo((bx0 + flyX) / 2, hoistB + hh * 0.06 + r1, bx0, hoistB);
+    ctx.closePath();
+    ctx.fill();
+    // The fly's dip band in the trim, and one fold shadow — cloth.
+    const tc = st.standard.trim ?? shade(st.standard.banner, 30);
+    ctx.fillStyle = tc;
+    ctx.beginPath();
+    ctx.moveTo(flyX - u * hw * 0.16, hoistT + r2 * 0.66);
+    ctx.lineTo(flyX, hoistT + r2 * 0.6);
+    ctx.lineTo(flyX, hoistB + r2 * 0.6);
+    ctx.lineTo(flyX - u * hw * 0.16, hoistB + r2 * 0.54);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(st.standard.banner, -20);
+    ctx.lineWidth = Math.max(1, s * 0.01);
+    ctx.beginPath();
+    ctx.moveTo(bx0 + u * hw * 0.2, hoistT + hh * 0.12);
+    ctx.quadraticCurveTo((bx0 + flyX) / 2, (hoistT + hoistB) / 2 + r1, flyX - u * hw * 0.14, hoistB - hh * 0.1 + r2 * 0.5);
+    ctx.stroke();
   }
   if (st.gleam && !hurt) {
     // The crown's glint: one star winking off the helm's high point
