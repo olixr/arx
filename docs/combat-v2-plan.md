@@ -174,6 +174,41 @@ stage + grace on the wire (additive); whiff-doc honesty in damage.ts.
 **Proof:** behavior-identical replay — TTK brackets green, DPS parity harness within
 noise, riglab det unchanged. The only visible change is the bug-fix set.
 
+**SHIPPED — as built (2026-08-13).**
+- `ComboTrack` + `advanceCombo`/`freshCombo`/`resetCombo` in shared/sim/combat.ts:
+  ONE track per body, units are the caller's clock (server ticks / client seq /
+  slate anything). `nextSnapStage` retired; `nextComboStage` survives as the inner
+  stage law (and the identity proof pins advanceCombo against it for every
+  (prevStage, withinGrace) pair).
+- THE STRING BELONGS TO THE WEAPON lives INSIDE advanceCombo (weaponId compare) —
+  no equipment-change hook to forget. Deliberate consequence: a bow snap interlude
+  now also drops a live sword string (one track, one law).
+- Reset sites: sheathe toggle, death respawn, mountToggle (mounting; dismount
+  deliberately not — attack-dismounts swing the same tick). Dodge does not reset.
+- `tryPlayerAttack` guards the three named lanes BEFORE paying cooldown/reveal —
+  an unknown style costs nothing and fires nothing (slate-pinned with a bow).
+- `tickBowDraw` now takes the equipped {id, weapon} pair (the snap chain needs the
+  string's owner).
+- STRIKE_CLOCKS (onehand/twohand/arx × swing/finisher) twins server holdTicks to
+  client ms; renderer poseMs and all four setPose sites read it; shared test pins
+  holdTicks × TICK_MS ≥ ms. Values byte-identical to the old literals.
+- S2CCombo `{t:'combo', stage, len, grace}` additive, own-session, one per basic
+  (melee stages, bolt rhythm, snap chain); `speakCombo` stamps AFTER recovery+grace
+  so `grace` is the honest remaining window. Client stores `ownCombo` w/
+  `graceUntilMs` on the local clock — Phase 2's beat UI reads it.
+- Client staff mirror converted to the SAME ComboTrack keyed by the WORN item id —
+  fixes the latent divergence where a staff swap kept the mirrored stage while the
+  server (now) resets. Mirror + ownCombo reset on welcome/reconnect.
+- smashPropsInArc takes arcHalf from the swing (the great reap finally clears
+  scenery as wide as it cuts, slate-pinned); damage.ts pipeline doc names the
+  rollBasic ≥1 basics exception honestly beside the whiff-0 law.
+- Proof: combatRhythm.test.ts (6 door-law pins: string clocks/sweep/spoken beat,
+  grace restart, swap-never-inherits, explicit-lane guard, wand heavy, one-cone) +
+  reworked combat.test.ts (ONE RHYTHM slate incl. legacy-identity proof); full
+  workspace suite 1503/1503 green. Pose holds, recovery mults, damage mults,
+  stage order all unchanged — the only behavior deltas are the four intended
+  fixes (swap/sheathe/death/mount resets, prop cone, lane guard, spoken beat).
+
 ### Phase 2 — THE PREDICTED BLOW + THE SPOKEN BEAT
 Seq-keyed swing prediction on the staff-mirror pattern; press-edge input with a one-deep
 buffer; dodge-cancel of recovery; hold-to-flow walking the full string; TEMPO beat

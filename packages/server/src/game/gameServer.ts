@@ -480,8 +480,11 @@ import {
   hasteOnHit,
   isDrawSlowed,
   isBehind,
-  nextComboStage,
-  nextSnapStage,
+  advanceCombo,
+  freshCombo,
+  resetCombo,
+  STRIKE_CLOCKS,
+  SNAP_CHAIN,
   reactionDamage,
   reactionFor,
   snapShot,
@@ -489,6 +492,7 @@ import {
   type AbilitySlot,
   type ActiveStatus,
   type CollisionSource,
+  type ComboTrack,
   type CombatStyleId,
   type TechniqueStyleId,
   type EquipSlot,
@@ -1379,10 +1383,13 @@ interface PlayerComp {
   drawTicks: number;
   /** Client-reported adaptive interp delay, ms (v8) — exact lag comp. */
   viewMs?: number;
-  /** Stage of the previous melee swing (0/1/2). */
-  comboStage: number;
-  /** Swinging again before this tick continues the combo string. */
-  comboGraceUntilTick: number;
+  /**
+   * THE ONE RHYTHM ENGINE: the one basic-attack chain — sword string,
+   * great string, bolt rhythm, snap chain all advance THIS track. The
+   * string belongs to the weapon that started it (a swap resets by
+   * construction) and drops on sheathe, death, and mounting up.
+   */
+  combo: ComboTrack;
   /** Remaining cooldown ticks: [first art (Q), relic, second art (R), sigil]. */
   abilityCd: [number, number, number, number];
   /** Buttons of the last processed frame — abilities fire on press edge. */
@@ -1424,12 +1431,6 @@ interface PlayerComp {
   perks: Perks;
   /** Consecutive ticks without movement, sneaking or not (Bulwark). */
   stillTicks: number;
-  /** Snap-shot rhythm: stage of the last snap and its grace window. */
-  snapStage: number;
-  snapGraceUntilTick: number;
-  /** Stage of the previous staff bolt (wand 1-2-HEAVY rhythm). */
-  boltStage: number;
-  boltGraceUntilTick: number;
   /** Crouch latch from the last processed frame (held bit, survives empty ticks). */
   sneaking: boolean;
   /**
@@ -3060,8 +3061,7 @@ export class GameServer {
       poseUntilTick: 0,
       lastDodgeSeq: -999,
       drawTicks: 0,
-      comboStage: 0,
-      comboGraceUntilTick: 0,
+      combo: freshCombo(),
       abilityCd: [0, 0, 0, 0],
       prevButtons: 0,
       castFreezeUntilTick: 0,
@@ -3072,10 +3072,6 @@ export class GameServer {
       callings: character.id > 0 ? new Set(await this.accounts.loadCallings(character.id)) : new Set(),
       perks: defaultPerks(),
       stillTicks: 0,
-      snapStage: 0,
-      snapGraceUntilTick: 0,
-      boltStage: 0,
-      boltGraceUntilTick: 0,
       sneaking: false,
       sitting: false,
       lying: false,
@@ -4387,6 +4383,7 @@ export class GameServer {
     }
     this.standUp(eid, player, pos);
     player.mountId = id;
+    resetCombo(player.combo); // the saddle is a rest note, not a beat
     this.broadcastMetaUpdate(eid);
     this.sendRide(player);
   }
@@ -14746,6 +14743,22 @@ export class GameServer {
     return { id: worn.id, weapon };
   }
 
+  /**
+   * THE SPOKEN BEAT: tell the swinging session what stage just played
+   * and how long its string stays alive. Own-session only, one tiny
+   * message per basic — the combo stops being a server secret.
+   * Stamped AFTER the lane sets recovery + grace, so `grace` is the
+   * honest remaining window from this tick.
+   */
+  private speakCombo(player: PlayerComp, stage: number, len = COMBO_STAGES): void {
+    player.session?.sendJson({
+      t: 'combo',
+      stage,
+      len,
+      grace: Math.max(0, player.combo.graceUntilTick - this.tickCount),
+    });
+  }
+
   private tryPlayerAttack(eid: EntityId, player: PlayerComp, aim: number, seq: number): void {
     if (player.attackCooldown > 0) return;
     const equipped = this.equippedWeapon(player);
@@ -14754,6 +14767,16 @@ export class GameServer {
     }
     if (!equipped) return;
     const { weapon } = equipped;
+    // EXPLICIT LANES (combat v2): archery routes through tickBowDraw
+    // before this door ever sees it, and any future style must claim
+    // its own named lane — no style fires from a fallthrough. Guarded
+    // BEFORE the cooldown/reveal pay so an unknown style costs nothing.
+    if (weapon.style !== 'onehand' && weapon.style !== 'twohand' && weapon.style !== 'arx') {
+      if (process.env.COMBAT_DEBUG) {
+        console.log(`[combat] no basic-attack lane for style=${weapon.style}`);
+      }
+      return;
+    }
 
     player.attackCooldown = weapon.cooldownTicks;
     player.lastCombatAt = Date.now();
@@ -14783,20 +14806,18 @@ export class GameServer {
       // again inside the grace window continues the chain; the finisher
       // hits harder, shoves harder, CLEARS THE WHOLE ARC, and demands a
       // longer recovery — the crowd-control payoff beat.
-      const stage = nextComboStage(
-        player.comboStage,
-        this.tickCount <= player.comboGraceUntilTick,
-      );
-      player.comboStage = stage;
+      const stage = advanceCombo(player.combo, equipped.id, this.tickCount);
       const finisher = stage === COMBO_STAGES - 1;
       if (finisher) {
         player.attackCooldown = Math.round(weapon.cooldownTicks * FINISHER_RECOVERY_MULT);
       }
-      player.comboGraceUntilTick = this.tickCount + player.attackCooldown + COMBO_GRACE_TICKS;
+      player.combo.graceUntilTick = this.tickCount + player.attackCooldown + COMBO_GRACE_TICKS;
+      this.speakCombo(player, stage);
+      const clock = finisher ? STRIKE_CLOCKS.onehand.finisher : STRIKE_CLOCKS.onehand.swing;
       this.setPose(
         eid,
         stage === 0 ? PoseState.Attack : stage === 1 ? PoseState.Attack2 : PoseState.Attack3,
-        finisher ? 8 : 6,
+        clock.holdTicks,
       );
       this.meleeSwing(
         eid,
@@ -14826,22 +14847,20 @@ export class GameServer {
       // blows shove. The payoff beat towers; the recovery is the
       // weapon's own slow breath. Both fists belong to the haft, so
       // there is no echo — the second hand already swung.
-      const stage = nextComboStage(
-        player.comboStage,
-        this.tickCount <= player.comboGraceUntilTick,
-      );
-      player.comboStage = stage;
+      const stage = advanceCombo(player.combo, equipped.id, this.tickCount);
       const finisher = stage === COMBO_STAGES - 1;
       if (finisher) {
         player.attackCooldown = Math.round(weapon.cooldownTicks * TWOHAND_FINISHER_RECOVERY_MULT);
       }
-      player.comboGraceUntilTick = this.tickCount + player.attackCooldown + TWOHAND_COMBO_GRACE_TICKS;
-      // The long clock: the client plays great cuts at 460ms and the
-      // finisher at 640ms — the pose must outlive its choreography.
+      player.combo.graceUntilTick = this.tickCount + player.attackCooldown + TWOHAND_COMBO_GRACE_TICKS;
+      this.speakCombo(player, stage);
+      // THE STRIKE CLOCK: the pose provably outlives its choreography
+      // (the shared table pins hold ticks beside the client's ms).
+      const clock = finisher ? STRIKE_CLOCKS.twohand.finisher : STRIKE_CLOCKS.twohand.swing;
       this.setPose(
         eid,
         stage === 0 ? PoseState.Attack : stage === 1 ? PoseState.Attack2 : PoseState.Attack3,
-        finisher ? 14 : 10,
+        clock.holdTicks,
       );
       const felled = this.meleeSwing(
         eid,
@@ -14867,14 +14886,15 @@ export class GameServer {
     } else {
       // Wand rhythm: bolt → bolt → HEAVY. The third cast is a fat slow
       // orb that splashes and shoves — the punch beat wands were missing.
-      const stage = nextComboStage(player.boltStage, this.tickCount <= player.boltGraceUntilTick);
-      player.boltStage = stage;
+      const stage = advanceCombo(player.combo, equipped.id, this.tickCount);
       const heavy = stage === COMBO_STAGES - 1;
       if (heavy) {
         player.attackCooldown = Math.round(weapon.cooldownTicks * HEAVY_BOLT_RECOVERY_MULT);
       }
-      player.boltGraceUntilTick = this.tickCount + player.attackCooldown + COMBO_GRACE_TICKS;
-      this.setPose(eid, heavy ? PoseState.Attack3 : PoseState.Cast, heavy ? 8 : 6);
+      player.combo.graceUntilTick = this.tickCount + player.attackCooldown + COMBO_GRACE_TICKS;
+      this.speakCombo(player, stage);
+      const clock = heavy ? STRIKE_CLOCKS.arx.finisher : STRIKE_CLOCKS.arx.swing;
+      this.setPose(eid, heavy ? PoseState.Attack3 : PoseState.Cast, clock.holdTicks);
       const pos = this.positions.must(eid);
       const proj = this.ecs.create();
       this.kinds.set(proj, EntityKind.Projectile);
@@ -14969,8 +14989,10 @@ export class GameServer {
   ): number {
     const pos = this.positions.must(eid);
     // Every swing sweeps the scenery too: destructible clutter in the
-    // arc bursts regardless of what the blade finds to bleed.
-    this.smashPropsInArc(pos, aim, range);
+    // arc bursts regardless of what the blade finds to bleed — through
+    // the SAME cone the blade cuts (a greatweapon's wide reap clears
+    // wide scenery; this used to hardcode the sword's ±60°).
+    this.smashPropsInArc(pos, aim, range, arcHalf);
     // Strike effects live on the blade that lands — the echo cut reads
     // the offhand instance, exactly like coats.
     const struckWeapon =
@@ -15069,11 +15091,17 @@ export class GameServer {
 
   /**
    * Sweep the strike arc for destructible clutter — same cone law as
-   * the NPC sweep (±60° of aim, touch range always counts) so a swing
-   * that would cut a goblin also bursts the barrel beside it. Every
-   * prop in the arc goes at once: clearing a room is the fantasy.
+   * the NPC sweep (the caller's arcHalf of aim, touch range always
+   * counts) so a swing that would cut a goblin also bursts the barrel
+   * beside it. Every prop in the arc goes at once: clearing a room is
+   * the fantasy.
    */
-  private smashPropsInArc(pos: { x: number; y: number }, aim: number, range: number): void {
+  private smashPropsInArc(
+    pos: { x: number; y: number },
+    aim: number,
+    range: number,
+    arcHalf = Math.PI / 3,
+  ): void {
     const r = Math.ceil(range + 1);
     const ptx = Math.floor(pos.x);
     const pty = Math.floor(pos.y);
@@ -15090,7 +15118,7 @@ export class GameServer {
         const angleTo = Math.atan2(dy, dx);
         let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff > Math.PI / 3 && dist > 0.9) continue;
+        if (diff > arcHalf && dist > 0.9) continue;
         this.hitProp(tx, ty, g as Tile, info, angleTo);
       }
     }
@@ -18686,6 +18714,7 @@ export class GameServer {
       health.hp = health.maxHp;
       this.statuses.delete(eid); // death is at least a clean slate
       player.buffs = [];
+      resetCombo(player.combo); // no string survives the fall
       this.dismount(eid, player); // nobody wakes up in the saddle
       this.updateChunkMembership(eid);
       // The friend follows home, unharmed: the pack spills, the
@@ -23380,6 +23409,7 @@ export class GameServer {
         player.sheathed = !player.sheathed;
         if (player.sheathed) {
           player.drawTicks = 0;
+          resetCombo(player.combo); // the stowed string is a dropped string
           this.cancelCasting(eid, player); // stowed steel casts nothing
           // ...and stowed steel sings nothing — the note breaks too.
           if (player.action?.kind === 'channel') this.cancelAction(eid, player, 'cancelled');
@@ -23453,7 +23483,7 @@ export class GameServer {
         this.dismount(eid, player); // no mounted combat, ever
       }
       if (style === 'archery') {
-        this.tickBowDraw(eid, player, equipped!.weapon, attackHeld, frame.aim, frame.seq);
+        this.tickBowDraw(eid, player, equipped!, attackHeld, frame.aim, frame.seq);
       } else if (attackHeld) {
         this.tryPlayerAttack(eid, player, frame.aim, frame.seq);
       }
@@ -23539,11 +23569,12 @@ export class GameServer {
   private tickBowDraw(
     eid: EntityId,
     player: PlayerComp,
-    weapon: WeaponStats,
+    equipped: { id: string; weapon: WeaponStats },
     attackHeld: boolean,
     aim: number,
     seq: number,
   ): void {
+    const { id: weaponId, weapon } = equipped;
     if (attackHeld) {
       if (player.drawTicks === 0) {
         // Starting a draw needs a ready bow and an arrow to nock.
@@ -23603,10 +23634,10 @@ export class GameServer {
         if (removeItem(player.inventory, weapon.ammo, 1) === 0) return;
         player.session?.sendJson({ t: 'inv', slots: player.inventory });
       }
-      const stage = nextSnapStage(player.snapStage, this.tickCount <= player.snapGraceUntilTick);
-      player.snapStage = stage;
+      const stage = advanceCombo(player.combo, weaponId, this.tickCount, SNAP_CHAIN);
       player.attackCooldown = SNAP_RECOVERY_TICKS;
-      player.snapGraceUntilTick = this.tickCount + SNAP_RECOVERY_TICKS + SNAP_GRACE_TICKS;
+      player.combo.graceUntilTick = this.tickCount + SNAP_RECOVERY_TICKS + SNAP_GRACE_TICKS;
+      this.speakCombo(player, stage, SNAP_CHAIN);
       player.lastCombatAt = Date.now();
       this.setPose(eid, PoseState.Loose, 4);
       // Fletcher's Eye: the quick arrow stops being an apology.
@@ -23623,7 +23654,7 @@ export class GameServer {
       return;
     }
 
-    player.snapStage = 0; // a drawn shot resets the snap rhythm
+    resetCombo(player.combo); // a drawn shot resets the snap rhythm
     if (weapon.ammo) {
       if (removeItem(player.inventory, weapon.ammo, 1) === 0) return;
       player.session?.sendJson({ t: 'inv', slots: player.inventory });

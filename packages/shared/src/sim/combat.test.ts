@@ -57,13 +57,101 @@ test('snap shots are weak, short, and never zero', async () => {
 });
 
 test('snap rhythm chains to the fan on the third, gap resets', async () => {
-  const { SNAP_CHAIN, nextSnapStage } = await import('./combat.js');
-  let stage = 0;
-  stage = nextSnapStage(stage, true);
-  stage = nextSnapStage(stage, true);
-  assert.equal(stage, SNAP_CHAIN - 1, 'third tap reaches the fan stage');
-  assert.equal(nextSnapStage(stage, true), 0, 'fan resets the chain');
-  assert.equal(nextSnapStage(1, false), 0, 'dropping the rhythm resets');
+  const { SNAP_CHAIN, advanceCombo, freshCombo } = await import('./combat.js');
+  const track = freshCombo();
+  // Taps in rhythm: each swing stamps a grace window the next lands in.
+  const tap = (now: number) => {
+    const stage = advanceCombo(track, 'shortbow', now, SNAP_CHAIN);
+    track.graceUntilTick = now + 16;
+    return stage;
+  };
+  assert.equal(tap(0), 0);
+  assert.equal(tap(10), 1);
+  assert.equal(tap(20), SNAP_CHAIN - 1, 'third tap reaches the fan stage');
+  assert.equal(tap(30), 0, 'fan resets the chain');
+  assert.equal(tap(100), 0, 'dropping the rhythm resets');
+});
+
+// ------------------------------------------------- the one rhythm engine
+
+test('ONE RHYTHM: the string advances inside grace and dies outside it', async () => {
+  const { advanceCombo, freshCombo, COMBO_STAGES } = await import('./combat.js');
+  const track = freshCombo();
+  const swing = (now: number) => {
+    const stage = advanceCombo(track, 'falchion', now);
+    track.graceUntilTick = now + 20;
+    return stage;
+  };
+  assert.equal(swing(0), 0, 'first swing opens the string');
+  assert.equal(swing(10), 1);
+  assert.equal(swing(20), COMBO_STAGES - 1, 'third beat is the finisher');
+  assert.equal(swing(30), 0, 'the finisher always resets');
+  assert.equal(swing(40), 1);
+  assert.equal(swing(61), 0, 'one tick past grace drops the string');
+});
+
+test('ONE RHYTHM: the string belongs to the weapon that started it', async () => {
+  const { advanceCombo, freshCombo } = await import('./combat.js');
+  const track = freshCombo();
+  advanceCombo(track, 'falchion', 0);
+  track.graceUntilTick = 100;
+  advanceCombo(track, 'falchion', 10);
+  track.graceUntilTick = 100;
+  assert.equal(track.stage, 1, 'two sword swings deep');
+  // The old bug, pinned dead: swapping to a greatsword mid-string used
+  // to land an instant x3.0 finisher. A new weapon starts a NEW string.
+  assert.equal(
+    advanceCombo(track, 'doom_greatsword', 20),
+    0,
+    'a swapped-in weapon never inherits the string',
+  );
+  assert.equal(track.weaponId, 'doom_greatsword', 'the new weapon owns the track');
+});
+
+test('ONE RHYTHM: reset drops the string entirely', async () => {
+  const { advanceCombo, freshCombo, resetCombo } = await import('./combat.js');
+  const track = freshCombo();
+  advanceCombo(track, 'falchion', 0);
+  track.graceUntilTick = 100;
+  advanceCombo(track, 'falchion', 10);
+  track.graceUntilTick = 100;
+  resetCombo(track);
+  assert.equal(track.weaponId, null, 'no weapon owns a dropped string');
+  assert.equal(
+    advanceCombo(track, 'falchion', 12),
+    0,
+    'the same weapon starts over after a reset',
+  );
+});
+
+test('ONE RHYTHM: agrees with the legacy stage law under the same inputs', async () => {
+  // The refactor's identity proof: for every (prevStage, withinGrace)
+  // the engine plays the exact stage nextComboStage played — the four
+  // private copies collapsed into ComboTrack without a beat moving.
+  const { advanceCombo, nextComboStage, COMBO_STAGES } = await import('./combat.js');
+  for (let prev = 0; prev < COMBO_STAGES; prev++) {
+    for (const within of [true, false]) {
+      const track = { stage: prev, graceUntilTick: within ? 10 : 0, weaponId: 'falchion' };
+      assert.equal(
+        advanceCombo(track, 'falchion', 5),
+        nextComboStage(prev, within),
+        `prev=${prev} within=${within}`,
+      );
+    }
+  }
+});
+
+test('THE STRIKE CLOCK: every pose hold outlives its choreography', async () => {
+  const { STRIKE_CLOCKS } = await import('./combat.js');
+  const { TICK_MS } = await import('../constants.js');
+  for (const [school, clocks] of Object.entries(STRIKE_CLOCKS)) {
+    for (const [beat, clock] of Object.entries(clocks)) {
+      assert.ok(
+        clock.holdTicks * TICK_MS >= clock.ms,
+        `${school}.${beat}: pose hold ${clock.holdTicks}t must outlive ${clock.ms}ms`,
+      );
+    }
+  }
 });
 
 test('heavy bolt laws: big, slow, splashy', async () => {

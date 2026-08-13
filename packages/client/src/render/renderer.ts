@@ -36,6 +36,7 @@ import {
   hashString,
   pointHitsSolid,
   seatAt,
+  STRIKE_CLOCKS,
   tileDef,
   treeOfSapling,
   daylightAt,
@@ -27765,21 +27766,20 @@ export class Renderer {
         if (e.pose !== PoseState.Sneak) this.kickDust(anim.legs);
       }
     }
-    // The finisher (and the wand's heavy bolt) rides its full 8-tick
-    // pose — a heavier beat deserves its whole 400ms; everything else
-    // keeps the standard 280ms one-shot clock. THE GREAT SCHOOL owns
-    // a longer clock entirely: a greatweapon's cuts run 460ms and its
-    // finisher 640ms (the server holds the poses 10/14 ticks), because
-    // the slow beat IS the school — mass never moves on a sword's time.
+    // THE STRIKE CLOCK: choreography lengths come from the ONE shared
+    // table (STRIKE_CLOCKS) whose server pose holds provably outlive
+    // these ms — the pairs used to be twinned by comment across two
+    // packages. The finisher (and the wand's heavy bolt) rides the
+    // longer payoff clock; THE GREAT SCHOOL owns a longer clock
+    // entirely — mass never moves on a sword's time.
     const greatArms = greatStyle(e.equip.weapon) !== null;
+    const strikeClocks = greatArms ? STRIKE_CLOCKS.twohand : STRIKE_CLOCKS.onehand;
     const poseMs =
       e.pose === PoseState.Attack3
-        ? greatArms
-          ? 640
-          : 400
+        ? strikeClocks.finisher.ms
         : greatArms && (e.pose === PoseState.Attack || e.pose === PoseState.Attack2)
-          ? 460
-          : 280;
+          ? strikeClocks.swing.ms
+          : STRIKE_CLOCKS.onehand.swing.ms;
     const poseT = Math.min(1, (now - anim.poseStartedAt) / poseMs);
     // Rest-carriage clock: survives Idle↔Walk flips, resets only when
     // returning from a non-restful pose (combat, gathering, drawing).

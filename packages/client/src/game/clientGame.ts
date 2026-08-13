@@ -27,7 +27,9 @@ import {
   doorInfo,
   findPath,
   isSignTile,
-  nextComboStage,
+  advanceCombo,
+  freshCombo,
+  resetCombo,
   sanitizeSignText,
   signKey,
   snapShot,
@@ -422,8 +424,20 @@ export class ClientGame {
    * breaks and every bolt draws twice — tracer plus real entity.
    */
   private staffReadySeq = 0;
-  private boltStageLocal = 0;
-  private boltGraceUntilSeq = 0;
+  /**
+   * THE ONE RHYTHM ENGINE's client mirror (seq units, not ticks): the
+   * predicted staff string advances through the same ComboTrack law the
+   * server swings by — including THE STRING BELONGS TO THE WEAPON (a
+   * staff swap resets the mirrored stage exactly as the server resets).
+   */
+  private readonly comboLocal = freshCombo();
+  /**
+   * THE SPOKEN BEAT, as last spoken by the server: the stage the last
+   * basic played at, the string's length, and when the string dies
+   * (local clock, ms). Phase 2's beat UI reads this; until then it is
+   * the honest record.
+   */
+  ownCombo: { stage: number; len: number; graceUntilMs: number } | null = null;
   /** Local mirror of the cast commitment window (holds basics back). */
   private castFreezeUntilSeq = 0;
   /** NPC deaths this frame — drives the ragdoll + stuck-arrow scatter. */
@@ -828,18 +842,20 @@ export class ClientGame {
    * matches an entity and fades.
    */
   private trackOwnStaff(frame: InputFrame): void {
+    const worn = this.equipment.weapon;
     const weapon = this.equippedWeaponDef();
-    if (!weapon || weapon.style !== 'arx') return;
+    if (!worn || !weapon || weapon.style !== 'arx') return;
     if (!hasButton(frame.buttons, InputButton.Attack)) return;
     if (frame.seq < this.staffReadySeq || frame.seq < this.castFreezeUntilSeq) return;
-    const stage = nextComboStage(this.boltStageLocal, frame.seq <= this.boltGraceUntilSeq);
-    this.boltStageLocal = stage;
+    // The worn ITEM id keys the string — the mirror resets on a staff
+    // swap exactly when the server's track does.
+    const stage = advanceCombo(this.comboLocal, worn.id, frame.seq);
     const heavy = stage === COMBO_STAGES - 1;
     const cdTicks = heavy
       ? Math.round(weapon.cooldownTicks * HEAVY_BOLT_RECOVERY_MULT)
       : weapon.cooldownTicks;
     this.staffReadySeq = frame.seq + cdTicks;
-    this.boltGraceUntilSeq = this.staffReadySeq + COMBO_GRACE_TICKS;
+    this.comboLocal.graceUntilTick = this.staffReadySeq + COMBO_GRACE_TICKS;
     const base = heavy ? 'arx_heavy' : 'arx';
     const defId = weapon.element ? `${base}:${weapon.element}` : base;
     this.predictShot(
@@ -1021,8 +1037,8 @@ export class ClientGame {
         this.ownShots.length = 0;
         this.projHandoffs.clear();
         this.staffReadySeq = 0;
-        this.boltStageLocal = 0;
-        this.boltGraceUntilSeq = 0;
+        resetCombo(this.comboLocal);
+        this.ownCombo = null;
         this.castFreezeUntilSeq = 0;
         this.ownCast = null;
         this.clockOffset = null;
@@ -1448,6 +1464,16 @@ export class ClientGame {
         const now = performance.now();
         this.abilityMax = [msg.max[0], msg.max[1], msg.max[2], msg.max[3]];
         for (let i = 0; i < 4; i++) this.abilityReadyAt[i] = now + msg.cd[i]! * TICK_MS;
+        break;
+      }
+      case 'combo': {
+        // THE SPOKEN BEAT: the stage the server just swung and how long
+        // the string stays alive, kept on the local clock.
+        this.ownCombo = {
+          stage: msg.stage,
+          len: msg.len,
+          graceUntilMs: performance.now() + msg.grace * TICK_MS,
+        };
         break;
       }
       case 'techniques': {

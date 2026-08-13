@@ -14,7 +14,11 @@
  *      club at level 5 and level 15 are DIFFERENT threats.
  *   3. THE ROLL — uniform 0..maxHit at the strike site. A 0 is a
  *      whiff: the axe whistles past. Deliberate law — the miss is
- *      real risk texture and is NEVER floored away.
+ *      real risk texture and is NEVER floored away — WITH ONE spoken
+ *      exception: player BASIC attacks floor a landed roll at 1
+ *      (`rollBasic`, the hack-and-slash cadence law 09b762b — at ~3
+ *      chip hits a second, zero-rolls read broken and starve on-hit
+ *      haste). Abilities and every NPC strike keep the true whiff.
  *   4. MITIGATION — armor class. Percentage reduction from trained
  *      defence + worn armor, diminishing-returns shaped so big hits
  *      shrink but never vanish, with the attacker's level piercing

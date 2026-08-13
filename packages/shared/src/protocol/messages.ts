@@ -965,6 +965,24 @@ export interface S2CCast {
 }
 
 /**
+ * THE SPOKEN BEAT (combat v2): the swing that just fired, spoken to
+ * its own session only — the combo string stops being a server
+ * secret. Additive, tiny, one per basic. `grace` is ticks from now
+ * during which the next press continues the string (recovery
+ * included), so the client can draw the window without knowing the
+ * server's absolute clock.
+ */
+export interface S2CCombo {
+  t: 'combo';
+  /** Stage the swing played at, 0-based. */
+  stage: number;
+  /** Stages in this weapon's string (the last one is the payoff beat). */
+  len: number;
+  /** Ticks from now that the string stays alive. */
+  grace: number;
+}
+
+/**
  * A combat effect the client should render — one generic event for
  * ability shapes, ground telegraphs, and status reactions so the wire
  * vocabulary stays small while the VFX vocabulary grows freely.
@@ -1760,6 +1778,7 @@ export type S2CMessage =
   | S2CBank
   | S2CCooldowns
   | S2CCast
+  | S2CCombo
   | S2CFx
   | S2COwnBuilt
   | S2CTime

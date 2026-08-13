@@ -50,11 +50,7 @@ export function snapShot(
   };
 }
 
-/** Next snap-chain stage; the fan stage always resets. */
-export function nextSnapStage(prevStage: number, withinGrace: boolean): number {
-  if (!withinGrace) return 0;
-  return (prevStage + 1) % SNAP_CHAIN;
-}
+// (The snap chain advances through the ONE rhythm engine — see ComboTrack.)
 
 // ---------------------------------------------------------- wand rhythm
 
@@ -123,6 +119,94 @@ export function nextComboStage(prevStage: number, withinGrace: boolean): number 
   if (!withinGrace) return 0;
   return (prevStage + 1) % COMBO_STAGES;
 }
+
+// ------------------------------------------------- the one rhythm engine
+
+/**
+ * THE ONE RHYTHM ENGINE (combat v2, Phase 1): every basic-attack chain
+ * in the game — the sword string, the great string, the wand's
+ * bolt-bolt-HEAVY, the bow's snap chain — advances through this ONE
+ * track. A body carries exactly one; the lanes never coexist because a
+ * hand holds exactly one weapon, and THE STRING BELONGS TO THE WEAPON
+ * THAT STARTED IT: a different weapon id resets the stage by
+ * construction (no swapped-in finishers, ever). Grace/stage units are
+ * the caller's clock — server ticks on the sim, input seq on the
+ * client mirror — the law never cares which.
+ */
+export interface ComboTrack {
+  /** Stage of the last swing on this track (0-based). */
+  stage: number;
+  /** Swinging again at-or-before this instant continues the string. */
+  graceUntilTick: number;
+  /** The weapon id that owns the live string; null = no string. */
+  weaponId: string | null;
+}
+
+export function freshCombo(): ComboTrack {
+  return { stage: 0, graceUntilTick: 0, weaponId: null };
+}
+
+/**
+ * Advance the track for a swing landing at `now` from weapon
+ * `weaponId`, returning the stage this swing plays at. The caller
+ * stamps `graceUntilTick` afterward (the window opens after a
+ * recovery the stage itself decides). `stages` is the chain length —
+ * COMBO_STAGES for every current lane; the moveset book (Phase 3)
+ * will author it per string.
+ */
+export function advanceCombo(
+  track: ComboTrack,
+  weaponId: string,
+  now: number,
+  stages = COMBO_STAGES,
+): number {
+  const withinGrace = track.weaponId === weaponId && now <= track.graceUntilTick;
+  const stage = withinGrace ? (track.stage + 1) % stages : 0;
+  track.stage = stage;
+  track.weaponId = weaponId;
+  return stage;
+}
+
+/**
+ * Drop the string. Called at every honest break — sheathe, death,
+ * mounting up, a drawn bow shot superseding the snap rhythm. Dodge
+ * deliberately does NOT reset: the dodge-weave is a combo verb, not a
+ * retreat from the string.
+ */
+export function resetCombo(track: ComboTrack): void {
+  track.stage = 0;
+  track.graceUntilTick = 0;
+  track.weaponId = null;
+}
+
+// ------------------------------------------------------ the strike clock
+
+/**
+ * THE STRIKE CLOCK — the one authored table twinning the server's pose
+ * hold (ticks, what the wire carries) to the client's choreography
+ * length (ms, what the arms play). These pairs used to live twinned by
+ * COMMENT across two packages; now the pose provably outlives its
+ * choreography (holdTicks × TICK_MS ≥ ms, pinned by test). The `arx`
+ * row clocks the wand's bolt/HEAVY poses; bow draw/loose keep their
+ * own charge clock (drawTicks) and never read this table.
+ */
+export interface StrikeClock {
+  /** Client choreography length, ms. */
+  ms: number;
+  /** Server pose hold, ticks — must outlive the choreography. */
+  holdTicks: number;
+}
+
+export const STRIKE_CLOCKS: Record<
+  'onehand' | 'twohand' | 'arx',
+  { swing: StrikeClock; finisher: StrikeClock }
+> = {
+  onehand: { swing: { ms: 280, holdTicks: 6 }, finisher: { ms: 400, holdTicks: 8 } },
+  // THE GREAT SCHOOL owns a longer clock entirely: mass never moves
+  // on a sword's time.
+  twohand: { swing: { ms: 460, holdTicks: 10 }, finisher: { ms: 640, holdTicks: 14 } },
+  arx: { swing: { ms: 280, holdTicks: 6 }, finisher: { ms: 400, holdTicks: 8 } },
+};
 
 // ------------------------------------------------------------ twohand
 
