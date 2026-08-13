@@ -222,19 +222,33 @@ persistent memory or is a deliberate, documented stateless portrait.
 ## Part 2 — the phases
 
 **Phase 1 — THE COMMON TONGUE** (pure refactor, zero pixels change).
-FacingFrame + wieldClass + the shared constants: one GROUND_K (shields
-imports it), BOW_GRIP_X born and consumed everywhere the 0.18s lives,
-rest-arm/choke dedupe, dead exports deleted or wired
-(GREAT_GUARD_PITCH consumed by greatFinisherPath), the two profileK
-formulas unified, armY joins the hScale frame. Retype armDepth; fix
-the CMS/lookCreator callers and the gameRender equip wiring.
-Byte-identical screenshots on the ARMS SHEET prove "zero pixels".
+**SHIPPED 2026-08-12 (4c96c3b + 0129fe7).** wieldClass + the shared
+constants: one GROUND_K (shields imports it), BOW_GRIP_X born and
+consumed at the grip wrap, the limb quadratic, and rig's carry
+translate, rest-arm dedupe, GREAT_GUARD_PITCH wired into
+greatFinisherPath, faceProfileK single-sources the 13 inline face
+reads, the rest anatomy named + exported + imported by the tests.
+armDepth retyped; CMS casts killed (gameRender's dead equip key wired
+— bestiary mobs now hold their weapons — portraits' dropped cape slot
+fixed); lookCreator/farmlab own persistent anim memory. Zero pixels
+PROVEN: det=1 runs 240 fixed steps synchronously (headless capture
+fires ~4 rAF frames in — the stamp is the receipt), and all four
+sheet bands byte-matched pre/post refactor at the settled frame-239
+state. armY joined the hScale frame as its own flagged commit
+(coherent 1–3px arm-frame shift, measured per facing column).
+As-built notes: the FacingFrame STRUCT is deferred to Phase 2 — its
+threading rebuilds the same signatures the ONE MOUTH assembly owns,
+so it lands there (the constants half shipped here); the painter's
+style dispatch in drawHeldItem keeps its own chain for the same
+reason (it interleaves tools/rods and needs colored styles).
 
 **Phase 2 — THE ONE MOUTH.** The WieldFrame assembly in rig.ts: one
 writer per channel, modifiers folded in, the 0.04/0.05 nudges moved
 into their class functions, stale-channel fixes (armSwingK, pump exit
 blend, offSwingK blend, grip on the ladder). The assembly-owner test
-lands here.
+lands here — and so does the FacingFrame struct (deferred from Phase
+1): the rebuilt signatures all take the one facing vocabulary, and
+the painter dispatch joins wieldClass while its contract is open.
 
 **Phase 3 — THE HONEST DEPTH.** One projection function; elliptical
 hand orbits, aim anchor, and finisher paths; the trail's K becomes the
