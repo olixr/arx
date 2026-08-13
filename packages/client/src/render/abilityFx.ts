@@ -454,6 +454,42 @@ export const FX_STYLES: Record<string, FxStyle> = {
   two_answers: GOLD({ mid: '#e8c878', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.4 }),
   four_roads: GOLD({ mid: '#d8c080', ring: 'halo', debris: 'star', decal: 'glow', motif: 'rays', punch: 0.6, wash: 0.5 }),
 
+  // ------------- THE BREATH BETWEEN RUNGS — the onehand breath wave
+  // Ten blade voices seated between the founding rungs, each wearing
+  // one element the hand commits to. The casted five read as a gather
+  // then ONE answer; the channeled five read as a held working. Every
+  // face keeps a unique ring+debris+motif hand within its family.
+  // Ember Edge — the kindled cut: a breaking fire crescent, coals left
+  // smoldering in the grass where the swing passed.
+  ember_edge: EMBER({ mid: '#ff8148', ring: 'shards', debris: 'ember', decal: 'scorch', motif: 'wave', punch: 0.55, wash: 0.55 }),
+  // Millwork — the turning stone: chaff-tan grind, the wheel's inward
+  // draw, grit thrown off the rim every pass.
+  millwork: STEEL({ mid: '#c8b088', deep: '#6a5a40', spark: '#f0e4c8', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'vortex', punch: 0.45, wash: 0.3 }),
+  // Levinstroke — the sky off the edge: levin-pale blue, a rent torn
+  // down the line of the throw, scorch where it lands.
+  levinstroke: STORM({ mid: '#8ab8f0', deep: '#3a4a7a', ring: 'shards', debris: 'spark', decal: 'scorch', motif: 'tear', punch: 0.65, wash: 0.5 }),
+  // Red Ledger — the account held open: entry rings repeating down the
+  // tether, the stain of what was taken.
+  red_ledger: BLOOD({ mid: '#d84858', ring: 'runes', debris: 'blood', decal: 'stain', motif: 'echo', punch: 0.35, wash: 0.35 }),
+  // Cold Iron — winter driven in at the mark: hoarfrost spears out of
+  // the struck ring, rime that stays.
+  cold_iron: FROST({ mid: '#9cc8dc', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'spikes', punch: 0.6, wash: 0.5 }),
+  // Frostwork — the pattern taking the ground: pale etch-blue, frost
+  // unfurling ring by held ring.
+  frostwork: FROST({ mid: '#bce4f0', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'bloom', punch: 0.4, wash: 0.5 }),
+  // First Light — the doorway opened: dawn gold torn through the dark,
+  // a bright afterline where you passed.
+  first_light: RADIANT({ mid: '#ffe9b0', ring: 'halo', debris: 'star', decal: 'glow', motif: 'tear', punch: 0.6, wash: 0.55 }),
+  // Live Iron — the standing circuit: hot brass over storm, charge
+  // bars caging the ring while the blade sings.
+  live_iron: STORM({ mid: '#e8d84a', deep: '#7a6a20', ring: 'runes', debris: 'spark', decal: 'scorch', motif: 'cage', punch: 0.5, wash: 0.45 }),
+  // Gloomfall — night poured out: dusk violet, dark falling INTO the
+  // ring like rain that puts the light out.
+  gloomfall: SHADOW({ mid: '#6a5a88', spark: '#b0a0d0', ring: 'runes', debris: 'shadow', decal: 'stain', motif: 'rain', punch: 0.7, wash: 0.2 }),
+  // Noonfall — noon held over a ring: sun-bleached gold, a pillar of
+  // light hammering the stake every beat, the turf seared white.
+  noonfall: RADIANT({ mid: '#f8e8b0', ring: 'halo', debris: 'star', decal: 'scorch', motif: 'pillar', punch: 0.7, wash: 0.75 }),
+
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),
 

@@ -98,7 +98,7 @@ test('the rank clock is uniform and the ladder mastered before 99', () => {
 
 test('THE OPEN LADDER: an art every five levels, 5 through 50, no gaps, no doubles', () => {
   const RUNGS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
-  for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
+  for (const style of ['combat', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
     const arts = techniquesFor(style).filter((t) => !t.hidden);
     assert.deepEqual(
       arts.map((t) => t.unlockLevel),
@@ -106,6 +106,54 @@ test('THE OPEN LADDER: an art every five levels, 5 through 50, no gaps, no doubl
       `${style} ladder must fill every rung in order`,
     );
     assert.equal(new Set(arts.map((t) => t.ability)).size, RUNGS.length);
+  }
+});
+
+const RUNG_LEVELS = new Set([5, 10, 15, 20, 25, 30, 35, 40, 45, 50]);
+
+test('THE BREATH BETWEEN RUNGS: onehand holds exactly its authored ladder', () => {
+  // THE DRAWN BREATH's content wave grew the onehand school ten new
+  // breath arts seated BETWEEN the founding rungs — five casted, five
+  // channeled — so the school's pin becomes an authored table (the
+  // KEEPER LADDER pattern): the deliberate record of what stands,
+  // extended art by art, never by accident.
+  const arts = techniquesFor('onehand').filter((t) => !t.hidden);
+  assert.deepEqual(
+    arts.map((t) => [t.ability, t.unlockLevel]),
+    [
+      ['heavy_slam', 5],
+      ['ember_edge', 8],
+      ['bull_rush', 10],
+      ['millwork', 13],
+      ['whirlwind', 15],
+      ['levinstroke', 18],
+      ['warcry', 20],
+      ['red_ledger', 23],
+      ['steel_wave', 25],
+      ['cold_iron', 28],
+      ['bloodlust', 30],
+      ['frostwork', 33],
+      ['stagger_stomp', 35],
+      ['first_light', 38],
+      ['headsman_stroke', 40],
+      ['live_iron', 43],
+      ['earthbreaker', 45],
+      ['gloomfall', 46],
+      ['noonfall', 48],
+      ['warlords_descent', 50],
+    ],
+    'the onehand ladder is exactly its authored roster',
+  );
+  assert.equal(new Set(arts.map((t) => t.ability)).size, arts.length);
+  // The breath wave's own law: every between-rung art is a breath art
+  // (castTicks or channelTicks), never another press-edge instant.
+  for (const t of arts) {
+    if (RUNG_LEVELS.has(t.unlockLevel)) continue;
+    const ab = abilityDef(t.ability)!;
+    assert.ok(
+      (ab.castTicks ?? 0) > 0 || (ab.channelTicks ?? 0) > 0,
+      `${t.ability}: a between-rung seat must breathe (cast or channel)`,
+    );
   }
 });
 

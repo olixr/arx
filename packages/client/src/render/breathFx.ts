@@ -88,6 +88,62 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
     },
   },
 
+  // -------------- THE BREATH BETWEEN RUNGS — the onehand gathers
+  // Ember Edge: fire climbs the edge as the cut is drawn — a small
+  // true plume that leans hungrier as the reach tightens.
+  ember_edge: {
+    charge: (c, x, y, o) => {
+      fire.deployments.plume!(c, x, y, {
+        scale: 0.4 + (1.5 - o.radius) * 0.45,
+        dur: 0.7,
+      });
+    },
+  },
+  // Levinstroke: the storm is INVITED — charge converges on the raised
+  // blade, tightening exactly as the sky decides.
+  levinstroke: {
+    charge: (c, x, y, o) => {
+      storm.deployments.charge!(c, x, y, {
+        radius: o.radius,
+        scale: 0.5 + (1.5 - o.radius) * 0.4,
+        dur: 0.7,
+      });
+    },
+  },
+  // Cold Iron: rime climbs the held iron while the mark waits — the
+  // bloom grows as the point drops toward the ground.
+  cold_iron: {
+    charge: (c, x, y, o) => {
+      frost.deployments.bloom!(c, x, y, {
+        radius: 0.5,
+        scale: 0.4 + (1.5 - o.radius) * 0.45,
+        dur: 0.7,
+      });
+    },
+  },
+  // First Light: thin shafts of dawn assemble on the planted stance —
+  // the doorway is being found before it is opened.
+  first_light: {
+    charge: (c, x, y, o) => {
+      radiance.deployments.shafts!(c, x, y, {
+        radius: o.radius * 0.6,
+        scale: 0.4 + (1.5 - o.radius) * 0.4,
+        dur: 0.7,
+      });
+    },
+  },
+  // Gloomfall: the dark gathers ALONG the edge — a veil pulling close,
+  // the light going out of the ring first.
+  gloomfall: {
+    charge: (c, x, y, o) => {
+      shadow.deployments.veil!(c, x, y, {
+        radius: o.radius * 0.7,
+        scale: 0.45 + (1.5 - o.radius) * 0.4,
+        dur: 0.8,
+      });
+    },
+  },
+
   // -------------------------------------------- the held notes
   // Maelstrom: the sea churns underfoot for as long as the vortex
   // is held open.
@@ -136,6 +192,44 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
   kept_ground: {
     note: (c, x, y, o) => {
       storm.deployments.static!(c, x, y, { radius: o.radius, scale: 0.5, dur: 1.3 });
+    },
+  },
+
+  // ---------------- THE BREATH BETWEEN RUNGS — the onehand notes
+  // Millwork: the wheel grinds a tight ring of grist at the stance —
+  // the blade's reach, torn and turning, for as long as it turns.
+  millwork: {
+    note: (c, x, y, o) => {
+      dust.deployments.skirt!(c, x, y, { radius: o.radius, scale: 0.6, dur: 1.2 });
+    },
+  },
+  // Red Ledger: the account drips — what the point takes runs off the
+  // held blade, entry by entry. (Red Thread drinks INWARD; the ledger
+  // spills what it has already counted.)
+  red_ledger: {
+    note: (c, x, y) => {
+      blood.deployments.drip!(c, x, y, { scale: 0.6, dur: 1.1 });
+    },
+  },
+  // Frostwork: the pattern claims ground — frost blooms outward from
+  // the planted feet, ring by held ring.
+  frostwork: {
+    note: (c, x, y, o) => {
+      frost.deployments.bloom!(c, x, y, { radius: o.radius, scale: 0.6, dur: 1.2 });
+    },
+  },
+  // Live Iron: the circuit discharges around the singer — crackle
+  // ticks patrolling the blade's reach while the note holds.
+  live_iron: {
+    note: (c, x, y, o) => {
+      storm.deployments.crackle!(c, x, y, { radius: o.radius * 0.8, scale: 0.6, dur: 1.2 });
+    },
+  },
+  // Noonfall: kept light stands on the singer — thin noon shafts,
+  // patient, while the stake takes the hammer.
+  noonfall: {
+    note: (c, x, y, o) => {
+      radiance.deployments.shafts!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 });
     },
   },
 

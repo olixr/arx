@@ -2992,6 +2992,119 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// ------------- THE BREATH BETWEEN RUNGS — the onehand breath wave
+Object.assign(PLATES, {
+  // Ember Edge — the cut drawn through fire: one blade, one burning
+  // crescent riding its wake, coals already falling.
+  ember_edge: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0.02, 0.02, 0.3, 0.4, -2.4, -0.4, st.mid, 0.05);
+    crescent(c, 0.02, 0.02, 0.33, 0.37, -2.1, -0.7, st.core, 0.026);
+    blade(c, -0.04, 0.06, 0.6, -Math.PI / 3.2, st);
+    flame(c, 0.3, -0.08, 0.42, st, 0.08);
+    dot(c, st.spark, -0.28, 0.3, 0.035);
+    dot(c, st.deep, -0.16, 0.38, 0.03);
+  },
+  // Millwork — the blade turned millstone: the round stone, the grip
+  // set square through its eye, grist thrown off the rim.
+  millwork: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    ringDot(c, st.mid, 0, 0, 0.32, 0.09);
+    ringDot(c, st.deep, 0, 0, 0.2, 0.028);
+    blade(c, 0, 0, 0.56, Math.PI / 2, st);
+    dot(c, st.spark, -0.38, -0.16, 0.032);
+    dot(c, st.spark, 0.34, 0.22, 0.032);
+    dot(c, st.deep, 0.4, -0.1, 0.028);
+  },
+  // Levinstroke — the sky loosed off the point: blade high, the levin
+  // already leaving in a line.
+  levinstroke: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    blade(c, -0.2, 0.12, 0.52, -Math.PI / 2.6, st);
+    bolt(c, 0.12, -0.1, 0.66, st, 0.3);
+    star4(c, -0.06, -0.34, 0.07, st.core);
+    dot(c, st.spark, 0.38, 0.3, 0.03);
+  },
+  // Red Ledger — the point held out, the account open: entry rings
+  // marching down the tether toward the drop it takes.
+  red_ledger: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    blade(c, -0.24, 0.02, 0.5, Math.PI, st);
+    ringDot(c, st.mid, 0.08, 0.02, 0.08, 0.028);
+    ringDot(c, st.mid, 0.24, 0.02, 0.11, 0.028);
+    ringDot(c, st.deep, 0.38, 0.02, 0.13, 0.026);
+    droplet(c, 0.34, 0.3, 0.62, st);
+  },
+  // Cold Iron — the point driven in, winter spearing out of the ring.
+  cold_iron: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.34, st);
+    blade(c, 0, -0.1, 0.56, Math.PI / 2, st);
+    poly(c, st.core, [[-0.26, 0.22], [-0.34, -0.02]], 0.036);
+    poly(c, st.core, [[0.26, 0.22], [0.34, -0.02]], 0.036);
+    poly(c, st.mid, [[-0.14, 0.26], [-0.18, 0.02]], 0.032);
+    poly(c, st.mid, [[0.14, 0.26], [0.18, 0.02]], 0.032);
+    snowflake(c, 0.3, -0.3, 0.09, st.spark, 0.032);
+  },
+  // Frostwork — the pattern working outward: the flake at the heart
+  // and the rings it has already claimed.
+  frostwork: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    ringDot(c, st.deep, 0, 0, 0.4, 0.026);
+    ringDot(c, st.mid, 0, 0, 0.27, 0.032);
+    snowflake(c, 0, 0, 0.15, st.core, 0.04);
+    dot(c, st.spark, 0.31, -0.18, 0.03);
+    dot(c, st.spark, -0.31, 0.18, 0.03);
+    dot(c, st.spark, 0.18, 0.33, 0.026);
+  },
+  // First Light — the doorway: two dark posts, the dawn tearing
+  // through the gap, and you already gone.
+  first_light: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    fill(c, st.deep, [[-0.34, -0.36], [-0.16, -0.36], [-0.16, 0.36], [-0.34, 0.36]]);
+    fill(c, st.deep, [[0.16, -0.36], [0.34, -0.36], [0.34, 0.36], [0.16, 0.36]]);
+    fill(c, st.mid, [[-0.13, -0.3], [0.13, -0.34], [0.08, 0.34], [-0.09, 0.3]]);
+    fill(c, st.core, [[-0.06, -0.26], [0.06, -0.29], [0.03, 0.28], [-0.04, 0.25]]);
+    chevrons(c, 0.4, 0, 0, st, 2, 1);
+    star4(c, 0, -0.02, 0.08, st.core);
+  },
+  // Live Iron — the blade gone live: the current riding the flat,
+  // charge held at the guard.
+  live_iron: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    blade(c, 0, 0.04, 0.64, -Math.PI / 2, st);
+    bolt(c, -0.2, -0.14, 0.4, st, 0.5);
+    bolt(c, 0.22, 0.08, 0.34, st, -0.45);
+    star4(c, 0, -0.36, 0.08, st.core);
+    dot(c, st.spark, -0.3, 0.28, 0.03);
+    dot(c, st.spark, 0.32, -0.3, 0.03);
+  },
+  // Gloomfall — night poured out of the edge: the dark ring landing,
+  // rain of shadow falling inside it.
+  gloomfall: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    novaRing(c, 0, 0.18, 0.34, st, 10, 0.24, 0.04);
+    poly(c, st.mid, [[-0.18, -0.34], [-0.22, -0.06]], 0.036);
+    poly(c, st.mid, [[0.0, -0.4], [-0.03, -0.1]], 0.036);
+    poly(c, st.mid, [[0.18, -0.32], [0.15, -0.04]], 0.036);
+    dot(c, st.spark, -0.21, 0.0, 0.03);
+    dot(c, st.spark, -0.02, -0.04, 0.03);
+    dot(c, st.spark, 0.15, 0.02, 0.03);
+  },
+  // Noonfall — noon held over the stake: the pillar of light hammering
+  // the ring, the sun that will not move.
+  noonfall: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.32, st);
+    fill(c, st.mid, [[-0.13, -0.28], [0.13, -0.28], [0.08, 0.3], [-0.08, 0.3]]);
+    fill(c, st.core, [[-0.06, -0.28], [0.06, -0.28], [0.03, 0.28], [-0.03, 0.28]]);
+    star4(c, 0, -0.36, 0.11, st.core);
+    ringDot(c, st.spark, 0, -0.36, 0.17, 0.024);
+    dot(c, st.spark, -0.26, 0.28, 0.03);
+    dot(c, st.spark, 0.26, 0.28, 0.03);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ------------------------------- THE SHIELD SKILL — the wall's plates
 Object.assign(PLATES, {
   // Shield Bash — the face of the wall meeting a jaw: impact star at

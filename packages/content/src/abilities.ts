@@ -1913,6 +1913,157 @@ const defs: AbilityDef[] = [
     self: { shieldHp: 5, speedMult: 1.1, durationTicks: 100 },
   },
 
+  // ------------------- THE BREATH BETWEEN RUNGS — onehand breath arts
+  // THE DRAWN BREATH's content wave: ten new blade voices seated
+  // BETWEEN the founding rungs, five casted and five channeled, each
+  // carrying one element so gear may someday favor it. Casted arts
+  // carry no castFreezeTicks (the wind-up IS the commit); channels
+  // never ride a ground_field.
+  {
+    id: 'ember_edge',
+    name: 'Ember Edge',
+    desc: 'Draw the cut through a held breath of fire. What it touches keeps burning.',
+    color: '#e8763c',
+    code: 'Ee',
+    cooldownTicks: 170, // 8.5 s
+    castTicks: 18, // 0.9 s wound, 0.72 s planted
+    shape: 'melee_arc',
+    damage: 8,
+    range: 2.2,
+    arc: 1.2,
+    status: { status: 'burn', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'millwork',
+    name: 'Millwork',
+    desc: 'Set your feet and turn the blade like the wheel. Every beat grinds.',
+    color: '#c8b088',
+    code: 'Mk',
+    cooldownTicks: 200, // 10 s
+    channelTicks: 48, // 2.4 s held, three turns of the wheel
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 4,
+    range: 2.0,
+    arc: 2.4,
+  },
+  {
+    id: 'levinstroke',
+    name: 'Levinstroke',
+    desc: 'Hold the blade high until it crackles, then loose the levin in a line.',
+    color: '#8ab8f0',
+    code: 'Lv',
+    cooldownTicks: 190, // 9.5 s
+    castTicks: 20, // 1 s drawn, 0.8 s planted
+    shape: 'projectile_fan',
+    damage: 11,
+    range: 14,
+    projectiles: 1,
+    projectileSpeed: 22,
+    pierce: true, // the storm does not stop for the first opinion
+    status: { status: 'shock', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'red_ledger',
+    name: 'Red Ledger',
+    desc: 'Hold the point out and open the account. Every beat takes its due in red.',
+    color: '#c03848',
+    code: 'Rl',
+    cooldownTicks: 210, // 10.5 s
+    channelTicks: 48, // 2.4 s held, three entries in the book
+    pulseEveryTicks: 16,
+    shape: 'beam',
+    damage: 4,
+    range: 6,
+    width: 0.5, // the tether's corridor, red_thread's proven slimness
+    drainFrac: 0.35, // what the ledger takes, it pays you
+  },
+  {
+    id: 'cold_iron',
+    name: 'Cold Iron',
+    desc: 'Plant cold iron at your mark. Winter takes it from there.',
+    color: '#9cc8dc',
+    code: 'Ci',
+    cooldownTicks: 220, // 11 s
+    castTicks: 24, // 1.2 s wound, 0.96 s planted
+    shape: 'ground_aoe',
+    damage: 10,
+    range: 8,
+    radius: 2.0,
+    fuseTicks: 14,
+    status: { status: 'chill', power: 1, durationTicks: 80 },
+  },
+  {
+    id: 'frostwork',
+    name: 'Frostwork',
+    desc: 'Stand fast and let the cold work outward. The ground itself takes the pattern.',
+    color: '#bce4f0',
+    code: 'Fw',
+    cooldownTicks: 240, // 12 s
+    channelTicks: 64, // 3.2 s held, four rings of the pattern
+    pulseEveryTicks: 16,
+    shape: 'nova',
+    damage: 3,
+    radius: 2.2,
+    status: { status: 'chill', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'first_light',
+    name: 'First Light',
+    desc: 'Plant your feet and gather the dawn, then arrive like light through a doorway.',
+    color: '#f0dca0',
+    code: 'Fl',
+    cooldownTicks: 200, // 10 s
+    castTicks: 20, // 1 s gathered, 0.8 s planted
+    shape: 'dash_strike',
+    damage: 12,
+    dashTiles: 3.5,
+  },
+  {
+    id: 'live_iron',
+    name: 'Live Iron',
+    desc: 'Hold the blade up and let the storm take it. Every beat leaps for the next throat.',
+    color: '#e8d84a',
+    code: 'Li',
+    cooldownTicks: 240, // 12 s
+    channelTicks: 48, // 2.4 s held, three peals of the circuit
+    pulseEveryTicks: 16,
+    shape: 'chain_zap',
+    damage: 3,
+    range: 8,
+    radius: 3.0,
+    chainTargets: 3,
+    status: { status: 'shock', power: 1, durationTicks: 70 },
+  },
+  {
+    id: 'gloomfall',
+    name: 'Gloomfall',
+    desc: 'Gather the dark along the edge, then pour out night in a ring.',
+    color: '#6a5a88',
+    code: 'Gf',
+    cooldownTicks: 240, // 12 s
+    castTicks: 26, // 1.3 s gathered, 1.04 s planted
+    shape: 'nova',
+    damage: 13,
+    radius: 2.4,
+    status: { status: 'chill', power: 1, durationTicks: 60 }, // the gloom drags at the heels
+  },
+  {
+    id: 'noonfall',
+    name: 'Noonfall',
+    desc: 'Stake a ring and hold noon over it. Shafts of light hammer every beat.',
+    color: '#f8e8b0',
+    code: 'Nn',
+    cooldownTicks: 260, // 13 s
+    channelTicks: 64, // 3.2 s held, four falls of the light
+    pulseEveryTicks: 16,
+    shape: 'ground_aoe',
+    damage: 4,
+    range: 10,
+    radius: 2.2,
+    fuseTicks: 12,
+  },
+
   // ---------------------------------- THE OPEN LADDER — new archery arts
   {
     id: 'longshot',
@@ -3688,6 +3839,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'ember_edge',
+    style: 'onehand',
+    unlockLevel: 8,
+    ranks: [
+      { note: 'The edge bites deeper.', damage: 10 },
+      {
+        note: 'The fire keeps its grip longer.',
+        status: { status: 'burn', power: 1, durationTicks: 80 },
+      },
+      { note: 'The kindling catches quicker, and oftener.', cooldownTicks: 160, castTicks: 16 },
+    ],
+  },
+  {
     ability: 'bull_rush',
     style: 'onehand',
     unlockLevel: 10,
@@ -3698,6 +3862,16 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'millwork',
+    style: 'onehand',
+    unlockLevel: 13,
+    ranks: [
+      { note: 'Every pass grinds harder.', damage: 5 },
+      { note: 'The wheel turns a fourth time.', channelTicks: 64 },
+      { note: 'The stone is ready again sooner.', cooldownTicks: 180 },
+    ],
+  },
+  {
     ability: 'whirlwind',
     style: 'onehand',
     unlockLevel: 15,
@@ -3705,6 +3879,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'Each cut bites deeper.', damage: 5 },
       { note: 'The blade reaches a step farther.', radius: 2.1 },
       { note: 'The storm turns a fourth time.', pulses: 4 },
+    ],
+  },
+  {
+    ability: 'levinstroke',
+    style: 'onehand',
+    unlockLevel: 18,
+    ranks: [
+      { note: 'The stroke lands heavier.', damage: 13 },
+      {
+        note: 'The charge clings longer to what it strikes.',
+        status: { status: 'shock', power: 1, durationTicks: 80 },
+      },
+      { note: 'The levin leaps from a shorter wind.', castTicks: 14, cooldownTicks: 170 },
     ],
   },
   {
@@ -3724,6 +3911,16 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'red_ledger',
+    style: 'onehand',
+    unlockLevel: 23,
+    ranks: [
+      { note: 'The toll rises.', damage: 5 },
+      { note: 'More of the red comes home to you.', drainFrac: 0.5, cooldownTicks: 200 },
+      { note: 'The account stays open a fourth beat.', channelTicks: 64 },
+    ],
+  },
+  {
     ability: 'steel_wave',
     style: 'onehand',
     unlockLevel: 25,
@@ -3731,6 +3928,20 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'The edges bite deeper.', damage: 8 },
       { note: 'The wave rolls out oftener.', cooldownTicks: 160 },
       { note: 'A fourth blade joins the wave.', projectiles: 4, spreadArc: 0.6 },
+    ],
+  },
+  {
+    ability: 'cold_iron',
+    style: 'onehand',
+    unlockLevel: 28,
+    ranks: [
+      { note: 'The frost bites deeper.', damage: 12 },
+      {
+        note: 'Winter spreads wider and holds longer.',
+        radius: 2.3,
+        status: { status: 'chill', power: 1, durationTicks: 100 },
+      },
+      { note: 'The iron goes in quicker, and colder.', damage: 13, cooldownTicks: 190, castTicks: 20 },
     ],
   },
   {
@@ -3753,6 +3964,20 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'frostwork',
+    style: 'onehand',
+    unlockLevel: 33,
+    ranks: [
+      { note: 'Each beat etches deeper.', damage: 4 },
+      {
+        note: 'The pattern reaches farther and grips longer.',
+        radius: 2.5,
+        status: { status: 'chill', power: 1, durationTicks: 80 },
+      },
+      { note: 'The work is ready again sooner.', cooldownTicks: 220 },
+    ],
+  },
+  {
     ability: 'stagger_stomp',
     style: 'onehand',
     unlockLevel: 35,
@@ -3768,6 +3993,16 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'first_light',
+    style: 'onehand',
+    unlockLevel: 38,
+    ranks: [
+      { note: 'You arrive harder.', damage: 14 },
+      { note: 'The doorway opens farther off.', dashTiles: 4.5, cooldownTicks: 190 },
+      { note: 'First light breaks from a shorter gather.', damage: 16, castTicks: 16 },
+    ],
+  },
+  {
     ability: 'headsman_stroke',
     style: 'onehand',
     unlockLevel: 40,
@@ -3778,6 +4013,20 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'live_iron',
+    style: 'onehand',
+    unlockLevel: 43,
+    ranks: [
+      { note: 'The current bites deeper.', damage: 4 },
+      { note: 'A fourth throat joins the circuit.', chainTargets: 4 },
+      {
+        note: 'The charge clings longer, and the iron rests less.',
+        cooldownTicks: 230,
+        status: { status: 'shock', power: 1, durationTicks: 90 },
+      },
+    ],
+  },
+  {
     ability: 'earthbreaker',
     style: 'onehand',
     unlockLevel: 45,
@@ -3785,6 +4034,30 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'You land heavier.', damage: 13 },
       { note: 'The leap carries farther; the verdict spreads wider.', dashTiles: 5.5, radius: 2.5 },
       { note: 'The mountain falls oftener, and harder.', cooldownTicks: 190, knockback: 3.0 },
+    ],
+  },
+  {
+    ability: 'gloomfall',
+    style: 'onehand',
+    unlockLevel: 46,
+    ranks: [
+      { note: 'The dark falls heavier.', damage: 15 },
+      {
+        note: 'Night spreads wider and drags at more heels.',
+        radius: 2.7,
+        status: { status: 'chill', power: 1, durationTicks: 80 },
+      },
+      { note: 'The gloom gathers quicker, and deeper.', damage: 16, castTicks: 22, cooldownTicks: 220 },
+    ],
+  },
+  {
+    ability: 'noonfall',
+    style: 'onehand',
+    unlockLevel: 48,
+    ranks: [
+      { note: 'The light hammers harder.', damage: 5 },
+      { note: 'Noon is sooner recalled.', cooldownTicks: 250 },
+      { note: 'The ring widens, and the sun asks less.', radius: 2.5, cooldownTicks: 240 },
     ],
   },
   {
