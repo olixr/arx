@@ -11,6 +11,9 @@ import {
   type ZoneDef,
 } from '@arx/content';
 import {
+  TILE_DEFS,
+  TILE_SKIP,
+  Tile,
   chestInfo,
   closedChestTile,
   dangerAt,
@@ -211,6 +214,7 @@ export function composeStronghold(
   seat: CapitalSeat,
   layout: StrongholdDef,
   prefab: PrefabDef,
+  epoch = 0,
 ): ZoneDef {
   const { width: w, height: h } = prefab;
   const originX = seat.rect.x;
@@ -219,7 +223,14 @@ export function composeStronghold(
   const detail = prefab.detail.slice();
   const flat = prefab.elev.every((e) => e === 0);
   const law = dangerLaw(seat.tier);
-  const musterBase = hashCoords((seed ^ ST_CAPITAL) >>> 0, seat.x, seat.y);
+  // The muster folds the EPOCH: same walls, never the same siege —
+  // an epoch turn re-deals which optional wards are manned, the knot
+  // counts, and the watch (THE WALLS ARE AUTHORED, THE WAR IS DEALT).
+  const musterBase = hashCoords(
+    hashCoords((seed ^ ST_CAPITAL) >>> 0, seat.x, seat.y),
+    epoch,
+    0x9c1,
+  );
 
   // The cache: re-keyed one law up (a capital pays above its tier's
   // camps — gilded at 3, boss at 4+), warded by the standing garrison
@@ -235,7 +246,46 @@ export function composeStronghold(
     law.npcLevel[0] +
     (hashCoords(musterBase, streamA, streamB) % (law.npcLevel[1] - law.npcLevel[0] + 1)) +
     offset;
+  // A tile a patrol can pace: the composed ground, transparent cells
+  // reading as the meadow they will be.
+  const paceable = (lx: number, ly: number): boolean => {
+    if (lx < 1 || ly < 1 || lx >= w - 1 || ly >= h - 1) return false;
+    const t = ground[ly * w + lx]!;
+    if (t === TILE_SKIP) return true;
+    const def = TILE_DEFS[t as Tile];
+    return def ? !def.solid : false;
+  };
+  // THE PATROL LOOPS: a 'wall' ward walks a ring around its own yard
+  // (the gate watch making rounds); a 'lane' ward paces between its
+  // yard and the hearth plaza — the moving pull that crosses the knot
+  // gaps on a clock (the shipped waypoint machinery does the rest).
+  const patrolLoop = (ward: StrongholdDef['wards'][number]): Array<{ x: number; y: number }> => {
+    const wcx = ward.rect.x + ward.rect.w / 2;
+    const wcy = ward.rect.y + ward.rect.h / 2;
+    const pts: Array<{ x: number; y: number }> = [];
+    if (ward.patrol === 'wall') {
+      const r = Math.max(6, Math.min(ward.rect.w, ward.rect.h) / 2 + 3);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const lx = Math.round(wcx + Math.cos(a) * r);
+        const ly = Math.round(wcy + Math.sin(a) * r * 0.8);
+        if (paceable(lx, ly)) pts.push({ x: originX + lx, y: originY + ly });
+      }
+    } else {
+      for (const t of [0.2, 0.4, 0.6, 0.8]) {
+        const lx = Math.round(wcx + (w / 2 - wcx) * t);
+        const ly = Math.round(wcy + (h / 2 - wcy) * t);
+        if (paceable(lx, ly)) pts.push({ x: originX + lx, y: originY + ly });
+      }
+    }
+    return pts.length >= 3 ? pts : []; // degrade to the post (the POI law)
+  };
+  const bossWardIdx = layout.wards.findIndex((wd) => wd.key === layout.boss.ward);
   layout.wards.forEach((ward, wi) => {
+    // THE WAR IS DEALT: an optional ward rolls manned or empty per
+    // epoch — same walls, different watch. The last stand never rolls.
+    if (ward.optional && hashCoords(musterBase, wi, 0xd1) % 100 >= 65) return;
+    const loop = ward.patrol ? patrolLoop(ward) : [];
     ward.knots.forEach((knot, ki) => {
       if (knot.minTier !== undefined && seat.tier < knot.minTier) return;
       const span = knot.band[1] - knot.band[0] + 1;
@@ -247,6 +297,8 @@ export function composeStronghold(
         count,
         radius: 2.5,
         level: rollLevel(wi * 31 + ki, 0xa1, knot.levelOffset ?? 0),
+        wing: wi,
+        ...(knot.role === 'sentry' && loop.length > 0 ? { patrol: loop } : {}),
         ...(knot.hours ? { hours: knot.hours } : {}),
       });
     });
@@ -261,6 +313,7 @@ export function composeStronghold(
     radius: 1.5,
     level: law.npcLevel[1] + (layout.boss.levelOffset ?? 0),
     name: bossName,
+    ...(bossWardIdx >= 0 ? { wing: bossWardIdx } : {}),
   });
 
   return {

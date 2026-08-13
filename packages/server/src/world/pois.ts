@@ -882,6 +882,38 @@ export function composePoi(
   // hash-picked once, stable forever (the hill has always been
   // Korga's), winning over any static name.
   const holdR = Math.max(2, Math.min(prefab.width, prefab.height) / 2 - 1);
+  // THE DOCTRINE REACHES DOWN (strongholds Phase 4): a big muster at
+  // one anchor is one pull — the whole camp answers together. Where
+  // the ground affords it, the SECOND and later unnamed holdfast
+  // entries re-anchor a spaced knot ~10 tiles out (past rally reach),
+  // so a careful player takes the camp in pulls. Named champions
+  // always keep the heart; small footprints keep the old cluster.
+  const knotSplitAt = (ax: number, ay: number, salt: number): { x: number; y: number } | null => {
+    const start = hashCoords(musterBase, salt, 0xd0c) % 4;
+    for (let d = 0; d < 4; d++) {
+      const dir = [
+        [10, 0],
+        [0, 10],
+        [-10, 0],
+        [0, -10],
+      ][(start + d) % 4]!;
+      const bx = ax + dir[0]!;
+      const by = ay + dir[1]!;
+      const zx = bx - originX;
+      const zy = by - originY;
+      if (zx < 2 || zy < 2 || zx >= zw - 2 || zy >= zh - 2) continue;
+      const t = ground[zy * zw + zx]!;
+      if (t === TILE_SKIP) {
+        const cls = groundProbeAt(seed, bx, by);
+        if (cls !== 'grass' && cls !== 'forest') continue;
+      } else if (TILE_DEFS[t as Tile]?.solid !== false) {
+        continue;
+      }
+      return { x: bx, y: by };
+    }
+    return null;
+  };
+  const holdSplit = knotSplitAt(site.anchorX, site.anchorY, 0x1);
   const sentryWants: Array<{
     npc: string;
     level: number;
@@ -909,11 +941,12 @@ export function composePoi(
       ? g.names[hashCoords(musterBase, gi, 41) % g.names.length]
       : g.name;
     if (g.role === 'holdfast') {
+      const knotB = gi % 2 === 1 && !g.names ? holdSplit : null;
       spawns.push({
         npc: g.npc,
-        x: site.anchorX + 0.5,
-        y: site.anchorY + 0.5,
-        radius: holdR,
+        x: (knotB ? knotB.x : site.anchorX) + 0.5,
+        y: (knotB ? knotB.y : site.anchorY) + 0.5,
+        radius: knotB ? 2.5 : holdR,
         count,
         level: levelRoll(n++) + (g.levelOffset ?? 0),
         name: gname,
@@ -1127,6 +1160,7 @@ export function composePoi(
       });
     }
     const wingHoldR = Math.max(2, Math.min(w.prefab.width, w.prefab.height) / 2 - 1);
+    const wingSplit = knotSplitAt(w.cx, w.cy, 0x51b + w.wing);
     for (const [gi, g] of (def.compound?.wingGarrison ?? []).entries()) {
       if (g.minTier !== undefined && site.tier < g.minTier) continue;
       const count =
@@ -1136,11 +1170,12 @@ export function composePoi(
       const gname = g.names
         ? g.names[hashCoords(musterBase, 0x519 + w.wing, gi) % g.names.length]
         : g.name;
+      const knotB = gi % 2 === 1 && !g.names ? wingSplit : null;
       spawns.push({
         npc: g.npc,
-        x: w.cx + 0.5,
-        y: w.cy + 0.5,
-        radius: wingHoldR,
+        x: (knotB ? knotB.x : w.cx) + 0.5,
+        y: (knotB ? knotB.y : w.cy) + 0.5,
+        radius: knotB ? 2.5 : wingHoldR,
         count,
         level: levelRoll(n++) + (g.levelOffset ?? 0),
         name: gname,

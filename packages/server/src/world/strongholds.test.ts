@@ -173,29 +173,134 @@ test('composeStronghold deals a lawful zone: muster in bands, the chief crowned,
     (n, w) => n + w.knots.reduce((m, k) => m + k.band[1], 0),
     1,
   );
-  const minBodies = layout.wards.reduce(
-    (n, w) =>
-      n +
-      w.knots.reduce(
-        (m, k) => m + (k.minTier !== undefined && seat.tier < k.minTier ? 0 : k.band[0]),
-        0,
-      ),
-    1,
-  );
-  assert.ok(
-    bodies >= minBodies && bodies <= maxBodies,
-    `muster ${bodies} outside ${minBodies}..${maxBodies}`,
-  );
-  // Every knot spawn sits at its authored anchor, world-shifted.
-  for (const ward of layout.wards) {
+  assert.ok(bodies >= 1 && bodies <= maxBodies, `muster ${bodies} outside 1..${maxBodies}`);
+  // THE CHAPTERS: every spawn wears its ward tag; manned wards keep
+  // every eligible knot at its authored anchor; optional wards that
+  // rolled empty this epoch contribute nothing at all.
+  for (const [wi, ward] of layout.wards.entries()) {
+    const wardSpawns = spawns.filter((sp) => sp.wing === wi);
+    if (ward.optional && wardSpawns.length === 0) continue; // rolled empty
     for (const knot of ward.knots) {
       if (knot.minTier !== undefined && seat.tier < knot.minTier) continue;
       assert.ok(
-        spawns.some(
+        wardSpawns.some(
           (sp) => sp.x === seat.rect.x + knot.at[0] && sp.y === seat.rect.y + knot.at[1],
         ),
         `${ward.key} knot at ${knot.at[0]},${knot.at[1]} lost its post`,
       );
     }
   }
+  assert.ok(
+    spawns.every((sp) => sp.wing !== undefined),
+    'every muster body belongs to a chapter',
+  );
+  // The last stand never rolls empty and holds the chief.
+  const bossWi = layout.wards.findIndex((w) => w.key === layout.boss.ward);
+  assert.ok(spawns.some((sp) => sp.wing === bossWi && sp.name !== undefined));
+  // Patrol wards lay waypoint loops for their sentries.
+  for (const [wi, ward] of layout.wards.entries()) {
+    if (!ward.patrol) continue;
+    const walkers = spawns.filter((sp) => sp.wing === wi && sp.patrol !== undefined);
+    for (const sp of walkers) {
+      assert.ok((sp.patrol?.length ?? 0) >= 3, `${ward.key}: a patrol needs a round`);
+    }
+  }
+  // The epoch re-deals the war, never the walls.
+  const nextEpoch = composeStronghold(SEED, seat, layout, prefab, 1);
+  assert.deepEqual(nextEpoch.ground, zone.ground, 'the walls are authored');
+  assert.notDeepEqual(nextEpoch.spawns, zone.spawns, 'the war is dealt');
+});
+
+// ---- THE CHAPTERS, slate-proven (the poiWard dialect) ----------------
+
+import { GameServer } from '../game/gameServer.js';
+
+const chapterProto = GameServer.prototype as unknown as {
+  noteStrongholdKill: (this: unknown, spawnIndex: number, killerEid?: number) => void;
+  strongholdGarrisonStands: (this: unknown, key: string, ward?: number) => boolean;
+  strongholdBossWard: (this: unknown, key: string) => number | undefined;
+  poiSpawnFights: (s: unknown) => boolean;
+};
+
+function chapterSlate() {
+  const layoutId = 'stronghold_gnoll_cacklefort';
+  const layout = STRONGHOLD_DEFS.get(layoutId)!;
+  const bossWi = layout.wards.findIndex((w) => w.key === layout.boss.ward);
+  const wardA = layout.wards.findIndex((w, i) => i !== bossWi);
+  const key = '9,9';
+  const lines: string[] = [];
+  const wardMarks: number[] = [];
+  const clearedMarks: Array<[number, number]> = [];
+  const arts: string[] = [];
+  const killerPlayer = {
+    session: { sendJson: (m: { text?: string }) => lines.push(m.text ?? '') },
+  };
+  const spawnPoints = [
+    { npc: 'gnoll', eid: 1, active: true, wing: wardA, x: 0, y: 0 },
+    { npc: 'gnoll', eid: 2, active: true, wing: wardA, x: 5, y: 0 },
+    { npc: 'gnoll', eid: 3, active: true, wing: bossWi, x: 0, y: 5 },
+    { npc: 'gnoll_champion', eid: 4, active: true, wing: bossWi, x: 1, y: 5 },
+  ];
+  const slate = {
+    spawnPoints,
+    strongholdSpawnCells: new Map([[0, key], [1, key], [2, key], [3, key]]),
+    strongholdLive: new Map([
+      [key, {
+        zoneId: `stronghold:${key}`,
+        seat: { gx: 9, gy: 9, x: 0, y: 0, rect: { x: 0, y: 0, w: 1, h: 1 }, family: 'gnoll', tier: 4, layoutId },
+        layoutId,
+        spawnIdx: [0, 1, 2, 3],
+        fighters: new Set([77]),
+      }],
+    ]),
+    strongholdLedger: new Map([
+      [key, { layoutId, anchorX: 0, anchorY: 0, epoch: 0, wardsCleared: 0, clearedAt: null as number | null }],
+    ]),
+    players: new Map([[500, killerPlayer]]),
+    characterEids: new Map([[77, 500]]),
+    accounts: {
+      markStrongholdWards: (_gx: number, _gy: number, bits: number) => wardMarks.push(bits),
+      markStrongholdCleared: (_gx: number, _gy: number, bits: number, ts: number) =>
+        clearedMarks.push([bits, ts]),
+    },
+    grantArt: (_p: unknown, id: string) => arts.push(id),
+    poiSpawnFights: chapterProto.poiSpawnFights,
+  };
+  return { slate, key, layout, bossWi, wardA, lines, wardMarks, clearedMarks, arts, spawnPoints };
+}
+
+test('a ward\'s last fighter falls: one line, one ledger bit, once', () => {
+  const f = chapterSlate();
+  // First ward body falls; its brother still stands — silence.
+  f.spawnPoints[0]!.eid = null as unknown as number;
+  chapterProto.noteStrongholdKill.call(f.slate, 0, 500);
+  assert.equal(f.lines.length, 0, 'a thinning ward is not yet a chapter');
+  // The brother falls: the chapter closes.
+  f.spawnPoints[1]!.eid = null as unknown as number;
+  chapterProto.noteStrongholdKill.call(f.slate, 1, 500);
+  assert.equal(f.lines.length, 1);
+  assert.match(f.lines[0]!, /^Quiet falls over the .*\. The hold thins\.$/);
+  assert.deepEqual(f.wardMarks, [1 << f.wardA]);
+  assert.equal(f.slate.strongholdLedger.get(f.key)!.wardsCleared, 1 << f.wardA);
+  // Once per ward: a re-kill ceremonies nothing.
+  chapterProto.noteStrongholdKill.call(f.slate, 1, 500);
+  assert.equal(f.lines.length, 1);
+  // The cache stays warded — the LAST STAND still holds it.
+  assert.equal(chapterProto.strongholdBossWard.call(f.slate, f.key), f.bossWi);
+  assert.equal(chapterProto.strongholdGarrisonStands.call(f.slate, f.key, f.bossWi), true);
+});
+
+test('the last stand falls: the clear ceremony, the stamp, the open cache', () => {
+  const f = chapterSlate();
+  for (const sp of f.spawnPoints) sp.eid = null as unknown as number;
+  chapterProto.noteStrongholdKill.call(f.slate, 3, 500);
+  assert.equal(f.lines.length, 1);
+  assert.match(f.lines[0]!, /is broken — word of it will travel\.$/);
+  assert.ok(f.lines[0]!.includes(f.layout.name));
+  assert.deepEqual(f.arts, ['warden_volley']);
+  const row = f.slate.strongholdLedger.get(f.key)!;
+  assert.ok(row.clearedAt !== null, 'the clear stamps the ledger');
+  assert.equal(f.clearedMarks.length, 1);
+  // The ward breaks with the court: the cache opens.
+  assert.equal(chapterProto.strongholdGarrisonStands.call(f.slate, f.key, f.bossWi), false);
 });

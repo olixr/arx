@@ -1509,6 +1509,20 @@ export function createMapsApi(
           });
           return true;
         }
+        // Composed capitals open read-only the same way — the Foundry
+        // owns their ground; the studio may look.
+        if (id.startsWith('stronghold:')) {
+          if (req.method === 'GET') {
+            const zone = game.world.zoneById(id) ?? null;
+            if (zone) sendJson(res, 200, zoneToJson(zone));
+            else sendJson(res, 404, { error: `no capital stands as '${id}'` });
+            return true;
+          }
+          sendJson(res, 400, {
+            error: `'${id}' is a composed capital — curate its layout in the Foundry bench`,
+          });
+          return true;
+        }
         if (!ID_RE.test(id)) {
           sendJson(res, 400, { error: `zone id must match ${ID_RE}` });
           return true;

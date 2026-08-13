@@ -2189,12 +2189,30 @@ export class GameServer {
   /** Standing capitals, lattice key → live record. */
   private readonly strongholdLive = new Map<
     string,
-    { zoneId: string; seat: CapitalSeat; layoutId: string; spawnIdx: number[] }
+    {
+      zoneId: string;
+      seat: CapitalSeat;
+      layoutId: string;
+      spawnIdx: number[];
+      /** The participation ledger (the poiLive dialect). */
+      fighters?: Set<number>;
+      /** Chapters already ceremonied this uptime. */
+      wardsBroken?: Set<number>;
+    }
   >();
+  /** spawnIndex → capital lattice key (the poiSpawnCells dialect). */
+  private readonly strongholdSpawnCells = new Map<number, string>();
   /** The world_strongholds ledger, loaded at boot (deviations only). */
   private readonly strongholdLedger = new Map<
     string,
-    { layoutId: string; anchorX: number; anchorY: number; epoch: number }
+    {
+      layoutId: string;
+      anchorX: number;
+      anchorY: number;
+      epoch: number;
+      wardsCleared: number;
+      clearedAt: number | null;
+    }
   >();
 
   private readonly poiLedger = new Map<
@@ -3950,7 +3968,10 @@ export class GameServer {
     const over = this.poiChests.get(`${tx},${ty}`);
     const wardStands = over?.warded
       ? over.cell.startsWith('sh:')
-        ? this.strongholdGarrisonStands(over.cell.slice(3))
+        ? this.strongholdGarrisonStands(
+            over.cell.slice(3),
+            this.strongholdBossWard(over.cell.slice(3)),
+          )
         : this.poiGarrisonStands(over.cell)
       : false;
     if (wardStands) {
@@ -8185,15 +8206,109 @@ export class GameServer {
     return capitalMasked(x0, y0, POI_CELL + pad * 2, POI_CELL + pad * 2, this.capitalRects());
   }
 
-  /** Does any fighting body of this capital still stand? */
-  private strongholdGarrisonStands(key: string): boolean {
+  /**
+   * Does any fighting body of this capital still stand? With a ward
+   * index, only that chapter's bodies answer — the cache ward reads
+   * the LAST STAND alone (Phase 4: the chief's court is the lock;
+   * the outlying wards are chapters, not tumblers).
+   */
+  private strongholdGarrisonStands(key: string, ward?: number): boolean {
     const live = this.strongholdLive.get(key);
     if (!live) return false;
     for (const i of live.spawnIdx) {
       const sp = this.spawnPoints[i];
-      if (sp?.active && sp.eid !== null && this.poiSpawnFights(sp)) return true;
+      if (!sp?.active || sp.eid === null || !this.poiSpawnFights(sp)) continue;
+      if (ward !== undefined && sp.wing !== ward) continue;
+      return true;
     }
     return false;
+  }
+
+  /** The last-stand ward index of a standing capital's layout. */
+  private strongholdBossWard(key: string): number | undefined {
+    const live = this.strongholdLive.get(key);
+    const layout = live ? STRONGHOLD_DEFS.get(live.layoutId) : undefined;
+    if (!layout) return undefined;
+    const wi = layout.wards.findIndex((w) => w.key === layout.boss.ward);
+    return wi >= 0 ? wi : undefined;
+  }
+
+  /**
+   * THE CHAPTERS (strongholds Phase 4, the noteHoldWing dialect at
+   * citadel scale): a ward's last fighter falls while another chapter
+   * stands — one line, once, and the ledger bit stamps so the broken
+   * ward STAYS broken across restarts. The whole muster falls — the
+   * clear ceremony: the named line, the warden's deed, the cleared
+   * stamp. The purse stays the bounty pipeline's (a capital pays when
+   * MARKED — Phase 5 posts those marks; no unmarked faucet opens).
+   */
+  private noteStrongholdKill(spawnIndex: number, killerEid?: EntityId): void {
+    const key = this.strongholdSpawnCells.get(spawnIndex);
+    if (key === undefined) return;
+    const live = this.strongholdLive.get(key);
+    if (!live) return;
+    const layout = STRONGHOLD_DEFS.get(live.layoutId);
+    if (!layout) return;
+    const dying = this.spawnPoints[spawnIndex];
+    const ward = dying?.wing;
+    if (ward === undefined) return;
+    let wardStands = false;
+    let otherStands = false;
+    for (const i of live.spawnIdx) {
+      const sp = this.spawnPoints[i];
+      if (!sp?.active || sp.eid === null || !this.poiSpawnFights(sp)) continue;
+      if (sp.wing === ward) wardStands = true;
+      else otherStands = true;
+    }
+    if (wardStands) return;
+    const heard = new Set<PlayerComp>();
+    const killer = killerEid !== undefined ? this.players.get(killerEid) : undefined;
+    if (killer) heard.add(killer);
+    for (const characterId of live.fighters ?? []) {
+      const feid = this.characterEids.get(characterId);
+      const p = feid !== undefined ? this.players.get(feid) : undefined;
+      if (p) heard.add(p);
+    }
+    const row = this.strongholdLedger.get(key);
+    if (otherStands) {
+      // A chapter closes; the siege goes on.
+      const broken = (live.wardsBroken ??= new Set<number>());
+      if (broken.has(ward)) return;
+      broken.add(ward);
+      if (row) {
+        row.wardsCleared |= 1 << ward;
+        this.accounts.markStrongholdWards(live.seat.gx, live.seat.gy, row.wardsCleared);
+      }
+      const name = layout.wards[ward]?.name ?? 'the yard';
+      for (const p of heard) {
+        p.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Quiet falls over ${name}. The hold thins.`,
+        });
+      }
+      return;
+    }
+    // The last stand falls — the capital is broken.
+    if (row) {
+      row.wardsCleared |= 1 << ward;
+      row.clearedAt = Date.now();
+      this.accounts.markStrongholdCleared(
+        live.seat.gx,
+        live.seat.gy,
+        row.wardsCleared,
+        row.clearedAt,
+      );
+    }
+    live.fighters = undefined;
+    for (const p of heard) {
+      p.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `The last of them falls. ${layout.name} is broken — word of it will travel.`,
+      });
+      this.grantArt(p, 'warden_volley');
+    }
   }
 
   /**
@@ -8262,10 +8377,26 @@ export class GameServer {
         console.log(`[stronghold] ${key}: cell ${cellKey} yields its ground to the capital`);
       }
     }
-    const zone = composeStronghold(config.worldSeed, seat, layout, prefab);
+    const row = this.strongholdLedger.get(key);
+    const zone = composeStronghold(config.worldSeed, seat, layout, prefab, row?.epoch ?? 0);
     this.world.addZone(zone);
     this.dropClientChunks(zone);
     const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
+    for (const i of spawnIdx) this.strongholdSpawnCells.set(i, key);
+    // THE CHAPTERS, restart-safe: broken wards re-stand broken; a
+    // cleared capital re-stands whole as a carcass (the ember-law
+    // dialect — Phase 5's clock owns dissolving it).
+    if (row) {
+      if (row.clearedAt !== null) {
+        this.standDownGarrison(spawnIdx);
+      } else if (row.wardsCleared !== 0) {
+        const downed = spawnIdx.filter((i) => {
+          const sp = this.spawnPoints[i];
+          return sp?.wing !== undefined && (row.wardsCleared & (1 << sp.wing)) !== 0;
+        });
+        if (downed.length > 0) this.standDownGarrison(downed);
+      }
+    }
     // The cache: warded while any fighter stands (the capital dialect
     // of the chest-ward law — Phase 4 narrows it to the last stand).
     for (let i = 0; i < zone.ground.length; i++) {
@@ -8282,6 +8413,8 @@ export class GameServer {
         anchorX: seat.x,
         anchorY: seat.y,
         epoch: 0,
+        wardsCleared: 0,
+        clearedAt: null,
       });
       this.accounts.recordStronghold(seat.gx, seat.gy, seat.layoutId, seat.x, seat.y, 0);
     }
@@ -8295,6 +8428,7 @@ export class GameServer {
     const live = this.strongholdLive.get(key);
     if (!live) return;
     this.unloadZone(live.zoneId);
+    for (const i of live.spawnIdx) this.strongholdSpawnCells.delete(i);
     for (const [tileKey, over] of this.poiChests) {
       if (over.cell === `sh:${key}`) this.poiChests.delete(tileKey);
     }
@@ -8359,6 +8493,8 @@ export class GameServer {
         anchorX: number;
         anchorY: number;
         epoch: number;
+        wardsCleared: number;
+        clearedAt: number | null;
       }>;
     } = {},
   ): void {
@@ -8377,6 +8513,8 @@ export class GameServer {
         anchorX: h.anchorX,
         anchorY: h.anchorY,
         epoch: h.epoch,
+        wardsCleared: h.wardsCleared,
+        clearedAt: h.clearedAt,
       });
     }
     let sites = 0;
@@ -12055,6 +12193,7 @@ export class GameServer {
           : baseSec;
       spawn.respawnAt = Date.now() + sec * 1000;
       this.noteHoldWing(npc.spawnIndex, tamerEid);
+      this.noteStrongholdKill(npc.spawnIndex, tamerEid);
       this.notePoiKill(npc.spawnIndex, tamerEid);
       this.noteMinorKill(npc.spawnIndex);
     }
@@ -18503,6 +18642,11 @@ export class GameServer {
           const live = this.poiLive.get(cellKey);
           if (live) (live.fighters ??= new Set()).add(attacker.characterId);
         }
+        const shKey = this.strongholdSpawnCells.get(npc.spawnIndex);
+        if (shKey !== undefined) {
+          const shLive = this.strongholdLive.get(shKey);
+          if (shLive) (shLive.fighters ??= new Set()).add(attacker.characterId);
+        }
       }
       let credited = 0;
       if (opts.viaPet) {
@@ -18745,6 +18889,7 @@ export class GameServer {
         spawn.respawnAt = Date.now() + sec * 1000;
       }
       this.noteHoldWing(npc.spawnIndex, killerEid);
+      this.noteStrongholdKill(npc.spawnIndex, killerEid);
       this.notePoiKill(npc.spawnIndex, killerEid);
       this.noteMinorKill(npc.spawnIndex);
       // THE UNWRITTEN PAGE: felling a delve's named boss (the only
@@ -23130,11 +23275,17 @@ export class GameServer {
           const seat = this.cachedSeat(gx + dx, gy + dy);
           if (!seat) continue;
           const key = capitalKey(seat.gx, seat.gy);
+          const row = this.strongholdLedger.get(key);
+          const bits = row?.wardsCleared ?? 0;
+          let brokenWards = 0;
+          for (let b = bits; b > 0; b >>= 1) brokenWards += b & 1;
           const state = this.strongholdLive.has(key)
             ? this.strongholdGarrisonStands(key)
-              ? 'standing'
+              ? brokenWards > 0
+                ? `standing, ${brokenWards} ward(s) broken`
+                : 'standing'
               : 'broken'
-            : this.strongholdLedger.has(key)
+            : row
               ? 'known, beyond the fog'
               : 'unfound';
           const d = Math.round(Math.hypot(seat.x - px, seat.y - py));

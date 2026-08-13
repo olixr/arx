@@ -917,12 +917,34 @@ export class AccountStore {
       anchorX: number;
       anchorY: number;
       epoch: number;
+      wardsCleared: number;
+      clearedAt: number | null;
     }>
   > {
     return this.db.query(
       'SELECT lattice_x AS "latticeX", lattice_y AS "latticeY", layout_id AS "layoutId", ' +
-        'anchor_x AS "anchorX", anchor_y AS "anchorY", epoch FROM world_strongholds',
+        'anchor_x AS "anchorX", anchor_y AS "anchorY", epoch, ' +
+        'wards_cleared AS "wardsCleared", cleared_at AS "clearedAt" FROM world_strongholds',
     ) as ReturnType<AccountStore['loadStrongholds']>;
+  }
+
+  markStrongholdWards(latticeX: number, latticeY: number, wardsCleared: number): void {
+    this.db.fire(
+      'UPDATE world_strongholds SET wards_cleared = ? WHERE lattice_x = ? AND lattice_y = ?',
+      [wardsCleared, latticeX, latticeY],
+    );
+  }
+
+  markStrongholdCleared(
+    latticeX: number,
+    latticeY: number,
+    wardsCleared: number,
+    clearedAt: number,
+  ): void {
+    this.db.fire(
+      'UPDATE world_strongholds SET wards_cleared = ?, cleared_at = ? WHERE lattice_x = ? AND lattice_y = ?',
+      [wardsCleared, clearedAt, latticeX, latticeY],
+    );
   }
 
   recordStronghold(
