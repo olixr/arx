@@ -81,7 +81,7 @@ export interface BodyStyle {
     // kingfisher folded wing, `guardhair` the wolfstalker winter
     // pelt, `drakewing` the drakescale ribbed wing-fin, `oakspaul`
     // the stagheart oak-leaf lappets.
-    | 'halcyon' | 'guardhair' | 'drakewing' | 'oakspaul';
+    | 'finblade' | 'guardhair' | 'drakewing' | 'oakspaul';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
@@ -468,10 +468,17 @@ export interface BodyStyle {
    *  kicking with the stride — speed made visible at a standstill's
    *  first step. */
   streamers?: { color: string };
-  /** Kingfisher: the dive bib — the flame breast worn as one bold
-   *  pointed wedge from throat to sternum, edged pale like the bird's
-   *  own collar. Front-plane. */
-  divebib?: { color: string; edge: string };
+  /** Kingfisher: THE SCALECOAT — fish-leather worn whole: dense
+   *  crescent-scale rows banding the torso, nacre edges, a dorsal
+   *  fin ridge on the back read — and THE SHEENWAVE, an iridescent
+   *  light band that travels the rows on a slow clock: light through
+   *  water, the secret-boss shimmer. */
+  scalecoat?: { color: string; edge: string; sheen: string };
+  /** Kingfisher: THE HOOKLINE — a slack fishing line slung across
+   *  the chest, three barbed hooks riding it and one feathered lure
+   *  at the low point. The lure winks WARM on the rare-glint law:
+   *  bait, not jewelry. */
+  hookline?: { line: string; hook: string; lure: string };
   /** Cutpurse: the guild tether — a cord slung shoulder-to-hip strung
    *  with lifted coins; one glint WALKS the strand, coin to coin. The
    *  trophies are the heraldry. */
@@ -552,14 +559,19 @@ export interface HelmStyle {
     | 'stardiadem'
     // THE HUNTER'S HEADS — the leather lane's own, one owner each:
     // `courierhood` the hareswift wind-flattened runner's hood,
-    // `halcyonhood` the kingfisher crested diver, `thiefhood` the
+    // kingfisher's FOUR FISHERS (the FOUR VIGILS precedent on
+    // leather — each dye lot wears its OWN head): `finhelm` the
+    // sailfin casque, `anglerhood` the deep hood under its glowing
+    // rod-and-lure, `stormbeak` the storm hat over the pale beak
+    // mask, `dartcrest` the bare-crest strike cap; `thiefhood` the
     // cutpurse slouched cap-and-kerchief, `trapperhood` the trapline
     // deep winter fur tunnel, `foxmantle` the emberfox pelt worn
     // whole, `roadhood` the wayfarer patched traveler, `wolfmantle`
     // the wolfstalker headdress with its cascading mane, `shadowcowl`
     // the nightveil assassin's blade-point dark, `stagcrown` the
     // stagheart antlered forest crown.
-    | 'courierhood' | 'halcyonhood' | 'thiefhood' | 'trapperhood'
+    | 'courierhood' | 'finhelm' | 'anglerhood' | 'stormbeak'
+    | 'dartcrest' | 'thiefhood' | 'trapperhood'
     | 'foxmantle' | 'roadhood' | 'wolfmantle' | 'shadowcowl'
     | 'stagcrown'
     // THE FOUR VIGILS OF THE DAWN — dawnsworn's skies each wear
@@ -733,9 +745,18 @@ export interface HelmStyle {
   /** Courierhood: the waybill — a parchment ribbon pinned at the
    *  temple by a wax seal, streaming off the trailing edge. */
   waybill?: { color: string; seal: string };
-  /** Halcyonhood: the diver's crest — lapped feather planes running
-   *  the keel line, plus ONE flame primary slanted at the temple. */
+  /** Finhelm/dartcrest: the fin crest — raked spine blades with
+   *  membrane between; `flash` is the bright spine edge (finhelm)
+   *  or the counter-color crest (dartcrest). */
   divecrest?: { color: string; flash: string };
+  /** Anglerhood: the rod-and-lure — a thin spine curving off the
+   *  crown, dangling a warm lure bead before the brow. It breathes
+   *  on a slow clock; the face below stays void. THE LURE IS
+   *  ALWAYS WARM — bait must contrast the water. */
+  lure?: { color: string };
+  /** Stormbeak: the pale seabird half-mask — one long tapered beak
+   *  below the eye shadow. The storm-fisher answers nothing. */
+  beakmask?: { color: string };
   /** Thiefhood: the guild's one vanity — a brass coin pinned at the
    *  brow, glinting rarely. */
   coinpin?: { color: string };
@@ -785,6 +806,9 @@ export interface LegStyle {
   /** Kingfisher: waxed waders — a hard waterline break high on the
    *  shin with one lit rim where the wax catches. */
   wader?: { color: string; rim: string };
+  /** Kingfisher: a small swept fin blade off each outer calf —
+   *  sharp, back-raked, bright-edged. */
+  calffin?: { color: string; edge: string };
   /** Cutpurse: the tool roll strapped flat to the lead thigh, pick
    *  ends ticking out of it. */
   pickroll?: { color: string; glint?: string };
@@ -1115,14 +1139,19 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     satchel: { color: '#8a6f48', strap: '#6e5638' },
     streamers: { color: '#b84a32' },
   },
-  // The diver: teal back, the flame bib pointed at the water, folded
-  // halcyon wings at the shoulder. Dive dressed.
+  // THE RIVERKING'S FISHER: fish-leather worn whole — deep-water
+  // scalecoat under a sailfin shoulder, hookline tackle across the
+  // chest, the lure the one warm thing in all that cold. The
+  // secret-boss set of the leather lane; it should read like nobody
+  // was ever supposed to own it.
   kingfisher_jerkin: {
-    color: '#2f7a8a', trim: '#d87f3c', metal: '#1f5866', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'halcyon', pauldronColor: '#2a6d7c',
-    pauldronTrim: '#57a8b8', pauldronScale: 1.08, chest: 'none',
-    skirt: 0, pouch: true, divebib: { color: '#e88a3c', edge: '#e8e0cc' },
-    belt: { color: '#1f5866', buckle: '#d87f3c' },
+    color: '#1e404c', trim: '#cfe4e2', metal: '#26343c', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'finblade', pauldronColor: '#1a3842',
+    pauldronTrim: '#d8ecec', pauldronScale: 1.16, chest: 'none',
+    skirt: 0,
+    scalecoat: { color: '#24505e', edge: '#3e7484', sheen: '#cfe4e2' },
+    hookline: { line: '#8a9a9e', hook: '#d8ecec', lure: '#ffb054' },
+    belt: { color: '#26343c', buckle: '#cfe4e2' },
   },
   // The guild: umber under laced umber, and the ledger worn openly —
   // a tether of lifted coins with one traveling glint.
@@ -1615,8 +1644,8 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     waybill: { color: '#e8dcc0', seal: '#b84a32' },
   },
   kingfisher_hood: {
-    color: '#2f7a8a', trim: '#d87f3c', kind: 'halcyonhood',
-    divecrest: { color: '#57a8b8', flash: '#e88a3c' },
+    color: '#1e404c', trim: '#cfe4e2', kind: 'finhelm',
+    divecrest: { color: '#14303a', flash: '#d8ecec' },
   },
   cutpurse_cowl: {
     color: '#4e4438', trim: '#c9a23c', kind: 'thiefhood', mask: '#26221c',
@@ -1879,8 +1908,9 @@ export const LEG_STYLES: Record<string, LegStyle> = {
     kneeColor: '#8a6f48', hock: { color: '#ece4d0' },
   },
   kingfisher_chaps: {
-    kind: 'wraps', thigh: '#2f7a8a', shin: '#256575', knee: 'none',
-    wader: { color: '#1c4a56', rim: '#57a8b8' },
+    kind: 'wraps', thigh: '#1e404c', shin: '#183642', knee: 'none',
+    wader: { color: '#122a34', rim: '#cfe4e2' },
+    calffin: { color: '#14303a', edge: '#d8ecec' },
   },
   cutpurse_leggings: {
     kind: 'wraps', thigh: '#4e4438', shin: '#3e362c', knee: 'wrap',
@@ -1966,7 +1996,7 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   cindersworn_slippers: { color: '#332826', height: 0.08, cuff: { color: '#e05438' } },
   starweaver_slippers: { color: '#232850', height: 0.08, curl: true, cuff: { color: '#c8cee8' } },
   hareswift_boots: { color: '#a88f60', height: 0.1, fur: { color: '#e8e2d4' } },
-  kingfisher_boots: { color: '#1c4a56', height: 0.14, cuff: { color: '#57a8b8' } },
+  kingfisher_boots: { color: '#122a34', height: 0.15, toe: '#cfe4e2', cuff: { color: '#1e4450' } },
   cutpurse_boots: { color: '#3a332c', height: 0.09, cuff: { color: '#6e6050' } },
   trapline_boots: { color: '#6e5a3c', height: 0.13, wrap: { color: '#d8cfae' } },
   emberfox_boots: { color: '#2e2724', height: 0.11, fur: { color: '#c9713c' } },
@@ -2155,8 +2185,9 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     cuff: { color: '#e8e2d4', kind: 'fur' },
   },
   kingfisher_gloves: {
-    color: '#2f7a8a', hand: 'glove', bracer: '#2a6f7e',
-    cuff: { color: '#d87f3c', kind: 'band' },
+    color: '#1e404c', hand: 'glove', bracer: '#183642',
+    cuff: { color: '#cfe4e2', kind: 'band' },
+    knuckle: { color: '#d8ecec', kind: 'spikes' },
   },
   cutpurse_gloves: {
     color: '#4e4438', hand: 'glove', bracer: '#453c31',
@@ -2666,42 +2697,70 @@ registerColorways(BOOT_STYLES, 'hareswift_boots', {
   sorrel: { color: '#8a5638', fur: { color: '#e8dcc4' } },
 });
 
-// Kingfisher dye lots: plumage swaps whole — sundart flips the bird,
-// teal bib on gold. Crest, bib and waders restate per lot.
+// Kingfisher dye lots — THE FOUR FISHERS: the FOUR VIGILS law on
+// leather. Each lot re-tans the WHOLE fish AND wears its own head:
+// the riverking's finhelm, the reed angler under its breathing lure,
+// the storm-fisher behind the pale beak, the gold dart bare-faced.
+// THE LURE IS ALWAYS WARM — bait must contrast the water (sundart's
+// runs deep ember on the pale gold, the palethorn law).
 registerColorways(BODY_STYLES, 'kingfisher_jerkin', {
   reedmace: {
-    color: '#6a8a4a', trim: '#c9a23c', metal: '#54703a',
-    pauldronColor: '#5e7c42', pauldronTrim: '#82a862',
-    divebib: { color: '#c9a23c', edge: '#e8e0c0' },
-    belt: { color: '#54703a', buckle: '#c9a23c' },
+    color: '#2c4434', trim: '#c8d8b0', metal: '#1e3024',
+    pauldronColor: '#243a2c', pauldronTrim: '#c8d8b0',
+    scalecoat: { color: '#35543c', edge: '#4e7050', sheen: '#c8d8b0' },
+    hookline: { line: '#7a8a72', hook: '#c8d8b0', lure: '#ffb054' },
+    belt: { color: '#1e3024', buckle: '#c8d8b0' },
   },
   stormgull: {
-    color: '#9aa8b0', trim: '#4e5a64', metal: '#7e8c94',
-    pauldronColor: '#8c9aa2', pauldronTrim: '#c0ccd2',
-    divebib: { color: '#e8ecee', edge: '#4e5a64' },
-    belt: { color: '#7e8c94', buckle: '#4e5a64' },
+    color: '#46525c', trim: '#e2eaee', metal: '#323c44',
+    pauldronColor: '#3c4852', pauldronTrim: '#e2eaee',
+    scalecoat: { color: '#525f6a', edge: '#6e7e8a', sheen: '#e2eaee' },
+    hookline: { line: '#9aa6ae', hook: '#e2eaee', lure: '#ffb054' },
+    belt: { color: '#323c44', buckle: '#e2eaee' },
   },
   sundart: {
-    color: '#d8a03c', trim: '#2f7a8a', metal: '#b58230',
-    pauldronColor: '#c8922f', pauldronTrim: '#e8bc60',
-    divebib: { color: '#2f7a8a', edge: '#e8e0cc' },
-    belt: { color: '#b58230', buckle: '#2f7a8a' },
+    color: '#b0802e', trim: '#f4e8c8', metal: '#8a6828',
+    pauldronColor: '#a0742a', pauldronTrim: '#f4e8c8',
+    scalecoat: { color: '#bc8c34', edge: '#d8a848', sheen: '#f4e8c8' },
+    hookline: { line: '#8a7a52', hook: '#f4e8c8', lure: '#e05820' },
+    belt: { color: '#8a6828', buckle: '#f4e8c8' },
   },
 });
 registerColorways(HELM_STYLES, 'kingfisher_hood', {
-  reedmace: { color: '#6a8a4a', trim: '#c9a23c', divecrest: { color: '#82a862', flash: '#c9a23c' } },
-  stormgull: { color: '#9aa8b0', trim: '#4e5a64', divecrest: { color: '#c0ccd2', flash: '#e8ecee' } },
-  sundart: { color: '#d8a03c', trim: '#2f7a8a', divecrest: { color: '#e8bc60', flash: '#2f7a8a' } },
+  reedmace: {
+    color: '#2c4434', trim: '#c8d8b0', kind: 'anglerhood',
+    lure: { color: '#ffb054' },
+  },
+  stormgull: {
+    color: '#46525c', trim: '#e2eaee', kind: 'stormbeak',
+    beakmask: { color: '#c2c2b2' },
+  },
+  sundart: {
+    color: '#b0802e', trim: '#f4e8c8', kind: 'dartcrest',
+    divecrest: { color: '#8a6828', flash: '#2f7a8a' },
+  },
 });
 registerColorways(LEG_STYLES, 'kingfisher_chaps', {
-  reedmace: { thigh: '#6a8a4a', shin: '#54703a', wader: { color: '#3e5430', rim: '#82a862' } },
-  stormgull: { thigh: '#9aa8b0', shin: '#7e8c94', wader: { color: '#5e6a72', rim: '#c0ccd2' } },
-  sundart: { thigh: '#d8a03c', shin: '#b58230', wader: { color: '#8a6828', rim: '#e8bc60' } },
+  reedmace: {
+    thigh: '#2c4434', shin: '#243a2c',
+    wader: { color: '#182618', rim: '#c8d8b0' },
+    calffin: { color: '#1e3024', edge: '#c8d8b0' },
+  },
+  stormgull: {
+    thigh: '#46525c', shin: '#3c4852',
+    wader: { color: '#2c343c', rim: '#e2eaee' },
+    calffin: { color: '#323c44', edge: '#e2eaee' },
+  },
+  sundart: {
+    thigh: '#b0802e', shin: '#a0742a',
+    wader: { color: '#6e5220', rim: '#f4e8c8' },
+    calffin: { color: '#8a6828', edge: '#2f7a8a' },
+  },
 });
 registerColorways(BOOT_STYLES, 'kingfisher_boots', {
-  reedmace: { color: '#3e5430', cuff: { color: '#82a862' } },
-  stormgull: { color: '#5e6a72', cuff: { color: '#c0ccd2' } },
-  sundart: { color: '#8a6828', cuff: { color: '#e8bc60' } },
+  reedmace: { color: '#182618', toe: '#c8d8b0', cuff: { color: '#35543c' } },
+  stormgull: { color: '#2c343c', toe: '#e2eaee', cuff: { color: '#525f6a' } },
+  sundart: { color: '#6e5220', toe: '#f4e8c8', cuff: { color: '#bc8c34' } },
 });
 
 // Cutpurse dye lots: the coin is the tell — brass on umber and
@@ -2994,9 +3053,21 @@ registerColorways(GLOVE_STYLES, 'hareswift_gloves', {
   sorrel: { color: '#a86a48', bracer: '#9a6041', cuff: { color: '#e8dcc4', kind: 'fur' } },
 });
 registerColorways(GLOVE_STYLES, 'kingfisher_gloves', {
-  reedmace: { color: '#6a8a4a', bracer: '#5f7d42', cuff: { color: '#c9a23c', kind: 'band' } },
-  stormgull: { color: '#9aa8b0', bracer: '#8c9aa2', cuff: { color: '#4e5a64', kind: 'band' } },
-  sundart: { color: '#d8a03c', bracer: '#c89336', cuff: { color: '#2f7a8a', kind: 'band' } },
+  reedmace: {
+    color: '#2c4434', bracer: '#243a2c',
+    cuff: { color: '#c8d8b0', kind: 'band' },
+    knuckle: { color: '#c8d8b0', kind: 'spikes' },
+  },
+  stormgull: {
+    color: '#46525c', bracer: '#3c4852',
+    cuff: { color: '#e2eaee', kind: 'band' },
+    knuckle: { color: '#e2eaee', kind: 'spikes' },
+  },
+  sundart: {
+    color: '#b0802e', bracer: '#a0742a',
+    cuff: { color: '#f4e8c8', kind: 'band' },
+    knuckle: { color: '#2f7a8a', kind: 'spikes' },
+  },
 });
 registerColorways(GLOVE_STYLES, 'cutpurse_gloves', {
   alleyrat: { color: '#5c5c56', bracer: '#53534d', cuff: { color: '#767670', kind: 'band' } },
@@ -4975,6 +5046,82 @@ export function drawTorsoGarment(
       }
     }
 
+    // ---- THE SCALECOAT: fish-leather worn whole — dense crescent
+    // rows banding the torso, nacre edge crescents, wrap-around (a
+    // skin has no front). Finer than any drake: this is the river's
+    // own tanning. On the back read a dorsal ridge of small fin tabs
+    // runs the spine; and THE SHEENWAVE — one iridescent band —
+    // travels the rows every few seconds: light through water.
+    if (st.scalecoat && !hurt) {
+      const sc = st.scalecoat;
+      const rows = 7;
+      const topY = -th * 0.98;
+      const botY = 0.0 * s;
+      const sr = tww * 0.155;
+      for (let r = 0; r < rows; r++) {
+        const yy = topY + ((botY - topY) * (r + 1)) / rows;
+        const off = (r % 2) * sr;
+        const perRow = Math.ceil((tww * 2) / (sr * 2)) + 1;
+        const lastRow = r === rows - 1;
+        for (let i = 0; i < perRow; i++) {
+          const sx = -tww + off + i * sr * 2;
+          if (sx - sr > tww || sx + sr < -tww) continue;
+          const turnBias = (sx * leadSign) / tww;
+          const col2 = turnBias > 0.5 ? shade(sc.color, 7) : turnBias < -0.45 ? shade(sc.color, -12) : sc.color;
+          ctx.fillStyle = col2;
+          ctx.beginPath();
+          ctx.arc(sx, yy, sr, 0, Math.PI);
+          ctx.closePath();
+          ctx.fill();
+          // The bottom row keeps NO edge crescent — bright scallops
+          // over the belt read as a row of teeth.
+          if (lastRow) continue;
+          ctx.strokeStyle = sc.edge;
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.moveTo(sx - sr * 0.62, yy + sr * 0.22);
+          ctx.quadraticCurveTo(sx, yy + sr * 0.58, sx + sr * 0.62, yy + sr * 0.22);
+          ctx.stroke();
+        }
+      }
+      // THE SHEENWAVE: a diagonal nacre band sweeping the coat on a
+      // slow clock — clipped to the scale field, alpha-soft, gone as
+      // fast as light off a turning fish.
+      const wp = (nowMs % 4200) / 4200;
+      if (wp < 0.4) {
+        const k = wp / 0.4;
+        const bx = -tww * 1.4 + k * tww * 2.8;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(-tww, topY, tww * 2, botY - topY);
+        ctx.clip();
+        ctx.globalAlpha = 0.3 * Math.sin(k * Math.PI);
+        ctx.fillStyle = sc.sheen;
+        ctx.beginPath();
+        ctx.moveTo(bx - tww * 0.16, botY);
+        ctx.lineTo(bx + tww * 0.3, topY);
+        ctx.lineTo(bx + tww * 0.52, topY);
+        ctx.lineTo(bx + tww * 0.06, botY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+      // The dorsal ridge: fin tabs down the spine, back views only.
+      if (back) {
+        ctx.fillStyle = shade(sc.color, -18);
+        for (let i = 0; i < 4; i++) {
+          const yy = -th * (0.92 - i * 0.24);
+          ctx.beginPath();
+          ctx.moveTo(-tww * 0.05, yy);
+          ctx.lineTo(tww * 0.05, yy);
+          ctx.lineTo(leadSign * tww * 0.02, yy + th * 0.14);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
     // ---- WINDTABS: the hood's triangle language carried to the
     // waist — layered wind-cut tabs off the belt line, all raked one
     // way, kicked by the stride like the fringe but SHAPED: swept
@@ -5023,40 +5170,6 @@ export function drawTorsoGarment(
     // rides the turned-garment transform as one sheet.
     frontPlaneOn();
     if (!back) {
-      // ---- THE DIVE BIB: kingfisher's flame breast worn as one bold
-      // pointed wedge, throat to sternum, ringed by the bird's pale
-      // collar — two flat fills, no strokes, readable at any zoom.
-      if (st.divebib && !hurt) {
-        const bw = tww * 0.46;
-        const topY2 = -th * 1.0;
-        const tipY2 = -th * 0.3;
-        ctx.fillStyle = st.divebib.edge;
-        ctx.beginPath();
-        ctx.moveTo(-bw, topY2);
-        ctx.lineTo(bw, topY2);
-        ctx.lineTo(0, tipY2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = st.divebib.color;
-        ctx.beginPath();
-        ctx.moveTo(-bw * 0.78, topY2 + th * 0.05);
-        ctx.lineTo(bw * 0.78, topY2 + th * 0.05);
-        ctx.lineTo(0, tipY2 - th * 0.05);
-        ctx.closePath();
-        ctx.fill();
-        // Three barb ticks up the wedge's midline — feather, not enamel.
-        ctx.strokeStyle = shade(st.divebib.color, -16);
-        ctx.lineWidth = Math.max(1, s * 0.011);
-        ctx.beginPath();
-        for (const k of [0.3, 0.52, 0.74]) {
-          const yy = topY2 + (tipY2 - topY2) * k;
-          const w2 = bw * 0.6 * (1 - k);
-          ctx.moveTo(-w2, yy - th * 0.03);
-          ctx.lineTo(0, yy);
-          ctx.lineTo(w2, yy - th * 0.03);
-        }
-        ctx.stroke();
-      }
       // ---- THE FOX BIB: emberfox's cream front — a soft rounded
       // throat panel, fur-ticked along its edge so it reads as coat,
       // never as a painted-on shape.
@@ -5716,6 +5829,64 @@ export function drawTorsoGarment(
           ctx.closePath();
           ctx.fill();
         }
+      }
+    }
+
+    // ---- THE HOOKLINE: the fisher's tackle worn as regalia — a
+    // slack line slung shoulder to hip, three barbed hooks riding
+    // it, one feathered lure at the low point. The lure winks WARM
+    // and RARELY: bait, not jewelry.
+    if (st.hookline) {
+      const hk = st.hookline;
+      ctx.strokeStyle = hurt ? '#ffffff' : hk.line;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      // The line sags — a taut line is a bandolier; a fisher's line
+      // rests slack between jobs.
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.7, -th * 0.96);
+      ctx.quadraticCurveTo(0.02 * s, -th * 0.46, ww * 0.58, -th * 0.2);
+      ctx.stroke();
+      if (!back && !hurt) {
+        // Two barbed hooks (a crowd of hardware at the waist reads
+        // as teeth): J-curves hung to gravity, muted a step — the
+        // LURE keeps the bright note.
+        for (const u of [0.3, 0.66]) {
+          const bxx = -tw * 0.7 + (ww * 0.58 + tw * 0.7) * u;
+          const t2 = 1 - u;
+          const byy = -th * 0.96 * t2 * t2 + 2 * t2 * u * (-th * 0.46) + u * u * (-th * 0.2);
+          ctx.strokeStyle = shade(hk.hook, -18);
+          ctx.lineWidth = Math.max(1, s * 0.011);
+          ctx.beginPath();
+          ctx.moveTo(bxx, byy);
+          ctx.lineTo(bxx, byy + 0.026 * s);
+          ctx.arc(bxx - 0.01 * s, byy + 0.026 * s, 0.01 * s, 0, Math.PI * 0.85);
+          ctx.stroke();
+        }
+        // THE LURE at the sag's low point: a feathered teardrop with
+        // its warm wink on the rare clock.
+        const lx = 0.01 * s;
+        const ly = -th * 0.5;
+        const wake = nowMs % 2900 < 320;
+        ctx.fillStyle = wake ? shade(hk.lure, 30) : hk.lure;
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        ctx.quadraticCurveTo(lx + 0.016 * s, ly + 0.02 * s, lx, ly + 0.052 * s);
+        ctx.quadraticCurveTo(lx - 0.016 * s, ly + 0.02 * s, lx, ly);
+        ctx.closePath();
+        ctx.fill();
+        if (wake) {
+          ctx.globalAlpha = 0.4;
+          ctx.beginPath();
+          ctx.arc(lx, ly + 0.026 * s, 0.024 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.strokeStyle = shade(hk.lure, -24);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(lx, ly + 0.014 * s);
+        ctx.lineTo(lx, ly + 0.044 * s);
+        ctx.stroke();
       }
     }
 
@@ -8725,47 +8896,72 @@ export function drawPauldron(
     ctx.restore();
     return;
   }
-  if (st.pauldron === 'halcyon') {
-    // THE HALCYON WING — kingfisher's own: the diver's wing FOLDED at
-    // rest along the arm, not fanned. Three lapped covert planes
-    // sweep back and down off the seat dome, each with its spine;
-    // the flame underwing shows one hot wedge at the trailing edge —
-    // the flash the fish sees last, kept half-hidden until the dive.
-    seat(0.115 * s, 0.09 * s, shade(base, -6), trim);
-    const flash = st.divebib?.color ?? shade(trim, 20);
-    if (!hurt) {
-      // The underwing wedge peeks BELOW the folded coverts.
-      ctx.fillStyle = flash;
+  if (st.pauldron === 'finblade') {
+    // THE FINBLADE — kingfisher's shoulder: a sailfin at rest. Four
+    // rigid spines rake back-and-down off the seat dome with
+    // TRANSLUCENT membrane sagging between them (alpha fill — you
+    // can half-see the coat through the sail), each spine tipped in
+    // a barb, the leading spine carrying THE ONE BRIGHT EDGE.
+    // Folded-at-rest law, but SHARP: this fin never spreads, it
+    // threatens. Heavy at the root: a nacre gill plate seats it.
+    seat(0.12 * s, 0.09 * s, shade(base, -10), shade(base, 6));
+    const spineCol = st.pauldronTrim ?? shade(base, 30);
+    // THE SAIL: one solid raked fin built from THREE filled blade
+    // planes stepping down the arm — a sail is a SHAPE, never a
+    // spray of strokes (stroke-spines read as whiskers at ten
+    // paces; the round-1 verdict). Notched trailing edge says
+    // membrane; the leading blade carries the bright edge.
+    const blades: Array<[number, number, number, number, number]> = [
+      // [rootY, tipX, tipY, returnW, tone]
+      [-0.05, 0.155, -0.105, 0.055, 4],
+      [-0.005, 0.165, -0.03, 0.05, -8],
+      [0.04, 0.15, 0.05, 0.046, -18],
+    ];
+    for (const [ry, txx, tyy, w2, tone] of blades) {
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 6 : -6) + tone);
       ctx.beginPath();
-      ctx.moveTo(side * 0.015 * s, 0.02 * s);
-      ctx.lineTo(side * 0.11 * s, 0.075 * s);
-      ctx.lineTo(side * 0.035 * s, 0.085 * s);
+      ctx.moveTo(side * -0.02 * s, ry * s);
+      ctx.lineTo(side * txx * s, tyy * s);
+      // The membrane notch: the trailing edge bites IN before the
+      // return — fin, not feather.
+      ctx.lineTo(side * (txx - 0.035) * s, (tyy + w2 * 0.55) * s);
+      ctx.lineTo(side * (txx - 0.012) * s, (tyy + w2 * 0.8) * s);
+      ctx.lineTo(side * -0.012 * s, (ry + w2) * s);
       ctx.closePath();
       ctx.fill();
     }
-    // Folded coverts: three planes stacking down the arm, longest on
-    // top — a wing at rest is a lapped slab hugging the shoulder,
-    // never a spread fan (spread reads as angel at ten paces).
-    const folds: Array<[number, number, number, number, number]> = [
-      // [baseY, tipX, tipY, width, tone]
-      [-0.07, 0.13, 0.045, 0.06, 14],
-      [-0.028, 0.115, 0.085, 0.054, 0],
-      [0.014, 0.095, 0.12, 0.048, -14],
-    ];
-    for (const [by, txx, tyy, w2, tone] of folds) {
-      ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 8 : -4) + tone);
+    if (!hurt) {
+      // The bright leading edge, one line on the top blade only.
+      ctx.strokeStyle = spineCol;
+      ctx.lineWidth = Math.max(1, s * 0.015);
       ctx.beginPath();
-      ctx.moveTo(side * -0.06 * s, by * s);
-      ctx.quadraticCurveTo(side * 0.09 * s, (by - 0.035) * s, side * txx * s, tyy * s);
-      ctx.quadraticCurveTo(side * (txx - 0.05) * s, (tyy + w2) * s, side * -0.045 * s, (by + w2) * s);
+      ctx.moveTo(side * -0.02 * s, -0.05 * s);
+      ctx.lineTo(side * 0.155 * s, -0.105 * s);
+      ctx.stroke();
+      // One barb past the lead tip — the threat, singular.
+      ctx.beginPath();
+      ctx.moveTo(side * 0.155 * s, -0.105 * s);
+      ctx.lineTo(side * 0.175 * s, -0.088 * s);
+      ctx.stroke();
+    }
+    if (!hurt) {
+      // The gill plate: a nacre crescent seating the sail's root —
+      // heavy hardware, not a sticker.
+      ctx.fillStyle = shade(spineCol, -8);
+      ctx.beginPath();
+      ctx.moveTo(side * -0.045 * s, -0.055 * s);
+      ctx.quadraticCurveTo(side * 0.035 * s, -0.075 * s, side * 0.05 * s, 0.055 * s);
+      ctx.lineTo(side * 0.014 * s, 0.05 * s);
+      ctx.quadraticCurveTo(side * 0.002 * s, -0.04 * s, side * -0.045 * s, -0.03 * s);
       ctx.closePath();
       ctx.fill();
-      if (!hurt) {
-        ctx.strokeStyle = shade(st.pauldronTrim ?? base, 8);
-        ctx.lineWidth = Math.max(1, s * 0.011);
+      // Three gill slits cut into the plate.
+      ctx.strokeStyle = shade(base, -26);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      for (const gy of [-0.03, 0.0, 0.03]) {
         ctx.beginPath();
-        ctx.moveTo(side * -0.03 * s, (by + w2 * 0.4) * s);
-        ctx.quadraticCurveTo(side * 0.08 * s, (by + w2 * 0.1 - 0.02) * s, side * (txx - 0.025) * s, (tyy + w2 * 0.35) * s);
+        ctx.moveTo(side * 0.012 * s, gy * s);
+        ctx.quadraticCurveTo(side * 0.03 * s, (gy + 0.008) * s, side * 0.042 * s, (gy + 0.002) * s);
         ctx.stroke();
       }
     }
@@ -12491,66 +12687,215 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'halcyonhood') {
-    // THE HALCYONHOOD — kingfisher's head: the diver in profile at
-    // every facing. A short BEAK PEAK juts off the brow (the visor
-    // the river never sees coming), a lapped feather crest runs the
-    // keel of the crown to a swept point, and the pale throat wraps
-    // the jaw hem. One flame primary slants off the temple.
+  if (st.kind === 'finhelm') {
+    // THE FINHELM — the riverking's sailfin casque: a fitted fish-
+    // leather HELM, not a hood. Angular skull shell with cheek
+    // guards, a nacre brow visor jutting over the eye line (the face
+    // lives in its folded dark), gill slits scored into the cheeks —
+    // and THE SAIL: a tall raked dorsal crest of rigid spines with
+    // translucent membrane, running the keel of the crown and down
+    // the nape. Secret-boss hardware: heavy at every seam.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
-    const ohw = hw * 0.72 * (1 - 0.5 * t);
-    const oTop = headY - hh * 0.58;
-    const oBot = headY + hh * 0.84;
-    const beakX = headX + lead * hw * (1.52 + t * 0.3);
-    const beakY = headY - hh * 0.66;
+    const ohw = hw * 0.68 * (1 - 0.5 * t);
+    const crest = st.divecrest;
+    const spineCol = crest?.flash ?? shade(st.trim, 20);
+    const memCol = crest?.color ?? shade(st.color, -20);
+    // THE SAIL first (behind the shell): four spines raking back off
+    // the keel, membrane sagging between — structure, hurt-white.
+    const sail = (): void => {
+      // ONE solid raked sail: a filled blade from brow-line to a
+      // long trailing point, its underside notched in three membrane
+      // bites — a crest you could cut a hand on, not a spray of
+      // strokes. Structure: hurt-white keeps it.
+      ctx.fillStyle = hurt ? '#ffffff' : memCol;
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.58, headY - hh * 1.04);
+      ctx.lineTo(headX + lead * hw * 0.34, headY - hh * 1.68);
+      ctx.lineTo(headX - lead * hw * 0.26, headY - hh * 1.78);
+      ctx.lineTo(headX - lead * hw * (1.3 + t * 0.3), headY - hh * 1.32);
+      // The notched underside walking back toward the crown.
+      ctx.lineTo(headX - lead * hw * 0.88, headY - hh * 1.22);
+      ctx.lineTo(headX - lead * hw * 0.72, headY - hh * 1.32);
+      ctx.lineTo(headX - lead * hw * 0.4, headY - hh * 1.12);
+      ctx.lineTo(headX - lead * hw * 0.22, headY - hh * 1.24);
+      ctx.lineTo(headX + lead * hw * 0.06, headY - hh * 1.06);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // Two scored spine lines INSIDE the blade + the bright
+        // leading edge — planes first, lines as seams only.
+        ctx.strokeStyle = shade(memCol, 22);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 0.3, headY - hh * 1.08);
+        ctx.lineTo(headX + lead * hw * 0.1, headY - hh * 1.62);
+        ctx.moveTo(headX - lead * hw * 0.12, headY - hh * 1.1);
+        ctx.lineTo(headX - lead * hw * 0.5, headY - hh * 1.56);
+        ctx.stroke();
+        ctx.strokeStyle = spineCol;
+        ctx.lineWidth = Math.max(1.5, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 0.58, headY - hh * 1.04);
+        ctx.lineTo(headX + lead * hw * 0.34, headY - hh * 1.68);
+        ctx.lineTo(headX - lead * hw * 0.26, headY - hh * 1.78);
+        ctx.stroke();
+      }
+    };
+    sail();
+    // The shell: angular fitted casque — planar jaw, cheek guards.
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.22, headX + lead * hw * 1.18, headY - hh * 0.4);
-      // THE BEAK PEAK: the brow runs OUT into a short hard point,
-      // then returns under itself — a visor with a bird's intent.
-      ctx.lineTo(beakX, beakY);
-      ctx.lineTo(headX + lead * hw * 1.02, headY - hh * 0.94);
-      // The crown climbs into the crest line.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * 1.36, headX - lead * hw * 0.5, headY - hh * 1.32);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.1 + t * 0.26), headY - hh * 1.0, headX - lead * hw * (1.26 + t * 0.34), headY - hh * 0.2);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.36 + t * 0.3), headY + hh * 0.36, headX - lead * hw * 1.3, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.moveTo(headX + lead * hw * 1.12, headY + hh * 1.06);
+      ctx.lineTo(headX + lead * hw * 1.2, headY + hh * 0.1);
+      ctx.lineTo(headX + lead * hw * 1.08, headY - hh * 0.62);
+      // The visor ledge: a hard step past the brow.
+      ctx.lineTo(headX + lead * hw * 1.22, headY - hh * 0.8);
+      ctx.lineTo(headX + lead * hw * 0.7, headY - hh * 1.06);
+      ctx.lineTo(headX - lead * hw * 0.55, headY - hh * 1.12);
+      ctx.lineTo(headX - lead * hw * (1.06 + t * 0.26), headY - hh * 0.7);
+      ctx.lineTo(headX - lead * hw * (1.18 + t * 0.3), headY + hh * 0.14);
+      ctx.lineTo(headX - lead * hw * 1.12, headY + hh * 1.06);
+      // The nape guard: two lapped tabs close the neck.
+      ctx.lineTo(headX - lead * hw * 0.5, headY + hh * 1.24);
+      ctx.lineTo(headX + lead * hw * 0.4, headY + hh * 1.26);
+      ctx.closePath();
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      ctx.clip();
+      // Planar shading: trailing half, lit crown plane, jaw shade.
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.4);
+      ctx.fillStyle = shade(st.color, 12);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.66, headY - hh * 1.0);
+      ctx.lineTo(headX - lead * hw * 0.5, headY - hh * 1.06);
+      ctx.lineTo(headX - lead * hw * 0.42, headY - hh * 0.84);
+      ctx.lineTo(headX + lead * hw * 0.56, headY - hh * 0.8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(st.color, -22);
+      ctx.fillRect(headX - hw * 1.3, headY + hh * 0.78, hw * 2.6, hh * 0.5);
+      // Scale rows scored into the shell: three crescent lines.
+      ctx.strokeStyle = shade(st.color, -20);
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      for (const k of [0.34, 0.02, -0.3]) {
+        ctx.beginPath();
+        ctx.moveTo(headX - lead * hw * 0.9, headY - hh * (k - 0.08));
+        ctx.quadraticCurveTo(headX, headY - hh * (k + 0.14), headX + lead * hw * 0.9, headY - hh * (k - 0.04));
+        ctx.stroke();
+      }
+      ctx.restore();
+      if (front) {
+        // THE FOLDED DARK under the visor: the eyes live behind a
+        // hard shadow polygon — the helm looks back, you don't.
+        ctx.fillStyle = 'rgba(16, 12, 20, 0.5)';
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw, headY - hh * 0.66);
+        ctx.lineTo(cx + ohw, headY - hh * 0.62);
+        ctx.lineTo(cx + ohw * 0.86, headY - hh * 0.1);
+        ctx.lineTo(cx - lead * ohw * 0.12, headY - hh * 0.02);
+        ctx.lineTo(cx - ohw * 0.86, headY - hh * 0.16);
+        ctx.closePath();
+        ctx.fill();
+        // The nacre visor rim: THE ONE BRIGHT EDGE across the brow.
+        ctx.strokeStyle = st.trim;
+        ctx.lineWidth = Math.max(1.5, s * 0.02);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 1.04, headY - hh * 0.6);
+        ctx.lineTo(cx + ohw * 1.08, headY - hh * 0.56);
+        ctx.stroke();
+        // Gill slits: three scored curves on the leading cheek.
+        ctx.strokeStyle = shade(st.color, -28);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        for (let g = 0; g < 3; g++) {
+          const gx = cx + lead * ohw * (0.94 - g * 0.14);
+          ctx.beginPath();
+          ctx.moveTo(gx, headY + hh * 0.18);
+          ctx.quadraticCurveTo(gx - lead * hw * 0.05, headY + hh * 0.36, gx - lead * hw * 0.02, headY + hh * 0.52);
+          ctx.stroke();
+        }
+        // The jaw rim: nacre closes the casque.
+        ctx.strokeStyle = shade(st.trim, -10);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.9, headY + hh * 0.78);
+        ctx.quadraticCurveTo(cx, headY + hh * 0.92, cx + ohw * 0.9, headY + hh * 0.78);
+        ctx.stroke();
+      } else {
+        // Back read: the sail runs down the nape between lapped
+        // neck-guard tabs — the fin owns the spine.
+        ctx.fillStyle = shade(memCol, -6);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.06, headY - hh * 1.05);
+        ctx.lineTo(headX + hw * 0.06, headY - hh * 1.05);
+        ctx.lineTo(headX + lead * hw * 0.06 + hw * 0.04, headY + hh * 1.1);
+        ctx.lineTo(headX + lead * hw * 0.06 - hw * 0.04, headY + hh * 1.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        for (const ky of [0.55, 0.85]) {
+          ctx.beginPath();
+          ctx.moveTo(headX - hw * 0.85, headY + hh * ky);
+          ctx.quadraticCurveTo(headX, headY + hh * (ky + 0.16), headX + hw * 0.85, headY + hh * ky);
+          ctx.stroke();
+        }
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'anglerhood') {
+    // THE ANGLERHOOD — the deep fisher: a swallowed planar hood whose
+    // opening holds true VOID — and above it the ROD: a thin chitin
+    // spine curving off the crown, dangling a warm LURE that
+    // breathes on its own slow clock. Whatever wears this hood is
+    // not the thing the light says it is. How did anybody ever
+    // acquire this?
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.32 + 0.22 * t);
+    const ohw = hw * 0.6 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.52;
+    const oBot = headY + hh * 0.8;
+    const sway = Math.sin(f.nowMs * 0.0017) * hw * 0.05;
+    const apexX = headX - lead * hw * 0.16;
+    const apexY = headY - hh * 1.52;
+    const peakX = headX - lead * (hw * (1.5 + t * 0.4) + sway);
+    const peakY = headY - hh * 0.6 + sway * 0.4;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.18, headY + hh * 1.14);
+      ctx.lineTo(headX + lead * hw * 1.26, headY + hh * 0.1);
+      ctx.lineTo(headX + lead * hw * 1.06, headY - hh * 0.6);
+      ctx.lineTo(headX + lead * hw * 1.1, headY - hh * 0.9);
+      ctx.lineTo(headX + lead * hw * 0.46, headY - hh * 1.26);
+      ctx.lineTo(apexX, apexY);
+      ctx.lineTo(peakX, peakY);
+      ctx.lineTo(headX - lead * hw * (1.14 + t * 0.28), headY - hh * 0.28);
+      ctx.lineTo(headX - lead * hw * (1.26 + t * 0.3), headY + hh * 0.32);
+      ctx.lineTo(headX - lead * hw * 1.22, headY + hh * 1.14);
+      ctx.lineTo(headX - lead * hw * 0.4, headY + hh * 1.32);
+      ctx.lineTo(headX + lead * hw * 0.44, headY + hh * 1.34);
       ctx.closePath();
     };
     const opening = () => {
-      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+      ctx.moveTo(cx - ohw, oBot);
+      ctx.lineTo(cx - ohw, headY - hh * 0.1);
+      ctx.lineTo(cx - ohw * 0.5, oTop + hh * 0.14);
+      ctx.lineTo(cx, oTop);
+      ctx.lineTo(cx + ohw * 0.5, oTop + hh * 0.14);
+      ctx.lineTo(cx + ohw, headY - hh * 0.1);
+      ctx.lineTo(cx + ohw, oBot);
+      ctx.closePath();
     };
-    // THE CREST — structure: three lapped feather planes riding the
-    // keel, tallest trailing, each a filled blade with its return
-    // edge. Hurt paints them white; the diver's outline survives.
-    const crest = st.divecrest;
-    const drawCrest = (): void => {
-      if (!crest) return;
-      const planes: Array<[number, number, number, number]> = [
-        // [rootU (lead→trail along crown), rise, sweep, tone] — each
-        // blade is a sharp raked point; together they read as ONE
-        // serrated crest ridge, not three lumps.
-        [0.52, 0.38, 0.42, -12],
-        [0.06, 0.5, 0.55, 0],
-        [-0.4, 0.6, 0.7, 12],
-      ];
-      for (const [ru, rise, sweep2, tone] of planes) {
-        const rx = headX + lead * hw * ru;
-        const ry = headY - hh * (1.22 + 0.08 * ru * ru);
-        const txx = rx - lead * hw * sweep2;
-        const tyy = ry - hh * rise;
-        ctx.fillStyle = hurt ? '#ffffff' : shade(crest.color, tone);
-        ctx.beginPath();
-        ctx.moveTo(rx + lead * hw * 0.1, ry + hh * 0.04);
-        ctx.lineTo(txx, tyy);
-        ctx.quadraticCurveTo(txx - lead * hw * 0.06, tyy + hh * 0.2, rx - lead * hw * 0.34, ry + hh * 0.06);
-        ctx.closePath();
-        ctx.fill();
-      }
-    };
-    drawCrest();
     ctx.fillStyle = mc;
     ctx.beginPath();
     shell();
@@ -12563,72 +12908,345 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       if (front) opening();
       ctx.clip('evenodd');
       ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // The beak's own top plane stays lit — the strike line.
-      ctx.fillStyle = shade(st.color, 16);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.7, hw * 2.4, hh * 3.4);
+      ctx.fillStyle = shade(st.color, 10);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 1.0, headY - hh * 0.9);
-      ctx.lineTo(beakX, beakY);
-      ctx.lineTo(headX + lead * hw * 1.12, headY - hh * 0.52);
+      ctx.moveTo(headX + lead * hw * 0.98, headY - hh * 0.88);
+      ctx.lineTo(headX + lead * hw * 0.4, headY - hh * 1.2);
+      ctx.lineTo(apexX, apexY);
+      ctx.lineTo(apexX + lead * hw * 0.2, apexY + hh * 0.24);
+      ctx.lineTo(headX + lead * hw * 0.84, headY - hh * 0.68);
       ctx.closePath();
       ctx.fill();
-      // THE THROAT WRAP: the pale collar closing the jaw hem.
-      ctx.fillStyle = shade(st.trim, 30);
+      ctx.fillStyle = shade(st.color, -24);
       ctx.beginPath();
-      ctx.moveTo(headX - hw * 1.1, headY + hh * 0.86);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.2, headX + hw * 1.1, headY + hh * 0.86);
-      ctx.lineTo(headX + hw * 1.04, headY + hh * 1.16);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX - hw * 1.04, headY + hh * 1.16);
+      ctx.moveTo(apexX, apexY + hh * 0.08);
+      ctx.lineTo(peakX + lead * hw * 0.08, peakY - hh * 0.02);
+      ctx.lineTo(headX - lead * hw * 1.06, headY - hh * 0.3);
       ctx.closePath();
       ctx.fill();
       ctx.restore();
       if (front) {
+        // THE VOID: nothing lives in this opening but the dark. The
+        // deepest face in the leather lane — deeper than shadowcowl.
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.02);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.46)');
-        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.6);
+        ctx.fillStyle = 'rgba(10, 8, 14, 0.72)';
+        ctx.fillRect(cx - ohw, oTop, ohw * 2, oBot - oTop);
         ctx.restore();
-        ctx.strokeStyle = shade(st.color, 18);
-        ctx.lineWidth = Math.max(1, s * 0.016);
+        // A thin nacre frame line — the shrine door, barely lit.
+        ctx.strokeStyle = shade(st.trim, -6);
+        ctx.lineWidth = Math.max(1, s * 0.012);
         ctx.beginPath();
         opening();
         ctx.stroke();
-        // The flame primary: ONE hot feather slanted off the temple.
-        const fx2 = cx + lead * ohw * 0.98;
-        const fy2 = oTop - headR * 0.04;
-        ctx.fillStyle = crest?.flash ?? st.trim;
-        ctx.beginPath();
-        ctx.moveTo(fx2, fy2);
-        ctx.quadraticCurveTo(fx2 - lead * hw * 0.4, fy2 - hh * 0.52, fx2 - lead * hw * 0.72, fy2 - hh * 0.6);
-        ctx.quadraticCurveTo(fx2 - lead * hw * 0.5, fy2 - hh * 0.28, fx2 - lead * hw * 0.12, fy2 + hh * 0.06);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = shade(crest?.flash ?? st.trim, -18);
-        ctx.lineWidth = Math.max(1, s * 0.01);
-        ctx.beginPath();
-        ctx.moveTo(fx2 - lead * hw * 0.06, fy2 - hh * 0.02);
-        ctx.quadraticCurveTo(fx2 - lead * hw * 0.38, fy2 - hh * 0.36, fx2 - lead * hw * 0.66, fy2 - hh * 0.54);
-        ctx.stroke();
       } else {
-        // Back read: the crest keel runs down into the drape.
         ctx.fillStyle = shade(st.color, -10);
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
+        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.88);
+        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.88);
         ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.9);
         ctx.closePath();
         ctx.fill();
         ctx.strokeStyle = shade(st.color, -22);
-        ctx.lineWidth = Math.max(1.5, s * 0.018);
+        ctx.lineWidth = Math.max(1, s * 0.012);
         ctx.beginPath();
-        ctx.moveTo(headX, headY - hh * 1.3);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
+        ctx.moveTo(headX, headY - hh * 1.15);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.82);
         ctx.stroke();
+      }
+      // THE ROD AND LURE — structure arcs even from behind: the
+      // spine curves from the crown out over the brow; the lure
+      // hangs before the void and BREATHES.
+      if (st.lure) {
+        // The rod is pale chitin — a dark rod on a dark hood is no
+        // rod at all. It arcs well PAST the brow so the lure hangs
+        // clear of the cloth, unmissable: it IS the set's face.
+        const rodRootX = headX + lead * hw * 0.1;
+        const rodRootY = headY - hh * 1.42;
+        const rodTipX = cx + lead * ohw * (front ? 0.55 : 0.95);
+        const rodTipY = oTop - hh * 0.62;
+        ctx.strokeStyle = hurt ? '#ffffff' : shade(st.trim, -24);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(rodRootX, rodRootY);
+        ctx.quadraticCurveTo(rodRootX + lead * hw * 0.75, rodRootY - hh * 0.36, rodTipX, rodTipY);
+        ctx.stroke();
+        if (!hurt && front) {
+          const bob = Math.sin(f.nowMs * 0.0013) * hh * 0.035;
+          const lx = rodTipX;
+          const ly = rodTipY + hh * 0.58 + bob;
+          ctx.strokeStyle = shade(st.trim, -24);
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.moveTo(rodTipX, rodTipY);
+          ctx.lineTo(lx, ly - headR * 0.08);
+          ctx.stroke();
+          // The breath: halo swells and dims on a slow clock — the
+          // one warm thing in all that cold, and it is BAIT.
+          const breathe = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(f.nowMs * 0.0024));
+          ctx.globalAlpha = 0.36 * breathe;
+          ctx.fillStyle = st.lure.color;
+          ctx.beginPath();
+          ctx.arc(lx, ly, headR * 0.24, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.5 * breathe;
+          ctx.beginPath();
+          ctx.arc(lx, ly, headR * 0.13, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.95;
+          ctx.fillStyle = shade(st.lure.color, 32);
+          ctx.beginPath();
+          ctx.arc(lx, ly, headR * 0.07, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'stormbeak') {
+    // THE STORMBEAK — the storm-fisher: a swept sou'wester whose
+    // back brim rakes LONG past the nape (planar, one bright rim),
+    // and below the eye shadow a pale BEAK half-mask tapering past
+    // the chin. The storm asks; the beak answers nothing.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.7 * (1 - 0.5 * t);
+    const shell = () => {
+      // Low crown.
+      ctx.moveTo(headX + lead * hw * 1.02, headY - hh * 0.52);
+      ctx.lineTo(headX + lead * hw * 0.82, headY - hh * 1.18);
+      ctx.lineTo(headX - lead * hw * 0.3, headY - hh * 1.34);
+      ctx.lineTo(headX - lead * hw * 0.92, headY - hh * 1.0);
+      // The long back brim: one hard rake past the nape.
+      ctx.lineTo(headX - lead * hw * (1.72 + t * 0.4), headY + hh * 0.16);
+      ctx.lineTo(headX - lead * hw * (1.5 + t * 0.34), headY + hh * 0.3);
+      ctx.lineTo(headX - lead * hw * 0.7, headY - hh * 0.14);
+      // Under the crown to the short front brim.
+      ctx.lineTo(headX + lead * hw * 0.7, headY - hh * 0.1);
+      ctx.lineTo(headX + lead * hw * (1.3 + t * 0.2), headY - hh * 0.28);
+      ctx.closePath();
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      ctx.clip();
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.6 : headX, headY - hh * 1.6, hw * 2.6, hh * 3.2);
+      ctx.fillStyle = shade(st.color, 12);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.76, headY - hh * 1.1);
+      ctx.lineTo(headX - lead * hw * 0.26, headY - hh * 1.26);
+      ctx.lineTo(headX - lead * hw * 0.2, headY - hh * 1.04);
+      ctx.lineTo(headX + lead * hw * 0.62, headY - hh * 0.9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      // The brim's ONE BRIGHT EDGE: a nacre line down the whole rake.
+      ctx.strokeStyle = st.trim;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * (1.3 + t * 0.2), headY - hh * 0.28);
+      ctx.lineTo(headX + lead * hw * 0.7, headY - hh * 0.1);
+      ctx.lineTo(headX - lead * hw * 0.7, headY - hh * 0.14);
+      ctx.lineTo(headX - lead * hw * (1.5 + t * 0.34), headY + hh * 0.3);
+      ctx.stroke();
+      if (front) {
+        // The eye shadow band under the brim — folded dark, HARD:
+        // the eyes are the storm's business, nobody else's.
+        ctx.fillStyle = 'rgba(16, 12, 20, 0.58)';
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.96, headY - hh * 0.38);
+        ctx.lineTo(cx + ohw * 0.96, headY - hh * 0.34);
+        ctx.lineTo(cx + ohw * 0.8, headY + hh * 0.08);
+        ctx.lineTo(cx - ohw * 0.8, headY + hh * 0.04);
+        ctx.closePath();
+        ctx.fill();
+        // THE BEAK: pale tapered wedge past the chin, one shaded
+        // side plane, a scored nostril tick. Answers nothing.
+        if (st.beakmask) {
+          const bk = st.beakmask.color;
+          const tipX2 = cx + lead * ohw * 0.5;
+          const tipY2 = headY + hh * 1.06;
+          ctx.fillStyle = bk;
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 0.8, headY + hh * 0.04);
+          ctx.lineTo(cx + ohw * 0.8, headY + hh * 0.08);
+          ctx.lineTo(tipX2 + headR * 0.05, tipY2 - headR * 0.06);
+          ctx.lineTo(tipX2 - headR * 0.06, tipY2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(bk, -16);
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 0.8, headY + hh * 0.04);
+          ctx.lineTo(tipX2 - headR * 0.06, tipY2);
+          ctx.lineTo(tipX2 - headR * 0.1, tipY2 - headR * 0.14);
+          ctx.lineTo(cx - ohw * 0.56, headY + hh * 0.14);
+          ctx.closePath();
+          ctx.fill();
+          // The center seam + strap: the mask is BUILT, and it is
+          // not a face — the seam is what separates bone from skin
+          // at a glance.
+          ctx.strokeStyle = shade(bk, -30);
+          ctx.lineWidth = Math.max(1, s * 0.01);
+          ctx.beginPath();
+          ctx.moveTo(cx + lead * ohw * 0.06, headY + hh * 0.08);
+          ctx.lineTo(tipX2 - headR * 0.005, tipY2 - headR * 0.04);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx + lead * ohw * 0.2, headY + hh * 0.36);
+          ctx.lineTo(cx + lead * ohw * 0.34, headY + hh * 0.46);
+          ctx.stroke();
+          ctx.strokeStyle = shade(st.color, -20);
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 0.8, headY + hh * 0.06);
+          ctx.lineTo(cx - ohw * 1.02, headY - hh * 0.02);
+          ctx.moveTo(cx + ohw * 0.8, headY + hh * 0.1);
+          ctx.lineTo(cx + ohw * 1.02, headY + hh * 0.02);
+          ctx.stroke();
+        }
+      } else {
+        // Back read: the raked brim covers the nape; two planar
+        // panels break the crown, a storm cord crosses under it.
+        ctx.fillStyle = shade(st.color, -18);
+        ctx.beginPath();
+        ctx.moveTo(headX - lead * hw * 0.1, headY - hh * 1.3);
+        ctx.lineTo(headX - lead * hw * 0.62, headY - hh * 0.44);
+        ctx.lineTo(headX - lead * hw * 0.3, headY - hh * 0.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.8, headY + hh * 0.34);
+        ctx.quadraticCurveTo(headX, headY + hh * 0.5, headX + hw * 0.8, headY + hh * 0.34);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'dartcrest') {
+    // THE DARTCREST — the strike, bare-faced: no hood at all. A
+    // fitted skullcap sweeps into ONE long back-raked arrow crest;
+    // nacre cheek-fins blade off the temples; a sharp brow visor
+    // line keeps the eyes in a hard shade band. The only fisher who
+    // lets you see it coming — because it doesn't matter.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.7 * (1 - 0.5 * t);
+    const crest = st.divecrest;
+    const crestCol = crest?.flash ?? shade(st.trim, -10);
+    // THE CREST first — structure: one blade from brow line to a
+    // long trailing point, with its darker under-facet.
+    const crestTipX = headX - lead * hw * (1.9 + t * 0.45);
+    const crestTipY = headY - hh * 1.16;
+    ctx.fillStyle = hurt ? '#ffffff' : crestCol;
+    ctx.beginPath();
+    ctx.moveTo(headX + lead * hw * 0.62, headY - hh * 1.08);
+    ctx.lineTo(headX - lead * hw * 0.1, headY - hh * 1.44);
+    ctx.lineTo(crestTipX, crestTipY);
+    ctx.lineTo(headX - lead * hw * 0.5, headY - hh * 1.02);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(crestCol, -18);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.5, headY - hh * 1.02);
+      ctx.lineTo(crestTipX, crestTipY);
+      ctx.lineTo(crestTipX + lead * hw * 0.24, crestTipY + hh * 0.1);
+      ctx.lineTo(headX - lead * hw * 0.44, headY - hh * 0.94);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The cap: fitted, planar, stopping at the temples — a strike
+    // cap, not a helmet; the face is bare below the visor line.
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.04, headY - hh * 0.42);
+      ctx.lineTo(headX + lead * hw * 0.98, headY - hh * 0.78);
+      ctx.lineTo(headX + lead * hw * 0.52, headY - hh * 1.1);
+      ctx.lineTo(headX - lead * hw * 0.46, headY - hh * 1.14);
+      ctx.lineTo(headX - lead * hw * (1.0 + t * 0.22), headY - hh * 0.72);
+      ctx.lineTo(headX - lead * hw * (1.06 + t * 0.24), headY - hh * 0.3);
+      ctx.lineTo(headX - lead * hw * 0.88, headY - hh * 0.36);
+      ctx.lineTo(headX, headY - hh * 0.5);
+      ctx.lineTo(headX + lead * hw * 0.86, headY - hh * 0.34);
+      ctx.closePath();
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      ctx.clip();
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 2.4);
+      ctx.fillStyle = shade(st.color, 12);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.48, headY - hh * 1.04);
+      ctx.lineTo(headX - lead * hw * 0.4, headY - hh * 1.08);
+      ctx.lineTo(headX - lead * hw * 0.34, headY - hh * 0.86);
+      ctx.lineTo(headX + lead * hw * 0.4, headY - hh * 0.82);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      // THE CHEEK FINS: nacre blades off the temples, back-raked.
+      for (const es of [-1, 1]) {
+        const far = es !== (lead || 1);
+        const wK = far ? Math.max(0.3, 1 - t * 0.65) : 1;
+        const bx = headX + es * hw * 0.92;
+        const by = headY - hh * 0.3;
+        ctx.fillStyle = far ? shade(st.trim, -14) : st.trim;
+        ctx.beginPath();
+        ctx.moveTo(bx, by - hh * 0.14);
+        ctx.lineTo(bx + es * hw * 0.34 * wK - lead * hw * 0.3, by + hh * 0.18);
+        ctx.lineTo(bx, by + hh * 0.22);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (front) {
+        // The visor line: a hard shade band across the eyes — bare-
+        // faced is not the same as readable.
+        ctx.fillStyle = 'rgba(16, 12, 20, 0.34)';
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.9, headY - hh * 0.46);
+        ctx.lineTo(cx + ohw * 0.9, headY - hh * 0.42);
+        ctx.lineTo(cx + ohw * 0.74, headY - hh * 0.12);
+        ctx.lineTo(cx - ohw * 0.74, headY - hh * 0.16);
+        ctx.closePath();
+        ctx.fill();
+        // The brow rim: one bright line under the cap's edge.
+        ctx.strokeStyle = shade(st.trim, 10);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.9, headY - hh * 0.44);
+        ctx.lineTo(cx + ohw * 0.9, headY - hh * 0.4);
+        ctx.stroke();
+      } else {
+        // Back read: the crest blade + two cap seam panels.
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        for (const ku of [-0.4, 0.4]) {
+          ctx.beginPath();
+          ctx.moveTo(headX + hw * ku, headY - hh * 1.06);
+          ctx.lineTo(headX + hw * ku * 0.7, headY - hh * 0.4);
+          ctx.stroke();
+        }
       }
     }
     return;

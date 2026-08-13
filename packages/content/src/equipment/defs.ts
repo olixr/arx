@@ -2103,17 +2103,18 @@ function earlyLeatherDefs(): EquipmentDef[] {
       { key: 'sorrel', dye: 'Sorrel', color: '#a86a48', dyeInput: { item: 'berries', qty: 2 },
         desc: 'Warm chestnut-red, the hare the hounds never caught.' },
     ]),
-    // -------- Kingfisher: teal leather with a flame-orange breast and a
-    // dagger of a feather at the temple. The river poacher's craft line —
-    // patient, bright, gone before the splash lands.
+    // -------- Kingfisher: THE RIVERKING'S FISHER — deep-water fish
+    // leather under a sailfin casque, hookline tackle, one warm lure.
+    // The secret-boss read of the leather lane; each dye lot re-tans
+    // the whole fish AND wears its own head.
     ...kingfisher,
     ...colorways(kingfisher, [
-      { key: 'reedmace', dye: 'Reedmace', color: '#6a8a4a', dyeInput: { item: 'sagewort', qty: 2 },
-        desc: 'Rush-green for waiting in. The river forgets you first.' },
-      { key: 'stormgull', dye: 'Stormgull', color: '#9aa8b0', dyeInput: { item: 'cotton', qty: 2 },
-        desc: 'Spray-grey wings over white water. Loud coast, quiet work.' },
-      { key: 'sundart', dye: 'Sundart', color: '#d8a03c', dyeInput: { item: 'sunflower', qty: 2 },
-        desc: 'The flash the fish sees last.' },
+      { key: 'reedmace', dye: 'Reedmace', color: '#2c4434', dyeInput: { item: 'sagewort', qty: 2 },
+        desc: 'The reed angler. A lure glows where the face should be.' },
+      { key: 'stormgull', dye: 'Stormgull', color: '#46525c', dyeInput: { item: 'cotton', qty: 2 },
+        desc: 'The storm-fisher. The beak answers nothing.' },
+      { key: 'sundart', dye: 'Sundart', color: '#b0802e', dyeInput: { item: 'sunflower', qty: 2 },
+        desc: 'The strike, bare-faced. It lets you see it coming.' },
     ]),
     // -------- Cutpurse: umber leather under a brass coin device and a
     // half-mask. Drop-only — the guild does not sell its colors, you
@@ -2216,7 +2217,7 @@ function kingfisherSet(): EquipmentDef[] {
     { stat: 'sneak' },
     { stat: 'maxHp' },
   ];
-  const color = '#2f7a8a';
+  const color = '#1e404c';
   const craft = (levelReq: number, xp: number, ticks: number, leather: number) => ({
     skill: 'leatherworking' as const,
     levelReq,
@@ -2231,35 +2232,35 @@ function kingfisherSet(): EquipmentDef[] {
       levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(7, 55, 45, 1),
       value: 95, color, code: 'Oh',
-      desc: 'A swept diver\'s crest, one flame feather in it. The river reads it as local.',
+      desc: 'The sailfin casque. Gill-scored, nacre-browed — the river made this, not a tannery.',
     },
     {
       id: 'kingfisher_jerkin', name: 'Kingfisher jerkin', slot: 'body', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 8 }, armor: 4, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(11, 90, 60, 2),
       value: 140, color, code: 'Oj',
-      desc: 'Teal back, orange breast, feathered shoulders. Dive dressed.',
+      desc: 'Fish-leather scalecoat under a sailfin shoulder. Light moves through it like water.',
     },
     {
       id: 'kingfisher_chaps', name: 'Kingfisher chaps', slot: 'legs', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 7 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(9, 70, 50, 2),
       value: 115, color, code: 'Oc',
-      desc: 'Waxed against the spray. Perch anywhere, answer nothing.',
+      desc: 'Waders to the waterline, fins at the calf. Perch anywhere, answer nothing.',
     },
     {
       id: 'kingfisher_boots', name: 'Kingfisher boots', slot: 'boots', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(8, 60, 45, 1),
       value: 100, color, code: 'Ob',
-      desc: 'Dry inside, always. The bank mud files a complaint.',
+      desc: 'Nacre-toed, dry inside, always. The bank mud files a complaint.',
     },
     {
       id: 'kingfisher_gloves', name: 'Kingfisher gloves', slot: 'gloves', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(8, 58, 45, 1),
       value: 98, color, code: 'Og',
-      desc: 'Teal-backed, orange at the palm. The strike half of the bird.',
+      desc: 'Barb-knuckled fish leather. The hand that never comes up empty.',
     },
   ];
 }

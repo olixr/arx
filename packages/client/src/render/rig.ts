@@ -3470,6 +3470,26 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             ctx.stroke();
           }
         }
+        if (legSt.calffin) {
+          // The calf fin: one small swept blade off the outer shin,
+          // back-raked, bright leading edge — sharp even at a walk.
+          const bk = 0.3;
+          const bx = kx + (ankX - kx) * bk;
+          const by = ky + (ankY - ky) * bk;
+          ctx.fillStyle = legSt.calffin.color;
+          ctx.beginPath();
+          ctx.moveTo(bx, by - 0.012 * s);
+          ctx.lineTo(bx + outX * 0.062 * s, by + 0.028 * s);
+          ctx.lineTo(bx, by + 0.045 * s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = legSt.calffin.edge;
+          ctx.lineWidth = Math.max(1, s * 0.011);
+          ctx.beginPath();
+          ctx.moveTo(bx, by - 0.012 * s);
+          ctx.lineTo(bx + outX * 0.062 * s, by + 0.028 * s);
+          ctx.stroke();
+        }
         if (legSt.wader) {
           // Waxed waders: the lower shin recolored to a hard
           // waterline break, one lit rim where the wax catches.
