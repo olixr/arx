@@ -1,0 +1,288 @@
+# ARMS v3 — THE ARM ANSWERS THE WORLD
+
+The plan of record for the foundational rework of the procedural arm
+system. Written against a two-front audit (2026-08-12): a code audit of
+rig.ts 3608–5320 (the arm/weapon solve and depth ladder), wield.ts,
+carriage.ts, sheath.ts, shields.ts, and the renderer feed; and a visual
+audit on the rebuilt riglab ARMS SHEET (8 facings × idle/walk/run ×
+every carry class, live-simulated gaits with persistent anim state —
+the first lab that actually exercises the stateful laws; see Part 3).
+
+This supersedes nothing: docs/wield-plan.md remains the honest record
+of the LAST rework. Part 0 below documents which of its laws shipped
+and which were quietly never built — that gap is where the compounding
+started.
+
+## Part 0 — what the audit found
+
+### 0.1 The unbuilt laws of the wield plan
+
+The wield rebuild shipped its per-class vocabulary (staffWield,
+greatWield, bowWield, the honest pump, the gait ladder) — but three of
+its founding laws exist only in the plan document:
+
+- **ONE MOUTH PER CHANNEL — never implemented.** `heldAngle` now has
+  SEVEN writers (was six at the last audit): the init at rig.ts:4138,
+  five mutually-exclusive strike branches, then unconditional `+=`
+  accumulations from the rest lerp (4385), wrist-follow (4489), the
+  cast present (4611), and the sheathe (4690). `offX/offY` is still a
+  ~10-branch cascade with five later overwriters.
+- **ONE CLASS, ONE DETECTION — never implemented.** `wieldClass` does
+  not exist. Class is derived four times: held (rig.ts:3620-3630, with
+  the check-great-first fragility hand-patched into `isSword`), worn
+  (4653-4656), the painter's own style probes, and the trail gate's
+  `weapon.weapon.style === 'onehand'|'twohand'` re-derivation (4830).
+- **THE GRIP IS WHERE THE FIST IS — half-implemented.** `BOW_GRIP_X`
+  was never created; the `0.18s` bow apex constant is duplicated
+  across ≥8 sites in weapons.ts and rig.ts.
+
+### 0.2 Structural rot (new since the wield rebuild)
+
+- **Three meanings of `side`.** carriage.ts's module header says
+  "screen side the hand hangs on"; its own `bladeCarriage` docblock 40
+  lines later says "facing weight, NOT the hanging side";
+  `settleElbowPole` uses the outboard-arm sign; sheath.ts calls the
+  weight `rake`. staffWield/greatWield take the smoothed SIGN where
+  bowWield takes the WEIGHT in the same positional slot — a silent
+  caller swap away from a mirrored stance.
+- **Three depth laws.** `WIELD_GROUND_K = 0.52` (exported, consumed by
+  nobody outside wield.ts), shields.ts's private `GROUND_K = 0.52`
+  (duplicated literal), and `projectStrike`'s own K=0.7/floor 0.85 —
+  plus bowWield's third softening (`0.5 + 0.5·fore`) stacked on
+  projectCarry's already-softened output. No test pins any of them to
+  any other.
+- **Compensating offsets outside the vocabulary.** rig.ts:4328 adds
+  `fx·0.04·s` to the great carry and rig.ts:4352 `fx·0.05·s` to the
+  staff carry — bare magic nudges at the assembly site, exactly what
+  the frame functions were supposed to own.
+- **Stale channels across pose boundaries.** `armSwingK` is written
+  only inside the rest branch but consumed outside it (retains its
+  last value into combat); `staffGrip` snaps 0.5–0.72 → 0.34 at combat
+  entry with no blend (the grip channel is explicitly excluded from
+  both neutral-at-ends tests); the off-hand pump gain pops 1 → 0.85
+  when an off blade is equipped; the pump itself drops to zero with no
+  blend when leaving the restful poses.
+- **Five ladder dialects.** Blades ride `gaitK`, staff/great ignore it
+  and consume raw `runF`, bow uses `gaitLift`, runnerLift mixes a
+  fourth combination. "Every class rides one ladder" is not true.
+- **Dead exports.** `GREAT_GUARD_PITCH` (its value re-literalled 3×
+  inside greatFinisherPath), `STRIKE_REST_ARM` (duplicated privately
+  twice in wield.ts), `WIELD_GROUND_K`, `gaitLift` — exported for a
+  wiring that never happened.
+- **Undebounced layer flips.** Only `mainBehind`/`offFront` earned
+  hysteresis. Seven+ facing thresholds flip paint order raw:
+  `fy < −0.35` (weaponBehind + gearBehindLegs), `fy > 0.08` ×2 (staff
+  trail, great shoulder), `fy < −0.08` (great front), `fy < −0.16` ×2
+  (quiver, sling), `profileK > 0.62` (belt), `runF > 0.35`,
+  `restSettle > 0.5` ×6. Running a slow arc across any of these lines
+  pops the weapon between layers.
+- **Two `profileK` definitions in one file** — `|fx|` for the rig,
+  `min(1, |fx|·1.15)` at 8 painter sites.
+- **`armY = hipY − 0.26s` ignores the squash** (`shoulderY` rides
+  `hScale`; the hand anchor line does not) — the two ends of the arm
+  frame disagree about the fake-3D compression.
+- **The caller contract is untyped at the edges.** AnimState.armDepth
+  is declared `{mainBehind: boolean}` while the rig mutates eight more
+  fields onto it; cms/portraits.ts and cms/gameRender.ts cast through
+  `as unknown as` (gameRender passes an `equip` key RigPose doesn't
+  have — mob loadouts silently never reach the hands in CMS renders);
+  lookCreator feeds no memory at all. Until this pass, both dev labs
+  allocated a FRESH depthMemory every frame — every stateful law
+  (240ms side ease, 120ms dwell, 80ms swing low-pass, elbow memory,
+  both layer hysteresis pairs) was dead in every sheet ever judged.
+
+### 0.3 What the lab showed (the perceptual failures)
+
+- **THE DEPTH-AXIS COLLAPSE.** The one projection law is geometrically
+  honest and perceptually wrong at the camera lines. Staff run S: the
+  leveled carry projects to a vertical stick with the crown orb
+  SCRAPING THE GROUND (an inverted crown — our own staff law). Staff
+  run N: a vertical stick indistinguishable from the idle plant. Sword
+  run S: a stick held straight down mid-sprint. Bow draw S: the archer
+  aims the arrow at their own feet; N: at the sky — because the hand
+  orbit and the aim anchor (`cos/sin(dir)·reach`, `fx/fy·bd`) are
+  UNFORESHORTENED SCREEN CIRCLES. The slash trail already knows better
+  (it draws an ellipse, TRAIL_K 0.62 — with its own constant, ≠ 0.52);
+  the fists that swing the steel still ride the flat card the trail
+  comment complains about.
+- **THE VANISHING LOADOUT.** At N/NE/NW the gear disappears entirely:
+  the kiteshield is INVISIBLE at NE and NW (a sword-and-board knight
+  reads as unarmed from 2 of 8 facings), the bow vanishes at N/NE, the
+  sword thins to a sliver between the legs, the tome hides. Honest
+  occlusion, dead readability — there is no silhouette-peek law.
+- **THE BROKEN MIRROR.** SE↔SW and E↔W are not mirror images. The
+  greatblade run carry points tip-UP at SE and tip-DOWN INTO THE
+  GROUND at SW (the `hemi = sin(dir) >= 0` hard flip interacting with
+  the smoothed side — the exact joint case no test samples). The
+  planted staff stands beside the head at E but ACROSS THE FACE at W.
+  Rogue idle blade layering differs E vs W. Only bladeCarriage and
+  bowWield have mirror tests; staff and great have none.
+- **THE STATUE RUN.** On S-facing (camera-line) gaits both fists sit
+  symmetric at the hips — the honest pump's motion lives on the depth
+  axis and projects to almost nothing. Honest, and dead: nothing else
+  picks up the beat, so the run reads stiff exactly where the player
+  camera points most of the time.
+- (Adjacent, legs) The S-facing run's trailing leg folds flat sideways
+  at ground level mid-stride — the same depth-axis degeneracy family,
+  logged here for the leg pass that should ride this epic.
+
+## Part 1 — the laws of v3
+
+**THE ONE WORLD FRAME.** A wield is authored in the world (yaw, pitch,
+lateral lane, grip) and rendered through ONE projection: a single
+`GROUND_K` with a single perceptual-floor law, shared by carries,
+strikes, the pump, the AIM, the HAND ORBITS, and the trails. The three
+parallel softenings collapse into one function with one set of
+constants; shields.ts imports it instead of re-declaring it. The hand's
+combat orbit and the archer's aim anchor become ground ELLIPSES —
+`(cos·r, sin·r·K)` with the lift channel carrying the vertical — so a
+thrust north is short and high, a thrust south short and low, and the
+fist finally lives in the same world its slash trail does.
+
+**THE FACING FRAME.** One struct, computed once per body per frame:
+`{fx, fy, profileK, sideSign (eased, dwelled), sideW (weighted),
+bands}` — and every vocabulary function takes IT, not a loose number
+whose meaning drifts per module. The three meanings of `side` die; the
+0.2 floor moves inside with its name on it; the two `profileK`
+formulas become one.
+
+**ONE MOUTH PER CHANNEL, ENFORCED BY SHAPE.** Every class function
+returns a `WieldFrame {mainX?, mainY?, heldAngle?, fore?, offX?,
+offY?, offAngle?, grip?, pumpK?, layer?}` and rig.ts owns ONE assembly
+site per channel: resolve class → resolve frame → blend frames (rest ↔
+strike ↔ sheathe ↔ seat ↔ shield claim) → write once. Wrist-follow,
+cast present, flourishes are FRAME MODIFIERS applied inside the
+assembly, not scattered `+=`. The `fx·0.04/0.05` nudges move into
+staffWield/greatWield where they belong. A lint-shaped test walks the
+assembly and fails on any second writer.
+
+**ONE CLASS, ONE DETECTION.** `wieldClass(def): {kind: 'blade' |
+'great' | 'staff' | 'bow' | 'tool' | 'none', compact, styles}` —
+computed once, cached by item id, consumed by the held solve, the stow
+solve, the painter gates, and the trail gate. The check-great-first
+ordering lives inside it, once.
+
+**EVERY FLIP EARNS ITS HYSTERESIS.** All layer decisions route through
+one banded facing resolver with enter/exit thresholds riding
+depthMemory (the mainBehind pattern, generalized): weaponBehind,
+gearBehindLegs, staffTrailBehind, greatShoulderBehind/Front, belt,
+sling, quiver. A slow arc across any boundary swaps layers exactly
+once, at a defensible moment. Where geometry permits, the swap is
+placed where it is invisible by construction (the shield's profile
+trick, generalized).
+
+**THE MIRROR LAW.** Every carry, every class, is pinned mirror-
+symmetric: E↔W and SE↔SW produce reflected geometry (angles negated,
+lanes mirrored, layers mirrored). The greatWield hemisphere flip is
+rebuilt as a continuous signed pitch (no `sin(dir) >= 0` branch), and
+staff/great/bow/blade all get the same automated mirror sweep blades
+already have — including the JOINT case (facing near a camera line
+while sideS is mid-ease).
+
+**THE LIFELINE (perceptual depth-axis floor).** At camera-line
+facings, a long carry keeps a MINIMUM SCREEN-LATERAL COMPONENT: the
+authored yaw biases toward the eased side (riding sideS, so it turns
+continuously and never snaps) just enough that a staff/great/bow reads
+as a diagonal, never a vertical stick. Paired with THE CROWN NEVER
+DIGS: a projected carry may not point a staff crown / great tip into
+the ground band — the pitch floor clamps before the projection, in the
+world, so the guard is honest. The bow aim keeps its true fire
+direction for gameplay, but the DRAWN POSE rides the projected
+ellipse: a south draw holds low-forward (not at the feet), a north
+draw high-forward (not at the zenith) — the elevation read comes from
+the arrow's fore + lift, the way the trail already tells depth.
+
+**THE SILHOUETTE PEEK.** Away-band carries may tuck behind the body
+but never vanish: each class authors a peek lane (minimum lateral
+offset at the away bands) so a shield shows its rim past the shoulder,
+a bow shows a limb tip, a blade shows its point beside the hip — at
+every one of the 8 headings a loadout is readable. This is a lane
+adjustment in the class functions, not a layering hack.
+
+**ONE LADDER, EVERY CHANNEL.** All classes consume the same
+`gaitK`/`gaitLift` pair; the grip channel joins the neutral-at-
+boundary contract (staffGrip/greatGrip lerp on the same 280ms pose
+blend every other channel uses); `armSwingK`, the pump, and the
+off-gain ride blended weights that live in the frame, so nothing pops
+on pose entry, pose exit, or a weapon swap.
+
+**THE VISIBLE BREATH.** Where the honest pump projects to nothing
+(camera-line gaits), the beat re-expresses through channels that
+SURVIVE projection — alternating elbow lift, the shoulder-line
+counter-sway, the sw² bounce — scaled by (1 − |poleX|) so it fades in
+exactly where the fore/aft read fades out. Same energy, different
+axis; never a fake side-to-side arm swing.
+
+**THE CONTRACT IS TYPED.** `AnimState.armDepth` becomes
+`RigPose['depthMemory']` by construction; the CMS casts die (and
+gameRender's dead `equip` key is wired to the real RigPose fields so
+CMS mobs hold their weapons); every drawHumanoid caller either owns
+persistent memory or is a deliberate, documented stateless portrait.
+
+## Part 2 — the phases
+
+**Phase 1 — THE COMMON TONGUE** (pure refactor, zero pixels change).
+FacingFrame + wieldClass + the shared constants: one GROUND_K (shields
+imports it), BOW_GRIP_X born and consumed everywhere the 0.18s lives,
+rest-arm/choke dedupe, dead exports deleted or wired
+(GREAT_GUARD_PITCH consumed by greatFinisherPath), the two profileK
+formulas unified, armY joins the hScale frame. Retype armDepth; fix
+the CMS/lookCreator callers and the gameRender equip wiring.
+Byte-identical screenshots on the ARMS SHEET prove "zero pixels".
+
+**Phase 2 — THE ONE MOUTH.** The WieldFrame assembly in rig.ts: one
+writer per channel, modifiers folded in, the 0.04/0.05 nudges moved
+into their class functions, stale-channel fixes (armSwingK, pump exit
+blend, offSwingK blend, grip on the ladder). The assembly-owner test
+lands here.
+
+**Phase 3 — THE HONEST DEPTH.** One projection function; elliptical
+hand orbits, aim anchor, and finisher paths; the trail's K becomes the
+same K; bow draw pose rides the ellipse. THE LIFELINE + THE CROWN
+NEVER DIGS land here — this is the phase that fixes staff-run-S,
+sword-run-S, and both broken draws.
+
+**Phase 4 — THE READABLE EIGHT.** The banded flip resolver with
+hysteresis for every layer decision; THE SILHOUETTE PEEK lanes per
+class; THE MIRROR LAW rebuild of greatWield's hemisphere; the staff
+plant lane moved off the face at W; the N-facing blade lane. The
+mirror sweep + joint-case tests land here.
+
+**Phase 5 — THE LIVING GAIT.** THE VISIBLE BREATH on camera-line
+gaits; walk-stage polish across classes on the one ladder; the
+S-facing trailing-leg fold handed to the leg solver (same depth
+family, its own fix — knee pole floor at deep-fold chords).
+
+**Phase 6 — THE PINNED LAW.** The suite: mirror sweeps all classes,
+hemi×sideS joint sweeps, choke collinearity (staff off-hand ON the
+wood, great pommel hand ON the grip, at every facing), GROUND_K
+equality across modules, fractional armedK pump ratios, dwell-defeat
+jitter (300ms-period wobble), sideW floor pinned by name, and the
+channel-owner walk. riglab's ARMS SHEET graduates to the standing
+audit surface (it already carries persistent per-fig state — keep it).
+
+## Part 3 — verification
+
+The ARMS SHEET (packages/client/riglab.html → src/dev/riglab.ts,
+rebuilt this pass): 8 facings × {idle, walk, run} × {bare, sword std,
+rogue, dual, sword+board, great, staff, bow, tome}, plus the strafe
+row (facing S, traveling 8 headings), stow row, and bow-draw row.
+Every figure owns a persistent LegSolver, kneeMemory, and depthMemory
+— the stateful laws RUN in the lab now. Screenshot bands via
+`?rows=a-b`, walk-speed lever `?gait=walk`. Judge every cell; then
+live: equip each class in-game, run all 8 headings + slow arcs across
+the N and profile boundaries (the flip-pop hunt), sheathe/draw on the
+move, at 120fps.
+
+## Part 4 — what does NOT change
+
+- carriage.ts blade numbers, strike specs, finisher paths, echo law —
+  user verdicts, untouched. Strikes keep their choreography; they
+  simply write through the one assembly and the one projection.
+- shields.ts plane math, sling, straps, dialects (it gains only the
+  imported GROUND_K and the peek lane at the away bands).
+- sheath.ts stow spots and phases.
+- Work cycles (chop/mine/forage/milk/craft), the seat vocabulary.
+- All painters' art. The bow keeps its geometry; the staff keeps its
+  crown-along-+x law (the LIFELINE defends it).
+- Protocol, server, content: a pure client render epic.
