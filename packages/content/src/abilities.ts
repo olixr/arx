@@ -2064,6 +2064,174 @@ const defs: AbilityDef[] = [
     fuseTicks: 12,
   },
 
+  // ---------------------- THE BREATH BETWEEN RUNGS — arx breath arts
+  // The mage school's between-rung wave: ten new askings of the world
+  // seated between the founding rungs, five casted and five channeled,
+  // each speaking for ONE element the founding roster never claimed
+  // whole (wick fire, the rime road, the gale, the quarry, the deep
+  // well, the anvil cloud, the hollow, the lens, the early moon, the
+  // far sky). Casted arts carry no castFreezeTicks; channels never
+  // ride a ground_field.
+  {
+    id: 'wickfire',
+    name: 'Wickfire',
+    desc: 'Light the wick and let it fly. The flame arrives still hungry.',
+    color: '#ff9a4a',
+    code: 'Wk',
+    cooldownTicks: 180, // 9 s
+    castTicks: 18, // 0.9 s lit, 0.72 s planted
+    shape: 'projectile_fan',
+    damage: 10,
+    range: 10,
+    projectiles: 1,
+    spreadArc: 0,
+    projectileSpeed: 13,
+    element: 'ember',
+    status: { status: 'burn', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'rime_river',
+    name: 'Rime River',
+    desc: 'Pour winter from your hand and hold the pour. The cold leaves a road.',
+    color: '#9ad4ec',
+    code: 'Rv',
+    cooldownTicks: 200, // 10 s
+    channelTicks: 48, // 2.4 s held, three reaches of the river
+    pulseEveryTicks: 16,
+    shape: 'beam',
+    damage: 4,
+    range: 11,
+    width: 0.5,
+    element: 'frost',
+    status: { status: 'chill', power: 1, durationTicks: 70 },
+  },
+  {
+    id: 'windshear',
+    name: 'Windshear',
+    desc: 'Draw the whole sky in, then hand it back all at once.',
+    color: '#c2e8c8',
+    code: 'Wn',
+    cooldownTicks: 200, // 10 s
+    castTicks: 20, // 1 s indrawn, 0.8 s planted
+    shape: 'nova',
+    damage: 11,
+    radius: 2.6,
+    knockback: 2.2,
+    element: 'gale',
+  },
+  {
+    id: 'stonerise',
+    name: 'Stonerise',
+    desc: 'Ask the ground to stand up. Every beat, another row answers.',
+    color: '#c8a25f',
+    code: 'Se',
+    cooldownTicks: 220, // 11 s
+    channelTicks: 48, // 2.4 s held, three rows of the quarry
+    pulseEveryTicks: 16,
+    shape: 'ground_aoe',
+    damage: 4,
+    range: 9,
+    radius: 2.0,
+    fuseTicks: 12,
+    knockback: 1.2,
+    element: 'stone',
+  },
+  {
+    id: 'geyser',
+    name: 'Geyser',
+    desc: 'Wake the deep water under their feet. It rises without asking twice.',
+    color: '#8ec8dc',
+    code: 'Gy',
+    cooldownTicks: 220, // 11 s
+    castTicks: 22, // 1.1 s drawn up, 0.88 s planted
+    shape: 'ground_aoe',
+    damage: 12,
+    range: 10,
+    radius: 2.0,
+    fuseTicks: 14,
+    knockback: 1.8,
+    element: 'tide',
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'anvil_sky',
+    name: 'Anvil Sky',
+    desc: 'Call the cloud down to forge height and hold it. Every beat, the hammer.',
+    color: '#efe27a',
+    code: 'Av',
+    cooldownTicks: 240, // 12 s
+    channelTicks: 64, // 3.2 s held, four falls of the hammer
+    pulseEveryTicks: 16,
+    shape: 'nova',
+    damage: 3,
+    radius: 2.4,
+    element: 'storm',
+    status: { status: 'shock', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'hollowcall',
+    name: 'Hollowcall',
+    desc: 'Open a small nothing where you point. Everything nearby is invited.',
+    color: '#8a6ad0',
+    code: 'Ho',
+    cooldownTicks: 240, // 12 s
+    castTicks: 24, // 1.2 s opened, 0.96 s planted
+    shape: 'ground_aoe',
+    damage: 12,
+    range: 11,
+    radius: 2.2,
+    fuseTicks: 16,
+    knockback: -2.0, // the invitation: a pull to the hollow's mouth
+    element: 'void',
+  },
+  {
+    id: 'burning_glass',
+    name: 'Burning Glass',
+    desc: 'Narrow the noon through a held lens. What the line crosses smolders.',
+    color: '#ffd98a',
+    code: 'Bg',
+    cooldownTicks: 220, // 11 s
+    channelTicks: 48, // 2.4 s held, three focusings of the lens
+    pulseEveryTicks: 16,
+    shape: 'beam',
+    damage: 4,
+    range: 10,
+    width: 0.5,
+    element: 'radiant',
+    status: { status: 'burn', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'moonrise',
+    name: 'Moonrise',
+    desc: 'Bring the moon up early. Everything under it slows in the silver.',
+    color: '#d8e2f8',
+    code: 'Mo',
+    cooldownTicks: 240, // 12 s
+    castTicks: 26, // 1.3 s raised, 1.04 s planted
+    shape: 'nova',
+    damage: 13,
+    radius: 2.4,
+    element: 'lunar',
+    status: { status: 'chill', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'cometfall',
+    name: 'Cometfall',
+    desc: 'Ask the far sky for stones. Hold the asking, and they keep coming.',
+    color: '#b8ecff',
+    code: 'Cf',
+    cooldownTicks: 260, // 13 s
+    channelTicks: 64, // 3.2 s held, four visitors from far away
+    pulseEveryTicks: 16,
+    shape: 'ground_aoe',
+    damage: 4,
+    range: 11,
+    radius: 2.2,
+    fuseTicks: 12,
+    element: 'astral',
+    status: { status: 'shock', power: 1, durationTicks: 50 },
+  },
+
   // ---------------------------------- THE OPEN LADDER — new archery arts
   {
     id: 'longshot',
@@ -4209,6 +4377,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'wickfire',
+    style: 'arx',
+    unlockLevel: 8,
+    ranks: [
+      { note: 'The flame flies heavier.', damage: 12 },
+      {
+        note: 'What it lights stays lit longer.',
+        status: { status: 'burn', power: 1, durationTicks: 80 },
+      },
+      { note: 'The wick takes faster, and the hand learns the toss.', cooldownTicks: 170, castTicks: 16 },
+    ],
+  },
+  {
     ability: 'frost_lance',
     style: 'arx',
     unlockLevel: 10,
@@ -4223,6 +4404,20 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'rime_river',
+    style: 'arx',
+    unlockLevel: 13,
+    ranks: [
+      { note: 'The river runs deeper.', damage: 5 },
+      { note: 'The river reaches farther downhill.', range: 12.5 },
+      {
+        note: 'The cold outstays the pour.',
+        cooldownTicks: 180,
+        status: { status: 'chill', power: 1, durationTicks: 90 },
+      },
+    ],
+  },
+  {
     ability: 'blink',
     style: 'arx',
     unlockLevel: 15,
@@ -4233,6 +4428,16 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'windshear',
+    style: 'arx',
+    unlockLevel: 18,
+    ranks: [
+      { note: 'The gale leans harder.', damage: 13 },
+      { note: 'The whole field bows away from you.', radius: 3.0, knockback: 2.6 },
+      { note: 'The sky refills sooner.', cooldownTicks: 180, castTicks: 18 },
+    ],
+  },
+  {
     ability: 'ward_shell',
     style: 'arx',
     unlockLevel: 20,
@@ -4240,6 +4445,16 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'The shell thickens.', self: { shieldHp: 14, durationTicks: 160 } },
       { note: 'The light gathers again sooner.', cooldownTicks: 280 },
       { note: 'A shell that outlasts the storm.', self: { shieldHp: 18, durationTicks: 200 } },
+    ],
+  },
+  {
+    ability: 'stonerise',
+    style: 'arx',
+    unlockLevel: 23,
+    ranks: [
+      { note: 'The rows rise sharper.', damage: 5 },
+      { note: 'A wider quarry answers.', radius: 2.4 },
+      { note: 'The ground stands up angrier, oftener.', cooldownTicks: 200, knockback: 1.6 },
     ],
   },
   {
@@ -4256,6 +4471,16 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'geyser',
+    style: 'arx',
+    unlockLevel: 28,
+    ranks: [
+      { note: 'The deep water rises harder.', damage: 14 },
+      { note: 'The well mouth widens.', radius: 2.4, knockback: 2.2 },
+      { note: 'The deep answers the first knock.', cooldownTicks: 200, castTicks: 20 },
+    ],
+  },
+  {
     ability: 'meteor_shard',
     style: 'arx',
     unlockLevel: 30,
@@ -4269,6 +4494,20 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'anvil_sky',
+    style: 'arx',
+    unlockLevel: 33,
+    ranks: [
+      { note: 'The hammer falls heavier.', damage: 4 },
+      { note: 'The anvil widens.', radius: 2.8 },
+      {
+        note: 'The forge keeps longer hours, and the charge clings.',
+        cooldownTicks: 220,
+        status: { status: 'shock', power: 1, durationTicks: 80 },
+      },
+    ],
+  },
+  {
     ability: 'stormcall',
     style: 'arx',
     unlockLevel: 35,
@@ -4276,6 +4515,16 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'Each strike asks for more.', damage: 6 },
       { note: 'The appointment runs long, and wide.', radius: 2.6, fieldTicks: 120 },
       { note: 'The sky keeps the appointment.', cooldownTicks: 220 },
+    ],
+  },
+  {
+    ability: 'hollowcall',
+    style: 'arx',
+    unlockLevel: 38,
+    ranks: [
+      { note: 'The nothing bites deeper.', damage: 14 },
+      { note: 'The invitation reaches farther.', radius: 2.6, knockback: -2.4 },
+      { note: 'The hollow opens quicker, and closes on more.', cooldownTicks: 210, castTicks: 22, damage: 15 },
     ],
   },
   {
@@ -4295,6 +4544,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'burning_glass',
+    style: 'arx',
+    unlockLevel: 43,
+    ranks: [
+      { note: 'The line burns finer and hotter.', damage: 5 },
+      {
+        note: 'What it crosses keeps smoldering.',
+        status: { status: 'burn', power: 1, durationTicks: 60 },
+      },
+      { note: 'The lens steadies sooner.', cooldownTicks: 200 },
+    ],
+  },
+  {
     ability: 'maelstrom',
     style: 'arx',
     unlockLevel: 45,
@@ -4307,6 +4569,30 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
         knockback: -2.6,
         status: { status: 'chill', power: 1, durationTicks: 100 },
       },
+    ],
+  },
+  {
+    ability: 'moonrise',
+    style: 'arx',
+    unlockLevel: 46,
+    ranks: [
+      { note: 'A heavier moon.', damage: 15 },
+      {
+        note: 'The silver reaches farther, and the slow runs longer.',
+        radius: 2.8,
+        status: { status: 'chill', power: 1, durationTicks: 80 },
+      },
+      { note: 'The moon answers the first call.', cooldownTicks: 220, castTicks: 24 },
+    ],
+  },
+  {
+    ability: 'cometfall',
+    style: 'arx',
+    unlockLevel: 48,
+    ranks: [
+      { note: 'Heavier stones from farther away.', damage: 5 },
+      { note: 'The sky opens wider.', radius: 2.6 },
+      { note: 'The visitors arrive closer together.', cooldownTicks: 240, pulseEveryTicks: 14 },
     ],
   },
   {

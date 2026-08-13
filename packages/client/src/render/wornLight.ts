@@ -64,6 +64,13 @@ export const ELEMENT_TINTS: Record<string, ElementTint> = {
   radiant: { core: '#ffffff', mid: '#ffd98a', deep: '196, 150, 70', fleck: '#fff2c8', glow: '255, 217, 138' },
   blood: { core: '#ffb0a8', mid: '#d95763', deep: '134, 38, 48', fleck: '#ff8a8a', glow: '217, 87, 99' },
   astral: { core: '#ffffff', mid: '#9ae8de', deep: '90, 140, 180', fleck: '#e8b0ff', glow: '154, 232, 222' },
+  // THE BREATH BETWEEN RUNGS (arx wave): four schools the mage ladder
+  // now speaks for — tinted here so the day a gale or lunar set ships,
+  // its worn light and projectile paint already agree with the arts.
+  gale: { core: '#f4fff6', mid: '#c2e8c8', deep: '74, 122, 98', fleck: '#ffffff', glow: '160, 220, 180' },
+  stone: { core: '#ffedc8', mid: '#c8a25f', deep: '106, 78, 42', fleck: '#ffd98a', glow: '200, 162, 95' },
+  tide: { core: '#eaffff', mid: '#8ec8dc', deep: '42, 90, 120', fleck: '#c8f0f4', glow: '142, 200, 220' },
+  lunar: { core: '#ffffff', mid: '#d8e2f8', deep: '70, 84, 138', fleck: '#eaf0ff', glow: '190, 205, 250' },
 };
 
 export function elementTint(element: string | undefined): ElementTint {

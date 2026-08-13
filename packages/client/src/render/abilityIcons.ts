@@ -3105,6 +3105,127 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// --------------- THE BREATH BETWEEN RUNGS — the arx wave's plates
+Object.assign(PLATES, {
+  // Wickfire — the thrown candle: the flame in flight, its wick-trail
+  // still curling behind, a gutter of small fire already landed.
+  wickfire: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.deep, [[-0.36, 0.3], [-0.22, 0.18], [-0.12, 0.02], [-0.02, -0.08]], 0.034);
+    flame(c, 0.12, -0.14, 0.5, st, 0.14);
+    flame(c, -0.3, 0.34, 0.22, st, -0.08);
+    dot(c, st.spark, -0.14, 0.36, 0.03);
+    dot(c, st.spark, 0.34, 0.18, 0.028);
+  },
+  // Rime River — winter poured downhill: the river band winding from
+  // the hand's corner, its source flake, rime set along the banks.
+  rime_river: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    fill(c, st.mid, [[-0.4, -0.28], [-0.24, -0.32], [-0.02, -0.12], [0.2, -0.02], [0.38, 0.22], [0.26, 0.34], [0.06, 0.12], [-0.18, 0.0], [-0.4, -0.14]]);
+    poly(c, st.core, [[-0.32, -0.26], [-0.06, -0.08], [0.16, 0.04], [0.3, 0.24]], 0.03);
+    snowflake(c, -0.32, -0.3, 0.1, st.core, 0.034);
+    dot(c, st.spark, 0.1, -0.24, 0.028);
+    dot(c, st.spark, -0.06, 0.24, 0.028);
+    dot(c, st.deep, 0.34, 0.06, 0.026);
+  },
+  // Windshear — the sky handed back: gust fronts breaking outward,
+  // leaves torn off their stems mid-air.
+  windshear: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0, 0.18, 0.24, -2.6, 0.6, st.core, 0.04);
+    crescent(c, 0, 0, 0.3, 0.36, -2.2, 1.0, st.mid, 0.04);
+    crescent(c, 0, 0, 0.42, 0.46, -1.8, 1.3, st.deep, 0.034);
+    fill(c, st.mid, [[0.24, -0.3], [0.34, -0.36], [0.32, -0.24]]);
+    fill(c, st.mid, [[-0.3, 0.22], [-0.4, 0.24], [-0.32, 0.34]]);
+    dot(c, st.spark, 0.12, -0.38, 0.028);
+    dot(c, st.spark, -0.14, 0.4, 0.026);
+  },
+  // Stonerise — the quarry answering: rows of ground teeth standing
+  // up out of the line, the crack that called them.
+  stonerise: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.36, st);
+    fill(c, st.mid, [[-0.3, 0.24], [-0.2, -0.18], [-0.1, 0.24]]);
+    fill(c, st.core, [[-0.08, 0.24], [0.02, -0.32], [0.14, 0.24]]);
+    fill(c, st.mid, [[0.16, 0.24], [0.26, -0.1], [0.34, 0.24]]);
+    poly(c, st.deep, [[-0.36, 0.32], [-0.12, 0.36], [0.1, 0.33], [0.36, 0.37]], 0.026);
+    dot(c, st.spark, 0.02, -0.4, 0.03);
+  },
+  // Geyser — the deep well woken: the white column standing out of
+  // its pool, spray raining back down both sides.
+  geyser: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.34, st);
+    fill(c, st.mid, [[-0.12, 0.26], [-0.07, -0.3], [0.07, -0.3], [0.12, 0.26]]);
+    fill(c, st.core, [[-0.05, 0.24], [-0.025, -0.28], [0.025, -0.28], [0.05, 0.24]]);
+    puff(c, 0, -0.34, 0.11, st.core);
+    droplet(c, -0.24, -0.1, 0.4, st);
+    droplet(c, 0.26, -0.14, 0.4, st);
+    dot(c, st.spark, -0.32, 0.16, 0.028);
+    dot(c, st.spark, 0.33, 0.12, 0.028);
+  },
+  // Anvil Sky — the forge brought low: the flat cloud pressed down to
+  // anvil height, the hammer-stroke already falling.
+  anvil_sky: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    fill(c, st.deep, [[-0.38, -0.26], [0.38, -0.26], [0.3, -0.14], [-0.3, -0.14]]);
+    puff(c, -0.3, -0.3, 0.09, st.deep);
+    puff(c, 0.28, -0.31, 0.1, st.deep);
+    bolt(c, 0, 0.1, 0.52, st, 0.1);
+    novaRing(c, 0, 0.34, 0.22, st, 8, 0.2, 0.032);
+    dot(c, st.spark, -0.3, 0.3, 0.028);
+    dot(c, st.spark, 0.3, 0.26, 0.028);
+  },
+  // Hollowcall — the small nothing: the rim of runes holding, and
+  // everything already leaning in toward the dark at the middle.
+  hollowcall: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    ringDot(c, st.mid, 0, 0, 0.36, 0.036);
+    dot(c, st.deep, 0, 0, 0.13);
+    ringDot(c, st.core, 0, 0, 0.16, 0.024);
+    chevrons(c, -0.42, 0, 0, st, 2, 0.7);
+    chevrons(c, 0.42, 0, Math.PI, st, 2, 0.7);
+    chevrons(c, 0, -0.42, Math.PI / 2, st, 2, 0.7);
+    chevrons(c, 0, 0.42, -Math.PI / 2, st, 2, 0.7);
+  },
+  // Burning Glass — noon narrowed: the held lens, the light entering
+  // wide and leaving as one line that ends in fire.
+  burning_glass: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.spark, [[-0.42, -0.3], [-0.1, -0.06]], 0.028);
+    poly(c, st.spark, [[-0.42, -0.02], [-0.1, -0.02]], 0.028);
+    poly(c, st.spark, [[-0.42, 0.26], [-0.1, 0.02]], 0.028);
+    ringDot(c, st.mid, -0.04, -0.02, 0.15, 0.045);
+    poly(c, st.core, [[0.1, -0.02], [0.38, 0.16]], 0.05);
+    flame(c, 0.38, 0.1, 0.24, st, 0.1);
+  },
+  // Moonrise — the early moon: the disc just clear of the horizon,
+  // its halo, and the pale moths adrift under it.
+  moonrise: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.deep, [[-0.42, 0.26], [0.42, 0.26]], 0.036);
+    dot(c, st.core, 0, -0.08, 0.19);
+    crescent(c, 0, -0.08, 0.24, 0.28, -2.8, 0.2, st.mid, 0.03);
+    dot(c, st.mid, 0.07, -0.14, 0.035);
+    dot(c, st.mid, -0.06, -0.02, 0.026);
+    star4(c, -0.3, 0.1, 0.06, st.spark);
+    star4(c, 0.3, -0.28, 0.05, st.spark);
+    dot(c, st.spark, 0.24, 0.16, 0.024);
+  },
+  // Cometfall — the visitor: head and tapering tail crossing the
+  // whole plate, the cracked ring where the last one landed.
+  cometfall: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    fill(c, st.mid, [[-0.4, -0.38], [0.1, -0.02], [0.02, 0.08]]);
+    dot(c, st.core, 0.1, 0.02, 0.09);
+    dot(c, st.spark, -0.16, -0.2, 0.028);
+    novaRing(c, 0.16, 0.3, 0.2, st, 9, 0.22, 0.03);
+    poly(c, st.deep, [[0.02, 0.38], [0.12, 0.3]], 0.026);
+    poly(c, st.deep, [[0.3, 0.38], [0.24, 0.3]], 0.026);
+    star4(c, -0.34, 0.18, 0.05, st.spark);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ------------------------------- THE SHIELD SKILL — the wall's plates
 Object.assign(PLATES, {
   // Shield Bash — the face of the wall meeting a jaw: impact star at

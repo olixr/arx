@@ -37,6 +37,7 @@ import { MELEE_SIGS } from './fxSigsMelee.js';
 import { SNEAK_SIGS } from './fxSigsSneak.js';
 import { ARCHERY_SIGS } from './fxSigsArchery.js';
 import { ARX_SIGS } from './fxSigsArx.js';
+import { ARX_BREATH_SIGS } from './fxSigsArxBreath.js';
 import { ARCHER_SIGS } from './fxSigsArcher.js';
 import { ROGUE_SIGS } from './fxSigsRogue.js';
 import { BLADE_SIGS } from './fxSigsBlade.js';
@@ -820,6 +821,7 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...SNEAK_SIGS,
   ...ARCHERY_SIGS,
   ...ARX_SIGS,
+  ...ARX_BREATH_SIGS,
   ...ARCHER_SIGS,
   ...ROGUE_SIGS,
   ...BLADE_SIGS,

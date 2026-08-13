@@ -490,6 +490,42 @@ export const FX_STYLES: Record<string, FxStyle> = {
   // light hammering the stake every beat, the turf seared white.
   noonfall: RADIANT({ mid: '#f8e8b0', ring: 'halo', debris: 'star', decal: 'scorch', motif: 'pillar', punch: 0.7, wash: 0.75 }),
 
+  // --------------- THE BREATH BETWEEN RUNGS — the arx breath wave
+  // Ten askings of the world seated between the mage school's rungs.
+  // Same law as the blade wave: one element per art, a unique face per
+  // art, the casted five read gather-then-answer, the channeled five
+  // read as a held working.
+  // Wickfire — the thrown candle: hungry lamp-orange, little standing
+  // flames guttering where the splash licked.
+  wickfire: EMBER({ mid: '#ff9a4a', ring: 'shards', debris: 'ember', decal: 'scorch', motif: 'wisps', punch: 0.5, wash: 0.55 }),
+  // Rime River — winter poured downhill: milk-blue over deep water,
+  // a crest that rolls away downstream and a road of rime left behind.
+  rime_river: FROST({ mid: '#9ad4ec', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'wave', punch: 0.4, wash: 0.45 }),
+  // Windshear — the sky handed back: mint-pale air, torn leaves, gust
+  // fronts breaking outward; the one face here with no mark left.
+  windshear: VERDANT({ mid: '#c2e8c8', deep: '#4a7a62', spark: '#f4fff6', ring: 'petals', debris: 'leaf', decal: undefined, motif: 'wave', punch: 0.65, wash: 0.3 }),
+  // Stonerise — the quarry answering: sandstone tan, rows of ground
+  // teeth, cracks that stay in the earth.
+  stonerise: STEEL({ mid: '#c8a25f', deep: '#6a4e2a', spark: '#ffd98a', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'spikes', punch: 0.6, wash: 0.35 }),
+  // Geyser — the deep well woken: surf-blue, a standing white column,
+  // the wet sheen where it rained back down.
+  geyser: TIDE({ mid: '#8ec8dc', ring: 'petals', debris: 'ice', decal: 'glow', motif: 'pillar', punch: 0.7, wash: 0.45 }),
+  // Anvil Sky — the forge brought low: hot brass under a flat cloud
+  // disc, the hammer falling every held beat.
+  anvil_sky: STORM({ mid: '#efe27a', deep: '#6a5f1e', ring: 'halo', debris: 'spark', decal: 'scorch', motif: 'echo', punch: 0.75, wash: 0.3 }),
+  // Hollowcall — the small nothing: bruise-violet, everything leaning
+  // inward, a stain where light arrives late.
+  hollowcall: VOID({ mid: '#8a6ad0', ring: 'runes', debris: 'shadow', decal: 'glow', motif: 'vortex', punch: 0.65, wash: 0.25 }),
+  // Burning Glass — noon narrowed: honey gold drawn to a line, embers
+  // where the focus crossed, the scorch of a held burn.
+  burning_glass: RADIANT({ mid: '#ffce70', ring: 'halo', debris: 'ember', decal: 'scorch', motif: 'rays', punch: 0.45, wash: 0.6 }),
+  // Moonrise — the early moon: silver-blue silence, a slow halo, pale
+  // moths of light adrift in the glade it leaves.
+  moonrise: ARCANE({ mid: '#d8e2f8', deep: '#46548a', spark: '#ffffff', glow: '190, 205, 250', ring: 'halo', debris: 'star', decal: 'glow', motif: 'wisps', punch: 0.55, wash: 0.4 }),
+  // Cometfall — visitors from far away: sea-glass teal with a violet
+  // fleck, streaks falling in, craters cracked where they land.
+  cometfall: ARCANE({ mid: '#9ae8de', deep: '#2a6a7a', spark: '#e8b0ff', glow: '154, 232, 222', ring: 'shards', debris: 'star', decal: 'cracks', motif: 'rain', punch: 0.8, wash: 0.5 }),
+
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),
 

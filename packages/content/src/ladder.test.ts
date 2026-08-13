@@ -98,7 +98,7 @@ test('the rank clock is uniform and the ladder mastered before 99', () => {
 
 test('THE OPEN LADDER: an art every five levels, 5 through 50, no gaps, no doubles', () => {
   const RUNGS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
-  for (const style of ['combat', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
+  for (const style of ['combat', 'archery', 'sneak', 'twohand', 'shield', 'dualwield']) {
     const arts = techniquesFor(style).filter((t) => !t.hidden);
     assert.deepEqual(
       arts.map((t) => t.unlockLevel),
@@ -147,6 +147,52 @@ test('THE BREATH BETWEEN RUNGS: onehand holds exactly its authored ladder', () =
   assert.equal(new Set(arts.map((t) => t.ability)).size, arts.length);
   // The breath wave's own law: every between-rung art is a breath art
   // (castTicks or channelTicks), never another press-edge instant.
+  for (const t of arts) {
+    if (RUNG_LEVELS.has(t.unlockLevel)) continue;
+    const ab = abilityDef(t.ability)!;
+    assert.ok(
+      (ab.castTicks ?? 0) > 0 || (ab.channelTicks ?? 0) > 0,
+      `${t.ability}: a between-rung seat must breathe (cast or channel)`,
+    );
+  }
+});
+
+test('THE BREATH BETWEEN RUNGS: arx holds exactly its authored ladder', () => {
+  // The mage school's between-rung wave (the second school to go
+  // off-rung, after onehand): ten new breath arts seated BETWEEN the
+  // founding rungs, five casted and five channeled, so the pin becomes
+  // an authored table too.
+  const arts = techniquesFor('arx').filter((t) => !t.hidden);
+  assert.deepEqual(
+    arts.map((t) => [t.ability, t.unlockLevel]),
+    [
+      ['arc_bolt', 5],
+      ['wickfire', 8],
+      ['frost_lance', 10],
+      ['rime_river', 13],
+      ['blink', 15],
+      ['windshear', 18],
+      ['ward_shell', 20],
+      ['stonerise', 23],
+      ['ember_fan', 25],
+      ['geyser', 28],
+      ['meteor_shard', 30],
+      ['anvil_sky', 33],
+      ['stormcall', 35],
+      ['hollowcall', 38],
+      ['mirror_image', 40],
+      ['burning_glass', 43],
+      ['maelstrom', 45],
+      ['moonrise', 46],
+      ['cometfall', 48],
+      ['daybreak', 50],
+    ],
+    'the arx ladder is exactly its authored roster',
+  );
+  assert.equal(new Set(arts.map((t) => t.ability)).size, arts.length);
+  // The breath wave's own law holds here too: every between-rung art
+  // is a breath art (castTicks or channelTicks), never another
+  // press-edge instant.
   for (const t of arts) {
     if (RUNG_LEVELS.has(t.unlockLevel)) continue;
     const ab = abilityDef(t.ability)!;

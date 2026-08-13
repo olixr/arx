@@ -144,6 +144,61 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
     },
   },
 
+  // ---------------- THE BREATH BETWEEN RUNGS — the arx gathers
+  // Wickfire: the wick takes — a small true plume climbs the lit
+  // hand, briefer and hungrier than Ember Edge's drawn cut.
+  wickfire: {
+    charge: (c, x, y, o) => {
+      fire.deployments.plume!(c, x, y, {
+        scale: 0.35 + (1.5 - o.radius) * 0.5,
+        dur: 0.6,
+      });
+    },
+  },
+  // Windshear: the indraw — loose ground breathes UP around the
+  // caster while the whole sky is being borrowed.
+  windshear: {
+    charge: (c, x, y, o) => {
+      dust.deployments.billow!(c, x, y, {
+        radius: o.radius * 0.8,
+        scale: 0.4 + (1.5 - o.radius) * 0.45,
+        dur: 0.7,
+      });
+    },
+  },
+  // Geyser: the deep is knocked on — an undertow turns beneath the
+  // stance before anything shows above it.
+  geyser: {
+    charge: (c, x, y, o) => {
+      water.deployments.undertow!(c, x, y, {
+        radius: o.radius * 0.6,
+        scale: 0.45 + (1.5 - o.radius) * 0.4,
+        dur: 0.7,
+      });
+    },
+  },
+  // Hollowcall: the door is being opened — the dark's own doorway
+  // grammar, small and patient, at the caller's hand.
+  hollowcall: {
+    charge: (c, x, y, o) => {
+      shadow.deployments.door!(c, x, y, {
+        radius: o.radius * 0.6,
+        scale: 0.55 + (1.5 - o.radius) * 0.45,
+        dur: 0.8,
+      });
+    },
+  },
+  // Moonrise: the silver gathers — a quiet bloom of kept light that
+  // fills as the moon agrees to come early.
+  moonrise: {
+    charge: (c, x, y, o) => {
+      radiance.deployments.bloom!(c, x, y, {
+        scale: 0.35 + (1.5 - o.radius) * 0.45,
+        dur: 0.8,
+      });
+    },
+  },
+
   // -------------------------------------------- the held notes
   // Maelstrom: the sea churns underfoot for as long as the vortex
   // is held open.
@@ -230,6 +285,43 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
   noonfall: {
     note: (c, x, y, o) => {
       radiance.deployments.shafts!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 });
+    },
+  },
+
+  // ------------------ THE BREATH BETWEEN RUNGS — the arx notes
+  // Rime River: the pour itself — a line of cold leaving the hand for
+  // as long as the river is held. The one note that IS its shape.
+  rime_river: {
+    note: (c, x, y, o) => {
+      frost.deployments.lance!(c, x, y, { radius: o.radius, scale: 0.55, dur: 1.2 });
+    },
+  },
+  // Stonerise: the quarry works — the ground near the caller tears
+  // and gouges while rows keep answering at the mark.
+  stonerise: {
+    note: (c, x, y, o) => {
+      dust.deployments.gouge!(c, x, y, { radius: o.radius * 0.7, scale: 0.6, dur: 1.2 });
+    },
+  },
+  // Anvil Sky: the cloud keeps charging between hammerfalls — the
+  // singer stands inside the forge's own static.
+  anvil_sky: {
+    note: (c, x, y, o) => {
+      storm.deployments.charge!(c, x, y, { radius: o.radius * 0.8, scale: 0.75, dur: 1.2 });
+    },
+  },
+  // Burning Glass: the lens hums — a held halo of narrowed noon
+  // standing on the singer while the line does its work.
+  burning_glass: {
+    note: (c, x, y, o) => {
+      radiance.deployments.halo!(c, x, y, { radius: o.radius * 0.8, scale: 0.5, dur: 1.2 });
+    },
+  },
+  // Cometfall: the far sky answers — faint star-fall drifts down
+  // around the asker for as long as the asking holds.
+  cometfall: {
+    note: (c, x, y, o) => {
+      radiance.deployments.rain!(c, x, y, { radius: o.radius * 0.8, scale: 0.5, dur: 1.3 });
     },
   },
 
