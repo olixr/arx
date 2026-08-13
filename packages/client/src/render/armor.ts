@@ -100,7 +100,13 @@ export interface BodyStyle {
     // kingfisher folded wing, `guardhair` the wolfstalker winter
     // pelt, `drakewing` the drakescale ribbed wing-fin, `oakspaul`
     // the stagheart oak-leaf lappets.
-    | 'finblade' | 'guardhair' | 'drakewing' | 'oakspaul';
+    // Kingfisher's FOUR SHOULDERS — lots override `pauldron` the way
+    // they override `kind` (one owner per LOT): `sharkfin` the
+    // leviathan's dorsal icon, `escalight` the deep angler's barbel
+    // lights, `krakengrip` the coiled sucker-armed tentacle,
+    // `sailfan` the marlin's ribbed sail.
+    | 'sharkfin' | 'escalight' | 'krakengrip' | 'sailfan'
+    | 'guardhair' | 'drakewing' | 'oakspaul';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
@@ -596,19 +602,20 @@ export interface HelmStyle {
     | 'stardiadem'
     // THE HUNTER'S HEADS — the leather lane's own, one owner each:
     // `courierhood` the hareswift wind-flattened runner's hood,
-    // kingfisher's FOUR FISHERS (the FOUR VIGILS precedent on
-    // leather — each dye lot wears its OWN head): `finhelm` the
-    // sailfin casque, `anglerhood` the deep hood under its glowing
-    // rod-and-lure, `stormbeak` the storm hat over the pale beak
-    // mask, `dartcrest` the bare-crest strike cap; `thiefhood` the
+    // kingfisher's FOUR LEVIATHANS (each dye lot wears its OWN sea
+    // monster): `sharkmaw` the jaws worn whole — the wearer looks
+    // out of the shark's mouth; `anglerhood` the deep hood under its
+    // glowing rod-and-lure; `krakencowl` the mantle with eyes and
+    // sucker-armed tentacles; `marlincrest` the bill-and-sail
+    // strike; `thiefhood` the
     // cutpurse slouched cap-and-kerchief, `trapperhood` the trapline
     // deep winter fur tunnel, `foxmantle` the emberfox pelt worn
     // whole, `roadhood` the wayfarer patched traveler, `wolfmantle`
     // the wolfstalker headdress with its cascading mane, `shadowcowl`
     // the nightveil assassin's blade-point dark, `stagcrown` the
     // stagheart antlered forest crown.
-    | 'courierhood' | 'finhelm' | 'anglerhood' | 'stormbeak'
-    | 'dartcrest' | 'thiefhood' | 'trapperhood'
+    | 'courierhood' | 'sharkmaw' | 'anglerhood' | 'krakencowl'
+    | 'marlincrest' | 'thiefhood' | 'trapperhood'
     | 'foxmantle' | 'roadhood' | 'wolfmantle' | 'shadowcowl'
     | 'stagcrown'
     // THE FOUR VIGILS OF THE DAWN — dawnsworn's skies each wear
@@ -800,18 +807,16 @@ export interface HelmStyle {
   /** Courierhood: the waybill — a parchment ribbon pinned at the
    *  temple by a wax seal, streaming off the trailing edge. */
   waybill?: { color: string; seal: string };
-  /** Finhelm/dartcrest: the fin crest — raked spine blades with
-   *  membrane between; `flash` is the bright spine edge (finhelm)
-   *  or the counter-color crest (dartcrest). */
+  /** Sharkmaw/marlincrest: the crest colors — sharkmaw reads `color`
+   *  as its belly-pale and `flash` as the tooth ivory; marlincrest
+   *  reads `color` as sail membrane and `flash` as the bill/spine
+   *  counter-metal. */
   divecrest?: { color: string; flash: string };
   /** Anglerhood: the rod-and-lure — a thin spine curving off the
    *  crown, dangling a warm lure bead before the brow. It breathes
    *  on a slow clock; the face below stays void. THE LURE IS
    *  ALWAYS WARM — bait must contrast the water. */
   lure?: { color: string };
-  /** Stormbeak: the pale seabird half-mask — one long tapered beak
-   *  below the eye shadow. The storm-fisher answers nothing. */
-  beakmask?: { color: string };
   /** Thiefhood: the guild's one vanity — a brass coin pinned at the
    *  brow, glinting rarely. */
   coinpin?: { color: string };
@@ -1206,7 +1211,7 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   // was ever supposed to own it.
   kingfisher_jerkin: {
     color: '#1e404c', trim: '#cfe4e2', metal: '#26343c', cls: 'leather',
-    silhouette: 'jerkin', pauldron: 'finblade', pauldronColor: '#1a3842',
+    silhouette: 'jerkin', pauldron: 'sharkfin', pauldronColor: '#1a3842',
     pauldronTrim: '#d8ecec', pauldronScale: 1.16, chest: 'none',
     skirt: 0,
     scalecoat: { color: '#24505e', edge: '#3e7484', sheen: '#cfe4e2' },
@@ -1704,8 +1709,8 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     waybill: { color: '#e8dcc0', seal: '#b84a32' },
   },
   kingfisher_hood: {
-    color: '#1e404c', trim: '#cfe4e2', kind: 'finhelm',
-    divecrest: { color: '#14303a', flash: '#d8ecec' },
+    color: '#1e404c', trim: '#cfe4e2', kind: 'sharkmaw',
+    divecrest: { color: '#a8c2c2', flash: '#e8ecec' },
   },
   cutpurse_cowl: {
     color: '#4e4438', trim: '#c9a23c', kind: 'thiefhood', mask: '#26221c',
@@ -2791,21 +2796,21 @@ registerColorways(BOOT_STYLES, 'hareswift_boots', {
 registerColorways(BODY_STYLES, 'kingfisher_jerkin', {
   reedmace: {
     color: '#2c4434', trim: '#c8d8b0', metal: '#1e3024',
-    pauldronColor: '#243a2c', pauldronTrim: '#c8d8b0',
+    pauldron: 'escalight' as const, pauldronColor: '#243a2c', pauldronTrim: '#c8d8b0',
     scalecoat: { color: '#35543c', edge: '#4e7050', sheen: '#c8d8b0' },
     hookline: { line: '#7a8a72', hook: '#c8d8b0', lure: '#ffb054' },
     belt: { color: '#1e3024', buckle: '#c8d8b0' },
   },
   stormgull: {
     color: '#46525c', trim: '#e2eaee', metal: '#323c44',
-    pauldronColor: '#3c4852', pauldronTrim: '#e2eaee',
+    pauldron: 'krakengrip' as const, pauldronColor: '#3c4852', pauldronTrim: '#e2eaee',
     scalecoat: { color: '#525f6a', edge: '#6e7e8a', sheen: '#e2eaee' },
     hookline: { line: '#9aa6ae', hook: '#e2eaee', lure: '#ffb054' },
     belt: { color: '#323c44', buckle: '#e2eaee' },
   },
   sundart: {
     color: '#b0802e', trim: '#f4e8c8', metal: '#8a6828',
-    pauldronColor: '#a0742a', pauldronTrim: '#f4e8c8',
+    pauldron: 'sailfan' as const, pauldronColor: '#a0742a', pauldronTrim: '#2f7a8a',
     scalecoat: { color: '#bc8c34', edge: '#d8a848', sheen: '#f4e8c8' },
     hookline: { line: '#8a7a52', hook: '#f4e8c8', lure: '#e05820' },
     belt: { color: '#8a6828', buckle: '#f4e8c8' },
@@ -2817,12 +2822,11 @@ registerColorways(HELM_STYLES, 'kingfisher_hood', {
     lure: { color: '#ffb054' },
   },
   stormgull: {
-    color: '#46525c', trim: '#e2eaee', kind: 'stormbeak',
-    beakmask: { color: '#c2c2b2' },
+    color: '#46525c', trim: '#e2eaee', kind: 'krakencowl',
   },
   sundart: {
-    color: '#b0802e', trim: '#f4e8c8', kind: 'dartcrest',
-    divecrest: { color: '#8a6828', flash: '#2f7a8a' },
+    color: '#b0802e', trim: '#f4e8c8', kind: 'marlincrest',
+    divecrest: { color: '#2f7a8a', flash: '#f4e8c8' },
   },
 });
 registerColorways(LEG_STYLES, 'kingfisher_chaps', {
@@ -5283,33 +5287,57 @@ export function drawTorsoGarment(
     // travels the rows every few seconds: light through water.
     if (st.scalecoat && !hurt) {
       const sc = st.scalecoat;
-      const rows = 7;
-      const topY = -th * 0.98;
-      const botY = 0.0 * s;
-      const sr = tww * 0.155;
-      for (let r = 0; r < rows; r++) {
+      // THE SCUTE PLATES: four rows of LARGE lapped shield-scales —
+      // dragon-plate weight, not sardine skin. Each plate is a full
+      // assembly: body fill, lit top plane, keel ridge, nacre edge
+      // arc. Staggered rows, wrap-around, upper rows lap the lower.
+      const topY = -th * 0.99;
+      const botY = 0.01 * s;
+      const rows = 4;
+      const pw = tww * 0.36;
+      for (let r = rows - 1; r >= 0; r--) {
+        // Painted bottom-up so each upper row LAPS the one below.
         const yy = topY + ((botY - topY) * (r + 1)) / rows;
-        const off = (r % 2) * sr;
-        const perRow = Math.ceil((tww * 2) / (sr * 2)) + 1;
+        const rowH = (botY - topY) / rows;
+        const off = (r % 2) * pw;
+        const perRow = Math.ceil((tww * 2) / (pw * 2)) + 1;
         const lastRow = r === rows - 1;
-        for (let i = 0; i < perRow; i++) {
-          const sx = -tww + off + i * sr * 2;
-          if (sx - sr > tww || sx + sr < -tww) continue;
+        for (let i = -1; i < perRow; i++) {
+          const sx = -tww + off + i * pw * 2;
+          if (sx - pw > tww || sx + pw < -tww) continue;
           const turnBias = (sx * leadSign) / tww;
-          const col2 = turnBias > 0.5 ? shade(sc.color, 7) : turnBias < -0.45 ? shade(sc.color, -12) : sc.color;
+          const col2 = turnBias > 0.5 ? shade(sc.color, 8) : turnBias < -0.45 ? shade(sc.color, -12) : sc.color;
+          // The plate: flat shoulders, full-bellied point — a scute,
+          // not a scallop.
           ctx.fillStyle = col2;
           ctx.beginPath();
-          ctx.arc(sx, yy, sr, 0, Math.PI);
+          ctx.moveTo(sx - pw, yy - rowH * 1.16);
+          ctx.lineTo(sx + pw, yy - rowH * 1.16);
+          ctx.lineTo(sx + pw, yy - rowH * 0.34);
+          ctx.quadraticCurveTo(sx + pw * 0.6, yy + rowH * 0.12, sx, yy + rowH * 0.22);
+          ctx.quadraticCurveTo(sx - pw * 0.6, yy + rowH * 0.12, sx - pw, yy - rowH * 0.34);
           ctx.closePath();
           ctx.fill();
-          // The bottom row keeps NO edge crescent — bright scallops
-          // over the belt read as a row of teeth.
-          if (lastRow) continue;
-          ctx.strokeStyle = sc.edge;
-          ctx.lineWidth = Math.max(1, s * 0.009);
+          // The lit top plane: the plate's 2.5D shoulder.
+          ctx.fillStyle = shade(col2, 12);
+          ctx.fillRect(sx - pw * 0.92, yy - rowH * 1.12, pw * 1.84, rowH * 0.3);
+          // The keel: one darker facet splitting the belly.
+          ctx.fillStyle = shade(col2, -14);
           ctx.beginPath();
-          ctx.moveTo(sx - sr * 0.62, yy + sr * 0.22);
-          ctx.quadraticCurveTo(sx, yy + sr * 0.58, sx + sr * 0.62, yy + sr * 0.22);
+          ctx.moveTo(sx - pw * 0.1, yy - rowH * 0.8);
+          ctx.lineTo(sx + pw * 0.1, yy - rowH * 0.8);
+          ctx.lineTo(sx + pw * 0.03, yy + rowH * 0.2);
+          ctx.lineTo(sx - pw * 0.03, yy + rowH * 0.2);
+          ctx.closePath();
+          ctx.fill();
+          // The nacre edge: one arc riding the plate's belly rim —
+          // skipped on the bottom row (teeth law).
+          if (lastRow) continue;
+          ctx.strokeStyle = turnBias > 0.5 ? shade(sc.edge, 14) : sc.edge;
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(sx - pw * 0.82, yy - rowH * 0.3);
+          ctx.quadraticCurveTo(sx, yy + rowH * 0.26, sx + pw * 0.82, yy - rowH * 0.3);
           ctx.stroke();
         }
       }
@@ -9195,72 +9223,180 @@ export function drawPauldron(
     ctx.restore();
     return;
   }
-  if (st.pauldron === 'finblade') {
-    // THE FINBLADE — kingfisher's shoulder: a sailfin at rest. Four
-    // rigid spines rake back-and-down off the seat dome with
-    // TRANSLUCENT membrane sagging between them (alpha fill — you
-    // can half-see the coat through the sail), each spine tipped in
-    // a barb, the leading spine carrying THE ONE BRIGHT EDGE.
-    // Folded-at-rest law, but SHARP: this fin never spreads, it
-    // threatens. Heavy at the root: a nacre gill plate seats it.
+  if (st.pauldron === 'sharkfin') {
+    // THE SHARKFIN — the icon itself: ONE solid dorsal fin standing
+    // off the seat dome, raked, notch-bitten at the trailing edge
+    // (a fin that has survived things), pale belly counter-plane,
+    // denticle tick row at the base. No spray, no fan: everyone on
+    // earth knows this silhouette in silhouette.
     seat(0.12 * s, 0.09 * s, shade(base, -10), shade(base, 6));
-    const spineCol = st.pauldronTrim ?? shade(base, 30);
-    // THE SAIL: one solid raked fin built from THREE filled blade
-    // planes stepping down the arm — a sail is a SHAPE, never a
-    // spray of strokes (stroke-spines read as whiskers at ten
-    // paces; the round-1 verdict). Notched trailing edge says
-    // membrane; the leading blade carries the bright edge.
-    const blades: Array<[number, number, number, number, number]> = [
-      // [rootY, tipX, tipY, returnW, tone]
-      [-0.05, 0.155, -0.105, 0.055, 4],
-      [-0.005, 0.165, -0.03, 0.05, -8],
-      [0.04, 0.15, 0.05, 0.046, -18],
-    ];
-    for (const [ry, txx, tyy, w2, tone] of blades) {
-      ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 6 : -6) + tone);
+    const belly = st.pauldronTrim ?? shade(base, 30);
+    ctx.fillStyle = hurt ? '#ffffff' : shade(base, -4);
+    ctx.beginPath();
+    ctx.moveTo(side * -0.055 * s, -0.04 * s);
+    ctx.quadraticCurveTo(side * 0.01 * s, -0.2 * s, side * 0.075 * s, -0.21 * s);
+    // Raked trailing edge with THE BITE: a half-moon notch.
+    ctx.lineTo(side * 0.15 * s, -0.1 * s);
+    ctx.lineTo(side * 0.115 * s, -0.085 * s);
+    ctx.lineTo(side * 0.145 * s, -0.045 * s);
+    ctx.lineTo(side * 0.09 * s, 0.045 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The belly counter-plane on the leading face.
+      ctx.fillStyle = belly;
       ctx.beginPath();
-      ctx.moveTo(side * -0.02 * s, ry * s);
-      ctx.lineTo(side * txx * s, tyy * s);
-      // The membrane notch: the trailing edge bites IN before the
-      // return — fin, not feather.
-      ctx.lineTo(side * (txx - 0.035) * s, (tyy + w2 * 0.55) * s);
-      ctx.lineTo(side * (txx - 0.012) * s, (tyy + w2 * 0.8) * s);
-      ctx.lineTo(side * -0.012 * s, (ry + w2) * s);
+      ctx.moveTo(side * -0.045 * s, -0.035 * s);
+      ctx.quadraticCurveTo(side * 0.005 * s, -0.16 * s, side * 0.06 * s, -0.175 * s);
+      ctx.lineTo(side * 0.052 * s, -0.11 * s);
+      ctx.quadraticCurveTo(side * 0.015 * s, -0.07 * s, side * 0.005 * s, -0.02 * s);
       ctx.closePath();
       ctx.fill();
-    }
-    if (!hurt) {
-      // The bright leading edge, one line on the top blade only.
-      ctx.strokeStyle = spineCol;
-      ctx.lineWidth = Math.max(1, s * 0.015);
-      ctx.beginPath();
-      ctx.moveTo(side * -0.02 * s, -0.05 * s);
-      ctx.lineTo(side * 0.155 * s, -0.105 * s);
-      ctx.stroke();
-      // One barb past the lead tip — the threat, singular.
-      ctx.beginPath();
-      ctx.moveTo(side * 0.155 * s, -0.105 * s);
-      ctx.lineTo(side * 0.175 * s, -0.088 * s);
-      ctx.stroke();
-    }
-    if (!hurt) {
-      // The gill plate: a nacre crescent seating the sail's root —
-      // heavy hardware, not a sticker.
-      ctx.fillStyle = shade(spineCol, -8);
-      ctx.beginPath();
-      ctx.moveTo(side * -0.045 * s, -0.055 * s);
-      ctx.quadraticCurveTo(side * 0.035 * s, -0.075 * s, side * 0.05 * s, 0.055 * s);
-      ctx.lineTo(side * 0.014 * s, 0.05 * s);
-      ctx.quadraticCurveTo(side * 0.002 * s, -0.04 * s, side * -0.045 * s, -0.03 * s);
-      ctx.closePath();
-      ctx.fill();
-      // Three gill slits cut into the plate.
-      ctx.strokeStyle = shade(base, -26);
-      ctx.lineWidth = Math.max(1, s * 0.01);
-      for (const gy of [-0.03, 0.0, 0.03]) {
+      // Denticle ticks along the fin base — skin, not lacquer.
+      ctx.strokeStyle = shade(base, -22);
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      for (let i = 0; i < 4; i++) {
+        const bx = side * (-0.03 + i * 0.032) * s;
         ctx.beginPath();
-        ctx.moveTo(side * 0.012 * s, gy * s);
-        ctx.quadraticCurveTo(side * 0.03 * s, (gy + 0.008) * s, side * 0.042 * s, (gy + 0.002) * s);
+        ctx.moveTo(bx, 0.02 * s);
+        ctx.lineTo(bx + side * 0.012 * s, 0.038 * s);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'escalight') {
+    // THE ESCALIGHT — the deep angler's shoulder: a dark chitin
+    // socket plate sprouting three curved barbels, each tipped with
+    // a tiny warm light breathing on the deep's clock, staggered so
+    // the shoulder never blinks in unison with itself. Bait at every
+    // altitude.
+    seat(0.115 * s, 0.088 * s, shade(base, -14), shade(base, 2));
+    const glow = st.hookline?.lure ?? '#ffb054';
+    if (!hurt) {
+      // The chitin plate: one angular scute over the dome crown.
+      ctx.fillStyle = shade(base, -24);
+      ctx.beginPath();
+      ctx.moveTo(side * -0.07 * s, -0.045 * s);
+      ctx.lineTo(side * 0.01 * s, -0.075 * s);
+      ctx.lineTo(side * 0.08 * s, -0.04 * s);
+      ctx.lineTo(side * 0.055 * s, 0.02 * s);
+      ctx.lineTo(side * -0.045 * s, 0.015 * s);
+      ctx.closePath();
+      ctx.fill();
+      // Three barbels arcing up-out, staggered phases.
+      ctx.strokeStyle = shade(base, -30);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const ph = i * 2.1;
+        const breathe = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(nowMs * 0.0024 + ph));
+        const bx = side * (-0.02 + i * 0.035) * s;
+        const by = (-0.06 + i * 0.008) * s;
+        const txx = bx + side * (0.05 + i * 0.02) * s;
+        const tyy = by - (0.1 - i * 0.018) * s;
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo(bx + side * 0.01 * s, by - 0.07 * s, txx, tyy);
+        ctx.stroke();
+        ctx.globalAlpha = 0.4 * breathe;
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(txx, tyy, 0.032 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = Math.min(1, 0.55 + 0.45 * breathe);
+        ctx.fillStyle = shade(glow, 34);
+        ctx.beginPath();
+        ctx.arc(txx, tyy, 0.012 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.lineCap = 'butt';
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'krakengrip') {
+    // THE KRAKENGRIP — a tentacle owns the shoulder: rooted behind
+    // the seat, coiling OVER the dome in one thick wrap, the free
+    // tip curling up past the crown; paired sucker dots walk the
+    // inner face. Not worn — HELD.
+    seat(0.115 * s, 0.088 * s, shade(base, -12), shade(base, 4));
+    const arm = st.pauldronTrim ? shade(base, 8) : shade(base, 6);
+    const sucker = st.pauldronTrim ?? shade(base, 34);
+    if (!hurt) {
+      // The wrap: a fat tapered band lying across the dome.
+      ctx.fillStyle = arm;
+      ctx.beginPath();
+      ctx.moveTo(side * -0.115 * s, 0.01 * s);
+      ctx.quadraticCurveTo(side * -0.02 * s, -0.075 * s, side * 0.095 * s, -0.03 * s);
+      ctx.lineTo(side * 0.1 * s, 0.015 * s);
+      ctx.quadraticCurveTo(side * -0.01 * s, -0.028 * s, side * -0.1 * s, 0.05 * s);
+      ctx.closePath();
+      ctx.fill();
+      // The free tip: rises off the outboard end and CURLS.
+      ctx.fillStyle = shade(base, 12);
+      ctx.beginPath();
+      ctx.moveTo(side * 0.085 * s, -0.02 * s);
+      ctx.quadraticCurveTo(side * 0.15 * s, -0.06 * s, side * 0.135 * s, -0.125 * s);
+      ctx.quadraticCurveTo(side * 0.125 * s, -0.165 * s, side * 0.085 * s, -0.155 * s);
+      ctx.quadraticCurveTo(side * 0.105 * s, -0.14 * s, side * 0.104 * s, -0.115 * s);
+      ctx.quadraticCurveTo(side * 0.105 * s, -0.05 * s, side * 0.06 * s, -0.005 * s);
+      ctx.closePath();
+      ctx.fill();
+      // Paired suckers walking the wrap's inner face.
+      ctx.fillStyle = sucker;
+      for (let i = 0; i < 4; i++) {
+        const uu = -0.07 + i * 0.05;
+        for (const o of [-0.011, 0.011]) {
+          ctx.beginPath();
+          ctx.arc(side * uu * s + o * s * 0.4, (0.006 + o) * s - uu * uu * 8 * s * 0.02, Math.max(1, 0.008 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // Two suckers up the free tip.
+      for (const [ux, uy] of [[0.118, -0.07], [0.122, -0.105]] as const) {
+        ctx.beginPath();
+        ctx.arc(side * ux * s, uy * s, Math.max(1, 0.007 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'sailfan') {
+    // THE SAILFAN — the marlin's shoulder: a ribbed sail raked hard
+    // back, four counter-metal spines under teal membrane planes,
+    // folded at rest (never spread), the lead spine bright. The
+    // strike, holstered.
+    seat(0.115 * s, 0.088 * s, shade(base, -8), shade(base, 8));
+    const mem = shade(base, -14);
+    const spine = st.pauldronTrim ?? shade(base, 30);
+    ctx.fillStyle = hurt ? '#ffffff' : mem;
+    ctx.beginPath();
+    ctx.moveTo(side * -0.03 * s, -0.055 * s);
+    ctx.lineTo(side * 0.065 * s, -0.155 * s);
+    ctx.lineTo(side * 0.125 * s, -0.12 * s);
+    ctx.lineTo(side * 0.165 * s, -0.05 * s);
+    ctx.lineTo(side * 0.155 * s, 0.03 * s);
+    // Notched return: membrane bays between spine tips.
+    ctx.lineTo(side * 0.115 * s, 0.005 * s);
+    ctx.lineTo(side * 0.1 * s, 0.05 * s);
+    ctx.lineTo(side * 0.045 * s, 0.02 * s);
+    ctx.lineTo(side * 0.005 * s, 0.055 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      const tips: Array<[number, number, number]> = [
+        [0.065, -0.155, 1], [0.125, -0.12, 0], [0.165, -0.05, 0], [0.155, 0.03, 0],
+      ];
+      for (const [txx, tyy, lit] of tips) {
+        ctx.strokeStyle = lit ? shade(spine, 16) : spine;
+        ctx.lineWidth = Math.max(1, s * (lit ? 0.015 : 0.011));
+        ctx.beginPath();
+        ctx.moveTo(side * -0.025 * s, -0.045 * s);
+        ctx.lineTo(side * txx * s, tyy * s);
         ctx.stroke();
       }
     }
@@ -12829,78 +12965,61 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'finhelm') {
-    // THE FINHELM — the riverking's sailfin casque: a fitted fish-
-    // leather HELM, not a hood. Angular skull shell with cheek
-    // guards, a nacre brow visor jutting over the eye line (the face
-    // lives in its folded dark), gill slits scored into the cheeks —
-    // and THE SAIL: a tall raked dorsal crest of rigid spines with
-    // translucent membrane, running the keel of the crown and down
-    // the nape. Secret-boss hardware: heavy at every seam.
+  if (st.kind === 'sharkmaw') {
+    // THE SHARKMAW — the leviathan worn whole, on the pelt law: the
+    // shark's head IS the helm and the wearer looks out of its
+    // MOUTH. The blunt snout planes over the brow, the tooth row
+    // hangs from the upper jaw framing the opening (incorporated,
+    // never sprinkled), dead black eyes sit wide on the snout, gill
+    // slashes score the cheeks, and the dorsal sail rakes off the
+    // crown into a notched trailing blade. Below the teeth: the
+    // folded dark. Nothing about this reads as a hat.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
-    const ohw = hw * 0.68 * (1 - 0.5 * t);
-    const crest = st.divecrest;
-    const spineCol = crest?.flash ?? shade(st.trim, 20);
-    const memCol = crest?.color ?? shade(st.color, -20);
-    // THE SAIL first (behind the shell): four spines raking back off
-    // the keel, membrane sagging between — structure, hurt-white.
-    const sail = (): void => {
-      // ONE solid raked sail: a filled blade from brow-line to a
-      // long trailing point, its underside notched in three membrane
-      // bites — a crest you could cut a hand on, not a spray of
-      // strokes. Structure: hurt-white keeps it.
-      ctx.fillStyle = hurt ? '#ffffff' : memCol;
+    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const belly = st.divecrest?.color ?? shade(st.color, 26);
+    const tooth = st.divecrest?.flash ?? '#e8ecec';
+    // THE DORSAL SAIL — structure: one solid raked blade with two
+    // membrane notches, crown to nape.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, -16);
+    ctx.beginPath();
+    ctx.moveTo(headX + lead * hw * 0.42, headY - hh * 1.12);
+    ctx.lineTo(headX + lead * hw * 0.16, headY - hh * 1.74);
+    ctx.lineTo(headX - lead * hw * 0.42, headY - hh * 1.72);
+    ctx.lineTo(headX - lead * hw * (1.24 + t * 0.28), headY - hh * 1.18);
+    ctx.lineTo(headX - lead * hw * 0.84, headY - hh * 1.12);
+    ctx.lineTo(headX - lead * hw * 0.68, headY - hh * 1.26);
+    ctx.lineTo(headX - lead * hw * 0.34, headY - hh * 1.08);
+    ctx.lineTo(headX - lead * hw * 0.12, headY - hh * 1.2);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = shade(st.trim, -6);
+      ctx.lineWidth = Math.max(1.5, s * 0.015);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.58, headY - hh * 1.04);
-      ctx.lineTo(headX + lead * hw * 0.34, headY - hh * 1.68);
-      ctx.lineTo(headX - lead * hw * 0.26, headY - hh * 1.78);
-      ctx.lineTo(headX - lead * hw * (1.3 + t * 0.3), headY - hh * 1.32);
-      // The notched underside walking back toward the crown.
-      ctx.lineTo(headX - lead * hw * 0.88, headY - hh * 1.22);
-      ctx.lineTo(headX - lead * hw * 0.72, headY - hh * 1.32);
-      ctx.lineTo(headX - lead * hw * 0.4, headY - hh * 1.12);
-      ctx.lineTo(headX - lead * hw * 0.22, headY - hh * 1.24);
-      ctx.lineTo(headX + lead * hw * 0.06, headY - hh * 1.06);
-      ctx.closePath();
-      ctx.fill();
-      if (!hurt) {
-        // Two scored spine lines INSIDE the blade + the bright
-        // leading edge — planes first, lines as seams only.
-        ctx.strokeStyle = shade(memCol, 22);
-        ctx.lineWidth = Math.max(1, s * 0.01);
-        ctx.beginPath();
-        ctx.moveTo(headX + lead * hw * 0.3, headY - hh * 1.08);
-        ctx.lineTo(headX + lead * hw * 0.1, headY - hh * 1.62);
-        ctx.moveTo(headX - lead * hw * 0.12, headY - hh * 1.1);
-        ctx.lineTo(headX - lead * hw * 0.5, headY - hh * 1.56);
-        ctx.stroke();
-        ctx.strokeStyle = spineCol;
-        ctx.lineWidth = Math.max(1.5, s * 0.016);
-        ctx.beginPath();
-        ctx.moveTo(headX + lead * hw * 0.58, headY - hh * 1.04);
-        ctx.lineTo(headX + lead * hw * 0.34, headY - hh * 1.68);
-        ctx.lineTo(headX - lead * hw * 0.26, headY - hh * 1.78);
-        ctx.stroke();
-      }
-    };
-    sail();
-    // The shell: angular fitted casque — planar jaw, cheek guards.
+      ctx.moveTo(headX + lead * hw * 0.42, headY - hh * 1.12);
+      ctx.lineTo(headX + lead * hw * 0.16, headY - hh * 1.74);
+      ctx.lineTo(headX - lead * hw * 0.42, headY - hh * 1.72);
+      ctx.stroke();
+    }
+    // THE HEAD: one broad streamlined mass — snout wide over the
+    // brow, tapering back. Planar, blunt, heavy.
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.12, headY + hh * 1.06);
-      ctx.lineTo(headX + lead * hw * 1.2, headY + hh * 0.1);
-      ctx.lineTo(headX + lead * hw * 1.08, headY - hh * 0.62);
-      // The visor ledge: a hard step past the brow.
-      ctx.lineTo(headX + lead * hw * 1.22, headY - hh * 0.8);
-      ctx.lineTo(headX + lead * hw * 0.7, headY - hh * 1.06);
-      ctx.lineTo(headX - lead * hw * 0.55, headY - hh * 1.12);
-      ctx.lineTo(headX - lead * hw * (1.06 + t * 0.26), headY - hh * 0.7);
-      ctx.lineTo(headX - lead * hw * (1.18 + t * 0.3), headY + hh * 0.14);
-      ctx.lineTo(headX - lead * hw * 1.12, headY + hh * 1.06);
-      // The nape guard: two lapped tabs close the neck.
-      ctx.lineTo(headX - lead * hw * 0.5, headY + hh * 1.24);
-      ctx.lineTo(headX + lead * hw * 0.4, headY + hh * 1.26);
+      ctx.moveTo(headX + lead * hw * 1.16, headY + hh * 1.08);
+      ctx.lineTo(headX + lead * hw * 1.3, headY + hh * 0.14);
+      // THE SNOUT: juts past the face line and rounds DOWN over the
+      // brow — the overbite every shark leads with.
+      ctx.lineTo(headX + lead * hw * (1.46 + t * 0.2), headY - hh * 0.34);
+      ctx.lineTo(headX + lead * hw * (1.3 + t * 0.16), headY - hh * 0.66);
+      ctx.lineTo(headX + lead * hw * 0.62, headY - hh * 1.08);
+      ctx.lineTo(headX - lead * hw * 0.6, headY - hh * 1.14);
+      ctx.lineTo(headX - lead * hw * (1.1 + t * 0.26), headY - hh * 0.66);
+      ctx.lineTo(headX - lead * hw * (1.2 + t * 0.3), headY + hh * 0.16);
+      ctx.lineTo(headX - lead * hw * 1.14, headY + hh * 1.08);
+      // Nape tabs close the neck.
+      ctx.lineTo(headX - lead * hw * 0.44, headY + hh * 1.26);
+      ctx.lineTo(headX + lead * hw * 0.46, headY + hh * 1.28);
       ctx.closePath();
     };
     ctx.fillStyle = mc;
@@ -12912,84 +13031,120 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.beginPath();
       shell();
       ctx.clip();
-      // Planar shading: trailing half, lit crown plane, jaw shade.
       ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.4);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.6 : headX, headY - hh * 1.6, hw * 2.6, hh * 3.4);
+      // The snout's lit top plane — the whole muzzle catches sky.
       ctx.fillStyle = shade(st.color, 12);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.66, headY - hh * 1.0);
-      ctx.lineTo(headX - lead * hw * 0.5, headY - hh * 1.06);
-      ctx.lineTo(headX - lead * hw * 0.42, headY - hh * 0.84);
-      ctx.lineTo(headX + lead * hw * 0.56, headY - hh * 0.8);
+      ctx.moveTo(headX + lead * hw * 1.36, headY - hh * 0.4);
+      ctx.lineTo(headX + lead * hw * 0.58, headY - hh * 1.02);
+      ctx.lineTo(headX - lead * hw * 0.52, headY - hh * 1.08);
+      ctx.lineTo(headX - lead * hw * 0.44, headY - hh * 0.84);
+      ctx.lineTo(headX + lead * hw * 0.5, headY - hh * 0.8);
+      ctx.lineTo(headX + lead * hw * 1.22, headY - hh * 0.24);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = shade(st.color, -22);
-      ctx.fillRect(headX - hw * 1.3, headY + hh * 0.78, hw * 2.6, hh * 0.5);
-      // Scale rows scored into the shell: three crescent lines.
-      ctx.strokeStyle = shade(st.color, -20);
-      ctx.lineWidth = Math.max(1, s * 0.009);
-      for (const k of [0.34, 0.02, -0.3]) {
+      // THE BELLY LINE: the pale countershade sweeping the jaw —
+      // every real shark is two-toned, and so is this helm.
+      ctx.fillStyle = belly;
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 0.34);
+      ctx.quadraticCurveTo(headX, headY + hh * 0.66, headX - lead * hw * 1.08, headY + hh * 0.4);
+      ctx.lineTo(headX - lead * hw * 1.12, headY + hh * 1.06);
+      ctx.lineTo(headX + lead * hw * 1.14, headY + hh * 1.06);
+      ctx.closePath();
+      ctx.fill();
+      // Gill slashes: five hard cuts raking the trailing cheek.
+      ctx.strokeStyle = shade(st.color, -30);
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      for (let g = 0; g < 5; g++) {
+        const gx = headX - lead * hw * (0.52 + g * 0.13);
         ctx.beginPath();
-        ctx.moveTo(headX - lead * hw * 0.9, headY - hh * (k - 0.08));
-        ctx.quadraticCurveTo(headX, headY - hh * (k + 0.14), headX + lead * hw * 0.9, headY - hh * (k - 0.04));
+        ctx.moveTo(gx, headY - hh * 0.1);
+        ctx.quadraticCurveTo(gx - lead * hw * 0.06, headY + hh * 0.22, gx - lead * hw * 0.02, headY + hh * 0.5);
         ctx.stroke();
       }
       ctx.restore();
+      // THE DEAD EYE: flat black bead set wide on the snout side —
+      // no light in it, ever. Far eye skipped past the diagonals.
+      ctx.fillStyle = '#0e1216';
+      ctx.beginPath();
+      ctx.arc(headX + lead * hw * 0.98, headY - hh * 0.52, headR * 0.075, 0, Math.PI * 2);
+      ctx.fill();
+      if (t < 0.5) {
+        ctx.beginPath();
+        ctx.arc(headX - lead * hw * 0.4 - fx * headR * 0.2, headY - hh * 0.56, headR * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+      }
       if (front) {
-        // THE FOLDED DARK under the visor: the eyes live behind a
-        // hard shadow polygon — the helm looks back, you don't.
-        ctx.fillStyle = 'rgba(16, 12, 20, 0.5)';
+        // THE MOUTH: the opening lives INSIDE the jaws. Folded dark
+        // first, then the tooth row HANGING from the snout rim —
+        // rooted in a gum band, serrated, uneven like a real bite.
+        ctx.save();
         ctx.beginPath();
-        ctx.moveTo(cx - ohw, headY - hh * 0.66);
-        ctx.lineTo(cx + ohw, headY - hh * 0.62);
-        ctx.lineTo(cx + ohw * 0.86, headY - hh * 0.1);
-        ctx.lineTo(cx - lead * ohw * 0.12, headY - hh * 0.02);
-        ctx.lineTo(cx - ohw * 0.86, headY - hh * 0.16);
+        chamferRect(ctx, cx - ohw, headY - hh * 0.44, ohw * 2, hh * 1.24, cut * 0.7);
+        ctx.clip();
+        ctx.fillStyle = 'rgba(12, 9, 16, 0.55)';
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw, headY - hh * 0.44);
+        ctx.lineTo(cx + ohw, headY - hh * 0.4);
+        ctx.lineTo(cx + ohw * 0.8, headY + hh * 0.06);
+        ctx.lineTo(cx - lead * ohw * 0.1, headY + hh * 0.16);
+        ctx.lineTo(cx - ohw * 0.8, headY);
         ctx.closePath();
         ctx.fill();
-        // The nacre visor rim: THE ONE BRIGHT EDGE across the brow.
-        ctx.strokeStyle = st.trim;
-        ctx.lineWidth = Math.max(1.5, s * 0.02);
+        ctx.restore();
+        // The gum band seats the teeth — teeth without a gum read
+        // as sprinkles (the round-1 verdict, answered).
+        ctx.fillStyle = shade(st.color, -8);
         ctx.beginPath();
-        ctx.moveTo(cx - ohw * 1.04, headY - hh * 0.6);
-        ctx.lineTo(cx + ohw * 1.08, headY - hh * 0.56);
-        ctx.stroke();
-        // Gill slits: three scored curves on the leading cheek.
-        ctx.strokeStyle = shade(st.color, -28);
-        ctx.lineWidth = Math.max(1, s * 0.011);
-        for (let g = 0; g < 3; g++) {
-          const gx = cx + lead * ohw * (0.94 - g * 0.14);
+        ctx.moveTo(cx - ohw * 1.02, headY - hh * 0.52);
+        ctx.quadraticCurveTo(cx, headY - hh * 0.66, cx + ohw * 1.02, headY - hh * 0.48);
+        ctx.lineTo(cx + ohw * 1.02, headY - hh * 0.3);
+        ctx.quadraticCurveTo(cx, headY - hh * 0.46, cx - ohw * 1.02, headY - hh * 0.34);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = tooth;
+        for (let i = 0; i < 6; i++) {
+          const u = -0.82 + i * 0.328;
+          const txx = cx + u * ohw;
+          const big = i === 1 || i === 4;
+          const tl = hh * (big ? 0.34 : 0.24);
           ctx.beginPath();
-          ctx.moveTo(gx, headY + hh * 0.18);
-          ctx.quadraticCurveTo(gx - lead * hw * 0.05, headY + hh * 0.36, gx - lead * hw * 0.02, headY + hh * 0.52);
-          ctx.stroke();
+          ctx.moveTo(txx - ohw * 0.11, headY - hh * (0.42 - Math.abs(u) * 0.06));
+          ctx.lineTo(txx + ohw * 0.11, headY - hh * (0.4 - Math.abs(u) * 0.06));
+          ctx.lineTo(txx + ohw * 0.015, headY - hh * (0.4 - Math.abs(u) * 0.06) + tl);
+          ctx.closePath();
+          ctx.fill();
         }
-        // The jaw rim: nacre closes the casque.
-        ctx.strokeStyle = shade(st.trim, -10);
-        ctx.lineWidth = Math.max(1, s * 0.013);
-        ctx.beginPath();
-        ctx.moveTo(cx - ohw * 0.9, headY + hh * 0.78);
-        ctx.quadraticCurveTo(cx, headY + hh * 0.92, cx + ohw * 0.9, headY + hh * 0.78);
-        ctx.stroke();
+        // Two small lower fangs at the jaw corners close the bite —
+        // kept modest: oversized uppers-vs-lowers reads walrus.
+        for (const es of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(cx + es * ohw * 0.8 - ohw * 0.06, headY + hh * 0.84);
+          ctx.lineTo(cx + es * ohw * 0.8 + ohw * 0.06, headY + hh * 0.84);
+          ctx.lineTo(cx + es * ohw * 0.8, headY + hh * 0.68);
+          ctx.closePath();
+          ctx.fill();
+        }
       } else {
-        // Back read: the sail runs down the nape between lapped
-        // neck-guard tabs — the fin owns the spine.
-        ctx.fillStyle = shade(memCol, -6);
+        // Back read: the dorsal ridge runs the nape between gill
+        // tabs; the tail nub finishes the spine.
+        ctx.fillStyle = shade(st.color, -18);
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.06, headY - hh * 1.05);
-        ctx.lineTo(headX + hw * 0.06, headY - hh * 1.05);
-        ctx.lineTo(headX + lead * hw * 0.06 + hw * 0.04, headY + hh * 1.1);
-        ctx.lineTo(headX + lead * hw * 0.06 - hw * 0.04, headY + hh * 1.1);
+        ctx.moveTo(headX - hw * 0.06, headY - hh * 1.08);
+        ctx.lineTo(headX + hw * 0.06, headY - hh * 1.08);
+        ctx.lineTo(headX + lead * hw * 0.08 + hw * 0.05, headY + hh * 1.16);
+        ctx.lineTo(headX + lead * hw * 0.08 - hw * 0.05, headY + hh * 1.16);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = shade(st.color, -22);
-        ctx.lineWidth = Math.max(1, s * 0.012);
-        for (const ky of [0.55, 0.85]) {
-          ctx.beginPath();
-          ctx.moveTo(headX - hw * 0.85, headY + hh * ky);
-          ctx.quadraticCurveTo(headX, headY + hh * (ky + 0.16), headX + hw * 0.85, headY + hh * ky);
-          ctx.stroke();
-        }
+        ctx.fillStyle = shade(st.color, -12);
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * 0.08, headY + hh * 1.12);
+        ctx.lineTo(headX + lead * hw * 0.08 + hw * 0.22, headY + hh * 1.44);
+        ctx.lineTo(headX + lead * hw * 0.08 - hw * 0.16, headY + hh * 1.4);
+        ctx.closePath();
+        ctx.fill();
       }
     }
     return;
@@ -13150,181 +13305,242 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'stormbeak') {
-    // THE STORMBEAK — the storm-fisher: a swept sou'wester whose
-    // back brim rakes LONG past the nape (planar, one bright rim),
-    // and below the eye shadow a pale BEAK half-mask tapering past
-    // the chin. The storm asks; the beak answers nothing.
+  if (st.kind === 'krakencowl') {
+    // THE KRAKENCOWL — the deep's own crown: a bulbous mantle-hood
+    // built from three flat value planes (never a gradient dome),
+    // TWO great eyes riding the mantle with bar pupils — the kraken
+    // does the looking; the wearer's face keeps the folded dark
+    // beneath — and THREE tentacles alive on a slow clock: one
+    // curling off the crown, one draping each side with paired
+    // sucker rows and a free curled tip. The storm asked; this is
+    // what answered.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.7 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.5;
+    const oBot = headY + hh * 0.82;
+    const sway = Math.sin(f.nowMs * 0.0012) * hw * 0.06;
     const shell = () => {
-      // Low crown.
-      ctx.moveTo(headX + lead * hw * 1.02, headY - hh * 0.52);
-      ctx.lineTo(headX + lead * hw * 0.82, headY - hh * 1.18);
-      ctx.lineTo(headX - lead * hw * 0.3, headY - hh * 1.34);
-      ctx.lineTo(headX - lead * hw * 0.92, headY - hh * 1.0);
-      // The long back brim: one hard rake past the nape.
-      ctx.lineTo(headX - lead * hw * (1.72 + t * 0.4), headY + hh * 0.16);
-      ctx.lineTo(headX - lead * hw * (1.5 + t * 0.34), headY + hh * 0.3);
-      ctx.lineTo(headX - lead * hw * 0.7, headY - hh * 0.14);
-      // Under the crown to the short front brim.
-      ctx.lineTo(headX + lead * hw * 0.7, headY - hh * 0.1);
-      ctx.lineTo(headX + lead * hw * (1.3 + t * 0.2), headY - hh * 0.28);
+      // The mantle: swollen high and trailing — mass, planar cut.
+      ctx.moveTo(headX + lead * hw * 1.14, headY + hh * 1.1);
+      ctx.lineTo(headX + lead * hw * 1.24, headY + hh * 0.1);
+      ctx.lineTo(headX + lead * hw * 1.1, headY - hh * 0.56);
+      ctx.lineTo(headX + lead * hw * 0.86, headY - hh * 1.18);
+      ctx.lineTo(headX + lead * hw * 0.22, headY - hh * 1.62);
+      ctx.lineTo(headX - lead * hw * 0.62, headY - hh * 1.66);
+      ctx.lineTo(headX - lead * hw * (1.22 + t * 0.26), headY - hh * 1.08);
+      ctx.lineTo(headX - lead * hw * (1.36 + t * 0.3), headY - hh * 0.2);
+      ctx.lineTo(headX - lead * hw * 1.24, headY + hh * 1.1);
+      ctx.lineTo(headX - lead * hw * 0.42, headY + hh * 1.28);
+      ctx.lineTo(headX + lead * hw * 0.44, headY + hh * 1.28);
       ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
     };
     ctx.fillStyle = mc;
     ctx.beginPath();
     shell();
-    ctx.fill();
+    if (front) opening();
+    ctx.fill('evenodd');
     if (!hurt) {
       ctx.save();
       ctx.beginPath();
       shell();
-      ctx.clip();
+      if (front) opening();
+      ctx.clip('evenodd');
+      // Three flat planes say BULB: trailing shade, mid, lit crown.
       ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.6 : headX, headY - hh * 1.6, hw * 2.6, hh * 3.2);
-      ctx.fillStyle = shade(st.color, 12);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.6 : headX, headY - hh * 1.8, hw * 2.6, hh * 3.6);
+      ctx.fillStyle = shade(st.color, -24);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.76, headY - hh * 1.1);
-      ctx.lineTo(headX - lead * hw * 0.26, headY - hh * 1.26);
-      ctx.lineTo(headX - lead * hw * 0.2, headY - hh * 1.04);
-      ctx.lineTo(headX + lead * hw * 0.62, headY - hh * 0.9);
+      ctx.moveTo(headX - lead * hw * 0.5, headY - hh * 1.6);
+      ctx.lineTo(headX - lead * hw * 1.3, headY - hh * 0.9);
+      ctx.lineTo(headX - lead * hw * 1.34, headY + hh * 0.4);
+      ctx.lineTo(headX - lead * hw * 0.7, headY + hh * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(st.color, 11);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.78, headY - hh * 1.1);
+      ctx.lineTo(headX + lead * hw * 0.18, headY - hh * 1.52);
+      ctx.lineTo(headX - lead * hw * 0.5, headY - hh * 1.56);
+      ctx.lineTo(headX - lead * hw * 0.42, headY - hh * 1.3);
+      ctx.lineTo(headX + lead * hw * 0.6, headY - hh * 0.94);
       ctx.closePath();
       ctx.fill();
       ctx.restore();
-      // The brim's ONE BRIGHT EDGE: a nacre line down the whole rake.
-      ctx.strokeStyle = st.trim;
-      ctx.lineWidth = Math.max(1, s * 0.014);
-      ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * (1.3 + t * 0.2), headY - hh * 0.28);
-      ctx.lineTo(headX + lead * hw * 0.7, headY - hh * 0.1);
-      ctx.lineTo(headX - lead * hw * 0.7, headY - hh * 0.14);
-      ctx.lineTo(headX - lead * hw * (1.5 + t * 0.34), headY + hh * 0.3);
-      ctx.stroke();
-      if (front) {
-        // The eye shadow band under the brim — folded dark, HARD:
-        // the eyes are the storm's business, nobody else's.
-        ctx.fillStyle = 'rgba(16, 12, 20, 0.58)';
+      // THE EYES ON THE MANTLE: two wide-set discs with horizontal
+      // bar pupils — intelligence with no warmth in it. Far eye
+      // narrows with the facing.
+      for (const es of [-1, 1]) {
+        const far = es !== (lead || 1);
+        const wK = far ? Math.max(0.25, 1 - t * 0.8) : 1;
+        const ex = headX + es * hw * 0.66 * (far ? wK : 1);
+        const ey = headY - hh * 0.78;
+        ctx.fillStyle = shade(st.trim, -4);
         ctx.beginPath();
-        ctx.moveTo(cx - ohw * 0.96, headY - hh * 0.38);
-        ctx.lineTo(cx + ohw * 0.96, headY - hh * 0.34);
-        ctx.lineTo(cx + ohw * 0.8, headY + hh * 0.08);
-        ctx.lineTo(cx - ohw * 0.8, headY + hh * 0.04);
-        ctx.closePath();
+        ctx.ellipse(ex, ey, headR * 0.14 * wK, headR * 0.14, 0, 0, Math.PI * 2);
         ctx.fill();
-        // THE BEAK: pale tapered wedge past the chin, one shaded
-        // side plane, a scored nostril tick. Answers nothing.
-        if (st.beakmask) {
-          const bk = st.beakmask.color;
-          const tipX2 = cx + lead * ohw * 0.5;
-          const tipY2 = headY + hh * 1.06;
-          ctx.fillStyle = bk;
-          ctx.beginPath();
-          ctx.moveTo(cx - ohw * 0.8, headY + hh * 0.04);
-          ctx.lineTo(cx + ohw * 0.8, headY + hh * 0.08);
-          ctx.lineTo(tipX2 + headR * 0.05, tipY2 - headR * 0.06);
-          ctx.lineTo(tipX2 - headR * 0.06, tipY2);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = shade(bk, -16);
-          ctx.beginPath();
-          ctx.moveTo(cx - ohw * 0.8, headY + hh * 0.04);
-          ctx.lineTo(tipX2 - headR * 0.06, tipY2);
-          ctx.lineTo(tipX2 - headR * 0.1, tipY2 - headR * 0.14);
-          ctx.lineTo(cx - ohw * 0.56, headY + hh * 0.14);
-          ctx.closePath();
-          ctx.fill();
-          // The center seam + strap: the mask is BUILT, and it is
-          // not a face — the seam is what separates bone from skin
-          // at a glance.
-          ctx.strokeStyle = shade(bk, -30);
-          ctx.lineWidth = Math.max(1, s * 0.01);
-          ctx.beginPath();
-          ctx.moveTo(cx + lead * ohw * 0.06, headY + hh * 0.08);
-          ctx.lineTo(tipX2 - headR * 0.005, tipY2 - headR * 0.04);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(cx + lead * ohw * 0.2, headY + hh * 0.36);
-          ctx.lineTo(cx + lead * ohw * 0.34, headY + hh * 0.46);
-          ctx.stroke();
-          ctx.strokeStyle = shade(st.color, -20);
-          ctx.lineWidth = Math.max(1, s * 0.012);
-          ctx.beginPath();
-          ctx.moveTo(cx - ohw * 0.8, headY + hh * 0.06);
-          ctx.lineTo(cx - ohw * 1.02, headY - hh * 0.02);
-          ctx.moveTo(cx + ohw * 0.8, headY + hh * 0.1);
-          ctx.lineTo(cx + ohw * 1.02, headY + hh * 0.02);
-          ctx.stroke();
-        }
-      } else {
-        // Back read: the raked brim covers the nape; two planar
-        // panels break the crown, a storm cord crosses under it.
-        ctx.fillStyle = shade(st.color, -18);
-        ctx.beginPath();
-        ctx.moveTo(headX - lead * hw * 0.1, headY - hh * 1.3);
-        ctx.lineTo(headX - lead * hw * 0.62, headY - hh * 0.44);
-        ctx.lineTo(headX - lead * hw * 0.3, headY - hh * 0.4);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = shade(st.color, -24);
-        ctx.lineWidth = Math.max(1, s * 0.012);
-        ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.8, headY + hh * 0.34);
-        ctx.quadraticCurveTo(headX, headY + hh * 0.5, headX + hw * 0.8, headY + hh * 0.34);
-        ctx.stroke();
+        ctx.fillStyle = '#141018';
+        ctx.fillRect(ex - headR * 0.11 * wK, ey - headR * 0.035, headR * 0.22 * wK, headR * 0.07);
       }
+      if (front) {
+        // The wearer keeps the folded dark below the kraken's gaze.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(14, 11, 18, 0.6)';
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw, oTop);
+        ctx.lineTo(cx + ohw, oTop);
+        ctx.lineTo(cx + ohw * 0.82, headY - hh * 0.08);
+        ctx.lineTo(cx - lead * ohw * 0.12, headY + hh * 0.04);
+        ctx.lineTo(cx - ohw * 0.82, headY - hh * 0.14);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    // THE TENTACLES — structure: they hold the silhouette. Each is
+    // a tapered two-segment arm; the side pair carries paired
+    // sucker dots on the inner face; all three sway on the deep's
+    // own clock, never in unison.
+    const tent = (
+      rootX: number, rootY: number, midX: number, midY: number,
+      tipX: number, tipY: number, w0: number, tone: number, suckers: boolean,
+    ): void => {
+      ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, tone);
+      ctx.beginPath();
+      ctx.moveTo(rootX - w0, rootY);
+      ctx.quadraticCurveTo(midX - w0 * 0.8, midY, tipX - w0 * 0.22, tipY);
+      // The curled tip: hooks back on itself — an arm, not a strap.
+      ctx.quadraticCurveTo(tipX + w0 * 0.5, tipY + w0 * 0.9, tipX + w0 * 0.85, tipY - w0 * 0.2);
+      ctx.quadraticCurveTo(midX + w0 * 0.9, midY + w0 * 0.4, rootX + w0, rootY);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt && suckers) {
+        ctx.fillStyle = shade(st.trim, -8);
+        for (let k2 = 0; k2 < 4; k2++) {
+          const uu = 0.22 + k2 * 0.2;
+          const sx2 = rootX + (midX - rootX) * uu * 1.6 - w0 * 0.1;
+          const sy2 = rootY + (midY - rootY) * uu * 1.6;
+          ctx.beginPath();
+          ctx.arc(sx2, sy2, Math.max(1, w0 * 0.2), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    };
+    // Crown arm: curls up and trailing off the mantle peak.
+    tent(
+      headX - lead * hw * 0.3, headY - hh * 1.5,
+      headX - lead * hw * (1.0 + t * 0.2), headY - hh * (1.7 + 0.04 * Math.sin(f.nowMs * 0.0012)),
+      headX - lead * hw * (1.5 + t * 0.4) - sway, headY - hh * 1.14,
+      hw * 0.14, -6, false,
+    );
+    // Side arms: drape past the jaw toward the shoulders.
+    tent(
+      headX + lead * hw * 1.0, headY + hh * 0.2,
+      headX + lead * hw * (1.3 + t * 0.14), headY + hh * 0.92,
+      headX + lead * hw * 1.06 + sway * 0.6, headY + hh * 1.62,
+      hw * 0.16, 2, true,
+    );
+    tent(
+      headX - lead * hw * 1.06, headY + hh * 0.24,
+      headX - lead * hw * (1.34 + t * 0.2), headY + hh * 0.98,
+      headX - lead * hw * 1.1 - sway * 0.8, headY + hh * 1.6,
+      hw * 0.14, -14, true,
+    );
+    if (!hurt && !front) {
+      // Back read: the mantle's siphon seam + a fourth arm hugging
+      // the spine.
+      ctx.strokeStyle = shade(st.color, -24);
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      ctx.moveTo(headX, headY - hh * 1.5);
+      ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.7);
+      ctx.stroke();
+      tent(
+        headX + lead * hw * 0.1, headY + hh * 0.5,
+        headX + lead * hw * 0.2, headY + hh * 1.2,
+        headX - lead * hw * 0.12, headY + hh * 1.8,
+        hw * 0.12, -18, true,
+      );
     }
     return;
   }
 
-  if (st.kind === 'dartcrest') {
-    // THE DARTCREST — the strike, bare-faced: no hood at all. A
-    // fitted skullcap sweeps into ONE long back-raked arrow crest;
-    // nacre cheek-fins blade off the temples; a sharp brow visor
-    // line keeps the eyes in a hard shade band. The only fisher who
-    // lets you see it coming — because it doesn't matter.
+  if (st.kind === 'marlincrest') {
+    // THE MARLINCREST — the strike made armor: the BILL spears
+    // forward-up off the brow (one long two-facet blade, the
+    // silhouette that names the fish at any distance), the SAIL
+    // rakes back in ribbed spines under teal membrane, streamlined
+    // cheek plates close the jaw. The eyes keep a hard visor shade —
+    // bare-faced is not the same as readable.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.7 * (1 - 0.5 * t);
-    const crest = st.divecrest;
-    const crestCol = crest?.flash ?? shade(st.trim, -10);
-    // THE CREST first — structure: one blade from brow line to a
-    // long trailing point, with its darker under-facet.
-    const crestTipX = headX - lead * hw * (1.9 + t * 0.45);
-    const crestTipY = headY - hh * 1.16;
-    ctx.fillStyle = hurt ? '#ffffff' : crestCol;
+    const mem = st.divecrest?.color ?? shade(st.color, -14);
+    const spine = st.divecrest?.flash ?? shade(st.trim, -8);
+    // THE BILL — structure: two facets, upper lit, lower shaded.
+    const billTipX = headX + lead * hw * (2.35 + t * 0.4);
+    const billTipY = headY - hh * 1.06;
+    ctx.fillStyle = hurt ? '#ffffff' : shade(spine, 14);
     ctx.beginPath();
-    ctx.moveTo(headX + lead * hw * 0.62, headY - hh * 1.08);
-    ctx.lineTo(headX - lead * hw * 0.1, headY - hh * 1.44);
-    ctx.lineTo(crestTipX, crestTipY);
-    ctx.lineTo(headX - lead * hw * 0.5, headY - hh * 1.02);
+    ctx.moveTo(headX + lead * hw * 0.5, headY - hh * 0.98);
+    ctx.lineTo(billTipX, billTipY);
+    ctx.lineTo(headX + lead * hw * 0.56, headY - hh * 0.78);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
-      ctx.fillStyle = shade(crestCol, -18);
+      ctx.fillStyle = shade(spine, -12);
       ctx.beginPath();
-      ctx.moveTo(headX - lead * hw * 0.5, headY - hh * 1.02);
-      ctx.lineTo(crestTipX, crestTipY);
-      ctx.lineTo(crestTipX + lead * hw * 0.24, crestTipY + hh * 0.1);
-      ctx.lineTo(headX - lead * hw * 0.44, headY - hh * 0.94);
+      ctx.moveTo(headX + lead * hw * 0.56, headY - hh * 0.78);
+      ctx.lineTo(billTipX, billTipY);
+      ctx.lineTo(headX + lead * hw * 0.6, headY - hh * 0.64);
       ctx.closePath();
       ctx.fill();
     }
-    // The cap: fitted, planar, stopping at the temples — a strike
-    // cap, not a helmet; the face is bare below the visor line.
+    // THE SAIL — structure: five gold spines raking back off the
+    // crown with membrane planes between, tall at the brow, dying
+    // at the nape. Filled planes; spines as seams.
+    const sailPts: Array<[number, number]> = [
+      [0.36, 1.94], [-0.06, 1.98], [-0.5, 1.86], [-0.9, 1.6], [-1.2, 1.3],
+    ];
+    ctx.fillStyle = hurt ? '#ffffff' : mem;
+    ctx.beginPath();
+    ctx.moveTo(headX + lead * hw * 0.6, headY - hh * 1.04);
+    for (const [ux, uy] of sailPts) {
+      ctx.lineTo(headX + lead * hw * ux, headY - hh * uy);
+    }
+    ctx.lineTo(headX - lead * hw * (1.3 + t * 0.24), headY - hh * 1.02);
+    ctx.lineTo(headX - lead * hw * 0.4, headY - hh * 1.06);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = spine;
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      for (const [ux, uy] of sailPts) {
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * (ux * 0.32 - 0.02), headY - hh * 1.05);
+        ctx.lineTo(headX + lead * hw * ux, headY - hh * uy);
+        ctx.stroke();
+      }
+    }
+    // The cap: streamlined, close, planar — with cheek plates.
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.04, headY - hh * 0.42);
-      ctx.lineTo(headX + lead * hw * 0.98, headY - hh * 0.78);
-      ctx.lineTo(headX + lead * hw * 0.52, headY - hh * 1.1);
-      ctx.lineTo(headX - lead * hw * 0.46, headY - hh * 1.14);
-      ctx.lineTo(headX - lead * hw * (1.0 + t * 0.22), headY - hh * 0.72);
-      ctx.lineTo(headX - lead * hw * (1.06 + t * 0.24), headY - hh * 0.3);
-      ctx.lineTo(headX - lead * hw * 0.88, headY - hh * 0.36);
-      ctx.lineTo(headX, headY - hh * 0.5);
-      ctx.lineTo(headX + lead * hw * 0.86, headY - hh * 0.34);
+      ctx.moveTo(headX + lead * hw * 1.1, headY + hh * 0.5);
+      ctx.lineTo(headX + lead * hw * 1.18, headY - hh * 0.42);
+      ctx.lineTo(headX + lead * hw * 0.6, headY - hh * 1.08);
+      ctx.lineTo(headX - lead * hw * 0.5, headY - hh * 1.12);
+      ctx.lineTo(headX - lead * hw * (1.06 + t * 0.24), headY - hh * 0.6);
+      ctx.lineTo(headX - lead * hw * (1.14 + t * 0.26), headY + hh * 0.2);
+      ctx.lineTo(headX - lead * hw * 0.96, headY + hh * 0.66);
+      ctx.lineTo(headX - lead * hw * 0.2, headY + hh * 0.4);
+      ctx.lineTo(headX + lead * hw * 0.5, headY + hh * 0.62);
       ctx.closePath();
     };
     ctx.fillStyle = mc;
@@ -13337,56 +13553,47 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       shell();
       ctx.clip();
       ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 2.4);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.0);
       ctx.fillStyle = shade(st.color, 12);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.48, headY - hh * 1.04);
-      ctx.lineTo(headX - lead * hw * 0.4, headY - hh * 1.08);
-      ctx.lineTo(headX - lead * hw * 0.34, headY - hh * 0.86);
-      ctx.lineTo(headX + lead * hw * 0.4, headY - hh * 0.82);
+      ctx.moveTo(headX + lead * hw * 0.56, headY - hh * 1.02);
+      ctx.lineTo(headX - lead * hw * 0.44, headY - hh * 1.06);
+      ctx.lineTo(headX - lead * hw * 0.36, headY - hh * 0.82);
+      ctx.lineTo(headX + lead * hw * 0.46, headY - hh * 0.78);
       ctx.closePath();
       ctx.fill();
+      // The lateral line: one scored streamline down the cheek.
+      ctx.strokeStyle = shade(st.color, -22);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.08, headY - hh * 0.3);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.5, headY - hh * 0.06, headX - lead * hw * 0.6, headY - hh * 0.1);
+      ctx.stroke();
       ctx.restore();
-      // THE CHEEK FINS: nacre blades off the temples, back-raked.
-      for (const es of [-1, 1]) {
-        const far = es !== (lead || 1);
-        const wK = far ? Math.max(0.3, 1 - t * 0.65) : 1;
-        const bx = headX + es * hw * 0.92;
-        const by = headY - hh * 0.3;
-        ctx.fillStyle = far ? shade(st.trim, -14) : st.trim;
-        ctx.beginPath();
-        ctx.moveTo(bx, by - hh * 0.14);
-        ctx.lineTo(bx + es * hw * 0.34 * wK - lead * hw * 0.3, by + hh * 0.18);
-        ctx.lineTo(bx, by + hh * 0.22);
-        ctx.closePath();
-        ctx.fill();
-      }
       if (front) {
-        // The visor line: a hard shade band across the eyes — bare-
-        // faced is not the same as readable.
-        ctx.fillStyle = 'rgba(16, 12, 20, 0.34)';
+        // The visor shade band: hard, past the eye line.
+        ctx.fillStyle = 'rgba(16, 12, 20, 0.4)';
         ctx.beginPath();
-        ctx.moveTo(cx - ohw * 0.9, headY - hh * 0.46);
-        ctx.lineTo(cx + ohw * 0.9, headY - hh * 0.42);
-        ctx.lineTo(cx + ohw * 0.74, headY - hh * 0.12);
+        ctx.moveTo(cx - ohw * 0.92, headY - hh * 0.5);
+        ctx.lineTo(cx + ohw * 0.92, headY - hh * 0.46);
+        ctx.lineTo(cx + ohw * 0.74, headY - hh * 0.1);
         ctx.lineTo(cx - ohw * 0.74, headY - hh * 0.16);
         ctx.closePath();
         ctx.fill();
-        // The brow rim: one bright line under the cap's edge.
-        ctx.strokeStyle = shade(st.trim, 10);
+        ctx.strokeStyle = shade(st.trim, 8);
         ctx.lineWidth = Math.max(1, s * 0.014);
         ctx.beginPath();
-        ctx.moveTo(cx - ohw * 0.9, headY - hh * 0.44);
-        ctx.lineTo(cx + ohw * 0.9, headY - hh * 0.4);
+        ctx.moveTo(cx - ohw * 0.92, headY - hh * 0.48);
+        ctx.lineTo(cx + ohw * 0.92, headY - hh * 0.44);
         ctx.stroke();
       } else {
-        // Back read: the crest blade + two cap seam panels.
+        // Back read: the sail's trailing spines + cap seams.
         ctx.strokeStyle = shade(st.color, -22);
         ctx.lineWidth = Math.max(1, s * 0.012);
-        for (const ku of [-0.4, 0.4]) {
+        for (const ku of [-0.42, 0.42]) {
           ctx.beginPath();
-          ctx.moveTo(headX + hw * ku, headY - hh * 1.06);
-          ctx.lineTo(headX + hw * ku * 0.7, headY - hh * 0.4);
+          ctx.moveTo(headX + hw * ku, headY - hh * 1.04);
+          ctx.lineTo(headX + hw * ku * 0.7, headY - hh * 0.3);
           ctx.stroke();
         }
       }

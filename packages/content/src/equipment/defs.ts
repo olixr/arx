@@ -2112,9 +2112,9 @@ function earlyLeatherDefs(): EquipmentDef[] {
       { key: 'reedmace', dye: 'Reedmace', color: '#2c4434', dyeInput: { item: 'sagewort', qty: 2 },
         desc: 'The reed angler. A lure glows where the face should be.' },
       { key: 'stormgull', dye: 'Stormgull', color: '#46525c', dyeInput: { item: 'cotton', qty: 2 },
-        desc: 'The storm-fisher. The beak answers nothing.' },
+        desc: 'The kraken\'s claim. It has eyes; they are not yours.' },
       { key: 'sundart', dye: 'Sundart', color: '#b0802e', dyeInput: { item: 'sunflower', qty: 2 },
-        desc: 'The strike, bare-faced. It lets you see it coming.' },
+        desc: 'The marlin\'s bill and sail. It lets you see it coming.' },
     ]),
     // -------- Cutpurse: umber leather under a brass coin device and a
     // half-mask. Drop-only — the guild does not sell its colors, you
@@ -2232,14 +2232,14 @@ function kingfisherSet(): EquipmentDef[] {
       levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(7, 55, 45, 1),
       value: 95, color, code: 'Oh',
-      desc: 'The sailfin casque. Gill-scored, nacre-browed — the river made this, not a tannery.',
+      desc: 'The leviathan\'s jaws, worn whole. You look out from inside the bite.',
     },
     {
       id: 'kingfisher_jerkin', name: 'Kingfisher jerkin', slot: 'body', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 8 }, armor: 4, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(11, 90, 60, 2),
       value: 140, color, code: 'Oj',
-      desc: 'Fish-leather scalecoat under a sailfin shoulder. Light moves through it like water.',
+      desc: 'Lapped scute plates under a dorsal fin. Light moves across it like water.',
     },
     {
       id: 'kingfisher_chaps', name: 'Kingfisher chaps', slot: 'legs', armorClass: 'leather',
