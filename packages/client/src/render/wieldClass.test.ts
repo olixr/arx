@@ -13,7 +13,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EQUIPMENT_DEFS } from '@arx/content';
+import { EQUIPMENT_DEFS, ITEMS } from '@arx/content';
 import {
   bladeStyle,
   bowStyle,
@@ -65,6 +65,21 @@ test('THE CHECK-GREAT-FIRST LAW: a greatsword-shaped id satisfies BOTH fallbacks
   assert.notEqual(bladeStyle('doom_greatsword'), null, 'blade fallback claims *sword ids');
   assert.notEqual(greatStyle('doom_greatsword'), null, 'great fallback claims *greatsword ids');
   assert.equal(wieldClass('doom_greatsword'), 'great');
+});
+
+test('tools are never a carry class: every tool id resolves none (the painter dispatch leans on this)', () => {
+  // drawHeldItem's dispatch reads wieldClass for the four carry
+  // classes and keeps its own interleaved toolStyle probe for axes,
+  // picks, and rods — which is only equivalent to the old chain if no
+  // tool id ever satisfies a weapon-style registry. Pinned here over
+  // the whole item roster.
+  let tools = 0;
+  for (const def of ITEMS.values()) {
+    if (!def.tool) continue;
+    tools++;
+    assert.equal(wieldClass(def.id), 'none', `tool ${def.id} claims a weapon class`);
+  }
+  assert.ok(tools > 5, `only ${tools} tool defs enumerated`);
 });
 
 test('wieldClass caches and stays stable across calls', () => {

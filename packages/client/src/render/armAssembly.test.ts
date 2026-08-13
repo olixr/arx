@@ -1,0 +1,79 @@
+/**
+ * THE ONE MOUTH — the single-writer law, enforced by shape.
+ *
+ * The arms-v3 audit found the arm channels written from sites
+ * scattered across 1500 lines (`heldAngle` had SEVEN writers with no
+ * owner). Phase 2 fenced the whole pipeline between two markers in
+ * drawHumanoid; this test walks the SOURCE and fails the build if:
+ *   1. any write to an arm channel appears inside drawHumanoid but
+ *      OUTSIDE the fence, or
+ *   2. the per-channel writer census inside the fence drifts without
+ *      this pin being deliberately updated (a new writer must be a
+ *      decision, never an accident).
+ *
+ * Comments are stripped before scanning so prose about a channel can
+ * never trip the census.
+ */
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'rig.ts'), 'utf8');
+
+/** The fenced arm channels and their PINNED writer counts. */
+const CENSUS: Record<string, number> = {
+  heldAngle: 6, // strike resolve · rest lerp · wrist-follow ×2 · cast · sheathe
+  mainX: 14, // pose/work targets · rest · pump/sway/breath · seat · cast · draw · sheathe
+  mainY: 16,
+  offX: 22, // the widest channel: every stage owns the free hand somewhere
+  offY: 22,
+  offAngle: 3, // counter-swing init · echo brace · echo blend
+  offBladeAngle: 5, // guard init · echo · rest · flourish path · sheathe
+  mainFore: 2, // strike resolve · rest lerp
+  offFore: 3, // init · echo · rest lerp
+  staffGrip: 5, // combat default · strike override · great rest · staff rest · sheathe
+  armSwingK: 3, // default · great pumpK · staff pumpK
+};
+
+function stripComments(s: string): string {
+  return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
+function writesOf(body: string, channel: string): number {
+  // An assignment head: the bare identifier (no property access, no
+  // wider word) followed by =, +=, -=, *=, /= — but never ==, =>.
+  const re = new RegExp(`(?<![.\\w$])${channel}\\s*(?:[+\\-*/]?=)(?![=>])`, 'g');
+  return (body.match(re) ?? []).length;
+}
+
+test('every arm-channel write lives inside THE ONE MOUTH fence', () => {
+  const fnStart = SRC.indexOf('export function drawHumanoid');
+  const fnEnd = SRC.indexOf('export function drawBackGear');
+  assert.ok(fnStart > 0 && fnEnd > fnStart, 'drawHumanoid bounds');
+  const begin = SRC.indexOf('THE ONE MOUTH BEGINS');
+  const end = SRC.indexOf('THE ONE MOUTH ENDS');
+  assert.ok(begin > fnStart && end > begin && end < fnEnd, 'fence markers present, in order');
+
+  const before = stripComments(SRC.slice(fnStart, begin));
+  const inside = stripComments(SRC.slice(begin, end));
+  const after = stripComments(SRC.slice(end, fnEnd));
+
+  for (const ch of Object.keys(CENSUS)) {
+    assert.equal(
+      writesOf(before, ch) + writesOf(after, ch),
+      0,
+      `${ch} is written outside the fence`,
+    );
+  }
+});
+
+test('the writer census matches the pin — a new writer is a decision', () => {
+  const begin = SRC.indexOf('THE ONE MOUTH BEGINS');
+  const end = SRC.indexOf('THE ONE MOUTH ENDS');
+  const inside = stripComments(SRC.slice(begin, end));
+  const actual: Record<string, number> = {};
+  for (const ch of Object.keys(CENSUS)) actual[ch] = writesOf(inside, ch);
+  assert.deepEqual(actual, CENSUS);
+});

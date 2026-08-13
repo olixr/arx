@@ -37,6 +37,53 @@ function smooth(t: number): number {
   return u * u * (3 - 2 * u);
 }
 
+// ------------------------------------------------- THE FACING FRAME
+//
+// ONE SIDE VOCABULARY (arms-v3 Phase 2). The audit found `side`
+// meaning three different things across three modules — the facing
+// weight, the smoothed sign, the outboard-arm sign — with nothing but
+// parameter names (some of them lying) to keep callers honest. The
+// FacingFrame is the fix: computed ONCE per body per frame from the
+// facing and the eased rest side, and passed WHOLE, so a function
+// picks the read it needs by FIELD NAME instead of trusting a bare
+// number's positional slot.
+
+/** THE FACING-WEIGHT LAW's floor: front-on there is no screen-forward
+ *  for a rake to point, so the weight never quite reaches zero — grip
+ *  identity is carried by the edge flip and the lean sign there. A
+ *  bigger floor splayed blades at the camera (the 0.35 verdict). */
+export const SIDE_FLOOR = 0.2;
+/** The weight's profile slope: full rake belongs to the silhouette. */
+export const SIDE_SLOPE = 0.8;
+
+export interface FacingFrame {
+  /** World heading, radians (the projection functions' yaw). */
+  dir: number;
+  fx: number;
+  fy: number;
+  /** The rig's honest facing weight: |fx| (NOT the face painters'
+   *  boosted read — that is faceProfileK in rig.ts). */
+  profileK: number;
+  /** THE SMOOTHED REST SIDE — eased, dwelled sign (easeRestSide). */
+  sideS: number;
+  /** THE FACING WEIGHT — sideS · (floor + slope·profileK). */
+  sideW: number;
+}
+
+export function facingFrame(dir: number, sideS: number): FacingFrame {
+  const fx = Math.cos(dir);
+  const fy = Math.sin(dir);
+  const profileK = Math.abs(fx);
+  return {
+    dir,
+    fx,
+    fy,
+    profileK,
+    sideS,
+    sideW: sideS * (SIDE_FLOOR + SIDE_SLOPE * profileK),
+  };
+}
+
 /**
  * THE GAIT LADDER: idle → walk → run as one continuous clock.
  * `moveK` = is the body travelling at all (min(1, poleStrength));
@@ -292,6 +339,13 @@ export interface StaffWield {
   /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
   dx: number;
   dy: number;
+  /** UN-squashed forward lean of the fist along the facing, units of
+   *  s — the carry sits a breath ahead of the hang lane. This used to
+   *  be a bare `fx·0.05·s` nudge at the rig's assembly site (the
+   *  frame-is-the-only-writer violation the audit caught); the frame
+   *  owns it now. Kept separate from dx because dx rides wScale and
+   *  this deliberately does not. */
+  fwd: number;
   /** Staff angle, fist→crown, screen radians (projected). */
   angle: number;
   /** Foreshortened length for the painter. */
@@ -301,6 +355,11 @@ export interface StaffWield {
   /** How much the planted hand sits out the arm pump (0 planted…1 free). */
   pumpK: number;
 }
+
+/** The staff carry's forward lean (see StaffWield.fwd), units of s. */
+export const STAFF_FWD_LEAN_S = 0.05;
+/** The great shoulder carry's forward lean, units of s. */
+export const GREAT_FWD_LEAN_S = 0.04;
 
 /**
  * THE STAFF LADDER, second edition — one hand on the move.
@@ -319,13 +378,13 @@ export interface StaffWield {
  * points up-screen and draws SHORT — the length change is the depth.
  */
 export function staffWield(
-  dir: number,
-  sideS: number,
+  f: FacingFrame,
   moveK: number,
   runK: number,
   sw: number,
   px: number,
 ): StaffWield {
+  const { dir, sideS } = f;
   const carry = smooth(runK);
   const m = Math.max(0, Math.min(1, moveK));
   // The stride works the planted stick: a pitch oscillation in the
@@ -342,6 +401,7 @@ export function staffWield(
   return {
     dx: sideS * (0.27 - 0.06 * carry),
     dy: -0.04 + 0.17 * carry,
+    fwd: f.fx * STAFF_FWD_LEAN_S,
     angle: p.angle,
     fore: p.fore,
     grip: 0.72 - 0.22 * carry,
@@ -526,6 +586,8 @@ export interface GreatWield {
   /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
   dx: number;
   dy: number;
+  /** UN-squashed forward lean along the facing (StaffWield.fwd's law). */
+  fwd: number;
   /** Weapon angle, fist→tip, screen radians (projected). */
   angle: number;
   /** Foreshortened length for the painter. */
@@ -565,13 +627,13 @@ export interface GreatWield {
  * screen's vertical component never crosses zero (nothing to whip).
  */
 export function greatWield(
-  dir: number,
-  sideS: number,
+  f: FacingFrame,
   moveK: number,
   runK: number,
   sw: number,
   px: number,
 ): GreatWield {
+  const { dir, sideS } = f;
   const m = Math.max(0, Math.min(1, moveK));
   const drive = smooth(runK);
   // The late rock: the mass answers the stride at reduced amplitude —
@@ -606,6 +668,7 @@ export function greatWield(
     // shoulder — the bent elbow's read, not a fist across the chest.
     dx: sideS * (0.16 + 0.05 * drive + 0.08 * k),
     dy: -0.16 + 0.07 * drive,
+    fwd: f.fx * GREAT_FWD_LEAN_S,
     angle: p.angle,
     fore: p.fore,
     grip: 0.14 + 0.07 * drive,
@@ -828,11 +891,11 @@ export function greatFinisherLean(t: number): number {
  * the depth read of the blades, because a bow is a plane, not a rod.
  */
 export function bowWield(
-  dir: number,
-  sideW: number,
+  f: FacingFrame,
   moveK: number,
   runK: number,
 ): { dx: number; dy: number; angle: number; fore: number } {
+  const { dir, sideW } = f;
   const lift = gaitLift(moveK, runK);
   const beta = 0.72 + 0.1 * lift;
   const p = projectCarry(dir, beta);

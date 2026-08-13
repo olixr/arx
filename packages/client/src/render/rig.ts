@@ -51,6 +51,7 @@ import {
   armPump,
   bowWield,
   easeRestSide,
+  facingFrame,
   gaitK,
   greatFinisherLean,
   greatFinisherPath,
@@ -4067,6 +4068,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // facing. Both ends of the arm frame now agree about the squash.
   const armY = hipY - ARM_RING_DROP_S * s * hScale;
   const shoulderY = hipY - th * hScale + SHOULDER_Y_DROP_S * s;
+  // ==================== THE ONE MOUTH BEGINS ====================
+  // (arms-v3 Phase 2) Every write to the arm channels — heldAngle,
+  // mainX/mainY, offX/offY, offBladeAngle, mainFore/offFore,
+  // staffGrip, armSwingK — lives between this fence and its END
+  // marker, as one ordered pipeline of labeled stages: baseline →
+  // rest carriage → pump → seat → cast → draw → sheathe → claims.
+  // armAssembly.test.ts walks the source and fails the build if a
+  // write to any of these channels appears outside the fence, or if
+  // the per-channel writer census drifts without the test being told.
   const mainAngle = rig.dir + swingOffset;
   // The free arm counter-swings a melee strike instead of floating on
   // a fixed circle — two arms in the fight, not one. An off BLADE
@@ -4182,46 +4192,54 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // so a weapon pointing into (or out of) the scene draws SHORT. The
   // length change, not the angle, is what tells the eye the steel
   // lives in the world's depth instead of rotating on a flat card.
-  let mainFore = 1;
+  // THE STRIKE'S OWN MOUTH (arms-v3 Phase 2): the five mutually-
+  // exclusive strike-angle sources resolve to ONE {angle, fore} pair
+  // in one pure expression — the branch cascade that used to be
+  // heldAngle's writers #1 and #2 is now a single resolved input to
+  // the assembly below.
+  const strikeHeld = ((): { angle: number; fore: number } => {
+    if (strikeBladeRel !== null) {
+      // THE WRIST LAW (strikeFrame's blade channel): the blade lags
+      // the arm cocked through the coil and the hold, whips to a lead
+      // at impact, settles straight — a whip-crack cut, not a
+      // windshield wiper. The reverse grip runs the same beat around
+      // its π reversal, tight and locked — the grip never lies. The
+      // cut sweeps the GROUND plane, so the strike projection bends
+      // the screen angle and shortens the steel along the depth axis.
+      return projectStrike(mainAngle + strikeBladeRel);
+    }
+    if (staffSpin !== null) {
+      // THE POLE SCHOOL's tangent hold, through the same projection.
+      return projectStrike(mainAngle + staffSpin);
+    }
+    if (ice) {
+      // The reversed blade stays pointed at the strike mark all the
+      // way through the coil and the drive — menace through the whole
+      // beat. The mark is a SCREEN target, so the angle stays
+      // target-true; the depth read comes from the length alone.
+      const markX = rig.x + fx * 0.6 * s * wS;
+      const markY = armY + fy * 0.6 * s + 0.26 * s;
+      return {
+        angle: Math.atan2(markY - mainY, markX - mainX),
+        fore: projectStrike(rig.dir).fore,
+      };
+    }
+    if (greatFinPitch !== null) {
+      // THE MOUNTAIN FALLS: the blade's overhead haul is a world
+      // pitch — straight up through the poise, crashing to
+      // down-forward at the bury — projected exactly like a carry.
+      return projectCarry(rig.dir, greatFinPitch);
+    }
+    if (thrustR !== null) {
+      // The lunge rams straight down the aim — angle target-true, the
+      // blade honestly shorter when the aim runs into the screen.
+      return { angle: rig.dir, fore: projectStrike(rig.dir).fore };
+    }
+    return { angle: mainAngle, fore: 1 };
+  })();
+  let mainFore = strikeHeld.fore;
   let offFore = 1;
-  let heldAngle = thrustR !== null ? rig.dir : mainAngle;
-  if (strikeBladeRel !== null) {
-    // THE WRIST LAW (strikeFrame's blade channel): the blade lags the
-    // arm cocked through the coil and the hold, whips to a lead at
-    // impact, settles straight — a whip-crack cut, not a windshield
-    // wiper. The reverse grip runs the same beat around its π
-    // reversal, tight and locked — the grip never lies. The cut
-    // sweeps the GROUND plane, so the strike projection bends the
-    // screen angle and shortens the steel along the depth axis.
-    const ps = projectStrike(mainAngle + strikeBladeRel);
-    heldAngle = ps.angle;
-    mainFore = ps.fore;
-  } else if (staffSpin !== null) {
-    // THE POLE SCHOOL's tangent hold, through the same projection.
-    const ps = projectStrike(mainAngle + staffSpin);
-    heldAngle = ps.angle;
-    mainFore = ps.fore;
-  } else if (ice) {
-    // The reversed blade stays pointed at the strike mark all the way
-    // through the coil and the drive — menace through the whole beat.
-    // The mark is a SCREEN target, so the angle stays target-true; the
-    // depth read comes from the length alone.
-    const markX = rig.x + fx * 0.6 * s * wS;
-    const markY = armY + fy * 0.6 * s + 0.26 * s;
-    heldAngle = Math.atan2(markY - mainY, markX - mainX);
-    mainFore = projectStrike(rig.dir).fore;
-  } else if (greatFinPitch !== null) {
-    // THE MOUNTAIN FALLS: the blade's overhead haul is a world pitch —
-    // straight up through the poise, crashing to down-forward at the
-    // bury — projected exactly like a carry.
-    const gp = projectCarry(rig.dir, greatFinPitch);
-    heldAngle = gp.angle;
-    mainFore = gp.fore;
-  } else if (thrustR !== null) {
-    // The lunge rams straight down the aim — angle target-true, the
-    // blade honestly shorter when the aim runs into the screen.
-    mainFore = projectStrike(rig.dir).fore;
-  }
+  let heldAngle = strikeHeld.angle;
   let staffGrip = 0.34; // combat default: gripped low, business end forward
   if (staffStrikeGrip !== null) staffGrip = staffStrikeGrip;
   let armSwingK = 1;
@@ -4235,6 +4253,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let sideS = restSide;
   const mem = rig.depthMemory;
   if (mem) sideS = easeRestSide(mem, restSide, fx, rig.nowMs);
+  // THE FACING FRAME (arms-v3 Phase 2): the one side vocabulary,
+  // computed once — every wield function takes the whole frame and
+  // reads by field name, so a bare number can never be fed the wrong
+  // meaning of "side" again (the drift the audit mapped).
+  const face = facingFrame(rig.dir, sideS);
   // THE FACING-WEIGHT LAW: the carriage rake is a PROFILE read. Side-on
   // the blade rakes fully forward or back; facing the camera (or away)
   // there IS no screen-forward, so the rake relaxes toward a near-
@@ -4245,7 +4268,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // edge flip and the lean SIGN, not by rake magnitude. Feeding the
   // full ±1 at every facing is what held swords sideways and fists
   // high on a north-south run.
-  const sideW = sideS * (0.2 + 0.8 * profileK);
+  const sideW = face.sideW;
   // THE SMOOTHED SWING LAW: the raw pump drive — the foot-lift
   // differential — saturates and kinks at every footfall, and wrists
   // driven straight off it hinge between two poses. An ~80ms low-pass
@@ -4364,17 +4387,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // little into the drive, drops the fist toward the ribs, and
       // calls the off hand back to the grip (the second-fist claim
       // below reads gf.offClaim).
-      const gf = greatWield(
-        rig.dir,
-        wSide,
-        Math.min(1, rig.poleStrength),
-        rig.runF,
-        swS,
-        rig.poleX,
-      );
+      const gf = greatWield(face, Math.min(1, rig.poleStrength), rig.runF, swS, rig.poleX);
       hAngle = gf.angle;
       hFore = gf.fore;
-      hx = rig.x + gf.dx * s * wS + fx * 0.04 * s;
+      hx = rig.x + gf.dx * s * wS + gf.fwd * s;
       hy = armY + gf.dy * s;
       staffGrip = gf.grip;
       armSwingK = gf.pumpK;
@@ -4388,17 +4404,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // (the user's verdict on the two-hand run: nobody crosses their
       // body to double-grip a pole at a dead sprint). Two hands meet
       // on the wood only in the quarterstaff guard and its strikes.
-      const sf = staffWield(
-        rig.dir,
-        wSide,
-        Math.min(1, rig.poleStrength),
-        rig.runF,
-        swS,
-        rig.poleX,
-      );
+      const sf = staffWield(face, Math.min(1, rig.poleStrength), rig.runF, swS, rig.poleX);
       hAngle = sf.angle;
       hFore = sf.fore;
-      hx = rig.x + sf.dx * s * wS + fx * 0.05 * s;
+      hx = rig.x + sf.dx * s * wS + sf.fwd * s;
       hy = armY + sf.dy * s;
       staffGrip = sf.grip;
       armSwingK = sf.pumpK;
@@ -4412,7 +4421,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // ladder firms the carry toward ready on the run, and the
       // projection law compresses the limbs gently at the camera-line
       // facings — a plane's half-measure of the rod law's depth.
-      const bf = bowWield(rig.dir, sideW, Math.min(1, rig.poleStrength), rig.runF);
+      const bf = bowWield(face, Math.min(1, rig.poleStrength), rig.runF);
       hAngle = bf.angle;
       hFore = bf.fore;
       hx += bf.dx * s * wS;
@@ -4847,6 +4856,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     offX += (shieldFr.gripX - offX) * claim;
     offY += (shieldFr.gripY - offY) * claim;
   }
+  // ===================== THE ONE MOUTH ENDS =====================
+  // Everything below READS the assembled channels; nothing writes.
 
   // Slash trails: a crisp crescent chasing each blade through its cut,
   // centered on the cut's plane (a high cleave rings high, a rising
@@ -6436,9 +6447,16 @@ function drawHeldItem(
   ctx.translate(hx, hy);
   ctx.rotate(angle);
   if (extra?.flip) ctx.scale(1, -1);
+  // ONE CLASS, ONE DETECTION (arms-v3 Phase 2): the painter's branch
+  // SELECTION reads wieldClass — the same single detection the solve
+  // and the stows use — while each branch still resolves its colored
+  // style for the art. Tools and rods stay their own interleaved
+  // probes: they are paintability questions (toolStyle), not carry
+  // classes, and wieldClass pins them 'none' by test.
+  const kind = wieldClass(itemId);
   const fore = extra?.fore ?? 1;
   if (fore !== 1) {
-    if (bowStyle(itemId) !== null) ctx.scale(1, fore);
+    if (kind === 'bow') ctx.scale(1, fore);
     else ctx.scale(fore, 1);
   }
   // Mid-arc wood point: the bow's belly passes through x = BOW_GRIP_X·s
@@ -6453,14 +6471,13 @@ function drawHeldItem(
   // knife would bill the whole town).
   let env: readonly [number, number, number];
   let paint: (c: CanvasRenderingContext2D) => void;
-  if (greatStyle(itemId, color)) {
-    // THE GREAT SCHOOL asks first (the check-great-first law: a
-    // 'greatsword'-shaped id also satisfies bladeStyle's fallback).
-    // The grip slides with the carry exactly like the staff's — high
-    // on the shouldered rest, mid-haft through the cuts.
+  if (kind === 'great') {
+    // (Check-great-first lives inside wieldClass now.) The grip
+    // slides with the carry exactly like the staff's — high on the
+    // shouldered rest, mid-haft through the cuts.
     env = [-1.3, 1.3, 0.45];
     paint = (c) => drawGreatweapon(c, greatStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.grip ?? 0.2);
-  } else if (bladeStyle(itemId, color)) {
+  } else if (kind === 'blade') {
     // The blade + rogue rosters: every sword AND dagger resolves a
     // style — bespoke silhouette, guard, pommel, living fx channel.
     // Unknown '*sword'/'*dagger' ids get color-derived fallbacks.
@@ -6480,14 +6497,14 @@ function drawHeldItem(
       drawTool(c, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
       c.restore();
     };
-  } else if (bowStyle(itemId, color)) {
+  } else if (kind === 'bow') {
     // The archer's roster: every bow resolves a style — limb kind,
     // wood, tip furniture, charms, and the living fx channel. The
     // painter keeps the classic behaviors: limbs flex with the pull,
     // the string hauls to the nock, release buzzes it straight.
     env = [-0.5, 0.7, 0.85];
     paint = (c) => drawBow(c, enchantedStyle(bowStyle(itemId, color)!, extra?.ench, 'blade'), s, rig.nowMs, rig.hurt, extra?.pull ?? 0, extra?.loose);
-  } else if (staffStyle(itemId, color)) {
+  } else if (kind === 'staff') {
     // The archmage's roster: every staff resolves a style — shaft
     // grammar, signature crown, element focus, living fx. The grip
     // slides with the carriage — high on a planted walking stick,

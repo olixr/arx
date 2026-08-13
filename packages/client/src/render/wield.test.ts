@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { bladeCarriage } from './carriage.js';
 import {
   WIELD_GROUND_K,
+  facingFrame,
   gaitK,
   gaitLift,
   armPump,
@@ -170,8 +171,8 @@ test('settle pole: at rest the flare stands alone, and the blend is continuous',
 // ---- the staff ----
 
 test('staff ladder: planted upright at idle, one-hand level trail at a run', () => {
-  const idle = staffWield(0, 1, 0, 0, 0, 1);
-  const run = staffWield(0, 1, 1, 1, 0, 1);
+  const idle = staffWield(facingFrame(0, 1), 0, 0, 0, 1);
+  const run = staffWield(facingFrame(0, 1), 1, 1, 0, 1);
   assert.ok(Math.abs(idle.angle + Math.PI / 2) < 0.01, 'idle: a true walking stick');
   assert.ok(Math.abs(idle.fore - 1) < 0.01, 'an upright stick is unforeshortened');
   assert.ok(run.angle > -0.4 && run.angle < 0.1, `run east: leveled, crown a touch high (${run.angle.toFixed(2)})`);
@@ -179,14 +180,14 @@ test('staff ladder: planted upright at idle, one-hand level trail at a run', () 
 });
 
 test('staff run: north foreshortens the trail carry — the depth read', () => {
-  const n = staffWield(-Math.PI / 2, 1, 1, 1, 0, 0);
+  const n = staffWield(facingFrame(-Math.PI / 2, 1), 1, 1, 0, 0);
   assert.ok(n.fore > 0.8 && n.fore < 0.93, `a north sprint shortens the staff a restrained shade (${n.fore.toFixed(3)})`);
   assert.ok(Math.abs(Math.abs(n.angle) - Math.PI / 2) < 0.2, 'and along the camera line');
 });
 
 test('staff rock is alive at every facing while walking', () => {
-  const ew = staffWield(0, 1, 1, 0, 1, 1);
-  const ns = staffWield(-Math.PI / 2, 1, 1, 0, 1, 0);
+  const ew = staffWield(facingFrame(0, 1), 1, 0, 1, 1);
+  const ns = staffWield(facingFrame(-Math.PI / 2, 1), 1, 0, 1, 0);
   assert.ok(Math.abs(ew.angle + Math.PI / 2) > 0.05, 'E/W stride rocks the stick');
   assert.ok(
     Math.abs(ns.angle + Math.PI / 2) > 0.008 || Math.abs(ns.fore - 1) > 0.012,
@@ -195,12 +196,12 @@ test('staff rock is alive at every facing while walking', () => {
 });
 
 test('staff channels are continuous through the ladder', () => {
-  let prev = staffWield(0, 1, 0, 0, 0.5, 1);
+  let prev = staffWield(facingFrame(0, 1), 0, 0, 0.5, 1);
   for (let i = 1; i <= 40; i++) {
     const u = i / 40;
     const moveK = Math.min(1, u * 2);
     const runK = Math.max(0, u * 2 - 1);
-    const f = staffWield(0, 1, moveK, runK, 0.5, 1);
+    const f = staffWield(facingFrame(0, 1), moveK, runK, 0.5, 1);
     assert.ok(Math.abs(f.angle - prev.angle) < 0.14, `angle step ${i}`);
     assert.ok(Math.abs(f.grip - prev.grip) < 0.05, `grip step ${i}`);
     assert.ok(Math.abs(f.fore - prev.fore) < 0.08, `fore step ${i}`);
@@ -209,8 +210,8 @@ test('staff channels are continuous through the ladder', () => {
 });
 
 test('staff planted hand sits out the pump, the run carry pumps with the arm', () => {
-  assert.ok(staffWield(0, 1, 0, 0, 0, 1).pumpK < 0.4, 'planted: the stick holds the hand still');
-  assert.equal(staffWield(0, 1, 1, 1, 0, 1).pumpK, 1, 'run carry: the arm swings with the gait');
+  assert.ok(staffWield(facingFrame(0, 1), 0, 0, 0, 1).pumpK < 0.4, 'planted: the stick holds the hand still');
+  assert.equal(staffWield(facingFrame(0, 1), 1, 1, 0, 1).pumpK, 1, 'run carry: the arm swings with the gait');
 });
 
 // ---- the pole school ----
@@ -262,22 +263,22 @@ test('pole school: the trail lives from the loosing through the extension', () =
 // ---- the bow ----
 
 test('bow: the approved half-ready carry holds through the gait', () => {
-  const idle = bowWield(0, 1, 0, 0);
-  const run = bowWield(0, 1, 1, 1);
+  const idle = bowWield(facingFrame(0, 1), 0, 0);
+  const run = bowWield(facingFrame(0, 1), 1, 1);
   assert.ok(Math.abs(idle.angle - 0.85) < 1e-9, 'idle at the user-approved rake');
   assert.ok(run.angle < idle.angle, 'the run leans a hair further toward ready');
   assert.ok(Math.abs(run.angle - idle.angle) < 0.15, 'a hair, not a new pose');
 });
 
 test('bow: mirror symmetry through the facing weight', () => {
-  const r = bowWield(0, 1, 0, 0).angle;
-  const l = bowWield(Math.PI, -1, 0, 0).angle;
+  const r = bowWield(facingFrame(0, 1), 0, 0).angle;
+  const l = bowWield(facingFrame(Math.PI, -1), 0, 0).angle;
   assert.ok(Math.abs(r + l - Math.PI) < 1e-9, 'angles mirror across vertical');
 });
 
 test('bow: the plane compresses toward the camera line, gently', () => {
-  const e = bowWield(0, 1, 0, 0);
-  const n = bowWield(-Math.PI / 2, 0.2, 0, 0);
+  const e = bowWield(facingFrame(0, 1), 0, 0);
+  const n = bowWield(facingFrame(-Math.PI / 2, 1), 0, 0);
   assert.ok(Math.abs(e.fore - 1) < 1e-9, 'full at profile');
   assert.ok(n.fore <= 0.95 && n.fore > 0.8, `half the rod law's depth (${n.fore.toFixed(3)})`);
 });
@@ -305,10 +306,10 @@ import { strikePhases } from './carriage.js';
 test('shoulder carry: shouldered at idle, leveling a little at a run, never forward of the body', () => {
   // Facing east, the resting blade points up and BACK (screen up-left):
   // the shoulder carry, not a ready or a trail.
-  const idle = greatWield(0, 1, 0, 0, 0, 1);
+  const idle = greatWield(facingFrame(0, 1), 0, 0, 0, 1);
   assert.ok(Math.cos(idle.angle) < 0, 'idle tip trails behind the facing');
   assert.ok(Math.sin(idle.angle) < 0, 'idle tip rides up over the shoulder');
-  const run = greatWield(0, 1, 1, 1, 0, 1);
+  const run = greatWield(facingFrame(0, 1), 1, 1, 0, 1);
   // The run levels the carry toward the drive but the tip stays behind
   // the body — a shouldered sprint, never a leveled lance.
   assert.ok(Math.cos(run.angle) < 0.1, 'run tip never leads the body');
@@ -319,10 +320,10 @@ test('shoulder carry: shouldered at idle, leveling a little at a run, never forw
 });
 
 test('shoulder carry: continuous through the gait ladder — the mass never pops', () => {
-  let prev = greatWield(1.2, 0.7, 0, 0, 0.3, 0.6);
+  let prev = greatWield(facingFrame(1.2, 0.7), 0, 0, 0.3, 0.6);
   for (let i = 1; i <= 20; i++) {
     const k = i / 20;
-    const g = greatWield(1.2, 0.7, Math.min(1, k * 2), k, 0.3, 0.6);
+    const g = greatWield(facingFrame(1.2, 0.7), Math.min(1, k * 2), k, 0.3, 0.6);
     assert.ok(Math.abs(g.dx - prev.dx) < 0.08, 'dx continuous');
     assert.ok(Math.abs(g.dy - prev.dy) < 0.08, 'dy continuous');
     assert.ok(Math.abs(g.grip - prev.grip) < 0.06, 'grip continuous');
@@ -332,9 +333,9 @@ test('shoulder carry: continuous through the gait ladder — the mass never pops
 });
 
 test('the second fist: the run calls the off hand back to the hilt', () => {
-  assert.equal(greatWield(0, 1, 0, 0, 0, 1).offClaim, 0, 'idle frees the off hand');
-  const walk = greatWield(0, 1, 1, 0.2, 0, 1).offClaim;
-  const run = greatWield(0, 1, 1, 1, 0, 1).offClaim;
+  assert.equal(greatWield(facingFrame(0, 1), 0, 0, 0, 1).offClaim, 0, 'idle frees the off hand');
+  const walk = greatWield(facingFrame(0, 1), 1, 0.2, 0, 1).offClaim;
+  const run = greatWield(facingFrame(0, 1), 1, 1, 0, 1).offClaim;
   assert.ok(walk < run, 'the claim builds with the gait');
   assert.ok(run > 0.95, 'a sprint welds both hands on');
 });
@@ -420,7 +421,7 @@ test('the mountain falls: overhead poise, the longest telegraph, then the bury',
 });
 test('THE RESTING SHOULDER: square to the camera the blade leans over the shoulder, never vertical', () => {
   for (const dir of [Math.PI / 2, -Math.PI / 2]) {
-    const g = greatWield(dir, 1, 0, 0, 0, 0);
+    const g = greatWield(facingFrame(dir, 1), 0, 0, 0, 0);
     // A readable screen diagonal: clearly up, clearly to the side —
     // neither the centered candle nor a level plank.
     assert.ok(Math.sin(g.angle) < -0.5, `dir ${dir}: the blade points up`);
@@ -441,16 +442,16 @@ test('THE RESTING SHOULDER: the blade points up at EVERY facing and gait — not
   for (let i = 0; i < 16; i++) {
     const dir = (i / 16) * Math.PI * 2;
     for (const [m, r] of [[0, 0], [1, 0.2], [1, 1]] as const) {
-      const g = greatWield(dir, 1, m, r, 0.3, Math.cos(dir));
+      const g = greatWield(facingFrame(dir, 1), m, r, 0.3, Math.cos(dir));
       assert.ok(Math.sin(g.angle) < -0.25, `dir ${dir.toFixed(2)} gait ${r}: tip above the fist`);
     }
   }
 });
 
 test('THE RESTING SHOULDER: continuous in facing — turning on the spot never pops the carry', () => {
-  let prev = greatWield(0, 1, 0, 0, 0, 0);
+  let prev = greatWield(facingFrame(0, 1), 0, 0, 0, 0);
   for (let i = 1; i <= 48; i++) {
-    const g = greatWield((i / 48) * Math.PI * 2, 1, 0, 0, 0, 0);
+    const g = greatWield(facingFrame((i / 48) * Math.PI * 2, 1), 0, 0, 0, 0);
     let d = (g.angle - prev.angle) % (Math.PI * 2);
     if (d > Math.PI) d -= Math.PI * 2;
     if (d < -Math.PI) d += Math.PI * 2;
@@ -464,10 +465,10 @@ test('THE RESTING SHOULDER: continuous in facing — turning on the spot never p
 test('THE RESTING SHOULDER: the side swap eases the blade across, never teleports it', () => {
   // sideS easing through zero (the smoothed rest-side flip) must carry
   // the lean smoothly from one shoulder to the other, square-on.
-  let prev = greatWield(Math.PI / 2, 1, 0, 0, 0, 0);
+  let prev = greatWield(facingFrame(Math.PI / 2, 1), 0, 0, 0, 0);
   for (let i = 1; i <= 20; i++) {
     const sideS = 1 - (i / 10);
-    const g = greatWield(Math.PI / 2, sideS, 0, 0, 0, 0);
+    const g = greatWield(facingFrame(Math.PI / 2, sideS), 0, 0, 0, 0);
     let d = (g.angle - prev.angle) % (Math.PI * 2);
     if (d > Math.PI) d -= Math.PI * 2;
     if (d < -Math.PI) d += Math.PI * 2;
