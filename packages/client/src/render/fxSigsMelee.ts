@@ -546,10 +546,13 @@ const earthbreaker: AbilitySig = {
 
 /**
  * REND — "the opened seam."
- * A shallow cut that bleeds like a deep one: the swing leaves one
- * ragged seam whose two lips pull APART over its life, dark wound
- * showing between them, droplets beading along its length and
- * dripping long after the arc is gone.
+ * A shallow cut that bleeds like a deep one: the rip itself flashes
+ * as a RAGGED white tear at chest height — notched, never straight —
+ * and then the seam it leaves pulls APART over its life: a filled
+ * wound band widening between two jagged lips, the upper lip lit
+ * where the parted edge catches light, droplets beading along its
+ * length while a dark pool gathers under the deepest notch. The arc
+ * was shallow; the ground disagrees.
  */
 const rend: AbilitySig = {
   spawn(c) {
@@ -570,39 +573,67 @@ const rend: AbilitySig = {
     const n = 4;
     ctx.save();
     ctx.lineCap = 'butt';
-    // The seam rides the swing's reach: station points along the arc.
+    // The seam rides the swing's reach: station points along the arc,
+    // each with its own ragged offset — a tear, not a rule.
     const px: number[] = [];
     const py: number[] = [];
+    const jag: number[] = [];
     for (let k = 0; k <= n; k++) {
       const a = dir - 0.42 + (0.84 * k) / n;
       const rr = rPx * (0.68 + (rand() - 0.5) * 0.1);
       const p = groundPt(c, rr, a);
       px.push(p.x);
       py.push(p.y);
+      jag.push((rand() - 0.5) * 1.4);
     }
-    // The wound between the lips: a dark band, widening.
-    ctx.globalAlpha = 0.55 * fade;
-    ctx.strokeStyle = shade(st.deep, -16);
-    ctx.lineWidth = Math.max(2, sc * 0.09 * open);
+    // The wound itself: a FILLED band between two jagged lips, dark
+    // interior widening as the seam gives — the ground has depth to
+    // lose and the tear is showing it.
+    const w = sc * 0.095 * open;
+    ctx.globalAlpha = 0.7 * fade;
+    ctx.fillStyle = shade(st.deep, -18);
     ctx.beginPath();
-    for (let k = 0; k <= n; k++) (k === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, px[k]!, py[k]!);
-    ctx.stroke();
-    // Two lips separating off the wound line.
+    for (let k = 0; k <= n; k++) {
+      const a = dir - 0.42 + (0.84 * k) / n;
+      const o = w * (1 + jag[k]! * 0.5);
+      (k === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, px[k]! - Math.cos(a) * o, py[k]! - Math.sin(a) * o * squash);
+    }
+    for (let k = n; k >= 0; k--) {
+      const a = dir - 0.42 + (0.84 * k) / n;
+      const o = w * (1 - jag[k]! * 0.5);
+      ctx.lineTo(px[k]! + Math.cos(a) * o, py[k]! + Math.sin(a) * o * squash);
+    }
+    ctx.closePath();
+    ctx.fill();
+    // The lips: the parted upper edge catches light; the lower edge
+    // rolls into its own shadow.
     for (let s = 0; s < 2; s++) {
-      const off = (s === 0 ? -1 : 1) * sc * 0.05 * open;
-      ctx.globalAlpha = 0.65 * fade;
-      ctx.strokeStyle = s === 0 ? st.mid : st.deep;
-      ctx.lineWidth = Math.max(1.5, sc * 0.03);
+      const e = s === 0 ? -1 : 1;
+      ctx.globalAlpha = (s === 0 ? 0.8 : 0.6) * fade;
+      ctx.strokeStyle = s === 0 ? st.mid : shade(st.deep, -8);
+      ctx.lineWidth = Math.max(2, sc * 0.038);
       ctx.beginPath();
       for (let k = 0; k <= n; k++) {
         const a = dir - 0.42 + (0.84 * k) / n;
-        (k === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, px[k]! + Math.cos(a) * off, py[k]! + Math.sin(a) * off * squash);
+        const o = w * (1 - e * jag[k]! * 0.5) * e + e * sc * 0.012;
+        (k === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, px[k]! + Math.cos(a) * o, py[k]! + Math.sin(a) * o * squash);
       }
       ctx.stroke();
     }
-    // Droplets bead along the seam as the bleed sets in.
+    // The pool: under the deepest notch, the bleed gathers late.
+    if (t > 0.4) {
+      const pu = Math.min(1, (t - 0.4) / 0.35);
+      let di = 0;
+      for (let k = 1; k <= n; k++) if (jag[k]! > jag[di]!) di = k;
+      ctx.globalAlpha = 0.55 * fade * pu;
+      ctx.fillStyle = shade(st.deep, -14);
+      ctx.beginPath();
+      ctx.ellipse(px[di]!, py[di]! + sc * 0.04, sc * 0.15 * pu, sc * 0.1 * pu * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Droplets bead along the seam as the bleed sets in — true drops,
+    // taller than wide, each with a white catch.
     if (t > 0.25) {
-      ctx.fillStyle = st.spark;
       for (let k = 0; k < 4; k++) {
         const bt = Math.min(1, (t - 0.25 - k * 0.08) / 0.2);
         if (bt <= 0) continue;
@@ -610,16 +641,66 @@ const rend: AbilitySig = {
         const i = Math.min(n - 1, Math.floor(f * n));
         const bx = px[i]! + (px[i + 1]! - px[i]!) * (f * n - i);
         const by = py[i]! + (py[i + 1]! - py[i]!) * (f * n - i);
-        const g = Math.max(2, sc * 0.05 * bt);
         ctx.globalAlpha = 0.85 * fade * bt;
-        ctx.fillRect(bx - g / 2, by - g / 2, g, g);
+        ctx.fillStyle = st.spark;
+        ctx.beginPath();
+        ctx.ellipse(bx, by, sc * 0.024 * bt, sc * 0.032 * bt, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(bx - 1, by - sc * 0.02 * bt, Math.max(1, sc * 0.012), Math.max(1, sc * 0.012));
       }
     }
     ctx.restore();
   },
   air(c) {
-    // The seam keeps weeping: slow drips off the cut line.
-    // (The seep itself is the blood.drip emitter from spawn.)
+    // The rip: a ragged white tear-line flashes along the arc chord
+    // at chest height — five segments, notched, riding a dark bed —
+    // with a red star snapping at the deepest notch. Gone in a blink;
+    // the seam below inherits everything it started.
+    const { ctx, st, t, sc, squash, px, py, dir } = c;
+    if (t >= 0.26) return;
+    const ft = 1 - t / 0.26;
+    const rand = srand(c.seed ^ 0x93);
+    const cx = px + Math.cos(dir) * c.rPx * 0.68;
+    const cy = py + Math.sin(dir) * c.rPx * 0.68 * squash - sc * 0.42;
+    const ta = Math.atan2(Math.sin(dir) * squash, Math.cos(dir)) + Math.PI / 2;
+    const ca = Math.cos(ta);
+    const sn = Math.sin(ta);
+    const L = sc * 0.55;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // Station the notches once; both strokes walk the same tear.
+    const nx: number[] = [];
+    const ny: number[] = [];
+    let deep = 0;
+    let deepV = 0;
+    for (let k = 0; k <= 5; k++) {
+      const f = -1 + (k / 5) * 2;
+      const notch = k === 0 || k === 5 ? 0 : (rand() - 0.5) * sc * 0.14;
+      nx.push(cx + ca * L * f - sn * notch);
+      ny.push(cy + sn * L * f + ca * notch);
+      if (Math.abs(notch) > deepV) { deepV = Math.abs(notch); deep = k; }
+    }
+    ctx.globalAlpha = 0.7 * ft;
+    ctx.strokeStyle = shade(st.deep, -12);
+    ctx.lineWidth = Math.max(3, sc * 0.07);
+    ctx.beginPath();
+    for (let k = 0; k <= 5; k++) (k === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, nx[k]!, ny[k]!);
+    ctx.stroke();
+    ctx.globalAlpha = ft;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1.5, sc * 0.032);
+    ctx.beginPath();
+    for (let k = 0; k <= 5; k++) (k === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, nx[k]!, ny[k]!);
+    ctx.stroke();
+    // The deepest notch snaps a red star: where the shallow cut lied.
+    ctx.globalAlpha = 0.9 * ft;
+    ctx.fillStyle = st.spark;
+    ctx.beginPath();
+    burstStarPath(ctx, nx[deep]!, ny[deep]!, sc * 0.13 * ft + sc * 0.04, sc * 0.05, 5, ta);
+    ctx.fill();
+    ctx.restore();
+    c.glow(c.wx + Math.cos(dir) * c.radius * 0.7, c.wy + Math.sin(dir) * c.radius * 0.7, 0.7, 0.3 * ft);
   },
 };
 

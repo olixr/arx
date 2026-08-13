@@ -30,7 +30,7 @@
  */
 
 import { shade } from './rig.js';
-import { srand, type FxStyle } from './abilityFx.js';
+import { srand, burstStarPath, type FxStyle } from './abilityFx.js';
 import type { Particles } from './particles.js';
 import { fire, frost, dust, shadow, asMatter } from './matter/index.js';
 import { MELEE_SIGS } from './fxSigsMelee.js';
@@ -601,6 +601,13 @@ const smoke_bomb: AbilitySig = {
       ctx.lineTo(px + Math.sin(a) * w, py - Math.cos(a) * w * squash);
       ctx.closePath();
       ctx.fill();
+      // The hunting head: each arm pushes a soot bead ahead of itself,
+      // fattest while the reach is still finding ground.
+      ctx.globalAlpha = 0.5 * fade * Math.sin(Math.min(1, reach) * Math.PI);
+      ctx.fillStyle = '#221c2e';
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, w * 0.85, w * 0.6 * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   },
@@ -608,19 +615,25 @@ const smoke_bomb: AbilitySig = {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
     const rand = srand(c.seed ^ 0x43);
     ctx.save();
-    // The igniter flash: one white slit, gone in a blink.
+    // The igniter: a white star snap with the slit through its heart —
+    // the one hard light this art will ever allow, gone in a blink.
     if (t < 0.07) {
       const ft = 1 - t / 0.07;
-      ctx.globalAlpha = ft;
+      ctx.globalAlpha = 0.85 * ft;
       ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      burstStarPath(ctx, px, py - sc * 0.4, sc * 0.3 * ft + sc * 0.08, sc * 0.07, 5, (c.seed % 6) * 0.5);
+      ctx.fill();
       ctx.save();
       ctx.translate(px, py - sc * 0.4);
       ctx.rotate((c.seed % 6) * 0.5);
+      ctx.globalAlpha = ft;
       ctx.fillRect(-sc * 0.42 * ft, -Math.max(1.5, sc * 0.035), sc * 0.84 * ft, Math.max(3, sc * 0.07));
       ctx.restore();
     }
     // The canopy: billow lobes roil at body height, thinning late —
-    // each lobe breathes on its own clock and sags as the smoke dies.
+    // each lobe a VOLUME: dark underbelly with a lighter cap riding
+    // its top shoulder, breathing on its own clock, sagging as it dies.
     const thin = t < 0.6 ? 1 : (1 - t) / 0.4;
     for (let k = 0; k < 5; k++) {
       const a = rand() * Math.PI * 2;
@@ -629,10 +642,18 @@ const smoke_bomb: AbilitySig = {
       const s = sc * (0.26 + rand() * 0.2) * breathe * (0.7 + t * 0.5);
       const bx = px + Math.cos(a) * rr;
       const by = py - sc * (0.35 + rand() * 0.5) + t * sc * 0.2;
+      const roll = Math.sin(c.now / 500 + k) * 0.2;
+      // The underbelly: the smoke's own shadow, carried with it.
       ctx.globalAlpha = (0.4 - k * 0.05) * thin;
-      ctx.fillStyle = k % 2 === 0 ? st.deep : st.mid;
+      ctx.fillStyle = k % 2 === 0 ? shade(st.deep, -8) : st.deep;
       ctx.beginPath();
-      ctx.ellipse(bx, by, s, s * 0.8, Math.sin(c.now / 500 + k) * 0.2, 0, Math.PI * 2);
+      ctx.ellipse(bx, by, s, s * 0.8, roll, 0, Math.PI * 2);
+      ctx.fill();
+      // The cap: what little moon reaches the top shoulder.
+      ctx.globalAlpha = (0.3 - k * 0.04) * thin;
+      ctx.fillStyle = k % 2 === 0 ? st.mid : shade(st.mid, 10);
+      ctx.beginPath();
+      ctx.ellipse(bx - s * 0.18, by - s * 0.3, s * 0.62, s * 0.42, roll, 0, Math.PI * 2);
       ctx.fill();
     }
     // The canopy sheds: soot motes sift off its underside.

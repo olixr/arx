@@ -34485,8 +34485,9 @@ export class Renderer {
 
         case 'summon': {
           // The arrival circle rolls out on the turf; its glyphs
-          // stand on the ring in the volume pass.
-          const rr = rPx * (0.4 + 0.6 * t);
+          // stand on the ring in the volume pass. Body-sized always —
+          // the wire's radius is influence, not stagecraft.
+          const rr = Math.min(rPx, sc * 1.3) * (0.4 + 0.6 * t);
           ctx.save();
           ctx.globalAlpha = (1 - t) * 0.8;
           ctx.strokeStyle = st.mid;
@@ -34614,7 +34615,10 @@ export class Renderer {
         }
         const ap = this.camera.worldToScreen(ax, ay, this.w, this.h);
         ap.y -= this.renderLift(ax, ay) * sc;
-        this.fxMotifGround(ax, ay, ap.x, ap.y, Math.max(rPx, sc * 0.9), st, t, seed, now);
+        // A summon's wire radius is its INFLUENCE (taunt reach, bait
+        // draw) — the stagecraft itself stays body-sized.
+        const motifR = fx.kind === 'summon' ? Math.min(rPx, sc * 1.1) : Math.max(rPx, sc * 0.9);
+        this.fxMotifGround(ax, ay, ap.x, ap.y, motifR, st, t, seed, now);
       }
 
       // THE SIGNATURE LAW: the ability's bespoke ground set-piece
@@ -34826,8 +34830,9 @@ export class Renderer {
         }
 
         case 'summon': {
-          // The arrival glyphs stand on the expanding ring.
-          const rrW = fx.radius * (0.4 + 0.6 * t);
+          // The arrival glyphs stand on the expanding ring — a ring
+          // around the ARRIVAL, never the influence radius.
+          const rrW = Math.min(fx.radius, 1.3) * (0.4 + 0.6 * t);
           for (let k = 0; k < 4; k++) {
             const a = (k / 4) * Math.PI * 2 + now / 400;
             const ex = fx.x + Math.cos(a) * rrW;
@@ -34991,7 +34996,10 @@ export class Renderer {
           ax = fx.x2;
           ay = fx.y2 ?? fx.y;
         }
-        this.collectMotifVolumes(items, ax, ay, Math.max(fx.radius, 0.9), st, t, seed, now);
+        // Same law as the ground half: a summon's influence radius
+        // never inflates its stagecraft.
+        const motifR = fx.kind === 'summon' ? Math.min(fx.radius, 1.1) : Math.max(fx.radius, 0.9);
+        this.collectMotifVolumes(items, ax, ay, motifR, st, t, seed, now);
       }
     }
   }
