@@ -1983,7 +1983,7 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   kingfisher_chaps: {
     kind: 'wraps', thigh: '#1e404c', shin: '#183642', knee: 'none',
     wader: { color: '#122a34', rim: '#cfe4e2' },
-    calffin: { color: '#14303a', edge: '#d8ecec' },
+    calffin: { color: '#1e4450', edge: '#6e98a0' },
   },
   cutpurse_leggings: {
     kind: 'wraps', thigh: '#4e4438', shin: '#3e362c', knee: 'wrap',
@@ -2841,17 +2841,17 @@ registerColorways(LEG_STYLES, 'kingfisher_chaps', {
   reedmace: {
     thigh: '#2c4434', shin: '#243a2c',
     wader: { color: '#182618', rim: '#c8d8b0' },
-    calffin: { color: '#1e3024', edge: '#c8d8b0' },
+    calffin: { color: '#2c4434', edge: '#7a9a72' },
   },
   stormgull: {
     thigh: '#46525c', shin: '#3c4852',
     wader: { color: '#2c343c', rim: '#e2eaee' },
-    calffin: { color: '#323c44', edge: '#e2eaee' },
+    calffin: { color: '#46525c', edge: '#8a99a4' },
   },
   sundart: {
     thigh: '#b0802e', shin: '#a0742a',
     wader: { color: '#6e5220', rim: '#f4e8c8' },
-    calffin: { color: '#8a6828', edge: '#2f7a8a' },
+    calffin: { color: '#8a6828', edge: '#5a8a94' },
   },
 });
 registerColorways(BOOT_STYLES, 'kingfisher_boots', {
@@ -5295,60 +5295,91 @@ export function drawTorsoGarment(
     // travels the rows every few seconds: light through water.
     if (st.scalecoat && !hurt) {
       const sc = st.scalecoat;
-      // THE SCUTE PLATES: four rows of LARGE lapped shield-scales —
-      // dragon-plate weight, not sardine skin. Each plate is a full
-      // assembly: body fill, lit top plane, keel ridge, nacre edge
-      // arc. Staggered rows, wrap-around, upper rows lap the lower.
-      const topY = -th * 0.99;
-      const botY = 0.01 * s;
-      const rows = 4;
-      const pw = tww * 0.36;
+      // THE TAILORED HARNESS: scale armor as a CUT GARMENT, not a
+      // texture grid. Five arced rows hang from a nacre yoke band;
+      // each row is a center KEEL plate flanked by smaller scales
+      // that taper toward the flanks (radial composition — the
+      // sturgeon's scute line down the front); rows tighten toward
+      // the waist and drape (center dips, flanks ride up). Uniform
+      // giant blocks read as cinderblock (the round-3 verdict);
+      // tailoring is what says ARMORER.
+      const topY = -th * 0.94;
+      const botY = 0.005 * s;
+      const rows = 5;
+      const spanRows = botY - topY;
+      // Flank taper: plate slots at u = 0, ±1, ±2 across the torso;
+      // width shrinks stepping outward AND stepping down the rows.
+      const slotU = [0, -1, 1, -2, 2];
       for (let r = rows - 1; r >= 0; r--) {
-        // Painted bottom-up so each upper row LAPS the one below.
-        const yy = topY + ((botY - topY) * (r + 1)) / rows;
-        const rowH = (botY - topY) / rows;
-        const off = (r % 2) * pw;
-        const perRow = Math.ceil((tww * 2) / (pw * 2)) + 1;
+        const rowK = 1 - r * 0.05; // rows tighten toward the waist
+        const rowH = (spanRows / rows) * 1.0;
+        const yy = topY + (spanRows * (r + 1)) / rows;
+        const off = (r % 2) * 0.5; // half-slot stagger
         const lastRow = r === rows - 1;
-        for (let i = -1; i < perRow; i++) {
-          const sx = -tww + off + i * pw * 2;
+        for (const u0 of slotU) {
+          const u = u0 + (u0 >= 0 ? off : -off);
+          const center = u0 === 0;
+          const pw = tww * (center ? 0.24 : u0 === -1 || u0 === 1 ? 0.2 : 0.17) * rowK;
+          const sx = u * tww * 0.42;
           if (sx - pw > tww || sx + pw < -tww) continue;
+          // THE DRAPE: rows arc — center hangs lowest, flanks ride
+          // up the ribs.
+          const dip = (1 - Math.min(1, Math.abs(u) * 0.5)) * rowH * 0.22;
+          const py = yy + dip;
           const turnBias = (sx * leadSign) / tww;
           const col2 = turnBias > 0.5 ? shade(sc.color, 8) : turnBias < -0.45 ? shade(sc.color, -12) : sc.color;
-          // The plate: flat shoulders, full-bellied point — a scute,
-          // not a scallop.
-          ctx.fillStyle = col2;
+          // The plate: flat shoulders into a full-bellied point.
+          ctx.fillStyle = center ? shade(col2, 4) : col2;
           ctx.beginPath();
-          ctx.moveTo(sx - pw, yy - rowH * 1.16);
-          ctx.lineTo(sx + pw, yy - rowH * 1.16);
-          ctx.lineTo(sx + pw, yy - rowH * 0.34);
-          ctx.quadraticCurveTo(sx + pw * 0.6, yy + rowH * 0.12, sx, yy + rowH * 0.22);
-          ctx.quadraticCurveTo(sx - pw * 0.6, yy + rowH * 0.12, sx - pw, yy - rowH * 0.34);
+          ctx.moveTo(sx - pw, py - rowH * 1.06);
+          ctx.lineTo(sx + pw, py - rowH * 1.06);
+          ctx.lineTo(sx + pw, py - rowH * 0.3);
+          ctx.quadraticCurveTo(sx + pw * 0.58, py + rowH * 0.1, sx, py + rowH * 0.2);
+          ctx.quadraticCurveTo(sx - pw * 0.58, py + rowH * 0.1, sx - pw, py - rowH * 0.3);
           ctx.closePath();
           ctx.fill();
-          // The lit top plane: the plate's 2.5D shoulder.
+          // Lit shoulder plane, scaled to the plate.
           ctx.fillStyle = shade(col2, 12);
-          ctx.fillRect(sx - pw * 0.92, yy - rowH * 1.12, pw * 1.84, rowH * 0.3);
-          // The keel: one darker facet splitting the belly.
-          ctx.fillStyle = shade(col2, -14);
-          ctx.beginPath();
-          ctx.moveTo(sx - pw * 0.1, yy - rowH * 0.8);
-          ctx.lineTo(sx + pw * 0.1, yy - rowH * 0.8);
-          ctx.lineTo(sx + pw * 0.03, yy + rowH * 0.2);
-          ctx.lineTo(sx - pw * 0.03, yy + rowH * 0.2);
-          ctx.closePath();
-          ctx.fill();
-          // The nacre edge: one arc riding the plate's belly rim —
-          // skipped on the bottom row (teeth law).
-          if (lastRow) continue;
+          ctx.fillRect(sx - pw * 0.85, py - rowH * 1.0, pw * 1.7, rowH * 0.22);
+          // Only the CENTER column carries the keel facet — a keel
+          // on every plate is noise; one line of keels is a design.
+          if (center) {
+            ctx.fillStyle = shade(col2, -16);
+            ctx.beginPath();
+            ctx.moveTo(sx - pw * 0.09, py - rowH * 0.72);
+            ctx.lineTo(sx + pw * 0.09, py - rowH * 0.72);
+            ctx.lineTo(sx + pw * 0.03, py + rowH * 0.17);
+            ctx.lineTo(sx - pw * 0.03, py + rowH * 0.17);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // Nacre edge arc; the bottom row and the outermost flanks
+          // stay bare (teeth law; the silhouette keeps its own line).
+          if (lastRow || Math.abs(u0) === 2) continue;
           ctx.strokeStyle = turnBias > 0.5 ? shade(sc.edge, 14) : sc.edge;
-          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.lineWidth = Math.max(1, s * 0.011);
           ctx.beginPath();
-          ctx.moveTo(sx - pw * 0.82, yy - rowH * 0.3);
-          ctx.quadraticCurveTo(sx, yy + rowH * 0.26, sx + pw * 0.82, yy - rowH * 0.3);
+          ctx.moveTo(sx - pw * 0.78, py - rowH * 0.26);
+          ctx.quadraticCurveTo(sx, py + rowH * 0.22, sx + pw * 0.78, py - rowH * 0.26);
           ctx.stroke();
         }
       }
+      // THE YOKE: the nacre-edged band the whole harness hangs from
+      // — a coat is MOUNTED, never floating.
+      ctx.fillStyle = shade(sc.color, -18);
+      ctx.beginPath();
+      ctx.moveTo(-tww * 0.98, topY - th * 0.02);
+      ctx.quadraticCurveTo(0, topY - th * 0.1, tww * 0.98, topY - th * 0.02);
+      ctx.lineTo(tww * 0.94, topY + th * 0.1);
+      ctx.quadraticCurveTo(0, topY + th * 0.02, -tww * 0.94, topY + th * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = sc.edge;
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(-tww * 0.94, topY + th * 0.09);
+      ctx.quadraticCurveTo(0, topY + th * 0.01, tww * 0.94, topY + th * 0.09);
+      ctx.stroke();
       // THE SHEENWAVE: a diagonal nacre band sweeping the coat on a
       // slow clock — clipped to the scale field, alpha-soft, gone as
       // fast as light off a turning fish.

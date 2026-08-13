@@ -3473,21 +3473,21 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         if (legSt.calffin) {
           // The calf fin: one small swept blade off the outer shin,
           // back-raked, bright leading edge — sharp even at a walk.
-          const bk = 0.3;
+          const bk = 0.34;
           const bx = kx + (ankX - kx) * bk;
           const by = ky + (ankY - ky) * bk;
           ctx.fillStyle = legSt.calffin.color;
           ctx.beginPath();
-          ctx.moveTo(bx, by - 0.012 * s);
-          ctx.lineTo(bx + outX * 0.062 * s, by + 0.028 * s);
-          ctx.lineTo(bx, by + 0.045 * s);
+          ctx.moveTo(bx, by - 0.008 * s);
+          ctx.lineTo(bx + outX * 0.044 * s, by + 0.022 * s);
+          ctx.lineTo(bx, by + 0.034 * s);
           ctx.closePath();
           ctx.fill();
           ctx.strokeStyle = legSt.calffin.edge;
-          ctx.lineWidth = Math.max(1, s * 0.011);
+          ctx.lineWidth = Math.max(1, s * 0.009);
           ctx.beginPath();
-          ctx.moveTo(bx, by - 0.012 * s);
-          ctx.lineTo(bx + outX * 0.062 * s, by + 0.028 * s);
+          ctx.moveTo(bx, by - 0.008 * s);
+          ctx.lineTo(bx + outX * 0.044 * s, by + 0.022 * s);
           ctx.stroke();
         }
         if (legSt.wader) {
