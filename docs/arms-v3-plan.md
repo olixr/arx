@@ -242,13 +242,29 @@ so it lands there (the constants half shipped here); the painter's
 style dispatch in drawHeldItem keeps its own chain for the same
 reason (it interleaves tools/rods and needs colored styles).
 
-**Phase 2 — THE ONE MOUTH.** The WieldFrame assembly in rig.ts: one
-writer per channel, modifiers folded in, the 0.04/0.05 nudges moved
-into their class functions, stale-channel fixes (armSwingK, pump exit
-blend, offSwingK blend, grip on the ladder). The assembly-owner test
-lands here — and so does the FacingFrame struct (deferred from Phase
-1): the rebuilt signatures all take the one facing vocabulary, and
-the painter dispatch joins wieldClass while its contract is open.
+**Phase 2 — THE ONE MOUTH.** **SHIPPED 2026-08-12 (bf0d819 sheet
+rows + 9208212 assembly + bb584f2 transitions).** FacingFrame is the
+one side vocabulary (SIDE_FLOOR/SIDE_SLOPE named inside;
+staffWield/greatWield/bowWield take the whole frame); the 0.04/0.05
+nudges are the frames' own `fwd` channel; the five strike-angle
+sources resolve through one pure expression; every arm-channel write
+lives between THE ONE MOUTH BEGINS/ENDS fences with
+armAssembly.test.ts walking the comment-stripped source (zero writes
+outside, pinned per-channel census — a new writer is a decision);
+the painter dispatch and bow fore-scale read wieldClass (tools pinned
+'none' by roster test). Stale channels: the renderer's rest clock
+glides on exit (~80ms, entry ramp untouched), the rest + pump stages
+gate on restSettle instead of pose (no-ops at settle 0 by
+construction), pump contributions scale with the settle, and
+staffGrip/armSwingK join the settle blend. Proof: six det bands
+(carries + the new strike/cast/sit/sheathe/chop/mine assembly rows,
+riglab rows 21–33) byte-identical at settled states through every
+change; the transition probes (rows 34–35, ?detn=N) measured the
+pose-flip pixel delta nearly halved (6.49%→3.79%) with later steps at
+parity. As-built: the offSwingK 0.85↔1 equip-swap pop is left as-is —
+an equipment swap is inherently instantaneous; a WieldFrame OBJECT
+(vs the fenced pipeline) was judged not worth the churn once the
+fence + census gave the same guarantee.
 
 **Phase 3 — THE HONEST DEPTH.** One projection function; elliptical
 hand orbits, aim anchor, and finisher paths; the trail's K becomes the
