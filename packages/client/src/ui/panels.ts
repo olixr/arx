@@ -40,6 +40,7 @@ import {
   instanceName,
   isTwoHanded,
   itemDef,
+  movesetFor,
   rolledStats,
   secretArtsFor,
   techniquePoolDef,
@@ -996,6 +997,10 @@ export class Panels {
     if (w) {
       // Damage already leads the headline; the fine print starts here.
       stat(w.style === 'onehand' || w.style === 'twohand' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
+      // THE WEAPON'S OWN HAND: the card names the fight this weapon
+      // teaches the body — its page in the moveset book.
+      const page = movesetFor(w, def.id);
+      if (page) stat('Fights as', page.name, '#c98f4a');
       // The two-hands law, stated where you'd look before equipping.
       if (isTwoHanded(def)) stat('Hands', 'Two-handed', '#8d9299');
       if (w.ammo) stat('Ammo', itemDef(w.ammo)?.name ?? w.ammo, '#c4b590');

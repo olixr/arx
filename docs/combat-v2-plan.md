@@ -372,6 +372,42 @@ distinguishing beat); bladelab/stafflab audit rows grow a moveset column; codex/
 cards speak the fight style ("Fights as: the Fencer's Line").
 **Proof:** roster test (every weapon resolves a moveset), lab sheets, band audit.
 
+**SHIPPED — as built (2026-08-13).**
+- The book grew to NINE pages, all named for the card: The Soldier's Line, The
+  Knife Weave, The Mountain Line, The Bolt Rhythm (the four defaults) + five new:
+  - **The Fencer's Line** (gladius line + six dueling swords, 14): thrust-led,
+    narrow lanes (arcHalf 0.8/0.55), NO crowd-clear anywhere — every beat takes
+    one body; lunge 2.7 / flèche tap 3.0. +3.6%/+9.1% vs the soldier's line.
+  - **The Reaver's Arc** (falchion + scimitar lines, 16): the OLD three-beat chop
+    survives as an identity — wider cuts (±1.15/1.2), the legacy crowd finisher,
+    EXACT legacy cycle (pinned equal to 1.125).
+  - **The Crusher's Drop** (the five mauls): fewer, meatier — 1.1/1.25/QUAKE 3.3
+    on 1.1/1.1/1.7 recoveries, kb 1.4→2.5, windups 5/5/6. +1.3% vs the great line.
+  - **The Storm Weave** (the four battlestaffs): a longer bolt weave into a
+    TEMPEST orb (3.6, splash 1.5, speed 0.75). +6.8% vs the bolt rhythm.
+  - **The King's Verdict** (kingsbane, THE FIRST SIGNATURE): the flurry whose
+    plunge takes ONE throat at 3.05 — a census dagger fighting its own fight.
+- THE PAGE ROSTER: assignment is an authored table IN THE BOOK (movesets.ts), not
+  scattered def edits — all fight-style authoring is one file. Precedence:
+  weapon.moveset field > roster > class default (so the roster outranks the dagger
+  classifier — pinned with kingsbane). movesetFor grew the id param; server passes
+  equipped.id, both client mirrors pass worn.id.
+- The item card speaks it: "Fights as" row under Reach, the page's name in ember
+  gold. bladelab + stafflab rows carry the page name under each weapon id.
+- The CADENCE BANDS test generalized: EVERY page (and every branch cycle) must sit
+  within ±10% of its class default page — the fencer's flèche was authored 3.1 and
+  the band test caught it at +10.9% before it ever shipped; trimmed to 3.0.
+  Roster pins: ids real, styles agree, one page per id, counts exact (14/16/5/4/1).
+  Name laws: real prose, dash ban, unique.
+- Masterwork breadth beyond kingsbane deliberately restrained: signature = a
+  bespoke PAGE, and pages are identity-expensive — the remaining masterworks ride
+  their family pages until a distinguishing beat EARNS its page (the infra is one
+  table row when it does). THE BOW KICK recorded as a FUTURE DOOR: it needs a jab/
+  kick choreography that belongs to a dedicated choreography pass (arms/legs
+  territory) — no combat-v2 phase creates new painters.
+- Proof: 3 new content contracts (roster/style/count/precedence, per-class cadence
+  bands incl. branches, name laws) — full workspace suite 1522/1522 green.
+
 ### Phase 6 — THE PROVING
 Live-receipt lane (prove:combat-v2) on the isolated-rig pattern: string flow, buffer,
 dodge-cancel, tempo, prediction reconciliation under injected latency, per-class DPS

@@ -74,7 +74,16 @@ export interface WeaponStats {
 }
 
 /** The moveset pages that exist — grown deliberately, per design family. */
-export type MovesetId = 'sword_string' | 'dagger_flurry' | 'great_string' | 'wand_rhythm';
+export type MovesetId =
+  | 'sword_string'
+  | 'dagger_flurry'
+  | 'great_string'
+  | 'wand_rhythm'
+  | 'fencer_line'
+  | 'reaver_arc'
+  | 'crusher_drop'
+  | 'stormcall_weave'
+  | 'kingsbane_verdict';
 
 /**
  * A consumable buff. One buff may be active per channel: drinking a new

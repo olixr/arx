@@ -13,6 +13,7 @@
 //   ?s=<px>      body scale per cell (default 240)
 //   ?hurt=1      the flat white hurt-flash silhouettes
 import { SWORD_STYLES, DAGGER_STYLES, drawSword } from '../render/weapons.js';
+import { itemDef, movesetFor } from '@arx/content';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
@@ -117,6 +118,15 @@ function frame(nowMs: number): void {
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       ctx.font = '13px monospace';
       ctx.fillText(id, x0 + S * 0.62, y0 + CELL_H * 0.5 - 6);
+      // THE WEAPON'S OWN HAND: the audit sheet names the fight too.
+      const wpn = itemDef(id)?.weapon;
+      const page = wpn ? movesetFor(wpn, id) : null;
+      if (page) {
+        ctx.fillStyle = 'rgba(232, 182, 76, 0.55)';
+        ctx.font = '11px monospace';
+        ctx.fillText(page.name, x0 + S * 0.62, y0 + CELL_H * 0.5 + 8);
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      }
     }
   }
   requestAnimationFrame(frame);

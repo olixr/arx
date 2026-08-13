@@ -908,7 +908,7 @@ export class ClientGame {
     const buffered = frame.seq <= this.staffBufferedUntilSeq;
     if (!hasButton(frame.buttons, InputButton.Attack) && !buffered) return;
     this.staffBufferedUntilSeq = 0;
-    const moveset = movesetFor(weapon);
+    const moveset = movesetFor(weapon, worn.id);
     if (!moveset) return;
     // The worn ITEM id keys the string — the mirror resets on a staff
     // swap exactly when the server's track does; the page carries the
@@ -951,7 +951,7 @@ export class ClientGame {
     // swing nothing (crafting/gathering actions carry a recipe instead
     // and the server lets the swing cancel them, so they don't gate).
     if (this.action?.ability) return;
-    const moveset = movesetFor(weapon);
+    const moveset = movesetFor(weapon, worn.id);
     if (!moveset) return;
     const pressed = frame.buttons & ~this.prevLocalButtons;
     // THE HELD INTENT, mirrored: a tap in the tail of recovery buffers.

@@ -17,7 +17,7 @@ import {
   TWOHAND_KNOCKBACK_MULT,
   TWOHAND_STAGE2_DAMAGE_MULT,
 } from '@arx/shared';
-import { MOVESETS, isDaggerStats, movesetFor, strikePose } from './movesets.js';
+import { MOVESETS, PAGE_ROSTER, isDaggerStats, movesetFor, strikePose } from './movesets.js';
 import { EQUIPMENT_DEFS } from './equipment/defs.js';
 
 /**
@@ -117,6 +117,68 @@ test('every weapon resolves a page whose style agrees; bows have none', () => {
       isDaggerStats(d.weapon!),
       `${d.id} classified by the one three-dial law`,
     );
+  }
+});
+
+test('THE PAGE ROSTER: every listed id is real, agrees in style, sits on one page', () => {
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  const seen = new Set<string>();
+  for (const [pageId, ids] of Object.entries(PAGE_ROSTER)) {
+    const page = MOVESETS[pageId as keyof typeof MOVESETS];
+    for (const id of ids!) {
+      const def = byId.get(id);
+      assert.ok(def?.weapon, `${pageId}: ${id} is a real weapon`);
+      assert.equal(def!.weapon!.style, page.style, `${pageId}: ${id} agrees in style`);
+      assert.ok(!seen.has(id), `${id} sits on exactly one page`);
+      seen.add(id);
+      assert.equal(movesetFor(def!.weapon!, id)!.id, page.id, `${id} resolves its page`);
+    }
+  }
+  // The curated counts — moving a family is a deliberate edit here.
+  assert.equal(PAGE_ROSTER.fencer_line!.length, 14, 'the dueling swords');
+  assert.equal(PAGE_ROSTER.reaver_arc!.length, 16, 'the falchion and scimitar lines');
+  assert.equal(PAGE_ROSTER.crusher_drop!.length, 5, 'the mauls');
+  assert.equal(PAGE_ROSTER.stormcall_weave!.length, 4, 'the battlestaffs');
+  assert.deepEqual(PAGE_ROSTER.kingsbane_verdict, ['kingsbane'], 'the first signature');
+  // The roster outranks the dagger classifier: a signature knife keeps
+  // its own page even though it IS a census dagger.
+  const kb = byId.get('kingsbane')!.weapon!;
+  assert.ok(isDaggerStats(kb), 'kingsbane is a census dagger');
+  assert.equal(movesetFor(kb, 'kingsbane')!.id, 'kingsbane_verdict', 'and fights its own fight');
+});
+
+test('CADENCE BANDS: every page holds within ±10% of its class default', () => {
+  const baselines = {
+    onehand: cycleRate(MOVESETS.sword_string.string),
+    twohand: cycleRate(MOVESETS.great_string.string),
+    arx: cycleRate(MOVESETS.wand_rhythm.string),
+  };
+  for (const m of Object.values(MOVESETS)) {
+    const base = baselines[m.style];
+    const rate = cycleRate(m.string);
+    assert.ok(
+      rate >= base * 0.9 && rate <= base * 1.1,
+      `${m.id}: ${rate.toFixed(3)} within ±10% of the ${m.style} line ${base.toFixed(3)}`,
+    );
+    // Branches judged on their own whole cycle too.
+    const last = m.string[m.string.length - 1]!;
+    if (last.alt) {
+      const altRate = cycleRate([...m.string.slice(0, -1), last.alt]);
+      assert.ok(altRate <= base * 1.1, `${m.id} branch ${altRate.toFixed(3)} inside the band`);
+    }
+  }
+  // The reaver keeps the EXACT legacy line — the old string survives
+  // as an identity, not a default.
+  assert.equal(cycleRate(MOVESETS.reaver_arc.string), LEGACY_RATE, 'the reaver IS the old chop');
+});
+
+test('the pages speak: every name is real prose, dash-free, unique', () => {
+  const names = new Set<string>();
+  for (const m of Object.values(MOVESETS)) {
+    assert.ok(m.name.length >= 8, `${m.id} has a real name`);
+    assert.ok(!/[—–-]/.test(m.name), `${m.id}: the dash ban holds in player text`);
+    assert.ok(!names.has(m.name), `${m.id}: names never collide`);
+    names.add(m.name);
   }
 });
 

@@ -14832,7 +14832,7 @@ export class GameServer {
     // through tickBowDraw before this door ever sees it, and a style
     // with no page pays nothing and fires nothing — checked BEFORE the
     // cooldown/reveal pay.
-    const moveset = movesetFor(weapon);
+    const moveset = movesetFor(weapon, equipped.id);
     if (!moveset) {
       if (process.env.COMBAT_DEBUG) {
         console.log(`[combat] no moveset page for style=${weapon.style}`);

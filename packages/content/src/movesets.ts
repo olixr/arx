@@ -59,6 +59,8 @@ export interface StrikeDef {
 
 export interface MovesetDef {
   id: MovesetId;
+  /** The page's spoken name (the item card's Fights as row). */
+  name: string;
   style: 'onehand' | 'twohand' | 'arx';
   /** Which pose vocabulary the string speaks (steel swings vs casts). */
   poseDialect: 'steel' | 'wand';
@@ -79,6 +81,7 @@ export interface MovesetDef {
  */
 const SWORD_STRING: MovesetDef = {
   id: 'sword_string',
+  name: "The Soldier's Line",
   style: 'onehand',
   poseDialect: 'steel',
   graceTicks: COMBO_GRACE_TICKS,
@@ -114,6 +117,7 @@ const SWORD_STRING: MovesetDef = {
  */
 const DAGGER_FLURRY: MovesetDef = {
   id: 'dagger_flurry',
+  name: 'The Knife Weave',
   style: 'onehand',
   poseDialect: 'steel',
   graceTicks: COMBO_GRACE_TICKS,
@@ -136,6 +140,7 @@ const DAGGER_FLURRY: MovesetDef = {
 /** THE GREAT STRING: the legacy three beats, now with honest weight. */
 const GREAT_STRING: MovesetDef = {
   id: 'great_string',
+  name: 'The Mountain Line',
   style: 'twohand',
   poseDialect: 'steel',
   graceTicks: TWOHAND_COMBO_GRACE_TICKS,
@@ -183,6 +188,7 @@ const GREAT_STRING: MovesetDef = {
 /** THE WAND RHYTHM: bolt, bolt, orb — the legacy lane, as a page. */
 const WAND_RHYTHM: MovesetDef = {
   id: 'wand_rhythm',
+  name: 'The Bolt Rhythm',
   style: 'arx',
   poseDialect: 'wand',
   graceTicks: COMBO_GRACE_TICKS,
@@ -202,12 +208,202 @@ const WAND_RHYTHM: MovesetDef = {
   ],
 };
 
+/**
+ * THE FENCER'S LINE (Phase 5): the dueling swords' page — thrust-led,
+ * narrow lanes, no crowd-clear at all: every beat takes ONE body, and
+ * the lunge is the point's whole argument. Cycle +3.6% base / +9.1%
+ * on the tap against the soldier's line, single-target only.
+ */
+const FENCER_LINE: MovesetDef = {
+  id: 'fencer_line',
+  name: "The Fencer's Line",
+  style: 'onehand',
+  poseDialect: 'steel',
+  graceTicks: COMBO_GRACE_TICKS,
+  string: [
+    { key: 'thrust', dmgMult: 1, kbMult: 0.9, sweepAll: false, recoveryMult: 1, windupTicks: 2, arcHalf: 0.8 },
+    { key: 'cut', dmgMult: 1, kbMult: 1, sweepAll: false, recoveryMult: 1, windupTicks: 2 },
+    { key: 'thrust', dmgMult: 1, kbMult: 0.9, sweepAll: false, recoveryMult: 1, windupTicks: 2, arcHalf: 0.8 },
+    {
+      key: 'lunge',
+      dmgMult: 2.7,
+      kbMult: 1.5,
+      sweepAll: false,
+      recoveryMult: FINISHER_RECOVERY_MULT,
+      windupTicks: 3,
+      arcHalf: 0.55,
+      alt: {
+        key: 'fleche',
+        dmgMult: 3.0,
+        kbMult: 1.6,
+        sweepAll: false,
+        recoveryMult: FINISHER_RECOVERY_MULT,
+        windupTicks: 3,
+        arcHalf: 0.55,
+      },
+    },
+  ],
+};
+
+/**
+ * THE REAVER'S ARC (Phase 5): the falchion and scimitar families keep
+ * the OLD three-beat chop — wider cuts than a soldier's sword, the
+ * legacy crowd finisher, EXACT legacy cycle. The old string survives
+ * as an identity, not a default.
+ */
+const REAVER_ARC: MovesetDef = {
+  id: 'reaver_arc',
+  name: "The Reaver's Arc",
+  style: 'onehand',
+  poseDialect: 'steel',
+  graceTicks: COMBO_GRACE_TICKS,
+  string: [
+    { key: 'cleave', dmgMult: 1, kbMult: 1.05, sweepAll: false, recoveryMult: 1, windupTicks: 2, arcHalf: 1.15 },
+    { key: 'return', dmgMult: 1, kbMult: 1.15, sweepAll: false, recoveryMult: 1, windupTicks: 2, arcHalf: 1.15 },
+    {
+      key: 'sweep',
+      dmgMult: FINISHER_DAMAGE_MULT,
+      kbMult: 1.9,
+      sweepAll: true,
+      recoveryMult: FINISHER_RECOVERY_MULT,
+      windupTicks: 3,
+      arcHalf: 1.2,
+    },
+  ],
+};
+
+/**
+ * THE CRUSHER'S DROP (Phase 5): the mauls' page — fewer, meatier.
+ * Every beat lands a little heavier and rests a little longer; the
+ * QUAKE is the biggest single basic-beat in the game. Cycle +1.3%
+ * against the great line.
+ */
+const CRUSHER_DROP: MovesetDef = {
+  id: 'crusher_drop',
+  name: "The Crusher's Drop",
+  style: 'twohand',
+  poseDialect: 'steel',
+  graceTicks: TWOHAND_COMBO_GRACE_TICKS,
+  string: [
+    { key: 'drop', dmgMult: 1.1, kbMult: 1.4, sweepAll: true, recoveryMult: 1.1, windupTicks: 5 },
+    { key: 'drop', dmgMult: 1.25, kbMult: 1.4, sweepAll: true, recoveryMult: 1.1, windupTicks: 5 },
+    {
+      key: 'quake',
+      dmgMult: 3.3,
+      kbMult: 2.5,
+      sweepAll: true,
+      recoveryMult: 1.7,
+      windupTicks: 6,
+    },
+  ],
+};
+
+/**
+ * THE STORM WEAVE (Phase 5): the battlestaffs' page — a longer bolt
+ * weave into a TEMPEST orb that splashes wider and hits harder than
+ * the scholar's. Cycle +6.8% against the bolt rhythm, paid in the
+ * longer weave a fight must survive.
+ */
+const STORMCALL_WEAVE: MovesetDef = {
+  id: 'stormcall_weave',
+  name: 'The Storm Weave',
+  style: 'arx',
+  poseDialect: 'wand',
+  graceTicks: COMBO_GRACE_TICKS,
+  string: [
+    { key: 'bolt', dmgMult: 1, kbMult: 1, sweepAll: false, recoveryMult: 1, windupTicks: 0 },
+    { key: 'bolt', dmgMult: 1, kbMult: 1, sweepAll: false, recoveryMult: 1, windupTicks: 0 },
+    { key: 'bolt', dmgMult: 1, kbMult: 1, sweepAll: false, recoveryMult: 1, windupTicks: 0 },
+    {
+      key: 'tempest',
+      dmgMult: 3.6,
+      kbMult: 1,
+      sweepAll: false,
+      recoveryMult: HEAVY_BOLT_RECOVERY_MULT,
+      windupTicks: 0,
+      speedMult: 0.75,
+      splash: 1.5,
+    },
+  ],
+};
+
+/**
+ * THE KING'S VERDICT (Phase 5, signature): kingsbane's own page — the
+ * flurry whose plunge takes ONE throat, harder. The first weapon in
+ * the game whose fight is its own. Cycle +4.4%, single-target only.
+ */
+const KINGSBANE_VERDICT: MovesetDef = {
+  id: 'kingsbane_verdict',
+  name: "The King's Verdict",
+  style: 'onehand',
+  poseDialect: 'steel',
+  graceTicks: COMBO_GRACE_TICKS,
+  string: [
+    { key: 'rake', dmgMult: 1, kbMult: 1, sweepAll: false, recoveryMult: 1, windupTicks: 1 },
+    { key: 'backslash', dmgMult: 1, kbMult: 1, sweepAll: false, recoveryMult: 1, windupTicks: 1 },
+    { key: 'rake', dmgMult: 1, kbMult: 1, sweepAll: false, recoveryMult: 1, windupTicks: 1 },
+    { key: 'backslash', dmgMult: 1, kbMult: 1, sweepAll: false, recoveryMult: 1, windupTicks: 1 },
+    {
+      key: 'verdict',
+      dmgMult: 3.05,
+      kbMult: 1.6,
+      sweepAll: false,
+      recoveryMult: 2.0,
+      windupTicks: 2,
+    },
+  ],
+};
+
 export const MOVESETS: Record<MovesetId, MovesetDef> = {
   sword_string: SWORD_STRING,
   dagger_flurry: DAGGER_FLURRY,
   great_string: GREAT_STRING,
   wand_rhythm: WAND_RHYTHM,
+  fencer_line: FENCER_LINE,
+  reaver_arc: REAVER_ARC,
+  crusher_drop: CRUSHER_DROP,
+  stormcall_weave: STORMCALL_WEAVE,
+  kingsbane_verdict: KINGSBANE_VERDICT,
 };
+
+/**
+ * THE PAGE ROSTER (Phase 5): the book's own authored assignment — a
+ * design family's ids on the page they fight from. Lives HERE, not
+ * scattered across defs, so all fight-style authoring is one file;
+ * the roster test pins every id real and every style agreeing. The
+ * roster outranks the dagger classifier (a signature knife keeps its
+ * own page) and is outranked only by an authored `weapon.moveset`.
+ */
+const metals = (key: string) =>
+  ['', 'iron_', 'steel_', 'gold_', 'mithril_', 'adamant_', 'obsidian_', 'starsteel_'].map(
+    (m) => `${m}${key}`,
+  );
+export const PAGE_ROSTER: Partial<Record<MovesetId, readonly string[]>> = {
+  fencer_line: [
+    ...metals('gladius'),
+    'moonshard',
+    'duelists_grace',
+    'vipersong',
+    'silverlace',
+    'silverthread',
+    'borrowed_time',
+  ],
+  reaver_arc: [...metals('falchion'), ...metals('scimitar')],
+  crusher_drop: ['stonebreaker_maul', 'kerbstone', 'forgewrath', 'stormhewer', 'tollbreaker'],
+  stormcall_weave: [
+    'ember_battlestaff',
+    'frost_battlestaff',
+    'storm_battlestaff',
+    'verdant_battlestaff',
+  ],
+  kingsbane_verdict: ['kingsbane'],
+};
+
+/** id → page, folded once from the roster. */
+const PAGE_BY_ID = new Map<string, MovesetDef>();
+for (const [pageId, ids] of Object.entries(PAGE_ROSTER)) {
+  for (const id of ids!) PAGE_BY_ID.set(id, MOVESETS[pageId as MovesetId]);
+}
 
 /**
  * The census test's dagger identity, as the one classifier: fast
@@ -222,13 +418,17 @@ export function isDaggerStats(weapon: WeaponStats): boolean {
 }
 
 /**
- * The weapon's page in the book: authored `moveset` first, then the
- * class default (daggers split off by identity). Archery has no page
- * — the draw is a charge grammar, and the caller must treat null as
- * "no basic string lane".
+ * The weapon's page in the book: authored `moveset` field first, then
+ * THE PAGE ROSTER by id, then the class default (daggers split off by
+ * identity). Archery has no page — the draw is a charge grammar, and
+ * the caller must treat null as "no basic string lane".
  */
-export function movesetFor(weapon: WeaponStats): MovesetDef | null {
+export function movesetFor(weapon: WeaponStats, id?: string): MovesetDef | null {
   if (weapon.moveset) return MOVESETS[weapon.moveset];
+  if (id) {
+    const page = PAGE_BY_ID.get(id);
+    if (page) return page;
+  }
   if (weapon.style === 'twohand') return GREAT_STRING;
   if (weapon.style === 'arx') return WAND_RHYTHM;
   if (weapon.style === 'onehand') return isDaggerStats(weapon) ? DAGGER_FLURRY : SWORD_STRING;
