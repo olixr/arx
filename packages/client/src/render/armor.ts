@@ -446,6 +446,24 @@ export interface BodyStyle {
   /** Hareswift: the courier's cross-body satchel — strap over the
    *  chest (front-plane), flap bag riding the trailing hip. */
   satchel?: { color: string; strap: string };
+  /** Hareswift: THE WIND MANTLE — a draped two-tier shoulder cape in
+   *  wind-torn swept points, all raked the same way (the wind lives
+   *  in the cut), hare-fur lining peeking only at the throat. The
+   *  collar done the way collars are done. */
+  windmantle?: { color: string; under: string; lining: string };
+  /** Hareswift: wind-cut hem tabs at the waist — layered swept
+   *  triangles kicked by the stride, the hood's own language carried
+   *  to the hem. ONE furniture family, crown to waist. */
+  windtabs?: { color: string };
+  /** Hareswift: the luck worn openly — a hare's-foot talisman on a
+   *  belt cord, swinging with the stride. Couriers don't carry
+   *  trophies; they carry LUCK. */
+  luckcharm?: { foot: string; cord: string };
+  /** Hareswift: THE SLIPSTREAM — speed made visible: pale wind
+   *  streaks that trail off the shoulders only while moving, scaled
+   *  by the run. At rest there is nothing to see; that is the
+   *  point. */
+  slipstream?: { color: string };
   /** Hareswift: two waybill ribbons off the belt knot, streaming and
    *  kicking with the stride — speed made visible at a standstill's
    *  first step. */
@@ -1082,12 +1100,17 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   // The early-game leather sets: the skirmisher's leveling road. Each
   // ships in four dye lots via registerColorways below.
-  // The courier: quilted oat leather, satchel worn crossed, waybill
-  // ribbons that never stop moving. Fast feet, faster excuses.
+  // THE UNCATCHABLE: wind-torn mantle over a buckled courier
+  // harness, wind-cut hem tabs, a hare's foot for luck — and the
+  // slipstream that only exists at a run. The set the most players
+  // will ever wear, built like it knows that.
   hareswift_jerkin: {
     color: '#c2a878', trim: '#8a6f48', metal: '#6e5638', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'none', chest: 'none', skirt: 0,
-    collar: 'fur', collarColor: '#ece4d0', quilt: true,
+    windmantle: { color: '#b09a68', under: '#7a6240', lining: '#ece4d0' },
+    windtabs: { color: '#8a6f48' },
+    luckcharm: { foot: '#cfc0a0', cord: '#6e5638' },
+    slipstream: { color: '#ece4d0' },
     belt: { color: '#6e5638', buckle: '#c9a23c' },
     satchel: { color: '#8a6f48', strap: '#6e5638' },
     streamers: { color: '#b84a32' },
@@ -2585,19 +2608,31 @@ registerColorways(BOOT_STYLES, 'stormwoven_slippers', {
 // courier is never off duty. Every color-bearing word restates.
 registerColorways(BODY_STYLES, 'hareswift_jerkin', {
   clover: {
-    color: '#7a9a58', trim: '#4e6a38', metal: '#42562e', collarColor: '#e8f0d8',
+    color: '#7a9a58', trim: '#4e6a38', metal: '#42562e',
+    windmantle: { color: '#6c8a4e', under: '#465c34', lining: '#e8f0d8' },
+    windtabs: { color: '#4e6a38' },
+    luckcharm: { foot: '#e8f0d8', cord: '#42562e' },
+    slipstream: { color: '#e8f0d8' },
     belt: { color: '#42562e', buckle: '#c9a23c' },
     satchel: { color: '#5c7a42', strap: '#42562e' },
     streamers: { color: '#e0c860' },
   },
   snowmelt: {
-    color: '#cfd2ca', trim: '#9aa096', metal: '#82887e', collarColor: '#f4f4ee',
+    color: '#cfd2ca', trim: '#9aa096', metal: '#82887e',
+    windmantle: { color: '#bcc0b6', under: '#8e948a', lining: '#f4f4ee' },
+    windtabs: { color: '#9aa096' },
+    luckcharm: { foot: '#f4f4ee', cord: '#82887e' },
+    slipstream: { color: '#f4f4ee' },
     belt: { color: '#82887e', buckle: '#b0b6be' },
     satchel: { color: '#b0b4aa', strap: '#82887e' },
     streamers: { color: '#8fa8c8' },
   },
   sorrel: {
-    color: '#a86a48', trim: '#6e4530', metal: '#5a3826', collarColor: '#e8dcc4',
+    color: '#a86a48', trim: '#6e4530', metal: '#5a3826',
+    windmantle: { color: '#96593c', under: '#644028', lining: '#e8dcc4' },
+    windtabs: { color: '#6e4530' },
+    luckcharm: { foot: '#e8dcc4', cord: '#5a3826' },
+    slipstream: { color: '#e8dcc4' },
     belt: { color: '#5a3826', buckle: '#c9a23c' },
     satchel: { color: '#8a5638', strap: '#5a3826' },
     streamers: { color: '#e8dcc0' },
@@ -4089,6 +4124,51 @@ export function drawTorsoGarment(
     // ---- the mantle: a layered shoulder cope draping over the chest —
     // the garment-over-garment read that says HIGH wizardry. Its point
     // drapes lower in front; from behind it reads as a clean yoke.
+    // ---- THE WIND MANTLE: hareswift's collar — a draped two-tier
+    // shoulder cape whose hem breaks into swept points, every point
+    // raked the SAME way (the wind lives in the cut; points that
+    // disagree read as decoration, points that agree read as
+    // weather). Hare-fur lining shows only at the throat: one pale
+    // line, not a donut.
+    if (st.windmantle && !hurt) {
+      const wm = st.windmantle;
+      const rake = -(f.lead || 1);
+      // Each tier DRAPES off the shoulder line and hangs in a few
+      // BOLD points — cloth with weight, not a zigzag trim band.
+      // Points lean with the rake; the trailing point hangs longest.
+      const tier = (span: number, yTop: number, colr: string, pts: Array<[number, number]>): void => {
+        ctx.fillStyle = colr;
+        ctx.beginPath();
+        ctx.moveTo(-tww * span, yTop + th * 0.06);
+        ctx.quadraticCurveTo(0, yTop - th * 0.1, tww * span, yTop + th * 0.06);
+        // Walk back across the hem, dropping each hanging point:
+        // [anchor u, drop] — right to left, all tips kicked by rake.
+        for (const [u, drop] of pts) {
+          const px2 = tww * span * u;
+          ctx.lineTo(px2 + tww * 0.14, yTop + th * 0.16);
+          ctx.lineTo(px2 + rake * tww * 0.12, yTop + drop);
+          ctx.lineTo(px2 - tww * 0.15, yTop + th * 0.2);
+        }
+        ctx.lineTo(-tww * span, yTop + th * 0.06);
+        ctx.closePath();
+        ctx.fill();
+      };
+      // Under tier: deep, three long points. Outer tier: lighter,
+      // shorter, offset so the under-points show BETWEEN its own.
+      tier(1.02, -th * 0.86, wm.under, [[0.6, th * 0.5], [-0.05, th * 0.42], [-0.68, th * 0.56]]);
+      tier(0.9, -th * 0.92, wm.color, [[0.82, th * 0.34], [0.28, th * 0.3], [-0.32, th * 0.32], [-0.88, th * 0.4]]);
+      // The throat lining: hare fur peeking at the neck seam only —
+      // a short pale tuft line, never a collar-wide smile.
+      ctx.strokeStyle = wm.lining;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1.5, s * 0.018);
+      ctx.beginPath();
+      ctx.moveTo(-tww * 0.18, -th * 1.02);
+      ctx.quadraticCurveTo(0, -th * 1.08, tww * 0.18, -th * 1.02);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+
     // ---- THE MOSS MANTLE: stagheart's shoulders — two lapped bark-
     // leather tiers with moss spilling over every hem, the forest
     // floor worn as a cope. Flat value planes, moss as fat bumps.
@@ -4892,6 +4972,29 @@ export function drawTorsoGarment(
           ctx.quadraticCurveTo(sx, yy + sr * 0.62, sx + sr * 0.6, yy + sr * 0.26);
           ctx.stroke();
         }
+      }
+    }
+
+    // ---- WINDTABS: the hood's triangle language carried to the
+    // waist — layered wind-cut tabs off the belt line, all raked one
+    // way, kicked by the stride like the fringe but SHAPED: swept
+    // triangles, not threads.
+    if (st.windtabs && !hurt) {
+      const rake = -(f.lead || 1);
+      const yy = -0.02 * s;
+      for (let i = 0; i < 5; i++) {
+        const u = -0.8 + i * 0.4;
+        const kick =
+          f.strideSw * 0.018 * s * (0.5 + 0.5 * Math.abs(u)) +
+          Math.sin(nowMs * 0.0038 + i * 1.9) * 0.006 * s * (0.3 + 0.7 * runF);
+        const len = (0.075 + 0.02 * Math.sin(i * 2.1)) * s;
+        ctx.fillStyle = shade(st.windtabs.color, i % 2 === 0 ? 0 : -12);
+        ctx.beginPath();
+        ctx.moveTo(u * tww - 0.032 * s, yy);
+        ctx.lineTo(u * tww + 0.03 * s, yy);
+        ctx.lineTo(u * tww + rake * 0.028 * s + kick, yy + len);
+        ctx.closePath();
+        ctx.fill();
       }
     }
 
@@ -5801,7 +5904,7 @@ export function drawTorsoGarment(
     // visible even at a standstill's first step.
     if (st.streamers && !hurt) {
       const rc = st.streamers.color;
-      const knotX = -(f.lead || 1) * ww * 0.55;
+      const knotX = -(f.lead || 1) * ww * 0.74;
       for (const [ui, ph, len] of [[0, 0, 0.19], [1, 1.9, 0.15]] as const) {
         const bx = knotX - (f.lead || 1) * ui * ww * 0.16;
         const kick =
@@ -5836,6 +5939,44 @@ export function drawTorsoGarment(
       ctx.beginPath();
       chamferRect(ctx, pxx - 0.042 * s, -0.06 * s, 0.084 * s, 0.032 * s, 0.014 * s);
       ctx.fill();
+    }
+
+    // ---- THE LUCK CHARM: a hare's foot on a belt cord, swinging on
+    // the stride — luck worn where everyone can see it working.
+    if (st.luckcharm && !back && !hurt) {
+      const lc = st.luckcharm;
+      const bx = f.lead * ww * 0.5;
+      const kick = f.strideSw * 0.024 * s + Math.sin(nowMs * 0.003) * 0.007 * s * (0.3 + 0.7 * runF);
+      ctx.strokeStyle = lc.cord;
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(bx, -0.045 * s);
+      ctx.quadraticCurveTo(bx + kick * 0.5, 0.0, bx + kick, 0.038 * s);
+      ctx.stroke();
+      // The foot: a small tapered pelt lozenge with a pale tip and a
+      // brass cap at the cord — flat planes, readable tiny.
+      ctx.save();
+      ctx.translate(bx + kick, 0.04 * s);
+      ctx.rotate(kick / (0.12 * s));
+      ctx.fillStyle = '#c9a23c';
+      ctx.fillRect(-0.012 * s, -0.006 * s, 0.024 * s, 0.014 * s);
+      ctx.fillStyle = lc.foot;
+      ctx.beginPath();
+      ctx.moveTo(-0.013 * s, 0.008 * s);
+      ctx.lineTo(0.013 * s, 0.008 * s);
+      ctx.lineTo(0.009 * s, 0.062 * s);
+      ctx.lineTo(-0.007 * s, 0.058 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(lc.foot, 26);
+      ctx.beginPath();
+      ctx.moveTo(-0.007 * s, 0.048 * s);
+      ctx.lineTo(0.009 * s, 0.05 * s);
+      ctx.lineTo(0.008 * s, 0.062 * s);
+      ctx.lineTo(-0.006 * s, 0.058 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
 
     // ---- RUNESTRIPS: hanging inscribed strips off the shoulders and
@@ -6258,6 +6399,31 @@ export function drawTorsoGarment(
     // ---- the scarf tail: a neck wrap knotted at the trailing
     // shoulder, its tail waving behind in a lazy S — the assassin's
     // flag. Cloth, not light: full weight, one shaded edge.
+    // ---- THE SLIPSTREAM: speed made visible — pale wind streaks
+    // trailing off the shoulders and hip, ALIVE ONLY IN MOTION
+    // (gated on the run factor; an idle courier shows nothing, and
+    // that restraint is the whole trick). Each streak is a thin
+    // tapered plane on its own short clock, drawn toward the trail.
+    if (st.slipstream && !hurt && runF > 0.12) {
+      const rake = -(f.lead || 1);
+      const strength = Math.min(1, (runF - 0.12) / 0.6);
+      ctx.fillStyle = st.slipstream.color;
+      for (let i = 0; i < 3; i++) {
+        const p = (nowMs * 0.0016 + i * 0.333) % 1;
+        const yy = -th * (0.9 - i * 0.34);
+        const x0 = rake * tww * (0.7 + 0.2 * Math.sin(i * 2.1));
+        const len = (0.1 + 0.1 * strength) * s * (1 - p * 0.5);
+        ctx.globalAlpha = strength * 0.5 * (1 - p);
+        ctx.beginPath();
+        ctx.moveTo(x0, yy - 0.006 * s);
+        ctx.lineTo(x0 + rake * len, yy + 0.004 * s * (i % 2 === 0 ? 1 : -1));
+        ctx.lineTo(x0, yy + 0.008 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     // ---- SHADOWTAILS: twin dusk scarf ends off the shoulders,
     // drifting on the cowl's slow clock — never snapping, never
     // symmetric. The dark that follows you out of the room.
@@ -12056,75 +12222,119 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   // minimum), and STRUCTURE that survives the hurt flash white.
 
   if (st.kind === 'courierhood') {
-    // THE COURIERHOOD — hareswift's head: the runner's hood cut LOW,
-    // crown swept back like a hare at full stretch, and the ears worn
-    // the way a running hare wears them: RAKED FLAT along the crown,
-    // black-tipped blades trailing past the nape. Nothing about this
-    // head stands up into the wind. A waybill ribbon streams off the
-    // temple seal — the letter always almost delivered.
+    // THE WINDCUT — hareswift's head, rebuilt to the FOUR VIGILS cowl
+    // reference laws. TRIANGLE OVER DOME: the hood is a hard planar
+    // wedge whose long peak streams behind on the wind's own clock —
+    // it reads as running while standing still. The RUN EARS are cut
+    // FROM the hood's own cloth (twin swept continuations of the
+    // crown line, pale hare-lining inside, black tips), never bolted
+    // on. The opening is a pointed arch FRAMED like a shrine door in
+    // saddle stitch, and the face keeps its MYSTERY: a hard folded
+    // shadow polygon past the eye line — angular cloth throws
+    // FOLDED dark. The waybill seal CLOSES the throat like a brooch,
+    // ribbon streaming. The letter is always almost delivered.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
-    const ohw = hw * 0.72 * (1 - 0.5 * t);
-    const oTop = headY - hh * 0.56;
-    const oBot = headY + hh * 0.82;
+    const ohw = hw * 0.7 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.66;
+    const oBot = headY + hh * 0.84;
+    const sway = Math.sin(f.nowMs * 0.0019) * hw * 0.06;
+    // The apex and the wind-drawn peak: apex just trailing of crown
+    // center, peak streaming far behind, slightly BELOW the apex —
+    // drawn by speed, not drooping under gravity.
+    // The apex sits LOW between the ears — the twin ear blades own
+    // the crown (one busy crown of four points reads as a pineapple;
+    // the references keep ONE clean triangle language).
+    const apexX = headX - lead * hw * 0.18;
+    const apexY = headY - hh * 1.36;
+    const peakX = headX - lead * (hw * (2.0 + t * 0.5) + sway);
+    const peakY = headY - hh * 0.72 + sway * 0.35;
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.16);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.2, headX + lead * hw * 1.12, headY - hh * 0.46);
-      // A modest brow kick — the courier ducks the wind.
-      ctx.quadraticCurveTo(headX + lead * hw * 1.18, headY - hh * 0.78, headX + lead * hw * 0.66, headY - hh * 1.06);
-      // The LOW swept crown: pitched shallow, streaming back.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.02, headY - hh * 1.3, headX - lead * hw * 0.72, headY - hh * 1.18);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.16 + t * 0.28), headY - hh * 0.86, headX - lead * hw * (1.28 + t * 0.34), headY - hh * 0.16);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.38 + t * 0.3), headY + hh * 0.38, headX - lead * hw * 1.3, headY + hh * 1.16);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.22, headY + hh * 1.16);
+      // Leading hem, planar: jaw → brow ledge → straight rake to the
+      // apex — lines, not domes.
+      ctx.moveTo(headX + lead * hw * 1.2, headY + hh * 1.14);
+      ctx.lineTo(headX + lead * hw * 1.28, headY + hh * 0.1);
+      ctx.lineTo(headX + lead * hw * 1.1, headY - hh * 0.58);
+      // The brow ledge juts — a short hard overhang.
+      ctx.lineTo(headX + lead * hw * 1.16, headY - hh * 0.88);
+      ctx.lineTo(headX + lead * hw * 0.52, headY - hh * 1.24);
+      ctx.lineTo(apexX, apexY);
+      // THE PEAK: one long draw to the streaming tip, then the fold
+      // returns under itself — two lines, a blade of cloth.
+      ctx.lineTo(peakX, peakY);
+      ctx.lineTo(headX - lead * hw * (1.18 + t * 0.3), headY - hh * 0.34);
+      // Trailing drape, planar to the hem.
+      ctx.lineTo(headX - lead * hw * (1.3 + t * 0.32), headY + hh * 0.3);
+      ctx.lineTo(headX - lead * hw * 1.26, headY + hh * 1.14);
+      // The mantle hem sags onto the shoulders in two swept points —
+      // the wind lives in the cut.
+      ctx.lineTo(headX - lead * hw * 0.52, headY + hh * 1.34);
+      ctx.lineTo(headX - lead * hw * 0.28, headY + hh * 1.22);
+      ctx.lineTo(headX + lead * hw * 0.38, headY + hh * 1.38);
+      ctx.lineTo(headX + lead * hw * 0.62, headY + hh * 1.2);
       ctx.closePath();
     };
+    // The shrine arch: a pointed-arch opening, peak riding the face
+    // anchor like the eyes do.
     const opening = () => {
-      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+      ctx.moveTo(cx - ohw, oBot);
+      ctx.lineTo(cx - ohw, headY - hh * 0.14);
+      ctx.lineTo(cx - ohw * 0.52, oTop + hh * 0.14);
+      ctx.lineTo(cx, oTop);
+      ctx.lineTo(cx + ohw * 0.52, oTop + hh * 0.14);
+      ctx.lineTo(cx + ohw, headY - hh * 0.14);
+      ctx.lineTo(cx + ohw, oBot);
+      ctx.closePath();
     };
-    // THE RUN EARS — structure: they hold the silhouette in hurt
-    // white. One ear each side, splayed in a shallow V at the front
-    // facings and raking flat back as the body turns — the same ear,
-    // seen honestly. Far ear paints first, darker.
+    // THE RUN EARS — structure, cut from the hood's own cloth: each
+    // blade roots INSIDE the crown line and continues it, splayed a
+    // shallow V frontal, raked flat with the peak at profile. Hood
+    // cloth outside, hare lining inside, black tip. Hurt keeps them.
     const earsSt = st.ears;
     const drawEars = (): void => {
       if (!earsSt) return;
-      for (const es of [-1, 1]) {
-        const far = es !== (lead || 1);
+      for (const pass of ['far', 'near'] as const) {
+        const es = pass === 'far' ? -(lead || 1) : lead || 1;
+        const far = pass === 'far';
         const wK = far ? Math.max(0.35, 1 - t * 0.6) : 1;
-        const rootX = headX + es * hw * 0.34;
-        const rootY = headY - hh * 1.08;
-        // Outward splay + trailing rake: frontal = V, profile = flat.
-        const tipX = rootX + es * hw * 0.55 * wK - lead * hw * (0.55 + t * 0.5);
-        const tipY = rootY - hh * (0.72 - t * 0.24);
-        const col2 = hurt ? '#ffffff' : far ? shade(earsSt.color, -16) : earsSt.color;
-        ctx.fillStyle = col2;
+        const rootX = headX + es * hw * 0.3 - lead * hw * 0.1;
+        const rootY = headY - hh * 1.18;
+        const tipX = rootX + es * hw * 0.5 * wK - lead * hw * (0.62 + t * 0.45);
+        const tipY = rootY - hh * (0.78 - t * 0.22);
+        // The blade: hood cloth, planar edges — WIDE enough to read
+        // as folded cloth; a thin blade tips into a needle.
+        ctx.fillStyle = hurt ? '#ffffff' : far ? shade(st.color, -14) : st.color;
         ctx.beginPath();
-        ctx.moveTo(rootX - es * hw * 0.16, rootY + hh * 0.08);
-        ctx.quadraticCurveTo(rootX + es * hw * 0.1 - lead * hw * 0.2, (rootY + tipY) / 2 - hh * 0.1, tipX, tipY);
-        ctx.quadraticCurveTo(rootX + es * hw * 0.26 - lead * hw * 0.06, (rootY + tipY) / 2 + hh * 0.14, rootX + es * hw * 0.2, rootY + hh * 0.12);
+        ctx.moveTo(rootX - es * hw * 0.3, rootY + hh * 0.18);
+        ctx.lineTo(tipX - es * hw * 0.05, tipY - hh * 0.02);
+        ctx.lineTo(tipX + es * hw * 0.08, tipY + hh * 0.06);
+        ctx.lineTo(rootX + es * hw * 0.3, rootY + hh * 0.12);
         ctx.closePath();
         ctx.fill();
-        if (!hurt && earsSt.tip) {
-          // The black tip claims the top third — the mark that sells
-          // the hare at any distance.
-          ctx.fillStyle = earsSt.tip;
-          ctx.beginPath();
-          ctx.moveTo(tipX, tipY);
-          ctx.lineTo(tipX - es * hw * 0.14 + lead * hw * 0.12, tipY + hh * 0.3);
-          ctx.lineTo(tipX + es * hw * 0.12 + lead * hw * 0.16, tipY + hh * 0.26);
-          ctx.closePath();
-          ctx.fill();
-        }
-        if (!hurt && !far && front) {
-          // Inner-ear shadow up the near blade.
-          ctx.strokeStyle = shade(earsSt.color, -24);
-          ctx.lineWidth = Math.max(1, s * 0.014);
-          ctx.beginPath();
-          ctx.moveTo(rootX + es * hw * 0.04, rootY + hh * 0.04);
-          ctx.quadraticCurveTo((rootX + tipX) / 2, (rootY + tipY) / 2 + hh * 0.04, tipX + es * hw * 0.02, tipY + hh * 0.16);
-          ctx.stroke();
+        if (!hurt) {
+          // The hare lining: a pale inner wedge — the animal inside
+          // the cloth. Near ear only; the far ear keeps its shadow.
+          if (!far && front && earsSt.color) {
+            ctx.fillStyle = earsSt.color;
+            ctx.beginPath();
+            ctx.moveTo(rootX - es * hw * 0.08, rootY + hh * 0.08);
+            ctx.lineTo(tipX + (rootX - tipX) * 0.18 + es * hw * 0.015, tipY + (rootY - tipY) * 0.16);
+            ctx.lineTo(rootX + es * hw * 0.1, rootY + hh * 0.06);
+            ctx.closePath();
+            ctx.fill();
+          }
+          if (earsSt.tip) {
+            // The black tip claims the last quarter — the hare's
+            // mark, readable at forty tiles.
+            ctx.fillStyle = earsSt.tip;
+            ctx.beginPath();
+            ctx.moveTo(tipX, tipY);
+            ctx.lineTo(tipX + (rootX - es * hw * 0.2 - tipX) * 0.27, tipY + (rootY + hh * 0.14 - tipY) * 0.27);
+            ctx.lineTo(tipX + (rootX + es * hw * 0.22 - tipX) * 0.27, tipY + (rootY + hh * 0.1 - tipY) * 0.27);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
       }
     };
@@ -12139,75 +12349,142 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       shell();
       if (front) opening();
       ctx.clip('evenodd');
+      // Trailing-half shade, then FOLDED planes — every value change
+      // lands on a crease line, never a gradient.
       ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // The lit slope panel — flat, low, fast.
-      ctx.fillStyle = shade(st.color, 10);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.7, hw * 2.4, hh * 3.4);
+      // The lit rake plane: brow ledge to apex, one flat panel.
+      ctx.fillStyle = shade(st.color, 12);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.8, headY - hh * 0.92);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.1, headY - hh * 1.22, headX - lead * hw * 0.66, headY - hh * 1.1);
-      ctx.lineTo(headX - lead * hw * 0.56, headY - hh * 0.9);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.14, headY - hh * 1.0, headX + lead * hw * 0.64, headY - hh * 0.72);
+      ctx.moveTo(headX + lead * hw * 1.02, headY - hh * 0.86);
+      ctx.lineTo(headX + lead * hw * 0.46, headY - hh * 1.18);
+      ctx.lineTo(apexX, apexY);
+      ctx.lineTo(apexX + lead * hw * 0.22, apexY + hh * 0.26);
+      ctx.lineTo(headX + lead * hw * 0.9, headY - hh * 0.66);
       ctx.closePath();
       ctx.fill();
+      // The peak's under-fold: a deeper plane the whole way out.
+      ctx.fillStyle = shade(st.color, -24);
+      ctx.beginPath();
+      ctx.moveTo(apexX, apexY + hh * 0.1);
+      ctx.lineTo(peakX + lead * hw * 0.1, peakY - hh * 0.02);
+      ctx.lineTo(headX - lead * hw * 1.12, headY - hh * 0.36);
+      ctx.closePath();
+      ctx.fill();
+      // One crease off the mantle hem's leading point.
+      ctx.strokeStyle = shade(st.color, -22);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.38, headY + hh * 1.3);
+      ctx.lineTo(headX + lead * hw * 0.5, headY + hh * 0.6);
+      ctx.stroke();
       ctx.restore();
     }
     drawEars();
     if (!hurt) {
       if (front) {
-        // The overhang shadow — shallower than a deep cowl: the
-        // courier needs to SEE.
+        // THE FOLDED DARK: mystery past the eye line — a hard-edged
+        // shadow polygon under the brow, deeper in its trailing
+        // corner. No gradient; this hood is planes all the way in.
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY - hh * 0.06);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.38)');
-        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.52);
+        ctx.fillStyle = 'rgba(24, 15, 26, 0.46)';
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw, oTop);
+        ctx.lineTo(cx + ohw, oTop);
+        ctx.lineTo(cx + ohw, headY - hh * 0.24);
+        ctx.lineTo(cx + lead * ohw * 0.1, headY - hh * 0.04);
+        ctx.lineTo(cx - ohw, headY - hh * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(24, 15, 26, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(cx - lead * ohw, oTop);
+        ctx.lineTo(cx, oTop);
+        ctx.lineTo(cx - lead * ohw * 0.3, headY - hh * 0.1);
+        ctx.lineTo(cx - lead * ohw, headY + hh * 0.06);
+        ctx.closePath();
+        ctx.fill();
         ctx.restore();
-        // Rolled brim band, one lit ribbon.
-        ctx.strokeStyle = shade(st.color, 14);
-        ctx.lineWidth = Math.max(1.5, headR * 0.09);
+        // THE SHRINE FRAME: saddle-stitch border — trim line, running
+        // stitch, inner dark line. The craft IS the ornament.
+        ctx.strokeStyle = shade(st.trim, 16);
+        ctx.lineWidth = Math.max(1.5, headR * 0.06);
         ctx.beginPath();
         opening();
         ctx.stroke();
+        ctx.strokeStyle = shade(st.color, -26);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.setLineDash([s * 0.013, s * 0.012]);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.88, oBot - hh * 0.04);
+        ctx.lineTo(cx - ohw * 0.88, headY - hh * 0.1);
+        ctx.lineTo(cx - ohw * 0.44, oTop + hh * 0.2);
+        ctx.lineTo(cx, oTop + hh * 0.09);
+        ctx.lineTo(cx + ohw * 0.44, oTop + hh * 0.2);
+        ctx.lineTo(cx + ohw * 0.88, headY - hh * 0.1);
+        ctx.lineTo(cx + ohw * 0.88, oBot - hh * 0.04);
+        ctx.stroke();
+        ctx.setLineDash([]);
       } else {
+        // Back read: folded planar panels breaking around the center
+        // seam, and the peak's shadow laid across them.
         ctx.fillStyle = shade(st.color, -10);
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.85);
+        ctx.moveTo(headX - hw * 0.4, headY + hh * 0.86);
+        ctx.lineTo(headX + hw * 0.4, headY + hh * 0.86);
+        ctx.lineTo(headX + lead * hw * 0.12 + hw * 0.06, headY + hh * 1.9);
+        ctx.lineTo(headX + lead * hw * 0.12 - hw * 0.1, headY + hh * 1.78);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = shade(st.color, -22);
+        ctx.fillStyle = shade(st.color, -18);
+        ctx.beginPath();
+        ctx.moveTo(headX - lead * hw * 0.06, headY - hh * 1.34);
+        ctx.lineTo(headX - lead * hw * 0.5, headY - hh * 0.3);
+        ctx.lineTo(headX - lead * hw * 0.42, headY + hh * 0.9);
+        ctx.lineTo(headX - lead * hw * 0.12, headY + hh * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -24);
         ctx.lineWidth = Math.max(1, s * 0.012);
         ctx.beginPath();
-        ctx.moveTo(headX, headY - hh * 1.02);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
+        ctx.moveTo(headX, headY - hh * 1.2);
+        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 0.8);
         ctx.stroke();
       }
       if (st.waybill) {
-        // The waybill: pinned at the leading temple by its wax seal,
-        // parchment ribbon streaming trailing — swallow-cut end.
-        const sx2 = headX + lead * hw * 0.92;
-        const sy2 = headY - hh * 0.52;
-        const sway = Math.sin(f.nowMs * 0.0036) * hw * 0.08;
-        const endX = sx2 - lead * hw * (1.5 + t * 0.3) - sway * lead;
-        const endY = sy2 + hh * 0.34 + sway * 0.5;
+        // THE SEAL ON THE TRAILING JAW: the wax brooch pins the hood
+        // shut at the cheek seam, its ribbon streaming OUTWARD past
+        // the silhouette edge — never across the chest (a cross-body
+        // parchment reads as a sash at ten paces; the caught bug).
+        const sx2 = cx - lead * ohw * 0.78;
+        const sy2 = oBot - headR * 0.06;
+        const rEndX = sx2 - lead * hw * (1.05 + t * 0.3) - sway * lead * 0.8;
+        const rEndY = sy2 + hh * 0.3 + sway * 0.4;
         ctx.fillStyle = st.waybill.color;
         ctx.beginPath();
-        ctx.moveTo(sx2, sy2 - hh * 0.07);
-        ctx.quadraticCurveTo((sx2 + endX) / 2, sy2 - hh * 0.24, endX, endY);
-        ctx.lineTo(endX + lead * hw * 0.14, endY - hh * 0.1);
-        ctx.lineTo(endX + lead * hw * 0.1, endY + hh * 0.06);
-        ctx.quadraticCurveTo((sx2 + endX) / 2, sy2 + hh * 0.06, sx2, sy2 + hh * 0.07);
+        ctx.moveTo(sx2, sy2 - hh * 0.035);
+        ctx.quadraticCurveTo((sx2 + rEndX) / 2, sy2 - hh * 0.1, rEndX, rEndY);
+        ctx.lineTo(rEndX + lead * hw * 0.09, rEndY - hh * 0.07);
+        ctx.lineTo(rEndX + lead * hw * 0.06, rEndY + hh * 0.035);
+        ctx.quadraticCurveTo((sx2 + rEndX) / 2, sy2 + hh * 0.05, sx2, sy2 + hh * 0.035);
         ctx.closePath();
         ctx.fill();
+        // The seal: wax disc + pressed sigil ring + one hot fleck.
         ctx.fillStyle = st.waybill.seal;
         ctx.beginPath();
-        ctx.arc(sx2, sy2, headR * 0.07, 0, Math.PI * 2);
+        ctx.arc(sx2, sy2, headR * 0.085, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = shade(st.waybill.seal, -22);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.arc(sx2, sy2, headR * 0.048, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = shade(st.waybill.seal, 34);
+        ctx.beginPath();
+        ctx.arc(sx2 - headR * 0.025, sy2 - headR * 0.03, headR * 0.018, 0, Math.PI * 2);
         ctx.fill();
       }
     }

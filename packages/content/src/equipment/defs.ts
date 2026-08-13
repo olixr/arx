@@ -2176,14 +2176,14 @@ function hareswiftSet(): EquipmentDef[] {
       levelReq: { skill: 'archery', level: 2 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(2, 20, 35, 1),
       value: 30, color, code: 'Jh',
-      desc: 'Tall ears, black at the tips. You hear the bowstring first.',
+      desc: 'A wind-cut hood, ears laid back in the cloth. Still running.',
     },
     {
       id: 'hareswift_jerkin', name: 'Hareswift jerkin', slot: 'body', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 4 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(5, 40, 50, 2),
       value: 55, color, code: 'Jj',
-      desc: 'Oat-pale leather, fur at the throat. Built for the getaway.',
+      desc: 'Wind-torn mantle, buckled strap, a hare\'s foot for luck. Built for the getaway.',
     },
     {
       id: 'hareswift_chaps', name: 'Hareswift chaps', slot: 'legs', armorClass: 'leather',
