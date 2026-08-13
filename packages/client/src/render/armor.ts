@@ -96,6 +96,13 @@ export interface BodyStyle {
     | 'gonfalon' | 'rampart' | 'sunfan' | 'veilwing'
     | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest'
     | 'gateshard' | 'mothpile' | 'dawncrest' | 'fenlantern'
+    // The fen court's other shoulders — one owner each, and the
+    // lots-override-pauldron law (the leviathans precedent) running
+    // on cloth: `orchidpaul` mirebloom's bloom-and-bud, `cattailpaul`
+    // rustsedge's sheaf-and-creel, `heronwing` graymist's folded
+    // wing and plume tuft. Each kind wears TWO designs — the
+    // shoulders answer each other, they do not repeat each other.
+    | 'orchidpaul' | 'cattailpaul' | 'heronwing'
     // The hunter's shoulders — one owner each: `halcyon` the
     // kingfisher folded wing, `guardhair` the wolfstalker winter
     // pelt, `drakewing` the drakescale ribbed wing-fin, `oakspaul`
@@ -774,10 +781,11 @@ export interface HelmStyle {
    *  forward peak, and the fen light inside it breathing on THE
    *  FENLIGHT clock. It gutters, it rallies; it never goes out. */
   wisplantern?: { cage: string; wisp: string };
-  /** Bloomcrown: the orchid's keeping — the inner petal heart shown
-   *  in the crown's notch as it eases open, and the dew beads at the
-   *  lappet tips. It opens for no sun. */
-  bloomheart?: { color: string; dew: string };
+  /** Bloomcrown: the orchid's keeping — the heart burning between
+   *  the standards as the crown breathes open, dew at the fall
+   *  tips, and pale petal `tails` streaming off the back (MUST
+   *  contrast the plum, per the species-tails law). */
+  bloomheart?: { color: string; dew: string; tails?: string };
   /** Sedgehat: the darter — a dragonfly settled at the crown's foot,
    *  wings folded back along the body, shivering awake once a cycle. */
   darter?: { body: string; wing: string };
@@ -2641,7 +2649,7 @@ registerColorways(BOOT_STYLES, 'dawnsworn_slippers', {
 registerColorways(BODY_STYLES, 'fenwalker_robe', {
   mirebloom: {
     color: '#5e4260', trim: '#e0b0d8', underskirt: '#48334a',
-    pauldronColor: '#553c57', pauldronTrim: '#e0b0d8',
+    pauldron: 'orchidpaul', pauldronColor: '#553c57', pauldronTrim: '#e0b0d8',
     capelet: { color: '#523a54', hem: 'point', trim: '#a878a0' },
     mirehem: { water: '#2e2032', ripple: '#e8b0e0', reed: '#48334a' },
     wispcourt: { color: '#e8b0e0' },
@@ -2650,7 +2658,7 @@ registerColorways(BODY_STYLES, 'fenwalker_robe', {
   },
   rustsedge: {
     color: '#8a5a36', trim: '#e8cc90', underskirt: '#6a4428',
-    pauldronColor: '#7e5230', pauldronTrim: '#e8cc90',
+    pauldron: 'cattailpaul', pauldronColor: '#7e5230', pauldronTrim: '#e8cc90',
     capelet: { color: '#744b2c', hem: 'point', trim: '#b8823c' },
     mirehem: { water: '#3e2818', ripple: '#f0c078', reed: '#5c3c24' },
     wispcourt: { color: '#f0c078' },
@@ -2659,7 +2667,7 @@ registerColorways(BODY_STYLES, 'fenwalker_robe', {
   },
   graymist: {
     color: '#6e7a76', trim: '#d8e0dc', underskirt: '#57625e',
-    pauldronColor: '#65716d', pauldronTrim: '#d8e0dc',
+    pauldron: 'heronwing', pauldronColor: '#65716d', pauldronTrim: '#d8e0dc',
     capelet: { color: '#5e6a66', hem: 'point', trim: '#98a49c' },
     mirehem: { water: '#333e3b', ripple: '#d0ecdc', reed: '#48524e' },
     wispcourt: { color: '#d0ecdc' },
@@ -2670,7 +2678,7 @@ registerColorways(BODY_STYLES, 'fenwalker_robe', {
 registerColorways(HELM_STYLES, 'fenwalker_hood', {
   mirebloom: {
     color: '#5e4260', trim: '#e0b0d8', kind: 'bloomcrown',
-    bloomheart: { color: '#f0a8d0', dew: '#f4e0f4' },
+    bloomheart: { color: '#f0a8d0', dew: '#f4e0f4', tails: '#f0c8e4' },
   },
   rustsedge: {
     color: '#a06840', trim: '#6a4428', kind: 'sedgehat',
@@ -7972,16 +7980,18 @@ export function drawPauldron(
     return;
   }
   if (st.pauldron === 'fenlantern') {
-    // THE FENLANTERN — the fenwalker shoulder: the worn seat
-    // thatched in two ragged rush laps, and off the outer edge a
-    // small reed-cage lantern on a cord with a live wisp inside,
-    // breathing on THE FENLIGHT clock. Two shoulders, two lights,
-    // trading watches — the court never all asleep at once.
+    // THE FENLANTERN — the fenwalker shoulders, second forging, and
+    // the first ASYMMETRIC pair in the wardrobe: the shoulders
+    // answer each other instead of repeating each other. The right
+    // carries THE LANTERN RIG — a carved gallows post off the seat
+    // with the reed-cage light hung outboard; the left carries THE
+    // RUSH KEEP — stacked thatch with a soft moss-light banked under
+    // its hem. Two lights still trading watches on THE FENLIGHT
+    // clock; only their housings differ.
     const wisp = st.wispcourt?.color ?? trim;
     seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
     if (!hurt) {
-      // The rush laps: flat bands over the dome, hems ragged in
-      // reed points — the hood's thatch answered at the shoulder.
+      // The rush laps both shoulders share — the family ground.
       for (const [ti, ly, dv] of [[0, -0.038, 8], [1, 0.002, -8]] as const) {
         ctx.fillStyle = shade(col, dv);
         ctx.beginPath();
@@ -7996,47 +8006,336 @@ export function drawPauldron(
         ctx.closePath();
         ctx.fill();
       }
-      // The lantern, hung outboard on a short cord off the cap edge
-      // — big enough to be the statement, not the buckle.
       const k = fenlightK(nowMs, side < 0 ? 0.18 : 0.68);
-      const lx = side * 0.148 * s;
-      const ly2 = 0.062 * s + Math.sin(nowMs * 0.0016 + side) * 0.007 * s;
-      ctx.strokeStyle = shade(col, -22);
-      ctx.lineWidth = Math.max(1, s * 0.01);
-      ctx.beginPath();
-      ctx.moveTo(side * 0.096 * s, -0.014 * s);
-      ctx.quadraticCurveTo(side * 0.136 * s, 0.01 * s, lx, ly2 - 0.048 * s);
-      ctx.stroke();
-      // The glow first, past the ribs — light owns the cage.
-      ctx.globalAlpha = 0.24 + 0.34 * k;
-      ctx.fillStyle = wisp;
-      ctx.beginPath();
-      ctx.arc(lx, ly2, 0.056 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 0.4 + 0.3 * k;
-      ctx.beginPath();
-      ctx.arc(lx, ly2, 0.032 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 0.66 + 0.34 * k;
-      ctx.fillStyle = shade(wisp, 30);
-      ctx.beginPath();
-      ctx.arc(lx, ly2, 0.015 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      // The cage: cap, hook, foot and three reed ribs.
-      ctx.fillStyle = shade(trim, -8);
-      ctx.fillRect(lx - 0.03 * s, ly2 - 0.048 * s, 0.06 * s, 0.013 * s);
-      ctx.fillRect(lx - 0.025 * s, ly2 + 0.036 * s, 0.05 * s, 0.011 * s);
-      ctx.strokeStyle = trim;
-      ctx.lineWidth = Math.max(1, s * 0.011);
-      ctx.beginPath();
-      ctx.moveTo(lx - 0.022 * s, ly2 - 0.036 * s);
-      ctx.lineTo(lx - 0.022 * s, ly2 + 0.036 * s);
-      ctx.moveTo(lx + 0.022 * s, ly2 - 0.036 * s);
-      ctx.lineTo(lx + 0.022 * s, ly2 + 0.036 * s);
-      ctx.moveTo(lx, ly2 - 0.042 * s);
-      ctx.lineTo(lx, ly2 + 0.042 * s);
-      ctx.stroke();
+      if (side > 0) {
+        // THE LANTERN RIG: the gallows post rises FROM the seat, the
+        // arm reaches outboard, the cage rides under its tip.
+        const cage = shade(col, -18);
+        ctx.fillStyle = cage;
+        ctx.beginPath();
+        ctx.moveTo(side * 0.012 * s, -0.05 * s);
+        ctx.lineTo(side * 0.036 * s, -0.052 * s);
+        ctx.lineTo(side * 0.05 * s, -0.128 * s);
+        ctx.lineTo(side * 0.148 * s, -0.118 * s);
+        ctx.lineTo(side * 0.146 * s, -0.096 * s);
+        ctx.lineTo(side * 0.066 * s, -0.102 * s);
+        ctx.lineTo(side * 0.036 * s, -0.028 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(col, -30);
+        ctx.fillRect(side * 0.04 * s - 0.008 * s, -0.09 * s, 0.016 * s, 0.02 * s);
+        const lx = side * 0.146 * s;
+        const ly2 = -0.04 * s + Math.sin(nowMs * 0.0016 + side) * 0.006 * s;
+        ctx.strokeStyle = shade(col, -24);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(side * 0.147 * s, -0.098 * s);
+        ctx.lineTo(lx, ly2 - 0.044 * s);
+        ctx.stroke();
+        // The glow first, past the ribs.
+        ctx.globalAlpha = 0.24 + 0.34 * k;
+        ctx.fillStyle = wisp;
+        ctx.beginPath();
+        ctx.arc(lx, ly2, 0.052 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.4 + 0.3 * k;
+        ctx.beginPath();
+        ctx.arc(lx, ly2, 0.03 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.66 + 0.34 * k;
+        ctx.fillStyle = shade(wisp, 30);
+        ctx.beginPath();
+        ctx.arc(lx, ly2, 0.014 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = shade(trim, -8);
+        ctx.fillRect(lx - 0.028 * s, ly2 - 0.044 * s, 0.056 * s, 0.012 * s);
+        ctx.fillRect(lx - 0.023 * s, ly2 + 0.033 * s, 0.046 * s, 0.01 * s);
+        ctx.strokeStyle = trim;
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(lx - 0.02 * s, ly2 - 0.033 * s);
+        ctx.lineTo(lx - 0.02 * s, ly2 + 0.033 * s);
+        ctx.moveTo(lx + 0.02 * s, ly2 - 0.033 * s);
+        ctx.lineTo(lx + 0.02 * s, ly2 + 0.033 * s);
+        ctx.moveTo(lx, ly2 - 0.038 * s);
+        ctx.lineTo(lx, ly2 + 0.038 * s);
+        ctx.stroke();
+      } else {
+        // THE RUSH KEEP: a crown tuft of standing reeds over the
+        // stack, and the moss-light BANKED under the hem — a glow
+        // with no cage, the fen light that moved in on its own.
+        for (const [ri, ru, rh] of [[0, -0.03, 0.1], [1, 0.015, 0.125], [2, 0.055, 0.095]] as const) {
+          const bx = side * ru * s * -1;
+          const swayR = Math.sin(nowMs * 0.0018 + ri * 1.9) * 0.006 * s;
+          ctx.strokeStyle = shade(col, ri === 1 ? 14 : -2);
+          ctx.lineWidth = Math.max(1.5, s * 0.013);
+          ctx.beginPath();
+          ctx.moveTo(bx, -0.055 * s);
+          ctx.quadraticCurveTo(bx + swayR * 0.6 + side * 0.01 * s, -0.055 * s - rh * s * 0.6, bx + swayR + side * 0.02 * s, -0.055 * s - rh * s);
+          ctx.stroke();
+          ctx.fillStyle = shade(col, 20);
+          ctx.beginPath();
+          ctx.ellipse(bx + swayR + side * 0.02 * s, -0.055 * s - rh * s - 0.012 * s, 0.007 * s, 0.016 * s, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // The banked moss-light under the hem's outboard edge.
+        ctx.globalAlpha = 0.2 + 0.3 * k;
+        ctx.fillStyle = wisp;
+        ctx.beginPath();
+        ctx.ellipse(side * 0.096 * s, 0.052 * s, 0.05 * s, 0.026 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.5 + 0.35 * k;
+        ctx.fillStyle = shade(wisp, 26);
+        ctx.beginPath();
+        ctx.ellipse(side * 0.098 * s, 0.052 * s, 0.02 * s, 0.011 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        // The bundle pin holding the thatch: a bound reed toggle.
+        ctx.fillStyle = shade(trim, -10);
+        ctx.fillRect(-side * 0.02 * s - 0.026 * s, -0.048 * s, 0.052 * s, 0.014 * s);
+        ctx.fillStyle = shade(trim, 14);
+        ctx.fillRect(-side * 0.02 * s - 0.008 * s, -0.052 * s, 0.016 * s, 0.022 * s);
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'orchidpaul') {
+    // THE ORCHIDPAUL — mirebloom's shoulders: the flower's whole
+    // life worn as a pair. The right is THE BLOOM — a five-petal
+    // whorl open on the seat, heart burning on the fen clock; the
+    // left is THE BUD — closed on its curled stem, one dew drop
+    // hanging, patient. Bloom and bud answer each other; nothing
+    // repeats.
+    const petal = st.petalfall?.color ?? trim;
+    seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
+    if (!hurt) {
+      const k = fenlightK(nowMs, side < 0 ? 0.4 : 0.0);
+      if (side > 0) {
+        // THE BLOOM: five petals radiating from the seat's crown,
+        // each a filled round-tipped wedge, value-stepped so the
+        // whorl turns; the heart wakes between them.
+        const hx = side * 0.02 * s;
+        const hy = -0.045 * s;
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI * 0.5 + (i - 2) * 0.62 + Math.sin(nowMs * 0.0009) * 0.04;
+          const len = (0.085 + (i === 2 ? 0.02 : 0)) * s * (0.92 + 0.12 * k);
+          ctx.save();
+          ctx.translate(hx, hy);
+          ctx.rotate(a);
+          ctx.fillStyle = shade(petal, i % 2 === 0 ? -10 : 6);
+          ctx.beginPath();
+          ctx.moveTo(0, 0.014 * s);
+          ctx.quadraticCurveTo(len * 0.5, 0.03 * s, len, 0.004 * s);
+          ctx.quadraticCurveTo(len * 1.12, -0.012 * s, len * 0.94, -0.024 * s);
+          ctx.quadraticCurveTo(len * 0.45, -0.03 * s, 0, -0.014 * s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.globalAlpha = 0.4 + 0.5 * k;
+        ctx.fillStyle = shade(petal, 30);
+        ctx.beginPath();
+        ctx.arc(hx, hy, 0.028 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.7 + 0.3 * k;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(hx, hy, 0.011 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      } else {
+        // THE BUD: the closed teardrop leaning outboard on its
+        // curled stem, sepals wrapping it, one dew drop hanging.
+        const bx = side * 0.09 * s;
+        const by = -0.075 * s + Math.sin(nowMs * 0.0014) * 0.004 * s;
+        ctx.strokeStyle = shade(col, -22);
+        ctx.lineWidth = Math.max(1.5, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(side * 0.01 * s, -0.03 * s);
+        ctx.quadraticCurveTo(side * 0.03 * s, -0.09 * s, bx - side * 0.014 * s, by + 0.03 * s);
+        ctx.stroke();
+        ctx.fillStyle = petal;
+        ctx.beginPath();
+        ctx.moveTo(bx, by - 0.05 * s);
+        ctx.quadraticCurveTo(bx + side * 0.038 * s, by - 0.012 * s, bx, by + 0.038 * s);
+        ctx.quadraticCurveTo(bx - side * 0.038 * s, by - 0.012 * s, bx, by - 0.05 * s);
+        ctx.closePath();
+        ctx.fill();
+        // Sepals: two dark wraps holding the bud shut.
+        ctx.fillStyle = shade(col, -14);
+        for (const su of [-1, 1] as const) {
+          ctx.beginPath();
+          ctx.moveTo(bx, by + 0.038 * s);
+          ctx.quadraticCurveTo(bx + su * 0.03 * s, by + 0.006 * s, bx + su * 0.016 * s, by - 0.026 * s);
+          ctx.quadraticCurveTo(bx + su * 0.008 * s, by, bx, by + 0.02 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // The dew drop, hanging and glinting on the clock.
+        ctx.strokeStyle = shade(col, -20);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(bx, by + 0.04 * s);
+        ctx.lineTo(bx, by + 0.06 * s);
+        ctx.stroke();
+        ctx.globalAlpha = 0.5 + 0.5 * k;
+        ctx.fillStyle = shade(petal, 34);
+        ctx.beginPath();
+        ctx.arc(bx, by + 0.072 * s, 0.013 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'cattailpaul') {
+    // THE CATTAILPAUL — rustsedge's shoulders: the harvest worn as a
+    // pair. The right is THE SHEAF — three cattails bound and fanned
+    // off the seat; the left is THE CREEL — the woven basket lid
+    // domed over the shoulder with its amber beads. What the fen
+    // grows, and what carries it home.
+    const headC = st.seedheads?.head ?? shade(col, -24);
+    const fluff = st.seedheads?.fluff ?? trim;
+    seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
+    if (!hurt) {
+      if (side > 0) {
+        // THE SHEAF: three stalks rising and fanning outboard, bound
+        // once at the seat's crown.
+        for (const [ci, cu, chg] of [[0, -0.02, 0.13], [1, 0.02, 0.165], [2, 0.055, 0.12]] as const) {
+          const bx0 = side * cu * s;
+          const nod = Math.sin(nowMs * 0.0017 + ci * 2.1) * 0.006 * s;
+          const tx = bx0 + side * 0.02 * s * (ci + 1) * 0.6 + nod;
+          const topY = -0.04 * s - chg * s;
+          ctx.strokeStyle = shade(trim, -18);
+          ctx.lineWidth = Math.max(1, s * 0.011);
+          ctx.beginPath();
+          ctx.moveTo(bx0, -0.03 * s);
+          ctx.quadraticCurveTo(bx0 + (tx - bx0) * 0.4, -0.04 * s - chg * s * 0.55, tx, topY + 0.03 * s);
+          ctx.stroke();
+          ctx.fillStyle = headC;
+          ctx.beginPath();
+          ctx.ellipse(tx, topY, 0.012 * s, 0.028 * s, side * 0.1, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = fluff;
+          ctx.beginPath();
+          ctx.ellipse(tx + side * 0.004 * s, topY - 0.038 * s, 0.007 * s, 0.012 * s, side * 0.1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // The binding: one cord wrap where the sheaf leaves the seat.
+        ctx.fillStyle = shade(trim, -12);
+        ctx.fillRect(side * 0.0 * s - 0.024 * s, -0.05 * s, 0.048 * s, 0.015 * s);
+        ctx.fillStyle = shade(trim, 12);
+        ctx.fillRect(side * 0.0 * s - 0.007 * s, -0.054 * s, 0.014 * s, 0.023 * s);
+      } else {
+        // THE CREEL: the woven lid domed over the seat — concentric
+        // weave bands, a rim knot, two amber beads off the outboard
+        // edge, and one loose reed blade laid across.
+        for (const [rk, dv] of [[1, -14], [0.72, -2], [0.45, 10]] as const) {
+          ctx.fillStyle = shade(col, dv);
+          ctx.beginPath();
+          ctx.ellipse(0, -0.035 * s, 0.105 * s * rk, 0.062 * s * rk, 0, Math.PI, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = shade(trim, -8);
+        ctx.fillRect(-0.014 * s, -0.108 * s, 0.028 * s, 0.016 * s);
+        // The loose blade: one reed lying across the lid.
+        ctx.strokeStyle = shade(trim, -20);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(-side * 0.07 * s, -0.02 * s);
+        ctx.quadraticCurveTo(0, -0.075 * s, side * 0.095 * s, -0.055 * s);
+        ctx.stroke();
+        // The amber beads, two lengths, trading a glint.
+        for (const [bi, bl] of [[0, 0.045], [1, 0.028]] as const) {
+          const bx = side * (0.1 - bi * 0.026) * s;
+          const bSway = Math.sin(nowMs * 0.0019 + bi * 2.3) * 0.005 * s;
+          const bby = 0.03 * s + bl * s;
+          ctx.strokeStyle = shade(trim, -22);
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(bx, 0.024 * s);
+          ctx.lineTo(bx + bSway, bby - 0.01 * s);
+          ctx.stroke();
+          ctx.fillStyle = shade(trim, 10 + bi * 8);
+          ctx.beginPath();
+          ctx.arc(bx + bSway, bby, (0.014 - bi * 0.003) * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'heronwing') {
+    // THE HERONWING — graymist's shoulders: the bird worn as a pair.
+    // The right is THE FOLDED WING — three lapped feather rows
+    // shingling the seat, dark-tipped, lifting a breath on the
+    // hands' own clock (FOLDED-AT-REST law: a spread wing is the
+    // butterfly sin); the left is THE PLUME TUFT — three crest vanes
+    // leaning outboard with the mist sliding off them.
+    seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
+    if (!hurt) {
+      if (side > 0) {
+        // THE FOLDED WING: rows of round-tipped coverts, each row a
+        // value step, tips dipped dark — mass lying at rest.
+        const lift = Math.sin(nowMs * 0.0019) * 0.008;
+        ctx.save();
+        ctx.rotate(-side * lift);
+        for (const [ri, ry, dv, n] of [[0, 0.02, -16, 4], [1, -0.02, -4, 4], [2, -0.06, 8, 3]] as const) {
+          for (let i = 0; i < n; i++) {
+            const u = (i - (n - 1) / 2) / n;
+            const fx2 = u * 0.17 * s + side * 0.012 * s * ri;
+            ctx.fillStyle = shade(col, dv);
+            ctx.beginPath();
+            ctx.moveTo(fx2 - 0.032 * s, ry * s);
+            ctx.quadraticCurveTo(fx2, ry * s + 0.075 * s, fx2 + 0.032 * s, ry * s);
+            ctx.quadraticCurveTo(fx2, ry * s - 0.02 * s, fx2 - 0.032 * s, ry * s);
+            ctx.closePath();
+            ctx.fill();
+            // The dark tip: dipped in the fen's ink.
+            ctx.fillStyle = shade(col, -34);
+            ctx.beginPath();
+            ctx.moveTo(fx2 - 0.014 * s, ry * s + 0.035 * s);
+            ctx.quadraticCurveTo(fx2, ry * s + 0.07 * s, fx2 + 0.014 * s, ry * s + 0.035 * s);
+            ctx.quadraticCurveTo(fx2, ry * s + 0.048 * s, fx2 - 0.014 * s, ry * s + 0.035 * s);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      } else {
+        // THE PLUME TUFT: three crest vanes off the seat's crown,
+        // leaning outboard, dark-tipped, each on its own slow air —
+        // and the mist that will not stay put.
+        for (const [pi, pu, ph2] of [[0, 0.0, 0.11], [1, 0.035, 0.15], [2, 0.07, 0.1]] as const) {
+          const bx0 = side * pu * s;
+          const pSway = Math.sin(nowMs * 0.0011 + pi * 1.3) * 0.007 * s;
+          const tx = bx0 + side * (0.03 + pi * 0.012) * s + pSway;
+          const topY = -0.045 * s - ph2 * s;
+          ctx.fillStyle = shade(col, pi === 1 ? 6 : -8);
+          ctx.beginPath();
+          ctx.moveTo(bx0 - 0.012 * s, -0.04 * s);
+          ctx.quadraticCurveTo(bx0 + (tx - bx0) * 0.4 - 0.01 * s, topY + ph2 * s * 0.4, tx, topY);
+          ctx.quadraticCurveTo(bx0 + (tx - bx0) * 0.5 + 0.012 * s, topY + ph2 * s * 0.5, bx0 + 0.012 * s, -0.04 * s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(col, -32);
+          ctx.beginPath();
+          ctx.ellipse(tx, topY + 0.008 * s, 0.008 * s, 0.018 * s, side * 0.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        const mk = fenlightK(nowMs, 0.5);
+        const u01 = (nowMs * 0.00018) % 1;
+        ctx.globalAlpha = (0.12 + 0.16 * mk) * (1 - u01);
+        ctx.fillStyle = trim;
+        ctx.beginPath();
+        ctx.ellipse(side * (0.06 + u01 * 0.1) * s, -0.1 * s - u01 * 0.03 * s, 0.045 * s, 0.018 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
     }
     ctx.restore();
     return;
@@ -15240,12 +15539,13 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   }
 
   if (st.kind === 'lanterncowl') {
-    // THE LANTERN COWL — the fen court's first head: a fitted
-    // triangle leaning FORWARD, the peak nodding over the brow like
-    // a gallows for its one jewel — a reed-cage lantern with a live
-    // wisp breathing on THE FENLIGHT clock. The face keeps its dark:
-    // the fen light is for the fen to see by, not for you. Rush laps
-    // shingle the crown, quieter than the old thatch.
+    // THE WARDEN'S GALLOWS — the fen court's first head, second
+    // forging: a fitted forward-peaked cowl whose apex carries a
+    // carved gallows crook, arcing out over the brow, and from the
+    // crook's hook the reed-cage lantern rides ahead of its wearer —
+    // the fen's own light walking point. Three rush tiers ridge the
+    // crown, a reed-scale mantle laps the base, and the face keeps
+    // its dark: the light is for the road, never the wearer.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
@@ -15253,20 +15553,17 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const oTop = headY - hh * 0.56;
     const oBot = headY + hh * 0.88;
     const sway = Math.sin(f.nowMs * 0.0014) * hw * 0.03;
-    const apexX = headX + lead * hw * (0.36 + t * 0.08) + sway;
-    const apexY = headY - hh * 1.46;
-    const tipX = apexX + lead * hw * 0.42;
-    const tipY = apexY + hh * 0.2;
+    const apexX = headX + lead * hw * (0.28 + t * 0.08) + sway;
+    const apexY = headY - hh * 1.48;
     const shell = () => {
       ctx.moveTo(headX + lead * hw * 1.2, headY + hh * 1.16);
       ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.14, headX + lead * hw * 1.06, headY - hh * 0.56);
       // The leading flank climbs close to the skull into the peak.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.98, headY - hh * 1.08, apexX, apexY);
-      // The nod: the peak leans out over the brow, the cord's perch.
-      ctx.quadraticCurveTo(tipX, tipY - hh * 0.12, tipX, tipY);
-      ctx.quadraticCurveTo(apexX + lead * hw * 0.02, apexY + hh * 0.34, headX - lead * hw * 0.28, headY - hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.96, headY - hh * 1.1, apexX, apexY);
+      // Behind the peak the crown steps down in a ridge.
+      ctx.quadraticCurveTo(apexX - lead * hw * 0.26, apexY - hh * 0.02, headX - lead * hw * 0.3, headY - hh * 1.2);
       // The trailing flank falls fitted into the drape.
-      ctx.quadraticCurveTo(headX - lead * hw * (0.88 + t * 0.22), headY - hh * 0.7, headX - lead * hw * (1.1 + t * 0.3), headY - hh * 0.04);
+      ctx.quadraticCurveTo(headX - lead * hw * (0.9 + t * 0.22), headY - hh * 0.72, headX - lead * hw * (1.1 + t * 0.3), headY - hh * 0.04);
       ctx.quadraticCurveTo(headX - lead * hw * (1.24 + t * 0.28), headY + hh * 0.44, headX - lead * hw * 1.22, headY + hh * 1.16);
       ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.2, headY + hh * 1.16);
       ctx.closePath();
@@ -15279,57 +15576,79 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     shell();
     if (front) opening();
     ctx.fill('evenodd');
+    // THE GALLOWS CROOK is STRUCTURE, not fx — it holds its place in
+    // the hurt flash so the silhouette never pops.
+    const crook = (dx: number, dy: number) => ({ x: apexX + lead * hw * dx, y: apexY + hh * dy });
+    const cTip = crook(1.06, 0.46);
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.wisplantern?.cage ?? st.trim, -6);
+    ctx.beginPath();
+    ctx.moveTo(apexX - lead * hw * 0.02, apexY - hh * 0.08);
+    ctx.quadraticCurveTo(crook(0.56, -0.3).x, crook(0.56, -0.3).y, crook(0.95, -0.04).x, crook(0.95, -0.04).y);
+    ctx.quadraticCurveTo(crook(1.16, 0.12).x, crook(1.16, 0.12).y, cTip.x, cTip.y);
+    ctx.lineTo(crook(0.94, 0.44).x, crook(0.94, 0.44).y);
+    ctx.quadraticCurveTo(crook(0.98, 0.18).x, crook(0.98, 0.18).y, crook(0.8, 0.1).x, crook(0.8, 0.1).y);
+    ctx.quadraticCurveTo(crook(0.5, -0.1).x, crook(0.5, -0.1).y, apexX, apexY + hh * 0.1);
+    ctx.closePath();
+    ctx.fill();
     if (!hurt) {
       ctx.save();
       ctx.beginPath();
       shell();
       if (front) opening();
       ctx.clip('evenodd');
-      // Two planar facets meeting under the nod — folded, not blown.
+      // Two planar facets meeting at the ridge — folded, not blown.
       ctx.fillStyle = shade(st.color, -13);
       ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 2.1, hw * 2.4, hh * 3.8);
       ctx.fillStyle = shade(st.color, 9);
       ctx.beginPath();
       ctx.moveTo(headX + lead * hw * 1.0, headY - hh * 0.54);
-      ctx.lineTo(apexX + lead * hw * 0.06, apexY + hh * 0.1);
-      ctx.lineTo(apexX - lead * hw * 0.08, apexY + hh * 0.3);
+      ctx.lineTo(apexX + lead * hw * 0.04, apexY + hh * 0.08);
+      ctx.lineTo(apexX - lead * hw * 0.1, apexY + hh * 0.26);
       ctx.lineTo(headX + lead * hw * 0.52, headY - hh * 0.44);
       ctx.closePath();
       ctx.fill();
-      // THE RUSH LAPS: two quiet value bands ringing the crown, hems
-      // ragged in reed points — the thatch remembered, not rebuilt.
-      for (const [ti, y0b, dv] of [[0, -1.02, -20], [1, -0.56, 5]] as const) {
+      // THE RUSH TIERS: three lapped bands ridging the crown, hems
+      // ragged in reed points, each a value step — layered thatch
+      // worn as regalia, not roofing.
+      for (const [ti, y0b, dv] of [[0, -1.16, -22], [1, -0.78, 6], [2, -0.42, -8]] as const) {
         const baseY = headY + hh * y0b;
         ctx.fillStyle = shade(st.color, dv);
         ctx.beginPath();
-        ctx.moveTo(headX + lead * hw * 1.2, baseY - hh * 0.26);
-        ctx.lineTo(headX - lead * hw * 1.4, baseY - hh * 0.4);
+        ctx.moveTo(headX + lead * hw * 1.2, baseY - hh * 0.24);
+        ctx.lineTo(headX - lead * hw * 1.4, baseY - hh * 0.38);
         ctx.lineTo(headX - lead * hw * 1.4, baseY + hh * 0.04);
         for (let i = 0; i < 6; i++) {
           const u = -1.4 + (i / 5) * 2.6;
-          const drop = hh * (0.16 + 0.1 * Math.sin(i * 2.1 + ti * 1.7));
+          const drop = hh * (0.15 + 0.09 * Math.sin(i * 2.1 + ti * 1.7));
           ctx.lineTo(headX + lead * hw * (u + 0.12), baseY + drop);
           ctx.lineTo(headX + lead * hw * (u + 0.24), baseY - hh * 0.02);
         }
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = shade(st.color, dv - 14);
-        ctx.fillRect(headX - hw * 1.4, baseY - hh * 0.26, hw * 2.6, hh * 0.07);
+        ctx.fillStyle = shade(st.color, dv - 13);
+        ctx.fillRect(headX - hw * 1.4, baseY - hh * 0.24, hw * 2.6, hh * 0.06);
       }
-      // The crease falling from the nod's underside.
-      ctx.fillStyle = shade(st.color, -26);
-      ctx.beginPath();
-      ctx.moveTo(apexX - lead * hw * 0.06, apexY + hh * 0.3);
-      ctx.lineTo(apexX + lead * hw * 0.02, apexY + hh * 0.3);
-      ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.08);
-      ctx.lineTo(headX - lead * hw * 0.04, headY + hh * 1.08);
-      ctx.closePath();
-      ctx.fill();
+      // THE SCALE MANTLE: a row of lapped reed scales across the
+      // cowl's base — the hood handing itself to the shoulders.
+      for (let i = 0; i < 5; i++) {
+        const u = -0.84 + i * 0.42;
+        ctx.fillStyle = shade(st.color, i % 2 === 0 ? -18 : -6);
+        ctx.beginPath();
+        ctx.moveTo(headX + hw * (u - 0.2), headY + hh * 1.02);
+        ctx.quadraticCurveTo(headX + hw * u, headY + hh * 1.44, headX + hw * (u + 0.2), headY + hh * 1.02);
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.restore();
+      // The crook's binding wraps: two dark reed ties.
+      ctx.fillStyle = shade(st.wisplantern?.cage ?? st.trim, -26);
+      for (const bu of [0.3, 0.62] as const) {
+        const b = crook(bu, -0.16 + bu * 0.18);
+        ctx.fillRect(b.x - hw * 0.045, b.y - hh * 0.02, hw * 0.09, hh * 0.13);
+      }
       if (front) {
         // THE DEEP DOOR: shadow past the eye line — the fen keeps
-        // its walkers' faces. No light reaches in; the lantern is
-        // for the road, never the wearer.
+        // its walkers' faces.
         ctx.save();
         ctx.beginPath();
         opening();
@@ -15340,8 +15659,9 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.fillStyle = shGrad;
         ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 1.0);
         ctx.restore();
-        // THE REED-CORD FRAME: the shrine door spoken in cord — two
-        // thin woven lines and a knot bead at each lower corner.
+        // THE REED-CORD FRAME: two woven lines, knot beads at the
+        // corners, and a hanging tie cord swinging off each — the
+        // shrine door, tied shut.
         ctx.strokeStyle = st.trim;
         ctx.lineWidth = Math.max(1.5, s * 0.016);
         ctx.beginPath();
@@ -15363,9 +15683,16 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           ctx.beginPath();
           ctx.arc(bx - headR * 0.014, by - headR * 0.014, headR * 0.02, 0, Math.PI * 2);
           ctx.fill();
+          const tSway = Math.sin(f.nowMs * 0.0024 + u * 1.7) * headR * 0.03;
+          ctx.strokeStyle = shade(st.trim, -10);
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.moveTo(bx, by + headR * 0.04);
+          ctx.quadraticCurveTo(bx + tSway, by + headR * 0.14, bx + tSway * 1.4, by + headR * 0.22);
+          ctx.stroke();
         }
       } else {
-        // From behind: the drape tail and the crease keep falling.
+        // From behind: the drape tail and the ridge keep falling.
         ctx.fillStyle = shade(st.color, -10);
         ctx.beginPath();
         ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
@@ -15375,57 +15702,61 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.fill();
       }
       if (st.wisplantern) {
-        // THE CAGED WISP: a reed-cage lantern hung off the nod on a
-        // short cord, the fen light inside breathing on THE FENLIGHT
-        // clock — guttering, rallying, never out. It hangs beside
-        // the brow at every facing; the fen walks where you walk.
+        // THE CAGED WISP: hung from the crook's hook, riding ahead
+        // of the brow at every facing — bigger now, a lantern worn
+        // like a standard. It gutters, it rallies; it never goes
+        // out, and it sheds one mote at a time home to the fen.
         const wl = st.wisplantern;
         const k = fenlightK(f.nowMs);
         const flick = k > 0.72 ? Math.sin(f.nowMs * 0.029) * 0.09 : 0;
-        const bob = Math.sin(f.nowMs * 0.0016) * hh * 0.04;
-        const lSwing = Math.sin(f.nowMs * 0.0011) * hw * 0.06;
-        // The lantern hangs CLEAR of the cloth — the jewel is worn
-        // where the fen can see it, beside the brow, never buried.
-        const lx = tipX + lead * hw * 0.55 + lSwing;
-        const ly = tipY + hh * 0.78 + bob;
-        const cw = headR * 0.24;
+        const bob = Math.sin(f.nowMs * 0.0016) * hh * 0.045;
+        const lSwing = Math.sin(f.nowMs * 0.0011) * hw * 0.07;
+        const lx = cTip.x + lead * hw * 0.06 + lSwing;
+        const ly = cTip.y + hh * 0.62 + bob;
+        const cw = headR * 0.28;
         ctx.strokeStyle = shade(wl.cage, -18);
         ctx.lineWidth = Math.max(1, s * 0.01);
         ctx.beginPath();
-        ctx.moveTo(tipX, tipY);
-        ctx.quadraticCurveTo(tipX + lead * hw * 0.4, tipY + hh * 0.3, lx, ly - cw * 1.3);
+        ctx.moveTo(cTip.x, cTip.y);
+        ctx.lineTo(lx, ly - cw * 1.35);
         ctx.stroke();
         // The glow first, past the ribs — light owns the cage.
-        ctx.globalAlpha = 0.26 + 0.34 * (k + flick);
+        ctx.globalAlpha = 0.24 + 0.32 * (k + flick);
         ctx.fillStyle = wl.wisp;
         ctx.beginPath();
-        ctx.arc(lx, ly, cw * 1.65, 0, Math.PI * 2);
+        ctx.arc(lx, ly, cw * 1.6, 0, Math.PI * 2);
         ctx.fill();
-        ctx.globalAlpha = 0.42 + 0.3 * k;
+        ctx.globalAlpha = 0.4 + 0.3 * k;
         ctx.beginPath();
-        ctx.arc(lx, ly, cw * 0.95, 0, Math.PI * 2);
+        ctx.arc(lx, ly, cw * 0.92, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 0.7 + 0.3 * Math.min(1, k + flick);
         ctx.fillStyle = shade(wl.wisp, 30);
         ctx.beginPath();
-        ctx.arc(lx, ly, cw * 0.42, 0, Math.PI * 2);
+        ctx.arc(lx, ly, cw * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        // One mote falling home.
+        const fall = (f.nowMs * 0.00035) % 1;
+        ctx.globalAlpha = 0.5 * k * (1 - fall);
+        ctx.beginPath();
+        ctx.arc(lx + Math.sin(f.nowMs * 0.0012) * cw * 0.4, ly + cw * (0.9 + fall * 1.6), cw * 0.13, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
-        // The cage: cap, foot and three ribs — reed, tied, worn.
+        // The cage: cap, hanger, foot and three ribs.
         ctx.fillStyle = wl.cage;
-        ctx.fillRect(lx - cw * 0.85, ly - cw * 1.25, cw * 1.7, cw * 0.4);
-        ctx.fillRect(lx - cw * 0.7, ly + cw * 0.9, cw * 1.4, cw * 0.34);
+        ctx.fillRect(lx - cw * 0.85, ly - cw * 1.28, cw * 1.7, cw * 0.4);
+        ctx.fillRect(lx - cw * 0.7, ly + cw * 0.92, cw * 1.4, cw * 0.34);
         ctx.fillStyle = shade(wl.cage, 16);
-        ctx.fillRect(lx - cw * 0.3, ly - cw * 1.55, cw * 0.6, cw * 0.34);
+        ctx.fillRect(lx - cw * 0.28, ly - cw * 1.56, cw * 0.56, cw * 0.32);
         ctx.strokeStyle = shade(wl.cage, 12);
         ctx.lineWidth = Math.max(1, s * 0.013);
         ctx.beginPath();
-        ctx.moveTo(lx - cw * 0.62, ly - cw * 0.9);
-        ctx.lineTo(lx - cw * 0.62, ly + cw * 0.92);
-        ctx.moveTo(lx + cw * 0.62, ly - cw * 0.9);
-        ctx.lineTo(lx + cw * 0.62, ly + cw * 0.92);
-        ctx.moveTo(lx, ly - cw * 0.98);
-        ctx.lineTo(lx, ly + cw * 0.98);
+        ctx.moveTo(lx - cw * 0.62, ly - cw * 0.92);
+        ctx.lineTo(lx - cw * 0.62, ly + cw * 0.94);
+        ctx.moveTo(lx + cw * 0.62, ly - cw * 0.92);
+        ctx.lineTo(lx + cw * 0.62, ly + cw * 0.94);
+        ctx.moveTo(lx, ly - cw * 1.0);
+        ctx.lineTo(lx, ly + cw * 1.0);
         ctx.stroke();
       }
     }
@@ -15433,12 +15764,13 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   }
 
   if (st.kind === 'bloomcrown') {
-    // THE BLOOM CROWN — mirebloom's own head: the mire orchid worn
-    // closed. Lapped petals climb to a soft central point, two
-    // drooping lappet petals frame the jaw with dew at their tips,
-    // and on THE FENLIGHT clock the crown EASES OPEN a breath — the
-    // inner heart shows in the notches — then shuts. It opens for
-    // no sun, only the fen's own light.
+    // THE SOVEREIGN ORCHID — mirebloom's own head, second forging:
+    // the mire orchid worn OPEN. Two great fall petals sweep down
+    // from the crown to frame the jaw, dew-tipped; three wide lit
+    // standard petals stand above, parting as THE FENLIGHT clock
+    // breathes; the heart burns between them; and two pale petal
+    // tails stream out past the silhouette. Petals and falls are
+    // STRUCTURE — they hold as white in the hurt flash.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
@@ -15446,22 +15778,41 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const oTop = headY - hh * 0.54;
     const oBot = headY + hh * 0.86;
     const bloomK = fenlightK(f.nowMs);
-    const petX = 0.6 + bloomK * 0.09;
-    const apexX = headX - lead * hw * 0.04;
-    const apexY = headY - hh * (1.34 + bloomK * 0.06);
+    const crownY = headY - hh * 0.98;
+    // THE PETAL TAILS first — behind everything, streaming PAST the
+    // shell's own silhouette on the trailing side, pale on plum.
+    if (!hurt && st.bloomheart) {
+      const tailCol = st.bloomheart.tails ?? st.bloomheart.color;
+      for (const [u, len, swing, ph] of [[-1, 1.75, 1.7, 0], [1, 1.35, 1.42, 1.9]] as const) {
+        const tSway = Math.sin(f.nowMs * 0.0013 + ph) * hw * 0.1;
+        const bx0 = headX - lead * hw * 0.1 + u * hw * 0.2;
+        const tipX = headX - lead * hw * swing + tSway;
+        ctx.fillStyle = shade(tailCol, u === -1 ? 0 : -12);
+        ctx.beginPath();
+        ctx.moveTo(bx0, crownY + hh * 0.08);
+        ctx.quadraticCurveTo(
+          headX - lead * hw * (swing + 0.25) + tSway * 0.5, crownY + hh * len * 0.42,
+          tipX, crownY + hh * len,
+        );
+        ctx.quadraticCurveTo(
+          headX - lead * hw * (swing - 0.28) + tSway, crownY + hh * (len * 0.5),
+          bx0 - lead * hw * 0.26, crownY + hh * 0.18,
+        );
+        ctx.closePath();
+        ctx.fill();
+        // The tail's curl: a paler tip flick.
+        ctx.fillStyle = shade(tailCol, 16);
+        ctx.beginPath();
+        ctx.arc(tipX, crownY + hh * len, headR * 0.045, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
     const shell = () => {
       ctx.moveTo(headX + lead * hw * 1.18, headY + hh * 1.14);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.28, headY + hh * 0.1, headX + lead * hw * 1.0, headY - hh * 0.5);
-      // Leading side petal: out and up to its own soft point.
-      ctx.quadraticCurveTo(headX + lead * hw * (petX + 0.34), headY - hh * 0.92, headX + lead * hw * petX, headY - hh * 1.08);
-      // The notch: petals part here when the crown eases open.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.4, headY - hh * 1.02, headX + lead * hw * 0.28, headY - hh * 1.0);
-      // The central petal climbs to the crown's point.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.14, headY - hh * 1.3, apexX, apexY);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.18, headY - hh * 1.28, headX - lead * hw * 0.3, headY - hh * 1.0);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.42, headY - hh * 1.02, headX - lead * hw * petX, headY - hh * 1.06);
-      // Trailing side petal falls fitted into the drape.
-      ctx.quadraticCurveTo(headX - lead * hw * (petX + 0.32), headY - hh * 0.88, headX - lead * hw * (1.02 + t * 0.24), headY - hh * 0.44);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.28, headY + hh * 0.1, headX + lead * hw * 1.02, headY - hh * 0.5);
+      // The calyx dome: a low fitted crown the petals stand from.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.7, headY - hh * 1.06, headX, headY - hh * 1.12);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.7, headY - hh * 1.04, headX - lead * hw * (1.0 + t * 0.24), headY - hh * 0.46);
       ctx.quadraticCurveTo(headX - lead * hw * (1.24 + t * 0.26), headY + hh * 0.42, headX - lead * hw * 1.2, headY + hh * 1.14);
       ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.18, headY + hh * 1.14);
       ctx.closePath();
@@ -15474,65 +15825,142 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     shell();
     if (front) opening();
     ctx.fill('evenodd');
+    // The calyx planes and sepal seams, clipped to the shell.
     if (!hurt) {
       ctx.save();
       ctx.beginPath();
       shell();
       if (front) opening();
       ctx.clip('evenodd');
-      // Petal planes: trailing half a step darker, the central petal
-      // lit — three petals, three values, folded dark in the seams.
       ctx.fillStyle = shade(st.color, -12);
       ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 2.1, hw * 2.4, hh * 3.8);
-      ctx.fillStyle = shade(st.color, 8);
+      ctx.fillStyle = shade(st.color, -24);
+      for (const u of [-0.5, 0.1, 0.7] as const) {
+        ctx.beginPath();
+        ctx.moveTo(headX + lead * hw * u, headY - hh * 1.04);
+        ctx.lineTo(headX + lead * hw * (u + 0.1), headY - hh * 1.04);
+        ctx.lineTo(headX + lead * hw * (u + 0.04), headY - hh * 0.35);
+        ctx.lineTo(headX + lead * hw * (u - 0.06), headY - hh * 0.35);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    // THE STANDARDS: three wide LIT petals off the calyx, the sides
+    // PARTING on the clock — structure first, detail only unhurt.
+    const stands = [
+      [1, 0.36, 1.18, 0.5], [-1, -0.36, 1.16, 0.5], [0, 0, 1.5, 0.6],
+    ] as const;
+    for (const [u, bx0, ph, pw] of stands) {
+      const baseX = headX + lead * hw * 0.04 + u * hw * 0.36 + lead * hw * bx0 * 0.1;
+      const rot = u === 0 ? lead * 0.05 : u * (0.1 + 0.24 * bloomK);
+      ctx.save();
+      ctx.translate(baseX, crownY);
+      ctx.rotate(rot);
+      ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, u === 0 ? 18 : 8);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.28, headY - hh * 1.0);
-      ctx.lineTo(apexX, apexY + hh * 0.06);
-      ctx.lineTo(apexX - lead * hw * 0.1, apexY + hh * 0.22);
-      ctx.lineTo(headX + lead * hw * 0.02, headY - hh * 0.7);
+      ctx.moveTo(-hw * pw * 0.5, 0);
+      ctx.quadraticCurveTo(-hw * pw * 0.78, -hh * ph * 0.6, 0, -hh * ph);
+      ctx.quadraticCurveTo(hw * pw * 0.78, -hh * ph * 0.6, hw * pw * 0.5, 0);
       ctx.closePath();
       ctx.fill();
-      // The petal seams: hard creases falling from both notches —
-      // wide enough to read at the front, where the crown must say
-      // PETALS or it says nothing.
-      ctx.fillStyle = shade(st.color, -28);
-      for (const u of [1, -1] as const) {
-        ctx.beginPath();
-        ctx.moveTo(headX + u * lead * hw * 0.3, headY - hh * 1.02);
-        ctx.lineTo(headX + u * lead * hw * 0.42, headY - hh * 0.98);
-        ctx.lineTo(headX + u * lead * hw * 0.54, headY + hh * 0.2);
-        ctx.lineTo(headX + u * lead * hw * 0.42, headY + hh * 0.2);
-        ctx.closePath();
-        ctx.fill();
-      }
-      // The notch under-shadow: the parting petals throw their own
-      // folded dark where they separate from the central bud.
-      ctx.fillStyle = shade(st.color, -20);
-      for (const u of [1, -1] as const) {
-        ctx.beginPath();
-        ctx.moveTo(headX + u * lead * hw * 0.28, headY - hh * 1.02);
-        ctx.quadraticCurveTo(headX + u * lead * hw * 0.5, headY - hh * 1.12, headX + u * lead * hw * 0.62, headY - hh * 1.0);
-        ctx.lineTo(headX + u * lead * hw * 0.56, headY - hh * 0.88);
-        ctx.quadraticCurveTo(headX + u * lead * hw * 0.42, headY - hh * 0.96, headX + u * lead * hw * 0.28, headY - hh * 0.94);
-        ctx.closePath();
-        ctx.fill();
-      }
+      if (hurt) { ctx.restore(); continue; }
+      // The petal's heartward vein: a darker center plane.
+      ctx.fillStyle = shade(st.color, u === 0 ? -4 : -12);
+      ctx.beginPath();
+      ctx.moveTo(-hw * pw * 0.14, -hh * 0.06);
+      ctx.quadraticCurveTo(-hw * pw * 0.2, -hh * ph * 0.52, 0, -hh * (ph - 0.1));
+      ctx.quadraticCurveTo(hw * pw * 0.06, -hh * ph * 0.5, hw * pw * 0.1, -hh * 0.06);
+      ctx.closePath();
+      ctx.fill();
+      // The petal's rim light: the mire's own color at the edge.
       if (st.bloomheart) {
-        // THE HEART SHOWN: as the crown opens, the inner petal color
-        // wakes in both notches — the orchid admitting its center.
-        ctx.globalAlpha = 0.38 + 0.55 * bloomK;
-        ctx.fillStyle = st.bloomheart.color;
-        for (const u of [1, -1] as const) {
-          ctx.beginPath();
-          ctx.moveTo(headX + u * lead * hw * 0.3, headY - hh * 1.02);
-          ctx.quadraticCurveTo(headX + u * lead * hw * 0.44, headY - hh * 1.16, headX + u * lead * hw * 0.54, headY - hh * 1.04);
-          ctx.quadraticCurveTo(headX + u * lead * hw * 0.44, headY - hh * 0.96, headX + u * lead * hw * 0.3, headY - hh * 1.02);
-          ctx.closePath();
-          ctx.fill();
-        }
+        ctx.globalAlpha = 0.5 + 0.3 * bloomK;
+        ctx.strokeStyle = shade(st.bloomheart.color, -6);
+        ctx.lineWidth = Math.max(1.5, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(-hw * pw * 0.42, -hh * 0.05);
+        ctx.quadraticCurveTo(-hw * pw * 0.7, -hh * ph * 0.6, 0, -hh * (ph - 0.02));
+        ctx.stroke();
         ctx.globalAlpha = 1;
       }
       ctx.restore();
+    }
+    // THE FALLS: two great petals sweeping down from the calyx to
+    // frame the jaw, tips curling out — structure, so they hold in
+    // the flash; midrib and dew are detail.
+    for (const u of [1, -1] as const) {
+      const fSway = Math.sin(f.nowMs * 0.0012 + u * 1.2) * hw * 0.02;
+      const bx0 = headX + u * hw * 0.6;
+      const tx = headX + u * hw * (1.28 + t * 0.1) + fSway;
+      const ty = headY + hh * 0.5;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, u === lead ? 4 : -10);
+      ctx.beginPath();
+      ctx.moveTo(bx0, headY - hh * 0.95);
+      ctx.quadraticCurveTo(headX + u * hw * 1.3, headY - hh * 0.5, tx, ty);
+      ctx.quadraticCurveTo(headX + u * hw * 1.4, headY + hh * 0.68, headX + u * hw * 1.16, headY + hh * 0.86);
+      ctx.quadraticCurveTo(headX + u * hw * 0.98, headY + hh * 0.42, headX + u * hw * 0.78, headY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + u * hw * 0.66, headY - hh * 0.6, bx0, headY - hh * 0.95);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) continue;
+      // The fall's midrib: a darker vein plane.
+      ctx.fillStyle = shade(st.color, u === lead ? -10 : -22);
+      ctx.beginPath();
+      ctx.moveTo(bx0 + u * hw * 0.04, headY - hh * 0.85);
+      ctx.quadraticCurveTo(headX + u * hw * 1.12, headY - hh * 0.4, tx - u * hw * 0.08, ty - hh * 0.06);
+      ctx.lineTo(tx - u * hw * 0.16, ty - hh * 0.02);
+      ctx.quadraticCurveTo(headX + u * hw * 1.0, headY - hh * 0.44, bx0 - u * hw * 0.04, headY - hh * 0.82);
+      ctx.closePath();
+      ctx.fill();
+      if (st.bloomheart) {
+        const dewK = fenlightK(f.nowMs, u === 1 ? 0.25 : 0.6);
+        ctx.globalAlpha = 0.5 + 0.5 * dewK;
+        ctx.fillStyle = st.bloomheart.dew;
+        ctx.beginPath();
+        ctx.arc(headX + u * hw * 1.16, headY + hh * 0.88, headR * 0.055, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.5 * dewK;
+        ctx.beginPath();
+        ctx.arc(headX + u * hw * 1.14, headY + hh * 0.85, headR * 0.02, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    if (!hurt) {
+      if (st.bloomheart) {
+        // THE HEART: the orchid's center burning between the
+        // standards, waking with the clock — and at full open one
+        // pollen mote lifts off it.
+        const hx = headX + lead * hw * 0.04;
+        const hy = crownY - hh * 0.36;
+        ctx.globalAlpha = 0.35 + 0.45 * bloomK;
+        ctx.fillStyle = st.bloomheart.color;
+        ctx.beginPath();
+        ctx.arc(hx, hy, headR * (0.22 + 0.06 * bloomK), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.6 + 0.4 * bloomK;
+        ctx.fillStyle = shade(st.bloomheart.color, 18);
+        ctx.beginPath();
+        ctx.arc(hx, hy, headR * 0.13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.7 + 0.3 * bloomK;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(hx - headR * 0.03, hy - headR * 0.03, headR * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        if (bloomK > 0.7) {
+          const u01 = (f.nowMs % 5600) / 5600;
+          ctx.globalAlpha = 0.55 * ((bloomK - 0.7) / 0.3) * (1 - u01 * 0.6);
+          ctx.fillStyle = st.bloomheart.dew;
+          ctx.beginPath();
+          ctx.arc(hx + Math.sin(f.nowMs * 0.0021) * hw * 0.14, hy - hh * (0.24 + u01 * 0.4), headR * 0.032, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
       if (front) {
         ctx.save();
         ctx.beginPath();
@@ -15554,44 +15982,11 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.beginPath();
         chamferRect(ctx, cx - ohw + s * 0.012, oTop + s * 0.012, (ohw - s * 0.012) * 2, oBot - oTop - s * 0.024, cut * 0.6);
         ctx.stroke();
-        // THE LAPPETS: two drooping petals framing the jaw, each
-        // carrying a dew bead at its tip that glints on the clock.
-        for (const u of [1, -1] as const) {
-          const bx0 = headX + u * hw * 0.84;
-          const tx = headX + u * hw * 1.0;
-          const ty = headY + hh * 1.0;
-          ctx.fillStyle = shade(st.color, u === lead ? -2 : -14);
-          ctx.beginPath();
-          ctx.moveTo(bx0, headY + hh * 0.28);
-          ctx.quadraticCurveTo(headX + u * hw * 1.14, headY + hh * 0.62, tx, ty);
-          ctx.quadraticCurveTo(headX + u * hw * 0.78, headY + hh * 0.72, bx0 - u * hw * 0.1, headY + hh * 0.34);
-          ctx.closePath();
-          ctx.fill();
-          if (st.bloomheart) {
-            const dewK = fenlightK(f.nowMs, u === 1 ? 0.25 : 0.6);
-            ctx.globalAlpha = 0.5 + 0.5 * dewK;
-            ctx.fillStyle = st.bloomheart.dew;
-            ctx.beginPath();
-            ctx.arc(tx, ty + hh * 0.05, headR * 0.06, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.globalAlpha = 0.5 * dewK;
-            ctx.beginPath();
-            ctx.arc(tx - headR * 0.018, ty + hh * 0.03, headR * 0.022, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-          }
-        }
       } else {
-        // From behind: petal backs — the calyx seam and the tail.
+        // From behind: the calyx seam and the tail keep the cloth
+        // honest under the streaming petals.
         ctx.fillStyle = shade(st.color, -18);
-        ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.06, apexY + hh * 0.2);
-        ctx.lineTo(headX + hw * 0.06, apexY + hh * 0.2);
-        ctx.lineTo(headX + hw * 0.02, headY + hh * 1.1);
-        ctx.lineTo(headX - hw * 0.02, headY + hh * 1.1);
-        ctx.closePath();
-        ctx.fill();
+        ctx.fillRect(headX - hw * 0.05, headY - hh * 0.95, hw * 0.1, hh * 1.9);
         ctx.fillStyle = shade(st.color, -10);
         ctx.beginPath();
         ctx.moveTo(headX - hw * 0.32, headY + hh * 0.9);
@@ -15600,36 +15995,29 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.closePath();
         ctx.fill();
       }
-      if (st.bloomheart && bloomK > 0.7) {
-        // One pollen mote lifting off the crown at full open.
-        const u01 = (f.nowMs % 5600) / 5600;
-        ctx.globalAlpha = 0.55 * (bloomK - 0.7) / 0.3 * (1 - u01 * 0.6);
-        ctx.fillStyle = st.bloomheart.dew;
-        ctx.beginPath();
-        ctx.arc(apexX + Math.sin(f.nowMs * 0.0021) * hw * 0.14, apexY - hh * (0.12 + u01 * 0.4), headR * 0.03, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
     }
     return;
   }
 
   if (st.kind === 'sedgehat') {
-    // THE SEDGE HAT — rustsedge's own head: a low wide woven cone
-    // seated close over the eyes, the brim stepped in flat weave
-    // rings, a cord band knotted at the cone's foot. Under the brim
-    // the face sits in its own poured shadow; on the crown perches
-    // THE DARTER — a dragonfly, wings folded back along the body,
-    // still as bait, shivering awake once a cycle.
+    // THE FEN LORD'S HAT — rustsedge's own head, second forging: a
+    // GRAND double-tiered woven hat, the wide lower brim fringed in
+    // hanging reed strands, a lighter upper brim stacked over it,
+    // and the tall cone rising between two standing cattails. The
+    // face sits in poured shadow under all of it; THE DARTER perches
+    // on the upper brim, still as bait, shivering awake once a
+    // cycle. A hat with a county under it.
     const t = profileK;
     const front = backK <= 0.55;
-    const brimY = headY - hh * 0.2;
-    const brimRx = hw * 1.78 * (1 - 0.14 * t);
-    const brimRy = hh * 0.36 * (1 - 0.2 * t);
-    const apexX = headX - lead * hw * 0.08;
-    const apexY = headY - hh * 1.42;
-    // The under-brim first: poured shadow down PAST the eye line —
-    // the mystery is how little face the brim agrees to show.
+    const brimY = headY - hh * 0.22;
+    const brimRx = hw * 2.2 * (1 - 0.16 * t);
+    const brimRy = hh * 0.42 * (1 - 0.2 * t);
+    const brim2Y = brimY - hh * 0.34;
+    const brim2Rx = brimRx * 0.66;
+    const brim2Ry = brimRy * 0.62;
+    const apexX = headX - lead * hw * 0.1;
+    const apexY = headY - hh * 1.5;
+    // The under-brim first: poured shadow down PAST the eye line.
     if (front && !hurt) {
       ctx.fillStyle = 'rgba(26, 16, 10, 0.72)';
       ctx.beginPath();
@@ -15641,78 +16029,119 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.closePath();
       ctx.fill();
     }
-    // The brim: three concentric weave rings, value-stepped — flat
-    // planes, the way woven sedge actually holds the light.
-    for (const [rk, dv] of [[1, -16], [0.78, -5], [0.52, 6]] as const) {
+    // THE LOWER BRIM: the great ring, three weave bands deep.
+    for (const [rk, dv] of [[1, -18], [0.8, -8], [0.58, 2]] as const) {
       ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, dv);
       ctx.beginPath();
       ctx.ellipse(headX, brimY, brimRx * rk, brimRy * rk, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    // The cone: a low woven rise, faceted lit-to-lee, two weave
-    // bands stepping it, the cord band knotted at its foot.
-    const coneW = hw * 1.0;
+    if (!hurt) {
+      // THE REED FRINGE: hanging strands off the lower brim's edge,
+      // parted at the front so the shadowed face keeps its door.
+      ctx.strokeStyle = shade(st.color, -24);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      for (let i = 0; i < 9; i++) {
+        const u = -0.92 + (i / 8) * 1.84;
+        if (front && Math.abs(u) < 0.34) continue;
+        const fx0 = headX + u * brimRx * 0.94;
+        const fy0 = brimY + brimRy * Math.sqrt(Math.max(0, 1 - u * u)) * 0.85;
+        const fSway = Math.sin(f.nowMs * 0.0019 + i * 1.3) * hw * 0.03;
+        const fLen = hh * (0.34 + 0.1 * Math.sin(i * 2.7));
+        ctx.beginPath();
+        ctx.moveTo(fx0, fy0);
+        ctx.quadraticCurveTo(fx0 + fSway * 0.5, fy0 + fLen * 0.6, fx0 + fSway, fy0 + fLen);
+        ctx.stroke();
+      }
+    }
+    // THE UPPER BRIM: the lighter tier stacked above, lit.
+    for (const [rk, dv] of [[1, -4], [0.66, 8]] as const) {
+      ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, dv);
+      ctx.beginPath();
+      ctx.ellipse(headX, brim2Y, brim2Rx * rk, brim2Ry * rk, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // THE CONE: tall woven rise off the upper brim, faceted, banded.
+    const coneW = hw * 0.92;
+    const cone = () => {
+      ctx.moveTo(headX - coneW, brim2Y);
+      ctx.quadraticCurveTo(headX - coneW * 0.48, brim2Y - hh * 0.7, apexX, apexY);
+      ctx.quadraticCurveTo(headX + coneW * 0.5, brim2Y - hh * 0.68, headX + coneW, brim2Y);
+      ctx.quadraticCurveTo(headX, brim2Y + brim2Ry * 0.6, headX - coneW, brim2Y);
+      ctx.closePath();
+    };
     ctx.fillStyle = hurt ? '#ffffff' : st.color;
     ctx.beginPath();
-    ctx.moveTo(headX - coneW, brimY);
-    ctx.quadraticCurveTo(headX - coneW * 0.5, brimY - hh * 0.62, apexX, apexY);
-    ctx.quadraticCurveTo(headX + coneW * 0.52, brimY - hh * 0.6, headX + coneW, brimY);
-    ctx.quadraticCurveTo(headX, brimY + brimRy * 0.5, headX - coneW, brimY);
-    ctx.closePath();
+    cone();
     ctx.fill();
     if (!hurt) {
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(headX - coneW, brimY);
-      ctx.quadraticCurveTo(headX - coneW * 0.5, brimY - hh * 0.62, apexX, apexY);
-      ctx.quadraticCurveTo(headX + coneW * 0.52, brimY - hh * 0.6, headX + coneW, brimY);
-      ctx.quadraticCurveTo(headX, brimY + brimRy * 0.5, headX - coneW, brimY);
-      ctx.closePath();
+      cone();
       ctx.clip();
-      // Lee facet: the trailing half a value step down.
       ctx.fillStyle = shade(st.color, -12);
-      ctx.fillRect(lead === 1 ? headX - hw * 2 : headX, apexY - hh * 0.2, hw * 2, hh * 2);
-      // Two weave bands stepping the cone.
-      for (const [by, dv] of [[-0.98, 7], [-0.62, -6]] as const) {
+      ctx.fillRect(lead === 1 ? headX - hw * 2 : headX, apexY - hh * 0.2, hw * 2, hh * 2.4);
+      for (const [by, dv] of [[-1.14, 7], [-0.76, -6]] as const) {
         ctx.fillStyle = shade(st.color, dv);
         ctx.fillRect(headX - coneW, headY + hh * by, coneW * 2, hh * 0.1);
       }
       // The cord band at the cone's foot, and its knot.
       ctx.fillStyle = st.trim;
-      ctx.fillRect(headX - coneW, brimY - hh * 0.16, coneW * 2, hh * 0.13);
+      ctx.fillRect(headX - coneW, brim2Y - hh * 0.16, coneW * 2, hh * 0.13);
       ctx.fillStyle = shade(st.trim, -16);
-      ctx.fillRect(headX + lead * hw * 0.34 - hw * 0.06, brimY - hh * 0.19, hw * 0.12, hh * 0.19);
+      ctx.fillRect(headX + lead * hw * 0.3 - hw * 0.06, brim2Y - hh * 0.19, hw * 0.12, hh * 0.19);
       ctx.restore();
-      // The bead cord: hung off the brim's trailing edge, swinging.
-      const bx = headX - lead * brimRx * 0.8;
-      const bSway = Math.sin(f.nowMs * 0.0019) * hw * 0.05;
-      const bby = brimY + brimRy + hh * 0.42;
-      ctx.strokeStyle = shade(st.trim, -20);
-      ctx.lineWidth = Math.max(1, s * 0.009);
-      ctx.beginPath();
-      ctx.moveTo(bx, brimY + brimRy * 0.6);
-      ctx.lineTo(bx + bSway, bby - hh * 0.06);
-      ctx.stroke();
-      ctx.fillStyle = shade(st.trim, 10);
-      ctx.beginPath();
-      ctx.arc(bx + bSway, bby, headR * 0.05, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = shade(st.trim, 32);
-      ctx.beginPath();
-      ctx.arc(bx + bSway - headR * 0.014, bby - headR * 0.014, headR * 0.02, 0, Math.PI * 2);
-      ctx.fill();
+      // THE STANDING CATTAILS: two off the band's trailing side,
+      // velvet heads tipped in fluff, nodding a hair.
+      for (const [ci, cu, chg] of [[0, -0.62, 0.55], [1, -0.86, 0.4]] as const) {
+        const bx0 = headX + lead * hw * cu;
+        const nod = Math.sin(f.nowMs * 0.0017 + ci * 2.1) * hw * 0.03;
+        const topY = brim2Y - hh * (chg + 0.34);
+        ctx.strokeStyle = shade(st.trim, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(bx0, brim2Y - hh * 0.1);
+        ctx.quadraticCurveTo(bx0 + nod * 0.5, brim2Y - hh * chg, bx0 + nod, topY + hh * 0.14);
+        ctx.stroke();
+        ctx.fillStyle = shade(st.color, -28);
+        ctx.beginPath();
+        ctx.ellipse(bx0 + nod, topY, hw * 0.055, hh * 0.13, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(st.trim, 18);
+        ctx.beginPath();
+        ctx.ellipse(bx0 + nod, topY - hh * 0.17, hw * 0.035, hh * 0.05, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The bead cords: two amber drops off the trailing brim edge.
+      for (const [bi, bu, bl] of [[0, -0.82, 0.5], [1, -0.6, 0.36]] as const) {
+        const bx = headX + lead * brimRx * bu;
+        const bSway = Math.sin(f.nowMs * 0.0019 + bi * 2.3) * hw * 0.04;
+        const bby = brimY + brimRy + hh * bl;
+        ctx.strokeStyle = shade(st.trim, -20);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(bx, brimY + brimRy * 0.6);
+        ctx.lineTo(bx + bSway, bby - hh * 0.06);
+        ctx.stroke();
+        ctx.fillStyle = shade(st.trim, 10);
+        ctx.beginPath();
+        ctx.arc(bx + bSway, bby, headR * (0.055 - bi * 0.012), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(st.trim, 32);
+        ctx.beginPath();
+        ctx.arc(bx + bSway - headR * 0.014, bby - headR * 0.014, headR * 0.02, 0, Math.PI * 2);
+        ctx.fill();
+      }
       if (st.darter) {
-        // THE DARTER: settled at the cone's foot on the leading
-        // side. Long abdomen, thorax bulb, folded wings laid back
-        // along the body — filled blade planes, never stroked
-        // spines. The shiver: once a cycle it remembers it can fly.
+        // THE DARTER: perched on the upper brim's leading edge —
+        // long abdomen, thorax bulb, folded blade-plane wings. Once
+        // a cycle it remembers it can fly.
         const shivT = f.nowMs % 6200;
         const shiver = shivT < 420 ? Math.sin(f.nowMs * 0.09) * 0.16 : 0;
         ctx.save();
-        ctx.translate(headX + lead * hw * 0.34, brimY - hh * 0.3);
-        ctx.rotate(lead * -0.1 + shiver * 0.4);
-        const dl = hw * 0.78;
-        // Abdomen: slim, two darker segment ticks.
+        ctx.translate(headX + lead * brim2Rx * 0.66, brim2Y - hh * 0.1);
+        ctx.rotate(lead * -0.12 + shiver * 0.4);
+        const dl = hw * 0.82;
         ctx.fillStyle = st.darter.body;
         ctx.beginPath();
         ctx.ellipse(-lead * dl * 0.5, 0, dl * 0.5, hh * 0.05, 0, 0, Math.PI * 2);
@@ -15720,7 +16149,6 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.fillStyle = shade(st.darter.body, -18);
         ctx.fillRect(-lead * dl * 0.42, -hh * 0.045, dl * 0.05, hh * 0.09);
         ctx.fillRect(-lead * dl * 0.68, -hh * 0.04, dl * 0.05, hh * 0.08);
-        // Thorax and head, two lamp eyes.
         ctx.fillStyle = shade(st.darter.body, 8);
         ctx.beginPath();
         ctx.arc(0, 0, hh * 0.085, 0, Math.PI * 2);
@@ -15729,8 +16157,6 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.beginPath();
         ctx.arc(lead * dl * 0.14, -hh * 0.014, hh * 0.06, 0, Math.PI * 2);
         ctx.fill();
-        // The folded wings: two lapped blade planes swept back past
-        // the tail, pale, each with one membrane notch.
         for (const [wy, dv, wr] of [[-0.03, 0, -0.07], [0.02, -12, 0.06]] as const) {
           ctx.save();
           ctx.rotate(wr + shiver);
