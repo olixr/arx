@@ -13,6 +13,7 @@ import {
   HANGABLE_WALL_TILES,
   INTERIOR_BOUNDARY_TILES,
   LIGHT_BLOCKING_TILES,
+  PALISADE_TILES,
   SIGN_MOTIF_COUNT,
   TRELLIS_SPECIES_COUNT,
   WALL_HUNG_DETAILS,
@@ -38,6 +39,7 @@ import {
   openChestTile,
   openDoorTile,
   orientDiagFence,
+  orientDiagPalisade,
   orientDiagWall,
   shutDoorTile,
   tileDef,
@@ -112,6 +114,20 @@ test('door posture drives solidity and lamplight', () => {
       );
       continue;
     }
+    if (info.material === 'palisade') {
+      // The camp gate carves out the same way: it belongs to the
+      // spiked-wall family, and its shut leaf is full-height lashed
+      // logs — lamplight mass like the garrison's, prop like the
+      // fence's.
+      assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} stays out of wall runs`);
+      assert.ok(PALISADE_TILES.has(tile), `${tileDef(tile).name} joins the palisade family`);
+      assert.equal(
+        LIGHT_BLOCKING_TILES.includes(tile),
+        !info.open,
+        `${tileDef(tile).name} lamplight`,
+      );
+      continue;
+    }
     assert.equal(
       LIGHT_BLOCKING_TILES.includes(tile),
       !info.open,
@@ -121,6 +137,36 @@ test('door posture drives solidity and lamplight', () => {
     // never re-shape the building around it.
     assert.ok(WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} joins wall runs`);
   }
+});
+
+test('palisade family: the spiked wall stands apart and its gate rounds the trip', () => {
+  assert.deepEqual(doorInfo(Tile.PalisadeGate), { material: 'palisade', wide: false, open: true });
+  assert.deepEqual(doorInfo(Tile.PalisadeGateShut), {
+    material: 'palisade',
+    wide: false,
+    open: false,
+  });
+  assert.equal(shutDoorTile(Tile.PalisadeGate), Tile.PalisadeGateShut);
+  assert.equal(openDoorTile(Tile.PalisadeGateShut), Tile.PalisadeGate);
+  for (const tile of PALISADE_TILES) {
+    assert.ok(tileDef(tile).raised, `${tileDef(tile).name} renders raised`);
+    // Only the open gate lets a body through.
+    assert.equal(tileDef(tile).solid, tile !== Tile.PalisadeGate, `${tileDef(tile).name} solidity`);
+    // THE SEPARATE-MASONRY LAW, third family: never a building wall,
+    // never a fence, never garrison masonry.
+    assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} out of wall runs`);
+    assert.ok(!FENCE_TILES.has(tile), `${tileDef(tile).name} out of the fence family`);
+    assert.ok(!GARRISON_TILES.has(tile), `${tileDef(tile).name} out of the garrison family`);
+  }
+  // Head-high logs hide the camp; the open gate spills firelight.
+  for (const tile of [Tile.Palisade, Tile.PalisadeDiagNE, Tile.PalisadeDiagNW]) {
+    assert.ok(LIGHT_BLOCKING_TILES.includes(tile), `${tileDef(tile).name} blocks lamplight`);
+  }
+  // The 45° turn joins whichever diagonal already carries the wall.
+  assert.equal(orientDiagPalisade(true, false, false, false), Tile.PalisadeDiagNE);
+  assert.equal(orientDiagPalisade(false, false, false, true), Tile.PalisadeDiagNE);
+  assert.equal(orientDiagPalisade(false, true, false, false), Tile.PalisadeDiagNW);
+  assert.equal(orientDiagPalisade(false, false, true, false), Tile.PalisadeDiagNW);
 });
 
 test('fence family: gates round-trip and diagonals stay solid', () => {
@@ -194,6 +240,32 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     // the secret-door law — three blows open the hidden room.
     [Tile.BonePile, 'bonepile', 1],
     [Tile.CrackedCaveWall, 'crackedwall', 3],
+    // THE CAMP BARES ITS TEETH: the war camp is an obstacle course.
+    // Walls hold four blows; the road-blocker two; dressing pops in
+    // one or two. Palisade gates + the bonfire are deliberately NOT
+    // here (door law / a fire is doused, not smashed).
+    [Tile.Palisade, 'palisade', 4],
+    [Tile.PalisadeDiagNE, 'palisade', 4],
+    [Tile.PalisadeDiagNW, 'palisade', 4],
+    [Tile.StandingTorch, 'torch', 1],
+    [Tile.WarBrazier, 'brazier', 2],
+    [Tile.TentHide, 'tent', 3],
+    [Tile.TentWar, 'tent', 3],
+    [Tile.SkullPile, 'skulls', 1],
+    [Tile.SkullTotem, 'totem', 2],
+    [Tile.WarBanner, 'banner', 2],
+    [Tile.PrisonCage, 'cage', 3],
+    [Tile.SpikeBarrier, 'stakes', 2],
+    [Tile.MeatSpit, 'spit', 2],
+    [Tile.MeatRack, 'meatrack', 2],
+    [Tile.CookPot, 'pot', 2],
+    [Tile.PotionRack, 'potions', 1],
+    [Tile.BeastNest, 'nest', 1],
+    [Tile.PlunderSacks, 'sacks', 2],
+    [Tile.SpearRack, 'spears', 2],
+    [Tile.TargetDummy, 'dummy', 3],
+    [Tile.WarDrum, 'drum', 2],
+    [Tile.HideFrame, 'hide', 2],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -205,8 +277,9 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     assert.ok(info!.hits >= 1);
     // The absence must be worth enjoying, and never permanent. The
     // cracked wall runs long on purpose: a found passage stays found
-    // for the whole run (instances die before it restands).
-    const cap = kind === 'crackedwall' ? 3600 : 600;
+    // for the whole run (instances die before it restands). A breached
+    // palisade ring stays breached for the whole assault.
+    const cap = kind === 'crackedwall' ? 3600 : kind === 'palisade' ? 900 : 600;
     assert.ok(info!.respawnSec >= 120 && info!.respawnSec <= cap);
     // Only SOLID clutter is smashable — bursting a walkable tile
     // would patch the floor out from under someone's feet.
@@ -217,7 +290,17 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
 });
 
 test('load-bearing scenery is not smashable', () => {
-  for (const t of [Tile.WallWood, Tile.DoorwayWoodShut, Tile.ChestWood, Tile.Bed, Tile.Bookshelf]) {
+  for (const t of [
+    Tile.WallWood,
+    Tile.DoorwayWoodShut,
+    Tile.ChestWood,
+    Tile.Bed,
+    Tile.Bookshelf,
+    // The camp gate is the door law's; the bonfire never breaks.
+    Tile.PalisadeGate,
+    Tile.PalisadeGateShut,
+    Tile.Bonfire,
+  ]) {
     assert.equal(destructibleInfo(t), null);
   }
 });

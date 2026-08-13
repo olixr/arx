@@ -104,6 +104,23 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE CAMP BARES ITS TEETH: the enemy encampment's own shelf —
+    // the spiked wall family first, then the dressing.
+    id: 'camp',
+    label: 'War camp',
+    tiles: [
+      Tile.Palisade, Tile.PalisadeDiagNE, Tile.PalisadeDiagNW,
+      Tile.PalisadeGate, Tile.PalisadeGateShut,
+      Tile.StandingTorch, Tile.Bonfire, Tile.WarBrazier,
+      Tile.TentHide, Tile.TentWar,
+      Tile.SkullPile, Tile.SkullTotem, Tile.WarBanner,
+      Tile.PrisonCage, Tile.SpikeBarrier,
+      Tile.MeatSpit, Tile.MeatRack, Tile.CookPot, Tile.PotionRack,
+      Tile.BeastNest, Tile.PlunderSacks, Tile.SpearRack,
+      Tile.TargetDummy, Tile.WarDrum, Tile.HideFrame,
+    ],
+  },
+  {
     // THE OUTWARD FACE: every shape × dye, dealt from the shared band
     // math so the shelf can never drift from the world ids. Authors
     // paint the awning ROW (the tile south of a wall run).

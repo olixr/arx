@@ -22,6 +22,15 @@ import { validatePrefab } from '../maps/prefab.js';
  *   L lamp post     M market stall  a barrel     c crate
  *   e bench         l wood rail   P pillar       R cave rubble
  *   D delve gate    X iron chest  Z boss chest
+ * War-camp vocabulary (THE CAMP BARES ITS TEETH — the fortifier's
+ * punctuation, letters having run out):
+ *   | palisade      / \ 45° turns   = gate open   + gate shut
+ *   ! torch         @ bonfire       & war brazier
+ *   ^ hide tent     m war tent      0 skull pile  ? skull totem
+ *   > war banner    [ prison cage   < spike barrier
+ *   - meat spit     ) meat rack     { cook pot    } potion rack
+ *   ; beast nest    $ plunder       ] spear rack  ( target dummy
+ *   " war drum      ` hide frame
  * A 'D' is a WORKING riftgate: the sketch helper registers a delve
  * portal on every PortalDown tile (the tile IS the gate — same law as
  * chests and doors), so keys found in the wild can be turned in the
@@ -97,6 +106,35 @@ const LEGEND: Record<string, number> = {
   A: Tile.WallGarrison,
   U: Tile.GateGarrison,
   d: Tile.Sawhorse,
+  // THE CAMP BARES ITS TEETH: the war camp's own vocabulary
+  // (docs/war-camp-decor-plan.md). Letters ran out — the fortifier's
+  // punctuation reads true in a sketch: | is the spiked wall, = its
+  // gate, ! a standing torch, @ the great bonfire.
+  '|': Tile.Palisade,
+  '/': Tile.PalisadeDiagNE,
+  '\\': Tile.PalisadeDiagNW,
+  '=': Tile.PalisadeGate,
+  '+': Tile.PalisadeGateShut,
+  '!': Tile.StandingTorch,
+  '@': Tile.Bonfire,
+  '&': Tile.WarBrazier,
+  '^': Tile.TentHide,
+  m: Tile.TentWar,
+  '0': Tile.SkullPile,
+  '?': Tile.SkullTotem,
+  '>': Tile.WarBanner,
+  '[': Tile.PrisonCage,
+  '<': Tile.SpikeBarrier,
+  '-': Tile.MeatSpit,
+  ')': Tile.MeatRack,
+  '{': Tile.CookPot,
+  '}': Tile.PotionRack,
+  ';': Tile.BeastNest,
+  $: Tile.PlunderSacks,
+  ']': Tile.SpearRack,
+  '(': Tile.TargetDummy,
+  '"': Tile.WarDrum,
+  '`': Tile.HideFrame,
 };
 
 interface Marker {
@@ -184,13 +222,13 @@ const goblinCampRing = sketch(
   [
     '_____,,,_____',
     '__,:::::::,__',
-    '_,::F:::F::,_',
-    '_,:.......:,_',
+    '_,::|:!:|::,_',
+    '_,:.^.....:,_',
     ',::.1...2.::,',
-    ',:....f....:,',
+    ',:....f..-.:,',
     ',::.3...W.::,',
-    '_,:.......:,_',
-    '_,::F:n:F::,_',
+    '_,:.0.....:,_',
+    '_,::|:>:|::,_',
     '__,:::::::,__',
     '_____,,,_____',
   ],
@@ -204,11 +242,11 @@ const goblinCampPair = sketch(
   [
     '______,,,,_____',
     '__,::::::::,___',
-    '_,::f....:::,__',
+    '_,::f..^.:::,__',
     ',:.1...2..f::,_',
-    ',::...W.....:,_',
-    '_,:..n...3..:,_',
-    '_,::::::::::,__',
+    ',::...W...-.:,_',
+    '_,:..>...3..:,_',
+    '_,:::0::::::,__',
     '___,,::::,,____',
   ],
   goblinMarks,
@@ -239,7 +277,7 @@ const gnollSquat = sketch(
     '_,:S..2..SS:,_',
     '_,:#S..W.S#:,_',
     '_,:##S:S###:,_',
-    ',::.o.f..3.::,',
+    ',::.0.f-.3.::,',
     '_,::::o:::,,__',
     '____,,,,______',
   ],
@@ -253,10 +291,10 @@ const gnollBoneyard = sketch(
   [
     '____,,,,____',
     '__,::::::,__',
-    '_,:o.1..o:,_',
+    '_,:o.1..0:,_',
     ',::..f...::,',
     ',::2.W.o.::,',
-    '_,:..5...:,_',
+    '_,:..5.-.:,_',
     '__,::o:::,__',
     '____,,,,____',
   ],
@@ -478,10 +516,10 @@ const banditHollow = sketch(
   [
     '________,,_______',
     '___,::::::::,____',
-    '__,:u.G.c..u:,___',
+    '__,:u.G.c.$u:,___',
     '_,:.1...f..2.:,__',
     '_,:..k......X:,__',
-    '_,:.3.f....n.:,__',
+    '_,:.3.f..(.>.:,__',
     '_,:.llll.....:,__',
     '_,:.l99l..a.u:,__',
     '__,:llll...:,____',
@@ -505,9 +543,9 @@ const banditToll = sketch(
     '_,:.c.a..G.:,___',
     '_,:.1..f..2.:,__',
     '_::::::::::::::_',
-    '_,:n..o...n.:,__',
+    '_,:>..o...>.:,__',
     '_,:.3...X...:,__',
-    '_,:..c.::.a.:,__',
+    '_,:!.c.::.a.:,__',
     '__,::::::::,____',
     '______,,________',
   ],
@@ -528,9 +566,9 @@ const raiderSquat = sketch(
     '_____,,,______',
     '__,::::::,____',
     '_,:.c..1.:,___',
-    '_,:..f...n:,__',
+    '_,:..f...>:,__',
     '_,:2...W.:,___',
-    '_,:.a..3.:,___',
+    '_,:$a..3.:,___',
     '__,::::::,____',
     '_____,,_______',
   ],
@@ -735,7 +773,7 @@ const denBones = sketch(
     '__,,......,,___',
     '_,.rrr..o..,,__',
     '_,rrXrr...1.,__',
-    '_,.r.r..o...,__',
+    '_,.r.r..;...,__',
     '_,.o.....f..,__',
     '_,.1...c....,__',
     '__,..o...,,,___',
@@ -756,7 +794,7 @@ const denHollow = sketch(
     '____,,,_______',
     '__,u.....u,___',
     '_,.,,o.,,.,,__',
-    '_,u.1...o.u,__',
+    '_,u.1...;.u,__',
     '_,.o..rX...,__',
     '_,....rr...,__',
     '_,u..1...u.,__',
@@ -912,14 +950,14 @@ const goblinStockade = sketch(
   [
     '______,,,_______',
     '__,::::::::::,__',
-    '_,:FFFF::FFFF:,_',
-    '_,:F........F:,_',
-    '_,:F.f.1..f.F:,_',
-    '_,:F...W....F:,_',
-    '_,:F.2...3..F:,_',
-    '_,:F...f....F:,_',
-    '_,:FFFF::FFFF:,_',
-    '_,::n::::::n::,_',
+    '_,:||||==||||:,_',
+    '_,:|.^.....0|:,_',
+    '_,:|.f.1..f.|:,_',
+    '_,:|...W...-|:,_',
+    '_,:|.2...3..|:,_',
+    '_,:|...f...[|:,_',
+    '_,:||||==||||:,_',
+    '_,::>::!:::>::,_',
     '__,::::::::::,__',
     '_____,,,________',
   ],
@@ -1311,11 +1349,11 @@ const findTappedYew = sketch('find_tapped_yew', 'Tapped yew', [
   '_,..,_',
 ]);
 
-/** A crooked trophy pole on trampled ground — the warband's claim. */
+/** A crooked skull totem on trampled ground — the warband's claim. */
 const findWarTotem = sketch('find_war_totem', 'War totem', [
   '_,..,_',
-  ',.o:.,',
-  ',:n:.,',
+  ',.0:.,',
+  ',:?:.,',
   ',.o..,',
   '_,..,_',
 ]);
@@ -1343,17 +1381,23 @@ const findBarrow = sketch('find_barrow', 'Old barrow', [
 // come from the ordinary camp shelves; the court is the piece that
 // says THIS one is the region's landmark.
 
-/** The goblin war-hold's court: a palisade ring around the chief's fires. */
+/**
+ * The goblin war-hold's court: a TRUE spiked ring now — the great
+ * bonfire at the heart, the chief's tents flanking it, the skull
+ * totem beside the warded cache, and the camp's whole life (cage,
+ * drum, plunder, spit) crowded inside the logs. Torches and war
+ * banners walk the gate row so the hold reads from the road at night.
+ */
 const warholdCourt = sketch('poi_warhold_court', 'War-hold court', [
   '_____,,::,,_____',
   '__,::::::::::,__',
-  '_,::F::::::F::,_',
-  '_,:F........F:,_',
-  ',::....ff....::,',
-  ',::.o..nZ....::,',
-  ',::..........::,',
-  '_,:F........F:,_',
-  '_,::F::::::F::,_',
+  '_,::|::==::|::,_',
+  '_,:|.^....m.|:,_',
+  ',::.!..@...[.::,',
+  ',::.0..?Z..$.::,',
+  ',::.-......".::,',
+  '_,:|.>....!.|:,_',
+  '_,::|::==::|::,_',
   '__,::::::::::,__',
   '_____,,::,,_____',
 ]);
@@ -1363,11 +1407,11 @@ const stockadeCourt = sketch('poi_stockade_court', 'Stockade court', [
   '______,,,______',
   '__,::::::::,___',
   '_,:wwwg:gwww:,_',
-  '_,:w.......w:,_',
+  '_,:w.$...(.w:,_',
   ',::w..a.c..w::,',
   ',::v...Z...v::,',
-  ',::w..f....w::,',
-  '_,:w.......w:,_',
+  ',::w..f.{..w::,',
+  '_,:w.]...!.w:,_',
   '_,:wwwg:gwww:,_',
   '__,::::::::,___',
   '______,,,______',
@@ -1378,9 +1422,9 @@ const greatdenCourt = sketch('poi_greatden_court', 'Great den court', [
   '____,,rr,,____',
   '__,rrRRRRrr,__',
   '_,rR::::::Rr,_',
-  ',rR:.o..o.:Rr,',
-  ',rR:..SZ..:Rr,',
-  ',rR:.o..o.:Rr,',
+  ',rR:.;..o.:Rr,',
+  ',rR:.0SZ?.:Rr,',
+  ',rR:.;..;.:Rr,',
   '_,rR::::::Rr,_',
   '__,rrRRrrr,___',
   '____,,rr,,____',

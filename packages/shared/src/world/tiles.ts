@@ -494,6 +494,65 @@ export enum Tile {
   HayBale = 289,
   Silo = 290,
   Dovecote = 291,
+  // THE CAMP BARES ITS TEETH (war-camp decor, docs/war-camp-decor-plan.md):
+  // the enemy encampment's own material culture. 292-296 = THE SPIKED
+  // WALL, a third fortification family (sharpened logs lashed together —
+  // never a WALL_RUN member, never bounds an interior, breaks under four
+  // blows like the barricade it is). 297-316 = the camp props.
+  /** Sharpened logs lashed shoulder to shoulder — the war camp's wall. */
+  Palisade = 292,
+  /** "/" palisade turn, corner-to-corner (the fence diagonal law). */
+  PalisadeDiagNE = 293,
+  /** "\" palisade turn. */
+  PalisadeDiagNW = 294,
+  /** The camp's lashed-log gate, standing open. Rides the door law. */
+  PalisadeGate = 295,
+  /** The gate barred shut — full-height mass, blocks lamplight. */
+  PalisadeGateShut = 296,
+  /** A sharpened stake driven at an angle, rag-lashed head burning. */
+  StandingTorch = 297,
+  /**
+   * The great fire at the camp's heart: stone ring, log tepee, a roaring
+   * three-tongue flame. The one camp piece no blade puts out — a fire is
+   * doused, never smashed — so a cleared camp keeps its night anchor.
+   */
+  Bonfire = 298,
+  /** An iron fire-cage slung in a tripod of scavenged spears. */
+  WarBrazier = 299,
+  /** A round goblin tent: stitched pelts over bent poles. */
+  TentHide = 300,
+  /** The chieftain's ridge tent, trophy jaw over the door. */
+  TentWar = 301,
+  /** Heaped skulls and long bones — the camp keeps its count. */
+  SkullPile = 302,
+  /** The war totem: skulls stacked up a carved stake, fetishes swaying. */
+  SkullTotem = 303,
+  /** A bent spear-shaft standard flying tattered painted hide. */
+  WarBanner = 304,
+  /** A crude cage of lashed branches, door rope-bound. */
+  PrisonCage = 305,
+  /** Crossed sharpened stakes in an X-frame — the road-blocker. */
+  SpikeBarrier = 306,
+  /** Forked stakes and a cross-spit, a haunch turning over coals. */
+  MeatSpit = 307,
+  /** A crossbar of hooks hung with cuts and drying strips. */
+  MeatRack = 308,
+  /** A blackened pot slung from a tripod, gruel at a slow boil. */
+  CookPot = 309,
+  /** A crooked shelf of bottles, gourds, and stoppered horns. */
+  PotionRack = 310,
+  /** The warg bed: a trampled ring of fur and straw and gnawed bones. */
+  BeastNest = 311,
+  /** Rope-tied loot sacks heaped where the raiders dropped them. */
+  PlunderSacks = 312,
+  /** Spears leaned in a pyramid stack, a crude shield propped against. */
+  SpearRack = 313,
+  /** A straw-stuffed dummy on a post, painted target, stuck arrows. */
+  TargetDummy = 314,
+  /** The great hide drum on its lashed frame, mallets crossed. */
+  WarDrum = 315,
+  /** A stretched hide lashed in a square curing frame. */
+  HideFrame = 316,
 }
 
 export enum Detail {
@@ -892,6 +951,32 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.HayBale]: { name: 'hay bale', solid: true, color: '#c9a64b', raised: true, topColor: '#e0c48e' },
   [Tile.Silo]: { name: 'silo', solid: true, color: '#8d8798', raised: true, topColor: '#a8794a' },
   [Tile.Dovecote]: { name: 'dovecote', solid: true, color: '#e8e2d4', raised: true, topColor: '#7d5a2e' },
+  // THE CAMP BARES ITS TEETH — war-camp fortification + props.
+  [Tile.Palisade]: { name: 'spiked palisade', solid: true, color: '#5e4023', raised: true, topColor: '#8a6534' },
+  [Tile.PalisadeDiagNE]: { name: 'spiked palisade', solid: true, color: '#5e4023', raised: true, topColor: '#8a6534' },
+  [Tile.PalisadeDiagNW]: { name: 'spiked palisade', solid: true, color: '#5e4023', raised: true, topColor: '#8a6534' },
+  [Tile.PalisadeGate]: { name: 'palisade gate', solid: false, color: '#6b4a26', raised: true, topColor: '#8a6534' },
+  [Tile.PalisadeGateShut]: { name: 'palisade gate', solid: true, color: '#5e4023', raised: true, topColor: '#8a6534' },
+  [Tile.StandingTorch]: { name: 'standing torch', solid: true, color: '#6b4a26', raised: true, topColor: '#e8823d' },
+  [Tile.Bonfire]: { name: 'bonfire', solid: true, color: '#57535f', raised: true, topColor: '#e8823d' },
+  [Tile.WarBrazier]: { name: 'war brazier', solid: true, color: '#3a3444', raised: true, topColor: '#e8823d' },
+  [Tile.TentHide]: { name: 'hide tent', solid: true, color: '#7a5c3e', raised: true, topColor: '#8f6e4a' },
+  [Tile.TentWar]: { name: 'war tent', solid: true, color: '#6e4a33', raised: true, topColor: '#84583c' },
+  [Tile.SkullPile]: { name: 'skull pile', solid: true, color: '#c9c2ae', raised: true, topColor: '#ddd6c2' },
+  [Tile.SkullTotem]: { name: 'skull totem', solid: true, color: '#6b4a26', raised: true, topColor: '#c9c2ae' },
+  [Tile.WarBanner]: { name: 'war banner', solid: true, color: '#6b4a26', raised: true, topColor: '#8a3b34' },
+  [Tile.PrisonCage]: { name: 'prison cage', solid: true, color: '#5e4023', raised: true, topColor: '#7d5a2e' },
+  [Tile.SpikeBarrier]: { name: 'spike barrier', solid: true, color: '#6b4a26', raised: true, topColor: '#8a6534' },
+  [Tile.MeatSpit]: { name: 'roasting spit', solid: true, color: '#6b4a26', raised: true, topColor: '#a3543a' },
+  [Tile.MeatRack]: { name: 'meat rack', solid: true, color: '#6b4a26', raised: true, topColor: '#8a4a3a' },
+  [Tile.CookPot]: { name: 'cook pot', solid: true, color: '#3a3444', raised: true, topColor: '#5d7a42' },
+  [Tile.PotionRack]: { name: 'potion rack', solid: true, color: '#6b4a26', raised: true, topColor: '#5d8a6e' },
+  [Tile.BeastNest]: { name: 'beast nest', solid: true, color: '#8a6a45', raised: true, topColor: '#a5834f' },
+  [Tile.PlunderSacks]: { name: 'plunder sacks', solid: true, color: '#9c8a62', raised: true, topColor: '#b09c70' },
+  [Tile.SpearRack]: { name: 'spear rack', solid: true, color: '#6b4a26', raised: true, topColor: '#8a6534' },
+  [Tile.TargetDummy]: { name: 'target dummy', solid: true, color: '#b09c70', raised: true, topColor: '#c9b684' },
+  [Tile.WarDrum]: { name: 'war drum', solid: true, color: '#6b4a26', raised: true, topColor: '#c9b088' },
+  [Tile.HideFrame]: { name: 'hide frame', solid: true, color: '#6b4a26', raised: true, topColor: '#b08d62' },
   [Tile.PikeHole]: { name: 'pike hole', solid: true, color: '#39679c', variants: ['#366293'] },
   [Tile.EelRun]: { name: 'eel run', solid: true, color: '#31578c', variants: ['#2e5284'] },
   [Tile.SalmonRun]: { name: 'salmon run', solid: true, color: '#457bbd', variants: ['#4174b3'] },
@@ -1174,6 +1259,12 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   // spills torchlight through the passage, a shut one seals it.
   Tile.WallGarrison,
   Tile.GateGarrisonShut,
+  // Head-high sharpened logs: a war camp's wall hides what it guards.
+  // The open gate spills firelight; the barred one seals it.
+  Tile.Palisade,
+  Tile.PalisadeDiagNE,
+  Tile.PalisadeDiagNW,
+  Tile.PalisadeGateShut,
 ];
 
 /**
@@ -1190,7 +1281,7 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
  * a fence gate its shut leaves are full-height mass — they block
  * lamplight and read as fortification.
  */
-export type DoorMaterial = 'stone' | 'wood' | 'fence' | 'garrison';
+export type DoorMaterial = 'stone' | 'wood' | 'fence' | 'garrison' | 'palisade';
 
 export interface DoorInfo {
   material: DoorMaterial;
@@ -1215,6 +1306,12 @@ const DOOR_INFO = new Map<Tile, DoorInfo>([
   // into one arched opening and the server flips the unit atomically.
   [Tile.GateGarrison, { material: 'garrison', wide: true, open: true }],
   [Tile.GateGarrisonShut, { material: 'garrison', wide: true, open: false }],
+  // The camp gate: rides ALL the door machinery like the fence gate,
+  // rendered by the palisade family (never the wall-doorway pipeline).
+  // Unlike a field gate its shut leaf is full-height lashed logs —
+  // it blocks lamplight and reads as fortification.
+  [Tile.PalisadeGate, { material: 'palisade', wide: false, open: true }],
+  [Tile.PalisadeGateShut, { material: 'palisade', wide: false, open: false }],
 ]);
 
 /** Every doorway tile, open and shut, both widths and materials. */
@@ -1232,6 +1329,7 @@ const SHUT_OF = new Map<Tile, Tile>([
   [Tile.DoorwayWoodWide, Tile.DoorwayWoodWideShut],
   [Tile.FenceGate, Tile.FenceGateShut],
   [Tile.GateGarrison, Tile.GateGarrisonShut],
+  [Tile.PalisadeGate, Tile.PalisadeGateShut],
 ]);
 const OPEN_OF = new Map<Tile, Tile>([...SHUT_OF].map(([o, s]) => [s, o]));
 
@@ -1279,6 +1377,35 @@ export function orientDiagFence(
   if (ne || sw) return Tile.FenceDiagNE;
   if (nw || se) return Tile.FenceDiagNW;
   return Tile.FenceDiagNE;
+}
+
+/**
+ * THE SPIKED WALL — the war camp's fortification family: straight
+ * runs, the two 45° turns, and the lashed-log gate in both postures.
+ * A THIRD wall family beside buildings and the garrison (the
+ * separate-masonry law): palisades never join a WALL_RUN, never
+ * bound an interior, and merge only with their own kind — a goblin
+ * stockade dying into a town wall would read as one builder's work,
+ * and they are not.
+ */
+export const PALISADE_TILES: ReadonlySet<Tile> = new Set([
+  Tile.Palisade,
+  Tile.PalisadeDiagNE,
+  Tile.PalisadeDiagNW,
+  Tile.PalisadeGate,
+  Tile.PalisadeGateShut,
+]);
+
+/** The fence family's auto-orient law, spoken in sharpened logs. */
+export function orientDiagPalisade(
+  ne: boolean,
+  nw: boolean,
+  se: boolean,
+  sw: boolean,
+): Tile {
+  if (ne || sw) return Tile.PalisadeDiagNE;
+  if (nw || se) return Tile.PalisadeDiagNW;
+  return Tile.PalisadeDiagNE;
 }
 
 /** Every mineable/mined rock formation tile, ore-bearing or not. */
@@ -1406,6 +1533,25 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.BonePile, 0.34],
   [Tile.Brazier, 0.28],
   [Tile.GlowShroom, 0.3],
+  // War-camp props: you shoulder past the stake, not an invisible
+  // crate around it. Walls, gates, tents, cages, and the spike
+  // barrier stay full-block — they are the camp's architecture.
+  [Tile.StandingTorch, 0.18],
+  [Tile.Bonfire, 0.44],
+  [Tile.WarBrazier, 0.3],
+  [Tile.SkullPile, 0.34],
+  [Tile.SkullTotem, 0.2],
+  [Tile.WarBanner, 0.2],
+  [Tile.MeatSpit, 0.35],
+  [Tile.MeatRack, 0.35],
+  [Tile.CookPot, 0.3],
+  [Tile.PotionRack, 0.32],
+  [Tile.BeastNest, 0.34],
+  [Tile.PlunderSacks, 0.36],
+  [Tile.SpearRack, 0.3],
+  [Tile.TargetDummy, 0.2],
+  [Tile.WarDrum, 0.32],
+  [Tile.HideFrame, 0.25],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -1553,7 +1699,28 @@ export type DestructibleKind =
   | 'table'
   | 'bench'
   | 'bonepile'
-  | 'crackedwall';
+  | 'crackedwall'
+  // THE CAMP BARES ITS TEETH: nearly every war-camp piece can be
+  // beaten apart — clearing the camp is the fantasy.
+  | 'palisade'
+  | 'torch'
+  | 'brazier'
+  | 'tent'
+  | 'skulls'
+  | 'totem'
+  | 'banner'
+  | 'cage'
+  | 'stakes'
+  | 'spit'
+  | 'meatrack'
+  | 'pot'
+  | 'potions'
+  | 'nest'
+  | 'sacks'
+  | 'spears'
+  | 'dummy'
+  | 'drum'
+  | 'hide';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -1582,6 +1749,35 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   // say otherwise. The long respawn means a found passage stays found
   // for the whole run (dungeon instances die before it ever restands).
   [Tile.CrackedCaveWall, { kind: 'crackedwall', respawnSec: 3600, hits: 3 }],
+  // THE CAMP BARES ITS TEETH: the war camp is an obstacle course.
+  // Walls hold four blows (the barricade knob turned at last), the
+  // road-blocker two; camp dressing pops in one or two so clearing a
+  // camp FEELS like clearing it. Gates are the door law's, not ours,
+  // and the bonfire never breaks (a fire is doused, not smashed).
+  // The long wall respawn means a breached ring stays breached for
+  // the whole assault; clutter re-dresses on the furniture clock.
+  [Tile.Palisade, { kind: 'palisade', respawnSec: 900, hits: 4 }],
+  [Tile.PalisadeDiagNE, { kind: 'palisade', respawnSec: 900, hits: 4 }],
+  [Tile.PalisadeDiagNW, { kind: 'palisade', respawnSec: 900, hits: 4 }],
+  [Tile.StandingTorch, { kind: 'torch', respawnSec: 300, hits: 1 }],
+  [Tile.WarBrazier, { kind: 'brazier', respawnSec: 300, hits: 2 }],
+  [Tile.TentHide, { kind: 'tent', respawnSec: 600, hits: 3 }],
+  [Tile.TentWar, { kind: 'tent', respawnSec: 600, hits: 3 }],
+  [Tile.SkullPile, { kind: 'skulls', respawnSec: 600, hits: 1 }],
+  [Tile.SkullTotem, { kind: 'totem', respawnSec: 600, hits: 2 }],
+  [Tile.WarBanner, { kind: 'banner', respawnSec: 420, hits: 2 }],
+  [Tile.PrisonCage, { kind: 'cage', respawnSec: 600, hits: 3 }],
+  [Tile.SpikeBarrier, { kind: 'stakes', respawnSec: 600, hits: 2 }],
+  [Tile.MeatSpit, { kind: 'spit', respawnSec: 300, hits: 2 }],
+  [Tile.MeatRack, { kind: 'meatrack', respawnSec: 300, hits: 2 }],
+  [Tile.CookPot, { kind: 'pot', respawnSec: 300, hits: 2 }],
+  [Tile.PotionRack, { kind: 'potions', respawnSec: 300, hits: 1 }],
+  [Tile.BeastNest, { kind: 'nest', respawnSec: 420, hits: 1 }],
+  [Tile.PlunderSacks, { kind: 'sacks', respawnSec: 420, hits: 2 }],
+  [Tile.SpearRack, { kind: 'spears', respawnSec: 420, hits: 2 }],
+  [Tile.TargetDummy, { kind: 'dummy', respawnSec: 240, hits: 3 }],
+  [Tile.WarDrum, { kind: 'drum', respawnSec: 420, hits: 2 }],
+  [Tile.HideFrame, { kind: 'hide', respawnSec: 420, hits: 2 }],
 ]);
 
 /** Every smashable prop tile. */

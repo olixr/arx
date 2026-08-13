@@ -1898,8 +1898,9 @@ game.onFx = (fx) => {
       return;
     }
     renderer.smashProp(fx.x, fx.y, fx.dir ?? 0, kind);
-    sfx.spatial(at, 'far', () => sfx.propSmash(kind === 'barrel'));
-    if (dist < 6) renderer.shake(kind === 'table' ? 3.2 : 2.2);
+    // Hollow vessels boom; solid joinery cracks.
+    sfx.spatial(at, 'far', () => sfx.propSmash(kind === 'barrel' || kind === 'drum' || kind === 'pot'));
+    if (dist < 6) renderer.shake(kind === 'table' || kind === 'palisade' ? 3.2 : 2.2);
     if (dist < 2.5) input.rumble(0.32, 0.5, 90);
     return;
   }

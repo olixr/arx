@@ -36,7 +36,27 @@ export type SmashKind =
   | 'table'
   | 'bench'
   | 'bonepile'
-  | 'crackedwall';
+  | 'crackedwall'
+  // THE CAMP BARES ITS TEETH: the war camp's own wreckage.
+  | 'palisade'
+  | 'torch'
+  | 'brazier'
+  | 'tent'
+  | 'skulls'
+  | 'totem'
+  | 'banner'
+  | 'cage'
+  | 'stakes'
+  | 'spit'
+  | 'meatrack'
+  | 'pot'
+  | 'potions'
+  | 'nest'
+  | 'sacks'
+  | 'spears'
+  | 'dummy'
+  | 'drum'
+  | 'hide';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -451,6 +471,26 @@ const CHIP_TONE: Record<SmashKind, string> = {
   bench: '#9c7040',
   bonepile: '#cfc7ae',
   crackedwall: '#5a5370',
+  // War-camp wreckage: raw axe-hewn timber, bone, hide, and iron.
+  palisade: '#6a4a28',
+  torch: '#5e4023',
+  brazier: '#3a3444',
+  tent: '#7a5c3e',
+  skulls: '#c9c2ae',
+  totem: '#6a4a28',
+  banner: '#8a5c40',
+  cage: '#5e4023',
+  stakes: '#6a4a28',
+  spit: '#6a4a28',
+  meatrack: '#7c3a2c',
+  pot: '#2c2836',
+  potions: '#4a8a5e',
+  nest: '#8a7444',
+  sacks: '#9c8a62',
+  spears: '#6a4a28',
+  dummy: '#c9b684',
+  drum: '#7a5636',
+  hide: '#b08d62',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -584,6 +624,284 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       for (let i = 0; i < 4 + Math.floor(rand() * 3); i++) {
         out.push({ len: 0.08 + rand() * 0.08, wid: 0.06, color: pick(rand, rock), pace: 0.85 });
       }
+      break;
+    }
+    case 'palisade': {
+      // The wall gives: whole sharpened logs cartwheel HEAVY (low
+      // pace — a log drops and thuds, it never sails), rope lashings
+      // whip off light, and a spray of splinters rides the blow.
+      const logs = ['#6a4a28', '#5e4023', '#755231'];
+      for (let i = 0; i < 3 + Math.floor(rand() * 2); i++) {
+        out.push({
+          len: 0.44 + rand() * 0.22,
+          wid: 0.11 * (0.85 + rand() * 0.3),
+          color: pick(rand, logs),
+          stripe: shade('#6a4a28', 18),
+          pace: 0.7,
+        });
+      }
+      // The cut points: short bright wedges off the spike tops.
+      for (let i = 0; i < 2 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.16 + rand() * 0.06, wid: 0.08, color: shade('#6a4a28', 26), pace: 1.1 });
+      }
+      // Rope: pale coils, flung far and light.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.14 + rand() * 0.08, wid: 0.14, color: '#8a713f', round: true, pace: 1.35 });
+      }
+      wood('#6a4a28', 3 + Math.floor(rand() * 3), 0.12, 0.24, 0.05);
+      break;
+    }
+    case 'torch': {
+      // The stake snaps; the rag head tumbles trailing its last few
+      // embers (hot round chips that die where they land).
+      out.push({ len: 0.4 + rand() * 0.14, wid: 0.07, color: '#5e4023', stripe: shade('#5e4023', 14) });
+      out.push({ len: 0.16, wid: 0.13, color: '#6e4a33', round: true, pace: 1.2 });
+      for (let i = 0; i < 3 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.06 + rand() * 0.04, wid: 0.06, color: pick(rand, ['#e8823d', '#f2c94c', '#c1502e']), round: true, pace: 1.4 });
+      }
+      wood('#5e4023', 2, 0.1, 0.18, 0.045);
+      break;
+    }
+    case 'brazier': {
+      // The tripod spears clatter long; the iron cage drops HEAVY;
+      // the coals scatter hot and die.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.42 + rand() * 0.12, wid: 0.05, color: '#6b4a26', stripe: shade('#6b4a26', 14) });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.2 + rand() * 0.08, wid: 0.05, color: '#3a3444', stripe: '#565064', pace: 0.7 });
+      }
+      out.push({ len: 0.22, wid: 0.16, color: '#2c2836', stripe: '#454052', round: true, pace: 0.65 });
+      for (let i = 0; i < 4 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.05 + rand() * 0.04, wid: 0.05, color: pick(rand, ['#e8823d', '#c1502e', '#f2c94c']), round: true, pace: 1.3 });
+      }
+      break;
+    }
+    case 'tent': {
+      // Bent poles spring loose; the cover comes off in soft hide
+      // flaps (round, light — cloth floats where timber tumbles).
+      for (let i = 0; i < 3 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.4 + rand() * 0.18, wid: 0.05, color: pick(rand, ['#6b4a26', '#5e4023']) });
+      }
+      const hides = ['#8f6e4a', '#7a5c3e', '#6e523a'];
+      for (let i = 0; i < 4 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.24 + rand() * 0.12, wid: 0.2, color: pick(rand, hides), round: true, pace: 1.25 });
+      }
+      // Bone toggles rattle out among the pelts.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.08, wid: 0.045, color: '#c9c2ae' });
+      }
+      break;
+    }
+    case 'skulls':
+    case 'totem': {
+      // Skulls BOUNCE — the round chunks are the whole show, domes
+      // rolling clear among a rattle of long-bones and teeth. The
+      // totem adds its broken stake.
+      const bones = ['#c9c2ae', '#bdb49a', '#e0d9c2'];
+      const n = kind === 'skulls' ? 3 + Math.floor(rand() * 2) : 2;
+      for (let i = 0; i < n; i++) {
+        out.push({
+          len: 0.17 + rand() * 0.06,
+          wid: 0.17,
+          color: pick(rand, bones),
+          stripe: '#ddd6c0',
+          round: true,
+          pace: 1.3,
+        });
+      }
+      for (let i = 0; i < 2 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.24 + rand() * 0.1, wid: 0.05, color: pick(rand, bones) });
+      }
+      if (kind === 'totem') {
+        out.push({ len: 0.5 + rand() * 0.14, wid: 0.09, color: '#6a4a28', stripe: shade('#6a4a28', 14), pace: 0.75 });
+        // The fetish rags flutter down light.
+        out.push({ len: 0.16, wid: 0.12, color: '#8a3b34', round: true, pace: 1.4 });
+      }
+      for (let i = 0; i < 3 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.07 + rand() * 0.05, wid: 0.05, color: pick(rand, bones) });
+      }
+      break;
+    }
+    case 'banner': {
+      // The shaft breaks at its old kink; the painted hide flies as
+      // one big flap; the spearhead spins off bright.
+      out.push({ len: 0.5 + rand() * 0.1, wid: 0.06, color: '#6a4a28', stripe: shade('#6a4a28', 12) });
+      out.push({ len: 0.36 + rand() * 0.08, wid: 0.06, color: '#5e4023' });
+      out.push({ len: 0.3 + rand() * 0.08, wid: 0.24, color: '#8a5c40', stripe: '#e8e2d4', round: true, pace: 1.3 });
+      out.push({ len: 0.13, wid: 0.05, color: '#8b93a4', stripe: '#aeb6c6', pace: 1.2 });
+      wood('#6a4a28', 2, 0.1, 0.18, 0.04);
+      break;
+    }
+    case 'cage': {
+      // Branch bars everywhere — the box that held something is
+      // suddenly all daylight. Rope hinges and a bone or two follow.
+      wood('#5e4023', 6 + Math.floor(rand() * 3), 0.3, 0.5, 0.06);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.3 + rand() * 0.08, wid: 0.09, color: shade('#5e4023', -10), pace: 0.8 });
+      }
+      out.push({ len: 0.13, wid: 0.13, color: '#8a713f', round: true, pace: 1.3 });
+      out.push({ len: 0.2 + rand() * 0.06, wid: 0.05, color: '#c9c2ae' });
+      break;
+    }
+    case 'stakes': {
+      // The road-blocker: sharpened shafts spin out point-first,
+      // heavy, with the lashed crossbeam among them.
+      const logs = ['#6a4a28', '#755231'];
+      for (let i = 0; i < 3 + Math.floor(rand() * 2); i++) {
+        out.push({
+          len: 0.4 + rand() * 0.16,
+          wid: 0.08,
+          color: pick(rand, logs),
+          stripe: shade('#6a4a28', 24),
+          pace: 0.8,
+        });
+      }
+      out.push({ len: 0.5 + rand() * 0.1, wid: 0.07, color: shade('#6a4a28', -10), pace: 0.7 });
+      out.push({ len: 0.12, wid: 0.12, color: '#8a713f', round: true, pace: 1.3 });
+      wood('#6a4a28', 2 + Math.floor(rand() * 2), 0.1, 0.2, 0.05);
+      break;
+    }
+    case 'spit': {
+      // Forks and rod go as timber — and the haunch itself flies
+      // whole (the fat round chunk IS the joke), coals scattering.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.34 + rand() * 0.08, wid: 0.06, color: '#6b4a26' });
+      }
+      out.push({ len: 0.5 + rand() * 0.1, wid: 0.045, color: shade('#6b4a26', -8) });
+      out.push({ len: 0.24, wid: 0.19, color: '#8a4130', stripe: '#e8d9b8', round: true, pace: 1.25 });
+      out.push({ len: 0.14, wid: 0.05, color: '#c9c2ae' });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05 + rand() * 0.04, wid: 0.05, color: pick(rand, ['#e8823d', '#c1502e']), round: true, pace: 1.3 });
+      }
+      break;
+    }
+    case 'meatrack': {
+      // Posts and bar down; the larder rains — cuts flop as soft
+      // round chunks, the sausage string whips off light.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.4 + rand() * 0.1, wid: 0.06, color: '#6b4a26', stripe: shade('#6b4a26', 12) });
+      }
+      out.push({ len: 0.52 + rand() * 0.1, wid: 0.05, color: shade('#6b4a26', -10) });
+      for (let i = 0; i < 2 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.18 + rand() * 0.08, wid: 0.14, color: pick(rand, ['#7c3a2c', '#a3543a']), stripe: '#e8d9b8', round: true, pace: 1.2 });
+      }
+      out.push({ len: 0.22, wid: 0.07, color: '#8a4a3a', round: true, pace: 1.35 });
+      break;
+    }
+    case 'pot': {
+      // The kettle splits in two iron shells (HEAVY, they thud), the
+      // tripod clatters, and the gruel goes up in green splashes.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.24 + rand() * 0.06, wid: 0.16, color: '#2c2836', stripe: '#454052', round: true, pace: 0.65 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.38 + rand() * 0.1, wid: 0.05, color: '#6b4a26' });
+      }
+      for (let i = 0; i < 3 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.07 + rand() * 0.05, wid: 0.07, color: pick(rand, ['#5d7a42', '#4e6636']), round: true, pace: 1.25 });
+      }
+      out.push({ len: 0.2, wid: 0.045, color: shade('#6b4a26', 8) });
+      break;
+    }
+    case 'potions': {
+      // The shelf drops as planks — but the STOCK is the show:
+      // bright glass chips in every brew color, small and fast, a
+      // glitter where the rack stood.
+      wood('#6b4a26', 3, 0.24, 0.4, 0.07);
+      const brews = ['#4a8a5e', '#7a5c9e', '#b8862e', '#5d4a7a', '#a89a8a'];
+      for (let i = 0; i < 6 + Math.floor(rand() * 4); i++) {
+        out.push({
+          len: 0.06 + rand() * 0.05,
+          wid: 0.05,
+          color: pick(rand, brews),
+          stripe: rand() < 0.5 ? '#f4f2ea' : null,
+          pace: 1.35,
+        });
+      }
+      // One horn and one stoneware shoulder survive to roll away.
+      out.push({ len: 0.16, wid: 0.07, color: '#ddd6c2', round: true, pace: 1.2 });
+      out.push({ len: 0.13, wid: 0.11, color: '#a89a8a', stripe: '#5d4a7a', round: true, pace: 0.9 });
+      break;
+    }
+    case 'nest': {
+      // The bed bursts soft: straw wisps and fur tufts float, the
+      // gnawed bones cartwheel out of the middle.
+      for (let i = 0; i < 5 + Math.floor(rand() * 3); i++) {
+        out.push({ len: 0.12 + rand() * 0.08, wid: 0.035, color: pick(rand, ['#a5834f', '#8a7444']), pace: 1.3 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1 + rand() * 0.05, wid: 0.09, color: '#8a8794', round: true, pace: 1.4 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.22 + rand() * 0.08, wid: 0.05, color: '#bdb49a' });
+      }
+      break;
+    }
+    case 'sacks': {
+      // Cloth flaps tumble — and the hoard sprays: coin sparks, fast
+      // and glittering, plus the looted candlestick end over end.
+      for (let i = 0; i < 3 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.2 + rand() * 0.1, wid: 0.16, color: pick(rand, ['#9c8a62', '#8a7a54']), round: true, pace: 1.1 });
+      }
+      for (let i = 0; i < 6 + Math.floor(rand() * 4); i++) {
+        out.push({ len: 0.05 + rand() * 0.025, wid: 0.05, color: pick(rand, ['#c9962e', '#e0b84f']), round: true, pace: 1.5 });
+      }
+      out.push({ len: 0.2, wid: 0.05, color: '#b8963a', stripe: '#e0b84f', pace: 1.2 });
+      out.push({ len: 0.13, wid: 0.06, color: '#8a713f', round: true, pace: 1.25 });
+      break;
+    }
+    case 'spears': {
+      // The stack collapses: long shafts scissor apart, bright
+      // spearheads spin off, the shield rolls its rim.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.5 + rand() * 0.16, wid: 0.045, color: pick(rand, ['#6a4a28', '#755231']), stripe: shade('#6a4a28', 14) });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.13, wid: 0.05, color: '#8b93a4', stripe: '#aeb6c6', pace: 1.25 });
+      }
+      out.push({ len: 0.26, wid: 0.26, color: '#7a5c3e', stripe: '#8a3b34', round: true, pace: 1.15 });
+      break;
+    }
+    case 'dummy': {
+      // The straw man lets go all at once: a BURST of straw wisps,
+      // the sack head bouncing away, the post dropping heavy, and
+      // the stuck arrows returned to sender.
+      for (let i = 0; i < 7 + Math.floor(rand() * 4); i++) {
+        out.push({ len: 0.1 + rand() * 0.09, wid: 0.03, color: pick(rand, ['#c9b684', '#b09c70', '#d9c894']), pace: 1.35 });
+      }
+      out.push({ len: 0.17, wid: 0.15, color: '#b09c70', stripe: '#241a2e', round: true, pace: 1.35 });
+      out.push({ len: 0.44 + rand() * 0.1, wid: 0.08, color: '#6a4a28', pace: 0.7 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.24, wid: 0.03, color: '#8a6534', stripe: '#ddd6c2', pace: 1.2 });
+      }
+      break;
+    }
+    case 'drum': {
+      // The shell staves apart like a barrel gone to war: hide-brown
+      // staves, the two hoops, the skin flying as one flap, and the
+      // mallets end over end.
+      wood('#7a5636', 4 + Math.floor(rand() * 2), 0.26, 0.42, 0.09);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.22 + rand() * 0.08, wid: 0.045, color: '#4e3a26', stripe: '#6a5236' });
+      }
+      out.push({ len: 0.3, wid: 0.26, color: '#c9b088', stripe: '#8a3b34', round: true, pace: 1.25 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.2, wid: 0.04, color: shade('#6b4a26', 6), pace: 1.15 });
+      }
+      break;
+    }
+    case 'hide': {
+      // Frame sticks snap; the hide itself sails as the big soft
+      // flap; tie cords and the scraper follow.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.36 + rand() * 0.12, wid: 0.05, color: pick(rand, ['#6a4a28', '#5e4023']) });
+      }
+      out.push({ len: 0.32, wid: 0.26, color: '#b08d62', stripe: '#c9a677', round: true, pace: 1.2 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1 + rand() * 0.05, wid: 0.03, color: '#4a3a22', pace: 1.3 });
+      }
+      out.push({ len: 0.15, wid: 0.05, color: '#8b93a4', pace: 1.1 });
       break;
     }
   }

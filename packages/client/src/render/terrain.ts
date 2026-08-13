@@ -3,6 +3,7 @@ import {
   CHUNK_SIZE,
   Detail,
   GARRISON_TILES,
+  PALISADE_TILES,
   Tile,
   WALL_RUN_TILES,
   awningInfo,
@@ -493,6 +494,26 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     }
     // Props stand ON a floor, they aren't ground materials themselves.
     if (t >= Tile.Barrel && t <= Tile.Basin) return nearestFloor(ground, tx, ty);
+    // War-camp props stand on the camp's trampled ground the same way.
+    if (t >= Tile.StandingTorch && t <= Tile.HideFrame) return nearestFloor(ground, tx, ty);
+    // The palisade stands in open country like the garrison curtain:
+    // whatever walkable terrain fronts it continues beneath (south
+    // first — that side's base sliver shows), and a family member
+    // never lends its own skin. Camps ring meadow, trail, and dirt;
+    // dressed flags would read as town masonry.
+    if (PALISADE_TILES.has(t)) {
+      const pick = (tt: Tile | undefined): Tile | null =>
+        tt !== undefined && !tileDef(tt).solid && !PALISADE_TILES.has(tt) && tt !== Tile.Ramp
+          ? tt
+          : null;
+      return (
+        pick(ground(tx, ty + 1)) ??
+        pick(ground(tx, ty - 1)) ??
+        pick(ground(tx + 1, ty)) ??
+        pick(ground(tx - 1, ty)) ??
+        Tile.Dirt
+      );
+    }
     // Dungeon props stand on whichever floor the corridor carries
     // (nearestFloor knows DungeonFloor/CaveRubble/CaveFloor).
     if (

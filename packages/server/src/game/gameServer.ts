@@ -4076,7 +4076,8 @@ export class GameServer {
   ): void {
     const unit = this.doorUnit(tx, ty, info);
     const lockKey = `${unit.ax},${unit.ay}`;
-    const gate = info.material === 'fence' || info.material === 'garrison';
+    const gate =
+      info.material === 'fence' || info.material === 'garrison' || info.material === 'palisade';
     if (info.open) {
       for (const t of unit.tiles) {
         if (this.bodyOnTile(t.x, t.y)) {
@@ -21844,7 +21845,7 @@ export class GameServer {
       }
       if (best.info.open) {
         sys(
-          best.info.material === 'fence'
+          best.info.material === 'fence' || best.info.material === 'palisade'
             ? 'Close the gate before locking it.'
             : 'Close the door before locking it.',
         );
