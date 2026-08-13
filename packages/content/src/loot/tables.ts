@@ -258,6 +258,22 @@ const defs: LootTableDef[] = [
     { item: 'dowser', chance: 0.012 },
   ]),
   {
+    // THE GRAND ARCANUM: the first voice of the fire carries the
+    // last word of the scripture. (Held to 0.002: a lvl 7 caster
+    // guarding a lvl 45 legendary is the longest hunt on the road —
+    // the troll law, run further.)
+    id: 'firecaller_word',
+    desc: 'What the firecaller keeps: the Flamewrought scripture, one line at a time.',
+    entries: [...setDrops('flamewrought', 0.002)],
+  },
+  {
+    // THE GRAND ARCANUM: the gloomcaller looked into the gloam and
+    // came back wearing the answer badly. It fits you better.
+    id: 'gloom_regalia',
+    desc: 'The gloomcaller’s prize: the Gloamsight vestments, worn wrong.',
+    entries: [...setDrops('gloamsight', 0.003)],
+  },
+  {
     // The road-thieves' pockets: heavier coin than any beast carries
     // (they've been TAKING it), trail rations, and the working kit of
     // an ambush trade. What they wear is what they drop.
@@ -492,6 +508,14 @@ const defs: LootTableDef[] = [
       ...setDrops('sentinel', 0.008, { colorway: 'bloodwatch' }),
     ],
   ),
+  {
+    // THE GRAND ARCANUM: the chanter's own hoard. It stole the
+    // morning service whole and has sung it wrong ever since; the
+    // ivory and gold come off the bones one piece at a century.
+    id: 'chanter_vestry',
+    desc: 'The bone chanter’s stolen liturgy: the Sunhallow vestments, surrendered slowly.',
+    entries: [...setDrops('sunhallow', 0.004)],
+  },
   rack('crypt_arms', 'Blades, bows, and staves the dead still carry.', 0.045, [
     { item: 'fenreaper', chance: 0.01 },
     { item: 'gravewhisper', chance: 0.012 },
@@ -685,6 +709,9 @@ const defs: LootTableDef[] = [
       // The honor guard's lion plate, racked with everyone who tried
       // — the guard never sold a suit; the trophy walls collect.
       ...setDrops('kingsmane', 0.004),
+      // The archmage tried too. The racks keep the vestment; the
+      // glyph ring keeps turning over it, uncollected.
+      ...setDrops('aetherion', 0.004),
     ],
   ),
 
@@ -791,6 +818,14 @@ const defs: LootTableDef[] = [
       // Beside it, the harp he taught to shoot. The vault log lists
       // it as an instrument. The guards list it as a reason to knock.
       { item: 'runespan', chance: 0.005 },
+      // The morning service, folded right: the chanter sings the
+      // stolen set wrong, and the vaults keep the one it was copied
+      // from.
+      ...setDrops('sunhallow', 0.005),
+      // An heir sold the family oracle's vestments unworn. The clerk
+      // who shelved them says the sigils finished reading him in
+      // under a minute.
+      ...setDrops('gloamsight', 0.004),
     ],
   },
   {
@@ -899,6 +934,12 @@ const defs: LootTableDef[] = [
       // The honor guard never sold a suit. The world only keeps what
       // it took, and it took it down here.
       ...setDrops('kingsmane', 0.004),
+      // The fire's scripture went into the dark still lit. The hoard
+      // reads a line of it every night and has never reached the end.
+      ...setDrops('flamewrought', 0.005),
+      // The archmage's vestment went below with its ring still
+      // turning. The coins nearest it stack themselves.
+      ...setDrops('aetherion', 0.004),
     ],
   },
   {
@@ -940,6 +981,15 @@ const defs: LootTableDef[] = [
       // The king's own lion plate went through the gate on a bier.
       // Nothing about that day is written anywhere official.
       ...setDrops('kingsmane', 0.004),
+      // A singer walked into the gate mid-verse. The orbs waited by
+      // the lock for three seasons, then gave up and went in after.
+      ...setDrops('stormsinger', 0.005),
+      // The last warden's kit, minus the hat the worgs argue over.
+      // The gatekeeper holds the rest against the toll.
+      ...setDrops('duskwarden', 0.004),
+      // The ring of runes fits the gate's own lock a little too
+      // well. Nobody has dared turn it.
+      ...setDrops('aetherion', 0.004),
     ],
   },
 
@@ -994,6 +1044,10 @@ const defs: LootTableDef[] = [
       // The pack's other prize: a bow of night glass. The worgs
       // howl at the glint in it, which howls nothing back.
       { item: 'moonglass', chance: 0.01 },
+      // The dusk roads took the last warden at the ford. The packs
+      // split the kit and could not agree on the hat. (Held to
+      // 0.002: the war-hounds' per-kill ceiling carries the camp.)
+      ...setDrops('duskwarden', 0.002),
     ],
   },
   {
@@ -1069,6 +1123,10 @@ const defs: LootTableDef[] = [
       // The pale thorn lot went south over the high passes and never
       // came down. The parliament nests above what is left of it.
       ...setDrops('palethorn', 0.006),
+      // The only thing over the pines that ever outflew the weather
+      // it sings about. The elder took the singer's indigo the way
+      // it takes everything: mid-verse.
+      ...setDrops('stormsinger', 0.005),
     ],
   },
 

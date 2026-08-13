@@ -393,7 +393,7 @@ test('themed cloth sets: five pieces each, coherent class and reqs', () => {
   assert.ok(byId.get('scholars_tome'));
 });
 
-test('the named wardrobe: twenty-four chase sets, owners keep them, rarity floors hold', () => {
+test('the named wardrobe: thirty chase sets, owners keep them, rarity floors hold', () => {
   // The vault-of-names law brought to armor: epic finds live at the
   // bands players level THROUGH (a low level never means a plain
   // reward), the legendary three never mint below their name, and
@@ -433,6 +433,15 @@ test('the named wardrobe: twenty-four chase sets, owners keep them, rarity floor
     rimethorn: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 45 },
     palethorn: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 45 },
     kingsmane: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 52 },
+    // THE GRAND ARCANUM: the cloth high road — six vestments climbing
+    // the same rungs the plate lane took, 30 to 52. The first two
+    // jackpot from epic; the upper four never mint below legendary.
+    sunhallow: { cls: 'cloth', skill: 'arx', floor: ['epic', 'legendary'], maxLevel: 30 },
+    stormsinger: { cls: 'cloth', skill: 'arx', floor: ['epic', 'legendary'], maxLevel: 35 },
+    gloamsight: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 40 },
+    flamewrought: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 45 },
+    duskwarden: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 48 },
+    aetherion: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 52 },
   };
   for (const [set, want] of Object.entries(SETS)) {
     const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));

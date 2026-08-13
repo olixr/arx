@@ -4,6 +4,8 @@
 // sabatons, gauntlets) on a live rig across all eight facings, at
 // idle and at a real simulated gait, ringed by the renderer's
 // outline-dilate simulation, beside an oathgold benchmark row.
+// Rows 13+ are THE GRAND ARCANUM — the cloth high road — with
+// riftweave as the cloth lane's own calibration row.
 // THE LAB LESSON applies: every figure owns a persistent LegSolver +
 // kneeMemory + depthMemory, or every stateful arm law is dead.
 // The audits this sheet runs:
@@ -39,14 +41,37 @@ const DIRS = [
   ['SW', (3 * Math.PI) / 4],
 ] as const;
 
-/** Full five-piece loadout per family — ids follow the plate lane. */
-const worn = (family: string) => ({
-  headItem: `${family}_helm`,
-  bodyItem: `${family}_platebody`,
-  legsItem: `${family}_greaves`,
-  bootsItem: `${family}_sabatons`,
-  glovesItem: `${family}_gauntlets`,
-});
+/** Full five-piece loadout per family. Plate nouns by default; the
+ *  cloth lane wears its own (robe, skirts, slippers, wraps) with a
+ *  bespoke head noun per set — the hat IS the identity. */
+const CLOTH_HEADS: Record<string, string> = {
+  riftweave: 'cowl',
+  sunhallow: 'hood',
+  stormsinger: 'hat',
+  gloamsight: 'veil',
+  flamewrought: 'crown',
+  duskwarden: 'hat',
+  aetherion: 'cowl',
+};
+const worn = (family: string) => {
+  const clothHead = CLOTH_HEADS[family];
+  if (clothHead) {
+    return {
+      headItem: `${family}_${clothHead}`,
+      bodyItem: `${family}_robe`,
+      legsItem: `${family}_skirts`,
+      bootsItem: `${family}_slippers`,
+      glovesItem: `${family}_wraps`,
+    };
+  }
+  return {
+    headItem: `${family}_helm`,
+    bodyItem: `${family}_platebody`,
+    legsItem: `${family}_greaves`,
+    bootsItem: `${family}_sabatons`,
+    glovesItem: `${family}_gauntlets`,
+  };
+};
 
 type Mode = 'idle' | 'move' | 'strike';
 
@@ -85,6 +110,22 @@ row('palethorn', 'idle'); // 9 — the twin quench, one row
 row('kingsmane', 'idle'); // 10
 row('kingsmane', 'move'); // 11
 row('kingsmane', 'strike'); // 12
+// THE GRAND ARCANUM: the cloth high road, with the old cloth road's
+// best as its own calibration row.
+row('riftweave', 'idle'); // 13 — the old cloth road's best
+row('sunhallow', 'idle'); // 14
+row('sunhallow', 'move'); // 15
+row('stormsinger', 'idle'); // 16
+row('stormsinger', 'move'); // 17
+row('gloamsight', 'idle'); // 18
+row('gloamsight', 'move'); // 19
+row('flamewrought', 'idle'); // 20
+row('flamewrought', 'move'); // 21
+row('duskwarden', 'idle'); // 22
+row('duskwarden', 'move'); // 23
+row('aetherion', 'idle'); // 24
+row('aetherion', 'move'); // 25
+row('aetherion', 'strike'); // 26
 
 const COLS = 8;
 const CW = 240;

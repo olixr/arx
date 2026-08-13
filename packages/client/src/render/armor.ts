@@ -37,11 +37,13 @@ export interface BodyStyle {
   /** The high-wardrobe kinds each have ONE owner set: `axeblade` the
    *  jadeskull crescents, `boneridge` the fellbone slab fan,
    *  `thorncrest` the rimethorn hooks (palethorn is its pale quench),
-   *  `lionhead` the kingsmane sculpted lions. */
+   *  `lionhead` the kingsmane sculpted lions, `sunfan` the sunhallow
+   *  gilt ray petals, `veilwing` the gloamsight swept wing plates. */
   pauldron:
     | 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur'
     | 'feathered' | 'orbs' | 'shards' | 'wyrmwing'
-    | 'axeblade' | 'boneridge' | 'thorncrest' | 'lionhead';
+    | 'axeblade' | 'boneridge' | 'thorncrest' | 'lionhead'
+    | 'sunfan' | 'veilwing';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
@@ -281,6 +283,43 @@ export interface BodyStyle {
    * wardrobe's one floating regalia.
    */
   crownring?: { color: string };
+  /**
+   * Three charged orbs orbiting the WHOLE torso on the crown ring's
+   * depth law — near side big and lit, far side small and dim, and
+   * hidden where the body stands between it and you. Each orb snaps
+   * a static spark on its own beat. The stormsinger word.
+   */
+  stormorbs?: { color: string };
+  /**
+   * Sigils surfacing through the skirt cloth — one rises, holds its
+   * look, and sinks back into the weave while the next wakes. The
+   * garment is reading; so is whoever faces it. The gloamsight word.
+   */
+  sigilweave?: { color: string };
+  /**
+   * Hanging inscribed strips off the shoulders and hem, swaying on
+   * the stride, their runes kindling in a slow reading wave — top
+   * strip first, hem last. Cloth, not light: full weight. The
+   * flamewrought word.
+   */
+  runestrips?: { color: string; rune: string };
+  /**
+   * Gem clusters riding the capelet hem, winking awake in rotation
+   * the way watch fires answer each other (rides the capelet — the
+   * cape IS the setting; without one there is nothing to stud). The
+   * duskwarden word.
+   */
+  gemwake?: { color: string; metal: string };
+  /**
+   * THE GLYPH RING: a circle of living runes floating about the
+   * hips, turning slowly — from the front two arcs of runes stand
+   * off the flanks (the body hides the rest); from behind the whole
+   * circle shows. Every rune rides the rim on the fake-3D depth law,
+   * and one glint walks among them. Nothing holds it up. The
+   * aetherion word, and the wardrobe's second floating regalia after
+   * the kingsmane crown ring.
+   */
+  glyphring?: { color: string };
 }
 
 export interface HelmStyle {
@@ -306,7 +345,7 @@ export interface HelmStyle {
     | 'greathelm' | 'bascinet' | 'barbute' | 'armet' | 'sallet'
     | 'radiant' | 'ramfort' | 'warmask' | 'dread' | 'briar' | 'drake'
     | 'aurochs' | 'barrow' | 'tempest' | 'furnace' | 'wyrm' | 'champion'
-    | 'hood' | 'circlet' | 'wizard';
+    | 'hood' | 'circlet' | 'wizard' | 'veil' | 'magus';
   visor?: 'slit' | 'cross';
   plume?: { color: string };
   /** `curl` bends the sweep into a ram's spiral beside the temples;
@@ -390,6 +429,20 @@ export interface HelmStyle {
    *  square banner that ripples on the march wind's clock — the
    *  king's colors carried on the helm itself. The kingsmane word. */
   standard?: { pole: string; banner: string; trim?: string };
+  /** THE AUREOLE: a fan of gilt rays standing behind the crown,
+   *  breathing on a slow clock, tallest at the peak — dawn worn as
+   *  a halo's older sister. Painted before the shell so the rays
+   *  stand BEHIND the cloth. The sunhallow word. */
+  aureole?: { color: string };
+  /** Iron tines rising off the crown band, each guttering a hot
+   *  flame that re-shapes every beat — the coldfire idiom run hot,
+   *  worn as a crown. The flamewrought word. */
+  flamecrown?: { tine: string; flame: string };
+  /** Three angular rune glyphs orbiting the crown on the fake-3D
+   *  depth law — the far side painted before the shell so the hood
+   *  occludes it honestly, the near side riding above. None of them
+   *  repeats. The aetherion word. */
+  glyphs?: { color: string };
 }
 
 export interface LegStyle {
@@ -811,6 +864,61 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     sleeves: 'full', folds: true, underskirt: '#1e2540',
     mantle: '#1e2540', runes: '#c9a23c', motes: '#e8c878',
   },
+  // THE GRAND ARCANUM: the cloth high road — six chase vestments
+  // climbing the plate lane's own rungs, each under the high-road
+  // law: big curated silhouettes, and a signature that MOVES.
+  sunhallow_robe: {
+    color: '#ece6d8', trim: '#d4a843', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'sunfan', pauldronColor: '#f0b040',
+    pauldronTrim: '#ffe9b0', pauldronScale: 1.08,
+    chest: 'emblem', emblem: 'sun', emblemScale: 1.2, skirt: 0.36,
+    sleeves: 'full', folds: true, underskirt: '#8a3030',
+    mantle: '#ded4bc', stole: { color: '#efe8d8', trim: '#d4a843' },
+    beads: { color: '#7ec8e8' }, runes: '#ffdf9a', motes: '#ffe9b0',
+  },
+  stormsinger_robe: {
+    color: '#2c3a6e', trim: '#ccd4e8', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'emblem',
+    emblem: 'bolt', emblemScale: 1.2, skirt: 0.36, skirtSlit: true,
+    sleeves: 'full', folds: true, underskirt: '#1c2547',
+    mantle: '#232e58',
+    capelet: { color: '#232e58', hem: 'dag', trim: '#66d8f0' },
+    sash: '#1c2547', runes: '#66d8f0', stormorbs: { color: '#66d8f0' },
+  },
+  gloamsight_robe: {
+    color: '#4e5636', trim: '#b09346', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'veilwing', pauldronColor: '#8a7436',
+    pauldronTrim: '#e8cc7a', pauldronScale: 1.06, chest: 'none',
+    skirt: 0.36, sleeves: 'full', folds: true, underskirt: '#3d4429',
+    mantle: '#434a2e', sash: '#3d4429',
+    sigilweave: { color: '#ffb054' },
+  },
+  flamewrought_robe: {
+    color: '#ddd2b8', trim: '#3a2e2a', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'none', skirt: 0.36,
+    sleeves: 'full', folds: true, underskirt: '#352a24',
+    belt: { color: '#3a2e2a', buckle: '#8a6a4a' },
+    runestrips: { color: '#cfc2a2', rune: '#ff7a3c' },
+    glowTrim: '#ff7a3c',
+  },
+  duskwarden_robe: {
+    color: '#232838', trim: '#9a7a44', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'none', skirt: 0.36,
+    skirtSlit: true, sleeves: 'full', folds: true,
+    underskirt: '#1a1e2c',
+    capelet: { color: '#1c2130', hem: 'dag', trim: '#9a7a44' },
+    belt: { color: '#1c2130', buckle: '#9a7a44' }, pouch: true,
+    gemwake: { color: '#d84052', metal: '#9a7a44' },
+  },
+  aetherion_robe: {
+    color: '#2e2452', trim: '#d8dce8', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'none', skirt: 0.38,
+    skirtSlit: true, sleeves: 'full', folds: true,
+    underskirt: '#1f1838', mantle: '#261e44',
+    capelet: { color: '#261e44', hem: 'point', trim: '#8ce0e8' },
+    sash: '#1f1838', runes: '#8ce0e8', motes: '#b8ecf0',
+    glyphring: { color: '#8ce0e8' },
+  },
   // The legendary leather road: four hunter and assassin kits spread
   // down the leveling bands, each with a signature that MOVES.
   // Drop-only, one lot each — the same law the cloth road keeps.
@@ -1128,6 +1236,34 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#c9a23c', trim: '#e8c878', kind: 'circlet',
     orbitals: { color: '#e0b054', ring: '#8a7434' },
   },
+  // THE GRAND ARCANUM's heads: the dawn's hood, the storm-sung cone,
+  // the sculpted veil, the burning crown, the road magus's brim, and
+  // the glyph-circled cowl.
+  sunhallow_hood: {
+    color: '#ece6d8', trim: '#d4a843', kind: 'hood',
+    gem: { color: '#7ec8e8' }, aureole: { color: '#f0b040' },
+  },
+  stormsinger_hat: {
+    color: '#2c3a6e', trim: '#ccd4e8', kind: 'wizard',
+    charm: '#66d8f0', arcs: { color: '#8ae8ff' },
+  },
+  gloamsight_veil: {
+    color: '#4e5636', trim: '#b09346', kind: 'veil',
+    fins: { color: '#b09346' }, emberEyes: { color: '#ffb054' },
+  },
+  flamewrought_crown: {
+    color: '#3a2e2a', trim: '#8a6a4a', kind: 'hood',
+    emberEyes: { color: '#ff9a4a' },
+    flamecrown: { tine: '#2e2422', flame: '#ff7a3c' },
+  },
+  duskwarden_hat: {
+    color: '#232838', trim: '#9a7a44', kind: 'magus',
+    gem: { color: '#d84052' },
+  },
+  aetherion_cowl: {
+    color: '#2e2452', trim: '#d8dce8', kind: 'hood',
+    gem: { color: '#8ce0e8' }, glyphs: { color: '#8ce0e8' },
+  },
   // The legendary leather road's heads: an antlered crown with living
   // company, a crested hawk hood, a hood with coals for eyes, and the
   // rook's swept-feather cowl.
@@ -1250,6 +1386,13 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   vigil_skirts: { kind: 'pants', thigh: '#c2b696' },
   skydancer_skirts: { kind: 'pants', thigh: '#283a4e' },
   orrery_skirts: { kind: 'pants', thigh: '#1e2540' },
+  // THE GRAND ARCANUM.
+  sunhallow_skirts: { kind: 'pants', thigh: '#d9d1ba' },
+  stormsinger_skirts: { kind: 'pants', thigh: '#22305c' },
+  gloamsight_skirts: { kind: 'pants', thigh: '#3d4429' },
+  flamewrought_skirts: { kind: 'pants', thigh: '#c9bda0' },
+  duskwarden_skirts: { kind: 'pants', thigh: '#1e2330' },
+  aetherion_skirts: { kind: 'pants', thigh: '#251d42' },
   // The legendary leather road.
   hartsong_leggings: { kind: 'wraps', thigh: '#2a3b26', shin: '#243320', knee: 'wrap', kneeColor: '#d8b84c' },
   skytalon_leggings: { kind: 'wraps', thigh: '#32404f', shin: '#2a3642', knee: 'wrap', kneeColor: '#e8ddc0' },
@@ -1321,6 +1464,14 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   vigil_slippers: { color: '#c2b696', height: 0.08, cuff: { color: '#c9922f' } },
   skydancer_slippers: { color: '#283a4e', height: 0.09, cuff: { color: '#8ae8c0' } },
   orrery_slippers: { color: '#1e2540', height: 0.09, cuff: { color: '#c9a23c' } },
+  // THE GRAND ARCANUM. The hem owns the foot line; only the warden
+  // wears road boots under the robe.
+  sunhallow_slippers: { color: '#c9b073', height: 0.08, cuff: { color: '#ece6d8' } },
+  stormsinger_slippers: { color: '#1f2a52', height: 0.09, cuff: { color: '#66d8f0' } },
+  gloamsight_slippers: { color: '#39402a', height: 0.08, cuff: { color: '#b09346' } },
+  flamewrought_slippers: { color: '#352a24', height: 0.08, cuff: { color: '#ff7a3c' } },
+  duskwarden_slippers: { color: '#1c2130', height: 0.14, wrap: { color: '#9a7a44' } },
+  aetherion_slippers: { color: '#211a3a', height: 0.09, cuff: { color: '#8ce0e8' } },
   // The legendary leather road: laced and wrapped, never curled.
   hartsong_treads: { color: '#2a3b26', height: 0.12, wrap: { color: '#d8b84c' } },
   skytalon_striders: { color: '#32404f', height: 0.13, cuff: { color: '#e8ddc0' } },
@@ -1570,6 +1721,38 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     color: '#262e4e', hand: 'wrap', bracer: '#222946',
     cuff: { color: '#c9a23c', kind: 'band' },
     knuckle: { color: '#e0b054', kind: 'gem' },
+  },
+  // THE GRAND ARCANUM. The flamewrought pair runs char hands under
+  // ivory forearms — the fire ends at the wrist by design.
+  sunhallow_wraps: {
+    color: '#ece6d8', hand: 'glove', bracer: '#ded4bc',
+    cuff: { color: '#d4a843', kind: 'roll' },
+    knuckle: { color: '#7ec8e8', kind: 'gem' },
+  },
+  stormsinger_wraps: {
+    color: '#2c3a6e', hand: 'wrap', bracer: '#243156',
+    cuff: { color: '#ccd4e8', kind: 'band' },
+    knuckle: { color: '#66d8f0', kind: 'gem' },
+  },
+  gloamsight_wraps: {
+    color: '#4e5636', hand: 'wrap', bracer: '#434a2e',
+    cuff: { color: '#b09346', kind: 'band' },
+    knuckle: { color: '#ffb054', kind: 'gem' },
+  },
+  flamewrought_wraps: {
+    color: '#3a2e2a', hand: 'wrap', bracer: '#cfc2a2',
+    cuff: { color: '#ddd2b8', kind: 'roll' },
+    knuckle: { color: '#ff7a3c', kind: 'gem' },
+  },
+  duskwarden_wraps: {
+    color: '#232838', hand: 'glove', bracer: '#1c2130',
+    cuff: { color: '#9a7a44', kind: 'band' },
+    knuckle: { color: '#d84052', kind: 'gem' },
+  },
+  aetherion_wraps: {
+    color: '#2e2452', hand: 'wrap', bracer: '#261e44',
+    cuff: { color: '#d8dce8', kind: 'roll' },
+    knuckle: { color: '#8ce0e8', kind: 'gem' },
   },
   // The legendary leather road: the hunter grips, the hawk talons,
   // the assassin's fingerless cuts.
@@ -2955,6 +3138,54 @@ export function drawTorsoGarment(
           ctx.fill();
         }
       }
+      // ---- GEMWAKE: gem clusters riding the capelet hem — bezel-set
+      // stones hung from the hem dips like the icefringe law cut in
+      // oxblood, and the hearts keep a rotation: one wakes at a time,
+      // flares, and hands the watch along. The cape does the wearing;
+      // the gems do the watching.
+      if (st.gemwake && !hurt) {
+        const gwc = st.gemwake.color;
+        const gwm = st.gemwake.metal;
+        const turnG = Math.floor(nowMs / 1500) % 4;
+        const ftG = (nowMs % 1500) / 1500;
+        for (let i = 0; i < 4; i++) {
+          const u = 0.125 + i * 0.25;
+          const gx = -half + u * 2 * half;
+          const gy = -th + drop * (0.84 + 0.16 * Math.sin(u * Math.PI)) + drop * 0.22;
+          const R = 0.026 * s;
+          // The bezel seats the stone on the hem — jewelry, not paint.
+          ctx.fillStyle = shade(gwm, -12);
+          ctx.beginPath();
+          ctx.arc(gx, gy, R * 1.05, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = shade(gwm, 18);
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.arc(gx, gy, R * 1.05, Math.PI * 1.1, Math.PI * 1.9);
+          ctx.stroke();
+          // The stone: a cut diamond with its table facet.
+          const lit = i === turnG ? Math.sin(ftG * Math.PI) : 0;
+          ctx.fillStyle = shade(gwc, -8 + lit * 34);
+          ctx.beginPath();
+          ctx.moveTo(gx, gy - R * 0.78);
+          ctx.lineTo(gx + R * 0.62, gy);
+          ctx.lineTo(gx, gy + R * 0.78);
+          ctx.lineTo(gx - R * 0.62, gy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(gwc, 26 + lit * 24);
+          ctx.fillRect(gx - R * 0.18, gy - R * 0.24, R * 0.36, R * 0.3);
+          if (lit > 0.25) {
+            // The waking flare — this stone holds the watch.
+            ctx.globalAlpha = (lit - 0.25) * 0.55;
+            ctx.fillStyle = gwc;
+            ctx.beginPath();
+            ctx.arc(gx, gy, R * 1.9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        }
+      }
     }
 
     // ---- collar: the neck joint that ties helmet to breastplate.
@@ -3741,6 +3972,111 @@ export function drawTorsoGarment(
       ctx.fill();
     }
 
+    // ---- RUNESTRIPS: hanging inscribed strips off the shoulders and
+    // hem — cloth with full weight, swaying on the stride and the
+    // travel drag, pointed ends, stitched roots. Their runes kindle
+    // in a slow reading wave, top strip first, hem last: the fire
+    // reads the scripture in order and never loses its place.
+    if (st.runestrips) {
+      const rsCol = hurt ? '#ffffff' : st.runestrips.color;
+      const rn = st.runestrips.rune;
+      const turnR = Math.floor(nowMs / 1400) % 4;
+      const ftR = (nowMs % 1400) / 1400;
+      const strips = [
+        // [anchor x (×ww), top y, length, width, phase, order]
+        [-0.62, -th * 0.92, th * 0.78, 0.052, 0, 0],
+        [0.62, -th * 0.92, th * 0.78, 0.052, 1.6, 1],
+        [-0.84, 0.04 * s, st.skirt * s + 0.05 * s, 0.048, 3.1, 2],
+        [0.84, 0.04 * s, st.skirt * s + 0.05 * s, 0.048, 4.5, 3],
+      ] as const;
+      for (const [au, ay, len, w0, ph, order] of strips) {
+        const ax = au * ww;
+        const w = w0 * s;
+        const sway =
+          Math.sin(nowMs * 0.0021 + ph) * 0.013 * s * (0.35 + 0.65 * runF) +
+          f.strideSw * 0.014 * s +
+          f.dragX * 0.42 * s;
+        const tipX = ax + sway;
+        const tipY = ay + len;
+        // The strip's outline path — traced twice, once for the fill
+        // and once for the edge that SEPARATES it from the robe (the
+        // strips are the robe's colors; the drawn edge is what keeps
+        // them a garment-over-garment layer, not a stripe).
+        const stripPath = () => {
+          ctx.moveTo(ax - w, ay);
+          ctx.lineTo(ax + w, ay);
+          ctx.quadraticCurveTo(ax + w + sway * 0.5, ay + len * 0.55, tipX + w * 0.72, tipY - w * 1.4);
+          ctx.lineTo(tipX, tipY);
+          ctx.lineTo(tipX - w * 0.72, tipY - w * 1.4);
+          ctx.quadraticCurveTo(ax - w + sway * 0.5, ay + len * 0.55, ax - w, ay);
+          ctx.closePath();
+        };
+        ctx.fillStyle = rsCol;
+        ctx.beginPath();
+        stripPath();
+        ctx.fill();
+        if (!hurt) {
+          // The full edge keeps the strip legible on its own cloth.
+          ctx.strokeStyle = shade(st.runestrips.color, -34);
+          ctx.lineWidth = Math.max(1, s * 0.011);
+          ctx.beginPath();
+          stripPath();
+          ctx.stroke();
+          // The stitched root, and the CHARRED POINT — the scripture
+          // burns from the bottom up, and the tips already went.
+          ctx.fillStyle = shade(st.runestrips.color, -24);
+          ctx.fillRect(ax - w, ay, w * 2, 0.016 * s);
+          ctx.fillStyle = shade(st.runestrips.color, -58);
+          ctx.beginPath();
+          ctx.moveTo(tipX + w * 0.72, tipY - w * 1.4);
+          ctx.lineTo(tipX, tipY);
+          ctx.lineTo(tipX - w * 0.72, tipY - w * 1.4);
+          ctx.lineTo(tipX - w * 0.5, tipY - w * 2.3);
+          ctx.lineTo(tipX + w * 0.5, tipY - w * 2.3);
+          ctx.closePath();
+          ctx.fill();
+          // The scripture: three marks down the strip. The reading
+          // wave lights one strip at a time, in order.
+          const lit = order === turnR ? Math.sin(ftR * Math.PI) : 0;
+          ctx.strokeStyle = shade(rn, lit * 30);
+          ctx.globalAlpha = 0.42 + 0.58 * lit;
+          ctx.lineWidth = Math.max(1, s * 0.011);
+          for (let m = 0; m < 3; m++) {
+            const mu = 0.22 + m * 0.26;
+            const mx = ax + sway * mu * 0.72;
+            const my = ay + len * mu;
+            const mw = w * 0.6;
+            ctx.beginPath();
+            if ((m + order) % 3 === 0) {
+              ctx.moveTo(mx - mw, my + mw);
+              ctx.lineTo(mx, my - mw);
+              ctx.lineTo(mx + mw, my + mw);
+            } else if ((m + order) % 3 === 1) {
+              ctx.moveTo(mx - mw, my - mw);
+              ctx.lineTo(mx + mw, my - mw);
+              ctx.moveTo(mx, my - mw);
+              ctx.lineTo(mx, my + mw);
+            } else {
+              ctx.moveTo(mx - mw, my);
+              ctx.lineTo(mx + mw, my);
+              ctx.moveTo(mx - mw * 0.5, my - mw);
+              ctx.lineTo(mx + mw * 0.5, my + mw);
+            }
+            ctx.stroke();
+          }
+          if (lit > 0.3) {
+            // The reading glow while this strip holds the fire's eye.
+            ctx.globalAlpha = (lit - 0.3) * 0.24;
+            ctx.fillStyle = rn;
+            ctx.beginPath();
+            ctx.ellipse(ax + sway * 0.4, ay + len * 0.5, w * 2.1, len * 0.44, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
     // ---- the aura: three Arx motes drifting slowly up the robe,
     // each on its own phase, fading in and out — quiet power, never a
     // particle storm. Deterministic from the clock alone.
@@ -3789,6 +4125,63 @@ export function drawTorsoGarment(
         ctx.lineTo(gx + gr, gy);
         ctx.moveTo(gx, gy - gr);
         ctx.lineTo(gx, gy + gr);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // ---- SIGILWEAVE: sigils surfacing through the skirt cloth, one
+    // at a time — rise, hold, sink — while the next wakes elsewhere.
+    // The rosette rotation law worn as script: the garment is
+    // reading, and it never reads the same line twice in a row.
+    if (st.sigilweave && st.skirt > 0) {
+      const sg = st.sigilweave.color;
+      const sites = [
+        [-0.52, 0.4, 0],
+        [0.44, 0.62, 1],
+        [-0.06, 0.82, 2],
+      ] as const;
+      const turnS = Math.floor(nowMs / 2600) % 3;
+      const ftS = (nowMs % 2600) / 2600;
+      for (const [gu, gk, idx] of sites) {
+        const lit = idx === turnS ? Math.sin(ftS * Math.PI) : 0;
+        if (lit < 0.06) continue;
+        const gx = gu * ww * 1.15;
+        const gy = 0.02 * s + st.skirt * s * gk;
+        const R = 0.036 * s;
+        // The under-glow: the weave warms before the line shows.
+        ctx.globalAlpha = lit * 0.16;
+        ctx.fillStyle = sg;
+        ctx.beginPath();
+        ctx.arc(gx, gy, R * 1.7, 0, Math.PI * 2);
+        ctx.fill();
+        // The sigil itself — each site keeps its own letter.
+        ctx.globalAlpha = lit * 0.9;
+        ctx.strokeStyle = shade(sg, lit * 20);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        if (idx === 0) {
+          // The open eye, lidded.
+          ctx.moveTo(gx - R, gy);
+          ctx.quadraticCurveTo(gx, gy - R * 1.1, gx + R, gy);
+          ctx.quadraticCurveTo(gx, gy + R * 1.1, gx - R, gy);
+          ctx.moveTo(gx + R * 0.3, gy);
+          ctx.arc(gx, gy, R * 0.3, 0, Math.PI * 2);
+        } else if (idx === 1) {
+          // The asking: a stave that leans to listen.
+          ctx.moveTo(gx - R * 0.5, gy + R);
+          ctx.lineTo(gx - R * 0.5, gy - R);
+          ctx.lineTo(gx + R * 0.7, gy - R * 0.3);
+          ctx.lineTo(gx - R * 0.5, gy + R * 0.2);
+        } else {
+          // The answer: three falling bars, each shorter.
+          ctx.moveTo(gx - R * 0.8, gy - R);
+          ctx.lineTo(gx + R * 0.8, gy - R);
+          ctx.moveTo(gx - R * 0.55, gy - R * 0.3);
+          ctx.lineTo(gx + R * 0.55, gy - R * 0.3);
+          ctx.moveTo(gx - R * 0.3, gy + R * 0.4);
+          ctx.lineTo(gx + R * 0.3, gy + R * 0.4);
+        }
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
@@ -4515,6 +4908,152 @@ export function drawTorsoGarment(
       ctx.globalAlpha = 1;
       ctx.lineCap = 'butt';
     }
+
+    // ---- STORMORBS: three charged orbs orbiting the whole torso —
+    // the crown ring's depth law with the ring taken away. Near side
+    // big and lit, far side small and dim; where the body stands
+    // between orb and eye the orb honestly disappears. Each snaps a
+    // static spark on its own beat — charge, never decoration.
+    if (st.stormorbs) {
+      const oc = st.stormorbs.color;
+      const cyO = -th * 0.6;
+      const rxO = tww * 1.62;
+      const ryO = th * 0.42;
+      const spinO = nowMs * 0.00058;
+      for (let k = 0; k < 3; k++) {
+        const a = spinO + (k * Math.PI * 2) / 3;
+        const px = Math.cos(a) * rxO;
+        const py = cyO + Math.sin(a) * ryO;
+        const depth = (Math.sin(a) + 1) / 2;
+        // The far half passes behind the body; the torso hides it.
+        if (Math.sin(a) < 0 && Math.abs(px) < tww * 1.08) continue;
+        const r = (0.02 + 0.017 * depth) * s;
+        // The charge glow breathes around the sphere.
+        ctx.globalAlpha = 0.16 + 0.14 * depth;
+        ctx.fillStyle = oc;
+        ctx.beginPath();
+        ctx.arc(px, py, r * 2.1, 0, Math.PI * 2);
+        ctx.fill();
+        // The sphere: lit by its own depth, hard glint on the crown.
+        ctx.globalAlpha = 0.55 + 0.45 * depth;
+        ctx.fillStyle = shade(oc, -10 + depth * 26);
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(oc, 44);
+        ctx.beginPath();
+        ctx.arc(px - r * 0.3, py - r * 0.32, r * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        // The snap: a jagged arc jumps off the orb on its own beat.
+        const snap = Math.sin(nowMs * 0.0037 + k * 2.3);
+        if (snap > 0.93 && !f.hurt) {
+          const j = ((snap - 0.93) / 0.07) * 0.9;
+          const es = Math.sin(a * 3.1) > 0 ? 1 : -1;
+          ctx.globalAlpha = j;
+          ctx.strokeStyle = shade(oc, 34);
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(px + es * r * 0.9, py);
+          ctx.lineTo(px + es * r * 1.9, py - r * 0.8);
+          ctx.lineTo(px + es * r * 1.6, py - r * 0.2);
+          ctx.lineTo(px + es * r * 2.6, py - r * 1.1);
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // ---- THE GLYPH RING: a circle of living runes floating about
+    // the hips, turning slowly — no hoop holds them; the circle IS
+    // the runes keeping formation. Front view the body hides the far
+    // side and the flanks carry two standing arcs of script; from
+    // behind the whole sentence shows. Every rune rides the rim on
+    // the fake-3D depth law, and one glint walks among them.
+    if (st.glyphring) {
+      const gc = st.glyphring.color;
+      const cyG = 0.16 * s;
+      const rxG = ww * 1.95;
+      const ryG = 0.08 * s;
+      const spinG = -nowMs * 0.00034;
+      // The whisper of the rim: a thin arc glow tying the script
+      // together — light remembering a circle, never a solid hoop.
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.22;
+      ctx.strokeStyle = gc;
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      if (back) {
+        ctx.beginPath();
+        ctx.ellipse(0, cyG, rxG, ryG, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        for (const a0 of [-0.55, Math.PI - 0.55] as const) {
+          ctx.beginPath();
+          ctx.ellipse(0, cyG, rxG, ryG, 0, a0, a0 + 1.1);
+          ctx.stroke();
+        }
+      }
+      // Eight runes keep the formation. Four strokes of alphabet,
+      // recycled with flips so none of them repeats its neighbor.
+      for (let k = 0; k < 8; k++) {
+        const a = spinG + (k * Math.PI * 2) / 8;
+        const px = Math.cos(a) * rxG;
+        const py = cyG + Math.sin(a) * ryG;
+        const depth = (Math.sin(a) + 1) / 2;
+        if (!back && Math.sin(a) < 0 && Math.abs(px) < ww * 1.2) continue;
+        const rh = (0.02 + 0.016 * depth) * s;
+        const rw = rh * 0.62;
+        const fl = k % 2 === 0 ? 1 : -1;
+        ctx.globalAlpha = 0.4 + 0.6 * depth;
+        ctx.strokeStyle = shade(gc, depth * 26);
+        ctx.lineWidth = Math.max(1, s * (0.009 + 0.004 * depth));
+        ctx.beginPath();
+        switch (k % 4) {
+          case 0: // the gate: a bar with a raised threshold
+            ctx.moveTo(px - rw, py + rh * 0.5);
+            ctx.lineTo(px - rw, py - rh * 0.5);
+            ctx.lineTo(px + rw, py - rh * 0.5);
+            ctx.lineTo(px + rw, py + rh * 0.5);
+            ctx.moveTo(px, py - rh * 0.5);
+            ctx.lineTo(px, py + rh * 0.2);
+            break;
+          case 1: // the bolt: a broken diagonal
+            ctx.moveTo(px - rw * fl, py - rh * 0.55);
+            ctx.lineTo(px + rw * 0.3 * fl, py - rh * 0.1);
+            ctx.lineTo(px - rw * 0.3 * fl, py + rh * 0.1);
+            ctx.lineTo(px + rw * fl, py + rh * 0.55);
+            break;
+          case 2: // the eye: a diamond with a keel
+            ctx.moveTo(px, py - rh * 0.55);
+            ctx.lineTo(px + rw, py);
+            ctx.lineTo(px, py + rh * 0.55);
+            ctx.lineTo(px - rw, py);
+            ctx.closePath();
+            break;
+          default: // the branch: a stave with two leaning arms
+            ctx.moveTo(px, py - rh * 0.6);
+            ctx.lineTo(px, py + rh * 0.6);
+            ctx.moveTo(px, py - rh * 0.15);
+            ctx.lineTo(px + rw * fl, py - rh * 0.55);
+            ctx.moveTo(px, py + rh * 0.25);
+            ctx.lineTo(px - rw * fl, py - rh * 0.15);
+            break;
+        }
+        ctx.stroke();
+      }
+      // The reader: one glint walking the script ahead of the turn.
+      const ga2 = spinG * 2.6;
+      const gpx = Math.cos(ga2) * rxG;
+      const gpy = cyG + Math.sin(ga2) * ryG;
+      if (back || Math.sin(ga2) >= 0 || Math.abs(gpx) >= ww * 1.2) {
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = shade(gc, 40);
+        ctx.beginPath();
+        ctx.arc(gpx, gpy, 0.012 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'butt';
+    }
   }
 
   // ---- seated knee tents: a raised knee lifts the robe's front into
@@ -4734,6 +5273,121 @@ export function drawPauldron(
       ctx.closePath();
       ctx.fill();
       ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'sunfan') {
+    // THE SUNFAN — the sunhallow shoulder: three gilt ray petals
+    // fanning up and outward off a seated gold cap, breathing on a
+    // slow dawn clock. Rays, not blades: each petal is broad at the
+    // root, round at the tip, and carries its lit ridge the way a
+    // ray carries light — the dawn worn at the shoulder to answer
+    // the aureole at the brow.
+    const breathe = 1 + 0.05 * Math.sin(nowMs * 0.0013 + side * 0.7);
+    const rays: Array<[number, number, number]> = [
+      // [angle from straight up (×side, outward positive), length, width]
+      [0.12, 0.185, 0.052],
+      [0.5, 0.16, 0.046],
+      [0.86, 0.13, 0.04],
+    ];
+    for (let i = rays.length - 1; i >= 0; i--) {
+      const [ang, len0, w] = rays[i]!;
+      const len = len0 * breathe * s;
+      const dx = Math.sin(ang) * side;
+      const dy = -Math.cos(ang);
+      const px = dx * -0.005 * s;
+      const py = 0.01 * s;
+      const tx = px + dx * len;
+      const ty = py + dy * len;
+      const nx = -dy * side;
+      const ny = dx * side;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 10 : -4) - i * 8);
+      ctx.beginPath();
+      ctx.moveTo(px - nx * w * s * 0.5 * side, py - ny * w * s * 0.5 * side);
+      ctx.quadraticCurveTo(
+        px + dx * len * 0.55 - nx * w * s * 0.62 * side,
+        py + dy * len * 0.55 - ny * w * s * 0.62 * side,
+        tx - nx * w * s * 0.2 * side, ty - ny * w * s * 0.2 * side,
+      );
+      // The round ray tip — a petal, never a spike.
+      ctx.quadraticCurveTo(tx + dx * w * s * 0.5, ty + dy * w * s * 0.5, tx + nx * w * s * 0.2 * side, ty + ny * w * s * 0.2 * side);
+      ctx.quadraticCurveTo(
+        px + dx * len * 0.55 + nx * w * s * 0.62 * side,
+        py + dy * len * 0.55 + ny * w * s * 0.62 * side,
+        px + nx * w * s * 0.5 * side, py + ny * w * s * 0.5 * side,
+      );
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // Each ray carries its lit ridge up the center.
+        ctx.strokeStyle = trim;
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.moveTo(px + dx * len * 0.16, py + dy * len * 0.16);
+        ctx.lineTo(px + dx * len * 0.82, py + dy * len * 0.82);
+        ctx.stroke();
+      }
+    }
+    // The seat: a low gold cap the fan grows from — worn, not taped on.
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.ellipse(0, 0.012 * s, 0.088 * s, 0.052 * s, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = trim;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.ellipse(0, 0.012 * s, 0.088 * s, 0.052 * s, 0, Math.PI * 1.06, Math.PI * 1.94);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'veilwing') {
+    // THE VEILWING — the gloamsight shoulder: two sculpted wing
+    // plates swept up and OUTWARD off the arm, lapped like the
+    // veil's own temple crest grown to full span. Dark bronze mass
+    // under THE ONE BRIGHT EDGE: a lit stroke down each leading
+    // curve, or the sweep reads as shadow instead of wing.
+    const u = 1; // outward: the wings clear the silhouette, never the chest
+    for (let i = 1; i >= 0; i--) {
+      const lift = i * 0.05;
+      const len = (0.24 - i * 0.06) * s;
+      const px = side * -0.01 * s;
+      const py = (-0.03 + lift * 0.3) * s;
+      const tx = px + side * u * len;
+      const ty = py - (0.16 - lift) * s;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 8 : -6) - i * 12);
+      ctx.beginPath();
+      ctx.moveTo(px, py - 0.045 * s);
+      // Leading curve: up and back to the wing point.
+      ctx.quadraticCurveTo(px + side * u * len * 0.5, py - 0.135 * s, tx, ty);
+      // The return edge gives the plate its WIDTH — a sculpted slab.
+      ctx.quadraticCurveTo(px + side * u * len * 0.55, py + 0.02 * s, px, py + 0.055 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // THE ONE BRIGHT EDGE down the leading curve.
+        ctx.strokeStyle = trim;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(px, py - 0.042 * s);
+        ctx.quadraticCurveTo(px + side * u * len * 0.5, py - 0.13 * s, tx, ty);
+        ctx.stroke();
+      }
+    }
+    // The root cap seats the wings on the arm.
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 0.085 * s, 0.06 * s, 0, Math.PI * 0.9, Math.PI * 2.1);
+    ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = trim;
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 0.085 * s, 0.06 * s, 0, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
     }
     ctx.restore();
     return;
@@ -5437,6 +6091,99 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     ctx.fill();
   }
 
+  if (st.aureole && !hurt) {
+    // THE AUREOLE: a fan of gilt rays standing behind the crown,
+    // breathing on a slow clock — tallest at the peak, shorter down
+    // the sides, every ray carrying its lit ridge. Painted before the
+    // shell so the dawn stands BEHIND the cloth; centered on the
+    // skull axis, so like the halo it never loses a face.
+    const ac = st.aureole.color;
+    const cyA = headY - hh * 0.55;
+    for (let i = 0; i < 7; i++) {
+      const ang = -Math.PI * 0.78 + (i / 6) * Math.PI * 0.56;
+      const mid = 1 - Math.abs(i - 3) / 3;
+      const breathe = 1 + 0.09 * Math.sin(f.nowMs * 0.0014 + i * 0.55);
+      const len = hh * (0.62 + 0.55 * mid) * breathe;
+      const dx = Math.sin(ang);
+      const dy = -Math.cos(ang) * 0.9;
+      const bx = headX + dx * hw * 0.55;
+      const by = cyA + dy * hh * 0.3;
+      const tx = headX + dx * (hw * 0.55 + len * 0.72);
+      const ty = cyA + dy * (hh * 0.3 + len);
+      const w = hw * (0.1 + 0.05 * mid);
+      ctx.fillStyle = shade(ac, -6 + mid * 10);
+      ctx.beginPath();
+      ctx.moveTo(bx - dy * w, by + dx * w);
+      ctx.lineTo(tx - dy * w * 0.24, ty + dx * w * 0.24);
+      ctx.quadraticCurveTo(tx + dx * w * 0.7, ty + dy * w * 0.7, tx + dy * w * 0.24, ty - dx * w * 0.24);
+      ctx.lineTo(bx + dy * w, by - dx * w);
+      ctx.closePath();
+      ctx.fill();
+      // The lit ridge each ray carries.
+      ctx.strokeStyle = shade(ac, 30);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+    }
+  }
+
+  // THE GLYPH ORBIT: three angular runes circling the crown on the
+  // fake-3D depth law. Split into two passes so the shell occludes
+  // honestly: the far half paints before the cloth, the near half
+  // rides above it (the hood branch calls the near pass).
+  const drawGlyphOrbit = (pass: 'far' | 'near'): void => {
+    if (!st.glyphs || hurt) return;
+    const gc = st.glyphs.color;
+    const cyO = headY - hh * 0.86;
+    const rxO = hw * 1.42;
+    const ryO = hh * 0.3;
+    const spin = f.nowMs * 0.00046;
+    for (let k = 0; k < 3; k++) {
+      const a = spin + (k * Math.PI * 2) / 3;
+      const isNear = Math.sin(a) >= 0;
+      if ((pass === 'near') !== isNear) continue;
+      const px = headX + Math.cos(a) * rxO;
+      const py = cyO + Math.sin(a) * ryO;
+      const depth = (Math.sin(a) + 1) / 2;
+      const rh = headR * (0.17 + 0.12 * depth);
+      ctx.globalAlpha = 0.55 + 0.45 * depth;
+      ctx.strokeStyle = shade(gc, depth * 26);
+      ctx.lineWidth = Math.max(1, s * (0.01 + 0.004 * depth));
+      ctx.beginPath();
+      if (k === 0) {
+        // The door: a frame with a raised sill.
+        ctx.moveTo(px - rh * 0.62, py + rh * 0.55);
+        ctx.lineTo(px - rh * 0.62, py - rh * 0.55);
+        ctx.lineTo(px + rh * 0.62, py - rh * 0.55);
+        ctx.lineTo(px + rh * 0.62, py + rh * 0.55);
+        ctx.moveTo(px, py - rh * 0.55);
+        ctx.lineTo(px, py + rh * 0.15);
+      } else if (k === 1) {
+        // The tide: a diamond riding a bar.
+        ctx.moveTo(px, py - rh * 0.6);
+        ctx.lineTo(px + rh * 0.55, py);
+        ctx.lineTo(px, py + rh * 0.6);
+        ctx.lineTo(px - rh * 0.55, py);
+        ctx.closePath();
+        ctx.moveTo(px - rh * 0.55, py + rh * 0.6);
+        ctx.lineTo(px + rh * 0.55, py + rh * 0.6);
+      } else {
+        // The asking: a stave with two leaning arms.
+        ctx.moveTo(px, py - rh * 0.6);
+        ctx.lineTo(px, py + rh * 0.6);
+        ctx.moveTo(px, py - rh * 0.1);
+        ctx.lineTo(px + rh * 0.55, py - rh * 0.55);
+        ctx.moveTo(px, py + rh * 0.3);
+        ctx.lineTo(px - rh * 0.55, py - rh * 0.1);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  };
+  drawGlyphOrbit('far');
+
   if (st.shards && !hurt) {
     // The rift's answer to a halo: three slivers of night glass riding
     // above the crown, the tall one centered, each on its own slow
@@ -5645,6 +6392,158 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.closePath();
       ctx.fill();
       ctx.globalAlpha = 1;
+      if (st.arcs) {
+        // The storm in the hat: the tempest shells' word consumed by
+        // the wizard cone — an arc snaps from the windward brim tip
+        // up the crown to the slumped point on its own beat, and
+        // between snaps a charge glint keeps the current honest.
+        const arcC = st.arcs.color;
+        const beat = Math.sin(f.nowMs * 0.0029 + 0.7);
+        const bx0 = headX - u * hw * 1.88;
+        const by0 = bandY + hh * 0.14;
+        if (beat > 0.88) {
+          const j = (beat - 0.88) / 0.12;
+          ctx.globalAlpha = j;
+          ctx.strokeStyle = arcC;
+          ctx.lineWidth = Math.max(1, s * 0.014);
+          ctx.beginPath();
+          ctx.moveTo(bx0, by0);
+          for (let k2 = 1; k2 <= 4; k2++) {
+            const t2 = k2 / 4;
+            const jag = Math.sin(f.nowMs * 0.05 + k2 * 2.7) * hw * 0.16;
+            ctx.lineTo(
+              bx0 + (tipX - bx0) * t2 + jag,
+              by0 + (tipY - by0) * t2 - Math.sin(t2 * Math.PI) * hh * 0.3,
+            );
+          }
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        } else {
+          const charge = 0.3 + 0.4 * Math.max(0, beat);
+          ctx.globalAlpha = charge;
+          ctx.fillStyle = shade(arcC, 20);
+          ctx.beginPath();
+          ctx.arc(tipX + u * hw * 0.08, tipY, s * 0.013, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'magus') {
+    // THE MAGUS HAT — the duskwarden silhouette: the wizard cone's
+    // worldly cousin. A broader brim bent by real weather (upturned
+    // at the tips, one wave through each side), a taller, thinner
+    // spire with a harder crook, and a brass band carrying a cut gem
+    // cluster. Dark cloth under ONE BRIGHT EDGE: the brim's lit rim
+    // is what keeps midnight legible on midnight.
+    const bandY = headY - hh * 0.55;
+    const u = -lead;
+    const sway = Math.sin(f.nowMs * 0.0017) * hw * 0.09;
+    const tipX = headX + u * (hw * 1.38 + sway);
+    const tipY = bandY - hh * 1.78;
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    // Windward edge: a leaner concave climb than the wizard's.
+    ctx.moveTo(headX - u * hw * 0.78, bandY);
+    ctx.quadraticCurveTo(headX - u * hw * 0.42, bandY - hh * 1.0, headX - u * hw * 0.1, bandY - hh * 1.62);
+    // Over the crook — the spire commits harder than the cone does.
+    ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.08, tipX, tipY - hh * 0.22);
+    // A pinched, dropped point — road-worn, never a wisp.
+    ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
+    ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.4, headX + u * hw * 0.56, bandY - hh * 0.9);
+    ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The crook side folds dark; the windward ridge takes the moon.
+      ctx.fillStyle = shade(st.color, -14);
+      ctx.beginPath();
+      ctx.moveTo(headX, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.04, bandY - hh * 0.95, headX - u * hw * 0.01, bandY - hh * 1.56);
+      ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.0, tipX, tipY - hh * 0.2);
+      ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.03, tipX + u * hw * 0.02, tipY + hh * 0.12);
+      ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.38, headX + u * hw * 0.56, bandY - hh * 0.88);
+      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(st.color, 16);
+      ctx.lineWidth = Math.max(1.5, s * 0.018);
+      ctx.beginPath();
+      ctx.moveTo(headX - u * hw * 0.26, bandY - hh * 0.5);
+      ctx.quadraticCurveTo(headX - u * hw * 0.05, bandY - hh * 1.25, headX + u * hw * 0.26, bandY - hh * 1.72);
+      ctx.stroke();
+      // One crease under the crook — the weather left its writing.
+      ctx.strokeStyle = shade(st.color, -24);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(headX + u * hw * 0.14, bandY - hh * 1.44);
+      ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.56, tipX - u * hw * 0.1, tipY + hh * 0.02);
+      ctx.stroke();
+    }
+    // THE BRIM: broader than the wizard's, waved through each side,
+    // tips turned UP — a slab that has argued with weather and won.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 4);
+    ctx.beginPath();
+    ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.06);
+    ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
+    ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
+    ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.06);
+    ctx.quadraticCurveTo(headX + hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
+    ctx.quadraticCurveTo(headX - hw * 1.6, bandY + hh * 0.44, headX - hw * 2.45, bandY - hh * 0.06);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // Brim underside shadow, and THE ONE BRIGHT EDGE along the rim.
+      ctx.fillStyle = shade(st.color, -26);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 2.3, bandY + hh * 0.02);
+      ctx.quadraticCurveTo(headX, bandY + hh * 0.48, headX + hw * 2.3, bandY + hh * 0.02);
+      ctx.quadraticCurveTo(headX + hw * 1.5, bandY + hh * 0.38, headX, bandY + hh * 0.36);
+      ctx.quadraticCurveTo(headX - hw * 1.5, bandY + hh * 0.38, headX - hw * 2.3, bandY + hh * 0.02);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(st.color, 26);
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.06);
+      ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.06);
+      ctx.stroke();
+      // The brass band, and the gem cluster tracking the face.
+      ctx.fillStyle = st.trim;
+      ctx.fillRect(headX - hw * 0.74, bandY - hh * 0.44, hw * 1.48, hh * 0.24);
+      if (backK <= 0.55 && st.gem) {
+        const gx = headX + fx * headR * 0.34;
+        const gCol = st.gem.color;
+        for (const [du, dr] of [[0, 0.11], [-0.24, 0.075], [0.22, 0.07]] as const) {
+          const gx2 = gx + du * headR;
+          const gy2 = bandY - hh * 0.32;
+          ctx.fillStyle = shade(st.trim, -26);
+          ctx.beginPath();
+          ctx.arc(gx2, gy2, headR * dr * 1.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = gCol;
+          ctx.beginPath();
+          ctx.moveTo(gx2, gy2 - headR * dr);
+          ctx.lineTo(gx2 + headR * dr * 0.8, gy2);
+          ctx.lineTo(gx2, gy2 + headR * dr);
+          ctx.lineTo(gx2 - headR * dr * 0.8, gy2);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // The center stone keeps a slow watch-fire pulse.
+        const wk = 0.4 + 0.6 * Math.max(0, Math.sin(f.nowMs * 0.0013));
+        ctx.globalAlpha = wk * 0.5;
+        ctx.fillStyle = st.gem.color;
+        ctx.beginPath();
+        ctx.arc(gx, bandY - hh * 0.32, headR * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
     }
     return;
   }
@@ -5723,6 +6622,133 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           ctx.beginPath();
           ctx.arc(px - r2 * 0.3, py - r2 * 0.3, r2 * 0.4, 0, Math.PI * 2);
           ctx.fill();
+        }
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'veil') {
+    // THE VEIL — the gloamsight face: the cowl's shell grammar with
+    // the window REFUSED. Where every hood opens, this one hangs a
+    // sculpted curtain: a smooth cloth plane with nothing behind it
+    // but two amber points where the eyes should be. Swept temple
+    // wings (the fins word, consumed as the veil's crest) ride the
+    // crown; a gold brow band seats the curtain. The opening-anchor
+    // law still holds — the blank face tracks the facing and narrows
+    // into the profile exactly like the face it refuses to show.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.78 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.62;
+    const oBot = headY + hh * 0.86;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.26, headY + hh * 1.2);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.2, headX + lead * hw * 1.14, headY - hh * 0.55);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.05, headY - hh * 1.28, headX + lead * hw * 0.3, headY - hh * 1.34);
+      ctx.quadraticCurveTo(headX - lead * hw * (0.9 + t * 0.4), headY - hh * 1.38, headX - lead * hw * (1.12 + t * 0.5), headY - hh * 0.62);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.28 + t * 0.45), headY + hh * 0.15, headX - lead * hw * 1.26, headY + hh * 1.2);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.42, headX + lead * hw * 1.26, headY + hh * 1.2);
+      ctx.closePath();
+    };
+    // The temple wings paint FIRST so their roots tuck under the
+    // shell — swept gold blades climbing back off the temples, each
+    // under THE ONE BRIGHT EDGE.
+    if (st.fins && !hurt) {
+      const wc = st.fins.color;
+      for (const es of [-1, 1]) {
+        const sw2 = es !== lead ? 1 : 0.85;
+        const ax = headX + es * hw * 0.92;
+        const ay = headY - hh * 0.42;
+        const tx = ax + es * hw * 0.85 * sw2;
+        const ty = ay - hh * 1.3;
+        ctx.fillStyle = shade(wc, es === lead ? 4 : -10);
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo(ax + es * hw * 0.72, ay - hh * 0.5, tx, ty);
+        ctx.quadraticCurveTo(ax + es * hw * 0.14, ay - hh * 0.62, ax - es * hw * 0.14, ay - hh * 0.14);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(wc, 34);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo(ax + es * hw * 0.72, ay - hh * 0.5, tx, ty);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      ctx.clip();
+      // The torso's own form split, and the crown's lit fold.
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      ctx.strokeStyle = shade(st.color, 16);
+      ctx.lineWidth = Math.max(1.5, s * 0.024);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.72, headY - hh * 0.78);
+      ctx.quadraticCurveTo(headX, headY - hh * 1.52, headX + hw * 0.72, headY - hh * 0.78);
+      ctx.stroke();
+      ctx.restore();
+      if (front) {
+        // THE CURTAIN: the sculpted blank where a face would be — a
+        // plane lit a step above the shell so it reads as a surface
+        // presented, not a hole. Three gravity creases; no eyes, no
+        // mouth, no argument.
+        ctx.fillStyle = shade(st.color, 9);
+        ctx.beginPath();
+        chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+        ctx.fill();
+        ctx.save();
+        ctx.beginPath();
+        chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+        ctx.clip();
+        ctx.strokeStyle = shade(st.color, -12);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        for (const du of [-0.45, 0.05, 0.5]) {
+          ctx.beginPath();
+          ctx.moveTo(cx + du * ohw, oTop + hh * 0.34);
+          ctx.quadraticCurveTo(cx + du * ohw * 1.3, headY + hh * 0.2, cx + du * ohw * 0.8, oBot - hh * 0.1);
+          ctx.stroke();
+        }
+        // The curtain's own lit edge on the leading rim.
+        ctx.strokeStyle = shade(st.color, 24);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(cx + ohw * 0.92, oTop + hh * 0.1);
+        ctx.lineTo(cx + ohw * 0.92, oBot - hh * 0.12);
+        ctx.stroke();
+        ctx.restore();
+        // The brow band seats the curtain in gold.
+        ctx.fillStyle = st.trim;
+        ctx.fillRect(cx - ohw * 1.02, oTop - headR * 0.04, ohw * 2.04, headR * 0.12);
+        // The hidden gaze: two amber points burning where eyes
+        // should be, breathing on the ember clock — the only proof
+        // of tenancy the veil offers.
+        if (st.emberEyes) {
+          const pulse = 0.6 + 0.4 * Math.sin(f.nowMs * 0.0016);
+          const ey = headY + hh * 0.02;
+          for (const es of [-1, 1]) {
+            const wK = es !== lead ? Math.max(0, 1 - t * 1.4) : 1;
+            if (wK <= 0.05) continue;
+            const px = cx + es * ohw * 0.42;
+            ctx.globalAlpha = 0.3 * pulse * wK;
+            ctx.fillStyle = st.emberEyes.color;
+            ctx.beginPath();
+            ctx.arc(px, ey, hw * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = (0.8 + 0.2 * pulse) * wK;
+            ctx.fillStyle = shade(st.emberEyes.color, 30);
+            ctx.fillRect(px - hw * 0.1, ey - hw * 0.035, hw * 0.2, hw * 0.07);
+          }
+          ctx.globalAlpha = 1;
         }
       }
     }
@@ -6155,6 +7181,74 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       }
       ctx.globalAlpha = 1;
     }
+    if (st.flamecrown && !hurt) {
+      // THE FLAMECROWN: iron tines rising off a dark band seated on
+      // the crown, each guttering a hot flame that re-shapes every
+      // beat — the coldfire idiom run hot and worn as a crown. The
+      // crown was lit, not forged: the tines only hold the fire's
+      // place. Centered on the skull axis, so it keeps every facing.
+      const tc = st.flamecrown.tine;
+      const fc2 = st.flamecrown.flame;
+      // The band arcs over the crown to seat the tines.
+      ctx.strokeStyle = tc;
+      ctx.lineWidth = Math.max(2, s * 0.032);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.88, headY - hh * 0.92);
+      ctx.quadraticCurveTo(headX, headY - hh * 1.38, headX + hw * 0.88, headY - hh * 0.92);
+      ctx.stroke();
+      for (const [du, len, ph] of [
+        [-0.72, 0.5, 0],
+        [-0.26, 0.72, 1.9],
+        [0.26, 0.72, 3.7],
+        [0.72, 0.5, 5.2],
+      ] as const) {
+        const bx = headX + du * hw;
+        const by = headY - hh * (1.02 + 0.22 * Math.cos(du * 1.3));
+        const bend = du * 0.4;
+        const tx = bx + bend * hw * len;
+        const ty = by - hh * len;
+        // The tine: an iron prong curving outward — forged mass, not
+        // a wire; the fire needs something worth holding.
+        ctx.fillStyle = tc;
+        ctx.beginPath();
+        ctx.moveTo(bx - hw * 0.13, by);
+        ctx.quadraticCurveTo(bx - hw * 0.08 + bend * hw * 0.5, by - hh * len * 0.55, tx, ty);
+        ctx.quadraticCurveTo(bx + hw * 0.1 + bend * hw * 0.5, by - hh * len * 0.5, bx + hw * 0.13, by);
+        ctx.closePath();
+        ctx.fill();
+        // The dim glint down the leading edge — iron, not shadow.
+        ctx.strokeStyle = shade(tc, 34);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(bx + hw * 0.1, by);
+        ctx.quadraticCurveTo(bx + hw * 0.09 + bend * hw * 0.5, by - hh * len * 0.5, tx, ty);
+        ctx.stroke();
+        // The flame: two tongues off the tine's point, re-shaping on
+        // their own gutter, giving real heat.
+        const g1 = Math.sin(f.nowMs * 0.006 + ph);
+        const g2 = Math.sin(f.nowMs * 0.0087 + ph * 1.6);
+        const fh = hh * (0.46 + 0.13 * g1) * (len / 0.72);
+        ctx.globalAlpha = 0.82;
+        ctx.fillStyle = fc2;
+        ctx.beginPath();
+        ctx.moveTo(tx - hw * 0.1, ty + hh * 0.03);
+        ctx.quadraticCurveTo(tx - hw * (0.16 + 0.05 * g2), ty - fh * 0.5, tx + hw * 0.06 * g1, ty - fh);
+        ctx.quadraticCurveTo(tx + hw * (0.15 + 0.04 * g1), ty - fh * 0.45, tx + hw * 0.11, ty + hh * 0.03);
+        ctx.closePath();
+        ctx.fill();
+        // The hot heart inside the tongue.
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = shade(fc2, 34);
+        ctx.beginPath();
+        ctx.moveTo(tx - hw * 0.045, ty + hh * 0.02);
+        ctx.quadraticCurveTo(tx + hw * 0.03 * g2, ty - fh * 0.42, tx + hw * 0.03 * g1, ty - fh * 0.6);
+        ctx.quadraticCurveTo(tx + hw * 0.055, ty - fh * 0.3, tx + hw * 0.05, ty + hh * 0.02);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    drawGlyphOrbit('near');
     return;
   }
 

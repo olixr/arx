@@ -5683,6 +5683,102 @@ function namedChaseDefs(): EquipmentDef[] {
     color: '#e8e4da',
     rarities: ['legendary'] as RarityTier[],
   };
+  // ------------------------------------------- the grand arcanum
+  // The cloth high road: six chase vestments climbing the same rungs
+  // the plate high road took, 30 to 52. The caster's answer to the
+  // kingsmane law — big curated silhouettes, and every set carries a
+  // signature that MOVES. Drop-only; the owners keep them.
+
+  // SUNHALLOW — the dawn liturgy in ivory and gold, rays standing
+  // behind the brow. Owner: the bone chanter, who stole the morning
+  // service whole and has sung it wrong ever since; the vaults keep
+  // a second set folded right.
+  const sunhallow = {
+    class: 'cloth' as const, skill: 'arx' as const,
+    pool: [
+      { stat: 'arx', w: 2 },
+      { stat: 'vitality' },
+      { stat: 'regen', w: 2 },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#ece6d8',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
+  // STORMSINGER — indigo under three charged orbs that never stop
+  // circling. Owner: the elder great owl, the only thing over the
+  // pines that ever outflew the weather it sings about.
+  const stormsinger = {
+    class: 'cloth' as const, skill: 'arx' as const,
+    pool: [
+      { stat: 'arx', w: 3 },
+      { stat: 'regen' },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#2c3a6e',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
+  // GLOAMSIGHT — moss bronze under a sculpted veil with no face in
+  // it. Sigils rise through the weave, hold, and sink: it is reading.
+  // Owner: the gloomcaller, who looked into the gloam and came back
+  // wearing the answer badly.
+  const gloamsight = {
+    class: 'cloth' as const, skill: 'arx' as const,
+    pool: [
+      { stat: 'arx', w: 2 },
+      { stat: 'sneak' },
+      { stat: 'herbalism' },
+      { stat: 'regen' },
+    ] as AffixPoolEntry[],
+    color: '#4e5636',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // FLAMEWROUGHT — bone ivory inscribed to the hem, read in fire,
+  // under a crown of burning tines. Owner: the first voice of the
+  // fire; the firecaller has carried the last word of the scripture
+  // since before it could pronounce it.
+  const flamewrought = {
+    class: 'cloth' as const, skill: 'arx' as const,
+    pool: [
+      { stat: 'arx', w: 3 },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+      { stat: 'regen' },
+    ] as AffixPoolEntry[],
+    color: '#ddd2b8',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // DUSKWARDEN — the traveling magus in midnight and brass, oxblood
+  // gems keeping watch off the shoulder cape. Owner: the dusk roads;
+  // the worgs took the last warden at the ford and could not agree
+  // on the hat.
+  const duskwarden = {
+    class: 'cloth' as const, skill: 'arx' as const,
+    pool: [
+      { stat: 'arx', w: 2 },
+      { stat: 'herbalism', w: 2 },
+      { stat: 'vitality' },
+      { stat: 'regen' },
+    ] as AffixPoolEntry[],
+    color: '#232838',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // AETHERION — violet night under a floating ring of living runes:
+  // the wardrobe's second floating regalia, and the archmage's last
+  // word. Owner: the deep hoards, same law as the kingsmane — the
+  // world only keeps what it took.
+  const aetherion = {
+    class: 'cloth' as const, skill: 'arx' as const,
+    pool: [
+      { stat: 'arx', w: 3 },
+      { stat: 'vitality', w: 2 },
+      { stat: 'maxHp' },
+      { stat: 'regen' },
+      { stat: 'herbalism' },
+    ] as AffixPoolEntry[],
+    color: '#2e2452',
+    rarities: ['legendary'] as RarityTier[],
+  };
   return [
     chasePiece(moonbell, 'moonbell_hood', 'Moonbell hood', 'head', 8, 2, 380, 'Ma',
       'Two pale blooms tucked at the brow. They open at dusk.'),
@@ -5947,5 +6043,71 @@ function namedChaseDefs(): EquipmentDef[] {
       'Gold to the toe. Parade step and war step are the same step.'),
     chasePiece(kingsmane, 'kingsmane_gauntlets', 'Kingsmane gauntlets', 'gloves', 50, 10, 2450, 'Kp',
       'A sapphire at the fist and lions at the shoulders. Doors open before the knock.'),
+
+    chasePiece(sunhallow, 'sunhallow_hood', 'Sunhallow hood', 'head', 27, 5, 1300, 'Ua',
+      'Gilt rays stand behind the brow and breathe. Dawn, worn indoors.'),
+    chasePiece(sunhallow, 'sunhallow_robe', 'Sunhallow robe', 'body', 30, 6, 1500, 'Ub',
+      'Ivory and gold over a hem of crimson. The light arrives before you do.'),
+    chasePiece(sunhallow, 'sunhallow_skirts', 'Sunhallow skirts', 'legs', 29, 5, 1400, 'Uc',
+      'White that has never once touched mud. It will not start with you.'),
+    chasePiece(sunhallow, 'sunhallow_slippers', 'Sunhallow slippers', 'boots', 28, 4, 1300, 'Ue',
+      'They walk the aisle whether or not there is one.'),
+    chasePiece(sunhallow, 'sunhallow_wraps', 'Sunhallow wraps', 'gloves', 28, 4, 1300, 'Uf',
+      'Gold thread to the fingertip. A blessing needs clean hands.'),
+
+    chasePiece(stormsinger, 'stormsinger_hat', 'Stormsinger hat', 'head', 32, 6, 1550, 'Ya',
+      'A bent spire that hums before weather. The arc jumps brim to tip and back.'),
+    chasePiece(stormsinger, 'stormsinger_robe', 'Stormsinger robe', 'body', 35, 7, 1750, 'Yd',
+      'Three charged orbs keep their orbit. The song keeps the count.'),
+    chasePiece(stormsinger, 'stormsinger_skirts', 'Stormsinger skirts', 'legs', 34, 6, 1600, 'Ye',
+      'Indigo that swings like a front coming in over the pines.'),
+    chasePiece(stormsinger, 'stormsinger_slippers', 'Stormsinger slippers', 'boots', 33, 5, 1500, 'Yf',
+      'Thunder counts the steps. You arrive on the flash.'),
+    chasePiece(stormsinger, 'stormsinger_wraps', 'Stormsinger wraps', 'gloves', 33, 5, 1500, 'Yi',
+      'Silver stitching to lead the arc away from the skin. Mostly.'),
+
+    chasePiece(gloamsight, 'gloamsight_veil', 'Gloamsight veil', 'head', 37, 7, 1800, 'Ga',
+      'A sculpted face with no face in it. Amber burns where the eyes should be.'),
+    chasePiece(gloamsight, 'gloamsight_robe', 'Gloamsight robe', 'body', 40, 8, 2050, 'Ge',
+      'Sigils rise through the weave, hold, and sink. It is reading. So are you.'),
+    chasePiece(gloamsight, 'gloamsight_skirts', 'Gloamsight skirts', 'legs', 39, 7, 1900, 'Gf',
+      'Moss bronze cut to move like held breath.'),
+    chasePiece(gloamsight, 'gloamsight_slippers', 'Gloamsight slippers', 'boots', 38, 6, 1800, 'Gm',
+      'They know the floor plan of rooms you have not entered.'),
+    chasePiece(gloamsight, 'gloamsight_wraps', 'Gloamsight wraps', 'gloves', 38, 6, 1800, 'Go',
+      'Antique gold at the cuff. What they touch stays known.'),
+
+    chasePiece(flamewrought, 'flamewrought_crown', 'Flamewrought crown', 'head', 42, 7, 2050, 'Fd',
+      'Iron tines off a dark band, each one burning. The crown was lit, not forged.'),
+    chasePiece(flamewrought, 'flamewrought_robe', 'Flamewrought robe', 'body', 45, 8, 2300, 'Fe',
+      'Ivory strips inscribed to the hem, read in fire, one line at a time.'),
+    chasePiece(flamewrought, 'flamewrought_skirts', 'Flamewrought skirts', 'legs', 44, 7, 2150, 'Fl',
+      'Char at the hem where the scripture ends. It never climbs higher.'),
+    chasePiece(flamewrought, 'flamewrought_slippers', 'Flamewrought slippers', 'boots', 43, 6, 2050, 'Fm',
+      'Warm at every hour. The floorboards keep the news to themselves.'),
+    chasePiece(flamewrought, 'flamewrought_wraps', 'Flamewrought wraps', 'gloves', 43, 6, 2050, 'Fn',
+      'Bone cloth cuffed in char. The fire reads along when you point.'),
+
+    chasePiece(duskwarden, 'duskwarden_hat', 'Duskwarden hat', 'head', 45, 8, 2250, 'Da',
+      'A broad brim bent by weather no map records. The spire leans toward trouble.'),
+    chasePiece(duskwarden, 'duskwarden_robe', 'Duskwarden robe', 'body', 48, 9, 2500, 'Dc',
+      'Oxblood gems stud the shoulder cape and wink in turn. The watch never lapses.'),
+    chasePiece(duskwarden, 'duskwarden_skirts', 'Duskwarden skirts', 'legs', 47, 8, 2350, 'De',
+      'Midnight cloth hemmed in brass. The dusk roads defer.'),
+    chasePiece(duskwarden, 'duskwarden_slippers', 'Duskwarden slippers', 'boots', 46, 7, 2250, 'Df',
+      'Soled for the mile that comes after the last one.'),
+    chasePiece(duskwarden, 'duskwarden_wraps', 'Duskwarden wraps', 'gloves', 46, 7, 2250, 'Dg',
+      'Brass at the knuckle, a gem at the wrist. Tolls collect themselves.'),
+
+    chasePiece(aetherion, 'aetherion_cowl', 'Aetherion cowl', 'head', 49, 8, 2500, 'Ab',
+      'Three glyphs circle the crown, patient as moons. None of them repeats.'),
+    chasePiece(aetherion, 'aetherion_robe', 'Aetherion robe', 'body', 52, 10, 2850, 'Ac',
+      'A ring of living runes turns about the waist. Nothing holds it up. Nothing dares.'),
+    chasePiece(aetherion, 'aetherion_skirts', 'Aetherion skirts', 'legs', 51, 9, 2650, 'Ad',
+      'Violet night hemmed in silver. The hem decides where the floor is.'),
+    chasePiece(aetherion, 'aetherion_slippers', 'Aetherion slippers', 'boots', 50, 8, 2500, 'Ae',
+      'They land on agreement rather than stone.'),
+    chasePiece(aetherion, 'aetherion_wraps', 'Aetherion wraps', 'gloves', 50, 8, 2500, 'Af',
+      'Aether pools at the fingertips. Spend it slowly.'),
   ];
 }
