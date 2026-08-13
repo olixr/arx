@@ -19082,107 +19082,186 @@ export class Renderer {
   }
 
   /**
-   * One sharpened log of the palisade face: a flat value cylinder
-   * (lit west sliver, mid face, shaded east fall-off) rising to a
-   * chisel-cut spike — the bright cut facet is fresh axe work, the
-   * flank falls dark. The FLAT FORGE law: depth is planes, never
-   * stroked lines.
+   * ONE GIANT CARVED LOG — the unit the whole wall is built from. A
+   * quarter-tile round hewn from a whole trunk: four value bands roll
+   * the cylinder (FLAT FORGE — planes, never strokes), one or two
+   * axe-notch carvings bite the face, and the crown is a big two-facet
+   * chisel cut with an undercut shadow seating it on the body. Each
+   * log wears its OWN brand ring — a palisade is a row of monuments,
+   * not a fence panel — and overlapping logs occlude each other's ink
+   * honestly because fill and ink land together, log by log.
    */
-  private palisadeLog(
+  private giantLog(
     x: number,
     baseY: number,
-    lw: number,
+    w: number,
     shoulder: number,
-    apex: number,
-    tone: number,
+    seed: number,
+    ink: boolean,
   ): void {
     const ctx = this.ctx;
-    const base = shade(PALI_LOG, tone);
-    const mid = x + lw / 2;
-    // Body.
-    ctx.fillStyle = base;
-    ctx.fillRect(x, shoulder, lw, baseY - shoulder);
-    // Lit west sliver + shaded east fall-off: the turned round.
-    ctx.fillStyle = shade(PALI_LOG, tone + 13);
-    ctx.fillRect(x, shoulder, lw * 0.24, baseY - shoulder);
-    ctx.fillStyle = shade(PALI_LOG, tone - 15);
-    ctx.fillRect(x + lw * 0.76, shoulder, lw * 0.24, baseY - shoulder);
-    // The spike: west half wears the bright cut facet, east half
-    // falls into shadow — an axe-sharpened point, not a picket.
-    ctx.fillStyle = shade(PALI_LOG, tone + 32);
+    const s = this.camera.scale;
+    const tone = ((seed >> 2) & 7) - 4;
+    const apexX = x + w * (0.42 + ((seed >> 5) & 7) * 0.02);
+    const spikeH = s * (0.24 + ((seed >> 8) & 3) * 0.035);
+    const apexY = shoulder - spikeH;
+    // THE ROUND: four bands turn the trunk. West catches the light a
+    // hair in from the edge — the highlight sits ON the curve.
+    const bands: ReadonlyArray<readonly [number, number, number]> = [
+      [0, 0.13, 5],
+      [0.13, 0.4, 18],
+      [0.4, 0.74, 0],
+      [0.74, 1, -20],
+    ];
+    for (const [f0, f1, t] of bands) {
+      ctx.fillStyle = shade(PALI_LOG, tone + t);
+      ctx.fillRect(x + w * f0, shoulder - s * 0.01, w * (f1 - f0), baseY - shoulder + s * 0.01);
+    }
+    // THE CUT: two facets meet on the ridge — bright fresh axe work
+    // west, the shadowed fall east; both READ at distance.
+    ctx.fillStyle = shade(PALI_LOG, tone + 34);
     ctx.beginPath();
     ctx.moveTo(x, shoulder);
-    ctx.lineTo(mid, apex);
-    ctx.lineTo(mid, shoulder);
+    ctx.lineTo(apexX, apexY);
+    ctx.lineTo(apexX, shoulder);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = shade(PALI_LOG, tone - 20);
+    ctx.fillStyle = shade(PALI_LOG, tone - 10);
     ctx.beginPath();
-    ctx.moveTo(mid, apex);
-    ctx.lineTo(x + lw, shoulder);
-    ctx.lineTo(mid, shoulder);
+    ctx.moveTo(apexX, apexY);
+    ctx.lineTo(x + w, shoulder);
+    ctx.lineTo(apexX, shoulder);
     ctx.closePath();
     ctx.fill();
+    // The undercut: the point sits ON the trunk, not painted on it.
+    ctx.fillStyle = shade(PALI_LOG, tone - 24);
+    ctx.fillRect(x + w * 0.06, shoulder, w * 0.88, s * 0.024);
+    // CARVED, NOT MILLED: axe notches bite the face — a dark chip
+    // wedge with a sunlit lower lip.
+    const notches = 1 + ((seed >> 10) & 1);
+    for (let i = 0; i < notches; i++) {
+      const nf = 0.3 + (((seed >> (11 + i * 3)) & 7) / 7) * 0.42;
+      const ny = shoulder + (baseY - shoulder) * nf;
+      const nx = x + w * 0.16;
+      const nw = w * 0.55;
+      ctx.fillStyle = shade(PALI_LOG, tone - 16);
+      ctx.beginPath();
+      ctx.moveTo(nx, ny);
+      ctx.lineTo(nx + nw, ny + s * 0.008);
+      ctx.lineTo(nx + nw * 0.82, ny + s * 0.036);
+      ctx.lineTo(nx + nw * 0.12, ny + s * 0.03);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(PALI_LOG, tone + 12);
+      ctx.fillRect(nx + nw * 0.08, ny + s * 0.032, nw * 0.72, s * 0.014);
+    }
+    // The foot sinks into trampled ground.
+    ctx.fillStyle = 'rgba(20, 14, 26, 0.28)';
+    ctx.fillRect(x, baseY - s * 0.032, w, s * 0.032);
+    if (ink && this.outlineOn) {
+      this.beginStructOutline();
+      ctx.beginPath();
+      ctx.moveTo(x, baseY);
+      ctx.lineTo(x, shoulder);
+      ctx.lineTo(apexX, apexY);
+      ctx.lineTo(x + w, shoulder);
+      ctx.lineTo(x + w, baseY);
+      ctx.stroke();
+    }
+  }
+
+  /** Shoulder height for log k of a tile — big and uneven (1.3 to
+   *  1.62 tiles over the 1.15-tile body: the wall MEANS it). */
+  private logShoulder(tx: number, ty: number, k: number): number {
+    return 1.3 + ((hashCoords(43, tx * 8 + k, ty) >> 3) & 7) * 0.046;
   }
 
   /**
-   * A heavier gate-post log: fat round with a rope collar and its own
-   * spike, the anchor mass the gate leaf hangs from. Draws its own
-   * brand outline (called clear of the leaf so joints read lashed).
+   * THE HEAVY LASH: a thick rope course bound across a span of logs —
+   * dark wrap band, two lit strands, a shadowed wrap tick where it
+   * rounds each log seam, and a knot with a dangling end at one
+   * hash-picked log. Fill-only value work (the logs own the ink).
+   */
+  private palisadeRope(
+    xw: number,
+    xe: number,
+    y: number,
+    seams: readonly number[],
+    knotSeed: number,
+  ): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    ctx.fillStyle = PALI_ROPE_DARK;
+    ctx.fillRect(xw, y, xe - xw, s * 0.085);
+    ctx.fillStyle = PALI_ROPE;
+    ctx.fillRect(xw, y + s * 0.016, xe - xw, s * 0.02);
+    ctx.fillRect(xw, y + s * 0.052, xe - xw, s * 0.016);
+    ctx.fillStyle = 'rgba(24, 16, 30, 0.4)';
+    for (const sx of seams) {
+      ctx.fillRect(sx - s * 0.011, y, s * 0.022, s * 0.085);
+    }
+    if (seams.length > 0 && ((knotSeed >> 4) & 3) === 1) {
+      const kx = seams[(knotSeed >> 6) % seams.length]!;
+      ctx.fillStyle = PALI_ROPE;
+      ctx.beginPath();
+      facetCircle(ctx, kx, y + s * 0.042, s * 0.038, 5, 0.3, 0.8);
+      ctx.fill();
+      ctx.fillStyle = PALI_ROPE_DARK;
+      ctx.fillRect(kx - s * 0.012, y + s * 0.07, s * 0.024, s * 0.09);
+    }
+  }
+
+  /**
+   * A GATE POST: the fattest log in the wall, with a rope hinge
+   * collar and — on one side of every gate — the camp's skull staring
+   * down the road.
    */
   private drawPalisadePost(x: number, baseY: number, w: number, hTot: number, skull: boolean): void {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const hw = w / 2;
     const shoulder = baseY - hTot;
-    const apex = shoulder - s * 0.2;
-    // Contact shade roots it to the trampled ground.
-    ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
     ctx.beginPath();
-    ctx.ellipse(x, baseY + s * 0.012, hw * 1.7, s * 0.05, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, baseY + s * 0.012, hw * 1.5, s * 0.05, 0, 0, Math.PI * 2);
     ctx.fill();
-    this.palisadeLog(x - hw, baseY, w, shoulder, apex, -4);
-    // The rope collar: the gate's hinge lashing, thick and worn.
+    this.giantLog(x - hw, baseY, w, shoulder, hashCoords(61, Math.round(x), Math.round(baseY)), true);
+    // The rope hinge collar, doubled — a gate hangs real weight.
     ctx.fillStyle = PALI_ROPE_DARK;
-    ctx.fillRect(x - hw - s * 0.012, baseY - hTot * 0.62, w + s * 0.024, s * 0.075);
+    ctx.fillRect(x - hw - s * 0.014, baseY - hTot * 0.6, w + s * 0.028, s * 0.09);
     ctx.fillStyle = PALI_ROPE;
-    ctx.fillRect(x - hw - s * 0.012, baseY - hTot * 0.62 + s * 0.018, w + s * 0.024, s * 0.022);
+    ctx.fillRect(x - hw - s * 0.014, baseY - hTot * 0.6 + s * 0.02, w + s * 0.028, s * 0.022);
+    ctx.fillRect(x - hw - s * 0.014, baseY - hTot * 0.6 + s * 0.056, w + s * 0.028, s * 0.018);
     if (skull) {
-      // The camp signs its door: a weathered skull lashed to the post.
-      const sy = baseY - hTot * 0.86;
+      const sy = baseY - hTot * 0.84;
+      ctx.fillStyle = PALI_ROPE_DARK;
+      ctx.fillRect(x - s * 0.012, sy - s * 0.17, s * 0.024, s * 0.1);
       ctx.fillStyle = PALI_BONE;
       ctx.beginPath();
-      facetCircle(ctx, x, sy, s * 0.085, 7, 0.4, 0.8);
+      facetCircle(ctx, x, sy, s * 0.095, 7, 0.4, 0.8);
       ctx.fill();
       ctx.fillStyle = shade(PALI_BONE, -12);
-      ctx.fillRect(x - s * 0.05, sy + s * 0.045, s * 0.1, s * 0.045);
+      ctx.fillRect(x - s * 0.055, sy + s * 0.05, s * 0.11, s * 0.05);
       ctx.fillStyle = '#241a2e';
-      ctx.fillRect(x - s * 0.052, sy - s * 0.02, s * 0.036, s * 0.036);
-      ctx.fillRect(x + s * 0.016, sy - s * 0.02, s * 0.036, s * 0.036);
-    }
-    if (this.outlineOn) {
-      this.beginStructOutline();
-      ctx.beginPath();
-      ctx.moveTo(x - hw, baseY);
-      ctx.lineTo(x - hw, shoulder);
-      ctx.lineTo(x, apex);
-      ctx.lineTo(x + hw, shoulder);
-      ctx.lineTo(x + hw, baseY);
-      ctx.stroke();
+      ctx.fillRect(x - s * 0.058, sy - s * 0.022, s * 0.04, s * 0.04);
+      ctx.fillRect(x + s * 0.018, sy - s * 0.022, s * 0.04, s * 0.04);
     }
   }
 
   /**
-   * THE SPIKED WALL — sharpened logs lashed shoulder to shoulder, the
-   * war camp's own fortification. Fence-grammar connectivity (E-W
-   * courses, N-S edge-on strips, 45° strides, stubs toward pointing
-   * diagonals) at wall height: six logs to the tile on an uneven
-   * sawtooth skyline, every point a bright axe-cut facet, two rope
-   * lash courses binding the run, a leaning brace pole rooting every
-   * few tiles. The struct ink traces the TRUE sawtooth silhouette —
-   * spikes live INSIDE the outline path, side verticals only at
-   * exposed run ends — so estate-length rings merge seamlessly with
-   * no bake cap (the fence's live-stroke law).
+   * THE SPIKED WALL, rebuilt — GIANT CARVED LOGS, not a fence. Four
+   * whole trunks to the tile (each its own monument: rolled value
+   * bands, axe notches, a big two-facet point, its own black ring),
+   * bound by heavy rope courses. Every direction speaks the same
+   * vocabulary of STANDING logs:
+   *  - E-W runs: logs shoulder to shoulder, widths hash-split so no
+   *    two neighbors match, half-tile pitch so runs meet log-true.
+   *  - N-S runs: logs MARCH UP-SCREEN in depth — each drawn whole,
+   *    the next-south overlapping it, leaving a ridge of crowned
+   *    points climbing the screen (never an extruded strip).
+   *  - 45° strides: the same marching logs stepping corner-to-corner
+   *    — vertical giants on a diagonal line, never sheared planks.
+   * A fat junction log anchors every corner, tee, and run end.
    */
   private palisadeItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
     const s = this.camera.scale;
@@ -19213,71 +19292,78 @@ export class Renderer {
       tile === Tile.PalisadeDiagNW
         ? this.palisadeish(game, tx + 1, ty + 1)
         : straight && gAt(1, 1) === Tile.PalisadeDiagNW;
-    const any = cn || ce || cs || cw || dNE || dSW || dNW || dSE;
+    const anyDiag = dNE || dSW || dNW || dSE;
+    const any = cn || ce || cs || cw || anyDiag;
     const isoEW = straight && !any;
     const isoNE = tile === Tile.PalisadeDiagNE && !any;
     const isoNW = tile === Tile.PalisadeDiagNW && !any;
-    const LOGS = 6;
-    const lw = s / LOGS;
-    const SPIKE = s * 0.16;
-    // Per-log skyline: shoulder height off the log's own world seat —
-    // stable per tile, uneven along the run (1.28..1.5 tiles, over
-    // the 1.15-tile body: the wall means it).
-    const logH = (k: number) => (1.28 + ((hashCoords(43, tx * 8 + k, ty) >> 3) & 7) * 0.031) * s;
     const xw = cw || isoEW ? p.x - s * 0.5 : p.x;
     const xe = ce || isoEW ? p.x + s * 0.5 : p.x;
+    // A fat junction log anchors corners, tees, and run ends — a
+    // through-run needs none (its courses are continuous).
+    const dirCount =
+      (cw ? 1 : 0) + (ce ? 1 : 0) + (cn ? 1 : 0) + (cs ? 1 : 0) + (anyDiag ? 1 : 0);
+    const ewAny = cw || ce || isoEW;
+    const nsAny = cn || cs;
+    const ewThrough = cw && ce && !nsAny && !anyDiag;
+    const nsThrough = cn && cs && !ewAny && !anyDiag;
+    const needAnchor =
+      (straight && !ewThrough && !nsThrough && !isoEW && dirCount > 0) || anyDiag || isoNE || isoNW;
     return {
       sortY: ty + 0.8,
       drawShadow: () => {
-        if (cw || ce || isoEW) this.castEdgeQuad(xw, baseY, xe, baseY, 0.85);
-        if (cn) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY, 0.85);
-        if (cs) this.castEdgeQuad(p.x, baseY, p.x, baseY + syT * 0.5, 0.85);
-        if (dNE || isoNE) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY - syT * 0.5, 0.85);
-        if (dSW || isoNE) this.castEdgeQuad(p.x - s * 0.5, baseY + syT * 0.5, p.x, baseY, 0.85);
-        if (dNW || isoNW) this.castEdgeQuad(p.x - s * 0.5, baseY - syT * 0.5, p.x, baseY, 0.85);
-        if (dSE || isoNW) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY + syT * 0.5, 0.85);
+        if (ewAny) this.castEdgeQuad(xw, baseY, xe, baseY, 0.95);
+        if (cn) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY, 0.95);
+        if (cs) this.castEdgeQuad(p.x, baseY, p.x, baseY + syT * 0.5, 0.95);
+        if (dNE || isoNE) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY - syT * 0.5, 0.95);
+        if (dSW || isoNE) this.castEdgeQuad(p.x - s * 0.5, baseY + syT * 0.5, p.x, baseY, 0.95);
+        if (dNW || isoNW) this.castEdgeQuad(p.x - s * 0.5, baseY - syT * 0.5, p.x, baseY, 0.95);
+        if (dSE || isoNW) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY + syT * 0.5, 0.95);
       },
       draw: () => {
         // Draw-time ctx capture: the outline pass swaps this.ctx.
         const ctx = this.ctx;
 
-        // The E-W course: logs pitched on the tile grid (half-tile =
-        // three logs, so runs meet log-true at every seam).
+        // A marching log: one whole giant at a world offset from the
+        // tile center — the vocabulary every non-E-W course speaks.
+        const marchLog = (fx: number, fy: number, k: number) => {
+          const seed = hashCoords(47, tx * 8 + k, ty * 8 + Math.round(fy * 8));
+          const w = s * (0.24 + ((seed >> 3) & 3) * 0.014);
+          const lx = p.x + fx * s - w / 2 + (((seed >> 6) & 3) - 1.5) * s * 0.012;
+          const ly = baseY + fy * syT;
+          const shoulder = ly - this.logShoulder(tx, ty, k) * s;
+          this.giantLog(lx, ly, w, shoulder, seed, true);
+        };
+
+        // The E-W course: four giants to the tile, widths hash-split
+        // at each half so no two neighbors match, pitch locked to the
+        // half-tile so runs join log-true at every seam.
         const courseEW = () => {
-          const left = p.x - s * 0.5;
-          const k0 = Math.round((xw - left) / lw);
-          const k1 = Math.round((xe - left) / lw);
-          // Logs, west to east; remember the skyline for the ink.
-          const shoulders: number[] = [];
-          for (let k = k0; k < k1; k++) {
-            const x = left + k * lw;
-            const sh = baseY - logH(k);
-            shoulders.push(sh);
-            this.palisadeLog(x, baseY, lw, sh, sh - SPIKE, ((hashCoords(47, tx * 8 + k, ty) >> 2) & 7) - 4);
+          const seams: number[] = [];
+          const halves: Array<[number, number]> = [];
+          if (xw < p.x) halves.push([p.x - s * 0.5, 0]);
+          if (xe > p.x) halves.push([p.x, 1]);
+          for (const [hx, hi] of halves) {
+            const split = 0.42 + ((hashCoords(59, tx * 2 + hi, ty) >> 2) & 7) * 0.02;
+            const w0 = s * 0.5 * split;
+            const k0 = hi * 2;
+            const sh0 = baseY - this.logShoulder(tx, ty, k0) * s;
+            const sh1 = baseY - this.logShoulder(tx, ty, k0 + 1) * s;
+            this.giantLog(hx, baseY, w0, sh0, hashCoords(47, tx * 8 + k0, ty), true);
+            this.giantLog(hx + w0, baseY, s * 0.5 - w0, sh1, hashCoords(47, tx * 8 + k0 + 1, ty), true);
+            seams.push(hx + w0);
+            if (hi === 1 && xw < p.x) seams.push(p.x);
           }
-          // THE LASHING: two rope courses bind the run — a dark wrap
-          // band with one lit strand, seam shadows re-cut over it so
-          // the rope reads wound around each log, not painted across.
-          for (const bandH of [0.5, 0.98]) {
-            const by = baseY - bandH * s;
+          // THE HEAVY LASH: two thick rope courses bind the giants.
+          this.palisadeRope(xw, xe, baseY - s * 1.02, seams, h);
+          this.palisadeRope(xw, xe, baseY - s * 0.52, seams, h >> 3);
+          // The trophy: one weathered skull lashed mid-run, sized to
+          // be a WARNING, never a knot in the wood.
+          if (((h >> 5) & 7) === 2 && xe - xw > s * 0.9) {
+            const kx = p.x + (((h >> 8) & 1) ? -1 : 1) * s * 0.22;
+            const ky = baseY - 0.86 * s;
             ctx.fillStyle = PALI_ROPE_DARK;
-            ctx.fillRect(xw, by, xe - xw, s * 0.06);
-            ctx.fillStyle = PALI_ROPE;
-            ctx.fillRect(xw, by + s * 0.015, xe - xw, s * 0.02);
-            ctx.fillStyle = 'rgba(24, 16, 30, 0.35)';
-            for (let k = k0; k <= k1; k++) {
-              ctx.fillRect(left + k * lw - s * 0.008, by, s * 0.016, s * 0.06);
-            }
-          }
-          // A rare trophy: one weathered skull lashed mid-run (never
-          // at a seam — edges must stay identical across tiles). Big
-          // enough to read as a WARNING, not a knot in the wood.
-          if (((h >> 5) & 7) === 2 && k1 - k0 >= 4) {
-            const kx = left + (k0 + 1.5 + ((h >> 8) & 1)) * lw + lw / 2;
-            const ky = baseY - 0.82 * s;
-            // The lash it hangs from.
-            ctx.fillStyle = PALI_ROPE_DARK;
-            ctx.fillRect(kx - s * 0.014, ky - s * 0.2, s * 0.028, s * 0.13);
+            ctx.fillRect(kx - s * 0.013, ky - s * 0.2, s * 0.026, s * 0.13);
             ctx.fillStyle = PALI_BONE;
             ctx.beginPath();
             facetCircle(ctx, kx, ky, s * 0.095, 7, 0.2, 0.8);
@@ -19285,207 +19371,75 @@ export class Renderer {
             ctx.fillStyle = shade(PALI_BONE, -12);
             ctx.fillRect(kx - s * 0.056, ky + s * 0.052, s * 0.112, s * 0.05);
             ctx.fillStyle = '#241a2e';
-            ctx.fillRect(kx - s * 0.06, ky - s * 0.022, s * 0.04, s * 0.04);
-            ctx.fillRect(kx + s * 0.02, ky - s * 0.022, s * 0.04, s * 0.04);
-          }
-          // THE TRUE SILHOUETTE: one ink path walks the sawtooth —
-          // up-steps, spikes, down-steps — and drops to the ground
-          // only at exposed run ends.
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.beginPath();
-            const x0 = left + k0 * lw;
-            if (!cw && !((dNW || isoNW) && k0 === 0)) {
-              ctx.moveTo(x0, baseY);
-              ctx.lineTo(x0, shoulders[0]!);
-            } else {
-              ctx.moveTo(x0, shoulders[0]!);
-            }
-            for (let i = 0; i < shoulders.length; i++) {
-              const x = left + (k0 + i) * lw;
-              ctx.lineTo(x, shoulders[i]!);
-              ctx.lineTo(x + lw / 2, shoulders[i]! - SPIKE);
-              ctx.lineTo(x + lw, shoulders[i]!);
-            }
-            if (!ce && !((dSE || isoNE) && k1 === LOGS)) {
-              ctx.lineTo(left + k1 * lw, baseY);
-            }
-            ctx.stroke();
+            ctx.fillRect(kx - s * 0.058, ky - s * 0.022, s * 0.04, s * 0.04);
+            ctx.fillRect(kx + s * 0.018, ky - s * 0.022, s * 0.04, s * 0.04);
           }
         };
 
-        // The N-S strip: the wall edge-on — one log's honest width
-        // marching up-screen, spike tips reading as bright cut ticks
-        // at the log pitch, a lit west arris holding the light.
-        const courseNS = (yN: number, yS: number) => {
-          const hw2 = s * 0.1;
-          const topOff = 1.36 * s;
-          ctx.fillStyle = shade(PALI_LOG, -8);
-          ctx.fillRect(p.x - hw2, yN - topOff, hw2 * 2, yS - yN + topOff);
-          ctx.fillStyle = shade(PALI_LOG, 12);
-          ctx.fillRect(p.x - hw2, yN - topOff, s * 0.045, yS - yN + topOff);
-          ctx.fillStyle = shade(PALI_LOG, -22);
-          ctx.fillRect(p.x + hw2 - s * 0.035, yN - topOff, s * 0.035, yS - yN + topOff);
-          // The receding points: one bright cut facet per log rank.
-          const pitch = lw * this.camera.yScale;
-          ctx.fillStyle = shade(PALI_LOG, 26);
-          for (let y = yN - topOff + pitch * 0.5; y < yS - topOff + pitch * 0.1; y += pitch) {
-            ctx.beginPath();
-            ctx.moveTo(p.x - hw2 + s * 0.012, y + pitch * 0.42);
-            ctx.lineTo(p.x, y);
-            ctx.lineTo(p.x + hw2 - s * 0.012, y + pitch * 0.42);
-            ctx.closePath();
-            ctx.fill();
-          }
-          if (this.outlineOn) {
-            // Verticals only — both strip ends die into a crossing
-            // course's mass or the gate posts.
-            this.beginStructOutline();
-            ctx.beginPath();
-            ctx.moveTo(p.x - hw2, yN - topOff);
-            ctx.lineTo(p.x - hw2, yS);
-            ctx.moveTo(p.x + hw2, yN - topOff);
-            ctx.lineTo(p.x + hw2, yS);
-            ctx.stroke();
+        // N-S: the giants march up-screen in depth, STAGGERED into a
+        // double row — dead-vertical stacking swallows every crown in
+        // the ink of the log in front; the half-log sidestep lets
+        // each point clear its neighbor and read as carved wood.
+        const courseNS = (half: 'n' | 's') => {
+          const fr = half === 'n' ? [-0.37, -0.13] : [0.13, 0.37];
+          for (let i = 0; i < fr.length; i++) {
+            const k = (half === 'n' ? 4 : 6) + i;
+            marchLog(k % 2 === 0 ? -0.075 : 0.075, fr[i]!, k);
           }
         };
 
-        // The 45° stride: three sheared logs corner-to-corner, the
-        // sawtooth riding the diagonal, end-grain capped when the
-        // stride dies mid-air.
-        const courseDiag = (dx: number, dy: number, joined: boolean) => {
-          const k = joined ? 1.04 : 1;
-          const x1 = p.x + dx * k;
-          const y1 = baseY + dy * k;
-          const segs = 3;
-          for (let i = 0; i < segs; i++) {
-            const f0 = i / segs;
-            const f1 = (i + 1) / segs;
-            const ax = p.x + (x1 - p.x) * f0;
-            const ay = baseY + (y1 - baseY) * f0;
-            const bx = p.x + (x1 - p.x) * f1;
-            const by = baseY + (y1 - baseY) * f1;
-            const hh = logH(i + (dx > 0 ? 3 : 0)) * 0.98;
-            const tone = ((hashCoords(53, tx * 8 + i, ty + (dy > 0 ? 1 : 0)) >> 2) & 7) - 4;
-            // Face quad from skyline down to the ground line.
-            ctx.fillStyle = shade(PALI_LOG, tone);
-            ctx.beginPath();
-            ctx.moveTo(ax, ay - hh);
-            ctx.lineTo(bx, by - hh);
-            ctx.lineTo(bx, by);
-            ctx.lineTo(ax, ay);
-            ctx.closePath();
-            ctx.fill();
-            // The spike on the stride: apex above the segment mid.
-            const mx = (ax + bx) / 2;
-            const my = (ay + by) / 2;
-            ctx.fillStyle = shade(PALI_LOG, tone + 30);
-            ctx.beginPath();
-            ctx.moveTo(ax, ay - hh);
-            ctx.lineTo(mx, my - hh - SPIKE);
-            ctx.lineTo(mx, my - hh);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = shade(PALI_LOG, tone - 18);
-            ctx.beginPath();
-            ctx.moveTo(mx, my - hh - SPIKE);
-            ctx.lineTo(bx, by - hh);
-            ctx.lineTo(mx, my - hh);
-            ctx.closePath();
-            ctx.fill();
-            // Lit arris along the upper diagonal edge.
-            ctx.fillStyle = shade(PALI_LOG, tone + 12);
-            ctx.beginPath();
-            ctx.moveTo(ax, ay - hh);
-            ctx.lineTo(bx, by - hh);
-            ctx.lineTo(bx, by - hh + s * 0.035);
-            ctx.lineTo(ax, ay - hh + s * 0.035);
-            ctx.closePath();
-            ctx.fill();
-          }
-          // One rope course rides the stride.
-          const ropeAt = (frac: number) => {
-            ctx.beginPath();
-            ctx.moveTo(p.x, baseY - frac * s);
-            ctx.lineTo(x1, y1 - frac * s);
-            ctx.lineTo(x1, y1 - frac * s + s * 0.05);
-            ctx.lineTo(p.x, baseY - frac * s + s * 0.05);
-            ctx.closePath();
-            ctx.fill();
-          };
-          ctx.fillStyle = PALI_ROPE_DARK;
-          ropeAt(0.74);
-          ctx.fillStyle = PALI_ROPE;
-          ropeAt(0.71);
-          if (!joined) {
-            ctx.fillStyle = shade(PALI_LOG, -16);
-            ctx.fillRect(x1 - (dx > 0 ? s * 0.03 : 0), y1 - logH(1), s * 0.03, logH(1));
-          }
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.beginPath();
-            // The stride's skyline ink: shoulder line + spike chevrons.
-            for (let i = 0; i < segs; i++) {
-              const f0 = i / segs;
-              const f1 = (i + 1) / segs;
-              const ax = p.x + (x1 - p.x) * f0;
-              const ay = baseY + (y1 - baseY) * f0;
-              const bx = p.x + (x1 - p.x) * f1;
-              const by = baseY + (y1 - baseY) * f1;
-              const hh = logH(i + (dx > 0 ? 3 : 0)) * 0.98;
-              const mx = (ax + bx) / 2;
-              const my = (ay + by) / 2;
-              ctx.moveTo(ax, ay - hh);
-              ctx.lineTo(mx, my - hh - SPIKE);
-              ctx.lineTo(bx, by - hh);
-            }
-            if (!joined) {
-              ctx.moveTo(x1, y1 - logH(1));
-              ctx.lineTo(x1, y1);
-            }
-            ctx.stroke();
+        // 45°: the same marching giants stepping corner-to-corner —
+        // collected and depth-sorted so every overlap reads honestly.
+        const diagLogs: Array<[number, number, number]> = [];
+        const strideInto = (sx: number, sy: number, kBase: number) => {
+          for (let i = 0; i < 2; i++) {
+            const f = (i + 1) / 3;
+            diagLogs.push([sx * f * 0.5, sy * f * 0.5, kBase + i]);
           }
         };
 
-        // Back-to-front: up-screen strides, the N strip, the E-W
-        // course, then down-screen masses over its foot.
-        if (cn) courseNS(baseY - syT * 0.5, baseY);
-        if (dNE || isoNE) courseDiag(s * 0.5, -syT * 0.5, dNE);
-        if (dNW || isoNW) courseDiag(-s * 0.5, -syT * 0.5, dNW);
-        if (cw || ce || isoEW) courseEW();
-        // A leaning brace pole roots every few tiles of straight run
-        // on the camera side — the builders shored their wall.
-        if ((cw || ce) && ((h >> 2) & 3) === 1) {
-          const bx = p.x + (((h >> 9) & 1) ? -1 : 1) * s * 0.16;
-          ctx.fillStyle = shade(PALI_LOG, -10);
-          ctx.beginPath();
-          ctx.moveTo(bx - s * 0.28, baseY + syT * 0.34);
-          ctx.lineTo(bx - s * 0.22, baseY + syT * 0.34);
-          ctx.lineTo(bx + s * 0.1, baseY - s * 0.88);
-          ctx.lineTo(bx + s * 0.035, baseY - s * 0.92);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
-          ctx.beginPath();
-          ctx.ellipse(bx - s * 0.25, baseY + syT * 0.36, s * 0.08, s * 0.035, 0, 0, Math.PI * 2);
-          ctx.fill();
+        if (dNE || isoNE) strideInto(1, -1, 8);
+        if (dNW || isoNW) strideInto(-1, -1, 10);
+        if (dSW || isoNE) strideInto(-1, 1, 12);
+        if (dSE || isoNW) strideInto(1, 1, 14);
+        diagLogs.sort((a, b) => a[1] - b[1]);
+
+        // Back-to-front: north masses, the E-W wall, the junction
+        // anchor, then south masses over its foot.
+        if (cn) courseNS('n');
+        for (const [fx, fy, k] of diagLogs) if (fy < 0) marchLog(fx, fy, k);
+        if (needAnchor && !ewAny) {
+          // A pure junction (diag corner, N-S end): the anchor IS the
+          // course here — one extra-fat giant at the tile heart.
+          const seed = hashCoords(53, tx, ty);
+          const w = s * 0.3;
+          this.giantLog(p.x - w / 2, baseY, w, baseY - s * (1.42 + ((seed >> 4) & 3) * 0.04), seed, true);
         }
-        if (cs) courseNS(baseY, baseY + syT * 0.5);
-        if (dSW || isoNE) courseDiag(-s * 0.5, syT * 0.5, dSW);
-        if (dSE || isoNW) courseDiag(s * 0.5, syT * 0.5, dSE);
+        if (ewAny) {
+          courseEW();
+          if (needAnchor) {
+            const seed = hashCoords(53, tx, ty);
+            const w = s * 0.3;
+            this.giantLog(p.x - w / 2, baseY, w, baseY - s * (1.46 + ((seed >> 4) & 3) * 0.04), seed, true);
+          }
+        }
+        if (cs) courseNS('s');
+        for (const [fx, fy, k] of diagLogs) if (fy >= 0) marchLog(fx, fy, k);
       },
     };
   }
 
   /**
-   * THE CAMP GATE — a lashed-log leaf slung between two fat spiked
-   * gate posts (one wears the camp's skull), riding the door law
-   * wholesale like the field gate: E-W gates swing the leaf flat
-   * toward the west hinge post; N-S gates read edge-on when shut and
-   * throw one leaf into the east column when open. The leaf is the
-   * wall's own vocabulary at gate weight — five sharpened half-logs
-   * on two rope-bound cross-braces with an X of withies, daylight
-   * showing between the logs.
+   * THE GREAT GATE — the camp's one piece of architecture. Two
+   * towering gate posts (the fattest logs in the wall, rope hinge
+   * collars, the skull watching the road) carry a squared lintel beam
+   * overhead: a true top plane for the bird's eye, three carved
+   * spikes standing on it, lashed to the posts at both ends. Below
+   * swing DOUBLE doors of lashed half-logs that meet at a rope-bound
+   * center seam — open, each leaf folds flat against its own post.
+   * N-S gates keep the posts-and-leaf grammar edge-on (a lintel seen
+   * end-on is a sliver, so the vertical gate lets its posts carry the
+   * height instead).
    */
   private palisadeGateItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
     const s = this.camera.scale;
@@ -19498,11 +19452,13 @@ export class Renderer {
     const vertical =
       (this.palisadeish(game, tx, ty - 1) || this.palisadeish(game, tx, ty + 1)) &&
       !(this.palisadeish(game, tx + 1, ty) || this.palisadeish(game, tx - 1, ty));
+    const POST_W = s * 0.3;
+    const POST_H = s * 1.72;
     return {
       sortY: ty + (vertical ? 0.75 : 0.8),
       drawShadow: () => {
-        if (vertical) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY + syT * 0.5, 0.8);
-        else this.castEdgeQuad(p.x - s * 0.5, baseY, p.x + s * 0.5, baseY, 0.8);
+        if (vertical) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY + syT * 0.5, 1.0);
+        else this.castEdgeQuad(p.x - s * 0.5, baseY, p.x + s * 0.5, baseY, 1.0);
       },
       draw: () => {
         // Draw-time ctx capture: the outline pass swaps this.ctx.
@@ -19514,116 +19470,211 @@ export class Renderer {
           ctx.translate(shakeX, 0);
         }
 
-        // The leaf: sharpened half-logs on rope-bound cross-braces.
-        // `dim` deepens as the swing turns the timber edge-on.
-        const drawLeaf = (hx: number, X: number, base: number, dim: number) => {
-          const w2 = X - hx;
-          if (w2 < s * 0.05) return;
-          const yBot = base - 0.06 * s;
-          const yTop = base - 1.06 * s;
-          const rc = (k: number) => shade(PALI_LOG, k + dim);
-          if (w2 < s * 0.32) {
-            // Edge-on: the leaf collapses to one turned slab with a
-            // spike tip holding the silhouette.
-            ctx.fillStyle = rc(-10);
-            ctx.fillRect(hx, yTop, w2, yBot - yTop);
-            ctx.fillStyle = rc(18);
+        // One door leaf: lashed half-logs on two rope-bound braces.
+        // `hinge` is the x the leaf folds toward; `dir` +1 opens east.
+        const drawLeaf = (hingeX: number, dir: number, width: number, dim: number) => {
+          const w2 = width;
+          if (w2 < s * 0.045) return;
+          const x0 = dir > 0 ? hingeX : hingeX - w2;
+          const yBot = baseY - 0.04 * s;
+          const yTop = baseY - 1.12 * s;
+          if (w2 < s * 0.3) {
+            // Edge-on: the turned leaf collapses to a crowned slab.
+            ctx.fillStyle = shade(PALI_LOG, -12 + dim);
+            ctx.fillRect(x0, yTop, w2, yBot - yTop);
+            ctx.fillStyle = shade(PALI_LOG, 14 + dim);
             ctx.beginPath();
-            ctx.moveTo(hx, yTop);
-            ctx.lineTo(hx + w2 / 2, yTop - 0.12 * s);
-            ctx.lineTo(X, yTop);
+            ctx.moveTo(x0, yTop);
+            ctx.lineTo(x0 + w2 / 2, yTop - 0.1 * s);
+            ctx.lineTo(x0 + w2, yTop);
             ctx.closePath();
             ctx.fill();
             if (this.outlineOn) {
               this.beginStructOutline();
               ctx.beginPath();
-              ctx.moveTo(hx, yBot);
-              ctx.lineTo(hx, yTop);
-              ctx.lineTo(hx + w2 / 2, yTop - 0.12 * s);
-              ctx.lineTo(X, yTop);
-              ctx.lineTo(X, yBot);
-              ctx.closePath();
+              ctx.moveTo(x0, yBot);
+              ctx.lineTo(x0, yTop);
+              ctx.lineTo(x0 + w2 / 2, yTop - 0.1 * s);
+              ctx.lineTo(x0 + w2, yTop);
+              ctx.lineTo(x0 + w2, yBot);
               ctx.stroke();
             }
             return;
           }
-          const n = 5;
+          const n = 3;
           const glw = w2 / n;
-          const spike = s * 0.13;
+          const spike = s * 0.12;
           const shoulders: number[] = [];
           for (let i = 0; i < n; i++) {
-            const gh = 0.86 + (((h >> (i * 3)) & 3) * 0.05);
+            const gh = 0.9 + (((h >> (i * 3)) & 3) * 0.035);
             const sh = yBot - (yBot - yTop) * gh;
             shoulders.push(sh);
-            this.palisadeLog(hx + i * glw, yBot, glw, sh, sh - spike * 0.8, ((h >> i) & 3) - 1);
+            const seed = hashCoords(67, tx * 4 + i, ty + dir);
+            // Slimmer rounds than the wall — a door must read lighter
+            // than the wall it pierces.
+            const lx = x0 + i * glw;
+            ctx.fillStyle = shade(PALI_LOG, ((seed >> 2) & 5) - 2 + dim);
+            ctx.fillRect(lx, sh, glw, yBot - sh);
+            ctx.fillStyle = shade(PALI_LOG, 14 + dim);
+            ctx.fillRect(lx + glw * 0.12, sh, glw * 0.26, yBot - sh);
+            ctx.fillStyle = shade(PALI_LOG, -16 + dim);
+            ctx.fillRect(lx + glw * 0.78, sh, glw * 0.22, yBot - sh);
+            const ax = lx + glw * 0.48;
+            ctx.fillStyle = shade(PALI_LOG, 30 + dim);
+            ctx.beginPath();
+            ctx.moveTo(lx, sh);
+            ctx.lineTo(ax, sh - spike);
+            ctx.lineTo(ax, sh);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(PALI_LOG, -8 + dim);
+            ctx.beginPath();
+            ctx.moveTo(ax, sh - spike);
+            ctx.lineTo(lx + glw, sh);
+            ctx.lineTo(ax, sh);
+            ctx.closePath();
+            ctx.fill();
           }
-          // Dim wash for the turned leaf (over the logs, one pass —
-          // cheaper than re-toning every facet).
-          if (dim < 0) {
-            ctx.fillStyle = `rgba(20, 14, 26, ${Math.min(0.42, -dim / 60)})`;
-            ctx.fillRect(hx, yTop - spike, w2, yBot - (yTop - spike));
+          // Two rope-bound cross-braces hold the leaf square.
+          for (const by of [yBot - 0.78 * s, yBot - 0.26 * s]) {
+            ctx.fillStyle = shade(PALI_LOG, -14 + dim);
+            ctx.fillRect(x0 - 0.015 * s, by, w2 + 0.03 * s, 0.08 * s);
+            ctx.fillStyle = shade(PALI_LOG, 2 + dim);
+            ctx.fillRect(x0 - 0.015 * s, by, w2 + 0.03 * s, 0.024 * s);
+            ctx.fillStyle = PALI_ROPE;
+            const hx2 = dir > 0 ? x0 : x0 + w2 - 0.05 * s;
+            ctx.fillRect(hx2, by - 0.012 * s, 0.05 * s, 0.104 * s);
           }
-          // Two rope-bound cross-braces + the X of withies.
-          for (const [by, tone] of [
-            [yBot - 0.72 * s, 4],
-            [yBot - 0.24 * s, -4],
-          ] as const) {
-            ctx.fillStyle = rc(tone - 8);
-            ctx.fillRect(hx - 0.02 * s, by, w2 + 0.04 * s, 0.085 * s);
-            ctx.fillStyle = rc(tone + 10);
-            ctx.fillRect(hx - 0.02 * s, by, w2 + 0.04 * s, 0.026 * s);
-          }
-          ctx.fillStyle = rc(-16);
-          ctx.beginPath();
-          ctx.moveTo(hx + 0.03 * s, yBot - 0.24 * s);
-          ctx.lineTo(X - 0.03 * s, yBot - 0.72 * s);
-          ctx.lineTo(X - 0.03 * s, yBot - 0.66 * s);
-          ctx.lineTo(hx + 0.03 * s, yBot - 0.18 * s);
-          ctx.closePath();
-          ctx.fill();
-          // Rope wraps where brace meets the hinge-side stile.
-          ctx.fillStyle = PALI_ROPE;
-          ctx.fillRect(hx, yBot - 0.73 * s, 0.05 * s, 0.1 * s);
-          ctx.fillRect(hx, yBot - 0.25 * s, 0.05 * s, 0.1 * s);
           if (this.outlineOn) {
-            // The leaf's TRUE silhouette: sawtooth head, plumb sides.
+            // The leaf's TRUE silhouette: crowned head, plumb sides.
             this.beginStructOutline();
             ctx.beginPath();
-            ctx.moveTo(hx, yBot);
-            ctx.lineTo(hx, shoulders[0]!);
+            ctx.moveTo(x0, yBot);
+            ctx.lineTo(x0, shoulders[0]!);
             for (let i = 0; i < n; i++) {
-              const x = hx + i * glw;
-              ctx.lineTo(x, shoulders[i]!);
-              ctx.lineTo(x + glw / 2, shoulders[i]! - spike * 0.8);
-              ctx.lineTo(x + glw, shoulders[i]!);
+              const lx = x0 + i * glw;
+              ctx.lineTo(lx, shoulders[i]!);
+              ctx.lineTo(lx + glw * 0.48, shoulders[i]! - spike);
+              ctx.lineTo(lx + glw, shoulders[i]!);
             }
-            ctx.lineTo(X, yBot);
+            ctx.lineTo(x0 + w2, yBot);
             ctx.stroke();
           }
         };
 
         if (!vertical) {
-          const hx = p.x - 0.34 * s;
-          const X0 = p.x + 0.34 * s;
-          drawLeaf(hx, hx + (X0 - hx) * (1 - o * 0.93), baseY, Math.round(-26 * o));
-          // The posts stand INSIDE the gap — at ±0.5 the neighboring
-          // wall runs (drawn after in tile order) bury them.
-          this.drawPalisadePost(p.x - 0.42 * s, baseY, s * 0.22, s * 1.44, ((h >> 4) & 1) === 1);
-          this.drawPalisadePost(p.x + 0.42 * s, baseY, s * 0.22, s * 1.44, ((h >> 4) & 1) === 0);
+          const postL = p.x - 0.44 * s;
+          const postR = p.x + 0.44 * s;
+          // THE DOUBLE DOORS: each leaf folds toward its own post.
+          const leafFull = 0.36 * s;
+          const wNow = leafFull * (1 - o * 0.9);
+          drawLeaf(postL + POST_W * 0.3, 1, wNow, Math.round(-22 * o));
+          drawLeaf(postR - POST_W * 0.3, -1, wNow, Math.round(-22 * o));
+          // The rope-bound center seam when the doors stand shut.
+          if (o < 0.15) {
+            ctx.fillStyle = PALI_ROPE_DARK;
+            ctx.fillRect(p.x - s * 0.05, baseY - s * 0.72, s * 0.1, s * 0.14);
+            ctx.fillStyle = PALI_ROPE;
+            ctx.fillRect(p.x - s * 0.032, baseY - s * 0.69, s * 0.064, s * 0.08);
+          }
+          // The towering posts flank the opening.
+          this.drawPalisadePost(postL, baseY, POST_W, POST_H, ((h >> 4) & 1) === 1);
+          this.drawPalisadePost(postR, baseY, POST_W, POST_H, ((h >> 4) & 1) === 0);
+          // THE LINTEL: a squared beam spanning overhead — dark front
+          // face, a TRUE lit top plane for the bird's eye, lashed to
+          // both post crowns, three carved spikes standing on it.
+          const ly = baseY - POST_H - s * 0.12;
+          const lx0 = postL - POST_W * 0.62;
+          const lx1 = postR + POST_W * 0.62;
+          const faceH = s * 0.13;
+          const capD = 0.1 * syT;
+          ctx.fillStyle = shade(PALI_LOG, -8);
+          ctx.fillRect(lx0, ly, lx1 - lx0, faceH);
+          ctx.fillStyle = shade(PALI_LOG, -22);
+          ctx.fillRect(lx0, ly + faceH - s * 0.024, lx1 - lx0, s * 0.024);
+          ctx.fillStyle = shade(PALI_LOG, 20);
+          ctx.fillRect(lx0, ly - capD, lx1 - lx0, capD);
+          ctx.fillStyle = shade(PALI_LOG, 34);
+          ctx.fillRect(lx0, ly - capD, lx1 - lx0, s * 0.016);
+          // End grain shows at both beam ends.
+          ctx.fillStyle = shade(PALI_LOG, 12);
+          ctx.fillRect(lx0, ly - capD, s * 0.03, faceH + capD);
+          ctx.fillRect(lx1 - s * 0.03, ly - capD, s * 0.03, faceH + capD);
+          // The lashings marry beam to posts.
+          ctx.fillStyle = PALI_ROPE_DARK;
+          ctx.fillRect(postL - s * 0.055, ly - capD - s * 0.01, s * 0.11, faceH + capD + s * 0.02);
+          ctx.fillRect(postR - s * 0.055, ly - capD - s * 0.01, s * 0.11, faceH + capD + s * 0.02);
+          ctx.fillStyle = PALI_ROPE;
+          ctx.fillRect(postL - s * 0.055, ly - capD + s * 0.02, s * 0.11, s * 0.018);
+          ctx.fillRect(postR - s * 0.055, ly - capD + s * 0.02, s * 0.11, s * 0.018);
+          // Three carved spikes stand ON the beam's top plane.
+          for (const [fx, hgt] of [
+            [0.5, 0.24],
+            [0.28, 0.17],
+            [0.72, 0.18],
+          ] as const) {
+            const sx2 = lx0 + (lx1 - lx0) * fx;
+            const sw2 = s * 0.075;
+            const sb = ly - capD + s * 0.008;
+            ctx.fillStyle = shade(PALI_LOG, 2);
+            ctx.fillRect(sx2 - sw2 / 2, sb - hgt * s * 0.62, sw2, hgt * s * 0.62);
+            ctx.fillStyle = shade(PALI_LOG, 30);
+            ctx.beginPath();
+            ctx.moveTo(sx2 - sw2 / 2, sb - hgt * s * 0.62);
+            ctx.lineTo(sx2, sb - hgt * s);
+            ctx.lineTo(sx2, sb - hgt * s * 0.62);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(PALI_LOG, -12);
+            ctx.beginPath();
+            ctx.moveTo(sx2, sb - hgt * s);
+            ctx.lineTo(sx2 + sw2 / 2, sb - hgt * s * 0.62);
+            ctx.lineTo(sx2, sb - hgt * s * 0.62);
+            ctx.closePath();
+            ctx.fill();
+          }
+          if (this.outlineOn) {
+            // The arch's ink: one selective ring — beam ends, top
+            // line broken by the standing spikes, underside always.
+            this.beginStructOutline();
+            ctx.beginPath();
+            ctx.moveTo(lx0, ly + faceH);
+            ctx.lineTo(lx0, ly - capD);
+            ctx.lineTo(lx1, ly - capD);
+            ctx.moveTo(lx1, ly - capD);
+            ctx.lineTo(lx1, ly + faceH);
+            ctx.moveTo(lx0, ly + faceH);
+            ctx.lineTo(lx1, ly + faceH);
+            for (const [fx, hgt] of [
+              [0.5, 0.24],
+              [0.28, 0.17],
+              [0.72, 0.18],
+            ] as const) {
+              const sx2 = lx0 + (lx1 - lx0) * fx;
+              const sw2 = s * 0.075;
+              const sb = ly - capD + s * 0.008;
+              ctx.moveTo(sx2 - sw2 / 2, sb);
+              ctx.lineTo(sx2 - sw2 / 2, sb - hgt * s * 0.62);
+              ctx.lineTo(sx2, sb - hgt * s);
+              ctx.lineTo(sx2 + sw2 / 2, sb - hgt * s * 0.62);
+              ctx.lineTo(sx2 + sw2 / 2, sb);
+            }
+            ctx.stroke();
+          }
         } else {
           const yN = baseY - syT * 0.5;
           const yS = baseY + syT * 0.5;
-          this.drawPalisadePost(p.x, yN, s * 0.24, s * 1.44, ((h >> 4) & 1) === 1);
+          this.drawPalisadePost(p.x, yN, POST_W, POST_H, ((h >> 4) & 1) === 1);
           if (o < 0.98) {
-            // Shut: the leaf edge-on, a spiked strip barring the gap,
-            // retracting toward its north hinge as it swings.
-            const hw2 = 0.07 * s;
-            const top = yN - 1.06 * s;
-            const bot = top + (yS - 0.06 * s - top) * (1 - o);
-            ctx.fillStyle = shade(PALI_LOG, -6);
+            // Shut: the leaf edge-on, a crowned strip barring the
+            // gap, retracting toward its north hinge as it swings.
+            const hw2 = 0.075 * s;
+            const top = yN - 1.12 * s;
+            const bot = top + (yS - 0.04 * s - top) * (1 - o);
+            ctx.fillStyle = shade(PALI_LOG, -8);
             ctx.fillRect(p.x - hw2, top, hw2 * 2, bot - top);
             ctx.fillStyle = shade(PALI_LOG, 14);
-            ctx.fillRect(p.x - hw2, top, s * 0.024, bot - top);
+            ctx.fillRect(p.x - hw2, top, s * 0.026, bot - top);
             if (o < 0.35) {
               ctx.fillStyle = 'rgba(20, 14, 26, 0.3)';
               for (const fy of [0.3, 0.55, 0.8]) {
@@ -19639,14 +19690,15 @@ export class Renderer {
           }
           if (o > 0.02) {
             const oo = Math.sin((o * Math.PI) / 2);
-            drawLeaf(p.x + 0.07 * s, p.x + 0.07 * s + 0.8 * s * oo, yN, 0);
+            drawLeaf(p.x + 0.08 * s, 1, 0.72 * s * oo, 0);
           }
-          this.drawPalisadePost(p.x, yS, s * 0.24, s * 1.44, false);
+          this.drawPalisadePost(p.x, yS, POST_W, POST_H, false);
         }
         if (shakeX !== 0) ctx.restore();
       },
     };
   }
+
 
   private objectItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
     const ctx = this.ctx;
@@ -20767,16 +20819,27 @@ export class Renderer {
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx.
             const ctx = this.ctx;
+            // The shadow hugs the FOOTPRINT — the frame's legs bite
+            // the ground at its rim, never hover over it.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
             ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.03, s * 0.55, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x, baseY, s * 0.46, s * 0.08, 0, 0, Math.PI * 2);
             ctx.fill();
+            // Ground contact under each front leg.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            for (const gx of [-0.4, 0.36]) {
+              ctx.beginPath();
+              ctx.ellipse(p.x + gx * s, baseY - s * 0.01, s * 0.09, s * 0.035, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
             // One crossed pair of sharpened stakes: each shaft is a
             // squared timber with a lit facet, both ends axe-cut to a
             // bright point. Painted twice — the rear rank first, dim.
+            // The crossing sits LOW (0.26 tiles) so the lower points
+            // land on the shadow's rim.
             const stake = (rot: number, tone: number, ox: number, oy: number, len: number) => {
               ctx.save();
-              ctx.translate(p.x + ox * s, baseY + oy * s - s * 0.42);
+              ctx.translate(p.x + ox * s, baseY + oy * s - s * 0.26);
               ctx.rotate(rot);
               const hl = len * s * 0.5;
               ctx.fillStyle = shade(PALI_LOG, tone);
@@ -20803,20 +20866,21 @@ export class Renderer {
               ctx.restore();
             };
             // Rear rank (offset up-screen, dimmer), then the front X.
-            stake(-0.62, -16, 0.14, -0.18, 0.78);
-            stake(0.66, -20, 0.18, -0.18, 0.74);
+            stake(-0.62, -16, 0.14, -0.12, 0.78);
+            stake(0.66, -20, 0.18, -0.12, 0.74);
             stake(-0.58, 0, -0.06, 0, 0.92);
             stake(0.6, -6, -0.02, 0, 0.9);
-            // The carrying beam through the crossing, rope-lashed.
+            // The carrying beam rides just above the crossing,
+            // rope-lashed where it meets the X.
             ctx.fillStyle = shade(PALI_LOG, -10);
-            ctx.fillRect(p.x - s * 0.5, baseY - s * 0.46, s, s * 0.07);
+            ctx.fillRect(p.x - s * 0.5, baseY - s * 0.32, s, s * 0.07);
             ctx.fillStyle = shade(PALI_LOG, 2);
-            ctx.fillRect(p.x - s * 0.5, baseY - s * 0.46, s, s * 0.022);
+            ctx.fillRect(p.x - s * 0.5, baseY - s * 0.32, s, s * 0.022);
             ctx.fillStyle = PALI_ROPE;
-            ctx.fillRect(p.x - s * 0.1, baseY - s * 0.5, s * 0.07, s * 0.14);
-            ctx.fillRect(p.x + s * 0.04, baseY - s * 0.48, s * 0.07, s * 0.12);
+            ctx.fillRect(p.x - s * 0.1, baseY - s * 0.36, s * 0.07, s * 0.14);
+            ctx.fillRect(p.x + s * 0.04, baseY - s * 0.34, s * 0.07, s * 0.12);
             ctx.fillStyle = PALI_ROPE_DARK;
-            ctx.fillRect(p.x - s * 0.08, baseY - s * 0.46, s * 0.03, s * 0.1);
+            ctx.fillRect(p.x - s * 0.08, baseY - s * 0.32, s * 0.03, s * 0.1);
           },
         };
       }

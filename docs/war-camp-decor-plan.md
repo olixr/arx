@@ -240,3 +240,49 @@ Everything above shipped as designed. Deviations + laws learned:
   loot spills, wall-torch Detail — plus one new candidate from the
   audit: a palisade reveal/veil so bodies hidden behind a south run
   peek like they do behind garrison walls.
+
+## THE GIANT LOGS rework (2026-08-13, user-directed, second pass)
+
+User verdict on v1: "organized wood planks… too much of a square sort
+of fence." The wall was rebuilt around a new premise — **each log is
+an individual carved monument** — and these supersede the v1 wall
+internals:
+
+- **THE GIANT LOG** (`giantLog`): a quarter-tile round (4 to the tile,
+  widths hash-split per half so no two neighbors match; shoulders
+  1.3–1.62 tiles) with FOUR value bands rolling the cylinder, one or
+  two axe-notch carvings, a big two-facet chisel point with an
+  undercut shadow — and its OWN full brand ring. The per-log ring is
+  deliberate: a palisade is a row of monuments, and the ink is what
+  makes each log decipherable at scale (the user's explicit ask).
+- **EVERY DIRECTION SPEAKS STANDING LOGS**: N-S runs are logs marching
+  up-screen in depth (drawn whole, north first, each overlapped by the
+  next south — STAGGERED ±0.075 into a double row, or the stacked
+  crowns drown in each other's ink); 45° strides are the same giants
+  stepping corner-to-corner, depth-sorted. Sheared-plank courses are
+  DEAD — a log is vertical no matter which way the wall runs.
+- **THE HEAVY LASH** (`palisadeRope`): thick dark wrap band + two lit
+  strands + a shadowed wrap tick at every log seam + a hash-dealt
+  knot with a dangling end. Two courses bind every E-W run.
+- **A JUNCTION IS A LOG**: corners, tees, and run ends anchor on one
+  extra-fat giant at the tile heart (through-runs need none).
+- **THE GREAT GATE**: towering posts (1.72 tiles + point) with doubled
+  rope hinge collars and the skull; a squared LINTEL beam spanning
+  overhead with a true lit top plane, end grain at both ends, lashed
+  to the post crowns, three carved spikes standing ON it; DOUBLE
+  doors of crowned half-logs that meet at a rope-bound center seam
+  and fold flat to their own posts when open. The arch's ink is one
+  selective ring (beam ends + underside + the standing spikes).
+- **The spike barrier grounded**: crossing lowered to 0.26 tiles so
+  the legs land ON the shadow's rim; footprint-hugging ellipse plus a
+  contact pool under each front leg; the carrying beam rides just
+  above the crossing. (v1 floated 0.17 tiles over its shadow.)
+- Staging lesson: stage diagonal runs FAR-CORNER-FIRST — a /tp anchor
+  that lands on a just-placed solid tile clamps, and the next stamp
+  fires from the wrong spot (the v1 "gap in the diagonal" was this,
+  not paint). And /settile stamps only persist across sessions once
+  the chunk save flushes — reshoot in the session that staged, or
+  restage.
+- Rig lesson: rig ports are a shared commons — 8791/8793/8795 were
+  claimed by a concurrent session's provers mid-work; the lane moved
+  to rig4 (server 8797, client 5180) per the interleave protocol.
