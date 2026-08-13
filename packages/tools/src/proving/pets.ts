@@ -830,32 +830,34 @@ const main = async () => {
     receipt('an empty cone refuses, aloud, and nothing is spent', true);
   }
 
-  // --- Refusal: the rung, spoken through the cast door (a mudcrab
-  // asks for beastcraft 15; the keeper stands at 10).
+  // --- Refusal: THE BEAST SETS THE BAR, spoken through the cast
+  // door (a bear is wild level 16; the keeper stands at beastcraft
+  // 10 — the mark's own level is the gate now, never a species
+  // rung).
   {
     mark = c.mark();
-    await say(c, '/spawnmob mudcrab 1');
+    await say(c, '/spawnmob bear 1');
     await c.waitFor(
-      (m) => (m.t === 'enter' || m.t === 'update') && m.entities?.some((e: Msg) => e.defId === 'mudcrab' && e.ownerEid === undefined),
-      'mudcrab enters',
+      (m) => (m.t === 'enter' || m.t === 'update') && m.entities?.some((e: Msg) => e.defId === 'bear' && e.ownerEid === undefined),
+      'bear enters',
       6000,
       mark,
     );
-    const crab = c.msgs
+    const bear = c.msgs
       .slice(mark)
       .flatMap((m) => (m.t === 'enter' || m.t === 'update' ? (m.entities ?? []) : []))
-      .find((e: Msg) => e.defId === 'mudcrab' && e.ownerEid === undefined).eid;
-    await walkTo(crab, 3);
+      .find((e: Msg) => e.defId === 'bear' && e.ownerEid === undefined).eid;
+    await walkTo(bear, 3);
     mark = c.mark();
-    await castAt(crab);
+    await castAt(bear);
     await c.waitFor(
-      (m) => m.t === 'chat' && /need beastcraft level 15/.test(m.text ?? ''),
-      'rung refusal via cast',
+      (m) => m.t === 'chat' && /level 16 beast.*beastcraft is 10/.test(m.text ?? ''),
+      'level refusal via cast',
       5000,
       mark,
     );
-    receipt('the rung refuses through the cast, aloud, and teaches the number', true);
-    await killTarget(crab, 'the mudcrab');
+    receipt('THE BEAST SETS THE BAR: the mark\'s own level refuses, aloud, and teaches both numbers', true);
+    await killTarget(bear, 'the bear');
   }
 
   // --- Refusal: the empty pack (right rung, no lure in the cone).

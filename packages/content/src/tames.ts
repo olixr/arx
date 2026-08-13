@@ -7,6 +7,13 @@
  * validator below, so a future roster row cannot drift past the law
  * without a test going red.
  *
+ * THE BEAST SETS THE BAR (user mandate 2026-08-13): the per-species
+ * beastcraft rung is GONE. The gentling's one gate is the mark's own
+ * wild level against the keeper's beastcraft — find a weak body of
+ * the kind you want and it is yours to court. The whitelist above
+ * still decides WHICH kinds answer at all; the art's own unlock
+ * (beastcraft 10, the technique pool) is the one floor.
+ *
  * THE SPECIES SPEAK (Phase 5): the full ladder stands, entry pair to
  * the worg capstone, each kit shaped from the species' shipped teeth.
  * The ladder table is a tuning dial (plan Part 5), never a law.
@@ -33,8 +40,6 @@ export interface TameKit {
 export interface TameDef {
   /** NpcDef id — the wild body this bond begins as. */
   species: string;
-  /** Beastcraft rung: the gentling refuses below this, aloud. */
-  level: number;
   /** Item id the gentling consumes — the farmer and cook sell to the hunter. */
   lure: string;
   /** The ceremony's beastcraft grant — the tame is the skill's spine. */
@@ -48,7 +53,6 @@ export interface TameDef {
 export const TAME_DEFS: readonly TameDef[] = [
   {
     species: 'giant_beetle',
-    level: 10,
     lure: 'berries',
     // First-pass tame xp = 30 + 10 × species wild level (plan Part 5).
     tameXp: 90,
@@ -58,7 +62,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'rat',
-    level: 10,
     lure: 'egg',
     tameXp: 50,
     // FILTH NIP: the first fang — the sewer's own gift.
@@ -67,7 +70,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'cave_bat',
-    level: 10,
     lure: 'berries',
     tameXp: 60,
     // THE FIRST LESSON KEPT: no kit — the bleeding nip is the wild
@@ -76,7 +78,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'mudcrab',
-    level: 15,
     lure: 'raw_trout',
     tameXp: 50,
     // THE GRIP: a pinch that holds the mark half-still.
@@ -85,7 +86,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'boar',
-    level: 15,
     lure: 'carrot',
     tameXp: 100,
     // GORE: the charge lands like a cart — the pounce is the species' own.
@@ -94,7 +94,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'giant_spider',
-    level: 20,
     lure: 'raw_beef',
     tameXp: 130,
     // THE PATIENT FANG: no kit — the wild venom and the born pounce
@@ -103,7 +102,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'wolf',
-    level: 20,
     lure: 'raw_beef',
     tameXp: 150,
     // WORRY THE WOUND: the wild bleed and the fast lope, untouched.
@@ -111,7 +109,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'bear',
-    level: 25,
     lure: 'raw_beef',
     tameXp: 190,
     // THE CHARGE: the big wall — pounce and maul as it was born with.
@@ -119,7 +116,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'great_owl',
-    level: 30,
     lure: 'raw_trout',
     tameXp: 190,
     // THE SWOOP AND THE HUSH: the strike from above lands cold.
@@ -128,7 +124,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'adder',
-    level: 35,
     lure: 'egg',
     tameXp: 120,
     // DEEP VENOM: the poisoner's pick, one weight past the wild dose.
@@ -137,7 +132,6 @@ export const TAME_DEFS: readonly TameDef[] = [
   },
   {
     species: 'worg',
-    level: 45,
     lure: 'raw_beef',
     tameXp: 170,
     // THE WAR-HOUND TURNED: the capstone — cold bite, hard head.
@@ -151,9 +145,6 @@ export const TAMES: ReadonlyMap<string, TameDef> = new Map(TAME_DEFS.map((t) => 
 export function tameDef(species: string): TameDef | undefined {
   return TAMES.get(species);
 }
-
-/** Beastcraft opens the gentling here — the roster may not rung below it. */
-export const TAME_FLOOR_LEVEL = 10;
 
 /**
  * Humanoid mobs ride the player rig and keep their own counsel; the
@@ -229,9 +220,6 @@ export function tameErrors(def: TameDef): string[] {
   if (npc.splitInto) errs.push(`${def.species}: a thing that splits in two is not one friend`);
   if (npc.produce || npc.lays) {
     errs.push(`${def.species}: livestock already has a place in your life`);
-  }
-  if (!Number.isInteger(def.level) || def.level < TAME_FLOOR_LEVEL || def.level > 99) {
-    errs.push(`${def.species}: rung ${def.level} outside [${TAME_FLOOR_LEVEL}, 99]`);
   }
   if (!itemDef(def.lure)) errs.push(`${def.species}: lure '${def.lure}' is not an item`);
   if (!Number.isFinite(def.tameXp) || def.tameXp <= 0) {

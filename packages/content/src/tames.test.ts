@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TAME_DEFS, TAMES, TAME_FLOOR_LEVEL, tameDef, tameErrors, tameRosterErrors } from './tames.js';
+import { TAME_DEFS, TAMES, tameDef, tameErrors, tameRosterErrors } from './tames.js';
 import { NPCS } from './npcs.js';
 import { itemDef } from './items.js';
 
@@ -9,10 +9,15 @@ test('the shipped roster is clean against its own gate', () => {
   assert.ok(TAME_DEFS.length >= 2, 'phase 1 ships at least the beetle and the rat');
 });
 
-test('phase 1 rungs: taming begins at beastcraft 10, at the entry pair', () => {
-  assert.equal(TAME_FLOOR_LEVEL, 10);
-  assert.equal(tameDef('giant_beetle')?.level, 10);
-  assert.equal(tameDef('rat')?.level, 10);
+test('THE BEAST SETS THE BAR: no species carries a rung; every wild body names its own price', () => {
+  // The per-species beastcraft rung is retired (user mandate
+  // 2026-08-13): the gentling's gate is the mark's own level. The
+  // content contract left is that every whitelisted species has a
+  // real, reachable wild level for that gate to read.
+  for (const def of TAME_DEFS) {
+    const lvl = NPCS.get(def.species)?.level ?? 0;
+    assert.ok(lvl >= 1 && lvl <= 99, `${def.species}: wild level ${lvl} out of range`);
+  }
 });
 
 test('every tame names a real beast and a real lure', () => {
@@ -25,7 +30,7 @@ test('every tame names a real beast and a real lure', () => {
 
 test('the whitelist has teeth: every banned class is refused by the real gate', () => {
   const bad = (species: string) =>
-    tameErrors({ species, level: 10, lure: 'egg', tameXp: 50, flavor: 'A test row.' });
+    tameErrors({ species, lure: 'egg', tameXp: 50, flavor: 'A test row.' });
   // Champions and matriarchs.
   assert.ok(bad('skeleton_champion').length > 0);
   assert.ok(bad('dire_wolf').length > 0);
@@ -46,17 +51,6 @@ test('the whitelist has teeth: every banned class is refused by the real gate', 
   assert.ok(bad('hind').length > 0);
   // A species the bestiary has never heard of.
   assert.ok(bad('moon_calf').length > 0);
-});
-
-test('rungs below the floor are refused', () => {
-  const errs = tameErrors({
-    species: 'giant_beetle',
-    level: 5,
-    lure: 'berries',
-    tameXp: 50,
-    flavor: 'A test row.',
-  });
-  assert.ok(errs.some((e) => e.includes('rung')));
 });
 
 test('flavor keeps the dash ban (VOICE.md)', () => {
@@ -143,14 +137,8 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
   assert.equal(petLevelFor(50_000_000, 6, 99), 99);
 });
 
-test('THE SPECIES SPEAK: the whole ladder stands, rungs ascending', () => {
+test('THE SPECIES SPEAK: the whole roster stands', () => {
   assert.equal(TAME_DEFS.length, 11, 'entry trio through the worg capstone');
-  const rungs = TAME_DEFS.map((t) => t.level);
-  for (let i = 1; i < rungs.length; i++) {
-    assert.ok(rungs[i]! >= rungs[i - 1]!, 'the ladder never dips');
-  }
-  assert.equal(rungs[0], 10);
-  assert.equal(rungs[rungs.length - 1], 45);
 });
 
 test('kits are the species\' own teeth re-aimed, never an invented spellbook', () => {

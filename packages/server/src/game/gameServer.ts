@@ -11609,9 +11609,13 @@ export class GameServer {
       sys('A companion needs a keeper the world will remember. Guests pass through.');
       return;
     }
+    // THE BEAST SETS THE BAR (user mandate 2026-08-13): the gate is
+    // the mark's own level against the keeper's skill — never a
+    // per-species rung. A weak body of a grand kind answers a young
+    // keeper; a hard one makes anybody wait.
     const bc = levelForXp(player.skills.beastcraft ?? 0);
-    if (bc < tame.level) {
-      sys(`You need beastcraft level ${tame.level} to gentle a ${npc.def.name.toLowerCase()}.`);
+    if (bc < npc.def.level) {
+      sys(`It is a level ${npc.def.level} beast, and your beastcraft is ${bc}. It will not answer you yet.`);
       return;
     }
     if (player.pets.length >= PET_CAP) {
