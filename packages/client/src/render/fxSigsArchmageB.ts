@@ -1,1058 +1,1115 @@
 /**
- * THE SIGNATURE LAW — the ARCHMAGE wave, second half.
+ * THE SIGNATURE LAW — the ARCHMAGE wave, second half (THE ARMORY
+ * REMEMBERS, wave 5b: the heavy staff arts).
  *
- * Ten bespoke set-pieces for the heavy end of the archmage roster —
- * the late-game showpieces. Down here Arx stops asking the world
- * and starts TELLING it: venom that keeps chewing after it lands,
- * a window opened onto the place with no windows, noon thrown as a
- * spear, and at the very top the world itself parted at the seam
- * and welded shut again. Every signature keeps the three reads —
- * impact, aftermath, what the world remembers — in the grammar's
- * three strata.
+ * Ten late-game showpieces rebuilt ground-up to the three-strata
+ * bar. Down here Arx stops asking the world and starts TELLING it —
+ * and the telling now lands on all three layers: the painted
+ * statement, the matter that flies or drains or rises off it, and
+ * THE LASTING MARK: a threshold stain where a door of nothing
+ * stood, a dry circle inside a rained-on ring, one splinter-shard
+ * glinting at the end of an unsewn seam.
  *
- * Same binding laws as every wave before: hard edges only, save/
- * restore discipline, squash on ground y-radii, air pieces lifted
- * ~0.4·sc, srand-deterministic geometry with frameDt-gated emission
- * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
- * 120fps is a law. No signature shares a centerpiece with any other
- * file's — these are new sentences, not louder readings of old ones.
+ * Binding laws as ever: hard edges, save/restore hygiene, squash on
+ * ground y-radii, srand determinism, frameDt-gated emission, ≤ ~60
+ * path ops per hook per frame. No centerpiece repeats another's,
+ * nor any of this file's former ones (the seething spatter, the
+ * crusting-over, the closing floe-jaw, the standing noon, the lit
+ * lettering, the tolling rib-lantern, the inhaling window, the
+ * walking weather-wall, the drinking disc, the parted world — all
+ * retired whole). Pulse arts ride bornAt beat parity; field arts
+ * accumulate their mark beat by beat.
  *
- * FX v5 wave 3d: venom, fire, frost, radiance, storm, water, and
- * blood route through the MATTER LIBRARY (ONE-VOICE LAW); red_eclipse
- * and galvanic_arc honor their standing earmarks. rune_echo's arcane
- * lettering, marrow_pulse's bone, void_rift's void, and realm_rend's
- * world-fabric stay bespoke — no material owns those voices.
+ * ONE-VOICE stands: venom, fire, frost, radiance, storm, water, and
+ * blood speak through the MATTER LIBRARY; bone, void, moon-tide,
+ * and world-fabric stay each art's own.
  */
 
 import { shade } from './rig.js';
-import { srand } from './abilityFx.js';
+import { boltPath, burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
-import { venom, fire, frost, radiance, storm, water, blood, asMatter } from './matter/index.js';
+import { venom, fire, frost, radiance, storm, blood, asMatter } from './matter/index.js';
+
+// ------------------------------------------------------------ helpers
+
+/**
+ * THE LASTING MARK — one settled grain laid deliberately at a world
+ * point (the ~10s tertiary stratum; burst()'s ×0.7–1.3 life jitter
+ * keeps a formation from dying as one).
+ */
+function lay(
+  c: SigCtx, wx: number, wy: number, color: string,
+  opts: { life?: number; size?: number; flicker?: number; fade?: string; fadeAt?: number; fade2?: string; fade2At?: number } = {},
+): void {
+  c.particles.burst(wx, wy, 1, [color], {
+    speed: 0.05, life: opts.life ?? 8, size: opts.size ?? 0.055,
+    gravity: 0, drag: 4, layer: 'ground', flicker: opts.flicker ?? 0,
+    fade: opts.fade, fadeAt: opts.fadeAt,
+    fade2: opts.fade2, fade2At: opts.fade2At,
+  });
+}
 
 // --------------------------------------------------------- venom_lash
 
 /**
- * VENOM_LASH — "the seething spatter."
- * Both serpents' spit lands as a constellation of green blots that
- * keep WORKING: each blot seethes on its own clock, popping bubble
- * glints and creeping a pale eaten rim outward while acrid threads
- * of vapor lean off the wet ground — venom that is still a mouth
- * after it has left the fang.
+ * VENOM_LASH — "the two opinions."
+ * Each serpent's spit lands and SPLITS: the glob breaks into two
+ * runnels that crawl away in a widening V — wobbling lines with
+ * bead heads, professional enough never to cross — then both go
+ * still and soak in. The V stays as two flickering stain-lines
+ * for eight seconds; two shots print two verdicts.
  */
 const venom_lash: AbilitySig = {
-  spawn(c: SigCtx) {
-    const m = asMatter(c);
-    // The spit sheet: TRUE venom flung all ways — fat drops on real
-    // arcs that land as stains and dry near-black.
-    venom.deployments.burst!(m, c.wx, c.wy, { scale: 0.9 });
-    // The acrid air over the wet ground: a standing venom cloud,
-    // bright miasma clinging low with bubbles popping through it —
-    // the seethe and the threads in one sustained voice.
-    venom.deployments.cloud!(m, c.wx, c.wy, {
-      radius: c.radius * 0.55, dur: 1.4, scale: 0.6,
-    });
-  },
-  ground(c: SigCtx) {
-    const { ctx, st, t, sc, squash, px, py } = c;
-    const rand = srand(c.seed ^ 0xa2);
-    const rr = Math.max(c.rPx, sc * 0.9);
-    const fade = t < 0.65 ? 1 : (1 - t) / 0.35;
-    ctx.save();
-    // The blot constellation: each splash seethes on its own clock —
-    // a dark heart inside a pale eaten rim that creeps outward as
-    // the venom chews.
-    for (let k = 0; k < 5; k++) {
-      const a = rand() * Math.PI * 2;
-      const d = rr * (k === 0 ? 0 : 0.35 + rand() * 0.6);
-      const bx = px + Math.cos(a) * d;
-      const by = py + Math.sin(a) * d * squash;
-      const s0 = sc * (0.1 + rand() * 0.1) * (k === 0 ? 1.6 : 1);
-      const seethe = 0.75 + 0.25 * Math.sin(c.now / 170 + k * 2.7);
-      const eat = 1 + t * 0.5; // the rim creeps out over the life
-      ctx.globalAlpha = 0.7 * fade;
-      ctx.fillStyle = st.spark;
-      ctx.beginPath();
-      ctx.ellipse(bx, by, s0 * eat, s0 * eat * squash, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 0.85 * fade * seethe;
-      ctx.fillStyle = k % 2 === 0 ? st.deep : shade(st.mid, -12);
-      ctx.beginPath();
-      ctx.ellipse(bx, by, s0 * 0.7, s0 * 0.7 * squash, 0, 0, Math.PI * 2);
-      ctx.fill();
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x3e01);
+    const a = rand() * Math.PI * 2;
+    venom.deployments.spit!(asMatter(c), c.wx, c.wy, { dir: a, scale: 0.6 });
+    // The V's record: two grain-lines diverging from the strike.
+    for (const s of [-1, 1]) {
+      const ra = a + s * 0.45;
+      for (let k = 1; k <= 3; k++) {
+        lay(c, c.wx + Math.cos(ra) * 0.22 * k, c.wy + Math.sin(ra) * 0.22 * k,
+          k === 1 ? '#a0c050' : '#6a8a3c',
+          { life: 8.5, size: 0.05, flicker: 0.25 });
+      }
     }
-    ctx.restore();
-    c.glow(c.wx, c.wy, 0.9, 0.2 * fade);
   },
-  // (The bubbles and acrid threads live in the sustained library
-  // cloud spawned with the spit — one mouth, not three.)
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py } = c;
+    const rand = srand(c.seed ^ 0x3e01);
+    const a = rand() * Math.PI * 2;
+    const fade = t < 0.7 ? 1 : (1 - t) / 0.3;
+    ctx.save();
+    ctx.lineCap = 'round';
+    // THE RUNNELS: two crawling venom lines diverge in a V — each
+    // advancing with a wobble, head bead bright, body dimming as it
+    // soaks. The still phase: both freeze at 0.7 and darken.
+    const crawl = Math.min(1, t / 0.6);
+    for (const s of [-1, 1]) {
+      const ra = a + s * 0.45;
+      const L = sc * 0.72 * crawl;
+      const wob = Math.sin(c.now / 130 + s * 2) * sc * 0.05 * (t < 0.7 ? 1 : 0);
+      ctx.globalAlpha = 0.9 * fade;
+      ctx.strokeStyle = t < 0.7 ? '#7a9a3c' : '#5c7230';
+      ctx.lineWidth = Math.max(2.6, sc * 0.065);
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.quadraticCurveTo(
+        px + Math.cos(ra) * L * 0.5 + -Math.sin(ra) * wob,
+        py + Math.sin(ra) * L * 0.5 * squash + Math.cos(ra) * wob,
+        px + Math.cos(ra) * L, py + Math.sin(ra) * L * squash);
+      ctx.stroke();
+      // The head bead: bright while crawling, gone once still.
+      if (crawl < 1 && t < 0.7) {
+        ctx.globalAlpha = 0.97;
+        ctx.fillStyle = '#cfe86a';
+        ctx.beginPath();
+        ctx.ellipse(px + Math.cos(ra) * L, py + Math.sin(ra) * L * squash,
+          sc * 0.05, sc * 0.045, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // The strike blot at the split point.
+    ctx.globalAlpha = 0.85 * fade;
+    ctx.fillStyle = '#6a8a3c';
+    ctx.beginPath();
+    ctx.ellipse(px, py, sc * 0.12, sc * 0.09 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py } = c;
+    const rand = srand(c.seed ^ 0x3e01);
+    const a = rand() * Math.PI * 2;
+    // The spit's arrival: a green glob streak + one split flash.
+    if (t < 0.12) {
+      const k = 1 - t / 0.12;
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.95 * k;
+      ctx.strokeStyle = '#a0c050';
+      ctx.lineWidth = Math.max(3, sc * 0.075);
+      ctx.beginPath();
+      ctx.moveTo(px - Math.cos(a) * sc * 1.6, py - sc * 0.5 - Math.sin(a) * sc * 0.7);
+      ctx.lineTo(px, py - sc * 0.1);
+      ctx.stroke();
+      ctx.globalAlpha = 0.9 * k;
+      ctx.fillStyle = '#cfe86a';
+      ctx.beginPath();
+      burstStarPath(ctx, px, py - sc * 0.08, sc * 0.18, sc * 0.07, 5, a, c.squash);
+      ctx.fill();
+      ctx.restore();
+      c.glow(c.wx, c.wy, 0.6, 0.3 * k);
+    }
+    void st;
+  },
 };
 
 // ---------------------------------------------------------- magma_orb
 
 /**
- * MAGMA_ORB — "the crusting-over."
- * Where the slow globe lands, liquid rock POOLS — and then the pool
- * tells its whole cooling life: dark crust plates skin across the
- * orange heart one by one while the seams between them stay molten,
- * spitting sparks up through every gap that hasn't closed, until
- * the last seam chokes shut and the stone goes quiet.
+ * MAGMA_ORB — "the rolling footprints."
+ * It does not stop for anyone — so the wound shows it mid-transit:
+ * the globe passes through, its dark crust patch visibly rotating
+ * over the glow, and behind it a line of burning footprint-pools
+ * marks where it rolled. The pools stay as two ember discs cooling
+ * white → orange → soot for nine seconds.
  */
 const magma_orb: AbilitySig = {
-  spawn(c: SigCtx) {
-    const m = asMatter(c);
-    // Slag slops out as TRUE molten gobbets — real arcs, landing
-    // still burning, cooling to dead coals in the crusting pool.
-    fire.deployments.gobbets!(m, c.wx, c.wy, { scale: 0.9 });
-    // The splash burns where it stands: one full library detonation
-    // at reduced weight — heart flash, tongues, sparks, soot exhale.
-    fire.deployments.burst!(m, c.wx, c.wy, { scale: 0.55 });
-  },
-  ground(c: SigCtx) {
-    const { ctx, st, t, sc, squash, px, py } = c;
-    const rand = srand(c.seed ^ 0xa6);
-    const rr = Math.max(c.rPx * 0.7, sc * 0.75);
-    const fade = t < 0.8 ? 1 : (1 - t) / 0.2;
-    ctx.save();
-    // The pool: an orange heart with a white center, dimming as the
-    // crust claims it.
-    const heat = Math.max(0, 1 - t * 1.15);
-    ctx.globalAlpha = (0.35 + 0.5 * heat) * fade;
-    ctx.fillStyle = st.mid;
-    ctx.beginPath();
-    ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
-    ctx.fill();
-    if (heat > 0.25) {
-      ctx.globalAlpha = (heat - 0.25) * fade;
-      ctx.fillStyle = st.core;
-      ctx.beginPath();
-      ctx.ellipse(px, py, rr * 0.4, rr * 0.4 * squash, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Crust plates skin over one by one — each a dark slab growing
-    // in on its own clock; the seams between them keep the glow.
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + rand() * 0.5;
-      const d = rr * (0.25 + rand() * 0.45);
-      const grow = Math.min(1, Math.max(0, (t - 0.08 - k * 0.09) / 0.3));
-      if (grow <= 0) continue;
-      const s0 = sc * (0.14 + rand() * 0.1) * grow;
-      const bx = px + Math.cos(a) * d;
-      const by = py + Math.sin(a) * d * squash;
-      ctx.globalAlpha = 0.85 * fade;
-      ctx.fillStyle = k % 2 === 0 ? shade(st.deep, -14) : st.deep;
-      ctx.save();
-      ctx.translate(bx, by);
-      ctx.rotate(a + (c.seed % 7) * 0.4);
-      ctx.fillRect(-s0, -s0 * 0.6 * squash, s0 * 2, s0 * 1.2 * squash);
-      ctx.restore();
-      // The molten seam clings to the plate's trailing edge.
-      if (heat > 0) {
-        ctx.globalAlpha = heat * fade * (0.5 + 0.5 * Math.sin(c.now / 140 + k * 2.2));
-        ctx.strokeStyle = st.spark;
-        ctx.lineWidth = Math.max(1, sc * 0.03);
-        ctx.beginPath();
-        ctx.moveTo(bx - Math.sin(a) * s0, by + Math.cos(a) * s0 * squash);
-        ctx.lineTo(bx + Math.sin(a) * s0, by - Math.cos(a) * s0 * squash);
-        ctx.stroke();
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x309b);
+    const a = rand() * Math.PI * 2;
+    fire.deployments.gobbets!(asMatter(c), c.wx, c.wy, { scale: 0.5 });
+    // THE FOOTPRINTS: two melt-pool discs behind the wound, each a
+    // small ring of ember grains.
+    for (let p = 0; p < 2; p++) {
+      const d = 0.45 + p * 0.55;
+      const cxp = c.wx - Math.cos(a) * d;
+      const cyp = c.wy - Math.sin(a) * d;
+      for (let k = 0; k < 4; k++) {
+        const ra = (k / 4) * Math.PI * 2;
+        lay(c, cxp + Math.cos(ra) * 0.12, cyp + Math.sin(ra) * 0.12, '#fff1d8', {
+          life: 9, size: 0.05, flicker: 0.3,
+          fade: '#f0a45a', fadeAt: 0.2, fade2: '#4a3226', fade2At: 0.6,
+        });
       }
     }
-    ctx.restore();
-    c.glow(c.wx, c.wy, 0.9, 0.45 * heat * fade);
   },
-  air(c: SigCtx) {
-    // Sparks spit up through the seams that haven't closed yet — the
-    // rate dies as the crust wins.
-    const open = Math.max(0, 1 - c.t * 1.3);
-    if (open > 0 && Math.random() < c.frameDt * 12 * open) {
-      const a = Math.random() * Math.PI * 2;
-      const d = (Math.random() * 0.5 * Math.max(c.rPx * 0.7, c.sc * 0.75)) / c.sc;
-      c.particles.burst(c.wx + Math.cos(a) * d, c.wy + Math.sin(a) * d * c.squash, 1, [c.st.spark, c.st.core], {
-        speed: 1.4, life: 0.4, size: 0.06, gravity: 5, up: true,
-        flicker: 0.5, fade: c.st.deep,
-      });
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py } = c;
+    const rand = srand(c.seed ^ 0x309b);
+    const a = rand() * Math.PI * 2;
+    const fade = t < 0.7 ? 1 : (1 - t) / 0.3;
+    const heat = t < 0.3 ? '#fff1d8' : t < 0.55 ? '#ffb36a' : '#c85a28';
+    ctx.save();
+    // The footprint pools: two glowing discs with dark rims, laid
+    // back along the roll line, cooling in hard steps.
+    for (let p = 0; p < 2; p++) {
+      const d = sc * (0.45 + p * 0.55);
+      const cxp = px - Math.cos(a) * d;
+      const cyp = py - Math.sin(a) * d * squash;
+      ctx.globalAlpha = 0.9 * fade;
+      ctx.fillStyle = shade(st.deep, -18);
+      ctx.beginPath();
+      ctx.ellipse(cxp, cyp, sc * 0.17, sc * 0.13 * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.95 * fade;
+      ctx.fillStyle = heat;
+      ctx.beginPath();
+      ctx.ellipse(cxp, cyp, sc * 0.11, sc * 0.08 * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py } = c;
+    const rand = srand(c.seed ^ 0x309b);
+    const a = rand() * Math.PI * 2;
+    ctx.save();
+    // THE GLOBE, mid-transit: enters one side of the wound and
+    // leaves the other (0→0.4), crust patch rotating over the glow.
+    if (t < 0.4) {
+      const u = t / 0.4;
+      const d = sc * (u * 1.6 - 0.8);
+      const bx = px + Math.cos(a) * d;
+      const by = py - sc * 0.42 + Math.sin(a) * d * 0.5;
+      const R = sc * 0.2;
+      ctx.globalAlpha = 0.97;
+      ctx.fillStyle = '#ffb36a';
+      ctx.beginPath();
+      ctx.ellipse(bx, by, R, R, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff1d8';
+      ctx.beginPath();
+      ctx.ellipse(bx - R * 0.25, by - R * 0.25, R * 0.4, R * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // The crust: a dark patch rotating across the face.
+      const rot = a + u * 5;
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = shade(st.deep, -16);
+      ctx.beginPath();
+      ctx.ellipse(bx + Math.cos(rot) * R * 0.45, by + Math.sin(rot) * R * 0.45,
+        R * 0.42, R * 0.28, rot, 0, Math.PI * 2);
+      ctx.fill();
+      // Drips shed behind the roll.
+      if (Math.random() < c.frameDt * 12) {
+        c.particles.burst(c.wx + Math.cos(a) * (u * 1.6 - 0.8), c.wy + Math.sin(a) * (u * 1.6 - 0.8) * 0.5,
+          1, ['#ffb36a', '#e85a2c'], {
+            speed: 0.15, life: 0.8, size: 0.05, gravity: 0, shape: 'drop',
+            z: 0.4, vz: -0.2, zg: 5, land: 'splat', layer: 'world',
+            fade: '#c85a28', fadeAt: 0.4, fade3: '#4a3226',
+          });
+      }
+      c.glow(c.wx + Math.cos(a) * (u * 1.6 - 0.8), c.wy + Math.sin(a) * (u * 1.6 - 0.8) * 0.5, 0.8, 0.45);
+    }
+    ctx.restore();
+    void st;
   },
 };
 
-// ------------------------------------------------------- shatterfrost
+// -------------------------------------------------------- shatterfrost
 
 /**
- * SHATTERFROST — "the closing floe-jaw."
- * The glacier bites down, literally: two arcs of jagged floe teeth
- * slide in from either side of the circle like an upper and lower
- * jaw, clamp shut across the middle with a white crush-flash, and
- * leave the bite line paved with pressed ice rubble — what the
- * grip caught, the grind keeps.
+ * SHATTERFROST — "the millstones."
+ * The glacier grinds: two half-disc ice slabs cover the circle —
+ * north stone and south stone — turning against each other in hard
+ * stutters, their meeting seam spitting chips at every step; then
+ * both slabs craze and vanish. The seam stays as a line of white
+ * grains straight across the circle for eight seconds.
  */
 const shatterfrost: AbilitySig = {
-  spawn(c: SigCtx) {
-    // Cold breath rolls off both closing jaws: TRUE frost weather
-    // over the whole bite.
-    frost.deployments.fog!(asMatter(c), c.wx, c.wy, {
-      radius: c.radius * 0.8, dur: 0.7, scale: 0.7,
-    });
-  },
-  ground(c: SigCtx) {
-    const { ctx, st, t, sc, squash, px, py, rPx } = c;
-    const rand = srand(c.seed ^ 0xaa);
-    const fade = t < 0.7 ? 1 : (1 - t) / 0.3;
-    // The jaws travel: full gap at birth, shut at t = 0.45.
-    const gap = rPx * 0.8 * Math.max(0, 1 - t / 0.45) * squash;
-    const bit = t >= 0.45;
-    ctx.save();
-    // Two jaws of four floe teeth each, pointing at each other across
-    // the bite line, each riding a thick floe band at its base.
-    for (let j = 0; j < 2; j++) {
-      const side = j === 0 ? -1 : 1; // north jaw, south jaw
-      const baseY = py + side * (gap + sc * 0.1 * squash);
-      ctx.globalAlpha = 0.85 * fade;
-      ctx.strokeStyle = st.mid;
-      ctx.lineWidth = Math.max(2.5, sc * 0.1);
-      ctx.beginPath();
-      ctx.moveTo(px - rPx * 0.72, baseY + side * sc * 0.16 * squash);
-      ctx.lineTo(px + rPx * 0.72, baseY + side * sc * 0.16 * squash);
-      ctx.stroke();
-      ctx.fillStyle = j === 0 ? st.core : shade(st.mid, 16);
-      for (let k = 0; k < 4; k++) {
-        const bx = px + (k - 1.5) * rPx * 0.38 + (rand() - 0.5) * sc * 0.1;
-        const w = sc * (0.11 + rand() * 0.05);
-        const L = sc * (0.26 + rand() * 0.14) * squash;
-        ctx.globalAlpha = 0.9 * fade;
-        ctx.beginPath();
-        ctx.moveTo(bx - w, baseY);
-        ctx.lineTo(bx, baseY - side * L); // the tooth reaches for the other jaw
-        ctx.lineTo(bx + w, baseY);
-        ctx.closePath();
-        ctx.fill();
-      }
+  spawn(c) {
+    frost.deployments.shatter!(asMatter(c), c.wx, c.wy, { scale: 0.8 });
+    // The seam's record: white grains straight across.
+    const seamA = (c.seed % 7) * 0.4;
+    for (let k = -3; k <= 3; k++) {
+      lay(c, c.wx + Math.cos(seamA) * 0.3 * k, c.wy + Math.sin(seamA) * 0.3 * k,
+        k % 2 === 0 ? '#ffffff' : c.st.mid,
+        { life: 8, size: 0.05, flicker: 0.3 });
     }
-    // The crush: a white flash bar the instant the teeth meet, then
-    // pressed rubble paves the bite line.
-    if (bit) {
-      if (t < 0.56) {
-        ctx.globalAlpha = (1 - (t - 0.45) / 0.11) * 0.9;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px - rPx * 0.7, py - Math.max(2, sc * 0.05), rPx * 1.4, Math.max(4, sc * 0.1));
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const fade = t < 0.7 ? 1 : (1 - t) / 0.3;
+    const seamA = (c.seed % 7) * 0.4;
+    // The stutter clock: four hard steps across the grind.
+    const step = Math.min(3, Math.floor(t * 6));
+    const stepT = Math.min(1, (t * 6 - step) * 3); // fast settle
+    const craze = Math.max(0, (t - 0.72) / 0.28);
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // THE MILLSTONES: two half-discs, each a filled pale slab with
+    // a darker rim band, rotated opposite ways by the stutter.
+    for (const s of [-1, 1]) {
+      const rot = seamA + s * (step + stepT) * 0.07;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(1, squash);
+      ctx.rotate(rot);
+      ctx.globalAlpha = (0.55 - craze * 0.3) * fade;
+      ctx.fillStyle = s === -1 ? shade(st.mid, 18) : shade(st.mid, 8);
+      ctx.beginPath();
+      ctx.arc(0, 0, rPx * 0.88, s === -1 ? Math.PI : 0, s === -1 ? Math.PI * 2 : Math.PI);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = (0.8 - craze * 0.4) * fade;
+      ctx.strokeStyle = shade(st.deep, -8);
+      ctx.lineWidth = Math.max(2.4, sc * 0.06);
+      ctx.beginPath();
+      ctx.arc(0, 0, rPx * 0.86, s === -1 ? Math.PI + 0.1 : 0.1, s === -1 ? Math.PI * 2 - 0.1 : Math.PI - 0.1);
+      ctx.stroke();
+      // Craze cracks at the end: three kinked lines per slab.
+      if (craze > 0) {
+        const rand = srand(c.seed ^ (s + 9));
+        ctx.globalAlpha = 0.9 * fade;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1.4, sc * 0.03);
+        for (let k = 0; k < 3; k++) {
+          const a = (s === -1 ? Math.PI : 0) + rand() * Math.PI;
+          const r0 = rPx * (0.1 + rand() * 0.2);
+          const r1 = rPx * (0.5 + rand() * 0.34) * craze;
+          const kink = (rand() - 0.5) * 0.7;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+          ctx.lineTo(Math.cos(a + kink) * r1, Math.sin(a + kink) * r1);
+          ctx.stroke();
+        }
       }
-      ctx.fillStyle = st.core;
-      for (let k = 0; k < 5; k++) {
-        const bx = px + (rand() - 0.5) * rPx * 1.3;
-        const by = py + (rand() - 0.5) * sc * 0.2 * squash;
-        const s0 = sc * (0.05 + rand() * 0.06);
-        ctx.globalAlpha = 0.75 * fade;
-        ctx.save();
-        ctx.translate(bx, by);
-        ctx.rotate(rand() * Math.PI);
-        ctx.fillRect(-s0, -s0 * 0.5, s0 * 2, s0);
-        ctx.restore();
-      }
+      ctx.restore();
+    }
+    // THE SEAM: the grinding line — bright, chip-spitting at each
+    // stutter step (crossing-frame gate).
+    ctx.globalAlpha = 0.95 * fade * (1 - craze);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(2, sc * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(px - Math.cos(seamA) * rPx * 0.86, py - Math.sin(seamA) * rPx * 0.86 * squash);
+    ctx.lineTo(px + Math.cos(seamA) * rPx * 0.86, py + Math.sin(seamA) * rPx * 0.86 * squash);
+    ctx.stroke();
+    const prevStep = Math.min(3, Math.floor((t - c.frameDt * 1000 / 680) * 6));
+    if (prevStep < step && craze === 0) {
+      frost.deployments.shatter!(asMatter(c),
+        c.wx + Math.cos(seamA) * c.radius * (Math.random() - 0.5),
+        c.wy + Math.sin(seamA) * c.radius * (Math.random() - 0.5), { scale: 0.3 });
     }
     ctx.restore();
-    // The crush lands ON the crossing frame: the instant the teeth
-    // meet, TRUE frost shatters at both ends of the bite line —
-    // shards that tumble, lie, and steam off where the grind kept them.
-    const lifeMs = t > 0 ? c.age / t : 0;
-    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
-    if (tPrev < 0.45 && t >= 0.45) {
-      const m = asMatter(c);
-      for (const s of [-1, 1]) {
-        frost.deployments.shatter!(m, c.wx + s * c.radius * 0.45, c.wy, { scale: 0.5 });
-      }
-    }
+    c.glow(c.wx, c.wy, c.radius * 0.8, 0.3 * fade);
   },
-  air(c: SigCtx) {
-    c.glow(c.wx, c.wy, c.radius * 0.8, 0.3 * (1 - c.t));
-  },
+  air() { /* the grind lives on the ground; the library owns the chips */ },
 };
 
 // -------------------------------------------------------- solar_lance
 
 /**
- * SOLAR_LANCE — "the standing noon."
- * The spear does not fly — noon simply HAPPENS along the line: a
- * hairline of white snaps across the whole corridor, blooms into a
- * broad daylight band with vertical sun-shafts standing on it like
- * light through a torn roof, sun-coins dapple the ground below,
- * and when the noon burns off, a charred meridian stays.
+ * SOLAR_LANCE — "the second sun's shadows."
+ * Noon does not travel — it IS, all along the line: the corridor
+ * floor turns hard bright instantly, and the WORLD is re-lit: three
+ * seeded stones near the line throw long shadows AWAY from it,
+ * while inside the bar every mote's shadow sits directly beneath.
+ * The lance is one white-gold core with heat serrations. A line of
+ * gold grains and singe dots stays for eight seconds.
  */
 const solar_lance: AbilitySig = {
-  spawn(c: SigCtx) {
-    const m = asMatter(c);
-    // Noon fills the corridor with TRUE light: two rising
-    // congregations stationed along the line the instant it exists.
-    for (const f of [0.3, 0.7]) {
-      radiance.deployments.bloom!(m, c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f, { scale: 0.5 });
-    }
-    // The far end takes the point of the spear.
-    c.particles.burst(c.wx2, c.wy2 - 0.3, 6, [c.st.core, c.st.spark], {
-      speed: 2.2, life: 0.35, size: 0.07, gravity: 2, shape: 'streak',
-    });
-  },
-  ground(c: SigCtx) {
-    const { ctx, st, t, sc, squash } = c;
-    const rand = srand(c.seed ^ 0xae);
-    const dx = c.px2 - c.px, dy = c.py2 - c.py;
-    const len = Math.hypot(dx, dy) || 1;
-    const nx = -dy / len, ny = dx / len;
-    const fade = 1 - t;
-    ctx.save();
-    // Sun-coins: dapple spots inside the corridor, each breathing on
-    // its own clock — noon leaking through the world's canopy.
-    ctx.fillStyle = st.spark;
-    for (let k = 0; k < 7; k++) {
-      const f = 0.1 + rand() * 0.8;
-      const side = (rand() - 0.5) * 2;
-      const s0 = sc * (0.07 + rand() * 0.07);
-      const breathe = 0.5 + 0.5 * Math.sin(c.now / 220 + k * 2.4);
-      ctx.globalAlpha = 0.5 * fade * breathe;
-      ctx.beginPath();
-      ctx.ellipse(
-        c.px + dx * f + nx * side * sc * 0.4,
-        c.py + dy * f + ny * side * sc * 0.4,
-        s0, s0 * squash, 0, 0, Math.PI * 2,
-      );
-      ctx.fill();
-    }
-    // The charred meridian: once noon passes its peak, the line it
-    // stood on stays burnt into the ground.
-    if (t > 0.35) {
-      ctx.globalAlpha = Math.min(1, (t - 0.35) / 0.2) * 0.55 * fade;
-      ctx.strokeStyle = st.deep;
-      ctx.lineWidth = Math.max(1.5, sc * 0.04);
-      ctx.beginPath();
-      ctx.moveTo(c.px, c.py);
-      ctx.lineTo(c.px2, c.py2);
-      ctx.stroke();
-    }
-    ctx.restore();
-    c.glow((c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2, 1.6, 0.4 * fade);
-  },
-  air(c: SigCtx) {
-    const { ctx, st, t, sc } = c;
-    const rand = srand(c.seed ^ 0xaf);
-    const lift = sc * 0.4;
-    const x1 = c.px, y1 = c.py - lift;
-    const x2 = c.px2, y2 = c.py2 - lift;
-    const dx = x2 - x1, dy = y2 - y1;
-    ctx.save();
-    ctx.lineCap = 'butt';
-    // The hairline: the first crack of noon, full length instantly.
-    if (t < 0.08) {
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(1.5, sc * 0.04);
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    }
-    // The band: blooms wide fast, then narrows as the noon spends.
-    const bloom = Math.min(1, t / 0.14);
-    const spend = t < 0.55 ? 1 : Math.max(0, (1 - t) / 0.45);
-    const w = Math.max(2, sc * 0.24 * bloom * (0.35 + 0.65 * spend));
-    ctx.globalAlpha = 0.8 * spend;
-    ctx.strokeStyle = st.mid;
-    ctx.lineWidth = w;
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-    ctx.globalAlpha = 0.95 * spend;
-    ctx.strokeStyle = st.core;
-    ctx.lineWidth = Math.max(1.5, w * 0.35);
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-    // Sun-shafts: vertical light standing ON the lance — noon comes
-    // from overhead, and the line remembers where it fell from.
-    ctx.fillStyle = st.core;
-    for (let k = 0; k < 6; k++) {
-      const f = 0.12 + (k / 6) * 0.78 + rand() * 0.04;
-      const h = sc * (0.5 + rand() * 0.5);
-      const shaftW = Math.max(1.5, sc * 0.045);
-      const shimmer = 0.55 + 0.45 * Math.sin(c.now / 130 + k * 2.1);
-      ctx.globalAlpha = 0.55 * spend * shimmer;
-      ctx.fillRect(x1 + dx * f - shaftW / 2, y1 + dy * f - h, shaftW, h);
-    }
-    ctx.restore();
-    // The noon burns off ON the crossing frame: one last congregation
-    // rises from mid-line as the light departs upward.
-    const lifeMs = t > 0 ? c.age / t : 0;
-    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
-    if (tPrev < 0.5 && t >= 0.5) {
-      radiance.deployments.bloom!(asMatter(c), (c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2, { scale: 0.45 });
-    }
-  },
-};
-
-// ---------------------------------------------------------- rune_echo
-
-/**
- * RUNE_ECHO — "the lit lettering."
- * The blast is an inscription READ ALOUD: a ring of angular rune
- * letters snaps alight one by one clockwise around the caster —
- * the first reading — then the whole sentence flares at once,
- * twice as bright, and sheds rising letter-motes as it fades:
- * the runes light in order, then again, louder.
- */
-const rune_echo: AbilitySig = {
-  spawn(c: SigCtx) {
-    // The pen taps the page: one arcane pop at the center.
-    c.particles.burst(c.wx, c.wy - 0.4, 4, [c.st.core, c.st.mid], {
-      speed: 0.8, life: 0.5, size: 0.09, gravity: 0.3, drag: 1.8, shape: 'glint',
-    });
-  },
-  ground(c: SigCtx) {
-    const { ctx, st, t, sc, squash, px, py, rPx } = c;
-    const rand = srand(c.seed ^ 0xb2);
-    ctx.save();
-    ctx.lineCap = 'butt';
-    // Seven letters around the ring. Each has a lighting moment on
-    // the first reading; the echo flares them ALL at t = 0.55.
+  spawn(c) {
+    radiance.deployments.shafts!(asMatter(c),
+      (c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2, { radius: 0.6, dur: 0.6, scale: 0.7 });
+    // The singed line: gold grains + scorch dots down the corridor.
+    const dx = c.wx2 - c.wx;
+    const dy = c.wy2 - c.wy;
     const n = 7;
-    const flare = t >= 0.55 && t < 0.8 ? 1 - (t - 0.55) / 0.25 : 0;
-    const fade = t < 0.8 ? 1 : (1 - t) / 0.2;
     for (let k = 0; k < n; k++) {
-      const a = (k / n) * Math.PI * 2 - Math.PI / 2 + (c.seed % 5) * 0.2;
-      const lit = Math.min(1, Math.max(0, (t - 0.04 - k * 0.055) / 0.06));
-      if (lit <= 0) continue;
-      const bx = px + Math.cos(a) * rPx * 0.8;
-      const by = py + Math.sin(a) * rPx * 0.8 * squash;
-      const g = sc * 0.13;
-      const rot = rand() * Math.PI;
-      // Each letter: a stem, a crossing tick, a foot — angular,
-      // seeded, no two alike.
-      ctx.globalAlpha = (0.5 * lit + 0.5 * flare) * fade;
-      ctx.strokeStyle = flare > 0 ? st.core : st.mid;
-      ctx.lineWidth = Math.max(1.5, sc * (0.035 + 0.03 * flare));
-      ctx.save();
-      ctx.translate(bx, by);
-      ctx.rotate(rot);
-      ctx.beginPath();
-      ctx.moveTo(0, -g);
-      ctx.lineTo(0, g);
-      ctx.moveTo(-g * 0.7, -g * (0.2 + rand() * 0.5));
-      ctx.lineTo(g * 0.7, -g * 0.1);
-      ctx.moveTo(0, g);
-      ctx.lineTo(g * (rand() < 0.5 ? 0.6 : -0.6), g * 0.55);
-      ctx.stroke();
-      ctx.restore();
-      // The letter's own light kisses the turf when it lights.
-      if (lit < 1) {
-        ctx.globalAlpha = (1 - lit) * 0.7;
-        ctx.fillStyle = st.core;
-        const p = sc * 0.05;
-        ctx.fillRect(bx - p, by - p * squash, p * 2, p * 2 * squash);
-      }
-    }
-    ctx.restore();
-    c.glow(c.wx, c.wy, c.radius * 0.8, 0.2 + 0.35 * flare);
-  },
-  air(c: SigCtx) {
-    // The echo sheds: letter-motes rise off the inscription while
-    // the second, louder reading burns.
-    if (c.t >= 0.55 && c.t < 0.9 && Math.random() < c.frameDt * 14) {
-      const a = Math.random() * Math.PI * 2;
-      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.8, c.wy + Math.sin(a) * c.radius * 0.8 * c.squash - 0.2, 1, [c.st.core, c.st.mid], {
-        speed: 0.4, life: 0.6, size: 0.08, gravity: -1.8, drag: 1.0, shape: 'glint', wobble: 0.4,
-      });
+      const f = (k + 0.5) / n;
+      lay(c, c.wx + dx * f, c.wy + dy * f,
+        k % 2 === 0 ? '#ffd98a' : '#c89a3c', {
+          life: 8, size: 0.05,
+          fade: '#8a6a2e', fadeAt: 0.4,
+        });
     }
   },
-};
-
-// ------------------------------------------------------- marrow_pulse
-
-/**
- * MARROW_PULSE — "the tolling rib-lantern."
- * A lantern built of curved rib staves stands over the caster with
- * a pale grave-flame inside; each pulse is a TOLL — the lantern
- * rocks on its hook, the flame jumps, bone chips shiver off the
- * staves, and a band of grave-light rolls outward along the ground
- * like the sound of a bell you feel instead of hear.
- */
-const marrow_pulse: AbilitySig = {
-  spawn(c: SigCtx) {
-    // The clapper falls: chips shake loose off the staves.
-    c.particles.burst(c.wx, c.wy - 0.9, 5, [c.st.mid, c.st.core], {
-      speed: 0.9, life: 0.6, size: 0.08, gravity: 4, shape: 'shard', spin: 8, fade: c.st.deep,
-    });
-  },
-  ground(c: SigCtx) {
-    const { ctx, st, t, squash, px, py, rPx, sc } = c;
-    ctx.save();
-    ctx.lineCap = 'butt';
-    // The toll made visible: two grave-light bands roll outward, the
-    // second a half-beat behind the first — the hum after the strike.
-    for (let k = 0; k < 2; k++) {
-      const tt = t - k * 0.18;
-      if (tt <= 0) continue;
-      const rr = rPx * Math.min(1, tt * 1.3);
-      const a = Math.max(0, 1 - tt * 1.2) * (k === 0 ? 0.6 : 0.4);
-      if (a <= 0) continue;
-      ctx.globalAlpha = a;
-      ctx.strokeStyle = k === 0 ? st.core : st.mid;
-      ctx.lineWidth = Math.max(1.5, sc * (0.05 - k * 0.015));
-      ctx.setLineDash([sc * 0.2, sc * 0.09]);
-      ctx.lineDashOffset = (c.seed % 11) * 2;
-      ctx.beginPath();
-      ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-    ctx.restore();
-  },
-  air(c: SigCtx) {
-    const { ctx, st, t, sc, px, py } = c;
-    ctx.save();
-    ctx.lineCap = 'butt';
-    // The lantern rocks once per toll: a decaying swing.
-    const swing = Math.sin(t * Math.PI * 2.5) * 0.28 * (1 - t);
-    const cy = py - sc * 1.05;
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, px2, py2, rPx } = c;
+    const rand = srand(c.seed ^ 0x501a);
     const fade = t < 0.7 ? 1 : (1 - t) / 0.3;
-    ctx.translate(px, cy);
-    ctx.rotate(swing);
-    // Four rib staves: curved strokes bowing around the flame, a
-    // cage that was once a chest.
-    ctx.strokeStyle = st.mid;
-    ctx.lineWidth = Math.max(2, sc * 0.055);
-    for (let k = 0; k < 4; k++) {
-      const side = k < 2 ? -1 : 1;
-      const rx = sc * (0.16 + (k % 2) * 0.1);
-      ctx.globalAlpha = (0.85 - (k % 2) * 0.25) * fade;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, rx, sc * 0.34, 0, side > 0 ? -Math.PI * 0.42 : Math.PI * 0.58, side > 0 ? Math.PI * 0.42 : Math.PI * 1.42);
-      ctx.stroke();
-    }
-    // The grave-flame inside: a pale block that JUMPS on the toll
-    // and settles between.
-    const jump = 1 + Math.max(0, Math.sin(t * Math.PI * 2.5)) * 0.5 * (1 - t);
-    const fw = sc * 0.09;
-    const fh = sc * 0.2 * jump;
-    ctx.globalAlpha = 0.95 * fade;
-    ctx.fillStyle = st.core;
-    ctx.fillRect(-fw / 2, sc * 0.12 - fh, fw, fh);
-    ctx.globalAlpha = 0.6 * fade;
-    ctx.fillStyle = st.mid;
-    ctx.fillRect(-fw * 0.9, sc * 0.12 - fh * 0.5, fw * 1.8, fh * 0.5);
-    ctx.restore();
-    // Chips keep shivering off the staves while the lantern rocks.
-    if (t < 0.5 && Math.random() < c.frameDt * 8) {
-      c.particles.burst(c.wx + (Math.random() - 0.5) * 0.3, c.wy - 0.9, 1, [st.mid, st.deep], {
-        speed: 0.5, life: 0.5, size: 0.06, gravity: 4.5, shape: 'shard', spin: 7,
-      });
-    }
-    c.glow(c.wx, c.wy, c.radius * 0.7, 0.25 * (1 - t));
-  },
-};
-
-// ---------------------------------------------------------- void_rift
-
-/**
- * VOID_RIFT — "the inhaling window."
- * A jagged window lies OPEN in the ground for the field's whole
- * life, starlight from the place with no windows glinting inside
- * its frame — and everything nearby streams toward it: dashed
- * in-fall lanes march inward, loose matter is drawn over the sill
- * in long streaks, and the whole aperture breathes with each pull
- * until the frame snaps shut like a book.
- */
-const void_rift: AbilitySig = {
-  spawn(c: SigCtx) {
-    // The tearing-open: dark matter is yanked INTO the new mouth.
-    const rand = srand(c.seed ^ 0xb9);
-    for (let k = 0; k < 6; k++) {
-      const a = rand() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.9,
-        c.wy + Math.sin(a) * c.radius * 0.9 * c.squash,
-        1, [c.st.mid, c.st.deep], {
-          speed: 2.4, life: 0.5, size: 0.09, gravity: 0, dir: a + Math.PI,
-          spread: 0.15, shape: 'streak', fade: c.st.deep,
-        },
-      );
-    }
-  },
-  ground(c: SigCtx) {
-    const { ctx, st, t, sc, squash, px, py, rPx } = c;
-    const rand = srand(c.seed ^ 0xba);
-    // The window opens fast, holds, then snaps shut like a book.
-    const open = t < 0.08 ? t / 0.08 : t > 0.94 ? (1 - t) / 0.06 : 1;
-    // The breath: the aperture swells on the field's pull rhythm.
-    const breath = 1 + 0.06 * Math.sin((c.age / 800) * Math.PI * 2);
-    const ax = rPx * 0.55 * breath;
-    const ay = rPx * 0.34 * squash * open * breath;
+    const dx = px2 - px;
+    const dy = py2 - py;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const nx = -uy;
+    const ny = ux;
+    const W = Math.max(rPx, sc * 0.3);
     ctx.save();
-    // The frame and the far place: a jagged lens of night, star
-    // specks winking inside — a window, not a whirlpool.
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = shade(st.deep, -30);
+    ctx.lineCap = 'butt';
+    // THE BAR OF NOON: the corridor floor, instantly and evenly
+    // bright — a hard-edged light band, no growth, no travel.
+    ctx.globalAlpha = 0.5 * fade;
+    ctx.fillStyle = shade(st.mid, 22);
     ctx.beginPath();
-    for (let k = 0; k <= 8; k++) {
-      const f = (k % 8) / 8;
-      const a = f * Math.PI * 2;
-      const jag = 0.82 + rand() * 0.3;
-      const x = px + Math.cos(a) * ax * jag;
-      const y = py + Math.sin(a) * ay * jag;
-      if (k === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
+    ctx.moveTo(px + nx * W, py + ny * W * squash);
+    ctx.lineTo(px2 + nx * W, py2 + ny * W * squash);
+    ctx.lineTo(px2 - nx * W, py2 - ny * W * squash);
+    ctx.lineTo(px - nx * W, py - ny * W * squash);
     ctx.closePath();
     ctx.fill();
-    ctx.globalAlpha = 0.8;
-    ctx.strokeStyle = st.mid;
-    ctx.lineWidth = Math.max(1.5, sc * 0.04);
-    ctx.stroke();
-    if (open > 0.5) {
-      ctx.fillStyle = st.core;
-      for (let k = 0; k < 6; k++) {
-        const sx = px + (rand() - 0.5) * ax * 1.3;
-        const sy = py + (rand() - 0.5) * ay * 1.3;
-        const tw = 0.35 + 0.65 * Math.abs(Math.sin(c.now / 260 + k * 2.9));
-        const g = Math.max(1, sc * 0.03) * tw;
-        ctx.globalAlpha = 0.85 * tw;
-        ctx.fillRect(sx - g / 2, sy - g / 2, g, g);
-      }
-    }
-    // In-fall lanes: dashed radials marching INWARD — the inhale
-    // written on the ground.
-    ctx.globalAlpha = 0.45 * open;
-    ctx.strokeStyle = st.mid;
-    ctx.lineWidth = Math.max(1, sc * 0.03);
-    ctx.setLineDash([sc * 0.12, sc * 0.16]);
-    ctx.lineDashOffset = -c.now / 30; // dashes crawl toward the mouth
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + (c.seed % 7) * 0.3;
+    ctx.globalAlpha = 0.9 * fade;
+    ctx.strokeStyle = st.spark;
+    ctx.lineWidth = Math.max(1.8, sc * 0.045);
+    for (const s of [-1, 1]) {
       ctx.beginPath();
-      ctx.moveTo(px + Math.cos(a) * rPx * 1.05, py + Math.sin(a) * rPx * 1.05 * squash);
-      ctx.lineTo(px + Math.cos(a) * ax * 1.1, py + Math.sin(a) * ay * 1.5);
+      ctx.moveTo(px + nx * W * s, py + ny * W * s * squash);
+      ctx.lineTo(px2 + nx * W * s, py2 + ny * W * s * squash);
       ctx.stroke();
     }
-    ctx.setLineDash([]);
-    ctx.restore();
-  },
-  air(c: SigCtx) {
-    // Loose matter goes over the sill: streaks drawn from the rim to
-    // the mouth, all field long, heavier on each inhale.
-    const breath = 0.5 + 0.5 * Math.sin((c.age / 800) * Math.PI * 2);
-    if (c.t < 0.94 && Math.random() < c.frameDt * (8 + 12 * breath)) {
-      const a = Math.random() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * (0.8 + Math.random() * 0.3),
-        c.wy + Math.sin(a) * c.radius * (0.8 + Math.random() * 0.3) * c.squash,
-        1, [c.st.mid, c.st.deep, c.st.core], {
-          speed: 2.6, life: 0.4, size: 0.07, gravity: 0, dir: a + Math.PI,
-          spread: 0.1, shape: 'streak', fade: c.st.deep,
-        },
-      );
+    // THE RE-LIT WORLD: three seeded stones beside the line throw
+    // long shadows AWAY from it — the second sun's proof.
+    for (let k = 0; k < 3; k++) {
+      const f = 0.2 + rand() * 0.6;
+      const side = rand() < 0.5 ? 1 : -1;
+      const off = W * (1.3 + rand() * 0.8);
+      const bx = px + dx * f + nx * off * side;
+      const by = py + dy * f + ny * off * side * squash;
+      const shadowL = sc * (0.4 + rand() * 0.3) * fade;
+      // The stone: a small lit lump facing the line.
+      ctx.globalAlpha = 0.9 * fade;
+      ctx.fillStyle = shade(st.deep, 14);
+      ctx.beginPath();
+      ctx.ellipse(bx, by, sc * 0.08, sc * 0.06 * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.95 * fade;
+      ctx.fillStyle = '#ffd98a';
+      ctx.beginPath();
+      ctx.ellipse(bx - nx * sc * 0.04 * side, by - ny * sc * 0.04 * side * squash,
+        sc * 0.035, sc * 0.028 * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Its thrown shadow, stretching away from the bar.
+      ctx.globalAlpha = 0.55 * fade;
+      ctx.fillStyle = shade(st.deep, -18);
+      ctx.beginPath();
+      ctx.ellipse(bx + nx * (sc * 0.08 + shadowL * 0.5) * side,
+        by + ny * (sc * 0.08 + shadowL * 0.5) * side * squash,
+        shadowL * 0.5, sc * 0.05 * squash, Math.atan2(ny * side, nx * side), 0, Math.PI * 2);
+      ctx.fill();
     }
-    c.glow(c.wx, c.wy, c.radius * 0.7, 0.2 + 0.15 * breath);
+    ctx.restore();
+    c.glow((c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2, c.radius + 1, 0.55 * fade);
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py, px2, py2 } = c;
+    const fade = t < 0.6 ? 1 : (1 - t) / 0.4;
+    const lift = sc * 0.5;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // THE LANCE: one white-gold core, whole from frame one, heat
+    // serration ticks along its underside.
+    ctx.globalAlpha = 0.6 * fade;
+    ctx.strokeStyle = '#ffd98a';
+    ctx.lineWidth = Math.max(5, sc * 0.14);
+    ctx.beginPath();
+    ctx.moveTo(px, py - lift);
+    ctx.lineTo(px2, py2 - lift);
+    ctx.stroke();
+    ctx.globalAlpha = 0.97 * fade;
+    ctx.strokeStyle = '#fffdf2';
+    ctx.lineWidth = Math.max(2.2, sc * 0.055);
+    ctx.beginPath();
+    ctx.moveTo(px, py - lift);
+    ctx.lineTo(px2, py2 - lift);
+    ctx.stroke();
+    // Serrations: heat ticks hanging beneath, static (noon holds).
+    const dx = px2 - px;
+    const dy = py2 - py;
+    ctx.globalAlpha = 0.85 * fade;
+    ctx.strokeStyle = '#ffd98a';
+    ctx.lineWidth = Math.max(1.4, sc * 0.032);
+    for (let k = 0; k < 6; k++) {
+      const f = (k + 0.5) / 6;
+      ctx.beginPath();
+      ctx.moveTo(px + dx * f, py + dy * f - lift + sc * 0.05);
+      ctx.lineTo(px + dx * f - sc * 0.04, py + dy * f - lift + sc * 0.16);
+      ctx.stroke();
+    }
+    // The IS moment: one flash at both ends simultaneously (noon
+    // has no origin).
+    if (t < 0.1) {
+      const k = 1 - t / 0.1;
+      ctx.globalAlpha = 0.95 * k;
+      ctx.fillStyle = '#fffdf2';
+      for (const [ex, ey] of [[px, py], [px2, py2]] as Array<[number, number]>) {
+        ctx.beginPath();
+        burstStarPath(ctx, ex, ey - lift, sc * 0.26, sc * 0.1, 4, 0.4, 1);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    void st;
   },
 };
 
-// --------------------------------------------------- eye_of_the_storm
+// ----------------------------------------------------------- rune_echo
 
 /**
- * EYE_OF_THE_STORM — "the walking weather-wall."
- * The caster stands in a visibly CALM disc while the weather does
- * the walking around them: a curtain of slanted rain-strokes
- * marches around the rim, lightning ticks down onto the wall at a
- * fresh bearing every pulse, and the only quiet ground in the
- * whole circle is the exact spot the caster refuses to leave.
+ * RUNE_ECHO — "call and response."
+ * Four rune-tablets stand at the quarters. Odd pulses are the CALL:
+ * each tablet flashes one glyph-stroke in turn. Even pulses are the
+ * RESPONSE: all four flash together, brighter, with a doubled ring —
+ * the same word, louder. Tablet-base grains keep the four seats
+ * marked for eight seconds.
  */
-const eye_of_the_storm: AbilitySig = {
-  spawn(c: SigCtx) {
-    const m = asMatter(c);
-    const rand = srand(c.seed ^ 0xbd);
-    // Thunder ticks the rim awake at three bearings — each one TRUE.
-    for (let k = 0; k < 3; k++) {
-      const a = rand() * Math.PI * 2;
-      storm.deployments.impact!(m,
-        c.wx + Math.cos(a) * c.radius * 0.85,
-        c.wy + Math.sin(a) * c.radius * 0.85 * c.squash,
-        { scale: 0.3 });
+const rune_echo: AbilitySig = {
+  spawn(c) {
+    // One spawn per pulse — only the FIRST lays the tablet seats
+    // (beat 0), the rest ride the standing geometry.
+    const beat = Math.floor((c.now - c.age) / 500) % 4;
+    if (beat !== 0) return;
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+      const bx = c.wx + Math.cos(a) * c.radius * 0.6;
+      const by = c.wy + Math.sin(a) * c.radius * 0.6;
+      lay(c, bx, by, c.st.mid, { life: 8, size: 0.055 });
+      lay(c, bx + 0.08, by + 0.05, shade(c.st.deep, -10), { life: 8, size: 0.045 });
     }
-    // The weather-wall rains TRUE: the library's new curtain — drops
-    // plummet from height onto the rim line and splat exactly there,
-    // never a drop on the eye.
-    water.deployments.curtain!(m, c.wx, c.wy, {
-      radius: c.radius * 0.8, dur: 1.6, scale: 0.9,
-    });
   },
-  ground(c: SigCtx) {
+  ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
-    const rand = srand(c.seed ^ 0xbe);
+    const beat = Math.floor((c.now - c.age) / 500);
+    const isResponse = beat % 2 === 1;
     const fade = 1 - t;
     ctx.save();
-    ctx.lineCap = 'butt';
-    // The weather-wall: slanted strokes marching around the rim —
-    // rain with a wind behind it, going somewhere.
-    ctx.strokeStyle = st.mid;
-    ctx.lineWidth = Math.max(1.5, sc * 0.04);
-    for (let k = 0; k < 10; k++) {
-      const a = (k / 10) * Math.PI * 2 + c.now / 900;
-      const rr = rPx * (0.78 + (k % 3) * 0.08);
-      const bx = px + Math.cos(a) * rr;
-      const by = py + Math.sin(a) * rr * squash;
-      const slant = a + 2.3; // every stroke leans the same way — wind
-      const L = sc * 0.17;
-      ctx.globalAlpha = (0.4 + 0.25 * ((k * 7) % 3 === 0 ? 1 : 0)) * fade;
+    // The wave: one ring per pulse — the response doubles it.
+    const rr = rPx * (0.3 + Math.min(1, t / 0.7) * 0.65);
+    for (let d = 0; d < (isResponse ? 2 : 1); d++) {
+      const dr = rr * (1 - d * 0.12);
+      ctx.globalAlpha = (isResponse ? 0.9 : 0.6) * fade * (1 - d * 0.3);
+      ctx.strokeStyle = d === 0 ? st.mid : st.core;
+      ctx.lineWidth = Math.max(2, sc * (isResponse ? 0.06 : 0.045));
       ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx + Math.cos(slant) * L, by + Math.sin(slant) * L * squash);
-      ctx.stroke();
-    }
-    // The calm: one clean pale ring around the still center — the
-    // quietest ground in the circle.
-    ctx.globalAlpha = 0.5 * fade;
-    ctx.strokeStyle = st.core;
-    ctx.lineWidth = Math.max(1, sc * 0.025);
-    ctx.beginPath();
-    ctx.ellipse(px, py, rPx * 0.28, rPx * 0.28 * squash, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    // Lightning ticks the wall once per pulse, each at a fresh
-    // bearing — the storm walking its perimeter.
-    if (t > 0.22 && t < 0.4) {
-      const a = rand() * Math.PI * 2;
-      const bx = px + Math.cos(a) * rPx * 0.85;
-      const by = py + Math.sin(a) * rPx * 0.85 * squash;
-      const bt = 1 - (t - 0.22) / 0.18;
-      ctx.globalAlpha = bt;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(1.5, sc * 0.045);
-      ctx.beginPath();
-      let jx = bx, jy = by - sc * 1.0;
-      ctx.moveTo(jx, jy);
-      for (let k = 0; k < 4; k++) {
-        jx = bx + (rand() - 0.5) * sc * 0.24 * (1 - k / 4);
-        jy = by - sc * 1.0 * (1 - (k + 1) / 4);
-        ctx.lineTo(jx, jy);
-      }
+      ctx.ellipse(px, py, dr, dr * squash, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
   },
-  air(c: SigCtx) {
-    // (The rim rain lives in the sustained library curtain spawned
-    // with the storm — honest z-fall, splats on the wall line.)
-    c.glow(c.wx, c.wy, c.radius, 0.25 * (1 - c.t));
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const beat = Math.floor((c.now - c.age) / 500);
+    const isResponse = beat % 2 === 1;
+    const caller = beat % 4; // which tablet leads an odd pulse
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // THE TABLETS: four standing stones at the quarters — always
+    // present while a pulse lives — dark slab, pale face.
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+      const bx = px + Math.cos(a) * rPx * 0.6;
+      const by = py + Math.sin(a) * rPx * 0.6 * squash;
+      const H = sc * 0.44;
+      const W = sc * 0.15;
+      const lit = isResponse || k === caller % 4;
+      const flash = lit ? Math.max(0, 1 - t * 2.2) : 0;
+      ctx.globalAlpha = 0.92;
+      ctx.fillStyle = shade(st.deep, -12);
+      ctx.fillRect(bx - W / 2 - sc * 0.02, by - H, W + sc * 0.04, H);
+      ctx.fillStyle = shade(st.mid, lit ? 16 : -8);
+      ctx.fillRect(bx - W / 2, by - H + sc * 0.02, W, H - sc * 0.04);
+      // The glyph-stroke: one seeded angular mark per tablet, lit
+      // hard on its turn.
+      const r2 = srand(c.seed ^ (k + 11));
+      ctx.globalAlpha = lit ? 0.95 + flash * 0.05 : 0.4;
+      ctx.strokeStyle = lit ? (flash > 0.4 ? '#ffffff' : st.core) : st.mid;
+      ctx.lineWidth = Math.max(1.6, sc * 0.04);
+      ctx.beginPath();
+      ctx.moveTo(bx - W * 0.24, by - H * (0.3 + r2() * 0.3));
+      ctx.lineTo(bx + W * 0.1, by - H * (0.55 + r2() * 0.2));
+      ctx.lineTo(bx + W * 0.24, by - H * (0.25 + r2() * 0.2));
+      ctx.stroke();
+      // The response's crown glint.
+      if (isResponse && t < 0.3) {
+        ctx.globalAlpha = 0.95 * (1 - t / 0.3);
+        ctx.fillStyle = st.core;
+        const g = Math.max(2, sc * 0.05);
+        ctx.fillRect(bx - g / 2, by - H - g - sc * 0.02, g, g);
+      }
+    }
+    if (t < 0.15 && isResponse) c.glow(c.wx, c.wy, c.radius * 0.8, 0.5 * (1 - t / 0.15));
+    ctx.restore();
+  },
+};
+
+// -------------------------------------------------------- marrow_pulse
+
+/**
+ * MARROW_PULSE — "the counting knuckles."
+ * The grave-light tolls are COUNTED: five knucklebone stones ring
+ * the caster, and each pulse turns one more of them lit — an
+ * abacus of bone keeping the toll's tally — while the wave rolls
+ * out as a pale double-line. Bone-pale grains keep the ring for
+ * eight seconds after the counting stops.
+ */
+const marrow_pulse: AbilitySig = {
+  spawn(c) {
+    const beat = Math.floor((c.now - c.age) / 500) % 5;
+    if (beat !== 0) return;
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 - Math.PI / 2;
+      lay(c, c.wx + Math.cos(a) * 0.62, c.wy + Math.sin(a) * 0.62,
+        k % 2 === 0 ? '#d8d2be' : '#b8b09a',
+        { life: 8.5, size: 0.055 });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const fade = 1 - t;
+    ctx.save();
+    // The toll wave: a pale double-line rolling out.
+    const rr = rPx * (0.25 + Math.min(1, t / 0.75) * 0.7);
+    ctx.globalAlpha = 0.65 * fade;
+    ctx.strokeStyle = shade(st.deep, -6);
+    ctx.lineWidth = Math.max(3.4, sc * 0.09);
+    ctx.beginPath();
+    ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.9 * fade;
+    ctx.strokeStyle = '#d8d2be';
+    ctx.lineWidth = Math.max(1.8, sc * 0.045);
+    ctx.beginPath();
+    ctx.ellipse(px, py, rr * 0.94, rr * 0.94 * squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py } = c;
+    const count = Math.floor((c.now - c.age) / 500) % 6; // tolls so far
+    ctx.save();
+    // THE KNUCKLES: five bone stones ring the caster at waist
+    // height. The first `count` are LIT (a pale inner glow face);
+    // the newest lights with a click this pulse.
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 - Math.PI / 2;
+      const bx = px + Math.cos(a) * sc * 0.62;
+      const by = py - sc * 0.4 + Math.sin(a) * sc * 0.42 * squash;
+      const lit = k < count;
+      const isNew = k === count - 1;
+      const click = isNew ? Math.max(0, 1 - t * 3) : 0;
+      const g = sc * (0.09 + (isNew ? click * 0.03 : 0));
+      // Two offset bone blocks: the knuckle.
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = lit ? '#d8d2be' : shade('#b8b09a', -18);
+      ctx.fillRect(bx - g * 0.8, by - g * 0.9, g, g);
+      ctx.fillRect(bx - g * 0.1, by - g * 0.5, g * 0.9, g * 0.85);
+      if (lit) {
+        ctx.globalAlpha = 0.95;
+        ctx.fillStyle = click > 0.3 ? '#ffffff' : st.core;
+        ctx.fillRect(bx - g * 0.4, by - g * 0.6, Math.max(1.6, g * 0.32), Math.max(1.6, g * 0.32));
+      }
+    }
+    // The toll's heart: a dim lantern-glow at the sternum, breathing
+    // once per pulse.
+    const breathe = Math.max(0, 1 - t * 1.6);
+    ctx.globalAlpha = 0.5 * breathe;
+    ctx.fillStyle = st.mid;
+    ctx.beginPath();
+    ctx.ellipse(px, py - sc * 0.55, sc * 0.14, sc * 0.17, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.9 * breathe;
+    ctx.fillStyle = '#d8d2be';
+    ctx.beginPath();
+    ctx.ellipse(px, py - sc * 0.55, sc * 0.055, sc * 0.07, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (t < 0.15) c.glow(c.wx, c.wy, 0.9, 0.35 * (1 - t / 0.15));
+    ctx.restore();
+  },
+};
+
+// ----------------------------------------------------------- void_rift
+
+/**
+ * VOID_RIFT — "the unlit door."
+ * A door of nothing stands on the field: a tall featureless slab of
+ * pure dark, slightly trapezoid, that never shows an inside. Every
+ * beat it INHALES: grass-lean ticks bow toward it, motes stream in
+ * low, and the field's litter drags threshold-ward. When the field
+ * ends it thins to a line and is gone — leaving a threshold stain
+ * and drag-lines pointing at where it stood, for nine seconds.
+ */
+const void_rift: AbilitySig = {
+  spawn(c) {
+    // First pulse only: the threshold's lasting record.
+    const beat = Math.floor((c.now - c.age) / 800);
+    if (beat !== 0) return;
+    for (let k = -2; k <= 2; k++) {
+      lay(c, c.wx + k * 0.14, c.wy + 0.1, shade(c.st.deep, -18), { life: 9, size: 0.05 });
+    }
+    for (let s = 0; s < 4; s++) {
+      const a = (s / 4) * Math.PI * 2 + 0.4;
+      for (let k = 1; k <= 2; k++) {
+        lay(c, c.wx + Math.cos(a) * 0.5 * k, c.wy + Math.sin(a) * 0.5 * k,
+          c.st.deep, { life: 8.5, size: 0.04 });
+      }
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x0d0f);
+    const fade = t < 0.85 ? 1 : (1 - t) / 0.15;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // THE LEANING WORLD: grass ticks around the door bow toward it,
+    // harder on the inhale beat.
+    const inhale = 1 - Math.min(1, (c.now % 800) / 800) * 0.5;
+    for (let k = 0; k < 8; k++) {
+      const a = rand() * Math.PI * 2;
+      const rr = rPx * (0.4 + rand() * 0.55);
+      const bx = px + Math.cos(a) * rr;
+      const by = py + Math.sin(a) * rr * squash;
+      const lean = 0.4 + inhale * 0.4;
+      ctx.globalAlpha = 0.75 * fade;
+      ctx.strokeStyle = k % 2 === 0 ? shade(st.deep, -6) : st.deep;
+      ctx.lineWidth = Math.max(1.6, sc * 0.038);
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + (px - bx) * 0.14 * lean, by + (py - by) * 0.14 * lean - sc * 0.1 * (1 - lean * 0.5));
+      ctx.stroke();
+    }
+    // The threshold shadow: the door's foot, printed dark.
+    ctx.globalAlpha = 0.7 * fade;
+    ctx.fillStyle = shade(st.deep, -22);
+    ctx.beginPath();
+    ctx.ellipse(px, py + sc * 0.06, sc * 0.4, sc * 0.1 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py } = c;
+    const fade = t < 0.85 ? 1 : Math.max(0, 1 - (t - 0.85) / 0.1);
+    const thin = t > 0.85 ? (t - 0.85) / 0.15 : 0; // it closes to a line
+    ctx.save();
+    // THE DOOR: pure featureless dark, slightly trapezoid, standing
+    // on the field. No rim light, no inside — the one shape in the
+    // game that reflects nothing.
+    const H = sc * 1.7;
+    const Wb = sc * 0.4 * (1 - thin);
+    const Wt = sc * 0.3 * (1 - thin);
+    ctx.globalAlpha = 0.97 * fade;
+    ctx.fillStyle = '#100c18';
+    ctx.beginPath();
+    ctx.moveTo(px - Wb, py);
+    ctx.lineTo(px - Wt, py - H);
+    ctx.lineTo(px + Wt, py - H);
+    ctx.lineTo(px + Wb, py);
+    ctx.closePath();
+    ctx.fill();
+    // THE INHALE: on each beat's first frames, motes stream in low
+    // from all sides and vanish at the threshold.
+    const beatT = (c.now % 800) / 800;
+    if (beatT < 0.4 && t < 0.85 && Math.random() < c.frameDt * 30) {
+      const a = Math.random() * Math.PI * 2;
+      c.particles.burst(c.wx + Math.cos(a) * 1.6, c.wy + Math.sin(a) * 1.6,
+        1, [st.mid, st.spark], {
+          speed: 2.6, life: 0.55, size: 0.045, gravity: 0,
+          dir: a + Math.PI, spread: 0.06, shape: 'streak',
+          z: 0.1, layer: 'world', shadow: 0, drag: 0.2,
+        });
+    }
+    // The door's held breath between inhales: a slow vertical
+    // shiver along its edges — the only motion it allows.
+    const shiver = Math.sin(c.now / 320) * sc * 0.012;
+    ctx.globalAlpha = 0.5 * fade;
+    ctx.strokeStyle = shade(st.deep, -8);
+    ctx.lineWidth = Math.max(1.4, sc * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(px - Wb + shiver, py);
+    ctx.lineTo(px - Wt + shiver, py - H);
+    ctx.moveTo(px + Wb - shiver, py);
+    ctx.lineTo(px + Wt - shiver, py - H);
+    ctx.stroke();
+    ctx.restore();
+    c.glow(c.wx, c.wy, c.radius * 0.5, 0.14 * fade);
+  },
+};
+
+// ---------------------------------------------------- eye_of_the_storm
+
+/**
+ * EYE_OF_THE_STORM — "the quiet disc."
+ * Stand still at the center; the weather does the walking: a
+ * perfect mirror-calm disc holds under the caster — light, still,
+ * DRY — while every pulse rains only on the ring band around it:
+ * slanted rain ticks, two bolt flickers, spray that never crosses
+ * the line. What stays is the proof: a rained-dark ring of grains
+ * around a circle the storm never touched.
+ */
+const eye_of_the_storm: AbilitySig = {
+  spawn(c) {
+    const beat = Math.floor((c.now - c.age) / 450) % 4;
+    storm.deployments.crackle!(asMatter(c),
+      c.wx + Math.cos(beat * 1.7) * c.radius * 0.8,
+      c.wy + Math.sin(beat * 1.7) * c.radius * 0.8, { scale: 0.5 });
+    if (beat !== 0) return;
+    // The wet ring: dark rain-stain grains on the band only.
+    const rand = srand(c.seed ^ 0xe0e1);
+    for (let k = 0; k < 10; k++) {
+      const a = rand() * Math.PI * 2;
+      const rr = c.radius * (0.65 + rand() * 0.3);
+      lay(c, c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr,
+        shade(c.st.deep, -10), { life: 8, size: 0.05 });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const fade = 1 - t * 0.4;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // THE QUIET DISC: the calm — a light, still circle with one
+    // faint static sheen line. Nothing in it moves. Ever.
+    ctx.globalAlpha = 0.4 * fade;
+    ctx.fillStyle = shade(st.mid, 20);
+    ctx.beginPath();
+    ctx.ellipse(px, py, rPx * 0.42, rPx * 0.42 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.85 * fade;
+    ctx.strokeStyle = st.core;
+    ctx.lineWidth = Math.max(1.8, sc * 0.045);
+    ctx.beginPath();
+    ctx.ellipse(px, py, rPx * 0.44, rPx * 0.44 * squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // THE WEATHER BAND: slanted rain ticks on the ring only, redrawn
+    // per frame from the pulse clock — the storm walking its circle.
+    const rand = srand(c.seed ^ (0xe0e2 + Math.floor(c.now / 90)));
+    ctx.globalAlpha = 0.8 * fade;
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1.4, sc * 0.032);
+    for (let k = 0; k < 9; k++) {
+      const a = rand() * Math.PI * 2;
+      const rr = rPx * (0.58 + rand() * 0.36);
+      const bx = px + Math.cos(a) * rr;
+      const by = py + Math.sin(a) * rr * squash;
+      ctx.beginPath();
+      ctx.moveTo(bx + sc * 0.05, by - sc * 0.14);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    ctx.save();
+    // TWO BOLT FLICKERS on the band per pulse — never inside.
+    if (t < 0.4) {
+      const rand = srand(c.seed ^ (0xe0e3 + Math.floor(c.now / 140)));
+      const flicker = 0.7 + 0.3 * Math.sin(c.now / 45);
+      for (let k = 0; k < 2; k++) {
+        const a = rand() * Math.PI * 2;
+        const rr = rPx * (0.68 + rand() * 0.22);
+        const bx = px + Math.cos(a) * rr;
+        const by = py + Math.sin(a) * rr * squash;
+        ctx.globalAlpha = 0.85 * (1 - t / 0.4) * flicker;
+        ctx.strokeStyle = k === 0 ? '#fff9e0' : st.spark;
+        ctx.lineWidth = Math.max(1.6, sc * 0.038);
+        ctx.beginPath();
+        boltPath(ctx, bx, by - sc * 1.4, bx, by, c.seed ^ (k + Math.floor(c.now / 140)), sc * 0.1);
+        ctx.stroke();
+      }
+    }
+    // The eye's crown: one still glint directly over the caster —
+    // the only light that doesn't move.
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = st.core;
+    const g = Math.max(2, sc * 0.05);
+    ctx.fillRect(px - g / 2, py - sc * 1.5 - g / 2, g, g);
+    ctx.restore();
+    if (t < 0.12) c.glow(c.wx, c.wy, c.radius, 0.3 * (1 - t / 0.12));
   },
 };
 
 // -------------------------------------------------------- red_eclipse
 
 /**
- * RED_ECLIPSE — "the drinking disc."
- * For one heartbeat the moon is CLOSE: a dark disc slides over a
- * red corona hanging above the caster, and during totality the
- * circle pays tribute upward — red threads stream off the wounded
- * ground into the disc's underside. Its shadow sweeps the field
- * below, and when the moon lets go, one white diamond flashes at
- * the trailing limb before the sky remembers itself.
+ * RED_ECLIPSE — "the reverse rain."
+ * For one heartbeat the moon is CLOSE: a vast dim red disc hangs
+ * low over the circle, brighter at its limb — and the tide answers
+ * UPWARD: thin red threads lift off the ground toward it, beading
+ * as they rise, until the moon recedes to a point and lets go.
+ * Where each thread rose, a dark red dot stays for eight seconds.
  */
 const red_eclipse: AbilitySig = {
-  spawn(c: SigCtx) {
-    // The near-moon announces itself: red glints scatter at the rim.
-    const rand = srand(c.seed ^ 0xc1);
+  spawn(c) {
+    blood.deployments.drink!(asMatter(c), c.wx, c.wy, { radius: c.radius * 0.7, dur: 0.6, scale: 0.5 });
+    // The risen threads' roots: dark red dots in the circle.
+    const rand = srand(c.seed ^ 0x4ec1);
     for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + rand() * 0.4;
-      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.8, c.wy + Math.sin(a) * c.radius * 0.8 * c.squash, 1, [c.st.mid, c.st.spark], {
-        speed: 0.5, life: 0.6, size: 0.08, gravity: 0.5, drag: 1.5, shape: 'glint',
-      });
+      const a = rand() * Math.PI * 2;
+      const rr = Math.sqrt(rand()) * c.radius * 0.7;
+      lay(c, c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr,
+        k % 2 === 0 ? '#63201a' : '#421410', { life: 8, size: 0.05 });
     }
   },
-  ground(c: SigCtx) {
-    const { ctx, st, t, squash, px, py, rPx, sc } = c;
-    const fade = 1 - t;
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const fade = t < 0.7 ? 1 : (1 - t) / 0.3;
+    // The moon's light on the world: a dim red wash disc, limb-dark
+    // — eclipse light, wrong and low.
     ctx.save();
-    // The umbra: the moon's shadow sweeps the circle west to east,
-    // clipped to the field it darkens.
+    ctx.globalAlpha = 0.3 * fade;
+    ctx.fillStyle = st.mid;
     ctx.beginPath();
-    ctx.ellipse(px, py, rPx, rPx * squash, 0, 0, Math.PI * 2);
-    ctx.clip();
-    const bandW = rPx * 1.1;
-    const bx = px - rPx - bandW / 2 + (2 * rPx + bandW) * Math.min(1, t * 1.15);
-    ctx.globalAlpha = 0.5 * fade;
-    ctx.fillStyle = shade(st.deep, -20);
-    ctx.fillRect(bx - bandW / 2, py - rPx * squash - 2, bandW, rPx * 2 * squash + 4);
-    ctx.restore();
-    ctx.save();
-    // The field keeps a thin blood-lit rim while the moon is near.
-    ctx.globalAlpha = 0.55 * fade;
-    ctx.strokeStyle = st.mid;
-    ctx.lineWidth = Math.max(1.5, sc * 0.04);
+    ctx.ellipse(px, py, rPx * 0.9, rPx * 0.9 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.6 * fade;
+    ctx.strokeStyle = shade(st.deep, -14);
+    ctx.lineWidth = Math.max(3, sc * 0.08);
     ctx.beginPath();
-    ctx.ellipse(px, py, rPx * 0.95, rPx * 0.95 * squash, 0, 0, Math.PI * 2);
+    ctx.ellipse(px, py, rPx * 0.92, rPx * 0.92 * squash, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   },
-  air(c: SigCtx) {
-    const { ctx, st, t, sc, px, py } = c;
-    const rand = srand(c.seed ^ 0xc2);
-    const cy = py - sc * 1.2;
-    const R = sc * 0.4;
-    const fade = t < 0.85 ? 1 : (1 - t) / 0.15;
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x4ec2);
     ctx.save();
-    // The corona: the red ring that is about to be swallowed.
-    ctx.globalAlpha = 0.9 * fade;
-    ctx.strokeStyle = st.mid;
-    ctx.lineWidth = Math.max(2.5, sc * 0.09);
-    ctx.beginPath();
-    ctx.arc(px, cy, R, 0, Math.PI * 2);
-    ctx.stroke();
-    // Totality's flare prongs: two hard red tongues off the limb.
-    const total = t > 0.3 && t < 0.7;
-    if (total) {
-      ctx.fillStyle = st.spark;
-      for (let k = 0; k < 2; k++) {
+    // THE CLOSE MOON: a vast dim disc hanging low over the scene —
+    // arrives 0→0.15, holds through 0.62, recedes to a point after.
+    const arrive = Math.min(1, t / 0.15);
+    const recede = Math.max(0, (t - 0.62) / 0.3);
+    const moonY = py - sc * 1.9;
+    const R = rPx * 1.05 * arrive * (1 - recede * 0.92);
+    if (R > 1) {
+      ctx.globalAlpha = 0.4 * (1 - recede * 0.4);
+      ctx.fillStyle = shade(st.deep, -10);
+      ctx.beginPath();
+      ctx.ellipse(px, moonY, R, R * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // The limb: brighter at the rim, the eclipse's ring of blood.
+      ctx.globalAlpha = 0.85 * (1 - recede * 0.3);
+      ctx.strokeStyle = st.spark;
+      ctx.lineWidth = Math.max(2.2, sc * 0.055);
+      ctx.beginPath();
+      ctx.ellipse(px, moonY, R, R * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Maria: two darker seas on the face, seeded.
+      ctx.globalAlpha = 0.5 * (1 - recede);
+      ctx.fillStyle = shade(st.deep, -20);
+      ctx.beginPath();
+      ctx.ellipse(px - R * 0.3, moonY - R * 0.1, R * 0.2, R * 0.09, 0.3, 0, Math.PI * 2);
+      ctx.ellipse(px + R * 0.24, moonY + R * 0.12, R * 0.14, R * 0.07, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // THE REVERSE RAIN: five threads lift off the ground toward the
+    // moon — each a rising red line with a bead head, faster as the
+    // moon holds.
+    if (t > 0.12 && recede < 1) {
+      for (let k = 0; k < 5; k++) {
         const a = rand() * Math.PI * 2;
-        const g = sc * (0.1 + rand() * 0.06);
-        ctx.globalAlpha = 0.85 * (0.6 + 0.4 * Math.sin(c.now / 160 + k * 3));
+        const rr = Math.sqrt(rand()) * rPx * 0.7;
+        const born = 0.14 + k * 0.07;
+        const u = Math.min(1, Math.max(0, (t - born) / 0.4));
+        if (u <= 0 || u >= 1) continue;
+        const bx = px + Math.cos(a) * rr;
+        const by = py + Math.sin(a) * rr * squash;
+        const topY = by + (moonY + R * 0.4 - by) * u;
+        ctx.globalAlpha = 0.85 * (1 - recede);
+        ctx.strokeStyle = '#b8362a';
+        ctx.lineWidth = Math.max(1.4, sc * 0.032);
         ctx.beginPath();
-        ctx.moveTo(px + Math.cos(a) * R, cy + Math.sin(a) * R);
-        ctx.lineTo(px + Math.cos(a + 0.16) * (R + g), cy + Math.sin(a + 0.16) * (R + g));
-        ctx.lineTo(px + Math.cos(a + 0.32) * R, cy + Math.sin(a + 0.32) * R);
-        ctx.closePath();
+        ctx.moveTo(bx, by + (topY - by) * Math.max(0, u - 0.3) / u);
+        ctx.lineTo(bx, topY);
+        ctx.stroke();
+        ctx.globalAlpha = 0.95 * (1 - recede);
+        ctx.fillStyle = '#d84a3a';
+        ctx.beginPath();
+        ctx.ellipse(bx, topY, sc * 0.035, sc * 0.05, 0, 0, Math.PI * 2);
         ctx.fill();
       }
     }
-    // The moon itself: a dark disc sliding across — in, held, out.
-    const slide =
-      t < 0.3 ? 1 - t / 0.3
-      : t < 0.7 ? 0
-      : -(t - 0.7) / 0.3;
-    const mx = px + slide * R * 2.4;
-    ctx.globalAlpha = Math.min(1, fade * 1.4);
-    ctx.fillStyle = shade(st.deep, -35);
-    ctx.beginPath();
-    ctx.arc(mx, cy, R * 0.96, 0, Math.PI * 2);
-    ctx.fill();
-    // The diamond: one white flash at the trailing limb as it lets go.
-    if (t > 0.7 && t < 0.82) {
-      const dt = 1 - (t - 0.7) / 0.12;
-      const g = sc * 0.14 * dt;
-      ctx.globalAlpha = dt;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(px - R - g / 2, cy - g * 2, g, g * 4);
-      ctx.fillRect(px - R - g * 2, cy - g / 2, g * 4, g);
+    // The heartbeat: one deep pulse as the moon reaches full close.
+    if (t > 0.13 && t < 0.24) {
+      const k = 1 - (t - 0.13) / 0.11;
+      c.glow(c.wx, c.wy, c.radius, 0.55 * k);
     }
     ctx.restore();
-    // The drink begins AT totality: on that crossing frame the
-    // library pulls the tribute — TRUE red reeling out of the whole
-    // circle to gather beneath the disc (the standing earmark for
-    // this art, honored). The last hop into the moon's underside
-    // stays the eclipse's own red light.
-    const lifeMs = t > 0 ? c.age / t : 0;
-    const tPrev = lifeMs > 0 ? (c.age - c.frameDt * 1000) / lifeMs : 0;
-    if (tPrev < 0.3 && t >= 0.3) {
-      blood.deployments.drink!(asMatter(c), c.wx, c.wy, {
-        radius: c.radius * 0.85, dur: 0.85, scale: 0.75,
-      });
-    }
-    if (total && Math.random() < c.frameDt * 9) {
-      const a = Math.random() * Math.PI * 2;
-      c.particles.burst(
-        c.wx + Math.cos(a) * c.radius * 0.4,
-        c.wy + Math.sin(a) * c.radius * 0.4 * c.squash,
-        1, [st.mid, st.spark], {
-          speed: 1.8, life: 0.5, size: 0.07, gravity: -6, dir: -Math.PI / 2,
-          spread: 0.3, shape: 'streak', trail: 6, trailColor: st.deep,
-        },
-      );
-    }
-    c.glow(c.wx, c.wy, c.radius, total ? 0.45 : 0.25 * fade);
+    void st;
   },
 };
 
-// --------------------------------------------------------- realm_rend
+// ---------------------------------------------------------- realm_rend
 
 /**
- * REALM_REND — "the parted world."
- * The capstone: the ground itself is TORN along the whole corridor.
- * Two jagged lips gape into a lens of otherlight — the pale place
- * the splinter came from, stars and all — while torn-off shards of
- * the world's own fabric hang tilted over the wound. Then the
- * mending: a white weld-spark travels the seam end to end, zipping
- * the lips shut behind it and leaving a scarred line with branch
- * cracks the ground will remember until the light fades.
+ * REALM_REND — "the unsewn seam."
+ * Put the splinter back where it came from — through everything in
+ * between: the corridor is a seam of cross-stitch X marks that POP
+ * open one by one from the caster outward, a teal under-glow gaping
+ * wider behind each, until the far end takes the splinter home —
+ * then the seam re-closes from the far end back. A dotted line of
+ * teal grains stays, and at the far end one splinter-shard glints
+ * for nine seconds: returned, and remembered.
  */
 const realm_rend: AbilitySig = {
-  spawn(c: SigCtx) {
-    // The tearing: shock slivers leap from the whole seam at once,
-    // and both ends take a star-burst.
-    const rand = srand(c.seed ^ 0xc5);
-    for (let k = 0; k < 8; k++) {
-      const f = 0.08 + rand() * 0.84;
-      const side = k % 2 === 0 ? 1 : -1;
-      c.particles.burst(c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f, 1, [c.st.core, c.st.mid], {
-        speed: 2.6, life: 0.4, size: 0.08, gravity: 1,
-        dir: Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx) + side * Math.PI / 2,
-        spread: 0.3, shape: 'streak', fade: c.st.deep,
+  spawn(c) {
+    storm.deployments.impact!(asMatter(c), c.wx2, c.wy2, { scale: 0.7 });
+    // The seam's record: dotted teal grains + the splinter-shard.
+    const dx = c.wx2 - c.wx;
+    const dy = c.wy2 - c.wy;
+    const n = 7;
+    for (let k = 0; k < n; k++) {
+      const f = (k + 0.5) / n;
+      lay(c, c.wx + dx * f, c.wy + dy * f, '#9ae8de', {
+        life: 8.5, size: 0.045, flicker: 0.25,
+        fade: '#4a8a82', fadeAt: 0.5,
       });
     }
-    c.particles.burst(c.wx, c.wy - 0.3, 5, ['#ffffff', c.st.spark], {
-      speed: 1.4, life: 0.6, size: 0.1, gravity: 0.4, drag: 1.4, shape: 'glint',
-    });
-    c.particles.burst(c.wx2, c.wy2 - 0.3, 5, ['#ffffff', c.st.spark], {
-      speed: 1.4, life: 0.6, size: 0.1, gravity: 0.4, drag: 1.4, shape: 'glint',
+    c.particles.burst(c.wx2, c.wy2, 1, ['#dffcf8'], {
+      speed: 0.02, life: 9, size: 0.1, gravity: 0, shape: 'glint',
+      layer: 'world', z: 0.1, flicker: 0.3,
+      fade: '#9ae8de', fadeAt: 0.4, fade2: '#3a6a64', fade2At: 0.8,
     });
   },
-  ground(c: SigCtx) {
-    const { ctx, st, t, sc, squash } = c;
-    const rand = srand(c.seed ^ 0xc6);
-    const dx = c.px2 - c.px, dy = c.py2 - c.py;
-    const len = Math.hypot(dx, dy) || 1;
-    const ux = dx / len, uy = dy / len;
-    const nx = -uy, ny = ux;
-    // Open fast; the weld travels x1→x2 through the back half.
-    const open = Math.min(1, t / 0.16);
-    const weldF = t < 0.55 ? 0 : Math.min(1, (t - 0.55) / 0.38);
-    const fade = t < 0.9 ? 1 : (1 - t) / 0.1;
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, px2, py2 } = c;
+    const fade = t < 0.75 ? 1 : (1 - t) / 0.25;
+    const dx = px2 - px;
+    const dy = py2 - py;
+    ctx.save();
+    // The seam's shadow on the ground: a thin teal under-light line
+    // that widens where the stitches above have popped.
+    const unsew = Math.min(1, t / 0.45);
+    const resew = Math.max(0, (t - 0.62) / 0.32);
+    ctx.globalAlpha = 0.6 * fade;
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(2, sc * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(px + dx * resew, py + dy * resew);
+    ctx.lineTo(px + dx * unsew, py + dy * unsew);
+    ctx.stroke();
+    ctx.restore();
+    void squash;
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py, px2, py2 } = c;
+    const lift = sc * 0.5;
+    const dx = px2 - px;
+    const dy = py2 - py;
+    const n = 7;
+    const unsew = Math.min(1, t / 0.45); // pop wave, caster → far
+    const resew = Math.max(0, (t - 0.62) / 0.32); // close, far → caster...
     ctx.save();
     ctx.lineCap = 'butt';
-    // The lens: nine stations, each with a seeded jag; the gap swells
-    // toward mid-corridor and is zero behind the weld-spark.
-    const N = 9;
-    const hx: number[] = [];
-    const hy: number[] = [];
-    const gap: number[] = [];
-    for (let k = 0; k < N; k++) {
-      const f = k / (N - 1);
-      const wide = Math.sin(f * Math.PI) * sc * 0.34;
-      const jag = 0.7 + rand() * 0.6;
-      const sealed = f < weldF ? 0 : 1;
-      hx[k] = c.px + dx * f;
-      hy[k] = c.py + dy * f;
-      gap[k] = wide * jag * open * sealed * squash;
-    }
-    // The otherlight interior — the pale place showing through.
-    ctx.globalAlpha = 0.85 * fade;
-    ctx.fillStyle = st.core;
-    ctx.beginPath();
-    ctx.moveTo(hx[0]!, hy[0]!);
-    for (let k = 1; k < N; k++) ctx.lineTo(hx[k]! + nx * gap[k]!, hy[k]! + ny * gap[k]!);
-    for (let k = N - 2; k >= 0; k--) ctx.lineTo(hx[k]! - nx * gap[k]!, hy[k]! - ny * gap[k]!);
-    ctx.closePath();
-    ctx.fill();
-    // Stars of the far realm inside the widest reach of the wound.
-    ctx.fillStyle = st.mid;
-    for (let k = 0; k < 5; k++) {
-      const f = 0.25 + rand() * 0.5;
-      const gi = Math.floor(f * (N - 1));
-      if (gap[gi]! < sc * 0.08) continue;
-      const tw = 0.4 + 0.6 * Math.abs(Math.sin(c.now / 240 + k * 2.8));
-      const g = Math.max(1, sc * 0.028) * tw;
-      ctx.globalAlpha = 0.9 * tw * fade;
-      ctx.fillRect(c.px + dx * f - g / 2 + nx * (rand() - 0.5) * gap[gi]!, c.py + dy * f - g / 2 + ny * (rand() - 0.5) * gap[gi]!, g, g);
-    }
-    // The lips: both torn edges, dark against the light between them.
-    ctx.globalAlpha = 0.9 * fade;
-    ctx.strokeStyle = st.deep;
-    ctx.lineWidth = Math.max(1.5, sc * 0.045);
-    for (let s = 0; s < 2; s++) {
-      const sg = s === 0 ? 1 : -1;
-      ctx.beginPath();
-      ctx.moveTo(hx[0]!, hy[0]!);
-      for (let k = 1; k < N; k++) ctx.lineTo(hx[k]! + nx * gap[k]! * sg, hy[k]! + ny * gap[k]! * sg);
-      ctx.stroke();
-    }
-    // The scar: behind the weld the seam is a single fused line.
-    if (weldF > 0) {
-      ctx.globalAlpha = 0.75 * fade;
-      ctx.strokeStyle = st.mid;
-      ctx.lineWidth = Math.max(1.5, sc * 0.04);
-      ctx.beginPath();
-      ctx.moveTo(c.px, c.py);
-      ctx.lineTo(c.px + dx * weldF, c.py + dy * weldF);
-      ctx.stroke();
-    }
-    // Branch cracks: the ground took collateral, and keeps it.
-    ctx.globalAlpha = 0.6 * fade;
-    ctx.strokeStyle = st.deep;
-    ctx.lineWidth = Math.max(1, sc * 0.03);
-    for (let k = 0; k < 4; k++) {
-      const f = 0.15 + rand() * 0.7;
-      const side = k % 2 === 0 ? 1 : -1;
-      const L = sc * (0.2 + rand() * 0.25) * open;
-      const bx = c.px + dx * f, by = c.py + dy * f;
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx + (nx * side + ux * (rand() - 0.5)) * L, by + (ny * side + uy * (rand() - 0.5)) * L * squash);
-      ctx.stroke();
-    }
-    ctx.restore();
-    c.glow((c.wx + c.wx2) / 2, (c.wy + c.wy2) / 2, 1.8, 0.45 * fade);
-  },
-  air(c: SigCtx) {
-    const { ctx, st, t, sc } = c;
-    const rand = srand(c.seed ^ 0xc7);
-    const dx = c.px2 - c.px, dy = c.py2 - c.py;
-    const len = Math.hypot(dx, dy) || 1;
-    ctx.save();
-    // The first breath: a full-length white blade over the seam.
-    if (t < 0.1) {
-      ctx.globalAlpha = 1 - t / 0.1;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(2, sc * 0.07);
-      ctx.beginPath();
-      ctx.moveTo(c.px, c.py - sc * 0.15);
-      ctx.lineTo(c.px2, c.py2 - sc * 0.15);
-      ctx.stroke();
-    }
-    // Torn fabric: shards of the world hang tilted over the wound,
-    // rising slowly, gone before the weld reaches them.
-    const weldF = t < 0.55 ? 0 : Math.min(1, (t - 0.55) / 0.38);
-    ctx.fillStyle = st.mid;
-    for (let k = 0; k < 4; k++) {
-      const f = 0.2 + rand() * 0.6;
-      if (f < weldF) continue;
-      const s0 = sc * (0.09 + rand() * 0.07);
-      const rise = sc * (0.3 + rand() * 0.3) + t * sc * 0.5;
-      const rot = rand() * Math.PI + t * (0.6 + rand());
-      ctx.globalAlpha = 0.85 * Math.min(1, (1 - t) * 2);
-      ctx.save();
-      ctx.translate(c.px + dx * f, c.py + dy * f - rise);
-      ctx.rotate(rot);
-      ctx.fillRect(-s0, -s0 * 0.55, s0 * 2, s0 * 1.1);
-      ctx.restore();
-    }
-    // The weld-spark: a white cross traveling the seam, sealing it.
-    if (weldF > 0 && weldF < 1) {
-      const bx = c.px + dx * weldF;
-      const by = c.py + dy * weldF;
-      const g = sc * 0.1 * (0.7 + 0.3 * Math.sin(c.now / 60));
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(bx - g / 2, by - g * 2, g, g * 4);
-      ctx.fillRect(bx - g * 2, by - g / 2, g * 4, g);
-      ctx.restore();
-      // Welding throws sparks where it bites.
-      if (Math.random() < c.frameDt * 20) {
-        const f = weldF;
-        c.particles.burst(c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f - 0.15, 1, ['#ffffff', st.spark], {
-          speed: 1.8, life: 0.35, size: 0.06, gravity: 4, up: true, shape: 'glint',
-        });
+    // THE STITCHES: seven X marks along the corridor. Each pops
+    // when the unsew wave passes it — the X snaps into two diverging
+    // ticks — and re-forms when the resew wave (running the OTHER
+    // way) crosses back over it.
+    for (let k = 0; k < n; k++) {
+      const f = (k + 0.5) / n;
+      const x = px + dx * f;
+      const y = py + dy * f - lift;
+      const resewn = resew > 0 && f > 1 - resew;
+      const isOpen = f < unsew && !resewn;
+      const g = sc * 0.11;
+      if (!isOpen) {
+        // The intact stitch: a teal X.
+        ctx.globalAlpha = 0.95;
+        ctx.strokeStyle = st.mid;
+        ctx.lineWidth = Math.max(1.8, sc * 0.042);
+        ctx.beginPath();
+        ctx.moveTo(x - g, y - g * 0.7);
+        ctx.lineTo(x + g, y + g * 0.7);
+        ctx.moveTo(x + g, y - g * 0.7);
+        ctx.lineTo(x - g, y + g * 0.7);
+        ctx.stroke();
+      } else {
+        // Popped: two diverging ticks + the gape's under-glow.
+        const openAge = Math.min(1, (unsew - f) * 4);
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = '#dffcf8';
+        ctx.lineWidth = Math.max(1.8, sc * 0.042);
+        ctx.beginPath();
+        ctx.moveTo(x - g * (1 + openAge * 0.5), y - g * (0.7 + openAge * 0.5));
+        ctx.lineTo(x - g * 0.3, y - g * 0.2);
+        ctx.moveTo(x + g * (1 + openAge * 0.5), y - g * (0.7 + openAge * 0.5));
+        ctx.lineTo(x + g * 0.3, y - g * 0.2);
+        ctx.stroke();
+        // The gape: a teal lens gap where the world shows through
+        // to somewhere else — widest just behind the pop wave.
+        const W = g * (1.2 + openAge * 0.8);
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = shade('#1a3a36', -6);
+        ctx.beginPath();
+        ctx.ellipse(x, y + g * 0.3, W, g * 0.35, Math.atan2(dy, dx), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.95;
+        ctx.strokeStyle = '#9ae8de';
+        ctx.lineWidth = Math.max(1.4, sc * 0.032);
+        ctx.beginPath();
+        ctx.ellipse(x, y + g * 0.3, W, g * 0.35, Math.atan2(dy, dx), 0, Math.PI * 2);
+        ctx.stroke();
       }
-      return;
+    }
+    // THE POP WAVE'S HEAD: a bright rip point racing the corridor.
+    if (unsew < 1) {
+      const hx = px + dx * unsew;
+      const hy = py + dy * unsew - lift;
+      ctx.globalAlpha = 0.97;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      burstStarPath(ctx, hx, hy, sc * 0.16, sc * 0.06, 4, c.now / 200, 1);
+      ctx.fill();
+    }
+    // THE SPLINTER GOES HOME: at the far end, the moment the wave
+    // arrives — one hard teal star, the biggest this art allows.
+    if (t > 0.44 && t < 0.6) {
+      const k = 1 - (t - 0.44) / 0.16;
+      ctx.globalAlpha = 0.95 * k;
+      ctx.fillStyle = '#dffcf8';
+      ctx.beginPath();
+      burstStarPath(ctx, px2, py2 - lift, sc * 0.44, sc * 0.16, 6, c.now / 300, 1);
+      ctx.fill();
+      c.glow(c.wx2, c.wy2, 1.3, 0.75 * k);
     }
     ctx.restore();
-    // The open wound leaks: otherlight motes drift up out of the gap.
-    if (t < 0.55 && Math.random() < c.frameDt * 12) {
-      const f = 0.15 + Math.random() * 0.7;
-      c.particles.burst(c.wx + (c.wx2 - c.wx) * f, c.wy + (c.wy2 - c.wy) * f, 1, [st.core, st.mid], {
-        speed: 0.5, life: 0.8, size: 0.08, gravity: -1.6, drag: 1.1, shape: 'glint', wobble: 0.4,
-      });
-    }
+    void st;
   },
 };
 
-// ----------------------------------------------------------- registry
+// -------------------------------------------------------- the registry
 
-/**
- * The archmage roster's heavy half. The lead wires this table into
- * the master SIGNATURES registry — keys must match ability ids and
- * FX_STYLES faces exactly.
- */
+/** The archmage second-half signatures, keyed by ability id. */
 export const ARCHMAGE_B_SIGS: Record<string, AbilitySig> = {
   venom_lash,
   magma_orb,
