@@ -53,6 +53,8 @@ export interface StrikeDef {
   speedMult?: number;
   /** Wand lane: splash radius (tiles) at impact. */
   splash?: number;
+  /** Melee cone override, radians half-angle (else the class cone). */
+  arcHalf?: number;
 }
 
 export interface MovesetDef {
@@ -161,6 +163,19 @@ const GREAT_STRING: MovesetDef = {
       sweepAll: true,
       recoveryMult: TWOHAND_FINISHER_RECOVERY_MULT,
       windupTicks: 5,
+      // THE OVERHEAD: a rhythm TAP narrows the mountain to a single
+      // falling line — a tight cone, a heavier hit, a harder shove.
+      // +9.7% cycle against the great line, single-lane only, inside
+      // the +10% band.
+      alt: {
+        key: 'overhead',
+        dmgMult: 3.5,
+        kbMult: 2.6,
+        sweepAll: true,
+        recoveryMult: TWOHAND_FINISHER_RECOVERY_MULT,
+        windupTicks: 5,
+        arcHalf: 0.6,
+      },
     },
   ],
 };

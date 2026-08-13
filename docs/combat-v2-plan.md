@@ -320,6 +320,51 @@ sweep + element voices; bow point-blank kick + overcharge volley. Impact identit
 exists; players joining it makes both sides read).
 **Proof:** per-class live receipts, riglab strike rows extended per class.
 
+**SHIPPED — as built (2026-08-13).**
+- THE WEAVE (dual wield): the offhand echo now BREATHES with the string it mirrors —
+  each echo carries its beat's dmgMult normalized by the page's average (soft on the
+  chips, ×1.82 on the sword payoff), so Σ over any full string = len and the echo's
+  cycle output is EXACTLY the old flat echo (parity by construction, slate-pinned).
+  `offhandEchoMult` scheduled at press beside the echo's aim.
+- THE OVERHEAD (twohand): the mountain gained the rhythm-tap branch — dmg 3.5,
+  kb 2.6, cone narrowed to ±0.6 rad (StrikeDef grew `arcHalf` override), +9.7% cycle
+  in a single falling lane, inside the +10% band. **Hyper-armor was DISPROVEN, not
+  built**: the audit-check found players are never knocked back or flinched by NPC
+  hits — there is no substrate to be immune to. Recorded; the overhead carries the
+  class identity instead.
+- THE GUARD SWEEP (staff): a wand basic pressed with a living foe inside 1.7 tiles
+  becomes a POLE STRIKE — same beat, same damage, same rhythm stage, kb 1.4 shove,
+  wide arc, 2t windup — instead of spawning a bolt inside the enemy's chest. The
+  pose speaks steel (strikePose 'steel'), so the moulinet/butt-cut choreography the
+  staff vocabulary always had finally plays for wands — zero new art. Byte
+  alternation holds (Cast↔Attack always flips). Client mirror holds its bolt tracer
+  via an injected `foeWithin` (the assistMark scan main.ts already owns).
+- THE OVERCHARGE VOLLEY (bow): holding past full draw (+10t — the old drawTicks cap
+  IS the threshold, now one constant) splits the release into a three-shaft fan at
+  0.5× each (~+2% cycle for the extra half-second of standing brace). Center shaft
+  keeps the full-draw riders (Biting Draw); ONE arrow consumed (the overcharge
+  splits the release, it doesn't triple the quiver bill). Second draw-click +
+  rumble at the crossing; three predicted tracers on release. **The point-blank
+  KICK is deferred to Phase 5 by honest scoping**: no kick choreography exists and
+  shipping it on sword-swing art fails the bar — it lands with Phase 5's signature
+  strike infrastructure.
+- THE KNIFE'S HUNGER (dagger): a landed dagger basic quickens the feet — speedMult
+  1.1 for 20t, refresh-never-stack via a new 'momentum' buff channel (the
+  tonic/food replace-by-channel pattern; no HUD chip by the sendBuffs name filter).
+  Momentum reaches the predictor for free through the existing steady-speed ride
+  mirror (sendRide signature check) — no new netcode, no rubber-banding. Movement
+  identity only; the cadence contract does not blink.
+- IMPACT WEARS THE WEAPON (LAW 9): the hit spark voice follows the striking hand —
+  thin quick silver for knives, heavy dark-edged iron for great steel,
+  ELEMENT_COLORS-tinted fire for the wand (all nine schools), pale fletching for
+  the bow; crits keep the gold crown. Keyed to the local player's equipped class
+  (the same own-fight assumption the spark cone's aim already makes).
+- Proof: 5 new slate pins (overhead narrow/heavy, guard sweep near/far incl. pose
+  dialect + stage advance, weave parity Σ=len, echo beat-weight scaling, volley
+  fan/riders/ammo) + content overhead cadence pin. Knife's-hunger's damageNpc hook
+  rides Phase 6's live lane (the slate can't reach mid-damageNpc honestly). Full
+  workspace suite 1519/1519 green.
+
 ### Phase 5 — THE WEAPON'S OWN HAND (per-weapon variance)
 Curated moveset assignment across the 249 by design family (~12-16 movesets total);
 masterwork signature strikes (the fifteen regalia + twenty masterworks each get one

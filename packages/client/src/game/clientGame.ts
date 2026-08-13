@@ -27,8 +27,11 @@ import {
   advanceCombo,
   armBuffer,
   freshCombo,
+  isOvercharged,
   resetCombo,
   DODGE_CANCEL_FLOOR_TICKS,
+  GUARD_SWEEP_RANGE,
+  VOLLEY_SPREAD,
   PoseState,
   STRIKE_CLOCKS,
   sanitizeSignText,
@@ -599,6 +602,13 @@ export class ClientGame {
 
   /** Dodge FX hook (the predictor's onDodge is owned internally). */
   onDodgeFx: ((x: number, y: number, mx: number, my: number) => void) | null = null;
+  /**
+   * THE GUARD SWEEP's client eye: injected by main (which owns the
+   * entity scan) — true when a living foe stands within `range` tiles.
+   * The staff mirror uses it to hold its bolt tracer when the server
+   * will strike with the pole instead.
+   */
+  foeWithin: ((range: number) => boolean) | null = null;
   /** Fires the instant the local player releases a valid draw. */
   onLoose: ((charge: number, aim: number) => void) | null = null;
   /** performance.now() when the local bow draw began; 0 = not drawing. */
@@ -637,6 +647,16 @@ export class ClientGame {
       );
       this.onDodgeFx?.(x, y, mx, my);
     };
+  }
+
+  /**
+   * THE OVERCHARGE: true once the held draw has pulled past full into
+   * the volley band — the HUD's second click and the release's fan.
+   */
+  get ownOvercharged(): boolean {
+    if (this.drawStartAt === 0) return false;
+    const ticks = Math.round((performance.now() - this.drawStartAt) / TICK_MS);
+    return isOvercharged(ticks);
   }
 
   /** 0..1 charge of the local player's in-progress bow draw. */
@@ -850,7 +870,15 @@ export class ClientGame {
       // with — the tracer flies the true speed/range for this draw.
       const ticks = Math.round(heldMs / TICK_MS);
       const shot = chargedShot(drawCharge(ticks), 1, speed, weapon.range);
-      this.predictShot(frame.seq, 'archery', this.aim, shot.speed, shot.range);
+      if (isOvercharged(ticks)) {
+        // THE OVERCHARGE VOLLEY, mirrored: three tracers fan out
+        // exactly where the server's three shafts will fly.
+        this.predictShot(frame.seq, 'archery', this.aim, shot.speed, shot.range);
+        this.predictShot(frame.seq, 'archery', this.aim - VOLLEY_SPREAD, shot.speed, shot.range);
+        this.predictShot(frame.seq, 'archery', this.aim + VOLLEY_SPREAD, shot.speed, shot.range);
+      } else {
+        this.predictShot(frame.seq, 'archery', this.aim, shot.speed, shot.range);
+      }
     } else {
       // Snap shot — instant hip-fire, quick recovery, rapid-tap rhythm.
       this.drawReadyAt = now + 6 * TICK_MS;
@@ -891,6 +919,10 @@ export class ClientGame {
     const heavy = stage === len - 1;
     this.staffReadySeq = frame.seq + Math.round(weapon.cooldownTicks * strike.recoveryMult);
     this.comboLocal.graceUntilTick = this.staffReadySeq + moveset.graceTicks;
+    // THE GUARD SWEEP, mirrored: with a foe at the doorstep the server
+    // strikes with the pole — no bolt leaves, so no tracer should.
+    // The rhythm stage above still advanced (the beat is the beat).
+    if (this.foeWithin?.(GUARD_SWEEP_RANGE)) return;
     const base = heavy ? 'arx_heavy' : 'arx';
     const defId = weapon.element ? `${base}:${weapon.element}` : base;
     this.predictShot(

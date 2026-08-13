@@ -82,8 +82,17 @@ test('CADENCE CONTRACT: every string holds the legacy line', () => {
   assert.equal(MOVESETS.sword_string.string[3]!.alt!.sweepAll, false, 'the thrust takes ONE body');
   // The dagger flurry: EXACT parity — identity is rhythm, not power.
   assert.equal(cycleRate(MOVESETS.dagger_flurry.string), LEGACY_RATE, 'flurry parity is EXACT');
-  // Unchanged pages trivially hold their own line.
-  assert.equal(cycleRate(MOVESETS.great_string.string), cycleRate(MOVESETS.great_string.string));
+  // THE OVERHEAD: the great tap-branch stays inside +10% of the great
+  // line, and pays for its weight with a narrow falling lane.
+  const greatLine = cycleRate(MOVESETS.great_string.string);
+  const overheadLine = cycleRate([
+    ...MOVESETS.great_string.string.slice(0, 2),
+    MOVESETS.great_string.string[2]!.alt!,
+  ]);
+  assert.ok(overheadLine <= greatLine * 1.1, `overhead ${overheadLine} vs great ${greatLine}`);
+  const overhead = MOVESETS.great_string.string[2]!.alt!;
+  assert.ok(overhead.arcHalf! < 0.7, 'the mountain narrows to a falling line');
+  assert.ok(overhead.kbMult > MOVESETS.great_string.string[2]!.kbMult, 'and shoves harder');
 });
 
 test('every weapon resolves a page whose style agrees; bows have none', () => {

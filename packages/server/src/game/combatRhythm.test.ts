@@ -2,12 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   COMBO_GRACE_TICKS,
+  DRAW_FULL_TICKS,
   FINISHER_DAMAGE_MULT,
   FINISHER_RECOVERY_MULT,
+  GUARD_SWEEP_KNOCKBACK,
+  GUARD_SWEEP_RANGE,
+  GUARD_SWEEP_WINDUP,
   HEAVY_BOLT_RECOVERY_MULT,
   HEAVY_BOLT_SPLASH,
+  OVERCHARGE_TICKS,
+  PoseState,
   STRIKE_CLOCKS,
   TWOHAND_ARC_HALF,
+  VOLLEY_DMG_FACTOR,
   freshCombo,
 } from '@arx/shared';
 import { GameServer } from './gameServer.js';
@@ -33,9 +40,11 @@ const proto = GameServer.prototype as unknown as {
   meleeSwing: Fn;
   equippedWeapon: Fn;
   offhandWeapon: Fn;
+  offhandStrike: Fn;
   speakCombo: Fn;
   landStrike: Fn;
   resolvePendingStrike: Fn;
+  tickBowDraw: Fn;
 };
 
 interface SwingRec {
@@ -68,10 +77,14 @@ function mkRig(weaponId: string) {
       elementDmgMult: {},
       critPct: 0,
     },
-    perks: { finisherBonusMult: 1, greatReach: 0, offhandDelayTicks: 4 },
+    perks: { finisherBonusMult: 1, greatReach: 0, offhandDelayTicks: 4, offhandFactorBonus: 0, snapShotMult: 1 },
     session: { sendJson: (m: Record<string, unknown>) => sent.push(m) },
+    skills: {} as Record<string, number>,
+    inventory: [] as Array<{ item: string; qty: number } | null>,
+    drawTicks: 0,
     offhandEchoTicks: 0,
     offhandEchoAim: 0,
+    offhandEchoMult: 1,
   };
   let nextEid = 1;
   const rig = {
@@ -81,6 +94,7 @@ function mkRig(weaponId: string) {
     speakCombo: proto.speakCombo,
     landStrike: proto.landStrike,
     resolvePendingStrike: proto.resolvePendingStrike,
+    foeWithin: () => false,
     revealPlayer: () => undefined,
     effectiveLevel: () => 10,
     setPose: (_eid: unknown, pose: number, ticks: number) => poses.push({ pose, ticks }),
@@ -244,6 +258,108 @@ test('wand rhythm: bolt, bolt, ORB — the page drives the projectile lane', () 
   assert.equal(player.attackCooldown, Math.round(8 * HEAVY_BOLT_RECOVERY_MULT));
   assert.equal(poses[2]!.ticks, STRIKE_CLOCKS.arx.finisher.holdTicks);
   assert.ok(projectiles.every((p) => p.basic === true), 'bolts stay basics through the one door');
+});
+
+test('THE OVERHEAD: a rhythm TAP narrows the mountain to a falling line', () => {
+  const { swings, swingAt } = mkRig('iron_greatblade');
+  swingAt(0);
+  swingAt(12);
+  swingAt(24, true); // tapped on the payoff
+  assert.equal(swings[2]!.arcHalf, 0.6, 'the cone narrows');
+  assert.equal(swings[2]!.maxHit, Math.round(swings[0]!.maxHit * 3.5), 'and falls harder');
+  assert.equal(swings[2]!.knockbackMult, 2.6, 'and shoves harder');
+});
+
+test('THE GUARD SWEEP: a foe at the doorstep turns the bolt into the pole', () => {
+  const near = mkRig('carved_staff');
+  near.rig.foeWithin = () => true;
+  near.swingAt(0);
+  assert.equal(near.projectiles.length, 0, 'no bolt spawns inside a chest');
+  assert.equal(near.swings.length, 1, 'the pole strikes instead');
+  assert.equal(near.swings[0]!.knockbackMult, GUARD_SWEEP_KNOCKBACK, 'the shove that makes room');
+  assert.equal(near.swings[0]!.range, GUARD_SWEEP_RANGE);
+  assert.equal(near.swings[0]!.sweepAll, true, 'the turn clears the doorstep');
+  assert.deepEqual(near.windups, [GUARD_SWEEP_WINDUP], 'the moulinet coils');
+  assert.equal(near.poses[0]!.pose, PoseState.Attack, 'the pose speaks steel — the pole plays');
+  assert.deepEqual(near.sent.map((m) => m.stage), [0], 'the rhythm stage still advances');
+  const far = mkRig('carved_staff');
+  far.swingAt(0);
+  assert.equal(far.projectiles.length, 1, 'open ground keeps the bolt');
+  assert.equal(far.poses[0]!.pose, PoseState.Cast);
+});
+
+test('THE WEAVE: the echo breathes with the string at exact parity', () => {
+  const { player, swingAt } = mkRig('bronze_sword');
+  player.equipment.offhand = { id: 'shiv' };
+  const avg = 5.5 / 4; // the sword page's own average
+  const seen: number[] = [];
+  swingAt(0);
+  seen.push(player.offhandEchoMult);
+  swingAt(7);
+  seen.push(player.offhandEchoMult);
+  swingAt(14);
+  seen.push(player.offhandEchoMult);
+  swingAt(21);
+  seen.push(player.offhandEchoMult);
+  assert.ok(Math.abs(seen[0]! - 1 / avg) < 1e-9, 'soft on the chips');
+  assert.ok(Math.abs(seen[3]! - FINISHER_DAMAGE_MULT / avg) < 1e-9, 'heavy on the payoff');
+  const sum = seen.reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(sum - 4) < 1e-9, 'Σ mults over the string = len — parity by construction');
+});
+
+test('the echo lands at the beat weight it mirrors', () => {
+  const { rig, player, swings } = mkRig('bronze_sword');
+  player.equipment.offhand = { id: 'shiv' };
+  player.skills = { dualwield: 0 };
+  player.offhandEchoMult = 2;
+  proto.offhandStrike.call(rig, 1, player, 0);
+  const heavy = swings[0]!.maxHit;
+  swings.length = 0;
+  player.offhandEchoMult = 1;
+  proto.offhandStrike.call(rig, 1, player, 0);
+  assert.ok(Math.abs(heavy - swings[0]!.maxHit * 2) <= 1, 'the echo scales with the beat');
+});
+
+test('THE OVERCHARGE VOLLEY: held past full, the release fans three shafts', () => {
+  const single = mkRig('shortbow');
+  single.player.inventory = [{ item: 'arrow', qty: 50 }];
+  single.player.drawTicks = DRAW_FULL_TICKS; // a plain full draw
+  proto.tickBowDraw.call(
+    single.rig,
+    1,
+    single.player,
+    (proto.equippedWeapon as Fn).call(single.rig, single.player),
+    false,
+    0,
+    1,
+  );
+  assert.equal(single.projectiles.length, 1);
+  const one = single.projectiles[0]!.maxHit as number;
+
+  const volley = mkRig('shortbow');
+  volley.player.inventory = [{ item: 'arrow', qty: 50 }];
+  volley.player.drawTicks = DRAW_FULL_TICKS + OVERCHARGE_TICKS;
+  proto.tickBowDraw.call(
+    volley.rig,
+    1,
+    volley.player,
+    (proto.equippedWeapon as Fn).call(volley.rig, volley.player),
+    false,
+    0,
+    1,
+  );
+  assert.equal(volley.projectiles.length, 3, 'the fan');
+  assert.ok(
+    volley.projectiles.every(
+      (p) => (p.maxHit as number) === Math.max(1, Math.round(one * VOLLEY_DMG_FACTOR)),
+    ),
+    'each shaft carries the volley fraction',
+  );
+  assert.equal(volley.projectiles[0]!.fullDraw, true, 'the center shaft keeps the riders');
+  assert.equal(volley.projectiles[1]!.fullDraw, false);
+  const dirs = volley.projectiles.map((p) => Math.atan2(p.dirY as number, p.dirX as number));
+  assert.ok(dirs[1]! < dirs[0]! && dirs[2]! > dirs[0]!, 'the wings spread');
+  assert.equal(volley.player.inventory[0]!.qty, 49, 'one nocked arrow — the overcharge splits it');
 });
 
 test('the swing and the scenery share ONE cone', () => {

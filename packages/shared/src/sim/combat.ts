@@ -87,6 +87,52 @@ export function chargedShot(
   };
 }
 
+// ---------------------------------------------------------- overcharge
+
+/**
+ * THE OVERCHARGE VOLLEY (combat v2, Phase 4): holding past the full
+ * draw keeps pulling — at DRAW_FULL + OVERCHARGE ticks the release
+ * looses a three-arrow fan instead of one shaft. Cycle-honest: 1.5x
+ * payload over the extra half-second of standing brace works out to
+ * ~+2% per-tick against the plain charge cycle, paid for in exposure.
+ * The old drawTicks cap (FULL + 10) IS the overcharge threshold.
+ */
+export const OVERCHARGE_TICKS = 10;
+export const VOLLEY_ARROWS = 3;
+export const VOLLEY_DMG_FACTOR = 0.5;
+/** Fan half-spread between volley shafts, radians. */
+export const VOLLEY_SPREAD = 0.12;
+
+/** True when this many held draw ticks has reached the volley. */
+export function isOvercharged(drawTicks: number): boolean {
+  return drawTicks >= DRAW_FULL_TICKS + OVERCHARGE_TICKS;
+}
+
+// -------------------------------------------------------- knife's hunger
+
+/**
+ * THE KNIFE'S HUNGER (combat v2, Phase 4): a landed dagger basic
+ * quickens the feet — refresh-not-stack (the momentum buff channel),
+ * so the knife fighter stays glued to the mark. Movement identity,
+ * never damage: the cadence contract does not blink.
+ */
+export const KNIFE_HUNGER_SPEED = 1.1;
+export const KNIFE_HUNGER_TICKS = 20;
+
+// ---------------------------------------------------------- guard sweep
+
+/**
+ * THE GUARD SWEEP (combat v2, Phase 4): a wand basic pressed with a
+ * foe inside this reach becomes a pole strike — the moulinet the
+ * staff choreography always knew — instead of spawning a bolt inside
+ * the enemy's chest. Same beat, same damage, same rhythm stage; only
+ * the delivery answers the range.
+ */
+export const GUARD_SWEEP_RANGE = 1.7;
+export const GUARD_SWEEP_KNOCKBACK = 1.4;
+/** The pole strike's windup — the moulinet's coil (steel clock). */
+export const GUARD_SWEEP_WINDUP = 2;
+
 /**
  * True when this input frame slows movement: drawing a bow is a braced,
  * deliberate stance. Purely a function of the frame + equipped style so

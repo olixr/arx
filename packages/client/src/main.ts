@@ -1,7 +1,7 @@
 import { procShape } from './render/wornLight.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
 import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
-import { BUILDABLES, DYE_PIGMENTS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
+import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
 import { WORK_RECIPES, WORK_VERBS, workDone, type WorkStation } from '@arx/content';
@@ -1317,13 +1317,34 @@ const game = new ClientGame(input, {
   onEquipment: (equipment) => panels.renderEquipment(equipment),
   onHit: (hit) => {
     if (hit.dmg > 0) {
+      // IMPACT WEARS THE WEAPON: the spark voice follows the hand that
+      // struck — thin quick silver for knives, heavy dark-edged iron
+      // for the great steel, element-tinted fire for the wand, pale
+      // fletching for the bow. (Keyed to OUR equipped class — the same
+      // own-fight assumption the spark cone's aim already makes.)
+      const wpn = itemDef(game.equipment.weapon?.id ?? '')?.weapon;
+      const voice = hit.crit
+        ? { n: 16, colors: ['#ffd24a', '#fff3d0', '#e8823d'], speed: 4.5 }
+        : wpn && isDaggerStats(wpn)
+          ? { n: 7, colors: ['#cfd6de', '#f4efe4', '#9fb2c2'], speed: 3.6 }
+          : wpn?.style === 'twohand'
+            ? { n: 12, colors: ['#e8573d', '#d9c9a8', '#8a7a5a'], speed: 2.7 }
+            : wpn?.style === 'arx'
+              ? {
+                  n: 9,
+                  colors: [ELEMENT_COLORS[wpn.element ?? 'arcane'] ?? '#c9a6e8', '#f4efe4', '#e8a33d'],
+                  speed: 3,
+                }
+              : wpn?.style === 'archery'
+                ? { n: 7, colors: ['#d9c9a8', '#f4efe4', '#e8a33d'], speed: 3.2 }
+                : { n: 9, colors: ['#e8573d', '#f4efe4', '#e8a33d'], speed: 3 };
       // Directional spark cone along the blow, plus a crisp impact ring.
       renderer.particles.burst(
         hit.x,
         hit.y - 0.3,
-        hit.crit ? 16 : 9,
-        hit.crit ? ['#ffd24a', '#fff3d0', '#e8823d'] : ['#e8573d', '#f4efe4', '#e8a33d'],
-        { speed: hit.crit ? 4.5 : 3, life: 0.4, dir: hit.isOwn ? undefined : game.aim, spread: 1.3 },
+        voice.n,
+        voice.colors,
+        { speed: voice.speed, life: 0.4, dir: hit.isOwn ? undefined : game.aim, spread: 1.3 },
       );
       renderer.addRing(hit.x, hit.y - 0.3, hit.crit ? '#ffd24a' : '#f4efe4', hit.crit ? 0.6 : 0.4);
       // The payoff beat carries the weight: a blow landing while our
@@ -2817,6 +2838,7 @@ let invCaseOpenedAt = 0;
 let invCaseLeft = 0;
 let invCaseMeasuredW = -1;
 let lastDrawT = 0;
+let lastOvercharged = false;
 let lastSheathed = false;
 /** Pad button state last frame — build-mode verbs edge off this. */
 let padPrevBtns = new Set<number>();
@@ -2916,6 +2938,24 @@ function nearestNpcAim(): number | null {
   return best;
 }
 
+// THE GUARD SWEEP's eye: the staff mirror asks main (which owns the
+// entity scan) whether a living foe stands at the doorstep — same
+// assistMark roster the aim assist trusts.
+game.foeWithin = (range: number): boolean => {
+  const own = game.predictor.pos;
+  const r2 = range * range;
+  for (const remote of game.entities.values()) {
+    if (!assistMark(remote)) continue;
+    const latest = remote.buffer.latest();
+    const x = latest?.x ?? remote.meta.x;
+    const y = latest?.y ?? remote.meta.y;
+    const dx = x - own.x;
+    const dy = y - own.y;
+    if (dx * dx + dy * dy <= r2) return true;
+  }
+  return false;
+};
+
 function frame(now: number): void {
   // Schedule the next frame FIRST: one thrown exception in a render
   // pass must never kill the loop for good (it silently freezes
@@ -2984,13 +3024,20 @@ function frame(now: number): void {
   }
 
   // Bow-draw tension: creak when the string starts back, a tight click
-  // (plus a pulse in the hands) the moment the draw tops out.
+  // (plus a pulse in the hands) the moment the draw tops out — and a
+  // SECOND click when the pull crosses into the overcharge volley.
   const drawT = game.ownDrawT;
   if (drawT > 0 && lastDrawT === 0) sfx.bowDraw();
   if (drawT >= 1 && lastDrawT < 1) {
     sfx.fullDrawClick();
     input.rumble(0.1, 0.35, 60);
   }
+  const overcharged = game.ownOvercharged;
+  if (overcharged && !lastOvercharged) {
+    sfx.fullDrawClick();
+    input.rumble(0.3, 0.5, 90);
+  }
+  lastOvercharged = overcharged;
   lastDrawT = drawT;
 
   // Gamepad: poll sticks; X button interacts (edge-triggered).

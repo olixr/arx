@@ -326,6 +326,7 @@ import {
   type VoiceSlot,
   mountDef,
   MOUNTS,
+  isDaggerStats,
   movesetFor,
   strikePose,
 } from '@arx/content';
@@ -485,10 +486,19 @@ import {
   advanceCombo,
   armBuffer,
   freshCombo,
+  isOvercharged,
+  OVERCHARGE_TICKS,
   resetCombo,
   DODGE_CANCEL_FLOOR_TICKS,
+  GUARD_SWEEP_KNOCKBACK,
+  GUARD_SWEEP_RANGE,
+  GUARD_SWEEP_WINDUP,
+  KNIFE_HUNGER_SPEED,
+  KNIFE_HUNGER_TICKS,
   STRIKE_CLOCKS,
   SNAP_CHAIN,
+  VOLLEY_DMG_FACTOR,
+  VOLLEY_SPREAD,
   reactionDamage,
   reactionFor,
   snapShot,
@@ -1378,6 +1388,11 @@ interface PlayerComp {
   offhandEchoTicks: number;
   /** Aim captured at the mainhand swing its echo mirrors. */
   offhandEchoAim: number;
+  /**
+   * THE WEAVE: the beat multiplier the echo mirrors, normalized by the
+   * string's average (soft chips, heavy payoff, exact cycle parity).
+   */
+  offhandEchoMult: number;
   lastCombatAt: number;
   /** Last tick a block spark flew — the rim speaks at most every few beats. */
   lastBlockFxTick: number;
@@ -1702,8 +1717,10 @@ interface PlayerBuff {
    * a time; a new drink/meal replaces its channel. Combat buffs
    * (abilities, passives) leave this unset and stack freely. Weapon
    * oils are NOT buffs — they live on the weapon instance (roll.coat).
+   * 'momentum' = THE KNIFE'S HUNGER's refresh-not-stack lane (no HUD
+   * chip: sendBuffs shows only named consumables).
    */
-  channel?: 'tonic' | 'food';
+  channel?: 'tonic' | 'food' | 'momentum';
   /** Item that granted it + display name — drives the HUD chip. */
   itemId?: string;
   name?: string;
@@ -3089,6 +3106,7 @@ export class GameServer {
       attackCooldown: 0,
       offhandEchoTicks: 0,
       offhandEchoAim: 0,
+      offhandEchoMult: 1,
       lastCombatAt: 0,
       lastBlockFxTick: 0,
       poseUntilTick: 0,
@@ -14857,18 +14875,32 @@ export class GameServer {
     player.attackCooldown = Math.round(weapon.cooldownTicks * strike.recoveryMult);
     player.combo.graceUntilTick = this.tickCount + player.attackCooldown + moveset.graceTicks;
     this.speakCombo(player, stage, len);
+    // THE GUARD SWEEP: a foe inside the pole's reach turns a wand beat
+    // into a STRIKE — the moulinet the staff choreography always knew,
+    // not a bolt spawned inside the enemy's chest. Same beat, same
+    // damage, same rhythm stage; the delivery answers the range, and
+    // the pose speaks steel so the pole choreography plays.
+    const pos = this.positions.must(eid);
+    const guard = moveset.style === 'arx' && this.foeWithin(pos, GUARD_SWEEP_RANGE);
     // THE STRIKE CLOCK + THE POSE ALTERNATION LAW: any string length
-    // rides the existing pose bytes, adjacent beats never repeating.
+    // rides the existing pose bytes, adjacent beats never repeating
+    // (a guard beat between bolts still flips the byte — steel vs
+    // Cast — so the anim clock stays honest).
     const clock = STRIKE_CLOCKS[moveset.style][finisher ? 'finisher' : 'swing'];
-    this.setPose(eid, strikePose(moveset.poseDialect, stage, len), clock.holdTicks);
+    this.setPose(
+      eid,
+      strikePose(guard ? 'steel' : moveset.poseDialect, stage, len),
+      clock.holdTicks,
+    );
     // TEMPO: rhythm held past one full string quickens the hand — the
     // windup shaves a tick. Speed, never damage (the cadence contract).
-    const windup = Math.max(0, strike.windupTicks - (player.combo.run > len ? 1 : 0));
+    const windup = guard
+      ? GUARD_SWEEP_WINDUP
+      : Math.max(0, strike.windupTicks - (player.combo.run > len ? 1 : 0));
 
-    if (moveset.style === 'arx') {
+    if (moveset.style === 'arx' && !guard) {
       // Wand rhythm: bolt → bolt → orb. The bolt spawns at the press —
       // its flight is already the honest travel (windup 0 by authoring).
-      const pos = this.positions.must(eid);
       const proj = this.ecs.create();
       this.kinds.set(proj, EntityKind.Projectile);
       this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim });
@@ -14907,14 +14939,19 @@ export class GameServer {
       maxHit: finisher
         ? Math.round(maxHit * strike.dmgMult * player.perks.finisherBonusMult)
         : Math.round(maxHit * strike.dmgMult),
-      kbMult: strike.kbMult,
-      sweepAll: strike.sweepAll,
+      kbMult: guard ? GUARD_SWEEP_KNOCKBACK : strike.kbMult,
+      // The pole's turn clears the doorstep; steel beats read the page.
+      sweepAll: guard ? true : strike.sweepAll,
       wasHidden,
       backstabMult: weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
       xpStyle: moveset.style as SkillId,
-      arcHalf: moveset.style === 'twohand' ? TWOHAND_ARC_HALF : Math.PI / 3,
+      arcHalf: guard
+        ? TWOHAND_ARC_HALF
+        : (strike.arcHalf ?? (moveset.style === 'twohand' ? TWOHAND_ARC_HALF : Math.PI / 3)),
       // Farcleaver: the edge arrives before the argument.
-      range: weapon.range + (moveset.style === 'twohand' ? player.perks.greatReach : 0),
+      range: guard
+        ? GUARD_SWEEP_RANGE
+        : weapon.range + (moveset.style === 'twohand' ? player.perks.greatReach : 0),
       deed: moveset.style === 'twohand',
     };
     if (windup === 0) this.landStrike(eid, player, strikeData);
@@ -14926,7 +14963,26 @@ export class GameServer {
       // Ambidexter tightens the echo's schedule.
       player.offhandEchoTicks = player.perks.offhandDelayTicks;
       player.offhandEchoAim = aim;
+      // THE WEAVE: the echo breathes with the string — soft on the
+      // chips, heavy on the payoff — normalized by the page's own
+      // average, so the echo's cycle output is EXACTLY what the flat
+      // echo paid (Σ dmgMult/avg = len, by construction).
+      const avg = moveset.string.reduce((a, b) => a + b.dmgMult, 0) / len;
+      player.offhandEchoMult = strike.dmgMult / avg;
     }
+  }
+
+  /** A living foe (never a companion) inside `range` of this body. */
+  private foeWithin(pos: { x: number; y: number }, range: number): boolean {
+    for (const [npcEid, npc] of this.npcs) {
+      if (this.pets.has(npcEid)) continue;
+      const hp = this.healths.get(npcEid);
+      if (!hp || hp.hp <= 0) continue;
+      const npos = this.positions.get(npcEid);
+      if (!npos) continue;
+      if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius <= range) return true;
+    }
+    return false;
   }
 
   /** The impact frame arriving: a committed strike lands. */
@@ -14992,7 +15048,10 @@ export class GameServer {
         off.weapon.damage *
           powerMultFn(level, PLAYER_POWER_PER_LEVEL) *
           player.gear.styleDmgMult.onehand *
-          Math.max(trained, Math.min(1, stanceWeight)),
+          Math.max(trained, Math.min(1, stanceWeight)) *
+          // THE WEAVE: the off blade breathes with the string it
+          // mirrors — soft on the chips, heavy on the payoff beat.
+          player.offhandEchoMult,
       ),
     );
     // NO pose here: the echo is pure client choreography (the rig's
@@ -18071,6 +18130,22 @@ export class GameServer {
                 style,
               );
             }
+          }
+          // THE KNIFE'S HUNGER: a landed dagger basic quickens the
+          // feet — refresh, never stack (the momentum channel), and
+          // the steady-speed ride mirror re-arms the predictor by
+          // signature, so the burst never rubber-bands. Movement
+          // identity only; the cadence contract does not blink.
+          const struckStats = itemDef(struck.id)?.weapon;
+          if (dmg > 0 && struckStats && isDaggerStats(struckStats)) {
+            attacker.buffs = attacker.buffs.filter((b) => b.channel !== 'momentum');
+            attacker.buffs.push(
+              mkBuff({
+                speedMult: KNIFE_HUNGER_SPEED,
+                untilTick: this.tickCount + KNIFE_HUNGER_TICKS,
+                channel: 'momentum',
+              }),
+            );
           }
         }
         for (const b of attacker.buffs) {
@@ -23665,7 +23740,9 @@ export class GameServer {
           return;
         }
       }
-      player.drawTicks = Math.min(DRAW_FULL_TICKS + 10, player.drawTicks + 1);
+      // The pull saturates exactly at the overcharge line — holding
+      // longer changes nothing more.
+      player.drawTicks = Math.min(DRAW_FULL_TICKS + OVERCHARGE_TICKS, player.drawTicks + 1);
       return;
     }
     if (player.drawTicks === 0) return;
@@ -23743,6 +23820,23 @@ export class GameServer {
     player.lastCombatAt = Date.now();
     this.setPose(eid, PoseState.Loose, 6);
     const shot = chargedShot(drawCharge(ticks), base, weapon.projectileSpeed ?? 12, weapon.range);
+    if (isOvercharged(ticks)) {
+      // THE OVERCHARGE VOLLEY: held past the full draw, the release
+      // splits into a three-shaft fan — 1.5x payload for the extra
+      // half-second of standing brace (~cycle parity; exposure is the
+      // price). One nocked arrow: the overcharge splits the release,
+      // it doesn't triple the quiver bill. The center shaft keeps the
+      // full-draw riders (Biting Draw's chill).
+      const v = {
+        maxHit: Math.max(1, Math.round(shot.maxHit * VOLLEY_DMG_FACTOR)),
+        speed: shot.speed,
+        range: shot.range,
+      };
+      fire(v, aim, true);
+      fire(v, aim - VOLLEY_SPREAD, false);
+      fire(v, aim + VOLLEY_SPREAD, false);
+      return;
+    }
     fire(shot, aim, ticks >= DRAW_FULL_TICKS);
   }
 
