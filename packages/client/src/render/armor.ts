@@ -6027,15 +6027,13 @@ export function drawPauldron(
     ctx.ellipse(side * 0.01 * s, 0.012 * s, 0.135 * s, 0.115 * s, 0, 0, Math.PI * 2);
     ctx.fill();
     if (!hurt) {
-      // Quilt ticks on the pad's visible under-rim.
-      ctx.strokeStyle = shade('#7e222c', -26);
-      ctx.lineWidth = Math.max(1, s * 0.009);
+      // The pad's under-rim turns away from the sun: one flat deeper
+      // crescent, no tick lines.
+      ctx.fillStyle = shade('#7e222c', -22);
       ctx.beginPath();
-      for (const u of [-0.55, -0.15, 0.3, 0.7]) {
-        ctx.moveTo(side * u * 0.1 * s, 0.078 * s);
-        ctx.lineTo(side * (u * 0.1 + 0.028) * s, 0.114 * s);
-      }
-      ctx.stroke();
+      ctx.ellipse(side * 0.01 * s, 0.012 * s, 0.135 * s, 0.115 * s, 0, Math.PI * 0.15, Math.PI * 0.85);
+      ctx.closePath();
+      ctx.fill();
     }
     // 2) THE LAME STACK: three lapped plates stepping down-outboard,
     // each a curved band with a lit crown face, a shaded under-curl,
@@ -6062,20 +6060,21 @@ export function drawPauldron(
         ctx.beginPath();
         ctx.ellipse(lx, ly - drop * 0.42, lw2 * 0.58, drop * 0.36, 0, Math.PI, Math.PI * 2);
         ctx.fill();
-        // Flutes: two short lit/turned strips per lame.
-        for (const u of [-0.42, 0.18]) {
-          ctx.fillStyle = shade(col, 20 - li * 4);
-          ctx.fillRect(lx + u * lw2, ly - drop * 0.5, lw2 * 0.09, drop * 1.0);
-          ctx.fillStyle = shade(col, -16);
-          ctx.fillRect(lx + (u + 0.09) * lw2, ly - drop * 0.5, lw2 * 0.07, drop * 1.0);
+        // The panel break: one flat darker strip per lame — a seam
+        // where two planes meet, never a lit/turned line pair.
+        ctx.fillStyle = shade(col, -12);
+        for (const u of [-0.4, 0.2]) {
+          ctx.fillRect(lx + u * lw2, ly - drop * 0.5, lw2 * 0.08, drop * 1.0);
         }
-        // The electrum edge: each lame's one bright line.
-        ctx.strokeStyle = trim;
-        ctx.lineWidth = Math.max(1, s * 0.012);
+        // The electrum edge: a flat band following the lame's hem.
+        ctx.fillStyle = trim;
         ctx.beginPath();
-        ctx.moveTo(lx - lw2, ly + drop * 0.4);
-        ctx.quadraticCurveTo(lx, ly + drop * 0.85, lx + lw2, ly + drop * 0.4);
-        ctx.stroke();
+        ctx.moveTo(lx - lw2, ly + drop * 0.32);
+        ctx.quadraticCurveTo(lx, ly + drop * 0.77, lx + lw2, ly + drop * 0.32);
+        ctx.lineTo(lx + lw2, ly + drop * 0.4);
+        ctx.quadraticCurveTo(lx, ly + drop * 0.85, lx - lw2, ly + drop * 0.4);
+        ctx.closePath();
+        ctx.fill();
         // Paired rivets seating the lap.
         ctx.fillStyle = shade(gold, 26);
         for (const es of [-1, 1]) {
@@ -6134,14 +6133,6 @@ export function drawPauldron(
     ctx.moveTo(sx0, sy0);
     ctx.lineTo(sx1, sy1);
     ctx.stroke();
-    if (!hurt) {
-      ctx.strokeStyle = shade(gold, 18);
-      ctx.lineWidth = Math.max(1, s * 0.009);
-      ctx.beginPath();
-      ctx.moveTo(sx0 - side * 0.004 * s, sy0 - 0.006 * s);
-      ctx.lineTo(sx1 - side * 0.004 * s, sy1 - 0.005 * s);
-      ctx.stroke();
-    }
     ctx.fillStyle = hurt ? '#ffffff' : gold;
     ctx.beginPath();
     ctx.arc(sx1, sy1, 0.017 * s, 0, Math.PI * 2);
@@ -6217,19 +6208,21 @@ export function drawPauldron(
       ctx.moveTo(hx0 - side * 0.002 * s, hy0 + 0.012 * s);
       ctx.quadraticCurveTo(gInX + side * 0.004 * s, -0.02 * s, gInX + sway * side * 0.4 + side * 0.004 * s, gBot + 0.004 * s);
       ctx.stroke();
-      // Gold fringe ticking off both tails.
-      ctx.strokeStyle = shade(gold, 14);
-      ctx.lineWidth = Math.max(1, s * 0.011);
-      ctx.beginPath();
+      // Gold fringe off both tails: flat hanging tabs on the wind.
+      ctx.fillStyle = shade(gold, 14);
       for (const [tx, ty] of [
         [gInX + sway * side * 0.4, gBot + 0.01 * s],
         [gMid + sway * side * 0.65, gBot + 0.004 * s],
         [hx1 + sway * side, gBot - 0.02 * s],
       ] as const) {
-        ctx.moveTo(tx, ty);
-        ctx.lineTo(tx + sway * 0.6, ty + 0.018 * s);
+        ctx.beginPath();
+        ctx.moveTo(tx - 0.009 * s, ty);
+        ctx.lineTo(tx + 0.009 * s, ty);
+        ctx.lineTo(tx + 0.003 * s + sway * 0.6, ty + 0.019 * s);
+        ctx.lineTo(tx - 0.003 * s + sway * 0.6, ty + 0.019 * s);
+        ctx.closePath();
+        ctx.fill();
       }
-      ctx.stroke();
       // The crown device, woven mid-field — thread, two values.
       const dx = gMid;
       const dy = 0.02 * s;
@@ -10001,13 +9994,19 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.quadraticCurveTo(headX + es * hw * 1.0, headY - hh * 0.2, headX + es * hw * 0.6, headY - hh * 0.55);
         ctx.closePath();
         ctx.fill();
-        // The cloth's own fold shadow — weight, not a wing.
-        ctx.strokeStyle = shade(mantC, -24);
-        ctx.lineWidth = Math.max(1, s * 0.011);
+        // The fold: a flat inner panel a step deeper — the cloth's
+        // weight said with a second plane, never a drawn line.
+        ctx.fillStyle = shade(mantC, -22);
         ctx.beginPath();
-        ctx.moveTo(headX + es * hw * 0.84, headY - hh * 0.64);
-        ctx.quadraticCurveTo(headX + es * hw * 1.12, headY - hh * 0.24, headX + es * hw * 1.06 + kk, headY + hh * 0.12);
-        ctx.stroke();
+        ctx.moveTo(headX + es * hw * 0.78, headY - hh * 0.7);
+        ctx.quadraticCurveTo(
+          headX + es * hw * 1.16, headY - hh * 0.34,
+          headX + es * hw * 1.08 + kk, headY + hh * 0.14,
+        );
+        ctx.lineTo(headX + es * hw * 0.94 + kk * 0.7, headY + hh * 0.2);
+        ctx.quadraticCurveTo(headX + es * hw * 0.98, headY - hh * 0.22, headX + es * hw * 0.68, headY - hh * 0.56);
+        ctx.closePath();
+        ctx.fill();
       }
     }
     // THE WINGS: the king's pinions — two great layered electrum
@@ -10043,18 +10042,8 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.fill();
       }
       if (!hurt) {
-        // The leading blade's lit edge, and the root orb.
-        const ltx = rx + es * hw * 1.5 * wK;
-        const lty = ry - hh * 0.22;
-        ctx.strokeStyle = shade(st.trim, 10);
-        ctx.lineWidth = Math.max(1, s * 0.011);
-        ctx.beginPath();
-        ctx.moveTo(rx + es * hw * 0.16, ry + hh * 0.08);
-        ctx.quadraticCurveTo(
-          rx + es * hw * 0.66 * wK, ry - hh * 0.14,
-          ltx - es * hw * 0.02, lty + hh * 0.24,
-        );
-        ctx.stroke();
+        // The root orb — depth on the blades comes from their three
+        // stepped fills alone, never an edge line.
         ctx.fillStyle = shade(st.trim, 12);
         ctx.beginPath();
         ctx.arc(rx, ry, hw * 0.09, 0, Math.PI * 2);
@@ -10142,42 +10131,28 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     ctx.fill();
     shellLight(shell, topY, botY);
     if (!hurt) {
-      // THE FLUTES: gothic ribbing forged over the whole dome — the
-      // second forging left this zone bare, and bare gold reads as
-      // negative space. Each channel is a dark groove with a lit west
-      // ridge, converging on the crown plateau; clipped to the shell
-      // so the ribbing lives at every facing.
+      // THE FACETS: the dome breaks into flat panels — alternating
+      // value planes converging on the crown plateau, the flat-vector
+      // way to say "forged in sections". No engraved line pairs: the
+      // panel EDGE is where two fills meet. Clipped to the shell so
+      // the faceting lives at every facing.
       ctx.save();
       ctx.beginPath();
       shell();
       ctx.clip();
       const gy0 = topY + hh * 0.3;
       const gy1 = headY + hh * 0.02;
-      for (const u of [-0.85, -0.57, -0.29, 0, 0.29, 0.57, 0.85]) {
-        ctx.strokeStyle = shade(st.color, -30);
-        ctx.lineWidth = Math.max(1.5, s * 0.017);
+      for (const [uA, uB] of [[-0.9, -0.54], [-0.18, 0.18], [0.54, 0.9]] as const) {
+        ctx.fillStyle = shade(st.color, -8);
         ctx.beginPath();
-        ctx.moveTo(headX + u * hw * 0.74, gy0);
-        ctx.quadraticCurveTo(headX + u * hw * 0.94, (gy0 + gy1) / 2, headX + u * hw * 1.0, gy1);
-        ctx.stroke();
-        ctx.strokeStyle = shade(st.color, 22);
-        ctx.lineWidth = Math.max(1, s * 0.011);
-        ctx.beginPath();
-        ctx.moveTo(headX + u * hw * 0.74 - hw * 0.06, gy0 + hh * 0.02);
-        ctx.quadraticCurveTo(headX + u * hw * 0.94 - hw * 0.06, (gy0 + gy1) / 2, headX + u * hw * 1.0 - hw * 0.06, gy1 + hh * 0.02);
-        ctx.stroke();
+        ctx.moveTo(headX + uA * hw * 0.74, gy0);
+        ctx.quadraticCurveTo(headX + uA * hw * 0.94, (gy0 + gy1) / 2, headX + uA * hw * 1.0, gy1);
+        ctx.lineTo(headX + uB * hw * 1.0, gy1);
+        ctx.quadraticCurveTo(headX + uB * hw * 0.94, (gy0 + gy1) / 2, headX + uB * hw * 0.74, gy0);
+        ctx.closePath();
+        ctx.fill();
       }
       ctx.restore();
-      // THE GILT CUSPS: the jaw flanges wear their one bright edge —
-      // a hooked flange with no lit line reads as a dent, not a wing.
-      ctx.strokeStyle = shade(st.trim, -8);
-      ctx.lineWidth = Math.max(1, s * 0.013);
-      for (const es of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(headX + es * hw * 1.06, headY + hh * 0.12);
-        ctx.lineTo(headX + es * hw * 1.28, headY + hh * 0.42);
-        ctx.stroke();
-      }
     }
     if (!hurt) {
       // THE CROWN BAND: a full-width electrum band seated where shell
@@ -10229,13 +10204,18 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.lineTo(vx - headR * 0.54 * sw * wk2, headY + hh * (oy + 0.14));
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = shade(jc, 14);
-        ctx.lineWidth = Math.max(1, s * 0.01);
+        // The lit lap: a flat chevron plane along the top edge, not
+        // a stroked line.
+        ctx.fillStyle = shade(jc, 10);
         ctx.beginPath();
         ctx.moveTo(vx - headR * 0.54 * sw * wk2, headY + hh * oy);
         ctx.lineTo(vx, headY + hh * (oy + 0.18));
         ctx.lineTo(vx + headR * 0.54 * sw * wk2, headY + hh * oy);
-        ctx.stroke();
+        ctx.lineTo(vx + headR * 0.54 * sw * wk2, headY + hh * (oy + 0.05));
+        ctx.lineTo(vx, headY + hh * (oy + 0.23));
+        ctx.lineTo(vx - headR * 0.54 * sw * wk2, headY + hh * (oy + 0.05));
+        ctx.closePath();
+        ctx.fill();
       }
       // The plate itself: angular, prow-chinned, temple-flared.
       const visor = () => {
@@ -10268,13 +10248,9 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.closePath();
       ctx.fill();
       ctx.restore();
-      // The visor's parting line, then the electrum hem it hangs by,
-      // riveted at the brow.
-      ctx.strokeStyle = '#170f1c';
-      ctx.lineWidth = Math.max(1.5, s * 0.016);
-      ctx.beginPath();
-      visor();
-      ctx.stroke();
+      // The electrum hem the visor hangs by, riveted at the brow —
+      // the plate's edge against the shell is a value break, not a
+      // drawn outline (the shader owns outlines).
       ctx.strokeStyle = shade(tr, -6);
       ctx.lineWidth = Math.max(1, s * 0.012);
       ctx.beginPath();
@@ -10406,29 +10382,34 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.quadraticCurveTo(headX - hw * 0.44, headY + hh * 0.2, headX - hw * 0.38, topY + hh * 0.4);
       ctx.closePath();
       ctx.fill();
-      // The folds: the cloth's weight drawn down it.
-      ctx.strokeStyle = shade(mantC, -26);
-      ctx.lineWidth = Math.max(1, s * 0.011);
-      ctx.beginPath();
-      for (const u of [-0.5, 0, 0.5]) {
-        ctx.moveTo(headX + u * hw * 0.86, topY + hh * 0.5);
+      // The folds: two flat panels a step deeper — plane against
+      // plane, never a drawn line.
+      ctx.fillStyle = shade(mantC, -24);
+      for (const u of [-0.44, 0.44]) {
+        ctx.beginPath();
+        ctx.moveTo(headX + u * hw * 0.78, topY + hh * 0.5);
         ctx.quadraticCurveTo(
-          headX + u * hw * 0.94, headY,
-          headX + u * hw * 0.6 + mkick * 0.7, botY + hh * 0.12,
+          headX + u * hw * 0.9, headY,
+          headX + u * hw * 0.56 + mkick * 0.7, botY + hh * 0.14,
         );
+        ctx.lineTo(headX + u * hw * 0.4 + mkick * 0.6, botY + hh * 0.16);
+        ctx.quadraticCurveTo(headX + u * hw * 0.7, headY, headX + u * hw * 0.6, topY + hh * 0.5);
+        ctx.closePath();
+        ctx.fill();
       }
-      ctx.stroke();
-      // Gilt fringe off the cascade's hem.
-      ctx.strokeStyle = shade(st.trim, 4);
-      ctx.lineWidth = Math.max(1, s * 0.012);
-      ctx.beginPath();
+      // Gilt fringe off the cascade's hem: flat hanging tabs.
+      ctx.fillStyle = shade(st.trim, 4);
       for (const u of [-0.62, -0.32, 0, 0.32, 0.62]) {
         const fx2 = headX + u * hw * 0.6 + mkick * 0.7;
         const fy2 = botY + hh * (0.3 - Math.abs(u) * 0.1);
-        ctx.moveTo(fx2, fy2);
-        ctx.lineTo(fx2 + mkick * 0.4, fy2 + hh * 0.15);
+        ctx.beginPath();
+        ctx.moveTo(fx2 - hw * 0.038, fy2);
+        ctx.lineTo(fx2 + hw * 0.038, fy2);
+        ctx.lineTo(fx2 + hw * 0.012 + mkick * 0.4, fy2 + hh * 0.15);
+        ctx.lineTo(fx2 - hw * 0.012 + mkick * 0.4, fy2 + hh * 0.15);
+        ctx.closePath();
+        ctx.fill();
       }
-      ctx.stroke();
       // The band closes its circle — and the beads keep marching.
       ctx.strokeStyle = st.trim;
       ctx.lineWidth = hh * 0.12;
