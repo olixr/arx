@@ -337,6 +337,56 @@ export function drawPartyToken(
   ctx.restore();
 }
 
+/**
+ * THE SEARCH RING — an errand's "somewhere hereabouts". A soft gold
+ * wash inside a slowly walking dashed rim, breathing one quiet beacon
+ * ring: deliberately loose, because the ring promises a neighborhood,
+ * never a spot. `quiet` mutes it for the traveler's glass.
+ */
+export function drawSearchRing(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rPx: number,
+  pulse01: number,
+  quiet = false,
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  const a = quiet ? 0.55 : 1;
+  // The wash: barely there at the heart, gathering toward the rim.
+  const g = ctx.createRadialGradient(0, 0, rPx * 0.2, 0, 0, rPx);
+  g.addColorStop(0, `rgba(242, 201, 76, ${0.05 * a})`);
+  g.addColorStop(0.8, `rgba(242, 201, 76, ${0.11 * a})`);
+  g.addColorStop(1, `rgba(242, 201, 76, ${0.02 * a})`);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, rPx, 0, Math.PI * 2);
+  ctx.fill();
+  // A dark hairline seats the gold rim on pale ground.
+  ctx.beginPath();
+  ctx.arc(0, 0, rPx + (quiet ? 1.25 : 2), 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(12, 9, 5, ${0.35 * a})`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // The rim: the cartographer's dashed compass stroke, slowly walking.
+  ctx.beginPath();
+  ctx.arc(0, 0, rPx, 0, Math.PI * 2);
+  ctx.setLineDash([9, 7]);
+  ctx.lineDashOffset = -pulse01 * 16;
+  ctx.strokeStyle = `rgba(242, 201, 76, ${0.75 * a})`;
+  ctx.lineWidth = quiet ? 1.25 : 2;
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // The breath: one soft ring sighing outward, the beacon's gold kin.
+  ctx.beginPath();
+  ctx.arc(0, 0, rPx * (1 + pulse01 * 0.16), 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(242, 201, 76, ${0.3 * (1 - pulse01) * a})`;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** A serif nameplate over dark backing — the cartographer's hand. */
 export function drawMapLabel(
   ctx: CanvasRenderingContext2D,

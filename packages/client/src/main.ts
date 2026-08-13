@@ -1573,7 +1573,21 @@ const partyHud = new PartyHud();
 // THE JOURNAL and its HUD face: the log screen, and the tracked
 // errand's card (tracking is client-local — pure presentation).
 const questLog = new QuestLog(game);
-const objectiveTracker = new ObjectiveTracker(game, () => questLog.trackedId());
+// THE ERRAND POINTS AT THE CHART: one door for the journal's and the
+// errand card's "show me" — open the chart (through the one screen
+// gate) and frame the ask's neighborhood.
+const showAreaOnChart = (ring: { x: number; y: number; r: number; label: string; quest: string }): void => {
+  if (!mapScreen.isOpen) toggleScreen('map');
+  if (mapScreen.isOpen) mapScreen.frameSearchRing(ring);
+};
+questLog.onShowArea = showAreaOnChart;
+const objectiveTracker = new ObjectiveTracker(game, () => questLog.trackedId(), {
+  onOpen: (id) => {
+    if (!questLog.isOpen) toggleScreen('quests');
+    if (questLog.isOpen) questLog.inspectQuest(id);
+  },
+  onShowArea: showAreaOnChart,
+});
 
 // THE STANDING SCREEN: the name you carry, read back (L).
 const repScreen = new RepScreen(game);

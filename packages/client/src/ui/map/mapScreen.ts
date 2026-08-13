@@ -130,6 +130,24 @@ export class MapScreen {
   }
 
   /**
+   * THE ERRAND POINTS AT THE CHART: lay an errand's search ring on
+   * the table and frame the view around it (call open() first — the
+   * chart must be standing before it can be framed). The ring stays
+   * across folds until its errand leaves the ledger or another call
+   * re-points it.
+   */
+  frameSearchRing(ring: NonNullable<MapView['searchRing']>): void {
+    this.view.searchRing = ring;
+    const cw = this.canvas.clientWidth || 1;
+    const ch = this.canvas.clientHeight || 1;
+    // Frame the neighborhood with air around it, never wall to wall.
+    const scale = Math.min(6, Math.max(0.5, (Math.min(cw, ch) * 0.3) / Math.max(1, ring.r)));
+    this.view.centerOn(ring.x, ring.y, scale);
+    this.centered = true;
+    this.lastBand = this.view.band();
+  }
+
+  /**
    * Per-frame pad drive while the chart is open in pad mode. UiNav
    * lends the left stick (claimStick); LT/RT zoom about the center;
    * Ⓨ plants or lifts the waypoint at the reticle; Ⓧ centers on you.

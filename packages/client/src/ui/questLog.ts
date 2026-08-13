@@ -1,8 +1,8 @@
 import { itemDef, parseDialogueMarkup } from '@arx/content';
-import type { QuestObjectiveWire, QuestWire } from '@arx/shared';
+import type { QuestHintWire, QuestObjectiveWire, QuestWire } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { dockGlyphUrl, itemIconUrl, uiIconUrl } from '../render/icons.js';
-import { bigButton, dressPanel, needChip, sectionHead } from './panel.js';
+import { bigButton, dressPanel, meter, needChip, sectionHead } from './panel.js';
 import { createLedger } from './kit/ledger.js';
 
 /**
@@ -16,6 +16,11 @@ import { createLedger } from './kit/ledger.js';
  * Offerable-but-untaken quests are DELIBERATELY absent: you find work
  * by talking to the folk who wear the mark, not by reading a menu.
  *
+ * THE GUIDANCE LAW, AMENDED: the written entry still leads, but every
+ * ask that the world can place carries a chart affordance — a soft
+ * SEARCH RING on the map naming a neighborhood, never a pin. The
+ * reader is pointed, not led by the nose.
+ *
  * Tracking is client-local (localStorage per character) — pure
  * presentation; the server never hears which page is dog-eared.
  */
@@ -25,6 +30,12 @@ export class QuestLog {
   private readonly bench: HTMLElement;
   private selected: string | null = null;
   private confirmAbandon: string | null = null;
+  /**
+   * Set by main: lay an errand's search ring on the chart and open
+   * it. The journal never opens screens itself — the one gate does.
+   */
+  onShowArea: ((ring: { x: number; y: number; r: number; label: string; quest: string }) => void) | null =
+    null;
   private renderedVersion = -1;
   /** When the list last painted — the resting shelf's clocks read
    *  Date.now() at render time, so a reopen must know if they moved. */
@@ -241,6 +252,27 @@ export class QuestLog {
     }
   }
 
+  /** Hand a ring to the chart, tagged with its errand. */
+  private showArea(q: QuestWire, hint: QuestHintWire, label: string): void {
+    this.onShowArea?.({ x: hint.x, y: hint.y, r: hint.r, label, quest: q.id });
+  }
+
+  /** A small chart button — the "ring it on the map" affordance. */
+  private chartButton(navkey: string, title: string, onClick: () => void): HTMLButtonElement {
+    const btn = document.createElement('button');
+    btn.className = 'quest-chart-btn';
+    btn.title = title;
+    btn.dataset.nav = '';
+    btn.dataset.navkey = navkey;
+    btn.dataset.acta = 'Chart';
+    const img = document.createElement('img');
+    img.src = dockGlyphUrl('map', 22);
+    img.draggable = false;
+    btn.appendChild(img);
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
   private renderActiveBench(q: QuestWire): void {
     const head = document.createElement('div');
     head.className = 'quest-bench-head';
@@ -250,13 +282,31 @@ export class QuestLog {
     const sub = document.createElement('div');
     sub.className = 'quest-bench-sub';
     const part = q.stages > 1 ? `Part ${q.stage + 1} of ${q.stages} · ` : '';
-    sub.textContent =
-      q.status === 'ready'
-        ? `${part}Ready — return to ${q.turnInName}`
-        : `${part}Given by ${q.giverName}${q.turnIn !== q.giver ? ` · hand to ${q.turnInName}` : ''}`;
-    if (q.status === 'ready') sub.classList.add('ready');
+    sub.textContent = `${part}Given by ${q.giverName}${
+      q.turnIn !== q.giver ? ` · hand to ${q.turnInName}` : ''
+    }`;
     head.append(name, sub);
     this.bench.appendChild(head);
+
+    // THE RETURN CARD: a finished errand says plainly who settles it,
+    // and the chart button frames their door. The strongest thing on
+    // the page, because it is the only thing left to do.
+    if (q.status === 'ready') {
+      const ret = document.createElement('div');
+      ret.className = 'quest-return';
+      const word = document.createElement('div');
+      word.className = 'quest-return-word';
+      word.textContent = `Every ask is answered. Return to ${q.turnInName}.`;
+      ret.appendChild(word);
+      if (q.turnInHint) {
+        ret.appendChild(
+          this.chartButton('errand:return', `Show ${q.turnInName} on the chart`, () =>
+            this.showArea(q, q.turnInHint!, q.turnInName),
+          ),
+        );
+      }
+      this.bench.appendChild(ret);
+    }
 
     // The journal entry — the world's own directions, markup honored.
     const entry = document.createElement('div');
@@ -282,30 +332,76 @@ export class QuestLog {
     }
     this.bench.appendChild(entry);
 
-    // The asks, each with its have/need chip.
+    // The asks: chip, verb, a meter where the count runs long, and a
+    // chart button for every ask the world could place.
     const objs = document.createElement('div');
     objs.className = 'quest-objectives';
-    for (const o of q.objectives) {
+    q.objectives.forEach((o, i) => {
       const row = document.createElement('div');
-      row.className = 'quest-obj-row';
+      row.className = `quest-obj-row${o.have >= o.need ? ' met' : ''}`;
       row.appendChild(needChip(objectiveIconUrl(o), o.have, o.need, objectiveTitle(o)));
+      const col = document.createElement('div');
+      col.className = 'quest-obj-col';
       const label = document.createElement('span');
       label.className = 'quest-obj-label';
       label.textContent = objectiveVerb(o);
-      row.appendChild(label);
+      col.appendChild(label);
+      if (o.need > 1) col.appendChild(meter(o.have / o.need, 'quest-obj-meter').root);
+      row.appendChild(col);
+      if (o.hint && o.have < o.need) {
+        row.appendChild(
+          this.chartButton(`errand:chart:${i}`, `Show ${o.label} on the chart`, () =>
+            this.showArea(q, o.hint!, o.label),
+          ),
+        );
+      }
       objs.appendChild(row);
-    }
+    });
     this.bench.appendChild(objs);
+
+    // THE PAY: the terms of the work, read before the sweat.
+    if (q.rewards) {
+      const pay = document.createElement('div');
+      pay.className = 'quest-pay';
+      const payLabel = document.createElement('div');
+      payLabel.className = 'quest-pay-label';
+      payLabel.textContent = 'The pay';
+      pay.appendChild(payLabel);
+      const row = document.createElement('div');
+      row.className = 'quest-reward-row';
+      const chip = (iconUrl: string | null, text: string): void => {
+        const c = document.createElement('span');
+        c.className = 'quest-reward-chip';
+        if (iconUrl) {
+          const img = document.createElement('img');
+          img.src = iconUrl;
+          img.draggable = false;
+          c.appendChild(img);
+        }
+        const s = document.createElement('span');
+        s.textContent = text;
+        c.appendChild(s);
+        row.appendChild(c);
+      };
+      if (q.rewards.coins) chip(itemIconUrl('coins', 28), `${q.rewards.coins}`);
+      for (const e of q.rewards.items ?? []) {
+        const n = itemDef(e.item)?.name ?? e.item;
+        chip(itemIconUrl(e.item, 28), e.qty > 1 ? `${n} × ${e.qty}` : n);
+      }
+      for (const e of q.rewards.xp ?? []) chip(null, `+${e.amount} ${e.skill} xp`);
+      pay.appendChild(row);
+      this.bench.appendChild(pay);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'quest-actions';
     const tracked = this.trackedId() === q.id && localStorage.getItem(this.trackKey) === q.id;
     actions.appendChild(
-      bigButton(tracked ? 'Untrack' : 'Track', `quest:track`, () => this.setTracked(tracked ? null : q.id), {
-        acta: 'Track',
+      bigButton(tracked ? 'Unfollow' : 'Follow', `quest:track`, () => this.setTracked(tracked ? null : q.id), {
+        acta: 'Follow',
       }),
     );
-    const abandonLabel = this.confirmAbandon === q.id ? 'Abandon — sure?' : 'Abandon';
+    const abandonLabel = this.confirmAbandon === q.id ? 'Abandon, sure?' : 'Abandon';
     actions.appendChild(
       bigButton(abandonLabel, `quest:abandon`, () => {
         if (this.confirmAbandon === q.id) {
@@ -322,7 +418,7 @@ export class QuestLog {
     if (q.repeatable) {
       const teach = document.createElement('div');
       teach.className = 'quest-teach';
-      teach.textContent = 'Standing work — it will be offered again a while after you turn it in.';
+      teach.textContent = 'Standing work. It will be offered again a while after you turn it in.';
       this.bench.appendChild(teach);
     }
   }

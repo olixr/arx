@@ -544,6 +544,8 @@ import {
   questReady,
   questWire,
   type QuestCreditKind,
+  type QuestHintWire,
+  type QuestLocateRefs,
   type QuestNameRefs,
   type QuestPlayerCtx,
   type QuestProgress,
@@ -13489,6 +13491,76 @@ export class GameServer {
     };
   }
 
+  /**
+   * THE WORLD ANSWERS "WHERE" — generalized whereabouts for the
+   * journal's chart rings, derived from registries the world already
+   * keeps (actor placements, spawn grounds, zone extents). The center
+   * rounds to a coarse grid and the radius stays generous: a ring is
+   * a neighborhood, never a pin. Kill and drop grounds resolve
+   * nearest the GIVER's own door — the trouble a speaker means is the
+   * trouble on their watch — so the answer holds still across pushes.
+   * Surface band only; the chart's rings cannot reach the dark.
+   */
+  private questLocateRefs(): QuestLocateRefs {
+    const fuzz = (x: number, y: number, r: number): QuestHintWire => ({
+      x: Math.round(x / 8) * 8,
+      y: Math.round(y / 8) * 8,
+      r: Math.round(r),
+    });
+    const surface = (y: number): boolean => y < DUNGEON_MIN_Y;
+    const actorSpot = (id: string): { x: number; y: number } | undefined => {
+      const p = this.actorSpawnPoints.find((s) => s.actor === id);
+      return p && surface(p.y) ? p : undefined;
+    };
+    const actorHint = (id: string): QuestHintWire | undefined => {
+      const p = actorSpot(id);
+      return p ? fuzz(p.x, p.y, 10) : undefined;
+    };
+    const npcHint = (id: string, near?: { x: number; y: number }): QuestHintWire | undefined => {
+      let best: { x: number; y: number; radius: number } | undefined;
+      let bestD = Infinity;
+      for (const s of this.spawnPoints) {
+        if (s.npc !== id || !surface(s.y)) continue;
+        const d = near ? (s.x - near.x) ** 2 + (s.y - near.y) ** 2 : 0;
+        if (!best || d < bestD) {
+          best = s;
+          bestD = d;
+        }
+        if (!near) break;
+      }
+      return best ? fuzz(best.x, best.y, Math.max(18, best.radius + 10)) : undefined;
+    };
+    const placeHint = (place: string): QuestHintWire | undefined => {
+      if (!place.startsWith('zone:')) return undefined;
+      const zid = place.slice(5);
+      for (const z of this.world.zoneDefs) {
+        if (z.id !== zid) continue;
+        const cy = z.origin.y + z.height / 2;
+        if (!surface(cy)) return undefined;
+        return fuzz(z.origin.x + z.width / 2, cy, Math.max(14, Math.max(z.width, z.height) / 2));
+      }
+      return undefined;
+    };
+    return {
+      actorHint,
+      objectiveHint: (def, obj) => {
+        const near = actorSpot(def.giver);
+        switch (obj.kind) {
+          case 'talk':
+            return actorHint(obj.actor);
+          case 'kill':
+            return npcHint(obj.npc, near);
+          case 'collect': {
+            const src = def.questDrops?.find((d) => d.item === obj.item);
+            return src ? npcHint(src.npc, near) : undefined;
+          }
+          case 'discover':
+            return placeHint(obj.place);
+        }
+      },
+    };
+  }
+
   private questRewardsWire(def: QuestDef): QuestRewardsWire | undefined {
     const r = def.rewards;
     const out: QuestRewardsWire = {};
@@ -13539,12 +13611,14 @@ export class GameServer {
     if (!player.session) return;
     const ctx = this.questCtx(player);
     const names = this.questNames();
+    const locate = this.questLocateRefs();
     const active: QuestWire[] = [];
     const done: QuestDoneWire[] = [];
     for (const [id, q] of player.quests) {
       const def = this.questDefs.get(id);
       if (!def) continue; // a retired def's row sleeps until it returns
-      if (q.status === 'active') active.push(questWire(def, q, ctx, names));
+      if (q.status === 'active')
+        active.push(questWire(def, q, ctx, names, locate, this.questRewardsWire(def)));
       else done.push(this.questDoneWire(def, q));
     }
     const available = this.questAvailList(player);
@@ -13576,7 +13650,14 @@ export class GameServer {
   private pushQuestWire(player: PlayerComp, def: QuestDef, q: QuestProgress): void {
     player.session?.sendJson({
       t: 'questupd',
-      quest: questWire(def, q, this.questCtx(player), this.questNames()),
+      quest: questWire(
+        def,
+        q,
+        this.questCtx(player),
+        this.questNames(),
+        this.questLocateRefs(),
+        this.questRewardsWire(def),
+      ),
     });
   }
 

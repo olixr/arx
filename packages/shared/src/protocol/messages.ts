@@ -1555,6 +1555,20 @@ export interface S2CWaypoint {
   y?: number;
 }
 
+/**
+ * A generalized whereabouts for the chart: a soft circle, never a pin.
+ * The server derives it from its spatial registries (actor placements,
+ * spawn grounds, zone extents), rounds the center to a coarse grid,
+ * and keeps the radius generous — the ring promises a neighborhood,
+ * not a spot. Surface band only; absent when the world can't say.
+ */
+export interface QuestHintWire {
+  x: number;
+  y: number;
+  /** Radius in tiles. */
+  r: number;
+}
+
 /** One objective row: the id (in its namespace) keys the client icon. */
 export interface QuestObjectiveWire {
   kind: 'kill' | 'collect' | 'discover' | 'talk';
@@ -1565,6 +1579,8 @@ export interface QuestObjectiveWire {
   label: string;
   have: number;
   need: number;
+  /** Where this ask can be answered, when the world knows. Additive. */
+  hint?: QuestHintWire;
 }
 
 /**
@@ -1585,10 +1601,14 @@ export interface QuestWire {
   /** 0-based stage index and the total, for "Part n of m". */
   stage: number;
   stages: number;
-  /** The current stage's journal entry — directions, never markers. */
+  /** The current stage's journal entry — the world's written voice. */
   journal: string;
   objectives: QuestObjectiveWire[];
   repeatable?: boolean;
+  /** Where the finished work is handed in. Additive + cosmetic. */
+  turnInHint?: QuestHintWire;
+  /** What the work pays — the journal shows the terms. Additive. */
+  rewards?: QuestRewardsWire;
 }
 
 /** One completed quest on the ledger's done shelf. */

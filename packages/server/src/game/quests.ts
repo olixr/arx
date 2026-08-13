@@ -202,6 +202,14 @@ export interface QuestNameRefs {
   placeName(id: string): string;
 }
 
+/** A generalized whereabouts: a soft circle on the chart, never a pin. */
+export interface QuestHintWire {
+  x: number;
+  y: number;
+  /** Radius in tiles — deliberately generous. */
+  r: number;
+}
+
 export interface QuestObjectiveWire {
   kind: 'kill' | 'collect' | 'discover' | 'talk';
   /** The referenced id in its own namespace — the client's icon key. */
@@ -212,6 +220,15 @@ export interface QuestObjectiveWire {
   label: string;
   have: number;
   need: number;
+  /** Where this ask can be answered, when the world knows. */
+  hint?: QuestHintWire;
+}
+
+/** Reward summary for the wire — ids and counts only. */
+export interface QuestRewardsWire {
+  xp?: Array<{ skill: string; amount: number }>;
+  items?: Array<{ item: string; qty: number }>;
+  coins?: number;
 }
 
 export interface QuestWire {
@@ -228,6 +245,25 @@ export interface QuestWire {
   journal: string;
   objectives: QuestObjectiveWire[];
   repeatable?: boolean;
+  /** Where the finished work is handed in. */
+  turnInHint?: QuestHintWire;
+  /** What the work pays — the journal shows the terms. */
+  rewards?: QuestRewardsWire;
+}
+
+/**
+ * THE WORLD ANSWERS "WHERE" — the server's spatial registries at
+ * arm's length, so the pure module can dress each ask with a
+ * generalized whereabouts without touching the GameServer. Every
+ * answer is optional: a world that can't say sends silence, and the
+ * journal's written directions carry the load alone as they always
+ * did.
+ */
+export interface QuestLocateRefs {
+  /** A standing actor's home ground (talk asks, the turn-in door). */
+  actorHint(actor: string): QuestHintWire | undefined;
+  /** One ask's whereabouts, resolved with the whole def in hand. */
+  objectiveHint(def: QuestDef, obj: QuestObjective): QuestHintWire | undefined;
 }
 
 /** One active quest, shaped for the journal screen and the tracker. */
@@ -236,20 +272,28 @@ export function questWire(
   q: QuestProgress,
   ctx: QuestPlayerCtx,
   names: QuestNameRefs,
+  locate?: QuestLocateRefs,
+  rewards?: QuestRewardsWire,
 ): QuestWire {
   const stage = def.stages[q.stage] ?? def.stages[def.stages.length - 1]!;
+  // An authored stage mark is the story literally handing over a
+  // destination — it backstops any ask the registries can't place.
+  const markHint: QuestHintWire | undefined = stage.mark
+    ? { x: stage.mark.x, y: stage.mark.y, r: 12 }
+    : undefined;
   const objectives: QuestObjectiveWire[] = stage.objectives.map((obj, i) => {
     const have = objectiveHave(obj, q.progress[i] ?? 0, ctx);
     const need = objectiveNeed(obj);
+    const hint = locate?.objectiveHint(def, obj) ?? markHint;
     switch (obj.kind) {
       case 'kill':
-        return { kind: obj.kind, npc: obj.npc, label: names.npcName(obj.npc), have, need };
+        return { kind: obj.kind, npc: obj.npc, label: names.npcName(obj.npc), have, need, hint };
       case 'collect':
-        return { kind: obj.kind, item: obj.item, label: names.itemName(obj.item), have, need };
+        return { kind: obj.kind, item: obj.item, label: names.itemName(obj.item), have, need, hint };
       case 'discover':
-        return { kind: obj.kind, place: obj.place, label: names.placeName(obj.place), have, need };
+        return { kind: obj.kind, place: obj.place, label: names.placeName(obj.place), have, need, hint };
       case 'talk':
-        return { kind: obj.kind, actor: obj.actor, label: names.actorName(obj.actor), have, need };
+        return { kind: obj.kind, actor: obj.actor, label: names.actorName(obj.actor), have, need, hint };
     }
   });
   return {
@@ -265,5 +309,7 @@ export function questWire(
     journal: stage.journal,
     objectives,
     repeatable: def.repeat ? true : undefined,
+    turnInHint: locate?.actorHint(def.turnIn ?? def.giver),
+    rewards,
   };
 }

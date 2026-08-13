@@ -25,6 +25,7 @@ import {
   drawDeathMark,
   drawPartyToken,
   drawPlayerToken,
+  drawSearchRing,
   drawWaypointFlag,
   partyColor,
 } from './markers.js';
@@ -90,6 +91,13 @@ export class MapView {
   parchment = true;
   /** Overlay mode: quieter marks, no hover, town labels only. */
   overlay = false;
+  /**
+   * THE SEARCH RING — an errand's charted neighborhood: a soft
+   * generalized area in world tiles, or null. Pure presentation, set
+   * by the journal and the errand card; `quest` ties it to the ledger
+   * so a finished errand takes its ring with it.
+   */
+  searchRing: { x: number; y: number; r: number; label: string; quest: string } | null = null;
 
   private blocks = new Map<string, HTMLCanvasElement | null>();
   private dangerBlocks = new Map<string, HTMLCanvasElement>();
@@ -439,6 +447,21 @@ export class MapView {
 
     // 3. Marks over everything — a place once found is never lost to
     // the fog, even when its ground has gone parchment-blank.
+
+    // THE SEARCH RING rides under every pin: ground wash first, marks
+    // over it. A ring whose errand left the ledger lifts itself.
+    if (this.searchRing && !this.game.quests.has(this.searchRing.quest)) this.searchRing = null;
+    if (this.searchRing && band === 'surface') {
+      const ring = this.searchRing;
+      const x = this.sx(ring.x);
+      const y = this.sy(ring.y);
+      const rPx = Math.max(14, ring.r * this.scale);
+      if (x > -rPx - 40 && y > -rPx - 40 && x < cw + rPx + 40 && y < ch + rPx + 40) {
+        drawSearchRing(ctx, x, y, rPx, (nowMs % 2600) / 2600, this.overlay);
+        if (!this.overlay) drawMapLabel(ctx, x, y - rPx - 6, ring.label, '#f2c94c', 12);
+      }
+    }
+
     if (band === 'surface') {
       const markerR = this.overlay ? 6.5 : Math.max(7, Math.min(13, this.scale * 2.4));
       for (const d of this.game.discoveries.values()) {
