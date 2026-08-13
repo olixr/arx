@@ -5297,25 +5297,35 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gno,
     );
   };
-  // ---- THE SHOULDER FRAME: pauldrons are TORSO-FRAME CITIZENS. Both
-  // caps are computed from the garment's own shoulder corners and run
-  // through the exact transform the torso paints with — translate to
-  // the hip, combat lean, fake-3D squash — so a cap can no more drift
-  // off the body than the garment's own seam can. The shoulder bar is
-  // yawed INSIDE that local frame: the corners slide along the bar as
-  // the body turns (∓fy per unit) and the depth axis lives as a local
-  // y shift (±fx), so at a camera facing the caps flank level, at a
-  // diagonal one drops near while its twin rises far, and at a
-  // profile both stand at the garment's own leading edge — the near
-  // cap in front of the cloth, the far cap BEHIND it with its crown
-  // peeking over the shoulder line. BOTH always paint: depth decides
-  // layer, size and lean, never existence. The stride rolls each cap
-  // on its own end of the bar, so a runner's shoulders live; the
-  // combat lean carries them through every swing because the frame
-  // itself leans. History: the caps once rode the solved ARM anchors
-  // and followed the HANDS — an akimbo idle dragged a cap up to the
-  // cheek and left the actual shoulder bare. The arm never owns the
-  // pauldron again.
+  // ---- THE BILLBOARD SOCKET: pauldrons sit on the rig's SHOULDER
+  // SOCKETS — and the sockets obey the BILLBOARD's law, not a 3D
+  // projection's. This rig never yaws its torso: at every facing the
+  // body is a front-ish billboard whose depth is spoken through the
+  // wS squash, layering and size — the settled arms root at a
+  // CONSTANT spread (±SHOULDER_SETTLE_K·tw, the anatomical anchor law
+  // at line one of the shoulder settle) no matter the heading. The
+  // previous frame projected the shoulder bar like true 3D (lx =
+  // ∓fy·tw), so at a profile both caps collapsed onto the SPINE while
+  // the arms kept their billboard spread — caps beside the head,
+  // roots bare (the user's stormsinger E sheet). One law now serves
+  // both: each cap's socket spreads by the SAME settle constant the
+  // arm hangs from (widening to the garment corner only as the facing
+  // squares to the camera), and runs through the exact matrix the
+  // torso paints with — hip translate, combat lean, wS/hScale squash
+  // — so cap and arm root can never disagree again. Depth is spoken
+  // the billboard way: a small far-rise/near-drop on the shoulder
+  // line, ±15% size in drawPauldron, and the layer flag — far cap
+  // BEHIND the torso, crown peeking over the trapezius; near cap in
+  // front, cupping the arm root. BOTH always paint: depth decides
+  // layer, size and lean, never existence. Which screen side each
+  // anatomical cap owns flips ONCE through a profile on its own
+  // hysteresis band (the arms' remembered-side law), never per-frame.
+  // The stride rolls each cap on its own end; the combat lean carries
+  // both through every swing because the frame itself leans. History:
+  // the caps once rode the solved ARM anchors and followed the HANDS
+  // (akimbo dragged a cap to the cheek); then rode a projected 3D bar
+  // and abandoned the billboard. The arm never owns the pauldron; the
+  // projection never owns the billboard.
   const paintPauldrons = (layer: 'behind' | 'front'): void => {
     if (!bodySt || bodySt.pauldron === 'none') return;
     const cosL = Math.cos(lean);
@@ -5324,16 +5334,46 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // height shoulderY resolves to, expressed inside the frame.
     const lyBar = -th + (SHOULDER_Y_DROP_S * s) / hScale;
     const strideSwP = ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP;
+    // Socket spread: exactly the arm's anatomical settle spread at a
+    // profile (cap ON the root), easing out to the garment's own
+    // corner (0.98·tw) as the shoulder bar squares to the camera —
+    // there the cap wraps the OUTSIDE of the root, as a worn cap does.
+    const spread = tw * (SHOULDER_SETTLE_K + (0.98 - SHOULDER_SETTLE_K) * Math.abs(fy));
     for (const e of [1, -1] as const) {
-      // The bar end, yawed in the local frame: along ∓fy across the
-      // body, deep along ±fx — the camera's tilt is hScale's job.
-      const lx = e * -fy * tw * 0.98;
-      const ly = lyBar + e * fx * tw * 0.52;
+      // Screen side, remembered: ±fy decides while the bar reads,
+      // the band holds through the profile crossing so each cap
+      // flips sides exactly once per half-turn. The ±1e-4 bias keeps
+      // the stateless fallback deterministic (and opposite) at an
+      // exact profile.
+      const sideScr = bandFlag(
+        mem,
+        e === 1 ? 'capSideA' : 'capSideB',
+        e * (-fy + 1e-4),
+        0.1,
+        -0.1,
+      )
+        ? 1
+        : -1;
+      const depthK = e * fx; // -1 far .. +1 near
+      // Depth, spoken asymmetrically: the NEAR cap drops down its
+      // root (we look down onto it); the FAR cap must NOT rise — a
+      // tall device lifted at the far socket parks its crown at EYE
+      // height beside the face (the stormsinger crystal lesson). The
+      // far shoulder instead peeks OUTBOARD past the torso's back
+      // edge at shoulder height — the classic side-view read — with
+      // only a whisper of rise for the bird's-eye tilt.
+      const nearK = Math.max(0, depthK);
+      const farK = Math.max(0, -depthK);
+      // The near drop deepens toward a full profile: the head slides
+      // to the leading edge there and stands directly over the near
+      // socket, so the cap must seat BELOW the jaw — cupping the
+      // upper arm — for the face to stay sovereign.
+      const lx = sideScr * (spread + farK * tw * 0.34);
+      const ly = lyBar + nearK * tw * 0.32 - farK * tw * 0.08;
       const px = lx * wS;
       const py = ly * hScale;
       const wx = rig.x + cosL * px - sinL * py;
       const wy = hipY + sinL * px + cosL * py;
-      const depthK = e * fx; // -1 far .. +1 near
       const behind = bandFlag(
         mem,
         e === 1 ? 'capBehindA' : 'capBehindB',
@@ -5342,20 +5382,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         0.08,
       );
       if ((layer === 'behind') !== behind) continue;
-      const side =
-        Math.sign(wx - rig.x) || Math.sign(-e * fy) || e * (lead || 1) || 1;
-      // Orientation: the outward geometric lean along the turned bar,
+      // Orientation: the outward perspective lean (strongest when the
+      // bar points at the camera and we see the cap from its side),
       // the combat lean the frame itself carries, and the stride's
       // roll — opposite ends of the bar counter-rotate on the run.
       const tilt =
         Math.max(
           -0.34,
-          Math.min(0.34, Math.atan2(side * e * fx * 0.5, Math.abs(fy) + 0.45)),
+          Math.min(0.34, Math.atan2(sideScr * depthK * 0.5, Math.abs(fy) + 0.45)),
         ) +
         lean * 0.6 +
         strideSwP * 0.055 * rig.runF * e;
       drawPauldron(
-        ctx, bodySt, wx, wy, side, s, wS, rig.hurt, side < 0, rig.nowMs,
+        ctx, bodySt, wx, wy, sideScr, s, wS, rig.hurt, sideScr < 0, rig.nowMs,
         depthK, tilt,
       );
     }
