@@ -58,6 +58,7 @@ import {
   facingFrame,
   gaitK,
   lifelineYaw,
+  LIFT_ALT_K,
   PEEK_HANG_K,
   projectAim,
   greatFinisherLean,
@@ -4366,8 +4367,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // inside runnerLift: full lift in profile, half at the camera
     // lines, where the full lift tucked both fists into the armpits.
     const elbowLift = runnerLift(Math.min(1, rig.poleStrength), rig.runF, profileK) * s;
+    // THE VISIBLE BREATH (arms-v3 Phase 5): free fists alternate the
+    // lift with the stride on camera-line gaits — one hand toward the
+    // ribs as the other drops — dead at profile where the fore/aft
+    // pump already owns the read. Rides the SMOOTHED swing, so it
+    // sweeps instead of hinging.
+    const liftAlt = LIFT_ALT_K * swS * (1 - Math.abs(rig.poleX));
     let hx = rig.x + wSide * hangW * wS;
-    let hy = armY + REST_HANG_DROP_S * s - elbowLift;
+    let hy = armY + REST_HANG_DROP_S * s - elbowLift * (1 + liftAlt);
     let hAngle = Math.PI / 2 + sideW * (0.3 + 0.35 * runK); // tip down, trailing
     let hFore = 1; // rest-carry foreshortening, blended in on the settle
     // How "at rest" the rest really is: flourishes and wrist life only
@@ -4492,7 +4499,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // hand rides a touch higher and tighter than the main: the trailing
     // blade of a paired stance, not a mirror image.
     let ox = rig.x - wSide * hangW * wS;
-    let oy = armY + REST_HANG_DROP_S * s - elbowLift;
+    let oy = armY + REST_HANG_DROP_S * s - elbowLift * (1 - liftAlt);
     if (offBlade) {
       // The carriage mirrors on FACING, not on the hanging side — the
       // off fist trails the facing, so its outward push (dx) mirrors

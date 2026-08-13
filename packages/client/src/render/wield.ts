@@ -262,6 +262,21 @@ export interface PumpFrame {
  * channel the rig owns: it rides |sw|, not sw, and mixing it in here
  * would let the shared bob cancel the alternating throw.
  */
+/**
+ * THE VISIBLE BREATH (arms-v3 Phase 5): on a camera-line gait the
+ * pump's fore/aft throw projects to almost nothing — the S-facing
+ * "statue run" verdict cells: both fists frozen at the hips while the
+ * legs sprint. The beat re-expresses through the one channel that
+ * SURVIVES the projection: the vertical remnant amplifies by this
+ * gain exactly as the lateral read dies — sized so the deepest
+ * throw of a bare sprint stays inside the arm's reach budget (0.85
+ * overstretched the stride bottom; the elbow regression test caught
+ * it) ((1 − |px|): zero at profile,
+ * full at the camera lines). Same energy, different axis — never a
+ * fake side-to-side arm swing.
+ */
+export const BREATH_K = 0.5;
+
 export function armPump(
   px: number,
   py: number,
@@ -270,9 +285,10 @@ export function armPump(
   armedK: number,
 ): PumpFrame {
   const vert = WIELD_GROUND_K * (1 - 0.45 * armedK);
+  const breath = 1 + BREATH_K * (1 - Math.abs(px));
   return {
     dx: px * sw * amp,
-    dy: py * sw * amp * vert,
+    dy: py * sw * amp * vert * breath,
     sway: sw * (1 - Math.abs(px)) * 0.018,
   };
 }
@@ -294,6 +310,15 @@ export function armPump(
  * go. Half the lift at the camera-line facings, full in profile,
  * linear so the height breathes through every diagonal.
  */
+/**
+ * THE VISIBLE BREATH's second voice (arms-v3 Phase 5): free fists on
+ * a camera-line gait ALTERNATE their runner's lift with the stride —
+ * one fist rides toward the ribs as the other drops — the pumping
+ * read every running reference draws, re-expressed on the axis the
+ * camera can see. Zero at profile (the fore/aft pump owns that read).
+ */
+export const LIFT_ALT_K = 0.55;
+
 export function runnerLift(moveK: number, runK: number, profileK: number): number {
   const pk = Math.max(0, Math.min(1, profileK));
   return (

@@ -9,6 +9,11 @@ import {
   projectAim,
   awayPeekK,
   bandFlag,
+  BREATH_K,
+  SIDE_FLOOR,
+  SIDE_SLOPE,
+  easeRestSide,
+  type RestSideMemory,
   gaitLift,
   armPump,
   runnerLift,
@@ -104,15 +109,62 @@ test('honest pump: N/S travel still moves an armed hand', () => {
   assert.ok(Math.abs(ns.dy) > 0.02, `vertical pump alive (${ns.dy.toFixed(3)})`);
 });
 
-test('honest pump: N/S vertical is the E/W throw foreshortened by the ground', () => {
+test('THE VISIBLE BREATH: N/S vertical is the ground-foreshortened throw, re-voiced by the breath gain', () => {
   const ew = armPump(1, 0, 1, 0.12, 0);
   const ns = armPump(0, 1, 1, 0.12, 0);
-  assert.ok(Math.abs(ew.dx) > Math.abs(ns.dy), 'foreshortened, not equal');
+  assert.ok(Math.abs(ew.dx) > Math.abs(ns.dy), 'still foreshortened, never equal');
   const ratio = Math.abs(ns.dy) / Math.abs(ew.dx);
+  // Phase 5 re-pin: the old pin held this to the raw ground factor —
+  // the honest-but-dead statue run. The camera-line remnant now
+  // carries the beat's energy on the axis the camera can see.
   assert.ok(
-    Math.abs(ratio - WIELD_GROUND_K) < 1e-9,
-    `bare-hand N/S ratio IS the ground factor (${ratio.toFixed(3)})`,
+    Math.abs(ratio - WIELD_GROUND_K * (1 + BREATH_K)) < 1e-9,
+    `N/S ratio is K amplified by the breath (${ratio.toFixed(3)})`,
   );
+  // Profile stays EXACT: the breath is zero where the pump reads.
+  assert.ok(Math.abs(ew.dx - 1 * 1 * 0.12) < 1e-9, 'E/W throw untouched by the breath');
+});
+
+test('THE PINNED LAW: fractional armedK interpolates the vertical restraint (the audit gap)', () => {
+  const free = armPump(0, 1, 1, 0.12, 0);
+  const half = armPump(0, 1, 1, 0.12, 0.5);
+  const armed = armPump(0, 1, 1, 0.12, 1);
+  const expectHalf = 0.12 * WIELD_GROUND_K * (1 - 0.45 * 0.5) * (1 + BREATH_K);
+  assert.ok(Math.abs(Math.abs(half.dy) - expectHalf) < 1e-9, 'the production input is fractional and lawful');
+  assert.ok(Math.abs(half.dy) < Math.abs(free.dy) && Math.abs(half.dy) > Math.abs(armed.dy), 'monotone in load');
+});
+
+test('THE PINNED LAW: the facing weight is the named floor and slope', () => {
+  for (const dir of [0, Math.PI / 4, Math.PI / 2, 2.2]) {
+    const f = facingFrame(dir, 1);
+    assert.ok(
+      Math.abs(f.sideW - (SIDE_FLOOR + SIDE_SLOPE * f.profileK)) < 1e-9,
+      `weight law holds at ${dir}`,
+    );
+  }
+  assert.ok(Math.abs(facingFrame(Math.PI / 2, -0.5).sideW - -0.5 * SIDE_FLOOR) < 1e-9, 'signed and floored');
+});
+
+test('THE PINNED LAW: the dwell truth — fast jitter never flips, a slow deliberate wobble DOES', () => {
+  // The audit called the >240ms-period wobble "the dwell-defeating
+  // case, untested". Tested: it flips — CORRECTLY. A heading held for
+  // 150ms+ per side is indistinguishable from real turning, and the
+  // 240ms ease absorbs it into a sway instead of a snap. The law is
+  // that FAST jitter (sub-dwell holds) never registers; pinned both.
+  const fast: RestSideMemory = {};
+  for (let t = 0; t <= 2000; t += 16) {
+    const fx = Math.sin(t * 0.05) * 0.5; // ~125ms period: sub-dwell
+    easeRestSide(fast, Math.sign(fx) || 1, fx, t);
+  }
+  assert.equal(fast.side, 1, 'sub-dwell jitter holds the standing side');
+  const slow: RestSideMemory = {};
+  let flipped = false;
+  for (let t = 0; t <= 2000; t += 16) {
+    const fx = Math.sin(t * 0.02) * 0.5; // ~314ms holds: deliberate
+    easeRestSide(slow, Math.sign(fx) || 1, fx, t);
+    if (slow.side === -1) flipped = true;
+  }
+  assert.ok(flipped, 'a deliberate slow wobble reads as turning and flips through the ease');
 });
 
 test('honest pump: the counter-sway lives only off-profile', () => {
