@@ -1845,16 +1845,19 @@ function earlyClothDefs(): EquipmentDef[] {
       { key: 'graymist', dye: 'Graymist', color: '#6e7a76',
         desc: 'The fog itself, combed and sewn. It sheds a little of you as it goes.' },
     ]),
-    // -------- Stormwoven: slate cloth around a fat gold bolt, a mantle
-    // like a rolling front. The mid-game craft line with weather in it.
+    // -------- Stormwoven: THE STORM COURT — four weathers on one
+    // loom. The squall, the anvil, the sunshower, the night curtain:
+    // each dye lot is a different sky caught mid-sentence, and the
+    // bolt beneath all of them keeps its own count. The mid-game
+    // craft line with weather in it, none of it worn casually.
     ...stormwoven,
     ...colorways(stormwoven, [
       { key: 'thunderhead', dye: 'Thunderhead', color: '#3a3f4e', dyeInput: { item: 'iron_bar', qty: 1 },
-        desc: 'Anvil-cloud dark, gold at the seams. Count the seconds.' },
+        desc: 'Anvil-cloud dark, flat-topped, patient. Count the seconds.' },
       { key: 'sunshower', dye: 'Sunshower', color: '#c9a85c', dyeInput: { item: 'sunflower', qty: 2 },
-        desc: 'Rain with the sun still out — luck, wearable.' },
+        desc: 'Rain with the sun still out. Luck, worn with a brim.' },
       { key: 'aurora', dye: 'Aurora', color: '#4e8a7a', dyeInput: { item: 'moonbell', qty: 1 },
-        desc: 'Green fire off a midnight sky, hemmed and hushed.' },
+        desc: 'The night curtain itself, cut and hemmed. It has not stopped moving.' },
     ]),
   ];
 }
@@ -2051,21 +2054,21 @@ function stormwovenSet(): EquipmentDef[] {
       levelReq: { skill: 'arx', level: 17 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(20, 170, 70, 2),
       value: 360, color, code: 'Zh',
-      desc: 'A storm-eye glints at the brow. Weather answers to it, some days.',
+      desc: 'The squall itself, worn forward. The bolt on the pitch is charging whether you watch it or not.',
     },
     {
       id: 'stormwoven_robe', name: 'Stormwoven robe', slot: 'body', armorClass: 'cloth',
       levelReq: { skill: 'arx', level: 19 }, armor: 4, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(24, 260, 90, 4),
       value: 500, color, code: 'Zr',
-      desc: 'A fat gold bolt on rolling slate. Thunder, tailored.',
+      desc: 'A rolling front banked across the chest, the bolt inlaid below it. The count between flash and thunder is stitched in.',
     },
     {
       id: 'stormwoven_skirts', name: 'Stormwoven skirts', slot: 'legs', armorClass: 'cloth',
       levelReq: { skill: 'arx', level: 18 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(22, 210, 80, 3),
       value: 430, color, code: 'Zk',
-      desc: 'Rain-grey wool with a charge in it. Hems mutter like far fronts.',
+      desc: 'Rain keeps the hem company and never quite lands. The charge in the wool hums along.',
     },
     {
       id: 'stormwoven_slippers', name: 'Stormwoven slippers', slot: 'boots', armorClass: 'cloth',

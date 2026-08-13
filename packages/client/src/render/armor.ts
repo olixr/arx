@@ -45,6 +45,30 @@ function fenlightK(nowMs: number, off = 0): number {
 }
 
 /**
+ * THE STORMBOLT clock — the storm court's one sky, shared by the
+ * hood bolt, the robe inlay, the shoulder devices, the charge beads
+ * and the ground flash. A 7.2s cycle: a long banked CHARGE climbing
+ * to a watchful glow, then THE STRIKE — two hard flashes with a dark
+ * breath between — and a fast decay. Unlike the fen court's lights,
+ * the strike is NOT staggered: lightning is one event, and every
+ * bolt on the set whites out on the same beat (ONE SKY LAW). Only
+ * charge-level accents (beads, coils) may read the level early.
+ */
+function stormboltK(nowMs: number, off = 0): number {
+  const u = ((nowMs / 7200 + off) % 1 + 1) % 1;
+  const sm = (kk: number): number => {
+    const c = Math.min(1, Math.max(0, kk));
+    return c * c * (3 - 2 * c);
+  };
+  if (u < 0.78) return 0.08 + 0.42 * sm(u / 0.78);
+  const v = (u - 0.78) / 0.22;
+  if (v < 0.16) return 1;
+  if (v < 0.3) return 0.3;
+  if (v < 0.48) return 0.94;
+  return 0.08 + 0.42 * (1 - sm((v - 0.48) / 0.52));
+}
+
+/**
  * Visual equipment styles — the CAPE_STYLES pattern extended to every
  * armor slot. Each record is pure JSON-shaped data a painter interprets;
  * the content pass authors records + palettes here, never new painters.
@@ -103,6 +127,12 @@ export interface BodyStyle {
     // wing and plume tuft. Each kind wears TWO designs — the
     // shoulders answer each other, they do not repeat each other.
     | 'orchidpaul' | 'cattailpaul' | 'heronwing'
+    // THE STORM COURT'S SHOULDERS — stormwoven's four weathers, one
+    // owner each, every pair ASYMMETRIC: `stormyoke` the caught bolt
+    // and the storm-eye, `anvilpaul` the slab and the charge coil,
+    // `showerpaul` the sunbreak and the drip veil, `aurorapaul` the
+    // curtain and the nightfield. All on THE STORMBOLT clock.
+    | 'stormyoke' | 'anvilpaul' | 'showerpaul' | 'aurorapaul'
     // The hunter's shoulders — one owner each: `halcyon` the
     // kingfisher folded wing, `guardhair` the wolfstalker winter
     // pelt, `drakewing` the drakescale ribbed wing-fin, `oakspaul`
@@ -463,12 +493,33 @@ export interface BodyStyle {
   /** Graymist lot: the low fog — a translucent mist band sliding
    *  around the skirt, guttering on the fen clock. */
   mistwrap?: { color: string };
-  /** Stormwoven: the rolling front — lapped billow bands crossing the
-   *  chest on a diagonal, each with its flat lit rim. */
-  stormfront?: { color: string };
-  /** Stormwoven: ONE gold zigzag seam down the skirt's leading side —
-   *  lightning lives in the stitching, and now and then admits it. */
-  boltseam?: { color: string };
+  /** Stormwoven: THE THUNDER BANK — the front itself banked across
+   *  the chest, fat cloud rolls with flat lit caps, the gold charge
+   *  waking along the underside on THE STORMBOLT clock. */
+  thunderbank?: { color: string; glow: string };
+  /** Stormwoven: THE BOLT BRAND — the storm's mark inlaid down the
+   *  skirt's leading side in its own dark channel; it charges with
+   *  the sky and burns white on the shared strike. */
+  boltbrand?: { color: string };
+  /** Stormwoven: THE RAIN HEM — a soaked band riding the living hem,
+   *  slanted rain falling past it, one ring at a time where a drop
+   *  gives up. */
+  rainhem?: { color: string };
+  /** Stormwoven: THE STATIC COURT — three charge sparks climbing the
+   *  hem air, faint on the charge, popping together on the strike. */
+  staticcourt?: { color: string };
+  /** Stormwoven: THE CHARGE BEADS — three storm-glass beads on the
+   *  waist cords, lighting in sequence as the sky charges. */
+  chargebeads?: { cord: string; bead: string };
+  /** Thunderhead lot: the ground flash — for one beat after the
+   *  strike, the world under the hem answers. */
+  groundflash?: { color: string };
+  /** Sunshower lot: one warm window of light sliding across the
+   *  cloth as the clouds shift. The luck is that it finds you. */
+  sunpatch?: { color: string };
+  /** Aurora lot: the night curtain riding the living hem in its
+   *  three colors, each band waking on its own watch. */
+  curtainhem?: { colors: string[] };
   /** Hedgemage: herb bundles and a seed pouch hung off the sash cord,
    *  swinging on the stride — the garden carried along. */
   herbgirdle?: { cord: string; leaf: string };
@@ -597,16 +648,25 @@ export interface HelmStyle {
     // one-owner law. A leveling set is not a recolor: `fieldhood` the
     // thistledown rolled-brim working hood, `mothcowl` the mothwing
     // tufted moth's head,
-    // `stormhood` the stormwoven billow-collared front, `hedgehat`
+    // `hedgehat`
     // the hedgemage patched twice-bent cone, `tidehood` the
     // tidecaller breaking wave crest, `whispercowl` the voidwhisper
     // tippet cowl with the embroidered eye, `cinderhood` the
     // cindersworn char-lapped hood on a banked-coal band,
     // `stardiadem` the starweaver woven silver band under its turning
     // ring of stars.
-    | 'fieldhood' | 'mothcowl' | 'stormhood'
+    | 'fieldhood' | 'mothcowl'
     | 'hedgehat' | 'tidehood' | 'whispercowl' | 'cinderhood'
     | 'stardiadem'
+    // THE STORM COURT'S HEADS — stormwoven's four weathers, one
+    // owner each, the lots-override-kind law (the vigils precedent):
+    // `squallcowl` the rolling front worn forward with the caught
+    // bolt inlaid down its pitch, `anvilcrown` thunderhead's sheared
+    // cumulonimbus with the bolt jewel off the spill, `showerhat`
+    // sunshower's rain-slicked luck brim under its prism arc,
+    // `aurorapeak` aurora's folded midnight peak flying the night
+    // curtains. All four keep THE STORMBOLT clock.
+    | 'squallcowl' | 'anvilcrown' | 'showerhat' | 'aurorapeak'
     // THE HUNTER'S HEADS — the leather lane's own, one owner each:
     // `courierhood` the hareswift wind-flattened runner's hood,
     // kingfisher's FOUR LEVIATHANS (each dye lot wears its OWN sea
@@ -792,8 +852,23 @@ export interface HelmStyle {
   /** Heroncowl: the folded plume crest lapped down the swept peak,
    *  dark-tipped, each vane riding its own slow air. */
   plumecrest?: { color: string; tip: string };
-  /** Stormhood: the forged bolt pin on its disc boss at the brow. */
-  boltpin?: { color: string };
+  /** Squallcowl: THE CAUGHT BOLT — the forged fork inlaid down the
+   *  leading pitch, charging on THE STORMBOLT clock, and the gold
+   *  storm-`eye` boss at the brow that keeps the count. */
+  stormbolt?: { color: string; eye?: string };
+  /** Anvilcrown: the forked jewel hung off the anvil's spill on its
+   *  chain, and the gold charge `seam` burning under the lip. */
+  boltjewel?: { color: string; seam?: string };
+  /** Showerhat: the luck — the gilt `sun` boss at the band's leading
+   *  side and the rain-`bead` drip ring off the brim. */
+  showerluck?: { sun: string; bead: string };
+  /** Showerhat: the prism arc off the trailing brim — the rainbow
+   *  only this weather owns, waking with the charge. */
+  prismarc?: { colors: string[] };
+  /** Aurorapeak: the night curtains streaming off the apex — three
+   *  luminous silks waking in sequence — and the `star` pricks in
+   *  the cloth. */
+  nightcurtain?: { colors: string[]; star?: string };
   /** Tidehood: the pearl string across the brow — one glimmer walks
    *  the strand, wave after wave. */
   pearls?: { color: string };
@@ -1188,12 +1263,22 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     wispcourt: { color: '#9ae8c8' },
     reedgirdle: { cord: '#8a9a6c', charm: '#d8e8b0' },
   },
+  // THE STORM COURT: the sky's own regalia — the front banked on
+  // the chest, the bolt branded on the skirt, charge beads keeping
+  // the count at the waist, rain that never lands, and ONE shared
+  // strike across every piece. No borrowed runes, no stock emblem:
+  // the storm speaks its own words or none.
   stormwoven_robe: {
     color: '#4e5a78', trim: '#e8d878', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'bolt',
-    skirt: 0.34, runes: '#a8c4e8', sleeves: 'full', mantle: '#3e4860',
-    underskirt: '#3c4660', folds: true, stormfront: { color: '#46536e' },
-    boltseam: { color: '#e8d878' }, emblemScale: 1.15,
+    silhouette: 'robe', pauldron: 'stormyoke', pauldronColor: '#46516c',
+    pauldronTrim: '#e8d878', pauldronScale: 1.14, chest: 'none',
+    skirt: 0.34, sleeves: 'full', mantle: '#3e4860',
+    underskirt: '#3c4660', folds: true,
+    thunderbank: { color: '#46536e', glow: '#e8d878' },
+    boltbrand: { color: '#e8d878' },
+    rainhem: { color: '#a8c4e8' },
+    staticcourt: { color: '#e8d878' },
+    chargebeads: { cord: '#3e4860', bead: '#e8d878' },
   },
   // The early-game leather sets: the skirmisher's leveling road. Each
   // ships in four dye lots via registerColorways below.
@@ -1708,8 +1793,8 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     wisplantern: { cage: '#8a9a6c', wisp: '#9ae8c8' },
   },
   stormwoven_hood: {
-    color: '#4e5a78', trim: '#c9d4e8', kind: 'stormhood',
-    boltpin: { color: '#e8d878' },
+    color: '#4e5a78', trim: '#c9d4e8', kind: 'squallcowl',
+    stormbolt: { color: '#e8d878', eye: '#e8d878' },
   },
   hareswift_hood: {
     color: '#c2a878', trim: '#8a6f48', kind: 'courierhood',
@@ -2700,26 +2785,56 @@ registerColorways(BOOT_STYLES, 'fenwalker_slippers', {
   graymist: { color: '#57625e', wrap: { color: '#98a49c' }, toe: '#d0ecdc' },
 });
 
-// Stormwoven dye lots: the bolt stays gold under every weather but
-// aurora, where the sky itself changes color.
+// Stormwoven dye lots — THE STORM COURT: each weather wears its OWN
+// head and its OWN shoulders (lots override `kind` AND `pauldron`,
+// the vigils + leviathans laws), and every color-bearing word is
+// restated whole so no lot wears stale weather.
 registerColorways(BODY_STYLES, 'stormwoven_robe', {
   thunderhead: {
-    color: '#3a3f4e', trim: '#e8c04c', runes: '#8898b8', mantle: '#2e323e', underskirt: '#2e323e',
-    stormfront: { color: '#333846' }, boltseam: { color: '#e8c04c' },
+    color: '#3a3f4e', trim: '#e8c04c', mantle: '#2e323e', underskirt: '#2e323e',
+    pauldron: 'anvilpaul', pauldronColor: '#333848', pauldronTrim: '#e8c04c',
+    thunderbank: { color: '#333846', glow: '#e8c04c' },
+    boltbrand: { color: '#e8c04c' },
+    rainhem: { color: '#8898b8' },
+    staticcourt: { color: '#e8c04c' },
+    chargebeads: { cord: '#2e323e', bead: '#e8c04c' },
+    groundflash: { color: '#fff2c0' },
   },
   sunshower: {
-    color: '#c9a85c', trim: '#f4ecd0', runes: '#fff0b0', mantle: '#a8894a', underskirt: '#a8894a',
-    stormfront: { color: '#b2934e' }, boltseam: { color: '#fff0b0' },
+    color: '#c9a85c', trim: '#f4ecd0', mantle: '#a8894a', underskirt: '#a8894a',
+    pauldron: 'showerpaul', pauldronColor: '#b2934e', pauldronTrim: '#f4ecd0',
+    thunderbank: { color: '#b2934e', glow: '#fff0b0' },
+    boltbrand: { color: '#fff0b0' },
+    rainhem: { color: '#f4ecd0' },
+    staticcourt: { color: '#fff0b0' },
+    chargebeads: { cord: '#a8894a', bead: '#fff0b0' },
+    sunpatch: { color: '#ffe9a8' },
   },
   aurora: {
-    color: '#3e7a6a', trim: '#b8e8d0', runes: '#c8a8e8', mantle: '#326256', underskirt: '#326256',
-    stormfront: { color: '#37695c' }, boltseam: { color: '#c8a8e8' },
+    color: '#3e7a6a', trim: '#b8e8d0', mantle: '#326256', underskirt: '#326256',
+    pauldron: 'aurorapaul', pauldronColor: '#2e5248', pauldronTrim: '#b8e8d0',
+    thunderbank: { color: '#37695c', glow: '#b8e8d0' },
+    boltbrand: { color: '#c8a8e8' },
+    rainhem: { color: '#b8e8d0' },
+    staticcourt: { color: '#c8a8e8' },
+    chargebeads: { cord: '#326256', bead: '#c8a8e8' },
+    curtainhem: { colors: ['#9ae8c0', '#6ad0c0', '#c8a8e8'] },
   },
 });
 registerColorways(HELM_STYLES, 'stormwoven_hood', {
-  thunderhead: { color: '#3a3f4e', trim: '#e8c04c', boltpin: { color: '#e8c04c' } },
-  sunshower: { color: '#c9a85c', trim: '#f4ecd0', boltpin: { color: '#fff0b0' } },
-  aurora: { color: '#3e7a6a', trim: '#b8e8d0', boltpin: { color: '#c8a8e8' } },
+  thunderhead: {
+    color: '#3a3f4e', trim: '#8898b8', kind: 'anvilcrown',
+    boltjewel: { color: '#e8c04c', seam: '#e8c04c' },
+  },
+  sunshower: {
+    color: '#c9a85c', trim: '#f4ecd0', kind: 'showerhat',
+    showerluck: { sun: '#ffdf80', bead: '#eaf4ff' },
+    prismarc: { colors: ['#e8a0a0', '#ffe9a8', '#a0d8c8'] },
+  },
+  aurora: {
+    color: '#2e5248', trim: '#b8e8d0', kind: 'aurorapeak',
+    nightcurtain: { colors: ['#9ae8c0', '#6ad0c0', '#c8a8e8'], star: '#eaf4e8' },
+  },
 });
 registerColorways(LEG_STYLES, 'stormwoven_skirts', {
   thunderhead: { thigh: '#2e323e' },
@@ -3660,6 +3775,169 @@ export function drawTorsoGarment(
         }
         ctx.globalAlpha = 1;
       }
+      if (st.sunpatch && !back) {
+        // THE SUN PATCH: sunshower's own — one warm window of light
+        // sliding across the cloth as the clouds shift overhead.
+        // The luck is that it keeps finding you.
+        const k = stormboltK(nowMs);
+        const px = Math.sin(nowMs * 0.00019) * ww * 0.5;
+        ctx.globalAlpha = 0.12 + 0.1 * k;
+        ctx.fillStyle = st.sunpatch.color;
+        ctx.beginPath();
+        ctx.ellipse(px, y0 + (hemY - y0) * 0.55, ww * 0.4, (hemY - y0) * 0.34, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.1 + 0.12 * k;
+        ctx.beginPath();
+        ctx.ellipse(px - ww * 0.05, y0 + (hemY - y0) * 0.5, ww * 0.22, (hemY - y0) * 0.2, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      if (st.boltbrand && !back) {
+        // THE BOLT BRAND: the storm's mark inlaid down the skirt's
+        // leading side — a forged fork in its own dark channel,
+        // charging on THE STORMBOLT clock and burning white on the
+        // strike. Garment-scale: an heirloom, not a stitch.
+        const k = stormboltK(nowMs);
+        const strike = k > 0.92;
+        const bCol = st.boltbrand.color;
+        const pr = 0.15 * s;
+        const bbx = f.lead * ww * 0.52;
+        const bby = y0 + (hemY - y0) * 0.48;
+        const bolt = (m: number): void => {
+          ctx.beginPath();
+          ctx.moveTo(bbx + pr * 0.1 * m, bby - pr * 0.85 * m);
+          ctx.lineTo(bbx - pr * 0.42 * m, bby + pr * 0.12 * m);
+          ctx.lineTo(bbx - pr * 0.05 * m, bby + pr * 0.12 * m);
+          ctx.lineTo(bbx - pr * 0.16 * m, bby + pr * 0.8 * m);
+          ctx.lineTo(bbx + pr * 0.46 * m, bby - pr * 0.1 * m);
+          ctx.lineTo(bbx + pr * 0.08 * m, bby - pr * 0.1 * m);
+          ctx.closePath();
+        };
+        // The channel the fork sits in — inlay, not appliqué.
+        ctx.fillStyle = 'rgba(14, 12, 24, 0.5)';
+        bolt(1.3);
+        ctx.fill();
+        if (strike) {
+          ctx.globalAlpha = 0.3;
+          ctx.fillStyle = '#ffffff';
+          bolt(1.8);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.fillStyle = strike ? '#ffffff' : shade(bCol, Math.round(-22 + 40 * k));
+        bolt(1);
+        ctx.fill();
+        ctx.fillStyle = shade(bCol, 32);
+        ctx.fillRect(bbx - pr * 0.02, bby - pr * 0.5, pr * 0.14, pr * 0.14);
+      }
+      if (st.rainhem) {
+        // THE RAIN HEM: the weather the robe walks in — a soaked
+        // band riding the living hem, slanted rain falling past it,
+        // and one ring at a time where a drop gives up.
+        const rh = st.rainhem;
+        ctx.fillStyle = 'rgba(16, 18, 30, 0.35)';
+        ctx.beginPath();
+        ctx.moveTo(hem[0]!.x, hem[0]!.y - 0.036 * s);
+        for (let i = 1; i <= 4; i++) ctx.lineTo(hem[i]!.x, hem[i]!.y - 0.036 * s);
+        for (let i = 4; i >= 0; i--) ctx.lineTo(hem[i]!.x, hem[i]!.y + 0.01 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = rh.color;
+        ctx.lineWidth = Math.max(1.5, s * 0.013);
+        for (let i = 0; i < 5; i++) {
+          const u = -1.3 + (i / 4) * 2.6;
+          const fall = ((nowMs * 0.00058) + i * 0.23) % 1;
+          const rx0 = u * ww * 1.12 + Math.sin(i * 3.1) * ww * 0.08;
+          const ry0 = hemY - 0.34 * s + fall * 0.42 * s;
+          ctx.globalAlpha = 0.55 * Math.sin(Math.PI * fall);
+          ctx.beginPath();
+          ctx.moveTo(rx0, ry0);
+          ctx.lineTo(rx0 - f.lead * 0.016 * s, ry0 + 0.055 * s);
+          ctx.stroke();
+        }
+        const spU = (nowMs % 3600) / 3600;
+        const which = Math.floor(nowMs / 3600) % 3;
+        const sx2 = [-0.7, 0.15, 0.85][which]! * ww;
+        const srr = (0.014 + spU * 0.05) * s;
+        ctx.globalAlpha = 0.55 * (1 - spU);
+        ctx.strokeStyle = rh.color;
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.ellipse(sx2, hemY + 0.02 * s, srr, srr * 0.3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (st.curtainhem) {
+        // THE CURTAIN HEM: aurora's own — the night sky's curtain
+        // rides the living hem in its three colors, each band waking
+        // on its own watch. It never strikes; it breathes.
+        const colors = st.curtainhem.colors;
+        for (let bi = 0; bi < colors.length; bi++) {
+          const lift0 = (0.03 + bi * 0.032) * s;
+          const wake = 0.5 + 0.5 * Math.sin(nowMs * 0.00052 + bi * 2.1);
+          ctx.globalAlpha = 0.42 + 0.44 * wake;
+          ctx.strokeStyle = colors[bi]!;
+          ctx.lineWidth = Math.max(1.5, s * (0.026 - bi * 0.005));
+          ctx.beginPath();
+          for (let i = 0; i <= 4; i++) {
+            const p = hem[i]!;
+            const wob = Math.sin(nowMs * 0.0014 - i * 1.5 + bi * 1.1) * 0.012 * s;
+            const x = p.x * (1 - bi * 0.02);
+            const y = p.y - lift0 + wob;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (st.staticcourt) {
+        // THE STATIC COURT: three charge sparks climbing the hem air
+        // — faint while the sky banks, popping bright together on
+        // the strike. The storm's answer to the fen's wisps: these
+        // lights do not float, they RISE.
+        const scC = st.staticcourt.color;
+        const k = stormboltK(nowMs);
+        const strike = k > 0.92;
+        for (let i = 0; i < 3; i++) {
+          const u = [-1.18, 1.22, 0.1][i]!;
+          if (Math.abs(u) < 0.9 && back) continue;
+          const rise = ((nowMs * 0.00032) + i * 0.37) % 1;
+          const px = u * ww + Math.sin(nowMs * 0.0019 + i * 2.2) * 0.014 * s;
+          const py = hemY - rise * 0.34 * s;
+          const rr = (strike ? 0.02 : 0.011 + 0.005 * k) * s;
+          ctx.globalAlpha = (strike ? 0.95 : 0.3 + 0.45 * k) * Math.sin(Math.PI * rise);
+          ctx.fillStyle = strike ? '#ffffff' : scC;
+          ctx.beginPath();
+          ctx.moveTo(px, py - rr);
+          ctx.lineTo(px + rr * 0.6, py);
+          ctx.lineTo(px, py + rr);
+          ctx.lineTo(px - rr * 0.6, py);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (st.groundflash) {
+        // THE GROUND FLASH: thunderhead's own — when the strike
+        // lands, the world under the hem answers for one beat.
+        const k = stormboltK(nowMs);
+        if (k > 0.92) {
+          ctx.globalAlpha = 0.3;
+          ctx.fillStyle = st.groundflash.color;
+          ctx.beginPath();
+          ctx.ellipse(0, hemY + 0.045 * s, ww * 1.35, 0.05 * s, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.75;
+          ctx.strokeStyle = st.groundflash.color;
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(hem[0]!.x, hem[0]!.y);
+          for (let i = 1; i <= 4; i++) ctx.lineTo(hem[i]!.x, hem[i]!.y);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
       if (st.foamtiers) {
         // THE FOAM TIERS: tidecaller's own skirt — two scalloped
         // surf layers breaking over the cloth, each hem beaded in
@@ -3693,27 +3971,6 @@ export function drawTorsoGarment(
             ctx.fill();
           }
         }
-      }
-      if (st.boltseam && !back) {
-        // THE BOLT SEAM: stormwoven's one confession — a gold zigzag
-        // stitch down the skirt's leading side. Most beats it is only
-        // good sewing; on a rare one it remembers the sky.
-        const beat = Math.sin(nowMs * 0.0019 + 2.3);
-        ctx.globalAlpha = beat > 0.92 ? 1 : 0.6;
-        ctx.strokeStyle = st.boltseam.color;
-        ctx.lineWidth = Math.max(1, s * (beat > 0.92 ? 0.016 : 0.011));
-        const sx0 = f.lead * ww * 0.55;
-        ctx.beginPath();
-        ctx.moveTo(sx0, y0 + 0.04 * s);
-        for (let i = 1; i <= 6; i++) {
-          const v = i / 6;
-          ctx.lineTo(
-            sx0 + f.lead * ww * v * 0.32 + (i % 2 ? f.lead * ww * 0.14 : 0),
-            y0 + (hemY - y0) * v - 0.02 * s,
-          );
-        }
-        ctx.stroke();
-        ctx.globalAlpha = 1;
       }
       if (st.constellation && !back) {
         // THE CONSTELLATION: starweaver's own skirt — five stars
@@ -4298,6 +4555,53 @@ export function drawTorsoGarment(
         ctx.fillStyle = sh.fluff;
         ctx.beginPath();
         ctx.ellipse(bx + nod, -0.03 * s - hgt * s - 0.044 * s, 0.007 * s, 0.011 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // ---- THE CHARGE BEADS: stormwoven's girdle — a double cord
+    // swagged across the waist carrying three storm-glass beads.
+    // They light in sequence as the sky charges — the count made
+    // visible — and white out together on the strike.
+    if (st.chargebeads && !hurt && !back) {
+      const cb = st.chargebeads;
+      const ck = stormboltK(nowMs);
+      const cstrike = ck > 0.92;
+      ctx.strokeStyle = cb.cord;
+      ctx.lineWidth = Math.max(1.5, s * 0.013);
+      ctx.beginPath();
+      ctx.moveTo(-ww * 0.98, -0.05 * s);
+      ctx.quadraticCurveTo(0, -0.014 * s, ww * 0.98, -0.056 * s);
+      ctx.moveTo(-ww * 0.98, -0.032 * s);
+      ctx.quadraticCurveTo(0, 0.006 * s, ww * 0.98, -0.038 * s);
+      ctx.stroke();
+      const gSway = f.strideSw * 0.008 * s;
+      for (let i = 0; i < 3; i++) {
+        const u = -0.42 + i * 0.42;
+        const lit = cstrike || ck > (i + 1) / 3.6;
+        const bx = u * ww + gSway * (i - 1) * 0.5;
+        const by = 0.02 * s + 0.012 * s * Math.abs(u);
+        ctx.strokeStyle = shade(cb.cord, -12);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(u * ww, -0.02 * s);
+        ctx.lineTo(bx, by - 0.016 * s);
+        ctx.stroke();
+        if (lit) {
+          ctx.globalAlpha = cstrike ? 0.4 : 0.28;
+          ctx.fillStyle = cstrike ? '#ffffff' : cb.bead;
+          ctx.beginPath();
+          ctx.arc(bx, by, cstrike ? 0.032 * s : 0.024 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.fillStyle = cstrike ? '#ffffff' : lit ? cb.bead : shade(cb.cord, -22);
+        ctx.beginPath();
+        ctx.ellipse(bx, by, 0.013 * s, 0.017 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = cstrike ? '#ffffff' : shade(lit ? cb.bead : cb.cord, 26);
+        ctx.beginPath();
+        ctx.arc(bx - 0.004 * s, by - 0.005 * s, 0.004 * s, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -4895,31 +5199,41 @@ export function drawTorsoGarment(
       }
     }
 
-    // ---- THE STORMFRONT: stormwoven's own layer — lapped billow
-    // bands rolling across the chest on a diagonal, each with a flat
-    // lit rim: the weather system, worn. Front only; the back keeps
-    // the mantle's quiet.
-    if (st.stormfront && !hurt && !back) {
+    // ---- THE THUNDER BANK: stormwoven's own layer — the front
+    // itself banked across the chest on a diagonal: fat cloud rolls
+    // with flat lit caps, and the gold charge waking along the
+    // underside on THE STORMBOLT clock. At the strike the whole
+    // bank rims white for a beat.
+    if (st.thunderbank && !hurt && !back) {
       frontPlaneOn();
-      const fCol = st.stormfront.color;
-      // Rolls of cloud banked across the chest on a shallow diagonal
-      // — fat rounds with flat lit caps, darker as the bank climbs.
-      for (const [ri, y0, dv] of [[0, -0.88, -10], [1, -0.62, -2], [2, -0.38, 6]] as const) {
+      const tb = st.thunderbank;
+      const bk = stormboltK(nowMs);
+      const bstrike = bk > 0.92;
+      for (const [ri, yy0, dv] of [[0, -0.86, -12], [1, -0.58, -2]] as const) {
         for (let i = 0; i < 3; i++) {
-          const u = -0.6 + (i / 2) * 1.2;
-          const r = tw * (0.3 + 0.04 * Math.sin(i * 2.3 + ri * 1.7));
-          const bx = tw * u + tw * 0.06 * ri;
-          const by = th * y0 + th * 0.04 * Math.sin(i * 1.9 + ri) + tw * 0.05 * u * ri;
-          ctx.fillStyle = shade(fCol, dv);
+          const u = -0.62 + (i / 2) * 1.24;
+          const r = tw * (0.3 + 0.05 * Math.sin(i * 2.3 + ri * 1.7));
+          const bx = tw * u + tw * 0.09 * ri;
+          const by = th * yy0 + th * 0.05 * Math.sin(i * 1.9 + ri) + tw * 0.07 * u;
+          ctx.fillStyle = shade(tb.color, dv);
           ctx.beginPath();
           ctx.arc(bx, by, r, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = shade(fCol, dv + 13);
+          ctx.fillStyle = shade(tb.color, dv + 13);
           ctx.beginPath();
-          ctx.arc(bx - r * 0.16, by - r * 0.3, r * 0.5, 0, Math.PI * 2);
+          ctx.arc(bx, by, r * 0.8, Math.PI * 1.06, Math.PI * 1.94);
+          ctx.closePath();
           ctx.fill();
         }
       }
+      ctx.globalAlpha = 0.25 + 0.75 * bk;
+      ctx.strokeStyle = bstrike ? '#ffffff' : tb.glow;
+      ctx.lineWidth = Math.max(1, s * (bstrike ? 0.02 : 0.013));
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.88, -th * 0.52);
+      ctx.quadraticCurveTo(0, -th * 0.34, tw * 0.9, -th * 0.46);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
       frontPlaneOff();
     }
 
@@ -8371,6 +8685,387 @@ export function drawPauldron(
     ctx.restore();
     return;
   }
+  if (st.pauldron === 'stormyoke') {
+    // THE STORM YOKE — stormwoven's shoulders, asymmetric: the ONE
+    // SKY worn two ways. The right mounts THE CAUGHT BOLT — a forged
+    // fork rising off the seat, charging on THE STORMBOLT clock and
+    // whiting out on the shared strike. The left carries THE
+    // STORM-EYE — a coiled cloud roundel around the gold eye that
+    // keeps the count, with wind tabs streaming off the hem.
+    const boltC = st.boltbrand?.color ?? trim;
+    const k = stormboltK(nowMs);
+    const strike = k > 0.92;
+    seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
+    if (!hurt) {
+      // The shared ground: two cloud lobes lapping the seat hem.
+      for (const [u, r, dv] of [[-0.5, 0.05, -10], [0.4, 0.058, 2]] as const) {
+        ctx.fillStyle = shade(col, dv);
+        ctx.beginPath();
+        ctx.arc(u * 0.09 * s, 0.05 * s, r * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(col, dv + 12);
+        ctx.beginPath();
+        ctx.arc(u * 0.09 * s - r * s * 0.2, 0.05 * s - r * s * 0.32, r * s * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (side > 0) {
+      // THE CAUGHT BOLT: rising off the crest, leaning outboard —
+      // garment-scale, so it holds hurt-white instead of popping.
+      const pr = 0.098 * s;
+      const bx = side * 0.054 * s;
+      const by = -0.122 * s;
+      if (!hurt && strike) {
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(bx, by, pr * 1.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(side * 0.42);
+      ctx.fillStyle = hurt ? '#ffffff' : strike ? '#ffffff' : shade(boltC, Math.round(-8 + 30 * k));
+      ctx.beginPath();
+      ctx.moveTo(pr * 0.1, -pr * 0.85);
+      ctx.lineTo(-pr * 0.42, pr * 0.12);
+      ctx.lineTo(-pr * 0.05, pr * 0.12);
+      ctx.lineTo(-pr * 0.16, pr * 0.8);
+      ctx.lineTo(pr * 0.46, -pr * 0.1);
+      ctx.lineTo(pr * 0.08, -pr * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(boltC, 34);
+        ctx.fillRect(-pr * 0.04, -pr * 0.5, pr * 0.15, pr * 0.15);
+        // The mount collar where the fork meets the cloth.
+        ctx.fillStyle = shade(col, -22);
+        ctx.fillRect(-pr * 0.34, pr * 0.72, pr * 0.68, pr * 0.22);
+      }
+      ctx.restore();
+    } else if (!hurt) {
+      // THE STORM-EYE: the coiled roundel — three rings tightening
+      // to the gold eye, the count kept where the sword arm is not.
+      const ex = side * 0.02 * s;
+      const ey = -0.026 * s;
+      for (const [rr, dv] of [[0.062, -16], [0.044, -6], [0.027, 4]] as const) {
+        ctx.strokeStyle = shade(col, dv);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.arc(ex, ey, rr * s, Math.PI * 0.3, Math.PI * 2.05);
+        ctx.stroke();
+      }
+      ctx.fillStyle = strike ? '#ffffff' : shade(boltC, Math.round(-10 + 24 * k));
+      ctx.beginPath();
+      ctx.arc(ex, ey, 0.018 * s, 0, Math.PI * 2);
+      ctx.fill();
+      // Wind tabs streaming off the hem, outboard.
+      for (const [dy, ln] of [[0.052, 0.1], [0.072, 0.075]] as const) {
+        ctx.fillStyle = shade(col, -14);
+        ctx.beginPath();
+        ctx.moveTo(side * 0.06 * s, dy * s);
+        ctx.quadraticCurveTo(side * (0.06 + ln * 0.6) * s, dy * s + 0.004 * s, side * (0.06 + ln) * s, dy * s + 0.014 * s + Math.sin(nowMs * 0.0021 + dy * 40) * 0.006 * s);
+        ctx.lineTo(side * (0.06 + ln * 0.6) * s, dy * s + 0.02 * s);
+        ctx.quadraticCurveTo(side * 0.07 * s, dy * s + 0.018 * s, side * 0.06 * s, dy * s + 0.014 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.pauldron === 'anvilpaul') {
+    // THE ANVIL PAULDRON — thunderhead's shoulders, asymmetric. The
+    // right raises THE SLAB: a miniature anvil cloud with its own
+    // sheared lit top and a micro-bolt hung off the spill, flaring
+    // on the shared strike. The left lies flat: THE CHARGE COIL —
+    // three gold arcs banked on the seat dome that light in sequence
+    // as the sky charges, and white out together when it lets go.
+    const seamC = st.thunderbank?.glow ?? trim;
+    const k = stormboltK(nowMs);
+    const strike = k > 0.92;
+    seat(0.114 * s, 0.092 * s, hurt ? '#ffffff' : col, trim);
+    if (side > 0) {
+      // THE SLAB: column up from the seat, spreading to the shear.
+      const spill = side * 0.13 * s;
+      const topY = -0.15 * s;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(col, -8);
+      ctx.beginPath();
+      ctx.moveTo(side * -0.045 * s, -0.045 * s);
+      ctx.quadraticCurveTo(side * -0.055 * s, -0.1 * s, side * -0.03 * s, topY + 0.022 * s);
+      ctx.lineTo(spill, topY);
+      ctx.lineTo(spill - side * 0.012 * s, topY + 0.05 * s);
+      ctx.quadraticCurveTo(side * 0.05 * s, topY + 0.075 * s, side * 0.052 * s, -0.045 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The sheared lit top plane.
+        ctx.fillStyle = shade(col, 14);
+        ctx.beginPath();
+        ctx.moveTo(side * -0.03 * s, topY + 0.022 * s);
+        ctx.lineTo(spill, topY);
+        ctx.lineTo(spill - side * 0.018 * s, topY + 0.018 * s);
+        ctx.lineTo(side * -0.018 * s, topY + 0.036 * s);
+        ctx.closePath();
+        ctx.fill();
+        // Charge seam under the lip.
+        ctx.globalAlpha = 0.3 + 0.7 * k;
+        ctx.strokeStyle = strike ? '#ffffff' : seamC;
+        ctx.lineWidth = Math.max(1, s * (strike ? 0.013 : 0.009));
+        ctx.beginPath();
+        ctx.moveTo(spill - side * 0.014 * s, topY + 0.046 * s);
+        ctx.quadraticCurveTo(side * 0.06 * s, topY + 0.068 * s, side * 0.02 * s, topY + 0.062 * s);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        // The micro-bolt off the spill tip.
+        const pr = 0.036 * s;
+        const jx = spill - side * 0.01 * s + Math.sin(nowMs * 0.0013) * 0.008 * s;
+        const jy = topY + 0.1 * s;
+        ctx.strokeStyle = shade(col, -24);
+        ctx.lineWidth = Math.max(1, s * 0.006);
+        ctx.beginPath();
+        ctx.moveTo(spill - side * 0.008 * s, topY + 0.05 * s);
+        ctx.lineTo(jx, jy - pr * 0.8);
+        ctx.stroke();
+        if (strike) {
+          ctx.globalAlpha = 0.22;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(jx, jy, pr * 1.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.fillStyle = strike ? '#ffffff' : shade(seamC, Math.round(-16 + 30 * k));
+        ctx.beginPath();
+        ctx.moveTo(jx + pr * 0.1, jy - pr * 0.85);
+        ctx.lineTo(jx - pr * 0.42, jy + pr * 0.12);
+        ctx.lineTo(jx - pr * 0.05, jy + pr * 0.12);
+        ctx.lineTo(jx - pr * 0.16, jy + pr * 0.8);
+        ctx.lineTo(jx + pr * 0.46, jy - pr * 0.1);
+        ctx.lineTo(jx + pr * 0.08, jy - pr * 0.1);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if (!hurt) {
+      // THE CHARGE COIL: three arcs waking with the charge — the
+      // sequence IS the count; the strike takes them all at once.
+      for (let i = 0; i < 3; i++) {
+        const lit = strike || k > (i + 1) / 3.6;
+        const rr = (0.03 + i * 0.022) * s;
+        ctx.globalAlpha = lit ? (strike ? 1 : 0.9) : 0.4;
+        ctx.strokeStyle = lit ? seamC : shade(col, -18);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.arc(side * 0.014 * s, -0.03 * s, rr, Math.PI * (0.85 + i * 0.06), Math.PI * (2.35 - i * 0.06));
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // The coil heart: a rivet that sparks at the strike.
+      ctx.fillStyle = strike ? '#ffffff' : shade(seamC, -8);
+      ctx.beginPath();
+      ctx.arc(side * 0.014 * s, -0.03 * s, 0.012 * s, 0, Math.PI * 2);
+      ctx.fill();
+      if (strike) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = Math.max(1, s * 0.006);
+        for (const a of [0.5, 2.2, 4.1]) {
+          ctx.beginPath();
+          ctx.moveTo(side * 0.014 * s + Math.cos(a) * 0.018 * s, -0.03 * s + Math.sin(a) * 0.018 * s);
+          ctx.lineTo(side * 0.014 * s + Math.cos(a) * 0.034 * s, -0.03 * s + Math.sin(a) * 0.034 * s);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.pauldron === 'showerpaul') {
+    // THE SHOWER PAULDRON — sunshower's shoulders, asymmetric. The
+    // right carries THE SUNBREAK: a gilt half-disc looking over a
+    // cloud lobe, rays out, one glint walking its rim. The left is
+    // THE DRIP VEIL: the seat slicked with sheen, two bead cords
+    // swinging off the hem, and a drop that lets go on the beat.
+    const sunC = st.sunpatch?.color ?? trim;
+    const rainC = st.rainhem?.color ?? trim;
+    const k = stormboltK(nowMs);
+    seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
+    if (side > 0) {
+      // The cloud lobe the sun looks over.
+      ctx.fillStyle = hurt ? '#ffffff' : shade(col, 4);
+      ctx.beginPath();
+      ctx.arc(side * 0.03 * s, -0.052 * s, 0.055 * s, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(col, 16);
+        ctx.beginPath();
+        ctx.arc(side * 0.018 * s, -0.068 * s, 0.028 * s, 0, Math.PI * 2);
+        ctx.fill();
+        // Rays first, reaching from behind the lobe.
+        for (let i = 0; i < 4; i++) {
+          const a = -Math.PI * 0.9 + (i / 3) * Math.PI * 0.55;
+          ctx.strokeStyle = shade(sunC, -4);
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.moveTo(side * 0.052 * s + Math.cos(a) * 0.052 * s, -0.078 * s + Math.sin(a) * 0.052 * s);
+          ctx.lineTo(side * 0.052 * s + Math.cos(a) * 0.075 * s, -0.078 * s + Math.sin(a) * 0.075 * s);
+          ctx.stroke();
+        }
+        // The half-disc, clipped by its own horizon over the lobe.
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(side * 0.052 * s - 0.06 * s, -0.078 * s - 0.06 * s, 0.12 * s, 0.06 * s);
+        ctx.clip();
+        ctx.fillStyle = sunC;
+        ctx.beginPath();
+        ctx.arc(side * 0.052 * s, -0.078 * s, 0.042 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(sunC, 22);
+        ctx.beginPath();
+        ctx.arc(side * 0.052 * s, -0.078 * s, 0.028 * s, Math.PI, Math.PI * 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        // The walking glint.
+        const ga = Math.PI * (1.05 + 0.9 * k);
+        ctx.globalAlpha = 0.5 + 0.5 * k;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(side * 0.052 * s + Math.cos(ga) * 0.036 * s, -0.078 * s + Math.sin(ga) * 0.036 * s * 0.6 - 0.006 * s, 0.008 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    } else if (!hurt) {
+      // THE DRIP VEIL: sheen on the dome, cords of rain-beads off
+      // the hem, one drop falling on the cycle.
+      ctx.globalAlpha = 0.4;
+      ctx.strokeStyle = shade(trim, 8);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.arc(0, -0.02 * s, 0.078 * s, Math.PI * 1.15, Math.PI * 1.6);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      const dropU = (nowMs % 7200) / 7200;
+      for (const [u, ph] of [[-0.55, 0.4], [0.35, 2.2]] as const) {
+        const bx = u * 0.09 * s + Math.sin(nowMs * 0.0016 + ph) * 0.006 * s;
+        const by0 = 0.052 * s;
+        const hang = 0.05 * s + 0.012 * s * Math.sin(ph * 3);
+        ctx.strokeStyle = shade(col, -18);
+        ctx.lineWidth = Math.max(1, s * 0.005);
+        ctx.beginPath();
+        ctx.moveTo(u * 0.09 * s, by0);
+        ctx.quadraticCurveTo(u * 0.09 * s + (bx - u * 0.09 * s) * 0.6, by0 + hang * 0.6, bx, by0 + hang);
+        ctx.stroke();
+        for (const bv of [0.45, 0.75, 1] as const) {
+          ctx.fillStyle = rainC;
+          ctx.beginPath();
+          ctx.ellipse(u * 0.09 * s + (bx - u * 0.09 * s) * bv, by0 + hang * bv, 0.009 * s, 0.013 * s, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = shade(rainC, 28);
+        ctx.beginPath();
+        ctx.arc(bx - 0.004 * s, by0 + hang - 0.004 * s, 0.005 * s, 0, Math.PI * 2);
+        ctx.fill();
+        // The drop lets go off the trailing cord.
+        if (u < 0) {
+          ctx.globalAlpha = Math.max(0, 0.8 - dropU);
+          ctx.fillStyle = rainC;
+          ctx.beginPath();
+          ctx.ellipse(bx, by0 + hang + 0.02 * s + dropU * 0.11 * s, 0.007 * s, 0.011 * s, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.pauldron === 'aurorapaul') {
+    // THE AURORA PAULDRON — the night sky's shoulders, asymmetric.
+    // The right flies THE CURTAIN: three short luminous ribbons off
+    // the crest streaming outboard, waking in sequence — the head's
+    // sky at shoulder scale. The left is THE NIGHTFIELD: the dark
+    // seat holding its stars, with one pale arc banked low along
+    // the hem, breathing.
+    const curt = st.curtainhem?.colors ?? [trim];
+    seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
+    if (side > 0) {
+      // THE CURTAIN: garment-scale, holds hurt-white.
+      for (let i = 0; i < 3; i++) {
+        const rootX = side * (0.012 + i * 0.03) * s;
+        const rootY = -0.08 * s + i * 0.012 * s;
+        const len = (0.165 - i * 0.025) * s;
+        const wake = 0.5 + 0.5 * Math.sin(nowMs * 0.00052 + i * 2.1 + 0.8);
+        ctx.globalAlpha = hurt ? 1 : 0.55 + 0.4 * wake;
+        ctx.fillStyle = hurt ? '#ffffff' : curt[i % curt.length] ?? trim;
+        ctx.beginPath();
+        for (let sgm = 0; sgm <= 3; sgm++) {
+          const v = sgm / 3;
+          const px = rootX + side * v * 0.075 * s + side * Math.sin(nowMs * 0.0016 - v * 2.4 + i * 1.3) * 0.014 * s * v;
+          const py = rootY + v * len;
+          const wv = 0.019 * s * (1 - v * 0.5);
+          if (sgm === 0) ctx.moveTo(px - side * wv, py);
+          else ctx.lineTo(px - side * wv, py);
+        }
+        for (let sgm = 3; sgm >= 0; sgm--) {
+          const v = sgm / 3;
+          const px = rootX + side * v * 0.075 * s + side * Math.sin(nowMs * 0.0016 - v * 2.4 + i * 1.3) * 0.014 * s * v;
+          const py = rootY + v * len;
+          const wv = 0.019 * s * (1 - v * 0.5);
+          ctx.lineTo(px + side * wv, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      if (!hurt) {
+        // The clasp where the curtains root — cloth needs a mount.
+        ctx.fillStyle = shade(col, -20);
+        ctx.fillRect(side * 0.002 * s, -0.085 * s, side * 0.082 * s, 0.02 * s);
+        ctx.fillStyle = shade(trim, 6);
+        ctx.beginPath();
+        ctx.arc(side * 0.042 * s, -0.075 * s, 0.009 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (!hurt) {
+      // THE NIGHTFIELD: stars in the cloth, one awake at a time,
+      // and the banked arc breathing along the hem.
+      const starC = st.curtainhem?.colors?.[0] ?? trim;
+      for (const [ui, sx, sy] of [[0, -0.045, -0.055], [1, 0.03, -0.02], [2, -0.01, 0.015]] as const) {
+        const tw2 = 0.3 + 0.7 * Math.max(0, Math.sin(nowMs * 0.0009 + ui * 2.6 + 1.4));
+        ctx.globalAlpha = 0.35 + 0.45 * tw2;
+        ctx.fillStyle = starC;
+        const px = sx * s;
+        const py = sy * s;
+        const rr = (0.008 + 0.005 * tw2) * s;
+        ctx.beginPath();
+        ctx.moveTo(px, py - rr);
+        ctx.lineTo(px + rr * 0.3, py - rr * 0.3);
+        ctx.lineTo(px + rr, py);
+        ctx.lineTo(px + rr * 0.3, py + rr * 0.3);
+        ctx.lineTo(px, py + rr);
+        ctx.lineTo(px - rr * 0.3, py + rr * 0.3);
+        ctx.lineTo(px - rr, py);
+        ctx.lineTo(px - rr * 0.3, py - rr * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      }
+      const breathe = 0.5 + 0.5 * Math.sin(nowMs * 0.00052 + 3.2);
+      ctx.globalAlpha = 0.25 + 0.4 * breathe;
+      ctx.strokeStyle = curt[1 % curt.length] ?? starC;
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      ctx.arc(0, 0.16 * s, 0.13 * s, Math.PI * 1.28, Math.PI * 1.72);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
+
   if (st.pauldron === 'mothpile') {
     // THE MOTHPILE — the mothwing shoulder: the moth's own furred
     // thorax worn at the joint. A seated cap buried under two lapped
@@ -12156,35 +12851,41 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'stormhood') {
-    // THE STORMHOOD — stormwoven's own head: the rolling front worn
-    // as a collar. Three lapped billow rolls cross the mantle hem —
-    // cloud banks stacked on the shoulders — under a crown seamed
-    // with a gold zigzag stitch, pinned at the brow by the forged
-    // bolt on its disc boss. Now and then the seam admits what it is.
+  if (st.kind === 'squallcowl') {
+    // THE SQUALL COWL — stormwoven's own head, reforged: the rolling
+    // front worn as a garment. The cowl pitches FORWARD — a storm
+    // advances — under two cloud-roll ridges banked across the
+    // crown, a wind-tail tearing loose off the leeward slope, and
+    // THE CAUGHT BOLT: a forged fork inlaid down the leading pitch,
+    // charging on THE STORMBOLT clock. At the strike the inlay burns
+    // white and a hairline fork crosses the dark of the opening. The
+    // face stays in mystery; the weather does not.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.74 * (1 - 0.5 * t);
     const oTop = headY - hh * 0.6;
     const oBot = headY + hh * 0.84;
-    const sway = Math.sin(f.nowMs * 0.0015) * hw * 0.05;
-    const apexX = headX - lead * hw * (0.3 + t * 0.18);
-    const apexY = headY - hh * 1.5;
-    const tipX = headX - lead * (hw * (1.34 + t * 0.5) + sway);
-    const tipY = headY - hh * 0.94;
-    const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.26, headY + hh * 1.14);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.34, headY + hh * 0.2, headX + lead * hw * 1.18, headY - hh * 0.48);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.26, headY - hh * 0.84, headX + lead * hw * 0.84, headY - hh * 1.14);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * 1.42, apexX, apexY);
-      ctx.quadraticCurveTo(headX - lead * hw * (0.94 + t * 0.32), apexY + hh * 0.04, tipX, tipY);
-      ctx.quadraticCurveTo(headX - lead * hw * (0.98 + t * 0.26), headY - hh * 0.54, headX - lead * hw * (1.24 + t * 0.36), headY - hh * 0.18);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.38 + t * 0.32), headY + hh * 0.32, headX - lead * hw * 1.32, headY + hh * 1.14);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.42, headX + lead * hw * 1.26, headY + hh * 1.14);
+    const k = stormboltK(f.nowMs);
+    const strike = k > 0.92;
+    const sway = Math.sin(f.nowMs * 0.0014) * hw * 0.04;
+    const apexX = headX + lead * hw * (0.36 + t * 0.12) + sway;
+    const apexY = headY - hh * 1.46;
+    const tailX = headX - lead * (hw * (1.52 + t * 0.4) + sway * 1.6);
+    const tailY = headY - hh * (0.8 + 0.05 * Math.sin(f.nowMs * 0.0011 + 1.2));
+    const shell = (): void => {
+      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 1.12);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.36, headY + hh * 0.16, headX + lead * hw * 1.14, headY - hh * 0.5);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.12, headY - hh * 1.02, apexX, apexY);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.26, headY - hh * 1.36, headX - lead * hw * 0.86, headY - hh * 1.08);
+      // The leeward slope tears loose into the wind-tail.
+      ctx.quadraticCurveTo(headX - lead * hw * (1.12 + t * 0.2), headY - hh * 0.98, tailX, tailY);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.04 + t * 0.22), headY - hh * 0.62, headX - lead * hw * (1.26 + t * 0.32), headY - hh * 0.12);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.4 + t * 0.28), headY + hh * 0.36, headX - lead * hw * 1.3, headY + hh * 1.12);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.4, headX + lead * hw * 1.24, headY + hh * 1.12);
       ctx.closePath();
     };
-    const opening = () => {
+    const opening = (): void => {
       chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
     };
     ctx.fillStyle = mc;
@@ -12198,71 +12899,723 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       shell();
       if (front) opening();
       ctx.clip('evenodd');
+      // Leeward half in shade; the pitch keeps the light.
       ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // The crown's lit slope — a flat plane up the pitch.
+      ctx.fillRect(lead === 1 ? headX - hw * 2.6 : headX, headY - hh * 1.7, hw * 2.6, hh * 3.4);
       ctx.fillStyle = shade(st.color, 9);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.84, headY - hh * 1.0);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.2, headY - hh * 1.36, apexX, apexY + hh * 0.04);
-      ctx.lineTo(apexX + lead * hw * 0.1, apexY + hh * 0.26);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.24, headY - hh * 1.12, headX + lead * hw * 0.68, headY - hh * 0.8);
+      ctx.moveTo(headX + lead * hw * 1.06, headY - hh * 0.44);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.0, headY - hh * 1.0, apexX, apexY + hh * 0.04);
+      ctx.lineTo(apexX - lead * hw * 0.3, apexY + hh * 0.22);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.6, headY - hh * 0.9, headX + lead * hw * 0.74, headY - hh * 0.4);
       ctx.closePath();
       ctx.fill();
-      // THE BILLOW COLLAR: rolls of cloud stacked across the hem —
-      // each roll a fat round with a flat lit cap, banked the way a
-      // front banks on the horizon. Higher rows sit darker; the
-      // lowest catches what light is left.
-      for (const [ri, y0, dv] of [
-        [0, 0.44, -22], [1, 0.72, -10], [2, 1.0, 2],
-      ] as const) {
-        const by = headY + hh * y0;
+      // THE CLOUD RIDGES: two rolls banked across the crown — the
+      // front itself, worn. Fat rounds, flat lit caps, darker high.
+      for (const [ri, y0, dv] of [[0, -1.04, -16], [1, -0.72, -5]] as const) {
         for (let i = 0; i < 4; i++) {
-          const u = -1.2 + (i / 3) * 2.4;
-          const r = hw * (0.34 + 0.05 * Math.sin(i * 2.3 + ri * 1.7));
-          const bx = headX + hw * u;
-          const byy = by + hh * 0.04 * Math.sin(i * 1.9 + ri);
+          const u = -1.05 + (i / 3) * 2.1;
+          const r = hw * (0.3 + 0.05 * Math.sin(i * 2.1 + ri * 1.9));
+          const bx = headX + hw * u - lead * hw * 0.1 * ri;
+          const by = headY + hh * (y0 + 0.05 * Math.sin(i * 1.7 + ri * 0.9));
           ctx.fillStyle = shade(st.color, dv);
           ctx.beginPath();
-          ctx.arc(bx, byy, r, 0, Math.PI * 2);
+          ctx.arc(bx, by, r, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = shade(st.color, dv + 14);
+          ctx.fillStyle = shade(st.color, dv + 13);
           ctx.beginPath();
-          ctx.arc(bx - r * 0.18, byy - r * 0.3, r * 0.52, 0, Math.PI * 2);
+          ctx.arc(bx, by, r * 0.82, Math.PI * 1.06, Math.PI * 1.94);
+          ctx.closePath();
           ctx.fill();
         }
       }
-      // THE GOLD SEAM: a zigzag stitch down the trailing drape —
-      // lightning kept in the sewing. It flickers on a rare beat.
-      const beat = Math.sin(f.nowMs * 0.0021 + 1.1);
-      const seamA = beat > 0.93 ? 1 : 0.55;
-      ctx.globalAlpha = seamA;
-      ctx.strokeStyle = st.trim;
-      ctx.lineWidth = Math.max(1, s * 0.011);
-      ctx.beginPath();
-      ctx.moveTo(apexX - lead * hw * 0.02, apexY + hh * 0.14);
-      for (let i = 1; i <= 5; i++) {
-        const v = i / 5;
-        ctx.lineTo(
-          apexX - lead * hw * (0.1 + v * 0.6) + (i % 2 ? lead * hw * 0.12 : 0),
-          apexY + hh * (0.14 + v * 1.3),
-        );
+      // THE CAUGHT BOLT: the forged fork inlaid down the leading
+      // pitch — dark channel first, then the metal, then the charge.
+      const bCol = st.stormbolt?.color ?? st.trim;
+      const bx0 = headX + lead * hw * 0.66;
+      const by0 = headY - hh * 0.82;
+      const pr = headR * 0.6;
+      const bolt = (m: number): void => {
+        ctx.beginPath();
+        ctx.moveTo(pr * 0.1 * m, -pr * 0.85 * m);
+        ctx.lineTo(-pr * 0.42 * m, pr * 0.12 * m);
+        ctx.lineTo(-pr * 0.05 * m, pr * 0.12 * m);
+        ctx.lineTo(-pr * 0.16 * m, pr * 0.8 * m);
+        ctx.lineTo(pr * 0.46 * m, -pr * 0.1 * m);
+        ctx.lineTo(pr * 0.08 * m, -pr * 0.1 * m);
+        ctx.closePath();
+      };
+      ctx.save();
+      ctx.translate(bx0, by0);
+      ctx.rotate(lead * 0.42);
+      ctx.fillStyle = shade(st.color, -26);
+      bolt(1.32);
+      ctx.fill();
+      if (strike) {
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = '#ffffff';
+        bolt(1.35);
+        ctx.fill();
+        ctx.globalAlpha = 1;
       }
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.fillStyle = strike ? '#ffffff' : shade(bCol, Math.round(-24 + 40 * k));
+      bolt(1);
+      ctx.fill();
+      // One glint that survives every charge level.
+      ctx.fillStyle = shade(bCol, 34);
+      ctx.fillRect(-pr * 0.04, -pr * 0.52, pr * 0.16, pr * 0.16);
+      ctx.restore();
       ctx.restore();
       if (front) {
+        // The mystery is an OPAQUE plane, not a wash — flat forged
+        // dark held past the eye line, the lower face peeking under
+        // it (FF-wizard law; translucent pours gutter in this paint
+        // path, and the folded-dark language wants a flat plane).
+        ctx.fillStyle = '#1c1826';
+        ctx.fillRect(cx - ohw * 0.96, oTop + cut * 0.3, ohw * 1.92, (headY + hh * 0.18) - (oTop + cut * 0.3));
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.04);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.48)');
-        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.64);
+        // THE STRIKE ANSWERS INSIDE: a hairline fork crosses the
+        // dark — in front of the mystery, never lighting it.
+        if (strike) {
+          ctx.strokeStyle = 'rgba(232, 240, 255, 0.85)';
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 0.34, oTop + hh * 0.1);
+          ctx.lineTo(cx + ohw * 0.08, oTop + hh * 0.5);
+          ctx.lineTo(cx - ohw * 0.12, oTop + hh * 0.66);
+          ctx.lineTo(cx + ohw * 0.3, headY + hh * 0.5);
+          ctx.moveTo(cx - ohw * 0.12, oTop + hh * 0.66);
+          ctx.lineTo(cx - ohw * 0.38, headY + hh * 0.32);
+          ctx.stroke();
+        }
         ctx.restore();
+        // The shrine frame: trim border, inner dark line, brow hem.
+        ctx.strokeStyle = shade(st.color, 20);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        chamferRect(ctx, cx - ohw * 0.88, oTop + hh * 0.08, ohw * 1.76, (oBot - oTop) * 0.9, cut * 0.7);
+        ctx.stroke();
+        ctx.fillStyle = shade(st.color, -22);
+        ctx.fillRect(cx - ohw * 0.98, oTop - headR * 0.05, ohw * 1.96, headR * 0.1);
+        // THE STORM-EYE: the brow boss that keeps the count.
+        const eCol = st.stormbolt?.eye ?? st.trim;
+        const er = headR * 0.13 * (1 - t * 0.3);
+        const ey = oTop - headR * 0.02;
+        ctx.fillStyle = shade(eCol, -30);
+        ctx.beginPath();
+        ctx.arc(cx, ey, er, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = eCol;
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.arc(cx, ey, er * 0.68, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = strike ? '#ffffff' : eCol;
+        ctx.beginPath();
+        ctx.ellipse(cx, ey, er * 0.16, er * 0.42, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // From behind: the drape tail and the storm seam going home.
+        ctx.fillStyle = shade(st.color, -12);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.38, headY + hh * 0.84);
+        ctx.lineTo(headX + hw * 0.38, headY + hh * 0.84);
+        ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 1.86);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 1.1);
+        ctx.quadraticCurveTo(headX + lead * hw * 0.1, headY, headX + lead * hw * 0.04, headY + hh * 1.2);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'anvilcrown') {
+    // THE ANVIL CROWN — thunderhead's own head: the cumulonimbus
+    // worn as a crown. A dark cloud column climbs off a riveted brow
+    // band and SHEARS FLAT at the top — the anvil — spilling long on
+    // the leading side the way the real cloud runs downwind. The top
+    // keeps a lit, foreshortened plane; a gold charge seam burns
+    // under the lip on THE STORMBOLT clock; and the forked jewel
+    // hung off the overhang swings, counting, until the strike
+    // whites it out.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.6;
+    const oBot = headY + hh * 0.84;
+    const k = stormboltK(f.nowMs);
+    const strike = k > 0.92;
+    const topY = headY - hh * 1.32;
+    const spillX = headX + lead * hw * (1.5 - t * 0.28);
+    const backX = headX - lead * hw * (1.02 - t * 0.1);
+    const shell = (): void => {
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.12);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.3, headX + lead * hw * 1.12, headY - hh * 0.3);
+      // Leading side: the column waists in, then runs OUT under the
+      // overhang — the downwind spill.
+      ctx.quadraticCurveTo(headX + lead * hw * 1.06, headY - hh * 0.72, headX + lead * hw * 0.92, headY - hh * 0.92);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.28, headY - hh * 1.02, spillX, topY + hh * 0.12);
+      ctx.lineTo(spillX + lead * hw * 0.05, topY);
+      // The sheared top runs back nearly level.
+      ctx.lineTo(backX, topY - hh * 0.05);
+      // Trailing side steps down the stacked rolls.
+      ctx.quadraticCurveTo(headX - lead * hw * 1.14, headY - hh * 0.96, headX - lead * hw * 0.96, headY - hh * 0.74);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.2, headY - hh * 0.48, headX - lead * hw * 1.16, headY - hh * 0.1);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.3, headY + hh * 0.4, headX - lead * hw * 1.26, headY + hh * 1.12);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.4, headX + lead * hw * 1.22, headY + hh * 1.12);
+      ctx.closePath();
+    };
+    const opening = (): void => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      // The column in weather-shade.
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.6 : headX, headY - hh * 1.7, hw * 2.6, hh * 3.4);
+      // Stacked cloud rolls bulging the column — the mass that means
+      // the crown is WEATHER, not casework.
+      for (const [ri, y0, dv] of [[0, -0.94, -20], [1, -0.6, -9], [2, -0.28, 0]] as const) {
+        for (let i = 0; i < 4; i++) {
+          const u = -1.0 + (i / 3) * 2.0;
+          const r = hw * (0.32 + 0.05 * Math.sin(i * 2.4 + ri * 1.5));
+          const bx = headX + hw * u + lead * hw * 0.05 * ri;
+          const by = headY + hh * (y0 + 0.04 * Math.sin(i * 1.8 + ri));
+          ctx.fillStyle = shade(st.color, dv);
+          ctx.beginPath();
+          ctx.arc(bx, by, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(st.color, dv + 20);
+          ctx.beginPath();
+          ctx.arc(bx, by, r * 0.82, Math.PI * 1.06, Math.PI * 1.94);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      // The lit leading edge of the column — the light the anvil
+      // takes before it shears.
+      ctx.fillStyle = shade(st.color, 14);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.08, headY - hh * 0.3);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.02, headY - hh * 0.72, headX + lead * hw * 0.9, headY - hh * 0.92);
+      ctx.lineTo(headX + lead * hw * 0.7, headY - hh * 0.86);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.82, headY - hh * 0.66, headX + lead * hw * 0.86, headY - hh * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      // THE SHEARED TOP: a lit, foreshortened plane along the shear
+      // line — the 2.5D read that makes the anvil an anvil.
+      ctx.fillStyle = shade(st.color, 32);
+      ctx.beginPath();
+      ctx.moveTo(spillX + lead * hw * 0.05, topY);
+      ctx.lineTo(backX, topY - hh * 0.05);
+      ctx.lineTo(backX + lead * hw * 0.16, topY + hh * 0.1);
+      ctx.lineTo(spillX - lead * hw * 0.14, topY + hh * 0.14);
+      ctx.closePath();
+      ctx.fill();
+      // The front edge of the plane — one honest dark line.
+      ctx.strokeStyle = shade(st.color, -22);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(spillX - lead * hw * 0.14, topY + hh * 0.15);
+      ctx.lineTo(backX + lead * hw * 0.16, topY + hh * 0.11);
+      ctx.stroke();
+      // THE CHARGE SEAM: gold burning under the overhang lip.
+      const seamC = st.boltjewel?.seam ?? st.trim;
+      ctx.globalAlpha = 0.55 + 0.45 * k;
+      ctx.strokeStyle = strike ? '#ffffff' : seamC;
+      ctx.lineWidth = Math.max(1, s * (strike ? 0.02 : 0.014));
+      ctx.beginPath();
+      ctx.moveTo(spillX - lead * hw * 0.04, topY + hh * 0.2);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.0, topY + hh * 0.34, headX + lead * hw * 0.84, headY - hh * 0.88);
+      ctx.stroke();
+      if (strike) {
+        ctx.globalAlpha = 0.22;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = s * 0.05;
+        ctx.beginPath();
+        ctx.moveTo(spillX - lead * hw * 0.04, topY + hh * 0.24);
+        ctx.quadraticCurveTo(headX + lead * hw * 1.0, topY + hh * 0.38, headX + lead * hw * 0.84, headY - hh * 0.84);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      if (front) {
+        // The mystery is an OPAQUE flat plane held past the eye
+        // line — the anvil's shadow, not a wash.
+        ctx.fillStyle = '#16141f';
+        ctx.fillRect(cx - ohw * 0.96, oTop + cut * 0.3, ohw * 1.92, (headY + hh * 0.18) - (oTop + cut * 0.3));
         ctx.strokeStyle = shade(st.color, 18);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+        // THE RIVETED BROW BAND: the one forged thing on the cloud —
+        // dark band, gold edges, three rivet bosses.
+        const seamC = st.boltjewel?.seam ?? st.trim;
+        const bandH = headR * 0.13;
+        ctx.fillStyle = shade(st.color, -24);
+        ctx.fillRect(cx - ohw * 1.06, oTop - bandH * 0.72, ohw * 2.12, bandH);
+        ctx.strokeStyle = shade(seamC, -10);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 1.06, oTop - bandH * 0.72);
+        ctx.lineTo(cx + ohw * 1.06, oTop - bandH * 0.72);
+        ctx.moveTo(cx - ohw * 1.06, oTop + bandH * 0.28);
+        ctx.lineTo(cx + ohw * 1.06, oTop + bandH * 0.28);
+        ctx.stroke();
+        for (const u of [-0.72, 0, 0.72]) {
+          ctx.fillStyle = shade(seamC, u === 0 ? 8 : -6);
+          ctx.beginPath();
+          ctx.arc(cx + ohw * u, oTop - bandH * 0.22, headR * 0.035, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // From behind: the cloud spill draped down the nape.
+        for (const [yy, rr, dv] of [[0.9, 0.34, -14], [1.28, 0.26, -20], [1.6, 0.18, -26]] as const) {
+          ctx.fillStyle = shade(st.color, dv);
+          ctx.beginPath();
+          ctx.arc(headX + lead * hw * 0.08 * yy, headY + hh * yy, hw * rr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    // THE BOLT JEWEL: hung off the leading overhang — outside the
+    // silhouette, so it is STRUCTURE: it holds hurt-white, never
+    // pops. It swings on its chain; the strike whites it out.
+    const jCol = st.boltjewel?.color ?? st.trim;
+    const swing = Math.sin(f.nowMs * 0.0013 + 0.6) * hw * 0.07;
+    const jx = spillX - lead * hw * 0.1 + swing;
+    const jy = topY + hh * (0.56 + 0.03 * Math.cos(f.nowMs * 0.0013 + 0.6));
+    const pr = headR * 0.3;
+    if (!hurt) {
+      ctx.strokeStyle = shade(st.color, -28);
+      ctx.lineWidth = Math.max(1, s * 0.008);
+      ctx.beginPath();
+      ctx.moveTo(spillX - lead * hw * 0.08, topY + hh * 0.18);
+      ctx.lineTo(jx, jy - pr * 0.9);
+      ctx.stroke();
+      if (strike) {
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(jx, jy, pr * 1.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.save();
+    ctx.translate(jx, jy);
+    ctx.rotate(lead * 0.12 + swing / (hw * 1.4));
+    ctx.fillStyle = hurt ? '#ffffff' : strike ? '#ffffff' : shade(jCol, Math.round(-18 + 34 * k));
+    ctx.beginPath();
+    ctx.moveTo(pr * 0.1, -pr * 0.85);
+    ctx.lineTo(-pr * 0.42, pr * 0.12);
+    ctx.lineTo(-pr * 0.05, pr * 0.12);
+    ctx.lineTo(-pr * 0.16, pr * 0.8);
+    ctx.lineTo(pr * 0.46, -pr * 0.1);
+    ctx.lineTo(pr * 0.08, -pr * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(jCol, 34);
+      ctx.fillRect(-pr * 0.04, -pr * 0.5, pr * 0.16, pr * 0.16);
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.kind === 'showerhat') {
+    // THE LUCKWARD HAT — sunshower's own head: rain with the sun
+    // still out, worn with a brim. One wide rain-slicked brim, sagged
+    // at the front so the shadow door stays; a ring of drip beads
+    // hangs off the edge — parted at the face — and one drop lets go
+    // each cycle. The braided band holds the sun boss at its leading
+    // side, and off the trailing edge THE PRISM ARC wakes on the
+    // clock: the rainbow only this weather owns.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.6;
+    const oBot = headY + hh * 0.84;
+    const k = stormboltK(f.nowMs);
+    const sunC = st.showerluck?.sun ?? st.trim;
+    const beadC = st.showerluck?.bead ?? '#eaf4ff';
+    const brimY = headY - hh * 0.3;
+    const brimRx = hw * 2.15 * (1 - 0.16 * t);
+    // The mantle first — the hat sits on cloth, not on hair.
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    ctx.moveTo(headX - hw * 1.18, headY + hh * 1.1);
+    ctx.quadraticCurveTo(headX - hw * 1.26, headY - hh * 0.2, headX - hw * 0.96, brimY);
+    ctx.lineTo(headX + hw * 0.96, brimY);
+    ctx.quadraticCurveTo(headX + hw * 1.26, headY - hh * 0.2, headX + hw * 1.18, headY + hh * 1.1);
+    ctx.quadraticCurveTo(headX, headY + hh * 1.38, headX - hw * 1.18, headY + hh * 1.1);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt && front) {
+      // The face window sits in the mantle below the brim.
+      ctx.fillStyle = shade(st.color, -8);
+      ctx.beginPath();
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+      ctx.fill();
+      // Mystery poured from the brim, past the eye line.
+      // The under-brim shadow is an OPAQUE flat plane held past
+      // the eye line — brim-dark, the lower face keeps the light.
+      ctx.fillStyle = '#231a10';
+      ctx.fillRect(cx - ohw * 0.96, oTop + cut * 0.3, ohw * 1.92, (headY + hh * 0.18) - (oTop + cut * 0.3));
+      ctx.strokeStyle = shade(st.color, 18);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+      ctx.stroke();
+    }
+    if (!hurt && !front) {
+      // The back read: the mantle's rain-dark center seam and a
+      // soaked drape tail below the brim line.
+      ctx.fillStyle = shade(st.color, -12);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.4, headY + hh * 0.7);
+      ctx.lineTo(headX + hw * 0.4, headY + hh * 0.7);
+      ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 1.8);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // THE BRIM: one wide rain-slick plane. Lower lip sags; the back
+    // rides high. Painted as two half-ellipses sharing the rim line.
+    const dipRy = hh * 0.46;
+    const riseRy = hh * 0.26;
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, -4);
+    ctx.beginPath();
+    ctx.ellipse(headX, brimY, brimRx, dipRy, 0, 0, Math.PI);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 8);
+    ctx.beginPath();
+    ctx.ellipse(headX, brimY, brimRx, riseRy, 0, Math.PI, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // THE WATER SHEEN: one pale streak riding the upper plane, and
+      // a lit rim line at the edge — slicked, not dry felt.
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = shade(st.trim, 10);
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.ellipse(headX, brimY, brimRx * 0.78, riseRy * 0.6, 0, Math.PI * 1.12, Math.PI * 1.7);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = shade(st.color, 20);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.ellipse(headX, brimY, brimRx, dipRy, 0, 0, Math.PI);
+      ctx.stroke();
+      // THE DRIP RING: beads hanging off the brim edge on hairline
+      // cords, PARTED at the front so the shadow door stays. One
+      // drop per cycle lets go and falls.
+      const dropU = ((f.nowMs % 7200) / 7200);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + 0.35;
+        const ux = Math.cos(a);
+        if (front && Math.abs(ux) < 0.4 && Math.sin(a) > 0) continue;
+        const bx = headX + ux * brimRx * 0.94;
+        const by = brimY + Math.sin(a) * (Math.sin(a) > 0 ? dipRy : riseRy) * 0.94;
+        const hang = hh * (0.1 + 0.05 * Math.sin(i * 2.2));
+        ctx.strokeStyle = shade(st.color, -16);
+        ctx.lineWidth = Math.max(1, s * 0.006);
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx, by + hang);
+        ctx.stroke();
+        ctx.fillStyle = beadC;
+        ctx.beginPath();
+        ctx.ellipse(bx, by + hang + headR * 0.035, headR * 0.032, headR * 0.045, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(beadC, 30);
+        ctx.beginPath();
+        ctx.arc(bx - headR * 0.01, by + hang + headR * 0.022, headR * 0.012, 0, Math.PI * 2);
+        ctx.fill();
+        // The falling drop: bead 3's drip lets go once a cycle.
+        if (i === 3) {
+          const fall = dropU * hh * 0.9;
+          ctx.globalAlpha = Math.max(0, 0.85 - dropU);
+          ctx.fillStyle = beadC;
+          ctx.beginPath();
+          ctx.ellipse(bx, by + hang + headR * 0.09 + fall, headR * 0.02, headR * 0.034, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    // THE CROWN: a low slicked dome over the brim.
+    ctx.fillStyle = hurt ? '#ffffff' : st.color;
+    ctx.beginPath();
+    ctx.moveTo(headX - hw * 0.92, brimY);
+    ctx.quadraticCurveTo(headX - hw * 0.98, headY - hh * 0.98, headX - hw * 0.4, headY - hh * 1.14);
+    ctx.quadraticCurveTo(headX + lead * hw * 0.1, headY - hh * (1.26 + 0.02 * Math.sin(f.nowMs * 0.0012)), headX + hw * 0.4, headY - hh * 1.14);
+    ctx.quadraticCurveTo(headX + hw * 0.98, headY - hh * 0.98, headX + hw * 0.92, brimY);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The lit pitch of the crown.
+      ctx.fillStyle = shade(st.color, 10);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.14, headY - hh * 1.22);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.66, headY - hh * 1.06, headX + lead * hw * 0.8, brimY - hh * 0.12);
+      ctx.lineTo(headX + lead * hw * 0.5, brimY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.42, headY - hh * 1.0, headX + lead * hw * 0.0, headY - hh * 1.18);
+      ctx.closePath();
+      ctx.fill();
+      // THE BRAIDED BAND: two cords crossing — gold and cream — with
+      // the knot at the trailing side.
+      const bandY = brimY - hh * 0.16;
+      for (const [colr, ph] of [[sunC, 0], [st.trim, Math.PI]] as const) {
+        ctx.strokeStyle = shade(colr, -4);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        for (let i = 0; i <= 10; i++) {
+          const u = -0.88 + (i / 10) * 1.76;
+          const x = headX + hw * u;
+          const y = bandY + Math.sin((u * 3.2) + ph) * hh * 0.035;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      ctx.fillStyle = shade(sunC, -10);
+      ctx.beginPath();
+      ctx.arc(headX - lead * hw * 0.82, bandY + hh * 0.02, headR * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+      // THE SUN BOSS: the half-disc at the band's leading side, ray
+      // nubs reaching, one glint walking its rim with the charge.
+      const sbx = headX + lead * hw * 0.6;
+      const sbr = headR * 0.2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(sbx - sbr * 1.6, bandY - sbr * 1.9, sbr * 3.2, sbr * 1.9);
+      ctx.clip();
+      for (let i = 0; i < 5; i++) {
+        const a = Math.PI + (i / 4) * Math.PI;
+        ctx.strokeStyle = shade(sunC, -6);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(sbx + Math.cos(a) * sbr * 1.05, bandY + Math.sin(a) * sbr * 1.05);
+        ctx.lineTo(sbx + Math.cos(a) * sbr * 1.38, bandY + Math.sin(a) * sbr * 1.38);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = shade(sunC, -46);
+      ctx.lineWidth = Math.max(1.5, s * 0.013);
+      ctx.beginPath();
+      ctx.arc(sbx, bandY, sbr, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = sunC;
+      ctx.beginPath();
+      ctx.arc(sbx, bandY, sbr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(sunC, 24);
+      ctx.beginPath();
+      ctx.arc(sbx, bandY, sbr * 0.62, Math.PI, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      const ga = Math.PI * (1.0 + 1.0 * k);
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.5 + 0.5 * k;
+      ctx.beginPath();
+      ctx.arc(sbx + Math.cos(ga) * sbr * 0.85, bandY - Math.abs(Math.sin(ga)) * sbr * 0.85, headR * 0.022, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // THE PRISM ARC: three thin bows springing off the trailing
+      // brim, waking with the charge — sun and rain shaking hands.
+      if (st.prismarc) {
+        const pcs = st.prismarc.colors;
+        const ax = headX - lead * brimRx * 0.6;
+        const ay = brimY + hh * 0.06;
+        ctx.globalAlpha = 0.42 + 0.45 * k;
+        ctx.lineWidth = Math.max(1.5, s * 0.017);
+        for (let i = 0; i < pcs.length; i++) {
+          ctx.strokeStyle = shade(pcs[i]!, 14);
+          ctx.beginPath();
+          const rr = hw * (0.56 + i * 0.11);
+          const a0 = lead === 1 ? Math.PI * 0.98 : Math.PI * 1.52;
+          const a1 = lead === 1 ? Math.PI * 1.48 : Math.PI * 2.02;
+          ctx.arc(ax, ay, rr, a0, a1);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'aurorapeak') {
+    // THE NIGHT CURTAIN — aurora's own head: a folded midnight peak
+    // flying the sky it was cut from. Three luminous silk curtains
+    // stream off the apex and PAST the silhouette, rippling on
+    // traveling waves and waking in sequence — the aurora does not
+    // strike, it breathes. Hard folded planes keep the peak angular;
+    // faint stars sit in the cloth; the face stays in the deepest
+    // dark the wardrobe owns.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.6;
+    const oBot = headY + hh * 0.84;
+    const sway = Math.sin(f.nowMs * 0.0012) * hw * 0.03;
+    const apexX = headX - lead * hw * (0.22 + t * 0.1) + sway;
+    const apexY = headY - hh * 1.44;
+    const curt = st.nightcurtain?.colors ?? [st.trim, st.trim, st.trim];
+    // THE CURTAINS FIRST — they live behind the peak, trailing, and
+    // they are garment-scale STRUCTURE: hurt holds them white.
+    for (let i = 0; i < 3; i++) {
+      const rootX = apexX - lead * hw * (0.02 + i * 0.13);
+      const rootY = apexY + hh * (0.06 + i * 0.13);
+      const len = hh * (2.35 - i * 0.4);
+      const w0 = hw * (0.25 - i * 0.045);
+      const wake = 0.5 + 0.5 * Math.sin(f.nowMs * 0.00052 + i * 2.1);
+      ctx.globalAlpha = hurt ? 1 : 0.52 + 0.4 * wake;
+      ctx.fillStyle = hurt ? '#ffffff' : curt[i % curt.length] ?? st.trim;
+      ctx.beginPath();
+      for (let sgm = 0; sgm <= 4; sgm++) {
+        const v = sgm / 4;
+        const px = rootX - lead * (hw * 0.55 + v * hw * (0.85 + i * 0.2)) + lead * Math.sin(f.nowMs * 0.0016 - v * 2.6 + i * 1.4) * hw * 0.16 * v + lead * hw * 0.55;
+        const py = rootY + v * len;
+        const wv = w0 * (1 - v * 0.6);
+        if (sgm === 0) ctx.moveTo(px - lead * wv, py);
+        else ctx.lineTo(px - lead * wv, py);
+      }
+      for (let sgm = 4; sgm >= 0; sgm--) {
+        const v = sgm / 4;
+        const px = rootX - lead * (hw * 0.55 + v * hw * (0.85 + i * 0.2)) + lead * Math.sin(f.nowMs * 0.0016 - v * 2.6 + i * 1.4) * hw * 0.16 * v + lead * hw * 0.55;
+        const py = rootY + v * len;
+        const wv = w0 * (1 - v * 0.6);
+        ctx.lineTo(px + lead * wv, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The bright core thread of each curtain.
+        ctx.globalAlpha = 0.62 + 0.38 * wake;
+        ctx.strokeStyle = shade(curt[i % curt.length] ?? st.trim, 24);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        for (let sgm = 0; sgm <= 4; sgm++) {
+          const v = sgm / 4;
+          const px = rootX - lead * (v * hw * (0.85 + i * 0.2)) + lead * Math.sin(f.nowMs * 0.0016 - v * 2.6 + i * 1.4) * hw * 0.16 * v;
+          const py = rootY + v * len;
+          if (sgm === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    const shell = (): void => {
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.12);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.34, headY + hh * 0.18, headX + lead * hw * 1.14, headY - hh * 0.46);
+      // Hard folded planes: the peak is CUT, not draped.
+      ctx.lineTo(headX + lead * hw * 0.92, headY - hh * 1.02);
+      ctx.lineTo(headX + lead * hw * 0.34, headY - hh * 1.3);
+      ctx.lineTo(apexX, apexY);
+      ctx.lineTo(headX - lead * hw * 0.72, headY - hh * 1.16);
+      ctx.lineTo(headX - lead * hw * (1.1 + t * 0.24), headY - hh * 0.52);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.36 + t * 0.28), headY + hh * 0.3, headX - lead * hw * 1.28, headY + hh * 1.12);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.4, headX + lead * hw * 1.22, headY + hh * 1.12);
+      ctx.closePath();
+    };
+    const opening = (): void => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      // FOLDED DARK: hard planar shadows, never gradients.
+      ctx.fillStyle = shade(st.color, -16);
+      ctx.beginPath();
+      ctx.moveTo(apexX, apexY);
+      ctx.lineTo(headX - lead * hw * 0.72, headY - hh * 1.16);
+      ctx.lineTo(headX - lead * hw * 1.2, headY - hh * 0.4);
+      ctx.lineTo(headX - lead * hw * 1.34, headY + hh * 1.2);
+      ctx.lineTo(headX - lead * hw * 0.1, headY + hh * 1.3);
+      ctx.lineTo(headX - lead * hw * 0.2, headY - hh * 0.9);
+      ctx.closePath();
+      ctx.fill();
+      // The lit leading plane.
+      ctx.fillStyle = shade(st.color, 8);
+      ctx.beginPath();
+      ctx.moveTo(apexX, apexY);
+      ctx.lineTo(headX + lead * hw * 0.34, headY - hh * 1.3);
+      ctx.lineTo(headX + lead * hw * 0.7, headY - hh * 0.7);
+      ctx.lineTo(headX + lead * hw * 0.18, headY - hh * 0.62);
+      ctx.closePath();
+      ctx.fill();
+      // One crease line where the planes meet.
+      ctx.strokeStyle = shade(st.color, -26);
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      ctx.moveTo(apexX, apexY + hh * 0.06);
+      ctx.lineTo(headX + lead * hw * 0.16, headY - hh * 0.6);
+      ctx.stroke();
+      // THE STARS IN THE CLOTH: faint four-point pricks, one of them
+      // awake at a time.
+      const starC = st.nightcurtain?.star ?? '#eaf4e8';
+      for (const [ui, sx, sy] of [[0, -0.52, -0.9], [1, 0.36, -1.02], [2, -0.12, -0.42]] as const) {
+        const tw2 = 0.3 + 0.7 * Math.max(0, Math.sin(f.nowMs * 0.0009 + ui * 2.4));
+        ctx.globalAlpha = 0.25 + 0.45 * tw2;
+        ctx.fillStyle = starC;
+        const px = headX + hw * sx;
+        const py = headY + hh * sy;
+        const rr = headR * (0.035 + 0.02 * tw2);
+        ctx.beginPath();
+        ctx.moveTo(px, py - rr);
+        ctx.lineTo(px + rr * 0.3, py - rr * 0.3);
+        ctx.lineTo(px + rr, py);
+        ctx.lineTo(px + rr * 0.3, py + rr * 0.3);
+        ctx.lineTo(px, py + rr);
+        ctx.lineTo(px - rr * 0.3, py + rr * 0.3);
+        ctx.lineTo(px - rr, py);
+        ctx.lineTo(px - rr * 0.3, py - rr * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      if (front) {
+        // The deepest dark in the wardrobe — an OPAQUE flat plane;
+        // the night does not wash, it stands.
+        ctx.fillStyle = '#0c1210';
+        ctx.fillRect(cx - ohw * 0.96, oTop + cut * 0.3, ohw * 1.92, (headY + hh * 0.2) - (oTop + cut * 0.3));
+        ctx.strokeStyle = shade(st.color, 20);
         ctx.lineWidth = Math.max(1, s * 0.013);
         ctx.beginPath();
         opening();
@@ -12270,38 +13623,15 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.fillStyle = shade(st.color, -22);
         ctx.fillRect(cx - ohw * 0.98, oTop - headR * 0.045, ohw * 1.96, headR * 0.09);
       } else {
-        // From behind: the drape tail under the billow bank.
+        // From behind the curtains already carry the read; add the
+        // drape tail and the crease going home.
         ctx.fillStyle = shade(st.color, -12);
         ctx.beginPath();
         ctx.moveTo(headX - hw * 0.36, headY + hh * 0.86);
         ctx.lineTo(headX + hw * 0.36, headY + hh * 0.86);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.85);
+        ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 1.84);
         ctx.closePath();
         ctx.fill();
-      }
-      if (st.boltpin && front) {
-        // THE BOLT PIN: a forged gold bolt on a disc boss at the brow
-        // — the storm pinned where it can be watched.
-        const bc = st.boltpin.color;
-        const px = cx;
-        const py = oTop - headR * 0.01;
-        const pr = headR * 0.17 * (1 - t * 0.3);
-        ctx.fillStyle = shade(bc, -24);
-        ctx.beginPath();
-        ctx.arc(px, py, pr, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = bc;
-        ctx.beginPath();
-        ctx.moveTo(px + pr * 0.1, py - pr * 0.85);
-        ctx.lineTo(px - pr * 0.42, py + pr * 0.12);
-        ctx.lineTo(px - pr * 0.05, py + pr * 0.12);
-        ctx.lineTo(px - pr * 0.16, py + pr * 0.8);
-        ctx.lineTo(px + pr * 0.46, py - pr * 0.1);
-        ctx.lineTo(px + pr * 0.08, py - pr * 0.1);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = shade(bc, 30);
-        ctx.fillRect(px - pr * 0.05, py - pr * 0.5, pr * 0.18, pr * 0.18);
       }
     }
     return;
