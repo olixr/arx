@@ -4,8 +4,9 @@
 // sabatons, gauntlets) on a live rig across all eight facings, at
 // idle and at a real simulated gait, ringed by the renderer's
 // outline-dilate simulation, beside an oathgold benchmark row.
-// Rows 13+ are THE GRAND ARCANUM — the cloth high road — with
-// riftweave as the cloth lane's own calibration row.
+// Rows 13-15 are THE FALLEN GATE (gatefall, the plate lane's second
+// flagship); rows 16+ are THE GRAND ARCANUM — the cloth high road —
+// with riftweave as the cloth lane's own calibration row.
 // THE LAB LESSON applies: every figure owns a persistent LegSolver +
 // kneeMemory + depthMemory, or every stateful arm law is dead.
 // The audits this sheet runs:
@@ -118,22 +119,27 @@ row('palethorn', 'idle'); // 9 — the twin quench, one row
 row('kingsmane', 'idle'); // 10
 row('kingsmane', 'move'); // 11
 row('kingsmane', 'strike'); // 12
+// THE FALLEN GATE: the plate lane's second flagship — the strike row
+// proves the keystone holds its float through a swing.
+row('gatefall', 'idle'); // 13
+row('gatefall', 'move'); // 14
+row('gatefall', 'strike'); // 15
 // THE GRAND ARCANUM: the cloth high road, with the old cloth road's
 // best as its own calibration row.
-row('riftweave', 'idle'); // 13 — the old cloth road's best
-row('sunhallow', 'idle'); // 14
-row('sunhallow', 'move'); // 15
-row('stormsinger', 'idle'); // 16
-row('stormsinger', 'move'); // 17
-row('gloamsight', 'idle'); // 18
-row('gloamsight', 'move'); // 19
-row('flamewrought', 'idle'); // 20
-row('flamewrought', 'move'); // 21
-row('duskwarden', 'idle'); // 22
-row('duskwarden', 'move'); // 23
-row('aetherion', 'idle'); // 24
-row('aetherion', 'move'); // 25
-row('aetherion', 'strike'); // 26
+row('riftweave', 'idle'); // 16 — the old cloth road's best
+row('sunhallow', 'idle'); // 17
+row('sunhallow', 'move'); // 18
+row('stormsinger', 'idle'); // 19
+row('stormsinger', 'move'); // 20
+row('gloamsight', 'idle'); // 21
+row('gloamsight', 'move'); // 22
+row('flamewrought', 'idle'); // 23
+row('flamewrought', 'move'); // 24
+row('duskwarden', 'idle'); // 25
+row('duskwarden', 'move'); // 26
+row('aetherion', 'idle'); // 27
+row('aetherion', 'move'); // 28
+row('aetherion', 'strike'); // 29
 
 // ?sets=a,b,c — audit ANY families instead of the standing sheet:
 // one idle row each, plate nouns unless CLOTH_HEADS knows the family.

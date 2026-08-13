@@ -712,6 +712,9 @@ const defs: LootTableDef[] = [
       // The archmage tried too. The racks keep the vestment; the
       // glyph ring keeps turning over it, uncollected.
       ...setDrops('aetherion', 0.004),
+      // The doorwarden went down the way and did not come back. The
+      // racks keep the gatefall harness; the seam still tries.
+      ...setDrops('gatefall', 0.004),
     ],
   ),
 
@@ -940,6 +943,9 @@ const defs: LootTableDef[] = [
       // The archmage's vestment went below with its ring still
       // turning. The coins nearest it stack themselves.
       ...setDrops('aetherion', 0.004),
+      // The doorwarden's harness came back up without the warden.
+      // Nobody in the hoard's history has worn it twice.
+      ...setDrops('gatefall', 0.004),
     ],
   },
   {
@@ -990,6 +996,9 @@ const defs: LootTableDef[] = [
       // The ring of runes fits the gate's own lock a little too
       // well. Nobody has dared turn it.
       ...setDrops('aetherion', 0.004),
+      // Forged from the first gate that fell. The gatekeeper says
+      // the suit knocks, some nights, and it knocks from inside.
+      ...setDrops('gatefall', 0.004),
     ],
   },
 

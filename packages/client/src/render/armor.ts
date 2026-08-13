@@ -6441,19 +6441,25 @@ export function drawPauldron(
         const wake = Math.max(0, Math.sin(nowMs * 0.0009 + station * 1.5708) - 0.45) / 0.55;
         const gx = side * 0.02 * s;
         const gy = -0.138 * s;
-        // The pilot: a faint seam of light hanging in the gap.
-        ctx.globalAlpha = 0.22 + wake * 0.5;
+        // The pilot: a slim standing seam of light in the gap — a
+        // crack in the world, never an orb (the orbs word is owned).
+        ctx.globalAlpha = 0.2 + wake * 0.32;
         ctx.fillStyle = bc;
         ctx.beginPath();
-        ctx.ellipse(gx, gy, 0.03 * s + wake * 0.018 * s, 0.042 * s + wake * 0.022 * s, 0, 0, Math.PI * 2);
+        ctx.ellipse(gx, gy, 0.016 * s + wake * 0.01 * s, 0.046 * s + wake * 0.02 * s, side * 0.2, 0, Math.PI * 2);
         ctx.fill();
         if (wake > 0.04) {
-          // The bloom: hot core, and the broken tips catch the light.
-          ctx.globalAlpha = wake * 0.9;
-          ctx.fillStyle = shade(bc, 34);
+          // The bloom: a jagged bright crack standing in the gap,
+          // and the broken tips catching its light.
+          ctx.globalAlpha = Math.min(1, wake * 1.05);
+          ctx.strokeStyle = shade(bc, 34);
+          ctx.lineWidth = Math.max(1, s * 0.012);
           ctx.beginPath();
-          ctx.ellipse(gx, gy, 0.012 * s, 0.022 * s, 0, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.moveTo(gx + side * 0.006 * s, gy - 0.052 * s);
+          ctx.lineTo(gx - side * 0.008 * s, gy - 0.014 * s);
+          ctx.lineTo(gx + side * 0.008 * s, gy + 0.01 * s);
+          ctx.lineTo(gx - side * 0.004 * s, gy + 0.05 * s);
+          ctx.stroke();
           ctx.globalAlpha = wake * 0.8;
           ctx.strokeStyle = shade(bc, 26);
           ctx.lineWidth = Math.max(1, s * 0.011);
@@ -10808,12 +10814,10 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       // first, then the light inside it, pulsing like a held breath.
       const cy2 = headY - hh * 0.08;
       const crack = (o: number): void => {
-        ctx.moveTo(vx - dw * 0.86, cy2 + hh * 0.06 + o);
-        ctx.lineTo(vx - dw * 0.5, cy2 - hh * 0.05 + o);
-        ctx.lineTo(vx - dw * 0.22, cy2 + hh * 0.04 + o);
-        ctx.lineTo(vx + dw * 0.12, cy2 - hh * 0.07 + o);
-        ctx.lineTo(vx + dw * 0.46, cy2 + hh * 0.02 + o);
-        ctx.lineTo(vx + dw * 0.84, cy2 - hh * 0.06 + o);
+        ctx.moveTo(vx - dw * 0.84, cy2 + hh * 0.02 + o);
+        ctx.lineTo(vx - dw * 0.2, cy2 - hh * 0.04 + o);
+        ctx.lineTo(vx + dw * 0.08, cy2 + hh * 0.06 + o);
+        ctx.lineTo(vx + dw * 0.84, cy2 - hh * 0.04 + o);
       };
       ctx.strokeStyle = '#170f1c';
       ctx.lineWidth = Math.max(1.5, s * 0.022);
@@ -10832,13 +10836,22 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.strokeStyle = shade(kc, 34);
       ctx.lineWidth = Math.max(1, s * 0.014);
       ctx.beginPath();
-      ctx.moveTo(vx - dw * 0.22, cy2 + hh * 0.04);
-      ctx.lineTo(vx + dw * 0.12, cy2 - hh * 0.07);
+      ctx.moveTo(vx - dw * 0.2, cy2 - hh * 0.04);
+      ctx.lineTo(vx + dw * 0.08, cy2 + hh * 0.06);
       ctx.stroke();
       ctx.globalAlpha = 1;
     } else if (!hurt) {
-      // From behind: the door's back — two batten straps, the sealed
-      // seam with its faint scar of light, and the hinge backs.
+      // From behind: the door's back — the flared nape skirt first
+      // (a doorwarden shows no neck to the dark), then two batten
+      // straps, the sealed seam's faint scar, and the hinge backs.
+      ctx.fillStyle = shade(st.color, -6);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.92, headY + hh * 0.55);
+      ctx.lineTo(headX + hw * 0.92, headY + hh * 0.55);
+      ctx.lineTo(headX + hw * 0.72, botY + hh * 0.16);
+      ctx.lineTo(headX - hw * 0.72, botY + hh * 0.16);
+      ctx.closePath();
+      ctx.fill();
       ctx.fillStyle = shade(st.color, -12);
       for (const by2 of [-0.24, 0.34]) {
         ctx.fillRect(headX - hw * 0.78, headY + hh * by2, hw * 1.56, hh * 0.16);

@@ -393,7 +393,7 @@ test('themed cloth sets: five pieces each, coherent class and reqs', () => {
   assert.ok(byId.get('scholars_tome'));
 });
 
-test('the named wardrobe: thirty chase sets, owners keep them, rarity floors hold', () => {
+test('the named wardrobe: thirty-one chase sets, owners keep them, rarity floors hold', () => {
   // The vault-of-names law brought to armor: epic finds live at the
   // bands players level THROUGH (a low level never means a plain
   // reward), the legendary three never mint below their name, and
@@ -433,6 +433,9 @@ test('the named wardrobe: thirty chase sets, owners keep them, rarity floors hol
     rimethorn: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 45 },
     palethorn: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 45 },
     kingsmane: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 52 },
+    // THE FALLEN GATE: the plate lane's second flagship on the
+    // endgame shelf — the door that fell, worn as war plate.
+    gatefall: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 52 },
     // THE GRAND ARCANUM: the cloth high road — six vestments climbing
     // the same rungs the plate lane took, 30 to 52. The first two
     // jackpot from epic; the upper four never mint below legendary.
