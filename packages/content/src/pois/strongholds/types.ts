@@ -1,0 +1,134 @@
+/**
+ * THE STRONGHOLD GRAMMAR (docs/strongholds-plan.md Phase 1) — what a
+ * capital IS, as data.
+ *
+ * A StrongholdDef is a LAYOUT: one mega-prefab (the walls, gates,
+ * wards, and dressing — static, curated geometry) plus the muster
+ * plan that brings it to life. THE WALLS ARE AUTHORED, THE WAR IS
+ * DEALT: everything alive rides streams at compose time (Phase 4);
+ * the def only states intent — where the knots stand, who they are,
+ * which ward is the last stand.
+ *
+ * THE FOUNDRY LAW: the generator (generate.ts) PROPOSES layouts in
+ * this grammar; the bench curates them; the repository (this registry
+ * + the shared prefab library) serves them. Nothing generated ships
+ * sight-unseen — the shipped roster in defs.ts is generator output at
+ * pinned seeds, validated at build and walked by the test suite.
+ */
+
+export interface StrongholdKnot {
+  /** Anchor, prefab-local. The knot's bodies scatter ≤2.5 around it. */
+  at: readonly [number, number];
+  /** Bestiary id. */
+  npc: string;
+  /**
+   * Bodies in [min, max], 1..3 — THE PULL LAW's upper bound. A bigger
+   * fight is more knots, never a bigger knot.
+   */
+  band: readonly [number, number];
+  /**
+   * holdfast = lives at the anchor; sentry = watches (gate posts,
+   * wall eyes — the composer faces them outward).
+   */
+  role: 'holdfast' | 'sentry';
+  /** Entry only musters at this danger tier and above. */
+  minTier?: number;
+  /** Levels above the tier band's roll (honor guard rides this). */
+  levelOffset?: number;
+  /** Activity window, game hours [0, 24), from > to wraps midnight. */
+  hours?: { from: number; to: number };
+}
+
+export interface StrongholdWard {
+  /** Slug, unique within the def — the chapter ledger's key. */
+  key: string;
+  /** The chapter's name in the ward-break line ("the west pens"). */
+  name: string;
+  /** Prefab-local rect the chapter owns (knots + break detection). */
+  rect: { x: number; y: number; w: number; h: number };
+  /**
+   * The ward's muster. Knot anchors are pairwise ≥ KNOT_SPACING
+   * apart ACROSS THE WHOLE LAYOUT (validator law) — spacing is the
+   * strategy; a careful player takes a ward one knot at a time.
+   */
+  knots: readonly StrongholdKnot[];
+  /**
+   * An optional ward may roll unmanned per epoch (THE WAR IS DEALT —
+   * same walls, never the same siege). The boss ward never may.
+   */
+  optional?: boolean;
+  /**
+   * Patrol intent Phase 4 consumes: 'wall' walks the nearest wall
+   * run, 'lane' walks the worn lanes between wards. Absent = the
+   * knots keep their posts.
+   */
+  patrol?: 'wall' | 'lane';
+}
+
+export interface StrongholdBoss {
+  /** The last-stand ward's key. */
+  ward: string;
+  /** Bestiary id of the chief. */
+  npc: string;
+  /**
+   * Champion name pool — the seat hash crowns ONE, stable per site
+   * forever (the names-pool law; the chief of that hill has always
+   * been the chief of that hill).
+   */
+  names: readonly string[];
+  /** Anchor, prefab-local — beside the drum, before the cache. */
+  at: readonly [number, number];
+  /** Levels above the tier band's roll, 0..20. */
+  levelOffset?: number;
+}
+
+export interface StrongholdDef {
+  /** stronghold_-prefixed id; doubles as the layout prefab's id. */
+  id: string;
+  /** Bench label ("Goblin moot-citadel"). */
+  name: string;
+  /** One-line story for the bench — what this place IS. */
+  description?: string;
+  /**
+   * REQUIRED — a capital is a family's seat (THE CAPITAL LAW deals
+   * layouts by the territory field's family).
+   */
+  family: string;
+  /**
+   * Danger tiers this layout deals at, min ≥ 3 — a stronghold is
+   * deep frontier by law; settled countries keep no capital.
+   */
+  tiers: readonly [number, number];
+  /** Pick weight within the family's layout pool. */
+  weight: number;
+  /** The mega-prefab (shared library id — by convention === id). */
+  prefab: string;
+  /** The chapters. ≥ 2 (a gate yard and a last stand at minimum). */
+  wards: readonly StrongholdWard[];
+  /** The last stand. */
+  boss: StrongholdBoss;
+}
+
+/** THE PULL LAW: minimum tile distance between any two knot anchors. */
+export const KNOT_SPACING = 10;
+
+/** A knot is 1..3 bodies — busier is more knots, never bigger ones. */
+export const KNOT_BAND_MAX = 3;
+
+/** Layout prefab dimension envelope: a stronghold, not a camp. */
+export const STRONGHOLD_MIN_DIM = 48;
+export const STRONGHOLD_MAX_DIM = 120;
+
+/**
+ * Lawful muster envelope, counted in maximum bodies (knot band maxes
+ * + the boss): below it the walls outsize the war; above it the tick
+ * pays for a parade. Shipped layouts aim for 25-45.
+ */
+export const STRONGHOLD_BODIES_MIN = 16;
+export const STRONGHOLD_BODIES_MAX = 60;
+
+/** Ward count envelope. */
+export const STRONGHOLD_WARDS_MIN = 2;
+export const STRONGHOLD_WARDS_MAX = 9;
+
+export const STRONGHOLD_ID_RE = /^stronghold_[a-z0-9_]{1,50}$/;

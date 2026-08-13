@@ -137,7 +137,7 @@ const LEGEND: Record<string, number> = {
   '`': Tile.HideFrame,
 };
 
-interface Marker {
+export interface Marker {
   npc: string;
   /** Wander/respawn scatter radius for the posted body. */
   radius: number;
@@ -151,7 +151,9 @@ interface Marker {
   level?: number;
 }
 
-function sketch(
+// Exported for the stronghold Foundry's ward pieces (strongholds/
+// pieces.ts) — one sketch dialect, one legend, everywhere.
+export function sketch(
   id: string,
   name: string,
   rows: string[],

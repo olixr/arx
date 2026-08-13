@@ -6,6 +6,8 @@ import type {
   FrontierDef,
   LootTableDef,
   MinorDef,
+  StrongholdDef,
+  PrefabJson,
   NpcActorDef,
   NpcDef,
   PoiDef,
@@ -30,6 +32,10 @@ import {
   listItems,
   listLoot,
   listMinors,
+  listStrongholds,
+  saveStronghold,
+  revertStronghold,
+  savePrefabJson,
   listNodes,
   getGrowthDoc,
   saveNode,
@@ -78,6 +84,7 @@ export type Section =
   | 'dialogues'
   | 'pois'
   | 'minors'
+  | 'strongholds'
   | 'resources'
   | 'frontier'
   | 'factions'
@@ -95,6 +102,12 @@ export interface CmsState {
   pois: Array<Editable<PoiDef>>;
   /** THE SMALL FINDS roster (lived-in-land Phase 6). */
   minors: Array<Editable<MinorDef>>;
+  /** THE FOUNDRY's layout repository (strongholds Phase 1). */
+  strongholds: Array<Editable<StrongholdDef>>;
+  /** Families the generator can build for — the roll form's menu. */
+  strongholdFamilies: string[];
+  /** Rolled-but-unsaved layout prefabs, by def id (banked on save). */
+  strongholdDrafts: Record<string, PrefabJson>;
   /** THE ROSTER SPEAKS: the gatherable-node roster (second-growth Ph5). */
   nodes: Array<Editable<NodeDef>>;
   /** The land's clock — the growth dial doc riding the Resources bench. */
@@ -125,6 +138,9 @@ export const state: CmsState = {
   dialogues: [],
   pois: [],
   minors: [],
+  strongholds: [],
+  strongholdFamilies: [],
+  strongholdDrafts: {},
   nodes: [],
   growth: null,
   poiPrefabIds: [],
@@ -179,6 +195,11 @@ export async function reloadSection(section: Section): Promise<void> {
       const res = await listMinors();
       state.minors = res.minors;
       state.poiPrefabIds = res.prefabIds;
+    } else if (section === 'strongholds') {
+      const res = await listStrongholds();
+      state.strongholds = res.strongholds;
+      state.strongholdFamilies = res.families;
+      state.poiPrefabIds = res.prefabIds;
     } else if (section === 'resources') {
       state.nodes = (await listNodes()).nodes;
       state.growth = await getGrowthDoc();
@@ -201,7 +222,7 @@ export async function reloadSection(section: Section): Promise<void> {
 
 async function loadEverything(): Promise<void> {
   try {
-    const [npcs, loot, actors, dialogues, pois, minors, nodes, growth, items, sites, zones, frontier, factions, voice] =
+    const [npcs, loot, actors, dialogues, pois, minors, strongholds, nodes, growth, items, sites, zones, frontier, factions, voice] =
       await Promise.all([
         listNpcs(),
         listLoot(),
@@ -209,6 +230,7 @@ async function loadEverything(): Promise<void> {
         listDialogues(),
         listPois(),
         listMinors(),
+        listStrongholds(),
         listNodes(),
         getGrowthDoc(),
         listItems(),
@@ -224,6 +246,8 @@ async function loadEverything(): Promise<void> {
     state.dialogues = dialogues.dialogues;
     state.pois = pois.pois;
     state.minors = minors.minors;
+    state.strongholds = strongholds.strongholds;
+    state.strongholdFamilies = strongholds.families;
     state.nodes = nodes.nodes;
     state.growth = growth;
     state.poiPrefabIds = pois.prefabIds;
@@ -303,6 +327,12 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string; hint: string }
     hint: 'The texture layer — dens, cairns, caches, and claim-marks the lattice deals between sites. No chart markers, no ceremonies: the walk itself pays.',
   },
   {
+    id: 'strongholds',
+    label: 'Strongholds',
+    icon: 'stamp',
+    hint: 'THE FOUNDRY — walled capital layouts: roll a proposal, read its wards and pulls, polish in Map Studio, bank it in the repository. Nothing generated ships sight-unseen.',
+  },
+  {
     id: 'resources',
     label: 'Resources',
     icon: 'stamp',
@@ -378,6 +408,8 @@ function renderRail(): void {
                 ? state.pois.length
                 : s.id === 'minors'
                   ? state.minors.length
+                : s.id === 'strongholds'
+                  ? state.strongholds.length
                 : s.id === 'resources'
                   ? state.nodes.length
                 : s.id === 'frontier'
@@ -562,6 +594,24 @@ function listEntries(): ListEntry[] {
         ico: iconWrap(iconImg('stamp', 18)),
         group: m.def.family !== undefined ? `${m.def.family} country` : 'Universal texture',
       }));
+  }
+  if (state.section === 'strongholds') {
+    return state.strongholds
+      .filter((h) => match(h.def.id, h.def.name, h.def.description ?? ''))
+      .sort((a, b) => a.def.family.localeCompare(b.def.family) || a.def.name.localeCompare(b.def.name))
+      .map((h) => {
+        const knots = h.def.wards.reduce((n, w) => n + w.knots.length, 0);
+        const bodies = h.def.wards.reduce((n, w) => n + w.knots.reduce((m2, k) => m2 + k.band[1], 0), 1);
+        return {
+          id: h.def.id,
+          title: h.def.name,
+          sub: `${h.def.wards.length} wards · ${knots} knots · ≤${bodies} bodies`,
+          badge: `tiers ${h.def.tiers[0]}–${h.def.tiers[1]}`,
+          badgeEdited: h.edited,
+          ico: iconWrap(iconImg('stamp', 18)),
+          group: `${h.def.family} country`,
+        };
+      });
   }
   if (state.section === 'resources') {
     const SKILL_GROUP: Record<string, string> = {
@@ -783,6 +833,8 @@ $('btn-new-entry').onclick = () => {
         ? 'New archetype id (lowercase, e.g. bandit_watch):'
         : state.section === 'minors'
           ? 'New find id (must start find_, e.g. find_owl_roost):'
+        : state.section === 'strongholds'
+          ? 'New layout id (must start stronghold_, e.g. stronghold_goblin_highmoot):'
         : state.section === 'dialogues'
           ? 'New dialogue id (lowercase, e.g. ferryman_toll):'
           : 'New loot table id (lowercase, e.g. bog_fiend_drops):',
@@ -826,6 +878,44 @@ $('btn-new-entry').onclick = () => {
       return;
     }
     state.minors.push({ def: newMinorDef(id), edited: true, authored: false });
+  } else if (state.section === 'strongholds') {
+    if (state.strongholds.some((h) => h.def.id === id)) {
+      toast(`'${id}' already exists`, 3000, 'error');
+      return;
+    }
+    if (!id.startsWith('stronghold_')) {
+      toast("layout ids start with 'stronghold_' (the prefix is law)", 3600, 'error');
+      return;
+    }
+    // A layout is born rolled, never blank — the Foundry proposes,
+    // the curator disposes (reroll and polish live in the editor).
+    toast('rolling a first proposal…', 2200);
+    void (async () => {
+      try {
+        const roll = await (await import('./api.js')).generateStronghold({
+          seed: 1,
+          id,
+          name: id.replace(/^stronghold_/, '').replace(/_/g, ' '),
+          family: state.strongholdFamilies[0] ?? 'goblin',
+          tiers: [3, 5],
+          weight: 2,
+          sizeClass: 'hold',
+          bossNames: ['The Unnamed'],
+        });
+        if (!roll.ok || !roll.def || !roll.prefab) {
+          toast(`the Foundry refused: ${roll.errors[0] ?? 'no proposal'}`, 4200, 'error');
+          return;
+        }
+        state.strongholds.push({ def: roll.def, edited: true, authored: false });
+        state.strongholdDrafts[id] = roll.prefab;
+        select(id);
+        markDirty();
+        toast(`rolled '${id}' — reroll, polish, and save to bank it`, 3600);
+      } catch (err) {
+        toast((err as Error).message, 4200, 'error');
+      }
+    })();
+    return;
   }
   select(id);
   markDirty();
@@ -859,7 +949,7 @@ const hash = location.hash.replace(/^#/, '');
 if (hash) {
   const [sect, id] = hash.split('/') as [Section, string?];
   if (
-    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'minors', 'resources', 'items', 'frontier', 'factions', 'voice'].includes(sect)
+    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'minors', 'strongholds', 'resources', 'items', 'frontier', 'factions', 'voice'].includes(sect)
   ) {
     state.section = sect;
     state.selectedId = id ?? null;
@@ -929,6 +1019,27 @@ export const persistence = {
     if (outcome === 'deleted') state.selectedId = null;
     renderAll();
     toast(outcome === 'reverted' ? 'restored the shipped find' : 'deleted', 3000, 'success');
+  },
+  async saveStrongholdDef(def: StrongholdDef): Promise<void> {
+    // Bank the rolled prefab first — the def's geometry laws validate
+    // against the live library on the server.
+    const draft = state.strongholdDrafts[def.id];
+    if (draft) await savePrefabJson(draft);
+    await saveStronghold(def);
+    delete state.strongholdDrafts[def.id];
+    state.dirty = false;
+    await reloadSection('strongholds');
+    setSaveState('all changes saved');
+    toast(`'${def.name}' banked in the repository`, 3000, 'success');
+  },
+  async revertStrongholdDef(id: string): Promise<void> {
+    const { outcome } = await revertStronghold(id);
+    delete state.strongholdDrafts[id];
+    state.dirty = false;
+    await reloadSection('strongholds');
+    if (outcome === 'deleted') state.selectedId = null;
+    renderAll();
+    toast(outcome === 'reverted' ? 'restored the shipped layout' : 'deleted', 3000, 'success');
   },
   async saveNodeDef(def: NodeDef): Promise<void> {
     await saveNode(def);

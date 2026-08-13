@@ -10095,6 +10095,15 @@ export class GameServer {
     return new Set(this.poiPrefabs?.keys() ?? []);
   }
 
+  /**
+   * One live library prefab — the stronghold validator reads the
+   * layout's actual geometry (gates, wards, reachability), not just
+   * its id.
+   */
+  poiPrefab(id: string): PrefabDef | undefined {
+    return this.poiPrefabs?.get(id);
+  }
+
   /** In-world player count — the health endpoint's one gauge. */
   playerCount(): number {
     return this.players.size;

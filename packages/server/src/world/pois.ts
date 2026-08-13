@@ -19,6 +19,7 @@ import {
   PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
+  STRONGHOLD_PREFABS,
   ROAD_SHOULDER,
   dangerLaw,
   familiesOf,
@@ -1248,8 +1249,10 @@ export function loadPoiPrefabs(dataDir: string): Map<string, PrefabDef> {
   const dir = join(dataDir, 'prefabs');
   mkdirSync(dir, { recursive: true });
   const out = new Map<string, PrefabDef>();
-  // Builtins first (and seed any missing files).
-  for (const [id, builtin] of POI_PREFABS) {
+  // Builtins first (and seed any missing files). The stronghold
+  // shelf's layout prefabs are library citizens like any footprint —
+  // Map Studio curation of a citadel sticks by the same FILE-WINS law.
+  for (const [id, builtin] of [...POI_PREFABS, ...STRONGHOLD_PREFABS]) {
     const file = join(dir, `${id}.json`);
     if (!existsSync(file)) {
       try {

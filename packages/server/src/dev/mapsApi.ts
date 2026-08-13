@@ -13,6 +13,12 @@ import {
   AUTHORED_NODES,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
+  AUTHORED_STRONGHOLDS,
+  STRONGHOLD_DEFS,
+  FAMILY_STYLES,
+  genStronghold,
+  replaceStrongholds,
+  validateStronghold,
   MINOR_DEFS,
   familiesOf,
   DIALOGUES,
@@ -188,7 +194,8 @@ export function createMapsApi(
       url.pathname === '/dev/prefabs' ||
       url.pathname.startsWith('/dev/prefabs/') ||
       url.pathname.startsWith('/dev/content/') ||
-      url.pathname.startsWith('/dev/pois/');
+      url.pathname.startsWith('/dev/pois/') ||
+      url.pathname.startsWith('/dev/strongholds/');
     if (!isDev) return false;
 
     if (req.method === 'OPTIONS') {
@@ -1075,6 +1082,130 @@ export function createMapsApi(
           sendJson(res, 200, { ok: true, outcome });
           return true;
         }
+      }
+
+      // ------------------------------------------- THE FOUNDRY doors
+      // (strongholds Phase 1): the layout repository on the pois
+      // shape — list with edited/authored pills, PUT through the one
+      // validator against the LIVE prefab library, DELETE = revert —
+      // plus the generate door the bench rolls proposals through.
+      // No live cells stand in Phase 1, so a registry swap is the
+      // whole reload.
+      if (url.pathname === '/dev/content/strongholds' && req.method === 'GET') {
+        const edited = new Set(
+          (await loadContentDocs(db, 'stronghold')).filter((d) => d.edited).map((d) => d.id),
+        );
+        sendJson(res, 200, {
+          strongholds: [...STRONGHOLD_DEFS.values()].map((d) => ({
+            def: d,
+            edited: edited.has(d.id),
+            authored: AUTHORED_STRONGHOLDS.has(d.id),
+          })),
+          prefabIds: [...game.poiPrefabIds()],
+          families: [...FAMILY_STYLES.keys()],
+        });
+        return true;
+      }
+
+      const strongholdMatch = /^\/dev\/content\/strongholds\/([^/]+)$/.exec(url.pathname);
+      if (strongholdMatch) {
+        const id = strongholdMatch[1]!;
+        if (req.method === 'PUT') {
+          let raw: { id?: string; prefab?: string };
+          try {
+            raw = JSON.parse(await readBody(req)) as { id?: string; prefab?: string };
+            if (raw.id !== id) throw new Error(`body id '${raw.id}' does not match URL '${id}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          // The geometry laws need the layout's actual prefab — save
+          // the prefab to the library first (the bench does), then
+          // the def; a def naming a prefab the library lacks refuses.
+          const prefab = typeof raw.prefab === 'string' ? game.poiPrefab(raw.prefab) : undefined;
+          if (!prefab) {
+            sendJson(res, 400, { error: `prefab '${String(raw.prefab)}' is not in the library — save it first` });
+            return true;
+          }
+          const result = validateStronghold(raw, { prefab, npcIds: new Set(NPCS.keys()) });
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'stronghold', id, result.def);
+          const next = new Map(STRONGHOLD_DEFS);
+          next.set(id, result.def);
+          replaceStrongholds(next.values());
+          console.log(`[content] stronghold '${id}' saved + live`);
+          sendJson(res, 200, { ok: true, gates: result.gates });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const authored = AUTHORED_STRONGHOLDS.get(id) ?? null;
+          const outcome = await revertContentDoc(db, 'stronghold', id, authored);
+          const next = new Map(STRONGHOLD_DEFS);
+          if (authored) next.set(id, authored);
+          else next.delete(id);
+          replaceStrongholds(next.values());
+          console.log(`[content] stronghold '${id}' ${outcome}`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      if (url.pathname === '/dev/strongholds/generate' && req.method === 'POST') {
+        interface GenBody {
+          seed?: number;
+          id?: string;
+          name?: string;
+          description?: string;
+          family?: string;
+          tiers?: [number, number];
+          weight?: number;
+          sizeClass?: string;
+          bossNames?: string[];
+        }
+        let body: GenBody;
+        try {
+          body = JSON.parse(await readBody(req)) as GenBody;
+        } catch (err) {
+          sendJson(res, 400, { error: (err as Error).message });
+          return true;
+        }
+        const seed = Number.isInteger(body.seed) ? (body.seed as number) : 1;
+        try {
+          const proposal = genStronghold(seed, {
+            id: typeof body.id === 'string' ? body.id : 'stronghold_draft',
+            name: typeof body.name === 'string' && body.name.trim() ? body.name : 'Foundry draft',
+            ...(typeof body.description === 'string' && body.description
+              ? { description: body.description }
+              : {}),
+            family: typeof body.family === 'string' ? body.family : 'goblin',
+            tiers:
+              Array.isArray(body.tiers) && body.tiers.length === 2
+                ? [body.tiers[0], body.tiers[1]]
+                : [3, 5],
+            weight: typeof body.weight === 'number' ? body.weight : 2,
+            sizeClass: body.sizeClass === 'citadel' ? 'citadel' : 'hold',
+            bossNames:
+              Array.isArray(body.bossNames) && body.bossNames.length > 0
+                ? body.bossNames
+                : ['The Unnamed'],
+          });
+          const check = validateStronghold(proposal.def, { prefab: proposal.prefab });
+          sendJson(res, 200, {
+            ok: check.ok,
+            def: proposal.def,
+            prefab: prefabToJson(proposal.prefab),
+            gates: check.ok ? check.gates : [],
+            errors: check.ok ? [] : check.errors,
+          });
+        } catch (err) {
+          // A refused proposal (no ground for the court at this seed)
+          // is an honest answer, not a server fault.
+          sendJson(res, 200, { ok: false, errors: [(err as Error).message] });
+        }
+        return true;
       }
 
       // The bench's observed panel: run the REAL scaffold over a fresh

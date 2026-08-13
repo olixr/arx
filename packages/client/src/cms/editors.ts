@@ -24,6 +24,9 @@ import {
   type NpcDef,
   type PoiDef,
   type PoiGarrisonEntry,
+  type PrefabJson,
+  type StrongholdDef,
+  type StrongholdKnot,
 } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
@@ -34,7 +37,7 @@ import { creatureRender } from './gameRender.js';
 import { lookDesigner } from './lookDesigner.js';
 import { actorBust, actorFigure } from './portraits.js';
 import { entryShare, simulate, type SimAggregate } from './simulate.js';
-import { fetchPrefab, stagePoi, surveyFrontier } from './api.js';
+import { fetchPrefab, generateStronghold, stagePoi, surveyFrontier } from './api.js';
 import {
   drawPreviewPins,
   prefabLayers,
@@ -3973,6 +3976,383 @@ function iconWrap27(img: HTMLElement): HTMLElement {
   return wrap;
 }
 
+// ------------------------------------------------------ THE FOUNDRY
+
+/**
+ * THE FOUNDRY BENCH (strongholds Phase 1, docs/strongholds-plan.md):
+ * roll a walled-capital proposal from the generator, read it like a
+ * war-map — walls, gates, wards, and every pull — tune the muster,
+ * and bank it into the repository. THE FOUNDRY LAW: the generator
+ * proposes, this bench curates, nothing ships sight-unseen. Anchor
+ * geometry moves by reroll or in Map Studio (the layout prefab is an
+ * ordinary library citizen); the bench owns names, musters, flags,
+ * and the boss.
+ */
+
+/** Unsaved def drafts, by id — a reroll survives a detail rebuild. */
+const shDraftDefs = new Map<string, StrongholdDef>();
+/** Roll-bench params that are not part of the def. */
+const shRollParams = new Map<string, { seed: number; sizeClass: 'hold' | 'citadel' }>();
+
+function strongholdDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
+  const row = state.strongholds.find((h) => h.def.id === id);
+  if (!row) {
+    body.appendChild(el('p', 'muted empty', 'No such layout.'));
+    return;
+  }
+  if (!shDraftDefs.has(id)) {
+    shDraftDefs.set(id, JSON.parse(JSON.stringify(row.def)) as StrongholdDef);
+  }
+  const draft = shDraftDefs.get(id)!;
+  if (!shRollParams.has(id)) {
+    // A big ward roster reads as citadel scale — the chip starts on
+    // the class the layout actually is, not a blind default.
+    shRollParams.set(id, {
+      seed: 1,
+      sizeClass: row.def.wards.length >= 8 ? 'citadel' : 'hold',
+    });
+  }
+  const params = shRollParams.get(id)!;
+
+  const knotCount = (): number => draft.wards.reduce((n, w) => n + w.knots.length, 0);
+  const bodiesMax = (): number =>
+    draft.wards.reduce((n, w) => n + w.knots.reduce((m, k) => m + k.band[1], 0), 1);
+  const bodiesMin = (): number =>
+    draft.wards.reduce(
+      (n, w) => n + (w.optional ? 0 : w.knots.reduce((m, k) => m + k.band[0], 0)),
+      1,
+    );
+
+  const rebuild = (): void => strongholdDetail(body, linkage, id);
+
+  body.innerHTML = '';
+  linkage.innerHTML = '';
+  body.appendChild(
+    detailHead(
+      null,
+      draft.name,
+      draft.id,
+      [
+        pill(draft.family, "the family whose country deals this layout (THE CAPITAL LAW)", 'brass'),
+        pill(`tiers ${draft.tiers[0]}–${draft.tiers[1]}`, 'danger tiers this layout deals at'),
+        pill(`${draft.wards.length} wards`, 'chapters — each breaks with its own line'),
+        pill(
+          `${knotCount()} knots · ${bodiesMin()}–${bodiesMax()} bodies`,
+          'THE PULL LAW: knots of 1-3, anchors ≥10 tiles apart — the assault is a plan, not a blob',
+        ),
+        pill(`weight ${draft.weight}`, "pick weight in the family's pool"),
+      ],
+      row.edited || state.dirty,
+      row.authored,
+      () => void persistence.saveStrongholdDef(draft).then(() => shDraftDefs.delete(id)),
+      () => {
+        shDraftDefs.delete(id);
+        void persistence.revertStrongholdDef(id);
+      },
+    ),
+  );
+
+  // ---------------------------------------------------- the war-map
+  const mapWrap = el('div', 'poi-stage');
+  const mapNote = el('p', 'muted', 'composing the war-map…');
+  mapWrap.appendChild(mapNote);
+  void (async () => {
+    try {
+      const json: PrefabJson =
+        state.strongholdDrafts[id] ?? (await fetchPrefab(draft.prefab));
+      const prefab = prefabFromJson(json);
+      const layers = prefabLayers(prefab);
+      const canvas = renderLayersPreview(layers, 380);
+      // Ward rects over the bake: the last stand in gold, gate yards
+      // in watch-blue, wards in parchment.
+      const scale = canvas.width / (prefab.width + 2);
+      const ctx = canvas.getContext('2d')!;
+      ctx.lineWidth = 1.5;
+      for (const w of draft.wards) {
+        const isBoss = w.key === draft.boss.ward;
+        ctx.strokeStyle = isBoss ? '#e8d44c' : w.patrol === 'wall' ? '#6fb2d9' : '#d9c7a0';
+        ctx.globalAlpha = 0.85;
+        ctx.strokeRect(
+          (w.rect.x + 1) * scale,
+          (w.rect.y + 1) * scale,
+          w.rect.w * scale,
+          w.rect.h * scale,
+        );
+      }
+      ctx.globalAlpha = 1;
+      drawPreviewPins(
+        canvas,
+        layers,
+        [
+          ...draft.wards.flatMap((w) =>
+            w.knots.map((k) => ({
+              dx: k.at[0],
+              dy: k.at[1],
+              color: k.role === 'sentry' ? '#6fb2d9' : '#d96f6f',
+            })),
+          ),
+          { dx: draft.boss.at[0], dy: draft.boss.at[1], color: '#e8d44c' },
+        ],
+        380,
+      );
+      mapWrap.innerHTML = '';
+      mapWrap.appendChild(canvas);
+      const cap = el('div', 'hero-pills');
+      cap.appendChild(pill(`${prefab.width}×${prefab.height} tiles`, 'layout footprint'));
+      cap.appendChild(
+        pill(
+          state.strongholdDrafts[id] ? 'unsaved roll' : 'library prefab',
+          state.strongholdDrafts[id]
+            ? 'this geometry is banked on Save'
+            : `data/prefabs/${draft.prefab}.json — polish it in Map Studio; FILE WINS`,
+          state.strongholdDrafts[id] ? 'danger' : 'ink',
+        ),
+      );
+      cap.appendChild(pill('● holdfast · ● sentry · ● the chief', 'knot pins', 'ink'));
+      mapWrap.appendChild(cap);
+    } catch (err) {
+      mapNote.textContent = `no war-map: ${(err as Error).message}`;
+    }
+  })();
+  body.appendChild(
+    sect(
+      'The war-map',
+      'walls, gates, wards, and every pull — ward boxes outlined, the last stand in gold',
+      mapWrap,
+    ),
+  );
+
+  // -------------------------------------------------- the roll bench
+  const rollErrors = el('div', 'muted');
+  const seedIn = numIn(params.seed, (v) => {
+    params.seed = Math.max(0, Math.floor(v));
+  });
+  const sizeChips = el('div');
+  const sizeChip = (label: 'hold' | 'citadel', title: string): HTMLElement =>
+    featureChip(label, params.sizeClass === label, title, () => {
+      params.sizeClass = label;
+      rebuild();
+    });
+  sizeChips.append(
+    sizeChip('hold', '~58-80 tile walls — a hard fight'),
+    sizeChip('citadel', '~86-108 tile walls — a siege'),
+  );
+  const rollBtn = el('button', 'primary', 'Roll this seed') as HTMLButtonElement;
+  const roll = async (seed: number): Promise<void> => {
+    rollErrors.textContent = 'the Foundry is working…';
+    try {
+      const res = await generateStronghold({
+        seed,
+        id: draft.id,
+        name: draft.name,
+        ...(draft.description ? { description: draft.description } : {}),
+        family: draft.family,
+        tiers: [draft.tiers[0], draft.tiers[1]],
+        weight: draft.weight,
+        sizeClass: params.sizeClass,
+        bossNames: [...draft.boss.names],
+      });
+      if (!res.ok || !res.def || !res.prefab) {
+        rollErrors.textContent = `refused: ${res.errors.join(' · ')}`;
+        return;
+      }
+      params.seed = seed;
+      draft.wards = res.def.wards;
+      draft.boss = res.def.boss;
+      draft.prefab = res.def.prefab;
+      state.strongholdDrafts[id] = res.prefab;
+      markDirty();
+      rebuild();
+    } catch (err) {
+      rollErrors.textContent = (err as Error).message;
+    }
+  };
+  rollBtn.onclick = () => void roll(params.seed);
+  const luckBtn = el('button', '', 'Roll a fresh seed') as HTMLButtonElement;
+  luckBtn.onclick = () => {
+    const fresh = (Math.floor(Math.random() * 99999) + 1) | 0;
+    seedIn.value = String(fresh);
+    void roll(fresh);
+  };
+  const rollRow = el('div', 'poi-grow');
+  rollRow.append(el('span', 'lbl', 'seed'), seedIn, sizeChips, rollBtn, luckBtn);
+  body.appendChild(
+    sect(
+      'The Foundry',
+      'the generator proposes; you curate. A reroll replaces walls, wards, and anchors together — names, tiers, and the boss pool ride along.',
+      rollRow,
+      rollErrors,
+    ),
+  );
+
+  // ------------------------------------------------- the commission
+  const nameIn = document.createElement('input');
+  nameIn.type = 'text';
+  nameIn.value = draft.name;
+  nameIn.oninput = () => {
+    draft.name = nameIn.value;
+    markDirty();
+  };
+  const descIn = document.createElement('input');
+  descIn.type = 'text';
+  descIn.placeholder = 'one line: what this place IS';
+  descIn.value = draft.description ?? '';
+  descIn.oninput = () => {
+    draft.description = descIn.value || undefined;
+    markDirty();
+  };
+  const famPick = combobox(
+    () => state.strongholdFamilies.map((f) => ({ id: f, label: f, sub: `${f} country` })),
+    draft.family,
+    (f) => {
+      draft.family = f;
+      markDirty();
+    },
+    'family…',
+  );
+  const tiersPair = rangePair(draft.tiers[0], draft.tiers[1], 3, 5, (lo, hi) => {
+    draft.tiers = [lo, hi];
+    markDirty();
+  });
+  const weightIn = numIn(draft.weight, (v) => {
+    draft.weight = Math.max(0, v);
+    markDirty();
+  });
+  const commissionGrid = el('div', 'form-grid2');
+  const kv = (label: string, w: HTMLElement): void => {
+    commissionGrid.appendChild(el('span', 'lbl', label));
+    commissionGrid.appendChild(w);
+  };
+  kv('name', nameIn);
+  kv('story', descIn);
+  kv('family', famPick);
+  kv('tiers', tiersPair);
+  kv('weight', weightIn);
+  body.appendChild(
+    sect(
+      'The commission',
+      'a reroll keeps every word here; family steers the wall material, the pieces, and the muster menus',
+      commissionGrid,
+    ),
+  );
+
+  // ------------------------------------------------------ the wards
+  const wardsWrap = el('div');
+  for (const [wi, ward] of draft.wards.entries()) {
+    const card = el('div', 'poi-card');
+    const head = el('div', 'poi-grow');
+    const isBoss = ward.key === draft.boss.ward;
+    head.appendChild(pill(ward.key, 'chapter key (the ledger bit)', isBoss ? 'brass' : 'ink'));
+    const wname = document.createElement('input');
+    wname.type = 'text';
+    wname.value = ward.name;
+    wname.oninput = () => {
+      ward.name = wname.value;
+      markDirty();
+    };
+    head.appendChild(wname);
+    if (ward.patrol) head.appendChild(pill(`patrol: ${ward.patrol}`, 'Phase 4 walks this'));
+    if (!isBoss) {
+      head.appendChild(
+        featureChip(
+          'optional',
+          ward.optional === true,
+          'an optional ward may roll unmanned per epoch — same walls, never the same siege',
+          (on) => {
+            ward.optional = on || undefined;
+            markDirty();
+          },
+        ),
+      );
+    }
+    card.appendChild(head);
+    for (const [ki, knot] of ward.knots.entries()) {
+      const krow = el('div', 'poi-grow');
+      krow.appendChild(el('span', 'lbl', `knot ${ki + 1} @ ${knot.at[0]},${knot.at[1]}`));
+      krow.appendChild(
+        combobox(npcOptions, knot.npc, (npc) => {
+          (ward.knots as StrongholdKnot[])[ki] = { ...knot, npc };
+          markDirty();
+          rebuild();
+        }),
+      );
+      krow.appendChild(
+        rangePair(knot.band[0], knot.band[1], 1, 3, (lo, hi) => {
+          (ward.knots as StrongholdKnot[])[ki] = { ...knot, band: [lo, hi] };
+          markDirty();
+        }),
+      );
+      krow.appendChild(
+        featureChip('sentry', knot.role === 'sentry', 'sentries watch outward; holdfasts keep the yard', (on) => {
+          (ward.knots as StrongholdKnot[])[ki] = { ...knot, role: on ? 'sentry' : 'holdfast' };
+          markDirty();
+        }),
+      );
+      card.appendChild(krow);
+    }
+    if (ward.knots.length === 0) {
+      card.appendChild(el('p', 'muted', 'unmanned — scenery until a reroll marshals it'));
+    }
+    wardsWrap.appendChild(card);
+    void wi;
+  }
+  body.appendChild(
+    sect(
+      'The wards',
+      'each ward is a chapter: its knots are the pulls, its last fighter falling speaks its line (Phase 4). Anchors move by reroll or Map Studio — spacing is validated on save.',
+      wardsWrap,
+    ),
+  );
+
+  // -------------------------------------------------- the last stand
+  const bossRow = el('div', 'poi-grow');
+  bossRow.appendChild(el('span', 'lbl', 'the chief'));
+  bossRow.appendChild(
+    combobox(npcOptions, draft.boss.npc, (npc) => {
+      draft.boss = { ...draft.boss, npc };
+      markDirty();
+      rebuild();
+    }),
+  );
+  bossRow.appendChild(el('span', 'lbl', 'levels above band'));
+  bossRow.appendChild(
+    numIn(draft.boss.levelOffset ?? 0, (v) => {
+      draft.boss = { ...draft.boss, levelOffset: Math.max(0, Math.min(20, Math.floor(v))) };
+      markDirty();
+    }),
+  );
+  const namesIn = document.createElement('textarea');
+  namesIn.rows = 3;
+  namesIn.value = draft.boss.names.join('\n');
+  namesIn.oninput = () => {
+    draft.boss = {
+      ...draft.boss,
+      names: namesIn.value.split('\n').map((n) => n.trim()).filter(Boolean),
+    };
+    markDirty();
+  };
+  body.appendChild(
+    sect(
+      'The last stand',
+      'the seat hash crowns ONE name per site, stable forever — one name per line',
+      bossRow,
+      namesIn,
+    ),
+  );
+
+  // --------------------------------------------------------- linkage
+  const musterNpcs = new Map<string, number>();
+  for (const w of draft.wards) {
+    for (const k of w.knots) musterNpcs.set(k.npc, (musterNpcs.get(k.npc) ?? 0) + k.band[1]);
+  }
+  musterNpcs.set(draft.boss.npc, (musterNpcs.get(draft.boss.npc) ?? 0) + 1);
+  linkHead(linkage, 'npc', 'The muster bestiary', musterNpcs.size);
+  for (const [npc, n] of musterNpcs) {
+    const bench = state.npcs.find((x) => x.def.id === npc);
+    linkRow(linkage, bench?.def.name ?? npc, `≤${n} bodies`, () => setSection('npcs', npc));
+  }
+}
+
 export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   body.innerHTML = '';
   linkage.innerHTML = '';
@@ -3993,6 +4373,7 @@ export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   else if (state.section === 'dialogues') dialogueDetail(body, linkage, id);
   else if (state.section === 'pois') poiDetail(body, linkage, id);
   else if (state.section === 'minors') minorDetail(body, linkage, id);
+  else if (state.section === 'strongholds') strongholdDetail(body, linkage, id);
   else if (state.section === 'resources')
     id === 'growth' ? growthClockDetail(body) : nodeDetail(body, id);
   else if (state.section === 'frontier') frontierDetail(body, linkage);

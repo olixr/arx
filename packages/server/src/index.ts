@@ -10,6 +10,10 @@ import {
   AUTHORED_VOICE,
   AUTHORED_LOOT_TABLES,
   AUTHORED_MINOR_DEFS,
+  AUTHORED_STRONGHOLDS,
+  replaceStrongholds,
+  validateStronghold,
+  type StrongholdDef,
   AUTHORED_NODES,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
@@ -228,6 +232,36 @@ if (config.requireInvite) {
   console.log(
     `[content] finds: ${goodMinors.length} loaded ` +
       `(+${minorSeed.added} ~${minorSeed.updated} !${minorSeed.kept} -${minorSeed.removed} =${minorSeed.unchanged})`,
+  );
+
+  // THE FOUNDRY's repository (strongholds Phase 1) joins the same
+  // law: the pinned-seed shelf seeds as content docs, DB rows load
+  // back through the one validator (grammar half here — geometry laws
+  // run against the live prefab library at PUT time), the live
+  // registry swaps.
+  const strongholdSeed = await seedContentDocs(
+    db,
+    'stronghold',
+    [...AUTHORED_STRONGHOLDS.values()].map((d) => ({ id: d.id, doc: d })),
+  );
+  const strongholdDocs = await loadContentDocs(db, 'stronghold');
+  const goodStrongholds: StrongholdDef[] = [];
+  for (const docRow of strongholdDocs) {
+    const res = validateStronghold(docRow.doc);
+    if (!res.ok) {
+      console.warn(
+        `[content] DB stronghold '${docRow.id}' invalid (${res.errors[0]}) — authored layout stands`,
+      );
+      const authored = AUTHORED_STRONGHOLDS.get(docRow.id);
+      if (authored) goodStrongholds.push(authored);
+    } else {
+      goodStrongholds.push(res.def);
+    }
+  }
+  replaceStrongholds(goodStrongholds);
+  console.log(
+    `[content] strongholds: ${goodStrongholds.length} loaded ` +
+      `(+${strongholdSeed.added} ~${strongholdSeed.updated} !${strongholdSeed.kept} -${strongholdSeed.removed} =${strongholdSeed.unchanged})`,
   );
 
   // THE ROSTER SPEAKS (second-growth Phase 5): the resource-node

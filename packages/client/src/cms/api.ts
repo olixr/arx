@@ -10,6 +10,7 @@ import type {
   NpcDef,
   PoiDef,
   PrefabJson,
+  StrongholdDef,
   VoiceBankDef,
   VoiceClipDef,
   VoiceDoc,
@@ -268,6 +269,72 @@ export async function revertMinor(id: string): Promise<{ outcome: string }> {
   return (await (
     await request(`/dev/content/minors/${id}`, { method: 'DELETE' })
   ).json()) as { outcome: string };
+}
+
+// ------------------------------------------------------ THE FOUNDRY
+// (strongholds Phase 1): the layout repository + the generate door.
+
+export async function listStrongholds(): Promise<{
+  strongholds: Array<Editable<StrongholdDef>>;
+  prefabIds: string[];
+  families: string[];
+}> {
+  return (await (await request('/dev/content/strongholds')).json()) as {
+    strongholds: Array<Editable<StrongholdDef>>;
+    prefabIds: string[];
+    families: string[];
+  };
+}
+
+export async function saveStronghold(def: StrongholdDef): Promise<void> {
+  await request(`/dev/content/strongholds/${def.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertStronghold(id: string): Promise<{ outcome: string }> {
+  return (await (
+    await request(`/dev/content/strongholds/${id}`, { method: 'DELETE' })
+  ).json()) as { outcome: string };
+}
+
+export interface StrongholdRoll {
+  ok: boolean;
+  def?: StrongholdDef;
+  prefab?: PrefabJson;
+  gates?: Array<{ x: number; y: number }>;
+  errors: string[];
+}
+
+export async function generateStronghold(body: {
+  seed: number;
+  id: string;
+  name: string;
+  description?: string;
+  family: string;
+  tiers: [number, number];
+  weight: number;
+  sizeClass: 'hold' | 'citadel';
+  bossNames: string[];
+}): Promise<StrongholdRoll> {
+  return (await (
+    await request('/dev/strongholds/generate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  ).json()) as StrongholdRoll;
+}
+
+/** Bank a rolled layout prefab into the shared library (save order: prefab, then def). */
+export async function savePrefabJson(prefab: PrefabJson): Promise<void> {
+  await request(`/dev/prefabs/${prefab.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(prefab),
+  });
 }
 
 export async function listNodes(): Promise<{ nodes: Array<Editable<NodeDef>> }> {
