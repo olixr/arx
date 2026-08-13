@@ -18,6 +18,8 @@
 //   ?hurt=1     flat white hurt-flash silhouettes
 //   ?gait=walk  run rows amble instead of sprint
 //   ?s=<px>     body scale per cell (default 150)
+//   ?sets=a,b   audit ANY families (one idle row each) instead of
+//               the standing sheet — the lower-wardrobe sweep
 import { LegSolver, drawHumanoid, type RigPose } from '../render/rig.js';
 import { PoseState } from '@arx/shared';
 
@@ -126,6 +128,17 @@ row('duskwarden', 'move'); // 23
 row('aetherion', 'idle'); // 24
 row('aetherion', 'move'); // 25
 row('aetherion', 'strike'); // 26
+
+// ?sets=a,b,c — audit ANY families instead of the standing sheet:
+// one idle row each, plate nouns unless CLOTH_HEADS knows the family.
+// The lever that lets the lab sweep the LOWER wardrobe too.
+const setsQ = q.get('sets');
+if (setsQ) {
+  figs.length = 0;
+  for (const fam of setsQ.split(',').map((t) => t.trim()).filter(Boolean)) {
+    row(fam, 'idle');
+  }
+}
 
 const COLS = 8;
 const CW = 240;

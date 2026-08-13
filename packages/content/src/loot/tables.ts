@@ -912,7 +912,7 @@ const defs: LootTableDef[] = [
       // A rook got here first, once. It left the feathers behind.
       ...setDrops('rookfeather', 0.01),
       // The champion's parade kit went into the hoard with the
-      // champion. The pennons still fly down there.
+      // champion. The oath-cloth still flies down there.
       ...setDrops('oathgold', 0.008),
       // The weather abdicated into this hoard. The crown floats an
       // honest inch over the coins and outranks all of them.

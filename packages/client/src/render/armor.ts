@@ -34,20 +34,23 @@ export interface BodyStyle {
   metal?: string;
   cls: ArmorClassStyle;
   silhouette: 'tunic' | 'robe' | 'jerkin' | 'cuirass' | 'brigandine';
-  /** The high-wardrobe kinds each have ONE owner set: `axeblade` the
-   *  jadeskull crescents, `boneridge` the fellbone slab fan,
+  /** The high-wardrobe kinds each have ONE owner set: `bonemaw` the
+   *  jadeskull trophy jaw clamped over a jade dome, `boneridge` the
+   *  fellbone slab fan,
    *  `thorncrest` the rimethorn hooks (palethorn is its pale quench),
-   *  `lionhead` the kingsmane sculpted lions, `sunfan` the sunhallow
-   *  gilt ray petals, `veilwing` the gloamsight swept wing plates,
-   *  `stormspire` the stormsinger storm-glass crystals, `charbrand`
-   *  the flamewrought ember-seamed char slabs, `wardcrest` the
-   *  duskwarden brass crescent with its watch stone, `aethercrest`
-   *  the aetherion floating silver arcs. */
+   *  `lionhead` the kingsmane sculpted lions, `oathmantle` the
+   *  oathgold fluted dome under its pinned crimson oath-cloth,
+   *  `pavise` the redmarch shoulder-borne tower shield, `sunfan` the
+   *  sunhallow gilt ray petals, `veilwing` the gloamsight swept wing
+   *  plates, `stormspire` the stormsinger storm-glass crystals,
+   *  `charbrand` the flamewrought ember-seamed char slabs,
+   *  `wardcrest` the duskwarden brass crescent with its watch stone,
+   *  `aethercrest` the aetherion floating silver arcs. */
   pauldron:
     | 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur'
     | 'feathered' | 'orbs' | 'shards' | 'wyrmwing'
-    | 'axeblade' | 'boneridge' | 'thorncrest' | 'lionhead'
-    | 'sunfan' | 'veilwing'
+    | 'bonemaw' | 'boneridge' | 'thorncrest' | 'lionhead'
+    | 'oathmantle' | 'pavise' | 'sunfan' | 'veilwing'
     | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
@@ -241,12 +244,6 @@ export interface BodyStyle {
    */
   embers?: { color: string };
   /**
-   * Two swallow-tailed banner pennons flying off the shoulders,
-   * rippling on the march wind's own clock — heraldry that moves.
-   * Field in the first color, tail dip in the second.
-   */
-  pennons?: { colors: [string, string] };
-  /**
    * Star glints winking off the plate's high points on their own
    * beats — armor polished past vanity into legend.
    */
@@ -434,6 +431,19 @@ export interface HelmStyle {
    *  square banner that ripples on the march wind's clock — the
    *  king's colors carried on the helm itself. The kingsmane word. */
   standard?: { pole: string; banner: string; trim?: string };
+  /** THE BONE MASK: a carved death-mask riding the armet's face in
+   *  place of its wedge visor — brow ridge, cheek arcs, a nasal keel,
+   *  the eye pits left dark for whatever looks out. Consumed by the
+   *  armet shell as ITS face when present. The jadeskull word. */
+  boneMask?: { color: string };
+  /** THE BONE CROWN: a row of forward-hooked fangs riding the crown
+   *  centerline on a gilt seam — a trophy jaw worn as a comb, teeth
+   *  where the spike crown keeps nails. The jadeskull word. */
+  boneCrown?: { color: string; seam: string };
+  /** THE TRANSVERSE CREST: the legion officer's brush worn ear to
+   *  ear — full span frontal where the fore-aft crest shows its
+   *  blade, striped in the two colors. The redmarch word. */
+  transverse?: { colors: [string, string] };
   /** THE AUREOLE: a fan of gilt rays standing behind the crown,
    *  breathing on a slow clock, tallest at the peak — dawn worn as
    *  a halo's older sister. Painted before the shell so the rays
@@ -992,12 +1002,16 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   oathgold_platebody: {
     color: '#c9a23c', trim: '#f4e0a0', metal: '#e0b054', cls: 'plate',
-    silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#d4ac48',
-    pauldronTrim: '#fff2c8', pauldronScale: 1.15, chest: 'plate',
+    // THE OATHMANTLE: the sworn knight's shoulder — a fluted antique-
+    // gold dome (the champion helm's own flute grammar worn lower)
+    // under a pinned crimson oath-cloth. Deep gold, NOT the body's
+    // bright: the dome must separate from the torso or the whole
+    // harness reads as one molten ingot.
+    silhouette: 'cuirass', pauldron: 'oathmantle', pauldronColor: '#a8842e',
+    pauldronTrim: '#fff2c8', pauldronScale: 1.16, chest: 'plate',
     emblem: 'crown', emblemScale: 1.2, skirt: 0, collar: 'gorget',
     midline: true, rivetSeams: true, tassets: true,
     tabard: { color: '#8a2e2e', trim: '#c9a23c' },
-    pennons: { colors: ['#8a2e2e', '#f4e0a0'] },
     gleam: { color: '#fff6d8' },
   },
   // THE HIGH ROAD: the plate wardrobe's second reach — five bespoke
@@ -1006,8 +1020,14 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   // law the first road keeps.
   jadeskull_platebody: {
     color: '#3e6644', trim: '#c9a23c', metal: '#2f5238', cls: 'plate',
-    silhouette: 'cuirass', pauldron: 'axeblade', pauldronColor: '#c9ccd4',
-    pauldronTrim: '#eef2f8', pauldronScale: 1.16, chest: 'plate',
+    // THE BONEMAW: the trophy-taker's shoulder — a polished jade dome
+    // with a bleached hunting jaw clamped over its outer slope, fangs
+    // biting down over the rim, a small skull boss at the crown whose
+    // eyes wake on the chest device's own clock. The old silver
+    // crescents floated near the ear and read as feathers; the jaw is
+    // WORN, teeth around the shoulder it claimed.
+    silhouette: 'cuirass', pauldron: 'bonemaw', pauldronColor: '#35583c',
+    pauldronTrim: '#d8b04c', pauldronScale: 1.17, chest: 'plate',
     emblem: 'skull', emblemScale: 1.5, skirt: 0, collar: 'gorget',
     midline: true, rivetSeams: true, tassets: true,
     skullgaze: { color: '#7ab8ff' },
@@ -1021,8 +1041,14 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   redmarch_platebody: {
     color: '#8a2e34', trim: '#c9ccd4', metal: '#6e2329', cls: 'plate',
-    silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#8a2e34',
-    pauldronTrim: '#c9ccd4', pauldronScale: 1.14, chest: 'plate',
+    // THE PAVISE: the border legion's shoulder — a blackened-iron
+    // dome carrying an upright tower shield on its outer slope,
+    // silver-bordered, red-fielded, crossed in watch-fire white (the
+    // greathelm's own visor cross carried to the wall). An iron
+    // banner spike flies a short guidon behind it. The old red caps
+    // vanished into the red torso — iron and silver stand OFF it.
+    silhouette: 'cuirass', pauldron: 'pavise', pauldronColor: '#413a44',
+    pauldronTrim: '#c9ccd4', pauldronScale: 1.15, chest: 'plate',
     skirt: 0, collar: 'fur', collarColor: '#3a3230', midline: true,
     rivetSeams: true, tassets: true,
     rosettes: { color: '#eef4ff', metal: '#c9ccd4' },
@@ -1319,8 +1345,14 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
   // weather — waking blue eyes, hollow marrow-light, watch-fire
   // white, the cold that looks back twice, and the king's standard.
   jadeskull_helm: {
-    color: '#3e6644', trim: '#c9a23c', kind: 'armet', jaw: '#c9ccd4',
-    spikesCrown: { color: '#c9ccd4' }, emberEyes: { color: '#7ab8ff' },
+    // The trophy-taker's armet: a carved bone death-mask riding the
+    // jade shell where the wedge visor would be, under a crown of
+    // forward-hooked fangs on a gilt seam. The old silver spike row
+    // was the wardrobe's stock mohawk; this head keeps its own dead.
+    color: '#3e6644', trim: '#c9a23c', kind: 'armet', jaw: '#c9a23c',
+    boneMask: { color: '#e6e0cc' },
+    boneCrown: { color: '#e6e0cc', seam: '#c9a23c' },
+    emberEyes: { color: '#7ab8ff' },
   },
   fellbone_helm: {
     color: '#d9d2bd', trim: '#b8925c', kind: 'sallet', jaw: '#b8a88a',
@@ -1328,8 +1360,12 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     emberEyes: { color: '#a8d8e8' },
   },
   redmarch_helm: {
+    // The border legion's greathelm: the officer's transverse crest
+    // worn ear to ear in the legion's stripes — the old solid ridge
+    // read as a snowcap and belonged to three other helms besides.
     color: '#8a2e34', trim: '#c9ccd4', kind: 'greathelm', visor: 'cross',
-    crest: { color: '#c9ccd4' }, emberEyes: { color: '#eef4ff' },
+    transverse: { colors: ['#a8353c', '#eef4ff'] },
+    emberEyes: { color: '#eef4ff' },
   },
   rimethorn_helm: {
     color: '#2a3040', trim: '#a8d8ff', kind: 'armet', jaw: '#4a5468',
@@ -4688,57 +4724,6 @@ export function drawTorsoGarment(
       ctx.globalAlpha = 1;
     }
 
-    // ---- pennons: two swallow-tailed banners flying off the
-    // shoulders, rippling on the march wind's own clock — heraldry
-    // that moves. Banners, never sticks: the cloth swells through the
-    // middle and the tail kicks on the slow beat.
-    if (st.pennons) {
-      const [pa, pb] = st.pennons.colors;
-      for (const es2 of [-1, 1] as const) {
-        const ph = es2 * 1.4;
-        // Anchored wide of the pauldron caps and rising as they fly —
-        // the front pauldron pass paints last, so a banner tucked
-        // over the shoulder line simply vanishes under the steel.
-        const ax = es2 * tw * 1.14;
-        const ay = -th * 1.24;
-        const mx = ax + es2 * (0.095 * s + Math.sin(nowMs * 0.0019 + ph) * 0.018 * s);
-        const my = ay - 0.045 * s + Math.sin(nowMs * 0.0017 + ph + 1.2) * 0.016 * s;
-        const tx = ax + es2 * (0.185 * s + Math.sin(nowMs * 0.0021 + ph + 2.1) * 0.034 * s);
-        const ty = ay - 0.055 * s + Math.sin(nowMs * 0.0016 + ph + 3.2) * 0.026 * s;
-        const w0 = 0.038 * s;
-        const wm = 0.05 * s;
-        const w1 = 0.032 * s;
-        ctx.fillStyle = pa;
-        ctx.beginPath();
-        ctx.moveTo(ax, ay - w0);
-        ctx.quadraticCurveTo(mx, my - wm, tx, ty - w1);
-        // The swallow tail: two points biting a notch out of the fly.
-        ctx.lineTo(tx - es2 * 0.032 * s, ty);
-        ctx.lineTo(tx, ty + w1);
-        ctx.quadraticCurveTo(mx, my + wm, ax, ay + w0);
-        ctx.closePath();
-        ctx.fill();
-        // The hoist band and the tail dip in the second color.
-        ctx.fillStyle = pb;
-        ctx.fillRect(ax - es2 * 0.008 * s, ay - w0, es2 * 0.018 * s, w0 * 2);
-        ctx.beginPath();
-        ctx.moveTo(tx - es2 * 0.012 * s, ty - w1 * 0.85);
-        ctx.lineTo(tx, ty - w1);
-        ctx.lineTo(tx - es2 * 0.032 * s, ty);
-        ctx.lineTo(tx, ty + w1);
-        ctx.lineTo(tx - es2 * 0.012 * s, ty + w1 * 0.85);
-        ctx.closePath();
-        ctx.fill();
-        // The fold shadow under the swell — cloth, not paper.
-        ctx.strokeStyle = shade(pa, -22);
-        ctx.lineWidth = Math.max(1, s * 0.01);
-        ctx.beginPath();
-        ctx.moveTo(ax + es2 * 0.02 * s, ay + w0 * 0.4);
-        ctx.quadraticCurveTo(mx, my + wm * 0.5, tx - es2 * 0.02 * s, ty + w1 * 0.4);
-        ctx.stroke();
-      }
-    }
-
     // ---- gleam: star glints winking off the plate's high points on
     // their own beats — polish past vanity. Three sites, never lit
     // at once; a constant sparkle is a texture, a wink is a legend.
@@ -5694,6 +5679,370 @@ export function drawPauldron(
     ctx.restore();
     return;
   }
+  if (st.pauldron === 'bonemaw') {
+    // THE BONEMAW — the jadeskull shoulder: a polished jade dome
+    // cupping the arm, and the trophy clamped over it — a bleached
+    // hunting jaw biting down over the dome's outer slope, fangs
+    // curling in around the shoulder it claimed. At the crown a small
+    // carved skull boss keeps watch, its eyes waking on the chest
+    // device's own slow clock — the gaze answered at the shoulder.
+    // Bone rides jade: the dome stays the deep ground so the trophy
+    // stays the pale statement.
+    const bone = hurt ? '#ffffff' : '#e6e0cc';
+    // The rear crest first: two low bone wedges peeking over the
+    // crown from behind — silhouette at the north reads, roots
+    // buried under the dome so nothing floats.
+    ctx.fillStyle = hurt ? '#ffffff' : shade('#e6e0cc', -16);
+    for (const [wx, wt, wh] of [[-0.045, 0.03, 0.085], [0.02, 0.036, 0.108]] as const) {
+      ctx.beginPath();
+      ctx.moveTo(side * (wx - wt) * s, -0.07 * s);
+      ctx.quadraticCurveTo(side * (wx - wt * 0.2) * s, (-0.07 - wh) * s, side * (wx + wt * 0.5) * s, (-0.075 - wh) * s);
+      ctx.lineTo(side * (wx + wt) * s, -0.07 * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // THE WORN SEAT: the polished jade dome, gold-hemmed — the stone
+    // the trophy is mounted on.
+    seat(0.118 * s, 0.094 * s, hurt ? '#ffffff' : col, trim);
+    if (!hurt) {
+      // Carved jade: one engraved arc following the dome's face —
+      // quiet lapidary craft under the bone, never competing.
+      ctx.strokeStyle = shade(base, -20);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(-0.082 * s, 0.028 * s);
+      ctx.quadraticCurveTo(0, -0.028 * s, 0.082 * s, 0.028 * s);
+      ctx.stroke();
+    }
+    // The jawbone: a fat mandible arc clamped over the outer slope,
+    // thick at the hinge, thinning toward the front bite.
+    ctx.fillStyle = bone;
+    ctx.beginPath();
+    ctx.moveTo(side * -0.034 * s, -0.104 * s);
+    ctx.quadraticCurveTo(side * 0.07 * s, -0.132 * s, side * 0.136 * s, -0.048 * s);
+    ctx.lineTo(side * 0.126 * s, 0.006 * s);
+    ctx.quadraticCurveTo(side * 0.062 * s, -0.066 * s, side * -0.03 * s, -0.056 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // Two facets: the sun finds the jaw's upper face, the underside
+      // turns away — bone with mass, never a pale sticker.
+      ctx.fillStyle = shade('#e6e0cc', -14);
+      ctx.beginPath();
+      ctx.moveTo(side * -0.03 * s, -0.062 * s);
+      ctx.quadraticCurveTo(side * 0.062 * s, -0.072 * s, side * 0.126 * s, 0.002 * s);
+      ctx.lineTo(side * 0.126 * s, 0.006 * s);
+      ctx.quadraticCurveTo(side * 0.062 * s, -0.066 * s, side * -0.03 * s, -0.056 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade('#e6e0cc', 18);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(side * -0.028 * s, -0.102 * s);
+      ctx.quadraticCurveTo(side * 0.068 * s, -0.128 * s, side * 0.13 * s, -0.048 * s);
+      ctx.stroke();
+    }
+    // The bite: four fangs hanging off the jaw's lower edge, each a
+    // fat-rooted hook curling in toward the arm — descending from the
+    // hinge tooth to the front nipper, the way a real jaw is armed.
+    const fangs: Array<[number, number, number, number]> = [
+      // [rootX, rootY, length, halfW] — outward = +x, ×side.
+      [0.108, -0.028, 0.088, 0.021],
+      [0.072, -0.062, 0.075, 0.019],
+      [0.036, -0.076, 0.062, 0.017],
+      [0.002, -0.082, 0.05, 0.015],
+    ];
+    for (const [rx, ry, ln, hw2] of fangs) {
+      ctx.fillStyle = bone;
+      ctx.beginPath();
+      ctx.moveTo(side * (rx - hw2) * s, ry * s);
+      // The hook: tip drifts back INWARD — teeth close on a bite,
+      // they never splay like a fan.
+      ctx.quadraticCurveTo(
+        side * (rx + hw2 * 1.15) * s, (ry + ln * 0.55) * s,
+        side * (rx - hw2 * 0.35) * s, (ry + ln) * s,
+      );
+      ctx.quadraticCurveTo(side * (rx - hw2 * 0.4) * s, (ry + ln * 0.45) * s, side * (rx - hw2) * s, ry * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The root notch seats each fang IN the jaw, and the tip
+        // keeps a worn point of light.
+        ctx.fillStyle = shade('#e6e0cc', -26);
+        ctx.fillRect(side * (rx - hw2 * 0.9) * s, (ry - 0.004) * s, hw2 * 1.5 * s, 0.01 * s);
+        ctx.fillStyle = shade('#e6e0cc', 24);
+        ctx.beginPath();
+        ctx.arc(side * (rx - hw2 * 0.3) * s, (ry + ln * 0.92) * s, 0.006 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // The skull boss: a small carved watcher at the dome's crown.
+    const bx0 = side * -0.052 * s;
+    const by0 = -0.075 * s;
+    const br = 0.035 * s;
+    ctx.fillStyle = bone;
+    ctx.beginPath();
+    ctx.arc(bx0, by0, br, Math.PI * 0.92, Math.PI * 2.08);
+    ctx.lineTo(bx0 + br * 0.62, by0 + br * 0.78);
+    ctx.lineTo(bx0 - br * 0.62, by0 + br * 0.78);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The carved brow shadow, the pits, the nasal notch.
+      ctx.fillStyle = shade('#e6e0cc', -30);
+      ctx.fillRect(bx0 - br * 0.68, by0 - br * 0.1, br * 1.36, br * 0.16);
+      ctx.fillStyle = '#1c2418';
+      for (const exx of [-br * 0.34, br * 0.34]) {
+        ctx.fillRect(bx0 + exx - br * 0.2, by0 + br * 0.06, br * 0.4, br * 0.34);
+      }
+      ctx.fillRect(bx0 - br * 0.08, by0 + br * 0.5, br * 0.16, br * 0.22);
+      // The watch answers: the boss's eyes wake on the skullgaze
+      // clock, a half-beat behind the chest — fires down a wall.
+      if (st.skullgaze) {
+        const wake = Math.min(1, Math.max(0, (Math.sin(nowMs * 0.0007 + 1.1 + side * 0.7) + 0.55) * 1.6));
+        if (wake > 0.05) {
+          ctx.globalAlpha = wake * (0.8 + 0.14 * Math.sin(nowMs * 0.011 + side));
+          ctx.fillStyle = shade(st.skullgaze.color, 20);
+          for (const exx of [-br * 0.34, br * 0.34]) {
+            ctx.fillRect(bx0 + exx - br * 0.13, by0 + br * 0.1, br * 0.26, br * 0.24);
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'oathmantle') {
+    // THE OATHMANTLE — the oathgold shoulder: the champion helm's own
+    // fluted gold worn at the arm, a deep antique dome so the harness
+    // keeps more than one value of gold, crowned by a raised crest
+    // ridge — and over its outer slope the OATH-CLOTH: a crimson
+    // strip pinned at the crown by a sunburst stud, its fringed tail
+    // swaying on the march wind's clock. The knight carries the vow
+    // where the sword arm can see it.
+    // THE WORN SEAT: deep antique gold, bright parade rim.
+    seat(0.12 * s, 0.096 * s, hurt ? '#ffffff' : col, trim);
+    if (!hurt) {
+      // The flutes: paired lit-and-shaded strips down the dome face —
+      // FILLED strips, the champion helm's grammar answered below.
+      for (const u of [-0.5, 0, 0.5]) {
+        const fx0 = u * 0.062 * s;
+        const fx1 = u * 0.088 * s;
+        ctx.fillStyle = shade(base, 16);
+        ctx.beginPath();
+        ctx.moveTo(fx0 - 0.012 * s, -0.052 * s);
+        ctx.lineTo(fx1 - 0.014 * s, 0.052 * s);
+        ctx.lineTo(fx1, 0.055 * s);
+        ctx.lineTo(fx0, -0.052 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(base, -14);
+        ctx.beginPath();
+        ctx.moveTo(fx0, -0.052 * s);
+        ctx.lineTo(fx1, 0.055 * s);
+        ctx.lineTo(fx1 + 0.014 * s, 0.052 * s);
+        ctx.lineTo(fx0 + 0.012 * s, -0.052 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // The crest ridge: a raised gold arc riding the crown — the dome
+    // is a helm for the shoulder, and this is its comb.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(base, 20);
+    ctx.beginPath();
+    ctx.moveTo(-0.078 * s, -0.072 * s);
+    ctx.quadraticCurveTo(0, -0.148 * s, 0.078 * s, -0.072 * s);
+    ctx.quadraticCurveTo(0, -0.108 * s, -0.078 * s, -0.072 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = trim;
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      ctx.moveTo(-0.066 * s, -0.078 * s);
+      ctx.quadraticCurveTo(0, -0.144 * s, 0.066 * s, -0.078 * s);
+      ctx.stroke();
+    }
+    // The oath-cloth: pinned at the crown, draped down the OUTER
+    // slope, the tail lifting and settling on the march wind. Cloth
+    // HANGS — it hugs the dome's curve and falls, it never planes
+    // outward (a flying strip reads as a wing, not a vow).
+    const oc = hurt ? '#ffffff' : '#8a2e2e';
+    const kick = Math.sin(nowMs * 0.0019 + side * 1.4) * 0.009 * s;
+    const hemX = side * (0.112 * s + Math.abs(kick) * 0.5);
+    const hemY = 0.102 * s + kick * 0.4;
+    ctx.fillStyle = oc;
+    ctx.beginPath();
+    ctx.moveTo(side * 0.012 * s, -0.098 * s);
+    ctx.quadraticCurveTo(side * 0.124 * s, -0.03 * s, hemX, hemY);
+    // The hem walks back under itself — a draped strip, not a wedge.
+    ctx.lineTo(hemX - side * 0.05 * s, hemY + 0.008 * s);
+    ctx.quadraticCurveTo(side * 0.052 * s, -0.026 * s, side * -0.028 * s, -0.078 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The fold shadow down the drape's inner run — cloth, never
+      // paper — and the gilt fringe ticking off the hem.
+      ctx.strokeStyle = shade('#8a2e2e', -22);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(side * 0.005 * s, -0.075 * s);
+      ctx.quadraticCurveTo(side * 0.082 * s, -0.012 * s, hemX - side * 0.024 * s, hemY - 0.006 * s);
+      ctx.stroke();
+      ctx.strokeStyle = st.tabard?.trim ?? '#c9a23c';
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const fx2 = hemX - side * (0.006 + i * 0.017) * s;
+        const fy2 = hemY + 0.006 * s - i * 0.004 * s;
+        ctx.moveTo(fx2, fy2);
+        ctx.lineTo(fx2 + side * 0.004 * s, fy2 + 0.016 * s + kick * 0.2);
+      }
+      ctx.stroke();
+      // The sunburst pin: the stud that holds the vow — a gold boss
+      // with four short rays, set where cloth meets crown.
+      const px2 = side * 0.012 * s;
+      const py2 = -0.098 * s;
+      ctx.strokeStyle = shade(trim, 10);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const a = Math.PI * 0.25 + (i * Math.PI) / 2;
+        ctx.moveTo(px2 + Math.cos(a) * 0.014 * s, py2 + Math.sin(a) * 0.014 * s);
+        ctx.lineTo(px2 + Math.cos(a) * 0.026 * s, py2 + Math.sin(a) * 0.026 * s);
+      }
+      ctx.stroke();
+      ctx.fillStyle = shade(trim, 26);
+      ctx.beginPath();
+      ctx.arc(px2, py2, 0.013 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(base, -24);
+      ctx.beginPath();
+      ctx.arc(px2 + 0.004 * s, py2 + 0.004 * s, 0.005 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'pavise') {
+    // THE PAVISE — the redmarch shoulder: a tower shield stood upright
+    // on the dome's outer slope, silver-bordered, red-fielded, and
+    // crossed in watch-fire white — the greathelm's visor cross
+    // carried to the wall. Behind it an iron banner spike flies a
+    // short guidon that flicks on the march wind. Iron and silver
+    // stand OFF the red harness; red-on-red was no shoulder at all.
+    // The banner spike first, rooted behind the crown.
+    const spTipX = side * 0.088 * s;
+    const spTipY = -0.215 * s;
+    if (!hurt) {
+      ctx.strokeStyle = shade(base, -6);
+      ctx.lineWidth = Math.max(1.5, s * 0.016);
+      ctx.beginPath();
+      ctx.moveTo(side * 0.03 * s, -0.045 * s);
+      ctx.lineTo(spTipX, spTipY);
+      ctx.stroke();
+      // The spearhead finial.
+      ctx.fillStyle = shade(base, 18);
+      ctx.beginPath();
+      ctx.moveTo(spTipX, spTipY - 0.024 * s);
+      ctx.lineTo(spTipX + side * 0.012 * s, spTipY);
+      ctx.lineTo(spTipX, spTipY + 0.008 * s);
+      ctx.lineTo(spTipX - side * 0.012 * s, spTipY);
+      ctx.closePath();
+      ctx.fill();
+      // The guidon: a short swallow-tailed tail streaming off the
+      // spike, flicking on the march clock — the only cloth the
+      // legion allows its steel.
+      const gk = Math.sin(nowMs * 0.0021 + side * 1.9) * 0.012 * s;
+      const gx0 = spTipX;
+      const gy0 = spTipY + 0.02 * s;
+      const gx1 = gx0 + side * 0.085 * s;
+      ctx.fillStyle = '#a8353c';
+      ctx.beginPath();
+      ctx.moveTo(gx0, gy0);
+      ctx.quadraticCurveTo(gx0 + side * 0.045 * s, gy0 - 0.012 * s + gk, gx1, gy0 - 0.004 * s + gk * 1.4);
+      ctx.lineTo(gx1 - side * 0.028 * s, gy0 + 0.017 * s + gk * 0.8);
+      ctx.lineTo(gx1, gy0 + 0.038 * s + gk * 1.2);
+      ctx.quadraticCurveTo(gx0 + side * 0.04 * s, gy0 + 0.038 * s + gk * 0.4, gx0, gy0 + 0.034 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#eef4ff';
+      ctx.fillRect(gx0 - side * 0.004 * s, gy0, side * 0.014 * s, 0.034 * s);
+    }
+    // THE WORN SEAT: blackened iron, silver-hemmed — the mount the
+    // wall stands on.
+    seat(0.115 * s, 0.092 * s, hurt ? '#ffffff' : col, trim);
+    // The shield throws its stand-off shadow onto the dome before it
+    // paints — the slab reads IN FRONT of the shoulder, not inked on.
+    if (!hurt) {
+      ctx.fillStyle = 'rgba(20, 12, 16, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(side * 0.082 * s, 0.03 * s, 0.06 * s, 0.026 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The pavise itself: an upright tapered slab, yawed outward with
+    // the shoulder's own lean.
+    ctx.save();
+    ctx.translate(side * 0.088 * s, -0.026 * s);
+    ctx.rotate(side * 0.15);
+    const pw = 0.06 * s;
+    const pt = -0.118 * s;
+    const pb = 0.092 * s;
+    const slab = (inset: number) => {
+      const w2 = pw - inset;
+      ctx.moveTo(-w2 * 0.86, pt + inset);
+      ctx.lineTo(w2 * 0.86, pt + inset);
+      ctx.quadraticCurveTo(w2 + inset * 0.4, pt + inset + 0.02 * s, w2, pt + 0.05 * s);
+      ctx.lineTo(w2 * 0.92, pb - inset);
+      ctx.lineTo(-w2 * 0.92, pb - inset);
+      ctx.lineTo(-w2, pt + 0.05 * s);
+      ctx.quadraticCurveTo(-w2 - inset * 0.4, pt + inset + 0.02 * s, -w2 * 0.86, pt + inset);
+      ctx.closePath();
+    };
+    // The silver border is a FILLED BAND — the outer slab in steel,
+    // the field inset within it; a stroked hairline is a wire.
+    ctx.fillStyle = hurt ? '#ffffff' : trim;
+    ctx.beginPath();
+    slab(0);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = '#8a2e34';
+      ctx.beginPath();
+      slab(0.014 * s);
+      ctx.fill();
+      // The cross: two fat white bars — the visor's word, wall-sized.
+      ctx.fillStyle = '#eef4ff';
+      ctx.fillRect(-0.0115 * s, pt + 0.032 * s, 0.023 * s, (pb - pt) - 0.062 * s);
+      ctx.fillRect(-pw * 0.62, -0.036 * s, pw * 1.24, 0.023 * s);
+      // The form split: the slab's screen-right half turns from the
+      // one sun — even a flat wall has two values.
+      ctx.save();
+      ctx.beginPath();
+      slab(0);
+      ctx.clip();
+      ctx.fillStyle = 'rgba(24, 15, 26, 0.14)';
+      ctx.fillRect(0, pt - 0.02 * s, pw * 1.4, pb - pt + 0.05 * s);
+      ctx.restore();
+      // The lit top arris: the tilted bird's eye finds the shield's
+      // upper edge.
+      ctx.fillStyle = shade(trim, 24);
+      ctx.fillRect(-pw * 0.86, pt, pw * 1.72, 0.011 * s);
+      // Rivets pin the border at its stations: dark seat, lit dome.
+      for (const [rx, ry] of [
+        [-pw * 0.68, pt + 0.036 * s], [pw * 0.68, pt + 0.036 * s],
+        [-pw * 0.72, pb - 0.03 * s], [pw * 0.72, pb - 0.03 * s],
+      ] as const) {
+        ctx.fillStyle = shade(trim, -30);
+        ctx.fillRect(rx - 0.007 * s, ry - 0.007 * s, 0.014 * s, 0.014 * s);
+        ctx.fillStyle = shade(trim, 20);
+        ctx.fillRect(rx - 0.007 * s, ry - 0.007 * s, 0.007 * s, 0.007 * s);
+      }
+    }
+    ctx.restore();
+    ctx.restore();
+    return;
+  }
   if (st.pauldron === 'shards') {
     // Night-glass slivers in orbit where an orb would hang — angular
     // where the orb is serene, each pane tilted like it was broken
@@ -5917,7 +6266,7 @@ export function drawPauldron(
     return;
   }
   // ---- THE MOUNTED FAMILY (round / spiked / bladed / layered /
-  // wyrmwing / axeblade / boneridge / thorncrest): every
+  // wyrmwing / boneridge / thorncrest): every
   // plate pauldron starts from the same forged CAP — a domed shoulder
   // plate with a lit top plane, a one-sun form split, a bright rim
   // lip, and a crown rivet — seated on the arm by a contact shadow so
@@ -6093,45 +6442,6 @@ export function drawPauldron(
     ctx.moveTo(side * 0.005 * s, capTop + 0.03 * s);
     ctx.quadraticCurveTo(side * 0.168 * s, -0.17 * s, side * 0.25 * s, -0.305 * s);
     ctx.quadraticCurveTo(side * 0.148 * s, -0.152 * s, side * 0.038 * s, capTop + 0.028 * s);
-    ctx.closePath();
-    ctx.fill();
-  }
-  if (!hurt && st.pauldron === 'axeblade') {
-    // The war crescent: a whole axe moon swept up off the shoulder,
-    // horns up, with a shorter fletch crescent behind it. The blade
-    // carries three statements — body, shaded inner face, and a
-    // FILLED edge bevel along the outer rim; a hairline on a
-    // same-value fill is a wire.
-    // The rear fletch first: smaller, darker, half a beat behind.
-    ctx.fillStyle = shade(base, -22);
-    ctx.beginPath();
-    ctx.moveTo(side * -0.012 * s, -0.255 * s);
-    ctx.quadraticCurveTo(side * 0.1 * s, -0.095 * s, side * 0.168 * s, -0.235 * s);
-    ctx.quadraticCurveTo(side * 0.095 * s, -0.155 * s, side * -0.012 * s, -0.255 * s);
-    ctx.closePath();
-    ctx.fill();
-    // The main crescent's body.
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.moveTo(side * 0.055 * s, -0.3 * s);
-    ctx.quadraticCurveTo(side * 0.215 * s, -0.07 * s, side * 0.29 * s, -0.175 * s);
-    ctx.quadraticCurveTo(side * 0.165 * s, -0.155 * s, side * 0.055 * s, -0.3 * s);
-    ctx.closePath();
-    ctx.fill();
-    // The inner face turns from the sun — two planes or paper.
-    ctx.fillStyle = shade(base, -16);
-    ctx.beginPath();
-    ctx.moveTo(side * 0.07 * s, -0.275 * s);
-    ctx.quadraticCurveTo(side * 0.165 * s, -0.15 * s, side * 0.27 * s, -0.172 * s);
-    ctx.quadraticCurveTo(side * 0.17 * s, -0.185 * s, side * 0.07 * s, -0.275 * s);
-    ctx.closePath();
-    ctx.fill();
-    // The honed rim: the outer edge bevel, filled in the trim.
-    ctx.fillStyle = trim;
-    ctx.beginPath();
-    ctx.moveTo(side * 0.055 * s, -0.3 * s);
-    ctx.quadraticCurveTo(side * 0.215 * s, -0.07 * s, side * 0.29 * s, -0.175 * s);
-    ctx.quadraticCurveTo(side * 0.208 * s, -0.098 * s, side * 0.068 * s, -0.284 * s);
     ctx.closePath();
     ctx.fill();
   }
@@ -7786,47 +8096,124 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     ctx.fill();
     shellLight(shell, topY, botY);
     if (!hurt && front) {
-      // The wedge visor: a POINTED beak standing proud of the face —
-      // its top plane catches the sun, its keel edge stays bright, so
-      // the wedge reads as a wedge and never as a grille. Slats cut
-      // ACROSS the beak's slope, snout-short, breathing not speaking.
       const vw = headR * 0.54 * sw;
-      ctx.fillStyle = shade(st.color, -6);
-      ctx.beginPath();
-      ctx.moveTo(vx - vw, headY - hh * 0.42);
-      ctx.lineTo(vx + vw, headY - hh * 0.42);
-      ctx.lineTo(vx + vw * 0.7, headY + hh * 0.5);
-      ctx.lineTo(vx, headY + hh * 0.84);
-      ctx.lineTo(vx - vw * 0.7, headY + hh * 0.5);
-      ctx.closePath();
-      ctx.fill();
-      // Sun on the top plane; the beak's bright keel down the center.
-      ctx.fillStyle = shade(st.color, 28);
-      ctx.fillRect(vx - vw, headY - hh * 0.42, vw * 2, hh * 0.1);
-      ctx.strokeStyle = shade(st.color, 20);
-      ctx.lineWidth = Math.max(1, s * 0.016);
-      ctx.beginPath();
-      ctx.moveTo(vx, headY + hh * 0.02);
-      ctx.lineTo(vx, headY + hh * 0.8);
-      ctx.moveTo(vx - vw * 0.7, headY + hh * 0.5);
-      ctx.lineTo(vx, headY + hh * 0.84);
-      ctx.lineTo(vx + vw * 0.7, headY + hh * 0.5);
-      ctx.stroke();
-      // The eye slit, deep under the brow line.
-      ctx.fillStyle = '#170f1c';
-      ctx.fillRect(vx - vw * 0.88, headY - hh * 0.28, vw * 1.76, hh * 0.16);
-      // Three short breath cuts riding the beak's slopes, ANGLED with
-      // the wedge — never a flat stack.
-      for (const es of [-1, 1]) {
-        for (let i = 0; i < 3; i++) {
-          const y0 = headY + hh * (0.06 + i * 0.17);
+      if (st.boneMask) {
+        // THE BONE MASK: the armet consumes the mask as ITS face —
+        // a carved death's-head plate standing where the wedge visor
+        // would, brow ridge over dark pits, cheek arcs, a nasal keel,
+        // and a tooth row biting the bevor line. The pivot roundels
+        // still hold it: a trophy MOUNTED, never a painted-on face.
+        const bc = st.boneMask.color;
+        ctx.fillStyle = bc;
+        ctx.beginPath();
+        ctx.moveTo(vx - vw * 1.0, headY - hh * 0.52);
+        ctx.lineTo(vx + vw * 1.0, headY - hh * 0.52);
+        ctx.quadraticCurveTo(vx + vw * 1.06, headY + hh * 0.08, vx + vw * 0.56, headY + hh * 0.56);
+        ctx.lineTo(vx + vw * 0.3, headY + hh * 0.72);
+        ctx.lineTo(vx - vw * 0.3, headY + hh * 0.72);
+        ctx.lineTo(vx - vw * 0.56, headY + hh * 0.56);
+        ctx.quadraticCurveTo(vx - vw * 1.06, headY + hh * 0.08, vx - vw * 1.0, headY - hh * 0.52);
+        ctx.closePath();
+        ctx.fill();
+        // The brow ridge: a lit shelf over the pits, its underside
+        // carved into shadow — bone with a sun on it.
+        ctx.fillStyle = shade(bc, 20);
+        ctx.fillRect(vx - vw * 0.96, headY - hh * 0.52, vw * 1.92, hh * 0.14);
+        ctx.fillStyle = shade(bc, -22);
+        ctx.fillRect(vx - vw * 0.9, headY - hh * 0.38, vw * 1.8, hh * 0.07);
+        // The eye pits: dark and deep — the emberEyes word kindles
+        // inside them on its own breath.
+        ctx.fillStyle = '#141a12';
+        for (const es of [-1, 1]) {
           ctx.beginPath();
-          ctx.moveTo(vx + es * vw * 0.16, y0 + hh * 0.05);
-          ctx.lineTo(vx + es * vw * (0.62 - i * 0.1), y0 - hh * 0.03);
-          ctx.lineTo(vx + es * vw * (0.62 - i * 0.1), y0 + hh * 0.05);
-          ctx.lineTo(vx + es * vw * 0.16, y0 + hh * 0.13);
+          ctx.moveTo(vx + es * headR * 0.06 * sw, headY - hh * 0.24);
+          ctx.lineTo(vx + es * headR * 0.4 * sw, headY - hh * 0.28);
+          ctx.lineTo(vx + es * headR * 0.36 * sw, headY + hh * 0.1);
+          ctx.lineTo(vx + es * headR * 0.08 * sw, headY + hh * 0.08);
           ctx.closePath();
           ctx.fill();
+        }
+        // The nasal keel: the carved nose notch, one shadow wedge
+        // with a bone ridge catching light beside it.
+        ctx.fillStyle = '#141a12';
+        ctx.beginPath();
+        ctx.moveTo(vx - vw * 0.09, headY + hh * 0.16);
+        ctx.lineTo(vx + vw * 0.09, headY + hh * 0.16);
+        ctx.lineTo(vx, headY + hh * 0.34);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(bc, 16);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(vx, headY - hh * 0.3);
+        ctx.lineTo(vx, headY + hh * 0.12);
+        ctx.stroke();
+        // The grin: a dark seam along the jaw with bone teeth set in
+        // it — the mask keeps its own dead smile over the bevor.
+        ctx.fillStyle = shade(bc, -34);
+        ctx.fillRect(vx - vw * 0.5, headY + hh * 0.46, vw * 1.0, hh * 0.16);
+        ctx.fillStyle = bc;
+        for (const u of [-0.36, -0.12, 0.12, 0.36]) {
+          const txx = vx + u * vw;
+          ctx.beginPath();
+          ctx.moveTo(txx - vw * 0.075, headY + hh * 0.46);
+          ctx.lineTo(txx + vw * 0.075, headY + hh * 0.46);
+          ctx.lineTo(txx + vw * 0.05, headY + hh * 0.6);
+          ctx.quadraticCurveTo(txx, headY + hh * 0.65, txx - vw * 0.05, headY + hh * 0.6);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // One hairline crack wandering the crown of the mask — this
+        // trophy has been struck before and kept its face.
+        ctx.strokeStyle = shade(bc, -18);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(vx + vw * 0.62, headY - hh * 0.5);
+        ctx.lineTo(vx + vw * 0.5, headY - hh * 0.36);
+        ctx.lineTo(vx + vw * 0.6, headY - hh * 0.26);
+        ctx.stroke();
+      } else {
+        // The wedge visor: a POINTED beak standing proud of the face —
+        // its top plane catches the sun, its keel edge stays bright, so
+        // the wedge reads as a wedge and never as a grille. Slats cut
+        // ACROSS the beak's slope, snout-short, breathing not speaking.
+        ctx.fillStyle = shade(st.color, -6);
+        ctx.beginPath();
+        ctx.moveTo(vx - vw, headY - hh * 0.42);
+        ctx.lineTo(vx + vw, headY - hh * 0.42);
+        ctx.lineTo(vx + vw * 0.7, headY + hh * 0.5);
+        ctx.lineTo(vx, headY + hh * 0.84);
+        ctx.lineTo(vx - vw * 0.7, headY + hh * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        // Sun on the top plane; the beak's bright keel down the center.
+        ctx.fillStyle = shade(st.color, 28);
+        ctx.fillRect(vx - vw, headY - hh * 0.42, vw * 2, hh * 0.1);
+        ctx.strokeStyle = shade(st.color, 20);
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(vx, headY + hh * 0.02);
+        ctx.lineTo(vx, headY + hh * 0.8);
+        ctx.moveTo(vx - vw * 0.7, headY + hh * 0.5);
+        ctx.lineTo(vx, headY + hh * 0.84);
+        ctx.lineTo(vx + vw * 0.7, headY + hh * 0.5);
+        ctx.stroke();
+        // The eye slit, deep under the brow line.
+        ctx.fillStyle = '#170f1c';
+        ctx.fillRect(vx - vw * 0.88, headY - hh * 0.28, vw * 1.76, hh * 0.16);
+        // Three short breath cuts riding the beak's slopes, ANGLED with
+        // the wedge — never a flat stack.
+        for (const es of [-1, 1]) {
+          for (let i = 0; i < 3; i++) {
+            const y0 = headY + hh * (0.06 + i * 0.17);
+            ctx.beginPath();
+            ctx.moveTo(vx + es * vw * 0.16, y0 + hh * 0.05);
+            ctx.lineTo(vx + es * vw * (0.62 - i * 0.1), y0 - hh * 0.03);
+            ctx.lineTo(vx + es * vw * (0.62 - i * 0.1), y0 + hh * 0.05);
+            ctx.lineTo(vx + es * vw * 0.16, y0 + hh * 0.13);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
       }
       // Pivot roundels: bossed discs where the visor hinges.
@@ -9349,14 +9736,111 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     ctx.fillStyle = shade(st.spikesCrown.color, -20);
     ctx.fillRect(headX - hw * 0.8 * arcK, baseY - hh * 0.06, hw * 1.6 * arcK, hh * 0.1);
   }
+  if (st.boneCrown && !hurt) {
+    // THE BONE CROWN: a trophy jaw worn as a comb — four fangs riding
+    // the crown centerline, every one HOOKED toward the facing (a
+    // spike is a nail; a fang closes), seated on a gilt seam so the
+    // bone is mounted, never sprouting. Tallest over the brow, the
+    // row descending toward the nape like a jaw is armed.
+    const arcK = 0.35 + 0.65 * profileK;
+    const bc = st.boneCrown.color;
+    const baseY = headY - hh * 1.02;
+    // The gilt seam first: the mount the trophy is pinned to.
+    ctx.fillStyle = shade(st.boneCrown.seam, -18);
+    ctx.fillRect(headX - hw * 0.76 * arcK, baseY - hh * 0.1, hw * 1.52 * arcK, hh * 0.15);
+    ctx.fillStyle = st.boneCrown.seam;
+    ctx.fillRect(headX - hw * 0.76 * arcK, baseY - hh * 0.1, hw * 1.52 * arcK, hh * 0.08);
+    for (let i = 0; i < 4; i++) {
+      // Brow-forward: the tall fang leads, the row falls away behind.
+      const u = (0.6 - i * 0.42) * arcK;
+      const px = headX + ld * u * hw;
+      const seatY2 = baseY - hh * 0.16 * (1 - u * u * 1.4);
+      const tall = hh * (0.88 - i * 0.14);
+      const half = hw * (0.15 - i * 0.014) * (0.8 + 0.4 * arcK);
+      // Two facets per fang: lit leading face, shaded trailing.
+      ctx.fillStyle = shade(bc, 12);
+      ctx.beginPath();
+      ctx.moveTo(px + ld * half, seatY2);
+      ctx.quadraticCurveTo(px + ld * half * 1.7, seatY2 - tall * 0.62, px + ld * half * 0.5, seatY2 - tall);
+      ctx.lineTo(px, seatY2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(bc, -14);
+      ctx.beginPath();
+      ctx.moveTo(px, seatY2);
+      ctx.quadraticCurveTo(px + ld * half * 0.9, seatY2 - tall * 0.6, px + ld * half * 0.5, seatY2 - tall);
+      ctx.lineTo(px - ld * half, seatY2);
+      ctx.closePath();
+      ctx.fill();
+      // The root collar: each fang socketed in the seam's gold.
+      ctx.fillStyle = shade(st.boneCrown.seam, 16);
+      ctx.fillRect(px - half, seatY2 - hh * 0.02, half * 2, hh * 0.055);
+    }
+  }
+  if (st.transverse && !hurt) {
+    // THE TRANSVERSE CREST: the legion officer's brush worn ear to
+    // ear — full span when the helm faces you (where the fore-aft
+    // crest shows only its blade), a narrow banded fin at profile.
+    // Striped in the legion's two colors, seated on a bright seam.
+    const [ca, cb] = st.transverse.colors;
+    const tK = 0.35 + 0.65 * (1 - profileK);
+    const span = hw * 1.06 * tK;
+    const baseY = headY - hh * 0.96;
+    const arch = (u: number) => baseY - hh * (0.24 + 0.52 * (1 - u * u * 0.82));
+    // The brush silhouette first, in the field color.
+    ctx.fillStyle = ca;
+    ctx.beginPath();
+    ctx.moveTo(headX - span, baseY + hh * 0.06);
+    const N2 = 10;
+    for (let i = 0; i <= N2; i++) {
+      const u = -1 + (2 * i) / N2;
+      // Bristles lean outward from the center part, like a real brush.
+      ctx.lineTo(headX + u * span + u * hw * 0.06, arch(u));
+    }
+    ctx.lineTo(headX + span, baseY + hh * 0.06);
+    ctx.closePath();
+    ctx.fill();
+    // The stripes: alternating bands following the same arch.
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(headX - span, baseY + hh * 0.06);
+    for (let i = 0; i <= N2; i++) {
+      const u = -1 + (2 * i) / N2;
+      ctx.lineTo(headX + u * span + u * hw * 0.06, arch(u));
+    }
+    ctx.lineTo(headX + span, baseY + hh * 0.06);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = cb;
+    for (let i = 0; i < 7; i += 2) {
+      const u0 = -1 + (2 * i) / 7;
+      const u1 = -1 + (2 * (i + 1)) / 7;
+      const x0 = headX + u0 * span + u0 * hw * 0.06;
+      const x1 = headX + u1 * span + u1 * hw * 0.06;
+      ctx.fillRect(Math.min(x0, x1), baseY - hh * 1.0, Math.abs(x1 - x0), hh * 1.2);
+    }
+    // The sun finds the brush's crown; the underside keeps its shade.
+    ctx.fillStyle = 'rgba(255, 246, 230, 0.18)';
+    ctx.fillRect(headX - span, baseY - hh * 1.0, span * 2, hh * 0.16);
+    ctx.fillStyle = 'rgba(24, 15, 26, 0.22)';
+    ctx.fillRect(headX - span, baseY - hh * 0.02, span * 2, hh * 0.1);
+    ctx.restore();
+    // The seam: a bright holder bar mounting the brush to the crown.
+    ctx.fillStyle = shade(st.trim, -12);
+    ctx.fillRect(headX - span * 0.86, baseY - hh * 0.02, span * 1.72, hh * 0.12);
+    ctx.fillStyle = st.trim;
+    ctx.fillRect(headX - span * 0.86, baseY - hh * 0.02, span * 1.72, hh * 0.06);
+  }
   if (st.plume && !hurt) {
     // Crest: short center fin frontal, full arc at profile (its hero
     // read), falling tail from behind — the beard's band narrowing.
     // The champion's tall crown would swallow a hip-high crest, so
     // its plume rides a raised base and sweeps higher — the parade
     // read the fluted gold was forged for.
-    const lift = st.kind === 'champion' ? hh * 0.13 : 0;
-    const rise = st.kind === 'champion' ? 0.24 : 0;
+    // Taller and prouder on the champion: the benchmark helm's crest
+    // is a parade statement, not a streak.
+    const lift = st.kind === 'champion' ? hh * 0.2 : 0;
+    const rise = st.kind === 'champion' ? 0.44 : 0;
     ctx.fillStyle = st.plume.color;
     const arcK = 0.35 + 0.65 * profileK;
     // The champion's crest is a SOLID fin (low inner curve fills the
