@@ -265,6 +265,54 @@ charged opener, staff weave, dagger flurry string. Windups arrive here (LAW 2), 
 so per-class DPS parity holds; any cadence change retunes NPC HP in the same commit.
 **Proof:** moveset-equivalence tests, DPS parity table per class, TTK brackets.
 
+**SHIPPED — as built (2026-08-13).**
+- content/src/movesets.ts: StrikeDef {key, dmgMult, kbMult, sweepAll, recoveryMult,
+  windupTicks, alt?, speedMult?, splash?} + MovesetDef {id, style, poseDialect,
+  graceTicks, string}. Four pages: sword_string (GREW 3→4 beats), dagger_flurry
+  (NEW, 5 beats), great_string + wand_rhythm (legacy lanes as data, byte-law-pinned
+  against the shared constants they derive from). WeaponStats grew `moveset?:
+  MovesetId`; resolution = authored field → class default, with daggers split off
+  by `isDaggerStats` — the census test's exact three-dial identity (cd ≤ 6, range
+  ≤ 1.5, backstab ≥ 2.2), which lands on precisely the 58 census daggers with zero
+  leaks. The bow deliberately has NO page: its basic is the draw (charge grammar).
+- THE POSE ALTERNATION LAW (strikePose): any string length rides the existing
+  three pose bytes — even beats Attack, odd Attack2, payoff Attack3 — and STEEL
+  adjacent beats (wrap included) never share a value, because the anim clock keys
+  on pose change. A five-beat flurry costs ZERO wire changes. The WAND dialect
+  repeats Cast by design (the bolt tracer is the beat's feedback) — the law's
+  test caught this pre-existing quirk and pins it deliberately.
+- THE HONEST SWING: melee blows are committed at the press (cooldown, pose, the
+  spoken beat, every damage number captured — a mid-windup swap changes nothing)
+  and LAND at the impact frame via pendingStrike → landStrike (sword 2t/finisher
+  3t, dagger 1t/2t, great 4t/5t ≈ each choreography's visual impact). Lag comp
+  rewinds by base + flight ticks. Wand bolts stay windup-0 (flight IS the honest
+  travel; also keeps the press-edge tracer/entity handoff exact). Cleared at
+  sheathe/death/mount; a dodge never recalls a committed blow. One blow in flight
+  at a time, pinned: max windup < fastest class cadence.
+- THE BRANCH: the sword payoff answers the trigger — hold-flow keeps the
+  crowd-clear sweep (×2.5, unchanged for holders); a rhythm TAP (press edge or
+  spent buffer) drives THE PIERCING thrust: ONE body, ×3.0. Alts live only on
+  payoff beats and share their beat's recovery + windup (content-pinned), so the
+  mirror never needs to know the branch.
+- TEMPO lands its teeth: run held past one full string shaves 1 windup tick —
+  speed, never damage, and the beat UI's pip-warming threshold is the same
+  run > len instant the hands quicken.
+- CADENCE CONTRACT table (movesets.test.ts, vs the legacy 1.125/tick line):
+  sword 4-beat 0.978 (the finisher is EARNED), thrust branch 1.067 single-target
+  (≤ 1.10), dagger flurry 1.125 EXACT (plunge authored 2.75 = the parity
+  solution), great/wand unchanged. No cycle left the ±10% band → NO NPC HP
+  retune, per the contract's own terms.
+- Server door fully data-driven (the three hardcoded lanes are DEAD); client
+  melee + staff mirrors read the same page (length/recovery/grace/pose); the
+  Phase-2 helpers finisherRecoveryMult/comboGraceTicksFor deleted — the book is
+  the one source now. Dagger five-beat choreography reads natively (rogue
+  rake/backslash alternation + icepick plunge — zero rig changes).
+- Proof: movesets.test.ts 6 contracts (byte-law, cadence table, roster/style
+  agreement + 58-dagger census match, branch laws, pose alternation, windup
+  sanity) + combatRhythm.test.ts reworked to 9 door pins (four-beat clocks +
+  windup schedule + extraRewind, branch, TEMPO shave, flurry, restart, swap,
+  no-page, wand, one-cone). Full workspace suite 1514/1514 green.
+
 ### Phase 4 — EIGHT HANDS (class identity pass)
 Dagger momentum; dual-wield weave beats; twohand hyper-armor + overhead; staff guard
 sweep + element voices; bow point-blank kick + overcharge volley. Impact identity

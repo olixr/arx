@@ -222,19 +222,9 @@ export function armBuffer(remainingCooldown: number, now: number): number {
  */
 export const DODGE_CANCEL_FLOOR_TICKS = 3;
 
-/** The finisher's recovery multiplier for a basic-attack lane. */
-export function finisherRecoveryMult(style: 'onehand' | 'twohand' | 'arx'): number {
-  return style === 'twohand'
-    ? TWOHAND_FINISHER_RECOVERY_MULT
-    : style === 'arx'
-      ? HEAVY_BOLT_RECOVERY_MULT
-      : FINISHER_RECOVERY_MULT;
-}
-
-/** The grace window a basic-attack lane stamps after each swing. */
-export function comboGraceTicksFor(style: 'onehand' | 'twohand' | 'arx'): number {
-  return style === 'twohand' ? TWOHAND_COMBO_GRACE_TICKS : COMBO_GRACE_TICKS;
-}
+// (Per-lane recovery/grace numbers live in THE MOVESET BOOK now —
+// content/src/movesets.ts derives every default from the constants
+// above, and the byte-law test there pins the agreement.)
 
 // ------------------------------------------------------ the strike clock
 

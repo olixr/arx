@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   COMBO_GRACE_TICKS,
-  COMBO_STAGES,
   FINISHER_DAMAGE_MULT,
   FINISHER_RECOVERY_MULT,
   HEAVY_BOLT_RECOVERY_MULT,
@@ -14,15 +13,18 @@ import {
 import { GameServer } from './gameServer.js';
 
 /**
- * THE ONE RHYTHM's door laws, pinned at tryPlayerAttack: one ComboTrack
- * advances every lane, the string belongs to the weapon that started
- * it, recoveries and pose holds come from the shared tables, the beat
- * is SPOKEN to its own session, and no style fires from a fallthrough.
- * Same slate discipline as castEngine.test.ts: private GameServer
- * methods over a hand-built slate — no db, no sockets, real content.
+ * THE MOVESET BOOK's door laws, pinned at tryPlayerAttack: the page
+ * drives every beat (length, recovery, pose, windup), THE HONEST
+ * SWING lands on the impact frame, THE BRANCH answers the rhythm tap,
+ * TEMPO quickens the practiced hand, and the string still belongs to
+ * the weapon that started it. Same slate discipline as
+ * castEngine.test.ts: private GameServer methods over a hand-built
+ * slate — no db, no sockets, real content.
  *
- * Content facts leaned on: bronze_sword (onehand, cd 7), iron_greatblade
- * (twohand, cd 12), carved_staff (arx, cd 8), shortbow (archery, cd 7).
+ * Content facts leaned on: bronze_sword (onehand cd 7, sword_string
+ * 4 beats), shiv (dagger cd 4, dagger_flurry 5 beats), iron_greatblade
+ * (twohand cd 12, great_string), carved_staff (arx cd 8, wand_rhythm),
+ * shortbow (archery — no page).
  */
 
 type Fn = (...a: unknown[]) => unknown;
@@ -32,6 +34,8 @@ const proto = GameServer.prototype as unknown as {
   equippedWeapon: Fn;
   offhandWeapon: Fn;
   speakCombo: Fn;
+  landStrike: Fn;
+  resolvePendingStrike: Fn;
 };
 
 interface SwingRec {
@@ -41,12 +45,14 @@ interface SwingRec {
   knockbackMult?: number;
   sweepAll?: boolean;
   arcHalf?: number;
+  extraRewind?: number;
 }
 
 function mkRig(weaponId: string) {
   const sent: Array<Record<string, unknown>> = [];
   const poses: Array<{ pose: number; ticks: number }> = [];
   const swings: SwingRec[] = [];
+  const windups: number[] = [];
   const projectiles: Array<Record<string, unknown>> = [];
   const player = {
     attackCooldown: 0,
@@ -54,6 +60,7 @@ function mkRig(weaponId: string) {
     hidden: false,
     sneaking: false,
     combo: freshCombo(),
+    pendingStrike: null as { at: number; pressTick: number } | null,
     buffs: [] as unknown[],
     equipment: { weapon: { id: weaponId } } as Record<string, { id: string } | undefined>,
     gear: {
@@ -72,6 +79,8 @@ function mkRig(weaponId: string) {
     equippedWeapon: proto.equippedWeapon,
     offhandWeapon: proto.offhandWeapon,
     speakCombo: proto.speakCombo,
+    landStrike: proto.landStrike,
+    resolvePendingStrike: proto.resolvePendingStrike,
     revealPlayer: () => undefined,
     effectiveLevel: () => 10,
     setPose: (_eid: unknown, pose: number, ticks: number) => poses.push({ pose, ticks }),
@@ -87,8 +96,9 @@ function mkRig(weaponId: string) {
       _backstabMult?: number,
       _xpStyle?: string,
       arcHalf?: number,
+      extraRewind?: number,
     ) => {
-      swings.push({ aim, range, maxHit, knockbackMult, sweepAll, arcHalf });
+      swings.push({ aim, range, maxHit, knockbackMult, sweepAll, arcHalf, extraRewind });
       return 0;
     },
     grantArt: () => undefined,
@@ -102,90 +112,128 @@ function mkRig(weaponId: string) {
     projectiles: { set: (_eid: unknown, p: Record<string, unknown>) => projectiles.push(p) },
     updateChunkMembership: () => undefined,
   };
-  return { rig, player, sent, poses, swings, projectiles };
+  // Swing at a tick, then let any blow in flight land on its frame —
+  // recording the windup it flew.
+  const swingAt = (tick: number, tapped = false) => {
+    rig.tickCount = tick;
+    player.attackCooldown = 0; // the sim decrements per tick; the slate jumps
+    proto.tryPlayerAttack.call(rig, 1, player, 0, tick, tapped);
+    if (player.pendingStrike) {
+      windups.push(player.pendingStrike.at - player.pendingStrike.pressTick);
+      rig.tickCount = player.pendingStrike.at;
+      proto.resolvePendingStrike.call(rig, 1, player);
+    } else if (projectiles.length === 0) {
+      windups.push(0);
+    }
+  };
+  return { rig, player, sent, poses, swings, windups, projectiles, swingAt };
 }
 
-function swingAt(rig: { tickCount: number }, player: { attackCooldown: number }, tick: number) {
-  rig.tickCount = tick;
-  player.attackCooldown = 0; // the sim decrements per tick; the slate jumps
-  proto.tryPlayerAttack.call(rig, 1, player, 0, tick);
-}
-
-test('onehand string: stages, clocks, finisher sweep, and the spoken beat', () => {
-  const { rig, player, sent, poses, swings } = mkRig('bronze_sword');
-  swingAt(rig, player, 0);
-  swingAt(rig, player, 7);
-  swingAt(rig, player, 14); // all inside cooldown+grace — the full string
-  assert.deepEqual(
-    sent.map((m) => m.stage),
-    [0, 1, 2],
-    'the whole string spoken, in order',
-  );
-  assert.deepEqual(
-    sent.map((m) => m.run),
-    [1, 2, 3],
-    'THE RUN spoken with every beat',
-  );
-  assert.ok(
-    sent.every((m) => m.t === 'combo' && m.len === COMBO_STAGES),
-    'every beat names the string length',
-  );
-  // Recovery: swings ride the weapon cooldown; the finisher pays double.
+test('sword string: four beats, book clocks, honest windups, earned finisher', () => {
+  const { player, sent, poses, swings, windups, swingAt } = mkRig('bronze_sword');
+  swingAt(0);
+  swingAt(7);
+  swingAt(14);
+  swingAt(21); // the payoff beat, all in rhythm
+  assert.deepEqual(sent.map((m) => m.stage), [0, 1, 2, 3], 'the whole string spoken');
+  assert.deepEqual(sent.map((m) => m.run), [1, 2, 3, 4], 'THE RUN spoken with every beat');
+  assert.ok(sent.every((m) => m.t === 'combo' && m.len === 4), 'the book names the length');
   assert.equal(player.attackCooldown, Math.round(7 * FINISHER_RECOVERY_MULT));
-  // The spoken grace is the honest remaining window (recovery + grace).
-  assert.equal(sent[2]!.grace, player.attackCooldown + COMBO_GRACE_TICKS);
-  // Pose holds come from THE STRIKE CLOCK.
+  assert.equal(sent[3]!.grace, player.attackCooldown + COMBO_GRACE_TICKS);
+  // Pose alternation: forehand, backhand, forehand, payoff — from the
+  // strike clock table.
   assert.deepEqual(
     poses.map((p) => p.ticks),
     [
       STRIKE_CLOCKS.onehand.swing.holdTicks,
       STRIKE_CLOCKS.onehand.swing.holdTicks,
+      STRIKE_CLOCKS.onehand.swing.holdTicks,
       STRIKE_CLOCKS.onehand.finisher.holdTicks,
     ],
   );
-  // Only the finisher sweeps, at the payoff multiplier.
-  assert.deepEqual(swings.map((s) => s.sweepAll), [false, false, true]);
-  assert.equal(swings[2]!.maxHit, Math.round(swings[0]!.maxHit * FINISHER_DAMAGE_MULT));
+  assert.notEqual(poses[2]!.pose, poses[3]!.pose, 'adjacent beats flip the byte');
+  assert.notEqual(poses[1]!.pose, poses[2]!.pose);
+  // THE HONEST SWING: chips fly 2 ticks, the payoff 3.
+  assert.deepEqual(windups, [2, 2, 2, 3]);
+  // Hold-flow finisher: the crowd-clear sweep at the payoff multiplier.
+  assert.deepEqual(swings.map((s) => s.sweepAll), [false, false, false, true]);
+  assert.equal(swings[3]!.maxHit, Math.round(swings[0]!.maxHit * FINISHER_DAMAGE_MULT));
+  assert.deepEqual(
+    swings.map((s) => s.extraRewind),
+    [2, 2, 2, 3],
+    'lag comp rewinds by the windup the blow flew',
+  );
+});
+
+test('THE BRANCH: a rhythm TAP on the payoff drives the piercing thrust', () => {
+  const { swings, swingAt } = mkRig('bronze_sword');
+  swingAt(0);
+  swingAt(7);
+  swingAt(14);
+  swingAt(21, true); // tapped on the beat
+  assert.equal(swings[3]!.sweepAll, false, 'the thrust takes ONE body');
+  assert.equal(swings[3]!.maxHit, Math.round(swings[0]!.maxHit * 3.0), 'the duelist payoff');
+});
+
+test('TEMPO: rhythm past a full string quickens the hand by one tick', () => {
+  const { windups, swingAt } = mkRig('bronze_sword');
+  swingAt(0);
+  swingAt(7);
+  swingAt(14);
+  swingAt(21); // finisher, recovery 14
+  swingAt(35); // run 5 > len 4 — the practiced opener
+  assert.equal(windups[4], 1, 'windup 2 shaved to 1 (speed, never damage)');
+});
+
+test('dagger flurry: five quick cuts, the plunge, exact-parity payoff', () => {
+  const { player, sent, windups, swings, swingAt } = mkRig('shiv');
+  swingAt(0);
+  swingAt(4);
+  swingAt(8);
+  swingAt(12);
+  swingAt(16);
+  assert.deepEqual(sent.map((m) => m.stage), [0, 1, 2, 3, 4]);
+  assert.ok(sent.every((m) => m.len === 5), 'the flurry is five beats');
+  assert.deepEqual(windups, [1, 1, 1, 1, 2], 'fast hands stay fast');
+  assert.equal(player.attackCooldown, Math.round(4 * 2.0));
+  assert.equal(swings[4]!.maxHit, Math.round(swings[0]!.maxHit * 2.75), 'the plunge');
+  assert.equal(swings[4]!.sweepAll, true);
 });
 
 test('a rest past the grace window starts the string over', () => {
-  const { rig, player, sent } = mkRig('bronze_sword');
-  swingAt(rig, player, 0);
+  const { sent, swingAt } = mkRig('bronze_sword');
+  swingAt(0);
   const grace = sent[0]!.grace as number;
-  swingAt(rig, player, grace + 1);
+  swingAt(grace + 1);
   assert.deepEqual(sent.map((m) => m.stage), [0, 0], 'the dropped string restarts');
 });
 
 test('THE STRING BELONGS TO THE WEAPON: a swap never inherits the beat', () => {
-  const { rig, player, sent, poses, swings } = mkRig('bronze_sword');
-  swingAt(rig, player, 0);
-  swingAt(rig, player, 7);
-  // The old bug, dead: sword-sword-GREATSWORD used to land an instant
-  // x3.0 finisher off the shared stage counter.
+  const { player, sent, poses, swings, swingAt } = mkRig('bronze_sword');
+  swingAt(0);
+  swingAt(7);
   player.equipment.weapon = { id: 'iron_greatblade' };
-  swingAt(rig, player, 14);
+  swingAt(14);
   assert.deepEqual(sent.map((m) => m.stage), [0, 1, 0], 'the greatblade starts its own string');
   assert.equal(poses[2]!.ticks, STRIKE_CLOCKS.twohand.swing.holdTicks, 'great opener clock');
   assert.equal(swings[2]!.arcHalf, TWOHAND_ARC_HALF, 'the wide reap arrives with the swap');
   assert.equal(swings[2]!.sweepAll, true, 'THE CLEAVE LAW from the first greatswing');
 });
 
-test('EXPLICIT LANES: a style with no lane pays nothing and fires nothing', () => {
-  // A bow in the melee door (archery routes through tickBowDraw and
-  // never lands here in the sim — the guard keeps the door honest).
-  const { rig, player, sent, poses, swings, projectiles } = mkRig('shortbow');
-  swingAt(rig, player, 0);
+test('EXPLICIT LANES: a style with no page pays nothing and fires nothing', () => {
+  const { player, sent, poses, swings, projectiles, swingAt } = mkRig('shortbow');
+  swingAt(0);
   assert.equal(player.attackCooldown, 0, 'no cooldown paid');
   assert.equal(sent.length + poses.length + swings.length + projectiles.length, 0);
 });
 
-test('wand rhythm: bolt, bolt, HEAVY — splash, slow orb, long recovery', () => {
-  const { rig, player, sent, poses, projectiles } = mkRig('carved_staff');
-  swingAt(rig, player, 0);
-  swingAt(rig, player, 8);
-  swingAt(rig, player, 16);
+test('wand rhythm: bolt, bolt, ORB — the page drives the projectile lane', () => {
+  const { player, sent, poses, projectiles, swingAt } = mkRig('carved_staff');
+  swingAt(0);
+  swingAt(8);
+  swingAt(16);
   assert.deepEqual(sent.map((m) => m.stage), [0, 1, 2]);
-  assert.equal(projectiles.length, 3);
+  assert.equal(projectiles.length, 3, 'bolts spawn at the press — flight is the honest travel');
   assert.equal(projectiles[0]!.heavy, undefined);
   assert.equal(projectiles[2]!.heavy, true, 'the third bolt is the orb');
   assert.equal(projectiles[2]!.splashRadius, HEAVY_BOLT_SPLASH);
@@ -199,8 +247,6 @@ test('wand rhythm: bolt, bolt, HEAVY — splash, slow orb, long recovery', () =>
 });
 
 test('the swing and the scenery share ONE cone', () => {
-  // meleeSwing must hand its own arcHalf to smashPropsInArc — the prop
-  // sweep hardcoded the sword's ±60° and shorted the great reap.
   const arcs: number[] = [];
   const fake = {
     positions: { must: () => ({ x: 0, y: 0, dir: 0 }) },

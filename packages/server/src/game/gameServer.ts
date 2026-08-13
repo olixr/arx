@@ -326,6 +326,8 @@ import {
   type VoiceSlot,
   mountDef,
   MOUNTS,
+  movesetFor,
+  strikePose,
 } from '@arx/content';
 import {
   collectVoicePrefetch,
@@ -1399,6 +1401,28 @@ interface PlayerComp {
    * site ever needs to clean it up.
    */
   attackBufferedUntilTick: number;
+  /**
+   * THE HONEST SWING: the blow in flight — paid and spoken at the
+   * press, landing at `at` (the choreography's impact frame). The
+   * promise made at press is the promise kept: every number is
+   * captured there. Cleared by the honest breaks (sheathe, death,
+   * mount); a dodge never recalls a blow already swung.
+   */
+  pendingStrike: {
+    at: number;
+    pressTick: number;
+    aim: number;
+    maxHit: number;
+    kbMult: number;
+    sweepAll: boolean;
+    wasHidden: boolean;
+    backstabMult: number;
+    xpStyle: SkillId;
+    arcHalf: number;
+    range: number;
+    /** twohand: the whirlwind's deed check rides the resolve. */
+    deed: boolean;
+  } | null;
   /** Remaining cooldown ticks: [first art (Q), relic, second art (R), sigil]. */
   abilityCd: [number, number, number, number];
   /** Buttons of the last processed frame — abilities fire on press edge. */
@@ -3072,6 +3096,7 @@ export class GameServer {
       drawTicks: 0,
       combo: freshCombo(),
       attackBufferedUntilTick: 0,
+      pendingStrike: null,
       abilityCd: [0, 0, 0, 0],
       prevButtons: 0,
       castFreezeUntilTick: 0,
@@ -4394,6 +4419,7 @@ export class GameServer {
     this.standUp(eid, player, pos);
     player.mountId = id;
     resetCombo(player.combo); // the saddle is a rest note, not a beat
+    player.pendingStrike = null;
     this.broadcastMetaUpdate(eid);
     this.sendRide(player);
   }
@@ -14770,7 +14796,13 @@ export class GameServer {
     });
   }
 
-  private tryPlayerAttack(eid: EntityId, player: PlayerComp, aim: number, seq: number): void {
+  private tryPlayerAttack(
+    eid: EntityId,
+    player: PlayerComp,
+    aim: number,
+    seq: number,
+    tapped = false,
+  ): void {
     if (player.attackCooldown > 0) return;
     const equipped = this.equippedWeapon(player);
     if (process.env.COMBAT_DEBUG) {
@@ -14778,13 +14810,14 @@ export class GameServer {
     }
     if (!equipped) return;
     const { weapon } = equipped;
-    // EXPLICIT LANES (combat v2): archery routes through tickBowDraw
-    // before this door ever sees it, and any future style must claim
-    // its own named lane — no style fires from a fallthrough. Guarded
-    // BEFORE the cooldown/reveal pay so an unknown style costs nothing.
-    if (weapon.style !== 'onehand' && weapon.style !== 'twohand' && weapon.style !== 'arx') {
+    // THE MOVESET BOOK: the weapon's page IS the lane. Archery routes
+    // through tickBowDraw before this door ever sees it, and a style
+    // with no page pays nothing and fires nothing — checked BEFORE the
+    // cooldown/reveal pay.
+    const moveset = movesetFor(weapon);
+    if (!moveset) {
       if (process.env.COMBAT_DEBUG) {
-        console.log(`[combat] no basic-attack lane for style=${weapon.style}`);
+        console.log(`[combat] no moveset page for style=${weapon.style}`);
       }
       return;
     }
@@ -14812,125 +14845,123 @@ export class GameServer {
       ),
     );
 
-    if (weapon.style === 'onehand') {
-      // Combo string: forehand → backhand → heavy finisher. Swinging
-      // again inside the grace window continues the chain; the finisher
-      // hits harder, shoves harder, CLEARS THE WHOLE ARC, and demands a
-      // longer recovery — the crowd-control payoff beat.
-      const stage = advanceCombo(player.combo, equipped.id, this.tickCount);
-      const finisher = stage === COMBO_STAGES - 1;
-      if (finisher) {
-        player.attackCooldown = Math.round(weapon.cooldownTicks * FINISHER_RECOVERY_MULT);
-      }
-      player.combo.graceUntilTick = this.tickCount + player.attackCooldown + COMBO_GRACE_TICKS;
-      this.speakCombo(player, stage);
-      const clock = finisher ? STRIKE_CLOCKS.onehand.finisher : STRIKE_CLOCKS.onehand.swing;
-      this.setPose(
-        eid,
-        stage === 0 ? PoseState.Attack : stage === 1 ? PoseState.Attack2 : PoseState.Attack3,
-        clock.holdTicks,
-      );
-      this.meleeSwing(
-        eid,
-        player,
-        aim,
-        weapon.range,
-        // Follow-Through rides only the finisher — the rhythm's payoff.
-        finisher ? Math.round(maxHit * FINISHER_DAMAGE_MULT * player.perks.finisherBonusMult) : maxHit,
-        finisher ? FINISHER_KNOCKBACK_MULT : stage === 1 ? 1.1 : 1,
-        finisher, // the finisher sweeps everyone, not just the best target
-        wasHidden,
-        weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
-      );
-      // Dual wield: the off blade echoes every mainhand swing a
-      // half-beat later. Scheduled, not immediate — the one-two rhythm
-      // IS the fantasy.
-      if (this.offhandWeapon(player)) {
-        // Ambidexter tightens the echo's schedule.
-        player.offhandEchoTicks = player.perks.offhandDelayTicks;
-        player.offhandEchoAim = aim;
-      }
-    } else if (weapon.style === 'twohand') {
-      // THE GREAT SCHOOL: the same three-beat string, a mountain
-      // slower. THE CLEAVE LAW — every swing sweeps the WHOLE arc
-      // (the melee finisher's crowd-clear privilege is a twohand
-      // basic), the arc runs wider than a sword's, and even ordinary
-      // blows shove. The payoff beat towers; the recovery is the
-      // weapon's own slow breath. Both fists belong to the haft, so
-      // there is no echo — the second hand already swung.
-      const stage = advanceCombo(player.combo, equipped.id, this.tickCount);
-      const finisher = stage === COMBO_STAGES - 1;
-      if (finisher) {
-        player.attackCooldown = Math.round(weapon.cooldownTicks * TWOHAND_FINISHER_RECOVERY_MULT);
-      }
-      player.combo.graceUntilTick = this.tickCount + player.attackCooldown + TWOHAND_COMBO_GRACE_TICKS;
-      this.speakCombo(player, stage);
-      // THE STRIKE CLOCK: the pose provably outlives its choreography
-      // (the shared table pins hold ticks beside the client's ms).
-      const clock = finisher ? STRIKE_CLOCKS.twohand.finisher : STRIKE_CLOCKS.twohand.swing;
-      this.setPose(
-        eid,
-        stage === 0 ? PoseState.Attack : stage === 1 ? PoseState.Attack2 : PoseState.Attack3,
-        clock.holdTicks,
-      );
-      const felled = this.meleeSwing(
-        eid,
-        player,
-        aim,
-        // Farcleaver: the edge arrives before the argument.
-        weapon.range + player.perks.greatReach,
-        finisher
-          ? Math.round(maxHit * TWOHAND_FINISHER_DAMAGE_MULT * player.perks.finisherBonusMult)
-          : stage === 1
-            ? Math.round(maxHit * TWOHAND_STAGE2_DAMAGE_MULT)
-            : maxHit,
-        finisher ? TWOHAND_FINISHER_KNOCKBACK_MULT : TWOHAND_KNOCKBACK_MULT,
-        true, // THE CLEAVE LAW: every greatswing clears the crowd
-        wasHidden,
-        weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
-        'twohand',
-        TWOHAND_ARC_HALF,
-      );
-      // THE UNWRITTEN PAGE: three felled by ONE turn of the great
-      // steel is the whirlwind's deed — the crowd taught the turning.
-      if (felled >= 3) this.grantArt(player, 'whirling_ruin');
-    } else {
-      // Wand rhythm: bolt → bolt → HEAVY. The third cast is a fat slow
-      // orb that splashes and shoves — the punch beat wands were missing.
-      const stage = advanceCombo(player.combo, equipped.id, this.tickCount);
-      const heavy = stage === COMBO_STAGES - 1;
-      if (heavy) {
-        player.attackCooldown = Math.round(weapon.cooldownTicks * HEAVY_BOLT_RECOVERY_MULT);
-      }
-      player.combo.graceUntilTick = this.tickCount + player.attackCooldown + COMBO_GRACE_TICKS;
-      this.speakCombo(player, stage);
-      const clock = heavy ? STRIKE_CLOCKS.arx.finisher : STRIKE_CLOCKS.arx.swing;
-      this.setPose(eid, heavy ? PoseState.Attack3 : PoseState.Cast, clock.holdTicks);
+    // One data-driven door for every page: advance the ONE track, read
+    // the beat's strike (a rhythm TAP takes the branch where one is
+    // authored), pay its recovery, speak it, pose it, and land it on
+    // the choreography's impact frame.
+    const len = moveset.string.length;
+    const stage = advanceCombo(player.combo, equipped.id, this.tickCount, len);
+    const beat = moveset.string[stage]!;
+    const strike = tapped && beat.alt ? beat.alt : beat;
+    const finisher = stage === len - 1;
+    player.attackCooldown = Math.round(weapon.cooldownTicks * strike.recoveryMult);
+    player.combo.graceUntilTick = this.tickCount + player.attackCooldown + moveset.graceTicks;
+    this.speakCombo(player, stage, len);
+    // THE STRIKE CLOCK + THE POSE ALTERNATION LAW: any string length
+    // rides the existing pose bytes, adjacent beats never repeating.
+    const clock = STRIKE_CLOCKS[moveset.style][finisher ? 'finisher' : 'swing'];
+    this.setPose(eid, strikePose(moveset.poseDialect, stage, len), clock.holdTicks);
+    // TEMPO: rhythm held past one full string quickens the hand — the
+    // windup shaves a tick. Speed, never damage (the cadence contract).
+    const windup = Math.max(0, strike.windupTicks - (player.combo.run > len ? 1 : 0));
+
+    if (moveset.style === 'arx') {
+      // Wand rhythm: bolt → bolt → orb. The bolt spawns at the press —
+      // its flight is already the honest travel (windup 0 by authoring).
       const pos = this.positions.must(eid);
       const proj = this.ecs.create();
       this.kinds.set(proj, EntityKind.Projectile);
       this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim });
       this.projectiles.set(proj, {
         ownerEid: eid,
-        style: weapon.style,
-        maxHit: heavy ? Math.round(maxHit * HEAVY_BOLT_MULT) : maxHit,
+        style: 'arx',
+        maxHit: Math.round(maxHit * strike.dmgMult),
         dirX: Math.cos(aim),
         dirY: Math.sin(aim),
-        speed: (weapon.projectileSpeed ?? 12) * (heavy ? 0.8 : 1),
+        speed: (weapon.projectileSpeed ?? 12) * (strike.speedMult ?? 1),
         distLeft: weapon.range,
         basic: true,
         spawnSeq: seq,
         element: weapon.element,
-        heavy: heavy || undefined,
-        splashRadius: heavy ? HEAVY_BOLT_SPLASH : undefined,
+        heavy: finisher || undefined,
+        splashRadius: strike.splash,
         // Ember Bolt passive: the payoff beat sets things burning.
         status:
-          heavy && this.hasPassive(player, 'ember_bolt')
+          finisher && this.hasPassive(player, 'ember_bolt')
             ? { status: 'burn', power: 1, durationTicks: 60 }
             : undefined,
       });
       this.updateChunkMembership(proj);
+      return;
     }
+
+    // Steel lanes — THE HONEST SWING: the blow is committed at the
+    // press (cooldown, pose, the spoken beat) and LANDS at the impact
+    // frame. Every number is captured now: the promise made is the
+    // promise kept, a mid-windup swap changes nothing.
+    const strikeData = {
+      at: this.tickCount + windup,
+      pressTick: this.tickCount,
+      aim,
+      // Follow-Through rides only the finisher — the rhythm's payoff.
+      maxHit: finisher
+        ? Math.round(maxHit * strike.dmgMult * player.perks.finisherBonusMult)
+        : Math.round(maxHit * strike.dmgMult),
+      kbMult: strike.kbMult,
+      sweepAll: strike.sweepAll,
+      wasHidden,
+      backstabMult: weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
+      xpStyle: moveset.style as SkillId,
+      arcHalf: moveset.style === 'twohand' ? TWOHAND_ARC_HALF : Math.PI / 3,
+      // Farcleaver: the edge arrives before the argument.
+      range: weapon.range + (moveset.style === 'twohand' ? player.perks.greatReach : 0),
+      deed: moveset.style === 'twohand',
+    };
+    if (windup === 0) this.landStrike(eid, player, strikeData);
+    else player.pendingStrike = strikeData;
+    // Dual wield: the off blade echoes every mainhand swing a
+    // half-beat later. Scheduled from the press, so the echo still
+    // trails the main IMPACT by the rig's one-two beat.
+    if (moveset.style === 'onehand' && this.offhandWeapon(player)) {
+      // Ambidexter tightens the echo's schedule.
+      player.offhandEchoTicks = player.perks.offhandDelayTicks;
+      player.offhandEchoAim = aim;
+    }
+  }
+
+  /** The impact frame arriving: a committed strike lands. */
+  private landStrike(
+    eid: EntityId,
+    player: PlayerComp,
+    s: NonNullable<PlayerComp['pendingStrike']>,
+  ): void {
+    const felled = this.meleeSwing(
+      eid,
+      player,
+      s.aim,
+      s.range,
+      s.maxHit,
+      s.kbMult,
+      s.sweepAll,
+      s.wasHidden,
+      s.backstabMult,
+      s.xpStyle,
+      s.arcHalf,
+      // Lag comp: the world the attacker saw at the PRESS — the base
+      // rewind plus however long this blow has been in flight.
+      this.tickCount - s.pressTick,
+    );
+    // THE UNWRITTEN PAGE: three felled by ONE turn of the great
+    // steel is the whirlwind's deed — the crowd taught the turning.
+    if (s.deed && felled >= 3) this.grantArt(player, 'whirling_ruin');
+  }
+
+  /** The per-tick landing door for blows in flight. */
+  private resolvePendingStrike(eid: EntityId, player: PlayerComp): void {
+    const s = player.pendingStrike;
+    if (!s || this.tickCount < s.at) return;
+    player.pendingStrike = null;
+    this.landStrike(eid, player, s);
   }
 
   /**
@@ -14996,6 +15027,8 @@ export class GameServer {
     xpStyle: SkillId = 'onehand',
     /** Sweep half-angle — swords cut a ±60° cone, greatweapons wider. */
     arcHalf = Math.PI / 3,
+    /** Extra rewind ticks: how long this blow flew after its press. */
+    extraRewind = 0,
     /** @returns bodies FELLED by this one swing (the whirlwind's deed). */
   ): number {
     const pos = this.positions.must(eid);
@@ -15016,9 +15049,10 @@ export class GameServer {
     const critPct = player.gear.critPct + surgeCritPct(player);
     maxHit = Math.max(1, Math.round(maxHit * surgeDmgMult(player)));
     // LAG COMP: test the swing against the world the ATTACKER saw —
-    // NPC positions rewound by their view delay (see npcHist). Damage
+    // NPC positions rewound by their view delay (see npcHist), plus
+    // the windup this blow spent in flight since its press. Damage
     // and knockback still resolve on the live entity.
-    const rewind = this.viewRewindTicks(player);
+    const rewind = this.viewRewindTicks(player) + extraRewind;
     // A strike out of full stealth backstabs from any angle; otherwise a
     // sneaking attacker must be inside the cone behind the target's facing.
     const backstabs = (npos: { x: number; y: number; dir: number }): boolean =>
@@ -18726,6 +18760,7 @@ export class GameServer {
       this.statuses.delete(eid); // death is at least a clean slate
       player.buffs = [];
       resetCombo(player.combo); // no string survives the fall
+      player.pendingStrike = null; // nor does a blow in flight
       this.dismount(eid, player); // nobody wakes up in the saddle
       this.updateChunkMembership(eid);
       // The friend follows home, unharmed: the pack spills, the
@@ -23306,6 +23341,9 @@ export class GameServer {
   private processPlayerInputs(eid: EntityId, player: PlayerComp): void {
     const pos = this.positions.must(eid);
     if (player.attackCooldown > 0) player.attackCooldown--;
+    // THE HONEST SWING lands before the echo answers — the mainhand
+    // impact and its offhand echo keep their one-two order.
+    this.resolvePendingStrike(eid, player);
     if (player.offhandEchoTicks > 0 && --player.offhandEchoTicks === 0) {
       this.offhandStrike(eid, player, player.offhandEchoAim);
     }
@@ -23421,6 +23459,7 @@ export class GameServer {
         if (player.sheathed) {
           player.drawTicks = 0;
           resetCombo(player.combo); // the stowed string is a dropped string
+          player.pendingStrike = null; // the stowed blow never lands
           this.cancelCasting(eid, player); // stowed steel casts nothing
           // ...and stowed steel sings nothing — the note breaks too.
           if (player.action?.kind === 'channel') this.cancelAction(eid, player, 'cancelled');
@@ -23518,10 +23557,15 @@ export class GameServer {
       if (style === 'archery') {
         this.tickBowDraw(eid, player, equipped!, attackHeld, frame.aim, frame.seq);
       } else if (attackHeld || attackBuffered) {
-        // The buffered press spends itself the moment the hand is free
-        // (fires with the LATEST aim — the newest intent wins).
+        // THE BRANCH reads the trigger: a fresh press edge or a spent
+        // buffer is a TAP (the rhythm hand); the held bit flowing on
+        // is the steady hand. The buffered press spends itself the
+        // moment the hand is free (fires with the LATEST aim).
+        const tapped =
+          (pressed & InputButton.Attack) !== 0 ||
+          (player.attackCooldown === 0 && attackBuffered);
         if (player.attackCooldown === 0) player.attackBufferedUntilTick = 0;
-        this.tryPlayerAttack(eid, player, frame.aim, frame.seq);
+        this.tryPlayerAttack(eid, player, frame.aim, frame.seq, tapped);
       }
       frames++;
     }

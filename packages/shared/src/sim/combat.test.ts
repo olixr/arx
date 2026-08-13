@@ -176,27 +176,6 @@ test('THE HELD INTENT: the buffer arms only in the tail of recovery', async () =
   );
 });
 
-test('the mirror helpers agree with the lane constants forever', async () => {
-  const {
-    finisherRecoveryMult,
-    comboGraceTicksFor,
-    FINISHER_RECOVERY_MULT,
-    TWOHAND_FINISHER_RECOVERY_MULT,
-    HEAVY_BOLT_RECOVERY_MULT,
-    COMBO_GRACE_TICKS,
-    TWOHAND_COMBO_GRACE_TICKS,
-  } = await import('./combat.js');
-  // The client swing mirror predicts with these helpers while the
-  // server lanes read the constants directly — pinned equal so the
-  // two can never drift apart.
-  assert.equal(finisherRecoveryMult('onehand'), FINISHER_RECOVERY_MULT);
-  assert.equal(finisherRecoveryMult('twohand'), TWOHAND_FINISHER_RECOVERY_MULT);
-  assert.equal(finisherRecoveryMult('arx'), HEAVY_BOLT_RECOVERY_MULT);
-  assert.equal(comboGraceTicksFor('onehand'), COMBO_GRACE_TICKS);
-  assert.equal(comboGraceTicksFor('twohand'), TWOHAND_COMBO_GRACE_TICKS);
-  assert.equal(comboGraceTicksFor('arx'), COMBO_GRACE_TICKS);
-});
-
 test('THE STRIKE CLOCK: every pose hold outlives its choreography', async () => {
   const { STRIKE_CLOCKS } = await import('./combat.js');
   const { TICK_MS } = await import('../constants.js');

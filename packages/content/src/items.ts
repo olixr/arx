@@ -64,7 +64,17 @@ export interface WeaponStats {
   backstabMult?: number;
   /** Arx school (staves) — tints bolts, flashes, and impacts. */
   element?: ArxElement;
+  /**
+   * THE MOVESET BOOK: the weapon's authored fighting string. Unset =
+   * the class default (daggers split off by the census identity in
+   * `movesetFor`). Authoring this is how a design family gets its own
+   * hands.
+   */
+  moveset?: MovesetId;
 }
+
+/** The moveset pages that exist — grown deliberately, per design family. */
+export type MovesetId = 'sword_string' | 'dagger_flurry' | 'great_string' | 'wand_rhythm';
 
 /**
  * A consumable buff. One buff may be active per channel: drinking a new

@@ -2,14 +2,11 @@ import {
   CAST_STILL_FACTOR,
   CHUNK_SIZE,
   CLIENT_REVEAL_MS,
-  COMBO_GRACE_TICKS,
-  COMBO_STAGES,
   ChunkStore,
   DRAW_FULL_TICKS,
   DRAW_MIN_TICKS,
   DUNGEON_MIN_Y,
   ExploredMask,
-  HEAVY_BOLT_RECOVERY_MULT,
   INTERP_DELAY_MS,
   b64ToU8,
   InputButton,
@@ -31,8 +28,6 @@ import {
   armBuffer,
   freshCombo,
   resetCombo,
-  comboGraceTicksFor,
-  finisherRecoveryMult,
   DODGE_CANCEL_FLOOR_TICKS,
   PoseState,
   STRIKE_CLOCKS,
@@ -77,7 +72,7 @@ import {
   type DetailPatch,
   type Vec2,
 } from '@arx/shared';
-import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, tameDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
+import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, movesetFor, npcDef, replaceGeography, strikePose, tameDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
 import { farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
 import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
@@ -885,22 +880,24 @@ export class ClientGame {
     const buffered = frame.seq <= this.staffBufferedUntilSeq;
     if (!hasButton(frame.buttons, InputButton.Attack) && !buffered) return;
     this.staffBufferedUntilSeq = 0;
+    const moveset = movesetFor(weapon);
+    if (!moveset) return;
     // The worn ITEM id keys the string — the mirror resets on a staff
-    // swap exactly when the server's track does.
-    const stage = advanceCombo(this.comboLocal, worn.id, frame.seq);
-    const heavy = stage === COMBO_STAGES - 1;
-    const cdTicks = heavy
-      ? Math.round(weapon.cooldownTicks * HEAVY_BOLT_RECOVERY_MULT)
-      : weapon.cooldownTicks;
-    this.staffReadySeq = frame.seq + cdTicks;
-    this.comboLocal.graceUntilTick = this.staffReadySeq + COMBO_GRACE_TICKS;
+    // swap exactly when the server's track does; the page carries the
+    // rhythm's length, recovery, and grace.
+    const len = moveset.string.length;
+    const stage = advanceCombo(this.comboLocal, worn.id, frame.seq, len);
+    const strike = moveset.string[stage]!;
+    const heavy = stage === len - 1;
+    this.staffReadySeq = frame.seq + Math.round(weapon.cooldownTicks * strike.recoveryMult);
+    this.comboLocal.graceUntilTick = this.staffReadySeq + moveset.graceTicks;
     const base = heavy ? 'arx_heavy' : 'arx';
     const defId = weapon.element ? `${base}:${weapon.element}` : base;
     this.predictShot(
       frame.seq,
       defId,
       frame.aim,
-      (weapon.projectileSpeed ?? 12) * (heavy ? 0.8 : 1),
+      (weapon.projectileSpeed ?? 12) * (strike.speedMult ?? 1),
       weapon.range,
     );
   }
@@ -922,6 +919,8 @@ export class ClientGame {
     // swing nothing (crafting/gathering actions carry a recipe instead
     // and the server lets the swing cancel them, so they don't gate).
     if (this.action?.ability) return;
+    const moveset = movesetFor(weapon);
+    if (!moveset) return;
     const pressed = frame.buttons & ~this.prevLocalButtons;
     // THE HELD INTENT, mirrored: a tap in the tail of recovery buffers.
     if (pressed & InputButton.Attack) {
@@ -933,17 +932,19 @@ export class ClientGame {
     const buffered = frame.seq <= this.meleeBufferedUntilSeq;
     if (!held && !buffered) return;
     this.meleeBufferedUntilSeq = 0;
-    const stage = advanceCombo(this.comboLocal, worn.id, frame.seq);
-    const finisher = stage === COMBO_STAGES - 1;
-    const cd = finisher
-      ? Math.round(weapon.cooldownTicks * finisherRecoveryMult(weapon.style))
-      : weapon.cooldownTicks;
-    this.meleeReadySeq = frame.seq + cd;
-    this.comboLocal.graceUntilTick = this.meleeReadySeq + comboGraceTicksFor(weapon.style);
+    // THE MOVESET BOOK, mirrored: the page's own length, recovery, and
+    // grace. Branch alts share their beat's recovery (content-pinned),
+    // so the mirror never needs to know which branch the server took.
+    const len = moveset.string.length;
+    const stage = advanceCombo(this.comboLocal, worn.id, frame.seq, len);
+    const strike = moveset.string[stage]!;
+    const finisher = stage === len - 1;
+    this.meleeReadySeq = frame.seq + Math.round(weapon.cooldownTicks * strike.recoveryMult);
+    this.comboLocal.graceUntilTick = this.meleeReadySeq + moveset.graceTicks;
     const clocks = weapon.style === 'twohand' ? STRIKE_CLOCKS.twohand : STRIKE_CLOCKS.onehand;
     const ms = finisher ? clocks.finisher.ms : clocks.swing.ms;
     this.ownSwing = {
-      pose: stage === 0 ? PoseState.Attack : stage === 1 ? PoseState.Attack2 : PoseState.Attack3,
+      pose: strikePose(moveset.poseDialect, stage, len),
       startedAt: now,
       // The server's confirming byte normally lands well inside the
       // choreography and adopts the swing (same pose value = no clock

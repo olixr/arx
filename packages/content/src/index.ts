@@ -8,6 +8,7 @@ export * from './ladderModel.js';
 export * from './secretArts.js';
 export * from './callings.js';
 export * from './items.js';
+export * from './movesets.js';
 export * from './equipment/types.js';
 export * from './equipment/enchants.js';
 export * from './equipment/tables.js';
