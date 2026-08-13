@@ -197,6 +197,56 @@ minutes, at hand-authored quality, and bank it.
   lever, stubbed to force-compose in a dev cell) — walk the walls, count the
   pulls.
 
+### Phase 1 as-built (2026-08-13, commit a4af9ef — THE FOUNDRY OPENS)
+
+Shipped as designed; deviations and laws learned:
+
+- **The grammar hardened**: `StrongholdDef` carries ONE `prefab` (id ===
+  def id by convention), wards 2..9, knot bands ≤3, muster envelope
+  16..60 max bodies, dims 48..120, tiers min ≥ 3. The boss ward key is
+  always `last_stand`; **the boss anchor is exempt from PULL-LAW
+  spacing** — the chief folds into his honor guard, the last stand is
+  deliberately the biggest fight.
+- **A GATE PIERCES A WALL**: gate detection requires solid tiles on
+  both lateral flanks — a free-standing shrine arch is scenery, not an
+  entrance (the dead's courtyard arches taught this). Wolfkin and dead
+  mouths are `ArchStone` (non-solid); breaches are trampled grass, or
+  rubble for cairn walls (`CaveRubble` is non-solid — found, not
+  assumed).
+- **Ward pieces are content-internal** (`strongholds/pieces.ts`, 20
+  sketches on the shared `sketch()` dialect, now exported from
+  prefabs.ts) — not library prefabs. The curated artifact is the
+  LAYOUT; pieces are the generator's raw material. Pieces may carry
+  knot suggestions (the pens want worgs) that outrank the family menu.
+- **Streams fold the layout id** (`ST_FOUNDRY 0x501e70` +
+  `hashString(id)`): the same seed under two ids proposes two
+  different strongholds. Hulls: hold 58-80 / citadel 86-108 walls +
+  FRINGE 3. Lanes are a dendritic network — gates carve cart-wide to
+  the plaza, each ward joins the NEAREST worn ground footpath-wide,
+  nearest-first (parallel-stripe lanes were the first draft's tell).
+  Wards sample a ring band (0.3-0.72 of half-span) around the plaza.
+  Muster marks (citadel 32 / hold 24) are asks; spacing geometry
+  answers — shipped shelves land 19-32.
+- **Born rolled, never blank**: the bench's New flow generates
+  immediately; a blank stronghold doesn't exist. Unsaved rolls live in
+  bench memory (def drafts + prefab drafts) and Save banks
+  prefab-first-then-def so the server's geometry laws always validate
+  against the live library.
+- **Nine layouts at pinned seeds** (moot 108×101 flagship / warring /
+  deepfort / bastion / stockyard / greatring / bonering / cacklefort /
+  barrowcourt), swept by 18 tests; `data/prefabs/stronghold_*.json`
+  committed as the repository baseline (FILE WINS thereafter).
+- **Gotchas for the next phases**: server/client resolve @arx/content
+  through PROJECT REFERENCES — after content edits run `npx tsc -b`,
+  not just package-local `--noEmit`. CMS section wiring is exactly the
+  lived-in-land checklist; the styled classes are `form-grid2` /
+  `poi-card` / `poi-grow` / `poi-stage` (invented class names render
+  unstyled). The shared MCP browser is a session commons — headless
+  proof runs on scratch `playwright-core` + the cached
+  `chrome-headless-shell`. And NEVER leave a throwing module half-built
+  in the shared tree: the placeholder-seed shelf blanked two other
+  sessions' page loads until the seeds were pinned.
+
 ## Phase 2 — The Raised Ground (elevation through the composer)
 
 Goal: the boss court sits up a hill behind guards; composed zones carry honest
