@@ -326,7 +326,8 @@ const twin_strike: AbilitySig = {
     ctx.save();
     ctx.lineCap = 'butt';
     // Two tally gashes, the second landing a beat after the first —
-    // loosed as one, scored as two.
+    // loosed as one, scored as two. Each is a torn GROOVE: dark bed,
+    // parted lit lip, white nick at its head.
     for (let k = 0; k < 2; k++) {
       const grown = Math.min(1, Math.max(0, (t - k * 0.09) / 0.16));
       if (grown <= 0) continue;
@@ -334,19 +335,26 @@ const twin_strike: AbilitySig = {
       const cx = c.px - Math.sin(a) * off;
       const cy = c.py + Math.cos(a) * off * squash;
       const len = R * 0.95 * grown;
-      ctx.globalAlpha = 0.7 * fade;
-      ctx.strokeStyle = k === 0 ? st.deep : shade(st.deep, -10);
-      ctx.lineWidth = Math.max(2, sc * 0.06);
+      ctx.globalAlpha = 0.8 * fade;
+      ctx.strokeStyle = k === 0 ? shade(st.deep, -12) : shade(st.deep, -20);
+      ctx.lineWidth = Math.max(3.5, sc * 0.095);
       ctx.beginPath();
       ctx.moveTo(cx - Math.cos(a) * len * 0.5, cy - Math.sin(a) * len * 0.5 * squash);
       ctx.lineTo(cx + Math.cos(a) * len * 0.5, cy + Math.sin(a) * len * 0.5 * squash);
       ctx.stroke();
+      ctx.globalAlpha = 0.85 * fade;
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(1.6, sc * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(cx - Math.cos(a) * len * 0.5 - Math.sin(a) * sc * 0.03, cy - Math.sin(a) * len * 0.5 * squash + Math.cos(a) * sc * 0.03);
+      ctx.lineTo(cx + Math.cos(a) * len * 0.5 - Math.sin(a) * sc * 0.03, cy + Math.sin(a) * len * 0.5 * squash + Math.cos(a) * sc * 0.03);
+      ctx.stroke();
       // The white nick at the tally's head, freshest cut last.
-      ctx.globalAlpha = 0.9 * fade * grown;
+      ctx.globalAlpha = 0.95 * fade * grown;
       ctx.fillStyle = st.core;
       const nx = cx + Math.cos(a) * len * 0.5;
       const ny = cy + Math.sin(a) * len * 0.5 * squash;
-      const g = Math.max(2, sc * 0.06);
+      const g = Math.max(2.5, sc * 0.07);
       ctx.fillRect(nx - g / 2, ny - g / 2, g, g);
     }
     ctx.restore();
