@@ -1853,7 +1853,7 @@ function earlyClothDefs(): EquipmentDef[] {
     ...stormwoven,
     ...colorways(stormwoven, [
       { key: 'thunderhead', dye: 'Thunderhead', color: '#3a3f4e', dyeInput: { item: 'iron_bar', qty: 1 },
-        desc: 'Anvil-cloud dark, flat-topped, patient. Count the seconds.' },
+        desc: 'Anvil-dark under a wide waved brim. Count the seconds.' },
       { key: 'sunshower', dye: 'Sunshower', color: '#c9a85c', dyeInput: { item: 'sunflower', qty: 2 },
         desc: 'Rain with the sun still out. Luck, worn with a brim.' },
       { key: 'aurora', dye: 'Aurora', color: '#4e8a7a', dyeInput: { item: 'moonbell', qty: 1 },
@@ -2054,7 +2054,7 @@ function stormwovenSet(): EquipmentDef[] {
       levelReq: { skill: 'arx', level: 17 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(20, 170, 70, 2),
       value: 360, color, code: 'Zh',
-      desc: 'The squall itself, worn forward. The bolt on the pitch is charging whether you watch it or not.',
+      desc: 'A stormcloud that agreed to be worn. Its fog keeps you company; its lightning keeps its own counsel.',
     },
     {
       id: 'stormwoven_robe', name: 'Stormwoven robe', slot: 'body', armorClass: 'cloth',
