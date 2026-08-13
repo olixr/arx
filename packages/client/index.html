@@ -13,7 +13,9 @@
       <div class="panel login-panel">
         <h1>Arx</h1>
         <p class="tagline">an open world, forged by hand</p>
+        <div id="login-roster" class="hidden"></div>
         <form id="login-form">
+          <div id="login-chosen" class="hidden"></div>
           <input
             id="login-user"
             type="text"
@@ -50,6 +52,9 @@
             autocomplete="off"
           />
           <button type="submit" id="login-submit">Enter World</button>
+          <button type="button" id="login-other" class="link-button hidden">
+            Sign in with a username
+          </button>
           <button type="button" id="login-toggle" class="link-button">
             New here? Create an account
           </button>

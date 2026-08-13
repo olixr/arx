@@ -22,6 +22,8 @@ import { CraftHud } from './ui/craftHud.js';
 import { BuildTray } from './ui/buildTray.js';
 import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
+import { forgetAccount, loadRoster, rememberAccount, type RememberedAccount } from './ui/loginRoster.js';
+import { chosenPlate, renderRosterShelf } from './ui/loginShelf.js';
 import { SocialPanel } from './ui/socialPanel.js';
 import { MapScreen } from './ui/map/mapScreen.js';
 import { MapOverlay } from './ui/map/mapOverlay.js';
@@ -175,11 +177,21 @@ const loginSubmit = document.getElementById('login-submit') as HTMLButtonElement
 const loginToggle = document.getElementById('login-toggle') as HTMLButtonElement;
 const loginError = document.getElementById('login-error')!;
 const loginStatus = document.getElementById('login-status')!;
+const loginRosterEl = document.getElementById('login-roster')!;
+const loginChosen = document.getElementById('login-chosen')!;
+const loginOther = document.getElementById('login-other') as HTMLButtonElement;
 const hud = document.getElementById('hud')!;
 const debugEl = document.getElementById('debug')!;
 
 let registerMode = false;
 let authReady = false;
+// THE DOOR REMEMBERS: the shelf of saved sign-in cards, the card the
+// player picked, the username riding the in-flight attempt, and the
+// account behind the live session (for refreshing its card).
+let roster = loadRoster();
+let chosen: RememberedAccount | null = null;
+let pendingUser: string | null = null;
+let sessionUser: string | null = null;
 /** THE THIN THREAD: the reconnecting pill, live only while the socket is down. */
 let netPill: HTMLElement | null = null;
 
@@ -1079,6 +1091,12 @@ function showLoginError(text: string): void {
 
 const looks = new LookCreator((look) => {
   game.setLookSend(look);
+  // The freshly chosen face reaches this device's sign-in card too,
+  // so the shelf shows the real portrait on the next visit.
+  if (sessionUser) {
+    roster = rememberAccount({ user: sessionUser, name: game.ownName, look, at: Date.now() });
+    renderLoginRoster();
+  }
   chat.addLine({ channel: 'system', text: 'Your look is set. Welcome to the world.' });
 });
 
@@ -1215,6 +1233,29 @@ const game = new ClientGame(input, {
       loginOverlay.classList.add('hidden');
       hud.classList.remove('hidden');
       if (game.sessionToken) localStorage.setItem('arx.token', game.sessionToken);
+      // THE DOOR REMEMBERS: a successful sign-in leaves a card so the
+      // next visit starts from a face, not an empty form. A token
+      // resume only refreshes a card that already matches this
+      // character (a guest or a forgotten account never writes one).
+      // Cards never carry passwords or tokens.
+      if (pendingUser) {
+        sessionUser = pendingUser;
+      } else if (!sessionUser) {
+        const tokenUser = localStorage.getItem('arx.tokenuser');
+        const card = roster.find((c) => c.user === tokenUser);
+        sessionUser = card && card.name === game.ownName ? tokenUser : null;
+      }
+      pendingUser = null;
+      if (sessionUser) {
+        localStorage.setItem('arx.tokenuser', sessionUser);
+        roster = rememberAccount({
+          user: sessionUser,
+          name: game.ownName,
+          look: game.ownLook,
+          at: Date.now(),
+        });
+        renderLoginRoster();
+      }
       if (!localStorage.getItem('arx.tipsShown')) {
         localStorage.setItem('arx.tipsShown', '1');
         // The first words the game says obey the device in hand.
@@ -2248,26 +2289,88 @@ game.onLoose = (charge, aim) => {
   input,
 };
 
-loginToggle.addEventListener('click', () => {
-  registerMode = !registerMode;
+// ------------------------------------------------------------------
+// THE DOOR REMEMBERS: four views share the one login form. 'roster'
+// deals the saved cards as faces; picking one enters 'quick', where
+// the username rides hidden and only the password is asked. 'signin'
+// is the classic form, 'register' adds the adventurer fields.
+type LoginView = 'roster' | 'quick' | 'signin' | 'register';
+let loginView: LoginView = 'signin';
+
+function homeView(): LoginView {
+  return roster.length > 0 ? 'roster' : 'signin';
+}
+
+function renderLoginRoster(): void {
+  renderRosterShelf(loginRosterEl, roster, {
+    onPick: (c) => {
+      chosen = c;
+      loginUser.value = c.user;
+      setLoginView('quick');
+    },
+    onForget: (c) => {
+      roster = forgetAccount(c.user);
+      renderLoginRoster();
+      if (roster.length === 0) setLoginView('signin');
+    },
+  });
+}
+
+function setLoginView(view: LoginView): void {
+  loginView = view;
+  registerMode = view === 'register';
+  const shelf = view === 'roster';
+  const quick = view === 'quick';
+  if (!quick) chosen = null;
+  loginRosterEl.classList.toggle('hidden', !shelf);
+  loginChosen.classList.toggle('hidden', !quick);
+  if (quick && chosen) loginChosen.replaceChildren(chosenPlate(chosen));
+  loginUser.classList.toggle('hidden', shelf || quick);
+  loginPass.classList.toggle('hidden', shelf);
   loginCharName.classList.toggle('hidden', !registerMode);
   loginCharName.required = registerMode;
   // The invite field is not marked required — the server decides
   // whether registration is gated (dev servers leave it open).
   loginInvite.classList.toggle('hidden', !registerMode);
+  loginSubmit.classList.toggle('hidden', shelf);
   loginSubmit.textContent = registerMode ? 'Create & Enter World' : 'Enter World';
   loginToggle.textContent = registerMode
     ? 'Have an account? Sign in'
     : 'New here? Create an account';
+  loginOther.classList.toggle('hidden', !shelf && !quick);
+  loginOther.textContent = quick ? 'Not you? Choose another' : 'Sign in with a username';
   loginError.classList.add('hidden');
+  if (quick) {
+    loginPass.value = '';
+    loginPass.focus();
+  }
+}
+
+loginToggle.addEventListener('click', () => {
+  setLoginView(registerMode ? homeView() : 'register');
 });
+
+loginOther.addEventListener('click', () => {
+  if (loginView === 'quick') {
+    setLoginView(homeView());
+  } else {
+    loginUser.value = '';
+    loginPass.value = '';
+    setLoginView('signin');
+    loginUser.focus();
+  }
+});
+
+renderLoginRoster();
+setLoginView(homeView());
 
 loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  if (!authReady) return;
+  if (!authReady || loginView === 'roster') return;
   loginError.classList.add('hidden');
   loginStatus.textContent = registerMode ? 'Creating your adventurer…' : 'Signing in…';
   loginStatus.classList.remove('hidden');
+  pendingUser = loginUser.value.trim() || null;
   if (registerMode) {
     game.sendRegister(
       loginUser.value.trim(),
