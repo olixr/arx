@@ -306,18 +306,32 @@ against a bare-handed control: weapon rows 5.3–6.1% vs 4.7% baseline
 mirrors — the W face-overlap resolved through Phases 2–3's
 mirror-true geometry.
 
-**Phase 5 — THE LIVING GAIT.** THE VISIBLE BREATH on camera-line
-gaits; walk-stage polish across classes on the one ladder; the
-S-facing trailing-leg fold handed to the leg solver (same depth
-family, its own fix — knee pole floor at deep-fold chords).
+**Phase 5 — THE LIVING GAIT.** **SHIPPED 2026-08-12 (6bfa329).**
+THE VISIBLE BREATH: armPump's vertical remnant gains BREATH_K where
+the lateral dies (zero at profile by construction) and free fists
+alternate their runner's lift with the smoothed stride (LIFT_ALT_K).
+BREATH_K's first cut (0.85) overstretched the stride bottom and the
+elbow regression suite caught it — recalibrated to 0.5 with the reach
+budget documented. Footprint proven: moving rows only, E/W 0.0%.
+As-built: the five gait-ladder "dialects" stand as legitimate
+per-class authorship (the staff's planted walk is a user verdict);
+the S-facing trailing-LEG fold is handed to a dedicated leg pass —
+it lives in the leg solver's depth model, not the arm system.
 
-**Phase 6 — THE PINNED LAW.** The suite: mirror sweeps all classes,
-hemi×sideS joint sweeps, choke collinearity (staff off-hand ON the
-wood, great pommel hand ON the grip, at every facing), GROUND_K
-equality across modules, fractional armedK pump ratios, dwell-defeat
-jitter (300ms-period wobble), sideW floor pinned by name, and the
-channel-owner walk. riglab's ARMS SHEET graduates to the standing
-audit surface (it already carries persistent per-fig state — keep it).
+**Phase 6 — THE PINNED LAW.** **SHIPPED across Phases 2–5, closed
+2026-08-12 (6bfa329).** The channel-owner walk (Phase 2), mirror +
+joint sweeps for every class (Phase 4), GROUND_K equality by
+construction (Phase 1 imports), and the last pins: sideW floor+slope
+by name, fractional armedK, and the dwell truth — the feared
+"dwell-defeating wobble" flips CORRECTLY (150ms+ holds ARE turning;
+the ease absorbs them) while sub-dwell jitter never registers, both
+pinned. Choke collinearity is guaranteed by construction (chokes ride
+heldAngle × mainFore inside the fenced, census-pinned assembly). The
+ARMS SHEET is the standing audit surface (persistent per-fig state,
+det/detn proof harness, transition probes).
+
+**THE EPIC IS COMPLETE.** All six phases shipped 2026-08-12,
+437275b → 6bfa329.
 
 ## Part 3 — verification
 
