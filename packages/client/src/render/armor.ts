@@ -13296,22 +13296,28 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   }
 
   if (st.kind === 'sharkmaw') {
-    // THE SHARKMAW — the leviathan worn whole, on the pelt law: the
-    // shark's head IS the helm and the wearer looks out of its
-    // MOUTH. The blunt snout planes over the brow, the tooth row
-    // hangs from the upper jaw framing the opening (incorporated,
-    // never sprinkled), dead black eyes sit wide on the snout, gill
-    // slashes score the cheeks, and the dorsal sail rakes off the
-    // crown into a notched trailing blade. Below the teeth: the
-    // folded dark. Nothing about this reads as a hat.
+    // THE SHARKMAW, rebuilt — the bite IS the opening. The upper jaw
+    // line is an ARCH cut clean through the shell (high at the apex,
+    // rolling down into the cheek corners), and the teeth hang FROM
+    // that arch along its own normals — center teeth plumb, corner
+    // teeth raking inward — rooted in one continuous gum band. Above
+    // the arch: a true FORESHORTENED muzzle plane sliding with the
+    // facing, ending in a nose ridge with paired nostril slits; the
+    // silhouette carries the OVERBITE as a hard nose step past the
+    // leading edge. Dead eyes wide on the snout sides. No lower jaw:
+    // the wearer's shadowed chin is what the mouth is about to
+    // close on.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
-    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const ohw = hw * 0.78 * (1 - 0.5 * t);
     const belly = st.divecrest?.color ?? shade(st.color, 26);
     const tooth = st.divecrest?.flash ?? '#e8ecec';
-    // THE DORSAL SAIL — structure: one solid raked blade with two
-    // membrane notches, crown to nape.
+    // THE BITE ARCH: corners at the cheeks, apex over the brow.
+    const cornerY = headY + hh * 0.14;
+    const apexY = headY - hh * 0.52;
+    const oBot = headY + hh * 0.86;
+    // THE DORSAL SAIL — structure: unchanged from round 2; it works.
     ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, -16);
     ctx.beginPath();
     ctx.moveTo(headX + lead * hw * 0.42, headY - hh * 1.12);
@@ -13333,25 +13339,44 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.lineTo(headX - lead * hw * 0.42, headY - hh * 1.72);
       ctx.stroke();
     }
-    // THE HEAD: one broad streamlined mass — snout wide over the
-    // brow, tapering back. Planar, blunt, heavy.
+    // THE SHELL: streamlined mass whose leading edge carries the
+    // OVERBITE — jaw hem in, then the nose STEPS OUT past the face
+    // line at muzzle height and slopes back to the brow. The step
+    // deepens with the turn: at profile the shark leads with it.
+    const noseOut = headX + lead * hw * (1.5 + t * 0.34);
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.16, headY + hh * 1.08);
-      ctx.lineTo(headX + lead * hw * 1.3, headY + hh * 0.14);
-      // THE SNOUT: juts past the face line and rounds DOWN over the
-      // brow — the overbite every shark leads with.
-      ctx.lineTo(headX + lead * hw * (1.46 + t * 0.2), headY - hh * 0.34);
-      ctx.lineTo(headX + lead * hw * (1.3 + t * 0.16), headY - hh * 0.66);
-      ctx.lineTo(headX + lead * hw * 0.62, headY - hh * 1.08);
-      ctx.lineTo(headX - lead * hw * 0.6, headY - hh * 1.14);
-      ctx.lineTo(headX - lead * hw * (1.1 + t * 0.26), headY - hh * 0.66);
-      ctx.lineTo(headX - lead * hw * (1.2 + t * 0.3), headY + hh * 0.16);
-      ctx.lineTo(headX - lead * hw * 1.14, headY + hh * 1.08);
-      // Nape tabs close the neck.
-      ctx.lineTo(headX - lead * hw * 0.44, headY + hh * 1.26);
-      ctx.lineTo(headX + lead * hw * 0.46, headY + hh * 1.28);
+      ctx.moveTo(headX + lead * hw * 1.1, headY + hh * 1.1);
+      ctx.lineTo(headX + lead * hw * 1.2, headY + hh * 0.42);
+      // Under-nose cheek: tucked IN — the step needs a base.
+      ctx.lineTo(headX + lead * hw * 1.18, headY - hh * 0.08);
+      // THE NOSE STEP: out to the blunt tip, flat front, back up.
+      ctx.lineTo(noseOut, headY - hh * 0.22);
+      ctx.lineTo(noseOut - lead * hw * 0.02, headY - hh * 0.52);
+      ctx.lineTo(headX + lead * hw * 1.02, headY - hh * 0.86);
+      // Crown, planar, into the trailing gill flank.
+      ctx.lineTo(headX + lead * hw * 0.5, headY - hh * 1.12);
+      ctx.lineTo(headX - lead * hw * 0.62, headY - hh * 1.16);
+      ctx.lineTo(headX - lead * hw * (1.1 + t * 0.26), headY - hh * 0.64);
+      ctx.lineTo(headX - lead * hw * (1.2 + t * 0.3), headY + hh * 0.2);
+      ctx.lineTo(headX - lead * hw * 1.12, headY + hh * 1.1);
+      ctx.lineTo(headX - lead * hw * 0.42, headY + hh * 1.28);
+      ctx.lineTo(headX + lead * hw * 0.44, headY + hh * 1.28);
       ctx.closePath();
     };
+    // THE OPENING: the bite arch — cut through the shell evenodd so
+    // the face truly lives inside the mouth.
+    const opening = () => {
+      ctx.moveTo(cx - ohw, oBot);
+      ctx.lineTo(cx - ohw, cornerY);
+      ctx.quadraticCurveTo(cx - ohw * 0.52, apexY + hh * 0.06, cx, apexY);
+      ctx.quadraticCurveTo(cx + ohw * 0.52, apexY + hh * 0.06, cx + ohw, cornerY);
+      ctx.lineTo(cx + ohw, oBot);
+      ctx.closePath();
+    };
+    // Solid shell fill; the bite window paints as FOLDED DARK below
+    // (the mystery law prefers a void in the mouth to a visible face
+    // — and a two-subpath evenodd fill proved unreliable here while
+    // the same-path clip held; the shark7 probe verdict).
     ctx.fillStyle = mc;
     ctx.beginPath();
     shell();
@@ -13360,106 +13385,132 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.save();
       ctx.beginPath();
       shell();
-      ctx.clip();
+      if (front) opening();
+      ctx.clip('evenodd');
+      // Planar shading + THE MUZZLE PLANE: the foreshortened top of
+      // the snout, brow ridge to nose ridge, sliding with the facing
+      // and squeezing as the body turns — this plane is what says
+      // the snout comes TOWARD you.
       ctx.fillStyle = shade(st.color, -13);
       ctx.fillRect(lead === 1 ? headX - hw * 2.6 : headX, headY - hh * 1.6, hw * 2.6, hh * 3.4);
-      // The snout's lit top plane — the whole muzzle catches sky.
-      ctx.fillStyle = shade(st.color, 12);
+      const mzSq = 1 - 0.4 * t;
+      ctx.fillStyle = shade(st.color, 14);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 1.36, headY - hh * 0.4);
-      ctx.lineTo(headX + lead * hw * 0.58, headY - hh * 1.02);
-      ctx.lineTo(headX - lead * hw * 0.52, headY - hh * 1.08);
-      ctx.lineTo(headX - lead * hw * 0.44, headY - hh * 0.84);
-      ctx.lineTo(headX + lead * hw * 0.5, headY - hh * 0.8);
-      ctx.lineTo(headX + lead * hw * 1.22, headY - hh * 0.24);
+      ctx.moveTo(cx - ohw * 0.9 * mzSq + lead * hw * 0.12, headY - hh * 0.88);
+      ctx.lineTo(cx + ohw * 0.9 * mzSq + lead * hw * 0.3, headY - hh * 0.84);
+      ctx.lineTo(noseOut - lead * hw * 0.06, headY - hh * 0.5);
+      ctx.lineTo(cx - ohw * 0.82 * mzSq + lead * hw * 0.04, headY - hh * 0.56);
       ctx.closePath();
       ctx.fill();
-      // THE BELLY LINE: the pale countershade sweeping the jaw —
-      // every real shark is two-toned, and so is this helm.
+      // The nose FRONT: one mid-value plane under the ridge, with
+      // paired nostril slits raked along it.
+      ctx.fillStyle = shade(st.color, -2);
+      ctx.beginPath();
+      ctx.moveTo(cx - ohw * 0.82 * mzSq + lead * hw * 0.04, headY - hh * 0.56);
+      ctx.lineTo(noseOut - lead * hw * 0.06, headY - hh * 0.5);
+      ctx.lineTo(noseOut - lead * hw * 0.02, headY - hh * 0.24);
+      ctx.lineTo(cx - ohw * 0.78 * mzSq, headY - hh * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(st.color, -30);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      for (const es of [0.32, 0.66]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + lead * ohw * es * mzSq, headY - hh * 0.44);
+        ctx.lineTo(cx + lead * ohw * (es + 0.14) * mzSq, headY - hh * 0.36);
+        ctx.stroke();
+      }
+      // THE BELLY LINE: pale countershade sweeping the jaw hem.
       ctx.fillStyle = belly;
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 0.34);
-      ctx.quadraticCurveTo(headX, headY + hh * 0.66, headX - lead * hw * 1.08, headY + hh * 0.4);
-      ctx.lineTo(headX - lead * hw * 1.12, headY + hh * 1.06);
-      ctx.lineTo(headX + lead * hw * 1.14, headY + hh * 1.06);
+      ctx.moveTo(headX + lead * hw * 1.16, headY + hh * 0.52);
+      ctx.quadraticCurveTo(headX, headY + hh * 0.78, headX - lead * hw * 1.1, headY + hh * 0.54);
+      ctx.lineTo(headX - lead * hw * 1.1, headY + hh * 1.08);
+      ctx.lineTo(headX + lead * hw * 1.08, headY + hh * 1.08);
       ctx.closePath();
       ctx.fill();
-      // Gill slashes: five hard cuts raking the trailing cheek.
+      // Gill slashes raking the trailing cheek.
       ctx.strokeStyle = shade(st.color, -30);
       ctx.lineWidth = Math.max(1, s * 0.013);
       for (let g = 0; g < 5; g++) {
-        const gx = headX - lead * hw * (0.52 + g * 0.13);
+        const gx = headX - lead * hw * (0.5 + g * 0.13);
         ctx.beginPath();
-        ctx.moveTo(gx, headY - hh * 0.1);
-        ctx.quadraticCurveTo(gx - lead * hw * 0.06, headY + hh * 0.22, gx - lead * hw * 0.02, headY + hh * 0.5);
+        ctx.moveTo(gx, headY - hh * 0.06);
+        ctx.quadraticCurveTo(gx - lead * hw * 0.06, headY + hh * 0.26, gx - lead * hw * 0.02, headY + hh * 0.54);
         ctx.stroke();
       }
       ctx.restore();
-      // THE DEAD EYE: flat black bead set wide on the snout side —
-      // no light in it, ever. Far eye skipped past the diagonals.
+      // THE DEAD EYES: flat black beads at the snout's brow corners —
+      // above and OUTSIDE the bite, where a shark's eyes live. The
+      // far eye narrows past the diagonals.
       ctx.fillStyle = '#0e1216';
       ctx.beginPath();
-      ctx.arc(headX + lead * hw * 0.98, headY - hh * 0.52, headR * 0.075, 0, Math.PI * 2);
+      ctx.arc(headX + lead * hw * 1.02, headY - hh * 0.68, headR * 0.07, 0, Math.PI * 2);
       ctx.fill();
       if (t < 0.5) {
         ctx.beginPath();
-        ctx.arc(headX - lead * hw * 0.4 - fx * headR * 0.2, headY - hh * 0.56, headR * 0.06, 0, Math.PI * 2);
+        ctx.ellipse(headX - lead * hw * 0.56 - fx * headR * 0.18, headY - hh * 0.72, headR * 0.055 * (1 - t * 0.8), headR * 0.055, 0, 0, Math.PI * 2);
         ctx.fill();
       }
       if (front) {
-        // THE MOUTH: the opening lives INSIDE the jaws. Folded dark
-        // first, then the tooth row HANGING from the snout rim —
-        // rooted in a gum band, serrated, uneven like a real bite.
+        // Inside the mouth: folded dark past the eye line, deepest
+        // under the arch apex.
         ctx.save();
         ctx.beginPath();
-        chamferRect(ctx, cx - ohw, headY - hh * 0.44, ohw * 2, hh * 1.24, cut * 0.7);
+        opening();
         ctx.clip();
-        ctx.fillStyle = 'rgba(12, 9, 16, 0.55)';
+        // THE MOUTH VOID: opaque night first — nothing lives in the
+        // bite but the dark — then the fold plane deepens its top.
+        ctx.fillStyle = '#101720';
+        ctx.fillRect(cx - ohw, apexY - hh * 0.05, ohw * 2, oBot - apexY + hh * 0.1);
+        ctx.fillStyle = 'rgba(12, 9, 16, 0.5)';
         ctx.beginPath();
-        ctx.moveTo(cx - ohw, headY - hh * 0.44);
-        ctx.lineTo(cx + ohw, headY - hh * 0.4);
-        ctx.lineTo(cx + ohw * 0.8, headY + hh * 0.06);
-        ctx.lineTo(cx - lead * ohw * 0.1, headY + hh * 0.16);
-        ctx.lineTo(cx - ohw * 0.8, headY);
+        ctx.moveTo(cx - ohw, cornerY);
+        ctx.quadraticCurveTo(cx - ohw * 0.52, apexY + hh * 0.06, cx, apexY);
+        ctx.quadraticCurveTo(cx + ohw * 0.52, apexY + hh * 0.06, cx + ohw, cornerY);
+        ctx.lineTo(cx + ohw * 0.82, headY + hh * 0.12);
+        ctx.lineTo(cx - lead * ohw * 0.1, headY + hh * 0.22);
+        ctx.lineTo(cx - ohw * 0.82, headY + hh * 0.08);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
-        // The gum band seats the teeth — teeth without a gum read
-        // as sprinkles (the round-1 verdict, answered).
-        ctx.fillStyle = shade(st.color, -8);
+        // THE GUM BAND: one continuous band FOLLOWING the arch — the
+        // jaw the teeth grow from, never a straight strip.
+        const archPt = (k: number): [number, number] => {
+          // k in [-1, 1] along the arch, corner to corner.
+          const ax = cx + k * ohw;
+          const q = 1 - Math.abs(k);
+          const ay = cornerY + (apexY - cornerY) * (q * (2 - q));
+          return [ax, ay];
+        };
+        ctx.strokeStyle = shade(st.color, -6);
+        ctx.lineWidth = Math.max(2.5, headR * 0.14);
         ctx.beginPath();
-        ctx.moveTo(cx - ohw * 1.02, headY - hh * 0.52);
-        ctx.quadraticCurveTo(cx, headY - hh * 0.66, cx + ohw * 1.02, headY - hh * 0.48);
-        ctx.lineTo(cx + ohw * 1.02, headY - hh * 0.3);
-        ctx.quadraticCurveTo(cx, headY - hh * 0.46, cx - ohw * 1.02, headY - hh * 0.34);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(cx - ohw, cornerY);
+        ctx.quadraticCurveTo(cx - ohw * 0.52, apexY + hh * 0.06, cx, apexY);
+        ctx.quadraticCurveTo(cx + ohw * 0.52, apexY + hh * 0.06, cx + ohw, cornerY);
+        ctx.stroke();
+        // THE TEETH: seven, hanging along the arch NORMALS — plumb
+        // at the apex, raking inward at the corners; the pair beside
+        // the apex runs longest, corner teeth smallest. The bite.
         ctx.fillStyle = tooth;
-        for (let i = 0; i < 6; i++) {
-          const u = -0.82 + i * 0.328;
-          const txx = cx + u * ohw;
-          const big = i === 1 || i === 4;
-          const tl = hh * (big ? 0.34 : 0.24);
+        for (let i = 0; i < 7; i++) {
+          const k = -0.88 + (i / 6) * 1.76;
+          const [ax, ay] = archPt(k);
+          // Normal direction: inward tilt proportional to k.
+          const nx = -k * 0.55;
+          const big = Math.abs(Math.abs(k) - 0.3) < 0.16;
+          const tl = hh * (big ? 0.32 : 0.18 + 0.06 * (1 - Math.abs(k)));
+          const tw2 = ohw * (big ? 0.115 : 0.09);
           ctx.beginPath();
-          ctx.moveTo(txx - ohw * 0.11, headY - hh * (0.42 - Math.abs(u) * 0.06));
-          ctx.lineTo(txx + ohw * 0.11, headY - hh * (0.4 - Math.abs(u) * 0.06));
-          ctx.lineTo(txx + ohw * 0.015, headY - hh * (0.4 - Math.abs(u) * 0.06) + tl);
-          ctx.closePath();
-          ctx.fill();
-        }
-        // Two small lower fangs at the jaw corners close the bite —
-        // kept modest: oversized uppers-vs-lowers reads walrus.
-        for (const es of [-1, 1]) {
-          ctx.beginPath();
-          ctx.moveTo(cx + es * ohw * 0.8 - ohw * 0.06, headY + hh * 0.84);
-          ctx.lineTo(cx + es * ohw * 0.8 + ohw * 0.06, headY + hh * 0.84);
-          ctx.lineTo(cx + es * ohw * 0.8, headY + hh * 0.68);
+          ctx.moveTo(ax - tw2, ay + hh * 0.01);
+          ctx.lineTo(ax + tw2, ay + hh * 0.01);
+          ctx.lineTo(ax + nx * tw2 * 2 + tw2 * 0.1, ay + tl);
           ctx.closePath();
           ctx.fill();
         }
       } else {
-        // Back read: the dorsal ridge runs the nape between gill
-        // tabs; the tail nub finishes the spine.
+        // Back read: dorsal ridge, gill tabs, tail nub — unchanged.
         ctx.fillStyle = shade(st.color, -18);
         ctx.beginPath();
         ctx.moveTo(headX - hw * 0.06, headY - hh * 1.08);
