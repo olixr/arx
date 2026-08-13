@@ -1834,16 +1834,16 @@ function earlyClothDefs(): EquipmentDef[] {
       { key: 'eclipse', dye: 'Eclipse', color: '#4a4550', acquisition: { drop: true },
         desc: 'Charcoal cloth ringed in gold — the sun, briefly borrowed.' },
     ]),
-    // -------- Fenwalker: bog-green cloth threaded with wisp-light hem
-    // runes, a reed feather at the temple. Drop-only from the fens.
+    // -------- Fenwalker: THE FEN COURT — the fen's own regalia, four
+    // aspects, each lot its own head. Drop-only from the deep fens.
     ...fenwalker,
     ...colorways(fenwalker, [
-      { key: 'mirebloom', dye: 'Mirebloom', color: '#7a5a78',
-        desc: 'Heather-purple from flowers that grow on drowned ground.' },
-      { key: 'rustsedge', dye: 'Rustsedge', color: '#96603c',
-        desc: 'Iron-water rust, cut from the reeds that drink it.' },
-      { key: 'graymist', dye: 'Graymist', color: '#7d8580',
-        desc: 'Woven fog. The bog keeps what it cannot see.' },
+      { key: 'mirebloom', dye: 'Mirebloom', color: '#5e4260',
+        desc: 'The orchid that blooms on drowned ground, worn closed. It opens for no sun.' },
+      { key: 'rustsedge', dye: 'Rustsedge', color: '#8a5a36',
+        desc: 'Woven sedge steeped in iron water. The darter on the crown never leaves.' },
+      { key: 'graymist', dye: 'Graymist', color: '#6e7a76',
+        desc: 'The fog itself, combed and sewn. It sheds a little of you as it goes.' },
     ]),
     // -------- Stormwoven: slate cloth around a fat gold bolt, a mantle
     // like a rolling front. The mid-game craft line with weather in it.
@@ -2017,15 +2017,15 @@ function fenwalkerSet(): EquipmentDef[] {
   });
   return [
     piece('fenwalker_hood', 'Fenwalker hood', 'head', 14, 2, 280, 'Fh',
-      'A reed feather at the temple. The bog counts you as local.'),
+      'A caged wisp hangs from the peak and will not be put out. It lights the fen, never your face.'),
     piece('fenwalker_robe', 'Fenwalker robe', 'body', 16, 4, 390, 'Fr',
-      'Wisp-light runes ride the hem. They know where the ground lies.'),
+      'Three fen lights circle the hem in slow court. A waterline is stitched where the deep gave up.'),
     piece('fenwalker_skirts', 'Fenwalker skirts', 'legs', 15, 3, 330, 'Fk',
-      'Hemmed high over the waterline, weighted low against the wind.'),
+      'Cut above the stitched waterline. What is under it stays under it.'),
     piece('fenwalker_slippers', 'Fenwalker slippers', 'boots', 14, 2, 300, 'Fp',
-      'Reed-lashed soles. The mud signs for someone else entirely.'),
+      'Reed-lashed, wisp-toed. The ground firms a step ahead of them.'),
     piece('fenwalker_wraps', 'Fenwalker wraps', 'gloves', 14, 2, 290, 'Fw',
-      'Reed-wound wrists, a wisp-rune in each palm. The bog waves back.'),
+      'A wisp sleeps in each knuckle. Cold light, and the fen owes you a favor.'),
   ];
 }
 
