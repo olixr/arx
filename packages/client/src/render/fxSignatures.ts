@@ -443,53 +443,81 @@ const whirlwind: AbilitySig = {
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x3c);
     const fade = 1 - t;
     ctx.save();
-    // The scoured scar: two counter-rotating dashed grooves.
+    ctx.lineCap = 'butt';
+    // The scoured scar: a FILLED torn annulus — dark churned band
+    // with travelling scour nicks biting around it, and a lit inner
+    // rim where the blades ride lowest.
     ctx.globalAlpha = 0.55 * fade;
-    ctx.strokeStyle = st.deep;
-    ctx.lineWidth = Math.max(2, sc * 0.06);
-    ctx.setLineDash([sc * 0.16, sc * 0.11]);
-    ctx.lineDashOffset = -c.now / 22;
+    ctx.fillStyle = shade(st.deep, -8);
     ctx.beginPath();
-    ctx.ellipse(px, py, rPx * 0.88, rPx * 0.88 * squash, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 0.4 * fade;
+    ctx.ellipse(px, py, rPx * 0.95, rPx * 0.95 * squash, 0, 0, Math.PI * 2);
+    ctx.ellipse(px, py, rPx * 0.55, rPx * 0.55 * squash, 0, Math.PI * 2, 0, true);
+    ctx.fill();
+    ctx.globalAlpha = 0.7 * fade;
     ctx.strokeStyle = st.mid;
-    ctx.lineWidth = Math.max(1.5, sc * 0.04);
-    ctx.setLineDash([sc * 0.1, sc * 0.14]);
-    ctx.lineDashOffset = c.now / 28;
+    ctx.lineWidth = Math.max(2, sc * 0.05);
     ctx.beginPath();
-    ctx.ellipse(px, py, rPx * 0.62, rPx * 0.62 * squash, 0, 0, Math.PI * 2);
+    ctx.ellipse(px, py, rPx * 0.58, rPx * 0.58 * squash, 0, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]);
+    // Scour nicks: bright gashes travelling with the spin.
+    ctx.globalAlpha = 0.85 * fade;
+    ctx.strokeStyle = st.spark;
+    ctx.lineWidth = Math.max(2, sc * 0.045);
+    for (let k = 0; k < 6; k++) {
+      const a = c.now / 90 + (k / 6) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(px, py, rPx * (0.72 + (k % 2) * 0.12), rPx * (0.72 + (k % 2) * 0.12) * squash, 0, a, a + 0.22);
+      ctx.stroke();
+    }
+    // Torn grass chips thrown clear of the ring, lying where they
+    // fell — the cyclone's leavings.
+    for (let k = 0; k < 5; k++) {
+      const a = rand() * Math.PI * 2;
+      const settle = Math.min(1, t * 2.2 - rand() * 0.4);
+      if (settle <= 0) continue;
+      const p = { x: px + Math.cos(a) * rPx * (1.05 + rand() * 0.3), y: py + Math.sin(a) * rPx * (1.05 + rand() * 0.3) * squash };
+      const g = Math.max(2, sc * (0.04 + rand() * 0.025));
+      ctx.globalAlpha = 0.8 * fade * settle;
+      ctx.fillStyle = k % 2 === 0 ? shade(st.deep, 12) : st.deep;
+      ctx.fillRect(p.x - g, p.y - g * 0.5, g * 2, g);
+    }
     ctx.restore();
   },
   air(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x3d);
     const fade = 1 - t;
     const lift = sc * 0.45;
     ctx.save();
     ctx.lineCap = 'butt';
-    // Three blade crescents chase each other around the body, each a
-    // steel band with a white leading edge; higher crescents ride
-    // smaller radii — a cyclone, not a cylinder.
+    // Three blade crescents chase each other around the body — each
+    // a BAND with body (deep sleeve, steel, white leading edge);
+    // higher crescents ride smaller radii: a cyclone, not a cylinder.
     for (let k = 0; k < 3; k++) {
       const a0 = c.now / 75 + (k * Math.PI * 2) / 3;
       const rr = rPx * (0.82 - k * 0.16);
       const lk = lift + sc * 0.22 * k;
-      ctx.globalAlpha = (0.75 - k * 0.12) * fade;
-      ctx.strokeStyle = k === 1 ? shade(st.mid, 10) : st.mid;
-      ctx.lineWidth = Math.max(2.5, sc * (0.11 - k * 0.02));
+      ctx.globalAlpha = (0.5 - k * 0.08) * fade;
+      ctx.strokeStyle = shade(st.deep, -6);
+      ctx.lineWidth = Math.max(4.5, sc * (0.16 - k * 0.02));
       ctx.beginPath();
       ctx.ellipse(px, py - lk, rr, rr * squash, 0, a0, a0 + 1.9);
+      ctx.stroke();
+      ctx.globalAlpha = (0.9 - k * 0.12) * fade;
+      ctx.strokeStyle = k === 1 ? shade(st.mid, 10) : st.mid;
+      ctx.lineWidth = Math.max(2.8, sc * (0.11 - k * 0.02));
+      ctx.beginPath();
+      ctx.ellipse(px, py - lk, rr, rr * squash, 0, a0 + 0.06, a0 + 1.86);
       ctx.stroke();
       // The white edge leads the cut.
       ctx.globalAlpha = 0.95 * fade;
       ctx.strokeStyle = st.core;
-      ctx.lineWidth = Math.max(1.5, sc * 0.04);
+      ctx.lineWidth = Math.max(1.8, sc * 0.045);
       ctx.beginPath();
-      ctx.ellipse(px, py - lk, rr, rr * squash, 0, a0 + 1.65, a0 + 1.9);
+      ctx.ellipse(px, py - lk, rr, rr * squash, 0, a0 + 1.6, a0 + 1.9);
       ctx.stroke();
       // Sparks shed off the blade tip.
       if (Math.random() < c.frameDt * 22 * fade) {
@@ -499,7 +527,30 @@ const whirlwind: AbilitySig = {
         });
       }
     }
+    // Caught debris rides the column: torn quads spiralling upward
+    // between the blades, tumbling as they climb — the cyclone is
+    // FULL, not empty steel.
+    for (let k = 0; k < 5; k++) {
+      const phase = rand() * Math.PI * 2;
+      const climb = ((t * (0.7 + rand() * 0.6)) + rand()) % 1;
+      const a = phase + c.now / (140 + k * 30);
+      const rr = rPx * (0.75 - climb * 0.35);
+      const y = py - lift * 0.4 - climb * sc * 1.15;
+      const x = px + Math.cos(a) * rr;
+      const yy = y + Math.sin(a) * rr * squash * 0.5;
+      const spin = c.now / 110 + k * 2.3;
+      const g = sc * (0.05 + rand() * 0.035) * (1 - climb * 0.4);
+      ctx.globalAlpha = 0.85 * fade * Math.sin(Math.min(1, climb * 1.4) * Math.PI);
+      ctx.translate(x, yy);
+      ctx.rotate(spin % (Math.PI * 2));
+      ctx.fillStyle = shade(st.deep, -4);
+      ctx.fillRect(-g, -g * 0.7, g * 2, g * 1.4);
+      ctx.fillStyle = k % 2 === 0 ? st.mid : shade(st.deep, 18);
+      ctx.fillRect(-g * 0.75, -g * 0.5, g * 1.5, g);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
     ctx.restore();
+    c.glow(c.wx, c.wy, c.radius * 0.8, 0.3 * fade);
   },
 };
 
