@@ -286,11 +286,25 @@ work cycles untouched (Part 4). Verified by an exact per-row change
 map (unchanged rows at literal 0.0%) + all-facings cell judgment +
 re-pinned law tests.
 
-**Phase 4 — THE READABLE EIGHT.** The banded flip resolver with
-hysteresis for every layer decision; THE SILHOUETTE PEEK lanes per
-class; THE MIRROR LAW rebuild of greatWield's hemisphere; the staff
-plant lane moved off the face at W; the N-facing blade lane. The
-mirror sweep + joint-case tests land here.
+**Phase 4 — THE READABLE EIGHT.** **SHIPPED 2026-08-12 (5825409).**
+bandFlag = the one hysteresis resolver on depthMemory for every layer
+flag (away-deep shared by weaponBehind/gearBehindLegs, shoulder/trail
+fy + runF + settle bands, belt, sling, quiver, elbow hold) — bands
+straddle the old thresholds with every cardinal facing outside the
+dead zone, so settled cells proved 0.0% changed while rotation flips
+land once. THE SILHOUETTE PEEK: shields.ts away-diagonal clearance
+(mirror of its own mid-band law), PEEK_HANG_K hang-lane widening,
+bow outboard peek — footprint proven to be exactly the NE/N/NW
+columns, shield rim/back visibly restored at both away diagonals.
+As-built correction: greatWield's flagged SE↔SW mirror break DOES NOT
+EXIST — proven mirror-true to 1e-9 and continuous through every
+hemisphere crossing incl. the joint case, then PINNED (the audit's
+capture caught stride-phase, not asymmetry; no rebuild). staffWield
+gained its missing mirror pin. E/W layering asymmetry measured
+against a bare-handed control: weapon rows 5.3–6.1% vs 4.7% baseline
+(lead-side art, not carriage); staff idle E/W verified as clean
+mirrors — the W face-overlap resolved through Phases 2–3's
+mirror-true geometry.
 
 **Phase 5 — THE LIVING GAIT.** THE VISIBLE BREATH on camera-line
 gaits; walk-stage polish across classes on the one ladder; the
