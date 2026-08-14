@@ -18,7 +18,8 @@
     "prove:work": "ARX_PROVE_FROM=work tsx src/proving/farm.ts",
     "prove:table": "ARX_PROVE_FROM=table tsx src/proving/farm.ts",
     "prove:arts": "ARX_PROVE_FROM=arts tsx src/proving/farm.ts",
-    "prove:combat-v2": "tsx src/proving/combatV2.ts"
+    "prove:combat-v2": "tsx src/proving/combatV2.ts",
+    "prove:weapon-sets": "tsx src/proving/weaponSets.ts"
   },
   "dependencies": {
     "@arx/shared": "*",

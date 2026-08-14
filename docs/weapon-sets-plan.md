@@ -341,7 +341,48 @@ after the belt; LAW 7); THE RACK band + Stow verb + Draw verb + Swap button
 (LAW 8); pad verb wheel entries; controls table row; item card state suffix.
 Device-swap glyphs throughout via seatChip/kbBadge.
 
-**Phase 5 — THE PROVING.** `prove:weapon-sets` live lane (fresh-world law):
+**Phase 5 — THE PROVING. SHIPPED 2026-08-14 — THE EPIC IS COMPLETE.**
+
+*As-built:* `npm run prove:weapon-sets -w @arx/tools` = SIXTEEN live receipts
+over the real wire (tools/src/proving/weaponSets.ts, the secretArts harness
+lineage; `ARX_PROVE_URL` aims it at a proving server), run TWICE on fresh
+worlds (THE FRESH WORLD LAW, DBs arx_grip_proof_d/e — both 16/16). The
+receipts: stow verb lands with hands untouched; the un-stowable refuses
+aloud; THE HONEST TRADE atomic; a second-client WITNESS sees the active set
+change; the traded draw never looses (arrow count pinned — the cast-family
+kill observed as matter); **THE HONEST BEAT measured 600–601ms from trade
+echo to first legal swing against the authored 600**; the traded string
+drops (stage/run reset on the wire); the in-beat re-press swallowed (exactly
+one equip echo); the stowed shield stows and THE TWO-HANDS LAW sheds it
+aloud; blades pair in the stowed row in SILENCE and the trade that hands
+them over wakes the dual-wield school (ONE DOOR proven end to end); EMPTY
+HANDS REFUSE QUIETLY with zero equip echoes; the ready row survives the
+relog whole; and THE QUIET BACK's wire half — across every update the
+witness ever received, the stowed slots never rode the appearance wire once.
+Lane lessons paid into the harness: a `command()` helper rides out the chat
+bucket ("talking too fast" backs off for the refill — a lane that trips on
+its own pace is a lane nobody trusts), and `stowFromPack` hears gate
+refusals LOUDLY (which immediately taught us daggers gate on SNEAK, not
+onehand). THE HOLD SPLIT proven live on a fake pad (advancing-timestamp
+getter law): a 400ms hold of d-◀ TRADED and never sheathed (the release
+eaten); a 120ms tap SHEATHED on release and never traded.
+
+*GOALS AUDIT (the epic against the user's original brief):* two weapon sets
+carried and swapped — SHIPPED (slots, atomic trade, zero migration).
+"Instant or delayed, gamified so it can't be abused" — the 600ms HONEST
+TRADE beat, measured on the wire, with THE SLEEPING STEEL total exclusion as
+the structural anti-abuse. "What combinations" — EACH SET OBEYS ITS OWN
+LAWS, no cross-set restriction (three daggers legal; two-hander over paired
+blades legal), proven. "How presented on the character" — built as THE
+VISIBLE BACK, then USER-AMENDED to THE QUIET BACK: only the active set
+shows; recorded, reverted, never to be rebuilt without a fresh verdict.
+"How shown in the HUD / character profile / easily managed" — THE SWAP WELL
++ THE RACK + the Stow/Draw/Trade verbs on every input device. "Gamepad
+support" — THE HOLD SPLIT on sheathe d-◀ (all sixteen buttons were spoken
+for), pinned in bindings.test and proven on a fake pad. Every door the
+brief named is either shipped or recorded as a deliberate user verdict.
+
+*Original scope:* `prove:weapon-sets` live lane (fresh-world law):
 swap under fire receipts (beat lock honest — press→refusal→first legal swing
 measured), cast-death receipt, combo-death receipt, empty-refusal line, relog
 persistence, second-client receipt (the other session sees the ACTIVE set
