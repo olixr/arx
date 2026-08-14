@@ -3,6 +3,7 @@ import type { GearInfo, ItemDef } from '../items.js';
 import type { RecipeDef } from '../recipes.js';
 import type { AffixStat, EquipmentDef } from './types.js';
 import { ARMOR_CLASS_SLOTS, GEAR_SLOTS } from './types.js';
+import { temperFor } from './tempers.js';
 
 /**
  * Compile EquipmentDefs into ordinary ItemDefs (+ generated RecipeDefs).
@@ -62,7 +63,13 @@ export function compileEquipment(defs: readonly EquipmentDef[]): {
       affixPool: def.affixPool.map((p) => ({ stat: p.stat, w: p.w ?? 1 })),
       rarities,
       acquisition: { drop: !!acq.drop, craft: !!acq.craft, shop: !!acq.shop },
-      effects: def.effects,
+      // THE WEAPON'S TEMPER: the registry's temper joins the def's own
+      // natives at compile — one authored page, no scattered literals.
+      effects: (() => {
+        const temper = temperFor(def.id);
+        const all = [...(def.effects ?? []), ...temper];
+        return all.length > 0 ? all : undefined;
+      })(),
       set: def.set,
     };
 

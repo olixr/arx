@@ -394,6 +394,39 @@ The user's exact sentence becomes authorable data:
 
 ### Phase 4 — THE WEAPON'S TEMPER (native weapon identity)
 
+**SHIPPED 2026-08-14. As-built:**
+
+- `equipment/tempers.ts` = the registry: 33 authored tempers (10
+  masterwork swords + 9 daggers + 14 regalia), merged into each
+  weapon's native `effects` at compile (`temperFor` in compile.ts) —
+  one authored page, no scattered literals. `borrowed_time` and
+  `wakestone` keep their pre-buildcraft natives and count as
+  tempered (test-pinned). Ten Crowns untouched (already tempered by
+  their own epic).
+- Every temper is ONE effect and fits the blade's fx word: ambient
+  appliers (lamplight burn, reefwrack chill, larkspur venom...),
+  rhythm answers (chainbreaker's fifth blow SUNDERS — the second
+  sunder source; vesper's eighth toll; hollowchoir's ninth), crit
+  payoffs (riven crit-sunders, silverthread pulls a bleed), guard
+  answers (silver_line, mirrormere, merelight), kill riders
+  (knellwood, lastsheaf), and **five hitState signatures — the first
+  authored readers of the Phase 2 trigger**: northlight (frost nova
+  vs chilled), lodestone (storm bolt vs shocked), mothlight (drinks
+  at the venomed wound), duskcap (spores chain off the poisoned),
+  spindrift (chain vs chilled). Two vsState tempers: eclipse (vs
+  bleed) and ashgarden (vs burn).
+- Loudness law pinned: ambient onHitStatus ≤20% chance / power ≤3;
+  hitState signatures rest ≥150 ticks; temper vs clauses ≤25%.
+  `temper_` id prefix globally unique against enchants AND words
+  (ONE ID ONE TIMER is one law across all three systems).
+- **The elementDmg decision recorded**: it stays the caster lane's
+  stat. Melee tempers speak through statuses, procs, and clauses —
+  wiring elements into blades would add fold sites for no reading
+  the statuses don't already give.
+- `tempers.test.ts` (5 laws): full-roster tempered, registry tempers
+  the honor roll alone, proc validity + global id uniqueness,
+  loudness honesty, strike-channel resolution receipts.
+
 - The 35 masterworks/regalia (+ select chase bows) each gain ONE native
   effect through the already-live `effects` channel — mostly `kind:'proc'`
   (zero exist today) or a `vsState` clause that completes a set's combo.

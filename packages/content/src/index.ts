@@ -14,6 +14,7 @@ export * from './equipment/enchants.js';
 export * from './equipment/tables.js';
 export * from './equipment/roll.js';
 export * from './equipment/setWords.js';
+export * from './equipment/tempers.js';
 export * from './equipment/unmaking.js';
 export * from './equipment/naming.js';
 export * from './equipment/compile.js';
