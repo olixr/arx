@@ -11659,23 +11659,24 @@ export function drawPauldron(
       for (const [pass, aa0, aa1] of [[0, Math.PI, Math.PI * 2], [1, 0, Math.PI]] as const) {
         const bright = pass === 1;
         ctx.save();
-        if (!bright) {
-          // The far half hides behind the orb body: paint it, then
-          // the orb repaints over — approximated by dimming hard.
-          ctx.globalAlpha = 0.3;
-        }
         ctx.lineCap = 'round';
-        ctx.strokeStyle = shade(col, -12);
-        ctx.lineWidth = Math.max(1, s * (bright ? 0.018 : 0.012));
+        // The far half hides behind the orb: an OPAQUE dimmed color,
+        // never a translucent stroke — a low-alpha thin arc fans the
+        // world's outline dilate into whisker wings (the blunt tip
+        // law's stroke verse).
+        ctx.strokeStyle = bright ? shade(col, -12) : shade(col, -26);
+        ctx.lineWidth = Math.max(1, s * (bright ? 0.018 : 0.014));
         ctx.beginPath();
         ctx.ellipse(ox, ringy, orx * 1.38, ory * 0.5, -0.16 * side, ra + aa0, ra + aa1);
         ctx.stroke();
-        ctx.strokeStyle = '#dff4ef';
-        ctx.globalAlpha = bright ? 0.8 : 0.22;
-        ctx.lineWidth = Math.max(1, s * (bright ? 0.007 : 0.005));
-        ctx.beginPath();
-        ctx.ellipse(ox, ringy, orx * 1.38, ory * 0.5, -0.16 * side, ra + aa0 + 0.12, ra + aa1 - 0.12);
-        ctx.stroke();
+        if (bright) {
+          ctx.strokeStyle = '#dff4ef';
+          ctx.globalAlpha = 0.8;
+          ctx.lineWidth = Math.max(1, s * 0.007);
+          ctx.beginPath();
+          ctx.ellipse(ox, ringy, orx * 1.38, ory * 0.5, -0.16 * side, ra + aa0 + 0.12, ra + aa1 - 0.12);
+          ctx.stroke();
+        }
         ctx.restore();
       }
       // The ring's own foam bead riding the near arc.
@@ -15333,29 +15334,35 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const sway = Math.sin(f.nowMs * 0.0017) * hw * 0.09;
     const tipX = headX + u * (hw * 1.38 + sway);
     const tipY = bandY - hh * 1.78;
+    // THE ONE SWEEP: a single unbroken bell from brim to crook —
+    // the foot flares wide into the brim, no vertical edge (the
+    // Black Mage read; the square-step base is dead family-wide).
+    const spire = (): void => {
+      ctx.moveTo(headX - u * hw * 1.06, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX - u * hw * 0.72, bandY - hh * 0.34, headX - u * hw * 0.44, bandY - hh * 0.9);
+      ctx.quadraticCurveTo(headX - u * hw * 0.18, bandY - hh * 1.46, headX - u * hw * 0.02, bandY - hh * 1.68);
+      // Over the crook — the spire commits harder than the cone does.
+      ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.08, tipX, tipY - hh * 0.22);
+      // A pinched, dropped point — road-worn, never a wisp.
+      ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
+      ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.4, headX + u * hw * 0.56, bandY - hh * 0.9);
+      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
+      ctx.closePath();
+    };
     ctx.fillStyle = mc;
     ctx.beginPath();
-    // Windward edge: a leaner concave climb than the wizard's.
-    ctx.moveTo(headX - u * hw * 0.78, bandY);
-    ctx.quadraticCurveTo(headX - u * hw * 0.42, bandY - hh * 1.0, headX - u * hw * 0.1, bandY - hh * 1.62);
-    // Over the crook — the spire commits harder than the cone does.
-    ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.08, tipX, tipY - hh * 0.22);
-    // A pinched, dropped point — road-worn, never a wisp.
-    ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
-    ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.4, headX + u * hw * 0.56, bandY - hh * 0.9);
-    ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
-    ctx.closePath();
+    spire();
     ctx.fill();
     if (!hurt) {
       // The crook side folds dark; the windward ridge takes the moon.
       ctx.fillStyle = shade(st.color, -14);
       ctx.beginPath();
-      ctx.moveTo(headX, bandY);
+      ctx.moveTo(headX, bandY + hh * 0.05);
       ctx.quadraticCurveTo(headX + u * hw * 0.04, bandY - hh * 0.95, headX - u * hw * 0.01, bandY - hh * 1.56);
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.0, tipX, tipY - hh * 0.2);
       ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.03, tipX + u * hw * 0.02, tipY + hh * 0.12);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.38, headX + u * hw * 0.56, bandY - hh * 0.88);
-      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = shade(st.color, 16);
@@ -15374,15 +15381,21 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     }
     // THE BRIM: broader than the wizard's, waved through each side,
     // tips turned UP — a slab that has argued with weather and won.
+    // Blunt tips (the whisker law) and the edge clipped into the
+    // cloth.
+    const slab = (): void => {
+      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.12);
+      ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.12);
+      ctx.lineTo(headX + hw * 2.45, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
+      ctx.quadraticCurveTo(headX - hw * 1.6, bandY + hh * 0.44, headX - hw * 2.45, bandY + hh * 0.06);
+      ctx.closePath();
+    };
     ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 4);
     ctx.beginPath();
-    ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.06);
-    ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
-    ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
-    ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.06);
-    ctx.quadraticCurveTo(headX + hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
-    ctx.quadraticCurveTo(headX - hw * 1.6, bandY + hh * 0.44, headX - hw * 2.45, bandY - hh * 0.06);
-    ctx.closePath();
+    slab();
     ctx.fill();
     if (!hurt) {
       // Brim underside shadow, and THE ONE BRIGHT EDGE along the rim.
@@ -15394,17 +15407,35 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.quadraticCurveTo(headX - hw * 1.5, bandY + hh * 0.38, headX - hw * 2.3, bandY + hh * 0.02);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = shade(st.color, 26);
-      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.06);
+      slab();
+      ctx.clip();
+      ctx.strokeStyle = shade(st.color, 26);
+      ctx.lineWidth = Math.max(1, s * 0.013) * 2;
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.12);
       ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
       ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
-      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.06);
+      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.12);
       ctx.stroke();
-      // The brass band, and the gem cluster tracking the face.
+      ctx.restore();
+      // The brass band WRAPS the cone — a curved strip clipped into
+      // the sweep, never a straight rect — and the gem cluster
+      // tracks the face.
+      ctx.save();
+      ctx.beginPath();
+      spire();
+      ctx.clip();
       ctx.fillStyle = st.trim;
-      ctx.fillRect(headX - hw * 0.74, bandY - hh * 0.44, hw * 1.48, hh * 0.24);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 1.08, bandY - hh * 0.46);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.34, headX + hw * 1.08, bandY - hh * 0.46);
+      ctx.lineTo(headX + hw * 1.08, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX, bandY + hh * 0.02, headX - hw * 1.08, bandY - hh * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
       if (backK <= 0.55 && st.gem) {
         const gx = headX + fx * headR * 0.34;
         const gCol = st.gem.color;
@@ -16239,15 +16270,19 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    // THE SPIRE: the magus climb — lean concave windward edge, a
-    // hard committed crook, a pinched dropped point.
+    // THE SPIRE — ONE SWEEP: the cone is a single unbroken bell
+    // from brim to crook. Its foot flares WIDE into the brim
+    // (swallowing the old square step where band met cone) and no
+    // part of its edge ever runs vertical — the Black Mage read:
+    // the hat and the head are one thing.
     const spire = (): void => {
-      ctx.moveTo(headX - u * hw * 0.78, bandY);
-      ctx.quadraticCurveTo(headX - u * hw * 0.42, bandY - hh * 1.0, headX - u * hw * 0.1, bandY - hh * 1.58);
+      ctx.moveTo(headX - u * hw * 1.06, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX - u * hw * 0.72, bandY - hh * 0.34, headX - u * hw * 0.44, bandY - hh * 0.9);
+      ctx.quadraticCurveTo(headX - u * hw * 0.18, bandY - hh * 1.42, headX - u * hw * 0.02, bandY - hh * 1.64);
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.02, tipX, tipY - hh * 0.22);
       ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.38, headX + u * hw * 0.56, bandY - hh * 0.9);
-      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
       ctx.closePath();
     };
     ctx.fillStyle = mc;
@@ -16260,24 +16295,24 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       spire();
       ctx.clip();
       // The windward plane takes the light as a panel — linen in
-      // the sun, the magus's own shading grammar.
+      // the sun, the magus's own shading grammar, riding the sweep.
       ctx.fillStyle = shade(st.color, 9);
       ctx.beginPath();
-      ctx.moveTo(headX - u * hw * 0.62, bandY);
-      ctx.quadraticCurveTo(headX - u * hw * 0.3, bandY - hh * 0.9, headX - u * hw * 0.02, bandY - hh * 1.5);
-      ctx.quadraticCurveTo(headX - u * hw * 0.26, bandY - hh * 0.8, headX - u * hw * 0.3, bandY);
+      ctx.moveTo(headX - u * hw * 0.92, bandY + hh * 0.02);
+      ctx.quadraticCurveTo(headX - u * hw * 0.58, bandY - hh * 0.42, headX - u * hw * 0.26, bandY - hh * 1.1);
+      ctx.quadraticCurveTo(headX - u * hw * 0.4, bandY - hh * 0.5, headX - u * hw * 0.52, bandY + hh * 0.02);
       ctx.closePath();
       ctx.fill();
       // The crook side folds dark over the cone.
       ctx.fillStyle = shade(st.color, -14);
       ctx.globalAlpha = 0.55;
       ctx.beginPath();
-      ctx.moveTo(headX, bandY);
+      ctx.moveTo(headX, bandY + hh * 0.05);
       ctx.quadraticCurveTo(headX + u * hw * 0.04, bandY - hh * 0.95, headX - u * hw * 0.01, bandY - hh * 1.52);
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.94, tipX, tipY - hh * 0.2);
       ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.03, tipX + u * hw * 0.02, tipY + hh * 0.12);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.36, headX + u * hw * 0.56, bandY - hh * 0.88);
-      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
       ctx.closePath();
       ctx.fill();
       ctx.globalAlpha = 1;
@@ -16357,22 +16392,34 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.12);
       ctx.stroke();
       ctx.restore();
-      // THE BAND: stitched linen in the thread color, a running
-      // stitch along its lower edge, and at the front a small
-      // embroidered sprig — stem, two leaf ticks, one down dot.
+      // THE BAND: stitched linen in the thread color, WRAPPING the
+      // cone — a curved strip clipped into the sweep, never a
+      // straight rect — with a running stitch along its lower edge
+      // and at the front a small embroidered sprig.
+      ctx.save();
+      ctx.beginPath();
+      spire();
+      ctx.clip();
       ctx.fillStyle = shade(st.trim, -6);
-      ctx.fillRect(headX - hw * 0.9, bandY - hh * 0.4, hw * 1.8, hh * 0.24);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 1.08, bandY - hh * 0.44);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 1.08, bandY - hh * 0.44);
+      ctx.lineTo(headX + hw * 1.08, bandY - hh * 0.08);
+      ctx.quadraticCurveTo(headX, bandY + hh * 0.06, headX - hw * 1.08, bandY - hh * 0.08);
+      ctx.closePath();
+      ctx.fill();
       ctx.strokeStyle = shade(st.trim, 20);
       ctx.lineWidth = Math.max(1, s * 0.007);
       ctx.setLineDash([s * 0.012, s * 0.011]);
       ctx.beginPath();
-      ctx.moveTo(headX - hw * 0.88, bandY - hh * 0.19);
-      ctx.lineTo(headX + hw * 0.88, bandY - hh * 0.19);
+      ctx.moveTo(headX - hw * 1.0, bandY - hh * 0.14);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.0, headX + hw * 1.0, bandY - hh * 0.14);
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.restore();
       if (front && st.bloom) {
         const bx2 = cx;
-        const by2 = bandY - hh * 0.28;
+        const by2 = bandY - hh * 0.16;
         ctx.strokeStyle = st.bloom.calyx;
         ctx.lineWidth = Math.max(1, s * 0.008);
         ctx.lineCap = 'round';
@@ -17036,28 +17083,34 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.closePath();
       ctx.fill();
     }
-    // THE SPIRE: heavier than the magus — a column of weather.
+    // THE SPIRE: heavier than the magus — a column of weather, on
+    // THE ONE SWEEP (a single unbroken bell from brim to crook; the
+    // foot flares wide into the brim, no vertical edge anywhere).
+    const spire = (): void => {
+      ctx.moveTo(headX - u * hw * 1.1, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX - u * hw * 0.76, bandY - hh * 0.32, headX - u * hw * 0.48, bandY - hh * 0.88);
+      ctx.quadraticCurveTo(headX - u * hw * 0.2, bandY - hh * 1.36, headX - u * hw * 0.04, bandY - hh * 1.56);
+      ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.98, tipX, tipY - hh * 0.2);
+      ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.02, tipX + u * hw * 0.02, tipY + hh * 0.14);
+      ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.32, headX + u * hw * 0.6, bandY - hh * 0.84);
+      ctx.quadraticCurveTo(headX + u * hw * 0.9, bandY - hh * 0.28, headX + u * hw * 1.1, bandY + hh * 0.06);
+      ctx.closePath();
+    };
     ctx.fillStyle = mc;
     ctx.beginPath();
-    ctx.moveTo(headX - u * hw * 0.86, bandY);
-    ctx.quadraticCurveTo(headX - u * hw * 0.5, bandY - hh * 0.96, headX - u * hw * 0.12, bandY - hh * 1.5);
-    ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.98, tipX, tipY - hh * 0.2);
-    ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.02, tipX + u * hw * 0.02, tipY + hh * 0.14);
-    ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.32, headX + u * hw * 0.6, bandY - hh * 0.84);
-    ctx.quadraticCurveTo(headX + u * hw * 0.78, bandY - hh * 0.36, headX + u * hw * 0.86, bandY);
-    ctx.closePath();
+    spire();
     ctx.fill();
     if (!hurt) {
       // Crook side folds dark; the windward ridge keeps what light
       // the anvil sky allows.
       ctx.fillStyle = shade(st.color, -14);
       ctx.beginPath();
-      ctx.moveTo(headX, bandY);
+      ctx.moveTo(headX, bandY + hh * 0.05);
       ctx.quadraticCurveTo(headX + u * hw * 0.04, bandY - hh * 0.9, headX - u * hw * 0.02, bandY - hh * 1.44);
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.9, tipX, tipY - hh * 0.18);
       ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.01, tipX + u * hw * 0.02, tipY + hh * 0.12);
       ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.3, headX + u * hw * 0.6, bandY - hh * 0.82);
-      ctx.quadraticCurveTo(headX + u * hw * 0.78, bandY - hh * 0.36, headX + u * hw * 0.86, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.9, bandY - hh * 0.28, headX + u * hw * 1.1, bandY + hh * 0.06);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = shade(st.color, 15);
@@ -17106,15 +17159,21 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // THE BRIM: wide, waved, the leading tip turned UP by the
     // updraft — and its ONE BRIGHT EDGE is the charge seam.
     const bLead = lead;
+    // Blunt tips (the whisker law); the charge rim clipped into the
+    // slab.
+    const slab = (): void => {
+      ctx.moveTo(headX + bLead * hw * 2.52, bandY - hh * 0.2);
+      ctx.quadraticCurveTo(headX + bLead * hw * 1.7, bandY + hh * 0.24, headX + bLead * hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX - bLead * hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX - bLead * hw * 1.72, bandY + hh * 0.26, headX - bLead * hw * 2.32, bandY - hh * 0.08);
+      ctx.lineTo(headX - bLead * hw * 2.32, bandY + hh * 0.08);
+      ctx.quadraticCurveTo(headX - bLead * hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
+      ctx.quadraticCurveTo(headX + bLead * hw * 1.6, bandY + hh * 0.46, headX + bLead * hw * 2.52, bandY - hh * 0.02);
+      ctx.closePath();
+    };
     ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 4);
     ctx.beginPath();
-    ctx.moveTo(headX + bLead * hw * 2.52, bandY - hh * 0.18);
-    ctx.quadraticCurveTo(headX + bLead * hw * 1.7, bandY + hh * 0.24, headX + bLead * hw * 0.9, bandY - hh * 0.1);
-    ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX - bLead * hw * 0.9, bandY - hh * 0.1);
-    ctx.quadraticCurveTo(headX - bLead * hw * 1.72, bandY + hh * 0.26, headX - bLead * hw * 2.32, bandY - hh * 0.02);
-    ctx.quadraticCurveTo(headX - bLead * hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
-    ctx.quadraticCurveTo(headX + bLead * hw * 1.6, bandY + hh * 0.46, headX + bLead * hw * 2.52, bandY - hh * 0.18);
-    ctx.closePath();
+    slab();
     ctx.fill();
     if (!hurt) {
       // Brim underside shadow — the anvil's own dark.
@@ -17126,17 +17185,23 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.quadraticCurveTo(headX + bLead * hw * 1.5, bandY + hh * 0.4, headX + bLead * hw * 2.36, bandY - hh * 0.1);
       ctx.closePath();
       ctx.fill();
-      // THE CHARGE RIM: the one bright edge, gold, on the count.
+      // THE CHARGE RIM: the one bright edge, gold, on the count —
+      // clipped into the slab (the whisker law).
+      ctx.save();
+      ctx.beginPath();
+      slab();
+      ctx.clip();
       ctx.globalAlpha = 0.55 + 0.45 * k;
       ctx.strokeStyle = strike ? '#ffffff' : seamC;
-      ctx.lineWidth = Math.max(1, s * (strike ? 0.018 : 0.013));
+      ctx.lineWidth = Math.max(1, s * (strike ? 0.018 : 0.013)) * 2;
       ctx.beginPath();
-      ctx.moveTo(headX + bLead * hw * 2.52, bandY - hh * 0.18);
+      ctx.moveTo(headX + bLead * hw * 2.52, bandY - hh * 0.2);
       ctx.quadraticCurveTo(headX + bLead * hw * 1.7, bandY + hh * 0.24, headX + bLead * hw * 0.9, bandY - hh * 0.1);
       ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX - bLead * hw * 0.9, bandY - hh * 0.1);
-      ctx.quadraticCurveTo(headX - bLead * hw * 1.72, bandY + hh * 0.26, headX - bLead * hw * 2.32, bandY - hh * 0.02);
+      ctx.quadraticCurveTo(headX - bLead * hw * 1.72, bandY + hh * 0.26, headX - bLead * hw * 2.32, bandY - hh * 0.08);
       ctx.stroke();
       ctx.globalAlpha = 1;
+      ctx.restore();
       if (strike) {
         const fr = Math.floor(f.nowMs / 90);
         // Lightning RIDES the brim and CLIMBS the spire — arcs that
@@ -17150,9 +17215,21 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         stormArc(ctx, rx, bandY - hh * 0.3, rx + headR * 0.22, bandY - hh * 0.46, Math.floor(f.nowMs / 1300) + 7, hh * 0.05, seamC, 0.5, Math.max(1, s * 0.005), false);
       }
       // THE IRON BAND: dark, riveted in gold — the forge's word on
-      // all that cloth.
+      // all that cloth, WRAPPING the cone (a curved strip clipped
+      // into the sweep, never a straight rect).
+      ctx.save();
+      ctx.beginPath();
+      spire();
+      ctx.clip();
       ctx.fillStyle = shade(st.color, -30);
-      ctx.fillRect(headX - hw * 0.76, bandY - hh * 0.42, hw * 1.52, hh * 0.24);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 1.12, bandY - hh * 0.44);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 1.12, bandY - hh * 0.44);
+      ctx.lineTo(headX + hw * 1.12, bandY - hh * 0.08);
+      ctx.quadraticCurveTo(headX, bandY + hh * 0.06, headX - hw * 1.12, bandY - hh * 0.08);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
       if (front) {
         for (const du of [-0.4, 0, 0.4]) {
           ctx.fillStyle = shade(seamC, du === 0 ? 6 : -8);
@@ -17823,15 +17900,19 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.fill();
       ctx.globalAlpha = 1;
     }
-    // THE SPIRE: the magus climb — lean concave windward edge, a
-    // hard committed crook, a pinched dropped point.
+    // THE SPIRE — ONE SWEEP: the cone is a single unbroken bell
+    // from brim to crook. Its foot flares WIDE into the brim
+    // (swallowing the old square step where band met cone) and no
+    // part of its edge ever runs vertical — the Black Mage read:
+    // the hat and the head are one thing.
     const spire = (): void => {
-      ctx.moveTo(headX - u * hw * 0.78, bandY);
-      ctx.quadraticCurveTo(headX - u * hw * 0.42, bandY - hh * 1.0, headX - u * hw * 0.1, bandY - hh * 1.58);
+      ctx.moveTo(headX - u * hw * 1.06, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX - u * hw * 0.72, bandY - hh * 0.34, headX - u * hw * 0.44, bandY - hh * 0.9);
+      ctx.quadraticCurveTo(headX - u * hw * 0.18, bandY - hh * 1.42, headX - u * hw * 0.02, bandY - hh * 1.64);
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.02, tipX, tipY - hh * 0.22);
       ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.38, headX + u * hw * 0.56, bandY - hh * 0.9);
-      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
       ctx.closePath();
     };
     ctx.fillStyle = mc;
@@ -17851,7 +17932,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         (1 - v) * (1 - v) * headX + 2 * (1 - v) * v * (headX + u * hw * 0.12) + v * v * tipX;
       const spy = (v: number): number =>
         (1 - v) * (1 - v) * (bandY - hh * 0.1) + 2 * (1 - v) * v * (bandY - hh * 1.3) + v * v * (tipY + hh * 0.1);
-      const wof = (v: number): number => hw * (0.85 - 0.68 * v);
+      const wof = (v: number): number => hw * (1.02 - 0.84 * v);
       for (const [i, [v0, v1, dv]] of [
         [0, [0.02, 0.3, -11]], [1, [0.3, 0.62, 8]], [2, [0.62, 0.98, -9]],
       ] as const) {
@@ -17903,12 +17984,12 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.fillStyle = shade(st.color, -14);
       ctx.globalAlpha = 0.55;
       ctx.beginPath();
-      ctx.moveTo(headX, bandY);
+      ctx.moveTo(headX, bandY + hh * 0.05);
       ctx.quadraticCurveTo(headX + u * hw * 0.04, bandY - hh * 0.95, headX - u * hw * 0.01, bandY - hh * 1.52);
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.94, tipX, tipY - hh * 0.2);
       ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.03, tipX + u * hw * 0.02, tipY + hh * 0.12);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.36, headX + u * hw * 0.56, bandY - hh * 0.88);
-      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
       ctx.closePath();
       ctx.fill();
       ctx.globalAlpha = 1;
@@ -17950,16 +18031,21 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       }
     }
     // THE BRIM: the magus slab — full waved span, tips up, argued
-    // with weather and won.
+    // with weather and won. Blunt tips (the whisker law); the edge
+    // clipped into the cloth.
+    const slab = (): void => {
+      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.12);
+      ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.12);
+      ctx.lineTo(headX + hw * 2.45, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
+      ctx.quadraticCurveTo(headX - hw * 1.6, bandY + hh * 0.44, headX - hw * 2.45, bandY + hh * 0.06);
+      ctx.closePath();
+    };
     ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 4);
     ctx.beginPath();
-    ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.06);
-    ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
-    ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
-    ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.06);
-    ctx.quadraticCurveTo(headX + hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
-    ctx.quadraticCurveTo(headX - hw * 1.6, bandY + hh * 0.44, headX - hw * 2.45, bandY - hh * 0.06);
-    ctx.closePath();
+    slab();
     ctx.fill();
     if (!hurt) {
       // Brim underside — the sea's own dark beneath the slab.
@@ -17993,15 +18079,21 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.globalAlpha = 1;
       }
       // THE ONE BRIGHT EDGE: the rim line flows over slab AND swell
-      // unbroken — one continuous stroke says one continuous water.
-      ctx.strokeStyle = shade(st.color, 26);
-      ctx.lineWidth = Math.max(1, s * 0.013);
+      // unbroken — one continuous stroke says one continuous water —
+      // clipped into the slab (the whisker law).
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.06);
+      slab();
+      ctx.clip();
+      ctx.strokeStyle = shade(st.color, 26);
+      ctx.lineWidth = Math.max(1, s * 0.013) * 2;
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.12);
       ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
       ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
-      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.06);
+      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.12);
       ctx.stroke();
+      ctx.restore();
       if (nearSwell && tipFade > 0.05) {
         ctx.globalAlpha = tipFade;
         ctx.beginPath();
@@ -18014,30 +18106,43 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       // the swell passes (the basin law: lit water, never a hole).
       ctx.fillStyle = shade(st.color, 10);
       ctx.beginPath();
-      ctx.ellipse(headX, bandY - hh * 0.04, hw * 0.86, hh * 0.13, 0, 0, Math.PI * 2);
+      ctx.ellipse(headX, bandY - hh * 0.04, hw * 1.0, hh * 0.14, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = shade(st.color, -6);
       ctx.beginPath();
-      ctx.ellipse(headX, bandY - hh * 0.06, hw * 0.62, hh * 0.08, 0, 0, Math.PI * 2);
+      ctx.ellipse(headX, bandY - hh * 0.06, hw * 0.72, hh * 0.09, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = shade(st.color, 22);
       ctx.globalAlpha = 0.35 + 0.4 * k;
       ctx.lineWidth = Math.max(1, s * 0.007);
       ctx.beginPath();
-      ctx.ellipse(headX, bandY - hh * 0.05, hw * 0.86 * (0.55 + 0.45 * k), hh * 0.12 * (0.55 + 0.45 * k), 0, 0, Math.PI * 2);
+      ctx.ellipse(headX, bandY - hh * 0.05, hw * 1.0 * (0.55 + 0.45 * k), hh * 0.13 * (0.55 + 0.45 * k), 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.fillStyle = foamC;
-      for (const [ru, rr] of [[-0.8, 0.055], [0.85, 0.05]] as const) {
+      for (const [ru, rr] of [[-0.94, 0.055], [0.98, 0.05]] as const) {
         ctx.beginPath();
         ctx.arc(headX + hw * ru, bandY - hh * 0.02, hw * rr, Math.PI * 0.92, Math.PI * 2.08);
         ctx.closePath();
         ctx.fill();
       }
-      // THE BAND AND THE COUNT: dark band, four pearls walking, and
-      // THE CROWN PEARL front and center in its silver crescent.
+      // THE BAND AND THE COUNT: the dark band WRAPS the cone (a
+      // curved strip clipped into the sweep, never a straight
+      // rect), four pearls walking, and THE CROWN PEARL front and
+      // center in its silver crescent.
+      ctx.save();
+      ctx.beginPath();
+      spire();
+      ctx.clip();
       ctx.fillStyle = shade(st.color, -30);
-      ctx.fillRect(headX - hw * 0.9, bandY - hh * 0.4, hw * 1.8, hh * 0.22);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 1.08, bandY - hh * 0.42);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.28, headX + hw * 1.08, bandY - hh * 0.42);
+      ctx.lineTo(headX + hw * 1.08, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX, bandY + hh * 0.04, headX - hw * 1.08, bandY - hh * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
       if (front && st.pearls) {
         const pc = st.pearls.color;
         const walk = Math.floor(f.nowMs / 700) % 5;
