@@ -491,6 +491,13 @@ export interface StaffWield {
 
 /** The staff carry's forward lean (see StaffWield.fwd), units of s. */
 export const STAFF_FWD_LEAN_S = 0.05;
+/** THE PLANT CLEARS THE FACE: the planted stick's crown tips outboard
+ *  by this screen lean (radians) so the shaft stands clear of the head
+ *  silhouette at the profile facings — the lab's verdict cells showed
+ *  the staff crossing the face at W/NW. Rides sideS (mirror-true,
+ *  continuous through every turn) and fades out as the run levels the
+ *  carry (the trail has its own lifeline). */
+export const STAFF_PLANT_LEAN = 0.09;
 /** The great shoulder carry's forward lean, units of s. */
 export const GREAT_FWD_LEAN_S = 0.04;
 /** THE CROWN NEVER DIGS: extra above-level pitch the staff's run
@@ -548,10 +555,14 @@ export function staffWield(
   // the bias is zero there).
   const p = projectCarry(lifelineYaw(f), pitch);
   return {
-    dx: sideS * (0.27 - 0.06 * carry),
+    // The plant lane sits wide enough that the near-vertical shaft
+    // stands beside the head, never across it (0.27 parked the crown
+    // on the ear at the profile facings); the run carry pulls the
+    // leveled trail back in toward the body line.
+    dx: sideS * (0.33 - 0.12 * carry),
     dy: -0.04 + 0.17 * carry,
     fwd: f.fx * STAFF_FWD_LEAN_S,
-    angle: p.angle,
+    angle: p.angle + sideS * STAFF_PLANT_LEAN * (1 - carry),
     fore: p.fore,
     grip: 0.72 - 0.22 * carry,
     pumpK: 0.3 + 0.7 * carry,

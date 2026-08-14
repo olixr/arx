@@ -53,6 +53,14 @@ import {
 } from './carriage.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
 import {
+  EarSim,
+  drawWingEar,
+  earRestChain,
+  type EarCarriage,
+  type EarChain,
+  type EarStyle,
+} from './earPhysics.js';
+import {
   BOW_PLANE_SOFT,
   GREAT_FINISHER_PHASES,
   GREAT_POMMEL_CHOKE_S,
@@ -331,6 +339,14 @@ export interface RigPose {
    * carriage, and facing bands keep working untouched.
    */
   goblin?: GoblinLook;
+  /**
+   * THE EAR IS A SIMULATION (earPhysics.ts): the goblin's wing ears
+   * as elastic bodies — caller-owned on the anim map exactly like
+   * kneeMemory and depthMemory, ticked by the rig (it owns the exact
+   * skull anchor). Absent = the stateless rest chains, so audit
+   * sheets, static previews, and tests paint the settled silhouette.
+   */
+  earSim?: EarSim;
   /**
    * THE CONSTRUCT DIALECT (docs/golems-plan.md): swap head, torso,
    * limbs, and feet for one of the four golem builds — stacked stone,
@@ -3531,87 +3547,11 @@ export function paintGoblinHead(
     ctx.stroke();
   }
 
-  // --- THE WING EARS, before the cranium so the skull laps their
-  // roots: long tapered membranes swept up and out, canted wider than
-  // any shoulder — the species' whole silhouette argument. They are
-  // ALIVE: a slow listening sway at rest, and they PIN BACK as the
-  // jaw gapes — anger you can read before the swing lands. Far ear
-  // steps smaller at the three-quarter bands (the cheap perspective
-  // cue); both read from behind as backs — membranes face forward.
-  const drawEar = (side: number, depth: number): void => {
-    // At profile the ear GROWS: it must stay the tallest thing in the
-    // silhouette, or a forward nose out-points it and the head reads
-    // backward. The rake eases so it stands, not lies.
-    const el = hh * (1.02 + 0.3 * hv) * depth * (1 + 0.22 * profileK);
-    const bw = hh * 0.19 * (0.9 + 0.2 * hv);
-    // PERSPECTIVE: the roots walk to the OCCIPUT as the head turns —
-    // face-on the ears root wide on the skull sides; at profile both
-    // converge at the back of the skull, where a turned head keeps
-    // them. The lateral spread collapses on the same blend.
-    const ex = headX - fx * gw * (0.3 + 0.42 * profileK) + side * gw * 0.74 * (1 - 0.7 * profileK);
-    const ey = crTop + hh * (0.46 - 0.06 * profileK);
-    const sway = hurt ? 0 : 0.05 * Math.sin(f.nowMs / 640 + side * 1.7);
-    // The cant blends with the facing too: out-cant to the sides
-    // face-on, tilted BACKWARD off the facing at profile — an ear
-    // never folds over the face. The gape pin-back and the listening
-    // sway ride the same blended direction.
-    const flat = side * (1 - profileK) - fx * profileK;
-    const cant = flat * (0.6 + 0.12 * profileK + gape * 0.5 + sway);
-    ctx.save();
-    ctx.translate(ex, ey);
-    ctx.rotate(cant);
-    ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, back ? -14 : -6);
-    const notched = gb.scarred && side === nearSide;
-    ctx.beginPath();
-    ctx.moveTo(-bw, 0);
-    // Outer edge bows out; the tip hooks a touch back down — a wing,
-    // not a bunny spike.
-    ctx.quadraticCurveTo(-bw * 1.7, -el * 0.5, -bw * 0.1, -el);
-    if (notched) {
-      // The notch: a bite taken out of the trailing edge, healed ragged.
-      ctx.lineTo(bw * 0.12, -el * 0.66);
-      ctx.lineTo(bw * 0.5, -el * 0.74);
-    }
-    // Inner edge runs home concave — the membrane's sag.
-    ctx.quadraticCurveTo(bw * 0.3, -el * 0.34, bw, 0);
-    ctx.closePath();
-    ctx.fill();
-    if (!hurt) {
-      ctx.strokeStyle = shade(gb.hide, -26);
-      ctx.lineWidth = Math.max(1, bw * 0.22);
-      ctx.stroke();
-      if (!back) {
-        // The lit membrane: pale skin stretched between ribs — two
-        // fanned rib strokes keep it a wing, never a paddle.
-        ctx.fillStyle = shade(belly, -6);
-        ctx.beginPath();
-        ctx.moveTo(-bw * 0.4, -el * 0.12);
-        ctx.quadraticCurveTo(-bw * 1.05, -el * 0.5, -bw * 0.08, -el * 0.86);
-        ctx.quadraticCurveTo(bw * 0.16, -el * 0.34, bw * 0.4, -el * 0.1);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = shade(gb.hide, -16);
-        ctx.lineWidth = Math.max(1, bw * 0.12);
-        for (const rib of [-0.5, 0.1] as const) {
-          ctx.beginPath();
-          ctx.moveTo(bw * 0.1, -el * 0.1);
-          ctx.quadraticCurveTo(rib * bw, -el * 0.5, rib * bw * 0.9, -el * 0.8);
-          ctx.stroke();
-        }
-      } else {
-        // Ear back: one cartilage seam keeps it a volume.
-        ctx.strokeStyle = shade(gb.hide, -18);
-        ctx.lineWidth = Math.max(1, bw * 0.14);
-        ctx.beginPath();
-        ctx.moveTo(-bw * 0.2, -el * 0.14);
-        ctx.quadraticCurveTo(-bw * 0.7, -el * 0.5, -bw * 0.1, -el * 0.84);
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
-  };
-  if (profileK < 0.72 || back) drawEar(-nearSide, back ? 1 : 0.82);
-  drawEar(nearSide, 1);
+  // --- THE WING EARS ARE NOT PAINTED HERE: they are elastic bodies
+  // (earPhysics.ts — THE EAR IS A SIMULATION), ticked and painted by
+  // drawHumanoid in world space around the whole body: the skull-
+  // azimuth projection owns the perspective and the per-ear depth
+  // term owns the draw order at every band by construction.
 
   // --- cranium block: chamfered ROUND — a skull, not a crate. The
   // crown corners cut deep and the jaw corners deeper than the other
@@ -3651,7 +3591,9 @@ export function paintGoblinHead(
     ctx.fill();
   };
   if (profileK < 0.72 || back) drawJowl(-nearSide, back ? 0.9 : 0.78);
-  drawJowl(nearSide, back ? 0.9 : 0.95);
+  // Past the profile threshold the authored side view seats its own
+  // jowl at the jaw's REAR — the blended one would land mid-face.
+  if (profileK <= 0.9 || back) drawJowl(nearSide, back ? 0.9 : 0.95);
 
   if (back) {
     // --- the occiput: no face from behind. Hide courses, the nape
@@ -3680,6 +3622,245 @@ export function paintGoblinHead(
         ctx.lineTo(headX + gw * 0.2, crTop + hh * 0.52);
         ctx.stroke();
       }
+    }
+    return;
+  }
+
+  // ============ THE TRUE PROFILE: AN AUTHORED MODEL, NOT A BLEND ====
+  // At E/W every front-face element used to extrapolate its own
+  // profileK arithmetic to 1.0 and the errors COMPOUNDED — a botched
+  // eye here, a beached jowl there, a nose that read as an ear. Past
+  // the swap threshold the head now paints a bespoke side view with
+  // authored constants: one hooded eye forward on the face, the brow
+  // shelf overhanging it, the short jeer seam running home to the
+  // rear jowl, and the CROOK nose — bridge arcing up off the brow,
+  // cresting, curling decisively DOWN past the grin. The blends below
+  // this branch only ever serve the three-quarter band (profileK
+  // ≈ 0.707) again — nothing extrapolates.
+  if (profileK > 0.9) {
+    const F = lead;
+    const face = headX + F * gw;
+    const pEyeY = headY - hh * 0.14;
+    const pMouthY = headY + hh * 0.3;
+    const jawDrop = gape * hh * 0.52;
+    const mFront = face + F * hh * 0.02;
+    const mBack = headX - F * gw * 0.42;
+
+    // --- the brow shelf in silhouette: bone running rear-high to a
+    // front overhang, dipping to the nose root.
+    if (!hurt) {
+      ctx.fillStyle = shade(gb.hide, -12);
+      ctx.beginPath();
+      ctx.moveTo(headX - F * gw * 0.55, pEyeY - hh * 0.34);
+      ctx.quadraticCurveTo(headX + F * gw * 0.2, pEyeY - hh * 0.48, face + F * hh * 0.12, pEyeY - hh * 0.24);
+      ctx.lineTo(face + F * hh * 0.06, pEyeY - hh * 0.06);
+      ctx.quadraticCurveTo(headX + F * gw * 0.2, pEyeY - hh * 0.18, headX - F * gw * 0.5, pEyeY - hh * 0.16);
+      ctx.closePath();
+      ctx.fill();
+      // The lit top plane — bone catching the sky.
+      ctx.fillStyle = shade(gb.hide, 6);
+      ctx.beginPath();
+      ctx.moveTo(headX - F * gw * 0.48, pEyeY - hh * 0.32);
+      ctx.quadraticCurveTo(headX + F * gw * 0.2, pEyeY - hh * 0.44, face + F * hh * 0.08, pEyeY - hh * 0.24);
+      ctx.lineTo(face + F * hh * 0.02, pEyeY - hh * 0.19);
+      ctx.quadraticCurveTo(headX + F * gw * 0.2, pEyeY - hh * 0.37, headX - F * gw * 0.44, pEyeY - hh * 0.27);
+      ctx.closePath();
+      ctx.fill();
+      // The hooded-eye shadow under the shelf.
+      ctx.strokeStyle = gb.ink;
+      ctx.lineWidth = Math.max(1, hh * 0.045);
+      ctx.beginPath();
+      ctx.moveTo(face - F * gw * 0.04, pEyeY - hh * 0.19);
+      ctx.quadraticCurveTo(headX + F * gw * 0.44, pEyeY - hh * 0.28, headX + F * gw * 0.2, pEyeY - hh * 0.18);
+      ctx.stroke();
+    }
+
+    // --- ONE eye, forward on the face under the shelf, slanted
+    // toward the temple, slit pupil set toward where it looks.
+    const ex = headX + F * gw * 0.5;
+    ctx.fillStyle = hurt ? '#ffffff' : gb.eye;
+    ctx.beginPath();
+    ctx.ellipse(ex, pEyeY, hh * 0.13, hh * 0.085, -F * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = shade(gb.hide, -22);
+      ctx.lineWidth = Math.max(1, hh * 0.03);
+      ctx.beginPath();
+      ctx.ellipse(ex, pEyeY, hh * 0.13, hh * 0.085, -F * 0.3, Math.PI * 0.15, Math.PI * 0.9);
+      ctx.stroke();
+      ctx.fillStyle = gb.ink;
+      ctx.beginPath();
+      ctx.ellipse(ex + F * hh * 0.045, pEyeY + hh * 0.005, hh * 0.034, hh * 0.068, -F * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // --- the warboss ledger rakes the visible cheek.
+    if (gb.scarred && !hurt) {
+      ctx.strokeStyle = shade(gb.hide, 26);
+      ctx.lineWidth = Math.max(1, hh * 0.045);
+      for (const o of [0, 0.14] as const) {
+        ctx.beginPath();
+        ctx.moveTo(headX + F * gw * (0.3 + o * 0.2), pEyeY + hh * (0.16 + o));
+        ctx.lineTo(headX + F * gw * (0.08 + o * 0.2), pEyeY + hh * (0.44 + o));
+        ctx.stroke();
+      }
+    }
+
+    // --- the maw, the mandible, and the short jeer seam. The seam's
+    // REAR corner rises — the goblin smirks even side-on.
+    if (gape > 0.05) {
+      ctx.fillStyle = hurt ? '#ffffff' : gb.ink;
+      ctx.beginPath();
+      chamferRect(
+        ctx,
+        Math.min(mFront, mBack),
+        pMouthY - hh * 0.03,
+        Math.abs(mFront - mBack),
+        jawDrop + hh * 0.08,
+        cut * 0.4,
+      );
+      ctx.fill();
+    }
+    ctx.fillStyle = belly;
+    ctx.beginPath();
+    chamferRect(
+      ctx,
+      Math.min(mFront, mBack - F * gw * 0.06),
+      pMouthY + jawDrop,
+      Math.abs(mFront - (mBack - F * gw * 0.06)),
+      hh * 0.24,
+      [cut * 0.2, cut * 0.2, cut * 0.7, cut * 0.7],
+    );
+    ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = shade(gb.hide, -24);
+      ctx.lineWidth = Math.max(1, hh * 0.045);
+      ctx.beginPath();
+      chamferRect(
+        ctx,
+        Math.min(mFront, mBack - F * gw * 0.06),
+        pMouthY + jawDrop,
+        Math.abs(mFront - (mBack - F * gw * 0.06)),
+        hh * 0.24,
+        [cut * 0.2, cut * 0.2, cut * 0.7, cut * 0.7],
+      );
+      ctx.stroke();
+      ctx.strokeStyle = gb.ink;
+      ctx.lineWidth = Math.max(1, hh * 0.055);
+      ctx.beginPath();
+      ctx.moveTo(mFront, pMouthY - hh * 0.04);
+      ctx.quadraticCurveTo(
+        (mFront + mBack) / 2,
+        pMouthY + hh * 0.06,
+        mBack,
+        pMouthY - hh * 0.12,
+      );
+      ctx.stroke();
+      // Needle teeth off the seam — snaggled, never a tidy row.
+      ctx.fillStyle = GOBLIN_TOOTH;
+      for (const [u, len] of [
+        [0.2, 0.15],
+        [0.55, 0.1],
+      ] as const) {
+        const tx = mFront + (mBack - mFront) * u;
+        const ty = pMouthY + hh * 0.01;
+        ctx.beginPath();
+        ctx.moveTo(tx - hh * 0.035, ty);
+        ctx.lineTo(tx + hh * 0.005, ty + hh * len + jawDrop * 0.12);
+        ctx.lineTo(tx + hh * 0.045, ty);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (gape > 0.05) {
+        for (const u of [0.35, 0.72] as const) {
+          const tx = mFront + (mBack - mFront) * u;
+          const ty = pMouthY + jawDrop + hh * 0.02;
+          ctx.beginPath();
+          ctx.moveTo(tx - hh * 0.035, ty);
+          ctx.lineTo(tx + hh * 0.005, ty - hh * 0.11 - jawDrop * 0.15);
+          ctx.lineTo(tx + hh * 0.045, ty);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
+    // --- ONE tusk rides the mandible front through the gape.
+    if (gb.tusks && !hurt) {
+      const bx = face - F * hh * 0.02;
+      const by = pMouthY + jawDrop + hh * 0.1;
+      scaleRibbon(
+        ctx,
+        bx,
+        by,
+        bx + F * gw * 0.2,
+        by - hh * 0.26,
+        bx + F * gw * 0.14,
+        by - hh * (0.5 + 0.08 * (hv - 1)),
+        hh * 0.15,
+        GOBLIN_TOOTH,
+        shade(GOBLIN_TOOTH, -38),
+      );
+    }
+
+    // --- one nasolabial crease ages the cheek out of cartoon.
+    if (!hurt) {
+      ctx.strokeStyle = shade(gb.hide, -18);
+      ctx.lineWidth = Math.max(1, hh * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(face - F * gw * 0.08, pMouthY - hh * 0.26);
+      ctx.quadraticCurveTo(face - F * gw * 0.18, pMouthY - hh * 0.12, face - F * gw * 0.32, pMouthY - hh * 0.02);
+      ctx.stroke();
+    }
+
+    // --- THE CROOK NOSE, last so it overhangs everything: the bridge
+    // arcs UP off the brow root, crests, and the tip curls decisively
+    // DOWN past the grin line. A down-curling hook can never be read
+    // as an ear — and the ear behind the skull out-stands it anyway
+    // (SILHOUETTE HIERARCHY).
+    const reach = gw * 0.62;
+    const nRootX = face - F * gw * 0.02;
+    const crestX = face + F * reach * 0.62;
+    const crestY = pEyeY - hh * 0.34;
+    const tipX = face + F * reach;
+    const tipY = pMouthY - hh * 0.1;
+    const hookX = face + F * reach * 0.78;
+    const hookY = pMouthY + hh * 0.1;
+    ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, 5);
+    ctx.beginPath();
+    ctx.moveTo(nRootX, pEyeY - hh * 0.14);
+    ctx.quadraticCurveTo(crestX, crestY, tipX, tipY);
+    ctx.quadraticCurveTo(tipX + F * gw * 0.02, tipY + hh * 0.12, hookX, hookY);
+    ctx.quadraticCurveTo(face + F * reach * 0.5, pMouthY - hh * 0.02, face + F * gw * 0.06, pMouthY - hh * 0.16);
+    ctx.quadraticCurveTo(face - F * gw * 0.06, pMouthY - hh * 0.2, nRootX, pEyeY + hh * 0.12);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = shade(gb.hide, -26);
+      ctx.lineWidth = Math.max(1, hh * 0.045);
+      ctx.stroke();
+      // The lit facet rides the crest of the arc — never a straight
+      // sliver to the tip (a straight bright edge re-spears the hook).
+      ctx.fillStyle = shade(gb.hide, 14);
+      ctx.beginPath();
+      ctx.moveTo(nRootX - F * hh * 0.01, pEyeY - hh * 0.1);
+      ctx.quadraticCurveTo(crestX - F * gw * 0.04, crestY + hh * 0.05, tipX - F * gw * 0.1, tipY - hh * 0.04);
+      ctx.quadraticCurveTo(face + F * reach * 0.42, pEyeY + hh * 0.08, nRootX, pEyeY + hh * 0.02);
+      ctx.closePath();
+      ctx.fill();
+      // The underside shade seats the hook over the mouth...
+      ctx.fillStyle = shade(gb.hide, -14);
+      ctx.beginPath();
+      ctx.moveTo(hookX, hookY);
+      ctx.quadraticCurveTo(tipX - F * gw * 0.05, tipY + hh * 0.08, face + F * gw * 0.12, pMouthY - hh * 0.14);
+      ctx.quadraticCurveTo(face + F * reach * 0.5, pMouthY + hh * 0.01, hookX, hookY);
+      ctx.closePath();
+      ctx.fill();
+      // ...and the ONE visible nostril flares off its base.
+      ctx.fillStyle = gb.ink;
+      ctx.beginPath();
+      ctx.ellipse(face + F * gw * 0.1, pMouthY - hh * 0.17, hh * 0.05, hh * 0.032, F * 0.5, 0, Math.PI * 2);
+      ctx.fill();
     }
     return;
   }
@@ -6239,28 +6420,38 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let bowX: number | null = null;
   let bowY = 0;
   let bowPull = 0;
+  // THE DRAWN LIFELINE: at the exact camera lines the aim ellipse
+  // degenerates to a screen vertical — the lab's verdict cells: a
+  // south draw aimed the arrow between the archer's own feet, a north
+  // draw straight at the zenith. The drawn POSE rides a lifeline-
+  // biased yaw (the same eased-side bias every long carry takes, so
+  // it mirrors and turns continuously and profiles stay exact) — a
+  // south draw now holds low-forward, a north draw high-forward. The
+  // true fire direction is the server's; this is only the pose.
+  let aimDraw = aim;
   if (drawing || loosing) {
+    aimDraw = projectAim(lifelineYaw(face));
     const bd = reach * 1.2;
-    bowX = rig.x + aim.px * bd * wS;
-    bowY = armY + aim.py * bd;
+    bowX = rig.x + aimDraw.px * bd * wS;
+    bowY = armY + aimDraw.py * bd;
     if (loosing) {
       const t = rig.poseT;
-      bowX -= aim.ux * 0.05 * s * (1 - t); // recoil kick back into the grip
+      bowX -= aimDraw.ux * 0.05 * s * (1 - t); // recoil kick back into the grip
       bowPull = 0.03 * s;
-      mainX = bowX - aim.ux * 0.07 * s; // string hand snapped forward
+      mainX = bowX - aimDraw.ux * 0.07 * s; // string hand snapped forward
       mainY = bowY + 0.02 * s;
     } else {
       bowPull = (0.08 + 0.3 * drawT) * s;
-      mainX = bowX - aim.ux * bowPull;
+      mainX = bowX - aimDraw.ux * bowPull;
       mainY = bowY + (shoulderY + 0.06 * s - bowY) * (0.35 * drawT);
       if (drawT >= 0.97) {
         // Full-draw tension tremble — the whole aim quivers with
         // effort, perpendicular to the PROJECTED aim line.
         const tr = Math.sin(rig.nowMs * 0.05) * 0.008 * s;
-        mainX += -aim.uy * tr;
-        mainY += aim.ux * tr;
-        bowX += -aim.uy * tr * 0.5;
-        bowY += aim.ux * tr * 0.5;
+        mainX += -aimDraw.uy * tr;
+        mainY += aimDraw.ux * tr;
+        bowX += -aimDraw.uy * tr * 0.5;
+        bowY += aimDraw.ux * tr * 0.5;
       }
     }
     offX = bowX;
@@ -6627,26 +6818,58 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       rig.x - sideS * tw * SHOULDER_SETTLE_K * barTuck * wS - barStag * 0.12;
     RIG_DEBUG.sockets.length = 0;
   }
-  // Aiming up-and-away puts the gear behind the body. And a LONG
-  // carry crossing the body goes behind it too: the staff's leveled
-  // run trail at a camera-facing heading swept its butt half up
-  // across the chest and FACE when painted in front (the user's
-  // catch) — the body belongs in front of the pole, crown showing
-  // beside the hip, butt hidden behind the shoulder. Gated on the
-  // run trail itself (a planted stick and the combat guard stay in
-  // front, where the business end lives).
-  const staffTrailBehind = isStaff && settleHalf && runTrail && fwdShoulder;
-  // The shoulder carry lays the greatblade up-BACK over the trailing
-  // shoulder at EVERY gait — facing the camera, the body stands in
-  // front of it (the LONG CARRY GOES BEHIND law; strikes and the
-  // guard keep the business end in front). Facing AWAY the same rest
-  // lies on the NEAR side of the body — the blade crosses the BACK,
-  // which the camera sees — so the generic aim-away rule must not
-  // hide it behind the torso.
-  const greatShoulderBehind = isGreat && settleHalf && fwdShoulder;
+  // THE PIERCED CARRY: a LONG rest carry crossing the body no longer
+  // throws the WHOLE weapon (and the fist that holds it) behind the
+  // torso — the shaft SPLITS at the body line. The far half paints
+  // behind the body, the near half and the fist stay in front, so a
+  // trailing staff reads as passing THROUGH the space beside the hips
+  // — never as "held behind the back" (the user's south-sprint
+  // verdict on the old whole-weapon flip). The seam hides under the
+  // body/fist mass by construction, exactly the split-the-shaft
+  // technique the perspective grammar was built on. Strikes never
+  // split: every band gates on the settle, and a strike drops the
+  // settle before anything moves. A mid-sheathe carry keeps its whole
+  // layer too — the blend walks the weapon to the back, and clipping
+  // a moving shaft would march the seam out from under the body.
+  //
+  // The staff's leveled run trail at a camera-facing heading: butt
+  // half up-behind the shoulder, crown half (and the fist) in front
+  // beside the hip. Gated on the run trail itself — a planted stick
+  // and the combat guard stay whole, in front, where the business
+  // end lives.
+  const staffTrailSplit = isStaff && settleHalf && runTrail && fwdShoulder && sheath === 0;
+  // The great shoulder rest lays the blade up-BACK over the trailing
+  // shoulder at EVERY gait — so everywhere the camera can see the
+  // body's FRONT (the toward-camera half AND the profiles), the
+  // blade's distal half belongs behind the head and torso while the
+  // hilt and both fists stay in front of the chest. Facing AWAY the
+  // same rest lies across the BACK the camera is looking at —
+  // greatRestFront keeps it whole and in front.
   const greatRestFront = isGreat && settleHalf && awayShoulder;
-  const weaponBehind =
-    (awayDeep && !greatRestFront) || staffTrailBehind || greatShoulderBehind;
+  const greatRestSplit = isGreat && settleHalf && !awayShoulder && sheath === 0;
+  // Split stations in item-local units of s along the shaft (fist at
+  // 0, business end +x): the staff parts just behind the fist — the
+  // seam lives under the forearm — and the great parts past the
+  // shoulder line, under the neck mass. A whisker of overlap between
+  // the passes so the outline can never show a hairline gap.
+  const SPLIT_EPS = 0.03;
+  const STAFF_SPLIT_AT = -0.05;
+  const GREAT_SPLIT_AT = 0.38;
+  /** Item-local x range (units of s) the FRONT pass keeps. */
+  let splitNear: readonly [number, number] | null = null;
+  /** Item-local x range the BEHIND pass keeps (painted pre-torso). */
+  let splitFar: readonly [number, number] | null = null;
+  if (staffTrailSplit) {
+    splitNear = [STAFF_SPLIT_AT - SPLIT_EPS, 99];
+    splitFar = [-99, STAFF_SPLIT_AT + SPLIT_EPS];
+  } else if (greatRestSplit) {
+    splitNear = [-99, GREAT_SPLIT_AT + SPLIT_EPS];
+    splitFar = [GREAT_SPLIT_AT - SPLIT_EPS, 99];
+  }
+  // Aiming up-and-away still puts the whole gear layer behind the
+  // body (the splits live on the toward-camera half — the bands are
+  // exclusive by construction).
+  const weaponBehind = awayDeep && !greatRestFront;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
   const paintOffArm = (): void => {
     // DUAL WIELD: the off blade is the real weapon, carried by the off
@@ -6998,7 +7221,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       );
     }
   };
-  const paintWeapon = (): void => {
+  /**
+   * The held main weapon (or station prop). `clip` = THE PIERCED
+   * CARRY's item-local keep-range (units of s along the shaft): the
+   * assembly paints the far range before the torso and the near range
+   * after it, so a long carry honestly crosses the body's depth.
+   * Undefined = the whole item on one layer, exactly as before.
+   */
+  const paintWeapon = (clip?: readonly [number, number]): void => {
     // Station props: the smith's own kit, drawn regardless of loadout.
     if (craftKind === 'anvil') {
       // Tongs gripping a glowing billet — the work in progress.
@@ -7061,11 +7291,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // the elevation read (a south draw reads low-forward, never
       // "aimed at the boots"; a north draw high-forward, never
       // straight up a flat card).
-      drawHeldItem(ctx, weapon.id, weapon.color, bowX, bowY, aim.angle, s, rig, {
+      drawHeldItem(ctx, weapon.id, weapon.color, bowX, bowY, aimDraw.angle, s, rig, {
         pull: bowPull,
         loose: loosing ? rig.poseT : undefined,
         ench: rig.weaponEnch,
-        fore: 1 - BOW_PLANE_SOFT * (1 - aim.fore),
+        fore: 1 - BOW_PLANE_SOFT * (1 - aimDraw.fore),
       });
     } else {
       drawHeldItem(ctx, weapon.id, weapon.color, mainX, mainY, heldAngle, s, rig, {
@@ -7077,6 +7307,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ench: rig.weaponEnch,
         flip: mainFlip,
         fore: mainFore,
+        clipLo: clip?.[0],
+        clipHi: clip?.[1],
       });
     }
   };
@@ -7160,6 +7392,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (weaponBehind && !mainBehind && !gearBehindLegs) {
     paintWeapon();
     paintMainArm();
+  } else if (splitFar && !mainBehind) {
+    // THE PIERCED CARRY's far half: the shaft segment beyond the body
+    // line paints under the torso (the arm and the near half follow
+    // on the front layer — the fist never hides behind the chest).
+    paintWeapon(splitFar);
   }
 
   // Sprint lean: the torso tips into a full-tilt forward run — reads
@@ -7211,6 +7448,90 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // VANISHED at profile facings (the floating-cap ghost on unclipped
   // render sheets).
   paintPauldrons('behind');
+
+  // ---- THE EAR IS A SIMULATION (earPhysics.ts): the goblin's wing
+  // ears are elastic bodies ticked HERE — the rig owns the exact
+  // skull anchor — and painted in world space around the whole body:
+  // far-depth ears under everything before the torso frame opens,
+  // camera-side ears over the finished body at the end. The skull-
+  // azimuth projection owns the perspective at every band; no ear
+  // code below ever consults a facing blend.
+  let paintEars: ((layer: 'behind' | 'front') => void) | null = null;
+  if (gob) {
+    const hv = gob.heavy;
+    // The head anchor, through the torso frame's own transform
+    // (translate → lean → squash) so the roots ride the drawn skull.
+    const earR = 0.15 * s * 1.34;
+    const ehx = fx * 0.1 * s * rig.wScale;
+    const ehy = (-th - earR * 0.42) * (1 + (1 - rig.wScale) * 0.55);
+    const cosE = Math.cos(lean);
+    const sinE = Math.sin(lean);
+    const eax = rig.x + cosE * ehx - sinE * ehy;
+    const eay = hipY + sinE * ehx + cosE * ehy;
+    // The jeer pins the ears back through every strike beat — the
+    // same clock the head's gape rides.
+    const jeer =
+      meleeStage >= 0 || rig.pose === PoseState.Cast
+        ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
+        : 0;
+    const carriage: EarCarriage = {
+      azimuth: 2.0,
+      rootR: 0.19,
+      rootLift: 0.05,
+      length: 0.26 + 0.08 * (hv - 1),
+      spread: 0.85,
+      rise: 0.95,
+      curl: [0, 0.16, 0.34],
+    };
+    let chains: Array<{ side: number; c: EarChain }>;
+    if (rig.earSim) {
+      rig.earSim.update(eax, eay, s, carriage, rig.dir, jeer, rig.nowMs);
+      chains = [-1, 1].map((side) => ({
+        side,
+        c: rig.earSim!.chain(side, carriage, rig.dir, jeer),
+      }));
+    } else {
+      // Stateless: THE ONE REST — the settled silhouette, listening
+      // sway on the wall clock (audit sheets, previews, tests).
+      chains = [-1, 1].map((side) => ({
+        side,
+        c: earRestChain(side, carriage, {
+          dir: rig.dir,
+          pin: jeer,
+          sway: rig.hurt ? 0 : 0.05 * Math.sin(rig.nowMs / 640 + side * 1.7),
+        }),
+      }));
+    }
+    chains.sort((a, b) => a.c.depth - b.c.depth);
+    const backHead = backK > 0.55;
+    const st: EarStyle = {
+      skin: shade(gob.hide, backHead ? -14 : -6),
+      outline: shade(gob.hide, -26),
+      membrane: shade(gob.belly, -6),
+      rib: shade(gob.hide, -16),
+      seam: shade(gob.hide, -18),
+    };
+    const earW = 0.038 * (0.9 + 0.2 * hv) * s;
+    paintEars = (layer) => {
+      for (const { side, c } of chains) {
+        if ((c.depth > 0.05) !== (layer === 'front')) continue;
+        drawWingEar(
+          ctx,
+          c.pts.map((p) => ({ x: eax + p.x * s, y: eay + p.y * s })),
+          earW,
+          st,
+          {
+            hurt: rig.hurt,
+            back: backHead,
+            notch: (gob.scarred ?? false) && side === lead,
+            headX: eax,
+            headY: eay,
+          },
+        );
+      }
+    };
+    paintEars('behind');
+  }
 
   // ---- torso + head, drawn in a local frame at the hip line with the
   // fake-3D squash: narrow side profile, full front/back profile, height
@@ -8168,7 +8489,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // the main pair, so the weapon stays the boldest thing on screen.
   if (offFront && !headOverArms) paintOffArm();
   if (!weaponBehind && !mainBehind && !headOverArms) {
-    paintWeapon();
+    // A split carry keeps only its near range here — the far half
+    // already painted under the torso.
+    paintWeapon(splitNear ?? undefined);
     paintMainArm();
   }
   if (mainBehind) paintOffArm();
@@ -8176,6 +8499,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // near cap over its arm's root, and from behind, both caps over the
   // backplate where the camera can actually see them.
   paintPauldrons('front');
+  // Camera-side wing ears land over the finished body — the elastic
+  // pair's near half, seated on the skull the head painter just drew.
+  if (paintEars) paintEars('front');
 }
 
 /**
@@ -8381,6 +8707,16 @@ function drawHeldItem(
      * tells the eye the item lives in the world's depth.
      */
     fore?: number;
+    /**
+     * THE PIERCED CARRY's keep-range, item-local units of s along the
+     * shaft axis (fist at 0). The rig paints a long body-crossing
+     * carry twice — the far range under the torso, the near range
+     * over it — and the clip rides every transform the art does (fore
+     * compression included), so the two passes always meet on the
+     * same shaft station, hidden under the body mass.
+     */
+    clipLo?: number;
+    clipHi?: number;
   },
 ): void {
   ctx.save();
@@ -8404,6 +8740,15 @@ function drawHeldItem(
   // the quadratic that guarantees it) — align THAT to the fist, or the
   // bow reads as resting on the wrist.
   if (extra?.carry) ctx.translate(-BOW_GRIP_X * s * extra.carry, 0);
+  // The pierced-carry clip, applied in the art's own final space so
+  // the station lives ON the shaft through flip and foreshortening.
+  if (extra?.clipLo !== undefined || extra?.clipHi !== undefined) {
+    const lo = extra?.clipLo ?? -99;
+    const hi = extra?.clipHi ?? 99;
+    ctx.beginPath();
+    ctx.rect(lo * s, -4 * s, (hi - lo) * s, 8 * s);
+    ctx.clip();
+  }
 
   // The item-space envelope each roster's art can reach — the outline
   // scratch is sized from this, so keep it tight per class (a bow is

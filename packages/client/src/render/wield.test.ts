@@ -21,6 +21,7 @@ import {
   projectCarry,
   projectStrike,
   staffWield,
+  STAFF_PLANT_LEAN,
   staffStrikeFrame,
   staffStrikeTrail,
   bowWield,
@@ -226,13 +227,36 @@ test('settle pole: at rest the flare stands alone, and the blend is continuous',
 
 // ---- the staff ----
 
-test('staff ladder: planted upright at idle, one-hand level trail at a run', () => {
+test('staff ladder: planted at idle with the crown clear of the face, one-hand level trail at a run', () => {
   const idle = staffWield(facingFrame(0, 1), 0, 0, 0, 1);
+  const idleW = staffWield(facingFrame(Math.PI, -1), 0, 0, 0, 1);
   const run = staffWield(facingFrame(0, 1), 1, 1, 0, 1);
-  assert.ok(Math.abs(idle.angle + Math.PI / 2) < 0.01, 'idle: a true walking stick');
+  // THE PLANT CLEARS THE FACE: the planted stick tips its crown
+  // outboard by exactly the plant lean — beside the head, never
+  // across it (the lab's W/NW verdict cells) — and the lean mirrors
+  // with the eased side, E↔W reflected to numerical exactness.
+  assert.ok(
+    Math.abs(idle.angle - (-Math.PI / 2 + STAFF_PLANT_LEAN)) < 0.01,
+    `idle: a walking stick leaned a breath outboard (${idle.angle.toFixed(3)})`,
+  );
+  assert.ok(
+    Math.abs(idleW.angle - (-Math.PI / 2 - STAFF_PLANT_LEAN)) < 0.01,
+    `west plant mirrors the lean (${idleW.angle.toFixed(3)})`,
+  );
+  assert.ok(Math.abs(idle.dx + idleW.dx) < 1e-9, 'the plant lane mirrors E↔W');
   assert.ok(Math.abs(idle.fore - 1) < 0.01, 'an upright stick is unforeshortened');
   assert.ok(run.angle > -0.4 && run.angle < 0.1, `run east: leveled, crown a touch high (${run.angle.toFixed(2)})`);
   assert.ok(idle.grip > 0.6 && run.grip <= 0.5, 'grip slides to the balance point');
+  // The run trail sheds the plant lean entirely — the lifeline owns
+  // the leveled carry's diagonal, mirror-true across the vertical
+  // (reflection maps angle → π − angle, mod 2π).
+  const runS = staffWield(facingFrame(Math.PI / 2, 1), 1, 1, 0, 0);
+  const runSm = staffWield(facingFrame(Math.PI / 2, -1), 1, 1, 0, 0);
+  const wrap = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
+  assert.ok(
+    Math.abs(wrap(Math.PI - runS.angle) - wrap(runSm.angle)) < 1e-9,
+    'the south trail mirrors with the eased side',
+  );
 });
 
 test('staff run: north foreshortens the trail carry AND keeps the lifeline diagonal', () => {

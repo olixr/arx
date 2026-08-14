@@ -929,10 +929,15 @@ export function solveShield(
   // The stride's lateral lag: the mass trails the body a little.
   cx -= o.poleX * bob * 0.02 * s;
   cy -= o.poleY * bob * 0.02 * s * GROUND_K;
-  // The slung anchor: high across the back, off-side shoulder.
+  // The slung anchor: high across the back, off-side shoulder. The
+  // lateral seat is REAL shoulder width — at the straight-away facing
+  // fx is 0 and the old 0.09 offset parked the boards on the spine,
+  // fused with the head column (the lab's board-N verdict cell); the
+  // guige hangs a shield ON a shoulder, beside the neck, a notch
+  // below the shoulder line.
   if (sling > 0) {
-    const bx = o.x - o.fx * 0.15 * s * o.wS + oside * 0.09 * s * o.wS;
-    const by = o.shoulderY + 0.19 * s - o.fy * 0.15 * s * GROUND_K;
+    const bx = o.x - o.fx * 0.15 * s * o.wS + oside * 0.18 * s * o.wS;
+    const by = o.shoulderY + 0.24 * s - o.fy * 0.15 * s * GROUND_K;
     cx += (bx - cx) * sling;
     cy += (by - cy) * sling;
   }
