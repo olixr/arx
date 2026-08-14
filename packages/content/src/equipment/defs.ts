@@ -1817,8 +1817,11 @@ function earlyClothDefs(): EquipmentDef[] {
   const fenwalker = fenwalkerSet();
   const stormwoven = stormwovenSet();
   return [
-    // -------- Thistledown: undyed oat linen, big honest patches, a rope
-    // sash. The very first robe — and the town square wears four dyes.
+    // -------- Thistledown: THE FIRST WIND — the starter mage's
+    // wardrobe: a true wizard's hat crowned with a living thistle
+    // bloom, embroidered oat linen, a corded sash, and loosed seeds
+    // riding the breeze. The very first robes — and the town square
+    // wears four dyes.
     ...thistledown,
     ...colorways(thistledown, [
       { key: 'madder', dye: 'Madder', color: '#a8524a', dyeInput: { item: 'berries', qty: 2 },
@@ -1897,18 +1900,18 @@ function thistledownSet(): EquipmentDef[] {
   });
   return [
     {
-      id: 'thistledown_hood', name: 'Thistledown hood', slot: 'head', armorClass: 'cloth',
+      id: 'thistledown_hood', name: 'Thistledown hat', slot: 'head', armorClass: 'cloth',
       levelReq: { skill: 'arx', level: 2 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(2, 20, 35, 1),
       value: 30, color, code: 'Lh',
-      desc: 'Oat linen, soft as seed-fluff. Every road starts warm.',
+      desc: 'Your first wizard\'s hat. The thistle at the point is real — and now, so are you.',
     },
     {
       id: 'thistledown_robe', name: 'Thistledown robe', slot: 'body', armorClass: 'cloth',
       levelReq: { skill: 'arx', level: 4 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(5, 40, 50, 2),
       value: 55, color, code: 'Lr',
-      desc: 'Patched at the elbow, proud of it. The rope belt is load-bearing.',
+      desc: 'Embroidered by hand, sashed with a woven cord. Every stitch a small spell that held.',
     },
     {
       id: 'thistledown_skirts', name: 'Thistledown skirts', slot: 'legs', armorClass: 'cloth',

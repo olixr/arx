@@ -6211,7 +6211,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const helmSt = helm ? withArx(helm.id, helmStyle(helm.id), worn.slots.head) : null;
   // THE COVERAGE LAW: a helmet never deletes a hairstyle, it CONTAINS it.
   //   free   — bare head or a circlet: the full hairdo.
-  //   brim   — wizard's hat: the fringe cap only (cloth holds the rest).
+  //   brim   — the whole brim-hat family: the fringe cap only (cloth
+  //            holds the rest). Sealed-mode nape falls poke past a
+  //            wide brim as whiskers — every hat kind belongs here.
   //   sealed — every forged metal kind (THE FORGE LAW: all metal is
   //            full-face): only the nape falls escape below the rim.
   //   cloth  — hoods: the cloth wraps everything.
@@ -6219,7 +6221,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const cover: HairCover =
     !helm || helmKind === 'circlet'
       ? 'free'
-      : helmKind === 'wizard'
+      : helmKind === 'wizard' || helmKind === 'magus' ||
+          helmKind === 'thistlehat' || helmKind === 'tidehat' ||
+          helmKind === 'thunderhat' || helmKind === 'hedgehat' ||
+          helmKind === 'zenithhat' || helmKind === 'showerhat' ||
+          helmKind === 'sedgehat'
         ? 'brim'
         : helmKind === 'hood' || helmKind === 'guildcowl' ||
             helmKind === 'latchhood' || helmKind === 'veilwrap'

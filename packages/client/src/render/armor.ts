@@ -502,6 +502,65 @@ function voidRift(
   ctx.restore();
 }
 
+/**
+ * THE PASSING BREEZE — thistledown's clock: the first wind. A long
+ * calm at a low stir, then a gust rises, crests, and lets the field
+ * settle. One wind for the whole garment (the daybreak cross-painter
+ * pattern): the bloom nods, the shoulders shed, the hem seeds
+ * brighten — all on the same breath of weather. Drift positions run
+ * at one constant pace forever (the seamless law); the gust speaks
+ * only through amplitude and light.
+ */
+function breezeK(nowMs: number, off = 0): number {
+  const u = ((nowMs / 6400 - off) % 1 + 1) % 1;
+  const sm = (kk: number): number => {
+    const c = Math.min(1, Math.max(0, kk));
+    return c * c * (3 - 2 * c);
+  };
+  if (u < 0.55) return 0.2;
+  const v = (u - 0.55) / 0.45;
+  if (v < 0.4) return 0.2 + 0.8 * sm(v / 0.4);
+  return 1 - 0.8 * sm((v - 0.4) / 0.6);
+}
+
+/**
+ * THE SEED — thistledown drawn, never glowed: a tiny pale heart
+ * with filament rays fanned above it, the way the seed actually
+ * hangs under its down. One shape serves the whole wardrobe — the
+ * hat's shed, the shoulders' loose fluff, the hem's riders — so
+ * every seed in the set is unmistakably the same species.
+ */
+function thistleSeed(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, r: number,
+  color: string, rot: number, alpha: number,
+): void {
+  // Below ~0.3 the world's outline dilate rings a near-invisible
+  // seed in full dark and it reads as a fly, not as down — a seed
+  // too faint to carry its own light is not drawn at all.
+  if (alpha <= 0.3) return;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(1, r * 0.32);
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI * 0.82 + (i / 4) * Math.PI * 0.64;
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(0, r * 0.3, r * 0.38, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 
 /**
  * Visual equipment styles — the CAPE_STYLES pattern extended to every
@@ -596,6 +655,12 @@ export interface BodyStyle {
     // brightens both) while each shard bobs on its own time (the
     // clockwork law). The void does not return what it takes.
     | 'sunderpaul'
+    // THE DOWN SHOULDERS — thistledown's MATCHED pair: quilted
+    // linen caps crossed by stitch seams, soft down escaping at the
+    // seam crossing, and on the passing breeze each shoulder lets a
+    // seed go (per-side time — the clockwork law). The starter's
+    // first shoulders are the field itself, worn gently.
+    | 'downpaul'
     // THE FOUR SHADOWS' SHOULDERS — cutpurse's guild offices, one
     // owner per LOT, pairs asymmetric (one shoulder for the guild,
     // one for the work): `shadowdrape` the notched half-mantle and
@@ -627,8 +692,25 @@ export interface BodyStyle {
   chest: 'none' | 'straps' | 'plate' | 'emblem' | 'stitch' | 'scales' | 'diamondhide';
   /** Hanging leather fringe strips off the chest yoke — the buckskin read. */
   fringe?: boolean;
-  /** Big mismatched cloth patches with stitch ticks — the homespun read. */
-  patches?: string;
+  /** Thistledown: THE BROIDERY — the starter's craft elevated from
+   *  mending to needlework: a running-stitch border riding the yoke
+   *  hem, a thistle sprig embroidered at the sternum (stem, leaf
+   *  ticks, a small down bloom), and a vine stitch above the hem.
+   *  Thread, not gold: the first robe's jewel is the hand that made
+   *  it. */
+  broidery?: { thread: string; sprig: string };
+  /** Thistledown: THE CORDED SASH — the rope belt reborn as a woven
+   *  two-strand cord, knotted at the leading hip, its two tassel
+   *  cords hanging with seed-fluff ends that stir on the breeze. */
+  sashcord?: { color: string; tassel: string };
+  /** Thistledown: two clean lapped hem courses, each with its own
+   *  stitch border — layered tailoring, never patchwork. */
+  hemcourse?: { colors: [string, string] };
+  /** Thistledown: THE DRIFT — loosed seeds riding ONE WIND across
+   *  the skirt air at a constant pace, brightening when the breeze
+   *  passes. Read by downpaul for its own shed (the cross-read
+   *  pattern). */
+  driftdown?: { seed: string };
   emblem?:
     | 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star'
     | 'moon' | 'eye' | 'moth' | 'coin' | 'bullhead' | 'flame' | 'orrery'
@@ -911,9 +993,6 @@ export interface BodyStyle {
    * THE LOW WARDROBE'S OWN CLOTH — one owner each. A leveling robe
    * earns layers, not a palette swap.
    */
-  /** Thistledown: the twisted rope belt — two-strand hemp with a
-   *  looped knot and frayed ends. The rope is load-bearing. */
-  rope?: { color: string };
   /** Mothwing: THE WING CLOAK — the moth worn whole. Two layered
    *  folded wings (forewing lapped over hindwing) drape shoulder to
    *  hip, scalloped, veined, each forewing carrying its pale-ringed
@@ -1231,8 +1310,11 @@ export interface HelmStyle {
     | 'gatehelm'
     | 'hood' | 'circlet' | 'wizard' | 'veil' | 'magus'
     // THE LOW WARDROBE'S OWN HEADS — one owner each, per the
-    // one-owner law. A leveling set is not a recolor: `fieldhood` the
-    // thistledown rolled-brim working hood, `mothcowl` the mothwing
+    // one-owner law. A leveling set is not a recolor: `thistlehat`
+    // the thistledown wizard's hat on the magus chassis, crowned by
+    // a real thistle bloom that sheds its seed to the breeze
+    // (fieldhood and its rolled brim are dead — the first road
+    // deserves a first HAT), `mothcowl` the mothwing
     // tufted moth's head,
     // `hedgehat`
     // the hedgemage patched twice-bent cone, `hushcowl` the
@@ -1243,7 +1325,7 @@ export interface HelmStyle {
     // (cinderhood is dead — the fire keeps only what it re-forges),
     // `stardiadem` the starweaver woven silver band under its turning
     // ring of stars.
-    | 'fieldhood' | 'mothcowl'
+    | 'thistlehat' | 'mothcowl'
     | 'hedgehat' | 'hushcowl' | 'oathcowl'
     | 'stardiadem'
     // THE STORM COURT'S HEADS — stormwoven's four weathers, one
@@ -1427,9 +1509,11 @@ export interface HelmStyle {
    *  the chest). `glass` is the stone's night-glass body; `color` is
    *  the light that will not let it fall. The gatefall word. */
   keystone?: { color: string; glass: string };
-  /** Fieldhood: a thistle-seed tuft nodding off the peak tip — the
-   *  first robe's one soft jewel. */
-  tuft?: { color: string };
+  /** Thistlehat: THE BLOOM — a real thistle head crowning the
+   *  dropped tip: green calyx bulb under a brush of soft down,
+   *  nodding on the breeze; at the gust it lets ONE seed go to
+   *  ride the wind past the brim. The starter's jewel is alive. */
+  bloom?: { calyx: string; down: string; seed: string };
   /** Dawnhood: THE DAYBREAK — the sun at the brow, and it MOVES. On
    *  a slow shared clock the disc climbs out of the brow-band
    *  horizon, its rays reach, and first light washes the wearer's
@@ -1908,10 +1992,18 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   // The early-game cloth sets: five color stories for the leveling
   // road. Each ships in four dye lots via registerColorways below.
   thistledown_robe: {
+    // THE FIRST WIND: the starter mage's robe — oat linen tailored,
+    // embroidered, and sashed; never patchwork. The living word is
+    // THE DRIFT: loosed seeds riding one wind past the hem.
     color: '#c9bfa3', trim: '#8a7a5c', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.3,
-    patches: '#8a9a6a', rope: { color: '#a08a5c' }, underskirt: '#b0a688',
-    folds: true,
+    silhouette: 'robe', pauldron: 'downpaul', pauldronColor: '#c2b697',
+    pauldronTrim: '#8a7a5c', pauldronScale: 1.12, chest: 'none',
+    skirt: 0.32, sleeves: 'full', underskirt: '#b0a688', folds: true,
+    yoke: { color: '#bdb190' },
+    broidery: { thread: '#7a6a4e', sprig: '#6e8a4a' },
+    sashcord: { color: '#9a8458', tassel: '#efe7d2' },
+    hemcourse: { colors: ['#bcb090', '#a89a7c'] },
+    driftdown: { seed: '#f4eeda' },
   },
   mothwing_robe: {
     color: '#8a8a72', trim: '#d8d4b8', cls: 'cloth',
@@ -2465,8 +2557,8 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     starpoints: { color: '#c8cee8' }, starring: { color: '#c8cee8' },
   },
   thistledown_hood: {
-    color: '#c9bfa3', trim: '#8a7a5c', kind: 'fieldhood',
-    tuft: { color: '#e8e0cc' },
+    color: '#c9bfa3', trim: '#8a7a5c', kind: 'thistlehat',
+    bloom: { calyx: '#7a8a56', down: '#b49ad0', seed: '#f4eeda' },
   },
   mothwing_cowl: {
     color: '#8a8a72', trim: '#d8d4b8', kind: 'mothcowl',
@@ -3289,17 +3381,40 @@ function registerColorways<T>(
   }
 }
 
-// Thistledown dye lots: patch, rope and hem tones follow the cloth —
-// the rope stays hemp under every dye, only steeped a little.
+// Thistledown dye lots: every new word takes the dye too (the
+// colorway law) — yoke, cord, courses and thread follow the cloth;
+// the bloom keeps its own species color per steep, and the seed
+// down stays pale under every dye, as down does.
 registerColorways(BODY_STYLES, 'thistledown_robe', {
-  madder: { color: '#a8524a', trim: '#d9b08a', patches: '#c98a6a', rope: { color: '#9a7050' }, underskirt: '#8a4038' },
-  woad: { color: '#54688e', trim: '#c9c4b0', patches: '#7a8aa8', rope: { color: '#8a8468' }, underskirt: '#42527a' },
-  bracken: { color: '#8a6f4a', trim: '#c9b088', patches: '#a89060', rope: { color: '#8a7448' }, underskirt: '#6e5738' },
+  madder: {
+    color: '#a8524a', trim: '#d9b08a', underskirt: '#8a4038',
+    pauldronColor: '#a04e46', yoke: { color: '#9a4a42' },
+    broidery: { thread: '#e0c4a4', sprig: '#7a8a56' },
+    sashcord: { color: '#9a7050', tassel: '#e8d0c0' },
+    hemcourse: { colors: ['#9c4c44', '#8a4038'] },
+    driftdown: { seed: '#f0e0d4' },
+  },
+  woad: {
+    color: '#54688e', trim: '#c9c4b0', underskirt: '#42527a',
+    pauldronColor: '#506388', yoke: { color: '#4e6084' },
+    broidery: { thread: '#c9c4b0', sprig: '#6e8a5a' },
+    sashcord: { color: '#8a8468', tassel: '#dcdcc8' },
+    hemcourse: { colors: ['#4e6084', '#42527a'] },
+    driftdown: { seed: '#e8ecdc' },
+  },
+  bracken: {
+    color: '#8a6f4a', trim: '#c9b088', underskirt: '#6e5738',
+    pauldronColor: '#856b46', yoke: { color: '#816844' },
+    broidery: { thread: '#c9b088', sprig: '#6e7a3a' },
+    sashcord: { color: '#8a7448', tassel: '#e0d0b0' },
+    hemcourse: { colors: ['#816844', '#6e5738'] },
+    driftdown: { seed: '#eee0c4' },
+  },
 });
 registerColorways(HELM_STYLES, 'thistledown_hood', {
-  madder: { color: '#a8524a', trim: '#d9b08a', tuft: { color: '#e8d0c0' } },
-  woad: { color: '#54688e', trim: '#c9c4b0', tuft: { color: '#dcdcc8' } },
-  bracken: { color: '#8a6f4a', trim: '#c9b088', tuft: { color: '#e0d0b0' } },
+  madder: { color: '#a8524a', trim: '#d9b08a', bloom: { calyx: '#7a8a56', down: '#d492a0', seed: '#f0e0d4' } },
+  woad: { color: '#54688e', trim: '#c9c4b0', bloom: { calyx: '#6e8a5a', down: '#9aa8d8', seed: '#e8ecdc' } },
+  bracken: { color: '#8a6f4a', trim: '#c9b088', bloom: { calyx: '#6e7a3a', down: '#d0b070', seed: '#eee0c4' } },
 });
 registerColorways(LEG_STYLES, 'thistledown_skirts', {
   madder: { thigh: '#8a4038' },
@@ -5048,6 +5163,77 @@ export function drawTorsoGarment(
         }
         ctx.globalAlpha = 1;
       }
+      if (st.hemcourse) {
+        // ---- THE HEM COURSES: thistledown's skirt — two clean
+        // lapped courses of tailored linen, each with its own stitch
+        // border, stepping a value darker toward the ground. Layered
+        // tailoring; the patchwork is dead.
+        const [c1, c2] = st.hemcourse.colors;
+        for (const [col2, top] of [[c1, 0.5], [c2, 0.74]] as const) {
+          const tierTop = y0 + (hemY - y0) * top;
+          const tierBot = y0 + (hemY - y0) * (top + 0.3);
+          const sTop = 1 + top * 0.26;
+          const sBot = 1 + (top + 0.3) * 0.26;
+          ctx.fillStyle = col2;
+          ctx.beginPath();
+          ctx.moveTo(-ww * sTop, tierTop);
+          ctx.lineTo(ww * sTop, tierTop);
+          ctx.lineTo(ww * sBot, tierBot);
+          ctx.quadraticCurveTo(ww * 0.4, tierBot + 0.022 * s, 0, tierBot + 0.018 * s);
+          ctx.quadraticCurveTo(-ww * 0.4, tierBot + 0.022 * s, -ww * sBot, tierBot);
+          ctx.closePath();
+          ctx.fill();
+          // The course's stitch border — the tailor's tick.
+          ctx.strokeStyle = shade(col2, 22);
+          ctx.lineWidth = Math.max(1, s * 0.007);
+          ctx.setLineDash([s * 0.013, s * 0.012]);
+          ctx.beginPath();
+          ctx.moveTo(-ww * sBot * 0.94, tierBot - 0.008 * s);
+          ctx.quadraticCurveTo(0, tierBot + 0.01 * s, ww * sBot * 0.94, tierBot - 0.008 * s);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        // THE VINE STITCH: one embroidered wave riding above the
+        // courses — the sprig's garden, sewn all the way round.
+        if (st.broidery) {
+          const vy = y0 + (hemY - y0) * 0.42;
+          ctx.strokeStyle = st.broidery.thread;
+          ctx.lineWidth = Math.max(1, s * 0.0055);
+          ctx.globalAlpha = 0.7;
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const x0v = -ww * 0.9 + (i / 6) * ww * 1.8;
+            const x1v = -ww * 0.9 + ((i + 1) / 6) * ww * 1.8;
+            ctx.moveTo(x0v, vy);
+            ctx.quadraticCurveTo(
+              (x0v + x1v) / 2, vy + (i % 2 === 0 ? -0.012 : 0.012) * s,
+              x1v, vy,
+            );
+          }
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
+      if (st.driftdown) {
+        // ---- THE DRIFT: loosed seeds riding ONE WIND across the
+        // hem air — entering on the trailing side, gone past the
+        // leading edge, at one constant pace forever (the seamless
+        // law). The passing breeze only brightens them: the gust
+        // speaks through light, never through hurry.
+        const bz2 = breezeK(nowMs, 0);
+        for (const [i, [phi, hv]] of ([[0, 0.6], [0.36, 0.72], [0.7, 0.5]] as const).entries()) {
+          const ub = ((nowMs * 0.00011 + phi) % 1 + 1) % 1;
+          thistleSeed(
+            ctx,
+            -f.lead * ww * 1.25 + f.lead * ub * ww * 2.7,
+            y0 + (hemY - y0) * hv - ub * 0.09 * s + Math.sin(ub * 9 + i * 2.2) * 0.014 * s,
+            0.014 * s * (1 - ub * 0.2),
+            st.driftdown.seed,
+            f.lead * ub * 1.8,
+            Math.sin(ub * Math.PI) * (0.3 + 0.7 * bz2),
+          );
+        }
+      }
       if (st.winkmotes) {
         // THE ARRIVALS: voidwhisper's skirt lights — pale stars
         // living at FIXED seats down the cloth. Each wakes where it
@@ -5555,34 +5741,6 @@ export function drawTorsoGarment(
       ctx.stroke();
     }
 
-    // ---- patches: big honest squares of mismatched cloth crossed by
-    // stitch ticks — the homespun read. Every patch was a lesson.
-    if (st.patches) {
-      const pCol = st.patches;
-      const patch = (px: number, py: number, pr: number, rot: number) => {
-        ctx.save();
-        ctx.translate(px, py);
-        ctx.rotate(rot);
-        ctx.fillStyle = pCol;
-        ctx.fillRect(-pr, -pr, pr * 2, pr * 2);
-        // Stitches straddle the patch edge, top and bottom.
-        ctx.strokeStyle = shade(pCol, -26);
-        ctx.lineWidth = Math.max(1, s * 0.012);
-        ctx.beginPath();
-        for (let i = -1; i <= 1; i++) {
-          ctx.moveTo(i * pr * 0.55, -pr * 1.28);
-          ctx.lineTo(i * pr * 0.55, -pr * 0.75);
-          ctx.moveTo(i * pr * 0.55, pr * 0.75);
-          ctx.lineTo(i * pr * 0.55, pr * 1.28);
-        }
-        ctx.stroke();
-        ctx.restore();
-      };
-      patch(-tww * 0.48, -th * 0.46, tw * 0.29, -0.1);
-      // A second patch rides the skirt, drifting with the hem drag.
-      if (st.skirt > 0.2) patch(ww * 0.42 + f.dragX * 0.55 * s, 0.17 * s, tw * 0.33, 0.14);
-    }
-
     // ---- the shoulder yoke: a contrasting panel across the upper
     // chest, worn front AND back — a yoke is construction, not
     // decoration, and construction wraps the body.
@@ -5619,6 +5777,57 @@ export function drawTorsoGarment(
           ctx.lineTo(sx + 0.018 * s, -th + yh - 0.005 * s);
         }
         ctx.stroke();
+      }
+    }
+
+    // ---- THE BROIDERY: thistledown's needlework — the starter's
+    // craft raised from mending to embroidery (the patches are
+    // dead). A running-stitch border rides the yoke hem front AND
+    // back — construction wraps the body — and on the front plane a
+    // thistle sprig is worked at the sternum: stem, leaf ticks, and
+    // one small head of down. Thread, not gold.
+    if (st.broidery && !hurt) {
+      const bd = st.broidery;
+      if (st.yoke) {
+        const yh2 = th * 0.42;
+        ctx.strokeStyle = bd.thread;
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.setLineDash([s * 0.013, s * 0.012]);
+        ctx.beginPath();
+        ctx.moveTo(-tww * 0.9, -th + yh2 + 0.012 * s);
+        ctx.lineTo(tww * 0.9, -th + yh2 + 0.012 * s);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (!back) {
+        frontPlaneOn();
+        const spx2 = 0;
+        const spy2 = -th * 0.62;
+        ctx.strokeStyle = bd.sprig;
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(spx2 - tw * 0.05, spy2 + th * 0.17);
+        ctx.quadraticCurveTo(spx2 + tw * 0.02, spy2 + th * 0.06, spx2 + tw * 0.04, spy2 - th * 0.05);
+        ctx.moveTo(spx2 - tw * 0.015, spy2 + th * 0.08);
+        ctx.lineTo(spx2 - tw * 0.1, spy2 + th * 0.02);
+        ctx.moveTo(spx2 + tw * 0.025, spy2 + th * 0.0);
+        ctx.lineTo(spx2 + tw * 0.1, spy2 - th * 0.03);
+        ctx.stroke();
+        // The sprig's head: a small stitched burr with a down tuft.
+        ctx.fillStyle = bd.sprig;
+        ctx.beginPath();
+        ctx.ellipse(spx2 + tw * 0.045, spy2 - th * 0.075, tw * 0.032, th * 0.028, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = bd.thread;
+        ctx.lineWidth = Math.max(1, s * 0.007);
+        ctx.beginPath();
+        for (const da of [-0.5, -0.15, 0.2, 0.55] as const) {
+          ctx.moveTo(spx2 + tw * 0.045, spy2 - th * 0.09);
+          ctx.lineTo(spx2 + tw * 0.045 + Math.sin(da) * tw * 0.05, spy2 - th * 0.09 - Math.cos(da) * th * 0.055);
+        }
+        ctx.stroke();
+        frontPlaneOff();
       }
     }
 
@@ -5772,60 +5981,80 @@ export function drawTorsoGarment(
       }
     }
 
-    // ---- THE ROPE BELT: thistledown's own waist — a twisted two-
-    // strand hemp rope, its lay drawn as alternating diagonal blocks,
-    // a looped knot at the hip and two frayed ends splaying real
-    // fibers. The rope is load-bearing; the pride is too.
-    if (st.rope && !hurt) {
-      const rCol = st.rope.color;
+    // ---- THE CORDED SASH: thistledown's waist reborn — the rope
+    // belt is dead. A woven two-strand cord crosses the waist, its
+    // twist drawn as a braid of alternating lit blocks; a flat knot
+    // sits at the leading hip, and two tassel cords hang from it,
+    // each ending in a seed-fluff tuft that stirs when the breeze
+    // passes. Craft with a mage's patience.
+    if (st.sashcord && !hurt) {
+      const sc = st.sashcord;
+      const bz2 = breezeK(nowMs, 0);
       const ry = -0.086 * s;
-      const rh = 0.042 * s;
-      // The lay: alternating light/dark diagonal blocks across the
-      // band — twist read as flat value steps.
-      const n = 9;
+      const rh = 0.036 * s;
+      // The braid: two strands reading as opposed diagonal steps.
+      const n = 10;
       for (let i = 0; i < n; i++) {
         const x0 = -ww - 0.01 * s + (i / n) * (ww * 2 + 0.02 * s);
         const w = (ww * 2 + 0.02 * s) / n;
-        ctx.fillStyle = i % 2 === 0 ? rCol : shade(rCol, -16);
+        ctx.fillStyle = i % 2 === 0 ? shade(sc.color, 10) : shade(sc.color, -14);
         ctx.beginPath();
         ctx.moveTo(x0, ry + rh);
-        ctx.lineTo(x0 + w * 0.55, ry);
-        ctx.lineTo(x0 + w * 1.1, ry);
-        ctx.lineTo(x0 + w * 0.55, ry + rh);
+        ctx.quadraticCurveTo(x0 + w * 0.5, ry + (i % 2 === 0 ? -rh * 0.2 : rh * 1.2), x0 + w, ry + rh);
+        ctx.lineTo(x0 + w, ry);
+        ctx.quadraticCurveTo(x0 + w * 0.5, ry + (i % 2 === 0 ? rh * 1.2 : -rh * 0.2), x0, ry);
         ctx.closePath();
         ctx.fill();
       }
-      // The knot: a loop over the band at the leading hip.
-      const kx = f.lead * ww * 0.58;
-      ctx.fillStyle = shade(rCol, 8);
+      // The braid's edge stitch — one thread line under the cord.
+      ctx.strokeStyle = shade(sc.color, -24);
+      ctx.lineWidth = Math.max(1, s * 0.006);
       ctx.beginPath();
-      ctx.ellipse(kx, ry + rh * 0.5, 0.036 * s, 0.03 * s, 0.3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = shade(rCol, -20);
+      ctx.moveTo(-ww, ry + rh + 0.004 * s);
+      ctx.lineTo(ww, ry + rh + 0.004 * s);
+      ctx.stroke();
+      // The flat knot at the leading hip: two lapped loops.
+      const kx = f.lead * ww * 0.56;
+      ctx.fillStyle = shade(sc.color, 14);
       ctx.beginPath();
-      ctx.ellipse(kx, ry + rh * 0.5, 0.018 * s, 0.013 * s, 0.3, 0, Math.PI * 2);
+      ctx.ellipse(kx - 0.012 * s, ry + rh * 0.5, 0.026 * s, 0.022 * s, 0.4, 0, Math.PI * 2);
       ctx.fill();
-      // Two rope ends, swinging, each fraying into three fibers.
-      const sway3 = f.strideSw * 0.016 * s;
-      for (const [dx, len] of [[-0.014, 0.12], [0.022, 0.085]] as const) {
+      ctx.fillStyle = shade(sc.color, -4);
+      ctx.beginPath();
+      ctx.ellipse(kx + 0.014 * s, ry + rh * 0.5, 0.024 * s, 0.02 * s, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(sc.color, -26);
+      ctx.beginPath();
+      ctx.arc(kx, ry + rh * 0.5, 0.009 * s, 0, Math.PI * 2);
+      ctx.fill();
+      // Two tassel cords, seed-fluff tufts at their ends — the
+      // breeze stirs them; the stride swings them.
+      const sway3 = f.strideSw * 0.014 * s + Math.sin(nowMs * 0.0017) * 0.006 * s * (0.3 + 0.7 * bz2);
+      for (const [dx, len] of [[-0.012, 0.11], [0.02, 0.08]] as const) {
         const ex = kx + dx * s;
         const ey = ry + rh;
         const tipY2 = ey + len * s;
-        ctx.strokeStyle = rCol;
-        ctx.lineWidth = Math.max(2, s * 0.021);
+        ctx.strokeStyle = shade(sc.color, -8);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(ex, ey);
         ctx.quadraticCurveTo(ex + sway3 * 0.4, ey + len * s * 0.6, ex + sway3, tipY2);
         ctx.stroke();
-        ctx.strokeStyle = shade(rCol, -12);
-        ctx.lineWidth = Math.max(1, s * 0.01);
-        for (const fdx of [-0.012, 0, 0.012] as const) {
-          ctx.beginPath();
-          ctx.moveTo(ex + sway3, tipY2 - 0.008 * s);
-          ctx.lineTo(ex + sway3 + fdx * s, tipY2 + 0.026 * s);
-          ctx.stroke();
+        // The tuft: soft rays of pale down, folded at rest.
+        ctx.strokeStyle = sc.tassel;
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        for (const fda of [-0.55, -0.2, 0.15, 0.5] as const) {
+          ctx.moveTo(ex + sway3, tipY2);
+          ctx.lineTo(
+            ex + sway3 + Math.sin(fda) * 0.02 * s,
+            tipY2 + Math.cos(fda) * 0.026 * s,
+          );
         }
+        ctx.stroke();
       }
+      ctx.lineCap = 'butt';
     }
 
     // ---- THE HERB GIRDLE: hedgemage's own waist company — two herb
@@ -12004,6 +12233,75 @@ export function drawPauldron(
     return;
   }
 
+  if (st.pauldron === 'downpaul') {
+    // THE DOWN SHOULDERS — thistledown's MATCHED pair: quilted
+    // linen caps, two stitch seams crossing the dome into three
+    // soft puffed lobes, a wisp of real down escaping at the crown
+    // seam, and on the passing breeze each shoulder lets one seed
+    // rise and go. The pair shares the one wind; every loose thing
+    // keeps its own side-time (the clockwork law). A starter's
+    // shoulders, sewn like they mattered — because they did.
+    const seedCol = st.driftdown?.seed ?? shade(trim, 30);
+    const bz = breezeK(nowMs, 0);
+    const ph = side > 0 ? 0 : 2.3;
+    seat(0.1 * s, 0.084 * s, hurt ? '#ffffff' : col, trim);
+    const px = (u: number): number => side * u * s;
+    if (!hurt) {
+      // The quilting: three puffed lobes read as lit top crescents
+      // (the billow law — crescents, never offset circles).
+      ctx.fillStyle = shade(col, 12);
+      for (const [lu, lr] of [[-0.062, 0.026], [0.004, 0.032], [0.066, 0.024]] as const) {
+        ctx.beginPath();
+        ctx.arc(px(lu), -0.052 * s, lr * s, Math.PI * 1.04, Math.PI * 1.96);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The two seams between the lobes — running stitch, honest.
+      ctx.strokeStyle = shade(col, -20);
+      ctx.lineWidth = Math.max(1, s * 0.006);
+      ctx.setLineDash([s * 0.01, s * 0.009]);
+      ctx.beginPath();
+      ctx.moveTo(px(-0.03), -0.075 * s);
+      ctx.quadraticCurveTo(px(-0.036), -0.03 * s, px(-0.028), 0.032 * s);
+      ctx.moveTo(px(0.036), -0.072 * s);
+      ctx.quadraticCurveTo(px(0.042), -0.028 * s, px(0.034), 0.034 * s);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // THE ESCAPING DOWN: a wisp at the crown seam — two SHORT FAT
+      // rays leaning with the breeze (thin strokes past the cap's
+      // outline fan the world's dilate into dark fuzz — the blunt
+      // tip law reaches the small things too).
+      ctx.strokeStyle = seedCol;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1.5, s * 0.012);
+      const leanW = 0.2 + 0.5 * bz;
+      ctx.beginPath();
+      for (const [da, dl] of [[-0.3, 0.018], [0.25, 0.021]] as const) {
+        ctx.moveTo(px(0.036), -0.068 * s);
+        ctx.lineTo(
+          px(0.036) + Math.sin(da + leanW) * dl * s,
+          -0.068 * s - Math.cos(da + leanW) * dl * s,
+        );
+      }
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      // THE SHED: one seed rising off the cap and away — constant
+      // pace, per-side phase, brightest when the gust passes.
+      const ub = ((nowMs * 0.00012 + ph * 0.2) % 1 + 1) % 1;
+      thistleSeed(
+        ctx,
+        px(0.02) + Math.sin(ub * 6 + ph) * 0.016 * s,
+        -0.1 * s - ub * 0.095 * s,
+        0.013 * s * (1 - ub * 0.3),
+        seedCol,
+        side * ub * 1.5,
+        Math.sin(ub * Math.PI) * (0.25 + 0.75 * bz),
+      );
+    }
+    ctx.restore();
+    return;
+  }
+
   if (st.pauldron === 'vortexpaul') {
     // THE CHURN — the maelstrom's shoulders: the right carries the
     // whirl itself, two crescent ridges turning over the cap with
@@ -15881,174 +16179,292 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'fieldhood') {
-    // THE FIELDHOOD — thistledown's own head: the working hood of the
-    // first road. Rounder and shorter than the traveler's cowl — the
-    // point tucked back into itself as a folded nub — with the face
-    // opening ringed by a ROLLED BRIM: the hem folded back in a fat
-    // cuff the way a field hand rolls cloth out of the way. A patch
-    // rides the crown, sewn and ticked; a running stitch climbs the
-    // center seam; a thistle-seed tuft nods off the tuck. Craft is
-    // the jewel here — there is no gold to wear.
+  if (st.kind === 'thistlehat') {
+    // THE THISTLEHAT — thistledown's own head: the FIRST wizard's
+    // hat, standing on the whole magus chassis (the beloved climb:
+    // tall trailing spire, hard crook, pinched dropped point, full
+    // waved brim, ONE BRIGHT EDGE). What lives in it is the field:
+    // a running stitch climbs the pitch — thread, not gold — the
+    // band wears an embroidered sprig, and off the dropped point
+    // hangs THE BLOOM: a real thistle head, green calyx under a
+    // brush of soft down, nodding as the breeze passes. At the
+    // gust it lets one seed go, and the seed rides the wind past
+    // the brim the way the wearer left home.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
-    const ohw = hw * 0.72 * (1 - 0.5 * t);
-    const oTop = headY - hh * 0.58;
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
+    const bz = breezeK(f.nowMs, 0);
+    const bandY = headY - hh * 0.55;
+    const u = -lead;
+    const sway = Math.sin(f.nowMs * 0.0017) * hw * (0.04 + 0.07 * bz);
+    const tipX = headX + u * (hw * 1.38 + sway);
+    const tipY = bandY - hh * 1.72;
+    const oTop = headY - hh * 0.6;
     const oBot = headY + hh * 0.84;
-    const sway = Math.sin(f.nowMs * 0.0015) * hw * 0.04;
-    const nubX = headX - lead * (hw * (1.02 + t * 0.3) + sway);
-    const nubY = headY - hh * 0.98;
-    const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.2, headX + lead * hw * 1.14, headY - hh * 0.5);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.2, headY - hh * 0.86, headX + lead * hw * 0.7, headY - hh * 1.16);
-      // A rounded working crown — but it still pitches, cloth over a
-      // skull, never a helmet dome.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.1, headY - hh * 1.42, headX - lead * hw * 0.42, headY - hh * 1.3);
-      // The tucked point: the crown folds back and DOWN into a nub —
-      // a hood whose point was rolled into the seam to keep the wind
-      // out, not left to fly.
-      ctx.quadraticCurveTo(headX - lead * hw * 0.92, headY - hh * 1.24, nubX, nubY);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.06 + t * 0.2), headY - hh * 0.62, headX - lead * hw * (1.22 + t * 0.3), headY - hh * 0.12);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.34 + t * 0.28), headY + hh * 0.4, headX - lead * hw * 1.28, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.24, headY + hh * 1.18);
+    // THE MANTLE: cloth to the shoulders, risen to meet the band at
+    // every facing (the nape law), face window CUT, never filled.
+    const mantle = (): void => {
+      ctx.moveTo(headX - hw * 1.18, headY + hh * 1.1);
+      ctx.quadraticCurveTo(headX - hw * 1.26, headY - hh * 0.34, headX - hw * 1.02, bandY - hh * 0.44);
+      ctx.lineTo(headX + hw * 1.02, bandY - hh * 0.44);
+      ctx.quadraticCurveTo(headX + hw * 1.26, headY - hh * 0.34, headX + hw * 1.18, headY + hh * 1.1);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.38, headX - hw * 1.18, headY + hh * 1.1);
       ctx.closePath();
     };
-    const opening = () => {
+    const opening = (): void => {
       chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
     };
     ctx.fillStyle = mc;
     ctx.beginPath();
-    shell();
+    mantle();
     if (front) opening();
     ctx.fill('evenodd');
+    if (!hurt && !front) {
+      // The back read: center seam stitch and the drape tail — the
+      // maker's hand shows on every side.
+      ctx.fillStyle = shade(st.color, -10);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.4, headY + hh * 0.7);
+      ctx.lineTo(headX + hw * 0.4, headY + hh * 0.7);
+      ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 1.8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(st.color, -22);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.setLineDash([s * 0.016, s * 0.014]);
+      ctx.beginPath();
+      ctx.moveTo(headX, bandY - hh * 0.2);
+      ctx.lineTo(headX + lead * hw * 0.05, headY + hh * 1.5);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // THE SPIRE: the magus climb — lean concave windward edge, a
+    // hard committed crook, a pinched dropped point.
+    const spire = (): void => {
+      ctx.moveTo(headX - u * hw * 0.78, bandY);
+      ctx.quadraticCurveTo(headX - u * hw * 0.42, bandY - hh * 1.0, headX - u * hw * 0.1, bandY - hh * 1.58);
+      ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.02, tipX, tipY - hh * 0.22);
+      ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
+      ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.38, headX + u * hw * 0.56, bandY - hh * 0.9);
+      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.closePath();
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    spire();
+    ctx.fill();
     if (!hurt) {
       ctx.save();
       ctx.beginPath();
-      shell();
-      if (front) opening();
-      ctx.clip('evenodd');
-      // Trailing-half shade, then the crown's light as a FLAT plane —
-      // the slope catches the sun as a panel, not a drawn ridge.
-      ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      ctx.fillStyle = shade(st.color, 10);
+      spire();
+      ctx.clip();
+      // The windward plane takes the light as a panel — linen in
+      // the sun, the magus's own shading grammar.
+      ctx.fillStyle = shade(st.color, 9);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.82, headY - hh * 0.98);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.16, headY - hh * 1.34, headX - lead * hw * 0.4, headY - hh * 1.24);
-      ctx.lineTo(headX - lead * hw * 0.3, headY - hh * 1.02);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.2, headY - hh * 1.1, headX + lead * hw * 0.66, headY - hh * 0.78);
+      ctx.moveTo(headX - u * hw * 0.62, bandY);
+      ctx.quadraticCurveTo(headX - u * hw * 0.3, bandY - hh * 0.9, headX - u * hw * 0.02, bandY - hh * 1.5);
+      ctx.quadraticCurveTo(headX - u * hw * 0.26, bandY - hh * 0.8, headX - u * hw * 0.3, bandY);
       ctx.closePath();
       ctx.fill();
-      // THE CROWN PATCH: a mismatched square sewn slightly askew,
-      // stitch ticks all round — the first robe is proud of its
-      // mending all the way up.
-      const pCol = shade(st.trim, 18);
-      const px0 = headX - lead * hw * 0.16;
-      const py0 = headY - hh * 1.06;
-      ctx.save();
-      ctx.translate(px0, py0);
-      ctx.rotate(lead * 0.14);
-      ctx.fillStyle = pCol;
-      ctx.fillRect(-hw * 0.3, -hh * 0.24, hw * 0.6, hh * 0.48);
-      ctx.strokeStyle = shade(pCol, -26);
-      ctx.lineWidth = Math.max(1, s * 0.009);
-      for (const [x0, y0, x1, y1] of [
-        [-hw * 0.3, -hh * 0.1, -hw * 0.22, -hh * 0.1],
-        [-hw * 0.3, hh * 0.12, -hw * 0.22, hh * 0.12],
-        [hw * 0.22, -hh * 0.02, hw * 0.3, -hh * 0.02],
-        [-hw * 0.1, -hh * 0.24, -hw * 0.1, -hh * 0.16],
-        [hw * 0.08, hh * 0.16, hw * 0.08, hh * 0.24],
-      ] as const) {
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x1, y1);
-        ctx.stroke();
-      }
-      ctx.restore();
-      // The center seam's running stitch, climbing to the tuck.
-      ctx.strokeStyle = shade(st.color, -22);
-      ctx.lineWidth = Math.max(1, s * 0.009);
-      ctx.setLineDash([s * 0.016, s * 0.014]);
+      // The crook side folds dark over the cone.
+      ctx.fillStyle = shade(st.color, -14);
+      ctx.globalAlpha = 0.55;
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.5, headY - hh * 1.1);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.3, headY - hh * 1.3, nubX + lead * hw * 0.2, nubY - hh * 0.06);
+      ctx.moveTo(headX, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.04, bandY - hh * 0.95, headX - u * hw * 0.01, bandY - hh * 1.52);
+      ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.94, tipX, tipY - hh * 0.2);
+      ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.03, tipX + u * hw * 0.02, tipY + hh * 0.12);
+      ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.36, headX + u * hw * 0.56, bandY - hh * 0.88);
+      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // THE CLIMBING STITCH: a running seam up the pitch — the
+      // starter's craft where a court would wear its magic. Fixed,
+      // honest, hand-sewn; nothing about it glows.
+      ctx.strokeStyle = shade(st.trim, 14);
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.setLineDash([s * 0.015, s * 0.013]);
+      ctx.beginPath();
+      ctx.moveTo(headX + u * hw * 0.3, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + u * hw * 0.2, bandY - hh * 1.1, tipX - u * hw * 0.16, tipY + hh * 0.06);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
-      if (front) {
-        // The overhang shadow — the hooded read, on the face itself.
-        ctx.save();
-        ctx.beginPath();
-        opening();
-        ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.02);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.42)');
-        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.6);
-        ctx.restore();
-        // THE ROLLED BRIM: the hem folded back on itself — a fat cuff
-        // band ringing the opening, lit a step above the shell, with
-        // the fold's own under-shadow where it turns. Layers, not
-        // lines: the cuff is a flat ribbon, the turn a darker one.
-        const bw = headR * 0.13;
-        ctx.strokeStyle = shade(st.color, -18);
-        ctx.lineWidth = bw * 1.5;
-        ctx.beginPath();
-        chamferRect(ctx, cx - ohw - bw * 0.2, oTop - bw * 0.2, (ohw + bw * 0.2) * 2, oBot - oTop + bw * 0.4, cut * 0.8);
-        ctx.stroke();
-        ctx.strokeStyle = shade(st.color, 14);
-        ctx.lineWidth = bw;
-        ctx.beginPath();
-        chamferRect(ctx, cx - ohw - bw * 0.3, oTop - bw * 0.3, (ohw + bw * 0.3) * 2, oBot - oTop + bw * 0.6, cut * 0.8);
-        ctx.stroke();
-      }
-      if (!front) {
-        // From behind: the drape tail and center seam — the slab
-        // breaks into hung cloth.
-        ctx.fillStyle = shade(st.color, -10);
-        ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.9);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = shade(st.color, -22);
-        ctx.lineWidth = Math.max(1, s * 0.012);
-        ctx.beginPath();
-        ctx.moveTo(headX, headY - hh * 1.0);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
-        ctx.stroke();
-      }
-      if (st.tuft) {
-        // The thistle tuft: a seed-fluff cluster nodding off the tuck
-        // on a short stem — pale rays around a russet seed heart.
-        const tc2 = st.tuft.color;
-        const tx2 = nubX - lead * hw * 0.12;
-        const ty2 = nubY - hh * 0.22 + Math.sin(f.nowMs * 0.0021) * hh * 0.03;
-        ctx.strokeStyle = shade(st.color, -20);
-        ctx.lineWidth = Math.max(1, s * 0.01);
-        ctx.beginPath();
-        ctx.moveTo(nubX, nubY);
-        ctx.quadraticCurveTo(nubX - lead * hw * 0.04, nubY - hh * 0.14, tx2, ty2);
-        ctx.stroke();
-        ctx.strokeStyle = tc2;
-        ctx.lineWidth = Math.max(1, s * 0.012);
+      // The windward ridge takes the light — the one bright line
+      // the magus keeps.
+      ctx.strokeStyle = shade(st.color, 16);
+      ctx.lineWidth = Math.max(1.5, s * 0.018);
+      ctx.beginPath();
+      ctx.moveTo(headX - u * hw * 0.26, bandY - hh * 0.5);
+      ctx.quadraticCurveTo(headX - u * hw * 0.05, bandY - hh * 1.22, headX + u * hw * 0.26, bandY - hh * 1.66);
+      ctx.stroke();
+      // One crease under the crook.
+      ctx.strokeStyle = shade(st.color, -24);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(headX + u * hw * 0.14, bandY - hh * 1.4);
+      ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.52, tipX - u * hw * 0.1, tipY + hh * 0.02);
+      ctx.stroke();
+    }
+    // THE BRIM: the magus slab — full waved span, tips up, argued
+    // with weather and won. THE BLUNT TIP LAW: the tips end on a
+    // short vertical edge, never a razor point — the world's 8-tap
+    // outline dilate renders any feature thinner than its radius as
+    // a FAN of displaced dark copies (the whisker artifact, seen on
+    // every razor-tipped brim in the family).
+    const slab = (): void => {
+      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.12);
+      ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.12);
+      ctx.lineTo(headX + hw * 2.45, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
+      ctx.quadraticCurveTo(headX - hw * 1.6, bandY + hh * 0.44, headX - hw * 2.45, bandY + hh * 0.06);
+      ctx.closePath();
+    };
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 4);
+    ctx.beginPath();
+    slab();
+    ctx.fill();
+    if (!hurt) {
+      // Brim underside — the hat's own honest shadow.
+      ctx.fillStyle = shade(st.color, -26);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 2.3, bandY + hh * 0.02);
+      ctx.quadraticCurveTo(headX, bandY + hh * 0.48, headX + hw * 2.3, bandY + hh * 0.02);
+      ctx.quadraticCurveTo(headX + hw * 1.5, bandY + hh * 0.38, headX, bandY + hh * 0.36);
+      ctx.quadraticCurveTo(headX - hw * 1.5, bandY + hh * 0.38, headX - hw * 2.3, bandY + hh * 0.02);
+      ctx.closePath();
+      ctx.fill();
+      // THE ONE BRIGHT EDGE: linen catching the morning, unbroken —
+      // and CLIPPED to the slab: a stroke centered on the silhouette
+      // edge leaks half its width outside the shape, and the world's
+      // outline dilate rings that lip into whiskers (THE EDGE LIVES
+      // ON THE CLOTH law).
+      ctx.save();
+      ctx.beginPath();
+      slab();
+      ctx.clip();
+      ctx.strokeStyle = shade(st.color, 26);
+      ctx.lineWidth = Math.max(1, s * 0.013) * 2;
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.12);
+      ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.12);
+      ctx.stroke();
+      ctx.restore();
+      // THE BAND: stitched linen in the thread color, a running
+      // stitch along its lower edge, and at the front a small
+      // embroidered sprig — stem, two leaf ticks, one down dot.
+      ctx.fillStyle = shade(st.trim, -6);
+      ctx.fillRect(headX - hw * 0.9, bandY - hh * 0.4, hw * 1.8, hh * 0.24);
+      ctx.strokeStyle = shade(st.trim, 20);
+      ctx.lineWidth = Math.max(1, s * 0.007);
+      ctx.setLineDash([s * 0.012, s * 0.011]);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.88, bandY - hh * 0.19);
+      ctx.lineTo(headX + hw * 0.88, bandY - hh * 0.19);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (front && st.bloom) {
+        const bx2 = cx;
+        const by2 = bandY - hh * 0.28;
+        ctx.strokeStyle = st.bloom.calyx;
+        ctx.lineWidth = Math.max(1, s * 0.008);
         ctx.lineCap = 'round';
-        for (let i = 0; i < 6; i++) {
-          const a = -Math.PI * 0.92 + (i / 5) * Math.PI * 0.84;
-          ctx.beginPath();
-          ctx.moveTo(tx2, ty2);
-          ctx.lineTo(tx2 + Math.cos(a) * headR * 0.16, ty2 + Math.sin(a) * headR * 0.16);
-          ctx.stroke();
-        }
-        ctx.lineCap = 'butt';
-        ctx.fillStyle = shade(st.trim, -12);
         ctx.beginPath();
-        ctx.arc(tx2, ty2 + headR * 0.015, headR * 0.045, 0, Math.PI * 2);
+        ctx.moveTo(bx2 - headR * 0.07, by2 + headR * 0.05);
+        ctx.quadraticCurveTo(bx2, by2 - headR * 0.01, bx2 + headR * 0.06, by2 - headR * 0.06);
+        ctx.moveTo(bx2 - headR * 0.015, by2 + headR * 0.01);
+        ctx.lineTo(bx2 - headR * 0.055, by2 - headR * 0.03);
+        ctx.moveTo(bx2 + headR * 0.02, by2 - headR * 0.025);
+        ctx.lineTo(bx2 + headR * 0.005, by2 - headR * 0.07);
+        ctx.stroke();
+        ctx.fillStyle = st.bloom.down;
+        ctx.beginPath();
+        ctx.arc(bx2 + headR * 0.07, by2 - headR * 0.07, headR * 0.028, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+    // THE BLOOM: the living tassel off the dropped point — calyx
+    // above, down brush hanging below, nodding with the breeze.
+    // Structure: the bloom is silhouette and holds white in the
+    // flash; only its shed seed is light, and light dies in the
+    // flash.
+    if (st.bloom) {
+      const nod = Math.sin(f.nowMs * 0.0017 + 0.6) * (0.1 + 0.24 * bz);
+      const blx = tipX + u * hw * 0.03;
+      const bly = tipY + hh * 0.18;
+      ctx.save();
+      ctx.translate(blx, bly);
+      ctx.rotate(u * nod);
+      // the down brush first — it hangs BELOW the calyx, a real fan
+      // of soft rays wide enough to read as the flower it is
+      ctx.strokeStyle = hurt ? '#ffffff' : st.bloom.down;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = Math.PI * 0.14 + (i / 7) * Math.PI * 0.72;
+        ctx.moveTo(0, headR * 0.05);
+        ctx.lineTo(Math.cos(a) * headR * 0.36, headR * 0.05 + Math.sin(a) * headR * 0.36);
+      }
+      ctx.stroke();
+      if (!hurt) {
+        // pale tips on the outer rays — down catching the light
+        ctx.fillStyle = st.bloom.seed;
+        for (const ta of [0.2, 0.5, 0.8] as const) {
+          const a = Math.PI * 0.14 + ta * Math.PI * 0.72;
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * headR * 0.36, headR * 0.05 + Math.sin(a) * headR * 0.36, headR * 0.03, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // the calyx: a green urn, cross-ticked like the real burr
+      ctx.fillStyle = hurt ? '#ffffff' : st.bloom.calyx;
+      ctx.beginPath();
+      ctx.moveTo(-headR * 0.1, -headR * 0.05);
+      ctx.quadraticCurveTo(0, -headR * 0.16, headR * 0.1, -headR * 0.05);
+      ctx.quadraticCurveTo(headR * 0.085, headR * 0.09, 0, headR * 0.12);
+      ctx.quadraticCurveTo(-headR * 0.085, headR * 0.09, -headR * 0.1, -headR * 0.05);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(st.bloom.calyx, 16);
+        ctx.beginPath();
+        ctx.ellipse(0, -headR * 0.045, headR * 0.075, headR * 0.035, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = shade(st.bloom.calyx, -22);
+        ctx.lineWidth = Math.max(0.6, s * 0.004);
+        ctx.beginPath();
+        ctx.moveTo(-headR * 0.07, -headR * 0.02);
+        ctx.lineTo(headR * 0.045, headR * 0.08);
+        ctx.moveTo(headR * 0.07, -headR * 0.02);
+        ctx.lineTo(-headR * 0.045, headR * 0.08);
+        ctx.moveTo(0, -headR * 0.04);
+        ctx.lineTo(0, headR * 0.1);
+        ctx.stroke();
+      }
+      ctx.restore();
+      if (!hurt) {
+        // THE LOOSED SEED: one seed on the wind, always faintly
+        // going, bright when the gust passes — constant pace, born
+        // and dying at nothing (the seamless law). The wind blows
+        // toward the leading side; so does everything it carries.
+        const ub = ((f.nowMs * 0.00013) % 1 + 1) % 1;
+        thistleSeed(
+          ctx,
+          blx + lead * ub * hw * 2.3,
+          bly - ub * hh * 0.55 + Math.sin(ub * 7) * hh * 0.08,
+          headR * 0.09 * (1 - ub * 0.25),
+          st.bloom.seed,
+          lead * ub * 1.6,
+          Math.sin(ub * Math.PI) * (0.25 + 0.75 * bz),
+        );
       }
     }
     return;
