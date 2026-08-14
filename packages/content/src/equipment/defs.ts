@@ -1604,8 +1604,8 @@ function tidecallerSet(): EquipmentDef[] {
     acquisition: { drop: true }, value, color, code, desc,
   });
   return [
-    piece('tidecaller_hood', 'Tidecaller hood', 'head', 22, 2, 430, 'Th',
-      'The wave that chose a wearer. It has been about to break for a hundred years.'),
+    piece('tidecaller_hood', 'Tidecaller hat', 'head', 22, 2, 430, 'Th',
+      'The sea agreed to be a hat. The brim has not stopped going around.'),
     piece('tidecaller_robe', 'Tidecaller robe', 'body', 24, 4, 600, 'Tr',
       'It wears its moon in the pearl strand\'s keeping and its surf low on the hem.'),
     piece('tidecaller_skirts', 'Tidecaller skirts', 'legs', 22, 3, 510, 'Tk',
