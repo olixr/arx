@@ -963,7 +963,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // craft line. A pointed hat colorway proves hats obey the law too.
   ...hedgemageSet(),
   // -------- Tidecaller: THE TIDE COURT — four waters on one robe:
-  // the breaker, the abyss, the lagoon, the maelstrom. Drop-only
+  // the breaker, the abyss, the dark waters, the maelstrom. Drop-only
   // from the raiders who loot the coast; the tide keeps its own
   // ledger, and the moon on the chest keeps it honest.
   ...tidecallerCourt(),
@@ -1579,8 +1579,8 @@ function tidecallerCourt(): EquipmentDef[] {
     ...colorways(base, [
       { key: 'abyss', dye: 'Abyss', color: '#2a3352',
         desc: 'Cut from water no sun has reached. The light it carries is its own.' },
-      { key: 'lagoon', dye: 'Lagoon', color: '#3f9a8c',
-        desc: 'Shallow-water bright, coral at the shoulder. Even its shadows are warm.' },
+      { key: 'darkwater', dye: 'Dark Waters', color: '#131c2c',
+        desc: 'Dyed in the undertow, seamed with cold blue fire. Everything it touches is already sinking.' },
       { key: 'maelstrom', dye: 'Maelstrom', color: '#4a6360',
         desc: 'The whirlpool, measured and hemmed. It has not stopped turning.' },
     ]),

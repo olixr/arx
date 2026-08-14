@@ -1248,9 +1248,9 @@ const defs: LootTableDef[] = [
       // An angler's lure the size of a boathook. The crabs cannot
       // decide whether they worship it or resent it.
       { item: 'merelight', chance: 0.01 },
-      // The lagoon lot: the shallows dress their own. The crabs have
-      // been sitting on a warm-water wardrobe all along.
-      ...setDrops('tidecaller', 0.008, { colorway: 'lagoon' }),
+      // The dark-waters lot: dredged off the shelf where the light
+      // gives up. The crabs brought it back; they will not go back.
+      ...setDrops('tidecaller', 0.008, { colorway: 'darkwater' }),
     ],
   },
   {

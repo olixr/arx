@@ -379,7 +379,7 @@ test('themed cloth sets: five pieces each, coherent class and reqs', () => {
   // THE TIDE COURT: tidecaller ships in four waters — the base set
   // plus three dye lots. Lots are identity, never power, so the
   // five-piece law below reads base pieces only.
-  const TIDE_DYES = ['abyss', 'lagoon', 'maelstrom'];
+  const TIDE_DYES = ['abyss', 'darkwater', 'maelstrom'];
   const isLot = (id: string): boolean => TIDE_DYES.some((dye) => id.endsWith(`_${dye}`));
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const set of sets) {
