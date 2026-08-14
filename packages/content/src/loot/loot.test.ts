@@ -268,7 +268,10 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
     cow: ['raw_beef', 'cowhide'],
     rat: ['mothwing_robe', 'fenwalker_hood_rustsedge', 'cutpurse_gloves_alleyrat', 'ratter', 'shiv'],
     goblin: ['bronze_sword', 'snare_kit', 'mothwing_cowl_ember', 'briarplate_platebody_bloodbriar', 'gobsplitter', 'wisplight', 'emberstone'],
-    goblin_thrower: ['straw_decoy', 'cape_banner', 'tidecaller_robe', 'cutpurse_jerkin_redhand', 'briarplate_helm_nightbriar', 'serpentcoil', 'fishspine'],
+    goblin_thrower: ['straw_decoy', 'cape_banner', 'tidecaller_robe', 'tidecaller_robe_maelstrom', 'briarplate_helm_nightbriar', 'serpentcoil', 'fishspine'],
+    brigand_reaver: ['reavers_toll', 'tollbreaker', 'cutpurse_jerkin_redhand', 'redmarch_platebody', 'crownfire'],
+    lynx_champion: ['duskruff_pelt', 'mothlight', 'emberfox_hood_silverfox'],
+    iron_golem: ['forgeplate_scrap', 'golem_core', 'lodestone'],
     skeleton: ['aegis_stone', 'iron_helm', 'nightveil_cowl', 'voidwhisper_skirts', 'sentinel_gauntlets_bloodwatch', 'dawnsworn_robe_eclipse', 'gravewhisper', 'boneharrow'],
     skeleton_champion: ['sigil_fallen_champion', 'storm_coil', 'cape_champion', 'cape_phoenix', 'dreadforge_platebody', 'nightveil_jerkin', 'voidwhisper_robe', 'sentinel_greaves_daybreak', 'emberfox_hood_shadowfox', 'oathkeeper', 'last_word', 'skyrender', 'worldsplinter', 'frostplate_platebody'],
     wolf: ['wolf_fur', 'bramble_band', 'wolfhide_hood', 'wolfstalker_chaps', 'emberfox_gloves_dawnfox', 'mothwing_wraps_luna', 'frostplate_helm', 'wolffang', 'glacierbite'],
@@ -283,6 +286,10 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
   assert.ok(!reach.get('skeleton')!.has('nightveil_jerkin'), 'jerkin leaked to skeletons');
   assert.ok(!reach.get('skeleton')!.has('voidwhisper_robe'), 'robe leaked to skeletons');
   assert.ok(!reach.get('wolf')!.has('frostplate_platebody'), 'guarded frostplate leaked to wolves');
+  // The Red Company's colors fly over the reaver alone — never a
+  // goblin camp, never the common crews.
+  assert.ok(!reach.get('goblin_thrower')!.has('cutpurse_jerkin_redhand'), 'redhand leaked to throwers');
+  assert.ok(!reach.get('brigand')!.has('cutpurse_jerkin_redhand'), 'redhand leaked to the crews');
 });
 
 test('the flood law: every foe’s per-kill expectation stays under its station’s ceiling', () => {

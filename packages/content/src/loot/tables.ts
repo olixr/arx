@@ -341,6 +341,10 @@ const defs: LootTableDef[] = [
       { item: 'tollbreaker', chance: 0.01 },
       { item: 'leather_hood', chance: 0.03 },
       ...setDrops('cutpurse', 0.012),
+      // THE RED RIGHT HAND: the company's colors fly nowhere else.
+      // The Red Company never sold its flagship — you take it off the
+      // one rank the low roads permit to wear it.
+      ...setDrops('cutpurse', 0.008, { colorway: 'redhand' }),
       // The crews burn what they rob. One of them walked out of a
       // burn wearing this, and the reaver took it off them.
       ...setDrops('cindershade', 0.01),
@@ -405,7 +409,6 @@ const defs: LootTableDef[] = [
     // makes it, and some of them row back out wearing it.
     ...setDrops('tidecaller', 0.012, { colorway: 'maelstrom' }),
     ...setDrops('fenwalker', 0.014, { colorway: 'mirebloom' }),
-    ...setDrops('cutpurse', 0.012, { colorway: 'redhand' }),
     ...setDrops('briarplate', 0.009, { colorway: 'nightbriar' }),
   ]),
   rack('thrower_arms', 'Raider blades off the coast and the fens.', 0.045, [
@@ -1123,6 +1126,12 @@ const defs: LootTableDef[] = [
       { item: 'bloomstone', chance: 0.04 },
       { item: 'brass_key', chance: 0.08 },
       { item: 'dungeon_key', chance: 0.04 },
+      // What hunts at dusk collects at dusk: the moth-knife followed
+      // the duskruff home the way the moths follow the dark.
+      { item: 'mothlight', chance: 0.012 },
+      // The old cat kills silver foxes on principle. The pelts pile
+      // up in the lair, cured by nothing but patience.
+      ...setDrops('emberfox', 0.006, { colorway: 'silverfox' }),
     ],
   },
   // ------------------------------------------------------ the parliament
@@ -1519,6 +1528,9 @@ const defs: LootTableDef[] = [
       { item: 'coal', qty: [1, 2], chance: 0.3 },
       // The storm lives in forged joints, and sometimes it stays.
       { item: 'storm_essence', chance: 0.15 },
+      // The lodestone gathered every stray iron thing for a century.
+      // One piece of the pile was a knife the whole time, pointing.
+      { item: 'lodestone', chance: 0.008 },
     ],
   },
   {
