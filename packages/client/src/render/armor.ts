@@ -351,13 +351,13 @@ export interface BodyStyle {
     // levitating orbs of living seawater over wet seats (inner
     // swirls, ring current, droplet satellites, rising trickle,
     // surge crown on the beat; surfpaul is dead); `deeppaul` the
-    // medusa and the mote fall, `murkpaul` the dark waters' UNDERTOW
-    // — THE SINK's black pour on one shoulder and THE STILL MERE on
-    // the other (coralpaul is dead with the lagoon), `vortexpaul`
-    // the whirl and the wash — those pairs stay ASYMMETRIC. All on
-    // THE TIDE clock, each device offset by its place down the
-    // garment (THE TRAVELING SWELL law).
-    | 'tideorbs' | 'deeppaul' | 'murkpaul' | 'vortexpaul'
+    // medusa and the mote fall, `darkwells` the dark waters' TWIN
+    // WELLS — a MATCHED pair of wells of black water sunk into the
+    // caps, THE RISER climbing from each deep with the swell
+    // (murkpaul and coralpaul are dead), `vortexpaul` the whirl and
+    // the wash. All on THE TIDE clock, each device offset by its
+    // place down the garment (THE TRAVELING SWELL law).
+    | 'tideorbs' | 'deeppaul' | 'darkwells' | 'vortexpaul'
     // THE FOUR SHADOWS' SHOULDERS — cutpurse's guild offices, one
     // owner per LOT, pairs asymmetric (one shoulder for the guild,
     // one for the work): `shadowdrape` the notched half-mantle and
@@ -780,13 +780,32 @@ export interface BodyStyle {
   /** Abyss lot: bioluminescent motes rising through the hem air in
    *  their own procession. */
   luremotes?: { color: string };
-  /** Dark-waters lot: THE UNDERTOW — neon rip channels cutting DOWN
-   *  the skirt dark (drawn current, deep `water` casing under the
-   *  `neon` core) and motes that FALL past the hem. The abyss
-   *  breathes out and rises; the dark waters take, and everything
-   *  sinks. Read by murkpaul for its own light (the dawncrest
-   *  cross-read pattern). */
+  /** Dark-waters lot: THE UNDERTOW — the lot's light, carried: deep
+   *  `water` casing under the cold `neon` core, cross-read by every
+   *  dark-waters device (the dawncrest pattern); its own verse is
+   *  the sinking motes — the abyss breathes out and rises, the dark
+   *  waters take, and everything sinks. */
   undertow?: { water: string; neon: string };
+  /** Dark-waters lot: THE STRATA — the robe re-clothed as lapped
+   *  sheets of standing water, each a step darker (the drowning
+   *  gradient worn down the body), every hem a slack DIAGONAL
+   *  waterline breathing a beat behind its neighbor; colors[0] is
+   *  the chest collar sheet, the rest descend the skirt. A drawn
+   *  rip-current runs the second seam. The water column, not a
+   *  cloth tube. */
+  depthveils?: { colors: string[] };
+  /** Dark-waters lot: THE DISSOLVING HEM — the last stratum tears
+   *  into sinking tongues that fall PAST the cloth's edge, `deep`
+   *  showing between them. The robe does not end; it goes under.
+   *  Silhouette: structure — the tongues hold white in the hurt
+   *  flash. */
+  sinkhem?: { color: string; deep: string };
+  /** Dark-waters lot: THE EDDY — the wardrobe's third floating
+   *  regalia (kingsmane's crown ring, aetherion's glyphs, now a
+   *  ring CURRENT orbiting the hips): near arc only, drawn casing
+   *  under a cold core, droplets sinking off its low points.
+   *  Floating regalia never take the front-plane transform. */
+  eddyring?: { water: string; neon: string };
   /** Maelstrom lot: spindrift — the churn riding the living hem,
    *  spume streaking off the leading side at the break. */
   spindrift?: { color: string };
@@ -3252,14 +3271,21 @@ registerColorways(BODY_STYLES, 'tidecaller_robe', {
     // THE DARK WATERS: near-black murk ground, drowned-slate working
     // planes, cold silver the one bright edge — and the neon deep
     // blue as the living word. The near-black lot widens its value
-    // steps (the anvilcrown lesson) so the tiers still read.
-    color: '#131c2c', trim: '#8fb2d6', underskirt: '#0b111d',
-    pauldron: 'murkpaul', pauldronColor: '#182238', pauldronTrim: '#425c85',
-    capelet: { color: '#161f32', hem: 'scallop', trim: '#31486b' },
-    foamtiers: { color: '#223452' }, pearlstrand: { color: '#c8dcec' },
-    streamwrap: { color: '#0b111d', foam: '#7fd4ff', core: '#7fd4ff' },
+    // steps (the anvilcrown lesson). The robe is THE WATER COLUMN:
+    // strata veils + dissolving hem + the eddy — so the court's
+    // shared capelet/surf/currents are EXPLICITLY removed (spread
+    // merge honors an undefined override).
+    color: '#16223a', trim: '#8fb2d6', underskirt: '#070d18',
+    pauldron: 'darkwells', pauldronColor: '#182238', pauldronTrim: '#425c85',
+    capelet: undefined,
+    foamtiers: undefined,
+    streamwrap: undefined,
+    pearlstrand: { color: '#c8dcec' },
     tidemoon: { color: '#d6e6f4' },
     undertow: { water: '#2456c8', neon: '#7fd4ff' },
+    depthveils: { colors: ['#233754', '#1c2c47', '#14213a', '#0d172c'] },
+    sinkhem: { color: '#0d172c', deep: '#070d18' },
+    eddyring: { water: '#2456c8', neon: '#7fd4ff' },
   },
   maelstrom: {
     color: '#4a6360', trim: '#dce8e4', underskirt: '#374a48',
@@ -4183,6 +4209,117 @@ export function drawTorsoGarment(
           ctx.stroke();
         }
       }
+      if (st.depthveils) {
+        // THE STRATA: the dark waters re-clothe the column — lapped
+        // sheets of standing water descending the skirt, each a
+        // step darker (the drowning gradient worn), every hem a
+        // slack DIAGONAL waterline leaning against its neighbor and
+        // breathing a beat behind it down the procession. The
+        // diagonals are the point: they kill the tube.
+        const dv = st.depthveils.colors;
+        const kV = tideK(nowMs, 0.22);
+        for (let vi = 0; vi < 3; vi++) {
+          const cV = dv[Math.min(vi + 1, dv.length - 1)]!;
+          const lean = (vi % 2 === 0 ? -1 : 1) * 0.06;
+          const topU = 0.08 + vi * 0.3;
+          const breathe = Math.sin(nowMs * 0.0019 + vi * 2.1) * 0.012 * s * (0.4 + 0.6 * kV);
+          const yL = y0 + (hemY - y0) * (topU - lean) + breathe;
+          const yR = y0 + (hemY - y0) * (topU + lean) + breathe;
+          const wV = ww * (1 + topU * 0.3);
+          ctx.fillStyle = cV;
+          ctx.beginPath();
+          ctx.moveTo(-wV, yL);
+          ctx.quadraticCurveTo(-wV * 0.3, yL + 0.028 * s, wV * 0.12, (yL + yR) / 2 + 0.012 * s);
+          ctx.quadraticCurveTo(wV * 0.62, yR - 0.014 * s, wV, yR);
+          ctx.lineTo(hem[4]!.x, hem[4]!.y);
+          for (let i = 3; i >= 0; i--) ctx.lineTo(hem[i]!.x, hem[i]!.y);
+          ctx.closePath();
+          ctx.fill();
+          // ONE cold arris per seam, on the leading side only — an
+          // edge the light found, never a drawn rim.
+          ctx.strokeStyle = shade(cV, 26);
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          if (f.lead === 1) {
+            ctx.moveTo(wV * 0.26, (yL + yR) / 2 + 0.008 * s);
+            ctx.quadraticCurveTo(wV * 0.66, yR - 0.012 * s, wV * 0.96, yR);
+          } else {
+            ctx.moveTo(-wV * 0.96, yL);
+            ctx.quadraticCurveTo(-wV * 0.6, yL + 0.022 * s, -wV * 0.26, (yL + yR) / 2 + 0.008 * s);
+          }
+          ctx.stroke();
+        }
+        // THE SEAM RIP: the drawn current woven along the second
+        // stratum's waterline — the cowl's ripseam answered on the
+        // body; its beads run with the wrap of the cloth.
+        if (st.undertow) {
+          const unV = st.undertow;
+          const brkV = tideBreakK(nowMs, 0.22);
+          const yS = y0 + (hemY - y0) * 0.36;
+          tideStream(
+            ctx,
+            -ww * 0.92, yS + 0.024 * s,
+            ww * 0.96, yS - 0.018 * s,
+            nowMs, 2.3, 0.014 * s,
+            unV.water, unV.neon,
+            0.4 + 0.32 * kV + 0.22 * brkV, Math.max(1, s * 0.0075),
+            1 + 0.5 * brkV, unV.neon,
+          );
+        }
+      }
+      if (st.eddyring) {
+        // THE EDDY: the wardrobe's third floating regalia — after
+        // kingsmane's crown ring and aetherion's glyphs, the dark
+        // waters wear a ring CURRENT orbiting the hips. Near arc
+        // only; the far half is SKIPPED behind the cloth (the
+        // floating-orbit occlusion law). Drawn casing under a cold
+        // core with a traveling ripple at one constant pace (the
+        // seamless law), droplets sinking off the low points. It
+        // breathes with the tide and stands outside the garment's
+        // yaw — floating regalia never take the front plane.
+        const er = st.eddyring;
+        const kE = tideK(nowMs, 0.18);
+        const brkE = tideBreakK(nowMs, 0.18);
+        // Mid-skirt, its own register: collar, seam, EDDY, tongues —
+        // the four verses never crowd one another.
+        const ry = y0 + (hemY - y0) * 0.56;
+        const rrx = ww * (1.42 + 0.06 * kE);
+        const rry = 0.056 * s * (1 + 0.08 * kE);
+        const segs = 14;
+        const traceE = (w2: number, colE: string, al: number): void => {
+          ctx.strokeStyle = colE;
+          ctx.globalAlpha = al;
+          ctx.lineWidth = w2;
+          ctx.beginPath();
+          for (let i = 0; i <= segs; i++) {
+            const a = Math.PI * (0.05 + (i / segs) * 0.9);
+            const rip = Math.sin(i * 1.7 - nowMs * 0.0042) * 0.006 * s * (1 + 0.5 * brkE);
+            const px = Math.cos(a) * rrx;
+            const py = ry + Math.sin(a) * rry + rip;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        };
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        traceE(Math.max(1, s * 0.019), er.water, 0.55 + 0.2 * kE);
+        traceE(Math.max(1, s * 0.009), er.neon, 0.6 + 0.4 * kE);
+        ctx.globalAlpha = 1;
+        // The droplets the current cannot keep — sinking off the
+        // ring's low arc, fading as they go.
+        ctx.fillStyle = er.neon;
+        for (const [ph3, au] of [[0, 0.32], [0.5, 0.7]] as const) {
+          const mu = ((nowMs * 0.00014 + ph3) % 1 + 1) % 1;
+          const a = Math.PI * (0.05 + au * 0.9);
+          ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.35 + 0.4 * kE);
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * rrx, ry + Math.sin(a) * rry + mu * 0.07 * s, 0.008 * s * (1 - mu * 0.35), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
       if (st.mirehem) {
         // THE WATERLINE: the hem stitched as still black water — a
         // dark band riding the living hem's own contour, reed blades
@@ -4571,29 +4708,12 @@ export function drawTorsoGarment(
         ctx.globalAlpha = 1;
       }
       if (st.undertow) {
-        // THE UNDERTOW: the dark waters' verse — two neon rip
-        // channels cutting DOWN the skirt dark, drawn currents with
-        // their beads sinking (the flow runs hemward), waking as the
-        // swell passes; and the sinking motes: the abyss breathes
-        // out and rises, the dark waters take, and everything sinks.
+        // THE UNDERTOW's own verse: the motes that fall — born in
+        // the waist shadow, gone below the hem, each one fading as
+        // the dark takes it. (The drawn water lives in the strata
+        // seam and the dissolving hem now; the light word carries.)
         const un = st.undertow;
         const kT = tideK(nowMs, 0.3);
-        const brkT = tideBreakK(nowMs, 0.3);
-        for (const [ux, ph] of [[-0.55, 0], [0.5, 2.9]] as const) {
-          tideStream(
-            ctx,
-            ux * ww + 0.028 * s, y0 + (hemY - y0) * 0.5,
-            ux * ww - 0.028 * s, hemY - 0.008 * s,
-            nowMs, ph, 0.015 * s,
-            un.water, un.neon,
-            0.34 + 0.42 * kT + 0.24 * brkT,
-            Math.max(1, s * 0.007),
-            1 + 0.5 * brkT,
-            un.neon,
-          );
-        }
-        // The motes that fall: born in the waist shadow, gone below
-        // the hem, each one fading as the dark takes it.
         ctx.fillStyle = un.neon;
         for (const [i, [ux, ph]] of ([[-0.72, 0], [0.08, 0.37], [0.66, 0.71]] as const).entries()) {
           const mu = ((nowMs * 0.00011 + ph) % 1 + 1) % 1;
@@ -4710,6 +4830,68 @@ export function drawTorsoGarment(
         ctx.moveTo(0, y0 + 0.02 * s);
         ctx.lineTo(hem[2]!.x * 0.8, hem[2]!.y - 0.02 * s);
         ctx.stroke();
+      }
+    }
+    // THE DISSOLVING HEM: outside the hurt guard on purpose — the
+    // tongues change the garment's OUTLINE, so they are structure
+    // and must hold white in the flash (the hurt amendment).
+    if (st.sinkhem) {
+      const sh2 = st.sinkhem;
+      const kH = tideK(nowMs, 0.3);
+      const brkH = tideBreakK(nowMs, 0.3);
+      const hemAt = (u: number): { x: number; y: number } => {
+        const fu = ((u + 1) / 2) * 4;
+        const i0 = Math.min(3, Math.floor(fu));
+        const fr2 = fu - i0;
+        return {
+          x: hem[i0]!.x + (hem[i0 + 1]!.x - hem[i0]!.x) * fr2,
+          y: hem[i0]!.y + (hem[i0 + 1]!.y - hem[i0]!.y) * fr2,
+        };
+      };
+      if (!hurt) {
+        // The deep between the tongues, first — the water the robe
+        // is entering.
+        ctx.fillStyle = sh2.deep;
+        ctx.beginPath();
+        ctx.moveTo(hem[0]!.x, hem[0]!.y - 0.014 * s);
+        for (let i = 1; i <= 4; i++) ctx.lineTo(hem[i]!.x, hem[i]!.y - 0.014 * s);
+        for (let i = 4; i >= 0; i--) ctx.lineTo(hem[i]!.x * 1.01, hem[i]!.y + 0.03 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Six tongues, no two alike, drawn full edges — torn cloth
+      // still earns its edge. They reach a hair further at the
+      // swell and sway on their own slow clocks.
+      ctx.fillStyle = hurt ? '#ffffff' : sh2.color;
+      for (const [ui, len, wT, ph] of [
+        [-0.92, 0.075, 0.05, 0], [-0.55, 0.11, 0.062, 1.4],
+        [-0.16, 0.085, 0.054, 2.9], [0.2, 0.12, 0.06, 0.8],
+        [0.58, 0.09, 0.055, 2.2], [0.9, 0.07, 0.048, 3.6],
+      ] as const) {
+        const hp = hemAt(ui);
+        const sway2 = hurt ? 0 : Math.sin(nowMs * 0.0011 + ph) * 0.008 * s;
+        const lenY = len * s * (1 + 0.16 * kH + 0.12 * brkH);
+        ctx.beginPath();
+        ctx.moveTo(hp.x - wT * s * 0.5, hp.y - 0.02 * s);
+        ctx.lineTo(hp.x + wT * s * 0.5, hp.y - 0.02 * s);
+        ctx.quadraticCurveTo(hp.x + wT * s * 0.22 + sway2, hp.y + lenY * 0.6, hp.x + sway2 * 1.4, hp.y + lenY);
+        ctx.quadraticCurveTo(hp.x - wT * s * 0.3 + sway2 * 0.6, hp.y + lenY * 0.55, hp.x - wT * s * 0.5, hp.y - 0.02 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (!hurt) {
+        // Two tongue tips shed their beads in the procession — the
+        // last of the robe, going under.
+        ctx.fillStyle = st.undertow?.neon ?? st.trim;
+        for (const [ui2, ph2, tl] of [[-0.55, 0.15, 0.11], [0.2, 0.6, 0.12]] as const) {
+          const mu = ((nowMs * 0.00013 + ph2) % 1 + 1) % 1;
+          const hp = hemAt(ui2);
+          ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.45 + 0.35 * kH);
+          ctx.beginPath();
+          ctx.arc(hp.x + Math.sin(mu * 7) * 0.006 * s, hp.y + tl * s + mu * 0.09 * s, 0.0075 * s * (1 - mu * 0.4), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
       }
     }
   }
@@ -5427,6 +5609,34 @@ export function drawTorsoGarment(
         sw2.core ?? '#dff4ef',
       );
       frontPlaneOff();
+    }
+
+    // ---- THE STRATA COLLAR: the dark waters' first sheet laps the
+    // chest as a deep water yoke — the drowning gradient starts at
+    // the shoulders (this robe wears no capelet; the water is the
+    // mantle). Wrap-around cloth: it never takes the front-plane
+    // transform, and it dresses the back as a clean dark yoke too.
+    if (st.depthveils && !hurt) {
+      const dvc = st.depthveils.colors[0]!;
+      const kC = tideK(nowMs, 0.14);
+      const brC = Math.sin(nowMs * 0.0019) * th * 0.02 * (0.4 + 0.6 * kC);
+      ctx.fillStyle = dvc;
+      ctx.beginPath();
+      ctx.moveTo(-tw * 1.02, -th * 0.98);
+      ctx.lineTo(tw * 1.02, -th * 0.98);
+      ctx.lineTo(tw * 1.05, -th * 0.6 + brC);
+      ctx.quadraticCurveTo(tw * 0.52, -th * 0.42 + brC, f.lead * tw * 0.1, -th * 0.54 + brC);
+      ctx.quadraticCurveTo(-f.lead * tw * 0.54, -th * 0.68 + brC, -tw * 1.05, -th * 0.5 + brC);
+      ctx.closePath();
+      ctx.fill();
+      // The collar's cold arris, leading side only.
+      ctx.strokeStyle = shade(dvc, 26);
+      ctx.lineWidth = Math.max(1, s * 0.008);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(f.lead * tw * 0.98, -th * 0.62 + brC);
+      ctx.quadraticCurveTo(f.lead * tw * 0.5, -th * (f.lead === 1 ? 0.44 : 0.66) + brC, f.lead * tw * 0.12, -th * 0.55 + brC);
+      ctx.stroke();
     }
 
     // ---- THE TIDE MOON: the caller's warrant, high on the chest —
@@ -10806,154 +11016,122 @@ export function drawPauldron(
     return;
   }
 
-  if (st.pauldron === 'murkpaul') {
-    // THE UNDERTOW — the dark waters' shoulders, asymmetric: the
-    // right wears THE SINK, a hook of black water standing out of
-    // the seat's own basin to fall forever, the neon rip running
-    // down its face with the bead train sinking after it; the left
-    // keeps THE STILL MERE — a black pool, one ripple at a time, a
-    // gleam that passes beneath at the stand. Both basins hold the
-    // murk as a LIT surface (the basin law) — but here the light is
-    // UNDER the water. The pair shares the surge beat; every
-    // ornament keeps its own time (the clockwork law).
+  if (st.pauldron === 'darkwells') {
+    // THE TWIN WELLS — the dark waters' MATCHED pair (symmetric
+    // sets exist; the asymmetry law is a default, not a shackle):
+    // each shoulder carries a WELL of black water sunk into the cap
+    // — a cold silver coping (a filled band, never a wire), depth
+    // rings stepping to true dark — and down inside it THE RISER: a
+    // light climbing from the deep with the swell. At the stand it
+    // nearly surfaces and the water answers with one ring; at the
+    // break it BREACHES — a small crest, spray falling home — then
+    // sinks away. Something is down there. Twice a cycle it almost
+    // arrives. The pair shares the one beat; only the idle bubbles
+    // keep per-side time (the clockwork law).
     const un = st.undertow;
-    // The pour's BODY is murk — the electric blue lives only inside
-    // the drawn rip (water is drawn, never dressed in its light).
-    const water = hurt ? '#ffffff' : shade(col, -8);
     const neon = un?.neon ?? trim;
     const pearl = st.pearlstrand?.color ?? trim;
     const k = tideK(nowMs, 0.14);
     const brk = tideBreakK(nowMs, 0.14);
-    seat(0.102 * s, 0.084 * s, hurt ? '#ffffff' : col, trim);
-    // THE BASIN, both shoulders: the near-black plane, the cold
-    // under-light waking beneath it — a drawn crescent, never a
-    // halo — and a foam rim counted in drowned silver that shivers
-    // when the wave breaks.
-    const pox = side * 0.012 * s;
-    const poy = -0.054 * s;
-    const prx = (side > 0 ? 0.06 : 0.072) * s;
-    const pry = (side > 0 ? 0.02 : 0.024) * s;
+    const ph = side > 0 ? 0 : 1.9;
+    seat(0.104 * s, 0.086 * s, hurt ? '#ffffff' : col, trim);
+    const wx = side * 0.012 * s;
+    const wy2 = -0.062 * s;
+    const wrx = 0.066 * s;
+    const wry = 0.03 * s;
+    // THE COPING: the one metal the murk allows — a filled silver
+    // band seating the well into the cap. Structure: white on hurt.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(trim, -6);
+    ctx.beginPath();
+    ctx.ellipse(wx, wy2, wrx * 1.2, wry * 1.3, 0, 0, Math.PI * 2);
+    ctx.fill();
     if (!hurt) {
-      ctx.fillStyle = shade(col, -22);
+      // The coping's lit top crescent — 2.5D says the band has a
+      // face.
+      ctx.fillStyle = shade(trim, 12);
       ctx.beginPath();
-      ctx.ellipse(pox, poy, prx, pry, 0, 0, Math.PI * 2);
+      ctx.ellipse(wx, wy2 - wry * 0.16, wrx * 1.14, wry * 1.06, 0, Math.PI, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = neon;
-      ctx.lineWidth = Math.max(1, s * 0.008);
-      ctx.lineCap = 'round';
-      ctx.globalAlpha = 0.18 + 0.4 * k + 0.28 * brk;
-      ctx.beginPath();
-      ctx.ellipse(pox, poy + pry * 0.3, prx * 0.62, pry * 0.5, 0, Math.PI * 0.12, Math.PI * 0.88);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = pearl;
-      for (const bu of [-0.85, -0.45, 0.05, 0.5, 0.88] as const) {
-        const jit = Math.sin(bu * 9 + nowMs * 0.0011 + side * 2) * 0.0028 * s * (1 + 2.4 * brk);
+      // THE WELL: depth as converging rings, each darker — the
+      // drowning gradient sunk into the shoulder.
+      for (const [ri, dv] of [[1, -26], [0.74, -34], [0.5, -42]] as const) {
+        ctx.fillStyle = shade(col, dv);
         ctx.beginPath();
-        ctx.arc(pox + bu * prx * 1.04, poy - pry * 0.3 + jit, 0.0055 * s, 0, Math.PI * 2);
+        ctx.ellipse(wx, wy2 + wry * (1 - ri) * 0.24, wrx * ri, wry * ri, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-    }
-    if (side > 0) {
-      // THE SINK: black water stands out of the basin and folds
-      // back down — a wave hook curling IN toward the wearer,
-      // heavier and slower than any surf. Structure: the hook holds
-      // the silhouette white on hurt.
-      const hx = pox + side * prx * 0.55;
-      const rise = 1 + 0.1 * k + 0.16 * brk;
-      ctx.fillStyle = water;
+      // THE RISER: the light in the deep. Depth rides the tide —
+      // deep is small and dim, risen is wide and bright under the
+      // surface plane. Drawn discs; never a halo.
+      const rise = k;
+      const rr2 = wrx * (0.16 + 0.36 * rise);
+      ctx.fillStyle = un?.water ?? shade(col, -10);
+      ctx.globalAlpha = 0.45 + 0.3 * rise;
       ctx.beginPath();
-      ctx.moveTo(hx + side * 0.03 * s, poy + 0.008 * s);
-      ctx.quadraticCurveTo(hx + side * 0.052 * s, poy - 0.07 * s * rise, hx - side * 0.006 * s, poy - 0.096 * s * rise);
-      ctx.quadraticCurveTo(hx - side * 0.05 * s, poy - 0.108 * s * rise, hx - side * 0.066 * s, poy - 0.076 * s * rise);
-      ctx.quadraticCurveTo(hx - side * 0.072 * s, poy - 0.05 * s * rise, hx - side * 0.052 * s, poy - 0.044 * s * rise);
-      ctx.quadraticCurveTo(hx - side * 0.028 * s, poy - 0.052 * s * rise, hx - side * 0.014 * s, poy - 0.066 * s * rise);
-      ctx.quadraticCurveTo(hx + side * 0.012 * s, poy - 0.04 * s, hx + side * 0.006 * s, poy + 0.006 * s);
-      ctx.closePath();
+      ctx.ellipse(wx, wy2 + wry * 0.14, rr2 * 1.5, rr2 * 0.62, 0, 0, Math.PI * 2);
       ctx.fill();
-      if (!hurt) {
-        // Flat planes: lit outboard face, barrel dark toward the
-        // wearer — value, never outline.
-        ctx.fillStyle = shade(col, 12);
-        ctx.beginPath();
-        ctx.moveTo(hx + side * 0.026 * s, poy - 0.01 * s);
-        ctx.quadraticCurveTo(hx + side * 0.042 * s, poy - 0.062 * s * rise, hx - side * 0.004 * s, poy - 0.088 * s * rise);
-        ctx.quadraticCurveTo(hx + side * 0.014 * s, poy - 0.06 * s * rise, hx + side * 0.016 * s, poy - 0.008 * s);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = shade(col, -24);
-        ctx.beginPath();
-        ctx.moveTo(hx - side * 0.048 * s, poy - 0.05 * s * rise);
-        ctx.quadraticCurveTo(hx - side * 0.03 * s, poy - 0.058 * s * rise, hx - side * 0.018 * s, poy - 0.062 * s * rise);
-        ctx.quadraticCurveTo(hx - side * 0.03 * s, poy - 0.044 * s * rise, hx - side * 0.048 * s, poy - 0.05 * s * rise);
-        ctx.closePath();
-        ctx.fill();
-        // THE RIP: the neon core running down the hook's face into
-        // the pool, its beads sinking with the water.
-        tideStream(
-          ctx,
-          hx - side * 0.01 * s, poy - 0.085 * s * rise,
-          pox - side * 0.012 * s, poy - 0.002 * s,
-          nowMs, 0.6, 0.008 * s,
-          un?.water ?? shade(col, -14), neon,
-          0.5 + 0.28 * k + 0.22 * brk, Math.max(1, s * 0.0065),
-          1 + 0.6 * brk, neon,
-        );
-        // At the break the fall throws its flecks INWARD — spray
-        // that falls back to the pool, never leaps from it.
-        if (brk > 0.05) {
-          const fly = 1 - brk;
-          ctx.fillStyle = pearl;
-          for (const [dph, dxu] of [[0, -0.5], [0.2, 0.3], [0.36, -0.1]] as const) {
-            const du = Math.min(1, fly + dph);
-            if (du >= 1) continue;
-            ctx.globalAlpha = (1 - du) * 0.8;
-            ctx.beginPath();
-            ctx.arc(
-              hx - side * 0.02 * s + dxu * 0.02 * s,
-              poy - 0.08 * s + du * 0.07 * s,
-              0.0075 * s * (1 - du * 0.4), 0, Math.PI * 2,
-            );
-            ctx.fill();
-          }
-          ctx.globalAlpha = 1;
-        }
-      }
-    } else if (!hurt) {
-      // THE STILL MERE: the wide pool keeps its counsel. One ring
-      // ripple at a time crosses it and dies (the fen's one-ring
-      // law); at the stand a gleam slides beneath the surface —
-      // something passing, never shown; two drowned pearls keep the
-      // seat hem.
-      const ru = ((nowMs * 0.00036 + 0.3) % 1 + 1) % 1;
-      ctx.strokeStyle = shade(col, 16);
-      ctx.lineWidth = Math.max(1, s * 0.005);
-      ctx.globalAlpha = (1 - ru) * 0.55;
+      ctx.fillStyle = neon;
+      ctx.globalAlpha = 0.25 + 0.65 * rise;
       ctx.beginPath();
-      ctx.ellipse(pox - side * prx * 0.2, poy, prx * (0.2 + 0.75 * ru), pry * (0.25 + 0.75 * ru), 0, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.ellipse(wx, wy2 + wry * 0.14, rr2, rr2 * 0.42, 0, 0, Math.PI * 2);
+      ctx.fill();
       ctx.globalAlpha = 1;
-      // The passing gleam: only at high water, once a cycle.
-      if (k > 0.55) {
-        const gu = (k - 0.55) / 0.45;
-        const gx = pox + (gu * 2 - 1) * prx * 0.7;
-        ctx.strokeStyle = neon;
-        ctx.lineCap = 'round';
-        ctx.lineWidth = Math.max(1, s * 0.007);
-        ctx.globalAlpha = Math.sin(gu * Math.PI) * 0.7;
+      // The surface answers as it nears: one ring ripple opening.
+      if (rise > 0.55) {
+        const rp = (rise - 0.55) / 0.45;
+        ctx.strokeStyle = shade(neon, 10);
+        ctx.globalAlpha = (1 - rp) * 0.6;
+        ctx.lineWidth = Math.max(1, s * 0.005);
         ctx.beginPath();
-        ctx.moveTo(gx - prx * 0.22, poy + pry * 0.24);
-        ctx.quadraticCurveTo(gx, poy + pry * 0.05, gx + prx * 0.22, poy + pry * 0.24);
+        ctx.ellipse(wx, wy2 + wry * 0.12, wrx * (0.3 + 0.6 * rp), wry * (0.3 + 0.6 * rp), 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
-      // The drowned pearls at the seat hem.
-      for (const [pu2, pr2] of [[-0.5, 0.009], [0.42, 0.007]] as const) {
-        ctx.fillStyle = shade(pearl, Math.round(-6 + 26 * Math.max(k, brk)));
+      // THE BREACH: at the break the light touches air — a small
+      // drawn crest, spray falling home into the well. Nothing
+      // leaves. Nothing ever leaves.
+      if (brk > 0.05) {
+        const fly = 1 - brk;
+        ctx.strokeStyle = neon;
+        ctx.lineCap = 'round';
+        ctx.lineWidth = Math.max(1, s * 0.007);
+        ctx.globalAlpha = brk * 0.9;
         ctx.beginPath();
-        ctx.arc(pox + pu2 * prx, 0.012 * s, pr2 * s, 0, Math.PI * 2);
+        ctx.arc(wx, wy2 + wry * 0.05, wrx * 0.3, Math.PI * 1.12, Math.PI * 1.88);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = pearl;
+        for (const [dph, dxu] of [[0, -0.6], [0.18, 0.5], [0.34, -0.15]] as const) {
+          const du = Math.min(1, fly + dph);
+          if (du >= 1) continue;
+          ctx.globalAlpha = (1 - du) * 0.85;
+          ctx.beginPath();
+          ctx.arc(
+            wx + dxu * wrx * (0.5 + du * 0.7),
+            wy2 - wry * 0.4 - Math.sin(du * Math.PI) * 0.028 * s + du * du * 0.05 * s,
+            0.007 * s * (1 - du * 0.35), 0, Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      // Three rivet beads on the coping's outboard face — the
+      // shrine door's hardware, answered at the shoulder.
+      ctx.fillStyle = pearl;
+      for (const bu of [-0.62, 0, 0.62] as const) {
+        ctx.beginPath();
+        ctx.arc(wx + bu * wrx * 0.92, wy2 + wry * 1.12 - Math.abs(bu) * wry * 0.3, 0.005 * s, 0, Math.PI * 2);
         ctx.fill();
       }
+      // The idle bubble: one bead rising off the well on its own
+      // side-phase — air is the one thing that escapes.
+      const mu = ((nowMs * 0.0001 + ph * 0.2) % 1 + 1) % 1;
+      ctx.fillStyle = neon;
+      ctx.globalAlpha = Math.sin(mu * Math.PI) * 0.4;
+      ctx.beginPath();
+      ctx.arc(wx + Math.sin(mu * 7 + ph) * 0.012 * s, wy2 - wry - mu * 0.05 * s, 0.005 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
     ctx.restore();
     return;
